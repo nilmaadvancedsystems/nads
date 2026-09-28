@@ -34,6 +34,7 @@ export function EmpresaAberta() {
   const { empresa: slug = '', secao = '', pagina = '' } = useParams();
   const repo = useRepo();
   useVersaoDoRepo();
+  if (!repo.pronto()) return <div id="login"><p className="hint">Carregando…</p></div>;
   const nome = repo.nomePorSlug(slug);
   if (!nome) return <Navigate to="/" replace />;
   const id = secao + '/' + pagina;

@@ -4,6 +4,7 @@ export * from './acoes';
 export * from './repo';
 export { criarRepoConferenciaMemoria } from './repo.memoria';
 export { EMPRESAS_EXEMPLO } from './__exemplos__/empresas';
+export { CLIENTES, SEED } from './tabelas/clientes';
 export { CFOP_DESC } from './tabelas/cfop';
 export { SV, SERV_CAT, ehServ, type CategoriaServico, type ConfigServico } from './tabelas/servicos';
 export * from './arquivos';

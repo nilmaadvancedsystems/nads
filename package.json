@@ -8,12 +8,13 @@
   ],
   "scripts": {
     "dev": "npm run dev -w @nads/web",
+    "dev:banco": "npm run dev:banco -w @nads/web",
     "build": "npm run build -w @nads/web",
     "tipos": "tsc -b",
     "lint": "eslint --max-warnings=0 .",
     "teste": "vitest run",
-    "sem-rede": "node scripts/sem-rede.mjs",
-    "verificar": "npm run tipos && npm run lint && npm run teste && npm run sem-rede"
+    "conexoes": "node scripts/conexoes.mjs",
+    "verificar": "npm run tipos && npm run lint && npm run teste && npm run conexoes"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

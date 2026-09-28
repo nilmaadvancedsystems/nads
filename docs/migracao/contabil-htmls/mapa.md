@@ -71,13 +71,12 @@ tiradas do `conferencia.html`, rodam lado a lado com as novas na mesma entrada. 
 | `natAnimar` | sessão |
 | tema, barra lateral oculta | `localStorage` (ui) |
 
-## O que na cópia fica simulado
+## Banco
 
-| Original | Na cópia |
-|---|---|
-| Firestore `empresas/{slug}` (save/onSnapshot) | repositório em memória + localStorage do navegador |
-| `CLIENTES` (~230 empresas reais) | 3 empresas de exemplo (901, 902, 903) |
-| login | não existe no original (a Conferência é aberta) |
+Site publicado (https://nads-nilma.web.app): **mesmo Firestore da conferencia-nilma.web.app**
+(`apps/web/src/dados/conferencia.firestore.ts`): onSnapshot na coleção `empresas`, SEED na primeira carga,
+save = set do documento inteiro em `empresas/{slug}`, lista = CLIENTES + banco. Diferença proposital: nada
+grava antes da primeira carga. Local (`npm run dev`): repositório em memória com exemplos.
 
 ## Código morto do original (não copiado)
 
@@ -86,5 +85,4 @@ tiradas do `conferencia.html`, rodam lado a lado com as novas na mesma entrada. 
 
 ## Perguntas ao usuário
 
-- Link de publicação da cópia (hoje: página privada no claude.ai para prévia).
-- Ligar ao Firebase (fase 1 só leitura) — decisão pendente.
+- (resolvidas) link: https://nads-nilma.web.app · banco: mesmo da Conferência, leitura e gravação.

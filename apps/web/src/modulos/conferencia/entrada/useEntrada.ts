@@ -31,9 +31,10 @@ export function useEntrada() {
 
   function entrar(nome: string) {
     // entrar(): abre (ou cria) a empresa e marca a primeira abertura
+    if (!repo.pronto()) return;
     const existente = repo.obter(nome);
     const e = c.aoEntrar(existente || c.empresaNova(nome));
-    if (e !== existente) repo.salvar(e);
+    repo.salvar(e); // o entrar() original sempre salva
     setBusca('');
     setAberta(false);
     const t = c.telaInicialEmpresa(e);
@@ -59,6 +60,8 @@ export function useEntrada() {
     achadas: achadas.slice(0, LIMITE_LISTA),
     total: achadas.length,
     entrar, confirmar,
+    carregando: !repo.pronto(),
+    exemplos: repo.exemplos,
     restaurarExemplos: () => { repo.restaurarExemplos(); toast('Exemplos restaurados.'); },
   };
 }
