@@ -86,7 +86,7 @@ export function notasServicoDaConta(e: Empresa, t: TipoServico, codigos: string[
 }
 
 /** Opções de CFOP (naturezas) para o formulário; a vinculada à conta vem travada. */
-export function opcoesCfop(e: Empresa, conta: Conta | null): { chaves: string[]; rotulos: Record<string, string>; vinculada: string | null } {
+export function opcoesCfop(e: Empresa, conta: Conta | null, codigos?: string[]): { chaves: string[]; rotulos: Record<string, string>; vinculada: string | null } {
   const grupos = agruparTotaisPorNatureza(todasNotasComTipo(e));
   const chaves = Object.keys(grupos).sort((a, b) => compararNumerico(grupos[a].cfops.slice().sort()[0] || '', grupos[b].cfops.slice().sort()[0] || ''));
   const rotulos: Record<string, string> = {};
@@ -94,8 +94,40 @@ export function opcoesCfop(e: Empresa, conta: Conta | null): { chaves: string[];
     const g = grupos[k];
     rotulos[k] = g.cfops.slice().sort(compararNumerico).join(', ') + (g.desc ? ' — ' + g.desc : '') + ' (' + g.itens.length + ' notas)';
   }
-  const vinculada = conta ? naturezasDaConta(e, conta.codigo).filter(k => grupos[k])[0] || null : null;
+  const cods = codigos && codigos.length ? codigos : conta ? [conta.codigo] : [];
+  const ligadas = naturezasLigadas(e, cods, grupos);
+  const vinculada = ligadas[0] || null;
+  // conta ligada a várias naturezas: confere contra todas, e o campo mostra todos os CFOPs
+  if (vinculada && ligadas.length > 1) {
+    const gs = ligadas.map(k => grupos[k]);
+    rotulos[vinculada] = uniaoCfops(gs).join(', ') + ' (' + gs.reduce((s, g) => s + g.itens.length, 0) + ' notas)';
+  }
   return { chaves, rotulos, vinculada };
+}
+
+/** Naturezas (com notas) ligadas a essas contas no Cadastro, na ordem do CFOP. */
+function naturezasLigadas(e: Empresa, codigos: string[], grupos: ReturnType<typeof agruparTotaisPorNatureza>): string[] {
+  const ks: string[] = [];
+  for (const cod of codigos) for (const k of naturezasDaConta(e, cod)) if (grupos[k] && ks.indexOf(k) < 0) ks.push(k);
+  return ks.sort((a, b) => compararNumerico(grupos[a].cfops.slice().sort()[0] || '', grupos[b].cfops.slice().sort()[0] || ''));
+}
+
+function uniaoCfops(gs: { cfops: string[] }[]): string[] {
+  const cf: string[] = [];
+  for (const g of gs) for (const c of g.cfops) if (cf.indexOf(c) < 0) cf.push(c);
+  return cf.sort(compararNumerico);
+}
+
+/**
+ * Naturezas que entram na conferência: se o CFOP escolhido é um dos ligados à(s) conta(s),
+ * entram todas as naturezas ligadas (ex.: 96501 = 5102 + 5405); senão, só a escolhida.
+ * (O original usava só a primeira natureza ligada — as outras viravam "a mais".)
+ */
+export function naturezasDaConferencia(e: Empresa, codigos: string[], cfopGrupo: string | null): string[] {
+  const grupos = agruparTotaisPorNatureza(todasNotasComTipo(e));
+  if (!cfopGrupo || !grupos[cfopGrupo]) return [];
+  const ligadas = naturezasLigadas(e, codigos, grupos);
+  return ligadas.indexOf(cfopGrupo) > -1 ? ligadas : [cfopGrupo];
 }
 
 /** "70002 + 70006 — Compras de Mercadorias" (ou uma conta só). */
@@ -146,13 +178,14 @@ export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
   const todas = todasNotasComTipo(e);
   let alvo: NotaAlvo[];
   let fonte: string;
-  let gr: ReturnType<typeof agruparTotaisPorNatureza>[string] | undefined;
+  let gs: ReturnType<typeof agruparTotaisPorNatureza>[string][] = [];
   if (x.servTipo) {
     alvo = notasServicoDaConta(e, x.servTipo, codigos);
   } else {
-    gr = agruparTotaisPorNatureza(todas)[x.cfopGrupo || ''];
-    if (!gr) throw new Error('Escolha o CFOP antes de conferir.');
-    alvo = gr.itens;
+    const grupos = agruparTotaisPorNatureza(todas);
+    gs = naturezasDaConferencia(e, codigos, x.cfopGrupo).map(k => grupos[k]);
+    if (!gs.length) throw new Error('Escolha o CFOP antes de conferir.');
+    alvo = gs.flatMap(g => g.itens);
   }
   const razao: LinhaRazao[] = multi
     ? x.contas.flatMap(a => (x.razaoPorConta[a.codigo] || []).map(l => ({ ...l, conta: a.codigo, dica: undefined })))
@@ -192,7 +225,8 @@ export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
   linhasConf.forEach((_, i) => { for (const t of numerosPorLinha[i]) { const k = semZeros(t); vistos[k] = (vistos[k] || 0) + 1; } });
   const numerosAlvo: Record<string, 1> = {};
   for (const n of alvo) if (n.numero) numerosAlvo[n.numero.replace(/^0+/, '') || n.numero] = 1;
-  const faltando = alvo.filter(n => !!n.numero && !vistos[n.numero.replace(/^0+/, '') || n.numero]);
+  // nota de valor zero não tem o que lançar: não entra em "Faltando na conta"
+  const faltando = alvo.filter(n => !!n.numero && Math.abs(n.valor) >= IGUAL && !vistos[n.numero.replace(/^0+/, '') || n.numero]);
 
   const itensPorNumero: Record<string, number[]> = {};
   const linhasPorNumero: Record<string, LinhaRazao[]> = {};
@@ -226,7 +260,7 @@ export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
     for (const n of alvo) { const c = catServ(x.servTipo, catDoPart(e, x.servTipo, n.nome)).nome; if (cats.indexOf(c) < 0) cats.push(c); }
     fonte = SV[x.servTipo].rotulo + (cats.length ? ' · ' + cats.join(', ') : '');
   } else {
-    fonte = 'CFOP ' + (gr as NonNullable<typeof gr>).cfops.slice().sort(compararNumerico).join(', ') + ((gr as NonNullable<typeof gr>).desc ? ' — ' + (gr as NonNullable<typeof gr>).desc : '');
+    fonte = 'CFOP ' + uniaoCfops(gs).join(', ') + (gs.length === 1 && gs[0].desc ? ' — ' + gs[0].desc : '');
   }
   const comRel = multi ? x.contas.filter(a => x.razaoPorConta[a.codigo]) : [];
   const rot = rotuloContas(x.contas);
