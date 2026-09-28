@@ -74,7 +74,7 @@ function SaldoBalancete({ linhas, onRevisar }: { linhas: c.LinhaSaldo[]; onRevis
   return (
     <div className="table-wrap" style={{ maxHeight: 'none' }}>
       <table className="table-compact">
-        <thead><tr><th>Conta</th><th>Descrição</th><th className="num">Notas</th><th className="num">Soma das notas</th><th className="num">Saldo do balancete</th><th className="num th-sit">Situação</th></tr></thead>
+        <thead><tr><th>Conta</th><th>CFOP</th><th className="num">Notas</th><th className="num">Soma das notas</th><th className="num">Saldo do balancete</th><th className="num th-sit">Situação</th></tr></thead>
         <tbody>
           {linhas.map(l => {
             const chave = l.contas.join('+');
@@ -83,7 +83,7 @@ function SaldoBalancete({ linhas, onRevisar }: { linhas: c.LinhaSaldo[]; onRevis
               return (
                 <tr key={chave} className="linha-em-serv" title={'Essa conta também tem notas de serviço: a conferência dela é feita em ' + rotS + ', somando as duas.'}>
                   <td style={{ whiteSpace: 'nowrap' }}><b>{l.titulo}</b></td>
-                  <td className="wrap">CFOP {l.cfops.join(', ')}</td>
+                  <td className="wrap">{l.cfops.join(', ')}</td>
                   <td className="num">{l.qtdNotas}</td>
                   <td className="num">{brl(l.somaNotas)}</td>
                   <td className="num">—</td>
@@ -94,7 +94,7 @@ function SaldoBalancete({ linhas, onRevisar }: { linhas: c.LinhaSaldo[]; onRevis
             return (
               <tr key={chave} {...linhaPassivo(l.avisoPassivo)}>
                 <td style={{ whiteSpace: 'nowrap' }}><IconePassivo aviso={l.avisoPassivo} /><b>{l.titulo}</b></td>
-                <td className="wrap">CFOP {l.cfops.join(', ')}</td>
+                <td className="wrap">{l.cfops.join(', ')}</td>
                 <td className="num">{l.qtdNotas}</td>
                 <td className="num">{brl(l.somaNotas)}</td>
                 <td className="num">{l.saldo == null ? '—' : brl(l.saldo)}</td>
