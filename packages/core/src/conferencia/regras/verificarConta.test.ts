@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { conta, empresa, linha, nota } from '../__legado__/fixtures';
-import { conferirConta, ehLinhaIcms, numerosDoHistorico, partesDoHistorico, semPendencias, totaisVerificacao, type LinhaRazao } from './verificarConta';
+import { conferirConta, ehLinhaIcms, naturezasDaConferencia, numerosDoHistorico, opcoesCfop, partesDoHistorico, semPendencias, totaisVerificacao, type LinhaRazao } from './verificarConta';
 
 describe('numerosDoHistorico', () => {
   it('padrão fiscal: o número antes do CNPJ, ignorando o resto', () => {
@@ -96,5 +96,49 @@ describe('conferirConta', () => {
   });
   it('sem CFOP escolhido: erro', () => {
     expect(() => conferirConta({ empresa: e, contas: [e.contas[0]], razaoPorConta: {}, cfopGrupo: null, servTipo: null })).toThrow('Escolha o CFOP');
+  });
+  it('nota de valor zero não entra em "faltando"', () => {
+    const e0 = empresa({ ...e, entradas: [...e.entradas, nota('1102', '6', 0, '300')] });
+    const r = conferirConta({ empresa: e0, contas: [e0.contas[0]], razaoPorConta: { 66005: [linha('100', 500), linha('101', 300), linha('200', 400)] }, cfopGrupo: COMPRA, servTipo: null });
+    expect(r.faltando).toEqual([]);
+    expect(semPendencias(r)).toBe(true);
+  });
+});
+
+describe('conta ligada a várias naturezas (ex.: 96501 = 5102 + 5405)', () => {
+  const V5102 = 'Venda de mercadoria adquirida ou recebida de terceiros';
+  const V5405 = 'Venda de mercadoria, adquirida ou recebida de terceiros, na condição de contribuinte-substituído';
+  const e = empresa({
+    contas: [conta('96501', 'Vendas de Mercadorias', 0, 'Receita', 'C')],
+    saidas: [
+      nota('5102', '182', 100, '9001'),
+      nota('5405', '182', 250, '9002'),
+      nota('5102', '182', 68.09, '9756'),
+      nota('5405', '182', 269.37, '9756'), // mesma NF, os dois CFOPs na mesma conta
+    ],
+    naturezaConta: { [V5102]: ['96501'], [V5405]: ['96501'] },
+  });
+  const conta96501 = e.contas[0];
+
+  it('o campo CFOP mostra as duas naturezas juntas', () => {
+    const op = opcoesCfop(e, conta96501);
+    expect(op.vinculada).toBe(V5102);
+    expect(op.rotulos[V5102]).toBe('5102, 5405 (4 notas)');
+    expect(naturezasDaConferencia(e, ['96501'], V5102)).toEqual([V5102, V5405]);
+  });
+  it('confere contra todas: a venda 5405 não vira "a mais"', () => {
+    const r = conferirConta({ empresa: e, contas: [conta96501], razaoPorConta: { 96501: [linha('9001', 100), linha('9002', 250), linha('9756', 337.46)] }, cfopGrupo: V5102, servTipo: null });
+    expect(semPendencias(r)).toBe(true);
+    expect(r.somaFiscal).toBeCloseTo(687.46, 5);
+    expect(r.fonte).toBe('CFOP 5102, 5405');
+  });
+  it('NF com os dois CFOPs lançada duas vezes: duplicada pelo valor da nota inteira', () => {
+    const r = conferirConta({ empresa: e, contas: [conta96501], razaoPorConta: { 96501: [linha('9001', 100), linha('9002', 250), linha('9756', 337.46), linha('9756', 337.46)] }, cfopGrupo: V5102, servTipo: null });
+    expect(r.aMais).toEqual([]);
+    expect(r.duplicada.length).toBe(1);
+    expect(r.duplicada[0].valor).toBeCloseTo(337.46, 5);
+  });
+  it('CFOP escolhido à mão, que não é ligado à conta: só ele', () => {
+    expect(naturezasDaConferencia(e, ['99999'], V5405)).toEqual([V5405]);
   });
 });

@@ -23,7 +23,7 @@ function derivar(e: c.Empresa, v: EstadoVerificar) {
   const multi = grupo.length > 1;
   const codigos = multi ? grupo.map(a => a.codigo) : conta ? [conta.codigo] : [];
   const servTipo = conta ? c.servicoDaContaVerificar(e, conta.codigo) : null;
-  const opcoes = c.opcoesCfop(e, conta);
+  const opcoes = c.opcoesCfop(e, conta, codigos);
   const cfopGrupo = servTipo || !opcoes.chaves.length ? v.cfopGrupo
     : opcoes.vinculada || (v.cfopGrupo && opcoes.chaves.indexOf(v.cfopGrupo) > -1 ? v.cfopGrupo : null);
   const rotulo = c.rotuloContas(multi ? grupo : conta ? [conta] : []);
