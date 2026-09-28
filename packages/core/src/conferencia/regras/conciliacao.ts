@@ -123,15 +123,27 @@ export interface LinhaSaldo {
   qtdNotas: number;
   somaNotas: number;
   saldo: number | null;
+  /** contas somadas que não estão no balancete (o saldo é só das outras) */
+  contasFora: string[];
   /** conta com nota de serviço no período: conferida em Tomados/Prestados */
   emServicos: TipoServico | null;
   situacao: Situacao;
   avisoPassivo: string | null;
 }
 
-function saldoDasContas(e: Empresa, contas: string[]): number | null {
-  if (contas.some(c => saldoAtualizado(e, c) == null)) return null;
-  return contas.reduce((s, c) => s + (saldoAtualizado(e, c) as number), 0);
+/**
+ * Saldo das contas somadas (ex.: 70002 + 70006). Soma as que estão no balancete lido;
+ * null só quando nenhuma está. (O original dava "fora do balancete" se faltasse qualquer uma.)
+ */
+export function saldoDasContas(e: Empresa, contas: string[]): number | null {
+  const lidas = contas.filter(c => saldoAtualizado(e, c) != null);
+  if (!lidas.length) return null;
+  return lidas.reduce((s, c) => s + (saldoAtualizado(e, c) as number), 0);
+}
+
+/** Contas do grupo que não estão no balancete lido (o saldo foi somado sem elas). */
+export function contasForaDoBalancete(e: Empresa, contas: string[]): string[] {
+  return contas.filter(c => saldoAtualizado(e, c) == null);
 }
 
 /**
@@ -165,6 +177,7 @@ export function linhasDoSaldo(e: Empresa, grupos: Record<string, GrupoNatureza>,
       cfops,
       qtdNotas: comp.naturezas.reduce((s, k) => s + grupos[k].itens.length, 0),
       somaNotas, saldo,
+      contasFora: saldo == null ? [] : contasForaDoBalancete(e, comp.contas),
       emServicos: servicoDaConta(e, comp.contas, p),
       situacao,
       avisoPassivo: avisoPassivo(e, comp.contas),

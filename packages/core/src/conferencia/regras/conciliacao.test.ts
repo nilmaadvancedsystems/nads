@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { conta, empresa, nota } from '../__legado__/fixtures';
 import { FILTRO_MOVIMENTO_VAZIO } from '../tipos';
 import { agruparTotaisPorNatureza, comTipo } from './cfop';
-import { gruposConciliacao, nomeComumContas, podeConferir, quaisMarcarSozinho, situacaoDaConta, type EntradaSituacao } from './conciliacao';
+import { contasForaDoBalancete, gruposConciliacao, linhasDoSaldo, nomeComumContas, podeConferir, quaisMarcarSozinho, saldoDasContas, situacaoDaConta, type EntradaSituacao } from './conciliacao';
 import { periodoKey } from './periodo';
 
 const base: EntradaSituacao = { somaNotas: 100, saldo: 100, revisao: null, conferidoManual: false, podeConferir: false };
@@ -79,5 +79,29 @@ describe('quaisMarcarSozinho', () => {
   });
   it('sem balancete não marca nada', () => {
     expect(quaisMarcarSozinho({ ...e, contas: [] }, g, Object.keys(g), FILTRO_MOVIMENTO_VAZIO)).toEqual([]);
+  });
+});
+
+describe('contas somadas com uma fora do balancete (ex.: 70002 + 70006)', () => {
+  const COMPRA = 'Compra para comercialização';
+  // a 70002 está no Cadastro mas não veio no balancete lido
+  const e = empresa({
+    contas: [conta('70006', 'Compras de Mercadorias a Prazo', 290890.5)],
+    entradas: [nota('1102', '6', 290890.5, '100')],
+    naturezaConta: { [COMPRA]: ['70002', '70006'] },
+  });
+  it('soma só as contas que estão no balancete', () => {
+    expect(saldoDasContas(e, ['70002', '70006'])).toBe(290890.5);
+    expect(contasForaDoBalancete(e, ['70002', '70006'])).toEqual(['70002']);
+  });
+  it('nenhuma no balancete: continua "fora do balancete"', () => {
+    expect(saldoDasContas(e, ['70002'])).toBeNull();
+  });
+  it('a linha do Relatório confere com o saldo da que está no balancete', () => {
+    const grupos = agruparTotaisPorNatureza(comTipo(e.entradas, e.saidas));
+    const [l] = linhasDoSaldo(e, grupos, Object.keys(grupos), FILTRO_MOVIMENTO_VAZIO, '');
+    expect(l.saldo).toBe(290890.5);
+    expect(l.contasFora).toEqual(['70002']);
+    expect(l.situacao.tipo).toBe('ok');
   });
 });

@@ -431,6 +431,7 @@ hr{border:0;border-top:1px solid var(--border);margin:24px 0;}
 .modal.modal-ok p b{color:var(--ink);font-weight:600;}
 .modal.modal-ok .modal-actions{border:0;padding:18px 0 0;justify-content:center;}
 .modal.modal-ok .modal-actions .btn{min-width:120px;}
+.saldo-parcial{color:var(--ink-muted);margin-left:2px;cursor:help;}
 .modal-ok-barra{position:absolute;left:0;bottom:0;height:3px;width:100%;background:var(--success);transform-origin:left;animation:okBarra 2s linear forwards;}
 @keyframes okBarra{from{transform:scaleX(1);}to{transform:scaleX(0);}}
 .modal h3{font-size:14px;font-weight:600;padding:16px;border-bottom:1px solid var(--border);margin:0;}

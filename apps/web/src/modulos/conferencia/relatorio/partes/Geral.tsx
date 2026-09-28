@@ -5,7 +5,7 @@
 import { conferencia as c, formatos } from '@nads/core';
 import { Stat } from '@nads/ui';
 import type { useRelatorio } from '../useRelatorio';
-import { IconePassivo, linhaPassivo, Situacao } from './Situacao';
+import { IconePassivo, linhaPassivo, SaldoCelula, Situacao } from './Situacao';
 
 type VM = ReturnType<typeof useRelatorio>;
 const { brl } = formatos;
@@ -97,7 +97,7 @@ function SaldoBalancete({ linhas, onRevisar }: { linhas: c.LinhaSaldo[]; onRevis
                 <td className="wrap">CFOP {l.cfops.join(', ')}</td>
                 <td className="num">{l.qtdNotas}</td>
                 <td className="num">{brl(l.somaNotas)}</td>
-                <td className="num">{l.saldo == null ? '—' : brl(l.saldo)}</td>
+                <td className="num"><SaldoCelula saldo={l.saldo} contasFora={l.contasFora} /></td>
                 <td><div className="sit"><Situacao sit={l.situacao} contas={l.contas} onRevisar={onRevisar} /></div></td>
               </tr>
             );
