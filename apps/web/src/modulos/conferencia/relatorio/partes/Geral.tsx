@@ -74,7 +74,7 @@ function SaldoBalancete({ linhas, onRevisar }: { linhas: c.LinhaSaldo[]; onRevis
   return (
     <div className="table-wrap" style={{ maxHeight: 'none' }}>
       <table className="table-compact">
-        <thead><tr><th>Conta</th><th>CFOPs</th><th className="num">Notas</th><th className="num">Soma das notas</th><th className="num">Saldo do balancete</th><th className="num th-sit">Situação</th></tr></thead>
+        <thead><tr><th>Conta</th><th>CFOP</th><th className="num">Notas</th><th className="num">Soma das notas</th><th className="num">Saldo do balancete</th><th className="num th-sit">Situação</th></tr></thead>
         <tbody>
           {linhas.map(l => {
             const chave = l.contas.join('+');
