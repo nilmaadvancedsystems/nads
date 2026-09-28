@@ -1,9 +1,10 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-// base './': o build funciona em qualquer endereço (a cópia é publicada num link próprio).
+// base '/': as rotas são caminhos de verdade (ex.: /901/movimento/relatorio), então os
+// arquivos precisam ser referenciados a partir da raiz do site, não do caminho da página.
 export default defineConfig({
   plugins: [react()],
-  base: './',
+  base: '/',
   server: { port: 5178 },
 });
