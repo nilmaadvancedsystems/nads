@@ -20,7 +20,8 @@ export function CascaConferencia({ children }: { children: ReactNode }) {
       onInicio={vm.sair}
       onAplicativos={vm.aplicativos}
       onEmpresa={vm.voltarInicioDaEmpresa}
-      onSair={vm.sair}
+      aplicativos={vm.menuAplicativos}
+      onAplicativo={vm.abrirAplicativo}
     >
       {children}
     </Casca>

@@ -6,12 +6,13 @@ import { conferencia as c } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
+import { menuAplicativos, rotaDoAplicativo } from '../../../comum/menuAplicativos';
+import { VERSAO_SISTEMA } from '../../../versao';
 import { useRepo } from '../dados/repo';
 import { PAGINAS_ESCONDIDAS, paginaPorId, SECOES, secaoDaPagina, type IdSecao } from './navegacao';
 import { MSG_CADASTRO_BLOQ, useSessao } from './sessao';
 import { caminho } from './caminho';
 
-export const VERSAO = 'nads 0.1 · Conferência beta 0.1.63';
 
 export function useCascaConferencia() {
   const s = useSessao();
@@ -82,6 +83,12 @@ export function useCascaConferencia() {
     navegar('/');
   }
 
+  /** Outro aplicativo pela gaveta ☰: sai da empresa do mesmo jeito. */
+  function abrirAplicativo(id: string) {
+    s.aplicar(x => c.aoSair(x, new Date()));
+    navegar(rotaDoAplicativo(id));
+  }
+
   function voltarInicioDaEmpresa() {
     const t = c.telaInicialEmpresa(e);
     s.irPara(t.secao + '/' + t.pagina);
@@ -90,9 +97,9 @@ export function useCascaConferencia() {
   return {
     empresa: { codigo: s.codigo != null ? String(s.codigo) : lista?.codigo != null ? String(lista.codigo) : s.nome, nome: s.nome },
     titulo: pag?.titulo || '',
-    versao: VERSAO,
+    versao: VERSAO_SISTEMA,
     secoes, paginas,
-    onSecao, onPagina, sair, aplicativos, voltarInicioDaEmpresa,
+    onSecao, onPagina, sair, aplicativos, abrirAplicativo, menuAplicativos: menuAplicativos('conferencia'), voltarInicioDaEmpresa,
     msgCadastro: MSG_CADASTRO_BLOQ,
     paginaExiste: !!pag || PAGINAS_ESCONDIDAS.some(p => p.id === s.pagina),
   };

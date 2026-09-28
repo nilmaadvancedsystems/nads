@@ -3,11 +3,12 @@
 // Origem: conciliadorZINHO.html renderStepper/stepperList (~L1043-1081), cancelBtn (~L2256).
 import { useRetorno } from '@nads/ui';
 import { useNavigate } from 'react-router';
+import { menuAplicativos, rotaDoAplicativo } from '../../../comum/menuAplicativos';
+import { VERSAO_SISTEMA } from '../../../versao';
 import { caminho } from './caminho';
 import { idDaPagina } from './navegacao';
 import { useSessao } from './sessao';
 
-export const VERSAO = 'nads 0.2 · Conciliadorzinho';
 
 export function useCascaConciliador() {
   const s = useSessao();
@@ -26,7 +27,7 @@ export function useCascaConciliador() {
 
   return {
     empresa: { codigo: s.empresa.codigo != null ? String(s.empresa.codigo) : s.empresa.nome, nome: s.empresa.nome },
-    versao: VERSAO,
+    versao: VERSAO_SISTEMA,
     titulo: atual ? atual.titulo : '',
     etapaDeTotal: 'Etapa ' + n + ' de ' + s.lista.length,
     secoes: s.lista.map(x => ({ id: x.id, rotulo: x.rotulo, icone: x.icone, grupo: x.grupo, ativa: x.id === s.etapa, travada: !s.podeAbrir(x.id) })),
@@ -36,6 +37,8 @@ export function useCascaConciliador() {
     cancelar,
     sair: () => navegar(caminho()),
     aplicativos: () => navegar('/'),
+    menuAplicativos: menuAplicativos('conciliadorzinho'),
+    abrirAplicativo: (id: string) => navegar(rotaDoAplicativo(id)),
     voltarAoInicio: () => s.irPara('bandeiras'),
     idPagina: idDaPagina(s.etapa),
   };
