@@ -38,8 +38,11 @@ describe('repositório em memória', () => {
   });
   it('nome pelo slug da URL', () => {
     const repo = criarRepoConferenciaMemoria({ guarda: null });
-    expect(repo.nomePorSlug('exemplo-empresa-nova-ltda')).toBe('EXEMPLO EMPRESA NOVA LTDA');
-    expect(repo.nomePorSlug('nao-existe')).toBeNull();
+    expect(repo.empresaPelaRota('903')).toEqual({ nome: 'EXEMPLO EMPRESA NOVA LTDA', codigo: 903, rota: '903' });
+    // link antigo pelo nome aponta para o código
+    expect(repo.empresaPelaRota('exemplo-empresa-nova-ltda')).toEqual({ nome: 'EXEMPLO EMPRESA NOVA LTDA', codigo: 903, rota: '903' });
+    expect(repo.empresaPelaRota('nao-existe')).toBeNull();
+    expect(repo.empresaPelaRota('999')).toBeNull();
   });
   it('guarda: grava a cada mudança e relê na próxima abertura', () => {
     let salvo: string | null = null;

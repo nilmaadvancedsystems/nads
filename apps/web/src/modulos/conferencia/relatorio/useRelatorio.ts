@@ -100,7 +100,7 @@ export function useRelatorio() {
   function colocarNaCategoria(t: c.TipoServico, catId: string, nome: string) {
     s.setAbaCadastro(t);
     if (!c.importacoesOk(e)) { s.irPara('cadastro/configuracoes'); return; }
-    navegar('/' + s.slug + '/cadastro/configuracoes?servAdd=' + encodeURIComponent(t + '|' + catId + '|' + nome));
+    navegar('/' + s.rota + '/cadastro/configuracoes?servAdd=' + encodeURIComponent(t + '|' + catId + '|' + nome));
   }
 
   return {

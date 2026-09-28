@@ -21,7 +21,7 @@ export function Entrada() {
                 {!vm.total ? <p className="empty">Nenhuma empresa com esse nome.</p> : (
                   <div className="emp-list">
                     {vm.achadas.map(x => (
-                      <button key={x.nome} type="button" className="emp-item" title={'Entrar em ' + x.nome} onMouseDown={ev => ev.preventDefault()} onClick={() => vm.entrar(x.nome)}>
+                      <button key={(x.codigo ?? '') + x.nome} type="button" className="emp-item" title={'Entrar em ' + x.nome} onMouseDown={ev => ev.preventDefault()} onClick={() => vm.entrar(x)}>
                         <span className="emp-cod">{x.codigo != null ? String(x.codigo) : '—'}</span>
                         <span className="emp-txt"><span className="emp-nome">{x.nome}</span>{x.regime && <span className="emp-reg">{x.regime}</span>}</span>
                       </button>

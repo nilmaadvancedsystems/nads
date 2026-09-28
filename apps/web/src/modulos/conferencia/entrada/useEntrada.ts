@@ -29,7 +29,8 @@ export function useEntrada() {
       .map(x => x[0]);
   }, [candidatos, q]);
 
-  function entrar(nome: string) {
+  function entrar(x: c.EmpresaDaLista) {
+    const nome = x.nome;
     // entrar(): abre (ou cria) a empresa e marca a primeira abertura
     if (!repo.pronto()) return;
     const existente = repo.obter(nome);
@@ -38,7 +39,8 @@ export function useEntrada() {
     setBusca('');
     setAberta(false);
     const t = c.telaInicialEmpresa(e);
-    navegar('/' + formatos.slug(nome) + '/' + t.secao + '/' + t.pagina);
+    // rota pelo código do ERP (ex.: /292/…); sem código, pelo nome
+    navegar('/' + (x.codigo != null ? String(x.codigo) : formatos.slug(nome)) + '/' + t.secao + '/' + t.pagina);
   }
 
   /** Enter: código exato entra direto; uma só empresa achada entra nela. */
@@ -49,7 +51,7 @@ export function useEntrada() {
       if (achadas.length === 1) alvo = achadas[0];
       else { toast(achadas.length ? 'Mais de uma empresa com isso — escolha na lista.' : 'Nenhuma empresa com esse código ou nome.'); return; }
     }
-    entrar(alvo.nome);
+    entrar(alvo);
   }
 
   return {

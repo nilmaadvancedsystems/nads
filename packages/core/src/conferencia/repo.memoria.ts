@@ -8,10 +8,9 @@
 //
 // Na cópia: as empresas de exemplo (__exemplos__) + o que a pessoa fizer, guardado só no
 // navegador dela (localStorage). O nads não conecta a banco nenhum.
-import { slug } from '../formatos';
 import { empresasDeExemplo, EMPRESAS_EXEMPLO } from './__exemplos__/empresas';
 import { normalizarEmpresa } from './regras/empresa';
-import { montarListaEmpresas, type RepoConferencia } from './repo';
+import { empresaPelaRota, montarListaEmpresas, type RepoConferencia } from './repo';
 import type { Empresa, EmpresaDaLista } from './tipos';
 
 interface Guarda {
@@ -79,9 +78,8 @@ export function criarRepoConferenciaMemoria(opcoes: { guarda?: Guarda | null; li
     obter(nome) {
       return dados[nome] || null;
     },
-    nomePorSlug(s) {
-      const todos = Object.keys(dados).concat(lista.map(c => c.nome));
-      return todos.find(n => slug(n) === s) || null;
+    empresaPelaRota(rota) {
+      return empresaPelaRota(lista, Object.keys(dados), rota);
     },
     salvar(e) {
       dados[e.nome] = e;
