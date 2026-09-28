@@ -10,7 +10,7 @@ dentro dela.
 |---|---|
 | Entrada (`/`) | "Entrar no Concilia aí": a busca por nome ou código do ERP. Não tem mais a tela de escolher aplicativo |
 | Cabeçalho, trilha | `Concilia aí / <código> <nome da empresa>` |
-| Barra lateral | Importação, Cadastro │ Movimento │ Auditoria │ **Conciliadorzinho, Cheque especial** |
+| Barra lateral | Importação, Cadastro │ Movimento │ Auditoria │ **Conciliadorzinho, Cheque especial, Creditor** |
 | Cabeçalho, abas | as páginas da seção aberta. No Conciliadorzinho são as etapas, travadas até serem alcançadas |
 | Gaveta ☰ | Início (volta à escolha de empresa), tema e versão |
 
@@ -27,6 +27,7 @@ para outro uso**. O Concilia aí usa a barra lateral normal.
 | Conferência | `/292/movimento/relatorio`, `/292/importacao/balancete`, … |
 | Conciliadorzinho | `/292/conciliadorzinho/<etapa>` (bandeiras, extrato-cielo, notas, contas, totais, arquivos) |
 | Cheque especial | `/292/cheque-especial/saldo-negativo` |
+| Creditor | `/292/creditor/<etapa>` (banco, conferencia, sistema, cruzamento, lancamentos) |
 
 Links antigos que redirecionam:
 
@@ -60,9 +61,10 @@ apps/web/src/aplicativos/concilia-ai/
   ferramentas/
     conciliadorzinho/            casca/ (sessão, etapas) e telas/
     cheque-especial/             casca/ (páginas) e telas/
+    creditor/                    casca/ (sessão, etapas) e telas/ — ver ferramentas/creditor/mapa.md
 ```
 
-Mapas e inventários: `conferencia/`, `ferramentas/conciliadorzinho/`, `ferramentas/cheque-especial/`.
+Mapas e inventários: `conferencia/`, `ferramentas/conciliadorzinho/`, `ferramentas/cheque-especial/`, `ferramentas/creditor/`.
 
 ## Ferramenta nova
 

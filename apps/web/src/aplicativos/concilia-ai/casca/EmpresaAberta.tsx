@@ -1,11 +1,12 @@
 // Rota da empresa aberta: /:empresa/:secao/:pagina — resolve a empresa pelo código (ou slug),
 // monta a sessão e a casca, e escolhe a tela: uma página da Conferência ou uma ferramenta
-// (/:empresa/conciliadorzinho/:etapa, /:empresa/cheque-especial/:pagina).
+// (/:empresa/conciliadorzinho/:etapa, /:empresa/cheque-especial/:pagina, /:empresa/creditor/:etapa).
 import { Navigate, useParams } from 'react-router';
 import { conferencia as c } from '@nads/core';
 import { useRepo, useVersaoDoRepo } from '../dados/repo';
 import { FerramentaCheque } from '../ferramentas/cheque-especial/casca/Ferramenta';
 import { FerramentaConciliador } from '../ferramentas/conciliadorzinho/casca/Ferramenta';
+import { FerramentaCreditor } from '../ferramentas/creditor/casca/Ferramenta';
 import { Auditoria } from '../telas/auditoria/Auditoria';
 import { Configuracoes } from '../telas/cadastro/Configuracoes';
 import { CascaConciliaAi } from './CascaConciliaAi';
@@ -59,6 +60,7 @@ export function EmpresaAberta() {
       <TopoProvider>
         {ferramenta?.id === 'conciliadorzinho' ? <FerramentaConciliador empresa={empresa} rota={rota} pagina={pagina} />
           : ferramenta?.id === 'cheque-especial' ? <FerramentaCheque empresa={empresa} rota={rota} pagina={pagina} />
+            : ferramenta?.id === 'creditor' ? <FerramentaCreditor empresa={empresa} rota={rota} pagina={pagina} />
             : <CascaConciliaAi><Tela pagina={id} /></CascaConciliaAi>}
       </TopoProvider>
     </SessaoProvider>

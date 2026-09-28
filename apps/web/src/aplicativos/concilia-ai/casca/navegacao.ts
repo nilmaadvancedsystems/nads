@@ -69,13 +69,14 @@ export function secaoDaPagina(id: string): Secao | undefined {
  * recebem arquivos e devolvem no máximo um arquivo. As páginas de cada uma (abas do cabeçalho) são dela.
  * Ferramenta nova = uma linha aqui + a pasta ferramentas/<id>/ + a entrada em EmpresaAberta.
  */
-export type IdFerramenta = 'conciliadorzinho' | 'cheque-especial';
+export type IdFerramenta = 'conciliadorzinho' | 'cheque-especial' | 'creditor';
 
 export interface Ferramenta { id: IdFerramenta; rotulo: string; icone: NomeIcone; grupo: number; inicial: string }
 
 export const FERRAMENTAS: Ferramenta[] = [
   { id: 'conciliadorzinho', grupo: 4, rotulo: 'Conciliadorzinho', icone: 'cartao', inicial: 'bandeiras' },
   { id: 'cheque-especial', grupo: 4, rotulo: 'Cheque especial', icone: 'landmark', inicial: 'saldo-negativo' },
+  { id: 'creditor', grupo: 4, rotulo: 'Creditor', icone: 'fileSearch', inicial: 'banco' },
 ];
 
 export function ferramentaPorId(id: string): Ferramenta | undefined {

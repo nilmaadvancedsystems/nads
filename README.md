@@ -8,7 +8,7 @@
 
 O nads hoje é **um aplicativo só: o Concilia aí**. A pessoa escolhe a empresa e, dentro dela, tem na
 barra lateral as seções da Conferência (Importação, Cadastro, Movimento, Auditoria) e as ferramentas de
-conciliação (Conciliadorzinho, Cheque especial). Tudo em **React + Vite + TypeScript**, organizado em **MVVM**:
+conciliação (Conciliadorzinho, Cheque especial, Creditor). Tudo em **React + Vite + TypeScript**, organizado em **MVVM**:
 
 | Camada | Onde | O que é |
 |---|---|---|
@@ -34,7 +34,7 @@ apps/web/src/
       telas/<tela>/        as telas da Conferência: use<Tela>.ts + <Tela>.tsx + partes/
       ferramentas/<id>/    cada ferramenta de conciliação: casca/ (páginas, sessão) e telas/
 packages/
-  core/src/<módulo>/       Model (conferencia, conciliadorzinho, cheque-especial);  core/src/formatos/  o que é de todos
+  core/src/<módulo>/       Model (conferencia, conciliadorzinho, cheque-especial, creditor);  core/src/formatos/  o que é de todos
   ui/                      componentes e estilo (src/estilo/nads.css)
 docs/aplicativos/concilia-ai/   README (como juntou), mapas e inventários do código antigo
 ```
@@ -46,7 +46,8 @@ comum vai para `packages/ui`, `packages/core/src/formatos`, `packages/core/src/e
 O que está dentro (mapas em `docs/aplicativos/concilia-ai/`):
 - **Conferência Contábil** (veio de `contabil-htmls/conferencia.html`, beta 0.1.63);
 - **Conciliadorzinho** (`contabil-htmls/conciliadorZINHO.html`);
-- **Cheque especial** (`contabil-htmls/cheque_especial.html`).
+- **Cheque especial** (`contabil-htmls/cheque_especial.html`);
+- **Creditor** (novo: relatório de liquidação do banco × sistema → importação de 8 colunas).
 
 ## Rodar
 

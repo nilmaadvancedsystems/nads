@@ -5,3 +5,4 @@ export * as empresas from './empresas';
 export * as conferencia from './conferencia';
 export * as chequeEspecial from './cheque-especial';
 export * as conciliadorzinho from './conciliadorzinho';
+export * as creditor from './creditor';
