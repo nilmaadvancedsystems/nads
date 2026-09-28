@@ -14,7 +14,7 @@ export function CascaConciliador({ children }: { children: ReactNode }) {
         <LugarDasAcoes />
       </>}
       onSecao={vm.onSecao} onPagina={() => undefined} onInicio={vm.sair} onAplicativos={vm.aplicativos}
-      onEmpresa={vm.voltarAoInicio} onSair={vm.sair}>
+      onEmpresa={vm.voltarAoInicio} aplicativos={vm.menuAplicativos} onAplicativo={vm.abrirAplicativo}>
       <p className="page-eyebrow" style={{ marginBottom: 12 }}>{vm.etapaDeTotal}</p>
       {children}
     </Casca>

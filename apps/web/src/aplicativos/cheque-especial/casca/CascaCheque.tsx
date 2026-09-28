@@ -10,7 +10,7 @@ export function CascaCheque({ empresa, rota, pagina, children }: { empresa: empr
   return (
     <Casca sistema="Cheque especial" empresa={vm.empresa} versao={vm.versao} secoes={vm.secoes} paginas={vm.paginas} titulo={vm.titulo}
       acoes={<LugarDasAcoes />} onSecao={vm.onSecao} onPagina={vm.onPagina} onInicio={vm.sair} onAplicativos={vm.aplicativos}
-      onEmpresa={() => vm.onPagina(pagina)} onSair={vm.sair}>
+      onEmpresa={() => vm.onPagina(pagina)} aplicativos={vm.menuAplicativos} onAplicativo={vm.abrirAplicativo}>
       {children}
     </Casca>
   );

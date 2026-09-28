@@ -18,7 +18,7 @@ export function Inicio() {
             </button>
           ))}
         </div>
-        <p className="hint" style={{ textAlign: 'center', marginTop: 24 }}>Versão: {vm.versao}</p>
+        <p className="hint" style={{ textAlign: 'center', marginTop: 24 }}>Versão do sistema: {vm.versao}</p>
       </div>
     </div>
   );

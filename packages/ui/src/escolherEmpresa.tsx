@@ -56,7 +56,7 @@ export function EscolherEmpresa<T extends EmpresaNaLista>(p: PropsEscolherEmpres
           </div>
         </div>
         {p.carregando && <p className="hint" style={{ textAlign: 'center' }}>Carregando empresas…</p>}
-        <p className="hint" style={{ textAlign: 'center' }}>Versão: {p.versao}</p>
+        <p className="hint" style={{ textAlign: 'center' }}>Versão do sistema: {p.versao}</p>
         {p.rodape}
         {p.onAplicativos && (
           <p className="hint" style={{ textAlign: 'center', marginTop: 8 }}>

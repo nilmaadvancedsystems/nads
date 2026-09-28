@@ -1,4 +1,4 @@
-// A casca de todos os aplicativos (nasceu na Conferência): cabeçalho (☰, logo, trilha "Sistema / Empresa ▾", abas das páginas),
+// A casca de todos os aplicativos (nasceu na Conferência): cabeçalho (☰, logo, trilha "Sistema / Empresa", abas das páginas),
 // barra lateral das seções (com "Ocultar barra lateral"), gaveta ☰ com tema e a área da página
 // (título + ações no canto direito). Marcação e classes iguais às do conferencia.html (~L973-1033).
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
@@ -28,12 +28,13 @@ export function Casca(p: {
   /** Início do nads (tela de aplicativos), na gaveta ☰. Sem ele, a gaveta usa onInicio. */
   onAplicativos?: () => void;
   onEmpresa: () => void;
-  onSair: () => void;
+  /** os aplicativos do nads, na gaveta ☰ (o atual marcado) */
+  aplicativos?: { id: string; nome: string; icone: NomeIcone; ativo?: boolean }[];
+  onAplicativo?: (id: string) => void;
   children: ReactNode;
 }) {
   const [oculta, setOculta] = useState(lerLateral);
   const [gaveta, setGaveta] = useState(false);
-  const [pop, setPop] = useState(false);
   const cabecalho = useRef<HTMLElement>(null);
 
   // o menu lateral gruda logo abaixo do cabeçalho — a altura muda no celular
@@ -49,12 +50,6 @@ export function Casca(p: {
     document.addEventListener('keydown', esc);
     return () => document.removeEventListener('keydown', esc);
   }, [gaveta]);
-  useEffect(() => {
-    if (!pop) return;
-    const fora = (e: MouseEvent) => { if (!(e.target as Element).closest('.popover-wrap')) setPop(false); };
-    document.addEventListener('click', fora);
-    return () => document.removeEventListener('click', fora);
-  }, [pop]);
 
   const alternarLateral = () => {
     setOculta(o => {
@@ -76,18 +71,6 @@ export function Casca(p: {
             <button className="gh-crumb" type="button" title="Voltar para a tela inicial" onClick={p.onInicio}>{p.sistema}</button>
             <span className="gh-sep">/</span>
             <button className="brand-tag" id="brandTagEmpresa" type="button" title={p.empresa.nome} onClick={p.onEmpresa}>{p.empresa.codigo}</button>
-            <div className="popover-wrap" id="gearMenu">
-              <button className="gh-caret" type="button" aria-label="Opções da empresa" title="Opções da empresa" onClick={e => { e.stopPropagation(); setPop(v => !v); }}>
-                <svg viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6.5 8 10l3.5-3.5z" /></svg>
-              </button>
-              {pop && (
-                <div className="popover" id="gearPop">
-                  <p className="popover-label" />
-                  <button className="popover-item perigo" type="button" onClick={() => { setPop(false); p.onSair(); }}><Icone nome="logOut" /><span>Sair</span></button>
-                  <p className="hint" style={{ textAlign: 'center', fontSize: 12 }}>Versão: {p.versao}</p>
-                </div>
-              )}
-            </div>
           </nav>
         </div>
         <nav className="menu" id="menu" aria-label="Páginas da seção">
@@ -108,9 +91,21 @@ export function Casca(p: {
             <button className="drawer-x" type="button" aria-label="Fechar menu" onClick={() => setGaveta(false)}><Icone nome="x" /></button>
           </div>
           <button className="drawer-item" type="button" onClick={() => { setGaveta(false); (p.onAplicativos || p.onInicio)(); }}><Icone nome="home" />Início</button>
+          {p.aplicativos && p.aplicativos.length > 0 && (
+            <>
+              <hr className="drawer-sep" />
+              <p className="drawer-label">Aplicativos</p>
+              {p.aplicativos.map(a => (
+                <button key={a.id} className={'drawer-item' + (a.ativo ? ' active' : '')} type="button" aria-current={a.ativo ? 'page' : undefined}
+                  onClick={() => { setGaveta(false); p.onAplicativo?.(a.id); }}>
+                  <Icone nome={a.icone} />{a.nome}
+                </button>
+              ))}
+            </>
+          )}
           <div className="drawer-foot">
             <SeletorTema />
-            <p>Versão: {p.versao}</p>
+            <p>Versão do sistema: {p.versao}</p>
           </div>
         </aside>
       )}
