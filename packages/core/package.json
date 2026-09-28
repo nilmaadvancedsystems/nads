@@ -1,0 +1,15 @@
+{
+  "name": "@nads/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Model: regras, repositórios em memória e leitura de arquivos. TypeScript puro, sem React e sem banco.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./conferencia": "./src/conferencia/index.ts",
+    "./formatos": "./src/formatos/index.ts"
+  },
+  "dependencies": {
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  }
+}

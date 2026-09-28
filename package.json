@@ -1,0 +1,29 @@
+{
+  "name": "nads",
+  "private": true,
+  "description": "App único da Nilma — cópia dos sistemas em camadas MVVM, sem banco",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @nads/web",
+    "build": "npm run build -w @nads/web",
+    "tipos": "tsc -b",
+    "lint": "eslint --max-warnings=0 .",
+    "teste": "vitest run",
+    "sem-rede": "node scripts/sem-rede.mjs",
+    "verificar": "npm run tipos && npm run lint && npm run teste && npm run sem-rede"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^26.6.3",
+    "eslint": "^10.11.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "jsdom": "^30.1.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.1",
+    "vitest": "^5.0.2"
+  }
+}
