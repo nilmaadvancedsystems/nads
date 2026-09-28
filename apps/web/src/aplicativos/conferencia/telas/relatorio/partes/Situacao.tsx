@@ -29,6 +29,14 @@ export function Situacao({ sit, contas, servico, onRevisar }: { sit: c.Situacao;
   }
 }
 
+/** Saldo do balancete; com contas somadas fora do balancete lido, soma só as lidas e marca com *. */
+export function SaldoCelula({ saldo, contasFora }: { saldo: number | null; contasFora: string[] }) {
+  if (saldo == null) return <>—</>;
+  if (!contasFora.length) return <>{brl(saldo)}</>;
+  const aviso = (contasFora.length > 1 ? 'As contas ' + contasFora.join(', ') + ' não estão' : 'A conta ' + contasFora[0] + ' não está') + ' no balancete lido: o saldo é só das outras.';
+  return <span title={aviso}>{brl(saldo)}<span className="saldo-parcial">*</span></span>;
+}
+
 /** Ícone de alerta da conta do Passivo (vínculo errado vindo de antes) — o avisoPassivo (~L2282). */
 export function IconePassivo({ aviso }: { aviso: string | null }) {
   if (!aviso) return null;

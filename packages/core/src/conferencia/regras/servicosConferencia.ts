@@ -5,8 +5,8 @@ import { dataOrdem, lancN, nomeNorm } from '../../formatos';
 import { SERV_CAT, SV, type CategoriaServico } from '../tabelas/servicos';
 import type { Empresa, FiltroMovimento, Nota, NotaServico, TipoServico } from '../tipos';
 import { chaveNaturezaNota } from './cfop';
-import { podeConferir, situacaoDaConta, verifEstado, type Situacao } from './conciliacao';
-import { avisoPassivo, contasDaNatureza, listaTipo, nomeConta, saldoAtualizado } from './empresa';
+import { contasForaDoBalancete, podeConferir, saldoDasContas, situacaoDaConta, verifEstado, type Situacao } from './conciliacao';
+import { avisoPassivo, contasDaNatureza, listaTipo, nomeConta } from './empresa';
 import { noPeriodo } from './periodo';
 import { catDoPart, catFixa, catServ, chaveServ, contasDoPart, notasCfopDeServico, participantesDasNotas } from './servicos';
 
@@ -22,6 +22,8 @@ export interface LinhaSaldoServ {
   participantes: string[];
   somaNotas: number;
   saldo: number | null;
+  /** contas somadas que não estão no balancete (o saldo é só das outras) */
+  contasFora: string[];
   situacao: Situacao;
   avisoPassivo: string | null;
 }
@@ -95,8 +97,7 @@ export function conferirServicos(e: Empresa, tipo: TipoServico, f: FiltroMovimen
     const descricao = Object.keys(g.cats).map(id => (id === 'geral' ? 'Serviços Gerais' : g.cats[id].nome))
       .concat(g.cfops ? ['CFOP ' + Object.keys(g.cfops).sort().join(', ')] : []).join(', ');
     const titulo = g.contas.length ? g.contas.map(c => { const nm = nomeConta(e, c); return c + (nm ? ' — ' + nm : ''); }).join(' + ') : 'Sem conta vinculada';
-    const falta = g.contas.some(c => saldoAtualizado(e, c) == null);
-    const sal = g.contas.length && !falta ? g.contas.reduce((s, c) => s + (saldoAtualizado(e, c) as number), 0) : null;
+    const sal = g.contas.length ? saldoDasContas(e, g.contas) : null;
     const situacao: Situacao = !g.contas.length ? { tipo: 'sem-conta' } : situacaoDaConta({
       somaNotas: g.total, saldo: sal,
       revisao: verifEstado(e, f, g.contas[0]),
@@ -105,7 +106,7 @@ export function conferirServicos(e: Empresa, tipo: TipoServico, f: FiltroMovimen
     });
     return {
       contas: g.contas, titulo, descricao, qtdNotas: g.qtd, participantes: Object.keys(g.parts).map(x => g.parts[x]),
-      somaNotas: g.total, saldo: sal, situacao, avisoPassivo: avisoPassivo(e, g.contas),
+      somaNotas: g.total, saldo: sal, contasFora: sal == null ? [] : contasForaDoBalancete(e, g.contas), situacao, avisoPassivo: avisoPassivo(e, g.contas),
     };
   });
 

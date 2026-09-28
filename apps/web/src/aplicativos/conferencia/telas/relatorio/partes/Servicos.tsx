@@ -4,7 +4,7 @@
 import { conferencia as c, formatos } from '@nads/core';
 import { Stat } from '@nads/ui';
 import type { useRelatorio } from '../useRelatorio';
-import { IconePassivo, linhaPassivo, Situacao } from './Situacao';
+import { IconePassivo, linhaPassivo, SaldoCelula, Situacao } from './Situacao';
 
 type VM = ReturnType<typeof useRelatorio>;
 type Serv = NonNullable<VM['serv']>;
@@ -73,7 +73,7 @@ function SaldoServicos({ r, onRevisar }: { r: Serv; onRevisar: (contas: string[]
               <td className="wrap">{l.descricao}</td>
               <td className="num" title={r.tituloNotas(l)}>{l.qtdNotas}</td>
               <td className="num">{brl(l.somaNotas)}</td>
-              <td className="num">{l.saldo == null ? '—' : brl(l.saldo)}</td>
+              <td className="num"><SaldoCelula saldo={l.saldo} contasFora={l.contasFora} /></td>
               <td><div className="sit"><Situacao sit={l.situacao} contas={l.contas} servico onRevisar={onRevisar} /></div></td>
             </tr>
           ))}
