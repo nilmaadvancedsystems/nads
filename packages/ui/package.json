@@ -1,0 +1,20 @@
+{
+  "name": "@nads/ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "View compartilhada: o design da Conferência (design-n1) em componentes React.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./estilo.css": "./src/estilo/conferencia.css"
+  },
+  "peerDependencies": {
+    "react": ">=19"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0"
+  },
+  "dependencies": {
+    "@nads/core": "*"
+  }
+}

@@ -20,13 +20,15 @@ nads/
 │     └─ src/
 │        ├─ main.tsx              entra: providers (Query, tema, retorno) + roteador
 │        ├─ rotas.tsx             todas as rotas, na ordem da navegação
-│        ├─ casca/                cabeçalho, barra lateral e gaveta ligados às rotas e ao login
+│        ├─ dados/repo.tsx        liga o React ao repositório (useSyncExternalStore)
 │        └─ modulos/
-│           └─ <modulo>/
-│              ├─ navegacao.ts    seções/páginas/abas do módulo (o antigo SECOES / MODULOS_PADRAO)
+│           └─ <modulo>/          o molde completo está em padrao-de-tela.md
+│              ├─ navegacao.ts    seções/páginas do módulo (o antigo SECOES / MODULOS_PADRAO)
+│              ├─ sessao.tsx      estado da sessão (as antigas globais) + irPara()
+│              ├─ topo.tsx        <AcoesDoTopo>
+│              ├─ useCasca<M>.ts · Casca<M>.tsx · <Rota>.tsx
 │              └─ <tela>/
 │                 ├─ use<Tela>.ts      ViewModel
-│                 ├─ use<Tela>.test.ts (quando o hook tem lógica de fluxo)
 │                 ├─ <Tela>.tsx        View
 │                 └─ partes/           pedaços de View só desta tela
 ├─ packages/
@@ -62,7 +64,7 @@ nads/
 |---|---|---|
 | `@nads/core` | `xlsx` e bibliotecas puras | `react`, `@nads/ui`, `document`/`window` (só `localStorage` no repo em memória), **`firebase`** |
 | `@nads/ui` | `react` | `@nads/core` de domínio, `firebase` |
-| `apps/web` — hooks `use*.ts` | `@nads/core`, `@tanstack/react-query`, `@nads/ui` (só hooks: `useRetorno`, `useTema`) | JSX, `document` |
+| `apps/web` — hooks `use*.ts` | `@nads/core`, a sessão do módulo, `@nads/ui` (só hooks: `useRetorno`, `useTema`) | JSX, `document` |
 | `apps/web` — `*.tsx` | o próprio hook da tela, `@nads/ui`, tipos e formatos do `@nads/core` | `repo*` e `regras/` do core |
 | **todos** | | `firebase`, `firebase-admin`, `@firebase/*`, `googleapis`, SDK de IA, `fetch`/`XMLHttpRequest` para fora do próprio site |
 
@@ -123,7 +125,7 @@ cabeçalho e **abas internas** no seletor abaixo do título. A URL segue a mesma
 | Pacotes | **npm workspaces** | já vem com o Node; nada a instalar no PC do escritório |
 | App | **Vite + React + TypeScript** (`strict: true`) | site estático; publica em qualquer hospedagem estática (no link que o usuário indicar) |
 | Rotas | **React Router** (modo biblioteca) | rotas aninhadas = seção/página/aba |
-| Dados | **TanStack Query** em cima do repositório em memória | "carregando/erro" prontos; se um dia houver banco, a tela não muda |
+| Dados | **`useSyncExternalStore`** sobre o repositório em memória (`apps/web/src/dados/repo.tsx`) | síncrono e simples; se um dia houver fonte assíncrona, entra o TanStack Query sem mudar as telas |
 | Planilhas | **SheetJS (`xlsx`)** | o mesmo que os HTML usam; leitura pesada num Web Worker |
 | Testes | **Vitest** (+ Testing Library para hooks) | mesmo motor do Vite |
 | Lint | **ESLint** com `no-restricted-imports` por pasta | segura as camadas |

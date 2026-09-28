@@ -131,10 +131,13 @@ for (const bloco of blocos(texto, arquivo)) {
   const L = n => n.loc.start.line + bloco.linha0;
   // biblioteca colada no HTML (ex.: SheetJS minificado): linhas gigantes.
   // O que começa numa linha dessas não é código do sistema.
+  // Só conta como biblioteca quando a maior parte do bloco é linha gigante: o
+  // app também tem linhas longas (a lista CLIENTES, o norm() da Conferência).
   const linhasDoBloco = bloco.codigo.split('\n');
-  const minificado = n => (linhasDoBloco[n.loc.start.line - 1] || '').length > 1000;
-  const kbMin = Math.round(linhasDoBloco.filter(l => l.length > 1000).reduce((t, l) => t + l.length, 0) / 1024);
-  if (kbMin > 50) bibliotecas.push({ linha: bloco.linha0 + 1, tamanho: kbMin * 1024 });
+  const bytesLongos = linhasDoBloco.filter(l => l.length > 1000).reduce((t, l) => t + l.length, 0);
+  const temBiblioteca = bytesLongos > 100 * 1024 && bytesLongos / bloco.codigo.length > 0.5;
+  const minificado = n => temBiblioteca && (linhasDoBloco[n.loc.start.line - 1] || '').length > 1000;
+  if (temBiblioteca) bibliotecas.push({ linha: bloco.linha0 + 1, tamanho: bytesLongos });
 
   // de cima: CONSTANTES/tabelas (vão pro core como dados), infraestrutura
   // (db, auth, config do Firebase) e o resto = estado global mutável

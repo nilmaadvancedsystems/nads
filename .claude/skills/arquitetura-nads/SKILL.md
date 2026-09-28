@@ -42,6 +42,9 @@ testável sem abrir a tela e deixa trocar o visual sem medo de quebrar conta.
 
 - `references/banco-intocavel.md`: o que é proibido, repositório em memória, login de mentira, serviços
   falsos, paridade sem abrir o app antigo, onde publicar.
+- `references/padrao-de-tela.md`: **o molde**. Toda aplicação copiada segue o mesmo formato da
+  Conferência (pastas, arquivos por tela, catálogo de componentes do `packages/ui`, sessão, ações do
+  topo). Abra antes de criar qualquer arquivo.
 - `references/sistemas-nilma.md`: o que existe hoje (repositórios, arquivos, coleções, estilo do código).
   É descrição do original, para entender o código. Não é convite para acessar nada.
 - `references/estrutura-nads.md`: pastas, pacotes, nomes, ferramentas e a checagem de "sem rede".
@@ -115,14 +118,15 @@ Mostre ao usuário um resumo (telas, regras, cortes grandes, o que fica simulado
 
 ### 4. Implementar em fatias verticais
 
+No molde de `references/padrao-de-tela.md` (exemplo vivo: `apps/web/src/modulos/conferencia/importacao/`).
 Uma tela de cada vez, de dentro para fora. Uma fatia fina dá para conferir; copiar "todo o Model
 primeiro" deixa semanas sem nada utilizável.
 
 1. **Model:** tipos, regras puras, leitura de arquivo e o `repo.memoria.ts` com os exemplos. Toda regra
    ganha teste no Vitest. Regra que hoje lê estado global (`emp()`, `ccState`, `clientesCache`) passa a
    receber tudo **por parâmetro**.
-2. **ViewModel:** `use<Tela>.ts` com o estado e as ações. Os dados vêm do repositório (via contexto) e
-   passam pelo TanStack Query; decisões com o usuário (confirmar, avisar) via `useRetorno()` do
+2. **ViewModel:** `use<Tela>.ts` com o estado e as ações. Os dados vêm do repositório pela sessão do
+   módulo (`useSyncExternalStore` sobre o repositório em memória); decisões com o usuário (confirmar, avisar) via `useRetorno()` do
    `packages/ui`.
 3. **View:** `<Tela>.tsx` usando só o hook e os componentes do `packages/ui`. Se um `if` decide algo
    contábil, ele volta para o Model.
