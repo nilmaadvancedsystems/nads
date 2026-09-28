@@ -35,8 +35,9 @@ export function Resultado({ vm, r }: { vm: Vm; r: Res }) {
       {r.porConta ? <PorConta r={r} p={r.porConta} /> : r.todas && <Todas vm={vm} r={r} t={r.todas} />}
       <div className="btn-row" style={{ justifyContent: 'flex-end' }}>
         <button className="btn btn-outline" id="vcBtCsv" type="button" onClick={() => { const a = vm.csv(); if (a) baixarArquivo(a.texto, a.nome); }}>Baixar resultado</button>
-        {!r.limpo && <button className="btn btn-primary" id="vcBtReimportar" type="button" onClick={vm.reimportar}>Corrigi, quero reconferir</button>}
-        {r.limpo && <button className="btn btn-primary" id="vcBtOk" type="button" onClick={vm.voltar}>Ok</button>}
+        {/* Sem pendência, o "Ok" quem dá é o sistema (aviso automático que redireciona sozinho —
+            ver conferir() no ViewModel). Não existe botão de Ok manual: o usuário só reconfere. */}
+        <button className="btn btn-primary" id="vcBtReimportar" type="button" onClick={vm.reimportar}>Corrigi, quero reconferir</button>
       </div>
     </div>
   );
