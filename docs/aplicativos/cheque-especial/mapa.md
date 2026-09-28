@@ -77,3 +77,11 @@ Tudo com a casca e os componentes do nads. Nada do CSS, dos ícones nem das font
 - Ver `docs/aplicativos/inicio.md`: rotas e o que a empresa faz aqui.
 - Nome do arquivo baixado com o código da empresa (ex.: `lancamentos_ajuste_cheque_especial_292.xlsx`)?
   Recomendo sim.
+
+## Correções aprovadas (Vitor, 2026-09-28)
+Defeitos do original corrigidos no nads. Os testes de paridade comparam com o original já com essas
+correções e têm um teste de "diferença de propósito" para cada uma.
+- Data em número de série do Excel caía um dia antes no Brasil → agora é o dia do serial.
+- Saldo em texto sem C/D perdia o "-" → agora vale como está escrito ("-500,00" é negativo).
+- Saldo em texto com ponto decimal ("1234.56" virava 123456) → ponto decimal e milhar lidos certo.
+- Texto sem número na coluna Saldo virava saldo 0 → agora a linha é ignorada.

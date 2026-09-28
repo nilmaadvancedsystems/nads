@@ -5,10 +5,15 @@
 
 export const MS_DIA = 86400000;
 
-/** Serial do Excel → Date à meia-noite UTC (época 1899-12-30, a mesma do SheetJS/Windows). */
+/**
+ * Serial do Excel → data local à meia-noite (época 1899-12-30, a mesma do SheetJS/Windows).
+ * CORRIGIDO no nads: o original fazia meia-noite UTC e cortava no fuso local, e no Brasil
+ * (UTC-3) a data caía no DIA ANTERIOR. Agora o dia é o do serial, em qualquer fuso.
+ */
 export function serialExcelParaData(n: number): Date {
   const diasUtc = Math.floor(n) - 25569;
-  return new Date(diasUtc * MS_DIA);
+  const utc = new Date(diasUtc * MS_DIA);
+  return new Date(utc.getUTCFullYear(), utc.getUTCMonth(), utc.getUTCDate());
 }
 
 /** Só a data (meia-noite no fuso local). */
@@ -19,8 +24,6 @@ export function soData(d: Date): Date {
 /**
  * Valor da célula da coluna Data → data (ou null).
  * Aceita Date, serial numérico e texto "dd/mm/aa(aa)…"; texto numérico > 1000 vira serial.
- * Atenção (igual ao original): o serial vira meia-noite UTC e depois é cortado no fuso
- * local, então em fuso negativo (Brasil) o serial numérico cai no DIA ANTERIOR.
  */
 export function dataDaCelula(v: unknown): Date | null {
   if (v == null || v === '') return null;

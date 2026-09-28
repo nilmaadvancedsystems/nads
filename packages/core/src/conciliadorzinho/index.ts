@@ -11,7 +11,7 @@ export {
   rotuloMes, brl, valorBR, pad2, chaveDaData, campoCsv, dataDoSerialExcel, lerDataFlexivel, lerNumeroFlexivel,
   limparHistorico, notaDoHistorico,
 } from './regras/formatos';
-export { contarMeses, chaveMes, chaveMesDaData, slugMeses, compararMeses } from './regras/meses';
+export { contarMeses, chaveMes, chaveMesDaData, slugMeses, compararMeses, noPeriodo, porCalendario } from './regras/meses';
 export { ordemDasBandeiras, conciliar, HISTORICO_BRUTO_COM_NOTA, HISTORICO_BRUTO_SEM_NOTA, HISTORICO_TAXA } from './regras/conciliacao';
 export { conferirTotais, totaisPorMes, TOLERANCIA } from './regras/totais';
 export { linhasDaBandeira, saidasPorMes, nomeBaseBandeira, contaCaixa, CAIXA_PADRAO } from './regras/linhas';

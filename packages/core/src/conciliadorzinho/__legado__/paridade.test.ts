@@ -5,15 +5,21 @@ import { describe, expect, it } from 'vitest';
 import {
   BANDEIRAS, brl, campoCsv, chaveDaData, compararMeses, conciliar, conferirTotais, contarMeses, extensaoValida, EXTENSOES_EXTRATO,
   EXTENSOES_VENDAS, lerDataFlexivel, lerExtrato, lerNumeroFlexivel, lerVendas, limparHistorico, linhasDaBandeira, nomeBaseBandeira,
-  notaDoHistorico, ordemDasBandeiras, planilhaXls, rotuloMes, saidasPorMes, slugMeses, textoCsv, totaisPorMes, valorBR,
+  noPeriodo, notaDoHistorico, ordemDasBandeiras, planilhaXls, porCalendario, rotuloMes, saidasPorMes, slugMeses, textoCsv, totaisPorMes, valorBR,
 } from '../index';
 import type { Conciliacao, Contas, IdBandeira, Mes, MesContagem, ResultadoBandeira, Transacao, Venda } from '../index';
 import { carregarLegado, temLegado } from './carregar';
 import type { DatasetL, Legado, MesL, StateL, TxL, VendaL } from './carregar';
 
-const L = temLegado() ? carregarLegado() : null;
+// leg() = o original com a leitura de datas/números corrigida (ver carregar.ts); puro() = como era.
+// As outras correções aprovadas em 2026-09-28 (vendas e conferência só nos meses conciliados;
+// meses em ordem de calendário) são aplicadas na ENTRADA do original em rodar(), e cada uma tem
+// o seu teste de "diferença de propósito".
+const L = temLegado() ? carregarLegado(true) : null;
+const LP = temLegado() ? carregarLegado(false) : null;
 const d = L ? describe : describe.skip;
 const leg = (): Legado => L as Legado;
+const puro = (): Legado => LP as Legado;
 
 // ---------- planilhas em memória ----------
 function planilha(aoa: unknown[][], bookType: 'xlsx' | 'biff8' = 'xlsx'): ArrayBuffer {
@@ -158,11 +164,14 @@ async function rodar(cen: Cenario) {
   expect(comp.excluidos.map(mesL)).toEqual(compV.excluidos.map(m => ({ month: m.month, year: m.year })));
   const permitidos = cen.meses === 'auto' ? (comp.extras.length ? comp.comuns : null) : cen.meses;
   const excluidos = cen.meses === 'auto' && permitidos ? comp.excluidos : [];
+  // correção: só as vendas dos meses conciliados entram (o original punha as outras nas Saídas)
+  const dentro = noPeriodo(permitidos);
+  const entradasV = (vendasVelho.entries as VendaL[]).filter(e => dentro(e.date));
 
   // --- estado do original ---
   const state: StateL = {
     brands: cen.selecionadas.slice(), brandOrder: cen.selecionadas.slice(), brandData,
-    sales: { entries: vendasVelho.entries as VendaL[] },
+    sales: { entries: entradasV },
     reconcileMonths: permitidos ? permitidos.map(mesL) : null,
     excludedMonths: excluidos.map(mesL),
     accounts: { revenda: cen.contas.vendas, taxa: cen.contas.taxas, caixaPadrao: cen.contas.caixaPadrao, caixa: cen.contas.caixa },
@@ -183,11 +192,22 @@ async function rodar(cen: Cenario) {
   expect(c.sobras).toEqual(r.leftoverSales.map(vendaN));
 
   // --- conferência e totais ---
-  const conf = conferirTotais(c, ordem, txNovo, vendasNovo!.vendas);
+  const conf = conferirTotais(c, ordem, txNovo, vendasNovo!.vendas, permitidos);
+  // correção: a conferência olha o extrato só nos meses conciliados (o original, o extrato inteiro)
+  const brandDataTudo = state.brandData;
+  state.brandData = {};
+  for (const id of cen.selecionadas) {
+    const b = brandDataTudo[id]!;
+    state.brandData[id] = { conta: b.conta, files: [{ transactions: b.files.flatMap(f => f.transactions).filter(x => dentro(x.date)) }] };
+  }
   const confV = Lg.validateTotals();
+  state.brandData = brandDataTudo;
   expect(conf).toEqual({ ok: confV.ok, problemas: confV.issues });
   Lg.renderTotalsBreakdown();
-  expect(textosDosTotais(c, ordem)).toEqual(textosDoHtml(Lg.elemento('totalsBreakdown').innerHTML ?? ''));
+  // correção: meses em ordem de calendário; comparamos mês a mês, na ordem nova
+  const blocosV = (Lg.elemento('totalsBreakdown').innerHTML ?? '').split('<div class="brand-result-card">').slice(1).map(textosDoHtml);
+  const ordemV = new Map(blocosV.map(b => [b[0], b]));
+  expect(textosDosTotais(c, ordem)).toEqual(totaisPorMes(c, ordem).flatMap(m => ordemV.get(m.rotulo) ?? []));
 
   // --- arquivos finais ---
   Lg.buildFinalOutputs();
@@ -207,7 +227,7 @@ async function rodar(cen: Cenario) {
 
   const saidasV = Lg.finalSaidaOutputs();
   const saidas = saidasPorMes(c.sobras, cen.contas.vendas);
-  expect(saidas.map(s => s.chave)).toEqual(Object.keys(saidasV).sort());
+  expect(saidas.map(s => s.chave)).toEqual(Object.keys(saidasV).sort(porCalendario));
   for (const s of saidas) {
     const v = saidasV[s.chave];
     expect(mesL(s.mes)).toEqual(v.month);
@@ -234,13 +254,29 @@ d('paridade com o original (conciliadorZINHO.html)', () => {
     const Lg = leg();
     const datas: unknown[] = [new Date(2026, 6, 5, 13, 30), new Date('x'), 46208, 46208.9, 20000, 20001, 80000, 1, '5/7/26', '05-07-2026', '05.07.2026 10:00',
       '31/02/2026', '32/01/2026', '01/13/2026', '2026-07-05', '2026-7-5', ' 05/07/2026 ', 'Data', '', null, undefined, true];
+    // iguais ao original, menos a data que não existe (corrigido: '31/02/2026' era aceito como 03/03)
     for (const v of datas) {
-      const a = lerDataFlexivel(v), b = Lg.parseDateFlexible(v);
+      if (v === '31/02/2026') continue;
+      const a = lerDataFlexivel(v), b = puro().parseDateFlexible(v);
       expect(a ? a.getTime() : null).toBe(b ? b.getTime() : null);
     }
+    expect(puro().parseDateFlexible('31/02/2026')?.getDate()).toBe(3);
+    expect(lerDataFlexivel('31/02/2026')).toBeNull();
     const nums: unknown[] = [0, -1.5, NaN, Infinity, 'R$ 1.234,56', 'r$1.234,56', '(1.234,56)', '-10,5', '1.234', '1,234', '1,234.56', '1.234,567',
       ' 12 345,6 ', '10-', '(abc)', '', '  ', 'abc', null, undefined, {}, '1.2.3,45'];
-    for (const v of nums) expect(lerNumeroFlexivel(v)).toEqual(Lg.parseNumberFlexible(v));
+    // iguais ao original, menos os corrigidos
+    const corrigidos: Record<string, [number | null, number | null]> = {
+      '1.234': [1.234, 1234], '1,234': [1234, 1.234], '1.234,567': [1.234567, 1234.567], '10-': [10, null],
+    };
+    for (const v of nums) {
+      if (typeof v === 'string' && v in corrigidos) continue;
+      expect(lerNumeroFlexivel(v)).toEqual(puro().parseNumberFlexible(v));
+    }
+    for (const [v, [antes, agora]] of Object.entries(corrigidos)) {
+      expect(puro().parseNumberFlexible(v)).toBeCloseTo(antes as number, 5);
+      expect(lerNumeroFlexivel(v)).toBe(agora);
+    }
+    expect(lerNumeroFlexivel('1.000')).toBe(1000);
     const hists: unknown[] = [HIST('200294', '0', 'CONSUMIDOR FINAL'), '200294 - 0 - X - Y', 'NF 12-34', 'SEM NUMERO', '  ', null, 123, '1-2-3', 'A - 1 - 2 - B'];
     for (const v of hists) {
       expect(limparHistorico(v)).toBe(Lg.cleanHistorico(v));
@@ -279,13 +315,15 @@ d('paridade com o original (conciliadorZINHO.html)', () => {
     expect(c.sobras.length).toBeGreaterThan(0);
   });
 
-  it('meses extras nas vendas: concilia só os meses em comum (e a conferência acusa agosto)', async () => {
+  it('meses extras nas vendas: concilia só os meses em comum, e agora os totais batem (corrigido)', async () => {
     const { conf, permitidos, saidas } = await rodar({
       selecionadas: ['cielo', 'rede', 'getnet'], contas: { ...CONTAS, caixaPadrao: false, caixa: ' 10105 ' }, contaBandeira: CONTA_BANDEIRA, meses: 'auto',
     });
     expect(permitidos).toEqual([{ mes: 7, ano: 2026, qtd: expect.any(Number) }]);
-    expect(conf.ok).toBe(false);
-    expect(saidas.map(s => s.chave)).toEqual(['2026-10', '2026-7', '2026-9']);
+    // o original travava aqui (conferência acusava agosto, que só está no cartão) e mandava
+    // as vendas de setembro e outubro para as Saídas
+    expect(conf).toEqual({ ok: true, problemas: [] });
+    expect(saidas.map(s => s.chave)).toEqual(['2026-7']);
   });
 
   it('duas bandeiras com empate de volume e lista de meses vazia (= sem filtro)', async () => {

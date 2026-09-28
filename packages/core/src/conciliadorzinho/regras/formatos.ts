@@ -60,7 +60,9 @@ export function lerDataFlexivel(v: unknown): Date | null {
       const dia = parseInt(m[1], 10), mes = parseInt(m[2], 10);
       let ano = parseInt(m[3], 10);
       if (ano < 100) ano += 2000;
-      if (mes >= 1 && mes <= 12 && dia >= 1 && dia <= 31) return new Date(ano, mes - 1, dia);
+      const d = new Date(ano, mes - 1, dia);
+      // corrigido no nads: '31/02/2026' não "rola" para 03/03 (o original aceitava); data que não existe é ignorada
+      if (d.getMonth() === mes - 1 && d.getDate() === dia) return d;
     }
     m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (m) return new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
@@ -70,22 +72,25 @@ export function lerDataFlexivel(v: unknown): Date | null {
 
 /**
  * Número de uma célula (parseNumberFlexible): número finito, ou texto com 'R$', espaços,
- * sinal '-' ou parênteses; vírgula com 1-2 casas no fim é decimal, senão vírgula é milhar.
+ * sinal '-' ou parênteses. Com vírgula e ponto, o que vem por último é o decimal; só vírgula:
+ * vírgula decimal; só ponto: "1.000"/"1.234.567" são milhar, senão ("12.5") é decimal.
+ * Corrigido no nads: o original lia "1.000" como 1, "12,345" como 12345 e "1.234,567" como 1,23.
  */
 export function lerNumeroFlexivel(v: unknown): number | null {
-  if (typeof v === 'number' && isFinite(v)) return v;
-  if (typeof v === 'string') {
-    let s = v.trim().replace(/^R\$\s*/i, '').replace(/\s/g, '');
-    if (!s) return null;
-    const neg = /^-/.test(s) || /^\(.*\)$/.test(s);
-    s = s.replace(/[()-]/g, '');
-    if (/,\d{1,2}$/.test(s)) s = s.replace(/\./g, '').replace(',', '.');
-    else s = s.replace(/,/g, '');
-    const n = parseFloat(s);
-    if (isNaN(n)) return null;
-    return neg ? -n : n;
-  }
-  return null;
+  if (typeof v === 'number') return isFinite(v) ? v : null;
+  if (typeof v !== 'string') return null;
+  let s = v.trim().replace(/^R\$\s*/i, '').replace(/\s/g, '');
+  if (!s) return null;
+  const neg = /^-/.test(s) || /^\(.*\)$/.test(s);
+  s = s.replace(/^\((.*)\)$/, '$1').replace(/^-/, '');
+  const virg = s.lastIndexOf(',');
+  const ponto = s.lastIndexOf('.');
+  if (virg >= 0 && ponto >= 0) s = virg > ponto ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
+  else if (virg >= 0) s = s.replace(/\./g, '').replace(',', '.');
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+  if (!/^\d+(\.\d+)?$/.test(s)) return null;
+  const n = Number(s);
+  return neg ? -n : n;
 }
 
 /**

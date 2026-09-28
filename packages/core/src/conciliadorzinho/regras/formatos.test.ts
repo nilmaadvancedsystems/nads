@@ -32,7 +32,7 @@ describe('formatos do Conciliadorzinho', () => {
     expect(k('05.07.2026')).toBe('05/07/2026');
     expect(k('2026-07-05')).toBe('05/07/2026');
     expect(k('32/07/2026')).toBeNull();
-    expect(k('31/02/2026')).toBe('03/03/2026'); // dia inválido "rola" para o mês seguinte, como no original
+    expect(k('31/02/2026')).toBeNull(); // data que não existe é ignorada (corrigido; o original virava 03/03)
     expect(k('Data')).toBeNull();
     expect(k(null)).toBeNull();
     expect(k(new Date('x'))).toBeNull();
@@ -45,8 +45,12 @@ describe('formatos do Conciliadorzinho', () => {
     expect(lerNumeroFlexivel('(3,21)')).toBe(-3.21);
     expect(lerNumeroFlexivel('-2,5')).toBe(-2.5);
     expect(lerNumeroFlexivel('1,234.56')).toBe(1234.56);
-    expect(lerNumeroFlexivel('1.000')).toBe(1); // sem vírgula decimal o ponto é decimal (como o original)
-    expect(lerNumeroFlexivel('12,345')).toBe(12345); // 3 casas depois da vírgula: vírgula vira milhar
+    // corrigidos (o original dava 1, 12345 e 10):
+    expect(lerNumeroFlexivel('1.000')).toBe(1000);
+    expect(lerNumeroFlexivel('1.234.567')).toBe(1234567);
+    expect(lerNumeroFlexivel('12,345')).toBe(12.345);
+    expect(lerNumeroFlexivel('12.5')).toBe(12.5);
+    expect(lerNumeroFlexivel('10-')).toBeNull();
     expect(lerNumeroFlexivel('')).toBeNull();
     expect(lerNumeroFlexivel('abc')).toBeNull();
     expect(lerNumeroFlexivel(null)).toBeNull();

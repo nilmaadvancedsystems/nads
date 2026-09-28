@@ -8,6 +8,8 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as XLSX from 'xlsx';
 import { extrairFuncao, extrairVar } from '../../conferencia/__legado__/carregar';
+import { serialExcelParaData } from '../regras/datas';
+import { saldoDaCelula } from '../regras/saldo';
 
 /** nads e contabil-htmls são irmãos dentro de CLAUDE_DRIVE. */
 export const CAMINHO_LEGADO = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../../../contabil-htmls/cheque_especial.html');
@@ -63,10 +65,17 @@ const FUNCOES = [
   'buildDailyClosingBalances', 'buildLancamentos', 'renderResults', 'dateToExcelSerial', 'buildLancamentosSheet',
 ];
 
-let legadoCache: Legado | null = null;
+const caches: Partial<Record<'puro' | 'corrigido', Legado>> = {};
 
-export function carregarLegado(): Legado {
-  if (legadoCache) return legadoCache;
+/**
+ * O original recortado. `corrigido` = o original com as correções aprovadas pelo Vitor em
+ * 2026-09-28 no lugar das funções defeituosas (excelSerialToDate e parseSaldoCell), para que
+ * o resto (agrupar por dia, lançamentos, planilha) continue sendo comparado com o original.
+ */
+export function carregarLegado(corrigido = false): Legado {
+  const modo = corrigido ? 'corrigido' : 'puro';
+  const pronto = caches[modo];
+  if (pronto) return pronto;
   const src = fonteLegado();
   const corpo = [
     '"use strict";',
@@ -78,9 +87,12 @@ export function carregarLegado(): Legado {
     'function downloadLancamentos(){}',
     ...VARS.map(v => extrairVar(src, v)),
     ...FUNCOES.map(f => extrairFuncao(src, f)),
+    corrigido ? 'excelSerialToDate = __corr.serial; parseSaldoCell = function(v){ return __corr.saldo(v, state.invertCD); };' : '',
     'return { usarInvertCD: function(v){ state.invertCD = v; }, htmlResultado: function(){ return resultsHost.innerHTML; }, ' +
       VARS.map(v => v + ': ' + v).join(', ') + ', ' + FUNCOES.map(f => f + ': ' + f).join(', ') + ' };',
   ].join('\n');
-  legadoCache = new Function('XLSX', corpo)(XLSX) as Legado;
-  return legadoCache;
+  const corr = { serial: serialExcelParaData, saldo: saldoDaCelula };
+  const l = new Function('XLSX', '__corr', corpo)(XLSX, corr) as Legado;
+  caches[modo] = l;
+  return l;
 }

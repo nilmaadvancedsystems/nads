@@ -63,7 +63,7 @@ export function conciliarTudo(e: Estado): ResultadoConciliacao {
   const vendas = e.vendas?.vendas || [];
   const ordem = cz.ordemDasBandeiras(transacoes, e.bandeiras);
   const conciliacao = cz.conciliar({ ordem, transacoes, vendas, mesesPermitidos: e.mesesPermitidos });
-  return { ordem, conciliacao, conferencia: cz.conferirTotais(conciliacao, ordem, transacoes, vendas) };
+  return { ordem, conciliacao, conferencia: cz.conferirTotais(conciliacao, ordem, transacoes, vendas, e.mesesPermitidos) };
 }
 
 interface Sessao {

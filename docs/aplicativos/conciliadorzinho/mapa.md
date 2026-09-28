@@ -117,3 +117,14 @@ Tudo com a casca e os componentes do nads. Os logos das bandeiras entram em `pac
    Recomendo.
 3. Ver `docs/aplicativos/inicio.md`: rotas e o que a empresa faz aqui (lembrar as contas por
    empresa no banco, ou não).
+
+## Correções aprovadas (Vitor, 2026-09-28)
+Defeitos do original corrigidos no nads. Os testes de paridade comparam com o original já com essas
+correções e têm um teste de "diferença de propósito" para cada uma.
+- Com meses a mais nas vendas e mês do cartão sem vendas, os totais nunca batiam (beco sem saída) →
+  a conferência olha o extrato e as vendas só nos meses conciliados.
+- Vendas de meses fora do cartão iam para as Saídas, contra o aviso "apenas os meses em comum" →
+  agora ficam de fora.
+- Meses ordenados como texto (outubro antes de setembro) → ordem de calendário.
+- Leitura de texto: "1.000" virava 1, "12,345" virava 12345, "31/02" virava 03/03 → milhar/decimal
+  lidos certo e data que não existe é ignorada.
