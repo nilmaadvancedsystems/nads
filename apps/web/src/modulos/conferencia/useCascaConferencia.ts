@@ -81,7 +81,7 @@ export function useCascaConferencia() {
   }
 
   return {
-    empresa: { codigo: lista?.codigo != null ? String(lista.codigo) : s.nome, nome: s.nome },
+    empresa: { codigo: s.codigo != null ? String(s.codigo) : lista?.codigo != null ? String(lista.codigo) : s.nome, nome: s.nome },
     titulo: pag?.titulo || '',
     versao: VERSAO,
     secoes, paginas,

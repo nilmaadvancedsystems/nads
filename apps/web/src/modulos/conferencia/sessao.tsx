@@ -26,7 +26,10 @@ export const VERIFICAR_VAZIO: EstadoVerificar = { contas: [], razaoPorConta: {},
 
 export interface Sessao {
   nome: string;
-  slug: string;
+  /** pedaço da URL da empresa: o código do ERP (ex.: "292") ou, sem código, o slug do nome */
+  rota: string;
+  /** código do ERP da URL (o mesmo nome pode ter dois códigos) */
+  codigo: number | null;
   empresa: c.Empresa;
   aplicar: (acao: (e: c.Empresa) => c.Empresa) => c.Empresa | null;
   /** página aberta ("secao/pagina") */
@@ -79,7 +82,7 @@ export const AVISO_IMPORTAR = {
   todas: { titulo: 'Cadastro ainda indisponível', html: 'O Cadastro fica disponível depois de importar o <b>balancete</b> e as notas: <b>entradas e saídas</b>, ou os <b>serviços</b>.', botao: 'Ir para a importação', ir: null },
 } as const;
 
-export function SessaoProvider({ nome, slug, pagina, children }: { nome: string; slug: string; pagina: string; children: ReactNode }) {
+export function SessaoProvider({ nome, rota, codigo, pagina, children }: { nome: string; rota: string; codigo: number | null; pagina: string; children: ReactNode }) {
   const navegar = useNavigate();
   const { toast, modal } = useRetorno();
   const aplicar = useAplicar(nome);
@@ -103,9 +106,9 @@ export function SessaoProvider({ nome, slug, pagina, children }: { nome: string;
     if (v.startsWith('cadastro/') && !c.importacoesOk(e)) { toast(MSG_CADASTRO_BLOQ); v = 'importacao/' + c.primeiraImportacaoPendente(e); }
     // sair do Verificar por conta descarta o relatório lido e o resultado (nunca é salvo)
     if (pagina === 'movimento/verificar' && v !== 'movimento/verificar') setVerificar(x => ({ ...x, razaoPorConta: {}, razaoNome: {}, resultado: null, abaRes: 'todas' }));
-    navegar('/' + slug + '/' + v);
+    navegar('/' + rota + '/' + v);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [empresa, pagina, navegar, slug, toast]);
+  }, [empresa, pagina, navegar, rota, toast]);
 
   const revisarConta = useCallback((codigos: string[]) => {
     const lista = codigos.filter(cod => empresa.contas.some(x => x.codigo === cod && !x.sintetica));
@@ -124,7 +127,7 @@ export function SessaoProvider({ nome, slug, pagina, children }: { nome: string;
   }, [modal, irPara, empresa]);
 
   const valor: Sessao = {
-    nome, slug, empresa, aplicar, pagina, irPara,
+    nome, rota, codigo, empresa, aplicar, pagina, irPara,
     filtro, setFiltro, abaRelatorio, setAbaRelatorio, abaCadastro, setAbaCadastro, abaConsulta, setAbaConsulta,
     filtroConsulta, setFiltroConsulta: (g, f) => setFC(x => ({ ...x, [g]: f })),
     ordemDiv, setOrdemDiv: (t, o) => setOD(x => ({ ...x, [t]: o })),

@@ -79,7 +79,7 @@ export function criarRepoConferenciaFirestore(): RepoConferenciaFirestore {
     pronto: () => carregou,
     listarEmpresas: () => c.montarListaEmpresas(c.CLIENTES, Object.keys(dados)),
     obter: nome => dados[nome] || null,
-    nomePorSlug: s => Object.keys(dados).concat(c.CLIENTES.map(x => x.nome)).find(n => formatos.slug(n) === s) || null,
+    empresaPelaRota: rota => c.empresaPelaRota(c.CLIENTES, Object.keys(dados), rota),
     salvar(e) {
       if (!carregou) return; // antes da primeira carga, nunca grava
       dados = { ...dados, [e.nome]: e };
