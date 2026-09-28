@@ -65,7 +65,7 @@ export function useVerificarConta() {
       vRef.current = nv;
       s.setVerificar(nv);
       setInfo(i => { const n = { ...i }; delete n[codigo]; return n; });
-      if (reimportando.current) { reimportando.current = false; conferir(nv, true); }
+      if (reimportando.current) { reimportando.current = false; conferir(nv); }
     } catch (err) {
       if (reimportando.current) { reimportando.current = false; toast('Não deu para ler o arquivo.'); }
       erro('Não deu para ler o arquivo', err instanceof Error ? err.message : '');
@@ -77,7 +77,7 @@ export function useVerificarConta() {
   }
 
   // ---------- comparar ----------
-  function conferir(vv: EstadoVerificar = v, reconferindo = false) {
+  function conferir(vv: EstadoVerificar = v) {
     if (comparando) return;
     const dd = derivar(e, vv);
     const falta = c.faltaParaConferir({
@@ -119,13 +119,15 @@ export function useVerificarConta() {
         vRef.current = nv;
         s.setVerificar(nv);
         setSeqResultado(x => x + 1);
-        // reconferiu e zerou: aviso limpo; em 2 segundos volta sozinho pro Relatório com a conta Ok
-        if (reconferindo && limpo) {
+        // conferiu sem pendência (na primeira vez ou reconferindo): aviso limpo; em 3,5s volta
+        // sozinho pro Relatório com a conta Ok. O "Ok" é sempre o sistema que grava (linha 114
+        // acima) — não existe botão que o usuário use pra dar Ok na mão.
+        if (limpo) {
           void modal({
             tom: 'ok', icone: 'checkCircle', titulo: 'Tudo certo!',
             html: '<b>' + escapar(dd.rotulo) + '</b><br>sem pendências · Ok no Relatório',
             botoes: [{ rotulo: 'Ok', valor: true, variante: 'btn-primary' }],
-            fecharEm: { ms: 2000, valor: true },
+            fecharEm: { ms: 3500, valor: true },
           }).then(() => s.irPara('movimento/relatorio'));
         }
       } finally {
