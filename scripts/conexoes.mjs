@@ -4,7 +4,7 @@
 //  1. aparecer dependência de rede fora do permitido (só "firebase", e só no apps/web);
 //  2. código fora de apps/web/src/aplicativos/<app>/dados/*.firestore.ts importar/usar Firebase;
 //  3. qualquer código fizer fetch/XHR/WebSocket para fora;
-//  4. o firebase.json tiver algo além de "hosting" (impede publicar regras/funções do banco).
+//  4. o firebase.json (só em apps/web) tiver algo além de "hosting", ou houver arquivo de regras do banco.
 // Não edite a lista pra passar: se precisar de outra conexão, pergunte ao usuário.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -55,12 +55,18 @@ varrer(raiz, p => {
   });
 });
 
-// 4) firebase.json: só hospedagem
-const fj = path.join(raiz, 'firebase.json');
-if (fs.existsSync(fj)) {
-  const extras = Object.keys(JSON.parse(fs.readFileSync(fj, 'utf8'))).filter(k => k !== 'hosting');
-  if (extras.length) achados.push('firebase.json: só "hosting" é permitido (achei: ' + extras.join(', ') + ') — regras e funções do banco não se publicam daqui');
-}
+// 4) firebase.json: um só, em apps/web, e só com hospedagem (regras e funções do banco nunca se
+//    publicam daqui). Também não pode haver arquivo de regras do banco no repositório.
+const ONDE_PODE_FIREBASE_JSON = path.join('apps', 'web', 'firebase.json');
+varrer(raiz, p => {
+  const nome = path.basename(p);
+  const rel = path.relative(raiz, p);
+  if (/\.rules$/.test(nome)) achados.push(rel + ': arquivo de regras do banco não pode ficar no repositório');
+  if (nome !== 'firebase.json') return;
+  if (rel !== ONDE_PODE_FIREBASE_JSON) { achados.push(rel + ': o firebase.json só pode ficar em ' + ONDE_PODE_FIREBASE_JSON); return; }
+  const extras = Object.keys(JSON.parse(fs.readFileSync(p, 'utf8'))).filter(k => k !== 'hosting');
+  if (extras.length) achados.push(rel + ': só "hosting" é permitido (achei: ' + extras.join(', ') + ') — regras e funções do banco não se publicam daqui');
+});
 
 if (achados.length) {
   console.error('conexoes: ' + achados.length + ' achado(s):');

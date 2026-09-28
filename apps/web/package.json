@@ -8,7 +8,9 @@
     "dev:banco": "vite --mode banco",
     "build": "vite build",
     "build:exemplos": "vite build --mode exemplos",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "publicar": "firebase deploy --only hosting --project conferencia-nilma",
+    "previa": "firebase hosting:channel:deploy previa --expires 7d --project conferencia-nilma"
   },
   "dependencies": {
     "@nads/core": "*",
