@@ -138,3 +138,23 @@ export function useEstadoPorChave<T>(chave: string, inicial: T): [T, (v: T | ((a
   const set = (x: T | ((a: T) => T)) => setEstado(s => ({ chave, v: typeof x === 'function' ? (x as (a: T) => T)(s.chave === chave ? s.v : inicial) : x }));
   return [v, set];
 }
+
+/** Campo "Escolher arquivos" (.file-picker) que aceita vários de uma vez; cada escolha soma à lista de quem chama. */
+export function CampoArquivos({ id, onEscolher, aceitar, rotulo = 'Escolher arquivos' }: {
+  id: string;
+  onEscolher: (fs: File[]) => void;
+  aceitar: string;
+  rotulo?: string;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <label className="file-picker" htmlFor={id}>
+        <span><Icone nome="upload" /></span>
+        <span className="file-picker-name">{rotulo}</span>
+      </label>
+      <input ref={input} type="file" id={id} accept={aceitar} multiple className="sr-only"
+        onChange={ev => { const fs = Array.from(ev.target.files || []); if (input.current) input.current.value = ''; if (fs.length) onEscolher(fs); }} />
+    </>
+  );
+}

@@ -1,4 +1,4 @@
-// Ícones da Conferência (traço 1,75). Mapa copiado de conferencia.html ICONS (~L1335, L1673-1677).
+// Ícones do nads (traço 1,75). Mapa copiado de conferencia.html ICONS (~L1335, L1673-1677).
 import type { SVGProps } from 'react';
 
 const ICONS = {
@@ -39,6 +39,11 @@ const ICONS = {
   list: '<path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3.5 6h.01"/><path d="M3.5 12h.01"/><path d="M3.5 18h.01"/>',
   menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
   painel: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="m16 10-2 2 2 2"/>',
+  // do Conciliadorzinho (mesmo traço 1,75)
+  cartao: '<path d="M2 6.5A2.5 2.5 0 0 1 4.5 4h15A2.5 2.5 0 0 1 22 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-15A2.5 2.5 0 0 1 2 17.5v-11Z"/><path d="M2 9.5h20"/><path d="M6 14.5h4"/>',
+  download: '<path d="M12 3.5v11.8"/><path d="m7 10.8 5 5 5-5"/><path d="M5 20.5h14"/>',
+  grade: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  impressora: '<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/>',
 } as const;
 
 export type NomeIcone = keyof typeof ICONS;

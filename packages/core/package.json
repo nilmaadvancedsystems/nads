@@ -7,7 +7,10 @@
   "exports": {
     ".": "./src/index.ts",
     "./conferencia": "./src/conferencia/index.ts",
-    "./formatos": "./src/formatos/index.ts"
+    "./formatos": "./src/formatos/index.ts",
+    "./empresas": "./src/empresas/index.ts",
+    "./cheque-especial": "./src/cheque-especial/index.ts",
+    "./conciliadorzinho": "./src/conciliadorzinho/index.ts"
   },
   "dependencies": {
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"

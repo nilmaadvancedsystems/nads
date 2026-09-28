@@ -1,7 +1,7 @@
 // View da casca da empresa aberta (usa a Casca do design e o ViewModel useCascaConferencia).
 import { Casca } from '@nads/ui';
 import type { ReactNode } from 'react';
-import { LugarDasAcoes } from './topo';
+import { LugarDasAcoes } from '../../../comum/topo';
 import { useCascaConferencia } from './useCascaConferencia';
 
 export function CascaConferencia({ children }: { children: ReactNode }) {
@@ -18,6 +18,7 @@ export function CascaConferencia({ children }: { children: ReactNode }) {
       onSecao={vm.onSecao}
       onPagina={vm.onPagina}
       onInicio={vm.sair}
+      onAplicativos={vm.aplicativos}
       onEmpresa={vm.voltarInicioDaEmpresa}
       onSair={vm.sair}
     >

@@ -8,6 +8,7 @@ import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { useAplicar, useEmpresaGuardada } from '../dados/repo';
+import { caminho } from './caminho';
 
 export type AbaCadastro = 'entradas' | 'saidas' | 'tomados' | 'prestados';
 
@@ -106,7 +107,7 @@ export function SessaoProvider({ nome, rota, codigo, pagina, children }: { nome:
     if (v.startsWith('cadastro/') && !c.importacoesOk(e)) { toast(MSG_CADASTRO_BLOQ); v = 'importacao/' + c.primeiraImportacaoPendente(e); }
     // sair do Verificar por conta descarta o relatório lido e o resultado (nunca é salvo)
     if (pagina === 'movimento/verificar' && v !== 'movimento/verificar') setVerificar(x => ({ ...x, razaoPorConta: {}, razaoNome: {}, resultado: null, abaRes: 'todas' }));
-    navegar('/' + rota + '/' + v);
+    navegar(caminho(rota + '/' + v));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [empresa, pagina, navegar, rota, toast]);
 
