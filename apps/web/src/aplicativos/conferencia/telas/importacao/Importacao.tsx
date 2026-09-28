@@ -1,7 +1,7 @@
 // Importação › Balancete / Entradas / Saídas / Tomados / Prestados (conferencia.html ~L1036-1155).
 import { conferencia as c } from '@nads/core';
 import { Alerta, BotaoAcao, CampoArquivo, Icone, Interruptor, MensagemFlutuante } from '@nads/ui';
-import { AcoesDoTopo } from '../../casca/topo';
+import { AcoesDoTopo } from '../../../../comum/topo';
 import { BoasVindasBalancete } from './partes/BoasVindasBalancete';
 import { NotasImportadas, ServicosImportados } from './partes/Importados';
 import { PlanoDeContas } from './partes/PlanoDeContas';

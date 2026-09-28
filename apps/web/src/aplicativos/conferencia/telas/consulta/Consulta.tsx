@@ -2,7 +2,7 @@
 // thSort ~L2976; consTipoHtml ~L2953; "Baixar CSV" do topo ~L1980).
 import { type conferencia as c, formatos } from '@nads/core';
 import { baixarArquivo, CampoData, Icone, Segmentado } from '@nads/ui';
-import { AcoesDoTopo } from '../../casca/topo';
+import { AcoesDoTopo } from '../../../../comum/topo';
 import { useConsulta } from './useConsulta';
 
 const { brl } = formatos;

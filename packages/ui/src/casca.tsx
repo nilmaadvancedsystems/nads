@@ -1,4 +1,4 @@
-// A casca da Conferência: cabeçalho (☰, logo, trilha "Sistema / Empresa ▾", abas das páginas),
+// A casca de todos os aplicativos (nasceu na Conferência): cabeçalho (☰, logo, trilha "Sistema / Empresa ▾", abas das páginas),
 // barra lateral das seções (com "Ocultar barra lateral"), gaveta ☰ com tema e a área da página
 // (título + ações no canto direito). Marcação e classes iguais às do conferencia.html (~L973-1033).
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
@@ -25,6 +25,8 @@ export function Casca(p: {
   onSecao: (id: string) => void;
   onPagina: (id: string) => void;
   onInicio: () => void;
+  /** Início do nads (tela de aplicativos), na gaveta ☰. Sem ele, a gaveta usa onInicio. */
+  onAplicativos?: () => void;
   onEmpresa: () => void;
   onSair: () => void;
   children: ReactNode;
@@ -105,7 +107,7 @@ export function Casca(p: {
             <span className="brand-mark" aria-hidden="true"><MarcaN /></span>
             <button className="drawer-x" type="button" aria-label="Fechar menu" onClick={() => setGaveta(false)}><Icone nome="x" /></button>
           </div>
-          <button className="drawer-item" type="button" onClick={() => { setGaveta(false); p.onInicio(); }}><Icone nome="home" />Início</button>
+          <button className="drawer-item" type="button" onClick={() => { setGaveta(false); (p.onAplicativos || p.onInicio)(); }}><Icone nome="home" />Início</button>
           <div className="drawer-foot">
             <SeletorTema />
             <p>Versão: {p.versao}</p>
@@ -150,7 +152,17 @@ export function Casca(p: {
   );
 }
 
-/** Baixa um arquivo gerado no navegador (CSV etc.). */
+/** Baixa um arquivo binário gerado no navegador (planilha .xlsx/.xls). */
+export function baixarBytes(bytes: Uint8Array, nome: string, tipo: string) {
+  const b = new Blob([bytes as BlobPart], { type: tipo });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(b);
+  a.download = nome;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+/** Baixa um arquivo de texto gerado no navegador (CSV etc.). */
 export function baixarArquivo(texto: string, nome: string, tipo = 'text/csv') {
   const b = new Blob([texto], { type: tipo + ';charset=utf-8' });
   const a = document.createElement('a');

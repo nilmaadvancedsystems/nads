@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router';
 import { useRepo } from '../dados/repo';
 import { PAGINAS_ESCONDIDAS, paginaPorId, SECOES, secaoDaPagina, type IdSecao } from './navegacao';
 import { MSG_CADASTRO_BLOQ, useSessao } from './sessao';
+import { caminho } from './caminho';
 
 export const VERSAO = 'nads 0.1 · Conferência beta 0.1.63';
 
@@ -72,6 +73,12 @@ export function useCascaConferencia() {
 
   function sair() {
     s.aplicar(x => c.aoSair(x, new Date()));
+    navegar(caminho());
+  }
+
+  /** Início do nads (tela de aplicativos): sai da empresa do mesmo jeito. */
+  function aplicativos() {
+    s.aplicar(x => c.aoSair(x, new Date()));
     navegar('/');
   }
 
@@ -85,7 +92,7 @@ export function useCascaConferencia() {
     titulo: pag?.titulo || '',
     versao: VERSAO,
     secoes, paginas,
-    onSecao, onPagina, sair, voltarInicioDaEmpresa,
+    onSecao, onPagina, sair, aplicativos, voltarInicioDaEmpresa,
     msgCadastro: MSG_CADASTRO_BLOQ,
     paginaExiste: !!pag || PAGINAS_ESCONDIDAS.some(p => p.id === s.pagina),
   };

@@ -937,3 +937,46 @@ table.vc-tabela .vc-mut{color:var(--ink-muted);max-width:180px;overflow:hidden;t
 .ndp-item.ndp-nao-contabil:hover{opacity:.8;}
 .ndp-nao-btn{margin-left:8px;}
 #perDetalhe .painel{margin-top:16px;}
+
+/* ==========================================================================
+   Início do nads: escolher o aplicativo (cartões), e peças dos aplicativos
+   Cheque especial e Conciliadorzinho. Mesmos tokens, bordas e raio da casca.
+   ========================================================================== */
+.auth.apps-inicio{max-width:760px;}
+.app-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;}
+.app-card{appearance:none;display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:16px;margin:0;
+  border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;text-align:left;cursor:pointer;
+  transition:background-color .12s,border-color .12s;}
+.app-card:hover,.app-card:focus-visible{background:var(--hover-bg);border-color:var(--border-strong);}
+.app-card-ico{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:6px;
+  background:var(--surface-2);border:1px solid var(--border-muted);color:var(--accent);}
+.app-card-ico svg{width:20px;height:20px;}
+.app-card-nome{font-size:15px;font-weight:600;}
+.app-card-desc{font-size:13px;line-height:1.4;color:var(--ink-muted);}
+.badge-warn{color:var(--warn);border-color:var(--warn);background:none;}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:16px;}
+.form-grid .field{margin-bottom:0;}
+.form-grid .hint{margin-top:4px;}
+.bandeira-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
+.bandeira-opcao{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 12px 12px;
+  border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer;transition:background-color .12s,border-color .12s;}
+.bandeira-opcao:hover{background:var(--hover-bg);}
+.bandeira-opcao.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;}
+.bandeira-opcao:focus-within{outline:2px solid var(--accent);outline-offset:2px;}
+.bandeira-logo{display:flex;align-items:center;justify-content:center;height:32px;}
+.bandeira-logo svg,.bandeira-logo img{height:28px;width:auto;max-width:110px;}
+.bandeira-nome{font-size:14px;font-weight:600;}
+.bandeira-marca{position:absolute;top:8px;right:8px;display:none;color:var(--accent);}
+.bandeira-marca svg{width:16px;height:16px;}
+.bandeira-opcao.on .bandeira-marca{display:block;}
+.arquivo-lista{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
+.arquivo-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-2);}
+.arquivo-item > svg{width:16px;height:16px;flex:none;color:var(--success);}
+.arquivo-txt{display:flex;flex-direction:column;min-width:0;flex:1;}
+.arquivo-nome{font-size:14px;font-weight:600;overflow-wrap:anywhere;}
+.arquivo-txt .hint{margin-top:0;}
+@media print{
+  .gh-header,.subnav,#topbarActions,.btn-row,.page-eyebrow,.toast-region{display:none !important;}
+  .layout{display:block !important;}
+  .card{break-inside:avoid;}
+}

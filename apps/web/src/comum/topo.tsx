@@ -1,6 +1,6 @@
-// As ações da página (canto superior direito: Reimportar, Baixar CSV, Apagar ao sair) moram
-// no cabeçalho da casca, mas quem decide quais são é a própria página. <AcoesDoTopo> leva o
-// que a página desenha para lá.
+// As ações da página (canto superior direito: Reimportar, Baixar, …) moram no cabeçalho da casca,
+// mas quem decide quais são é a própria página. <AcoesDoTopo> leva o que a página desenha para lá.
+// É de todos os aplicativos (a casca é a mesma).
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 

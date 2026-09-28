@@ -9,6 +9,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useSessao } from '../../casca/sessao';
 import { travaDaAba, useMarcarSozinho, type ReqAba } from './movimento';
+import { caminho } from '../../casca/caminho';
 
 const { brl, rot, mesCurto, capital, lancN } = formatos;
 
@@ -100,7 +101,7 @@ export function useRelatorio() {
   function colocarNaCategoria(t: c.TipoServico, catId: string, nome: string) {
     s.setAbaCadastro(t);
     if (!c.importacoesOk(e)) { s.irPara('cadastro/configuracoes'); return; }
-    navegar('/' + s.rota + '/cadastro/configuracoes?servAdd=' + encodeURIComponent(t + '|' + catId + '|' + nome));
+    navegar(caminho(s.rota + '/cadastro/configuracoes') + '?servAdd=' + encodeURIComponent(t + '|' + catId + '|' + nome));
   }
 
   return {
