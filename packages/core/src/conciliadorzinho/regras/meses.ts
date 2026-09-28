@@ -55,3 +55,20 @@ export function compararMeses(mesesCartao: Mes[], mesesVendas: Mes[]): { extras:
     excluidos: mesesCartao.filter(m => !dasVendas[chaveMes(m)]),
   };
 }
+
+/**
+ * Filtro por mês: null ou lista vazia = todos. Usado na conciliação e na conferência dos totais,
+ * para os dois olharem os MESMOS meses (corrigido no nads: o original filtrava só o cartão).
+ */
+export function noPeriodo(mesesPermitidos: Mes[] | null): (d: Date) => boolean {
+  if (!mesesPermitidos || !mesesPermitidos.length) return () => true;
+  const ok = new Set(mesesPermitidos.map(chaveMes));
+  return d => ok.has(d.getFullYear() + '-' + (d.getMonth() + 1));
+}
+
+/** Ordena chaves 'aaaa-m' pelo calendário (corrigido no nads: o original punha '2026-10' antes de '2026-9'). */
+export function porCalendario(a: string, b: string): number {
+  const [aa, am] = a.split('-').map(Number);
+  const [ba, bm] = b.split('-').map(Number);
+  return (aa - ba) || (am - bm);
+}

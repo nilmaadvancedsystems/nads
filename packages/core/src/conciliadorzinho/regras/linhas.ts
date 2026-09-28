@@ -5,7 +5,7 @@
 import { bandeira } from '../tabelas/bandeiras';
 import type { Contas, IdBandeira, LinhaArquivo, Mes, ResultadoBandeira, SaidaDoMes, Venda } from '../tipos';
 import { pad2, rotuloMes } from './formatos';
-import { chaveMes, slugMeses } from './meses';
+import { chaveMes, slugMeses, porCalendario } from './meses';
 
 /** Conta de caixa quando o usuário diz que usa a padrão. */
 export const CAIXA_PADRAO = '10101';
@@ -40,7 +40,7 @@ export function nomeBaseBandeira(id: IdBandeira, meses: Mes[]): string {
 /**
  * Um arquivo de Saídas por mês (buildSaidaOutputs): D contrapartida (coluna E) / C conta de vendas,
  * histórico = código da coluna H, complemento = histórico limpo, nota = NF. Dentro do mês, por data
- * (empate mantém a ordem das sobras). Meses em ordem de chave como TEXTO, como o original.
+ * (empate mantém a ordem das sobras). Meses em ordem de calendário (corrigido no nads).
  */
 export function saidasPorMes(sobras: Venda[], contaVendas: string): SaidaDoMes[] {
   const conta = contaVendas.trim();
@@ -49,7 +49,7 @@ export function saidasPorMes(sobras: Venda[], contaVendas: string): SaidaDoMes[]
     const k = chaveMes({ ano: v.data.getFullYear(), mes: v.data.getMonth() + 1 });
     (porMes[k] = porMes[k] || []).push(v);
   }
-  return Object.keys(porMes).sort().map(k => {
+  return Object.keys(porMes).sort(porCalendario).map(k => {
     const vendas = porMes[k].slice().sort((a, b) => a.data.getTime() - b.data.getTime());
     const m: Mes = { ano: vendas[0].data.getFullYear(), mes: vendas[0].data.getMonth() + 1 };
     const linhas: LinhaArquivo[] = vendas.map(v => ({

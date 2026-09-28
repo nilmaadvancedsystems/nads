@@ -8,6 +8,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { extrairFuncao, extrairVar } from '../../conferencia/__legado__/carregar';
+import { lerDataFlexivel, lerNumeroFlexivel } from '../regras/formatos';
 
 /** nads e contabil-htmls são irmãos dentro de CLAUDE_DRIVE. */
 export const CAMINHO_LEGADO = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../../../contabil-htmls/conciliadorZINHO.html');
@@ -115,10 +116,17 @@ function trechoCompararMeses(src: string): string {
     '\nreturn { extras: extraSalesMonths, comuns: intersectionMonths, excluidos: ' + excl[1] + ' };\n}';
 }
 
-let legadoCache: Legado | null = null;
+const caches: Partial<Record<'puro' | 'corrigido', Legado>> = {};
 
-export function carregarLegado(): Legado {
-  if (legadoCache) return legadoCache;
+/**
+ * O original recortado. `corrigido` = com a leitura de datas e números corrigida no nads
+ * (aprovado pelo Vitor em 2026-09-28) no lugar de parseDateFlexible/parseNumberFlexible, para o
+ * resto (conciliação, totais, arquivos) continuar sendo comparado com o original.
+ */
+export function carregarLegado(corrigido = false): Legado {
+  const modo = corrigido ? 'corrigido' : 'puro';
+  const pronto = caches[modo];
+  if (pronto) return pronto;
   const html = fonteLegado();
   const XLSX = new Function('var module, exports, define, require;\n' + codigoSheetJs(html) + '\n;return XLSX;')();
   const src = codigoProprio(html);
@@ -133,6 +141,7 @@ export function carregarLegado(): Legado {
     'function renderBrandTabs(){} function renderPreviewForBrand(){} function renderBrandDownloads(){} function renderSaidaDownloads(){}',
     ...VARS.map(v => extrairVar(src, v)),
     ...FUNCOES.map(f => extrairFuncao(src, f)),
+    corrigido ? 'parseDateFlexible = __corr.data; parseNumberFlexible = __corr.numero;' : '',
     trechoCompararMeses(src),
     'return { XLSX: XLSX, BRAND_META: BRAND_META, BRAND_LIST: BRAND_LIST,' +
       ' usarEstado: function(s){ state = s; __els = {}; finalOutputs = {}; finalSaidaOutputs = {}; },' +
@@ -141,6 +150,7 @@ export function carregarLegado(): Legado {
       ' compararMeses: __compararMeses, ' +
       FUNCOES.map(f => f + ': ' + f).join(', ') + ' };',
   ].join('\n');
-  legadoCache = new Function('XLSX', corpo)(XLSX) as Legado;
-  return legadoCache;
+  const l = new Function('XLSX', '__corr', corpo)(XLSX, { data: lerDataFlexivel, numero: lerNumeroFlexivel }) as Legado;
+  caches[modo] = l;
+  return l;
 }

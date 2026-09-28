@@ -23,19 +23,17 @@ describe('dataDaCelula', () => {
     expect(dataDaCelula('31/02/2026')).toEqual(dia(3, 3));
   });
 
-  it('serial do Excel (número ou texto > 1000) é lido como meia-noite UTC e cortado no fuso local', () => {
-    // 46027 = 05/01/2026. Em fuso negativo (Brasil) o original cai no dia anterior.
-    const fusoNegativo = dia(5).getTimezoneOffset() > 0;
-    const esperado = fusoNegativo ? '04/01/2026' : '05/01/2026';
-    expect(dataBR(dataDaCelula(46027) as Date)).toBe(esperado);
-    expect(dataBR(dataDaCelula('46027,7') as Date)).toBe(esperado);
+  it('serial do Excel (número ou texto > 1000) é o dia do serial, em qualquer fuso (corrigido)', () => {
+    // 46027 = 05/01/2026. O original, no Brasil, caía em 04/01.
+    expect(dataBR(dataDaCelula(46027) as Date)).toBe('05/01/2026');
+    expect(dataBR(dataDaCelula('46027,7') as Date)).toBe('05/01/2026');
     expect(dataDaCelula('999')).toBeNull();
   });
 });
 
 describe('serial do Excel', () => {
   it('serialExcelParaData ignora a fração e usa a época 1899-12-30', () => {
-    expect(serialExcelParaData(46027.9).getTime()).toBe(Date.UTC(2026, 0, 5));
+    expect(serialExcelParaData(46027.9).getTime()).toBe(new Date(2026, 0, 5).getTime());
   });
   it('dataParaSerialExcel usa a data local', () => {
     expect(dataParaSerialExcel(dia(5))).toBe(46027);

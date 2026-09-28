@@ -58,13 +58,17 @@ describe('conciliação', () => {
     expect(c.porBandeira.cielo!.casadas).toBe(1);
   });
 
-  it('meses permitidos filtram só o cartão; conferência acusa o que ficou de fora', () => {
+  it('meses permitidos filtram cartão e vendas, e a conferência olha os mesmos meses (corrigido)', () => {
     const c = conciliar({ ordem: ['cielo', 'rede'], transacoes, vendas, mesesPermitidos: [{ mes: 7, ano: 2026 }] });
     expect(c.porBandeira.cielo!.aprovadas).toBe(2);
     expect(c.porBandeira.cielo!.totalBruto).toBe(150);
-    const conf = conferirTotais(c, ['cielo', 'rede'], transacoes, vendas);
-    expect(conf.ok).toBe(false);
-    expect(semNbsp(conf.problemas)).toEqual([
+    // vendas fora de julho não entram (nem nas Saídas)
+    expect(c.sobras.every(v => v.data.getMonth() === 6)).toBe(true);
+    // com os meses, a conferência bate; sem eles (como o original), acusa o que ficou de fora
+    expect(conferirTotais(c, ['cielo', 'rede'], transacoes, vendas, [{ mes: 7, ano: 2026 }])).toEqual({ ok: true, problemas: [] });
+    const semMeses = conferirTotais(c, ['cielo', 'rede'], transacoes, vendas);
+    expect(semMeses.ok).toBe(false);
+    expect(semNbsp(semMeses.problemas).slice(0, 2)).toEqual([
       'Cielo: total de vendas brutas do arquivo final (R$ 150,00) não bate com o extrato original (R$ 230,00).',
       'Cielo: total de taxas do arquivo final (R$ 3,00) não bate com o extrato original (R$ 5,00).',
     ]);
@@ -92,9 +96,9 @@ describe('conciliação', () => {
     expect(semNbsp(conf.problemas)).toEqual(['Total da planilha de vendas (R$ 290,00) não bate com a soma das notas usadas nas bandeiras + saídas (R$ 150,00).']);
   });
 
-  it('totais por mês ordenam a chave como texto (2026-10 antes de 2026-9)', () => {
+  it('totais por mês em ordem de calendário (corrigido: o original punha outubro antes de setembro)', () => {
     const c = conciliar({ ordem: ['cielo'], transacoes: { cielo: [tx(1, 9, 1, 0), tx(1, 10, 1, 0)] }, vendas: [], mesesPermitidos: null });
-    expect(totaisPorMes(c, ['cielo']).map(m => m.rotulo)).toEqual(['Outubro/2026', 'Setembro/2026']);
+    expect(totaisPorMes(c, ['cielo']).map(m => m.rotulo)).toEqual(['Setembro/2026', 'Outubro/2026']);
   });
 });
 

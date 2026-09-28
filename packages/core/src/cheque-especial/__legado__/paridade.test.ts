@@ -11,9 +11,13 @@ import {
 import type { DiaSaldo, Lancamento } from '../tipos';
 import { carregarLegado, temLegado, type DiaLegado, type LancamentoLegado } from './carregar';
 
-const L = temLegado() ? carregarLegado() : null;
+// leg() = o original COM as correções aprovadas (datas por serial e saldo em texto; ver
+// carregar.ts). puro() = o original como estava, usado para mostrar as diferenças de propósito.
+const L = temLegado() ? carregarLegado(true) : null;
+const LP = temLegado() ? carregarLegado(false) : null;
 const d = L ? describe : describe.skip;
 const leg = () => L as NonNullable<typeof L>;
+const puro = () => LP as NonNullable<typeof LP>;
 
 // ---------- planilhas de entrada montadas em memória ----------
 const texto = (s: string): ArrayBuffer => new TextEncoder().encode(s).buffer as ArrayBuffer;
@@ -118,9 +122,30 @@ d('paridade com o original (cheque_especial.html)', () => {
       leg().usarInvertCD(inv);
       const valores: unknown[] = [null, undefined, '', 0, -0, 10, -10.005, 1234.567, -0.0000000000164, NaN, '1.234,56 C', '1.234,56 D', '1.234,56c',
         '1.234,56d', '-1.234,56', '1234.56', 'R$ 10,50', 'abc', '1-2', '0,00 D', ' 5 C ', 'C', true, new Date(2026, 0, 5)];
-      for (const v of valores) expect(saldoDaCelula(v, inv)).toBe(leg().parseSaldoCell(v));
+      // igual ao original em tudo o que não foi corrigido
+      puro().usarInvertCD(inv);
+      const corrigidos = new Set<unknown>(['-1.234,56', '1234.56', 'abc', '1-2', 'C', true, NaN]);
+      for (const v of valores) if (!corrigidos.has(v) && !(v instanceof Date)) expect(saldoDaCelula(v, inv)).toBe(puro().parseSaldoCell(v));
     });
   }
+
+  it('diferenças de propósito (correções aprovadas em 2026-09-28)', () => {
+    for (const inv of [true, false]) {
+      puro().usarInvertCD(inv);
+      // texto sem C/D: o original perdia o "-"; agora fica negativo
+      expect(puro().parseSaldoCell('-1.234,56')).toBe(1234.56);
+      expect(saldoDaCelula('-1.234,56', inv)).toBe(-1234.56);
+      // ponto decimal: o original lia 1234.56 como 123456
+      expect(puro().parseSaldoCell('1234.56')).toBe(123456);
+      expect(saldoDaCelula('1234.56', inv)).toBe(1234.56);
+      // sem número: o original virava saldo 0; agora a linha é ignorada
+      expect(puro().parseSaldoCell('abc')).toBe(0);
+      for (const v of ['abc', 'C', true, NaN, new Date(2026, 0, 5)]) expect(saldoDaCelula(v, inv)).toBeNull();
+    }
+    // serial do Excel: 46027 é 05/01/2026 em qualquer fuso (o original, no Brasil, dava 04/01)
+    expect(dataBR(dataDaCelula(46027) as Date)).toBe('05/01/2026');
+    expect(dataBR(dataDaCelula('46027') as Date)).toBe('05/01/2026');
+  });
 
   it('roundCents, dias úteis, fmtDateBR e dateToExcelSerial num ano inteiro', () => {
     for (const n of [0, -0, 1.005, -1.005, 2.675, -0.004, 0.005, 1e-12, -1e-12, 123456.785]) expect(Object.is(arredondarCentavos(n), leg().roundCents(n))).toBe(true);
@@ -208,6 +233,7 @@ d('paridade com o original (cheque_especial.html)', () => {
       if (!res.lancamentos.length) return 'nenhum';
       return res.projetado ? 'com projetado' : 'sem projetado';
     });
-    expect(resumo).toEqual(['com projetado', 'sem projetado', 'com projetado', 'nenhum', 'com projetado', 'com projetado', 'sem colunas', 'sem colunas', 'nenhum']);
+    // o 2º caso passou a ter projetado: "-50,00" agora é negativo e "abc" (último dia) é ignorado
+    expect(resumo).toEqual(['com projetado', 'com projetado', 'com projetado', 'nenhum', 'com projetado', 'com projetado', 'sem colunas', 'sem colunas', 'nenhum']);
   });
 });

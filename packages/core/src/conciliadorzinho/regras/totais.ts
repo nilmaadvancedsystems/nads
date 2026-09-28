@@ -3,7 +3,7 @@
 import { bandeira } from '../tabelas/bandeiras';
 import type { Conciliacao, IdBandeira, Mes, ResultadoBandeira, TotalDoMes, Transacao, Venda } from '../tipos';
 import { brl, rotuloMes } from './formatos';
-import { chaveMes, chaveMesDaData } from './meses';
+import { chaveMes, chaveMesDaData, noPeriodo, porCalendario } from './meses';
 
 /** Tolerância da conferência (2 centavos). */
 export const TOLERANCIA = 0.02;
@@ -15,12 +15,16 @@ const arred = (n: number) => Math.round(n * 100) / 100;
 /**
  * (1) bruto e taxa do arquivo de cada bandeira têm de bater com o extrato INTEIRO dela;
  * (2) toda venda da planilha tem de aparecer uma vez: casada numa bandeira ou nas Saídas.
- * Mesmas mensagens do original (validateTotals). Atenção, como no original: o extrato inteiro
- * inclui os meses que o filtro de mesesPermitidos tirou, então com filtro ativo e lançamentos
- * fora dos meses em comum a conferência (1) acusa diferença.
+ * Mesmas mensagens do original (validateTotals). Extrato e vendas entram só nos meses conciliados
+ * (mesesPermitidos). Corrigido no nads: o original comparava com o extrato INTEIRO, e com meses a
+ * mais nas vendas e algum mês do cartão sem vendas os totais nunca batiam (beco sem saída).
  */
-export function conferirTotais(c: Conciliacao, ordem: IdBandeira[], transacoes: Partial<Record<IdBandeira, Transacao[]>>, vendas: Venda[]): { ok: boolean; problemas: string[] } {
+export function conferirTotais(c: Conciliacao, ordem: IdBandeira[], transacoesTodas: Partial<Record<IdBandeira, Transacao[]>>, vendasTodas: Venda[], mesesPermitidos: Mes[] | null = null): { ok: boolean; problemas: string[] } {
   const problemas: string[] = [];
+  const dentro = noPeriodo(mesesPermitidos);
+  const vendas = vendasTodas.filter(v => dentro(v.data));
+  const transacoes: Partial<Record<IdBandeira, Transacao[]>> = {};
+  for (const id of ordem) transacoes[id] = (transacoesTodas[id] ?? []).filter(t => dentro(t.data));
 
   for (const id of ordem) {
     const r = doResultado(c, id);
@@ -51,14 +55,14 @@ const mesDaVenda = (v: Venda): Mes => ({ ano: v.data.getFullYear(), mes: v.data.
 
 /**
  * Totais de cada mês (renderTotalsBreakdown): meses das bandeiras + meses das sobras, em ordem
- * de chave como TEXTO (como o original: '2026-10' vem antes de '2026-9').
+ * de calendário (corrigido no nads: o original ordenava como texto, outubro antes de setembro).
  */
 export function totaisPorMes(c: Conciliacao, ordem: IdBandeira[]): TotalDoMes[] {
   const meses: Record<string, Mes> = {};
   for (const id of ordem) for (const m of doResultado(c, id).meses) meses[chaveMes(m)] = { mes: m.mes, ano: m.ano };
   for (const v of c.sobras) { const m = mesDaVenda(v); meses[chaveMes(m)] = m; }
 
-  return Object.keys(meses).sort().map(k => {
+  return Object.keys(meses).sort(porCalendario).map(k => {
     const m = meses[k];
     const semCartao = arred(c.sobras.filter(v => chaveMes(mesDaVenda(v)) === k).reduce((s, v) => s + v.bruto, 0));
     let comCartao = 0;

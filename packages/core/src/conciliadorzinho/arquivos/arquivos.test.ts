@@ -24,13 +24,13 @@ describe('leitura', () => {
       ['Data', 'Bruto', 'Taxa'],
       [new Date(2026, 7, 1), 80, 2],
       ['05/07/2026', 'R$ 1.234,56', '(3,21)'],
-      ['07/07/2026', '1.234,567', 0], // 3 casas depois da vírgula: vira 1,234567 (como o original)
+      ['07/07/2026', '1.234,567', 0], // vírgula decimal: 1234,567 → 1234,57 (corrigido; o original dava 1,23)
       [46209, '50,00', '1,10'],
       ['total', 1, 1],
     ]));
     expect(r).not.toBeNull();
     expect(r!.transacoes.map(t => [t.chaveData, t.bruto, t.taxa])).toEqual([
-      ['05/07/2026', 1234.56, -3.21], ['06/07/2026', 50, 1.1], ['07/07/2026', 1.23, 0], ['01/08/2026', 80, 2],
+      ['05/07/2026', 1234.56, -3.21], ['06/07/2026', 50, 1.1], ['07/07/2026', 1234.57, 0], ['01/08/2026', 80, 2],
     ]);
     expect(r!.mes).toEqual({ mes: 7, ano: 2026 });
   });

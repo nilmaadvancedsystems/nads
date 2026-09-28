@@ -35,17 +35,24 @@ describe('saldoDaCelula', () => {
     expect(saldoDaCelula('1.234,56 D', true)).toBe(1234.56);
   });
 
-  it('texto sem sufixo fica positivo, mesmo com "-" (igual ao original)', () => {
-    expect(saldoDaCelula('-1.234,56', false)).toBe(1234.56);
+  it('texto sem sufixo vale como está escrito, com o sinal (corrigido: o original perdia o "-")', () => {
+    expect(saldoDaCelula('-1.234,56', false)).toBe(-1234.56);
+    expect(saldoDaCelula('-1.234,56', true)).toBe(-1234.56);
+    expect(saldoDaCelula('(500,00)', true)).toBe(-500);
     expect(saldoDaCelula('R$ 10,50', true)).toBe(10.5);
   });
 
-  it('texto com ponto decimal perde o ponto (vira milhar), igual ao original', () => {
-    expect(saldoDaCelula('1234.56', false)).toBe(123456);
+  it('ponto decimal e milhar (corrigido: o original lia 1234.56 como 123456)', () => {
+    expect(saldoDaCelula('1234.56', false)).toBe(1234.56);
+    expect(saldoDaCelula('1.000', false)).toBe(1000);
+    expect(saldoDaCelula('1.234.567,8 D', false)).toBe(-1234567.8);
+    expect(saldoDaCelula('1,234.56 C', false)).toBe(1234.56);
   });
 
-  it('texto sem dígitos vira 0 (não null), e lixo que não é número vira null', () => {
-    expect(saldoDaCelula('abc', false)).toBe(0);
+  it('texto sem número é ignorado (corrigido: o original virava saldo 0)', () => {
+    expect(saldoDaCelula('abc', false)).toBeNull();
+    expect(saldoDaCelula('C', false)).toBeNull();
     expect(saldoDaCelula('1-2', false)).toBeNull();
+    expect(saldoDaCelula(NaN, false)).toBeNull();
   });
 });

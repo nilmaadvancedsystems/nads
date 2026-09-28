@@ -2,7 +2,7 @@
 // com a mesma data e o mesmo valor (FIFO). O que sobra no monte vai para o arquivo de Saídas.
 // Origem: conciliadorZINHO.html computeBrandOrder (~L1369) e generateMultiBrandDatasets (~L1477).
 import type { Conciliacao, IdBandeira, LinhaConciliada, Mes, ResultadoBandeira, Transacao, Venda } from '../tipos';
-import { chaveMes, contarMeses } from './meses';
+import { chaveMes, contarMeses, noPeriodo } from './meses';
 
 /** Históricos do Alterdata usados nas linhas. */
 export const HISTORICO_BRUTO_COM_NOTA = '15';
@@ -26,8 +26,9 @@ function chaveDoMonte(chaveData: string, valor: number): string {
 /**
  * Concilia todas as bandeiras contra a planilha de vendas (generateMultiBrandDatasets).
  * mesesPermitidos null (ou vazio) = todos os meses do cartão; senão só os lançamentos desses meses
- * entram nos arquivos. As vendas NÃO são filtradas por mês: vendas de meses fora do cartão ficam
- * nas sobras (Saídas), como no original.
+ * entram nos arquivos. As vendas também são filtradas pelos mesmos meses (corrigido no nads: no
+ * original, vendas de meses fora do cartão iam para as Saídas, contrariando o aviso de que o
+ * arquivo final teria "apenas os meses em comum").
  */
 export function conciliar(entrada: {
   ordem: IdBandeira[];
@@ -44,7 +45,9 @@ export function conciliar(entrada: {
 
   // cópias: o monte é consumido (shift) e não pode mexer nas vendas de quem chamou
   const monte = new Map<string, Venda[]>();
+  const vendaNoPeriodo = noPeriodo(mesesPermitidos);
   for (const v of vendas) {
+    if (!vendaNoPeriodo(v.data)) continue;
     const copia: Venda = { ...v };
     const k = chaveDoMonte(copia.chaveData, copia.bruto);
     const fila = monte.get(k);
