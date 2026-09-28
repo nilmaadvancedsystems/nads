@@ -18,22 +18,30 @@ export default tseslint.config(
     },
   },
   {
-    // scripts de Node da raiz (a trava sem-rede)
+    // scripts de Node da raiz (a trava de conexões)
     files: ['scripts/**/*.mjs'],
     languageOptions: { globals: { console: 'readonly', process: 'readonly', URL: 'readonly' } },
+  },
+  {
+    // Firebase só no repositório do banco (apps/web/src/dados/*.firestore.ts)
+    files: ['**/*.{ts,tsx}'],
+    ignores: ['apps/web/src/dados/*.firestore.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [{ group: ['firebase', 'firebase/*'], message: 'Firebase só em apps/web/src/dados/*.firestore.ts.' }] }],
+    },
   },
   {
     // Model: TypeScript puro — não conhece React nem tela
     files: ['packages/core/**/*.ts'],
     rules: {
-      'no-restricted-imports': ['error', { patterns: [{ group: ['react', 'react-*', '@nads/ui', '@nads/web'], message: 'O core (Model) não conhece React nem tela.' }] }],
+      'no-restricted-imports': ['error', { patterns: [{ group: ['react', 'react-*', '@nads/ui', '@nads/web'], message: 'O core (Model) não conhece React nem tela.' }, { group: ['firebase', 'firebase/*'], message: 'Firebase só em apps/web/src/dados/*.firestore.ts.' }] }],
     },
   },
   {
     // ui: design compartilhado — sem regra de domínio
     files: ['packages/ui/**/*.{ts,tsx}'],
     rules: {
-      'no-restricted-imports': ['error', { paths: [{ name: '@nads/core/conferencia', message: 'O ui não conhece domínio: só formatos.' }] }],
+      'no-restricted-imports': ['error', { paths: [{ name: '@nads/core/conferencia', message: 'O ui não conhece domínio: só formatos.' }], patterns: [{ group: ['firebase', 'firebase/*'], message: 'Firebase só em apps/web/src/dados/*.firestore.ts.' }] }],
     },
   },
   {
@@ -48,7 +56,7 @@ export default tseslint.config(
     files: ['apps/web/src/modulos/**/*.tsx'],
     ignores: ['apps/web/src/modulos/**/sessao.tsx', 'apps/web/src/modulos/**/EmpresaAberta.tsx'],
     rules: {
-      'no-restricted-imports': ['error', { patterns: [{ group: ['**/dados/repo'], message: 'View não fala com o repositório: use o hook da tela.' }] }],
+      'no-restricted-imports': ['error', { patterns: [{ group: ['**/dados/repo', '**/dados/*.firestore'], message: 'View não fala com o repositório: use o hook da tela.' }, { group: ['firebase', 'firebase/*'], message: 'Firebase só em apps/web/src/dados/*.firestore.ts.' }] }],
     },
   },
 );

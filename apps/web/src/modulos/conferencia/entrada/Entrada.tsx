@@ -33,11 +33,14 @@ export function Entrada() {
             )}
           </div>
         </div>
+        {vm.carregando && <p className="hint" style={{ textAlign: 'center' }}>Carregando empresas…</p>}
         <p className="hint" style={{ textAlign: 'center' }}>Versão: {VERSAO}</p>
-        <p className="hint" style={{ textAlign: 'center', marginTop: 8 }}>
-          Cópia com dados de exemplo (901, 902, 903) · nada é gravado em banco ·{' '}
-          <button type="button" className="link-btn" onClick={vm.restaurarExemplos}>restaurar exemplos</button>
-        </p>
+        {vm.exemplos && (
+          <p className="hint" style={{ textAlign: 'center', marginTop: 8 }}>
+            Dados de exemplo (901, 902, 903) · nada é gravado em banco ·{' '}
+            <button type="button" className="link-btn" onClick={vm.restaurarExemplos}>restaurar exemplos</button>
+          </p>
+        )}
       </div>
     </div>
   );

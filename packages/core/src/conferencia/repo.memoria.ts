@@ -11,7 +11,7 @@
 import { slug } from '../formatos';
 import { empresasDeExemplo, EMPRESAS_EXEMPLO } from './__exemplos__/empresas';
 import { normalizarEmpresa } from './regras/empresa';
-import type { RepoConferencia } from './repo';
+import { montarListaEmpresas, type RepoConferencia } from './repo';
 import type { Empresa, EmpresaDaLista } from './tipos';
 
 interface Guarda {
@@ -69,11 +69,12 @@ export function criarRepoConferenciaMemoria(opcoes: { guarda?: Guarda | null; li
   }
 
   return {
+    exemplos: true,
+    pronto() {
+      return true;
+    },
     listarEmpresas() {
-      const vistos: Record<string, 1> = {};
-      const l = lista.map(c => { vistos[c.nome] = 1; return c; });
-      for (const n of Object.keys(dados).sort()) if (!vistos[n]) l.push({ codigo: null, nome: n, regime: '' });
-      return l;
+      return montarListaEmpresas(lista, Object.keys(dados));
     },
     obter(nome) {
       return dados[nome] || null;

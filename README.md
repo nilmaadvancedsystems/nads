@@ -1,8 +1,10 @@
 # nads — app único da Nilma
 
-> **Cópia sem banco.** O nads não conecta a nenhum Firebase nem a serviço de fora: roda com dados de
-> exemplo em memória (e o que você fizer fica só no seu navegador). A trava `npm run sem-rede` barra
-> qualquer dependência ou chamada de rede para fora.
+> **Banco:** o site publicado (**https://nads-nilma.web.app**) usa o **mesmo Firestore da
+> conferencia-nilma.web.app** — mesma coleção `empresas`, mesmo formato, mesmo jeito de salvar. Os dois
+> apps podem ser usados ao mesmo tempo sobre os mesmos dados. Rodando local (`npm run dev`), usa dados de
+> exemplo e não toca no banco. A trava `npm run conexoes` garante que o Firebase só aparece em
+> `apps/web/src/dados/*.firestore.ts` e que o `firebase.json` só publica hospedagem.
 
 Cópia dos sistemas do escritório, reescrita em **React + Vite + TypeScript** e organizada em **MVVM**:
 
@@ -19,16 +21,17 @@ Sistemas copiados até agora:
 
 ```bash
 npm install
-npm run dev          # http://localhost:5178
-npm run verificar    # tipos + lint das camadas + testes + sem-rede
-npm run build        # gera apps/web/dist (site estático)
+npm run dev          # http://localhost:5178 — dados de exemplo
+npm run dev:banco    # mesmo endereço, com o banco real da Conferência (cuidado: grava de verdade)
+npm run verificar    # tipos + lint das camadas + testes + conexões
+npm run build        # gera apps/web/dist ligado ao banco
+firebase deploy --only hosting   # publica em https://nads-nilma.web.app
 ```
 
 Empresas de exemplo: **901** (comércio), **902** (serviços médicos), **903** (nova, vazia). Na entrada,
 "restaurar exemplos" volta tudo ao início. Os arquivos reais do escritório (balancete, entradas,
 saídas, ISS, relatório da conta) podem ser importados: a leitura acontece no navegador.
 
-## Como copiar o próximo sistema
+## Rotas
 
-Skill `arquitetura-nads` (`.claude/skills/arquitetura-nads/`): inventário do código antigo, mapa,
-e as telas no **mesmo molde** da Conferência (`references/padrao-de-tela.md`).
+`/` entrada · `/<empresa>/<seção>/<página>` — ex.: `/fito-industria-e-comercio-de-alimentos-ltda/movimento/relatorio`.

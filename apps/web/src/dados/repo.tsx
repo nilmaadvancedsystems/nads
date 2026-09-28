@@ -38,7 +38,7 @@ export function useEmpresaGuardada(nome: string | null): Empresa | null {
 export function useAplicar(nome: string | null) {
   const repo = useRepo();
   return useCallback((acao: (e: Empresa) => Empresa): Empresa | null => {
-    if (!nome) return null;
+    if (!nome || !repo.pronto()) return null; // antes de carregar o banco, nunca grava
     const e = repo.obter(nome) || conferencia.empresaNova(nome);
     const nova = acao(e);
     if (nova !== e || !repo.obter(nome)) repo.salvar(nova);
