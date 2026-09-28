@@ -1,5 +1,5 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../tsconfig.json",
   "compilerOptions": { "outDir": "dist-tipos", "rootDir": "src", "types": ["vite/client"] },
   "include": ["src"],
   "references": [{ "path": "../../packages/core" }, { "path": "../../packages/ui" }]
