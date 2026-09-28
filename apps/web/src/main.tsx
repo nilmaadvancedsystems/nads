@@ -1,5 +1,5 @@
-// Entrada do nads: o visual, o retorno (toast/modal) e as rotas, comuns a todos os aplicativos.
-// Cada aplicativo liga os próprios dados em aplicativos/<app>/ (ex.: AppConferencia).
+// Entrada do nads: o visual, o retorno (toast/modal) e as rotas.
+// O Concilia aí liga os próprios dados em aplicativos/concilia-ai/ (AppConciliaAi).
 import '@nads/ui/estilo.css';
 import { DefsMarca, RetornoProvider } from '@nads/ui';
 import { StrictMode } from 'react';

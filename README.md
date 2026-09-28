@@ -1,4 +1,4 @@
-# nads — app único da Nilma
+# nads — Concilia aí, o app único da Nilma
 
 > **Banco:** o site publicado (**https://nads-nilma.web.app**) usa o **mesmo Firestore da
 > conferencia-nilma.web.app** — mesma coleção `empresas`, mesmo formato, mesmo jeito de salvar. Os dois
@@ -6,13 +6,14 @@
 > exemplo e não toca no banco. A trava `npm run conexoes` garante que o Firebase só aparece em
 > `apps/web/src/aplicativos/<app>/dados/*.firestore.ts` e que o `apps/web/firebase.json` (o único) só publica hospedagem.
 
-O nads é **um app só**, com vários **aplicativos** dentro (hoje: a Conferência Contábil). Tudo em
-**React + Vite + TypeScript**, organizado em **MVVM**:
+O nads hoje é **um aplicativo só: o Concilia aí**. A pessoa escolhe a empresa e, dentro dela, tem na
+barra lateral as seções da Conferência (Importação, Cadastro, Movimento, Auditoria) e as ferramentas de
+conciliação (Conciliadorzinho, Cheque especial). Tudo em **React + Vite + TypeScript**, organizado em **MVVM**:
 
 | Camada | Onde | O que é |
 |---|---|---|
-| Model | `packages/core/src/<app>/` | regras, leitura de planilhas, repositório em memória. TypeScript puro, com testes |
-| ViewModel | `apps/web/src/aplicativos/<app>/telas/<tela>/use<Tela>.ts` | um hook por tela: estado e ações |
+| Model | `packages/core/src/<módulo>/` | regras, leitura de planilhas, repositório em memória. TypeScript puro, com testes |
+| ViewModel | `apps/web/src/aplicativos/concilia-ai/…/telas/<tela>/use<Tela>.ts` | um hook por tela: estado e ações |
 | View | `<Tela>.tsx` + `partes/`, com `packages/ui` | só desenha, com o design do nads |
 
 ## Pastas
@@ -23,29 +24,29 @@ os arquivos do git e este README.
 ```
 apps/web/                  o site: firebase.json e .firebaserc (publicação) moram aqui
 apps/web/src/
-  main.tsx, rotas.tsx      o nads: visual, toast/modal e a soma das rotas dos aplicativos
+  main.tsx, rotas.tsx      o nads: visual, toast/modal e as rotas
   aplicativos/
-    conferencia/           um aplicativo
-      rotas.tsx            as rotas dele
-      AppConferencia.tsx   liga os dados dele (banco ou exemplos)
+    concilia-ai/           o aplicativo
+      rotas.tsx            / (empresa), /<código>/<seção>/<página> e os links antigos
+      AppConciliaAi.tsx    liga os dados (banco ou exemplos)
       dados/               repositório: fonte.ts, repo.tsx e o único arquivo com Firebase
-      casca/               barra lateral, abas, sessão e a rota da empresa aberta
-      telas/<tela>/        use<Tela>.ts + <Tela>.tsx + partes/
+      casca/               barra lateral (seções + ferramentas), abas, sessão e a rota da empresa aberta
+      telas/<tela>/        as telas da Conferência: use<Tela>.ts + <Tela>.tsx + partes/
+      ferramentas/<id>/    cada ferramenta de conciliação: casca/ (páginas, sessão) e telas/
 packages/
-  core/src/<app>/          Model de cada aplicativo;  core/src/formatos/  o que é de todos
-  ui/                      componentes e estilo (src/estilo/nads.css), de todos os aplicativos
-docs/aplicativos/<app>/    mapa da migração e inventário do código antigo
+  core/src/<módulo>/       Model (conferencia, conciliadorzinho, cheque-especial);  core/src/formatos/  o que é de todos
+  ui/                      componentes e estilo (src/estilo/nads.css)
+docs/aplicativos/concilia-ai/   README (como juntou), mapas e inventários do código antigo
 ```
 
-Aplicativo novo = uma pasta nova em `aplicativos/`, uma em `packages/core/src/` e uma em
-`docs/aplicativos/`, mais uma linha em `apps/web/src/rotas.tsx` e outra em
-`apps/web/src/inicio/aplicativos.ts`. Um aplicativo não importa nada de outro: o que for comum vai
-para `packages/ui`, `packages/core/src/formatos`, `packages/core/src/empresas` ou `apps/web/src/comum`.
+Ferramenta nova = uma pasta em `aplicativos/concilia-ai/ferramentas/`, uma em `packages/core/src/`,
+uma linha em `FERRAMENTAS` (`casca/navegacao.ts`) e a entrada em `casca/EmpresaAberta.tsx`. O que for
+comum vai para `packages/ui`, `packages/core/src/formatos`, `packages/core/src/empresas` ou `apps/web/src/comum`.
 
-Aplicativos até agora (mapas em `docs/aplicativos/<app>/mapa.md`):
+O que está dentro (mapas em `docs/aplicativos/concilia-ai/`):
 - **Conferência Contábil** (veio de `contabil-htmls/conferencia.html`, beta 0.1.63);
-- **Cheque especial** (`contabil-htmls/cheque_especial.html`);
-- **Conciliadorzinho** (`contabil-htmls/conciliadorZINHO.html`).
+- **Conciliadorzinho** (`contabil-htmls/conciliadorZINHO.html`);
+- **Cheque especial** (`contabil-htmls/cheque_especial.html`).
 
 ## Rodar
 
@@ -65,6 +66,7 @@ saídas, ISS, relatório da conta) podem ser importados: a leitura acontece no n
 
 ## Rotas
 
-`/` escolher o aplicativo · `/<app>` escolher a empresa · `/<app>/<código da empresa>/<seção>/<página>` —
-ex.: `/conferencia/292/movimento/relatorio`. Empresa sem código na lista usa o nome. Links antigos da
-Conferência (`/292/…`, ou pelo nome) redirecionam.
+`/` escolher a empresa · `/<código da empresa>/<seção>/<página>` — ex.: `/292/movimento/relatorio`,
+`/292/conciliadorzinho/bandeiras`, `/292/cheque-especial/saldo-negativo`. Empresa sem código na lista
+usa o nome. Os links antigos redirecionam: `/conferencia/…`, `/conciliei/…`, `/conciliadorzinho/…` e
+`/cheque-especial/…`.

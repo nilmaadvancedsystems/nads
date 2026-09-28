@@ -1,6 +1,6 @@
 // O que as telas da Conferência podem pedir e gravar. A tela nunca sabe onde o dado mora.
 // Implementações: repo.memoria.ts (exemplos, só no navegador) e, no app,
-// apps/web/src/aplicativos/conferencia/dados/conferencia.firestore.ts (o mesmo banco da conferencia-nilma.web.app).
+// apps/web/src/aplicativos/concilia-ai/dados/conferencia.firestore.ts (o mesmo banco da conferencia-nilma.web.app).
 import { slug } from '../formatos';
 import type { Empresa, EmpresaDaLista } from './tipos';
 

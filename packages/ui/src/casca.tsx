@@ -33,7 +33,7 @@ export function Casca(p: {
   onAplicativo?: (id: string) => void;
   /**
    * Como as seções aparecem à esquerda: "barra" (padrão; a barra lateral que oculta) ou "caixa"
-   * (lista com borda ao lado da página, no estilo "Insights" do GitHub — usada pelo Conciliei).
+   * (lista com borda ao lado da página, no estilo "Insights" do GitHub; guardada para um uso futuro).
    */
   lateral?: 'barra' | 'caixa';
   /** nome da lista da esquerda, para leitor de tela (padrão "Seções") */
