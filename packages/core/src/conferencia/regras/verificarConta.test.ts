@@ -20,6 +20,13 @@ describe('partesDoHistorico', () => {
       nota: '29', doc: '54540585000161', nome: 'EMPRESA X', contra: 'Fornecedores', lanc: '21101',
     });
   });
+  it('CNPJ sem o zero da frente ou com pontuação (razão de serviços da 292)', () => {
+    const base = 'Internet a Pagar 00067 Pelo serviços de acesso a internet conf nota fiscal de serviços nº - ';
+    expect(partesDoHistorico(base + '000041699 - 7314935000191-CONECTA FIBRA LTDA')).toMatchObject({ nota: '41699', doc: '07314935000191', nome: 'CONECTA FIBRA LTDA' });
+    expect(partesDoHistorico(base + '16787-07314935/0001-91-CONECTA FIBRA LTDA')).toMatchObject({ nota: '16787', doc: '07314935000191', nome: 'CONECTA FIBRA LTDA' });
+    expect(partesDoHistorico(base + '000000000207372 - 52622141000140-CONECTA DIGITAL LTDA')).toMatchObject({ nota: '207372', doc: '52622141000140', nome: 'CONECTA DIGITAL LTDA' });
+    expect(partesDoHistorico('NF 55 - 123.456.789-01 - MARIA')).toMatchObject({ nota: '55', doc: '12345678901', nome: 'MARIA' });
+  });
   it('texto sem padrão devolve tudo vazio', () => {
     expect(partesDoHistorico('qualquer coisa')).toEqual({ nota: '', doc: '', nome: '', contra: '', lanc: '' });
   });

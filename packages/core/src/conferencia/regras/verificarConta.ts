@@ -43,11 +43,22 @@ export function numerosDoHistorico(txt: string, serv: boolean): string[] {
   return (txt.match(/\d{3,}/g) || []).filter(t => (serv ? t.length <= 15 && t.length !== 11 && t.length !== 14 : t.length < 11));
 }
 
+/**
+ * "nota - documento - nome" no fim do histórico. O documento vem de vários jeitos:
+ * 54540585000161, 7314935000191 (CNPJ sem o zero da frente), 07314935/0001-91, 12345678901 (CPF).
+ */
+const NOTA_DOC_NOME = /(\d{1,15})\s*-\s*(\d{2}\.?\d{3}\.?\d{3}\/\d{4}-\d{2}|\d{3}\.\d{3}\.\d{3}-\d{2}|\d{11,14})\s*-\s*(.+)$/;
+
+function docDoHistorico(bruto: string): string {
+  const d = bruto.replace(/\D/g, '');
+  return d.length > 11 ? d.padStart(14, '0') : d;
+}
+
 export function partesDoHistorico(txt: string): { nota: string; doc: string; nome: string; contra: string; lanc: string } {
   const t = String(txt || '').replace(/\s+/g, ' ').trim();
   const p = { nota: '', doc: '', nome: '', contra: '', lanc: '' };
-  const m = t.match(/(\d{1,15})\s*-\s*(\d{14}|\d{11})\s*-\s*(.+)$/);
-  if (m) { p.nota = m[1].replace(/^0+(?=\d)/, ''); p.doc = m[2]; p.nome = m[3].trim(); }
+  const m = t.match(NOTA_DOC_NOME);
+  if (m) { p.nota = m[1].replace(/^0+(?=\d)/, ''); p.doc = docDoHistorico(m[2]); p.nome = m[3].trim(); }
   const c = t.match(/^(.*?)\s(\d{4,6})\s+pelo valor/i);
   if (c) { p.contra = c[1].trim(); p.lanc = c[2]; }
   return p;
