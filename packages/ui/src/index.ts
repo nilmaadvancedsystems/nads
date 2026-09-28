@@ -1,5 +1,5 @@
-// @nads/ui — View compartilhada: o design da Conferência em React.
-// O CSS vem de '@nads/ui/estilo.css' (cópia fiel do conferencia.html).
+// @nads/ui — View compartilhada por todos os aplicativos do nads: o design-n1 em React.
+// O CSS vem de '@nads/ui/estilo.css' (src/estilo/nads.css, cópia fiel do visual da Conferência).
 export { Icone, DefsMarca, MarcaN, type NomeIcone } from './icones';
 export { RetornoProvider, useRetorno, type Retorno, type OpcoesModal, type BotaoModal } from './retorno';
 export { useTema, SeletorTema, type Tema } from './tema';

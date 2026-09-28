@@ -2,7 +2,7 @@
 // Trava das conexões do nads. Decisão do usuário (2026-09-28): o nads usa o MESMO banco da
 // conferencia-nilma.web.app, e mais nada. Esta checagem falha se:
 //  1. aparecer dependência de rede fora do permitido (só "firebase", e só no apps/web);
-//  2. código fora de apps/web/src/dados/*.firestore.ts importar/usar Firebase;
+//  2. código fora de apps/web/src/aplicativos/<app>/dados/*.firestore.ts importar/usar Firebase;
 //  3. qualquer código fizer fetch/XHR/WebSocket para fora;
 //  4. o firebase.json tiver algo além de "hosting" (impede publicar regras/funções do banco).
 // Não edite a lista pra passar: se precisar de outra conexão, pergunte ao usuário.
@@ -11,7 +11,7 @@ import path from 'node:path';
 
 const raiz = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
 const PACOTES_PROIBIDOS = /^(firebase-admin|@firebase\/.*|googleapis|@google\/.*|@google-cloud\/.*|openai|@anthropic-ai\/.*|axios)$/;
-const ONDE_PODE_FIREBASE = /[\\/]apps[\\/]web[\\/]src[\\/]dados[\\/][^\\/]+\.firestore\.ts$/;
+const ONDE_PODE_FIREBASE = /[\\/]apps[\\/]web[\\/]src[\\/]aplicativos[\\/][^\\/]+[\\/]dados[\\/][^\\/]+\.firestore\.ts$/;
 const TEXTOS_FIREBASE = [/from\s+['"]firebase(\/[a-z-]+)?['"]/, /\b(getFirestore|initializeFirestore|firebase\.firestore)\b/, /\binitializeApp\s*\(/, /firebaseio\.com/];
 const TEXTOS_REDE = [/\bfetch\s*\(/, /\bXMLHttpRequest\b/, /\bnew\s+WebSocket\b/, /\bsendBeacon\b/, /\bEventSource\b/];
 

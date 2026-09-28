@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "View compartilhada: o design da Conferência (design-n1) em componentes React.",
+  "description": "View compartilhada por todos os aplicativos do nads: o design-n1 (nascido na Conferência) em componentes React.",
   "exports": {
     ".": "./src/index.ts",
-    "./estilo.css": "./src/estilo/conferencia.css"
+    "./estilo.css": "./src/estilo/nads.css"
   },
   "peerDependencies": {
     "react": ">=19"
