@@ -2,8 +2,7 @@
 // (aplicativos/<app>/rotas.tsx). São caminhos de verdade na URL; a hospedagem (firebase.json)
 // reescreve qualquer caminho para index.html, então acessar ou recarregar um link direto funciona.
 import { createBrowserRouter, Navigate, useLocation } from 'react-router';
-import { rotasChequeEspecial } from './aplicativos/cheque-especial/rotas';
-import { rotasConciliadorzinho } from './aplicativos/conciliadorzinho/rotas';
+import { rotasConciliei } from './aplicativos/conciliei/rotas';
 import { rotasConferencia } from './aplicativos/conferencia/rotas';
 import { ehRotaDeAplicativo } from './inicio/aplicativos';
 import { Inicio } from './inicio/Inicio';
@@ -22,7 +21,6 @@ function LinkAntigo() {
 export const roteador = createBrowserRouter([
   { path: '/', element: <Inicio /> },
   ...rotasConferencia,
-  ...rotasChequeEspecial,
-  ...rotasConciliadorzinho,
+  ...rotasConciliei,
   { path: '*', element: <LinkAntigo /> },
 ]);

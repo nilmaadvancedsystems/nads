@@ -578,8 +578,9 @@ main.main{padding:0 32px;}
 .subnav-sep{border:0;border-top:1px solid var(--border);margin:8px 0;}
 .subnav-foot{margin-top:auto;padding-top:8px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px;}
 .subnav-foot .theme-toggle{align-self:flex-start;margin-left:8px;}
-.step-pill.is-locked,.subnav-item.is-locked{opacity:.45;cursor:not-allowed;}
+.step-pill.is-locked,.subnav-item.is-locked,.menu-item.is-locked{opacity:.45;cursor:not-allowed;}
 .steps .step-pill.is-locked:hover,.subnav .subnav-item.is-locked:hover{background:transparent;}
+.menu-item.is-locked:hover::before{background:none;}
 .layout{transition:grid-template-columns .2s ease;}
 .layout.sidebar-oculta{grid-template-columns:56px minmax(0,1fr);}
 .sidebar-oculta .subnav{padding:16px 8px;}
@@ -983,3 +984,28 @@ table.vc-tabela .vc-mut{color:var(--ink-muted);max-width:180px;overflow:hidden;t
 }
 .drawer-item.active{background:var(--hover-bg);font-weight:600;}
 .drawer-item.active svg{color:var(--accent);}
+
+/* Casca com lateral="caixa" (Conciliei): no lugar da barra lateral, uma caixa com borda ao lado da
+   página, no estilo "Insights" do GitHub. O item aberto ganha a faixa vermelha à esquerda. */
+.layout-caixa{display:grid;grid-template-columns:296px minmax(0,1fr);gap:24px;align-items:start;max-width:1280px;margin:0 auto;padding:24px 32px 0;}
+.layout-caixa main.main{padding:0;}
+.layout-caixa .topbar{max-width:none;margin:0 0 16px;padding:0 0 12px;border-bottom:1px solid var(--border);align-items:center;min-height:45px;}
+.layout-caixa .content{max-width:none;}
+.caixa-menu{position:sticky;top:calc(var(--hdr-h,113px) + 24px);display:flex;flex-direction:column;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);overflow:hidden;}
+.caixa-item{position:relative;display:block;width:100%;min-height:38px;padding:8px 16px;border:none;border-top:1px solid var(--border);background:none;
+  font:inherit;font-size:14px;line-height:20px;color:var(--ink);text-align:left;cursor:pointer;}
+.caixa-item:first-child{border-top:none;}
+.caixa-item:hover{background:var(--surface-2);}
+.caixa-item.active{background:var(--surface-2);font-weight:600;}
+.caixa-item.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--tab-active);}
+.caixa-item:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+.caixa-item.is-locked{opacity:.45;cursor:not-allowed;}
+.caixa-item.is-locked:hover{background:none;}
+@media (max-width:768px){
+  .layout-caixa{grid-template-columns:minmax(0,1fr);gap:16px;padding:16px 16px 0;}
+  .caixa-menu{position:static;flex-direction:row;overflow-x:auto;}
+  .caixa-item{width:auto;flex:none;white-space:nowrap;border-top:none;border-left:1px solid var(--border);}
+  .caixa-item:first-child{border-left:none;}
+  .caixa-item.active::before{top:auto;right:0;width:auto;height:2px;}
+}
+@media print{.caixa-menu{display:none !important;} .layout-caixa{display:block !important;padding:0;}}

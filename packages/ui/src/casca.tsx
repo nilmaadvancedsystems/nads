@@ -1,6 +1,6 @@
 // A casca de todos os aplicativos (nasceu na Conferência): cabeçalho (☰, logo, trilha "Sistema / Empresa", abas das páginas),
-// barra lateral das seções (com "Ocultar barra lateral"), gaveta ☰ com tema e a área da página
-// (título + ações no canto direito). Marcação e classes iguais às do conferencia.html (~L973-1033).
+// barra lateral das seções (com "Ocultar barra lateral") — ou, com lateral="caixa", a caixa de seções ao lado da página —,
+// gaveta ☰ com tema e a área da página (título + ações no canto direito). Marcação e classes iguais às do conferencia.html (~L973-1033).
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Icone, MarcaN, type NomeIcone } from './icones';
 import { SeletorTema } from './tema';
@@ -31,6 +31,13 @@ export function Casca(p: {
   /** os aplicativos do nads, na gaveta ☰ (o atual marcado) */
   aplicativos?: { id: string; nome: string; icone: NomeIcone; ativo?: boolean }[];
   onAplicativo?: (id: string) => void;
+  /**
+   * Como as seções aparecem à esquerda: "barra" (padrão; a barra lateral que oculta) ou "caixa"
+   * (lista com borda ao lado da página, no estilo "Insights" do GitHub — usada pelo Conciliei).
+   */
+  lateral?: 'barra' | 'caixa';
+  /** nome da lista da esquerda, para leitor de tela (padrão "Seções") */
+  rotuloLateral?: string;
   children: ReactNode;
 }) {
   const [oculta, setOculta] = useState(lerLateral);
@@ -57,6 +64,18 @@ export function Casca(p: {
       return !o;
     });
   };
+
+  const principal = (
+    <main className="main">
+      <header className="topbar">
+        <div>
+          <h2 className="page-title">{p.titulo}</h2>
+        </div>
+        <div id="topbarActions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{p.acoes}</div>
+      </header>
+      <div className="content">{p.children}</div>
+    </main>
+  );
 
   let grupoAnt: number | null = null;
   return (
@@ -110,8 +129,21 @@ export function Casca(p: {
         </aside>
       )}
 
+      {p.lateral === 'caixa' ? (
+        <div className="layout-caixa">
+          <nav className="caixa-menu" aria-label={p.rotuloLateral || 'Seções'}>
+            {p.secoes.map(s => (
+              <button key={s.id} type="button" className={'caixa-item' + (s.ativa ? ' active' : '') + (s.travada ? ' is-locked' : '')}
+                aria-current={s.ativa ? 'page' : undefined} aria-disabled={s.travada ? 'true' : undefined} onClick={() => p.onSecao(s.id)}>
+                {s.rotulo}
+              </button>
+            ))}
+          </nav>
+          {principal}
+        </div>
+      ) : (
       <div className={'layout' + (oculta ? ' sidebar-oculta' : '')}>
-        <nav className="subnav" id="subnav" aria-label="Seções">
+        <nav className="subnav" id="subnav" aria-label={p.rotuloLateral || 'Seções'}>
           <div className="subnav-itens">
             {p.secoes.map(s => {
               const sep = grupoAnt !== null && s.grupo !== grupoAnt;
@@ -133,16 +165,9 @@ export function Casca(p: {
             </button>
           </div>
         </nav>
-        <main className="main">
-          <header className="topbar">
-            <div>
-              <h2 className="page-title">{p.titulo}</h2>
-            </div>
-            <div id="topbarActions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{p.acoes}</div>
-          </header>
-          <div className="content">{p.children}</div>
-        </main>
+        {principal}
       </div>
+      )}
     </div>
   );
 }

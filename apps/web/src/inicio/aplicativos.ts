@@ -13,8 +13,7 @@ export interface Aplicativo {
 
 export const APLICATIVOS: readonly Aplicativo[] = [
   { id: 'conferencia', nome: 'Conferência Contábil', descricao: 'Balancete × notas fiscais: relatório, checklist e verificação por conta.', icone: 'checklist', rota: '/conferencia' },
-  { id: 'cheque-especial', nome: 'Cheque especial', descricao: 'Ajuste do saldo negativo da conta, a partir do saldo diário.', icone: 'landmark', rota: '/cheque-especial' },
-  { id: 'conciliadorzinho', nome: 'Conciliadorzinho', descricao: 'Cartão × notas fiscais: arquivos por bandeira e das vendas sem cartão.', icone: 'cartao', rota: '/conciliadorzinho' },
+  { id: 'conciliei', nome: 'Conciliei', descricao: 'Ferramentas de conciliação: cartão × notas (Conciliadorzinho), cheque especial e outras. Nada é guardado.', icone: 'scale', rota: '/conciliei' },
 ];
 
 /** Primeiro pedaço da URL que é de um aplicativo (o resto são links antigos da Conferência). */

@@ -9,9 +9,10 @@ aplicativo**. Depois de escolher, a pessoa **escolhe a empresa**.
 |---|---|---|
 | Aplicativos | `/` | logo, título, um cartão por aplicativo (ícone, nome, uma linha do que faz) |
 | Empresa | `/<app>` | a mesma busca "nome ou código do ERP" da entrada da Conferência, com o nome do aplicativo no título |
-| Aplicativo aberto | `/<app>/<código>/<seção>/<página>` | casca do nads (barra lateral + abas) com a empresa no cabeçalho |
+| Aplicativo aberto | `/<app>/<código>/<seção>/<página>` | casca do nads (barra lateral + abas; no Conciliei, caixa de ferramentas + abas) com a empresa no cabeçalho |
 
-Os `<app>` são `conferencia`, `cheque-especial` e `conciliadorzinho`. Com a tela de aplicativos na
+Os `<app>` são `conferencia` e `conciliei` (o Cheque especial e o Conciliadorzinho viraram ferramentas
+do Conciliei: ver `conciliei/README.md`). Com a tela de aplicativos na
 raiz, a Conferência sai da raiz: `/292/movimento/relatorio` passa a ser
 `/conferencia/292/movimento/relatorio`. **Os links antigos continuam funcionando**: `/<código>/…`
 redireciona para `/conferencia/<código>/…`.
