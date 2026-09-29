@@ -1137,8 +1137,9 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 .iniciar-aba[aria-selected="true"]{color:var(--ink);font-weight:600;border-bottom-color:var(--accent);}
 .iniciar-titulo{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin:4px 8px 8px !important;}
 .iniciar-titulo svg{width:16px;height:16px;color:var(--ink-muted);}
-.iniciar-pop .steps{display:flex;width:100%;margin:0 0 8px;flex-wrap:nowrap;}
-.iniciar-pop .step-pill{flex:1;justify-content:center;padding:4px 8px;font-size:13px;white-space:nowrap;}
+/* o filtro rápido, como o HTTPS | SSH | GitHub CLI do GitHub: só da largura do texto */
+.iniciar-pop .steps{display:inline-flex;margin:2px 0 8px;flex-wrap:nowrap;align-self:flex-start;}
+.iniciar-pop .step-pill{padding:2px 12px;min-height:28px;font-size:13px;white-space:nowrap;}
 .iniciar-nada{padding:6px 8px;font-size:12px;margin:0 !important;}
 .iniciar-vazio{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:16px 8px;}
 .iniciar-vazio p{margin:0 0 6px !important;}

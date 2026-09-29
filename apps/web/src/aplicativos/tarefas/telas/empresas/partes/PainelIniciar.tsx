@@ -1,4 +1,4 @@
-// O painel do botão "Iniciar", no jeito do "Code ▾" do GitHub: abas em cima (Escolher / Minhas recentes),
+// O painel do botão "Iniciar", no jeito do "Code ▾" do GitHub: abas em cima (Empresas / Recentes),
 // o filtro rápido e a busca, a lista (só código e nome) e, embaixo, os atalhos. Minhas recentes: as
 // acessadas nos últimos 3 dias.
 import { Icone, Segmentado } from '@nads/ui';
@@ -25,8 +25,8 @@ export function PainelIniciar({ vm, fechar }: { vm: Vm; fechar: () => void }) {
   return (
     <div className="iniciar-pop">
       <div className="iniciar-abas" role="tablist">
-        <button type="button" role="tab" className="iniciar-aba" aria-selected={vm.abaIniciar === 'escolher'} onClick={() => vm.setAbaIniciar('escolher')}>Escolher</button>
-        <button type="button" role="tab" className="iniciar-aba" aria-selected={vm.abaIniciar === 'recentes'} onClick={() => vm.setAbaIniciar('recentes')}>Minhas recentes</button>
+        <button type="button" role="tab" className="iniciar-aba" aria-selected={vm.abaIniciar === 'escolher'} onClick={() => vm.setAbaIniciar('escolher')}>Empresas</button>
+        <button type="button" role="tab" className="iniciar-aba" aria-selected={vm.abaIniciar === 'recentes'} onClick={() => vm.setAbaIniciar('recentes')}>Recentes</button>
       </div>
 
       {vm.abaIniciar === 'escolher' ? (
@@ -34,7 +34,7 @@ export function PainelIniciar({ vm, fechar }: { vm: Vm; fechar: () => void }) {
           <Segmentado valor={vm.filtroIniciar} opcoes={vm.filtrosIniciar.map(f => ({ ...f }))} onMudar={vm.setFiltroIniciar} />
           <label className="busca-curta larga">
             <Icone nome="search" />
-            <input type="text" autoFocus placeholder="Escolha a empresa (nome ou código)" value={vm.buscaIniciar}
+            <input type="text" autoFocus placeholder="Nome ou código" aria-label="Buscar empresa (nome ou código)" value={vm.buscaIniciar}
               onChange={e => vm.setBuscaIniciar(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') ir(vm.paraIniciar[0] || null); }} />
           </label>
