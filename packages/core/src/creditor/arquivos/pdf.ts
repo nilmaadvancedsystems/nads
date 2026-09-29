@@ -30,16 +30,19 @@ export function linhasDosItens(itens: ItemPdf[]): string[] {
     });
 }
 
-/** Os pedaços de texto de cada página, em coordenadas da tela (já considera página girada). */
+/** Os pedaços de texto de cada página, em coordenadas da tela (já considera página girada). workerSrc = o pdf.worker do build legacy. */
 export async function itensDoPdf(buf: ArrayBuffer, workerSrc: string): Promise<ItemPdf[][]> {
-  const pdfjs = await import('pdfjs-dist');
+  // build "legacy": funciona também em Chrome/Edge que não estão na última versão
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
   pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
   const tarefa = pdfjs.getDocument({ data: new Uint8Array(buf), disableFontFace: true });
   let doc;
   try {
     doc = await tarefa.promise;
-  } catch {
-    throw new Error('Não consegui abrir o PDF (arquivo protegido ou corrompido?).');
+  } catch (e) {
+    const nome = e instanceof Error ? e.name : '';
+    if (nome === 'PasswordException') throw new Error('O PDF está protegido por senha. Exporte de novo sem senha.', { cause: e });
+    throw new Error('Não consegui abrir o PDF' + (e instanceof Error && e.message ? ': ' + e.message : '.'), { cause: e });
   }
   const paginas: ItemPdf[][] = [];
   for (let p = 1; p <= doc.numPages; p++) {

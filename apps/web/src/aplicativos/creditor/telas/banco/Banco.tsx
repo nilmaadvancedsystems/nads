@@ -10,7 +10,7 @@ export function Banco() {
       <div className="card">
         <h3><span className="import-card-ico"><Icone nome="landmark" /></span>Relatório de liquidação do banco</h3>
         <div className="import-box-row">
-          <CampoArquivo id="fBanco" arquivo={null} aceitar={vm.aceitar} onEscolher={f => { void vm.escolherArquivo(f); }} />
+          <CampoArquivo id="fBanco" arquivo={vm.arquivo} aceitar={vm.aceitar} onEscolher={f => { void vm.escolherArquivo(f); }} />
         </div>
         <p className="hint">PDF exportado pelo banco (Sicoob: "Relatório - Títulos por Período"), .xls, .xlsx ou .csv. A leitura acontece aqui no navegador: nada sai da máquina.</p>
         <div className="btn-row" style={{ justifyContent: 'flex-start', marginTop: 8 }}>
