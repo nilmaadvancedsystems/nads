@@ -19,8 +19,8 @@ export type AbaIniciar = 'escolher' | 'recentes';
 /** O filtro rápido da aba Escolher (como HTTPS / SSH / GitHub CLI). */
 export const FILTROS_INICIAR = [
   { valor: 'todas', rotulo: 'Todas' },
-  { valor: 'nao-iniciada', rotulo: 'Novas' },
-  { valor: 'em-andamento', rotulo: 'Em curso' },
+  { valor: 'nao-iniciada', rotulo: 'Iniciar' },
+  { valor: 'em-andamento', rotulo: 'Andamento' },
   { valor: 'parada', rotulo: 'Paradas' },
 ] as const;
 type FiltroIniciar = (typeof FILTROS_INICIAR)[number]['valor'];
