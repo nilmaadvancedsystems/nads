@@ -45,3 +45,15 @@ describe('remontar a empresa lida do banco', () => {
     expect(empresaDoBanco('FITO', { auditoria: [aud('x')] }, []).auditoria).toEqual([aud('x')]);
   });
 });
+
+describe('dados de teste do protótipo', () => {
+  it('extrato e razão na competência, com diferenças de propósito', async () => {
+    const { arquivoDeTeste } = await import('./teste');
+    const banco = arquivoDeTeste('banco', '2026-02');
+    const sistema = arquivoDeTeste('sistema', '2026-02');
+    expect(banco.nome).toBe('TESTE - Extrato Fevereiro/2026.pdf');
+    expect(banco.lancamentos.every(l => l.data.startsWith('2026-02'))).toBe(true);
+    expect(banco.lancamentos.some(l => l.data === '2026-02-28')).toBe(true); // dia 28 existe em fevereiro
+    expect(sistema.lancamentos).toHaveLength(banco.lancamentos.length + 1); // −1 falta, +1 a mais, +1 duplicada
+  });
+});

@@ -102,7 +102,7 @@ export function useExecutor(rotaEmpresa: string, competencia: string) {
     etapas: rotina.etapas.map((e, i) => ({ id: e.id, n: i + 1, nome: e.nome, situacao: t.situacaoDa(ex, e.id), atual: e.id === etapa?.id })),
     etapa, n: etapa ? rotina.etapas.findIndex(e => e.id === etapa.id) + 1 : 0, total: rotina.etapas.length,
     interrompidaAntes: etapa && ex ? t.estadoDa(ex, etapa.id)?.situacao === 'interrompida' ? t.estadoDa(ex, etapa.id) : null : null,
-    ferramenta: f && empresa ? { nome: f.nome, embutir: f.embutir, url: BASES[f.app] + f.caminho(empresas.rotaDaEmpresa(empresa)) } : null,
+    ferramenta: f && empresa ? { nome: f.nome, embutir: f.embutir, url: BASES[f.app] + f.caminho(empresas.rotaDaEmpresa(empresa)) + (f.app === 'extratudo' ? '?competencia=' + competencia : '') } : null,
     aviso, conferindo, proximo,
     resolver,
     interrompendo, abrirInterromper: () => setInterrompendo(true), fecharInterromper: () => setInterrompendo(false), interromper,

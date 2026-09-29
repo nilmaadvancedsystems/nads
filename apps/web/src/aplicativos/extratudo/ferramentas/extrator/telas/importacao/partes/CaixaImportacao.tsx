@@ -1,14 +1,16 @@
 // Uma caixa de importação (.import-box): título com ícone, "Escolher arquivos" (vários), a lista do
-// que foi escolhido e o botão Importar.
+// que foi escolhido e o botão Importar (e, no protótipo, "Importar dados de teste").
 import { BotaoAcao, CampoArquivos, Icone } from '@nads/ui';
 import type { ConfigCaixa } from '../useImportacao';
 
-export function CaixaImportacao({ caixa, ocupado, onEscolher, onTirar, onImportar }: {
+export function CaixaImportacao({ caixa, ocupado, onEscolher, onTirar, onImportar, onTeste }: {
   caixa: ConfigCaixa & { escolhidos: File[]; lendo: boolean };
   ocupado: boolean;
   onEscolher: (fs: File[]) => void;
   onTirar: (i: number) => void;
   onImportar: () => void;
+  /** PROTÓTIPO: importar dados de teste */
+  onTeste?: () => void;
 }) {
   const n = caixa.escolhidos.length;
   return (
@@ -33,6 +35,13 @@ export function CaixaImportacao({ caixa, ocupado, onEscolher, onTirar, onImporta
         </div>
       )}
       <p className="hint">{caixa.dica}</p>
+      {onTeste && (
+        <div>
+          <button type="button" className="btn btn-sm btn-outline" disabled={ocupado} onClick={onTeste} title="Protótipo: importa lançamentos inventados, com TESTE no nome do arquivo">
+            <Icone nome="zap" />Importar dados de teste
+          </button>
+        </div>
+      )}
     </div>
   );
 }

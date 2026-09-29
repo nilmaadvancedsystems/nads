@@ -12,7 +12,7 @@ export function Importacao() {
       <div className="import-grid ext-import-grid">
         {vm.caixas.map(c => (
           <CaixaImportacao key={c.lado} caixa={c} ocupado={vm.ocupado}
-            onEscolher={fs => vm.escolher(c.lado, fs)} onTirar={i => vm.tirar(c.lado, i)} onImportar={() => { void vm.importar(c.lado); }} />
+            onEscolher={fs => vm.escolher(c.lado, fs)} onTirar={i => vm.tirar(c.lado, i)} onImportar={() => { void vm.importar(c.lado); }} onTeste={() => { void vm.importarTeste(c.lado); }} />
         ))}
       </div>
 
