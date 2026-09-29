@@ -36,6 +36,7 @@ export function useAplicar(nome: string) {
   const repo = useRepo();
   return useCallback((acao: (e: Empresa) => Empresa): Empresa => {
     const e = repo.obter(nome) || extrator.empresaNova(nome);
+    if (!repo.carregada(nome)) return e; // antes de a empresa chegar do banco, nunca grava
     const nova = acao(e);
     if (nova !== e) repo.salvar(nova);
     return nova;

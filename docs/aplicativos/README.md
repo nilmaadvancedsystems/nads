@@ -7,7 +7,7 @@ link. Depois, no mesmo dia, as três ferramentas do banco viraram um aplicativo 
 |---|---|---|---|---|
 | **Concilia aí** (a Conferência) | concilia-ai-nilma.web.app | `/`, `/292/movimento/relatorio` | balancete × notas: importação, cadastro, relatório, checklist, auditoria | Firestore da Conferência (no nads-nilma) |
 | **Conciliadorzinho** | conciliadorzinho-nilma.web.app | `/conciliadorzinho/292/conciliacao/<etapa>` | cartão × notas fiscais, arquivos por bandeira | nenhum |
-| **Extratudo** | extratudo-nilma.web.app | `/extratudo/292/<ferramenta>/…` | tudo do banco da empresa (abaixo) | nenhum |
+| **Extratudo** | extratudo-nilma.web.app | `/extratudo/292/<ferramenta>/…` | tudo do banco da empresa (abaixo) | Firestore da Conferência, coleção `extrator` (o Extrator guarda os lançamentos lidos) |
 | **Tarefas** | tarefas-nilma.web.app | — | ainda "Em construção" | — |
 
 ## Extratudo
@@ -38,7 +38,8 @@ Todos começam escolhendo a empresa. Um aplicativo não importa nada de outro: o
 npm run sites -- extratudo            # ou vários, ou "todos"
 ```
 
-Os sites usam `--mode exemplos` (dados de exemplo, sem banco) e só a hospedagem deles é publicada.
+Os sites usam `--mode exemplos` (dados de exemplo, sem banco), menos o Extratudo, que é ligado ao banco
+(`--mode banco`). Só a hospedagem deles é publicada.
 
 Histórico: em 2026-09-28 as ferramentas chegaram a ficar dentro da Conferência (primeiro "Conciliei",
 com uma caixa estilo GitHub Insights, depois "Concilia aí" com tudo na barra lateral). A caixa

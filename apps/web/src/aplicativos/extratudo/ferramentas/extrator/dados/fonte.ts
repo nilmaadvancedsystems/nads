@@ -1,15 +1,21 @@
 // De onde vêm os dados do Extrator (VITE_FONTE):
-//   "exemplos" → empresas de exemplo (901, 902, 903), guardadas só neste navegador;
-//   "banco"    → a lista de empresas do escritório, com os lançamentos guardados só neste navegador.
-// O Extrator ainda não grava no Firestore: ligar o banco é decisão pendente
-// (docs/aplicativos/extratudo/extrator/mapa.md). O repositório é criado uma vez, quando alguém abre o Extrator.
+//   "banco"    → o Firestore da Conferência, coleção `extrator` (ver ../../../dados/extrator.firestore.ts),
+//                com a lista de empresas do escritório;
+//   "exemplos" → empresas de exemplo (901, 902, 903), guardadas só neste navegador.
+// O repositório é criado uma vez, quando alguém abre o Extratudo.
 import { empresas, extrator } from '@nads/core';
+import { criarRepoExtratorFirestore, type RepoExtratorFirestore } from '../../../dados/extrator.firestore';
 
-const exemplos = import.meta.env.VITE_FONTE !== 'banco';
+export const noBanco = import.meta.env.VITE_FONTE === 'banco';
 
 let repo: extrator.RepoExtrator | null = null;
 
 export function repoDoExtrator(): extrator.RepoExtrator {
-  if (!repo) repo = extrator.criarRepoExtratorMemoria(exemplos ? { exemplos: true } : { exemplos: false, lista: empresas.EMPRESAS });
+  if (!repo) repo = noBanco ? criarRepoExtratorFirestore(empresas.EMPRESAS) : extrator.criarRepoExtratorMemoria({ exemplos: true });
   return repo;
+}
+
+/** Os erros do banco (salvar/ler) vão para o toast da tela. */
+export function avisarErrosDoBanco(r: extrator.RepoExtrator, aviso: (mensagem: string) => void): void {
+  if (noBanco) (r as RepoExtratorFirestore).definirAviso(aviso);
 }

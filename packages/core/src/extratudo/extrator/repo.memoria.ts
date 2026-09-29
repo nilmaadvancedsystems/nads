@@ -59,6 +59,7 @@ export function criarRepoExtratorMemoria(opcoes: { exemplos: boolean; lista?: re
     exemplos: opcoes.exemplos,
     listarEmpresas: () => lista,
     obter: nome => dados[nome] || null,
+    carregada: () => true,
     salvar(e) {
       dados = { ...dados, [e.nome]: e };
       avisar();

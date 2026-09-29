@@ -55,10 +55,11 @@ Datas em `aaaa-mm-dd` e valores em **centavos** (inteiros): positivo entrou no b
 5. Sobrou no extrato = **faltando no sistema**; sobrou no sistema = **a mais**.
 
 ## Decisões pendentes (do Vitor)
-1. **Onde guardar os lançamentos.** Hoje ficam só no navegador de quem importou (localStorage),
-   no site publicado e nos exemplos. Gravar no Firestore da Conferência (uma coleção nova, ex.
-   `extrator/{empresa}`) é conexão nova com o banco: só ligo quando você liberar, e as regras do banco
-   precisam permitir a coleção.
+1. ~~Onde guardar os lançamentos~~ **Resolvido (2026-09-29, pedido do Vitor):** no Firestore da Conferência
+   (projeto conferencia-nilma), coleção `extrator`: `extrator/{empresa}` com o nome e a auditoria, e
+   `extrator/{empresa}/arquivos/{id}` com cada arquivo importado (só os lançamentos lidos). Carrega só a empresa
+   aberta e nunca grava antes de ela chegar. Código: `apps/web/src/aplicativos/extratudo/dados/extrator.firestore.ts`
+   e `packages/core/src/extratudo/extrator/regras/banco.ts`.
 2. **Puxar do Drive da empresa.** Precisa de uma conexão com o Google Drive (login Google + API do
    Drive), que a trava `npm run conexoes` proíbe hoje. Se liberar, entra como `dados/drive.ts` e um
    botão "Puxar do Drive" na caixa dos extratos, com a pasta de cada empresa guardada.

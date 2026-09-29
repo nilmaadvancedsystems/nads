@@ -15,6 +15,8 @@ export function useEntrada() {
   const { toast } = useRetorno();
 
   function entrar(x: empresas.EmpresaDoEscritorio) {
+    // no banco a empresa ainda pode estar chegando: a rota da empresa decide a página quando chegar
+    if (!repo.carregada(x.nome)) { navegar(caminho(empresas.rotaDaEmpresa(x))); return; }
     const e = repo.obter(x.nome);
     const pronta = !!e && e.arquivos.some(a => a.lado === 'banco') && e.arquivos.some(a => a.lado === 'sistema');
     navegar(caminho(empresas.rotaDaEmpresa(x) + '/' + (pronta ? 'conferencia/resultado' : PAGINA_INICIAL)));

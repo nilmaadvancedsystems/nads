@@ -17,5 +17,6 @@ export {
 export { EXTENSOES_EXTRATO, EXTENSOES_SISTEMA, abasDaPlanilha, lerArquivo } from './arquivos/leitura';
 export { definirWorkerDoPdf, ehPdf, itensDoPdf } from './arquivos/pdf';
 export type { RepoExtrator } from './repo';
+export { gravacao, semMudanca, empresaDoBanco, type Gravacao, type DocEmpresaExtrator } from './regras/banco';
 export { criarRepoExtratorMemoria, type Guarda } from './repo.memoria';
 export { EMPRESAS_EXEMPLO, empresasDeExemplo } from './__exemplos__/empresas';

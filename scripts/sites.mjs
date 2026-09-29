@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Um site (link) por aplicativo, no projeto conferencia-nilma. Cada site é gerado só com o seu
-// aplicativo (VITE_APLICATIVO) e com dados de exemplo (--mode exemplos: nada vai para o banco).
+// aplicativo (VITE_APLICATIVO). Por padrão com dados de exemplo (--mode exemplos: nada vai para o
+// banco); quem já foi ligado ao banco a pedido do Vitor usa --mode banco (hoje: o Extratudo).
 // Quem ainda não existe no nads ganha a página "Em construção"; os links antigos (que viraram parte
 // de outro aplicativo) levam para o novo.
 //
@@ -18,14 +19,14 @@ const url = site => 'https://' + site + '.web.app';
 
 /**
  * id → site do Firebase e o que vai nele:
- *   app       — o aplicativo do nads (VITE_APLICATIVO=id)
+ *   app       — o aplicativo do nads (VITE_APLICATIVO=id); banco: true = ligado ao banco
  *   construcao — a página "Em construção"
  *   mudou     — leva para outro aplicativo (o id dele)
  */
 const SITES = {
   'concilia-ai': { site: 'concilia-ai-nilma', nome: 'Concilia aí', tipo: 'app' },
   conciliadorzinho: { site: 'conciliadorzinho-nilma', nome: 'Conciliadorzinho', tipo: 'app' },
-  extratudo: { site: 'extratudo-nilma', nome: 'Extratudo', tipo: 'app' },
+  extratudo: { site: 'extratudo-nilma', nome: 'Extratudo', tipo: 'app', banco: true },
   tarefas: { site: 'tarefas-nilma', nome: 'Tarefas', tipo: 'construcao' },
   // viraram ferramentas do Extratudo
   extrator: { site: 'extrator-nilma', nome: 'Extrator', tipo: 'mudou', para: 'extratudo' },
@@ -48,8 +49,8 @@ for (const id of ids) {
   const saida = path.join(web, 'dist-sites', id);
   fs.rmSync(saida, { recursive: true, force: true });
   if (s.tipo === 'app') {
-    console.log('sites: gerando ' + s.nome + '…');
-    execSync('npx vite build --mode exemplos --outDir ' + JSON.stringify(saida) + ' --emptyOutDir', {
+    console.log('sites: gerando ' + s.nome + (s.banco ? ' (ligado ao banco)' : ' (dados de exemplo)') + '…');
+    execSync('npx vite build --mode ' + (s.banco ? 'banco' : 'exemplos') + ' --outDir ' + JSON.stringify(saida) + ' --emptyOutDir', {
       cwd: web, stdio: ['ignore', 'ignore', 'inherit'], env: { ...process.env, VITE_APLICATIVO: id },
     });
     continue;
