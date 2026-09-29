@@ -11,7 +11,7 @@ export function Entrada() {
         <p className="hint" style={{ textAlign: 'center', marginTop: 8 }}>
           {vm.exemplos ? <>Dados de exemplo (901, 902, 903) · nada é gravado em banco ·{' '}
             <button type="button" className="link-btn" onClick={vm.restaurarExemplos}>restaurar exemplos</button></>
-            : 'Os PDFs não são guardados: só os lançamentos lidos deles, neste navegador.'}
+            : 'Os PDFs não são guardados: só os lançamentos lidos deles, na nuvem.'}
         </p>
       } />
   );
