@@ -22,6 +22,21 @@ function embutida(): boolean {
   }
 }
 
+/**
+ * Acoplada a outro sistema (o Entregas abre o Extratudo com ?acoplado=entregas, 2026-09-29): a barra de
+ * cima (☰, logo, sistema) é a do sistema de fora, então aqui some só ela; ficam a empresa, as abas das
+ * páginas e a barra lateral das ferramentas, como as outras telas do Entregas. Fica guardado na aba,
+ * porque as rotas trocam o endereço e o ?acoplado some.
+ */
+function acoplada(): boolean {
+  try {
+    if (new URLSearchParams(window.location.search).get('acoplado')) sessionStorage.setItem('nads-acoplado', '1');
+    return embutida() && sessionStorage.getItem('nads-acoplado') === '1';
+  } catch {
+    return false;
+  }
+}
+
 const CHAVE_LATERAL = 'nads-barra-lateral-oculta';
 
 function lerLateral(): boolean {
@@ -100,20 +115,29 @@ export function Casca(p: {
   );
 
   // aberta dentro de outra tela (a etapa de uma tarefa): só a página, sem cabeçalho nem barra lateral
-  if (embutida()) return <div id="app" className="on embutida">{principal}</div>;
+  const noOutro = acoplada();
+  if (embutida() && !noOutro) return <div id="app" className="on embutida">{principal}</div>;
 
   let grupoAnt: number | null = null;
   return (
-    <div id="app" className={'on' + (p.larga ? ' larga' : '')}>
+    <div id="app" className={'on' + (p.larga ? ' larga' : '') + (noOutro ? ' acoplada' : '')}>
       <header className="gh-header" ref={cabecalho}>
         <div className="gh-header-top">
-          <button className="gh-hamb" type="button" aria-label="Abrir menu" title="Menu" onClick={() => setGaveta(true)}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
-          </button>
-          <span className="brand-mark" aria-hidden="true"><MarcaN /></span>
+          {!noOutro && (
+            <>
+              <button className="gh-hamb" type="button" aria-label="Abrir menu" title="Menu" onClick={() => setGaveta(true)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+              </button>
+              <span className="brand-mark" aria-hidden="true"><MarcaN /></span>
+            </>
+          )}
           <nav className="gh-crumbs" aria-label="Local">
-            <button className="gh-crumb" type="button" title="Voltar para a tela inicial" onClick={p.onInicio}>{p.sistema}</button>
-            <span className="gh-sep">/</span>
+            {!noOutro && (
+              <>
+                <button className="gh-crumb" type="button" title="Voltar para a tela inicial" onClick={p.onInicio}>{p.sistema}</button>
+                <span className="gh-sep">/</span>
+              </>
+            )}
             <button className="brand-tag" id="brandTagEmpresa" type="button" title={p.empresa.nome} onClick={p.onEmpresa}>{p.empresa.codigo}</button>
             {p.trilha?.map(t => (
               <span key={t.rotulo} style={{ display: 'contents' }}>
