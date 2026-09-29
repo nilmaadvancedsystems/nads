@@ -10,9 +10,11 @@
     "./formatos": "./src/formatos/index.ts",
     "./empresas": "./src/empresas/index.ts",
     "./cheque-especial": "./src/cheque-especial/index.ts",
-    "./conciliadorzinho": "./src/conciliadorzinho/index.ts"
+    "./conciliadorzinho": "./src/conciliadorzinho/index.ts",
+    "./extrator": "./src/extrator/index.ts"
   },
   "dependencies": {
+    "pdfjs-dist": "^5.7.284",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   }
 }

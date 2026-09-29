@@ -11,7 +11,7 @@ aplicativo**. Depois de escolher, a pessoa **escolhe a empresa**.
 | Empresa | `/<app>` | a mesma busca "nome ou código do ERP" da entrada da Conferência, com o nome do aplicativo no título |
 | Aplicativo aberto | `/<app>/<código>/<seção>/<página>` | casca do nads (barra lateral + abas) com a empresa no cabeçalho |
 
-Os `<app>` são `conferencia`, `cheque-especial` e `conciliadorzinho`. Com a tela de aplicativos na
+Os `<app>` são `conferencia`, `cheque-especial`, `conciliadorzinho` e `extrator`. Com a tela de aplicativos na
 raiz, a Conferência sai da raiz: `/292/movimento/relatorio` passa a ser
 `/conferencia/292/movimento/relatorio`. **Os links antigos continuam funcionando**: `/<código>/…`
 redireciona para `/conferencia/<código>/…`.
