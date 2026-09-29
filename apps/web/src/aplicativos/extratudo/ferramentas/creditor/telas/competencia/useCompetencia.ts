@@ -68,6 +68,7 @@ export function useCompetencia() {
     valida,
     drive: {
       exemplos: drive.exemplos,
+      loginDeFora: !!drive.loginDeFora,
       pronto: acesso.pronto,
       entrou: acesso.entrou,
       quem: acesso.quem,

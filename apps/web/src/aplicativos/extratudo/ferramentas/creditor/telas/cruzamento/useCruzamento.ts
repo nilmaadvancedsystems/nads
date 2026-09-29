@@ -1,6 +1,7 @@
-// ViewModel da etapa Cruzamento: cada título com a linha do sistema achada pela NF, a situação e,
-// quando há divergência, a decisão da pessoa (nunca presumimos qual lado está certo). A exceção é a NF
-// que não está no sistema de um cliente já conciliado antes: a conta aprendida resolve (dá para trocar).
+// ViewModel da etapa Contas: a conta (contrapartida) de cada título, que vem da conta aprendida do
+// cliente ou do balancete (2026-09-29: sem arquivo do sistema; o banco manda no valor e no cliente).
+// Sem conta achada, a pessoa informa (com as contas de clientes do balancete como sugestão) ou exclui
+// o título; a conta informada fica aprendida quando o arquivo é baixado.
 import { creditor as cr } from '@nads/core';
 import { useState } from 'react';
 import { useSessao } from '../../casca/sessao';
@@ -8,7 +9,7 @@ import { useSessao } from '../../casca/sessao';
 export type Filtro = 'todos' | 'decidir' | 'avisos';
 
 export const ROTULO_SITUACAO: Record<cr.SituacaoCruzamento, string> = {
-  ok: 'Ok', dividido: 'Duplicatas juntas', 'valor-diverge': 'Valor diverge', 'cliente-diverge': 'Cliente diverge', 'nao-encontrada': 'NF não encontrada',
+  ok: 'Ok', dividido: 'Duplicatas juntas', 'valor-diverge': 'Valor diverge', 'cliente-diverge': 'Cliente diverge', 'nao-encontrada': 'Sem conta',
 };
 
 export function useCruzamento() {
@@ -24,33 +25,33 @@ export function useCruzamento() {
   const linhas = s.d.cruzamentos.map(c => {
     const t = porId.get(c.tituloId) as cr.Titulo;
     const decisao = s.d.decisoes[c.tituloId];
-    const aprendida = s.d.aprendidas.includes(c.tituloId);
     const precisa = cr.precisaDecisao(c);
     return {
-      id: c.tituloId, nf: t.nf, liquidacao: t.liquidacao, sacado: t.sacado, cliente: c.linha?.cliente || '',
-      valorBanco: c.valorBanco, valorSistema: c.valorSistema,
+      id: c.tituloId, nf: t.nf, liquidacao: t.liquidacao, sacado: t.sacado, nomeDaConta: c.linha?.cliente || '',
+      valorBanco: c.valorBanco,
       contrapartida: decisao?.tipo === 'manual' ? decisao.contrapartida : c.linha?.contrapartida || '',
       situacao: c.situacao, rotulo: ROTULO_SITUACAO[c.situacao], nota: c.nota,
-      precisa, resolvida: precisa && cr.decisaoValida(c, decisao), decisao, aprendida, temLinha: !!c.linha,
+      precisa, resolvida: precisa && cr.decisaoValida(c, decisao), decisao, aprendida: !!c.aprendida,
       historicoPadrao: cr.historicoNfCliente(t),
     };
   });
 
-  const visiveis = linhas.filter(l => filtro === 'todos' || (filtro === 'decidir' ? l.precisa : l.situacao !== 'ok'));
+  const visiveis = linhas.filter(l => filtro === 'todos' || (filtro === 'decidir' ? l.precisa : !!l.nota));
   const conta = (f: (l: (typeof linhas)[number]) => boolean) => linhas.filter(f).length;
 
   return {
     linhas: visiveis,
     filtro, setFiltro,
+    /** as contas de clientes do balancete, para o campo sugerir enquanto digita */
+    contasClientes: s.contas.clientes,
+    semBalancete: s.contas.carregada && s.contas.balancete.origem === 'nenhum',
     resumo: {
       ok: conta(l => l.situacao === 'ok'),
-      divididos: conta(l => l.situacao === 'dividido'),
       decidir: conta(l => l.precisa),
       pendentes: s.d.pendentes.length,
       excluidos: conta(l => l.decisao?.tipo === 'excluir'),
       aprendidas: conta(l => l.aprendida),
     },
-    confirmar: (id: number) => decidir(id, { tipo: 'confirmar' }),
     excluir: (id: number) => decidir(id, { tipo: 'excluir' }),
     desfazer: (id: number) => decidir(id, null),
     manual: (id: number, campo: 'contrapartida' | 'historico', v: string) => {

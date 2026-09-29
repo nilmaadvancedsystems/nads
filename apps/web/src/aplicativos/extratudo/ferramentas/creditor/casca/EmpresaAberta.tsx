@@ -7,11 +7,9 @@ import { useEmpresaDoExtratudo } from '../../../empresas';
 import { TopoProvider } from '../../../../../comum/topo';
 import { Banco } from '../telas/banco/Banco';
 import { Competencia } from '../telas/competencia/Competencia';
-import { Conferencia } from '../telas/conferencia/Conferencia';
 import { Cruzamento } from '../telas/cruzamento/Cruzamento';
 import { Fiscal } from '../telas/fiscal/Fiscal';
 import { Lancamentos } from '../telas/lancamentos/Lancamentos';
-import { Sistema } from '../telas/sistema/Sistema';
 import { CascaCreditor } from './Casca';
 import { caminho } from './caminho';
 import { caminhoDaEtapa, ETAPAS, indiceDaEtapa, type IdEtapa } from './navegacao';
@@ -26,9 +24,7 @@ function Tela() {
   switch (s.etapa) {
     case 'competencia': return <Competencia />;
     case 'banco': return <Banco />;
-    case 'conferencia': return <Conferencia />;
     case 'fiscal': return <Fiscal />;
-    case 'sistema': return <Sistema />;
     case 'cruzamento': return <Cruzamento />;
     case 'lancamentos': return <Lancamentos />;
   }

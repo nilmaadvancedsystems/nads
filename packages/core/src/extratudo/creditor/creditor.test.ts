@@ -8,6 +8,7 @@ import { clienteDoHistorico, lerSistema, nfDoHistorico } from './arquivos/sistem
 import { emailDoUsuario } from './drive';
 import { BALANCETES_EXEMPLO, EXEMPLO_RELATORIO, EXEMPLO_SISTEMA_CSV } from './exemplos';
 import { aprender, clientesDoDocumento, contaAprendida, decisoesAprendidas } from './regras/aprendizado';
+import { contasDeClientes, cruzarPeloBalancete, mesmoNomeDeCliente } from './regras/clientes';
 import { competenciaPadrao, rotuloCompetencia, titulosForaDaCompetencia } from './regras/competencia';
 import { acharRelatorioNoDrive, falaDaCompetencia, pastaDoCliente, type ItemDrive } from './regras/drive';
 import { balanceteDoDocumento, CONFIG_VAZIA, configDoDocumento, confirmarContas, escolherConta, mesmaConfig, resolverContas, SEM_BALANCETE, sugerirConta } from './regras/balancete';
@@ -466,5 +467,40 @@ describe('competência e Drive', () => {
   it('login do Entregas: nome vira e-mail', () => {
     expect(emailDoUsuario('Vitor Araújo')).toBe('vitor.araujo@nilma.local');
     expect(emailDoUsuario(' x@y.com ')).toBe('x@y.com');
+  });
+});
+
+describe('conta do cliente pelo balancete', () => {
+  const bal = { origem: 'balancete' as const, contas: [
+    { codigo: '1', nome: 'ATIVO', sintetica: true },
+    { codigo: '11', nome: 'CLIENTES', sintetica: true },
+    { codigo: '12110', nome: 'ARAUJO E SA LTDA' },
+    { codigo: '12200', nome: 'MERCADINHO PLANALTO DE TAIOBEIRAS LTDA' },
+    { codigo: '12300', nome: 'SUPERMERCADO BOA COMPRA LTDA' },
+    { codigo: '12301', nome: 'SUPERMERCADO BOA COMPRA FILIAL' },
+    { codigo: '13', nome: 'ESTOQUES', sintetica: true },
+    { codigo: '13100', nome: 'MERCADORIAS PARA REVENDA' },
+  ] };
+  const t = (id: number, sacado: string) => ({ id, sacado, nossoNumero: '', nf: String(id), valor: 10, mora: 0, desconto: 0, outros: 0, liquidacao: '03/08/2026', cobrado: 10 });
+
+  it('só as analíticas abaixo de Clientes', () => {
+    expect(contasDeClientes(bal).map(c => c.codigo)).toEqual(['12110', '12200', '12300', '12301']);
+  });
+
+  it('nome cortado pelo banco e sufixo de filial', () => {
+    expect(mesmoNomeDeCliente('ARAUJO E SA LTDA -TAI1', 'ARAUJO E SA LTDA')).toBe(true);
+    expect(mesmoNomeDeCliente('MERCADINHO PLANALTO DE TAIOB', 'MERCADINHO PLANALTO DE TAIOBEIRAS LTDA')).toBe(true);
+    expect(mesmoNomeDeCliente('ARAUJO', 'MERCADORIAS')).toBe(false);
+  });
+
+  it('acha a conta; ambígua ou sem conta pede decisão; a aprendida vence', () => {
+    const cl = contasDeClientes(bal);
+    const aprendidos = { 'cliente novo': { conta: '12999', nome: 'CLIENTE NOVO', em: '' } };
+    const [a, b, c, d] = cruzarPeloBalancete([t(1, 'ARAUJO E SA LTDA'), t(2, 'SUPERMERCADO BOA COMPRA'), t(3, 'FULANO DE TAL'), t(4, 'CLIENTE NOVO')], cl, aprendidos);
+    expect([a.situacao, a.linha?.contrapartida, a.linha?.valor]).toEqual(['ok', '12110', 10]);
+    expect(b.situacao).toBe('nao-encontrada');
+    expect(b.nota).toMatch(/Mais de uma conta/);
+    expect(c.situacao).toBe('nao-encontrada');
+    expect([d.situacao, d.linha?.contrapartida, d.aprendida]).toEqual(['ok', '12999', true]);
   });
 });

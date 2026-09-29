@@ -3,17 +3,16 @@
 import type { NomeIcone } from '@nads/ui';
 import { caminho } from './caminho';
 
-export type IdEtapa = 'competencia' | 'banco' | 'conferencia' | 'fiscal' | 'sistema' | 'cruzamento' | 'lancamentos';
+// Sem Conferência dos grupos e sem arquivo do sistema (2026-09-29): a conta de cada cliente vem do balancete.
+export type IdEtapa = 'competencia' | 'banco' | 'fiscal' | 'cruzamento' | 'lancamentos';
 
 export interface Etapa { id: IdEtapa; rotulo: string; titulo: string; icone: NomeIcone }
 
 export const ETAPAS: Etapa[] = [
   { id: 'competencia', rotulo: 'Competência', titulo: 'Competência', icone: 'calendar' },
   { id: 'banco', rotulo: 'Relatório do banco', titulo: 'Relatório de liquidação do banco', icone: 'landmark' },
-  { id: 'conferencia', rotulo: 'Conferência', titulo: 'Conferência dos grupos', icone: 'scale' },
   { id: 'fiscal', rotulo: 'Fiscal', titulo: 'Baixa no Fiscal', icone: 'checklist' },
-  { id: 'sistema', rotulo: 'Sistema', titulo: 'Arquivo do sistema', icone: 'fileText' },
-  { id: 'cruzamento', rotulo: 'Cruzamento', titulo: 'Cruzamento banco × sistema', icone: 'repeat' },
+  { id: 'cruzamento', rotulo: 'Contas', titulo: 'Conta de cada cliente', icone: 'repeat' },
   { id: 'lancamentos', rotulo: 'Lançamentos', titulo: 'Lançamentos para importar', icone: 'download' },
 ];
 

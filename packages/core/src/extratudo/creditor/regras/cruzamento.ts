@@ -19,6 +19,8 @@ export interface Cruzamento {
   valorSistema: number | null;
   /** explicação curta para a tela */
   nota: string;
+  /** a conta veio do que foi aprendido do cliente (cruzarPeloBalancete) */
+  aprendida?: boolean;
 }
 
 /**

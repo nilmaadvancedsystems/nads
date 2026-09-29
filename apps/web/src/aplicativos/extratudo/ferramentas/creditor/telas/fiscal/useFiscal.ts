@@ -1,7 +1,7 @@
-// ViewModel da etapa Fiscal: o passo a passo entre o relatório conferido e a planilha do sistema.
-// No Fiscal, baixar os títulos dos clientes no Gerenciador de Duplicatas e exportar para o Contábil;
-// no Contábil, exportar a planilha dos recebimentos (a que entra na etapa Sistema). O nads não fala com
-// o Fiscal: a pessoa faz lá e marca aqui. Só libera o Sistema com os três passos marcados.
+// ViewModel da etapa Fiscal: o passo a passo depois do relatório do banco. No Fiscal, baixar os títulos
+// dos clientes no Gerenciador de Duplicatas e exportar para o Contábil. O nads não fala com o Fiscal: a
+// pessoa faz lá e marca aqui. Só libera as Contas com os passos marcados. (A planilha do sistema saiu
+// em 2026-09-29: a conta de cada cliente vem do balancete.)
 import { creditor as cr } from '@nads/core';
 import { PASSOS_FISCAL, useSessao, type PassoFiscal } from '../../casca/sessao';
 
@@ -13,10 +13,6 @@ const TEXTO: Record<PassoFiscal, { titulo: string; texto: string }> = {
   'exportar-contabil': {
     titulo: 'Exportar para o Contábil',
     texto: 'Ainda no Fiscal, exporte as baixas para o Contábil.',
-  },
-  'exportar-planilha': {
-    titulo: 'Exportar a planilha',
-    texto: 'No Contábil, exporte a planilha com os recebimentos (NF, Cliente, Contrapartida, Histórico, Valor). É ela que entra na próxima etapa.',
   },
 };
 

@@ -10,7 +10,7 @@ export function Fiscal() {
     <section>
       <div className="card">
         <h3><span className="import-card-ico"><Icone nome="checklist" /></span>Passo a passo · {vm.empresa}</h3>
-        <p className="hint" style={{ marginTop: 0 }}>Faça cada passo no sistema e marque aqui. A próxima etapa abre com os três marcados.</p>
+        <p className="hint" style={{ marginTop: 0 }}>Faça cada passo no sistema e marque aqui. A próxima etapa abre com todos marcados.</p>
         <ol className="passos">
           {vm.passos.map(p => (
             <li key={p.id}>
@@ -53,7 +53,7 @@ export function Fiscal() {
       <div className="btn-row">
         <button className="btn btn-ghost" type="button" onClick={vm.voltar}>← Voltar</button>
         <button className="btn btn-primary" type="button" disabled={!vm.podeContinuar} onClick={vm.continuar}>
-          {vm.podeContinuar ? 'Continuar para o sistema' : 'Faltam ' + vm.faltam + ' passo(s)'}
+          {vm.podeContinuar ? 'Continuar para as contas' : 'Faltam ' + vm.faltam + ' passo(s)'}
         </button>
       </div>
     </section>

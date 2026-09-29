@@ -33,7 +33,11 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   }
 
   async function buscar(linha: Linha) {
-    if (!acesso.entrou) { setPendente(linha); setLogin(l => ({ ...l, aberto: true, erro: '' })); return; }
+    if (!acesso.entrou) {
+      // aberto dentro do Entregas: o login é o de lá (sem pedir senha aqui)
+      if (drive.loginDeFora) { vm.avisarErro('Entre no Entregas', 'O Drive usa o mesmo login do Entregas.'); return; }
+      setPendente(linha); setLogin(l => ({ ...l, aberto: true, erro: '' })); return;
+    }
     setBuscando(linha.id);
     try {
       const pasta = await drive.pastaDoCliente(codigo);
