@@ -1,7 +1,9 @@
 // Cruzamento banco × sistema (passo 3 do fluxo): cada título liquidado procura a NF no arquivo do
-// sistema, de onde vêm a contrapartida e o histórico. Divergência nunca é resolvida sozinha, com uma
-// exceção que o próprio fluxo manda: o sistema lançou duas (ou mais) duplicatas juntas — aí vale o
-// valor de cada parcela que o banco liquidou ("dividido").
+// sistema, de onde vêm a contrapartida e o histórico. O BANCO SEMPRE MANDA (pedido do escritório,
+// 2026-09-29): valor e cliente são os do banco; o sistema só dá a conta do cliente. Achou a NF, a
+// conta é a daquela linha, mesmo com valor ou nome diferente (no 292 o sistema tem a razão social ou o
+// dono, "CIRO VERNER DE PAULA NUNES EIRELI", e o banco o fantasia, "SUPERMERCADOS BOA COMPRA"). NF que
+// não está no sistema: a conta vem de uma linha do mesmo cliente do banco. Só pede decisão sem conta.
 import { brl, nomeNorm } from '../../../formatos';
 import type { LinhaSistema, Titulo } from '../tipos';
 import { chaveNf, igual, r2, somar } from './numeros';
@@ -52,6 +54,22 @@ function duplicatasJuntas(valorSistema: number, t: Titulo, parcelasNoBanco: Titu
   return 0;
 }
 
+/**
+ * Mesmo cliente, para achar a conta pelo nome (mais rígido que mesmoCliente, que também aceita a
+ * primeira palavra igual — "SUPERMERCADO X" × "SUPERMERCADO Y" não pode dar a mesma conta).
+ */
+function mesmoNome(a: string, b: string): boolean {
+  const x = palavras(a).join(' '), y = palavras(b).join(' ');
+  if (x.length < 6 || y.length < 6) return false;
+  return x.includes(y) || y.includes(x);
+}
+
+/** A linha do sistema com a conta do cliente do banco — só se todas as linhas dele têm a mesma conta. */
+function linhaDoCliente(sacado: string, sistema: LinhaSistema[]): LinhaSistema | null {
+  const dele = sistema.filter(l => l.contrapartida && mesmoNome(sacado, l.cliente));
+  return dele.length && new Set(dele.map(l => l.contrapartida)).size === 1 ? dele[0] : null;
+}
+
 /** Os números do histórico, sem zeros à esquerda ("Recebimento DUP.009897/1/1" → 9897, 1, 1), com 3+ dígitos. */
 function numerosDoHistorico(h: string): string[] {
   return [...new Set((h.match(/\d+/g) || []).map(n => n.replace(/^0+(?=\d)/, '')).filter(n => n.length >= 3))];
@@ -76,23 +94,27 @@ export function cruzar(titulos: Titulo[], sistema: LinhaSistema[]): Cruzamento[]
     const k = chaveNf(t.nf);
     const candidatas = (k && (porNf.get(k) || porHistorico.get(k))) || [];
     const base = { tituloId: t.id, valorBanco: t.valor };
+    // a conta pelo cliente do banco; o histórico fica vazio para os lançamentos usarem "NF - cliente" do banco
+    const pelaConta = (motivo: string): Cruzamento | null => {
+      const l = linhaDoCliente(t.sacado, sistema);
+      return l ? { ...base, situacao: 'ok', linha: { ...l, nf: t.nf, historico: '', cliente: t.sacado, valor: t.valor }, valorSistema: null, nota: motivo + ' Conta ' + l.contrapartida + ' pelo cliente.' } : null;
+    };
     if (!candidatas.length) {
-      return { ...base, situacao: 'nao-encontrada', linha: null, valorSistema: null, nota: 'NF ' + (k || '(vazia)') + ' não está no arquivo do sistema.' };
+      return pelaConta('NF ' + (k || '(vazia)') + ' não está no sistema.')
+        || { ...base, situacao: 'nao-encontrada', linha: null, valorSistema: null, nota: 'NF ' + (k || '(vazia)') + ' não está no arquivo do sistema, nem outra do mesmo cliente.' };
     }
     // a linha que mais parece: mesmo valor primeiro, depois mesmo cliente
     const nota = (l: LinhaSistema) => (l.valor != null && igual(l.valor, t.valor) ? 2 : 0) + (mesmoCliente(t.sacado, l.cliente) ? 1 : 0);
     const linha = [...candidatas].sort((a, b) => nota(b) - nota(a))[0];
     const vs = linha.valor;
     const r = { ...base, linha, valorSistema: vs };
+    const outroNome = mesmoCliente(t.sacado, linha.cliente) ? '' : ' No sistema: ' + linha.cliente + '.';
     if (vs != null && !igual(vs, t.valor)) {
       const k2 = duplicatasJuntas(vs, t, titulosPorNf.get(k) || []);
-      if (k2) return { ...r, situacao: 'dividido', nota: 'O sistema lançou ' + k2 + ' duplicatas juntas (' + brl(vs) + '). Vai o valor desta parcela, na data em que o banco liquidou.' };
-      return { ...r, situacao: 'valor-diverge', nota: 'Banco ' + brl(t.valor) + ' × sistema ' + brl(vs) + ' (diferença ' + brl(r2(t.valor - vs)) + ').' };
+      if (k2) return { ...r, situacao: 'dividido', nota: 'O sistema lançou ' + k2 + ' duplicatas juntas (' + brl(vs) + '). Vai o valor desta parcela, na data em que o banco liquidou.' + outroNome };
+      return { ...r, situacao: 'ok', nota: ('Vai o valor do banco (' + brl(t.valor) + '; no sistema ' + brl(vs) + ', diferença ' + brl(r2(t.valor - vs)) + ').' + outroNome).trim() };
     }
-    if (!mesmoCliente(t.sacado, linha.cliente)) {
-      return { ...r, situacao: 'cliente-diverge', nota: 'Cliente no banco: ' + t.sacado + ' · no sistema: ' + linha.cliente + '.' };
-    }
-    return { ...r, situacao: 'ok', nota: '' };
+    return { ...r, situacao: 'ok', nota: outroNome.trim() };
   });
 }
 
