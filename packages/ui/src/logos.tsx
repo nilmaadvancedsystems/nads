@@ -18,14 +18,78 @@ function Sicoob({ cor }: { cor?: boolean }) {
   );
 }
 
-/** [fundo, texto, iniciais] de cada marca. */
+/**
+ * Os logos de verdade (redesenhados a partir das imagens que o Vitor mandou, 29/09/2026): Banco do Brasil,
+ * Banrisul, Bradesco, BTG Pactual, C6 e Caixa. Em cinza, o mesmo desenho em tons de cinza.
+ */
+const cinza = (cor?: boolean) => (cor ? undefined : { filter: 'grayscale(1)', opacity: 0.6 });
+
+const DESENHOS: Record<string, (cor?: boolean) => React.JSX.Element> = {
+  'banco-do-brasil': cor => (
+    <svg viewBox="0 0 512 512" aria-hidden="true" style={cinza(cor)}>
+      <rect width="512" height="512" rx="110" fill="#FCFC30" />
+      <g fill="#465EFF">
+        <path d="M115 210 L258 115 L343 170 L300 198 L258 170 L175 226 Z" />
+        <path d="M343 152 L398 115 L398 142 L366 163 Z" />
+        <path d="M205 172 L245 146 L395 243 L300 305 L258 278 L300 250 Z" />
+        <path d="M307 340 L165 243 L208 215 L258 250 L342 305 Z" />
+        <path d="M397 302 L254 397 L170 342 L212 314 L254 342 L337 286 Z" />
+        <path d="M169 360 L114 397 L114 370 L146 349 Z" />
+      </g>
+    </svg>
+  ),
+  banrisul: cor => (
+    <svg viewBox="0 0 447 447" aria-hidden="true" style={cinza(cor)} fill="none" strokeWidth="22" strokeLinejoin="round">
+      <rect width="447" height="447" rx="96" fill="#02004F" />
+      <path d="M142 160 L182 90 L262 90 L302 160 L262 230 L182 230 Z" stroke="#5B8CFF" />
+      <path d="M82 270 L122 200 L202 200 L242 270 L202 340 L122 340 Z" stroke="#9F7BFF" />
+      <path d="M212 270 L252 200 L332 200 L372 270 L332 340 L252 340 Z" stroke="#27D6C8" />
+    </svg>
+  ),
+  bradesco: cor => (
+    <svg viewBox="0 0 512 512" aria-hidden="true" style={cinza(cor)}>
+      <defs>
+        <linearGradient id="gradBradesco" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#B21E7F" /><stop offset="1" stopColor="#FF0035" />
+        </linearGradient>
+      </defs>
+      <rect width="512" height="512" rx="110" fill="url(#gradBradesco)" />
+      <g fill="none" stroke="#FFFFFF" strokeLinecap="round" strokeWidth="20">
+        <path d="M186 326 C112 262 118 146 228 116 C296 98 356 110 374 132" />
+        <path d="M70 190 C170 162 318 160 368 224 C396 262 370 300 334 324" />
+      </g>
+      <g fill="#FFFFFF">
+        <rect x="230" y="340" width="20" height="94" rx="3" />
+        <path d="M262 334 L300 304 L300 434 L262 434 Z" />
+      </g>
+    </svg>
+  ),
+  btg: cor => (
+    <svg viewBox="0 0 512 512" aria-hidden="true" style={cinza(cor)}>
+      <rect width="512" height="512" rx="110" fill="#070B18" />
+      <path d="M404 352 A188 188 0 1 1 438 240" fill="none" stroke="#FFFFFF" strokeWidth="6" strokeLinecap="round" />
+      <text x="300" y="302" textAnchor="middle" fontFamily="Arial, Helvetica, sans-serif" fontWeight="700" fontSize="168" letterSpacing="-6" fill="#FFFFFF">btg</text>
+    </svg>
+  ),
+  c6: cor => (
+    <svg viewBox="0 0 100 100" aria-hidden="true" style={cinza(cor)}>
+      <rect width="100" height="100" rx="22" fill="#121212" />
+      <text x="50" y="52" textAnchor="middle" dominantBaseline="central" fontFamily="Arial Black, Arial, Helvetica, sans-serif" fontWeight="900" fontSize="42" letterSpacing="-2" fill="#FAFAFA">C6</text>
+    </svg>
+  ),
+  caixa: cor => (
+    <svg viewBox="0 0 250 250" aria-hidden="true" style={cinza(cor)}>
+      <rect width="250" height="250" rx="54" fill="#0B47C9" />
+      <path d="M180 48 L228 48 L166 120 L118 120 Z" fill="#F37021" />
+      <path d="M130 130 L178 130 L116 202 L68 202 Z" fill="#F37021" />
+      <path d="M70 48 L120 48 L150 120 L100 120 Z" fill="#FFFFFF" />
+      <path d="M126 130 L176 130 L206 202 L156 202 Z" fill="#FFFFFF" />
+    </svg>
+  ),
+};
+
+/** [fundo, texto, iniciais] das marcas sem logo aqui ainda (selo simplificado). */
 const SELOS: Record<string, [string, string, string]> = {
-  'banco-do-brasil': ['#FCF800', '#005AA5', 'BB'],
-  banrisul: ['#004B8D', '#FFFFFF', 'B'],
-  bradesco: ['#CC092F', '#FFFFFF', 'b'],
-  btg: ['#0D1D48', '#FFFFFF', 'btg'],
-  c6: ['#1D1D1B', '#FFFFFF', 'C6'],
-  caixa: ['#005CA9', '#F39200', 'X'],
   cora: ['#FE3E6D', '#FFFFFF', 'c'],
   inter: ['#FF7A00', '#FFFFFF', 'in'],
   itau: ['#EC7000', '#003399', 'itaú'],
@@ -68,6 +132,7 @@ function Drive({ cor }: { cor?: boolean }) {
 /** O logo do banco (a marca: 'sicoob', 'itau'…), em cinza ou, com `cor`, colorido. Sem logo: o ícone de banco. */
 export function LogoBanco({ banco, cor }: { banco: string; cor?: boolean }) {
   if (banco === 'sicoob') return <Sicoob cor={cor} />;
+  if (DESENHOS[banco]) return DESENHOS[banco](cor);
   if (SELOS[banco]) return <Selo marca={banco} cor={cor} />;
   return <Icone nome="landmark" />;
 }
