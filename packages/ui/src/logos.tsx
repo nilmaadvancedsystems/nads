@@ -20,7 +20,8 @@ function Sicoob({ cor }: { cor?: boolean }) {
 
 /**
  * Os logos de verdade (redesenhados a partir das imagens que o Vitor mandou, 29/09/2026): Banco do Brasil,
- * Banrisul, Bradesco, BTG Pactual, C6 e Caixa. Em cinza, o mesmo desenho em tons de cinza.
+ * Banrisul, Bradesco, BTG Pactual, C6, Caixa, PagBank, Mercado Pago e Safra. Em cinza, o mesmo desenho em
+ * tons de cinza.
  */
 const cinza = (cor?: boolean) => (cor ? undefined : { filter: 'grayscale(1)', opacity: 0.6 });
 
@@ -77,6 +78,34 @@ const DESENHOS: Record<string, (cor?: boolean) => React.JSX.Element> = {
       <text x="50" y="52" textAnchor="middle" dominantBaseline="central" fontFamily="Arial Black, Arial, Helvetica, sans-serif" fontWeight="900" fontSize="42" letterSpacing="-2" fill="#FAFAFA">C6</text>
     </svg>
   ),
+  pagbank: cor => (
+    <svg viewBox="0 0 300 300" aria-hidden="true" style={cinza(cor)}>
+      <defs><clipPath id="clipPagbank"><circle cx="150" cy="150" r="136" /></clipPath></defs>
+      <circle cx="150" cy="150" r="146" fill="#111111" />
+      <g clipPath="url(#clipPagbank)" stroke="#111111" strokeWidth="10">
+        <circle cx="152" cy="118" r="108" fill="#D6E14A" />
+        <circle cx="122" cy="190" r="84" fill="#56D9DD" />
+        <circle cx="210" cy="192" r="56" fill="#FFD400" />
+      </g>
+    </svg>
+  ),
+  'mercado-pago': cor => (
+    <svg viewBox="0 0 240 240" aria-hidden="true" style={cinza(cor)}>
+      <ellipse cx="120" cy="120" rx="100" ry="68" fill="#41C3F0" stroke="#1B2A78" strokeWidth="7" />
+      <path d="M26 118 C60 100 88 96 110 104 L134 94 C158 88 184 98 214 116" fill="none" stroke="#1B2A78" strokeWidth="5" />
+      <path d="M50 116 C74 102 94 100 112 108 L136 98 C154 94 174 100 190 112 L178 140 C160 152 138 156 116 148 C98 142 80 134 62 130 Z"
+        fill="#FFFFFF" stroke="#1B2A78" strokeWidth="5" strokeLinejoin="round" />
+      <path d="M112 108 L128 124 M104 124 L118 138 M92 124 L104 136 M126 118 L150 132" fill="none" stroke="#1B2A78" strokeWidth="4" strokeLinecap="round" />
+    </svg>
+  ),
+  safra: cor => (
+    <svg viewBox="0 0 180 180" aria-hidden="true" style={cinza(cor)}>
+      <rect width="180" height="180" rx="40" fill="#FFFFFF" />
+      <path d="M36 26 Q90 12 144 26 L144 104 Q144 146 90 166 Q36 146 36 104 Z" fill="#FFFFFF" stroke="#1C2A55" strokeWidth="7" strokeLinejoin="round" />
+      <path d="M46 36 Q90 24 134 36 L134 102 Q134 138 90 154 Q46 138 46 102 Z" fill="none" stroke="#1C2A55" strokeWidth="2" />
+      <text x="90" y="100" textAnchor="middle" dominantBaseline="central" fontFamily="Georgia, 'Times New Roman', serif" fontSize="74" fontStyle="italic" fill="#1C2A55">JS</text>
+    </svg>
+  ),
   caixa: cor => (
     <svg viewBox="0 0 250 250" aria-hidden="true" style={cinza(cor)}>
       <rect width="250" height="250" rx="54" fill="#0B47C9" />
@@ -93,10 +122,7 @@ const SELOS: Record<string, [string, string, string]> = {
   cora: ['#FE3E6D', '#FFFFFF', 'c'],
   inter: ['#FF7A00', '#FFFFFF', 'in'],
   itau: ['#EC7000', '#003399', 'itaú'],
-  'mercado-pago': ['#00B1EA', '#FFFFFF', 'mp'],
   nubank: ['#820AD1', '#FFFFFF', 'nu'],
-  pagbank: ['#26262E', '#C4E538', 'pb'],
-  safra: ['#0C2340', '#C9A96E', 'S'],
   santander: ['#EC0000', '#FFFFFF', 'S'],
   sicredi: ['#3FA110', '#FFFFFF', 's'],
   stone: ['#00A868', '#FFFFFF', 'st'],
