@@ -1,6 +1,6 @@
 // Minhas empresas: a barra de cima, no jeito da do GitHub (competência no lugar do "main ▾", quantas
 // empresas, Insights; à direita a busca curta com atalho "/", Situação ▾ e "Iniciar ▾", que abre
-// o painel para escolher a empresa, em partes/PainelIniciar) e a lista (clicar no título da coluna ordena) com iniciar/continuar. Os números por situação ficam em Insights.
+// o painel para escolher a empresa, em partes/PainelIniciar) e a lista (clicar no título da coluna ordena; clicar na linha abre a empresa). Os números por situação ficam em Insights.
 import { Icone, MenuSuspenso } from '@nads/ui';
 import { useEffect, useRef } from 'react';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
@@ -73,25 +73,17 @@ export function MinhasEmpresas() {
             <thead><tr>
               <Titulo vm={vm} coluna="codigo" rotulo="Código" />
               <Titulo vm={vm} coluna="nome" rotulo="Empresa" />
-              <Titulo vm={vm} coluna="etapas" rotulo="Etapas" />
               <Titulo vm={vm} coluna="situacao" rotulo="Situação" />
-              <Titulo vm={vm} coluna="proxima" rotulo="Próxima etapa" />
-              <th />
+              <Titulo vm={vm} coluna="etapa" rotulo="Etapa atual" />
             </tr></thead>
             <tbody>
               {vm.linhas.map(l => (
-                <tr key={l.chave}>
+                <tr key={l.chave} className="linha-abre" tabIndex={0} title={l.acao + ': ' + l.nome}
+                  onClick={() => vm.abrir(l.rota)} onKeyDown={e => { if (e.key === 'Enter') vm.abrir(l.rota); }}>
                   <td className="num">{l.codigo ?? '—'}</td>
                   <td>{l.nome}</td>
-                  <td>
-                    <span className="tarefas-barra" aria-label={l.concluidas + ' de ' + l.total}><span style={{ width: (100 * l.concluidas / l.total) + '%' }} /></span>
-                    <span className="hint"> {l.concluidas}/{l.total}</span>
-                  </td>
                   <td><span className={'badge ' + SELO[l.situacao]}>{l.rotuloSituacao}</span></td>
-                  <td>{l.proxima}</td>
-                  <td style={{ textAlign: 'right' }}>
-                    <button type="button" className={'btn btn-sm ' + (l.situacao === 'concluida' ? 'btn-outline' : 'btn-primary')} onClick={() => vm.abrir(l.rota)}>{l.acao}</button>
-                  </td>
+                  <td>{l.etapaAtual}</td>
                 </tr>
               ))}
             </tbody>

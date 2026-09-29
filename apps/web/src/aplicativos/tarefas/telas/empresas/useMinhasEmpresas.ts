@@ -11,8 +11,8 @@ export const LIMITE = 60;
 export const LIMITE_INICIAR = 30;
 
 /** As colunas da tabela que ordenam (clicando no título, como na Consulta da Conferência). */
-export type Coluna = 'codigo' | 'nome' | 'etapas' | 'situacao' | 'proxima';
-const COLUNAS: readonly Coluna[] = ['codigo', 'nome', 'etapas', 'situacao', 'proxima'];
+export type Coluna = 'codigo' | 'nome' | 'situacao' | 'etapa';
+const COLUNAS: readonly Coluna[] = ['codigo', 'nome', 'situacao', 'etapa'];
 
 /** As abas do painel do Iniciar (como Local / Codespaces do botão Code do GitHub). */
 export type AbaIniciar = 'escolher' | 'recentes';
@@ -45,9 +45,8 @@ export function useMinhasEmpresas() {
   const comparar: Record<Coluna, (x: Linha, y: Linha) => number> = {
     codigo: (x, y) => (x.codigo ?? Infinity) - (y.codigo ?? Infinity),
     nome: (x, y) => x.nome.localeCompare(y.nome, 'pt-BR'),
-    etapas: (x, y) => x.concluidas / x.total - y.concluidas / y.total,
     situacao: (x, y) => x.rotuloSituacao.localeCompare(y.rotuloSituacao, 'pt-BR'),
-    proxima: (x, y) => x.proxima.localeCompare(y.proxima, 'pt-BR'),
+    etapa: (x, y) => x.etapaAtual.localeCompare(y.etapaAtual, 'pt-BR'),
   };
   // texto em ordem alfabética, número do menor para o maior; sem coluna escolhida fica a ordem de sempre
   if (escolhida) linhas.sort((x, y) => (dir === 'asc' ? 1 : -1) * comparar[coluna](x, y) || x.nome.localeCompare(y.nome, 'pt-BR'));

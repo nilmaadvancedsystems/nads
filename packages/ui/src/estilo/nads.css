@@ -1154,3 +1154,5 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 }
 .th-seta{width:12px;height:12px;margin-left:4px;vertical-align:-1px;color:var(--ink-muted);}
 .th-seta.cima{transform:rotate(180deg);}
+tr.linha-abre{cursor:pointer;}
+tr.linha-abre:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}

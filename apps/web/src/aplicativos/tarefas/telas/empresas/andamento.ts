@@ -37,6 +37,8 @@ export function useAndamento() {
       empresa: emp, chave: (emp.codigo ?? '') + emp.nome, codigo: emp.codigo, nome: emp.nome, rota: empresas.rotaDaEmpresa(emp),
       concluidas: p.concluidas, total: p.total, situacao, rotuloSituacao: t.ROTULO_SITUACAO_GERAL[situacao],
       proxima: proxima ? proxima.nome : '—', acao: ACAO[situacao], mexiEm,
+      // a etapa em que a empresa está (em branco se ainda não começou ou já terminou)
+      etapaAtual: situacao === 'nao-iniciada' || !proxima ? '' : proxima.nome,
 
     };
   }).sort((a, b) => ORDEM[a.situacao] - ORDEM[b.situacao]) : [];
