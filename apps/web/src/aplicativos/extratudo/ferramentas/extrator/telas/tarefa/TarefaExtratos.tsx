@@ -1,10 +1,14 @@
 // Importar e conferir na mesma tela — a página que a etapa "Importar e conferir os extratos" da Tarefas abre.
 // Em cima, à direita (como o "New issue" do GitHub): Pedir extrato e Adicionar banco ▾ (escolhe o banco e
-// pede agência e conta). Depois, uma linha por conta da empresa (logo, nome, agência e conta), com o extrato
-// e o razão lado a lado em botões só de ícone: clicar escolhe o arquivo e já importa; importado, vira um
-// check verde que, com o mouse em cima, vira um × vermelho para excluir. O logo do banco e o do Drive ficam
-// coloridos quando o extrato está importado. "Não teve movimento" trava a linha toda e vira "Desfazer" (quem
-// guarda é a Tarefas). Ao importar, só uma barrinha por cima da tela, que some em 2,7 s. Embaixo, a conferência.
+// pede agência e conta). Depois, uma linha por conta da empresa:
+//   ▸ setinha: abre o movimento do extrato (data, descrição, valor, entrou/saiu e o saldo acumulado);
+//   logo, nome, agência e conta (o logo fica colorido quando o extrato está importado);
+//   Extrato: importar à mão (vira o check verde) ou buscar no Drive (fica só o logo do Drive, colorido);
+//     com o mouse em cima, vira × vermelho para excluir;
+//   Razão: importar à mão (check verde / × para excluir);
+//   à direita: "Não teve movimento" (trava a linha e vira "Desfazer") ou, com o extrato importado,
+//     "Visualizar" (do Drive: abre pelo link temporário; à mão: mostra o movimento).
+// Ao importar, só uma barrinha por cima da tela, que some em 2,7 s. Embaixo, a conferência.
 import { extrator as x, type empresas } from '@nads/core';
 import { Icone, LogoBanco, LogoDrive, MensagemFlutuante, MenuSuspenso, useCarregando } from '@nads/ui';
 import { useCallback, useId, useState } from 'react';
@@ -12,6 +16,7 @@ import { usePonteDaTarefa } from '../../../../../../comum/ponte';
 import { useSessao } from '../../casca/sessao';
 import { Conferencia } from '../conferencia/Conferencia';
 import { useImportacao, type Mensagem } from '../importacao/useImportacao';
+import { useDriveDaLinha } from './useDriveDaLinha';
 
 type Vm = ReturnType<typeof useImportacao>;
 type Lado = { qtdArquivos: number; qtdLancamentos: number; lendo: boolean };
@@ -84,6 +89,30 @@ function AdicionarBanco({ bancos, onAdicionar, fechar }: {
   );
 }
 
+/** O movimento do extrato da conta na competência (abre pela setinha): o saldo acumula os meses importados. */
+function Movimento({ m }: { m: x.MovimentoDoExtrato }) {
+  if (!m.linhas.length) return <p className="hint imp-mov-vazio">Nenhum lançamento do extrato nesta competência.</p>;
+  return (
+    <div className="imp-mov">
+      <table className="table-compact">
+        <thead><tr><th>Data</th><th>Descrição</th><th className="num">Valor</th><th>Entrou/Saiu</th><th className="num">Saldo atual</th></tr></thead>
+        <tbody>
+          <tr className="imp-mov-anterior"><td colSpan={4}>Saldo anterior <span className="hint">(dos meses já importados)</span></td><td className="num">{x.valorBR(m.saldoAnterior)}</td></tr>
+          {m.linhas.map((l, i) => (
+            <tr key={i}>
+              <td style={{ whiteSpace: 'nowrap' }}>{x.dataBR(l.data)}</td>
+              <td className="wrap">{l.historico}</td>
+              <td className="num">{x.valorBR(Math.abs(l.valor))}</td>
+              <td><span className={l.valor > 0 ? 'ext-pos' : 'ext-neg'}>{l.valor > 0 ? 'Entrou' : 'Saiu'}</span></td>
+              <td className={'num' + (l.saldo < 0 ? ' ext-neg' : '')}>{x.valorBR(l.saldo)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function resumo(b: Vm['bancos'][number], semMovimento: boolean): string {
   if (semMovimento) return 'Sem movimento nesta competência';
   const parte = (nome: string, l: Lado) => (l.qtdArquivos ? nome + ' ' + l.qtdLancamentos + ' lanç.' : '');
@@ -94,8 +123,11 @@ export function TarefaExtratos() {
   const vm = useImportacao();
   const s = useSessao();
   const ponte = usePonteDaTarefa();
-  useCarregando(vm.ocupado || vm.bancos.some(b => b.extrato.lendo || b.razao.lendo));
+  const d = useDriveDaLinha(vm, s.codigo);
+  useCarregando(vm.ocupado || !!d.buscando || vm.bancos.some(b => b.extrato.lendo || b.razao.lendo));
   const [cxExtrato, cxRazao] = vm.caixas;
+  const [abertas, setAbertas] = useState<string[]>([]);
+  const alternar = (id: string) => setAbertas(v => (v.includes(id) ? v.filter(a => a !== id) : [...v, id]));
   // a conferência é de um banco por vez (com mais de um, escolhe nos chips)
   const [bancoConf, setBancoConf] = useState<string | null>(null);
   const prontos = vm.bancos.filter(b => b.extrato.qtdArquivos && b.razao.qtdArquivos);
@@ -105,12 +137,22 @@ export function TarefaExtratos() {
   const faltaNoBanco = !conf || !conf.extrato.qtdArquivos ? 'banco' : !conf.razao.qtdArquivos ? 'sistema' : null;
   const falta = umSo ? s.falta : faltaNoBanco;
 
+  /** Visualizar o que veio do Drive: abre a janela já (senão o navegador bloqueia) e põe o link temporário quando o robô responder. */
+  function visualizarDoDrive(arquivo: { id: string; nome: string }) {
+    const janela = window.open('', '_blank');
+    janela?.document.write('<p style="font:14px sans-serif;padding:24px;color:#555">Buscando ' + arquivo.nome.replace(/</g, '') + ' no Drive…</p>');
+    d.link(arquivo).then(url => { if (janela) janela.location.href = url; else window.open(url, '_blank'); },
+      e => { janela?.close(); vm.avisarErro('Não consegui abrir do Drive', e instanceof Error ? e.message : String(e)); });
+  }
+
   return (
     <section className="tarefa-extratos">
       <div className="imp-topo">
-        <button type="button" className="btn btn-outline btn-sm" onClick={() => vm.avisar('Pedir extrato ao cliente: em desenvolvimento')}>
-          <Icone nome="link" />Pedir extrato
-        </button>
+        <MenuSuspenso rotulo="Pedir extrato" setaAntes className="btn btn-outline btn-sm" direita titulo="Pedir ao cliente por" largura={200}
+          itens={[
+            { rotulo: 'Gmail', icone: 'link', onClick: () => vm.avisar('Pedir extrato por Gmail: em desenvolvimento') },
+            { rotulo: 'WhatsApp', icone: 'link', onClick: () => vm.avisar('Pedir extrato por WhatsApp: em desenvolvimento') },
+          ]} />
         <MenuSuspenso rotulo="Adicionar banco" icone="plus" className="btn btn-primary btn-sm" direita largura={260}
           conteudo={fechar => <AdicionarBanco bancos={vm.bancosParaAdicionar} onAdicionar={vm.adicionarBanco} fechar={fechar} />} />
       </div>
@@ -118,43 +160,73 @@ export function TarefaExtratos() {
       <div className="imp-lista">
         {vm.bancos.map(b => {
           const semMov = ponte.semMovimento.includes(b.id);
+          const buscando = d.buscando === b.id;
           // sem movimento: a linha toda trava (só o Desfazer fica)
-          const travado = semMov || vm.ocupado || b.extrato.lendo || b.razao.lendo;
-          const colorido = b.extrato.qtdArquivos > 0 && !semMov;
+          const travado = semMov || vm.ocupado || buscando || b.extrato.lendo || b.razao.lendo;
+          const temExtrato = b.extrato.qtdArquivos > 0;
+          const doDrive = b.extrato.doDrive;
+          const aberta = abertas.includes(b.id);
           return (
-            <div key={b.id} className={'imp-linha' + (semMov ? ' sem-movimento' : '')}>
-              <span className="imp-ico imp-logo"><LogoBanco banco={b.marca} cor={colorido} /></span>
-              <div className="imp-txt">
-                <span><b>{b.nome}</b>{b.conta && <span className="imp-conta">{b.conta}</span>}</span>
-                <span className="hint">{resumo(b, semMov)}</span>
-              </div>
-              <div className="imp-grupos">
-                <div className="imp-grupo" aria-label="Extrato do banco">
-                  <span className="imp-rotulo">Extrato</span>
-                  <BotaoLado lado={b.extrato} titulo="Extrato" aceitar={cxExtrato.aceitar} travado={travado}
-                    onArquivos={fs => { void vm.importarArquivos(b.id, 'banco', fs); }} onExcluir={() => { void vm.excluirDoBanco(b.id, 'banco'); }} />
-                  <button type="button" className="icon-btn icon-btn-sm imp-btn imp-drive" disabled={travado} title="Buscar no Drive" aria-label="Buscar no Drive"
-                    onClick={() => vm.avisar('Buscar no Drive: em desenvolvimento')}><LogoDrive cor={colorido} /></button>
-                  {!b.extrato.qtdArquivos && (
-                    <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={travado} title="Protótipo: importar um extrato de teste" aria-label="Extrato de teste"
-                      onClick={() => { void vm.importarTeste('banco', b.id); }}><Icone nome="zap" /></button>
+            <div key={b.id} className={'imp-bloco' + (semMov ? ' sem-movimento' : '')}>
+              <div className="imp-linha">
+                <button type="button" className={'imp-seta' + (aberta ? ' aberta' : '')} aria-expanded={aberta} disabled={semMov}
+                  title={aberta ? 'Fechar o movimento' : 'Ver o movimento do extrato'} aria-label="Movimento do extrato" onClick={() => alternar(b.id)}>
+                  <Icone nome="caretDown" />
+                </button>
+                <span className="imp-ico imp-logo"><LogoBanco banco={b.marca} cor={temExtrato && !semMov} /></span>
+                <div className="imp-txt">
+                  <span><b>{b.nome}</b>{b.conta && <span className="imp-conta">{b.conta}</span>}</span>
+                  <span className="hint">{resumo(b, semMov)}</span>
+                </div>
+                <div className="imp-grupos">
+                  <div className="imp-grupo" aria-label="Extrato do banco">
+                    <span className="imp-rotulo">Extrato</span>
+                    {buscando || b.extrato.lendo ? (
+                      <span className="icon-btn icon-btn-sm imp-btn" title="Trazendo o extrato…"><span className="btn-spinner" /></span>
+                    ) : doDrive.length ? (
+                      // veio do Drive: fica só o Drive, colorido (com o mouse em cima, × para excluir)
+                      <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito imp-feito-drive" disabled={travado} onClick={() => { void vm.excluirDoBanco(b.id, 'banco'); }}
+                        title={'Do Drive: ' + doDrive.map(a => a.nome).join(', ') + '. Clique para excluir.'} aria-label="Excluir o extrato do Drive">
+                        <span className="imp-feito-ok"><LogoDrive cor /></span><Icone nome="x" className="imp-feito-x" />
+                      </button>
+                    ) : temExtrato ? (
+                      // importado à mão: fica só o check
+                      <BotaoLado lado={b.extrato} titulo="Extrato" aceitar={cxExtrato.aceitar} travado={travado}
+                        onArquivos={() => undefined} onExcluir={() => { void vm.excluirDoBanco(b.id, 'banco'); }} />
+                    ) : (
+                      <>
+                        <BotaoLado lado={b.extrato} titulo="Extrato" aceitar={cxExtrato.aceitar} travado={travado}
+                          onArquivos={fs => { void vm.importarArquivos(b.id, 'banco', fs); }} onExcluir={() => undefined} />
+                        <button type="button" className="icon-btn icon-btn-sm imp-btn imp-drive" disabled={travado} title="Buscar no Drive" aria-label="Buscar no Drive"
+                          onClick={() => d.buscar(b)}><LogoDrive /></button>
+                        <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={travado} title="Protótipo: importar um extrato de teste" aria-label="Extrato de teste"
+                          onClick={() => { void vm.importarTeste('banco', b.id); }}><Icone nome="zap" /></button>
+                      </>
+                    )}
+                  </div>
+                  <div className="imp-grupo" aria-label="Razão da conta">
+                    <span className="imp-rotulo">Razão</span>
+                    <BotaoLado lado={b.razao} titulo="Razão" aceitar={cxRazao.aceitar} travado={travado}
+                      onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }} onExcluir={() => { void vm.excluirDoBanco(b.id, 'sistema'); }} />
+                    {!b.razao.qtdArquivos && (
+                      <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={travado} title="Protótipo: importar um razão de teste" aria-label="Razão de teste"
+                        onClick={() => { void vm.importarTeste('sistema', b.id); }}><Icone nome="zap" /></button>
+                    )}
+                  </div>
+                  {temExtrato ? (
+                    <button type="button" className="btn btn-sm btn-outline imp-sem-mov"
+                      title={doDrive.length ? 'Abrir o PDF do Drive (link temporário)' : 'Ver o movimento importado'}
+                      onClick={() => { if (doDrive.length) visualizarDoDrive(doDrive[doDrive.length - 1]); else if (!aberta) alternar(b.id); }}>
+                      Visualizar
+                    </button>
+                  ) : ponte.naTarefa && (
+                    <button type="button" className={'btn btn-sm btn-outline imp-sem-mov' + (semMov ? ' marcado' : '')} aria-pressed={semMov}
+                      disabled={!semMov && (vm.ocupado || buscando || b.extrato.lendo || b.razao.lendo)}
+                      onClick={() => ponte.marcarSemMovimento(b.id, !semMov)}>{semMov ? 'Desfazer' : 'Não teve movimento'}</button>
                   )}
                 </div>
-                <div className="imp-grupo" aria-label="Razão da conta">
-                  <span className="imp-rotulo">Razão</span>
-                  <BotaoLado lado={b.razao} titulo="Razão" aceitar={cxRazao.aceitar} travado={travado}
-                    onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }} onExcluir={() => { void vm.excluirDoBanco(b.id, 'sistema'); }} />
-                  {!b.razao.qtdArquivos && (
-                    <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={travado} title="Protótipo: importar um razão de teste" aria-label="Razão de teste"
-                      onClick={() => { void vm.importarTeste('sistema', b.id); }}><Icone nome="zap" /></button>
-                  )}
-                </div>
-                {ponte.naTarefa && (
-                  <button type="button" className={'btn btn-sm btn-outline imp-sem-mov' + (semMov ? ' marcado' : '')} aria-pressed={semMov}
-                    disabled={!semMov && (vm.ocupado || b.extrato.lendo || b.razao.lendo)}
-                    onClick={() => ponte.marcarSemMovimento(b.id, !semMov)}>{semMov ? 'Desfazer' : 'Não teve movimento'}</button>
-                )}
               </div>
+              {aberta && !semMov && <Movimento m={vm.movimentoDe(b.id)} />}
             </div>
           );
         })}
@@ -165,6 +237,50 @@ export function TarefaExtratos() {
         duracao={vm.mensagem?.tom === 'erro' ? null : 2700}>
         {vm.mensagem && <Aviso m={vm.mensagem} onFechar={vm.fecharMensagem} />}
       </MensagemFlutuante>
+
+      {d.login.aberto && (
+        <div className="modal-overlay" role="presentation" onClick={d.login.fechar}>
+          <form className="modal drive-login" role="dialog" aria-modal="true" aria-labelledby="tituloDrive" onClick={e => e.stopPropagation()}
+            onSubmit={e => { e.preventDefault(); d.login.entrar(); }}>
+            <h3 id="tituloDrive">Entrar no Drive do escritório</h3>
+            <p className="hint">O mesmo usuário do app Pendências (Entregas). Precisa ser do contábil.</p>
+            <label className="field"><span className="hint">Usuário</span>
+              <input type="text" autoFocus autoComplete="username" value={d.login.usuario} onChange={e => d.login.set({ usuario: e.target.value })} />
+            </label>
+            <label className="field"><span className="hint">Senha</span>
+              <input type="password" autoComplete="current-password" value={d.login.senha} onChange={e => d.login.set({ senha: e.target.value })} />
+            </label>
+            {d.login.erro && <p className="hint" style={{ color: 'var(--danger)' }}>{d.login.erro}</p>}
+            <div className="modal-actions">
+              <button type="button" className="btn btn-outline" onClick={d.login.fechar}>Voltar</button>
+              <button type="submit" className="btn btn-primary" disabled={d.login.entrando || !d.login.usuario || !d.login.senha}>{d.login.entrando ? 'Entrando…' : 'Entrar'}</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {d.escolha && (
+        <div className="modal-overlay" role="presentation" onClick={d.fecharEscolha}>
+          <div className="modal drive-escolha" role="dialog" aria-modal="true" aria-labelledby="tituloEscolha" onClick={e => e.stopPropagation()}>
+            <h3 id="tituloEscolha">Extrato do {d.escolha.linha.nome} no Drive</h3>
+            <p className="hint">{d.escolha.texto}</p>
+            {d.escolha.candidatos.length > 0 && (
+              <div className="drive-candidatos">
+                {d.escolha.candidatos.slice(0, 12).map(a => (
+                  <button key={a.id} type="button" className="popover-item" onClick={() => d.usar(a)}>
+                    <span className="add-banco-logo"><LogoDrive /></span>
+                    <span className="popover-texto">{a.caminho}</span>
+                    {a.daCompetencia && <span className="popover-dica">{vm.competencia.slice(5) + '/' + vm.competencia.slice(0, 4)}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="modal-actions">
+              <button type="button" className="btn btn-outline" onClick={d.fecharEscolha}>Fechar</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {!umSo && (
         <div className="chip-row imp-conf-bancos" aria-label="Conferência de qual banco">

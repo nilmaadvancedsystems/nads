@@ -1195,7 +1195,7 @@ tr.linha-atual > td{background:var(--hover-bg);}
 /* ---------------------------------- Extrator na etapa da Tarefas: importar (em lista) e conferir ---------------------------------- */
 .imp-lista{border:1px solid var(--border);border-radius:6px;background:var(--surface);margin-bottom:16px;}
 .imp-linha{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;}
-.imp-linha + .imp-linha{border-top:1px solid var(--border-muted);}
+.imp-bloco + .imp-bloco{border-top:1px solid var(--border-muted);}
 .imp-ico{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;background:var(--surface-2);flex:none;}
 .imp-ico svg{width:16px;height:16px;color:var(--ink-muted);}
 .imp-txt{display:flex;flex-direction:column;min-width:180px;line-height:1.35;}
@@ -1240,8 +1240,8 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-feito:hover .imp-feito-x{display:inline;}
 /* Não teve movimento: a linha toda escurece; o botão fica claro para desmarcar */
 .imp-linha{transition:background .15s ease;}
-.imp-linha.sem-movimento{background:var(--surface-2);}
-.imp-linha.sem-movimento > :not(.imp-grupos),.imp-linha.sem-movimento .imp-grupo{opacity:.35;}
+.imp-bloco.sem-movimento{background:var(--surface-2);}
+.imp-bloco.sem-movimento .imp-linha > :not(.imp-grupos),.imp-bloco.sem-movimento .imp-grupo{opacity:.35;}
 .imp-btn:disabled{opacity:.5;cursor:not-allowed;background:var(--btn-bg);}
 .imp-feito:disabled:hover{border-color:var(--success);background:var(--btn-bg);color:var(--success);}
 .imp-feito:disabled:hover .imp-feito-ok{display:inline;}
@@ -1258,3 +1258,25 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .add-banco-titulo{display:flex;align-items:center;gap:10px;font-size:14px;}
 .add-banco-form .field{display:flex;flex-direction:column;gap:4px;margin:0;}
 .add-banco-acoes{display:flex;justify-content:flex-end;gap:8px;margin-top:2px;}
+/* a setinha da linha do banco e o movimento do extrato embaixo dela */
+.imp-seta{width:20px;height:20px;flex:none;display:inline-flex;align-items:center;justify-content:center;margin-right:-6px;border:none;background:none;border-radius:4px;color:var(--ink-muted);cursor:pointer;}
+.imp-seta:hover:not(:disabled){background:var(--hover-bg);color:var(--ink);}
+.imp-seta:disabled{opacity:.35;cursor:default;}
+.imp-seta svg{width:12px;height:12px;transform:rotate(-90deg);transition:transform .12s ease;}
+.imp-seta.aberta svg{transform:none;}
+.imp-mov{max-height:320px;overflow:auto;margin:0 12px 12px 44px;border:1px solid var(--border-muted);border-radius:6px;}
+.imp-mov table{font-size:13px;}
+.imp-mov thead th{position:sticky;top:0;}
+.imp-mov-anterior td{color:var(--ink-muted);font-style:italic;}
+.imp-mov-vazio{margin:0 12px 12px 44px;}
+/* extrato do Drive: o logo colorido; com o mouse em cima, × vermelho */
+.imp-feito-drive{border-color:var(--border);}
+.imp-feito-drive .imp-feito-ok{display:inline-flex;}
+.imp-feito-drive .imp-feito-ok svg{width:15px;height:15px;}
+.imp-feito-drive:hover .imp-feito-ok{display:none;}
+/* login do Drive e a escolha do arquivo */
+.drive-login,.drive-escolha{text-align:left;}
+.drive-login .field{display:flex;flex-direction:column;gap:4px;padding:0 16px;margin-bottom:10px;}
+.drive-candidatos{display:flex;flex-direction:column;max-height:300px;overflow:auto;padding:0 8px 8px;}
+.drive-candidatos .popover-texto{white-space:normal;}
+.btn .menu-seta.antes{margin:0 -2px 0 -4px;}

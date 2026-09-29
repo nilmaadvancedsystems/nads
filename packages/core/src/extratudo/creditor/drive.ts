@@ -22,6 +22,8 @@ export interface RepoDrive {
   pastaDoCliente(codigo: number | null): Promise<{ raiz: string; nome: string; itens: ItemDrive[] } | null>;
   /** baixa o arquivo (pelo robô do Entregas); `passo` conta o andamento para a tela */
   baixar(id: string, nome: string, passo?: (texto: string) => void): Promise<ArrayBuffer>;
+  /** um link temporário para VER o arquivo (a cópia do robô vale ~30 min); não guardar o link */
+  link(id: string, nome: string, passo?: (texto: string) => void): Promise<string>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }

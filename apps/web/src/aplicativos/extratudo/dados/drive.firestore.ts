@@ -70,6 +70,19 @@ export function criarDriveFirestore(): cr.RepoDrive {
     },
 
     async baixar(id, nome, passo) {
+      const url = await this.link(id, nome, passo);
+      passo?.('baixando a cópia');
+      try {
+        const r = await fetch(url);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return await r.arrayBuffer();
+      } catch (e) {
+        throw new Error('Não consegui baixar a cópia do Drive (' + ((e as Error)?.message || e) + '). Se o erro for de CORS, o armazenamento do Entregas precisa liberar este site.', { cause: e });
+      }
+    },
+
+    /** Pede ao robô a cópia temporária (~30 min) e devolve o link dela — para ver, sem guardar. */
+    async link(id, nome, passo) {
       const u = auth.currentUser;
       if (!u) throw new Error('Entre com o usuário do Entregas primeiro.');
       passo?.('pedindo ao robô do Drive');
@@ -87,14 +100,7 @@ export function criarDriveFirestore(): cr.RepoDrive {
         }, e => { clearTimeout(fim); falha(e); });
       });
       if (!url.startsWith(LINK_DO_ROBO)) throw new Error('O robô respondeu com um endereço inesperado.');
-      passo?.('baixando a cópia');
-      try {
-        const r = await fetch(url);
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return await r.arrayBuffer();
-      } catch (e) {
-        throw new Error('Não consegui baixar a cópia do Drive (' + ((e as Error)?.message || e) + '). Se o erro for de CORS, o armazenamento do Entregas precisa liberar este site.', { cause: e });
-      }
+      return url;
     },
 
     assinar(f) {

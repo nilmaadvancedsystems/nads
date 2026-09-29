@@ -1,5 +1,6 @@
-// Drive de EXEMPLO do Creditor: a empresa 901 tem CONTÁBIL › RECEBIMENTO DE CLIENTES com o relatório
-// de exemplo em 08/2026 (e um de 07/2026, para a busca ter o que descartar). Nada sai do navegador.
+// Drive de EXEMPLO do Creditor e do Extrator: a empresa 901 tem CONTÁBIL › RECEBIMENTO DE CLIENTES com o
+// relatório de exemplo em 08/2026 (e um de 07/2026, para a busca ter o que descartar) e CONTÁBIL › EXTRATOS
+// com o extrato de 08/2026 (OFX). Nada sai do navegador.
 import type { RepoDrive } from './drive';
 import { EXEMPLO_RELATORIO } from './exemplos';
 import type { ItemDrive } from './regras/drive';
@@ -10,7 +11,28 @@ const ITENS_901: ItemDrive[] = [
   { i: 'ex-rec', n: 'RECEBIMENTO DE CLIENTES', p: 'ex-contabil', t: 'd' },
   { i: 'ex-rec-07', n: 'CREDLIQUIDAÇÃO 07-2026.txt', p: 'ex-rec', t: 'f', m: '2026-08-02T10:00:00.000Z' },
   { i: 'ex-rec-08', n: 'CREDLIQUIDAÇÃO 08-2026.txt', p: 'ex-rec', t: 'f', m: '2026-09-02T10:00:00.000Z' },
+  { i: 'ex-ext', n: 'EXTRATOS', p: 'ex-contabil', t: 'd' },
+  { i: 'ex-ext-08', n: 'EXTRATO 08-2026.ofx', p: 'ex-ext', t: 'f', m: '2026-09-03T10:00:00.000Z' },
 ];
+
+/** O extrato de exemplo (OFX) de 08/2026. */
+const EXEMPLO_EXTRATO_OFX = [
+  'OFXHEADER:100',
+  '<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><BANKTRANLIST>',
+  ...[
+    ['20260803', '1500.00', 'PIX RECEBIDO CLIENTE DRIVE'],
+    ['20260806', '-320.40', 'TARIFA BANCARIA DRIVE'],
+    ['20260815', '-1200.00', 'PAGTO FORNECEDOR DRIVE'],
+    ['20260820', '980.55', 'TED RECEBIDA DRIVE'],
+  ].map(([data, valor, memo]) => '<STMTTRN><DTPOSTED>' + data + '<TRNAMT>' + valor + '<MEMO>' + memo + '</STMTTRN>'),
+  '</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>',
+].join('\n');
+
+function conteudo(id: string): string {
+  if (id === 'ex-rec-08' || id === 'ex-rec-07') return EXEMPLO_RELATORIO;
+  if (id === 'ex-ext-08') return EXEMPLO_EXTRATO_OFX;
+  throw new Error('arquivo de exemplo inexistente');
+}
 
 export function criarDriveMemoria(): RepoDrive {
   return {
@@ -23,8 +45,11 @@ export function criarDriveMemoria(): RepoDrive {
     },
     async baixar(id, _nome, passo) {
       passo?.('lendo o exemplo');
-      if (id !== 'ex-rec-08' && id !== 'ex-rec-07') throw new Error('arquivo de exemplo inexistente');
-      return new TextEncoder().encode(EXEMPLO_RELATORIO).buffer as ArrayBuffer;
+      return new TextEncoder().encode(conteudo(id)).buffer as ArrayBuffer;
+    },
+    async link(id) {
+      // nos exemplos, o próprio conteúdo num endereço do navegador
+      return URL.createObjectURL(new Blob([conteudo(id)], { type: 'text/plain' }));
     },
     assinar: () => () => {},
     versao: () => 0,

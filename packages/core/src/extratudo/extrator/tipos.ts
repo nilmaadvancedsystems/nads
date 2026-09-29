@@ -35,6 +35,8 @@ export interface ArquivoImportado {
   lancamentos: Lancamento[];
   /** de qual banco da empresa (id); sem = o primeiro banco dela (arquivos de antes de ter mais de um) */
   banco?: string;
+  /** veio do Drive do escritório: o arquivo lá (para o "Visualizar" pedir um link temporário; nada é baixado para guardar) */
+  drive?: { id: string; nome: string };
 }
 
 /** Um banco que a pessoa adicionou à empresa, valendo da competência "desde" ('aaaa-mm') em diante. */

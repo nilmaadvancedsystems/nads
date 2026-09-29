@@ -1,6 +1,7 @@
 // Liga o React ao repositório do Extrator (ver fonte.ts). Os ViewModels usam estes hooks;
 // nenhuma View importa o repositório.
-import { extrator } from '@nads/core';
+import { extrator, type creditor } from '@nads/core';
+import { driveDoExtrator } from './fonte';
 import { createContext, useCallback, useContext, useSyncExternalStore, type ReactNode } from 'react';
 
 type Repo = extrator.RepoExtrator;
@@ -41,4 +42,11 @@ export function useAplicar(nome: string) {
     if (nova !== e) repo.salvar(nova);
     return nova;
   }, [repo, nome]);
+}
+
+/** O Drive do escritório (login do Entregas, mapa da pasta, cópia e link temporário), sempre atualizado. */
+export function useDrive(): { drive: creditor.RepoDrive; acesso: creditor.AcessoDrive } {
+  const drive = driveDoExtrator();
+  useSyncExternalStore(drive.assinar, drive.versao, drive.versao);
+  return { drive, acesso: drive.acesso() };
 }

@@ -175,7 +175,7 @@ export type ItemMenu = { rotulo: ReactNode; icone?: NomeIcone; marcado?: boolean
  * preenchido (padrão do app todo). Fecha ao escolher, ao clicar
  * fora e no Esc. Em vez de `itens`, pode receber `conteudo` (ex.: uma lista com busca), que ganha o `fechar`.
  */
-export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn-outline', itens, conteudo, direita, acima, largura }: {
+export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn-outline', itens, conteudo, direita, acima, largura, setaAntes }: {
   rotulo: ReactNode;
   icone?: NomeIcone;
   titulo?: string;
@@ -186,6 +186,8 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
   direita?: boolean;
   /** abre para cima (botão no pé da tela) */
   acima?: boolean;
+  /** a setinha à esquerda do texto (no lugar do ícone), em vez de à direita */
+  setaAntes?: boolean;
   largura?: number;
 }) {
   const [aberto, setAberto] = useState(false);
@@ -203,7 +205,9 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
   return (
     <div className="popover-wrap" ref={ref}>
       <button type="button" className={className} title={dica} aria-haspopup="menu" aria-expanded={aberto} onClick={() => setAberto(a => !a)}>
-        {icone && <Icone nome={icone} />}{rotulo}<Icone nome="caretDown" className="menu-seta" />
+        {setaAntes && <Icone nome="caretDown" className="menu-seta antes" />}
+        {icone && <Icone nome={icone} />}{rotulo}
+        {!setaAntes && <Icone nome="caretDown" className="menu-seta" />}
       </button>
       {aberto && (
         <div className={'popover menu-pop' + (direita ? ' direita' : '') + (acima ? ' acima' : '')} role="menu" style={largura ? { width: largura } : undefined}>

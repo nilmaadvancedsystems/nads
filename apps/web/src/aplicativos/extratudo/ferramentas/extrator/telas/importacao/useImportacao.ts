@@ -101,8 +101,17 @@ export function useImportacao() {
     setLendoLinha(null);
   }
 
+  /** O extrato que veio do Drive (já baixado): lê e importa para aquele banco, lembrando do arquivo de lá. */
+  async function importarDoDrive(banco: string, arquivo: { id: string; nome: string }, conteudo: ArrayBuffer) {
+    setMensagemBruta(null);
+    setLendoLinha(banco + '|banco');
+    const lido = await x.lerArquivo(arquivo.nome, new Uint8Array(conteudo), 'banco');
+    await gravarLidos('banco', [lido], banco, arquivo);
+    setLendoLinha(null);
+  }
+
   /** O que vem depois de ler: pergunta o modo (se já houver movimento nas datas), importa e avisa. */
-  async function gravarLidos(lado: x.Lado, lidos: x.ArquivoLido[], banco?: string) {
+  async function gravarLidos(lado: x.Lado, lidos: x.ArquivoLido[], banco?: string, doDrive?: { id: string; nome: string }) {
     const falhas = lidos.filter(l => l.erro || !l.lancamentos.length);
     const bons = lidos.filter(l => !l.erro && l.lancamentos.length);
     if (!bons.length) {
@@ -131,7 +140,7 @@ export function useImportacao() {
     if (banco) {
       const antes = new Set(base.arquivos.map(a => a.id));
       const outros = s.empresa.arquivos.filter(a => !doBanco(a));
-      s.aplicar(() => ({ ...res.empresa, arquivos: [...outros, ...res.empresa.arquivos.map(a => (antes.has(a.id) ? a : { ...a, banco }))] }));
+      s.aplicar(() => ({ ...res.empresa, arquivos: [...outros, ...res.empresa.arquivos.map(a => (antes.has(a.id) ? a : { ...a, banco, ...(doDrive ? { drive: doDrive } : {}) }))] }));
     } else s.aplicar(() => res.empresa);
     setLendo(null);
     setEscolhidos(e => ({ ...e, [lado]: [] }));
@@ -213,14 +222,22 @@ export function useImportacao() {
     bancos: bancos.map(b => {
       const lado = (l: x.Lado) => {
         const arqs = x.arquivosDoBanco(s.empresa, b.id, primeiro, l, competenciaDeTeste);
-        return { qtdArquivos: arqs.length, qtdLancamentos: arqs.reduce((t, a) => t + a.lancamentos.length, 0), lendo: lendoLinha === b.id + '|' + l };
+        return {
+          qtdArquivos: arqs.length, qtdLancamentos: arqs.reduce((t, a) => t + a.lancamentos.length, 0), lendo: lendoLinha === b.id + '|' + l,
+          /** os arquivos que vieram do Drive (para o Visualizar pedir o link temporário) */
+          doDrive: arqs.flatMap(a => (a.drive ? [a.drive] : [])),
+        };
       };
-      return { ...b, marca: b.marca || b.id, conta: empresas.rotuloDaConta(b), extrato: lado('banco'), razao: lado('sistema') };
+      return { ...b, marca: b.marca || b.id, numeroConta: b.conta, conta: empresas.rotuloDaConta(b), extrato: lado('banco'), razao: lado('sistema') };
     }),
     // o mesmo banco pode entrar de novo (outra conta, com outra agência/conta)
     bancosParaAdicionar: empresas.BANCOS_CONHECIDOS,
-    importarArquivos, excluirDoBanco, adicionarBanco,
+    importarArquivos, importarDoDrive, excluirDoBanco, adicionarBanco,
+    /** o extrato da conta na competência, com o saldo acumulado (a setinha da linha) */
+    movimentoDe: (banco: string) => x.movimentoDoExtrato(s.empresa, banco, primeiro, competenciaDeTeste),
+    marcarLendo: (banco: string | null) => setLendoLinha(banco ? banco + '|banco' : null),
     avisar: (titulo: string) => setMensagem({ tom: 'info', titulo, textos: [] }),
+    avisarErro: (titulo: string, texto: string) => setMensagem({ tom: 'erro', titulo, textos: [{ texto }] }),
     ocupado: lendo !== null,
     mensagem, seqMensagem, fecharMensagem,
     arquivos,
