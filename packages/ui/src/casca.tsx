@@ -28,14 +28,19 @@ function embutida(): boolean {
  * páginas e a barra lateral das ferramentas, como as outras telas do Entregas. Fica guardado na aba,
  * porque as rotas trocam o endereço e o ?acoplado some.
  */
+// lido quando o app carrega: o primeiro redirecionamento das rotas já tira o ?acoplado do endereço
+const ACOPLADO_NA_ENTRADA = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('acoplado');
+
 function acoplada(): boolean {
+  if (!embutida()) return false;
+  if (ACOPLADO_NA_ENTRADA) return true;
   try {
-    if (new URLSearchParams(window.location.search).get('acoplado')) sessionStorage.setItem('nads-acoplado', '1');
-    return embutida() && sessionStorage.getItem('nads-acoplado') === '1';
+    return sessionStorage.getItem('nads-acoplado') === '1';
   } catch {
     return false;
   }
 }
+try { if (ACOPLADO_NA_ENTRADA) sessionStorage.setItem('nads-acoplado', '1'); } catch { /* sem storage: vale o endereço */ }
 
 const CHAVE_LATERAL = 'nads-barra-lateral-oculta';
 
