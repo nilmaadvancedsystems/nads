@@ -26,7 +26,7 @@ export const FILTROS_INICIAR = [
 type FiltroIniciar = (typeof FILTROS_INICIAR)[number]['valor'];
 /** O filtro da aba Minhas recentes: as dos últimos dias ou as minhas paradas. */
 export const FILTROS_RECENTES = [
-  { valor: 'recentes', rotulo: 'Últimos 3 dias' },
+  { valor: 'recentes', rotulo: 'Últimas acessadas' },
   { valor: 'paradas', rotulo: 'Paradas' },
 ] as const;
 type FiltroRecentes = (typeof FILTROS_RECENTES)[number]['valor'];
