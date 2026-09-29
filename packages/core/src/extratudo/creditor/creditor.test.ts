@@ -164,7 +164,7 @@ describe('cruzamento', () => {
     expect(por('4521')).toEqual(['ok']);
     expect(por('4540')).toEqual(['ok']); // "RESTAURANTE SABOR CASEIRO" × "... LTDA"
     expect(por('4548')).toEqual(['dividido', 'dividido']);
-    expect(por('4555')).toEqual(['valor-diverge']);
+    expect(por('4555')).toEqual(['ok']); // valor diferente: o banco manda
     expect(por('4560')).toEqual(['nao-encontrada']);
   });
 
@@ -174,12 +174,22 @@ describe('cruzamento', () => {
   });
 
   it('pendências somem com decisão válida', () => {
-    expect(pendentes(cr, {})).toHaveLength(2);
-    const id4555 = titulos.find(t => t.nf === '4555')!.id;
+    expect(pendentes(cr, {})).toHaveLength(1);
     const id4560 = titulos.find(t => t.nf === '4560')!.id;
-    const semContrapartida: Record<number, Decisao> = { [id4555]: { tipo: 'confirmar' }, [id4560]: { tipo: 'manual', contrapartida: ' ', historico: '' } };
-    expect(pendentes(cr, semContrapartida)).toHaveLength(1);
-    expect(pendentes(cr, { [id4555]: { tipo: 'confirmar' }, [id4560]: { tipo: 'excluir' } })).toHaveLength(0);
+    expect(pendentes(cr, { [id4560]: { tipo: 'manual', contrapartida: ' ', historico: '' } })).toHaveLength(1);
+    expect(pendentes(cr, { [id4560]: { tipo: 'excluir' } })).toHaveLength(0);
+  });
+
+  it('o banco manda: a conta vem da NF; sem a NF, do cliente do banco', () => {
+    const t = (id: number, nf: string, sacado: string, valor: number) => ({ id, sacado, nossoNumero: '', nf, valor, mora: 0, desconto: 0, outros: 0, liquidacao: '03/08/2026', cobrado: valor });
+    const sis = [
+      { linha: 2, nf: '100', cliente: 'EDSON FRANCISCO CHAGAS', contrapartida: '111', historico: 'Recebimento 100', valor: 50 },
+      { linha: 3, nf: '200', cliente: 'MERCADINHO PLANALTO DE TAIOBEIRAS LTDA', contrapartida: '222', historico: 'Recebimento 200', valor: 70 },
+    ];
+    const [a, b, c] = cruzar([t(1, '100', 'MERCADINHO PLANALTO DE TAIOBEIRAS LTDA', 60), t(2, '999', 'MERCADINHO PLANALTO DE TAIOBEIRAS', 10), t(3, '888', 'SUPERMERCADO NOVO', 5)], sis);
+    expect([a.situacao, a.linha?.contrapartida]).toEqual(['ok', '111']); // achou a NF: a conta é a dela, mesmo com outro nome
+    expect([b.situacao, b.linha?.contrapartida]).toEqual(['ok', '222']);
+    expect(c.situacao).toBe('nao-encontrada');
   });
 });
 
