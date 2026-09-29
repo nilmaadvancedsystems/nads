@@ -14,6 +14,7 @@ export interface Aplicacao { id: IdAplicacao; nome: string; icone: NomeIcone; pa
 export const APLICACOES: readonly Aplicacao[] = [
   { id: 'minhas-empresas', nome: 'Minhas empresas', icone: 'briefcase', pronta: true, paginas: [
     { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Minhas empresas' },
+    { id: 'insights', rotulo: 'Insights', icone: 'barChart', titulo: 'Minhas empresas — insights' },
   ] },
   { id: 'contabil', nome: 'Contábil', icone: 'checklist', pronta: true, paginas: [
     { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Contábil — visão geral' },

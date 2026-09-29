@@ -1,5 +1,5 @@
-// Minhas empresas: escolher a competência e iniciar (ou continuar) as etapas de cada empresa.
-import { Stat } from '@nads/ui';
+// Minhas empresas: escolher a competência (e, se quiser, a situação) e iniciar ou continuar as etapas
+// de cada empresa. Os números por situação ficam em Insights.
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { LIMITE, useMinhasEmpresas } from './useMinhasEmpresas';
 
@@ -17,17 +17,17 @@ export function MinhasEmpresas() {
             {vm.competencias.map(c => <option key={c.valor} value={c.valor}>{c.rotulo}</option>)}
           </select>
         </label>
+        <label className="field" style={{ marginBottom: 0 }}>
+          <span className="hint">Situação</span>
+          <select className="select-compact" value={vm.situacao} onChange={e => vm.setSituacao(e.target.value)}>
+            <option value="">Todas</option>
+            {vm.situacoes.map(s => <option key={s.valor} value={s.valor}>{s.rotulo}</option>)}
+          </select>
+        </label>
         <input type="text" placeholder="Buscar empresa (nome ou código)" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} style={{ flex: 1, minWidth: 200 }} />
       </div>
 
-      <div className="stat-grid">
-        <Stat rotulo="Paradas" valor={vm.numeros.paradas} cor="entrada" />
-        <Stat rotulo="Em andamento" valor={vm.numeros.andamento} />
-        <Stat rotulo="Não iniciadas" valor={vm.numeros.naoIniciadas} />
-        <Stat rotulo="Concluídas" valor={vm.numeros.concluidas} cor="saida" />
-      </div>
-
-      {vm.carregando ? <p className="empty">Carregando…</p> : (
+      {vm.carregando ? <p className="empty">Carregando…</p> : vm.total === 0 ? <p className="empty">Nenhuma empresa nesta situação.</p> : (
         <div className="table-wrap">
           <table>
             <thead><tr><th>Código</th><th>Empresa</th><th>Etapas</th><th>Situação</th><th>Próxima etapa</th><th /></tr></thead>
@@ -49,7 +49,7 @@ export function MinhasEmpresas() {
               ))}
             </tbody>
           </table>
-          {vm.total > LIMITE && <p className="hint" style={{ padding: '8px 16px' }}>Mostrando {LIMITE} de {vm.total}. Use a busca.</p>}
+          {vm.total > LIMITE && <p className="hint" style={{ padding: '8px 16px' }}>Mostrando {LIMITE} de {vm.total}. Use a busca ou a situação.</p>}
         </div>
       )}
     </section>
