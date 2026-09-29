@@ -1,4 +1,4 @@
-// Etapa 5 do Creditor: contas, fechamento da conta banco por dia e o arquivo de importação.
+// Etapa 6 do Creditor: contas, fechamento da conta banco por dia e o arquivo de importação.
 import { creditor as cr } from '@nads/core';
 import { Alerta, baixarBytes, Icone, Stat } from '@nads/ui';
 import { AcoesDoTopo } from '../../../../../../comum/topo';

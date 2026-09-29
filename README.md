@@ -69,6 +69,6 @@ saídas, ISS, relatório da conta) podem ser importados: a leitura acontece no n
   Links antigos `/conferencia/…` redirecionam.
 - Conciliadorzinho: `/conciliadorzinho/<código>/conciliacao/<etapa>`.
 - Cheque especial: `/cheque-especial/<código>/ajuste/saldo-negativo`.
-- Creditor: `/creditor/<código>/<etapa>` (banco, conferencia, sistema, cruzamento, lancamentos).
+- Creditor (dentro do Extratudo): `/extratudo/<código>/creditor/<etapa>` (banco, conferencia, fiscal, sistema, cruzamento, lancamentos).
 
 Empresa sem código na lista usa o nome.

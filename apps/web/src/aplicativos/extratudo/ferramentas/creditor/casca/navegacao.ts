@@ -3,13 +3,14 @@
 import type { NomeIcone } from '@nads/ui';
 import { caminho } from './caminho';
 
-export type IdEtapa = 'banco' | 'conferencia' | 'sistema' | 'cruzamento' | 'lancamentos';
+export type IdEtapa = 'banco' | 'conferencia' | 'fiscal' | 'sistema' | 'cruzamento' | 'lancamentos';
 
 export interface Etapa { id: IdEtapa; rotulo: string; titulo: string; icone: NomeIcone }
 
 export const ETAPAS: Etapa[] = [
   { id: 'banco', rotulo: 'Relatório do banco', titulo: 'Relatório de liquidação do banco', icone: 'landmark' },
   { id: 'conferencia', rotulo: 'Conferência', titulo: 'Conferência dos grupos', icone: 'scale' },
+  { id: 'fiscal', rotulo: 'Fiscal', titulo: 'Baixa no Fiscal', icone: 'checklist' },
   { id: 'sistema', rotulo: 'Sistema', titulo: 'Arquivo do sistema', icone: 'fileText' },
   { id: 'cruzamento', rotulo: 'Cruzamento', titulo: 'Cruzamento banco × sistema', icone: 'repeat' },
   { id: 'lancamentos', rotulo: 'Lançamentos', titulo: 'Lançamentos para importar', icone: 'download' },

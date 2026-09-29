@@ -1,6 +1,6 @@
 // ViewModel da etapa Conferência: cada grupo do relatório contra o total impresso, com os títulos
 // editáveis (corrigir o dígito lido errado, digitar o que veio de foto) e o total geral.
-// Só libera o Sistema quando todos os grupos batem centavo a centavo.
+// Só libera o Fiscal quando todos os grupos batem centavo a centavo.
 import { creditor as cr } from '@nads/core';
 import { proximoIdTitulo, useSessao } from '../../casca/sessao';
 

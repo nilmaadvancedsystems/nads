@@ -17,13 +17,19 @@ export interface Estado {
   sistema: cr.LinhaSistema[] | null;
   origemSistema: string;
   decisoes: Record<number, cr.Decisao>;
+  /** os passos da etapa Fiscal que a pessoa marcou como feitos */
+  passosFiscal: string[];
   /** o relatório trouxe total impresso? (sem nenhum, a Conferência fica de fora) */
   conferir: boolean;
   /** a etapa mais adiante que já foi aberta */
   alcancada: number;
 }
 
-const INICIAL: Estado = { relatorio: null, origemBanco: '', sistema: null, origemSistema: '', decisoes: {}, conferir: true, alcancada: 0 };
+const INICIAL: Estado = { relatorio: null, origemBanco: '', sistema: null, origemSistema: '', decisoes: {}, passosFiscal: [], conferir: true, alcancada: 0 };
+
+/** Os passos da etapa Fiscal (a ordem e o texto de cada um ficam na tela). */
+export const PASSOS_FISCAL = ['baixar', 'exportar-contabil', 'exportar-planilha'] as const;
+export type PassoFiscal = (typeof PASSOS_FISCAL)[number];
 
 /** Tudo o que sai do estado (as telas só leem daqui). */
 export interface Derivado {
@@ -34,6 +40,8 @@ export interface Derivado {
   lancamentos: cr.Lancamento[];
   fora: cr.Titulo[];
   fechamento: cr.FechamentoDia[];
+  /** a baixa no Fiscal foi feita (todos os passos marcados) */
+  fiscalFeito: boolean;
 }
 
 export function derivar(e: Estado, contas: cr.ContasCreditor): Derivado {
@@ -44,7 +52,8 @@ export function derivar(e: Estado, contas: cr.ContasCreditor): Derivado {
   const lancamentos = cr.gerarLancamentos(titulos, cruzamentos, e.decisoes, contas);
   const fora = cr.titulosFora(titulos, cruzamentos, e.decisoes);
   const fechamento = e.relatorio ? cr.fecharPorDia(e.relatorio.grupos, lancamentos, fora, contas) : [];
-  return { titulos, conferido, cruzamentos, pendentes, lancamentos, fora, fechamento };
+  const fiscalFeito = PASSOS_FISCAL.every(p => e.passosFiscal.includes(p));
+  return { titulos, conferido, cruzamentos, pendentes, lancamentos, fora, fechamento, fiscalFeito };
 }
 
 /** A etapa já pode abrir? (o que ela precisa das anteriores) */
@@ -52,9 +61,10 @@ function requisitos(id: IdEtapa, e: Estado, d: Derivado): boolean {
   switch (id) {
     case 'banco': return true;
     case 'conferencia': return !!e.relatorio && e.conferir;
-    case 'sistema': return d.conferido;
-    case 'cruzamento': return d.conferido && !!e.sistema;
-    case 'lancamentos': return d.conferido && !!e.sistema && d.pendentes.length === 0;
+    case 'fiscal': return d.conferido;
+    case 'sistema': return d.conferido && d.fiscalFeito;
+    case 'cruzamento': return d.conferido && d.fiscalFeito && !!e.sistema;
+    case 'lancamentos': return d.conferido && d.fiscalFeito && !!e.sistema && d.pendentes.length === 0;
   }
 }
 

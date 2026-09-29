@@ -11,10 +11,11 @@ fonte das regras é o próprio prompt, e cada seção dele virou uma regra com t
 |---|---|---|
 | 1. Relatório do banco (`banco`) | Lê o PDF do banco (pdf.js no navegador) ou .xls/.xlsx/.csv. "Testar com o exemplo" carrega o exemplo | há pelo menos 1 título |
 | 2. Conferência (`conferencia`) | Cada grupo contra o "Total de Valores do grupo" impresso, coluna a coluna, e o total geral. Linha em vermelho: cobrado ≠ valor + mora − desconto. Tudo é editável (títulos, totais impressos, grupos) | todos os grupos batem centavo a centavo, e o total geral também (quando vier) |
-| | **Só aparece quando o relatório traz algum total impresso** (de grupo ou geral, valor ou quantidade: `temTotalImpresso`). Sem nenhum, a etapa sai das abas, o Relatório do banco vai direto para o Sistema e o topo mostra "Etapa n de 4" (pedido do Vitor, 2026-09-29) | |
-| 3. Sistema (`sistema`) | Lê o arquivo do sistema: Contrapartida, Valor e NF (ou "NF 1234" no histórico) | arquivo lido |
-| 4. Cruzamento (`cruzamento`) | Procura cada NF no sistema e mostra a situação: Ok, Duplicatas juntas, Valor diverge, Cliente diverge ou NF não encontrada | nenhuma divergência sem decisão |
-| 5. Lançamentos (`lancamentos`) | Contas/históricos (padrões do prompt, editáveis), a conta banco por dia e a prévia do arquivo. Baixa o .xls | todo dia bate, ou a diferença do dia é exatamente o que foi excluído |
+| | **Só aparece quando o relatório traz algum total impresso** (de grupo ou geral, valor ou quantidade: `temTotalImpresso`). Sem nenhum, a etapa sai das abas, o Relatório do banco vai direto para o Fiscal e o topo mostra "Etapa n de 5" (pedido do Vitor, 2026-09-29) | |
+| 3. Fiscal (`fiscal`) | Passo a passo, marcado pela pessoa: (1) no Fiscal, baixar os clientes no Gerenciador de Duplicatas; (2) exportar para o Contábil; (3) no Contábil, exportar a planilha dos recebimentos. Mostra os títulos a baixar (NF, sacado, liquidação, valor, mora, desconto, cobrado). Pedido do Vitor, 2026-09-29 | os três passos marcados |
+| 4. Sistema (`sistema`) | Lê o arquivo do sistema: Contrapartida, Valor e NF (ou "NF 1234" no histórico) | arquivo lido |
+| 5. Cruzamento (`cruzamento`) | Procura cada NF no sistema e mostra a situação: Ok, Duplicatas juntas, Valor diverge, Cliente diverge ou NF não encontrada | nenhuma divergência sem decisão |
+| 6. Lançamentos (`lancamentos`) | Contas/históricos (padrões do prompt, editáveis), a conta banco por dia e a prévia do arquivo. Baixa o .xls | todo dia bate, ou a diferença do dia é exatamente o que foi excluído |
 
 ## Regras (seção do prompt → código)
 

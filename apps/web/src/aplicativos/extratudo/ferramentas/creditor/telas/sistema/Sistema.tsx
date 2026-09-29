@@ -1,4 +1,5 @@
-// Etapa 3 do Creditor: o arquivo do sistema (recebimentos de clientes).
+// Etapa 4 do Creditor: o arquivo do sistema (recebimentos de clientes), a planilha exportada do Contábil
+// depois da baixa no Fiscal.
 import { creditor as cr } from '@nads/core';
 import { Alerta, CampoArquivo, Icone } from '@nads/ui';
 import { useSistema } from './useSistema';
@@ -12,7 +13,7 @@ export function Sistema() {
         <div className="import-box-row">
           <CampoArquivo id="fSistema" arquivo={null} aceitar={vm.aceitar} onEscolher={f => { void vm.escolherArquivo(f); }} />
         </div>
-        <p className="hint">.xls, .xlsx ou .csv com as colunas Contrapartida, Valor e NF (ou um Histórico com "NF 1234"). Cliente e Histórico, quando houver.</p>
+        <p className="hint">A planilha exportada do Contábil depois da baixa no Fiscal: .xls, .xlsx ou .csv com as colunas Contrapartida, Valor e NF (ou um Histórico com "NF 1234"). Cliente e Histórico, quando houver.</p>
         <div className="btn-row" style={{ justifyContent: 'flex-start', marginTop: 8 }}>
           <button className="btn btn-ghost" type="button" onClick={vm.exemplo}>Testar com o exemplo</button>
         </div>

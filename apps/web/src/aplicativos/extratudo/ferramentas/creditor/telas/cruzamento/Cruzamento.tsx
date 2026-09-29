@@ -1,4 +1,4 @@
-// Etapa 4 do Creditor: cruzamento banco × sistema pela NF, com as decisões das divergências.
+// Etapa 5 do Creditor: cruzamento banco × sistema pela NF, com as decisões das divergências.
 import { creditor as cr } from '@nads/core';
 import { Segmentado, Stat } from '@nads/ui';
 import { Fragment } from 'react';

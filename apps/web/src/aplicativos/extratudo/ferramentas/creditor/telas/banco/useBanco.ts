@@ -19,7 +19,7 @@ export function useBanco() {
    */
   function usar(rel: cr.RelatorioBanco, origem: string) {
     setErro('');
-    s.mudar(e => ({ ...e, relatorio: rel, origemBanco: origem, decisoes: {}, conferir: cr.temTotalImpresso(rel), alcancada: 0 }));
+    s.mudar(e => ({ ...e, relatorio: rel, origemBanco: origem, decisoes: {}, passosFiscal: [], conferir: cr.temTotalImpresso(rel), alcancada: 0 }));
   }
 
   async function escolherArquivo(f: File | null) {
@@ -57,7 +57,7 @@ export function useBanco() {
       avisos: r.avisos,
     } : null,
     podeContinuar: titulos.length > 0,
-    rotuloContinuar: 'Continuar para ' + (s.estado.conferir ? 'a conferência' : 'o sistema'),
+    rotuloContinuar: 'Continuar para ' + (s.estado.conferir ? 'a conferência' : 'o fiscal'),
     continuar: s.proxima,
   };
 }
