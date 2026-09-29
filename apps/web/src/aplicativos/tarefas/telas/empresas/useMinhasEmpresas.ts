@@ -21,15 +21,9 @@ export const FILTROS_INICIAR = [
   { valor: 'todas', rotulo: 'Todas' },
   { valor: 'nao-iniciada', rotulo: 'Não iniciadas' },
   { valor: 'em-andamento', rotulo: 'Em andamento' },
-  { valor: 'concluida', rotulo: 'Concluídas' },
+  { valor: 'parada', rotulo: 'Paradas' },
 ] as const;
 type FiltroIniciar = (typeof FILTROS_INICIAR)[number]['valor'];
-/** O filtro da aba Minhas recentes: as dos últimos dias ou as minhas paradas. */
-export const FILTROS_RECENTES = [
-  { valor: 'recentes', rotulo: 'Últimas acessadas' },
-  { valor: 'paradas', rotulo: 'Paradas' },
-] as const;
-type FiltroRecentes = (typeof FILTROS_RECENTES)[number]['valor'];
 /** Minhas recentes somem depois de 3 dias sem mexer. */
 const RECENTE_MS = 3 * 24 * 60 * 60 * 1000;
 
@@ -42,7 +36,6 @@ export function useMinhasEmpresas() {
   const [buscaIniciar, setBuscaIniciar] = useState('');
   const [abaIniciar, setAbaIniciar] = useState<AbaIniciar>('escolher');
   const [filtroIniciar, setFiltroIniciar] = useState<FiltroIniciar>('todas');
-  const [filtroRecentes, setFiltroRecentes] = useState<FiltroRecentes>('recentes');
   const situacao = SITUACOES.some(s => s.valor === a.params.get('situacao')) ? (a.params.get('situacao') as t.SituacaoGeral) : '';
   // ordem na URL (?ordem=codigo&dir=desc); sem nada = situação (paradas primeiro), sem seta no título
   const escolhida = COLUNAS.includes(a.params.get('ordem') as Coluna);
@@ -61,21 +54,19 @@ export function useMinhasEmpresas() {
   // texto em ordem alfabética, número do menor para o maior; sem coluna escolhida fica a ordem de sempre
   if (escolhida) linhas.sort((x, y) => (dir === 'asc' ? 1 : -1) * comparar[coluna](x, y) || x.nome.localeCompare(y.nome, 'pt-BR'));
 
-  // "Iniciar": as empresas (paradas e em andamento primeiro, concluídas no fim), com filtro rápido e busca própria
+  // "Iniciar": as empresas que ainda têm etapa a fazer (não faz sentido iniciar uma concluída), paradas e em
+  // andamento primeiro, com filtro rápido e busca própria
   const abertas = a.linhas.filter(l => l.situacao !== 'concluida');
-  const doFiltro = a.linhas.filter(l => filtroIniciar === 'todas' || l.situacao === filtroIniciar);
+  const doFiltro = abertas.filter(l => filtroIniciar === 'todas' || l.situacao === filtroIniciar);
   const achadasIniciar = buscaIniciar.trim() ? new Set(empresas.buscarEmpresas(doFiltro.map(l => l.empresa), buscaIniciar)) : null;
   const paraIniciar = doFiltro.filter(l => !achadasIniciar || achadasIniciar.has(l.empresa));
 
   const abrir = (rota: string) => navegar(caminhoDoExecutor(rota, a.competencia));
 
-  // Minhas recentes: onde quem está trabalhando mexeu nesta competência, a mais recente primeiro. Na lista,
-  // só as dos últimos 3 dias; as minhas paradas ficam no filtro Paradas até alguém retomar.
+  // Minhas recentes: onde quem está trabalhando mexeu nesta competência nos últimos 3 dias, a mais recente primeiro
   const minhas = a.linhas.filter(l => l.mexiEm).sort((x, y) => (y.mexiEm as string).localeCompare(x.mexiEm as string));
   const agora = Date.now();
-  const recentes = filtroRecentes === 'paradas'
-    ? minhas.filter(l => l.situacao === 'parada')
-    : minhas.filter(l => agora - Date.parse(l.mexiEm as string) <= RECENTE_MS);
+  const recentes = minhas.filter(l => agora - Date.parse(l.mexiEm as string) <= RECENTE_MS);
   const ultimaAberta = minhas.find(l => l.situacao !== 'concluida') || null;
   // a fila: as linhas já vêm paradas → em andamento → não iniciadas
   const proximaDaFila = abertas[0] || null;
@@ -117,7 +108,6 @@ export function useMinhasEmpresas() {
     abaIniciar, setAbaIniciar,
     filtroIniciar, filtrosIniciar: FILTROS_INICIAR, setFiltroIniciar,
     recentes: recentes.slice(0, LIMITE_INICIAR),
-    filtroRecentes, filtrosRecentes: FILTROS_RECENTES, setFiltroRecentes,
     ultimaAberta, proximaDaFila, paradas,
     verParadas: () => { setBusca(''); a.mudar('situacao', 'parada'); },
     abrirInsights: () => navegar(caminhoDaPagina('minhas-empresas', 'insights') + '?competencia=' + a.competencia),

@@ -1,6 +1,6 @@
 // O painel do botão "Iniciar", no jeito do "Code ▾" do GitHub: abas em cima (Escolher / Minhas recentes),
-// o filtro rápido e a busca, a lista (só código e nome) e, embaixo, os atalhos. Minhas recentes: as dos
-// últimos 3 dias, ou as minhas paradas.
+// o filtro rápido e a busca, a lista (só código e nome) e, embaixo, os atalhos. Minhas recentes: as
+// acessadas nos últimos 3 dias.
 import { Icone, Segmentado } from '@nads/ui';
 import type { useMinhasEmpresas } from '../useMinhasEmpresas';
 
@@ -47,10 +47,7 @@ export function PainelIniciar({ vm, fechar }: { vm: Vm; fechar: () => void }) {
         </>
       ) : (
         <>
-          <Segmentado valor={vm.filtroRecentes} opcoes={vm.filtrosRecentes.map(f => ({ ...f }))} onMudar={vm.setFiltroRecentes} />
-          {vm.recentes.length ? <Lista linhas={vm.recentes} onEscolher={ir} /> : vm.filtroRecentes === 'paradas' ? (
-            <p className="hint iniciar-nada">Nenhuma parada sua em {vm.rotuloCompetencia}.</p>
-          ) : (
+          {vm.recentes.length ? <Lista linhas={vm.recentes} onEscolher={ir} /> : (
             <div className="iniciar-vazio">
               <b>Nenhuma empresa ainda</b>
               <p className="hint">Você não mexeu em nenhuma empresa nos últimos 3 dias.</p>
