@@ -2,7 +2,7 @@
 // Lê os extratos (PDF, OFX) e o razão da conta do banco (Excel, CSV, PDF), guarda só os
 // lançamentos e confere: faltando, diferentes, a mais e duplicados. TypeScript puro.
 export type {
-  Lado, Lancamento, LancamentoDoArquivo, ModoImportacao, ArquivoImportado, RegistroAuditoria, EmpresaExtrator,
+  Lado, Lancamento, LancamentoDoArquivo, ModoImportacao, ArquivoImportado, RegistroAuditoria, EmpresaExtrator, BancoAdicionado,
   ArquivoLido, Situacao, TipoDiferenca, LinhaConferencia, Conferencia,
 } from './tipos';
 export { centavos, temSinal, lerData, numeroDoDia, dataBR, competencia, valorBR, palavras, parecido } from './regras/texto';
@@ -18,6 +18,7 @@ export { EXTENSOES_EXTRATO, EXTENSOES_SISTEMA, abasDaPlanilha, lerArquivo } from
 export { definirWorkerDoPdf, ehPdf, itensDoPdf } from './arquivos/pdf';
 export type { RepoExtrator } from './repo';
 export { arquivoDeTeste } from './regras/teste';
+export { bancoDoArquivo, bancosNaCompetencia, arquivosDoBanco, adicionarBanco } from './regras/bancos';
 export { gravacao, semMudanca, empresaDoBanco, type Gravacao, type DocEmpresaExtrator } from './regras/banco';
 export { criarRepoExtratorMemoria, type Guarda } from './repo.memoria';
 export { EMPRESAS_EXEMPLO, empresasDeExemplo } from './__exemplos__/empresas';

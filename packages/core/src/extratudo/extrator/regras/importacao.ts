@@ -10,7 +10,10 @@ export function empresaNova(nome: string): EmpresaExtrator {
 
 /** Garante os campos (dado antigo ou incompleto). */
 export function normalizarEmpresa(e: Partial<EmpresaExtrator> & { nome: string }): EmpresaExtrator {
-  return { nome: e.nome, arquivos: Array.isArray(e.arquivos) ? e.arquivos : [], auditoria: Array.isArray(e.auditoria) ? e.auditoria : [] };
+  return {
+    nome: e.nome, arquivos: Array.isArray(e.arquivos) ? e.arquivos : [], auditoria: Array.isArray(e.auditoria) ? e.auditoria : [],
+    ...(Array.isArray(e.bancos) && e.bancos.length ? { bancos: e.bancos } : {}),
+  };
 }
 
 /** Todos os lançamentos de um lado, com o endereço de cada um. */

@@ -2,10 +2,10 @@
 // checklist na barra lateral (caixinha marcada = feita). A página é só a ferramenta da etapa, com a
 // altura toda; embaixo, a barra com as saídas da etapa (Pedir extrato, Buscar no Drive…), Interromper e
 // Próximo.
-import { Alerta, Casca, Icone, MenuSuspenso, useCarregando } from '@nads/ui';
+import { Alerta, Casca, Icone, useCarregando } from '@nads/ui';
 import { useRef } from 'react';
 import { Navigate, useParams } from 'react-router';
-import { useImportacoesDaFerramenta, type ImportacaoResumo } from '../../../../comum/ponte';
+import { usePonteDaFerramenta } from '../../../../comum/ponte';
 import { BASE } from '../../casca/navegacao';
 import { useCascaTarefas } from '../../casca/useCascaTarefas';
 import { JanelaInterromper } from './partes/JanelaInterromper';
@@ -17,17 +17,9 @@ export function Executor() {
   const vm = useExecutor(rota, competencia);
   const casca = useCascaTarefas('minhas-empresas', 'empresas');
   useCarregando(vm.carregando || vm.conferindo);
-  // o que a ferramenta da etapa importou (ela conta pela ponte): vira os botões de excluir aqui embaixo
+  // a ferramenta da etapa (iframe): recebe os bancos sem movimento e avisa quando a pessoa marca um
   const iframe = useRef<HTMLIFrameElement>(null);
-  const ponte = useImportacoesDaFerramenta(iframe, vm.ferramenta?.embutir ? vm.ferramenta.url : null);
-  const excluir = (a: ImportacaoResumo) => { void vm.confirmarExclusao(a).then(ok => { if (ok) ponte.excluir(a.id); }); };
-  const menuExcluir = (lado: 'banco' | 'sistema', rotulo: string) => {
-    const doLado = ponte.importacoes.filter(a => a.lado === lado);
-    return doLado.length > 0 && (
-      <MenuSuspenso rotulo={rotulo} icone="x" className="btn btn-outline btn-sm" titulo="Qual importação excluir?" largura={340} acima
-        itens={doLado.map(a => ({ rotulo: a.nome, icone: 'fileText' as const, dica: a.periodo, onClick: () => excluir(a) }))} />
-    );
-  };
+  usePonteDaFerramenta(iframe, vm.semMovimento, vm.marcarSemMovimento);
   if (!vm.empresa) return <Navigate to={BASE} replace />;
 
   const checklist = vm.etapas.map(e => ({
@@ -75,8 +67,6 @@ export function Executor() {
           {vm.aviso && <Alerta titulo="Ainda não dá para seguir" texto={vm.aviso} />}
           <footer className="executor-rodape">
             <Objecoes etapa={vm.etapa} onResolver={vm.resolver} />
-            {menuExcluir('banco', 'Excluir extrato')}
-            {menuExcluir('sistema', 'Excluir razão')}
             <span className="executor-espaco" />
             <button type="button" className="btn btn-outline" onClick={vm.abrirInterromper}>Interromper</button>
             <button type="button" className="btn btn-primary" disabled={vm.conferindo} onClick={() => { void vm.proximo(); }}>

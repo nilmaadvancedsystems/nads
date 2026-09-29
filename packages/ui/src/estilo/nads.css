@@ -1070,7 +1070,7 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 #app.larga .topbar[hidden] + .content{padding-top:16px;}
 .executor-area{display:flex;flex-direction:column;gap:12px;}
 .executor-area > .hint{margin:0;}
-.executor-ferramenta{display:flex;height:calc(100vh - var(--hdr-h,64px) - 110px);min-height:420px;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--surface);}
+.executor-ferramenta{display:flex;height:calc(100vh - var(--hdr-h,64px) - 110px);min-height:420px;overflow:hidden;}
 .executor-ferramenta iframe{flex:1;width:100%;height:100%;border:0;}
 .executor-ferramenta .gh-blank{margin:auto;}
 .executor-rodape{position:sticky;bottom:0;z-index:5;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 0 12px;background:var(--bg);}
@@ -1203,8 +1203,34 @@ tr.linha-atual > td{background:var(--hover-bg);}
   box-shadow:var(--shadow-lg);font-size:14px;animation:popIn .14s ease-out both;}
 .imp-aviso-barra > svg{width:16px;height:16px;color:var(--success);flex:none;}
 .imp-aviso-barra.erro > svg{color:var(--danger);}
+.imp-aviso-barra.info > svg{color:var(--ink-muted);}
 .imp-aviso-barra > span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70vw;}
 .imp-aviso-barra button{border:none;background:none;color:var(--ink-muted);cursor:pointer;font-size:18px;line-height:1;padding:2px 6px;border-radius:4px;}
 .imp-aviso-barra button:hover{background:var(--hover-bg);}
 /* barra lateral recolhida: as caixinhas do checklist continuam aparecendo */
 .sidebar-oculta .subnav-item span.subnav-caixa{display:inline-flex;}
+
+/* as linhas de banco (etapa dos extratos): logo e nome, o extrato e o razão em botões só de ícone */
+.imp-topo{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:12px;}
+.imp-logo{background:none;}
+.imp-logo svg{width:22px;height:22px;color:var(--ink-muted);}
+.imp-grupos{display:flex;align-items:center;gap:16px;margin-left:auto;flex-wrap:wrap;}
+.imp-grupo{display:flex;align-items:center;gap:4px;}
+.imp-rotulo{font-size:12px;color:var(--ink-muted);margin-right:4px;}
+label.imp-btn{cursor:pointer;display:inline-flex;align-items:center;justify-content:center;}
+label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
+.imp-btn .btn-spinner{width:12px;height:12px;}
+.imp-drive svg{width:15px;height:15px;color:var(--ink-muted);}
+.imp-drive:hover svg{color:var(--ink);}
+/* importado: check verde; com o mouse em cima, × vermelho (clicar exclui) */
+.imp-feito{border-color:var(--success);color:var(--success);}
+.imp-feito .imp-feito-x{display:none;}
+.imp-feito:hover{border-color:var(--destructive);background:var(--destructive-soft);color:var(--destructive);}
+.imp-feito:hover .imp-feito-ok{display:none;}
+.imp-feito:hover .imp-feito-x{display:inline;}
+/* Não teve movimento: a linha toda escurece; o botão fica claro para desmarcar */
+.imp-linha{transition:background .15s ease;}
+.imp-linha.sem-movimento{background:var(--surface-2);}
+.imp-linha.sem-movimento > :not(.imp-grupos),.imp-linha.sem-movimento .imp-grupo{opacity:.4;}
+.imp-sem-mov.marcado{background:var(--surface-3);border-color:var(--border-strong);color:var(--ink);}
+.imp-conf-bancos{margin-bottom:12px;}

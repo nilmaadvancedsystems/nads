@@ -10,6 +10,9 @@ function temNaCompetencia(arquivos: readonly ArquivoImportado[], lado: 'banco' |
 
 export interface Resultado { ok: boolean; motivo: string }
 
+/** As contas da empresa na etapa dos extratos: cada banco precisa de extrato e razão, menos os sem movimento. */
+export interface ContasDaEtapa { bancos: readonly { id: string; nome: string }[]; semMovimento: readonly string[] }
+
 const MES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const mesDe = (competencia: string) => MES[Number(competencia.slice(5, 7)) - 1] + '/' + competencia.slice(0, 4);
 
@@ -17,7 +20,7 @@ const mesDe = (competencia: string) => MES[Number(competencia.slice(5, 7)) - 1] 
  * Confere a etapa. `arquivosDoExtrator` = o que o Extrator tem da empresa (só é usado nas etapas que
  * dependem dele). Etapa manual: a pessoa já confirmou ao clicar em Próximo.
  */
-export function verificar(etapa: Etapa, competencia: string, arquivosDoExtrator: readonly ArquivoImportado[]): Resultado {
+export function verificar(etapa: Etapa, competencia: string, arquivosDoExtrator: readonly ArquivoImportado[], contas?: ContasDaEtapa): Resultado {
   switch (etapa.verificacao) {
     case 'manual':
       return { ok: true, motivo: '' };
@@ -26,6 +29,17 @@ export function verificar(etapa: Etapa, competencia: string, arquivosDoExtrator:
         ? { ok: true, motivo: '' }
         : { ok: false, motivo: 'Ainda não há extrato de ' + mesDe(competencia) + ' importado.' };
     case 'extrato-e-sistema': {
+      if (contas?.bancos.length) {
+        // banco por banco (arquivo sem banco = do primeiro); os marcados sem movimento não precisam de nada
+        const primeiro = contas.bancos[0].id;
+        for (const b of contas.bancos) {
+          if (contas.semMovimento.includes(b.id)) continue;
+          const doBanco = arquivosDoExtrator.filter(a => (a.banco || primeiro) === b.id);
+          if (!temNaCompetencia(doBanco, 'banco', competencia)) return { ok: false, motivo: 'Falta o extrato do ' + b.nome + ' de ' + mesDe(competencia) + '.' };
+          if (!temNaCompetencia(doBanco, 'sistema', competencia)) return { ok: false, motivo: 'Falta o razão do ' + b.nome + ' de ' + mesDe(competencia) + '.' };
+        }
+        return { ok: true, motivo: '' };
+      }
       const banco = temNaCompetencia(arquivosDoExtrator, 'banco', competencia);
       const sistema = temNaCompetencia(arquivosDoExtrator, 'sistema', competencia);
       if (banco && sistema) return { ok: true, motivo: '' };

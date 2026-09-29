@@ -1,14 +1,12 @@
 // A ponte entre a Tarefas e a ferramenta que ela abre dentro da etapa (um iframe, que pode ser outro site:
-// tarefas-nilma → extratudo-nilma). A ferramenta conta o que foi importado; a Tarefas mostra os botões de
-// excluir na barra de baixo da etapa e pede para a ferramenta excluir. Só conversa com os endereços do nads
-// (*-nilma.web.app, as prévias deles e o próprio endereço, no desenvolvimento). É de todos os aplicativos.
-import { useCallback, useEffect, useState, type RefObject } from 'react';
+// tarefas-nilma → extratudo-nilma). Hoje: o "Não teve movimento" de cada banco. Quem guarda é a Tarefas
+// (fica na execução da etapa); a ferramenta mostra a linha do banco marcada e avisa quando a pessoa marca
+// ou desmarca. Só conversa com os endereços do nads (*-nilma.web.app, as prévias deles e o próprio
+// endereço, no desenvolvimento). É de todos os aplicativos.
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 
-/** O que a Tarefas precisa saber de cada arquivo importado na ferramenta. */
-export interface ImportacaoResumo { id: string; lado: 'banco' | 'sistema'; nome: string; periodo: string; qtd: number }
-
-type ParaTarefa = { nads: 'importacoes'; arquivos: ImportacaoResumo[] };
-type ParaFerramenta = { nads: 'excluir-importacao'; id: string };
+type ParaTarefa = { nads: 'pronta' } | { nads: 'sem-movimento'; banco: string; marcado: boolean };
+type ParaFerramenta = { nads: 'estado-etapa'; semMovimento: string[] };
 
 const NADS = /^https:\/\/[a-z0-9-]+-nilma(--[a-z0-9-]+)?\.web\.app$/;
 
@@ -17,60 +15,66 @@ export function origemConfiavel(origem: string): boolean {
   return origem === window.location.origin || NADS.test(origem);
 }
 
-/** O endereço da página de fora, quando esta está dentro de um iframe dela. */
+/** O endereço da página de fora, quando esta está dentro de um iframe de uma página do nads. */
 function origemDoPai(): string | null {
   if (window.parent === window) return null;
-  const pelaLista = window.location.ancestorOrigins?.[0];
-  if (pelaLista) return pelaLista;
-  try { return document.referrer ? new URL(document.referrer).origin : null; } catch { return null; }
+  let origem: string | null = window.location.ancestorOrigins?.[0] || null;
+  if (!origem) { try { origem = document.referrer ? new URL(document.referrer).origin : null; } catch { origem = null; } }
+  return origem && origemConfiavel(origem) ? origem : null;
 }
 
 /**
- * Na ferramenta (dentro da etapa da Tarefas): avisa a Tarefas o que está importado sempre que muda,
- * e exclui quando a Tarefas pedir (ela já perguntou à pessoa). Fora da Tarefas, não faz nada.
+ * Na ferramenta: está dentro de uma etapa da Tarefas? Então recebe os bancos marcados sem movimento
+ * e avisa quando a pessoa marca ou desmarca um. Fora da Tarefas: naTarefa = false e nada acontece.
  */
-export function useAvisarTarefa(arquivos: ImportacaoResumo[], excluir: (id: string) => void): void {
-  const chave = JSON.stringify(arquivos);
+export function usePonteDaTarefa() {
+  const [pai] = useState(origemDoPai);
+  const [semMovimento, setSemMovimento] = useState<string[]>([]);
   useEffect(() => {
-    const pai = origemDoPai();
-    if (!pai || !origemConfiavel(pai)) return;
-    const msg: ParaTarefa = { nads: 'importacoes', arquivos: JSON.parse(chave) as ImportacaoResumo[] };
-    window.parent.postMessage(msg, pai);
-  }, [chave]);
-  useEffect(() => {
+    if (!pai) return;
     const ouvir = (e: MessageEvent) => {
-      if (e.source !== window.parent || !origemConfiavel(e.origin)) return;
+      if (e.source !== window.parent || e.origin !== pai) return;
       const d = e.data as Partial<ParaFerramenta> | null;
-      if (d && d.nads === 'excluir-importacao' && typeof d.id === 'string') excluir(d.id);
+      if (d && d.nads === 'estado-etapa' && Array.isArray(d.semMovimento)) setSemMovimento(d.semMovimento);
     };
     window.addEventListener('message', ouvir);
+    const pronta: ParaTarefa = { nads: 'pronta' };
+    window.parent.postMessage(pronta, pai);
     return () => window.removeEventListener('message', ouvir);
-  }, [excluir]);
+  }, [pai]);
+  const marcarSemMovimento = useCallback((banco: string, marcado: boolean) => {
+    if (!pai) return;
+    setSemMovimento(v => (marcado ? [...v.filter(b => b !== banco), banco] : v.filter(b => b !== banco))); // já mostra; a Tarefas confirma
+    const msg: ParaTarefa = { nads: 'sem-movimento', banco, marcado };
+    window.parent.postMessage(msg, pai);
+  }, [pai]);
+  return { naTarefa: !!pai, semMovimento, marcarSemMovimento };
 }
 
-/** Na Tarefas: o que a ferramenta da etapa tem importado, e o pedido de excluir um arquivo. */
-export function useImportacoesDaFerramenta(iframe: RefObject<HTMLIFrameElement | null>, url: string | null) {
-  const [importacoes, setImportacoes] = useState<ImportacaoResumo[]>([]);
-  // outra etapa (outra ferramenta): começa vazio até ela contar
-  const [urlAtual, setUrlAtual] = useState(url);
-  if (url !== urlAtual) { setUrlAtual(url); setImportacoes([]); }
+/** Na Tarefas: manda à ferramenta os bancos sem movimento e recebe quando a pessoa marca um. */
+export function usePonteDaFerramenta(iframe: RefObject<HTMLIFrameElement | null>, semMovimento: string[], onSemMovimento: (banco: string, marcado: boolean) => void) {
+  const estado = useRef(semMovimento);
+  const aoMarcar = useRef(onSemMovimento);
+  useEffect(() => { estado.current = semMovimento; aoMarcar.current = onSemMovimento; });
+
+  const mandar = useCallback(() => {
+    const f = iframe.current;
+    if (!f?.contentWindow) return;
+    const msg: ParaFerramenta = { nads: 'estado-etapa', semMovimento: estado.current };
+    f.contentWindow.postMessage(msg, new URL(f.src, window.location.href).origin);
+  }, [iframe]);
 
   useEffect(() => {
     const ouvir = (e: MessageEvent) => {
       if (!iframe.current || e.source !== iframe.current.contentWindow || !origemConfiavel(e.origin)) return;
-      const d = e.data as Partial<ParaTarefa> | null;
-      if (d && d.nads === 'importacoes' && Array.isArray(d.arquivos)) setImportacoes(d.arquivos);
+      const d = e.data as Partial<{ nads: string; banco: string; marcado: boolean }> | null;
+      if (d?.nads === 'pronta') mandar();
+      if (d?.nads === 'sem-movimento' && typeof d.banco === 'string') aoMarcar.current(d.banco, !!d.marcado);
     };
     window.addEventListener('message', ouvir);
     return () => window.removeEventListener('message', ouvir);
-  }, [iframe]);
+  }, [iframe, mandar]);
 
-  const excluir = useCallback((id: string) => {
-    const f = iframe.current;
-    if (!f?.contentWindow) return;
-    const msg: ParaFerramenta = { nads: 'excluir-importacao', id };
-    f.contentWindow.postMessage(msg, new URL(f.src, window.location.href).origin);
-  }, [iframe]);
-
-  return { importacoes, excluir };
+  const chave = semMovimento.join(',');
+  useEffect(() => { mandar(); }, [chave, mandar]);
 }

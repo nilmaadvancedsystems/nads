@@ -25,9 +25,10 @@ const FILTROS: { valor: FiltroSituacao; rotulo: string }[] = [
   { valor: 'todos', rotulo: 'Tudo' },
 ];
 
-export function useConferencia() {
+/** doArquivo: só os arquivos de um banco (a etapa da Tarefas, quando a empresa tem mais de um) */
+export function useConferencia(doArquivo?: (a: x.ArquivoImportado) => boolean) {
   const s = useSessao();
-  const e = s.empresa;
+  const e = useMemo(() => (doArquivo ? { ...s.empresa, arquivos: s.empresa.arquivos.filter(doArquivo) } : s.empresa), [s.empresa, doArquivo]);
   const f = s.conferencia;
   const meses = x.competencias(e);
   const mesesBanco = [...new Set(x.lancamentosDe(e, 'banco').map(l => l.data.slice(0, 7)))].sort();

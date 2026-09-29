@@ -1,11 +1,11 @@
 // ViewModel do executor (a tela cheia das etapas): a etapa da vez, a ferramenta dela, as objeções,
 // o "Próximo" (check automático → marca feita e passa para a próxima), o "Interromper" (com o motivo)
 // e o "Não se aplica". Cada coisa vira evento com hora e pessoa.
-import { empresas, tarefas as t } from '@nads/core';
+import { empresas, extrator, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { arquivosDoExtrator } from '../../dados/fonte';
+import { extratorDaEmpresa } from '../../dados/fonte';
 import { useExecucoes, useRepo } from '../../dados/repo';
 import { caminhoDaEmpresa, caminhoDaPagina } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
@@ -31,6 +31,7 @@ export function useExecutor(rotaEmpresa: string, competencia: string) {
   const { execucoes, carregada } = useExecucoes(competencia, rotina.departamento);
   const ex = (empresa && execucoes.find(e => e.empresa === empresa.nome)) || (empresa ? t.execucaoNova(empresa.nome, empresa.codigo, competencia, rotina.departamento) : null);
   const etapa = ex ? t.proximaEtapa(ex, rotina) : null;
+  const carregando = !carregada;
   const [aviso, setAviso] = useState<string | null>(null);
   const [conferindo, setConferindo] = useState(false);
   const [interrompendo, setInterrompendo] = useState(false);
@@ -49,8 +50,18 @@ export function useExecutor(rotaEmpresa: string, competencia: string) {
     if (!ex || !etapa || conferindo) return;
     setConferindo(true);
     try {
-      const arquivos = t.precisaDoExtrator(etapa) ? await arquivosDoExtrator(ex.empresa) : [];
-      const r = t.verificar(etapa, competencia, arquivos);
+      const ext = t.precisaDoExtrator(etapa) ? await extratorDaEmpresa(ex.empresa) : null;
+      // os bancos da empresa na competência (cadastrados + adicionados no Extrator)
+      const bancos = ext ? extrator.bancosNaCompetencia(ext, empresas.bancosDaEmpresa(ex.codigo), competencia) : [];
+      if (ext && t.todosSemMovimento(ex, bancos)) {
+        // nenhum banco teve movimento: a etapa não se aplica nesta competência
+        const d = t.dispensar(ex, etapa.id, 'sem-movimento', '', op.nome, new Date());
+        repo.gravar(d.execucao, d.evento);
+        setAviso(null);
+        toast(etapa.nome + ': sem movimento.');
+        return;
+      }
+      const r = t.verificar(etapa, competencia, ext?.arquivos || [], ext ? { bancos, semMovimento: ex.semMovimento || [] } : undefined);
       if (!r.ok) {
         setAviso(r.motivo);
         repo.registrar(ex, t.eventoDeVerificacaoFalhou(etapa.id, op.nome, new Date(), r.motivo));
@@ -108,12 +119,13 @@ export function useExecutor(rotaEmpresa: string, competencia: string) {
     resolver,
     interrompendo, abrirInterromper: () => setInterrompendo(true), fecharInterromper: () => setInterrompendo(false), interromper,
     sair: voltar,
-    /** Excluir um arquivo que a ferramenta da etapa importou: pergunta aqui; quem exclui é a ferramenta. */
-    confirmarExclusao: (a: { nome: string; lado: 'banco' | 'sistema'; qtd: number }) => modal<boolean>({
-      icone: 'alert', titulo: 'Excluir esta importação?',
-      texto: (a.lado === 'banco' ? 'Extrato' : 'Razão') + ': ' + a.nome + ' (' + a.qtd + ' lançamentos). Dá para importar de novo depois.',
-      botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }],
-    }),
+    /** Os bancos sem movimento desta competência (a ferramenta da etapa mostra a linha marcada). */
+    semMovimento: ex?.semMovimento || [],
+    marcarSemMovimento: (banco: string, marcado: boolean) => {
+      if (!ex || !etapa || carregando) return;
+      const m = t.marcarSemMovimento(ex, etapa.id, banco, marcado, op.nome, new Date());
+      repo.gravar(m.execucao, m.evento);
+    },
     abrirEmpresa: () => { if (empresa) navegar(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), competencia)); },
   };
 }

@@ -7,8 +7,8 @@ import { TabelaConferencia } from './partes/TabelaConferencia';
 import { LIMITE_LINHAS, useConferencia } from './useConferencia';
 
 /** naTarefa: dentro da etapa da Tarefas (sem o título de cima): o "Baixar CSV" fica junto dos filtros. */
-export function Conferencia({ naTarefa }: { naTarefa?: boolean } = {}) {
-  const vm = useConferencia();
+export function Conferencia({ naTarefa, doArquivo }: { naTarefa?: boolean; doArquivo?: (a: x.ArquivoImportado) => boolean } = {}) {
+  const vm = useConferencia(doArquivo);
   const csv = <button className={'btn ' + (naTarefa ? 'btn-outline btn-sm' : 'btn-primary')} type="button" onClick={() => { const a = vm.csv(); baixarArquivo(a.texto, a.nome); }}>Baixar CSV</button>;
   return (
     <section>

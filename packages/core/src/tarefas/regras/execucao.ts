@@ -85,3 +85,17 @@ export function interromper(ex: Execucao, etapa: string, objecao: string, observ
 export function eventoDeVerificacaoFalhou(etapa: string, por: string, agora: Date, motivo: string): Evento {
   return { tipo: 'verificacao-falhou', etapa, por, em: agora.toISOString(), observacao: motivo };
 }
+
+/** "Não teve movimento" na linha de um banco (marcar ou desmarcar). O evento diz qual banco. */
+export function marcarSemMovimento(ex: Execucao, etapa: string, banco: string, marcado: boolean, por: string, agora: Date): { execucao: Execucao; evento: Evento } {
+  const atuais = (ex.semMovimento || []).filter(b => b !== banco);
+  return {
+    execucao: { ...ex, semMovimento: marcado ? [...atuais, banco] : atuais },
+    evento: { tipo: marcado ? 'sem-movimento' : 'com-movimento', etapa, por, em: agora.toISOString(), observacao: banco },
+  };
+}
+
+/** Todos os bancos da empresa sem movimento? (aí a etapa dos extratos conta como "não se aplica") */
+export function todosSemMovimento(ex: Execucao | null, bancos: readonly { id: string }[]): boolean {
+  return bancos.length > 0 && bancos.every(b => ex?.semMovimento?.includes(b.id));
+}

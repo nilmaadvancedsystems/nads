@@ -33,7 +33,12 @@ export interface ArquivoImportado {
   /** 'primeira' = não havia nada no período; senão o modo escolhido */
   modo: ModoImportacao | 'primeira';
   lancamentos: Lancamento[];
+  /** de qual banco da empresa (id); sem = o primeiro banco dela (arquivos de antes de ter mais de um) */
+  banco?: string;
 }
+
+/** Um banco que a pessoa adicionou à empresa, valendo da competência "desde" ('aaaa-mm') em diante. */
+export interface BancoAdicionado { id: string; nome: string; desde: string }
 
 export interface RegistroAuditoria {
   /** ISO */
@@ -48,6 +53,8 @@ export interface EmpresaExtrator {
   nome: string;
   arquivos: ArquivoImportado[];
   auditoria: RegistroAuditoria[];
+  /** bancos adicionados pela tela (os cadastrados vêm de empresas/bancos.ts) */
+  bancos?: BancoAdicionado[];
 }
 
 /** Resultado da leitura de um arquivo (antes de importar). */

@@ -69,9 +69,11 @@ export interface Execucao {
   competencia: string;
   departamento: Departamento;
   etapas: Record<string, EstadoEtapa>;
+  /** os bancos (id) que não tiveram movimento na competência ("Não teve movimento" na linha do banco) */
+  semMovimento?: string[];
 }
 
-export type TipoEvento = 'inicio' | 'feita' | 'dispensada' | 'interrompida' | 'verificacao-falhou';
+export type TipoEvento = 'inicio' | 'feita' | 'dispensada' | 'interrompida' | 'verificacao-falhou' | 'sem-movimento' | 'com-movimento';
 
 /** O que aconteceu, quando e com quem (para produtividade e análise das objeções). */
 export interface Evento {

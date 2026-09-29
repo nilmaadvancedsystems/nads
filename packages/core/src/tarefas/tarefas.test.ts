@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ArquivoImportado } from '../extratudo/extrator/tipos';
 import {
   competenciasRecentes, concluida, criarRepoTarefasMemoria, dispensar, execucaoNova, fazer, idDaExecucao, interromper,
-  objecoesMaisComuns, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar, execucoesVariadas,
+  objecoesMaisComuns, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar, execucoesVariadas, marcarSemMovimento, todosSemMovimento,
 } from '.';
 
 const R = ROTINA_CONTABIL;
@@ -121,5 +121,31 @@ describe('exemplos variados (só no modo exemplos)', () => {
     const repo = criarRepoTarefasMemoria({ agora, guarda: null, empresas: lista });
     expect(repo.listarEmpresas()).toHaveLength(50);
     expect(repo.execucoes('2026-08', 'contabil').length).toBe(doMes.length);
+  });
+});
+
+describe('não teve movimento (por banco)', () => {
+  it('marca e desmarca; todos os bancos sem movimento', () => {
+    const bancos = [{ id: 'sicoob' }, { id: 'itau' }];
+    let ex = execucaoNova('FITO', 292, '2026-08', 'contabil');
+    const m = marcarSemMovimento(ex, 'extratos', 'sicoob', true, 'Clara', agora);
+    expect(m.evento).toMatchObject({ tipo: 'sem-movimento', etapa: 'extratos', observacao: 'sicoob' });
+    ex = m.execucao;
+    expect(todosSemMovimento(ex, bancos)).toBe(false);
+    ex = marcarSemMovimento(ex, 'extratos', 'itau', true, 'Clara', agora).execucao;
+    expect(todosSemMovimento(ex, bancos)).toBe(true);
+    ex = marcarSemMovimento(ex, 'extratos', 'sicoob', false, 'Clara', agora).execucao;
+    expect(ex.semMovimento).toEqual(['itau']);
+    expect(todosSemMovimento(null, bancos)).toBe(false);
+  });
+});
+
+describe('check por banco', () => {
+  const contas = (semMovimento: string[] = []) => ({ bancos: [{ id: 'sicoob', nome: 'Sicoob' }, { id: 'itau', nome: 'Itaú' }], semMovimento });
+  const doBanco = (lado: 'banco' | 'sistema', banco?: string) => ({ ...arq(lado, '2026-08-05'), id: lado + (banco || ''), ...(banco ? { banco } : {}) });
+  it('cada banco precisa de extrato e razão; arquivo sem banco é do primeiro', () => {
+    expect(verificar(etapa('extratos'), '2026-08', [doBanco('banco'), doBanco('sistema')], contas()).motivo).toBe('Falta o extrato do Itaú de agosto/2026.');
+    expect(verificar(etapa('extratos'), '2026-08', [doBanco('banco'), doBanco('sistema'), doBanco('banco', 'itau')], contas()).motivo).toBe('Falta o razão do Itaú de agosto/2026.');
+    expect(verificar(etapa('extratos'), '2026-08', [doBanco('banco'), doBanco('sistema')], contas(['itau'])).ok).toBe(true);
   });
 });

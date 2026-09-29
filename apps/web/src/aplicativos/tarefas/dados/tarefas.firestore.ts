@@ -10,7 +10,7 @@
 // - se falhar, avisa 'Não deu para salvar … na nuvem: …'.
 import { extrator as x, formatos, tarefas as t, type empresas, type usuarios } from '@nads/core';
 import { getApps, initializeApp } from 'firebase/app';
-import { collection, doc, getDocs, getFirestore, initializeFirestore, onSnapshot, query, where, writeBatch, type Firestore } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, getFirestore, initializeFirestore, onSnapshot, query, where, writeBatch, type Firestore } from 'firebase/firestore';
 
 /** Configuração web pública do projeto conferencia-nilma (a mesma da Conferência). */
 const CONFIG_CONFERENCIA = {
@@ -93,8 +93,10 @@ export function criarRepoTarefasFirestore(lista: readonly empresas.EmpresaDoEscr
   };
 }
 
-/** Os arquivos que o Extrator guardou da empresa (só leitura, para o check automático). */
-export async function arquivosDoExtratorNoBanco(nome: string): Promise<x.ArquivoImportado[]> {
-  const s = await getDocs(collection(bancoDaConferencia(), 'extrator', formatos.slug(nome), 'arquivos'));
-  return s.docs.map(d => d.data() as x.ArquivoImportado);
+/** O que o Extrator guardou da empresa: os arquivos e os bancos adicionados (só leitura, para o check automático). */
+export async function extratorNoBanco(nome: string): Promise<x.EmpresaExtrator> {
+  const db = bancoDaConferencia();
+  const id = formatos.slug(nome);
+  const [d, s] = await Promise.all([getDoc(doc(db, 'extrator', id)), getDocs(collection(db, 'extrator', id, 'arquivos'))]);
+  return x.empresaDoBanco(nome, (d.data() as Partial<x.DocEmpresaExtrator> | undefined) || null, s.docs.map(a => a.data() as x.ArquivoImportado));
 }

@@ -4,7 +4,7 @@
 import { empresas, extrator, tarefas as t } from '@nads/core';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { arquivosDoExtrator } from '../../dados/fonte';
+import { extratorDaEmpresa } from '../../dados/fonte';
 import { useRepo, useVersaoDoRepo } from '../../dados/repo';
 import { caminhoDaEmpresa, caminhoDaPagina, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
@@ -44,7 +44,7 @@ export function useEmpresa(rota: string) {
     if (!empresa) return;
     let vivo = true;
     setArquivos(null);
-    arquivosDoExtrator(empresa.nome).then(a => { if (vivo) setArquivos(a); }, () => { if (vivo) setArquivos([]); });
+    extratorDaEmpresa(empresa.nome).then(e => { if (vivo) setArquivos(e.arquivos); }, () => { if (vivo) setArquivos([]); });
     return () => { vivo = false; };
   }, [empresa]);
 

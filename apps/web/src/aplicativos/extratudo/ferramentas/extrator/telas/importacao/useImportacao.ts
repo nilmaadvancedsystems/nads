@@ -2,7 +2,7 @@
 // cada uma com vários arquivos de uma vez. Lê cada arquivo no navegador (o arquivo não é guardado),
 // pergunta "apenas novas / sobrepor" quando já existe lançamento nas mesmas datas e mostra o
 // resultado na mensagem flutuante. Embaixo, os arquivos importados, com Excluir.
-import { extrator as x } from '@nads/core';
+import { empresas, extrator as x } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -40,7 +40,7 @@ export const CAIXAS: ConfigCaixa[] = [
 
 /** O que a mensagem flutuante mostra (a View desenha). */
 export interface Mensagem {
-  tom: 'erro' | 'ok';
+  tom: 'erro' | 'ok' | 'info';
   titulo: string;
   textos: { texto: string; tom?: 'aviso' }[];
 }
@@ -58,6 +58,12 @@ export function useImportacao() {
   const competenciaDeTeste = /^\d{4}-\d{2}$/.test(params.get('competencia') || '') ? (params.get('competencia') as string) : mesPassado();
   const [escolhidos, setEscolhidos] = useState<Record<x.Lado, File[]>>({ banco: [], sistema: [] });
   const [lendo, setLendo] = useState<x.Lado | null>(null);
+  /** a linha de banco que está importando: 'banco|lado' */
+  const [lendoLinha, setLendoLinha] = useState<string | null>(null);
+  // os bancos da empresa na competência (uma linha cada); arquivo sem banco = do primeiro cadastrado
+  const cadastrados = empresas.bancosDaEmpresa(s.codigo);
+  const primeiro = cadastrados[0].id;
+  const bancos = x.bancosNaCompetencia(s.empresa, cadastrados, competenciaDeTeste);
   const [mensagem, setMensagemBruta] = useState<Mensagem | null>(null);
   const [seqMensagem, setSeq] = useState(0);
   const setMensagem = (m: Mensagem | null) => { setMensagemBruta(m); setSeq(v => v + 1); };
@@ -84,8 +90,19 @@ export function useImportacao() {
     await gravarLidos(lado, lidos);
   }
 
+  /** Importar direto (na linha do banco): escolheu os arquivos, já importa para aquele banco. */
+  async function importarArquivos(banco: string, lado: x.Lado, fs: File[]) {
+    if (!fs.length) return;
+    setMensagemBruta(null);
+    setLendoLinha(banco + '|' + lado);
+    const lidos: x.ArquivoLido[] = [];
+    for (const f of fs) lidos.push(await x.lerArquivo(f.name, new Uint8Array(await f.arrayBuffer()), lado));
+    await gravarLidos(lado, lidos, banco);
+    setLendoLinha(null);
+  }
+
   /** O que vem depois de ler: pergunta o modo (se já houver movimento nas datas), importa e avisa. */
-  async function gravarLidos(lado: x.Lado, lidos: x.ArquivoLido[]) {
+  async function gravarLidos(lado: x.Lado, lidos: x.ArquivoLido[], banco?: string) {
     const falhas = lidos.filter(l => l.erro || !l.lancamentos.length);
     const bons = lidos.filter(l => !l.erro && l.lancamentos.length);
     if (!bons.length) {
@@ -95,7 +112,10 @@ export function useImportacao() {
     }
     const qtdLida = bons.reduce((t, l) => t + l.lancamentos.length, 0);
     let modo: x.ModoImportacao | 'primeira' = 'primeira';
-    const existentes = x.jaTemNoPeriodo(s.empresa, lado, bons);
+    // de um banco só: "apenas novas" e "sobrepor" olham só os arquivos daquele banco
+    const doBanco = (a: x.ArquivoImportado) => !banco || x.bancoDoArquivo(a, primeiro) === banco;
+    const base = banco ? { ...s.empresa, arquivos: s.empresa.arquivos.filter(doBanco) } : s.empresa;
+    const existentes = x.jaTemNoPeriodo(base, lado, bons);
     if (existentes) {
       const escolha = await modal<x.ModoImportacao | null>({
         icone: 'upload', titulo: 'Como importar ' + NOME[lado] + '?',
@@ -107,8 +127,12 @@ export function useImportacao() {
       if (!escolha) { setLendo(null); toast('Importação cancelada — nada foi alterado.'); return; }
       modo = escolha;
     }
-    const res = x.importar(s.empresa, lado, bons, modo, new Date(), novoId);
-    s.aplicar(() => res.empresa);
+    const res = x.importar(base, lado, bons, modo, new Date(), novoId);
+    if (banco) {
+      const antes = new Set(base.arquivos.map(a => a.id));
+      const outros = s.empresa.arquivos.filter(a => !doBanco(a));
+      s.aplicar(() => ({ ...res.empresa, arquivos: [...outros, ...res.empresa.arquivos.map(a => (antes.has(a.id) ? a : { ...a, banco }))] }));
+    } else s.aplicar(() => res.empresa);
     setLendo(null);
     setEscolhidos(e => ({ ...e, [lado]: [] }));
     const textos: Mensagem['textos'] = [];
@@ -122,10 +146,34 @@ export function useImportacao() {
    * PROTÓTIPO: importa um extrato ou razão inventado da competência (a da tarefa, quando vem na URL;
    * senão, o mês passado), pelo mesmo caminho de um arquivo de verdade. O nome do arquivo diz TESTE.
    */
-  async function importarTeste(lado: x.Lado) {
+  async function importarTeste(lado: x.Lado, banco?: string) {
     setMensagemBruta(null);
     setLendo(lado);
-    await gravarLidos(lado, [x.arquivoDeTeste(lado, competenciaDeTeste)]);
+    if (banco) setLendoLinha(banco + '|' + lado);
+    await gravarLidos(lado, [x.arquivoDeTeste(lado, competenciaDeTeste)], banco);
+    setLendoLinha(null);
+  }
+
+  /** O check verde da linha: exclui o que foi importado daquele banco e lado na competência (pergunta antes). */
+  async function excluirDoBanco(banco: string, lado: x.Lado) {
+    const arqs = x.arquivosDoBanco(s.empresa, banco, primeiro, lado, competenciaDeTeste);
+    if (!arqs.length) return;
+    const nomeBanco = bancos.find(b => b.id === banco)?.nome || 'banco';
+    const ok = await modal<boolean>({
+      icone: 'alert', titulo: 'Excluir a importação?',
+      html: (lado === 'banco' ? 'O extrato' : 'O razão') + ' do <b>' + escapar(nomeBanco) + '</b>: ' +
+        arqs.map(a => '<b>' + escapar(a.nome) + '</b> (' + a.lancamentos.length + ')').join(', ') + '. Dá para importar de novo depois.',
+      botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }],
+    });
+    if (!ok) return;
+    s.aplicar(e => arqs.reduce((acc, a) => x.excluirArquivo(acc, a.id, new Date()), e));
+    setMensagem({ tom: 'ok', titulo: 'Importação excluída', textos: [{ texto: nomeBanco + ' · ' + (lado === 'banco' ? 'extrato' : 'razão') }] });
+  }
+
+  /** Adicionar banco: vale desta competência em diante. */
+  function adicionarBanco(b: empresas.BancoDaEmpresa) {
+    s.aplicar(e => x.adicionarBanco(e, b, competenciaDeTeste, new Date()));
+    setMensagem({ tom: 'ok', titulo: b.nome + ' adicionado', textos: [{ texto: 'a partir desta competência' }] });
   }
 
   async function excluir(id: string) {
@@ -157,6 +205,19 @@ export function useImportacao() {
   return {
     caixas: CAIXAS.map(c => ({ ...c, escolhidos: escolhidos[c.lado], lendo: lendo === c.lado })),
     escolher, tirar, importar, importarTeste, excluir, excluirJa,
+    // linhas de banco (a etapa da Tarefas)
+    competencia: competenciaDeTeste,
+    primeiro,
+    bancos: bancos.map(b => {
+      const lado = (l: x.Lado) => {
+        const arqs = x.arquivosDoBanco(s.empresa, b.id, primeiro, l, competenciaDeTeste);
+        return { qtdArquivos: arqs.length, qtdLancamentos: arqs.reduce((t, a) => t + a.lancamentos.length, 0), lendo: lendoLinha === b.id + '|' + l };
+      };
+      return { ...b, extrato: lado('banco'), razao: lado('sistema') };
+    }),
+    bancosParaAdicionar: empresas.BANCOS_CONHECIDOS.filter(b => !bancos.some(v => v.id === b.id)),
+    importarArquivos, excluirDoBanco, adicionarBanco,
+    avisar: (titulo: string) => setMensagem({ tom: 'info', titulo, textos: [] }),
     ocupado: lendo !== null,
     mensagem, seqMensagem, fecharMensagem,
     arquivos,

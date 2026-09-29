@@ -5,7 +5,7 @@
 //                paradas), neste navegador; nada vai para o banco. O check lê o Extrator de exemplo.
 // O repositório é criado uma vez, quando alguém abre a Tarefas.
 import { empresas, extrator, tarefas } from '@nads/core';
-import { arquivosDoExtratorNoBanco, criarRepoTarefasFirestore, type RepoTarefasFirestore } from './tarefas.firestore';
+import { criarRepoTarefasFirestore, extratorNoBanco, type RepoTarefasFirestore } from './tarefas.firestore';
 
 export const noBanco = import.meta.env.VITE_FONTE === 'banco';
 
@@ -21,9 +21,9 @@ export function avisarErrosDoBanco(r: tarefas.RepoTarefas, aviso: (mensagem: str
   if (noBanco) (r as RepoTarefasFirestore).definirAviso(aviso);
 }
 
-/** O que o Extrator guardou da empresa (para o check automático das etapas que dependem dele). */
-export async function arquivosDoExtrator(nome: string): Promise<extrator.ArquivoImportado[]> {
-  if (noBanco) return arquivosDoExtratorNoBanco(nome);
+/** O que o Extrator guardou da empresa (arquivos e bancos adicionados), para o check automático e a página da empresa. */
+export async function extratorDaEmpresa(nome: string): Promise<extrator.EmpresaExtrator> {
+  if (noBanco) return extratorNoBanco(nome);
   // exemplos: o Extrator de exemplo guarda neste navegador; lê de novo a cada conferência
-  return extrator.criarRepoExtratorMemoria({ exemplos: true }).obter(nome)?.arquivos || [];
+  return extrator.criarRepoExtratorMemoria({ exemplos: true }).obter(nome) || extrator.empresaNova(nome);
 }
