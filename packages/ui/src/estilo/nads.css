@@ -1148,3 +1148,5 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
   .tarefas-barra-topo .popover-wrap{position:static;}
   .tarefas-barra-topo .menu-pop{left:0;right:0;width:auto !important;}
 }
+.th-seta{width:12px;height:12px;margin-left:4px;vertical-align:-1px;color:var(--ink-muted);}
+.th-seta.cima{transform:rotate(180deg);}

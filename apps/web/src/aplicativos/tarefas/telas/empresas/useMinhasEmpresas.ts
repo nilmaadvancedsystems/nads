@@ -4,7 +4,7 @@ import { empresas, tarefas as t } from '@nads/core';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { caminhoDaPagina, caminhoDoExecutor } from '../../casca/navegacao';
-import { ORDEM, SITUACOES, useAndamento } from './andamento';
+import { SITUACOES, useAndamento } from './andamento';
 
 export const LIMITE = 60;
 /** Quantas empresas a lista do "Iniciar" mostra de uma vez. */
@@ -35,8 +35,9 @@ export function useMinhasEmpresas() {
   const [abaIniciar, setAbaIniciar] = useState<AbaIniciar>('escolher');
   const [filtroIniciar, setFiltroIniciar] = useState<FiltroIniciar>('todas');
   const situacao = SITUACOES.some(s => s.valor === a.params.get('situacao')) ? (a.params.get('situacao') as t.SituacaoGeral) : '';
-  // ordem na URL (?ordem=codigo&dir=desc); sem nada = situação (paradas primeiro)
-  const coluna: Coluna = COLUNAS.includes(a.params.get('ordem') as Coluna) ? (a.params.get('ordem') as Coluna) : 'situacao';
+  // ordem na URL (?ordem=codigo&dir=desc); sem nada = situação (paradas primeiro), sem seta no título
+  const escolhida = COLUNAS.includes(a.params.get('ordem') as Coluna);
+  const coluna: Coluna = escolhida ? (a.params.get('ordem') as Coluna) : 'situacao';
   const dir: 'asc' | 'desc' = a.params.get('dir') === 'desc' ? 'desc' : 'asc';
 
   const achadas = busca.trim() ? new Set(empresas.buscarEmpresas(a.linhas.map(l => l.empresa), busca)) : null;
@@ -45,10 +46,11 @@ export function useMinhasEmpresas() {
     codigo: (x, y) => (x.codigo ?? Infinity) - (y.codigo ?? Infinity),
     nome: (x, y) => x.nome.localeCompare(y.nome, 'pt-BR'),
     etapas: (x, y) => x.concluidas / x.total - y.concluidas / y.total,
-    situacao: (x, y) => ORDEM[x.situacao] - ORDEM[y.situacao],
-    proxima: (x, y) => x.posProxima - y.posProxima,
+    situacao: (x, y) => x.rotuloSituacao.localeCompare(y.rotuloSituacao, 'pt-BR'),
+    proxima: (x, y) => x.proxima.localeCompare(y.proxima, 'pt-BR'),
   };
-  linhas.sort((x, y) => (dir === 'asc' ? 1 : -1) * comparar[coluna](x, y) || x.nome.localeCompare(y.nome, 'pt-BR'));
+  // texto em ordem alfabética, número do menor para o maior; sem coluna escolhida fica a ordem de sempre
+  if (escolhida) linhas.sort((x, y) => (dir === 'asc' ? 1 : -1) * comparar[coluna](x, y) || x.nome.localeCompare(y.nome, 'pt-BR'));
 
   // "Iniciar": as empresas que ainda têm etapa a fazer (paradas e em andamento primeiro), com busca própria
   const abertas = a.linhas.filter(l => l.situacao !== 'concluida');
@@ -76,12 +78,13 @@ export function useMinhasEmpresas() {
     rotuloSituacao: SITUACOES.find(s => s.valor === situacao)?.rotulo || 'Todas',
     situacoes: SITUACOES,
     setSituacao: (s: string) => a.mudar('situacao', s),
-    ordem: { coluna, dir },
-    /** clicar no título: ordena por ela; clicar de novo inverte */
+    /** a coluna que a pessoa escolheu (null = a ordem de sempre, sem seta) */
+    ordem: escolhida ? { coluna, dir } : null,
+    /** clicar no título: ordena por ela em ordem crescente (A→Z, menor primeiro); clicar de novo inverte */
     ordenar: (c: Coluna) => {
-      const novoDir = c === coluna && dir === 'asc' ? 'desc' : 'asc';
+      const novoDir = escolhida && c === coluna && dir === 'asc' ? 'desc' : 'asc';
       const novo = new URLSearchParams(a.params);
-      if (c === 'situacao' && novoDir === 'asc') novo.delete('ordem'); else novo.set('ordem', c);
+      novo.set('ordem', c);
       if (novoDir === 'desc') novo.set('dir', 'desc'); else novo.delete('dir');
       a.setParams(novo);
     },

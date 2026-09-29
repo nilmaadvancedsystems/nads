@@ -9,13 +9,13 @@ import { LIMITE, useMinhasEmpresas, type Coluna } from './useMinhasEmpresas';
 
 const SELO: Record<string, string> = { parada: 'badge-bad', 'em-andamento': 'badge-warn', 'nao-iniciada': 'badge-neutral', concluida: 'badge-ok' };
 
-/** Título de coluna que ordena: clicar ordena por ela, clicar de novo inverte (▲/▼, como na Consulta). */
+/** Título de coluna que ordena: clicar ordena por ela (crescente), clicar de novo inverte; a setinha cinza só aparece depois do clique. */
 function Titulo({ vm, coluna, rotulo }: { vm: ReturnType<typeof useMinhasEmpresas>; coluna: Coluna; rotulo: string }) {
-  const ativo = vm.ordem.coluna === coluna;
+  const ativo = vm.ordem?.coluna === coluna;
   return (
-    <th className="th-sort" onClick={() => vm.ordenar(coluna)} aria-sort={ativo ? (vm.ordem.dir === 'asc' ? 'ascending' : 'descending') : undefined}
+    <th className="th-sort" onClick={() => vm.ordenar(coluna)} aria-sort={ativo ? (vm.ordem?.dir === 'asc' ? 'ascending' : 'descending') : undefined}
       title="Ordenar por esta coluna">
-      {rotulo}<span className="th-sort-ico">{ativo ? (vm.ordem.dir === 'asc' ? ' ▲' : ' ▼') : ''}</span>
+      {rotulo}{ativo && <Icone nome="caretDown" className={'th-seta' + (vm.ordem?.dir === 'asc' ? ' cima' : '')} />}
     </th>
   );
 }

@@ -12,7 +12,7 @@ export const SITUACOES: readonly { valor: t.SituacaoGeral; rotulo: string }[] = 
   { valor: 'concluida', rotulo: 'Concluídas' },
 ];
 
-export const ORDEM: Record<t.SituacaoGeral, number> = { parada: 0, 'em-andamento': 1, 'nao-iniciada': 2, concluida: 3 };
+const ORDEM: Record<t.SituacaoGeral, number> = { parada: 0, 'em-andamento': 1, 'nao-iniciada': 2, concluida: 3 };
 const ACAO: Record<t.SituacaoGeral, string> = { parada: 'Retomar', 'em-andamento': 'Continuar', 'nao-iniciada': 'Iniciar', concluida: 'Ver' };
 
 export function useAndamento() {
@@ -37,8 +37,7 @@ export function useAndamento() {
       empresa: emp, chave: (emp.codigo ?? '') + emp.nome, codigo: emp.codigo, nome: emp.nome, rota: empresas.rotaDaEmpresa(emp),
       concluidas: p.concluidas, total: p.total, situacao, rotuloSituacao: t.ROTULO_SITUACAO_GERAL[situacao],
       proxima: proxima ? proxima.nome : '—', acao: ACAO[situacao], mexiEm,
-      // para ordenar pela próxima etapa na ordem da rotina (concluída = depois de todas)
-      posProxima: proxima ? rotina.etapas.indexOf(proxima) : rotina.etapas.length,
+
     };
   }).sort((a, b) => ORDEM[a.situacao] - ORDEM[b.situacao]) : [];
 
