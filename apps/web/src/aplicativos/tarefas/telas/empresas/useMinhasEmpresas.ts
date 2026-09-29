@@ -11,8 +11,8 @@ export const LIMITE = 60;
 export const LIMITE_INICIAR = 30;
 
 /** As colunas da tabela que ordenam (clicando no título, como na Consulta da Conferência). */
-export type Coluna = 'codigo' | 'nome' | 'situacao' | 'etapa';
-const COLUNAS: readonly Coluna[] = ['codigo', 'nome', 'situacao', 'etapa'];
+export type Coluna = 'codigo' | 'nome' | 'situacao';
+const COLUNAS: readonly Coluna[] = ['codigo', 'nome', 'situacao'];
 
 /** As abas do painel do Iniciar (como Local / Codespaces do botão Code do GitHub). */
 export type AbaIniciar = 'escolher' | 'recentes';
@@ -46,7 +46,6 @@ export function useMinhasEmpresas() {
     codigo: (x, y) => (x.codigo ?? Infinity) - (y.codigo ?? Infinity),
     nome: (x, y) => x.nome.localeCompare(y.nome, 'pt-BR'),
     situacao: (x, y) => x.rotuloSituacao.localeCompare(y.rotuloSituacao, 'pt-BR'),
-    etapa: (x, y) => x.etapaAtual.localeCompare(y.etapaAtual, 'pt-BR'),
   };
   // texto em ordem alfabética, número do menor para o maior; sem coluna escolhida fica a ordem de sempre
   if (escolhida) linhas.sort((x, y) => (dir === 'asc' ? 1 : -1) * comparar[coluna](x, y) || x.nome.localeCompare(y.nome, 'pt-BR'));
@@ -94,7 +93,12 @@ export function useMinhasEmpresas() {
     filtrando: !!situacao || !!busca.trim(),
     limparFiltros: () => { setBusca(''); a.mudar('situacao', ''); },
     carregando: a.carregando,
-    linhas: linhas.slice(0, LIMITE),
+    // quando mexeram por último ("há 5 horas", "ontem"), e a data e hora completas para o título
+    linhas: linhas.slice(0, LIMITE).map(l => ({
+      ...l,
+      quando: l.ultimaVez ? t.quandoFoi(l.ultimaVez, new Date()) : '',
+      quandoCompleto: l.ultimaVez ? new Date(l.ultimaVez).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '',
+    })),
     total: linhas.length,
     abrir,
     // Iniciar

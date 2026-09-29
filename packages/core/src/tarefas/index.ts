@@ -6,5 +6,6 @@ export * from './regras/execucao';
 export * from './regras/verificacao';
 export * from './regras/competencias';
 export * from './regras/visao';
+export * from './regras/quando';
 export { idDaExecucao, type RepoTarefas } from './repo';
 export { criarRepoTarefasMemoria, execucoesDeExemplo, type GuardaTarefas } from './repo.memoria';

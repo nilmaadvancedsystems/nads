@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ArquivoImportado } from '../extratudo/extrator/tipos';
 import {
   competenciasRecentes, concluida, criarRepoTarefasMemoria, dispensar, execucaoNova, fazer, idDaExecucao, interromper,
-  objecoesMaisComuns, progresso, proximaEtapa, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, verificar,
+  objecoesMaisComuns, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar,
 } from '.';
 
 const R = ROTINA_CONTABIL;
@@ -87,5 +87,23 @@ describe('competências e visão de cima', () => {
     repo.gravar(f.execucao, f.evento);
     expect(repo.execucoes('2026-08', 'contabil')).toHaveLength(3);
     expect(idDaExecucao('Fito Indústria', '2026-08', 'contabil')).toBe('fito-industria_2026-08_contabil');
+  });
+});
+
+describe('quando foi (última vez que mexeram)', () => {
+  const agoraLocal = new Date(2026, 8, 29, 15, 0);
+  const antes = (ms: number) => new Date(agoraLocal.getTime() - ms).toISOString();
+  it('minutos, horas, ontem, dias e data', () => {
+    expect(quandoFoi(antes(20 * 1000), agoraLocal)).toBe('agora');
+    expect(quandoFoi(antes(5 * 60000), agoraLocal)).toBe('há 5 min');
+    expect(quandoFoi(antes(60 * 60000), agoraLocal)).toBe('há 1 hora');
+    expect(quandoFoi(antes(5 * 3600000), agoraLocal)).toBe('há 5 horas');
+    expect(quandoFoi(new Date(2026, 8, 28, 23, 0).toISOString(), agoraLocal)).toBe('ontem');
+    expect(quandoFoi(new Date(2026, 8, 26, 10, 0).toISOString(), agoraLocal)).toBe('há 3 dias');
+    expect(quandoFoi(new Date(2026, 6, 1, 10, 0).toISOString(), agoraLocal)).toBe('01/07/2026');
+  });
+  it('a última data entre as etapas, de qualquer pessoa', () => {
+    expect(ultimaVez(null)).toBeNull();
+    expect(ultimaVez({ etapas: { a: { em: '2026-09-01T10:00:00Z' }, b: { em: '2026-09-03T10:00:00Z' } } })).toBe('2026-09-03T10:00:00Z');
   });
 });

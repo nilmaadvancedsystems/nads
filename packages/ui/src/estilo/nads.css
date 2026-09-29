@@ -1156,3 +1156,11 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 .th-seta.cima{transform:rotate(180deg);}
 tr.linha-abre{cursor:pointer;}
 tr.linha-abre:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+/* texto de apoio numa linha de tabela (etapa atual, quando mexeram): meio apagado, como as datas do GitHub */
+td.fraco{color:var(--ink-muted);}
+/* a situação da empresa como bolinha colorida ao lado do código (Tarefas) */
+.bolinha-sit{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:8px;vertical-align:1px;background:var(--border-strong);}
+.bolinha-sit.parada{background:var(--danger);}
+.bolinha-sit.em-andamento{background:#E3B341;}
+.bolinha-sit.nao-iniciada{background:var(--border-strong);}
+.bolinha-sit.concluida{background:var(--success);}

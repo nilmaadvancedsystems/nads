@@ -7,7 +7,6 @@ import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { PainelIniciar } from './partes/PainelIniciar';
 import { LIMITE, useMinhasEmpresas, type Coluna } from './useMinhasEmpresas';
 
-const SELO: Record<string, string> = { parada: 'badge-bad', 'em-andamento': 'badge-warn', 'nao-iniciada': 'badge-neutral', concluida: 'badge-ok' };
 
 /** Título de coluna que ordena: clicar ordena por ela (crescente), clicar de novo inverte; a setinha cinza só aparece depois do clique. */
 function Titulo({ vm, coluna, rotulo }: { vm: ReturnType<typeof useMinhasEmpresas>; coluna: Coluna; rotulo: string }) {
@@ -73,17 +72,21 @@ export function MinhasEmpresas() {
             <thead><tr>
               <Titulo vm={vm} coluna="codigo" rotulo="Código" />
               <Titulo vm={vm} coluna="nome" rotulo="Empresa" />
-              <Titulo vm={vm} coluna="situacao" rotulo="Situação" />
-              <Titulo vm={vm} coluna="etapa" rotulo="Etapa atual" />
+              <th />
+              <th />
             </tr></thead>
             <tbody>
               {vm.linhas.map(l => (
                 <tr key={l.chave} className="linha-abre" tabIndex={0} title={l.acao + ': ' + l.nome}
                   onClick={() => vm.abrir(l.rota)} onKeyDown={e => { if (e.key === 'Enter') vm.abrir(l.rota); }}>
-                  <td className="num">{l.codigo ?? '—'}</td>
+                  <td className="num">
+                    {l.codigo ?? '—'}
+                    {/* a situação em cor: laranja parada, amarelo em andamento, cinza não iniciada, verde concluída */}
+                    <span className={'bolinha-sit ' + l.situacao} title={l.rotuloSituacao} role="img" aria-label={l.rotuloSituacao} />
+                  </td>
                   <td>{l.nome}</td>
-                  <td><span className={'badge ' + SELO[l.situacao]}>{l.rotuloSituacao}</span></td>
-                  <td>{l.etapaAtual}</td>
+                  <td className="fraco">{l.etapaAtual}</td>
+                  <td className="fraco num" title={l.quandoCompleto || undefined}>{l.quando}</td>
                 </tr>
               ))}
             </tbody>

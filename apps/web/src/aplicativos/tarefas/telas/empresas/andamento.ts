@@ -39,7 +39,8 @@ export function useAndamento() {
       proxima: proxima ? proxima.nome : '—', acao: ACAO[situacao], mexiEm,
       // a etapa em que a empresa está (em branco se ainda não começou ou já terminou)
       etapaAtual: situacao === 'nao-iniciada' || !proxima ? '' : proxima.nome,
-
+      // a última vez que alguém mexeu nesta empresa na competência (de qualquer pessoa)
+      ultimaVez: t.ultimaVez(ex),
     };
   }).sort((a, b) => ORDEM[a.situacao] - ORDEM[b.situacao]) : [];
 
