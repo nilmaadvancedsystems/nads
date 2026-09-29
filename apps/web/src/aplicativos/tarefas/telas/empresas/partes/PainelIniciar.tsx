@@ -65,11 +65,11 @@ export function PainelIniciar({ vm, fechar }: { vm: Vm; fechar: () => void }) {
       <hr className="popover-sep" />
       <button type="button" className="popover-item" role="menuitem" disabled={!vm.ultimaAberta} onClick={() => ir(vm.ultimaAberta)}>
         <Icone nome="repeat" /><span className="popover-texto">Continuar a última que mexi</span>
-        {vm.ultimaAberta && <span className="popover-dica">{vm.ultimaAberta.codigo ?? vm.ultimaAberta.nome}</span>}
+        {vm.ultimaAberta && <span className="popover-dica">{vm.ultimaAberta.codigo != null ? 'Código ' + vm.ultimaAberta.codigo : vm.ultimaAberta.nome}</span>}
       </button>
       <button type="button" className="popover-item" role="menuitem" disabled={!vm.proximaDaFila} onClick={() => ir(vm.proximaDaFila)}>
         <Icone nome="zap" /><span className="popover-texto">Iniciar a próxima da fila</span>
-        {vm.proximaDaFila && <span className="popover-dica">{vm.proximaDaFila.codigo ?? vm.proximaDaFila.nome}</span>}
+        {vm.proximaDaFila && <span className="popover-dica">{vm.proximaDaFila.codigo != null ? 'Código ' + vm.proximaDaFila.codigo : vm.proximaDaFila.nome}</span>}
       </button>
       <button type="button" className="popover-item" role="menuitem" disabled={!vm.paradas} onClick={() => { fechar(); vm.verParadas(); }}>
         <Icone nome="alert" /><span className="popover-texto">Ver as paradas na lista</span>
