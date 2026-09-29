@@ -2,7 +2,7 @@
 // guardadas neste navegador (localStorage) quando dá. Nada vai para o banco.
 import { BALANCETES_EXEMPLO } from './exemplos';
 import { clientesDoDocumento, type ClientesAprendidos } from './regras/aprendizado';
-import { CONFIG_VAZIA, SEM_BALANCETE, configDoDocumento, type BalanceteDaEmpresa, type ConfigCreditor } from './regras/balancete';
+import { CONFIG_VAZIA, SEM_BALANCETE, configDoDocumento, type BalanceteDaEmpresa } from './regras/balancete';
 import type { RepoCreditor } from './repo';
 
 const NENHUM: ClientesAprendidos = {};

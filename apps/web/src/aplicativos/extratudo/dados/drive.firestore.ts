@@ -49,7 +49,7 @@ export function criarDriveFirestore(): cr.RepoDrive {
       try {
         await signInWithEmailAndPassword(auth, cr.emailDoUsuario(usuario), senha);
       } catch (e) {
-        throw new Error(cr.mensagemDoLogin(String((e as { code?: string })?.code || (e as Error)?.message || e)));
+        throw new Error(cr.mensagemDoLogin(String((e as { code?: string })?.code || (e as Error)?.message || e)), { cause: e });
       }
     },
     async sair() { await signOut(auth); },
@@ -64,7 +64,7 @@ export function criarDriveFirestore(): cr.RepoDrive {
         const itens = partes.docs.sort((a, b) => Number(a.id) - Number(b.id)).flatMap(p => (p.data().itens as cr.ItemDrive[]) || []);
         return { raiz: pasta.id, nome: pasta.nomePasta, itens };
       } catch (e) {
-        if (semPermissao(e)) throw new Error('Seu usuário do Entregas não pode ver o Arquivo (precisa ser do contábil ou admin).');
+        if (semPermissao(e)) throw new Error('Seu usuário do Entregas não pode ver o Arquivo (precisa ser do contábil ou admin).', { cause: e });
         throw e;
       }
     },
@@ -93,7 +93,7 @@ export function criarDriveFirestore(): cr.RepoDrive {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return await r.arrayBuffer();
       } catch (e) {
-        throw new Error('Não consegui baixar a cópia do Drive (' + ((e as Error)?.message || e) + '). Se o erro for de CORS, o armazenamento do Entregas precisa liberar este site.');
+        throw new Error('Não consegui baixar a cópia do Drive (' + ((e as Error)?.message || e) + '). Se o erro for de CORS, o armazenamento do Entregas precisa liberar este site.', { cause: e });
       }
     },
 
