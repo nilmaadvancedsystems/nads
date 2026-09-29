@@ -170,10 +170,12 @@ export function useImportacao() {
     setMensagem({ tom: 'ok', titulo: 'Importação excluída', textos: [{ texto: nomeBanco + ' · ' + (lado === 'banco' ? 'extrato' : 'razão') }] });
   }
 
-  /** Adicionar banco: vale desta competência em diante. */
-  function adicionarBanco(b: empresas.BancoDaEmpresa) {
+  /** Adicionar banco (uma conta: banco, agência e conta): vale desta competência em diante. */
+  function adicionarBanco(marca: empresas.BancoDaEmpresa, agencia: string, conta: string) {
+    const b: empresas.BancoDaEmpresa = { id: empresas.idDaConta(marca.id, agencia, conta), nome: marca.nome, marca: marca.id, agencia: agencia.trim(), conta: conta.trim() };
+    if (bancos.some(v => v.id === b.id)) { setMensagem({ tom: 'erro', titulo: 'Essa conta já está na lista', textos: [{ texto: b.nome + ' · ' + empresas.rotuloDaConta(b) }] }); return; }
     s.aplicar(e => x.adicionarBanco(e, b, competenciaDeTeste, new Date()));
-    setMensagem({ tom: 'ok', titulo: b.nome + ' adicionado', textos: [{ texto: 'a partir desta competência' }] });
+    setMensagem({ tom: 'ok', titulo: b.nome + ' adicionado', textos: [{ texto: empresas.rotuloDaConta(b) }] });
   }
 
   async function excluir(id: string) {
@@ -213,9 +215,10 @@ export function useImportacao() {
         const arqs = x.arquivosDoBanco(s.empresa, b.id, primeiro, l, competenciaDeTeste);
         return { qtdArquivos: arqs.length, qtdLancamentos: arqs.reduce((t, a) => t + a.lancamentos.length, 0), lendo: lendoLinha === b.id + '|' + l };
       };
-      return { ...b, extrato: lado('banco'), razao: lado('sistema') };
+      return { ...b, marca: b.marca || b.id, conta: empresas.rotuloDaConta(b), extrato: lado('banco'), razao: lado('sistema') };
     }),
-    bancosParaAdicionar: empresas.BANCOS_CONHECIDOS.filter(b => !bancos.some(v => v.id === b.id)),
+    // o mesmo banco pode entrar de novo (outra conta, com outra agência/conta)
+    bancosParaAdicionar: empresas.BANCOS_CONHECIDOS,
     importarArquivos, excluirDoBanco, adicionarBanco,
     avisar: (titulo: string) => setMensagem({ tom: 'info', titulo, textos: [] }),
     ocupado: lendo !== null,

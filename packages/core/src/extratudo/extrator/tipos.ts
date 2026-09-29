@@ -38,7 +38,7 @@ export interface ArquivoImportado {
 }
 
 /** Um banco que a pessoa adicionou à empresa, valendo da competência "desde" ('aaaa-mm') em diante. */
-export interface BancoAdicionado { id: string; nome: string; desde: string }
+export interface BancoAdicionado { id: string; nome: string; desde: string; marca?: string; agencia?: string; conta?: string }
 
 export interface RegistroAuditoria {
   /** ISO */

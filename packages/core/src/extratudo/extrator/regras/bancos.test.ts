@@ -18,6 +18,11 @@ describe('bancos da empresa no Extrator', () => {
     expect(bancosNaCompetencia(e, SICOOB, '2026-07').map(b => b.id)).toEqual(['sicoob']);
     expect(bancosNaCompetencia(e, SICOOB, '2026-08').map(b => b.id)).toEqual(['sicoob', 'itau']);
   });
+  it('conta com agência: id próprio, aparece no nome da auditoria', () => {
+    const e = adicionarBanco(emp(), { id: 'itau-3001-123456', nome: 'Itaú', marca: 'itau', agencia: '3001', conta: '12345-6' }, '2026-08', agora);
+    expect(e.auditoria[0].detalhe).toBe('Itaú · Ag. 3001 · C/C 12345-6 · a partir de 08/2026');
+    expect(bancosNaCompetencia(e, SICOOB, '2026-08')[1]).toEqual({ id: 'itau-3001-123456', nome: 'Itaú', marca: 'itau', agencia: '3001', conta: '12345-6' });
+  });
   it('a linha genérica sai quando há banco adicionado e ela não tem arquivo', () => {
     const e = adicionarBanco(emp(), { id: 'itau', nome: 'Itaú' }, '2026-08', agora);
     expect(bancosNaCompetencia(e, GENERICO, '2026-08').map(b => b.id)).toEqual(['itau']);

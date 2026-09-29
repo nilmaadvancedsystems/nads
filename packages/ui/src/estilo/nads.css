@@ -1241,6 +1241,20 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 /* Não teve movimento: a linha toda escurece; o botão fica claro para desmarcar */
 .imp-linha{transition:background .15s ease;}
 .imp-linha.sem-movimento{background:var(--surface-2);}
-.imp-linha.sem-movimento > :not(.imp-grupos),.imp-linha.sem-movimento .imp-grupo{opacity:.4;}
+.imp-linha.sem-movimento > :not(.imp-grupos),.imp-linha.sem-movimento .imp-grupo{opacity:.35;}
+.imp-btn:disabled{opacity:.5;cursor:not-allowed;background:var(--btn-bg);}
+.imp-feito:disabled:hover{border-color:var(--success);background:var(--btn-bg);color:var(--success);}
+.imp-feito:disabled:hover .imp-feito-ok{display:inline;}
+.imp-feito:disabled:hover .imp-feito-x{display:none;}
 .imp-sem-mov.marcado{background:var(--surface-3);border-color:var(--border-strong);color:var(--ink);}
 .imp-conf-bancos{margin-bottom:12px;}
+.imp-conta{margin-left:8px;font-size:12px;color:var(--ink-muted);font-variant-numeric:tabular-nums;}
+/* Adicionar banco: a lista com os logos (em cinza) e o formulário de agência e conta */
+.add-banco-lista{display:flex;flex-direction:column;max-height:340px;overflow:auto;}
+.add-banco-item{gap:10px;}
+.add-banco-logo{display:inline-flex;width:20px;height:20px;flex:none;color:var(--ink-muted);}
+.add-banco-logo svg{width:20px !important;height:20px !important;}
+.add-banco-form{display:flex;flex-direction:column;gap:10px;padding:6px 8px 4px;}
+.add-banco-titulo{display:flex;align-items:center;gap:10px;font-size:14px;}
+.add-banco-form .field{display:flex;flex-direction:column;gap:4px;margin:0;}
+.add-banco-acoes{display:flex;justify-content:flex-end;gap:8px;margin-top:2px;}
