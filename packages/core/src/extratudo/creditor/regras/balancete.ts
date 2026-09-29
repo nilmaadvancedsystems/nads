@@ -16,6 +16,8 @@ export interface ContaDoBalancete {
   /** Ativo, Passivo, Despesa, Receita… (não vem quando só sobrou o plano) */
   grupo?: string;
   sintetica?: boolean;
+  /** posição no plano (a ordem do balancete: as contas de clientes vêm logo abaixo da sintética "Clientes") */
+  ordem?: number;
 }
 
 /**
@@ -45,8 +47,9 @@ export function balanceteDoDocumento(doc: Record<string, unknown> | null | undef
   const em = texto(doc.balanceteAssinaturaTs) || undefined;
   if (Array.isArray(doc.contas) && doc.contas.length) {
     const contas = (doc.contas as Record<string, unknown>[])
-      .map(c => ({ codigo: texto(c?.codigo), nome: texto(c?.nome), grupo: texto(c?.grupo) || undefined, sintetica: c?.sintetica === true }))
-      .filter(c => c.codigo);
+      .map((c, i) => ({ codigo: texto(c?.codigo), nome: texto(c?.nome), grupo: texto(c?.grupo) || undefined, sintetica: c?.sintetica === true, ordem: typeof c?.ordem === 'number' ? c.ordem : i }))
+      .filter(c => c.codigo)
+      .sort((x, y) => x.ordem - y.ordem);
     if (contas.length) return { origem: 'balancete', contas, em };
   }
   const plano = doc.balanceteAssinatura;

@@ -20,10 +20,13 @@ export function Competencia() {
         {vm.origemCarregada && <p className="hint">Já carregado: {vm.origemCarregada}.</p>}
       </div>
 
-      {!d.exemplos && (
+      {/* acoplado no Entregas e logado lá: nada a mostrar, o Drive já está pronto */}
+      {!d.exemplos && !(d.loginDeFora && d.entrou) && (
         <div className="card">
           <h3><span className="import-card-ico"><Icone nome="fileDown" /></span>Drive do escritório</h3>
-          {!d.pronto ? <p className="hint">Conectando ao Entregas…</p> : d.entrou ? (
+          {!d.pronto ? <p className="hint">Conectando ao Entregas…</p> : d.loginDeFora ? (
+            <p className="hint">Entre no Entregas para buscar o relatório no Drive.</p>
+          ) : d.entrou ? (
             <p className="hint">Conectado como <b>{d.quem}</b>. <button className="btn btn-ghost btn-sm" type="button" onClick={d.sair}>Sair</button></p>
           ) : (
             <form onSubmit={e => { e.preventDefault(); void d.entrar(); }}>

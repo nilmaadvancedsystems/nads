@@ -14,6 +14,8 @@ export interface AcessoDrive {
 
 export interface RepoDrive {
   readonly exemplos: boolean;
+  /** o login é o do sistema de fora (o Extratudo acoplado no Entregas): não pede usuário nem senha */
+  readonly loginDeFora?: boolean;
   acesso(): AcessoDrive;
   /** entra com o usuário (nome ou e-mail) e a senha do Entregas; erro vira exceção com a mensagem */
   entrar(usuario: string, senha: string): Promise<void>;

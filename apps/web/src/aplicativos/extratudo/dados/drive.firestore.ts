@@ -7,6 +7,10 @@
 //     no próprio pedido com um link temporário (30 min) do armazenamento do Entregas, e o arquivo é
 //     baixado daquele link (o ÚNICO fetch do nads, travado em scripts/conexoes.mjs).
 // Nada aqui grava no Drive nem em outra coleção do Entregas.
+// Acoplado no Entregas (Contábil → Extratudo, 2026-09-29): a pessoa já está logada lá, então não pede
+// usuário e senha — os mesmos pedidos (mapa das pastas e pedido ao robô) vão por mensagem para a
+// página do Entregas (nilma-ponte-extratudo.js), que responde com o login dela. O download continua
+// daqui, do mesmo link do robô.
 import { creditor as cr } from '@nads/core';
 import { getApps, initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
@@ -28,7 +32,90 @@ const ESPERA_DO_ROBO_MS = 90000;
 
 const semPermissao = (e: unknown) => /permission|insufficient/i.test(String((e as Error)?.message || e));
 
+/** O Entregas publicado, a única página de fora que pode responder pelo Drive. */
+const ENTREGAS = 'https://nilmaadvancedsystems.github.io';
+
+/** Está dentro do Entregas (iframe)? Pelo endereço de quem está por fora. */
+function dentroDoEntregas(): boolean {
+  if (window.parent === window) return false;
+  let origem = window.location.ancestorOrigins?.[0] || '';
+  if (!origem) { try { origem = document.referrer ? new URL(document.referrer).origin : ''; } catch { origem = ''; } }
+  return origem === ENTREGAS;
+}
+
+async function baixarDoRobo(url: string, passo?: (texto: string) => void): Promise<ArrayBuffer> {
+  if (!url.startsWith(LINK_DO_ROBO)) throw new Error('O robô respondeu com um endereço inesperado.');
+  passo?.('baixando a cópia');
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.arrayBuffer();
+  } catch (e) {
+    throw new Error('Não consegui baixar a cópia do Drive (' + ((e as Error)?.message || e) + '). Se o erro for de CORS, o armazenamento do Entregas precisa liberar este site.', { cause: e });
+  }
+}
+
+/** O Drive pelo login do Entregas que está por fora (sem pedir senha aqui). */
+function criarDrivePeloEntregas(): cr.RepoDrive {
+  let acesso: cr.AcessoDrive = { pronto: false, entrou: false, quem: '' };
+  let ver = 0;
+  let proximo = 1;
+  const ouvintes = new Set<() => void>();
+  const esperando = new Map<number, { ok: (v: unknown) => void; falha: (e: Error) => void; passo?: (t: string) => void }>();
+
+  window.addEventListener('message', e => {
+    if (e.origin !== ENTREGAS || e.source !== window.parent) return;
+    const m = e.data as { nilmaDrive?: number; id?: number; ok?: boolean; dados?: unknown; passo?: string } | null;
+    if (!m || m.nilmaDrive !== 1 || typeof m.id !== 'number') return;
+    const w = esperando.get(m.id);
+    if (!w) return;
+    if (typeof m.passo === 'string') { w.passo?.(m.passo); return; }
+    esperando.delete(m.id);
+    if (m.ok) w.ok(m.dados); else w.falha(new Error(String(m.dados || 'O Entregas não respondeu.')));
+  });
+
+  function pedir<T>(op: string, extra: Record<string, unknown> = {}, passo?: (t: string) => void, espera = 120000): Promise<T> {
+    const id = proximo++;
+    return new Promise<T>((ok, falha) => {
+      const fim = setTimeout(() => { esperando.delete(id); falha(new Error('O Entregas não respondeu. Recarregue a página.')); }, espera);
+      esperando.set(id, { ok: v => { clearTimeout(fim); ok(v as T); }, falha: e => { clearTimeout(fim); falha(e); }, passo });
+      window.parent.postMessage({ nilmaDrive: 1, id, op, ...extra }, ENTREGAS);
+    });
+  }
+
+  const avisar = () => { ver++; for (const f of ouvintes) f(); };
+  pedir<{ email: string } | null>('quem', {}, undefined, 15000)
+    .then(u => { acesso = { pronto: true, entrou: !!u, quem: u?.email ? u.email.replace(/@nilma\.local$/, '') : '' }; })
+    .catch(() => { acesso = { pronto: true, entrou: false, quem: '' }; })
+    .finally(avisar);
+
+  return {
+    exemplos: false,
+    loginDeFora: true,
+    acesso: () => acesso,
+    async entrar() { throw new Error('Entre no Entregas: o Extratudo usa o mesmo login.'); },
+    async sair() { /* o login é o do Entregas */ },
+    async pastaDoCliente(codigo) {
+      const clientes = await pedir<cr.PastaDoCliente[]>('raiz');
+      const pasta = cr.pastaDoCliente(clientes || [], codigo);
+      if (!pasta) return null;
+      const itens = await pedir<cr.ItemDrive[]>('partes', { pasta: pasta.id });
+      return { raiz: pasta.id, nome: pasta.nomePasta, itens: itens || [] };
+    },
+    async baixar(id, nome, passo) {
+      const url = await pedir<string>('baixar', { fileId: id, nome }, passo, ESPERA_DO_ROBO_MS + 10000);
+      return baixarDoRobo(String(url), passo);
+    },
+    assinar(f) {
+      ouvintes.add(f);
+      return () => { ouvintes.delete(f); };
+    },
+    versao: () => ver,
+  };
+}
+
 export function criarDriveFirestore(): cr.RepoDrive {
+  if (dentroDoEntregas()) return criarDrivePeloEntregas();
   const app = getApps().find(a => a.name === 'entregas') ?? initializeApp(CONFIG_ENTREGAS, 'entregas');
   const auth = getAuth(app);
   const db = getFirestore(app);
@@ -86,15 +173,7 @@ export function criarDriveFirestore(): cr.RepoDrive {
           if (p.status === 'erro') { clearTimeout(fim); parar(); falha(new Error('O robô não conseguiu trazer o arquivo: ' + (p.erro || 'erro'))); }
         }, e => { clearTimeout(fim); falha(e); });
       });
-      if (!url.startsWith(LINK_DO_ROBO)) throw new Error('O robô respondeu com um endereço inesperado.');
-      passo?.('baixando a cópia');
-      try {
-        const r = await fetch(url);
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return await r.arrayBuffer();
-      } catch (e) {
-        throw new Error('Não consegui baixar a cópia do Drive (' + ((e as Error)?.message || e) + '). Se o erro for de CORS, o armazenamento do Entregas precisa liberar este site.', { cause: e });
-      }
+      return baixarDoRobo(url, passo);
     },
 
     assinar(f) {

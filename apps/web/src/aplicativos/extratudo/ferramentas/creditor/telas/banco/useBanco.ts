@@ -59,7 +59,7 @@ export function useBanco() {
       ],
     } : null,
     podeContinuar: titulos.length > 0,
-    rotuloContinuar: 'Continuar para ' + (s.estado.conferir ? 'a conferência' : 'o fiscal'),
+    rotuloContinuar: 'Continuar para o fiscal',
     continuar: s.proxima,
     voltar: s.anterior,
   };

@@ -1,9 +1,8 @@
-// Sessão do Creditor: a competência, o relatório do banco (já corrigido pela pessoa), o arquivo do
-// sistema e as decisões do cruzamento. Vive só enquanto a empresa está aberta nesta seção (nada disso é gravado).
-// As contas não: vêm do balancete da empresa e do que foi salvo nela (dados/repo.tsx), ao vivo; e a
-// conta de cada cliente já conciliado resolve sozinha a NF que não está no sistema (aprendizado).
+// Sessão do Creditor: a competência, o relatório do banco e as decisões das contas. Vive só enquanto a
+// empresa está aberta nesta seção (nada disso é gravado). As contas não: vêm do balancete da empresa e
+// do que foi salvo nela (dados/repo.tsx), ao vivo. A conta de cada cliente vem da conta aprendida ou do
+// balancete (sem arquivo do sistema nem Conferência dos grupos desde 2026-09-29; o banco manda).
 // Também mora aqui a trava das etapas: uma etapa só abre quando a anterior está resolvida.
-// Relatório sem nenhum total impresso não tem o que conferir: a etapa Conferência some do fluxo.
 import { creditor as cr } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
@@ -17,21 +16,17 @@ export interface Estado {
   relatorio: cr.RelatorioBanco | null;
   /** de onde veio: nome do arquivo, "texto colado", "exemplo" ou "digitado" */
   origemBanco: string;
-  sistema: cr.LinhaSistema[] | null;
-  origemSistema: string;
   decisoes: Record<number, cr.Decisao>;
   /** os passos da etapa Fiscal que a pessoa marcou como feitos */
   passosFiscal: string[];
-  /** o relatório trouxe total impresso? (sem nenhum, a Conferência fica de fora) */
-  conferir: boolean;
   /** a etapa mais adiante que já foi aberta */
   alcancada: number;
 }
 
-const INICIAL: Estado = { competencia: '', relatorio: null, origemBanco: '', sistema: null, origemSistema: '', decisoes: {}, passosFiscal: [], conferir: true, alcancada: 0 };
+const INICIAL: Estado = { competencia: '', relatorio: null, origemBanco: '', decisoes: {}, passosFiscal: [], alcancada: 0 };
 
 /** Os passos da etapa Fiscal (a ordem e o texto de cada um ficam na tela). */
-export const PASSOS_FISCAL = ['baixar', 'exportar-contabil', 'exportar-planilha'] as const;
+export const PASSOS_FISCAL = ['baixar', 'exportar-contabil'] as const;
 export type PassoFiscal = (typeof PASSOS_FISCAL)[number];
 
 /** Tudo o que sai do estado (as telas só leem daqui). */
@@ -51,10 +46,10 @@ export interface Derivado {
   aprendidas: number[];
 }
 
-export function derivar(e: Estado, contas: cr.ContasCreditor, aprendidos: cr.ClientesAprendidos): Derivado {
+export function derivar(e: Estado, contas: cr.ContasCreditor, aprendidos: cr.ClientesAprendidos, clientes: readonly cr.ContaDoBalancete[]): Derivado {
   const titulos = e.relatorio ? e.relatorio.grupos.flatMap(g => g.titulos) : [];
-  const conferido = !!e.relatorio && (e.conferir ? cr.relatorioConferido(e.relatorio) : titulos.length > 0);
-  const cruzamentos = e.sistema ? cr.cruzar(titulos, e.sistema) : [];
+  const conferido = titulos.length > 0;
+  const cruzamentos = cr.cruzarPeloBalancete(titulos, clientes, aprendidos);
   const auto = cr.decisoesAprendidas(titulos, cruzamentos, aprendidos, e.decisoes);
   const decisoes = { ...auto, ...e.decisoes };
   const pendentes = cr.pendentes(cruzamentos, decisoes);
@@ -70,11 +65,9 @@ function requisitos(id: IdEtapa, e: Estado, d: Derivado): boolean {
   switch (id) {
     case 'competencia': return true;
     case 'banco': return cr.competenciaValida(e.competencia);
-    case 'conferencia': return !!e.relatorio && e.conferir;
     case 'fiscal': return d.conferido;
-    case 'sistema': return d.conferido && d.fiscalFeito;
-    case 'cruzamento': return d.conferido && d.fiscalFeito && !!e.sistema;
-    case 'lancamentos': return d.conferido && d.fiscalFeito && !!e.sistema && d.pendentes.length === 0;
+    case 'cruzamento': return d.conferido && d.fiscalFeito;
+    case 'lancamentos': return d.conferido && d.fiscalFeito && d.pendentes.length === 0;
   }
 }
 
@@ -82,7 +75,6 @@ interface Sessao {
   empresa: { nome: string; codigo: number | null };
   rota: string;
   etapa: IdEtapa;
-  /** as etapas deste relatório (sem a Conferência quando não há total impresso) */
   etapas: Etapa[];
   estado: Estado;
   d: Derivado;
@@ -90,6 +82,8 @@ interface Sessao {
   contas: {
     resolvidas: cr.ContasResolvidas;
     balancete: cr.BalanceteDaEmpresa;
+    /** as contas de clientes do balancete (para a pessoa escolher quando não acha) */
+    clientes: cr.ContaDoBalancete[];
     carregada: boolean;
     escolher: (campo: keyof cr.ContasCreditor, valor: string) => void;
     /** esquece o que foi salvo: voltam as sugestões do balancete (e os históricos padrão) */
@@ -126,7 +120,8 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
   const daEmpresa = useContasDaEmpresa(empresa.nome);
   const { balancete, config, clientes, salvar, salvarClientes } = daEmpresa;
   const resolvidas = useMemo(() => cr.resolverContas(balancete, config), [balancete, config]);
-  const d = useMemo(() => derivar(estado, resolvidas.contas, clientes), [estado, resolvidas, clientes]);
+  const contasClientes = useMemo(() => cr.contasDeClientes(balancete), [balancete]);
+  const d = useMemo(() => derivar(estado, resolvidas.contas, clientes, contasClientes), [estado, resolvidas, clientes, contasClientes]);
 
   const podeAbrir = useCallback((id: IdEtapa) => indiceDaEtapa(id) <= estado.alcancada && requisitos(id, estado, d), [estado, d]);
 
@@ -143,18 +138,18 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
     abrir(id);
   }, [etapa, podeAbrir, abrir, toast]);
 
-  const etapas = estado.conferir ? ETAPAS : ETAPAS.filter(x => x.id !== 'conferencia');
+  const etapas = ETAPAS;
   const i = etapas.findIndex(x => x.id === etapa);
   const s: Sessao = {
     empresa, rota, etapa, etapas, estado, d,
     contas: {
-      resolvidas, balancete, carregada: daEmpresa.carregada,
+      resolvidas, balancete, clientes: contasClientes, carregada: daEmpresa.carregada,
       escolher: (campo, valor) => salvar(cr.escolherConta(config, campo, valor, balancete)),
       esquecer: () => salvar(cr.CONFIG_VAZIA),
     },
     mudar: f => setEstado(f),
     usarRelatorio: (rel, origem) => setEstado(e => ({
-      ...e, relatorio: rel, origemBanco: origem, decisoes: {}, passosFiscal: [], conferir: cr.temTotalImpresso(rel),
+      ...e, relatorio: rel, origemBanco: origem, decisoes: {}, passosFiscal: [],
       alcancada: Math.min(e.alcancada, indiceDaEtapa('banco')),
     })),
     avancarPara: abrir,
