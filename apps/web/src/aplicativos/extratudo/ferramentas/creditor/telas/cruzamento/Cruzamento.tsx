@@ -1,4 +1,4 @@
-// Etapa 5 do Creditor: cruzamento banco × sistema pela NF, com as decisões das divergências.
+// Etapa 6 do Creditor: cruzamento banco × sistema pela NF, com as decisões das divergências.
 import { creditor as cr } from '@nads/core';
 import { Segmentado, Stat } from '@nads/ui';
 import { Fragment } from 'react';
@@ -18,6 +18,7 @@ export function Cruzamento() {
         <Stat rotulo="Duplicatas juntas" valor={vm.resumo.divididos} grande={false} />
         <Stat rotulo="Para decidir" valor={vm.resumo.pendentes + ' de ' + vm.resumo.decidir} cor={vm.resumo.pendentes ? 'entrada' : undefined} grande={false} />
         <Stat rotulo="Excluídos" valor={vm.resumo.excluidos} grande={false} />
+        {vm.resumo.aprendidas > 0 && <Stat rotulo="Contas aprendidas" valor={vm.resumo.aprendidas} grande={false} />}
       </div>
 
       <div className="card">
@@ -50,14 +51,16 @@ export function Cruzamento() {
                         {l.nota && <span className="hint" style={{ marginRight: 12 }}>{l.nota}</span>}
                         {l.precisa && (l.decisao && l.resolvida ? (
                           <span className="decisao">
-                            <b>{l.decisao.tipo === 'excluir' ? 'Fica fora do arquivo.' : l.decisao.tipo === 'confirmar' ? 'Usar o valor do banco.' : 'Contrapartida informada.'}</b>
+                            <b>{l.decisao.tipo === 'excluir' ? 'Fica fora do arquivo.' : l.decisao.tipo === 'confirmar' ? 'Usar o valor do banco.' : l.aprendida ? 'Conta aprendida do cliente (já conciliado antes).' : 'Contrapartida informada.'}</b>
                             {l.decisao.tipo === 'manual' && (
                               <>
                                 <Celula valor={l.decisao.contrapartida} largura={90} rotulo="Contrapartida" onGravar={v => vm.manual(l.id, 'contrapartida', v)} />
                                 <Celula valor={l.decisao.historico} largura={260} rotulo="Histórico" placeholder={l.historicoPadrao} onGravar={v => vm.manual(l.id, 'historico', v)} />
                               </>
                             )}
-                            <button className="btn btn-ghost btn-sm" type="button" onClick={() => vm.desfazer(l.id)}>Desfazer</button>
+                            {l.aprendida
+                              ? <button className="btn btn-ghost btn-sm" type="button" onClick={() => vm.excluir(l.id)}>Excluir título</button>
+                              : <button className="btn btn-ghost btn-sm" type="button" onClick={() => vm.desfazer(l.id)}>Desfazer</button>}
                           </span>
                         ) : (
                           <span className="decisao">

@@ -1,5 +1,6 @@
 // ViewModel da etapa Cruzamento: cada título com a linha do sistema achada pela NF, a situação e,
-// quando há divergência, a decisão da pessoa (nunca presumimos qual lado está certo).
+// quando há divergência, a decisão da pessoa (nunca presumimos qual lado está certo). A exceção é a NF
+// que não está no sistema de um cliente já conciliado antes: a conta aprendida resolve (dá para trocar).
 import { creditor as cr } from '@nads/core';
 import { useState } from 'react';
 import { useSessao } from '../../casca/sessao';
@@ -22,14 +23,15 @@ export function useCruzamento() {
 
   const linhas = s.d.cruzamentos.map(c => {
     const t = porId.get(c.tituloId) as cr.Titulo;
-    const decisao = s.estado.decisoes[c.tituloId];
+    const decisao = s.d.decisoes[c.tituloId];
+    const aprendida = s.d.aprendidas.includes(c.tituloId);
     const precisa = cr.precisaDecisao(c);
     return {
       id: c.tituloId, nf: t.nf, liquidacao: t.liquidacao, sacado: t.sacado, cliente: c.linha?.cliente || '',
       valorBanco: c.valorBanco, valorSistema: c.valorSistema,
       contrapartida: decisao?.tipo === 'manual' ? decisao.contrapartida : c.linha?.contrapartida || '',
       situacao: c.situacao, rotulo: ROTULO_SITUACAO[c.situacao], nota: c.nota,
-      precisa, resolvida: precisa && cr.decisaoValida(c, decisao), decisao, temLinha: !!c.linha,
+      precisa, resolvida: precisa && cr.decisaoValida(c, decisao), decisao, aprendida, temLinha: !!c.linha,
       historicoPadrao: cr.historicoNfCliente(t),
     };
   });
@@ -46,12 +48,13 @@ export function useCruzamento() {
       decidir: conta(l => l.precisa),
       pendentes: s.d.pendentes.length,
       excluidos: conta(l => l.decisao?.tipo === 'excluir'),
+      aprendidas: conta(l => l.aprendida),
     },
     confirmar: (id: number) => decidir(id, { tipo: 'confirmar' }),
     excluir: (id: number) => decidir(id, { tipo: 'excluir' }),
     desfazer: (id: number) => decidir(id, null),
     manual: (id: number, campo: 'contrapartida' | 'historico', v: string) => {
-      const atual = s.estado.decisoes[id];
+      const atual = s.d.decisoes[id];
       const base = atual?.tipo === 'manual' ? atual : { tipo: 'manual' as const, contrapartida: '', historico: '' };
       decidir(id, { ...base, [campo]: v.trim() });
     },

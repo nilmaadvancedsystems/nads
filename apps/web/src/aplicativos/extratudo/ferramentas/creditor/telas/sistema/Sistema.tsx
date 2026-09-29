@@ -1,4 +1,4 @@
-// Etapa 4 do Creditor: o arquivo do sistema (recebimentos de clientes), a planilha exportada do Contábil
+// Etapa 5 do Creditor: o arquivo do sistema (recebimentos de clientes), a planilha exportada do Contábil
 // depois da baixa no Fiscal.
 import { creditor as cr } from '@nads/core';
 import { Alerta, CampoArquivo, Icone } from '@nads/ui';

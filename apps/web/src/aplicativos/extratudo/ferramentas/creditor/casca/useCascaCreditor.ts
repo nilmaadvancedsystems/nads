@@ -1,5 +1,5 @@
 // ViewModel do Creditor dentro da casca do Extratudo: as etapas nas abas de cima (travadas até serem
-// liberadas), o título, "Etapa n de 6" (de 5 sem a Conferência) e o Cancelar (com confirmação).
+// liberadas), o título, "Etapa n de 7" (de 6 sem a Conferência) e o Cancelar (com confirmação).
 import { useRetorno } from '@nads/ui';
 import { useSessao } from './sessao';
 

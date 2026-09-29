@@ -6,6 +6,7 @@ import { Navigate, useParams } from 'react-router';
 import { useEmpresaDoExtratudo } from '../../../empresas';
 import { TopoProvider } from '../../../../../comum/topo';
 import { Banco } from '../telas/banco/Banco';
+import { Competencia } from '../telas/competencia/Competencia';
 import { Conferencia } from '../telas/conferencia/Conferencia';
 import { Cruzamento } from '../telas/cruzamento/Cruzamento';
 import { Fiscal } from '../telas/fiscal/Fiscal';
@@ -23,6 +24,7 @@ function Tela() {
     return <Navigate to={caminhoDaEtapa(s.rota, ultima.id)} replace />;
   }
   switch (s.etapa) {
+    case 'competencia': return <Competencia />;
     case 'banco': return <Banco />;
     case 'conferencia': return <Conferencia />;
     case 'fiscal': return <Fiscal />;
@@ -37,7 +39,7 @@ export function EmpresaAberta() {
   const empresa = useEmpresaDoExtratudo(param);
   if (!empresa) return <Navigate to={caminho()} replace />;
   const rota = empresas.rotaDaEmpresa(empresa);
-  if (!etapa || param !== rota) return <Navigate to={caminhoDaEtapa(rota, indiceDaEtapa(etapa) >= 0 ? etapa as IdEtapa : 'banco')} replace />;
+  if (!etapa || param !== rota) return <Navigate to={caminhoDaEtapa(rota, indiceDaEtapa(etapa) >= 0 ? etapa as IdEtapa : 'competencia')} replace />;
   return (
     // key = empresa: trocar de empresa começa do zero (nada é guardado)
     <SessaoProvider key={rota} empresa={empresa} rota={rota} etapa={etapa as IdEtapa}>

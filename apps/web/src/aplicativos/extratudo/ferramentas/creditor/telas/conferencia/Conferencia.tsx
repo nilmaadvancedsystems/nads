@@ -1,4 +1,4 @@
-// Etapa 2 do Creditor (só quando o relatório traz total impresso): conferência de cada grupo contra o total impresso no relatório.
+// Etapa 3 do Creditor (só quando o relatório traz total impresso): conferência de cada grupo contra o total impresso no relatório.
 import { creditor as cr } from '@nads/core';
 import { Alerta, BotaoIcone, Icone } from '@nads/ui';
 import { Celula } from './partes/Celula';

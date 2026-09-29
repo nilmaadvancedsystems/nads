@@ -5,7 +5,11 @@ import { livroDeImportacao } from './arquivos/gerar';
 import { linhasDoCsv } from './arquivos/planilha';
 import { linhasDosItens } from './arquivos/pdf';
 import { clienteDoHistorico, lerSistema, nfDoHistorico } from './arquivos/sistema';
+import { emailDoUsuario } from './drive';
 import { BALANCETES_EXEMPLO, EXEMPLO_RELATORIO, EXEMPLO_SISTEMA_CSV } from './exemplos';
+import { aprender, clientesDoDocumento, contaAprendida, decisoesAprendidas } from './regras/aprendizado';
+import { competenciaPadrao, rotuloCompetencia, titulosForaDaCompetencia } from './regras/competencia';
+import { acharRelatorioNoDrive, falaDaCompetencia, pastaDoCliente, type ItemDrive } from './regras/drive';
 import { balanceteDoDocumento, CONFIG_VAZIA, configDoDocumento, confirmarContas, escolherConta, mesmaConfig, resolverContas, SEM_BALANCETE, sugerirConta } from './regras/balancete';
 import { conferirGrupo, conferirTotalGeral, relatorioConferido, temTotalImpresso } from './regras/conferencia';
 import { cruzar, mesmoCliente, pendentes, type Decisao } from './regras/cruzamento';
@@ -109,6 +113,24 @@ describe('arquivo do sistema', () => {
     expect(clienteDoHistorico('Recebimento de clientes NF 4521 - MERCADO X')).toBe('MERCADO X');
     const s = lerSistema(buf('Contrapartida;Historico;Valor\n11201;Recebimento de clientes NF 77 - ZE;10,00\n'), 's.csv');
     expect(s[0]).toMatchObject({ nf: '77', cliente: 'ZE', valor: 10 });
+  });
+
+  it('Alterdata: código do histórico ao lado do texto, NF dentro do histórico ("DUP.009897")', () => {
+    const csv = 'Conta;Nome;Valor;Hist;Complemento;Documento\n'
+      + '12093;COMERCIAL GALA LTDA;8.196,38D;00246;Recebimento DUP.009896/1/1 - COMERCIAL GALA LTDA;00246\n'
+      + '12093;COMERCIAL GALA LTDA;8.163,28D;00246;Recebimento DUP.009897/1/1 - COMERCIAL GALA LTDA;00246\n'
+      + '12820;SUPERMERCADO QUEBA LTDA;11.252,64D;00246;Recebimento DUP.009890/1/1 - SUPERMERCADO QUEBA LTDA;00246\n'
+      + '12820;SUPERMERCADO QUEBA LTDA;100,00D;00246;Recebimento DUP.009891/1/1 - SUPERMERCADO QUEBA LTDA;00246\n';
+    const s = lerSistema(buf(csv), 'credtest.csv');
+    expect(s.map(l => [l.nf, l.contrapartida, l.valor])).toEqual([['009896', '12093', 8196.38], ['009897', '12093', 8163.28], ['009890', '12820', 11252.64], ['009891', '12820', 100]]);
+    const t = { id: 1, sacado: 'COMERCIAL GALA LTDA - DIAMANTINA-J.AUGUS', nossoNumero: '10622-9', nf: '9897/1/1', valor: 8163.28, mora: 0, desconto: 0, outros: 0, liquidacao: '14/08/2026', cobrado: 8163.28 };
+    expect(cruzar([t], s)[0]).toMatchObject({ situacao: 'ok', linha: { contrapartida: '12093' } });
+  });
+
+  it('NF só no histórico, com outra coluna de número: o cruzamento acha pelo histórico', () => {
+    const linha = { linha: 2, nf: '555', cliente: 'X', contrapartida: '12093', historico: 'Recebimento DUP.009897/1/1', valor: 10 };
+    const t = { id: 1, sacado: 'X', nossoNumero: '', nf: '9897/1/1', valor: 10, mora: 0, desconto: 0, outros: 0, liquidacao: '14/08/2026', cobrado: 10 };
+    expect(cruzar([t], [linha])[0].situacao).toBe('ok');
   });
 
   it('CSV com aspas', () => {
@@ -352,5 +374,76 @@ describe('contas pelo balancete', () => {
     expect(c.contas).toEqual({ banco: '10503', juros: '97304', desconto: '85001' });
     expect(mesmaConfig(c, configDoDocumento({ ...c, atualizadoEm: 'x', lixo: 1 }))).toBe(true);
     expect(configDoDocumento({ contas: { banco: ' ', juros: 5 } }).contas).toEqual({ juros: '5' });
+  });
+});
+
+describe('clientes aprendidos', () => {
+  const titulo = (id: number, sacado: string, nf: string) => ({ id, sacado, nossoNumero: '', nf, valor: 100, mora: 0, desconto: 0, outros: 0, liquidacao: '01/09/2026', cobrado: 100 });
+  const linha = (nf: string, cliente: string, contrapartida: string) => ({ linha: 1, nf, cliente, contrapartida, historico: '', valor: 100 });
+
+  it('aprende do sistema e da conta informada; excluído não ensina', () => {
+    const ts = [titulo(1, 'MERCADO BOM PRECO LTDA', '10'), titulo(2, 'PADARIA SOL', '11'), titulo(3, 'BAR DO ZE', '12')];
+    const cz = cruzar(ts, [linha('10', 'MERCADO BOM PRECO', '21001')]);
+    const dec: Record<number, Decisao> = { 2: { tipo: 'manual', contrapartida: '21005', historico: '' }, 3: { tipo: 'excluir' } };
+    const a = aprender({}, ts, cz, dec, new Date('2026-09-29T12:00:00Z'));
+    expect(Object.fromEntries(Object.entries(a).map(([k, v]) => [k, v.conta]))).toEqual({ 'mercado bom preco ltda': '21001', 'padaria sol': '21005' });
+  });
+
+  it('NF fora do sistema de cliente já aprendido: resolve sozinha; a decisão da pessoa vence', () => {
+    const aprendidos = { 'padaria sol': { conta: '21005', nome: 'PADARIA SOL', em: '' } };
+    const ts = [titulo(1, 'PADARIA SOL', '99'), titulo(2, 'OUTRO CLIENTE', '98')];
+    const cz = cruzar(ts, []);
+    expect(decisoesAprendidas(ts, cz, aprendidos, {})).toEqual({ 1: { tipo: 'manual', contrapartida: '21005', historico: '' } });
+    expect(decisoesAprendidas(ts, cz, aprendidos, { 1: { tipo: 'excluir' } })).toEqual({});
+    expect(pendentes(cz, decisoesAprendidas(ts, cz, aprendidos, {})).map(c => c.tituloId)).toEqual([2]);
+  });
+
+  it('nome cortado pelo banco acha o cliente, mas só quando é um só', () => {
+    const a = { 'supermercado central ltda': { conta: '1', nome: '', em: '' }, 'supermercado central filial': { conta: '2', nome: '', em: '' } };
+    expect(contaAprendida(a, 'SUPERMERCADO CENTRAL LTDA')?.conta).toBe('1');
+    expect(contaAprendida(a, 'SUPERMERCADO CENTRAL')).toBeNull();
+    expect(contaAprendida({ 'supermercado central ltda': { conta: '1', nome: '', em: '' } }, 'SUPERMERCADO CENTRAL')?.conta).toBe('1');
+    expect(clientesDoDocumento({ clientes: { x: { conta: 5 }, y: { conta: '' } } })).toEqual({ x: { conta: '5', nome: 'x', em: '' } });
+  });
+});
+
+describe('competência e Drive', () => {
+  it('competência padrão é o mês anterior; títulos fora do mês', () => {
+    expect(competenciaPadrao(new Date(2026, 0, 15))).toBe('2025-12');
+    expect(rotuloCompetencia('2026-08')).toBe('08/2026');
+    const t = (liquidacao: string) => ({ id: 1, sacado: '', nossoNumero: '', nf: '1', valor: 1, mora: 0, desconto: 0, outros: 0, liquidacao, cobrado: null });
+    expect(titulosForaDaCompetencia([t('31/08/2026'), t('01/09/2026'), t('')], '2026-08').map(x => x.liquidacao)).toEqual(['01/09/2026']);
+  });
+
+  it('o nome ou a pasta falam da competência', () => {
+    for (const n of ['CREDLIQUIDAÇÃO 08-2026.pdf', 'credliquidacao 2026.08.pdf', 'CREDLIQ 082026.pdf', 'CREDLIQUIDACAO AGOSTO 2026.pdf', 'cred liquidacao ago26.pdf', '2026 08 x.pdf']) {
+      expect(falaDaCompetencia(n, '2026-08'), n).toBe(true);
+    }
+    for (const n of ['CREDLIQUIDAÇÃO 07-2026.pdf', 'CREDLIQUIDACAO 18 2026.pdf', 'CREDLIQUIDACAO 08-2025.pdf']) expect(falaDaCompetencia(n, '2026-08'), n).toBe(false);
+  });
+
+  it('acha o credliquidação da competência em CONTÁBIL › RECEBIMENTO DE CLIENTES', () => {
+    const itens: ItemDrive[] = [
+      { i: 'c', n: 'CONTÁBIL', p: 'r', t: 'd' },
+      { i: 'rc', n: 'RECEBIMENTO DE CLIENTES', p: 'c', t: 'd' },
+      { i: 'm8', n: '08', p: 'rc', t: 'd' },
+      { i: 'a', n: 'CREDLIQUIDAÇÃO 07-2026.pdf', p: 'rc', t: 'f' },
+      { i: 'b', n: 'CREDLIQUIDAÇÃO 08-2026.pdf', p: 'rc', t: 'f', m: '2026-09-02' },
+      { i: 'x', n: 'outro 08-2026.pdf', p: 'rc', t: 'f' },
+      { i: 'y', n: 'CREDLIQUIDAÇÃO 08-2026.pdf', p: 'outra', t: 'f' },
+    ];
+    expect(pastaDoCliente([{ id: 'r', nomePasta: '292 - FITO', codigo: 292 }], 292)?.id).toBe('r');
+    const b = acharRelatorioNoDrive(itens, 'r', '2026-08');
+    expect(b.situacao).toBe('achou');
+    expect(b.arquivo?.id).toBe('b');
+    expect(acharRelatorioNoDrive(itens, 'r', '2026-10').situacao).toBe('nada');
+    expect(acharRelatorioNoDrive(itens.filter(i => i.i !== 'c'), 'r', '2026-08').situacao).toBe('sem-pasta');
+    expect(acharRelatorioNoDrive(itens, null, '2026-08').situacao).toBe('sem-cliente');
+    expect(acharRelatorioNoDrive([...itens, { i: 'c2', n: 'CREDLIQUIDACAO AGOSTO 2026.xlsx', p: 'm8', t: 'f' }], 'r', '2026-08').situacao).toBe('varios');
+  });
+
+  it('login do Entregas: nome vira e-mail', () => {
+    expect(emailDoUsuario('Vitor Araújo')).toBe('vitor.araujo@nilma.local');
+    expect(emailDoUsuario(' x@y.com ')).toBe('x@y.com');
   });
 });

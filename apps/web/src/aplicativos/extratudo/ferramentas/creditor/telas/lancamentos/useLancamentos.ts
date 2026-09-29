@@ -2,7 +2,7 @@
 // checagem) e o arquivo .xls de 8 colunas. Só baixa quando todos os dias batem (ou a diferença é
 // exatamente o que a pessoa excluiu).
 // As contas vêm do balancete da empresa (sugeridas pelo nome) ou do que foi salvo nela; trocar uma
-// conta salva na empresa, e baixar o arquivo confirma as sugeridas.
+// conta salva na empresa, e baixar o arquivo confirma as sugeridas e ensina a conta de cada cliente.
 import { creditor as cr } from '@nads/core';
 import { useSessao } from '../../casca/sessao';
 
@@ -63,8 +63,8 @@ export function useLancamentos() {
     fora: fora.map(t => ({ id: t.id, nf: t.nf, sacado: t.sacado, liquidacao: t.liquidacao, valor: cr.liquidoDoTitulo(t) })),
     divergentes: divergentes.map(f => f.data + ': diferença de ' + cr.brl(f.diferenca)),
     podeBaixar: lancamentos.length > 0 && divergentes.length === 0 && contasOk,
-    /** baixar confirma as contas: as sugeridas passam a ser salvas na empresa */
-    baixou: s.contas.confirmar,
+    /** baixar conclui: as contas sugeridas passam a ser salvas e os clientes conciliados são aprendidos */
+    baixou: s.concluir,
     arquivo: () => ({ bytes: cr.planilhaDeImportacao(lancamentos), nome: cr.nomeDoArquivo(s.empresa.codigo != null ? String(s.empresa.codigo) : null), tipo: cr.TIPO_XLS }),
     voltar: s.anterior,
   };

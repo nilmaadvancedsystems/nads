@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 // Trava das conexões do nads. Decisão do usuário (2026-09-28): o nads usa o MESMO banco da
-// conferencia-nilma.web.app, e mais nada. Esta checagem falha se:
+// conferencia-nilma.web.app, e mais nada. Exceção liberada pelo Vitor (2026-09-29): o Creditor lê o
+// Drive do escritório pelo Entregas (app Pendências), SÓ em extratudo/dados/drive.firestore.ts: o mapa
+// das pastas, o pedido ao robô e o download da cópia temporária (o único fetch permitido).
+// Esta checagem falha se:
 //  1. aparecer dependência de rede fora do permitido (só "firebase", e só no apps/web);
 //  2. código fora de apps/web/src/aplicativos/<app>/dados/*.firestore.ts importar/usar Firebase;
 //  3. qualquer código fizer fetch/XHR/WebSocket para fora;
@@ -14,6 +17,8 @@ const PACOTES_PROIBIDOS = /^(firebase-admin|@firebase\/.*|googleapis|@google\/.*
 const ONDE_PODE_FIREBASE = /[\\/]apps[\\/]web[\\/]src[\\/]aplicativos[\\/][^\\/]+[\\/]dados[\\/][^\\/]+\.firestore\.ts$/;
 const TEXTOS_FIREBASE = [/from\s+['"]firebase(\/[a-z-]+)?['"]/, /\b(getFirestore|initializeFirestore|firebase\.firestore)\b/, /\binitializeApp\s*\(/, /firebaseio\.com/];
 const TEXTOS_REDE = [/\bfetch\s*\(/, /\bXMLHttpRequest\b/, /\bnew\s+WebSocket\b/, /\bsendBeacon\b/, /\bEventSource\b/];
+// o download da cópia que o robô do Entregas publica (e só dela: o arquivo confere o endereço antes)
+const ONDE_PODE_FETCH = /[\\/]apps[\\/]web[\\/]src[\\/]aplicativos[\\/]extratudo[\\/]dados[\\/]drive\.firestore\.ts$/;
 
 const achados = [];
 const ignorar = new Set(['node_modules', '.git', 'dist', 'dist-sites', 'dist-tipos', '.claude', 'docs', '.firebase']);
@@ -51,7 +56,11 @@ varrer(raiz, p => {
   const podeFirebase = ONDE_PODE_FIREBASE.test(p);
   linhas.forEach((l, i) => {
     if (!podeFirebase) for (const re of TEXTOS_FIREBASE) if (re.test(l)) achados.push(rel + ':' + (i + 1) + ': Firebase fora de dados/*.firestore.ts ("' + re.source + '")');
-    for (const re of TEXTOS_REDE) if (re.test(l)) achados.push(rel + ':' + (i + 1) + ': chamada de rede ("' + re.source + '")');
+    for (const re of TEXTOS_REDE) {
+      if (!re.test(l)) continue;
+      if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH.test(p)) continue;
+      achados.push(rel + ':' + (i + 1) + ': chamada de rede ("' + re.source + '")');
+    }
   });
 });
 
@@ -73,4 +82,10 @@ if (achados.length) {
   for (const a of achados) console.error('  ' + a);
   process.exit(1);
 }
-console.log('conexoes: ok — só o Firestore da Conferência, só em dados/*.firestore.ts; firebase.json só com hospedagem.');
+// o download do Drive só pode ir para a cópia do robô do Entregas
+const drive = path.join(raiz, 'apps', 'web', 'src', 'aplicativos', 'extratudo', 'dados', 'drive.firestore.ts');
+if (fs.existsSync(drive) && !/url\.startsWith\(LINK_DO_ROBO\)/.test(fs.readFileSync(drive, 'utf8'))) {
+  console.error('conexoes: drive.firestore.ts precisa conferir o endereço (url.startsWith(LINK_DO_ROBO)) antes do fetch');
+  process.exit(1);
+}
+console.log('conexoes: ok — o Firestore da Conferência e (só no drive.firestore.ts) o Drive pelo Entregas, só em dados/*.firestore.ts; firebase.json só com hospedagem.');

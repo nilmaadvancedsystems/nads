@@ -1,4 +1,4 @@
-// Etapa 3 do Creditor: o passo a passo no Fiscal (baixar os clientes no Gerenciador de Duplicatas,
+// Etapa 4 do Creditor: o passo a passo no Fiscal (baixar os clientes no Gerenciador de Duplicatas,
 // exportar para o Contábil e exportar a planilha), com os títulos que precisam de baixa.
 import { creditor as cr } from '@nads/core';
 import { Icone } from '@nads/ui';

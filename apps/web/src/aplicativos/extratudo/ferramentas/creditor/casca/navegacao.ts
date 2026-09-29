@@ -3,11 +3,12 @@
 import type { NomeIcone } from '@nads/ui';
 import { caminho } from './caminho';
 
-export type IdEtapa = 'banco' | 'conferencia' | 'fiscal' | 'sistema' | 'cruzamento' | 'lancamentos';
+export type IdEtapa = 'competencia' | 'banco' | 'conferencia' | 'fiscal' | 'sistema' | 'cruzamento' | 'lancamentos';
 
 export interface Etapa { id: IdEtapa; rotulo: string; titulo: string; icone: NomeIcone }
 
 export const ETAPAS: Etapa[] = [
+  { id: 'competencia', rotulo: 'Competência', titulo: 'Competência', icone: 'calendar' },
   { id: 'banco', rotulo: 'Relatório do banco', titulo: 'Relatório de liquidação do banco', icone: 'landmark' },
   { id: 'conferencia', rotulo: 'Conferência', titulo: 'Conferência dos grupos', icone: 'scale' },
   { id: 'fiscal', rotulo: 'Fiscal', titulo: 'Baixa no Fiscal', icone: 'checklist' },
