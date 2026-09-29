@@ -1,6 +1,7 @@
 // O Drive do escritório, do jeito que o Creditor usa: entrar com o usuário do Entregas (Pendências),
 // ler o mapa da pasta do cliente e baixar um arquivo. Implementações: drive.memoria.ts (exemplos) e,
 // no site ligado ao banco, apps/web/src/aplicativos/extratudo/dados/drive.firestore.ts.
+import type { BalanceteDaEmpresa } from './regras/balancete';
 import type { ItemDrive } from './regras/drive';
 
 export interface AcessoDrive {
@@ -22,6 +23,11 @@ export interface RepoDrive {
   sair(): Promise<void>;
   /** a pasta do cliente pelo código do ERP e tudo o que tem dentro (null = o cliente não tem pasta) */
   pastaDoCliente(codigo: number | null): Promise<{ raiz: string; nome: string; itens: ItemDrive[] } | null>;
+  /**
+   * O balancete subido no Entregas (Clientes e ajustes → Balancetes), pelo código do ERP; null = não
+   * tem. Só existe acoplado no Entregas.
+   */
+  balanceteDoEntregas?(codigo: number): Promise<BalanceteDaEmpresa | null>;
   /** baixa o arquivo (pelo robô do Entregas); `passo` conta o andamento para a tela */
   baixar(id: string, nome: string, passo?: (texto: string) => void): Promise<ArrayBuffer>;
   /** um link temporário para VER o arquivo (a cópia do robô vale ~30 min); não guardar o link */

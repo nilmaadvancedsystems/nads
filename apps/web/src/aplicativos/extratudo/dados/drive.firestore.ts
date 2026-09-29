@@ -102,6 +102,12 @@ function criarDrivePeloEntregas(): cr.RepoDrive {
       const itens = await pedir<cr.ItemDrive[]>('partes', { pasta: pasta.id });
       return { raiz: pasta.id, nome: pasta.nomePasta, itens: itens || [] };
     },
+    async balanceteDoEntregas(codigo) {
+      const b = await pedir<{ contas: unknown[]; em: string } | null>('balancete', { codigo: String(codigo) });
+      if (!b) return null;
+      const lido = cr.balanceteDoDocumento({ contas: b.contas, balanceteAssinaturaTs: b.em });
+      return lido.origem === 'nenhum' ? null : lido;
+    },
     async baixar(id, nome, passo) {
       const url = await pedir<string>('baixar', { fileId: id, nome }, passo, ESPERA_DO_ROBO_MS + 10000);
       return baixarDoRobo(String(url), passo);
