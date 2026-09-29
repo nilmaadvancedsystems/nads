@@ -66,6 +66,8 @@ export function useCompetencia() {
     mes, setMes: (v: string) => { setMes(v); setBusca({ fase: 'parado', texto: '', candidatos: [] }); },
     porExtenso: cr.competenciaPorExtenso(mes),
     valida,
+    /** não concilia mês que ainda não começou */
+    maximo: new Date().toISOString().slice(0, 7),
     drive: {
       exemplos: drive.exemplos,
       loginDeFora: !!drive.loginDeFora,
