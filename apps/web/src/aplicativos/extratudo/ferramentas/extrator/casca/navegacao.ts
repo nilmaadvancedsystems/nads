@@ -32,11 +32,19 @@ export const SECOES: Secao[] = [
   },
 ];
 
+/**
+ * Páginas que não aparecem na navegação: as que a Tarefas abre dentro de uma etapa. "tarefa/extratos" =
+ * importar (em lista) e conferir na mesma tela.
+ */
+export const PAGINAS_DA_TAREFA: Pagina[] = [
+  { id: 'tarefa/extratos', rotulo: 'Importar e conferir', icone: 'fileUp', titulo: '' },
+];
+
 export const PAGINA_INICIAL = 'importacao/arquivos';
 
 export function paginaPorId(id: string): Pagina | undefined {
   for (const s of SECOES) for (const p of s.paginas) if (p.id === id) return p;
-  return undefined;
+  return PAGINAS_DA_TAREFA.find(p => p.id === id);
 }
 
 export function secaoDaPagina(id: string): Secao | undefined {

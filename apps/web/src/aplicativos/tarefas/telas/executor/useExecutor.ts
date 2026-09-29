@@ -108,6 +108,12 @@ export function useExecutor(rotaEmpresa: string, competencia: string) {
     resolver,
     interrompendo, abrirInterromper: () => setInterrompendo(true), fecharInterromper: () => setInterrompendo(false), interromper,
     sair: voltar,
+    /** Excluir um arquivo que a ferramenta da etapa importou: pergunta aqui; quem exclui é a ferramenta. */
+    confirmarExclusao: (a: { nome: string; lado: 'banco' | 'sistema'; qtd: number }) => modal<boolean>({
+      icone: 'alert', titulo: 'Excluir esta importação?',
+      texto: (a.lado === 'banco' ? 'Extrato' : 'Razão') + ': ' + a.nome + ' (' + a.qtd + ' lançamentos). Dá para importar de novo depois.',
+      botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }],
+    }),
     abrirEmpresa: () => { if (empresa) navegar(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), competencia)); },
   };
 }

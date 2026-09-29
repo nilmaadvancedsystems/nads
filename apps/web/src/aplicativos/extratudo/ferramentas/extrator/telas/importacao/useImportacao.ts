@@ -137,9 +137,17 @@ export function useImportacao() {
       botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }],
     });
     if (!ok) return;
-    s.aplicar(e => x.excluirArquivo(e, id, new Date()));
-    toast('Arquivo excluído.');
+    excluirJa(id);
   }
+
+  /** Exclui sem perguntar (quem pediu já perguntou: a etapa da Tarefas). */
+  const excluirJa = useCallback((id: string) => {
+    const a = s.empresa.arquivos.find(v => v.id === id);
+    if (!a) return;
+    s.aplicar(e => x.excluirArquivo(e, id, new Date()));
+    setMensagemBruta({ tom: 'ok', titulo: 'Arquivo excluído', textos: [{ texto: a.nome }] });
+    setSeq(v => v + 1);
+  }, [s]);
 
   const arquivos = s.empresa.arquivos.slice().sort((a, b) => b.importadoEm.localeCompare(a.importadoEm)).map(a => ({
     id: a.id, lado: a.lado, nome: a.nome, qtd: a.lancamentos.length,
@@ -148,7 +156,7 @@ export function useImportacao() {
 
   return {
     caixas: CAIXAS.map(c => ({ ...c, escolhidos: escolhidos[c.lado], lendo: lendo === c.lado })),
-    escolher, tirar, importar, importarTeste, excluir,
+    escolher, tirar, importar, importarTeste, excluir, excluirJa,
     ocupado: lendo !== null,
     mensagem, seqMensagem, fecharMensagem,
     arquivos,

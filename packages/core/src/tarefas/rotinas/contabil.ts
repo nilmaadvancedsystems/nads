@@ -6,27 +6,18 @@ export const ROTINA_CONTABIL: Rotina = {
   departamento: 'contabil',
   etapas: [
     {
+      // importar e conferir na mesma tela (pedido do Vitor, 29/09/2026): era uma etapa para cada
       id: 'extratos',
-      nome: 'Importar os extratos',
-      descricao: 'Importe os extratos bancários da competência (PDF ou OFX).',
-      ferramenta: { app: 'extratudo', nome: 'Extrator', caminho: r => '/extratudo/' + r + '/extrator/importacao/arquivos', embutir: true },
-      verificacao: 'extratos',
+      nome: 'Importar e conferir os extratos',
+      descricao: 'Importe o extrato do banco e o razão da conta e confira o que falta, está diferente ou duplicado.',
+      ferramenta: { app: 'extratudo', nome: 'Extrator', caminho: r => '/extratudo/' + r + '/extrator/tarefa/extratos', embutir: true },
+      verificacao: 'extrato-e-sistema',
       objecoes: [
         { id: 'sem-extrato', texto: 'O cliente não enviou o extrato', solucao: { tipo: 'contato', rotulo: 'Pedir extrato' } },
         { id: 'no-drive', texto: 'O extrato está no Drive do cliente', solucao: { tipo: 'drive', rotulo: 'Buscar no Drive' } },
         { id: 'sem-movimento', texto: 'A empresa não teve movimento no banco', solucao: { tipo: 'nao-se-aplica', rotulo: 'Não teve movimento' } },
-      ],
-    },
-    {
-      id: 'conferencia',
-      nome: 'Conferir extrato × sistema',
-      descricao: 'Importe o razão da conta e confira o que falta, está diferente ou duplicado.',
-      ferramenta: { app: 'extratudo', nome: 'Extrator', caminho: r => '/extratudo/' + r + '/extrator/conferencia/resultado', embutir: true },
-      verificacao: 'extrato-e-sistema',
-      objecoes: [
-        { id: 'sem-razao', texto: 'O razão da conta ainda não foi gerado no sistema', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Gere o razão da conta do banco no Alterdata (Excel ou PDF) e importe na caixa "Sistema".' } },
-        { id: 'sem-documento', texto: 'Há lançamento no banco sem documento', solucao: { tipo: 'contato', rotulo: 'Pedir o documento ao cliente' } },
-        { id: 'diferenca', texto: 'Diferença que não sei explicar', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Anote a linha da conferência e peça ajuda a um sênior antes de seguir.' } },
+        { id: 'sem-razao', texto: 'O razão da conta ainda não foi gerado no sistema', soMotivo: true, solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Gere o razão da conta do banco no Alterdata (Excel ou PDF) e importe na linha "Lançamentos contábeis".' } },
+        { id: 'diferenca', texto: 'Diferença que não sei explicar', soMotivo: true, solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Anote a linha da conferência e peça ajuda a um sênior antes de seguir.' } },
       ],
     },
     {

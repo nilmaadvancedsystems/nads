@@ -9,7 +9,7 @@ const ICONE: Record<tarefas.Solucao['tipo'], NomeIcone> = { contato: 'link', dri
 export function Objecoes({ etapa, onResolver }: { etapa: tarefas.Etapa; onResolver: (o: tarefas.Objecao) => void }) {
   return (
     <div className="executor-saidas" aria-label="Se não der para concluir">
-      {etapa.objecoes.map(o => (
+      {etapa.objecoes.filter(o => !o.soMotivo).map(o => (
         <button key={o.id} type="button" className="btn btn-outline btn-sm" title={o.texto} onClick={() => onResolver(o)}>
           <Icone nome={ICONE[o.solucao.tipo]} />{o.solucao.tipo === 'orientacao' ? o.texto : o.solucao.rotulo}
         </button>

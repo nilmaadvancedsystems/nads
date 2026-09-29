@@ -10,6 +10,7 @@ import { Auditoria } from '../telas/auditoria/Auditoria';
 import { Conferencia } from '../telas/conferencia/Conferencia';
 import { Importacao } from '../telas/importacao/Importacao';
 import { Lancamentos } from '../telas/lancamentos/Lancamentos';
+import { TarefaExtratos } from '../telas/tarefa/TarefaExtratos';
 import { caminho } from './caminho';
 import { CascaExtrator } from './CascaExtrator';
 import { PAGINA_INICIAL, paginaPorId } from './navegacao';
@@ -22,6 +23,7 @@ function Tela() {
     case 'importacao/lancamentos': return <Lancamentos />;
     case 'conferencia/resultado': return s.falta ? <Navigate to={caminho(s.rota + '/' + PAGINA_INICIAL)} replace /> : <Conferencia />;
     case 'auditoria/historico': return <Auditoria />;
+    case 'tarefa/extratos': return <TarefaExtratos />;
     default: return null;
   }
 }

@@ -6,13 +6,13 @@ import { AcoesDoTopo } from '../../../../../../comum/topo';
 import { TabelaConferencia } from './partes/TabelaConferencia';
 import { LIMITE_LINHAS, useConferencia } from './useConferencia';
 
-export function Conferencia() {
+/** naTarefa: dentro da etapa da Tarefas (sem o título de cima): o "Baixar CSV" fica junto dos filtros. */
+export function Conferencia({ naTarefa }: { naTarefa?: boolean } = {}) {
   const vm = useConferencia();
+  const csv = <button className={'btn ' + (naTarefa ? 'btn-outline btn-sm' : 'btn-primary')} type="button" onClick={() => { const a = vm.csv(); baixarArquivo(a.texto, a.nome); }}>Baixar CSV</button>;
   return (
     <section>
-      <AcoesDoTopo>
-        <button className="btn btn-primary" type="button" onClick={() => { const a = vm.csv(); baixarArquivo(a.texto, a.nome); }}>Baixar CSV</button>
-      </AcoesDoTopo>
+      {!naTarefa && <AcoesDoTopo>{csv}</AcoesDoTopo>}
 
       <div className="ext-filtros">
         <div className="chip-row">
@@ -28,6 +28,7 @@ export function Conferencia() {
           </select>
           de diferença
         </label>
+        {naTarefa && csv}
       </div>
 
       <div className="stat-grid">

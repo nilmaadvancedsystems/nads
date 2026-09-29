@@ -87,7 +87,8 @@ export function Casca(p: {
 
   const principal = (
     <main className="main">
-      <header className="topbar" hidden={!p.titulo && !p.acoes && !p.descricao}>
+      {/* sem título nem descrição, some — e, dentro de uma etapa, mesmo com o lugar das ações */}
+      <header className="topbar" hidden={!p.titulo && !p.descricao && (!p.acoes || embutida())}>
         <div>
           <h2 className="page-title">{p.titulo}</h2>
           {p.descricao && <p className="page-desc">{p.descricao}</p>}

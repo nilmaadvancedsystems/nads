@@ -32,12 +32,11 @@ describe('andamento', () => {
     const f = fazer(ex, 'extratos', 'Clara', agora);
     expect(f.evento).toEqual({ tipo: 'feita', etapa: 'extratos', por: 'Clara', em: agora.toISOString() });
     ex = f.execucao;
-    expect(proximaEtapa(ex, R)?.id).toBe('conferencia');
-    ex = interromper(ex, 'conferencia', 'sem-razao', '  aguardando  ', 'Clara', agora).execucao;
-    expect(ex.etapas.conferencia).toMatchObject({ situacao: 'interrompida', objecao: 'sem-razao', observacao: 'aguardando' });
+    expect(proximaEtapa(ex, R)?.id).toBe('cheque-especial');
+    ex = interromper(ex, 'cheque-especial', 'sem-saldo-diario', '  aguardando  ', 'Clara', agora).execucao;
+    expect(ex.etapas['cheque-especial']).toMatchObject({ situacao: 'interrompida', objecao: 'sem-saldo-diario', observacao: 'aguardando' });
     expect(situacaoGeral(ex, R)).toBe('parada');
-    expect(progresso(ex, R)).toMatchObject({ concluidas: 1, total: 7, interrompida: etapa('conferencia') });
-    ex = fazer(ex, 'conferencia', 'Clara', agora).execucao;
+    expect(progresso(ex, R)).toMatchObject({ concluidas: 1, total: 6, interrompida: etapa('cheque-especial') });
     ex = dispensar(ex, 'cheque-especial', 'sem-negativo', '', 'Clara', agora).execucao;
     expect(concluida(ex.etapas['cheque-especial'].situacao)).toBe(true);
     expect(situacaoGeral(ex, R)).toBe('em-andamento');
@@ -48,15 +47,17 @@ describe('andamento', () => {
 });
 
 describe('check automático', () => {
-  it('extratos: precisa de extrato do banco com lançamento na competência', () => {
-    expect(verificar(etapa('extratos'), '2026-08', [])).toEqual({ ok: false, motivo: 'Ainda não há extrato de agosto/2026 importado.' });
-    expect(verificar(etapa('extratos'), '2026-08', [arq('banco', '2026-07-31')]).ok).toBe(false);
-    expect(verificar(etapa('extratos'), '2026-08', [arq('banco', '2026-08-05')]).ok).toBe(true);
-    expect(verificar(etapa('extratos'), '2026-08', [arq('sistema', '2026-08-05')]).ok).toBe(false);
+  it('só extrato: precisa de extrato do banco com lançamento na competência', () => {
+    const soExtrato = { ...etapa('extratos'), verificacao: 'extratos' as const };
+    expect(verificar(soExtrato, '2026-08', [])).toEqual({ ok: false, motivo: 'Ainda não há extrato de agosto/2026 importado.' });
+    expect(verificar(soExtrato, '2026-08', [arq('banco', '2026-07-31')]).ok).toBe(false);
+    expect(verificar(soExtrato, '2026-08', [arq('banco', '2026-08-05')]).ok).toBe(true);
+    expect(verificar(soExtrato, '2026-08', [arq('sistema', '2026-08-05')]).ok).toBe(false);
   });
-  it('conferência: precisa de extrato e razão do sistema', () => {
-    expect(verificar(etapa('conferencia'), '2026-08', [arq('banco', '2026-08-05')]).motivo).toBe('Falta importar o razão do sistema de agosto/2026.');
-    expect(verificar(etapa('conferencia'), '2026-08', [arq('banco', '2026-08-05'), arq('sistema', '2026-08-20')]).ok).toBe(true);
+  it('importar e conferir: precisa de extrato e razão do sistema', () => {
+    expect(verificar(etapa('extratos'), '2026-08', []).motivo).toBe('Falta o extrato de agosto/2026.');
+    expect(verificar(etapa('extratos'), '2026-08', [arq('banco', '2026-08-05')]).motivo).toBe('Falta importar o razão do sistema de agosto/2026.');
+    expect(verificar(etapa('extratos'), '2026-08', [arq('banco', '2026-08-05'), arq('sistema', '2026-08-20')]).ok).toBe(true);
   });
   it('manual: passa', () => {
     expect(verificar(etapa('fechamento'), '2026-08', []).ok).toBe(true);
@@ -75,9 +76,9 @@ describe('competências e visão de cima', () => {
     expect(exs).toHaveLength(2);
     const r = resumoPorEtapa(exs, R, 3);
     expect(r[0]).toMatchObject({ etapa: 'extratos', feitas: 2, pendentes: 1 });
-    expect(r[1]).toMatchObject({ etapa: 'conferencia', feitas: 1, interrompidas: 1, pendentes: 1 });
+    expect(r[1]).toMatchObject({ etapa: 'cheque-especial', dispensadas: 1, interrompidas: 1, pendentes: 1 });
     expect(objecoesMaisComuns(exs, R).map(o => [o.texto, o.qtd])).toEqual([
-      ['A conta não ficou negativa', 1], ['O razão da conta ainda não foi gerado no sistema', 1],
+      ['A conta não ficou negativa', 1], ['Não tenho o relatório de saldo diário', 1],
     ]);
   });
   it('repositório em memória grava a execução e o evento', () => {

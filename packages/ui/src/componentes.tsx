@@ -22,13 +22,18 @@ export function Alerta({ titulo, texto, tom, children, onFechar }: { titulo: str
  * Mensagem flutuante de importação: some sozinha em 3,7 s, tem ×, e fecha ao trocar de tela
  * (o componente sai da tela junto). id = o do CSS original (#planoMsg, #msgEnt, #msgSai, #msgPrest, #msgTom).
  */
-export function MensagemFlutuante({ id, children, onFechar, chave }: { id: string; children: ReactNode | null; onFechar: () => void; chave: number }) {
+export function MensagemFlutuante({ id, children, onFechar, chave, duracao = 3700, className }: {
+  id: string; children: ReactNode | null; onFechar: () => void; chave: number;
+  /** em ms; null = só fecha no × */
+  duracao?: number | null;
+  className?: string;
+}) {
   useEffect(() => {
-    if (!children) return;
-    const t = setTimeout(onFechar, 3700);
+    if (!children || duracao === null) return;
+    const t = setTimeout(onFechar, duracao);
     return () => clearTimeout(t);
-  }, [children, chave, onFechar]);
-  return <div id={id} style={{ marginBottom: 16 }}>{children}</div>;
+  }, [children, chave, onFechar, duracao]);
+  return <div id={id} className={className} style={className ? undefined : { marginBottom: 16 }}>{children}</div>;
 }
 
 /** Campo "Escolher arquivo" (.file-picker) com × para tirar. */
@@ -140,20 +145,23 @@ export function useEstadoPorChave<T>(chave: string, inicial: T): [T, (v: T | ((a
 }
 
 /** Campo "Escolher arquivos" (.file-picker) que aceita vários de uma vez; cada escolha soma à lista de quem chama. */
-export function CampoArquivos({ id, onEscolher, aceitar, rotulo = 'Escolher arquivos' }: {
+export function CampoArquivos({ id, onEscolher, aceitar, rotulo = 'Escolher arquivos', compacto, desabilitado }: {
   id: string;
   onEscolher: (fs: File[]) => void;
   aceitar: string;
   rotulo?: string;
+  /** um botão pequeno no lugar da caixa tracejada (listas) */
+  compacto?: boolean;
+  desabilitado?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
   return (
     <>
-      <label className="file-picker" htmlFor={id}>
+      <label className={compacto ? 'btn btn-outline btn-sm' + (desabilitado ? ' is-locked' : '') : 'file-picker'} htmlFor={id} aria-disabled={desabilitado || undefined}>
         <span><Icone nome="upload" /></span>
         <span className="file-picker-name">{rotulo}</span>
       </label>
-      <input ref={input} type="file" id={id} accept={aceitar} multiple className="sr-only"
+      <input ref={input} type="file" id={id} accept={aceitar} multiple className="sr-only" disabled={desabilitado}
         onChange={ev => { const fs = Array.from(ev.target.files || []); if (input.current) input.current.value = ''; if (fs.length) onEscolher(fs); }} />
     </>
   );
@@ -167,7 +175,7 @@ export type ItemMenu = { rotulo: ReactNode; icone?: NomeIcone; marcado?: boolean
  * preenchido (padrão do app todo). Fecha ao escolher, ao clicar
  * fora e no Esc. Em vez de `itens`, pode receber `conteudo` (ex.: uma lista com busca), que ganha o `fechar`.
  */
-export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn-outline', itens, conteudo, direita, largura }: {
+export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn-outline', itens, conteudo, direita, acima, largura }: {
   rotulo: ReactNode;
   icone?: NomeIcone;
   titulo?: string;
@@ -176,6 +184,8 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
   itens?: ItemMenu[];
   conteudo?: (fechar: () => void) => ReactNode;
   direita?: boolean;
+  /** abre para cima (botão no pé da tela) */
+  acima?: boolean;
   largura?: number;
 }) {
   const [aberto, setAberto] = useState(false);
@@ -196,7 +206,7 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
         {icone && <Icone nome={icone} />}{rotulo}<Icone nome="caretDown" className="menu-seta" />
       </button>
       {aberto && (
-        <div className={'popover menu-pop' + (direita ? ' direita' : '')} role="menu" style={largura ? { width: largura } : undefined}>
+        <div className={'popover menu-pop' + (direita ? ' direita' : '') + (acima ? ' acima' : '')} role="menu" style={largura ? { width: largura } : undefined}>
           {titulo && <p className="popover-label">{titulo}</p>}
           {itens?.map((it, i) => it === 'separador' ? <hr key={i} className="popover-sep" /> : (
             <button key={i} type="button" className="popover-item" role="menuitem" disabled={it.desabilitado}

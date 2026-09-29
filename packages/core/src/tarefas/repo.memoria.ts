@@ -32,17 +32,16 @@ export function execucoesDeExemplo(agora: Date): Execucao[] {
   const t = (h: number) => new Date(agora.getTime() - h * 3600000);
   let a = execucaoNova(e1.nome, e1.codigo, c, 'contabil');
   a = fazer(a, 'extratos', 'Clara', t(30)).execucao;
-  a = interromper(a, 'conferencia', 'sem-razao', '', 'Clara', t(29)).execucao;
+  a = interromper(a, 'cheque-especial', 'sem-saldo-diario', '', 'Clara', t(29)).execucao;
   let b = execucaoNova(e2.nome, e2.codigo, c, 'contabil');
   b = fazer(b, 'extratos', 'Felipe', t(20)).execucao;
-  b = fazer(b, 'conferencia', 'Felipe', t(19)).execucao;
   b = dispensar(b, 'cheque-especial', 'sem-negativo', '', 'Felipe', t(18)).execucao;
   return [a, b];
 }
 
 /** O motivo usado quando a etapa para, nos exemplos. */
 const MOTIVO_EXEMPLO: Record<string, string> = {
-  extratos: 'sem-extrato', conferencia: 'diferenca', 'cheque-especial': 'sem-saldo-diario', cartoes: 'sem-extrato-cartao',
+  extratos: 'sem-extrato', 'cheque-especial': 'sem-saldo-diario', cartoes: 'sem-extrato-cartao',
   liquidacoes: 'sem-relatorio', balancete: 'fiscal-pendente', fechamento: 'revisao',
 };
 const PESSOAS_EXEMPLO = ['Clara', 'Felipe', 'Vitor'];

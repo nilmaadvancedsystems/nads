@@ -33,7 +33,8 @@ export type Solucao =
   | { tipo: 'nao-se-aplica'; rotulo: string };
 
 /** Um motivo comum para a etapa não andar. */
-export interface Objecao { id: string; texto: string; solucao: Solucao }
+/** soMotivo: não vira botão na etapa; só aparece como motivo no Interromper (alimenta a análise do que trava) */
+export interface Objecao { id: string; texto: string; solucao: Solucao; soMotivo?: boolean }
 
 export interface Etapa {
   id: string;
