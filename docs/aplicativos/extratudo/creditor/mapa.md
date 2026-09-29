@@ -66,3 +66,27 @@ Lido a partir do `SICOOB 08-2026.pdf` da empresa 292 (o arquivo não entra no re
   (414.348,84 = 193 registros), e as 2 baixas ficam de fora.
 - **Vlr. Outros Acresc.:** entra no lançamento B, junto com a mora. No PDF de agosto é sempre 0,00.
 - Os grupos não são por dia. Por isso, no fechamento por dia, vale a soma conferida dos títulos.
+
+## Contas pelo balancete (2026-09-29)
+
+Pedido do Vitor: cada empresa já vem com as contas configuradas pelo balancete do banco, e quando o
+balancete é atualizado as contas acompanham. Escolhas dele: **sugere e guarda** e **históricos salvos
+por empresa**.
+
+- **De onde vem o balancete:** o documento da Conferência `empresas/{slug}`, **só leitura**, ouvido ao
+  vivo (`onSnapshot`). Usa `contas`; se o balancete foi apagado ao sair da Conferência ("Apagar ao
+  sair"), usa o plano que fica guardado (`balanceteAssinatura`: código → nome). Sem nenhum dos dois,
+  valem os padrões do prompt (`CONTAS_PADRAO`). `regras/balancete.ts`: `balanceteDoDocumento`.
+- **Sugestão pelo nome** (`sugerirConta`), sem conta sintética:
+  banco = "SICOOB" no Ativo (fora aplicação, capital, empréstimo…); juros = "JUROS RECEBIDOS/ATIVOS…"
+  na Receita (fora juros pagos/passivos); descontos = "DESCONTOS CONCEDIDOS" na Despesa (fora descontos
+  obtidos). Sem o grupo (só o plano), vale só o nome.
+- **O que fica salvo:** `extrator/{slug}/creditor/contas` = `{ contas, nomes, atualizadoEm }`. Trocar um
+  campo na etapa Lançamentos grava (ao sair do campo); **baixar o .xls confirma** as sugeridas e o nome
+  atual de cada conta. "Voltar às sugestões" apaga o que foi salvo.
+- **Balancete atualizado** (`resolverContas`): a conta salva continua valendo e o nome acompanha. Se ela
+  **mudou de nome**, aparece um aviso (some quando o arquivo é baixado); se **sumiu do balancete**, o
+  .xls fica travado até escolher outra. Conta sem sugestão também trava ("Falta escolher").
+- Código: `packages/core/src/extratudo/creditor/{regras/balancete.ts,repo.ts,repo.memoria.ts}`,
+  `apps/web/src/aplicativos/extratudo/dados/creditor.firestore.ts` e `ferramentas/creditor/dados/`.
+  No modo exemplos: 901 com balancete completo, 902 só com o plano (sem conta de descontos), 903 sem nada.

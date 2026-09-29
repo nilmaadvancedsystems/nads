@@ -5,7 +5,8 @@ import { livroDeImportacao } from './arquivos/gerar';
 import { linhasDoCsv } from './arquivos/planilha';
 import { linhasDosItens } from './arquivos/pdf';
 import { clienteDoHistorico, lerSistema, nfDoHistorico } from './arquivos/sistema';
-import { EXEMPLO_RELATORIO, EXEMPLO_SISTEMA_CSV } from './exemplos';
+import { BALANCETES_EXEMPLO, EXEMPLO_RELATORIO, EXEMPLO_SISTEMA_CSV } from './exemplos';
+import { balanceteDoDocumento, CONFIG_VAZIA, configDoDocumento, confirmarContas, escolherConta, mesmaConfig, resolverContas, SEM_BALANCETE, sugerirConta } from './regras/balancete';
 import { conferirGrupo, conferirTotalGeral, relatorioConferido, temTotalImpresso } from './regras/conferencia';
 import { cruzar, mesmoCliente, pendentes, type Decisao } from './regras/cruzamento';
 import { fecharPorDia, gerarLancamentos, historicoSemPrefixo, titulosFora } from './regras/lancamentos';
@@ -300,5 +301,56 @@ describe('PDF do Sicoob (leitura por posição)', () => {
 
   it('sem cabeçalho de tabela: devolve null (quem chama lê como texto)', () => {
     expect(relatorioDosItens([[it_('qualquer coisa', 10, 10, 50)]])).toBeNull();
+  });
+});
+
+describe('contas pelo balancete', () => {
+  const comercio = BALANCETES_EXEMPLO['EXEMPLO COMERCIO DE ALIMENTOS LTDA'];
+  const medicos = BALANCETES_EXEMPLO['EXEMPLO SERVICOS MEDICOS LTDA'];
+
+  it('lê o balancete do documento da Conferência; sem ele, o plano que ficou guardado', () => {
+    const doc = { contas: [{ codigo: '10503', nome: 'BANCO SICOOB', grupo: 'Ativo', dc: 'D', valor: 0 }], balanceteAssinaturaTs: '2026-09-02T13:10:00.000Z' };
+    expect(balanceteDoDocumento(doc)).toMatchObject({ origem: 'balancete', contas: [{ codigo: '10503', nome: 'BANCO SICOOB', grupo: 'Ativo' }] });
+    expect(balanceteDoDocumento({ contas: [], balanceteAssinatura: { 10503: 'banco sicoob c movimento' } })).toMatchObject({ origem: 'plano', contas: [{ codigo: '10503', nome: 'BANCO SICOOB C MOVIMENTO' }] });
+    expect(balanceteDoDocumento(null)).toBe(SEM_BALANCETE);
+    expect(balanceteDoDocumento({ nome: 'X' }).origem).toBe('nenhum');
+  });
+
+  it('sugere pelo nome, sem sintética, aplicação, juros passivos ou descontos obtidos', () => {
+    expect(sugerirConta('banco', comercio.contas)?.codigo).toBe('10503');
+    expect(sugerirConta('juros', comercio.contas)?.codigo).toBe('97304');
+    expect(sugerirConta('desconto', comercio.contas)?.codigo).toBe('85001');
+    expect(sugerirConta('juros', medicos.contas)?.codigo).toBe('31120');
+    expect(sugerirConta('desconto', medicos.contas)).toBeNull();
+  });
+
+  it('salva vale; sugerida quando não há; padrão sem balancete; falta escolher bloqueia', () => {
+    expect(resolverContas(comercio, CONFIG_VAZIA).contas).toEqual(CONTAS_PADRAO);
+    const cfg = escolherConta(CONFIG_VAZIA, 'banco', '10502', comercio);
+    expect(cfg).toEqual({ contas: { banco: '10502' }, nomes: { banco: 'BANCO DO BRASIL C/ MOVIMENTO' } });
+    expect(resolverContas(comercio, cfg).detalhe.banco).toMatchObject({ codigo: '10502', origem: 'salva', bloqueia: false });
+    expect(resolverContas(SEM_BALANCETE, CONFIG_VAZIA).detalhe.banco).toMatchObject({ codigo: CONTAS_PADRAO.banco, origem: 'padrao' });
+    expect(resolverContas(medicos, CONFIG_VAZIA).detalhe.desconto).toMatchObject({ codigo: '', origem: 'falta', bloqueia: true });
+    const hist = escolherConta(CONFIG_VAZIA, 'histJuros', '123', comercio);
+    expect(resolverContas(comercio, hist).contas.histJuros).toBe('123');
+  });
+
+  it('balancete atualizado: a conta salva que sumiu bloqueia, a que mudou de nome avisa', () => {
+    const cfg = escolherConta(CONFIG_VAZIA, 'banco', '10503', comercio);
+    const sumiu = { ...comercio, contas: comercio.contas.filter(c => c.codigo !== '10503') };
+    expect(resolverContas(sumiu, cfg).detalhe.banco).toMatchObject({ origem: 'salva', bloqueia: true });
+    const renomeada = { ...comercio, contas: comercio.contas.map(c => (c.codigo === '10503' ? { ...c, nome: 'SICOOB CREDICOOP' } : c)) };
+    const r = resolverContas(renomeada, cfg);
+    expect(r.detalhe.banco).toMatchObject({ nome: 'SICOOB CREDICOOP', bloqueia: false });
+    expect(r.detalhe.banco.aviso).toMatch(/mudou de nome/i);
+    // baixar confirma: o nome novo fica guardado e o aviso some
+    expect(resolverContas(renomeada, confirmarContas(cfg, r)).detalhe.banco.aviso).toBeUndefined();
+  });
+
+  it('confirmar salva as sugeridas; o documento guardado é conferido', () => {
+    const c = confirmarContas(CONFIG_VAZIA, resolverContas(comercio, CONFIG_VAZIA));
+    expect(c.contas).toEqual({ banco: '10503', juros: '97304', desconto: '85001' });
+    expect(mesmaConfig(c, configDoDocumento({ ...c, atualizadoEm: 'x', lixo: 1 }))).toBe(true);
+    expect(configDoDocumento({ contas: { banco: ' ', juros: 5 } }).contas).toEqual({ juros: '5' });
   });
 });

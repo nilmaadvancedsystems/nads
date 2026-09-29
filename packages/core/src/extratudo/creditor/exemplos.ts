@@ -6,6 +6,7 @@
 // - NF 4555: valor do banco (450,00) diferente do sistema (405,00);
 // - NF 4560: não está no sistema;
 // - uma seção "Baixa - Pedido Cedente", que fica de fora.
+import type { BalanceteDaEmpresa, ContaDoBalancete } from './regras/balancete';
 
 export const EXEMPLO_RELATORIO = `BANCO EXEMPLO S.A. - RELATORIO DE TITULOS LIQUIDADOS
 Cedente: EMPRESA EXEMPLO LTDA   Periodo: 01/09/2026 a 03/09/2026
@@ -42,3 +43,33 @@ export const EXEMPLO_SISTEMA_CSV = `Data;Documento;Cliente;Contrapartida;Histór
 02/09/2026;4557;CANTINA DA NONNA LTDA;11202;Recebimento de clientes NF 4557 - CANTINA DA NONNA LTDA;930,00
 03/09/2026;4562;MERCEARIA DOIS IRMAOS;11201;Recebimento de clientes NF 4562 - MERCEARIA DOIS IRMAOS;1.480,00
 `;
+
+// Balancetes de exemplo (os mesmos nomes de empresa do Extratudo), para ver as contas do Creditor:
+// - 901: balancete completo: as três contas são sugeridas (com os códigos do prompt);
+// - 902: só sobrou o plano (o balancete foi apagado ao sair da Conferência) e não há conta de descontos;
+// - 903: nunca teve balancete: valem os padrões do prompt.
+const conta = (codigo: string, nome: string, grupo: string, sintetica = false): ContaDoBalancete => ({ codigo, nome, grupo, sintetica });
+
+export const BALANCETES_EXEMPLO: Record<string, BalanceteDaEmpresa> = {
+  'EXEMPLO COMERCIO DE ALIMENTOS LTDA': {
+    origem: 'balancete', em: '2026-09-02T13:10:00.000Z', contas: [
+      conta('10000', 'ATIVO', 'Ativo', true),
+      conta('10101', 'CAIXA GERAL', 'Ativo'),
+      conta('10502', 'BANCO DO BRASIL C/ MOVIMENTO', 'Ativo'),
+      conta('10503', 'BANCO SICOOB C/ MOVIMENTO', 'Ativo'),
+      conta('10510', 'SICOOB APLICACAO FINANCEIRA', 'Ativo'),
+      conta('30000', 'RECEITAS', 'Receita', true),
+      conta('97301', 'JUROS PASSIVOS', 'Despesa'),
+      conta('97304', 'JUROS RECEBIDOS', 'Receita'),
+      conta('85001', 'DESCONTOS CONCEDIDOS', 'Despesa'),
+      conta('85002', 'DESCONTOS OBTIDOS', 'Receita'),
+    ],
+  },
+  'EXEMPLO SERVICOS MEDICOS LTDA': {
+    origem: 'plano', em: '2026-08-28T10:00:00.000Z', contas: [
+      { codigo: '11101', nome: 'CAIXA' },
+      { codigo: '11205', nome: 'SICOOB CREDICOOP C MOVIMENTO' },
+      { codigo: '31120', nome: 'JUROS ATIVOS' },
+    ],
+  },
+};

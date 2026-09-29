@@ -7,7 +7,7 @@ link. Depois, no mesmo dia, as três ferramentas do banco viraram um aplicativo 
 |---|---|---|---|---|
 | **Concilia aí** (a Conferência) | concilia-ai-nilma.web.app | `/`, `/292/movimento/relatorio` | balancete × notas: importação, cadastro, relatório, checklist, auditoria | Firestore da Conferência (no nads-nilma) |
 | **Conciliadorzinho** | conciliadorzinho-nilma.web.app | `/conciliadorzinho/292/conciliacao/<etapa>` | cartão × notas fiscais, arquivos por bandeira | nenhum |
-| **Extratudo** | extratudo-nilma.web.app | `/extratudo/292/<ferramenta>/…` | tudo do banco da empresa (abaixo) | Firestore da Conferência, coleção `extrator` (o Extrator guarda os lançamentos lidos) |
+| **Extratudo** | extratudo-nilma.web.app | `/extratudo/292/<ferramenta>/…` | tudo do banco da empresa (abaixo) | Firestore da Conferência, coleção `extrator` (o Extrator guarda os lançamentos lidos; o Creditor guarda as contas em `extrator/{slug}/creditor/contas` e só **lê** o balancete em `empresas/{slug}`) |
 | **Tarefas** | tarefas-nilma.web.app | `/tarefas/<aplicação>/<página>`, `/tarefas/executar/292/2026-08` | etapas guiadas por empresa e competência (protótipo, ver `tarefas/README.md`) | Firestore da Conferência, coleção `tarefas` |
 
 ## Extratudo
