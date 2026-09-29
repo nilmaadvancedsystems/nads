@@ -17,7 +17,8 @@
     "verificar": "npm run tipos && npm run lint && npm run teste && npm run conexoes",
     "versao": "node scripts/versao.mjs",
     "publicar": "npm run build && npm run publicar -w @nads/web",
-    "previa": "npm run build:exemplos -w @nads/web && npm run previa -w @nads/web"
+    "previa": "npm run build:exemplos -w @nads/web && npm run previa -w @nads/web",
+    "sites": "node scripts/sites.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -9,8 +9,8 @@
     "build": "vite build",
     "build:exemplos": "vite build --mode exemplos",
     "preview": "vite preview",
-    "publicar": "firebase deploy --only hosting --project conferencia-nilma",
-    "previa": "firebase hosting:channel:deploy previa --expires 7d --project conferencia-nilma"
+    "publicar": "firebase deploy --only hosting:nads-nilma --project conferencia-nilma",
+    "previa": "firebase hosting:channel:deploy previa --only nads-nilma --expires 7d --project conferencia-nilma"
   },
   "dependencies": {
     "@nads/core": "*",
