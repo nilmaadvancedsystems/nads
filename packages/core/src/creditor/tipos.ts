@@ -13,8 +13,10 @@ export interface Titulo {
   valor: number;
   /** Vlr. Mora (0 quando não tem) */
   mora: number;
-  /** Vlr. Desc. Acresc. (0 quando não tem) */
+  /** Vlr. Desc. (0 quando não tem) */
   desconto: number;
+  /** Vlr. Outros Acresc. (0 quando não tem); vai junto com a mora no lançamento B */
+  outros: number;
   /** Dt. Liquidação, DD/MM/AAAA */
   liquidacao: string;
   /** Vlr. Cobrado; null quando o relatório não traz */
@@ -23,21 +25,27 @@ export interface Titulo {
   aviso?: string;
 }
 
-export type ColunaValor = 'valor' | 'mora' | 'desconto' | 'cobrado';
+export type ColunaValor = 'valor' | 'mora' | 'desconto' | 'outros' | 'cobrado';
 
 /** Totais impressos no relatório ("Total de Valores do grupo"); null = não veio. */
 export type TotaisImpressos = Record<ColunaValor, number | null>;
 
 export interface Grupo {
   id: number;
+  /** o tipo de liquidação do relatório (ex.: "58-LIQUIDAÇÃO - VIA COMPENSAÇÃO"), quando vem */
+  rotulo?: string;
   titulos: Titulo[];
   impresso: TotaisImpressos;
+  /** "Total de Registros do grupo" impresso (null = não veio) */
+  registros?: number | null;
 }
 
 export interface RelatorioBanco {
   grupos: Grupo[];
   /** "Total de Valores Liquidados" do fim do relatório */
   totalGeral: TotaisImpressos;
+  /** "Total de Registros Liquidados" */
+  registrosGeral?: number | null;
   /** linhas de "Baixa - Pedido Cedente" (não são dinheiro recebido) que ficaram de fora */
   ignorados: number;
   avisos: string[];

@@ -8,11 +8,11 @@ import { dataBR, dinheiro, ordemData, r2 } from '../regras/numeros';
 import type { ColunaValor, Grupo, RelatorioBanco, Titulo, TotaisImpressos } from '../tipos';
 import { linhasDaPlanilha, textoDaCelula, type Linha } from './planilha';
 
-export type CampoBanco = 'sacado' | 'nosso' | 'seu' | 'vencimento' | 'valor' | 'mora' | 'desconto' | 'liquidacao' | 'cobrado';
+export type CampoBanco = 'sacado' | 'nosso' | 'seu' | 'vencimento' | 'valor' | 'mora' | 'desconto' | 'outros' | 'liquidacao' | 'cobrado';
 
 export const EXTENSOES_BANCO: readonly string[] = ['.pdf', '.csv', '.xls', '.xlsx', '.txt'];
 
-export const TOTAIS_VAZIOS: TotaisImpressos = { valor: null, mora: null, desconto: null, cobrado: null };
+export const TOTAIS_VAZIOS: TotaisImpressos = { valor: null, mora: null, desconto: null, outros: null, cobrado: null };
 
 /** Qual campo é esta coluna do cabeçalho? ("Vlr. Desc. Acresc." → desconto, "Dt. Liquidação" → liquidacao) */
 export function campoDoCabecalho(h: unknown): CampoBanco | null {
@@ -24,6 +24,7 @@ export function campoDoCabecalho(h: unknown): CampoBanco | null {
   if (/venc/.test(s)) return 'vencimento';
   if (/mora|juros/.test(s)) return 'mora';
   if (/desc|abatim/.test(s)) return 'desconto';
+  if (/outros|acresc/.test(s)) return 'outros';
   if (/cobrado|pago|recebido/.test(s)) return 'cobrado';
   if (/liquida|^(dt|data) (liq|pag|cred)/.test(s)) return 'liquidacao';
   if (/valor|vlr/.test(s)) return 'valor';
@@ -33,10 +34,10 @@ export function campoDoCabecalho(h: unknown): CampoBanco | null {
 const ehBaixa = (n: string) => /baixa/.test(n) && /(cedente|pedido)/.test(n);
 const ehTotalGeral = (n: string) => /total/.test(n) && /(liquidados|geral)/.test(n);
 
-interface Bloco { titulos: Titulo[]; impresso: TotaisImpressos }
+interface Bloco { titulos: Titulo[]; impresso: TotaisImpressos; rotulo?: string; registros?: number | null }
 
 /** Junta os blocos lidos. Sem nenhum total impresso, os grupos passam a ser os dias de liquidação. */
-function montar(blocos: Bloco[], totalGeral: TotaisImpressos, ignorados: number, avisos: string[]): RelatorioBanco {
+function montar(blocos: Bloco[], totalGeral: TotaisImpressos, ignorados: number, avisos: string[], registrosGeral: number | null = null): RelatorioBanco {
   let lista = blocos.filter(b => b.titulos.length);
   const algumTotal = lista.some(b => Object.values(b.impresso).some(v => v != null));
   if (!algumTotal) {
@@ -45,10 +46,10 @@ function montar(blocos: Bloco[], totalGeral: TotaisImpressos, ignorados: number,
     lista = datas.map(d => ({ titulos: titulos.filter(t => t.liquidacao === d), impresso: { ...TOTAIS_VAZIOS } }));
     if (titulos.length) avisos.push('O relatório não trouxe "Total de Valores do grupo": separei os grupos por dia de liquidação. Digite o total impresso de cada dia na conferência.');
   }
-  const grupos: Grupo[] = lista.map((b, i) => ({ id: i + 1, titulos: b.titulos, impresso: b.impresso }));
+  const grupos: Grupo[] = lista.map((b, i) => ({ id: i + 1, rotulo: b.rotulo, titulos: b.titulos, impresso: b.impresso, registros: b.registros ?? null }));
   const semData = grupos.flatMap(g => g.titulos).filter(t => !t.liquidacao).length;
   if (semData) avisos.push(semData + ' título(s) sem data de liquidação: preencha na conferência.');
-  return { grupos, totalGeral, ignorados, avisos };
+  return { grupos, totalGeral, registrosGeral, ignorados, avisos };
 }
 
 // ─── planilha ────────────────────────────────────────────────────────────────
@@ -67,7 +68,7 @@ export function lerRelatorioPlanilha(buf: ArrayBuffer, nome: string): RelatorioB
   let totalGeral: TotaisImpressos = { ...TOTAIS_VAZIOS };
   let ignorando = false, ignorados = 0, id = 1;
   const cel = (l: Linha, k: CampoBanco) => (mapa && mapa[k] != null ? l[mapa[k] as number] : null);
-  const totais = (l: Linha): TotaisImpressos => ({ valor: dinheiro(cel(l, 'valor')), mora: dinheiro(cel(l, 'mora')), desconto: dinheiro(cel(l, 'desconto')), cobrado: dinheiro(cel(l, 'cobrado')) });
+  const totais = (l: Linha): TotaisImpressos => ({ valor: dinheiro(cel(l, 'valor')), mora: dinheiro(cel(l, 'mora')), desconto: dinheiro(cel(l, 'desconto')), outros: dinheiro(cel(l, 'outros')), cobrado: dinheiro(cel(l, 'cobrado')) });
 
   for (const l of linhas) {
     const n = normalizarTexto(l.map(textoDaCelula).join(' '));
@@ -92,7 +93,7 @@ export function lerRelatorioPlanilha(buf: ArrayBuffer, nome: string): RelatorioB
     if (ignorando) { ignorados++; continue; }
     bloco.titulos.push({
       id: id++, sacado: textoDaCelula(cel(l, 'sacado')), nossoNumero: textoDaCelula(cel(l, 'nosso')), nf: seu, valor,
-      mora: dinheiro(cel(l, 'mora')) || 0, desconto: dinheiro(cel(l, 'desconto')) || 0,
+      mora: dinheiro(cel(l, 'mora')) || 0, desconto: dinheiro(cel(l, 'desconto')) || 0, outros: dinheiro(cel(l, 'outros')) || 0,
       liquidacao: dataBR(cel(l, 'liquidacao')), cobrado: dinheiro(cel(l, 'cobrado')),
     });
   }
@@ -111,7 +112,7 @@ interface Ordem { dinheiro: ColunaValor[]; datas: ('vencimento' | 'liquidacao')[
 
 const PADROES_CABECALHO: [CampoBanco, RegExp][] = [
   ['sacado', /sacado|pagador/], ['nosso', /nosso/], ['seu', /seu n/], ['vencimento', /venc/],
-  ['valor', /\bvalor\b(?! cobrado| pago| liquid)|vlr (titulo|nominal)/], ['mora', /mora|juros/], ['desconto', /desc|abatim/],
+  ['valor', /\bvalor\b(?! cobrado| pago| liquid)|vlr (titulo|nominal)/], ['mora', /mora|juros/], ['desconto', /desc|abatim/], ['outros', /outros/],
   ['liquidacao', /liquida/], ['cobrado', /cobrado|pago|recebido/],
 ];
 
@@ -122,7 +123,7 @@ export function ordemDoCabecalho(linha: string): Ordem | null {
   const pos: Partial<Record<CampoBanco, number>> = {};
   for (const [k, re] of PADROES_CABECALHO) { const m = n.match(re); if (m && m.index != null) pos[k] = m.index; }
   const ord = <T extends CampoBanco>(ks: T[]) => ks.filter(k => pos[k] != null).sort((a, b) => (pos[a] as number) - (pos[b] as number));
-  return { dinheiro: ord(['valor', 'mora', 'desconto', 'cobrado']), datas: ord(['vencimento', 'liquidacao']), inteiros: ord(['nosso', 'seu']) };
+  return { dinheiro: ord(['valor', 'mora', 'desconto', 'outros', 'cobrado']), datas: ord(['vencimento', 'liquidacao']), inteiros: ord(['nosso', 'seu']) };
 }
 
 /** Distribui os valores de dinheiro da linha nas colunas (pela ordem do cabeçalho, ou adivinhando). */
@@ -176,7 +177,7 @@ export function tituloDaLinha(linha: string, ordem: Ordem | null, id: number): T
   const sacado = semNumeros.replace(/R\$/g, ' ').replace(/\s+/g, ' ').trim();
 
   return {
-    id, sacado, nossoNumero: nosso, nf: seu, valor: t.valor as number, mora: t.mora || 0, desconto: t.desconto || 0,
+    id, sacado, nossoNumero: nosso, nf: seu, valor: t.valor as number, mora: t.mora || 0, desconto: t.desconto || 0, outros: t.outros || 0,
     liquidacao: dataBR(liquidacao), cobrado: t.cobrado,
     aviso: adivinhado ? 'Colunas de valor sem cabeçalho: confira valor, mora, desconto e cobrado.' : undefined,
   };
@@ -217,4 +218,125 @@ export function lerRelatorioTexto(texto: string): RelatorioBanco {
   blocos.push(bloco);
   if (!ordem) avisos.push('Não achei a linha de cabeçalho (Sacado, Valor…): as colunas foram adivinhadas. Confira linha a linha.');
   return montar(blocos, totalGeral, ignorados, avisos);
+}
+
+// ─── PDF por posição (Sicoob "Relatório - Títulos por Período") ─────────────────
+// Nesse PDF cada coluna é um bloco de texto: não dá para ler linha a linha. Lemos pela posição:
+// o cabeçalho diz onde fica cada coluna; cada "Seu Número" é uma linha da tabela, e o resto se
+// junta à linha mais próxima (o nome do sacado pode ocupar duas linhas).
+
+/** Um pedaço de texto do PDF, em coordenadas da tela: x da esquerda, y de cima para baixo. */
+export interface ItemPdf { texto: string; x: number; y: number; largura: number }
+
+interface ColunaPdf { campo: CampoBanco | null; centro: number }
+
+const centro = (i: ItemPdf) => i.x + i.largura / 2;
+
+/** Colunas pelo cabeçalho. "Vlr. Mora Vlr. Desc." num pedaço só vira duas colunas. */
+function colunasDoCabecalho(itens: ItemPdf[]): ColunaPdf[] {
+  const cols: ColunaPdf[] = [];
+  for (const it of itens) {
+    const partes = it.texto.split(/(?=Vlr\.)/).filter(p => p.trim());
+    let ini = 0;
+    for (const p of partes) {
+      const x0 = it.x + (it.largura * ini) / it.texto.length;
+      const x1 = it.x + (it.largura * (ini + p.length)) / it.texto.length;
+      cols.push({ campo: campoDoCabecalho(p), centro: (x0 + x1) / 2 });
+      ini += p.length;
+    }
+  }
+  return cols;
+}
+
+function colunaDe(it: ItemPdf, cols: ColunaPdf[]): CampoBanco | null {
+  let melhor: ColunaPdf | null = null;
+  for (const c of cols) if (!melhor || Math.abs(c.centro - centro(it)) < Math.abs(melhor.centro - centro(it))) melhor = c;
+  return melhor ? melhor.campo : null;
+}
+
+const ehSecao = (t: string) => /^\d+\s*-\s*\S/.test(t.trim()) && /(liquida|baixa)/.test(normalizarTexto(t));
+const ehCabecalhoPdf = (t: string) => normalizarTexto(t) === 'sacado';
+const ehTotalPdf = (t: string) => /^total de (valores|registros)/.test(normalizarTexto(t));
+
+/**
+ * Relatório a partir dos pedaços de texto de cada página. null quando não há cabeçalho
+ * reconhecível (aí quem chama tenta ler como texto corrido).
+ */
+export function relatorioDosItens(paginas: ItemPdf[][]): RelatorioBanco | null {
+  const blocos: Bloco[] = [];
+  let bloco: Bloco = { titulos: [], impresso: { ...TOTAIS_VAZIOS } };
+  let totalGeral: TotaisImpressos = { ...TOTAIS_VAZIOS };
+  let registrosGeral: number | null = null;
+  let cols: ColunaPdf[] | null = null;
+  // colunas da última tabela de liquidação: os totais se alinham a elas (a de baixas termina em "Vlr. Baixado")
+  let colsLiquidacao: ColunaPdf[] | null = null;
+  let ignorando = false, ignorados = 0, id = 1, achouCabecalho = false;
+  const avisos: string[] = [];
+
+  for (const pagina of paginas) {
+    const itens = pagina.filter(i => i.texto.trim()).sort((a, b) => a.y - b.y || a.x - b.x);
+    const marcos = itens.filter(i => ehSecao(i.texto) || ehCabecalhoPdf(i.texto) || ehTotalPdf(i.texto));
+    marcos.forEach((m, k) => {
+      const n = normalizarTexto(m.texto);
+      if (ehSecao(m.texto)) {
+        const rotulo = m.texto.trim();
+        if (rotulo !== bloco.rotulo) {
+          if (bloco.titulos.length) blocos.push(bloco);
+          bloco = { titulos: [], impresso: { ...TOTAIS_VAZIOS }, rotulo };
+        }
+        ignorando = ehBaixa(n);
+        return;
+      }
+      if (ehTotalPdf(m.texto)) {
+        const perto = itens.filter(i => i !== m && Math.abs(i.y - m.y) <= 6 && i.x > m.x);
+        if (/registros/.test(n)) {
+          const qtd = perto.map(i => i.texto.trim()).find(t => /^\d+$/.test(t));
+          if (qtd == null || /baixados/.test(n)) return;
+          if (/liquidados/.test(n)) registrosGeral = +qtd;
+          else if (!ignorando && blocos.length && blocos[blocos.length - 1].rotulo === bloco.rotulo) blocos[blocos.length - 1].registros = +qtd;
+          return;
+        }
+        const valorIt = perto.find(i => dinheiro(i.texto) != null && /,\d{2}$/.test(i.texto.trim()));
+        if (!valorIt || /baixados/.test(n)) return;
+        const campo = (colsLiquidacao && colunaDe(valorIt, colsLiquidacao)) || 'cobrado';
+        const c: ColunaValor = campo === 'valor' || campo === 'mora' || campo === 'desconto' || campo === 'outros' ? campo : 'cobrado';
+        if (/liquidados/.test(n)) { totalGeral = { ...totalGeral, [c]: dinheiro(valorIt.texto) }; return; }
+        if (ignorando) return;
+        bloco.impresso = { ...bloco.impresso, [c]: dinheiro(valorIt.texto) };
+        blocos.push(bloco);
+        bloco = { titulos: [], impresso: { ...TOTAIS_VAZIOS }, rotulo: bloco.rotulo };
+        return;
+      }
+      // cabeçalho da tabela: define as colunas e lê as linhas até o próximo marco
+      achouCabecalho = true;
+      cols = colunasDoCabecalho(itens.filter(i => Math.abs(i.y - m.y) <= 8 && !ehSecao(i.texto)));
+      if (!ignorando) colsLiquidacao = cols;
+      const fim = k + 1 < marcos.length ? marcos[k + 1].y - 2 : Infinity;
+      const regiao = itens.filter(i => i.y > m.y + 8 && i.y < fim);
+      const c = cols;
+      const ancoras = regiao.filter(i => colunaDe(i, c) === 'seu' && /\d/.test(i.texto));
+      const linhas = ancoras.map(a => ({ a, partes: [] as { campo: CampoBanco; it: ItemPdf }[] }));
+      for (const it of regiao) {
+        if (ancoras.includes(it)) continue;
+        let melhor: (typeof linhas)[number] | null = null;
+        for (const l of linhas) if (!melhor || Math.abs(l.a.y - it.y) < Math.abs(melhor.a.y - it.y)) melhor = l;
+        const campo = colunaDe(it, c);
+        if (melhor && campo && Math.abs(melhor.a.y - it.y) <= 12) melhor.partes.push({ campo, it });
+      }
+      for (const l of linhas) {
+        if (ignorando) { ignorados++; continue; }
+        const de = (k2: CampoBanco) => l.partes.filter(p => p.campo === k2).sort((x, y) => x.it.y - y.it.y || x.it.x - y.it.x).map(p => p.it.texto.trim()).join(' ');
+        const valor = dinheiro(de('valor'));
+        if (valor == null) { avisos.push('Linha do Seu Número ' + l.a.texto.trim() + ' sem valor: confira no PDF.'); continue; }
+        bloco.titulos.push({
+          id: id++, sacado: de('sacado'), nossoNumero: de('nosso'), nf: l.a.texto.trim(), valor,
+          mora: dinheiro(de('mora')) || 0, desconto: dinheiro(de('desconto')) || 0, outros: dinheiro(de('outros')) || 0,
+          liquidacao: dataBR(de('liquidacao')), cobrado: dinheiro(de('cobrado')),
+        });
+      }
+    });
+  }
+  if (!achouCabecalho) return null;
+  if (bloco.titulos.length) blocos.push(bloco);
+  return montar(blocos, totalGeral, ignorados, avisos, registrosGeral);
 }

@@ -1,14 +1,14 @@
-// ViewModel da casca da empresa aberta: seções (as da Conferência e as ferramentas) e páginas com as travas, título da página,
+// ViewModel da casca da empresa aberta: seções e páginas com as travas, título da página,
 // sair (Apagar ao sair), voltar pro início e a pergunta "presta serviços?".
 // Origem: conferencia.html renderNav (~L1789), aplicarBloqueios (~L1838), entrar/sair
 // (~L2004-2039), perguntarPrestaServico (~L1781), telaInicialEmpresa (~L1712).
 import { conferencia as c } from '@nads/core';
-import { useRetorno, type NomeIcone } from '@nads/ui';
+import { useRetorno } from '@nads/ui';
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { VERSAO_SISTEMA } from '../../../versao';
 import { useRepo } from '../dados/repo';
-import { FERRAMENTAS, ferramentaPorId, PAGINAS_ESCONDIDAS, paginaPorId, SECOES, secaoDaPagina, type IdSecao } from './navegacao';
+import { PAGINAS_ESCONDIDAS, paginaPorId, SECOES, secaoDaPagina, type IdSecao } from './navegacao';
 import { MSG_CADASTRO_BLOQ, useSessao } from './sessao';
 import { caminho } from './caminho';
 
@@ -42,13 +42,10 @@ export function useCascaConciliaAi() {
     });
   }, [e.prestaServico, modal, s, lista]);
 
-  const secoes = SECOES.map((sec): { id: string; rotulo: string; icone: NomeIcone; grupo: number; ativa: boolean; travada: boolean; req: string } => {
+  const secoes = SECOES.map(sec => {
     const req = sec.id === 'cadastro' && !ok ? 'todas' : sec.id === 'movimento' && semNotas ? 'notas' : '';
     return { id: sec.id, rotulo: sec.rotulo, icone: sec.icone, grupo: sec.grupo, ativa: sec.id === secAtual?.id, travada: !!req, req };
-  }).concat(FERRAMENTAS.map(f => ({
-    // as ferramentas não dependem das importações da Conferência: nunca travam
-    id: f.id, rotulo: f.rotulo, icone: f.icone, grupo: f.grupo, ativa: s.pagina.split('/')[0] === f.id, travada: false, req: '',
-  })));
+  });
 
   const abaAcesa = pag?.acendeAba || s.pagina;
   const paginas = (secAtual?.paginas || []).map(p => ({
@@ -59,8 +56,6 @@ export function useCascaConciliaAi() {
 
   /** Menu lateral: sempre abre a primeira página da seção, já na primeira aba interna. */
   function onSecao(id: string) {
-    const f = ferramentaPorId(id);
-    if (f) { if (s.pagina.split('/')[0] !== f.id) s.irPara(f.id + '/' + f.inicial); return; }
     const sec = secoes.find(x => x.id === id);
     if (sec?.req) { s.avisoImportar(sec.req as 'todas' | 'notas'); return; }
     if (id === 'cadastro' && !ok) { s.avisoImportar('todas'); return; }

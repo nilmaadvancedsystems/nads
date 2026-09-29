@@ -33,7 +33,7 @@ export function titulosFora(titulos: Titulo[], cruzamentos: Cruzamento[], deciso
 
 /**
  * A) principal: D banco, C contrapartida, valor cheio da NF (sem tirar mora/desconto);
- * B) mora (se houver): D banco, C juros;  C) desconto (se houver): D desconto, C banco.
+ * B) mora + outros acréscimos (se houver): D banco, C juros;  C) desconto (se houver): D desconto, C banco.
  * Em ordem de data de liquidação, e dentro do dia na ordem do relatório.
  */
 export function gerarLancamentos(titulos: Titulo[], cruzamentos: Cruzamento[], decisoes: Record<number, Decisao>, contas: ContasCreditor): Lancamento[] {
@@ -47,7 +47,9 @@ export function gerarLancamentos(titulos: Titulo[], cruzamentos: Cruzamento[], d
     const doc = chaveNf(t.nf);
     const comum = { automatico: '', data: t.liquidacao, documento: doc, tituloId: t.id };
     saida.push({ ...comum, tipo: 'principal', debito: contas.banco, credito: o.contrapartida, codHistorico: contas.histPrincipal, historico: o.historico || historicoNfCliente(t), valor: r2(t.valor) });
-    if (t.mora > 0) saida.push({ ...comum, tipo: 'mora', debito: contas.banco, credito: contas.juros, codHistorico: contas.histJuros, historico: historicoNfCliente(t), valor: r2(t.mora) });
+    // "Vlr. Outros Acresc." é acréscimo recebido junto: entra com a mora
+    const acrescimos = r2(t.mora + t.outros);
+    if (acrescimos > 0) saida.push({ ...comum, tipo: 'mora', debito: contas.banco, credito: contas.juros, codHistorico: contas.histJuros, historico: historicoNfCliente(t), valor: acrescimos });
     if (t.desconto > 0) saida.push({ ...comum, tipo: 'desconto', debito: contas.desconto, credito: contas.banco, codHistorico: contas.histDesconto, historico: historicoNfCliente(t), valor: r2(t.desconto) });
   }
   return saida;

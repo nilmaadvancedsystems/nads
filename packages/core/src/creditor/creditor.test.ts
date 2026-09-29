@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { describe, expect, it } from 'vitest';
-import { lerRelatorioPlanilha, lerRelatorioTexto, ordemDoCabecalho, tituloDaLinha } from './arquivos/banco';
+import { lerRelatorioPlanilha, lerRelatorioTexto, ordemDoCabecalho, relatorioDosItens, tituloDaLinha } from './arquivos/banco';
 import { livroDeImportacao } from './arquivos/gerar';
 import { linhasDoCsv } from './arquivos/planilha';
 import { linhasDosItens } from './arquivos/pdf';
@@ -46,8 +46,8 @@ describe('relatório do banco em texto', () => {
     expect(r.avisos).toEqual([]);
     const t = r.grupos[0].titulos[0];
     expect(t).toMatchObject({ sacado: 'MERCADO BOM PRECO LTDA', nossoNumero: '00012345671', nf: '4521', valor: 1250, mora: 12.5, desconto: 0, liquidacao: '01/09/2026', cobrado: 1262.5 });
-    expect(r.grupos[0].impresso).toEqual({ valor: 4180.4, mora: 12.5, desconto: 16.61, cobrado: 4176.29 });
-    expect(r.totalGeral).toEqual({ valor: 8593.22, mora: 21.8, desconto: 46.21, cobrado: 8568.81 });
+    expect(r.grupos[0].impresso).toEqual({ valor: 4180.4, mora: 12.5, desconto: 16.61, outros: null, cobrado: 4176.29 });
+    expect(r.totalGeral).toEqual({ valor: 8593.22, mora: 21.8, desconto: 46.21, outros: null, cobrado: 8568.81 });
   });
 
   it('número no nome do sacado não vira a NF', () => {
@@ -83,7 +83,7 @@ describe('conferência dos grupos', () => {
 
   it('sem total impresso não passa', () => {
     const r = corrigido();
-    const g = { ...r.grupos[0], impresso: { valor: null, mora: null, desconto: null, cobrado: null } };
+    const g = { ...r.grupos[0], impresso: { valor: null, mora: null, desconto: null, outros: null, cobrado: null } };
     expect(conferirGrupo(g).situacao).toBe('sem-total');
   });
 });
@@ -208,7 +208,7 @@ describe('planilha do banco', () => {
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), 'P');
     const r = lerRelatorioPlanilha(XLSX.write(wb, { bookType: 'xlsx', type: 'array' }), 'banco.xlsx');
     expect(r.grupos).toHaveLength(1);
-    expect(r.grupos[0].impresso).toEqual({ valor: 150, mora: 1, desconto: 5, cobrado: 146 });
+    expect(r.grupos[0].impresso).toEqual({ valor: 150, mora: 1, desconto: 5, outros: null, cobrado: 146 });
     expect(conferirGrupo(r.grupos[0]).situacao).toBe('ok');
 
     const semTotal = lerRelatorioPlanilha(buf('Sacado;Seu Número;Valor;Dt. Liquidação\nA;1;10,00;01/09/2026\nB;2;20,00;02/09/2026\n'), 'b.csv');
@@ -220,10 +220,78 @@ describe('planilha do banco', () => {
 describe('PDF', () => {
   it('remonta as linhas pela altura e separa as colunas', () => {
     expect(linhasDosItens([
-      { texto: '100,00', x: 300, y: 700, largura: 30 },
-      { texto: 'CLIENTE', x: 10, y: 701, largura: 40 },
-      { texto: 'A', x: 52, y: 700, largura: 5 },
-      { texto: 'Total', x: 10, y: 680, largura: 20 },
+      { texto: '100,00', x: 300, y: 100, largura: 30 },
+      { texto: 'CLIENTE', x: 10, y: 101, largura: 40 },
+      { texto: 'A', x: 52, y: 100, largura: 5 },
+      { texto: 'Total', x: 10, y: 120, largura: 20 },
     ])).toEqual(['CLIENTE A  100,00', 'Total']);
+  });
+});
+
+describe('PDF do Sicoob (leitura por posição)', () => {
+  // Coordenadas iguais às do "Relatório - Títulos por Período" real (página girada: cada coluna é um
+  // bloco de texto). Nomes inventados.
+  const it_ = (texto: string, x: number, y: number, largura: number) => ({ texto, x, y, largura });
+  const cabecalho = (y: number, liq = 'Dt. Liquid.', cobr = 'Vlr. Cobrado') => [
+    it_('Sacado', 86, y, 28), it_('Nosso Número', 181, y, 57), it_('Seu Número', 263, y, 47), it_('Dt. Previsão Crédito', 329, y, 76),
+    it_('Vencimento', 423, y, 45), it_('Dt. Limite', 492, y - 5, 36), it_('Pgto', 502, y + 5, 18), it_('Valor (R$)', 539, y, 38),
+    it_('Vlr. Mora Vlr. Desc. ', 581, y, 75), it_('Vlr. Outros', 657, y - 5, 41), it_('Acresc.', 663, y + 5, 29),
+    it_(liq, 709, y, 39), it_(cobr, 761, y, 48),
+  ];
+  const linha = (y: number, nome: string[], nosso: string, seu: string, valor: string, mora: string, liq: string, cobrado: string) => [
+    ...nome.map((n, i) => it_(n, 31, y - (nome.length > 1 ? 5 : 0) + i * 9, n.length * 5)),
+    it_(nosso, 215, y, 29), it_(seu, 294, y, 31), it_(liq, 347, y, 40), it_(liq, 426, y, 40),
+    it_(valor, 547, y, 31), it_(mora, 595, y, 20), it_('0,00', 636, y, 16), it_('0,00', 683, y, 16),
+    it_(liq, 708, y, 40), it_(cobrado, 781, y, 31),
+  ];
+  const topo = [it_('Cedente:', 28, 67, 43), it_('640581 - EMPRESA EXEMPLO LTDA', 127, 68, 295), it_('01/08/2026', 372, 84, 50), it_('Liquidação e baixa', 127, 84, 83)];
+  const rodape = (p: number) => [it_('Página ' + p + 'de: 2', 661, 579, 54), it_('Gerado em:', 28, 579, 42), it_('02/09/2026 08:51:13', 103, 579, 73)];
+  const pag1 = [
+    ...topo, it_('58-LIQUIDAÇÃO - VIA COMPENSAÇÃO', 28, 114, 186), ...cabecalho(136),
+    ...linha(161, ['CLIENTE UM'], '10542-4', '9848/2/3', '2.493,55', '69,83', '04/08/2026', '2.563,38'),
+    ...linha(189, ['MERCADINHO DOIS DE', 'TAIOBEIRAS LTDA'], '10573-2', '9862/2/2', '1.004,82', '0,00', '05/08/2026', '1.004,82'),
+    ...rodape(1),
+  ];
+  const pag2 = [
+    ...topo, it_('58-LIQUIDAÇÃO - VIA COMPENSAÇÃO', 28, 114, 186), ...cabecalho(136),
+    ...linha(161, ['CLIENTE TRES'], '10580-4', '9868/2/2', '1.025,66', '0,00', '17/08/2026', '1.025,66'),
+    it_('4.593,86', 764, 205, 50), it_('Total de Valores do grupo:', 583, 205, 118),
+    it_('3', 803, 220, 11), it_('Total de Registros do grupo:', 575, 220, 126),
+    it_('82-BAIXA - PEDIDO CEDENTE', 28, 250, 143), ...cabecalho(272, 'Dt. Baixa', 'Vlr. Baixado'),
+    ...linha(297, ['CLIENTE BAIXADO'], '10507-6', '9827/1/1', '344,30', '0,00', '06/08/2026', '344,30'),
+    it_('344,30', 775, 330, 39), it_('Total de Valores do grupo:', 583, 330, 118), it_('1', 808, 345, 6), it_('Total de Registros do grupo:', 575, 345, 126),
+    it_('Total de Valores Baixados:', 573, 376, 128), it_('344,30', 775, 380, 39),
+    it_('Total de Valores Liquidados:', 564, 420, 137), it_('4.593,86', 764, 424, 50),
+    it_('Total de Registros Liquidados:', 554, 435, 147), it_('3', 797, 439, 17),
+    ...rodape(2),
+  ];
+
+  it('lê os títulos pelas colunas, junta o nome em duas linhas e deixa a baixa de fora', () => {
+    const r = relatorioDosItens([pag1, pag2])!;
+    expect(r.grupos).toHaveLength(1);
+    expect(r.grupos[0].rotulo).toBe('58-LIQUIDAÇÃO - VIA COMPENSAÇÃO');
+    expect(r.grupos[0].titulos.map(t => [t.sacado, t.nossoNumero, t.nf, t.valor, t.mora, t.outros, t.liquidacao, t.cobrado])).toEqual([
+      ['CLIENTE UM', '10542-4', '9848/2/3', 2493.55, 69.83, 0, '04/08/2026', 2563.38],
+      ['MERCADINHO DOIS DE TAIOBEIRAS LTDA', '10573-2', '9862/2/2', 1004.82, 0, 0, '05/08/2026', 1004.82],
+      ['CLIENTE TRES', '10580-4', '9868/2/2', 1025.66, 0, 0, '17/08/2026', 1025.66],
+    ]);
+    expect(r.grupos[0].impresso.cobrado).toBe(4593.86);
+    expect(r.grupos[0].registros).toBe(3);
+    expect(r.ignorados).toBe(1);
+    expect(r.totalGeral.cobrado).toBe(4593.86);
+    expect(r.registrosGeral).toBe(3);
+    expect(conferirGrupo(r.grupos[0]).situacao).toBe('ok');
+    expect(relatorioConferido(r)).toBe(true);
+  });
+
+  it('linha faltando: a quantidade de registros não bate', () => {
+    const semUma = pag1.filter(i => !(i.y >= 184 && i.y <= 198 && i.x < 700) && i.texto !== '9862/2/2');
+    const g = conferirGrupo(relatorioDosItens([semUma, pag2])!.grupos[0]);
+    expect(g.registros).toEqual({ impresso: 3, lidos: 2 });
+    expect(g.situacao).toBe('diverge');
+  });
+
+  it('sem cabeçalho de tabela: devolve null (quem chama lê como texto)', () => {
+    expect(relatorioDosItens([[it_('qualquer coisa', 10, 10, 50)]])).toBeNull();
   });
 });

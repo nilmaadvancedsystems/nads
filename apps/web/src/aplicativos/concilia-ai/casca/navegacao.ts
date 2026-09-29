@@ -1,6 +1,4 @@
-// Navegação do Concilia aí: seções (barra lateral) → páginas (abas do cabeçalho). As seções da
-// Conferência vêm primeiro; depois, as ferramentas de conciliação (FERRAMENTAS), cada uma com as
-// próprias páginas (ferramentas/<id>/casca/navegacao.ts).
+// Navegação do Concilia aí (a Conferência): seções (barra lateral) → páginas (abas do cabeçalho).
 // Origem: conferencia.html SECOES/VIEWS (~L1678-1707).
 import type { NomeIcone } from '@nads/ui';
 
@@ -64,21 +62,3 @@ export function secaoDaPagina(id: string): Secao | undefined {
   return SECOES.find(s => s.id === sec);
 }
 
-/**
- * As ferramentas de conciliação, abaixo das seções da Conferência na barra lateral. Não guardam nada:
- * recebem arquivos e devolvem no máximo um arquivo. As páginas de cada uma (abas do cabeçalho) são dela.
- * Ferramenta nova = uma linha aqui + a pasta ferramentas/<id>/ + a entrada em EmpresaAberta.
- */
-export type IdFerramenta = 'conciliadorzinho' | 'cheque-especial' | 'creditor';
-
-export interface Ferramenta { id: IdFerramenta; rotulo: string; icone: NomeIcone; grupo: number; inicial: string }
-
-export const FERRAMENTAS: Ferramenta[] = [
-  { id: 'conciliadorzinho', grupo: 4, rotulo: 'Conciliadorzinho', icone: 'cartao', inicial: 'bandeiras' },
-  { id: 'cheque-especial', grupo: 4, rotulo: 'Cheque especial', icone: 'landmark', inicial: 'saldo-negativo' },
-  { id: 'creditor', grupo: 4, rotulo: 'Creditor', icone: 'fileSearch', inicial: 'banco' },
-];
-
-export function ferramentaPorId(id: string): Ferramenta | undefined {
-  return FERRAMENTAS.find(f => f.id === id);
-}

@@ -55,7 +55,7 @@ export function ordemData(d: string): number {
   return m ? +m[3] * 10000 + +m[2] * 100 + +m[1] : 0;
 }
 
-/** Valor que o banco efetivamente creditou no título: o cobrado, ou valor + mora − desconto. */
-export function liquidoDoTitulo(t: { valor: number; mora: number; desconto: number; cobrado: number | null }): number {
-  return t.cobrado != null ? t.cobrado : r2(t.valor + t.mora - t.desconto);
+/** Valor que o banco efetivamente creditou no título: o cobrado, ou valor + mora + outros − desconto. */
+export function liquidoDoTitulo(t: { valor: number; mora: number; desconto: number; outros?: number; cobrado: number | null }): number {
+  return t.cobrado != null ? t.cobrado : r2(t.valor + t.mora + (t.outros || 0) - t.desconto);
 }
