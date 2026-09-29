@@ -1,31 +1,44 @@
 # Os aplicativos do nads
 
-Decisão do Vitor (2026-09-29): cada ferramenta é **um aplicativo isolado**, desenvolvido e testado
-separado, cada um com a sua prévia.
+Decisão do Vitor (2026-09-29): cada aplicativo é **isolado**, desenvolvido e testado separado, com o seu
+link. Depois, no mesmo dia, as três ferramentas do banco viraram um aplicativo só: o **Extratudo**.
 
-| Aplicativo | Rota | O que faz | Banco |
-|---|---|---|---|
-| **Concilia aí** (a Conferência) | `/`, `/292/movimento/relatorio` | balancete × notas: importação, cadastro, relatório, checklist, auditoria | Firestore da Conferência (no site publicado) |
-| **Conciliadorzinho** | `/conciliadorzinho/292/conciliacao/<etapa>` | cartão × notas fiscais, arquivos por bandeira | nenhum |
-| **Cheque especial** | `/cheque-especial/292/ajuste/saldo-negativo` | ajuste do saldo negativo a partir do saldo diário | nenhum |
-| **Creditor** | `/creditor/292/<etapa>` | relatório de liquidação do banco × sistema → importação de 8 colunas | nenhum |
+| Aplicativo | Link | Rota | O que faz | Banco |
+|---|---|---|---|---|
+| **Concilia aí** (a Conferência) | concilia-ai-nilma.web.app | `/`, `/292/movimento/relatorio` | balancete × notas: importação, cadastro, relatório, checklist, auditoria | Firestore da Conferência (no nads-nilma) |
+| **Conciliadorzinho** | conciliadorzinho-nilma.web.app | `/conciliadorzinho/292/conciliacao/<etapa>` | cartão × notas fiscais, arquivos por bandeira | nenhum |
+| **Extratudo** | extratudo-nilma.web.app | `/extratudo/292/<ferramenta>/…` | tudo do banco da empresa (abaixo) | nenhum |
+| **Tarefas** | tarefas-nilma.web.app | — | ainda "Em construção" | — |
 
-Todos começam escolhendo a empresa. As ferramentas usam a lista de empresas do escritório e não guardam
-nada. Um aplicativo não importa nada de outro: o que é comum fica em `apps/web/src/comum`,
-`packages/ui` e `packages/core/src/{formatos,empresas}`.
+## Extratudo
 
-## Prévias (uma por aplicativo)
+Uma empresa, três ferramentas na barra lateral; as páginas da ferramenta ficam nas abas de cima.
 
-`VITE_APLICATIVO=<id>` gera um site com **um aplicativo só**: as rotas dos outros não entram, e a raiz
-leva direto a ele. Cada um vai num canal próprio do Firebase Hosting (site `nads-nilma`), que expira em 7 dias:
+| Ferramenta | Rota | O que faz |
+|---|---|---|
+| **Extrator** | `/extratudo/292/extrator/<seção>/<página>` | extrato bancário × lançamentos contábeis (falta, diferente, a mais, duplicado) |
+| **Cheque especial** | `/extratudo/292/cheque-especial/ajuste/saldo-negativo` | ajuste do saldo negativo a partir do saldo diário |
+| **Creditor** | `/extratudo/292/creditor/<etapa>` | relatório de liquidação do banco × sistema → importação de 8 colunas |
+
+Código: `apps/web/src/aplicativos/extratudo/` (casca comum, entrada e `ferramentas/<id>/`) e
+`packages/core/src/extratudo/<id>/`. Docs de cada ferramenta em `docs/aplicativos/extratudo/<id>/`. Os links
+antigos (`/extrator`, `/cheque-especial`, `/creditor` e os sites extrator-, cheque-especial-, creditor-nilma)
+levam para o Extratudo.
+
+## Regras
+
+Todos começam escolhendo a empresa. Um aplicativo não importa nada de outro: o que é comum fica em
+`apps/web/src/comum`, `packages/ui` e `packages/core/src/{formatos,empresas,usuarios}`.
+
+## Links (um site por aplicativo)
+
+`VITE_APLICATIVO=<id>` gera um site com **um aplicativo só**. Para gerar e publicar:
 
 ```bash
-# na pasta apps/web, para cada <id> em concilia-ai, conciliadorzinho, cheque-especial, creditor
-VITE_APLICATIVO=<id> npx vite build --mode exemplos
-npx firebase hosting:channel:deploy <id> --expires 7d --project conferencia-nilma
+npm run sites -- extratudo            # ou vários, ou "todos"
 ```
 
-Sem `VITE_APLICATIVO`, o site tem os quatro. As prévias usam `--mode exemplos`: dados de exemplo, sem banco.
+Os sites usam `--mode exemplos` (dados de exemplo, sem banco) e só a hospedagem deles é publicada.
 
 Histórico: em 2026-09-28 as ferramentas chegaram a ficar dentro da Conferência (primeiro "Conciliei",
 com uma caixa estilo GitHub Insights, depois "Concilia aí" com tudo na barra lateral). A caixa

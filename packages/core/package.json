@@ -9,10 +9,10 @@
     "./conferencia": "./src/conferencia/index.ts",
     "./formatos": "./src/formatos/index.ts",
     "./empresas": "./src/empresas/index.ts",
-    "./cheque-especial": "./src/cheque-especial/index.ts",
+    "./cheque-especial": "./src/extratudo/cheque-especial/index.ts",
     "./conciliadorzinho": "./src/conciliadorzinho/index.ts",
-    "./creditor": "./src/creditor/index.ts",
-    "./extrator": "./src/extrator/index.ts",
+    "./creditor": "./src/extratudo/creditor/index.ts",
+    "./extrator": "./src/extratudo/extrator/index.ts",
     "./usuarios": "./src/usuarios/index.ts"
   },
   "dependencies": {

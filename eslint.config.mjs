@@ -53,8 +53,9 @@ export default tseslint.config(
   },
   {
     // View: desenha o que o hook devolve — não fala com o repositório
-    files: ['apps/web/src/aplicativos/*/{casca,telas}/**/*.tsx'],
-    ignores: ['apps/web/src/aplicativos/*/casca/sessao.tsx', 'apps/web/src/aplicativos/*/casca/EmpresaAberta.tsx'],
+    // (as ferramentas de um aplicativo, como as do Extratudo, seguem a mesma regra)
+    files: ['apps/web/src/aplicativos/*/{casca,telas}/**/*.tsx', 'apps/web/src/aplicativos/*/ferramentas/*/{casca,telas}/**/*.tsx'],
+    ignores: ['apps/web/src/aplicativos/**/casca/sessao.tsx', 'apps/web/src/aplicativos/**/casca/EmpresaAberta.tsx'],
     rules: {
       'no-restricted-imports': ['error', { patterns: [{ group: ['**/dados/repo', '**/dados/fonte', '**/dados/*.firestore'], message: 'View não fala com o repositório: use o hook da tela.' }, { group: ['firebase', 'firebase/*'], message: 'Firebase só em apps/web/src/aplicativos/<app>/dados/*.firestore.ts.' }] }],
     },
