@@ -1,4 +1,4 @@
-// Etapa 2 do Creditor: conferência de cada grupo contra o total impresso no relatório.
+// Etapa 3 do Creditor (só quando o relatório traz total impresso): conferência de cada grupo contra o total impresso no relatório.
 import { creditor as cr } from '@nads/core';
 import { Alerta, BotaoIcone, Icone } from '@nads/ui';
 import { Celula } from './partes/Celula';
@@ -104,7 +104,7 @@ export function Conferencia() {
 
       <div className="btn-row">
         <button className="btn btn-ghost" type="button" onClick={vm.voltar}>← Voltar</button>
-        <button className="btn btn-primary" type="button" disabled={!vm.podeContinuar} onClick={vm.continuar}>Continuar para o sistema</button>
+        <button className="btn btn-primary" type="button" disabled={!vm.podeContinuar} onClick={vm.continuar}>Continuar para o fiscal</button>
       </div>
     </section>
   );

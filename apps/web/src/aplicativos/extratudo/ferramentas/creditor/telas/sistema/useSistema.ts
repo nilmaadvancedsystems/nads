@@ -2,6 +2,7 @@
 // Contrapartida e o Histórico de cada NF.
 import { creditor as cr } from '@nads/core';
 import { useState } from 'react';
+import { indiceDaEtapa } from '../../casca/navegacao';
 import { useSessao } from '../../casca/sessao';
 
 export const LIMITE_PREVIA = 50;
@@ -14,7 +15,7 @@ export function useSistema() {
   function usar(l: cr.LinhaSistema[], origem: string) {
     setErro('');
     // arquivo novo: as decisões do cruzamento eram sobre o outro
-    s.mudar(e => ({ ...e, sistema: l, origemSistema: origem, decisoes: {}, alcancada: Math.min(e.alcancada, 2) }));
+    s.mudar(e => ({ ...e, sistema: l, origemSistema: origem, decisoes: {}, alcancada: Math.min(e.alcancada, indiceDaEtapa('sistema')) }));
   }
 
   async function escolherArquivo(f: File | null) {

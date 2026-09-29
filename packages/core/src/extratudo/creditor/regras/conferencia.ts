@@ -83,6 +83,15 @@ export function conferirTotalGeral(r: RelatorioBanco): ConferenciaGeral {
   return { colunas, registros, ok };
 }
 
+/**
+ * O relatório trouxe algum total impresso (de grupo ou geral, em valor ou em quantidade)? Sem nenhum,
+ * não há contra o que conferir: a etapa Conferência fica de fora e o relatório segue direto para o sistema.
+ */
+export function temTotalImpresso(r: RelatorioBanco): boolean {
+  const algum = (t: TotaisImpressos) => Object.values(t).some(v => v != null);
+  return r.grupos.some(g => algum(g.impresso) || g.registros != null) || algum(r.totalGeral) || r.registrosGeral != null;
+}
+
 /** Tudo pronto para cruzar com o sistema: todo grupo "ok" e o total geral batendo. */
 export function relatorioConferido(r: RelatorioBanco): boolean {
   const titulos = r.grupos.flatMap(g => g.titulos);

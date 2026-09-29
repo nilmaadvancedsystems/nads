@@ -52,11 +52,19 @@ function duplicatasJuntas(valorSistema: number, t: Titulo, parcelasNoBanco: Titu
   return 0;
 }
 
+/** Os números do histórico, sem zeros à esquerda ("Recebimento DUP.009897/1/1" → 9897, 1, 1), com 3+ dígitos. */
+function numerosDoHistorico(h: string): string[] {
+  return [...new Set((h.match(/\d+/g) || []).map(n => n.replace(/^0+(?=\d)/, '')).filter(n => n.length >= 3))];
+}
+
 export function cruzar(titulos: Titulo[], sistema: LinhaSistema[]): Cruzamento[] {
   const porNf = new Map<string, LinhaSistema[]>();
+  // segunda chance: a NF escrita no histórico, quando a coluna de NF não tem (ou tem outro número)
+  const porHistorico = new Map<string, LinhaSistema[]>();
   for (const l of sistema) {
     const k = chaveNf(l.nf);
     if (k) porNf.set(k, [...(porNf.get(k) || []), l]);
+    for (const n of numerosDoHistorico(l.historico)) if (n !== k) porHistorico.set(n, [...(porHistorico.get(n) || []), l]);
   }
   const titulosPorNf = new Map<string, Titulo[]>();
   for (const t of titulos) {
@@ -66,7 +74,7 @@ export function cruzar(titulos: Titulo[], sistema: LinhaSistema[]): Cruzamento[]
 
   return titulos.map((t): Cruzamento => {
     const k = chaveNf(t.nf);
-    const candidatas = (k && porNf.get(k)) || [];
+    const candidatas = (k && (porNf.get(k) || porHistorico.get(k))) || [];
     const base = { tituloId: t.id, valorBanco: t.valor };
     if (!candidatas.length) {
       return { ...base, situacao: 'nao-encontrada', linha: null, valorSistema: null, nota: 'NF ' + (k || '(vazia)') + ' não está no arquivo do sistema.' };

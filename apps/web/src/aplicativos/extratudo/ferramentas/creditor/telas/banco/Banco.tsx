@@ -1,4 +1,4 @@
-// Etapa 1 do Creditor: o relatório de liquidação do banco (PDF ou planilha).
+// Etapa 2 do Creditor: o relatório de liquidação do banco (o do Drive, ou PDF/planilha anexado aqui).
 import { creditor as cr } from '@nads/core';
 import { Alerta, CampoArquivo, Icone } from '@nads/ui';
 import { useBanco } from './useBanco';
@@ -12,7 +12,7 @@ export function Banco() {
         <div className="import-box-row">
           <CampoArquivo id="fBanco" arquivo={vm.arquivo} aceitar={vm.aceitar} onEscolher={f => { void vm.escolherArquivo(f); }} />
         </div>
-        <p className="hint">PDF exportado pelo banco (Sicoob: "Relatório - Títulos por Período"), .xls, .xlsx ou .csv. A leitura acontece aqui no navegador: nada sai da máquina.</p>
+        <p className="hint">Competência: <b>{vm.competencia}</b>. Se o relatório veio do Drive, ele já está lido abaixo; para trocar, anexe outro. PDF exportado pelo banco (Sicoob: "Relatório - Títulos por Período"), .xls, .xlsx ou .csv. A leitura acontece aqui no navegador: nada sai da máquina.</p>
         <div className="btn-row" style={{ justifyContent: 'flex-start', marginTop: 8 }}>
           <button className="btn btn-ghost" type="button" onClick={vm.exemplo}>Testar com o exemplo</button>
         </div>
@@ -31,7 +31,8 @@ export function Banco() {
       )}
 
       <div className="btn-row">
-        <button className="btn btn-primary" type="button" disabled={!vm.podeContinuar} onClick={vm.continuar}>Continuar para a conferência</button>
+        <button className="btn btn-ghost" type="button" onClick={vm.voltar}>← Voltar</button>
+        <button className="btn btn-primary" type="button" disabled={!vm.podeContinuar} onClick={vm.continuar}>{vm.rotuloContinuar}</button>
       </div>
     </section>
   );

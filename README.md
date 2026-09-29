@@ -5,6 +5,8 @@
 > apps podem ser usados ao mesmo tempo sobre os mesmos dados. Rodando local (`npm run dev`), usa dados de
 > exemplo e não toca no banco. A trava `npm run conexoes` garante que o Firebase só aparece em
 > `apps/web/src/aplicativos/<app>/dados/*.firestore.ts` e que o `apps/web/firebase.json` (o único) só publica hospedagem.
+> Exceção (2026-09-29): o Creditor lê o Drive do escritório pelo Entregas (app Pendências), só em
+> `apps/web/src/aplicativos/extratudo/dados/drive.firestore.ts`, com o login do Entregas.
 
 O nads tem **cinco aplicativos isolados**, cada um com o seu link (ver `docs/aplicativos/README.md`):
 **Concilia aí** (a Conferência, em `/`), **Conciliadorzinho** (`/conciliadorzinho`), **Cheque especial**
@@ -69,6 +71,6 @@ saídas, ISS, relatório da conta) podem ser importados: a leitura acontece no n
   Links antigos `/conferencia/…` redirecionam.
 - Conciliadorzinho: `/conciliadorzinho/<código>/conciliacao/<etapa>`.
 - Cheque especial: `/cheque-especial/<código>/ajuste/saldo-negativo`.
-- Creditor: `/creditor/<código>/<etapa>` (banco, conferencia, sistema, cruzamento, lancamentos).
+- Creditor (dentro do Extratudo): `/extratudo/<código>/creditor/<etapa>` (competencia, banco, conferencia, fiscal, sistema, cruzamento, lancamentos).
 
 Empresa sem código na lista usa o nome.

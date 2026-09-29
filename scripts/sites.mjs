@@ -1,17 +1,21 @@
 #!/usr/bin/env node
-// Um site (link) por aplicativo, no projeto conferencia-nilma. Cada site é gerado só com o seu
-// aplicativo (VITE_APLICATIVO). Por padrão com dados de exemplo (--mode exemplos: nada vai para o
+// Um site (link) por aplicativo, no projeto conferencia-nilma (e, a pedido do Vitor em 2026-09-29, o
+// Extratudo também num site do projeto do Entregas, entregas-2e5e2). Cada site é gerado só com o seu
+// aplicativo (VITE_APLICATIVO). O banco não muda com o projeto do site: o Extratudo do Entregas grava no
+// mesmo Firestore da Conferência. Por padrão com dados de exemplo (--mode exemplos: nada vai para o
 // banco); quem já foi ligado ao banco a pedido do Vitor usa --mode banco (hoje: o Extratudo e a Tarefas).
 // Quem ainda não existe no nads ganha a página "Em construção"; os links antigos (que viraram parte
 // de outro aplicativo) levam para o novo.
 //
 //   npm run sites -- extratudo conciliadorzinho     publica só esses
+//   npm run sites -- extratudo-entregas             o Extratudo no projeto do Entregas (cria o site na 1ª vez)
 //   npm run sites -- todos                          publica todos
 //   npm run sites -- tarefas --canal=exemplos --exemplos
 //                                                   prévia com dados de exemplo (link próprio, expira em 7 dias;
 //                                                   não mexe no site no ar nem no banco)
 //
-// Publica SÓ a hospedagem desses sites (--only hosting:<site>); o nads-nilma não é tocado.
+// Publica SÓ a hospedagem desses sites (--only hosting:<site>); o nads-nilma não é tocado, e no projeto do
+// Entregas só o site do Extratudo (o site das Pendências, entregas-2e5e2, nunca entra aqui).
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -25,12 +29,16 @@ const url = site => 'https://' + site + '.web.app';
  *   app       — o aplicativo do nads (VITE_APLICATIVO=id); banco: true = ligado ao banco
  *   construcao — a página "Em construção"
  *   mudou     — leva para outro aplicativo (o id dele)
+ * projeto: o projeto do Firebase do site (padrão: conferencia-nilma); aplicativo: qual aplicativo do nads
+ * vai nele, quando não é o próprio id
  */
+const PROJETO_PADRAO = 'conferencia-nilma';
 const SITES = {
   'concilia-ai': { site: 'concilia-ai-nilma', nome: 'Concilia aí', tipo: 'app' },
   conciliadorzinho: { site: 'conciliadorzinho-nilma', nome: 'Conciliadorzinho', tipo: 'app' },
   extratudo: { site: 'extratudo-nilma', nome: 'Extratudo', tipo: 'app', banco: true },
   tarefas: { site: 'tarefas-nilma', nome: 'Tarefas', tipo: 'app', banco: true },
+  'extratudo-entregas': { site: 'extratudo-entregas', nome: 'Extratudo (Entregas)', tipo: 'app', banco: true, aplicativo: 'extratudo', projeto: 'entregas-2e5e2' },
   // viraram ferramentas do Extratudo
   extrator: { site: 'extrator-nilma', nome: 'Extrator', tipo: 'mudou', para: 'extratudo' },
   'cheque-especial': { site: 'cheque-especial-nilma', nome: 'Cheque especial', tipo: 'mudou', para: 'extratudo' },
@@ -63,7 +71,7 @@ for (const id of ids) {
     const banco = s.banco && !soExemplos;
     console.log('sites: gerando ' + s.nome + (banco ? ' (ligado ao banco)' : ' (dados de exemplo)') + '…');
     execSync('npx vite build --mode ' + (banco ? 'banco' : 'exemplos') + ' --outDir ' + JSON.stringify(saida) + ' --emptyOutDir', {
-      cwd: web, stdio: ['ignore', 'ignore', 'inherit'], env: { ...process.env, VITE_APLICATIVO: id },
+      cwd: web, stdio: ['ignore', 'ignore', 'inherit'], env: { ...process.env, VITE_APLICATIVO: s.aplicativo || id },
     });
     continue;
   }
@@ -78,13 +86,28 @@ if (canal) {
   // prévia (canal do Firebase Hosting): um link à parte, que some sozinho; o site no ar não muda
   for (const id of ids) {
     console.log('sites: prévia "' + canal + '" do ' + SITES[id].nome + ' (expira em 7 dias)');
-    execSync('firebase hosting:channel:deploy ' + canal + ' --only ' + SITES[id].site + ' --expires 7d --project conferencia-nilma', { cwd: web, stdio: 'inherit' });
+    execSync('firebase hosting:channel:deploy ' + canal + ' --only ' + SITES[id].site + ' --expires 7d --project ' + (SITES[id].projeto || PROJETO_PADRAO), { cwd: web, stdio: 'inherit' });
   }
   process.exit(0);
 }
-const alvo = ids.map(id => 'hosting:' + SITES[id].site).join(',');
-console.log('sites: publicando ' + alvo);
-execSync('firebase deploy --only ' + alvo + ' --project conferencia-nilma', { cwd: web, stdio: 'inherit' });
+/** Site de outro projeto: cria na primeira vez (o nome do site é único no Firebase inteiro). */
+function garantirSite(projeto, site) {
+  if (projeto === PROJETO_PADRAO) return;
+  const lista = execSync('firebase hosting:sites:list --json --project ' + projeto, { cwd: web, encoding: 'utf8' });
+  if (lista.includes('/sites/' + site + '"')) return;
+  console.log('sites: criando o site ' + site + ' no projeto ' + projeto);
+  execSync('firebase hosting:sites:create ' + site + ' --project ' + projeto, { cwd: web, stdio: 'inherit' });
+}
+
+// um deploy por projeto
+const porProjeto = {};
+for (const id of ids) (porProjeto[SITES[id].projeto || PROJETO_PADRAO] ||= []).push(id);
+for (const [projeto, doProjeto] of Object.entries(porProjeto)) {
+  for (const id of doProjeto) garantirSite(projeto, SITES[id].site);
+  const alvo = doProjeto.map(id => 'hosting:' + SITES[id].site).join(',');
+  console.log('sites: publicando ' + alvo + ' (projeto ' + projeto + ')');
+  execSync('firebase deploy --only ' + alvo + ' --project ' + projeto, { cwd: web, stdio: 'inherit' });
+}
 for (const id of ids) {
   const s = SITES[id];
   console.log('  ' + s.nome + ': ' + url(s.site) + (s.tipo === 'mudou' ? '  → leva para o ' + SITES[s.para].nome : ''));

@@ -1,9 +1,10 @@
-// ViewModel da etapa Relatório do banco: lê o PDF (no navegador, com o pdf.js) ou a planilha; ou
-// carrega o exemplo.
+// ViewModel da etapa Relatório do banco: mostra o que veio do Drive (etapa Competência) ou lê o arquivo
+// anexado aqui (PDF no navegador, com o pdf.js, ou planilha); ou carrega o exemplo. Avisa os títulos
+// liquidados fora da competência.
 import { creditor as cr } from '@nads/core';
-import workerPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useState } from 'react';
 import { useSessao } from '../../casca/sessao';
+import { lerRelatorio, mensagemDeErro } from '../../leitura';
 
 export function useBanco() {
   const s = useSessao();
@@ -12,10 +13,14 @@ export function useBanco() {
   const [arquivo, setArquivo] = useState<File | null>(null);
   const r = s.estado.relatorio;
 
-  /** Relatório novo: descarta as decisões do cruzamento (os títulos mudaram) e volta a travar as etapas seguintes. */
+  /**
+   * Relatório novo: descarta as decisões do cruzamento (os títulos mudaram) e volta a travar as etapas
+   * seguintes. Sem nenhum total impresso, a Conferência sai do fluxo (decidido aqui, na leitura, para a
+   * etapa não sumir enquanto a pessoa edita).
+   */
   function usar(rel: cr.RelatorioBanco, origem: string) {
     setErro('');
-    s.mudar(e => ({ ...e, relatorio: rel, origemBanco: origem, decisoes: {}, alcancada: 0 }));
+    s.usarRelatorio(rel, origem);
   }
 
   async function escolherArquivo(f: File | null) {
@@ -24,11 +29,7 @@ export function useBanco() {
     setLendo(true);
     setErro('');
     try {
-      const buf = await f.arrayBuffer();
-      const nome = f.name.toLowerCase();
-      if (nome.endsWith('.pdf')) usar(await cr.lerRelatorioPdf(buf, workerPdf), f.name);
-      else if (nome.endsWith('.txt')) usar(cr.lerRelatorioTexto(new TextDecoder().decode(buf)), f.name);
-      else usar(cr.lerRelatorioPlanilha(buf, f.name), f.name);
+      usar(await lerRelatorio(f.name, await f.arrayBuffer()), f.name);
     } catch (e) {
       setErro(mensagemDeErro(e));
       setArquivo(null);
@@ -38,7 +39,9 @@ export function useBanco() {
   }
 
   const titulos = r ? r.grupos.flatMap(g => g.titulos) : [];
+  const foraDoMes = cr.titulosForaDaCompetencia(titulos, s.estado.competencia);
   return {
+    competencia: cr.competenciaPorExtenso(s.estado.competencia),
     aceitar: cr.EXTENSOES_BANCO.join(','),
     lendo, erro, fecharErro: () => setErro(''),
     arquivo, escolherArquivo,
@@ -50,18 +53,14 @@ export function useBanco() {
       dias: new Set(titulos.map(t => t.liquidacao)).size,
       ignorados: r.ignorados,
       valor: cr.somar(titulos.map(t => t.valor)),
-      avisos: r.avisos,
+      avisos: [
+        ...r.avisos,
+        ...(foraDoMes.length ? [foraDoMes.length + ' título(s) liquidado(s) fora de ' + cr.rotuloCompetencia(s.estado.competencia) + ' (ex.: NF ' + foraDoMes[0].nf + ' em ' + foraDoMes[0].liquidacao + '). Confira se é o relatório certo.'] : []),
+      ],
     } : null,
     podeContinuar: titulos.length > 0,
+    rotuloContinuar: 'Continuar para ' + (s.estado.conferir ? 'a conferência' : 'o fiscal'),
     continuar: s.proxima,
+    voltar: s.anterior,
   };
-}
-
-/** A mensagem para a tela. Página aberta antes de uma atualização não acha mais o leitor de PDF antigo. */
-function mensagemDeErro(e: unknown): string {
-  const m = e instanceof Error ? e.message : String(e || '');
-  if (/dynamically imported module|Importing a module script failed|Failed to fetch|error loading dynamically/i.test(m)) {
-    return 'O Creditor foi atualizado enquanto a página estava aberta. Recarregue a página (F5) e escolha o arquivo de novo.';
-  }
-  return m || 'Não foi possível ler o arquivo.';
 }

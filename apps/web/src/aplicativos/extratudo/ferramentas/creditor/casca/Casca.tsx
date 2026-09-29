@@ -1,5 +1,5 @@
 // View: o Creditor dentro da casca do Extratudo. "Cancelar" fica nas ações do topo, antes das ações
-// da própria etapa, e "Etapa n de 5" acima da tela.
+// da própria etapa, e "Etapa n de 7" (ou de 6) acima da tela.
 import type { ReactNode } from 'react';
 import { CascaExtratudo } from '../../../casca/CascaExtratudo';
 import { useCascaCreditor } from './useCascaCreditor';
