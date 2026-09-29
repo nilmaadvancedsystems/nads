@@ -5,6 +5,7 @@ import { createBrowserRouter, Navigate, useLocation } from 'react-router';
 import { rotasChequeEspecial } from './aplicativos/cheque-especial/rotas';
 import { rotasConciliadorzinho } from './aplicativos/conciliadorzinho/rotas';
 import { rotasConferencia } from './aplicativos/conferencia/rotas';
+import { rotasExtrator } from './aplicativos/extrator/rotas';
 import { ehRotaDeAplicativo } from './inicio/aplicativos';
 import { Inicio } from './inicio/Inicio';
 
@@ -24,5 +25,6 @@ export const roteador = createBrowserRouter([
   ...rotasConferencia,
   ...rotasChequeEspecial,
   ...rotasConciliadorzinho,
+  ...rotasExtrator,
   { path: '*', element: <LinkAntigo /> },
 ]);

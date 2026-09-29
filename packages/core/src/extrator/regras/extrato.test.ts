@@ -1,0 +1,69 @@
+import { describe, expect, it } from 'vitest';
+import { anoDoTexto, lancamentosDoPdf, type ItemDeTexto } from './extrato';
+
+/** Monta uma página: cada linha é [texto, x] com a mesma altura; as linhas descem de 14 em 14. */
+function pagina(linhas: [string, number][][]): ItemDeTexto[] {
+  const itens: ItemDeTexto[] = [];
+  linhas.forEach((l, i) => {
+    for (const [texto, x] of l) itens.push({ texto, x, y: 800 - i * 14, largura: texto.length * 5 });
+  });
+  return itens;
+}
+
+describe('extrato em PDF', () => {
+  it('coluna Valor com sinal e coluna Saldo ignorada; histórico da linha de baixo junta', () => {
+    const p = pagina([
+      [['BANCO EXEMPLO S.A. Período: 01/08/2026 a 31/08/2026', 40]],
+      [['Data', 40], ['Lançamento', 100], ['Valor (R$)', 400], ['Saldo (R$)', 480]],
+      [['31/07/2026', 40], ['SALDO ANTERIOR', 100], ['10.000,00', 480]],
+      [['03/08/2026', 40], ['PIX RECEBIDO', 100], ['4.500,00', 400], ['14.500,00', 480]],
+      [['CLIENTE ALFA', 100]],
+      [['04/08/2026', 40], ['PAGTO BOLETO ENERGIA', 100], ['-1.289,00', 400], ['13.211,00', 480]],
+      [['TARIFA PACOTE', 100], ['-45,90', 400], ['13.165,10', 480]],
+      [['SALDO DO DIA', 100], ['13.165,10', 480]],
+    ]);
+    expect(lancamentosDoPdf([p], 'banco', 2000)).toEqual([
+      { data: '2026-08-03', valor: 450000, historico: 'PIX RECEBIDO CLIENTE ALFA' },
+      { data: '2026-08-04', valor: -128900, historico: 'PAGTO BOLETO ENERGIA' },
+      { data: '2026-08-04', valor: -4590, historico: 'TARIFA PACOTE' },
+    ]);
+  });
+
+  it('colunas Débito e Crédito dão o sinal; D/C colado no valor também', () => {
+    const p = pagina([
+      [['Data', 40], ['Histórico', 100], ['Débito', 330], ['Crédito', 410], ['Saldo', 490]],
+      [['05/08', 40], ['SAQUE', 100], ['200,00', 330], ['800,00', 490]],
+      [['06/08', 40], ['DEPOSITO', 100], ['300,00', 410], ['1.100,00', 490]],
+      [['07/08', 40], ['ESTORNO', 100], ['50,00', 300], ['C', 332]],
+    ]);
+    expect(lancamentosDoPdf([p], 'banco', 2026).map(l => [l.data, l.valor])).toEqual([
+      ['2026-08-05', -20000], ['2026-08-06', 30000], ['2026-08-07', 5000],
+    ]);
+  });
+
+  it('no razão (sistema) débito na conta do banco é entrada', () => {
+    const p = pagina([
+      [['Data', 40], ['Histórico', 100], ['Débito', 330], ['Crédito', 410]],
+      [['05/08/2026', 40], ['Recebimento', 100], ['100,00', 330]],
+      [['06/08/2026', 40], ['Pagamento', 100], ['40,00', 410]],
+    ]);
+    expect(lancamentosDoPdf([p], 'sistema').map(l => l.valor)).toEqual([10000, -4000]);
+  });
+
+  it('sem coluna nem sinal, o histórico decide; data do dia vale para as linhas seguintes', () => {
+    const p = pagina([
+      [['10/08/2026', 40], ['TARIFA MENSAL', 100], ['30,00', 400]],
+      [['PIX RECEBIDO JOAO', 100], ['70,00', 400]],
+    ]);
+    expect(lancamentosDoPdf([p], 'banco')).toEqual([
+      { data: '2026-08-10', valor: -3000, historico: 'TARIFA MENSAL' },
+      { data: '2026-08-10', valor: 7000, historico: 'PIX RECEBIDO JOAO' },
+    ]);
+  });
+
+  it('ano das datas sem ano: o que mais aparece no texto', () => {
+    expect(anoDoTexto('Período 01/08/2025 a 31/08/2025 emitido em 02/09/2026', 2000)).toBe(2025);
+    expect(anoDoTexto('Extrato de agosto de 2024', 2000)).toBe(2024);
+    expect(anoDoTexto('nada', 2000)).toBe(2000);
+  });
+});

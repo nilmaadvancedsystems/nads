@@ -15,6 +15,7 @@ export const APLICATIVOS: readonly Aplicativo[] = [
   { id: 'conferencia', nome: 'Conferência Contábil', descricao: 'Balancete × notas fiscais: relatório, checklist e verificação por conta.', icone: 'checklist', rota: '/conferencia' },
   { id: 'cheque-especial', nome: 'Cheque especial', descricao: 'Ajuste do saldo negativo da conta, a partir do saldo diário.', icone: 'landmark', rota: '/cheque-especial' },
   { id: 'conciliadorzinho', nome: 'Conciliadorzinho', descricao: 'Cartão × notas fiscais: arquivos por bandeira e das vendas sem cartão.', icone: 'cartao', rota: '/conciliadorzinho' },
+  { id: 'extrator', nome: 'Extrator', descricao: 'Extrato bancário × lançamentos contábeis: o que falta, está diferente, a mais ou duplicado.', icone: 'scale', rota: '/extrator' },
 ];
 
 /** Primeiro pedaço da URL que é de um aplicativo (o resto são links antigos da Conferência). */
