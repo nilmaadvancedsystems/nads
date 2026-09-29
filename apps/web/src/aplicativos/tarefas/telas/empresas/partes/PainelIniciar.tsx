@@ -1,5 +1,6 @@
 // O painel do botão "Iniciar", no jeito do "Code ▾" do GitHub: abas em cima (Escolher / Minhas recentes),
-// o filtro rápido e a busca, a lista (só código e nome) e, embaixo, os atalhos.
+// o filtro rápido e a busca, a lista (só código e nome) e, embaixo, os atalhos. Minhas recentes: as dos
+// últimos 3 dias, ou as minhas paradas.
 import { Icone, Segmentado } from '@nads/ui';
 import type { useMinhasEmpresas } from '../useMinhasEmpresas';
 
@@ -38,7 +39,7 @@ export function PainelIniciar({ vm, fechar }: { vm: Vm; fechar: () => void }) {
               onKeyDown={e => { if (e.key === 'Enter') ir(vm.paraIniciar[0] || null); }} />
           </label>
           {vm.paraIniciar.length === 0
-            ? <p className="hint iniciar-nada">{vm.totalParaIniciar === 0 && !vm.buscaIniciar && vm.filtroIniciar === 'todas' ? 'Todas concluídas nesta competência.' : 'Nenhuma empresa aqui.'}</p>
+            ? <p className="hint iniciar-nada">Nenhuma empresa aqui.</p>
             : <Lista linhas={vm.paraIniciar} onEscolher={ir} />}
           {vm.totalParaIniciar > vm.paraIniciar.length && (
             <p className="hint iniciar-nada">Mostrando {vm.paraIniciar.length} de {vm.totalParaIniciar}. Digite para achar as outras.</p>
@@ -46,11 +47,13 @@ export function PainelIniciar({ vm, fechar }: { vm: Vm; fechar: () => void }) {
         </>
       ) : (
         <>
-          <p className="iniciar-titulo"><Icone nome="clock" />Minhas recentes</p>
-          {vm.recentes.length ? <Lista linhas={vm.recentes} onEscolher={ir} /> : (
+          <Segmentado valor={vm.filtroRecentes} opcoes={vm.filtrosRecentes.map(f => ({ ...f }))} onMudar={vm.setFiltroRecentes} />
+          {vm.recentes.length ? <Lista linhas={vm.recentes} onEscolher={ir} /> : vm.filtroRecentes === 'paradas' ? (
+            <p className="hint iniciar-nada">Nenhuma parada sua em {vm.rotuloCompetencia}.</p>
+          ) : (
             <div className="iniciar-vazio">
               <b>Nenhuma empresa ainda</b>
-              <p className="hint">Você ainda não mexeu em nenhuma empresa em {vm.rotuloCompetencia}.</p>
+              <p className="hint">Você não mexeu em nenhuma empresa nos últimos 3 dias.</p>
               <button type="button" className="btn btn-primary btn-sm" disabled={!vm.proximaDaFila} onClick={() => ir(vm.proximaDaFila)}>
                 <Icone nome="play" />Iniciar a próxima da fila
               </button>
