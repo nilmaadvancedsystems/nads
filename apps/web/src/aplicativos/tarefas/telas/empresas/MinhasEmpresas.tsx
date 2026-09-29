@@ -80,9 +80,11 @@ export function MinhasEmpresas() {
                 <tr key={l.chave} className="linha-abre" tabIndex={0} title={l.acao + ': ' + l.nome}
                   onClick={() => vm.abrir(l.rota)} onKeyDown={e => { if (e.key === 'Enter') vm.abrir(l.rota); }}>
                   <td className="num">
-                    {l.codigo ?? '—'}
                     {/* a situação em cor: laranja parada, amarelo em andamento, cinza não iniciada, verde concluída */}
-                    <span className={'bolinha-sit ' + l.situacao} title={l.rotuloSituacao} role="img" aria-label={l.rotuloSituacao} />
+                    <span className="codigo-sit">
+                      <span className={'bolinha-sit ' + l.situacao} title={l.rotuloSituacao} role="img" aria-label={l.rotuloSituacao} />
+                      {l.codigo ?? '—'}
+                    </span>
                   </td>
                   <td>{l.nome}</td>
                   <td className="fraco">{l.etapaAtual}</td>
