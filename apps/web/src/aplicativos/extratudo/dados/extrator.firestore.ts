@@ -8,7 +8,7 @@
 // - nada é gravado antes de a empresa chegar do banco;
 // - grava só o que mudou (o arquivo novo, o apagado, a auditoria), num lote só;
 // - se falhar, avisa 'Não deu para salvar "…" na nuvem: …'.
-// Este e o conferencia.firestore.ts são os únicos arquivos do nads que falam com o Firebase.
+// Este, o creditor.firestore.ts (ao lado) e os dados/*.firestore.ts dos outros aplicativos são os únicos arquivos do nads que falam com o Firebase.
 import { extrator as x, formatos, type empresas } from '@nads/core';
 import { getApps, initializeApp } from 'firebase/app';
 import { collection, doc, getFirestore, initializeFirestore, onSnapshot, writeBatch, type Firestore } from 'firebase/firestore';
@@ -33,7 +33,7 @@ export interface RepoExtratorFirestore extends x.RepoExtrator {
 }
 
 /** O banco da Conferência (se a Conferência já abriu nesta página, usa a mesma conexão). */
-function bancoDaConferencia(): Firestore {
+export function bancoDaConferencia(): Firestore {
   const app = getApps().find(a => a.name === 'conferencia') ?? initializeApp(CONFIG_CONFERENCIA, 'conferencia');
   try {
     return initializeFirestore(app, { ignoreUndefinedProperties: true });

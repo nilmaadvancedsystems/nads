@@ -1,8 +1,9 @@
-// Etapa 5 do Creditor: contas, fechamento da conta banco por dia e o arquivo de importação.
+// Etapa 7 do Creditor: contas, fechamento da conta banco por dia e o arquivo de importação.
 import { creditor as cr } from '@nads/core';
 import { Alerta, baixarBytes, Icone, Stat } from '@nads/ui';
 import { AcoesDoTopo } from '../../../../../../comum/topo';
-import { useLancamentos, type CampoConta } from './useLancamentos';
+import { CampoConta } from './partes/CampoConta';
+import { useLancamentos, type CampoConta as IdCampo } from './useLancamentos';
 
 const BADGE: Record<cr.SituacaoDia, [string, string]> = {
   ok: ['badge badge-ok', 'Bate'], explicada: ['badge badge-warn', 'Diferença = excluídos'], diverge: ['badge badge-bad', 'Não bate'],
@@ -10,7 +11,7 @@ const BADGE: Record<cr.SituacaoDia, [string, string]> = {
 
 export function Lancamentos() {
   const vm = useLancamentos();
-  const baixar = () => { const a = vm.arquivo(); baixarBytes(a.bytes, a.nome, a.tipo); };
+  const baixar = () => { const a = vm.arquivo(); baixarBytes(a.bytes, a.nome, a.tipo); vm.baixou(); };
   return (
     <section>
       <AcoesDoTopo>
@@ -20,15 +21,27 @@ export function Lancamentos() {
       <div className="card">
         <div className="card-head">
           <h3>Contas e históricos</h3>
-          <button className="btn btn-ghost btn-sm" type="button" onClick={vm.restaurarContas}>Voltar aos padrões</button>
+          {vm.temSalvas && <button className="btn btn-ghost btn-sm" type="button" onClick={vm.esquecerContas}>Voltar às sugestões</button>}
         </div>
+        <p className="hint" style={{ marginTop: 0, marginBottom: 8 }}>{vm.fonte}</p>
+        <datalist id="contasDoBalancete">
+          {vm.opcoes.map(o => <option key={o.codigo} value={o.codigo}>{o.nome}</option>)}
+        </datalist>
         <div className="form-grid">
-          {(Object.keys(vm.rotuloConta) as CampoConta[]).map(c => (
-            <div key={c} className="field">
-              <label htmlFor={'fConta-' + c}>{vm.rotuloConta[c]}</label>
-              <input type="text" id={'fConta-' + c} inputMode="numeric" autoComplete="off" value={vm.contas[c]} onChange={e => vm.mudarConta(c, e.target.value)} />
-            </div>
-          ))}
+          {(Object.keys(vm.rotuloConta) as IdCampo[]).map(c => {
+            const d = vm.ehDoBalancete(c) ? vm.detalhe[c as keyof typeof vm.detalhe] : null;
+            return (
+              <div key={c} className="field">
+                <CampoConta id={'fConta-' + c} rotulo={vm.rotuloConta[c]} valor={vm.contas[c]} lista={d && vm.opcoes.length ? 'contasDoBalancete' : undefined} onGravar={v => vm.mudarConta(c, v)} />
+                {d && vm.carregada && (
+                  <p className="hint" style={{ margin: '4px 0 0' }}>
+                    <span className={'badge badge-' + d.tom}>{d.origem}</span>{d.nome && <> {d.nome}</>}
+                    {d.aviso && <><br />{d.aviso}</>}
+                  </p>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

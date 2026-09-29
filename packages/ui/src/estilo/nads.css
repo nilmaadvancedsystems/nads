@@ -1173,6 +1173,16 @@ tr.linha-atual > td{background:var(--hover-bg);}
 .empresa-acoes{display:flex;align-items:center;gap:8px;}
 .empresa-numeros{margin-bottom:16px;}
 .stat-texto{font-size:16px;font-weight:600;margin:4px 0 0;line-height:1.3;}
+/* passo a passo com checagem (Creditor: baixa no Fiscal) */
+.passos{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
+.passo{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;}
+.passo:hover{background:var(--hover-bg);}
+.passo input{margin-top:3px;flex:none;}
+.passo-n{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1px solid var(--border);font-size:12px;flex:none;}
+.passo.feito .passo-n{background:var(--success);border-color:var(--success);color:#fff;}
+.passo.feito .passo-titulo{text-decoration:line-through;color:var(--ink-muted);}
+.passo-titulo{display:block;font-weight:600;}
+.passo-texto{display:block;font-size:13px;color:var(--ink-muted);margin:2px 0 0;}
 
 /* ---------------------------------- barrinha de carregamento no topo (como a do GitHub) ---------------------------------- */
 .barra-carregamento{position:fixed;top:0;left:0;z-index:1000;height:3px;width:0;opacity:0;pointer-events:none;
