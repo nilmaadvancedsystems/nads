@@ -30,7 +30,6 @@ export function PainelIniciar({ vm, fechar }: { vm: Vm; fechar: () => void }) {
 
       {vm.abaIniciar === 'escolher' ? (
         <>
-          <p className="iniciar-titulo"><Icone nome="play" />Iniciar {vm.rotuloCompetencia}</p>
           <Segmentado valor={vm.filtroIniciar} opcoes={vm.filtrosIniciar.map(f => ({ ...f }))} onMudar={vm.setFiltroIniciar} />
           <label className="busca-curta larga">
             <Icone nome="search" />
