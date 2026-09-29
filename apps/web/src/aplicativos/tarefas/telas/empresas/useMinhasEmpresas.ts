@@ -16,14 +16,12 @@ const COLUNAS: readonly Coluna[] = ['codigo', 'nome', 'etapas', 'situacao', 'pro
 
 /** As abas do painel do Iniciar (como Local / Codespaces do botão Code do GitHub). */
 export type AbaIniciar = 'escolher' | 'recentes';
-/** O filtro rápido da aba Escolher (como HTTPS / SSH / GitHub CLI). */
-export const FILTROS_INICIAR = [
-  { valor: 'todas', rotulo: 'Todas' },
-  { valor: 'nao-iniciada', rotulo: 'Iniciar' },
-  { valor: 'em-andamento', rotulo: 'Andamento' },
-  { valor: 'parada', rotulo: 'Paradas' },
-] as const;
-type FiltroIniciar = (typeof FILTROS_INICIAR)[number]['valor'];
+/**
+ * O filtro rápido da aba Empresas (como HTTPS / SSH / GitHub CLI), com os mesmos nomes da coluna Situação.
+ * Sem nenhum escolhido = todas; clicar no escolhido de novo tira o filtro.
+ */
+export const FILTROS_INICIAR = (['nao-iniciada', 'em-andamento', 'parada'] as const).map(v => ({ valor: v, rotulo: t.ROTULO_SITUACAO_GERAL[v] }));
+type FiltroIniciar = (typeof FILTROS_INICIAR)[number]['valor'] | 'todas';
 /** Minhas recentes somem depois de 3 dias sem mexer. */
 const RECENTE_MS = 3 * 24 * 60 * 60 * 1000;
 
@@ -106,7 +104,8 @@ export function useMinhasEmpresas() {
     totalParaIniciar: paraIniciar.length,
     iniciar: (rota: string) => { setBuscaIniciar(''); abrir(rota); },
     abaIniciar, setAbaIniciar,
-    filtroIniciar, filtrosIniciar: FILTROS_INICIAR, setFiltroIniciar,
+    filtroIniciar, filtrosIniciar: FILTROS_INICIAR,
+    setFiltroIniciar: (f: FiltroIniciar) => setFiltroIniciar(atual => (atual === f ? 'todas' : f)),
     recentes: recentes.slice(0, LIMITE_INICIAR),
     ultimaAberta, proximaDaFila, paradas,
     verParadas: () => { setBusca(''); a.mudar('situacao', 'parada'); },
