@@ -30,10 +30,13 @@ export function useAndamento() {
     const p = t.progresso(ex, rotina);
     const situacao = t.situacaoGeral(ex, rotina);
     const proxima = t.proximaEtapa(ex, rotina);
+    // a última vez que quem está trabalhando mexeu nesta empresa (para 'Minhas recentes' do Iniciar)
+    const minhas = ex ? Object.values(ex.etapas).filter(e => e.por === op.nome).map(e => e.em) : [];
+    const mexiEm = minhas.length ? minhas.reduce((x, y) => (y > x ? y : x)) : null;
     return {
       empresa: emp, chave: (emp.codigo ?? '') + emp.nome, codigo: emp.codigo, nome: emp.nome, rota: empresas.rotaDaEmpresa(emp),
       concluidas: p.concluidas, total: p.total, situacao, rotuloSituacao: t.ROTULO_SITUACAO_GERAL[situacao],
-      proxima: proxima ? proxima.nome : '—', acao: ACAO[situacao],
+      proxima: proxima ? proxima.nome : '—', acao: ACAO[situacao], mexiEm,
     };
   }).sort((a, b) => ORDEM[a.situacao] - ORDEM[b.situacao]) : [];
 

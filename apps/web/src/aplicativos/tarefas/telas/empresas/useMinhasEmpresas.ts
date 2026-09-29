@@ -17,11 +17,24 @@ export const ORDENS = [
 ] as const;
 type Ordem = (typeof ORDENS)[number]['valor'];
 
+/** As abas do painel do Iniciar (como Local / Codespaces do botão Code do GitHub). */
+export type AbaIniciar = 'escolher' | 'recentes';
+/** O filtro rápido da aba Escolher (como HTTPS / SSH / GitHub CLI). */
+export const FILTROS_INICIAR = [
+  { valor: 'todas', rotulo: 'Todas' },
+  { valor: 'nao-iniciada', rotulo: 'Não iniciadas' },
+  { valor: 'em-andamento', rotulo: 'Em andamento' },
+  { valor: 'parada', rotulo: 'Paradas' },
+] as const;
+type FiltroIniciar = (typeof FILTROS_INICIAR)[number]['valor'];
+
 export function useMinhasEmpresas() {
   const a = useAndamento();
   const navegar = useNavigate();
   const [busca, setBusca] = useState('');
   const [buscaIniciar, setBuscaIniciar] = useState('');
+  const [abaIniciar, setAbaIniciar] = useState<AbaIniciar>('escolher');
+  const [filtroIniciar, setFiltroIniciar] = useState<FiltroIniciar>('todas');
   const situacao = SITUACOES.some(s => s.valor === a.params.get('situacao')) ? (a.params.get('situacao') as t.SituacaoGeral) : '';
   const ordem: Ordem = ORDENS.some(o => o.valor === a.params.get('ordem')) ? (a.params.get('ordem') as Ordem) : 'situacao';
 
@@ -32,10 +45,18 @@ export function useMinhasEmpresas() {
 
   // "Iniciar": as empresas que ainda têm etapa a fazer (paradas e em andamento primeiro), com busca própria
   const abertas = a.linhas.filter(l => l.situacao !== 'concluida');
-  const achadasIniciar = buscaIniciar.trim() ? new Set(empresas.buscarEmpresas(abertas.map(l => l.empresa), buscaIniciar)) : null;
-  const paraIniciar = abertas.filter(l => !achadasIniciar || achadasIniciar.has(l.empresa));
+  const doFiltro = abertas.filter(l => filtroIniciar === 'todas' || l.situacao === filtroIniciar);
+  const achadasIniciar = buscaIniciar.trim() ? new Set(empresas.buscarEmpresas(doFiltro.map(l => l.empresa), buscaIniciar)) : null;
+  const paraIniciar = doFiltro.filter(l => !achadasIniciar || achadasIniciar.has(l.empresa));
 
   const abrir = (rota: string) => navegar(caminhoDoExecutor(rota, a.competencia));
+
+  // Minhas recentes: onde quem está trabalhando mexeu nesta competência, a mais recente primeiro
+  const recentes = a.linhas.filter(l => l.mexiEm).sort((x, y) => (y.mexiEm as string).localeCompare(x.mexiEm as string));
+  const ultimaAberta = recentes.find(l => l.situacao !== 'concluida') || null;
+  // a fila: as linhas já vêm paradas → em andamento → não iniciadas
+  const proximaDaFila = abertas[0] || null;
+  const paradas = a.linhas.filter(l => l.situacao === 'parada').length;
 
   return {
     temRotina: a.temRotina,
@@ -62,6 +83,11 @@ export function useMinhasEmpresas() {
     paraIniciar: paraIniciar.slice(0, LIMITE_INICIAR),
     totalParaIniciar: paraIniciar.length,
     iniciar: (rota: string) => { setBuscaIniciar(''); abrir(rota); },
+    abaIniciar, setAbaIniciar,
+    filtroIniciar, filtrosIniciar: FILTROS_INICIAR, setFiltroIniciar,
+    recentes: recentes.slice(0, LIMITE_INICIAR),
+    ultimaAberta, proximaDaFila, paradas,
+    verParadas: () => { setBusca(''); a.mudar('situacao', 'parada'); },
     abrirInsights: () => navegar(caminhoDaPagina('minhas-empresas', 'insights') + '?competencia=' + a.competencia),
   };
 }

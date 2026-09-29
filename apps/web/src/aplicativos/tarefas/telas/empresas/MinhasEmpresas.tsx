@@ -1,9 +1,10 @@
 // Minhas empresas: a barra de cima, no jeito da do GitHub (competência no lugar do "main ▾", quantas
 // empresas, Insights; à direita a busca curta com atalho "/", Situação ▾, Ordenar ▾ e "Iniciar ▾", que abre
-// a lista para escolher a empresa) e a lista com iniciar/continuar. Os números por situação ficam em Insights.
+// o painel para escolher a empresa, em partes/PainelIniciar) e a lista com iniciar/continuar. Os números por situação ficam em Insights.
 import { Icone, MenuSuspenso } from '@nads/ui';
 import { useEffect, useRef } from 'react';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
+import { PainelIniciar } from './partes/PainelIniciar';
 import { LIMITE, useMinhasEmpresas } from './useMinhasEmpresas';
 
 const SELO: Record<string, string> = { parada: 'badge-bad', 'em-andamento': 'badge-warn', 'nao-iniciada': 'badge-neutral', concluida: 'badge-ok' };
@@ -53,35 +54,8 @@ export function MinhasEmpresas() {
             ...vm.situacoes.map(s => ({ rotulo: s.rotulo, marcado: s.valor === vm.situacao, onClick: () => vm.setSituacao(s.valor) }))]} />
         <MenuSuspenso icone="ordenar" rotulo="Ordenar" titulo="Ordenar por" direita
           itens={vm.ordens.map(o => ({ rotulo: o.rotulo, marcado: o.valor === vm.ordem, onClick: () => vm.setOrdem(o.valor) }))} />
-        <MenuSuspenso icone="play" rotulo="Iniciar" className="btn btn-primary" direita largura={380} dica="Escolher a empresa para iniciar"
-          conteudo={fechar => (
-            <div className="iniciar-pop">
-              <p className="popover-label">Iniciar {vm.rotuloCompetencia}</p>
-              <label className="busca-curta larga">
-                <Icone nome="search" />
-                <input type="text" autoFocus placeholder="Escolha a empresa (nome ou código)" value={vm.buscaIniciar}
-                  onChange={e => vm.setBuscaIniciar(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && vm.paraIniciar[0]) { fechar(); vm.iniciar(vm.paraIniciar[0].rota); } }} />
-              </label>
-              <div className="iniciar-lista">
-                {vm.paraIniciar.length === 0 && <p className="hint" style={{ padding: '8px' }}>{vm.buscaIniciar ? 'Nenhuma empresa com etapa a fazer.' : 'Todas concluídas nesta competência.'}</p>}
-                {vm.paraIniciar.map(l => (
-                  <button key={l.chave} type="button" className="popover-item iniciar-item" role="menuitem"
-                    onClick={() => { fechar(); vm.iniciar(l.rota); }}>
-                    <span className="num hint">{l.codigo ?? '—'}</span>
-                    <span className="iniciar-nome">
-                      <span>{l.nome}</span>
-                      <span className="hint">{l.acao} · {l.proxima}</span>
-                    </span>
-                    <span className={'badge ' + SELO[l.situacao]}>{l.rotuloSituacao}</span>
-                  </button>
-                ))}
-              </div>
-              {vm.totalParaIniciar > vm.paraIniciar.length && (
-                <p className="hint iniciar-rodape">Mostrando {vm.paraIniciar.length} de {vm.totalParaIniciar}. Digite para achar as outras.</p>
-              )}
-            </div>
-          )} />
+        <MenuSuspenso icone="play" rotulo="Iniciar" className="btn btn-primary" direita largura={400} dica="Escolher a empresa para iniciar"
+          conteudo={fechar => <PainelIniciar vm={vm} fechar={fechar} />} />
       </div>
 
       {vm.carregando ? <p className="empty">Carregando…</p> : vm.total === 0 ? <p className="empty">Nenhuma empresa nesta situação.</p> : (
