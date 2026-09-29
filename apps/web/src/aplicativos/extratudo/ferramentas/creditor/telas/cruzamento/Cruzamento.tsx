@@ -61,6 +61,13 @@ export function Cruzamento() {
                           </span>
                         ) : (
                           <span className="decisao">
+                            {l.opcoes.map(o => (
+                              <button key={o.codigo} type="button" title={o.nome}
+                                className={'btn btn-sm ' + (l.decisao?.tipo === 'manual' && l.decisao.contrapartida === o.codigo ? 'btn-primary' : 'btn-outline')}
+                                onClick={() => vm.manual(l.id, 'contrapartida', o.codigo)}>
+                                {o.codigo}
+                              </button>
+                            ))}
                             <Celula valor={l.decisao?.tipo === 'manual' ? l.decisao.contrapartida : ''} largura={90} rotulo="Contrapartida" placeholder="Conta" lista="contasClientes" onGravar={v => vm.manual(l.id, 'contrapartida', v)} />
                             <Celula valor={l.decisao?.tipo === 'manual' ? l.decisao.historico : ''} largura={260} rotulo="Histórico" placeholder={l.historicoPadrao} onGravar={v => vm.manual(l.id, 'historico', v)} />
                             <button className="btn btn-ghost btn-sm" type="button" onClick={() => vm.excluir(l.id)}>Excluir título</button>

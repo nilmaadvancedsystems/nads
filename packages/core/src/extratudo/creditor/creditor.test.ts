@@ -477,20 +477,25 @@ describe('conta do cliente pelo balancete', () => {
     { codigo: '12110', nome: 'ARAUJO E SA LTDA' },
     { codigo: '12200', nome: 'MERCADINHO PLANALTO DE TAIOBEIRAS LTDA' },
     { codigo: '12300', nome: 'SUPERMERCADO BOA COMPRA LTDA' },
-    { codigo: '12301', nome: 'SUPERMERCADO BOA COMPRA FILIAL' },
+    { codigo: '12301', nome: 'SUPERMERCADO BOA COMPRA LTDA' },
+    { codigo: '12400', nome: 'SUPERMERCADO A E E' },
     { codigo: '13', nome: 'ESTOQUES', sintetica: true },
     { codigo: '13100', nome: 'MERCADORIAS PARA REVENDA' },
   ] };
   const t = (id: number, sacado: string) => ({ id, sacado, nossoNumero: '', nf: String(id), valor: 10, mora: 0, desconto: 0, outros: 0, liquidacao: '03/08/2026', cobrado: 10 });
 
   it('só as analíticas abaixo de Clientes', () => {
-    expect(contasDeClientes(bal).map(c => c.codigo)).toEqual(['12110', '12200', '12300', '12301']);
+    expect(contasDeClientes(bal).map(c => c.codigo)).toEqual(['12110', '12200', '12300', '12301', '12400']);
   });
 
   it('nome cortado pelo banco e sufixo de filial', () => {
     expect(mesmoNomeDeCliente('ARAUJO E SA LTDA -TAI1', 'ARAUJO E SA LTDA')).toBe(true);
     expect(mesmoNomeDeCliente('MERCADINHO PLANALTO DE TAIOB', 'MERCADINHO PLANALTO DE TAIOBEIRAS LTDA')).toBe(true);
     expect(mesmoNomeDeCliente('ARAUJO', 'MERCADORIAS')).toBe(false);
+    // a conta de nome curto não bate com todo supermercado (292)
+    expect(mesmoNomeDeCliente('SUPERMERCADO JJJ MIRANDA LTDA', 'SUPERMERCADO A E E')).toBe(false);
+    // filial diferente não é o mesmo cliente
+    expect(mesmoNomeDeCliente('SUPERMERCADOS BOA COMPRA LTDA -TAI1', 'SUPERMERCADOS BOA COMPRA LTDA PA3')).toBe(false);
   });
 
   it('acha a conta; ambígua ou sem conta pede decisão; a aprendida vence', () => {
@@ -499,7 +504,11 @@ describe('conta do cliente pelo balancete', () => {
     const [a, b, c, d] = cruzarPeloBalancete([t(1, 'ARAUJO E SA LTDA'), t(2, 'SUPERMERCADO BOA COMPRA'), t(3, 'FULANO DE TAL'), t(4, 'CLIENTE NOVO')], cl, aprendidos);
     expect([a.situacao, a.linha?.contrapartida, a.linha?.valor]).toEqual(['ok', '12110', 10]);
     expect(b.situacao).toBe('nao-encontrada');
-    expect(b.nota).toMatch(/Mais de uma conta/);
+    expect(b.nota).toMatch(/2 contas com esse nome/);
+    expect(b.opcoes?.map(o => o.codigo)).toEqual(['12300', '12301']);
+    // filiais de nome igual: a aprendida só sugere
+    const [b2] = cruzarPeloBalancete([t(2, 'SUPERMERCADO BOA COMPRA')], cl, { 'supermercado boa compra': { conta: '12301', nome: 'X', em: '' } });
+    expect([b2.situacao, b2.nota]).toEqual(['nao-encontrada', expect.stringMatching(/Da última vez: 12301/)]);
     expect(c.situacao).toBe('nao-encontrada');
     expect([d.situacao, d.linha?.contrapartida, d.aprendida]).toEqual(['ok', '12999', true]);
   });
