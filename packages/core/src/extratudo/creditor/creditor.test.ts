@@ -127,6 +127,17 @@ describe('arquivo do sistema', () => {
     expect(cruzar([t], s)[0]).toMatchObject({ situacao: 'ok', linha: { contrapartida: '12093' } });
   });
 
+  it('Alterdata conciliação: "Descrição" é o nome, "Descrição histórico" traz NF antes do DUP, valores negativos', () => {
+    expect(nfDoHistorico('Recebimento de clientes  9925 -DUP.001 -04352355000109 -ARAUJO E SA LTDA')).toBe('9925');
+    expect(clienteDoHistorico('Recebimento de clientes  9925 -DUP.001 -04352355000109 -ARAUJO E SA LTDA')).toBe('ARAUJO E SA LTDA');
+    const csv = ';Status conciliação;Data;Lançamento automático;Contrapartida;Descrição;Valor;Histórico;Descrição histórico;Saldo\n'
+      + 'VERDADEIRO;Não conciliado;03/08/2026;;12110;ARAUJO E SA LTDA;-2809,73;00246;Recebimento de clientes  9925 -DUP.001 -04352355000109 -ARAUJO E SA LTDA;-1264925,69\n'
+      + 'VERDADEIRO;Não conciliado;03/08/2026;;100032;ATACAREJO NORTE MINAS LTDA;-1756,83;00246;Recebimento de clientes  9857 -DUP.003 -33963983000382 -ATACAREJO NORTE MINAS LTDA;-1266682,52\n';
+    const s = lerSistema(buf(csv), '292 credtest.csv');
+    expect(s.map(l => [l.nf, l.contrapartida, l.cliente, l.valor])).toEqual([
+      ['9925', '12110', 'ARAUJO E SA LTDA', 2809.73], ['9857', '100032', 'ATACAREJO NORTE MINAS LTDA', 1756.83]]);
+  });
+
   it('NF só no histórico, com outra coluna de número: o cruzamento acha pelo histórico', () => {
     const linha = { linha: 2, nf: '555', cliente: 'X', contrapartida: '12093', historico: 'Recebimento DUP.009897/1/1', valor: 10 };
     const t = { id: 1, sacado: 'X', nossoNumero: '', nf: '9897/1/1', valor: 10, mora: 0, desconto: 0, outros: 0, liquidacao: '14/08/2026', cobrado: 10 };
