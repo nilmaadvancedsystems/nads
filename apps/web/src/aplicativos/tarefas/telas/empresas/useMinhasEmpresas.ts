@@ -3,7 +3,7 @@
 import { empresas, tarefas as t } from '@nads/core';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { caminhoDaPagina, caminhoDoExecutor } from '../../casca/navegacao';
+import { caminhoDaEmpresa, caminhoDaPagina, caminhoDoExecutor } from '../../casca/navegacao';
 import { SITUACOES, useAndamento } from './andamento';
 
 export const LIMITE = 60;
@@ -101,6 +101,8 @@ export function useMinhasEmpresas() {
     })),
     total: linhas.length,
     abrir,
+    /** a página da empresa (insights dela) */
+    abrirEmpresa: (rota: string) => navegar(caminhoDaEmpresa(rota, a.competencia)),
     // Iniciar
     buscaIniciar, setBuscaIniciar,
     paraIniciar: paraIniciar.slice(0, LIMITE_INICIAR),

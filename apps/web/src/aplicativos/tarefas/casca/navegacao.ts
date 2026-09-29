@@ -1,6 +1,7 @@
 // Navegação da Tarefas: as aplicações ficam na gaveta ☰; a barra lateral mostra as páginas da
 // aplicação aberta. Fiscal e Contábil aparecem para quem é do departamento (ou admin).
-// URL: /tarefas/<aplicação>/<página>; o executor das etapas é /tarefas/executar/<empresa>/<competência>.
+// URL: /tarefas/<aplicação>/<página>; a página de uma empresa é /tarefas/minhas-empresas/empresa/<empresa>;
+// o executor das etapas é /tarefas/executar/<empresa>/<competência>.
 import type { NomeIcone } from '@nads/ui';
 import type { Operador } from './operador';
 
@@ -43,4 +44,6 @@ export function aplicacao(id: string): Aplicacao | undefined {
 }
 
 export const caminhoDaPagina = (app: IdAplicacao, pagina: string) => BASE + '/' + app + '/' + pagina;
+/** A página de uma empresa (insights dela): /tarefas/minhas-empresas/empresa/<código>?competencia=aaaa-mm */
+export const caminhoDaEmpresa = (rotaEmpresa: string, competencia: string) => BASE + '/minhas-empresas/empresa/' + rotaEmpresa + '?competencia=' + competencia;
 export const caminhoDoExecutor = (rotaEmpresa: string, competencia: string) => BASE + '/executar/' + rotaEmpresa + '/' + competencia;

@@ -1,7 +1,9 @@
 // Repositório da Tarefas EM MEMÓRIA (dados de exemplo), guardado neste navegador quando dá. Começa
 // com as empresas de exemplo do Extrator (901, 902, 903) e algumas etapas já andadas no mês passado,
 // para a visão do Contábil não nascer vazia. Nada vai para o banco.
+import type { EmpresaDoEscritorio } from '../empresas';
 import { EMPRESAS_EXEMPLO } from '../extratudo/extrator/__exemplos__/empresas';
+import { ROTINA_CONTABIL } from './rotinas/contabil';
 import { competenciasRecentes } from './regras/competencias';
 import { dispensar, execucaoNova, fazer, interromper } from './regras/execucao';
 import { idDaExecucao, type RepoTarefas } from './repo';
@@ -38,8 +40,53 @@ export function execucoesDeExemplo(agora: Date): Execucao[] {
   return [a, b];
 }
 
-export function criarRepoTarefasMemoria(opcoes: { agora?: Date; guarda?: GuardaTarefas | null } = {}): RepoTarefas {
-  const guarda = opcoes.guarda === undefined ? guardaDoNavegador('nads-tarefas-exemplos-v1') : opcoes.guarda;
+/** O motivo usado quando a etapa para, nos exemplos. */
+const MOTIVO_EXEMPLO: Record<string, string> = {
+  extratos: 'sem-extrato', conferencia: 'diferenca', 'cheque-especial': 'sem-saldo-diario', cartoes: 'sem-extrato-cartao',
+  liquidacoes: 'sem-relatorio', balancete: 'fiscal-pendente', fechamento: 'revisao',
+};
+const PESSOAS_EXEMPLO = ['Clara', 'Felipe', 'Vitor'];
+
+/**
+ * Exemplos variados para ver a lista cheia: nas primeiras 40 empresas, no mês passado, há concluídas,
+ * em andamento, paradas e não iniciadas, mexidas em horas e dias diferentes; nos dois meses antes,
+ * quase todas concluídas (com algumas paradas), para o histórico de cada empresa.
+ */
+export function execucoesVariadas(empresas: readonly EmpresaDoEscritorio[], agora: Date): Execucao[] {
+  const etapas = ROTINA_CONTABIL.etapas.map(e => e.id);
+  const [c0, c1, c2] = competenciasRecentes(agora, 3);
+  const t = (h: number) => new Date(agora.getTime() - h * 3600000);
+  const saida: Execucao[] = [];
+  /** faz as primeiras n etapas e, se pedir, para a seguinte */
+  function andar(emp: EmpresaDoEscritorio, comp: string, n: number, parar: boolean, horas: number, quem: string): Execucao {
+    let ex = execucaoNova(emp.nome, emp.codigo, comp, 'contabil');
+    for (let j = 0; j < n; j++) {
+      const quando = t(horas + (n - j) * 0.5);
+      ex = etapas[j] === 'cartoes' && (emp.codigo ?? 0) % 2 === 0
+        ? dispensar(ex, 'cartoes', 'sem-cartao', '', quem, quando).execucao
+        : fazer(ex, etapas[j], quem, quando).execucao;
+    }
+    if (parar && n < etapas.length) ex = interromper(ex, etapas[n], MOTIVO_EXEMPLO[etapas[n]], '', quem, t(horas)).execucao;
+    return ex;
+  }
+  empresas.slice(0, 40).forEach((emp, i) => {
+    const quem = PESSOAS_EXEMPLO[i % PESSOAS_EXEMPLO.length];
+    const horas = 1 + i * 4; // de "há 1 hora" até uns 6 dias
+    const tipo = i % 8;
+    if (tipo <= 1) saida.push(andar(emp, c0, etapas.length, false, horas, quem));
+    else if (tipo <= 3 || tipo === 5) saida.push(andar(emp, c0, 1 + (i % 5), false, horas, quem));
+    else if (tipo === 4) saida.push(andar(emp, c0, i % 6, true, horas, quem));
+    // 6 e 7: não iniciadas
+    saida.push(andar(emp, c1, i % 9 === 0 ? 3 : etapas.length, i % 9 === 0, 24 * 30 + i, quem));
+    saida.push(andar(emp, c2, i % 11 === 0 ? 5 : etapas.length, i % 11 === 0, 24 * 60 + i, quem));
+  });
+  return saida;
+}
+
+export function criarRepoTarefasMemoria(opcoes: { agora?: Date; guarda?: GuardaTarefas | null; empresas?: readonly EmpresaDoEscritorio[] } = {}): RepoTarefas {
+  // com a lista do escritório, os exemplos são os variados (outra chave no navegador)
+  const guarda = opcoes.guarda === undefined ? guardaDoNavegador(opcoes.empresas ? 'nads-tarefas-exemplos-v2' : 'nads-tarefas-exemplos-v1') : opcoes.guarda;
+  const lista = opcoes.empresas || EMPRESAS_EXEMPLO;
   let dados: Record<string, Execucao> = {};
   let eventos: Evento[] = [];
   let ver = 0;
@@ -48,7 +95,8 @@ export function criarRepoTarefasMemoria(opcoes: { agora?: Date; guarda?: GuardaT
   function carregarExemplos() {
     dados = {};
     eventos = [];
-    for (const ex of execucoesDeExemplo(opcoes.agora || new Date())) dados[idDaExecucao(ex.empresa, ex.competencia, ex.departamento)] = ex;
+    const exemplos = opcoes.empresas ? execucoesVariadas(opcoes.empresas, opcoes.agora || new Date()) : execucoesDeExemplo(opcoes.agora || new Date());
+    for (const ex of exemplos) dados[idDaExecucao(ex.empresa, ex.competencia, ex.departamento)] = ex;
   }
   const salvo = guarda?.ler();
   if (salvo) {
@@ -67,7 +115,7 @@ export function criarRepoTarefasMemoria(opcoes: { agora?: Date; guarda?: GuardaT
 
   return {
     exemplos: true,
-    listarEmpresas: () => EMPRESAS_EXEMPLO,
+    listarEmpresas: () => lista,
     execucoes: (competencia, departamento) => Object.values(dados).filter(e => e.competencia === competencia && e.departamento === departamento),
     carregada: () => true,
     gravar(ex, ev) {

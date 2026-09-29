@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ArquivoImportado } from '../extratudo/extrator/tipos';
 import {
   competenciasRecentes, concluida, criarRepoTarefasMemoria, dispensar, execucaoNova, fazer, idDaExecucao, interromper,
-  objecoesMaisComuns, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar,
+  objecoesMaisComuns, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar, execucoesVariadas,
 } from '.';
 
 const R = ROTINA_CONTABIL;
@@ -105,5 +105,20 @@ describe('quando foi (última vez que mexeram)', () => {
   it('a última data entre as etapas, de qualquer pessoa', () => {
     expect(ultimaVez(null)).toBeNull();
     expect(ultimaVez({ etapas: { a: { em: '2026-09-01T10:00:00Z' }, b: { em: '2026-09-03T10:00:00Z' } } })).toBe('2026-09-03T10:00:00Z');
+  });
+});
+
+describe('exemplos variados (só no modo exemplos)', () => {
+  it('o mês passado tem concluídas, em andamento, paradas e não iniciadas', () => {
+    const lista = Array.from({ length: 50 }, (_, i) => ({ codigo: i + 1, nome: 'EMPRESA ' + (i + 1), regime: 'Simples' }));
+    const exs = execucoesVariadas(lista, agora);
+    const doMes = exs.filter(e => e.competencia === '2026-08');
+    const porEmpresa = new Map(doMes.map(e => [e.empresa, e]));
+    const situacoes = lista.map(emp => situacaoGeral(porEmpresa.get(emp.nome) || null, R));
+    for (const s of ['concluida', 'em-andamento', 'parada', 'nao-iniciada'] as const) expect(situacoes).toContain(s);
+    expect(exs.some(e => e.competencia === '2026-07')).toBe(true);
+    const repo = criarRepoTarefasMemoria({ agora, guarda: null, empresas: lista });
+    expect(repo.listarEmpresas()).toHaveLength(50);
+    expect(repo.execucoes('2026-08', 'contabil').length).toBe(doMes.length);
   });
 });

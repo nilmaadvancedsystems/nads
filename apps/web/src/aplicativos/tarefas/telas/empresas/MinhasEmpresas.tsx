@@ -1,6 +1,6 @@
 // Minhas empresas: a barra de cima, no jeito da do GitHub (competência no lugar do "main ▾", quantas
 // empresas, Insights; à direita a busca curta com atalho "/", Situação ▾ e "Iniciar ▾", que abre
-// o painel para escolher a empresa, em partes/PainelIniciar) e a lista (clicar no título da coluna ordena; clicar na linha abre a empresa). Os números por situação ficam em Insights.
+// o painel para escolher a empresa, em partes/PainelIniciar) e a lista (clicar no título da coluna ordena; clicar na linha abre a página da empresa). Os números por situação ficam em Insights.
 import { Icone, MenuSuspenso } from '@nads/ui';
 import { useEffect, useRef } from 'react';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
@@ -68,7 +68,7 @@ export function MinhasEmpresas() {
 
       {vm.carregando ? <p className="empty">Carregando…</p> : vm.total === 0 ? <p className="empty">Nenhuma empresa nesta situação.</p> : (
         <div className="table-wrap">
-          <table>
+          <table className="tabela-empresas">
             <thead><tr>
               <Titulo vm={vm} coluna="codigo" rotulo="Código" />
               <Titulo vm={vm} coluna="nome" rotulo="Empresa" />
@@ -77,13 +77,13 @@ export function MinhasEmpresas() {
             </tr></thead>
             <tbody>
               {vm.linhas.map(l => (
-                <tr key={l.chave} className="linha-abre" tabIndex={0} title={l.acao + ': ' + l.nome}
-                  onClick={() => vm.abrir(l.rota)} onKeyDown={e => { if (e.key === 'Enter') vm.abrir(l.rota); }}>
+                <tr key={l.chave} className="linha-abre" tabIndex={0} title={'Ver ' + l.nome}
+                  onClick={() => vm.abrirEmpresa(l.rota)} onKeyDown={e => { if (e.key === 'Enter') vm.abrirEmpresa(l.rota); }}>
                   <td className="num">
                     {/* a situação em cor: laranja parada, amarelo em andamento, cinza não iniciada, verde concluída */}
                     <span className="codigo-sit">
                       <span className={'bolinha-sit ' + l.situacao} title={l.rotuloSituacao} role="img" aria-label={l.rotuloSituacao} />
-                      {l.codigo ?? '—'}
+                      <span className="codigo-num">{l.codigo ?? '—'}</span>
                     </span>
                   </td>
                   <td>{l.nome}</td>

@@ -1164,5 +1164,21 @@ td.fraco{color:var(--ink-muted);}
 .bolinha-sit.em-andamento{background:#E3B341;}
 .bolinha-sit.nao-iniciada{background:var(--border-strong);}
 .bolinha-sit.concluida{background:var(--success);}
-/* as bolinhas alinhadas à esquerda e o código à direita (códigos de tamanhos diferentes não entortam a coluna) */
-.codigo-sit{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+/* a bolinha colada no código; os códigos alinhados à direita num espaço fixo (não entortam a coluna) */
+.codigo-sit{display:inline-flex;align-items:center;gap:8px;}
+.codigo-num{min-width:4ch;text-align:right;}
+/* Minhas empresas: a coluna do código só da largura dela, sobra espaço para as outras */
+.tabela-empresas th:first-child,.tabela-empresas td:first-child{width:1%;white-space:nowrap;padding-right:8px;}
+
+/* ---------------------------------- Tarefas: página da empresa ---------------------------------- */
+tr.linha-abre:hover{background:var(--surface-3);}
+tr.linha-atual > td{background:var(--hover-bg);}
+.empresa-voltar{display:inline-flex;align-items:center;gap:6px;margin-bottom:12px;color:var(--ink-muted);}
+.empresa-voltar svg{width:14px;height:14px;}
+.empresa-cabeca{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px;}
+.empresa-quem{display:flex;align-items:baseline;gap:10px;min-width:0;}
+.empresa-quem h2{font-size:20px;font-weight:600;line-height:1.3;}
+.empresa-quem .bolinha-sit{width:10px;height:10px;margin-right:0;flex:none;}
+.empresa-acoes{display:flex;align-items:center;gap:8px;}
+.empresa-numeros{margin-bottom:16px;}
+.stat-texto{font-size:16px;font-weight:600;margin:4px 0 0;line-height:1.3;}

@@ -7,6 +7,9 @@
 //
 //   npm run sites -- extratudo conciliadorzinho     publica só esses
 //   npm run sites -- todos                          publica todos
+//   npm run sites -- tarefas --canal=exemplos --exemplos
+//                                                   prévia com dados de exemplo (link próprio, expira em 7 dias;
+//                                                   não mexe no site no ar nem no banco)
 //
 // Publica SÓ a hospedagem desses sites (--only hosting:<site>); o nads-nilma não é tocado.
 import { execSync } from 'node:child_process';
@@ -34,11 +37,19 @@ const SITES = {
   creditor: { site: 'creditor-nilma', nome: 'Creditor', tipo: 'mudou', para: 'extratudo' },
 };
 
-const pedidos = process.argv.slice(2);
+const argumentos = process.argv.slice(2);
+const canal = (argumentos.find(a => a.startsWith('--canal=')) || '').slice('--canal='.length);
+const soExemplos = argumentos.includes('--exemplos');
+const pedidos = argumentos.filter(a => !a.startsWith('--'));
 const ids = pedidos.includes('todos') ? Object.keys(SITES) : pedidos;
 const invalidos = ids.filter(id => !SITES[id]);
 if (!ids.length || invalidos.length) {
   console.error('sites: diga quais (' + Object.keys(SITES).join(', ') + ') ou "todos".' + (invalidos.length ? ' Não conheço: ' + invalidos.join(', ') : ''));
+  process.exit(1);
+}
+
+if (soExemplos && !canal) {
+  console.error('sites: --exemplos só com --canal (o site no ar do ' + ids.join(', ') + ' não pode perder o banco).');
   process.exit(1);
 }
 
@@ -49,8 +60,9 @@ for (const id of ids) {
   const saida = path.join(web, 'dist-sites', id);
   fs.rmSync(saida, { recursive: true, force: true });
   if (s.tipo === 'app') {
-    console.log('sites: gerando ' + s.nome + (s.banco ? ' (ligado ao banco)' : ' (dados de exemplo)') + '…');
-    execSync('npx vite build --mode ' + (s.banco ? 'banco' : 'exemplos') + ' --outDir ' + JSON.stringify(saida) + ' --emptyOutDir', {
+    const banco = s.banco && !soExemplos;
+    console.log('sites: gerando ' + s.nome + (banco ? ' (ligado ao banco)' : ' (dados de exemplo)') + '…');
+    execSync('npx vite build --mode ' + (banco ? 'banco' : 'exemplos') + ' --outDir ' + JSON.stringify(saida) + ' --emptyOutDir', {
       cwd: web, stdio: ['ignore', 'ignore', 'inherit'], env: { ...process.env, VITE_APLICATIVO: id },
     });
     continue;
@@ -62,6 +74,14 @@ for (const id of ids) {
   fs.writeFileSync(path.join(saida, 'index.html'), html);
 }
 
+if (canal) {
+  // prévia (canal do Firebase Hosting): um link à parte, que some sozinho; o site no ar não muda
+  for (const id of ids) {
+    console.log('sites: prévia "' + canal + '" do ' + SITES[id].nome + ' (expira em 7 dias)');
+    execSync('firebase hosting:channel:deploy ' + canal + ' --only ' + SITES[id].site + ' --expires 7d --project conferencia-nilma', { cwd: web, stdio: 'inherit' });
+  }
+  process.exit(0);
+}
 const alvo = ids.map(id => 'hosting:' + SITES[id].site).join(',');
 console.log('sites: publicando ' + alvo);
 execSync('firebase deploy --only ' + alvo + ' --project conferencia-nilma', { cwd: web, stdio: 'inherit' });
