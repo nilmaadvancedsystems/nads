@@ -2,6 +2,7 @@
 // do ERP ou nome), monta a sessão e a casca e escolhe a tela. Sem página (ou página que não existe),
 // abre a Conferência quando já dá para conferir, senão a Importação.
 import { empresas } from '@nads/core';
+import { useCarregando } from '@nads/ui';
 import { Navigate, useParams } from 'react-router';
 import { TopoProvider } from '../../../../../comum/topo';
 import { useRepo, useVersaoDoRepo } from '../dados/repo';
@@ -30,6 +31,7 @@ export function EmpresaAberta() {
   const repo = useRepo();
   useVersaoDoRepo();
   const achada = empresas.empresaPelaRota(repo.listarEmpresas(), param);
+  useCarregando(!!achada && !repo.carregada(achada.nome));
   if (!achada) return <Navigate to={caminho()} replace />;
   const rota = empresas.rotaDaEmpresa(achada);
   // no banco: espera a empresa chegar (antes disso não dá para saber onde abrir, nem gravar)

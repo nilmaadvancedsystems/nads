@@ -5,7 +5,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 import { Icone, MarcaN, type NomeIcone } from './icones';
 import { SeletorTema } from './tema';
 
-export interface SecaoCasca { id: string; rotulo: string; icone: NomeIcone; grupo: number; ativa?: boolean; travada?: boolean }
+/** caixa: no lugar do ícone, uma caixinha de checklist (vazia, marcada ou parada) — as etapas de uma tarefa */
+export interface SecaoCasca { id: string; rotulo: string; icone: NomeIcone; grupo: number; ativa?: boolean; travada?: boolean; caixa?: 'vazia' | 'marcada' | 'parada' }
 export interface PaginaCasca { id: string; rotulo: string; icone: NomeIcone; ativa?: boolean; travada?: boolean; oculta?: boolean }
 
 /**
@@ -34,7 +35,11 @@ export function Casca(p: {
   secoes: SecaoCasca[];
   paginas: PaginaCasca[];
   titulo: string;
+  /** uma linha embaixo do título (cinza) */
+  descricao?: string;
   acoes?: ReactNode;
+  /** mais pedaços da trilha depois da empresa ("Sistema / Empresa / …") */
+  trilha?: { rotulo: string; titulo?: string; onClick?: () => void }[];
   onSecao: (id: string) => void;
   onPagina: (id: string) => void;
   onInicio: () => void;
@@ -49,6 +54,8 @@ export function Casca(p: {
    * (lista com borda ao lado da página, no estilo "Insights" do GitHub; guardada para um uso futuro).
    */
   lateral?: 'barra' | 'caixa';
+  /** a página usa a largura toda da tela (ex.: a ferramenta de uma etapa) */
+  larga?: boolean;
   /** nome da lista da esquerda, para leitor de tela (padrão "Seções") */
   rotuloLateral?: string;
   children: ReactNode;
@@ -80,9 +87,10 @@ export function Casca(p: {
 
   const principal = (
     <main className="main">
-      <header className="topbar">
+      <header className="topbar" hidden={!p.titulo && !p.acoes && !p.descricao}>
         <div>
           <h2 className="page-title">{p.titulo}</h2>
+          {p.descricao && <p className="page-desc">{p.descricao}</p>}
         </div>
         <div id="topbarActions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{p.acoes}</div>
       </header>
@@ -95,7 +103,7 @@ export function Casca(p: {
 
   let grupoAnt: number | null = null;
   return (
-    <div id="app" className="on">
+    <div id="app" className={'on' + (p.larga ? ' larga' : '')}>
       <header className="gh-header" ref={cabecalho}>
         <div className="gh-header-top">
           <button className="gh-hamb" type="button" aria-label="Abrir menu" title="Menu" onClick={() => setGaveta(true)}>
@@ -106,6 +114,13 @@ export function Casca(p: {
             <button className="gh-crumb" type="button" title="Voltar para a tela inicial" onClick={p.onInicio}>{p.sistema}</button>
             <span className="gh-sep">/</span>
             <button className="brand-tag" id="brandTagEmpresa" type="button" title={p.empresa.nome} onClick={p.onEmpresa}>{p.empresa.codigo}</button>
+            {p.trilha?.map(t => (
+              <span key={t.rotulo} style={{ display: 'contents' }}>
+                <span className="gh-sep">/</span>
+                {t.onClick ? <button className="gh-crumb" type="button" title={t.titulo} onClick={t.onClick}>{t.rotulo}</button>
+                  : <span className="gh-crumb gh-crumb-fim" title={t.titulo}>{t.rotulo}</span>}
+              </span>
+            ))}
           </nav>
         </div>
         <nav className="menu" id="menu" aria-label="Páginas da seção">
@@ -169,7 +184,8 @@ export function Casca(p: {
                   {sep && <hr className="subnav-sep" />}
                   <button type="button" className={'subnav-item' + (s.ativa ? ' active' : '') + (s.travada ? ' is-locked' : '')}
                     aria-current={s.ativa ? 'page' : undefined} aria-disabled={s.travada ? 'true' : undefined} title={s.rotulo} onClick={() => p.onSecao(s.id)}>
-                    <Icone nome={s.icone} /><span>{s.rotulo}</span>
+                    {s.caixa ? <span className={'subnav-caixa ' + s.caixa} aria-hidden="true">{s.caixa === 'marcada' && <Icone nome="check" />}</span> : <Icone nome={s.icone} />}
+                    <span>{s.rotulo}</span>
                   </button>
                 </span>
               );

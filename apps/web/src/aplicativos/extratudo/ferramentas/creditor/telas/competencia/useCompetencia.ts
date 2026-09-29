@@ -3,6 +3,7 @@
 // Entregas, ler e seguir para o Relatório do banco já preenchido. Sem o Drive (não entrou, não achou,
 // deu erro), a pessoa anexa à mão na etapa seguinte.
 import { creditor as cr } from '@nads/core';
+import { useCarregando } from '@nads/ui';
 import { useState } from 'react';
 import { useSessao } from '../../casca/sessao';
 import { useDrive } from '../../dados/repo';
@@ -60,6 +61,7 @@ export function useCompetencia() {
   }
 
   const ocupado = busca.fase === 'procurando' || busca.fase === 'baixando';
+  useCarregando(ocupado);
   return {
     mes, setMes: (v: string) => { setMes(v); setBusca({ fase: 'parado', texto: '', candidatos: [] }); },
     porExtenso: cr.competenciaPorExtenso(mes),

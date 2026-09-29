@@ -2,6 +2,7 @@
 // monta a sessão e a casca, e escolhe a tela da Conferência.
 import { Navigate, useParams } from 'react-router';
 import { conferencia as c } from '@nads/core';
+import { useCarregando } from '@nads/ui';
 import { useRepo, useVersaoDoRepo } from '../dados/repo';
 import { Auditoria } from '../telas/auditoria/Auditoria';
 import { Configuracoes } from '../telas/cadastro/Configuracoes';
@@ -36,6 +37,7 @@ export function EmpresaAberta() {
   const { empresa: param = '', secao = '', pagina = '' } = useParams();
   const repo = useRepo();
   useVersaoDoRepo();
+  useCarregando(!repo.pronto());
   if (!repo.pronto()) return <div id="login"><p className="hint">Carregando…</p></div>;
   const achada = repo.empresaPelaRota(param);
   if (!achada) return <Navigate to={caminho()} replace />;

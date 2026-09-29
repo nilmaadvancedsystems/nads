@@ -1,6 +1,6 @@
 // Importação › Balancete / Entradas / Saídas / Tomados / Prestados (conferencia.html ~L1036-1155).
 import { conferencia as c } from '@nads/core';
-import { Alerta, BotaoAcao, CampoArquivo, Icone, Interruptor, MensagemFlutuante } from '@nads/ui';
+import { Alerta, BotaoAcao, CampoArquivo, Icone, Interruptor, MensagemFlutuante, useCarregando } from '@nads/ui';
 import { AcoesDoTopo } from '../../../../comum/topo';
 import { BoasVindasBalancete } from './partes/BoasVindasBalancete';
 import { NotasImportadas, ServicosImportados } from './partes/Importados';
@@ -9,6 +9,7 @@ import { useImportacao, type Mensagem } from './useImportacao';
 
 export function Importacao({ tipo }: { tipo: c.PaginaImportacao }) {
   const vm = useImportacao(tipo);
+  useCarregando(vm.carregando);
   return (
     <section>
       <AcoesDoTopo>

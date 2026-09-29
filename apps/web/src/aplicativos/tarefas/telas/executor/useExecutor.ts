@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { arquivosDoExtrator } from '../../dados/fonte';
 import { useExecucoes, useRepo } from '../../dados/repo';
-import { caminhoDaPagina } from '../../casca/navegacao';
+import { caminhoDaEmpresa, caminhoDaPagina } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 
 /**
@@ -88,8 +88,9 @@ export function useExecutor(rotaEmpresa: string, competencia: string) {
     voltar();
   }
 
-  /** Solução de uma objeção: as que dependem de Drive/Contato ainda estão em desenvolvimento. */
+  /** Solução de uma objeção (os botões embaixo): as que dependem de Drive/Contato ainda estão em desenvolvimento. */
   function resolver(o: t.Objecao) {
+    if (o.solucao.tipo === 'orientacao') { void modal({ icone: 'alert', titulo: o.texto, texto: o.solucao.texto, botoes: [{ rotulo: 'Entendi', valor: true, variante: 'btn-primary' }] }); return; }
     if (o.solucao.tipo === 'nao-se-aplica') { void naoSeAplica(o); return; }
     if (o.solucao.tipo === 'contato') { toast('Contato (e-mail ao cliente): em desenvolvimento.'); return; }
     if (o.solucao.tipo === 'drive') { toast('Drive: em desenvolvimento.'); return; }
@@ -107,5 +108,6 @@ export function useExecutor(rotaEmpresa: string, competencia: string) {
     resolver,
     interrompendo, abrirInterromper: () => setInterrompendo(true), fecharInterromper: () => setInterrompendo(false), interromper,
     sair: voltar,
+    abrirEmpresa: () => { if (empresa) navegar(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), competencia)); },
   };
 }
