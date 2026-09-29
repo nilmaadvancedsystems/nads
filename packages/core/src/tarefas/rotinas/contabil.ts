@@ -12,11 +12,9 @@ export const ROTINA_CONTABIL: Rotina = {
       ferramenta: { app: 'extratudo', nome: 'Extrator', caminho: r => '/extratudo/' + r + '/extrator/importacao/arquivos', embutir: true },
       verificacao: 'extratos',
       objecoes: [
-        { id: 'sem-extrato', texto: 'O cliente não enviou o extrato', solucao: { tipo: 'contato', rotulo: 'Pedir o extrato ao cliente' } },
+        { id: 'sem-extrato', texto: 'O cliente não enviou o extrato', solucao: { tipo: 'contato', rotulo: 'Pedir extrato' } },
         { id: 'no-drive', texto: 'O extrato está no Drive do cliente', solucao: { tipo: 'drive', rotulo: 'Buscar no Drive' } },
-        { id: 'sem-acesso', texto: 'Sem acesso ao banco (senha, token)', solucao: { tipo: 'contato', rotulo: 'Pedir o acesso ao cliente' } },
-        { id: 'ilegivel', texto: 'O extrato está ilegível (foto, PDF escaneado)', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Peça ao cliente o extrato em OFX ou Excel, direto do internet banking. PDF escaneado não tem texto para ler.' } },
-        { id: 'sem-movimento', texto: 'A empresa não teve movimento no banco', solucao: { tipo: 'nao-se-aplica', rotulo: 'Não se aplica nesta competência' } },
+        { id: 'sem-movimento', texto: 'A empresa não teve movimento no banco', solucao: { tipo: 'nao-se-aplica', rotulo: 'Não teve movimento' } },
       ],
     },
     {

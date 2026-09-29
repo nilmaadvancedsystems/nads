@@ -1063,38 +1063,27 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 .tarefas-opcoes{display:flex;flex-direction:column;gap:6px;margin-top:8px;}
 .tarefas-opcao{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:14px;}
 .tarefas-opcao.on{border-color:var(--accent);background:var(--hover-bg);}
-.executor{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;background:var(--bg);color:var(--ink);}
-.executor-topo{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--header-bg);}
-.executor-topo .brand-mark svg{height:24px;width:auto;}
-.executor-quem{display:flex;flex-direction:column;flex:1;min-width:0;}
-.executor-quem strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.executor-etapas{display:flex;gap:4px;list-style:none;margin:0;padding:10px 16px;overflow-x:auto;border-bottom:1px solid var(--border);}
-.executor-passo{display:flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:2em;font-size:12px;color:var(--ink-muted);white-space:nowrap;}
-.executor-passo.atual{background:var(--hover-bg);color:var(--ink);font-weight:600;}
-.executor-bolinha{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1px solid var(--border);font-size:11px;}
-.executor-bolinha svg{width:12px;height:12px;}
-.executor-passo.feita .executor-bolinha,.executor-passo.dispensada .executor-bolinha{background:var(--success);border-color:var(--success);color:#fff;}
-.executor-passo.interrompida .executor-bolinha{border-color:var(--danger);color:var(--danger);}
-.executor-passo.atual .executor-bolinha{border-color:var(--accent);color:var(--accent);}
-.executor-cabeca{padding:16px 16px 8px;}
-.executor-cabeca .page-title{margin:2px 0 4px;}
-.executor-corpo{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;padding:0 16px 12px;}
-.executor-ferramenta{min-height:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--surface);display:flex;}
+/* o executor dentro da casca: as etapas em checklist na lateral; a ferramenta com a altura toda; embaixo, a barra
+   fixa com as saídas da etapa (Pedir extrato, Buscar no Drive…), Interromper e Próximo */
+#app.larga .content,#app.larga .topbar{max-width:none;}
+#app.larga .content{padding-bottom:0;}
+#app.larga .topbar[hidden] + .content{padding-top:16px;}
+.executor-area{display:flex;flex-direction:column;gap:12px;}
+.executor-area > .hint{margin:0;}
+.executor-ferramenta{display:flex;height:calc(100vh - var(--hdr-h,64px) - 110px);min-height:420px;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--surface);}
 .executor-ferramenta iframe{flex:1;width:100%;height:100%;border:0;}
 .executor-ferramenta .gh-blank{margin:auto;}
-.executor-objecoes{min-height:0;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:12px 14px;background:var(--surface);}
-.executor-objecoes.destaque{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn) inset;}
-.executor-objecoes h3{font-size:14px;font-weight:600;margin:0 0 8px;}
-.executor-objecoes ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;}
-.executor-objecao-texto{font-size:14px;margin:0 0 4px;}
-.executor-rodape{display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--border);background:var(--header-bg);}
-.executor-aviso{flex:1;min-width:0;}
-.executor-aviso .alert{margin:0;}
-.executor-fim{margin:auto;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.executor-rodape{position:sticky;bottom:0;z-index:5;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 0 12px;background:var(--bg);}
+.executor-saidas{display:flex;gap:8px;flex-wrap:wrap;margin-right:auto;}
+.executor-area .alert{margin:0;}
+.executor-fim{margin:48px auto;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;}
 .executor-fim svg{width:40px;height:40px;color:var(--success);}
-@media (max-width:900px){
-  .executor-corpo{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(320px,1fr) auto;overflow-y:auto;}
-}
+/* a caixinha de cada etapa na lateral */
+.subnav-caixa{width:16px;height:16px;flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:4px;border:1.5px solid var(--border-strong);}
+.subnav-caixa.marcada{background:var(--success);border-color:var(--success);}
+.subnav-caixa.marcada svg{width:12px;height:12px;color:#FFFFFF;stroke-width:3;}
+.subnav-caixa.parada{border-color:var(--danger);background:var(--danger-soft);}
+.subnav-item.active .subnav-caixa.vazia{border-color:var(--ink);}
 
 /* ---------------------------------- menu suspenso (MenuSuspenso, como os do GitHub) ---------------------------------- */
 .btn .menu-seta{margin-left:-2px;}
