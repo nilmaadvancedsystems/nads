@@ -1,13 +1,24 @@
 // Minhas empresas: a barra de cima, no jeito da do GitHub (competência no lugar do "main ▾", quantas
-// empresas, Insights; à direita a busca curta com atalho "/", Situação ▾, Ordenar ▾ e "Iniciar ▾", que abre
-// o painel para escolher a empresa, em partes/PainelIniciar) e a lista com iniciar/continuar. Os números por situação ficam em Insights.
+// empresas, Insights; à direita a busca curta com atalho "/", Situação ▾ e "Iniciar ▾", que abre
+// o painel para escolher a empresa, em partes/PainelIniciar) e a lista (clicar no título da coluna ordena) com iniciar/continuar. Os números por situação ficam em Insights.
 import { Icone, MenuSuspenso } from '@nads/ui';
 import { useEffect, useRef } from 'react';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { PainelIniciar } from './partes/PainelIniciar';
-import { LIMITE, useMinhasEmpresas } from './useMinhasEmpresas';
+import { LIMITE, useMinhasEmpresas, type Coluna } from './useMinhasEmpresas';
 
 const SELO: Record<string, string> = { parada: 'badge-bad', 'em-andamento': 'badge-warn', 'nao-iniciada': 'badge-neutral', concluida: 'badge-ok' };
+
+/** Título de coluna que ordena: clicar ordena por ela, clicar de novo inverte (▲/▼, como na Consulta). */
+function Titulo({ vm, coluna, rotulo }: { vm: ReturnType<typeof useMinhasEmpresas>; coluna: Coluna; rotulo: string }) {
+  const ativo = vm.ordem.coluna === coluna;
+  return (
+    <th className="th-sort" onClick={() => vm.ordenar(coluna)} aria-sort={ativo ? (vm.ordem.dir === 'asc' ? 'ascending' : 'descending') : undefined}
+      title="Ordenar por esta coluna">
+      {rotulo}<span className="th-sort-ico">{ativo ? (vm.ordem.dir === 'asc' ? ' ▲' : ' ▼') : ''}</span>
+    </th>
+  );
+}
 
 export function MinhasEmpresas() {
   const vm = useMinhasEmpresas();
@@ -48,12 +59,10 @@ export function MinhasEmpresas() {
             onKeyDown={e => { if (e.key === 'Escape') { vm.setBusca(''); e.currentTarget.blur(); } }} />
           {!vm.busca && <kbd>/</kbd>}
         </label>
-        <MenuSuspenso icone="filtro" rotulo={vm.situacao ? vm.rotuloSituacao : 'Situação'} titulo="Situação" direita
+        <MenuSuspenso rotulo={vm.situacao ? vm.rotuloSituacao : 'Situação'} titulo="Situação" direita
           className={'btn btn-outline' + (vm.situacao ? ' ativo' : '')}
           itens={[{ rotulo: 'Todas', marcado: !vm.situacao, onClick: () => vm.setSituacao('') },
             ...vm.situacoes.map(s => ({ rotulo: s.rotulo, marcado: s.valor === vm.situacao, onClick: () => vm.setSituacao(s.valor) }))]} />
-        <MenuSuspenso icone="ordenar" rotulo="Ordenar" titulo="Ordenar por" direita
-          itens={vm.ordens.map(o => ({ rotulo: o.rotulo, marcado: o.valor === vm.ordem, onClick: () => vm.setOrdem(o.valor) }))} />
         <MenuSuspenso icone="play" rotulo="Iniciar" className="btn btn-primary" direita largura={400} dica="Escolher a empresa para iniciar"
           conteudo={fechar => <PainelIniciar vm={vm} fechar={fechar} />} />
       </div>
@@ -61,7 +70,14 @@ export function MinhasEmpresas() {
       {vm.carregando ? <p className="empty">Carregando…</p> : vm.total === 0 ? <p className="empty">Nenhuma empresa nesta situação.</p> : (
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Código</th><th>Empresa</th><th>Etapas</th><th>Situação</th><th>Próxima etapa</th><th /></tr></thead>
+            <thead><tr>
+              <Titulo vm={vm} coluna="codigo" rotulo="Código" />
+              <Titulo vm={vm} coluna="nome" rotulo="Empresa" />
+              <Titulo vm={vm} coluna="etapas" rotulo="Etapas" />
+              <Titulo vm={vm} coluna="situacao" rotulo="Situação" />
+              <Titulo vm={vm} coluna="proxima" rotulo="Próxima etapa" />
+              <th />
+            </tr></thead>
             <tbody>
               {vm.linhas.map(l => (
                 <tr key={l.chave}>

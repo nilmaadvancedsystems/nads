@@ -163,7 +163,8 @@ export function CampoArquivos({ id, onEscolher, aceitar, rotulo = 'Escolher arqu
 export type ItemMenu = { rotulo: ReactNode; icone?: NomeIcone; marcado?: boolean; dica?: ReactNode; desabilitado?: boolean; onClick: () => void } | 'separador';
 
 /**
- * Botão com menu suspenso (.popover), como os do GitHub ("main ▾", "Code ▾"). Fecha ao escolher, ao clicar
+ * Botão com menu suspenso (.popover), como os do GitHub ("main ▾", "Code ▾"). A seta é sempre o triângulo
+ * preenchido (padrão do app todo). Fecha ao escolher, ao clicar
  * fora e no Esc. Em vez de `itens`, pode receber `conteudo` (ex.: uma lista com busca), que ganha o `fechar`.
  */
 export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn-outline', itens, conteudo, direita, largura }: {
@@ -192,7 +193,7 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
   return (
     <div className="popover-wrap" ref={ref}>
       <button type="button" className={className} title={dica} aria-haspopup="menu" aria-expanded={aberto} onClick={() => setAberto(a => !a)}>
-        {icone && <Icone nome={icone} />}{rotulo}<Icone nome="chevronDown" className="menu-seta" />
+        {icone && <Icone nome={icone} />}{rotulo}<Icone nome="caretDown" className="menu-seta" />
       </button>
       {aberto && (
         <div className={'popover menu-pop' + (direita ? ' direita' : '')} role="menu" style={largura ? { width: largura } : undefined}>

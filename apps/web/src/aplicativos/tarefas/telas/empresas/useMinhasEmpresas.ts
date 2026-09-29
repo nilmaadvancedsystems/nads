@@ -1,21 +1,18 @@
-// ViewModel de "Minhas empresas": a barra de cima (competência, situação, ordem, busca e "Iniciar", que
-// escolhe a empresa) e a lista com o botão de iniciar/continuar. Os números por situação ficam nos Insights.
+// ViewModel de "Minhas empresas": a barra de cima (competência, situação, busca e "Iniciar", que escolhe
+// a empresa) e a lista, que ordena pela coluna clicada, com o botão de iniciar/continuar. Os números por situação ficam nos Insights.
 import { empresas, tarefas as t } from '@nads/core';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { caminhoDaPagina, caminhoDoExecutor } from '../../casca/navegacao';
-import { SITUACOES, useAndamento } from './andamento';
+import { ORDEM, SITUACOES, useAndamento } from './andamento';
 
 export const LIMITE = 60;
 /** Quantas empresas a lista do "Iniciar" mostra de uma vez. */
 export const LIMITE_INICIAR = 30;
 
-export const ORDENS = [
-  { valor: 'situacao', rotulo: 'Situação (paradas primeiro)' },
-  { valor: 'codigo', rotulo: 'Código' },
-  { valor: 'nome', rotulo: 'Nome' },
-] as const;
-type Ordem = (typeof ORDENS)[number]['valor'];
+/** As colunas da tabela que ordenam (clicando no título, como na Consulta da Conferência). */
+export type Coluna = 'codigo' | 'nome' | 'etapas' | 'situacao' | 'proxima';
+const COLUNAS: readonly Coluna[] = ['codigo', 'nome', 'etapas', 'situacao', 'proxima'];
 
 /** As abas do painel do Iniciar (como Local / Codespaces do botão Code do GitHub). */
 export type AbaIniciar = 'escolher' | 'recentes';
@@ -28,6 +25,8 @@ export const FILTROS_INICIAR = [
 ] as const;
 type FiltroIniciar = (typeof FILTROS_INICIAR)[number]['valor'];
 
+type Linha = ReturnType<typeof useAndamento>['linhas'][number];
+
 export function useMinhasEmpresas() {
   const a = useAndamento();
   const navegar = useNavigate();
@@ -36,12 +35,20 @@ export function useMinhasEmpresas() {
   const [abaIniciar, setAbaIniciar] = useState<AbaIniciar>('escolher');
   const [filtroIniciar, setFiltroIniciar] = useState<FiltroIniciar>('todas');
   const situacao = SITUACOES.some(s => s.valor === a.params.get('situacao')) ? (a.params.get('situacao') as t.SituacaoGeral) : '';
-  const ordem: Ordem = ORDENS.some(o => o.valor === a.params.get('ordem')) ? (a.params.get('ordem') as Ordem) : 'situacao';
+  // ordem na URL (?ordem=codigo&dir=desc); sem nada = situação (paradas primeiro)
+  const coluna: Coluna = COLUNAS.includes(a.params.get('ordem') as Coluna) ? (a.params.get('ordem') as Coluna) : 'situacao';
+  const dir: 'asc' | 'desc' = a.params.get('dir') === 'desc' ? 'desc' : 'asc';
 
   const achadas = busca.trim() ? new Set(empresas.buscarEmpresas(a.linhas.map(l => l.empresa), busca)) : null;
   const linhas = a.linhas.filter(l => (!situacao || l.situacao === situacao) && (!achadas || achadas.has(l.empresa)));
-  if (ordem === 'codigo') linhas.sort((x, y) => (x.codigo ?? Infinity) - (y.codigo ?? Infinity));
-  if (ordem === 'nome') linhas.sort((x, y) => x.nome.localeCompare(y.nome, 'pt-BR'));
+  const comparar: Record<Coluna, (x: Linha, y: Linha) => number> = {
+    codigo: (x, y) => (x.codigo ?? Infinity) - (y.codigo ?? Infinity),
+    nome: (x, y) => x.nome.localeCompare(y.nome, 'pt-BR'),
+    etapas: (x, y) => x.concluidas / x.total - y.concluidas / y.total,
+    situacao: (x, y) => ORDEM[x.situacao] - ORDEM[y.situacao],
+    proxima: (x, y) => x.posProxima - y.posProxima,
+  };
+  linhas.sort((x, y) => (dir === 'asc' ? 1 : -1) * comparar[coluna](x, y) || x.nome.localeCompare(y.nome, 'pt-BR'));
 
   // "Iniciar": as empresas que ainda têm etapa a fazer (paradas e em andamento primeiro), com busca própria
   const abertas = a.linhas.filter(l => l.situacao !== 'concluida');
@@ -69,8 +76,15 @@ export function useMinhasEmpresas() {
     rotuloSituacao: SITUACOES.find(s => s.valor === situacao)?.rotulo || 'Todas',
     situacoes: SITUACOES,
     setSituacao: (s: string) => a.mudar('situacao', s),
-    ordem, ordens: ORDENS,
-    setOrdem: (o: string) => a.mudar('ordem', o === 'situacao' ? '' : o),
+    ordem: { coluna, dir },
+    /** clicar no título: ordena por ela; clicar de novo inverte */
+    ordenar: (c: Coluna) => {
+      const novoDir = c === coluna && dir === 'asc' ? 'desc' : 'asc';
+      const novo = new URLSearchParams(a.params);
+      if (c === 'situacao' && novoDir === 'asc') novo.delete('ordem'); else novo.set('ordem', c);
+      if (novoDir === 'desc') novo.set('dir', 'desc'); else novo.delete('dir');
+      a.setParams(novo);
+    },
     busca, setBusca,
     filtrando: !!situacao || !!busca.trim(),
     limparFiltros: () => { setBusca(''); a.mudar('situacao', ''); },
