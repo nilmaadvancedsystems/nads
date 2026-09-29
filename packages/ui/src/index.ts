@@ -7,3 +7,4 @@ export { Alerta, MensagemFlutuante, CampoArquivo, CampoArquivos, Segmentado, Sta
 export { Casca, baixarArquivo, baixarBytes, type SecaoCasca, type PaginaCasca } from './casca';
 export { EscolherEmpresa, type EmpresaNaLista, type PropsEscolherEmpresa } from './escolherEmpresa';
 export { LOGOS_BANDEIRAS } from './logosBandeiras';
+export { BarraDeCarregamento, useCarregando } from './carregamento';

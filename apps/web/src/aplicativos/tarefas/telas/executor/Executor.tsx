@@ -1,6 +1,6 @@
 // O executor: tela cheia, uma etapa por vez. Em cima, a empresa, a competência e as etapas; no meio,
 // a ferramenta da etapa e as objeções comuns; embaixo, Interromper e Próximo.
-import { Alerta, Icone, MarcaN } from '@nads/ui';
+import { Alerta, Icone, MarcaN, useCarregando } from '@nads/ui';
 import { Navigate, useParams } from 'react-router';
 import { BASE } from '../../casca/navegacao';
 import { JanelaInterromper } from './partes/JanelaInterromper';
@@ -10,6 +10,7 @@ import { useExecutor } from './useExecutor';
 export function Executor() {
   const { empresa: rota = '', competencia = '' } = useParams();
   const vm = useExecutor(rota, competencia);
+  useCarregando(vm.carregando || vm.conferindo);
   if (!vm.empresa) return <Navigate to={BASE} replace />;
 
   return (

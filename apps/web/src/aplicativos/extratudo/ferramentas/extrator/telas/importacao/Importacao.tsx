@@ -1,12 +1,13 @@
 // Importação › Arquivos: as duas caixas (extratos bancários e lançamentos contábeis), a mensagem
 // flutuante do resultado e os arquivos importados.
-import { Alerta, MensagemFlutuante } from '@nads/ui';
+import { Alerta, MensagemFlutuante, useCarregando } from '@nads/ui';
 import { ArquivosImportados } from './partes/ArquivosImportados';
 import { CaixaImportacao } from './partes/CaixaImportacao';
 import { useImportacao, type Mensagem } from './useImportacao';
 
 export function Importacao() {
   const vm = useImportacao();
+  useCarregando(vm.ocupado);
   return (
     <section>
       <div className="import-grid ext-import-grid">

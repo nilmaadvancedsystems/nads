@@ -1182,3 +1182,11 @@ tr.linha-atual > td{background:var(--hover-bg);}
 .empresa-acoes{display:flex;align-items:center;gap:8px;}
 .empresa-numeros{margin-bottom:16px;}
 .stat-texto{font-size:16px;font-weight:600;margin:4px 0 0;line-height:1.3;}
+
+/* ---------------------------------- barrinha de carregamento no topo (como a do GitHub) ---------------------------------- */
+.barra-carregamento{position:fixed;top:0;left:0;z-index:1000;height:3px;width:0;opacity:0;pointer-events:none;
+  background:var(--btn-primary);box-shadow:0 0 8px var(--btn-primary);}
+.barra-carregamento.andando{opacity:1;animation:barra-anda 10s cubic-bezier(.08,.7,.2,1) forwards;}
+.barra-carregamento.terminando{width:100%;opacity:0;transition:width .2s ease-out,opacity .25s ease .2s;}
+@keyframes barra-anda{from{width:0;}10%{width:30%;}to{width:90%;}}
+@media (prefers-reduced-motion: reduce){.barra-carregamento.andando{animation:none;width:60%;}}

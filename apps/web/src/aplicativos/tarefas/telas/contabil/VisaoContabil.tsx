@@ -1,9 +1,11 @@
 // Contábil: a visão de cima (só leitura). "Visão geral" = cada etapa em todas as empresas e as
 // objeções mais comuns; "Paradas" = as etapas interrompidas, com o motivo.
+import { useCarregando } from '@nads/ui';
 import { useVisaoContabil } from './useVisaoContabil';
 
 export function VisaoContabil({ pagina }: { pagina: string }) {
   const vm = useVisaoContabil();
+  useCarregando(vm.carregando);
   return (
     <section>
       <div className="tarefas-filtros">
