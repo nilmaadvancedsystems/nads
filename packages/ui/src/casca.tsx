@@ -8,6 +8,19 @@ import { SeletorTema } from './tema';
 export interface SecaoCasca { id: string; rotulo: string; icone: NomeIcone; grupo: number; ativa?: boolean; travada?: boolean }
 export interface PaginaCasca { id: string; rotulo: string; icone: NomeIcone; ativa?: boolean; travada?: boolean; oculta?: boolean }
 
+/**
+ * A tela está dentro de outra (um iframe, como quando a Tarefas abre uma ferramenta na etapa)? Aí
+ * mostra só a página, sem cabeçalho nem barra lateral. Olha o próprio navegador, sem guardar nada:
+ * assim não vaza para a tela de fora nem para uma visita normal depois.
+ */
+function embutida(): boolean {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true; // outro endereço por fora: o navegador não deixa olhar, então está dentro de um iframe
+  }
+}
+
 const CHAVE_LATERAL = 'nads-barra-lateral-oculta';
 
 function lerLateral(): boolean {
@@ -76,6 +89,9 @@ export function Casca(p: {
       <div className="content">{p.children}</div>
     </main>
   );
+
+  // aberta dentro de outra tela (a etapa de uma tarefa): só a página, sem cabeçalho nem barra lateral
+  if (embutida()) return <div id="app" className="on embutida">{principal}</div>;
 
   let grupoAnt: number | null = null;
   return (

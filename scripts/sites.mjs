@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Um site (link) por aplicativo, no projeto conferencia-nilma. Cada site é gerado só com o seu
 // aplicativo (VITE_APLICATIVO). Por padrão com dados de exemplo (--mode exemplos: nada vai para o
-// banco); quem já foi ligado ao banco a pedido do Vitor usa --mode banco (hoje: o Extratudo).
+// banco); quem já foi ligado ao banco a pedido do Vitor usa --mode banco (hoje: o Extratudo e a Tarefas).
 // Quem ainda não existe no nads ganha a página "Em construção"; os links antigos (que viraram parte
 // de outro aplicativo) levam para o novo.
 //
@@ -27,7 +27,7 @@ const SITES = {
   'concilia-ai': { site: 'concilia-ai-nilma', nome: 'Concilia aí', tipo: 'app' },
   conciliadorzinho: { site: 'conciliadorzinho-nilma', nome: 'Conciliadorzinho', tipo: 'app' },
   extratudo: { site: 'extratudo-nilma', nome: 'Extratudo', tipo: 'app', banco: true },
-  tarefas: { site: 'tarefas-nilma', nome: 'Tarefas', tipo: 'construcao' },
+  tarefas: { site: 'tarefas-nilma', nome: 'Tarefas', tipo: 'app', banco: true },
   // viraram ferramentas do Extratudo
   extrator: { site: 'extrator-nilma', nome: 'Extrator', tipo: 'mudou', para: 'extratudo' },
   'cheque-especial': { site: 'cheque-especial-nilma', nome: 'Cheque especial', tipo: 'mudou', para: 'extratudo' },

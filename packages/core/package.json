@@ -13,7 +13,8 @@
     "./conciliadorzinho": "./src/conciliadorzinho/index.ts",
     "./creditor": "./src/extratudo/creditor/index.ts",
     "./extrator": "./src/extratudo/extrator/index.ts",
-    "./usuarios": "./src/usuarios/index.ts"
+    "./usuarios": "./src/usuarios/index.ts",
+    "./tarefas": "./src/tarefas/index.ts"
   },
   "dependencies": {
     "pdfjs-dist": "^6.3.289",

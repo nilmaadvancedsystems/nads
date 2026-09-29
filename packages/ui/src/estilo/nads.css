@@ -1045,3 +1045,53 @@ tr.linha-nota > td{border-top:none;padding-top:0;background:transparent;}
 tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 .decisao{display:inline-flex;flex-wrap:wrap;gap:8px;align-items:center;}
 .decisao input.celula{width:auto;border-color:var(--border);}
+/* tela embutida em outra (ferramenta dentro da etapa da Tarefas): só a página, com margem menor */
+#app.embutida .main{padding:0 16px;}
+#app.embutida .topbar{margin-top:12px;}
+
+/* ==========================================================================
+   Tarefas: filtros, barra de andamento e o executor (tela cheia das etapas)
+   ========================================================================== */
+.tarefas-filtros{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
+.tarefas-filtros .field{display:flex;flex-direction:column;gap:4px;}
+.tarefas-barra{display:inline-flex;vertical-align:middle;width:72px;height:8px;border-radius:2em;background:var(--surface-3);overflow:hidden;}
+.tarefas-barra.larga{width:100%;}
+.tarefas-barra > span{display:block;height:100%;background:var(--success);}
+.tarefas-barra > span.parada{background:var(--danger);}
+.tarefas-objecoes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;font-size:14px;}
+.tarefas-janela{max-width:480px;text-align:left;}
+.tarefas-opcoes{display:flex;flex-direction:column;gap:6px;margin-top:8px;}
+.tarefas-opcao{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:14px;}
+.tarefas-opcao.on{border-color:var(--accent);background:var(--hover-bg);}
+.executor{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;background:var(--bg);color:var(--ink);}
+.executor-topo{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--header-bg);}
+.executor-topo .brand-mark svg{height:24px;width:auto;}
+.executor-quem{display:flex;flex-direction:column;flex:1;min-width:0;}
+.executor-quem strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.executor-etapas{display:flex;gap:4px;list-style:none;margin:0;padding:10px 16px;overflow-x:auto;border-bottom:1px solid var(--border);}
+.executor-passo{display:flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:2em;font-size:12px;color:var(--ink-muted);white-space:nowrap;}
+.executor-passo.atual{background:var(--hover-bg);color:var(--ink);font-weight:600;}
+.executor-bolinha{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1px solid var(--border);font-size:11px;}
+.executor-bolinha svg{width:12px;height:12px;}
+.executor-passo.feita .executor-bolinha,.executor-passo.dispensada .executor-bolinha{background:var(--success);border-color:var(--success);color:#fff;}
+.executor-passo.interrompida .executor-bolinha{border-color:var(--danger);color:var(--danger);}
+.executor-passo.atual .executor-bolinha{border-color:var(--accent);color:var(--accent);}
+.executor-cabeca{padding:16px 16px 8px;}
+.executor-cabeca .page-title{margin:2px 0 4px;}
+.executor-corpo{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;padding:0 16px 12px;}
+.executor-ferramenta{min-height:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--surface);display:flex;}
+.executor-ferramenta iframe{flex:1;width:100%;height:100%;border:0;}
+.executor-ferramenta .gh-blank{margin:auto;}
+.executor-objecoes{min-height:0;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:12px 14px;background:var(--surface);}
+.executor-objecoes.destaque{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn) inset;}
+.executor-objecoes h3{font-size:14px;font-weight:600;margin:0 0 8px;}
+.executor-objecoes ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;}
+.executor-objecao-texto{font-size:14px;margin:0 0 4px;}
+.executor-rodape{display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--border);background:var(--header-bg);}
+.executor-aviso{flex:1;min-width:0;}
+.executor-aviso .alert{margin:0;}
+.executor-fim{margin:auto;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.executor-fim svg{width:40px;height:40px;color:var(--success);}
+@media (max-width:900px){
+  .executor-corpo{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(320px,1fr) auto;overflow-y:auto;}
+}
