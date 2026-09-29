@@ -10,7 +10,7 @@
 //     "Visualizar" (do Drive: abre pelo link temporário; à mão: mostra o movimento).
 // Ao importar, só uma barrinha por cima da tela, que some em 2,7 s. Embaixo, a conferência.
 import { extrator as x, type empresas } from '@nads/core';
-import { Icone, LogoBanco, LogoDrive, MensagemFlutuante, MenuSuspenso, useCarregando } from '@nads/ui';
+import { Icone, LogoBanco, LogoDrive, LogoGmail, LogoWhatsApp, MensagemFlutuante, MenuSuspenso, useCarregando } from '@nads/ui';
 import { useCallback, useId, useState } from 'react';
 import { usePonteDaTarefa } from '../../../../../../comum/ponte';
 import { useSessao } from '../../casca/sessao';
@@ -148,11 +148,13 @@ export function TarefaExtratos() {
   return (
     <section className="tarefa-extratos">
       <div className="imp-topo">
-        <MenuSuspenso rotulo="Pedir extrato" setaAntes className="btn btn-outline btn-sm" direita titulo="Pedir ao cliente por" largura={200}
-          itens={[
-            { rotulo: 'Gmail', icone: 'link', onClick: () => vm.avisar('Pedir extrato por Gmail: em desenvolvimento') },
-            { rotulo: 'WhatsApp', icone: 'link', onClick: () => vm.avisar('Pedir extrato por WhatsApp: em desenvolvimento') },
-          ]} />
+        <MenuSuspenso rotulo="Pedir extrato" setaAntes className="btn btn-outline btn-sm" direita
+          conteudo={fechar => (
+            <div className="apps-contato">
+              <button type="button" title="Pedir por Gmail" aria-label="Pedir por Gmail" onClick={() => { fechar(); vm.avisar('Pedir extrato por Gmail: em desenvolvimento'); }}><LogoGmail /></button>
+              <button type="button" title="Pedir por WhatsApp" aria-label="Pedir por WhatsApp" onClick={() => { fechar(); vm.avisar('Pedir extrato por WhatsApp: em desenvolvimento'); }}><LogoWhatsApp /></button>
+            </div>
+          )} />
         <MenuSuspenso rotulo="Adicionar banco" icone="plus" className="btn btn-primary btn-sm" direita largura={260}
           conteudo={fechar => <AdicionarBanco bancos={vm.bancosParaAdicionar} onAdicionar={vm.adicionarBanco} fechar={fechar} />} />
       </div>

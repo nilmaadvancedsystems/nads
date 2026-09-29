@@ -1280,3 +1280,20 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .drive-candidatos{display:flex;flex-direction:column;max-height:300px;overflow:auto;padding:0 8px 8px;}
 .drive-candidatos .popover-texto{white-space:normal;}
 .btn .menu-seta.antes{margin:0 -2px 0 -4px;}
+/* Iniciar em lote: a caixinha de cada empresa; o botão na linha das abas; o "Iniciar" de cima fica cinza com o painel aberto */
+.iniciar-abas{align-items:center;}
+.iniciar-lote{margin-left:auto;margin-bottom:4px;}
+.iniciar-linha{display:flex;align-items:center;gap:2px;padding-left:8px;border-radius:6px;}
+.iniciar-linha:hover{background:var(--hover-bg);}
+.iniciar-linha.marcada{background:var(--accent-soft);}
+.iniciar-linha .iniciar-item{flex:1;min-width:0;background:none;}
+.iniciar-linha input[type="checkbox"]{width:16px;height:16px;flex:none;}
+/* o "Iniciar" de cima com o painel aberto: cinza e sem clique (só o "Iniciar em lote" fica vermelho) */
+.btn.botao-apagado,.btn.botao-apagado:hover{background:var(--btn-bg);border-color:var(--btn-border);color:var(--ink-muted);pointer-events:none;transition:none;}
+/* Pedir extrato: só os logos (Gmail, WhatsApp), lado a lado; cinza, coloridos com o mouse em cima */
+.apps-contato{display:flex;gap:6px;padding:2px;}
+.apps-contato button{width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:8px;background:var(--btn-bg);cursor:pointer;}
+.apps-contato button:hover{background:var(--btn-hover);}
+.apps-contato svg{width:22px;height:22px;filter:grayscale(1);opacity:.65;transition:filter .12s ease,opacity .12s ease;}
+.apps-contato button:hover svg,.apps-contato button:focus-visible svg{filter:none;opacity:1;}
+.menu-pop:has(> .apps-contato){min-width:0;padding:6px;}

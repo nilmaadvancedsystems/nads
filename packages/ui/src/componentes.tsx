@@ -175,7 +175,7 @@ export type ItemMenu = { rotulo: ReactNode; icone?: NomeIcone; marcado?: boolean
  * preenchido (padrão do app todo). Fecha ao escolher, ao clicar
  * fora e no Esc. Em vez de `itens`, pode receber `conteudo` (ex.: uma lista com busca), que ganha o `fechar`.
  */
-export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn-outline', itens, conteudo, direita, acima, largura, setaAntes }: {
+export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn-outline', classeAberto, itens, conteudo, direita, acima, largura, setaAntes }: {
   rotulo: ReactNode;
   icone?: NomeIcone;
   titulo?: string;
@@ -188,6 +188,8 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
   acima?: boolean;
   /** a setinha à esquerda do texto (no lugar do ícone), em vez de à direita */
   setaAntes?: boolean;
+  /** classe a mais no botão enquanto o menu está aberto (ex.: apagar o botão de cima) */
+  classeAberto?: string;
   largura?: number;
 }) {
   const [aberto, setAberto] = useState(false);
@@ -204,7 +206,7 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
   const comMarca = itens?.some(i => i !== 'separador' && i.marcado !== undefined);
   return (
     <div className="popover-wrap" ref={ref}>
-      <button type="button" className={className} title={dica} aria-haspopup="menu" aria-expanded={aberto} onClick={() => setAberto(a => !a)}>
+      <button type="button" className={className + (aberto && classeAberto ? ' ' + classeAberto : '')} title={dica} aria-haspopup="menu" aria-expanded={aberto} onClick={() => setAberto(a => !a)}>
         {setaAntes && <Icone nome="caretDown" className="menu-seta antes" />}
         {icone && <Icone nome={icone} />}{rotulo}
         {!setaAntes && <Icone nome="caretDown" className="menu-seta" />}

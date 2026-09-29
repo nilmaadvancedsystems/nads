@@ -33,6 +33,8 @@ export function useMinhasEmpresas() {
   const [busca, setBusca] = useState('');
   const [buscaIniciar, setBuscaIniciar] = useState('');
   const [abaIniciar, setAbaIniciar] = useState<AbaIniciar>('escolher');
+  /** as empresas marcadas para "Iniciar em lote" (a rota de cada uma) */
+  const [lote, setLote] = useState<string[]>([]);
   const [filtroIniciar, setFiltroIniciar] = useState<FiltroIniciar>('todas');
   const situacao = SITUACOES.some(s => s.valor === a.params.get('situacao')) ? (a.params.get('situacao') as t.SituacaoGeral) : '';
   // ordem na URL (?ordem=codigo&dir=desc); sem nada = situação (paradas primeiro), sem seta no título
@@ -109,6 +111,12 @@ export function useMinhasEmpresas() {
     totalParaIniciar: paraIniciar.length,
     iniciar: (rota: string) => { setBuscaIniciar(''); abrir(rota); },
     abaIniciar, setAbaIniciar,
+    // Iniciar em lote: marca as empresas (a caixinha à esquerda) e abre uma aba para cada uma
+    lote, marcadaNoLote: (rota: string) => lote.includes(rota),
+    alternarNoLote: (rota: string) => setLote(v => (v.includes(rota) ? v.filter(r => r !== rota) : [...v, rota])),
+    podeIniciarEmLote: lote.length >= 2,
+    /** os endereços do executor das marcadas (a tela abre uma aba para cada); zera a marcação */
+    enderecosDoLote: () => { const r = lote.map(rota => caminhoDoExecutor(rota, a.competencia)); setLote([]); return r; },
     filtroIniciar, filtrosIniciar: FILTROS_INICIAR,
     setFiltroIniciar: (f: FiltroIniciar) => setFiltroIniciar(atual => (atual === f ? 'todas' : f)),
     recentes: recentes.slice(0, LIMITE_INICIAR),

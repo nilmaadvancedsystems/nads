@@ -63,7 +63,7 @@ export function MinhasEmpresas() {
           className={'btn btn-outline' + (vm.situacao ? ' ativo' : '')}
           itens={[{ rotulo: 'Todas', marcado: !vm.situacao, onClick: () => vm.setSituacao('') },
             ...vm.situacoes.map(s => ({ rotulo: s.rotulo, marcado: s.valor === vm.situacao, onClick: () => vm.setSituacao(s.valor) }))]} />
-        <MenuSuspenso icone="play" rotulo="Iniciar" className="btn btn-primary" direita largura={400} dica="Escolher a empresa para iniciar"
+        <MenuSuspenso icone="play" rotulo="Iniciar" className="btn btn-primary" classeAberto="botao-apagado" direita largura={400} dica="Escolher a empresa para iniciar"
           conteudo={fechar => <PainelIniciar vm={vm} fechar={fechar} />} />
       </div>
 
