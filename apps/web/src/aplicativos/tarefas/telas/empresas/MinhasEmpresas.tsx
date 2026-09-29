@@ -1,5 +1,8 @@
-// Minhas empresas: escolher a competência (e, se quiser, a situação) e iniciar ou continuar as etapas
-// de cada empresa. Os números por situação ficam em Insights.
+// Minhas empresas: a barra de cima, no jeito da do GitHub (competência no lugar do "main ▾", quantas
+// empresas, Insights; à direita a busca curta com atalho "/", Situação ▾, Ordenar ▾ e "Iniciar ▾", que abre
+// a lista para escolher a empresa) e a lista com iniciar/continuar. Os números por situação ficam em Insights.
+import { Icone, MenuSuspenso } from '@nads/ui';
+import { useEffect, useRef } from 'react';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { LIMITE, useMinhasEmpresas } from './useMinhasEmpresas';
 
@@ -7,24 +10,78 @@ const SELO: Record<string, string> = { parada: 'badge-bad', 'em-andamento': 'bad
 
 export function MinhasEmpresas() {
   const vm = useMinhasEmpresas();
+  const campoBusca = useRef<HTMLInputElement>(null);
+
+  // "/" leva para a busca (como o "T" do "Go to file" do GitHub)
+  useEffect(() => {
+    const atalho = (e: KeyboardEvent) => {
+      const alvo = e.target;
+      if (e.key !== '/' || (alvo instanceof Element && alvo.closest('input, textarea, select, [contenteditable]'))) return;
+      e.preventDefault();
+      campoBusca.current?.focus();
+    };
+    document.addEventListener('keydown', atalho);
+    return () => document.removeEventListener('keydown', atalho);
+  }, []);
+
   if (!vm.temRotina) return <EmDesenvolvimento nome={'A rotina do ' + (vm.departamento === 'fiscal' ? 'Fiscal' : 'Departamento Pessoal')} />;
   return (
     <section>
-      <div className="tarefas-filtros">
-        <label className="field" style={{ marginBottom: 0 }}>
-          <span className="hint">Competência</span>
-          <select className="select-compact" value={vm.competencia} onChange={e => vm.setCompetencia(e.target.value)}>
-            {vm.competencias.map(c => <option key={c.valor} value={c.valor}>{c.rotulo}</option>)}
-          </select>
+      <div className="tarefas-barra-topo">
+        <MenuSuspenso icone="calendar" rotulo={vm.rotuloCompetencia} titulo="Competência" dica="Trocar a competência"
+          itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
+        <button type="button" className="tarefas-contador" disabled={!vm.filtrando} onClick={vm.limparFiltros}
+          title={vm.filtrando ? 'Limpar a busca e a situação' : undefined}>
+          <Icone nome="briefcase" /><b>{vm.total}</b> {vm.total === 1 ? 'empresa' : 'empresas'}
+        </button>
+        <button type="button" className="tarefas-contador" onClick={vm.abrirInsights}>
+          <Icone nome="barChart" />Insights
+        </button>
+
+        <span className="tarefas-barra-espaco" />
+
+        <label className="busca-curta">
+          <Icone nome="search" />
+          <input ref={campoBusca} type="text" placeholder="Buscar empresa" aria-label="Buscar empresa (nome ou código)"
+            value={vm.busca} onChange={e => vm.setBusca(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Escape') { vm.setBusca(''); e.currentTarget.blur(); } }} />
+          {!vm.busca && <kbd>/</kbd>}
         </label>
-        <label className="field" style={{ marginBottom: 0 }}>
-          <span className="hint">Situação</span>
-          <select className="select-compact" value={vm.situacao} onChange={e => vm.setSituacao(e.target.value)}>
-            <option value="">Todas</option>
-            {vm.situacoes.map(s => <option key={s.valor} value={s.valor}>{s.rotulo}</option>)}
-          </select>
-        </label>
-        <input type="text" placeholder="Buscar empresa (nome ou código)" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} style={{ flex: 1, minWidth: 200 }} />
+        <MenuSuspenso icone="filtro" rotulo={vm.situacao ? vm.rotuloSituacao : 'Situação'} titulo="Situação" direita
+          className={'btn btn-outline' + (vm.situacao ? ' ativo' : '')}
+          itens={[{ rotulo: 'Todas', marcado: !vm.situacao, onClick: () => vm.setSituacao('') },
+            ...vm.situacoes.map(s => ({ rotulo: s.rotulo, marcado: s.valor === vm.situacao, onClick: () => vm.setSituacao(s.valor) }))]} />
+        <MenuSuspenso icone="ordenar" rotulo="Ordenar" titulo="Ordenar por" direita
+          itens={vm.ordens.map(o => ({ rotulo: o.rotulo, marcado: o.valor === vm.ordem, onClick: () => vm.setOrdem(o.valor) }))} />
+        <MenuSuspenso icone="play" rotulo="Iniciar" className="btn btn-primary" direita largura={380} dica="Escolher a empresa para iniciar"
+          conteudo={fechar => (
+            <div className="iniciar-pop">
+              <p className="popover-label">Iniciar {vm.rotuloCompetencia}</p>
+              <label className="busca-curta larga">
+                <Icone nome="search" />
+                <input type="text" autoFocus placeholder="Escolha a empresa (nome ou código)" value={vm.buscaIniciar}
+                  onChange={e => vm.setBuscaIniciar(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && vm.paraIniciar[0]) { fechar(); vm.iniciar(vm.paraIniciar[0].rota); } }} />
+              </label>
+              <div className="iniciar-lista">
+                {vm.paraIniciar.length === 0 && <p className="hint" style={{ padding: '8px' }}>{vm.buscaIniciar ? 'Nenhuma empresa com etapa a fazer.' : 'Todas concluídas nesta competência.'}</p>}
+                {vm.paraIniciar.map(l => (
+                  <button key={l.chave} type="button" className="popover-item iniciar-item" role="menuitem"
+                    onClick={() => { fechar(); vm.iniciar(l.rota); }}>
+                    <span className="num hint">{l.codigo ?? '—'}</span>
+                    <span className="iniciar-nome">
+                      <span>{l.nome}</span>
+                      <span className="hint">{l.acao} · {l.proxima}</span>
+                    </span>
+                    <span className={'badge ' + SELO[l.situacao]}>{l.rotuloSituacao}</span>
+                  </button>
+                ))}
+              </div>
+              {vm.totalParaIniciar > vm.paraIniciar.length && (
+                <p className="hint iniciar-rodape">Mostrando {vm.paraIniciar.length} de {vm.totalParaIniciar}. Digite para achar as outras.</p>
+              )}
+            </div>
+          )} />
       </div>
 
       {vm.carregando ? <p className="empty">Carregando…</p> : vm.total === 0 ? <p className="empty">Nenhuma empresa nesta situação.</p> : (

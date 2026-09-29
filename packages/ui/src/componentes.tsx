@@ -158,3 +158,57 @@ export function CampoArquivos({ id, onEscolher, aceitar, rotulo = 'Escolher arqu
     </>
   );
 }
+
+/** Um item do MenuSuspenso. `marcado` (true/false) mostra a coluna do ✓, como os menus do GitHub. */
+export type ItemMenu = { rotulo: ReactNode; icone?: NomeIcone; marcado?: boolean; dica?: ReactNode; desabilitado?: boolean; onClick: () => void } | 'separador';
+
+/**
+ * Botão com menu suspenso (.popover), como os do GitHub ("main ▾", "Code ▾"). Fecha ao escolher, ao clicar
+ * fora e no Esc. Em vez de `itens`, pode receber `conteudo` (ex.: uma lista com busca), que ganha o `fechar`.
+ */
+export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn-outline', itens, conteudo, direita, largura }: {
+  rotulo: ReactNode;
+  icone?: NomeIcone;
+  titulo?: string;
+  dica?: string;
+  className?: string;
+  itens?: ItemMenu[];
+  conteudo?: (fechar: () => void) => ReactNode;
+  direita?: boolean;
+  largura?: number;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!aberto) return;
+    const fora = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setAberto(false); };
+    document.addEventListener('mousedown', fora);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', fora); document.removeEventListener('keydown', esc); };
+  }, [aberto]);
+  const fechar = () => setAberto(false);
+  const comMarca = itens?.some(i => i !== 'separador' && i.marcado !== undefined);
+  return (
+    <div className="popover-wrap" ref={ref}>
+      <button type="button" className={className} title={dica} aria-haspopup="menu" aria-expanded={aberto} onClick={() => setAberto(a => !a)}>
+        {icone && <Icone nome={icone} />}{rotulo}<Icone nome="chevronDown" className="menu-seta" />
+      </button>
+      {aberto && (
+        <div className={'popover menu-pop' + (direita ? ' direita' : '')} role="menu" style={largura ? { width: largura } : undefined}>
+          {titulo && <p className="popover-label">{titulo}</p>}
+          {itens?.map((it, i) => it === 'separador' ? <hr key={i} className="popover-sep" /> : (
+            <button key={i} type="button" className="popover-item" role="menuitem" disabled={it.desabilitado}
+              onClick={() => { fechar(); it.onClick(); }}>
+              {comMarca && <span className="popover-marca">{it.marcado && <Icone nome="check" />}</span>}
+              {it.icone && <Icone nome={it.icone} />}
+              <span className="popover-texto">{it.rotulo}</span>
+              {it.dica != null && <span className="popover-dica">{it.dica}</span>}
+            </button>
+          ))}
+          {conteudo?.(fechar)}
+        </div>
+      )}
+    </div>
+  );
+}
