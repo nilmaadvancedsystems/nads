@@ -2,7 +2,18 @@
 // opacidades diferentes — certos no tema claro e no escuro); com `cor`, nas cores da marca (ex.: o banco
 // cujo extrato já foi importado). O Sicoob e o Drive têm o desenho deles; os outros bancos são um selo
 // com a cor e as iniciais da marca (simplificado — trocar pelo logo de verdade quando tiver o arquivo).
+/// <reference types="vite/client" />
 import { Icone } from './icones';
+
+/**
+ * Os logos originais, quando estão na pasta logos-bancos/ (nome do arquivo = a marca: itau.png, c6.png…).
+ * Aparecem como estão (coloridos) ou em tons de cinza. Sem arquivo, vale o desenho abaixo.
+ */
+const IMAGENS = import.meta.glob('./logos-bancos/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+function imagemDaMarca(marca: string): string | null {
+  for (const [caminho, url] of Object.entries(IMAGENS)) if (caminho.replace(/^.*\//, '').replace(/\.[^.]+$/, '') === marca) return url;
+  return null;
+}
 
 /** Sicoob: o triângulo de três partes, com o triângulo vazado no meio. */
 function Sicoob({ cor }: { cor?: boolean }) {
@@ -157,6 +168,8 @@ function Drive({ cor }: { cor?: boolean }) {
 
 /** O logo do banco (a marca: 'sicoob', 'itau'…), em cinza ou, com `cor`, colorido. Sem logo: o ícone de banco. */
 export function LogoBanco({ banco, cor }: { banco: string; cor?: boolean }) {
+  const imagem = imagemDaMarca(banco);
+  if (imagem) return <img src={imagem} alt="" aria-hidden="true" className={'logo-img' + (cor ? '' : ' cinza')} />;
   if (banco === 'sicoob') return <Sicoob cor={cor} />;
   if (DESENHOS[banco]) return DESENHOS[banco](cor);
   if (SELOS[banco]) return <Selo marca={banco} cor={cor} />;

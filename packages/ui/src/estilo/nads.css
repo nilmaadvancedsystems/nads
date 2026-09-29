@@ -1259,10 +1259,10 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .add-banco-form .field{display:flex;flex-direction:column;gap:4px;margin:0;}
 .add-banco-acoes{display:flex;justify-content:flex-end;gap:8px;margin-top:2px;}
 /* a setinha da linha do banco e o movimento do extrato embaixo dela */
-.imp-seta{width:20px;height:20px;flex:none;display:inline-flex;align-items:center;justify-content:center;margin-right:-6px;border:none;background:none;border-radius:4px;color:var(--ink-muted);cursor:pointer;}
+.imp-seta{width:26px;height:26px;padding:0;flex:none;display:inline-flex;align-items:center;justify-content:center;margin-right:-4px;border:none;background:none;border-radius:4px;color:var(--ink-muted);cursor:pointer;}
 .imp-seta:hover:not(:disabled){background:var(--hover-bg);color:var(--ink);}
 .imp-seta:disabled{opacity:.35;cursor:default;}
-.imp-seta svg{width:12px;height:12px;transform:rotate(-90deg);transition:transform .12s ease;}
+.imp-seta svg{flex:none;width:18px;height:18px;transform:rotate(-90deg);transition:transform .12s ease;}
 .imp-seta.aberta svg{transform:none;}
 .imp-mov{max-height:320px;overflow:auto;margin:0 12px 12px 44px;border:1px solid var(--border-muted);border-radius:6px;}
 .imp-mov table{font-size:13px;}
@@ -1297,3 +1297,11 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .apps-contato svg{width:22px;height:22px;filter:grayscale(1);opacity:.65;transition:filter .12s ease,opacity .12s ease;}
 .apps-contato button:hover svg,.apps-contato button:focus-visible svg{filter:none;opacity:1;}
 .menu-pop:has(> .apps-contato){min-width:0;padding:6px;}
+/* o logo original (imagem) do banco: colorido, ou em tons de cinza antes de importar */
+.logo-img{display:block;width:100%;height:100%;object-fit:contain;border-radius:20%;}
+.logo-img.cinza{filter:grayscale(1);opacity:.6;}
+.imp-logo .logo-img,.add-banco-logo .logo-img{width:22px;height:22px;}
+/* com mais de um banco: clicar no nome escolhe a conferência (o escolhido fica marcado) */
+.imp-txt.escolhe{cursor:pointer;border-radius:6px;padding:2px 6px;margin:-2px -6px;}
+.imp-txt.escolhe:hover{background:var(--hover-bg);}
+.imp-txt.na-conferencia b{text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:3px;}

@@ -8,7 +8,8 @@
 //   Razão: importar à mão (check verde / × para excluir);
 //   à direita: "Não teve movimento" (trava a linha e vira "Desfazer") ou, com o extrato importado,
 //     "Visualizar" (do Drive: abre pelo link temporário; à mão: mostra o movimento).
-// Ao importar, só uma barrinha por cima da tela, que some em 2,7 s. Embaixo, a conferência.
+// Ao importar, só uma barrinha por cima da tela, que some em 2,7 s. Embaixo, a conferência (com mais de um
+// banco, a do banco cujo nome foi clicado).
 import { extrator as x, type empresas } from '@nads/core';
 import { Icone, LogoBanco, LogoDrive, LogoGmail, LogoWhatsApp, MensagemFlutuante, MenuSuspenso, useCarregando } from '@nads/ui';
 import { useCallback, useId, useState } from 'react';
@@ -176,7 +177,8 @@ export function TarefaExtratos() {
                   <Icone nome="caretDown" />
                 </button>
                 <span className="imp-ico imp-logo"><LogoBanco banco={b.marca} cor={temExtrato && !semMov} /></span>
-                <div className="imp-txt">
+                <div className={'imp-txt' + (!umSo ? ' escolhe' : '') + (!umSo && conf?.id === b.id ? ' na-conferencia' : '')}
+                  onClick={umSo ? undefined : () => setBancoConf(b.id)} title={umSo ? undefined : 'Ver a conferência deste banco'}>
                   <span><b>{b.nome}</b>{b.conta && <span className="imp-conta">{b.conta}</span>}</span>
                   <span className="hint">{resumo(b, semMov)}</span>
                 </div>
@@ -284,15 +286,6 @@ export function TarefaExtratos() {
         </div>
       )}
 
-      {!umSo && (
-        <div className="chip-row imp-conf-bancos" aria-label="Conferência de qual banco">
-          {vm.bancos.map(b => (
-            <button key={b.id} type="button" className={'chip-f' + (b.id === conf?.id ? ' on' : '')} onClick={() => setBancoConf(b.id)}>
-              {b.nome}{b.conta ? ' · ' + b.conta : ''}
-            </button>
-          ))}
-        </div>
-      )}
       {falta ? (
         <div className="gh-blank">
           <Icone nome="scale" />
