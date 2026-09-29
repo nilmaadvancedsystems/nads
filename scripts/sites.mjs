@@ -21,7 +21,7 @@ const SITES = {
   'cheque-especial': { site: 'cheque-especial-nilma', nome: 'Cheque especial', pronto: true },
   creditor: { site: 'creditor-nilma', nome: 'Creditor', pronto: true },
   tarefas: { site: 'tarefas-nilma', nome: 'Tarefas', pronto: false },
-  extrator: { site: 'extrator-nilma', nome: 'Extrator', pronto: false },
+  extrator: { site: 'extrator-nilma', nome: 'Extrator', pronto: true },
 };
 
 const pedidos = process.argv.slice(2);

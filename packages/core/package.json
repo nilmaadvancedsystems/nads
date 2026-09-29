@@ -12,7 +12,8 @@
     "./cheque-especial": "./src/cheque-especial/index.ts",
     "./conciliadorzinho": "./src/conciliadorzinho/index.ts",
     "./creditor": "./src/creditor/index.ts",
-    "./extrator": "./src/extrator/index.ts"
+    "./extrator": "./src/extrator/index.ts",
+    "./usuarios": "./src/usuarios/index.ts"
   },
   "dependencies": {
     "pdfjs-dist": "^6.3.289",
