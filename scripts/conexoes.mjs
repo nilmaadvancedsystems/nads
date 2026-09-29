@@ -16,7 +16,7 @@ const TEXTOS_FIREBASE = [/from\s+['"]firebase(\/[a-z-]+)?['"]/, /\b(getFirestore
 const TEXTOS_REDE = [/\bfetch\s*\(/, /\bXMLHttpRequest\b/, /\bnew\s+WebSocket\b/, /\bsendBeacon\b/, /\bEventSource\b/];
 
 const achados = [];
-const ignorar = new Set(['node_modules', '.git', 'dist', 'dist-tipos', '.claude', 'docs', '.firebase']);
+const ignorar = new Set(['node_modules', '.git', 'dist', 'dist-sites', 'dist-tipos', '.claude', 'docs', '.firebase']);
 
 function varrer(dir, fn) {
   for (const nome of fs.readdirSync(dir)) {

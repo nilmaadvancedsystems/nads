@@ -6,3 +6,4 @@ export * as conferencia from './conferencia';
 export * as chequeEspecial from './cheque-especial';
 export * as conciliadorzinho from './conciliadorzinho';
 export * as creditor from './creditor';
+export * as extrator from './extrator';

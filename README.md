@@ -6,9 +6,9 @@
 > exemplo e não toca no banco. A trava `npm run conexoes` garante que o Firebase só aparece em
 > `apps/web/src/aplicativos/<app>/dados/*.firestore.ts` e que o `apps/web/firebase.json` (o único) só publica hospedagem.
 
-O nads tem **quatro aplicativos isolados**, cada um com a sua prévia (ver `docs/aplicativos/README.md`):
+O nads tem **cinco aplicativos isolados**, cada um com o seu link (ver `docs/aplicativos/README.md`):
 **Concilia aí** (a Conferência, em `/`), **Conciliadorzinho** (`/conciliadorzinho`), **Cheque especial**
-(`/cheque-especial`) e **Creditor** (`/creditor`). Tudo em **React + Vite + TypeScript**, organizado em **MVVM**:
+(`/cheque-especial`), **Creditor** (`/creditor`) e **Extrator** (`/extrator`). Tudo em **React + Vite + TypeScript**, organizado em **MVVM**:
 
 | Camada | Onde | O que é |
 |---|---|---|
@@ -45,6 +45,7 @@ De onde veio cada um:
 - **Conciliadorzinho** (`contabil-htmls/conciliadorZINHO.html`);
 - **Cheque especial** (`contabil-htmls/cheque_especial.html`);
 - **Creditor** (novo: relatório de liquidação do banco × sistema → importação de 8 colunas).
+- **Extrator** (novo: extrato bancário × lançamentos contábeis).
 
 ## Rodar
 

@@ -5,7 +5,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/dist-tipos/**', '**/node_modules/**', '.claude/**', 'docs/**', '**/__legado__/**'] },
+  { ignores: ['**/dist/**', '**/dist-sites/**', '**/dist-tipos/**', '**/node_modules/**', '.claude/**', 'docs/**', '**/__legado__/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
