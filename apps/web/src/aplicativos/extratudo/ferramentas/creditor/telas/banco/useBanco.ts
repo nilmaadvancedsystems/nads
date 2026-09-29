@@ -12,10 +12,14 @@ export function useBanco() {
   const [arquivo, setArquivo] = useState<File | null>(null);
   const r = s.estado.relatorio;
 
-  /** Relatório novo: descarta as decisões do cruzamento (os títulos mudaram) e volta a travar as etapas seguintes. */
+  /**
+   * Relatório novo: descarta as decisões do cruzamento (os títulos mudaram) e volta a travar as etapas
+   * seguintes. Sem nenhum total impresso, a Conferência sai do fluxo (decidido aqui, na leitura, para a
+   * etapa não sumir enquanto a pessoa edita).
+   */
   function usar(rel: cr.RelatorioBanco, origem: string) {
     setErro('');
-    s.mudar(e => ({ ...e, relatorio: rel, origemBanco: origem, decisoes: {}, alcancada: 0 }));
+    s.mudar(e => ({ ...e, relatorio: rel, origemBanco: origem, decisoes: {}, conferir: cr.temTotalImpresso(rel), alcancada: 0 }));
   }
 
   async function escolherArquivo(f: File | null) {
@@ -53,6 +57,7 @@ export function useBanco() {
       avisos: r.avisos,
     } : null,
     podeContinuar: titulos.length > 0,
+    rotuloContinuar: 'Continuar para ' + (s.estado.conferir ? 'a conferência' : 'o sistema'),
     continuar: s.proxima,
   };
 }

@@ -6,7 +6,7 @@ import { linhasDoCsv } from './arquivos/planilha';
 import { linhasDosItens } from './arquivos/pdf';
 import { clienteDoHistorico, lerSistema, nfDoHistorico } from './arquivos/sistema';
 import { EXEMPLO_RELATORIO, EXEMPLO_SISTEMA_CSV } from './exemplos';
-import { conferirGrupo, conferirTotalGeral, relatorioConferido } from './regras/conferencia';
+import { conferirGrupo, conferirTotalGeral, relatorioConferido, temTotalImpresso } from './regras/conferencia';
 import { cruzar, mesmoCliente, pendentes, type Decisao } from './regras/cruzamento';
 import { fecharPorDia, gerarLancamentos, historicoSemPrefixo, titulosFora } from './regras/lancamentos';
 import { chaveNf, dataBR, dinheiro } from './regras/numeros';
@@ -85,6 +85,13 @@ describe('conferência dos grupos', () => {
     const r = corrigido();
     const g = { ...r.grupos[0], impresso: { valor: null, mora: null, desconto: null, outros: null, cobrado: null } };
     expect(conferirGrupo(g).situacao).toBe('sem-total');
+  });
+
+  it('sem nenhum total impresso, não há o que conferir', () => {
+    expect(temTotalImpresso(lerRelatorioTexto(EXEMPLO_RELATORIO))).toBe(true);
+    const semTotal = lerRelatorioPlanilha(buf('Sacado;Seu Número;Valor;Dt. Liquidação\nA;1;10,00;01/09/2026\n'), 'b.csv');
+    expect(temTotalImpresso(semTotal)).toBe(false);
+    expect(temTotalImpresso({ ...semTotal, registrosGeral: 1 })).toBe(true);
   });
 });
 

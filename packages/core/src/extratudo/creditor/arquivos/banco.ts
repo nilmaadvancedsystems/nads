@@ -4,6 +4,7 @@
 // impressos de cada grupo e o total geral, e deixa de fora a seção "Baixa - Pedido Cedente".
 // Foto não entra: ler imagem exige OCR. Nesse caso a pessoa digita os títulos na conferência.
 import { normalizarTexto } from '../../../formatos';
+import { temTotalImpresso } from '../regras/conferencia';
 import { dataBR, dinheiro, ordemData, r2 } from '../regras/numeros';
 import type { ColunaValor, Grupo, RelatorioBanco, Titulo, TotaisImpressos } from '../tipos';
 import { linhasDaPlanilha, textoDaCelula, type Linha } from './planilha';
@@ -44,12 +45,15 @@ function montar(blocos: Bloco[], totalGeral: TotaisImpressos, ignorados: number,
     const titulos = lista.flatMap(b => b.titulos);
     const datas = [...new Set(titulos.map(t => t.liquidacao))].sort((a, b) => ordemData(a) - ordemData(b));
     lista = datas.map(d => ({ titulos: titulos.filter(t => t.liquidacao === d), impresso: { ...TOTAIS_VAZIOS } }));
-    if (titulos.length) avisos.push('O relatório não trouxe "Total de Valores do grupo": separei os grupos por dia de liquidação. Digite o total impresso de cada dia na conferência.');
+    const geral = registrosGeral != null || Object.values(totalGeral).some(v => v != null);
+    if (titulos.length) avisos.push('O relatório não trouxe "Total de Valores do grupo": separei os grupos por dia de liquidação. '
+      + (geral ? 'Digite o total impresso de cada dia na conferência.' : 'Sem nenhum total impresso, a conferência fica de fora.'));
   }
   const grupos: Grupo[] = lista.map((b, i) => ({ id: i + 1, rotulo: b.rotulo, titulos: b.titulos, impresso: b.impresso, registros: b.registros ?? null }));
+  const rel: RelatorioBanco = { grupos, totalGeral, registrosGeral, ignorados, avisos };
   const semData = grupos.flatMap(g => g.titulos).filter(t => !t.liquidacao).length;
-  if (semData) avisos.push(semData + ' título(s) sem data de liquidação: preencha na conferência.');
-  return { grupos, totalGeral, registrosGeral, ignorados, avisos };
+  if (semData) avisos.push(semData + ' título(s) sem data de liquidação' + (temTotalImpresso(rel) ? ': preencha na conferência.' : ': eles saem sem data no arquivo.'));
+  return rel;
 }
 
 // ─── planilha ────────────────────────────────────────────────────────────────

@@ -1,11 +1,12 @@
 // Sessão do Creditor: o relatório do banco (já corrigido pela pessoa), o arquivo do sistema, as
 // decisões do cruzamento e as contas. Vive só enquanto a empresa está aberta nesta seção (nada é
 // gravado). Também mora aqui a trava das etapas: uma etapa só abre quando a anterior está resolvida.
+// Relatório sem nenhum total impresso não tem o que conferir: a etapa Conferência some do fluxo.
 import { creditor as cr } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
-import { caminhoDaEtapa, ETAPAS, indiceDaEtapa, type IdEtapa } from './navegacao';
+import { caminhoDaEtapa, ETAPAS, indiceDaEtapa, type Etapa, type IdEtapa } from './navegacao';
 
 export interface Estado {
   relatorio: cr.RelatorioBanco | null;
@@ -15,11 +16,13 @@ export interface Estado {
   origemSistema: string;
   decisoes: Record<number, cr.Decisao>;
   contas: cr.ContasCreditor;
+  /** o relatório trouxe total impresso? (sem nenhum, a Conferência fica de fora) */
+  conferir: boolean;
   /** a etapa mais adiante que já foi aberta */
   alcancada: number;
 }
 
-const INICIAL: Estado = { relatorio: null, origemBanco: '', sistema: null, origemSistema: '', decisoes: {}, contas: cr.CONTAS_PADRAO, alcancada: 0 };
+const INICIAL: Estado = { relatorio: null, origemBanco: '', sistema: null, origemSistema: '', decisoes: {}, contas: cr.CONTAS_PADRAO, conferir: true, alcancada: 0 };
 
 /** Tudo o que sai do estado (as telas só leem daqui). */
 export interface Derivado {
@@ -34,7 +37,7 @@ export interface Derivado {
 
 export function derivar(e: Estado): Derivado {
   const titulos = e.relatorio ? e.relatorio.grupos.flatMap(g => g.titulos) : [];
-  const conferido = !!e.relatorio && cr.relatorioConferido(e.relatorio);
+  const conferido = !!e.relatorio && (e.conferir ? cr.relatorioConferido(e.relatorio) : titulos.length > 0);
   const cruzamentos = e.sistema ? cr.cruzar(titulos, e.sistema) : [];
   const pendentes = cr.pendentes(cruzamentos, e.decisoes);
   const lancamentos = cr.gerarLancamentos(titulos, cruzamentos, e.decisoes, e.contas);
@@ -47,7 +50,7 @@ export function derivar(e: Estado): Derivado {
 function requisitos(id: IdEtapa, e: Estado, d: Derivado): boolean {
   switch (id) {
     case 'banco': return true;
-    case 'conferencia': return !!e.relatorio;
+    case 'conferencia': return !!e.relatorio && e.conferir;
     case 'sistema': return d.conferido;
     case 'cruzamento': return d.conferido && !!e.sistema;
     case 'lancamentos': return d.conferido && !!e.sistema && d.pendentes.length === 0;
@@ -58,6 +61,8 @@ interface Sessao {
   empresa: { nome: string; codigo: number | null };
   rota: string;
   etapa: IdEtapa;
+  /** as etapas deste relatório (sem a Conferência quando não há total impresso) */
+  etapas: Etapa[];
   estado: Estado;
   d: Derivado;
   mudar: (f: (e: Estado) => Estado) => void;
@@ -99,13 +104,14 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
     abrir(id);
   }, [etapa, podeAbrir, abrir, toast]);
 
-  const i = indiceDaEtapa(etapa);
+  const etapas = estado.conferir ? ETAPAS : ETAPAS.filter(x => x.id !== 'conferencia');
+  const i = etapas.findIndex(x => x.id === etapa);
   const s: Sessao = {
-    empresa, rota, etapa, estado, d,
+    empresa, rota, etapa, etapas, estado, d,
     mudar: f => setEstado(f),
     podeAbrir, irPara,
-    proxima: () => { const p = ETAPAS[i + 1]; if (p && requisitos(p.id, estado, d)) abrir(p.id); },
-    anterior: () => { if (i > 0) abrir(ETAPAS[i - 1].id); },
+    proxima: () => { const p = etapas[i + 1]; if (p && requisitos(p.id, estado, d)) abrir(p.id); },
+    anterior: () => { if (i > 0) abrir(etapas[i - 1].id); },
     recomecar: () => { setEstado(INICIAL); navegar(caminhoDaEtapa(rota, 'banco')); },
   };
   return <Ctx.Provider value={s}>{children}</Ctx.Provider>;

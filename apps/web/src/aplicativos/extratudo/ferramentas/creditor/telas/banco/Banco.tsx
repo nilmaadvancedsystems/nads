@@ -31,7 +31,7 @@ export function Banco() {
       )}
 
       <div className="btn-row">
-        <button className="btn btn-primary" type="button" disabled={!vm.podeContinuar} onClick={vm.continuar}>Continuar para a conferência</button>
+        <button className="btn btn-primary" type="button" disabled={!vm.podeContinuar} onClick={vm.continuar}>{vm.rotuloContinuar}</button>
       </div>
     </section>
   );
