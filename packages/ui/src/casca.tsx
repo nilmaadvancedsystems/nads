@@ -178,7 +178,6 @@ export function Casca(p: {
           {p.aplicativos && p.aplicativos.length > 0 && (
             <>
               <hr className="drawer-sep" />
-              <p className="drawer-label">Aplicativos</p>
               {p.aplicativos.map(a => (
                 <button key={a.id} className={'drawer-item' + (a.ativo ? ' active' : '')} type="button" aria-current={a.ativo ? 'page' : undefined}
                   onClick={() => { setGaveta(false); p.onAplicativo?.(a.id); }}>

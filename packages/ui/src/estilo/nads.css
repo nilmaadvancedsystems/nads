@@ -47,7 +47,7 @@
     --warn:#D29922; --warn-soft:#BB800926;
     --info:#58A6FF; --info-soft:#388BFD26;
     --header-bg:#08080A; --tab-active:#F0626A; --hover-bg:#8C8C9233;
-    --drawer-bg:#121214; color-scheme:dark; --destructive:#F85149; --destructive-soft:#F851491A;
+    --drawer-bg:#08080A; color-scheme:dark; --destructive:#F85149; --destructive-soft:#F851491A;
     --shadow-md:0 3px 6px #000; --shadow-lg:0 8px 24px #000, 0 0 0 1px #34343A;
     --input-bg:#17171A; --overlay-bg:#08080A;
     --shadow-inset:inset 0 1px 0 0 #0000003D;
@@ -66,7 +66,7 @@
   --warn:#D29922; --warn-soft:#BB800926;
   --info:#58A6FF; --info-soft:#388BFD26;
   --header-bg:#08080A; --tab-active:#F0626A; --hover-bg:#8C8C9233;
-  --drawer-bg:#121214; color-scheme:dark; --destructive:#F85149; --destructive-soft:#F851491A;
+  --drawer-bg:#08080A; color-scheme:dark; --destructive:#F85149; --destructive-soft:#F851491A;
   --shadow-md:0 3px 6px #000; --shadow-lg:0 8px 24px #000, 0 0 0 1px #34343A;
   --input-bg:#17171A; --overlay-bg:#08080A;
   --shadow-inset:inset 0 1px 0 0 #0000003D;
@@ -519,12 +519,13 @@ button.gh-crumb:hover{background:var(--hover-bg);}
   display:inline-flex;align-items:center;justify-content:center;padding:0;}
 .gh-caret:hover{background:var(--hover-bg);}
 .gh-caret svg{width:16px;height:16px;}
-.drawer-overlay{position:fixed;inset:0;background:#0000004D;z-index:60;animation:fadeIn .15s ease both;}
+.drawer-overlay{position:fixed;inset:0;background:#01040966;z-index:60;animation:fadeIn .15s ease both;}
 .drawer{position:fixed;top:0;left:0;bottom:0;width:320px;max-width:calc(100vw - 48px);z-index:61;background:var(--drawer-bg);
-  border-radius:0 12px 12px 0;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;padding:16px;overflow-y:auto;
+  border-radius:0 12px 12px 0;box-shadow:var(--shadow-floating);display:flex;flex-direction:column;padding:16px;overflow-y:auto;
   animation:drawerIn .22s cubic-bezier(.33,1,.68,1) both;}
 @keyframes drawerIn{from{transform:translateX(-100%);}to{transform:none;}}
-.drawer-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-left:4px;}
+/* como a gaveta do GitHub: logo de 32px e × no topo, a lista começa mais abaixo, grupos só com a linha entre eles */
+.drawer-head{display:flex;align-items:center;justify-content:space-between;min-height:32px;margin-bottom:38px;}
 .drawer-x{width:32px;height:32px;border:none;background:none;border-radius:6px;color:var(--ink-muted);cursor:pointer;
   display:inline-flex;align-items:center;justify-content:center;padding:0;}
 .drawer-x:hover{background:var(--hover-bg);color:var(--ink);}
@@ -1029,8 +1030,7 @@ table.vc-tabela .vc-mut{color:var(--ink-muted);max-width:180px;overflow:hidden;t
   .layout{display:block !important;}
   .card{break-inside:avoid;}
 }
-.drawer-item.active{background:var(--hover-bg);font-weight:600;}
-.drawer-item.active svg{color:var(--accent);}
+/* a gaveta do GitHub não marca o item aberto */
 
 /* Casca com lateral="caixa" (Conciliei): no lugar da barra lateral, uma caixa com borda ao lado da
    página, no estilo "Insights" do GitHub. O item aberto ganha a faixa vermelha à esquerda. */
