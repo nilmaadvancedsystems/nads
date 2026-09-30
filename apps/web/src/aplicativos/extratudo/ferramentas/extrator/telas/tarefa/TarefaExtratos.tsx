@@ -112,6 +112,10 @@ function Movimento({ m }: { m: x.MovimentoDoExtrato }) {
   const q = semAcento(busca.trim());
   const achadas = q ? m.linhas.filter(l => semAcento([x.dataBR(l.data), l.historico, x.valorBR(Math.abs(l.valor)), x.valorBR(l.saldo)].join(' ')).includes(q)) : m.linhas;
   const linhas = ordem ? achadas.slice().sort((a, b) => (ordem.dir === 'asc' ? 1 : -1) * COMPARAR_MOV[ordem.coluna](a, b)) : achadas;
+  // o total do que a busca achou: quantos, quanto entrou, quanto saiu e o saldo (negativo em vermelho, sem sinal)
+  const entrou = achadas.filter(l => l.valor > 0).reduce((t, l) => t + l.valor, 0);
+  const saiu = achadas.filter(l => l.valor < 0).reduce((t, l) => t - l.valor, 0);
+  const saldoBusca = entrou - saiu;
   const ordenar = (c: ColunaMov) => setOrdem(o => (o?.coluna === c && o.dir === 'asc' ? { coluna: c, dir: 'desc' } : { coluna: c, dir: 'asc' }));
   const Titulo = ({ c, rotulo, num }: { c: ColunaMov; rotulo: string; num?: boolean }) => (
     <th className={'th-sort' + (num ? ' num' : '')} onClick={() => ordenar(c)} title="Ordenar por esta coluna"
@@ -121,11 +125,21 @@ function Movimento({ m }: { m: x.MovimentoDoExtrato }) {
   );
   return (
     <div className="imp-mov-caixa">
-      <label className="busca-curta imp-mov-busca">
-        <Icone nome="search" />
-        <input type="text" placeholder="Buscar no extrato" aria-label="Buscar no extrato (data, descrição ou valor)" value={busca}
-          onChange={e => setBusca(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') setBusca(''); }} />
-      </label>
+      <div className="imp-mov-topo">
+        <label className="busca-curta imp-mov-busca">
+          <Icone nome="search" />
+          <input type="text" placeholder="Buscar no extrato" aria-label="Buscar no extrato (data, descrição ou valor)" value={busca}
+            onChange={e => setBusca(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') setBusca(''); }} />
+        </label>
+        {q && (
+          <div className="imp-mov-total" aria-live="polite">
+            <span><b>{achadas.length}</b> {achadas.length === 1 ? 'lançamento' : 'lançamentos'}</span>
+            <span>Entrou <b className="ext-pos">{x.valorBR(entrou)}</b></span>
+            <span>Saiu <b className="ext-neg">{x.valorBR(saiu)}</b></span>
+            <span>Saldo <b className={saldoBusca < 0 ? 'ext-neg' : 'imp-mov-saldo'}>{x.valorBR(Math.abs(saldoBusca))}</b></span>
+          </div>
+        )}
+      </div>
     <div className="imp-mov">
       <table className="table-compact">
         <thead><tr>
@@ -329,7 +343,7 @@ export function TarefaExtratos() {
           <h4>{falta === 'banco' ? 'Importe o extrato' + (umSo ? ' do banco' : ' do ' + conf?.nome) : 'Importe o razão' + (umSo ? ' da conta' : ' do ' + conf?.nome)}</h4>
           <p>A conferência aparece aqui quando os dois lados estiverem importados.</p>
         </div>
-      ) : <Conferencia naTarefa doArquivo={umSo ? undefined : doArquivo} />}
+      ) : <Conferencia naTarefa doArquivo={umSo ? undefined : doArquivo} competencia={vm.competencia} />}
     </section>
   );
 }

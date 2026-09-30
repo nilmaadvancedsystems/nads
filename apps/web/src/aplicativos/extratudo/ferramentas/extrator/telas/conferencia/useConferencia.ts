@@ -26,13 +26,14 @@ const FILTROS: { valor: FiltroSituacao; rotulo: string }[] = [
 ];
 
 /** doArquivo: só os arquivos de um banco (a etapa da Tarefas, quando a empresa tem mais de um) */
-export function useConferencia(doArquivo?: (a: x.ArquivoImportado) => boolean) {
+/** competencia: fixa o mês (a etapa da Tarefas, que não mostra os filtros de mês) */
+export function useConferencia(doArquivo?: (a: x.ArquivoImportado) => boolean, competencia?: string) {
   const s = useSessao();
   const e = useMemo(() => (doArquivo ? { ...s.empresa, arquivos: s.empresa.arquivos.filter(doArquivo) } : s.empresa), [s.empresa, doArquivo]);
   const f = s.conferencia;
   const meses = x.competencias(e);
   const mesesBanco = [...new Set(x.lancamentosDe(e, 'banco').map(l => l.data.slice(0, 7)))].sort();
-  const periodo = f.periodo && (f.periodo === 'tudo' || meses.includes(f.periodo)) ? f.periodo : mesesBanco[mesesBanco.length - 1] || 'tudo';
+  const periodo = competencia || (f.periodo && (f.periodo === 'tudo' || meses.includes(f.periodo)) ? f.periodo : mesesBanco[mesesBanco.length - 1] || 'tudo');
 
   const r = useMemo(() => {
     const noPeriodo = (l: x.LancamentoDoArquivo) => periodo === 'tudo' || l.data.startsWith(periodo);

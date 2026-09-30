@@ -1205,9 +1205,10 @@ tr.linha-atual > td{background:var(--hover-bg);}
 @media (prefers-reduced-motion: reduce){.barra-carregamento.andando{animation:none;width:60%;}}
 
 /* ---------------------------------- Extrator na etapa da Tarefas: importar (em lista) e conferir ---------------------------------- */
-.imp-lista{border:1px solid var(--border);border-radius:6px;background:var(--surface);margin-bottom:16px;}
+/* cada banco num cartão, com um espaço pequeno entre eles */
+.imp-lista{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+.imp-bloco{border:1px solid var(--border);border-radius:6px;background:var(--surface);}
 .imp-linha{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;}
-.imp-bloco + .imp-bloco{border-top:1px solid var(--border-muted);}
 .imp-ico{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;background:var(--surface-2);flex:none;}
 .imp-ico svg{width:16px;height:16px;color:var(--ink-muted);}
 .imp-txt{display:flex;flex-direction:column;min-width:180px;line-height:1.35;}
@@ -1262,7 +1263,7 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-conf-bancos{margin-bottom:12px;}
 .imp-conta{margin-left:8px;font-size:12px;color:var(--ink-muted);font-variant-numeric:tabular-nums;}
 /* Adicionar banco: a lista com os logos (em cinza) e o formulário de agência e conta */
-.add-banco-lista{display:flex;flex-direction:column;max-height:340px;overflow:auto;}
+.add-banco-lista{display:flex;flex-direction:column;}
 .add-banco-item{gap:10px;}
 .add-banco-logo{display:inline-flex;width:20px;height:20px;flex:none;color:var(--ink-muted);}
 .add-banco-logo svg{width:20px !important;height:20px !important;}
@@ -1336,3 +1337,9 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-mov th.th-sort{cursor:pointer;user-select:none;}
 .imp-mov th.th-sort:hover{color:var(--ink);}
 .imp-mov thead th{background:var(--surface-2);}
+/* a busca do movimento e, na mesma linha, o total do que ela achou */
+.imp-mov-topo{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.imp-mov-total{display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink-muted);}
+.imp-mov-total b{font-weight:600;font-variant-numeric:tabular-nums;margin-left:4px;}
+.imp-mov-total > span:first-child b{margin-left:0;color:var(--ink);}
+.imp-mov-saldo{color:var(--ink);}

@@ -6,15 +6,18 @@ import { AcoesDoTopo } from '../../../../../../comum/topo';
 import { TabelaConferencia } from './partes/TabelaConferencia';
 import { LIMITE_LINHAS, useConferencia } from './useConferencia';
 
-/** naTarefa: dentro da etapa da Tarefas (sem o título de cima): o "Baixar CSV" fica junto dos filtros. */
-export function Conferencia({ naTarefa, doArquivo }: { naTarefa?: boolean; doArquivo?: (a: x.ArquivoImportado) => boolean } = {}) {
-  const vm = useConferencia(doArquivo);
+/**
+ * naTarefa: dentro da etapa da Tarefas — sem a barra de mês, tolerância e Baixar CSV (pedido do Vitor,
+ * 30/09/2026): confere o mês da tarefa (competencia) com a tolerância padrão.
+ */
+export function Conferencia({ naTarefa, doArquivo, competencia }: { naTarefa?: boolean; doArquivo?: (a: x.ArquivoImportado) => boolean; competencia?: string } = {}) {
+  const vm = useConferencia(doArquivo, naTarefa ? competencia : undefined);
   const csv = <button className={'btn ' + (naTarefa ? 'btn-outline btn-sm' : 'btn-primary')} type="button" onClick={() => { const a = vm.csv(); baixarArquivo(a.texto, a.nome); }}>Baixar CSV</button>;
   return (
     <section>
       {!naTarefa && <AcoesDoTopo>{csv}</AcoesDoTopo>}
 
-      <div className="ext-filtros">
+      {!naTarefa && <div className="ext-filtros">
         <div className="chip-row">
           {vm.meses.map(m => (
             <button key={m.valor} type="button" className={'chip-f' + (m.ativo ? ' on' : '')} onClick={() => vm.escolherPeriodo(m.valor)}>{m.rotulo}</button>
@@ -28,8 +31,7 @@ export function Conferencia({ naTarefa, doArquivo }: { naTarefa?: boolean; doArq
           </select>
           de diferença
         </label>
-        {naTarefa && csv}
-      </div>
+      </div>}
 
       <div className="stat-grid">
         {vm.stats.map(st => (
