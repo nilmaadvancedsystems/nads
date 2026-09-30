@@ -1,11 +1,12 @@
 // ViewModel da casca da Tarefas: as aplicações na gaveta ☰ (Minhas empresas, Contábil, Fiscal, Drive,
 // Contato), as páginas da aplicação aberta na barra lateral, o título e quem está trabalhando.
+// No Cadastro com uma empresa aberta (rotaEmpresa), as páginas da barra lateral ficam na mesma empresa.
 import { useLocation, useNavigate } from 'react-router';
 import { VERSAO_SISTEMA } from '../../../versao';
-import { aplicacao, aplicacoesDe, BASE, caminhoDaPagina, type IdAplicacao } from './navegacao';
+import { aplicacao, aplicacoesDe, BASE, caminhoDaPagina, caminhoDoCadastro, type IdAplicacao } from './navegacao';
 import { useOperador, type Operador } from './operador';
 
-export function useCascaTarefas(app: IdAplicacao, pagina: string) {
+export function useCascaTarefas(app: IdAplicacao, pagina: string, rotaEmpresa?: string) {
   const navegar = useNavigate();
   const { search } = useLocation();
   const { escolher, comLogin } = useOperador();
@@ -20,7 +21,7 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
     paginas: [],
     aplicacoes: aplicacoesDe(op).map(x => ({ id: x.id, nome: x.nome, icone: x.icone, ativo: x.id === app })),
     // páginas da mesma aplicação mantêm a competência escolhida (fica na URL)
-    onSecao: (id: string) => navegar(caminhoDaPagina(app, id) + search),
+    onSecao: (id: string) => navegar(app === 'cadastro' ? caminhoDoCadastro(rotaEmpresa || null, id) : caminhoDaPagina(app, id) + search),
     onAplicacao: (id: string) => { const x = aplicacao(id); if (x) navegar(caminhoDaPagina(x.id, x.paginas[0].id)); },
     inicio: () => navegar(BASE),
     trocarPessoa: () => escolher(null),

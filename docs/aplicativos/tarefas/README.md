@@ -13,6 +13,7 @@ Link: https://tarefas-nilma.web.app (ligado ao banco). Código: `apps/web/src/ap
 |---|---|
 | **Minhas empresas** | pronta: escolher a competência, ver o andamento de cada empresa, Iniciar/Continuar/Retomar |
 | **Contábil** (só para o Contábil e admin) | pronta, só leitura: etapas em todas as empresas, o que mais trava, etapas paradas |
+| **Cadastro** | pronta: contas bancárias, plano de contas, contas padrão e histórico de cada empresa (ver abaixo) |
 | **Fiscal** (só para o Fiscal e admin) | em desenvolvimento |
 | **Drive** | em desenvolvimento |
 | **Contato** | em desenvolvimento |
@@ -66,3 +67,31 @@ Os eventos que existiam em `tarefas` na Conferência foram copiados para `rotina
 
 - **Carteira de cada operador:** "Minhas empresas" mostra todas as empresas do escritório.
 - **Produtividade** (tempo por etapa): os eventos já são gravados; falta a tela.
+
+## Cadastro (2026-09-30)
+
+Pedido do Vitor: um lugar só para configurar os dados de cada cliente que as ferramentas usam. Rota
+`/tarefas/cadastro/<empresa>/<página>` (sem a empresa, escolhe primeiro; o "empresa ▾" da barra de cima troca e
+lembra as últimas abertas). Código: `apps/web/src/aplicativos/tarefas/telas/cadastro` e o Model em
+`packages/core/src/empresas/cadastro` (de todos os aplicativos, com testes).
+
+| Página | O que faz |
+|---|---|
+| **Contas bancárias** | incluir, editar, encerrar (última competência), reabrir e excluir. Cada conta: banco (logo), agência, conta, tipo, apelido, conta contábil (conferida contra o plano) e a primeira competência |
+| **Plano de contas** | importar do Alterdata (planilha do plano ou o balancete, xls/xlsx/csv/txt) ou montar pelo balancete que a Conferência guardou (só as contas com saldo). Antes de trocar, mostra o que muda e avisa as contas usadas no cadastro que somem |
+| **Contas padrão** | as do layout do Creditor: conta do banco da liquidação, juros, descontos e os três históricos. Vazio = o Creditor decide |
+| **Histórico** | o que mudou, quem e quando (os 200 mais novos) |
+
+Quem lê: o **Extrator** (as linhas de banco de cada competência e o "Adicionar banco", que grava aqui), o
+**Creditor** (o plano de contas no lugar do balancete, as contas padrão; o que ele confirma grava aqui; sem conta
+do banco escolhida, vale a conta contábil do Sicoob cadastrado) e o **check automático** da Tarefas.
+
+Nada foi apagado de onde estava: enquanto a empresa não tem os bancos cadastrados, vale o de antes (a lista
+provisória de `empresas/bancos.ts` e os bancos adicionados no Extrator), e a tela mostra essa lista com
+"Confirmar esta lista". Enquanto não tem as contas padrão, o Creditor usa as que ele já salvou. Ao editar uma
+conta, o id não muda (os arquivos importados no Extrator ficam presos a ele). Arquivo da linha genérica
+"Banco" vai para o primeiro banco do cadastro.
+
+Banco (Firestore da Conferência, coleção nova, regras abertas, nenhuma regra mudou):
+- `cadastro/{slug}`: `{ nome, codigo, bancos?, contasPadrao?, historico, atualizadoEm }` (campo ausente = nunca cadastrado);
+- `cadastro/{slug}/plano/atual`: `{ contas: [{ codigo, nome, classificacao?, grupo?, sintetica?, ordem }], origem, arquivo?, importadoEm, por? }`.

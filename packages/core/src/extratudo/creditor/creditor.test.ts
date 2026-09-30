@@ -17,6 +17,9 @@ import { cruzar, mesmoCliente, pendentes, type Decisao } from './regras/cruzamen
 import { fecharPorDia, gerarLancamentos, historicoSemPrefixo, titulosFora } from './regras/lancamentos';
 import { chaveNf, dataBR, dinheiro } from './regras/numeros';
 import { CONTAS_PADRAO, type RelatorioBanco } from './tipos';
+import { criarRepoCadastroMemoria } from '../../empresas/cadastro';
+import { balanceteComCadastro, comCadastro, configComCadastro } from './regras/cadastro';
+import { criarRepoCreditorMemoria } from './repo.memoria';
 
 const buf = (s: string) => new TextEncoder().encode(s).buffer as ArrayBuffer;
 
@@ -511,5 +514,44 @@ describe('conta do cliente pelo balancete', () => {
     expect([b2.situacao, b2.nota]).toEqual(['nao-encontrada', expect.stringMatching(/Da última vez: 12301/)]);
     expect(c.situacao).toBe('nao-encontrada');
     expect([d.situacao, d.linha?.contrapartida, d.aprendida]).toEqual(['ok', '12999', true]);
+  });
+});
+
+describe('Creditor com o Cadastro da empresa', () => {
+  const PLANO = { origem: 'arquivo' as const, importadoEm: '2026-09-30T12:00:00.000Z', contas: [
+    { codigo: '10503', nome: 'SICOOB', grupo: 'Ativo', ordem: 0 },
+    { codigo: '97304', nome: 'JUROS RECEBIDOS', grupo: 'Receita', ordem: 1 },
+  ] };
+
+  it('o plano do cadastro vale no lugar do balancete', () => {
+    expect(balanceteComCadastro(null, SEM_BALANCETE)).toBe(SEM_BALANCETE);
+    const b = balanceteComCadastro(PLANO, SEM_BALANCETE);
+    expect(b.origem).toBe('cadastro');
+    expect(b.contas.map(c => c.codigo)).toEqual(['10503', '97304']);
+  });
+
+  it('contas: as do cadastro; sem elas, as salvas no Creditor; o Sicoob cadastrado é a conta do banco', () => {
+    const salva = { contas: { juros: '1' }, nomes: {} };
+    const semNada = { nome: 'FITO', codigo: 292, bancos: null, contasPadrao: null, historico: [] };
+    expect(configComCadastro(semNada, salva).contas).toEqual({ juros: '1' });
+    const comSicoob = { ...semNada, bancos: [{ id: 'sicoob', marca: 'sicoob', nome: 'Sicoob', contaContabil: '10503' }] };
+    expect(configComCadastro(comSicoob, salva).contas).toEqual({ juros: '1', banco: '10503' });
+    const comContas = { ...comSicoob, contasPadrao: { contas: { juros: '97304', banco: '999' }, nomes: {} } };
+    expect(configComCadastro(comContas, salva).contas).toEqual({ juros: '97304', banco: '999' });
+  });
+
+  it('o que o Creditor confirma vai para o cadastro (e nada antes de chegar)', async () => {
+    const cadastro = criarRepoCadastroMemoria({ cadastros: {}, planos: {} });
+    const repo = comCadastro(criarRepoCreditorMemoria({}), cadastro, () => 292);
+    repo.salvarConfig('FITO', { contas: { juros: '97304' }, nomes: {} }); // ainda não chegou: ignorado
+    expect(repo.carregada('FITO')).toBe(false);
+    await Promise.resolve();
+    expect(repo.carregada('FITO')).toBe(true);
+    expect(repo.config('FITO').contas).toEqual({});
+    repo.salvarConfig('FITO', { contas: { juros: '97304' }, nomes: { juros: 'JUROS RECEBIDOS' } });
+    await Promise.resolve();
+    expect(cadastro.cadastro('FITO', 292).contasPadrao).toEqual({ contas: { juros: '97304' }, nomes: { juros: 'JUROS RECEBIDOS' } });
+    expect(cadastro.cadastro('FITO', 292).historico[0]).toMatchObject({ por: 'Creditor', acao: 'Mudou conta padrão' });
+    expect(repo.config('FITO').contas).toEqual({ juros: '97304' });
   });
 });

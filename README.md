@@ -7,6 +7,8 @@
 > `apps/web/src/aplicativos/<app>/dados/*.firestore.ts` e que o `apps/web/firebase.json` (o único) só publica hospedagem.
 > Exceção (2026-09-29): o Creditor lê o Drive do escritório pelo Entregas (app Pendências), só em
 > `apps/web/src/aplicativos/extratudo/dados/drive.firestore.ts`, com o login do Entregas.
+> Cadastro (2026-09-30): contas bancárias, plano de contas e contas padrão de cada empresa ficam na coleção
+> `cadastro` (a Tarefas edita; o Extrator e o Creditor leem). Ver `docs/aplicativos/tarefas/README.md`.
 
 O nads tem **cinco aplicativos isolados**, cada um com o seu link (ver `docs/aplicativos/README.md`):
 **Concilia aí** (a Conferência, em `/`), **Conciliadorzinho** (`/conciliadorzinho`), **Cheque especial**
