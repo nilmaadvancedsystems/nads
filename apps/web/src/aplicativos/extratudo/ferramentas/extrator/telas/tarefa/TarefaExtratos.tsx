@@ -173,6 +173,63 @@ function resumo(b: Vm['bancos'][number]): string[] {
 }
 
 /**
+ * A Etapa com vários meses, na linha de cada banco: o que cada mês já tem (Extrato e Razão; ✓ importado,
+ * "s/ mov." sem movimento, vazio = falta — clicar abre aquele mês), importar vários arquivos de uma vez (cada
+ * lançamento cai no seu mês) e buscar no Drive os extratos dos meses que faltam.
+ */
+function MesesDoBanco({ b, meses, competencia, travado, aceitarExtrato, aceitarRazao, onMes, onArquivos, onDrive }: {
+  b: Vm['bancos'][number];
+  meses: ReturnType<Vm['mesesDoBanco']>;
+  competencia: string; travado: boolean; aceitarExtrato: string; aceitarRazao: string;
+  onMes: (m: string) => void; onArquivos: (lado: 'banco' | 'sistema', fs: File[]) => void; onDrive: (faltam: string[]) => void;
+}) {
+  const idE = useId();
+  const idR = useId();
+  const faltamExtrato = meses.filter(m => !m.extrato && !m.semMovimento).map(m => m.mes);
+  const faltamRazao = meses.filter(m => !m.razao && !m.semMovimento).length;
+  const chips = (lado: 'extrato' | 'razao') => meses.map(m => {
+    const ok = m[lado];
+    return (
+      <button key={m.mes} type="button" className={'imp-mes-chip' + (ok ? ' ok' : m.semMovimento ? ' sem' : ' falta') + (m.mes === competencia ? ' atual' : '')}
+        title={m.rotulo + ': ' + (ok ? 'importado' : m.semMovimento ? 'sem movimento' : 'falta') + ' — clique para abrir o mês'} onClick={() => onMes(m.mes)}>
+        {m.rotulo}{ok ? <Icone nome="check" /> : m.semMovimento ? <span className="imp-mes-sem">s/ mov.</span> : null}
+      </button>
+    );
+  });
+  return (
+    <div className="imp-periodo-linha">
+      <div className="imp-periodo-lado">
+        <span className="imp-rotulo">Extrato</span>
+        <span className="imp-mes-chips">{chips('extrato')}</span>
+        <span className="imp-periodo-falta">{faltamExtrato.length ? faltamExtrato.length + (faltamExtrato.length === 1 ? ' falta' : ' faltam') : 'completo'}</span>
+        <label htmlFor={idE} className={'btn btn-outline btn-sm' + (travado ? ' is-locked' : '')} title="Importar extratos de vários meses de uma vez (cada lançamento cai no seu mês)">
+          <Icone nome="upload" />Importar vários
+        </label>
+        <input id={idE} type="file" multiple accept={aceitarExtrato} className="sr-only" disabled={travado}
+          onChange={ev => { const fs = Array.from(ev.target.files || []); ev.target.value = ''; onArquivos('banco', fs); }} />
+        {faltamExtrato.length > 0 && (
+          <button type="button" className="btn btn-outline btn-sm" disabled={travado} onClick={() => onDrive(faltamExtrato)}
+            title={'Buscar no Drive o extrato de ' + faltamExtrato.map(m => m.slice(5) + '/' + m.slice(0, 4)).join(', ')}>
+            <LogoDrive cor />Buscar os que faltam
+          </button>
+        )}
+      </div>
+      <div className="imp-periodo-lado">
+        <span className="imp-rotulo">Razão</span>
+        <span className="imp-mes-chips">{chips('razao')}</span>
+        <span className="imp-periodo-falta">{faltamRazao ? faltamRazao + (faltamRazao === 1 ? ' falta' : ' faltam') : 'completo'}</span>
+        <label htmlFor={idR} className={'btn btn-outline btn-sm' + (travado ? ' is-locked' : '')} title="Importar o razão de vários meses de uma vez">
+          <Icone nome="upload" />Importar vários
+        </label>
+        <input id={idR} type="file" multiple accept={aceitarRazao} className="sr-only" disabled={travado}
+          onChange={ev => { const fs = Array.from(ev.target.files || []); ev.target.value = ''; onArquivos('sistema', fs); }} />
+      </div>
+      <span className="sr-only">{b.nome}</span>
+    </div>
+  );
+}
+
+/**
  * O seletor de competência (como o "main ▾" do GitHub): os meses e, dentro da Tarefas, "Vários meses" — abre a
  * mesma empresa no período (a Etapa com vários meses). Fora da Tarefas, troca o mês na URL.
  */
@@ -180,10 +237,14 @@ function SeletorDeCompetencia({ vm, naTarefa, trocar }: { vm: ReturnType<typeof 
   const periodo = vm.periodo.length > 1 ? vm.periodo : [];
   const [de, setDe] = useState(periodo[0] || vm.competencias[2]?.valor || vm.competencia);
   const [ate, setAte] = useState(periodo[periodo.length - 1] || vm.competencia);
-  const rotulo = periodo.length ? tarefas.rotuloCurtoCompetencia(periodo[0]).slice(0, 3) + ' a ' + tarefas.rotuloCurtoCompetencia(periodo[periodo.length - 1]) : vm.rotuloCompetencia;
+  const mmaaaa = tarefas.rotuloNumericoCompetencia;
+  const rotulo = periodo.length
+    ? <>{mmaaaa(periodo[0])} a {mmaaaa(periodo[periodo.length - 1])}<span className="imp-periodo-qtd">{periodo.length} meses</span></>
+    : vm.rotuloCompetencia;
   const ir = (c: string) => { if (naTarefa) trocar(c); else vm.setCompetencia(c); };
   return (
-    <MenuSuspenso icone="calendar" rotulo={rotulo} titulo="Competência" dica="Trocar a competência" largura={260}
+    <MenuSuspenso icone="calendar" rotulo={rotulo} titulo="Competência" dica={periodo.length ? 'Vários meses: ' + periodo.map(mmaaaa).join(', ') : 'Trocar a competência'} largura={260}
+      className={'btn btn-outline' + (periodo.length ? ' imp-periodo-ativo' : '')}
       conteudo={fechar => (
         <>
           {vm.competencias.map(c => (
@@ -198,11 +259,11 @@ function SeletorDeCompetencia({ vm, naTarefa, trocar }: { vm: ReturnType<typeof 
               <p className="popover-label">Vários meses</p>
               <div className="imp-periodo">
                 <select aria-label="Do mês" value={de} onChange={e => setDe(e.target.value)}>
-                  {vm.competencias.map(c => <option key={c.valor} value={c.valor}>{c.rotulo}</option>)}
+                  {vm.competencias.map(c => <option key={c.valor} value={c.valor}>{mmaaaa(c.valor)}</option>)}
                 </select>
                 <span className="hint">a</span>
                 <select aria-label="Até o mês" value={ate} onChange={e => setAte(e.target.value)}>
-                  {vm.competencias.map(c => <option key={c.valor} value={c.valor}>{c.rotulo}</option>)}
+                  {vm.competencias.map(c => <option key={c.valor} value={c.valor}>{mmaaaa(c.valor)}</option>)}
                 </select>
               </div>
               <button type="button" className="btn btn-primary btn-sm imp-periodo-abrir" disabled={de === ate} onClick={() => { fechar(); trocar(tarefas.rotaDoPeriodo(de, ate)); }}>
@@ -246,7 +307,7 @@ export function TarefaExtratos() {
           <div className="imp-meses" role="tablist" aria-label="Meses do período">
             {vm.periodo.map(m => (
               <button key={m} type="button" role="tab" aria-selected={m === vm.competencia} className={'imp-mes' + (m === vm.competencia ? ' on' : '')} onClick={() => vm.setCompetencia(m)}>
-                {tarefas.rotuloCurtoCompetencia(m)}
+                {tarefas.rotuloNumericoCompetencia(m)}
                 {vm.prontoNoMes(m, ponte.semMovimentoPorMes[m] || []) && <Icone nome="check" />}
               </button>
             ))}
@@ -342,6 +403,10 @@ export function TarefaExtratos() {
                   )}
                 </div>
               </div>
+              {vm.periodo.length > 1 && <MesesDoBanco b={b} meses={vm.mesesDoBanco(b.id, ponte.semMovimentoPorMes)} competencia={vm.competencia}
+                travado={vm.ocupado || buscando || b.extrato.lendo || b.razao.lendo} aceitarExtrato={cxExtrato.aceitar} aceitarRazao={cxRazao.aceitar}
+                onMes={vm.setCompetencia} onArquivos={(lado, fs) => { void vm.importarArquivos(b.id, lado, fs); }}
+                onDrive={faltam => d.buscarNoPeriodo(b, faltam)} />}
               {aberta && !semMov && <Movimento m={vm.movimentoDe(b.id)} />}
             </div>
           );

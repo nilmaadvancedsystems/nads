@@ -226,7 +226,8 @@ export function useImportacao() {
     // linhas de banco (a etapa da Tarefas)
     competencia: competenciaDeTeste,
     rotuloCompetencia: tarefas.rotuloCurtoCompetencia(competenciaDeTeste),
-    competencias: tarefas.competenciasRecentes(new Date(), 12).map(c => ({ valor: c, rotulo: tarefas.rotuloCompetencia(c) })),
+    // a partir de 01/2026 (o primeiro mês do nads)
+    competencias: tarefas.competenciasRecentes(new Date(), 24).filter(c => c >= tarefas.PRIMEIRA_COMPETENCIA).map(c => ({ valor: c, rotulo: tarefas.rotuloCompetencia(c) })),
     /** Fora da Tarefas: troca a competência na URL (dentro dela, quem troca é a Tarefas, pela ponte). */
     setCompetencia: (c: string) => { const n = new URLSearchParams(params); n.set('competencia', c); setParams(n); },
     /**
@@ -234,6 +235,14 @@ export function useImportacao() {
      * já está pronto (todo banco com extrato e razão do mês, ou sem movimento naquele mês).
      */
     periodo: (params.get('meses') || '').split(',').filter(m => /^\d{4}-\d{2}$/.test(m)),
+    /** De cada mês do período, o que o banco já tem: extrato, razão, sem movimento. */
+    mesesDoBanco: (banco: string, semMovimentoPorMes: Record<string, string[]>) =>
+      (params.get('meses') || '').split(',').filter(m => /^\d{4}-\d{2}$/.test(m)).map(mes => ({
+        mes, rotulo: tarefas.rotuloNumericoCompetencia(mes),
+        extrato: x.arquivosDoBanco(s.empresa, banco, primeiro, 'banco', mes).length > 0,
+        razao: x.arquivosDoBanco(s.empresa, banco, primeiro, 'sistema', mes).length > 0,
+        semMovimento: (semMovimentoPorMes[mes] || []).includes(banco),
+      })),
     prontoNoMes: (competencia: string, semMovimento: string[]) => {
       const bs = x.bancosDaEmpresaNa(s.empresa, cad.cadastro, s.codigo, competencia).bancos;
       return bs.length > 0 && bs.every(b => semMovimento.includes(b.id) ||

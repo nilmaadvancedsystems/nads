@@ -5,6 +5,14 @@ export function rotuloCompetencia(c: string): string {
   return MESES[Number(c.slice(5, 7)) - 1] + '/' + c.slice(0, 4);
 }
 
+/** O primeiro mês que o nads trabalha: as listas de competência não vão antes dele (Vitor, 30/09/2026). */
+export const PRIMEIRA_COMPETENCIA = '2026-01';
+
+/** "08/2026" (os seletores de/até e os meses do período). */
+export function rotuloNumericoCompetencia(c: string): string {
+  return c.slice(5, 7) + '/' + c.slice(0, 4);
+}
+
 /** O rótulo curto, para o seletor (como o "main" do GitHub): "ago 2026". */
 export function rotuloCurtoCompetencia(c: string): string {
   return MESES[Number(c.slice(5, 7)) - 1].slice(0, 3).toLowerCase() + ' ' + c.slice(0, 4);

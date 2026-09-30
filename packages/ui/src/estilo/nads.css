@@ -1597,3 +1597,23 @@ td.cad-acoes .menu-seta{display:none;}
 .imp-periodo{display:flex;align-items:center;gap:6px;padding:4px 8px;}
 .imp-periodo select{min-height:28px;padding:3px 26px 3px 8px;font-size:13px;}
 .imp-periodo-abrir{margin:6px 8px 4px;width:calc(100% - 16px);}
+
+/* a Etapa com vários meses: o botão de fora destacado (período), e embaixo de cada banco os meses de Extrato e Razão */
+.btn.imp-periodo-ativo{border-color:var(--accent);background:var(--accent-soft);color:var(--ink);}
+.btn.imp-periodo-ativo svg{color:var(--accent);}
+.imp-periodo-qtd{margin-left:6px;padding:0 7px;border-radius:2em;background:var(--accent);color:#FFFFFF;font-size:11px;font-weight:600;line-height:18px;}
+.imp-periodo-linha{display:flex;flex-direction:column;gap:8px;padding:10px 12px 12px 90px;border-top:1px dashed var(--border-muted);}
+.imp-periodo-lado{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.imp-periodo-lado .imp-rotulo{width:52px;flex:none;}
+.imp-mes-chips{display:inline-flex;flex-wrap:wrap;gap:4px;}
+.imp-mes-chip{display:inline-flex;align-items:center;gap:4px;padding:0 8px;min-height:24px;border:1px solid var(--border);border-radius:2em;background:var(--surface);
+  color:var(--ink-muted);font:inherit;font-size:12px;cursor:pointer;font-variant-numeric:tabular-nums;}
+.imp-mes-chip:hover{background:var(--btn-hover);}
+.imp-mes-chip.ok{color:var(--ink);border-color:var(--success);}
+.imp-mes-chip.ok svg{width:12px;height:12px;color:var(--success);}
+.imp-mes-chip.falta{border-style:dashed;}
+.imp-mes-chip.atual{box-shadow:0 0 0 1px var(--ink-muted);font-weight:600;}
+.imp-mes-sem{font-size:10px;}
+.imp-periodo-falta{font-size:12px;color:var(--ink-muted);min-width:64px;}
+.imp-periodo-lado .btn svg{width:14px;height:14px;}
+.imp-periodo-lado .btn .logo-img{width:14px;height:14px;}

@@ -53,6 +53,37 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     }
   }
 
+  /** No período: procura no Drive o extrato de cada mês que falta daquele banco e importa os que achar. */
+  async function buscarNoPeriodo(linha: Linha, meses: string[]) {
+    if (!meses.length) return;
+    if (!acesso.entrou) {
+      if (drive.loginDeFora) { vm.avisarErro('Entre no Entregas', 'O Drive usa o mesmo login do Entregas.'); return; }
+      depois.current = () => { void buscarNoPeriodo(linha, meses); };
+      setLogin(l => ({ ...l, aberto: true, erro: '' }));
+      return;
+    }
+    setBuscando(linha.id);
+    const achados: string[] = [];
+    const faltam: string[] = [];
+    try {
+      const pasta = await drive.pastaDoCliente(codigo);
+      for (const mes of meses) {
+        const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, mes, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta });
+        const rotulo = mes.slice(5) + '/' + mes.slice(0, 4);
+        if (r.situacao !== 'achou' || !r.arquivo) { faltam.push(rotulo); continue; }
+        const conteudo = await drive.baixar(r.arquivo.id, r.arquivo.nome);
+        await vm.importarDoDrive(linha.id, { id: r.arquivo.id, nome: r.arquivo.nome }, conteudo);
+        achados.push(rotulo);
+      }
+      if (faltam.length) vm.avisarErro(linha.nome + ': ' + (achados.length ? 'trouxe ' + achados.join(', ') : 'nada no Drive'), 'Não achei no Drive: ' + faltam.join(', ') + '.');
+      else vm.avisar(linha.nome + ': extratos de ' + achados.join(', ') + ' trazidos do Drive');
+    } catch (e) {
+      vm.avisarErro('Não consegui olhar o Drive', mensagemDeErro(e));
+    } finally {
+      setBuscando(null);
+    }
+  }
+
   async function entrar() {
     setLogin(l => ({ ...l, entrando: true, erro: '' }));
     try {
@@ -74,6 +105,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     entrou: acesso.entrou,
     buscando,
     buscar: (linha: Linha) => { void buscar(linha); },
+    buscarNoPeriodo: (linha: Linha, meses: string[]) => { void buscarNoPeriodo(linha, meses); },
     login: { ...login, set: (m: Partial<typeof login>) => setLogin(l => ({ ...l, ...m })), entrar: () => { void entrar(); }, fechar: () => { setPendente(null); depois.current = null; setLogin(l => ({ ...l, aberto: false })); } },
     /** pede o login do Entregas e, ao entrar, faz `f` */
     pedirLogin: (f: () => void) => { depois.current = f; setLogin(l => ({ ...l, aberto: true, erro: '' })); },
