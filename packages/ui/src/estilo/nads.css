@@ -1510,6 +1510,17 @@ td.cad-acoes .menu-seta{display:none;}
   .cad-form-2{grid-template-columns:1fr;}
   .cad-empresa{max-width:100%;}
 }
+.cad-sugestoes .card-head{display:flex;align-items:center;justify-content:space-between;}
+.cad-sugestoes .hint{margin:0 0 8px;}
+.cad-sugestoes-lista{list-style:none;margin:0;padding:0;}
+.cad-sugestoes-lista li{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--border-muted, var(--border));}
+.cad-sugestoes-lista li:first-child{border-top:none;}
+.cad-lista td{vertical-align:middle;}
+.cad-bancos-da-linha{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 12px;}
+.cad-bancos-da-linha.do-robo .cad-banco-mini{color:var(--ink-muted);}
+.cad-banco-mini{display:inline-flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap;}
+.cad-banco-mini .add-banco-logo{width:16px;height:16px;}
+.cad-banco-mini .add-banco-logo svg,.cad-banco-mini .add-banco-logo img{width:16px !important;height:16px !important;}
 
 /* Pedir documentos: com várias competências, cada documento com uma caixinha por mês; travado = já está no Drive ou importado */
 .pedir-doc-varias{display:flex;flex-direction:column;gap:6px;padding:6px 0;border-bottom:1px solid var(--border-muted);}

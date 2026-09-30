@@ -77,10 +77,16 @@ lembra as últimas abertas). Código: `apps/web/src/aplicativos/tarefas/telas/ca
 
 | Página | O que faz |
 |---|---|
+| **(sem empresa)** | a lista de todas as empresas: bancos (do cadastro ou, sem cadastro, os que o robô já sabe), plano de contas; busca e situação |
 | **Contas bancárias** | incluir, editar, encerrar (última competência), reabrir e excluir. Cada conta: banco (logo), agência, conta, tipo, apelido, conta contábil (conferida contra o plano) e a primeira competência |
 | **Plano de contas** | importar do Alterdata (planilha do plano ou o balancete, xls/xlsx/csv/txt) ou montar pelo balancete que o Entregas (Clientes › Balancetes) ou a Conferência guardou (só as contas com saldo). Antes de trocar, mostra o que muda e avisa as contas usadas no cadastro que somem |
 | **Contas padrão** | as do layout do Creditor: conta do banco da liquidação, juros, descontos e os três históricos. Vazio = o Creditor decide |
 | **Histórico** | o que mudou, quem e quando (os 200 mais novos) |
+
+O que o robô já sabe (do Entregas, `clientes/{id}.bancos` e `contasBancarias`, só leitura): o robô aprende os bancos
+pelo Drive e pelos extratos e, desde 30/09/2026, a agência e a conta do cabeçalho de cada extrato (Gmail e pastas do
+Drive; `scripts/contas-bancarias.js` no Entregas). Empresa sem cadastro: entra no ponto de partida. Com cadastro: o que
+falta aparece em "O robô já sabe", com Incluir, Completar (banco sem número) e Incluir todas.
 
 Quem lê: o **Extrator** (as linhas de banco de cada competência e o "Adicionar banco", que grava aqui), o
 **Creditor** (o plano de contas no lugar do balancete, as contas padrão; o que ele confirma grava aqui; sem conta

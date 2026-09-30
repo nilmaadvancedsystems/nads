@@ -47,11 +47,40 @@ export function ContasBancarias({ rota }: { rota: string }) {
             <p className="alert-title">Esta empresa ainda não tem os bancos cadastrados</p>
             <p className="alert-text">
               {vm.linhas.length
-                ? 'A lista abaixo é a que o Extrator usa hoje. Confira e confirme; incluir ou editar uma conta também já grava a lista.'
+                ? 'A lista abaixo junta o que o Extrator usa hoje e o que o robô já sabe do cliente (ele aprende pelo Drive e pelos extratos). Confira e confirme; incluir ou editar uma conta também já grava a lista.'
                 : 'O Extrator mostra uma linha "Banco" só. Inclua as contas da empresa.'}
             </p>
             {!!vm.linhas.length && <button type="button" className="btn btn-outline btn-sm" onClick={vm.confirmarLista}>Confirmar esta lista</button>}
           </div>
+        </div>
+      )}
+
+      {!vm.carregando && !vm.semCadastro && vm.sugestoes.length > 0 && (
+        <div className="card cad-sugestoes">
+          <div className="card-head">
+            <h3>O robô já sabe</h3>
+            {vm.sugestoes.some(s => s.comNumero) && vm.sugestoes.length > 1 && (
+              <button type="button" className="btn btn-outline btn-sm" onClick={vm.incluirTodas}>Incluir todas</button>
+            )}
+          </div>
+          <p className="hint">Bancos e contas que o robô aprendeu pelo Drive e pelos extratos, e que não estão aqui.</p>
+          <ul className="cad-sugestoes-lista">
+            {vm.sugestoes.map(s => (
+              <li key={s.chave}>
+                <span className="cad-banco">
+                  <span className="add-banco-logo"><LogoBanco banco={s.marca} cor /></span>
+                  <span><b>{s.nome}</b><span className="cad-apelido">{s.rotulo || 'o robô sabe só o banco'}</span></span>
+                </span>
+                <span className="tarefas-barra-espaco" />
+                {s.comNumero ? (
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => vm.incluirSugestao(s)}>{s.tipo === 'completar' ? 'Completar' : 'Incluir'}</button>
+                ) : (
+                  <MenuSuspenso rotulo="Incluir" className="btn btn-outline btn-sm" direita largura={400}
+                    conteudo={fechar => <FormConta vm={vm} id={null} inicial={{ marca: s.marca, agencia: '', conta: '', tipo: 'corrente' }} fechar={fechar} />} />
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

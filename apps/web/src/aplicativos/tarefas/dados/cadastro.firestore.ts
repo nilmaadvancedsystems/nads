@@ -6,8 +6,10 @@
 // chegar) está no core (empresas.cadastro.criarRepoCadastro); aqui é só a porta.
 // Lê também, sem gravar, quando a pessoa pede o plano "do balancete": o que a Conferência guardou
 // (empresas/{slug}, ainda no banco da Conferência) e o de Clientes › Balancetes do Entregas (balancetes/{código}).
+// E, só leitura, os bancos de cada cliente que o Entregas já sabe (clientes: bancos e contasBancarias, que o robô
+// aprende pelo Drive e pelos extratos).
 import { formatos, type empresas } from '@nads/core';
-import { doc, getDoc, onSnapshot, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, onSnapshot, writeBatch } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 import { bancoDaConferencia } from './tarefas.firestore';
 
@@ -16,6 +18,7 @@ export function portaCadastroFirestore(): empresas.cadastro.PortaCadastro {
   return {
     ouvirCadastro: (id, chegou, falhou) => onSnapshot(doc(db, 'cadastro', id), s => chegou(s.exists() ? s.data() : null), falhou),
     ouvirPlano: (id, chegou, falhou) => onSnapshot(doc(db, 'cadastro', id, 'plano', 'atual'), s => chegou(s.exists() ? s.data() : null), falhou),
+    ouvirTodos: (chegou, falhou) => onSnapshot(collection(db, 'cadastro'), s => chegou(s.docs.map(d => ({ id: d.id, doc: d.data() }))), falhou),
     async gravar(id, cadastro, plano) {
       const b = writeBatch(db);
       b.set(doc(db, 'cadastro', id), cadastro);
@@ -35,4 +38,10 @@ export async function conferenciaNoBanco(nome: string): Promise<Record<string, u
 export async function balanceteNoEntregas(codigo: number): Promise<Record<string, unknown> | null> {
   const s = await getDoc(doc(bancoDoEntregas(), 'balancetes', String(codigo)));
   return s.exists() ? s.data() : null;
+}
+
+/** Os clientes do Entregas (só leitura), para os bancos que o Entregas já sabe de cada um. */
+export async function clientesNoEntregas(): Promise<Record<string, unknown>[]> {
+  const s = await getDocs(collection(bancoDoEntregas(), 'clientes'));
+  return s.docs.map(d => d.data());
 }

@@ -8,7 +8,7 @@
 // A lógica fica no core (empresas.cadastro.criarRepoCadastro); aqui é só a porta.
 import type { empresas } from '@nads/core';
 import { getAuth } from 'firebase/auth';
-import { doc, getFirestore, initializeFirestore, onSnapshot, writeBatch, type Firestore } from 'firebase/firestore';
+import { collection, doc, getFirestore, initializeFirestore, onSnapshot, writeBatch, type Firestore } from 'firebase/firestore';
 import { appDoEntregas } from './drive.firestore';
 
 function bancoDoEntregas(): Firestore {
@@ -36,6 +36,14 @@ export function portaCadastroFirestore(): empresas.cadastro.PortaCadastro {
   return {
     ouvirCadastro: (id, chegou, falhou) => ouvir(['cadastro', id], chegou, falhou),
     ouvirPlano: (id, chegou, falhou) => ouvir(['cadastro', id, 'plano', 'atual'], chegou, falhou),
+    ouvirTodos(chegou, falhou) {
+      let parar = () => {};
+      let parado = false;
+      auth.authStateReady().then(() => {
+        if (!parado) parar = onSnapshot(collection(db, 'cadastro'), s => chegou(s.docs.map(d => ({ id: d.id, doc: d.data() }))), falhou);
+      }, falhou);
+      return () => { parado = true; parar(); };
+    },
     async gravar(id, cadastro, plano) {
       const b = writeBatch(db);
       b.set(doc(db, 'cadastro', id), cadastro);

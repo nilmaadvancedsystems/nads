@@ -1,12 +1,14 @@
 // ViewModel comum das páginas do Cadastro: a empresa aberta, o cadastro dela ao vivo, quem está trabalhando
 // e o ponto de partida dos bancos (enquanto a empresa não tem bancos cadastrados, valem os que o Extrator já
-// usava: a lista provisória e os adicionados na tela dele, lidos do banco sem gravar).
+// usava — a lista provisória e os adicionados na tela dele — mais o que o Entregas já sabe do cliente: os
+// bancos e as contas que o robô aprendeu pelo Drive e pelos extratos). Com os bancos cadastrados, o que o
+// Entregas sabe e o cadastro não tem vira sugestão.
 import { empresas, type extrator } from '@nads/core';
 import { useEffect, useMemo, useState } from 'react';
 import { empresaDaRota } from '../../../../comum/empresaDaRota';
 import { useOperador } from '../../casca/operador';
 import { extratorDaEmpresa } from '../../dados/fonte';
-import { useCadastro } from '../../dados/repo';
+import { useBancosDoEntregas, useCadastro } from '../../dados/repo';
 
 /** A competência de hoje ('aaaa-mm'). */
 export function competenciaDeHoje(agora = new Date()): string {
@@ -34,8 +36,13 @@ export function useCadastroAberto(rota: string) {
     return () => { vale = false; };
   }, [semBancos, empresa.nome]);
 
+  const entregas = useBancosDoEntregas();
+  const doEntregas = empresa.codigo != null ? entregas.porCodigo.get(empresa.codigo) ?? null : null;
   const adicionados = doExtrator?.nome === empresa.nome ? doExtrator.bancos : null;
-  const partida = useMemo(() => empresas.cadastro.pontoDePartida(empresa.codigo, adicionados || []), [empresa.codigo, adicionados]);
+  const partida = useMemo(
+    () => empresas.cadastro.juntarComEntregas(empresas.cadastro.pontoDePartida(empresa.codigo, adicionados || []), doEntregas),
+    [empresa.codigo, adicionados, doEntregas],
+  );
 
   return {
     empresa,
@@ -46,8 +53,10 @@ export function useCadastroAberto(rota: string) {
     partida,
     /** os bancos que a tela mostra: os cadastrados, ou o ponto de partida */
     bancos: vivo.cadastro.bancos ?? partida,
-    /** ainda chegando: o cadastro, ou (sem cadastro) os bancos do Extrator */
-    carregando: !vivo.carregada || (semBancos && !adicionados),
+    /** o que o Entregas sabe e o cadastro não tem (só com os bancos cadastrados) */
+    sugestoes: vivo.cadastro.bancos ? empresas.cadastro.sugestoesDoEntregas(vivo.cadastro, doEntregas) : [],
+    /** ainda chegando: o cadastro, ou (sem cadastro) os bancos do Extrator e do Entregas */
+    carregando: !vivo.carregada || (semBancos && (!adicionados || !entregas.carregado)),
     hoje: competenciaDeHoje(),
   };
 }
