@@ -1,39 +1,33 @@
-// Rota de uma página do Cadastro com a empresa aberta: /tarefas/cadastro/:empresa/:pagina.
-// Empresa que não está na lista volta para a escolha; página que não existe vai para as contas bancárias.
-// Trocar de empresa remonta a página (nada da empresa anterior fica na tela).
-import { useEffect } from 'react';
+// Rotas do Cadastro: a lista de empresas (/tarefas/cadastro/empresas) e, por cima dela, a janela de uma empresa
+// (/tarefas/cadastro/empresas/:empresa/:aba). As duas usam este mesmo componente, então a lista (com a busca)
+// continua montada atrás da janela. Empresa que não está na lista volta para a lista; aba que não existe vai
+// para as contas bancárias. Os links antigos (/tarefas/cadastro/:empresa/:aba) levam para os novos.
 import { Navigate, useParams } from 'react-router';
 import { empresaDaRota } from '../../../comum/empresaDaRota';
 import { TopoProvider } from '../../../comum/topo';
-import { ContasBancarias } from '../telas/cadastro/bancos/ContasBancarias';
-import { ContasPadrao } from '../telas/cadastro/contas-padrao/ContasPadrao';
-import { HistoricoCadastro } from '../telas/cadastro/historico/HistoricoCadastro';
-import { lembrarEmpresa } from '../telas/cadastro/partes/useEscolherNoCadastro';
-import { PlanoDeContas } from '../telas/cadastro/plano/PlanoDeContas';
+import { EscolherEmpresaCadastro } from '../telas/cadastro/escolher/EscolherEmpresaCadastro';
+import { JanelaDaEmpresa } from '../telas/cadastro/janela/JanelaDaEmpresa';
 import { CascaTarefas } from './CascaTarefas';
-import { aplicacao, caminhoDoCadastro } from './navegacao';
-
-function Tela({ rota, pagina }: { rota: string; pagina: string }) {
-  switch (pagina) {
-    case 'plano': return <PlanoDeContas rota={rota} />;
-    case 'contas-padrao': return <ContasPadrao rota={rota} />;
-    case 'historico': return <HistoricoCadastro rota={rota} />;
-    default: return <ContasBancarias rota={rota} />;
-  }
-}
+import { ABAS_DO_CADASTRO, caminhoDoCadastro } from './navegacao';
 
 export function CadastroAberto() {
-  const { empresa = '', pagina = '' } = useParams();
-  const existe = !!empresaDaRota(empresa);
-  const paginaExiste = !!aplicacao('cadastro')?.paginas.some(p => p.id === pagina);
-  useEffect(() => { if (existe) lembrarEmpresa(empresa); }, [existe, empresa]);
-  if (!existe) return <Navigate to={caminhoDoCadastro(null, paginaExiste ? pagina : 'bancos')} replace />;
-  if (!paginaExiste) return <Navigate to={caminhoDoCadastro(empresa, 'bancos')} replace />;
+  const { empresa = '', aba = '' } = useParams();
+  const existe = !empresa || !!empresaDaRota(empresa);
+  const abaExiste = !empresa || ABAS_DO_CADASTRO.some(a => a.id === aba);
+  if (!existe) return <Navigate to={caminhoDoCadastro(null)} replace />;
+  if (!abaExiste) return <Navigate to={caminhoDoCadastro(empresa)} replace />;
   return (
     <TopoProvider>
-      <CascaTarefas app="cadastro" pagina={pagina} rotaEmpresa={empresa}>
-        <Tela key={empresa} rota={empresa} pagina={pagina} />
+      <CascaTarefas app="cadastro" pagina="empresas">
+        <EscolherEmpresaCadastro />
+        {empresa && <JanelaDaEmpresa key={empresa} rota={empresa} aba={aba} />}
       </CascaTarefas>
     </TopoProvider>
   );
+}
+
+/** Link antigo (/tarefas/cadastro/292/bancos): leva para a janela da empresa no endereço novo. */
+export function CadastroAntigo() {
+  const { empresa = '', aba = '' } = useParams();
+  return <Navigate to={caminhoDoCadastro(empresa, ABAS_DO_CADASTRO.some(a => a.id === aba) ? aba : 'bancos')} replace />;
 }

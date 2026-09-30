@@ -70,14 +70,16 @@ Os eventos que existiam em `tarefas` na Conferência foram copiados para `rotina
 
 ## Cadastro (2026-09-30)
 
-Pedido do Vitor: um lugar só para configurar os dados de cada cliente que as ferramentas usam. Rota
-`/tarefas/cadastro/<empresa>/<página>` (sem a empresa, escolhe primeiro; o "empresa ▾" da barra de cima troca e
-lembra as últimas abertas). Código: `apps/web/src/aplicativos/tarefas/telas/cadastro` e o Model em
+Pedido do Vitor: um lugar só para configurar os dados de cada cliente que as ferramentas usam. A página é a lista
+de empresas (`/tarefas/cadastro/empresas`); clicar numa empresa abre uma **janela flutuante** por cima da lista, com
+as abas dela na lateral e "‹ Empresas" / ✕ / Esc para voltar (`/tarefas/cadastro/empresas/<empresa>/<aba>`). A
+barra lateral de fora fica só com "Empresas" (o Vitor vai decidir o que mais vai nela). Na barra de cima da lista,
+o interruptor **Robô lê agência e conta** (config/indiceDrive.contas do Entregas; só o admin muda). Código: `apps/web/src/aplicativos/tarefas/telas/cadastro` e o Model em
 `packages/core/src/empresas/cadastro` (de todos os aplicativos, com testes).
 
 | Página | O que faz |
 |---|---|
-| **(sem empresa)** | a lista de todas as empresas: bancos (do cadastro ou, sem cadastro, os que o robô já sabe), plano de contas; busca e situação |
+| **Lista** | todas as empresas: bancos (do cadastro ou, sem cadastro, os que o robô já sabe), plano de contas; busca e situação |
 | **Contas bancárias** | incluir, editar, encerrar (última competência), reabrir e excluir. Cada conta: banco (logo), agência, conta, tipo, apelido, conta contábil (conferida contra o plano) e a primeira competência |
 | **Plano de contas** | importar do Alterdata (planilha do plano ou o balancete, xls/xlsx/csv/txt) ou montar pelo balancete que o Entregas (Clientes › Balancetes) ou a Conferência guardou (só as contas com saldo). Antes de trocar, mostra o que muda e avisa as contas usadas no cadastro que somem |
 | **Contas padrão** | as do layout do Creditor: conta do banco da liquidação, juros, descontos e os três históricos. Vazio = o Creditor decide |

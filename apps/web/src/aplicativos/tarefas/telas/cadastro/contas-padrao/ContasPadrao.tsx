@@ -2,7 +2,6 @@
 // os códigos de histórico. Grava ao sair do campo (ou Enter).
 import { Icone, useCarregando } from '@nads/ui';
 import { useId, useState } from 'react';
-import { TrocarEmpresa } from '../partes/TrocarEmpresa';
 import { useContasPadrao, type CampoPadrao } from './useContasPadrao';
 
 type Vm = ReturnType<typeof useContasPadrao>;
@@ -33,9 +32,6 @@ export function ContasPadrao({ rota }: { rota: string }) {
   useCarregando(vm.carregando);
   return (
     <section>
-      <div className="tarefas-barra-topo">
-        <TrocarEmpresa empresa={vm.empresa} rota={rota} pagina="contas-padrao" />
-      </div>
       {!vm.temPlano && !vm.carregando && (
         <div className="alert cad-aviso">
           <Icone nome="alert" />

@@ -1,17 +1,24 @@
-// Cadastro sem empresa aberta (/tarefas/cadastro/<página>): a lista de todas as empresas, com os bancos (do
+// Cadastro (/tarefas/cadastro/empresas): a lista de todas as empresas, com os bancos (do
 // cadastro ou, sem cadastro, os que o robô já sabe) e o plano de contas. A busca e a situação filtram;
-// clicar na linha abre a empresa na página pedida.
-import { Icone, LogoBanco, MenuSuspenso, useCarregando } from '@nads/ui';
+// clicar na linha abre a janela da empresa, por cima da lista.
+import { Icone, Interruptor, LogoBanco, MenuSuspenso, useCarregando } from '@nads/ui';
 import { SITUACOES, useListaDoCadastro } from './useListaDoCadastro';
 
-export function EscolherEmpresaCadastro({ pagina }: { pagina: string }) {
-  const vm = useListaDoCadastro(pagina);
+export function EscolherEmpresaCadastro() {
+  const vm = useListaDoCadastro();
   useCarregando(vm.carregando);
   return (
     <section>
       <div className="tarefas-barra-topo">
         <span className="tarefas-contador"><Icone nome="briefcase" /><b>{vm.total}</b> empresas</span>
         <span className="tarefas-contador"><Icone nome="landmark" /><b>{vm.cadastradas}</b> com bancos cadastrados</span>
+        {vm.robo.carregado && (
+          <span className={'cad-robo' + (vm.robo.podeMudar ? '' : ' so-leitura')}
+            title={vm.robo.podeMudar ? 'O robô lê a agência e a conta do cabeçalho dos extratos (Gmail e Drive)' : 'Só um administrador liga ou desliga'}>
+            <Icone nome="zap" />Robô lê agência e conta
+            <Interruptor ligado={vm.robo.ligado} onMudar={() => void vm.alternarRobo()} rotulo="Robô lê agência e conta" />
+          </span>
+        )}
         <span className="tarefas-barra-espaco" />
         <label className="busca-curta">
           <Icone nome="search" />

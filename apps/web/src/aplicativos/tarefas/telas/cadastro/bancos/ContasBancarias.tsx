@@ -1,8 +1,7 @@
-// Cadastro › Contas bancárias: a barra de cima (empresa ▾, quantas contas, encerradas, "Nova conta ▾") e a lista.
+// Cadastro › empresa › Contas bancárias: a barra de cima (quantas contas, encerradas, "Nova conta ▾") e a lista.
 // Empresa sem cadastro: o aviso com a lista que o Extrator usa hoje e "Confirmar esta lista".
 import { Icone, LogoBanco, MenuSuspenso, useCarregando } from '@nads/ui';
 import { useState } from 'react';
-import { TrocarEmpresa } from '../partes/TrocarEmpresa';
 import { FormConta, FormEncerrar } from './partes/FormConta';
 import { useContasBancarias, type LinhaConta, type VmContasBancarias } from './useContasBancarias';
 
@@ -28,7 +27,6 @@ export function ContasBancarias({ rota }: { rota: string }) {
   return (
     <section>
       <div className="tarefas-barra-topo">
-        <TrocarEmpresa empresa={vm.empresa} rota={rota} pagina="bancos" />
         <span className="tarefas-contador"><Icone nome="landmark" /><b>{vm.total}</b> {vm.total === 1 ? 'conta' : 'contas'}</span>
         {vm.encerradas > 0 && (
           <button type="button" className="tarefas-contador" onClick={vm.alternarEncerradas} title={vm.verEncerradas ? 'Esconder as encerradas' : 'Mostrar as encerradas'}>

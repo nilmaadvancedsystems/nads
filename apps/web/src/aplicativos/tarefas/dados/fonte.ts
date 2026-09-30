@@ -8,7 +8,7 @@
 // O repositório e a sessão são criados uma vez, quando alguém abre a Tarefas. O do Cadastro, quando alguém abre o Cadastro.
 import { empresas, extrator, tarefas } from '@nads/core';
 import { criarSessaoEntregas, type SessaoEntregas } from './entregas.firestore';
-import { balanceteNoEntregas, clientesNoEntregas, conferenciaNoBanco, portaCadastroFirestore } from './cadastro.firestore';
+import { balanceteNoEntregas, clientesNoEntregas, conferenciaNoBanco, gravarLeituraDeContas, ouvirLeituraDeContas, portaCadastroFirestore } from './cadastro.firestore';
 import { criarRepoTarefasFirestore, extratorNoBanco, type RepoTarefasFirestore } from './tarefas.firestore';
 
 export const noBanco = import.meta.env.VITE_FONTE === 'banco';
@@ -82,4 +82,22 @@ export function bancosDoEntregas(): Promise<Map<number, empresas.cadastro.Bancos
       .catch(() => new Map());
   }
   return doEntregas;
+}
+
+/**
+ * O interruptor do robô que lê a agência e a conta dos extratos (no banco: config/indiceDrive.contas do Entregas;
+ * nos exemplos, só neste navegador enquanto a página está aberta).
+ */
+let leituraExemplo = true;
+const ouvintesExemplo = new Set<(ligado: boolean) => void>();
+export function ouvirLeituraDoRobo(aoMudar: (ligado: boolean) => void, aoFalhar: (err: Error) => void): () => void {
+  if (noBanco) return ouvirLeituraDeContas(aoMudar, aoFalhar);
+  ouvintesExemplo.add(aoMudar);
+  aoMudar(leituraExemplo);
+  return () => { ouvintesExemplo.delete(aoMudar); };
+}
+export async function gravarLeituraDoRobo(ligado: boolean): Promise<void> {
+  if (noBanco) return gravarLeituraDeContas(ligado);
+  leituraExemplo = ligado;
+  for (const f of ouvintesExemplo) f(ligado);
 }

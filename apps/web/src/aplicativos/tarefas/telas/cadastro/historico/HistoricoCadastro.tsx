@@ -1,6 +1,5 @@
 // Cadastro › Histórico: a lista do que mudou no cadastro da empresa.
 import { Icone, useCarregando } from '@nads/ui';
-import { TrocarEmpresa } from '../partes/TrocarEmpresa';
 import { useHistoricoCadastro } from './useHistoricoCadastro';
 
 export function HistoricoCadastro({ rota }: { rota: string }) {
@@ -8,9 +7,6 @@ export function HistoricoCadastro({ rota }: { rota: string }) {
   useCarregando(vm.carregando);
   return (
     <section>
-      <div className="tarefas-barra-topo">
-        <TrocarEmpresa empresa={vm.empresa} rota={rota} pagina="historico" />
-      </div>
       {!vm.carregando && !vm.linhas.length ? (
         <div className="gh-blank">
           <Icone nome="clock" />

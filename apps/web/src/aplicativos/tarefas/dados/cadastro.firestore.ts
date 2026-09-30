@@ -7,9 +7,10 @@
 // Lê também, sem gravar, quando a pessoa pede o plano "do balancete": o que a Conferência guardou
 // (empresas/{slug}, ainda no banco da Conferência) e o de Clientes › Balancetes do Entregas (balancetes/{código}).
 // E, só leitura, os bancos de cada cliente que o Entregas já sabe (clientes: bancos e contasBancarias, que o robô
-// aprende pelo Drive e pelos extratos).
+// aprende pelo Drive e pelos extratos). E o interruptor dessa leitura do robô: config/indiceDrive.contas (só o
+// admin grava, pela regra do Entregas; a gravação mexe só nesse campo).
 import { formatos, type empresas } from '@nads/core';
-import { collection, doc, getDoc, getDocs, onSnapshot, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, onSnapshot, setDoc, writeBatch } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 import { bancoDaConferencia } from './tarefas.firestore';
 
@@ -44,4 +45,13 @@ export async function balanceteNoEntregas(codigo: number): Promise<Record<string
 export async function clientesNoEntregas(): Promise<Record<string, unknown>[]> {
   const s = await getDocs(collection(bancoDoEntregas(), 'clientes'));
   return s.docs.map(d => d.data());
+}
+
+/** O robô lê a agência e a conta dos extratos? (config/indiceDrive.contas; sem o campo = ligado) */
+export function ouvirLeituraDeContas(aoMudar: (ligado: boolean) => void, aoFalhar: (err: Error) => void): () => void {
+  return onSnapshot(doc(bancoDoEntregas(), 'config', 'indiceDrive'), s => aoMudar((s.data() || {}).contas !== false), aoFalhar);
+}
+
+export async function gravarLeituraDeContas(ligado: boolean): Promise<void> {
+  await setDoc(doc(bancoDoEntregas(), 'config', 'indiceDrive'), { contas: ligado }, { merge: true });
 }

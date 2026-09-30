@@ -3,7 +3,7 @@
 import type { empresas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { bancosDoEntregas, repoDoCadastro } from './fonte';
+import { bancosDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDoCadastro } from './fonte';
 
 type Repo = tarefas.RepoTarefas;
 
@@ -71,4 +71,11 @@ export function useBancosDoEntregas(): { carregado: boolean; porCodigo: Readonly
     return () => { vale = false; };
   }, []);
   return estado;
+}
+
+/** O interruptor do robô que lê a agência e a conta dos extratos: ao vivo, e como mudar. */
+export function useLeituraDoRobo(): { carregado: boolean; ligado: boolean; mudar: (ligado: boolean) => Promise<void> } {
+  const [estado, setEstado] = useState<{ carregado: boolean; ligado: boolean }>({ carregado: false, ligado: true });
+  useEffect(() => ouvirLeituraDoRobo(ligado => setEstado({ carregado: true, ligado }), () => setEstado(e => ({ ...e, carregado: true }))), []);
+  return { ...estado, mudar: gravarLeituraDoRobo };
 }

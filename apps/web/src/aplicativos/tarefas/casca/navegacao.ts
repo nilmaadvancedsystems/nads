@@ -2,7 +2,8 @@
 // aplicação aberta. Fiscal e Contábil aparecem para quem é do departamento (ou admin).
 // URL: /tarefas/<aplicação>/<página>; a página de uma empresa é /tarefas/minhas-empresas/empresa/<empresa>;
 // o executor das etapas é /tarefas/executar/<empresa>/<competência>.
-// O Cadastro tem uma empresa aberta: /tarefas/cadastro/<empresa>/<página> (sem a empresa, escolhe primeiro).
+// O Cadastro é a lista de empresas (/tarefas/cadastro/empresas); a empresa abre numa janela por cima da lista,
+// com as abas dela: /tarefas/cadastro/empresas/<empresa>/<aba>.
 import type { NomeIcone } from '@nads/ui';
 import type { Operador } from './operador';
 
@@ -23,10 +24,7 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'paradas', rotulo: 'Paradas', icone: 'alert', titulo: 'Contábil — etapas paradas' },
   ] },
   { id: 'cadastro', nome: 'Cadastro', icone: 'landmark', pronta: true, paginas: [
-    { id: 'bancos', rotulo: 'Contas bancárias', icone: 'landmark', titulo: 'Cadastro — contas bancárias' },
-    { id: 'plano', rotulo: 'Plano de contas', icone: 'list', titulo: 'Cadastro — plano de contas' },
-    { id: 'contas-padrao', rotulo: 'Contas padrão', icone: 'settings', titulo: 'Cadastro — contas padrão' },
-    { id: 'historico', rotulo: 'Histórico', icone: 'clock', titulo: 'Cadastro — histórico' },
+    { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Cadastro — empresas' },
   ] },
   { id: 'fiscal', nome: 'Fiscal', icone: 'fileText', pronta: false, paginas: [
     { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Fiscal' },
@@ -53,6 +51,15 @@ export function aplicacao(id: string): Aplicacao | undefined {
 export const caminhoDaPagina = (app: IdAplicacao, pagina: string) => BASE + '/' + app + '/' + pagina;
 /** A página de uma empresa (insights dela): /tarefas/minhas-empresas/empresa/<código>?competencia=aaaa-mm */
 export const caminhoDaEmpresa = (rotaEmpresa: string, competencia: string) => BASE + '/minhas-empresas/empresa/' + rotaEmpresa + '?competencia=' + competencia;
-/** Uma página do Cadastro de uma empresa (sem empresa: a escolha da empresa, que depois abre a página). */
-export const caminhoDoCadastro = (rotaEmpresa: string | null, pagina: string) => BASE + '/cadastro/' + (rotaEmpresa ? rotaEmpresa + '/' : '') + pagina;
+/** As abas da janela de uma empresa no Cadastro. */
+export const ABAS_DO_CADASTRO: readonly { id: string; rotulo: string; icone: NomeIcone }[] = [
+  { id: 'bancos', rotulo: 'Contas bancárias', icone: 'landmark' },
+  { id: 'plano', rotulo: 'Plano de contas', icone: 'list' },
+  { id: 'contas-padrao', rotulo: 'Contas padrão', icone: 'settings' },
+  { id: 'historico', rotulo: 'Histórico', icone: 'clock' },
+];
+
+/** A lista do Cadastro (sem empresa) ou a janela de uma empresa, numa aba. */
+export const caminhoDoCadastro = (rotaEmpresa: string | null, aba = 'bancos') =>
+  BASE + '/cadastro/empresas' + (rotaEmpresa ? '/' + rotaEmpresa + '/' + aba : '');
 export const caminhoDoExecutor = (rotaEmpresa: string, competencia: string) => BASE + '/executar/' + rotaEmpresa + '/' + competencia;
