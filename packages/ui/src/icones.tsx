@@ -58,6 +58,7 @@ const ICONS = {
   download: '<path d="M12 3.5v11.8"/><path d="m7 10.8 5 5 5-5"/><path d="M5 20.5h14"/>',
   grade: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   impressora: '<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/>',
+  mais: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
 } as const;
 
 export type NomeIcone = keyof typeof ICONS;

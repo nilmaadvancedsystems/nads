@@ -1,6 +1,7 @@
-// Drive › Pastas, com a cara do Explorador de Arquivos do Windows: barra de endereço (voltar, avançar, acima, a
-// trilha e a pesquisa), barra de comandos (baixar, selecionar, ordenar, exibir, painel de navegação), a árvore das
-// pastas à esquerda, a lista em Detalhes ou Ícones e a barra de status; Tela cheia cobre o nads todo (Esc sai). Um clique seleciona (Ctrl junta, Shift faz
+// Drive › Pastas, com a cara do Explorador de Arquivos do Windows, numa barra só: voltar, avançar, acima, a trilha, a
+// pesquisa, Detalhes/Ícones, Tela cheia (cobre o nads todo; Esc sai), o "⋯" (baixar a pasta, selecionar tudo, a árvore,
+// classificar) e o botão cheio Enviar arquivos. Embaixo, a barra de status vira a da seleção (Baixar e limpar) quando
+// há algo marcado. A árvore das pastas (escondida no começo) e a lista em Detalhes ou Ícones. Um clique seleciona (Ctrl junta, Shift faz
 // o intervalo), dois cliques (ou Enter) abrem; na tela de toque, um toque abre. Abrir um arquivo: a aba nasce no
 // clique (senão o navegador bloqueia) e recebe o link quando o robô termina de buscar. O botão direito abre o menu
 // do Explorador (MenuDeContexto) e "Enviar para o Claudio Secretário" (botão, menu ou arrastar arquivos para a tela)
@@ -25,6 +26,9 @@ function pontoDoMenu(ev: MouseEvent): { x: number; y: number } {
 const COLUNAS: { id: e.ColunaDoExplorador; rotulo: string }[] = [
   { id: 'nome', rotulo: 'Nome' }, { id: 'data', rotulo: 'Data de modificação' }, { id: 'tipo', rotulo: 'Tipo' }, { id: 'tamanho', rotulo: 'Tamanho' },
 ];
+
+/** Na lista em Detalhes o Tipo não entra (a cor do ícone já diz; está no título e nas Propriedades). */
+const COLUNAS_DA_LISTA = COLUNAS.filter(c => c.id !== 'tipo');
 
 const toque = () => typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches;
 
@@ -108,7 +112,7 @@ function Detalhes({ vm, aoMenu }: { vm: VmDrive; aoMenu: AoMenu }) {
     <table className="explorador-detalhes">
       <thead>
         <tr>
-          {COLUNAS.map(c => (
+          {COLUNAS_DA_LISTA.map(c => (
             <th key={c.id} className={'col-' + c.id} aria-sort={vm.coluna === c.id ? (vm.desc ? 'descending' : 'ascending') : undefined}>
               <button type="button" onClick={() => vm.ordenarPor(c.id)}>
                 {c.rotulo}{vm.coluna === c.id && <Icone nome={vm.desc ? 'arrowDown' : 'arrowUp'} className="explorador-ordem" />}
@@ -120,11 +124,10 @@ function Detalhes({ vm, aoMenu }: { vm: VmDrive; aoMenu: AoMenu }) {
       <tbody>
         {vm.entradas.map(x => (
           <tr key={x.id} tabIndex={0} aria-selected={vm.estaMarcado(x.id)} className={vm.estaMarcado(x.id) ? 'marcado' : undefined} {...eventos(vm, x, aoMenu)}>
-            <td className="col-nome">
+            <td className="col-nome" title={x.nome + ' · ' + x.tipo}>
               <span className="drive-nome"><IconeDaEntrada x={x} /><span>{x.nome}{x.onde && <span className="fraco drive-onde">{x.onde}</span>}</span></span>
             </td>
             <td className="col-data">{vm.quando(x.data)}</td>
-            <td className="col-tipo">{x.tipo}</td>
             <td className="col-tamanho">{x.pasta ? '' : vm.tamanho(x.bytes)}</td>
           </tr>
         ))}
@@ -227,6 +230,22 @@ export function ExploradorDoDrive() {
       ],
     });
   };
+  /** O "⋯" da barra: o que sai da vista (baixar a pasta, selecionar, classificar, a árvore), embaixo do botão. */
+  const abrirMais = (ev: MouseEvent<HTMLButtonElement>) => {
+    const r = ev.currentTarget.getBoundingClientRect();
+    const v = atual.current;
+    setMenu({
+      x: r.right - 240, y: r.bottom + 4, topo: [],
+      linhas: [
+        { rotulo: 'Baixar esta pasta (.zip)', icone: 'download', desabilitado: !v.podeBaixarPasta, onClick: baixarPasta },
+        { rotulo: 'Selecionar tudo', icone: 'checkCircle', atalho: 'Ctrl+A', desabilitado: !v.entradas.length, onClick: () => atual.current.selecionarTodos() },
+        'separador',
+        { rotulo: 'Árvore (painel de navegação)', icone: 'painel', marcado: v.mostrarArvore, onClick: () => atual.current.alternarArvore() },
+        { titulo: 'Classificar por' },
+        ...COLUNAS.map<OpcaoDoMenu>(c => ({ rotulo: c.rotulo, marcado: v.coluna === c.id, onClick: () => atual.current.ordenarPor(c.id) })),
+      ],
+    });
+  };
   const menuDaArvore = (ev: MouseEvent, no: e.NoDaArvore) => {
     ev.preventDefault();
     ev.stopPropagation();
@@ -305,10 +324,12 @@ export function ExploradorDoDrive() {
   return (
     <section ref={caixa} className={'explorador' + (vm.telaCheia ? ' tela-cheia' : '') + (soltando ? ' soltando' : '')} style={altura ? { height: altura } : undefined}
       onKeyDown={teclas} onDragOver={arrastando} onDragLeave={ev => { if (!ev.currentTarget.contains(ev.relatedTarget as Node | null)) setSoltando(false); }} onDrop={soltar}>
-      <div className="explorador-endereco">
-        <button type="button" className="explorador-btn" title="Voltar (Alt+←)" aria-label="Voltar" onClick={vm.voltar}><Icone nome="chevronLeft" /></button>
-        <button type="button" className="explorador-btn" title="Avançar (Alt+→)" aria-label="Avançar" onClick={vm.avancar}><Icone nome="chevronRight" /></button>
-        <button type="button" className="explorador-btn" title="Acima (Alt+↑)" aria-label="Acima" disabled={!vm.podeSubir} onClick={vm.subir}><Icone nome="arrowUp" /></button>
+      <div className="explorador-endereco" role="toolbar" aria-label="Drive">
+        <div className="explorador-navegar">
+          <button type="button" className="explorador-btn" title="Voltar (Alt+←)" aria-label="Voltar" onClick={vm.voltar}><Icone nome="chevronLeft" /></button>
+          <button type="button" className="explorador-btn" title="Avançar (Alt+→)" aria-label="Avançar" onClick={vm.avancar}><Icone nome="chevronRight" /></button>
+          <button type="button" className="explorador-btn" title="Acima (Alt+↑)" aria-label="Acima" disabled={!vm.podeSubir} onClick={vm.subir}><Icone nome="arrowUp" /></button>
+        </div>
         <nav ref={trilha} className="explorador-trilha" aria-label="Endereço">
           <Icone nome="pasta" className="drive-ico pasta" />
           <button type="button" onClick={vm.irParaRaiz}>{vm.ano}</button>
@@ -324,33 +345,19 @@ export function ExploradorDoDrive() {
             onChange={ev => vm.setBusca(ev.target.value)} onKeyDown={ev => { if (ev.key === 'Escape') vm.setBusca(''); }} />
           <Icone nome="search" />
         </label>
-      </div>
-
-      <div className="explorador-comandos" role="toolbar" aria-label="Comandos">
-        <button type="button" className="explorador-cmd" disabled={!m} onClick={baixarMarcados}><Icone nome="download" />Baixar{m > 1 ? ' (' + m + ')' : ''}</button>
-        <button type="button" className="explorador-cmd" disabled={!vm.podeBaixarPasta} onClick={baixarPasta}><Icone nome="pasta" />Baixar esta pasta</button>
-        <button type="button" className="explorador-cmd" title="Mandar arquivos para a pasta Claudio Secretario (a próxima rodada do arquivamento põe na pasta do cliente)"
-          onClick={() => envio.abrir()}><Icone nome="upload" />Enviar para o Claudio Secretário</button>
-        <span className="explorador-divisor" />
-        <button type="button" className="explorador-cmd" disabled={!n} onClick={vm.selecionarTodos}><Icone nome="checkCircle" />Selecionar tudo</button>
-        <button type="button" className="explorador-cmd" disabled={!m} onClick={vm.limparSelecao}><Icone nome="x" />Limpar seleção</button>
-        <span className="explorador-divisor" />
-        <label className="explorador-cmd explorador-ordenar">
-          <Icone nome="ordenar" />
-          <select aria-label="Classificar por" value={vm.coluna} onChange={ev => vm.ordenarPor(ev.target.value as e.ColunaDoExplorador)}>
-            {COLUNAS.map(c => <option key={c.id} value={c.id}>{c.rotulo}</option>)}
-          </select>
-        </label>
-        <span className="tarefas-barra-espaco" />
         <div className="explorador-exibir" role="group" aria-label="Exibir">
-          <button type="button" className={'explorador-cmd' + (vm.exibicao === 'detalhes' ? ' on' : '')} aria-pressed={vm.exibicao === 'detalhes'} title="Detalhes" onClick={() => vm.mudarExibicao('detalhes')}><Icone nome="list" />Detalhes</button>
-          <button type="button" className={'explorador-cmd' + (vm.exibicao === 'icones' ? ' on' : '')} aria-pressed={vm.exibicao === 'icones'} title="Ícones grandes" onClick={() => vm.mudarExibicao('icones')}><Icone nome="grade" />Ícones</button>
-          <button type="button" className={'explorador-cmd' + (vm.mostrarArvore ? ' on' : '')} aria-pressed={vm.mostrarArvore} title="Painel de navegação (árvore)" onClick={vm.alternarArvore}><Icone nome="painel" />Árvore</button>
+          <button type="button" className={'explorador-btn' + (vm.exibicao === 'detalhes' ? ' on' : '')} aria-pressed={vm.exibicao === 'detalhes'}
+            title="Detalhes" aria-label="Detalhes" onClick={() => vm.mudarExibicao('detalhes')}><Icone nome="list" /></button>
+          <button type="button" className={'explorador-btn' + (vm.exibicao === 'icones' ? ' on' : '')} aria-pressed={vm.exibicao === 'icones'}
+            title="Ícones" aria-label="Ícones" onClick={() => vm.mudarExibicao('icones')}><Icone nome="grade" /></button>
         </div>
-        <button type="button" className={'explorador-cmd' + (vm.telaCheia ? ' on' : '')} aria-pressed={vm.telaCheia}
+        <button type="button" className="explorador-btn" aria-pressed={vm.telaCheia} aria-label={vm.telaCheia ? 'Sair da tela cheia' : 'Tela cheia'}
           title={vm.telaCheia ? 'Sair da tela cheia (Esc)' : 'Tela cheia'} onClick={vm.alternarTelaCheia}>
-          <Icone nome={vm.telaCheia ? 'minimizar' : 'maximizar'} />{vm.telaCheia ? 'Sair da tela cheia' : 'Tela cheia'}
+          <Icone nome={vm.telaCheia ? 'minimizar' : 'maximizar'} />
         </button>
+        <button type="button" className="explorador-btn" title="Mais opções" aria-label="Mais opções" aria-haspopup="menu" onClick={abrirMais}><Icone nome="mais" /></button>
+        <button type="button" className="btn btn-primary explorador-enviar" title="Manda para a pasta Claudio Secretário; a próxima rodada do arquivamento põe cada arquivo na pasta do cliente"
+          onClick={() => envio.abrir()}><Icone nome="upload" />Enviar arquivos</button>
       </div>
 
       {vm.erro && <div className="alert"><Icone nome="alert" /><div><p className="alert-text">{vm.erro}</p></div></div>}
@@ -364,12 +371,23 @@ export function ExploradorDoDrive() {
         </div>
       </div>
 
-      <div className="explorador-status" role="status">
-        <span>{n} {n === 1 ? 'item' : 'itens'}</span>
-        {m > 0 && <span>{m} {m === 1 ? 'item selecionado' : 'itens selecionados'}{vm.tamanhoMarcado ? ' · ' + vm.tamanhoMarcado : ''}</span>}
-        <span className="tarefas-barra-espaco" />
-        {vm.atualizado && <span className="fraco">Mapa do robô: {vm.atualizado}</span>}
-      </div>
+      {m > 0
+        ? (
+          <div className="explorador-status selecao" role="status">
+            <b>{m} {m === 1 ? 'selecionado' : 'selecionados'}</b>
+            {vm.tamanhoMarcado && <span>{vm.tamanhoMarcado}</span>}
+            <span className="tarefas-barra-espaco" />
+            <button type="button" className="btn explorador-selecao-btn" onClick={baixarMarcados}><Icone nome="download" />Baixar{m > 1 ? ' ' + m : ''}</button>
+            <button type="button" className="explorador-btn" title="Limpar seleção (Esc)" aria-label="Limpar seleção" onClick={vm.limparSelecao}><Icone nome="x" /></button>
+          </div>
+        )
+        : (
+          <div className="explorador-status" role="status">
+            <span>{n} {n === 1 ? 'item' : 'itens'}</span>
+            <span className="tarefas-barra-espaco" />
+            {vm.atualizado && <span title="Quando o robô leu o Drive pela última vez">Atualizado em {vm.atualizado}</span>}
+          </div>
+        )}
 
       {vm.pedidos.length + envio.envios.length > 0 && (
         <div className="drive-pedidos" role="status" aria-live="polite">
