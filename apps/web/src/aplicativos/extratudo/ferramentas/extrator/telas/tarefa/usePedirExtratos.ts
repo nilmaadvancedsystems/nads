@@ -5,13 +5,19 @@
 import { creditor, extrator as x, tarefas } from '@nads/core';
 import { useState } from 'react';
 import { useDrive } from '../../dados/repo';
-import type { useImportacao } from '../importacao/useImportacao';
 
-type Vm = ReturnType<typeof useImportacao>;
+/** O que o pedido usa da tela (a etapa passa o ViewModel dela; a prévia passa um de exemplo). */
+export interface VmDoPedido {
+  competencia: string;
+  competencias: { valor: string; rotulo: string }[];
+  bancos: { id: string; nome: string; marca: string; conta: string; extrato: { qtdArquivos: number } }[];
+  avisar(titulo: string): void;
+  avisarErro(titulo: string, detalhe: string): void;
+}
 
 const mensagemDeErro = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
-export function usePedirExtratos(vm: Vm, codigo: number | null, empresa: string, semMovimento: string[], pedirLogin: (depois: () => void) => void) {
+export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa: string, semMovimento: string[], pedirLogin: (depois: () => void) => void) {
   const { drive, acesso } = useDrive();
   const [canal, setCanal] = useState<x.CanalDoPedido | null>(null);
   const [contato, setContato] = useState<{ carregando: boolean; erro: string; dados: creditor.ContatoDoCliente | null }>({ carregando: false, erro: '', dados: null });

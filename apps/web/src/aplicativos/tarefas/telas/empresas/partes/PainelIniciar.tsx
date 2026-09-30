@@ -10,13 +10,16 @@ import type { useMinhasEmpresas } from '../useMinhasEmpresas';
 type Vm = ReturnType<typeof useMinhasEmpresas>;
 type Linha = Vm['paraIniciar'][number];
 
-function Lista({ vm, linhas, onEscolher }: { vm: Vm; linhas: Linha[]; onEscolher: (l: Linha) => void }) {
+/** A lista do painel; a caixinha do lote só na aba Empresas. */
+function Lista({ vm, linhas, onEscolher, comLote }: { vm: Vm; linhas: Linha[]; onEscolher: (l: Linha) => void; comLote?: boolean }) {
   return (
     <div className="iniciar-lista">
       {linhas.map(l => (
-        <div key={l.chave} className={'iniciar-linha' + (vm.marcadaNoLote(l.rota) ? ' marcada' : '')}>
-          <input type="checkbox" checked={vm.marcadaNoLote(l.rota)} onChange={() => vm.alternarNoLote(l.rota)}
-            aria-label={'Marcar ' + l.nome + ' para iniciar em lote'} title="Marcar para iniciar em lote" />
+        <div key={l.chave} className={'iniciar-linha' + (comLote && vm.marcadaNoLote(l.rota) ? ' marcada' : '')}>
+          {comLote && (
+            <input type="checkbox" checked={vm.marcadaNoLote(l.rota)} onChange={() => vm.alternarNoLote(l.rota)}
+              aria-label={'Marcar ' + l.nome + ' para iniciar em lote'} title="Marcar para iniciar em lote" />
+          )}
           <button type="button" className="popover-item iniciar-item" role="menuitem" onClick={() => onEscolher(l)}>
             <span className="num hint">{l.codigo ?? '—'}</span>
             <span className="iniciar-nome">{l.nome}</span>
@@ -81,7 +84,7 @@ export function PainelIniciar({ vm, fechar }: { vm: Vm; fechar: () => void }) {
           </label>
           {vm.paraIniciar.length === 0
             ? <p className="hint iniciar-nada">Nenhuma empresa aqui.</p>
-            : <Lista vm={vm} linhas={vm.paraIniciar} onEscolher={ir} />}
+            : <Lista vm={vm} linhas={vm.paraIniciar} onEscolher={ir} comLote />}
           {vm.totalParaIniciar > vm.paraIniciar.length && (
             <p className="hint iniciar-nada">Mostrando {vm.paraIniciar.length} de {vm.totalParaIniciar}. Digite para achar as outras.</p>
           )}

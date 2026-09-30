@@ -53,7 +53,8 @@ export function criarDriveMemoria(): RepoDrive {
       return URL.createObjectURL(new Blob([conteudo(id)], { type: 'text/plain' }));
     },
     async contatoDoCliente(codigo) {
-      return { id: 'exemplo-' + codigo, nome: 'EXEMPLO ' + codigo, emails: ['financeiro@exemplo.com.br'], telefone: '(38) 99999-0000' };
+      // sem nome: vale o da empresa aberta
+      return { id: 'exemplo-' + codigo, nome: '', emails: ['financeiro@exemplo.com.br', 'contato@exemplo.com.br'], telefone: '(38) 99999-0000' };
     },
     async pedirEmail(_p, passo) {
       // nos exemplos nada sai daqui: só finge a fila do robô

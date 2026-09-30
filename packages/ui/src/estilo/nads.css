@@ -1427,3 +1427,7 @@ a.btn.is-locked{opacity:.55;cursor:not-allowed;}
 .iniciar-faltam .hint{margin:0 0 6px;}
 /* o painel do Iniciar não rola: só a lista das empresas tem barra de rolagem */
 .menu-pop:has(> .iniciar-pop){max-height:none;overflow:visible;}
+
+/* a página da prévia do Pedir extratos */
+.previa-pedir{padding:24px;}
+.previa-pedir-botoes{display:flex;gap:8px;margin-top:12px;}
