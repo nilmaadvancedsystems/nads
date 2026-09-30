@@ -197,7 +197,23 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     if (o.solucao.tipo === 'drive') { toast('Drive: em desenvolvimento.'); return; }
   }
 
+  // os grupos da rotina (os botões no canto do cabeçalho): quantas etapas feitas, o da vez e os da frente (travados)
+  const concluidaNoPeriodo = (id: string) => meses.length > 0 && meses.every(c => concluidaEm(id, c));
+  const iDaVez = etapa ? secoes.indexOf(etapa.secao || '') : secoes.length;
+  const grupos = secoes.map((nome, i) => {
+    const es = rotina.etapas.filter(e => (e.secao || '') === nome);
+    return { nome, feitas: es.filter(e => concluidaNoPeriodo(e.id)).length, total: es.length, atual: i === iDaVez, travado: i > iDaVez };
+  });
+  /** Abrir um grupo de trás: volta para a primeira etapa dele (como clicar nela no checklist). O da vez e os da frente: nada. */
+  function abrirGrupo(nome: string) {
+    const i = secoes.indexOf(nome);
+    if (i < 0 || i >= iDaVez) return;
+    const primeira = rotina.etapas.find(e => (e.secao || '') === nome);
+    if (primeira) voltarPara(primeira.id);
+  }
+
   return {
+    grupos, abrirGrupo,
     empresa, competencia, periodo, meses, varios, rotuloCompetencia: t.rotuloDoPeriodo(meses.length ? meses : [competencia]),
     carregando: !carregada,
     etapas: rotina.etapas.map((e, i) => {

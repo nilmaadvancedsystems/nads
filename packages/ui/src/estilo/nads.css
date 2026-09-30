@@ -187,6 +187,20 @@ a{color:var(--accent);}
 #brandTagEmpresa:hover{background:var(--hover-bg);}
 #gearPop{top:calc(100% + 4px);left:0;}
 .gh-header-spacer{flex:1;}
+/* o canto direito do cabeçalho, como o do GitHub: botões quadrados só com ícone, um separador e o perfil (redondo) */
+.gh-topo-direita{display:flex;align-items:center;gap:8px;flex:none;}
+.gh-topo-grupos{display:flex;align-items:center;gap:8px;}
+.gh-topo-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border:1px solid var(--border);border-radius:6px;background:none;color:var(--ink-muted);cursor:pointer;}
+.gh-topo-btn svg{width:16px;height:16px;}
+.gh-topo-btn:hover:not(:disabled){background:var(--hover-bg);color:var(--ink);}
+.gh-topo-btn.feito{color:var(--success);}
+.gh-topo-btn.ativo{color:var(--ink);border-color:var(--tab-active);box-shadow:inset 0 -2px 0 var(--tab-active);}
+.gh-topo-btn:disabled{opacity:.45;cursor:not-allowed;}
+.gh-topo-sep{width:1px;height:20px;background:var(--border);}
+.gh-avatar{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border:1px solid var(--border);border-radius:50%;background:var(--surface-3);color:var(--ink);font-size:12px;font-weight:600;cursor:pointer;}
+.gh-avatar:hover{border-color:var(--border-strong);}
+.gh-avatar .menu-seta{display:none;}
+@media (max-width:768px){.gh-topo-grupos,.gh-topo-sep{display:none;}}
 
 nav.menu{display:flex;align-items:center;gap:8px;padding:0 16px;overflow-x:auto;scrollbar-width:none;}
 nav.menu::-webkit-scrollbar{display:none;}

@@ -2,8 +2,9 @@
 // checklist na barra lateral, com o nome de cada grupo em cima (Preparação, Ativo, Passivo, Resultado, Fechamento;
 // caixinha marcada = feita; clicar numa anterior volta para ela e tira o check). A página é só a ferramenta da
 // etapa, com a altura toda; embaixo, a barra com as saídas da etapa (Pedir extrato, Buscar no Drive…), Interromper e
-// Próximo.
-import { Alerta, Casca, Icone, useCarregando, useFerramentaNaEtapa } from '@nads/ui';
+// Próximo. No canto direito do cabeçalho, como os botões do GitHub: os grupos da rotina (o da vez aceso; clicar
+// num de trás volta para ele) e o perfil.
+import { Alerta, Casca, Icone, MenuSuspenso, useCarregando, useFerramentaNaEtapa, type NomeIcone } from '@nads/ui';
 import { useRef } from 'react';
 import { Navigate, useParams } from 'react-router';
 import { usePonteDaFerramenta } from '../../../../comum/ponte';
@@ -12,6 +13,11 @@ import { useCascaTarefas } from '../../casca/useCascaTarefas';
 import { JanelaInterromper } from './partes/JanelaInterromper';
 import { Objecoes } from './partes/Objecoes';
 import { useExecutor } from './useExecutor';
+
+/** O ícone de cada grupo da rotina, no canto do cabeçalho. */
+const ICONE_DO_GRUPO: Record<string, NomeIcone> = {
+  'Preparação': 'fileUp', Ativo: 'landmark', Passivo: 'relatorio', Resultado: 'barChart', Fechamento: 'checkCircle',
+};
 
 export function Executor() {
   // a competência da rota pode ser um período ('2026-06..2026-08'): a Etapa com vários meses
@@ -36,8 +42,25 @@ export function Executor() {
     caixa: e.situacao === 'feita' ? 'marcada' as const : e.situacao === 'interrompida' ? 'parada' as const : 'vazia' as const,
   }));
 
+  const topo = (
+    <>
+      <nav className="gh-topo-grupos" aria-label="Grupos da rotina">
+        {vm.grupos.map(g => (
+          <button key={g.nome} type="button" className={'gh-topo-btn' + (g.atual ? ' ativo' : '') + (g.feitas === g.total ? ' feito' : '')}
+            disabled={g.travado} onClick={() => vm.abrirGrupo(g.nome)} title={g.nome + ' · ' + g.feitas + '/' + g.total} aria-label={g.nome + ': ' + g.feitas + ' de ' + g.total}
+            aria-current={g.atual ? 'step' : undefined}>
+            <Icone nome={ICONE_DO_GRUPO[g.nome] || 'list'} />
+          </button>
+        ))}
+      </nav>
+      <span className="gh-topo-sep" aria-hidden="true" />
+      <MenuSuspenso rotulo={casca.perfil.iniciais} className="gh-avatar" dica={casca.perfil.nome} titulo={casca.perfil.nome} direita
+        itens={[{ rotulo: 'Voltar às empresas', icone: 'home', onClick: vm.sair }, { rotulo: casca.perfil.sair, icone: 'logOut', onClick: casca.trocarPessoa }]} />
+    </>
+  );
+
   return (
-    <Casca sistema="Tarefas" larga rotuloLateral="Etapas"
+    <Casca sistema="Tarefas" larga rotuloLateral="Etapas" topoDireita={topo}
       empresa={{ codigo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome, nome: '' }}
 
       versao={casca.versao} secoes={checklist} paginas={[]} titulo=""

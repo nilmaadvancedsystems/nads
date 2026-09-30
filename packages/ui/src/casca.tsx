@@ -80,6 +80,8 @@ export function Casca(p: {
   lateral?: 'barra' | 'caixa' | 'nenhuma';
   /** a página usa a largura toda da tela (ex.: a ferramenta de uma etapa) */
   larga?: boolean;
+  /** o canto direito do cabeçalho, como os botões do GitHub (ex.: os grupos da rotina e o perfil, no executor) */
+  topoDireita?: ReactNode;
   /** nome da lista da esquerda, para leitor de tela (padrão "Seções") */
   rotuloLateral?: string;
   /**
@@ -165,6 +167,7 @@ export function Casca(p: {
               </span>
             ))}
           </nav>
+          {p.topoDireita && <><span className="gh-header-spacer" /><div className="gh-topo-direita">{p.topoDireita}</div></>}
         </div>
         <nav className="menu" id="menu" aria-label="Páginas da seção">
           {p.paginas.filter(x => !x.oculta).map(x => (
