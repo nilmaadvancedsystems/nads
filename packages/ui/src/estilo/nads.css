@@ -1351,3 +1351,4 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-mov-total b{font-weight:600;font-variant-numeric:tabular-nums;margin-left:4px;}
 .imp-mov-total > span:first-child b{margin-left:0;color:var(--ink);}
 .imp-mov-saldo{color:var(--ink);}
+.imp-pdf{gap:4px;padding:3px 10px;}

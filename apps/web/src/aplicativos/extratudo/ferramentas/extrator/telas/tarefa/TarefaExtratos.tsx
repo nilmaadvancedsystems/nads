@@ -6,8 +6,8 @@
 //   Extrato: importar à mão (vira o check verde) ou buscar no Drive (fica só o logo do Drive, colorido);
 //     com o mouse em cima, vira × vermelho para excluir;
 //   Razão: importar à mão (check verde / × para excluir);
-//   à direita: "Não teve movimento" (trava a linha e vira "Desfazer") ou, com o extrato importado,
-//     "Visualizar" (do Drive: abre pelo link temporário; à mão: mostra o movimento).
+//   à direita: "Não teve movimento" (trava a linha e vira "Desfazer"); com o extrato vindo do Drive, um
+//     botãozinho de PDF (abre pelo link temporário). O movimento se vê pela setinha.
 // Ao importar, só uma barrinha por cima da tela, que some em 2,7 s. Embaixo, a conferência (com mais de um
 // banco, a do banco cujo nome foi clicado).
 import { extrator as x, type empresas } from '@nads/core';
@@ -268,11 +268,11 @@ export function TarefaExtratos() {
                         onClick={() => { void vm.importarTeste('sistema', b.id); }}><Icone nome="zap" /></button>
                     )}
                   </div>
-                  {temExtrato ? (
-                    <button type="button" className="btn btn-sm btn-outline imp-sem-mov"
-                      title={doDrive.length ? 'Abrir o PDF do Drive (link temporário)' : 'Ver o movimento importado'}
-                      onClick={() => { if (doDrive.length) visualizarDoDrive(doDrive[doDrive.length - 1]); else if (!aberta) alternar(b.id); }}>
-                      Visualizar
+                  {/* importado: o movimento se vê pela setinha; do Drive, um botãozinho de PDF (link temporário, não guardado) */}
+                  {temExtrato ? doDrive.length > 0 && (
+                    <button type="button" className="btn btn-sm btn-outline imp-pdf" title={'Abrir o PDF do Drive: ' + doDrive[doDrive.length - 1].nome}
+                      aria-label="Abrir o PDF do Drive" onClick={() => visualizarDoDrive(doDrive[doDrive.length - 1])}>
+                      <Icone nome="fileText" />PDF
                     </button>
                   ) : ponte.naTarefa && (
                     <button type="button" className={'btn btn-sm btn-outline imp-sem-mov' + (semMov ? ' marcado' : '')} aria-pressed={semMov}
