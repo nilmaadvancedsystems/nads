@@ -1079,6 +1079,8 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
    fixa com as saídas da etapa (Pedir extrato, Buscar no Drive…), Interromper e Próximo */
 #app.larga .content,#app.larga .topbar{max-width:none;}
 #app.larga .content{padding-bottom:0;}
+/* a etapa encosta a ferramenta (e a barra de rolagem dela) na borda direita da tela */
+#app.larga .main{padding-right:0;}
 #app.larga .topbar[hidden] + .content{padding-top:16px;}
 /* a etapa ocupa a tela até embaixo (sem sobra): a ferramenta estica no que sobrar depois dos avisos */
 .executor-area{display:flex;flex-direction:column;gap:12px;height:calc(100vh - var(--hdr-h,64px) - 16px);}
