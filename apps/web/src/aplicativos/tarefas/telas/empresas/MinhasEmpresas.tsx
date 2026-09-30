@@ -3,6 +3,7 @@
 // o painel para escolher a empresa, em partes/PainelIniciar) e a lista (clicar no título da coluna ordena; clicar na linha abre a página da empresa). Os números por situação ficam em Insights.
 import { Icone, MenuSuspenso, useCarregando } from '@nads/ui';
 import { useEffect, useRef } from 'react';
+import { useLocation } from 'react-router';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { PainelIniciar } from './partes/PainelIniciar';
 import { LIMITE, useMinhasEmpresas, type Coluna } from './useMinhasEmpresas';
@@ -24,6 +25,7 @@ export function MinhasEmpresas() {
   const campoBusca = useRef<HTMLInputElement>(null);
   useCarregando(vm.carregando);
 
+  const iniciarPedido = (useLocation().state as { iniciar?: number } | null)?.iniciar;
   // "/" leva para a busca (como o "T" do "Go to file" do GitHub)
   useEffect(() => {
     const atalho = (e: KeyboardEvent) => {
@@ -63,7 +65,8 @@ export function MinhasEmpresas() {
           className={'btn btn-outline' + (vm.situacao ? ' ativo' : '')}
           itens={[{ rotulo: 'Todas', marcado: !vm.situacao, onClick: () => vm.setSituacao('') },
             ...vm.situacoes.map(s => ({ rotulo: s.rotulo, marcado: s.valor === vm.situacao, onClick: () => vm.setSituacao(s.valor) }))]} />
-        <MenuSuspenso icone="play" rotulo="Iniciar" className="btn btn-primary" classeAberto="botao-apagado" direita largura={400} dica="Escolher a empresa para iniciar"
+        {/* "Novo ▾ → Iniciar empresa…" do cabeçalho chega aqui com o painel já aberto */}
+        <MenuSuspenso key={iniciarPedido} abertoInicial={!!iniciarPedido} icone="play" rotulo="Iniciar" className="btn btn-primary" classeAberto="botao-apagado" direita largura={400} dica="Escolher a empresa para iniciar"
           conteudo={fechar => <PainelIniciar vm={vm} fechar={fechar} />} />
       </div>
 
