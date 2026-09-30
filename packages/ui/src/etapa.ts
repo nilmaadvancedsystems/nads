@@ -27,6 +27,17 @@ export function useAlturaNaEtapa(ativo: boolean) {
     const obs = new ResizeObserver(mandar);
     obs.observe(document.body);
     mandar();
+    // uma janela ou um menu aberto aqui dentro: a Tarefas esconde os botões soltos da etapa, que ficariam por cima
+    let janela: boolean | null = null;
+    const olharJanela = () => {
+      const agora = !!document.querySelector('.modal-overlay, .popover');
+      if (agora === janela) return;
+      janela = agora;
+      window.parent.postMessage({ nads: 'janela', aberta: agora }, pai);
+    };
+    const obsJanela = new MutationObserver(olharJanela);
+    obsJanela.observe(document.body, { childList: true, subtree: true });
+    olharJanela();
     const ouvir = (e: MessageEvent) => {
       if (e.source !== window.parent || e.origin !== pai) return;
       const d = e.data as { nads?: string; topo?: unknown; altura?: unknown } | null;
@@ -37,6 +48,7 @@ export function useAlturaNaEtapa(ativo: boolean) {
     window.addEventListener('message', ouvir);
     return () => {
       obs.disconnect();
+      obsJanela.disconnect();
       window.removeEventListener('message', ouvir);
       html.classList.remove('na-etapa');
     };
@@ -51,9 +63,11 @@ export function useAlturaNaEtapa(ativo: boolean) {
 export function useFerramentaNaEtapa(iframe: RefObject<HTMLIFrameElement | null>, chave: string | undefined) {
   const [altura, setAltura] = useState<number | null>(null);
   const [carregando, setCarregando] = useState(!!chave);
+  const [janelaAberta, setJanelaAberta] = useState(false);
   useEffect(() => {
     setAltura(null);
     setCarregando(!!chave);
+    setJanelaAberta(false);
     let disse = false;
     const limite = setTimeout(() => { if (!disse) setCarregando(false); }, 10000);
     let quadro = 0;
@@ -73,6 +87,7 @@ export function useFerramentaNaEtapa(iframe: RefObject<HTMLIFrameElement | null>
       const d = e.data as { nads?: string; px?: unknown; ativo?: unknown } | null;
       if (d?.nads === 'altura' && typeof d.px === 'number' && d.px > 0) { setAltura(d.px); mandarVista(); }
       if (d?.nads === 'carregando' && typeof d.ativo === 'boolean') { disse = true; setCarregando(d.ativo); }
+      if (d?.nads === 'janela' && typeof (d as { aberta?: unknown }).aberta === 'boolean') setJanelaAberta(!!(d as { aberta?: boolean }).aberta);
     };
     window.addEventListener('message', ouvir);
     window.addEventListener('scroll', mandarVista, { passive: true });
@@ -85,5 +100,5 @@ export function useFerramentaNaEtapa(iframe: RefObject<HTMLIFrameElement | null>
       window.removeEventListener('resize', mandarVista);
     };
   }, [iframe, chave]);
-  return { altura, carregando };
+  return { altura, carregando, janelaAberta };
 }

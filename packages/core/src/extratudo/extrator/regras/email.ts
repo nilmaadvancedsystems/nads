@@ -4,6 +4,8 @@
 // tabelas, estilo inline, 600px. As imagens vão por endereço (o logo e os logos dos bancos, publicados no site).
 import { competenciasPorExtenso, dataPorExtenso, type PedidoDeExtratos } from './pedido';
 
+const MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const C = { tinta: '#0B0B0C', texto: '#55555C', fraco: '#8C8C92', mais: '#A0A0A8', borda: '#E6E6E9', cinza: '#F7F7F8', fundo: '#F2F2F3', vinho: '#93282F' };
 const F = "Montserrat,'Segoe UI',Helvetica,Arial,sans-serif";
@@ -38,13 +40,17 @@ export function htmlDoPedido(o: OpcoesDoEmail): string {
   const pilula = '<span style="display:inline-block;font-size:9px;line-height:14px;letter-spacing:1.5px;font-weight:700;color:' + C.vinho + ';border:1px solid ' + C.vinho + ';border-radius:20px;padding:1px 8px;white-space:nowrap">PENDENTE</span>';
   const cartoes = p.documentos.map((d, i) => {
     const logo = d.banco ? o.logoDoBanco(d.banco) : null;
+    // com mais de uma competência no pedido, os meses deste documento em pílulas pequenas
+    const meses = d.competencias && new Set(p.competencias).size > 1
+      ? '<p style="margin:6px 0 0">' + [...d.competencias].sort().map(c => '<span style="display:inline-block;margin:0 4px 0 0;padding:1px 8px;border-radius:20px;background:#FFFFFF;border:1px solid ' + C.borda + ';font-size:11px;line-height:16px;font-weight:600;color:' + C.tinta + '">' + MESES_CURTOS[Number(c.slice(5, 7)) - 1] + '/' + c.slice(0, 4) + '</span>').join('') + '</p>'
+      : '';
     return '<tr><td style="padding:0 0 10px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate"><tr>' +
       '<td bgcolor="' + C.cinza + '" style="background:' + C.cinza + ';border:1px solid ' + C.borda + ';border-radius:12px;padding:16px 18px">' +
       '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>' +
       '<td width="40" valign="top" style="font-size:13px;line-height:22px;font-weight:800;letter-spacing:1px;color:' + C.vinho + '">' + String(i + 1).padStart(2, '0') + '</td>' +
       (logo ? '<td width="32" valign="top" style="padding-top:1px"><img src="' + esc(logo) + '" width="22" height="22" alt="" style="display:block;width:22px;height:22px;border:0;border-radius:5px"></td>' : '') +
       '<td valign="top"><p style="margin:0;font-size:15px;line-height:22px;font-weight:700;color:' + C.tinta + '">' + esc(d.nome) + '</p>' +
-      (d.detalhe ? '<p style="margin:2px 0 0;font-size:13px;line-height:19px;color:' + C.texto + '">' + esc(d.detalhe) + '</p>' : '') + '</td>' +
+      (d.detalhe ? '<p style="margin:2px 0 0;font-size:13px;line-height:19px;color:' + C.texto + '">' + esc(d.detalhe) + '</p>' : '') + meses + '</td>' +
       '<td class="hide-m" width="90" align="right" valign="top" style="padding-top:3px">' + pilula + '</td>' +
       '</tr></table></td></tr></table></td></tr>';
   }).join('');

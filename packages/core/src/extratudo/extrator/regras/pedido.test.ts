@@ -40,6 +40,15 @@ describe('pedir documentos', () => {
     expect(h).toContain('Julho e agosto/2026');
   });
 
+  it('com mais de uma competência, cada documento diz as dele (texto e HTML)', () => {
+    const p2: PedidoDeExtratos = { ...pedido, documentos: [{ ...docs[0], competencias: ['2026-08', '2026-07'] }, { ...docs[1], competencias: ['2026-08'] }] };
+    expect(textoDoPedido(p2, '')).toContain('- Comprovantes bancários (agosto/2026)');
+    expect(textoDoPedido(p2, '')).toContain('(julho e agosto/2026)');
+    const h = htmlDoPedido({ pedido: p2, prazo: '', enviadoEm: new Date(2026, 8, 30), logo: 'l', logoDoBanco: () => null });
+    expect(h).toContain('jul/2026');
+    expect(h).toContain('ago/2026');
+  });
+
   it('o WhatsApp: texto com "•"; o telefone do cadastro para o wa.me', () => {
     expect(textoDoWhatsApp(pedido, '')).toContain('• Comprovantes bancários');
     expect(telefoneParaWhatsApp('(38) 99999-1234')).toBe('5538999991234');

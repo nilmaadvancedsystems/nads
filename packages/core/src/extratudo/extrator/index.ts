@@ -25,7 +25,7 @@ export { gravacao, semMudanca, empresaDoBanco, type Gravacao, type DocEmpresaExt
 export { criarRepoExtratorMemoria, type Guarda } from './repo.memoria';
 export {
   assuntoDoPedido, competenciaDoPedido, competenciasPorExtenso, linkDoWhatsApp, mesPorExtenso, rotuloDoBanco, telefoneParaWhatsApp, textoDoPedido,
-  documentosDoPedido, textoDoWhatsApp, registrarPedido, prazoPadrao, dataPorExtenso,
+  documentosDoPedido, textoDoWhatsApp, registrarPedido, prazoPadrao, dataPorExtenso, nomeComCompetencias,
   type BancoDoPedido, type CanalDoPedido, type PedidoDeExtratos, type DocumentoDoPedido,
 } from './regras/pedido';
 export { htmlDoPedido, type OpcoesDoEmail } from './regras/email';

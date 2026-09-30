@@ -20,7 +20,7 @@ export function Executor() {
   const iframe = useRef<HTMLIFrameElement>(null);
   usePonteDaFerramenta(iframe, vm.semMovimento, vm.marcarSemMovimento, vm.trocarCompetencia);
   // a ferramenta do tamanho do conteúdo dela: a página toda rola junto, numa barra só
-  const { altura, carregando: ferramentaCarregando } = useFerramentaNaEtapa(iframe, vm.ferramenta?.embutir ? vm.ferramenta.url : undefined);
+  const { altura, carregando: ferramentaCarregando, janelaAberta } = useFerramentaNaEtapa(iframe, vm.ferramenta?.embutir ? vm.ferramenta.url : undefined);
   // uma barra só, no alto da página: a da Tarefas e a da ferramenta juntas
   useCarregando(vm.carregando || vm.conferindo || ferramentaCarregando);
   if (!vm.empresa) return <Navigate to={BASE} replace />;
@@ -69,7 +69,8 @@ export function Executor() {
           </div>
           {vm.aviso && <Alerta titulo="Ainda não dá para seguir" texto={vm.aviso} />}
           {/* os botões da etapa soltos por cima da tela, no canto: as saídas (quando a etapa tem), ✕ Interromper e → Próximo */}
-          <div className="executor-flutuante">
+          {/* só na primeira camada: com janela ou menu aberto (aqui ou na ferramenta), os botões saem da frente */}
+          <div className="executor-flutuante" hidden={janelaAberta || vm.interrompendo}>
             <Objecoes etapa={vm.etapa} onResolver={vm.resolver} />
             <button type="button" className="executor-botao" onClick={vm.abrirInterromper} title="Interromper a etapa" aria-label="Interromper">
               <Icone nome="x" />
