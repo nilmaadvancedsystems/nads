@@ -1366,3 +1366,9 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 /* o resumo à esquerda do Extrato: na mesma linha e no mesmo tamanho dos rótulos; um traço fino entre as partes */
 .imp-resumo{display:inline-flex;align-items:center;font-size:12px;line-height:20px;color:var(--ink-muted);white-space:nowrap;}
 .imp-resumo > span + span::before{content:'';display:inline-block;width:1px;height:12px;margin:0 10px;background:var(--border);vertical-align:-2px;}
+
+/* o rodapé da Casca: depois de tudo, na largura toda (só se vê rolando até o fim); a marca G&V em letra bem grossa */
+.rodape{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;padding:24px 16px;border-top:1px solid var(--border);
+  font-size:12px;line-height:20px;color:var(--ink-muted);}
+.rodape-marca{font-size:18px;font-weight:900;letter-spacing:-1px;line-height:1;color:var(--ink-muted);}
+@media print{.rodape{display:none;}}

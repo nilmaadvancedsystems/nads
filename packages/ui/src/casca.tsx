@@ -233,7 +233,21 @@ export function Casca(p: {
         {principal}
       </div>
       )}
+      {!noOutro && <Rodape />}
     </div>
+  );
+}
+
+/**
+ * O rodapé (como o do GitHub): no fim da página, na largura toda; só aparece quando a pessoa rola até o fim.
+ * Por enquanto só a marca e o direito autoral; os links (Termos, Privacidade…) vêm depois, com as páginas.
+ */
+function Rodape() {
+  return (
+    <footer className="rodape">
+      <span className="rodape-marca" aria-hidden="true">G&amp;V</span>
+      <span>© {new Date().getFullYear()} Grupo G&amp;V by Gustavo Santos &amp; Vítor Dias, Inc.</span>
+    </footer>
   );
 }
 
