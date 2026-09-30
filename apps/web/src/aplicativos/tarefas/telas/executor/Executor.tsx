@@ -13,12 +13,13 @@ import { Objecoes } from './partes/Objecoes';
 import { useExecutor } from './useExecutor';
 
 export function Executor() {
-  const { empresa: rota = '', competencia = '' } = useParams();
-  const vm = useExecutor(rota, competencia);
+  // a competência da rota pode ser um período ('2026-06..2026-08'): a Etapa com vários meses
+  const { empresa: rota = '', competencia: periodo = '' } = useParams();
+  const vm = useExecutor(rota, periodo);
   const casca = useCascaTarefas('minhas-empresas', 'empresas');
   // a ferramenta da etapa (iframe): recebe os bancos sem movimento e avisa quando a pessoa marca um
   const iframe = useRef<HTMLIFrameElement>(null);
-  usePonteDaFerramenta(iframe, vm.semMovimento, vm.marcarSemMovimento, vm.trocarCompetencia);
+  usePonteDaFerramenta(iframe, vm.semMovimentoPorMes, vm.competencia, vm.marcarSemMovimento, vm.trocarCompetencia);
   // a ferramenta do tamanho do conteúdo dela: a página toda rola junto, numa barra só
   const { altura, carregando: ferramentaCarregando, janelaAberta } = useFerramentaNaEtapa(iframe, vm.ferramenta?.embutir ? vm.ferramenta.url : undefined);
   // uma barra só, no alto da página: a da Tarefas e a da ferramenta juntas
@@ -26,8 +27,9 @@ export function Executor() {
   if (!vm.empresa) return <Navigate to={BASE} replace />;
 
   const checklist = vm.etapas.map(e => ({
-    id: e.id, rotulo: e.nome, icone: 'check' as const, grupo: 1, ativa: e.atual,
-    caixa: e.situacao === 'feita' || e.situacao === 'dispensada' ? 'marcada' as const : e.situacao === 'interrompida' ? 'parada' as const : 'vazia' as const,
+    // no período, quantos meses a etapa já tem feitos ("Importação · 1/3")
+    id: e.id, rotulo: e.nome + (vm.varios && e.feitos > 0 && e.feitos < vm.meses.length ? ' · ' + e.feitos + '/' + vm.meses.length : ''), icone: 'check' as const, grupo: 1, ativa: e.atual,
+    caixa: e.situacao === 'feita' ? 'marcada' as const : e.situacao === 'interrompida' ? 'parada' as const : 'vazia' as const,
   }));
 
   return (

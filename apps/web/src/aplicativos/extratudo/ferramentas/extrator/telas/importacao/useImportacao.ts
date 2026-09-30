@@ -229,6 +229,16 @@ export function useImportacao() {
     competencias: tarefas.competenciasRecentes(new Date(), 12).map(c => ({ valor: c, rotulo: tarefas.rotuloCompetencia(c) })),
     /** Fora da Tarefas: troca a competência na URL (dentro dela, quem troca é a Tarefas, pela ponte). */
     setCompetencia: (c: string) => { const n = new URLSearchParams(params); n.set('competencia', c); setParams(n); },
+    /**
+     * A Etapa com vários meses: os meses do período (?meses=aaaa-mm,…; vazio = um mês só) e, de cada um, se
+     * já está pronto (todo banco com extrato e razão do mês, ou sem movimento naquele mês).
+     */
+    periodo: (params.get('meses') || '').split(',').filter(m => /^\d{4}-\d{2}$/.test(m)),
+    prontoNoMes: (competencia: string, semMovimento: string[]) => {
+      const bs = x.bancosDaEmpresaNa(s.empresa, cad.cadastro, s.codigo, competencia).bancos;
+      return bs.length > 0 && bs.every(b => semMovimento.includes(b.id) ||
+        (x.arquivosDoBanco(s.empresa, b.id, primeiro, 'banco', competencia).length > 0 && x.arquivosDoBanco(s.empresa, b.id, primeiro, 'sistema', competencia).length > 0));
+    },
     primeiro,
     bancos: bancos.map(b => {
       const lado = (l: x.Lado) => {

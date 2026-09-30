@@ -9,7 +9,7 @@
 //   à direita: "Não teve movimento" (trava a linha e vira "Desfazer"); com o extrato vindo do Drive, um
 //     botãozinho de PDF (abre pelo link temporário). O movimento se vê pela setinha.
 // Ao importar, só uma barrinha por cima da tela, que some em 2,7 s.
-import { extrator as x, type empresas } from '@nads/core';
+import { extrator as x, type empresas, tarefas } from '@nads/core';
 import { Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useCarregando } from '@nads/ui';
 import { useEffect, useId, useState } from 'react';
 import { usePonteDaTarefa } from '../../../../../../comum/ponte';
@@ -172,10 +172,53 @@ function resumo(b: Vm['bancos'][number]): string[] {
   return [parte('Extrato', b.extrato), parte('Razão', b.razao)].filter(Boolean);
 }
 
+/**
+ * O seletor de competência (como o "main ▾" do GitHub): os meses e, dentro da Tarefas, "Vários meses" — abre a
+ * mesma empresa no período (a Etapa com vários meses). Fora da Tarefas, troca o mês na URL.
+ */
+function SeletorDeCompetencia({ vm, naTarefa, trocar }: { vm: ReturnType<typeof useImportacao>; naTarefa: boolean; trocar: (c: string) => void }) {
+  const periodo = vm.periodo.length > 1 ? vm.periodo : [];
+  const [de, setDe] = useState(periodo[0] || vm.competencias[2]?.valor || vm.competencia);
+  const [ate, setAte] = useState(periodo[periodo.length - 1] || vm.competencia);
+  const rotulo = periodo.length ? tarefas.rotuloCurtoCompetencia(periodo[0]).slice(0, 3) + ' a ' + tarefas.rotuloCurtoCompetencia(periodo[periodo.length - 1]) : vm.rotuloCompetencia;
+  const ir = (c: string) => { if (naTarefa) trocar(c); else vm.setCompetencia(c); };
+  return (
+    <MenuSuspenso icone="calendar" rotulo={rotulo} titulo="Competência" dica="Trocar a competência" largura={260}
+      conteudo={fechar => (
+        <>
+          {vm.competencias.map(c => (
+            <button key={c.valor} type="button" className="popover-item" role="menuitem" onClick={() => { fechar(); ir(c.valor); }}>
+              <span className="popover-marca">{!periodo.length && c.valor === vm.competencia && <Icone nome="check" />}</span>
+              <span className="popover-texto">{c.rotulo}</span>
+            </button>
+          ))}
+          {naTarefa && (
+            <>
+              <hr className="popover-sep" />
+              <p className="popover-label">Vários meses</p>
+              <div className="imp-periodo">
+                <select aria-label="Do mês" value={de} onChange={e => setDe(e.target.value)}>
+                  {vm.competencias.map(c => <option key={c.valor} value={c.valor}>{c.rotulo}</option>)}
+                </select>
+                <span className="hint">a</span>
+                <select aria-label="Até o mês" value={ate} onChange={e => setAte(e.target.value)}>
+                  {vm.competencias.map(c => <option key={c.valor} value={c.valor}>{c.rotulo}</option>)}
+                </select>
+              </div>
+              <button type="button" className="btn btn-primary btn-sm imp-periodo-abrir" disabled={de === ate} onClick={() => { fechar(); trocar(tarefas.rotaDoPeriodo(de, ate)); }}>
+                Abrir os meses juntos
+              </button>
+            </>
+          )}
+        </>
+      )} />
+  );
+}
+
 export function TarefaExtratos() {
   const vm = useImportacao();
   const s = useSessao();
-  const ponte = usePonteDaTarefa();
+  const ponte = usePonteDaTarefa(vm.competencia);
   const d = useDriveDaLinha(vm, s.codigo);
   const pe = usePedirExtratos(vm, s.codigo, s.nome, ponte.semMovimento, d.pedirLogin, { logo: urlDoLogoNilma(), logoDoBanco: urlDoLogoBanco });
   // os logos do Pedir extrato (Gmail/WhatsApp) já vêm com a página: no clique, aparecem na hora
@@ -197,9 +240,18 @@ export function TarefaExtratos() {
     <section className="tarefa-extratos">
       <div className="imp-topo">
         {/* à esquerda, como o "⎇ main ▾  6 Branches" do GitHub: a competência e o número de bancos */}
-        <MenuSuspenso icone="calendar" rotulo={vm.rotuloCompetencia} titulo="Competência" dica="Trocar a competência" largura={220}
-          itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia,
-            onClick: () => { if (ponte.naTarefa) ponte.trocarCompetencia(c.valor); else vm.setCompetencia(c.valor); } }))} />
+        <SeletorDeCompetencia vm={vm} naTarefa={ponte.naTarefa} trocar={ponte.trocarCompetencia} />
+        {/* a Etapa com vários meses: uma aba por mês (✓ = o mês já está pronto) */}
+        {vm.periodo.length > 1 && (
+          <div className="imp-meses" role="tablist" aria-label="Meses do período">
+            {vm.periodo.map(m => (
+              <button key={m} type="button" role="tab" aria-selected={m === vm.competencia} className={'imp-mes' + (m === vm.competencia ? ' on' : '')} onClick={() => vm.setCompetencia(m)}>
+                {tarefas.rotuloCurtoCompetencia(m)}
+                {vm.prontoNoMes(m, ponte.semMovimentoPorMes[m] || []) && <Icone nome="check" />}
+              </button>
+            ))}
+          </div>
+        )}
         <span className="imp-topo-num"><Icone nome="landmark" /><b>{vm.bancos.length}</b> {vm.bancos.length === 1 ? 'banco' : 'bancos'}</span>
         <span className="imp-topo-meio" />
         <MenuSuspenso rotulo="Pedir extratos" setaAntes className="btn btn-outline" direita

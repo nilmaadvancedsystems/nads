@@ -1,12 +1,15 @@
 // ViewModel do executor (a tela cheia das etapas): a etapa da vez, a ferramenta dela, as objeções,
 // o "Próximo" (check automático → marca feita e passa para a próxima), o "Interromper" (com o motivo)
 // e o "Não se aplica". Cada coisa vira evento com hora e pessoa.
+// Etapa com vários meses: a rota pode ser um período ('2026-06..2026-08'). Continua uma execução por mês; a
+// etapa da vez é a primeira que falta em algum mês. Se a ferramenta trabalha o período (ferramenta.periodo, o
+// Extrator), o Próximo confere e marca todos os meses que faltam de uma vez; senão, vai mês a mês.
 import { empresas, extrator, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { extratorDaEmpresa, repoDoCadastro } from '../../dados/fonte';
-import { useExecucoes, useRepo } from '../../dados/repo';
+import { useExecucoesDoPeriodo, useRepo } from '../../dados/repo';
 import { caminhoDaEmpresa, caminhoDaPagina, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 
@@ -21,16 +24,29 @@ const BASES: Record<t.FerramentaDaEtapa['app'], string> = {
   'concilia-ai': 'https://nads-nilma.web.app',
 };
 
-export function useExecutor(rotaEmpresa: string, competencia: string) {
+export function useExecutor(rotaEmpresa: string, periodo: string) {
   const repo = useRepo();
   const navegar = useNavigate();
   const { toast, modal } = useRetorno();
   const op = useOperador().operador as Operador;
   const rotina = t.ROTINA_CONTABIL;
   const empresa = empresas.empresaPelaRota(repo.listarEmpresas(), rotaEmpresa);
-  const { execucoes, carregada } = useExecucoes(competencia, rotina.departamento);
-  const ex = (empresa && execucoes.find(e => e.empresa === empresa.nome)) || (empresa ? t.execucaoNova(empresa.nome, empresa.codigo, competencia, rotina.departamento) : null);
-  const etapa = ex ? t.proximaEtapa(ex, rotina) : null;
+  const meses = t.competenciasDoPeriodo(periodo);
+  const varios = meses.length > 1;
+  const { porMes, carregada } = useExecucoesDoPeriodo(meses, rotina.departamento);
+  // a execução de cada mês (a que já existe ou uma nova)
+  const exDe: Record<string, t.Execucao> = {};
+  if (empresa) for (const m of porMes) exDe[m.competencia] = m.execucoes.find(e => e.empresa === empresa.nome) || t.execucaoNova(empresa.nome, empresa.codigo, m.competencia, rotina.departamento);
+  const concluidaEm = (id: string, c: string) => t.concluida(t.situacaoDa(exDe[c] || null, id));
+  // a etapa da vez: a primeira que falta em algum mês do período
+  const etapa = empresa && meses.length ? rotina.etapas.find(e => meses.some(c => !concluidaEm(e.id, c))) || null : null;
+  const pendentes = etapa ? meses.filter(c => !concluidaEm(etapa.id, c)) : [];
+  const f = etapa?.ferramenta || null;
+  // a ferramenta trabalha o período inteiro? então as ações valem para todos os meses que faltam; senão, só o primeiro
+  const juntos = !!f?.periodo;
+  const alvos = juntos ? pendentes : pendentes.slice(0, 1);
+  const competencia = pendentes[0] || meses[meses.length - 1] || '';
+  const ex = exDe[competencia] || null;
   const carregando = !carregada;
   const [aviso, setAviso] = useState<string | null>(null);
   const [conferindo, setConferindo] = useState(false);
@@ -38,28 +54,39 @@ export function useExecutor(rotaEmpresa: string, competencia: string) {
 
   // começou (ou voltou a) uma etapa: um evento por etapa aberta (conta o tempo de cada uma)
   const iniciadas = useRef(new Set<string>());
+  const chaveDosAlvos = alvos.join(',');
   useEffect(() => {
-    if (!carregada || !ex || !etapa || iniciadas.current.has(etapa.id)) return;
-    iniciadas.current.add(etapa.id);
-    repo.registrar(ex, t.eventoDeInicio(etapa.id, op.nome, new Date()));
-  }, [carregada, ex, etapa, repo, op.nome]);
+    if (!carregada || !etapa) return;
+    for (const c of chaveDosAlvos.split(',').filter(Boolean)) {
+      const k = etapa.id + '|' + c;
+      if (iniciadas.current.has(k) || !exDe[c]) continue;
+      iniciadas.current.add(k);
+      repo.registrar(exDe[c], t.eventoDeInicio(etapa.id, op.nome, new Date()));
+    }
+  });
 
   /**
    * Clique numa etapa do checklist: dá para voltar a uma etapa anterior já concluída — o check dela sai
    * e ela vira a da vez (as outras ficam como estão). Etapa da vez ou mais à frente: não faz nada.
    */
   function voltarPara(id: string) {
-    if (!ex || !etapa || carregando || conferindo) return;
+    if (!etapa || carregando || conferindo) return;
     const alvo = rotina.etapas.findIndex(e => e.id === id);
-    if (alvo < 0 || alvo >= rotina.etapas.findIndex(e => e.id === etapa.id) || !t.concluida(t.situacaoDa(ex, id))) return;
-    const v = t.voltarPara(ex, id, op.nome, new Date());
-    iniciadas.current.delete(id);
-    repo.gravar(v.execucao, v.evento);
+    if (alvo < 0 || alvo >= rotina.etapas.findIndex(e => e.id === etapa.id)) return;
+    // no período: volta em todos os meses em que ela estava feita
+    for (const c of meses.filter(m => concluidaEm(id, m))) {
+      const v = t.voltarPara(exDe[c], id, op.nome, new Date());
+      iniciadas.current.delete(id + '|' + c);
+      repo.gravar(v.execucao, v.evento);
+    }
     setAviso(null);
   }
 
-  const voltar = () => navegar(caminhoDaPagina('minhas-empresas', 'empresas') + '?competencia=' + competencia);
+  const ultimo = meses[meses.length - 1] || competencia;
+  const voltar = () => navegar(caminhoDaPagina('minhas-empresas', 'empresas') + '?competencia=' + ultimo);
+  const rotuloCurto = (c: string) => t.rotuloCurtoCompetencia(c);
 
+  /** Confere e marca a etapa em cada mês que falta (no período, todos de uma vez); o que não passou vira aviso. */
   async function proximo() {
     if (!ex || !etapa || conferindo) return;
     setConferindo(true);
@@ -67,25 +94,31 @@ export function useExecutor(rotaEmpresa: string, competencia: string) {
       const ext = t.precisaDoExtrator(etapa) ? await extratorDaEmpresa(ex.empresa) : null;
       // os bancos da empresa na competência: os do Cadastro, quando ela tem; senão, os de antes
       const cad = ext ? await repoDoCadastro().obter(ex.empresa, ex.codigo) : null;
-      const { bancos, primeiro } = ext ? extrator.bancosDaEmpresaNa(ext, cad, ex.codigo, competencia) : { bancos: [], primeiro: undefined };
-      if (ext && t.todosSemMovimento(ex, bancos)) {
-        // nenhum banco teve movimento: a etapa não se aplica nesta competência
-        const d = t.dispensar(ex, etapa.id, 'sem-movimento', '', op.nome, new Date());
-        repo.gravar(d.execucao, d.evento);
-        setAviso(null);
-        toast(etapa.nome + ': sem movimento.');
-        return;
+      const falhas: string[] = [];
+      const feitos: string[] = [];
+      let semMov = 0;
+      for (const c of alvos) {
+        const exc = exDe[c];
+        const { bancos, primeiro } = ext ? extrator.bancosDaEmpresaNa(ext, cad, exc.codigo, c) : { bancos: [], primeiro: undefined };
+        if (ext && t.todosSemMovimento(exc, bancos)) {
+          // nenhum banco teve movimento: a etapa não se aplica nesta competência
+          const d = t.dispensar(exc, etapa.id, 'sem-movimento', '', op.nome, new Date());
+          repo.gravar(d.execucao, d.evento);
+          feitos.push(c); semMov++;
+          continue;
+        }
+        const r = t.verificar(etapa, c, ext?.arquivos || [], ext ? { bancos, primeiro, semMovimento: exc.semMovimento || [] } : undefined);
+        if (!r.ok) {
+          falhas.push((varios ? rotuloCurto(c) + ': ' : '') + r.motivo);
+          repo.registrar(exc, t.eventoDeVerificacaoFalhou(etapa.id, op.nome, new Date(), r.motivo));
+          continue;
+        }
+        const fz = t.fazer(exc, etapa.id, op.nome, new Date());
+        repo.gravar(fz.execucao, fz.evento);
+        feitos.push(c);
       }
-      const r = t.verificar(etapa, competencia, ext?.arquivos || [], ext ? { bancos, primeiro, semMovimento: ex.semMovimento || [] } : undefined);
-      if (!r.ok) {
-        setAviso(r.motivo);
-        repo.registrar(ex, t.eventoDeVerificacaoFalhou(etapa.id, op.nome, new Date(), r.motivo));
-        return;
-      }
-      const f = t.fazer(ex, etapa.id, op.nome, new Date());
-      repo.gravar(f.execucao, f.evento);
-      setAviso(null);
-      toast(etapa.nome + ': feita.');
+      setAviso(falhas.length ? falhas.join(' · ') : null);
+      if (feitos.length) toast(etapa.nome + (semMov === feitos.length ? ': sem movimento' : ': feita') + (varios ? ' em ' + feitos.map(rotuloCurto).join(', ') : '') + '.');
     } catch (e) {
       setAviso('Não consegui conferir agora: ' + (e instanceof Error ? e.message : String(e)));
     } finally {
@@ -100,15 +133,19 @@ export function useExecutor(rotaEmpresa: string, competencia: string) {
       botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Não se aplica', valor: true, variante: 'btn-primary' }],
     });
     if (!ok) return;
-    const d = t.dispensar(ex, etapa.id, objecao.id, '', op.nome, new Date());
-    repo.gravar(d.execucao, d.evento);
+    for (const c of alvos) {
+      const d = t.dispensar(exDe[c], etapa.id, objecao.id, '', op.nome, new Date());
+      repo.gravar(d.execucao, d.evento);
+    }
     setAviso(null);
   }
 
   function interromper(objecao: string, observacao: string) {
     if (!ex || !etapa) return;
-    const i = t.interromper(ex, etapa.id, objecao, observacao, op.nome, new Date());
-    repo.gravar(i.execucao, i.evento);
+    for (const c of alvos) {
+      const i = t.interromper(exDe[c], etapa.id, objecao, observacao, op.nome, new Date());
+      repo.gravar(i.execucao, i.evento);
+    }
     setInterrompendo(false);
     toast('Etapa interrompida: ' + etapa.nome + '.');
     voltar();
@@ -122,27 +159,34 @@ export function useExecutor(rotaEmpresa: string, competencia: string) {
     if (o.solucao.tipo === 'drive') { toast('Drive: em desenvolvimento.'); return; }
   }
 
-  const f = etapa?.ferramenta || null;
   return {
-    empresa, competencia, rotuloCompetencia: t.rotuloCompetencia(competencia),
+    empresa, competencia, periodo, meses, varios, rotuloCompetencia: t.rotuloDoPeriodo(meses.length ? meses : [competencia]),
     carregando: !carregada,
-    etapas: rotina.etapas.map((e, i) => ({ id: e.id, n: i + 1, nome: e.nome, situacao: t.situacaoDa(ex, e.id), atual: e.id === etapa?.id })),
+    etapas: rotina.etapas.map((e, i) => {
+      const feitos = meses.filter(c => concluidaEm(e.id, c)).length;
+      const parada = meses.some(c => t.situacaoDa(exDe[c] || null, e.id) === 'interrompida');
+      return { id: e.id, n: i + 1, nome: e.nome, situacao: feitos === meses.length && meses.length ? 'feita' as const : parada ? 'interrompida' as const : 'pendente' as const, feitos, atual: e.id === etapa?.id };
+    }),
     etapa, n: etapa ? rotina.etapas.findIndex(e => e.id === etapa.id) + 1 : 0, total: rotina.etapas.length,
     interrompidaAntes: etapa && ex ? t.estadoDa(ex, etapa.id)?.situacao === 'interrompida' ? t.estadoDa(ex, etapa.id) : null : null,
-    ferramenta: f && empresa ? { nome: f.nome, embutir: f.embutir, url: BASES[f.app] + f.caminho(empresas.rotaDaEmpresa(empresa)) + (f.app === 'extratudo' ? '?competencia=' + competencia : '') } : null,
+    // no período, a ferramenta que trabalha vários meses recebe todos (abas por mês); as outras, o mês da vez
+    ferramenta: f && empresa ? { nome: f.nome, embutir: f.embutir, url: BASES[f.app] + f.caminho(empresas.rotaDaEmpresa(empresa)) + (f.app === 'extratudo' ? '?competencia=' + competencia + (juntos && varios ? '&meses=' + meses.join(',') : '') : '') } : null,
+    /** os meses que a etapa ainda precisa (no período) */
+    pendentes: pendentes.map(rotuloCurto),
     aviso, conferindo, proximo, voltarPara,
     resolver,
     interrompendo, abrirInterromper: () => setInterrompendo(true), fecharInterromper: () => setInterrompendo(false), interromper,
     sair: voltar,
-    /** Os bancos sem movimento desta competência (a ferramenta da etapa mostra a linha marcada). */
-    semMovimento: ex?.semMovimento || [],
-    marcarSemMovimento: (banco: string, marcado: boolean) => {
-      if (!ex || !etapa || carregando) return;
-      const m = t.marcarSemMovimento(ex, etapa.id, banco, marcado, op.nome, new Date());
+    /** Os bancos sem movimento de cada mês (a ferramenta da etapa mostra a linha marcada no mês que estiver aberto). */
+    semMovimentoPorMes: Object.fromEntries(meses.map(c => [c, exDe[c]?.semMovimento || []])) as Record<string, string[]>,
+    marcarSemMovimento: (banco: string, marcado: boolean, mes?: string) => {
+      const c = mes && exDe[mes] ? mes : competencia;
+      if (!exDe[c] || !etapa || carregando) return;
+      const m = t.marcarSemMovimento(exDe[c], etapa.id, banco, marcado, op.nome, new Date());
       repo.gravar(m.execucao, m.evento);
     },
-    /** A ferramenta trocou a competência (o seletor dela): a mesma empresa, na outra competência. */
-    trocarCompetencia: (c: string) => { if (empresa && c !== competencia) navegar(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), c)); },
-    abrirEmpresa: () => { if (empresa) navegar(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), competencia)); },
+    /** A ferramenta trocou a competência ou o período (o seletor dela): a mesma empresa, no outro período. */
+    trocarCompetencia: (c: string) => { if (empresa && c !== periodo && t.competenciasDoPeriodo(c).length) navegar(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), c)); },
+    abrirEmpresa: () => { if (empresa) navegar(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), ultimo)); },
   };
 }

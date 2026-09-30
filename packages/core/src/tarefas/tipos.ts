@@ -22,6 +22,8 @@ export interface FerramentaDaEtapa {
   caminho: (rotaEmpresa: string) => string;
   /** false = abre em outra aba (quando não dá para embutir) */
   embutir: boolean;
+  /** a ferramenta trabalha vários meses de uma vez (a Etapa com vários meses); sem isso, vai mês a mês */
+  periodo?: boolean;
 }
 
 /** O que a tela oferece para resolver uma objeção. */

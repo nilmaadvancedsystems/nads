@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ArquivoImportado } from '../extratudo/extrator/tipos';
 import {
   competenciasRecentes, concluida, criarRepoTarefasMemoria, dispensar, execucaoNova, fazer, idDaExecucao, interromper,
-  objecoesMaisComuns, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar, execucoesVariadas, marcarSemMovimento, todosSemMovimento, voltarPara, rotuloCurtoCompetencia,
+  objecoesMaisComuns, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar, execucoesVariadas, marcarSemMovimento, todosSemMovimento, voltarPara, rotuloCurtoCompetencia, competenciasDoPeriodo, rotaDoPeriodo, rotuloDoPeriodo,
 } from '.';
 
 const R = ROTINA_CONTABIL;
@@ -43,6 +43,22 @@ describe('andamento', () => {
     for (const e of R.etapas) ex = fazer(ex, e.id, 'Clara', agora).execucao;
     expect(situacaoGeral(ex, R)).toBe('concluida');
     expect(proximaEtapa(ex, R)).toBeNull();
+  });
+});
+
+describe('etapa com vários meses: o período na rota', () => {
+  it('um mês, vários, virada de ano, invertido e inválido', () => {
+    expect(competenciasDoPeriodo('2026-08')).toEqual(['2026-08']);
+    expect(competenciasDoPeriodo('2026-06..2026-08')).toEqual(['2026-06', '2026-07', '2026-08']);
+    expect(competenciasDoPeriodo('2025-11..2026-02')).toEqual(['2025-11', '2025-12', '2026-01', '2026-02']);
+    expect(competenciasDoPeriodo('2026-08..2026-06')).toEqual(['2026-06', '2026-07', '2026-08']);
+    expect(competenciasDoPeriodo('2026-13')).toEqual([]);
+    expect(competenciasDoPeriodo('2020-01..2026-01')).toHaveLength(24);
+    expect(rotaDoPeriodo('2026-08', '2026-06')).toBe('2026-06..2026-08');
+    expect(rotaDoPeriodo('2026-08', '2026-08')).toBe('2026-08');
+    expect(rotuloDoPeriodo(['2026-06', '2026-07', '2026-08'])).toBe('Junho a Agosto/2026');
+    expect(rotuloDoPeriodo(['2025-12', '2026-01'])).toBe('Dezembro/2025 a Janeiro/2026');
+    expect(rotuloDoPeriodo(['2026-08'])).toBe('Agosto/2026');
   });
 });
 

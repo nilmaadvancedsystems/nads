@@ -32,6 +32,14 @@ export function useExecucoes(competencia: string, departamento: usuarios.Departa
   return { execucoes: repo.execucoes(competencia, departamento), carregada: repo.carregada(competencia, departamento) };
 }
 
+/** As execuções de cada competência do período (a Etapa com vários meses), e se todas já chegaram do banco. */
+export function useExecucoesDoPeriodo(competencias: string[], departamento: usuarios.Departamento) {
+  const repo = useRepo();
+  useVersaoDoRepo();
+  const porMes = competencias.map(c => ({ competencia: c, execucoes: repo.execucoes(c, departamento), carregada: repo.carregada(c, departamento) }));
+  return { porMes, carregada: porMes.every(m => m.carregada) };
+}
+
 export interface CadastroAoVivo {
   cadastro: empresas.cadastro.CadastroDaEmpresa;
   plano: empresas.cadastro.PlanoDeContas | null;
