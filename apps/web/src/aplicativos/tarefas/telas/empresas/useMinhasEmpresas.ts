@@ -115,8 +115,12 @@ export function useMinhasEmpresas() {
     lote, marcadaNoLote: (rota: string) => lote.includes(rota),
     alternarNoLote: (rota: string) => setLote(v => (v.includes(rota) ? v.filter(r => r !== rota) : [...v, rota])),
     podeIniciarEmLote: lote.length >= 2,
-    /** os endereços do executor das marcadas (a tela abre uma aba para cada); zera a marcação */
-    enderecosDoLote: () => { const r = lote.map(rota => caminhoDoExecutor(rota, a.competencia)); setLote([]); return r; },
+    /** as marcadas, com o endereço do executor (a tela abre uma aba para cada); zera a marcação */
+    enderecosDoLote: () => {
+      const r = lote.map(rota => { const l = a.linhas.find(x => x.rota === rota); return { endereco: caminhoDoExecutor(rota, a.competencia), rotulo: l ? (l.codigo != null ? l.codigo + ' · ' : '') + l.nome : rota }; });
+      setLote([]);
+      return r;
+    },
     filtroIniciar, filtrosIniciar: FILTROS_INICIAR,
     setFiltroIniciar: (f: FiltroIniciar) => setFiltroIniciar(atual => (atual === f ? 'todas' : f)),
     recentes: recentes.slice(0, LIMITE_INICIAR),

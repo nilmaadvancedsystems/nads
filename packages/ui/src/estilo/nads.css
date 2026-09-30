@@ -1423,3 +1423,7 @@ a.btn.is-locked{opacity:.55;cursor:not-allowed;}
 .drive-login-texto{font-size:14px;color:var(--ink);padding:16px 16px 0;margin:0;}
 .drive-login-google{padding:16px;}
 .drive-login-erro{color:var(--danger) !important;padding:0 16px 16px;margin:0;}
+.iniciar-faltam{padding:8px;border:1px solid var(--border);border-radius:6px;margin:8px 0;background:var(--surface-2);}
+.iniciar-faltam .hint{margin:0 0 6px;}
+/* o painel do Iniciar não rola: só a lista das empresas tem barra de rolagem */
+.menu-pop:has(> .iniciar-pop){max-height:none;overflow:visible;}

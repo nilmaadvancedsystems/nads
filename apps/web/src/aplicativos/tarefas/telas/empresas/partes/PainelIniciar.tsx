@@ -1,8 +1,10 @@
 // O painel do botão "Iniciar", no jeito do "Code ▾" do GitHub: abas em cima (Empresas / Recentes) e, na
 // mesma linha, "Iniciar em lote"; o filtro rápido e a busca, a lista (caixinha para o lote, código e nome;
-// clicar no nome inicia só aquela) e, embaixo, os atalhos. Recentes: as acessadas nos últimos 3 dias.
-// Em lote (duas ou mais marcadas), abre uma aba do navegador para cada empresa.
+// clicar no nome inicia só aquela) Recentes: as acessadas nos últimos 3 dias e, embaixo, os atalhos.
+// Em lote (duas ou mais marcadas), abre uma aba do navegador para cada empresa. O navegador só deixa abrir
+// uma aba por clique: as que ele bloquear ficam no painel, um botão para cada (cada clique abre uma).
 import { Icone, Segmentado, useRetorno } from '@nads/ui';
+import { useState } from 'react';
 import type { useMinhasEmpresas } from '../useMinhasEmpresas';
 
 type Vm = ReturnType<typeof useMinhasEmpresas>;
@@ -29,24 +31,44 @@ export function PainelIniciar({ vm, fechar }: { vm: Vm; fechar: () => void }) {
   const { toast } = useRetorno();
   const ir = (l: Linha | null) => { if (!l) return; fechar(); vm.iniciar(l.rota); };
   /** uma aba do navegador por empresa marcada (se o navegador bloquear, avisa para liberar as janelas) */
+  const [faltam, setFaltam] = useState<{ endereco: string; rotulo: string }[]>([]);
+  const abrirAba = (endereco: string) => { const w = window.open(new URL(endereco, window.location.href).href, '_blank'); return !!w && !w.closed; };
   const emLote = () => {
-    const enderecos = vm.enderecosDoLote();
-    const abertas = enderecos.map(e => window.open(new URL(e, window.location.href).href, '_blank')).filter(Boolean).length;
-    fechar();
-    toast(abertas < enderecos.length
-      ? 'O navegador bloqueou ' + (enderecos.length - abertas) + ' aba(s): libere as janelas pop-up deste site e tente de novo.'
-      : abertas + ' empresas abertas, uma em cada aba.');
+    const marcadas = vm.enderecosDoLote();
+    const bloqueadas = marcadas.filter(m => !abrirAba(m.endereco));
+    if (!bloqueadas.length) { fechar(); toast(marcadas.length + ' empresas abertas, uma em cada aba.'); return; }
+    setFaltam(bloqueadas);
+  };
+  const abrirUma = (m: { endereco: string; rotulo: string }) => {
+    abrirAba(m.endereco);
+    const resto = faltam.filter(f => f !== m);
+    setFaltam(resto);
+    if (!resto.length) fechar();
   };
   return (
     <div className="iniciar-pop">
       <div className="iniciar-abas" role="tablist">
         <button type="button" role="tab" className="iniciar-aba" aria-selected={vm.abaIniciar === 'escolher'} onClick={() => vm.setAbaIniciar('escolher')}>Empresas</button>
         <button type="button" role="tab" className="iniciar-aba" aria-selected={vm.abaIniciar === 'recentes'} onClick={() => vm.setAbaIniciar('recentes')}>Recentes</button>
-        <button type="button" className="btn btn-primary btn-sm iniciar-lote" disabled={!vm.podeIniciarEmLote} onClick={emLote}
-          title={vm.podeIniciarEmLote ? 'Abrir uma aba para cada empresa marcada' : 'Marque duas ou mais empresas'}>
-          Iniciar em lote{vm.lote.length ? ' (' + vm.lote.length + ')' : ''}
-        </button>
+        {/* o lote é só da aba Empresas (onde se marca) */}
+        {vm.abaIniciar === 'escolher' && (
+          <button type="button" className="btn btn-primary btn-sm iniciar-lote" disabled={!vm.podeIniciarEmLote} onClick={emLote}
+            title={vm.podeIniciarEmLote ? 'Abrir uma aba para cada empresa marcada' : 'Marque duas ou mais empresas'}>
+            Iniciar em lote{vm.lote.length ? ' (' + vm.lote.length + ')' : ''}
+          </button>
+        )}
       </div>
+
+      {faltam.length > 0 && (
+        <div className="iniciar-faltam">
+          <p className="hint">O navegador abriu só uma aba. Clique para abrir as outras (ou libere as janelas pop-up deste site, no ícone da barra de endereço, para abrir todas de uma vez):</p>
+          {faltam.map(m => (
+            <button key={m.endereco} type="button" className="popover-item" onClick={() => abrirUma(m)}>
+              <Icone nome="play" /><span className="popover-texto">Abrir {m.rotulo}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {vm.abaIniciar === 'escolher' ? (
         <>
@@ -70,14 +92,20 @@ export function PainelIniciar({ vm, fechar }: { vm: Vm; fechar: () => void }) {
             <div className="iniciar-vazio">
               <b>Nenhuma empresa ainda</b>
               <p className="hint">Você não mexeu em nenhuma empresa nos últimos 3 dias.</p>
-              <button type="button" className="btn btn-primary btn-sm" disabled={!vm.proximaDaFila} onClick={() => ir(vm.proximaDaFila)}>
-                <Icone nome="play" />Iniciar a próxima da fila
-              </button>
             </div>
           )}
+          <Atalhos vm={vm} ir={ir} fechar={fechar} />
         </>
       )}
 
+    </div>
+  );
+}
+
+/** Os atalhos (só na aba Recentes): continuar a última, a próxima da fila e as paradas. */
+function Atalhos({ vm, ir, fechar }: { vm: Vm; ir: (l: Linha | null) => void; fechar: () => void }) {
+  return (
+    <>
       <hr className="popover-sep" />
       <button type="button" className="popover-item" role="menuitem" disabled={!vm.ultimaAberta} onClick={() => ir(vm.ultimaAberta)}>
         <Icone nome="repeat" /><span className="popover-texto">Continuar a última que mexi</span>
@@ -91,6 +119,6 @@ export function PainelIniciar({ vm, fechar }: { vm: Vm; fechar: () => void }) {
         <Icone nome="alert" /><span className="popover-texto">Ver as paradas na lista</span>
         <span className="popover-dica">{vm.paradas}</span>
       </button>
-    </div>
+    </>
   );
 }
