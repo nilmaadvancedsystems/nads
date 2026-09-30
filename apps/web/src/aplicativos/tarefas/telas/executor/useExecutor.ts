@@ -32,6 +32,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const { toast, modal } = useRetorno();
   const op = useOperador().operador as Operador;
   const rotina = t.ROTINA_CONTABIL;
+  // as seções da rotina, na ordem (Preparação, Ativo, Passivo, Resultado, Fechamento)
+  const secoes = [...new Set(rotina.etapas.map(e => e.secao || ''))];
   const empresa = empresas.empresaPelaRota(repo.listarEmpresas(), rotaEmpresa);
   const meses = t.competenciasDoPeriodo(periodo);
   const varios = meses.length > 1;
@@ -183,7 +185,9 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     etapas: rotina.etapas.map((e, i) => {
       const feitos = meses.filter(c => concluidaEm(e.id, c)).length;
       const parada = meses.some(c => t.situacaoDa(exDe[c] || null, e.id) === 'interrompida');
-      return { id: e.id, n: i + 1, nome: e.nome, situacao: feitos === meses.length && meses.length ? 'feita' as const : parada ? 'interrompida' as const : 'pendente' as const, feitos, atual: e.id === etapa?.id };
+      // o grupo na barra lateral (Preparação, Ativo, Passivo…): a mesma seção, o mesmo número
+      const grupo = secoes.indexOf(e.secao || '');
+      return { id: e.id, n: i + 1, nome: e.nome, secao: e.secao, grupo, situacao: feitos === meses.length && meses.length ? 'feita' as const : parada ? 'interrompida' as const : 'pendente' as const, feitos, atual: e.id === etapa?.id };
     }),
     etapa, n: etapa ? rotina.etapas.findIndex(e => e.id === etapa.id) + 1 : 0, total: rotina.etapas.length,
     interrompidaAntes: etapa && ex ? t.estadoDa(ex, etapa.id)?.situacao === 'interrompida' ? t.estadoDa(ex, etapa.id) : null : null,

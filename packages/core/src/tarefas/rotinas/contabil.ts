@@ -1,14 +1,23 @@
-// A rotina do Contábil, etapa por etapa. RASCUNHO para o Vitor corrigir (2026-09-29): a ordem, os
-// nomes, as ferramentas e as objeções saem daqui — é o único lugar a mexer.
+// A rotina do Contábil, etapa por etapa (Vitor, 30/09/2026): a preparação (Importação, Conferência fiscal,
+// Importação DP), as conferências que toda empresa tem — tiradas dos balancetes de 15 empresas (292, 309, 10, 54,
+// 289, 363, 380, 393, 408, 409, 429, 450, 452, 476, 509): o que aparece em quase todas — e o fechamento. As
+// conferências de cada empresa (as que só algumas têm) vêm depois, pelo balancete, no Cadastro.
+// É o único lugar a mexer: a ordem, os nomes, as ferramentas, o que conferir e as objeções saem daqui.
 import type { Rotina } from '../tipos';
+
+const DP_PENDENTE = { id: 'dp-pendente', texto: 'A folha (Departamento Pessoal) ainda não saiu', solucao: { tipo: 'orientacao' as const, rotulo: 'Como resolver', texto: 'A etapa depende do Departamento Pessoal. Interrompa e retome quando a folha for liberada.' } };
+const SEM_FUNCIONARIOS = { id: 'sem-funcionarios', texto: 'A empresa não tem funcionários', solucao: { tipo: 'nao-se-aplica' as const, rotulo: 'Não tem funcionários' } };
+const nao = (id: string, texto: string, rotulo = 'Não se aplica') => ({ id, texto, solucao: { tipo: 'nao-se-aplica' as const, rotulo } });
 
 export const ROTINA_CONTABIL: Rotina = {
   departamento: 'contabil',
   etapas: [
+    // ─── Preparação ───────────────────────────────────────────────────────────
     {
-      // "Importação" (Vitor, 30/09/2026): por enquanto só importar tudo o que a empresa precisa na competência
-      // (a conferência sai daqui). O id continua "extratos": é a chave do que já foi gravado.
+      // "Importação" (Vitor, 30/09/2026): importar tudo o que a empresa precisa na competência. O id continua
+      // "extratos": é a chave do que já foi gravado.
       id: 'extratos',
+      secao: 'Preparação',
       nome: 'Importação',
       descricao: 'Importe tudo o que a empresa precisa na competência: o extrato de cada banco e o razão da conta.',
       ferramenta: { app: 'extratudo', nome: 'Extrator', caminho: r => '/extratudo/' + r + '/extrator/tarefa/extratos', embutir: true, periodo: true },
@@ -21,55 +30,289 @@ export const ROTINA_CONTABIL: Rotina = {
       ],
     },
     {
-      id: 'cheque-especial',
-      nome: 'Ajustar o cheque especial',
-      descricao: 'Gere os lançamentos de ajuste do saldo negativo.',
-      ferramenta: { app: 'extratudo', nome: 'Cheque especial', caminho: r => '/extratudo/' + r + '/cheque-especial/ajuste/saldo-negativo', embutir: true },
-      verificacao: 'manual',
-      objecoes: [
-        { id: 'sem-negativo', texto: 'A conta não ficou negativa', solucao: { tipo: 'nao-se-aplica', rotulo: 'Não se aplica nesta competência' } },
-        { id: 'sem-saldo-diario', texto: 'Não tenho o relatório de saldo diário', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Tire o relatório de saldo diário da conta no Alterdata e importe na ferramenta.' } },
-      ],
-    },
-    {
-      id: 'cartoes',
-      nome: 'Conciliar os cartões',
-      descricao: 'Concilie as vendas em cartão com as notas fiscais.',
-      ferramenta: { app: 'conciliadorzinho', nome: 'Conciliadorzinho', caminho: r => '/conciliadorzinho/' + r + '/conciliacao/bandeiras', embutir: true },
-      verificacao: 'manual',
-      objecoes: [
-        { id: 'sem-cartao', texto: 'A empresa não vende em cartão', solucao: { tipo: 'nao-se-aplica', rotulo: 'Não se aplica' } },
-        { id: 'sem-extrato-cartao', texto: 'O extrato da operadora não chegou', solucao: { tipo: 'contato', rotulo: 'Pedir o extrato da operadora' } },
-      ],
-    },
-    {
-      id: 'liquidacoes',
-      nome: 'Liquidações de títulos',
-      descricao: 'Concilie o relatório de liquidação do banco com o sistema.',
-      ferramenta: { app: 'extratudo', nome: 'Creditor', caminho: r => '/extratudo/' + r + '/creditor/banco', embutir: true },
-      verificacao: 'manual',
-      objecoes: [
-        { id: 'sem-titulos', texto: 'A empresa não tem cobrança no banco', solucao: { tipo: 'nao-se-aplica', rotulo: 'Não se aplica' } },
-        { id: 'sem-relatorio', texto: 'O relatório de liquidação não chegou', solucao: { tipo: 'contato', rotulo: 'Pedir o relatório ao cliente' } },
-      ],
-    },
-    {
-      id: 'balancete',
-      nome: 'Conferir o balancete',
-      descricao: 'Confira o balancete com as notas na Conferência.',
+      id: 'fiscal',
+      secao: 'Preparação',
+      nome: 'Conferência fiscal',
+      descricao: 'Confira se o Fiscal fechou a competência: as notas de entrada e saída batem com o balancete.',
       ferramenta: { app: 'concilia-ai', nome: 'Conferência', caminho: r => '/conferencia/' + r, embutir: false },
       verificacao: 'manual',
       objecoes: [
         { id: 'fiscal-pendente', texto: 'O Fiscal ainda não fechou as notas', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'A etapa depende do Fiscal. Interrompa e retome quando o Fiscal liberar a competência.' } },
-        { id: 'dp-pendente', texto: 'A folha (Departamento Pessoal) ainda não saiu', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'A etapa depende do Departamento Pessoal. Interrompa e retome quando a folha for liberada.' } },
       ],
     },
     {
+      id: 'dp',
+      secao: 'Preparação',
+      nome: 'Importação DP',
+      descricao: 'Importe a folha do Departamento Pessoal: salários, pró-labore, INSS, FGTS e rescisões.',
+      ferramenta: null,
+      verificacao: 'manual',
+      conferir: [
+        'A folha do mês está liberada pelo DP.',
+        'Importe a folha no Alterdata: salários, pró-labore, férias, rescisões, INSS, FGTS e IRRF.',
+        'Rescisão no mês: a multa do FGTS (GRRF) também.',
+      ],
+      objecoes: [DP_PENDENTE, SEM_FUNCIONARIOS],
+    },
+
+    // ─── Ativo ────────────────────────────────────────────────────────────────
+    {
+      id: 'caixa',
+      secao: 'Ativo',
+      nome: 'Caixa',
+      descricao: 'O caixa nunca fica credor.',
+      ferramenta: null,
+      verificacao: 'manual',
+      conferir: [
+        'O saldo do caixa é devedor (ou zero) no fim do mês e em nenhum dia fica credor.',
+        'Caixa credor: procure pagamentos lançados no caixa que saíram pelo banco e vendas à vista que faltam.',
+        'O saldo está de acordo com o tamanho da empresa (caixa alto demais também é sinal de lançamento errado).',
+      ],
+      objecoes: [
+        { id: 'caixa-credor', texto: 'O caixa ficou credor e não achei o motivo', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Interrompa com esta objeção: a competência aparece para os sêniores revisarem.' } },
+        nao('sem-caixa', 'A empresa não usa caixa'),
+      ],
+    },
+    {
+      id: 'bancos',
+      secao: 'Ativo',
+      nome: 'Bancos',
+      descricao: 'O saldo de cada banco é o do extrato no último dia; banco negativo vai para o cheque especial.',
+      ferramenta: { app: 'extratudo', nome: 'Cheque especial', caminho: r => '/extratudo/' + r + '/cheque-especial/ajuste/saldo-negativo', embutir: true },
+      verificacao: 'manual',
+      conferir: [
+        'O saldo contábil de cada banco é igual ao saldo do extrato no último dia do mês.',
+        'Banco com saldo credor: gere o ajuste do cheque especial (saldo negativo).',
+      ],
+      objecoes: [
+        { id: 'saldo-diferente', texto: 'O saldo não bate com o extrato', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Volte na Importação e confira extrato × razão do banco: o lançamento que falta ou sobra aparece lá.' } },
+        { id: 'sem-saldo-diario', texto: 'Não tenho o relatório de saldo diário', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Tire o relatório de saldo diário da conta no Alterdata e importe na ferramenta.' } },
+        nao('sem-negativo', 'Nenhum banco ficou negativo', 'Nenhum banco negativo'),
+      ],
+    },
+    {
+      id: 'clientes',
+      secao: 'Ativo',
+      nome: 'Clientes',
+      descricao: 'Nenhum cliente com saldo credor; os recebimentos do mês baixados.',
+      ferramenta: { app: 'extratudo', nome: 'Creditor', caminho: r => '/extratudo/' + r + '/creditor/banco', embutir: true },
+      verificacao: 'manual',
+      conferir: [
+        'Nenhum cliente com saldo credor (recebeu mais do que vendeu: recebimento sem a nota, ou baixa em duplicidade).',
+        'As liquidações do banco (títulos recebidos) estão baixadas nos clientes.',
+      ],
+      objecoes: [
+        { id: 'sem-relatorio', texto: 'O relatório de liquidação não chegou', solucao: { tipo: 'contato', rotulo: 'Pedir o relatório ao cliente' } },
+        nao('sem-clientes', 'A empresa não vende a prazo'),
+      ],
+    },
+    {
+      id: 'adiantamento-fornecedores',
+      secao: 'Ativo',
+      nome: 'Adiantamento a fornecedores',
+      descricao: 'Os adiantamentos baixados quando a nota do fornecedor chega.',
+      ferramenta: null,
+      verificacao: 'manual',
+      conferir: [
+        'Nenhum adiantamento com saldo credor.',
+        'A nota do fornecedor chegou: baixe o adiantamento contra o fornecedor.',
+        'Adiantamento antigo parado: confirme com o cliente se a mercadoria ou o serviço veio.',
+      ],
+      objecoes: [nao('sem-adiantamento', 'A empresa não teve adiantamento a fornecedor')],
+    },
+    {
+      id: 'estoque',
+      secao: 'Ativo',
+      nome: 'Estoque',
+      descricao: 'O estoque final atualizado com o inventário do cliente.',
+      ferramenta: null,
+      verificacao: 'manual',
+      conferir: [
+        'O estoque final do mês (ou do inventário) está lançado; no balancete, o estoque parado desde o início do ano é o sinal de que não foi.',
+        'O custo das mercadorias vendidas (CMV) fecha com estoque inicial + compras − estoque final.',
+      ],
+      objecoes: [
+        { id: 'sem-inventario', texto: 'O cliente não mandou o inventário', solucao: { tipo: 'contato', rotulo: 'Pedir o inventário' } },
+        nao('sem-estoque', 'A empresa não tem estoque'),
+      ],
+    },
+    {
+      id: 'bens',
+      secao: 'Ativo',
+      nome: 'Bens',
+      descricao: 'As compras e vendas de bens do mês lançadas no imobilizado.',
+      ferramenta: null,
+      verificacao: 'manual',
+      conferir: [
+        'Nota de compra de veículo, máquina, equipamento, móvel ou computador: lançada no imobilizado, não na despesa.',
+        'Venda ou baixa de bem: o bem e a depreciação dele saem juntos.',
+      ],
+      objecoes: [nao('sem-bens', 'A empresa não tem bens')],
+    },
+    {
+      id: 'depreciacao',
+      secao: 'Ativo',
+      nome: 'Depreciação',
+      descricao: 'A depreciação do mês lançada: a conta de depreciação acumulada anda todo mês.',
+      ferramenta: null,
+      verificacao: 'manual',
+      conferir: [
+        'A depreciação acumulada é credora e cresce todo mês (parada no balancete = depreciação não lançada).',
+        'A depreciação acumulada de cada bem não passa do valor dele.',
+      ],
+      objecoes: [nao('sem-depreciacao', 'A empresa não tem bens a depreciar')],
+    },
+
+    // ─── Passivo ──────────────────────────────────────────────────────────────
+    {
+      id: 'fornecedores',
+      secao: 'Passivo',
+      nome: 'Fornecedores',
+      descricao: 'Nenhum fornecedor com saldo devedor; as notas de entrada e os pagamentos do mês lançados.',
+      ferramenta: null,
+      verificacao: 'manual',
+      conferir: [
+        'Nenhum fornecedor com saldo devedor (pagou mais do que comprou: pagamento sem a nota, ou nota que faltou entrar).',
+        'Os pagamentos do extrato estão baixados no fornecedor certo.',
+      ],
+      objecoes: [nao('sem-fornecedores', 'A empresa não compra a prazo')],
+    },
+    {
+      id: 'adiantamento-clientes',
+      secao: 'Passivo',
+      nome: 'Adiantamento de clientes',
+      descricao: 'Os adiantamentos baixados quando a nota de venda sai.',
+      ferramenta: null,
+      verificacao: 'manual',
+      conferir: [
+        'Nenhum adiantamento de cliente com saldo devedor.',
+        'A nota de venda saiu: baixe o adiantamento contra o cliente.',
+      ],
+      objecoes: [nao('sem-adiantamento-clientes', 'A empresa não recebeu adiantamento de cliente')],
+    },
+    {
+      id: 'emprestimos',
+      secao: 'Passivo',
+      nome: 'Empréstimos e financiamentos',
+      descricao: 'O saldo de cada contrato igual ao do banco: parcela paga, juros e saldo devedor.',
+      ferramenta: null,
+      verificacao: 'manual',
+      conferir: [
+        'Cada empréstimo tem saldo credor igual ao saldo devedor do contrato no banco.',
+        'A parcela do mês está lançada: o principal baixa o empréstimo e os juros vão para a despesa financeira.',
+        'Cartão de crédito a pagar: a fatura do mês lançada e a paga baixada.',
+      ],
+      objecoes: [
+        { id: 'sem-extrato-contrato', texto: 'Não tenho o extrato do empréstimo', solucao: { tipo: 'contato', rotulo: 'Pedir o extrato do empréstimo' } },
+        nao('sem-emprestimos', 'A empresa não tem empréstimo'),
+      ],
+    },
+    {
+      id: 'folha',
+      secao: 'Passivo',
+      nome: 'Salários, INSS e FGTS',
+      descricao: 'A folha paga e as guias do mês: salários a pagar zerados, INSS e FGTS iguais às guias.',
+      ferramenta: null,
+      verificacao: 'manual',
+      conferir: [
+        'Salários a pagar: a folha do mês entra e o pagamento zera; nenhum saldo devedor.',
+        'INSS a recolher e FGTS a recolher iguais às guias do mês; a guia paga zera o saldo.',
+        'Férias, 13º e rescisões pagos baixados (e a multa do FGTS na GRRF).',
+      ],
+      objecoes: [DP_PENDENTE, SEM_FUNCIONARIOS],
+    },
+    {
+      id: 'pro-labore',
+      secao: 'Passivo',
+      nome: 'Pró-labore',
+      descricao: 'O pró-labore a pagar recebe a despesa do mês e zera no pagamento.',
+      ferramenta: null,
+      verificacao: 'manual',
+      conferir: [
+        'O crédito do mês no pró-labore a pagar é igual à despesa de pró-labore.',
+        'O pagamento zera o saldo; nenhum saldo devedor.',
+      ],
+      objecoes: [nao('sem-pro-labore', 'A empresa não paga pró-labore')],
+    },
+    {
+      id: 'honorarios',
+      secao: 'Passivo',
+      nome: 'Honorários',
+      descricao: 'O honorário a pagar recebe a despesa do mês e zera no pagamento.',
+      ferramenta: null,
+      verificacao: 'manual',
+      conferir: [
+        'O crédito do mês em honorários a pagar é igual à despesa de honorários contábeis.',
+        'O pagamento zera o saldo; nenhum saldo devedor.',
+      ],
+      objecoes: [
+        { id: 'honorario-diferente', texto: 'A despesa e o a pagar não batem', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Lance a provisão do honorário do mês (despesa × honorários a pagar) e baixe o pagamento contra o a pagar, não contra a despesa.' } },
+      ],
+    },
+    {
+      id: 'impostos',
+      secao: 'Passivo',
+      nome: 'Impostos a recolher',
+      descricao: 'O imposto do mês (Simples ou ICMS) igual à guia; a guia paga zera o saldo.',
+      ferramenta: null,
+      verificacao: 'manual',
+      conferir: [
+        'Simples Nacional a recolher: o crédito do mês é igual à despesa (ou à dedução da receita) e à guia do DAS.',
+        'ICMS a recolher: o crédito do mês é igual à dedução "(-) ICMS" da receita.',
+        'A guia paga zera o saldo; nenhum imposto a recolher devedor.',
+      ],
+      objecoes: [
+        { id: 'sem-guia', texto: 'Não tenho a guia do mês', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'A guia sai do Fiscal. Interrompa e retome quando o Fiscal liberar a competência.' } },
+      ],
+    },
+
+    // ─── Resultado ────────────────────────────────────────────────────────────
+    {
+      id: 'despesas',
+      secao: 'Resultado',
+      nome: 'Despesas',
+      descricao: 'Todas as despesas e custos devedores.',
+      ferramenta: null,
+      verificacao: 'manual',
+      conferir: [
+        'Nenhuma despesa ou custo com saldo credor, menos as redutoras "(-)" (devoluções de compra, por exemplo).',
+        'Despesa credora: lançamento invertido, ou estorno lançado na conta errada.',
+        'Nota de compra de bem lançada como despesa: passe para o imobilizado.',
+      ],
+      objecoes: [
+        { id: 'despesa-credora', texto: 'Tem despesa credora e não achei o motivo', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Interrompa com esta objeção: a competência aparece para os sêniores revisarem.' } },
+      ],
+    },
+    {
+      id: 'receitas',
+      secao: 'Resultado',
+      nome: 'Receitas',
+      descricao: 'Todas as receitas credoras; as vendas em cartão conciliadas com as notas.',
+      ferramenta: { app: 'conciliadorzinho', nome: 'Conciliadorzinho', caminho: r => '/conciliadorzinho/' + r + '/conciliacao/bandeiras', embutir: true },
+      verificacao: 'manual',
+      conferir: [
+        'Nenhuma receita com saldo devedor, menos as deduções "(-)" (impostos sobre a venda, devoluções).',
+        'Vende em cartão: as vendas das bandeiras conciliadas com as notas.',
+      ],
+      objecoes: [
+        { id: 'receita-devedora', texto: 'Tem receita devedora e não achei o motivo', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Interrompa com esta objeção: a competência aparece para os sêniores revisarem.' } },
+        { id: 'sem-extrato-cartao', texto: 'O extrato da operadora não chegou', soMotivo: true, solucao: { tipo: 'contato', rotulo: 'Pedir o extrato da operadora' } },
+      ],
+    },
+
+    // ─── Fechamento ───────────────────────────────────────────────────────────
+    {
       id: 'fechamento',
+      secao: 'Fechamento',
       nome: 'Fechar a competência',
       descricao: 'Revise os saldos e feche a competência no sistema.',
       ferramenta: null,
       verificacao: 'manual',
+      conferir: [
+        'O balancete fecha: ativo = passivo + patrimônio líquido + resultado.',
+        'Todas as conferências acima feitas (ou com o motivo de não se aplicar).',
+        'Feche a competência no Alterdata.',
+      ],
       objecoes: [
         { id: 'revisao', texto: 'Precisa de revisão de um sênior', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Interrompa com esta objeção: a competência aparece para os sêniores revisarem.' } },
       ],
