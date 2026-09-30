@@ -1431,3 +1431,4 @@ a.btn.is-locked{opacity:.55;cursor:not-allowed;}
 /* a página da prévia do Pedir extratos */
 .previa-pedir{padding:24px;}
 .previa-pedir-botoes{display:flex;gap:8px;margin-top:12px;}
+.modal .pedir-previa p{padding:0;}
