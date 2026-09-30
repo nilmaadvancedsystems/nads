@@ -192,6 +192,7 @@ function MesesDoBanco({ meses, competencia, travado, aceitarExtrato, aceitarRaza
     return (
       <span key={m.mes} className={'imp-mes-celula' + (m.mes === competencia ? ' atual' : '') + (m.semMovimento ? ' sem-mov' : '')}>
         <button type="button" className="imp-mes-nome" onClick={() => onMes(m.mes)} title={'Abrir ' + m.rotulo}>{m.rotulo}</button>
+        <span className="imp-mes-icones">
         {m.semMovimento ? (
           <button type="button" className="imp-mes-sem" disabled={travado || !naTarefa} onClick={() => onSemMovimento(m.mes, false)} title="Não teve movimento — clique para desfazer">s/ mov.</button>
         ) : info.lendo ? (
@@ -214,6 +215,7 @@ function MesesDoBanco({ meses, competencia, travado, aceitarExtrato, aceitarRaza
             )}
           </>
         )}
+        </span>
       </span>
     );
   };
@@ -221,12 +223,12 @@ function MesesDoBanco({ meses, competencia, travado, aceitarExtrato, aceitarRaza
     <div className="imp-periodo-linha">
       <div className="imp-periodo-lado">
         <span className="imp-rotulo">Extrato</span>
-        <span className="imp-mes-celulas">{meses.map(m => mes(m, 'banco'))}</span>
+        <span className="imp-mes-celulas" style={{ gridTemplateColumns: 'repeat(' + meses.length + ', minmax(0, 1fr))' }}>{meses.map(m => mes(m, 'banco'))}</span>
         <span className="imp-periodo-falta">{faltamExtrato ? faltamExtrato + (faltamExtrato === 1 ? ' falta' : ' faltam') : 'completo'}</span>
       </div>
       <div className="imp-periodo-lado">
         <span className="imp-rotulo">Razão</span>
-        <span className="imp-mes-celulas">{meses.map(m => mes(m, 'sistema'))}</span>
+        <span className="imp-mes-celulas" style={{ gridTemplateColumns: 'repeat(' + meses.length + ', minmax(0, 1fr))' }}>{meses.map(m => mes(m, 'sistema'))}</span>
         <span className="imp-periodo-falta">{faltamRazao ? faltamRazao + (faltamRazao === 1 ? ' falta' : ' faltam') : 'completo'}</span>
       </div>
     </div>
