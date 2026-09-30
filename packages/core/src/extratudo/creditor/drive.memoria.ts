@@ -60,7 +60,10 @@ export function criarDriveMemoria(): RepoDrive {
       // nos exemplos nada sai daqui: só finge a fila do robô
       passo?.('na fila do robô (exemplo)');
       await new Promise(ok => setTimeout(ok, 600));
-      return 'enviado';
+      return { id: 'exemplo-' + Date.now(), situacao: 'enviado' };
+    },
+    async situacaoDosEmails(ids) {
+      return Object.fromEntries(ids.map(id => [id, { status: 'enviado' as const }]));
     },
     assinar: () => () => {},
     versao: () => 0,

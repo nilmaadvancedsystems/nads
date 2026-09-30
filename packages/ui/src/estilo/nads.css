@@ -1395,12 +1395,12 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 @media print{.rodape{display:none;}}
 
 /* Pedir extratos (Gmail / WhatsApp): a janela com Para, Bancos, Competência e a mensagem pronta */
-.modal.pedir-modal{max-width:560px;}
+.modal.pedir-modal{max-width:min(1120px,96vw);width:100%;}
 .pedir-titulo{display:flex;align-items:center;gap:10px;}
 .pedir-app{width:20px;height:20px;display:inline-flex;}
 .pedir-app .logo-img,.pedir-app svg{width:20px;height:20px;}
 .pedir-x{margin-left:auto;}
-.pedir-corpo{display:flex;flex-direction:column;gap:16px;padding:16px;max-height:min(62vh,560px);overflow:auto;}
+.pedir-corpo{display:flex;flex-direction:column;gap:20px;padding:20px 24px;overflow:auto;}
 .pedir-campo{display:grid;grid-template-columns:96px minmax(0,1fr);gap:8px 12px;align-items:start;}
 .pedir-rotulo{font-size:14px;font-weight:600;line-height:24px;}
 .pedir-opcoes{display:flex;flex-direction:column;gap:6px;}
@@ -1432,6 +1432,42 @@ a.btn.is-locked{opacity:.55;cursor:not-allowed;}
 .previa-pedir{padding:24px;}
 .previa-pedir-botoes{display:flex;gap:8px;margin-top:12px;}
 .modal .pedir-previa p{padding:0;}
+
+/* Pedir documentos: a janela larga — o pedido à esquerda, o e-mail como o cliente vai ver à direita */
+.pedir-grade-2{display:grid;grid-template-columns:minmax(0,1fr) 640px;height:min(74vh,720px);}
+.pedir-grade-2 > .pedir-corpo{border-right:1px solid var(--border);}
+.pedir-previa-email{display:flex;flex-direction:column;background:#F2F2F3;min-width:0;}
+.pedir-previa-email iframe{flex:1;width:100%;border:0;background:#F2F2F3;}
+.pedir-previa-email .pedir-assunto{margin:0;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);font-size:13px;font-weight:600;color:var(--ink);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pedir-previa-email .pedir-assunto .hint{margin:0 8px 0 0;font-weight:400;}
+.pedir-campo{grid-template-columns:110px minmax(0,1fr);}
+.pedir-doc{align-items:flex-start;}
+.pedir-doc-nome{flex:1;min-width:0;}
+.pedir-outro{display:flex;gap:8px;margin-top:4px;}
+.pedir-outro input[type="text"]{min-height:28px;padding:3px 10px;font-size:13px;}
+.pedir-prazo{width:180px;min-height:32px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--ink);padding:4px 10px;font:inherit;font-size:14px;color-scheme:inherit;}
+.pedir-whats{width:100%;min-height:150px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--ink);padding:8px 12px;font:14px/1.5 var(--font-body);resize:vertical;}
+.pedir-refazer{align-self:flex-start;}
+.pedir-opcao.is-locked{opacity:.55;cursor:not-allowed;}
+.popover-marca-app{width:16px;height:16px;display:inline-flex;flex:none;}
+.popover-marca-app .logo-img,.popover-marca-app svg{width:16px;height:16px;}
+.modal.pedir-historico{max-width:760px;width:100%;}
+.pedir-hist-lista{display:flex;flex-direction:column;gap:12px;padding:16px 20px;max-height:min(70vh,640px);overflow:auto;}
+.pedir-hist-item{border:1px solid var(--border);border-radius:6px;padding:12px 16px;background:var(--surface);}
+.pedir-hist-topo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px;}
+.pedir-hist-topo .hint{margin:0;}
+.pedir-hist-comp{display:inline-flex;gap:4px;margin-left:auto;}
+.pedir-hist-docs{margin:8px 0;padding-left:18px;font-size:13px;color:var(--ink);}
+.pedir-hist-canais{display:flex;flex-direction:column;gap:6px;font-size:13px;}
+.pedir-hist-canal{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.pedir-hist-nota{padding:0 20px 16px;margin:0;}
+@media (max-width:1100px){.pedir-grade-2{grid-template-columns:minmax(0,1fr);height:auto;max-height:78vh;overflow:auto;}.pedir-grade-2 > .pedir-corpo{border-right:none;}.pedir-previa-email iframe{height:600px;}}
+.pedir-doc .pedir-logo{width:20px;height:20px;display:inline-flex;flex:none;}
+.pedir-doc .pedir-logo .logo-img,.pedir-doc .pedir-logo svg{width:20px;height:20px;border-radius:4px;}
+.pedir-titulo > svg{width:16px;height:16px;flex:none;color:var(--ink-muted);}
+.pedir-grade-2 > .pedir-corpo{overflow-x:hidden;}
+
 /* Cadastro (Tarefas): contas bancárias, plano de contas, contas padrão e histórico de uma empresa */
 .cad-empresa{max-width:360px;}
 .cad-empresa b{font-weight:600;font-variant-numeric:tabular-nums;}

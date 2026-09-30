@@ -28,10 +28,16 @@ export interface PedidoDeEmail {
   /** tem que ser um dos e-mails do cadastro (o robô confere) */
   para: string;
   assunto: string;
+  /** o texto (quem não abre HTML; o robô também usa) */
   corpo: string;
+  /** o HTML montado pelo nads (o robô do Entregas usa este no lugar do dele, quando souber ler o campo) */
+  html?: string;
   /** 'aaaa-mm': o mês em que o pedido fica registrado no Entregas */
   competencia: string;
 }
+
+/** Como está o e-mail na fila do robô do Entregas. */
+export interface SituacaoDoEmail { status: 'pendente' | 'processando' | 'enviado' | 'erro' | 'sumiu'; erro?: string }
 
 export interface RepoDrive {
   readonly exemplos: boolean;
@@ -57,7 +63,9 @@ export interface RepoDrive {
   /** o contato do cliente no cadastro do Entregas (null = não achou); não existe acoplado no Entregas */
   contatoDoCliente?(codigo: number): Promise<ContatoDoCliente | null>;
   /** põe o e-mail na fila do robô do Entregas e espera ele enviar (erro = o motivo); 'na-fila' = o robô ainda não pegou */
-  pedirEmail?(p: PedidoDeEmail, passo?: (texto: string) => void): Promise<'enviado' | 'na-fila'>;
+  pedirEmail?(p: PedidoDeEmail, passo?: (texto: string) => void): Promise<{ id: string; situacao: 'enviado' | 'na-fila' }>;
+  /** a situação de cada pedido de e-mail na fila do robô (pelo id) */
+  situacaoDosEmails?(ids: string[]): Promise<Record<string, SituacaoDoEmail>>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }

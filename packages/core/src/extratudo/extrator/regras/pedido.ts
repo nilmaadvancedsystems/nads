@@ -1,29 +1,64 @@
-// "Pedir extratos" (Extrator na etapa Importação): o pedido ao cliente, com os bancos e as competências
-// escolhidos, e as mensagens prontas. E-mail: o robô do Entregas monta o HTML (com a cara do escritório) a
-// partir do texto — cada linha "- Extrato bancário …" vira um cartão. WhatsApp: texto, aberto pelo link wa.me.
-// O contato (e-mails e telefone) vem do cadastro de clientes do Entregas.
+// "Pedir extratos" (Extrator na etapa Importação): o pedido de documentos ao cliente — os documentos e as
+// competências escolhidos, o prazo e as mensagens. E-mail (obrigatório: é a relação formal): o HTML montado
+// sozinho (regras/email.ts) e o texto que vai junto; WhatsApp (opcional): a mensagem que a pessoa digita,
+// aberta pelo link wa.me. O contato (e-mails e telefone) vem do cadastro de clientes do Entregas.
+import type { EmpresaExtrator, PedidoRegistrado } from '../tipos';
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
-/** Um banco do pedido: o nome e, se tiver, "Ag. 0500 · C/C 22222-2". */
-export interface BancoDoPedido { nome: string; conta?: string }
+/** Um documento do pedido: o nome, a explicação curta e, no extrato, o banco (para o logo). */
+export interface DocumentoDoPedido {
+  id: string;
+  nome: string;
+  detalhe: string;
+  /** a marca do banco (o logo no e-mail) */
+  banco?: string;
+}
+
+/** Um banco da empresa: o nome e, se tiver, "Ag. 0500 · C/C 22222-2". */
+export interface BancoDoPedido { id: string; nome: string; marca?: string; conta?: string }
 
 export interface PedidoDeExtratos {
   /** o nome da empresa (cliente) */
   cliente: string;
-  bancos: BancoDoPedido[];
+  documentos: DocumentoDoPedido[];
   /** 'aaaa-mm' */
   competencias: string[];
 }
 
 export type CanalDoPedido = 'email' | 'whatsapp';
 
+/** Os documentos que dá para pedir: o extrato de cada banco da empresa e os de sempre. */
+export function documentosDoPedido(bancos: readonly BancoDoPedido[]): DocumentoDoPedido[] {
+  return [
+    ...bancos.map(b => ({
+      id: 'extrato:' + b.id, nome: 'Extrato bancário · ' + b.nome + (b.conta ? ' (' + b.conta + ')' : ''),
+      detalhe: 'Do primeiro ao último dia do mês, em PDF ou OFX.', banco: b.marca || b.id,
+    })),
+    { id: 'comprovantes', nome: 'Comprovantes bancários', detalhe: 'Dos pagamentos e transferências feitos no mês.' },
+    { id: 'cartao', nome: 'Cartão de crédito empresarial', detalhe: 'A fatura ou o relatório do cartão do mês.' },
+    { id: 'cred', nome: 'CRED Liquidação', detalhe: 'O relatório de liquidação do mês inteiro.' },
+    { id: 'aplicacao', nome: 'Extrato de aplicação', detalhe: 'Das aplicações e investimentos do mês.' },
+  ];
+}
+
 /** "agosto/2026" */
 export function mesPorExtenso(c: string): string {
   return MESES[Number(c.slice(5, 7)) - 1] + '/' + c.slice(0, 4);
 }
 
-export function rotuloDoBanco(b: BancoDoPedido): string {
+/** "30 de setembro de 2026" */
+export function dataPorExtenso(d: Date): string {
+  return d.getDate() + ' de ' + MESES[d.getMonth()] + ' de ' + d.getFullYear();
+}
+
+/** O prazo que já vem na tela: daqui a 7 dias ('dd/mm/aaaa'). */
+export function prazoPadrao(agora: Date): string {
+  const d = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + 7);
+  return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+}
+
+export function rotuloDoBanco(b: { nome: string; conta?: string }): string {
   return b.nome + (b.conta ? ' (' + b.conta + ')' : '');
 }
 
@@ -44,36 +79,49 @@ export function competenciaDoPedido(p: PedidoDeExtratos): string {
 
 /** O assunto do e-mail. */
 export function assuntoDoPedido(p: PedidoDeExtratos): string {
-  return 'Extratos bancários de ' + competenciasPorExtenso(p.competencias) + ' - ' + p.cliente;
+  return 'Documentos de ' + competenciasPorExtenso(p.competencias) + ' - ' + p.cliente;
 }
 
 /**
- * O texto do pedido. No e-mail, cada banco numa linha "- Extrato bancário …" (o robô do Entregas transforma
- * em cartão, com o logo); no WhatsApp, com "•".
+ * O texto do e-mail (vai junto do HTML, para quem não abre HTML; o robô do Entregas também usa: cada linha
+ * "- …" vira um cartão).
  */
-export function textoDoPedido(p: PedidoDeExtratos, canal: CanalDoPedido): string {
-  const meses = competenciasPorExtenso(p.competencias);
-  const umSo = p.bancos.length === 1;
-  if (canal === 'whatsapp') {
-    return [
-      'Olá! Aqui é da Nilma Contabilidade.',
-      'Para fecharmos a contabilidade de ' + meses + ' da ' + p.cliente + ', precisamos ' + (umSo ? 'do extrato bancário:' : 'dos extratos bancários:'),
-      ...p.bancos.map(b => '• ' + rotuloDoBanco(b)),
-      'Pode mandar em PDF ou OFX, do mês inteiro, por aqui ou por e-mail. Obrigado!',
-    ].join('\n');
-  }
+export function textoDoPedido(p: PedidoDeExtratos, prazo: string): string {
   return [
-    'Olá,',
+    'Olá, tudo bem?',
     '',
-    'Para fecharmos a contabilidade de ' + meses + ' da ' + p.cliente + ', precisamos ' + (umSo ? 'do extrato bancário abaixo:' : 'dos extratos bancários abaixo:'),
+    'Viemos através deste e-mail pedir a relação de documentos para o fechamento contábil do período de ' + competenciasPorExtenso(p.competencias) + '.',
     '',
-    ...p.bancos.map(b => '- Extrato bancário ' + rotuloDoBanco(b) + ' - ' + meses),
+    'O que precisamos:',
+    ...p.documentos.map(d => '- ' + d.nome),
     '',
-    'Pode responder este e-mail com os arquivos em anexo (PDF ou OFX, do mês inteiro, do primeiro ao último dia)? Assim que chegarem, o recebimento é registrado automaticamente.',
+    ...(prazo ? ['Prazo: até ' + prazo + '.', ''] : []),
+    'Responda este e-mail com os arquivos em anexo: PDF, OFX, planilha.',
     '',
     'Obrigado,',
     'Nilma Contabilidade',
   ].join('\n');
+}
+
+/** A mensagem do WhatsApp que já vem escrita (a pessoa muda à vontade). */
+export function textoDoWhatsApp(p: PedidoDeExtratos, prazo: string): string {
+  return [
+    'Olá! Aqui é da Nilma Contabilidade.',
+    'Mandamos por e-mail a relação de documentos para o fechamento de ' + competenciasPorExtenso(p.competencias) + ' da ' + p.cliente + ':',
+    ...p.documentos.map(d => '• ' + d.nome),
+    ...(prazo ? ['Prazo: até ' + prazo + '.'] : []),
+    'Pode responder o e-mail com os arquivos. Obrigado!',
+  ].join('\n');
+}
+
+/** Guarda o pedido no histórico da empresa (o mais novo primeiro) e na auditoria. */
+export function registrarPedido(e: EmpresaExtrator, reg: PedidoRegistrado): EmpresaExtrator {
+  const canais = [reg.email ? 'e-mail' : '', reg.whatsapp ? 'WhatsApp' : ''].filter(Boolean).join(' e ');
+  return {
+    ...e,
+    pedidos: [reg, ...(e.pedidos || [])],
+    auditoria: [{ ts: reg.em, acao: 'Pediu documentos', detalhe: reg.documentos.length + ' documento(s) de ' + competenciasPorExtenso(reg.competencias) + ' por ' + canais, tom: 'neutral' }, ...e.auditoria],
+  };
 }
 
 /** O telefone do cadastro no formato do wa.me (só dígitos, com o 55); '' se não der para usar. */

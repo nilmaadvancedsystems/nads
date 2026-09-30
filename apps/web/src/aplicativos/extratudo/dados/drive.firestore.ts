@@ -245,11 +245,11 @@ export function criarDriveFirestore(): cr.RepoDrive {
       if (!u) throw new Error('Entre com o usuário do Entregas primeiro.');
       passo?.('pondo na fila do robô');
       const ref = await addDoc(collection(db, 'solicitacoesEmail'), {
-        tipo: 'um', clienteId: p.contato.id, clienteNome: p.contato.nome, para: p.para, assunto: p.assunto, corpo: p.corpo,
+        tipo: 'um', clienteId: p.contato.id, clienteNome: p.contato.nome, para: p.para, assunto: p.assunto, corpo: p.corpo, ...(p.html ? { html: p.html } : {}),
         tipos: ['extrato'], competencia: p.competencia, status: 'pendente',
         criadoEm: serverTimestamp(), criadoPor: acesso.quem || 'nads', criadoPorEmail: u.email || '', criadoPorUid: u.uid, origem: 'nads',
       });
-      return new Promise<'enviado' | 'na-fila'>((ok, falha) => {
+      const situacao = await new Promise<'enviado' | 'na-fila'>((ok, falha) => {
         const fim = setTimeout(() => { parar(); ok('na-fila'); }, ESPERA_DO_EMAIL_MS);
         const parar = onSnapshot(ref, d => {
           const s = d.data() || {};
@@ -258,6 +258,17 @@ export function criarDriveFirestore(): cr.RepoDrive {
           if (s.status === 'erro') { clearTimeout(fim); parar(); falha(new Error('O robô não enviou: ' + (s.erro || 'erro'))); }
         }, e => { clearTimeout(fim); falha(e); });
       });
+      return { id: ref.id, situacao };
+    },
+
+    async situacaoDosEmails(ids) {
+      const r: Record<string, cr.SituacaoDoEmail> = {};
+      await Promise.all(ids.map(async id => {
+        const d = await getDoc(doc(db, 'solicitacoesEmail', id));
+        const s = d.data();
+        r[id] = !s ? { status: 'sumiu' } : { status: (s.status as cr.SituacaoDoEmail['status']) || 'pendente', ...(s.erro ? { erro: String(s.erro) } : {}) };
+      }));
+      return r;
     },
 
     assinar(f) {

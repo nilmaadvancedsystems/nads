@@ -10,13 +10,13 @@
 //     botãozinho de PDF (abre pelo link temporário). O movimento se vê pela setinha.
 // Ao importar, só uma barrinha por cima da tela, que some em 2,7 s.
 import { extrator as x, type empresas } from '@nads/core';
-import { Icone, LogoBanco, LogoDrive, LogoGmail, LogoWhatsApp, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, useCarregando } from '@nads/ui';
+import { Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useCarregando } from '@nads/ui';
 import { useEffect, useId, useState } from 'react';
 import { usePonteDaTarefa } from '../../../../../../comum/ponte';
 import { useSessao } from '../../casca/sessao';
 import { useImportacao, type Mensagem } from '../importacao/useImportacao';
 import { BotaoGoogle } from '../../../../../../comum/BotaoGoogle';
-import { JanelaPedirExtratos } from './JanelaPedirExtratos';
+import { JanelaHistoricoDePedidos, JanelaPedirExtratos } from './JanelaPedirExtratos';
 import { useDriveDaLinha } from './useDriveDaLinha';
 import { usePedirExtratos } from './usePedirExtratos';
 
@@ -177,7 +177,7 @@ export function TarefaExtratos() {
   const s = useSessao();
   const ponte = usePonteDaTarefa();
   const d = useDriveDaLinha(vm, s.codigo);
-  const pe = usePedirExtratos(vm, s.codigo, s.nome, ponte.semMovimento, d.pedirLogin);
+  const pe = usePedirExtratos(vm, s.codigo, s.nome, ponte.semMovimento, d.pedirLogin, { logo: urlDoLogoNilma(), logoDoBanco: urlDoLogoBanco });
   // os logos do Pedir extrato (Gmail/WhatsApp) já vêm com a página: no clique, aparecem na hora
   useEffect(preCarregarLogosDosApps, []);
   useCarregando(vm.ocupado || !!d.buscando || vm.bancos.some(b => b.extrato.lendo || b.razao.lendo));
@@ -204,10 +204,15 @@ export function TarefaExtratos() {
         <span className="imp-topo-meio" />
         <MenuSuspenso rotulo="Pedir extratos" setaAntes className="btn btn-outline" direita
           conteudo={fechar => (
-            <div className="apps-contato">
-              <button type="button" title="Pedir por e-mail" aria-label="Pedir por e-mail" onClick={() => { fechar(); pe.abrir('email'); }}><LogoGmail /></button>
-              <button type="button" title="Pedir por WhatsApp" aria-label="Pedir por WhatsApp" onClick={() => { fechar(); pe.abrir('whatsapp'); }}><LogoWhatsApp /></button>
-            </div>
+            <>
+              <button type="button" className="popover-item" role="menuitem" onClick={() => { fechar(); pe.abrir(); }}>
+                <span className="popover-marca-app"><LogoGmail /></span><span className="popover-texto">E-mail</span>
+              </button>
+              <button type="button" className="popover-item" role="menuitem" onClick={() => { fechar(); pe.abrirHistorico(); }}>
+                <Icone nome="clock" /><span className="popover-texto">Histórico</span>
+                {pe.pedidos.length > 0 && <span className="popover-dica">{pe.pedidos.length}</span>}
+              </button>
+            </>
           )} />
         <MenuSuspenso rotulo="Adicionar banco" icone="plus" className="btn btn-primary" direita largura={260}
           conteudo={fechar => <AdicionarBanco bancos={vm.bancosParaAdicionar} onAdicionar={vm.adicionarBanco} fechar={fechar} />} />
@@ -336,6 +341,7 @@ export function TarefaExtratos() {
         </div>
       )}
       <JanelaPedirExtratos p={pe} />
+      <JanelaHistoricoDePedidos p={pe} />
     </section>
   );
 }
