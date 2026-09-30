@@ -66,6 +66,12 @@ export function useCaixaDoRobo() {
     admin,
     salvo: (x: e.EmailDaCaixa) => estado.salvos[x.mensagemId] || null,
     parecido: (x: e.EmailDaCaixa) => e.clienteParecido(x, clientes),
+    /** os clientes que batem com a busca (código ou nome), para escolher o dono do e-mail */
+    clientesQueBatem(busca: string): e.ClienteDoEntregas[] {
+      const t = semAcento(busca.trim());
+      if (!t) return [];
+      return clientes.filter(c => c.codigo === t || c.codigo.startsWith(t) || semAcento(c.nome).includes(t)).slice(0, 8);
+    },
     linkDoGmail: e.linkDoGmail,
     quandoFoi,
     verificar: () => tentar('pedir a leitura', () => repo.verificar(3), estado.online ? 'Pedido na fila: o robô vai ler os e-mails dos últimos 3 dias.' : 'Pedido na fila: o robô está fora do ar e lê quando voltar.'),
