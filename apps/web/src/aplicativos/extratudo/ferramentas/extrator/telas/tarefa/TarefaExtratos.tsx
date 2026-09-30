@@ -274,7 +274,7 @@ function SeletorDeCompetencia({ vm, naTarefa, trocar, periodoDaTarefa, encerrar 
   const concluido = !!periodoDaTarefa?.concluido;
   return (
     <MenuSuspenso icone="calendar" rotulo={rotulo} largura={300}
-      dica={periodo.length ? 'Vários meses: ' + periodo.map(mmaaaa).join(', ') : 'Trocar a competência'}
+      dica={periodo.length ? 'Em lote: ' + periodo.map(mmaaaa).join(', ') : 'Trocar a competência'}
       className={'btn btn-outline' + (periodo.length ? ' imp-periodo-ativo' : '')}
       conteudo={fechar => (
         <div className="comp-pop">
@@ -282,7 +282,7 @@ function SeletorDeCompetencia({ vm, naTarefa, trocar, periodoDaTarefa, encerrar 
             <div className="iniciar-abas comp-abas" role="tablist">
               <button type="button" role="tab" className="iniciar-aba" aria-selected={aba === 'mes'} onClick={() => setAba('mes')}>Competência</button>
               <button type="button" role="tab" className="iniciar-aba" aria-selected={aba === 'varios'} onClick={() => setAba('varios')}>
-                Vários meses{periodo.length > 0 && <span className="imp-periodo-qtd">{periodo.length}</span>}
+                Em Lote{periodo.length > 0 && <span className="imp-periodo-qtd">{periodo.length}</span>}
               </button>
             </div>
           )}
@@ -301,9 +301,9 @@ function SeletorDeCompetencia({ vm, naTarefa, trocar, periodoDaTarefa, encerrar 
               <p className="comp-varios-texto">A empresa está nos meses <b>{mmaaaa(periodo[0])} a {mmaaaa(periodo[periodo.length - 1])}</b> ({periodo.length} meses).</p>
               <div className="imp-mes-chips">{periodo.map(m => <span key={m} className="imp-mes-chip">{mmaaaa(m)}</span>)}</div>
               {concluido
-                ? <p className="comp-varios-texto ok"><Icone nome="checkCircle" />Todos os meses concluídos: já dá para encerrar.</p>
-                : <p className="hint">Para encerrar, os {periodo.length} meses precisam estar 100% concluídos (todas as etapas). Até lá, a empresa abre sempre nesses meses.</p>}
-              <button type="button" className="btn btn-primary btn-sm comp-varios-botao" disabled={!concluido} onClick={() => { fechar(); encerrar(); }}>Encerrar vários meses</button>
+                ? <p className="comp-varios-texto ok"><Icone nome="checkCircle" />Todos os meses concluídos: já dá para cancelar a função.</p>
+                : <p className="hint">Para cancelar a função, os {periodo.length} meses precisam estar 100% concluídos (todas as etapas). Até lá, a empresa abre sempre nesses meses.</p>}
+              <button type="button" className="btn btn-primary btn-sm comp-varios-botao" disabled={!concluido} onClick={() => { fechar(); encerrar(); }}>Cancelar função</button>
             </div>
           ) : (
             <div className="comp-varios">

@@ -210,13 +210,13 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     /** Encerra os vários meses (só com todos concluídos): tira a promessa de cada mês e volta ao último mês. */
     encerrarPeriodo: () => {
       if (!varios || !empresa) return;
-      if (!concluido) { toast('Para encerrar, os ' + meses.length + ' meses precisam estar 100% concluídos.'); return; }
+      if (!concluido) { toast('Para cancelar a função, os ' + meses.length + ' meses precisam estar 100% concluídos.'); return; }
       for (const c of meses) {
         if (!exDe[c]?.periodo) continue;
         const p = t.definirPeriodo(exDe[c], null, op.nome, new Date());
         repo.gravar(p.execucao, p.evento);
       }
-      toast('Vários meses encerrado: ' + t.rotuloDoPeriodo(meses) + '.');
+      toast('Em lote cancelado: ' + t.rotuloDoPeriodo(meses) + '.');
       navegar(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), ultimo));
     },
     /** A ferramenta trocou a competência ou o período (o seletor dela): a mesma empresa, no outro período. */
