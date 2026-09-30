@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ItemDrive } from '../../creditor/regras/drive';
 import type { ArquivoImportado, EmpresaExtrator } from '../tipos';
 import { acharExtratoNoDrive } from './drive';
-import { movimentoDoExtrato } from './movimento';
+import { movimentoDoExtrato, TODOS_OS_MESES } from './movimento';
 
 const arq = (id: string, lancamentos: [string, number][], banco?: string, lado: 'banco' | 'sistema' = 'banco'): ArquivoImportado => ({
   id, lado, nome: id, importadoEm: '2026-09-29T12:00:00Z', modo: 'primeira', ...(banco ? { banco } : {}),
@@ -24,6 +24,12 @@ describe('movimento do extrato (a setinha da linha do banco)', () => {
     expect(m.linhas.map(l => [l.data, l.valor, l.saldo])).toEqual([['2026-08-02', 3000, 10500], ['2026-08-05', -1000, 9500]]);
     expect([m.entradas, m.saidas]).toEqual([3000, -1000]);
     expect(movimentoDoExtrato(e, 'itau', 'sicoob', '2026-08').linhas.map(l => l.saldo)).toEqual([777]);
+  });
+  it('"Todos": todos os extratos importados da conta, do primeiro ao último mês', () => {
+    const e = emp([arq('jul', [['2026-07-10', 10000]]), arq('ago', [['2026-08-02', -3000]]), arq('itau', [['2026-08-03', 777]], 'itau')]);
+    const m = movimentoDoExtrato(e, 'sicoob', 'sicoob', TODOS_OS_MESES.de, TODOS_OS_MESES.ate);
+    expect(m.saldoAnterior).toBe(0);
+    expect(m.linhas.map(l => [l.data, l.saldo])).toEqual([['2026-07-10', 10000], ['2026-08-02', 7000]]);
   });
 });
 

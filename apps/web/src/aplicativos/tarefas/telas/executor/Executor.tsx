@@ -1,8 +1,11 @@
-// O executor: dentro do cabeçalho padrão (☰, "Tarefas / 292 · EMPRESA / Agosto/2026"), com as etapas em
-// checklist na barra lateral (caixinha marcada = feita; clicar numa anterior volta para ela e tira o check). A página é só a ferramenta da etapa, com a
+// O executor: dentro do cabeçalho padrão (☰, "Tarefas / 292 · EMPRESA / Agosto/2026"), com os grupos da rotina nas
+// abas de cima (Preparação, Ativo, Passivo, Resultado, Fechamento, como as abas do GitHub, com quantas etapas estão
+// feitas). Na Preparação a ferramenta ocupa a tela toda (a Conferência fiscal é o Concilia aí inteiro); dali em
+// diante, as etapas do grupo ficam na caixa à esquerda (como o "Insights" do GitHub), em checklist (caixinha
+// marcada = feita; clicar numa anterior volta para ela e tira o check). A página é só a ferramenta da etapa, com a
 // altura toda; embaixo, a barra com as saídas da etapa (Pedir extrato, Buscar no Drive…), Interromper e
 // Próximo.
-import { Alerta, Casca, Icone, useCarregando, useFerramentaNaEtapa } from '@nads/ui';
+import { Alerta, Casca, Icone, useCarregando, useFerramentaNaEtapa, type NomeIcone } from '@nads/ui';
 import { useRef } from 'react';
 import { Navigate, useParams } from 'react-router';
 import { usePonteDaFerramenta } from '../../../../comum/ponte';
@@ -11,6 +14,13 @@ import { useCascaTarefas } from '../../casca/useCascaTarefas';
 import { JanelaInterromper } from './partes/JanelaInterromper';
 import { Objecoes } from './partes/Objecoes';
 import { useExecutor } from './useExecutor';
+
+/** O ícone de cada grupo nas abas de cima. */
+const ICONE_DO_GRUPO: Record<string, NomeIcone> = {
+  'Preparação': 'fileUp', Ativo: 'landmark', Passivo: 'relatorio', Resultado: 'barChart', Fechamento: 'checkCircle',
+};
+/** O grupo em que a ferramenta ocupa a tela toda (sem a caixa das etapas). */
+const TELA_TODA = 'Preparação';
 
 export function Executor() {
   // a competência da rota pode ser um período ('2026-06..2026-08'): a Etapa com vários meses
@@ -29,18 +39,37 @@ export function Executor() {
   // o mês faz parte de um período prometido (vários meses): abre o período
   if (vm.irParaPeriodo) return <Navigate to={vm.irParaPeriodo} replace />;
 
-  const checklist = vm.etapas.map(e => ({
+  // os grupos da rotina (abas de cima): o da vez marcado; os de trás abrem (voltam para a primeira etapa deles); os da frente travam
+  const grupos = [...new Set(vm.etapas.map(e => e.secao || ''))];
+  const grupoDaVez = vm.etapa?.secao || '';
+  const iDaVez = grupos.indexOf(grupoDaVez);
+  const abas = vm.etapa ? grupos.map((g, i) => {
+    const es = vm.etapas.filter(e => (e.secao || '') === g);
+    return {
+      id: g, rotulo: g, icone: ICONE_DO_GRUPO[g] || ('list' as NomeIcone), ativa: g === grupoDaVez, travada: i > iDaVez,
+      contador: es.filter(e => e.situacao === 'feita').length + '/' + es.length,
+    };
+  }) : [];
+  const abrirGrupo = (g: string) => {
+    const i = grupos.indexOf(g);
+    if (i < 0 || i >= iDaVez) return;
+    const primeira = vm.etapas.find(e => (e.secao || '') === g);
+    if (primeira) vm.voltarPara(primeira.id);
+  };
+
+  // a caixa da esquerda: só as etapas do grupo da vez
+  const checklist = vm.etapas.filter(e => (e.secao || '') === grupoDaVez).map(e => ({
     // no período, quantos meses a etapa já tem feitos ("Importação · 1/3")
-    id: e.id, rotulo: e.nome + (vm.varios && e.feitos > 0 && e.feitos < vm.meses.length ? ' · ' + e.feitos + '/' + vm.meses.length : ''), icone: 'check' as const, grupo: e.grupo, titulo: e.secao, ativa: e.atual,
+    id: e.id, rotulo: e.nome + (vm.varios && e.feitos > 0 && e.feitos < vm.meses.length ? ' · ' + e.feitos + '/' + vm.meses.length : ''), icone: 'check' as const, grupo: e.grupo, ativa: e.atual,
     caixa: e.situacao === 'feita' ? 'marcada' as const : e.situacao === 'interrompida' ? 'parada' as const : 'vazia' as const,
   }));
 
   return (
-    <Casca sistema="Tarefas" larga rotuloLateral="Etapas"
+    <Casca sistema="Tarefas" larga rotuloLateral="Etapas" lateral={!vm.etapa || grupoDaVez === TELA_TODA ? 'nenhuma' : 'caixa'}
       empresa={{ codigo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome, nome: '' }}
 
-      versao={casca.versao} secoes={checklist} paginas={[]} titulo=""
-      onSecao={vm.voltarPara} onPagina={() => undefined} onInicio={vm.sair} onAplicativos={casca.inicio}
+      versao={casca.versao} secoes={checklist} paginas={abas} titulo=""
+      onSecao={vm.voltarPara} onPagina={abrirGrupo} onInicio={vm.sair} onAplicativos={casca.inicio}
       onEmpresa={vm.abrirEmpresa} aplicativos={casca.aplicacoes} onAplicativo={casca.onAplicacao}>
       {vm.carregando ? null : !vm.etapa ? (
         <div className="executor-fim">

@@ -10,7 +10,8 @@ import { SeletorTema } from './tema';
 /** caixa: no lugar do ícone, uma caixinha de checklist (vazia, marcada ou parada) — as etapas de uma tarefa */
 /** titulo: o nome do grupo, em cima da primeira seção dele (Ativo, Passivo…) */
 export interface SecaoCasca { id: string; rotulo: string; icone: NomeIcone; grupo: number; ativa?: boolean; travada?: boolean; caixa?: 'vazia' | 'marcada' | 'parada'; titulo?: string }
-export interface PaginaCasca { id: string; rotulo: string; icone: NomeIcone; ativa?: boolean; travada?: boolean; oculta?: boolean }
+/** contador: o número ao lado do nome, como o "Issues 12" do GitHub (ex.: "2/7") */
+export interface PaginaCasca { id: string; rotulo: string; icone: NomeIcone; ativa?: boolean; travada?: boolean; oculta?: boolean; contador?: string }
 
 /**
  * A tela está dentro de outra (um iframe, como quando a Tarefas abre uma ferramenta na etapa)? Aí
@@ -74,9 +75,9 @@ export function Casca(p: {
   onAplicativo?: (id: string) => void;
   /**
    * Como as seções aparecem à esquerda: "barra" (padrão; a barra lateral que oculta) ou "caixa"
-   * (lista com borda ao lado da página, no estilo "Insights" do GitHub; guardada para um uso futuro).
+   * (lista com borda ao lado da página, no estilo "Insights" do GitHub) ou "nenhuma" (a página na tela toda).
    */
-  lateral?: 'barra' | 'caixa';
+  lateral?: 'barra' | 'caixa' | 'nenhuma';
   /** a página usa a largura toda da tela (ex.: a ferramenta de uma etapa) */
   larga?: boolean;
   /** nome da lista da esquerda, para leitor de tela (padrão "Seções") */
@@ -162,7 +163,7 @@ export function Casca(p: {
           {p.paginas.filter(x => !x.oculta).map(x => (
             <button key={x.id} type="button" className={'menu-item' + (x.ativa ? ' active' : '') + (x.travada ? ' is-locked' : '')}
               aria-current={x.ativa ? 'page' : undefined} aria-disabled={x.travada ? 'true' : undefined} onClick={() => p.onPagina(x.id)}>
-              <Icone nome={x.icone} /><span>{x.rotulo}</span>
+              <Icone nome={x.icone} /><span>{x.rotulo}</span>{x.contador && <span className="menu-contador">{x.contador}</span>}
             </button>
           ))}
         </nav>
@@ -194,12 +195,13 @@ export function Casca(p: {
         </aside>
       )}
 
-      {p.lateral === 'caixa' ? (
+      {p.lateral === 'nenhuma' ? principal : p.lateral === 'caixa' ? (
         <div className="layout-caixa">
           <nav className="caixa-menu" aria-label={p.rotuloLateral || 'Seções'}>
             {p.secoes.map(s => (
               <button key={s.id} type="button" className={'caixa-item' + (s.ativa ? ' active' : '') + (s.travada ? ' is-locked' : '')}
                 aria-current={s.ativa ? 'page' : undefined} aria-disabled={s.travada ? 'true' : undefined} onClick={() => p.onSecao(s.id)}>
+                {s.caixa && <span className={'subnav-caixa ' + s.caixa} aria-hidden="true">{s.caixa === 'marcada' && <Icone nome="check" />}</span>}
                 {s.rotulo}
               </button>
             ))}
