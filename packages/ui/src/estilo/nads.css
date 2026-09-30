@@ -602,6 +602,11 @@ main.main{padding:0 24px;}
 /* ---------------------------------- barra lateral: grupos, rodapé (tema + ocultar) e travas ---------------------------------- */
 .subnav-itens{display:flex;flex-direction:column;gap:2px;}
 .subnav-sep{border:0;border-top:1px solid var(--border);margin:8px 0;}
+/* o nome do grupo (Ativo, Passivo…) em cima das seções dele, como os títulos da barra lateral do GitHub */
+.subnav-titulo{margin:0;padding:4px 8px 2px;font-size:12px;font-weight:600;color:var(--ink-muted);}
+.subnav-titulo.depois{margin-top:8px;padding-top:10px;border-top:1px solid var(--border);}
+.sidebar-oculta .subnav-titulo{display:none;}
+@media (max-width:768px){.subnav-titulo{display:none;}}
 .subnav-foot{margin-top:auto;padding-top:8px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px;}
 /* o "Ocultar barra lateral" sempre à mão: a página rola e ele fica parado no pé da tela */
 .subnav-foot{position:sticky;bottom:0;z-index:1;background:var(--bg);padding-bottom:16px;margin-bottom:-16px;}
@@ -1102,6 +1107,9 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
    fim da tela */
 .executor-area{display:flex;flex-direction:column;gap:12px;}
 .executor-area > .hint{margin:0;}
+/* a etapa sem ferramenta: o que conferir, item por item */
+.executor-conferir{max-width:620px;margin:8px auto 0;padding-left:20px;text-align:left;color:var(--ink);font-size:14px;line-height:1.5;}
+.executor-conferir li+li{margin-top:6px;}
 .executor-ferramenta{display:flex;min-height:360px;}
 .executor-ferramenta iframe{display:block;width:100%;min-height:calc(100vh - var(--hdr-h,64px) - 16px);border:0;}
 .executor-ferramenta .gh-blank{margin:auto;}

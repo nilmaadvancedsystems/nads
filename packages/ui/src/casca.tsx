@@ -8,7 +8,8 @@ import { Icone, MarcaN, type NomeIcone } from './icones';
 import { SeletorTema } from './tema';
 
 /** caixa: no lugar do ícone, uma caixinha de checklist (vazia, marcada ou parada) — as etapas de uma tarefa */
-export interface SecaoCasca { id: string; rotulo: string; icone: NomeIcone; grupo: number; ativa?: boolean; travada?: boolean; caixa?: 'vazia' | 'marcada' | 'parada' }
+/** titulo: o nome do grupo, em cima da primeira seção dele (Ativo, Passivo…) */
+export interface SecaoCasca { id: string; rotulo: string; icone: NomeIcone; grupo: number; ativa?: boolean; travada?: boolean; caixa?: 'vazia' | 'marcada' | 'parada'; titulo?: string }
 export interface PaginaCasca { id: string; rotulo: string; icone: NomeIcone; ativa?: boolean; travada?: boolean; oculta?: boolean }
 
 /**
@@ -211,10 +212,12 @@ export function Casca(p: {
           <div className="subnav-itens">
             {p.secoes.map(s => {
               const sep = grupoAnt !== null && s.grupo !== grupoAnt;
+              const comeca = grupoAnt === null || s.grupo !== grupoAnt;
               grupoAnt = s.grupo;
               return (
                 <span key={s.id} style={{ display: 'contents' }}>
-                  {sep && <hr className="subnav-sep" />}
+                  {sep && !s.titulo && <hr className="subnav-sep" />}
+                  {comeca && s.titulo && <p className={'subnav-titulo' + (sep ? ' depois' : '')}>{s.titulo}</p>}
                   <button type="button" className={'subnav-item' + (s.ativa ? ' active' : '') + (s.travada ? ' is-locked' : '')}
                     aria-current={s.ativa ? 'page' : undefined} aria-disabled={s.travada ? 'true' : undefined} title={s.rotulo} onClick={() => p.onSecao(s.id)}>
                     {s.caixa ? <span className={'subnav-caixa ' + s.caixa} aria-hidden="true">{s.caixa === 'marcada' && <Icone nome="check" />}</span> : <Icone nome={s.icone} />}

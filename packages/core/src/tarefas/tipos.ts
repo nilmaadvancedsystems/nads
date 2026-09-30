@@ -46,6 +46,10 @@ export interface Etapa {
   ferramenta: FerramentaDaEtapa | null;
   verificacao: Verificacao;
   objecoes: Objecao[];
+  /** o grupo da etapa na barra lateral (Preparação, Ativo, Passivo, Resultado, Fechamento) */
+  secao?: string;
+  /** o que conferir, item por item (aparece na etapa sem ferramenta, no lugar do "Feito no sistema") */
+  conferir?: string[];
 }
 
 export interface Rotina { departamento: Departamento; etapas: Etapa[] }

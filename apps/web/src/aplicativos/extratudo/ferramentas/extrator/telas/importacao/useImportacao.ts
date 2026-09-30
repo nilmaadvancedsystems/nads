@@ -187,6 +187,25 @@ export function useImportacao() {
     setMensagem({ tom: 'ok', titulo: 'Importação excluída', textos: [{ texto: nomeBanco + ' · ' + (lado === 'banco' ? 'extrato' : 'razão') }] });
   }
 
+  /** Em Lote, "Remover todos": exclui o extrato (ou o razão) do banco em todos os meses do período, com uma pergunta só. */
+  async function excluirDoPeriodo(banco: string, lado: x.Lado, meses: string[]) {
+    const porId = new Map<string, x.ArquivoImportado>();
+    for (const m of meses) for (const a of x.arquivosDoBanco(s.empresa, banco, primeiro, lado, m)) porId.set(a.id, a);
+    const arqs = [...porId.values()];
+    if (!arqs.length) return;
+    const nomeBanco = bancos.find(b => b.id === banco)?.nome || 'banco';
+    const oQue = lado === 'banco' ? 'extrato' : 'razão';
+    const ok = await modal<boolean>({
+      icone: 'alert', titulo: 'Remover todos?',
+      html: 'O ' + oQue + ' do <b>' + escapar(nomeBanco) + '</b> nos ' + meses.length + ' meses: ' + arqs.length + (arqs.length === 1 ? ' arquivo' : ' arquivos') +
+        ' (' + arqs.reduce((t, a) => t + a.lancamentos.length, 0) + ' lançamentos). Dá para importar de novo depois.',
+      botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Remover todos', valor: true, variante: 'btn-danger' }],
+    });
+    if (!ok) return;
+    s.aplicar(e => arqs.reduce((acc, a) => x.excluirArquivo(acc, a.id, new Date()), e));
+    setMensagem({ tom: 'ok', titulo: 'Importações removidas', textos: [{ texto: nomeBanco + ' · ' + oQue + ' · ' + meses.length + ' meses' }] });
+  }
+
   /**
    * Adicionar banco (uma conta: banco, agência e conta): vai para o Cadastro da empresa, valendo desta competência
    * em diante. Empresa sem bancos cadastrados: o cadastro começa com os que o Extrator já usava.
@@ -279,7 +298,7 @@ export function useImportacao() {
     }),
     // o mesmo banco pode entrar de novo (outra conta, com outra agência/conta)
     bancosParaAdicionar: empresas.BANCOS_CONHECIDOS,
-    importarArquivos, importarDoDrive, excluirDoBanco, adicionarBanco,
+    importarArquivos, importarDoDrive, excluirDoBanco, excluirDoPeriodo, adicionarBanco,
     /** os pedidos de documentos feitos ao cliente (o histórico do Pedir extratos) */
     pedidos: s.empresa.pedidos || [],
     /** o extrato do banco naquela competência já foi importado? (qualquer competência, não só a da tela) */

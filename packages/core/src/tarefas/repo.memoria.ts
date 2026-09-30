@@ -32,17 +32,18 @@ export function execucoesDeExemplo(agora: Date): Execucao[] {
   const t = (h: number) => new Date(agora.getTime() - h * 3600000);
   let a = execucaoNova(e1.nome, e1.codigo, c, 'contabil');
   a = fazer(a, 'extratos', 'Clara', t(30)).execucao;
-  a = interromper(a, 'cheque-especial', 'sem-saldo-diario', '', 'Clara', t(29)).execucao;
+  a = interromper(a, 'fiscal', 'fiscal-pendente', '', 'Clara', t(29)).execucao;
   let b = execucaoNova(e2.nome, e2.codigo, c, 'contabil');
   b = fazer(b, 'extratos', 'Felipe', t(20)).execucao;
-  b = dispensar(b, 'cheque-especial', 'sem-negativo', '', 'Felipe', t(18)).execucao;
+  b = fazer(b, 'fiscal', 'Felipe', t(19)).execucao;
+  b = dispensar(b, 'dp', 'sem-funcionarios', '', 'Felipe', t(18)).execucao;
   return [a, b];
 }
 
 /** O motivo usado quando a etapa para, nos exemplos. */
 const MOTIVO_EXEMPLO: Record<string, string> = {
-  extratos: 'sem-extrato', 'cheque-especial': 'sem-saldo-diario', cartoes: 'sem-extrato-cartao',
-  liquidacoes: 'sem-relatorio', balancete: 'fiscal-pendente', fechamento: 'revisao',
+  extratos: 'sem-extrato', fiscal: 'fiscal-pendente', dp: 'dp-pendente', caixa: 'caixa-credor', bancos: 'sem-saldo-diario',
+  clientes: 'sem-relatorio', estoque: 'sem-inventario', emprestimos: 'sem-extrato-contrato', folha: 'dp-pendente', fechamento: 'revisao',
 };
 const PESSOAS_EXEMPLO = ['Clara', 'Felipe', 'Vitor'];
 
@@ -65,7 +66,7 @@ export function execucoesVariadas(empresas: readonly EmpresaDoEscritorio[], agor
         ? dispensar(ex, 'cartoes', 'sem-cartao', '', quem, quando).execucao
         : fazer(ex, etapas[j], quem, quando).execucao;
     }
-    if (parar && n < etapas.length) ex = interromper(ex, etapas[n], MOTIVO_EXEMPLO[etapas[n]], '', quem, t(horas)).execucao;
+    if (parar && n < etapas.length) ex = interromper(ex, etapas[n], MOTIVO_EXEMPLO[etapas[n]] ?? ROTINA_CONTABIL.etapas[n].objecoes[0].id, '', quem, t(horas)).execucao;
     return ex;
   }
   empresas.slice(0, 40).forEach((emp, i) => {

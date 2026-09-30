@@ -31,7 +31,7 @@ export function Executor() {
 
   const checklist = vm.etapas.map(e => ({
     // no período, quantos meses a etapa já tem feitos ("Importação · 1/3")
-    id: e.id, rotulo: e.nome + (vm.varios && e.feitos > 0 && e.feitos < vm.meses.length ? ' · ' + e.feitos + '/' + vm.meses.length : ''), icone: 'check' as const, grupo: 1, ativa: e.atual,
+    id: e.id, rotulo: e.nome + (vm.varios && e.feitos > 0 && e.feitos < vm.meses.length ? ' · ' + e.feitos + '/' + vm.meses.length : ''), icone: 'check' as const, grupo: e.grupo, titulo: e.secao, ativa: e.atual,
     caixa: e.situacao === 'feita' ? 'marcada' as const : e.situacao === 'interrompida' ? 'parada' as const : 'vazia' as const,
   }));
 
@@ -70,8 +70,10 @@ export function Executor() {
             ) : (
               <div className="gh-blank">
                 <Icone nome="checklist" />
-                <h4>Feito no sistema</h4>
-                <p>Faça esta etapa no Alterdata e clique em Próximo.</p>
+                <h4>{vm.etapa.conferir ? 'O que conferir' : 'Feito no sistema'}</h4>
+                {vm.etapa.conferir ? (
+                  <ul className="executor-conferir">{vm.etapa.conferir.map(c => <li key={c}>{c}</li>)}</ul>
+                ) : <p>Faça esta etapa no Alterdata e clique em Próximo.</p>}
               </div>
             )}
           </div>

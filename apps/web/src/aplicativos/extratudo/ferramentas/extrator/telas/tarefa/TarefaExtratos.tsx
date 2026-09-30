@@ -237,6 +237,16 @@ function MesesDoBanco({ meses, competencia, travado, aceitarExtrato, aceitarRaza
   );
 }
 
+/** "Remover todos" (vários meses): com todos os meses importados, exclui o lado do banco no período (pergunta antes). */
+function RemoverTodos({ titulo, travado, onRemover }: { titulo: string; travado: boolean; onRemover: () => void }) {
+  return (
+    <button type="button" className="btn btn-outline btn-sm imp-todos" disabled={travado} onClick={onRemover}
+      title={'Todos os meses importados. Remover ' + titulo + ' de todos os meses'}>
+      <Icone nome="x" />Remover todos
+    </button>
+  );
+}
+
 /** "Importar Todos" (vários meses): vários arquivos de uma vez; cada lançamento cai no seu mês. */
 function ImportarTodos({ titulo, aceitar, travado, onArquivos }: { titulo: string; aceitar: string; travado: boolean; onArquivos: (fs: File[]) => void }) {
   const id = useId();
@@ -386,6 +396,16 @@ export function TarefaExtratos() {
           const travado = semMov || vm.ocupado || buscando || b.extrato.lendo || b.razao.lendo;
           const temExtrato = b.extrato.qtdArquivos > 0;
           const doDrive = b.extrato.doDrive;
+          // Em Lote: os meses do banco — completo (todo mês importado ou sem movimento), algum pelo Drive, os que faltam
+          const meses = vm.periodo.length > 1 ? vm.mesesDoBanco(b.id, ponte.semMovimentoPorMes) : [];
+          const lote = {
+            extratoCompleto: meses.length > 0 && meses.every(m => m.extrato || m.semMovimento) && meses.some(m => m.extrato),
+            razaoCompleto: meses.length > 0 && meses.every(m => m.razao || m.semMovimento) && meses.some(m => m.razao),
+            algumDoDrive: meses.some(m => m.ladoExtrato.doDrive.length > 0),
+            faltamExtrato: meses.filter(m => !m.extrato && !m.semMovimento).map(m => m.mes),
+            comExtrato: meses.filter(m => m.extrato).map(m => m.mes),
+            comRazao: meses.filter(m => m.razao).map(m => m.mes),
+          };
           const aberta = abertas.includes(b.id);
           return (
             <div key={b.id} className={'imp-bloco' + (semMov ? ' sem-movimento' : '')}>
@@ -403,20 +423,30 @@ export function TarefaExtratos() {
                   {!semMov && vm.periodo.length <= 1 && resumo(b).length > 0 && <div>{resumo(b).map(t => <span key={t}>{t}</span>)}</div>}
                 </div>
                 {vm.periodo.length > 1 ? (
-                  // vários meses: os botões de um mês ficam embaixo (por mês); aqui, o de todos de uma vez
+                  // vários meses: os botões de um mês ficam embaixo (por mês); aqui, o de todos de uma vez.
+                  // Todos os meses importados (à mão ou pelo Drive; sem movimento conta): vira "Remover todos".
+                  // Veio algum mês pelo Drive: sai o "Importar Todos" (à mão); o que faltar, pelo Drive ou no mês.
                   <div className="imp-grupos">
                     <div className="imp-grupo" aria-label="Extrato do banco (todos os meses)">
                       <span className="imp-rotulo">Extrato</span>
-                      <ImportarTodos titulo="o extrato" aceitar={cxExtrato.aceitar} travado={vm.ocupado || buscando} onArquivos={fs => { void vm.importarArquivos(b.id, 'banco', fs); }} />
-                      <button type="button" className="btn btn-outline btn-sm imp-todos" disabled={vm.ocupado || buscando}
-                        title="Buscar no Drive, na pasta da empresa, o extrato de cada mês que falta e importar"
-                        onClick={() => d.buscarNoPeriodo(b, vm.mesesDoBanco(b.id, ponte.semMovimentoPorMes).filter(m => !m.extrato && !m.semMovimento).map(m => m.mes))}>
-                        {buscando ? <span className="btn-spinner" /> : <LogoDrive cor />}Todos pelo Drive
-                      </button>
+                      {lote.extratoCompleto ? (
+                        <RemoverTodos titulo="o extrato" travado={vm.ocupado || buscando} onRemover={() => { void vm.excluirDoPeriodo(b.id, 'banco', lote.comExtrato); }} />
+                      ) : (
+                        <>
+                          {!lote.algumDoDrive && <ImportarTodos titulo="o extrato" aceitar={cxExtrato.aceitar} travado={vm.ocupado || buscando} onArquivos={fs => { void vm.importarArquivos(b.id, 'banco', fs); }} />}
+                          <button type="button" className="btn btn-outline btn-sm imp-todos" disabled={vm.ocupado || buscando}
+                            title="Buscar no Drive, na pasta da empresa, o extrato de cada mês que falta e importar"
+                            onClick={() => d.buscarNoPeriodo(b, lote.faltamExtrato)}>
+                            {buscando ? <span className="btn-spinner" /> : <LogoDrive cor />}Todos pelo Drive
+                          </button>
+                        </>
+                      )}
                     </div>
                     <div className="imp-grupo" aria-label="Razão da conta (todos os meses)">
                       <span className="imp-rotulo">Razão</span>
-                      <ImportarTodos titulo="o razão" aceitar={cxRazao.aceitar} travado={vm.ocupado || buscando} onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }} />
+                      {lote.razaoCompleto
+                        ? <RemoverTodos titulo="o razão" travado={vm.ocupado || buscando} onRemover={() => { void vm.excluirDoPeriodo(b.id, 'sistema', lote.comRazao); }} />
+                        : <ImportarTodos titulo="o razão" aceitar={cxRazao.aceitar} travado={vm.ocupado || buscando} onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }} />}
                     </div>
                   </div>
                 ) : (
@@ -469,7 +499,7 @@ export function TarefaExtratos() {
                   </div>
                 )}
               </div>
-              {vm.periodo.length > 1 && <MesesDoBanco meses={vm.mesesDoBanco(b.id, ponte.semMovimentoPorMes)} competencia={vm.competencia} naTarefa={ponte.naTarefa}
+              {vm.periodo.length > 1 && <MesesDoBanco meses={meses} competencia={vm.competencia} naTarefa={ponte.naTarefa}
                 travado={vm.ocupado || buscando} aceitarExtrato={cxExtrato.aceitar} aceitarRazao={cxRazao.aceitar}
                 onMes={vm.setCompetencia} onArquivos={(lado, fs) => { void vm.importarArquivos(b.id, lado, fs); }}
                 onExcluir={(lado, mes) => { void vm.excluirDoBanco(b.id, lado, mes); }}
