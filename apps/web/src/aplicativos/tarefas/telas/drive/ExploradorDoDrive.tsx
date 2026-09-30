@@ -1,11 +1,11 @@
 // Drive › Pastas, com a cara do Explorador de Arquivos do Windows: barra de endereço (voltar, avançar, acima, a
 // trilha e a pesquisa), barra de comandos (baixar, selecionar, ordenar, exibir, painel de navegação), a árvore das
-// pastas à esquerda, a lista em Detalhes ou Ícones e a barra de status. Um clique seleciona (Ctrl junta, Shift faz
+// pastas à esquerda, a lista em Detalhes ou Ícones e a barra de status; Tela cheia cobre o nads todo (Esc sai). Um clique seleciona (Ctrl junta, Shift faz
 // o intervalo), dois cliques (ou Enter) abrem; na tela de toque, um toque abre. Abrir um arquivo: a aba nasce no
 // clique (senão o navegador bloqueia) e recebe o link quando o robô termina de buscar.
 import type { entregas as e } from '@nads/core';
 import { Icone, useCarregando } from '@nads/ui';
-import { useEffect, useRef, type KeyboardEvent, type MouseEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { useExploradorDoDrive, type VmDrive } from './useExploradorDoDrive';
 
 const COLUNAS: { id: e.ColunaDoExplorador; rotulo: string }[] = [
@@ -143,7 +143,6 @@ export function ExploradorDoDrive() {
     else if (ev.altKey && ev.key === 'ArrowRight') { ev.preventDefault(); vm.avancar(); }
     else if ((ev.altKey && ev.key === 'ArrowUp') || ev.key === 'Backspace') { ev.preventDefault(); vm.subir(); }
     else if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'a') { ev.preventDefault(); vm.selecionarTodos(); }
-    else if (ev.key === 'Escape') vm.limparSelecao();
   };
   const n = vm.entradas.length;
   const m = vm.marcados.length;
@@ -151,9 +150,43 @@ export function ExploradorDoDrive() {
   const trilha = useRef<HTMLElement>(null);
   const fimDaTrilha = vm.trilha.map(p => p.p || p.c).join('/');
   useEffect(() => { const el = trilha.current; if (el) el.scrollLeft = el.scrollWidth; }, [fimDaTrilha]);
+  // no PC o Explorador vai até o fim da janela e a página não rola (uma barra de rolagem só, a da lista);
+  // na tela cheia ele cobre tudo. No celular, a página rola como sempre.
+  const caixa = useRef<HTMLElement>(null);
+  const [altura, setAltura] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const medir = () => {
+      const el = caixa.current;
+      if (!el || vm.telaCheia || window.innerWidth <= 760) { setAltura(null); return; }
+      setAltura(Math.max(320, Math.floor(window.innerHeight - (el.getBoundingClientRect().top + window.scrollY) - 12)));
+    };
+    medir();
+    window.addEventListener('resize', medir);
+    return () => window.removeEventListener('resize', medir);
+  }, [vm.telaCheia]);
+  const travar = vm.telaCheia || altura !== null;
+  // Esc (em qualquer lugar da página, fora dos campos): limpa a seleção; sem seleção, sai da tela cheia
+  const esc = useRef(() => {});
+  esc.current = () => { if (vm.marcados.length) vm.limparSelecao(); else if (vm.telaCheia) vm.alternarTelaCheia(); };
+  useEffect(() => {
+    const tecla = (ev: globalThis.KeyboardEvent) => {
+      if (ev.key !== 'Escape' || ev.defaultPrevented || ev.target instanceof HTMLInputElement || ev.target instanceof HTMLSelectElement) return;
+      esc.current();
+    };
+    window.addEventListener('keydown', tecla);
+    return () => window.removeEventListener('keydown', tecla);
+  }, []);
+  useEffect(() => {
+    if (!travar) return;
+    const html = document.documentElement;
+    const antes = html.style.overflow;
+    window.scrollTo(0, 0);
+    html.style.overflow = 'hidden';
+    return () => { html.style.overflow = antes; };
+  }, [travar]);
 
   return (
-    <section className="explorador" onKeyDown={teclas}>
+    <section ref={caixa} className={'explorador' + (vm.telaCheia ? ' tela-cheia' : '')} style={altura ? { height: altura } : undefined} onKeyDown={teclas}>
       <div className="explorador-endereco">
         <button type="button" className="explorador-btn" title="Voltar (Alt+←)" aria-label="Voltar" onClick={vm.voltar}><Icone nome="chevronLeft" /></button>
         <button type="button" className="explorador-btn" title="Avançar (Alt+→)" aria-label="Avançar" onClick={vm.avancar}><Icone nome="chevronRight" /></button>
@@ -194,6 +227,10 @@ export function ExploradorDoDrive() {
           <button type="button" className={'explorador-cmd' + (vm.exibicao === 'icones' ? ' on' : '')} aria-pressed={vm.exibicao === 'icones'} title="Ícones grandes" onClick={() => vm.mudarExibicao('icones')}><Icone nome="grade" />Ícones</button>
           <button type="button" className={'explorador-cmd' + (vm.mostrarArvore ? ' on' : '')} aria-pressed={vm.mostrarArvore} title="Painel de navegação (árvore)" onClick={vm.alternarArvore}><Icone nome="painel" />Árvore</button>
         </div>
+        <button type="button" className={'explorador-cmd' + (vm.telaCheia ? ' on' : '')} aria-pressed={vm.telaCheia}
+          title={vm.telaCheia ? 'Sair da tela cheia (Esc)' : 'Tela cheia'} onClick={vm.alternarTelaCheia}>
+          <Icone nome={vm.telaCheia ? 'minimizar' : 'maximizar'} />{vm.telaCheia ? 'Sair da tela cheia' : 'Tela cheia'}
+        </button>
       </div>
 
       {vm.erro && <div className="alert"><Icone nome="alert" /><div><p className="alert-text">{vm.erro}</p></div></div>}
