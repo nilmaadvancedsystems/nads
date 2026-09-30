@@ -73,7 +73,7 @@ export interface Execucao {
   semMovimento?: string[];
 }
 
-export type TipoEvento = 'inicio' | 'feita' | 'dispensada' | 'interrompida' | 'verificacao-falhou' | 'sem-movimento' | 'com-movimento';
+export type TipoEvento = 'inicio' | 'feita' | 'dispensada' | 'interrompida' | 'verificacao-falhou' | 'sem-movimento' | 'com-movimento' | 'reaberta';
 
 /** O que aconteceu, quando e com quem (para produtividade e análise das objeções). */
 export interface Evento {

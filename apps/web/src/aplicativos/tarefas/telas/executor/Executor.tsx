@@ -1,8 +1,8 @@
 // O executor: dentro do cabeçalho padrão (☰, "Tarefas / 292 · EMPRESA / Agosto/2026"), com as etapas em
-// checklist na barra lateral (caixinha marcada = feita). A página é só a ferramenta da etapa, com a
+// checklist na barra lateral (caixinha marcada = feita; clicar numa anterior volta para ela e tira o check). A página é só a ferramenta da etapa, com a
 // altura toda; embaixo, a barra com as saídas da etapa (Pedir extrato, Buscar no Drive…), Interromper e
 // Próximo.
-import { Alerta, Casca, Icone, useCarregando } from '@nads/ui';
+import { Alerta, Casca, Icone, useCarregando, useFerramentaNaEtapa } from '@nads/ui';
 import { useRef } from 'react';
 import { Navigate, useParams } from 'react-router';
 import { usePonteDaFerramenta } from '../../../../comum/ponte';
@@ -20,6 +20,8 @@ export function Executor() {
   // a ferramenta da etapa (iframe): recebe os bancos sem movimento e avisa quando a pessoa marca um
   const iframe = useRef<HTMLIFrameElement>(null);
   usePonteDaFerramenta(iframe, vm.semMovimento, vm.marcarSemMovimento);
+  // a ferramenta do tamanho do conteúdo dela: a página toda rola junto, numa barra só
+  const altura = useFerramentaNaEtapa(iframe, vm.ferramenta?.url);
   if (!vm.empresa) return <Navigate to={BASE} replace />;
 
   const checklist = vm.etapas.map(e => ({
@@ -32,7 +34,7 @@ export function Executor() {
       empresa={{ codigo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome, nome: '' }}
       trilha={[{ rotulo: vm.rotuloCompetencia }]}
       versao={casca.versao} secoes={checklist} paginas={[]} titulo=""
-      onSecao={() => undefined} onPagina={() => undefined} onInicio={vm.sair} onAplicativos={casca.inicio}
+      onSecao={vm.voltarPara} onPagina={() => undefined} onInicio={vm.sair} onAplicativos={casca.inicio}
       onEmpresa={vm.abrirEmpresa} aplicativos={casca.aplicacoes} onAplicativo={casca.onAplicacao}>
       {vm.carregando ? <p className="empty">Carregando…</p> : !vm.etapa ? (
         <div className="executor-fim">
@@ -48,7 +50,7 @@ export function Executor() {
           )}
           <div className="executor-ferramenta">
             {vm.ferramenta?.embutir ? (
-              <iframe ref={iframe} key={vm.ferramenta.url} src={vm.ferramenta.url} title={vm.ferramenta.nome} />
+              <iframe ref={iframe} key={vm.ferramenta.url} src={vm.ferramenta.url} title={vm.ferramenta.nome} style={altura ? { height: altura } : undefined} />
             ) : vm.ferramenta ? (
               <div className="gh-blank">
                 <Icone nome="link" />

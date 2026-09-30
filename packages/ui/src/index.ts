@@ -8,4 +8,5 @@ export { Casca, baixarArquivo, baixarBytes, type SecaoCasca, type PaginaCasca } 
 export { EscolherEmpresa, type EmpresaNaLista, type PropsEscolherEmpresa } from './escolherEmpresa';
 export { LOGOS_BANDEIRAS } from './logosBandeiras';
 export { BarraDeCarregamento, useCarregando } from './carregamento';
+export { origemConfiavel, origemDoPai, useAlturaNaEtapa, useFerramentaNaEtapa } from './etapa';
 export { LogoBanco, LogoDrive, LogoGmail, LogoWhatsApp } from './logos';

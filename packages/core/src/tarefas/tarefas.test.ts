@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ArquivoImportado } from '../extratudo/extrator/tipos';
 import {
   competenciasRecentes, concluida, criarRepoTarefasMemoria, dispensar, execucaoNova, fazer, idDaExecucao, interromper,
-  objecoesMaisComuns, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar, execucoesVariadas, marcarSemMovimento, todosSemMovimento,
+  objecoesMaisComuns, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar, execucoesVariadas, marcarSemMovimento, todosSemMovimento, voltarPara,
 } from '.';
 
 const R = ROTINA_CONTABIL;
@@ -43,6 +43,21 @@ describe('andamento', () => {
     for (const e of R.etapas) ex = fazer(ex, e.id, 'Clara', agora).execucao;
     expect(situacaoGeral(ex, R)).toBe('concluida');
     expect(proximaEtapa(ex, R)).toBeNull();
+  });
+});
+
+describe('voltar para uma etapa (clique no checklist)', () => {
+  it('tira o check só dela, e ela vira a da vez', () => {
+    let ex = execucaoNova('FITO', 292, '2026-08', 'contabil');
+    ex = fazer(ex, 'extratos', 'Clara', agora).execucao;
+    ex = dispensar(ex, 'cheque-especial', 'sem-negativo', '', 'Clara', agora).execucao;
+    expect(proximaEtapa(ex, R)?.id).toBe(R.etapas[2].id);
+    const v = voltarPara(ex, 'extratos', 'Vitor', agora);
+    expect(v.execucao.etapas.extratos).toBeUndefined();
+    expect(v.execucao.etapas['cheque-especial'].situacao).toBe('dispensada');
+    expect(proximaEtapa(v.execucao, R)?.id).toBe('extratos');
+    expect(v.evento).toEqual({ tipo: 'reaberta', etapa: 'extratos', por: 'Vitor', em: agora.toISOString(), observacao: 'feita' });
+    expect(ex.etapas.extratos.situacao).toBe('feita');
   });
 });
 

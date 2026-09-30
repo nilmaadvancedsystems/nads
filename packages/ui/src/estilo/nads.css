@@ -161,7 +161,7 @@ a{color:var(--accent);}
 /* ---------------------------------- app shell: cabeçalho + abas ---------------------------------- */
 #app{display:none;min-height:100vh;}
 #app.on{display:block;}
-.gh-header{background:var(--header-bg);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:25;}
+.gh-header{background:var(--header-bg);border-bottom:1px solid var(--border);position:relative;z-index:25;}
 .gh-header-top{display:flex;align-items:center;gap:12px;padding:16px 32px 8px;min-height:64px;}
 .gh-crumbs{display:flex;align-items:center;gap:4px;min-width:0;font-size:16px;}
 .gh-crumb{color:var(--ink);padding:4px 6px;border-radius:6px;white-space:nowrap;}
@@ -528,8 +528,8 @@ button.gh-crumb:hover{background:var(--hover-bg);}
 /* ---------------------------------- seções: abas no topo + menu lateral da seção ---------------------------------- */
 .menu-item.is-disabled{opacity:.45;cursor:not-allowed;}
 .menu-item.is-disabled:hover::before{background:none;}
-.layout{display:grid;grid-template-columns:256px minmax(0,1fr);align-items:start;}
-.subnav{position:sticky;top:var(--hdr-h,113px);height:calc(100vh - var(--hdr-h,113px));overflow-y:auto;
+.layout{display:grid;grid-template-columns:256px minmax(0,1fr);align-items:stretch;}
+.subnav{min-height:calc(100vh - var(--hdr-h,113px));
   border-right:1px solid var(--border);padding:16px 8px 16px 16px;display:flex;flex-direction:column;gap:2px;}
 .subnav-title{font-size:12px;font-weight:600;color:var(--ink-muted);padding:4px 8px 8px;}
 .subnav-item{position:relative;display:flex;align-items:center;gap:8px;width:100%;min-height:32px;padding:6px 8px;border:none;background:none;
@@ -550,7 +550,7 @@ main.main{padding:0 32px;}
 .content{max-width:1216px;}
 @media (max-width:768px){
   .layout{grid-template-columns:minmax(0,1fr);}
-  .subnav{position:static;height:auto;flex-direction:row;overflow-x:auto;border-right:none;border-bottom:1px solid var(--border);padding:8px 16px;gap:4px;}
+  .subnav{min-height:0;flex-direction:row;overflow-x:auto;border-right:none;border-bottom:1px solid var(--border);padding:8px 16px;gap:4px;}
   .subnav-title{display:none;}
   .subnav-item{width:auto;flex:none;white-space:nowrap;}
   .subnav-item.active::before{display:none;}
@@ -1022,7 +1022,7 @@ table.vc-tabela .vc-mut{color:var(--ink-muted);max-width:180px;overflow:hidden;t
 .layout-caixa main.main{padding:0;}
 .layout-caixa .topbar{max-width:none;margin:0 0 16px;padding:0 0 12px;border-bottom:1px solid var(--border);align-items:center;min-height:45px;}
 .layout-caixa .content{max-width:none;}
-.caixa-menu{position:sticky;top:calc(var(--hdr-h,113px) + 24px);display:flex;flex-direction:column;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);overflow:hidden;}
+.caixa-menu{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);overflow:hidden;}
 .caixa-item{position:relative;display:block;width:100%;min-height:38px;padding:8px 16px;border:none;border-top:1px solid var(--border);background:none;
   font:inherit;font-size:14px;line-height:20px;color:var(--ink);text-align:left;cursor:pointer;}
 .caixa-item:first-child{border-top:none;}
@@ -1082,11 +1082,12 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 /* a etapa encosta a ferramenta (e a barra de rolagem dela) na borda direita da tela */
 #app.larga .main{padding-right:0;}
 #app.larga .topbar[hidden] + .content{padding-top:16px;}
-/* a etapa ocupa a tela até embaixo (sem sobra): a ferramenta estica no que sobrar depois dos avisos */
-.executor-area{display:flex;flex-direction:column;gap:12px;height:calc(100vh - var(--hdr-h,64px) - 16px);}
+/* a ferramenta da etapa do tamanho do conteúdo dela (quem rola é a página, com o cabeçalho junto); no mínimo, até o
+   fim da tela */
+.executor-area{display:flex;flex-direction:column;gap:12px;}
 .executor-area > .hint{margin:0;}
-.executor-ferramenta{display:flex;flex:1;min-height:360px;overflow:hidden;}
-.executor-ferramenta iframe{flex:1;width:100%;height:100%;border:0;}
+.executor-ferramenta{display:flex;min-height:360px;}
+.executor-ferramenta iframe{display:block;width:100%;min-height:calc(100vh - var(--hdr-h,64px) - 16px);border:0;}
 .executor-ferramenta .gh-blank{margin:auto;}
 /* os botões da etapa soltos no canto de baixo, por cima da ferramenta (do tamanho dos do Gmail/WhatsApp) */
 .executor-flutuante{position:fixed;right:24px;bottom:20px;z-index:30;display:flex;align-items:center;gap:8px;}
@@ -1352,3 +1353,14 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-mov-total > span:first-child b{margin-left:0;color:var(--ink);}
 .imp-mov-saldo{color:var(--ink);}
 .imp-pdf{gap:4px;padding:3px 10px;}
+
+/* a página aberta dentro de uma etapa (iframe esticado até o conteúdo): sem barra de rolagem própria nem altura
+   mínima da tela; espaço embaixo para os botões soltos da etapa. Janela, avisos e barra de carregamento vão para
+   o pedaço que está na tela (a Tarefas conta qual é: --vista-topo e --vista-altura). */
+html.na-etapa{overflow:hidden;}
+html.na-etapa body,html.na-etapa #app{min-height:0;}
+html.na-etapa #app.embutida .content{padding-bottom:80px;}
+html.na-etapa .modal-overlay{top:var(--vista-topo,0px);bottom:auto;height:var(--vista-altura,100vh);}
+html.na-etapa .toast-region{bottom:auto;top:calc(var(--vista-topo,0px) + var(--vista-altura,100vh) - 16px);transform:translateY(-100%);}
+html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
+html.na-etapa .barra-carregamento{top:var(--vista-topo,0px);}

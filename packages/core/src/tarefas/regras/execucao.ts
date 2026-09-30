@@ -81,6 +81,17 @@ export function interromper(ex: Execucao, etapa: string, objecao: string, observ
   };
 }
 
+/**
+ * A pessoa clicou numa etapa já concluída no checklist: volta para ela e o check sai (a etapa fica
+ * pendente de novo; as outras continuam como estão). O evento guarda como ela estava.
+ */
+export function voltarPara(ex: Execucao, etapa: string, por: string, agora: Date): { execucao: Execucao; evento: Evento } {
+  const antes = situacaoDa(ex, etapa);
+  const etapas = { ...ex.etapas };
+  delete etapas[etapa];
+  return { execucao: { ...ex, etapas }, evento: { tipo: 'reaberta', etapa, por, em: agora.toISOString(), observacao: antes } };
+}
+
 /** O "Próximo" conferiu e ainda não está feita (vira evento: mostra onde as pessoas tropeçam). */
 export function eventoDeVerificacaoFalhou(etapa: string, por: string, agora: Date, motivo: string): Evento {
   return { tipo: 'verificacao-falhou', etapa, por, em: agora.toISOString(), observacao: motivo };

@@ -2,6 +2,7 @@
 // barra lateral das seções (com "Ocultar barra lateral") — ou, com lateral="caixa", a caixa de seções ao lado da página —,
 // gaveta ☰ com tema e a área da página (título + ações no canto direito). Marcação e classes iguais às do conferencia.html (~L973-1033).
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useAlturaNaEtapa } from './etapa';
 import { Icone, MarcaN, type NomeIcone } from './icones';
 import { SeletorTema } from './tema';
 
@@ -83,8 +84,10 @@ export function Casca(p: {
   const [oculta, setOculta] = useState(lerLateral);
   const [gaveta, setGaveta] = useState(false);
   const cabecalho = useRef<HTMLElement>(null);
+  // dentro de uma etapa da Tarefas: a página diz a altura dela (quem rola é a Tarefas, uma barra só)
+  useAlturaNaEtapa(embutida() && !acoplada());
 
-  // o menu lateral gruda logo abaixo do cabeçalho — a altura muda no celular
+  // a altura do cabeçalho (muda no celular): a barra lateral vai dele até o fim da tela
   useLayoutEffect(() => {
     const ajustar = () => { if (cabecalho.current) document.documentElement.style.setProperty('--hdr-h', cabecalho.current.offsetHeight + 'px'); };
     ajustar();

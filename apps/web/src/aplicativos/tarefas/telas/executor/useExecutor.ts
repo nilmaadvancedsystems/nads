@@ -44,6 +44,20 @@ export function useExecutor(rotaEmpresa: string, competencia: string) {
     repo.registrar(ex, t.eventoDeInicio(etapa.id, op.nome, new Date()));
   }, [carregada, ex, etapa, repo, op.nome]);
 
+  /**
+   * Clique numa etapa do checklist: dá para voltar a uma etapa anterior já concluída — o check dela sai
+   * e ela vira a da vez (as outras ficam como estão). Etapa da vez ou mais à frente: não faz nada.
+   */
+  function voltarPara(id: string) {
+    if (!ex || !etapa || carregando || conferindo) return;
+    const alvo = rotina.etapas.findIndex(e => e.id === id);
+    if (alvo < 0 || alvo >= rotina.etapas.findIndex(e => e.id === etapa.id) || !t.concluida(t.situacaoDa(ex, id))) return;
+    const v = t.voltarPara(ex, id, op.nome, new Date());
+    iniciadas.current.delete(id);
+    repo.gravar(v.execucao, v.evento);
+    setAviso(null);
+  }
+
   const voltar = () => navegar(caminhoDaPagina('minhas-empresas', 'empresas') + '?competencia=' + competencia);
 
   async function proximo() {
@@ -115,7 +129,7 @@ export function useExecutor(rotaEmpresa: string, competencia: string) {
     etapa, n: etapa ? rotina.etapas.findIndex(e => e.id === etapa.id) + 1 : 0, total: rotina.etapas.length,
     interrompidaAntes: etapa && ex ? t.estadoDa(ex, etapa.id)?.situacao === 'interrompida' ? t.estadoDa(ex, etapa.id) : null : null,
     ferramenta: f && empresa ? { nome: f.nome, embutir: f.embutir, url: BASES[f.app] + f.caminho(empresas.rotaDaEmpresa(empresa)) + (f.app === 'extratudo' ? '?competencia=' + competencia : '') } : null,
-    aviso, conferindo, proximo,
+    aviso, conferindo, proximo, voltarPara,
     resolver,
     interrompendo, abrirInterromper: () => setInterrompendo(true), fecharInterromper: () => setInterrompendo(false), interromper,
     sair: voltar,
