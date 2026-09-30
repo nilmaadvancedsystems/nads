@@ -589,6 +589,9 @@ main.main{padding:0 32px;}
 .subnav-itens{display:flex;flex-direction:column;gap:2px;}
 .subnav-sep{border:0;border-top:1px solid var(--border);margin:8px 0;}
 .subnav-foot{margin-top:auto;padding-top:8px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px;}
+/* o "Ocultar barra lateral" sempre à mão: a página rola e ele fica parado no pé da tela */
+.subnav-foot{position:sticky;bottom:0;z-index:1;background:var(--bg);padding-bottom:16px;margin-bottom:-16px;}
+@media (max-width:768px){.subnav-foot{position:static;margin-bottom:0;padding-bottom:0;}}
 .subnav-foot .theme-toggle{align-self:flex-start;margin-left:8px;}
 .step-pill.is-locked,.subnav-item.is-locked,.menu-item.is-locked{opacity:.45;cursor:not-allowed;}
 .steps .step-pill.is-locked:hover,.subnav .subnav-item.is-locked:hover{background:transparent;}
