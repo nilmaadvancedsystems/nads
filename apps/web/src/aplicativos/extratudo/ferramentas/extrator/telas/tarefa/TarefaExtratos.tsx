@@ -230,48 +230,84 @@ function MesesDoBanco({ b, meses, competencia, travado, aceitarExtrato, aceitarR
 }
 
 /**
- * O seletor de competência (como o "main ▾" do GitHub): os meses e, dentro da Tarefas, "Vários meses" — abre a
- * mesma empresa no período (a Etapa com vários meses). Fora da Tarefas, troca o mês na URL.
+ * O seletor de competência, com duas abas (como o "Code ▾" do GitHub: Local | Codespaces):
+ *   Competência — os meses (a partir de 01/2026); nos vários meses, só os do período (cada um abre o seu aqui);
+ *   Vários meses — (dentro da Tarefas) de / até (MM/AAAA) e Iniciar: a empresa abre nos meses juntos e fica neles
+ *   (prometido); no período, os meses e "Encerrar", que só funciona com todos os meses 100% concluídos.
  */
-function SeletorDeCompetencia({ vm, naTarefa, trocar }: { vm: ReturnType<typeof useImportacao>; naTarefa: boolean; trocar: (c: string) => void }) {
+function SeletorDeCompetencia({ vm, naTarefa, trocar, periodoDaTarefa, encerrar }: {
+  vm: ReturnType<typeof useImportacao>;
+  naTarefa: boolean;
+  trocar: (c: string) => void;
+  periodoDaTarefa: { meses: string[]; concluido: boolean } | null;
+  encerrar: () => void;
+}) {
   const periodo = vm.periodo.length > 1 ? vm.periodo : [];
-  const [de, setDe] = useState(periodo[0] || vm.competencias[2]?.valor || vm.competencia);
-  const [ate, setAte] = useState(periodo[periodo.length - 1] || vm.competencia);
   const mmaaaa = tarefas.rotuloNumericoCompetencia;
+  const [aba, setAba] = useState<'mes' | 'varios'>('mes');
+  const cs = vm.competencias.map(c => c.valor);
+  const [de, setDe] = useState(cs[Math.min(2, cs.length - 1)] || vm.competencia);
+  const [ate, setAte] = useState(cs[0] || vm.competencia);
+  const qtd = tarefas.competenciasDoPeriodo(tarefas.rotaDoPeriodo(de, ate)).length;
   const rotulo = periodo.length
     ? <>{mmaaaa(periodo[0])} a {mmaaaa(periodo[periodo.length - 1])}<span className="imp-periodo-qtd">{periodo.length} meses</span></>
     : vm.rotuloCompetencia;
-  const ir = (c: string) => { if (naTarefa) trocar(c); else vm.setCompetencia(c); };
+  const lista = periodo.length ? periodo.map(c => ({ valor: c, rotulo: tarefas.rotuloCompetencia(c) })) : vm.competencias;
+  const concluido = !!periodoDaTarefa?.concluido;
   return (
-    <MenuSuspenso icone="calendar" rotulo={rotulo} titulo="Competência" dica={periodo.length ? 'Vários meses: ' + periodo.map(mmaaaa).join(', ') : 'Trocar a competência'} largura={260}
+    <MenuSuspenso icone="calendar" rotulo={rotulo} largura={300}
+      dica={periodo.length ? 'Vários meses: ' + periodo.map(mmaaaa).join(', ') : 'Trocar a competência'}
       className={'btn btn-outline' + (periodo.length ? ' imp-periodo-ativo' : '')}
       conteudo={fechar => (
-        <>
-          {vm.competencias.map(c => (
-            <button key={c.valor} type="button" className="popover-item" role="menuitem" onClick={() => { fechar(); ir(c.valor); }}>
-              <span className="popover-marca">{!periodo.length && c.valor === vm.competencia && <Icone nome="check" />}</span>
-              <span className="popover-texto">{c.rotulo}</span>
-            </button>
-          ))}
+        <div className="comp-pop">
           {naTarefa && (
-            <>
-              <hr className="popover-sep" />
-              <p className="popover-label">Vários meses</p>
-              <div className="imp-periodo">
-                <select aria-label="Do mês" value={de} onChange={e => setDe(e.target.value)}>
-                  {vm.competencias.map(c => <option key={c.valor} value={c.valor}>{mmaaaa(c.valor)}</option>)}
-                </select>
-                <span className="hint">a</span>
-                <select aria-label="Até o mês" value={ate} onChange={e => setAte(e.target.value)}>
-                  {vm.competencias.map(c => <option key={c.valor} value={c.valor}>{mmaaaa(c.valor)}</option>)}
-                </select>
-              </div>
-              <button type="button" className="btn btn-primary btn-sm imp-periodo-abrir" disabled={de === ate} onClick={() => { fechar(); trocar(tarefas.rotaDoPeriodo(de, ate)); }}>
-                Abrir os meses juntos
+            <div className="iniciar-abas comp-abas" role="tablist">
+              <button type="button" role="tab" className="iniciar-aba" aria-selected={aba === 'mes'} onClick={() => setAba('mes')}>Competência</button>
+              <button type="button" role="tab" className="iniciar-aba" aria-selected={aba === 'varios'} onClick={() => setAba('varios')}>
+                Vários meses{periodo.length > 0 && <span className="imp-periodo-qtd">{periodo.length}</span>}
               </button>
-            </>
+            </div>
           )}
-        </>
+          {aba === 'mes' || !naTarefa ? (
+            <div className="comp-lista">
+              {lista.map(c => (
+                <button key={c.valor} type="button" className="popover-item" role="menuitem"
+                  onClick={() => { fechar(); if (periodo.length || !naTarefa) vm.setCompetencia(c.valor); else trocar(c.valor); }}>
+                  <span className="popover-marca">{c.valor === vm.competencia && <Icone nome="check" />}</span>
+                  <span className="popover-texto">{c.rotulo}</span>
+                </button>
+              ))}
+            </div>
+          ) : periodo.length ? (
+            <div className="comp-varios">
+              <p className="comp-varios-texto">A empresa está nos meses <b>{mmaaaa(periodo[0])} a {mmaaaa(periodo[periodo.length - 1])}</b> ({periodo.length} meses).</p>
+              <div className="imp-mes-chips">{periodo.map(m => <span key={m} className="imp-mes-chip">{mmaaaa(m)}</span>)}</div>
+              {concluido
+                ? <p className="comp-varios-texto ok"><Icone nome="checkCircle" />Todos os meses concluídos: já dá para encerrar.</p>
+                : <p className="hint">Para encerrar, os {periodo.length} meses precisam estar 100% concluídos (todas as etapas). Até lá, a empresa abre sempre nesses meses.</p>}
+              <button type="button" className="btn btn-primary btn-sm comp-varios-botao" disabled={!concluido} onClick={() => { fechar(); encerrar(); }}>Encerrar vários meses</button>
+            </div>
+          ) : (
+            <div className="comp-varios">
+              <p className="hint">A empresa abre nesses meses juntos e fica neles até todos estarem concluídos.</p>
+              <div className="varios-de-ate">
+                <label>De
+                  <select value={de} onChange={e => setDe(e.target.value)}>
+                    {vm.competencias.map(c => <option key={c.valor} value={c.valor}>{mmaaaa(c.valor)}</option>)}
+                  </select>
+                </label>
+                <label>Até
+                  <select value={ate} onChange={e => setAte(e.target.value)}>
+                    {vm.competencias.map(c => <option key={c.valor} value={c.valor}>{mmaaaa(c.valor)}</option>)}
+                  </select>
+                </label>
+              </div>
+              <button type="button" className="btn btn-primary btn-sm comp-varios-botao" disabled={qtd < 2} onClick={() => { fechar(); trocar(tarefas.rotaDoPeriodo(de, ate)); }}>
+                {qtd > 1 ? 'Iniciar ' + qtd + ' meses' : 'Escolha dois meses ou mais'}
+              </button>
+            </div>
+          )}
+        </div>
       )} />
   );
 }
@@ -301,7 +337,7 @@ export function TarefaExtratos() {
     <section className="tarefa-extratos">
       <div className="imp-topo">
         {/* à esquerda, como o "⎇ main ▾  6 Branches" do GitHub: a competência e o número de bancos */}
-        <SeletorDeCompetencia vm={vm} naTarefa={ponte.naTarefa} trocar={ponte.trocarCompetencia} />
+        <SeletorDeCompetencia vm={vm} naTarefa={ponte.naTarefa} trocar={ponte.trocarCompetencia} periodoDaTarefa={ponte.periodo} encerrar={ponte.encerrarPeriodo} />
         {/* a Etapa com vários meses: uma aba por mês (✓ = o mês já está pronto) */}
         {vm.periodo.length > 1 && (
           <div className="imp-meses" role="tablist" aria-label="Meses do período">

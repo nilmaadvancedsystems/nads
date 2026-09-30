@@ -1617,3 +1617,22 @@ td.cad-acoes .menu-seta{display:none;}
 .imp-periodo-falta{font-size:12px;color:var(--ink-muted);min-width:64px;}
 .imp-periodo-lado .btn svg{width:14px;height:14px;}
 .imp-periodo-lado .btn .logo-img{width:14px;height:14px;}
+
+.executor-fim-botoes{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px;}
+
+
+/* o seletor de competência com abas (como o "Code ▾" do GitHub): Competência | Vários meses */
+.comp-pop{display:flex;flex-direction:column;margin:-8px;}
+.comp-abas{padding:8px 8px 0;}
+.comp-lista{display:flex;flex-direction:column;padding:8px;max-height:min(360px,60vh);overflow:auto;}
+.comp-varios{display:flex;flex-direction:column;gap:10px;padding:12px 14px 14px;}
+.comp-varios .hint{margin:0;}
+.comp-varios-texto{margin:0;font-size:13px;color:var(--ink);}
+.comp-varios-texto.ok{display:flex;align-items:center;gap:6px;color:var(--success);}
+.comp-varios-texto.ok svg{width:16px;height:16px;}
+.comp-varios-botao{width:100%;}
+.varios-de-ate{display:flex;align-items:flex-end;gap:10px;}
+.varios-de-ate label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--ink-muted);flex:1;}
+.varios-de-ate select{width:100%;}
+.iniciar-aba .imp-periodo-qtd{margin-left:6px;}
+.iniciar-abas.comp-abas{margin:0;padding:6px 8px 0;}

@@ -7,9 +7,13 @@
 import { origemConfiavel, origemDoPai } from '@nads/ui';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 
-type ParaTarefa = { nads: 'pronta' } | { nads: 'sem-movimento'; banco: string; marcado: boolean; competencia?: string } | { nads: 'competencia'; competencia: string };
+type ParaTarefa = { nads: 'pronta' } | { nads: 'sem-movimento'; banco: string; marcado: boolean; competencia?: string } | { nads: 'competencia'; competencia: string }
+  | { nads: 'encerrar-periodo' };
 /** o estado da etapa: os bancos sem movimento de cada mês (no período, um por mês; num mês só, só ele) */
-type ParaFerramenta = { nads: 'estado-etapa'; porMes: Record<string, string[]> };
+type ParaFerramenta = { nads: 'estado-etapa'; porMes: Record<string, string[]>; periodo?: PeriodoDaEtapa | null };
+
+/** Vários meses: os meses do período prometido e se todos já estão concluídos (só aí dá para encerrar). */
+export interface PeriodoDaEtapa { meses: string[]; concluido: boolean }
 
 /** 'aaaa-mm' ou o período 'aaaa-mm..aaaa-mm' (a Etapa com vários meses). */
 const COMPETENCIA_OU_PERIODO = /^d{4}-d{2}(..d{4}-d{2})?$/;
@@ -24,12 +28,16 @@ export { origemConfiavel };
 export function usePonteDaTarefa(competencia?: string) {
   const [pai] = useState(origemDoPai);
   const [porMes, setPorMes] = useState<Record<string, string[]>>({});
+  const [periodo, setPeriodo] = useState<PeriodoDaEtapa | null>(null);
   useEffect(() => {
     if (!pai) return;
     const ouvir = (e: MessageEvent) => {
       if (e.source !== window.parent || e.origin !== pai) return;
       const d = e.data as Partial<ParaFerramenta> | null;
-      if (d && d.nads === 'estado-etapa' && d.porMes && typeof d.porMes === 'object') setPorMes(d.porMes);
+      if (d && d.nads === 'estado-etapa' && d.porMes && typeof d.porMes === 'object') {
+        setPorMes(d.porMes);
+        setPeriodo(d.periodo && Array.isArray(d.periodo.meses) ? { meses: d.periodo.meses, concluido: !!d.periodo.concluido } : null);
+      }
     };
     window.addEventListener('message', ouvir);
     const pronta: ParaTarefa = { nads: 'pronta' };
@@ -52,21 +60,30 @@ export function usePonteDaTarefa(competencia?: string) {
     const msg: ParaTarefa = { nads: 'competencia', competencia };
     window.parent.postMessage(msg, pai);
   }, [pai]);
-  return { naTarefa: !!pai, semMovimento, semMovimentoPorMes: porMes, marcarSemMovimento, trocarCompetencia };
+  /** Vários meses: pede à Tarefas para encerrar (ela só encerra com todos os meses concluídos). */
+  const encerrarPeriodo = useCallback(() => {
+    if (!pai) return;
+    const msg: ParaTarefa = { nads: 'encerrar-periodo' };
+    window.parent.postMessage(msg, pai);
+  }, [pai]);
+  return { naTarefa: !!pai, semMovimento, semMovimentoPorMes: porMes, marcarSemMovimento, trocarCompetencia, periodo, encerrarPeriodo };
 }
 
 /** Na Tarefas: manda à ferramenta os bancos sem movimento de cada mês e recebe quando a pessoa marca um. */
 export function usePonteDaFerramenta(iframe: RefObject<HTMLIFrameElement | null>, porMes: Record<string, string[]>, mesPadrao: string,
-  onSemMovimento: (banco: string, marcado: boolean, competencia?: string) => void, onCompetencia?: (competencia: string) => void) {
+  onSemMovimento: (banco: string, marcado: boolean, competencia?: string) => void, onCompetencia?: (competencia: string) => void,
+  periodo: PeriodoDaEtapa | null = null, onEncerrar?: () => void) {
   const estado = useRef(porMes);
+  const estadoPeriodo = useRef(periodo);
+  const aoEncerrar = useRef(onEncerrar);
   const aoMarcar = useRef(onSemMovimento);
   const aoTrocar = useRef(onCompetencia);
-  useEffect(() => { estado.current = porMes; aoMarcar.current = onSemMovimento; aoTrocar.current = onCompetencia; });
+  useEffect(() => { estado.current = porMes; estadoPeriodo.current = periodo; aoMarcar.current = onSemMovimento; aoTrocar.current = onCompetencia; aoEncerrar.current = onEncerrar; });
 
   const mandar = useCallback(() => {
     const f = iframe.current;
     if (!f?.contentWindow) return;
-    const msg: ParaFerramenta = { nads: 'estado-etapa', porMes: estado.current };
+    const msg: ParaFerramenta = { nads: 'estado-etapa', porMes: estado.current, periodo: estadoPeriodo.current };
     f.contentWindow.postMessage(msg, new URL(f.src, window.location.href).origin);
   }, [iframe]);
 
@@ -77,11 +94,12 @@ export function usePonteDaFerramenta(iframe: RefObject<HTMLIFrameElement | null>
       if (d?.nads === 'pronta') mandar();
       if (d?.nads === 'sem-movimento' && typeof d.banco === 'string') aoMarcar.current(d.banco, !!d.marcado, typeof d.competencia === 'string' ? d.competencia : mesPadrao);
       if (d?.nads === 'competencia' && typeof d.competencia === 'string' && COMPETENCIA_OU_PERIODO.test(d.competencia)) aoTrocar.current?.(d.competencia);
+      if (d?.nads === 'encerrar-periodo') aoEncerrar.current?.();
     };
     window.addEventListener('message', ouvir);
     return () => window.removeEventListener('message', ouvir);
   }, [iframe, mandar, mesPadrao]);
 
-  const chave = JSON.stringify(porMes);
+  const chave = JSON.stringify([porMes, periodo]);
   useEffect(() => { mandar(); }, [chave, mandar]);
 }

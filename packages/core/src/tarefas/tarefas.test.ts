@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ArquivoImportado } from '../extratudo/extrator/tipos';
 import {
   competenciasRecentes, concluida, criarRepoTarefasMemoria, dispensar, execucaoNova, fazer, idDaExecucao, interromper,
-  objecoesMaisComuns, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar, execucoesVariadas, marcarSemMovimento, todosSemMovimento, voltarPara, rotuloCurtoCompetencia, competenciasDoPeriodo, rotaDoPeriodo, rotuloDoPeriodo,
+  objecoesMaisComuns, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar, execucoesVariadas, marcarSemMovimento, todosSemMovimento, voltarPara, rotuloCurtoCompetencia, competenciasDoPeriodo, rotaDoPeriodo, rotuloDoPeriodo, definirPeriodo, periodoConcluido,
 } from '.';
 
 const R = ROTINA_CONTABIL;
@@ -43,6 +43,22 @@ describe('andamento', () => {
     for (const e of R.etapas) ex = fazer(ex, e.id, 'Clara', agora).execucao;
     expect(situacaoGeral(ex, R)).toBe('concluida');
     expect(proximaEtapa(ex, R)).toBeNull();
+  });
+});
+
+describe('vários meses: o período prometido', () => {
+  it('põe e tira o período do mês; só encerra com todos os meses concluídos', () => {
+    let ex = execucaoNova('FITO', 292, '2026-06', 'contabil');
+    const p = definirPeriodo(ex, '2026-06..2026-08', 'Vitor', agora);
+    expect(p.execucao.periodo).toBe('2026-06..2026-08');
+    expect(p.evento).toMatchObject({ tipo: 'periodo', observacao: '2026-06..2026-08' });
+    const tira = definirPeriodo(p.execucao, null, 'Vitor', agora);
+    expect(tira.execucao.periodo).toBeUndefined();
+    expect(tira.evento.tipo).toBe('periodo-encerrado');
+    expect(periodoConcluido([ex], R)).toBe(false);
+    for (const e of R.etapas) ex = fazer(ex, e.id, 'Vitor', agora).execucao;
+    expect(periodoConcluido([ex, ex], R)).toBe(true);
+    expect(periodoConcluido([ex, execucaoNova('FITO', 292, '2026-07', 'contabil')], R)).toBe(false);
   });
 });
 

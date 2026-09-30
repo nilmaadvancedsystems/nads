@@ -106,6 +106,24 @@ export function marcarSemMovimento(ex: Execucao, etapa: string, banco: string, m
   };
 }
 
+/**
+ * Vários meses: põe o mês no período prometido (ou tira, com null). O evento guarda o período (a etapa fica vazia:
+ * vale para a competência inteira).
+ */
+export function definirPeriodo(ex: Execucao, periodo: string | null, por: string, agora: Date): { execucao: Execucao; evento: Evento } {
+  const sem: Execucao = { ...ex };
+  delete sem.periodo;
+  return {
+    execucao: periodo ? { ...ex, periodo } : sem,
+    evento: { tipo: periodo ? 'periodo' : 'periodo-encerrado', etapa: '', por, em: agora.toISOString(), observacao: periodo || ex.periodo || '' },
+  };
+}
+
+/** Os meses do período estão todos concluídos (todas as etapas feitas ou "não se aplica")? Só aí dá para encerrar. */
+export function periodoConcluido(execucoes: readonly (Execucao | null)[], rotina: Rotina): boolean {
+  return execucoes.length > 0 && execucoes.every(ex => situacaoGeral(ex, rotina) === 'concluida');
+}
+
 /** Todos os bancos da empresa sem movimento? (aí a etapa dos extratos conta como "não se aplica") */
 export function todosSemMovimento(ex: Execucao | null, bancos: readonly { id: string }[]): boolean {
   return bancos.length > 0 && bancos.every(b => ex?.semMovimento?.includes(b.id));

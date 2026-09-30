@@ -19,12 +19,15 @@ export function Executor() {
   const casca = useCascaTarefas('minhas-empresas', 'empresas');
   // a ferramenta da etapa (iframe): recebe os bancos sem movimento e avisa quando a pessoa marca um
   const iframe = useRef<HTMLIFrameElement>(null);
-  usePonteDaFerramenta(iframe, vm.semMovimentoPorMes, vm.competencia, vm.marcarSemMovimento, vm.trocarCompetencia);
+  usePonteDaFerramenta(iframe, vm.semMovimentoPorMes, vm.competencia, vm.marcarSemMovimento, vm.trocarCompetencia,
+    vm.varios ? { meses: vm.meses, concluido: vm.periodoConcluido } : null, vm.encerrarPeriodo);
   // a ferramenta do tamanho do conteúdo dela: a página toda rola junto, numa barra só
   const { altura, carregando: ferramentaCarregando, janelaAberta } = useFerramentaNaEtapa(iframe, vm.ferramenta?.embutir ? vm.ferramenta.url : undefined);
   // uma barra só, no alto da página: a da Tarefas e a da ferramenta juntas
   useCarregando(vm.carregando || vm.conferindo || ferramentaCarregando);
   if (!vm.empresa) return <Navigate to={BASE} replace />;
+  // o mês faz parte de um período prometido (vários meses): abre o período
+  if (vm.irParaPeriodo) return <Navigate to={vm.irParaPeriodo} replace />;
 
   const checklist = vm.etapas.map(e => ({
     // no período, quantos meses a etapa já tem feitos ("Importação · 1/3")
@@ -43,8 +46,11 @@ export function Executor() {
         <div className="executor-fim">
           <Icone nome="checkCircle" />
           <h2>Tudo pronto em {vm.rotuloCompetencia}</h2>
-          <p className="hint">Todas as etapas desta empresa estão concluídas.</p>
-          <button type="button" className="btn btn-primary" onClick={vm.sair}>Voltar às empresas</button>
+          <p className="hint">Todas as etapas desta empresa estão concluídas{vm.varios ? ' nos ' + vm.meses.length + ' meses' : ''}.</p>
+          <div className="executor-fim-botoes">
+            {vm.varios && <button type="button" className="btn btn-outline" onClick={vm.encerrarPeriodo}>Encerrar vários meses</button>}
+            <button type="button" className="btn btn-primary" onClick={vm.sair}>Voltar às empresas</button>
+          </div>
         </div>
       ) : (
         <div className="executor-area">

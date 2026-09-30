@@ -73,9 +73,15 @@ export interface Execucao {
   etapas: Record<string, EstadoEtapa>;
   /** os bancos (id) que não tiveram movimento na competência ("Não teve movimento" na linha do banco) */
   semMovimento?: string[];
+  /**
+   * Vários meses: o período prometido que este mês faz parte ('aaaa-mm..aaaa-mm'). Enquanto estiver aqui,
+   * abrir a empresa neste mês leva ao período; só sai quando todos os meses dele estiverem concluídos.
+   */
+  periodo?: string;
 }
 
-export type TipoEvento = 'inicio' | 'feita' | 'dispensada' | 'interrompida' | 'verificacao-falhou' | 'sem-movimento' | 'com-movimento' | 'reaberta';
+export type TipoEvento = 'inicio' | 'feita' | 'dispensada' | 'interrompida' | 'verificacao-falhou' | 'sem-movimento' | 'com-movimento' | 'reaberta'
+  | 'periodo' | 'periodo-encerrado';
 
 /** O que aconteceu, quando e com quem (para produtividade e análise das objeções). */
 export interface Evento {

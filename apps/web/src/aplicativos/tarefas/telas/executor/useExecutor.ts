@@ -4,6 +4,8 @@
 // Etapa com vários meses: a rota pode ser um período ('2026-06..2026-08'). Continua uma execução por mês; a
 // etapa da vez é a primeira que falta em algum mês. Se a ferramenta trabalha o período (ferramenta.periodo, o
 // Extrator), o Próximo confere e marca todos os meses que faltam de uma vez; senão, vai mês a mês.
+// O período fica prometido: gravado em cada mês (execucao.periodo); abrir a empresa num desses meses leva de
+// volta ao período, e só dá para encerrar quando todos os meses dele estiverem concluídos.
 import { empresas, extrator, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
@@ -48,6 +50,22 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const competencia = pendentes[0] || meses[meses.length - 1] || '';
   const ex = exDe[competencia] || null;
   const carregando = !carregada;
+  // um mês só, mas que faz parte de um período prometido: o executor leva para o período
+  const periodoDoMes = !varios && carregada && ex?.periodo && ex.periodo !== periodo && t.competenciasDoPeriodo(ex.periodo).length > 1 ? ex.periodo : null;
+  const concluido = varios && carregada && t.periodoConcluido(meses.map(c => exDe[c] || null), rotina);
+
+  // abriu o período: grava a promessa em cada mês dele (uma vez)
+  const gravouPeriodo = useRef('');
+  useEffect(() => {
+    if (!varios || !carregada || !empresa || gravouPeriodo.current === periodo) return;
+    gravouPeriodo.current = periodo;
+    for (const c of meses) {
+      if (exDe[c] && exDe[c].periodo !== periodo) {
+        const p = t.definirPeriodo(exDe[c], periodo, op.nome, new Date());
+        repo.gravar(p.execucao, p.evento);
+      }
+    }
+  });
   const [aviso, setAviso] = useState<string | null>(null);
   const [conferindo, setConferindo] = useState(false);
   const [interrompendo, setInterrompendo] = useState(false);
@@ -184,6 +202,22 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       if (!exDe[c] || !etapa || carregando) return;
       const m = t.marcarSemMovimento(exDe[c], etapa.id, banco, marcado, op.nome, new Date());
       repo.gravar(m.execucao, m.evento);
+    },
+    /** o mês aberto faz parte de um período prometido: para onde levar */
+    irParaPeriodo: periodoDoMes && empresa ? caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), periodoDoMes) : null,
+    /** todos os meses do período estão concluídos (só aí dá para encerrar) */
+    periodoConcluido: concluido,
+    /** Encerra os vários meses (só com todos concluídos): tira a promessa de cada mês e volta ao último mês. */
+    encerrarPeriodo: () => {
+      if (!varios || !empresa) return;
+      if (!concluido) { toast('Para encerrar, os ' + meses.length + ' meses precisam estar 100% concluídos.'); return; }
+      for (const c of meses) {
+        if (!exDe[c]?.periodo) continue;
+        const p = t.definirPeriodo(exDe[c], null, op.nome, new Date());
+        repo.gravar(p.execucao, p.evento);
+      }
+      toast('Vários meses encerrado: ' + t.rotuloDoPeriodo(meses) + '.');
+      navegar(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), ultimo));
     },
     /** A ferramenta trocou a competência ou o período (o seletor dela): a mesma empresa, no outro período. */
     trocarCompetencia: (c: string) => { if (empresa && c !== periodo && t.competenciasDoPeriodo(c).length) navegar(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), c)); },
