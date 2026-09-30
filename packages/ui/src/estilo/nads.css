@@ -1345,7 +1345,6 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-btn.imp-drive,.imp-btn.imp-feito-drive{width:32px;height:32px;}
 /* com mais de um banco: clicar no nome escolhe a conferência (o escolhido fica marcado) */
 .imp-txt.escolhe{cursor:pointer;border-radius:6px;padding:2px 6px;margin:-2px -6px;}
-.imp-txt.escolhe:hover{background:var(--hover-bg);}
 .imp-mov th.th-sort{cursor:pointer;user-select:none;}
 .imp-mov th.th-sort:hover{color:var(--ink);}
 .imp-mov thead th{background:var(--surface-2);}
