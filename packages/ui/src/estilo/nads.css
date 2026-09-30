@@ -1374,4 +1374,7 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 .rodape{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--border);
   font-size:12px;line-height:20px;color:var(--ink-muted);}
 .rodape-marca{display:block;width:24px;height:24px;flex:none;border-radius:50%;}
+/* no tema escuro, a logo com as cores invertidas (círculo preto, tigre branco), como o Vitor mandou */
+:root[data-theme="dark"] .rodape-marca{filter:invert(1);}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .rodape-marca{filter:invert(1);}}
 @media print{.rodape{display:none;}}
