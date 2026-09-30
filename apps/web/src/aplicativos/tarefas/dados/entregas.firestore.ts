@@ -1,0 +1,87 @@
+// A Tarefas no banco do Entregas (projeto entregas-2e5e2), pedido do escritório em 30/09/2026: o nads
+// inteiro passa a gravar lá, com as contas de lá. Aqui ficam a conexão e o login:
+//   - Firebase Auth do Entregas (e-mail/senha; o nome vira "nome@nilma.local", como lá);
+//   - usuarios/{uid}: SÓ LEITURA do próprio documento (nome, papéis, cargo, ativo).
+// As tarefas ficam na coleção `rotinas` (tarefas.firestore.ts), que usa a mesma conexão.
+// O app Firebase se chama 'entregas', o mesmo do Drive do Extratudo: no site com os dois, a sessão é uma só.
+import { usuarios } from '@nads/core';
+import { getApps, initializeApp } from 'firebase/app';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, getDoc, getFirestore, initializeFirestore, type Firestore } from 'firebase/firestore';
+
+/** Configuração web pública do projeto do Entregas (a mesma das páginas de lá). */
+const CONFIG_ENTREGAS = {
+  apiKey: 'AIzaSyD6xg7XhX8dKTKmaYup4hRX5k9XFHEkb98',
+  authDomain: 'entregas-2e5e2.firebaseapp.com',
+  projectId: 'entregas-2e5e2',
+  storageBucket: 'entregas-2e5e2.firebasestorage.app',
+  messagingSenderId: '1009094556836',
+  appId: '1:1009094556836:web:d3b6a9283e934db064fa31',
+};
+
+/** A sessão: `pronta` = já se sabe se tem alguém; `aviso` = por que a conta não entrou. */
+export interface EstadoSessao { pronta: boolean; usuario: usuarios.Usuario | null; aviso: string }
+
+export interface SessaoEntregas {
+  estado(): EstadoSessao;
+  entrar(login: string, senha: string): Promise<void>;
+  sair(): Promise<void>;
+  assinar(aoMudar: () => void): () => void;
+  versao(): number;
+}
+
+const appDoEntregas = () => getApps().find(a => a.name === 'entregas') ?? initializeApp(CONFIG_ENTREGAS, 'entregas');
+
+/** O banco do Entregas (a mesma conexão para o login e para as rotinas; campo undefined não vai). */
+export function bancoDoEntregas(): Firestore {
+  const app = appDoEntregas();
+  try {
+    return initializeFirestore(app, { ignoreUndefinedProperties: true });
+  } catch {
+    return getFirestore(app); // já aberto nesta página
+  }
+}
+
+export function criarSessaoEntregas(): SessaoEntregas {
+  const auth = getAuth(appDoEntregas());
+  const db = bancoDoEntregas();
+  let estado: EstadoSessao = { pronta: false, usuario: null, aviso: '' };
+  let ver = 0;
+  const ouvintes = new Set<() => void>();
+  const mudar = (e: EstadoSessao) => { estado = e; ver++; for (const f of ouvintes) f(); };
+
+  onAuthStateChanged(auth, async u => {
+    if (!u) { mudar({ pronta: true, usuario: null, aviso: estado.aviso }); return; }
+    try {
+      const d = await getDoc(doc(db, 'usuarios', u.uid));
+      const lido = d.exists() ? usuarios.lerUsuario(u.uid, d.data() as usuarios.DocUsuario) : null;
+      // conta sem cadastro na equipe, ou desativada: não entra (o Entregas faz o mesmo)
+      if (!lido || !lido.ativo || !lido.papeis.length) {
+        await signOut(auth);
+        mudar({ pronta: true, usuario: null, aviso: lido && !lido.ativo ? 'Esta conta está desativada.' : 'Esta conta não é da equipe.' });
+        return;
+      }
+      mudar({ pronta: true, usuario: lido, aviso: '' });
+    } catch (e) {
+      mudar({ pronta: true, usuario: null, aviso: 'Não consegui ler o seu cadastro no Entregas (' + ((e as Error)?.message || e) + ').' });
+    }
+  });
+
+  return {
+    estado: () => estado,
+    async entrar(login, senha) {
+      mudar({ ...estado, aviso: '' });
+      try {
+        await signInWithEmailAndPassword(auth, usuarios.emailDoLogin(login), senha);
+      } catch (e) {
+        throw new Error(usuarios.mensagemDeErroDeLogin(String((e as { code?: string })?.code || '')), { cause: e });
+      }
+    },
+    async sair() { await signOut(auth); },
+    assinar(f) {
+      ouvintes.add(f);
+      return () => { ouvintes.delete(f); };
+    },
+    versao: () => ver,
+  };
+}

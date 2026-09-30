@@ -8,12 +8,12 @@ import { useOperador, type Operador } from './operador';
 export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const navegar = useNavigate();
   const { search } = useLocation();
-  const { escolher } = useOperador();
+  const { escolher, comLogin } = useOperador();
   const op = useOperador().operador as Operador;
   const a = aplicacao(app);
   return {
     // no lugar da empresa (a Tarefas não tem uma empresa aberta): quem está trabalhando
-    empresa: { codigo: op.nome, nome: 'Trocar de pessoa' },
+    empresa: { codigo: op.nome, nome: comLogin ? 'Sair da conta' : 'Trocar de pessoa' },
     versao: VERSAO_SISTEMA,
     titulo: a?.paginas.find(p => p.id === pagina)?.titulo || a?.nome || '',
     secoes: (a?.paginas || []).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, grupo: 1, ativa: p.id === pagina })),

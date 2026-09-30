@@ -117,6 +117,17 @@ export function rotuloDoCargo(u: Pick<Usuario, 'departamento' | 'nivel' | 'papei
   return nomes.length ? nomes.join(' · ') : 'Equipe';
 }
 
+/**
+ * O departamento em que a pessoa trabalha: o do cargo; na conta antiga, sem cargo gravado, o que os
+ * papéis dizem (contábil, depois fiscal, depois DP). null = a conta não diz (a Tarefas pede para o
+ * admin completar o cargo).
+ */
+export function departamentoDaConta(u: Pick<Usuario, 'departamento' | 'papeis'>): Departamento | null {
+  if (u.departamento) return u.departamento;
+  for (const d of ['contabil', 'fiscal', 'dp'] as const) if (u.papeis.includes(d)) return d;
+  return null;
+}
+
 /** O nível da pessoa é pelo menos `minimo`? (Diretor > Sênior > Pleno > Júnior; sem nível = não.) */
 export function nivelPeloMenos(u: Pick<Usuario, 'nivel'>, minimo: Nivel): boolean {
   if (!u.nivel) return false;

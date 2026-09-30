@@ -3,13 +3,24 @@
 //                de empresas do escritório; o check automático lê o que o Extrator guardou no banco;
 //   "exemplos" → a lista de empresas do escritório com andamentos inventados (concluídas, em andamento,
 //                paradas), neste navegador; nada vai para o banco. O check lê o Extrator de exemplo.
-// O repositório é criado uma vez, quando alguém abre a Tarefas.
+// Quem está trabalhando: no banco, o login com as contas do Entregas (entregas.firestore.ts, 30/09/2026);
+// nos exemplos, a pessoa escolhe o nome na lista da equipe (não há login).
+// O repositório e a sessão são criados uma vez, quando alguém abre a Tarefas.
 import { empresas, extrator, tarefas } from '@nads/core';
+import { criarSessaoEntregas, type SessaoEntregas } from './entregas.firestore';
 import { criarRepoTarefasFirestore, extratorNoBanco, type RepoTarefasFirestore } from './tarefas.firestore';
 
 export const noBanco = import.meta.env.VITE_FONTE === 'banco';
 
 let repo: tarefas.RepoTarefas | null = null;
+let sessao: SessaoEntregas | null = null;
+
+/** O login do Entregas (só no banco; nos exemplos, null: a pessoa escolhe o nome). */
+export function sessaoDaTarefas(): SessaoEntregas | null {
+  if (!noBanco) return null;
+  if (!sessao) sessao = criarSessaoEntregas();
+  return sessao;
+}
 
 export function repoDaTarefas(): tarefas.RepoTarefas {
   if (!repo) repo = noBanco ? criarRepoTarefasFirestore(empresas.EMPRESAS) : tarefas.criarRepoTarefasMemoria({ empresas: empresas.EMPRESAS });

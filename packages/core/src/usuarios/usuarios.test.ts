@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  conferirNovaConta, docDaContaNova, emailDoLogin, emailDoNome, EQUIPE_EXEMPLO, iniciais, lerUsuario, mensagemDeErroDeLogin,
+  conferirNovaConta, departamentoDaConta, docDaContaNova, emailDoLogin, emailDoNome, EQUIPE_EXEMPLO, iniciais, lerUsuario, mensagemDeErroDeLogin,
   mudancaDeCargo, nivelPeloMenos, papeisAoMudarCargo, papeisDaContaNova, papeisDoDoc, papeisFaltando, pode, recursosDe, rotuloDoCargo,
 } from '.';
 
@@ -103,5 +103,14 @@ describe('conta nova', () => {
       ['Nilma', 'staff,admin,fiscal'], ['Sávio', 'staff,admin,dp'], ['Vitor', 'staff,contabil'], ['Fernando', 'staff,contabil'],
       ['Felipe', 'staff,contabil'], ['Clara', 'staff,contabil'], ['Heverton', 'staff,fiscal'], ['Adivania', 'staff,fiscal'],
     ]);
+  });
+});
+
+describe('departamento da conta (a rotina da Tarefas)', () => {
+  it('o do cargo; na conta antiga, o que os papéis dizem', () => {
+    expect(departamentoDaConta(lerUsuario('a', { roles: ['staff', 'contabil'], departamento: 'fiscal' }))).toBe('fiscal');
+    expect(departamentoDaConta(lerUsuario('b', { roles: ['staff', 'admin', 'fiscal'] }))).toBe('fiscal');
+    expect(departamentoDaConta(lerUsuario('c', { roles: ['staff', 'contabil'] }))).toBe('contabil');
+    expect(departamentoDaConta(lerUsuario('d', { roles: ['staff', 'admin'] }))).toBeNull();
   });
 });

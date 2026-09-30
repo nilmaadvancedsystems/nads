@@ -1,9 +1,11 @@
-// Repositório da Tarefas no banco: o MESMO Firestore da Conferência (projeto conferencia-nilma),
-// coleção nova `tarefas` (regras abertas; nenhuma regra foi mudada).
-//   tarefas/{empresa}_{competência}_{departamento}          → a execução (estado de cada etapa)
-//   tarefas/{empresa}_{competência}_{departamento}/eventos   → o que aconteceu, com hora e pessoa
+// Repositório da Tarefas no banco: o Firestore do Entregas (projeto entregas-2e5e2), coleção `rotinas`
+// (30/09/2026; antes era `tarefas` no banco da Conferência — no Entregas, `tarefas` é do tarefas.html antigo).
+// Precisa do login do Entregas (entregas.firestore.ts): as regras de lá só deixam quem é da equipe.
+//   rotinas/{empresa}_{competência}_{departamento}          → a execução (estado de cada etapa)
+//   rotinas/{empresa}_{competência}_{departamento}/eventos   → o que aconteceu, com hora e pessoa
 //                                                             (só acrescentado: é a base da produtividade)
-// Lê também, sem gravar, os arquivos do Extrator (coleção `extrator`), para o check automático.
+// Lê também, sem gravar, os arquivos do Extrator (coleção `extrator`, ainda no banco da Conferência até o
+// Extratudo mudar), para o check automático.
 // Cuidados, os mesmos da Conferência e do Extratudo:
 // - carrega só a competência pedida (uma consulta), não a coleção inteira;
 // - nada é gravado antes de a competência chegar do banco;
@@ -11,6 +13,7 @@
 import { extrator as x, formatos, tarefas as t, type empresas, type usuarios } from '@nads/core';
 import { getApps, initializeApp } from 'firebase/app';
 import { collection, doc, getDoc, getDocs, getFirestore, initializeFirestore, onSnapshot, query, where, writeBatch, type Firestore } from 'firebase/firestore';
+import { bancoDoEntregas } from './entregas.firestore';
 
 /** Configuração web pública do projeto conferencia-nilma (a mesma da Conferência). */
 const CONFIG_CONFERENCIA = {
@@ -22,7 +25,7 @@ const CONFIG_CONFERENCIA = {
   appId: '1:1037380082378:web:c21407e582534572953233',
 };
 
-const COLECAO = 'tarefas';
+const COLECAO = 'rotinas';
 
 type Aviso = (mensagem: string) => void;
 
@@ -43,7 +46,7 @@ function bancoDaConferencia(): Firestore {
 interface Carga { chegou: boolean; execucoes: Map<string, t.Execucao> }
 
 export function criarRepoTarefasFirestore(lista: readonly empresas.EmpresaDoEscritorio[]): RepoTarefasFirestore {
-  const db = bancoDaConferencia();
+  const db = bancoDoEntregas();
   const cargas = new Map<string, Carga>();
   let ver = 0;
   const ouvintes = new Set<() => void>();

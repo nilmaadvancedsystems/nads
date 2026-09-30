@@ -43,19 +43,26 @@ Arquivo único: `packages/core/src/tarefas/rotinas/contabil.ts`.
 | 6 | Conferir o balancete | Conferência (outra aba) | manual |
 | 7 | Fechar a competência | — (no Alterdata) | manual |
 
-## Banco
+## Banco e login
 
-O mesmo Firestore da Conferência (projeto conferencia-nilma, regras abertas; nenhuma regra mudou):
-- `tarefas/{empresa}_{competência}_{departamento}`: o estado de cada etapa;
+Desde 30/09/2026, o Firestore do **Entregas** (projeto entregas-2e5e2), com o login de lá (as mesmas
+contas, nome e senha do Entregas; `dados/entregas.firestore.ts`):
+- `rotinas/{empresa}_{competência}_{departamento}`: o estado de cada etapa (o nome não é `tarefas`
+  porque essa coleção, no Entregas, é do tarefas.html antigo);
 - `.../eventos`: só acrescentados (início, feita, não se aplica, interrompida, check que falhou), com pessoa
   e hora. É a base da produtividade.
+- As regras ficam no `firestore.rules` do Entregas (bloco "nads"): lê e grava quem é da equipe; evento
+  não se edita nem se apaga.
+
+Quem trabalha é a conta que entrou: o nome vai nos eventos, e o departamento (o do cargo, ou o dos papéis
+nas contas antigas) escolhe a rotina. Conta sem departamento vê "Falta o seu departamento".
+Nos exemplos (`npm run dev`), não há login: a pessoa escolhe o nome na lista da equipe.
 
 Carrega só a competência pedida e nunca grava antes de ela chegar. O check automático lê, sem gravar, o
-que o Extrator guardou (`extrator/{empresa}/arquivos`).
+que o Extrator guardou (`extrator/{empresa}/arquivos`, ainda no banco da Conferência até o Extratudo mudar).
+Os eventos que existiam em `tarefas` na Conferência foram copiados para `rotinas` (o original ficou lá).
 
 ## Ainda não é
 
-- **Login:** a pessoa escolhe o nome na lista da equipe (fica no navegador). É só para registrar quem fez;
-  a autenticação vem depois.
 - **Carteira de cada operador:** "Minhas empresas" mostra todas as empresas do escritório.
 - **Produtividade** (tempo por etapa): os eventos já são gravados; falta a tela.
