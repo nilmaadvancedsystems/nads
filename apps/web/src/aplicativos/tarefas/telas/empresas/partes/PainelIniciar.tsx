@@ -1,7 +1,7 @@
-// O painel do botão "Iniciar", no jeito do "Code ▾" do GitHub: abas em cima (Empresas / Recentes) e, na
-// mesma linha, "Iniciar em lote"; o filtro rápido e a busca, a lista (caixinha para o lote, código e nome;
-// clicar no nome inicia só aquela) Recentes: as acessadas nos últimos 3 dias e, embaixo, os atalhos.
-// Em lote (duas ou mais marcadas), abre uma aba do navegador para cada empresa. O navegador só deixa abrir
+// O painel do botão "Iniciar", no jeito do "Code ▾" do GitHub: abas em cima (Empresas / Recentes / Em lote).
+// Empresas: o filtro rápido, a busca e a lista (clicar inicia aquela). Recentes: as acessadas nos últimos 3 dias
+// e, embaixo, os atalhos. Em lote: a busca e o "+" em cada empresa, que a põe na lista de cima; "Abrir N abas"
+// abre uma aba do navegador para cada uma. O navegador só deixa abrir
 // uma aba por clique: as que ele bloquear ficam no painel, um botão para cada (cada clique abre uma).
 import { Icone, Segmentado, useRetorno } from '@nads/ui';
 import { useState } from 'react';
@@ -10,16 +10,12 @@ import type { useMinhasEmpresas } from '../useMinhasEmpresas';
 type Vm = ReturnType<typeof useMinhasEmpresas>;
 type Linha = Vm['paraIniciar'][number];
 
-/** A lista do painel; a caixinha do lote só na aba Empresas. */
-function Lista({ vm, linhas, onEscolher, comLote }: { vm: Vm; linhas: Linha[]; onEscolher: (l: Linha) => void; comLote?: boolean }) {
+/** A lista do painel (Empresas e Recentes): clicar inicia aquela empresa. */
+function Lista({ linhas, onEscolher }: { linhas: Linha[]; onEscolher: (l: Linha) => void }) {
   return (
     <div className="iniciar-lista">
       {linhas.map(l => (
-        <div key={l.chave} className={'iniciar-linha' + (comLote && vm.marcadaNoLote(l.rota) ? ' marcada' : '')}>
-          {comLote && (
-            <input type="checkbox" checked={vm.marcadaNoLote(l.rota)} onChange={() => vm.alternarNoLote(l.rota)}
-              aria-label={'Marcar ' + l.nome + ' para iniciar em lote'} title="Marcar para iniciar em lote" />
-          )}
+        <div key={l.chave} className="iniciar-linha">
           <button type="button" className="popover-item iniciar-item" role="menuitem" onClick={() => onEscolher(l)}>
             <span className="num hint">{l.codigo ?? '—'}</span>
             <span className="iniciar-nome">{l.nome}</span>
@@ -53,13 +49,9 @@ export function PainelIniciar({ vm, fechar }: { vm: Vm; fechar: () => void }) {
       <div className="iniciar-abas" role="tablist">
         <button type="button" role="tab" className="iniciar-aba" aria-selected={vm.abaIniciar === 'escolher'} onClick={() => vm.setAbaIniciar('escolher')}>Empresas</button>
         <button type="button" role="tab" className="iniciar-aba" aria-selected={vm.abaIniciar === 'recentes'} onClick={() => vm.setAbaIniciar('recentes')}>Recentes</button>
-        {/* o lote é só da aba Empresas (onde se marca) */}
-        {vm.abaIniciar === 'escolher' && (
-          <button type="button" className="btn btn-primary btn-sm iniciar-lote" disabled={!vm.podeIniciarEmLote} onClick={emLote}
-            title={vm.podeIniciarEmLote ? 'Abrir uma aba para cada empresa marcada' : 'Marque duas ou mais empresas'}>
-            Iniciar em lote{vm.lote.length ? ' (' + vm.lote.length + ')' : ''}
-          </button>
-        )}
+        <button type="button" role="tab" className="iniciar-aba" aria-selected={vm.abaIniciar === 'lote'} onClick={() => vm.setAbaIniciar('lote')}>
+          Em lote{vm.lote.length > 0 && <span className="iniciar-lote-qtd">{vm.lote.length}</span>}
+        </button>
       </div>
 
       {faltam.length > 0 && (
@@ -84,14 +76,58 @@ export function PainelIniciar({ vm, fechar }: { vm: Vm; fechar: () => void }) {
           </label>
           {vm.paraIniciar.length === 0
             ? <p className="hint iniciar-nada">Nenhuma empresa aqui.</p>
-            : <Lista vm={vm} linhas={vm.paraIniciar} onEscolher={ir} comLote />}
+            : <Lista linhas={vm.paraIniciar} onEscolher={ir} />}
           {vm.totalParaIniciar > vm.paraIniciar.length && (
             <p className="hint iniciar-nada">Mostrando {vm.paraIniciar.length} de {vm.totalParaIniciar}. Digite para achar as outras.</p>
           )}
         </>
+      ) : vm.abaIniciar === 'lote' ? (
+        <>
+          {/* a lista do lote (o que o "+" pôs), com × para tirar, e o botão de abrir */}
+          {vm.loteLinhas.length > 0 ? (
+            <div className="lote-lista">
+              <div className="lote-topo">
+                <span className="hint">Para abrir ({vm.loteLinhas.length})</span>
+                <button type="button" className="btn btn-primary btn-sm" disabled={!vm.podeIniciarEmLote} onClick={emLote}
+                  title={vm.podeIniciarEmLote ? 'Abrir uma aba do navegador para cada empresa' : 'Ponha duas ou mais empresas'}>
+                  <Icone nome="play" />{vm.podeIniciarEmLote ? 'Abrir ' + vm.loteLinhas.length + ' abas' : 'Ponha mais uma'}
+                </button>
+              </div>
+              <div className="lote-chips">
+                {vm.loteLinhas.map(l => (
+                  <span key={l.chave} className="lote-chip" title={l.nome}>
+                    <span className="num">{l.codigo ?? '—'}</span><span className="lote-chip-nome">{l.nome}</span>
+                    <button type="button" aria-label={'Tirar ' + l.nome + ' do lote'} onClick={() => vm.tirarDoLote(l.rota)}><Icone nome="x" /></button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : <p className="hint lote-vazio">Ponha as empresas no lote pelo <b>+</b>. Depois, "Abrir" abre uma aba para cada uma.</p>}
+          <label className="busca-curta larga">
+            <Icone nome="search" />
+            <input type="text" autoFocus placeholder="Nome ou código" aria-label="Buscar empresa para o lote (nome ou código)" value={vm.buscaIniciar}
+              onChange={e => vm.setBuscaIniciar(e.target.value)}
+              onKeyDown={e => { const l = vm.paraIniciar.find(x => !vm.marcadaNoLote(x.rota)); if (e.key === 'Enter' && l) vm.alternarNoLote(l.rota); }} />
+          </label>
+          <div className="iniciar-lista">
+            {vm.paraIniciar.map(l => {
+              const noLote = vm.marcadaNoLote(l.rota);
+              return (
+                <div key={l.chave} className={'iniciar-linha lote-linha' + (noLote ? ' marcada' : '')}>
+                  <span className="num hint">{l.codigo ?? '—'}</span>
+                  <span className="iniciar-nome">{l.nome}</span>
+                  <button type="button" className={'icon-btn icon-btn-sm lote-mais' + (noLote ? ' no-lote' : '')} onClick={() => vm.alternarNoLote(l.rota)}
+                    title={noLote ? 'Tirar do lote' : 'Pôr no lote'} aria-label={(noLote ? 'Tirar ' : 'Pôr ') + l.nome + (noLote ? ' do lote' : ' no lote')}>
+                    <Icone nome={noLote ? 'check' : 'plus'} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </>
       ) : (
         <>
-          {vm.recentes.length ? <Lista vm={vm} linhas={vm.recentes} onEscolher={ir} /> : (
+          {vm.recentes.length ? <Lista linhas={vm.recentes} onEscolher={ir} /> : (
             <div className="iniciar-vazio">
               <b>Nenhuma empresa ainda</b>
               <p className="hint">Você não mexeu em nenhuma empresa nos últimos 3 dias.</p>

@@ -15,7 +15,7 @@ export type Coluna = 'codigo' | 'nome' | 'situacao';
 const COLUNAS: readonly Coluna[] = ['codigo', 'nome', 'situacao'];
 
 /** As abas do painel do Iniciar (como Local / Codespaces do botão Code do GitHub). */
-export type AbaIniciar = 'escolher' | 'recentes';
+export type AbaIniciar = 'escolher' | 'recentes' | 'lote';
 /**
  * O filtro rápido da aba Empresas (como HTTPS / SSH / GitHub CLI), com os mesmos nomes da coluna Situação.
  * Sem nenhum escolhido = todas; clicar no escolhido de novo tira o filtro.
@@ -113,6 +113,9 @@ export function useMinhasEmpresas() {
     abaIniciar, setAbaIniciar,
     // Iniciar em lote: marca as empresas (a caixinha à esquerda) e abre uma aba para cada uma
     lote, marcadaNoLote: (rota: string) => lote.includes(rota),
+    /** as empresas já postas no lote (pelo "+"), na ordem em que entraram */
+    loteLinhas: lote.map(rota => a.linhas.find(l => l.rota === rota)).filter((l): l is Linha => !!l),
+    tirarDoLote: (rota: string) => setLote(v => v.filter(r => r !== rota)),
     alternarNoLote: (rota: string) => setLote(v => (v.includes(rota) ? v.filter(r => r !== rota) : [...v, rota])),
     podeIniciarEmLote: lote.length >= 2,
     /** as marcadas, com o endereço do executor (a tela abre uma aba para cada); zera a marcação */

@@ -1636,3 +1636,23 @@ td.cad-acoes .menu-seta{display:none;}
 .varios-de-ate select{width:100%;}
 .iniciar-aba .imp-periodo-qtd{margin-left:6px;}
 .iniciar-abas.comp-abas{margin:0;padding:6px 8px 0;}
+
+/* Iniciar › Em lote: o "+" em cada empresa, a lista de cima (com ×) e "Abrir N abas" */
+.iniciar-lote-qtd{margin-left:6px;padding:0 6px;border-radius:2em;background:var(--hover-bg);font-size:12px;font-weight:600;}
+.lote-lista{display:flex;flex-direction:column;gap:8px;padding:8px;margin-bottom:8px;border:1px solid var(--border);border-radius:6px;background:var(--surface-2);}
+.lote-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.lote-topo .hint{margin:0;}
+.lote-chips{display:flex;flex-wrap:wrap;gap:6px;max-height:120px;overflow:auto;}
+.lote-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:2px 4px 2px 8px;border:1px solid var(--border);border-radius:2em;background:var(--surface);font-size:12px;}
+.lote-chip .num{color:var(--ink-muted);font-variant-numeric:tabular-nums;}
+.lote-chip-nome{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lote-chip button{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:none;border-radius:50%;background:none;color:var(--ink-muted);cursor:pointer;padding:0;}
+.lote-chip button:hover{background:var(--hover-bg);color:var(--ink);}
+.lote-chip button svg{width:12px;height:12px;}
+.lote-vazio{margin:4px 4px 8px;}
+.lote-linha{display:flex;align-items:center;gap:10px;padding:4px 8px;border-radius:6px;}
+.lote-linha:hover{background:var(--hover-bg);}
+.lote-linha .num{min-width:32px;text-align:right;}
+.lote-linha .iniciar-nome{flex:1;}
+.lote-mais{flex:none;}
+.lote-mais.no-lote{color:var(--success);border-color:var(--success);}
