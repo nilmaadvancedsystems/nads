@@ -24,5 +24,7 @@ Ponha aqui a imagem original de cada banco, com o **id da marca** como nome do a
 
 Aceita `.png`, `.jpg`, `.jpeg`, `.webp` ou `.svg`. Quadrada e de preferência grande (256×256 ou mais).
 
-A imagem aparece como está (colorida) quando o extrato do banco foi importado, e em tons de cinza antes disso.
+Regra (30/09/2026): logo com o nome ou o desenho em **branco** fica **com o fundo** (Itaú, Stone, Nubank, Bradesco, BTG,
+C6, Caixa); os outros ficam **sem o fundo** (o fundo é tirado da imagem; a imagem como veio fica em `originais/`).
+Em tons de cinza até o extrato do banco ser importado; colorido depois.
 Banco sem imagem aqui usa o desenho de `../logos.tsx`.

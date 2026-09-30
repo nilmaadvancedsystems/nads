@@ -7,14 +7,12 @@ import { Icone } from './icones';
 
 /**
  * Os logos originais (as imagens que o Vitor mandou, 29/09/2026), na pasta logos-bancos/: nome do arquivo = a
- * marca (itau.png, c6.png…), e também drive, gmail e whatsapp. Os dos bancos estão SEM O FUNDO (as imagens com
- * fundo estão em logos-bancos/originais/) e ficam em cinza até o extrato ser importado, como antes (pedido do
- * Vitor, 30/09/2026). Sem arquivo, vale o desenho abaixo.
+ * marca (itau.png, c6.jpg…), e também drive, gmail e whatsapp. Regra do Vitor (30/09/2026): logo com o nome ou o
+ * desenho em BRANCO fica com o fundo (Itaú, Stone, Nubank, Bradesco, BTG, C6, Caixa); os outros, sem o fundo
+ * (as imagens como vieram estão em logos-bancos/originais/). Em cinza até o extrato ser importado, depois
+ * coloridos. Sem arquivo, vale o desenho abaixo.
  */
 const IMAGENS = import.meta.glob('./logos-bancos/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
-/** as marcas brancas (sem o fundo, somem no tema claro: lá ficam pretas) */
-const MARCA_BRANCA = ['bradesco', 'btg', 'c6'];
-
 function imagemDaMarca(marca: string): string | null {
   for (const [caminho, url] of Object.entries(IMAGENS)) if (caminho.replace(/^.*\//, '').replace(/\.[^.]+$/, '') === marca) return url;
   return null;
@@ -136,12 +134,7 @@ const DESENHOS: Record<string, (cor?: boolean) => React.JSX.Element> = {
 /** [fundo, texto, iniciais] das marcas sem logo aqui ainda (selo simplificado). */
 const SELOS: Record<string, [string, string, string]> = {
   cora: ['#FE3E6D', '#FFFFFF', 'c'],
-  inter: ['#FF7A00', '#FFFFFF', 'in'],
-  itau: ['#EC7000', '#003399', 'itaú'],
-  nubank: ['#820AD1', '#FFFFFF', 'nu'],
-  santander: ['#EC0000', '#FFFFFF', 'S'],
   sicredi: ['#3FA110', '#FFFFFF', 's'],
-  stone: ['#00A868', '#FFFFFF', 'st'],
 };
 
 function Selo({ marca, cor }: { marca: string; cor?: boolean }) {
@@ -174,9 +167,8 @@ function Drive({ cor }: { cor?: boolean }) {
 /** O logo do banco (a marca: 'sicoob', 'itau'…), em cinza ou, com `cor`, colorido. Sem logo: o ícone de banco. */
 export function LogoBanco({ banco, cor }: { banco: string; cor?: boolean }) {
   const imagem = imagemDaMarca(banco);
-  // o logo original sem o fundo: em cinza até o extrato ser importado, depois colorido; os de marca branca
-  // (Bradesco, BTG, C6) ficam pretos no tema claro
-  if (imagem) return <img src={imagem} alt="" aria-hidden="true" className={'logo-img' + (cor ? '' : ' cinza') + (MARCA_BRANCA.includes(banco) ? ' marca-branca' : '')} />;
+  // o logo original: em cinza até o extrato ser importado, depois colorido
+  if (imagem) return <img src={imagem} alt="" aria-hidden="true" className={'logo-img' + (cor ? '' : ' cinza')} />;
   if (banco === 'sicoob') return <Sicoob cor={cor} />;
   if (DESENHOS[banco]) return DESENHOS[banco](cor);
   if (SELOS[banco]) return <Selo marca={banco} cor={cor} />;
