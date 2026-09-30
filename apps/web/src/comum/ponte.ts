@@ -16,7 +16,7 @@ type ParaFerramenta = { nads: 'estado-etapa'; porMes: Record<string, string[]>; 
 export interface PeriodoDaEtapa { meses: string[]; concluido: boolean }
 
 /** 'aaaa-mm' ou o período 'aaaa-mm..aaaa-mm' (a Etapa com vários meses). */
-const COMPETENCIA_OU_PERIODO = /^d{4}-d{2}(..d{4}-d{2})?$/;
+const COMPETENCIA_OU_PERIODO = /^\d{4}-\d{2}(\.\.\d{4}-\d{2})?$/;
 
 // As origens confiáveis moram no @nads/ui (etapa.ts), junto com a altura da ferramenta na etapa.
 export { origemConfiavel };

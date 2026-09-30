@@ -7,6 +7,12 @@ import { Icone, Segmentado, useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import type { useMinhasEmpresas } from '../useMinhasEmpresas';
 
+/**
+ * "Em lote" (abrir várias empresas, uma aba cada): guardado, desligado — no Contábil a rotina é uma empresa por
+ * mês (Vitor, 30/09/2026). Para ligar de novo (em outro departamento), é só trocar para true.
+ */
+const LOTE_LIGADO = false;
+
 type Vm = ReturnType<typeof useMinhasEmpresas>;
 type Linha = Vm['paraIniciar'][number];
 
@@ -49,9 +55,9 @@ export function PainelIniciar({ vm, fechar }: { vm: Vm; fechar: () => void }) {
       <div className="iniciar-abas" role="tablist">
         <button type="button" role="tab" className="iniciar-aba" aria-selected={vm.abaIniciar === 'escolher'} onClick={() => vm.setAbaIniciar('escolher')}>Empresas</button>
         <button type="button" role="tab" className="iniciar-aba" aria-selected={vm.abaIniciar === 'recentes'} onClick={() => vm.setAbaIniciar('recentes')}>Recentes</button>
-        <button type="button" role="tab" className="iniciar-aba" aria-selected={vm.abaIniciar === 'lote'} onClick={() => vm.setAbaIniciar('lote')}>
+        {LOTE_LIGADO && <button type="button" role="tab" className="iniciar-aba" aria-selected={vm.abaIniciar === 'lote'} onClick={() => vm.setAbaIniciar('lote')}>
           Em lote{vm.lote.length > 0 && <span className="iniciar-lote-qtd">{vm.lote.length}</span>}
-        </button>
+        </button>}
       </div>
 
       {faltam.length > 0 && (
@@ -81,7 +87,7 @@ export function PainelIniciar({ vm, fechar }: { vm: Vm; fechar: () => void }) {
             <p className="hint iniciar-nada">Mostrando {vm.paraIniciar.length} de {vm.totalParaIniciar}. Digite para achar as outras.</p>
           )}
         </>
-      ) : vm.abaIniciar === 'lote' ? (
+      ) : LOTE_LIGADO && vm.abaIniciar === 'lote' ? (
         <>
           {/* a lista do lote (o que o "+" pôs), com × para tirar, e o botão de abrir */}
           {vm.loteLinhas.length > 0 ? (
