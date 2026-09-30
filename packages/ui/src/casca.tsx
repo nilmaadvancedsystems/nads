@@ -83,10 +83,11 @@ export function Casca(p: {
   /** nome da lista da esquerda, para leitor de tela (padrão "Seções") */
   rotuloLateral?: string;
   /**
-   * Dentro de uma etapa da Tarefas, a página vem sem cabeçalho nem barra lateral. Com isto, as seções e as abas
-   * das páginas ficam numa barra em cima da página (um aplicativo inteiro dentro da etapa, como a Conferência).
+   * Dentro de uma etapa da Tarefas, a página vem sem cabeçalho nem barra lateral. Com isto, o aplicativo vem
+   * inteiro, exatamente como ele é (barra lateral, abas das páginas, a empresa), só sem a barra de cima (☰, logo,
+   * sistema), que é a da Tarefas — como quando está acoplado a outro sistema. Ex.: a Conferência na Conferência fiscal.
    */
-  navNaEtapa?: boolean;
+  inteiroNaEtapa?: boolean;
   children: ReactNode;
 }) {
   const [oculta, setOculta] = useState(lerLateral);
@@ -131,27 +132,9 @@ export function Casca(p: {
   );
 
   // aberta dentro de outra tela (a etapa de uma tarefa): só a página, sem cabeçalho nem barra lateral
-  const noOutro = acoplada();
-  if (embutida() && !noOutro) {
-    const paginas = p.paginas.filter(x => !x.oculta);
-    const botao = (x: { id: string; rotulo: string; icone: NomeIcone; ativa?: boolean; travada?: boolean }, onClick: (id: string) => void) => (
-      <button key={x.id} type="button" className={'menu-item' + (x.ativa ? ' active' : '') + (x.travada ? ' is-locked' : '')}
-        aria-current={x.ativa ? 'page' : undefined} aria-disabled={x.travada ? 'true' : undefined} onClick={() => onClick(x.id)}>
-        <Icone nome={x.icone} /><span>{x.rotulo}</span>
-      </button>
-    );
-    return (
-      <div id="app" className="on embutida">
-        {p.navNaEtapa && (
-          <div className="nav-na-etapa">
-            <nav className="menu" aria-label={p.rotuloLateral || 'Seções'}>{p.secoes.map(s => botao(s, p.onSecao))}</nav>
-            {paginas.length > 1 && <nav className="menu nav-na-etapa-paginas" aria-label="Páginas da seção">{paginas.map(x => botao(x, p.onPagina))}</nav>}
-          </div>
-        )}
-        {principal}
-      </div>
-    );
-  }
+  // acoplado a outro sistema, ou um aplicativo inteiro dentro da etapa: tudo menos a barra de cima
+  const noOutro = acoplada() || (embutida() && !!p.inteiroNaEtapa);
+  if (embutida() && !noOutro) return <div id="app" className="on embutida">{principal}</div>;
 
   let grupoAnt: number | null = null;
   return (
