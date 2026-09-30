@@ -3,9 +3,11 @@
 //   driveIndice/raiz e driveIndice/{pasta}/partes   SÓ LEITURA: o mapa das pastas que o robô mantém (admin/contábil)
 //   aberturasDrive                                   o pedido de abrir, baixar ou juntar num .zip; o robô responde
 //                                                    no próprio pedido com um link temporário (30 min). Cada um lê só o seu.
+//   enviosSecretario (+ partes)                      o arquivo mandado para a pasta Claudio Secretario, em pedaços; o
+//                                                    robô grava no Drive, apaga os pedaços e responde no próprio envio.
 // As partes de uma pasta só são lidas de novo quando o robô atualiza a pasta (atualizadoEm), como nas Pendências.
 import { entregas as e } from '@nads/core';
-import { addDoc, collection, doc, getDocs, onSnapshot } from 'firebase/firestore';
+import { addDoc, Bytes, collection, doc, getDocs, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 
 interface Pasta { carregados: boolean; itens: e.ItemDoDrive[]; atualizadoEm: string }
@@ -62,6 +64,31 @@ export function criarDriveFirestore(quem: () => e.Quem | null): e.RepoDriveDoEnt
         if (!vivo) return;
         parar = onSnapshot(ref, s => aoMudar(e.andamentoDoDocumento(s.data())), err => aoMudar({ status: 'erro', erro: err.message }));
       }, (err: Error) => aoMudar({ status: 'erro', erro: err.message }));
+      return () => { vivo = false; parar(); };
+    },
+    enviar(arquivo, destino, aoMudar) {
+      const q = quem();
+      let parar = () => {};
+      let vivo = true;
+      const avisar = (a: e.AndamentoDoEnvio) => { if (vivo) aoMudar(a); };
+      if (!q) { avisar({ status: 'erro', erro: 'entre com a conta do Entregas' }); return parar; }
+      const partes = e.partesDoArquivo(arquivo.bytes);
+      const ref = doc(collection(db, 'enviosSecretario'));
+      // sobe tudo mesmo que a tela pare de acompanhar (senão o envio fica pela metade)
+      (async () => {
+        await setDoc(ref, {
+          status: 'enviando', nome: e.nomeParaEnviar(arquivo.nome), tamanho: arquivo.bytes.length, partes: partes.length,
+          competencia: destino.competencia, cliente: destino.cliente.trim(), codigo: destino.codigo,
+          criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorUid: q.uid,
+        });
+        for (let i = 0; i < partes.length; i++) {
+          await setDoc(doc(ref, 'partes', String(i)), { dados: Bytes.fromUint8Array(partes[i]) });
+          avisar({ status: 'enviando', enviadas: i + 1, partes: partes.length });
+        }
+        await updateDoc(ref, { status: 'pendente' });
+        if (!vivo) return;
+        parar = onSnapshot(ref, s => avisar(e.andamentoDoEnvio(s.data())), err => avisar({ status: 'erro', erro: err.message }));
+      })().catch((err: Error) => avisar({ status: 'erro', erro: err.message }));
       return () => { vivo = false; parar(); };
     },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },

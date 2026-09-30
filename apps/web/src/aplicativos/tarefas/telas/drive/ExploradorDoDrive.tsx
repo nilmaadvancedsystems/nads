@@ -2,11 +2,25 @@
 // trilha e a pesquisa), barra de comandos (baixar, selecionar, ordenar, exibir, painel de navegação), a árvore das
 // pastas à esquerda, a lista em Detalhes ou Ícones e a barra de status; Tela cheia cobre o nads todo (Esc sai). Um clique seleciona (Ctrl junta, Shift faz
 // o intervalo), dois cliques (ou Enter) abrem; na tela de toque, um toque abre. Abrir um arquivo: a aba nasce no
-// clique (senão o navegador bloqueia) e recebe o link quando o robô termina de buscar.
+// clique (senão o navegador bloqueia) e recebe o link quando o robô termina de buscar. O botão direito abre o menu
+// do Explorador (MenuDeContexto) e "Enviar para o Claudio Secretário" (botão, menu ou arrastar arquivos para a tela)
+// manda arquivos para a pasta de onde o arquivamento tira.
 import type { entregas as e } from '@nads/core';
-import { Icone, useCarregando } from '@nads/ui';
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import { Icone, useCarregando, useRetorno } from '@nads/ui';
+import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react';
+import { EnviarAoSecretario } from './EnviarAoSecretario';
+import { MenuDeContexto, type LinhaDoMenu, type MenuAberto, type OpcaoDoMenu } from './MenuDeContexto';
+import { useEnvioAoSecretario } from './useEnvioAoSecretario';
 import { useExploradorDoDrive, type VmDrive } from './useExploradorDoDrive';
+
+type AoMenu = (ev: MouseEvent, x: e.EntradaDoExplorador | null) => void;
+
+/** Onde abrir o menu: no mouse, ou (tecla de menu / Shift+F10) embaixo do elemento. */
+function pontoDoMenu(ev: MouseEvent): { x: number; y: number } {
+  if (ev.clientX || ev.clientY) return { x: ev.clientX, y: ev.clientY };
+  const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+  return { x: r.left + 24, y: r.bottom };
+}
 
 const COLUNAS: { id: e.ColunaDoExplorador; rotulo: string }[] = [
   { id: 'nome', rotulo: 'Nome' }, { id: 'data', rotulo: 'Data de modificação' }, { id: 'tipo', rotulo: 'Tipo' }, { id: 'tamanho', rotulo: 'Tamanho' },
@@ -35,9 +49,10 @@ function abrir(vm: VmDrive, x: e.EntradaDoExplorador) {
   if (x.pasta) vm.entrar(x.id); else abrirArquivo(vm, x);
 }
 
-/** Os eventos de uma linha (ou ícone): clique seleciona, duplo clique/Enter abre, espaço marca. */
-function eventos(vm: VmDrive, x: e.EntradaDoExplorador) {
+/** Os eventos de uma linha (ou ícone): clique seleciona, duplo clique/Enter abre, espaço marca, botão direito abre o menu. */
+function eventos(vm: VmDrive, x: e.EntradaDoExplorador, aoMenu: AoMenu) {
   return {
+    onContextMenu: (ev: MouseEvent) => aoMenu(ev, x),
     onClick: (ev: MouseEvent) => {
       if (toque() && !ev.ctrlKey && !ev.shiftKey && !ev.metaKey) { abrir(vm, x); return; }
       vm.selecionar(x.id, { ctrl: ev.ctrlKey || ev.metaKey, shift: ev.shiftKey });
@@ -56,7 +71,7 @@ function IconeDaEntrada({ x, grande }: { x: e.EntradaDoExplorador; grande?: bool
   return <Icone nome={nome} className={'drive-ico' + cor + (grande ? ' grande' : '')} />;
 }
 
-function Arvore({ vm }: { vm: VmDrive }) {
+function Arvore({ vm, aoMenu }: { vm: VmDrive; aoMenu: (ev: MouseEvent, no: e.NoDaArvore) => void }) {
   return (
     <nav className="explorador-arvore" aria-label="Painel de navegação">
       <ul role="tree">
@@ -76,7 +91,7 @@ function Arvore({ vm }: { vm: VmDrive }) {
                   <Icone nome={no.aberto ? 'caretDown' : 'chevronRight'} />
                 </button>
                 : <span className="arvore-seta" />}
-              <button type="button" className="arvore-rotulo" title={no.nome} onClick={() => vm.abrirNo(no)}>
+              <button type="button" className="arvore-rotulo" title={no.nome} onClick={() => vm.abrirNo(no)} onContextMenu={ev => aoMenu(ev, no)}>
                 <Icone nome="pasta" className="drive-ico pasta" /><span className="arvore-nome">{no.nome}</span>
                 {no.carregando && <span className="drive-girando" aria-label="carregando" />}
               </button>
@@ -88,7 +103,7 @@ function Arvore({ vm }: { vm: VmDrive }) {
   );
 }
 
-function Detalhes({ vm }: { vm: VmDrive }) {
+function Detalhes({ vm, aoMenu }: { vm: VmDrive; aoMenu: AoMenu }) {
   return (
     <table className="explorador-detalhes">
       <thead>
@@ -104,7 +119,7 @@ function Detalhes({ vm }: { vm: VmDrive }) {
       </thead>
       <tbody>
         {vm.entradas.map(x => (
-          <tr key={x.id} tabIndex={0} aria-selected={vm.estaMarcado(x.id)} className={vm.estaMarcado(x.id) ? 'marcado' : undefined} {...eventos(vm, x)}>
+          <tr key={x.id} tabIndex={0} aria-selected={vm.estaMarcado(x.id)} className={vm.estaMarcado(x.id) ? 'marcado' : undefined} {...eventos(vm, x, aoMenu)}>
             <td className="col-nome">
               <span className="drive-nome"><IconeDaEntrada x={x} /><span>{x.nome}{x.onde && <span className="fraco drive-onde">{x.onde}</span>}</span></span>
             </td>
@@ -118,12 +133,12 @@ function Detalhes({ vm }: { vm: VmDrive }) {
   );
 }
 
-function Icones({ vm }: { vm: VmDrive }) {
+function Icones({ vm, aoMenu }: { vm: VmDrive; aoMenu: AoMenu }) {
   return (
     <ul className="explorador-icones" role="listbox" aria-multiselectable>
       {vm.entradas.map(x => (
         <li key={x.id} role="option" tabIndex={0} aria-selected={vm.estaMarcado(x.id)} className={vm.estaMarcado(x.id) ? 'marcado' : undefined}
-          title={x.nome + '\n' + x.tipo + (x.pasta ? '' : '\n' + vm.tamanho(x.bytes))} {...eventos(vm, x)}>
+          title={x.nome + '\n' + x.tipo + (x.pasta ? '' : '\n' + vm.tamanho(x.bytes))} {...eventos(vm, x, aoMenu)}>
           <IconeDaEntrada x={x} grande />
           <span className="explorador-icone-nome">{x.nome}</span>
         </li>
@@ -134,11 +149,113 @@ function Icones({ vm }: { vm: VmDrive }) {
 
 export function ExploradorDoDrive() {
   const vm = useExploradorDoDrive();
+  const envio = useEnvioAoSecretario(vm.pastaCliente);
+  const { toast, modal } = useRetorno();
   useCarregando(vm.carregando);
-  const baixarMarcados = () => { vm.linkDosMarcados().then(url => { baixar(url); vm.limparSelecao(); }, () => {}); };
-  const baixarPasta = () => { vm.linkDaPasta().then(baixar, () => {}); };
+  // as opções do menu rodam depois de a seleção mudar: usam sempre o ViewModel mais novo
+  const atual = useRef(vm);
+  atual.current = vm;
+  const [menu, setMenu] = useState<MenuAberto | null>(null);
+  const [soltando, setSoltando] = useState(false);
+  const baixarMarcados = () => { atual.current.linkDosMarcados().then(url => { baixar(url); atual.current.limparSelecao(); }, () => {}); };
+  const baixarPasta = () => { atual.current.linkDaPasta().then(baixar, () => {}); };
+  const copiar = (texto: string, oque: string) => {
+    navigator.clipboard.writeText(texto).then(() => toast(oque + ' copiado.'), () => toast('Não consegui copiar (o navegador não deixou).'));
+  };
+  const nomes = (l: e.EntradaDoExplorador[]) => l.map(i => i.nome).join('\n');
+  const caminhos = (l: e.EntradaDoExplorador[]) => l.map(i => atual.current.caminhoDe(i)).join('\n');
+  const propriedades = (x: e.EntradaDoExplorador) => {
+    void modal({
+      icone: 'fileText', titulo: 'Propriedades de ' + x.nome, botoes: [{ rotulo: 'OK', valor: true, variante: 'btn-primary' }],
+      corpo: <dl className="explorador-propriedades">{atual.current.propriedadesDe(x).map(l => <div key={l.rotulo}><dt>{l.rotulo}</dt><dd>{l.valor}</dd></div>)}</dl>,
+    });
+  };
+
+  /** O menu de uma linha (ou do fundo, com x = null), como o do Windows. */
+  const abrirMenu: AoMenu = (ev, x) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const v = atual.current;
+    if (!x) {
+      const exibir: LinhaDoMenu[] = [
+        { titulo: 'Exibir' },
+        { rotulo: 'Detalhes', icone: 'list', marcado: v.exibicao === 'detalhes', onClick: () => atual.current.mudarExibicao('detalhes') },
+        { rotulo: 'Ícones', icone: 'grade', marcado: v.exibicao === 'icones', onClick: () => atual.current.mudarExibicao('icones') },
+        { rotulo: 'Árvore (painel de navegação)', icone: 'painel', marcado: v.mostrarArvore, onClick: () => atual.current.alternarArvore() },
+        { titulo: 'Classificar por' },
+        ...COLUNAS.map<OpcaoDoMenu>(c => ({ rotulo: c.rotulo, marcado: v.coluna === c.id, onClick: () => atual.current.ordenarPor(c.id) })),
+      ];
+      setMenu({
+        ...pontoDoMenu(ev),
+        topo: [],
+        linhas: [
+          ...exibir,
+          'separador',
+          { rotulo: 'Selecionar tudo', icone: 'checkCircle', atalho: 'Ctrl+A', desabilitado: !v.entradas.length, onClick: () => atual.current.selecionarTodos() },
+          { rotulo: 'Baixar esta pasta (.zip)', icone: 'download', desabilitado: !v.podeBaixarPasta, onClick: baixarPasta },
+          { rotulo: 'Enviar para o Claudio Secretário…', icone: 'upload', onClick: () => envio.abrir() },
+          'separador',
+          { rotulo: v.telaCheia ? 'Sair da tela cheia' : 'Tela cheia', icone: v.telaCheia ? 'minimizar' : 'maximizar', onClick: () => atual.current.alternarTelaCheia() },
+        ],
+      });
+      return;
+    }
+    v.selecionarParaMenu(x.id);
+    const varios = v.estaMarcado(x.id) && v.marcados.length > 1 ? v.marcados : [x];
+    const n = varios.length;
+    const soPastas = n > 1 && varios.every(i => i.pasta);
+    const baixarRotulo = n > 1 ? 'Baixar ' + n + ' itens (.zip)' : x.pasta ? 'Baixar pasta (.zip)' : 'Baixar';
+    setMenu({
+      ...pontoDoMenu(ev),
+      topo: [
+        { rotulo: baixarRotulo, icone: 'download', desabilitado: soPastas, onClick: baixarMarcados },
+        { rotulo: 'Copiar nome', icone: 'copiar', onClick: () => copiar(nomes(varios), n > 1 ? 'Nomes' : 'Nome') },
+        { rotulo: 'Copiar caminho', icone: 'link', onClick: () => copiar(caminhos(varios), 'Caminho') },
+        { rotulo: 'Propriedades', icone: 'settings', desabilitado: n > 1, onClick: () => propriedades(x) },
+      ],
+      linhas: [
+        { rotulo: 'Abrir', icone: x.pasta ? 'pasta' : 'arquivo', atalho: 'Enter', desabilitado: n > 1, onClick: () => abrir(atual.current, x) },
+        { rotulo: baixarRotulo, icone: 'download', desabilitado: soPastas, onClick: baixarMarcados },
+        'separador',
+        { rotulo: 'Copiar nome', icone: 'copiar', onClick: () => copiar(nomes(varios), n > 1 ? 'Nomes' : 'Nome') },
+        { rotulo: 'Copiar caminho', icone: 'link', atalho: 'Ctrl+Shift+C', onClick: () => copiar(caminhos(varios), 'Caminho') },
+        'separador',
+        { rotulo: 'Enviar para o Claudio Secretário…', icone: 'upload', onClick: () => envio.abrir() },
+        { rotulo: 'Selecionar tudo', icone: 'checkCircle', atalho: 'Ctrl+A', onClick: () => atual.current.selecionarTodos() },
+        'separador',
+        { rotulo: 'Propriedades', icone: 'settings', atalho: 'Alt+Enter', desabilitado: n > 1, onClick: () => propriedades(x) },
+      ],
+    });
+  };
+  const menuDaArvore = (ev: MouseEvent, no: e.NoDaArvore) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const linhas: LinhaDoMenu[] = [{ rotulo: 'Abrir', icone: 'pasta', onClick: () => atual.current.abrirNo(no) }];
+    if (no.temFilhos) linhas.push({ rotulo: no.aberto ? 'Recolher' : 'Expandir', icone: no.aberto ? 'caretDown' : 'chevronRight', onClick: () => atual.current.alternarNo(no.id) });
+    linhas.push('separador',
+      { rotulo: 'Copiar nome', icone: 'copiar', onClick: () => copiar(no.nome, 'Nome') },
+      { rotulo: 'Enviar para o Claudio Secretário…', icone: 'upload', onClick: () => envio.abrir() });
+    setMenu({ ...pontoDoMenu(ev), topo: [], linhas });
+  };
+  // arrastar arquivos do computador para o Explorador: abre o envio com eles
+  const temArquivos = (ev: DragEvent) => Array.from(ev.dataTransfer?.types || []).includes('Files');
+  const arrastando = (ev: DragEvent) => { if (!temArquivos(ev) || envio.aberto) return; ev.preventDefault(); setSoltando(true); };
+  const soltar = (ev: DragEvent) => {
+    if (!temArquivos(ev) || envio.aberto) return;
+    ev.preventDefault();
+    setSoltando(false);
+    envio.abrir(Array.from(ev.dataTransfer.files || []));
+  };
+
   const teclas = (ev: KeyboardEvent) => {
     if (ev.target instanceof HTMLInputElement || ev.target instanceof HTMLSelectElement) return;
+    const um = vm.marcados.length === 1 ? vm.marcados[0] : null;
+    if (ev.altKey && ev.key === 'Enter' && um) { ev.preventDefault(); propriedades(um); return; }
+    if ((ev.ctrlKey || ev.metaKey) && ev.shiftKey && ev.key.toLowerCase() === 'c' && vm.marcados.length) {
+      ev.preventDefault();
+      copiar(caminhos(vm.marcados), 'Caminho');
+      return;
+    }
     if (ev.altKey && ev.key === 'ArrowLeft') { ev.preventDefault(); vm.voltar(); }
     else if (ev.altKey && ev.key === 'ArrowRight') { ev.preventDefault(); vm.avancar(); }
     else if ((ev.altKey && ev.key === 'ArrowUp') || ev.key === 'Backspace') { ev.preventDefault(); vm.subir(); }
@@ -186,7 +303,8 @@ export function ExploradorDoDrive() {
   }, [travar]);
 
   return (
-    <section ref={caixa} className={'explorador' + (vm.telaCheia ? ' tela-cheia' : '')} style={altura ? { height: altura } : undefined} onKeyDown={teclas}>
+    <section ref={caixa} className={'explorador' + (vm.telaCheia ? ' tela-cheia' : '') + (soltando ? ' soltando' : '')} style={altura ? { height: altura } : undefined}
+      onKeyDown={teclas} onDragOver={arrastando} onDragLeave={ev => { if (!ev.currentTarget.contains(ev.relatedTarget as Node | null)) setSoltando(false); }} onDrop={soltar}>
       <div className="explorador-endereco">
         <button type="button" className="explorador-btn" title="Voltar (Alt+←)" aria-label="Voltar" onClick={vm.voltar}><Icone nome="chevronLeft" /></button>
         <button type="button" className="explorador-btn" title="Avançar (Alt+→)" aria-label="Avançar" onClick={vm.avancar}><Icone nome="chevronRight" /></button>
@@ -211,6 +329,8 @@ export function ExploradorDoDrive() {
       <div className="explorador-comandos" role="toolbar" aria-label="Comandos">
         <button type="button" className="explorador-cmd" disabled={!m} onClick={baixarMarcados}><Icone nome="download" />Baixar{m > 1 ? ' (' + m + ')' : ''}</button>
         <button type="button" className="explorador-cmd" disabled={!vm.podeBaixarPasta} onClick={baixarPasta}><Icone nome="pasta" />Baixar esta pasta</button>
+        <button type="button" className="explorador-cmd" title="Mandar arquivos para a pasta Claudio Secretario (a próxima rodada do arquivamento põe na pasta do cliente)"
+          onClick={() => envio.abrir()}><Icone nome="upload" />Enviar para o Claudio Secretário</button>
         <span className="explorador-divisor" />
         <button type="button" className="explorador-cmd" disabled={!n} onClick={vm.selecionarTodos}><Icone nome="checkCircle" />Selecionar tudo</button>
         <button type="button" className="explorador-cmd" disabled={!m} onClick={vm.limparSelecao}><Icone nome="x" />Limpar seleção</button>
@@ -237,9 +357,9 @@ export function ExploradorDoDrive() {
       {vm.exemplos && <p className="hint drive-aviso">Dados de exemplo: as pastas são inventadas e nenhum arquivo abre de verdade.</p>}
 
       <div className={'explorador-corpo' + (vm.mostrarArvore ? '' : ' sem-arvore')}>
-        {vm.mostrarArvore && <Arvore vm={vm} />}
-        <div className="explorador-conteudo" onClick={ev => { if (ev.target === ev.currentTarget) vm.limparSelecao(); }}>
-          {!vm.carregando && (vm.exibicao === 'detalhes' ? <Detalhes vm={vm} /> : <Icones vm={vm} />)}
+        {vm.mostrarArvore && <Arvore vm={vm} aoMenu={menuDaArvore} />}
+        <div className="explorador-conteudo" onClick={ev => { if (ev.target === ev.currentTarget) vm.limparSelecao(); }} onContextMenu={ev => abrirMenu(ev, null)}>
+          {!vm.carregando && (vm.exibicao === 'detalhes' ? <Detalhes vm={vm} aoMenu={abrirMenu} /> : <Icones vm={vm} aoMenu={abrirMenu} />)}
           {!vm.carregando && !n && <p className="empty">{vm.buscando ? 'Nenhum item corresponde à pesquisa.' : 'Esta pasta está vazia.'}</p>}
         </div>
       </div>
@@ -251,11 +371,19 @@ export function ExploradorDoDrive() {
         {vm.atualizado && <span className="fraco">Mapa do robô: {vm.atualizado}</span>}
       </div>
 
-      {vm.pedidos.length > 0 && (
+      {vm.pedidos.length + envio.envios.length > 0 && (
         <div className="drive-pedidos" role="status" aria-live="polite">
           {vm.pedidos.map(p => <div key={p.id} className="drive-pedido"><span className="drive-girando" aria-hidden="true" />{p.texto}</div>)}
+          {envio.envios.map(p => (
+            <div key={p.id} className={'drive-pedido' + (p.erro ? ' com-erro' : '')}>
+              {p.erro ? <Icone nome="alert" className="drive-ico" /> : <span className="drive-girando" aria-hidden="true" />}{p.texto}
+            </div>
+          ))}
         </div>
       )}
+      {soltando && <div className="explorador-soltar" aria-hidden="true"><Icone nome="upload" />Solte para enviar ao Claudio Secretário</div>}
+      {menu && <MenuDeContexto menu={menu} onFechar={() => setMenu(null)} />}
+      <EnviarAoSecretario vm={envio} />
     </section>
   );
 }

@@ -1894,3 +1894,52 @@ main.main:has(> .content > .explorador){padding:0;}
   .explorador-detalhes .col-tipo,.explorador-detalhes .col-data{display:none;}
   .explorador-cmd{padding:0 7px;}
 }
+
+/* ── Drive: menu do botão direito (como o do Windows 11), Propriedades, arrastar e "Enviar para o Claudio Secretário" ── */
+.explorador:not(.tela-cheia){position:relative;}
+.ctx-menu{position:fixed;z-index:75;min-width:240px;max-width:340px;padding:4px;border:1px solid var(--border);border-radius:8px;background:var(--surface);box-shadow:var(--shadow-lg);font-size:13px;animation:fadeIn .08s ease both;}
+.ctx-topo{display:flex;gap:2px;padding:2px 2px 4px;margin-bottom:4px;border-bottom:1px solid var(--border-muted);}
+.ctx-topo button{display:inline-flex;align-items:center;justify-content:center;width:34px;height:32px;border:0;border-radius:6px;background:none;color:var(--ink);cursor:pointer;}
+.ctx-topo button svg{width:17px;height:17px;}
+.ctx-topo button:hover:not(:disabled),.ctx-topo button:focus-visible{background:var(--hover-bg);outline:none;}
+.ctx-topo button:disabled{opacity:.4;cursor:default;}
+.ctx-lista{display:flex;flex-direction:column;}
+.ctx-lista button{display:flex;align-items:center;gap:10px;width:100%;height:32px;padding:0 10px 0 8px;border:0;border-radius:6px;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
+.ctx-lista button:hover:not(:disabled),.ctx-lista button:focus-visible{background:var(--hover-bg);outline:none;}
+.ctx-lista button:disabled{color:var(--ink-muted);opacity:.55;cursor:default;}
+.ctx-marca{width:14px;display:inline-flex;justify-content:center;}
+.ctx-marca svg{width:14px;height:14px;color:var(--accent-ink);}
+.ctx-icone{width:16px;display:inline-flex;justify-content:center;color:var(--ink-muted);}
+.ctx-icone svg{width:16px;height:16px;}
+.ctx-rotulo{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ctx-atalho{color:var(--ink-muted);font-size:12px;padding-left:16px;white-space:nowrap;}
+.ctx-sep{border:0;border-top:1px solid var(--border-muted);margin:4px 2px;}
+.ctx-titulo{padding:6px 10px 2px;font-size:11px;font-weight:600;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.03em;}
+.explorador-propriedades{margin:0;padding:12px 16px 4px;display:flex;flex-direction:column;gap:8px;font-size:13px;}
+.explorador-propriedades > div{display:grid;grid-template-columns:130px 1fr;gap:12px;}
+.explorador-propriedades dt{color:var(--ink-muted);}
+.explorador-propriedades dd{margin:0;overflow-wrap:anywhere;}
+.explorador.soltando .explorador-conteudo{outline:2px dashed var(--accent);outline-offset:-6px;}
+.explorador-soltar{position:absolute;left:50%;bottom:48px;transform:translateX(-50%);z-index:5;display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:8px;background:var(--accent);color:var(--on-accent);font-size:14px;font-weight:600;box-shadow:var(--shadow-lg);pointer-events:none;}
+.explorador-soltar svg{width:18px;height:18px;}
+.drive-pedido.com-erro{border-color:var(--danger);}
+.drive-pedido.com-erro .drive-ico{color:var(--danger);}
+.envio-janela{max-width:560px;}
+.envio-janela h3{display:flex;align-items:center;gap:8px;}
+.envio-janela h3 svg{width:16px;height:16px;}
+.envio-corpo{padding:14px 16px;display:flex;flex-direction:column;gap:12px;max-height:calc(100dvh - 200px);overflow:auto;}
+.modal .envio-corpo p{padding:0;margin:0;}
+.envio-dica{font-size:13px !important;color:var(--ink-muted) !important;}
+.envio-soltar{border-radius:8px;}
+.envio-soltar.on{outline:2px dashed var(--accent);outline-offset:2px;}
+.envio-lista{list-style:none;margin:0;padding:0;border:1px solid var(--border-muted);border-radius:6px;max-height:200px;overflow:auto;}
+.envio-lista li{display:flex;align-items:center;gap:8px;padding:4px 4px 4px 10px;font-size:13px;}
+.envio-lista li + li{border-top:1px solid var(--border-muted);}
+.envio-lista li.com-problema .fraco{color:var(--danger);}
+.envio-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.envio-campos{display:flex;flex-direction:column;gap:12px;}
+.envio-campo{display:flex;flex-direction:column;align-items:flex-start;gap:4px;font-size:13px;min-width:0;}
+.envio-campo select{width:100%;}
+.envio-campo > span{color:var(--ink-muted);font-size:12px;}
+.envio-campo select{height:32px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;padding:0 8px;min-width:0;}
+.envio-onde{display:flex;align-items:center;gap:8px;font-size:13px !important;padding:8px 10px !important;border-radius:6px;background:var(--surface-2);}

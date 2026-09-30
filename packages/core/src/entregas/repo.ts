@@ -1,6 +1,7 @@
 // O que as telas do Drive e do Gmail pedem e gravam. A tela nunca sabe onde o dado mora.
 // No site: os dados/*.firestore.ts da Tarefas (o banco do Entregas, com o login de lá); nos exemplos: repo.memoria.ts.
 import type { AndamentoDoPedido, ItemDoDrive, MapaDoDrive, PedidoAoDrive } from './drive';
+import type { AndamentoDoEnvio, ArquivoParaEnviar, DestinoDoEnvio } from './secretario';
 import type { ClienteDoEntregas, EmailLido, EstadoDoRobo, RespostaPedida } from './gmail';
 
 /** Quem está pedindo (vai em todo pedido ao robô; as regras do banco conferem o uid). */
@@ -14,6 +15,8 @@ export interface RepoDriveDoEntregas {
   itens(pastaDoCliente: string): { carregados: boolean; itens: ItemDoDrive[] };
   /** pede ao robô (abrir, baixar, zip) e acompanha; devolve como parar de acompanhar */
   pedir(p: PedidoAoDrive, aoMudar: (a: AndamentoDoPedido) => void): () => void;
+  /** manda um arquivo para a pasta Claudio Secretario (o robô grava) e acompanha; devolve como parar de acompanhar */
+  enviar(arquivo: ArquivoParaEnviar, destino: DestinoDoEnvio, aoMudar: (a: AndamentoDoEnvio) => void): () => void;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }

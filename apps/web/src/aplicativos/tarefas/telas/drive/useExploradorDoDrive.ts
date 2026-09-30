@@ -139,6 +139,11 @@ export function useExploradorDoDrive() {
 
   const falhou = (oque: string) => (err: Error): never => { toast('Não consegui ' + oque + ': ' + err.message + '.'); throw err; };
 
+  function caminhoDe(x: e.EntradaDoExplorador): string {
+    const pastas = [mapa.pastaAno?.nome || 'Drive', ...(pastaCliente ? [pastaCliente.nomePasta] : []), ...caminho.map(c => c.n)];
+    return [...pastas, ...(x.onde ? x.onde.split(' › ') : []), x.nome].join(' › ');
+  }
+
   const selecionadas = entradas.filter(x => marcados.has(x.id));
   const bytesMarcados = selecionadas.reduce((t, x) => t + (x.pasta ? 0 : x.bytes), 0);
   const acima = !cliente ? null : pasta === cliente ? { c: '', p: '' } : { c: cliente, p: caminho.length >= 2 ? caminho[caminho.length - 2].i : cliente };
@@ -168,6 +173,37 @@ export function useExploradorDoDrive() {
     ordenarPor: (c: e.ColunaDoExplorador) => mudarPref(pref.coluna === c ? { desc: !pref.desc } : { coluna: c, desc: false }),
     quando,
     tamanho: e.tamanhoLegivel,
+
+    /** a pasta de cliente aberta (o "Enviar para o Claudio Secretário" começa nela) */
+    pastaCliente,
+    /** "2026 › 58 - TORNEARIA › CONTÁBIL › extrato.pdf" */
+    caminhoDe,
+    /** as Propriedades (como no Windows): tipo, local, tamanho ou o que tem dentro, datas */
+    propriedadesDe(x: e.EntradaDoExplorador): { rotulo: string; valor: string }[] {
+      const local = caminhoDe(x).split(' › ').slice(0, -1).join(' › ');
+      const linhas = [{ rotulo: 'Tipo', valor: x.tipo }, { rotulo: 'Local', valor: local }];
+      const doCliente = !cliente ? mapa.clientes.find(c => c.id === x.id) : null;
+      if (doCliente) {
+        linhas.push({ rotulo: 'Tamanho', valor: e.tamanhoLegivel(doCliente.bytes) || '0 bytes' });
+        linhas.push({ rotulo: 'Contém', valor: doCliente.arquivos + ' arquivos, ' + doCliente.pastas + ' pastas' });
+        if (doCliente.codigo) linhas.push({ rotulo: 'Código do cliente', valor: doCliente.codigo });
+      } else if (x.pasta) {
+        const d = e.quantosDentro(itens, x.id);
+        const bytes = e.descendentesDe(itens, x.id).reduce((t, i) => t + (i.s || 0), 0);
+        linhas.push({ rotulo: 'Tamanho', valor: e.tamanhoLegivel(bytes) || '0 bytes' });
+        linhas.push({ rotulo: 'Contém', valor: d.arquivos + ' arquivos, ' + d.pastas + ' pastas' });
+      } else {
+        linhas.push({ rotulo: 'Tamanho', valor: e.tamanhoLegivel(x.bytes) + (x.bytes ? ' (' + x.bytes.toLocaleString('pt-BR') + ' bytes)' : '') });
+      }
+      if (x.data) linhas.push({ rotulo: 'Modificado em', valor: quando(x.data) });
+      return linhas;
+    },
+    /** botão direito numa linha: se ela não está na seleção, a seleção passa a ser só ela (como no Windows) */
+    selecionarParaMenu(id: string) {
+      if (marcados.has(id)) return;
+      setMarcados(new Set([id]));
+      setAncora(id);
+    },
 
     // seleção
     marcados: selecionadas,

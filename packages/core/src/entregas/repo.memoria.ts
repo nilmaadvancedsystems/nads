@@ -1,6 +1,7 @@
 // O Drive e o Gmail EM MEMÓRIA (modo exemplos): um mapa e uma caixa de exemplo, para as telas terem o que
 // mostrar. Nada vai para o banco, e nenhum arquivo de verdade abre.
 import { mapaDaRaiz, type AndamentoDoPedido, type ItemDoDrive } from './drive';
+import { partesDoArquivo, PASTA_SEM_CLIENTE, type AndamentoDoEnvio } from './secretario';
 import { estadoDoRobo, type ClienteDoEntregas, type EmailLido, type RespostaPedida } from './gmail';
 import type { RepoDriveDoEntregas, RepoGmailDoEntregas } from './repo';
 
@@ -56,6 +57,20 @@ export function criarDriveDoEntregasMemoria(): RepoDriveDoEntregas {
         { status: 'erro', erro: 'nos dados de exemplo o Drive não abre arquivos de verdade' },
       ];
       passos.forEach((a, i) => setTimeout(() => { if (vivo) aoMudar(a); }, 400 * (i + 1)));
+      return () => { vivo = false; };
+    },
+    enviar(arquivo, destino, aoMudar) {
+      // exemplos: finge subir as partes e o robô gravar (nada vai para o Drive)
+      let vivo = true;
+      const partes = Math.max(1, partesDoArquivo(arquivo.bytes).length);
+      const pasta = destino.competencia + '/' + (destino.cliente.trim() || PASTA_SEM_CLIENTE);
+      const passos: AndamentoDoEnvio[] = [
+        ...Array.from({ length: partes }, (_, i) => ({ status: 'enviando' as const, enviadas: i + 1, partes })),
+        { status: 'pendente', partes },
+        { status: 'gravando', partes },
+        { status: 'pronto', partes, pasta, nomeFinal: arquivo.nome },
+      ];
+      passos.forEach((a, i) => setTimeout(() => { if (vivo) aoMudar(a); }, 300 * (i + 1)));
       return () => { vivo = false; };
     },
     assinar: o.assinar,
