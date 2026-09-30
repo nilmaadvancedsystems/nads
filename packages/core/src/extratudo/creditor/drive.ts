@@ -40,6 +40,8 @@ export interface RepoDrive {
   acesso(): AcessoDrive;
   /** entra com o usuário (nome ou e-mail) e a senha do Entregas; erro vira exceção com a mensagem */
   entrar(usuario: string, senha: string): Promise<void>;
+  /** entra com a conta Google do escritório (uma vez por computador: o login fica guardado) */
+  entrarComGoogle(): Promise<void>;
   sair(): Promise<void>;
   /** a pasta do cliente pelo código do ERP e tudo o que tem dentro (null = o cliente não tem pasta) */
   pastaDoCliente(codigo: number | null): Promise<{ raiz: string; nome: string; itens: ItemDrive[] } | null>;
@@ -68,6 +70,19 @@ export function emailDoUsuario(usuario: string): string {
 }
 
 /** A mensagem de erro do login do Firebase, em português. */
+/** A conta Google do escritório (vem sugerida na janela do Google). */
+export const CONTA_GOOGLE_DO_ESCRITORIO = 'nilmacontabilidade@gmail.com';
+
+/** O erro do login com Google, em português, dizendo o que ajustar no projeto do Entregas. */
+export function mensagemDoLoginGoogle(codigo: string, site: string): string {
+  if (/popup-closed|cancelled-popup/.test(codigo)) return 'A janela do Google foi fechada antes de entrar.';
+  if (/popup-blocked/.test(codigo)) return 'O navegador bloqueou a janela do Google. Libere as janelas deste site e tente de novo.';
+  if (/unauthorized-domain/.test(codigo)) return 'Este site (' + site + ') ainda não está autorizado no login do Entregas: no Firebase do Entregas, Authentication → Configurações → Domínios autorizados.';
+  if (/operation-not-allowed/.test(codigo)) return 'O login com Google não está ligado no Entregas: no Firebase do Entregas, Authentication → Método de login → Google.';
+  if (/network/.test(codigo)) return 'Sem conexão com o Entregas.';
+  return 'Não foi possível entrar com o Google (' + codigo + ').';
+}
+
 export function mensagemDoLogin(codigo: string): string {
   if (/invalid-credential|wrong-password|user-not-found|invalid-email/.test(codigo)) return 'Usuário ou senha errados.';
   if (/too-many-requests/.test(codigo)) return 'Muitas tentativas. Espere um pouco e tente de novo.';

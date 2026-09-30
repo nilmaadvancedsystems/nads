@@ -25,7 +25,7 @@ export function useCompetencia() {
   async function entrar() {
     setEntrando(true);
     setErroLogin('');
-    try { await drive.entrar(login.usuario, login.senha); setLogin({ usuario: '', senha: '' }); }
+    try { await drive.entrarComGoogle(); setLogin({ usuario: '', senha: '' }); }
     catch (e) { setErroLogin(mensagemDeErro(e)); }
     finally { setEntrando(false); }
   }

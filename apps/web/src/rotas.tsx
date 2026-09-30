@@ -17,7 +17,9 @@ const APLICATIVOS: Record<string, { nome: string; rotas: RouteObject[]; raiz: st
   'concilia-ai': { nome: 'Concilia aí', rotas: rotasConciliaAi, raiz: '/' },
   conciliadorzinho: { nome: 'Conciliadorzinho', rotas: rotasConciliadorzinho, raiz: '/conciliadorzinho' },
   extratudo: { nome: 'Extratudo', rotas: rotasExtratudo, raiz: '/extratudo' },
-  tarefas: { nome: 'Tarefas', rotas: rotasTarefas, raiz: '/tarefas' },
+  // a Tarefas leva junto o Extratudo: as ferramentas da etapa abrem no mesmo endereço (o login do Entregas
+  // fica guardado no navegador; em outro endereço, dentro do iframe, o Brave apaga)
+  tarefas: { nome: 'Tarefas', rotas: [...rotasTarefas, ...rotasExtratudo], raiz: '/tarefas' },
 };
 
 const so = APLICATIVOS[import.meta.env.VITE_APLICATIVO || ''];

@@ -16,7 +16,7 @@
 // daqui, do mesmo link do robô.
 import { creditor as cr } from '@nads/core';
 import { getApps, initializeApp } from 'firebase/app';
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
 import { addDoc, collection, doc, getDoc, getDocs, getFirestore, limit, onSnapshot, query, serverTimestamp, where } from 'firebase/firestore';
 
 /** Configuração web pública do projeto do Entregas (a mesma do app Pendências). */
@@ -99,6 +99,7 @@ function criarDrivePeloEntregas(): cr.RepoDrive {
     loginDeFora: true,
     acesso: () => acesso,
     async entrar() { throw new Error('Entre no Entregas: o Extratudo usa o mesmo login.'); },
+    async entrarComGoogle() { throw new Error('Entre no Entregas: o Extratudo usa o mesmo login.'); },
     async sair() { /* o login é o do Entregas */ },
     async pastaDoCliente(codigo) {
       const clientes = await pedir<cr.PastaDoCliente[]>('raiz');
@@ -149,6 +150,26 @@ export function criarDriveFirestore(): cr.RepoDrive {
   return {
     exemplos: false,
     acesso: () => acesso,
+    /**
+     * A conta Google do escritório, pela janela do Google. O login fica guardado neste navegador (uma vez por
+     * computador). Para ler e pedir, a conta precisa estar em usuarios/{uid} no Entregas, com o papel do contábil.
+     */
+    async entrarComGoogle() {
+      let u;
+      try {
+        const provedor = new GoogleAuthProvider();
+        provedor.setCustomParameters({ login_hint: cr.CONTA_GOOGLE_DO_ESCRITORIO, prompt: 'select_account' });
+        u = (await signInWithPopup(auth, provedor)).user;
+      } catch (e) {
+        throw new Error(cr.mensagemDoLoginGoogle(String((e as { code?: string })?.code || (e as Error)?.message || e), window.location.host), { cause: e });
+      }
+      let temAcesso = true;
+      try { temAcesso = (await getDoc(doc(db, 'usuarios', u.uid))).exists(); } catch { /* sem permissão de ler: quem decide são as regras, na hora de usar */ }
+      if (!temAcesso) {
+        throw new Error('A conta ' + (u.email || '') + ' entrou, mas ainda não tem acesso no Entregas. No Firestore do Entregas, crie usuarios/' + u.uid + ' com o papel do contábil.');
+      }
+    },
+
     async entrar(usuario, senha) {
       try {
         await signInWithEmailAndPassword(auth, cr.emailDoUsuario(usuario), senha);

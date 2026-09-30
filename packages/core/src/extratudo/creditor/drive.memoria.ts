@@ -39,6 +39,7 @@ export function criarDriveMemoria(): RepoDrive {
     exemplos: true,
     acesso: () => ({ pronto: true, entrou: true, quem: 'exemplo' }),
     async entrar() { /* nos exemplos já está dentro */ },
+    async entrarComGoogle() { /* idem */ },
     async sair() { /* idem */ },
     async pastaDoCliente(codigo) {
       return codigo === 901 ? { raiz: 'ex-901', nome: '901 - EXEMPLO COMERCIO DE ALIMENTOS LTDA', itens: ITENS_901 } : null;

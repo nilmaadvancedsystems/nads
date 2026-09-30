@@ -56,7 +56,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   async function entrar() {
     setLogin(l => ({ ...l, entrando: true, erro: '' }));
     try {
-      await drive.entrar(login.usuario, login.senha);
+      await drive.entrarComGoogle();
       setLogin({ aberto: false, usuario: '', senha: '', entrando: false, erro: '' });
       const linha = pendente;
       setPendente(null);

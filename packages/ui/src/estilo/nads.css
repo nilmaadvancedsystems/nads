@@ -1417,3 +1417,9 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 .pedir-previa .hint{margin:8px 0 0;}
 .pedir-andamento{display:inline-flex;align-items:center;gap:6px;margin:0 auto 0 0;}
 a.btn.is-locked{opacity:.55;cursor:not-allowed;}
+
+/* login do Entregas com Google (uma vez por computador) */
+.botao-google svg{width:18px;height:18px;color:inherit;}
+.drive-login-texto{font-size:14px;color:var(--ink);padding:16px 16px 0;margin:0;}
+.drive-login-google{padding:16px;}
+.drive-login-erro{color:var(--danger) !important;padding:0 16px 16px;margin:0;}

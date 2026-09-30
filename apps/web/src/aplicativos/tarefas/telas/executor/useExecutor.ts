@@ -11,12 +11,12 @@ import { caminhoDaEmpresa, caminhoDaPagina, caminhoDoExecutor } from '../../casc
 import { useOperador, type Operador } from '../../casca/operador';
 
 /**
- * Onde cada aplicativo mora. No site da Tarefas (só ela), as ferramentas são os sites delas; rodando
- * o nads inteiro (desenvolvimento), estão no mesmo endereço. A Conferência é sempre a de verdade.
+ * Onde cada aplicativo mora. O Extratudo vem junto no site da Tarefas (mesmo endereço: o login do Entregas
+ * fica guardado); o Conciliadorzinho ainda é o site dele. A Conferência é sempre a de verdade.
  */
 const soTarefas = import.meta.env.VITE_APLICATIVO === 'tarefas';
 const BASES: Record<t.FerramentaDaEtapa['app'], string> = {
-  extratudo: soTarefas ? 'https://extratudo-nilma.web.app' : '',
+  extratudo: '',
   conciliadorzinho: soTarefas ? 'https://conciliadorzinho-nilma.web.app' : '',
   'concilia-ai': 'https://nads-nilma.web.app',
 };

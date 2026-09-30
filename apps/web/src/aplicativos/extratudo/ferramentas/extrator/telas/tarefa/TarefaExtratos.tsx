@@ -15,6 +15,7 @@ import { useEffect, useId, useState } from 'react';
 import { usePonteDaTarefa } from '../../../../../../comum/ponte';
 import { useSessao } from '../../casca/sessao';
 import { useImportacao, type Mensagem } from '../importacao/useImportacao';
+import { BotaoGoogle } from '../../../../../../comum/BotaoGoogle';
 import { JanelaPedirExtratos } from './JanelaPedirExtratos';
 import { useDriveDaLinha } from './useDriveDaLinha';
 import { usePedirExtratos } from './usePedirExtratos';
@@ -298,22 +299,17 @@ export function TarefaExtratos() {
 
       {d.login.aberto && (
         <div className="modal-overlay" role="presentation" onClick={d.login.fechar}>
-          <form className="modal drive-login" role="dialog" aria-modal="true" aria-labelledby="tituloDrive" onClick={e => e.stopPropagation()}
-            onSubmit={e => { e.preventDefault(); d.login.entrar(); }}>
-            <h3 id="tituloDrive">Entrar no Drive do escritório</h3>
-            <p className="hint">O mesmo usuário do app Pendências (Entregas). Precisa ser do contábil.</p>
-            <label className="field"><span className="hint">Usuário</span>
-              <input type="text" autoFocus autoComplete="username" value={d.login.usuario} onChange={e => d.login.set({ usuario: e.target.value })} />
-            </label>
-            <label className="field"><span className="hint">Senha</span>
-              <input type="password" autoComplete="current-password" value={d.login.senha} onChange={e => d.login.set({ senha: e.target.value })} />
-            </label>
-            {d.login.erro && <p className="hint" style={{ color: 'var(--danger)' }}>{d.login.erro}</p>}
+          <div className="modal drive-login" role="dialog" aria-modal="true" aria-labelledby="tituloDrive" onClick={e => e.stopPropagation()}>
+            <h3 id="tituloDrive">Entrar no Entregas</h3>
+            <p className="drive-login-texto">Com a conta Google do escritório. Fica guardado neste computador: é só uma vez.</p>
+            <div className="drive-login-google">
+              <BotaoGoogle entrando={d.login.entrando} onClick={d.login.entrar} />
+            </div>
+            {d.login.erro && <p className="hint drive-login-erro">{d.login.erro}</p>}
             <div className="modal-actions">
               <button type="button" className="btn btn-outline" onClick={d.login.fechar}>Voltar</button>
-              <button type="submit" className="btn btn-primary" disabled={d.login.entrando || !d.login.usuario || !d.login.senha}>{d.login.entrando ? 'Entrando…' : 'Entrar'}</button>
             </div>
-          </form>
+          </div>
         </div>
       )}
 

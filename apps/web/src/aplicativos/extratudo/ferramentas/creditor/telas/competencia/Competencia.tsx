@@ -1,6 +1,7 @@
 // Etapa 1 do Creditor: a competência. Ao abrir, o relatório de liquidação vem da pasta da empresa no
 // Drive (pelo Entregas); sem o Drive, segue para anexar à mão.
 import { Alerta, Icone, SeletorMes } from '@nads/ui';
+import { BotaoGoogle } from '../../../../../../comum/BotaoGoogle';
 import { useCompetencia } from './useCompetencia';
 
 export function Competencia() {
@@ -29,23 +30,13 @@ export function Competencia() {
           ) : d.entrou ? (
             <p className="hint">Conectado como <b>{d.quem}</b>. <button className="btn btn-ghost btn-sm" type="button" onClick={d.sair}>Sair</button></p>
           ) : (
-            <form onSubmit={e => { e.preventDefault(); void d.entrar(); }}>
-              <p className="hint" style={{ marginTop: 0 }}>Entre com o mesmo usuário do app Pendências (Entregas). Precisa ser do contábil.</p>
-              <div className="form-grid">
-                <div className="field">
-                  <label htmlFor="fDriveUsuario">Usuário</label>
-                  <input id="fDriveUsuario" autoComplete="username" value={d.login.usuario} onChange={e => d.setLogin({ ...d.login, usuario: e.target.value })} />
-                </div>
-                <div className="field">
-                  <label htmlFor="fDriveSenha">Senha</label>
-                  <input id="fDriveSenha" type="password" autoComplete="current-password" value={d.login.senha} onChange={e => d.setLogin({ ...d.login, senha: e.target.value })} />
-                </div>
-              </div>
+            <div>
+              <p className="hint" style={{ marginTop: 0 }}>Entre com a conta Google do escritório. Fica guardado neste computador: é só uma vez.</p>
               <div className="btn-row" style={{ justifyContent: 'flex-start', marginTop: 8 }}>
-                <button className="btn btn-outline" type="submit" disabled={d.entrando || !d.login.usuario || !d.login.senha}>{d.entrando ? 'Entrando…' : 'Entrar'}</button>
+                <BotaoGoogle entrando={d.entrando} onClick={() => { void d.entrar(); }} />
               </div>
               {d.erroLogin && <p className="hint" style={{ color: 'var(--danger)' }}>{d.erroLogin}</p>}
-            </form>
+            </div>
           )}
         </div>
       )}
