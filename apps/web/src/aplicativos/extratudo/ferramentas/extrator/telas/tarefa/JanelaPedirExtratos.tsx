@@ -1,11 +1,16 @@
-// A janela do "Pedir extratos" (View do usePedirExtratos), larga: à esquerda o pedido — para quem (do
-// cadastro do Entregas), os documentos (+ outro), a competência (+ "Mais competências"), o prazo e o WhatsApp
-// opcional com a mensagem que a pessoa digita; à direita, o e-mail em HTML como o cliente vai ver.
+// A janela do "Pedir extratos" (View do usePedirExtratos), em duas etapas:
+//   1. Montar — para quem (do cadastro do Entregas); os documentos, cada um com a caixinha do mês da tela e
+//      "Outros meses" (travado = já importado ou já no Drive); outro documento; o prazo; o WhatsApp opcional
+//      com a mensagem que a pessoa digita.
+//   2. Conferir — o e-mail como o cliente vai ver (e a mensagem do WhatsApp), com Voltar e Enviar.
 import { Icone, LogoBanco, LogoGmail, LogoWhatsApp, useCarregando } from '@nads/ui';
 import { useState } from 'react';
 import type { usePedirExtratos } from './usePedirExtratos';
 
 type P = ReturnType<typeof usePedirExtratos>;
+type Mes = P['documentos'][number]['atual'];
+
+const titulo = (m: Mes) => (m.travado ? 'Já está ' + (m.travado === 'importado' ? 'importado no sistema' : 'no Drive') + ': não precisa pedir' : undefined);
 
 export function JanelaPedirExtratos({ p }: { p: P }) {
   useCarregando(p.aberto && p.contato.carregando);
@@ -17,16 +22,18 @@ export function JanelaPedirExtratos({ p }: { p: P }) {
     if (p.whatsapp.ligado && p.whatsapp.ok) window.open(p.whatsapp.link, '_blank');
     p.enviar();
   };
+  const conferir = p.etapa === 'conferir';
   return (
     <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) p.fechar(); }}>
-      <div className="modal pedir-modal" role="dialog" aria-modal="true" aria-label="Pedir documentos">
+      <div className={'modal pedir-modal' + (conferir ? ' conferir' : '')} role="dialog" aria-modal="true" aria-label="Pedir documentos">
         <h3 className="pedir-titulo">
           <span className="pedir-app"><LogoGmail /></span>
-          Pedir documentos por e-mail
+          {conferir ? 'Conferir o e-mail' : 'Pedir documentos por e-mail'}
+          <span className="pedir-passos" aria-hidden="true"><span className={conferir ? '' : 'on'}>1 Montar</span><span className={conferir ? 'on' : ''}>2 Conferir</span></span>
           <button type="button" className="drawer-x pedir-x" aria-label="Fechar" onClick={p.fechar}><Icone nome="x" /></button>
         </h3>
 
-        <div className="pedir-grade-2">
+        {!conferir ? (
           <div className="pedir-corpo">
             <div className="pedir-campo">
               <span className="pedir-rotulo">Para</span>
@@ -42,47 +49,37 @@ export function JanelaPedirExtratos({ p }: { p: P }) {
             </div>
 
             <div className="pedir-campo">
-              <span className="pedir-rotulo">Competências</span>
-              <div className="pedir-opcoes">
-                <label className="pedir-opcao"><input type="checkbox" checked disabled />{p.competencia.rotulo}</label>
-                <label className="pedir-opcao"><input type="checkbox" checked={p.mais} onChange={e => p.setMais(e.target.checked)} />Mais competências</label>
-                {p.mais && (
-                  <div className="pedir-grade">
-                    {p.outrasCompetencias.map(c => (
-                      <label key={c.valor} className="pedir-opcao"><input type="checkbox" checked={c.marcado} onChange={() => p.alternarCompetencia(c.valor)} />{c.rotulo}</label>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="pedir-campo">
               <span className="pedir-rotulo">Documentos</span>
               <div className="pedir-opcoes">
-                {p.documentos.map(d => p.variasCompetencias ? (
-                  // várias competências: o documento e uma caixinha por mês
-                  <div key={d.id} className="pedir-doc-varias">
-                    <span className="pedir-doc-titulo">
-                      {d.banco && <span className="pedir-logo"><LogoBanco banco={d.banco} cor /></span>}
-                      <span className="pedir-doc-nome">{d.nome}</span>
-                    </span>
-                    <span className="pedir-comps">
-                      {d.competencias.map(c => (
-                        <label key={c.valor} className={'pedir-comp' + (c.marcado ? ' marcado' : '') + (c.travado ? ' travado' : '')} title={c.travado ? 'Já está ' + (c.travado === 'importado' ? 'importado' : 'no Drive') + ': não precisa pedir' : undefined}>
-                          <input type="checkbox" checked={c.marcado} disabled={!!c.travado} onChange={() => p.alternarDocumento(d.id, c.valor)} />
-                          {c.rotulo}{c.travado && <span className="pedir-comp-tag">{c.travado}</span>}
-                        </label>
-                      ))}
-                    </span>
+                {p.documentos.map(d => (
+                  <div key={d.id} className="pedir-doc-bloco">
+                    <div className="pedir-doc-linha">
+                      <label className={'pedir-opcao pedir-doc' + (d.atual.travado ? ' travado' : '')} title={titulo(d.atual)}>
+                        <input type="checkbox" checked={d.atual.marcado} disabled={!!d.atual.travado} onChange={() => p.alternarDocumento(d.id, d.atual.valor)} />
+                        {d.banco && <span className="pedir-logo"><LogoBanco banco={d.banco} cor /></span>}
+                        <span className="pedir-doc-nome">{d.nome}</span>
+                        <span className="pedir-mes-atual">{d.atual.rotulo}</span>
+                        {d.atual.travado && <span className={'badge pedir-tem ' + (d.atual.travado === 'importado' ? 'badge-ok' : 'badge-neutral')}>{d.atual.travado}</span>}
+                      </label>
+                      <button type="button" className={'btn btn-ghost btn-sm pedir-outros-btn' + (d.mesesAbertos ? ' aberto' : '')} aria-expanded={d.mesesAbertos} onClick={() => p.alternarMeses(d.id)}>
+                        Outros meses{d.outrosMarcados.length ? ' (' + d.outrosMarcados.length + ')' : ''}
+                        <Icone nome="caretDown" className="menu-seta" />
+                      </button>
+                    </div>
+                    {!d.mesesAbertos && d.outrosMarcados.length > 0 && (
+                      <div className="pedir-comps pedir-comps-resumo">{d.outrosMarcados.map(m => <span key={m.valor} className="pedir-comp marcado">{m.rotulo}</span>)}</div>
+                    )}
+                    {d.mesesAbertos && (
+                      <div className="pedir-comps">
+                        {d.outros.map(m => (
+                          <label key={m.valor} className={'pedir-comp' + (m.marcado ? ' marcado' : '') + (m.travado ? ' travado' : '')} title={titulo(m)}>
+                            <input type="checkbox" checked={m.marcado} disabled={!!m.travado} onChange={() => p.alternarDocumento(d.id, m.valor)} />
+                            {m.rotulo}{m.travado && <span className="pedir-comp-tag">{m.travado}</span>}
+                          </label>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <label key={d.id} className={'pedir-opcao pedir-doc' + (d.competencias[0].travado ? ' travado' : '')}
-                    title={d.competencias[0].travado ? 'Já está ' + (d.competencias[0].travado === 'importado' ? 'importado' : 'no Drive') + ': não precisa pedir' : undefined}>
-                    <input type="checkbox" checked={d.competencias[0].marcado} disabled={!!d.competencias[0].travado} onChange={() => p.alternarDocumento(d.id, d.competencias[0].valor)} />
-                    {d.banco && <span className="pedir-logo"><LogoBanco banco={d.banco} cor /></span>}
-                    <span className="pedir-doc-nome">{d.nome}</span>
-                    {d.competencias[0].travado && <span className={'badge pedir-tem ' + (d.competencias[0].travado === 'importado' ? 'badge-ok' : 'badge-neutral')}>{d.competencias[0].travado}</span>}
-                  </label>
                 ))}
                 <form className="pedir-outro" onSubmit={e => { e.preventDefault(); adicionar(); }}>
                   <input type="text" placeholder="Outro documento (ex.: Relatórios da LJ)" value={outro} onChange={e => setOutro(e.target.value)} />
@@ -114,19 +111,30 @@ export function JanelaPedirExtratos({ p }: { p: P }) {
               </div>
             </div>
           </div>
-
-          <div className="pedir-previa-email">
+        ) : (
+          <div className="pedir-conferir">
+            <div className="pedir-resumo">
+              <span><b>Para</b> {p.resumo.para.join(', ')}</span>
+              <span><b>{p.resumo.documentos}</b> {p.resumo.documentos === 1 ? 'documento' : 'documentos'} · {p.resumo.meses.join(', ')}</span>
+              {p.whatsapp.ligado && <span className="pedir-resumo-whats"><span className="pedir-app"><LogoWhatsApp /></span>também pelo WhatsApp</span>}
+            </div>
             <p className="pedir-assunto"><span className="hint">Assunto</span>{p.assunto}</p>
             <iframe title="Prévia do e-mail" srcDoc={p.html} sandbox="allow-same-origin" />
           </div>
-        </div>
+        )}
 
         <div className="modal-actions">
           {p.enviando && <span className="hint pedir-andamento"><span className="btn-spinner" />{p.enviando}</span>}
-          <button type="button" className="btn btn-outline" disabled={!!p.enviando} onClick={p.fechar}>Cancelar</button>
-          <button type="button" className="btn btn-primary" disabled={!p.pode} onClick={enviar}>
-            {p.exemplos ? 'Enviar (exemplo)' : p.whatsapp.ligado ? 'Enviar e-mail e WhatsApp' : 'Enviar e-mail'}
-          </button>
+          {conferir
+            ? <button type="button" className="btn btn-outline" disabled={!!p.enviando} onClick={p.voltar}>Voltar</button>
+            : <button type="button" className="btn btn-outline" onClick={p.fechar}>Cancelar</button>}
+          {conferir ? (
+            <button type="button" className="btn btn-primary" disabled={!p.podeContinuar || !!p.enviando} onClick={enviar}>
+              {p.exemplos ? 'Enviar (exemplo)' : p.whatsapp.ligado ? 'Enviar e-mail e WhatsApp' : 'Enviar e-mail'}
+            </button>
+          ) : (
+            <button type="button" className="btn btn-primary" disabled={!p.podeContinuar} onClick={p.continuar}>Continuar</button>
+          )}
         </div>
       </div>
     </div>

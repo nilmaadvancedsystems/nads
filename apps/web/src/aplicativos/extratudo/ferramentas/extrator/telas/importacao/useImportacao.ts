@@ -246,6 +246,8 @@ export function useImportacao() {
     importarArquivos, importarDoDrive, excluirDoBanco, adicionarBanco,
     /** os pedidos de documentos feitos ao cliente (o histórico do Pedir extratos) */
     pedidos: s.empresa.pedidos || [],
+    /** o extrato do banco naquela competência já foi importado? (qualquer competência, não só a da tela) */
+    extratoImportado: (banco: string, competencia: string) => x.arquivosDoBanco(s.empresa, banco, primeiro, 'banco', competencia).length > 0,
     registrarPedido: (reg: x.PedidoRegistrado) => { s.aplicar(e => x.registrarPedido(e, reg)); },
     /** o extrato da conta na competência, com o saldo acumulado (a setinha da linha) */
     movimentoDe: (banco: string) => x.movimentoDoExtrato(s.empresa, banco, primeiro, competenciaDeTeste),

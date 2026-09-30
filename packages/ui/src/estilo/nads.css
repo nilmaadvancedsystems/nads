@@ -1395,7 +1395,8 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 @media print{.rodape{display:none;}}
 
 /* Pedir extratos (Gmail / WhatsApp): a janela com Para, Bancos, Competência e a mensagem pronta */
-.modal.pedir-modal{max-width:min(1120px,96vw);width:100%;}
+.modal.pedir-modal{max-width:min(760px,96vw);width:100%;}
+.modal.pedir-modal.conferir{max-width:min(760px,96vw);}
 .pedir-titulo{display:flex;align-items:center;gap:10px;}
 .pedir-app{width:20px;height:20px;display:inline-flex;}
 .pedir-app .logo-img,.pedir-app svg{width:20px;height:20px;}
@@ -1519,3 +1520,25 @@ td.cad-acoes .menu-seta{display:none;}
 .pedir-comp.marcado{border-color:var(--accent);}
 .pedir-comp.travado,.pedir-doc.travado{opacity:.6;cursor:not-allowed;}
 .pedir-comp-tag{font-size:10px;color:var(--ink-muted);}
+
+/* Pedir documentos em duas etapas: montar (sem prévia) e conferir (o e-mail como o cliente vai ver) */
+.pedir-modal > .pedir-corpo{max-height:min(72vh,680px);}
+.pedir-passos{display:inline-flex;gap:6px;margin-left:12px;font-size:12px;font-weight:500;color:var(--ink-muted);}
+.pedir-passos span{padding:1px 8px;border-radius:2em;border:1px solid var(--border);}
+.pedir-passos span.on{color:var(--ink);border-color:var(--ink-muted);font-weight:600;}
+.pedir-doc-bloco{display:flex;flex-direction:column;gap:6px;padding:4px 0;}
+.pedir-doc-linha{display:flex;align-items:flex-start;gap:8px;}
+.pedir-doc-linha .pedir-doc{flex:1;min-width:0;}
+.pedir-mes-atual{font-size:12px;color:var(--ink-muted);white-space:nowrap;}
+.pedir-outros-btn{flex:none;color:var(--ink-muted);}
+.pedir-outros-btn .menu-seta{transition:transform .12s ease;}
+.pedir-outros-btn.aberto .menu-seta{transform:rotate(180deg);}
+.pedir-doc-bloco .pedir-comps{padding-left:26px;}
+.pedir-comps-resumo .pedir-comp{cursor:default;padding:0 10px;}
+.pedir-conferir{display:flex;flex-direction:column;height:min(72vh,720px);background:#F2F2F3;}
+.pedir-conferir iframe{flex:1;width:100%;border:0;background:#F2F2F3;}
+.pedir-conferir .pedir-assunto{margin:0;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pedir-conferir .pedir-assunto .hint{margin:0 8px 0 0;font-weight:400;}
+.pedir-resumo{display:flex;flex-wrap:wrap;gap:6px 18px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);font-size:13px;color:var(--ink);}
+.pedir-resumo b{font-weight:600;}
+.pedir-resumo-whats{display:inline-flex;align-items:center;gap:6px;}

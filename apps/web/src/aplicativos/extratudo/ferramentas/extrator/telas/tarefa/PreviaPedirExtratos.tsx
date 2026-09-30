@@ -17,6 +17,7 @@ export function PreviaPedirExtratos() {
     competencia,
     competencias: tarefas.competenciasRecentes(new Date(), 12).map(c => ({ valor: c, rotulo: tarefas.rotuloCompetencia(c) })),
     bancos: [{ id: 'sicoob', nome: 'Sicoob', marca: 'sicoob', conta: '', extrato: { qtdArquivos: 0 } }],
+    extratoImportado: () => false,
     pedidos,
     registrarPedido: reg => setPedidos(v => [reg, ...v]),
     avisar: t => toast(t),
