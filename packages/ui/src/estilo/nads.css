@@ -1353,6 +1353,3 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-mov-total b{font-weight:600;font-variant-numeric:tabular-nums;margin-left:4px;}
 .imp-mov-total > span:first-child b{margin-left:0;color:var(--ink);}
 .imp-mov-saldo{color:var(--ink);}
-/* página aberta dentro de uma etapa (iframe): sem a barra de rolagem ocupando espaço (rola com a roda/trackpad) */
-html:has(#app.embutida){scrollbar-width:none;}
-html:has(#app.embutida)::-webkit-scrollbar{display:none;}
