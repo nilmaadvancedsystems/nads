@@ -3,6 +3,7 @@
 // gaveta ☰ com tema e a área da página (título + ações no canto direito). Marcação e classes iguais às do conferencia.html (~L973-1033).
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useAlturaNaEtapa } from './etapa';
+import marcaGV from './marca-gv.png';
 import { Icone, MarcaN, type NomeIcone } from './icones';
 import { SeletorTema } from './tema';
 
@@ -242,17 +243,10 @@ export function Casca(p: {
  * O rodapé (como o do GitHub): no fim da página, na largura toda; só aparece quando a pessoa rola até o fim.
  * Por enquanto só a marca e o direito autoral; os links (Termos, Privacidade…) vêm depois, com as páginas.
  */
-/** A marca G&V: G e V bem grossos e o "&" por cima dos dois, cortado por um contorno da cor do fundo. */
+/** A marca GV (a imagem do Vitor, sem o fundo): vira máscara, então pega a cor do texto do rodapé, no claro e no escuro. */
 function MarcaGV() {
-  return (
-    <svg className="rodape-marca" viewBox="0 0 122 64" aria-hidden="true">
-      <g fontFamily="'Arial Black', 'Segoe UI Black', 'Helvetica Neue', Arial, sans-serif" fontWeight={900} fill="currentColor">
-        <text x="-2" y="56" fontSize="66">G</text>
-        <text x="60" y="56" fontSize="66">V</text>
-        <text x="33" y="62" fontSize="56" stroke="var(--bg)" strokeWidth={5} paintOrder="stroke" strokeLinejoin="round">&amp;</text>
-      </g>
-    </svg>
-  );
+  const url = 'url(' + marcaGV + ')';
+  return <span className="rodape-marca" aria-hidden="true" style={{ WebkitMaskImage: url, maskImage: url }} />;
 }
 
 function Rodape() {

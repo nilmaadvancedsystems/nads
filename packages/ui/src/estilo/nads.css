@@ -1368,8 +1368,8 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 @media (min-width:900px){.imp-linha{position:relative;}.imp-resumo > div{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);}}
 .imp-resumo > div{display:flex;flex-direction:column;font-size:12px;line-height:18px;color:var(--ink-muted);white-space:nowrap;}
 
-/* o rodapé da Casca: depois de tudo, na largura toda (só se vê rolando até o fim); a marca G&V em letra bem grossa */
+/* o rodapé da Casca: depois de tudo, na largura toda (só se vê rolando até o fim); a marca GV (máscara: cor do texto) */
 .rodape{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--border);
   font-size:12px;line-height:20px;color:var(--ink-muted);}
-.rodape-marca{width:30px;height:16px;flex:none;color:var(--ink-muted);}
+.rodape-marca{display:inline-block;width:38px;height:16px;flex:none;background:var(--ink-muted);-webkit-mask:no-repeat center/contain;mask:no-repeat center/contain;}
 @media print{.rodape{display:none;}}
