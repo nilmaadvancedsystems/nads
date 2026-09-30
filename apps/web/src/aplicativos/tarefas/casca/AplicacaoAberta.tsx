@@ -1,7 +1,8 @@
 // Rota de uma aplicação da Tarefas: /tarefas/:app/:pagina. Monta a casca e escolhe a tela; as
-// aplicações que ainda não foram feitas mostram "Em desenvolvimento".
+// aplicações que ainda não foram feitas mostram "Em desenvolvimento". O Cadastro, sem empresa, pede a empresa.
 import { Navigate, useParams } from 'react-router';
 import { TopoProvider } from '../../../comum/topo';
+import { EscolherEmpresaCadastro } from '../telas/cadastro/escolher/EscolherEmpresaCadastro';
 import { VisaoContabil } from '../telas/contabil/VisaoContabil';
 import { MinhasEmpresas } from '../telas/empresas/MinhasEmpresas';
 import { Insights } from '../telas/insights/Insights';
@@ -14,6 +15,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
   switch (app) {
     case 'minhas-empresas': return pagina === 'insights' ? <Insights /> : <MinhasEmpresas />;
     case 'contabil': return <VisaoContabil pagina={pagina} />;
+    case 'cadastro': return <EscolherEmpresaCadastro pagina={pagina} />;
     default: return <EmDesenvolvimento nome={aplicacao(app)?.nome || app} />;
   }
 }

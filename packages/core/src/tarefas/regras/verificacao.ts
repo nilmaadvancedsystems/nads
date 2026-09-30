@@ -11,7 +11,12 @@ function temNaCompetencia(arquivos: readonly ArquivoImportado[], lado: 'banco' |
 export interface Resultado { ok: boolean; motivo: string }
 
 /** As contas da empresa na etapa dos extratos: cada banco precisa de extrato e razão, menos os sem movimento. */
-export interface ContasDaEtapa { bancos: readonly { id: string; nome: string }[]; semMovimento: readonly string[] }
+export interface ContasDaEtapa {
+  bancos: readonly { id: string; nome: string }[];
+  semMovimento: readonly string[];
+  /** o banco dos arquivos sem banco (ou da linha genérica); sem = o primeiro da lista */
+  primeiro?: string;
+}
 
 const MES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const mesDe = (competencia: string) => MES[Number(competencia.slice(5, 7)) - 1] + '/' + competencia.slice(0, 4);
@@ -31,10 +36,10 @@ export function verificar(etapa: Etapa, competencia: string, arquivosDoExtrator:
     case 'extrato-e-sistema': {
       if (contas?.bancos.length) {
         // banco por banco (arquivo sem banco = do primeiro); os marcados sem movimento não precisam de nada
-        const primeiro = contas.bancos[0].id;
+        const primeiro = contas.primeiro ?? contas.bancos[0].id;
         for (const b of contas.bancos) {
           if (contas.semMovimento.includes(b.id)) continue;
-          const doBanco = arquivosDoExtrator.filter(a => (a.banco || primeiro) === b.id);
+          const doBanco = arquivosDoExtrator.filter(a => (a.banco && a.banco !== 'banco' ? a.banco : primeiro) === b.id);
           if (!temNaCompetencia(doBanco, 'banco', competencia)) return { ok: false, motivo: 'Falta o extrato do ' + b.nome + ' de ' + mesDe(competencia) + '.' };
           if (!temNaCompetencia(doBanco, 'sistema', competencia)) return { ok: false, motivo: 'Falta o razão do ' + b.nome + ' de ' + mesDe(competencia) + '.' };
         }

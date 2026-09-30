@@ -5,9 +5,10 @@
 //                paradas), neste navegador; nada vai para o banco. O check lê o Extrator de exemplo.
 // Quem está trabalhando: no banco, o login com as contas do Entregas (entregas.firestore.ts, 30/09/2026);
 // nos exemplos, a pessoa escolhe o nome na lista da equipe (não há login).
-// O repositório e a sessão são criados uma vez, quando alguém abre a Tarefas.
+// O repositório e a sessão são criados uma vez, quando alguém abre a Tarefas. O do Cadastro, quando alguém abre o Cadastro.
 import { empresas, extrator, tarefas } from '@nads/core';
 import { criarSessaoEntregas, type SessaoEntregas } from './entregas.firestore';
+import { balanceteNoEntregas, conferenciaNoBanco, portaCadastroFirestore } from './cadastro.firestore';
 import { criarRepoTarefasFirestore, extratorNoBanco, type RepoTarefasFirestore } from './tarefas.firestore';
 
 export const noBanco = import.meta.env.VITE_FONTE === 'banco';
@@ -37,4 +38,29 @@ export async function extratorDaEmpresa(nome: string): Promise<extrator.EmpresaE
   if (noBanco) return extratorNoBanco(nome);
   // exemplos: o Extrator de exemplo guarda neste navegador; lê de novo a cada conferência
   return extrator.criarRepoExtratorMemoria({ exemplos: true }).obter(nome) || extrator.empresaNova(nome);
+}
+
+let cadastro: empresas.cadastro.RepoCadastro | null = null;
+
+/**
+ * O Cadastro (contas bancárias, plano de contas, contas padrão): no banco, a coleção `cadastro` do Entregas
+ * (ver cadastro.firestore.ts); nos exemplos, neste navegador.
+ */
+export function repoDoCadastro(): empresas.cadastro.RepoCadastro {
+  if (!cadastro) {
+    cadastro = noBanco
+      ? empresas.cadastro.criarRepoCadastro(portaCadastroFirestore(), false)
+      : empresas.cadastro.criarRepoCadastroMemoria();
+  }
+  return cadastro;
+}
+
+/** O documento da empresa na Conferência (para montar o plano pelo balancete). Nos exemplos, não há. */
+export async function conferenciaDaEmpresa(nome: string): Promise<Record<string, unknown> | null> {
+  return noBanco ? conferenciaNoBanco(nome) : null;
+}
+
+/** O balancete de Clientes › Balancetes do Entregas (para montar o plano). Nos exemplos, não há. */
+export async function balanceteDoEntregas(codigo: number | null): Promise<Record<string, unknown> | null> {
+  return noBanco && codigo != null ? balanceteNoEntregas(codigo) : null;
 }

@@ -34,7 +34,7 @@ export interface RepoTarefasFirestore extends t.RepoTarefas {
 }
 
 /** O banco da Conferência (se outro aplicativo já abriu nesta página, usa a mesma conexão). */
-function bancoDaConferencia(): Firestore {
+export function bancoDaConferencia(): Firestore {
   const app = getApps().find(a => a.name === 'conferencia') ?? initializeApp(CONFIG_CONFERENCIA, 'conferencia');
   try {
     return initializeFirestore(app, { ignoreUndefinedProperties: true });
