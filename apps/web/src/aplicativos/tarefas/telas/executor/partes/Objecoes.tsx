@@ -10,7 +10,7 @@ export function Objecoes({ etapa, onResolver }: { etapa: tarefas.Etapa; onResolv
   return (
     <div className="executor-saidas" aria-label="Se não der para concluir">
       {etapa.objecoes.filter(o => !o.soMotivo).map(o => (
-        <button key={o.id} type="button" className="btn btn-outline btn-sm" title={o.texto} onClick={() => onResolver(o)}>
+        <button key={o.id} type="button" className="btn btn-outline" title={o.texto} onClick={() => onResolver(o)}>
           <Icone nome={ICONE[o.solucao.tipo]} />{o.solucao.tipo === 'orientacao' ? o.texto : o.solucao.rotulo}
         </button>
       ))}

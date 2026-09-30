@@ -192,14 +192,14 @@ export function TarefaExtratos() {
   return (
     <section className="tarefa-extratos">
       <div className="imp-topo">
-        <MenuSuspenso rotulo="Pedir extrato" setaAntes className="btn btn-outline btn-sm" direita
+        <MenuSuspenso rotulo="Pedir extrato" setaAntes className="btn btn-outline" direita
           conteudo={fechar => (
             <div className="apps-contato">
               <button type="button" title="Pedir por Gmail" aria-label="Pedir por Gmail" onClick={() => { fechar(); vm.avisar('Pedir extrato por Gmail: em desenvolvimento'); }}><LogoGmail /></button>
               <button type="button" title="Pedir por WhatsApp" aria-label="Pedir por WhatsApp" onClick={() => { fechar(); vm.avisar('Pedir extrato por WhatsApp: em desenvolvimento'); }}><LogoWhatsApp /></button>
             </div>
           )} />
-        <MenuSuspenso rotulo="Adicionar banco" icone="plus" className="btn btn-primary btn-sm" direita largura={260}
+        <MenuSuspenso rotulo="Adicionar banco" icone="plus" className="btn btn-primary" direita largura={260}
           conteudo={fechar => <AdicionarBanco bancos={vm.bancosParaAdicionar} onAdicionar={vm.adicionarBanco} fechar={fechar} />} />
       </div>
 

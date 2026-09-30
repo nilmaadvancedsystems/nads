@@ -27,7 +27,7 @@
   --shadow-lg:0 8px 24px #1D1C1F33, 0 0 0 1px #DADADF80;
   --shadow-accent:none; --shadow-success:none;
   --radius:6px; --radius-sm:6px;
-  --font-body:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
+  --font-body:"Mona Sans",-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
   --font-num:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
 }
 @media (prefers-color-scheme: dark){
@@ -162,21 +162,22 @@ a{color:var(--accent);}
 #app{display:none;min-height:100vh;}
 #app.on{display:block;}
 .gh-header{background:var(--header-bg);border-bottom:1px solid var(--border);position:relative;z-index:25;}
-.gh-header-top{display:flex;align-items:center;gap:12px;padding:16px 32px 8px;min-height:64px;}
-.gh-crumbs{display:flex;align-items:center;gap:4px;min-width:0;font-size:16px;}
+/* tamanhos do cabeçalho do GitHub (AppHeader): 16px em volta, 64px de altura, o local em 14px, as abas com 48px */
+.gh-header-top{display:flex;align-items:center;gap:12px;padding:16px;min-height:64px;}
+.gh-crumbs{display:flex;align-items:center;gap:4px;min-width:0;font-size:14px;}
 .gh-crumb{color:var(--ink);padding:4px 6px;border-radius:6px;white-space:nowrap;}
 .gh-sep{color:var(--ink-muted);font-weight:300;padding:0 2px;}
 #brandTagEmpresa{
   display:inline-flex;align-items:center;gap:6px;max-width:min(560px,60vw);
   padding:4px 8px;border:none;border-radius:6px;background:none;cursor:pointer;
-  font-size:16px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;
+  font-size:14px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;
 }
 #brandTagEmpresa::after{content:attr(title);font-weight:400;color:var(--ink-muted);overflow:hidden;text-overflow:ellipsis;}
 #brandTagEmpresa:hover{background:var(--hover-bg);}
 #gearPop{top:calc(100% + 4px);left:0;}
 .gh-header-spacer{flex:1;}
 
-nav.menu{display:flex;align-items:center;gap:8px;padding:0 32px;overflow-x:auto;scrollbar-width:none;}
+nav.menu{display:flex;align-items:center;gap:8px;padding:0 16px;overflow-x:auto;scrollbar-width:none;}
 nav.menu::-webkit-scrollbar{display:none;}
 .menu-label{display:none;}
 .menu-item{
@@ -193,7 +194,7 @@ nav.menu::-webkit-scrollbar{display:none;}
 .menu-num{display:none;}
 .menu-item .dot{width:8px;height:8px;border-radius:50%;background:var(--danger);flex:none;}
 
-main.main{min-width:0;padding:0 32px;}
+main.main{min-width:0;padding:0 24px;}
 .topbar{max-width:1216px;margin:24px auto 16px;padding:0 0 8px;border-bottom:1px solid var(--border);
   display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;}
 .page-eyebrow{display:inline-block;font-size:12px;font-weight:500;line-height:18px;padding:0 7px;border:1px solid var(--border);
@@ -257,7 +258,7 @@ input[type="checkbox"]:checked::after{
 
 /* ---------------------------------- botões ---------------------------------- */
 .btn{appearance:none;cursor:pointer;font-weight:500;font-size:14px;line-height:20px;border-radius:6px;
-  padding:5px 16px;min-height:32px;display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;
+  padding:5px 12px;min-height:32px;display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;
   background:var(--btn-bg);color:var(--ink);border:1px solid var(--btn-border);box-shadow:var(--shadow-xs);
   transition:background .12s ease,border-color .12s ease,color .12s ease;}
 .btn svg{width:16px;height:16px;flex:none;color:var(--ink-muted);}
@@ -273,7 +274,8 @@ input[type="checkbox"]:checked::after{
 .btn-danger{color:var(--destructive);}
 .btn-danger:hover:not(:disabled){background:var(--destructive);border-color:var(--destructive);color:#FFFFFF;}
 .btn-spinner{display:inline-block;width:14px;height:14px;flex:none;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .6s linear infinite;}
-.btn-sm{padding:3px 12px;min-height:28px;font-size:12px;}
+/* pequeno: só dentro de linhas e caixas (tabela, cartão, janelinha); ação da página usa o padrão */
+.btn-sm{padding:3px 8px;min-height:28px;font-size:12px;}
 .btn-sm svg{width:14px;height:14px;}
 .btn-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:16px;flex-wrap:wrap;}
 #btVoltarMov{margin-bottom:12px !important;padding-left:8px !important;}
@@ -544,7 +546,7 @@ button.gh-crumb:hover{background:var(--hover-bg);}
 .subnav-item.is-disabled:hover{background:none;}
 .menu-count{min-width:20px;padding:0 6px;border-radius:2em;background:var(--hover-bg);font-size:12px;font-weight:500;
   line-height:18px;text-align:center;color:var(--ink);}
-main.main{padding:0 32px;}
+main.main{padding:0 24px;}
 .topbar{border-bottom:none;padding:0;margin:24px auto 16px;align-items:center;}
 .page-title{font-size:20px;font-weight:600;}
 .content{max-width:1216px;}
