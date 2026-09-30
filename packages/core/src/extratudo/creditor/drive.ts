@@ -13,6 +13,26 @@ export interface AcessoDrive {
   quem: string;
 }
 
+/** O contato do cliente no cadastro do Entregas (clientes/{id}, pelo código do ERP). */
+export interface ContatoDoCliente {
+  id: string;
+  nome: string;
+  /** o e-mail principal primeiro, depois os outros */
+  emails: string[];
+  telefone: string;
+}
+
+/** O pedido de e-mail para a fila do robô do Entregas (ele monta o HTML e envia pelo Gmail do escritório). */
+export interface PedidoDeEmail {
+  contato: ContatoDoCliente;
+  /** tem que ser um dos e-mails do cadastro (o robô confere) */
+  para: string;
+  assunto: string;
+  corpo: string;
+  /** 'aaaa-mm': o mês em que o pedido fica registrado no Entregas */
+  competencia: string;
+}
+
 export interface RepoDrive {
   readonly exemplos: boolean;
   /** o login é o do sistema de fora (o Extratudo acoplado no Entregas): não pede usuário nem senha */
@@ -32,6 +52,10 @@ export interface RepoDrive {
   baixar(id: string, nome: string, passo?: (texto: string) => void): Promise<ArrayBuffer>;
   /** um link temporário para VER o arquivo (a cópia do robô vale ~30 min); não guardar o link */
   link(id: string, nome: string, passo?: (texto: string) => void): Promise<string>;
+  /** o contato do cliente no cadastro do Entregas (null = não achou); não existe acoplado no Entregas */
+  contatoDoCliente?(codigo: number): Promise<ContatoDoCliente | null>;
+  /** põe o e-mail na fila do robô do Entregas e espera ele enviar (erro = o motivo); 'na-fila' = o robô ainda não pegou */
+  pedirEmail?(p: PedidoDeEmail, passo?: (texto: string) => void): Promise<'enviado' | 'na-fila'>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }

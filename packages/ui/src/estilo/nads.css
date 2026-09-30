@@ -1393,3 +1393,27 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 :root[data-theme="dark"] .rodape-marca{filter:invert(1);}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .rodape-marca{filter:invert(1);}}
 @media print{.rodape{display:none;}}
+
+/* Pedir extratos (Gmail / WhatsApp): a janela com Para, Bancos, Competência e a mensagem pronta */
+.modal.pedir-modal{max-width:560px;}
+.pedir-titulo{display:flex;align-items:center;gap:10px;}
+.pedir-app{width:20px;height:20px;display:inline-flex;}
+.pedir-app .logo-img,.pedir-app svg{width:20px;height:20px;}
+.pedir-x{margin-left:auto;}
+.pedir-corpo{display:flex;flex-direction:column;gap:16px;padding:16px;max-height:min(62vh,560px);overflow:auto;}
+.pedir-campo{display:grid;grid-template-columns:96px minmax(0,1fr);gap:8px 12px;align-items:start;}
+.pedir-rotulo{font-size:14px;font-weight:600;line-height:24px;}
+.pedir-opcoes{display:flex;flex-direction:column;gap:6px;}
+.pedir-opcao{display:flex;align-items:center;gap:8px;font-size:14px;line-height:24px;cursor:pointer;}
+.pedir-banco .pedir-logo{width:20px;height:20px;display:inline-flex;flex:none;}
+.pedir-banco .pedir-logo .logo-img{width:20px;height:20px;border-radius:4px;}
+.pedir-conta{margin:0 0 0 6px;}
+.pedir-tem{margin-left:auto;}
+.pedir-grade{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 12px;padding:4px 0 0 26px;}
+.pedir-erro{font-size:14px;line-height:24px;color:var(--destructive);}
+.pedir-previa{border:1px solid var(--border);border-radius:6px;background:var(--surface-2);padding:12px;}
+.pedir-previa pre{margin:0;white-space:pre-wrap;font:14px/1.5 var(--font-body);color:var(--ink);}
+.pedir-assunto{margin:0 0 8px;font-weight:600;font-size:14px;}
+.pedir-previa .hint{margin:8px 0 0;}
+.pedir-andamento{display:inline-flex;align-items:center;gap:6px;margin:0 auto 0 0;}
+a.btn.is-locked{opacity:.55;cursor:not-allowed;}

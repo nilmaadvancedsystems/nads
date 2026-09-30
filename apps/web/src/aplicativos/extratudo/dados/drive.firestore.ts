@@ -6,7 +6,10 @@
 //   - aberturasDrive: o pedido para o robô trazer a cópia do arquivo (modo "baixar"). O robô responde
 //     no próprio pedido com um link temporário (30 min) do armazenamento do Entregas, e o arquivo é
 //     baixado daquele link (o ÚNICO fetch do nads, travado em scripts/conexoes.mjs).
-// Nada aqui grava no Drive nem em outra coleção do Entregas.
+// Nada aqui grava no Drive. Liberado pelo Vitor em 2026-09-30 ("Pedir extratos", o sistema envia o e-mail
+// que puxa do cadastro): clientes (SÓ LEITURA: e-mails e telefone, pelo código do ERP) e solicitacoesEmail
+// (o pedido de e-mail tipo 'um' para a fila do robô do Entregas, que monta o HTML e envia pelo Gmail do
+// escritório, só para e-mail do cadastro, no máximo 60 por hora). Nenhuma outra coleção do Entregas.
 // Acoplado no Entregas (Contábil → Extratudo, 2026-09-29): a pessoa já está logada lá, então não pede
 // usuário e senha — os mesmos pedidos (mapa das pastas e pedido ao robô) vão por mensagem para a
 // página do Entregas (nilma-ponte-extratudo.js), que responde com o login dela. O download continua
@@ -14,7 +17,7 @@
 import { creditor as cr } from '@nads/core';
 import { getApps, initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { addDoc, collection, doc, getDoc, getDocs, getFirestore, onSnapshot } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, getDocs, getFirestore, limit, onSnapshot, query, serverTimestamp, where } from 'firebase/firestore';
 
 /** Configuração web pública do projeto do Entregas (a mesma do app Pendências). */
 const CONFIG_ENTREGAS = {
@@ -29,6 +32,8 @@ const CONFIG_ENTREGAS = {
 /** O único endereço de onde o nads baixa arquivo: a cópia temporária que o robô do Entregas publica. */
 const LINK_DO_ROBO = 'https://firebasestorage.googleapis.com/v0/b/entregas-2e5e2';
 const ESPERA_DO_ROBO_MS = 90000;
+/** Quanto espera o robô enviar o e-mail; depois disso o pedido segue na fila e o robô envia quando puder. */
+const ESPERA_DO_EMAIL_MS = 60000;
 
 const semPermissao = (e: unknown) => /permission|insufficient/i.test(String((e as Error)?.message || e));
 
@@ -192,6 +197,41 @@ export function criarDriveFirestore(): cr.RepoDrive {
       });
       if (!url.startsWith(LINK_DO_ROBO)) throw new Error('O robô respondeu com um endereço inesperado.');
       return url;
+    },
+
+    async contatoDoCliente(codigo) {
+      try {
+        const r = await getDocs(query(collection(db, 'clientes'), where('codigoOrigem', '==', String(codigo)), limit(1)));
+        const d = r.docs[0];
+        if (!d) return null;
+        const x = d.data();
+        const emails = [x.email, ...((x.emails as string[]) || [])].map(e => String(e || '').trim().toLowerCase()).filter(Boolean);
+        return { id: d.id, nome: String(x.nome || ''), emails: [...new Set(emails)], telefone: String(x.telefone || '') };
+      } catch (e) {
+        if (semPermissao(e)) throw new Error('Seu usuário do Entregas não pode ver o cadastro de clientes.', { cause: e });
+        throw e;
+      }
+    },
+
+    /** Põe o e-mail na fila do robô (solicitacoesEmail, tipo 'um') e acompanha até ele enviar. */
+    async pedirEmail(p, passo) {
+      const u = auth.currentUser;
+      if (!u) throw new Error('Entre com o usuário do Entregas primeiro.');
+      passo?.('pondo na fila do robô');
+      const ref = await addDoc(collection(db, 'solicitacoesEmail'), {
+        tipo: 'um', clienteId: p.contato.id, clienteNome: p.contato.nome, para: p.para, assunto: p.assunto, corpo: p.corpo,
+        tipos: ['extrato'], competencia: p.competencia, status: 'pendente',
+        criadoEm: serverTimestamp(), criadoPor: acesso.quem || 'nads', criadoPorEmail: u.email || '', criadoPorUid: u.uid, origem: 'nads',
+      });
+      return new Promise<'enviado' | 'na-fila'>((ok, falha) => {
+        const fim = setTimeout(() => { parar(); ok('na-fila'); }, ESPERA_DO_EMAIL_MS);
+        const parar = onSnapshot(ref, d => {
+          const s = d.data() || {};
+          if (s.status === 'processando') passo?.('o robô está enviando');
+          if (s.status === 'enviado') { clearTimeout(fim); parar(); ok('enviado'); }
+          if (s.status === 'erro') { clearTimeout(fim); parar(); falha(new Error('O robô não enviou: ' + (s.erro || 'erro'))); }
+        }, e => { clearTimeout(fim); falha(e); });
+      });
     },
 
     assinar(f) {

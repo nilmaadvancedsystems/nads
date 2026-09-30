@@ -4,7 +4,7 @@
 // Entregas, pede primeiro (o mesmo usuário das Pendências). Não achou um só: a pessoa escolhe entre os
 // candidatos. "Visualizar" pede ao robô um link temporário (~30 min) e só abre; o link não é guardado.
 import { creditor, extrator as x } from '@nads/core';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useDrive } from '../../dados/repo';
 import type { useImportacao } from '../importacao/useImportacao';
 
@@ -19,6 +19,8 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   const [pendente, setPendente] = useState<Linha | null>(null);
   const [escolha, setEscolha] = useState<{ linha: Linha; texto: string; candidatos: creditor.ArquivoAchado[] } | null>(null);
   const [buscando, setBuscando] = useState<string | null>(null);
+  // o que fazer depois de entrar, quando o login foi pedido por outra coisa (o Pedir extratos)
+  const depois = useRef<(() => void) | null>(null);
 
   async function usar(linha: Linha, a: creditor.ArquivoAchado) {
     setEscolha(null);
@@ -59,6 +61,9 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       const linha = pendente;
       setPendente(null);
       if (linha) void buscar(linha);
+      const f = depois.current;
+      depois.current = null;
+      f?.();
     } catch (e) {
       setLogin(l => ({ ...l, entrando: false, erro: mensagemDeErro(e) }));
     }
@@ -69,7 +74,9 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     entrou: acesso.entrou,
     buscando,
     buscar: (linha: Linha) => { void buscar(linha); },
-    login: { ...login, set: (m: Partial<typeof login>) => setLogin(l => ({ ...l, ...m })), entrar: () => { void entrar(); }, fechar: () => { setPendente(null); setLogin(l => ({ ...l, aberto: false })); } },
+    login: { ...login, set: (m: Partial<typeof login>) => setLogin(l => ({ ...l, ...m })), entrar: () => { void entrar(); }, fechar: () => { setPendente(null); depois.current = null; setLogin(l => ({ ...l, aberto: false })); } },
+    /** pede o login do Entregas e, ao entrar, faz `f` */
+    pedirLogin: (f: () => void) => { depois.current = f; setLogin(l => ({ ...l, aberto: true, erro: '' })); },
     escolha,
     usar: (a: creditor.ArquivoAchado) => { if (escolha) void usar(escolha.linha, a); },
     fecharEscolha: () => setEscolha(null),

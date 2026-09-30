@@ -51,6 +51,15 @@ export function criarDriveMemoria(): RepoDrive {
       // nos exemplos, o próprio conteúdo num endereço do navegador
       return URL.createObjectURL(new Blob([conteudo(id)], { type: 'text/plain' }));
     },
+    async contatoDoCliente(codigo) {
+      return { id: 'exemplo-' + codigo, nome: 'EXEMPLO ' + codigo, emails: ['financeiro@exemplo.com.br'], telefone: '(38) 99999-0000' };
+    },
+    async pedirEmail(_p, passo) {
+      // nos exemplos nada sai daqui: só finge a fila do robô
+      passo?.('na fila do robô (exemplo)');
+      await new Promise(ok => setTimeout(ok, 600));
+      return 'enviado';
+    },
     assinar: () => () => {},
     versao: () => 0,
   };

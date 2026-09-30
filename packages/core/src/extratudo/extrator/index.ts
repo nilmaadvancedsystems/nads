@@ -23,4 +23,8 @@ export { movimentoDoExtrato, type LinhaDoMovimento, type MovimentoDoExtrato } fr
 export { acharExtratoNoDrive, mensagemDaBuscaDoExtrato, type ContaProcurada } from './regras/drive';
 export { gravacao, semMudanca, empresaDoBanco, type Gravacao, type DocEmpresaExtrator } from './regras/banco';
 export { criarRepoExtratorMemoria, type Guarda } from './repo.memoria';
+export {
+  assuntoDoPedido, competenciaDoPedido, competenciasPorExtenso, linkDoWhatsApp, mesPorExtenso, rotuloDoBanco, telefoneParaWhatsApp, textoDoPedido,
+  type BancoDoPedido, type CanalDoPedido, type PedidoDeExtratos,
+} from './regras/pedido';
 export { EMPRESAS_EXEMPLO, empresasDeExemplo } from './__exemplos__/empresas';

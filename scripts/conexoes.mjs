@@ -3,6 +3,8 @@
 // conferencia-nilma.web.app, e mais nada. Exceção liberada pelo Vitor (2026-09-29): o Creditor lê o
 // Drive do escritório pelo Entregas (app Pendências), SÓ em extratudo/dados/drive.firestore.ts: o mapa
 // das pastas, o pedido ao robô e o download da cópia temporária (o único fetch permitido).
+// Mais uma, liberada pelo Vitor (2026-09-30, "Pedir extratos"), no mesmo arquivo: ler o cadastro de clientes
+// do Entregas (e-mails e telefone) e pôr o pedido de e-mail na fila do robô (solicitacoesEmail).
 // Esta checagem falha se:
 //  1. aparecer dependência de rede fora do permitido (só "firebase", e só no apps/web);
 //  2. código fora de apps/web/src/aplicativos/<app>/dados/*.firestore.ts importar/usar Firebase;

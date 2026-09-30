@@ -15,7 +15,9 @@ import { useEffect, useId, useState } from 'react';
 import { usePonteDaTarefa } from '../../../../../../comum/ponte';
 import { useSessao } from '../../casca/sessao';
 import { useImportacao, type Mensagem } from '../importacao/useImportacao';
+import { JanelaPedirExtratos } from './JanelaPedirExtratos';
 import { useDriveDaLinha } from './useDriveDaLinha';
+import { usePedirExtratos } from './usePedirExtratos';
 
 type Vm = ReturnType<typeof useImportacao>;
 type Lado = { qtdArquivos: number; qtdLancamentos: number; lendo: boolean };
@@ -174,15 +176,13 @@ export function TarefaExtratos() {
   const s = useSessao();
   const ponte = usePonteDaTarefa();
   const d = useDriveDaLinha(vm, s.codigo);
+  const pe = usePedirExtratos(vm, s.codigo, s.nome, ponte.semMovimento, d.pedirLogin);
   // os logos do Pedir extrato (Gmail/WhatsApp) já vêm com a página: no clique, aparecem na hora
   useEffect(preCarregarLogosDosApps, []);
   useCarregando(vm.ocupado || !!d.buscando || vm.bancos.some(b => b.extrato.lendo || b.razao.lendo));
   const [cxExtrato, cxRazao] = vm.caixas;
   const [abertas, setAbertas] = useState<string[]>([]);
   const alternar = (id: string) => setAbertas(v => (v.includes(id) ? v.filter(a => a !== id) : [...v, id]));
-
-  // pronto = extrato e razão importados, ou marcado sem movimento
-  const prontos = vm.bancos.filter(b => ponte.semMovimento.includes(b.id) || (b.extrato.qtdArquivos > 0 && b.razao.qtdArquivos > 0)).length;
 
   /** Visualizar o que veio do Drive: abre a janela já (senão o navegador bloqueia) e põe o link temporário quando o robô responder. */
   function visualizarDoDrive(arquivo: { id: string; nome: string }) {
@@ -195,18 +195,17 @@ export function TarefaExtratos() {
   return (
     <section className="tarefa-extratos">
       <div className="imp-topo">
-        {/* à esquerda, como o "⎇ main ▾  6 Branches  0 Tags" do GitHub: a competência e os números */}
+        {/* à esquerda, como o "⎇ main ▾  6 Branches" do GitHub: a competência e o número de bancos */}
         <MenuSuspenso icone="calendar" rotulo={vm.rotuloCompetencia} titulo="Competência" dica="Trocar a competência" largura={220}
           itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia,
             onClick: () => { if (ponte.naTarefa) ponte.trocarCompetencia(c.valor); else vm.setCompetencia(c.valor); } }))} />
         <span className="imp-topo-num"><Icone nome="landmark" /><b>{vm.bancos.length}</b> {vm.bancos.length === 1 ? 'banco' : 'bancos'}</span>
-        <span className="imp-topo-num"><Icone nome="check" /><b>{prontos}</b> {prontos === 1 ? 'pronto' : 'prontos'}</span>
         <span className="imp-topo-meio" />
-        <MenuSuspenso rotulo="Pedir extrato" setaAntes className="btn btn-outline" direita
+        <MenuSuspenso rotulo="Pedir extratos" setaAntes className="btn btn-outline" direita
           conteudo={fechar => (
             <div className="apps-contato">
-              <button type="button" title="Pedir por Gmail" aria-label="Pedir por Gmail" onClick={() => { fechar(); vm.avisar('Pedir extrato por Gmail: em desenvolvimento'); }}><LogoGmail /></button>
-              <button type="button" title="Pedir por WhatsApp" aria-label="Pedir por WhatsApp" onClick={() => { fechar(); vm.avisar('Pedir extrato por WhatsApp: em desenvolvimento'); }}><LogoWhatsApp /></button>
+              <button type="button" title="Pedir por e-mail" aria-label="Pedir por e-mail" onClick={() => { fechar(); pe.abrir('email'); }}><LogoGmail /></button>
+              <button type="button" title="Pedir por WhatsApp" aria-label="Pedir por WhatsApp" onClick={() => { fechar(); pe.abrir('whatsapp'); }}><LogoWhatsApp /></button>
             </div>
           )} />
         <MenuSuspenso rotulo="Adicionar banco" icone="plus" className="btn btn-primary" direita largura={260}
@@ -340,6 +339,7 @@ export function TarefaExtratos() {
           </div>
         </div>
       )}
+      <JanelaPedirExtratos p={pe} />
     </section>
   );
 }
