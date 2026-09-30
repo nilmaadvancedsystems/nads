@@ -1,4 +1,4 @@
-// Importar e conferir na mesma tela — a página que a etapa "Importar e conferir os extratos" da Tarefas abre.
+// A página que a etapa "Importação" da Tarefas abre: por enquanto, só importar (a conferência saiu daqui).
 // Em cima, à direita (como o "New issue" do GitHub): Pedir extrato e Adicionar banco ▾ (escolhe o banco e
 // pede agência e conta). Depois, uma linha por conta da empresa:
 //   ▸ setinha: abre o movimento do extrato (data, descrição, valor, entrou/saiu e o saldo acumulado);
@@ -8,14 +8,12 @@
 //   Razão: importar à mão (check verde / × para excluir);
 //   à direita: "Não teve movimento" (trava a linha e vira "Desfazer"); com o extrato vindo do Drive, um
 //     botãozinho de PDF (abre pelo link temporário). O movimento se vê pela setinha.
-// Ao importar, só uma barrinha por cima da tela, que some em 2,7 s. Embaixo, a conferência (com mais de um
-// banco, a do banco cujo nome foi clicado).
+// Ao importar, só uma barrinha por cima da tela, que some em 2,7 s.
 import { extrator as x, type empresas } from '@nads/core';
 import { Icone, LogoBanco, LogoDrive, LogoGmail, LogoWhatsApp, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, useCarregando } from '@nads/ui';
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { usePonteDaTarefa } from '../../../../../../comum/ponte';
 import { useSessao } from '../../casca/sessao';
-import { Conferencia } from '../conferencia/Conferencia';
 import { useImportacao, type Mensagem } from '../importacao/useImportacao';
 import { useDriveDaLinha } from './useDriveDaLinha';
 
@@ -165,10 +163,10 @@ function Movimento({ m }: { m: x.MovimentoDoExtrato }) {
   );
 }
 
-/** O que já entrou do banco, à esquerda do Extrato: "Extrato: 12 lançamentos | Razão: 13 lançamentos" (só o que foi importado). */
-function resumo(b: Vm['bancos'][number]): string {
+/** O que já entrou do banco, à esquerda do Extrato: "Extrato: 12 lançamentos", "Razão: 13 lançamentos" (só o que foi importado). */
+function resumo(b: Vm['bancos'][number]): string[] {
   const parte = (nome: string, l: Lado) => (l.qtdArquivos ? nome + ': ' + l.qtdLancamentos + (l.qtdLancamentos === 1 ? ' lançamento' : ' lançamentos') : '');
-  return [parte('Extrato', b.extrato), parte('Razão', b.razao)].filter(Boolean).join(' | ');
+  return [parte('Extrato', b.extrato), parte('Razão', b.razao)].filter(Boolean);
 }
 
 export function TarefaExtratos() {
@@ -182,14 +180,6 @@ export function TarefaExtratos() {
   const [cxExtrato, cxRazao] = vm.caixas;
   const [abertas, setAbertas] = useState<string[]>([]);
   const alternar = (id: string) => setAbertas(v => (v.includes(id) ? v.filter(a => a !== id) : [...v, id]));
-  // a conferência é de um banco por vez (com mais de um, escolhe nos chips)
-  const [bancoConf, setBancoConf] = useState<string | null>(null);
-  const prontos = vm.bancos.filter(b => b.extrato.qtdArquivos && b.razao.qtdArquivos);
-  const conf = vm.bancos.find(b => b.id === bancoConf) || prontos[0] || vm.bancos[0];
-  const doArquivo = useCallback((a: x.ArquivoImportado) => x.bancoDoArquivo(a, vm.primeiro) === conf?.id, [vm.primeiro, conf?.id]);
-  const umSo = vm.bancos.length <= 1;
-  const faltaNoBanco = !conf || !conf.extrato.qtdArquivos ? 'banco' : !conf.razao.qtdArquivos ? 'sistema' : null;
-  const falta = umSo ? s.falta : faltaNoBanco;
 
   /** Visualizar o que veio do Drive: abre a janela já (senão o navegador bloqueia) e põe o link temporário quando o robô responder. */
   function visualizarDoDrive(arquivo: { id: string; nome: string }) {
@@ -230,12 +220,13 @@ export function TarefaExtratos() {
                   <Icone nome="caretDown" />
                 </button>
                 <span className="imp-ico imp-logo"><LogoBanco banco={b.marca} cor={temExtrato && !semMov} /></span>
-                <div className={'imp-txt' + (!umSo ? ' escolhe' : '') + (!umSo && conf?.id === b.id ? ' na-conferencia' : '')}
-                  onClick={umSo ? undefined : () => setBancoConf(b.id)} title={umSo ? undefined : 'Ver a conferência deste banco'}>
+                <div className="imp-txt">
                   <span><b>{b.nome}</b>{b.conta && <span className="imp-conta">{b.conta}</span>}</span>
                 </div>
                 <div className="imp-grupos">
-                  {!semMov && resumo(b) && <span className="hint imp-resumo">{resumo(b)}</span>}
+                  {!semMov && resumo(b).length > 0 && (
+                    <span className="imp-resumo">{resumo(b).map(t => <span key={t}>{t}</span>)}</span>
+                  )}
                   <div className="imp-grupo" aria-label="Extrato do banco">
                     <span className="imp-rotulo">Extrato</span>
                     {buscando || b.extrato.lendo ? (
@@ -338,14 +329,6 @@ export function TarefaExtratos() {
           </div>
         </div>
       )}
-
-      {falta ? (
-        <div className="gh-blank">
-          <Icone nome="scale" />
-          <h4>{falta === 'banco' ? 'Importe o extrato' + (umSo ? ' do banco' : ' do ' + conf?.nome) : 'Importe o razão' + (umSo ? ' da conta' : ' do ' + conf?.nome)}</h4>
-          <p>A conferência aparece aqui quando os dois lados estiverem importados.</p>
-        </div>
-      ) : <Conferencia naTarefa doArquivo={umSo ? undefined : doArquivo} competencia={vm.competencia} />}
     </section>
   );
 }

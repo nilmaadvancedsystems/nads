@@ -1255,7 +1255,7 @@ tr.linha-atual > td{background:var(--hover-bg);}
 .imp-logo svg{width:22px;height:22px;color:var(--ink-muted);}
 .imp-grupos{display:flex;align-items:center;gap:16px;margin-left:auto;flex-wrap:wrap;}
 .imp-grupo{display:flex;align-items:center;gap:4px;}
-.imp-rotulo{font-size:12px;color:var(--ink-muted);margin-right:4px;}
+.imp-rotulo{font-size:12px;line-height:20px;color:var(--ink-muted);margin-right:4px;}
 label.imp-btn{cursor:pointer;display:inline-flex;align-items:center;justify-content:center;}
 label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-btn .btn-spinner{width:12px;height:12px;}
@@ -1343,8 +1343,6 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-logo:has(.logo-img){background:none;}
 .add-banco-logo{width:24px;height:24px;}
 .imp-btn.imp-drive,.imp-btn.imp-feito-drive{width:32px;height:32px;}
-/* com mais de um banco: clicar no nome escolhe a conferência (o escolhido fica marcado) */
-.imp-txt.escolhe{cursor:pointer;border-radius:6px;padding:2px 6px;margin:-2px -6px;}
 .imp-mov th.th-sort{cursor:pointer;user-select:none;}
 .imp-mov th.th-sort:hover{color:var(--ink);}
 .imp-mov thead th{background:var(--surface-2);}
@@ -1365,4 +1363,6 @@ html.na-etapa #app.embutida .content{padding-bottom:80px;}
 html.na-etapa .modal-overlay{top:var(--vista-topo,0px);bottom:auto;height:var(--vista-altura,100vh);}
 html.na-etapa .toast-region{bottom:auto;top:calc(var(--vista-topo,0px) + var(--vista-altura,100vh) - 16px);transform:translateY(-100%);}
 html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
-.imp-resumo{font-size:12px;white-space:nowrap;}
+/* o resumo à esquerda do Extrato: na mesma linha e no mesmo tamanho dos rótulos; um traço fino entre as partes */
+.imp-resumo{display:inline-flex;align-items:center;font-size:12px;line-height:20px;color:var(--ink-muted);white-space:nowrap;}
+.imp-resumo > span + span::before{content:'';display:inline-block;width:1px;height:12px;margin:0 10px;background:var(--border);vertical-align:-2px;}

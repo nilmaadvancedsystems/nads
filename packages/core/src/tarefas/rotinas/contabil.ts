@@ -6,10 +6,11 @@ export const ROTINA_CONTABIL: Rotina = {
   departamento: 'contabil',
   etapas: [
     {
-      // importar e conferir na mesma tela (pedido do Vitor, 29/09/2026): era uma etapa para cada
+      // "Importação" (Vitor, 30/09/2026): por enquanto só importar tudo o que a empresa precisa na competência
+      // (a conferência sai daqui). O id continua "extratos": é a chave do que já foi gravado.
       id: 'extratos',
-      nome: 'Importar e conferir os extratos',
-      descricao: 'Importe o extrato do banco e o razão da conta e confira o que falta, está diferente ou duplicado.',
+      nome: 'Importação',
+      descricao: 'Importe tudo o que a empresa precisa na competência: o extrato de cada banco e o razão da conta.',
       ferramenta: { app: 'extratudo', nome: 'Extrator', caminho: r => '/extratudo/' + r + '/extrator/tarefa/extratos', embutir: true },
       verificacao: 'extrato-e-sistema',
       objecoes: [
@@ -17,7 +18,6 @@ export const ROTINA_CONTABIL: Rotina = {
         { id: 'no-drive', texto: 'O extrato está no Drive do cliente', soMotivo: true, solucao: { tipo: 'drive', rotulo: 'Buscar no Drive' } },
         { id: 'sem-movimento', texto: 'A empresa não teve movimento no banco', soMotivo: true, solucao: { tipo: 'nao-se-aplica', rotulo: 'Não teve movimento' } },
         { id: 'sem-razao', texto: 'O razão da conta ainda não foi gerado no sistema', soMotivo: true, solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Gere o razão da conta do banco no Alterdata (Excel ou PDF) e importe na linha "Lançamentos contábeis".' } },
-        { id: 'diferenca', texto: 'Diferença que não sei explicar', soMotivo: true, solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Anote a linha da conferência e peça ajuda a um sênior antes de seguir.' } },
       ],
     },
     {

@@ -37,7 +37,7 @@ export const SECOES: Secao[] = [
  * importar (em lista) e conferir na mesma tela.
  */
 export const PAGINAS_DA_TAREFA: Pagina[] = [
-  { id: 'tarefa/extratos', rotulo: 'Importar e conferir', icone: 'fileUp', titulo: '' },
+  { id: 'tarefa/extratos', rotulo: 'Importação', icone: 'fileUp', titulo: '' },
 ];
 
 export const PAGINA_INICIAL = 'importacao/arquivos';
