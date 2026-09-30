@@ -1680,3 +1680,8 @@ td.cad-acoes .menu-seta{display:none;}
 .imp-mes-celula{flex-direction:column;align-items:stretch;justify-content:center;gap:4px;padding:6px;min-width:0;}
 .imp-mes-celula .imp-mes-nome{text-align:center;padding:0 2px;}
 .imp-mes-icones{display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;min-height:28px;}
+
+/* a caixa do mês é o clique (sem o botão do nome) */
+.imp-mes-celula{cursor:pointer;transition:background 80ms cubic-bezier(.65,0,.35,1),border-color 80ms cubic-bezier(.65,0,.35,1);}
+.imp-mes-celula:hover{background:var(--surface-2);border-color:var(--border-strong);}
+.imp-mes-celula .imp-mes-nome,.imp-mes-celula .imp-mes-nome:hover{background:none;cursor:inherit;}
