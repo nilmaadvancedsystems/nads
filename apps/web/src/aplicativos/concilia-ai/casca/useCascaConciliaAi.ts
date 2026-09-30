@@ -44,7 +44,8 @@ export function useCascaConciliaAi() {
 
   const secoes = SECOES.map(sec => {
     const req = sec.id === 'cadastro' && !ok ? 'todas' : sec.id === 'movimento' && semNotas ? 'notas' : '';
-    return { id: sec.id, rotulo: sec.rotulo, icone: sec.icone, grupo: sec.grupo, ativa: sec.id === secAtual?.id, travada: !!req, req };
+    // a Importação foi para a primeira etapa da Tarefas: dentro da etapa (Conferência fiscal), ela não aparece aqui
+    return { id: sec.id, rotulo: sec.rotulo, icone: sec.icone, grupo: sec.grupo, ativa: sec.id === secAtual?.id, travada: !!req, req, foraDaEtapa: sec.id === 'importacao' };
   });
 
   const abaAcesa = pag?.acendeAba || s.pagina;

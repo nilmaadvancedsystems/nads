@@ -1264,6 +1264,11 @@ tr.linha-atual > td{background:var(--hover-bg);}
 /* ---------------------------------- Extrator na etapa da Tarefas: importar (em lista) e conferir ---------------------------------- */
 /* cada banco num cartão, com um espaço pequeno entre eles */
 .imp-lista{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+/* a Importação da Conferência na primeira etapa: o título e as linhas (balancete, notas, serviços) no jeito dos bancos */
+.imp-conf{margin-top:8px;}
+.imp-conf-titulo{margin:0 0 8px;font-size:14px;font-weight:600;color:var(--ink);}
+.imp-ico-conf{color:var(--ink-muted);}
+.imp-ico-conf svg{width:16px;height:16px;}
 .imp-bloco{border:1px solid var(--border);border-radius:6px;background:var(--surface);}
 .imp-linha{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;}
 .imp-ico{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;background:var(--surface-2);flex:none;}

@@ -9,7 +9,8 @@ import { SeletorTema } from './tema';
 
 /** caixa: no lugar do ícone, uma caixinha de checklist (vazia, marcada ou parada) — as etapas de uma tarefa */
 /** titulo: o nome do grupo, em cima da primeira seção dele (Ativo, Passivo…) */
-export interface SecaoCasca { id: string; rotulo: string; icone: NomeIcone; grupo: number; ativa?: boolean; travada?: boolean; caixa?: 'vazia' | 'marcada' | 'parada'; titulo?: string }
+/** foraDaEtapa: a seção some quando o aplicativo está inteiro dentro de uma etapa (ex.: a Importação da Conferência, que foi para a primeira etapa) */
+export interface SecaoCasca { id: string; rotulo: string; icone: NomeIcone; grupo: number; ativa?: boolean; travada?: boolean; caixa?: 'vazia' | 'marcada' | 'parada'; titulo?: string; foraDaEtapa?: boolean }
 /** contador: o número ao lado do nome, como o "Issues 12" do GitHub (ex.: "2/7") */
 export interface PaginaCasca { id: string; rotulo: string; icone: NomeIcone; ativa?: boolean; travada?: boolean; oculta?: boolean; contador?: string }
 
@@ -224,7 +225,7 @@ export function Casca(p: {
       <div className={'layout' + (oculta ? ' sidebar-oculta' : '')}>
         <nav className="subnav" id="subnav" aria-label={p.rotuloLateral || 'Seções'}>
           <div className="subnav-itens">
-            {p.secoes.map(s => {
+            {p.secoes.filter(s => !(naEtapa && s.foraDaEtapa)).map(s => {
               const sep = grupoAnt !== null && s.grupo !== grupoAnt;
               const comeca = grupoAnt === null || s.grupo !== grupoAnt;
               grupoAnt = s.grupo;

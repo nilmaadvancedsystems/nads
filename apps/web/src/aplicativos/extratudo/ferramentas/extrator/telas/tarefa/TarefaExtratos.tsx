@@ -16,6 +16,7 @@ import { usePonteDaTarefa } from '../../../../../../comum/ponte';
 import { useSessao } from '../../casca/sessao';
 import { useImportacao, type Mensagem } from '../importacao/useImportacao';
 import { BotaoGoogle } from '../../../../../../comum/BotaoGoogle';
+import { ImportacaoNaEtapa } from '../../../../../concilia-ai/ImportacaoNaEtapa';
 import { JanelaHistoricoDePedidos, JanelaPedirExtratos } from './JanelaPedirExtratos';
 import { useDriveDaLinha } from './useDriveDaLinha';
 import { usePedirExtratos } from './usePedirExtratos';
@@ -558,6 +559,8 @@ export function TarefaExtratos() {
           </div>
         </div>
       )}
+      {/* a Importação da Conferência (balancete, notas e serviços), embaixo dos bancos: a primeira etapa importa tudo */}
+      <ImportacaoNaEtapa nome={s.nome} />
       <JanelaPedirExtratos p={pe} />
       <JanelaHistoricoDePedidos p={pe} />
     </section>
