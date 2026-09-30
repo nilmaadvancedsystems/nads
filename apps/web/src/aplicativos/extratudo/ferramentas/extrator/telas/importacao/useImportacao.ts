@@ -2,7 +2,7 @@
 // cada uma com vários arquivos de uma vez. Lê cada arquivo no navegador (o arquivo não é guardado),
 // pergunta "apenas novas / sobrepor" quando já existe lançamento nas mesmas datas e mostra o
 // resultado na mensagem flutuante. Embaixo, os arquivos importados, com Excluir.
-import { empresas, extrator as x } from '@nads/core';
+import { empresas, extrator as x, tarefas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -54,7 +54,7 @@ function novoId(): string {
 export function useImportacao() {
   const s = useSessao();
   const { toast, modal } = useRetorno();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const competenciaDeTeste = /^\d{4}-\d{2}$/.test(params.get('competencia') || '') ? (params.get('competencia') as string) : mesPassado();
   const [escolhidos, setEscolhidos] = useState<Record<x.Lado, File[]>>({ banco: [], sistema: [] });
   const [lendo, setLendo] = useState<x.Lado | null>(null);
@@ -218,6 +218,10 @@ export function useImportacao() {
     escolher, tirar, importar, importarTeste, excluir, excluirJa,
     // linhas de banco (a etapa da Tarefas)
     competencia: competenciaDeTeste,
+    rotuloCompetencia: tarefas.rotuloCurtoCompetencia(competenciaDeTeste),
+    competencias: tarefas.competenciasRecentes(new Date(), 12).map(c => ({ valor: c, rotulo: tarefas.rotuloCompetencia(c) })),
+    /** Fora da Tarefas: troca a competência na URL (dentro dela, quem troca é a Tarefas, pela ponte). */
+    setCompetencia: (c: string) => { const n = new URLSearchParams(params); n.set('competencia', c); setParams(n); },
     primeiro,
     bancos: bancos.map(b => {
       const lado = (l: x.Lado) => {

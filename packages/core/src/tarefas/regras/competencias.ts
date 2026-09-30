@@ -5,6 +5,11 @@ export function rotuloCompetencia(c: string): string {
   return MESES[Number(c.slice(5, 7)) - 1] + '/' + c.slice(0, 4);
 }
 
+/** O rótulo curto, para o seletor (como o "main" do GitHub): "ago 2026". */
+export function rotuloCurtoCompetencia(c: string): string {
+  return MESES[Number(c.slice(5, 7)) - 1].slice(0, 3).toLowerCase() + ' ' + c.slice(0, 4);
+}
+
 /**
  * As últimas `n` competências, da mais nova para a mais velha, começando pelo mês ANTERIOR ao
  * de hoje (o escritório trabalha o mês que passou).

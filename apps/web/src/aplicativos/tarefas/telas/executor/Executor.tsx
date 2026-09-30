@@ -18,7 +18,7 @@ export function Executor() {
   const casca = useCascaTarefas('minhas-empresas', 'empresas');
   // a ferramenta da etapa (iframe): recebe os bancos sem movimento e avisa quando a pessoa marca um
   const iframe = useRef<HTMLIFrameElement>(null);
-  usePonteDaFerramenta(iframe, vm.semMovimento, vm.marcarSemMovimento);
+  usePonteDaFerramenta(iframe, vm.semMovimento, vm.marcarSemMovimento, vm.trocarCompetencia);
   // a ferramenta do tamanho do conteúdo dela: a página toda rola junto, numa barra só
   const { altura, carregando: ferramentaCarregando } = useFerramentaNaEtapa(iframe, vm.ferramenta?.embutir ? vm.ferramenta.url : undefined);
   // uma barra só, no alto da página: a da Tarefas e a da ferramenta juntas
@@ -33,7 +33,7 @@ export function Executor() {
   return (
     <Casca sistema="Tarefas" larga rotuloLateral="Etapas"
       empresa={{ codigo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome, nome: '' }}
-      trilha={[{ rotulo: vm.rotuloCompetencia }]}
+
       versao={casca.versao} secoes={checklist} paginas={[]} titulo=""
       onSecao={vm.voltarPara} onPagina={() => undefined} onInicio={vm.sair} onAplicativos={casca.inicio}
       onEmpresa={vm.abrirEmpresa} aplicativos={casca.aplicacoes} onAplicativo={casca.onAplicacao}>

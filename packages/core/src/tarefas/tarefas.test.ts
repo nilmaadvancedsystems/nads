@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ArquivoImportado } from '../extratudo/extrator/tipos';
 import {
   competenciasRecentes, concluida, criarRepoTarefasMemoria, dispensar, execucaoNova, fazer, idDaExecucao, interromper,
-  objecoesMaisComuns, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar, execucoesVariadas, marcarSemMovimento, todosSemMovimento, voltarPara,
+  objecoesMaisComuns, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar, execucoesVariadas, marcarSemMovimento, todosSemMovimento, voltarPara, rotuloCurtoCompetencia,
 } from '.';
 
 const R = ROTINA_CONTABIL;
@@ -43,6 +43,13 @@ describe('andamento', () => {
     for (const e of R.etapas) ex = fazer(ex, e.id, 'Clara', agora).execucao;
     expect(situacaoGeral(ex, R)).toBe('concluida');
     expect(proximaEtapa(ex, R)).toBeNull();
+  });
+});
+
+describe('rótulo curto da competência', () => {
+  it('"ago 2026"', () => {
+    expect(rotuloCurtoCompetencia('2026-08')).toBe('ago 2026');
+    expect(rotuloCurtoCompetencia('2026-03')).toBe('mar 2026');
   });
 });
 

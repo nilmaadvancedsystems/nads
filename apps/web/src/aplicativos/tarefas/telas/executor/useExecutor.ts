@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { extratorDaEmpresa } from '../../dados/fonte';
 import { useExecucoes, useRepo } from '../../dados/repo';
-import { caminhoDaEmpresa, caminhoDaPagina } from '../../casca/navegacao';
+import { caminhoDaEmpresa, caminhoDaPagina, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 
 /**
@@ -140,6 +140,8 @@ export function useExecutor(rotaEmpresa: string, competencia: string) {
       const m = t.marcarSemMovimento(ex, etapa.id, banco, marcado, op.nome, new Date());
       repo.gravar(m.execucao, m.evento);
     },
+    /** A ferramenta trocou a competência (o seletor dela): a mesma empresa, na outra competência. */
+    trocarCompetencia: (c: string) => { if (empresa && c !== competencia) navegar(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), c)); },
     abrirEmpresa: () => { if (empresa) navegar(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), competencia)); },
   };
 }

@@ -181,6 +181,9 @@ export function TarefaExtratos() {
   const [abertas, setAbertas] = useState<string[]>([]);
   const alternar = (id: string) => setAbertas(v => (v.includes(id) ? v.filter(a => a !== id) : [...v, id]));
 
+  // pronto = extrato e razão importados, ou marcado sem movimento
+  const prontos = vm.bancos.filter(b => ponte.semMovimento.includes(b.id) || (b.extrato.qtdArquivos > 0 && b.razao.qtdArquivos > 0)).length;
+
   /** Visualizar o que veio do Drive: abre a janela já (senão o navegador bloqueia) e põe o link temporário quando o robô responder. */
   function visualizarDoDrive(arquivo: { id: string; nome: string }) {
     const janela = window.open('', '_blank');
@@ -192,6 +195,13 @@ export function TarefaExtratos() {
   return (
     <section className="tarefa-extratos">
       <div className="imp-topo">
+        {/* à esquerda, como o "⎇ main ▾  6 Branches  0 Tags" do GitHub: a competência e os números */}
+        <MenuSuspenso icone="calendar" rotulo={vm.rotuloCompetencia} titulo="Competência" dica="Trocar a competência" largura={220}
+          itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia,
+            onClick: () => { if (ponte.naTarefa) ponte.trocarCompetencia(c.valor); else vm.setCompetencia(c.valor); } }))} />
+        <span className="imp-topo-num"><Icone nome="landmark" /><b>{vm.bancos.length}</b> {vm.bancos.length === 1 ? 'banco' : 'bancos'}</span>
+        <span className="imp-topo-num"><Icone nome="check" /><b>{prontos}</b> {prontos === 1 ? 'pronto' : 'prontos'}</span>
+        <span className="imp-topo-meio" />
         <MenuSuspenso rotulo="Pedir extrato" setaAntes className="btn btn-outline" direita
           conteudo={fechar => (
             <div className="apps-contato">
