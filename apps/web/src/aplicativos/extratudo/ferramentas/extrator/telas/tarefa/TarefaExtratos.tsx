@@ -163,7 +163,7 @@ function Movimento({ m }: { m: x.MovimentoDoExtrato }) {
   );
 }
 
-/** O que já entrou do banco, à esquerda do Extrato: "Extrato: 12 lançamentos", "Razão: 13 lançamentos" (só o que foi importado). */
+/** O que já entrou do banco, no meio da linha: "Extrato: 12 lançamentos", "Razão: 13 lançamentos" (só o que foi importado). */
 function resumo(b: Vm['bancos'][number]): string[] {
   const parte = (nome: string, l: Lado) => (l.qtdArquivos ? nome + ': ' + l.qtdLancamentos + (l.qtdLancamentos === 1 ? ' lançamento' : ' lançamentos') : '');
   return [parte('Extrato', b.extrato), parte('Razão', b.razao)].filter(Boolean);
@@ -223,10 +223,11 @@ export function TarefaExtratos() {
                 <div className="imp-txt">
                   <span><b>{b.nome}</b>{b.conta && <span className="imp-conta">{b.conta}</span>}</span>
                 </div>
+                {/* no meio da linha, uma parte embaixo da outra: Extrato: 12 lançamentos / Razão: 13 lançamentos */}
+                <div className="imp-resumo">
+                  {!semMov && resumo(b).length > 0 && <div>{resumo(b).map(t => <span key={t}>{t}</span>)}</div>}
+                </div>
                 <div className="imp-grupos">
-                  {!semMov && resumo(b).length > 0 && (
-                    <span className="imp-resumo">{resumo(b).map(t => <span key={t}>{t}</span>)}</span>
-                  )}
                   <div className="imp-grupo" aria-label="Extrato do banco">
                     <span className="imp-rotulo">Extrato</span>
                     {buscando || b.extrato.lendo ? (
