@@ -13,6 +13,7 @@ export function normalizarEmpresa(e: Partial<EmpresaExtrator> & { nome: string }
   return {
     nome: e.nome, arquivos: Array.isArray(e.arquivos) ? e.arquivos : [], auditoria: Array.isArray(e.auditoria) ? e.auditoria : [],
     ...(Array.isArray(e.bancos) && e.bancos.length ? { bancos: e.bancos } : {}),
+    ...(Array.isArray(e.pedidos) && e.pedidos.length ? { pedidos: e.pedidos } : {}),
   };
 }
 

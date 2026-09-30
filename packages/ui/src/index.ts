@@ -9,4 +9,4 @@ export { EscolherEmpresa, type EmpresaNaLista, type PropsEscolherEmpresa } from 
 export { LOGOS_BANDEIRAS } from './logosBandeiras';
 export { BarraDeCarregamento, useCarregando } from './carregamento';
 export { origemConfiavel, origemDoPai, useAlturaNaEtapa, useFerramentaNaEtapa } from './etapa';
-export { LogoBanco, LogoDrive, LogoGmail, LogoWhatsApp, preCarregarLogosDosApps } from './logos';
+export { LogoBanco, LogoDrive, LogoGmail, LogoWhatsApp, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma } from './logos';

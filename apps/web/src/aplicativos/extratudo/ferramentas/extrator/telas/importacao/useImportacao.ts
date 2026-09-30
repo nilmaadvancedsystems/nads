@@ -237,6 +237,9 @@ export function useImportacao() {
     // o mesmo banco pode entrar de novo (outra conta, com outra agência/conta)
     bancosParaAdicionar: empresas.BANCOS_CONHECIDOS,
     importarArquivos, importarDoDrive, excluirDoBanco, adicionarBanco,
+    /** os pedidos de documentos feitos ao cliente (o histórico do Pedir extratos) */
+    pedidos: s.empresa.pedidos || [],
+    registrarPedido: (reg: x.PedidoRegistrado) => { s.aplicar(e => x.registrarPedido(e, reg)); },
     /** o extrato da conta na competência, com o saldo acumulado (a setinha da linha) */
     movimentoDe: (banco: string) => x.movimentoDoExtrato(s.empresa, banco, primeiro, competenciaDeTeste),
     marcarLendo: (banco: string | null) => setLendoLinha(banco ? banco + '|banco' : null),

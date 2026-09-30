@@ -13,6 +13,18 @@ import { Icone } from './icones';
  * coloridos. Sem arquivo, vale o desenho abaixo.
  */
 const IMAGENS = import.meta.glob('./logos-bancos/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+import marcaNilma from './marca-nilma.png';
+
+/** O endereço completo do logo da Nilma (o do e-mail), publicado junto com o site. */
+export function urlDoLogoNilma(): string {
+  return new URL(marcaNilma, window.location.origin).href;
+}
+
+/** O endereço completo do logo do banco (null = sem imagem), para usar fora do site (o e-mail). */
+export function urlDoLogoBanco(marca: string): string | null {
+  const url = imagemDaMarca(marca);
+  return url ? new URL(url, window.location.origin).href : null;
+}
 function imagemDaMarca(marca: string): string | null {
   for (const [caminho, url] of Object.entries(IMAGENS)) if (caminho.replace(/^.*\//, '').replace(/\.[^.]+$/, '') === marca) return url;
   return null;

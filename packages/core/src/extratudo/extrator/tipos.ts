@@ -57,6 +57,25 @@ export interface EmpresaExtrator {
   auditoria: RegistroAuditoria[];
   /** bancos adicionados pela tela (os cadastrados vêm de empresas/bancos.ts) */
   bancos?: BancoAdicionado[];
+  /** os pedidos de documentos feitos ao cliente (o histórico do "Pedir extratos"), o mais novo primeiro */
+  pedidos?: PedidoRegistrado[];
+}
+
+/** Um pedido de documentos ao cliente, como fica no histórico. */
+export interface PedidoRegistrado {
+  id: string;
+  /** ISO */
+  em: string;
+  /** quem pediu */
+  por: string;
+  /** 'aaaa-mm' */
+  competencias: string[];
+  /** o nome de cada documento pedido */
+  documentos: string[];
+  /** 'dd/mm/aaaa' (vazio = sem prazo) */
+  prazo: string;
+  email?: { para: string[]; assunto: string; /** os pedidos na fila do robô do Entregas (para ver a situação) */ solicitacoes: string[] };
+  whatsapp?: { telefone: string; texto: string };
 }
 
 /** Resultado da leitura de um arquivo (antes de importar). */
