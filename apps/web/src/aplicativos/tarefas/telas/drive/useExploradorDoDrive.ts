@@ -3,7 +3,8 @@
 // Detalhes (Nome, Data de modificação, Tipo, Tamanho; clicar no título ordena) ou em Ícones, a seleção (clique,
 // Ctrl e Shift) e a barra de status. A pasta aberta fica na URL (?c=<pasta do cliente>&p=<pasta>), então o voltar do
 // navegador funciona. Os pedidos ao robô (abrir, baixar, .zip) recomeçam o prazo a cada avanço que ele informa.
-// A exibição, a árvore, a tela cheia e a ordem ficam guardadas neste navegador (localStorage; se ele recusar, vale o padrão).
+// A exibição, a árvore (começa escondida: na raiz ela repete a lista), a tela cheia e a ordem ficam guardadas neste
+// navegador (localStorage; se ele recusar, vale o padrão).
 import { entregas as e } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
@@ -18,14 +19,14 @@ export interface PedidoNaTela { id: number; rotulo: string; texto: string; erro?
 export type Exibicao = 'detalhes' | 'icones';
 interface Preferencias { exibicao: Exibicao; arvore: boolean; telaCheia: boolean; coluna: e.ColunaDoExplorador; desc: boolean }
 
-const PADRAO: Preferencias = { exibicao: 'detalhes', arvore: true, telaCheia: false, coluna: 'nome', desc: false };
+const PADRAO: Preferencias = { exibicao: 'detalhes', arvore: false, telaCheia: false, coluna: 'nome', desc: false };
 
 function lerPreferencias(): Preferencias {
   try {
     const p = JSON.parse(localStorage.getItem(GUARDADO) || '{}') as Partial<Preferencias>;
     return {
       exibicao: p.exibicao === 'icones' ? 'icones' : 'detalhes',
-      arvore: p.arvore !== false,
+      arvore: p.arvore === true,
       telaCheia: p.telaCheia === true,
       coluna: p.coluna === 'data' || p.coluna === 'tipo' || p.coluna === 'tamanho' ? p.coluna : 'nome',
       desc: p.desc === true,

@@ -121,6 +121,11 @@ Pendências (os mesmos dados e as mesmas filas do robô do Entregas); nada nas P
   em **Detalhes** (Nome, Data de modificação, Tipo, Tamanho; o título ordena, pastas sempre em cima) ou **Ícones**, a
   seleção por clique/Ctrl/Shift (dois cliques abrem; no toque, um) e a barra de status. Exibição, árvore e ordem ficam
   guardadas no navegador. Model: `entregas.{tipoDoItem, ordenarEntradas, linhasDaArvore}`.
+  Barra enxuta (30/09/2026, pedido de "menos informação e um botão de envio de verdade"): uma linha só com
+  voltar/avançar/acima, a trilha, a pesquisa, Detalhes/Ícones, Tela cheia, o **⋯** (baixar a pasta, selecionar tudo,
+  a árvore, classificar) e o botão cheio **Enviar arquivos** (para o Claudio Secretário; no celular, largura toda).
+  Baixar e limpar a seleção só aparecem na barra de baixo quando há algo marcado. A lista em Detalhes não mostra mais
+  o Tipo (a cor do ícone diz; fica no título da linha e em Propriedades) e a árvore começa escondida.
 - **Gmail › E-mails**: o robô (online, fila, andamento, "Verificar o Gmail agora", Cancelar), as abas De clientes /
   Sem cliente / Spam (de `robo/estado`), busca, "Salvar no Drive", "De qual cliente?", ligar o remetente a um cliente
   (`clientes.email`/`emails`), "É spam" (admin, `config/roboIgnorados`), abrir no Gmail, e o e-mail inteiro
