@@ -1116,6 +1116,11 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 /* a etapa sem ferramenta: o que conferir, item por item */
 .executor-conferir{max-width:620px;margin:8px auto 0;padding-left:20px;text-align:left;color:var(--ink);font-size:14px;line-height:1.5;}
 .executor-conferir li+li{margin-top:6px;}
+/* um aplicativo inteiro dentro da etapa (a Conferência): as seções e as abas dele numa barra em cima da página */
+.nav-na-etapa{border-bottom:1px solid var(--border);margin-bottom:8px;}
+.nav-na-etapa nav.menu{padding:0 8px;}
+.nav-na-etapa-paginas{border-top:1px solid var(--border);}
+.nav-na-etapa-paginas .menu-item{height:38px;font-size:13px;}
 .executor-ferramenta{display:flex;min-height:360px;}
 .executor-ferramenta iframe{display:block;width:100%;min-height:calc(100vh - var(--hdr-h,64px) - 16px);border:0;}
 .executor-ferramenta .gh-blank{margin:auto;}

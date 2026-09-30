@@ -8,7 +8,7 @@
 // VITE_APLICATIVO=<id> gera um site com UM aplicativo só (o link de cada um): as rotas dos outros
 // nem entram, e a raiz leva direto a ele. Sem a variável, entram os quatro.
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router';
-import { rotasConciliaAi } from './aplicativos/concilia-ai/rotas';
+import { rotasConciliaAi, rotasConciliaAiNaTarefa } from './aplicativos/concilia-ai/rotas';
 import { rotasConciliadorzinho } from './aplicativos/conciliadorzinho/rotas';
 import { rotasExtratudo } from './aplicativos/extratudo/rotas';
 import { rotasTarefas } from './aplicativos/tarefas/rotas';
@@ -17,9 +17,9 @@ const APLICATIVOS: Record<string, { nome: string; rotas: RouteObject[]; raiz: st
   'concilia-ai': { nome: 'Concilia aí', rotas: rotasConciliaAi, raiz: '/' },
   conciliadorzinho: { nome: 'Conciliadorzinho', rotas: rotasConciliadorzinho, raiz: '/conciliadorzinho' },
   extratudo: { nome: 'Extratudo', rotas: rotasExtratudo, raiz: '/extratudo' },
-  // a Tarefas leva junto o Extratudo: as ferramentas da etapa abrem no mesmo endereço (o login do Entregas
-  // fica guardado no navegador; em outro endereço, dentro do iframe, o Brave apaga)
-  tarefas: { nome: 'Tarefas', rotas: [...rotasTarefas, ...rotasExtratudo], raiz: '/tarefas' },
+  // a Tarefas leva junto o Extratudo e a Conferência (a etapa Conferência fiscal): as ferramentas da etapa abrem
+  // no mesmo endereço (o login do Entregas fica guardado no navegador; em outro endereço, dentro do iframe, o Brave apaga)
+  tarefas: { nome: 'Tarefas', rotas: [...rotasTarefas, ...rotasExtratudo, ...rotasConciliaAiNaTarefa], raiz: '/tarefas' },
 };
 
 const so = APLICATIVOS[import.meta.env.VITE_APLICATIVO || ''];

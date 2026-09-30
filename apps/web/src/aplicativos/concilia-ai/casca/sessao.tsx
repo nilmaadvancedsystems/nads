@@ -6,7 +6,7 @@
 import { conferencia as c } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { useAplicar, useEmpresaGuardada } from '../dados/repo';
 import { caminho } from './caminho';
 
@@ -90,7 +90,12 @@ export function SessaoProvider({ nome, rota, codigo, pagina, children }: { nome:
   const guardada = useEmpresaGuardada(nome);
   const empresa = useMemo(() => guardada || c.empresaNova(nome), [guardada, nome]);
 
-  const [filtro, setFiltro] = useState<c.FiltroMovimento>(c.FILTRO_MOVIMENTO_VAZIO);
+  // dentro de uma etapa da Tarefas (a Conferência fiscal), ?meses=aaaa-mm,… : o filtro já nasce no período que a pessoa está fazendo
+  const { search } = useLocation();
+  const [filtro, setFiltro] = useState<c.FiltroMovimento>(() => {
+    const meses = new URLSearchParams(search).get('meses');
+    return meses ? c.filtroDoPeriodo(meses.split(',')) : c.FILTRO_MOVIMENTO_VAZIO;
+  });
   const [abaRelatorio, setAbaRelatorio] = useState<c.AbaRelatorio>('geral');
   const [abaCadastro, setAbaCadastro] = useState<AbaCadastro>('entradas');
   const [abaConsulta, setAbaConsulta] = useState<c.GrupoConsulta>('fiscais');

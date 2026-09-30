@@ -23,7 +23,8 @@ const soTarefas = import.meta.env.VITE_APLICATIVO === 'tarefas';
 const BASES: Record<t.FerramentaDaEtapa['app'], string> = {
   extratudo: '',
   conciliadorzinho: soTarefas ? 'https://conciliadorzinho-nilma.web.app' : '',
-  'concilia-ai': 'https://nads-nilma.web.app',
+  // a Conferência vem junto no site da Tarefas (a etapa Conferência fiscal abre no mesmo endereço)
+  'concilia-ai': '',
 };
 
 /**
@@ -209,7 +210,9 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     etapa, n: etapa ? rotina.etapas.findIndex(e => e.id === etapa.id) + 1 : 0, total: rotina.etapas.length,
     interrompidaAntes: etapa && ex ? t.estadoDa(ex, etapa.id)?.situacao === 'interrompida' ? t.estadoDa(ex, etapa.id) : null : null,
     // no período, a ferramenta que trabalha vários meses recebe todos (abas por mês); as outras, o mês da vez
-    ferramenta: f && empresa ? { nome: f.nome, embutir: f.embutir, url: BASES[f.app] + f.caminho(empresas.rotaDaEmpresa(empresa)) + (f.app === 'extratudo' ? '?competencia=' + competencia + (juntos && varios ? '&meses=' + meses.join(',') : '') : '') } : null,
+    ferramenta: f && empresa ? { nome: f.nome, embutir: f.embutir, url: BASES[f.app] + f.caminho(empresas.rotaDaEmpresa(empresa)) + (f.app === 'extratudo' ? '?competencia=' + competencia + (juntos && varios ? '&meses=' + meses.join(',') : '')
+      // a Conferência roda no período que a pessoa está fazendo (o mês, ou os meses do Em Lote)
+      : f.app === 'concilia-ai' ? '?meses=' + (juntos && varios ? meses : [competencia]).join(',') : '') } : null,
     /** os meses que a etapa ainda precisa (no período) */
     pendentes: pendentes.map(rotuloCurto),
     aviso, conferindo, proximo, voltarPara,

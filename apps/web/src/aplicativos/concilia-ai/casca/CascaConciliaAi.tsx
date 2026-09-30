@@ -19,6 +19,7 @@ export function CascaConciliaAi({ children }: { children: ReactNode }) {
       onPagina={vm.onPagina}
       onInicio={vm.sair}
       onEmpresa={vm.voltarInicioDaEmpresa}
+      navNaEtapa
     >
       {children}
     </Casca>

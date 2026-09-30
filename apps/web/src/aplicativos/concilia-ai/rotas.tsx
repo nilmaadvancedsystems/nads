@@ -27,3 +27,17 @@ export const rotasConciliaAi: RouteObject[] = [
   },
   { path: '/conferencia/*', element: <LinkConferencia /> },
 ];
+
+/**
+ * A Conferência dentro da Tarefas (a etapa Conferência fiscal, no mesmo endereço): só a empresa aberta
+ * (/<código>/<seção>/<página>), sem a tela de escolher a empresa — a raiz do site continua sendo a Tarefas.
+ */
+export const rotasConciliaAiNaTarefa: RouteObject[] = [
+  {
+    element: <AppConciliaAi />,
+    children: [
+      { path: ':empresa/:secao/:pagina', element: <EmpresaAberta /> },
+      { path: ':empresa/:secao', element: <EmpresaAberta /> },
+    ],
+  },
+];
