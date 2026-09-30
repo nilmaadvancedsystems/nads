@@ -1,9 +1,9 @@
 // Liga o React ao repositório da Tarefas (ver fonte.ts). Os ViewModels usam estes hooks; nenhuma
 // View importa o repositório.
-import type { empresas, tarefas, usuarios } from '@nads/core';
+import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { bancosDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDoCadastro } from './fonte';
+import { bancosDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDoCadastro, repoDoDrive, repoDoGmail } from './fonte';
 
 type Repo = tarefas.RepoTarefas;
 
@@ -86,4 +86,18 @@ export function useLeituraDoRobo(): { carregado: boolean; ligado: boolean; mudar
   const [estado, setEstado] = useState<{ carregado: boolean; ligado: boolean }>({ carregado: false, ligado: true });
   useEffect(() => ouvirLeituraDoRobo(ligado => setEstado({ carregado: true, ligado }), () => setEstado(e => ({ ...e, carregado: true }))), []);
   return { ...estado, mudar: gravarLeituraDoRobo };
+}
+
+/** O Drive do escritório (o mapa ao vivo e os pedidos ao robô). */
+export function useDriveDoEntregas(): entregas.RepoDriveDoEntregas {
+  const repo = repoDoDrive();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** A caixa do robô do Gmail, ao vivo. */
+export function useGmailDoEntregas(): entregas.RepoGmailDoEntregas {
+  const repo = repoDoGmail();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
 }

@@ -3,6 +3,9 @@
 import { Navigate, useParams } from 'react-router';
 import { TopoProvider } from '../../../comum/topo';
 import { VisaoContabil } from '../telas/contabil/VisaoContabil';
+import { ExploradorDoDrive } from '../telas/drive/ExploradorDoDrive';
+import { CaixaDoRobo } from '../telas/gmail/CaixaDoRobo';
+import { HistoricoDoRobo } from '../telas/gmail/HistoricoDoRobo';
 import { MinhasEmpresas } from '../telas/empresas/MinhasEmpresas';
 import { Insights } from '../telas/insights/Insights';
 import { EmDesenvolvimento } from '../telas/em-desenvolvimento/EmDesenvolvimento';
@@ -14,6 +17,8 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
   switch (app) {
     case 'minhas-empresas': return pagina === 'insights' ? <Insights /> : <MinhasEmpresas />;
     case 'contabil': return <VisaoContabil pagina={pagina} />;
+    case 'drive': return <ExploradorDoDrive />;
+    case 'contato': return pagina === 'historico' ? <HistoricoDoRobo /> : <CaixaDoRobo />;
     default: return <EmDesenvolvimento nome={aplicacao(app)?.nome || app} />;
   }
 }

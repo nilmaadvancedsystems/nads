@@ -6,8 +6,10 @@
 // Quem está trabalhando: no banco, o login com as contas do Entregas (entregas.firestore.ts, 30/09/2026);
 // nos exemplos, a pessoa escolhe o nome na lista da equipe (não há login).
 // O repositório e a sessão são criados uma vez, quando alguém abre a Tarefas. O do Cadastro, quando alguém abre o Cadastro.
-import { empresas, extrator, tarefas } from '@nads/core';
+import { empresas, entregas, extrator, tarefas } from '@nads/core';
+import { criarDriveFirestore } from './drive.firestore';
 import { criarSessaoEntregas, type SessaoEntregas } from './entregas.firestore';
+import { criarGmailFirestore } from './gmail.firestore';
 import { balanceteNoEntregas, clientesNoEntregas, conferenciaNoBanco, gravarLeituraDeContas, ouvirLeituraDeContas, portaCadastroFirestore } from './cadastro.firestore';
 import { criarRepoTarefasFirestore, extratorNoBanco, type RepoTarefasFirestore } from './tarefas.firestore';
 
@@ -100,4 +102,28 @@ export async function gravarLeituraDoRobo(ligado: boolean): Promise<void> {
   if (noBanco) return gravarLeituraDeContas(ligado);
   leituraExemplo = ligado;
   for (const f of ouvintesExemplo) f(ligado);
+}
+
+/** Quem está logado (vai nos pedidos ao robô do Entregas). */
+function quemPede(): entregas.Quem | null {
+  const u = sessaoDaTarefas()?.estado().usuario;
+  return u ? { nome: u.nome, uid: u.uid, email: u.email } : null;
+}
+
+let drive: entregas.RepoDriveDoEntregas | null = null;
+let gmail: entregas.RepoGmailDoEntregas | null = null;
+
+/** O Drive do escritório pelo robô do Entregas (o mapa das pastas e os pedidos de abrir e baixar). */
+export function repoDoDrive(): entregas.RepoDriveDoEntregas {
+  if (!drive) drive = noBanco ? criarDriveFirestore(quemPede) : entregas.criarDriveDoEntregasMemoria();
+  return drive;
+}
+
+/** A caixa do robô do Gmail (o que ele viu e a fila de pedidos). */
+export function repoDoGmail(): entregas.RepoGmailDoEntregas {
+  if (!gmail) {
+    const mes = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+    gmail = noBanco ? criarGmailFirestore(quemPede, mes) : entregas.criarGmailDoEntregasMemoria();
+  }
+  return gmail;
 }

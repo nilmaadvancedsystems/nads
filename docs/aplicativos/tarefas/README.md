@@ -15,8 +15,8 @@ Link: https://tarefas-nilma.web.app (ligado ao banco). Código: `apps/web/src/ap
 | **Contábil** (só para o Contábil e admin) | pronta, só leitura: etapas em todas as empresas, o que mais trava, etapas paradas |
 | **Cadastro** | pronta: contas bancárias, plano de contas, contas padrão e histórico de cada empresa (ver abaixo) |
 | **Fiscal** (só para o Fiscal e admin) | em desenvolvimento |
-| **Drive** | em desenvolvimento |
-| **Contato** | em desenvolvimento |
+| **Drive** (Contábil e admin) | pronta: a pasta do ano como nas Pendências (ver abaixo) |
+| **Gmail** (Contábil e admin) | pronta: a caixa do robô do Gmail como nas Pendências (ver abaixo) |
 
 **Executor** (`/tarefas/executar/<empresa>/<competência>`):
 - **Próximo** faz o check automático da etapa. Se passar, marca como feita e segue para a próxima. Se não
@@ -106,3 +106,21 @@ Cadastro usa o login do Entregas do Drive; sem ele (ou dentro da página do Entr
 é negada e as ferramentas seguem como antes, sem gravar nada no cadastro:
 - `cadastro/{slug}`: `{ nome, codigo, bancos?, contasPadrao?, historico, atualizadoEm }` (campo ausente = nunca cadastrado);
 - `cadastro/{slug}/plano/atual`: `{ contas: [{ codigo, nome, classificacao?, grupo?, sintetica?, ordem }], origem, arquivo?, importadoEm, por? }`.
+
+## Drive e Gmail (2026-09-30)
+
+Pedido do Vitor: as funções do Drive e do Gmail das Pendências dentro do nads. As duas telas funcionam junto com as
+Pendências (os mesmos dados e as mesmas filas do robô do Entregas); nada nas Pendências mudou. Model em
+`packages/core/src/entregas` (com testes); banco em `tarefas/dados/{drive,gmail}.firestore.ts`.
+
+- **Drive › Pastas** (`/tarefas/drive/pastas?c=<pasta do cliente>&p=<pasta>`): as pastas de cliente da pasta do ano
+  (`driveIndice`, o mapa que o robô mantém); dentro, a trilha, a busca (a pasta e tudo abaixo), abrir no navegador,
+  marcar e baixar (um arquivo ou vários num .zip) e "Baixar pasta". Os pedidos vão em `aberturasDrive`; o robô devolve
+  um link de 30 min.
+- **Gmail › E-mails**: o robô (online, fila, andamento, "Verificar o Gmail agora", Cancelar), as abas De clientes /
+  Sem cliente / Spam (de `robo/estado`), busca, "Salvar no Drive", "De qual cliente?", ligar o remetente a um cliente
+  (`clientes.email`/`emails`), "É spam" (admin, `config/roboIgnorados`), abrir no Gmail, e o e-mail inteiro
+  (`leiturasGmail`) com Responder (`solicitacoesEmail` tipo `responder`, sem anexo por enquanto).
+- **Gmail › Histórico**: as últimas leituras do robô.
+
+Ainda não: a cobrança (um cliente, lote, disparo, régua), o status do mês (pendências) e a aba "Marcados".
