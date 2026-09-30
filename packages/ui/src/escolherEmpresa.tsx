@@ -2,6 +2,7 @@
 // com a lista embaixo. Nasceu na entrada da Conferência (conferencia.html #login ~L955) e agora é
 // de todos os aplicativos. Só desenha: a busca e o "entrar" vêm do ViewModel.
 import type { ReactNode } from 'react';
+import { useCarregando } from './carregamento';
 import { MarcaN } from './icones';
 
 export interface EmpresaNaLista { codigo: number | null; nome: string; regime?: string }
@@ -27,6 +28,7 @@ export interface PropsEscolherEmpresa<T extends EmpresaNaLista> {
 }
 
 export function EscolherEmpresa<T extends EmpresaNaLista>(p: PropsEscolherEmpresa<T>) {
+  useCarregando(!!p.carregando); // as empresas chegando: só a barra do topo
   return (
     <div id="login">
       <div className="auth">
@@ -55,7 +57,6 @@ export function EscolherEmpresa<T extends EmpresaNaLista>(p: PropsEscolherEmpres
             )}
           </div>
         </div>
-        {p.carregando && <p className="hint" style={{ textAlign: 'center' }}>Carregando empresas…</p>}
         <p className="hint" style={{ textAlign: 'center' }}>Versão do sistema: {p.versao}</p>
         {p.rodape}
         {p.onAplicativos && (

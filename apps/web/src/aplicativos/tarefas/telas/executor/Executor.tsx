@@ -16,12 +16,13 @@ export function Executor() {
   const { empresa: rota = '', competencia = '' } = useParams();
   const vm = useExecutor(rota, competencia);
   const casca = useCascaTarefas('minhas-empresas', 'empresas');
-  useCarregando(vm.carregando || vm.conferindo);
   // a ferramenta da etapa (iframe): recebe os bancos sem movimento e avisa quando a pessoa marca um
   const iframe = useRef<HTMLIFrameElement>(null);
   usePonteDaFerramenta(iframe, vm.semMovimento, vm.marcarSemMovimento);
   // a ferramenta do tamanho do conteúdo dela: a página toda rola junto, numa barra só
-  const altura = useFerramentaNaEtapa(iframe, vm.ferramenta?.url);
+  const { altura, carregando: ferramentaCarregando } = useFerramentaNaEtapa(iframe, vm.ferramenta?.embutir ? vm.ferramenta.url : undefined);
+  // uma barra só, no alto da página: a da Tarefas e a da ferramenta juntas
+  useCarregando(vm.carregando || vm.conferindo || ferramentaCarregando);
   if (!vm.empresa) return <Navigate to={BASE} replace />;
 
   const checklist = vm.etapas.map(e => ({
@@ -36,7 +37,7 @@ export function Executor() {
       versao={casca.versao} secoes={checklist} paginas={[]} titulo=""
       onSecao={vm.voltarPara} onPagina={() => undefined} onInicio={vm.sair} onAplicativos={casca.inicio}
       onEmpresa={vm.abrirEmpresa} aplicativos={casca.aplicacoes} onAplicativo={casca.onAplicacao}>
-      {vm.carregando ? <p className="empty">Carregando…</p> : !vm.etapa ? (
+      {vm.carregando ? null : !vm.etapa ? (
         <div className="executor-fim">
           <Icone nome="checkCircle" />
           <h2>Tudo pronto em {vm.rotuloCompetencia}</h2>

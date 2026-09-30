@@ -37,7 +37,7 @@ export function EmpresaTarefas({ rota }: { rota: string }) {
         </div>
       </div>
 
-      {vm.carregando ? <p className="empty">Carregando…</p> : (
+      {vm.carregando ? null : (
         <>
           <div className="stat-grid empresa-numeros">
             <div className="stat"><p className="stat-label">Etapas</p><p className="stat-value">{vm.feitas}<span className="hint"> de {vm.total}</span></p></div>
@@ -94,7 +94,7 @@ export function EmpresaTarefas({ rota }: { rota: string }) {
 
       <div className="card">
         <div className="card-head"><h3>No Extrator</h3></div>
-        {vm.carregandoExtratos ? <p className="empty">Carregando…</p> : vm.extratos.length === 0 ? (
+        {vm.carregandoExtratos ? null : vm.extratos.length === 0 ? (
           <p className="empty">Nenhum arquivo importado no Extrator.</p>
         ) : (
           <div className="table-wrap">

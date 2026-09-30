@@ -37,7 +37,7 @@ export function EmpresaAberta() {
   if (!achada) return <Navigate to={caminho()} replace />;
   const rota = empresas.rotaDaEmpresa(achada);
   // no banco: espera a empresa chegar (antes disso não dá para saber onde abrir, nem gravar)
-  if (!repo.carregada(achada.nome)) return <div id="login"><p className="hint">Carregando…</p></div>;
+  if (!repo.carregada(achada.nome)) return null; // só a barra do topo, sem texto
   const id = secao + '/' + pagina;
   if (!paginaPorId(id) || param !== rota) {
     const guardada = repo.obter(achada.nome);

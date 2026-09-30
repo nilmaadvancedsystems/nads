@@ -1355,12 +1355,11 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-pdf{gap:4px;padding:3px 10px;}
 
 /* a página aberta dentro de uma etapa (iframe esticado até o conteúdo): sem barra de rolagem própria nem altura
-   mínima da tela; espaço embaixo para os botões soltos da etapa. Janela, avisos e barra de carregamento vão para
-   o pedaço que está na tela (a Tarefas conta qual é: --vista-topo e --vista-altura). */
+   mínima da tela; espaço embaixo para os botões soltos da etapa. Janela e avisos vão para o pedaço que está na
+   tela; a barra de carregamento é a da Tarefas, de ponta a ponta (a Tarefas conta qual é: --vista-topo e --vista-altura). */
 html.na-etapa{overflow:hidden;}
 html.na-etapa body,html.na-etapa #app{min-height:0;}
 html.na-etapa #app.embutida .content{padding-bottom:80px;}
 html.na-etapa .modal-overlay{top:var(--vista-topo,0px);bottom:auto;height:var(--vista-altura,100vh);}
 html.na-etapa .toast-region{bottom:auto;top:calc(var(--vista-topo,0px) + var(--vista-altura,100vh) - 16px);transform:translateY(-100%);}
 html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
-html.na-etapa .barra-carregamento{top:var(--vista-topo,0px);}

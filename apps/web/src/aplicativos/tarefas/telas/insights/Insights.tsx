@@ -20,7 +20,7 @@ export function Insights() {
           </select>
         </label>
       </div>
-      {vm.carregando ? <p className="empty">Carregando…</p> : (
+      {vm.carregando ? null : (
         <>
           <div className="stat-grid">
             {vm.numeros.map(n => (

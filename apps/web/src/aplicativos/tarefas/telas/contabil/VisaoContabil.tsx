@@ -16,7 +16,7 @@ export function VisaoContabil({ pagina }: { pagina: string }) {
           </select>
         </label>
       </div>
-      {vm.carregando ? <p className="empty">Carregando…</p> : pagina === 'paradas' ? (
+      {vm.carregando ? null : pagina === 'paradas' ? (
         vm.paradas.length === 0 ? <p className="empty">Nenhuma etapa parada nesta competência.</p> : (
           <div className="table-wrap">
             <table>

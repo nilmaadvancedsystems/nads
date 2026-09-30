@@ -1,25 +1,14 @@
 // A ferramenta aberta dentro de uma etapa da Tarefas (um iframe, que pode ser outro site:
 // tarefas-nilma → extratudo-nilma). Nada de cabeçalho fixo nem de duas barras de rolagem: a ferramenta
 // diz a altura do conteúdo e a Tarefas estica o iframe até ela — quem rola é a página de fora, inteira.
-// Em troca, a Tarefas conta à ferramenta que pedaço dela está na tela, para a janela, o aviso e a barra
-// de carregamento aparecerem onde a pessoa está olhando. Só conversa com os endereços do nads
-// (*-nilma.web.app, as prévias deles e o próprio endereço, no desenvolvimento).
+// Em troca, a Tarefas conta à ferramenta que pedaço dela está na tela, para a janela e o aviso
+// aparecerem onde a pessoa está olhando. A barra de carregamento é uma só, a da Tarefas, de ponta a ponta.
+// Só conversa com os endereços do nads (*-nilma.web.app, as prévias deles e o próprio endereço, no
+// desenvolvimento).
 import { useEffect, useState, type RefObject } from 'react';
+import { origemConfiavel, origemDoPai } from './origem';
 
-const NADS = /^https:\/\/[a-z0-9-]+-nilma(--[a-z0-9-]+)?\.web\.app$/;
-
-/** Endereço do nads (ou o mesmo da página, no desenvolvimento)? */
-export function origemConfiavel(origem: string): boolean {
-  return origem === window.location.origin || NADS.test(origem);
-}
-
-/** O endereço da página de fora, quando esta está dentro de um iframe de uma página do nads. */
-export function origemDoPai(): string | null {
-  if (window.parent === window) return null;
-  let origem: string | null = window.location.ancestorOrigins?.[0] || null;
-  if (!origem) { try { origem = document.referrer ? new URL(document.referrer).origin : null; } catch { origem = null; } }
-  return origem && origemConfiavel(origem) ? origem : null;
-}
+export { origemConfiavel, origemDoPai };
 
 /** Na ferramenta (a Casca embutida): manda a altura do conteúdo e recebe o pedaço que está na tela. */
 export function useAlturaNaEtapa(ativo: boolean) {
@@ -55,13 +44,18 @@ export function useAlturaNaEtapa(ativo: boolean) {
 }
 
 /**
- * Na Tarefas: a altura que a ferramenta pediu (null = ainda não disse) e, ao rolar ou mudar o tamanho
+ * Na Tarefas: a altura que a ferramenta pediu (null = ainda não disse), se ela está carregando (desde o
+ * clique até ela dizer que terminou; no máximo 10 s se ela nunca disser) e, ao rolar ou mudar o tamanho
  * da janela, o pedaço do iframe que está na tela.
  */
 export function useFerramentaNaEtapa(iframe: RefObject<HTMLIFrameElement | null>, chave: string | undefined) {
   const [altura, setAltura] = useState<number | null>(null);
+  const [carregando, setCarregando] = useState(!!chave);
   useEffect(() => {
     setAltura(null);
+    setCarregando(!!chave);
+    let disse = false;
+    const limite = setTimeout(() => { if (!disse) setCarregando(false); }, 10000);
     let quadro = 0;
     const mandarVista = () => {
       cancelAnimationFrame(quadro);
@@ -76,18 +70,20 @@ export function useFerramentaNaEtapa(iframe: RefObject<HTMLIFrameElement | null>
     };
     const ouvir = (e: MessageEvent) => {
       if (!iframe.current || e.source !== iframe.current.contentWindow || !origemConfiavel(e.origin)) return;
-      const d = e.data as { nads?: string; px?: unknown } | null;
+      const d = e.data as { nads?: string; px?: unknown; ativo?: unknown } | null;
       if (d?.nads === 'altura' && typeof d.px === 'number' && d.px > 0) { setAltura(d.px); mandarVista(); }
+      if (d?.nads === 'carregando' && typeof d.ativo === 'boolean') { disse = true; setCarregando(d.ativo); }
     };
     window.addEventListener('message', ouvir);
     window.addEventListener('scroll', mandarVista, { passive: true });
     window.addEventListener('resize', mandarVista);
     return () => {
+      clearTimeout(limite);
       cancelAnimationFrame(quadro);
       window.removeEventListener('message', ouvir);
       window.removeEventListener('scroll', mandarVista);
       window.removeEventListener('resize', mandarVista);
     };
   }, [iframe, chave]);
-  return altura;
+  return { altura, carregando };
 }

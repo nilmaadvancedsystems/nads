@@ -67,7 +67,8 @@ export function MinhasEmpresas() {
           conteudo={fechar => <PainelIniciar vm={vm} fechar={fechar} />} />
       </div>
 
-      {vm.carregando ? <p className="empty">Carregando…</p> : vm.total === 0 ? <p className="empty">Nenhuma empresa nesta situação.</p> : (
+      {/* a tabela aparece na hora; as linhas entram quando o banco responde (a barra do topo termina) */}
+      {!vm.carregando && vm.total === 0 ? <p className="empty">Nenhuma empresa nesta situação.</p> : (
         <div className="table-wrap">
           <table className="tabela-empresas">
             <thead><tr>
@@ -77,7 +78,7 @@ export function MinhasEmpresas() {
               <th />
             </tr></thead>
             <tbody>
-              {vm.linhas.map(l => (
+              {!vm.carregando && vm.linhas.map(l => (
                 <tr key={l.chave} className="linha-abre" tabIndex={0} title={'Ver ' + l.nome}
                   onClick={() => vm.abrirEmpresa(l.rota)} onKeyDown={e => { if (e.key === 'Enter') vm.abrirEmpresa(l.rota); }}>
                   <td className="num">

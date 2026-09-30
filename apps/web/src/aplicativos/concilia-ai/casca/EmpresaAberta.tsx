@@ -38,7 +38,7 @@ export function EmpresaAberta() {
   const repo = useRepo();
   useVersaoDoRepo();
   useCarregando(!repo.pronto());
-  if (!repo.pronto()) return <div id="login"><p className="hint">Carregando…</p></div>;
+  if (!repo.pronto()) return null; // só a barra do topo, sem texto
   const achada = repo.empresaPelaRota(param);
   if (!achada) return <Navigate to={caminho()} replace />;
   const { nome, rota } = achada;
