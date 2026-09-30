@@ -1389,32 +1389,3 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 :root[data-theme="dark"] .rodape-marca{filter:invert(1);}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .rodape-marca{filter:invert(1);}}
 @media print{.rodape{display:none;}}
-
-/* a barra da direita do cabeçalho (como a do GitHub): busca, separador, atalhos em botões de 32px e o avatar */
-.gh-barra{display:flex;align-items:center;gap:8px;margin-left:auto;flex:none;}
-.gh-barra-sep{width:1px;height:20px;background:var(--border);margin:0 4px;}
-.gh-barra-btn{position:relative;}
-.gh-barra-btn:disabled{opacity:.45;cursor:default;}
-.gh-barra-num{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:20px;background:var(--btn-primary);
-  color:#FFFFFF;font-size:11px;font-weight:600;line-height:18px;text-align:center;box-shadow:0 0 0 2px var(--header-bg);}
-.btn.gh-barra-novo{padding:5px 8px;gap:4px;}
-.btn.gh-barra-novo svg{color:var(--ink-muted);}
-.gh-avatar-btn{border:none;background:none;padding:0;cursor:pointer;border-radius:50%;display:inline-flex;}
-.gh-avatar{width:32px;height:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-3);
-  color:var(--ink);font-size:13px;font-weight:600;box-shadow:0 0 0 1px var(--border);}
-.gh-avatar-btn:hover .gh-avatar{box-shadow:0 0 0 1px var(--border-strong);}
-.gh-voce-nome{display:flex;flex-direction:column;padding:4px 8px;margin:0;}
-.gh-voce-nome .hint{margin:0;}
-.gh-voce-tema{display:flex;align-items:center;justify-content:space-between;padding:4px 8px;}
-.gh-busca{position:relative;width:260px;}
-.gh-busca > svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--ink-muted);pointer-events:none;}
-.gh-busca input[type="text"]{padding-left:32px;padding-right:28px;background:var(--header-bg);}
-.gh-busca kbd{position:absolute;right:8px;top:50%;transform:translateY(-50%);font:11px/16px var(--font-num);padding:0 5px;border:1px solid var(--border);
-  border-radius:4px;color:var(--ink-muted);pointer-events:none;}
-.gh-busca-lista{top:calc(100% + 4px);right:0;width:480px;max-width:calc(100vw - 32px);}
-.gh-busca-lista .popover-item.marcado{background:var(--hover-bg);}
-.gh-busca-cod{min-width:32px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink-muted);font-size:12px;}
-.gh-busca-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.gh-busca-vazia{padding:8px;margin:0;}
-@media (max-width:1012px){.gh-busca{width:180px;}}
-@media (max-width:768px){.gh-busca,.gh-barra-sep{display:none;}}

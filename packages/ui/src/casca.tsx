@@ -60,8 +60,6 @@ export function Casca(p: {
   /** uma linha embaixo do título (cinza) */
   descricao?: string;
   acoes?: ReactNode;
-  /** a barra da direita do cabeçalho (busca e atalhos do aplicativo, como a do GitHub) */
-  barra?: ReactNode;
   /** mais pedaços da trilha depois da empresa ("Sistema / Empresa / …") */
   trilha?: { rotulo: string; titulo?: string; onClick?: () => void }[];
   onSecao: (id: string) => void;
@@ -158,7 +156,6 @@ export function Casca(p: {
               </span>
             ))}
           </nav>
-          {p.barra && !noOutro && <div className="gh-barra">{p.barra}</div>}
         </div>
         <nav className="menu" id="menu" aria-label="Páginas da seção">
           {p.paginas.filter(x => !x.oculta).map(x => (

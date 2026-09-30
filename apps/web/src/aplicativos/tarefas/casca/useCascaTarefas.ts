@@ -1,5 +1,5 @@
 // ViewModel da casca da Tarefas: as aplicações na gaveta ☰ (Minhas empresas, Contábil, Fiscal, Drive,
-// Contato), as páginas da aplicação aberta na barra lateral, o título. Quem está trabalhando fica na barra da direita (BarraTarefas).
+// Contato), as páginas da aplicação aberta na barra lateral, o título e quem está trabalhando.
 import { useLocation, useNavigate } from 'react-router';
 import { VERSAO_SISTEMA } from '../../../versao';
 import { aplicacao, aplicacoesDe, BASE, caminhoDaPagina, type IdAplicacao } from './navegacao';
@@ -8,11 +8,12 @@ import { useOperador, type Operador } from './operador';
 export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const navegar = useNavigate();
   const { search } = useLocation();
+  const { escolher } = useOperador();
   const op = useOperador().operador as Operador;
   const a = aplicacao(app);
   return {
-    // no lugar da empresa (a Tarefas não tem uma empresa aberta): a aplicação aberta (quem está trabalhando fica no avatar, à direita)
-    empresa: { codigo: a?.nome || '', nome: '' },
+    // no lugar da empresa (a Tarefas não tem uma empresa aberta): quem está trabalhando
+    empresa: { codigo: op.nome, nome: 'Trocar de pessoa' },
     versao: VERSAO_SISTEMA,
     titulo: a?.paginas.find(p => p.id === pagina)?.titulo || a?.nome || '',
     secoes: (a?.paginas || []).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, grupo: 1, ativa: p.id === pagina })),
@@ -22,7 +23,6 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
     onSecao: (id: string) => navegar(caminhoDaPagina(app, id) + search),
     onAplicacao: (id: string) => { const x = aplicacao(id); if (x) navegar(caminhoDaPagina(x.id, x.paginas[0].id)); },
     inicio: () => navegar(BASE),
-    /** clicar no nome da aplicação: a primeira página dela */
-    irParaAplicacao: () => { if (a) navegar(caminhoDaPagina(a.id, a.paginas[0].id) + search); },
+    trocarPessoa: () => escolher(null),
   };
 }

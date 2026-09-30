@@ -236,7 +236,7 @@ export type ItemMenu = { rotulo: ReactNode; icone?: NomeIcone; marcado?: boolean
  * preenchido (padrão do app todo). Fecha ao escolher, ao clicar
  * fora e no Esc. Em vez de `itens`, pode receber `conteudo` (ex.: uma lista com busca), que ganha o `fechar`.
  */
-export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn-outline', classeAberto, itens, conteudo, direita, acima, largura, setaAntes, semSeta, abertoInicial }: {
+export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn-outline', classeAberto, itens, conteudo, direita, acima, largura, setaAntes }: {
   rotulo: ReactNode;
   icone?: NomeIcone;
   titulo?: string;
@@ -252,12 +252,8 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
   /** classe a mais no botão enquanto o menu está aberto (ex.: apagar o botão de cima) */
   classeAberto?: string;
   largura?: number;
-  /** sem a setinha (ex.: o avatar de quem está trabalhando) */
-  semSeta?: boolean;
-  /** já abre aberto (ex.: outra tela mandou abrir o "Iniciar") */
-  abertoInicial?: boolean;
 }) {
-  const [aberto, setAberto] = useState(!!abertoInicial);
+  const [aberto, setAberto] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!aberto) return;
@@ -274,7 +270,7 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
       <button type="button" className={className + (aberto && classeAberto ? ' ' + classeAberto : '')} title={dica} aria-haspopup="menu" aria-expanded={aberto} onClick={() => setAberto(a => !a)}>
         {setaAntes && <Icone nome="caretDown" className="menu-seta antes" />}
         {icone && <Icone nome={icone} />}{rotulo}
-        {!setaAntes && !semSeta && <Icone nome="caretDown" className="menu-seta" />}
+        {!setaAntes && <Icone nome="caretDown" className="menu-seta" />}
       </button>
       {aberto && (
         <div className={'popover menu-pop' + (direita ? ' direita' : '') + (acima ? ' acima' : '')} role="menu" style={largura ? { width: largura } : undefined}>

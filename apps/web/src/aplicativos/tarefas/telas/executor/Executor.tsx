@@ -6,7 +6,6 @@ import { Alerta, Casca, Icone, useCarregando, useFerramentaNaEtapa } from '@nads
 import { useRef } from 'react';
 import { Navigate, useParams } from 'react-router';
 import { usePonteDaFerramenta } from '../../../../comum/ponte';
-import { BarraTarefas } from '../../casca/BarraTarefas';
 import { BASE } from '../../casca/navegacao';
 import { useCascaTarefas } from '../../casca/useCascaTarefas';
 import { JanelaInterromper } from './partes/JanelaInterromper';
@@ -34,7 +33,7 @@ export function Executor() {
   return (
     <Casca sistema="Tarefas" larga rotuloLateral="Etapas"
       empresa={{ codigo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome, nome: '' }}
-      trilha={[{ rotulo: vm.rotuloCompetencia }]} barra={<BarraTarefas competencia={competencia} />}
+      trilha={[{ rotulo: vm.rotuloCompetencia }]}
       versao={casca.versao} secoes={checklist} paginas={[]} titulo=""
       onSecao={vm.voltarPara} onPagina={() => undefined} onInicio={vm.sair} onAplicativos={casca.inicio}
       onEmpresa={vm.abrirEmpresa} aplicativos={casca.aplicacoes} onAplicativo={casca.onAplicacao}>
