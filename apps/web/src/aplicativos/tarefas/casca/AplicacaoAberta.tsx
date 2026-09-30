@@ -34,7 +34,7 @@ export function AplicacaoAberta() {
   if (!a.paginas.some(p => p.id === pagina)) return <Navigate to={caminhoDaPagina(a.id, a.paginas[0].id)} replace />;
   return (
     <TopoProvider>
-      <CascaTarefas app={a.id} pagina={pagina}>
+      <CascaTarefas app={a.id} pagina={pagina} telaInteira={a.id === 'drive'}>
         <Tela app={a.id} pagina={pagina} />
       </CascaTarefas>
     </TopoProvider>

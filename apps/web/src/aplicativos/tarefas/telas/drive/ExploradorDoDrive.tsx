@@ -158,7 +158,7 @@ export function ExploradorDoDrive() {
     const medir = () => {
       const el = caixa.current;
       if (!el || vm.telaCheia || window.innerWidth <= 760) { setAltura(null); return; }
-      setAltura(Math.max(320, Math.floor(window.innerHeight - (el.getBoundingClientRect().top + window.scrollY) - 12)));
+      setAltura(Math.max(320, Math.floor(window.innerHeight - (el.getBoundingClientRect().top + window.scrollY))));
     };
     medir();
     window.addEventListener('resize', medir);
