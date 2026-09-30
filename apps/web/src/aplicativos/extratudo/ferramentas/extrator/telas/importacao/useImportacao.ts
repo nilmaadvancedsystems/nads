@@ -137,13 +137,20 @@ export function useImportacao() {
       if (!escolha) { setLendo(null); toast('Importação cancelada — nada foi alterado.'); return; }
       modo = escolha;
     }
-    const res = x.importar(base, lado, bons, modo, new Date(), novoId);
-    if (banco) {
-      const antes = new Set(base.arquivos.map(a => a.id));
-      const outros = s.empresa.arquivos.filter(a => !doBanco(a));
-      s.aplicar(() => ({ ...res.empresa, arquivos: [...outros, ...res.empresa.arquivos.map(a => (antes.has(a.id) ? a : { ...a, banco, ...(doDrive ? { drive: doDrive } : {}) }))] }));
-    } else s.aplicar(() => res.empresa);
+    // importa sobre a empresa guardada agora (não a desta tela): "Todos pelo Drive" grava um mês atrás do outro
+    const feito: { res?: ReturnType<typeof x.importar> } = {};
+    s.aplicar(e => {
+      const agora = banco ? { ...e, arquivos: e.arquivos.filter(doBanco) } : e;
+      const res = x.importar(agora, lado, bons, modo, new Date(), novoId);
+      feito.res = res;
+      if (!banco) return res.empresa;
+      const antes = new Set(agora.arquivos.map(a => a.id));
+      const outros = e.arquivos.filter(a => !doBanco(a));
+      return { ...res.empresa, arquivos: [...outros, ...res.empresa.arquivos.map(a => (antes.has(a.id) ? a : { ...a, banco, ...(doDrive ? { drive: doDrive } : {}) }))] };
+    });
     setLendo(null);
+    const res = feito.res;
+    if (!res) { setMensagem({ tom: 'erro', titulo: 'A empresa ainda está carregando', textos: [{ texto: 'Espere um instante e tente de novo.' }] }); return; }
     setEscolhidos(e => ({ ...e, [lado]: [] }));
     const textos: Mensagem['textos'] = [];
     if (res.jaExistiam) textos.push({ texto: res.jaExistiam + ' já estavam guardados e ficaram como estavam.' });
