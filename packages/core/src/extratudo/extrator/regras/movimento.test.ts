@@ -45,3 +45,19 @@ describe('extrato no Drive', () => {
     expect(acharExtratoNoDrive(itens, null, '2026-08', { nome: 'Sicoob' }).situacao).toBe('sem-cliente');
   });
 });
+
+describe('extrato no Drive: comprovantes da mesma competência não atrapalham', () => {
+  it('acha o extrato em BANCÁRIOS mesmo com vários comprovantes do mês em COMPROVANTES', () => {
+    const d = (i: string, n: string, p: string) => ({ i, n, p, t: 'd' as const });
+    const f = (i: string, n: string, p: string) => ({ i, n, p, t: 'f' as const });
+    const itens = [
+      d('c', 'CONTÁBIL', 'raiz'), d('e', 'EXTRATOS', 'c'), d('a', '2026', 'e'), d('m', '03', 'a'),
+      d('b', 'BANCÁRIOS', 'm'), d('bs', 'SICOOB', 'b'), f('x', '03-2026.pdf', 'bs'),
+      d('cp', 'COMPROVANTES', 'm'), d('cs', 'SICOOB', 'cp'),
+      f('c1', 'Comprovante 26-03-2026 15h05m34s.pdf', 'cs'), f('c2', 'Comprovante 26-03-2026 15h05m35s.pdf', 'cs'),
+    ];
+    const r = acharExtratoNoDrive(itens, 'raiz', '2026-03', { nome: 'Sicoob', marca: 'sicoob' });
+    expect(r.situacao).toBe('achou');
+    expect(r.arquivo?.id).toBe('x');
+  });
+});

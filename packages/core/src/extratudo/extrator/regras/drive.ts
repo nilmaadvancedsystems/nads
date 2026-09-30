@@ -26,8 +26,12 @@ export function acharExtratoNoDrive(itens: readonly ItemDrive[], raizDoCliente: 
       if (it.t !== 'f' || !EXTENSOES.test(it.n)) continue;
       const texto = nomeNorm([...caminho, it.n].join(' '));
       if (/cred ?liquid|razao|balancete/.test(texto)) continue; // não é extrato
+      // a rotina de arquivamento guarda extrato, comprovante e aplicação em pastas separadas
+      // (CONTÁBIL/EXTRATOS/AAAA/MM/{BANCÁRIOS|COMPROVANTES|APLICAÇÕES}): comprovante não é extrato
+      const pastas = caminho.map(nomeNorm);
+      if (pastas.some(p => p === 'comprovantes' || p === 'aplicacoes') || /^comprovante/.test(nomeNorm(it.n))) continue;
       const daCompetencia = falaDaCompetencia([...caminho, it.n].join(' '), competencia);
-      const nota = (daCompetencia ? 4 : 0) + (/extrato/.test(texto) ? 2 : 0)
+      const nota = (daCompetencia ? 4 : 0) + (/extrato/.test(texto) ? 2 : 0) + (pastas.includes('bancarios') ? 3 : 0)
         + (banco.some(b => b && texto.includes(b)) ? 2 : 0) + (digitos.length >= 4 && texto.replace(/\D/g, '').includes(digitos) ? 3 : 0);
       achados.push({ id: it.i, nome: it.n, caminho: [...caminho, it.n].join(' › '), modificado: it.m, credliquidacao: false, daCompetencia, nota });
     }
