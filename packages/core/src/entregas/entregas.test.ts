@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buscarClientes, buscarNaPasta, caminhoAte, clienteParecido, clientesDoEntregas, estadoDoRobo, filhosDe, itensDasPartes,
-  mapaDaRaiz, mensagemIdValido, pedidoDaPasta, pedidoDeZip, quantosDentro, semCliente, tamanhoLegivel, type ItemDoDrive,
+  buscarClientes, buscarNaPasta, caminhoAte, clienteParecido, clientesDoEntregas, entradaDoCliente, entradaDoItem, estadoDoRobo,
+  filhosDe, itensDasPartes, linhasDaArvore, mapaDaRaiz, ordenarEntradas, tipoDoItem, mensagemIdValido, pedidoDaPasta, pedidoDeZip, quantosDentro, semCliente, tamanhoLegivel, type ItemDoDrive,
 } from '.';
 
 const ITENS: ItemDoDrive[] = [
@@ -42,6 +42,24 @@ describe('mapa do Drive', () => {
     expect(pedidoDeZip(ITENS, 'x.zip')).toMatchObject({ modo: 'zip', fileId: 'f10', fileIds: ['f10', 'f2', 'z'] });
     expect(pedidoDeZip([ITENS[0]], 'x')).toBeNull();
     expect(pedidoDaPasta({ i: 'b', n: 'EXTRATOS' })).toMatchObject({ modo: 'zip', fileId: 'b', pastaId: 'b' });
+  });
+
+  it('explorador: tipo como no Windows, pastas em cima ao ordenar, árvore só com pastas e sob demanda', () => {
+    expect(ITENS.map(tipoDoItem)).toEqual(['Pasta de arquivos', 'Pasta de arquivos', 'Documento PDF', 'Documento PDF', 'Documento Google']);
+    expect(tipoDoItem({ n: 'razao.XLSX', t: 'f' })).toBe('Planilha do Excel');
+    expect(tipoDoItem({ n: 'nota.abc', t: 'f' })).toBe('Arquivo ABC');
+    const es = ITENS.map(x => entradaDoItem(x));
+    expect(ordenarEntradas(es, 'nome', false).map(e => e.id)).toEqual(['a', 'b', 'z', 'f2', 'f10']);
+    expect(ordenarEntradas(es, 'tamanho', true).map(e => e.id)).toEqual(['b', 'a', 'f10', 'f2', 'z']);
+    const cs = mapaDaRaiz({ clientes: [{ id: 'raiz', nomePasta: '1 - A', pastas: 2 }, { id: 'c2', nomePasta: '2 - B', pastas: 0 }] }).clientes;
+    expect(entradaDoCliente(cs[0])).toMatchObject({ nome: '1 - A', pasta: true, tipo: 'Pasta de cliente' });
+    const pedidos: string[] = [];
+    const itensDe = (c: string) => { pedidos.push(c); return { carregados: true, itens: ITENS }; };
+    expect(linhasDaArvore(cs, () => false, itensDe).map(n => [n.nome, n.temFilhos])).toEqual([['1 - A', true], ['2 - B', false]]);
+    expect(pedidos).toEqual([]);
+    const aberta = linhasDaArvore(cs, id => id === 'raiz' || id === 'a', itensDe);
+    expect(aberta.map(n => [n.nome, n.nivel])).toEqual([['1 - A', 0], ['CONTÁBIL', 1], ['EXTRATOS', 2], ['2 - B', 0]]);
+    expect(linhasDaArvore(cs, id => id === 'raiz', () => ({ carregados: false, itens: [] }))[0].carregando).toBe(true);
   });
 });
 

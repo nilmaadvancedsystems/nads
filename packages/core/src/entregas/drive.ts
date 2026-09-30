@@ -207,3 +207,110 @@ export function andamentoDoDocumento(doc: Record<string, unknown> | null | undef
   if (typeof d.arquivos === 'number') a.arquivos = d.arquivos;
   return a;
 }
+
+// ── O Explorador (Tarefas › Drive): colunas como no Explorador de Arquivos do Windows e a árvore das pastas ──
+
+const TIPOS: [RegExp, string][] = [
+  [/\.pdf$/i, 'Documento PDF'],
+  [/\.(xlsx|xlsm|xls)$/i, 'Planilha do Excel'],
+  [/\.csv$/i, 'Arquivo CSV'],
+  [/\.(docx|doc)$/i, 'Documento do Word'],
+  [/\.(pptx|ppt)$/i, 'Apresentação do PowerPoint'],
+  [/\.(ofx|ofc)$/i, 'Extrato OFX'],
+  [/\.xml$/i, 'Documento XML'],
+  [/\.txt$/i, 'Documento de texto'],
+  [/\.(zip|rar|7z)$/i, 'Pasta compactada'],
+  [/\.(png|jpe?g|gif|webp|bmp|heic)$/i, 'Imagem'],
+  [/\.(msg|eml)$/i, 'Mensagem de e-mail'],
+];
+
+/** "Pasta de arquivos", "Documento PDF", "Planilha do Excel"… (senão "Arquivo XYZ", pela extensão). */
+export function tipoDoItem(it: Pick<ItemDoDrive, 'n' | 't' | 'x'>): string {
+  if (it.t === 'd') return 'Pasta de arquivos';
+  if (it.t === 'g') return /spreadsheet/.test(it.x || '') ? 'Planilha Google' : /presentation/.test(it.x || '') ? 'Apresentação Google' : 'Documento Google';
+  for (const [re, nome] of TIPOS) if (re.test(it.n)) return nome;
+  if (it.x === 'application/pdf') return 'Documento PDF';
+  const ext = /\.([a-z0-9]{1,6})$/i.exec(it.n);
+  return ext ? 'Arquivo ' + ext[1].toUpperCase() : 'Arquivo';
+}
+
+/** Uma linha do Explorador: pasta de cliente (na raiz), pasta ou arquivo. */
+export interface EntradaDoExplorador {
+  id: string;
+  nome: string;
+  pasta: boolean;
+  tipo: string;
+  /** modificado em (ISO) */
+  data: string | null;
+  bytes: number;
+  /** na busca: as pastas de cima ("CONTÁBIL › EXTRATOS") */
+  onde: string;
+}
+
+export function entradaDoItem(it: ItemDoDrive, onde = ''): EntradaDoExplorador {
+  return { id: it.i, nome: it.n, pasta: it.t === 'd', tipo: tipoDoItem(it), data: it.m || null, bytes: it.s || 0, onde };
+}
+
+export function entradaDoCliente(c: PastaDeCliente): EntradaDoExplorador {
+  return { id: c.id, nome: c.nomePasta || c.nome, pasta: true, tipo: 'Pasta de cliente', data: c.mod, bytes: c.bytes, onde: '' };
+}
+
+export type ColunaDoExplorador = 'nome' | 'data' | 'tipo' | 'tamanho';
+
+/** Como o Explorador: as pastas sempre em cima; dentro de cada grupo, pela coluna (empate: pelo nome). */
+export function ordenarEntradas<T extends EntradaDoExplorador>(lista: readonly T[], coluna: ColunaDoExplorador, desc: boolean): T[] {
+  const sinal = desc ? -1 : 1;
+  const porColuna = (a: T, b: T) => {
+    if (coluna === 'data') return (a.data || '').localeCompare(b.data || '');
+    if (coluna === 'tipo') return ordemNatural.compare(a.tipo, b.tipo);
+    if (coluna === 'tamanho') return a.bytes - b.bytes;
+    return 0;
+  };
+  return [...lista].sort((a, b) => (a.pasta === b.pasta ? 0 : a.pasta ? -1 : 1)
+    || sinal * (porColuna(a, b) || ordemNatural.compare(a.nome, b.nome)));
+}
+
+/** Uma linha da árvore (painel da esquerda): a pasta de cliente (nível 0) e as pastas de dentro. */
+export interface NoDaArvore {
+  id: string;
+  nome: string;
+  nivel: number;
+  /** a pasta de cliente onde ele está */
+  cliente: string;
+  /** tem pasta dentro (mostra a setinha) */
+  temFilhos: boolean;
+  aberto: boolean;
+  /** aberto, mas as pastas de dentro ainda estão chegando do banco */
+  carregando: boolean;
+}
+
+/**
+ * A árvore achatada na ordem de desenho: cada pasta de cliente e, se aberta, as pastas de dentro (só pastas, como
+ * no painel de navegação do Windows). `itensDe` só é chamado para os clientes abertos (o banco lê sob demanda).
+ */
+export function linhasDaArvore(
+  clientes: readonly PastaDeCliente[],
+  aberto: (id: string) => boolean,
+  itensDe: (cliente: string) => { carregados: boolean; itens: readonly ItemDoDrive[] },
+): NoDaArvore[] {
+  const saida: NoDaArvore[] = [];
+  for (const c of clientes) {
+    const no: NoDaArvore = { id: c.id, nome: c.nomePasta || c.nome, nivel: 0, cliente: c.id, temFilhos: c.pastas > 0, aberto: aberto(c.id), carregando: false };
+    saida.push(no);
+    if (!no.aberto || !no.temFilhos) continue;
+    const { carregados, itens } = itensDe(c.id);
+    if (!carregados) { no.carregando = true; continue; }
+    const pastas = new Map<string, ItemDoDrive[]>();
+    for (const x of itens) if (x.t === 'd') { const l = pastas.get(x.p); if (l) l.push(x); else pastas.set(x.p, [x]); }
+    const descer = (pai: string, nivel: number) => {
+      if (nivel > 40) return;
+      for (const x of (pastas.get(pai) || []).sort((a, b) => ordemNatural.compare(a.n, b.n))) {
+        const n: NoDaArvore = { id: x.i, nome: x.n, nivel, cliente: c.id, temFilhos: pastas.has(x.i), aberto: aberto(x.i), carregando: false };
+        saida.push(n);
+        if (n.aberto && n.temFilhos) descer(x.i, nivel + 1);
+      }
+    };
+    descer(c.id, 1);
+  }
+  return saida;
+}

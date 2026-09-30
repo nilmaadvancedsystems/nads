@@ -116,7 +116,11 @@ Pendências (os mesmos dados e as mesmas filas do robô do Entregas); nada nas P
 - **Drive › Pastas** (`/tarefas/drive/pastas?c=<pasta do cliente>&p=<pasta>`): as pastas de cliente da pasta do ano
   (`driveIndice`, o mapa que o robô mantém); dentro, a trilha, a busca (a pasta e tudo abaixo), abrir no navegador,
   marcar e baixar (um arquivo ou vários num .zip) e "Baixar pasta". Os pedidos vão em `aberturasDrive`; o robô devolve
-  um link de 30 min.
+  um link de 30 min. Desde 30/09/2026 tem a cara do Explorador do Windows: voltar/avançar/acima e a trilha na barra de
+  endereço, a árvore das pastas à esquerda (botão **Árvore**; cada cliente só é lido do banco quando é aberto), a lista
+  em **Detalhes** (Nome, Data de modificação, Tipo, Tamanho; o título ordena, pastas sempre em cima) ou **Ícones**, a
+  seleção por clique/Ctrl/Shift (dois cliques abrem; no toque, um) e a barra de status. Exibição, árvore e ordem ficam
+  guardadas no navegador. Model: `entregas.{tipoDoItem, ordenarEntradas, linhasDaArvore}`.
 - **Gmail › E-mails**: o robô (online, fila, andamento, "Verificar o Gmail agora", Cancelar), as abas De clientes /
   Sem cliente / Spam (de `robo/estado`), busca, "Salvar no Drive", "De qual cliente?", ligar o remetente a um cliente
   (`clientes.email`/`emails`), "É spam" (admin, `config/roboIgnorados`), abrir no Gmail, e o e-mail inteiro

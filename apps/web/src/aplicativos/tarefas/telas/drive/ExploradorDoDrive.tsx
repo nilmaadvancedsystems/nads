@@ -1,12 +1,18 @@
-// Drive › Pastas: a pasta do ano como o robô do Entregas mapeia. Na raiz, as pastas de cliente; dentro, a trilha,
-// a busca (a pasta aberta e tudo abaixo), a lista (pastas primeiro) e a seleção para baixar (um arquivo, ou vários
-// num .zip), além do .zip da pasta inteira. Clicar num arquivo abre no navegador: a aba nasce no clique (senão o
-// navegador bloqueia) e recebe o link quando o robô termina de buscar.
+// Drive › Pastas, com a cara do Explorador de Arquivos do Windows: barra de endereço (voltar, avançar, acima, a
+// trilha e a pesquisa), barra de comandos (baixar, selecionar, ordenar, exibir, painel de navegação), a árvore das
+// pastas à esquerda, a lista em Detalhes ou Ícones e a barra de status. Um clique seleciona (Ctrl junta, Shift faz
+// o intervalo), dois cliques (ou Enter) abrem; na tela de toque, um toque abre. Abrir um arquivo: a aba nasce no
+// clique (senão o navegador bloqueia) e recebe o link quando o robô termina de buscar.
 import type { entregas as e } from '@nads/core';
 import { Icone, useCarregando } from '@nads/ui';
+import { useEffect, useRef, type KeyboardEvent, type MouseEvent } from 'react';
 import { useExploradorDoDrive, type VmDrive } from './useExploradorDoDrive';
 
-const quando = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '');
+const COLUNAS: { id: e.ColunaDoExplorador; rotulo: string }[] = [
+  { id: 'nome', rotulo: 'Nome' }, { id: 'data', rotulo: 'Data de modificação' }, { id: 'tipo', rotulo: 'Tipo' }, { id: 'tamanho', rotulo: 'Tamanho' },
+];
+
+const toque = () => typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches;
 
 function baixar(url: string) {
   const a = document.createElement('a');
@@ -17,33 +23,112 @@ function baixar(url: string) {
   a.remove();
 }
 
-function abrirArquivo(vm: VmDrive, it: e.ItemDoDrive) {
+function abrirArquivo(vm: VmDrive, x: e.EntradaDoExplorador) {
   const janela = window.open('', '_blank');
-  if (janela) { try { janela.document.title = 'Abrindo ' + it.n; janela.document.body.textContent = 'Buscando "' + it.n + '" no Drive…'; } catch { /* outra origem */ } }
-  vm.linkParaAbrir(it).then(url => {
+  if (janela) { try { janela.document.title = 'Abrindo ' + x.nome; janela.document.body.textContent = 'Buscando "' + x.nome + '" no Drive…'; } catch { /* outra origem */ } }
+  vm.linkParaAbrir(x.id).then(url => {
     if (janela && !janela.closed) janela.location.href = url; else window.open(url, '_blank');
   }, () => { try { janela?.close(); } catch { /* já fechou */ } });
 }
 
-function IconeDoItem({ it }: { it: e.ItemDoDrive }) {
-  return <Icone nome={it.t === 'd' ? 'pasta' : it.t === 'g' ? 'fileText' : 'arquivo'} className={'drive-ico' + (it.t === 'd' ? ' pasta' : '')} />;
+function abrir(vm: VmDrive, x: e.EntradaDoExplorador) {
+  if (x.pasta) vm.entrar(x.id); else abrirArquivo(vm, x);
 }
 
-function Linha({ vm, it, onde }: { vm: VmDrive; it: e.ItemDoDrive; onde: string }) {
-  const pasta = it.t === 'd';
-  const dentro = pasta ? vm.quantos(it) : null;
-  const abrir = () => (pasta ? vm.abrirPasta(it.i) : abrirArquivo(vm, it));
+/** Os eventos de uma linha (ou ícone): clique seleciona, duplo clique/Enter abre, espaço marca. */
+function eventos(vm: VmDrive, x: e.EntradaDoExplorador) {
+  return {
+    onClick: (ev: MouseEvent) => {
+      if (toque() && !ev.ctrlKey && !ev.shiftKey && !ev.metaKey) { abrir(vm, x); return; }
+      vm.selecionar(x.id, { ctrl: ev.ctrlKey || ev.metaKey, shift: ev.shiftKey });
+    },
+    onDoubleClick: () => abrir(vm, x),
+    onKeyDown: (ev: KeyboardEvent) => {
+      if (ev.key === 'Enter') { ev.preventDefault(); abrir(vm, x); }
+      else if (ev.key === ' ') { ev.preventDefault(); vm.selecionar(x.id, { ctrl: true }); }
+    },
+  };
+}
+
+function IconeDaEntrada({ x, grande }: { x: e.EntradaDoExplorador; grande?: boolean }) {
+  const nome = x.pasta ? 'pasta' : /Google|texto|Word/.test(x.tipo) ? 'fileText' : 'arquivo';
+  const cor = x.pasta ? ' pasta' : /PDF/.test(x.tipo) ? ' pdf' : /Excel|CSV|Planilha/.test(x.tipo) ? ' planilha' : /Word|Documento Google/.test(x.tipo) ? ' texto' : '';
+  return <Icone nome={nome} className={'drive-ico' + cor + (grande ? ' grande' : '')} />;
+}
+
+function Arvore({ vm }: { vm: VmDrive }) {
   return (
-    <tr className="linha-abre" tabIndex={0} onClick={abrir} onKeyDown={ev => { if (ev.key === 'Enter') abrir(); }}>
-      <td className="drive-marca" onClick={ev => ev.stopPropagation()}>
-        {!pasta && <input type="checkbox" aria-label={'Marcar ' + it.n} checked={vm.estaMarcado(it)} onChange={() => vm.marcar(it)} />}
-      </td>
-      <td>
-        <span className="drive-nome"><IconeDoItem it={it} /><span>{it.n}{onde && <span className="fraco drive-onde">{onde}</span>}</span></span>
-      </td>
-      <td className="fraco num">{pasta ? (dentro?.arquivos ?? 0) + ' arq.' : vm.tamanho(it.s)}</td>
-      <td className="fraco num">{quando(it.m)}</td>
-    </tr>
+    <nav className="explorador-arvore" aria-label="Painel de navegação">
+      <ul role="tree">
+        <li role="treeitem" aria-selected={vm.naRaiz} aria-expanded>
+          <div className={'arvore-no' + (vm.naRaiz ? ' atual' : '')} style={{ paddingLeft: 6 }}>
+            <span className="arvore-seta" />
+            <button type="button" className="arvore-rotulo" onClick={vm.irParaRaiz}>
+              <Icone nome="pasta" className="drive-ico pasta" /><span className="arvore-nome">{vm.ano}</span>
+            </button>
+          </div>
+        </li>
+        {vm.arvore.map(no => (
+          <li key={no.id} role="treeitem" aria-selected={vm.naPasta(no.id)} aria-expanded={no.temFilhos ? no.aberto : undefined}>
+            <div className={'arvore-no' + (vm.naPasta(no.id) ? ' atual' : '')} style={{ paddingLeft: 6 + (no.nivel + 1) * 14 }}>
+              {no.temFilhos
+                ? <button type="button" className="arvore-seta" aria-label={(no.aberto ? 'Fechar ' : 'Abrir ') + no.nome} onClick={() => vm.alternarNo(no.id)}>
+                  <Icone nome={no.aberto ? 'caretDown' : 'chevronRight'} />
+                </button>
+                : <span className="arvore-seta" />}
+              <button type="button" className="arvore-rotulo" title={no.nome} onClick={() => vm.abrirNo(no)}>
+                <Icone nome="pasta" className="drive-ico pasta" /><span className="arvore-nome">{no.nome}</span>
+                {no.carregando && <span className="drive-girando" aria-label="carregando" />}
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+function Detalhes({ vm }: { vm: VmDrive }) {
+  return (
+    <table className="explorador-detalhes">
+      <thead>
+        <tr>
+          {COLUNAS.map(c => (
+            <th key={c.id} className={'col-' + c.id} aria-sort={vm.coluna === c.id ? (vm.desc ? 'descending' : 'ascending') : undefined}>
+              <button type="button" onClick={() => vm.ordenarPor(c.id)}>
+                {c.rotulo}{vm.coluna === c.id && <Icone nome={vm.desc ? 'arrowDown' : 'arrowUp'} className="explorador-ordem" />}
+              </button>
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {vm.entradas.map(x => (
+          <tr key={x.id} tabIndex={0} aria-selected={vm.estaMarcado(x.id)} className={vm.estaMarcado(x.id) ? 'marcado' : undefined} {...eventos(vm, x)}>
+            <td className="col-nome">
+              <span className="drive-nome"><IconeDaEntrada x={x} /><span>{x.nome}{x.onde && <span className="fraco drive-onde">{x.onde}</span>}</span></span>
+            </td>
+            <td className="col-data">{vm.quando(x.data)}</td>
+            <td className="col-tipo">{x.tipo}</td>
+            <td className="col-tamanho">{x.pasta ? '' : vm.tamanho(x.bytes)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function Icones({ vm }: { vm: VmDrive }) {
+  return (
+    <ul className="explorador-icones" role="listbox" aria-multiselectable>
+      {vm.entradas.map(x => (
+        <li key={x.id} role="option" tabIndex={0} aria-selected={vm.estaMarcado(x.id)} className={vm.estaMarcado(x.id) ? 'marcado' : undefined}
+          title={x.nome + '\n' + x.tipo + (x.pasta ? '' : '\n' + vm.tamanho(x.bytes))} {...eventos(vm, x)}>
+          <IconeDaEntrada x={x} grande />
+          <span className="explorador-icone-nome">{x.nome}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -52,69 +137,82 @@ export function ExploradorDoDrive() {
   useCarregando(vm.carregando);
   const baixarMarcados = () => { vm.linkDosMarcados().then(url => { baixar(url); vm.limparSelecao(); }, () => {}); };
   const baixarPasta = () => { vm.linkDaPasta().then(baixar, () => {}); };
-  const lista = vm.buscando ? vm.achados : vm.filhos;
+  const teclas = (ev: KeyboardEvent) => {
+    if (ev.target instanceof HTMLInputElement || ev.target instanceof HTMLSelectElement) return;
+    if (ev.altKey && ev.key === 'ArrowLeft') { ev.preventDefault(); vm.voltar(); }
+    else if (ev.altKey && ev.key === 'ArrowRight') { ev.preventDefault(); vm.avancar(); }
+    else if ((ev.altKey && ev.key === 'ArrowUp') || ev.key === 'Backspace') { ev.preventDefault(); vm.subir(); }
+    else if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'a') { ev.preventDefault(); vm.selecionarTodos(); }
+    else if (ev.key === 'Escape') vm.limparSelecao();
+  };
+  const n = vm.entradas.length;
+  const m = vm.marcados.length;
+  // a barra de endereço mostra o fim do caminho (a pasta aberta), como no Windows
+  const trilha = useRef<HTMLElement>(null);
+  const fimDaTrilha = vm.trilha.map(p => p.p || p.c).join('/');
+  useEffect(() => { const el = trilha.current; if (el) el.scrollLeft = el.scrollWidth; }, [fimDaTrilha]);
 
   return (
-    <section>
-      <div className="tarefas-barra-topo">
-        <nav className="drive-trilha" aria-label="Onde estou">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={vm.irParaRaiz}><Icone nome="pasta" />{vm.ano}</button>
-          {vm.pastaCliente && (
-            <><span className="drive-sep">›</span>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => vm.abrirCliente(vm.pastaCliente?.id || '')}>{vm.pastaCliente.nomePasta}</button></>
-          )}
-          {vm.caminho.map(p => (
-            <span key={p.id} className="drive-trilha-item"><span className="drive-sep">›</span>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => vm.abrirPasta(p.id)}>{p.nome}</button></span>
+    <section className="explorador" onKeyDown={teclas}>
+      <div className="explorador-endereco">
+        <button type="button" className="explorador-btn" title="Voltar (Alt+←)" aria-label="Voltar" onClick={vm.voltar}><Icone nome="chevronLeft" /></button>
+        <button type="button" className="explorador-btn" title="Avançar (Alt+→)" aria-label="Avançar" onClick={vm.avancar}><Icone nome="chevronRight" /></button>
+        <button type="button" className="explorador-btn" title="Acima (Alt+↑)" aria-label="Acima" disabled={!vm.podeSubir} onClick={vm.subir}><Icone nome="arrowUp" /></button>
+        <nav ref={trilha} className="explorador-trilha" aria-label="Endereço">
+          <Icone nome="pasta" className="drive-ico pasta" />
+          <button type="button" onClick={vm.irParaRaiz}>{vm.ano}</button>
+          {vm.trilha.map(p => (
+            <span key={p.c + '|' + p.p} className="explorador-trilha-item">
+              <Icone nome="chevronRight" className="explorador-sep" />
+              <button type="button" onClick={() => vm.irPara(p.c, p.p)}>{p.nome}</button>
+            </span>
           ))}
         </nav>
-        <span className="tarefas-barra-espaco" />
-        <label className="busca-curta">
-          <Icone nome="search" />
-          <input type="text" placeholder={vm.naRaiz ? 'Buscar cliente' : 'Buscar nesta pasta'} aria-label="Buscar" value={vm.busca}
+        <label className="explorador-busca">
+          <input type="search" placeholder={vm.placeholderBusca} aria-label="Pesquisar" value={vm.busca}
             onChange={ev => vm.setBusca(ev.target.value)} onKeyDown={ev => { if (ev.key === 'Escape') vm.setBusca(''); }} />
+          <Icone nome="search" />
         </label>
-        {vm.marcados.length > 0 && (
-          <>
-            <button type="button" className="btn btn-primary" onClick={baixarMarcados}><Icone nome="download" />Baixar ({vm.marcados.length})</button>
-            <button type="button" className="btn btn-outline" onClick={vm.limparSelecao}>Limpar</button>
-          </>
-        )}
-        {!vm.naRaiz && !vm.marcados.length && <button type="button" className="btn btn-outline" onClick={baixarPasta}><Icone nome="download" />Baixar pasta</button>}
+      </div>
+
+      <div className="explorador-comandos" role="toolbar" aria-label="Comandos">
+        <button type="button" className="explorador-cmd" disabled={!m} onClick={baixarMarcados}><Icone nome="download" />Baixar{m > 1 ? ' (' + m + ')' : ''}</button>
+        <button type="button" className="explorador-cmd" disabled={!vm.podeBaixarPasta} onClick={baixarPasta}><Icone nome="pasta" />Baixar esta pasta</button>
+        <span className="explorador-divisor" />
+        <button type="button" className="explorador-cmd" disabled={!n} onClick={vm.selecionarTodos}><Icone nome="checkCircle" />Selecionar tudo</button>
+        <button type="button" className="explorador-cmd" disabled={!m} onClick={vm.limparSelecao}><Icone nome="x" />Limpar seleção</button>
+        <span className="explorador-divisor" />
+        <label className="explorador-cmd explorador-ordenar">
+          <Icone nome="ordenar" />
+          <select aria-label="Classificar por" value={vm.coluna} onChange={ev => vm.ordenarPor(ev.target.value as e.ColunaDoExplorador)}>
+            {COLUNAS.map(c => <option key={c.id} value={c.id}>{c.rotulo}</option>)}
+          </select>
+        </label>
+        <span className="tarefas-barra-espaco" />
+        <div className="explorador-exibir" role="group" aria-label="Exibir">
+          <button type="button" className={'explorador-cmd' + (vm.exibicao === 'detalhes' ? ' on' : '')} aria-pressed={vm.exibicao === 'detalhes'} title="Detalhes" onClick={() => vm.mudarExibicao('detalhes')}><Icone nome="list" />Detalhes</button>
+          <button type="button" className={'explorador-cmd' + (vm.exibicao === 'icones' ? ' on' : '')} aria-pressed={vm.exibicao === 'icones'} title="Ícones grandes" onClick={() => vm.mudarExibicao('icones')}><Icone nome="grade" />Ícones</button>
+          <button type="button" className={'explorador-cmd' + (vm.mostrarArvore ? ' on' : '')} aria-pressed={vm.mostrarArvore} title="Painel de navegação (árvore)" onClick={vm.alternarArvore}><Icone nome="painel" />Árvore</button>
+        </div>
       </div>
 
       {vm.erro && <div className="alert"><Icone nome="alert" /><div><p className="alert-text">{vm.erro}</p></div></div>}
       {vm.exemplos && <p className="hint drive-aviso">Dados de exemplo: as pastas são inventadas e nenhum arquivo abre de verdade.</p>}
 
-      {vm.naRaiz ? (
-        <div className="table-wrap">
-          <table className="tabela-empresas">
-            <thead><tr><th>Código</th><th>Pasta do cliente</th><th>Arquivos</th><th>Tamanho</th><th>Modificado</th></tr></thead>
-            <tbody>
-              {!vm.carregando && vm.clientes.map(c => (
-                <tr key={c.id} className="linha-abre" tabIndex={0} onClick={() => vm.abrirCliente(c.id)} onKeyDown={ev => { if (ev.key === 'Enter') vm.abrirCliente(c.id); }}>
-                  <td className="num">{c.codigo || '—'}</td>
-                  <td><span className="drive-nome"><Icone nome="pasta" className="drive-ico pasta" /><span>{c.nome || c.nomePasta}</span></span></td>
-                  <td className="fraco num">{c.arquivos}</td>
-                  <td className="fraco num">{vm.tamanho(c.bytes)}</td>
-                  <td className="fraco num">{quando(c.mod)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {!vm.carregando && !vm.clientes.length && <p className="empty">Nenhuma pasta com isso.</p>}
+      <div className={'explorador-corpo' + (vm.mostrarArvore ? '' : ' sem-arvore')}>
+        {vm.mostrarArvore && <Arvore vm={vm} />}
+        <div className="explorador-conteudo" onClick={ev => { if (ev.target === ev.currentTarget) vm.limparSelecao(); }}>
+          {!vm.carregando && (vm.exibicao === 'detalhes' ? <Detalhes vm={vm} /> : <Icones vm={vm} />)}
+          {!vm.carregando && !n && <p className="empty">{vm.buscando ? 'Nenhum item corresponde à pesquisa.' : 'Esta pasta está vazia.'}</p>}
         </div>
-      ) : (
-        <div className="table-wrap">
-          <table className="tabela-empresas drive-tabela">
-            <thead><tr><th /><th>Nome</th><th>Tamanho</th><th>Modificado</th></tr></thead>
-            <tbody>
-              {!vm.carregando && lista.map(x => <Linha key={x.item.i} vm={vm} it={x.item} onde={x.onde} />)}
-            </tbody>
-          </table>
-          {!vm.carregando && !lista.length && <p className="empty">{vm.buscando ? 'Nada com esse nome aqui dentro.' : 'Pasta vazia.'}</p>}
-        </div>
-      )}
+      </div>
+
+      <div className="explorador-status" role="status">
+        <span>{n} {n === 1 ? 'item' : 'itens'}</span>
+        {m > 0 && <span>{m} {m === 1 ? 'item selecionado' : 'itens selecionados'}{vm.tamanhoMarcado ? ' · ' + vm.tamanhoMarcado : ''}</span>}
+        <span className="tarefas-barra-espaco" />
+        {vm.atualizado && <span className="fraco">Mapa do robô: {vm.atualizado}</span>}
+      </div>
 
       {vm.pedidos.length > 0 && (
         <div className="drive-pedidos" role="status" aria-live="polite">
