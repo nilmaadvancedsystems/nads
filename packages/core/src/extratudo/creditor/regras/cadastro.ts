@@ -41,11 +41,12 @@ export function comCadastro(repo: RepoCreditor, cadastro: RepoCadastro, codigoDe
   return {
     exemplos: repo.exemplos,
     balancete: nome => { doCadastro(nome); return balanceteComCadastro(cadastro.plano(nome), repo.balancete(nome)); },
-    config: nome => configComCadastro(doCadastro(nome), repo.config(nome)),
+    config: nome => (cadastro.disponivel(nome) ? configComCadastro(doCadastro(nome), repo.config(nome)) : repo.config(nome)),
     clientes: nome => repo.clientes(nome),
     carregada: nome => { doCadastro(nome); return repo.carregada(nome) && cadastro.carregada(nome); },
     salvarConfig(nome, c) {
       if (!repo.carregada(nome) || !cadastro.carregada(nome)) return; // antes de chegar do banco, nunca grava
+      if (!cadastro.disponivel(nome)) { repo.salvarConfig(nome, c); return; } // sem o cadastro: onde gravava antes
       const atual = doCadastro(nome);
       const novo = comContasPadrao(atual, { contas: c.contas, nomes: c.nomes }, 'Creditor', new Date());
       if (novo !== atual) cadastro.salvar(nome, novo);

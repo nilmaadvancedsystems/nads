@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
-  criarRepoCadastroMemoria, definirContaPadrao, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
+  criarRepoCadastro, criarRepoCadastroMemoria, definirContaPadrao, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
   lerPlanilhaDoPlano, linhasDoTexto, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
   type PlanoDeContas,
 } from '.';
@@ -157,6 +157,24 @@ describe('plano de contas', () => {
     const c = definirContaPadrao(vazio(), 'juros', '97304', PLANO, 'V', AGORA);
     const m = compararPlanos(PLANO, [{ codigo: '10503', nome: 'SICOOB S/A', ordem: 0 }, { codigo: '5', nome: 'NOVA', ordem: 1 }], c);
     expect(m).toEqual({ novas: 1, saem: 2, renomeadas: 1, usadasQueSaem: ['97304 (Juros recebidos)'] });
+  });
+});
+
+describe('repositório sem acesso ao banco', () => {
+  it('conta como carregado, vazio, indisponível e nunca grava', async () => {
+    const gravados: string[] = [];
+    const negado = (_id: string, _ok: unknown, falhou: (e: Error) => void) => { queueMicrotask(() => falhou(new Error('Missing or insufficient permissions.'))); return () => {}; };
+    const avisos: string[] = [];
+    const repo = criarRepoCadastro({ ouvirCadastro: negado, ouvirPlano: negado, gravar: async id => { gravados.push(id); } }, false);
+    repo.definirAviso(m => avisos.push(m));
+    repo.cadastro('FITO', 292);
+    await Promise.resolve();
+    expect(repo.carregada('FITO')).toBe(true);
+    expect(repo.disponivel('FITO')).toBe(false);
+    expect(repo.cadastro('FITO', 292).bancos).toBeNull();
+    repo.salvar('FITO', confirmarPontoDePartida(repo.cadastro('FITO', 292), pontoDePartida(292), 'V', AGORA));
+    expect(gravados).toEqual([]);
+    expect(avisos).toHaveLength(1);
   });
 });
 

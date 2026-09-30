@@ -8,7 +8,7 @@
 // O repositório e a sessão são criados uma vez, quando alguém abre a Tarefas. O do Cadastro, quando alguém abre o Cadastro.
 import { empresas, extrator, tarefas } from '@nads/core';
 import { criarSessaoEntregas, type SessaoEntregas } from './entregas.firestore';
-import { conferenciaNoBanco, portaCadastroFirestore } from './cadastro.firestore';
+import { balanceteNoEntregas, conferenciaNoBanco, portaCadastroFirestore } from './cadastro.firestore';
 import { criarRepoTarefasFirestore, extratorNoBanco, type RepoTarefasFirestore } from './tarefas.firestore';
 
 export const noBanco = import.meta.env.VITE_FONTE === 'banco';
@@ -43,7 +43,7 @@ export async function extratorDaEmpresa(nome: string): Promise<extrator.EmpresaE
 let cadastro: empresas.cadastro.RepoCadastro | null = null;
 
 /**
- * O Cadastro (contas bancárias, plano de contas, contas padrão): no banco, a coleção `cadastro`
+ * O Cadastro (contas bancárias, plano de contas, contas padrão): no banco, a coleção `cadastro` do Entregas
  * (ver cadastro.firestore.ts); nos exemplos, neste navegador.
  */
 export function repoDoCadastro(): empresas.cadastro.RepoCadastro {
@@ -58,4 +58,9 @@ export function repoDoCadastro(): empresas.cadastro.RepoCadastro {
 /** O documento da empresa na Conferência (para montar o plano pelo balancete). Nos exemplos, não há. */
 export async function conferenciaDaEmpresa(nome: string): Promise<Record<string, unknown> | null> {
   return noBanco ? conferenciaNoBanco(nome) : null;
+}
+
+/** O balancete de Clientes › Balancetes do Entregas (para montar o plano). Nos exemplos, não há. */
+export async function balanceteDoEntregas(codigo: number | null): Promise<Record<string, unknown> | null> {
+  return noBanco && codigo != null ? balanceteNoEntregas(codigo) : null;
 }

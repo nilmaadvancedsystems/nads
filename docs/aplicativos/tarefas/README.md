@@ -78,7 +78,7 @@ lembra as últimas abertas). Código: `apps/web/src/aplicativos/tarefas/telas/ca
 | Página | O que faz |
 |---|---|
 | **Contas bancárias** | incluir, editar, encerrar (última competência), reabrir e excluir. Cada conta: banco (logo), agência, conta, tipo, apelido, conta contábil (conferida contra o plano) e a primeira competência |
-| **Plano de contas** | importar do Alterdata (planilha do plano ou o balancete, xls/xlsx/csv/txt) ou montar pelo balancete que a Conferência guardou (só as contas com saldo). Antes de trocar, mostra o que muda e avisa as contas usadas no cadastro que somem |
+| **Plano de contas** | importar do Alterdata (planilha do plano ou o balancete, xls/xlsx/csv/txt) ou montar pelo balancete que o Entregas (Clientes › Balancetes) ou a Conferência guardou (só as contas com saldo). Antes de trocar, mostra o que muda e avisa as contas usadas no cadastro que somem |
 | **Contas padrão** | as do layout do Creditor: conta do banco da liquidação, juros, descontos e os três históricos. Vazio = o Creditor decide |
 | **Histórico** | o que mudou, quem e quando (os 200 mais novos) |
 
@@ -92,6 +92,9 @@ provisória de `empresas/bancos.ts` e os bancos adicionados no Extrator), e a te
 conta, o id não muda (os arquivos importados no Extrator ficam presos a ele). Arquivo da linha genérica
 "Banco" vai para o primeiro banco do cadastro.
 
-Banco (Firestore da Conferência, coleção nova, regras abertas, nenhuma regra mudou):
+Banco: o Firestore do **Entregas** (entregas-2e5e2), com o login de lá (o mesmo da Tarefas), coleção `cadastro`
+com regra própria no `firestore.rules` do Entregas (quem é da equipe lê e grava; só admin apaga). No Extratudo, o
+Cadastro usa o login do Entregas do Drive; sem ele (ou dentro da página do Entregas, que fala pela ponte) a leitura
+é negada e as ferramentas seguem como antes, sem gravar nada no cadastro:
 - `cadastro/{slug}`: `{ nome, codigo, bancos?, contasPadrao?, historico, atualizadoEm }` (campo ausente = nunca cadastrado);
 - `cadastro/{slug}/plano/atual`: `{ contas: [{ codigo, nome, classificacao?, grupo?, sintetica?, ordem }], origem, arquivo?, importadoEm, por? }`.

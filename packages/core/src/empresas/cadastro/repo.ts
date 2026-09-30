@@ -28,6 +28,11 @@ export interface RepoCadastro {
   obter(nome: string, codigo: number | null): Promise<CadastroDaEmpresa>;
   /** o cadastro e o plano já chegaram? (antes disso, nada é gravado) */
   carregada(nome: string): boolean;
+  /**
+   * false = não deu para ler (por exemplo, sem o login do Entregas): conta como carregada, mas vazia, e
+   * nunca grava. Quem usa o cadastro segue com o que tinha antes.
+   */
+  disponivel(nome: string): boolean;
   salvar(nome: string, c: CadastroDaEmpresa): void;
   /** troca o plano (e grava o cadastro junto, com o registro no histórico) */
   salvarPlano(nome: string, p: PlanoDeContas, c: CadastroDaEmpresa): void;
@@ -43,6 +48,8 @@ interface Carga {
   cadastroChegou: boolean;
   plano: PlanoDeContas | null;
   planoChegou: boolean;
+  /** a leitura falhou: vazio e sem gravar */
+  falhou: boolean;
 }
 
 export function criarRepoCadastro(porta: PortaCadastro, exemplos: boolean): RepoCadastro {
@@ -58,10 +65,18 @@ export function criarRepoCadastro(porta: PortaCadastro, exemplos: boolean): Repo
       if (pronta.codigo == null && codigo != null) pronta.codigo = codigo;
       return pronta;
     }
-    const c: Carga = { codigo, cadastro: cadastroVazio(nome, codigo), cadastroChegou: false, plano: null, planoChegou: false };
+    const c: Carga = { codigo, cadastro: cadastroVazio(nome, codigo), cadastroChegou: false, plano: null, planoChegou: false, falhou: false };
     cargas.set(nome, c);
     const id = slug(nome);
-    const falhou = (err: Error) => avisar('Não consegui ler o cadastro de "' + nome + '" na nuvem: ' + err.message);
+    const falhou = (err: Error) => {
+      const antes = c.falhou;
+      c.falhou = true;
+      c.cadastroChegou = true;
+      c.planoChegou = true;
+      mudou();
+      // sem permissão (sem o login do Entregas) não é erro: o aplicativo segue como antes
+      if (!antes && !/permission|insufficient/i.test(err.message)) avisar('Não consegui ler o cadastro de "' + nome + '" na nuvem: ' + err.message);
+    };
     porta.ouvirCadastro(id, doc => {
       c.cadastro = cadastroDoDocumento(nome, c.codigo, doc);
       c.cadastroChegou = true;
@@ -80,6 +95,7 @@ export function criarRepoCadastro(porta: PortaCadastro, exemplos: boolean): Repo
   function gravar(nome: string, c: CadastroDaEmpresa, p?: PlanoDeContas) {
     const carga = carregar(nome);
     if (!chegou(carga)) return; // antes de a empresa chegar do banco, nunca grava
+    if (carga.falhou) { avisar('O cadastro de "' + nome + '" não está disponível (entre com a conta do Entregas).'); return; }
     carga.cadastro = { ...c, codigo: c.codigo ?? carga.codigo };
     if (p) carga.plano = p;
     mudou(); // a tela já vê a mudança; o banco confirma pelo ouvinte
@@ -100,6 +116,7 @@ export function criarRepoCadastro(porta: PortaCadastro, exemplos: boolean): Repo
       });
     },
     carregada: nome => chegou(carregar(nome)),
+    disponivel: nome => !carregar(nome).falhou,
     salvar: (nome, c) => gravar(nome, c),
     salvarPlano: (nome, p, c) => gravar(nome, c, p),
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },

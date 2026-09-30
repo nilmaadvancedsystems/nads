@@ -39,7 +39,8 @@ export function PlanoDeContas({ rota }: { rota: string }) {
         <MenuSuspenso icone="upload" rotulo={vm.plano ? 'Trocar plano' : 'Importar plano'} className={vm.plano ? 'btn btn-outline' : 'btn btn-primary'} direita largura={340}
           itens={[
             { rotulo: 'Planilha do Alterdata…', icone: 'fileUp', dica: 'plano ou balancete', onClick: escolherArquivo },
-            { rotulo: 'Balancete da Conferência', icone: 'relatorio', dica: 'só as contas com saldo', onClick: () => void vm.usarBalancete() },
+            { rotulo: 'Balancete do Entregas', icone: 'relatorio', dica: 'Clientes › Balancetes', onClick: () => void vm.usarBalancete('entregas') },
+            { rotulo: 'Balancete da Conferência', icone: 'relatorio', dica: 'o último do Concilia aí', onClick: () => void vm.usarBalancete('conferencia') },
           ]} />
       </div>
 
@@ -51,7 +52,8 @@ export function PlanoDeContas({ rota }: { rota: string }) {
             <p>Exporte o plano de contas do Alterdata em Excel e importe aqui. O Creditor passa a usar este plano para achar as contas.</p>
             <p className="cad-botoes">
               <button type="button" className="btn btn-primary" onClick={escolherArquivo}><Icone nome="fileUp" />Escolher a planilha</button>
-              <button type="button" className="btn btn-outline" onClick={() => void vm.usarBalancete()}>Usar o balancete da Conferência</button>
+              <button type="button" className="btn btn-outline" onClick={() => void vm.usarBalancete('entregas')}>Usar o balancete do Entregas</button>
+              <button type="button" className="btn btn-outline" onClick={() => void vm.usarBalancete('conferencia')}>Usar o balancete da Conferência</button>
             </p>
           </div>
         )

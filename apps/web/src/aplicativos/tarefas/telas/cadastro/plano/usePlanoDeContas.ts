@@ -1,10 +1,10 @@
 // ViewModel do plano de contas da empresa: importar do Alterdata (a planilha do plano, ou o balancete) ou
-// montar pelo balancete que a Conferência guardou; antes de trocar, mostra o que muda (e as contas usadas no
+// montar pelo balancete que o Entregas (Clientes › Balancetes) ou a Conferência guardou; antes de trocar, mostra o que muda (e as contas usadas no
 // cadastro que somem) e pede a confirmação. A lista: busca por código, classificação ou nome, e grupo.
 import { empresas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
-import { conferenciaDaEmpresa } from '../../../dados/fonte';
+import { balanceteDoEntregas, conferenciaDaEmpresa } from '../../../dados/fonte';
 import { useCadastroAberto } from '../useCadastroAberto';
 
 const cad = empresas.cadastro;
@@ -45,12 +45,13 @@ export function usePlanoDeContas(rota: string) {
   const resumo = cad.resumoDoPlano(contas);
 
   /** Mostra o que muda e troca o plano, se a pessoa confirmar. */
-  async function trocar(novas: empresas.cadastro.ContaDoPlano[], origem: 'arquivo' | 'balancete', arquivo?: string) {
+  async function trocar(novas: empresas.cadastro.ContaDoPlano[], origem: 'arquivo' | 'balancete', arquivo?: string, deOnde = 'da Conferência') {
+    if (novas.length > cad.MAX_CONTAS_NO_PLANO) { toast('O plano tem ' + n(novas.length) + ' contas; o limite é ' + n(cad.MAX_CONTAS_NO_PLANO) + '.'); return; }
     const r = cad.resumoDoPlano(novas);
     const m = cad.compararPlanos(c.plano, novas, c.cadastro);
     const partes = ['<b>' + n(r.total) + '</b> contas (' + n(r.analiticas) + ' recebem lançamento).'];
     if (c.plano) partes.push('Em relação ao plano atual: <b>' + n(m.novas) + '</b> novas, <b>' + n(m.saem) + '</b> saem e <b>' + n(m.renomeadas) + '</b> mudam de nome.');
-    if (origem === 'balancete') partes.push('O balancete só traz as contas <b>com saldo</b>: o plano completo vem da planilha do plano de contas.');
+    if (origem === 'balancete') partes.push('Do balancete ' + deOnde + '. O balancete só traz as contas <b>com saldo</b>: o plano completo vem da planilha do plano de contas.');
     if (m.usadasQueSaem.length) partes.push('<b>Atenção:</b> estas contas usadas no cadastro não estão no plano novo: ' + m.usadasQueSaem.map(escapar).join(', ') + '.');
     const ok = await modal<boolean>({
       icone: 'upload', titulo: c.plano ? 'Trocar o plano de contas?' : 'Importar o plano de contas?', html: partes.join('<br><br>'),
@@ -77,13 +78,16 @@ export function usePlanoDeContas(rota: string) {
     }
   }
 
-  async function usarBalancete() {
+  /** O plano pelo balancete que o Entregas (Clientes › Balancetes) ou a Conferência guardou (só leitura). */
+  async function usarBalancete(de: 'entregas' | 'conferencia') {
     if (lendo) return;
     setLendo(true);
+    const nome = de === 'entregas' ? 'do Entregas (Clientes › Balancetes)' : 'da Conferência';
     try {
-      const contasDoBalancete = cad.planoDoBalancete(await conferenciaDaEmpresa(c.empresa.nome));
-      if (!contasDoBalancete.length) { toast(c.exemplos ? 'Nos dados de exemplo não há balancete da Conferência.' : 'A Conferência não tem balancete desta empresa.'); return; }
-      await trocar(contasDoBalancete, 'balancete');
+      const doc = de === 'entregas' ? await balanceteDoEntregas(c.empresa.codigo) : await conferenciaDaEmpresa(c.empresa.nome);
+      const contasDoBalancete = cad.planoDoBalancete(doc);
+      if (!contasDoBalancete.length) { toast(c.exemplos ? 'Nos dados de exemplo não há esse balancete.' : 'Não há balancete ' + nome + ' desta empresa.'); return; }
+      await trocar(contasDoBalancete, 'balancete', undefined, nome);
     } catch (err) {
       toast('Não consegui ler o balancete na nuvem: ' + (err as Error).message);
     } finally {
@@ -105,7 +109,7 @@ export function usePlanoDeContas(rota: string) {
     importarArquivo,
     usarBalancete,
     /** "de plano.xls em 30/09/2026 por Vitor" */
-    origem: c.plano ? (c.plano.origem === 'balancete' ? 'do balancete da Conferência' : 'de ' + (c.plano.arquivo || 'um arquivo'))
+    origem: c.plano ? (c.plano.origem === 'balancete' ? 'de um balancete' : 'de ' + (c.plano.arquivo || 'um arquivo'))
       + (c.plano.importadoEm ? ' em ' + new Date(c.plano.importadoEm).toLocaleDateString('pt-BR') : '') + (c.plano.por ? ' por ' + c.plano.por : '') : '',
   };
 }

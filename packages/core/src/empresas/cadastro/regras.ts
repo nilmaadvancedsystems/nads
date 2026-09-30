@@ -11,6 +11,9 @@ import type {
 
 /** Quantos registros do histórico ficam guardados (os mais novos). */
 export const MAX_HISTORICO = 200;
+/** Os limites da regra do banco (firestore.rules do Entregas, coleção `cadastro`). */
+export const MAX_BANCOS = 60;
+export const MAX_CONTAS_NO_PLANO = 5000;
 
 export const CAMPOS_CONTA_PADRAO: readonly CampoContaPadrao[] = ['banco', 'juros', 'desconto', 'histPrincipal', 'histJuros', 'histDesconto'];
 export const CONTAS_PADRAO_DO_PLANO: readonly ContaPadraoDoPlano[] = ['banco', 'juros', 'desconto'];
@@ -200,6 +203,7 @@ export function salvarConta(c: CadastroDaEmpresa, id: string | null, d: DadosDaC
   if (d.desde) nova.desde = d.desde;
   if (antes?.ate) nova.ate = antes.ate;
   const lista = antes ? bancos.map(b => (b.id === novoId ? nova : b)) : [...bancos, nova];
+  if (lista.length > MAX_BANCOS) return { cadastro: c, erro: 'São no máximo ' + MAX_BANCOS + ' contas por empresa.' };
   return { cadastro: registrar({ ...c, bancos: lista }, por, agora, antes ? 'Editou conta' : 'Incluiu conta', descreverConta(nova)), erro: null };
 }
 
