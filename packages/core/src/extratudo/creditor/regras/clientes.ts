@@ -31,28 +31,64 @@ export function contasDeClientes(b: BalanceteDaEmpresa): ContaDoBalancete[] {
 const PALAVRAS_VAZIAS = new Set(['ltda', 'me', 'epp', 'eireli', 'sa', 's', 'a', 'de', 'da', 'do', 'das', 'dos', 'e', 'cia']);
 const semVazias = (n: string) => nomeNorm(n).split(' ').filter(p => p && !PALAVRAS_VAZIAS.has(p)).join(' ');
 
-/** Mesmo nome? Um contém o outro (o banco corta o nome do sacado e acrescenta "-TAI1"), com 6+ letras. */
+const palavrasDoNome = (n: string) => semVazias(n).split(' ').filter(Boolean);
+/** "TAI1", "PA3", "AL2": código de filial que o banco e o plano põem no fim do nome */
+const ehFilial = (p: string) => /^[a-z]{1,4}\d{1,2}$/.test(p);
+/** Mesma palavra, ou uma é o começo da outra (o banco corta: "TAIOB" = "TAIOBEIRAS", "PA" = "PALM"). */
+const mesmaPalavra = (a: string, b: string) => a === b || (!ehFilial(a) && !ehFilial(b) && Math.min(a.length, b.length) >= 2 && (a.startsWith(b) || b.startsWith(a)));
+
+/**
+ * Quanto o nome do sacado parece o nome da conta (0 a 1): as palavras que batem sobre as do nome mais
+ * comprido. Antes bastava um nome conter o outro, e a conta "SUPERMERCADO A E E" batia com todo
+ * supermercado (292, 2026-09-29). Filial diferente ("-TAI1" × "PA3") não é o mesmo cliente: 0.
+ */
+export function semelhancaDeNome(sacado: string, conta: string): number {
+  let a = palavrasDoNome(sacado), b = palavrasDoNome(conta);
+  const fa = a.filter(ehFilial), fb = b.filter(ehFilial);
+  if (fa.length && fb.length && !fa.some(x => fb.includes(x))) return 0;
+  // só um lado diz a filial: ela não conta ("ARAUJO E SA LTDA -TAI1" = "ARAUJO E SA LTDA")
+  if (!fa.length || !fb.length) { a = a.filter(p => !ehFilial(p)); b = b.filter(p => !ehFilial(p)); }
+  if (!a.length || !b.length) return 0;
+  const livres = [...b];
+  let bate = 0;
+  for (const p of a) {
+    const i = livres.findIndex(q => mesmaPalavra(p, q));
+    if (i >= 0) { bate++; livres.splice(i, 1); }
+  }
+  return bate / Math.max(a.length, b.length);
+}
+
+/** Parecido o bastante para ser o mesmo cliente. */
+export const SEMELHANCA_MINIMA = 0.6;
 export function mesmoNomeDeCliente(sacado: string, conta: string): boolean {
-  const x = semVazias(sacado.replace(/\s-\s?[a-z0-9]{2,4}$/i, '')), y = semVazias(conta);
-  if (x.length < 6 || y.length < 6) return false;
-  return x.includes(y) || y.includes(x);
+  return semelhancaDeNome(sacado, conta) >= SEMELHANCA_MINIMA;
 }
 
 export function cruzarPeloBalancete(titulos: Titulo[], clientes: readonly ContaDoBalancete[], aprendidos: ClientesAprendidos): Cruzamento[] {
   return titulos.map((t): Cruzamento => {
     const base = { tituloId: t.id, valorBanco: t.valor, valorSistema: null };
     const linha = (contrapartida: string, cliente: string) => ({ linha: 0, nf: t.nf, cliente, contrapartida, historico: '', valor: t.valor });
+    // a conta mais parecida vence; empate no topo (o mesmo nome em mais de uma conta) pergunta
+    const notas = clientes.map(c => ({ c, n: semelhancaDeNome(t.sacado, c.nome) })).filter(x => x.n >= SEMELHANCA_MINIMA);
+    const topo = Math.max(0, ...notas.map(x => x.n));
+    const parecidas = notas.filter(x => x.n === topo).map(x => x.c);
+    const codigos = [...new Set(parecidas.map(c => c.codigo))];
     const aprendida = contaAprendida(aprendidos, t.sacado);
+    // Cliente com várias filiais de nome igual (no 292: MEDEIROS E MOURA em 4 contas): a conta
+    // aprendida é guardada pelo nome, então não decide sozinha — vira a sugestão.
+    if (codigos.length > 1) {
+      const sugestao = aprendida && codigos.includes(aprendida.conta) ? ' Da última vez: ' + aprendida.conta + '.' : '';
+      return {
+        ...base, situacao: 'nao-encontrada', linha: null,
+        nota: 'O cliente tem ' + codigos.length + ' contas com esse nome no balancete (uma por filial). Escolha a desta NF.' + sugestao,
+        opcoes: parecidas.map(c => ({ codigo: c.codigo, nome: c.nome })),
+      };
+    }
     if (aprendida) {
       const doBalancete = clientes.find(c => c.codigo === aprendida.conta);
       return { ...base, situacao: 'ok', linha: linha(aprendida.conta, doBalancete?.nome || aprendida.nome), nota: 'Conta aprendida do cliente.', aprendida: true };
     }
-    const parecidas = clientes.filter(c => mesmoNomeDeCliente(t.sacado, c.nome));
-    const codigos = [...new Set(parecidas.map(c => c.codigo))];
-    if (codigos.length === 1) return { ...base, situacao: 'ok', linha: linha(parecidas[0].codigo, parecidas[0].nome), nota: '' };
-    const nota = codigos.length > 1
-      ? 'Mais de uma conta parecida no balancete: ' + parecidas.map(c => c.codigo + ' ' + c.nome).join(' · ') + '. Informe a conta.'
-      : 'Cliente sem conta no balancete. Informe a conta (fica aprendida).';
-    return { ...base, situacao: 'nao-encontrada', linha: null, nota };
+    if (codigos.length === 1) return { ...base, situacao: 'ok', linha: linha(parecidas[0].codigo, parecidas[0].nome), nota: topo < 1 ? 'Pelo nome parecido: ' + parecidas[0].nome + '.' : '' };
+    return { ...base, situacao: 'nao-encontrada', linha: null, nota: 'Cliente sem conta com esse nome no balancete. Informe a conta (fica aprendida).' };
   });
 }

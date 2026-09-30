@@ -1,6 +1,6 @@
 // Etapa 1 do Creditor: a competência. Ao abrir, o relatório de liquidação vem da pasta da empresa no
 // Drive (pelo Entregas); sem o Drive, segue para anexar à mão.
-import { Alerta, Icone } from '@nads/ui';
+import { Alerta, Icone, SeletorMes } from '@nads/ui';
 import { useCompetencia } from './useCompetencia';
 
 export function Competencia() {
@@ -13,7 +13,7 @@ export function Competencia() {
         <div className="form-grid">
           <div className="field">
             <label htmlFor="fCompetencia">Mês da conciliação</label>
-            <input type="month" id="fCompetencia" value={vm.mes} onChange={e => vm.setMes(e.target.value)} />
+            <SeletorMes id="fCompetencia" rotulo="Mês da conciliação" valor={vm.mes} onMudar={vm.setMes} max={vm.maximo} />
           </div>
         </div>
         <p className="hint">{vm.valida ? 'Conciliação de ' + vm.porExtenso + '. ' : ''}O relatório de liquidação é buscado em <b>{vm.caminho}</b>.</p>

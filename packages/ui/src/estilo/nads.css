@@ -118,6 +118,18 @@ a{color:var(--accent);}
 .popover-item:hover{background:var(--hover-bg);}
 .popover-item.perigo,.popover-item.perigo svg{color:var(--destructive);}
 .popover-item.perigo:hover{background:var(--destructive-soft);}
+/* ---------------------------------- seletor de mês ---------------------------------- */
+.seletor-mes{display:inline-flex;align-items:center;gap:4px;}
+.seletor-mes-passo{padding:5px 8px;}
+.seletor-mes-atual{min-width:190px;justify-content:flex-start;}
+.seletor-mes-atual span{flex:1;text-align:left;font-weight:600;}
+.seletor-mes-pop{top:calc(100% + 4px);left:36px;width:260px;}
+.seletor-mes-ano{display:flex;align-items:center;justify-content:space-between;padding:0 0 8px;margin-bottom:8px;border-bottom:1px solid var(--border);}
+.seletor-mes-grade{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;}
+.seletor-mes-item{appearance:none;border:1px solid transparent;background:none;color:var(--ink);border-radius:6px;min-height:36px;font-size:14px;cursor:pointer;}
+.seletor-mes-item:hover:not(:disabled){background:var(--hover-bg);}
+.seletor-mes-item.active{background:var(--btn-primary);border-color:var(--btn-primary-border);color:#FFFFFF;font-weight:600;}
+.seletor-mes-item:disabled{opacity:.4;cursor:not-allowed;}
 #gearPop .hint{border-top:1px solid var(--border);margin:8px -8px 0 !important;padding:8px 8px 0;}
 
 /* ---------------------------------- login (tela de entrada do GitHub) ---------------------------------- */

@@ -136,6 +136,67 @@ export function CampoData({ valor, onMudar, rotulo, id, onEnter }: { valor: stri
   );
 }
 
+const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+/**
+ * Escolha de mês ("AAAA-MM"), no lugar do <input type="month"> do navegador (que no tema escuro fica
+ * cinza e sem jeito): ‹ e › andam um mês; o meio mostra "Agosto de 2026" e abre a grade dos 12 meses,
+ * com o ano ao lado. Mês depois de `max` fica travado.
+ */
+export function SeletorMes({ valor, onMudar, id, rotulo, max }: { valor: string; onMudar: (v: string) => void; id?: string; rotulo: string; max?: string }) {
+  const [aberto, setAberto] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const m = /^(\d{4})-(\d{2})$/.exec(valor);
+  const ano = m ? Number(m[1]) : new Date().getFullYear();
+  const mes = m ? Number(m[2]) : new Date().getMonth() + 1;
+  const [anoGrade, setAnoGrade] = useState(ano);
+  const chave = (a: number, n: number) => a + '-' + String(n).padStart(2, '0');
+  const passou = (v: string) => !!max && v > max;
+  const somar = (d: number) => { const t = ano * 12 + (mes - 1) + d; return chave(Math.floor(t / 12), (t % 12) + 1); };
+  useEffect(() => {
+    if (!aberto) return;
+    const fora = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setAberto(false); };
+    document.addEventListener('mousedown', fora);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', fora); document.removeEventListener('keydown', esc); };
+  }, [aberto]);
+  return (
+    <div className="seletor-mes popover-wrap" ref={ref}>
+      <button type="button" className="btn btn-outline seletor-mes-passo" aria-label="Mês anterior" title="Mês anterior" onClick={() => onMudar(somar(-1))}>
+        <Icone nome="chevronLeft" />
+      </button>
+      <button type="button" id={id} className="btn btn-outline seletor-mes-atual" aria-label={rotulo + ': ' + MESES[mes - 1] + ' de ' + ano} aria-haspopup="dialog" aria-expanded={aberto}
+        onClick={() => { setAnoGrade(ano); setAberto(a => !a); }}>
+        <Icone nome="calendar" /><span>{MESES[mes - 1]} de {ano}</span><Icone nome="caretDown" className="menu-seta" />
+      </button>
+      <button type="button" className="btn btn-outline seletor-mes-passo" aria-label="Próximo mês" title="Próximo mês" disabled={passou(somar(1))} onClick={() => onMudar(somar(1))}>
+        <Icone nome="chevronRight" />
+      </button>
+      {aberto && (
+        <div className="popover seletor-mes-pop" role="dialog" aria-label={rotulo}>
+          <div className="seletor-mes-ano">
+            <button type="button" className="btn btn-ghost btn-sm" aria-label="Ano anterior" onClick={() => setAnoGrade(a => a - 1)}><Icone nome="chevronLeft" /></button>
+            <b>{anoGrade}</b>
+            <button type="button" className="btn btn-ghost btn-sm" aria-label="Próximo ano" disabled={passou(chave(anoGrade + 1, 1))} onClick={() => setAnoGrade(a => a + 1)}><Icone nome="chevronRight" /></button>
+          </div>
+          <div className="seletor-mes-grade">
+            {MESES.map((nome, i) => {
+              const v = chave(anoGrade, i + 1);
+              return (
+                <button key={nome} type="button" className={'seletor-mes-item' + (v === valor ? ' active' : '')} aria-pressed={v === valor} disabled={passou(v)}
+                  onClick={() => { onMudar(v); setAberto(false); }}>
+                  {nome.slice(0, 3)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Estado local que volta ao valor inicial quando a chave muda (ex.: trocar de empresa). */
 export function useEstadoPorChave<T>(chave: string, inicial: T): [T, (v: T | ((a: T) => T)) => void] {
   const [estado, setEstado] = useState<{ chave: string; v: T }>({ chave, v: inicial });

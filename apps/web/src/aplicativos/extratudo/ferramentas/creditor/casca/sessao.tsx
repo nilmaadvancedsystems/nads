@@ -5,9 +5,9 @@
 // Também mora aqui a trava das etapas: uma etapa só abre quando a anterior está resolvida.
 import { creditor as cr } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
-import { useContasDaEmpresa } from '../dados/repo';
+import { useContasDaEmpresa, useDrive } from '../dados/repo';
 import { caminhoDaEtapa, ETAPAS, indiceDaEtapa, type Etapa, type IdEtapa } from './navegacao';
 
 export interface Estado {
@@ -118,7 +118,18 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
   const { toast } = useRetorno();
   const [estado, setEstado] = useState<Estado>(INICIAL);
   const daEmpresa = useContasDaEmpresa(empresa.nome);
-  const { balancete, config, clientes, salvar, salvarClientes } = daEmpresa;
+  const { config, clientes, salvar, salvarClientes } = daEmpresa;
+  // Acoplado no Entregas: o balancete subido lá (Clientes e ajustes → Balancetes) vale por cima do da
+  // Conferência — é o que o escritório está usando por enquanto (2026-09-29).
+  const { drive, acesso } = useDrive();
+  const [doEntregas, setDoEntregas] = useState<cr.BalanceteDaEmpresa | null>(null);
+  useEffect(() => {
+    if (!acesso.entrou || !drive.balanceteDoEntregas || empresa.codigo == null) return;
+    let vivo = true;
+    drive.balanceteDoEntregas(empresa.codigo).then(b => { if (vivo) setDoEntregas(b); }).catch(() => { /* sem balancete lá: fica o da Conferência */ });
+    return () => { vivo = false; };
+  }, [drive, acesso.entrou, empresa.codigo]);
+  const balancete = doEntregas || daEmpresa.balancete;
   const resolvidas = useMemo(() => cr.resolverContas(balancete, config), [balancete, config]);
   const contasClientes = useMemo(() => cr.contasDeClientes(balancete), [balancete]);
   const d = useMemo(() => derivar(estado, resolvidas.contas, clientes, contasClientes), [estado, resolvidas, clientes, contasClientes]);

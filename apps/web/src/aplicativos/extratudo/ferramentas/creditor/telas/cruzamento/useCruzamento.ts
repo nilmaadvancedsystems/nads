@@ -33,6 +33,8 @@ export function useCruzamento() {
       situacao: c.situacao, rotulo: ROTULO_SITUACAO[c.situacao], nota: c.nota,
       precisa, resolvida: precisa && cr.decisaoValida(c, decisao), decisao, aprendida: !!c.aprendida,
       historicoPadrao: cr.historicoNfCliente(t),
+      /** filiais de nome igual: as contas para escolher com um clique */
+      opcoes: c.opcoes || [],
     };
   });
 
