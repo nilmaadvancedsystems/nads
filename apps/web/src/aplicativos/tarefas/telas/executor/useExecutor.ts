@@ -26,6 +26,13 @@ const BASES: Record<t.FerramentaDaEtapa['app'], string> = {
   'concilia-ai': 'https://nads-nilma.web.app',
 };
 
+/**
+ * A conferência automática do "Próximo" (extrato e razão importados…). DESLIGADA por enquanto (Vitor, 30/09/2026:
+ * "libera pra mim, depois bloqueio de novo"): o Próximo marca a etapa como feita sem conferir. Para bloquear de
+ * novo, volte para true.
+ */
+const CONFERIR_NO_PROXIMO = false;
+
 export function useExecutor(rotaEmpresa: string, periodo: string) {
   const repo = useRepo();
   const navegar = useNavigate();
@@ -111,6 +118,16 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     if (!ex || !etapa || conferindo) return;
     setConferindo(true);
     try {
+      if (!CONFERIR_NO_PROXIMO) {
+        // liberado: marca feita em cada mês que falta, sem conferir
+        for (const c of alvos) {
+          const fz = t.fazer(exDe[c], etapa.id, op.nome, new Date());
+          repo.gravar(fz.execucao, fz.evento);
+        }
+        setAviso(null);
+        toast(etapa.nome + ': feita' + (varios ? ' em ' + alvos.map(rotuloCurto).join(', ') : '') + '.');
+        return;
+      }
       const ext = t.precisaDoExtrator(etapa) ? await extratorDaEmpresa(ex.empresa) : null;
       // os bancos da empresa na competência: os do Cadastro, quando ela tem; senão, os de antes
       const cad = ext ? await repoDoCadastro().obter(ex.empresa, ex.codigo) : null;
