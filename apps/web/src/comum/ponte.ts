@@ -47,11 +47,12 @@ export function usePonteDaTarefa(competencia?: string) {
   // sem competência (ou mês que a Tarefas não mandou): o primeiro que veio
   const mes = competencia && porMes[competencia] ? competencia : Object.keys(porMes)[0] || competencia || '';
   const semMovimento = porMes[mes] || [];
-  const marcarSemMovimento = useCallback((banco: string, marcado: boolean) => {
+  const marcarSemMovimento = useCallback((banco: string, marcado: boolean, noMes?: string) => {
     if (!pai) return;
+    const m = noMes || mes;
     // já mostra; a Tarefas confirma
-    setPorMes(v => ({ ...v, [mes]: marcado ? [...(v[mes] || []).filter(b => b !== banco), banco] : (v[mes] || []).filter(b => b !== banco) }));
-    const msg: ParaTarefa = { nads: 'sem-movimento', banco, marcado, ...(mes ? { competencia: mes } : {}) };
+    setPorMes(v => ({ ...v, [m]: marcado ? [...(v[m] || []).filter(b => b !== banco), banco] : (v[m] || []).filter(b => b !== banco) }));
+    const msg: ParaTarefa = { nads: 'sem-movimento', banco, marcado, ...(m ? { competencia: m } : {}) };
     window.parent.postMessage(msg, pai);
   }, [pai, mes]);
   /** O seletor de competência da ferramenta: dentro da Tarefas, quem troca é ela (a etapa da outra competência ou do período). */
