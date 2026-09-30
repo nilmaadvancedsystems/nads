@@ -1752,3 +1752,7 @@ td.gmail-erro{color:var(--danger);}
 .gmail-todos input[type="checkbox"]{width:16px;height:16px;}
 .gmail-icone svg{width:16px;height:16px;}
 a.btn.gmail-icone,.gmail-de-acoes a.btn{text-decoration:none;}
+/* a caixa do mês é o clique (sem o botão do nome) */
+.imp-mes-celula{cursor:pointer;transition:background 80ms cubic-bezier(.65,0,.35,1),border-color 80ms cubic-bezier(.65,0,.35,1);}
+.imp-mes-celula:hover{background:var(--surface-2);border-color:var(--border-strong);}
+.imp-mes-celula .imp-mes-nome,.imp-mes-celula .imp-mes-nome:hover{background:none;cursor:inherit;}

@@ -190,8 +190,10 @@ function MesesDoBanco({ meses, competencia, travado, aceitarExtrato, aceitarRaza
     const doDrive = lado === 'banco' && info.doDrive.length > 0;
     const trava = travado || m.semMovimento;
     return (
-      <span key={m.mes} className={'imp-mes-celula' + (m.mes === competencia ? ' atual' : '') + (m.semMovimento ? ' sem-mov' : '')}>
-        <button type="button" className="imp-mes-nome" onClick={() => onMes(m.mes)} title={'Abrir ' + m.rotulo}>{m.rotulo}</button>
+      // a caixa toda do mês abre o mês (os ícones dentro dela fazem o deles)
+      <span key={m.mes} className={'imp-mes-celula' + (m.mes === competencia ? ' atual' : '') + (m.semMovimento ? ' sem-mov' : '')}
+        onClick={() => onMes(m.mes)} title={'Abrir ' + m.rotulo}>
+        <span className="imp-mes-nome">{m.rotulo}</span>
         <span className="imp-mes-icones">
         {m.semMovimento ? (
           <button type="button" className="imp-mes-sem" disabled={travado || !naTarefa} onClick={() => onSemMovimento(m.mes, false)} title="Não teve movimento — clique para desfazer">s/ mov.</button>
