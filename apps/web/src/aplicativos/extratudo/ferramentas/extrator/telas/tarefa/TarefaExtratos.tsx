@@ -11,8 +11,8 @@
 // Ao importar, só uma barrinha por cima da tela, que some em 2,7 s. Embaixo, a conferência (com mais de um
 // banco, a do banco cujo nome foi clicado).
 import { extrator as x, type empresas } from '@nads/core';
-import { Icone, LogoBanco, LogoDrive, LogoGmail, LogoWhatsApp, MensagemFlutuante, MenuSuspenso, useCarregando } from '@nads/ui';
-import { useCallback, useId, useState } from 'react';
+import { Icone, LogoBanco, LogoDrive, LogoGmail, LogoWhatsApp, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, useCarregando } from '@nads/ui';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { usePonteDaTarefa } from '../../../../../../comum/ponte';
 import { useSessao } from '../../casca/sessao';
 import { Conferencia } from '../conferencia/Conferencia';
@@ -176,6 +176,8 @@ export function TarefaExtratos() {
   const s = useSessao();
   const ponte = usePonteDaTarefa();
   const d = useDriveDaLinha(vm, s.codigo);
+  // os logos do Pedir extrato (Gmail/WhatsApp) já vêm com a página: no clique, aparecem na hora
+  useEffect(preCarregarLogosDosApps, []);
   useCarregando(vm.ocupado || !!d.buscando || vm.bancos.some(b => b.extrato.lendo || b.razao.lendo));
   const [cxExtrato, cxRazao] = vm.caixas;
   const [abertas, setAbertas] = useState<string[]>([]);

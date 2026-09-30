@@ -175,6 +175,20 @@ export function LogoBanco({ banco, cor }: { banco: string; cor?: boolean }) {
   return <Icone nome="landmark" />;
 }
 
+/**
+ * Baixa antes os logos dos botões que só aparecem num menu (Pedir extrato → Gmail/WhatsApp) e o do Drive:
+ * a tela chama ao abrir, e no clique eles já estão prontos, sem atraso.
+ */
+export function preCarregarLogosDosApps() {
+  for (const m of ['gmail', 'whatsapp', 'drive']) {
+    const url = imagemDaMarca(m);
+    if (!url) continue;
+    const img = new Image();
+    img.src = url;
+    void img.decode().catch(() => undefined);
+  }
+}
+
 /** Gmail (o "M" do Google). */
 export function LogoGmail() {
   const imagem = imagemDaMarca('gmail');
