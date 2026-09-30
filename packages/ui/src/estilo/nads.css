@@ -1365,3 +1365,4 @@ html.na-etapa #app.embutida .content{padding-bottom:80px;}
 html.na-etapa .modal-overlay{top:var(--vista-topo,0px);bottom:auto;height:var(--vista-altura,100vh);}
 html.na-etapa .toast-region{bottom:auto;top:calc(var(--vista-topo,0px) + var(--vista-altura,100vh) - 16px);transform:translateY(-100%);}
 html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
+.imp-resumo{font-size:12px;white-space:nowrap;}

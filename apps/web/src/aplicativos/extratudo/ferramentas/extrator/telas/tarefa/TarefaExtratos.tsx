@@ -165,10 +165,10 @@ function Movimento({ m }: { m: x.MovimentoDoExtrato }) {
   );
 }
 
-function resumo(b: Vm['bancos'][number], semMovimento: boolean): string {
-  if (semMovimento) return 'Sem movimento nesta competência';
-  const parte = (nome: string, l: Lado) => (l.qtdArquivos ? nome + ' ' + l.qtdLancamentos + ' lanç.' : '');
-  return [parte('Extrato', b.extrato), parte('Razão', b.razao)].filter(Boolean).join(' · ') || 'Nada importado';
+/** O que já entrou do banco, à esquerda do Extrato: "Extrato: 12 lançamentos | Razão: 13 lançamentos" (só o que foi importado). */
+function resumo(b: Vm['bancos'][number]): string {
+  const parte = (nome: string, l: Lado) => (l.qtdArquivos ? nome + ': ' + l.qtdLancamentos + (l.qtdLancamentos === 1 ? ' lançamento' : ' lançamentos') : '');
+  return [parte('Extrato', b.extrato), parte('Razão', b.razao)].filter(Boolean).join(' | ');
 }
 
 export function TarefaExtratos() {
@@ -233,9 +233,9 @@ export function TarefaExtratos() {
                 <div className={'imp-txt' + (!umSo ? ' escolhe' : '') + (!umSo && conf?.id === b.id ? ' na-conferencia' : '')}
                   onClick={umSo ? undefined : () => setBancoConf(b.id)} title={umSo ? undefined : 'Ver a conferência deste banco'}>
                   <span><b>{b.nome}</b>{b.conta && <span className="imp-conta">{b.conta}</span>}</span>
-                  <span className="hint">{resumo(b, semMov)}</span>
                 </div>
                 <div className="imp-grupos">
+                  {!semMov && resumo(b) && <span className="hint imp-resumo">{resumo(b)}</span>}
                   <div className="imp-grupo" aria-label="Extrato do banco">
                     <span className="imp-rotulo">Extrato</span>
                     {buscando || b.extrato.lendo ? (
