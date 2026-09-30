@@ -42,25 +42,7 @@ export function JanelaPedirExtratos({ p }: { p: P }) {
             </div>
 
             <div className="pedir-campo">
-              <span className="pedir-rotulo">Documentos</span>
-              <div className="pedir-opcoes">
-                {p.documentos.map(d => (
-                  <label key={d.id} className="pedir-opcao pedir-doc">
-                    <input type="checkbox" checked={d.marcado} onChange={() => p.alternarDocumento(d.id)} />
-                    {d.banco && <span className="pedir-logo"><LogoBanco banco={d.banco} cor /></span>}
-                    <span className="pedir-doc-nome">{d.nome}</span>
-                    {d.jaTem && <span className="badge badge-ok pedir-tem">já tem</span>}
-                  </label>
-                ))}
-                <form className="pedir-outro" onSubmit={e => { e.preventDefault(); adicionar(); }}>
-                  <input type="text" placeholder="Outro documento (ex.: Relatórios da LJ)" value={outro} onChange={e => setOutro(e.target.value)} />
-                  <button type="submit" className="btn btn-outline btn-sm" disabled={!outro.trim()}><Icone nome="plus" />Adicionar</button>
-                </form>
-              </div>
-            </div>
-
-            <div className="pedir-campo">
-              <span className="pedir-rotulo">Competência</span>
+              <span className="pedir-rotulo">Competências</span>
               <div className="pedir-opcoes">
                 <label className="pedir-opcao"><input type="checkbox" checked disabled />{p.competencia.rotulo}</label>
                 <label className="pedir-opcao"><input type="checkbox" checked={p.mais} onChange={e => p.setMais(e.target.checked)} />Mais competências</label>
@@ -71,6 +53,41 @@ export function JanelaPedirExtratos({ p }: { p: P }) {
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+
+            <div className="pedir-campo">
+              <span className="pedir-rotulo">Documentos</span>
+              <div className="pedir-opcoes">
+                {p.documentos.map(d => p.variasCompetencias ? (
+                  // várias competências: o documento e uma caixinha por mês
+                  <div key={d.id} className="pedir-doc-varias">
+                    <span className="pedir-doc-titulo">
+                      {d.banco && <span className="pedir-logo"><LogoBanco banco={d.banco} cor /></span>}
+                      <span className="pedir-doc-nome">{d.nome}</span>
+                    </span>
+                    <span className="pedir-comps">
+                      {d.competencias.map(c => (
+                        <label key={c.valor} className={'pedir-comp' + (c.marcado ? ' marcado' : '') + (c.travado ? ' travado' : '')} title={c.travado ? 'Já está ' + (c.travado === 'importado' ? 'importado' : 'no Drive') + ': não precisa pedir' : undefined}>
+                          <input type="checkbox" checked={c.marcado} disabled={!!c.travado} onChange={() => p.alternarDocumento(d.id, c.valor)} />
+                          {c.rotulo}{c.travado && <span className="pedir-comp-tag">{c.travado}</span>}
+                        </label>
+                      ))}
+                    </span>
+                  </div>
+                ) : (
+                  <label key={d.id} className={'pedir-opcao pedir-doc' + (d.competencias[0].travado ? ' travado' : '')}
+                    title={d.competencias[0].travado ? 'Já está ' + (d.competencias[0].travado === 'importado' ? 'importado' : 'no Drive') + ': não precisa pedir' : undefined}>
+                    <input type="checkbox" checked={d.competencias[0].marcado} disabled={!!d.competencias[0].travado} onChange={() => p.alternarDocumento(d.id, d.competencias[0].valor)} />
+                    {d.banco && <span className="pedir-logo"><LogoBanco banco={d.banco} cor /></span>}
+                    <span className="pedir-doc-nome">{d.nome}</span>
+                    {d.competencias[0].travado && <span className={'badge pedir-tem ' + (d.competencias[0].travado === 'importado' ? 'badge-ok' : 'badge-neutral')}>{d.competencias[0].travado}</span>}
+                  </label>
+                ))}
+                <form className="pedir-outro" onSubmit={e => { e.preventDefault(); adicionar(); }}>
+                  <input type="text" placeholder="Outro documento (ex.: Relatórios da LJ)" value={outro} onChange={e => setOutro(e.target.value)} />
+                  <button type="submit" className="btn btn-outline btn-sm" disabled={!outro.trim()}><Icone nome="plus" />Adicionar</button>
+                </form>
               </div>
             </div>
 

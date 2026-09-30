@@ -13,6 +13,13 @@ export interface DocumentoDoPedido {
   detalhe: string;
   /** a marca do banco (o logo no e-mail) */
   banco?: string;
+  /** as competências deste documento, quando o pedido tem mais de uma ('aaaa-mm') */
+  competencias?: string[];
+}
+
+/** "Extrato bancário · Sicoob (julho e agosto/2026)" quando o documento vale para mais de uma competência. */
+export function nomeComCompetencias(d: DocumentoDoPedido, p: PedidoDeExtratos): string {
+  return d.competencias && new Set(p.competencias).size > 1 ? d.nome + ' (' + competenciasPorExtenso(d.competencias) + ')' : d.nome;
 }
 
 /** Um banco da empresa: o nome e, se tiver, "Ag. 0500 · C/C 22222-2". */
@@ -93,7 +100,7 @@ export function textoDoPedido(p: PedidoDeExtratos, prazo: string): string {
     'Viemos através deste e-mail pedir a relação de documentos para o fechamento contábil do período de ' + competenciasPorExtenso(p.competencias) + '.',
     '',
     'O que precisamos:',
-    ...p.documentos.map(d => '- ' + d.nome),
+    ...p.documentos.map(d => '- ' + nomeComCompetencias(d, p)),
     '',
     ...(prazo ? ['Prazo: até ' + prazo + '.', ''] : []),
     'Responda este e-mail com os arquivos em anexo: PDF, OFX, planilha.',
@@ -108,7 +115,7 @@ export function textoDoWhatsApp(p: PedidoDeExtratos, prazo: string): string {
   return [
     'Olá! Aqui é da Nilma Contabilidade.',
     'Mandamos por e-mail a relação de documentos para o fechamento de ' + competenciasPorExtenso(p.competencias) + ' da ' + p.cliente + ':',
-    ...p.documentos.map(d => '• ' + d.nome),
+    ...p.documentos.map(d => '• ' + nomeComCompetencias(d, p)),
     ...(prazo ? ['Prazo: até ' + prazo + '.'] : []),
     'Pode responder o e-mail com os arquivos. Obrigado!',
   ].join('\n');

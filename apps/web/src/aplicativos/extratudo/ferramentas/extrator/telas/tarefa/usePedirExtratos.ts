@@ -2,7 +2,8 @@
 // e, se a pessoa quiser, WhatsApp junto, com a mensagem que ela digita) e o histórico dos pedidos.
 // O contato vem do cadastro de clientes do Entregas (mesmo login do Drive). O e-mail vai para a fila do robô
 // do Entregas com o HTML montado aqui (regras/email.ts) e o texto; o WhatsApp abre pelo link wa.me.
-// Cada pedido fica no histórico da empresa (extrator/{empresa}.pedidos).
+// Cada pedido fica no histórico da empresa (extrator/{empresa}.pedidos). Cada documento é marcado por
+// competência; o que já está no Drive (o extrato achado na pasta do cliente) ou já foi importado não deixa marcar.
 import { creditor, extrator as x, tarefas } from '@nads/core';
 import { useState } from 'react';
 import { useDrive } from '../../dados/repo';
@@ -38,7 +39,9 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
   const { drive, acesso } = useDrive();
   const [aberto, setAberto] = useState(false);
   const [contato, setContato] = useState<{ carregando: boolean; erro: string; dados: creditor.ContatoDoCliente | null }>({ carregando: false, erro: '', dados: null });
+  // o que está marcado: 'documento|competência'
   const [marcados, setMarcados] = useState<string[]>([]);
+  const [pasta, setPasta] = useState<{ raiz: string; itens: creditor.ItemDrive[] } | null>(null);
   const [extras, setExtras] = useState<x.DocumentoDoPedido[]>([]);
   const [mais, setMais] = useState(false);
   const [outrasComp, setOutrasComp] = useState<string[]>([]);
@@ -61,7 +64,24 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
     }
   }
 
+  /** A pasta do cliente no Drive (para saber o que já está lá); sem pasta ou sem acesso, nada fica travado. */
+  async function carregarPasta() {
+    setPasta(null);
+    try { const p = await drive.pastaDoCliente(codigo); setPasta(p ? { raiz: p.raiz, itens: p.itens } : null); } catch { setPasta(null); }
+  }
+
   const precisaEntrar = () => !acesso.entrou && !drive.exemplos;
+  const chave = (doc: string, comp: string) => doc + '|' + comp;
+
+  /** Por que o documento daquela competência não dá para pedir ('' = dá). */
+  function travado(docId: string, comp: string, p = pasta): '' | 'no Drive' | 'importado' {
+    if (!docId.startsWith('extrato:')) return '';
+    const b = vm.bancos.find(x => 'extrato:' + x.id === docId);
+    if (!b) return '';
+    if (comp === vm.competencia && b.extrato.qtdArquivos > 0) return 'importado';
+    if (p && x.acharExtratoNoDrive(p.itens, p.raiz, comp, { nome: b.nome, marca: b.marca, conta: b.conta || undefined }).situacao === 'achou') return 'no Drive';
+    return '';
+  }
 
   function abrir() {
     if (precisaEntrar()) {
@@ -69,21 +89,27 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
       pedirLogin(() => abrir());
       return;
     }
-    // já marcados: os extratos que ainda faltam na competência (e não estão sem movimento)
-    const faltam = vm.bancos.filter(b => !b.extrato.qtdArquivos && !semMovimento.includes(b.id)).map(b => 'extrato:' + b.id);
-    setMarcados(faltam.length ? faltam : vm.bancos.map(b => 'extrato:' + b.id));
+    // já marcados: os extratos que ainda faltam na competência (não importados e não sem movimento)
+    setMarcados(vm.bancos.filter(b => !b.extrato.qtdArquivos && !semMovimento.includes(b.id)).map(b => chave('extrato:' + b.id, vm.competencia)));
     setExtras([]); setMais(false); setOutrasComp([]); setEnviando('');
     setPrazo(x.prazoPadrao(new Date()));
     setWhats({ ligado: false, texto: '', editado: false });
     setAberto(true);
     void carregarContato();
+    void carregarPasta();
   }
 
   const catalogo = [...x.documentosDoPedido(vm.bancos.map(b => ({ id: b.id, nome: b.nome, marca: b.marca, conta: b.conta || undefined }))), ...extras];
+  const comps = [vm.competencia, ...(mais ? outrasComp : [])].sort().reverse();
+  const valeMarcado = (docId: string, comp: string) => marcados.includes(chave(docId, comp)) && !travado(docId, comp);
+  const documentosDoPedido = catalogo
+    .map(d => ({ ...d, competencias: comps.filter(c => valeMarcado(d.id, c)) }))
+    .filter(d => d.competencias.length);
   const pedido: x.PedidoDeExtratos = {
     cliente: contato.dados?.nome || empresa,
-    documentos: catalogo.filter(d => marcados.includes(d.id)),
-    competencias: [vm.competencia, ...(mais ? outrasComp : [])],
+    documentos: documentosDoPedido,
+    // só as competências que têm algum documento
+    competencias: (() => { const cs = comps.filter(c => documentosDoPedido.some(d => d.competencias.includes(c))); return cs.length ? cs : [vm.competencia]; })(),
   };
   const textoWhats = whats.editado ? whats.texto : x.textoDoWhatsApp(pedido, prazo);
   const telefone = contato.dados ? x.telefoneParaWhatsApp(contato.dados.telefone) : '';
@@ -105,7 +131,7 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
       }
       vm.registrarPedido({
         id: Date.now().toString(36), em: new Date().toISOString(), por: quemPede(acesso),
-        competencias: pedido.competencias, documentos: pedido.documentos.map(d => d.nome), prazo,
+        competencias: pedido.competencias, documentos: pedido.documentos.map(d => x.nomeComCompetencias(d, pedido)), prazo,
         email: { para: emails, assunto, solicitacoes },
         ...(whats.ligado && contato.dados ? { whatsapp: { telefone: contato.dados.telefone, texto: textoWhats } } : {}),
       });
@@ -132,23 +158,32 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
     contato,
     emails: (contato.dados?.emails || []).map(e => ({ email: e, marcado: emails.includes(e) })),
     alternarEmail: (e: string) => setEmails(v => alternar(v, e)),
+    /** cada documento, com uma caixinha por competência (travada: já está no Drive ou já foi importado) */
     documentos: catalogo.map(d => ({
-      ...d, marcado: marcados.includes(d.id),
-      jaTem: d.id.startsWith('extrato:') && (vm.bancos.find(b => 'extrato:' + b.id === d.id)?.extrato.qtdArquivos || 0) > 0,
+      ...d,
+      competencias: comps.map(c => ({ valor: c, rotulo: tarefas.rotuloCurtoCompetencia(c), marcado: valeMarcado(d.id, c), travado: travado(d.id, c) })),
     })),
-    alternarDocumento: (id: string) => setMarcados(v => alternar(v, id)),
+    variasCompetencias: comps.length > 1,
+    alternarDocumento: (id: string, comp: string) => { if (!travado(id, comp)) setMarcados(v => alternar(v, chave(id, comp))); },
     /** um documento que não está na lista (ex.: "Relatórios da LJ") */
     adicionarDocumento: (nome: string) => {
       const n = nome.trim();
       if (!n) return;
       const id = 'outro:' + n.toLowerCase();
       if (!catalogo.some(d => d.id === id)) setExtras(v => [...v, { id, nome: n, detalhe: '' }]);
-      setMarcados(v => (v.includes(id) ? v : [...v, id]));
+      setMarcados(v => [...v.filter(k => !k.startsWith(id + '|')), ...comps.map(c => chave(id, c))]);
     },
     competencia: { valor: vm.competencia, rotulo: tarefas.rotuloCompetencia(vm.competencia) },
     mais, setMais,
     outrasCompetencias: vm.competencias.filter(c => c.valor !== vm.competencia).map(c => ({ ...c, marcado: outrasComp.includes(c.valor) })),
-    alternarCompetencia: (c: string) => setOutrasComp(v => alternar(v, c)),
+    /** ao ligar uma competência a mais, já marca nela o que está marcado na da tela (menos o que já está no Drive) */
+    alternarCompetencia: (c: string) => {
+      const liga = !outrasComp.includes(c);
+      setOutrasComp(v => alternar(v, c));
+      if (liga) setMarcados(v => [...v, ...catalogo.filter(d => v.includes(chave(d.id, vm.competencia)) && !travado(d.id, c)).map(d => chave(d.id, c))]);
+    },
+    /** achou a pasta do cliente no Drive (para travar o que já está lá) */
+    olhouDrive: !!pasta,
     /** o prazo no formato do campo de data ('aaaa-mm-dd') */
     prazo: paraData(prazo),
     setPrazo: (iso: string) => setPrazo(deData(iso)),
