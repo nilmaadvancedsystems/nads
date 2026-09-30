@@ -33,12 +33,14 @@ export function rotuloDaConta(b: { agencia?: string; conta?: string }): string {
 /** Os bancos que dá para adicionar pela tela ("Adicionar banco ▾"), em ordem alfabética (id = a marca). */
 export const BANCOS_CONHECIDOS: readonly BancoDaEmpresa[] = [
   { id: 'banco-do-brasil', nome: 'Banco do Brasil' },
+  { id: 'bnb', nome: 'Banco do Nordeste' },
   { id: 'banrisul', nome: 'Banrisul' },
   { id: 'bradesco', nome: 'Bradesco' },
   { id: 'btg', nome: 'BTG Pactual' },
   { id: 'c6', nome: 'C6 Bank' },
   { id: 'caixa', nome: 'Caixa' },
   { id: 'cora', nome: 'Cora' },
+  { id: 'cresol', nome: 'Cresol' },
   { id: 'inter', nome: 'Inter' },
   { id: 'itau', nome: 'Itaú' },
   { id: 'mercado-pago', nome: 'Mercado Pago' },

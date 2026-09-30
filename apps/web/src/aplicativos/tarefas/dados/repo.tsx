@@ -2,8 +2,8 @@
 // View importa o repositório.
 import type { empresas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { createContext, useCallback, useContext, useEffect, useSyncExternalStore, type ReactNode } from 'react';
-import { repoDoCadastro } from './fonte';
+import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { bancosDoEntregas, repoDoCadastro } from './fonte';
 
 type Repo = tarefas.RepoTarefas;
 
@@ -51,4 +51,24 @@ export function useCadastro(nome: string, codigo: number | null): CadastroAoVivo
   const salvar = useCallback((c: empresas.cadastro.CadastroDaEmpresa) => repo.salvar(nome, c), [repo, nome]);
   const salvarPlano = useCallback((p: empresas.cadastro.PlanoDeContas, c: empresas.cadastro.CadastroDaEmpresa) => repo.salvarPlano(nome, p, c), [repo, nome]);
   return { cadastro: repo.cadastro(nome, codigo), plano: repo.plano(nome), carregada: repo.carregada(nome), exemplos: repo.exemplos, salvar, salvarPlano };
+}
+
+/** Todos os cadastros (sem os planos), para a lista de empresas do Cadastro. */
+export function useTodosOsCadastros() {
+  const repo = repoDoCadastro();
+  const { toast } = useRetorno();
+  useEffect(() => { repo.definirAviso(toast); }, [repo, toast]);
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo.todos();
+}
+
+/** Os bancos que o Entregas já sabe de cada cliente (por código do ERP). */
+export function useBancosDoEntregas(): { carregado: boolean; porCodigo: ReadonlyMap<number, empresas.cadastro.BancosDoEntregas> } {
+  const [estado, setEstado] = useState<{ carregado: boolean; porCodigo: ReadonlyMap<number, empresas.cadastro.BancosDoEntregas> }>({ carregado: false, porCodigo: new Map() });
+  useEffect(() => {
+    let vale = true;
+    void bancosDoEntregas().then(m => { if (vale) setEstado({ carregado: true, porCodigo: m }); });
+    return () => { vale = false; };
+  }, []);
+  return estado;
 }

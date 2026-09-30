@@ -47,12 +47,14 @@ export function portaCadastroMemoria(inicial?: Guardado): PortaCadastro {
   return {
     ouvirCadastro: (id, aoChegar) => ouvir('c:' + id, () => aoChegar(g.cadastros[id] || null)),
     ouvirPlano: (id, aoChegar) => ouvir('p:' + id, () => aoChegar(g.planos[id] || null)),
+    ouvirTodos: aoChegar => ouvir('todos', () => aoChegar(Object.entries(g.cadastros).map(([id, doc]) => ({ id, doc })))),
     async gravar(id, cadastro, plano) {
       g.cadastros[id] = cadastro;
       if (plano) g.planos[id] = plano;
       if (!inicial) guardar(g);
       avisar('c:' + id);
       if (plano) avisar('p:' + id);
+      avisar('todos');
     },
   };
 }

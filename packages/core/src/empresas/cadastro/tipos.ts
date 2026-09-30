@@ -83,5 +83,7 @@ export interface CadastroDaEmpresa {
   /** null = as contas padrão nunca foram cadastradas (o Creditor segue com as que ele salvou) */
   contasPadrao: ContasPadrao | null;
   historico: RegistroCadastro[];
+  /** o resumo do plano de contas (o plano mora em outro documento): para a lista de empresas */
+  plano?: { contas: number; importadoEm: string };
   atualizadoEm?: string;
 }
