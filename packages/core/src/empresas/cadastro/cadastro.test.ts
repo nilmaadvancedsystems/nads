@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
   criarRepoCadastro, criarRepoCadastroMemoria, definirContaPadrao, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
-  lerPlanilhaDoPlano, linhasDoTexto, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
+  bancosDoEntregasDoDocumento, bancosDoEntregasPorCodigo, contasDoEntregas, juntarComEntregas, sugestoesDoEntregas,
+  lerPlanilhaDoPlano, linhasDoTexto, registrarPlano, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
   type PlanoDeContas,
 } from '.';
 
@@ -165,7 +166,7 @@ describe('repositório sem acesso ao banco', () => {
     const gravados: string[] = [];
     const negado = (_id: string, _ok: unknown, falhou: (e: Error) => void) => { queueMicrotask(() => falhou(new Error('Missing or insufficient permissions.'))); return () => {}; };
     const avisos: string[] = [];
-    const repo = criarRepoCadastro({ ouvirCadastro: negado, ouvirPlano: negado, gravar: async id => { gravados.push(id); } }, false);
+    const repo = criarRepoCadastro({ ouvirCadastro: negado, ouvirPlano: negado, ouvirTodos: (ok, falhou) => negado('', ok, falhou), gravar: async id => { gravados.push(id); } }, false);
     repo.definirAviso(m => avisos.push(m));
     repo.cadastro('FITO', 292);
     await Promise.resolve();
@@ -192,9 +193,13 @@ describe('repositório (memória)', () => {
     repo.salvar('FITO', confirmarPontoDePartida(repo.cadastro('FITO', 292), pontoDePartida(292), 'V', AGORA));
     await Promise.resolve();
     expect(repo.cadastro('FITO', 292).bancos?.map(b => b.id)).toEqual(['sicoob']);
-    repo.salvarPlano('FITO', PLANO, repo.cadastro('FITO', 292));
+    repo.salvarPlano('FITO', PLANO, registrarPlano(repo.cadastro('FITO', 292), PLANO, 'V', AGORA));
     await Promise.resolve();
     expect(repo.plano('FITO')?.contas.length).toBe(3);
+    repo.todos();
+    await Promise.resolve();
+    expect(repo.todos().carregada).toBe(true);
+    expect(repo.todos().porId.get('fito')?.plano?.contas).toBe(3);
     expect(avisos).toBeGreaterThan(2);
   });
 });
@@ -207,5 +212,35 @@ describe('planilha do plano em CSV', () => {
     expect(r.contas.map(c => [c.codigo, c.nome, !!c.sintetica])).toEqual([['1', 'ATIVO', true], ['10503', 'BANCO SICOOB; C/ MOVIMENTO', false]]);
     const latin1 = new Uint8Array([...'Descri'].map(c => c.charCodeAt(0)).concat([0xe7, 0xe3], [...'o;C'].map(c => c.charCodeAt(0)), [0xf3], [...'digo\nSICOOB;10503\n'].map(c => c.charCodeAt(0))));
     expect(linhasDoTexto(textoDoArquivo(latin1.buffer))[0]).toEqual(['Descrição', 'Código']);
+  });
+});
+
+describe('bancos que o Entregas já sabe', () => {
+  const doc = { codigoOrigem: '292', ativo: true, bancos: ['sicoob', 'bb', 'mercadopago'], contasBancarias: [{ banco: 'sicoob', agencia: '3144-5', conta: '12.345-6' }, { banco: 'bb', agencia: '', conta: '1' }] };
+
+  it('traduz os ids do Entregas e junta por código do ERP', () => {
+    const m = bancosDoEntregasPorCodigo([doc, { codigoOrigem: '5', ativo: false, bancos: ['itau'] }, { codigoOrigem: 'x', bancos: ['itau'] }]);
+    expect([...m.keys()]).toEqual([292]);
+    expect(m.get(292)).toEqual({ bancos: ['sicoob', 'banco-do-brasil', 'mercado-pago'], contas: [{ marca: 'sicoob', agencia: '3144-5', conta: '12.345-6' }] });
+    expect(contasDoEntregas(m.get(292)).map(c => c.id)).toEqual(['sicoob-31445-123456', 'banco-do-brasil', 'mercado-pago']);
+  });
+
+  it('o ponto de partida ganha a agência e a conta do banco que já estava, e os bancos que faltam', () => {
+    const e = bancosDoEntregasDoDocumento(doc);
+    const p = juntarComEntregas(pontoDePartida(292), e);
+    expect(p.map(b => [b.id, b.agencia || '', b.conta || ''])).toEqual([
+      ['sicoob', '3144-5', '12.345-6'], ['banco-do-brasil', '', ''], ['mercado-pago', '', ''],
+    ]);
+  });
+
+  it('com cadastro: sugere completar o banco sem número e incluir o que falta; o que já está não aparece', () => {
+    const e = bancosDoEntregasDoDocumento(doc);
+    const c = confirmarPontoDePartida(vazio(), pontoDePartida(292), 'V', AGORA); // só o Sicoob, sem número
+    expect(sugestoesDoEntregas(c, e).map(s => [s.tipo, s.conta.id, s.id || ''])).toEqual([
+      ['completar', 'sicoob-31445-123456', 'sicoob'], ['nova', 'banco-do-brasil', ''], ['nova', 'mercado-pago', ''],
+    ]);
+    const completo = salvarConta(c, 'sicoob', { marca: 'sicoob', agencia: '03144-5', conta: '0012345-6' }, [], 'V', AGORA).cadastro;
+    expect(sugestoesDoEntregas(completo, e).map(s => s.conta.id)).toEqual(['banco-do-brasil', 'mercado-pago']);
+    expect(sugestoesDoEntregas(completo, null)).toEqual([]);
   });
 });

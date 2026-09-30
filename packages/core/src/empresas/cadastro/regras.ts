@@ -71,7 +71,9 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
   const historico = Array.isArray(doc.historico)
     ? (doc.historico as Record<string, unknown>[]).map(h => ({ ts: texto(h?.ts), por: texto(h?.por), acao: texto(h?.acao), detalhe: texto(h?.detalhe) })).filter(h => h.ts)
     : [];
-  return { nome, codigo, bancos, contasPadrao: contasPadraoDoDocumento(doc.contasPadrao), historico, atualizadoEm: opcional(doc.atualizadoEm) };
+  const pl = (doc.plano || null) as Record<string, unknown> | null;
+  const plano = pl && typeof pl.contas === 'number' ? { contas: pl.contas, importadoEm: texto(pl.importadoEm) } : undefined;
+  return { nome, codigo, bancos, contasPadrao: contasPadraoDoDocumento(doc.contasPadrao), historico, ...(plano ? { plano } : {}), atualizadoEm: opcional(doc.atualizadoEm) };
 }
 
 /** O que vai para o banco (o que nunca foi cadastrado fica de fora, para não virar "cadastrado vazio"). */
@@ -80,6 +82,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     nome: c.nome, codigo: c.codigo,
     ...(c.bancos ? { bancos: c.bancos } : {}),
     ...(c.contasPadrao ? { contasPadrao: c.contasPadrao } : {}),
+    ...(c.plano ? { plano: c.plano } : {}),
     historico: c.historico.slice(0, MAX_HISTORICO),
     atualizadoEm: c.atualizadoEm || new Date().toISOString(),
   };
@@ -114,8 +117,9 @@ function registrar(c: CadastroDaEmpresa, por: string, agora: Date, acao: string,
 
 /** Registra no histórico a troca do plano de contas (o plano mora em outro documento). */
 export function registrarPlano(c: CadastroDaEmpresa, p: PlanoDeContas, por: string, agora: Date): CadastroDaEmpresa {
-  const de = p.origem === 'balancete' ? 'do balancete da Conferência' : (p.arquivo ? 'de ' + p.arquivo : 'de um arquivo');
-  return registrar(c, por, agora, 'Importou o plano de contas', p.contas.length + ' contas ' + de);
+  const de = p.origem === 'balancete' ? 'de um balancete' : (p.arquivo ? 'de ' + p.arquivo : 'de um arquivo');
+  const comResumo = { ...c, plano: { contas: p.contas.length, importadoEm: p.importadoEm } };
+  return registrar(comResumo, por, agora, 'Importou o plano de contas', p.contas.length + ' contas ' + de);
 }
 
 // ─── contas bancárias ───────────────────────────────────────────────────────

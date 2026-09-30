@@ -8,7 +8,7 @@
 // O repositório e a sessão são criados uma vez, quando alguém abre a Tarefas. O do Cadastro, quando alguém abre o Cadastro.
 import { empresas, extrator, tarefas } from '@nads/core';
 import { criarSessaoEntregas, type SessaoEntregas } from './entregas.firestore';
-import { balanceteNoEntregas, conferenciaNoBanco, portaCadastroFirestore } from './cadastro.firestore';
+import { balanceteNoEntregas, clientesNoEntregas, conferenciaNoBanco, portaCadastroFirestore } from './cadastro.firestore';
 import { criarRepoTarefasFirestore, extratorNoBanco, type RepoTarefasFirestore } from './tarefas.firestore';
 
 export const noBanco = import.meta.env.VITE_FONTE === 'banco';
@@ -63,4 +63,23 @@ export async function conferenciaDaEmpresa(nome: string): Promise<Record<string,
 /** O balancete de Clientes › Balancetes do Entregas (para montar o plano). Nos exemplos, não há. */
 export async function balanceteDoEntregas(codigo: number | null): Promise<Record<string, unknown> | null> {
   return noBanco && codigo != null ? balanceteNoEntregas(codigo) : null;
+}
+
+/** Clientes de exemplo do Entregas (os bancos que o robô teria aprendido). */
+const CLIENTES_EXEMPLO: Record<string, unknown>[] = [
+  { codigoOrigem: '292', bancos: ['sicoob', 'bb'], contasBancarias: [{ banco: 'sicoob', agencia: '3144-5', conta: '12.345-6' }] },
+  { codigoOrigem: '14', bancos: ['itau'], contasBancarias: [{ banco: 'itau', agencia: '0412', conta: '99887-7' }] },
+  { codigoOrigem: '58', bancos: ['sicoob', 'nubank'] },
+];
+
+let doEntregas: Promise<Map<number, empresas.cadastro.BancosDoEntregas>> | null = null;
+
+/** Os bancos que o Entregas já sabe de cada cliente, por código do ERP (lido uma vez por sessão; falha = vazio). */
+export function bancosDoEntregas(): Promise<Map<number, empresas.cadastro.BancosDoEntregas>> {
+  if (!doEntregas) {
+    doEntregas = (noBanco ? clientesNoEntregas() : Promise.resolve(CLIENTES_EXEMPLO))
+      .then(docs => empresas.cadastro.bancosDoEntregasPorCodigo(docs))
+      .catch(() => new Map());
+  }
+  return doEntregas;
 }

@@ -14,6 +14,8 @@ export interface PortaCadastro {
   ouvirCadastro(id: string, aoChegar: (doc: Doc) => void, aoFalhar: (err: Error) => void): () => void;
   /** ouve o plano de contas da empresa */
   ouvirPlano(id: string, aoChegar: (doc: Doc) => void, aoFalhar: (err: Error) => void): () => void;
+  /** ouve todos os cadastros (sem os planos): para a lista de empresas */
+  ouvirTodos(aoChegar: (docs: { id: string; doc: Record<string, unknown> }[]) => void, aoFalhar: (err: Error) => void): () => void;
   /** grava o cadastro e, se vier, o plano (juntos, num lote) */
   gravar(id: string, cadastro: Record<string, unknown>, plano?: Record<string, unknown>): Promise<void>;
 }
@@ -34,6 +36,11 @@ export interface RepoCadastro {
    */
   disponivel(nome: string): boolean;
   salvar(nome: string, c: CadastroDaEmpresa): void;
+  /**
+   * Todos os cadastros (sem os planos), por id (slug do nome), para a lista de empresas. Pedir já começa a ouvir.
+   * carregada = já chegou (ou falhou: aí vem vazio).
+   */
+  todos(): { carregada: boolean; porId: ReadonlyMap<string, CadastroDaEmpresa> };
   /** troca o plano (e grava o cadastro junto, com o registro no histórico) */
   salvarPlano(nome: string, p: PlanoDeContas, c: CadastroDaEmpresa): void;
   assinar(aoMudar: () => void): () => void;
@@ -54,6 +61,7 @@ interface Carga {
 
 export function criarRepoCadastro(porta: PortaCadastro, exemplos: boolean): RepoCadastro {
   const cargas = new Map<string, Carga>();
+  let lista: { carregada: boolean; porId: ReadonlyMap<string, CadastroDaEmpresa> } | null = null;
   let ver = 0;
   const ouvintes = new Set<() => void>();
   let avisar = (m: string) => console.warn(m);
@@ -117,6 +125,25 @@ export function criarRepoCadastro(porta: PortaCadastro, exemplos: boolean): Repo
     },
     carregada: nome => chegou(carregar(nome)),
     disponivel: nome => !carregar(nome).falhou,
+    todos() {
+      if (!lista) {
+        lista = { carregada: false, porId: new Map() };
+        porta.ouvirTodos(docs => {
+          const m = new Map<string, CadastroDaEmpresa>();
+          for (const { id, doc } of docs) {
+            const nome = typeof doc.nome === 'string' ? doc.nome : id;
+            m.set(id, cadastroDoDocumento(nome, typeof doc.codigo === 'number' ? doc.codigo : null, doc));
+          }
+          lista = { carregada: true, porId: m };
+          mudou();
+        }, err => {
+          lista = { carregada: true, porId: new Map() };
+          mudou();
+          if (!/permission|insufficient/i.test(err.message)) avisar('Não consegui ler a lista do cadastro na nuvem: ' + err.message);
+        });
+      }
+      return lista;
+    },
     salvar: (nome, c) => gravar(nome, c),
     salvarPlano: (nome, p, c) => gravar(nome, c, p),
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
