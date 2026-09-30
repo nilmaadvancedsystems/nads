@@ -1697,3 +1697,27 @@ td.drive-marca{width:1%;}
 .gmail-responder textarea{width:100%;resize:vertical;}
 .gmail-responder-pe{display:flex;align-items:center;gap:8px;margin-top:6px;}
 td.gmail-erro{color:var(--danger);}
+
+/* vários meses: "Importar Todos" / "Todos pelo Drive" em cima; embaixo, por mês, os ícones de um mês */
+.btn.imp-todos{gap:6px;}
+.btn.imp-todos svg,.btn.imp-todos .logo-img{width:14px;height:14px;}
+.imp-mes-celulas{display:inline-flex;flex-wrap:wrap;gap:6px;}
+.imp-mes-celula{display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 2px;border:1px solid var(--border);border-radius:8px;background:var(--surface);}
+.imp-mes-celula.atual{border-color:var(--ink-muted);}
+.imp-mes-celula.sem-mov{opacity:.7;}
+.imp-mes-nome{border:none;background:none;color:var(--ink-muted);font:inherit;font-size:12px;padding:2px 6px;cursor:pointer;border-radius:6px;font-variant-numeric:tabular-nums;}
+.imp-mes-nome:hover{background:var(--hover-bg);color:var(--ink);}
+.imp-mes-celula.atual .imp-mes-nome{color:var(--ink);font-weight:600;}
+.imp-mes-sem,.imp-mes-sem-btn{border:1px dashed var(--border);background:none;color:var(--ink-muted);font:inherit;font-size:10px;padding:2px 6px;border-radius:2em;cursor:pointer;}
+.imp-mes-sem{border-style:solid;color:var(--ink);}
+.imp-mes-sem-btn:hover,.imp-mes-sem:hover{background:var(--hover-bg);}
+
+/* vários meses: os meses ocupam a caixa toda (uma coluna igual por mês, até a direita); o mês em cima, os ícones embaixo */
+.imp-periodo-linha{padding:12px 16px 14px 52px;gap:10px;}
+.imp-periodo-lado{display:grid;grid-template-columns:60px minmax(0,1fr) 72px;align-items:stretch;gap:10px;}
+.imp-periodo-lado .imp-rotulo{width:auto;align-self:center;}
+.imp-periodo-lado .imp-periodo-falta{align-self:center;text-align:right;min-width:0;}
+.imp-mes-celulas{display:grid;gap:6px;}
+.imp-mes-celula{flex-direction:column;align-items:stretch;justify-content:center;gap:4px;padding:6px;min-width:0;}
+.imp-mes-celula .imp-mes-nome{text-align:center;padding:0 2px;}
+.imp-mes-icones{display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;min-height:28px;}

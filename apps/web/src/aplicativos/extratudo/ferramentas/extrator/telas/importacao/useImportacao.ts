@@ -165,8 +165,8 @@ export function useImportacao() {
   }
 
   /** O check verde da linha: exclui o que foi importado daquele banco e lado na competência (pergunta antes). */
-  async function excluirDoBanco(banco: string, lado: x.Lado) {
-    const arqs = x.arquivosDoBanco(s.empresa, banco, primeiro, lado, competenciaDeTeste);
+  async function excluirDoBanco(banco: string, lado: x.Lado, competencia = competenciaDeTeste) {
+    const arqs = x.arquivosDoBanco(s.empresa, banco, primeiro, lado, competencia);
     if (!arqs.length) return;
     const nomeBanco = bancos.find(b => b.id === banco)?.nome || 'banco';
     const ok = await modal<boolean>({
@@ -237,12 +237,22 @@ export function useImportacao() {
     periodo: (params.get('meses') || '').split(',').filter(m => /^\d{4}-\d{2}$/.test(m)),
     /** De cada mês do período, o que o banco já tem: extrato, razão, sem movimento. */
     mesesDoBanco: (banco: string, semMovimentoPorMes: Record<string, string[]>) =>
-      (params.get('meses') || '').split(',').filter(m => /^\d{4}-\d{2}$/.test(m)).map(mes => ({
-        mes, rotulo: tarefas.rotuloNumericoCompetencia(mes),
-        extrato: x.arquivosDoBanco(s.empresa, banco, primeiro, 'banco', mes).length > 0,
-        razao: x.arquivosDoBanco(s.empresa, banco, primeiro, 'sistema', mes).length > 0,
-        semMovimento: (semMovimentoPorMes[mes] || []).includes(banco),
-      })),
+      (params.get('meses') || '').split(',').filter(m => /^\d{4}-\d{2}$/.test(m)).map(mes => {
+        const lado = (l: x.Lado) => {
+          const arqs = x.arquivosDoBanco(s.empresa, banco, primeiro, l, mes);
+          return {
+            qtdArquivos: arqs.length, qtdLancamentos: arqs.reduce((t, a) => t + a.lancamentos.filter(z => z.data.startsWith(mes)).length, 0),
+            lendo: lendoLinha === banco + '|' + l, doDrive: arqs.flatMap(a => (a.drive ? [a.drive] : [])),
+          };
+        };
+        const extrato = lado('banco');
+        const razao = lado('sistema');
+        return {
+          mes, rotulo: tarefas.rotuloNumericoCompetencia(mes),
+          extrato: extrato.qtdArquivos > 0, razao: razao.qtdArquivos > 0, ladoExtrato: extrato, ladoRazao: razao,
+          semMovimento: (semMovimentoPorMes[mes] || []).includes(banco),
+        };
+      }),
     prontoNoMes: (competencia: string, semMovimento: string[]) => {
       const bs = x.bancosDaEmpresaNa(s.empresa, cad.cadastro, s.codigo, competencia).bancos;
       return bs.length > 0 && bs.every(b => semMovimento.includes(b.id) ||

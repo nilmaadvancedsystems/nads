@@ -48,7 +48,7 @@ export function Executor() {
           <h2>Tudo pronto em {vm.rotuloCompetencia}</h2>
           <p className="hint">Todas as etapas desta empresa estão concluídas{vm.varios ? ' nos ' + vm.meses.length + ' meses' : ''}.</p>
           <div className="executor-fim-botoes">
-            {vm.varios && <button type="button" className="btn btn-outline" onClick={vm.encerrarPeriodo}>Encerrar vários meses</button>}
+            {vm.varios && <button type="button" className="btn btn-outline" onClick={vm.encerrarPeriodo}>Cancelar função</button>}
             <button type="button" className="btn btn-primary" onClick={vm.sair}>Voltar às empresas</button>
           </div>
         </div>

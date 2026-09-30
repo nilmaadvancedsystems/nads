@@ -16,7 +16,7 @@ type ParaFerramenta = { nads: 'estado-etapa'; porMes: Record<string, string[]>; 
 export interface PeriodoDaEtapa { meses: string[]; concluido: boolean }
 
 /** 'aaaa-mm' ou o período 'aaaa-mm..aaaa-mm' (a Etapa com vários meses). */
-const COMPETENCIA_OU_PERIODO = /^d{4}-d{2}(..d{4}-d{2})?$/;
+const COMPETENCIA_OU_PERIODO = /^\d{4}-\d{2}(\.\.\d{4}-\d{2})?$/;
 
 // As origens confiáveis moram no @nads/ui (etapa.ts), junto com a altura da ferramenta na etapa.
 export { origemConfiavel };
@@ -47,11 +47,12 @@ export function usePonteDaTarefa(competencia?: string) {
   // sem competência (ou mês que a Tarefas não mandou): o primeiro que veio
   const mes = competencia && porMes[competencia] ? competencia : Object.keys(porMes)[0] || competencia || '';
   const semMovimento = porMes[mes] || [];
-  const marcarSemMovimento = useCallback((banco: string, marcado: boolean) => {
+  const marcarSemMovimento = useCallback((banco: string, marcado: boolean, noMes?: string) => {
     if (!pai) return;
+    const m = noMes || mes;
     // já mostra; a Tarefas confirma
-    setPorMes(v => ({ ...v, [mes]: marcado ? [...(v[mes] || []).filter(b => b !== banco), banco] : (v[mes] || []).filter(b => b !== banco) }));
-    const msg: ParaTarefa = { nads: 'sem-movimento', banco, marcado, ...(mes ? { competencia: mes } : {}) };
+    setPorMes(v => ({ ...v, [m]: marcado ? [...(v[m] || []).filter(b => b !== banco), banco] : (v[m] || []).filter(b => b !== banco) }));
+    const msg: ParaTarefa = { nads: 'sem-movimento', banco, marcado, ...(m ? { competencia: m } : {}) };
     window.parent.postMessage(msg, pai);
   }, [pai, mes]);
   /** O seletor de competência da ferramenta: dentro da Tarefas, quem troca é ela (a etapa da outra competência ou do período). */
