@@ -14,6 +14,7 @@
     "./creditor": "./src/extratudo/creditor/index.ts",
     "./extrator": "./src/extratudo/extrator/index.ts",
     "./usuarios": "./src/usuarios/index.ts",
+    "./entregas": "./src/entregas/index.ts",
     "./tarefas": "./src/tarefas/index.ts"
   },
   "dependencies": {

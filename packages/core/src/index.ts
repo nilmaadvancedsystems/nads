@@ -3,6 +3,7 @@
 export * as formatos from './formatos';
 export * as empresas from './empresas';
 export * as usuarios from './usuarios';
+export * as entregas from './entregas';
 export * as conferencia from './conferencia';
 export * as chequeEspecial from './extratudo/cheque-especial';
 export * as conciliadorzinho from './conciliadorzinho';

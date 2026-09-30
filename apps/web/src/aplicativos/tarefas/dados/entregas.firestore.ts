@@ -32,6 +32,12 @@ export interface SessaoEntregas {
 
 const appDoEntregas = () => getApps().find(a => a.name === 'entregas') ?? initializeApp(CONFIG_ENTREGAS, 'entregas');
 
+/** Quem está logado no Entregas agora (uid e e-mail vão nos pedidos ao robô; as regras conferem o uid). */
+export function contaDoEntregas(): { uid: string; email: string } | null {
+  const u = getAuth(appDoEntregas()).currentUser;
+  return u ? { uid: u.uid, email: u.email || '' } : null;
+}
+
 /** O banco do Entregas (a mesma conexão para o login e para as rotinas; campo undefined não vai). */
 export function bancoDoEntregas(): Firestore {
   const app = appDoEntregas();

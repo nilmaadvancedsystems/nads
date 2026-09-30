@@ -29,19 +29,22 @@ export const APLICACOES: readonly Aplicacao[] = [
   { id: 'fiscal', nome: 'Fiscal', icone: 'fileText', pronta: false, paginas: [
     { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Fiscal' },
   ] },
-  { id: 'drive', nome: 'Drive', icone: 'fileDown', pronta: false, paginas: [
-    { id: 'arquivos', rotulo: 'Arquivos', icone: 'fileDown', titulo: 'Drive' },
+  { id: 'drive', nome: 'Drive', icone: 'pasta', pronta: true, paginas: [
+    { id: 'pastas', rotulo: 'Pastas', icone: 'pasta', titulo: 'Drive — pasta do ano' },
   ] },
-  { id: 'contato', nome: 'Contato', icone: 'link', pronta: false, paginas: [
-    { id: 'caixa', rotulo: 'Caixa de entrada', icone: 'link', titulo: 'Contato' },
+  { id: 'contato', nome: 'Gmail', icone: 'envelope', pronta: true, paginas: [
+    { id: 'caixa', rotulo: 'E-mails', icone: 'envelope', titulo: 'Gmail — e-mails do robô' },
+    { id: 'historico', rotulo: 'Histórico', icone: 'clock', titulo: 'Gmail — execuções do robô' },
   ] },
 ];
 
-/** As aplicações que a pessoa vê: Fiscal só para o Fiscal, Contábil só para o Contábil (admin vê as duas). */
+/** As aplicações que a pessoa vê: Fiscal só para o Fiscal; Contábil, Drive e Gmail só para o Contábil (admin vê tudo). */
 export function aplicacoesDe(op: Operador): Aplicacao[] {
   return APLICACOES.filter(a =>
     (a.id !== 'fiscal' || op.admin || op.departamento === 'fiscal') &&
-    (a.id !== 'contabil' || op.admin || op.departamento === 'contabil'));
+    (a.id !== 'contabil' || op.admin || op.departamento === 'contabil') &&
+    // o Drive e o Gmail do robô: as regras do Entregas só deixam o admin e o contábil lerem
+    ((a.id !== 'drive' && a.id !== 'contato') || op.admin || op.departamento === 'contabil'));
 }
 
 export function aplicacao(id: string): Aplicacao | undefined {

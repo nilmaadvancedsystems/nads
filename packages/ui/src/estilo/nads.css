@@ -1656,3 +1656,44 @@ td.cad-acoes .menu-seta{display:none;}
 .lote-linha .iniciar-nome{flex:1;}
 .lote-mais{flex:none;}
 .lote-mais.no-lote{color:var(--success);border-color:var(--success);}
+/* Drive (Tarefas): a pasta do ano pelo mapa do robô */
+.drive-trilha{display:flex;align-items:center;flex-wrap:wrap;gap:2px;min-width:0;}
+.drive-trilha .btn svg{width:16px;height:16px;}
+.drive-trilha-item{display:inline-flex;align-items:center;}
+.drive-sep{color:var(--ink-muted);padding:0 2px;}
+.drive-nome{display:inline-flex;align-items:center;gap:8px;min-width:0;}
+.drive-nome > span{display:flex;flex-direction:column;min-width:0;overflow-wrap:anywhere;}
+.drive-onde{font-size:12px;}
+.drive-ico{width:16px;height:16px;flex:none;color:var(--ink-muted);}
+.drive-ico.pasta{color:var(--accent);}
+td.drive-marca{width:1%;}
+.drive-aviso{margin:0 0 12px;}
+.drive-pedidos{position:fixed;right:16px;bottom:16px;z-index:65;display:flex;flex-direction:column;gap:6px;max-width:min(420px,calc(100vw - 32px));}
+.drive-pedido{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);box-shadow:var(--shadow-lg);font-size:13px;}
+.drive-girando{width:14px;height:14px;flex:none;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:drive-gira .8s linear infinite;}
+@keyframes drive-gira{to{transform:rotate(360deg);}}
+/* Gmail (Tarefas): a caixa do robô */
+.gmail-robo{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-muted);}
+.gmail-robo svg{width:16px;height:16px;}
+.gmail-robo.online{color:var(--success);}
+.gmail-robo .fraco{color:var(--ink-muted);}
+.gmail-andamento{margin-bottom:12px;}
+.gmail-andamento-topo{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.gmail-andamento-passos{list-style:none;margin:8px 0 0;padding:0;font-size:13px;color:var(--ink-muted);}
+.gmail-andamento-passos li.destaque{color:var(--ink);}
+.gmail-tabela td.gmail-assunto{max-width:480px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.gmail-acoes{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+.gmail-janela{width:min(900px,100%);}
+.gmail-painel{display:flex;flex-direction:column;gap:12px;}
+.gmail-cabecalho p{margin:0 0 2px;font-size:14px;}
+.gmail-cabecalho .fraco{color:var(--ink-muted);font-size:13px;}
+.gmail-painel-acoes{margin-top:8px !important;}
+.gmail-texto{white-space:pre-wrap;font:inherit;font-size:14px;line-height:1.5;margin:0;padding:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface-2);}
+.gmail-anexos ul{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;}
+.gmail-anexos li{display:inline-flex;align-items:center;gap:6px;}
+.gmail-anexos svg{width:14px;height:14px;color:var(--ink-muted);}
+.gmail-respostas .gmail-resposta{border-left:3px solid var(--border);padding:4px 10px;margin-top:6px;}
+.gmail-respostas p{margin:0;font-size:13px;}
+.gmail-responder textarea{width:100%;resize:vertical;}
+.gmail-responder-pe{display:flex;align-items:center;gap:8px;margin-top:6px;}
+td.gmail-erro{color:var(--danger);}
