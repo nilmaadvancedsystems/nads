@@ -16,6 +16,8 @@
 // aplicativos/tarefas/dados/{drive,gmail}.firestore.ts: driveIndice e robo/estado (só leitura), os pedidos em
 // aberturasDrive, solicitacoesEmail e leiturasGmail, clientes.email/emails (ligar remetente) e config/roboIgnorados.
 // O arquivo abre e baixa pelo link temporário que o robô devolve (navegação, não fetch).
+// E a proteção do login e a equipe (2026-09-30), em aplicativos/tarefas/dados/acesso.firestore.ts: config/nads,
+// nadsPedidos (+codigo), nadsSessoes e usuarios (cargo, papéis, ativo; só o admin grava).
 // Esta checagem falha se:
 //  1. aparecer dependência de rede fora do permitido (só "firebase", e só no apps/web);
 //  2. código fora de apps/web/src/aplicativos/<app>/dados/*.firestore.ts importar/usar Firebase;

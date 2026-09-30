@@ -2,6 +2,8 @@
 // aplicações que ainda não foram feitas mostram "Em desenvolvimento". O Cadastro tem rota própria (CadastroAberto).
 import { Navigate, useParams } from 'react-router';
 import { TopoProvider } from '../../../comum/topo';
+import { ConfiguracoesDoNads } from '../telas/cadastro/configuracoes/ConfiguracoesDoNads';
+import { UsuariosDoNads } from '../telas/cadastro/usuarios/UsuariosDoNads';
 import { VisaoContabil } from '../telas/contabil/VisaoContabil';
 import { ExploradorDoDrive } from '../telas/drive/ExploradorDoDrive';
 import { CaixaDoRobo } from '../telas/gmail/CaixaDoRobo';
@@ -17,6 +19,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
   switch (app) {
     case 'minhas-empresas': return pagina === 'insights' ? <Insights /> : <MinhasEmpresas />;
     case 'contabil': return <VisaoContabil pagina={pagina} />;
+    case 'cadastro': return pagina === 'configuracoes' ? <ConfiguracoesDoNads /> : <UsuariosDoNads />;
     case 'drive': return <ExploradorDoDrive />;
     case 'contato': return pagina === 'historico' ? <HistoricoDoRobo /> : <CaixaDoRobo />;
     default: return <EmDesenvolvimento nome={aplicacao(app)?.nome || app} />;

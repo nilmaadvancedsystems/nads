@@ -114,3 +114,19 @@ describe('departamento da conta (a rotina da Tarefas)', () => {
     expect(departamentoDaConta(lerUsuario('d', { roles: ['staff', 'admin'] }))).toBeNull();
   });
 });
+
+describe('liberação do login do nads', () => {
+  it('sessão, código, computador e pedidos', async () => {
+    const l = await import('./regras/liberacao');
+    expect(l.idDaSessao('u1', '1727710000')).toBe('u1_1727710000');
+    expect(l.codigoNovo(() => 0.0123)).toBe('012300');
+    expect(l.codigoNovo(() => 0.999999)).toBe('999999');
+    expect(l.computadorDoNavegador('Mozilla/5.0 (Windows NT 10.0) Chrome/130 Safari/537')).toBe('Chrome · Windows');
+    expect(l.computadorDoNavegador('Mozilla/5.0 (Windows NT 10.0) Chrome/130 Edg/130')).toBe('Edge · Windows');
+    expect(l.codigoDigitado(' 48-29 13x')).toBe('482913');
+    const p = l.pedidoDoDocumento('p1', { uid: 'u1', status: 'estranho', criadoEm: '2026-09-30T12:00:00Z' });
+    expect(p.status).toBe('pendente');
+    expect(l.pedidoVencido(p, Date.parse('2026-09-30T12:10:00Z'))).toBe(false);
+    expect(l.pedidoVencido(p, Date.parse('2026-09-30T13:00:00Z'))).toBe(true);
+  });
+});

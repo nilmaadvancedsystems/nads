@@ -3,7 +3,8 @@
 import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { bancosDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDoCadastro, repoDoDrive, repoDoGmail } from './fonte';
+import type { RepoAcesso } from './acesso';
+import { bancosDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail } from './fonte';
 
 type Repo = tarefas.RepoTarefas;
 
@@ -98,6 +99,13 @@ export function useDriveDoEntregas(): entregas.RepoDriveDoEntregas {
 /** A caixa do robô do Gmail, ao vivo. */
 export function useGmailDoEntregas(): entregas.RepoGmailDoEntregas {
   const repo = repoDoGmail();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** A proteção do login, a equipe e as configurações do nads, ao vivo. */
+export function useAcesso(): RepoAcesso {
+  const repo = repoDeAcesso();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
 }

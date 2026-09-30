@@ -33,6 +33,14 @@ export interface SessaoEntregas {
 const appDoEntregas = () => getApps().find(a => a.name === 'entregas') ?? initializeApp(CONFIG_ENTREGAS, 'entregas');
 
 /** Quem está logado no Entregas agora (uid e e-mail vão nos pedidos ao robô; as regras conferem o uid). */
+/** A hora do login atual (auth_time do token, em segundos): a chave da liberação do nads. */
+export async function horaDoLogin(): Promise<string> {
+  const u = getAuth(appDoEntregas()).currentUser;
+  if (!u) return '';
+  const t = await u.getIdTokenResult();
+  return String(t.claims.auth_time || '');
+}
+
 export function contaDoEntregas(): { uid: string; email: string } | null {
   const u = getAuth(appDoEntregas()).currentUser;
   return u ? { uid: u.uid, email: u.email || '' } : null;

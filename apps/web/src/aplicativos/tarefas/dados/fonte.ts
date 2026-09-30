@@ -7,6 +7,8 @@
 // nos exemplos, a pessoa escolhe o nome na lista da equipe (não há login).
 // O repositório e a sessão são criados uma vez, quando alguém abre a Tarefas. O do Cadastro, quando alguém abre o Cadastro.
 import { empresas, entregas, extrator, tarefas } from '@nads/core';
+import { criarAcessoMemoria, type RepoAcesso } from './acesso';
+import { criarAcessoFirestore } from './acesso.firestore';
 import { criarDriveFirestore } from './drive.firestore';
 import { criarSessaoEntregas, type SessaoEntregas } from './entregas.firestore';
 import { criarGmailFirestore } from './gmail.firestore';
@@ -126,4 +128,19 @@ export function repoDoGmail(): entregas.RepoGmailDoEntregas {
     gmail = noBanco ? criarGmailFirestore(quemPede, mes) : entregas.criarGmailDoEntregasMemoria();
   }
   return gmail;
+}
+
+let acesso: RepoAcesso | null = null;
+
+/** A proteção do login, a equipe e as configurações do nads (config/nads). */
+export function repoDeAcesso(): RepoAcesso {
+  if (!acesso) {
+    acesso = noBanco
+      ? criarAcessoFirestore(() => {
+        const u = sessaoDaTarefas()?.estado().usuario;
+        return u ? { uid: u.uid, nome: u.nome, email: u.email, admin: u.papeis.includes('admin') } : null;
+      })
+      : criarAcessoMemoria(() => ({ nome: 'você' }));
+  }
+  return acesso;
 }

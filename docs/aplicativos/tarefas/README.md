@@ -124,3 +124,19 @@ Pendências (os mesmos dados e as mesmas filas do robô do Entregas); nada nas P
 - **Gmail › Histórico**: as últimas leituras do robô.
 
 Ainda não: a cobrança (um cliente, lote, disparo, régua), o status do mês (pendências) e a aba "Marcados".
+
+## Proteção do login, Usuários e Configurações (2026-09-30)
+
+Pedido do Vitor: que ninguém use o nads fora do escritório sem um admin liberar. Ligada em **Cadastro ›
+Configurações** (config/nads.protecaoLogin, começa desligada), quem não é admin, ao entrar num computador ainda não
+liberado, vê "Liberar este computador" e pede; o pedido aparece no canto da tela dos admins (Aprovar / Recusar);
+quem aprova recebe um código de 6 dígitos e passa para a pessoa, que digita e entra. O login fica liberado até a
+pessoa sair da conta (a chave é a hora do login, auth_time do token, que as regras enxergam).
+
+Banco (Entregas): nadsPedidos (+ codigo/atual, só admin), nadsSessoes/{uid}_{auth_time}; as regras de rotinas e
+cadastro exigem o login liberado quando a proteção está ligada (o admin não precisa). O navegador não sabe onde
+a pessoa está: a proteção é o admin liberar cada login.
+
+**Cadastro › Usuários**: a equipe (usuarios do Entregas) com departamento, nível, papéis e ativo (só o admin muda)
+e os computadores liberados de cada pessoa, com Revogar. **Cadastro › Configurações**: a proteção do login e o
+robô que lê agência e conta.
