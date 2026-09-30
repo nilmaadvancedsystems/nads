@@ -65,14 +65,17 @@ export function Executor() {
             )}
           </div>
           {vm.aviso && <Alerta titulo="Ainda não dá para seguir" texto={vm.aviso} />}
-          <footer className="executor-rodape">
+          {/* os botões da etapa soltos por cima da tela, no canto: as saídas (quando a etapa tem), ✕ Interromper e → Próximo */}
+          <div className="executor-flutuante">
             <Objecoes etapa={vm.etapa} onResolver={vm.resolver} />
-            <span className="executor-espaco" />
-            <button type="button" className="btn btn-outline" onClick={vm.abrirInterromper}>Interromper</button>
-            <button type="button" className="btn btn-primary" disabled={vm.conferindo} onClick={() => { void vm.proximo(); }}>
-              {vm.conferindo ? <><span className="btn-spinner" />Conferindo…</> : <>Próximo<Icone nome="arrowDown" style={{ transform: 'rotate(-90deg)' }} /></>}
+            <button type="button" className="executor-botao" onClick={vm.abrirInterromper} title="Interromper a etapa" aria-label="Interromper">
+              <Icone nome="x" />
             </button>
-          </footer>
+            <button type="button" className="executor-botao proximo" disabled={vm.conferindo} onClick={() => { void vm.proximo(); }}
+              title={vm.conferindo ? 'Conferindo…' : 'Próximo (confere e segue para a próxima etapa)'} aria-label="Próximo">
+              {vm.conferindo ? <span className="btn-spinner" /> : <Icone nome="arrowDown" style={{ transform: 'rotate(-90deg)' }} />}
+            </button>
+          </div>
           {vm.interrompendo && <JanelaInterromper etapa={vm.etapa} onInterromper={vm.interromper} onCancelar={vm.fecharInterromper} />}
         </div>
       )}
