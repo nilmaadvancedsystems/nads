@@ -19,7 +19,7 @@ export { definirWorkerDoPdf, ehPdf, itensDoPdf } from './arquivos/pdf';
 export type { RepoExtrator } from './repo';
 export { arquivoDeTeste } from './regras/teste';
 export { bancoDoArquivo, bancosNaCompetencia, bancosDaEmpresaNa, arquivosDoBanco, adicionarBanco } from './regras/bancos';
-export { movimentoDoExtrato, type LinhaDoMovimento, type MovimentoDoExtrato } from './regras/movimento';
+export { movimentoDoExtrato, TODOS_OS_MESES, type LinhaDoMovimento, type MovimentoDoExtrato } from './regras/movimento';
 export { acharExtratoNoDrive, mensagemDaBuscaDoExtrato, type ContaProcurada } from './regras/drive';
 export { gravacao, semMudanca, empresaDoBanco, type Gravacao, type DocEmpresaExtrator } from './regras/banco';
 export { criarRepoExtratorMemoria, type Guarda } from './repo.memoria';

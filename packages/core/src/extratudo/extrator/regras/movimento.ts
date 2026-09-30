@@ -6,9 +6,13 @@ import type { EmpresaExtrator } from '../tipos';
 import { bancoDoArquivo } from './bancos';
 
 export interface LinhaDoMovimento { data: string; historico: string; valor: number; saldo: number }
+/** Todos os extratos importados da conta, do primeiro ao último mês. */
+export const TODOS_OS_MESES = { de: '0000-00', ate: '9999-99' } as const;
+
 export interface MovimentoDoExtrato { saldoAnterior: number; linhas: LinhaDoMovimento[]; entradas: number; saidas: number }
 
-export function movimentoDoExtrato(e: EmpresaExtrator, banco: string, primeiro: string, competencia: string): MovimentoDoExtrato {
+/** ate: a última competência que entra (sem = só a competência); "todos" = movimentoDoExtrato(…, TODOS_OS_MESES.de, TODOS_OS_MESES.ate) */
+export function movimentoDoExtrato(e: EmpresaExtrator, banco: string, primeiro: string, competencia: string, ate = competencia): MovimentoDoExtrato {
   const todos = e.arquivos
     .filter(a => a.lado === 'banco' && bancoDoArquivo(a, primeiro) === banco)
     .flatMap(a => a.lancamentos)
@@ -18,9 +22,9 @@ export function movimentoDoExtrato(e: EmpresaExtrator, banco: string, primeiro: 
   let saldoAnterior = 0;
   const linhas: LinhaDoMovimento[] = [];
   for (const l of todos) {
-    if (l.data.slice(0, 7) > competencia) break;
+    if (l.data.slice(0, 7) > ate) break;
     saldo += l.valor;
-    if (l.data.startsWith(competencia)) linhas.push({ data: l.data, historico: l.historico, valor: l.valor, saldo });
+    if (l.data.slice(0, 7) >= competencia) linhas.push({ data: l.data, historico: l.historico, valor: l.valor, saldo });
     else saldoAnterior = saldo;
   }
   return {
