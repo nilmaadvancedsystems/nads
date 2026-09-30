@@ -1276,7 +1276,9 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-seta:disabled{opacity:.35;cursor:default;}
 .imp-seta svg{flex:none;width:18px;height:18px;transform:rotate(-90deg);transition:transform .12s ease;}
 .imp-seta.aberta svg{transform:none;}
-.imp-mov{max-height:320px;overflow:auto;margin:0 12px 12px 44px;border:1px solid var(--border-muted);border-radius:6px;}
+.imp-mov-caixa{margin:0 12px 12px 44px;display:flex;flex-direction:column;gap:8px;}
+.imp-mov-busca{width:260px;}
+.imp-mov{max-height:320px;overflow:auto;border:1px solid var(--border-muted);border-radius:6px;}
 .imp-mov table{font-size:13px;}
 .imp-mov thead th{position:sticky;top:0;}
 .imp-mov-anterior td{color:var(--ink-muted);font-style:italic;}
@@ -1314,15 +1316,19 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 /* o logo original (imagem) do banco: colorido, ou em tons de cinza antes de importar */
 .logo-img{display:block;width:100%;height:100%;object-fit:contain;border-radius:20%;}
 .logo-img.cinza{filter:grayscale(1);opacity:.6;}
-.imp-logo .logo-img{width:32px;height:32px;}
+.imp-logo .logo-img{width:40px;height:40px;}
+.logo-img.original{border-radius:0;filter:none;opacity:1;}
 .add-banco-logo .logo-img{width:24px;height:24px;}
 .logo-img.app{border-radius:0;}
 .imp-drive .logo-img,.imp-feito-drive .logo-img{width:18px;height:18px;}
-.apps-contato .logo-img{width:24px;height:24px;filter:grayscale(1);opacity:.65;transition:filter .12s ease,opacity .12s ease;}
-.apps-contato button:hover .logo-img,.apps-contato button:focus-visible .logo-img{filter:none;opacity:1;}
-.imp-logo{width:36px;height:36px;}
+.apps-contato .logo-img{width:24px;height:24px;}
+.imp-logo{width:40px;height:40px;}
+.imp-logo:has(.logo-img){background:none;}
 .add-banco-logo{width:24px;height:24px;}
 .imp-btn.imp-drive,.imp-btn.imp-feito-drive{width:32px;height:32px;}
 /* com mais de um banco: clicar no nome escolhe a conferência (o escolhido fica marcado) */
 .imp-txt.escolhe{cursor:pointer;border-radius:6px;padding:2px 6px;margin:-2px -6px;}
 .imp-txt.escolhe:hover{background:var(--hover-bg);}
+.imp-mov th.th-sort{cursor:pointer;user-select:none;}
+.imp-mov th.th-sort:hover{color:var(--ink);}
+.imp-mov thead th{background:var(--surface-2);}

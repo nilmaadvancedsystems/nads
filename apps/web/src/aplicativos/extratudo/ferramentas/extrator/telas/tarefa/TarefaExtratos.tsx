@@ -65,7 +65,7 @@ function AdicionarBanco({ bancos, onAdicionar, fechar }: {
       <div className="add-banco-lista" role="menu">
         {bancos.map(b => (
           <button key={b.id} type="button" className="popover-item add-banco-item" role="menuitem" onClick={() => setEscolhido(b)}>
-            <span className="add-banco-logo"><LogoBanco banco={b.id} /></span>{b.nome}
+            {b.nome}
           </button>
         ))}
       </div>
@@ -90,16 +90,52 @@ function AdicionarBanco({ bancos, onAdicionar, fechar }: {
   );
 }
 
-/** O movimento do extrato da conta na competência (abre pela setinha): o saldo acumula os meses importados. */
+type ColunaMov = 'data' | 'historico' | 'valor' | 'tipo' | 'saldo';
+const COMPARAR_MOV: Record<ColunaMov, (a: x.LinhaDoMovimento, b: x.LinhaDoMovimento) => number> = {
+  data: (a, b) => a.data.localeCompare(b.data),
+  historico: (a, b) => a.historico.localeCompare(b.historico, 'pt-BR'),
+  valor: (a, b) => Math.abs(a.valor) - Math.abs(b.valor),
+  tipo: (a, b) => Number(b.valor > 0) - Number(a.valor > 0),
+  saldo: (a, b) => a.saldo - b.saldo,
+};
+const semAcento = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+/**
+ * O movimento do extrato da conta na competência (abre pela setinha): o saldo acumula os meses importados.
+ * Busca (data, descrição ou valor) e ordem por coluna (clicar no título; clicar de novo inverte; a setinha só
+ * aparece depois do clique). A linha do saldo anterior fica sempre em cima, como está.
+ */
 function Movimento({ m }: { m: x.MovimentoDoExtrato }) {
+  const [busca, setBusca] = useState('');
+  const [ordem, setOrdem] = useState<{ coluna: ColunaMov; dir: 'asc' | 'desc' } | null>(null);
   if (!m.linhas.length) return <p className="hint imp-mov-vazio">Nenhum lançamento do extrato nesta competência.</p>;
+  const q = semAcento(busca.trim());
+  const achadas = q ? m.linhas.filter(l => semAcento([x.dataBR(l.data), l.historico, x.valorBR(Math.abs(l.valor)), x.valorBR(l.saldo)].join(' ')).includes(q)) : m.linhas;
+  const linhas = ordem ? achadas.slice().sort((a, b) => (ordem.dir === 'asc' ? 1 : -1) * COMPARAR_MOV[ordem.coluna](a, b)) : achadas;
+  const ordenar = (c: ColunaMov) => setOrdem(o => (o?.coluna === c && o.dir === 'asc' ? { coluna: c, dir: 'desc' } : { coluna: c, dir: 'asc' }));
+  const Titulo = ({ c, rotulo, num }: { c: ColunaMov; rotulo: string; num?: boolean }) => (
+    <th className={'th-sort' + (num ? ' num' : '')} onClick={() => ordenar(c)} title="Ordenar por esta coluna"
+      aria-sort={ordem?.coluna === c ? (ordem.dir === 'asc' ? 'ascending' : 'descending') : undefined}>
+      {rotulo}{ordem?.coluna === c && <Icone nome="caretDown" className={'th-seta' + (ordem.dir === 'asc' ? ' cima' : '')} />}
+    </th>
+  );
   return (
+    <div className="imp-mov-caixa">
+      <label className="busca-curta imp-mov-busca">
+        <Icone nome="search" />
+        <input type="text" placeholder="Buscar no extrato" aria-label="Buscar no extrato (data, descrição ou valor)" value={busca}
+          onChange={e => setBusca(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') setBusca(''); }} />
+      </label>
     <div className="imp-mov">
       <table className="table-compact">
-        <thead><tr><th>Data</th><th>Descrição</th><th className="num">Valor</th><th>Entrou/Saiu</th><th className="num">Saldo atual</th></tr></thead>
+        <thead><tr>
+          <Titulo c="data" rotulo="Data" /><Titulo c="historico" rotulo="Descrição" /><Titulo c="valor" rotulo="Valor" num />
+          <Titulo c="tipo" rotulo="Entrou/Saiu" /><Titulo c="saldo" rotulo="Saldo atual" num />
+        </tr></thead>
         <tbody>
           <tr className="imp-mov-anterior"><td colSpan={4}>Saldo anterior <span className="hint">(dos meses já importados)</span></td><td className="num">{x.valorBR(m.saldoAnterior)}</td></tr>
-          {m.linhas.map((l, i) => (
+          {!linhas.length && <tr><td colSpan={5} className="hint">Nada com essa busca.</td></tr>}
+          {linhas.map((l, i) => (
             <tr key={i}>
               <td style={{ whiteSpace: 'nowrap' }}>{x.dataBR(l.data)}</td>
               <td className="wrap">{l.historico}</td>
@@ -110,6 +146,7 @@ function Movimento({ m }: { m: x.MovimentoDoExtrato }) {
           ))}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }

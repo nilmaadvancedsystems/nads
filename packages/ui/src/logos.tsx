@@ -7,8 +7,9 @@ import { Icone } from './icones';
 
 /**
  * Os logos originais (as imagens que o Vitor mandou, 29/09/2026), na pasta logos-bancos/: nome do arquivo = a
- * marca (itau.png, c6.jpg…), e também drive, gmail e whatsapp. Aparecem como estão (coloridos) ou em tons de
- * cinza. Sem arquivo, vale o desenho abaixo.
+ * marca (itau.png, c6.jpg…), e também drive, gmail e whatsapp. Os dos bancos aparecem SEMPRE como estão (sem
+ * filtro nem corte — pedido do Vitor, 30/09/2026); o do Drive fica cinza até o extrato vir do Drive. Sem
+ * arquivo, vale o desenho abaixo.
  */
 const IMAGENS = import.meta.glob('./logos-bancos/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
 function imagemDaMarca(marca: string): string | null {
@@ -170,7 +171,8 @@ function Drive({ cor }: { cor?: boolean }) {
 /** O logo do banco (a marca: 'sicoob', 'itau'…), em cinza ou, com `cor`, colorido. Sem logo: o ícone de banco. */
 export function LogoBanco({ banco, cor }: { banco: string; cor?: boolean }) {
   const imagem = imagemDaMarca(banco);
-  if (imagem) return <img src={imagem} alt="" aria-hidden="true" className={'logo-img' + (cor ? '' : ' cinza')} />;
+  // a imagem original, como o Vitor mandou: sem filtro nem corte, esteja importado ou não
+  if (imagem) return <img src={imagem} alt="" aria-hidden="true" className="logo-img original" />;
   if (banco === 'sicoob') return <Sicoob cor={cor} />;
   if (DESENHOS[banco]) return DESENHOS[banco](cor);
   if (SELOS[banco]) return <Selo marca={banco} cor={cor} />;
