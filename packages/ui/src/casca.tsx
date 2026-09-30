@@ -136,13 +136,15 @@ export function Casca(p: {
   // aberta dentro de outra tela (a etapa de uma tarefa): só a página, sem cabeçalho nem barra lateral
   // acoplado a outro sistema, ou um aplicativo inteiro dentro da etapa: tudo menos a barra de cima
   const noOutro = acoplada() || (embutida() && !!p.inteiroNaEtapa);
+  // o aplicativo inteiro dentro da etapa: sem nem a linha da empresa (a empresa já está no cabeçalho da Tarefas)
+  const naEtapa = embutida() && !!p.inteiroNaEtapa && !acoplada();
   if (embutida() && !noOutro) return <div id="app" className="on embutida">{principal}</div>;
 
   let grupoAnt: number | null = null;
   return (
     <div id="app" className={'on' + (p.larga ? ' larga' : '') + (noOutro ? ' acoplada' : '')}>
       <header className="gh-header" ref={cabecalho}>
-        <div className="gh-header-top">
+        <div className="gh-header-top" hidden={naEtapa}>
           {!noOutro && (
             <>
               <button className="gh-hamb" type="button" aria-label="Abrir menu" title="Menu" onClick={() => setGaveta(true)}>
