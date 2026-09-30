@@ -7,11 +7,14 @@ import { Icone } from './icones';
 
 /**
  * Os logos originais (as imagens que o Vitor mandou, 29/09/2026), na pasta logos-bancos/: nome do arquivo = a
- * marca (itau.png, c6.jpg…), e também drive, gmail e whatsapp. Os dos bancos aparecem SEMPRE como estão (sem
- * filtro nem corte — pedido do Vitor, 30/09/2026); o do Drive fica cinza até o extrato vir do Drive. Sem
- * arquivo, vale o desenho abaixo.
+ * marca (itau.png, c6.png…), e também drive, gmail e whatsapp. Os dos bancos estão SEM O FUNDO (as imagens com
+ * fundo estão em logos-bancos/originais/) e ficam em cinza até o extrato ser importado, como antes (pedido do
+ * Vitor, 30/09/2026). Sem arquivo, vale o desenho abaixo.
  */
 const IMAGENS = import.meta.glob('./logos-bancos/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+/** as marcas brancas (sem o fundo, somem no tema claro: lá ficam pretas) */
+const MARCA_BRANCA = ['bradesco', 'btg', 'c6'];
+
 function imagemDaMarca(marca: string): string | null {
   for (const [caminho, url] of Object.entries(IMAGENS)) if (caminho.replace(/^.*\//, '').replace(/\.[^.]+$/, '') === marca) return url;
   return null;
@@ -171,8 +174,9 @@ function Drive({ cor }: { cor?: boolean }) {
 /** O logo do banco (a marca: 'sicoob', 'itau'…), em cinza ou, com `cor`, colorido. Sem logo: o ícone de banco. */
 export function LogoBanco({ banco, cor }: { banco: string; cor?: boolean }) {
   const imagem = imagemDaMarca(banco);
-  // a imagem original, como o Vitor mandou: sem filtro nem corte, esteja importado ou não
-  if (imagem) return <img src={imagem} alt="" aria-hidden="true" className="logo-img original" />;
+  // o logo original sem o fundo: em cinza até o extrato ser importado, depois colorido; os de marca branca
+  // (Bradesco, BTG, C6) ficam pretos no tema claro
+  if (imagem) return <img src={imagem} alt="" aria-hidden="true" className={'logo-img' + (cor ? '' : ' cinza') + (MARCA_BRANCA.includes(banco) ? ' marca-branca' : '')} />;
   if (banco === 'sicoob') return <Sicoob cor={cor} />;
   if (DESENHOS[banco]) return DESENHOS[banco](cor);
   if (SELOS[banco]) return <Selo marca={banco} cor={cor} />;
