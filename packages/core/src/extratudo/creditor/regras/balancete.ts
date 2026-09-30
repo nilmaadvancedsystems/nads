@@ -25,10 +25,11 @@ export interface ContaDoBalancete {
  * - "balancete": importado na Conferência e ainda guardado;
  * - "plano": o balancete foi apagado ao sair da Conferência, mas a impressão digital dele (código e
  *   nome de cada conta) fica guardada, e basta para achar as contas;
- * - "nenhum": a empresa nunca teve balancete importado.
+ * - "nenhum": a empresa nunca teve balancete importado;
+ * - "cadastro": o plano de contas importado no Cadastro da empresa (Tarefas), que vale no lugar dos outros.
  */
 export interface BalanceteDaEmpresa {
-  origem: 'balancete' | 'plano' | 'nenhum';
+  origem: 'balancete' | 'plano' | 'nenhum' | 'cadastro';
   contas: ContaDoBalancete[];
   /** quando o balancete foi importado (ISO), se o banco souber */
   em?: string;

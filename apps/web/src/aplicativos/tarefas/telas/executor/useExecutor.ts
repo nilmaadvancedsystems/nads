@@ -5,7 +5,7 @@ import { empresas, extrator, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { extratorDaEmpresa } from '../../dados/fonte';
+import { extratorDaEmpresa, repoDoCadastro } from '../../dados/fonte';
 import { useExecucoes, useRepo } from '../../dados/repo';
 import { caminhoDaEmpresa, caminhoDaPagina, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
@@ -65,8 +65,9 @@ export function useExecutor(rotaEmpresa: string, competencia: string) {
     setConferindo(true);
     try {
       const ext = t.precisaDoExtrator(etapa) ? await extratorDaEmpresa(ex.empresa) : null;
-      // os bancos da empresa na competência (cadastrados + adicionados no Extrator)
-      const bancos = ext ? extrator.bancosNaCompetencia(ext, empresas.bancosDaEmpresa(ex.codigo), competencia) : [];
+      // os bancos da empresa na competência: os do Cadastro, quando ela tem; senão, os de antes
+      const cad = ext ? await repoDoCadastro().obter(ex.empresa, ex.codigo) : null;
+      const { bancos, primeiro } = ext ? extrator.bancosDaEmpresaNa(ext, cad, ex.codigo, competencia) : { bancos: [], primeiro: undefined };
       if (ext && t.todosSemMovimento(ex, bancos)) {
         // nenhum banco teve movimento: a etapa não se aplica nesta competência
         const d = t.dispensar(ex, etapa.id, 'sem-movimento', '', op.nome, new Date());
@@ -75,7 +76,7 @@ export function useExecutor(rotaEmpresa: string, competencia: string) {
         toast(etapa.nome + ': sem movimento.');
         return;
       }
-      const r = t.verificar(etapa, competencia, ext?.arquivos || [], ext ? { bancos, semMovimento: ex.semMovimento || [] } : undefined);
+      const r = t.verificar(etapa, competencia, ext?.arquivos || [], ext ? { bancos, primeiro, semMovimento: ex.semMovimento || [] } : undefined);
       if (!r.ok) {
         setAviso(r.motivo);
         repo.registrar(ex, t.eventoDeVerificacaoFalhou(etapa.id, op.nome, new Date(), r.motivo));

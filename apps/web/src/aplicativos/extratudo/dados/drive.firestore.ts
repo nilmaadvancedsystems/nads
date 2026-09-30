@@ -132,9 +132,14 @@ function criarDrivePeloEntregas(): cr.RepoDrive {
   };
 }
 
+/** O app do Entregas nesta página (o mesmo do login; o Cadastro, em cadastro.firestore.ts, usa ele também). */
+export function appDoEntregas() {
+  return getApps().find(a => a.name === 'entregas') ?? initializeApp(CONFIG_ENTREGAS, 'entregas');
+}
+
 export function criarDriveFirestore(): cr.RepoDrive {
   if (dentroDoEntregas()) return criarDrivePeloEntregas();
-  const app = getApps().find(a => a.name === 'entregas') ?? initializeApp(CONFIG_ENTREGAS, 'entregas');
+  const app = appDoEntregas();
   const auth = getAuth(app);
   const db = getFirestore(app);
   let acesso: cr.AcessoDrive = { pronto: false, entrou: false, quem: '' };

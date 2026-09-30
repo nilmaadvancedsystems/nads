@@ -1,8 +1,10 @@
 // Liga o React ao repositório do Extrator (ver fonte.ts). Os ViewModels usam estes hooks;
 // nenhuma View importa o repositório.
-import { extrator, type creditor } from '@nads/core';
+import { extrator, type creditor, type empresas } from '@nads/core';
+import { useRetorno } from '@nads/ui';
+import { repoDoCadastro } from '../../../dados/cadastro';
 import { driveDoExtrator } from './fonte';
-import { createContext, useCallback, useContext, useSyncExternalStore, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useSyncExternalStore, type ReactNode } from 'react';
 
 type Repo = extrator.RepoExtrator;
 type Empresa = extrator.EmpresaExtrator;
@@ -49,4 +51,21 @@ export function useDrive(): { drive: creditor.RepoDrive; acesso: creditor.Acesso
   const drive = driveDoExtrator();
   useSyncExternalStore(drive.assinar, drive.versao, drive.versao);
   return { drive, acesso: drive.acesso() };
+}
+
+/**
+ * O cadastro da empresa (Tarefas › Cadastro): as contas bancárias viram as linhas de banco do Extrator.
+ * Enquanto não chega do banco, `cadastro` é null (vale o de antes).
+ */
+export function useCadastroDaEmpresa(nome: string, codigo: number | null): {
+  cadastro: empresas.cadastro.CadastroDaEmpresa | null;
+  salvar: (c: empresas.cadastro.CadastroDaEmpresa) => void;
+} {
+  const cad = repoDoCadastro();
+  const { toast } = useRetorno();
+  useEffect(() => { cad.definirAviso(toast); }, [cad, toast]);
+  useSyncExternalStore(cad.assinar, cad.versao, cad.versao);
+  const salvar = useCallback((c: empresas.cadastro.CadastroDaEmpresa) => cad.salvar(nome, c), [cad, nome]);
+  const cadastro = cad.cadastro(nome, codigo);
+  return { cadastro: cad.carregada(nome) ? cadastro : null, salvar };
 }

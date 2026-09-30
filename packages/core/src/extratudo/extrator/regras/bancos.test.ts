@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ArquivoImportado, EmpresaExtrator } from '../tipos';
-import { adicionarBanco, arquivosDoBanco, bancosNaCompetencia } from './bancos';
+import { adicionarBanco, arquivosDoBanco, bancosDaEmpresaNa, bancosNaCompetencia } from './bancos';
 
 const agora = new Date('2026-09-29T12:00:00Z');
 const arq = (id: string, lado: 'banco' | 'sistema', data: string, banco?: string): ArquivoImportado =>
@@ -33,5 +33,33 @@ describe('bancos da empresa no Extrator', () => {
     const e = emp([arq('a', 'banco', '2026-08-01'), arq('b', 'banco', '2026-08-02', 'itau'), arq('c', 'banco', '2026-07-30')]);
     expect(arquivosDoBanco(e, 'sicoob', 'sicoob', 'banco', '2026-08').map(a => a.id)).toEqual(['a']);
     expect(arquivosDoBanco(e, 'itau', 'sicoob', 'banco', '2026-08').map(a => a.id)).toEqual(['b']);
+  });
+});
+
+describe('bancos do Cadastro no Extrator', () => {
+  const cadastro = (bancos: { id: string; marca: string; nome: string; desde?: string; ate?: string }[] | null) =>
+    ({ nome: 'FITO', codigo: 292, bancos, contasPadrao: null, historico: [] });
+
+  it('sem cadastro, como antes (a lista provisória e os adicionados na tela)', () => {
+    const e = { ...emp(), bancos: [{ id: 'itau-1-2', nome: 'Itaú', marca: 'itau', desde: '2026-08' }] };
+    const r = bancosDaEmpresaNa(e, null, 292, '2026-08');
+    expect(r.bancos.map(b => b.id)).toEqual(['sicoob', 'itau-1-2']);
+    expect(r.primeiro).toBe('sicoob');
+    expect(bancosDaEmpresaNa(e, cadastro(null), 292, '2026-08').primeiro).toBe('sicoob');
+  });
+
+  it('com cadastro, as contas que valem na competência (os adicionados de antes ficam de fora)', () => {
+    const e = { ...emp(), bancos: [{ id: 'velho', nome: 'Velho', desde: '2026-01' }] };
+    const c = cadastro([{ id: 'sicoob', marca: 'sicoob', nome: 'Sicoob' }, { id: 'itau-1-2', marca: 'itau', nome: 'Itaú', desde: '2026-09' }]);
+    expect(bancosDaEmpresaNa(e, c, 292, '2026-08').bancos.map(b => b.id)).toEqual(['sicoob']);
+    expect(bancosDaEmpresaNa(e, c, 292, '2026-09').bancos.map(b => b.id)).toEqual(['sicoob', 'itau-1-2']);
+  });
+
+  it('arquivo da linha genérica "Banco" vai para o primeiro banco do cadastro', () => {
+    const e = emp([arq('a', 'banco', '2026-08-03', 'banco'), arq('b', 'banco', '2026-08-04')]);
+    const c = cadastro([{ id: 'itau-1-2', marca: 'itau', nome: 'Itaú' }]);
+    const { primeiro } = bancosDaEmpresaNa(e, c, null, '2026-08');
+    expect(arquivosDoBanco(e, 'itau-1-2', primeiro, 'banco', '2026-08').map(a => a.id)).toEqual(['a', 'b']);
+    expect(bancosDaEmpresaNa(e, cadastro([]), null, '2026-08')).toEqual({ bancos: GENERICO, primeiro: 'banco' });
   });
 });

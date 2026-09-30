@@ -1467,3 +1467,45 @@ a.btn.is-locked{opacity:.55;cursor:not-allowed;}
 .pedir-doc .pedir-logo .logo-img,.pedir-doc .pedir-logo svg{width:20px;height:20px;border-radius:4px;}
 .pedir-titulo > svg{width:16px;height:16px;flex:none;color:var(--ink-muted);}
 .pedir-grade-2 > .pedir-corpo{overflow-x:hidden;}
+
+/* Cadastro (Tarefas): contas bancárias, plano de contas, contas padrão e histórico de uma empresa */
+.cad-empresa{max-width:360px;}
+.cad-empresa b{font-weight:600;font-variant-numeric:tabular-nums;}
+.cad-empresa-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.cad-escolher{display:flex;flex-direction:column;padding:8px 8px 4px;}
+.cad-escolher .emp-list{padding:0;max-height:360px;overflow:auto;}
+.cad-escolher-titulo{font-size:12px;font-weight:600;color:var(--ink-muted);margin:6px 8px 2px;}
+.cad-escolher .empty{padding:8px;}
+.cad-escolher-pagina{max-width:560px;margin:0 auto;}
+.cad-escolher-caixa{border:1px solid var(--border);border-radius:6px;background:var(--surface);}
+.cad-aviso{margin:0 0 16px;}
+.cad-aviso .btn{margin-top:8px;}
+.cad-tabela td{vertical-align:middle;}
+.cad-banco{display:inline-flex;align-items:center;gap:10px;}
+.cad-banco > span:last-child{display:flex;flex-direction:column;}
+.cad-apelido{font-size:12px;color:var(--ink-muted);}
+.cad-conta{display:inline-flex;flex-direction:column;}
+.cad-conta .fraco{font-size:12px;color:var(--ink-muted);}
+.cad-badge{margin-left:6px;vertical-align:1px;}
+tr.cad-encerrada td{color:var(--ink-muted);}
+td.cad-acoes{width:1%;text-align:right;}
+td.cad-acoes .btn{padding:4px 6px;}
+td.cad-acoes .menu-seta{display:none;}
+.cad-form .field select,.cad-form .field input{width:100%;}
+.cad-form-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.cad-trocar{margin-left:auto;}
+.cad-dica{font-size:12px;min-height:16px;}
+.cad-dica-aviso{color:var(--danger);}
+.cad-bancos-lista{max-height:360px;overflow:auto;}
+.cad-origem{font-size:13px;color:var(--ink-muted);}
+.cad-plano tr.cad-sintetica td{font-weight:600;}
+.cad-botoes{margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+.cad-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;align-items:start;}
+.cad-grade .card{margin:0;}
+.cad-campo{display:flex;flex-direction:column;gap:4px;}
+.cad-campo-rotulo{font-size:14px;font-weight:600;}
+.cad-campo input{max-width:240px;}
+@media (max-width:640px){
+  .cad-form-2{grid-template-columns:1fr;}
+  .cad-empresa{max-width:100%;}
+}

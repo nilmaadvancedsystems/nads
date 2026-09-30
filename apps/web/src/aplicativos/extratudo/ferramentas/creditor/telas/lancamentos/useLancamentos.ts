@@ -21,6 +21,7 @@ const dataCurta = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('pt-
 function fonteDasContas(b: cr.BalanceteDaEmpresa, carregada: boolean): string {
   if (!carregada) return 'Carregando o balancete da empresa…';
   const em = b.em ? ' (importado em ' + dataCurta(b.em) + ')' : '';
+  if (b.origem === 'cadastro') return 'Contas do plano de contas do Cadastro da empresa (Tarefas)' + em + '. As contas escolhidas aqui ficam no Cadastro.';
   if (b.origem === 'balancete') return 'Contas do balancete da Conferência' + em + '. Quando o balancete é atualizado lá, as contas acompanham.';
   if (b.origem === 'plano') return 'O balancete foi apagado ao sair da Conferência: as contas vêm do plano que ficou guardado' + em + '.';
   return 'Esta empresa não tem balancete na Conferência: valem os padrões. Importe o balancete lá para as contas virem sugeridas.';

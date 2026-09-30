@@ -1,5 +1,9 @@
 # Os aplicativos do nads
 
+> **Mudança em andamento (30/09/2026):** o nads inteiro passa a gravar no banco do **Entregas** (`entregas-2e5e2`),
+> com as contas de lá. Coleções novas: `rotinas` (Tarefas, feito), `extrator` (Extratudo) e `conferencia`
+> (Concilia aí e a Conferência antiga). Ordem: Tarefas → Extratudo → Concilia aí.
+
 Decisão do Vitor (2026-09-29): cada aplicativo é **isolado**, desenvolvido e testado separado, com o seu
 link. Depois, no mesmo dia, as três ferramentas do banco viraram um aplicativo só: o **Extratudo**.
 
@@ -9,7 +13,7 @@ link. Depois, no mesmo dia, as três ferramentas do banco viraram um aplicativo 
 | **Conciliadorzinho** | conciliadorzinho-nilma.web.app | `/conciliadorzinho/292/conciliacao/<etapa>` | cartão × notas fiscais, arquivos por bandeira | nenhum |
 | **Extratudo** | extratudo-nilma.web.app | `/extratudo/292/<ferramenta>/…` | tudo do banco da empresa (abaixo) | Firestore da Conferência, coleção `extrator` (o Extrator guarda os lançamentos lidos; o Creditor guarda as contas em `extrator/{slug}/creditor/contas` e só **lê** o balancete em `empresas/{slug}`; os clientes aprendidos em `extrator/{slug}/creditor/clientes`). O Creditor também lê o Drive pelo **Entregas** (`driveIndice`, `aberturasDrive`), com login |
 | **Extratudo (Entregas)** | extratudo-entregas.web.app | igual ao Extratudo | o mesmo Extratudo, hospedado no projeto do Entregas (`entregas-2e5e2`) a pedido do Vitor (2026-09-29): `npm run sites -- extratudo-entregas` cria o site na 1ª vez | o mesmo do Extratudo (Firestore da Conferência) |
-| **Tarefas** | tarefas-nilma.web.app | `/tarefas/<aplicação>/<página>`, `/tarefas/executar/292/2026-08` | etapas guiadas por empresa e competência (protótipo, ver `tarefas/README.md`) | Firestore da Conferência, coleção `tarefas` |
+| **Tarefas** | tarefas-nilma.web.app | `/tarefas/<aplicação>/<página>`, `/tarefas/executar/292/2026-08`, `/tarefas/cadastro/292/bancos` | etapas guiadas por empresa e competência (protótipo) e o **Cadastro** da empresa (contas bancárias, plano de contas, contas padrão; ver `tarefas/README.md`) | **Firestore do Entregas** (`entregas-2e5e2`), coleções `rotinas` e `cadastro`, com o **login do Entregas** (30/09/2026). O Extrator e o Creditor leem o `cadastro` (com o login do Entregas; sem ele, seguem como antes). Ainda lê o Extrator no banco da Conferência até o Extratudo mudar |
 
 ## Extratudo
 

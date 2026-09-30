@@ -7,6 +7,7 @@ import { useRetorno } from '@nads/ui';
 import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useSessao } from '../../casca/sessao';
+import { useCadastroDaEmpresa } from '../../dados/repo';
 
 /** 'aaaa-mm' do mês passado (a competência que o escritório trabalha). */
 function mesPassado(): string {
@@ -60,10 +61,10 @@ export function useImportacao() {
   const [lendo, setLendo] = useState<x.Lado | null>(null);
   /** a linha de banco que está importando: 'banco|lado' */
   const [lendoLinha, setLendoLinha] = useState<string | null>(null);
-  // os bancos da empresa na competência (uma linha cada); arquivo sem banco = do primeiro cadastrado
-  const cadastrados = empresas.bancosDaEmpresa(s.codigo);
-  const primeiro = cadastrados[0].id;
-  const bancos = x.bancosNaCompetencia(s.empresa, cadastrados, competenciaDeTeste);
+  // os bancos da empresa na competência (uma linha cada), do Cadastro da empresa quando ela tem (Tarefas ›
+  // Cadastro); arquivo sem banco = do primeiro banco
+  const cad = useCadastroDaEmpresa(s.nome, s.codigo);
+  const { bancos, primeiro } = x.bancosDaEmpresaNa(s.empresa, cad.cadastro, s.codigo, competenciaDeTeste);
   const [mensagem, setMensagemBruta] = useState<Mensagem | null>(null);
   const [seqMensagem, setSeq] = useState(0);
   const setMensagem = (m: Mensagem | null) => { setMensagemBruta(m); setSeq(v => v + 1); };
@@ -179,12 +180,18 @@ export function useImportacao() {
     setMensagem({ tom: 'ok', titulo: 'Importação excluída', textos: [{ texto: nomeBanco + ' · ' + (lado === 'banco' ? 'extrato' : 'razão') }] });
   }
 
-  /** Adicionar banco (uma conta: banco, agência e conta): vale desta competência em diante. */
+  /**
+   * Adicionar banco (uma conta: banco, agência e conta): vai para o Cadastro da empresa, valendo desta competência
+   * em diante. Empresa sem bancos cadastrados: o cadastro começa com os que o Extrator já usava.
+   */
   function adicionarBanco(marca: empresas.BancoDaEmpresa, agencia: string, conta: string) {
-    const b: empresas.BancoDaEmpresa = { id: empresas.idDaConta(marca.id, agencia, conta), nome: marca.nome, marca: marca.id, agencia: agencia.trim(), conta: conta.trim() };
-    if (bancos.some(v => v.id === b.id)) { setMensagem({ tom: 'erro', titulo: 'Essa conta já está na lista', textos: [{ texto: b.nome + ' · ' + empresas.rotuloDaConta(b) }] }); return; }
-    s.aplicar(e => x.adicionarBanco(e, b, competenciaDeTeste, new Date()));
-    setMensagem({ tom: 'ok', titulo: b.nome + ' adicionado', textos: [{ texto: empresas.rotuloDaConta(b) }] });
+    const rotulo = empresas.rotuloDaConta({ agencia: agencia.trim(), conta: conta.trim() });
+    if (!cad.cadastro) { setMensagem({ tom: 'erro', titulo: 'O cadastro da empresa ainda está chegando', textos: [{ texto: 'Tente de novo em instantes.' }] }); return; }
+    const partida = empresas.cadastro.pontoDePartida(s.codigo, s.empresa.bancos || []);
+    const r = empresas.cadastro.salvarConta(cad.cadastro, null, { marca: marca.id, agencia, conta, tipo: 'corrente', desde: competenciaDeTeste }, partida, 'Extrator', new Date());
+    if (r.erro) { setMensagem({ tom: 'erro', titulo: r.erro === 'Essa conta já está cadastrada.' ? 'Essa conta já está na lista' : r.erro, textos: [{ texto: marca.nome + ' · ' + rotulo }] }); return; }
+    cad.salvar(r.cadastro);
+    setMensagem({ tom: 'ok', titulo: marca.nome + ' adicionado', textos: [{ texto: rotulo + ' · no Cadastro da empresa' }] });
   }
 
   async function excluir(id: string) {

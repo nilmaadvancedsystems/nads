@@ -5,6 +5,12 @@
 // das pastas, o pedido ao robô e o download da cópia temporária (o único fetch permitido).
 // Mais uma, liberada pelo Vitor (2026-09-30, "Pedir extratos"), no mesmo arquivo: ler o cadastro de clientes
 // do Entregas (e-mails e telefone) e pôr o pedido de e-mail na fila do robô (solicitacoesEmail).
+// Exceção liberada pelo escritório (2026-09-30): o nads inteiro passa a gravar no banco do Entregas, com as
+// contas de lá. Feito: a Tarefas (login pelo Firebase Auth do entregas-2e5e2, usuarios/{uid} só leitura,
+// e as tarefas na coleção `rotinas`), só em aplicativos/tarefas/dados/*.firestore.ts, sem fetch.
+// Também (2026-09-30): o Cadastro da empresa, coleção `cadastro` (e cadastro/{id}/plano) do Entregas: a Tarefas
+// lê e grava (tarefas/dados/cadastro.firestore.ts, que também lê balancetes/{código}); o Extratudo lê e grava
+// com o login do Drive (extratudo/dados/cadastro.firestore.ts). Sem fetch.
 // Esta checagem falha se:
 //  1. aparecer dependência de rede fora do permitido (só "firebase", e só no apps/web);
 //  2. código fora de apps/web/src/aplicativos/<app>/dados/*.firestore.ts importar/usar Firebase;

@@ -1,11 +1,19 @@
-// Quem está trabalhando. NÃO é login (a autenticação fica para depois): a pessoa escolhe o nome na
-// lista da equipe, e ele vai em cada evento das tarefas. Preferência de quem usa: fica no navegador.
+// Quem está trabalhando: o nome vai em cada evento das tarefas; o departamento escolhe a rotina.
+// No banco, vem do login com a conta do Entregas (AppTarefas passa em `daConta`); nos exemplos, a
+// pessoa escolhe o nome na lista da equipe (fica no navegador).
 import { usuarios } from '@nads/core';
 import { createContext, useContext, useState, type ReactNode } from 'react';
 
 const CHAVE = 'nads-tarefas-operador';
 
-export interface Operador { nome: string; departamento: usuarios.Departamento; nivel: usuarios.Nivel; admin: boolean }
+export interface Operador { nome: string; departamento: usuarios.Departamento; nivel: usuarios.Nivel | null; admin: boolean }
+
+/** A pessoa da conta do Entregas como operador (null = a conta não diz o departamento). */
+export function operadorDaConta(u: usuarios.Usuario): Operador | null {
+  const departamento = usuarios.departamentoDaConta(u);
+  if (!departamento) return null;
+  return { nome: u.nome, departamento, nivel: u.nivel, admin: u.papeis.includes('admin') };
+}
 
 function daEquipe(nome: string | null): Operador | null {
   const u = usuarios.EQUIPE_EXEMPLO.find(x => x.nome === nome);
@@ -17,15 +25,18 @@ function ler(): Operador | null {
   try { return daEquipe(localStorage.getItem(CHAVE)); } catch { return null; }
 }
 
-const Ctx = createContext<{ operador: Operador | null; escolher: (nome: string | null) => void } | null>(null);
+/** comLogin: quem está é a conta do Entregas, e "escolher(null)" é sair da conta. */
+const Ctx = createContext<{ operador: Operador | null; escolher: (nome: string | null) => void; comLogin: boolean } | null>(null);
 
-export function OperadorProvider({ children }: { children: ReactNode }) {
-  const [operador, setOperador] = useState<Operador | null>(ler);
+export function OperadorProvider({ children, daConta }: { children: ReactNode; daConta?: { operador: Operador; sair: () => void } }) {
+  const [escolhido, setEscolhido] = useState<Operador | null>(ler);
   function escolher(nome: string | null) {
+    if (daConta) { if (!nome) daConta.sair(); return; }
     try { if (nome) localStorage.setItem(CHAVE, nome); else localStorage.removeItem(CHAVE); } catch { /* vale só agora */ }
-    setOperador(daEquipe(nome));
+    setEscolhido(daEquipe(nome));
   }
-  return <Ctx.Provider value={{ operador, escolher }}>{children}</Ctx.Provider>;
+  const operador = daConta ? daConta.operador : escolhido;
+  return <Ctx.Provider value={{ operador, escolher, comLogin: !!daConta }}>{children}</Ctx.Provider>;
 }
 
 export function useOperador() {
