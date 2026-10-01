@@ -1269,6 +1269,8 @@ tr.linha-atual > td{background:var(--hover-bg);}
 .imp-conf-titulo{margin:0 0 8px;font-size:14px;font-weight:600;color:var(--ink);}
 .imp-ico-conf{color:var(--ink-muted);}
 .imp-ico-conf svg{width:16px;height:16px;}
+.imp-conf-dados{padding:12px 16px 16px;border-top:1px solid var(--border);}
+.imp-conf-dados .table-wrap{max-height:420px;overflow:auto;}
 .imp-bloco{border:1px solid var(--border);border-radius:6px;background:var(--surface);}
 .imp-linha{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;}
 .imp-ico{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;background:var(--surface-2);flex:none;}

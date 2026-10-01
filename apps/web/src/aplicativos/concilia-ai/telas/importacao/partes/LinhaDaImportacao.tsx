@@ -1,10 +1,13 @@
 // Uma linha da Importação da Conferência dentro da primeira etapa da Tarefas (Balancete, Entradas, Saídas, Tomados,
-// Prestados), no jeito das linhas dos bancos: o ícone, o nome, o que já veio e, à direita, importar (vira ✓; o ×
-// exclui) e reimportar. Mesmo ViewModel da página de Importação: as mesmas regras, perguntas e mensagens.
+// Prestados), no jeito das linhas dos bancos: a setinha (abre o que foi importado), o ícone, o nome, o que já veio
+// e, à direita, importar (vira ✓; o × exclui) e reimportar. Mesmo ViewModel da página de Importação: as mesmas
+// regras, perguntas e mensagens.
 import { conferencia as c } from '@nads/core';
 import { Alerta, Icone, MensagemFlutuante } from '@nads/ui';
 import { useEffect, useId, useState } from 'react';
 import { useImportacao } from '../useImportacao';
+import { NotasImportadas, ServicosImportados } from './Importados';
+import { PlanoDeContas } from './PlanoDeContas';
 
 const NOME: Record<c.PaginaImportacao, string> = {
   balancete: 'Balancete', entradas: 'Entradas', saidas: 'Saídas', tomados: 'Serviços tomados', prestados: 'Serviços prestados',
@@ -15,6 +18,7 @@ export function LinhaDaImportacao({ tipo }: { tipo: c.PaginaImportacao }) {
   const id = useId();
   // escolheu o arquivo: importa já (o ViewModel lê o arquivo guardado, então espera ele chegar)
   const [pedido, setPedido] = useState(false);
+  const [aberta, setAberta] = useState(false);
   const { arquivo, importar } = vm;
   useEffect(() => {
     if (!pedido || !arquivo) return;
@@ -33,6 +37,10 @@ export function LinhaDaImportacao({ tipo }: { tipo: c.PaginaImportacao }) {
   return (
     <div className="imp-bloco">
       <div className="imp-linha imp-linha-conf">
+        <button type="button" className={'imp-seta' + (aberta && vm.ja ? ' aberta' : '')} aria-expanded={aberta && vm.ja} disabled={!vm.ja}
+          title={!vm.ja ? 'Nada importado ainda' : aberta ? 'Fechar' : 'Ver o que foi importado'} aria-label={'Ver ' + NOME[tipo].toLowerCase()} onClick={() => setAberta(a => !a)}>
+          <Icone nome="caretDown" />
+        </button>
         <span className="imp-ico imp-ico-conf"><Icone nome={vm.cfg.icone} /></span>
         <div className="imp-txt"><span><b>{NOME[tipo]}</b></span></div>
         <div className="imp-resumo">{resumo && <div><span>{resumo}</span></div>}</div>
@@ -62,6 +70,13 @@ export function LinhaDaImportacao({ tipo }: { tipo: c.PaginaImportacao }) {
           </div>
         </div>
       </div>
+      {aberta && vm.ja && (
+        <div className="imp-conf-dados">
+          {vm.plano && <PlanoDeContas plano={vm.plano} onGrupo={vm.alternarGrupo} />}
+          {vm.notas && <NotasImportadas r={vm.notas} />}
+          {vm.servicos && <ServicosImportados r={vm.servicos} />}
+        </div>
+      )}
       <MensagemFlutuante id={vm.cfg.idMensagem} chave={vm.seqMensagem} onFechar={vm.fecharMensagem}>
         {vm.mensagem && (
           <Alerta titulo={vm.mensagem.titulo} tom={vm.mensagem.tom === 'ok' ? 'ok' : undefined} onFechar={vm.fecharMensagem}>
