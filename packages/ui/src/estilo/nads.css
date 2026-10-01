@@ -1406,9 +1406,8 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 /* "Todos" ao lado da busca: aceso = o movimento de todos os extratos importados */
 .imp-mov-busca + .imp-mov-todos{margin-left:-8px;}
 .imp-mov-todos.ativo{color:var(--accent);border-color:var(--accent);background:var(--hover-bg);}
-/* o PDF do Drive, colado no "todos"; o Lançamentos (Em Lote) aceso quando a tabela está aberta */
+/* o PDF do Drive, colado no "todos" */
 .imp-mov-todos + .imp-mov-pdf{margin-left:-8px;}
-.imp-todos.ativo{border-color:var(--accent);background:var(--hover-bg);}
 .imp-mov-total{display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink-muted);}
 .imp-mov-total b{font-weight:600;font-variant-numeric:tabular-nums;margin-left:4px;}
 .imp-mov-total > span:first-child b{margin-left:0;color:var(--ink);}

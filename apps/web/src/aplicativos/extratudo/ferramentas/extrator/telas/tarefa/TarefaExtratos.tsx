@@ -485,15 +485,16 @@ export function TarefaExtratos() {
             comRazao: meses.filter(m => m.razao).map(m => m.mes),
           };
           const aberta = abertas.includes(b.id);
-          // Em Lote: a setinha recolhe e abre a grade dos meses (começa aberta); os lançamentos têm o botão próprio
+          // Em Lote: a setinha abre ou recolhe tudo junto — a grade dos meses e os lançamentos do mês (começa aberta)
           const emLote = vm.periodo.length > 1;
           const gradeAberta = !recolhidas.includes(b.id);
+          const verLancamentos = (emLote ? gradeAberta : aberta) && !semMov;
           return (
             <div key={b.id} className={'imp-bloco' + (semMov ? ' sem-movimento' : '')}>
               <div className="imp-linha">
                 {emLote ? (
                   <button type="button" className={'imp-seta' + (gradeAberta ? ' aberta' : '')} aria-expanded={gradeAberta}
-                    title={gradeAberta ? 'Recolher os meses' : 'Mostrar os meses'} aria-label="Os meses do banco" onClick={() => alternarGrade(b.id)}>
+                    title={gradeAberta ? 'Recolher os meses e os lançamentos' : 'Abrir os meses e os lançamentos'} aria-label="Os meses e os lançamentos do banco" onClick={() => alternarGrade(b.id)}>
                     <Icone nome="caretDown" />
                   </button>
                 ) : (
@@ -516,11 +517,6 @@ export function TarefaExtratos() {
                   // Faltando algum mês (mesmo com os outros do Drive): "Importar Todos" (à mão) e "Todos pelo Drive"; com uns
                   // importados e outros não, os dois viram "Adicionar restantes" (à mão e pelo Drive).
                   <div className="imp-grupos">
-                    <button type="button" className={'btn btn-outline btn-sm imp-todos' + (aberta ? ' ativo' : '')} aria-pressed={aberta}
-                      disabled={semMov || !temExtrato} onClick={() => alternar(b.id)}
-                      title={!temExtrato ? 'Sem extrato importado em ' + tarefas.rotuloNumericoCompetencia(vm.competencia) : aberta ? 'Fechar os lançamentos' : 'Ver os lançamentos do extrato de ' + tarefas.rotuloNumericoCompetencia(vm.competencia)}>
-                      <Icone nome="list" />Lançamentos
-                    </button>
                     <div className="imp-grupo" aria-label="Extrato do banco (todos os meses)">
                       <span className="imp-rotulo">Extrato</span>
                       {lote.extratoCompleto ? (
@@ -597,7 +593,7 @@ export function TarefaExtratos() {
                 onDrive={mes => d.buscarNoPeriodo(b, [mes])}
                 onVer={visualizarDoDrive}
                 onSemMovimento={(mes, marcado) => ponte.marcarSemMovimento(b.id, marcado, mes)} />}
-              {aberta && !semMov && <Movimento doMes={vm.movimentoDe(b.id)} todos={vm.movimentoTodosDe(b.id)}
+              {verLancamentos && <Movimento doMes={vm.movimentoDe(b.id)} todos={vm.movimentoTodosDe(b.id)}
                 pdf={doDrive.length ? doDrive[doDrive.length - 1] : null} onPdf={visualizarDoDrive} />}
             </div>
           );
