@@ -4,7 +4,7 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { bancosDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail } from './fonte';
+import { bancosDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude } from './fonte';
 
 type Repo = tarefas.RepoTarefas;
 
@@ -101,6 +101,14 @@ export function useGmailDoEntregas(): entregas.RepoGmailDoEntregas {
   const repo = repoDoGmail();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
+}
+
+/** A saúde do robô do Entregas: lê enquanto a tela está aberta (a cada 30 s). */
+export function useSaudeDoRobo(): entregas.DocsDaSaude | null {
+  const repo = repoDaSaude();
+  useEffect(() => repo.acompanhar(), [repo]);
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo.docs();
 }
 
 /** A proteção do login, a equipe e as configurações do nads, ao vivo. */

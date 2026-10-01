@@ -22,6 +22,8 @@ export function useEnvioAoSecretario(clienteAberto: e.PastaDeCliente | null) {
   const [competencia, setCompetencia] = useState(() => e.competenciaDe(new Date()));
   const [envios, setEnvios] = useState<EnvioNaTela[]>([]);
   const [subindo, setSubindo] = useState(false);
+  const [vendoMeus, setVendoMeus] = useState(false);
+  const meus = repo.meusEnvios();
   // parar de acompanhar ao sair da tela (o que já subiu, o robô grava do mesmo jeito)
   const paradas = useRef(new Set<() => void>());
   useEffect(() => {
@@ -72,6 +74,12 @@ export function useEnvioAoSecretario(clienteAberto: e.PastaDeCliente | null) {
   }
 
   return {
+    // Meus envios: o que a pessoa mandou nos últimos 30 dias e onde cada arquivo foi parar
+    vendoMeus,
+    verMeus: () => setVendoMeus(true),
+    fecharMeus: () => setVendoMeus(false),
+    meusCarregados: meus.carregados,
+    meus: meus.lista.map(x => ({ ...x, situacao: e.situacaoDoEnvioFeito(x), quando: x.criadoEm ? new Date(x.criadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '' })),
     exemplos: repo.exemplos,
     aberto,
     /** abre a janela (com os arquivos arrastados, se vieram) já no cliente aberto no Explorador */

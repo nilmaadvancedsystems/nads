@@ -2,6 +2,7 @@
 // de todos os aplicativos (hoje, a Tarefas: Drive e Gmail).
 export * from './drive';
 export * from './secretario';
+export * from './saude';
 export * from './gmail';
 export type * from './repo';
 export { criarDriveDoEntregasMemoria, criarGmailDoEntregasMemoria } from './repo.memoria';

@@ -81,3 +81,55 @@ export function andamentoDoEnvio(doc: Record<string, unknown> | null | undefined
 export function ondeVai(destino: Pick<DestinoDoEnvio, 'competencia' | 'cliente'>): string {
   return ['Claudio Secretario', destino.competencia, destino.cliente.trim() || PASTA_SEM_CLIENTE].join(' › ');
 }
+
+// ---------- Meus envios: o que já mandei e onde foi parar (01/10/2026) ----------
+// Depois de cada rodada do arquivamento, o robô grava no envio o destino (enviosSecretario/{id}.arquivamento):
+//   { situacao: 'arquivado' | 'nao_identificado' | 'duplicado', em, execucao, codigo?, cliente?, subpasta?, final?, motivo? }
+// O envio fica 30 dias no banco.
+
+export interface ArquivamentoDoEnvio {
+  situacao: 'arquivado' | 'nao_identificado' | 'duplicado';
+  em: string;
+  codigo: string;
+  cliente: string;
+  /** "CONTÁBIL/EXTRATOS/2026/08" (dentro da pasta do cliente) */
+  subpasta: string;
+  /** o nome que o arquivo ganhou ("08-2026.pdf") */
+  final: string;
+  motivo: string;
+}
+
+export interface EnvioFeito {
+  id: string;
+  nome: string;
+  criadoEm: string;
+  status: AndamentoDoEnvio['status'];
+  /** "2026-09/TORNEARIA" (no Claudio Secretario) */
+  pasta: string;
+  erro: string;
+  arquivamento: ArquivamentoDoEnvio | null;
+}
+
+const txt = (v: unknown) => (v == null ? '' : String(v));
+
+export function envioFeitoDoDocumento(id: string, d: Record<string, unknown>): EnvioFeito {
+  const a = d.arquivamento && typeof d.arquivamento === 'object' ? (d.arquivamento as Record<string, unknown>) : null;
+  const situacao = a && (a.situacao === 'arquivado' || a.situacao === 'nao_identificado' || a.situacao === 'duplicado') ? a.situacao : null;
+  return {
+    id, nome: txt(d.nomeFinal || d.nome), criadoEm: txt(d.criadoEm), status: andamentoDoEnvio(d).status, pasta: txt(d.pasta), erro: txt(d.erro),
+    arquivamento: a && situacao ? {
+      situacao, em: txt(a.em), codigo: txt(a.codigo), cliente: txt(a.cliente), subpasta: txt(a.subpasta), final: txt(a.final), motivo: txt(a.motivo),
+    } : null,
+  };
+}
+
+/** Como o envio está, em uma frase (e o tom: ok, esperando, atenção). */
+export function situacaoDoEnvioFeito(e: EnvioFeito): { tom: 'ok' | 'espera' | 'aviso'; texto: string } {
+  if (e.status === 'erro') return { tom: 'aviso', texto: 'Não foi: ' + (e.erro || 'erro') };
+  if (e.status !== 'pronto') return { tom: 'espera', texto: e.status === 'gravando' ? 'O robô está gravando no Drive' : 'Na fila do robô' };
+  const a = e.arquivamento;
+  if (!a) return { tom: 'espera', texto: 'Em Claudio Secretario › ' + e.pasta.split('/').join(' › ') + ' — esperando a próxima rodada do arquivamento' };
+  if (a.situacao === 'arquivado') return { tom: 'ok', texto: 'Arquivado em ' + [a.codigo + ' - ' + a.cliente, ...a.subpasta.split('/').filter(Boolean), a.final].join(' › ') };
+  if (a.situacao === 'duplicado') return { tom: 'aviso', texto: 'O arquivamento achou igual já guardado' + (a.motivo ? ': ' + a.motivo : '') };
+  return { tom: 'aviso', texto: 'O arquivamento não identificou o cliente' + (a.motivo ? ' (' + a.motivo + ')' : '') };
+}

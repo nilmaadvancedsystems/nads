@@ -1,7 +1,7 @@
 // O Drive e o Gmail EM MEMÓRIA (modo exemplos): um mapa e uma caixa de exemplo, para as telas terem o que
 // mostrar. Nada vai para o banco, e nenhum arquivo de verdade abre.
 import { mapaDaRaiz, type AndamentoDoPedido, type ItemDoDrive } from './drive';
-import { partesDoArquivo, PASTA_SEM_CLIENTE, type AndamentoDoEnvio } from './secretario';
+import { partesDoArquivo, PASTA_SEM_CLIENTE, type AndamentoDoEnvio, type EnvioFeito } from './secretario';
 import { estadoDoRobo, type ClienteDoEntregas, type EmailLido, type RespostaPedida } from './gmail';
 import type { RepoDriveDoEntregas, RepoGmailDoEntregas } from './repo';
 
@@ -46,6 +46,12 @@ function ouvintes() {
 export function criarDriveDoEntregasMemoria(): RepoDriveDoEntregas {
   const o = ouvintes();
   const mapa = mapaDaRaiz({ pastaId: 'ano', pastaNome: '2026', atualizadoEm: agora(), clientes: PASTAS });
+  const ha = (min: number) => new Date(Date.now() - min * 60000).toISOString();
+  let envios: EnvioFeito[] = [
+    { id: 'e2', nome: 'nota 553.xml', criadoEm: ha(20), status: 'pronto', pasta: '2026-10/Enviados pelo nads', erro: '', arquivamento: null },
+    { id: 'e1', nome: 'extrato-sicoob-08.pdf', criadoEm: ha(60 * 26), status: 'pronto', pasta: '2026-09/TORNEARIA VOLPONI INDUSTRIA E COMERCIO LTDA', erro: '',
+      arquivamento: { situacao: 'arquivado', em: ha(60 * 20), codigo: '58', cliente: 'TORNEARIA VOLPONI INDUSTRIA E COMERCIO LTDA', subpasta: 'CONTÁBIL/EXTRATOS/2026', final: 'extrato-sicoob-08.pdf', motivo: '' } },
+  ];
   return {
     exemplos: true,
     mapa: () => mapa,
@@ -71,8 +77,13 @@ export function criarDriveDoEntregasMemoria(): RepoDriveDoEntregas {
         { status: 'pronto', partes, pasta, nomeFinal: arquivo.nome },
       ];
       passos.forEach((a, i) => setTimeout(() => { if (vivo) aoMudar(a); }, 300 * (i + 1)));
+      setTimeout(() => {
+        envios = [{ id: 'e' + Date.now(), nome: arquivo.nome, criadoEm: agora(), status: 'pronto', pasta, erro: '', arquivamento: null }, ...envios];
+        o.mudou();
+      }, 300 * (passos.length + 1));
       return () => { vivo = false; };
     },
+    meusEnvios: () => ({ carregados: true, lista: envios }),
     assinar: o.assinar,
     versao: o.versao,
   };
