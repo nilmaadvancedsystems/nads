@@ -37,6 +37,9 @@ export const SERV_CAT: Readonly<Record<TipoServico, readonly CategoriaServico[]>
     { id: 'honorario', nome: 'Honorário', lanc: '42', travado: true, fixos: ['NILMA DIAS OLIVEIRA', 'NILMA CONTABILIDADE'], fixosRot: ['NILMA DIAS OLIVEIRA - ME', 'NILMA CONTABILIDADE LTDA'] },
     { id: 'telefone', nome: 'Telefone', lanc: '38' },
     { id: 'internet', nome: 'Internet', lanc: '52' },
+    // Vitor, 01/10/2026: a conta de água (COPASA, lanç. 39) e a de energia (CEMIG, lanç. 40) também vêm como serviço tomado
+    { id: 'agua', nome: 'Água', lanc: '39' },
+    { id: 'energia', nome: 'Energia elétrica', lanc: '40' },
     { id: 'viagem', nome: 'Despesas de viagem', lanc: '259' },
     { id: 'sistemas', nome: 'Locação de sistemas', lanc: '503' },
   ],
