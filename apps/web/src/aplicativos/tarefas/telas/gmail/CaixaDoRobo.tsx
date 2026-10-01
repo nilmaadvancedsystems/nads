@@ -152,7 +152,8 @@ export function CaixaDoRobo() {
   const vm = useCaixaDoRobo();
   useCarregando(vm.carregando);
   // trocou de caixa ou de aba (ou chegou a lista): os e-mails chegam em cascata, do jeito do app
-  const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [vm.caixa, vm.aba, vm.carregando], 'lista');
+  // tela com muitas caixas (Vitor, 01/10/2026: "tudo que tiver muita box pode reduzir"): a lista inteira só acende rápido
+  const tabela = useEntradaAnimada<HTMLDivElement>(null, [vm.caixa, vm.aba, vm.carregando], 'repetida');
   // a aba escolhida (De clientes, Sem cliente, Spam): o destaque desliza até ela
   const chipsInd = useIndicador<HTMLDivElement>('.chip-f.on', [vm.aba], 'fundo');
   // saiu um e-mail da lista (ligou ao cliente, ignorou, salvou) ou chegou um novo: os outros deslizam e fecham o espaço

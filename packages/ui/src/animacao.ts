@@ -89,7 +89,8 @@ const RECEITAS: Record<Jeito, Record<Peca, Receita>> = {
       sai: () => ({ opacity: 0, translateY: '120%', filter: 'blur(6px)', duration: 360, ease: ENTRAR }),
     },
     lista: { entra: () => ({ opacity: [0, 1], translateX: [-20, 0], filter: desfoque(6), duration: 600, ease: ENTRAR }), sai: () => ({ opacity: 0 }), intervalo: 55 },
-    pagina: { entra: () => ({ opacity: [0, 1], translateY: [18, 0], duration: 560, ease: ENTRAR }), sai: () => ({ opacity: 0 }) },
+    // a página é quase sempre uma tela cheia de caixas (listas, cartões): só um acender curto, igual nos três jeitos
+    pagina: { entra: () => ({ opacity: [0, 1], translateY: [6, 0], duration: 260, ease: ENTRAR }), sai: () => ({ opacity: 0 }) },
     alerta: { entra: () => ({ opacity: [0, 1], translateY: [-14, 0], filter: desfoque(6), duration: 520, ease: ENTRAR }), sai: () => ({ opacity: 0, translateY: -8, filter: 'blur(4px)', duration: 260, ease: ENTRAR }) },
     login: { entra: () => ({ opacity: [0, 1], translateY: [26, 0], filter: desfoque(10), duration: 800, ease: ENTRAR }), sai: () => ({ opacity: 0 }), intervalo: 110, atraso: 100 },
     repetida: { entra: () => ({ opacity: [0, 1], duration: 140, ease: ENTRAR }), sai: () => ({ opacity: 0, duration: 100 }) },
@@ -109,7 +110,7 @@ const RECEITAS: Record<Jeito, Record<Peca, Receita>> = {
       sai: () => ({ opacity: 0, translateY: '140%', rotate: 4, duration: 320, ease: ENTRAR }),
     },
     lista: { entra: () => ({ opacity: aparece(240), translateY: [28, 0], scale: [0.96, 1], ease: mola(0.35, 650) }), sai: () => ({ opacity: 0 }), intervalo: 45 },
-    pagina: { entra: () => ({ opacity: aparece(260), translateY: [30, 0], ease: mola(0.25, 650) }), sai: () => ({ opacity: 0 }) },
+    pagina: { entra: () => ({ opacity: [0, 1], translateY: [6, 0], duration: 260, ease: ENTRAR }), sai: () => ({ opacity: 0 }) },
     alerta: { entra: () => ({ opacity: aparece(200), translateY: [-18, 0], scale: [0.95, 1], ease: mola(0.45, 600) }), sai: () => ({ opacity: 0, scale: 0.96, translateY: -8, duration: 240, ease: ENTRAR }) },
     login: { entra: () => ({ opacity: aparece(300), translateY: [40, 0], scale: [0.94, 1], ease: mola(0.4, 800) }), sai: () => ({ opacity: 0 }), intervalo: 90 },
     repetida: { entra: () => ({ opacity: [0, 1], duration: 140, ease: ENTRAR }), sai: () => ({ opacity: 0, duration: 100 }) },
@@ -126,7 +127,7 @@ const RECEITAS: Record<Jeito, Record<Peca, Receita>> = {
     menu: { entra: () => ({ opacity: [0, 1], scale: [0.94, 1], translateY: [-8, 0], duration: 420, ease: ENTRAR }), sai: () => ({ opacity: 0, duration: 220 }) },
     aviso: { entra: () => ({ opacity: [0, 1], translateY: ['100%', '0%'], duration: 800, ease: SUAVE }), sai: () => ({ opacity: 0, translateY: '100%', duration: 480, ease: SUAVE }) },
     lista: { entra: () => ({ opacity: [0, 1], translateY: [16, 0], duration: 700, ease: ENTRAR }), sai: () => ({ opacity: 0 }), intervalo: 70 },
-    pagina: { entra: () => ({ opacity: [0, 1], translateY: [16, 0], duration: 700, ease: ENTRAR }), sai: () => ({ opacity: 0 }) },
+    pagina: { entra: () => ({ opacity: [0, 1], translateY: [6, 0], duration: 300, ease: ENTRAR }), sai: () => ({ opacity: 0 }) },
     alerta: { entra: () => ({ opacity: [0, 1], translateY: [-10, 0], duration: 600, ease: ENTRAR }), sai: () => ({ opacity: 0, translateY: -6, duration: 360, ease: ENTRAR }) },
     login: { entra: () => ({ opacity: [0, 1], translateY: [20, 0], duration: 900, ease: ENTRAR }), sai: () => ({ opacity: 0 }), intervalo: 130, atraso: 120 },
     repetida: { entra: () => ({ opacity: [0, 1], duration: 140, ease: ENTRAR }), sai: () => ({ opacity: 0, duration: 100 }) },
@@ -439,7 +440,7 @@ export function useLinhasQueSeMovem<T extends HTMLElement>(ordem: string, quieto
       void waapi.animate(tr, { translate: ['0px ' + dy + 'px', '0px 0px'], duration: ms, ease: jeito === 'viva' ? mola(0.25, 600) : 'cubic-bezier(0.77, 0, 0.175, 1)' })
         .then(() => { tr.style.removeProperty('translate'); });
     }
-    if (novas.length && novas.length < linhas.length) entrar('lista', novas);
+    if (novas.length && novas.length < linhas.length) entrar('repetida', novas);
   }, [ordem, quieto]);
   return ref;
 }

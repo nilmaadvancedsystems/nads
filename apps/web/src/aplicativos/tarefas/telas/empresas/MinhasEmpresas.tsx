@@ -24,7 +24,8 @@ export function MinhasEmpresas() {
   const campoBusca = useRef<HTMLInputElement>(null);
   useCarregando(vm.carregando);
   // as linhas chegam em cascata quando o banco responde
-  const tabela = useEntradaAnimada<HTMLDivElement>(':scope > table > tbody > tr', [vm.carregando], 'lista');
+  // tela com muitas caixas (Vitor, 01/10/2026: "tudo que tiver muita box pode reduzir"): a lista inteira só acende rápido
+  const tabela = useEntradaAnimada<HTMLDivElement>(null, [vm.carregando], 'repetida');
   // ordenou, filtrou, chegou ou saiu uma: as linhas deslizam até o lugar novo (a busca é teclado: vai sem animar)
   const linhasQueSeMovem = useLinhasQueSeMovem<HTMLTableElement>(vm.carregando ? '' : vm.linhas.map(l => l.chave).join('|'), vm.busca);
 

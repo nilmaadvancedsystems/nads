@@ -38,7 +38,7 @@ export function JanelaDaEmpresa({ rota, aba }: { rota: string; aba: string }) {
 
   // a aba ativa: o fundo e a barrinha deslizam até ela; o conteúdo da aba chega do jeito do app
   const abasInd = useIndicador<HTMLElement>('.cad-janela-aba.ativa', [vm.aba], 'fundo');
-  const conteudoDaAba = useEntradaAnimada<HTMLDivElement>(null, [vm.aba], 'pagina');
+  const conteudoDaAba = useEntradaAnimada<HTMLDivElement>(null, [vm.aba], 'repetida');
 
   return (
     // data-volta-para: ao fechar, a janela encolhe de volta para a linha desta empresa na lista (mesmo aberta por link)
