@@ -2085,3 +2085,28 @@ main.main:has(> .content > .explorador){padding:0;}
 /* aviso de versão nova (AvisoDeVersaoNova): faixa no alto, por cima de tudo */
 .versao-nova{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:90;display:flex;align-items:center;gap:10px;max-width:calc(100vw - 32px);padding:8px 10px 8px 14px;border:1px solid var(--accent-border);border-radius:8px;background:var(--surface);color:var(--ink);box-shadow:var(--shadow-lg);font-size:13px;}
 .versao-nova > svg{width:16px;height:16px;color:var(--accent-ink);flex:none;}
+
+/* Cadastro › Configurações: saúde do robô */
+.saude-lista{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;}
+.saude-lista li{display:grid;grid-template-columns:14px 220px 1fr;align-items:baseline;gap:10px;padding:8px 0;border-top:1px solid var(--border-muted);font-size:13px;}
+.saude-ponto{width:9px;height:9px;border-radius:50%;background:var(--ink-muted);align-self:center;}
+.saude-ok .saude-ponto{background:var(--success);}
+.saude-aviso .saude-ponto{background:var(--attention, #D29922);}
+.saude-erro .saude-ponto{background:var(--danger);}
+.saude-rotulo{color:var(--ink-muted);}
+.saude-texto{display:flex;flex-direction:column;gap:2px;min-width:0;overflow-wrap:anywhere;}
+.saude-texto .fraco{font-size:12px;}
+@media (max-width:640px){.saude-lista li{grid-template-columns:14px 1fr;}.saude-texto{grid-column:2;}}
+
+/* Drive › Enviar ▾ › Meus envios */
+.meus-envios{max-width:640px;}
+.meus-lista{list-style:none;margin:0;padding:0;border:1px solid var(--border-muted);border-radius:6px;max-height:min(420px,calc(100dvh - 300px));overflow:auto;}
+.meus-lista li{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;font-size:13px;}
+.meus-lista li + li{border-top:1px solid var(--border-muted);}
+.meus-ico{width:16px;height:16px;flex:none;margin-top:2px;color:var(--ink-muted);}
+.meus-ok .meus-ico{color:var(--success);}
+.meus-aviso .meus-ico{color:var(--danger);}
+.meus-texto{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;overflow-wrap:anywhere;}
+.meus-texto b{font-weight:600;}
+.meus-texto .fraco{font-size:12px;}
+.meus-lista .btn{flex:none;}

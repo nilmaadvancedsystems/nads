@@ -7,7 +7,7 @@
 //                                                    robô grava no Drive, apaga os pedaços e responde no próprio envio.
 // As partes de uma pasta só são lidas de novo quando o robô atualiza a pasta (atualizadoEm), como nas Pendências.
 import { entregas as e } from '@nads/core';
-import { addDoc, Bytes, collection, doc, getDocs, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
+import { addDoc, Bytes, collection, doc, getDocs, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 
 interface Pasta { carregados: boolean; itens: e.ItemDoDrive[]; atualizadoEm: string }
@@ -16,6 +16,10 @@ export function criarDriveFirestore(quem: () => e.Quem | null): e.RepoDriveDoEnt
   const db = bancoDoEntregas();
   let mapa: e.MapaDoDrive = e.MAPA_VAZIO;
   let ouvindoMapa = false;
+  // os meus envios ao Claudio Secretario (só os da pessoa: a regra só deixa ler os próprios)
+  let envios: { carregados: boolean; lista: e.EnvioFeito[] } = { carregados: false, lista: [] };
+  let enviosDe = '';
+  let pararEnvios = () => {};
   const pastas = new Map<string, Pasta>();
   let ver = 0;
   const ouvintes = new Set<() => void>();
@@ -90,6 +94,23 @@ export function criarDriveFirestore(quem: () => e.Quem | null): e.RepoDriveDoEnt
         parar = onSnapshot(ref, s => avisar(e.andamentoDoEnvio(s.data())), err => avisar({ status: 'erro', erro: err.message }));
       })().catch((err: Error) => avisar({ status: 'erro', erro: err.message }));
       return () => { vivo = false; parar(); };
+    },
+    meusEnvios() {
+      const q = quem();
+      const uid = q?.uid || '';
+      if (uid !== enviosDe) {
+        enviosDe = uid;
+        pararEnvios();
+        envios = { carregados: !uid, lista: [] };
+        if (uid) {
+          pararEnvios = onSnapshot(query(collection(db, 'enviosSecretario'), where('criadoPorUid', '==', uid)), s => {
+            const lista = s.docs.map(d => e.envioFeitoDoDocumento(d.id, d.data())).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm)).slice(0, 100);
+            envios = { carregados: true, lista };
+            mudou();
+          }, () => { envios = { carregados: true, lista: [] }; mudou(); });
+        }
+      }
+      return envios;
     },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,

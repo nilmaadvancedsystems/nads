@@ -11,6 +11,7 @@ import type { entregas as e } from '@nads/core';
 import { Icone, MenuSuspenso, useCarregando, useRetorno } from '@nads/ui';
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent, type ReactNode, type RefObject } from 'react';
 import { EnviarAoSecretario } from './EnviarAoSecretario';
+import { MeusEnvios } from './MeusEnvios';
 import { MenuDeContexto, type LinhaDoMenu, type MenuAberto } from './MenuDeContexto';
 import { useEnvioAoSecretario } from './useEnvioAoSecretario';
 import { useExploradorDoDrive, type VmDrive } from './useExploradorDoDrive';
@@ -350,7 +351,10 @@ export function ExploradorDoDrive() {
   );
   const enviar = (
     <MenuSuspenso icone="upload" rotulo="Enviar" direita dica="Mandar arquivos para a pasta Claudio Secretario (a próxima rodada do arquivamento põe na pasta do cliente)"
-      itens={[{ rotulo: 'Enviar para o Claudio Secretário…', icone: 'upload', onClick: () => envio.abrir() }]} />
+      itens={[
+        { rotulo: 'Enviar para o Claudio Secretário…', icone: 'upload', onClick: () => envio.abrir() },
+        { rotulo: 'Meus envios (para onde foram)', icone: 'clock', onClick: envio.verMeus },
+      ]} />
   );
   const corpo: ReactNode = naRaiz ? (
     <div className="drive-inicio">
@@ -442,6 +446,7 @@ export function ExploradorDoDrive() {
       {soltando && <div className="explorador-soltar" aria-hidden="true"><Icone nome="upload" />Solte para enviar ao Claudio Secretário</div>}
       {menu && <MenuDeContexto menu={menu} onFechar={() => setMenu(null)} />}
       <EnviarAoSecretario vm={envio} />
+      <MeusEnvios vm={envio} abrirDestino={vm.abrirDestino} />
     </section>
   );
 }

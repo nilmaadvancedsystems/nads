@@ -6,7 +6,7 @@
 // A exibição, a árvore, a tela cheia e a ordem ficam guardadas neste navegador (localStorage; se ele recusar, vale o padrão).
 import { entregas as e } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useDriveDoEntregas } from '../../dados/repo';
 
@@ -82,6 +82,19 @@ export function useExploradorDoDrive() {
   function mudarPref(p: Partial<Preferencias>) {
     setPref(atual => { const nova = { ...atual, ...p }; guardarPreferencias(nova); return nova; });
   }
+
+  // "Abrir a pasta" de um envio arquivado: vai para o cliente e, quando as pastas dele chegarem, desce pelo caminho
+  const [destino, setDestino] = useState<{ cliente: string; subpasta: string } | null>(null);
+  useEffect(() => {
+    if (!destino || destino.cliente !== cliente || !conteudo.carregados) return;
+    const alvo = e.pastaPeloCaminho(itens, cliente, destino.subpasta);
+    setDestino(null);
+    if (alvo !== cliente) irAgora.current(cliente, alvo);
+  }, [destino, cliente, conteudo.carregados, itens]);
+
+  // o efeito acima usa sempre o ir mais novo (sem refazer o efeito a cada render)
+  const irAgora = useRef(ir);
+  irAgora.current = ir;
 
   function ir(c: string, p?: string) {
     setBusca('');
@@ -217,6 +230,14 @@ export function useExploradorDoDrive() {
     entrar,
     irPara: (c: string, p?: string) => ir(c, p),
     irParaRaiz: () => ir(''),
+    /** abre a pasta onde o arquivamento pôs o arquivo (pelo código do cliente e o caminho dentro dele) */
+    abrirDestino(codigo: string, subpasta: string): boolean {
+      const c = mapa.clientes.find(x => x.codigo === codigo);
+      if (!c) { toast('Não achei a pasta do cliente ' + codigo + ' no mapa do Drive.'); return false; }
+      setDestino({ cliente: c.id, subpasta });
+      ir(c.id);
+      return true;
+    },
     podeSubir: !!acima,
     subir: () => { if (acima) ir(acima.c, acima.p); },
     voltar: () => { void navegar(-1); },

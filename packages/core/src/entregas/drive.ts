@@ -90,6 +90,21 @@ export function filhosDe(itens: readonly ItemDoDrive[], pastaId: string): ItemDo
 }
 
 /** O caminho da pasta raiz até o item (sem a raiz): para a trilha "2026 › cliente › …". */
+/**
+ * A pasta pelo caminho de nomes, a partir da pasta do cliente ("CONTÁBIL/EXTRATOS/2026/08"; maiúsculas e acentos
+ * não importam). Devolve o id da pasta mais funda que existe (ou a raiz, se nem a primeira existe).
+ */
+export function pastaPeloCaminho(itens: readonly ItemDoDrive[], raizId: string, caminho: string): string {
+  const igual = (a: string, b: string) => semAcento(a).trim() === semAcento(b).trim();
+  let atual = raizId;
+  for (const parte of caminho.split('/').filter(Boolean)) {
+    const prox = itens.find(x => x.t === 'd' && x.p === atual && igual(x.n, parte));
+    if (!prox) break;
+    atual = prox.i;
+  }
+  return atual;
+}
+
 export function caminhoAte(itens: readonly ItemDoDrive[], id: string, raizId: string): ItemDoDrive[] {
   const porId = new Map(itens.map(x => [x.i, x]));
   const caminho: ItemDoDrive[] = [];

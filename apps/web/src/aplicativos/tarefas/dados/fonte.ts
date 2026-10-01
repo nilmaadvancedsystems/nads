@@ -12,6 +12,8 @@ import { criarAcessoFirestore } from './acesso.firestore';
 import { criarDriveFirestore } from './drive.firestore';
 import { criarSessaoEntregas, type SessaoEntregas } from './entregas.firestore';
 import { criarGmailFirestore } from './gmail.firestore';
+import { criarSaudeMemoria, type RepoSaude } from './saude';
+import { criarSaudeFirestore } from './saude.firestore';
 import { balanceteNoEntregas, clientesNoEntregas, conferenciaNoBanco, gravarLeituraDeContas, ouvirLeituraDeContas, portaCadastroFirestore } from './cadastro.firestore';
 import { criarRepoTarefasFirestore, extratorNoBanco, type RepoTarefasFirestore } from './tarefas.firestore';
 
@@ -128,6 +130,14 @@ export function repoDoGmail(): entregas.RepoGmailDoEntregas {
     gmail = noBanco ? criarGmailFirestore(quemPede, mes) : entregas.criarGmailDoEntregasMemoria();
   }
   return gmail;
+}
+
+let saude: RepoSaude | null = null;
+
+/** A saúde do robô do Entregas (Cadastro › Configurações). */
+export function repoDaSaude(): RepoSaude {
+  if (!saude) saude = noBanco ? criarSaudeFirestore() : criarSaudeMemoria();
+  return saude;
 }
 
 let acesso: RepoAcesso | null = null;

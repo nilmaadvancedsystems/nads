@@ -1,5 +1,5 @@
 // Cadastro › Configurações: as chaves do nads (só o admin muda): a proteção do login (liberar cada computador com o
-// código de um admin) e o robô que lê a agência e a conta dos extratos.
+// código de um admin), o robô que lê a agência e a conta dos extratos e a saúde do robô do Entregas.
 import { Icone, Interruptor, useCarregando } from '@nads/ui';
 import { useConfiguracoesDoNads } from './useConfiguracoesDoNads';
 
@@ -31,6 +31,28 @@ export function ConfiguracoesDoNads() {
           <Interruptor ligado={vm.robo} onMudar={() => void vm.alternarRobo()} rotulo="Robô lê agência e conta" />
         </div>
       </div>
+      {vm.veSaude && (
+        <div className="card config-item">
+          <div className="config-item-topo">
+            <Icone nome="monitor" />
+            <div>
+              <h3>Saúde do robô</h3>
+              <p className="fraco">O robô da nuvem (Gmail, Drive, cobrança) e o arquivador do PC do escritório. Atualiza sozinho a cada 30 segundos.</p>
+            </div>
+          </div>
+          {!vm.saude ? <p className="fraco config-detalhe">Lendo…</p> : (
+            <ul className="saude-lista">
+              {vm.saude.map(i => (
+                <li key={i.id} className={'saude-' + i.tom}>
+                  <span className="saude-ponto" aria-hidden="true" />
+                  <span className="saude-rotulo">{i.rotulo}</span>
+                  <span className="saude-texto">{i.texto}{i.detalhe && <span className="fraco">{i.detalhe}</span>}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </section>
   );
 }
