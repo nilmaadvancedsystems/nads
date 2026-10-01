@@ -2,7 +2,7 @@
 // competência e o botão para abrir o executor; os números da competência; as etapas com quem fez,
 // quando e por que parou; o histórico dos últimos meses (clicar abre aquele mês); e os arquivos que o
 // Extrator tem da empresa.
-import { Icone, MenuSuspenso, useCarregando } from '@nads/ui';
+import { Esqueleto, Icone, MenuSuspenso, useCarregando } from '@nads/ui';
 import { Navigate } from 'react-router';
 import { BASE } from '../../casca/navegacao';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
@@ -37,7 +37,7 @@ export function EmpresaTarefas({ rota }: { rota: string }) {
         </div>
       </div>
 
-      {vm.carregando ? null : (
+      {vm.carregando ? <Esqueleto numeros={3} linhas={5} /> : (
         <>
           <div className="stat-grid empresa-numeros">
             <div className="stat"><p className="stat-label">Etapas</p><p className="stat-value">{vm.feitas}<span className="hint"> de {vm.total}</span></p></div>

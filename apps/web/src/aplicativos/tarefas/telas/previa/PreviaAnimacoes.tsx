@@ -2,7 +2,7 @@
 // de verdade — janela, aviso, menu, gaveta, lista, página, alerta e o toque nos botões. Escolher um jeito já vale para
 // o app todo neste navegador (fica guardado); o escolhido de vez vira o padrão no código.
 // Não pede login: só mostra as animações (os dados são de mentira).
-import { Icone, JEITOS, jeitoAtual, definirJeito, MenuSuspenso, sairComo, Segmentado, Stat, useEntradaAnimada, useLinhasQueSeMovem, useRetorno, type Jeito } from '@nads/ui';
+import { Alerta, Icone, JEITOS, jeitoAtual, definirJeito, MenuSuspenso, sairComo, Segmentado, Stat, useEntradaAnimada, useLinhasQueSeMovem, useRetorno, type Jeito } from '@nads/ui';
 import { useRef, useState } from 'react';
 
 const LINHAS = [
@@ -90,9 +90,11 @@ export function PreviaAnimacoes() {
           <Stat rotulo="Pendentes" valor={String(numeros.pendentes)} />
           <Stat rotulo="Movimento do mês" valor={'R$ ' + numeros.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} />
         </div>
-        {alerta > 0 && (
-          <div key={alerta} className="alert"><Icone nome="alert" /><div><p className="alert-text">O robô terminou de ler a caixa do contábil.</p></div></div>
-        )}
+        {alerta > 0 && (alerta % 2 ? (
+          <Alerta key={alerta} titulo="O robô terminou de ler a caixa do contábil" texto="3 e-mails ficaram sem cliente; veja na aba Sem cliente." onFechar={() => setAlerta(0)} />
+        ) : (
+          <Alerta key={alerta} tom="ok" titulo="Tudo conferido" texto="O extrato e o razão batem em todos os meses." onFechar={() => setAlerta(0)} />
+        ))}
         <div ref={lista} className="table-wrap">
           <table ref={linhasQueSeMovem} className="tabela-empresas">
             <thead><tr><th>Código</th><th>Empresa</th><th>Setor</th><th>Atualizado</th></tr></thead>

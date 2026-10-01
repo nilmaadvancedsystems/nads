@@ -1,20 +1,22 @@
 // Peças pequenas da Conferência, com as mesmas classes do CSS original.
 import { useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
-import { useIndicador, useNumeroAnimado } from './animacao';
+import { sairComo, useIndicador, useNumeroAnimado } from './animacao';
 import { Icone, type NomeIcone } from './icones';
 
 /** Aviso dentro de uma caixa (.alert). tom "ok" = verde. */
 export function Alerta({ titulo, texto, tom, children, onFechar }: { titulo: string; texto?: ReactNode; tom?: 'ok'; children?: ReactNode; onFechar?: () => void }) {
-  const estiloOk = tom === 'ok' ? { borderColor: 'var(--success)', background: 'var(--success-soft)', color: 'var(--success-ink)' } : undefined;
+  // fechar pelo ×: o alerta sai (sobe e apaga) e só então some da tela
+  const caixa = useRef<HTMLDivElement>(null);
+  const fechar = onFechar && (() => { if (caixa.current) void sairComo('alerta', caixa.current).then(onFechar); else onFechar(); });
   return (
-    <div className="alert" style={estiloOk}>
+    <div ref={caixa} className={'alert' + (tom === 'ok' ? ' alert-ok' : '')}>
       <Icone nome={tom === 'ok' ? 'checkCircle' : 'alert'} />
       <div>
         <p className="alert-title">{titulo}</p>
         {texto != null && texto !== '' && <p className="alert-text">{texto}</p>}
         {children}
       </div>
-      {onFechar && <button type="button" className="alert-x" title="Fechar" aria-label="Fechar" onClick={onFechar}>×</button>}
+      {fechar && <button type="button" className="alert-x" title="Fechar" aria-label="Fechar" onClick={fechar}>×</button>}
     </div>
   );
 }
@@ -93,6 +95,24 @@ export function Stat({ rotulo, valor, cor, grande = true }: { rotulo: string; va
       <p className={'stat-value' + (cor ? ' cor-' + cor : '')} style={grande ? undefined : { fontSize: 16 }}>
         {typeof valor === 'string' || typeof valor === 'number' ? <NumeroQueConta texto={String(valor)} /> : valor}
       </p>
+    </div>
+  );
+}
+
+/**
+ * Esqueleto de carregamento: o desenho do que vai chegar (linhas, ou os cartões dos números), em cinza, com um brilho
+ * que passa — no lugar de "Lendo…" ou da tela vazia. Menos movimento: fica parado.
+ */
+export function Esqueleto({ linhas = 3, numeros = 0, className }: { linhas?: number; numeros?: number; className?: string }) {
+  const larguras = [92, 74, 84, 58, 68];
+  return (
+    <div className={'esqueleto' + (className ? ' ' + className : '')} role="status" aria-label="Carregando">
+      {numeros > 0 && (
+        <div className="esqueleto-numeros">
+          {Array.from({ length: numeros }, (_, i) => <span key={i} className="esqueleto-cartao"><span className="esqueleto-linha" style={{ width: '50%' }} /><span className="esqueleto-linha grande" style={{ width: '35%' }} /></span>)}
+        </div>
+      )}
+      {Array.from({ length: linhas }, (_, i) => <span key={i} className="esqueleto-linha" style={{ width: larguras[i % larguras.length] + '%' }} />)}
     </div>
   );
 }

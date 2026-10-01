@@ -8,7 +8,7 @@ export function PreviaAbertura() {
   const [vidro, setVidro] = useState(false);
   return (
     <>
-      <AberturaN key={vez + (vidro ? '-v' : '')} vidro={vidro} />
+      <AberturaN key={vez + (vidro ? '-v' : '')} vidro={vidro} inteira />
       <div className="previa-abertura-botoes">
         <button type="button" className="btn btn-primary" onClick={() => setVez(v => v + 1)}>Ver de novo</button>
         <button type="button" className="btn btn-outline" onClick={() => { setVidro(x => !x); setVez(v => v + 1); }}>{vidro ? 'Abertura do app' : 'Carregando uma área (vidro)'}</button>

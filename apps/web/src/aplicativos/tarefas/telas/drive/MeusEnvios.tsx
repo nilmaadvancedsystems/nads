@@ -1,6 +1,6 @@
 // "Meus envios" (Drive › Enviar ▾): o que a pessoa mandou para o Claudio Secretário nos últimos 30 dias e onde cada
 // arquivo foi parar depois do arquivamento. Arquivado: "Abrir a pasta" leva o Explorador até a pasta do cliente.
-import { Icone } from '@nads/ui';
+import { Esqueleto, Icone } from '@nads/ui';
 import { useEffect } from 'react';
 import type { VmEnvio } from './useEnvioAoSecretario';
 
@@ -18,7 +18,7 @@ export function MeusEnvios({ vm, abrirDestino }: { vm: VmEnvio; abrirDestino: (c
         <h3 id="meusTitulo"><Icone nome="upload" />Meus envios ao Claudio Secretário</h3>
         <div className="envio-corpo">
           <p className="envio-dica">Os últimos 30 dias. Depois de cada rodada do arquivamento, aparece aqui para onde cada arquivo foi.</p>
-          {!vm.meusCarregados ? <p className="fraco">Lendo…</p> : !vm.meus.length ? <p className="fraco">Você ainda não mandou nenhum arquivo.</p> : (
+          {!vm.meusCarregados ? <Esqueleto linhas={3} /> : !vm.meus.length ? <p className="fraco">Você ainda não mandou nenhum arquivo.</p> : (
             <ul className="meus-lista">
               {vm.meus.map(x => (
                 <li key={x.id} className={'meus-' + x.situacao.tom}>

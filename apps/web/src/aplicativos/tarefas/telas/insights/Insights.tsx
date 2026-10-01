@@ -1,6 +1,6 @@
 // Insights de "Minhas empresas": os números da competência por situação. Cada número abre a lista
 // de empresas filtrada por aquela situação.
-import { useCarregando } from '@nads/ui';
+import { Esqueleto, useCarregando } from '@nads/ui';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { useInsights } from './useInsights';
 
@@ -20,7 +20,7 @@ export function Insights() {
           </select>
         </label>
       </div>
-      {vm.carregando ? null : (
+      {vm.carregando ? <Esqueleto numeros={4} linhas={4} /> : (
         <>
           <div className="stat-grid">
             {vm.numeros.map(n => (

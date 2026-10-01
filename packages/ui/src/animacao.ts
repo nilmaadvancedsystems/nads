@@ -86,7 +86,7 @@ const RECEITAS: Record<Jeito, Record<Peca, Receita>> = {
     },
     lista: { entra: () => ({ opacity: [0, 1], translateX: [-20, 0], filter: desfoque(6), duration: 600, ease: ENTRAR }), sai: () => ({ opacity: 0 }), intervalo: 55 },
     pagina: { entra: () => ({ opacity: [0, 1], translateY: [18, 0], duration: 560, ease: ENTRAR }), sai: () => ({ opacity: 0 }) },
-    alerta: { entra: () => ({ opacity: [0, 1], translateY: [-14, 0], filter: desfoque(6), duration: 520, ease: ENTRAR }), sai: () => ({ opacity: 0 }) },
+    alerta: { entra: () => ({ opacity: [0, 1], translateY: [-14, 0], filter: desfoque(6), duration: 520, ease: ENTRAR }), sai: () => ({ opacity: 0, translateY: -8, filter: 'blur(4px)', duration: 260, ease: ENTRAR }) },
     login: { entra: () => ({ opacity: [0, 1], translateY: [26, 0], filter: desfoque(10), duration: 800, ease: ENTRAR }), sai: () => ({ opacity: 0 }), intervalo: 110, atraso: 100 },
   },
   viva: {
@@ -104,7 +104,7 @@ const RECEITAS: Record<Jeito, Record<Peca, Receita>> = {
     },
     lista: { entra: () => ({ opacity: aparece(240), translateY: [28, 0], scale: [0.96, 1], ease: mola(0.35, 650) }), sai: () => ({ opacity: 0 }), intervalo: 45 },
     pagina: { entra: () => ({ opacity: aparece(260), translateY: [30, 0], ease: mola(0.25, 650) }), sai: () => ({ opacity: 0 }) },
-    alerta: { entra: () => ({ opacity: aparece(200), translateY: [-18, 0], scale: [0.95, 1], ease: mola(0.45, 600) }), sai: () => ({ opacity: 0 }) },
+    alerta: { entra: () => ({ opacity: aparece(200), translateY: [-18, 0], scale: [0.95, 1], ease: mola(0.45, 600) }), sai: () => ({ opacity: 0, scale: 0.96, translateY: -8, duration: 240, ease: ENTRAR }) },
     login: { entra: () => ({ opacity: aparece(300), translateY: [40, 0], scale: [0.94, 1], ease: mola(0.4, 800) }), sai: () => ({ opacity: 0 }), intervalo: 90 },
   },
   suave: {
@@ -119,7 +119,7 @@ const RECEITAS: Record<Jeito, Record<Peca, Receita>> = {
     aviso: { entra: () => ({ opacity: [0, 1], translateY: ['100%', '0%'], duration: 800, ease: SUAVE }), sai: () => ({ opacity: 0, translateY: '100%', duration: 480, ease: SUAVE }) },
     lista: { entra: () => ({ opacity: [0, 1], translateY: [16, 0], duration: 700, ease: ENTRAR }), sai: () => ({ opacity: 0 }), intervalo: 70 },
     pagina: { entra: () => ({ opacity: [0, 1], translateY: [16, 0], duration: 700, ease: ENTRAR }), sai: () => ({ opacity: 0 }) },
-    alerta: { entra: () => ({ opacity: [0, 1], translateY: [-10, 0], duration: 600, ease: ENTRAR }), sai: () => ({ opacity: 0 }) },
+    alerta: { entra: () => ({ opacity: [0, 1], translateY: [-10, 0], duration: 600, ease: ENTRAR }), sai: () => ({ opacity: 0, translateY: -6, duration: 360, ease: ENTRAR }) },
     login: { entra: () => ({ opacity: [0, 1], translateY: [20, 0], duration: 900, ease: ENTRAR }), sai: () => ({ opacity: 0 }), intervalo: 130, atraso: 120 },
   },
 };

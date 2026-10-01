@@ -1,6 +1,6 @@
 // Cadastro › Configurações: as chaves do nads (só o admin muda): a proteção do login (liberar cada computador com o
 // código de um admin), o robô que lê a agência e a conta dos extratos e a saúde do robô do Entregas.
-import { Icone, Interruptor, useCarregando, useEntradaAnimada } from '@nads/ui';
+import { Esqueleto, Icone, Interruptor, useCarregando, useEntradaAnimada } from '@nads/ui';
 import { useConfiguracoesDoNads } from './useConfiguracoesDoNads';
 
 export function ConfiguracoesDoNads() {
@@ -42,7 +42,7 @@ export function ConfiguracoesDoNads() {
               <p className="fraco">O robô da nuvem (Gmail, Drive, cobrança) e o arquivador do PC do escritório. Atualiza sozinho a cada 30 segundos.</p>
             </div>
           </div>
-          {!vm.saude ? <p className="fraco config-detalhe">Lendo…</p> : (
+          {!vm.saude ? <Esqueleto linhas={4} className="config-detalhe" /> : (
             <ul className="saude-lista">
               {vm.saude.map(i => (
                 <li key={i.id} className={'saude-' + i.tom}>

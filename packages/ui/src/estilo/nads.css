@@ -2199,6 +2199,8 @@ main.main:has(> .content > .explorador){padding:0;}
 /* a sequência é do animejs (abertura.tsx, 01/10/2026). Aqui só o estado de antes de cada peça entrar, para nada piscar
    antes da linha do tempo chegar nela; sem movimento (.anima não vem), tudo aparece parado e montado */
 .abertura.anima .abertura-a,.abertura.anima .abertura-b,.abertura.anima .abertura-palavra,.abertura.anima .abertura-contabilidade{opacity:0;}
+/* o contorno do N só aparece enquanto se desenha (na abertura completa) */
+.abertura-contorno{opacity:0;}
 .abertura.anima .abertura-logo-n{transform:translateX(176.5%);}
 
 /* Pedir documentos: o Gmail de onde o pedido sai (o do setor de quem pede) */
@@ -2266,3 +2268,25 @@ tr.linha-abre,.imp-linha,.imp-mes-celula,.gh-crumb,.drawer-x{
 /* o "fantasma" (a cópia que anima a saída, animador.ts) não repete as animações de CSS do original: sem isso, o vidro
    da etapa voltava a acender (e a desfocar) na hora de sair */
 [data-fantasma],[data-fantasma] *{animation:none !important;}
+/* O alerta (01/10/2026): uma faixa colorida à esquerda (atenção: laranja; deu certo: verde) que cresce quando ele chega
+   (--alerta-faixa, animado pelo animador.ts); o verde agora é classe (alert-ok), não estilo solto */
+.alert{position:relative;padding-left:20px;box-shadow:0 1px 2px color-mix(in srgb, var(--ink) 6%, transparent);}
+.alert::before{content:'';position:absolute;left:-1px;top:-1px;bottom:-1px;width:4px;border-radius:6px 0 0 6px;background:var(--warn);
+  transform:scaleY(var(--alerta-faixa,1));transform-origin:50% 0;}
+.alert-ok{border-color:color-mix(in srgb, var(--success) 45%, transparent);background:var(--success-soft);color:var(--success-ink);}
+.alert-ok::before{background:var(--success);}
+.alert-ok svg{color:var(--success);}
+.alert[style*="success"]::before{background:var(--success);}
+.alert[style*="success"] svg{color:var(--success);}
+@property --alerta-faixa{syntax:'<number>';inherits:false;initial-value:1;}
+/* O esqueleto de carregamento (Esqueleto, componentes.tsx): o desenho do que vai chegar, com um brilho que passa
+   (só transform no brilho: não repinta a página) */
+.esqueleto{display:flex;flex-direction:column;gap:10px;padding:8px 0;}
+.esqueleto-linha{position:relative;display:block;overflow:hidden;height:12px;border-radius:6px;background:var(--hover-bg);}
+.esqueleto-linha.grande{height:22px;}
+.esqueleto-linha::after{content:'';position:absolute;inset:0;transform:translateX(-100%);
+  background:linear-gradient(90deg,transparent,color-mix(in srgb, var(--surface) 75%, transparent),transparent);
+  animation:esqueletoBrilho 1.5s var(--ease-in-out) infinite;}
+@keyframes esqueletoBrilho{to{transform:translateX(100%);}}
+.esqueleto-numeros{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:8px;}
+.esqueleto-cartao{display:flex;flex-direction:column;gap:10px;padding:16px;border:1px solid var(--border);border-radius:6px;background:var(--surface);}

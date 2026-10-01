@@ -53,10 +53,14 @@ Três agentes levantaram:
 
 Fica para depois: a linha que mudou em tempo real (Firestore) piscar o fundo; a paridade do Conciliadorzinho com festa.
 
-## Fase 3 — morph e detalhes
+## Fase 3 — morph e detalhes ✅
 
-- **Elemento compartilhado:** a linha da empresa vira a janela do cadastro; a linha do e-mail vira o painel.
-- **Botões que trocam de texto** (Salvar → Salvando… → Salvo ✓): cruzamento com `blur(2px)`.
-- **Quique de recusa:** clicar fora de uma janela que não fecha.
-- **Esqueletos de carregamento** no lugar de "Lendo…".
-- **A abertura em 1,2 s:** o contorno do N desenhado, "Nilma" letra a letra; só no primeiro acesso do dia.
+| O quê | Onde |
+|---|---|
+| A linha que vira a janela: clicou numa linha e abriu a janela (cadastro da empresa, e-mail): ela nasce do lugar e do tamanho da linha e cresce; ao fechar, volta para a linha | animador.ts (`origem`, `deLaParaCa`) |
+| Quique de recusa: clicou fora de uma janela que não fecha assim, ela dá um "não" de leve | animador.ts (`recusar`) |
+| Botões que trocam de texto (Salvar → Salvando…): o texto novo chega saindo de um desfoque de 2 px | animador.ts (`botaoTrocouDeTexto`) |
+| Esqueletos de carregamento no lugar de "Lendo…"/tela vazia: Insights, página da empresa, e-mail aberto, Meus envios, Saúde do robô | `Esqueleto` (componentes.tsx) |
+| A abertura: o contorno prateado do N se desenha e as metades pousam dentro dele; a abertura inteira só no primeiro acesso do dia (depois, a logo só acende); a prévia mostra sempre a inteira | abertura.tsx |
+| O alerta: abre da esquerda para a direita (o recorte), a faixa colorida cresce, o título e o texto chegam atrás; o ícone de atenção dá uma balançada, o verde desenha o check; fechar pelo × anima a saída | animador.ts (`alertaChegou`), componentes.tsx (Alerta), nads.css |
+| Executor: a página com a ferramenta não desliza (só acende ao trocar de etapa) e o vidro não pisca ao sair | casca.tsx, nads.css |

@@ -2,7 +2,7 @@
 // agora" e o andamento da leitura; as abas (de clientes, sem cliente, spam) com a busca; a lista; e o e-mail aberto
 // numa janela por cima, com o texto inteiro, os anexos, as ações e responder.
 import type { entregas as e } from '@nads/core';
-import { Icone, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Segmentado } from '@nads/ui';
+import { Esqueleto, Icone, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Segmentado } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useCaixaDoRobo, usePainelDoEmail, type AbaDaCaixa, type VmCaixa } from './useCaixaDoRobo';
 
@@ -107,7 +107,7 @@ function PainelDoEmail({ vm, x }: { vm: VmCaixa; x: e.EmailDaCaixa }) {
           ) : null}
 
           <div className="gmail-corpo">
-            {p.lido.carregando ? <p className="fraco">Buscando o e-mail no Gmail pelo robô…</p>
+            {p.lido.carregando ? <Esqueleto linhas={5} />
               : p.lido.erro ? <p className="fraco">Não consegui ler o e-mail inteiro ({p.lido.erro}). O começo dele: {x.trecho}</p>
                 : m?.texto.trim() ? <div className="gmail-texto">{m.texto}{m.truncado ? '\n\n(o e-mail é maior; o resto está no Gmail)' : ''}</div>
                   : <p className="fraco">Este e-mail não tem texto, só {anexos.length === 1 ? 'o anexo' : 'os anexos'}.</p>}
