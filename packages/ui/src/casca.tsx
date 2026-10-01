@@ -2,7 +2,7 @@
 // barra lateral das seções (com "Ocultar barra lateral") — ou, com lateral="caixa", a caixa de seções ao lado da página —,
 // gaveta ☰ com tema e a área da página (título + ações no canto direito). Marcação e classes iguais às do conferencia.html (~L973-1033).
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { sairComo, useEntradaAnimada } from './animacao';
+import { revelarTitulo, sairComo, useEntradaAnimada, useIndicador } from './animacao';
 import { useAbasParaAEtapa, useAlturaNaEtapa } from './etapa';
 import { Icone, MarcaN, type NomeIcone } from './icones';
 import { SeletorTema } from './tema';
@@ -113,6 +113,15 @@ export function Casca(p: {
   };
   // a página que abriu entra do jeito do app
   const conteudo = useEntradaAnimada<HTMLDivElement>(null, [p.titulo, p.paginas?.find(x => x.ativa)?.id, p.secoes.find(s => s.ativa)?.id], 'pagina');
+  // os indicadores do ativo deslizam de um item ao outro (o sublinhado das abas e o fundo + barrinha da lateral)
+  const abasInd = useIndicador<HTMLElement>('.menu-item.active', [p.paginas?.find(x => x.ativa)?.id, p.paginas?.length], 'sublinhado');
+  const lateralInd = useIndicador<HTMLDivElement>('.subnav-item.active', [p.secoes.find(s => s.ativa)?.id, p.secoes.length, oculta], 'fundo');
+  // o título da página se revela palavra por palavra (o h2 tem key={titulo}: o React cria um novo a cada título)
+  const titulo = useRef<HTMLHeadingElement>(null);
+  useLayoutEffect(() => {
+    const el = titulo.current;
+    return el ? revelarTitulo(el) ?? undefined : undefined;
+  }, [p.titulo]);
   // saiu versão nova do nads: um pontinho no ☰ e "Atualizar para …" ao lado da versão, no menu
   const versaoNova = useVersaoNova(p.versao || '');
   const cabecalho = useRef<HTMLElement>(null);
@@ -151,7 +160,7 @@ export function Casca(p: {
       {/* sem título nem descrição, some — e, dentro de uma etapa, mesmo com o lugar das ações */}
       <header className="topbar" hidden={!p.titulo && !p.descricao && (!p.acoes || embutida())}>
         <div>
-          <h2 className="page-title">{p.titulo}</h2>
+          <h2 ref={titulo} key={p.titulo} className="page-title">{p.titulo}</h2>
           {p.descricao && <p className="page-desc">{p.descricao}</p>}
         </div>
         <div id="topbarActions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{p.acoes}</div>
@@ -201,7 +210,7 @@ export function Casca(p: {
           </nav>
           {p.topoDireita && <><span className="gh-header-spacer" /><div className="gh-topo-direita">{p.topoDireita}</div></>}
         </div>
-        <nav className="menu" id="menu" aria-label="Páginas da seção">
+        <nav ref={abasInd} className="menu com-indicador" id="menu" aria-label="Páginas da seção">
           {(abasDaEtapa || p.paginas).filter(x => !x.oculta).map(x => (
             <button key={x.id} type="button" className={'menu-item' + (x.ativa ? ' active' : '') + (x.travada ? ' is-locked' : '')}
               aria-current={x.ativa ? 'page' : undefined} aria-disabled={x.travada ? 'true' : undefined} onClick={() => (abasDaEtapa && p.onAbaNaEtapa ? p.onAbaNaEtapa : p.onPagina)(x.id)}>
@@ -253,7 +262,7 @@ export function Casca(p: {
       ) : (
       <div className={'layout' + (oculta ? ' sidebar-oculta' : '')}>
         <nav className="subnav" id="subnav" aria-label={p.rotuloLateral || 'Seções'}>
-          <div className="subnav-itens">
+          <div ref={lateralInd} className="subnav-itens com-indicador">
             {p.secoes.filter(s => !(naEtapa && s.foraDaEtapa)).map(s => {
               const sep = grupoAnt !== null && s.grupo !== grupoAnt;
               const comeca = grupoAnt === null || s.grupo !== grupoAnt;

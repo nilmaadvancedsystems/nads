@@ -8,11 +8,12 @@
 //   viva   com mola: as peças chegam com impulso e assentam com um quique
 //   suave  elegante e lenta: deslizam devagar, sem quique
 // Quem anima um elemento da tela usa entrar/sairComo (eventos), useEntradaAnimada (React) ou animar.
-import { animate, cleanInlineStyles, cubicBezier, spring, stagger, type AnimationParams, type JSAnimation, type TargetsParam } from 'animejs';
+import { animate, cleanInlineStyles, createDrawable, cubicBezier, splitText, spring, stagger, waapi, type AnimationParams, type JSAnimation, type TargetsParam } from 'animejs';
 import { useLayoutEffect, useRef, type DependencyList, type RefObject } from 'react';
 
 /** A pessoa pediu menos movimento no sistema: nada desloca, só esmaece. */
-export const semMovimento = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+// sem matchMedia (fora de um navegador de verdade: os testes) também não anima: tudo já no lugar
+export const semMovimento = () => typeof window === 'undefined' || typeof window.matchMedia !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** A curva de entrar/sair da tela: rápida no começo, assenta devagar. */
 export const ENTRAR = cubicBezier(0.23, 1, 0.32, 1);
@@ -84,7 +85,7 @@ const RECEITAS: Record<Jeito, Record<Peca, Receita>> = {
       sai: () => ({ opacity: 0, translateY: '120%', filter: 'blur(6px)', duration: 360, ease: ENTRAR }),
     },
     lista: { entra: () => ({ opacity: [0, 1], translateX: [-20, 0], filter: desfoque(6), duration: 600, ease: ENTRAR }), sai: () => ({ opacity: 0 }), intervalo: 55 },
-    pagina: { entra: () => ({ opacity: [0, 1], translateY: [22, 0], filter: desfoque(10), duration: 620, ease: ENTRAR }), sai: () => ({ opacity: 0 }) },
+    pagina: { entra: () => ({ opacity: [0, 1], translateY: [18, 0], duration: 560, ease: ENTRAR }), sai: () => ({ opacity: 0 }) },
     alerta: { entra: () => ({ opacity: [0, 1], translateY: [-14, 0], filter: desfoque(6), duration: 520, ease: ENTRAR }), sai: () => ({ opacity: 0 }) },
     login: { entra: () => ({ opacity: [0, 1], translateY: [26, 0], filter: desfoque(10), duration: 800, ease: ENTRAR }), sai: () => ({ opacity: 0 }), intervalo: 110, atraso: 100 },
   },
@@ -123,14 +124,143 @@ const RECEITAS: Record<Jeito, Record<Peca, Receita>> = {
   },
 };
 
-/** O toque nos botões, por jeito: o quanto afunda e como volta. */
-const TOQUE: Record<Jeito, { afunda: () => AnimationParams; volta: () => AnimationParams }> = {
-  marca: { afunda: () => ({ scale: 0.94, duration: 140, ease: ENTRAR }), volta: () => ({ scale: 1, ease: mola(0.5, 450) }) },
-  viva: { afunda: () => ({ scale: 0.9, duration: 120, ease: ENTRAR }), volta: () => ({ scale: 1, ease: mola(0.65, 550) }) },
-  suave: { afunda: () => ({ scale: 0.96, duration: 220, ease: ENTRAR }), volta: () => ({ scale: 1, duration: 360, ease: ENTRAR }) },
+/**
+ * O toque nos botões, por jeito: o quanto afunda e como volta. Vai pelo WAAPI na propriedade CSS `scale` (fora da
+ * thread principal: não engasga quando a tela está ocupada) e soma com o transform que o botão já tenha.
+ */
+const TOQUE: Record<Jeito, { afunda: [number, number]; volta: () => string | ReturnType<typeof mola>; voltaMs?: number }> = {
+  marca: { afunda: [0.95, 140], volta: () => mola(0.45, 420) },
+  viva: { afunda: [0.91, 120], volta: () => mola(0.6, 520) },
+  suave: { afunda: [0.97, 200], volta: () => 'cubic-bezier(0.23, 1, 0.32, 1)', voltaMs: 360 },
 };
-export const afundar = (el: HTMLElement) => animar(el, TOQUE[jeito].afunda());
-export const voltar = (el: HTMLElement) => animar(el, TOQUE[jeito].volta());
+export function afundar(el: HTMLElement): void {
+  if (semMovimento()) return;
+  const [escala, ms] = TOQUE[jeito].afunda;
+  waapi.animate(el, { scale: escala, duration: ms, ease: 'cubic-bezier(0.23, 1, 0.32, 1)' });
+}
+export function voltar(el: HTMLElement): void {
+  if (semMovimento()) return;
+  const t = TOQUE[jeito];
+  void waapi.animate(el, { scale: 1, ease: t.volta(), ...(t.voltaMs ? { duration: t.voltaMs } : {}) })
+    .then(() => { el.style.removeProperty('scale'); });
+}
+
+/** O indicador que desliza (aba ativa, item ativo da lateral, opção do segmentado), por jeito. */
+const INDICADOR: Record<Jeito, () => AnimationParams> = {
+  marca: () => ({ ease: mola(0.18, 520) }),
+  viva: () => ({ ease: mola(0.4, 600) }),
+  suave: () => ({ duration: 560, ease: MOVER }),
+};
+/** Leva o indicador até o lugar (left/top/largura/altura); na primeira vez, aparece já no lugar. */
+export function moverIndicador(el: HTMLElement, lugar: { x: number; y: number; w: number; h: number }, primeira: boolean): void {
+  const alvo = { translateX: lugar.x, translateY: lugar.y, width: lugar.w, height: lugar.h };
+  if (primeira || semMovimento()) { animate(el, { ...alvo, opacity: 1, duration: 0 }); return; }
+  animate(el, { ...alvo, opacity: 1, ...INDICADOR[jeito](), composition: 'replace' });
+}
+
+/**
+ * Conta do número que está na tela (atual.v) até o novo, escrevendo no elemento no formato que a tela deu (os números
+ * do painel). atual.v acompanha a conta: interrompida no meio, a próxima parte de onde parou.
+ */
+export function contar(el: HTMLElement, atual: { v: number }, para: number, formatar: (n: number) => string): JSAnimation | null {
+  if (semMovimento() || atual.v === para) { atual.v = para; el.textContent = formatar(para); return null; }
+  return animate(atual, {
+    v: para, duration: jeito === 'suave' ? 1100 : 900, ease: jeito === 'viva' ? mola(0.2, 900) : ENTRAR,
+    onUpdate: () => { el.textContent = formatar(atual.v); },
+    onComplete: () => { el.textContent = formatar(para); },
+  });
+}
+
+/** "R$ 1.234,56", "58%", "1.200": o número e o que vem antes e depois (pt-BR). Outra coisa (datas, códigos): null. */
+export function lerNumero(texto: string): { valor: number; casas: number; antes: string; depois: string } | null {
+  const m = /^([^\d-]*?)(-?\d{1,3}(?:\.\d{3})*(?:,\d+)?|-?\d+(?:,\d+)?)([^\d]*)$/.exec(texto.trim());
+  if (!m || /[\d/:]/.test(m[1] + m[3])) return null;
+  const casas = m[2].includes(',') ? m[2].split(',')[1].length : 0;
+  return { valor: parseFloat(m[2].replace(/\./g, '').replace(',', '.')), casas, antes: m[1], depois: m[3] };
+}
+
+/**
+ * React: um número que conta quando muda (e ao aparecer). O span é só do animejs (o React não mexe no texto dele).
+ * Texto que não é número aparece como está.
+ */
+export function useNumeroAnimado(texto: string): RefObject<HTMLSpanElement | null> {
+  const ref = useRef<HTMLSpanElement | null>(null);
+  const atual = useRef({ v: 0 });
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const n = lerNumero(texto);
+    if (!n) { el.textContent = texto; return; }
+    const fmt = (x: number) => n.antes + x.toLocaleString('pt-BR', { minimumFractionDigits: n.casas, maximumFractionDigits: n.casas }) + n.depois;
+    const a = contar(el, atual.current, n.valor, fmt);
+    return () => { a?.pause(); };
+  }, [texto]);
+  return ref;
+}
+
+/**
+ * React: um indicador que desliza até o item ativo (o sublinhado da aba, a barrinha da lateral, o fundo da opção do
+ * segmentado). O container precisa da classe com-indicador (position:relative) e o CSS do indicador é da classe dada.
+ * Na primeira vez (e quando a janela muda de tamanho) ele aparece já no lugar; depois, desliza com o jeito do app.
+ */
+export type FormaDoIndicador = 'fundo' | 'sublinhado' | 'barra';
+export function useIndicador<T extends HTMLElement>(seletorAtivo: string, deps: DependencyList, forma: FormaDoIndicador = 'fundo', classe = 'indicador'): RefObject<T | null> {
+  const ref = useRef<T | null>(null);
+  const primeira = useRef(true);
+  const posicionar = (sem: boolean) => {
+    const raiz = ref.current;
+    if (!raiz) return;
+    let ind = raiz.querySelector<HTMLElement>(':scope > .' + classe);
+    if (!ind) {
+      ind = document.createElement('span');
+      ind.className = classe + ' indicador-' + forma;
+      ind.setAttribute('aria-hidden', 'true');
+      raiz.appendChild(ind);
+    }
+    const ativo = raiz.querySelector<HTMLElement>(seletorAtivo);
+    if (!ativo) { ind.style.opacity = '0'; primeira.current = true; return; }
+    const x = ativo.offsetLeft, y = ativo.offsetTop, w = ativo.offsetWidth, h = ativo.offsetHeight;
+    // fundo: a caixa inteira; sublinhado: 2 px embaixo (a aba); barra: 4 px à esquerda, fora do item (a lateral)
+    const lugar = forma === 'sublinhado' ? { x, y: y + h - 1, w, h: 2 } : forma === 'barra' ? { x: x - 8, y: y + 6, w: 4, h: h - 12 } : { x, y, w, h };
+    moverIndicador(ind, lugar, sem || primeira.current);
+    primeira.current = false;
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => { posicionar(false); }, deps);
+  useLayoutEffect(() => {
+    const raiz = ref.current;
+    if (!raiz || typeof ResizeObserver === 'undefined') return;
+    const obs = new ResizeObserver(() => posicionar(true));
+    obs.observe(raiz);
+    return () => obs.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return ref;
+}
+
+/** O check se desenha (o traço vai de uma ponta à outra), com o selo crescendo junto. */
+export function desenharCheck(svg: SVGSVGElement, atraso = 0): void {
+  if (semMovimento()) return;
+  const caminhos = svg.querySelectorAll('path, polyline');
+  if (!caminhos.length) return;
+  const desenhos = createDrawable(caminhos as unknown as SVGGeometryElement[]);
+  animate(desenhos, { draw: ['0 0', '0 1'], duration: jeito === 'suave' ? 620 : 480, delay: atraso, ease: MOVER,
+    onComplete: a => { cleanInlineStyles(a); } });
+}
+
+/**
+ * O título da página se revela palavra por palavra, subindo de trás de uma máscara (a assinatura da marca).
+ * Devolve o desfazer (o texto volta a ser só texto). O elemento precisa de key={texto} no React.
+ */
+export function revelarTitulo(el: HTMLElement): (() => void) | null {
+  if (semMovimento() || !el.textContent?.trim()) return null;
+  const partes = splitText(el, { words: { wrap: 'clip' } });
+  const a = animate(partes.words, {
+    translateY: ['105%', '0%'], ...(jeito === 'marca' ? { filter: desfoque(4) } : {}),
+    duration: jeito === 'suave' ? 900 : 720, delay: stagger(jeito === 'suave' ? 70 : 50), ease: jeito === 'viva' ? mola(0.3, 700) : ENTRAR,
+  });
+  return () => { a.revert(); partes.revert(); };
+}
 
 const DESLOCAM = ['translateX', 'translateY', 'scale', 'scaleX', 'scaleY', 'rotate', 'x', 'y', 'filter'];
 
@@ -151,6 +281,15 @@ export function animar(alvos: TargetsParam, params: AnimationParams): JSAnimatio
 
 const limpar = (a: JSAnimation) => { cleanInlineStyles(a); };
 
+// As entradas de página que estão rodando: enquanto a página sobe, um transform fica nela, e um transform prende o
+// position:fixed de quem está dentro (uma janela abriria fora do lugar). Abriu uma janela, um menu ou uma faixa fixa:
+// a entrada da página termina na hora (encerrarPaginas, chamado pelo animador).
+const paginas = new Set<JSAnimation>();
+export function encerrarPaginas(): void {
+  for (const a of paginas) { a.complete(); cleanInlineStyles(a); }
+  paginas.clear();
+}
+
 /**
  * A peça entra do jeito do app (em cascata, se for mais de uma). Terminou: tira o estilo que ficou (um transform ou
  * filter parado prende o position:fixed de quem está dentro). maximo: lista grande não espera (os outros já aparecem).
@@ -159,13 +298,17 @@ export function entrar(peca: Peca, alvos: Element | Element[] | NodeListOf<Eleme
   const lista = (alvos instanceof Element ? [alvos] : Array.from(alvos)) as HTMLElement[];
   if (!lista.length) return null;
   const r = RECEITAS[jeito][peca];
-  const animados = lista.slice(0, o.maximo ?? 14);
+  const animados = lista.slice(0, o.maximo ?? 24);
   const atraso = (r.atraso ?? 0) + (o.atraso ?? 0);
-  return animar(animados, {
+  // a cascata inteira cabe em ~600 ms: lista grande encurta o intervalo em vez de fazer o último esperar
+  const intervalo = r.intervalo && animados.length > 1 ? Math.min(r.intervalo, 600 / (animados.length - 1)) : 0;
+  const a = animar(animados, {
     ...r.entra(),
-    ...(r.intervalo && animados.length > 1 ? { delay: stagger(r.intervalo, { start: atraso }) } : atraso ? { delay: atraso } : {}),
-    onComplete: limpar,
+    ...(intervalo ? { delay: stagger(intervalo, { start: atraso }) } : atraso ? { delay: atraso } : {}),
+    onComplete: x => { paginas.delete(x); limpar(x); },
   });
+  if (peca === 'pagina') paginas.add(a);
+  return a;
 }
 
 /** A peça sai do jeito do app (pelo caminho por onde entrou, mais rápido); resolve quando terminou. */

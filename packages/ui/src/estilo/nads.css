@@ -86,7 +86,12 @@ button{font-family:inherit;color:inherit;}
 @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
 @keyframes popIn{from{opacity:0;transform:translateY(-4px) scale(.97);}to{opacity:1;transform:none;}}
 @keyframes spin{to{transform:rotate(360deg);}}
-@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important;transition-duration:.001ms !important;}}
+/* menos movimento: as transições e as animações de entrada acabam na hora, mas o que mostra "carregando" (os que giram)
+   continua girando, devagar — quem pediu calma não pode ficar sem saber que a tela está trabalhando */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;}
+  .btn-spinner,.drive-girando,.icon-btn.girando svg{animation-duration:1.6s !important;animation-iteration-count:infinite !important;}
+}
 :focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
 a{color:var(--accent);}
 
@@ -2212,3 +2217,43 @@ main.main:has(> .content > .explorador){padding:0;}
 .previa-anim-botoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;}
 .previa-anim-pagina{padding:20px;display:flex;flex-direction:column;gap:12px;}
 .previa-anim-pagina h3{margin:0;}
+.previa-anim-stats{display:flex;gap:32px;flex-wrap:wrap;}
+
+/* ---------------------------------- Movimento (animejs, 01/10/2026) ----------------------------------
+   As curvas da casa (as mesmas do animacao.ts) */
+:root{--ease-out:cubic-bezier(.23,1,.32,1);--ease-in-out:cubic-bezier(.77,0,.175,1);--ease-drawer:cubic-bezier(.32,.72,0,1);}
+
+/* O destaque de passar o mouse acende na hora e apaga devagar (o do Linear): o app parece responder antes de você
+   terminar o gesto, e o rastro que fica ao sair dá a sensação de fluidez */
+.btn,.icon-btn,.explorador-cmd,.chip-f,.step-pill,.subnav-item,.drawer-item,.popover-item,.ctx-lista > button,.caixa-item,
+tr.linha-abre,.imp-linha,.imp-mes-celula,.gh-crumb,.drawer-x{
+  transition:background-color .22s var(--ease-out),border-color .22s var(--ease-out),color .22s var(--ease-out),box-shadow .22s var(--ease-out);}
+.btn:hover,.icon-btn:hover,.explorador-cmd:hover,.chip-f:hover,.step-pill:hover,.subnav-item:hover,.drawer-item:hover,.popover-item:hover,
+.ctx-lista > button:hover,.caixa-item:hover,tr.linha-abre:hover,.imp-linha:hover,.imp-mes-celula:hover,.gh-crumb:hover,.drawer-x:hover{transition-duration:0s;}
+.menu-item::before{transition:background-color .22s var(--ease-out);}
+.menu-item:hover::before{transition-duration:0s;}
+
+/* Os indicadores que deslizam (useIndicador): o container fica relativo e o indicador vai por baixo dos itens.
+   Com o indicador, o ativo perde o próprio fundo/traço (quem mostra é o indicador) */
+.com-indicador{position:relative;}
+.com-indicador > .indicador{position:absolute;left:0;top:0;width:0;height:0;opacity:0;pointer-events:none;z-index:0;}
+.indicador-sublinhado{border-radius:6px;background:var(--tab-active);}
+.menu.com-indicador .menu-item.active::after{display:none;}
+/* a lateral: o fundo do ativo desliza, com a barrinha vermelha à esquerda dele */
+.subnav-itens.com-indicador > .indicador{border-radius:6px;background:var(--hover-bg);}
+.subnav-itens.com-indicador > .indicador::before{content:'';position:absolute;left:-8px;top:6px;bottom:6px;width:4px;border-radius:6px;background:var(--tab-active);}
+.subnav-itens.com-indicador .subnav-item{z-index:1;}
+.subnav-itens.com-indicador .subnav-item.active{background:transparent;}
+.subnav-itens.com-indicador .subnav-item.active::before{display:none;}
+/* o segmentado: o "botão" branco da opção escolhida desliza até ela */
+.steps.com-indicador > .indicador{border-radius:6px;background:var(--surface);border:1px solid var(--border-strong);box-sizing:border-box;}
+.steps.com-indicador .step-pill{position:relative;z-index:1;}
+.steps.com-indicador .step-pill[aria-current="true"]{background:transparent;border-color:transparent;}
+
+/* O interruptor e as setas: a bolinha corre e as setas giram na curva forte, sem a curva fraca padrão */
+.toggle-knob{transition:transform .32s var(--ease-out),background .22s var(--ease-out);}
+.imp-seta svg,.imp-faixa-seta,.pedir-outros-btn .menu-seta,.th-seta{transition:transform .32s var(--ease-out);}
+/* a lateral que se esconde: a grade abre e fecha na curva de movimento */
+.layout{transition:grid-template-columns .36s var(--ease-in-out);}
+/* o número que conta (Stat): os dígitos não dançam de largura enquanto contam */
+.numero-que-conta{font-variant-numeric:tabular-nums;}

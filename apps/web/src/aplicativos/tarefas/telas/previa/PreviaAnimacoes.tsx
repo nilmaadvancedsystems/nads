@@ -2,7 +2,7 @@
 // de verdade — janela, aviso, menu, gaveta, lista, página, alerta e o toque nos botões. Escolher um jeito já vale para
 // o app todo neste navegador (fica guardado); o escolhido de vez vira o padrão no código.
 // Não pede login: só mostra as animações (os dados são de mentira).
-import { Icone, JEITOS, jeitoAtual, definirJeito, MenuSuspenso, sairComo, useEntradaAnimada, useRetorno, type Jeito } from '@nads/ui';
+import { Icone, JEITOS, jeitoAtual, definirJeito, MenuSuspenso, sairComo, Segmentado, Stat, useEntradaAnimada, useRetorno, type Jeito } from '@nads/ui';
 import { useRef, useState } from 'react';
 
 const LINHAS = [
@@ -20,6 +20,9 @@ export function PreviaAnimacoes() {
   const [vezPagina, setVezPagina] = useState(0);
   const [gaveta, setGaveta] = useState(false);
   const [alerta, setAlerta] = useState(0);
+  const [aba, setAba] = useState<'contabil' | 'fiscal' | 'pessoal'>('contabil');
+  const [numeros, setNumeros] = useState({ empresas: 128, pendentes: 37, valor: 48250.9 });
+  const sortear = () => setNumeros({ empresas: 100 + Math.round(Math.random() * 60), pendentes: Math.round(Math.random() * 50), valor: Math.round(Math.random() * 9000000) / 100 });
   const { toast, modal } = useRetorno();
   const gavetaEl = useRef<HTMLElement>(null);
   const fundoEl = useRef<HTMLDivElement>(null);
@@ -65,12 +68,19 @@ export function PreviaAnimacoes() {
           <button type="button" className="btn btn-outline" onClick={() => setVezLista(v => v + 1)}>Lista</button>
           <button type="button" className="btn btn-outline" onClick={() => setVezPagina(v => v + 1)}>Página</button>
           <button type="button" className="btn btn-outline" onClick={() => setAlerta(v => v + 1)}>Alerta</button>
+          <button type="button" className="btn btn-outline" onClick={sortear}>Números</button>
         </div>
       </header>
 
       <div ref={pagina} className="card previa-anim-pagina">
         <h3>Uma página</h3>
-        <p className="fraco">É assim que o conteúdo chega quando você troca de página ou de etapa.</p>
+        <p className="fraco">É assim que o conteúdo chega quando você troca de página ou de etapa. As abas abaixo têm o fundo que desliza; os números contam quando mudam.</p>
+        <Segmentado valor={aba} onMudar={setAba} opcoes={[{ valor: 'contabil', rotulo: 'Contábil' }, { valor: 'fiscal', rotulo: 'Fiscal' }, { valor: 'pessoal', rotulo: 'Departamento pessoal' }]} />
+        <div className="stats-row previa-anim-stats">
+          <Stat rotulo="Empresas" valor={String(numeros.empresas)} />
+          <Stat rotulo="Pendentes" valor={String(numeros.pendentes)} />
+          <Stat rotulo="Movimento do mês" valor={'R$ ' + numeros.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} />
+        </div>
         {alerta > 0 && (
           <div key={alerta} className="alert"><Icone nome="alert" /><div><p className="alert-text">O robô terminou de ler a caixa do contábil.</p></div></div>
         )}

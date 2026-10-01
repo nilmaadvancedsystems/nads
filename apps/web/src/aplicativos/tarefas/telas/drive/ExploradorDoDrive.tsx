@@ -98,14 +98,16 @@ function Lista({ vm, aoMenu, acima, baixarMarcados, faixaFora }: { vm: VmDrive; 
   });
   return (
     <>
-    {faixaFora && m > 0 && <div className="card drive-card drive-faixa-so"><Faixa /></div>}
+    {faixaFora && m > 0 && <div className="card drive-card drive-faixa-so">{faixa()}</div>}
     <div ref={lista} className="card drive-card" onContextMenu={ev => aoMenu(ev, null)}>
-      {!faixaFora && m > 0 && <Faixa />}
-      <Tabela />
+      {!faixaFora && m > 0 && faixa()}
+      {tabela()}
     </div>
     </>
   );
-  function Faixa() {
+  // faixa() e tabela() são chamadas, não componentes: um componente declarado aqui dentro seria outro a cada
+  // render, e o React remontaria a tabela inteira (a cascata se perdia no meio, a rolagem voltava ao topo)
+  function faixa() {
     return (
       <div className="card-head">
         {m > 0 ? (
@@ -119,7 +121,7 @@ function Lista({ vm, aoMenu, acima, baixarMarcados, faixaFora }: { vm: VmDrive; 
       </div>
     );
   }
-  function Tabela() {
+  function tabela() {
     return (
       <>
       <div className="table-wrap">

@@ -95,7 +95,7 @@ function Modal({ aberto, fechar }: { aberto: ModalAberto; fechar: (v: unknown) =
     return () => clearTimeout(t);
   }, [o, fecharAnimado]);
   return (
-    <div ref={raiz} className={'modal-overlay' + (o.obrigatoria ? ' modal-blur' : '')}>
+    <div ref={raiz} data-saida-propria className={'modal-overlay' + (o.obrigatoria ? ' modal-blur' : '')}>
       <div className={'modal' + (o.tom === 'ok' ? ' modal-ok' : '')} role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div className="modal-icon"><Icone nome={o.icone || 'landmark'} /></div>
         <h3 id="modalTitle">{o.titulo}</h3>

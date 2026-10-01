@@ -1,5 +1,6 @@
 // Peças pequenas da Conferência, com as mesmas classes do CSS original.
 import { useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { useIndicador, useNumeroAnimado } from './animacao';
 import { Icone, type NomeIcone } from './icones';
 
 /** Aviso dentro de uma caixa (.alert). tom "ok" = verde. */
@@ -70,8 +71,10 @@ export function Segmentado<T extends string>({ valor, opcoes, onMudar, id }: {
   onMudar: (v: T) => void;
   id?: string;
 }) {
+  // o fundo da opção escolhida desliza até ela (animejs, do jeito do app)
+  const trilho = useIndicador<HTMLDivElement>('.step-pill[aria-current="true"]', [valor, opcoes.length], 'fundo');
   return (
-    <div className="steps" id={id}>
+    <div ref={trilho} className="steps com-indicador" id={id}>
       {opcoes.filter(o => !o.oculta).map(o => (
         <button key={o.valor} type="button" className={'step-pill' + (o.travada ? ' is-locked' : '')} aria-current={o.valor === valor ? 'true' : 'false'}
           aria-disabled={o.travada ? 'true' : undefined} title={o.travada || undefined} onClick={() => onMudar(o.valor)}>
@@ -87,9 +90,17 @@ export function Stat({ rotulo, valor, cor, grande = true }: { rotulo: string; va
   return (
     <div className="stat">
       <p className="stat-label">{rotulo}</p>
-      <p className={'stat-value' + (cor ? ' cor-' + cor : '')} style={grande ? undefined : { fontSize: 16 }}>{valor}</p>
+      <p className={'stat-value' + (cor ? ' cor-' + cor : '')} style={grande ? undefined : { fontSize: 16 }}>
+        {typeof valor === 'string' || typeof valor === 'number' ? <NumeroQueConta texto={String(valor)} /> : valor}
+      </p>
     </div>
   );
+}
+
+/** Um número que conta até o valor quando aparece e quando muda (texto que não é número fica como está). */
+export function NumeroQueConta({ texto }: { texto: string }) {
+  const ref = useNumeroAnimado(texto);
+  return <span ref={ref} className="numero-que-conta" />;
 }
 
 /** Chave On/Off (.toggle-switch). */
