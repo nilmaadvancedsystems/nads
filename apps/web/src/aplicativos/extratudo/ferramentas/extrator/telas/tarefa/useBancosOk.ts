@@ -1,10 +1,10 @@
 // ViewModel do "Ok" da linha do banco (Vitor, 01/10/2026): quando o extrato e o razão do banco batem no
 // período (core: extrator.bancoOkNoPeriodo), a linha troca os botões pelo selo Ok e a setinha não abre mais.
 // Quando um banco fica Ok depois de importar (não ao abrir a tela já Ok), aparece o mesmo "Tudo certo!" do
-// Verificar por conta, que fecha sozinho.
+// Verificar por conta, que fecha sozinho. Enquanto não bate, "O que corrigir no razão" (core: extrator.correcoesDoRazao).
 import { extrator as x } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { usePonteDaTarefa } from '../../../../../../comum/ponte';
 import { useSessao } from '../../casca/sessao';
 import type { useImportacao } from '../importacao/useImportacao';
@@ -15,18 +15,26 @@ type Ponte = ReturnType<typeof usePonteDaTarefa>;
 const escapar = (t: string) => t.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch] as string));
 
 /** ocupado: alguma importação ou busca no Drive rodando (o "Tudo certo!" só vem depois de uma) */
-export function useBancosOk(vm: Vm, ponte: Ponte, ocupado: boolean): Record<string, boolean> {
+export function useBancosOk(vm: Vm, ponte: Ponte, ocupado: boolean): { ok: Record<string, boolean>; correcoes: Record<string, x.CorrecaoDoRazao[]> } {
   const s = useSessao();
   const { modal } = useRetorno();
   const emLote = vm.periodo.length > 1;
   const meses = emLote ? vm.periodo : [vm.competencia];
-  const ok: Record<string, boolean> = {};
-  for (const b of vm.bancos) {
-    const semMovimento = emLote
-      ? meses.filter(m => (ponte.semMovimentoPorMes[m] || []).includes(b.id))
-      : ponte.semMovimento.includes(b.id) ? meses : [];
-    ok[b.id] = x.bancoOkNoPeriodo(s.empresa, b.id, vm.primeiro, meses, semMovimento);
-  }
+  const semMovimentoDe = (banco: string) => emLote
+    ? meses.filter(m => (ponte.semMovimentoPorMes[m] || []).includes(banco))
+    : ponte.semMovimento.includes(banco) ? meses : [];
+  const chaveSemMov = vm.bancos.map(b => b.id + ':' + semMovimentoDe(b.id).join('.')).join(',');
+  // a conferência de todos os meses de cada banco: só quando os arquivos, os meses ou os "sem movimento" mudam
+  const { ok, correcoes } = useMemo(() => {
+    const ok: Record<string, boolean> = {};
+    const correcoes: Record<string, x.CorrecaoDoRazao[]> = {};
+    for (const b of vm.bancos) {
+      ok[b.id] = x.bancoOkNoPeriodo(s.empresa, b.id, vm.primeiro, meses, semMovimentoDe(b.id));
+      correcoes[b.id] = ok[b.id] ? [] : x.correcoesDoRazao(s.empresa, b.id, vm.primeiro, meses, semMovimentoDe(b.id));
+    }
+    return { ok, correcoes };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.empresa, vm.primeiro, meses.join(','), chaveSemMov]);
 
   const antes = useRef<Record<string, boolean> | null>(null);
   const mexeu = useRef(false);
@@ -50,5 +58,5 @@ export function useBancosOk(vm: Vm, ponte: Ponte, ocupado: boolean): Record<stri
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chave, ocupado]);
 
-  return ok;
+  return { ok, correcoes };
 }

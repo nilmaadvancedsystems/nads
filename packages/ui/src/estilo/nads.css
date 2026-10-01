@@ -1403,6 +1403,15 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-mov thead th{background:var(--surface-2);}
 /* a busca do movimento e, na mesma linha, o total do que ela achou */
 .imp-mov-topo{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+/* "O que corrigir no razão": embaixo da linha do banco, o aviso com as pendências, uma por linha (o dia à esquerda) */
+.imp-corrigir{margin:0 12px 12px 44px;}
+.imp-corrigir-corpo{min-width:0;flex:1;}
+.imp-corrigir-qtd{display:inline-block;min-width:20px;padding:0 6px;margin-left:4px;border-radius:10px;background:var(--surface-3);font-size:12px;text-align:center;}
+.imp-corrigir-lista{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:14px;}
+.imp-corrigir-lista li{display:flex;gap:12px;align-items:baseline;}
+.imp-corrigir-dia{flex:none;font-variant-numeric:tabular-nums;color:var(--ink-muted);font-size:13px;}
+.imp-corrigir-dica{display:block;margin-top:2px;}
+@media (max-width:640px){.imp-corrigir{margin-left:12px;}.imp-corrigir-lista li{flex-direction:column;gap:0;}}
 /* banco Ok (extrato e razão batem no período): a setinha fica apagada e não abre */
 .imp-ok .imp-seta{opacity:.35;cursor:default;}
 /* o olho (PDF do Drive) colado na busca e, grudado à direita dele, o mês que a tabela mostra */

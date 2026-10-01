@@ -122,6 +122,30 @@ function AdicionarBanco({ bancos, onAdicionar, fechar }: {
   );
 }
 
+/** "O que corrigir no razão": as pendências do extrato × razão do banco, ditas para corrigir no sistema contábil. */
+const LIMITE_CORRECOES = 30;
+function CorrigirNoRazao({ itens }: { itens: x.CorrecaoDoRazao[] }) {
+  if (!itens.length) return null;
+  return (
+    <div className="alert imp-corrigir" role="note">
+      <Icone nome="alert" />
+      <div className="imp-corrigir-corpo">
+        <p className="alert-title">O que corrigir no razão <span className="imp-corrigir-qtd">{itens.length}</span></p>
+        <ul className="imp-corrigir-lista">
+          {itens.slice(0, LIMITE_CORRECOES).map((c, i) => (
+            <li key={i}>
+              <span className="imp-corrigir-dia">{x.dataBR(c.data)}</span>
+              <span>{c.texto}{c.dica && <span className="hint imp-corrigir-dica">{c.dica}</span>}</span>
+            </li>
+          ))}
+        </ul>
+        {itens.length > LIMITE_CORRECOES && <p className="hint">E mais {itens.length - LIMITE_CORRECOES}: veja tudo em Extrato × sistema.</p>}
+        <p className="hint">Corrigido no sistema contábil, reimporte o razão do mês: quando tudo bater, a linha vira Ok.</p>
+      </div>
+    </div>
+  );
+}
+
 type ColunaMov = 'data' | 'historico' | 'valor' | 'tipo' | 'saldo';
 const COMPARAR_MOV: Record<ColunaMov, (a: x.LinhaDoMovimento, b: x.LinhaDoMovimento) => number> = {
   data: (a, b) => a.data.localeCompare(b.data),
@@ -413,7 +437,7 @@ export function TarefaExtratos() {
   const ocupadoGeral = vm.ocupado || !!d.buscando || vm.bancos.some(b => b.extrato.lendo || b.razao.lendo);
   useCarregando(ocupadoGeral);
   // extrato e razão batendo no período: a linha vira só o selo Ok (sem botões, a setinha não abre)
-  const bancosOk = useBancosOk(vm, ponte, ocupadoGeral);
+  const { ok: bancosOk, correcoes } = useBancosOk(vm, ponte, ocupadoGeral);
   const [cxExtrato, cxRazao] = vm.caixas;
   const [abertas, setAbertas] = useState<string[]>([]);
   const [abaEscolhida, setAba] = useState<AbaImportacao>('bancos');
@@ -598,6 +622,7 @@ export function TarefaExtratos() {
                   </div>
                 )}
               </div>
+              {!ok && <CorrigirNoRazao itens={correcoes[b.id] || []} />}
               {emLote && gradeAberta && <MesesDoBanco meses={meses} competencia={vm.competencia} naTarefa={ponte.naTarefa}
                 travado={ocupadoGeral} aceitarExtrato={cxExtrato.aceitar} aceitarRazao={cxRazao.aceitar}
                 onMes={vm.setCompetencia} onArquivos={(lado, fs) => { void vm.importarArquivos(b.id, lado, fs); }}
