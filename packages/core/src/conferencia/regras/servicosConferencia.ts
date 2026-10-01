@@ -156,7 +156,7 @@ export interface CategoriaNoCadastro {
   chaveConta: string;
   contas: string[];
   participantes: ParticipanteNaCategoria[];
-  /** participantes na categoria geral lançados com o lançamento desta categoria */
+  /** participantes na categoria geral lançados com o lançamento desta categoria (nenhum quando ela usa o lançamento padrão, como Comissões) */
   sugestoes: string[];
 }
 
@@ -176,7 +176,7 @@ export function cadastroServicos(e: Empresa, t: TipoServico): CategoriaNoCadastr
         const m = mapa[k];
         return { chave: k, nome: p ? p.nome : m ? m.nome : k, qtd: p ? p.qtd : null };
       }) : [],
-      sugestoes: especifica ? Object.keys(parts).filter(k => catDoPart(e, t, parts[k].nome) === 'geral' && parts[k].lancs[c.lanc]).sort().map(k => parts[k].nome) : [],
+      sugestoes: especifica && c.lanc !== SV[t].lancPadrao ? Object.keys(parts).filter(k => catDoPart(e, t, parts[k].nome) === 'geral' && parts[k].lancs[c.lanc]).sort().map(k => parts[k].nome) : [],
     };
   });
 }
