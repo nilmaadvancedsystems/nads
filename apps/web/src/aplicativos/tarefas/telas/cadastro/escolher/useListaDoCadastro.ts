@@ -2,7 +2,7 @@
 // com os bancos do cadastro (ou, sem cadastro, os que o robô do Entregas já sabe) e o plano de contas. Busca
 // por nome ou código, filtro por situação, e clicar abre a janela da empresa (por cima da lista). E o interruptor do
 // robô que lê a agência e a conta dos extratos (só o admin muda).
-import { empresas, formatos } from '@nads/core';
+import { demo, empresas, formatos } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -46,7 +46,7 @@ export function useListaDoCadastro() {
   const admin = !!useOperador().operador?.admin;
   const { toast } = useRetorno();
 
-  const linhas = useMemo<LinhaEmpresa[]>(() => empresas.EMPRESAS.map(x => {
+  const linhas = useMemo<LinhaEmpresa[]>(() => demo.comEmpresaDemo(empresas.EMPRESAS, demo.EMPRESA_DEMO).map(x => {
     const c = todos.porId.get(formatos.slug(x.nome)) || null;
     const doRobo = x.codigo != null ? entregas.porCodigo.get(x.codigo) : undefined;
     const contas = c?.bancos ? c.bancos.filter(b => !b.ate) : cad.contasDoEntregas(doRobo);

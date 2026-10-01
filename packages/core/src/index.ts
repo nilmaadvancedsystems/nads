@@ -10,3 +10,4 @@ export * as conciliadorzinho from './conciliadorzinho';
 export * as creditor from './extratudo/creditor';
 export * as extrator from './extratudo/extrator';
 export * as tarefas from './tarefas';
+export * as demo from './demo';

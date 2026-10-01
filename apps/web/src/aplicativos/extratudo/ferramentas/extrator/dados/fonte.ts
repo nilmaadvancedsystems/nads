@@ -5,7 +5,7 @@
 // O Drive (o extrato da competência na pasta da empresa): no banco, o do escritório pelo Entregas (o mesmo
 // login e o mesmo robô do Creditor, ver ../../../dados/drive.firestore.ts); nos exemplos, a pasta de exemplo
 // da empresa 901. O repositório e o Drive são criados uma vez, quando alguém abre o Extratudo.
-import { creditor, empresas, extrator } from '@nads/core';
+import { creditor, demo, empresas, extrator } from '@nads/core';
 import { criarDriveFirestore } from '../../../dados/drive.firestore';
 import { criarRepoExtratorFirestore, type RepoExtratorFirestore } from '../../../dados/extrator.firestore';
 
@@ -20,7 +20,8 @@ export function driveDoExtrator(): creditor.RepoDrive {
 }
 
 export function repoDoExtrator(): extrator.RepoExtrator {
-  if (!repo) repo = noBanco ? criarRepoExtratorFirestore(empresas.EMPRESAS) : extrator.criarRepoExtratorMemoria({ exemplos: true });
+  // a empresa de teste (Personaly Company) fica neste navegador; o resto, no banco (ou nos exemplos)
+  if (!repo) repo = demo.extratorComDemo(noBanco ? criarRepoExtratorFirestore(empresas.EMPRESAS) : extrator.criarRepoExtratorMemoria({ exemplos: true }));
   return repo;
 }
 
