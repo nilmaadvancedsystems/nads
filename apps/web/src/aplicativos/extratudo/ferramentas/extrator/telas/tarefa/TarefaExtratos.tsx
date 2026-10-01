@@ -9,8 +9,8 @@
 //   à direita: "Não teve movimento" (trava a linha e vira "Desfazer"); com o extrato vindo do Drive, um
 //     botãozinho de PDF (abre pelo link temporário). O movimento se vê pela setinha.
 // Ao importar, só uma barrinha por cima da tela, que some em 2,7 s.
-import { extrator as x, type empresas, tarefas } from '@nads/core';
-import { Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useCarregando } from '@nads/ui';
+import { extrator as x, type conferencia, type empresas, tarefas } from '@nads/core';
+import { Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
 import { useEffect, useId, useState } from 'react';
 import { usePonteDaTarefa } from '../../../../../../comum/ponte';
 import { useSessao } from '../../casca/sessao';
@@ -348,6 +348,21 @@ function SeletorDeCompetencia({ vm, naTarefa, trocar, periodoDaTarefa, encerrar 
   );
 }
 
+/**
+ * As abas da Importação (Vitor, 30/09/2026: "separe em menu superior"): os bancos (extrato e razão) e, da
+ * Conferência, o balancete, as notas e os serviços. Dentro da Tarefas, ficam no cabeçalho dela, por cima do
+ * checklist; aberta sozinha, em cima da página.
+ */
+type AbaImportacao = 'bancos' | conferencia.PaginaImportacao;
+const ABAS_DA_IMPORTACAO: { id: AbaImportacao; rotulo: string; icone: AbaDaEtapa['icone'] }[] = [
+  { id: 'bancos', rotulo: 'Bancos', icone: 'landmark' },
+  { id: 'balancete', rotulo: 'Balancete', icone: 'scale' },
+  { id: 'entradas', rotulo: 'Entradas', icone: 'arrowDown' },
+  { id: 'saidas', rotulo: 'Saídas', icone: 'arrowUp' },
+  { id: 'tomados', rotulo: 'Tomados', icone: 'fileDown' },
+  { id: 'prestados', rotulo: 'Prestados', icone: 'fileUp' },
+];
+
 export function TarefaExtratos() {
   const vm = useImportacao();
   const s = useSessao();
@@ -359,6 +374,9 @@ export function TarefaExtratos() {
   useCarregando(vm.ocupado || !!d.buscando || vm.bancos.some(b => b.extrato.lendo || b.razao.lendo));
   const [cxExtrato, cxRazao] = vm.caixas;
   const [abertas, setAbertas] = useState<string[]>([]);
+  const [aba, setAba] = useState<AbaImportacao>('bancos');
+  const abas = ABAS_DA_IMPORTACAO.map(a => ({ ...a, ativa: a.id === aba }));
+  useAbasParaAEtapa(ponte.naTarefa ? abas : null, id => { if (ABAS_DA_IMPORTACAO.some(a => a.id === id)) setAba(id as AbaImportacao); });
   const alternar = (id: string) => setAbertas(v => (v.includes(id) ? v.filter(a => a !== id) : [...v, id]));
 
   /** Visualizar o que veio do Drive: abre a janela já (senão o navegador bloqueia) e põe o link temporário quando o robô responder. */
@@ -371,6 +389,16 @@ export function TarefaExtratos() {
 
   return (
     <section className="tarefa-extratos">
+      {!ponte.naTarefa && (
+        <nav className="menu imp-abas" aria-label="Importação">
+          {abas.map(a => (
+            <button key={a.id} type="button" className={'menu-item' + (a.ativa ? ' active' : '')} aria-current={a.ativa ? 'page' : undefined} onClick={() => setAba(a.id)}>
+              <Icone nome={a.icone} /><span>{a.rotulo}</span>
+            </button>
+          ))}
+        </nav>
+      )}
+      {aba !== 'bancos' ? <ImportacaoNaEtapa nome={s.nome} tipo={aba} /> : (<>
       <div className="imp-topo">
         {/* à esquerda, como o "⎇ main ▾  6 Branches" do GitHub: a competência e o número de bancos */}
         <SeletorDeCompetencia vm={vm} naTarefa={ponte.naTarefa} trocar={ponte.trocarCompetencia} periodoDaTarefa={ponte.periodo} encerrar={ponte.encerrarPeriodo} />
@@ -559,8 +587,7 @@ export function TarefaExtratos() {
           </div>
         </div>
       )}
-      {/* a Importação da Conferência (balancete, notas e serviços), embaixo dos bancos: a primeira etapa importa tudo */}
-      <ImportacaoNaEtapa nome={s.nome} />
+      </>)}
       <JanelaPedirExtratos p={pe} />
       <JanelaHistoricoDePedidos p={pe} />
     </section>
