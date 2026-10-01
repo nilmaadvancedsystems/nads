@@ -7,6 +7,20 @@ import { Icone, LogoBanco, LogoGmail, LogoWhatsApp, useCarregando } from '@nads/
 import { useState } from 'react';
 import type { usePedirExtratos } from './usePedirExtratos';
 
+/** A prévia cresce até a altura inteira do e-mail (quem rola é a janela, uma barra só). */
+function ajustarAltura(ev: { currentTarget: HTMLIFrameElement }) {
+  const f = ev.currentTarget;
+  const doc = f.contentDocument;
+  if (doc) f.style.height = Math.max(doc.documentElement.scrollHeight, doc.body ? doc.body.scrollHeight : 0) + 'px';
+}
+
+/** O e-mail sozinho numa aba nova, do tamanho que o cliente vai ver. */
+function abrirInteiro(html: string) {
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+  window.open(url, '_blank', 'noopener');
+  setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
+}
+
 type P = ReturnType<typeof usePedirExtratos>;
 type Mes = P['documentos'][number]['atual'];
 
@@ -125,8 +139,15 @@ export function JanelaPedirExtratos({ p }: { p: P }) {
               <span><b>{p.resumo.documentos}</b> {p.resumo.documentos === 1 ? 'documento' : 'documentos'} · {p.resumo.meses.join(', ')}</span>
               {p.whatsapp.ligado && <span className="pedir-resumo-whats"><span className="pedir-app"><LogoWhatsApp /></span>também pelo WhatsApp</span>}
             </div>
-            <p className="pedir-assunto"><span className="hint">Assunto</span>{p.assunto}</p>
-            <iframe title="Prévia do e-mail" srcDoc={p.html} sandbox="allow-same-origin" />
+            <p className="pedir-assunto">
+              <span className="hint">Assunto</span><span className="pedir-assunto-texto">{p.assunto}</span>
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => abrirInteiro(p.html)} title="O e-mail sozinho numa aba nova, como o cliente vai ver">
+                <Icone nome="maximizar" />Abrir o e-mail inteiro
+              </button>
+            </p>
+            <div className="pedir-previa-rola">
+              <iframe title="Prévia do e-mail" srcDoc={p.html} sandbox="allow-same-origin" onLoad={ajustarAltura} />
+            </div>
           </div>
         )}
 

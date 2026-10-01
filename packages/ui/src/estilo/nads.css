@@ -1508,7 +1508,7 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 
 /* Pedir extratos (Gmail / WhatsApp): a janela com Para, Bancos, Competência e a mensagem pronta */
 .modal.pedir-modal{max-width:min(760px,96vw);width:100%;}
-.modal.pedir-modal.conferir{max-width:min(760px,96vw);}
+.modal.pedir-modal.conferir{max-width:min(820px,96vw);}
 .pedir-titulo{display:flex;align-items:center;gap:10px;}
 .pedir-app{width:20px;height:20px;display:inline-flex;}
 .pedir-app .logo-img,.pedir-app svg{width:20px;height:20px;}
@@ -1658,9 +1658,13 @@ td.cad-acoes .menu-seta{display:none;}
 .pedir-outros-btn.aberto .menu-seta{transform:rotate(180deg);}
 .pedir-doc-bloco .pedir-comps{padding-left:26px;}
 .pedir-comps-resumo .pedir-comp{cursor:default;padding:0 10px;}
-.pedir-conferir{display:flex;flex-direction:column;height:min(72vh,720px);background:#F2F2F3;}
-.pedir-conferir iframe{flex:1;width:100%;border:0;background:#F2F2F3;}
-.pedir-conferir .pedir-assunto{margin:0;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pedir-conferir{display:flex;flex-direction:column;height:min(78vh,860px);background:#F2F2F3;}
+/* a prévia do tamanho inteiro do e-mail; quem rola é esta caixa */
+.pedir-previa-rola{flex:1;min-height:0;overflow:auto;}
+.pedir-conferir iframe{display:block;width:100%;min-height:100%;border:0;background:#F2F2F3;}
+.pedir-conferir .pedir-assunto{display:flex;align-items:center;gap:8px;margin:0;padding:8px 12px 8px 16px;background:var(--surface);border-bottom:1px solid var(--border);font-size:13px;font-weight:600;color:var(--ink);}
+.pedir-assunto-texto{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pedir-conferir .pedir-assunto .btn{flex:none;}
 .pedir-conferir .pedir-assunto .hint{margin:0 8px 0 0;font-weight:400;}
 .pedir-resumo{display:flex;flex-wrap:wrap;gap:6px 18px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);font-size:13px;color:var(--ink);}
 .pedir-resumo b{font-weight:600;}
