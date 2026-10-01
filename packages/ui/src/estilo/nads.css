@@ -1969,117 +1969,41 @@ main.main:has(> .content > .explorador){padding:0;}
 .envio-onde{display:flex;align-items:center;gap:8px;font-size:13px !important;padding:8px 10px !important;border-radius:6px;background:var(--surface-2);}
 
 /* ---------------------------------- Drive com a cara do GitHub (30/09/2026) ----------------------------------
-   Página inicial (a pasta do ano, a pasta do cliente): o nome em cima, a barra, a caixa com a faixa do robô e a lista,
-   e o "Sobre" ao lado. Dentro do cliente: o painel "Arquivos" (o ano, a busca, a árvore) e, à direita, a trilha e a lista. */
-.ghf{position:relative;}
-.ghf.tela-cheia{position:fixed;inset:0;z-index:900;background:var(--bg);overflow:auto;padding:16px;}
-.ghf-espaco{flex:1;}
-.ghf .fraco svg{width:14px;height:14px;vertical-align:-2px;margin-right:4px;}
-/* página inicial */
-.ghf-inicio{max-width:1280px;margin:0 auto;padding:8px 16px 32px;}
-.ghf-titulo{display:flex;align-items:center;gap:8px;padding:8px 0 16px;margin-bottom:16px;border-bottom:1px solid var(--border);}
-.ghf-titulo h2{margin:0;font-size:20px;font-weight:600;color:var(--ink);}
-.ghf-titulo-ico{display:inline-flex;}
-.ghf-titulo-ico svg{width:20px;height:20px;}
-.ghf-selo{padding:0 7px;border:1px solid var(--border);border-radius:2em;font-size:12px;line-height:18px;color:var(--ink-muted);}
-.ghf-colunas{display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:24px;align-items:start;}
-.ghf-barra{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
-.ghf-link{display:inline-flex;align-items:center;gap:4px;border:none;background:none;padding:0 4px;font:inherit;font-size:14px;color:var(--ink-muted);cursor:pointer;}
-.ghf-link:hover{color:var(--accent);}
-.ghf-link svg{width:14px;height:14px;}
-.ghf-sobre h3{margin:0 0 8px;font-size:16px;font-weight:600;}
-.ghf-sobre p{margin:0 0 12px;font-size:14px;color:var(--ink);}
-.ghf-sobre ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
-.ghf-sobre li{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--ink-muted);}
-.ghf-sobre li svg{width:16px;height:16px;flex:none;margin-top:1px;}
-.ghf-sobre li b{color:var(--ink);font-weight:600;}
-/* a busca ("Go to file", com o T) e os botões */
-.ghf-busca{position:relative;display:flex;align-items:center;width:240px;max-width:100%;}
-.ghf-busca > svg{position:absolute;left:8px;width:16px;height:16px;color:var(--ink-muted);pointer-events:none;}
-.ghf-busca input{width:100%;height:32px;padding:0 28px 0 30px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--ink);font:inherit;font-size:14px;}
-.ghf-busca input:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent;}
-.ghf-busca input::-webkit-search-cancel-button{display:none;}
-.ghf-kbd{position:absolute;right:6px;padding:0 5px;border:1px solid var(--border);border-radius:4px;font:11px/16px var(--font-num,monospace);color:var(--ink-muted);pointer-events:none;}
-.ghf-ano svg{width:14px;height:14px;}
-.ghf-mais{padding:0 8px;}
-.ghf-mais .menu-seta{display:none;}
-.ghf-icone-acao{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border:1px solid transparent;border-radius:6px;background:none;color:var(--ink-muted);cursor:pointer;flex:none;}
-.ghf-icone-acao.com-borda{border-color:var(--border);}
-.ghf-icone-acao:hover{background:var(--hover-bg);color:var(--ink);}
-.ghf-icone-acao svg{width:16px;height:16px;}
-/* a caixa da lista e a faixa do robô */
-.ghf-caixa{border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--surface);}
-.ghf-faixa{display:flex;align-items:center;gap:8px;min-height:48px;padding:8px 16px;background:var(--surface-2);border-bottom:1px solid var(--border);font-size:13px;flex-wrap:wrap;}
-.ghf-faixa.fora{border:1px solid var(--border);border-radius:6px;margin-bottom:16px;}
-.ghf-faixa-texto{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:0 1 auto;}
-.ghf-robo{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--surface-3);}
-.ghf-robo svg{width:14px;height:14px;}
-.ghf-tabela{width:100%;border-collapse:collapse;font-size:14px;}
-.ghf-tabela th{padding:0 16px;height:40px;text-align:left;font-size:12px;font-weight:600;color:var(--ink-muted);border-bottom:1px solid var(--border);}
-.ghf-tabela th button{display:inline-flex;align-items:center;gap:4px;border:none;background:none;padding:0;font:inherit;color:inherit;cursor:pointer;}
-.ghf-tabela th button:hover{color:var(--ink);}
-.ghf-ordem{width:14px;height:14px;}
-.ghf-ordem.cima{transform:rotate(180deg);}
-.ghf-tabela td{padding:0 16px;height:40px;border-top:1px solid var(--border);white-space:nowrap;}
-.ghf-tabela tbody tr:first-child td{border-top:none;}
-.ghf-tabela tbody tr:hover td{background:var(--hover-bg);}
-.ghf-tabela tr.marcado td{background:var(--accent-soft);}
-.ghf-tabela tr:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
-.ghf-tabela .col-nome{width:100%;max-width:0;}
-.ghf-tabela .col-tipo{width:1%;}
-.ghf-tabela .col-tamanho,.ghf-tabela .col-data{text-align:right;width:1%;}
-.ghf-tabela th.col-tamanho,.ghf-tabela th.col-data{text-align:right;}
-.ghf-celula{display:flex;align-items:center;gap:10px;min-width:0;}
-.ghf-nome{border:none;background:none;padding:0;font:inherit;color:var(--ink);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;}
-.ghf-nome:hover{color:var(--accent);text-decoration:underline;}
-.ghf-onde{font-size:12px;overflow:hidden;text-overflow:ellipsis;}
-.ghf-acima .ghf-nome{padding-left:26px;font-weight:600;letter-spacing:2px;}
-.ghf-ico{width:16px;height:16px;flex:none;color:var(--ink-muted);}
-.ghf-ico.pasta{color:#7d8590;fill:#7d8590;fill-opacity:.9;}
-.ghf-ico.pdf{color:var(--danger);}
-.ghf-ico.planilha{color:var(--success);}
-.ghf-ico.texto{color:var(--info);}
-.ghf-ico.grande{width:40px;height:40px;}
-.ghf-icones{list-style:none;margin:0;padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;}
-.ghf-icones li{border-radius:6px;}
-.ghf-icones li.marcado{background:var(--accent-soft);}
-.ghf-icone-btn{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;padding:12px 6px;border:none;background:none;border-radius:6px;font:inherit;font-size:13px;color:var(--ink);cursor:pointer;}
-.ghf-icone-btn:hover{background:var(--hover-bg);}
-.ghf-icone-nome{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-/* navegador de arquivos: o painel "Arquivos" à esquerda e a trilha + a lista à direita */
-.ghf-navegador{display:grid;grid-template-columns:300px minmax(0,1fr);align-items:start;}
-.ghf-navegador.sem-painel{grid-template-columns:minmax(0,1fr);}
-.ghf-painel{position:sticky;top:0;max-height:calc(100vh - var(--hdr-h,64px));min-height:calc(100vh - var(--hdr-h,64px));overflow:auto;padding:16px 12px;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;}
-.ghf-painel-topo{display:flex;align-items:center;gap:8px;}
-.ghf-painel-topo h2{margin:0;font-size:16px;font-weight:600;}
-.ghf-painel-barra{display:flex;align-items:center;gap:8px;}
-.ghf-painel-barra .ghf-ano{flex:1;justify-content:flex-start;}
-.ghf-painel .ghf-busca{width:100%;}
-.ghf-arvore{list-style:none;margin:0;padding:0 0 0 8px;font-size:14px;}
-.ghf-no{display:flex;align-items:center;gap:4px;min-height:32px;width:100%;padding-right:8px;border:none;background:none;border-radius:6px;position:relative;color:var(--ink);font:inherit;cursor:pointer;text-align:left;}
-.ghf-no:hover{background:var(--hover-bg);}
-.ghf-no.atual{background:var(--hover-bg);font-weight:600;}
-.ghf-no.atual::before{content:"";position:absolute;left:-8px;top:6px;bottom:6px;width:4px;border-radius:2px;background:var(--tab-active);}
-.ghf-seta{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;flex:none;border:none;background:none;padding:0;color:var(--ink-muted);cursor:pointer;}
-.ghf-seta svg{width:14px;height:14px;transition:transform .12s ease;}
-.ghf-seta svg.fechada{transform:rotate(-90deg);}
-.ghf-no-rotulo{display:flex;align-items:center;gap:6px;flex:1;min-width:0;border:none;background:none;padding:0;font:inherit;color:inherit;cursor:pointer;text-align:left;}
-.ghf-no-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.ghf-direita{padding:16px 24px 32px;min-width:0;}
-.ghf-trilha-linha{display:flex;align-items:center;gap:8px;margin-bottom:16px;min-height:32px;}
-.ghf-trilha{display:flex;align-items:center;flex-wrap:wrap;gap:4px;font-size:16px;min-width:0;}
-.ghf-trilha button{border:none;background:none;padding:0;font:inherit;font-weight:600;color:var(--accent);cursor:pointer;}
-.ghf-trilha button:hover{text-decoration:underline;}
-.ghf-trilha b{font-weight:600;color:var(--ink);}
-.ghf-barra-sep{color:var(--ink-muted);padding:0 2px;}
-@media (max-width:1012px){
-  .ghf-colunas{grid-template-columns:minmax(0,1fr);}
-  .ghf-sobre{order:-1;}
-}
+   Só a disposição: as peças são as do nads (tarefas-barra-topo, MenuSuspenso, tarefas-contador, busca-curta, btn,
+   icon-btn, badge, card + card-head + table-wrap, subnav-item, gh-crumbs). Na pasta do ano, a lista e o Sobre ao lado;
+   no cliente, a barra lateral das pastas e a lista. */
+.drive{position:relative;}
+.drive.tela-cheia{position:fixed;inset:0;z-index:900;background:var(--bg);overflow:auto;padding:16px;}
+.drive-inicio{max-width:1280px;margin:0 auto;}
+.drive-titulo{padding-bottom:16px;border-bottom:1px solid var(--border);}
+.drive-titulo .page-title{margin:0;}
+.drive-colunas{display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:24px;align-items:start;}
+.drive-sobre p{margin:0 0 12px;font-size:14px;}
+.drive-sobre-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--ink-muted);}
+.drive-sobre-lista li{display:flex;gap:8px;align-items:flex-start;}
+.drive-sobre-lista svg{width:16px;height:16px;flex:none;}
+.drive-sobre-lista b{color:var(--ink);}
+.drive-faixa{display:inline-flex;align-items:center;gap:6px;}
+.drive-faixa svg{width:14px;height:14px;}
+.drive-col-nome{width:100%;max-width:0;}
+.drive-card td:not(.drive-col-nome){white-space:nowrap;}
+.drive-col-nome{min-width:200px;}
+.drive-card .drive-nome{display:flex;width:100%;}
+.drive-card .drive-nome > span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.drive-card .drive-onde{margin-left:8px;}
+.drive-navegador{display:grid;grid-template-columns:296px minmax(0,1fr);align-items:start;}
+.drive-navegador.sem-painel{grid-template-columns:minmax(0,1fr);}
+.drive-painel{position:sticky;top:0;max-height:calc(100vh - var(--hdr-h,64px));overflow:auto;gap:8px;scrollbar-width:thin;}
+.drive-painel .tarefas-barra-topo{margin-bottom:0;}
+.drive-painel-titulo{font-size:16px;font-weight:600;}
+.drive-no{display:flex;align-items:center;gap:2px;}
+.drive-no .subnav-item{flex:1;min-width:0;}
+.drive-no .subnav-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.drive-direita{padding:16px 24px 32px;min-width:0;}
+.drive-trilha{font-size:16px;flex-wrap:wrap;min-width:0;}
+@media (max-width:1012px){ .drive-colunas{grid-template-columns:minmax(0,1fr);} }
 @media (max-width:768px){
-  .ghf-navegador{grid-template-columns:minmax(0,1fr);}
-  .ghf-painel{position:static;max-height:none;min-height:0;border-right:none;border-bottom:1px solid var(--border);}
-  .ghf-tabela .col-tipo,.ghf-tabela .col-tamanho{display:none;}
-  .ghf-direita{padding:16px;}
-  .ghf-busca{width:100%;}
+  .drive-navegador{grid-template-columns:minmax(0,1fr);}
+  .drive-painel{position:static;max-height:none;}
+  .drive-direita{padding:16px;}
 }

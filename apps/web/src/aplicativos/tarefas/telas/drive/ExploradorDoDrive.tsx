@@ -1,14 +1,14 @@
-// Drive › Pastas, com a cara do GitHub (Vitor, 30/09/2026: "no Drive, faça esse design"). Na pasta do ano, a página
-// inicial de um repositório: o nome em cima, a barra (o ano ▾, quantas pastas e arquivos, "Ir
-// para arquivo", Enviar e Baixar), a caixa com a faixa do mapa do robô e a lista dos clientes, e ao lado o "Sobre".
-// Abriu um cliente: o navegador de arquivos — o painel "Arquivos" à esquerda (o ano, a busca e as pastas do cliente) e,
-// à direita, a trilha (CLIENTE / PASTA /, copiar o caminho, ⋯), a faixa do robô e a lista com o "..". Um clique no nome abre (a pasta entra, o
-// arquivo abre numa aba nova: ela nasce no clique, senão o navegador bloqueia, e recebe o link quando o robô termina);
-// Ctrl e Shift marcam; o botão direito abre o menu (MenuDeContexto); arrastar arquivos para a tela, ou "Enviar", manda
-// para o Claudio Secretário. Tela cheia cobre o nads (Esc sai). "T" vai para a busca, como no GitHub.
+// Drive › Pastas, com a cara do GitHub e só com as peças do nads (Vitor, 30/09/2026). Na pasta do ano, a página inicial de
+// um repositório: o nome em cima (⋯), a barra (o ano ▾ como o "main ▾", o contador como o "6 Branches", a busca com o T,
+// Enviar ▾ e Baixar ▾), o card com a faixa do mapa do robô e a lista dos clientes, e o Sobre ao lado. Abriu um cliente: o
+// navegador de arquivos — à esquerda, a barra lateral com as pastas dele (a aberta marcada) e, à direita, a trilha
+// (CLIENTE / PASTA /, copiar, Enviar ▾, Baixar ▾, ⋯) e o card com a lista (com o ".."). Um clique abre (a pasta entra; o
+// arquivo abre numa aba nova, que nasce no clique e recebe o link quando o robô termina); Ctrl e Shift marcam; o botão
+// direito abre o menu (MenuDeContexto); arrastar arquivos, ou Enviar, manda para o Claudio Secretário. Tela cheia cobre
+// o nads (Esc sai). "T" vai para a busca, como no GitHub.
 import type { entregas as e } from '@nads/core';
 import { Icone, MenuSuspenso, useCarregando, useRetorno } from '@nads/ui';
-import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent, type ReactNode, type RefObject } from 'react';
 import { EnviarAoSecretario } from './EnviarAoSecretario';
 import { MenuDeContexto, type LinhaDoMenu, type MenuAberto, type OpcaoDoMenu } from './MenuDeContexto';
 import { useEnvioAoSecretario } from './useEnvioAoSecretario';
@@ -64,148 +64,117 @@ function relativo(iso: string | null): string {
   return d.toLocaleDateString('pt-BR');
 }
 
-function IconeDaEntrada({ x, grande }: { x: e.EntradaDoExplorador; grande?: boolean }) {
+function IconeDaEntrada({ x }: { x: e.EntradaDoExplorador }) {
   const nome = x.pasta ? 'pasta' : /Google|texto|Word/.test(x.tipo) ? 'fileText' : 'arquivo';
   const cor = x.pasta ? ' pasta' : /PDF/.test(x.tipo) ? ' pdf' : /Excel|CSV|Planilha/.test(x.tipo) ? ' planilha' : /Word|Documento Google/.test(x.tipo) ? ' texto' : '';
-  return <Icone nome={nome} className={'ghf-ico' + cor + (grande ? ' grande' : '')} />;
+  return <Icone nome={nome} className={'drive-ico' + cor} />;
 }
 
-/** A caixa da lista, como a do GitHub: a faixa de cima (o mapa do robô, ou o que está marcado) e as linhas. */
-/** faixaFora: a faixa numa caixa própria, em cima da lista (o navegador de arquivos); sem, dentro (a página inicial). */
-function Lista({ vm, aoMenu, acima, baixarMarcados, faixaFora }: { vm: VmDrive; aoMenu: AoMenu; acima: boolean; baixarMarcados: () => void; faixaFora?: boolean }) {
+/** O card da lista: a faixa de cima (o mapa do robô, ou o que está marcado) e a tabela (o ".." quando dá para subir). */
+function Lista({ vm, aoMenu, acima, baixarMarcados }: { vm: VmDrive; aoMenu: AoMenu; acima: boolean; baixarMarcados: () => void }) {
   const m = vm.marcados.length;
   const linha = (x: e.EntradaDoExplorador) => ({
+    className: 'linha-abre' + (vm.estaMarcado(x.id) ? ' linha-atual' : ''),
+    tabIndex: 0,
+    'aria-selected': vm.estaMarcado(x.id),
     onContextMenu: (ev: MouseEvent) => aoMenu(ev, x),
     onClick: (ev: MouseEvent) => {
-      if (ev.ctrlKey || ev.metaKey || ev.shiftKey) { ev.preventDefault(); vm.selecionar(x.id, { ctrl: ev.ctrlKey || ev.metaKey, shift: ev.shiftKey }); }
+      if (ev.ctrlKey || ev.metaKey || ev.shiftKey) vm.selecionar(x.id, { ctrl: ev.ctrlKey || ev.metaKey, shift: ev.shiftKey });
+      else abrir(vm, x);
     },
     onKeyDown: (ev: KeyboardEvent) => {
       if (ev.key === 'Enter') { ev.preventDefault(); abrir(vm, x); }
       else if (ev.key === ' ') { ev.preventDefault(); vm.selecionar(x.id, { ctrl: true }); }
     },
   });
-  const faixa = (
-      <div className={'ghf-faixa' + (faixaFora ? ' fora' : '')}>
+  return (
+    <div className="card drive-card" onContextMenu={ev => aoMenu(ev, null)}>
+      <div className="card-head">
         {m > 0 ? (
           <>
-            <span><b>{m}</b> {m === 1 ? 'selecionado' : 'selecionados'}{vm.tamanhoMarcado ? ' · ' + vm.tamanhoMarcado : ''}</span>
-            <span className="ghf-espaco" />
-            <button type="button" className="btn btn-sm btn-outline" onClick={baixarMarcados}><Icone nome="download" />Baixar</button>
-            <button type="button" className="btn btn-sm btn-ghost" onClick={vm.limparSelecao}>Limpar</button>
+            <h3>{m} {m === 1 ? 'selecionado' : 'selecionados'}{vm.tamanhoMarcado ? ' · ' + vm.tamanhoMarcado : ''}</h3>
+            <span className="tarefas-barra-espaco" />
+            <button type="button" className="btn btn-outline" onClick={baixarMarcados}><Icone nome="download" />Baixar</button>
+            <button type="button" className="btn btn-ghost" onClick={vm.limparSelecao}>Limpar</button>
           </>
         ) : (
           <>
-            <span className="ghf-robo"><Icone nome="robo" /></span>
-            <b>Mapa do robô</b>
-            <span className="fraco ghf-faixa-texto">{vm.exemplos ? 'dados de exemplo: as pastas são inventadas e nenhum arquivo abre de verdade' : 'o Drive do escritório, como o robô do Entregas leu'}</span>
-            <span className="ghf-espaco" />
-            {vm.atualizado && <span className="fraco" title={'Atualizado em ' + vm.atualizado}><Icone nome="clock" />{vm.atualizado}</span>}
-            <span className="fraco"><b>{vm.entradas.length}</b> {vm.entradas.length === 1 ? 'item' : 'itens'}</span>
+            <h3 className="drive-faixa"><Icone nome="robo" />Mapa do robô</h3>
+            <span className="hint">{vm.exemplos ? 'dados de exemplo: as pastas são inventadas e nenhum arquivo abre de verdade' : 'o Drive do escritório, como o robô do Entregas leu'}</span>
+            <span className="tarefas-barra-espaco" />
+            {vm.atualizado && <span className="hint drive-faixa"><Icone nome="clock" />{vm.atualizado}</span>}
           </>
         )}
       </div>
-  );
-  return (
-    <>
-    {faixaFora && faixa}
-    <div className="ghf-caixa" onContextMenu={ev => aoMenu(ev, null)}>
-      {!faixaFora && faixa}
-      {vm.exibicao === 'icones' ? (
-        <ul className="ghf-icones" role="listbox" aria-multiselectable>
-          {vm.entradas.map(x => (
-            <li key={x.id} role="option" tabIndex={0} aria-selected={vm.estaMarcado(x.id)} className={vm.estaMarcado(x.id) ? 'marcado' : undefined}
-              title={x.nome} {...linha(x)} onDoubleClick={() => abrir(vm, x)}>
-              <button type="button" className="ghf-icone-btn" onClick={ev => { if (!ev.ctrlKey && !ev.metaKey && !ev.shiftKey) abrir(vm, x); }}>
-                <IconeDaEntrada x={x} grande /><span className="ghf-icone-nome">{x.nome}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <table className="ghf-tabela">
+      <div className="table-wrap">
+        <table>
           <thead>
             <tr>
               {COLUNAS.map(c => (
-                <th key={c.id} className={'col-' + c.id} aria-sort={vm.coluna === c.id ? (vm.desc ? 'descending' : 'ascending') : undefined}>
-                  <button type="button" onClick={() => vm.ordenarPor(c.id)}>
-                    {c.rotulo}{vm.coluna === c.id && <Icone nome="caretDown" className={'ghf-ordem' + (vm.desc ? '' : ' cima')} />}
-                  </button>
+                <th key={c.id} className={'th-sort' + (c.id === 'tamanho' || c.id === 'data' ? ' num' : '')} onClick={() => vm.ordenarPor(c.id)}
+                  aria-sort={vm.coluna === c.id ? (vm.desc ? 'descending' : 'ascending') : undefined}>
+                  {c.rotulo}{vm.coluna === c.id && <Icone nome="caretDown" className={'th-seta' + (vm.desc ? '' : ' cima')} />}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {acima && (
-              <tr className="ghf-acima">
-                <td colSpan={COLUNAS.length}><button type="button" className="ghf-nome" onClick={vm.subir} title="Pasta de cima">..</button></td>
+              <tr className="linha-abre" tabIndex={0} onClick={vm.subir} onKeyDown={ev => { if (ev.key === 'Enter') vm.subir(); }} title="A pasta de cima">
+                <td colSpan={COLUNAS.length}><span className="drive-nome"><Icone nome="pasta" className="drive-ico pasta" />..</span></td>
               </tr>
             )}
             {vm.entradas.map(x => (
-              <tr key={x.id} tabIndex={0} aria-selected={vm.estaMarcado(x.id)} className={vm.estaMarcado(x.id) ? 'marcado' : undefined} {...linha(x)}>
-                <td className="col-nome">
-                  <span className="ghf-celula">
-                    <IconeDaEntrada x={x} />
-                    <button type="button" className="ghf-nome" title={x.nome} onClick={ev => { if (!ev.ctrlKey && !ev.metaKey && !ev.shiftKey) abrir(vm, x); }}>{x.nome}</button>
-                    {x.onde && <span className="fraco ghf-onde">{x.onde}</span>}
-                  </span>
-                </td>
-                <td className="col-tipo fraco">{x.tipo}</td>
-                <td className="col-tamanho fraco">{x.pasta ? '' : vm.tamanho(x.bytes)}</td>
-                <td className="col-data fraco" title={vm.quando(x.data)}>{relativo(x.data)}</td>
+              <tr key={x.id} {...linha(x)}>
+                <td className="drive-col-nome"><span className="drive-nome" title={x.nome}><IconeDaEntrada x={x} /><span>{x.nome}{x.onde && <span className="fraco drive-onde">{x.onde}</span>}</span></span></td>
+                <td className="fraco">{x.tipo}</td>
+                <td className="fraco num">{x.pasta ? '' : vm.tamanho(x.bytes)}</td>
+                <td className="fraco num" title={vm.quando(x.data)}>{relativo(x.data)}</td>
               </tr>
             ))}
           </tbody>
         </table>
-      )}
+      </div>
       {!vm.carregando && !vm.entradas.length && <p className="empty">{vm.buscando ? 'Nada com essa busca.' : 'Esta pasta está vazia.'}</p>}
     </div>
-    </>
   );
 }
 
-/** A árvore do painel, como a do GitHub: só as pastas do cliente aberto (o "repositório"), sem ele mesmo. */
+/** A barra lateral do cliente: as pastas dele (a aberta marcada), nos itens da barra lateral do nads. */
 function Arvore({ vm, aoMenu }: { vm: VmDrive; aoMenu: (ev: MouseEvent, no: e.NoDaArvore) => void }) {
   const cliente = vm.pastaCliente?.id || '';
   return (
-    <ul className="ghf-arvore" role="tree" aria-label="Pastas">
+    <div className="subnav-itens" role="tree" aria-label="Pastas">
       {vm.arvore.filter(no => no.cliente === cliente && no.nivel >= 1).map(no => (
-        <li key={no.id} role="treeitem" aria-selected={vm.naPasta(no.id)} aria-expanded={no.temFilhos ? no.aberto : undefined}>
-          <div className={'ghf-no' + (vm.naPasta(no.id) ? ' atual' : '')} style={{ paddingLeft: 8 + (no.nivel - 1) * 16 }}>
-            {no.temFilhos
-              ? <button type="button" className="ghf-seta" aria-label={(no.aberto ? 'Fechar ' : 'Abrir ') + no.nome} onClick={() => vm.alternarNo(no.id)}>
-                <Icone nome="caretDown" className={no.aberto ? '' : 'fechada'} />
-              </button>
-              : <span className="ghf-seta" />}
-            <button type="button" className="ghf-no-rotulo" title={no.nome} onClick={() => vm.abrirNo(no)} onContextMenu={ev => aoMenu(ev, no)}>
-              <Icone nome="pasta" className="ghf-ico pasta" /><span className="ghf-no-nome">{no.nome}</span>
-              {no.carregando && <span className="drive-girando" aria-label="carregando" />}
-            </button>
-          </div>
-        </li>
+        <div key={no.id} className="drive-no" style={{ paddingLeft: (no.nivel - 1) * 16 }} role="treeitem" aria-selected={vm.naPasta(no.id)} aria-expanded={no.temFilhos ? no.aberto : undefined}>
+          {no.temFilhos
+            ? <button type="button" className={'imp-seta' + (no.aberto ? ' aberta' : '')} aria-label={(no.aberto ? 'Fechar ' : 'Abrir ') + no.nome} onClick={() => vm.alternarNo(no.id)}><Icone nome="caretDown" /></button>
+            : <span className="imp-seta" />}
+          <button type="button" className={'subnav-item' + (vm.naPasta(no.id) ? ' active' : '')} title={no.nome} onClick={() => vm.abrirNo(no)} onContextMenu={ev => aoMenu(ev, no)}>
+            <Icone nome="pasta" /><span>{no.nome}</span>
+            {no.carregando && <span className="drive-girando" aria-label="carregando" />}
+          </button>
+        </div>
       ))}
-    </ul>
+    </div>
   );
 }
 
-/** A busca do GitHub ("Go to file" com o T no canto). */
-function Busca({ vm, campo }: { vm: VmDrive; campo: React.RefObject<HTMLInputElement | null> }) {
+/** A busca (a mesma das listas do nads), com o T no canto como o "Go to file" do GitHub. */
+function Busca({ vm, campo, larga }: { vm: VmDrive; campo: RefObject<HTMLInputElement | null>; larga?: boolean }) {
   return (
-    <label className="ghf-busca">
+    <label className={'busca-curta' + (larga ? ' larga' : '')}>
       <Icone nome="search" />
-      <input ref={campo} type="search" placeholder={vm.naRaiz ? 'Ir para o cliente' : 'Ir para arquivo'} aria-label={vm.placeholderBusca} value={vm.busca}
-        onChange={ev => vm.setBusca(ev.target.value)} onKeyDown={ev => { if (ev.key === 'Escape') { vm.setBusca(''); (ev.target as HTMLInputElement).blur(); } }} />
-      <kbd className="ghf-kbd">T</kbd>
+      <input ref={campo} type="text" placeholder={vm.naRaiz ? 'Ir para o cliente' : 'Ir para arquivo'} aria-label={vm.placeholderBusca} value={vm.busca}
+        onChange={ev => vm.setBusca(ev.target.value)} onKeyDown={ev => { if (ev.key === 'Escape') { vm.setBusca(''); ev.currentTarget.blur(); } }} />
+      {!vm.busca && <kbd>T</kbd>}
     </label>
   );
 }
 
-/** O ano, no lugar do "main ▾" do GitHub (hoje, a pasta do ano que o robô mapeia). */
+/** O ano, como o "main ▾" do GitHub (hoje, só a pasta do ano que o robô mapeia). */
 function Ano({ vm }: { vm: VmDrive }) {
-  return (
-    <button type="button" className="btn btn-outline btn-sm ghf-ano" onClick={vm.irParaRaiz} title={'A pasta ' + vm.ano + ' do Drive'}>
-      <Icone nome="calendar" />{vm.ano}
-    </button>
-  );
+  return <MenuSuspenso icone="calendar" rotulo={vm.ano} titulo="Pasta do ano" dica="A pasta do ano no Drive" itens={[{ rotulo: vm.ano, marcado: true, onClick: vm.irParaRaiz }]} />;
 }
 
 export function ExploradorDoDrive() {
@@ -341,57 +310,47 @@ export function ExploradorDoDrive() {
   }, [vm.telaCheia]);
 
   // a página inicial (só a pasta do ano, com os clientes) ou o navegador de arquivos (o cliente e as pastas dele)
-  const inicio = vm.trilha.length === 0;
-  const titulo = vm.trilha.length ? vm.trilha[0].nome : vm.ano;
-  const codigo = vm.pastaCliente && 'codigo' in vm.pastaCliente ? String((vm.pastaCliente as { codigo?: unknown }).codigo || '') : '';
-  const sobre = vm.pastaCliente
-    ? vm.propriedadesDe({ id: vm.pastaCliente.id, nome: vm.pastaCliente.nomePasta, pasta: true, tipo: 'Pasta do cliente', data: null, bytes: 0, onde: '' })
-      .filter(l => l.rotulo === 'Tamanho' || l.rotulo === 'Contém')
-    : [];
+  const naRaiz = vm.trilha.length === 0;
   const mais = (
-    <MenuSuspenso rotulo={<Icone nome="mais" />} className="btn btn-outline btn-sm ghf-mais" dica="Mais ações" direita largura={260}
-      conteudo={fechar => (
-        <div>
-          {linhasDoFundo().map((l, i) => l === 'separador' ? <hr key={i} className="popover-sep" />
-            : 'titulo' in l ? <p key={i} className="popover-label">{l.titulo}</p>
-              : (
-                <button key={i} type="button" className="popover-item" role="menuitem" disabled={l.desabilitado} onClick={() => { fechar(); l.onClick(); }}>
-                  <span className="popover-marca">{l.marcado && <Icone nome="check" />}</span>
-                  {l.icone && <Icone nome={l.icone} />}<span className="popover-texto">{l.rotulo}</span>
-                </button>
-              ))}
-        </div>
-      )} />
+    <button type="button" className="icon-btn" title="Mais ações" aria-label="Mais ações"
+      onClick={ev => setMenu({ ...pontoDoMenu(ev), topo: [], linhas: linhasDoFundo() })}><Icone nome="mais" /></button>
   );
-  const corpo: ReactNode = inicio ? (
-    <div className="ghf-inicio">
-      <div className="ghf-titulo">
-        <span className="ghf-titulo-ico"><Icone nome="pasta" className="ghf-ico pasta" /></span>
-        <h2>{titulo}</h2>
-        {codigo && <span className="ghf-selo">{codigo}</span>}
-        {!vm.pastaCliente && <span className="ghf-selo">pasta do ano</span>}
-        <span className="ghf-espaco" />
-        <button type="button" className="btn btn-outline btn-sm" disabled={!vm.podeBaixarPasta} onClick={baixarPasta}><Icone nome="download" />Baixar .zip</button>
+  const enviarEBaixar = (
+    <>
+      <MenuSuspenso icone="upload" rotulo="Enviar" direita dica="Mandar arquivos para a pasta Claudio Secretario (a próxima rodada do arquivamento põe na pasta do cliente)"
+        itens={[{ rotulo: 'Enviar para o Claudio Secretário…', icone: 'upload', onClick: () => envio.abrir() }]} />
+      <MenuSuspenso icone="download" rotulo="Baixar" className="btn btn-primary" direita
+        itens={[
+          { rotulo: 'Esta pasta (.zip)', icone: 'pasta', desabilitado: !vm.podeBaixarPasta, onClick: baixarPasta },
+          { rotulo: vm.marcados.length ? 'Os ' + vm.marcados.length + ' marcados' : 'Os marcados', icone: 'download', desabilitado: !vm.marcados.length, onClick: baixarMarcados },
+        ]} />
+    </>
+  );
+  const corpo: ReactNode = naRaiz ? (
+    <div className="drive-inicio">
+      <div className="tarefas-barra-topo drive-titulo">
+        <Icone nome="pasta" className="drive-ico pasta" />
+        <h2 className="page-title">{vm.ano}</h2>
+        <span className="badge badge-neutral">pasta do ano</span>
+        <span className="tarefas-barra-espaco" />
         {mais}
       </div>
-      <div className="ghf-colunas">
-        <div className="ghf-principal">
-          <div className="ghf-barra">
+      <div className="drive-colunas">
+        <div>
+          <div className="tarefas-barra-topo">
             <Ano vm={vm} />
-            {vm.pastaCliente && <button type="button" className="ghf-link fraco" onClick={vm.irParaRaiz}><Icone nome="chevronLeft" />Clientes</button>}
-            <span className="ghf-espaco" />
+            <span className="tarefas-contador"><Icone nome="pasta" /><b>{vm.entradas.length}</b> {vm.entradas.length === 1 ? 'cliente' : 'clientes'}</span>
+            <span className="tarefas-barra-espaco" />
             <Busca vm={vm} campo={busca} />
-            <button type="button" className="btn btn-primary btn-sm" title="Mandar arquivos para a pasta Claudio Secretario (a próxima rodada do arquivamento põe na pasta do cliente)"
-              onClick={() => envio.abrir()}><Icone nome="upload" />Enviar</button>
+            {enviarEBaixar}
           </div>
           <Lista vm={vm} aoMenu={abrirMenu} acima={false} baixarMarcados={baixarMarcados} />
         </div>
-        <aside className="ghf-sobre">
-          <h3>Sobre</h3>
-          <p>{vm.pastaCliente ? 'A pasta do cliente no Drive do escritório, na pasta ' + vm.ano + '.' : 'A pasta ' + vm.ano + ' do Drive do escritório: uma pasta por cliente.'}</p>
-          <ul>
-            {sobre.map(l => <li key={l.rotulo}><Icone nome={l.rotulo === 'Tamanho' ? 'arquivo' : 'pasta'} /><span><b>{l.rotulo}</b> {l.valor}</span></li>)}
-            {!vm.pastaCliente && <li><Icone nome="pasta" /><span><b>{vm.entradas.length}</b> clientes</span></li>}
+        <aside className="card drive-sobre">
+          <div className="card-head"><h3>Sobre</h3></div>
+          <p>A pasta {vm.ano} do Drive do escritório: uma pasta por cliente.</p>
+          <ul className="drive-sobre-lista">
+            <li><Icone nome="pasta" /><span><b>{vm.entradas.length}</b> clientes</span></li>
             {vm.atualizado && <li><Icone nome="clock" /><span>Mapa do robô de {vm.atualizado}</span></li>}
             <li><Icone nome="upload" /><span>Arraste arquivos para cá para enviar ao Claudio Secretário</span></li>
           </ul>
@@ -399,45 +358,46 @@ export function ExploradorDoDrive() {
       </div>
     </div>
   ) : (
-    <div className={'ghf-navegador' + (vm.mostrarArvore ? '' : ' sem-painel')}>
+    <div className={'drive-navegador' + (vm.mostrarArvore ? '' : ' sem-painel')}>
       {vm.mostrarArvore && (
-        <aside className="ghf-painel">
-          <div className="ghf-painel-topo">
-            <button type="button" className="ghf-icone-acao" title="Fechar o painel" aria-label="Fechar o painel" onClick={vm.alternarArvore}><Icone nome="painel" /></button>
-            <h2>Arquivos</h2>
+        <nav className="subnav drive-painel" aria-label="Arquivos">
+          <div className="tarefas-barra-topo">
+            <button type="button" className="icon-btn" title="Fechar o painel" aria-label="Fechar o painel" onClick={vm.alternarArvore}><Icone nome="painel" /></button>
+            <span className="drive-painel-titulo">Arquivos</span>
           </div>
-          <div className="ghf-painel-barra">
+          <div className="tarefas-barra-topo">
             <Ano vm={vm} />
-            <button type="button" className="ghf-icone-acao com-borda" title="Enviar para o Claudio Secretário" aria-label="Enviar para o Claudio Secretário" onClick={() => envio.abrir()}><Icone nome="plus" /></button>
+            <span className="tarefas-barra-espaco" />
+            <button type="button" className="icon-btn" title="Enviar para o Claudio Secretário" aria-label="Enviar para o Claudio Secretário" onClick={() => envio.abrir()}><Icone nome="plus" /></button>
           </div>
-          <Busca vm={vm} campo={busca} />
+          <Busca vm={vm} campo={busca} larga />
           <Arvore vm={vm} aoMenu={menuDaArvore} />
-        </aside>
+        </nav>
       )}
-      <div className="ghf-direita">
-        <div className="ghf-trilha-linha">
-          {!vm.mostrarArvore && <button type="button" className="ghf-icone-acao" title="Abrir o painel" aria-label="Abrir o painel" onClick={vm.alternarArvore}><Icone nome="painel" /></button>}
-          <nav className="ghf-trilha" aria-label="Caminho">
+      <div className="drive-direita">
+        <div className="tarefas-barra-topo">
+          {!vm.mostrarArvore && <button type="button" className="icon-btn" title="Abrir o painel" aria-label="Abrir o painel" onClick={vm.alternarArvore}><Icone nome="painel" /></button>}
+          <nav className="gh-crumbs drive-trilha" aria-label="Caminho">
             {vm.trilha.map((p, i) => (
-              <span key={p.c + '|' + p.p} className="ghf-trilha-item">
-                {i > 0 && <span className="ghf-barra-sep">/</span>}
-                {i === vm.trilha.length - 1 ? <b>{p.nome}</b> : <button type="button" onClick={() => vm.irPara(p.c, p.p)}>{p.nome}</button>}
+              <span key={p.c + '|' + p.p} style={{ display: 'contents' }}>
+                {i > 0 && <span className="gh-sep">/</span>}
+                {i === vm.trilha.length - 1 ? <span className="gh-crumb gh-crumb-fim">{p.nome}</span> : <button type="button" className="gh-crumb" onClick={() => vm.irPara(p.c, p.p)}>{p.nome}</button>}
               </span>
             ))}
-            <span className="ghf-barra-sep">/</span>
+            <span className="gh-sep">/</span>
           </nav>
-          <button type="button" className="ghf-icone-acao" title="Copiar o caminho" aria-label="Copiar o caminho" onClick={() => copiar(caminhoDaPasta, 'Caminho')}><Icone nome="copiar" /></button>
-          <span className="ghf-espaco" />
-          <button type="button" className="btn btn-outline btn-sm" disabled={!vm.podeBaixarPasta} onClick={baixarPasta}><Icone nome="download" />Baixar .zip</button>
+          <button type="button" className="icon-btn" title="Copiar o caminho" aria-label="Copiar o caminho" onClick={() => copiar(caminhoDaPasta, 'Caminho')}><Icone nome="copiar" /></button>
+          <span className="tarefas-barra-espaco" />
+          {enviarEBaixar}
           {mais}
         </div>
-        <Lista vm={vm} aoMenu={abrirMenu} acima={vm.podeSubir} baixarMarcados={baixarMarcados} faixaFora />
+        <Lista vm={vm} aoMenu={abrirMenu} acima={vm.podeSubir} baixarMarcados={baixarMarcados} />
       </div>
     </div>
   );
 
   return (
-    <section className={'ghf' + (vm.telaCheia ? ' tela-cheia' : '') + (soltando ? ' soltando' : '')}
+    <section className={'drive' + (vm.telaCheia ? ' tela-cheia' : '') + (soltando ? ' soltando' : '')}
       onKeyDown={teclas} onDragOver={arrastando} onDragLeave={ev => { if (!ev.currentTarget.contains(ev.relatedTarget as Node | null)) setSoltando(false); }} onDrop={soltar}>
       {vm.erro && <div className="alert"><Icone nome="alert" /><div><p className="alert-text">{vm.erro}</p></div></div>}
       {corpo}
@@ -446,7 +406,7 @@ export function ExploradorDoDrive() {
           {vm.pedidos.map(p => <div key={p.id} className="drive-pedido"><span className="drive-girando" aria-hidden="true" />{p.texto}</div>)}
           {envio.envios.map(p => (
             <div key={p.id} className={'drive-pedido' + (p.erro ? ' com-erro' : '')}>
-              {p.erro ? <Icone nome="alert" className="ghf-ico" /> : <span className="drive-girando" aria-hidden="true" />}{p.texto}
+              {p.erro ? <Icone nome="alert" className="drive-ico" /> : <span className="drive-girando" aria-hidden="true" />}{p.texto}
             </div>
           ))}
         </div>
