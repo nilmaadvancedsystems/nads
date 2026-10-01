@@ -1,14 +1,16 @@
 // Cadastro (/tarefas/cadastro/empresas): a lista de todas as empresas, com os bancos (do
 // cadastro ou, sem cadastro, os que o robô já sabe) e o plano de contas. A busca e a situação filtram;
 // clicar na linha abre a janela da empresa, por cima da lista.
-import { Icone, Interruptor, LogoBanco, MenuSuspenso, useCarregando, useEntradaAnimada } from '@nads/ui';
+import { Icone, Interruptor, LogoBanco, MenuSuspenso, useCarregando, useEntradaAnimada, useLinhasQueSeMovem } from '@nads/ui';
 import { SITUACOES, useListaDoCadastro } from './useListaDoCadastro';
 
 export function EscolherEmpresaCadastro() {
   const vm = useListaDoCadastro();
   useCarregando(vm.carregando);
-  // as linhas chegam em cascata quando o banco responde e quando muda o filtro (a busca é teclado: não anima)
-  const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [vm.carregando, vm.situacao], 'lista', 12);
+  // as linhas chegam em cascata quando o banco responde
+  const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [vm.carregando], 'lista');
+  // ordenou, filtrou, chegou ou saiu uma: as linhas deslizam até o lugar novo (a busca é teclado: vai sem animar)
+  const linhasQueSeMovem = useLinhasQueSeMovem<HTMLTableElement>(vm.carregando ? '' : vm.linhas.map(l => l.chave).join('|'), vm.busca);
   return (
     <section>
       <div className="tarefas-barra-topo">
@@ -34,11 +36,11 @@ export function EscolherEmpresaCadastro() {
 
       {!vm.carregando && !vm.linhas.length ? <p className="empty">Nenhuma empresa com isso.</p> : (
         <div ref={tabela} className="table-wrap">
-          <table className="tabela-empresas cad-lista">
+          <table ref={linhasQueSeMovem} className="tabela-empresas cad-lista">
             <thead><tr><th>Código</th><th>Empresa</th><th>Bancos</th><th>Plano de contas</th><th>Atualizado</th></tr></thead>
             <tbody>
               {!vm.carregando && vm.linhas.map(l => (
-                <tr key={l.chave} className="linha-abre" tabIndex={0} title={'Abrir o cadastro de ' + l.nome}
+                <tr key={l.chave} data-linha={l.chave} className="linha-abre" tabIndex={0} title={'Abrir o cadastro de ' + l.nome}
                   onClick={() => vm.abrir(l.rota)} onKeyDown={e => { if (e.key === 'Enter') vm.abrir(l.rota); }}>
                   <td className="num">{l.codigo ?? '—'}</td>
                   <td><span className="cad-conta"><span>{l.nome}</span><span className="fraco">{l.regime}</span></span></td>

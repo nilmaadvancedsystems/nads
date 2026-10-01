@@ -4,7 +4,6 @@
 //   janela (.modal-overlay + .modal, .cad-janela-fundo)  o fundo acende e a janela chega
 //   gaveta ☰ (.drawer)                                   desliza da esquerda; os itens chegam em cascata
 //   menus (.popover, .ctx-menu)                          saem do ponto de onde foram abertos
-//   avisos (.toast)                                      sobem de baixo
 //   faixas e alertas                                     descem de leve e aparecem
 //   selo de sucesso (.modal-ok)                          o check encaixa com mola
 //   tela de entrar (#login)                              a marca, o título e a caixa chegam em cascata
@@ -12,7 +11,7 @@
 // As saídas: janela, menu e abertura saem animadas mesmo quando o React tira do DOM de uma vez (o "fantasma", abaixo).
 // O check da janela de sucesso e o das etapas feitas se desenham.
 // Menos movimento (prefers-reduced-motion): só o esmaecer, sem deslocar (animar, em animacao.ts); sem toque nos botões.
-import { afundar, animar, desenharCheck, encerrarPaginas, entrar, MOLA_VIVA, sairComo, semMovimento, voltar } from './animacao';
+import { afundar, animar, celebrar, desenharCheck, encerrarPaginas, entrar, MOLA_VIVA, revelarTitulo, sairComo, semMovimento, voltar } from './animacao';
 
 type Entrada = (el: HTMLElement) => void;
 
@@ -56,9 +55,22 @@ const ENTRADAS: [string, Entrada][] = [
     el.style.transformOrigin = 'top left';
     entrar('menu', el);
   }],
-  ['.toast', el => { entrar('aviso', el); }],
   ['#login', el => { entrar('login', el.querySelectorAll(':scope > *, .auth > *')); }],
-  ['.alert, .imp-aviso-barra, .drive-pedido, .liberar-aviso, .versao-nova, .envio-lista li, .meus-lista li', el => { entrar('alerta', el); }],
+  ['.alert, .imp-aviso-barra, .drive-pedido, .liberar-aviso, .versao-nova, .envio-lista li, .meus-lista li', el => {
+    entrar('alerta', el);
+    // o alerta verde (deu certo): o check do círculo se desenha
+    const svg = el.querySelector<SVGSVGElement>(':scope > svg');
+    if (svg && (el.getAttribute('style') || '').includes('success') && svg.querySelector('circle')) celebrar(svg, false);
+  }],
+  // tudo pronto no executor (todas as etapas feitas): é raro — o selo, o check, as faíscas e o título revelado
+  ['.executor-fim', el => {
+    const svg = el.querySelector<SVGSVGElement>('svg');
+    if (svg) celebrar(svg);
+    const h = el.querySelector<HTMLElement>('h2');
+    if (h) revelarTitulo(h);
+  }],
+  // o Ok do banco (extrato e razão batem): encaixa com mola
+  ['.badge-ok', el => { animar(el, { opacity: [0, 1], scale: [0.6, 1], ease: MOLA_VIVA }); }],
 ];
 
 const vistos = new WeakSet<Element>();

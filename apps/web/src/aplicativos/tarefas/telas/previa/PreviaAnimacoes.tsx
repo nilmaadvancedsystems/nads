@@ -2,7 +2,7 @@
 // de verdade — janela, aviso, menu, gaveta, lista, página, alerta e o toque nos botões. Escolher um jeito já vale para
 // o app todo neste navegador (fica guardado); o escolhido de vez vira o padrão no código.
 // Não pede login: só mostra as animações (os dados são de mentira).
-import { Icone, JEITOS, jeitoAtual, definirJeito, MenuSuspenso, sairComo, Segmentado, Stat, useEntradaAnimada, useRetorno, type Jeito } from '@nads/ui';
+import { Icone, JEITOS, jeitoAtual, definirJeito, MenuSuspenso, sairComo, Segmentado, Stat, useEntradaAnimada, useLinhasQueSeMovem, useRetorno, type Jeito } from '@nads/ui';
 import { useRef, useState } from 'react';
 
 const LINHAS = [
@@ -20,6 +20,11 @@ export function PreviaAnimacoes() {
   const [vezPagina, setVezPagina] = useState(0);
   const [gaveta, setGaveta] = useState(false);
   const [alerta, setAlerta] = useState(0);
+  const [linhas, setLinhas] = useState(LINHAS);
+  const [pronto, setPronto] = useState(0);
+  const linhasQueSeMovem = useLinhasQueSeMovem<HTMLTableElement>(linhas.map(l => l[0]).join('|'));
+  const embaralhar = () => setLinhas(ls => ls.slice().sort(() => Math.random() - 0.5));
+  const tirarUma = () => setLinhas(ls => (ls.length > 2 ? ls.filter((_, i) => i !== 1) : LINHAS));
   const [aba, setAba] = useState<'contabil' | 'fiscal' | 'pessoal'>('contabil');
   const [numeros, setNumeros] = useState({ empresas: 128, pendentes: 37, valor: 48250.9 });
   const sortear = () => setNumeros({ empresas: 100 + Math.round(Math.random() * 60), pendentes: Math.round(Math.random() * 50), valor: Math.round(Math.random() * 9000000) / 100 });
@@ -69,6 +74,10 @@ export function PreviaAnimacoes() {
           <button type="button" className="btn btn-outline" onClick={() => setVezPagina(v => v + 1)}>Página</button>
           <button type="button" className="btn btn-outline" onClick={() => setAlerta(v => v + 1)}>Alerta</button>
           <button type="button" className="btn btn-outline" onClick={sortear}>Números</button>
+          <button type="button" className="btn btn-outline" onClick={() => { toast('Mapa do Drive atualizado.'); setTimeout(() => toast('3 e-mails novos na caixa do contábil.'), 500); setTimeout(() => toast('Arquivo enviado para o Claudio Secretário.'), 1000); }}>Vários avisos</button>
+          <button type="button" className="btn btn-outline" onClick={embaralhar}>Ordenar lista</button>
+          <button type="button" className="btn btn-outline" onClick={tirarUma}>Tirar uma linha</button>
+          <button type="button" className="btn btn-outline" onClick={() => setPronto(v => v + 1)}>Tudo pronto</button>
         </div>
       </header>
 
@@ -85,14 +94,22 @@ export function PreviaAnimacoes() {
           <div key={alerta} className="alert"><Icone nome="alert" /><div><p className="alert-text">O robô terminou de ler a caixa do contábil.</p></div></div>
         )}
         <div ref={lista} className="table-wrap">
-          <table className="tabela-empresas">
+          <table ref={linhasQueSeMovem} className="tabela-empresas">
             <thead><tr><th>Código</th><th>Empresa</th><th>Setor</th><th>Atualizado</th></tr></thead>
             <tbody>
-              {LINHAS.map(l => <tr key={l[0]}><td className="num">{l[0]}</td><td>{l[1]}</td><td>{l[2]}</td><td className="fraco">{l[3]}</td></tr>)}
+              {linhas.map(l => <tr key={l[0]} data-linha={l[0]}><td className="num">{l[0]}</td><td>{l[1]}</td><td>{l[2]}</td><td className="fraco">{l[3]}</td></tr>)}
             </tbody>
           </table>
         </div>
       </div>
+
+      {pronto > 0 && (
+        <div key={pronto} className="card executor-fim previa-anim-pronto">
+          <Icone nome="checkCircle" />
+          <h2>Tudo pronto em setembro de 2026</h2>
+          <p className="hint">Todas as etapas desta empresa estão concluídas.</p>
+        </div>
+      )}
 
       {gaveta && <div ref={fundoEl} className="drawer-overlay" onClick={fecharGaveta} />}
       {gaveta && (

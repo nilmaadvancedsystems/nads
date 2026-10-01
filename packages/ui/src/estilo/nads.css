@@ -493,7 +493,9 @@ hr{border:0;border-top:1px solid var(--border);margin:24px 0;}
 .modal p{font-size:14px;color:var(--ink);padding:16px;}
 .modal p b{font-weight:600;}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;padding:16px;border-top:1px solid var(--border);margin:0;}
-.toast-region{position:fixed;bottom:16px;left:16px;z-index:80;display:flex;flex-direction:column;gap:8px;align-items:flex-start;}
+/* os avisos empilham (retorno.tsx): cada um no fundo da região, um sobre o outro; a altura da região é a do que está à vista */
+.toast-region{position:fixed;bottom:16px;left:16px;z-index:80;width:min(380px,calc(100vw - 32px));}
+.toast-region .toast{position:absolute;left:0;right:0;bottom:0;transform-origin:50% 100%;}
 .toast{background:var(--surface);color:var(--ink);font-size:14px;padding:12px 16px;border-radius:6px;border:1px solid var(--border);
   border-left:4px solid var(--accent);box-shadow:var(--shadow-lg);max-width:420px;}
 
@@ -2257,3 +2259,7 @@ tr.linha-abre,.imp-linha,.imp-mes-celula,.gh-crumb,.drawer-x{
 .layout{transition:grid-template-columns .36s var(--ease-in-out);}
 /* o número que conta (Stat): os dígitos não dançam de largura enquanto contam */
 .numero-que-conta{font-variant-numeric:tabular-nums;}
+/* as faíscas da festa (celebrar, animacao.ts): vermelhas e prateadas, as cores do N */
+.faisca{position:fixed;width:6px;height:6px;border-radius:50%;pointer-events:none;z-index:1000;background:var(--btn-primary);}
+.faisca.prata{background:linear-gradient(135deg,#F2F3F5,#9AA0A8);}
+.previa-anim-pronto{margin:0;padding:32px 16px;}

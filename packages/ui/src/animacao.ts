@@ -145,6 +145,18 @@ export function voltar(el: HTMLElement): void {
     .then(() => { el.style.removeProperty('scale'); });
 }
 
+/** O aviso (toast) que acabou de chegar sobe de baixo, do jeito do app (em px: a pilha também é em px). */
+export function paramsDoAvisoQueChega(altura: number): AnimationParams {
+  const y = altura + 24;
+  if (jeito === 'viva') return { opacity: aparece(200), translateY: [y, 0], scale: [0.85, 1], rotate: [-4, 0], ease: mola(0.5, 750) };
+  if (jeito === 'suave') return { opacity: [0, 1], translateY: [y, 0], scale: 1, duration: 800, ease: SUAVE };
+  return { opacity: [0, 1], translateY: [y, 0], scale: [0.9, 1], filter: desfoque(8), ease: mola(0.25, 700) };
+}
+/** Os avisos se rearrumando na pilha (chegou um, saiu um, o mouse abriu o leque). */
+export function paramsDaPilha(): AnimationParams {
+  return jeito === 'suave' ? { duration: 600, ease: ENTRAR } : jeito === 'viva' ? { ease: mola(0.3, 600) } : { ease: mola(0.12, 520) };
+}
+
 /** O indicador que desliza (aba ativa, item ativo da lateral, opção do segmentado), por jeito. */
 const INDICADOR: Record<Jeito, () => AnimationParams> = {
   marca: () => ({ ease: mola(0.18, 520) }),
@@ -241,11 +253,39 @@ export function useIndicador<T extends HTMLElement>(seletorAtivo: string, deps: 
 /** O check se desenha (o traço vai de uma ponta à outra), com o selo crescendo junto. */
 export function desenharCheck(svg: SVGSVGElement, atraso = 0): void {
   if (semMovimento()) return;
-  const caminhos = svg.querySelectorAll('path, polyline');
+  const caminhos = svg.querySelectorAll('path, polyline, circle');
   if (!caminhos.length) return;
   const desenhos = createDrawable(caminhos as unknown as SVGGeometryElement[]);
   animate(desenhos, { draw: ['0 0', '0 1'], duration: jeito === 'suave' ? 620 : 480, delay: atraso, ease: MOVER,
     onComplete: a => { cleanInlineStyles(a); } });
+}
+
+/**
+ * A festa do que é raro (tudo pronto, conferido, tudo bate): o selo encaixa com mola, o check se desenha e faíscas
+ * vermelhas e prateadas (as cores do N) saem dele. faiscas=false: só o selo e o check (o sucesso do dia a dia).
+ */
+export function celebrar(svg: SVGSVGElement, faiscas = true): void {
+  if (semMovimento()) return;
+  animate(svg, { opacity: [0, 1], scale: [0.4, 1], rotate: [-30, 0], ease: MOLA_VIVA });
+  desenharCheck(svg, 120);
+  if (!faiscas) return;
+  const r = svg.getBoundingClientRect();
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const total = 16;
+  for (let i = 0; i < total; i++) {
+    const f = document.createElement('span');
+    f.className = 'faisca' + (i % 2 ? ' prata' : '');
+    f.setAttribute('aria-hidden', 'true');
+    f.style.left = cx - 3 + 'px';
+    f.style.top = cy - 3 + 'px';
+    document.body.appendChild(f);
+    const angulo = (i / total) * Math.PI * 2 + Math.random() * 0.4;
+    const longe = 46 + Math.random() * 46;
+    animate(f, {
+      translateX: [0, Math.cos(angulo) * longe], translateY: [0, Math.sin(angulo) * longe], scale: [1.2, 0.3], opacity: [1, 0],
+      duration: 760 + Math.random() * 260, delay: 160 + i * 8, ease: 'out(3)', onComplete: () => f.remove(),
+    });
+  }
 }
 
 /**
@@ -294,7 +334,7 @@ export function encerrarPaginas(): void {
  * A peça entra do jeito do app (em cascata, se for mais de uma). Terminou: tira o estilo que ficou (um transform ou
  * filter parado prende o position:fixed de quem está dentro). maximo: lista grande não espera (os outros já aparecem).
  */
-export function entrar(peca: Peca, alvos: Element | Element[] | NodeListOf<Element>, o: { maximo?: number; atraso?: number } = {}): JSAnimation | null {
+export function entrar(peca: Peca, alvos: Element | Element[] | NodeListOf<Element>, o: { maximo?: number; atraso?: number; mais?: AnimationParams } = {}): JSAnimation | null {
   const lista = (alvos instanceof Element ? [alvos] : Array.from(alvos)) as HTMLElement[];
   if (!lista.length) return null;
   const r = RECEITAS[jeito][peca];
@@ -304,6 +344,7 @@ export function entrar(peca: Peca, alvos: Element | Element[] | NodeListOf<Eleme
   const intervalo = r.intervalo && animados.length > 1 ? Math.min(r.intervalo, 600 / (animados.length - 1)) : 0;
   const a = animar(animados, {
     ...r.entra(),
+    ...o.mais,
     ...(intervalo ? { delay: stagger(intervalo, { start: atraso }) } : atraso ? { delay: atraso } : {}),
     onComplete: x => { paginas.delete(x); limpar(x); },
   });
@@ -335,3 +376,40 @@ export function useEntradaAnimada<T extends HTMLElement>(seletor: string | null,
   }, deps);
   return ref;
 }
+
+/**
+ * React: as linhas de uma tabela que se rearrumam (ordenar, filtrar, chegou ou saiu uma) deslizam até o lugar novo
+ * em vez de pular (FLIP: guarda onde cada linha estava, mede onde ficou e anima a diferença com `translate`, pelo
+ * WAAPI). As linhas novas entram em cascata. Cada linha precisa de data-linha (o id); `ordem` são os ids na ordem
+ * da tela. `quieto`: o que muda pelo teclado (a busca) — mudou, as linhas vão para o lugar sem animar.
+ * (O AutoLayout do animejs põe position:absolute nos filhos e quebra <table>: por isso o FLIP é feito aqui.)
+ */
+export function useLinhasQueSeMovem<T extends HTMLElement>(ordem: string, quieto = ''): RefObject<T | null> {
+  const ref = useRef<T | null>(null);
+  const antes = useRef<Map<string, number> | null>(null);
+  const quietoAntes = useRef(quieto);
+  useLayoutEffect(() => {
+    const raiz = ref.current;
+    if (!raiz) return;
+    const linhas = Array.from(raiz.querySelectorAll<HTMLElement>('tbody > tr[data-linha]'));
+    const agora = new Map(linhas.map(tr => [tr.dataset.linha || '', tr.offsetTop] as [string, number]));
+    const eram = antes.current;
+    const digitou = quietoAntes.current !== quieto;
+    antes.current = agora;
+    quietoAntes.current = quieto;
+    if (!eram || !eram.size || digitou || semMovimento()) return;
+    const novas: HTMLElement[] = [];
+    const ms = jeito === 'suave' ? 700 : 520;
+    for (const tr of linhas) {
+      const y0 = eram.get(tr.dataset.linha || '');
+      if (y0 === undefined) { novas.push(tr); continue; }
+      const dy = y0 - tr.offsetTop;
+      if (Math.abs(dy) < 1) continue;
+      void waapi.animate(tr, { translate: ['0px ' + dy + 'px', '0px 0px'], duration: ms, ease: jeito === 'viva' ? mola(0.25, 600) : 'cubic-bezier(0.77, 0, 0.175, 1)' })
+        .then(() => { tr.style.removeProperty('translate'); });
+    }
+    if (novas.length && novas.length < linhas.length) entrar('lista', novas);
+  }, [ordem, quieto]);
+  return ref;
+}
+

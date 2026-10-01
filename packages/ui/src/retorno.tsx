@@ -1,8 +1,10 @@
-// Retorno ao usuário: toast (some em ~3,6 s) e modal (pergunta com botões, devolve a escolha).
+// Retorno ao usuário: toast (fica 4 s) e modal (pergunta com botões, devolve a escolha).
+// Os avisos (01/10/2026, no estilo do Sonner): empilham no canto — o mais novo na frente, os de trás menores e um pouco
+// acima (até 3 à vista); com o mouse em cima, a pilha abre em leque e o tempo para; com a aba escondida também para.
 // Origem: conferencia.html toast/modal (~L1425-1448). O ViewModel pede com useRetorno();
 // quem desenha é daqui.
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { sairComo } from './animacao';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { animar, ENTRAR, paramsDaPilha, paramsDoAvisoQueChega, sairComo, semMovimento } from './animacao';
 import { Icone, type NomeIcone } from './icones';
 
 export interface BotaoModal<T> { rotulo: string; valor: T; variante?: 'btn-primary' | 'btn-outline' | 'btn-danger' }
@@ -46,15 +48,75 @@ export function RetornoProvider({ children }: { children: ReactNode }) {
   const [aberto, setAberto] = useState<ModalAberto | null>(null);
   const seq = useRef(0);
 
+  // o tempo de cada aviso: quanto falta e desde quando está correndo (pausa com o mouse em cima e com a aba escondida)
+  const relogios = useRef(new Map<number, { falta: number; desde: number; t: ReturnType<typeof setTimeout> | null }>());
+  const pausado = useRef(false);
+  const [leque, setLeque] = useState(false);
+  const regiao = useRef<HTMLDivElement>(null);
+
+  const tirar = useCallback((id: number) => {
+    relogios.current.delete(id);
+    // sai por onde entrou (desce e apaga); só então sai da lista
+    const el = regiao.current?.querySelector<HTMLElement>('[data-toast="' + id + '"]');
+    if (el) el.setAttribute('data-saindo', '');
+    setToasts(t => t.slice());   // a pilha se rearruma sem ele já agora
+    const fora = () => setToasts(t => t.filter(x => x.id !== id));
+    if (!el) { fora(); return; }
+    animar(el, { opacity: 0, translateY: el.offsetHeight + 24, scale: 0.95, duration: 320, ease: ENTRAR, composition: 'replace', onComplete: fora });
+  }, []);
+  const correr = useCallback((id: number) => {
+    const r = relogios.current.get(id);
+    if (!r || pausado.current) return;
+    r.desde = Date.now();
+    r.t = setTimeout(() => tirar(id), r.falta);
+  }, [tirar]);
+  const pausar = useCallback((sim: boolean) => {
+    if (pausado.current === sim) return;
+    pausado.current = sim;
+    for (const [id, r] of relogios.current) {
+      if (sim) { if (r.t) clearTimeout(r.t); r.t = null; r.falta = Math.max(800, r.falta - (Date.now() - r.desde)); }
+      else correr(id);
+    }
+  }, [correr]);
+  useEffect(() => {
+    const ver = () => pausar(document.hidden);
+    document.addEventListener('visibilitychange', ver);
+    return () => document.removeEventListener('visibilitychange', ver);
+  }, [pausar]);
+
   const toast = useCallback((texto: string) => {
     const id = ++seq.current;
     setToasts(t => t.concat({ id, texto }));
-    // a saída (animejs, 01/10/2026): o aviso sai por onde entrou, do jeito do app; só então sai da lista
-    setTimeout(() => {
-      const el = document.querySelector<HTMLElement>('[data-toast="' + id + '"]');
-      void (el ? sairComo('aviso', el) : Promise.resolve()).then(() => setToasts(t => t.filter(x => x.id !== id)));
-    }, 3300);
-  }, []);
+    relogios.current.set(id, { falta: 4000, desde: Date.now(), t: null });
+    correr(id);
+  }, [correr]);
+
+  // a pilha: o mais novo na frente (embaixo); os de trás 12 px acima e 5% menores, até 3 à vista; no leque, um acima do
+  // outro com 8 px entre eles. O que acabou de chegar sobe de baixo.
+  const vistos = useRef(new Set<number>());
+  useLayoutEffect(() => {
+    const reg = regiao.current;
+    if (!reg) return;
+    const els = Array.from(reg.querySelectorAll<HTMLElement>('.toast:not([data-saindo])')).reverse();
+    let acima = 0;
+    els.forEach((el, i) => {
+      const id = Number(el.dataset.toast);
+      const lugar = { translateY: leque ? -acima : -i * 12, scale: leque ? 1 : Math.max(0.85, 1 - i * 0.05), opacity: i < 3 ? 1 : 0 };
+      acima += el.offsetHeight + 8;
+      el.style.zIndex = String(100 - i);
+      if (!vistos.current.has(id)) {
+        vistos.current.add(id);
+        animar(el, paramsDoAvisoQueChega(el.offsetHeight));
+      } else if (semMovimento()) {
+        animar(el, { opacity: lugar.opacity });
+        el.style.transform = 'translateY(' + lugar.translateY + 'px) scale(' + lugar.scale + ')';
+      } else {
+        animar(el, { ...lugar, ...paramsDaPilha(), composition: 'replace' });
+      }
+    });
+    // a região tem a altura do que está à vista (o mouse continua "em cima" enquanto o leque está aberto)
+    reg.style.height = (leque ? Math.max(0, acima - 8) : els[0]?.offsetHeight || 0) + 'px';
+  }, [toasts, leque]);
 
   const modal = useCallback(<T,>(o: OpcoesModal<T>) => new Promise<T>(res => {
     setAberto({ id: ++proximaJanela, o: o as OpcoesModal<unknown>, resolver: v => res(v as T) });
@@ -66,7 +128,8 @@ export function RetornoProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={valor}>
       {children}
       {aberto && <Modal key={aberto.id} aberto={aberto} fechar={v => { setAberto(a => (a === aberto ? null : a)); aberto.resolver(v); }} />}
-      <div className="toast-region" aria-live="polite">
+      <div ref={regiao} className="toast-region" aria-live="polite"
+        onMouseEnter={() => { setLeque(true); pausar(true); }} onMouseLeave={() => { setLeque(false); pausar(document.hidden); }}>
         {toasts.map(t => <div key={t.id} className="toast" data-toast={t.id}>{t.texto}</div>)}
       </div>
     </Ctx.Provider>

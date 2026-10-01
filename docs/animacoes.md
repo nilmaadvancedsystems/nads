@@ -40,20 +40,18 @@ Três agentes levantaram:
 | Menos movimento: os carregamentos que giram continuam girando, devagar | nads.css | mapa do app (bug) |
 | Interruptor, setas e lateral na curva forte | nads.css | Emil |
 
-## Fase 2 — listas vivas e momentos de sucesso
+## Fase 2 — listas vivas e momentos de sucesso ✅
 
-- **Avisos empilhados no estilo Sonner:** até 3 visíveis, os de trás menores, abrem em leque ao passar o mouse,
-  pausam com o mouse em cima e com a aba oculta.
-- **Listas que se rearranjam** (FLIP): ordenar e filtrar; um item que sai fecha o espaço.
-  - Tabelas: FLIP manual com `translate`. O AutoLayout põe `position:absolute` e quebra `<table>`.
-  - Listas de cartões: `createLayout`.
-- **Árvore do Drive:** os filhos entram em cascata ao abrir a pasta.
-- **Executor:**
-  - "Tudo pronto" com celebração: check desenhado e brilho prateado;
-  - troca de etapa com direção (a próxima vem da direita);
-  - o "vidro" sai do foco.
-- **Momentos de sucesso:** banco Ok (Extratudo), conferido (Concilia aí), paridade (Conciliadorzinho).
-- **Linha que mudou em tempo real** (Firestore): o fundo pisca e desbota, sem reanimar a lista.
+| O quê | Onde |
+|---|---|
+| Avisos empilhados (Sonner): o mais novo na frente, os de trás 12 px acima e 5% menores (até 3 à vista); com o mouse em cima abrem em leque e o tempo para; com a aba escondida também para; ficam 4 s | retorno.tsx, `paramsDoAvisoQueChega`/`paramsDaPilha` |
+| Linhas que deslizam até o lugar novo (FLIP pelo WAAPI) ao ordenar, filtrar, chegar ou sair uma — Minhas empresas, Cadastro, Gmail, Drive; a busca (teclado) não anima | `useLinhasQueSeMovem` |
+| Árvore do Drive: as subpastas descem em cascata ao abrir a pasta | ExploradorDoDrive.tsx (Arvore) |
+| Tudo pronto (executor): o selo encaixa, o check se desenha, faíscas vermelhas e prateadas, título revelado | `celebrar`, animador.ts |
+| Troca de etapa (e de seção pela lateral) com direção: a seguinte chega da direita, a anterior da esquerda | casca.tsx |
+| Alerta verde (deu certo, em qualquer app): o check do círculo se desenha; o Ok do banco (Extratudo) encaixa com mola | animador.ts |
+
+Fica para depois: a linha que mudou em tempo real (Firestore) piscar o fundo; a paridade do Conciliadorzinho com festa.
 
 ## Fase 3 — morph e detalhes
 

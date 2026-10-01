@@ -1,7 +1,7 @@
 // Minhas empresas: a barra de cima, no jeito da do GitHub (competência no lugar do "main ▾", quantas
 // empresas, Insights; à direita a busca curta com atalho "/", Situação ▾ e "Iniciar ▾", que abre
 // o painel para escolher a empresa, em partes/PainelIniciar) e a lista (clicar no título da coluna ordena; clicar na linha abre a página da empresa). Os números por situação ficam em Insights.
-import { Icone, MenuSuspenso, useCarregando, useEntradaAnimada } from '@nads/ui';
+import { Icone, MenuSuspenso, useCarregando, useEntradaAnimada, useLinhasQueSeMovem } from '@nads/ui';
 import { useEffect, useRef } from 'react';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { PainelIniciar } from './partes/PainelIniciar';
@@ -23,8 +23,10 @@ export function MinhasEmpresas() {
   const vm = useMinhasEmpresas();
   const campoBusca = useRef<HTMLInputElement>(null);
   useCarregando(vm.carregando);
-  // as linhas chegam em cascata quando o banco responde e quando muda o filtro (a busca é teclado: não anima)
-  const tabela = useEntradaAnimada<HTMLDivElement>(':scope > table > tbody > tr', [vm.carregando, vm.situacao], 'lista', 12);
+  // as linhas chegam em cascata quando o banco responde
+  const tabela = useEntradaAnimada<HTMLDivElement>(':scope > table > tbody > tr', [vm.carregando], 'lista');
+  // ordenou, filtrou, chegou ou saiu uma: as linhas deslizam até o lugar novo (a busca é teclado: vai sem animar)
+  const linhasQueSeMovem = useLinhasQueSeMovem<HTMLTableElement>(vm.carregando ? '' : vm.linhas.map(l => l.chave).join('|'), vm.busca);
 
   // "/" leva para a busca (como o "T" do "Go to file" do GitHub)
   useEffect(() => {
@@ -72,7 +74,7 @@ export function MinhasEmpresas() {
       {/* a tabela aparece na hora; as linhas entram quando o banco responde (a barra do topo termina) */}
       {!vm.carregando && vm.total === 0 ? <p className="empty">Nenhuma empresa nesta situação.</p> : (
         <div ref={tabela} className="table-wrap">
-          <table className="tabela-empresas">
+          <table ref={linhasQueSeMovem} className="tabela-empresas">
             <thead><tr>
               <Titulo vm={vm} coluna="codigo" rotulo="Código" />
               <Titulo vm={vm} coluna="nome" rotulo="Empresa" />
@@ -81,7 +83,7 @@ export function MinhasEmpresas() {
             </tr></thead>
             <tbody>
               {!vm.carregando && vm.linhas.map(l => (
-                <tr key={l.chave} className="linha-abre" tabIndex={0} title={'Ver ' + l.nome}
+                <tr key={l.chave} data-linha={l.chave} className="linha-abre" tabIndex={0} title={'Ver ' + l.nome}
                   onClick={() => vm.abrirEmpresa(l.rota)} onKeyDown={e => { if (e.key === 'Enter') vm.abrirEmpresa(l.rota); }}>
                   <td className="num">
                     {/* a situação em cor: laranja parada, amarelo em andamento, cinza não iniciada, verde concluída */}

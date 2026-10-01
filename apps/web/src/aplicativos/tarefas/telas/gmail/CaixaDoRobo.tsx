@@ -2,7 +2,7 @@
 // agora" e o andamento da leitura; as abas (de clientes, sem cliente, spam) com a busca; a lista; e o e-mail aberto
 // numa janela por cima, com o texto inteiro, os anexos, as ações e responder.
 import type { entregas as e } from '@nads/core';
-import { Icone, useCarregando, useEntradaAnimada, Segmentado } from '@nads/ui';
+import { Icone, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Segmentado } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useCaixaDoRobo, usePainelDoEmail, type AbaDaCaixa, type VmCaixa } from './useCaixaDoRobo';
 
@@ -152,7 +152,9 @@ export function CaixaDoRobo() {
   const vm = useCaixaDoRobo();
   useCarregando(vm.carregando);
   // trocou de caixa ou de aba (ou chegou a lista): os e-mails chegam em cascata, do jeito do app
-  const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [vm.caixa, vm.aba, vm.carregando], 'lista', 12);
+  const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [vm.caixa, vm.aba, vm.carregando], 'lista');
+  // saiu um e-mail da lista (ligou ao cliente, ignorou, salvou) ou chegou um novo: os outros deslizam e fecham o espaço
+  const linhasQueSeMovem = useLinhasQueSeMovem<HTMLTableElement>(vm.carregando ? '' : vm.linhas.map(x => x.mensagemId).join('|'), vm.caixa + '/' + vm.aba);
   const a = vm.robo.andamento;
   return (
     <section>
@@ -203,11 +205,11 @@ export function CaixaDoRobo() {
 
       {!vm.carregando && !vm.linhas.length ? <p className="empty">Nenhum e-mail aqui.</p> : (
         <div ref={tabela} className="table-wrap">
-          <table className="tabela-empresas gmail-tabela">
+          <table ref={linhasQueSeMovem} className="tabela-empresas gmail-tabela">
             <thead><tr><th>Quando</th><th>De</th><th>Assunto</th><th>Anexos</th><th /></tr></thead>
             <tbody>
               {!vm.carregando && vm.linhas.map(x => (
-                <tr key={x.mensagemId} className="linha-abre" tabIndex={0} onClick={() => vm.abrir(x.mensagemId)} onKeyDown={ev => { if (ev.key === 'Enter') vm.abrir(x.mensagemId); }}>
+                <tr key={x.mensagemId} data-linha={x.mensagemId} className="linha-abre" tabIndex={0} onClick={() => vm.abrir(x.mensagemId)} onKeyDown={ev => { if (ev.key === 'Enter') vm.abrir(x.mensagemId); }}>
                   <td className="fraco num">{vm.quandoFoi(x.em)}</td>
                   <td><span className="cad-conta"><span>{x.clienteNome || x.nome || x.remetente}</span><span className="fraco">{x.remetente}</span></span></td>
                   <td className="gmail-assunto"><b>{x.assunto || '(sem assunto)'}</b><span className="fraco"> — {x.trecho}</span></td>

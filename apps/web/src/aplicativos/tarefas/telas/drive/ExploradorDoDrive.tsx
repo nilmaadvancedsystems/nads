@@ -8,7 +8,7 @@
 // direito abre o menu (MenuDeContexto); arrastar arquivos, ou Enviar, manda para o Claudio Secretário. Tela cheia cobre
 // o nads (Esc sai). "T" vai para a busca, como no GitHub.
 import type { entregas as e } from '@nads/core';
-import { Icone, MenuSuspenso, useCarregando, useEntradaAnimada, useRetorno } from '@nads/ui';
+import { entrar, Icone, MenuSuspenso, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, useRetorno } from '@nads/ui';
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent, type ReactNode, type RefObject } from 'react';
 import { EnviarAoSecretario } from './EnviarAoSecretario';
 import { MeusEnvios } from './MeusEnvios';
@@ -80,9 +80,12 @@ const COLUNAS_DA_LISTA: { id: e.ColunaDoExplorador; rotulo: string; num?: boolea
 function Lista({ vm, aoMenu, acima, baixarMarcados, faixaFora }: { vm: VmDrive; aoMenu: AoMenu; acima: boolean; baixarMarcados: () => void; faixaFora?: boolean }) {
   // abriu outra pasta (ou acabou de carregar): as linhas chegam em cascata, do jeito do app
   const pastaAberta = vm.trilha.map(t => t.p || t.c).join('/'); // digitar na busca não anima (teclado)
-  const lista = useEntradaAnimada<HTMLDivElement>('tbody > tr', [pastaAberta, vm.carregando], 'lista', 12);
+  const lista = useEntradaAnimada<HTMLDivElement>('tbody > tr', [pastaAberta, vm.carregando], 'lista');
+  // ordenou (ou o robô mexeu na pasta): as linhas deslizam até o lugar novo; trocar de pasta e buscar não
+  const linhasQueSeMovem = useLinhasQueSeMovem<HTMLTableElement>(vm.carregando ? '' : vm.entradas.map(x => x.id).join('|'), pastaAberta + '?' + vm.busca);
   const m = vm.marcados.length;
   const linha = (x: e.EntradaDoExplorador) => ({
+    'data-linha': x.id,
     className: 'linha-abre' + (vm.estaMarcado(x.id) ? ' linha-atual' : ''),
     tabIndex: 0,
     'aria-selected': vm.estaMarcado(x.id),
@@ -125,7 +128,7 @@ function Lista({ vm, aoMenu, acima, baixarMarcados, faixaFora }: { vm: VmDrive; 
     return (
       <>
       <div className="table-wrap">
-        <table>
+        <table ref={linhasQueSeMovem}>
           <thead>
             <tr>
               {COLUNAS_DA_LISTA.map(c => (
@@ -161,10 +164,23 @@ function Lista({ vm, aoMenu, acima, baixarMarcados, faixaFora }: { vm: VmDrive; 
 /** A barra lateral do cliente: as pastas dele (a aberta marcada), nos itens da barra lateral do nads. */
 function Arvore({ vm, aoMenu }: { vm: VmDrive; aoMenu: (ev: MouseEvent, no: e.NoDaArvore) => void }) {
   const cliente = vm.pastaCliente?.id || '';
+  const nos = vm.arvore.filter(no => no.cliente === cliente && no.nivel >= 1);
+  // abriu uma pasta: as subpastas que apareceram descem em cascata (as que já estavam ficam paradas)
+  const raiz = useRef<HTMLDivElement>(null);
+  const antes = useRef<Set<string> | null>(null);
+  const chave = nos.map(no => no.id).join('|');
+  useLayoutEffect(() => {
+    const ids = new Set(chave ? chave.split('|') : []);
+    const eram = antes.current;
+    antes.current = ids;
+    if (!eram || !raiz.current) return;
+    const novos = Array.from(raiz.current.querySelectorAll<HTMLElement>(':scope > .drive-no')).filter(el => !eram.has(el.dataset.no || ''));
+    if (novos.length && novos.length < ids.size) entrar('lista', novos);
+  }, [chave]);
   return (
-    <div className="subnav-itens" role="tree" aria-label="Pastas">
-      {vm.arvore.filter(no => no.cliente === cliente && no.nivel >= 1).map(no => (
-        <div key={no.id} className="drive-no" style={{ paddingLeft: (no.nivel - 1) * 16 }} role="treeitem" aria-selected={vm.naPasta(no.id)} aria-expanded={no.temFilhos ? no.aberto : undefined}>
+    <div ref={raiz} className="subnav-itens" role="tree" aria-label="Pastas">
+      {nos.map(no => (
+        <div key={no.id} data-no={no.id} className="drive-no" style={{ paddingLeft: (no.nivel - 1) * 16 }} role="treeitem" aria-selected={vm.naPasta(no.id)} aria-expanded={no.temFilhos ? no.aberto : undefined}>
           {no.arquivo ? (
             <>
               <span className="imp-seta" />

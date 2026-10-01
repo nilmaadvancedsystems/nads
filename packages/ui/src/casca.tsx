@@ -2,7 +2,7 @@
 // barra lateral das seções (com "Ocultar barra lateral") — ou, com lateral="caixa", a caixa de seções ao lado da página —,
 // gaveta ☰ com tema e a área da página (título + ações no canto direito). Marcação e classes iguais às do conferencia.html (~L973-1033).
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { revelarTitulo, sairComo, useEntradaAnimada, useIndicador } from './animacao';
+import { entrar, revelarTitulo, sairComo, useIndicador } from './animacao';
 import { useAbasParaAEtapa, useAlturaNaEtapa } from './etapa';
 import { Icone, MarcaN, type NomeIcone } from './icones';
 import { SeletorTema } from './tema';
@@ -111,8 +111,21 @@ export function Casca(p: {
     if (fundoEl.current) void sairComo('fundo', fundoEl.current);
     void sairComo('gaveta', gavetaEl.current).then(() => setGaveta(false));
   };
-  // a página que abriu entra do jeito do app
-  const conteudo = useEntradaAnimada<HTMLDivElement>(null, [p.titulo, p.paginas?.find(x => x.ativa)?.id, p.secoes.find(s => s.ativa)?.id], 'pagina');
+  // a página que abriu entra do jeito do app; andando pela lateral (as etapas, as seções), ela vem do lado para onde
+  // se andou: a seguinte chega da direita, a anterior da esquerda
+  const conteudo = useRef<HTMLDivElement>(null);
+  const secaoAtiva = p.secoes.findIndex(s => s.ativa);
+  const secaoAntes = useRef(secaoAtiva);
+  useLayoutEffect(() => {
+    const el = conteudo.current;
+    const antes = secaoAntes.current;
+    secaoAntes.current = secaoAtiva;
+    if (!el) return;
+    const lado = antes >= 0 && secaoAtiva >= 0 && antes !== secaoAtiva ? Math.sign(secaoAtiva - antes) : 0;
+    const a = entrar('pagina', el, lado ? { mais: { translateX: [lado * 32, 0], translateY: [0, 0] } } : {});
+    return () => { a?.revert(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.titulo, p.paginas?.find(x => x.ativa)?.id, p.secoes.find(s => s.ativa)?.id]);
   // os indicadores do ativo deslizam de um item ao outro (o sublinhado das abas e o fundo + barrinha da lateral)
   const abasInd = useIndicador<HTMLElement>('.menu-item.active', [p.paginas?.find(x => x.ativa)?.id, p.paginas?.length], 'sublinhado');
   const lateralInd = useIndicador<HTMLDivElement>('.subnav-item.active', [p.secoes.find(s => s.ativa)?.id, p.secoes.length, oculta], 'fundo');
