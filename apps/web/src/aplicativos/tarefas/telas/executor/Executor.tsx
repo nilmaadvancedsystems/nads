@@ -5,7 +5,7 @@
 // atrapalhavam a ferramenta): os grupos da rotina num menu só (como o "+ ▾"), as saídas da etapa (⚠ ▾), ✕ Interromper,
 // ? (o que falta) ou → Próximo, e o perfil.
 import type { tarefas } from '@nads/core';
-import { Alerta, Casca, Icone, MenuSuspenso, useCarregando, useFerramentaNaEtapa, type ItemMenu, type NomeIcone } from '@nads/ui';
+import { AberturaN, Alerta, Casca, Icone, MenuSuspenso, useCarregando, useFerramentaNaEtapa, type ItemMenu, type NomeIcone } from '@nads/ui';
 import { useRef, useState } from 'react';
 import { Navigate, useBlocker, useParams } from 'react-router';
 import { usePonteDaFerramenta } from '../../../../comum/ponte';
@@ -132,6 +132,8 @@ export function Executor() {
             <p className="hint">Parada antes por {vm.interrompidaAntes.por}: {vm.etapa.objecoes.find(o => o.id === vm.interrompidaAntes?.objecao)?.texto || vm.interrompidaAntes.observacao || 'outro motivo'}.</p>
           )}
           <div className="executor-ferramenta">
+            {/* a ferramenta carregando: o N no meio, sobre um vidro embaçado (em vez da área vazia) */}
+            {vm.ferramenta?.embutir && ferramentaCarregando && <AberturaN vidro />}
             {vm.ferramenta?.embutir ? (
               <iframe ref={iframe} key={vm.ferramenta.url} src={vm.ferramenta.url} title={vm.ferramenta.nome} style={altura ? { height: altura } : undefined} />
             ) : vm.ferramenta ? (
