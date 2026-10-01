@@ -74,10 +74,10 @@ export function useExploradorDoDrive() {
     return e.ordenarEntradas(lista, pref.coluna, pref.desc);
   }, [cliente, mapa.clientes, q, buscando, itens, pasta, pref.coluna, pref.desc]);
 
-  // a árvore: o caminho da pasta aberta fica aberto, a não ser que a pessoa feche
-  const noCaminho = useMemo(() => new Set([cliente, ...caminho.slice(0, -1).map(x => x.i)].filter(Boolean)), [cliente, caminho]);
+  // a árvore: o caminho da pasta aberta fica aberto (ela também, como no GitHub), a não ser que a pessoa feche
+  const noCaminho = useMemo(() => new Set([cliente, ...caminho.map(x => x.i)].filter(Boolean)), [cliente, caminho]);
   const estaAberto = (id: string) => !fechados.has(id) && (abertos.has(id) || noCaminho.has(id));
-  const arvore = pref.arvore ? e.linhasDaArvore(e.buscarClientes(mapa.clientes, ''), estaAberto, c => repo.itens(c)) : [];
+  const arvore = pref.arvore ? e.linhasDaArvore(e.buscarClientes(mapa.clientes, ''), estaAberto, c => repo.itens(c), true) : [];
 
   function mudarPref(p: Partial<Preferencias>) {
     setPref(atual => { const nova = { ...atual, ...p }; guardarPreferencias(nova); return nova; });

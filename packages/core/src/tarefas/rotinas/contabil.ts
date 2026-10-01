@@ -34,7 +34,8 @@ export const ROTINA_CONTABIL: Rotina = {
       secao: 'Preparação',
       nome: 'Conferência fiscal',
       descricao: 'Confira se o Fiscal fechou a competência: as notas de entrada e saída batem com o balancete.',
-      ferramenta: { app: 'concilia-ai', nome: 'Conferência', caminho: r => '/conferencia/' + r, embutir: false },
+      // a Conferência (Concilia aí) dentro da etapa, no período que a pessoa está fazendo (o mês ou os meses do Em Lote)
+      ferramenta: { app: 'concilia-ai', nome: 'Conferência', caminho: r => '/' + r + '/movimento/relatorio', embutir: true, periodo: true },
       verificacao: 'manual',
       objecoes: [
         { id: 'fiscal-pendente', texto: 'O Fiscal ainda não fechou as notas', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'A etapa depende do Fiscal. Interrompa e retome quando o Fiscal liberar a competência.' } },

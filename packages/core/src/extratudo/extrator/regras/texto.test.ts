@@ -10,6 +10,10 @@ describe('valores', () => {
   it('sabe quando o texto já traz o sinal', () => {
     expect(['10,00 D', '-10,00', '(10,00)', '10,00 C', '10,00'].map(temSinal)).toEqual([true, true, true, true, false]);
   });
+  it('o D/C colado no número, como o extrato do Sicoob (5,10D = saída; 5.852,54C = entrada)', () => {
+    expect(['5,10D', '5.852,54C', '1.166,00d'].map(centavos)).toEqual([-510, 585254, -116600]);
+    expect(['5,10D', '5.852,54C'].map(temSinal)).toEqual([true, true]);
+  });
   it('mostra com o menos tipográfico', () => {
     expect(valorBR(-123456)).toBe('−1.234,56');
     expect(valorBR(5)).toBe('0,05');

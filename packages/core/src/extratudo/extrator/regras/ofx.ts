@@ -10,6 +10,15 @@ export function ehOfx(texto: string): boolean {
   return /<OFX>|OFXHEADER/i.test(texto);
 }
 
+/** O saldo antes do primeiro lançamento: o saldo final do OFX (<LEDGERBAL><BALAMT>) menos o movimento do arquivo. Sem saldo, null. */
+export function saldoAnteriorDoOfx(texto: string, lancamentos: readonly Lancamento[]): number | null {
+  const m = /<LEDGERBAL>[\s\S]*?<BALAMT>([^<\r\n]*)/i.exec(texto);
+  if (!m) return null;
+  const final = Math.round(parseFloat(m[1].trim().replace(',', '.')) * 100);
+  if (!isFinite(final)) return null;
+  return final - lancamentos.reduce((t, l) => t + l.valor, 0);
+}
+
 export function lancamentosDoOfx(texto: string): Lancamento[] {
   const saida: Lancamento[] = [];
   const re = /<STMTTRN>([\s\S]*?)(?:<\/STMTTRN>|(?=<STMTTRN>)|(?=<\/BANKTRANLIST>))/gi;

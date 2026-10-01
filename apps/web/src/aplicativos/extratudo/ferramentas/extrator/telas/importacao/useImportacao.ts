@@ -299,6 +299,11 @@ export function useImportacao() {
     // o mesmo banco pode entrar de novo (outra conta, com outra agência/conta)
     bancosParaAdicionar: empresas.BANCOS_CONHECIDOS,
     importarArquivos, importarDoDrive, excluirDoBanco, excluirDoPeriodo, adicionarBanco,
+    /** os extratos que abrem a conta, vindos do Drive sem o saldo anterior (a linha do Drive completa sozinha) */
+    extratosSemSaldo: x.extratosSemSaldoAnterior(s.empresa, primeiro),
+    gravarSaldoAnterior: (arquivoId: string, saldo: number) => s.aplicar(e => x.definirSaldoAnterior(e, arquivoId, saldo, new Date())),
+    /** a regra do Cadastro da empresa: presta serviços? (null = não informado, ou o cadastro ainda não chegou) */
+    prestaServico: cad.cadastro?.prestaServico ?? null,
     /** os pedidos de documentos feitos ao cliente (o histórico do Pedir extratos) */
     pedidos: s.empresa.pedidos || [],
     /** o extrato do banco naquela competência já foi importado? (qualquer competência, não só a da tela) */
@@ -306,8 +311,6 @@ export function useImportacao() {
     registrarPedido: (reg: x.PedidoRegistrado) => { s.aplicar(e => x.registrarPedido(e, reg)); },
     /** o extrato da conta na competência, com o saldo acumulado (a setinha da linha) */
     movimentoDe: (banco: string) => x.movimentoDoExtrato(s.empresa, banco, primeiro, competenciaDeTeste),
-    /** "Todos": o movimento de todos os extratos importados da conta, do primeiro ao último mês */
-    movimentoTodosDe: (banco: string) => x.movimentoDoExtrato(s.empresa, banco, primeiro, x.TODOS_OS_MESES.de, x.TODOS_OS_MESES.ate),
     marcarLendo: (banco: string | null) => setLendoLinha(banco ? banco + '|banco' : null),
     avisar: (titulo: string) => setMensagem({ tom: 'info', titulo, textos: [] }),
     avisarErro: (titulo: string, texto: string) => setMensagem({ tom: 'erro', titulo, textos: [{ texto }] }),

@@ -11,7 +11,7 @@ import { useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { extratorDaEmpresa, repoDoCadastro } from '../../dados/fonte';
-import { useExecucoesDoPeriodo, useRepo } from '../../dados/repo';
+import { useExecucoesDoPeriodo, usePrestaServico, useRepo } from '../../dados/repo';
 import { caminhoDaEmpresa, caminhoDaPagina, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 
@@ -23,8 +23,16 @@ const soTarefas = import.meta.env.VITE_APLICATIVO === 'tarefas';
 const BASES: Record<t.FerramentaDaEtapa['app'], string> = {
   extratudo: '',
   conciliadorzinho: soTarefas ? 'https://conciliadorzinho-nilma.web.app' : '',
-  'concilia-ai': 'https://nads-nilma.web.app',
+  // a Conferência vem junto no site da Tarefas (a etapa Conferência fiscal abre no mesmo endereço)
+  'concilia-ai': '',
 };
+
+/**
+ * A conferência automática do "Próximo" (extrato e razão importados…). DESLIGADA por enquanto (Vitor, 30/09/2026:
+ * "libera pra mim, depois bloqueio de novo"): o Próximo marca a etapa como feita sem conferir. Para bloquear de
+ * novo, volte para true.
+ */
+const CONFERIR_NO_PROXIMO = false;
 
 export function useExecutor(rotaEmpresa: string, periodo: string) {
   const repo = useRepo();
@@ -35,6 +43,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   // as seções da rotina, na ordem (Preparação, Ativo, Passivo, Resultado, Fechamento)
   const secoes = [...new Set(rotina.etapas.map(e => e.secao || ''))];
   const empresa = empresas.empresaPelaRota(repo.listarEmpresas(), rotaEmpresa);
+  // a regra do Cadastro da empresa (presta serviços?): vai para a Conferência fiscal (?servicos=)
+  const prestaServico = usePrestaServico(empresa?.nome ?? null, empresa?.codigo ?? null);
   const meses = t.competenciasDoPeriodo(periodo);
   const varios = meses.length > 1;
   const { porMes, carregada } = useExecucoesDoPeriodo(meses, rotina.departamento);
@@ -111,6 +121,16 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     if (!ex || !etapa || conferindo) return;
     setConferindo(true);
     try {
+      if (!CONFERIR_NO_PROXIMO) {
+        // liberado: marca feita em cada mês que falta, sem conferir
+        for (const c of alvos) {
+          const fz = t.fazer(exDe[c], etapa.id, op.nome, new Date());
+          repo.gravar(fz.execucao, fz.evento);
+        }
+        setAviso(null);
+        toast(etapa.nome + ': feita' + (varios ? ' em ' + alvos.map(rotuloCurto).join(', ') : '') + '.');
+        return;
+      }
       const ext = t.precisaDoExtrator(etapa) ? await extratorDaEmpresa(ex.empresa) : null;
       // os bancos da empresa na competência: os do Cadastro, quando ela tem; senão, os de antes
       const cad = ext ? await repoDoCadastro().obter(ex.empresa, ex.codigo) : null;
@@ -179,7 +199,23 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     if (o.solucao.tipo === 'drive') { toast('Drive: em desenvolvimento.'); return; }
   }
 
+  // os grupos da rotina (os botões no canto do cabeçalho): quantas etapas feitas, o da vez e os da frente (travados)
+  const concluidaNoPeriodo = (id: string) => meses.length > 0 && meses.every(c => concluidaEm(id, c));
+  const iDaVez = etapa ? secoes.indexOf(etapa.secao || '') : secoes.length;
+  const grupos = secoes.map((nome, i) => {
+    const es = rotina.etapas.filter(e => (e.secao || '') === nome);
+    return { nome, feitas: es.filter(e => concluidaNoPeriodo(e.id)).length, total: es.length, atual: i === iDaVez, travado: i > iDaVez };
+  });
+  /** Abrir um grupo de trás: volta para a primeira etapa dele (como clicar nela no checklist). O da vez e os da frente: nada. */
+  function abrirGrupo(nome: string) {
+    const i = secoes.indexOf(nome);
+    if (i < 0 || i >= iDaVez) return;
+    const primeira = rotina.etapas.find(e => (e.secao || '') === nome);
+    if (primeira) voltarPara(primeira.id);
+  }
+
   return {
+    grupos, abrirGrupo,
     empresa, competencia, periodo, meses, varios, rotuloCompetencia: t.rotuloDoPeriodo(meses.length ? meses : [competencia]),
     carregando: !carregada,
     etapas: rotina.etapas.map((e, i) => {
@@ -192,7 +228,9 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     etapa, n: etapa ? rotina.etapas.findIndex(e => e.id === etapa.id) + 1 : 0, total: rotina.etapas.length,
     interrompidaAntes: etapa && ex ? t.estadoDa(ex, etapa.id)?.situacao === 'interrompida' ? t.estadoDa(ex, etapa.id) : null : null,
     // no período, a ferramenta que trabalha vários meses recebe todos (abas por mês); as outras, o mês da vez
-    ferramenta: f && empresa ? { nome: f.nome, embutir: f.embutir, url: BASES[f.app] + f.caminho(empresas.rotaDaEmpresa(empresa)) + (f.app === 'extratudo' ? '?competencia=' + competencia + (juntos && varios ? '&meses=' + meses.join(',') : '') : '') } : null,
+    ferramenta: f && empresa ? { nome: f.nome, embutir: f.embutir, url: BASES[f.app] + f.caminho(empresas.rotaDaEmpresa(empresa)) + (f.app === 'extratudo' ? '?competencia=' + competencia + (juntos && varios ? '&meses=' + meses.join(',') : '')
+      // a Conferência roda no período que a pessoa está fazendo (o mês, ou os meses do Em Lote)
+      : f.app === 'concilia-ai' ? '?meses=' + (juntos && varios ? meses : [competencia]).join(',') + (prestaServico == null ? '' : '&servicos=' + (prestaServico ? 'sim' : 'nao')) : '') } : null,
     /** os meses que a etapa ainda precisa (no período) */
     pendentes: pendentes.map(rotuloCurto),
     aviso, conferindo, proximo, voltarPara,

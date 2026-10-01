@@ -71,3 +71,41 @@ describe('conferência extrato × sistema', () => {
     expect(csv.split('\n')).toEqual(['\ufeffSituação;Data extrato;Histórico extrato;Valor extrato;Data sistema;Histórico sistema;Valor sistema;O que houve', 'Faltando;03/08/2026;"TARIFA; PIX";-10,50;;;;Está no extrato e não no sistema']);
   });
 });
+
+describe('conferido pelo total do dia (cobrança em lote)', () => {
+  it('o lote do extrato e os clientes do razão no mesmo dia, somando igual: tudo conferido', () => {
+    const r = conferir([
+      B(2, 585254, 'CRÉD.LIQ.COBRANÇA DOC.: 1820477'), B(2, 208347, 'CRÉD.LIQ.COBRANÇA DOC.: 1821307'),
+    ], [
+      S(2, 389879, 'CAMILA SIMOES CORDEIRO'), S(2, 200000, 'MEDEIROS E MOURA LTDA'), S(2, 203288, 'SUPERMERCADO SKINAO LTDA'),
+      S(2, 5059, 'Juros Recebidos'), S(2, -4625, 'Descontos Concedidos'),
+    ], 3);
+    expect(r.contagem).toEqual({ ok: 7, faltando: 0, diferente: 0, amais: 0, duplicado: 0 });
+    expect(r.linhas[0].motivo).toBe('Conferido pelo total do dia: 2 lançamentos no extrato, 5 no sistema, somando 7.936,01');
+  });
+  it('o dia não fecha: lote a lote, só o lote errado fica pendente (a 292 em 06/03)', () => {
+    const r = conferir([
+      B(6, 219801, 'CRÉD.LIQ.COBRANÇA DOC.: 1948278'), B(6, 95814, 'CRÉD.LIQ.COBRANÇA DOC.: 1948608'), B(6, 781276, 'CRÉD.LIQ.COBRANÇA DOC.: 1949517'),
+    ], [
+      S(6, 398190, 'SUPERMERCADO UNIAO'), S(6, 383086, 'CAMPOS COMERCIO'), S(6, 123825, 'MEDEIROS E MOURA'),
+      S(6, 108910, 'SUPERMERCADO GONCALVES E AQUINO'), S(6, 95976, 'MEDEIROS E MOURA'),
+    ], 3);
+    expect(r.contagem).toEqual({ ok: 6, faltando: 1, diferente: 0, amais: 1, duplicado: 0 });
+    expect(resumo(r).filter(x => x[0] !== 'ok')).toEqual([
+      ['faltando', 'CRÉD.LIQ.COBRANÇA DOC.: 1948608', '', 'Está no extrato e não no sistema'],
+      ['amais', '', 'SUPERMERCADO GONCALVES E AQUINO', 'Está no sistema e não no extrato'],
+    ]);
+  });
+  it('um lançamento com a data trocada não trava o resto do dia', () => {
+    const r = conferir([
+      B(16, 94730, 'CRÉD.LIQ.COBRANÇA DOC.: 2034985'), B(17, 500000, 'CRÉD.LIQ.COBRANÇA DOC.: 2037491'),
+    ], [S(17, 94730, 'DONA BEIJA'), S(17, 300000, 'A'), S(17, 200000, 'B')], 3);
+    expect(r.contagem).toEqual({ ok: 3, faltando: 0, diferente: 1, amais: 0, duplicado: 0 });
+  });
+  it('somando diferente, ou em dias diferentes: continua pendente', () => {
+    const r = conferir([B(6, 1096891, 'CRÉD.LIQ.COBRANÇA DOC.: 1948278')], [S(6, 398190, 'SUPERMERCADO UNIAO'), S(6, 711797, 'CAMPOS COMERCIO')], 0);
+    expect(r.contagem).toMatchObject({ ok: 0, faltando: 1, amais: 2 });
+    const r2 = conferir([B(6, 300000, 'CRÉD.LIQ.COBRANÇA DOC.: 1')], [S(6, 100000, 'A'), S(7, 200000, 'B')], 0);
+    expect(r2.contagem).toMatchObject({ ok: 0, faltando: 1, amais: 2 });
+  });
+});

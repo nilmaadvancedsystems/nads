@@ -4,12 +4,14 @@ import { Icone } from '@nads/ui';
 import { useEffect } from 'react';
 import { ContasBancarias } from '../bancos/ContasBancarias';
 import { ContasPadrao } from '../contas-padrao/ContasPadrao';
+import { DadosDaEmpresa } from '../empresa/DadosDaEmpresa';
 import { HistoricoCadastro } from '../historico/HistoricoCadastro';
 import { PlanoDeContas } from '../plano/PlanoDeContas';
 import { useJanelaDaEmpresa } from './useJanelaDaEmpresa';
 
 function Aba({ rota, aba }: { rota: string; aba: string }) {
   switch (aba) {
+    case 'empresa': return <DadosDaEmpresa rota={rota} />;
     case 'plano': return <PlanoDeContas rota={rota} />;
     case 'contas-padrao': return <ContasPadrao rota={rota} />;
     case 'historico': return <HistoricoCadastro rota={rota} />;

@@ -4,12 +4,12 @@
 // (~L2004-2039), perguntarPrestaServico (~L1781), telaInicialEmpresa (~L1712).
 import { conferencia as c } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import { VERSAO_SISTEMA } from '../../../versao';
 import { useRepo } from '../dados/repo';
 import { PAGINAS_ESCONDIDAS, paginaPorId, SECOES, secaoDaPagina, type IdSecao } from './navegacao';
-import { MSG_CADASTRO_BLOQ, useSessao } from './sessao';
+import { MSG_CADASTRO_BLOQ, servicosDoEndereco, useSessao, useSincronizarPrestaServico } from './sessao';
 import { caminho } from './caminho';
 
 
@@ -27,10 +27,15 @@ export function useCascaConciliaAi() {
   const semP = c.semPrest(e);
   const lista = repo.listarEmpresas().find(x => x.nome === s.nome);
 
+  // aberta pela Tarefas: a regra vem do Cadastro da empresa (?servicos=), e não se pergunta
+  const { search } = useLocation();
+  const [servicosDoCadastro] = useState(() => servicosDoEndereco(search));
+  useSincronizarPrestaServico(servicosDoCadastro);
+
   // "Essa empresa presta serviço?" — uma vez por empresa, obrigatória, fundo embaçado
   const perguntou = useRef(false);
   useEffect(() => {
-    if (perguntou.current || e.prestaServico !== undefined) return;
+    if (perguntou.current || e.prestaServico !== undefined || servicosDoCadastro !== undefined) return;
     perguntou.current = true;
     void modal<boolean>({
       obrigatoria: true, icone: 'briefcase', titulo: 'Seja bem-vindo(a) ao Concilia aí!',
@@ -40,11 +45,12 @@ export function useCascaConciliaAi() {
       s.aplicar(x => c.definirPrestaServico(x, sim));
       if (!sim && s.abaCadastro === 'prestados') s.setAbaCadastro('entradas');
     });
-  }, [e.prestaServico, modal, s, lista]);
+  }, [e.prestaServico, modal, s, lista, servicosDoCadastro]);
 
   const secoes = SECOES.map(sec => {
     const req = sec.id === 'cadastro' && !ok ? 'todas' : sec.id === 'movimento' && semNotas ? 'notas' : '';
-    return { id: sec.id, rotulo: sec.rotulo, icone: sec.icone, grupo: sec.grupo, ativa: sec.id === secAtual?.id, travada: !!req, req };
+    // a Importação foi para a primeira etapa da Tarefas: dentro da etapa (Conferência fiscal), ela não aparece aqui
+    return { id: sec.id, rotulo: sec.rotulo, icone: sec.icone, grupo: sec.grupo, ativa: sec.id === secAtual?.id, travada: !!req, req, foraDaEtapa: sec.id === 'importacao' };
   });
 
   const abaAcesa = pag?.acendeAba || s.pagina;
@@ -71,6 +77,30 @@ export function useCascaConciliaAi() {
     s.irPara(id);
   }
 
+  /**
+   * Dentro da etapa da Tarefas (a Conferência fiscal), sem barra lateral: todas as páginas numa linha de abas, como as
+   * de um repositório do GitHub — Relatório · Naturezas · Consulta · Cadastro · Auditoria (a Importação está na
+   * primeira etapa). "Checklist" vira "Naturezas" (o título da página) para não confundir com o checklist das etapas.
+   */
+  const NA_ETAPA: { id: string; rotulo: string; secao: IdSecao }[] = [
+    { id: 'movimento/relatorio', rotulo: 'Relatório', secao: 'movimento' },
+    { id: 'movimento/checklist', rotulo: 'Naturezas', secao: 'movimento' },
+    { id: 'movimento/consulta', rotulo: 'Consulta', secao: 'movimento' },
+    { id: 'cadastro/configuracoes', rotulo: 'Cadastro', secao: 'cadastro' },
+    { id: 'auditoria/historico', rotulo: 'Auditoria', secao: 'auditoria' },
+  ];
+  const abasNaEtapa = NA_ETAPA.map(a => ({
+    id: a.id, rotulo: a.rotulo, icone: paginaPorId(a.id)?.icone || 'list' as const, ativa: a.id === abaAcesa,
+    travada: !!secoes.find(x => x.id === a.secao)?.travada,
+  }));
+  function onAbaNaEtapa(id: string) {
+    const a = NA_ETAPA.find(x => x.id === id);
+    if (!a) return;
+    // a primeira página da seção (Cadastro) abre como no menu lateral; as outras voltam onde a pessoa parou
+    if (a.secao !== 'movimento' || secoes.find(x => x.id === a.secao)?.req) onSecao(a.secao);
+    else onPagina(id);
+  }
+
   function sair() {
     s.aplicar(x => c.aoSair(x, new Date()));
     navegar(caminho());
@@ -87,6 +117,7 @@ export function useCascaConciliaAi() {
     versao: VERSAO_SISTEMA,
     secoes, paginas,
     onSecao, onPagina, sair, voltarInicioDaEmpresa,
+    abasNaEtapa, onAbaNaEtapa,
     msgCadastro: MSG_CADASTRO_BLOQ,
     paginaExiste: !!pag || PAGINAS_ESCONDIDAS.some(p => p.id === s.pagina),
   };

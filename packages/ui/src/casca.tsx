@@ -2,14 +2,14 @@
 // barra lateral das seções (com "Ocultar barra lateral") — ou, com lateral="caixa", a caixa de seções ao lado da página —,
 // gaveta ☰ com tema e a área da página (título + ações no canto direito). Marcação e classes iguais às do conferencia.html (~L973-1033).
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { useAlturaNaEtapa } from './etapa';
-import marcaTigre from './marca-tigre.png';
+import { useAbasParaAEtapa, useAlturaNaEtapa } from './etapa';
 import { Icone, MarcaN, type NomeIcone } from './icones';
 import { SeletorTema } from './tema';
 
 /** caixa: no lugar do ícone, uma caixinha de checklist (vazia, marcada ou parada) — as etapas de uma tarefa */
 /** titulo: o nome do grupo, em cima da primeira seção dele (Ativo, Passivo…) */
-export interface SecaoCasca { id: string; rotulo: string; icone: NomeIcone; grupo: number; ativa?: boolean; travada?: boolean; caixa?: 'vazia' | 'marcada' | 'parada'; titulo?: string }
+/** foraDaEtapa: a seção some quando o aplicativo está inteiro dentro de uma etapa (ex.: a Importação da Conferência, que foi para a primeira etapa) */
+export interface SecaoCasca { id: string; rotulo: string; icone: NomeIcone; grupo: number; ativa?: boolean; travada?: boolean; caixa?: 'vazia' | 'marcada' | 'parada'; titulo?: string; foraDaEtapa?: boolean }
 /** contador: o número ao lado do nome, como o "Issues 12" do GitHub (ex.: "2/7") */
 export interface PaginaCasca { id: string; rotulo: string; icone: NomeIcone; ativa?: boolean; travada?: boolean; oculta?: boolean; contador?: string }
 
@@ -80,8 +80,22 @@ export function Casca(p: {
   lateral?: 'barra' | 'caixa' | 'nenhuma';
   /** a página usa a largura toda da tela (ex.: a ferramenta de uma etapa) */
   larga?: boolean;
+  /** o canto direito do cabeçalho, como os botões do GitHub (ex.: os grupos da rotina e o perfil, no executor) */
+  topoDireita?: ReactNode;
   /** nome da lista da esquerda, para leitor de tela (padrão "Seções") */
   rotuloLateral?: string;
+  /**
+   * Dentro de uma etapa da Tarefas, a página vem sem cabeçalho nem barra lateral. Com isto, o aplicativo vem
+   * inteiro, exatamente como ele é (barra lateral, abas das páginas, a empresa), só sem a barra de cima (☰, logo,
+   * sistema), que é a da Tarefas — como quando está acoplado a outro sistema. Ex.: a Conferência na Conferência fiscal.
+   */
+  inteiroNaEtapa?: boolean;
+  /**
+   * Com inteiroNaEtapa: no lugar da barra lateral e das abas da seção, todas as páginas numa linha de abas só (como
+   * as de um repositório do GitHub), e a página na largura toda.
+   */
+  abasNaEtapa?: PaginaCasca[];
+  onAbaNaEtapa?: (id: string) => void;
   children: ReactNode;
 }) {
   const [oculta, setOculta] = useState(lerLateral);
@@ -89,13 +103,19 @@ export function Casca(p: {
   const cabecalho = useRef<HTMLElement>(null);
   // dentro de uma etapa da Tarefas: a página diz a altura dela (quem rola é a Tarefas, uma barra só)
   useAlturaNaEtapa(embutida() && !acoplada());
+  // um aplicativo inteiro dentro da etapa, com as abas de todas as páginas: elas sobem para o cabeçalho da Tarefas
+  const abasSobem = embutida() && !acoplada() && !!p.inteiroNaEtapa && !!p.abasNaEtapa;
+  useAbasParaAEtapa(abasSobem ? p.abasNaEtapa || null : null, p.onAbaNaEtapa);
 
   // a altura do cabeçalho (muda no celular): a barra lateral vai dele até o fim da tela
   useLayoutEffect(() => {
     const ajustar = () => { if (cabecalho.current) document.documentElement.style.setProperty('--hdr-h', cabecalho.current.offsetHeight + 'px'); };
     ajustar();
+    // muda também quando chegam as abas de uma ferramenta (a Conferência dentro da etapa)
+    const obs = typeof ResizeObserver !== 'undefined' && cabecalho.current ? new ResizeObserver(ajustar) : null;
+    if (obs && cabecalho.current) obs.observe(cabecalho.current);
     window.addEventListener('resize', ajustar);
-    return () => window.removeEventListener('resize', ajustar);
+    return () => { obs?.disconnect(); window.removeEventListener('resize', ajustar); };
   }, []);
   useEffect(() => {
     if (!gaveta) return;
@@ -126,14 +146,19 @@ export function Casca(p: {
   );
 
   // aberta dentro de outra tela (a etapa de uma tarefa): só a página, sem cabeçalho nem barra lateral
-  const noOutro = acoplada();
+  // acoplado a outro sistema, ou um aplicativo inteiro dentro da etapa: tudo menos a barra de cima
+  const noOutro = acoplada() || (embutida() && !!p.inteiroNaEtapa);
+  // o aplicativo inteiro dentro da etapa: sem nem a linha da empresa (a empresa já está no cabeçalho da Tarefas)
+  const naEtapa = embutida() && !!p.inteiroNaEtapa && !acoplada();
+  // dentro da etapa, com as abas de todas as páginas: sem barra lateral
+  const abasDaEtapa = naEtapa && p.abasNaEtapa ? p.abasNaEtapa : null;
   if (embutida() && !noOutro) return <div id="app" className="on embutida">{principal}</div>;
 
   let grupoAnt: number | null = null;
   return (
     <div id="app" className={'on' + (p.larga ? ' larga' : '') + (noOutro ? ' acoplada' : '')}>
-      <header className="gh-header" ref={cabecalho}>
-        <div className="gh-header-top">
+      <header className="gh-header" ref={cabecalho} hidden={abasSobem}>
+        <div className="gh-header-top" hidden={naEtapa}>
           {!noOutro && (
             <>
               <button className="gh-hamb" type="button" aria-label="Abrir menu" title="Menu" onClick={() => setGaveta(true)}>
@@ -158,11 +183,12 @@ export function Casca(p: {
               </span>
             ))}
           </nav>
+          {p.topoDireita && <><span className="gh-header-spacer" /><div className="gh-topo-direita">{p.topoDireita}</div></>}
         </div>
         <nav className="menu" id="menu" aria-label="Páginas da seção">
-          {p.paginas.filter(x => !x.oculta).map(x => (
+          {(abasDaEtapa || p.paginas).filter(x => !x.oculta).map(x => (
             <button key={x.id} type="button" className={'menu-item' + (x.ativa ? ' active' : '') + (x.travada ? ' is-locked' : '')}
-              aria-current={x.ativa ? 'page' : undefined} aria-disabled={x.travada ? 'true' : undefined} onClick={() => p.onPagina(x.id)}>
+              aria-current={x.ativa ? 'page' : undefined} aria-disabled={x.travada ? 'true' : undefined} onClick={() => (abasDaEtapa && p.onAbaNaEtapa ? p.onAbaNaEtapa : p.onPagina)(x.id)}>
               <Icone nome={x.icone} /><span>{x.rotulo}</span>{x.contador && <span className="menu-contador">{x.contador}</span>}
             </button>
           ))}
@@ -195,7 +221,7 @@ export function Casca(p: {
         </aside>
       )}
 
-      {p.lateral === 'nenhuma' ? principal : p.lateral === 'caixa' ? (
+      {p.lateral === 'nenhuma' || abasDaEtapa ? principal : p.lateral === 'caixa' ? (
         <div className="layout-caixa">
           <nav className="caixa-menu" aria-label={p.rotuloLateral || 'Seções'}>
             {p.secoes.map(s => (
@@ -212,7 +238,7 @@ export function Casca(p: {
       <div className={'layout' + (oculta ? ' sidebar-oculta' : '')}>
         <nav className="subnav" id="subnav" aria-label={p.rotuloLateral || 'Seções'}>
           <div className="subnav-itens">
-            {p.secoes.map(s => {
+            {p.secoes.filter(s => !(naEtapa && s.foraDaEtapa)).map(s => {
               const sep = grupoAnt !== null && s.grupo !== grupoAnt;
               const comeca = grupoAnt === null || s.grupo !== grupoAnt;
               grupoAnt = s.grupo;
@@ -245,17 +271,11 @@ export function Casca(p: {
 
 /**
  * O rodapé (como o do GitHub): no fim da página, na largura toda; só aparece quando a pessoa rola até o fim.
- * Por enquanto só a marca e o direito autoral; os links (Termos, Privacidade…) vêm depois, com as páginas.
+ * Por enquanto só o direito autoral (o tigre saiu: Vitor, 01/10/2026); os links (Termos, Privacidade…) vêm depois, com as páginas.
  */
-/** A logo oficial (o tigre no círculo branco), idêntica à que o Vitor mandou: só recortada no círculo (marca-tigre-original.webp). */
-function Marca() {
-  return <img className="rodape-marca" src={marcaTigre} alt="" aria-hidden="true" />;
-}
-
 function Rodape() {
   return (
     <footer className="rodape">
-      <Marca />
       <span>© {new Date().getFullYear()} Grupo G&amp;V by Gustavo Santos &amp; Vítor Dias, Inc.</span>
     </footer>
   );

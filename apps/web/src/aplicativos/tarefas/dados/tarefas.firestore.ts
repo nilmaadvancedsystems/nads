@@ -9,7 +9,9 @@
 // Cuidados, os mesmos da Conferência e do Extratudo:
 // - carrega só a competência pedida (uma consulta), não a coleção inteira;
 // - nada é gravado antes de a competência chegar do banco;
-// - se falhar, avisa 'Não deu para salvar … na nuvem: …'.
+// - se falhar, avisa 'Não deu para salvar … na nuvem: …';
+// - a leitura negada (o login ainda chegando, ou a liberação do computador acabando de sair) tenta de novo sozinha
+//   (1, 2, 4 e 8 s); só avisa se continuar, e uma vez só para todos os meses (não um aviso por mês).
 import { extrator as x, formatos, tarefas as t, type empresas, type usuarios } from '@nads/core';
 import { getApps, initializeApp } from 'firebase/app';
 import { collection, doc, getDoc, getDocs, getFirestore, initializeFirestore, onSnapshot, query, where, writeBatch, type Firestore } from 'firebase/firestore';
@@ -45,6 +47,9 @@ export function bancoDaConferencia(): Firestore {
 
 interface Carga { chegou: boolean; execucoes: Map<string, t.Execucao> }
 
+/** As esperas antes de tentar de novo uma leitura negada (ms). */
+const ESPERAS = [1000, 2000, 4000, 8000];
+
 export function criarRepoTarefasFirestore(lista: readonly empresas.EmpresaDoEscritorio[]): RepoTarefasFirestore {
   const db = bancoDoEntregas();
   const cargas = new Map<string, Carga>();
@@ -52,6 +57,20 @@ export function criarRepoTarefasFirestore(lista: readonly empresas.EmpresaDoEscr
   const ouvintes = new Set<() => void>();
   let avisar: Aviso = m => console.warn(m);
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
+  // os meses que não deu para ler, para um aviso só
+  const naoLidos = new Map<string, string>();
+  let avisoMarcado: ReturnType<typeof setTimeout> | null = null;
+  const avisarNaoLidos = () => {
+    if (avisoMarcado) return;
+    avisoMarcado = setTimeout(() => {
+      avisoMarcado = null;
+      if (!naoLidos.size) return;
+      const meses = [...naoLidos.keys()].sort().map(c => t.rotuloCompetencia(c));
+      const motivo = [...naoLidos.values()][0];
+      avisar('Não consegui ler as tarefas de ' + meses.join(', ') + ' na nuvem: ' + motivo);
+      naoLidos.clear();
+    }, 300);
+  };
 
   function carregar(competencia: string, departamento: usuarios.Departamento): Carga {
     const k = competencia + '|' + departamento;
@@ -60,11 +79,23 @@ export function criarRepoTarefasFirestore(lista: readonly empresas.EmpresaDoEscr
     const c: Carga = { chegou: false, execucoes: new Map() };
     cargas.set(k, c);
     const q = query(collection(db, COLECAO), where('competencia', '==', competencia), where('departamento', '==', departamento));
-    onSnapshot(q, s => {
-      c.execucoes = new Map(s.docs.map(d => [d.id, d.data() as t.Execucao]));
-      c.chegou = true;
-      mudou();
-    }, err => avisar('Não consegui ler as tarefas de ' + t.rotuloCompetencia(competencia) + ' na nuvem: ' + err.message));
+    const ouvir = (tentativa: number) => {
+      onSnapshot(q, s => {
+        c.execucoes = new Map(s.docs.map(d => [d.id, d.data() as t.Execucao]));
+        c.chegou = true;
+        naoLidos.delete(competencia);
+        mudou();
+      }, err => {
+        // negada: o login pode ainda estar chegando (ou a liberação deste computador acabou de sair): tenta de novo
+        if (tentativa < ESPERAS.length && /permission|insufficient|unauthenticated/i.test(err.message)) {
+          setTimeout(() => ouvir(tentativa + 1), ESPERAS[tentativa]);
+          return;
+        }
+        naoLidos.set(competencia, err.message);
+        avisarNaoLidos();
+      });
+    };
+    ouvir(0);
     return c;
   }
 

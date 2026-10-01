@@ -282,32 +282,44 @@ export interface NoDaArvore {
   aberto: boolean;
   /** aberto, mas as pastas de dentro ainda estão chegando do banco */
   carregando: boolean;
+  /** um arquivo (com comArquivos): sem setinha; clicar abre */
+  arquivo?: boolean;
 }
 
 /**
  * A árvore achatada na ordem de desenho: cada pasta de cliente e, se aberta, as pastas de dentro (só pastas, como
  * no painel de navegação do Windows). `itensDe` só é chamado para os clientes abertos (o banco lê sob demanda).
+ * comArquivos: os arquivos também, depois das pastas de cada nível (como a árvore do GitHub).
  */
 export function linhasDaArvore(
   clientes: readonly PastaDeCliente[],
   aberto: (id: string) => boolean,
   itensDe: (cliente: string) => { carregados: boolean; itens: readonly ItemDoDrive[] },
+  comArquivos = false,
 ): NoDaArvore[] {
   const saida: NoDaArvore[] = [];
   for (const c of clientes) {
-    const no: NoDaArvore = { id: c.id, nome: c.nomePasta || c.nome, nivel: 0, cliente: c.id, temFilhos: c.pastas > 0, aberto: aberto(c.id), carregando: false };
+    const no: NoDaArvore = { id: c.id, nome: c.nomePasta || c.nome, nivel: 0, cliente: c.id, temFilhos: c.pastas > 0 || (comArquivos && c.arquivos > 0), aberto: aberto(c.id), carregando: false };
     saida.push(no);
     if (!no.aberto || !no.temFilhos) continue;
     const { carregados, itens } = itensDe(c.id);
     if (!carregados) { no.carregando = true; continue; }
     const pastas = new Map<string, ItemDoDrive[]>();
-    for (const x of itens) if (x.t === 'd') { const l = pastas.get(x.p); if (l) l.push(x); else pastas.set(x.p, [x]); }
+    const arquivos = new Map<string, ItemDoDrive[]>();
+    for (const x of itens) {
+      const m = x.t === 'd' ? pastas : comArquivos ? arquivos : null;
+      if (!m) continue;
+      const l = m.get(x.p); if (l) l.push(x); else m.set(x.p, [x]);
+    }
     const descer = (pai: string, nivel: number) => {
       if (nivel > 40) return;
       for (const x of (pastas.get(pai) || []).sort((a, b) => ordemNatural.compare(a.n, b.n))) {
-        const n: NoDaArvore = { id: x.i, nome: x.n, nivel, cliente: c.id, temFilhos: pastas.has(x.i), aberto: aberto(x.i), carregando: false };
+        const n: NoDaArvore = { id: x.i, nome: x.n, nivel, cliente: c.id, temFilhos: pastas.has(x.i) || arquivos.has(x.i), aberto: aberto(x.i), carregando: false };
         saida.push(n);
         if (n.aberto && n.temFilhos) descer(x.i, nivel + 1);
+      }
+      for (const x of (arquivos.get(pai) || []).sort((a, b) => ordemNatural.compare(a.n, b.n))) {
+        saida.push({ id: x.i, nome: x.n, nivel, cliente: c.id, temFilhos: false, aberto: false, carregando: false, arquivo: true });
       }
     };
     descer(c.id, 1);

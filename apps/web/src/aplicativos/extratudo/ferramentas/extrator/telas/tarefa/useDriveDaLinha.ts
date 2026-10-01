@@ -4,7 +4,7 @@
 // Entregas, pede primeiro (o mesmo usuário das Pendências). Não achou um só: a pessoa escolhe entre os
 // candidatos. "Visualizar" pede ao robô um link temporário (~30 min) e só abre; o link não é guardado.
 import { creditor, extrator as x } from '@nads/core';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useDrive } from '../../dados/repo';
 import type { useImportacao } from '../importacao/useImportacao';
 
@@ -19,8 +19,30 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   const [pendente, setPendente] = useState<Linha | null>(null);
   const [escolha, setEscolha] = useState<{ linha: Linha; texto: string; candidatos: creditor.ArquivoAchado[] } | null>(null);
   const [buscando, setBuscando] = useState<string | null>(null);
+  // "Cancelar" a busca de vários meses: para antes do próximo mês
+  const cancelado = useRef(false);
+  const [cancelando, setCancelando] = useState(false);
   // o que fazer depois de entrar, quando o login foi pedido por outra coisa (o Pedir extratos)
   const depois = useRef<(() => void) | null>(null);
+
+  // o saldo anterior dos extratos que abrem a conta e vieram do Drive antes de a leitura guardar o saldo: com o login,
+  // pede o arquivo de novo ao robô e lê só o saldo (uma vez por arquivo; se não der, fica como está)
+  const tentados = useRef(new Set<string>());
+  const semSaldo = vm.extratosSemSaldo.map(a => a.id).join(',');
+  const { gravarSaldoAnterior } = vm;
+  useEffect(() => {
+    if (!acesso.entrou) return;
+    for (const a of vm.extratosSemSaldo) {
+      if (!a.drive || tentados.current.has(a.id)) continue;
+      tentados.current.add(a.id);
+      const doDrive = a.drive;
+      drive.baixar(doDrive.id, doDrive.nome)
+        .then(conteudo => x.lerArquivo(doDrive.nome, new Uint8Array(conteudo), 'banco'))
+        .then(lido => { if (typeof lido.saldoAnterior === 'number') gravarSaldoAnterior(a.id, lido.saldoAnterior); })
+        .catch(() => { /* sem o robô agora: fica sem o saldo (reimportar resolve) */ });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acesso.entrou, semSaldo]);
 
   async function usar(linha: Linha, a: creditor.ArquivoAchado) {
     setEscolha(null);
@@ -63,11 +85,18 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       return;
     }
     setBuscando(linha.id);
+    cancelado.current = false;
+    setCancelando(false);
     const achados: string[] = [];
     const faltam: string[] = [];
     try {
       const pasta = await drive.pastaDoCliente(codigo);
       for (const mes of meses) {
+        // "Cancelar": para antes do próximo mês (o que já veio fica)
+        if (cancelado.current) {
+          vm.avisarErro(linha.nome + ': cancelado', achados.length ? 'Ficaram os que já vieram: ' + achados.join(', ') + '.' : 'Nenhum mês foi trazido.');
+          return;
+        }
         const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, mes, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta });
         const rotulo = mes.slice(5) + '/' + mes.slice(0, 4);
         if (r.situacao !== 'achou' || !r.arquivo) { faltam.push(rotulo); continue; }
@@ -81,6 +110,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       vm.avisarErro('Não consegui olhar o Drive', mensagemDeErro(e));
     } finally {
       setBuscando(null);
+      setCancelando(false);
     }
   }
 
@@ -104,6 +134,9 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     exemplos: drive.exemplos,
     entrou: acesso.entrou,
     buscando,
+    /** pediu para cancelar a busca de vários meses (espera o mês que está baixando) */
+    cancelando,
+    cancelar: () => { cancelado.current = true; setCancelando(true); },
     buscar: (linha: Linha) => { void buscar(linha); },
     buscarNoPeriodo: (linha: Linha, meses: string[]) => { void buscarNoPeriodo(linha, meses); },
     login: { ...login, set: (m: Partial<typeof login>) => setLogin(l => ({ ...l, ...m })), entrar: () => { void entrar(); }, fechar: () => { setPendente(null); depois.current = null; setLogin(l => ({ ...l, aberto: false })); } },

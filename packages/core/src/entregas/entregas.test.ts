@@ -60,6 +60,11 @@ describe('mapa do Drive', () => {
     const aberta = linhasDaArvore(cs, id => id === 'raiz' || id === 'a', itensDe);
     expect(aberta.map(n => [n.nome, n.nivel])).toEqual([['1 - A', 0], ['CONTÁBIL', 1], ['EXTRATOS', 2], ['2 - B', 0]]);
     expect(linhasDaArvore(cs, id => id === 'raiz', () => ({ carregados: false, itens: [] }))[0].carregando).toBe(true);
+    // com os arquivos (a árvore do GitHub): depois das pastas de cada nível, em ordem natural
+    const comArquivos = linhasDaArvore(cs, id => id === 'raiz' || id === 'a' || id === 'b', itensDe, true);
+    expect(comArquivos.map(n => [n.nome, n.nivel, !!n.arquivo])).toEqual([
+      ['1 - A', 0, false], ['CONTÁBIL', 1, false], ['EXTRATOS', 2, false], ['extrato 2.pdf', 3, true], ['extrato 10.pdf', 3, true], ['Anotações', 1, true], ['2 - B', 0, false],
+    ]);
   });
 });
 

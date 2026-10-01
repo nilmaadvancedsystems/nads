@@ -30,19 +30,26 @@ Link: https://tarefas-nilma.web.app (ligado ao banco). Código: `apps/web/src/ap
 - A ferramenta da etapa abre **embutida** (um iframe do site dela; a Casca, dentro de um iframe, mostra só
   a página). A Conferência abre em outra aba (a de verdade, no nads-nilma).
 
-## Rotina do Contábil (RASCUNHO para o Vitor corrigir)
+## Rotina do Contábil (30/09/2026)
 
-Arquivo único: `packages/core/src/tarefas/rotinas/contabil.ts`.
+Arquivo único: `packages/core/src/tarefas/rotinas/contabil.ts`. As conferências são as que aparecem em quase
+todos os balancetes de 15 empresas (292, 309, 10, 54, 289, 363, 380, 393, 408, 409, 429, 450, 452, 476, 509).
+No executor, os grupos são as abas de cima; na Preparação a ferramenta ocupa a tela toda, dali em diante as
+etapas do grupo ficam na caixa à esquerda. A etapa sem ferramenta mostra "O que conferir".
 
-| # | Etapa | Ferramenta | Check automático |
-|---|---|---|---|
-| 1 | Importar os extratos | Extrator (importação) | há extrato do banco com lançamentos na competência |
-| 2 | Conferir extrato × sistema | Extrator (conferência) | há extrato **e** razão do sistema na competência |
-| 3 | Ajustar o cheque especial | Cheque especial | manual |
-| 4 | Conciliar os cartões | Conciliadorzinho | manual |
-| 5 | Liquidações de títulos | Creditor | manual |
-| 6 | Conferir o balancete | Conferência (outra aba) | manual |
-| 7 | Fechar a competência | — (no Alterdata) | manual |
+| Grupo | Etapas | Ferramenta |
+|---|---|---|
+| Preparação | Importação · Conferência fiscal · Importação DP | Extrator · Conferência (Concilia aí) · — |
+| Ativo | Caixa · Bancos · Clientes · Adiantamento a fornecedores · Estoque · Bens · Depreciação | Bancos: Cheque especial · Clientes: Creditor |
+| Passivo | Fornecedores · Adiantamento de clientes · Empréstimos e financiamentos · Salários, INSS e FGTS · Pró-labore · Honorários · Impostos a recolher | — |
+| Resultado | Despesas · Receitas | Receitas: Conciliadorzinho |
+| Fechamento | Fechar a competência | — |
+
+**Check automático desligado por enquanto** (`CONFERIR_NO_PROXIMO = false` no `useExecutor.ts`, a pedido do
+Vitor): o "Próximo" marca a etapa sem conferir extrato e razão. Para bloquear de novo, volte para `true`.
+
+Depois: as conferências que só algumas empresas têm (Aplicações, Impostos a recuperar, Mútuo com sócio,
+Parcelamentos, Cartão de crédito a pagar, Água, Energia…), ligadas por empresa no Cadastro a partir do balancete.
 
 ## Banco e login
 
@@ -67,6 +74,25 @@ Os eventos que existiam em `tarefas` na Conferência foram copiados para `rotina
 
 - **Carteira de cada operador:** "Minhas empresas" mostra todas as empresas do escritório.
 - **Produtividade** (tempo por etapa): os eventos já são gravados; falta a tela.
+- **Fiscal: lançamentos do extrato para a declaração** (ideia do Vitor, 30/09/2026, pronta para construir).
+  O Fiscal usa o extrato que o Contábil já importou no Extrator para achar três coisas: **Distribuição de
+  lucros**, **Energia elétrica** e **Água**. A tela mostra os lançamentos de cada uma e, embaixo, só a soma,
+  que é o valor que o Fiscal leva para a declaração.
+  - **De onde vem:** os arquivos do extrato (lado `banco`) do Extrator, só leitura, na competência ou no
+    período escolhido (o mesmo "Em Lote" da Importação).
+  - **Como acha** (regra no core, `extratudo/extrator/regras/fiscal.ts`, com teste): pelo histórico do
+    lançamento, só as saídas.
+    - Energia: CEMIG, ENERGISA, NEOENERGIA, COELBA, "ENERGIA", "LUZ".
+    - Água: COPASA, SAAE, SABESP, "AGUA", "SANEAMENTO".
+    - Distribuição de lucros: "LUCRO", "DIVIDENDO", "DISTRIB", e PIX/TED para os sócios. Para isso, os sócios
+      (nome e CPF) precisam entrar no Cadastro da empresa, que ainda não tem esse campo.
+  - **Tela** (na Tarefas, aplicação Fiscal, por empresa): três caixas (Distribuição de lucros, Energia
+    elétrica, Água), cada uma com data, histórico e valor. A pessoa tira da caixa o que não é daquilo (e põe
+    à mão o que faltou), e a soma se ajusta. No fim, só os três totais, para copiar para a declaração.
+  - **Onde guarda:** o que a pessoa tirou ou pôs, por empresa e competência, para a próxima vez abrir igual
+    e para o Contábil ver.
+  - **Decisões do Vitor antes de construir:** qual declaração usa esses totais (e se é por mês ou por ano),
+    se vira uma etapa da rotina do Fiscal, e os nomes das concessionárias da região.
 
 ## Cadastro (2026-09-30)
 

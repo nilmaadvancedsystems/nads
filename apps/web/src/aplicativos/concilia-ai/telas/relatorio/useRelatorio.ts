@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router';
 import { useSessao } from '../../casca/sessao';
 import { travaDaAba, useMarcarSozinho, type ReqAba } from './movimento';
 import { caminho } from '../../casca/caminho';
+import { SO_ENTRADAS } from '../../soEntradas';
 
 const { brl, rot, mesCurto, capital, lancN } = formatos;
 
@@ -32,11 +33,12 @@ export function useRelatorio() {
   const semP = c.semPrest(e);
 
   // aba que ficou sem dados volta pra Geral
-  const aba: c.AbaRelatorio = s.abaRelatorio !== 'geral' && !tem[s.abaRelatorio] ? 'geral' : s.abaRelatorio;
+  // só conferir entradas: sempre a aba Entradas
+  const aba: c.AbaRelatorio = SO_ENTRADAS ? 'entradas' : s.abaRelatorio !== 'geral' && !tem[s.abaRelatorio] ? 'geral' : s.abaRelatorio;
   const { abaRelatorio, setAbaRelatorio } = s;
   useEffect(() => { if (aba !== abaRelatorio) setAbaRelatorio(aba); }, [aba, abaRelatorio, setAbaRelatorio]);
 
-  const abas = ABAS.map(a => ({
+  const abas = ABAS.filter(a => !SO_ENTRADAS || a.valor === 'entradas').map(a => ({
     ...a,
     oculta: a.valor === 'prestados' && semP,
     travada: a.valor === 'geral' ? (false as const) : travaDaAba(tem, a.valor as ReqAba),

@@ -3,7 +3,7 @@
 // (~L3332-3341), periodoKeyCc (~L3367). O original lia o ccState global; aqui o
 // filtro vem por parâmetro.
 import { dataOrdem } from '../../formatos';
-import type { Empresa, FiltroMovimento, NotaComTipo } from '../tipos';
+import { FILTRO_MOVIMENTO_VAZIO, type Empresa, type FiltroMovimento, type NotaComTipo } from '../tipos';
 import { todasNotasComTipo } from './empresa';
 
 type Periodo = Pick<FiltroMovimento, 'dataDe' | 'dataAte' | 'meses'>;
@@ -34,4 +34,18 @@ export function notasNoPeriodo(e: Empresa, p: Periodo): NotaComTipo[] {
 /** Prefixo das marcas de conferência: cada período tem as suas. */
 export function periodoKey(p: Periodo): string {
   return 'data|' + p.dataDe + '|' + p.dataAte + (p.meses.length ? '|' + p.meses.slice().sort().join(',') : '');
+}
+
+/**
+ * O filtro do Movimento de quando a Conferência abre dentro de uma etapa da Tarefas (a Conferência fiscal): os
+ * meses que a pessoa está fazendo ('aaaa-mm', um ou o período do Em Lote) e as datas do primeiro dia do primeiro
+ * mês ao último dia do último — tudo roda dentro desse período. Mês inválido fica de fora; sem nenhum, o vazio.
+ */
+export function filtroDoPeriodo(meses: readonly string[]): FiltroMovimento {
+  const validos = [...new Set(meses.filter(m => /^\d{4}-(0[1-9]|1[0-2])$/.test(m)))].sort();
+  if (!validos.length) return { ...FILTRO_MOVIMENTO_VAZIO };
+  const [a1, m1] = validos[0].split('-');
+  const [a2, m2] = validos[validos.length - 1].split('-');
+  const ultimoDia = new Date(Date.UTC(Number(a2), Number(m2), 0)).getUTCDate();
+  return { ...FILTRO_MOVIMENTO_VAZIO, meses: validos, dataDe: '01/' + m1 + '/' + a1, dataAte: String(ultimoDia).padStart(2, '0') + '/' + m2 + '/' + a2 };
 }

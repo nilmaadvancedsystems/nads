@@ -6,6 +6,10 @@
 //  1. conferido: mesma data e mesmo valor (entre vários, o de histórico mais parecido);
 //  2. duplicado: o que sobrou e é igual (data, valor e histórico parecido) a um já conferido do
 //     mesmo lado — lançado duas vezes no sistema, ou repetido no extrato;
+//  2b. conferido pelo total do dia: a cobrança em lote (o banco credita num lançamento só, o razão lança
+//     cliente por cliente) — no mesmo dia, o que sobrou dos dois lados soma igual, no centavo;
+//  2c. depois do passo 3, o total do dia de novo e, no que ainda não fecha, lote a lote (os do sistema que somam
+//     exatamente cada lote do extrato);
 //  3. diferente (data): mesmo valor, data até `tolerancia` dias de distância (a mais próxima);
 //  4. diferente (sinal): mesmo valor com sinal trocado, dentro da tolerância;
 //  5. diferente (valor): mesma data (ou dentro da tolerância) e histórico parecido, valor diferente;
@@ -77,6 +81,30 @@ export function conferir(extrato: LancamentoDoArquivo[], sistema: LancamentoDoAr
     }
   }
 
+  // 2b. pelo total do dia (Vitor, 01/10/2026; a 292 no Sicoob): "CRÉD.LIQ.COBRANÇA DOC.: 1820477" 5.852,54 no extrato
+  // e, no razão, os clientes daquele lote (com descontos e juros dentro). No mesmo dia, se o que sobrou do extrato soma
+  // exatamente o que sobrou do sistema, tudo daquele dia está conferido. Um contra um fica para os passos de baixo.
+  const soma = (l: Item[]) => l.reduce((t, x) => t + x.valor, 0);
+  const sobrasPorDia = () => {
+    const sb = new Map<number, Item[]>(), sc = new Map<number, Item[]>();
+    for (const b of B) if (!usadoB.has(b.id)) (sb.get(b.dia) || sb.set(b.dia, []).get(b.dia)!).push(b);
+    for (const c of C) if (!usadoC.has(c.id)) (sc.get(c.dia) || sc.set(c.dia, []).get(c.dia)!).push(c);
+    return { sb, sc };
+  };
+  const conferirGrupo = (bs: Item[], cs: Item[], motivo: string) => {
+    for (const b of bs) { usadoB.add(b.id); linha({ situacao: 'ok', extrato: b, sistema: null, motivo }); }
+    for (const c of cs) { usadoC.add(c.id); linha({ situacao: 'ok', extrato: null, sistema: c, motivo }); }
+  };
+  const peloTotalDoDia = () => {
+    const { sb, sc } = sobrasPorDia();
+    for (const [dia, bs] of sb) {
+      const cs = sc.get(dia);
+      if (!cs || bs.length + cs.length < 3 || soma(bs) !== soma(cs)) continue;
+      conferirGrupo(bs, cs, 'Conferido pelo total do dia: ' + bs.length + (bs.length === 1 ? ' lançamento' : ' lançamentos') + ' no extrato, ' + cs.length + ' no sistema, somando ' + valorBR(soma(bs)));
+    }
+  };
+  peloTotalDoDia();
+
   // sobras do sistema por dia, para achar vizinhos
   const porDia = new Map<number, Item[]>();
   for (const c of C) if (!usadoC.has(c.id)) { const l = porDia.get(c.dia); if (l) l.push(c); else porDia.set(c.dia, [c]); }
@@ -101,6 +129,20 @@ export function conferir(extrato: LancamentoDoArquivo[], sistema: LancamentoDoAr
         if (d < dist || (d === dist && p > nota)) { dist = d; nota = p; melhor = c; }
       }
       if (melhor) casar(b, melhor, { tipoDiferenca: 'data', motivo: 'Data diferente: ' + dist + (dist === 1 ? ' dia' : ' dias') });
+    }
+  }
+
+  // 3b. tirado o que só mudou de data, o resto do dia pode fechar; o que ainda não fecha, lote a lote: os
+  // lançamentos do sistema do mesmo dia que somam exatamente cada lote do extrato (assim só o que está errado sobra)
+  peloTotalDoDia();
+  {
+    const { sb, sc } = sobrasPorDia();
+    for (const [dia, bs] of sb) {
+      for (const b of bs.slice().sort((x, y) => Math.abs(y.valor) - Math.abs(x.valor))) {
+        const livres = (sc.get(dia) || []).filter(c => !usadoC.has(c.id) && (c.valor > 0) === (b.valor > 0));
+        const grupo = subconjuntoQueSoma(livres, b.valor);
+        if (grupo) conferirGrupo([b], grupo, 'Conferido pelo lote: ' + grupo.length + ' lançamentos no sistema somando ' + valorBR(b.valor));
+      }
     }
   }
 
@@ -139,6 +181,30 @@ export function conferir(extrato: LancamentoDoArquivo[], sistema: LancamentoDoAr
   const contagem: Record<Situacao, number> = { ok: 0, faltando: 0, diferente: 0, amais: 0, duplicado: 0 };
   for (const l of final) contagem[l.situacao]++;
   return { linhas: final, sistemaInvertido, contagem };
+}
+
+/**
+ * Os lançamentos (2 ou mais, do mesmo sinal) que somam exatamente o alvo; null = nenhum, ou a busca passou do
+ * limite (dia com lançamentos demais). Os maiores primeiro, cortando quando o que resta não alcança o alvo.
+ */
+function subconjuntoQueSoma<T extends { valor: number }>(itens: T[], alvo: number, limite = 200000): T[] | null {
+  const v = itens.map(x => ({ x, a: Math.abs(x.valor) })).sort((p, q) => q.a - p.a);
+  const t = Math.abs(alvo);
+  const resto: number[] = [];
+  for (let i = v.length - 1, r = 0; i >= 0; i--) { r += v[i].a; resto[i] = r; }
+  let passos = 0;
+  const escolhidos: number[] = [];
+  const buscar = (i: number, falta: number): boolean => {
+    if (falta === 0) return escolhidos.length >= 2;
+    if (i >= v.length || resto[i] < falta || ++passos > limite) return false;
+    if (v[i].a <= falta) {
+      escolhidos.push(i);
+      if (buscar(i + 1, falta - v[i].a)) return true;
+      escolhidos.pop();
+    }
+    return buscar(i + 1, falta);
+  };
+  return buscar(0, t) ? escolhidos.map(i => v[i].x) : null;
 }
 
 /** Entradas, saídas e o líquido de uma lista (centavos). */

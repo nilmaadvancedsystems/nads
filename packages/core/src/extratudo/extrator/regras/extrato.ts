@@ -21,6 +21,24 @@ const RE_SALDO = /\bs\s?a\s?l\s?d\s?o\b|saldo|total|resumo|limite|bloquead|dispo
 const RE_SAIDA = /\b(pagto|pagamento|pag\b|tarifa|tar\b|saque|debito|deb\b|compra|enviad|envio|iof|juros|encargo|tributo|darf|gps|das\b|pago|aplicacao|cesta|mensalidade|cheque compensado|chq)/;
 const RE_ENTRADA = /\b(recebid|receb\b|credito|cred\b|deposito|dep\b|resgate|estorno|rendimento|liquidacao cobranca|cobranca)/;
 
+/**
+ * O saldo antes do primeiro lançamento, como o extrato traz: a primeira linha "SALDO ANTERIOR" (ou "saldo inicial")
+ * com valor; o valor é o da direita (a coluna Saldo), com o sinal dele (−, D/C, parênteses). Sem a linha, null.
+ */
+export function saldoAnteriorDoPdf(paginas: ItemDeTexto[][]): number | null {
+  for (const linhas of paginas.map(montarLinhas)) {
+    for (const l of linhas) {
+      if (!/saldo\s*(anterior|inicial)/i.test(normalizarTexto(l.texto))) continue;
+      const t = l.tokens;
+      for (let i = t.length - 1; i >= 0; i--) {
+        if (RE_SINAL.test(t[i].s) && i > 0 && RE_VALOR.test(t[i - 1].s)) return centavos(t[i - 1].s + ' ' + t[i].s.replace(/[()]/g, ''));
+        if (RE_VALOR.test(t[i].s)) return centavos(t[i].s);
+      }
+    }
+  }
+  return null;
+}
+
 /** Junta os pedaços da mesma altura numa linha, da esquerda para a direita, e separa as palavras. */
 export function montarLinhas(itens: ItemDeTexto[]): Linha[] {
   const ord = itens.filter(i => i.texto && i.texto.trim()).sort((a, b) => b.y - a.y || a.x - b.x);

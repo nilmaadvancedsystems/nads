@@ -187,6 +187,22 @@ a{color:var(--accent);}
 #brandTagEmpresa:hover{background:var(--hover-bg);}
 #gearPop{top:calc(100% + 4px);left:0;}
 .gh-header-spacer{flex:1;}
+/* o canto direito do cabeçalho, como o do GitHub: botões quadrados só com ícone, um separador e o perfil (redondo) */
+.gh-topo-direita{display:flex;align-items:center;gap:8px;flex:none;}
+.gh-topo-grupos{display:flex;align-items:center;gap:8px;}
+.gh-topo-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--ink-muted);cursor:pointer;}
+.gh-topo-btn svg{width:16px;height:16px;opacity:.4;}
+.gh-topo-btn:hover:not(:disabled){background:var(--hover-bg);}
+.gh-topo-btn:hover:not(:disabled) svg{opacity:1;}
+/* o grupo da vez: o ícone normal; os outros apagados (como os do GitHub, sem cor) */
+.gh-topo-btn.ativo{color:var(--ink);}
+.gh-topo-btn.ativo svg{opacity:1;}
+.gh-topo-btn:disabled{cursor:not-allowed;}
+.gh-topo-sep{width:1px;height:20px;background:var(--border);}
+.gh-avatar{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border:1px solid var(--border);border-radius:50%;background:var(--surface-3);color:var(--ink);font-size:12px;font-weight:600;cursor:pointer;}
+.gh-avatar:hover{border-color:var(--border-strong);}
+.gh-avatar .menu-seta{display:none;}
+@media (max-width:768px){.gh-topo-grupos,.gh-topo-sep{display:none;}}
 
 nav.menu{display:flex;align-items:center;gap:8px;padding:0 16px;overflow-x:auto;scrollbar-width:none;}
 nav.menu::-webkit-scrollbar{display:none;}
@@ -1250,6 +1266,14 @@ tr.linha-atual > td{background:var(--hover-bg);}
 /* ---------------------------------- Extrator na etapa da Tarefas: importar (em lista) e conferir ---------------------------------- */
 /* cada banco num cartão, com um espaço pequeno entre eles */
 .imp-lista{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+/* a Importação da Conferência numa aba da primeira etapa: o título e as ações (Reimportar) em cima, como na Conferência; aberta sozinha, as abas em cima da página */
+.imp-conf-topo{padding:0 0 12px;margin-bottom:16px;}
+/* Cadastro › Empresa: uma regra por linha (o nome e para que serve à esquerda; as opções à direita) */
+.cad-regra{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 16px;border:1px solid var(--border);border-radius:6px;}
+.cad-regra-txt{display:flex;flex-direction:column;gap:2px;}
+.cad-regra-opcoes{display:flex;gap:6px;flex:none;}
+.imp-conf-acoes{display:flex;gap:8px;flex-wrap:wrap;}
+.imp-abas{margin:0 0 16px;border-bottom:1px solid var(--border);padding:0;}
 .imp-bloco{border:1px solid var(--border);border-radius:6px;background:var(--surface);}
 .imp-linha{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;}
 .imp-ico{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;background:var(--surface-2);flex:none;}
@@ -1379,9 +1403,38 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-mov thead th{background:var(--surface-2);}
 /* a busca do movimento e, na mesma linha, o total do que ela achou */
 .imp-mov-topo{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
-/* "Todos" ao lado da busca: aceso = o movimento de todos os extratos importados */
-.imp-mov-busca + .imp-mov-todos{margin-left:-8px;}
-.imp-mov-todos.ativo{color:var(--accent);border-color:var(--accent);background:var(--hover-bg);}
+/* Pendências do banco: a faixa grudada embaixo da linha do banco (abre e fecha) e a planilha das correções */
+.imp-pend{border-top:1px solid var(--border);}
+.imp-pend-barra{display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;border:none;background:var(--warn-soft);color:var(--ink);font:inherit;font-size:14px;text-align:left;cursor:pointer;}
+.imp-pend-barra:hover{background:color-mix(in srgb, var(--warn) 18%, transparent);}
+.imp-pend-barra .hint{margin:0;}
+.imp-pend-qtd{display:inline-block;min-width:20px;padding:0 6px;border-radius:10px;background:var(--surface-3);font-size:12px;font-weight:600;text-align:center;}
+.imp-pend-seta{width:16px;height:16px;flex:none;color:var(--ink-muted);transform:rotate(-90deg);transition:transform .12s ease;}
+.imp-pend.aberta .imp-pend-seta{transform:none;}
+.imp-pend-ico{width:16px;height:16px;flex:none;color:var(--warn);}
+.imp-pend:last-child .imp-pend-barra{border-radius:0 0 6px 6px;}
+.imp-pend.aberta .imp-pend-barra{border-radius:0;}
+.imp-pend-corpo{padding:12px;display:flex;flex-direction:column;gap:8px;}
+.imp-pend-corpo .hint{margin:0;}
+/* com cara de planilha: as linhas de grade em todas as células */
+.imp-planilha{border-collapse:collapse;}
+.imp-planilha th,.imp-planilha td{border:1px solid var(--border);vertical-align:top;}
+.imp-planilha th{background:var(--surface-2);}
+.imp-planilha-dia,.imp-planilha-sit{white-space:nowrap;}
+.imp-planilha-dia{font-variant-numeric:tabular-nums;}
+.imp-planilha-lanc .hint{display:block;margin-top:2px;}
+.imp-planilha-dica{color:var(--warn);}
+/* banco Ok (extrato e razão batem no período): a setinha fica apagada e não abre */
+.imp-ok .imp-seta{opacity:.35;cursor:default;}
+/* o olho (PDF do Drive) colado na busca e, grudado à direita dele, o mês que a tabela mostra */
+.imp-mov-busca + .imp-mov-pdf, .imp-mov-busca + .imp-mov-periodo{margin-left:-8px;}
+.imp-mov-periodo{display:inline-flex;align-items:center;height:32px;padding:0 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;}
+.imp-mov-pdf + .imp-mov-periodo{margin-left:-17px;border-top-left-radius:0;border-bottom-left-radius:0;}
+.imp-mov-topo .imp-mov-pdf:has(+ .imp-mov-periodo){border-top-right-radius:0;border-bottom-right-radius:0;}
+/* o Drive buscando vários meses vira "Cancelar"; o resto da tela fica travado até acabar */
+.imp-cancelar{border-color:var(--accent);}
+label.btn.is-locked{opacity:.5;pointer-events:none;}
+.imp-topo.travado .popover-wrap > .btn{opacity:.5;pointer-events:none;}
 .imp-mov-total{display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink-muted);}
 .imp-mov-total b{font-weight:600;font-variant-numeric:tabular-nums;margin-left:4px;}
 .imp-mov-total > span:first-child b{margin-left:0;color:var(--ink);}
@@ -1405,10 +1458,7 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 /* o rodapé da Casca: depois de tudo, na largura toda (só se vê rolando até o fim); a logo oficial (o tigre) */
 .rodape{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--border);
   font-size:12px;line-height:20px;color:var(--ink-muted);}
-.rodape-marca{display:block;width:24px;height:24px;flex:none;border-radius:50%;}
 /* no tema escuro, a logo com as cores invertidas (círculo preto, tigre branco), como o Vitor mandou */
-:root[data-theme="dark"] .rodape-marca{filter:invert(1);}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .rodape-marca{filter:invert(1);}}
 @media print{.rodape{display:none;}}
 
 /* Pedir extratos (Gmail / WhatsApp): a janela com Para, Bancos, Competência e a mensagem pronta */
@@ -1943,3 +1993,79 @@ main.main:has(> .content > .explorador){padding:0;}
 .envio-campo > span{color:var(--ink-muted);font-size:12px;}
 .envio-campo select{height:32px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;padding:0 8px;min-width:0;}
 .envio-onde{display:flex;align-items:center;gap:8px;font-size:13px !important;padding:8px 10px !important;border-radius:6px;background:var(--surface-2);}
+
+/* ---------------------------------- Drive com a cara do GitHub (30/09/2026) ----------------------------------
+   Só a disposição: as peças são as do nads (tarefas-barra-topo, MenuSuspenso, tarefas-contador, busca-curta, btn,
+   icon-btn, badge, card + card-head + table-wrap, subnav-item, gh-crumbs). Na pasta do ano, a lista e o Sobre ao lado;
+   no cliente, a barra lateral das pastas e a lista. */
+.drive{position:relative;}
+.drive.tela-cheia{position:fixed;inset:0;z-index:900;background:var(--bg);overflow:auto;padding:16px;}
+.drive-inicio{max-width:1280px;margin:0 auto;}
+.drive-titulo{padding-bottom:16px;border-bottom:1px solid var(--border);}
+.drive-titulo .page-title{margin:0;}
+.drive-colunas{display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:24px;align-items:start;}
+.drive-sobre p{margin:0 0 12px;font-size:14px;}
+.drive-sobre-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--ink-muted);}
+.drive-sobre-lista li{display:flex;gap:8px;align-items:flex-start;}
+.drive-sobre-lista svg{width:16px;height:16px;flex:none;}
+.drive-sobre-lista b{color:var(--ink);}
+.drive-faixa{display:inline-flex;align-items:center;gap:6px;}
+.drive-faixa svg{width:14px;height:14px;}
+.drive-col-nome{width:100%;max-width:0;}
+.drive-card td:not(.drive-col-nome){white-space:nowrap;}
+.drive-col-nome{min-width:200px;}
+.drive-card .drive-nome{display:flex;width:100%;}
+.drive-card .drive-nome > span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.drive-card .drive-onde{margin-left:8px;}
+/* uma caixa só, como a do GitHub: a faixa em cima e a tabela embaixo, de ponta a ponta e sem limite de altura (quem rola é a página) */
+.drive-card{padding:0;overflow:hidden;}
+.drive-card > .card-head{margin:0;border-radius:0;}
+.drive-card .table-wrap{border:none;border-radius:0;max-height:none;overflow:visible;}
+.drive-card thead th{position:static;}
+.drive-card .empty{margin:0;padding:24px 16px;}
+/* a pasta cinza e cheia, como a do GitHub */
+.drive .drive-ico.pasta{color:var(--ink-muted);fill:currentColor;}
+/* a faixa numa caixa própria (o navegador de arquivos), como a do último commit do GitHub */
+.drive-faixa-so{margin-bottom:16px;}
+.drive-faixa-so > .card-head{border-bottom:none;}
+.drive-faixa-arquivo{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:50%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:13px;}
+.drive-faixa-arquivo .hint{margin-left:4px;}
+/* o ano na largura toda do painel, como o main ▾ */
+.drive-ano-largo{flex:1;min-width:0;}
+.drive-ano-largo .popover-wrap,.drive-ano-largo .btn{width:100%;}
+.drive-ano-largo .btn{justify-content:flex-start;}
+.drive-ano-largo .btn .menu-seta{margin-left:auto;}
+/* a trilha: o caminho em link e a pasta aberta em negrito */
+.drive-trilha .gh-crumb{color:var(--ink);font-weight:600;}
+.drive-trilha .gh-crumb:hover{text-decoration:underline;}
+/* a pasta aberta na árvore: só o fundo, sem a barrinha vermelha */
+.drive-painel .subnav-item.active::before{display:none;}
+.drive-trilha .gh-crumb-fim{color:var(--ink);font-weight:600;}
+.drive-navegador{display:grid;grid-template-columns:296px minmax(0,1fr);align-items:stretch;}
+/* com a altura medida (a janela), cada coluna rola por si: o painel e a lista */
+.drive-navegador[style] > *{height:100%;overflow:auto;scrollbar-width:thin;}
+.drive.tela-cheia .drive-navegador{height:calc(100vh - 32px);}
+.drive.tela-cheia .drive-navegador > *{height:100%;overflow:auto;}
+.drive-navegador.sem-painel{grid-template-columns:minmax(0,1fr);}
+.drive-painel{min-height:0;padding:16px;gap:8px;}
+/* o navegador de arquivos encosta nas bordas, como no GitHub: sem o espaço da página (só o do painel e o da lista) */
+@media (min-width:769px){ .main:has(.drive-navegador){padding:0;} }
+.drive-painel .tarefas-barra-topo{margin-bottom:0;flex-wrap:nowrap;}
+.drive-painel .subnav-itens{margin-top:8px;}
+/* o + e a lupa juntos, como o grupo do GitHub */
+.drive-grupo{display:inline-flex;flex:none;}
+.drive-grupo .icon-btn{border-radius:0;}
+.drive-grupo .icon-btn:first-child{border-radius:6px 0 0 6px;}
+.drive-grupo .icon-btn:last-child{border-radius:0 6px 6px 0;margin-left:-1px;}
+.drive-painel-titulo{font-size:16px;font-weight:600;}
+.drive-no{display:flex;align-items:center;gap:2px;}
+.drive-no .subnav-item{flex:1;min-width:0;}
+.drive-no .subnav-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.drive-direita{padding:16px 24px 32px;min-width:0;}
+.drive-trilha{font-size:16px;flex-wrap:wrap;min-width:0;}
+@media (max-width:1012px){ .drive-colunas{grid-template-columns:minmax(0,1fr);} }
+@media (max-width:768px){
+  .drive-navegador{grid-template-columns:minmax(0,1fr);}
+  .drive-painel{position:static;max-height:none;}
+  .drive-direita{padding:16px;}
+}

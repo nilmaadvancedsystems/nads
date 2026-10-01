@@ -109,3 +109,11 @@ export function useAcesso(): RepoAcesso {
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
 }
+
+/** Só a regra "presta serviços?" do Cadastro da empresa (null = não informado, ou o cadastro ainda não chegou). */
+export function usePrestaServico(nome: string | null, codigo: number | null): boolean | null {
+  const repo = repoDoCadastro();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  if (!nome || !repo.carregada(nome)) return null;
+  return repo.cadastro(nome, codigo).prestaServico ?? null;
+}

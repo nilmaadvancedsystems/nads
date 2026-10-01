@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { anoDoTexto, lancamentosDoPdf, type ItemDeTexto } from './extrato';
+import { anoDoTexto, lancamentosDoPdf, saldoAnteriorDoPdf, type ItemDeTexto } from './extrato';
 
 /** Monta uma página: cada linha é [texto, x] com a mesma altura; as linhas descem de 14 em 14. */
 function pagina(linhas: [string, number][][]): ItemDeTexto[] {
@@ -65,5 +65,19 @@ describe('extrato em PDF', () => {
     expect(anoDoTexto('Período 01/08/2025 a 31/08/2025 emitido em 02/09/2026', 2000)).toBe(2025);
     expect(anoDoTexto('Extrato de agosto de 2024', 2000)).toBe(2024);
     expect(anoDoTexto('nada', 2000)).toBe(2000);
+  });
+});
+
+describe('saldo anterior do extrato (abre a conta quando não há mês antes)', () => {
+  it('a linha SALDO ANTERIOR: o valor da direita, com o sinal', () => {
+    const p = pagina([
+      [['Data', 40], ['Lançamento', 100], ['Valor (R$)', 400], ['Saldo (R$)', 480]],
+      [['31/12/2025', 40], ['SALDO ANTERIOR', 100], ['10.000,00', 480]],
+      [['02/01/2026', 40], ['PIX RECEBIDO', 100], ['4.500,00', 400], ['14.500,00', 480]],
+    ]);
+    expect(saldoAnteriorDoPdf([p])).toBe(1000000);
+    const d = pagina([[['SALDO ANTERIOR', 100], ['1.250,30', 470], ['D', 520]]]);
+    expect(saldoAnteriorDoPdf([d])).toBe(-125030);
+    expect(saldoAnteriorDoPdf([pagina([[['02/01/2026', 40], ['PIX', 100], ['10,00', 400]]])])).toBeNull();
   });
 });

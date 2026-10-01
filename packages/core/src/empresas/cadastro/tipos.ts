@@ -82,6 +82,11 @@ export interface CadastroDaEmpresa {
   bancos: ContaBancaria[] | null;
   /** null = as contas padrão nunca foram cadastradas (o Creditor segue com as que ele salvou) */
   contasPadrao: ContasPadrao | null;
+  /**
+   * A empresa presta serviços? (Vitor, 30/09/2026: a regra fica no Cadastro.) Decide a aba Prestados na Importação
+   * e os serviços prestados na Conferência. Sem = ainda não informado.
+   */
+  prestaServico?: boolean;
   historico: RegistroCadastro[];
   /** o resumo do plano de contas (o plano mora em outro documento): para a lista de empresas */
   plano?: { contas: number; importadoEm: string };

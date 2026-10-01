@@ -1,11 +1,10 @@
-// O executor: dentro do cabeçalho padrão (☰, "Tarefas / 292 · EMPRESA / Agosto/2026"), com os grupos da rotina nas
-// abas de cima (Preparação, Ativo, Passivo, Resultado, Fechamento, como as abas do GitHub, com quantas etapas estão
-// feitas). Na Preparação a ferramenta ocupa a tela toda (a Conferência fiscal é o Concilia aí inteiro); dali em
-// diante, as etapas do grupo ficam na caixa à esquerda (como o "Insights" do GitHub), em checklist (caixinha
-// marcada = feita; clicar numa anterior volta para ela e tira o check). A página é só a ferramenta da etapa, com a
-// altura toda; embaixo, a barra com as saídas da etapa (Pedir extrato, Buscar no Drive…), Interromper e
-// Próximo.
-import { Alerta, Casca, Icone, useCarregando, useFerramentaNaEtapa, type NomeIcone } from '@nads/ui';
+// O executor: dentro do cabeçalho padrão (☰, "Tarefas / 292 · EMPRESA / Agosto/2026"), com as etapas em
+// checklist na barra lateral, com o nome de cada grupo em cima (Preparação, Ativo, Passivo, Resultado, Fechamento;
+// caixinha marcada = feita; clicar numa anterior volta para ela e tira o check). A página é só a ferramenta da
+// etapa, com a altura toda; embaixo, a barra com as saídas da etapa (Pedir extrato, Buscar no Drive…), Interromper e
+// Próximo. No canto direito do cabeçalho, como os botões do GitHub: os grupos da rotina (o da vez com o ícone normal,
+// os outros apagados; clicar num de trás volta para ele) e o perfil.
+import { Alerta, Casca, Icone, MenuSuspenso, useCarregando, useFerramentaNaEtapa, type NomeIcone } from '@nads/ui';
 import { useRef } from 'react';
 import { Navigate, useParams } from 'react-router';
 import { usePonteDaFerramenta } from '../../../../comum/ponte';
@@ -15,12 +14,10 @@ import { JanelaInterromper } from './partes/JanelaInterromper';
 import { Objecoes } from './partes/Objecoes';
 import { useExecutor } from './useExecutor';
 
-/** O ícone de cada grupo nas abas de cima. */
+/** O ícone de cada grupo da rotina, no canto do cabeçalho. */
 const ICONE_DO_GRUPO: Record<string, NomeIcone> = {
   'Preparação': 'fileUp', Ativo: 'landmark', Passivo: 'relatorio', Resultado: 'barChart', Fechamento: 'checkCircle',
 };
-/** O grupo em que a ferramenta ocupa a tela toda (sem a caixa das etapas). */
-const TELA_TODA = 'Preparação';
 
 export function Executor() {
   // a competência da rota pode ser um período ('2026-06..2026-08'): a Etapa com vários meses
@@ -32,44 +29,44 @@ export function Executor() {
   usePonteDaFerramenta(iframe, vm.semMovimentoPorMes, vm.competencia, vm.marcarSemMovimento, vm.trocarCompetencia,
     vm.varios ? { meses: vm.meses, concluido: vm.periodoConcluido } : null, vm.encerrarPeriodo);
   // a ferramenta do tamanho do conteúdo dela: a página toda rola junto, numa barra só
-  const { altura, carregando: ferramentaCarregando, janelaAberta } = useFerramentaNaEtapa(iframe, vm.ferramenta?.embutir ? vm.ferramenta.url : undefined);
+  // um aplicativo inteiro dentro da etapa (a Conferência) manda as abas dele: elas ficam no cabeçalho, por cima do checklist
+  const { altura, carregando: ferramentaCarregando, janelaAberta, abas, abrirAba } = useFerramentaNaEtapa(iframe, vm.ferramenta?.embutir ? vm.ferramenta.url : undefined);
   // uma barra só, no alto da página: a da Tarefas e a da ferramenta juntas
   useCarregando(vm.carregando || vm.conferindo || ferramentaCarregando);
   if (!vm.empresa) return <Navigate to={BASE} replace />;
   // o mês faz parte de um período prometido (vários meses): abre o período
   if (vm.irParaPeriodo) return <Navigate to={vm.irParaPeriodo} replace />;
 
-  // os grupos da rotina (abas de cima): o da vez marcado; os de trás abrem (voltam para a primeira etapa deles); os da frente travam
-  const grupos = [...new Set(vm.etapas.map(e => e.secao || ''))];
-  const grupoDaVez = vm.etapa?.secao || '';
-  const iDaVez = grupos.indexOf(grupoDaVez);
-  const abas = vm.etapa ? grupos.map((g, i) => {
-    const es = vm.etapas.filter(e => (e.secao || '') === g);
-    return {
-      id: g, rotulo: g, icone: ICONE_DO_GRUPO[g] || ('list' as NomeIcone), ativa: g === grupoDaVez, travada: i > iDaVez,
-      contador: es.filter(e => e.situacao === 'feita').length + '/' + es.length,
-    };
-  }) : [];
-  const abrirGrupo = (g: string) => {
-    const i = grupos.indexOf(g);
-    if (i < 0 || i >= iDaVez) return;
-    const primeira = vm.etapas.find(e => (e.secao || '') === g);
-    if (primeira) vm.voltarPara(primeira.id);
-  };
-
-  // a caixa da esquerda: só as etapas do grupo da vez
-  const checklist = vm.etapas.filter(e => (e.secao || '') === grupoDaVez).map(e => ({
+  // o checklist da esquerda: só as etapas do grupo da vez (os outros grupos ficam nos botões do canto); tudo pronto, todas
+  const checklist = vm.etapas.filter(e => !vm.etapa || e.secao === vm.etapa.secao).map(e => ({
     // no período, quantos meses a etapa já tem feitos ("Importação · 1/3")
-    id: e.id, rotulo: e.nome + (vm.varios && e.feitos > 0 && e.feitos < vm.meses.length ? ' · ' + e.feitos + '/' + vm.meses.length : ''), icone: 'check' as const, grupo: e.grupo, ativa: e.atual,
+    id: e.id, rotulo: e.nome + (vm.varios && e.feitos > 0 && e.feitos < vm.meses.length ? ' · ' + e.feitos + '/' + vm.meses.length : ''), icone: 'check' as const, grupo: e.grupo, titulo: e.secao, ativa: e.atual,
     caixa: e.situacao === 'feita' ? 'marcada' as const : e.situacao === 'interrompida' ? 'parada' as const : 'vazia' as const,
   }));
 
+  const topo = (
+    <>
+      <nav className="gh-topo-grupos" aria-label="Grupos da rotina">
+        {vm.grupos.map(g => (
+          <button key={g.nome} type="button" className={'gh-topo-btn' + (g.atual ? ' ativo' : '')}
+            disabled={g.travado} onClick={() => vm.abrirGrupo(g.nome)} title={g.nome + ' · ' + g.feitas + '/' + g.total} aria-label={g.nome + ': ' + g.feitas + ' de ' + g.total}
+            aria-current={g.atual ? 'step' : undefined}>
+            <Icone nome={ICONE_DO_GRUPO[g.nome] || 'list'} />
+          </button>
+        ))}
+      </nav>
+      <span className="gh-topo-sep" aria-hidden="true" />
+      <MenuSuspenso rotulo={casca.perfil.iniciais} className="gh-avatar" dica={casca.perfil.nome} titulo={casca.perfil.nome} direita
+        itens={[{ rotulo: 'Voltar às empresas', icone: 'home', onClick: vm.sair }, { rotulo: casca.perfil.sair, icone: 'logOut', onClick: casca.trocarPessoa }]} />
+    </>
+  );
+
   return (
-    <Casca sistema="Tarefas" larga rotuloLateral="Etapas" lateral={!vm.etapa || grupoDaVez === TELA_TODA ? 'nenhuma' : 'caixa'}
+    <Casca sistema="Tarefas" larga rotuloLateral="Etapas" topoDireita={topo}
       empresa={{ codigo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome, nome: '' }}
 
       versao={casca.versao} secoes={checklist} paginas={abas} titulo=""
-      onSecao={vm.voltarPara} onPagina={abrirGrupo} onInicio={vm.sair} onAplicativos={casca.inicio}
+      onSecao={vm.voltarPara} onPagina={abrirAba} onInicio={vm.sair} onAplicativos={casca.inicio}
       onEmpresa={vm.abrirEmpresa} aplicativos={casca.aplicacoes} onAplicativo={casca.onAplicacao}>
       {vm.carregando ? null : !vm.etapa ? (
         <div className="executor-fim">

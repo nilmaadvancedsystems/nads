@@ -18,8 +18,9 @@ export { EXTENSOES_EXTRATO, EXTENSOES_SISTEMA, abasDaPlanilha, lerArquivo } from
 export { definirWorkerDoPdf, ehPdf, itensDoPdf } from './arquivos/pdf';
 export type { RepoExtrator } from './repo';
 export { arquivoDeTeste } from './regras/teste';
-export { bancoDoArquivo, bancosNaCompetencia, bancosDaEmpresaNa, arquivosDoBanco, adicionarBanco } from './regras/bancos';
-export { movimentoDoExtrato, TODOS_OS_MESES, type LinhaDoMovimento, type MovimentoDoExtrato } from './regras/movimento';
+export { bancoDoArquivo, bancosNaCompetencia, bancosDaEmpresaNa, arquivosDoBanco, adicionarBanco, bancoOkNoPeriodo } from './regras/bancos';
+export { movimentoDoExtrato, TODOS_OS_MESES, extratosSemSaldoAnterior, definirSaldoAnterior, type LinhaDoMovimento, type MovimentoDoExtrato } from './regras/movimento';
+export { correcoesDoRazao, ROTULO_CORRECAO, type CorrecaoDoRazao, type TipoCorrecao } from './regras/correcoes';
 export { acharExtratoNoDrive, mensagemDaBuscaDoExtrato, type ContaProcurada } from './regras/drive';
 export { gravacao, semMudanca, empresaDoBanco, type Gravacao, type DocEmpresaExtrator } from './regras/banco';
 export { criarRepoExtratorMemoria, type Guarda } from './repo.memoria';
