@@ -2,7 +2,7 @@
 //   "banco"    → o mesmo Firestore da conferencia-nilma.web.app (site publicado, `npm run dev:banco`)
 //   "exemplos" → empresas de exemplo em memória, nada vai para o banco (`npm run dev`, prévias)
 // O repositório só é criado quando alguém abre a Conferência, e uma vez só.
-import { conferencia } from '@nads/core';
+import { conferencia, demo } from '@nads/core';
 import { criarRepoConferenciaFirestore, type RepoConferenciaFirestore } from './conferencia.firestore';
 
 export const noBanco = import.meta.env.VITE_FONTE === 'banco';
@@ -10,7 +10,8 @@ export const noBanco = import.meta.env.VITE_FONTE === 'banco';
 let repo: conferencia.RepoConferencia | null = null;
 
 export function repoDaConferencia(): conferencia.RepoConferencia {
-  if (!repo) repo = noBanco ? criarRepoConferenciaFirestore() : conferencia.criarRepoConferenciaMemoria();
+  // a empresa de teste (Personaly Company) fica neste navegador; o resto, no banco (ou nos exemplos)
+  if (!repo) repo = demo.conferenciaComDemo(noBanco ? criarRepoConferenciaFirestore() : conferencia.criarRepoConferenciaMemoria());
   return repo;
 }
 

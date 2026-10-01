@@ -2,7 +2,7 @@
 // cada uma com vários arquivos de uma vez. Lê cada arquivo no navegador (o arquivo não é guardado),
 // pergunta "apenas novas / sobrepor" quando já existe lançamento nas mesmas datas e mostra o
 // resultado na mensagem flutuante. Embaixo, os arquivos importados, com Excluir.
-import { empresas, extrator as x, tarefas } from '@nads/core';
+import { demo, empresas, extrator as x, tarefas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -163,6 +163,17 @@ export function useImportacao() {
    * PROTÓTIPO: importa um extrato ou razão inventado da competência (a da tarefa, quando vem na URL;
    * senão, o mês passado), pelo mesmo caminho de um arquivo de verdade. O nome do arquivo diz TESTE.
    */
+  /** A empresa de teste (Personaly Company): implanta os extratos ou o razão fictícios do período, como se fossem importados. */
+  async function implantarDadosDeTeste(banco: string, o: 'extratos' | demo.RazaoDeTeste) {
+    const ms = (params.get('meses') || '').split(',').filter(m => /^\d{4}-\d{2}$/.test(m));
+    const meses = ms.length ? ms : [competenciaDeTeste];
+    const lado: x.Lado = o === 'extratos' ? 'banco' : 'sistema';
+    setMensagemBruta(null);
+    setLendoLinha(banco + '|' + lado);
+    await gravarLidos(lado, o === 'extratos' ? demo.extratosDeTeste(meses) : demo.razaoDeTeste(meses, o), banco);
+    setLendoLinha(null);
+  }
+
   async function importarTeste(lado: x.Lado, banco?: string) {
     setMensagemBruta(null);
     setLendo(lado);
@@ -301,6 +312,10 @@ export function useImportacao() {
     // o mesmo banco pode entrar de novo (outra conta, com outra agência/conta)
     bancosParaAdicionar: empresas.BANCOS_CONHECIDOS,
     importarArquivos, importarDoDrive, excluirDoBanco, excluirDoPeriodo, adicionarBanco,
+    /** a empresa de teste (Personaly Company): os botões de dados fictícios (nada vai para o banco) */
+    ehEmpresaDeTeste: demo.ehEmpresaDemo(s.nome),
+    implantarDadosDeTeste,
+    apagarDadosDeTeste: () => demo.apagarDadosDeTeste(),
     /** os extratos que abrem a conta, vindos do Drive sem o saldo anterior (a linha do Drive completa sozinha) */
     extratosSemSaldo: x.extratosSemSaldoAnterior(s.empresa, primeiro),
     gravarSaldoAnterior: (arquivoId: string, saldo: number) => s.aplicar(e => x.definirSaldoAnterior(e, arquivoId, saldo, new Date())),

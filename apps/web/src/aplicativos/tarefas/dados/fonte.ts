@@ -6,7 +6,7 @@
 // Quem está trabalhando: no banco, o login com as contas do Entregas (entregas.firestore.ts, 30/09/2026);
 // nos exemplos, a pessoa escolhe o nome na lista da equipe (não há login).
 // O repositório e a sessão são criados uma vez, quando alguém abre a Tarefas. O do Cadastro, quando alguém abre o Cadastro.
-import { empresas, entregas, extrator, tarefas } from '@nads/core';
+import { demo, empresas, entregas, extrator, tarefas } from '@nads/core';
 import { criarAcessoMemoria, type RepoAcesso } from './acesso';
 import { criarAcessoFirestore } from './acesso.firestore';
 import { criarDriveFirestore } from './drive.firestore';
@@ -30,7 +30,8 @@ export function sessaoDaTarefas(): SessaoEntregas | null {
 }
 
 export function repoDaTarefas(): tarefas.RepoTarefas {
-  if (!repo) repo = noBanco ? criarRepoTarefasFirestore(empresas.EMPRESAS) : tarefas.criarRepoTarefasMemoria({ empresas: empresas.EMPRESAS });
+  // a empresa de teste (Personaly Company) fica neste navegador; o resto, no banco (ou nos exemplos)
+  if (!repo) repo = demo.tarefasComDemo(noBanco ? criarRepoTarefasFirestore(empresas.EMPRESAS) : tarefas.criarRepoTarefasMemoria({ empresas: empresas.EMPRESAS }));
   return repo;
 }
 
@@ -41,6 +42,7 @@ export function avisarErrosDoBanco(r: tarefas.RepoTarefas, aviso: (mensagem: str
 
 /** O que o Extrator guardou da empresa (arquivos e bancos adicionados), para o check automático e a página da empresa. */
 export async function extratorDaEmpresa(nome: string): Promise<extrator.EmpresaExtrator> {
+  if (demo.ehEmpresaDemo(nome)) return demo.extratorDaDemo();
   if (noBanco) return extratorNoBanco(nome);
   // exemplos: o Extrator de exemplo guarda neste navegador; lê de novo a cada conferência
   return extrator.criarRepoExtratorMemoria({ exemplos: true }).obter(nome) || extrator.empresaNova(nome);
@@ -55,20 +57,20 @@ let cadastro: empresas.cadastro.RepoCadastro | null = null;
 export function repoDoCadastro(): empresas.cadastro.RepoCadastro {
   if (!cadastro) {
     cadastro = noBanco
-      ? empresas.cadastro.criarRepoCadastro(portaCadastroFirestore(), false)
-      : empresas.cadastro.criarRepoCadastroMemoria();
+      ? empresas.cadastro.criarRepoCadastro(demo.portaCadastroComDemo(portaCadastroFirestore()), false)
+      : empresas.cadastro.criarRepoCadastro(demo.portaCadastroComDemo(empresas.cadastro.portaCadastroMemoria()), true);
   }
   return cadastro;
 }
 
 /** O documento da empresa na Conferência (para montar o plano pelo balancete). Nos exemplos, não há. */
 export async function conferenciaDaEmpresa(nome: string): Promise<Record<string, unknown> | null> {
-  return noBanco ? conferenciaNoBanco(nome) : null;
+  return noBanco && !demo.ehEmpresaDemo(nome) ? conferenciaNoBanco(nome) : null;
 }
 
 /** O balancete de Clientes › Balancetes do Entregas (para montar o plano). Nos exemplos, não há. */
 export async function balanceteDoEntregas(codigo: number | null): Promise<Record<string, unknown> | null> {
-  return noBanco && codigo != null ? balanceteNoEntregas(codigo) : null;
+  return noBanco && codigo != null && codigo !== demo.EMPRESA_DEMO.codigo ? balanceteNoEntregas(codigo) : null;
 }
 
 /** Clientes de exemplo do Entregas (os bancos que o robô teria aprendido). */
