@@ -2186,3 +2186,6 @@ main.main:has(> .content > .explorador){padding:0;}
 :root[data-theme="dark"] .abertura-contabilidade{filter:invert(1) hue-rotate(180deg);}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .abertura-contabilidade{filter:invert(1) hue-rotate(180deg);}}
 @media (prefers-reduced-motion: reduce){.abertura-logo,.abertura-logo > *,.abertura-logo .abertura-a,.abertura-logo .abertura-b{animation:none;}.abertura-brilho{display:none;}}
+
+/* Pedir documentos: o Gmail de onde o pedido sai (o do setor de quem pede) */
+.pedir-de{font-size:14px;line-height:24px;color:var(--ink);font-weight:600;}

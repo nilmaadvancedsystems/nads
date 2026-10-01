@@ -14,7 +14,7 @@
 // usuário e senha — os mesmos pedidos (mapa das pastas e pedido ao robô) vão por mensagem para a
 // página do Entregas (nilma-ponte-extratudo.js), que responde com o login dela. O download continua
 // daqui, do mesmo link do robô.
-import { creditor as cr } from '@nads/core';
+import { creditor as cr, entregas } from '@nads/core';
 import { getApps, initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
 import { addDoc, collection, doc, getDoc, getDocs, getFirestore, limit, onSnapshot, query, serverTimestamp, where } from 'firebase/firestore';
@@ -262,6 +262,17 @@ export function criarDriveFirestore(): cr.RepoDrive {
         }, e => { clearTimeout(fim); falha(e); });
       });
       return { id: ref.id, situacao };
+    },
+
+    /** De qual Gmail o pedido sai: o setor de quem pede (usuarios) e o endereço da caixa (robo/estado.caixas). */
+    async remetente() {
+      const u = auth.currentUser;
+      if (!u) throw new Error('Entre com o usuário do Entregas primeiro.');
+      const [usuario, estado] = await Promise.all([
+        getDoc(doc(db, 'usuarios', u.uid)).then(d => d.data() || null, () => null),
+        getDoc(doc(db, 'robo', 'estado')).then(d => d.data() || null, () => null),
+      ]);
+      return entregas.remetenteDoPedido(usuario, estado?.caixas);
     },
 
     async situacaoDosEmails(ids) {

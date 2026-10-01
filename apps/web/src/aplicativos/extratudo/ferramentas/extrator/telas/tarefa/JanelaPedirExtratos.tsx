@@ -35,6 +35,12 @@ export function JanelaPedirExtratos({ p }: { p: P }) {
 
         {!conferir ? (
           <div className="pedir-corpo">
+            {p.de && (
+              <div className="pedir-campo">
+                <span className="pedir-rotulo">De</span>
+                {p.de.carregando ? <span className="hint">…</span> : p.de.erro ? <span className="pedir-erro">{p.de.erro}</span> : <span className="pedir-de">{p.de.email}</span>}
+              </div>
+            )}
             <div className="pedir-campo">
               <span className="pedir-rotulo">Para</span>
               {p.contato.erro ? <span className="pedir-erro">{p.contato.erro}</span> : !p.contato.dados ? <span className="hint">…</span> : p.emails.length === 0 ? (
@@ -114,6 +120,7 @@ export function JanelaPedirExtratos({ p }: { p: P }) {
         ) : (
           <div className="pedir-conferir">
             <div className="pedir-resumo">
+              {p.resumo.de && <span><b>De</b> {p.resumo.de}</span>}
               <span><b>Para</b> {p.resumo.para.join(', ')}</span>
               <span><b>{p.resumo.documentos}</b> {p.resumo.documentos === 1 ? 'documento' : 'documentos'} · {p.resumo.meses.join(', ')}</span>
               {p.whatsapp.ligado && <span className="pedir-resumo-whats"><span className="pedir-app"><LogoWhatsApp /></span>também pelo WhatsApp</span>}

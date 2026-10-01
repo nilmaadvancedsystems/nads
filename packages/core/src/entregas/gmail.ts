@@ -236,3 +236,32 @@ export function docDaCaixa(docDoRobo: Record<string, unknown> | null, docDaCaixa
   for (const k of CAMPOS_DA_CAIXA) junto[k] = docDaCaixaDoSetor ? docDaCaixaDoSetor[k] : undefined;
   return junto;
 }
+
+// ---------- de qual Gmail sai um pedido (01/10/2026) ----------
+// A mesma regra do robô (vigia-robo.js departamentoDoPedido + caixaDoDepartamento): o setor de quem pede é o
+// departamento do Cadastro (usuarios.departamento) ou, sem ele, o papel (fiscal sem o contábil = fiscal; o resto,
+// contábil). O contábil sai pela caixa do contábil (ou a do robô, enquanto ela não estiver autorizada); o fiscal, só
+// pela caixa do fiscal. Os endereços vêm de robo/estado.caixas, que o robô mantém.
+
+export interface RemetenteDoPedido {
+  setor: 'contabil' | 'fiscal';
+  /** '' = não dá para enviar (o Gmail do fiscal ainda não foi autorizado) */
+  email: string;
+  /** a caixa de onde sai (o contábil cai na do robô enquanto a dele não for autorizada) */
+  caixa: CaixaDoGmail;
+}
+
+export function setorDoUsuario(u: { departamento?: unknown; roles?: unknown } | null | undefined): 'contabil' | 'fiscal' {
+  if (u && (u.departamento === 'fiscal' || u.departamento === 'contabil')) return u.departamento;
+  const papeis = u && Array.isArray(u.roles) ? u.roles.map(String) : [];
+  return papeis.includes('fiscal') && !papeis.includes('contabil') ? 'fiscal' : 'contabil';
+}
+
+export function remetenteDoPedido(usuario: { departamento?: unknown; roles?: unknown } | null | undefined, caixas: unknown): RemetenteDoPedido {
+  const setor = setorDoUsuario(usuario);
+  const cx = (caixas && typeof caixas === 'object' ? caixas : {}) as Record<string, { autorizada?: unknown; email?: unknown } | undefined>;
+  const endereco = (c: string) => (cx[c] && cx[c]!.autorizada && cx[c]!.email ? String(cx[c]!.email) : '');
+  if (setor === 'fiscal') return { setor, caixa: 'fiscal', email: endereco('fiscal') };
+  if (endereco('contabil')) return { setor, caixa: 'contabil', email: endereco('contabil') };
+  return { setor, caixa: 'robo', email: endereco('robo') || 'nilmacontabilidade@gmail.com' };
+}
