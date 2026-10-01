@@ -2022,6 +2022,8 @@ main.main:has(> .content > .explorador){padding:0;}
 .drive.tela-cheia .drive-navegador > *{height:100%;overflow:auto;}
 .drive-navegador.sem-painel{grid-template-columns:minmax(0,1fr);}
 .drive-painel{min-height:0;padding:16px;gap:8px;}
+/* o navegador de arquivos encosta nas bordas, como no GitHub: sem o espaço da página (só o do painel e o da lista) */
+@media (min-width:769px){ .main:has(.drive-navegador){padding:0;} }
 .drive-painel .tarefas-barra-topo{margin-bottom:0;flex-wrap:nowrap;}
 .drive-painel .subnav-itens{margin-top:8px;}
 /* o + e a lupa juntos, como o grupo do GitHub */

@@ -11,7 +11,7 @@ import type { entregas as e } from '@nads/core';
 import { Icone, MenuSuspenso, useCarregando, useRetorno } from '@nads/ui';
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent, type ReactNode, type RefObject } from 'react';
 import { EnviarAoSecretario } from './EnviarAoSecretario';
-import { MenuDeContexto, type LinhaDoMenu, type MenuAberto, type OpcaoDoMenu } from './MenuDeContexto';
+import { MenuDeContexto, type LinhaDoMenu, type MenuAberto } from './MenuDeContexto';
 import { useEnvioAoSecretario } from './useEnvioAoSecretario';
 import { useExploradorDoDrive, type VmDrive } from './useExploradorDoDrive';
 
@@ -23,10 +23,6 @@ function pontoDoMenu(ev: MouseEvent): { x: number; y: number } {
   const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
   return { x: r.left + 24, y: r.bottom };
 }
-
-const COLUNAS: { id: e.ColunaDoExplorador; rotulo: string }[] = [
-  { id: 'nome', rotulo: 'Nome' }, { id: 'tipo', rotulo: 'Tipo' }, { id: 'tamanho', rotulo: 'Tamanho' }, { id: 'data', rotulo: 'Modificado' },
-];
 
 function baixar(url: string) {
   const a = document.createElement('a');
@@ -228,20 +224,11 @@ export function ExploradorDoDrive() {
     });
   };
 
-  /** O que o ⋯ e o botão direito no fundo oferecem: exibir, classificar, selecionar, baixar a pasta, enviar, tela cheia. */
+  /** O que o ⋯ e o botão direito no fundo oferecem. */
   const linhasDoFundo = (): LinhaDoMenu[] => {
     const v = atual.current;
-    return [
-      { titulo: 'Classificar por' },
-      ...COLUNAS.map<OpcaoDoMenu>(c => ({ rotulo: c.rotulo, marcado: v.coluna === c.id, onClick: () => atual.current.ordenarPor(c.id) })),
-      'separador',
-      { rotulo: 'Selecionar tudo', icone: 'checkCircle', atalho: 'Ctrl+A', desabilitado: !v.entradas.length, onClick: () => atual.current.selecionarTodos() },
-      { rotulo: 'Baixar esta pasta (.zip)', icone: 'download', desabilitado: !v.podeBaixarPasta, onClick: baixarPasta },
-      { rotulo: v.marcados.length ? 'Baixar os ' + v.marcados.length + ' marcados' : 'Baixar os marcados', icone: 'download', desabilitado: !v.marcados.length, onClick: baixarMarcados },
-      { rotulo: 'Enviar para o Claudio Secretário…', icone: 'upload', onClick: () => envio.abrir() },
-      'separador',
-      { rotulo: v.telaCheia ? 'Sair da tela cheia' : 'Tela cheia', icone: v.telaCheia ? 'minimizar' : 'maximizar', onClick: () => atual.current.alternarTelaCheia() },
-    ];
+    // por enquanto, só baixar a pasta (Vitor, 01/10/2026: "tira todas as funções, só deixa download da pasta")
+    return [{ rotulo: 'Baixar esta pasta (.zip)', icone: 'download', desabilitado: !v.podeBaixarPasta, onClick: baixarPasta }];
   };
 
   /** O menu de uma linha (ou do fundo, com x = null), como o do Windows. */
