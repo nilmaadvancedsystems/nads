@@ -387,7 +387,28 @@ export function useEntradaAnimada<T extends HTMLElement>(seletor: string | null,
 export function useLinhasQueSeMovem<T extends HTMLElement>(ordem: string, quieto = ''): RefObject<T | null> {
   const ref = useRef<T | null>(null);
   const antes = useRef<Map<string, number> | null>(null);
+  const textos = useRef<Map<string, string>>(new Map());
   const quietoAntes = useRef(quieto);
+  // a linha que mudou sozinha (o banco atualizou: a etapa andou, o e-mail foi ligado): o fundo acende e apaga devagar,
+  // para o olho achar o que mudou — sem reanimar a lista. Roda a cada render, mas só lê o texto das linhas.
+  useLayoutEffect(() => {
+    const raiz = ref.current;
+    if (!raiz) return;
+    const vistos = textos.current;
+    const novo = new Map<string, string>();
+    for (const tr of Array.from(raiz.querySelectorAll<HTMLElement>('tbody > tr[data-linha]'))) {
+      const id = tr.dataset.linha || '';
+      const t = tr.textContent || '';
+      novo.set(id, t);
+      const era = vistos.get(id);
+      if (era !== undefined && era !== t && !semMovimento()) {
+        tr.querySelectorAll('td').forEach(td => td.animate(
+          [{ backgroundColor: 'var(--accent-soft)' }, { backgroundColor: 'var(--accent-soft)', offset: 0.25 }, { backgroundColor: 'transparent' }],
+          { duration: 1400, easing: 'ease-out' }));
+      }
+    }
+    textos.current = novo;
+  });
   useLayoutEffect(() => {
     const raiz = ref.current;
     if (!raiz) return;

@@ -3,7 +3,7 @@
 // e, embaixo, os atalhos. Em lote: a busca e o "+" em cada empresa, que a põe na lista de cima; "Abrir N abas"
 // abre uma aba do navegador para cada uma. O navegador só deixa abrir
 // uma aba por clique: as que ele bloquear ficam no painel, um botão para cada (cada clique abre uma).
-import { Icone, Segmentado, useRetorno } from '@nads/ui';
+import { Icone, Segmentado, useIndicador, useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import type { useMinhasEmpresas } from '../useMinhasEmpresas';
 
@@ -50,9 +50,11 @@ export function PainelIniciar({ vm, fechar }: { vm: Vm; fechar: () => void }) {
     setFaltam(resto);
     if (!resto.length) fechar();
   };
+  // a aba escolhida: o sublinhado desliza até ela
+  const abasInd = useIndicador<HTMLDivElement>('.iniciar-aba[aria-selected="true"]', [vm.abaIniciar], 'sublinhado');
   return (
     <div className="iniciar-pop">
-      <div className="iniciar-abas" role="tablist">
+      <div ref={abasInd} className="iniciar-abas com-indicador" role="tablist">
         <button type="button" role="tab" className="iniciar-aba" aria-selected={vm.abaIniciar === 'escolher'} onClick={() => vm.setAbaIniciar('escolher')}>Empresas</button>
         <button type="button" role="tab" className="iniciar-aba" aria-selected={vm.abaIniciar === 'recentes'} onClick={() => vm.setAbaIniciar('recentes')}>Recentes</button>
         {LOTE_LIGADO && <button type="button" role="tab" className="iniciar-aba" aria-selected={vm.abaIniciar === 'lote'} onClick={() => vm.setAbaIniciar('lote')}>

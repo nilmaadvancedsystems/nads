@@ -1,6 +1,6 @@
 // A janela flutuante de uma empresa no Cadastro, por cima da lista: no topo, "‹ Empresas" (voltar), a empresa
 // e o ✕; na lateral, as abas dela; no meio, a aba aberta. Esc ou clicar fora fecha.
-import { Icone } from '@nads/ui';
+import { Icone, useEntradaAnimada, useIndicador } from '@nads/ui';
 import { useEffect } from 'react';
 import { ContasBancarias } from '../bancos/ContasBancarias';
 import { ContasPadrao } from '../contas-padrao/ContasPadrao';
@@ -36,6 +36,10 @@ export function JanelaDaEmpresa({ rota, aba }: { rota: string; aba: string }) {
     return () => { document.body.style.overflow = antes; document.removeEventListener('keydown', esc); };
   }, [fechar]);
 
+  // a aba ativa: o fundo e a barrinha deslizam até ela; o conteúdo da aba chega do jeito do app
+  const abasInd = useIndicador<HTMLElement>('.cad-janela-aba.ativa', [vm.aba], 'fundo');
+  const conteudoDaAba = useEntradaAnimada<HTMLDivElement>(null, [vm.aba], 'pagina');
+
   return (
     // data-volta-para: ao fechar, a janela encolhe de volta para a linha desta empresa na lista (mesmo aberta por link)
     <div className="cad-janela-fundo" data-volta-para={vm.empresa.codigo != null ? '[data-empresa="' + vm.empresa.codigo + '"]' : undefined}
@@ -55,7 +59,7 @@ export function JanelaDaEmpresa({ rota, aba }: { rota: string; aba: string }) {
           </button>
         </header>
         <div className="cad-janela-corpo">
-          <nav className="cad-janela-abas" aria-label="Abas da empresa">
+          <nav ref={abasInd} className="cad-janela-abas com-indicador" aria-label="Abas da empresa">
             {vm.abas.map(a => (
               <button key={a.id} type="button" className={'cad-janela-aba' + (a.ativa ? ' ativa' : '')} aria-current={a.ativa ? 'page' : undefined}
                 onClick={() => vm.irPara(a.id)}>
@@ -63,7 +67,7 @@ export function JanelaDaEmpresa({ rota, aba }: { rota: string; aba: string }) {
               </button>
             ))}
           </nav>
-          <div className="cad-janela-conteudo">
+          <div ref={conteudoDaAba} className="cad-janela-conteudo">
             <Aba rota={rota} aba={vm.aba} />
           </div>
         </div>

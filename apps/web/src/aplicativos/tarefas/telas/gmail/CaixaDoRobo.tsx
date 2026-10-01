@@ -2,7 +2,7 @@
 // agora" e o andamento da leitura; as abas (de clientes, sem cliente, spam) com a busca; a lista; e o e-mail aberto
 // numa janela por cima, com o texto inteiro, os anexos, as ações e responder.
 import type { entregas as e } from '@nads/core';
-import { Esqueleto, Icone, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Segmentado } from '@nads/ui';
+import { Esqueleto, Icone, NumeroQueConta, useCarregando, useEntradaAnimada, useIndicador, useLinhasQueSeMovem, Segmentado } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useCaixaDoRobo, usePainelDoEmail, type AbaDaCaixa, type VmCaixa } from './useCaixaDoRobo';
 
@@ -153,6 +153,8 @@ export function CaixaDoRobo() {
   useCarregando(vm.carregando);
   // trocou de caixa ou de aba (ou chegou a lista): os e-mails chegam em cascata, do jeito do app
   const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [vm.caixa, vm.aba, vm.carregando], 'lista');
+  // a aba escolhida (De clientes, Sem cliente, Spam): o destaque desliza até ela
+  const chipsInd = useIndicador<HTMLDivElement>('.chip-f.on', [vm.aba], 'fundo');
   // saiu um e-mail da lista (ligou ao cliente, ignorou, salvou) ou chegou um novo: os outros deslizam e fecham o espaço
   const linhasQueSeMovem = useLinhasQueSeMovem<HTMLTableElement>(vm.carregando ? '' : vm.linhas.map(x => x.mensagemId).join('|'), vm.caixa + '/' + vm.aba);
   const a = vm.robo.andamento;
@@ -195,10 +197,10 @@ export function CaixaDoRobo() {
         </div>
       )}
 
-      <div className="chip-row">
+      <div ref={chipsInd} className="chip-row com-indicador">
         {ABAS.map(x => (
           <button key={x.id} type="button" className={'chip-f' + (vm.aba === x.id ? ' on' : '')} onClick={() => vm.setAba(x.id)}>
-            {x.rotulo} <span className="gh-counter">{vm.contagem[x.id]}</span>
+            {x.rotulo} <span className="gh-counter"><NumeroQueConta texto={String(vm.contagem[x.id])} /></span>
           </button>
         ))}
       </div>

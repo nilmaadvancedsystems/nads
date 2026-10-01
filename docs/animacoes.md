@@ -66,4 +66,11 @@ Fica para depois: a linha que mudou em tempo real (Firestore) piscar o fundo; a 
 | Executor: a página com a ferramenta não desliza (só acende ao trocar de etapa) e o vidro não pisca ao sair | casca.tsx, nads.css |
 | Toda tela flutuante (janela, janela do cadastro, menu, menu do botão direito) nasce de onde foi aberta — o botão, a linha, o ponto do clique direito — e, ao fechar (no × ou clicando fora), volta para lá encolhendo até o tamanho dele. A janela de confirmação fecha clicando fora quando dá para saber o que isso quer dizer (um botão só, ou o de desistir); a obrigatória não | animacao.ts (`marcarOrigem`, `crescerDaOrigem`, `voltarParaOrigem`), animador.ts, retorno.tsx |
 | A logo na Prévia das animações: abertura inteira, curta e o vidro | PreviaAnimacoes.tsx |
+| Linha que mudou sozinha (o banco atualizou): o fundo acende e apaga devagar, sem reanimar a lista (Minhas empresas, Cadastro, Gmail, Drive) | `useLinhasQueSeMovem` |
+| Janela do cadastro: o fundo e a barrinha da aba ativa deslizam; o conteúdo da aba chega do jeito do app | JanelaDaEmpresa.tsx |
+| Iniciar (Minhas empresas): o sublinhado desliza entre Empresas/Recentes/Em lote | PainelIniciar.tsx |
+| Gmail: o destaque desliza entre De clientes/Sem cliente/Spam; os contadores contam | CaixaDoRobo.tsx |
+| Contador de empresas (Minhas empresas) conta; as barras de andamento andam em vez de pular | MinhasEmpresas.tsx, nads.css |
+
+Foco (Vitor, 01/10/2026): só a Tarefas por enquanto; os outros apps ficam como estão.
 

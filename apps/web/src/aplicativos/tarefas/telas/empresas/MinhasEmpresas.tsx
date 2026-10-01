@@ -1,7 +1,7 @@
 // Minhas empresas: a barra de cima, no jeito da do GitHub (competência no lugar do "main ▾", quantas
 // empresas, Insights; à direita a busca curta com atalho "/", Situação ▾ e "Iniciar ▾", que abre
 // o painel para escolher a empresa, em partes/PainelIniciar) e a lista (clicar no título da coluna ordena; clicar na linha abre a página da empresa). Os números por situação ficam em Insights.
-import { Icone, MenuSuspenso, useCarregando, useEntradaAnimada, useLinhasQueSeMovem } from '@nads/ui';
+import { Icone, MenuSuspenso, NumeroQueConta, useCarregando, useEntradaAnimada, useLinhasQueSeMovem } from '@nads/ui';
 import { useEffect, useRef } from 'react';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { PainelIniciar } from './partes/PainelIniciar';
@@ -48,7 +48,7 @@ export function MinhasEmpresas() {
           itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
         <button type="button" className="tarefas-contador" disabled={!vm.filtrando} onClick={vm.limparFiltros}
           title={vm.filtrando ? 'Limpar a busca e a situação' : undefined}>
-          <Icone nome="briefcase" /><b>{vm.total}</b> {vm.total === 1 ? 'empresa' : 'empresas'}
+          <Icone nome="briefcase" /><b><NumeroQueConta texto={String(vm.total)} /></b> {vm.total === 1 ? 'empresa' : 'empresas'}
         </button>
         <button type="button" className="tarefas-contador" onClick={vm.abrirInsights}>
           <Icone nome="barChart" />Insights
