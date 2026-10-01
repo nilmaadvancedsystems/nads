@@ -2,7 +2,7 @@
 // mostrar. Nada vai para o banco, e nenhum arquivo de verdade abre.
 import { mapaDaRaiz, type AndamentoDoMapa, type AndamentoDoPedido, type ItemDoDrive } from './drive';
 import { partesDoArquivo, PASTA_SEM_CLIENTE, type AndamentoDoEnvio, type EnvioFeito } from './secretario';
-import { estadoDoRobo, type ClienteDoEntregas, type EmailLido, type RespostaPedida } from './gmail';
+import { estadoDoRobo, type CaixaDoGmail, type ClienteDoEntregas, type EmailLido, type RespostaPedida } from './gmail';
 import type { RepoDriveDoEntregas, RepoGmailDoEntregas } from './repo';
 
 const agora = () => new Date().toISOString();
@@ -131,8 +131,11 @@ export function criarGmailDoEntregasMemoria(): RepoGmailDoEntregas {
   const ouvRespostas = new Map<string, Set<(r: RespostaPedida[]) => void>>();
   const mudar = (novo: Record<string, unknown>) => { doc = { ...doc, ...novo, vigia: { em: agora() } }; o.mudou(); };
   const espera = (ms: number) => new Promise(r => setTimeout(r, ms));
+  let caixaEscolhida: CaixaDoGmail = 'robo';
   return {
     exemplos: true,
+    caixa: () => caixaEscolhida,
+    usarCaixa(c) { caixaEscolhida = c; o.mudou(); },
     estado: () => estadoDoRobo(doc),
     clientes: () => ({ carregados: true, lista: clientes }),
     ignorados: () => ignorados,

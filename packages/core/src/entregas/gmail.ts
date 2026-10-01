@@ -209,3 +209,30 @@ export function respostaDoDocumento(id: string, d: Record<string, unknown>): Res
 
 /** O id do Gmail que a leitura aceita (a regra do banco). */
 export const mensagemIdValido = (id: string) => /^[0-9a-fA-F]{10,32}$/.test(id);
+
+// ---------- as caixas do Gmail por setor (01/10/2026) ----------
+// O robô lê três caixas: a da Nilma Contabilidade (robo/estado) e as dos setores (robo/caixa-contabil e
+// robo/caixa-fiscal: as mesmas listas — caixa, sem cliente, spam, execuções). O "online", a fila e o andamento são
+// do robô (robo/estado). Cada pessoa vê a da Nilma e a do próprio setor (o do Cadastro); o admin vê todas.
+
+export type CaixaDoGmail = 'robo' | 'contabil' | 'fiscal';
+
+export const NOMES_DAS_CAIXAS: Record<CaixaDoGmail, string> = { robo: 'Nilma Contabilidade', contabil: 'Setor contábil', fiscal: 'Setor fiscal' };
+
+/** As caixas que a pessoa vê, na ordem das abas. */
+export function caixasDaPessoa(p: { admin: boolean; departamento: string | null | undefined }): CaixaDoGmail[] {
+  if (p.admin) return ['robo', 'contabil', 'fiscal'];
+  if (p.departamento === 'contabil') return ['robo', 'contabil'];
+  if (p.departamento === 'fiscal') return ['robo', 'fiscal'];
+  return [];
+}
+
+const CAMPOS_DA_CAIXA = ['caixa', 'naoReconhecidos', 'spam', 'execucoes', 'salvos', 'ultimaExecucao', 'ultimaExecucaoResumo'];
+
+/** O documento que a tela lê para uma caixa de setor: o do robô (online, fila, andamento) com as listas da caixa. */
+export function docDaCaixa(docDoRobo: Record<string, unknown> | null, docDaCaixaDoSetor: Record<string, unknown> | null): Record<string, unknown> | null {
+  if (!docDoRobo) return null;
+  const junto: Record<string, unknown> = { ...docDoRobo };
+  for (const k of CAMPOS_DA_CAIXA) junto[k] = docDaCaixaDoSetor ? docDaCaixaDoSetor[k] : undefined;
+  return junto;
+}

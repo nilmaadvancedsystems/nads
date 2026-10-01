@@ -1,6 +1,7 @@
 // A caixa do robô do Gmail na Tarefas, pelo robô do Entregas (o mesmo das Pendências), no banco do Entregas com o
 // login de lá. O navegador não fala com o Gmail:
-//   robo/estado             SÓ LEITURA: o que o robô viu (caixa, sem cliente, spam, execuções, andamento) — admin/contábil
+//   robo/estado             SÓ LEITURA: o que o robô viu (caixa, sem cliente, spam, execuções, andamento) — admin/contábil/fiscal
+//   robo/caixa-<setor>      SÓ LEITURA: as listas da caixa do setor (contabil, fiscal) — só o setor e o admin (01/10/2026)
 //   clientes                para escolher o dono do e-mail; ligar remetente grava SÓ email/emails (o que a regra deixa)
 //   config/roboIgnorados    os remetentes marcados como spam (só o admin grava)
 //   solicitacoesEmail       os pedidos ao robô: verificar, cancelar, salvar no Drive, responder (mesmos campos das Pendências)
@@ -15,6 +16,11 @@ export function criarGmailFirestore(quem: () => (e.Quem | null), competencia: ()
   const db = bancoDoEntregas();
   let estado: e.EstadoDoRobo = e.ESTADO_VAZIO;
   let docEstado: Record<string, unknown> | null = null;
+  // a caixa escolhida: a da Nilma (robo/estado) ou a de um setor (robo/caixa-<setor>, ouvida só enquanto escolhida)
+  let caixa: e.CaixaDoGmail = 'robo';
+  let docSetor: Record<string, unknown> | null = null;
+  let pararSetor = () => {};
+  const recalcular = () => { estado = e.estadoDoRobo(caixa === 'robo' ? docEstado : e.docDaCaixa(docEstado, docSetor)); mudou(); };
   let clientes: { carregados: boolean; lista: e.ClienteDoEntregas[] } = { carregados: false, lista: [] };
   let ignorados: string[] = [];
   let ouvindo = false;
@@ -25,7 +31,7 @@ export function criarGmailFirestore(quem: () => (e.Quem | null), competencia: ()
   function ouvir() {
     if (ouvindo) return;
     ouvindo = true;
-    onSnapshot(doc(db, 'robo', 'estado'), s => { docEstado = s.exists() ? s.data() : null; estado = e.estadoDoRobo(docEstado); mudou(); },
+    onSnapshot(doc(db, 'robo', 'estado'), s => { docEstado = s.exists() ? s.data() : null; recalcular(); },
       err => { estado = { ...e.ESTADO_VAZIO, carregado: true, erro: err.message }; mudou(); });
     onSnapshot(collection(db, 'clientes'), s => {
       clientes = { carregados: true, lista: e.clientesDoEntregas(s.docs.map(d => ({ id: d.id, dados: d.data() }))) };
@@ -37,7 +43,7 @@ export function criarGmailFirestore(quem: () => (e.Quem | null), competencia: ()
       mudou();
     }, () => {});
     // o "online" depende da hora: recalcula a cada 30 s
-    setInterval(() => { if (docEstado) { estado = e.estadoDoRobo(docEstado); mudou(); } }, 30 * 1000);
+    setInterval(() => { if (docEstado) recalcular(); }, 30 * 1000);
   }
 
   function pessoa(): e.Quem {
@@ -50,12 +56,25 @@ export function criarGmailFirestore(quem: () => (e.Quem | null), competencia: ()
   async function pedir(dados: Record<string, unknown>) {
     const q = pessoa();
     await addDoc(collection(db, 'solicitacoesEmail'), {
-      status: 'pendente', criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorEmail: q.email, competencia: competencia(), ...dados,
+      status: 'pendente', criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorEmail: q.email, competencia: competencia(), caixa, ...dados,
     });
   }
 
   return {
     exemplos: false,
+    caixa: () => caixa,
+    usarCaixa(c) {
+      if (c === caixa) return;
+      caixa = c;
+      pararSetor();
+      docSetor = null;
+      pararSetor = () => {};
+      if (c !== 'robo') {
+        pararSetor = onSnapshot(doc(db, 'robo', 'caixa-' + c), s => { docSetor = s.exists() ? s.data() : null; recalcular(); },
+          err => { estado = { ...e.ESTADO_VAZIO, carregado: true, erro: err.message }; mudou(); });
+      }
+      recalcular();
+    },
     estado: () => { ouvir(); return estado; },
     clientes: () => { ouvir(); return clientes; },
     ignorados: () => { ouvir(); return ignorados; },
@@ -76,7 +95,7 @@ export function criarGmailFirestore(quem: () => (e.Quem | null), competencia: ()
     async ler(mensagemId) {
       const q = pessoa();
       if (!e.mensagemIdValido(mensagemId)) throw new Error('e-mail sem id do Gmail');
-      const ref = await addDoc(collection(db, 'leiturasGmail'), { status: 'pendente', mensagemId, criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorUid: q.uid });
+      const ref = await addDoc(collection(db, 'leiturasGmail'), { status: 'pendente', mensagemId, caixa, criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorUid: q.uid });
       return new Promise<e.EmailLido>((resolver, recusar) => {
         const fim = setTimeout(() => { parar(); recusar(new Error('o robô não respondeu a tempo')); }, ESPERA_LEITURA_MS);
         const parar = onSnapshot(ref, s => {
@@ -90,7 +109,7 @@ export function criarGmailFirestore(quem: () => (e.Quem | null), competencia: ()
       const q = pessoa();
       await addDoc(collection(db, 'solicitacoesEmail'), {
         tipo: 'responder', status: 'pendente', mensagemId: p.mensagemId, corpo: p.corpo.slice(0, 20000), todos: p.todos,
-        para: p.para, assunto: p.assunto.slice(0, 200), clienteId: p.clienteId, anexo: null,
+        para: p.para, assunto: p.assunto.slice(0, 200), clienteId: p.clienteId, anexo: null, caixa,
         criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorEmail: q.email, criadoPorUid: q.uid,
       });
     },

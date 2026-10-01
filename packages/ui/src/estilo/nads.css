@@ -2151,3 +2151,6 @@ main.main:has(> .content > .explorador){padding:0;}
 @keyframes aberturaB{from{opacity:0;transform:translate(22%,14%) rotate(-8deg) scale(.86);}to{opacity:1;transform:none;}}
 @keyframes aberturaRespira{0%,100%{transform:scale(1);filter:drop-shadow(0 0 0 transparent);}50%{transform:scale(1.04);filter:drop-shadow(0 0 18px color-mix(in srgb, var(--accent) 35%, transparent));}}
 @media (prefers-reduced-motion: reduce){.abertura-n,.abertura-a,.abertura-b{animation:none;}}
+
+/* Gmail: as abas das caixas (Nilma Contabilidade / setor) */
+.gmail-caixas{margin:0 0 12px;}

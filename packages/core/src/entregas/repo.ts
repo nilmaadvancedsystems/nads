@@ -2,7 +2,7 @@
 // No site: os dados/*.firestore.ts da Tarefas (o banco do Entregas, com o login de lá); nos exemplos: repo.memoria.ts.
 import type { AndamentoDoMapa, AndamentoDoPedido, ItemDoDrive, MapaDoDrive, PedidoAoDrive } from './drive';
 import type { AndamentoDoEnvio, ArquivoParaEnviar, DestinoDoEnvio, EnvioFeito } from './secretario';
-import type { ClienteDoEntregas, EmailLido, EstadoDoRobo, RespostaPedida } from './gmail';
+import type { CaixaDoGmail, ClienteDoEntregas, EmailLido, EstadoDoRobo, RespostaPedida } from './gmail';
 
 /** Quem está pedindo (vai em todo pedido ao robô; as regras do banco conferem o uid). */
 export interface Quem { nome: string; uid: string; email: string }
@@ -37,7 +37,10 @@ export interface PedidoDeResposta {
 
 export interface RepoGmailDoEntregas {
   readonly exemplos: boolean;
-  /** o que o robô deixou em robo/estado, ao vivo */
+  /** a caixa escolhida (Nilma Contabilidade ou a de um setor): o estado, a leitura, o salvar e o responder são dela */
+  caixa(): CaixaDoGmail;
+  usarCaixa(c: CaixaDoGmail): void;
+  /** o que o robô deixou para a caixa escolhida (robo/estado, ou robo/caixa-<setor>), ao vivo */
   estado(): EstadoDoRobo;
   clientes(): { carregados: boolean; lista: ClienteDoEntregas[] };
   /** remetentes marcados como spam (config/roboIgnorados) */
