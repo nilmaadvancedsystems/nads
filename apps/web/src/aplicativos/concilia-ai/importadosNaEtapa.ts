@@ -13,3 +13,16 @@ export function useImportadosDaConferencia(nome: string): c.JaImportado | null {
   const e = repo.obter(achada?.nome || nome);
   return e ? c.jaImportado(e) : { balancete: false, entradas: false, saidas: false, tomados: false, prestados: false };
 }
+
+/** As contas do balancete importado na Conferência (a etapa Contabilização da Folha monta o checklist com elas). null = carregando. */
+const semAssinar = () => () => {};
+const versaoZero = () => 0;
+
+export function useContasDoBalancete(nome: string): c.Conta[] | null {
+  // sem nome (a etapa não é a da folha): nem liga a Conferência
+  const repo = nome ? repoDaConferencia() : null;
+  useSyncExternalStore(repo ? repo.assinar : semAssinar, repo ? repo.versao : versaoZero, repo ? repo.versao : versaoZero);
+  if (!repo || !repo.pronto()) return null;
+  const achada = repo.empresaPelaRota(formatos.slug(nome));
+  return repo.obter(achada?.nome || nome)?.contas || [];
+}
