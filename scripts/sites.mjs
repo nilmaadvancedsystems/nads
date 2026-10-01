@@ -36,7 +36,7 @@ const PROJETO_PADRAO = 'conferencia-nilma';
 const SITES = {
   'concilia-ai': { site: 'concilia-ai-nilma', nome: 'Concilia aí', tipo: 'app' },
   // o Concilia aí só para conferir entradas, ligado ao banco da Conferência (Vitor, 01/10/2026): só como prévia (link à parte)
-  'conferir-entradas': { site: 'concilia-ai-nilma', nome: 'Concilia aí — Conferir entradas', tipo: 'app', banco: true, aplicativo: 'concilia-ai', env: { VITE_SO_ENTRADAS: '1' }, soCanal: true },
+  'conferir-entradas': { site: 'concilia-ai-nilma', nome: 'Concilia aí — Conferir entradas', tipo: 'app', banco: true, aplicativo: 'concilia-ai', env: { VITE_SO_ENTRADAS: '1' }, soCanal: true, pasta: 'concilia-ai' },
   conciliadorzinho: { site: 'conciliadorzinho-nilma', nome: 'Conciliadorzinho', tipo: 'app' },
   extratudo: { site: 'extratudo-nilma', nome: 'Extratudo', tipo: 'app', banco: true },
   tarefas: { site: 'tarefas-nilma', nome: 'Tarefas', tipo: 'app', banco: true },
@@ -75,7 +75,8 @@ const pagina = (arquivo, trocas) => Object.entries(trocas).reduce((t, [a, b]) =>
 
 for (const id of ids) {
   const s = SITES[id];
-  const saida = path.join(web, 'dist-sites', id);
+  // a pasta que o site publica (firebase.json); a prévia de outro aplicativo no mesmo site usa a pasta dele
+  const saida = path.join(web, 'dist-sites', s.pasta || id);
   fs.rmSync(saida, { recursive: true, force: true });
   if (s.tipo === 'app') {
     const banco = s.banco && !soExemplos;
