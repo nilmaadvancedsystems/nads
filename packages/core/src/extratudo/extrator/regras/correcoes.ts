@@ -8,9 +8,8 @@
 //   sobra  — está no razão e não no banco;
 //   duplicado — lançado duas vezes no razão (ou repetido no extrato).
 // Quando a diferença de um dia é o contrário da de outro (130,96 a mais em 06/03 e a menos em 18/05), a dica liga os dois.
-import type { ArquivoImportado, EmpresaExtrator, LancamentoDoArquivo, LinhaConferencia } from '../tipos';
-import { arquivosDoBanco } from './bancos';
-import { conferir } from './conferencia';
+import type { EmpresaExtrator, LancamentoDoArquivo, LinhaConferencia } from '../tipos';
+import { conferenciaDoBanco } from './situacaoDoBanco';
 import { dataBR, valorBR } from './texto';
 
 export type TipoCorrecao = 'data' | 'sinal' | 'valor' | 'lote' | 'falta' | 'sobra' | 'duplicado';
@@ -98,17 +97,17 @@ function correcoesDoMes(mes: string, linhas: LinhaConferencia[]): CorrecaoDoRaza
  * de fora), na ordem das datas. Vazio = nada a corrigir (ou ainda falta importar).
  */
 export function correcoesDoRazao(e: EmpresaExtrator, banco: string, primeiro: string, meses: readonly string[], semMovimento: readonly string[] = []): CorrecaoDoRazao[] {
-  const doMes = (lado: ArquivoImportado['lado'], mes: string): LancamentoDoArquivo[] =>
-    arquivosDoBanco(e, banco, primeiro, lado, mes).flatMap(a =>
-      a.lancamentos.flatMap((l, i) => (l.data.startsWith(mes) ? [{ ...l, id: a.id + ':' + i, idArquivo: a.id, lado }] : [])));
-  const todas: CorrecaoDoRazao[] = [];
-  for (const mes of meses) {
-    if (semMovimento.includes(mes)) continue;
-    const extrato = doMes('banco', mes), razao = doMes('sistema', mes);
-    if (!extrato.length || !razao.length) continue;
-    todas.push(...correcoesDoMes(mes, conferir(extrato, razao).linhas));
-  }
+  // a conferência do banco (mês a mês, já sem os lançamentos do cheque especial)
+  const c = conferenciaDoBanco(e, banco, primeiro, meses, semMovimento);
+  const todas: CorrecaoDoRazao[] = c.pendencias.flatMap(p => correcoesDoMes(p.mes, p.linhas));
   todas.sort((a, b) => a.data.localeCompare(b.data));
+  // num dia que fecha negativo, o que sobra no razão pode ser o cheque especial com o valor errado
+  const negativo = new Map(c.negativos.map(n => [n.data, n.saldo]));
+  for (const x of todas) {
+    const s = negativo.get(x.data);
+    if (s == null || x.dica || !(x.tipo === 'sobra' || x.tipo === 'lote' || x.tipo === 'valor')) continue;
+    x.dica = 'O banco fecha negativo neste dia (' + valorBR(s) + '): se for o cheque especial, o ajuste é de ' + valorBR(Math.abs(s)) + ' e o estorno, no dia seguinte.';
+  }
   // a mesma diferença ao contrário em outro dia: provavelmente o mesmo lançamento no dia errado
   for (const c of todas) {
     if (!c.diferenca) continue;

@@ -261,6 +261,8 @@ export function useImportacao() {
      * já está pronto (todo banco com extrato e razão do mês, ou sem movimento naquele mês).
      */
     periodo: (params.get('meses') || '').split(',').filter(m => /^\d{4}-\d{2}$/.test(m)),
+    /** aberta pela etapa Cheque especial da Tarefas (a mesma página, só os bancos, com o aviso do cheque) */
+    etapaCheque: params.get('etapa') === 'cheque',
     /** De cada mês do período, o que o banco já tem: extrato, razão, sem movimento. */
     mesesDoBanco: (banco: string, semMovimentoPorMes: Record<string, string[]>) =>
       (params.get('meses') || '').split(',').filter(m => /^\d{4}-\d{2}$/.test(m)).map(mes => {

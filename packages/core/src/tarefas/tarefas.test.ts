@@ -32,13 +32,15 @@ describe('andamento', () => {
     const f = fazer(ex, 'extratos', 'Clara', agora);
     expect(f.evento).toEqual({ tipo: 'feita', etapa: 'extratos', por: 'Clara', em: agora.toISOString() });
     ex = f.execucao;
+    expect(proximaEtapa(ex, R)?.id).toBe('cheque-especial');
+    ex = fazer(ex, 'cheque-especial', 'Clara', agora).execucao;
     expect(proximaEtapa(ex, R)?.id).toBe('fiscal');
     ex = fazer(ex, 'fiscal', 'Clara', agora).execucao;
     expect(proximaEtapa(ex, R)?.id).toBe('dp');
-    ex = interromper(ex, 'dp', 'dp-pendente', '  aguardando  ', 'Clara', agora).execucao;
-    expect(ex.etapas.dp).toMatchObject({ situacao: 'interrompida', objecao: 'dp-pendente', observacao: 'aguardando' });
+    ex = interromper(ex, 'dp', 'outro', '  aguardando  ', 'Clara', agora).execucao;
+    expect(ex.etapas.dp).toMatchObject({ situacao: 'interrompida', objecao: 'outro', observacao: 'aguardando' });
     expect(situacaoGeral(ex, R)).toBe('parada');
-    expect(progresso(ex, R)).toMatchObject({ concluidas: 2, total: R.etapas.length, interrompida: etapa('dp') });
+    expect(progresso(ex, R)).toMatchObject({ concluidas: 3, total: R.etapas.length, interrompida: etapa('dp') });
     ex = dispensar(ex, 'dp', 'sem-funcionarios', '', 'Clara', agora).execucao;
     expect(concluida(ex.etapas.dp.situacao)).toBe(true);
     expect(situacaoGeral(ex, R)).toBe('em-andamento');
@@ -92,7 +94,7 @@ describe('voltar para uma etapa (clique no checklist)', () => {
     let ex = execucaoNova('FITO', 292, '2026-08', 'contabil');
     ex = fazer(ex, 'extratos', 'Clara', agora).execucao;
     ex = dispensar(ex, 'fiscal', 'outro', '', 'Clara', agora).execucao;
-    expect(proximaEtapa(ex, R)?.id).toBe(R.etapas[2].id);
+    expect(proximaEtapa(ex, R)?.id).toBe('cheque-especial');
     const v = voltarPara(ex, 'extratos', 'Vitor', agora);
     expect(v.execucao.etapas.extratos).toBeUndefined();
     expect(v.execucao.etapas.fiscal.situacao).toBe('dispensada');
@@ -132,8 +134,8 @@ describe('competências e visão de cima', () => {
     expect(exs).toHaveLength(2);
     const r = resumoPorEtapa(exs, R, 3);
     expect(r[0]).toMatchObject({ etapa: 'extratos', feitas: 2, pendentes: 1 });
-    expect(r[1]).toMatchObject({ etapa: 'fiscal', feitas: 1, interrompidas: 1, pendentes: 1 });
-    expect(r[2]).toMatchObject({ etapa: 'dp', dispensadas: 1, pendentes: 2 });
+    expect(r[2]).toMatchObject({ etapa: 'fiscal', feitas: 1, interrompidas: 1, pendentes: 1 });
+    expect(r[3]).toMatchObject({ etapa: 'dp', dispensadas: 1, pendentes: 2 });
     expect(objecoesMaisComuns(exs, R).map(o => [o.texto, o.qtd])).toEqual([
       ['A empresa não tem funcionários', 1], ['Outro motivo', 1],
     ]);

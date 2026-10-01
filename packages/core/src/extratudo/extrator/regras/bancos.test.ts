@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ArquivoImportado, EmpresaExtrator } from '../tipos';
-import { adicionarBanco, arquivosDoBanco, bancoOkNoPeriodo, bancosDaEmpresaNa, bancosNaCompetencia } from './bancos';
+import { adicionarBanco, arquivosDoBanco, bancosDaEmpresaNa, bancosNaCompetencia } from './bancos';
+import { bancoOkNoPeriodo } from './situacaoDoBanco';
 
 const agora = new Date('2026-09-29T12:00:00Z');
 const arq = (id: string, lado: 'banco' | 'sistema', data: string, banco?: string): ArquivoImportado =>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { requisitosDaImportacao } from './requisitos';
+import { requisitosDaImportacao, requisitosDoChequeEspecial } from './requisitos';
 
 const TUDO = { balancete: true, entradas: true, saidas: true, tomados: true, prestados: true };
 
@@ -16,5 +16,14 @@ describe('requisitos para seguir da Importação', () => {
     expect(requisitosDaImportacao([], { ...TUDO, prestados: false }, false).pronto).toBe(true);
     expect(requisitosDaImportacao([], { ...TUDO, prestados: false }, null).pronto).toBe(true);
     expect(requisitosDaImportacao([], null, false)).toEqual({ pronto: false, faltam: ['a Conferência carregar'] });
+  });
+});
+
+describe('requisitos da etapa Cheque especial', () => {
+  it('na Importação, o banco que só falta o cheque passa; no Cheque especial, não', () => {
+    expect(requisitosDaImportacao([{ nome: 'Sicoob', ok: false, semMovimento: false, faltaCheque: true }], TUDO, false).pronto).toBe(true);
+    expect(requisitosDoChequeEspecial([{ nome: 'Sicoob', ok: false, semMovimento: false, diasSemCheque: 3 }]))
+      .toEqual({ pronto: false, faltam: ['Sicoob: o cheque especial de 3 dias negativos e o razão importado de novo'] });
+    expect(requisitosDoChequeEspecial([{ nome: 'Sicoob', ok: true, semMovimento: false, diasSemCheque: 0 }]).pronto).toBe(true);
   });
 });
