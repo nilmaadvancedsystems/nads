@@ -47,7 +47,7 @@ describe('conferirServicos (prestados dos médicos)', () => {
 describe('cadastroServicos', () => {
   const c = cadastroServicos(comercio, 'tomados');
   it('lista as categorias padrão com a conta de cada uma', () => {
-    expect(c.map(x => x.cat.id)).toEqual(['geral', 'honorario', 'telefone', 'internet', 'viagem', 'sistemas']);
+    expect(c.map(x => x.cat.id)).toEqual(['geral', 'honorario', 'telefone', 'internet', 'agua', 'energia', 'comissoes', 'viagem', 'sistemas']);
     expect(c[0].chaveConta).toBe('serv|tomados|*');
     expect(c[0].contas).toEqual(['31130']);
   });

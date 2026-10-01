@@ -9,6 +9,10 @@ describe('numerosDoHistorico', () => {
   it('sem o padrão: números de 3+ dígitos (fiscal < 11 dígitos)', () => {
     expect(numerosDoHistorico('NF 12345 ref 9876543210123 e 777 12', false)).toEqual(['12345', '777']);
   });
+  it('nota de 1 dígito com espaços em volta do traço (serviços tomados da 292)', () => {
+    expect(numerosDoHistorico('Pelo valor de Serviços Tomados conf. NF nº - 6 - 27203457000150-RAIMUNDO PINHEIRO DOS SANTOS NETO 006679', true)).toEqual(['006679', '6']);
+    expect(numerosDoHistorico('Pelo valor de Serviços Tomados conf. NF nº - 002600000000107 - 30295591000132-LEONEL RODRIGUES FREITAS', true)).toEqual(['002600000000107']);
+  });
   it('serviço: aceita até 15 dígitos, mas não 11 (CPF) nem 14 (CNPJ)', () => {
     expect(numerosDoHistorico('NFS 202600000012345 CNPJ 11222333000100 CPF 12345678901 nr 777', true)).toEqual(['202600000012345', '777']);
   });
@@ -59,6 +63,18 @@ describe('conferirConta', () => {
     expect(semPendencias(r)).toBe(true);
     expect(r.somaFiscal).toBe(1200);
     expect(r.fonte).toBe('CFOP 1102 — ' + COMPRA);
+  });
+  it('sem o número no histórico, mas com o mesmo valor perto da data: conferida pelo valor (o pagamento no banco)', () => {
+    const banco = (valor: number, data: string): LinhaRazao => ({ txt: 'DB.TR.C.DIF.TIT.INT comissao DOC.: 16283133', data, valor, sinal: 1, contra: '' });
+    const r = conferir([linha('100', 500), banco(300, '06/07/2026'), linha('200', 400)]);
+    expect(r.faltando).toEqual([]);
+    expect(r.aMais).toEqual([]);
+    expect(r.peloValor.map(p => p.nota.numero)).toEqual(['101']);
+    expect(semPendencias(r)).toBe(true);
+    // longe da data (mais de 5 dias): continua faltando e a linha fica a mais
+    const r2 = conferir([linha('100', 500), banco(300, '20/07/2026'), linha('200', 400)]);
+    expect(r2.faltando.map(n => n.numero)).toEqual(['101']);
+    expect(r2.aMais.length).toBe(1);
   });
   it('nota que não está no razão: faltando', () => {
     const r = conferir([linha('100', 500), linha('200', 400)]);

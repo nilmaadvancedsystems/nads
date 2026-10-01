@@ -2126,6 +2126,7 @@ main.main:has(> .content > .explorador){padding:0;}
 /* Drive: o ⟳ do "Atualizar o mapa" gira enquanto o robô relê */
 .icon-btn.girando svg{animation:drive-gira 1s linear infinite;}
 
+<<<<<<< HEAD
 /* Barras de rolagem do nads inteiro (01/10/2026): finas, arredondadas, sem as setinhas, na cor do sistema (o vermelho
    do --accent, suave parado e forte ao passar o mouse). Chrome/Edge pelo ::-webkit-scrollbar; Firefox pelo
    scrollbar-color (só onde não há o ::-webkit, senão o Chrome trocaria pelo padrão dele). */
@@ -2140,3 +2141,16 @@ main.main:has(> .content > .explorador){padding:0;}
   *{scrollbar-width:thin;scrollbar-color:color-mix(in srgb, var(--accent) 50%, transparent) transparent;}
 }
 .icon-btn.girando svg{transform-origin:50% 50%;}
+=======
+/* A abertura do app (AberturaN): o N grande no meio da tela; as metades entram de lados opostos e se encaixam,
+   depois o N respira de leve (e um brilho passa por ele) até a tela abrir */
+.abertura{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:var(--bg);}
+.abertura-n{width:auto;height:min(160px,28vh);overflow:visible;animation:aberturaRespira 2.4s ease-in-out 1.1s infinite;}
+.abertura-a,.abertura-b{transform-box:view-box;transform-origin:50% 50%;}
+.abertura-a{animation:aberturaA .9s cubic-bezier(.2,.8,.2,1) both;}
+.abertura-b{animation:aberturaB .9s cubic-bezier(.2,.8,.2,1) .12s both;}
+@keyframes aberturaA{from{opacity:0;transform:translate(-22%,-14%) rotate(-8deg) scale(.86);}to{opacity:1;transform:none;}}
+@keyframes aberturaB{from{opacity:0;transform:translate(22%,14%) rotate(-8deg) scale(.86);}to{opacity:1;transform:none;}}
+@keyframes aberturaRespira{0%,100%{transform:scale(1);filter:drop-shadow(0 0 0 transparent);}50%{transform:scale(1.04);filter:drop-shadow(0 0 18px color-mix(in srgb, var(--accent) 35%, transparent));}}
+@media (prefers-reduced-motion: reduce){.abertura-n,.abertura-a,.abertura-b{animation:none;}}
+>>>>>>> origin/desenvolvimento
