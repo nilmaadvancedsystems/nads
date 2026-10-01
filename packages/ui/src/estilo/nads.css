@@ -2010,7 +2010,10 @@ main.main:has(> .content > .explorador){padding:0;}
 .drive-ano-largo .btn{justify-content:flex-start;}
 .drive-ano-largo .btn .menu-seta{margin-left:auto;}
 /* a trilha: o caminho em link e a pasta aberta em negrito */
-.drive-trilha .gh-crumb{color:var(--accent);font-weight:600;}
+.drive-trilha .gh-crumb{color:var(--ink);font-weight:600;}
+.drive-trilha .gh-crumb:hover{text-decoration:underline;}
+/* a pasta aberta na árvore: só o fundo, sem a barrinha vermelha */
+.drive-painel .subnav-item.active::before{display:none;}
 .drive-trilha .gh-crumb-fim{color:var(--ink);font-weight:600;}
 .drive-navegador{display:grid;grid-template-columns:296px minmax(0,1fr);align-items:stretch;}
 /* com a altura medida (a janela), cada coluna rola por si: o painel e a lista */
