@@ -4,15 +4,16 @@
 //   0,8–1,5 s o N desliza para a esquerda e "Nilma" se revela da esquerda para a direita, saindo do desfoque;
 //   1,4–2 s   "CONTABILIDADE" abre do centro para fora;
 //   depois    um brilho metálico passa pelas letras de tempos em tempos e a logo respira até a tela abrir.
-// As palavras são recortes da logo oficial (logo-nilma-completa-original.jpg), nas mesmas medidas dela.
+// As palavras são da logo oficial, vetorizadas (logoNilma.ts): nítidas em qualquer tamanho; "Nilma" com o mesmo
+// degradê vermelho do N e "CONTABILIDADE" na cor do texto (clara no escuro).
 // vidro: por cima de uma área que está carregando (o fundo embaçado), só o N, que se monta e respira.
 // Sem movimento (prefers-reduced-motion): a logo aparece parada, já montada.
 import { animate, createTimeline } from 'animejs';
 import { useLayoutEffect, useRef } from 'react';
 import { MOLA_VIVA, semMovimento } from './animacao';
 import { CAMINHO_N } from './icones';
-import palavra from './logo-nilma-palavra.png';
-import contabilidade from './logo-nilma-contabilidade.png';
+import palavra from './logo-nilma-palavra.svg';
+import { CAMINHO_CONTABILIDADE, CAMINHO_NILMA, VIEWBOX_CONTABILIDADE, VIEWBOX_NILMA } from './logoNilma';
 
 function N({ className }: { className: string }) {
   return (
@@ -77,9 +78,9 @@ export function AberturaN({ vidro }: { vidro?: boolean } = {}) {
     <div ref={raiz} className={'abertura' + (anima ? ' anima' : '')} role="status" aria-label="Abrindo">
       <div className="abertura-logo">
         <N className="abertura-logo-n" />
-        <img className="abertura-palavra" src={palavra} alt="" />
+        <svg className="abertura-palavra" viewBox={VIEWBOX_NILMA} preserveAspectRatio="none" aria-hidden="true"><path fill="url(#nlRed)" d={CAMINHO_NILMA} /></svg>
         <span className="abertura-brilho" style={{ WebkitMaskImage: 'url(' + palavra + ')', maskImage: 'url(' + palavra + ')' }} />
-        <img className="abertura-contabilidade" src={contabilidade} alt="" />
+        <svg className="abertura-contabilidade" viewBox={VIEWBOX_CONTABILIDADE} preserveAspectRatio="none" aria-hidden="true"><path fill="currentColor" d={CAMINHO_CONTABILIDADE} /></svg>
       </div>
     </div>
   );

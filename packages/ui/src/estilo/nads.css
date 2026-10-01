@@ -2185,9 +2185,9 @@ main.main:has(> .content > .explorador){padding:0;}
   mix-blend-mode:screen;}
 .abertura-contabilidade{left:56.90%;top:85.47%;width:43.41%;height:9.59%;}
 /* o N começa no meio da caixa: (956/2 − 211/2) ÷ 211 = 176,5% da largura dele */
-/* no escuro, "CONTABILIDADE" (cinza-escuro na logo) clareia para dar para ler; o vermelho fica como é */
-:root[data-theme="dark"] .abertura-contabilidade{filter:invert(1) hue-rotate(180deg);}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .abertura-contabilidade{filter:invert(1) hue-rotate(180deg);}}
+/* "CONTABILIDADE" vetorizado (logoNilma.ts) pinta com a cor do texto secundário: cinza no claro, claro no escuro */
+.abertura-contabilidade{color:var(--ink-muted);overflow:visible;}
+.abertura-palavra{overflow:visible;}
 @media (prefers-reduced-motion: reduce){.abertura-brilho{display:none;}}
 /* a sequência é do animejs (abertura.tsx, 01/10/2026). Aqui só o estado de antes de cada peça entrar, para nada piscar
    antes da linha do tempo chegar nela; sem movimento (.anima não vem), tudo aparece parado e montado */
