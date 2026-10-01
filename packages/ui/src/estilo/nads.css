@@ -1147,6 +1147,9 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 .executor-botao.proximo{background:var(--btn-primary);border-color:transparent;color:#FFFFFF;}
 .executor-botao.proximo:hover:not(:disabled){background:var(--btn-primary-hover);}
 .executor-botao:disabled{opacity:.7;cursor:progress;}
+/* o checklist da tarefa: as etapas da frente (ainda não feitas) mais apagadas */
+.subnav-item.apagada:not(.active){opacity:.45;}
+.subnav-item.apagada:not(.active):hover{opacity:.75;}
 /* o "?" no lugar do avançar (falta requisito): abre, por cima dos botões, a lista do que falta */
 .executor-ajuda{position:relative;display:inline-flex;}
 .executor-botao.ativo{background:var(--hover-bg);border-color:var(--border-strong);}
