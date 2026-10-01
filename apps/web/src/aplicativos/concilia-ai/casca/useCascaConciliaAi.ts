@@ -4,13 +4,17 @@
 // (~L2004-2039), perguntarPrestaServico (~L1781), telaInicialEmpresa (~L1712).
 import { conferencia as c } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { VERSAO_SISTEMA } from '../../../versao';
 import { useRepo } from '../dados/repo';
 import { PAGINAS_ESCONDIDAS, paginaPorId, SECOES, secaoDaPagina, type IdSecao } from './navegacao';
 import { MSG_CADASTRO_BLOQ, servicosDoEndereco, useSessao, useSincronizarPrestaServico } from './sessao';
 import { caminho } from './caminho';
+import { useRequisitosParaATarefa } from '../../../comum/ponte';
+
+/** No "?" da Tarefas cabem poucas linhas: as primeiras e "e mais N". */
+const LIMITE_DO_QUE_FALTA = 8;
 
 
 export function useCascaConciliaAi() {
@@ -31,6 +35,16 @@ export function useCascaConciliaAi() {
   const { search } = useLocation();
   const [servicosDoCadastro] = useState(() => servicosDoEndereco(search));
   useSincronizarPrestaServico(servicosDoCadastro);
+
+  // dentro da etapa Conferência fiscal da Tarefas: o que falta para tudo ficar Ok (o avançar só aparece sem nada).
+  // Conta o período da tarefa (o ?meses= do endereço), não o filtro de meses que a pessoa mexe na tela.
+  const [mesesDaTarefa] = useState(() => (new URLSearchParams(search).get('meses') || '').split(',').filter(Boolean));
+  const faltamFiscal = useMemo(() => {
+    const filtro = mesesDaTarefa.length ? c.filtroDoPeriodo(mesesDaTarefa) : s.filtro;
+    const todas = c.pendenciasDaConferenciaFiscal(e, filtro);
+    return todas.length > LIMITE_DO_QUE_FALTA ? [...todas.slice(0, LIMITE_DO_QUE_FALTA), 'e mais ' + (todas.length - LIMITE_DO_QUE_FALTA)] : todas;
+  }, [e, s.filtro, mesesDaTarefa]);
+  useRequisitosParaATarefa(repo.pronto() ? { pronto: faltamFiscal.length === 0, faltam: faltamFiscal } : null);
 
   // "Essa empresa presta serviço?" — uma vez por empresa, obrigatória, fundo embaçado
   const perguntou = useRef(false);

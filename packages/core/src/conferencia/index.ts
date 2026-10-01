@@ -26,3 +26,4 @@ export * from './regras/verificarConta';
 export * from './regras/foraDoPadraoFiscal';
 export * from './regras/consultaCsv';
 export * from './regras/verificarContaTela';
+export * from './regras/pendenciasFiscais';
