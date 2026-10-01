@@ -1991,6 +1991,14 @@ main.main:has(> .content > .explorador){padding:0;}
 .drive-card .drive-nome{display:flex;width:100%;}
 .drive-card .drive-nome > span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .drive-card .drive-onde{margin-left:8px;}
+/* uma caixa só, como a do GitHub: a faixa em cima e a tabela embaixo, de ponta a ponta e sem limite de altura (quem rola é a página) */
+.drive-card{padding:0;overflow:hidden;}
+.drive-card > .card-head{margin:0;border-radius:0;}
+.drive-card .table-wrap{border:none;border-radius:0;max-height:none;overflow:visible;}
+.drive-card thead th{position:static;}
+.drive-card .empty{margin:0;padding:24px 16px;}
+/* a pasta cinza e cheia, como a do GitHub */
+.drive .drive-ico.pasta{color:var(--ink-muted);fill:currentColor;}
 .drive-navegador{display:grid;grid-template-columns:296px minmax(0,1fr);align-items:start;}
 .drive-navegador.sem-painel{grid-template-columns:minmax(0,1fr);}
 .drive-painel{position:sticky;top:0;max-height:calc(100vh - var(--hdr-h,64px));overflow:auto;gap:8px;scrollbar-width:thin;}

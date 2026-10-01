@@ -151,7 +151,7 @@ function Arvore({ vm, aoMenu }: { vm: VmDrive; aoMenu: (ev: MouseEvent, no: e.No
             ? <button type="button" className={'imp-seta' + (no.aberto ? ' aberta' : '')} aria-label={(no.aberto ? 'Fechar ' : 'Abrir ') + no.nome} onClick={() => vm.alternarNo(no.id)}><Icone nome="caretDown" /></button>
             : <span className="imp-seta" />}
           <button type="button" className={'subnav-item' + (vm.naPasta(no.id) ? ' active' : '')} title={no.nome} onClick={() => vm.abrirNo(no)} onContextMenu={ev => aoMenu(ev, no)}>
-            <Icone nome="pasta" /><span>{no.nome}</span>
+            <Icone nome="pasta" className="drive-ico pasta" /><span>{no.nome}</span>
             {no.carregando && <span className="drive-girando" aria-label="carregando" />}
           </button>
         </div>
@@ -339,7 +339,7 @@ export function ExploradorDoDrive() {
         <div>
           <div className="tarefas-barra-topo">
             <Ano vm={vm} />
-            <span className="tarefas-contador"><Icone nome="pasta" /><b>{vm.entradas.length}</b> {vm.entradas.length === 1 ? 'cliente' : 'clientes'}</span>
+            <span className="tarefas-contador"><Icone nome="pasta" className="drive-ico pasta" /><b>{vm.entradas.length}</b> {vm.entradas.length === 1 ? 'cliente' : 'clientes'}</span>
             <span className="tarefas-barra-espaco" />
             <Busca vm={vm} campo={busca} />
             {enviarEBaixar}
