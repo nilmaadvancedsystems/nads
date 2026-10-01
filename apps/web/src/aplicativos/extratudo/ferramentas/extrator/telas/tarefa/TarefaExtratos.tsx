@@ -12,11 +12,12 @@
 import { extrator as x, type conferencia, type empresas, tarefas } from '@nads/core';
 import { Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
 import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { usePonteDaTarefa } from '../../../../../../comum/ponte';
+import { usePonteDaTarefa, useRequisitosParaATarefa } from '../../../../../../comum/ponte';
 import { useSessao } from '../../casca/sessao';
 import { useImportacao, type Mensagem } from '../importacao/useImportacao';
 import { BotaoGoogle } from '../../../../../../comum/BotaoGoogle';
 import { ImportacaoNaEtapa } from '../../../../../concilia-ai/ImportacaoNaEtapa';
+import { useImportadosDaConferencia } from '../../../../../concilia-ai/importadosNaEtapa';
 import { JanelaHistoricoDePedidos, JanelaPedirExtratos } from './JanelaPedirExtratos';
 import { useBancosOk } from './useBancosOk';
 import { useDriveDaLinha } from './useDriveDaLinha';
@@ -488,6 +489,14 @@ export function TarefaExtratos() {
   useCarregando(ocupadoGeral);
   // extrato e razão batendo no período: a linha vira só o selo Ok (sem botões, a setinha não abre)
   const { ok: bancosOk, correcoes } = useBancosOk(vm, ponte, ocupadoGeral);
+  // os requisitos para seguir (o botão de avançar da Tarefas só aparece com tudo pronto): cada banco Ok e, na
+  // Conferência, Balancete, Entradas, Saídas, Tomados e (se presta serviço) Prestados importados
+  const importados = useImportadosDaConferencia(s.nome);
+  const mesesDaEtapa = vm.periodo.length > 1 ? vm.periodo : [vm.competencia];
+  useRequisitosParaATarefa(ponte.naTarefa ? x.requisitosDaImportacao(vm.bancos.map(b => ({
+    nome: b.nome, ok: !!bancosOk[b.id],
+    semMovimento: mesesDaEtapa.every(m => (vm.periodo.length > 1 ? ponte.semMovimentoPorMes[m] || [] : ponte.semMovimento).includes(b.id)),
+  })), importados, vm.prestaServico) : null);
   const [cxExtrato, cxRazao] = vm.caixas;
   const [abertas, setAbertas] = useState<string[]>([]);
   const [abaEscolhida, setAba] = useState<AbaImportacao>('bancos');
