@@ -2070,3 +2070,7 @@ main.main:has(> .content > .explorador){padding:0;}
   .drive-painel{position:static;max-height:none;}
   .drive-direita{padding:16px;}
 }
+
+/* aviso de versão nova (AvisoDeVersaoNova): faixa no alto, por cima de tudo */
+.versao-nova{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:90;display:flex;align-items:center;gap:10px;max-width:calc(100vw - 32px);padding:8px 10px 8px 14px;border:1px solid var(--accent-border);border-radius:8px;background:var(--surface);color:var(--ink);box-shadow:var(--shadow-lg);font-size:13px;}
+.versao-nova > svg{width:16px;height:16px;color:var(--accent-ink);flex:none;}

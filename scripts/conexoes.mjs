@@ -34,6 +34,8 @@ const TEXTOS_FIREBASE = [/from\s+['"]firebase(\/[a-z-]+)?['"]/, /\b(getFirestore
 const TEXTOS_REDE = [/\bfetch\s*\(/, /\bXMLHttpRequest\b/, /\bnew\s+WebSocket\b/, /\bsendBeacon\b/, /\bEventSource\b/];
 // o download da cópia que o robô do Entregas publica (e só dela: o arquivo confere o endereço antes)
 const ONDE_PODE_FETCH = /[\\/]apps[\\/]web[\\/]src[\\/]aplicativos[\\/]extratudo[\\/]dados[\\/]drive\.firestore\.ts$/;
+// e o aviso de versão nova, que lê o /versao.json do próprio site
+const ONDE_PODE_FETCH_VERSAO = /[\\/]packages[\\/]ui[\\/]src[\\/]versaoNova\.tsx$/;
 
 const achados = [];
 const ignorar = new Set(['node_modules', '.git', 'dist', 'dist-sites', 'dist-tipos', '.claude', 'docs', '.firebase']);
@@ -74,6 +76,8 @@ varrer(raiz, p => {
     for (const re of TEXTOS_REDE) {
       if (!re.test(l)) continue;
       if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH.test(p)) continue;
+      // o aviso de versão nova lê só o /versao.json do próprio site (mesmo endereço; liberado pelo usuário em 01/10/2026)
+      if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH_VERSAO.test(p) && l.includes("fetch('/versao.json?t=' + Date.now()")) continue;
       achados.push(rel + ':' + (i + 1) + ': chamada de rede ("' + re.source + '")');
     }
   });

@@ -84,6 +84,9 @@ export function pedidoDoDocumento(id: string, d: Record<string, unknown>): Pedid
 export const codigoVencido = (p: PedidoDeLiberacao, agora = Date.now()) =>
   p.status === 'aprovado' && (!p.validoAte || agora >= Date.parse(p.validoAte));
 
+/** Aprovado por uma tela de admin desatualizada (sem o prazo): o código não passa nas regras; o admin precisa atualizar. */
+export const aprovadoSemPrazo = (p: PedidoDeLiberacao | null) => !!p && p.status === 'aprovado' && !p.validoAte;
+
 /** A pessoa precisa pedir de novo: sem pedido, recusado, revogado ou com o código vencido. */
 export const precisaPedirDeNovo = (p: PedidoDeLiberacao | null, agora = Date.now()) =>
   !p || p.status === 'recusado' || p.status === 'revogado' || codigoVencido(p, agora);
