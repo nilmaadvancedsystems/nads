@@ -6,6 +6,8 @@
 //  1. conferido: mesma data e mesmo valor (entre vários, o de histórico mais parecido);
 //  2. duplicado: o que sobrou e é igual (data, valor e histórico parecido) a um já conferido do
 //     mesmo lado — lançado duas vezes no sistema, ou repetido no extrato;
+//  2b. conferido pelo total do dia: a cobrança em lote (o banco credita num lançamento só, o razão lança
+//     cliente por cliente) — no mesmo dia, o que sobrou dos dois lados soma igual, no centavo;
 //  3. diferente (data): mesmo valor, data até `tolerancia` dias de distância (a mais próxima);
 //  4. diferente (sinal): mesmo valor com sinal trocado, dentro da tolerância;
 //  5. diferente (valor): mesma data (ou dentro da tolerância) e histórico parecido, valor diferente;
@@ -75,6 +77,22 @@ export function conferir(extrato: LancamentoDoArquivo[], sistema: LancamentoDoAr
       usadoB.add(b.id);
       linha({ situacao: 'duplicado', extrato: b, sistema: null, ladoDuplicado: 'banco', motivo: 'Aparece repetido no extrato e só uma vez no sistema' });
     }
+  }
+
+  // 2b. pelo total do dia (Vitor, 01/10/2026; a 292 no Sicoob): "CRÉD.LIQ.COBRANÇA DOC.: 1820477" 5.852,54 no extrato
+  // e, no razão, os clientes daquele lote (com descontos e juros dentro). No mesmo dia, se o que sobrou do extrato soma
+  // exatamente o que sobrou do sistema, tudo daquele dia está conferido. Um contra um fica para os passos de baixo.
+  const sobraB = new Map<number, Item[]>(), sobraC = new Map<number, Item[]>();
+  for (const b of B) if (!usadoB.has(b.id)) (sobraB.get(b.dia) || sobraB.set(b.dia, []).get(b.dia)!).push(b);
+  for (const c of C) if (!usadoC.has(c.id)) (sobraC.get(c.dia) || sobraC.set(c.dia, []).get(c.dia)!).push(c);
+  for (const [dia, bs] of sobraB) {
+    const cs = sobraC.get(dia);
+    if (!cs || bs.length + cs.length < 3) continue;
+    const soma = (l: Item[]) => l.reduce((t, x) => t + x.valor, 0);
+    if (soma(bs) !== soma(cs)) continue;
+    const motivo = 'Conferido pelo total do dia: ' + bs.length + (bs.length === 1 ? ' lançamento' : ' lançamentos') + ' no extrato, ' + cs.length + ' no sistema, somando ' + valorBR(soma(bs));
+    for (const b of bs) { usadoB.add(b.id); linha({ situacao: 'ok', extrato: b, sistema: null, motivo }); }
+    for (const c of cs) { usadoC.add(c.id); linha({ situacao: 'ok', extrato: null, sistema: c, motivo }); }
   }
 
   // sobras do sistema por dia, para achar vizinhos

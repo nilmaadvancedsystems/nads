@@ -71,3 +71,22 @@ describe('conferência extrato × sistema', () => {
     expect(csv.split('\n')).toEqual(['\ufeffSituação;Data extrato;Histórico extrato;Valor extrato;Data sistema;Histórico sistema;Valor sistema;O que houve', 'Faltando;03/08/2026;"TARIFA; PIX";-10,50;;;;Está no extrato e não no sistema']);
   });
 });
+
+describe('conferido pelo total do dia (cobrança em lote)', () => {
+  it('o lote do extrato e os clientes do razão no mesmo dia, somando igual: tudo conferido', () => {
+    const r = conferir([
+      B(2, 585254, 'CRÉD.LIQ.COBRANÇA DOC.: 1820477'), B(2, 208347, 'CRÉD.LIQ.COBRANÇA DOC.: 1821307'),
+    ], [
+      S(2, 389879, 'CAMILA SIMOES CORDEIRO'), S(2, 200000, 'MEDEIROS E MOURA LTDA'), S(2, 203288, 'SUPERMERCADO SKINAO LTDA'),
+      S(2, 5059, 'Juros Recebidos'), S(2, -4625, 'Descontos Concedidos'),
+    ], 3);
+    expect(r.contagem).toEqual({ ok: 7, faltando: 0, diferente: 0, amais: 0, duplicado: 0 });
+    expect(r.linhas[0].motivo).toBe('Conferido pelo total do dia: 2 lançamentos no extrato, 5 no sistema, somando 7.936,01');
+  });
+  it('somando diferente, ou em dias diferentes: continua pendente', () => {
+    const r = conferir([B(6, 1096891, 'CRÉD.LIQ.COBRANÇA DOC.: 1948278')], [S(6, 398190, 'SUPERMERCADO UNIAO'), S(6, 711797, 'CAMPOS COMERCIO')], 0);
+    expect(r.contagem).toMatchObject({ ok: 0, faltando: 1, amais: 2 });
+    const r2 = conferir([B(6, 300000, 'CRÉD.LIQ.COBRANÇA DOC.: 1')], [S(6, 100000, 'A'), S(7, 200000, 'B')], 0);
+    expect(r2.contagem).toMatchObject({ ok: 0, faltando: 1, amais: 2 });
+  });
+});
