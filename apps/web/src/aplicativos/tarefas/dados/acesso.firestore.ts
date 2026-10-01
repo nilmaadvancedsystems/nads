@@ -2,12 +2,13 @@
 //   config/nads                     { protecaoLogin }  — a proteção do login (só o admin grava)
 //   nadsPedidos/{id}                o pedido de liberação de um login (a pessoa cria; o admin aprova ou recusa)
 //   nadsPedidos/{id}/codigo/atual   { codigo }         — o código de 6 dígitos (só o admin lê e grava)
-//   nadsSessoes/{uid}_{authTime}    o login liberado (a pessoa cria com o código; as regras conferem; o admin revoga)
+//   nadsSessoes/{uid}_{authTime}    o login liberado (a pessoa cria com o código; as regras conferem; o admin revoga:
+//                                   a sessão some, o pedido vira 'revogado' e o código é apagado)
 //   usuarios/{uid}                  a equipe: departamento, nível, papéis (roles) e ativo (só o admin grava)
 // As regras do Entregas (firestore.rules) só deixam ler e gravar os dados do nads (rotinas, cadastro) com o login
 // liberado, quando a proteção está ligada; o admin não precisa de liberação.
 import { usuarios as u } from '@nads/core';
-import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc, updateDoc, where, writeBatch, limit } from 'firebase/firestore';
+import { addDoc, collection, doc, onSnapshot, orderBy, query, setDoc, Timestamp, updateDoc, where, writeBatch, limit } from 'firebase/firestore';
 import type { RepoAcesso } from './acesso';
 import { bancoDoEntregas, horaDoLogin } from './entregas.firestore';
 
@@ -89,6 +90,7 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
       const q = eu();
       const t = authTime || await horaDoLogin();
       if (!pedido || pedido.status !== 'aprovado') throw new Error('o pedido ainda não foi aprovado');
+      if (u.codigoVencido(pedido)) throw new Error('o código venceu');
       await setDoc(doc(db, 'nadsSessoes', u.idDaSessao(q.uid, t)), {
         uid: q.uid, nome: q.nome, email: q.email, computador: pedido.computador, pedidoId: pedido.id, codigo: u.codigoDigitado(codigo), liberadoEm: new Date().toISOString(),
       });
@@ -99,7 +101,11 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
       const codigo = u.codigoNovo();
       const b = writeBatch(db);
       b.set(doc(db, 'nadsPedidos', p.id, 'codigo', 'atual'), { codigo });
-      b.update(doc(db, 'nadsPedidos', p.id), { status: 'aprovado', aprovadoPor: q.nome, aprovadoEm: new Date().toISOString() });
+      b.update(doc(db, 'nadsPedidos', p.id), {
+        status: 'aprovado', aprovadoPor: q.nome, aprovadoEm: new Date().toISOString(),
+        // o código só vale por um tempo (as regras conferem com a hora do servidor)
+        validoAte: Timestamp.fromMillis(Date.now() + u.PRAZO_DO_CODIGO_MS),
+      });
       await b.commit();
       return codigo;
     },
@@ -108,7 +114,17 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
       await updateDoc(doc(db, 'nadsPedidos', p.id), { status: 'recusado', aprovadoPor: q.nome, aprovadoEm: new Date().toISOString() });
     },
     sessoes: () => { ouvir(); return sessoes; },
-    async revogar(id) { await deleteDoc(doc(db, 'nadsSessoes', id)); },
+    async revogar(s) {
+      const q = eu();
+      const b = writeBatch(db);
+      b.delete(doc(db, 'nadsSessoes', s.id));
+      // o código daquele pedido deixa de valer: para entrar de novo, outro pedido e outro código
+      if (s.pedidoId) {
+        b.update(doc(db, 'nadsPedidos', s.pedidoId), { status: 'revogado', revogadoPor: q.nome, revogadoEm: new Date().toISOString() });
+        b.delete(doc(db, 'nadsPedidos', s.pedidoId, 'codigo', 'atual'));
+      }
+      await b.commit();
+    },
     equipe: () => { ouvir(); return equipe; },
     async salvarCargo(uid, departamento, nivel) {
       const atual = equipe.docs[uid];

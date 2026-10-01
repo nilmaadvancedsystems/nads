@@ -22,7 +22,8 @@ export interface RepoAcesso {
   recusar(p: usuarios.PedidoDeLiberacao): Promise<void>;
   /** para o admin: os logins liberados */
   sessoes(): usuarios.SessaoLiberada[];
-  revogar(id: string): Promise<void>;
+  /** apaga a liberação e invalida o código do pedido (a pessoa pede de novo e recebe outro código) */
+  revogar(s: usuarios.SessaoLiberada): Promise<void>;
   /** a equipe (usuarios do Entregas) */
   equipe(): { carregada: boolean; lista: usuarios.Usuario[]; docs: Record<string, usuarios.DocUsuario> };
   salvarCargo(uid: string, departamento: usuarios.Departamento | null, nivel: usuarios.Nivel | null): Promise<void>;
@@ -58,21 +59,26 @@ export function criarAcessoMemoria(quem: () => { nome: string } | null): RepoAce
       mudou();
     },
     async confirmar(c) {
-      if (!pedido || pedido.status !== 'aprovado' || c !== codigo) throw new Error('código errado ou pedido ainda não aprovado');
+      if (!pedido || pedido.status !== 'aprovado' || usuarios.codigoVencido(pedido) || c !== codigo) throw new Error('código errado ou pedido ainda não aprovado');
       liberada = true;
-      sessoes = [...sessoes, { id: 'eu_1', uid: 'eu', nome: pedido.nome, email: '', computador: pedido.computador, liberadoEm: agora() }];
+      sessoes = [...sessoes, { id: 'eu_1', pedidoId: pedido.id, uid: 'eu', nome: pedido.nome, email: '', computador: pedido.computador, liberadoEm: agora() }];
       mudou();
     },
     pendentes: () => (pedido && pedido.status === 'pendente' ? [pedido] : []),
     async aprovar(p) {
       codigo = usuarios.codigoNovo();
-      pedido = { ...p, status: 'aprovado', aprovadoPor: quem()?.nome || '', aprovadoEm: agora() };
+      pedido = { ...p, status: 'aprovado', aprovadoPor: quem()?.nome || '', aprovadoEm: agora(), validoAte: new Date(Date.now() + usuarios.PRAZO_DO_CODIGO_MS).toISOString() };
       mudou();
       return codigo;
     },
     async recusar(p) { pedido = { ...p, status: 'recusado' }; mudou(); },
     sessoes: () => sessoes,
-    async revogar(id) { sessoes = sessoes.filter(s => s.id !== id); if (id === 'eu_1') liberada = false; mudou(); },
+    async revogar(s) {
+      sessoes = sessoes.filter(x => x.id !== s.id);
+      if (s.id === 'eu_1') liberada = false;
+      if (pedido && pedido.id === s.pedidoId) { pedido = { ...pedido, status: 'revogado', revogadoPor: quem()?.nome || '' }; codigo = ''; }
+      mudou();
+    },
     equipe: () => ({ carregada: true, lista: equipe(), docs }),
     async salvarCargo(uid, dep, nivel) { Object.assign(docs[uid], usuarios.mudancaDeCargo(docs[uid], dep, nivel)); mudou(); },
     async salvarPapeis(uid, papeis) { docs[uid].roles = papeis as usuarios.Papel[]; mudou(); },

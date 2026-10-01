@@ -129,4 +129,20 @@ describe('liberação do login do nads', () => {
     expect(l.pedidoVencido(p, Date.parse('2026-09-30T12:10:00Z'))).toBe(false);
     expect(l.pedidoVencido(p, Date.parse('2026-09-30T13:00:00Z'))).toBe(true);
   });
+
+  it('revogar e o prazo do código: pedir de novo, com outro código', async () => {
+    const l = await import('./regras/liberacao');
+    const aprovado = l.pedidoDoDocumento('p1', { status: 'aprovado', validoAte: { toMillis: () => Date.parse('2026-10-01T12:30:00Z') } });
+    expect(aprovado.validoAte).toBe('2026-10-01T12:30:00.000Z');
+    expect(l.codigoVencido(aprovado, Date.parse('2026-10-01T12:10:00Z'))).toBe(false);
+    expect(l.codigoVencido(aprovado, Date.parse('2026-10-01T12:31:00Z'))).toBe(true);
+    expect(l.precisaPedirDeNovo(aprovado, Date.parse('2026-10-01T12:10:00Z'))).toBe(false);
+    // aprovado antes de existir o prazo: não vale mais
+    expect(l.codigoVencido(l.pedidoDoDocumento('p0', { status: 'aprovado' }))).toBe(true);
+    const revogado = l.pedidoDoDocumento('p2', { status: 'revogado', revogadoPor: 'Nilma' });
+    expect([revogado.status, revogado.revogadoPor, l.precisaPedirDeNovo(revogado)]).toEqual(['revogado', 'Nilma', true]);
+    expect(l.precisaPedirDeNovo(null)).toBe(true);
+    expect(l.precisaPedirDeNovo(l.pedidoDoDocumento('p3', { status: 'pendente' }))).toBe(false);
+    expect(l.sessaoDoDocumento('u1_1', { pedidoId: 'p1', uid: 'u1' }).pedidoId).toBe('p1');
+  });
 });
