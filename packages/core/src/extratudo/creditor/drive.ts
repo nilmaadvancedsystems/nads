@@ -59,7 +59,8 @@ export interface RepoDrive {
   /** baixa o arquivo (pelo robô do Entregas); `passo` conta o andamento para a tela */
   baixar(id: string, nome: string, passo?: (texto: string) => void): Promise<ArrayBuffer>;
   /** um link temporário para VER o arquivo (a cópia do robô vale ~30 min); não guardar o link */
-  link(id: string, nome: string, passo?: (texto: string) => void): Promise<string>;
+  /** modo 'abrir' (padrão): o PDF abre no navegador, só para ver; 'baixar': vem como download */
+  link(id: string, nome: string, passo?: (texto: string) => void, modo?: 'abrir' | 'baixar'): Promise<string>;
   /** o contato do cliente no cadastro do Entregas (null = não achou); não existe acoplado no Entregas */
   contatoDoCliente?(codigo: number): Promise<ContatoDoCliente | null>;
   /** põe o e-mail na fila do robô do Entregas e espera ele enviar (erro = o motivo); 'na-fila' = o robô ainda não pegou */

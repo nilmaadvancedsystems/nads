@@ -200,16 +200,19 @@ export function criarDriveFirestore(): cr.RepoDrive {
     },
 
     async baixar(id, nome, passo) {
-      return baixarDoRobo(await this.link(id, nome, passo), passo);
+      return baixarDoRobo(await this.link(id, nome, passo, 'baixar'), passo);
     },
 
-    /** Pede ao robô a cópia temporária (~30 min) e devolve o link dela — para ver, sem guardar. */
-    async link(id, nome, passo) {
+    /**
+     * Pede ao robô a cópia temporária (~30 min) e devolve o link dela — para ver, sem guardar. 'abrir' (o padrão):
+     * o PDF abre no próprio navegador (só ver, sem baixar); 'baixar': vem como download (a importação lê os bytes).
+     */
+    async link(id, nome, passo, modo: 'abrir' | 'baixar' = 'abrir') {
       const u = auth.currentUser;
       if (!u) throw new Error('Entre com o usuário do Entregas primeiro.');
       passo?.('pedindo ao robô do Drive');
       const ref = await addDoc(collection(db, 'aberturasDrive'), {
-        status: 'pendente', fileId: id, nome, modo: 'baixar',
+        status: 'pendente', fileId: id, nome, modo,
         criadoEm: new Date().toISOString(), criadoPor: acesso.quem || 'nads', criadoPorUid: u.uid,
       });
       const url = await new Promise<string>((ok, falha) => {

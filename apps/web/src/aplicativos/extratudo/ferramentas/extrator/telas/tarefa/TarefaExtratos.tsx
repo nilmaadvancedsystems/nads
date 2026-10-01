@@ -137,8 +137,10 @@ const semAcento = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, 
  * Busca (data, descrição ou valor) e ordem por coluna (clicar no título; clicar de novo inverte; a setinha só
  * aparece depois do clique). A linha do saldo anterior fica sempre em cima, como está.
  */
-function Movimento({ doMes, todos, pdf, onPdf }: {
+function Movimento({ doMes, todos, pdf, onPdf, competencia }: {
   doMes: x.MovimentoDoExtrato; todos: x.MovimentoDoExtrato;
+  /** o mês aberto ('aaaa-mm'): a linha da busca diz qual período a tabela mostra */
+  competencia: string;
   /** o extrato do mês veio do Drive: o botão PDF ao lado da busca abre o arquivo de lá */
   pdf?: { id: string; nome: string } | null; onPdf?: (arquivo: { id: string; nome: string }) => void;
 }) {
@@ -173,11 +175,18 @@ function Movimento({ doMes, todos, pdf, onPdf }: {
           title={verTodos ? 'Voltar para o mês' : 'Todos os extratos importados'} aria-label="Todos os extratos importados">
           <Icone nome="grade" />
         </button>
-        {pdf && onPdf && (
-          <button type="button" className="btn btn-outline imp-mov-pdf" title={'Abrir o PDF do Drive: ' + pdf.nome} aria-label="Abrir o PDF do Drive" onClick={() => onPdf(pdf)}>
+        {pdf && onPdf && !verTodos && (
+          <button type="button" className="btn btn-outline imp-mov-pdf" title={'Ver o PDF no Drive (link temporário, sem baixar): ' + pdf.nome} aria-label="Ver o PDF no Drive" onClick={() => onPdf(pdf)}>
             <Icone nome="fileText" />PDF
           </button>
         )}
+        {/* qual período a tabela mostra: o mês aberto, ou todos os meses importados (do primeiro ao último) */}
+        <span className={'imp-mov-periodo' + (verTodos ? ' todos' : '')} aria-live="polite">
+          <Icone nome="calendar" />
+          {verTodos
+            ? <>Mostrando <b>todos os meses importados</b>{todos.linhas.length > 0 && <> · {tarefas.rotuloNumericoCompetencia(todos.linhas[0].data.slice(0, 7))} a {tarefas.rotuloNumericoCompetencia(todos.linhas[todos.linhas.length - 1].data.slice(0, 7))}</>}</>
+            : <>Mostrando <b>{tarefas.rotuloCompetencia(competencia).toLowerCase()}</b></>}
+        </span>
         {q && (
           <div className="imp-mov-total" aria-live="polite">
             <span><b>{achadas.length}</b> {achadas.length === 1 ? 'lançamento' : 'lançamentos'}</span>
@@ -411,7 +420,10 @@ export function TarefaExtratos() {
   const pe = usePedirExtratos(vm, s.codigo, s.nome, ponte.semMovimento, d.pedirLogin, { logo: urlDoLogoNilma(), logoDoBanco: urlDoLogoBanco });
   // os logos do Pedir extrato (Gmail/WhatsApp) já vêm com a página: no clique, aparecem na hora
   useEffect(preCarregarLogosDosApps, []);
-  useCarregando(vm.ocupado || !!d.buscando || vm.bancos.some(b => b.extrato.lendo || b.razao.lendo));
+  // qualquer operação rodando (importar, ler, buscar no Drive): a barra do topo e todos os botões travados até acabar
+  // (o botão que está girando no Drive vira "Cancelar")
+  const ocupadoGeral = vm.ocupado || !!d.buscando || vm.bancos.some(b => b.extrato.lendo || b.razao.lendo);
+  useCarregando(ocupadoGeral);
   const [cxExtrato, cxRazao] = vm.caixas;
   const [abertas, setAbertas] = useState<string[]>([]);
   const [abaEscolhida, setAba] = useState<AbaImportacao>('bancos');
@@ -446,7 +458,7 @@ export function TarefaExtratos() {
         </nav>
       )}
       {aba !== 'bancos' ? <ImportacaoNaEtapa nome={s.nome} tipo={aba} prestaServico={vm.prestaServico} /> : (<>
-      <div className="imp-topo">
+      <div className={'imp-topo' + (ocupadoGeral ? ' travado' : '')} aria-busy={ocupadoGeral}>
         {/* à esquerda, como o "⎇ main ▾  6 Branches" do GitHub: a competência e o número de bancos */}
         <SeletorDeCompetencia vm={vm} naTarefa={ponte.naTarefa} trocar={ponte.trocarCompetencia} periodoDaTarefa={ponte.periodo} encerrar={ponte.encerrarPeriodo} />
         <span className="imp-topo-num"><Icone nome="landmark" /><b>{vm.bancos.length}</b> {vm.bancos.length === 1 ? 'banco' : 'bancos'}</span>
@@ -472,7 +484,7 @@ export function TarefaExtratos() {
           const semMov = ponte.semMovimento.includes(b.id);
           const buscando = d.buscando === b.id;
           // sem movimento: a linha toda trava (só o Desfazer fica)
-          const travado = semMov || vm.ocupado || buscando || b.extrato.lendo || b.razao.lendo;
+          const travado = semMov || ocupadoGeral;
           const temExtrato = b.extrato.qtdArquivos > 0;
           const doDrive = b.extrato.doDrive;
           // Em Lote: os meses do banco — completo (todo mês importado ou sem movimento) e os que faltam
@@ -520,14 +532,16 @@ export function TarefaExtratos() {
                     <div className="imp-grupo" aria-label="Extrato do banco (todos os meses)">
                       <span className="imp-rotulo">Extrato</span>
                       {lote.extratoCompleto ? (
-                        <RemoverTodos titulo="o extrato" travado={vm.ocupado || buscando} onRemover={() => { void vm.excluirDoPeriodo(b.id, 'banco', lote.comExtrato); }} />
+                        <RemoverTodos titulo="o extrato" travado={ocupadoGeral} onRemover={() => { void vm.excluirDoPeriodo(b.id, 'banco', lote.comExtrato); }} />
                       ) : (
                         <>
-                          <ImportarTodos titulo="o extrato" restantes={lote.comExtrato.length > 0} aceitar={cxExtrato.aceitar} travado={vm.ocupado || buscando} onArquivos={fs => { void vm.importarArquivos(b.id, 'banco', fs); }} />
-                          <button type="button" className="btn btn-outline btn-sm imp-todos" disabled={vm.ocupado || buscando}
-                            title="Buscar no Drive, na pasta da empresa, o extrato de cada mês que falta e importar"
-                            onClick={() => d.buscarNoPeriodo(b, lote.faltamExtrato)}>
-                            {buscando ? <span className="btn-spinner" /> : <LogoDrive cor />}{lote.comExtrato.length > 0 ? 'Adicionar restantes' : 'Todos pelo Drive'}
+                          <ImportarTodos titulo="o extrato" restantes={lote.comExtrato.length > 0} aceitar={cxExtrato.aceitar} travado={ocupadoGeral} onArquivos={fs => { void vm.importarArquivos(b.id, 'banco', fs); }} />
+                          {/* buscando: o próprio botão vira "Cancelar" (para depois do mês que está baixando); o resto fica travado */}
+                          <button type="button" className={'btn btn-outline btn-sm imp-todos' + (buscando ? ' imp-cancelar' : '')}
+                            disabled={buscando ? d.cancelando : ocupadoGeral}
+                            title={buscando ? 'Cancelar: para depois do mês que está baixando (os meses que já vieram ficam)' : 'Buscar no Drive, na pasta da empresa, o extrato de cada mês que falta e importar'}
+                            onClick={() => (buscando ? d.cancelar() : d.buscarNoPeriodo(b, lote.faltamExtrato))}>
+                            {buscando ? <><span className="btn-spinner" />{d.cancelando ? 'Cancelando…' : 'Cancelar'}</> : <><LogoDrive cor />{lote.comExtrato.length > 0 ? 'Adicionar restantes' : 'Todos pelo Drive'}</>}
                           </button>
                         </>
                       )}
@@ -535,8 +549,8 @@ export function TarefaExtratos() {
                     <div className="imp-grupo" aria-label="Razão da conta (todos os meses)">
                       <span className="imp-rotulo">Razão</span>
                       {lote.razaoCompleto
-                        ? <RemoverTodos titulo="o razão" travado={vm.ocupado || buscando} onRemover={() => { void vm.excluirDoPeriodo(b.id, 'sistema', lote.comRazao); }} />
-                        : <ImportarTodos titulo="o razão" restantes={lote.comRazao.length > 0} aceitar={cxRazao.aceitar} travado={vm.ocupado || buscando} onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }} />}
+                        ? <RemoverTodos titulo="o razão" travado={ocupadoGeral} onRemover={() => { void vm.excluirDoPeriodo(b.id, 'sistema', lote.comRazao); }} />
+                        : <ImportarTodos titulo="o razão" restantes={lote.comRazao.length > 0} aceitar={cxRazao.aceitar} travado={ocupadoGeral} onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }} />}
                     </div>
                   </div>
                 ) : (
@@ -580,21 +594,21 @@ export function TarefaExtratos() {
                       </button>
                     ) : ponte.naTarefa && (
                       <button type="button" className={'btn btn-sm btn-outline imp-sem-mov' + (semMov ? ' marcado' : '')} aria-pressed={semMov}
-                        disabled={!semMov && (vm.ocupado || buscando || b.extrato.lendo || b.razao.lendo)}
+                        disabled={!semMov && ocupadoGeral}
                         onClick={() => ponte.marcarSemMovimento(b.id, !semMov)}>{semMov ? 'Desfazer' : 'Não teve movimento'}</button>
                     )}
                   </div>
                 )}
               </div>
               {emLote && gradeAberta && <MesesDoBanco meses={meses} competencia={vm.competencia} naTarefa={ponte.naTarefa}
-                travado={vm.ocupado || buscando} aceitarExtrato={cxExtrato.aceitar} aceitarRazao={cxRazao.aceitar}
+                travado={ocupadoGeral} aceitarExtrato={cxExtrato.aceitar} aceitarRazao={cxRazao.aceitar}
                 onMes={vm.setCompetencia} onArquivos={(lado, fs) => { void vm.importarArquivos(b.id, lado, fs); }}
                 onExcluir={(lado, mes) => { void vm.excluirDoBanco(b.id, lado, mes); }}
                 onDrive={mes => d.buscarNoPeriodo(b, [mes])}
                 onVer={visualizarDoDrive}
                 onSemMovimento={(mes, marcado) => ponte.marcarSemMovimento(b.id, marcado, mes)} />}
               {verLancamentos && <Movimento doMes={vm.movimentoDe(b.id)} todos={vm.movimentoTodosDe(b.id)}
-                pdf={doDrive.length ? doDrive[doDrive.length - 1] : null} onPdf={visualizarDoDrive} />}
+                pdf={doDrive.length ? doDrive[doDrive.length - 1] : null} onPdf={visualizarDoDrive} competencia={vm.competencia} />}
             </div>
           );
         })}

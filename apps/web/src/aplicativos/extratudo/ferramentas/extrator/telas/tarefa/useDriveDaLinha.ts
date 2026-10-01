@@ -19,6 +19,9 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   const [pendente, setPendente] = useState<Linha | null>(null);
   const [escolha, setEscolha] = useState<{ linha: Linha; texto: string; candidatos: creditor.ArquivoAchado[] } | null>(null);
   const [buscando, setBuscando] = useState<string | null>(null);
+  // "Cancelar" a busca de vários meses: para antes do próximo mês
+  const cancelado = useRef(false);
+  const [cancelando, setCancelando] = useState(false);
   // o que fazer depois de entrar, quando o login foi pedido por outra coisa (o Pedir extratos)
   const depois = useRef<(() => void) | null>(null);
 
@@ -82,11 +85,18 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       return;
     }
     setBuscando(linha.id);
+    cancelado.current = false;
+    setCancelando(false);
     const achados: string[] = [];
     const faltam: string[] = [];
     try {
       const pasta = await drive.pastaDoCliente(codigo);
       for (const mes of meses) {
+        // "Cancelar": para antes do próximo mês (o que já veio fica)
+        if (cancelado.current) {
+          vm.avisarErro(linha.nome + ': cancelado', achados.length ? 'Ficaram os que já vieram: ' + achados.join(', ') + '.' : 'Nenhum mês foi trazido.');
+          return;
+        }
         const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, mes, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta });
         const rotulo = mes.slice(5) + '/' + mes.slice(0, 4);
         if (r.situacao !== 'achou' || !r.arquivo) { faltam.push(rotulo); continue; }
@@ -100,6 +110,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       vm.avisarErro('Não consegui olhar o Drive', mensagemDeErro(e));
     } finally {
       setBuscando(null);
+      setCancelando(false);
     }
   }
 
@@ -123,6 +134,9 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     exemplos: drive.exemplos,
     entrou: acesso.entrou,
     buscando,
+    /** pediu para cancelar a busca de vários meses (espera o mês que está baixando) */
+    cancelando,
+    cancelar: () => { cancelado.current = true; setCancelando(true); },
     buscar: (linha: Linha) => { void buscar(linha); },
     buscarNoPeriodo: (linha: Linha, meses: string[]) => { void buscarNoPeriodo(linha, meses); },
     login: { ...login, set: (m: Partial<typeof login>) => setLogin(l => ({ ...l, ...m })), entrar: () => { void entrar(); }, fechar: () => { setPendente(null); depois.current = null; setLogin(l => ({ ...l, aberto: false })); } },

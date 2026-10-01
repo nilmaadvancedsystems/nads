@@ -1408,6 +1408,15 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-mov-todos.ativo{color:var(--accent);border-color:var(--accent);background:var(--hover-bg);}
 /* o PDF do Drive, colado no "todos" */
 .imp-mov-todos + .imp-mov-pdf{margin-left:-8px;}
+/* qual período a tabela mostra (o mês aberto, ou todos os meses: aceso como o botão "todos") */
+.imp-mov-periodo{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--ink-muted);}
+.imp-mov-periodo svg{width:14px;height:14px;}
+.imp-mov-periodo b{color:var(--ink);font-weight:600;}
+.imp-mov-periodo.todos{border-color:var(--accent);background:var(--hover-bg);}
+/* o Drive buscando vários meses vira "Cancelar"; o resto da tela fica travado até acabar */
+.imp-cancelar{border-color:var(--accent);}
+label.btn.is-locked{opacity:.5;pointer-events:none;}
+.imp-topo.travado .popover-wrap > .btn{opacity:.5;pointer-events:none;}
 .imp-mov-total{display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink-muted);}
 .imp-mov-total b{font-weight:600;font-variant-numeric:tabular-nums;margin-left:4px;}
 .imp-mov-total > span:first-child b{margin-left:0;color:var(--ink);}
