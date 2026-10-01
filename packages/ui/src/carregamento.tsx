@@ -3,7 +3,9 @@
 // devagar até quase o fim; quando todos terminam, ela completa e some. Carregamento rápido (menos de
 // 150 ms) nem aparece. Dentro de uma etapa da Tarefas, a barra é a dela (no alto da página, de ponta a
 // ponta): esta só conta a ela quando começa e termina.
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { animate, utils } from 'animejs';
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { semMovimento } from './animacao';
 import { origemDoPai } from './origem';
 
 let ativos = 0;
@@ -46,13 +48,26 @@ export function BarraDeCarregamento() {
     if (fase === 'andando') setFase('terminando');
   }, [carregando, fase]);
 
-  // completou: some e volta ao começo
-  useEffect(() => {
-    if (fase !== 'terminando') return;
-    const t = setTimeout(() => setFase('parada'), 450);
-    return () => clearTimeout(t);
+  // o movimento é do animejs (01/10/2026): andando, corre no começo e freia perto do fim (nunca chega sozinha);
+  // terminando, completa num instante e apaga; sem movimento, só aparece e some
+  const barra = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = barra.current;
+    if (!el) return;
+    if (fase === 'andando') {
+      if (semMovimento()) { utils.set(el, { width: '60%', opacity: 1 }); return; }
+      const a = animate(el, { width: ['0%', '88%'], opacity: [1, 1], duration: 9000, ease: 'out(5)' });
+      return () => { a.pause(); };
+    }
+    if (fase === 'terminando') {
+      const a = animate(el, { width: '100%', duration: semMovimento() ? 0 : 200, ease: 'outQuad', onComplete: () => {
+        animate(el, { opacity: 0, duration: semMovimento() ? 0 : 240, ease: 'linear', onComplete: () => setFase('parada') });
+      } });
+      return () => { a.pause(); };
+    }
+    utils.set(el, { width: '0%', opacity: 0 });
   }, [fase]);
 
   if (pai) return null;
-  return <div className={'barra-carregamento ' + fase} role="progressbar" aria-hidden={fase === 'parada'} aria-label="Carregando" />;
+  return <div ref={barra} className={'barra-carregamento ' + fase} role="progressbar" aria-hidden={fase === 'parada'} aria-label="Carregando" />;
 }
