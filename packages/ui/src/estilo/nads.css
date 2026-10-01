@@ -1887,11 +1887,6 @@ a.btn.gmail-icone,.gmail-de-acoes a.btn{text-decoration:none;}
 /* o Drive na tela inteira: sem as margens da página (o Explorador vai de ponta a ponta, embaixo do cabeçalho) */
 main.main:has(> .content > .explorador){padding:0;}
 .content:has(> .explorador){max-width:none;padding:0 !important;}
-.explorador ::-webkit-scrollbar{width:10px;height:10px;}
-.explorador ::-webkit-scrollbar-button{display:none;}
-.explorador ::-webkit-scrollbar-track{background:transparent;}
-.explorador ::-webkit-scrollbar-thumb{background:var(--border);border-radius:6px;border:2px solid var(--surface);}
-.explorador ::-webkit-scrollbar-thumb:hover{background:var(--border-strong);}
 .explorador .drive-aviso,.explorador > .alert{margin:8px 10px 0;}
 .explorador.tela-cheia{position:fixed;inset:0;z-index:55;height:auto;min-height:0;border:0;border-radius:0;}
 .explorador-endereco{display:flex;align-items:center;gap:4px;padding:6px 8px;border-bottom:1px solid var(--border-muted);background:var(--surface-2);}
@@ -2070,7 +2065,7 @@ main.main:has(> .content > .explorador){padding:0;}
 .drive-trilha .gh-crumb-fim{color:var(--ink);font-weight:600;}
 .drive-navegador{display:grid;grid-template-columns:296px minmax(0,1fr);align-items:stretch;}
 /* com a altura medida (a janela), cada coluna rola por si: o painel e a lista */
-.drive-navegador[style] > *{height:100%;overflow:auto;scrollbar-width:thin;}
+.drive-navegador[style] > *{height:100%;overflow:auto;}
 .drive.tela-cheia .drive-navegador{height:calc(100vh - 32px);}
 .drive.tela-cheia .drive-navegador > *{height:100%;overflow:auto;}
 .drive-navegador.sem-painel{grid-template-columns:minmax(0,1fr);}
@@ -2130,3 +2125,18 @@ main.main:has(> .content > .explorador){padding:0;}
 
 /* Drive: o ⟳ do "Atualizar o mapa" gira enquanto o robô relê */
 .icon-btn.girando svg{animation:drive-gira 1s linear infinite;}
+
+/* Barras de rolagem do nads inteiro (01/10/2026): finas, arredondadas, sem as setinhas, na cor do sistema (o vermelho
+   do --accent, suave parado e forte ao passar o mouse). Chrome/Edge pelo ::-webkit-scrollbar; Firefox pelo
+   scrollbar-color (só onde não há o ::-webkit, senão o Chrome trocaria pelo padrão dele). */
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-button{display:none;width:0;height:0;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-corner{background:transparent;}
+::-webkit-scrollbar-thumb{background:color-mix(in srgb, var(--accent) 45%, transparent);border-radius:8px;border:2px solid transparent;background-clip:padding-box;}
+::-webkit-scrollbar-thumb:hover{background:var(--accent);border:2px solid transparent;background-clip:padding-box;}
+::-webkit-scrollbar-thumb:active{background:var(--accent-strong);border:2px solid transparent;background-clip:padding-box;}
+@supports not selector(::-webkit-scrollbar){
+  *{scrollbar-width:thin;scrollbar-color:color-mix(in srgb, var(--accent) 50%, transparent) transparent;}
+}
+.icon-btn.girando svg{transform-origin:50% 50%;}

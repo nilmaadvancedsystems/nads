@@ -348,7 +348,7 @@ export function ExploradorDoDrive() {
   const mais = (
     <>
       <button type="button" className={'icon-btn' + (vm.atualizandoMapa ? ' girando' : '')} title={vm.atualizandoMapa || vm.dicaDoAtualizar}
-        aria-label="Atualizar o mapa" disabled={!!vm.atualizandoMapa} onClick={vm.atualizarMapa}><Icone nome="repeat" /></button>
+        aria-label="Atualizar o mapa" disabled={!!vm.atualizandoMapa} onClick={vm.atualizarMapa}><Icone nome={vm.atualizandoMapa ? 'girar' : 'repeat'} /></button>
       <button type="button" className="icon-btn" title="Mais ações" aria-label="Mais ações"
         onClick={ev => setMenu({ ...pontoDoMenu(ev), topo: [], linhas: linhasDoFundo() })}><Icone nome="mais" /></button>
     </>
