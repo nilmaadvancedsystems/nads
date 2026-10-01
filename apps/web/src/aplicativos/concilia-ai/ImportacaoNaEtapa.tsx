@@ -8,19 +8,20 @@ import { useCarregando, useRetorno } from '@nads/ui';
 import { useEffect } from 'react';
 import { LugarDasAcoes, TopoProvider } from '../../comum/topo';
 import { paginaPorId } from './casca/navegacao';
-import { SessaoProvider } from './casca/sessao';
+import { SessaoProvider, useSincronizarPrestaServico } from './casca/sessao';
 import { avisarErrosDoBanco, repoDaConferencia } from './dados/fonte';
 import { RepoProvider, useRepo, useVersaoDoRepo } from './dados/repo';
 import { Importacao } from './telas/importacao/Importacao';
 
-export function ImportacaoNaEtapa({ nome, tipo }: { nome: string; tipo: c.PaginaImportacao }) {
+/** prestaServico: a regra do Cadastro da empresa (a Conferência fica igual); null = não informado. */
+export function ImportacaoNaEtapa({ nome, tipo, prestaServico }: { nome: string; tipo: c.PaginaImportacao; prestaServico: boolean | null }) {
   const repo = repoDaConferencia();
   const { toast } = useRetorno();
   useEffect(() => { avisarErrosDoBanco(repo, toast); }, [repo, toast]);
-  return <RepoProvider repo={repo}><DaEmpresa nome={nome} tipo={tipo} /></RepoProvider>;
+  return <RepoProvider repo={repo}><DaEmpresa nome={nome} tipo={tipo} prestaServico={prestaServico} /></RepoProvider>;
 }
 
-function DaEmpresa({ nome, tipo }: { nome: string; tipo: c.PaginaImportacao }) {
+function DaEmpresa({ nome, tipo, prestaServico }: { nome: string; tipo: c.PaginaImportacao; prestaServico: boolean | null }) {
   const repo = useRepo();
   useVersaoDoRepo();
   useCarregando(!repo.pronto());
@@ -29,6 +30,7 @@ function DaEmpresa({ nome, tipo }: { nome: string; tipo: c.PaginaImportacao }) {
   const pagina = 'importacao/' + tipo;
   return (
     <SessaoProvider nome={achada?.nome || nome} rota={achada?.rota || formatos.slug(nome)} codigo={achada?.codigo ?? null} pagina={pagina}>
+      <SincronizarServicos valor={prestaServico} />
       <TopoProvider>
         <header className="topbar imp-conf-topo">
           <div><h2 className="page-title">{paginaPorId(pagina)?.titulo || ''}</h2></div>
@@ -38,4 +40,9 @@ function DaEmpresa({ nome, tipo }: { nome: string; tipo: c.PaginaImportacao }) {
       </TopoProvider>
     </SessaoProvider>
   );
+}
+
+function SincronizarServicos({ valor }: { valor: boolean | null }) {
+  useSincronizarPrestaServico(valor);
+  return null;
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
-  criarRepoCadastro, criarRepoCadastroMemoria, definirContaPadrao, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
+  criarRepoCadastro, criarRepoCadastroMemoria, definirContaPadrao, definirPrestaServico, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
   bancosDoEntregasDoDocumento, bancosDoEntregasPorCodigo, contasDoEntregas, juntarComEntregas, sugestoesDoEntregas,
   lerPlanilhaDoPlano, linhasDoTexto, registrarPlano, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
   type PlanoDeContas,
@@ -242,5 +242,24 @@ describe('bancos que o Entregas já sabe', () => {
     const completo = salvarConta(c, 'sicoob', { marca: 'sicoob', agencia: '03144-5', conta: '0012345-6' }, [], 'V', AGORA).cadastro;
     expect(sugestoesDoEntregas(completo, e).map(s => s.conta.id)).toEqual(['banco-do-brasil', 'mercado-pago']);
     expect(sugestoesDoEntregas(completo, null)).toEqual([]);
+  });
+});
+
+describe('presta serviços (a regra no Cadastro)', () => {
+  it('sim, não e não informado; fica no histórico e vai para o documento', () => {
+    const c0 = vazio();
+    expect(c0.prestaServico).toBeUndefined();
+    const sim = definirPrestaServico(c0, true, 'Vitor', AGORA);
+    expect(sim.prestaServico).toBe(true);
+    expect(sim.historico[0]).toMatchObject({ acao: 'Presta serviços', detalhe: 'Sim', por: 'Vitor' });
+    expect(definirPrestaServico(sim, true, 'Vitor', AGORA)).toBe(sim);
+    const doc = documentoDoCadastro(sim);
+    expect(doc.prestaServico).toBe(true);
+    expect(cadastroDoDocumento('FITO', 292, doc).prestaServico).toBe(true);
+    const nao = definirPrestaServico(sim, false, 'Vitor', AGORA);
+    expect(cadastroDoDocumento('FITO', 292, documentoDoCadastro(nao)).prestaServico).toBe(false);
+    const volta = definirPrestaServico(nao, null, 'Vitor', AGORA);
+    expect('prestaServico' in documentoDoCadastro(volta)).toBe(false);
+    expect(volta.historico[0].detalhe).toBe('Não informado');
   });
 });

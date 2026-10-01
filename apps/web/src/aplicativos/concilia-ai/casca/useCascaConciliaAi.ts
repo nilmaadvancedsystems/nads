@@ -4,12 +4,12 @@
 // (~L2004-2039), perguntarPrestaServico (~L1781), telaInicialEmpresa (~L1712).
 import { conferencia as c } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import { VERSAO_SISTEMA } from '../../../versao';
 import { useRepo } from '../dados/repo';
 import { PAGINAS_ESCONDIDAS, paginaPorId, SECOES, secaoDaPagina, type IdSecao } from './navegacao';
-import { MSG_CADASTRO_BLOQ, useSessao } from './sessao';
+import { MSG_CADASTRO_BLOQ, servicosDoEndereco, useSessao, useSincronizarPrestaServico } from './sessao';
 import { caminho } from './caminho';
 
 
@@ -27,10 +27,15 @@ export function useCascaConciliaAi() {
   const semP = c.semPrest(e);
   const lista = repo.listarEmpresas().find(x => x.nome === s.nome);
 
+  // aberta pela Tarefas: a regra vem do Cadastro da empresa (?servicos=), e não se pergunta
+  const { search } = useLocation();
+  const [servicosDoCadastro] = useState(() => servicosDoEndereco(search));
+  useSincronizarPrestaServico(servicosDoCadastro);
+
   // "Essa empresa presta serviço?" — uma vez por empresa, obrigatória, fundo embaçado
   const perguntou = useRef(false);
   useEffect(() => {
-    if (perguntou.current || e.prestaServico !== undefined) return;
+    if (perguntou.current || e.prestaServico !== undefined || servicosDoCadastro !== undefined) return;
     perguntou.current = true;
     void modal<boolean>({
       obrigatoria: true, icone: 'briefcase', titulo: 'Seja bem-vindo(a) ao Concilia aí!',
@@ -40,7 +45,7 @@ export function useCascaConciliaAi() {
       s.aplicar(x => c.definirPrestaServico(x, sim));
       if (!sim && s.abaCadastro === 'prestados') s.setAbaCadastro('entradas');
     });
-  }, [e.prestaServico, modal, s, lista]);
+  }, [e.prestaServico, modal, s, lista, servicosDoCadastro]);
 
   const secoes = SECOES.map(sec => {
     const req = sec.id === 'cadastro' && !ok ? 'todas' : sec.id === 'movimento' && semNotas ? 'notas' : '';

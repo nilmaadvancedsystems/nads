@@ -73,7 +73,10 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     : [];
   const pl = (doc.plano || null) as Record<string, unknown> | null;
   const plano = pl && typeof pl.contas === 'number' ? { contas: pl.contas, importadoEm: texto(pl.importadoEm) } : undefined;
-  return { nome, codigo, bancos, contasPadrao: contasPadraoDoDocumento(doc.contasPadrao), historico, ...(plano ? { plano } : {}), atualizadoEm: opcional(doc.atualizadoEm) };
+  return {
+    nome, codigo, bancos, contasPadrao: contasPadraoDoDocumento(doc.contasPadrao), historico, ...(plano ? { plano } : {}),
+    ...(typeof doc.prestaServico === 'boolean' ? { prestaServico: doc.prestaServico } : {}), atualizadoEm: opcional(doc.atualizadoEm),
+  };
 }
 
 /** O que vai para o banco (o que nunca foi cadastrado fica de fora, para não virar "cadastrado vazio"). */
@@ -83,6 +86,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(c.bancos ? { bancos: c.bancos } : {}),
     ...(c.contasPadrao ? { contasPadrao: c.contasPadrao } : {}),
     ...(c.plano ? { plano: c.plano } : {}),
+    ...(typeof c.prestaServico === 'boolean' ? { prestaServico: c.prestaServico } : {}),
     historico: c.historico.slice(0, MAX_HISTORICO),
     atualizadoEm: c.atualizadoEm || new Date().toISOString(),
   };
@@ -113,6 +117,15 @@ export function planoDoDocumento(doc: Record<string, unknown> | null | undefined
 function registrar(c: CadastroDaEmpresa, por: string, agora: Date, acao: string, detalhe: string): CadastroDaEmpresa {
   const r: RegistroCadastro = { ts: agora.toISOString(), por: por || '—', acao, detalhe };
   return { ...c, historico: [r, ...c.historico].slice(0, MAX_HISTORICO), atualizadoEm: r.ts };
+}
+
+/** Presta serviços: sim, não, ou volta a "não informado" (null). Fica no histórico; sem mudança, devolve o mesmo. */
+export function definirPrestaServico(c: CadastroDaEmpresa, sim: boolean | null, por: string, agora: Date): CadastroDaEmpresa {
+  if ((c.prestaServico ?? null) === sim) return c;
+  const resto: CadastroDaEmpresa = { ...c };
+  delete resto.prestaServico;
+  const novo = sim == null ? resto : { ...resto, prestaServico: sim };
+  return registrar(novo, por, agora, 'Presta serviços', sim == null ? 'Não informado' : sim ? 'Sim' : 'Não');
 }
 
 /** Registra no histórico a troca do plano de contas (o plano mora em outro documento). */

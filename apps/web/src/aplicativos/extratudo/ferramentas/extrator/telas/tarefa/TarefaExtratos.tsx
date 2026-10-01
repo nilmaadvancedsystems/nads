@@ -374,8 +374,11 @@ export function TarefaExtratos() {
   useCarregando(vm.ocupado || !!d.buscando || vm.bancos.some(b => b.extrato.lendo || b.razao.lendo));
   const [cxExtrato, cxRazao] = vm.caixas;
   const [abertas, setAbertas] = useState<string[]>([]);
-  const [aba, setAba] = useState<AbaImportacao>('bancos');
-  const abas = ABAS_DA_IMPORTACAO.map(a => ({ ...a, ativa: a.id === aba }));
+  const [abaEscolhida, setAba] = useState<AbaImportacao>('bancos');
+  // Prestados só para quem presta serviço (a regra do Cadastro; sem informar, aparece)
+  const visiveis = ABAS_DA_IMPORTACAO.filter(a => a.id !== 'prestados' || vm.prestaServico !== false);
+  const aba = visiveis.some(a => a.id === abaEscolhida) ? abaEscolhida : 'bancos';
+  const abas = visiveis.map(a => ({ ...a, ativa: a.id === aba }));
   useAbasParaAEtapa(ponte.naTarefa ? abas : null, id => { if (ABAS_DA_IMPORTACAO.some(a => a.id === id)) setAba(id as AbaImportacao); });
   const alternar = (id: string) => setAbertas(v => (v.includes(id) ? v.filter(a => a !== id) : [...v, id]));
 
@@ -398,7 +401,7 @@ export function TarefaExtratos() {
           ))}
         </nav>
       )}
-      {aba !== 'bancos' ? <ImportacaoNaEtapa nome={s.nome} tipo={aba} /> : (<>
+      {aba !== 'bancos' ? <ImportacaoNaEtapa nome={s.nome} tipo={aba} prestaServico={vm.prestaServico} /> : (<>
       <div className="imp-topo">
         {/* à esquerda, como o "⎇ main ▾  6 Branches" do GitHub: a competência e o número de bancos */}
         <SeletorDeCompetencia vm={vm} naTarefa={ponte.naTarefa} trocar={ponte.trocarCompetencia} periodoDaTarefa={ponte.periodo} encerrar={ponte.encerrarPeriodo} />

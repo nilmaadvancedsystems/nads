@@ -5,7 +5,7 @@
 // Também é aqui que mora irPara(), com as regras do antigo go() (~L1950).
 import { conferencia as c } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useAplicar, useEmpresaGuardada } from '../dados/repo';
 import { caminho } from './caminho';
@@ -141,4 +141,23 @@ export function SessaoProvider({ nome, rota, codigo, pagina, children }: { nome:
     verificar, setVerificar, revisarConta, natAnimar, setNatAnimar, avisoImportar,
   };
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
+}
+
+/** ?servicos=sim|nao (a Tarefas manda o que está no Cadastro da empresa); sem = a Conferência decide (pergunta). */
+export function servicosDoEndereco(search: string): boolean | undefined {
+  const v = new URLSearchParams(search).get('servicos');
+  return v === 'sim' ? true : v === 'nao' ? false : undefined;
+}
+
+/**
+ * A regra "presta serviços" mora no Cadastro da empresa (Vitor, 30/09/2026). Quando a Conferência abre pela
+ * Tarefas, ela vem junto, e a empresa da Conferência fica igual (no lugar da pergunta de boas-vindas).
+ */
+export function useSincronizarPrestaServico(valor: boolean | null | undefined) {
+  const s = useSessao();
+  const atual = s.empresa.prestaServico;
+  const { aplicar } = s;
+  useEffect(() => {
+    if (typeof valor === 'boolean' && atual !== valor) aplicar(x => c.definirPrestaServico(x, valor));
+  }, [valor, atual, aplicar]);
 }

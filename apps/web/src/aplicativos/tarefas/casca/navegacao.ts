@@ -58,6 +58,7 @@ export const caminhoDaPagina = (app: IdAplicacao, pagina: string) => BASE + '/' 
 export const caminhoDaEmpresa = (rotaEmpresa: string, competencia: string) => BASE + '/minhas-empresas/empresa/' + rotaEmpresa + '?competencia=' + competencia;
 /** As abas da janela de uma empresa no Cadastro. */
 export const ABAS_DO_CADASTRO: readonly { id: string; rotulo: string; icone: NomeIcone }[] = [
+  { id: 'empresa', rotulo: 'Empresa', icone: 'briefcase' },
   { id: 'bancos', rotulo: 'Contas bancárias', icone: 'landmark' },
   { id: 'plano', rotulo: 'Plano de contas', icone: 'list' },
   { id: 'contas-padrao', rotulo: 'Contas padrão', icone: 'settings' },

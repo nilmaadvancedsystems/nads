@@ -299,6 +299,8 @@ export function useImportacao() {
     // o mesmo banco pode entrar de novo (outra conta, com outra agência/conta)
     bancosParaAdicionar: empresas.BANCOS_CONHECIDOS,
     importarArquivos, importarDoDrive, excluirDoBanco, excluirDoPeriodo, adicionarBanco,
+    /** a regra do Cadastro da empresa: presta serviços? (null = não informado, ou o cadastro ainda não chegou) */
+    prestaServico: cad.cadastro?.prestaServico ?? null,
     /** os pedidos de documentos feitos ao cliente (o histórico do Pedir extratos) */
     pedidos: s.empresa.pedidos || [],
     /** o extrato do banco naquela competência já foi importado? (qualquer competência, não só a da tela) */

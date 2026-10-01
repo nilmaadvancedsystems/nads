@@ -11,7 +11,7 @@ import { useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { extratorDaEmpresa, repoDoCadastro } from '../../dados/fonte';
-import { useExecucoesDoPeriodo, useRepo } from '../../dados/repo';
+import { useExecucoesDoPeriodo, usePrestaServico, useRepo } from '../../dados/repo';
 import { caminhoDaEmpresa, caminhoDaPagina, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 
@@ -43,6 +43,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   // as seções da rotina, na ordem (Preparação, Ativo, Passivo, Resultado, Fechamento)
   const secoes = [...new Set(rotina.etapas.map(e => e.secao || ''))];
   const empresa = empresas.empresaPelaRota(repo.listarEmpresas(), rotaEmpresa);
+  // a regra do Cadastro da empresa (presta serviços?): vai para a Conferência fiscal (?servicos=)
+  const prestaServico = usePrestaServico(empresa?.nome ?? null, empresa?.codigo ?? null);
   const meses = t.competenciasDoPeriodo(periodo);
   const varios = meses.length > 1;
   const { porMes, carregada } = useExecucoesDoPeriodo(meses, rotina.departamento);
@@ -228,7 +230,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     // no período, a ferramenta que trabalha vários meses recebe todos (abas por mês); as outras, o mês da vez
     ferramenta: f && empresa ? { nome: f.nome, embutir: f.embutir, url: BASES[f.app] + f.caminho(empresas.rotaDaEmpresa(empresa)) + (f.app === 'extratudo' ? '?competencia=' + competencia + (juntos && varios ? '&meses=' + meses.join(',') : '')
       // a Conferência roda no período que a pessoa está fazendo (o mês, ou os meses do Em Lote)
-      : f.app === 'concilia-ai' ? '?meses=' + (juntos && varios ? meses : [competencia]).join(',') : '') } : null,
+      : f.app === 'concilia-ai' ? '?meses=' + (juntos && varios ? meses : [competencia]).join(',') + (prestaServico == null ? '' : '&servicos=' + (prestaServico ? 'sim' : 'nao')) : '') } : null,
     /** os meses que a etapa ainda precisa (no período) */
     pendentes: pendentes.map(rotuloCurto),
     aviso, conferindo, proximo, voltarPara,

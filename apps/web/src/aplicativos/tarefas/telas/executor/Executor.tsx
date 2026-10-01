@@ -2,8 +2,8 @@
 // checklist na barra lateral, com o nome de cada grupo em cima (Preparação, Ativo, Passivo, Resultado, Fechamento;
 // caixinha marcada = feita; clicar numa anterior volta para ela e tira o check). A página é só a ferramenta da
 // etapa, com a altura toda; embaixo, a barra com as saídas da etapa (Pedir extrato, Buscar no Drive…), Interromper e
-// Próximo. No canto direito do cabeçalho, como os botões do GitHub: os grupos da rotina (o da vez aceso; clicar
-// num de trás volta para ele) e o perfil.
+// Próximo. No canto direito do cabeçalho, como os botões do GitHub: os grupos da rotina (o da vez com o ícone normal,
+// os outros apagados; clicar num de trás volta para ele) e o perfil.
 import { Alerta, Casca, Icone, MenuSuspenso, useCarregando, useFerramentaNaEtapa, type NomeIcone } from '@nads/ui';
 import { useRef } from 'react';
 import { Navigate, useParams } from 'react-router';
@@ -37,7 +37,8 @@ export function Executor() {
   // o mês faz parte de um período prometido (vários meses): abre o período
   if (vm.irParaPeriodo) return <Navigate to={vm.irParaPeriodo} replace />;
 
-  const checklist = vm.etapas.map(e => ({
+  // o checklist da esquerda: só as etapas do grupo da vez (os outros grupos ficam nos botões do canto); tudo pronto, todas
+  const checklist = vm.etapas.filter(e => !vm.etapa || e.secao === vm.etapa.secao).map(e => ({
     // no período, quantos meses a etapa já tem feitos ("Importação · 1/3")
     id: e.id, rotulo: e.nome + (vm.varios && e.feitos > 0 && e.feitos < vm.meses.length ? ' · ' + e.feitos + '/' + vm.meses.length : ''), icone: 'check' as const, grupo: e.grupo, titulo: e.secao, ativa: e.atual,
     caixa: e.situacao === 'feita' ? 'marcada' as const : e.situacao === 'interrompida' ? 'parada' as const : 'vazia' as const,
@@ -47,7 +48,7 @@ export function Executor() {
     <>
       <nav className="gh-topo-grupos" aria-label="Grupos da rotina">
         {vm.grupos.map(g => (
-          <button key={g.nome} type="button" className={'gh-topo-btn' + (g.atual ? ' ativo' : '') + (g.feitas === g.total ? ' feito' : '')}
+          <button key={g.nome} type="button" className={'gh-topo-btn' + (g.atual ? ' ativo' : '')}
             disabled={g.travado} onClick={() => vm.abrirGrupo(g.nome)} title={g.nome + ' · ' + g.feitas + '/' + g.total} aria-label={g.nome + ': ' + g.feitas + ' de ' + g.total}
             aria-current={g.atual ? 'step' : undefined}>
             <Icone nome={ICONE_DO_GRUPO[g.nome] || 'list'} />
