@@ -2,6 +2,8 @@
 // Gmail agora", as abas (de clientes, sem cliente, spam), a busca, e as ações de cada e-mail: salvar os anexos no
 // Drive, escolher o cliente, ligar o remetente a um cliente, marcar como spam (admin), abrir no Gmail. O e-mail aberto
 // (usePainelDoEmail) pede o texto inteiro ao robô e mostra as respostas; responder vai para a fila dele.
+// As abas de cima escolhem a caixa (01/10/2026): a da Nilma Contabilidade e a do setor da pessoa (o do Cadastro);
+// o admin vê as três. Ler, salvar e responder vão pela caixa escolhida.
 import { entregas as e } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useState } from 'react';
@@ -27,7 +29,12 @@ export function quandoFoi(iso: string, agora = Date.now()): string {
 export function useCaixaDoRobo() {
   const repo = useGmailDoEntregas();
   const { toast } = useRetorno();
-  const admin = !!useOperador().operador?.admin;
+  const operador = useOperador().operador;
+  const admin = !!operador?.admin;
+  const caixas = e.caixasDaPessoa({ admin, departamento: operador?.departamento });
+  const caixa = repo.caixa();
+  // a caixa guardada no repositório tem de ser uma das que a pessoa vê
+  useEffect(() => { if (caixas.length && !caixas.includes(caixa)) repo.usarCaixa(caixas[0]); }, [caixas, caixa, repo]);
   const [aba, setAba] = useState<AbaDaCaixa>('clientes');
   const [busca, setBusca] = useState('');
   const [aberto, setAberto] = useState<string | null>(null);
@@ -46,6 +53,10 @@ export function useCaixaDoRobo() {
   }
 
   return {
+    // as caixas (abas de cima)
+    caixas: caixas.map(c => ({ valor: c, rotulo: e.NOMES_DAS_CAIXAS[c] })),
+    caixa,
+    escolherCaixa: (c: e.CaixaDoGmail) => { setAberto(null); repo.usarCaixa(c); },
     exemplos: repo.exemplos,
     carregando: !estado.carregado,
     erro: estado.erro ? 'Não consegui ler o robô (' + estado.erro + '). Só o admin e o contábil veem a caixa dele.' : '',

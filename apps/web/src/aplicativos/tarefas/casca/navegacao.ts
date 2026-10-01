@@ -40,13 +40,15 @@ export const APLICACOES: readonly Aplicacao[] = [
   ] },
 ];
 
-/** As aplicações que a pessoa vê: Fiscal só para o Fiscal; Contábil, Drive e Gmail só para o Contábil (admin vê tudo). */
+/** As aplicações que a pessoa vê: Fiscal só para o Fiscal; Contábil e Drive só para o Contábil; Gmail para os dois (admin vê tudo). */
 export function aplicacoesDe(op: Operador): Aplicacao[] {
   return APLICACOES.filter(a =>
     (a.id !== 'fiscal' || op.admin || op.departamento === 'fiscal') &&
     (a.id !== 'contabil' || op.admin || op.departamento === 'contabil') &&
-    // o Drive e o Gmail do robô: as regras do Entregas só deixam o admin e o contábil lerem
-    ((a.id !== 'drive' && a.id !== 'contato') || op.admin || op.departamento === 'contabil'));
+    // o Drive do robô: as regras do Entregas só deixam o admin e o contábil lerem; o Gmail (01/10/2026): o contábil
+    // e o fiscal (cada um vê a caixa da Nilma e a do próprio setor)
+    (a.id !== 'drive' || op.admin || op.departamento === 'contabil') &&
+    (a.id !== 'contato' || op.admin || op.departamento === 'contabil' || op.departamento === 'fiscal'));
 }
 
 export function aplicacao(id: string): Aplicacao | undefined {

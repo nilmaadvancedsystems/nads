@@ -2,7 +2,7 @@
 // agora" e o andamento da leitura; as abas (de clientes, sem cliente, spam) com a busca; a lista; e o e-mail aberto
 // numa janela por cima, com o texto inteiro, os anexos, as ações e responder.
 import type { entregas as e } from '@nads/core';
-import { Icone, useCarregando } from '@nads/ui';
+import { Icone, useCarregando, Segmentado } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useCaixaDoRobo, usePainelDoEmail, type AbaDaCaixa, type VmCaixa } from './useCaixaDoRobo';
 
@@ -154,6 +154,11 @@ export function CaixaDoRobo() {
   const a = vm.robo.andamento;
   return (
     <section>
+      {vm.caixas.length > 1 && (
+        <div className="gmail-caixas">
+          <Segmentado valor={vm.caixa} opcoes={vm.caixas} onMudar={vm.escolherCaixa} />
+        </div>
+      )}
       <div className="tarefas-barra-topo">
         <span className={'gmail-robo' + (vm.robo.online ? ' online' : '')} title={vm.robo.visto ? 'Último sinal ' + vm.robo.visto : 'Sem sinal do robô'}>
           <Icone nome="robo" />{vm.robo.online ? (vm.robo.lendo ? 'Robô lendo o Gmail' : 'Robô online') : 'Robô fora do ar'}
