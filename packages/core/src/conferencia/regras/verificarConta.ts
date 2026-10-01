@@ -40,7 +40,12 @@ const semZeros = (t: string) => t.replace(/^0+/, '') || t;
 export function numerosDoHistorico(txt: string, serv: boolean): string[] {
   const m = txt.match(/(\d{1,9})-(\d{14})-/);
   if (m) return [m[1]];
-  return (txt.match(/\d{3,}/g) || []).filter(t => (serv ? t.length <= 15 && t.length !== 11 && t.length !== 14 : t.length < 11));
+  // com espaços em volta do traço (o relatório de serviços tomados): "NF nº - 6 - 27203457000150-NOME" — sem isso, a
+  // nota de 1 ou 2 dígitos sumia (Vitor, 01/10/2026: a nota 6 do Raimundo, na 80005 da 292). Entra junto com os outros
+  // números (como o original fazia), só quando ainda não veio
+  const lista = (txt.match(/\d{3,}/g) || []).filter(t => (serv ? t.length <= 15 && t.length !== 11 && t.length !== 14 : t.length < 11));
+  const s = txt.match(/(\d{1,15})\s+-\s+(\d{14}|\d{11})\s*-/);
+  return s && lista.indexOf(s[1]) < 0 ? [...lista, s[1]] : lista;
 }
 
 /**
@@ -152,10 +157,20 @@ export function rotuloContas(contas: Pick<Conta, 'codigo' | 'nome'>[]): string {
 // ---------- o cruzamento ----------
 export interface Duplicada { numero: string; vezes: number; valor: number; linhas: LinhaRazao[] }
 
+/** Até quantos dias de distância uma linha sem o número da nota confere com ela pelo valor. */
+export const DIAS_PELO_VALOR = 5;
+
+const diaDe = (d: string) => { const [dd, mm, aa] = String(d || '').split('/').map(Number); return aa && mm && dd ? Date.UTC(aa, mm - 1, dd) / 86400000 : NaN; };
+
 export interface ResultadoVerificacao {
   faltando: NotaAlvo[];
   duplicada: Duplicada[];
   aMais: LinhaRazao[];
+  /**
+   * Conferidas pelo valor: a nota sem o número no histórico, lançada com o mesmo valor até DIAS_PELO_VALOR dias de
+   * distância (ex.: a comissão lançada pelo pagamento no banco, "comissao Raimundo DOC.: 16283133").
+   */
+  peloValor: { nota: NotaAlvo; linha: LinhaRazao }[];
   icms: LinhaRazao[];
   somaRazao: number;
   somaSemIcms: number;
@@ -237,7 +252,7 @@ export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
   const numerosAlvo: Record<string, 1> = {};
   for (const n of alvo) if (n.numero) numerosAlvo[n.numero.replace(/^0+/, '') || n.numero] = 1;
   // nota de valor zero não tem o que lançar: não entra em "Faltando na conta"
-  const faltando = alvo.filter(n => !!n.numero && Math.abs(n.valor) >= IGUAL && !vistos[n.numero.replace(/^0+/, '') || n.numero]);
+  const faltandoPeloNumero = alvo.filter(n => !!n.numero && Math.abs(n.valor) >= IGUAL && !vistos[n.numero.replace(/^0+/, '') || n.numero]);
 
   const itensPorNumero: Record<string, number[]> = {};
   const linhasPorNumero: Record<string, LinhaRazao[]> = {};
@@ -258,7 +273,23 @@ export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
     return { numero: k, vezes: ls.length, valor: extra, linhas: resto };
   }).filter((d): d is Duplicada => d !== null);
 
-  const aMais = linhasConf.filter((_, i) => !numerosPorLinha[i].some(t => numerosAlvo[semZeros(t)])).concat(deOutroCfop);
+  // as linhas sem o número de nenhuma nota: a que falta pelo número pode estar aqui pelo valor (a mais perto na data)
+  const semNumero = linhasConf.filter((_, i) => !numerosPorLinha[i].some(t => numerosAlvo[semZeros(t)]));
+  const usadas = new Set<LinhaRazao>();
+  const peloValor: { nota: NotaAlvo; linha: LinhaRazao }[] = [];
+  const faltando = faltandoPeloNumero.filter(n => {
+    let melhor: LinhaRazao | null = null, dist = Infinity;
+    for (const l of semNumero) {
+      if (usadas.has(l) || Math.abs(l.valor - Math.abs(n.valor)) >= IGUAL) continue;
+      const d = Math.abs(diaDe(l.data) - diaDe(n.data));
+      if (d <= DIAS_PELO_VALOR && d < dist) { dist = d; melhor = l; }
+    }
+    if (!melhor) return true;
+    usadas.add(melhor);
+    peloValor.push({ nota: n, linha: melhor });
+    return false;
+  });
+  const aMais = semNumero.filter(l => !usadas.has(l)).concat(deOutroCfop);
   const somaSemIcms = linhasConf.concat(deOutroCfop).reduce((s, l) => s + l.valor, 0);
   const neg = linhasConf.filter(l => l.sinal < 0).length;
   const sinalConta = neg > linhasConf.length / 2 ? -1 : 1;
@@ -280,7 +311,7 @@ export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
     : { codigo: comRel.map(a => a.codigo).join(' + '), nome: nomeComumContas(comRel.map(a => a.nome)) || rot.slice(rot.indexOf(' — ') + 3) };
 
   return {
-    faltando, duplicada, aMais, icms: icmsLinhas, somaRazao, somaSemIcms, icmsSub, somaFiscal,
+    faltando, duplicada, aMais, peloValor, icms: icmsLinhas, somaRazao, somaSemIcms, icmsSub, somaFiscal,
     serv: x.servTipo, conta,
     contas: comRel.length > 1 ? comRel.map(a => ({ codigo: a.codigo, nome: a.nome })) : null,
     fonte, linhas: razao,
