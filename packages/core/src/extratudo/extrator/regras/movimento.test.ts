@@ -41,6 +41,8 @@ describe('movimento do extrato (a setinha da linha do banco)', () => {
     const e = emp([jan, arq('fev', [['2026-02-03', -500]])]);
     const m1 = movimentoDoExtrato(e, 'sicoob', 'sicoob', '2026-01');
     expect([m1.abertura, m1.saldoAnterior, m1.linhas[0].saldo]).toEqual([1000000, 1000000, 1004500]);
+    expect(m1.mesesAntes).toBe(false);
+    expect(movimentoDoExtrato(e, 'sicoob', 'sicoob', '2026-02').mesesAntes).toBe(true);
     expect(movimentoDoExtrato(e, 'sicoob', 'sicoob', '2026-02').saldoAnterior).toBe(1004500);
     expect(movimentoDoExtrato(emp([arq('x', [['2026-01-02', 10]])]), 'sicoob', 'sicoob', '2026-01').abertura).toBeNull();
   });

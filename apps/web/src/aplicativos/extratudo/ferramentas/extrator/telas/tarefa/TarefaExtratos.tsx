@@ -187,7 +187,7 @@ function Movimento({ doMes, todos }: { doMes: x.MovimentoDoExtrato; todos: x.Mov
         <tbody>
           {!verTodos && (
             <tr className="imp-mov-anterior">
-              <td colSpan={4}>Saldo anterior <span className="hint">{m.saldoAnterior !== m.abertura ? '(dos meses já importados)' : m.abertura != null ? '(do extrato)' : '(o extrato não trouxe)'}</span></td>
+              <td colSpan={4}>Saldo anterior <span className="hint">{m.mesesAntes ? '(dos meses já importados)' : m.abertura != null ? '(do extrato)' : '(o extrato não trouxe)'}</span></td>
               <td className="num">{x.valorBR(m.saldoAnterior)}</td>
             </tr>
           )}
@@ -415,6 +415,7 @@ export function TarefaExtratos() {
 
   /** Visualizar o que veio do Drive: abre a janela já (senão o navegador bloqueia) e põe o link temporário quando o robô responder. */
   function visualizarDoDrive(arquivo: { id: string; nome: string }) {
+    if (!d.entrou) { d.pedirLogin(() => visualizarDoDrive(arquivo)); return; }
     const janela = window.open('', '_blank');
     janela?.document.write('<p style="font:14px sans-serif;padding:24px;color:#555">Buscando ' + arquivo.nome.replace(/</g, '') + ' no Drive…</p>');
     d.link(arquivo).then(url => { if (janela) janela.location.href = url; else window.open(url, '_blank'); },

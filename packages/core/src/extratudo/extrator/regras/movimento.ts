@@ -10,8 +10,8 @@ export interface LinhaDoMovimento { data: string; historico: string; valor: numb
 /** Todos os extratos importados da conta, do primeiro ao último mês. */
 export const TODOS_OS_MESES = { de: '0000-00', ate: '9999-99' } as const;
 
-/** abertura: o saldo anterior do primeiro extrato (null = o extrato não trouxe; conta de zero) */
-export interface MovimentoDoExtrato { saldoAnterior: number; abertura: number | null; linhas: LinhaDoMovimento[]; entradas: number; saidas: number }
+/** abertura: o saldo anterior do primeiro extrato (null = o extrato não trouxe; conta de zero); mesesAntes: houve lançamento antes da competência */
+export interface MovimentoDoExtrato { saldoAnterior: number; abertura: number | null; mesesAntes: boolean; linhas: LinhaDoMovimento[]; entradas: number; saidas: number }
 
 /** ate: a última competência que entra (sem = só a competência); "todos" = movimentoDoExtrato(…, TODOS_OS_MESES.de, TODOS_OS_MESES.ate) */
 export function movimentoDoExtrato(e: EmpresaExtrator, banco: string, primeiro: string, competencia: string, ate = competencia): MovimentoDoExtrato {
@@ -26,15 +26,16 @@ export function movimentoDoExtrato(e: EmpresaExtrator, banco: string, primeiro: 
     .sort((a, b) => a.data.localeCompare(b.data) || a.i - b.i);
   let saldo = abertura ?? 0;
   let saldoAnterior = saldo;
+  let mesesAntes = false;
   const linhas: LinhaDoMovimento[] = [];
   for (const l of todos) {
     if (l.data.slice(0, 7) > ate) break;
     saldo += l.valor;
     if (l.data.slice(0, 7) >= competencia) linhas.push({ data: l.data, historico: l.historico, valor: l.valor, saldo });
-    else saldoAnterior = saldo;
+    else { saldoAnterior = saldo; mesesAntes = true; }
   }
   return {
-    saldoAnterior, abertura, linhas,
+    saldoAnterior, abertura, mesesAntes, linhas,
     entradas: linhas.filter(l => l.valor > 0).reduce((t, l) => t + l.valor, 0),
     saidas: linhas.filter(l => l.valor < 0).reduce((t, l) => t + l.valor, 0),
   };
