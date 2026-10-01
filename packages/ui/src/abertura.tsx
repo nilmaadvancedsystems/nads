@@ -78,9 +78,9 @@ export function AberturaN({ vidro }: { vidro?: boolean } = {}) {
     <div ref={raiz} className={'abertura' + (anima ? ' anima' : '')} role="status" aria-label="Abrindo">
       <div className="abertura-logo">
         <N className="abertura-logo-n" />
-        <svg className="abertura-palavra" viewBox={VIEWBOX_NILMA} preserveAspectRatio="none" aria-hidden="true"><path fill="url(#nlRed)" d={CAMINHO_NILMA} /></svg>
+        <svg className="abertura-palavra" viewBox={VIEWBOX_NILMA} preserveAspectRatio="none" aria-hidden="true"><path fill="url(#nlRed)" fillRule="evenodd" d={CAMINHO_NILMA} /></svg>
         <span className="abertura-brilho" style={{ WebkitMaskImage: 'url(' + palavra + ')', maskImage: 'url(' + palavra + ')' }} />
-        <svg className="abertura-contabilidade" viewBox={VIEWBOX_CONTABILIDADE} preserveAspectRatio="none" aria-hidden="true"><path fill="currentColor" d={CAMINHO_CONTABILIDADE} /></svg>
+        <svg className="abertura-contabilidade" viewBox={VIEWBOX_CONTABILIDADE} preserveAspectRatio="none" aria-hidden="true"><path fill="currentColor" fillRule="evenodd" d={CAMINHO_CONTABILIDADE} /></svg>
       </div>
     </div>
   );
