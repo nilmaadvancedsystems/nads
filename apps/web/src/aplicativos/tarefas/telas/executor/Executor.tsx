@@ -5,7 +5,7 @@
 // Próximo. No canto direito do cabeçalho, como os botões do GitHub: os grupos da rotina (o da vez com o ícone normal,
 // os outros apagados; clicar num de trás volta para ele) e o perfil.
 import { Alerta, Casca, Icone, MenuSuspenso, useCarregando, useFerramentaNaEtapa, type NomeIcone } from '@nads/ui';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Navigate, useParams } from 'react-router';
 import { usePonteDaFerramenta } from '../../../../comum/ponte';
 import { BASE } from '../../casca/navegacao';
@@ -26,8 +26,14 @@ export function Executor() {
   const casca = useCascaTarefas('minhas-empresas', 'empresas');
   // a ferramenta da etapa (iframe): recebe os bancos sem movimento e avisa quando a pessoa marca um
   const iframe = useRef<HTMLIFrameElement>(null);
+  // a ferramenta que tem requisitos (a Importação) diz o que falta: o avançar só aparece com tudo pronto
+  const [requisitos, setRequisitos] = useState<{ url: string; pronto: boolean; faltam: string[] } | null>(null);
+  const urlDaFerramenta = vm.ferramenta?.url || '';
   usePonteDaFerramenta(iframe, vm.semMovimentoPorMes, vm.competencia, vm.marcarSemMovimento, vm.trocarCompetencia,
-    vm.varios ? { meses: vm.meses, concluido: vm.periodoConcluido } : null, vm.encerrarPeriodo);
+    vm.varios ? { meses: vm.meses, concluido: vm.periodoConcluido } : null, vm.encerrarPeriodo,
+    r => setRequisitos({ url: urlDaFerramenta, ...r }));
+  // os requisitos valem só para a ferramenta que mandou (trocou de etapa: some)
+  const faltam = requisitos && requisitos.url === urlDaFerramenta && !requisitos.pronto ? requisitos.faltam : null;
   // a ferramenta do tamanho do conteúdo dela: a página toda rola junto, numa barra só
   // um aplicativo inteiro dentro da etapa (a Conferência) manda as abas dele: elas ficam no cabeçalho, por cima do checklist
   const { altura, carregando: ferramentaCarregando, janelaAberta, abas, abrirAba } = useFerramentaNaEtapa(iframe, vm.ferramenta?.embutir ? vm.ferramenta.url : undefined);
@@ -111,10 +117,12 @@ export function Executor() {
             <button type="button" className="executor-botao" onClick={vm.abrirInterromper} title="Interromper a etapa" aria-label="Interromper">
               <Icone nome="x" />
             </button>
-            <button type="button" className="executor-botao proximo" disabled={vm.conferindo} onClick={() => { void vm.proximo(); }}
-              title={vm.conferindo ? 'Conferindo…' : 'Próximo (confere e segue para a próxima etapa)'} aria-label="Próximo">
-              {vm.conferindo ? <span className="btn-spinner" /> : <Icone nome="arrowDown" style={{ transform: 'rotate(-90deg)' }} />}
-            </button>
+            {!faltam && (
+              <button type="button" className="executor-botao proximo" disabled={vm.conferindo} onClick={() => { void vm.proximo(); }}
+                title={vm.conferindo ? 'Conferindo…' : 'Próximo (confere e segue para a próxima etapa)'} aria-label="Próximo">
+                {vm.conferindo ? <span className="btn-spinner" /> : <Icone nome="arrowDown" style={{ transform: 'rotate(-90deg)' }} />}
+              </button>
+            )}
           </div>
           {vm.interrompendo && <JanelaInterromper etapa={vm.etapa} onInterromper={vm.interromper} onCancelar={vm.fecharInterromper} />}
         </div>

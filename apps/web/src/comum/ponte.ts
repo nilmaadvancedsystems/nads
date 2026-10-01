@@ -8,7 +8,7 @@ import { origemConfiavel, origemDoPai } from '@nads/ui';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 
 type ParaTarefa = { nads: 'pronta' } | { nads: 'sem-movimento'; banco: string; marcado: boolean; competencia?: string } | { nads: 'competencia'; competencia: string }
-  | { nads: 'encerrar-periodo' };
+  | { nads: 'encerrar-periodo' } | { nads: 'requisitos'; pronto: boolean; faltam: string[] };
 /** o estado da etapa: os bancos sem movimento de cada mês (no período, um por mês; num mês só, só ele) */
 type ParaFerramenta = { nads: 'estado-etapa'; porMes: Record<string, string[]>; periodo?: PeriodoDaEtapa | null };
 
@@ -70,16 +70,33 @@ export function usePonteDaTarefa(competencia?: string) {
   return { naTarefa: !!pai, semMovimento, semMovimentoPorMes: porMes, marcarSemMovimento, trocarCompetencia, periodo, encerrarPeriodo };
 }
 
+/**
+ * Na ferramenta: diz à Tarefas se os requisitos da etapa estão cumpridos (o botão de avançar só aparece com tudo
+ * pronto). Manda de novo quando muda e quando a Tarefas pergunta (ela avisa "pronta" ao abrir).
+ */
+export function useRequisitosParaATarefa(requisitos: { pronto: boolean; faltam: string[] } | null) {
+  const [pai] = useState(origemDoPai);
+  const chave = requisitos ? JSON.stringify(requisitos) : '';
+  useEffect(() => {
+    if (!pai || !requisitos) return;
+    const msg: ParaTarefa = { nads: 'requisitos', pronto: requisitos.pronto, faltam: requisitos.faltam };
+    window.parent.postMessage(msg, pai);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pai, chave]);
+}
+
 /** Na Tarefas: manda à ferramenta os bancos sem movimento de cada mês e recebe quando a pessoa marca um. */
 export function usePonteDaFerramenta(iframe: RefObject<HTMLIFrameElement | null>, porMes: Record<string, string[]>, mesPadrao: string,
   onSemMovimento: (banco: string, marcado: boolean, competencia?: string) => void, onCompetencia?: (competencia: string) => void,
-  periodo: PeriodoDaEtapa | null = null, onEncerrar?: () => void) {
+  periodo: PeriodoDaEtapa | null = null, onEncerrar?: () => void,
+  onRequisitos?: (r: { pronto: boolean; faltam: string[] }) => void) {
+  const aoRequisitos = useRef(onRequisitos);
   const estado = useRef(porMes);
   const estadoPeriodo = useRef(periodo);
   const aoEncerrar = useRef(onEncerrar);
   const aoMarcar = useRef(onSemMovimento);
   const aoTrocar = useRef(onCompetencia);
-  useEffect(() => { estado.current = porMes; estadoPeriodo.current = periodo; aoMarcar.current = onSemMovimento; aoTrocar.current = onCompetencia; aoEncerrar.current = onEncerrar; });
+  useEffect(() => { estado.current = porMes; estadoPeriodo.current = periodo; aoMarcar.current = onSemMovimento; aoTrocar.current = onCompetencia; aoEncerrar.current = onEncerrar; aoRequisitos.current = onRequisitos; });
 
   const mandar = useCallback(() => {
     const f = iframe.current;
@@ -91,11 +108,12 @@ export function usePonteDaFerramenta(iframe: RefObject<HTMLIFrameElement | null>
   useEffect(() => {
     const ouvir = (e: MessageEvent) => {
       if (!iframe.current || e.source !== iframe.current.contentWindow || !origemConfiavel(e.origin)) return;
-      const d = e.data as Partial<{ nads: string; banco: string; marcado: boolean; competencia: string }> | null;
+      const d = e.data as Partial<{ nads: string; banco: string; marcado: boolean; competencia: string; pronto: boolean; faltam: unknown }> | null;
       if (d?.nads === 'pronta') mandar();
       if (d?.nads === 'sem-movimento' && typeof d.banco === 'string') aoMarcar.current(d.banco, !!d.marcado, typeof d.competencia === 'string' ? d.competencia : mesPadrao);
       if (d?.nads === 'competencia' && typeof d.competencia === 'string' && COMPETENCIA_OU_PERIODO.test(d.competencia)) aoTrocar.current?.(d.competencia);
       if (d?.nads === 'encerrar-periodo') aoEncerrar.current?.();
+      if (d?.nads === 'requisitos') aoRequisitos.current?.({ pronto: !!d.pronto, faltam: Array.isArray(d.faltam) ? d.faltam.filter((x): x is string => typeof x === 'string') : [] });
     };
     window.addEventListener('message', ouvir);
     return () => window.removeEventListener('message', ouvir);
