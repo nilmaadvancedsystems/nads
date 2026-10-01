@@ -197,3 +197,14 @@ export function ehParticipanteConhecido(e: Empresa, t: TipoServico, busca: strin
 }
 
 export { SV };
+
+/** As contas Ok (ou Ok pela revisão) em Tomados e Prestados no período: as naturezas de CFOP delas marcam sozinhas. */
+export function contasOkEmServicos(e: Empresa, f: FiltroMovimento): Set<string> {
+  const ok = new Set<string>();
+  for (const t of ['tomados', 'prestados'] as const) {
+    for (const l of conferirServicos(e, t, f, 'nome').saldo) {
+      if (l.situacao.tipo === 'ok' || l.situacao.tipo === 'ok-pela-revisao') for (const c of l.contas) ok.add(c);
+    }
+  }
+  return ok;
+}

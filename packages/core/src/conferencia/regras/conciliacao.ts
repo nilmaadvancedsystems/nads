@@ -187,10 +187,14 @@ export function linhasDoSaldo(e: Empresa, grupos: Record<string, GrupoNatureza>,
 }
 
 /**
- * Naturezas que devem ser marcadas "conferido" sozinhas: todo grupo cuja(s) conta(s)
- * bate(m) com o balancete. Nunca desmarca; respeita o que a pessoa desmarcou (recusados).
+ * Naturezas que devem ser marcadas "conferido" sozinhas: todo grupo cuja(s) conta(s) bate(m) com o balancete, ou
+ * ficou Ok pela revisão (o Verificar por conta sem pendências). A conta conferida em Serviços marca quando está Ok
+ * lá (contasOkEmServicos). Nunca desmarca; respeita o que a pessoa desmarcou (recusados).
+ * Vitor, 01/10/2026 (a 292): a 2910 foi resolvida pela revisão e a 1302/1303 (Internet) estava Ok em Tomados, e
+ * nenhuma marcava sozinha.
  */
-export function quaisMarcarSozinho(e: Empresa, grupos: Record<string, GrupoNatureza>, chaves: string[], p: Periodo): { chave: string; texto: string }[] {
+export function quaisMarcarSozinho(e: Empresa, grupos: Record<string, GrupoNatureza>, chaves: string[], p: Periodo,
+  contasOkEmServicos: ReadonlySet<string> = new Set()): { chave: string; texto: string }[] {
   if (!e.contas.length) return [];
   const pk = periodoKey(p);
   const out: { chave: string; texto: string }[] = [];
@@ -198,9 +202,11 @@ export function quaisMarcarSozinho(e: Empresa, grupos: Record<string, GrupoNatur
     const saldo = saldoDasContas(e, comp.contas);
     if (saldo == null) continue;
     const somaNotas = comp.naturezas.reduce((s, k) => s + somaValores(grupos[k].itens), 0);
-    if (servicoDaConta(e, comp.contas, p)) continue; // conferida em Serviços
     if (Math.abs(somaNotas) < ZERO) continue;
-    if (Math.abs(somaNotas - saldo) >= TOLERANCIA) continue;
+    if (servicoDaConta(e, comp.contas, p)) {
+      // conferida em Serviços: marca quando a conta está Ok lá
+      if (!comp.contas.every(c => contasOkEmServicos.has(c))) continue;
+    } else if (Math.abs(somaNotas - saldo) >= TOLERANCIA && verifEstado(e, p, comp.contas[0]) !== 'ok') continue;
     for (const k of comp.naturezas) {
       const mk = pk + '||' + k;
       if (e.confMarcados.indexOf(mk) > -1 || e.confAutoRecusados.indexOf(mk) > -1) continue;

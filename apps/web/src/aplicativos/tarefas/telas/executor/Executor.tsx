@@ -69,7 +69,7 @@ export function Executor() {
   vm.grupos.forEach((g, i) => {
     // separa a Preparação e o Fechamento do meio (Ativo, Passivo, Resultado)
     if (i > 0 && (i === 1 || i === vm.grupos.length - 1)) itensDosGrupos.push('separador');
-    itensDosGrupos.push({ rotulo: g.nome, icone: ICONE_DO_GRUPO[g.nome] || 'list', dica: g.feitas + '/' + g.total, marcado: g.atual, desabilitado: g.travado, onClick: () => vm.abrirGrupo(g.nome) });
+    itensDosGrupos.push({ rotulo: g.nome, icone: ICONE_DO_GRUPO[g.nome] || 'list', marcado: g.atual, desabilitado: g.travado, onClick: () => vm.abrirGrupo(g.nome) });
   });
   // as saídas da etapa (Pedir extrato, Buscar no Drive, "O Fiscal ainda não fechou as notas"…), num menu
   const saidas = vm.etapa ? vm.etapa.objecoes.filter(o => !o.soMotivo) : [];
@@ -80,7 +80,7 @@ export function Executor() {
       <nav className="gh-topo-acoes" aria-label="Etapa">
         {vm.grupos.length > 0 && (
           <MenuSuspenso rotulo="" icone={grupoDaVez ? ICONE_DO_GRUPO[grupoDaVez.nome] || 'list' : 'checkCircle'} className="gh-topo-btn gh-topo-menu"
-            dica={grupoDaVez ? grupoDaVez.nome + ' · ' + grupoDaVez.feitas + '/' + grupoDaVez.total : 'Grupos da rotina'} titulo="Grupos da rotina" direita largura={240} itens={itensDosGrupos} />
+            dica={grupoDaVez ? grupoDaVez.nome + ' · ' + grupoDaVez.feitas + '/' + grupoDaVez.total : 'Grupos da rotina'} direita itens={itensDosGrupos} />
         )}
         {botoesDaEtapa && saidas.length > 0 && (
           <MenuSuspenso rotulo="" icone="alert" className="gh-topo-btn gh-topo-menu" dica="Se não der para concluir" titulo="Se não der para concluir" direita largura={300}
@@ -92,13 +92,9 @@ export function Executor() {
           </button>
         )}
         {botoesDaEtapa && faltam && (
-          <MenuSuspenso rotulo="" icone="ajuda" className="gh-topo-btn gh-topo-menu" dica="O que falta para seguir" direita largura={300}
-            conteudo={() => (
-              <div className="executor-faltam">
-                <b>Para seguir, falta:</b>
-                <ul>{faltam.map(t => <li key={t}>{t}</li>)}</ul>
-              </div>
-            )} />
+          <button type="button" className="gh-topo-btn gh-topo-forte" onClick={() => vm.mostrarOQueFalta(faltam)} title="O que falta para seguir" aria-label="O que falta para seguir">
+            <Icone nome="ajuda" />
+          </button>
         )}
         {botoesDaEtapa && !faltam && requisitosConhecidos && (
           <button type="button" className="gh-topo-btn gh-topo-proximo" disabled={vm.conferindo} onClick={() => { void vm.proximo(); }}

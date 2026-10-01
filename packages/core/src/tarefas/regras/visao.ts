@@ -27,7 +27,7 @@ export function objecoesMaisComuns(execucoes: readonly Execucao[], rotina: Rotin
     for (const [idEtapa, est] of Object.entries(ex.etapas)) {
       if (!est.objecao || (est.situacao !== 'interrompida' && est.situacao !== 'dispensada')) continue;
       const etapa = rotina.etapas.find(e => e.id === idEtapa);
-      const texto = etapa?.objecoes.find(o => o.id === est.objecao)?.texto || est.objecao;
+      const texto = etapa?.objecoes.find(o => o.id === est.objecao)?.texto || (est.objecao === 'outro' ? 'Outro motivo' : est.objecao);
       const k = idEtapa + '|' + est.objecao;
       const c = conta.get(k) || { etapa: idEtapa, nomeEtapa: etapa?.nome || idEtapa, objecao: est.objecao, texto, qtd: 0 };
       c.qtd++;

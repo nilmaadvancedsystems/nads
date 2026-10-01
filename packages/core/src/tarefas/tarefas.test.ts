@@ -13,11 +13,11 @@ const arq = (lado: 'banco' | 'sistema', data: string): ArquivoImportado => ({
 });
 
 describe('rotina do Contábil', () => {
-  it('etapas com ids únicos, cada uma com objeções', () => {
+  it('etapas com ids únicos, cada uma com objeções (a Conferência fiscal não tem: sem o Fiscal fechado, nem abre)', () => {
     const ids = R.etapas.map(e => e.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const e of R.etapas) {
-      expect(e.objecoes.length).toBeGreaterThan(0);
+      if (e.id !== 'fiscal') expect(e.objecoes.length).toBeGreaterThan(0);
       expect(new Set(e.objecoes.map(o => o.id)).size).toBe(e.objecoes.length);
     }
     expect(ids[0]).toBe('extratos');
@@ -91,7 +91,7 @@ describe('voltar para uma etapa (clique no checklist)', () => {
   it('tira o check só dela, e ela vira a da vez', () => {
     let ex = execucaoNova('FITO', 292, '2026-08', 'contabil');
     ex = fazer(ex, 'extratos', 'Clara', agora).execucao;
-    ex = dispensar(ex, 'fiscal', 'fiscal-pendente', '', 'Clara', agora).execucao;
+    ex = dispensar(ex, 'fiscal', 'outro', '', 'Clara', agora).execucao;
     expect(proximaEtapa(ex, R)?.id).toBe(R.etapas[2].id);
     const v = voltarPara(ex, 'extratos', 'Vitor', agora);
     expect(v.execucao.etapas.extratos).toBeUndefined();
@@ -135,7 +135,7 @@ describe('competências e visão de cima', () => {
     expect(r[1]).toMatchObject({ etapa: 'fiscal', feitas: 1, interrompidas: 1, pendentes: 1 });
     expect(r[2]).toMatchObject({ etapa: 'dp', dispensadas: 1, pendentes: 2 });
     expect(objecoesMaisComuns(exs, R).map(o => [o.texto, o.qtd])).toEqual([
-      ['A empresa não tem funcionários', 1], ['O Fiscal ainda não fechou as notas', 1],
+      ['A empresa não tem funcionários', 1], ['Outro motivo', 1],
     ]);
   });
   it('repositório em memória grava a execução e o evento', () => {

@@ -1159,10 +1159,8 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 /* o checklist da tarefa: as etapas da frente (ainda não feitas) mais apagadas */
 .subnav-item.apagada:not(.active){opacity:.45;}
 .subnav-item.apagada:not(.active):hover{opacity:.75;}
-/* o "?" do cabeçalho do executor (falta requisito): a lista do que falta */
-.executor-faltam{padding:8px 12px;font-size:14px;color:var(--ink);}
-.executor-faltam ul{margin:6px 0 0;padding-left:18px;}
-.executor-faltam li{margin-top:2px;}
+/* o menu dos grupos (o "+ ▾" do GitHub): estreito */
+.gh-topo-acoes .menu-pop{min-width:180px;}
 /* o checklist da tarefa: as etapas da frente (ainda não feitas) mais apagadas */
 .subnav-item.apagada:not(.active){opacity:.45;}
 .subnav-item.apagada:not(.active):hover{opacity:.75;}

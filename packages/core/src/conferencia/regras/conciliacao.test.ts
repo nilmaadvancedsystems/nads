@@ -77,6 +77,10 @@ describe('quaisMarcarSozinho', () => {
     const e2 = { ...e, confAutoRecusados: [pk + '||Uso e Consumo'], confMarcados: [pk + '||Compra para comercialização'] };
     expect(quaisMarcarSozinho(e2, g, Object.keys(g), FILTRO_MOVIMENTO_VAZIO)).toEqual([]);
   });
+  it('Ok pela revisão também marca (a 2910 da 292)', () => {
+    const e2 = { ...e, verifConta: { [pk + '||66015']: 'ok' as const } };
+    expect(quaisMarcarSozinho(e2, g, Object.keys(g), FILTRO_MOVIMENTO_VAZIO).map(x => x.chave)).toContain(pk + '||Frete Comercial (entrada)');
+  });
   it('sem balancete não marca nada', () => {
     expect(quaisMarcarSozinho({ ...e, contas: [] }, g, Object.keys(g), FILTRO_MOVIMENTO_VAZIO)).toEqual([]);
   });

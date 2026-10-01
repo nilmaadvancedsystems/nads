@@ -6,6 +6,7 @@ import { agruparTotaisPorNatureza, somaValores, tituloDoGrupo } from './cfop';
 import { quaisMarcarSozinho } from './conciliacao';
 import { contasDaNatureza, naoContabil, nomeConta } from './empresa';
 import { notasNoPeriodo, periodoKey } from './periodo';
+import { contasOkEmServicos } from './servicosConferencia';
 
 export interface LinhaChecklist {
   chave: string;
@@ -52,7 +53,7 @@ export function montarChecklist(e: Empresa, f: FiltroMovimento): Checklist {
   const maxVal = chaves.reduce((m, k) => Math.max(m, somaValores(grupos[k].itens)), 0) || 1;
   return {
     temNaturezas: todas.length > 0,
-    marcarSozinho: quaisMarcarSozinho(e, grupos, todas, f),
+    marcarSozinho: quaisMarcarSozinho(e, grupos, todas, f, contasOkEmServicos(e, f)),
     linhas: chaves.map(k => {
       const gr = grupos[k];
       const total = somaValores(gr.itens);

@@ -37,9 +37,8 @@ export const ROTINA_CONTABIL: Rotina = {
       // a Conferência (Concilia aí) dentro da etapa, no período que a pessoa está fazendo (o mês ou os meses do Em Lote)
       ferramenta: { app: 'concilia-ai', nome: 'Conferência', caminho: r => '/' + r + '/movimento/relatorio', embutir: true, periodo: true, requisitos: true },
       verificacao: 'manual',
-      objecoes: [
-        { id: 'fiscal-pendente', texto: 'O Fiscal ainda não fechou as notas', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'A etapa depende do Fiscal. Interrompa e retome quando o Fiscal liberar a competência.' } },
-      ],
+      // sem a saída "O Fiscal ainda não fechou as notas" (Vitor, 01/10/2026): sem o Fiscal fechado, o Contábil nem abre a empresa
+      objecoes: [],
     },
     {
       id: 'dp',

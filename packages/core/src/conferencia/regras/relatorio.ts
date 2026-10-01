@@ -6,6 +6,7 @@ import type { Empresa, FiltroMovimento, GrupoNatureza, NotaComTipo, TipoCfop } f
 import { agruparTotaisPorNatureza, somaValores } from './cfop';
 import { linhasDoSaldo, quaisMarcarSozinho, type LinhaSaldo } from './conciliacao';
 import { notasBase, notasNoPeriodo } from './periodo';
+import { contasOkEmServicos } from './servicosConferencia';
 
 export type AbaRelatorio = 'geral' | 'entradas' | 'saidas' | 'tomados' | 'prestados';
 
@@ -72,6 +73,6 @@ export function montarRelatorio(e: Empresa, f: FiltroMovimento, tipoF: '' | Tipo
     meses: porMes(notasBase(e, f).filter(doTipo)),
     rank: maioresNaturezas(grupos),
     saldo: linhasDoSaldo(e, gruposTodos, chavesTodas, f, tipoF),
-    marcarSozinho: quaisMarcarSozinho(e, gruposTodos, chavesTodas, f),
+    marcarSozinho: quaisMarcarSozinho(e, gruposTodos, chavesTodas, f, contasOkEmServicos(e, f)),
   };
 }
