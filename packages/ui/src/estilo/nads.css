@@ -1292,10 +1292,6 @@ tr.linha-atual > td{background:var(--hover-bg);}
 /* ---------------------------------- barrinha de carregamento no topo (como a do GitHub) ---------------------------------- */
 .barra-carregamento{position:fixed;top:0;left:0;z-index:1000;height:2px;width:0;opacity:0;pointer-events:none;
   background:var(--btn-primary);}
-.barra-carregamento.andando{opacity:1;animation:barra-anda 10s cubic-bezier(.08,.7,.2,1) forwards;}
-.barra-carregamento.terminando{width:100%;opacity:0;transition:width .2s ease-out,opacity .25s ease .2s;}
-@keyframes barra-anda{from{width:0;}10%{width:30%;}to{width:90%;}}
-@media (prefers-reduced-motion: reduce){.barra-carregamento.andando{animation:none;width:60%;}}
 
 /* ---------------------------------- Extrator na etapa da Tarefas: importar (em lista) e conferir ---------------------------------- */
 /* cada banco num cartão, com um espaço pequeno entre eles */
@@ -2166,49 +2162,40 @@ main.main:has(> .content > .explorador){padding:0;}
 /* A abertura do app (AberturaN): o N grande no meio da tela; as metades entram de lados opostos e se encaixam,
    depois o N respira de leve (e um brilho passa por ele) até a tela abrir */
 .abertura{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:var(--bg);}
-.abertura-n{width:auto;height:min(160px,28vh);overflow:visible;animation:aberturaRespira 2.4s ease-in-out 1.1s infinite;}
+.abertura-n{width:auto;height:min(160px,28vh);overflow:visible;}
 .abertura-a,.abertura-b{transform-box:view-box;transform-origin:50% 50%;}
-.abertura-a{animation:aberturaA .9s cubic-bezier(.2,.8,.2,1) both;}
-.abertura-b{animation:aberturaB .9s cubic-bezier(.2,.8,.2,1) .12s both;}
-@keyframes aberturaA{from{opacity:0;transform:translate(-22%,-14%) rotate(-8deg) scale(.86);}to{opacity:1;transform:none;}}
-@keyframes aberturaB{from{opacity:0;transform:translate(22%,14%) rotate(-8deg) scale(.86);}to{opacity:1;transform:none;}}
-@keyframes aberturaRespira{0%,100%{transform:scale(1);filter:drop-shadow(0 0 0 transparent);}50%{transform:scale(1.04);filter:drop-shadow(0 0 18px color-mix(in srgb, var(--accent) 35%, transparent));}}
 /* vidro: só sobre a área que carrega (a ferramenta da etapa), com o fundo embaçado; o N um pouco menor */
 .abertura.vidro{position:absolute;z-index:5;min-height:calc(100vh - var(--hdr-h,64px) - 16px);background:color-mix(in srgb, var(--bg) 55%, transparent);
   -webkit-backdrop-filter:blur(14px) saturate(120%);backdrop-filter:blur(14px) saturate(120%);animation:aberturaVidro .25s ease-out both;}
 .abertura.vidro .abertura-n{height:min(120px,22vh);}
 @keyframes aberturaVidro{from{opacity:0;}to{opacity:1;}}
-@media (prefers-reduced-motion: reduce){.abertura-n,.abertura-a,.abertura-b{animation:none;}}
 
 /* Gmail: as abas das caixas (Nilma Contabilidade / setor) */
 .gmail-caixas{margin:0 0 12px;}
 
 /* A abertura com a logo completa (abertura.tsx). A caixa tem a proporção da logo oficial (do N ao fim de "Nilma":
-   956 × 344 px no arquivo); cada peça fica na posição dela, em %. A sequência:
-   0–0,9 s  o N se monta no meio da caixa (as metades entram de lados opostos);
-   0,9–1,6 s o N desliza para a esquerda e "Nilma" se revela da esquerda para a direita, saindo do desfoque;
-   1,6–2,2 s "CONTABILIDADE" abre do centro e um brilho metálico passa pelas letras (e volta a passar de tempos em tempos);
-   depois, a logo respira de leve até a tela abrir. */
-.abertura-logo{position:relative;width:min(400px,80vw);aspect-ratio:956/344;animation:aberturaLogoRespira 3s ease-in-out 2.4s infinite;}
+   956 × 344 px no arquivo); cada peça fica na posição dela, em %. A sequência (o N se monta, desliza, "Nilma" se
+   revela, "CONTABILIDADE" abre do centro, o brilho passa e a logo respira) é do animejs, em abertura.tsx. */
+.abertura-logo{position:relative;width:min(400px,80vw);aspect-ratio:956/344;}
 .abertura-logo > *{position:absolute;display:block;}
-.abertura-logo-n{left:0;top:0;width:22.07%;height:100%;overflow:visible;animation:aberturaNParaEsquerda .7s cubic-bezier(.65,0,.35,1) .9s both;}
-.abertura-palavra{left:26.78%;top:34.59%;width:73.54%;height:49.13%;animation:aberturaRevela .75s cubic-bezier(.2,.8,.2,1) 1.05s both;}
+.abertura-logo-n{left:0;top:0;width:22.07%;height:100%;overflow:visible;}
+.abertura-palavra{left:26.78%;top:34.59%;width:73.54%;height:49.13%;}
 .abertura-brilho{left:26.78%;top:34.59%;width:73.54%;height:49.13%;-webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
   background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.75) 50%,transparent 65%) no-repeat;background-size:250% 100%;background-position:160% 0;
-  mix-blend-mode:screen;animation:aberturaBrilho 3.2s ease-in-out 1.7s infinite;}
-.abertura-contabilidade{left:56.90%;top:85.47%;width:43.41%;height:9.59%;animation:aberturaAbreDoCentro .6s cubic-bezier(.2,.8,.2,1) 1.6s both;}
-.abertura-logo .abertura-a{animation:aberturaA .9s cubic-bezier(.2,.8,.2,1) both;}
-.abertura-logo .abertura-b{animation:aberturaB .9s cubic-bezier(.2,.8,.2,1) .12s both;}
+  mix-blend-mode:screen;}
+.abertura-contabilidade{left:56.90%;top:85.47%;width:43.41%;height:9.59%;}
 /* o N começa no meio da caixa: (956/2 − 211/2) ÷ 211 = 176,5% da largura dele */
-@keyframes aberturaNParaEsquerda{from{transform:translateX(176.5%);}to{transform:none;}}
-@keyframes aberturaRevela{from{clip-path:inset(0 100% 0 0);filter:blur(8px);transform:translateX(-4%);opacity:.3;}to{clip-path:inset(0 0 0 0);filter:none;transform:none;opacity:1;}}
-@keyframes aberturaAbreDoCentro{from{clip-path:inset(0 50% 0 50%);opacity:0;transform:translateY(30%);}to{clip-path:inset(0 0 0 0);opacity:1;transform:none;}}
-@keyframes aberturaBrilho{0%{background-position:160% 0;}45%,100%{background-position:-60% 0;}}
-@keyframes aberturaLogoRespira{0%,100%{transform:scale(1);filter:drop-shadow(0 0 0 transparent);}50%{transform:scale(1.02);filter:drop-shadow(0 0 22px color-mix(in srgb, var(--accent) 30%, transparent));}}
 /* no escuro, "CONTABILIDADE" (cinza-escuro na logo) clareia para dar para ler; o vermelho fica como é */
 :root[data-theme="dark"] .abertura-contabilidade{filter:invert(1) hue-rotate(180deg);}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .abertura-contabilidade{filter:invert(1) hue-rotate(180deg);}}
-@media (prefers-reduced-motion: reduce){.abertura-logo,.abertura-logo > *,.abertura-logo .abertura-a,.abertura-logo .abertura-b{animation:none;}.abertura-brilho{display:none;}}
+@media (prefers-reduced-motion: reduce){.abertura-brilho{display:none;}}
+/* a sequência é do animejs (abertura.tsx, 01/10/2026). Aqui só o estado de antes de cada peça entrar, para nada piscar
+   antes da linha do tempo chegar nela; sem movimento (.anima não vem), tudo aparece parado e montado */
+.abertura.anima .abertura-a,.abertura.anima .abertura-b,.abertura.anima .abertura-palavra,.abertura.anima .abertura-contabilidade{opacity:0;}
+.abertura.anima .abertura-logo-n{transform:translateX(176.5%);}
 
 /* Pedir documentos: o Gmail de onde o pedido sai (o do setor de quem pede) */
 .pedir-de{font-size:14px;line-height:24px;color:var(--ink);font-weight:600;}
+
+/* Prévia da abertura (/tarefas/previa/abertura): os botões por cima dela */
+.previa-abertura-botoes{position:fixed;left:50%;bottom:32px;transform:translateX(-50%);z-index:101;display:flex;gap:8px;}

@@ -1,7 +1,8 @@
 // Rotas da Tarefas: /tarefas/<aplicação>/<página> (Minhas empresas, Contábil, Fiscal, Drive, Contato)
 // a página de cada empresa (/tarefas/minhas-empresas/empresa/<código>), o Cadastro (a lista e a janela de uma empresa:
 // /tarefas/cadastro/empresas/<código>/<aba>)
-// e o executor em tela cheia: /tarefas/executar/<código da empresa>/<competência aaaa-mm>.
+// e o executor em tela cheia: /tarefas/executar/<código da empresa>/<competência aaaa-mm>. A prévia da abertura:
+// /tarefas/previa/abertura.
 import { Navigate, type RouteObject } from 'react-router';
 import { AppTarefas } from './AppTarefas';
 import { AplicacaoAberta } from './casca/AplicacaoAberta';
@@ -9,8 +10,11 @@ import { CadastroAberto, CadastroAntigo } from './casca/CadastroAberto';
 import { EmpresaAberta } from './casca/EmpresaAberta';
 import { BASE, caminhoDaPagina } from './casca/navegacao';
 import { Executor } from './telas/executor/Executor';
+import { PreviaAbertura } from './telas/previa/PreviaAbertura';
 
 export const rotasTarefas: RouteObject[] = [
+  // a prévia da abertura (a animação da logo), sem login
+  { path: BASE + '/previa/abertura', element: <PreviaAbertura /> },
   {
     path: BASE,
     element: <AppTarefas />,
