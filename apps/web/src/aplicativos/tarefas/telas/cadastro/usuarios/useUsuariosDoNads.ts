@@ -1,5 +1,5 @@
 // ViewModel de Cadastro › Usuários: a equipe (usuarios do Entregas) com cargo, papéis e ativo (só o admin muda) e os
-// computadores liberados de cada pessoa (revogar = aquele login precisa de liberação de novo).
+// computadores liberados de cada pessoa (revogar = aquele login precisa de liberação de novo, com outro código).
 import { usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
@@ -48,7 +48,7 @@ export function useUsuariosDoNads() {
       }
       await tentar(() => repo.ativar(p.uid, !p.ativo), p.nome + (p.ativo ? ' desativado.' : ' ativado.'));
     },
-    revogar: (s: usuarios.SessaoLiberada) => tentar(() => repo.revogar(s.id), 'Liberação de ' + s.nome + ' (' + s.computador + ') revogada.'),
+    revogar: (s: usuarios.SessaoLiberada) => tentar(() => repo.revogar(s), 'Liberação de ' + s.nome + ' (' + s.computador + ') revogada: o código não vale mais.'),
     quando: (iso: string) => (iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : ''),
   };
 }

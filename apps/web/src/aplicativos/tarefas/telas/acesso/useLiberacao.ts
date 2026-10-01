@@ -20,6 +20,8 @@ export function useLiberacao(admin: boolean) {
     carregando: !config.carregada || (config.protecao && !admin && !sessao.carregada),
     precisa: config.protecao && !admin && sessao.carregada && !sessao.liberada,
     pedido,
+    /** sem pedido, recusado, revogado ou com o código vencido: mostra "Pedir liberação" */
+    pedirDeNovo: usuarios.precisaPedirDeNovo(pedido),
     codigo,
     setCodigo: (v: string) => { setErro(''); setCodigo(usuarios.codigoDigitado(v)); },
     enviando,
@@ -31,7 +33,9 @@ export function useLiberacao(admin: boolean) {
     async confirmar() {
       if (codigo.length !== 6) { setErro('O código tem 6 números.'); return; }
       setEnviando(true);
-      try { await repo.confirmar(codigo); } catch { setErro('Código errado. Confira com quem liberou.'); } finally { setEnviando(false); }
+      try { await repo.confirmar(codigo); } catch (err) {
+        setErro(/venceu/.test((err as Error).message) ? 'O código venceu. Peça a liberação de novo.' : 'Código errado. Confira com quem liberou.');
+      } finally { setEnviando(false); }
     },
   };
 }

@@ -11,9 +11,11 @@ export function LiberarComputador({ vm, nome, sair }: { vm: ReturnType<typeof us
         <h1 className="auth-title">Liberar este computador</h1>
         <div className="auth-box liberar-caixa">
           <p>Olá, <b>{nome}</b>. Para usar o nads fora dos computadores já liberados, um administrador precisa liberar este login.</p>
-          {!p || p.status === 'recusado' ? (
+          {!p || vm.pedirDeNovo ? (
             <>
               {p?.status === 'recusado' && <p className="liberar-erro"><Icone nome="alert" />O pedido anterior foi recusado{p.aprovadoPor ? ' por ' + p.aprovadoPor : ''}.</p>}
+              {p?.status === 'revogado' && <p className="liberar-erro"><Icone nome="alert" />A liberação deste login foi revogada{p.revogadoPor ? ' por ' + p.revogadoPor : ''}. Peça de novo: o código será outro.</p>}
+              {p?.status === 'aprovado' && <p className="liberar-erro"><Icone nome="alert" />O código venceu (vale 30 minutos depois da aprovação). Peça de novo.</p>}
               <button type="button" className="btn btn-primary liberar-botao" disabled={vm.enviando} onClick={() => void vm.pedir()}>
                 {vm.enviando ? 'Pedindo…' : 'Pedir liberação'}
               </button>
