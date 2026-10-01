@@ -78,7 +78,7 @@ export function Icone({ nome, ...resto }: { nome: NomeIcone } & SVGProps<SVGSVGE
   );
 }
 
-const CAMINHO_N = 'M2,40 C2,0 18,5 40,30 L490,482 C508,498 515,505 515,522 L515,640 C515,662 510,668 490,648 L165,322 C140,295 120,270 118,292 L118,738 C118,758 122,764 140,780 L218,858 C228,868 230,872 230,890 L230,1010 C230,1032 222,1030 200,1008 L12,818 C4,810 2,806 2,792 Z';
+export const CAMINHO_N = 'M2,40 C2,0 18,5 40,30 L490,482 C508,498 515,505 515,522 L515,640 C515,662 510,668 490,648 L165,322 C140,295 120,270 118,292 L118,738 C118,758 122,764 140,780 L218,858 C228,868 230,872 230,890 L230,1010 C230,1032 222,1030 200,1008 L12,818 C4,810 2,806 2,792 Z';
 
 /** Gradientes da marca (vão uma vez no topo da página). */
 export function DefsMarca() {
@@ -93,22 +93,6 @@ export function DefsMarca() {
 }
 
 /** O "N" da Nilma. */
-/**
- * A abertura do app (enquanto carrega): o N grande no meio da tela; as duas metades (a vermelha e a prata) entram de
- * lados opostos e se encaixam, e depois o N respira de leve até a tela abrir. Sem movimento para quem pediu menos.
- */
-/** vidro: por cima de uma área que está carregando (o fundo embaçado, e não a tela toda) */
-export function AberturaN({ vidro }: { vidro?: boolean } = {}) {
-  return (
-    <div className={'abertura' + (vidro ? ' vidro' : '')} role="status" aria-label="Abrindo">
-      <svg className="abertura-n" viewBox="0 0 720 1176" aria-hidden="true">
-        <g className="abertura-a"><path fill="url(#nlRed)" d={CAMINHO_N} /></g>
-        <g className="abertura-b"><path fill="url(#nlSilver)" transform="rotate(180 360 588)" d={CAMINHO_N} /></g>
-      </svg>
-    </div>
-  );
-}
-
 export function MarcaN() {
   return (
     <svg viewBox="0 0 720 1176">
