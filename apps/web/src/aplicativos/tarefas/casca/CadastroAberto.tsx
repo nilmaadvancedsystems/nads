@@ -2,6 +2,7 @@
 // (/tarefas/cadastro/empresas/:empresa/:aba). As duas usam este mesmo componente, então a lista (com a busca)
 // continua montada atrás da janela. Empresa que não está na lista volta para a lista; aba que não existe vai
 // para as contas bancárias. Os links antigos (/tarefas/cadastro/:empresa/:aba) levam para os novos.
+import { useSemAnimacao } from '@nads/ui';
 import { Navigate, useParams } from 'react-router';
 import { empresaDaRota } from '../../../comum/empresaDaRota';
 import { TopoProvider } from '../../../comum/topo';
@@ -11,6 +12,8 @@ import { CascaTarefas } from './CascaTarefas';
 import { ABAS_DO_CADASTRO, caminhoDoCadastro } from './navegacao';
 
 export function CadastroAberto() {
+  // o Cadastro não tem animação nenhuma (a lista, a janela da empresa, as abas, os botões)
+  useSemAnimacao();
   const { empresa = '', aba = '' } = useParams();
   const existe = !empresa || !!empresaDaRota(empresa);
   const abaExiste = !empresa || ABAS_DO_CADASTRO.some(a => a.id === aba);

@@ -2325,3 +2325,9 @@ tr.linha-abre,.imp-linha,.imp-mes-celula,.gh-crumb,.drawer-x{
 .chip-row.com-indicador .chip-f.on{background:transparent;border-color:transparent;}
 /* as barras de andamento (a leitura do robô, o progresso da empresa) andam em vez de pular */
 .tarefas-barra > span{transition:width .7s var(--ease-out);}
+/* Área sem animação (useSemAnimacao: o Cadastro): nada se mexe — nem transição, nem animação de CSS; só o que mostra
+   "carregando" (os que giram) continua girando */
+html[data-sem-animacao] *,html[data-sem-animacao] *::before,html[data-sem-animacao] *::after{transition:none !important;animation:none !important;}
+html[data-sem-animacao] .btn-spinner{animation:spin .6s linear infinite !important;}
+html[data-sem-animacao] .drive-girando{animation:drive-gira .8s linear infinite !important;}
+html[data-sem-animacao] .icon-btn.girando svg{animation:drive-gira 1s linear infinite !important;}
