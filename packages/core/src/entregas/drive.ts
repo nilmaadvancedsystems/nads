@@ -341,3 +341,23 @@ export function linhasDaArvore(
   }
   return saida;
 }
+
+// ---------- "Atualizar o mapa" (pedidosMapaDrive, 01/10/2026) ----------
+// O robô relê na hora uma pasta de cliente (segundos) ou a pasta do ano inteira (~1 min) e responde no pedido.
+
+export interface AndamentoDoMapa {
+  status: 'pendente' | 'atualizando' | 'pronto' | 'erro';
+  pastas?: number;
+  arquivos?: number;
+  erro?: string;
+}
+
+export function andamentoDoMapa(doc: Record<string, unknown> | null | undefined): AndamentoDoMapa {
+  const d = doc || {};
+  const status = d.status === 'atualizando' || d.status === 'pronto' || d.status === 'erro' ? d.status : 'pendente';
+  const a: AndamentoDoMapa = { status };
+  if (typeof d.pastas === 'number') a.pastas = d.pastas;
+  if (typeof d.arquivos === 'number') a.arquivos = d.arquivos;
+  if (d.erro) a.erro = texto(d.erro);
+  return a;
+}

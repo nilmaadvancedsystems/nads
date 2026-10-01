@@ -346,8 +346,12 @@ export function ExploradorDoDrive() {
 
   // a página inicial (só a pasta do ano, com os clientes) ou o navegador de arquivos (o cliente e as pastas dele)
   const mais = (
-    <button type="button" className="icon-btn" title="Mais ações" aria-label="Mais ações"
-      onClick={ev => setMenu({ ...pontoDoMenu(ev), topo: [], linhas: linhasDoFundo() })}><Icone nome="mais" /></button>
+    <>
+      <button type="button" className={'icon-btn' + (vm.atualizandoMapa ? ' girando' : '')} title={vm.atualizandoMapa || vm.dicaDoAtualizar}
+        aria-label="Atualizar o mapa" disabled={!!vm.atualizandoMapa} onClick={vm.atualizarMapa}><Icone nome="repeat" /></button>
+      <button type="button" className="icon-btn" title="Mais ações" aria-label="Mais ações"
+        onClick={ev => setMenu({ ...pontoDoMenu(ev), topo: [], linhas: linhasDoFundo() })}><Icone nome="mais" /></button>
+    </>
   );
   const enviar = (
     <MenuSuspenso icone="upload" rotulo="Enviar" direita dica="Mandar arquivos para a pasta Claudio Secretario (a próxima rodada do arquivamento põe na pasta do cliente)"
@@ -433,8 +437,9 @@ export function ExploradorDoDrive() {
       onKeyDown={teclas} onDragOver={arrastando} onDragLeave={ev => { if (!ev.currentTarget.contains(ev.relatedTarget as Node | null)) setSoltando(false); }} onDrop={soltar}>
       {vm.erro && <div className="alert"><Icone nome="alert" /><div><p className="alert-text">{vm.erro}</p></div></div>}
       {corpo}
-      {vm.pedidos.length + envio.envios.length > 0 && (
+      {vm.pedidos.length + envio.envios.length > 0 || vm.atualizandoMapa ? (
         <div className="drive-pedidos" role="status" aria-live="polite">
+          {vm.atualizandoMapa && <div className="drive-pedido"><span className="drive-girando" aria-hidden="true" />{vm.atualizandoMapa}</div>}
           {vm.pedidos.map(p => <div key={p.id} className="drive-pedido"><span className="drive-girando" aria-hidden="true" />{p.texto}</div>)}
           {envio.envios.map(p => (
             <div key={p.id} className={'drive-pedido' + (p.erro ? ' com-erro' : '')}>
@@ -442,7 +447,7 @@ export function ExploradorDoDrive() {
             </div>
           ))}
         </div>
-      )}
+      ) : null}
       {soltando && <div className="explorador-soltar" aria-hidden="true"><Icone nome="upload" />Solte para enviar ao Claudio Secretário</div>}
       {menu && <MenuDeContexto menu={menu} onFechar={() => setMenu(null)} />}
       <EnviarAoSecretario vm={envio} />
