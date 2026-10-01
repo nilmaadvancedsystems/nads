@@ -24,6 +24,8 @@ export interface FerramentaDaEtapa {
   embutir: boolean;
   /** a ferramenta trabalha vários meses de uma vez (a Etapa com vários meses); sem isso, vai mês a mês */
   periodo?: boolean;
+  /** a ferramenta diz à Tarefas o que falta para seguir (a Importação): os botões só aparecem depois que ela disser */
+  requisitos?: boolean;
 }
 
 /** O que a tela oferece para resolver uma objeção. */

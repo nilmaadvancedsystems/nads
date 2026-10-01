@@ -6,7 +6,7 @@
 // os outros apagados; clicar num de trás volta para ele) e o perfil.
 import { Alerta, Casca, Icone, MenuSuspenso, useCarregando, useFerramentaNaEtapa, type NomeIcone } from '@nads/ui';
 import { useRef, useState } from 'react';
-import { Navigate, useParams } from 'react-router';
+import { Navigate, useBlocker, useParams } from 'react-router';
 import { usePonteDaFerramenta } from '../../../../comum/ponte';
 import { BASE } from '../../casca/navegacao';
 import { useCascaTarefas } from '../../casca/useCascaTarefas';
@@ -41,6 +41,14 @@ export function Executor() {
   const { altura, carregando: ferramentaCarregando, janelaAberta, abas, abrirAba } = useFerramentaNaEtapa(iframe, vm.ferramenta?.embutir ? vm.ferramenta.url : undefined);
   // uma barra só, no alto da página: a da Tarefas e a da ferramenta juntas
   useCarregando(vm.carregando || vm.conferindo || ferramentaCarregando);
+  // os botões da etapa só com a tela pronta (a Tarefas e a ferramenta carregadas); o avançar, se a ferramenta tem
+  // requisitos, só depois que ela disser o que falta (antes disso ele apareceria liberado)
+  const telaPronta = !vm.carregando && !ferramentaCarregando;
+  const requisitosConhecidos = !vm.ferramenta?.requisitos || requisitos?.url === urlDaFerramenta;
+  // sair da execução por qualquer lugar do app (o cabeçalho, o menu, o voltar do navegador) com a etapa aberta:
+  // é interromper, com a justificativa; trocar de mês ou período dentro do executor não conta
+  const saida = useBlocker(({ currentLocation, nextLocation }) =>
+    !!vm.etapa && !vm.interrompendo && currentLocation.pathname !== nextLocation.pathname && !nextLocation.pathname.startsWith(BASE + '/executar/'));
   if (!vm.empresa) return <Navigate to={BASE} replace />;
   // o mês faz parte de um período prometido (vários meses): abre o período
   if (vm.irParaPeriodo) return <Navigate to={vm.irParaPeriodo} replace />;
@@ -114,7 +122,7 @@ export function Executor() {
           {vm.aviso && <Alerta titulo="Ainda não dá para seguir" texto={vm.aviso} />}
           {/* os botões da etapa soltos por cima da tela, no canto: as saídas (quando a etapa tem), ✕ Interromper e → Próximo */}
           {/* só na primeira camada: com janela ou menu aberto (aqui ou na ferramenta), os botões saem da frente */}
-          <div className="executor-flutuante" hidden={janelaAberta || vm.interrompendo}>
+          <div className="executor-flutuante" hidden={!telaPronta || janelaAberta || vm.interrompendo || saida.state === 'blocked'}>
             <Objecoes etapa={vm.etapa} onResolver={vm.resolver} />
             <button type="button" className="executor-botao" onClick={vm.abrirInterromper} title="Interromper a etapa" aria-label="Interromper">
               <Icone nome="x" />
@@ -133,7 +141,7 @@ export function Executor() {
                 </button>
               </span>
             )}
-            {!faltam && (
+            {!faltam && requisitosConhecidos && (
               <button type="button" className="executor-botao proximo" disabled={vm.conferindo} onClick={() => { void vm.proximo(); }}
                 title={vm.conferindo ? 'Conferindo…' : 'Próximo (confere e segue para a próxima etapa)'} aria-label="Próximo">
                 {vm.conferindo ? <span className="btn-spinner" /> : <Icone nome="arrowDown" style={{ transform: 'rotate(-90deg)' }} />}
@@ -141,6 +149,10 @@ export function Executor() {
             )}
           </div>
           {vm.interrompendo && <JanelaInterromper etapa={vm.etapa} onInterromper={vm.interromper} onCancelar={vm.fecharInterromper} />}
+          {/* saiu por outro lugar: a mesma janela; interrompeu, segue para onde clicou; cancelou, fica */}
+          {saida.state === 'blocked' && !vm.interrompendo && (
+            <JanelaInterromper etapa={vm.etapa} onInterromper={(o, obs) => vm.interromper(o, obs, () => saida.proceed())} onCancelar={() => saida.reset()} />
+          )}
         </div>
       )}
     </Casca>

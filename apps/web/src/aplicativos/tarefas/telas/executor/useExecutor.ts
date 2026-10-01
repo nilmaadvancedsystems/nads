@@ -180,7 +180,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     setAviso(null);
   }
 
-  function interromper(objecao: string, observacao: string) {
+  /** depois: para onde ir (a saída que a pessoa clicou); sem isso, volta para a lista */
+  function interromper(objecao: string, observacao: string, depois?: () => void) {
     if (!ex || !etapa) return;
     for (const c of alvos) {
       const i = t.interromper(exDe[c], etapa.id, objecao, observacao, op.nome, new Date());
@@ -188,7 +189,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     }
     setInterrompendo(false);
     toast('Etapa interrompida: ' + etapa.nome + '.');
-    voltar();
+    if (depois) depois(); else voltar();
   }
 
   /** Solução de uma objeção (os botões embaixo): as que dependem de Drive/Contato ainda estão em desenvolvimento. */
@@ -228,7 +229,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     etapa, n: etapa ? rotina.etapas.findIndex(e => e.id === etapa.id) + 1 : 0, total: rotina.etapas.length,
     interrompidaAntes: etapa && ex ? t.estadoDa(ex, etapa.id)?.situacao === 'interrompida' ? t.estadoDa(ex, etapa.id) : null : null,
     // no período, a ferramenta que trabalha vários meses recebe todos (abas por mês); as outras, o mês da vez
-    ferramenta: f && empresa ? { nome: f.nome, embutir: f.embutir, url: BASES[f.app] + f.caminho(empresas.rotaDaEmpresa(empresa)) + (f.app === 'extratudo' ? '?competencia=' + competencia + (juntos && varios ? '&meses=' + meses.join(',') : '')
+    ferramenta: f && empresa ? { nome: f.nome, embutir: f.embutir, requisitos: !!f.requisitos, url: BASES[f.app] + f.caminho(empresas.rotaDaEmpresa(empresa)) + (f.app === 'extratudo' ? '?competencia=' + competencia + (juntos && varios ? '&meses=' + meses.join(',') : '')
       // a Conferência roda no período que a pessoa está fazendo (o mês, ou os meses do Em Lote)
       : f.app === 'concilia-ai' ? '?meses=' + (juntos && varios ? meses : [competencia]).join(',') + (prestaServico == null ? '' : '&servicos=' + (prestaServico ? 'sim' : 'nao')) : '') } : null,
     /** os meses que a etapa ainda precisa (no período) */

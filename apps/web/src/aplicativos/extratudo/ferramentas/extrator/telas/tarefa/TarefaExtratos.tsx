@@ -493,7 +493,7 @@ export function TarefaExtratos() {
   // Conferência, Balancete, Entradas, Saídas, Tomados e (se presta serviço) Prestados importados
   const importados = useImportadosDaConferencia(s.nome);
   const mesesDaEtapa = vm.periodo.length > 1 ? vm.periodo : [vm.competencia];
-  useRequisitosParaATarefa(ponte.naTarefa ? x.requisitosDaImportacao(vm.bancos.map(b => ({
+  useRequisitosParaATarefa(ponte.naTarefa && importados ? x.requisitosDaImportacao(vm.bancos.map(b => ({
     nome: b.nome, ok: !!bancosOk[b.id],
     semMovimento: mesesDaEtapa.every(m => (vm.periodo.length > 1 ? ponte.semMovimentoPorMes[m] || [] : ponte.semMovimento).includes(b.id)),
   })), importados, vm.prestaServico) : null);

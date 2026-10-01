@@ -20,7 +20,7 @@ export const ROTINA_CONTABIL: Rotina = {
       secao: 'Preparação',
       nome: 'Importação',
       descricao: 'Importe tudo o que a empresa precisa na competência: o extrato de cada banco e o razão da conta.',
-      ferramenta: { app: 'extratudo', nome: 'Extrator', caminho: r => '/extratudo/' + r + '/extrator/tarefa/extratos', embutir: true, periodo: true },
+      ferramenta: { app: 'extratudo', nome: 'Extrator', caminho: r => '/extratudo/' + r + '/extrator/tarefa/extratos', embutir: true, periodo: true, requisitos: true },
       verificacao: 'extrato-e-sistema',
       objecoes: [
         { id: 'sem-extrato', texto: 'O cliente não enviou o extrato', soMotivo: true, solucao: { tipo: 'contato', rotulo: 'Pedir extrato' } },
