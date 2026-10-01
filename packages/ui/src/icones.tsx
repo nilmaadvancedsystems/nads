@@ -95,9 +95,10 @@ export function DefsMarca() {
  * A abertura do app (enquanto carrega): o N grande no meio da tela; as duas metades (a vermelha e a prata) entram de
  * lados opostos e se encaixam, e depois o N respira de leve até a tela abrir. Sem movimento para quem pediu menos.
  */
-export function AberturaN() {
+/** vidro: por cima de uma área que está carregando (o fundo embaçado, e não a tela toda) */
+export function AberturaN({ vidro }: { vidro?: boolean } = {}) {
   return (
-    <div className="abertura" role="status" aria-label="Abrindo">
+    <div className={'abertura' + (vidro ? ' vidro' : '')} role="status" aria-label="Abrindo">
       <svg className="abertura-n" viewBox="0 0 720 1176" aria-hidden="true">
         <g className="abertura-a"><path fill="url(#nlRed)" d={CAMINHO_N} /></g>
         <g className="abertura-b"><path fill="url(#nlSilver)" transform="rotate(180 360 588)" d={CAMINHO_N} /></g>

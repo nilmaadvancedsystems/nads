@@ -1141,7 +1141,7 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 /* a etapa sem ferramenta: o que conferir, item por item */
 .executor-conferir{max-width:620px;margin:8px auto 0;padding-left:20px;text-align:left;color:var(--ink);font-size:14px;line-height:1.5;}
 .executor-conferir li+li{margin-top:6px;}
-.executor-ferramenta{display:flex;min-height:360px;}
+.executor-ferramenta{display:flex;min-height:360px;position:relative;}
 .executor-ferramenta iframe{display:block;width:100%;min-height:calc(100vh - var(--hdr-h,64px) - 16px);border:0;}
 .executor-ferramenta .gh-blank{margin:auto;}
 /* os botões da etapa soltos no canto de baixo, por cima da ferramenta (do tamanho dos do Gmail/WhatsApp) */
@@ -2141,4 +2141,9 @@ main.main:has(> .content > .explorador){padding:0;}
 @keyframes aberturaA{from{opacity:0;transform:translate(-22%,-14%) rotate(-8deg) scale(.86);}to{opacity:1;transform:none;}}
 @keyframes aberturaB{from{opacity:0;transform:translate(22%,14%) rotate(-8deg) scale(.86);}to{opacity:1;transform:none;}}
 @keyframes aberturaRespira{0%,100%{transform:scale(1);filter:drop-shadow(0 0 0 transparent);}50%{transform:scale(1.04);filter:drop-shadow(0 0 18px color-mix(in srgb, var(--accent) 35%, transparent));}}
+/* vidro: só sobre a área que carrega (a ferramenta da etapa), com o fundo embaçado; o N um pouco menor */
+.abertura.vidro{position:absolute;z-index:5;min-height:calc(100vh - var(--hdr-h,64px) - 16px);background:color-mix(in srgb, var(--bg) 55%, transparent);
+  -webkit-backdrop-filter:blur(14px) saturate(120%);backdrop-filter:blur(14px) saturate(120%);animation:aberturaVidro .25s ease-out both;}
+.abertura.vidro .abertura-n{height:min(120px,22vh);}
+@keyframes aberturaVidro{from{opacity:0;}to{opacity:1;}}
 @media (prefers-reduced-motion: reduce){.abertura-n,.abertura-a,.abertura-b{animation:none;}}
