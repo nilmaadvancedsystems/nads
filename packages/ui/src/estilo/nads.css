@@ -1785,7 +1785,8 @@ td.gmail-erro{color:var(--danger);}
 .imp-periodo-lado .imp-rotulo{width:auto;align-self:center;}
 .imp-periodo-lado .imp-periodo-falta{align-self:center;text-align:right;min-width:0;}
 .imp-mes-celulas{display:grid;gap:6px;}
-.imp-mes-celula{flex-direction:column;align-items:stretch;justify-content:center;gap:4px;padding:6px;min-width:0;}
+/* o mês e o ícone numa linha só (Vitor, 01/10/2026); sem espaço, o ícone desce */
+.imp-mes-celula{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;padding:4px 6px;min-width:0;}
 .imp-mes-celula .imp-mes-nome{text-align:center;padding:0 2px;}
 .imp-mes-icones{display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;min-height:28px;}
 
