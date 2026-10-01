@@ -18,6 +18,7 @@ import { useImportacao, type Mensagem } from '../importacao/useImportacao';
 import { BotaoGoogle } from '../../../../../../comum/BotaoGoogle';
 import { ImportacaoNaEtapa } from '../../../../../concilia-ai/ImportacaoNaEtapa';
 import { JanelaHistoricoDePedidos, JanelaPedirExtratos } from './JanelaPedirExtratos';
+import { useBancosOk } from './useBancosOk';
 import { useDriveDaLinha } from './useDriveDaLinha';
 import { usePedirExtratos } from './usePedirExtratos';
 
@@ -133,13 +134,13 @@ const semAcento = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, 
 
 /**
  * O movimento do extrato da conta na competência (abre pela setinha): o saldo acumula os meses importados.
- * Ao lado da busca, o olho: o PDF do Drive do mês (link temporário, sem baixar). A linha do saldo anterior diz o
- * mês mostrado ("Mostrando Janeiro/2026") e fica sempre em cima. Busca (data, descrição ou valor) e ordem por
+ * Ao lado da busca, o olho: o PDF do Drive do mês (link temporário, sem baixar). Grudado nele, o mês mostrado
+ * ("Mostrando Janeiro/2026"). A linha do saldo anterior fica sempre em cima. Busca (data, descrição ou valor) e ordem por
  * coluna (clicar no título; clicar de novo inverte; a setinha só aparece depois do clique).
  */
 function Movimento({ m, pdf, onPdf, competencia }: {
   m: x.MovimentoDoExtrato;
-  /** o mês aberto ('aaaa-mm'): a linha do saldo anterior diz qual mês a tabela mostra */
+  /** o mês aberto ('aaaa-mm'): ao lado do olho, qual mês a tabela mostra */
   competencia: string;
   /** o extrato do mês veio do Drive: o olho ao lado da busca abre o PDF de lá */
   pdf?: { id: string; nome: string } | null; onPdf?: (arquivo: { id: string; nome: string }) => void;
@@ -174,6 +175,8 @@ function Movimento({ m, pdf, onPdf, competencia }: {
             <Icone nome="olho" />
           </button>
         )}
+        {/* grudado à direita do olho: o mês que a tabela mostra */}
+        <span className="imp-mov-periodo" aria-live="polite">Mostrando {tarefas.rotuloCompetencia(competencia)}</span>
         {q && (
           <div className="imp-mov-total" aria-live="polite">
             <span><b>{achadas.length}</b> {achadas.length === 1 ? 'lançamento' : 'lançamentos'}</span>
@@ -191,10 +194,7 @@ function Movimento({ m, pdf, onPdf, competencia }: {
         </tr></thead>
         <tbody>
           <tr className="imp-mov-anterior">
-            <td colSpan={4}>
-              <b className="imp-mov-mes">Mostrando {tarefas.rotuloCompetencia(competencia)}</b>
-              {' · '}Saldo anterior <span className="hint">{m.mesesAntes ? '(dos meses já importados)' : m.abertura != null ? '(do extrato)' : '(o extrato não trouxe)'}</span>
-            </td>
+            <td colSpan={4}>Saldo anterior <span className="hint">{m.mesesAntes ? '(dos meses já importados)' : m.abertura != null ? '(do extrato)' : '(o extrato não trouxe)'}</span></td>
             <td className="num">{x.valorBR(m.saldoAnterior)}</td>
           </tr>
           {!linhas.length && <tr><td colSpan={5} className="hint">Nada com essa busca.</td></tr>}
@@ -412,6 +412,8 @@ export function TarefaExtratos() {
   // (o botão que está girando no Drive vira "Cancelar")
   const ocupadoGeral = vm.ocupado || !!d.buscando || vm.bancos.some(b => b.extrato.lendo || b.razao.lendo);
   useCarregando(ocupadoGeral);
+  // extrato e razão batendo no período: a linha vira só o selo Ok (sem botões, a setinha não abre)
+  const bancosOk = useBancosOk(vm, ponte, ocupadoGeral);
   const [cxExtrato, cxRazao] = vm.caixas;
   const [abertas, setAbertas] = useState<string[]>([]);
   const [abaEscolhida, setAba] = useState<AbaImportacao>('bancos');
@@ -484,15 +486,18 @@ export function TarefaExtratos() {
             comExtrato: meses.filter(m => m.extrato).map(m => m.mes),
             comRazao: meses.filter(m => m.razao).map(m => m.mes),
           };
-          const aberta = abertas.includes(b.id);
+          const ok = bancosOk[b.id];
+          const aberta = abertas.includes(b.id) && !ok;
           // Em Lote: a setinha abre ou recolhe tudo junto — a grade dos meses e os lançamentos do mês (começa aberta)
           const emLote = vm.periodo.length > 1;
-          const gradeAberta = !recolhidas.includes(b.id);
+          const gradeAberta = !recolhidas.includes(b.id) && !ok;
           const verLancamentos = (emLote ? gradeAberta : aberta) && !semMov;
           return (
-            <div key={b.id} className={'imp-bloco' + (semMov ? ' sem-movimento' : '')}>
+            <div key={b.id} className={'imp-bloco' + (semMov ? ' sem-movimento' : '') + (ok ? ' imp-ok' : '')}>
               <div className="imp-linha">
-                {emLote ? (
+                {ok ? (
+                  <span className="imp-seta" aria-hidden="true"><Icone nome="caretDown" /></span>
+                ) : emLote ? (
                   <button type="button" className={'imp-seta' + (gradeAberta ? ' aberta' : '')} aria-expanded={gradeAberta}
                     title={gradeAberta ? 'Recolher os meses e os lançamentos' : 'Abrir os meses e os lançamentos'} aria-label="Os meses e os lançamentos do banco" onClick={() => alternarGrade(b.id)}>
                     <Icone nome="caretDown" />
@@ -511,7 +516,12 @@ export function TarefaExtratos() {
                 <div className="imp-resumo">
                   {!semMov && vm.periodo.length <= 1 && resumo(b).length > 0 && <div>{resumo(b).map(t => <span key={t}>{t}</span>)}</div>}
                 </div>
-                {vm.periodo.length > 1 ? (
+                {ok ? (
+                  // extrato e razão batem no período: só o Ok
+                  <div className="imp-grupos">
+                    <span className="badge badge-ok" title="O extrato e o razão batem em todos os meses do período">Ok</span>
+                  </div>
+                ) : vm.periodo.length > 1 ? (
                   // vários meses: os botões de um mês ficam embaixo (por mês); aqui, o de todos de uma vez.
                   // Todos os meses importados (à mão ou pelo Drive; sem movimento conta): vira "Remover todos".
                   // Faltando algum mês (mesmo com os outros do Drive): "Importar Todos" (à mão) e "Todos pelo Drive"; com uns

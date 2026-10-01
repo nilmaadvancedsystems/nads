@@ -1403,9 +1403,13 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-mov thead th{background:var(--surface-2);}
 /* a busca do movimento e, na mesma linha, o total do que ela achou */
 .imp-mov-topo{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
-/* o olho (PDF do Drive) colado na busca; o mês mostrado fica na linha do saldo anterior */
-.imp-mov-busca + .imp-mov-pdf{margin-left:-8px;}
-.imp-mov-anterior .imp-mov-mes{font-style:normal;color:var(--ink);font-weight:600;}
+/* banco Ok (extrato e razão batem no período): a setinha fica apagada e não abre */
+.imp-ok .imp-seta{opacity:.35;cursor:default;}
+/* o olho (PDF do Drive) colado na busca e, grudado à direita dele, o mês que a tabela mostra */
+.imp-mov-busca + .imp-mov-pdf, .imp-mov-busca + .imp-mov-periodo{margin-left:-8px;}
+.imp-mov-periodo{display:inline-flex;align-items:center;height:32px;padding:0 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;}
+.imp-mov-pdf + .imp-mov-periodo{margin-left:-17px;border-top-left-radius:0;border-bottom-left-radius:0;}
+.imp-mov-topo .imp-mov-pdf:has(+ .imp-mov-periodo){border-top-right-radius:0;border-bottom-right-radius:0;}
 /* o Drive buscando vários meses vira "Cancelar"; o resto da tela fica travado até acabar */
 .imp-cancelar{border-color:var(--accent);}
 label.btn.is-locked{opacity:.5;pointer-events:none;}

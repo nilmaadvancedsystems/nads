@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ArquivoImportado, EmpresaExtrator } from '../tipos';
-import { adicionarBanco, arquivosDoBanco, bancosDaEmpresaNa, bancosNaCompetencia } from './bancos';
+import { adicionarBanco, arquivosDoBanco, bancoOkNoPeriodo, bancosDaEmpresaNa, bancosNaCompetencia } from './bancos';
 
 const agora = new Date('2026-09-29T12:00:00Z');
 const arq = (id: string, lado: 'banco' | 'sistema', data: string, banco?: string): ArquivoImportado =>
@@ -61,5 +61,24 @@ describe('bancos do Cadastro no Extrator', () => {
     const { primeiro } = bancosDaEmpresaNa(e, c, null, '2026-08');
     expect(arquivosDoBanco(e, 'itau-1-2', primeiro, 'banco', '2026-08').map(a => a.id)).toEqual(['a', 'b']);
     expect(bancosDaEmpresaNa(e, cadastro([]), null, '2026-08')).toEqual({ bancos: GENERICO, primeiro: 'banco' });
+  });
+});
+
+describe('banco Ok no período (extrato e razão batem)', () => {
+  const MESES = ['2026-07', '2026-08'];
+  it('todo mês com extrato e razão iguais: Ok', () => {
+    const e = emp([arq('e7', 'banco', '2026-07-10'), arq('r7', 'sistema', '2026-07-10'), arq('e8', 'banco', '2026-08-05'), arq('r8', 'sistema', '2026-08-05')]);
+    expect(bancoOkNoPeriodo(e, 'sicoob', 'sicoob', MESES)).toBe(true);
+  });
+  it('falta o razão de um mês, ou sobra pendência: não está Ok', () => {
+    const semRazao = emp([arq('e7', 'banco', '2026-07-10'), arq('r7', 'sistema', '2026-07-10'), arq('e8', 'banco', '2026-08-05')]);
+    expect(bancoOkNoPeriodo(semRazao, 'sicoob', 'sicoob', MESES)).toBe(false);
+    const dataDiferente = emp([arq('e7', 'banco', '2026-07-10'), arq('r7', 'sistema', '2026-07-11'), arq('e8', 'banco', '2026-08-05'), arq('r8', 'sistema', '2026-08-05')]);
+    expect(bancoOkNoPeriodo(dataDiferente, 'sicoob', 'sicoob', MESES)).toBe(false);
+  });
+  it('mês sem movimento fica de fora; só sem movimento, não está Ok', () => {
+    const e = emp([arq('e7', 'banco', '2026-07-10'), arq('r7', 'sistema', '2026-07-10')]);
+    expect(bancoOkNoPeriodo(e, 'sicoob', 'sicoob', MESES, ['2026-08'])).toBe(true);
+    expect(bancoOkNoPeriodo(emp(), 'sicoob', 'sicoob', MESES, MESES)).toBe(false);
   });
 });
