@@ -1,18 +1,18 @@
 // Entrada da Tarefas (30/09/2026): o mesmo nome e a mesma senha do Entregas.
-import { MarcaN } from '@nads/ui';
+import { AberturaN, MarcaN } from '@nads/ui';
 import { VERSAO_SISTEMA } from '../../../../versao';
 import type { Sessao } from '../../dados/sessao';
 import { useEntrar } from './useEntrar';
 
 export function Entrar({ sessao }: { sessao: Sessao }) {
   const vm = useEntrar(sessao);
+  // abrindo: só a abertura do N, grande e no meio da tela
+  if (vm.carregando) return <AberturaN />;
   return (
     <div id="login">
       <div className="auth">
         <span className="auth-mark" aria-hidden="true"><MarcaN /></span>
-        {vm.carregando ? (
-          <p className="hint" style={{ textAlign: 'center' }}><span className="btn-spinner" /> Abrindo…</p>
-        ) : vm.semDepartamento ? (
+        {vm.semDepartamento ? (
           <>
             <h1 className="auth-title">Falta o seu departamento</h1>
             <div className="auth-box">
