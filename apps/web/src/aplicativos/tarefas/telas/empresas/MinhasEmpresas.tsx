@@ -24,7 +24,7 @@ export function MinhasEmpresas() {
   const campoBusca = useRef<HTMLInputElement>(null);
   useCarregando(vm.carregando);
   // as linhas chegam em cascata quando o banco responde e quando muda o filtro (a busca é teclado: não anima)
-  const tabela = useEntradaAnimada<HTMLDivElement>(':scope > table > tbody > tr', [vm.carregando, vm.situacao], { y: 4, duracao: 220, intervalo: 22, maximo: 12 });
+  const tabela = useEntradaAnimada<HTMLDivElement>(':scope > table > tbody > tr', [vm.carregando, vm.situacao], 'lista', 12);
 
   // "/" leva para a busca (como o "T" do "Go to file" do GitHub)
   useEffect(() => {

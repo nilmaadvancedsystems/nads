@@ -151,8 +151,8 @@ function PainelDoEmail({ vm, x }: { vm: VmCaixa; x: e.EmailDaCaixa }) {
 export function CaixaDoRobo() {
   const vm = useCaixaDoRobo();
   useCarregando(vm.carregando);
-  // trocou de caixa ou de aba (ou chegou a lista): os e-mails chegam em cascata, de leve
-  const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [vm.caixa, vm.aba, vm.carregando], { y: 4, duracao: 200, intervalo: 22, maximo: 12 });
+  // trocou de caixa ou de aba (ou chegou a lista): os e-mails chegam em cascata, do jeito do app
+  const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [vm.caixa, vm.aba, vm.carregando], 'lista', 12);
   const a = vm.robo.andamento;
   return (
     <section>

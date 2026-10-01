@@ -2,7 +2,7 @@
 // barra lateral das seções (com "Ocultar barra lateral") — ou, com lateral="caixa", a caixa de seções ao lado da página —,
 // gaveta ☰ com tema e a área da página (título + ações no canto direito). Marcação e classes iguais às do conferencia.html (~L973-1033).
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { animar, GAVETA, useEntradaAnimada } from './animacao';
+import { sairComo, useEntradaAnimada } from './animacao';
 import { useAbasParaAEtapa, useAlturaNaEtapa } from './etapa';
 import { Icone, MarcaN, type NomeIcone } from './icones';
 import { SeletorTema } from './tema';
@@ -108,11 +108,11 @@ export function Casca(p: {
   const fundoEl = useRef<HTMLDivElement>(null);
   const fecharGaveta = () => {
     if (!gavetaEl.current) { setGaveta(false); return; }
-    if (fundoEl.current) animar(fundoEl.current, { opacity: 0, duration: 240, ease: GAVETA });
-    animar(gavetaEl.current, { translateX: '-100%', duration: 240, ease: GAVETA, onComplete: () => setGaveta(false) });
+    if (fundoEl.current) void sairComo('fundo', fundoEl.current);
+    void sairComo('gaveta', gavetaEl.current).then(() => setGaveta(false));
   };
-  // a página que abriu entra de leve (troca de página é coisa de toda hora: 4 px e 200 ms, quase nada)
-  const conteudo = useEntradaAnimada<HTMLDivElement>(null, [p.titulo, p.paginas?.find(x => x.ativa)?.id, p.secoes.find(s => s.ativa)?.id], { y: 4, duracao: 200 });
+  // a página que abriu entra do jeito do app
+  const conteudo = useEntradaAnimada<HTMLDivElement>(null, [p.titulo, p.paginas?.find(x => x.ativa)?.id, p.secoes.find(s => s.ativa)?.id], 'pagina');
   // saiu versão nova do nads: um pontinho no ☰ e "Atualizar para …" ao lado da versão, no menu
   const versaoNova = useVersaoNova(p.versao || '');
   const cabecalho = useRef<HTMLElement>(null);

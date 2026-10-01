@@ -5,7 +5,7 @@ import { useHistoricoDoRobo } from './useHistoricoDoRobo';
 export function HistoricoDoRobo() {
   const vm = useHistoricoDoRobo();
   useCarregando(vm.carregando);
-  const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [vm.carregando], { y: 4, duracao: 200, intervalo: 22, maximo: 12 });
+  const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [vm.carregando], 'lista', 12);
   if (vm.erro) return <div className="alert"><Icone nome="alert" /><div><p className="alert-text">Não consegui ler o robô ({vm.erro}).</p></div></div>;
   return !vm.carregando && !vm.linhas.length ? <p className="empty">O robô ainda não leu nada.</p> : (
     <div ref={tabela} className="table-wrap">

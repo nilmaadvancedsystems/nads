@@ -78,9 +78,9 @@ const COLUNAS_DA_LISTA: { id: e.ColunaDoExplorador; rotulo: string; num?: boolea
  * numa caixa própria, em cima (o navegador de arquivos); sem, dentro do card (a página inicial).
  */
 function Lista({ vm, aoMenu, acima, baixarMarcados, faixaFora }: { vm: VmDrive; aoMenu: AoMenu; acima: boolean; baixarMarcados: () => void; faixaFora?: boolean }) {
-  // abriu outra pasta (ou acabou de carregar): as linhas chegam em cascata, bem de leve (trocar de pasta é toda hora)
+  // abriu outra pasta (ou acabou de carregar): as linhas chegam em cascata, do jeito do app
   const pastaAberta = vm.trilha.map(t => t.p || t.c).join('/'); // digitar na busca não anima (teclado)
-  const lista = useEntradaAnimada<HTMLDivElement>('tbody > tr', [pastaAberta, vm.carregando], { y: 4, duracao: 180, intervalo: 18, maximo: 12 });
+  const lista = useEntradaAnimada<HTMLDivElement>('tbody > tr', [pastaAberta, vm.carregando], 'lista', 12);
   const m = vm.marcados.length;
   const linha = (x: e.EntradaDoExplorador) => ({
     className: 'linha-abre' + (vm.estaMarcado(x.id) ? ' linha-atual' : ''),

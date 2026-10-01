@@ -7,7 +7,7 @@ import { useUsuariosDoNads } from './useUsuariosDoNads';
 export function UsuariosDoNads() {
   const vm = useUsuariosDoNads();
   useCarregando(vm.carregando);
-  const tabela = useEntradaAnimada<HTMLDivElement>(':scope > table > tbody > tr', [vm.carregando], { y: 4, duracao: 220, intervalo: 22, maximo: 12 });
+  const tabela = useEntradaAnimada<HTMLDivElement>(':scope > table > tbody > tr', [vm.carregando], 'lista', 12);
   return (
     <section>
       <div className="tarefas-barra-topo">

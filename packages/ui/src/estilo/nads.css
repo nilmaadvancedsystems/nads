@@ -2199,3 +2199,16 @@ main.main:has(> .content > .explorador){padding:0;}
 
 /* Prévia da abertura (/tarefas/previa/abertura): os botões por cima dela */
 .previa-abertura-botoes{position:fixed;left:50%;bottom:32px;transform:translateX(-50%);z-index:101;display:flex;gap:8px;}
+
+/* a Prévia das animações (/tarefas/previa/animacoes): os três jeitos lado a lado e as peças para experimentar */
+.previa-anim{max-width:960px;margin:0 auto;padding:32px 16px 64px;display:flex;flex-direction:column;gap:20px;}
+.previa-anim-topo h1{margin:0 0 4px;font-size:24px;}
+.previa-anim-jeitos{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:16px;}
+.previa-anim-jeito{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;padding:14px 16px;cursor:pointer;font:inherit;color:var(--ink);
+  border:1px solid var(--border);transition:border-color .2s cubic-bezier(.23,1,.32,1),background .2s cubic-bezier(.23,1,.32,1);}
+.previa-anim-jeito b{display:flex;align-items:center;gap:6px;}
+.previa-anim-jeito b svg{width:16px;height:16px;color:var(--accent);}
+.previa-anim-jeito.on{border-color:var(--accent);background:var(--accent-soft);}
+.previa-anim-botoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;}
+.previa-anim-pagina{padding:20px;display:flex;flex-direction:column;gap:12px;}
+.previa-anim-pagina h3{margin:0;}

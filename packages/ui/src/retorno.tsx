@@ -2,7 +2,7 @@
 // Origem: conferencia.html toast/modal (~L1425-1448). O ViewModel pede com useRetorno();
 // quem desenha é daqui.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { animar, ENTRAR } from './animacao';
+import { sairComo } from './animacao';
 import { Icone, type NomeIcone } from './icones';
 
 export interface BotaoModal<T> { rotulo: string; valor: T; variante?: 'btn-primary' | 'btn-outline' | 'btn-danger' }
@@ -49,12 +49,11 @@ export function RetornoProvider({ children }: { children: ReactNode }) {
   const toast = useCallback((texto: string) => {
     const id = ++seq.current;
     setToasts(t => t.concat({ id, texto }));
-    // a saída (animejs, 01/10/2026): o aviso sai por onde entrou (desce e apaga) antes de sair da lista
+    // a saída (animejs, 01/10/2026): o aviso sai por onde entrou, do jeito do app; só então sai da lista
     setTimeout(() => {
       const el = document.querySelector<HTMLElement>('[data-toast="' + id + '"]');
-      if (el) animar(el, { opacity: 0, translateY: '100%', duration: 220, ease: ENTRAR });
-    }, 3380);
-    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3600);
+      void (el ? sairComo('aviso', el) : Promise.resolve()).then(() => setToasts(t => t.filter(x => x.id !== id)));
+    }, 3300);
   }, []);
 
   const modal = useCallback(<T,>(o: OpcoesModal<T>) => new Promise<T>(res => {
@@ -79,15 +78,15 @@ function Modal({ aberto, fechar }: { aberto: ModalAberto; fechar: (v: unknown) =
   const primeiro = useRef<HTMLButtonElement>(null);
   const raiz = useRef<HTMLDivElement>(null);
   const saindo = useRef(false);
-  // a saída (animejs, 01/10/2026): o fundo apaga e a janela volta a 0,96 (o caminho da entrada, mais rápido); só então ela fecha
+  // a saída (animejs, 01/10/2026): o fundo apaga e a janela sai pelo caminho da entrada, do jeito do app; só então ela fecha
   const fecharAnimado = useCallback((v: unknown) => {
     if (saindo.current) return;
     saindo.current = true;
     const el = raiz.current;
     if (!el) { fechar(v); return; }
     const janela = el.querySelector<HTMLElement>('.modal');
-    if (janela) animar(janela, { opacity: 0, scale: 0.96, duration: 150, ease: ENTRAR });
-    animar(el, { opacity: 0, duration: 150, ease: ENTRAR, onComplete: () => fechar(v) });
+    if (janela) void sairComo('janela', janela);
+    void sairComo('fundo', el).then(() => fechar(v));
   }, [fechar]);
   useEffect(() => { primeiro.current?.focus(); }, []);
   useEffect(() => {

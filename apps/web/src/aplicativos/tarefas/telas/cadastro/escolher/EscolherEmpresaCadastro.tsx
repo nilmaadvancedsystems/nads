@@ -8,7 +8,7 @@ export function EscolherEmpresaCadastro() {
   const vm = useListaDoCadastro();
   useCarregando(vm.carregando);
   // as linhas chegam em cascata quando o banco responde e quando muda o filtro (a busca é teclado: não anima)
-  const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [vm.carregando, vm.situacao], { y: 4, duracao: 220, intervalo: 22, maximo: 12 });
+  const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [vm.carregando, vm.situacao], 'lista', 12);
   return (
     <section>
       <div className="tarefas-barra-topo">

@@ -7,7 +7,7 @@ export function ConfiguracoesDoNads() {
   const vm = useConfiguracoesDoNads();
   useCarregando(vm.carregando);
   // a saúde do robô: os itens chegam em cascata na primeira leitura (a releitura de 30 em 30 s não anima)
-  const saude = useEntradaAnimada<HTMLDivElement>('.saude-lista > li', [!!vm.saude], { y: 6, duracao: 260, intervalo: 40 });
+  const saude = useEntradaAnimada<HTMLDivElement>('.saude-lista > li', [!!vm.saude], 'lista');
   return (
     <section className="config-nads">
       {!vm.admin && <p className="hint">Só um administrador muda as configurações.</p>}
