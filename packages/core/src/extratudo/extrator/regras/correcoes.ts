@@ -58,7 +58,7 @@ function correcoesDoMes(mes: string, linhas: LinhaConferencia[]): CorrecaoDoRaza
       const dif = soma(cs) - soma(bs);
       r.push({
         mes, data: d, tipo: 'lote', diferenca: dif,
-        texto: bs.map(b => b.historico).join(' + ') + ' foi ' + v(soma(bs)) + ' no banco; no razão, ' + nomes(cs) + ' somam ' + v(soma(cs)) + '. ' +
+        texto: bs.map(b => b.historico).join(' + ') + ' foi ' + v(soma(bs)) + ' no banco; no razão, ' + (cs.length === 1 ? cs[0].historico + ' está com ' + v(cs[0].valor) : nomes(cs) + ' somam ' + v(soma(cs))) + '. ' +
           (dif === 0 ? 'Mesmo total, lançamentos diferentes.' : v(dif) + (dif > 0 ? ' a mais' : ' a menos') + ' no razão.'),
       });
     } else {

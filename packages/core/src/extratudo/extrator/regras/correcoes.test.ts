@@ -18,7 +18,7 @@ describe('o que corrigir no razão', () => {
   const r = correcoesDoRazao(e, 'sicoob', 'sicoob', ['2026-03', '2026-04', '2026-05']);
   it('cada problema dito para corrigir, na ordem das datas', () => {
     expect(r.map(c => [c.data, c.tipo, c.texto])).toEqual([
-      ['2026-03-06', 'lote', 'CRÉD.LIQ.COBRANÇA DOC.: 1948608 foi 958,14 no banco; no razão, GONCALVES E AQUINO 1.089,10 somam 1.089,10. 130,96 a mais no razão.'],
+      ['2026-03-06', 'lote', 'CRÉD.LIQ.COBRANÇA DOC.: 1948608 foi 958,14 no banco; no razão, GONCALVES E AQUINO está com 1.089,10. 130,96 a mais no razão.'],
       ['2026-03-16', 'data', 'DONA BEIJA (947,30) está no razão em 17/03; no banco foi em 16/03. Mudar a data.'],
       ['2026-05-18', 'lote', 'CRÉD.LIQ.COBRANÇA DOC.: 2096255 foi 8.398,18 no banco; no razão, QUEBA 5.109,72, SANTOS E OLIVEIRA 3.157,50 somam 8.267,22. 130,96 a menos no razão.'],
     ]);
