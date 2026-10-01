@@ -11,7 +11,7 @@
 // Ao importar, só uma barrinha por cima da tela, que some em 2,7 s.
 import { extrator as x, type conferencia, type empresas, tarefas } from '@nads/core';
 import { Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { usePonteDaTarefa } from '../../../../../../comum/ponte';
 import { useSessao } from '../../casca/sessao';
 import { useImportacao, type Mensagem } from '../importacao/useImportacao';
@@ -155,20 +155,38 @@ function PendenciasDoBanco({ itens }: { itens: x.CorrecaoDoRazao[] }) {
                 <th className="num">Banco</th><th className="num">Razão</th><th className="num">Diferença</th>
               </tr></thead>
               <tbody>
-                {itens.slice(0, LIMITE_CORRECOES).map((c, i) => (
-                  <tr key={i}>
-                    <td className="imp-planilha-dia">{x.dataBR(c.data)}</td>
-                    <td className="imp-planilha-sit">{x.ROTULO_CORRECAO[c.tipo]}</td>
-                    <td className="imp-planilha-lanc">
-                      {c.lancamento}
-                      {c.detalhe && <span className="hint">{c.detalhe}</span>}
-                      {c.dica && <span className="hint imp-planilha-dica">{c.dica}</span>}
-                    </td>
-                    <td className="num">{valor(c.noBanco)}</td>
-                    <td className="num">{valor(c.noRazao)}</td>
-                    <td className={'num' + (c.diferenca ? ' ext-neg' : '')}>{c.diferenca ? (c.diferenca > 0 ? '+' : '−') + x.valorBR(Math.abs(c.diferenca)) : ''}</td>
-                  </tr>
-                ))}
+                {itens.slice(0, LIMITE_CORRECOES).map((c, i) => {
+                  // o lote quebrado: a linha do lote com os totais, cada lançamento numa linha embaixo e a dica no fim
+                  const partes = c.partes || [];
+                  const linhas = 1 + partes.length + (c.dica ? 1 : 0);
+                  return (
+                    <Fragment key={i}>
+                      <tr className={partes.length ? 'imp-planilha-grupo' : undefined}>
+                        <td className="imp-planilha-dia" rowSpan={linhas}>{x.dataBR(c.data)}</td>
+                        <td className="imp-planilha-sit" rowSpan={linhas}>{x.ROTULO_CORRECAO[c.tipo]}</td>
+                        <td className="imp-planilha-lanc">
+                          <b>{c.lancamento}</b>
+                          {!partes.length && c.detalhe && <span className="hint">{c.detalhe}</span>}
+                          {!partes.length && c.dica && <span className="hint imp-planilha-dica">{c.dica}</span>}
+                        </td>
+                        <td className="num"><b>{valor(c.noBanco)}</b></td>
+                        <td className="num"><b>{valor(c.noRazao)}</b></td>
+                        <td className={'num' + (c.diferenca ? ' ext-neg' : '')}>{c.diferenca ? (c.diferenca > 0 ? '+' : '−') + x.valorBR(Math.abs(c.diferenca)) : ''}</td>
+                      </tr>
+                      {partes.map((p, j) => (
+                        <tr key={j} className="imp-planilha-parte">
+                          <td>{p.historico}</td>
+                          <td className="num">{p.lado === 'banco' ? valor(p.valor) : ''}</td>
+                          <td className="num">{p.lado === 'razao' ? valor(p.valor) : ''}</td>
+                          <td />
+                        </tr>
+                      ))}
+                      {partes.length > 0 && c.dica && (
+                        <tr className="imp-planilha-parte"><td colSpan={4} className="imp-planilha-dica">{c.dica}</td></tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>

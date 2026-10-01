@@ -30,6 +30,12 @@ describe('o que corrigir no razão', () => {
       ['CRÉD.LIQ.COBRANÇA DOC.: 2096255', 'No razão: QUEBA 5.109,72 · SANTOS E OLIVEIRA 3.157,50', 839818, 826722, -13096],
     ]);
   });
+  it('o lote traz cada lançamento do razão daquele dia, um por linha', () => {
+    expect(r[2].partes).toEqual([
+      { lado: 'razao', historico: 'QUEBA', valor: 510972 },
+      { lado: 'razao', historico: 'SANTOS E OLIVEIRA', valor: 315750 },
+    ]);
+  });
   it('a mesma diferença ao contrário liga os dois dias', () => {
     expect(r[0].dica).toBe('Os 130,96 a mais parecem ser de 18/05/2026 (lá faltam 130,96 no razão).');
     expect(r[2].dica).toBe('Os 130,96 que faltam parecem estar lançados em 06/03/2026 (lá sobram 130,96 no razão).');

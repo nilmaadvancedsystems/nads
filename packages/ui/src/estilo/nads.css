@@ -1424,6 +1424,10 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-planilha-dia{font-variant-numeric:tabular-nums;}
 .imp-planilha-lanc .hint{display:block;margin-top:2px;}
 .imp-planilha-dica{color:var(--warn);}
+/* o lote quebrado: as partes embaixo do lote, recuadas e mais leves, sem a linha de grade entre elas */
+.imp-planilha-parte td{color:var(--ink-muted);font-size:13px;border-top-style:dashed;}
+.imp-planilha-parte td:first-child{padding-left:24px;}
+td.imp-planilha-dica{color:var(--warn);font-size:12px;}
 /* banco Ok (extrato e razão batem no período): a setinha fica apagada e não abre */
 .imp-ok .imp-seta{opacity:.35;cursor:default;}
 /* o olho (PDF do Drive) colado na busca e, grudado à direita dele, o mês que a tabela mostra */
