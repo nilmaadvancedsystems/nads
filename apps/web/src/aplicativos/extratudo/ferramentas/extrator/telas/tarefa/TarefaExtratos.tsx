@@ -137,7 +137,11 @@ const semAcento = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, 
  * Busca (data, descrição ou valor) e ordem por coluna (clicar no título; clicar de novo inverte; a setinha só
  * aparece depois do clique). A linha do saldo anterior fica sempre em cima, como está.
  */
-function Movimento({ doMes, todos }: { doMes: x.MovimentoDoExtrato; todos: x.MovimentoDoExtrato }) {
+function Movimento({ doMes, todos, pdf, onPdf }: {
+  doMes: x.MovimentoDoExtrato; todos: x.MovimentoDoExtrato;
+  /** o extrato do mês veio do Drive: o botão PDF ao lado da busca abre o arquivo de lá */
+  pdf?: { id: string; nome: string } | null; onPdf?: (arquivo: { id: string; nome: string }) => void;
+}) {
   const [verTodos, setVerTodos] = useState(false);
   const m = verTodos ? todos : doMes;
   const [busca, setBusca] = useState('');
@@ -169,6 +173,11 @@ function Movimento({ doMes, todos }: { doMes: x.MovimentoDoExtrato; todos: x.Mov
           title={verTodos ? 'Voltar para o mês' : 'Todos os extratos importados'} aria-label="Todos os extratos importados">
           <Icone nome="grade" />
         </button>
+        {pdf && onPdf && (
+          <button type="button" className="btn btn-outline imp-mov-pdf" title={'Abrir o PDF do Drive: ' + pdf.nome} aria-label="Abrir o PDF do Drive" onClick={() => onPdf(pdf)}>
+            <Icone nome="fileText" />PDF
+          </button>
+        )}
         {q && (
           <div className="imp-mov-total" aria-live="polite">
             <span><b>{achadas.length}</b> {achadas.length === 1 ? 'lançamento' : 'lançamentos'}</span>
@@ -412,6 +421,9 @@ export function TarefaExtratos() {
   const abas = visiveis.map(a => ({ ...a, ativa: a.id === aba }));
   useAbasParaAEtapa(ponte.naTarefa ? abas : null, id => { if (ABAS_DA_IMPORTACAO.some(a => a.id === id)) setAba(id as AbaImportacao); });
   const alternar = (id: string) => setAbertas(v => (v.includes(id) ? v.filter(a => a !== id) : [...v, id]));
+  // Em Lote: os bancos com a grade dos meses recolhida (pela setinha)
+  const [recolhidas, setRecolhidas] = useState<string[]>([]);
+  const alternarGrade = (id: string) => setRecolhidas(v => (v.includes(id) ? v.filter(a => a !== id) : [...v, id]));
 
   /** Visualizar o que veio do Drive: abre a janela já (senão o navegador bloqueia) e põe o link temporário quando o robô responder. */
   function visualizarDoDrive(arquivo: { id: string; nome: string }) {
@@ -473,13 +485,23 @@ export function TarefaExtratos() {
             comRazao: meses.filter(m => m.razao).map(m => m.mes),
           };
           const aberta = abertas.includes(b.id);
+          // Em Lote: a setinha recolhe e abre a grade dos meses (começa aberta); os lançamentos têm o botão próprio
+          const emLote = vm.periodo.length > 1;
+          const gradeAberta = !recolhidas.includes(b.id);
           return (
             <div key={b.id} className={'imp-bloco' + (semMov ? ' sem-movimento' : '')}>
               <div className="imp-linha">
-                <button type="button" className={'imp-seta' + (aberta ? ' aberta' : '')} aria-expanded={aberta} disabled={semMov}
-                  title={aberta ? 'Fechar o movimento' : 'Ver o movimento do extrato'} aria-label="Movimento do extrato" onClick={() => alternar(b.id)}>
-                  <Icone nome="caretDown" />
-                </button>
+                {emLote ? (
+                  <button type="button" className={'imp-seta' + (gradeAberta ? ' aberta' : '')} aria-expanded={gradeAberta}
+                    title={gradeAberta ? 'Recolher os meses' : 'Mostrar os meses'} aria-label="Os meses do banco" onClick={() => alternarGrade(b.id)}>
+                    <Icone nome="caretDown" />
+                  </button>
+                ) : (
+                  <button type="button" className={'imp-seta' + (aberta ? ' aberta' : '')} aria-expanded={aberta} disabled={semMov}
+                    title={aberta ? 'Fechar o movimento' : 'Ver o movimento do extrato'} aria-label="Movimento do extrato" onClick={() => alternar(b.id)}>
+                    <Icone nome="caretDown" />
+                  </button>
+                )}
                 <span className="imp-ico imp-logo"><LogoBanco banco={b.marca} cor={temExtrato && !semMov} /></span>
                 <div className="imp-txt">
                   <span><b>{b.nome}</b>{b.conta && <span className="imp-conta">{b.conta}</span>}</span>
@@ -494,6 +516,11 @@ export function TarefaExtratos() {
                   // Faltando algum mês (mesmo com os outros do Drive): "Importar Todos" (à mão) e "Todos pelo Drive"; com uns
                   // importados e outros não, os dois viram "Adicionar restantes" (à mão e pelo Drive).
                   <div className="imp-grupos">
+                    <button type="button" className={'btn btn-outline btn-sm imp-todos' + (aberta ? ' ativo' : '')} aria-pressed={aberta}
+                      disabled={semMov || !temExtrato} onClick={() => alternar(b.id)}
+                      title={!temExtrato ? 'Sem extrato importado em ' + tarefas.rotuloNumericoCompetencia(vm.competencia) : aberta ? 'Fechar os lançamentos' : 'Ver os lançamentos do extrato de ' + tarefas.rotuloNumericoCompetencia(vm.competencia)}>
+                      <Icone nome="list" />Lançamentos
+                    </button>
                     <div className="imp-grupo" aria-label="Extrato do banco (todos os meses)">
                       <span className="imp-rotulo">Extrato</span>
                       {lote.extratoCompleto ? (
@@ -563,14 +590,15 @@ export function TarefaExtratos() {
                   </div>
                 )}
               </div>
-              {vm.periodo.length > 1 && <MesesDoBanco meses={meses} competencia={vm.competencia} naTarefa={ponte.naTarefa}
+              {emLote && gradeAberta && <MesesDoBanco meses={meses} competencia={vm.competencia} naTarefa={ponte.naTarefa}
                 travado={vm.ocupado || buscando} aceitarExtrato={cxExtrato.aceitar} aceitarRazao={cxRazao.aceitar}
                 onMes={vm.setCompetencia} onArquivos={(lado, fs) => { void vm.importarArquivos(b.id, lado, fs); }}
                 onExcluir={(lado, mes) => { void vm.excluirDoBanco(b.id, lado, mes); }}
                 onDrive={mes => d.buscarNoPeriodo(b, [mes])}
                 onVer={visualizarDoDrive}
                 onSemMovimento={(mes, marcado) => ponte.marcarSemMovimento(b.id, marcado, mes)} />}
-              {aberta && !semMov && <Movimento doMes={vm.movimentoDe(b.id)} todos={vm.movimentoTodosDe(b.id)} />}
+              {aberta && !semMov && <Movimento doMes={vm.movimentoDe(b.id)} todos={vm.movimentoTodosDe(b.id)}
+                pdf={doDrive.length ? doDrive[doDrive.length - 1] : null} onPdf={visualizarDoDrive} />}
             </div>
           );
         })}
