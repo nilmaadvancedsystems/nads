@@ -85,6 +85,8 @@ export function useExploradorDoDrive() {
 
   // "Abrir a pasta" de um envio arquivado: vai para o cliente e, quando as pastas dele chegarem, desce pelo caminho
   const [destino, setDestino] = useState<{ cliente: string; subpasta: string } | null>(null);
+  // "Atualizar o mapa": o robô relê na hora (a pasta do cliente aberta, ou a pasta do ano inteira)
+  const [atualizandoMapa, setAtualizandoMapa] = useState('');
   useEffect(() => {
     if (!destino || destino.cliente !== cliente || !conteudo.carregados) return;
     const alvo = e.pastaPeloCaminho(itens, cliente, destino.subpasta);
@@ -230,6 +232,30 @@ export function useExploradorDoDrive() {
     entrar,
     irPara: (c: string, p?: string) => ir(c, p),
     irParaRaiz: () => ir(''),
+    atualizandoMapa,
+    /** o que o botão ⟳ relê: a pasta do cliente aberta, ou tudo */
+    dicaDoAtualizar: cliente ? 'Atualizar o mapa desta pasta (o robô relê agora, em segundos)' : 'Atualizar o mapa da pasta ' + (mapa.pastaAno?.nome || 'do ano') + ' inteira (o robô relê agora, cerca de 1 minuto)',
+    atualizarMapa() {
+      if (atualizandoMapa) return;
+      const rotulo = pastaCliente ? 'a pasta ' + pastaCliente.nomePasta : 'a pasta ' + (mapa.pastaAno?.nome || 'do ano') + ' inteira';
+      setAtualizandoMapa('Pedindo ao robô para reler ' + rotulo + '…');
+      let parar = () => {};
+      const prazo = setTimeout(() => {
+        parar();
+        setAtualizandoMapa('');
+        toast('O robô não respondeu a tempo. Confira se ele está ligado (Cadastro › Configurações › Saúde do robô).');
+      }, (cliente ? 3 : 8) * 60 * 1000);
+      parar = repo.atualizarMapa(cliente, a => {
+        if (a.status === 'atualizando') setAtualizandoMapa('O robô está relendo ' + rotulo + '…');
+        else if (a.status === 'pronto' || a.status === 'erro') {
+          clearTimeout(prazo);
+          parar();
+          setAtualizandoMapa('');
+          toast(a.status === 'erro' ? 'Não consegui atualizar o mapa: ' + (a.erro || 'erro do robô') + '.'
+            : 'Mapa atualizado: ' + (a.pastas === 1 ? '' : (a.pastas || 0) + ' pastas, ') + (a.arquivos || 0).toLocaleString('pt-BR') + ' arquivos.');
+        }
+      });
+    },
     /** abre a pasta onde o arquivamento pôs o arquivo (pelo código do cliente e o caminho dentro dele) */
     abrirDestino(codigo: string, subpasta: string): boolean {
       const c = mapa.clientes.find(x => x.codigo === codigo);

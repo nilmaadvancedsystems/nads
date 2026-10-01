@@ -2127,3 +2127,6 @@ main.main:has(> .content > .explorador){padding:0;}
 .meus-texto b{font-weight:600;}
 .meus-texto .fraco{font-size:12px;}
 .meus-lista .btn{flex:none;}
+
+/* Drive: o ⟳ do "Atualizar o mapa" gira enquanto o robô relê */
+.icon-btn.girando svg{animation:drive-gira 1s linear infinite;}

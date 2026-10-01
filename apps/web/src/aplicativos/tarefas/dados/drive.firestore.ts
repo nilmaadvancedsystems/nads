@@ -3,6 +3,7 @@
 //   driveIndice/raiz e driveIndice/{pasta}/partes   SÓ LEITURA: o mapa das pastas que o robô mantém (admin/contábil)
 //   aberturasDrive                                   o pedido de abrir, baixar ou juntar num .zip; o robô responde
 //                                                    no próprio pedido com um link temporário (30 min). Cada um lê só o seu.
+//   pedidosMapaDrive                                 "Atualizar o mapa": o robô relê na hora uma pasta (ou tudo) e responde
 //   enviosSecretario (+ partes)                      o arquivo mandado para a pasta Claudio Secretario, em pedaços; o
 //                                                    robô grava no Drive, apaga os pedaços e responde no próprio envio.
 // As partes de uma pasta só são lidas de novo quando o robô atualiza a pasta (atualizadoEm), como nas Pendências.
@@ -93,6 +94,17 @@ export function criarDriveFirestore(quem: () => e.Quem | null): e.RepoDriveDoEnt
         if (!vivo) return;
         parar = onSnapshot(ref, s => avisar(e.andamentoDoEnvio(s.data())), err => avisar({ status: 'erro', erro: err.message }));
       })().catch((err: Error) => avisar({ status: 'erro', erro: err.message }));
+      return () => { vivo = false; parar(); };
+    },
+    atualizarMapa(pastaId, aoMudar) {
+      const q = quem();
+      let parar = () => {};
+      let vivo = true;
+      if (!q) { aoMudar({ status: 'erro', erro: 'entre com a conta do Entregas' }); return parar; }
+      addDoc(collection(db, 'pedidosMapaDrive'), { status: 'pendente', pastaId, criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorUid: q.uid }).then(ref => {
+        if (!vivo) return;
+        parar = onSnapshot(ref, s => aoMudar(e.andamentoDoMapa(s.data())), err => aoMudar({ status: 'erro', erro: err.message }));
+      }, (err: Error) => aoMudar({ status: 'erro', erro: err.message }));
       return () => { vivo = false; parar(); };
     },
     meusEnvios() {

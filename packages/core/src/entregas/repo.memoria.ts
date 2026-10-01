@@ -1,6 +1,6 @@
 // O Drive e o Gmail EM MEMÓRIA (modo exemplos): um mapa e uma caixa de exemplo, para as telas terem o que
 // mostrar. Nada vai para o banco, e nenhum arquivo de verdade abre.
-import { mapaDaRaiz, type AndamentoDoPedido, type ItemDoDrive } from './drive';
+import { mapaDaRaiz, type AndamentoDoMapa, type AndamentoDoPedido, type ItemDoDrive } from './drive';
 import { partesDoArquivo, PASTA_SEM_CLIENTE, type AndamentoDoEnvio, type EnvioFeito } from './secretario';
 import { estadoDoRobo, type ClienteDoEntregas, type EmailLido, type RespostaPedida } from './gmail';
 import type { RepoDriveDoEntregas, RepoGmailDoEntregas } from './repo';
@@ -84,6 +84,13 @@ export function criarDriveDoEntregasMemoria(): RepoDriveDoEntregas {
       return () => { vivo = false; };
     },
     meusEnvios: () => ({ carregados: true, lista: envios }),
+    atualizarMapa(pastaId, aoMudar) {
+      // exemplos: finge o robô relendo (nada muda no mapa de exemplo)
+      let vivo = true;
+      const passos: AndamentoDoMapa[] = [{ status: 'atualizando' }, { status: 'pronto', pastas: pastaId ? 1 : PASTAS.length, arquivos: pastaId ? (ITENS[pastaId] || []).length : 12 }];
+      passos.forEach((a, i) => setTimeout(() => { if (vivo) aoMudar(a); }, 700 * (i + 1)));
+      return () => { vivo = false; };
+    },
     assinar: o.assinar,
     versao: o.versao,
   };
