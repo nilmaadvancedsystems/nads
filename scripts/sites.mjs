@@ -77,6 +77,11 @@ for (const id of ids) {
   const s = SITES[id];
   // a pasta que o site publica (firebase.json); a prévia de outro aplicativo no mesmo site usa a pasta dele
   const saida = path.join(web, 'dist-sites', s.pasta || id);
+  // as peças (assets/) das versões anteriores ficam no site por 30 dias: uma aba aberta antes da publicação pede os
+  // pedaços da versão dela (o leitor de PDF, por exemplo) e, sem eles, dava "Failed to fetch dynamically imported
+  // module" (Vitor, 01/10/2026). Guardadas em dist-sites/.assets-<site>, com a data de quando saíram pela 1ª vez.
+  const guardadas = path.join(web, 'dist-sites', '.assets-' + (s.pasta || id));
+  if (s.tipo === 'app' && !canal) guardarPecas(path.join(saida, 'assets'), guardadas);
   fs.rmSync(saida, { recursive: true, force: true });
   if (s.tipo === 'app') {
     const banco = s.banco && !soExemplos;
@@ -84,6 +89,7 @@ for (const id of ids) {
     execSync('npx vite build --mode ' + (banco ? 'banco' : 'exemplos') + ' --outDir ' + JSON.stringify(saida) + ' --emptyOutDir', {
       cwd: web, stdio: ['ignore', 'ignore', 'inherit'], env: { ...process.env, VITE_APLICATIVO: s.aplicativo || id, ...(s.env || {}) },
     });
+    if (!canal) devolverPecas(guardadas, path.join(saida, 'assets'));
     continue;
   }
   fs.mkdirSync(saida, { recursive: true });
@@ -101,6 +107,29 @@ if (canal) {
   }
   process.exit(0);
 }
+/** Guarda as peças da versão que está no ar (só as que ainda não estavam guardadas: a data é a de quando saíram). */
+function guardarPecas(de, para) {
+  if (!fs.existsSync(de)) return;
+  fs.mkdirSync(para, { recursive: true });
+  for (const f of fs.readdirSync(de)) {
+    const destino = path.join(para, f);
+    if (!fs.existsSync(destino)) fs.copyFileSync(de + path.sep + f, destino);
+  }
+}
+/** Põe de volta as peças antigas que a versão nova não tem; as de mais de 30 dias saem de vez. */
+function devolverPecas(de, para) {
+  if (!fs.existsSync(de)) return;
+  const limite = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  let devolvidas = 0;
+  for (const f of fs.readdirSync(de)) {
+    const origem = path.join(de, f);
+    if (fs.statSync(origem).mtimeMs < limite) { fs.rmSync(origem); continue; }
+    const destino = path.join(para, f);
+    if (!fs.existsSync(destino)) { fs.copyFileSync(origem, destino); devolvidas++; }
+  }
+  if (devolvidas) console.log('sites: ' + devolvidas + ' peças de versões anteriores continuam no site (abas abertas antes desta publicação)');
+}
+
 /** Site de outro projeto: cria na primeira vez (o nome do site é único no Firebase inteiro). */
 function garantirSite(projeto, site) {
   if (projeto === PROJETO_PADRAO) return;
