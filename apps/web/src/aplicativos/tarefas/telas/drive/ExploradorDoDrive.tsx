@@ -1,7 +1,7 @@
-// Drive › Pastas, com a cara do GitHub (Vitor, 30/09/2026: "no Drive, faça esse design"). Na pasta do ano e na pasta
-// de um cliente, a página inicial de um repositório: o nome em cima, a barra (o ano ▾, quantas pastas e arquivos, "Ir
-// para arquivo", Enviar e Baixar), a caixa com a faixa do mapa do robô e a lista, e ao lado o "Sobre". Clicou numa pasta
-// dentro do cliente: o navegador de arquivos — o painel "Arquivos" à esquerda (o ano, a busca e as pastas do cliente) e,
+// Drive › Pastas, com a cara do GitHub (Vitor, 30/09/2026: "no Drive, faça esse design"). Na pasta do ano, a página
+// inicial de um repositório: o nome em cima, a barra (o ano ▾, quantas pastas e arquivos, "Ir
+// para arquivo", Enviar e Baixar), a caixa com a faixa do mapa do robô e a lista dos clientes, e ao lado o "Sobre".
+// Abriu um cliente: o navegador de arquivos — o painel "Arquivos" à esquerda (o ano, a busca e as pastas do cliente) e,
 // à direita, a trilha (CLIENTE / PASTA /, copiar o caminho, ⋯), a faixa do robô e a lista com o "..". Um clique no nome abre (a pasta entra, o
 // arquivo abre numa aba nova: ela nasce no clique, senão o navegador bloqueia, e recebe o link quando o robô termina);
 // Ctrl e Shift marcam; o botão direito abre o menu (MenuDeContexto); arrastar arquivos para a tela, ou "Enviar", manda
@@ -340,8 +340,8 @@ export function ExploradorDoDrive() {
     return () => { html.style.overflow = antes; };
   }, [vm.telaCheia]);
 
-  // a página inicial (o ano, ou a pasta do cliente) ou o navegador de arquivos (uma pasta dentro do cliente)
-  const inicio = vm.trilha.length <= 1;
+  // a página inicial (só a pasta do ano, com os clientes) ou o navegador de arquivos (o cliente e as pastas dele)
+  const inicio = vm.trilha.length === 0;
   const titulo = vm.trilha.length ? vm.trilha[0].nome : vm.ano;
   const codigo = vm.pastaCliente && 'codigo' in vm.pastaCliente ? String((vm.pastaCliente as { codigo?: unknown }).codigo || '') : '';
   const sobre = vm.pastaCliente
