@@ -2,7 +2,7 @@
 // barra lateral das seções (com "Ocultar barra lateral") — ou, com lateral="caixa", a caixa de seções ao lado da página —,
 // gaveta ☰ com tema e a área da página (título + ações no canto direito). Marcação e classes iguais às do conferencia.html (~L973-1033).
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { useAlturaNaEtapa } from './etapa';
+import { useAbasParaAEtapa, useAlturaNaEtapa } from './etapa';
 import marcaTigre from './marca-tigre.png';
 import { Icone, MarcaN, type NomeIcone } from './icones';
 import { SeletorTema } from './tema';
@@ -104,13 +104,19 @@ export function Casca(p: {
   const cabecalho = useRef<HTMLElement>(null);
   // dentro de uma etapa da Tarefas: a página diz a altura dela (quem rola é a Tarefas, uma barra só)
   useAlturaNaEtapa(embutida() && !acoplada());
+  // um aplicativo inteiro dentro da etapa, com as abas de todas as páginas: elas sobem para o cabeçalho da Tarefas
+  const abasSobem = embutida() && !acoplada() && !!p.inteiroNaEtapa && !!p.abasNaEtapa;
+  useAbasParaAEtapa(abasSobem ? p.abasNaEtapa || null : null, p.onAbaNaEtapa);
 
   // a altura do cabeçalho (muda no celular): a barra lateral vai dele até o fim da tela
   useLayoutEffect(() => {
     const ajustar = () => { if (cabecalho.current) document.documentElement.style.setProperty('--hdr-h', cabecalho.current.offsetHeight + 'px'); };
     ajustar();
+    // muda também quando chegam as abas de uma ferramenta (a Conferência dentro da etapa)
+    const obs = typeof ResizeObserver !== 'undefined' && cabecalho.current ? new ResizeObserver(ajustar) : null;
+    if (obs && cabecalho.current) obs.observe(cabecalho.current);
     window.addEventListener('resize', ajustar);
-    return () => window.removeEventListener('resize', ajustar);
+    return () => { obs?.disconnect(); window.removeEventListener('resize', ajustar); };
   }, []);
   useEffect(() => {
     if (!gaveta) return;
@@ -152,7 +158,7 @@ export function Casca(p: {
   let grupoAnt: number | null = null;
   return (
     <div id="app" className={'on' + (p.larga ? ' larga' : '') + (noOutro ? ' acoplada' : '')}>
-      <header className="gh-header" ref={cabecalho}>
+      <header className="gh-header" ref={cabecalho} hidden={abasSobem}>
         <div className="gh-header-top" hidden={naEtapa}>
           {!noOutro && (
             <>

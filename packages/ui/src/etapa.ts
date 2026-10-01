@@ -5,8 +5,42 @@
 // aparecerem onde a pessoa está olhando. A barra de carregamento é uma só, a da Tarefas, de ponta a ponta.
 // Só conversa com os endereços do nads (*-nilma.web.app, as prévias deles e o próprio endereço, no
 // desenvolvimento).
-import { useEffect, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import type { NomeIcone } from './icones';
 import { origemConfiavel, origemDoPai } from './origem';
+
+/** Uma aba de um aplicativo inteiro dentro da etapa (a Conferência): a Tarefas a desenha no cabeçalho dela. */
+export interface AbaDaEtapa { id: string; rotulo: string; icone: NomeIcone; ativa?: boolean; travada?: boolean }
+
+/**
+ * Na ferramenta (um aplicativo inteiro dentro da etapa): as abas dele sobem para o cabeçalho da Tarefas, que ocupa
+ * a largura toda, por cima do checklist — como no GitHub, a barra de cima "come" a lateral. Manda as abas (e a
+ * aberta) sempre que mudam e recebe o clique. abas = null: não manda nada.
+ */
+export function useAbasParaAEtapa(abas: readonly AbaDaEtapa[] | null, onAba: ((id: string) => void) | undefined) {
+  const aoClicar = useRef(onAba);
+  useEffect(() => { aoClicar.current = onAba; });
+  const ligado = !!abas;
+  const chave = JSON.stringify(abas);
+  useEffect(() => {
+    const pai = ligado ? origemDoPai() : null;
+    if (!pai) return;
+    window.parent.postMessage({ nads: 'abas', abas: JSON.parse(chave) as AbaDaEtapa[] }, pai);
+  }, [ligado, chave]);
+  useEffect(() => {
+    const pai = ligado ? origemDoPai() : null;
+    if (!pai) return;
+    const ouvir = (e: MessageEvent) => {
+      if (e.source !== window.parent || e.origin !== pai) return;
+      const d = e.data as { nads?: string; id?: unknown } | null;
+      if (d?.nads === 'aba' && typeof d.id === 'string') aoClicar.current?.(d.id);
+    };
+    window.addEventListener('message', ouvir);
+    return () => window.removeEventListener('message', ouvir);
+  }, [ligado]);
+}
+
+const ehAba = (a: unknown): a is AbaDaEtapa => !!a && typeof (a as AbaDaEtapa).id === 'string' && typeof (a as AbaDaEtapa).rotulo === 'string' && typeof (a as AbaDaEtapa).icone === 'string';
 
 export { origemConfiavel, origemDoPai };
 
@@ -64,7 +98,9 @@ export function useFerramentaNaEtapa(iframe: RefObject<HTMLIFrameElement | null>
   const [altura, setAltura] = useState<number | null>(null);
   const [carregando, setCarregando] = useState(!!chave);
   const [janelaAberta, setJanelaAberta] = useState(false);
+  const [abas, setAbas] = useState<AbaDaEtapa[]>([]);
   useEffect(() => {
+    setAbas([]);
     setAltura(null);
     setCarregando(!!chave);
     setJanelaAberta(false);
@@ -88,6 +124,8 @@ export function useFerramentaNaEtapa(iframe: RefObject<HTMLIFrameElement | null>
       if (d?.nads === 'altura' && typeof d.px === 'number' && d.px > 0) { setAltura(d.px); mandarVista(); }
       if (d?.nads === 'carregando' && typeof d.ativo === 'boolean') { disse = true; setCarregando(d.ativo); }
       if (d?.nads === 'janela' && typeof (d as { aberta?: unknown }).aberta === 'boolean') setJanelaAberta(!!(d as { aberta?: boolean }).aberta);
+      const lista = (d as { abas?: unknown } | null)?.abas;
+      if (d?.nads === 'abas' && Array.isArray(lista)) setAbas(lista.filter(ehAba).slice(0, 20).map(a => ({ id: a.id, rotulo: a.rotulo, icone: a.icone, ativa: !!a.ativa, travada: !!a.travada })));
     };
     window.addEventListener('message', ouvir);
     window.addEventListener('scroll', mandarVista, { passive: true });
@@ -100,5 +138,11 @@ export function useFerramentaNaEtapa(iframe: RefObject<HTMLIFrameElement | null>
       window.removeEventListener('resize', mandarVista);
     };
   }, [iframe, chave]);
-  return { altura, carregando, janelaAberta };
+  /** Clique numa aba da ferramenta (desenhada no cabeçalho da Tarefas): a ferramenta troca a página dela. */
+  const abrirAba = useCallback((id: string) => {
+    const f = iframe.current;
+    if (!f?.contentWindow) return;
+    f.contentWindow.postMessage({ nads: 'aba', id }, new URL(f.src, window.location.href).origin);
+  }, [iframe]);
+  return { altura, carregando, janelaAberta, abas, abrirAba };
 }
