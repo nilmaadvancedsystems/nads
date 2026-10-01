@@ -37,7 +37,9 @@ export function JanelaDaEmpresa({ rota, aba }: { rota: string; aba: string }) {
   }, [fechar]);
 
   return (
-    <div className="cad-janela-fundo" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
+    // data-volta-para: ao fechar, a janela encolhe de volta para a linha desta empresa na lista (mesmo aberta por link)
+    <div className="cad-janela-fundo" data-volta-para={vm.empresa.codigo != null ? '[data-empresa="' + vm.empresa.codigo + '"]' : undefined}
+      onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
       <div className="cad-janela" role="dialog" aria-modal="true" aria-label={'Cadastro de ' + vm.empresa.nome}>
         <header className="cad-janela-topo">
           <button type="button" className="btn btn-ghost btn-sm" onClick={fechar} title="Voltar para a lista de empresas">

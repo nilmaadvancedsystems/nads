@@ -418,30 +418,61 @@ export function useLinhasQueSeMovem<T extends HTMLElement>(ordem: string, quieto
 // clique direito — e, ao fechar (no × ou clicando fora), volta para lá encolhendo até o tamanho dele (o Vitor,
 // 01/10/2026: "quando eu clique para fechar uma tela flutuante, ou clique fora, ela volte para onde foi aberta").
 // O animador marca a origem no clique (marcarOrigem); a tela que abre logo depois (até 900 ms) fica com ela.
-export interface Origem { el?: Element; ponto?: { x: number; y: number } }
+export interface Origem {
+  el?: Element;
+  ponto?: { x: number; y: number };
+  /** a linha da lista (data-linha): se a lista se redesenhar (a janela do cadastro muda a rota), acha a linha nova */
+  linha?: string;
+  /** onde estava no clique: o último recurso, se não der para achar o botão de novo */
+  lugar?: { x: number; y: number; w: number; h: number };
+  /** quem a tela diz que é a casa dela (data-volta-para, um seletor): a linha da empresa, a do e-mail */
+  seletor?: string;
+}
 let ultimaOrigem: { o: Origem; quando: number } | null = null;
 const origens = new WeakMap<Element, Origem>();
-export function marcarOrigem(o: Origem): void { ultimaOrigem = { o, quando: performance.now() }; }
+export function marcarOrigem(o: Origem): void {
+  if (o.el) {
+    o.linha = o.el.closest<HTMLElement>('[data-linha]')?.dataset.linha;
+    const r = o.el.getBoundingClientRect();
+    o.lugar = { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height };
+  }
+  ultimaOrigem = { o, quando: performance.now() };
+}
 /** A tela que acabou de abrir fica com a origem do último clique (se foi agora há pouco). */
 export function pegarOrigem(tela: Element): Origem | null {
   const u = ultimaOrigem;
   ultimaOrigem = null;
-  if (!u || performance.now() - u.quando > 900) return null;
+  if (!u || performance.now() - u.quando > 1500) return null;
   origens.set(tela, u.o);
   return u.o;
 }
-export const origemDe = (tela: Element): Origem | null => origens.get(tela) || null;
+/** A origem da tela: a do clique que a abriu; sem clique (aberta por link), a casa que ela mesma diz (data-volta-para). */
+export const origemDe = (tela: Element): Origem | null => {
+  const o = origens.get(tela);
+  const seletor = (tela as HTMLElement).dataset?.voltaPara;
+  if (o) return seletor ? { ...o, seletor } : o;
+  return seletor ? { seletor } : null;
+};
 
 type Caixa = { x: number; y: number; w: number; h: number };
 function caixaDe(el: Element): Caixa { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height }; }
 /** Onde está a origem agora (o botão pode ter saído da tela: aí não tem para onde voltar). */
 function lugarDaOrigem(o: Origem | null): Caixa | null {
-  if (o?.el?.isConnected) {
-    const c = caixaDe(o.el);
-    if (c.w > 0 && c.h > 0) return c;
+  if (!o) return null;
+  const visivel = (el: Element | null | undefined) => { if (!el?.isConnected) return null; const c = caixaDe(el); return c.w > 0 && c.h > 0 ? c : null; };
+  const direto = visivel(o.el);
+  if (direto) return direto;
+  // a lista foi redesenhada: a mesma linha, agora outro elemento
+  if (o.linha) {
+    const nova = visivel(document.querySelector('[data-linha="' + CSS.escape(o.linha) + '"]'));
+    if (nova) return nova;
   }
-  if (o?.ponto) return { x: o.ponto.x, y: o.ponto.y, w: 24, h: 24 };
-  return null;
+  if (o.seletor) {
+    const casa = visivel(document.querySelector(o.seletor));
+    if (casa) return casa;
+  }
+  if (o.ponto) return { x: o.ponto.x, y: o.ponto.y, w: 24, h: 24 };
+  return o.lugar || null;
 }
 function deLaParaCa(de: Caixa, para: Caixa) {
   return { translateX: de.x - para.x, translateY: de.y - para.y, scaleX: Math.max(0.06, Math.min(1, de.w / para.w)), scaleY: Math.max(0.04, Math.min(1, de.h / para.h)) };
@@ -469,11 +500,12 @@ export function voltarParaOrigem(caixa: HTMLElement, o: Origem | null): Promise<
   const para = lugarDaOrigem(o);
   if (!para || semMovimento()) return null;
   const v = deLaParaCa(para, caixaDe(caixa));
-  const ms = jeito === 'suave' ? 520 : 400;
+  const ms = jeito === 'suave' ? 620 : 480;
   caixa.style.transformOrigin = '50% 50%';
-  animate(caixa.querySelectorAll(':scope > *'), { opacity: 0, duration: 120, ease: 'linear' });
+  animate(caixa.querySelectorAll(':scope > *'), { opacity: 0, duration: 140, ease: 'linear' });
+  // sai já na direção da origem (a curva da gaveta: rápida no começo) e só apaga no fim, pequena, em cima dela
   return new Promise(ok => {
-    animate(caixa, { ...v, opacity: { to: 0, delay: ms * 0.55, duration: ms * 0.45, ease: 'linear' }, duration: ms, ease: MOVER, onComplete: () => ok() });
+    animate(caixa, { ...v, opacity: { to: 0, delay: ms * 0.6, duration: ms * 0.4, ease: 'linear' }, duration: ms, ease: GAVETA, onComplete: () => ok() });
   });
 }
 

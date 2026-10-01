@@ -74,7 +74,7 @@ function PainelDoEmail({ vm, x }: { vm: VmCaixa; x: e.EmailDaCaixa }) {
   const anexos = m?.anexos.length ? m.anexos : x.arquivos.map(nome => ({ nome, tamanho: 0 }));
   const inicial = (x.nome || x.remetente || '?').trim().charAt(0).toUpperCase();
   return (
-    <div className="cad-janela-fundo" onMouseDown={ev => { if (ev.target === ev.currentTarget) fechar(); }}>
+    <div className="cad-janela-fundo" data-volta-para={'[data-linha="' + x.mensagemId + '"]'} onMouseDown={ev => { if (ev.target === ev.currentTarget) fechar(); }}>
       <div className="cad-janela gmail-janela" role="dialog" aria-modal="true" aria-label={x.assunto || 'E-mail'}>
         <header className="cad-janela-topo">
           <button type="button" className="btn btn-ghost btn-sm" onClick={fechar}><Icone nome="chevronLeft" />E-mails</button>

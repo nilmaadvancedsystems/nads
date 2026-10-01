@@ -38,7 +38,7 @@ function janela(el: HTMLElement, caixa: HTMLElement | null) {
   encerrarPaginas();
   entrar('fundo', el);
   if (!caixa) return;
-  if (!crescerDaOrigem(caixa, pegarOrigem(el))) entrar('janela', caixa);
+  if (!crescerDaOrigem(caixa, pegarOrigem(el) || origemDe(el))) entrar('janela', caixa);
 }
 
 const ENTRADAS: [string, Entrada][] = [

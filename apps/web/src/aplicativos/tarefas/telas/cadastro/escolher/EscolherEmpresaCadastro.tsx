@@ -40,7 +40,7 @@ export function EscolherEmpresaCadastro() {
             <thead><tr><th>Código</th><th>Empresa</th><th>Bancos</th><th>Plano de contas</th><th>Atualizado</th></tr></thead>
             <tbody>
               {!vm.carregando && vm.linhas.map(l => (
-                <tr key={l.chave} data-linha={l.chave} className="linha-abre" tabIndex={0} title={'Abrir o cadastro de ' + l.nome}
+                <tr key={l.chave} data-linha={l.chave} data-empresa={l.codigo ?? undefined} className="linha-abre" tabIndex={0} title={'Abrir o cadastro de ' + l.nome}
                   onClick={() => vm.abrir(l.rota)} onKeyDown={e => { if (e.key === 'Enter') vm.abrir(l.rota); }}>
                   <td className="num">{l.codigo ?? '—'}</td>
                   <td><span className="cad-conta"><span>{l.nome}</span><span className="fraco">{l.regime}</span></span></td>
