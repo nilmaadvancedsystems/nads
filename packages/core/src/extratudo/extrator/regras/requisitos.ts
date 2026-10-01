@@ -22,7 +22,7 @@ export function requisitosDaImportacao(
   prestaServico: boolean | null,
 ): RequisitosDaImportacao {
   const faltam: string[] = [];
-  for (const b of bancos) if (!b.ok && !b.semMovimento) faltam.push(b.nome + ' Ok');
+  for (const b of bancos) if (!b.ok && !b.semMovimento) faltam.push(b.nome + ': extrato e razão batendo');
   if (!importados) faltam.push('a Conferência carregar');
   else {
     if (!importados.balancete) faltam.push('Balancete');

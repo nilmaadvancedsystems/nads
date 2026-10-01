@@ -34,6 +34,8 @@ export function Executor() {
     r => setRequisitos({ url: urlDaFerramenta, ...r }));
   // os requisitos valem só para a ferramenta que mandou (trocou de etapa: some)
   const faltam = requisitos && requisitos.url === urlDaFerramenta && !requisitos.pronto ? requisitos.faltam : null;
+  // no lugar do avançar, o "?": abre o que falta para seguir
+  const [verFaltam, setVerFaltam] = useState(false);
   // a ferramenta do tamanho do conteúdo dela: a página toda rola junto, numa barra só
   // um aplicativo inteiro dentro da etapa (a Conferência) manda as abas dele: elas ficam no cabeçalho, por cima do checklist
   const { altura, carregando: ferramentaCarregando, janelaAberta, abas, abrirAba } = useFerramentaNaEtapa(iframe, vm.ferramenta?.embutir ? vm.ferramenta.url : undefined);
@@ -117,6 +119,20 @@ export function Executor() {
             <button type="button" className="executor-botao" onClick={vm.abrirInterromper} title="Interromper a etapa" aria-label="Interromper">
               <Icone nome="x" />
             </button>
+            {faltam && (
+              <span className="executor-ajuda">
+                {verFaltam && (
+                  <div className="executor-faltam" role="dialog" aria-label="O que falta para seguir">
+                    <b>Para seguir, falta:</b>
+                    <ul>{faltam.map(t => <li key={t}>{t}</li>)}</ul>
+                  </div>
+                )}
+                <button type="button" className={'executor-botao' + (verFaltam ? ' ativo' : '')} aria-expanded={verFaltam} onClick={() => setVerFaltam(v => !v)}
+                  title="O que falta para seguir" aria-label="O que falta para seguir">
+                  <Icone nome="ajuda" />
+                </button>
+              </span>
+            )}
             {!faltam && (
               <button type="button" className="executor-botao proximo" disabled={vm.conferindo} onClick={() => { void vm.proximo(); }}
                 title={vm.conferindo ? 'Conferindo…' : 'Próximo (confere e segue para a próxima etapa)'} aria-label="Próximo">

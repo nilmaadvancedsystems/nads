@@ -1147,6 +1147,13 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 .executor-botao.proximo{background:var(--btn-primary);border-color:transparent;color:#FFFFFF;}
 .executor-botao.proximo:hover:not(:disabled){background:var(--btn-primary-hover);}
 .executor-botao:disabled{opacity:.7;cursor:progress;}
+/* o "?" no lugar do avançar (falta requisito): abre, por cima dos botões, a lista do que falta */
+.executor-ajuda{position:relative;display:inline-flex;}
+.executor-botao.ativo{background:var(--hover-bg);border-color:var(--border-strong);}
+.executor-faltam{position:absolute;right:0;bottom:calc(100% + 8px);min-width:220px;max-width:320px;padding:12px 16px;border:1px solid var(--border);border-radius:8px;
+  background:var(--overlay-bg);box-shadow:var(--shadow-lg);font-size:14px;color:var(--ink);}
+.executor-faltam ul{margin:6px 0 0;padding-left:18px;}
+.executor-faltam li{margin-top:2px;}
 .executor-area .alert{margin:0;}
 .executor-fim{margin:48px auto;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;}
 .executor-fim svg{width:40px;height:40px;color:var(--success);}
