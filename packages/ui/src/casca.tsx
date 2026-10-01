@@ -91,6 +91,12 @@ export function Casca(p: {
    * sistema), que é a da Tarefas — como quando está acoplado a outro sistema. Ex.: a Conferência na Conferência fiscal.
    */
   inteiroNaEtapa?: boolean;
+  /**
+   * Com inteiroNaEtapa: no lugar da barra lateral e das abas da seção, todas as páginas numa linha de abas só (como
+   * as de um repositório do GitHub), e a página na largura toda.
+   */
+  abasNaEtapa?: PaginaCasca[];
+  onAbaNaEtapa?: (id: string) => void;
   children: ReactNode;
 }) {
   const [oculta, setOculta] = useState(lerLateral);
@@ -139,6 +145,8 @@ export function Casca(p: {
   const noOutro = acoplada() || (embutida() && !!p.inteiroNaEtapa);
   // o aplicativo inteiro dentro da etapa: sem nem a linha da empresa (a empresa já está no cabeçalho da Tarefas)
   const naEtapa = embutida() && !!p.inteiroNaEtapa && !acoplada();
+  // dentro da etapa, com as abas de todas as páginas: sem barra lateral
+  const abasDaEtapa = naEtapa && p.abasNaEtapa ? p.abasNaEtapa : null;
   if (embutida() && !noOutro) return <div id="app" className="on embutida">{principal}</div>;
 
   let grupoAnt: number | null = null;
@@ -173,9 +181,9 @@ export function Casca(p: {
           {p.topoDireita && <><span className="gh-header-spacer" /><div className="gh-topo-direita">{p.topoDireita}</div></>}
         </div>
         <nav className="menu" id="menu" aria-label="Páginas da seção">
-          {p.paginas.filter(x => !x.oculta).map(x => (
+          {(abasDaEtapa || p.paginas).filter(x => !x.oculta).map(x => (
             <button key={x.id} type="button" className={'menu-item' + (x.ativa ? ' active' : '') + (x.travada ? ' is-locked' : '')}
-              aria-current={x.ativa ? 'page' : undefined} aria-disabled={x.travada ? 'true' : undefined} onClick={() => p.onPagina(x.id)}>
+              aria-current={x.ativa ? 'page' : undefined} aria-disabled={x.travada ? 'true' : undefined} onClick={() => (abasDaEtapa && p.onAbaNaEtapa ? p.onAbaNaEtapa : p.onPagina)(x.id)}>
               <Icone nome={x.icone} /><span>{x.rotulo}</span>{x.contador && <span className="menu-contador">{x.contador}</span>}
             </button>
           ))}
@@ -208,7 +216,7 @@ export function Casca(p: {
         </aside>
       )}
 
-      {p.lateral === 'nenhuma' ? principal : p.lateral === 'caixa' ? (
+      {p.lateral === 'nenhuma' || abasDaEtapa ? principal : p.lateral === 'caixa' ? (
         <div className="layout-caixa">
           <nav className="caixa-menu" aria-label={p.rotuloLateral || 'Seções'}>
             {p.secoes.map(s => (

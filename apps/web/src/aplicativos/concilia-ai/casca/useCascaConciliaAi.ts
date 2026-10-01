@@ -72,6 +72,30 @@ export function useCascaConciliaAi() {
     s.irPara(id);
   }
 
+  /**
+   * Dentro da etapa da Tarefas (a Conferência fiscal), sem barra lateral: todas as páginas numa linha de abas, como as
+   * de um repositório do GitHub — Relatório · Naturezas · Consulta · Cadastro · Auditoria (a Importação está na
+   * primeira etapa). "Checklist" vira "Naturezas" (o título da página) para não confundir com o checklist das etapas.
+   */
+  const NA_ETAPA: { id: string; rotulo: string; secao: IdSecao }[] = [
+    { id: 'movimento/relatorio', rotulo: 'Relatório', secao: 'movimento' },
+    { id: 'movimento/checklist', rotulo: 'Naturezas', secao: 'movimento' },
+    { id: 'movimento/consulta', rotulo: 'Consulta', secao: 'movimento' },
+    { id: 'cadastro/configuracoes', rotulo: 'Cadastro', secao: 'cadastro' },
+    { id: 'auditoria/historico', rotulo: 'Auditoria', secao: 'auditoria' },
+  ];
+  const abasNaEtapa = NA_ETAPA.map(a => ({
+    id: a.id, rotulo: a.rotulo, icone: paginaPorId(a.id)?.icone || 'list' as const, ativa: a.id === abaAcesa,
+    travada: !!secoes.find(x => x.id === a.secao)?.travada,
+  }));
+  function onAbaNaEtapa(id: string) {
+    const a = NA_ETAPA.find(x => x.id === id);
+    if (!a) return;
+    // a primeira página da seção (Cadastro) abre como no menu lateral; as outras voltam onde a pessoa parou
+    if (a.secao !== 'movimento' || secoes.find(x => x.id === a.secao)?.req) onSecao(a.secao);
+    else onPagina(id);
+  }
+
   function sair() {
     s.aplicar(x => c.aoSair(x, new Date()));
     navegar(caminho());
@@ -88,6 +112,7 @@ export function useCascaConciliaAi() {
     versao: VERSAO_SISTEMA,
     secoes, paginas,
     onSecao, onPagina, sair, voltarInicioDaEmpresa,
+    abasNaEtapa, onAbaNaEtapa,
     msgCadastro: MSG_CADASTRO_BLOQ,
     paginaExiste: !!pag || PAGINAS_ESCONDIDAS.some(p => p.id === s.pagina),
   };

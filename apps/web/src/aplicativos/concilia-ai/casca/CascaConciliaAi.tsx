@@ -20,6 +20,8 @@ export function CascaConciliaAi({ children }: { children: ReactNode }) {
       onInicio={vm.sair}
       onEmpresa={vm.voltarInicioDaEmpresa}
       inteiroNaEtapa
+      abasNaEtapa={vm.abasNaEtapa}
+      onAbaNaEtapa={vm.onAbaNaEtapa}
     >
       {children}
     </Casca>
