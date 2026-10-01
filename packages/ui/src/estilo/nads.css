@@ -1403,16 +1403,9 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-mov thead th{background:var(--surface-2);}
 /* a busca do movimento e, na mesma linha, o total do que ela achou */
 .imp-mov-topo{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
-/* "Todos" ao lado da busca: aceso = o movimento de todos os extratos importados */
-.imp-mov-busca + .imp-mov-todos{margin-left:-8px;}
-.imp-mov-todos.ativo{color:var(--accent);border-color:var(--accent);background:var(--hover-bg);}
-/* o PDF do Drive, colado no "todos" */
-.imp-mov-todos + .imp-mov-pdf{margin-left:-8px;}
-/* qual período a tabela mostra (o mês aberto, ou todos os meses: aceso como o botão "todos") */
-.imp-mov-periodo{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--ink-muted);}
-.imp-mov-periodo svg{width:14px;height:14px;}
-.imp-mov-periodo b{color:var(--ink);font-weight:600;}
-.imp-mov-periodo.todos{border-color:var(--accent);background:var(--hover-bg);}
+/* o olho (PDF do Drive) colado na busca; o mês mostrado fica na linha do saldo anterior */
+.imp-mov-busca + .imp-mov-pdf{margin-left:-8px;}
+.imp-mov-anterior .imp-mov-mes{font-style:normal;color:var(--ink);font-weight:600;}
 /* o Drive buscando vários meses vira "Cancelar"; o resto da tela fica travado até acabar */
 .imp-cancelar{border-color:var(--accent);}
 label.btn.is-locked{opacity:.5;pointer-events:none;}

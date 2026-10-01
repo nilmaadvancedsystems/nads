@@ -311,8 +311,6 @@ export function useImportacao() {
     registrarPedido: (reg: x.PedidoRegistrado) => { s.aplicar(e => x.registrarPedido(e, reg)); },
     /** o extrato da conta na competência, com o saldo acumulado (a setinha da linha) */
     movimentoDe: (banco: string) => x.movimentoDoExtrato(s.empresa, banco, primeiro, competenciaDeTeste),
-    /** "Todos": o movimento de todos os extratos importados da conta, do primeiro ao último mês */
-    movimentoTodosDe: (banco: string) => x.movimentoDoExtrato(s.empresa, banco, primeiro, x.TODOS_OS_MESES.de, x.TODOS_OS_MESES.ate),
     marcarLendo: (banco: string | null) => setLendoLinha(banco ? banco + '|banco' : null),
     avisar: (titulo: string) => setMensagem({ tom: 'info', titulo, textos: [] }),
     avisarErro: (titulo: string, texto: string) => setMensagem({ tom: 'erro', titulo, textos: [{ texto }] }),

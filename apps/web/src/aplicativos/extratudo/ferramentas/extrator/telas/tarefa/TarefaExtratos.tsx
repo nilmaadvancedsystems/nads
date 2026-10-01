@@ -133,22 +133,20 @@ const semAcento = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, 
 
 /**
  * O movimento do extrato da conta na competência (abre pela setinha): o saldo acumula os meses importados.
- * Ao lado da busca, "Todos": o movimento de todos os extratos importados da conta, do primeiro ao último mês.
- * Busca (data, descrição ou valor) e ordem por coluna (clicar no título; clicar de novo inverte; a setinha só
- * aparece depois do clique). A linha do saldo anterior fica sempre em cima, como está.
+ * Ao lado da busca, o olho: o PDF do Drive do mês (link temporário, sem baixar). A linha do saldo anterior diz o
+ * mês mostrado ("Mostrando Janeiro/2026") e fica sempre em cima. Busca (data, descrição ou valor) e ordem por
+ * coluna (clicar no título; clicar de novo inverte; a setinha só aparece depois do clique).
  */
-function Movimento({ doMes, todos, pdf, onPdf, competencia }: {
-  doMes: x.MovimentoDoExtrato; todos: x.MovimentoDoExtrato;
-  /** o mês aberto ('aaaa-mm'): a linha da busca diz qual período a tabela mostra */
+function Movimento({ m, pdf, onPdf, competencia }: {
+  m: x.MovimentoDoExtrato;
+  /** o mês aberto ('aaaa-mm'): a linha do saldo anterior diz qual mês a tabela mostra */
   competencia: string;
-  /** o extrato do mês veio do Drive: o botão PDF ao lado da busca abre o arquivo de lá */
+  /** o extrato do mês veio do Drive: o olho ao lado da busca abre o PDF de lá */
   pdf?: { id: string; nome: string } | null; onPdf?: (arquivo: { id: string; nome: string }) => void;
 }) {
-  const [verTodos, setVerTodos] = useState(false);
-  const m = verTodos ? todos : doMes;
   const [busca, setBusca] = useState('');
   const [ordem, setOrdem] = useState<{ coluna: ColunaMov; dir: 'asc' | 'desc' } | null>(null);
-  if (!doMes.linhas.length && !todos.linhas.length) return <p className="hint imp-mov-vazio">Nenhum lançamento do extrato nesta competência.</p>;
+  if (!m.linhas.length) return <p className="hint imp-mov-vazio">Nenhum lançamento do extrato nesta competência.</p>;
   const q = semAcento(busca.trim());
   const achadas = q ? m.linhas.filter(l => semAcento([x.dataBR(l.data), l.historico, x.valorBR(Math.abs(l.valor)), x.valorBR(l.saldo)].join(' ')).includes(q)) : m.linhas;
   const linhas = ordem ? achadas.slice().sort((a, b) => (ordem.dir === 'asc' ? 1 : -1) * COMPARAR_MOV[ordem.coluna](a, b)) : achadas;
@@ -171,22 +169,11 @@ function Movimento({ doMes, todos, pdf, onPdf, competencia }: {
           <input type="text" placeholder="Buscar no extrato" aria-label="Buscar no extrato (data, descrição ou valor)" value={busca}
             onChange={e => setBusca(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') setBusca(''); }} />
         </label>
-        <button type="button" className={'icon-btn imp-mov-todos' + (verTodos ? ' ativo' : '')} aria-pressed={verTodos} onClick={() => setVerTodos(v => !v)}
-          title={verTodos ? 'Voltar para o mês' : 'Todos os extratos importados'} aria-label="Todos os extratos importados">
-          <Icone nome="grade" />
-        </button>
-        {pdf && onPdf && !verTodos && (
-          <button type="button" className="btn btn-outline imp-mov-pdf" title={'Ver o PDF no Drive (link temporário, sem baixar): ' + pdf.nome} aria-label="Ver o PDF no Drive" onClick={() => onPdf(pdf)}>
-            <Icone nome="fileText" />PDF
+        {pdf && onPdf && (
+          <button type="button" className="icon-btn imp-mov-pdf" title={'Ver o PDF no Drive (link temporário, sem baixar): ' + pdf.nome} aria-label="Ver o PDF no Drive" onClick={() => onPdf(pdf)}>
+            <Icone nome="olho" />
           </button>
         )}
-        {/* qual período a tabela mostra: o mês aberto, ou todos os meses importados (do primeiro ao último) */}
-        <span className={'imp-mov-periodo' + (verTodos ? ' todos' : '')} aria-live="polite">
-          <Icone nome="calendar" />
-          {verTodos
-            ? <>Mostrando <b>todos os meses importados</b>{todos.linhas.length > 0 && <> · {tarefas.rotuloNumericoCompetencia(todos.linhas[0].data.slice(0, 7))} a {tarefas.rotuloNumericoCompetencia(todos.linhas[todos.linhas.length - 1].data.slice(0, 7))}</>}</>
-            : <>Mostrando <b>{tarefas.rotuloCompetencia(competencia).toLowerCase()}</b></>}
-        </span>
         {q && (
           <div className="imp-mov-total" aria-live="polite">
             <span><b>{achadas.length}</b> {achadas.length === 1 ? 'lançamento' : 'lançamentos'}</span>
@@ -203,12 +190,13 @@ function Movimento({ doMes, todos, pdf, onPdf, competencia }: {
           <Titulo c="tipo" rotulo="Entrou/Saiu" /><Titulo c="saldo" rotulo="Saldo atual" num />
         </tr></thead>
         <tbody>
-          {!verTodos && (
-            <tr className="imp-mov-anterior">
-              <td colSpan={4}>Saldo anterior <span className="hint">{m.mesesAntes ? '(dos meses já importados)' : m.abertura != null ? '(do extrato)' : '(o extrato não trouxe)'}</span></td>
-              <td className="num">{x.valorBR(m.saldoAnterior)}</td>
-            </tr>
-          )}
+          <tr className="imp-mov-anterior">
+            <td colSpan={4}>
+              <b className="imp-mov-mes">Mostrando {tarefas.rotuloCompetencia(competencia)}</b>
+              {' · '}Saldo anterior <span className="hint">{m.mesesAntes ? '(dos meses já importados)' : m.abertura != null ? '(do extrato)' : '(o extrato não trouxe)'}</span>
+            </td>
+            <td className="num">{x.valorBR(m.saldoAnterior)}</td>
+          </tr>
           {!linhas.length && <tr><td colSpan={5} className="hint">Nada com essa busca.</td></tr>}
           {linhas.map((l, i) => (
             <tr key={i}>
@@ -607,7 +595,7 @@ export function TarefaExtratos() {
                 onDrive={mes => d.buscarNoPeriodo(b, [mes])}
                 onVer={visualizarDoDrive}
                 onSemMovimento={(mes, marcado) => ponte.marcarSemMovimento(b.id, marcado, mes)} />}
-              {verLancamentos && <Movimento doMes={vm.movimentoDe(b.id)} todos={vm.movimentoTodosDe(b.id)}
+              {verLancamentos && <Movimento m={vm.movimentoDe(b.id)}
                 pdf={doDrive.length ? doDrive[doDrive.length - 1] : null} onPdf={visualizarDoDrive} competencia={vm.competencia} />}
             </div>
           );
