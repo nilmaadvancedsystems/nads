@@ -36,7 +36,7 @@ function DaEmpresa({ nome, tipo, prestaServico }: { nome: string; tipo: c.Pagina
           <div><h2 className="page-title">{paginaPorId(pagina)?.titulo || ''}</h2></div>
           <div className="imp-conf-acoes"><LugarDasAcoes /></div>
         </header>
-        <Importacao key={tipo} tipo={tipo} />
+        <Importacao key={tipo} tipo={tipo} naEtapa />
       </TopoProvider>
     </SessaoProvider>
   );

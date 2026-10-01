@@ -7,13 +7,14 @@ import { NotasImportadas, ServicosImportados } from './partes/Importados';
 import { PlanoDeContas } from './partes/PlanoDeContas';
 import { useImportacao, type Mensagem } from './useImportacao';
 
-export function Importacao({ tipo }: { tipo: c.PaginaImportacao }) {
+/** naEtapa: dentro da primeira etapa da Tarefas, sem o "Apagar ao sair" do balancete (nem a pergunta sobre ele). */
+export function Importacao({ tipo, naEtapa }: { tipo: c.PaginaImportacao; naEtapa?: boolean }) {
   const vm = useImportacao(tipo);
   useCarregando(vm.carregando);
   return (
     <section>
       <AcoesDoTopo>
-        {tipo === 'balancete' && (
+        {tipo === 'balancete' && !naEtapa && (
           <span className="toggle-row" title="Ligado: o balancete desta empresa é apagado sempre que alguém sai dela, pra próxima conferência começar com um balancete atualizado.">
             Apagar ao sair<Interruptor ligado={vm.autoLimpar} onMudar={vm.alternarAutoLimpar} rotulo="Apagar o balancete ao sair" />
           </span>
@@ -21,7 +22,7 @@ export function Importacao({ tipo }: { tipo: c.PaginaImportacao }) {
         {vm.ja && <button className="btn btn-primary" type="button" onClick={vm.alternarReimportar}>{vm.reimportando ? 'Cancelar reimportação' : 'Reimportar'}</button>}
       </AcoesDoTopo>
 
-      {vm.boasVindas && <BoasVindasBalancete autoLimpar={vm.autoLimpar} onResponder={vm.definirAutoLimpar} />}
+      {vm.boasVindas && !naEtapa && <BoasVindasBalancete autoLimpar={vm.autoLimpar} onResponder={vm.definirAutoLimpar} />}
 
       {vm.mostrarCaixa && (
         <div className="card">
