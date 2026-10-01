@@ -1403,15 +1403,27 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-mov thead th{background:var(--surface-2);}
 /* a busca do movimento e, na mesma linha, o total do que ela achou */
 .imp-mov-topo{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
-/* "O que corrigir no razão": embaixo da linha do banco, o aviso com as pendências, uma por linha (o dia à esquerda) */
-.imp-corrigir{margin:0 12px 12px 44px;}
-.imp-corrigir-corpo{min-width:0;flex:1;}
-.imp-corrigir-qtd{display:inline-block;min-width:20px;padding:0 6px;margin-left:4px;border-radius:10px;background:var(--surface-3);font-size:12px;text-align:center;}
-.imp-corrigir-lista{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:14px;}
-.imp-corrigir-lista li{display:flex;gap:12px;align-items:baseline;}
-.imp-corrigir-dia{flex:none;font-variant-numeric:tabular-nums;color:var(--ink-muted);font-size:13px;}
-.imp-corrigir-dica{display:block;margin-top:2px;}
-@media (max-width:640px){.imp-corrigir{margin-left:12px;}.imp-corrigir-lista li{flex-direction:column;gap:0;}}
+/* Pendências do banco: a faixa grudada embaixo da linha do banco (abre e fecha) e a planilha das correções */
+.imp-pend{border-top:1px solid var(--border);}
+.imp-pend-barra{display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;border:none;background:var(--warn-soft);color:var(--ink);font:inherit;font-size:14px;text-align:left;cursor:pointer;}
+.imp-pend-barra:hover{background:color-mix(in srgb, var(--warn) 18%, transparent);}
+.imp-pend-barra .hint{margin:0;}
+.imp-pend-qtd{display:inline-block;min-width:20px;padding:0 6px;border-radius:10px;background:var(--surface-3);font-size:12px;font-weight:600;text-align:center;}
+.imp-pend-seta{width:16px;height:16px;flex:none;color:var(--ink-muted);transform:rotate(-90deg);transition:transform .12s ease;}
+.imp-pend.aberta .imp-pend-seta{transform:none;}
+.imp-pend-ico{width:16px;height:16px;flex:none;color:var(--warn);}
+.imp-pend:last-child .imp-pend-barra{border-radius:0 0 6px 6px;}
+.imp-pend.aberta .imp-pend-barra{border-radius:0;}
+.imp-pend-corpo{padding:12px;display:flex;flex-direction:column;gap:8px;}
+.imp-pend-corpo .hint{margin:0;}
+/* com cara de planilha: as linhas de grade em todas as células */
+.imp-planilha{border-collapse:collapse;}
+.imp-planilha th,.imp-planilha td{border:1px solid var(--border);vertical-align:top;}
+.imp-planilha th{background:var(--surface-2);}
+.imp-planilha-dia,.imp-planilha-sit{white-space:nowrap;}
+.imp-planilha-dia{font-variant-numeric:tabular-nums;}
+.imp-planilha-lanc .hint{display:block;margin-top:2px;}
+.imp-planilha-dica{color:var(--warn);}
 /* banco Ok (extrato e razão batem no período): a setinha fica apagada e não abre */
 .imp-ok .imp-seta{opacity:.35;cursor:default;}
 /* o olho (PDF do Drive) colado na busca e, grudado à direita dele, o mês que a tabela mostra */
@@ -1446,10 +1458,7 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 /* o rodapé da Casca: depois de tudo, na largura toda (só se vê rolando até o fim); a logo oficial (o tigre) */
 .rodape{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--border);
   font-size:12px;line-height:20px;color:var(--ink-muted);}
-.rodape-marca{display:block;width:24px;height:24px;flex:none;border-radius:50%;}
 /* no tema escuro, a logo com as cores invertidas (círculo preto, tigre branco), como o Vitor mandou */
-:root[data-theme="dark"] .rodape-marca{filter:invert(1);}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .rodape-marca{filter:invert(1);}}
 @media print{.rodape{display:none;}}
 
 /* Pedir extratos (Gmail / WhatsApp): a janela com Para, Bancos, Competência e a mensagem pronta */

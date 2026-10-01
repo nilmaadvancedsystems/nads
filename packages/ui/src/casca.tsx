@@ -3,7 +3,6 @@
 // gaveta ☰ com tema e a área da página (título + ações no canto direito). Marcação e classes iguais às do conferencia.html (~L973-1033).
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useAbasParaAEtapa, useAlturaNaEtapa } from './etapa';
-import marcaTigre from './marca-tigre.png';
 import { Icone, MarcaN, type NomeIcone } from './icones';
 import { SeletorTema } from './tema';
 
@@ -272,17 +271,11 @@ export function Casca(p: {
 
 /**
  * O rodapé (como o do GitHub): no fim da página, na largura toda; só aparece quando a pessoa rola até o fim.
- * Por enquanto só a marca e o direito autoral; os links (Termos, Privacidade…) vêm depois, com as páginas.
+ * Por enquanto só o direito autoral (o tigre saiu: Vitor, 01/10/2026); os links (Termos, Privacidade…) vêm depois, com as páginas.
  */
-/** A logo oficial (o tigre no círculo branco), idêntica à que o Vitor mandou: só recortada no círculo (marca-tigre-original.webp). */
-function Marca() {
-  return <img className="rodape-marca" src={marcaTigre} alt="" aria-hidden="true" />;
-}
-
 function Rodape() {
   return (
     <footer className="rodape">
-      <Marca />
       <span>© {new Date().getFullYear()} Grupo G&amp;V by Gustavo Santos &amp; Vítor Dias, Inc.</span>
     </footer>
   );

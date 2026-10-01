@@ -122,26 +122,54 @@ function AdicionarBanco({ bancos, onAdicionar, fechar }: {
   );
 }
 
-/** "O que corrigir no razão": as pendências do extrato × razão do banco, ditas para corrigir no sistema contábil. */
+/**
+ * As pendências do banco (o que corrigir no razão): uma faixa grudada embaixo da linha do banco, "Pendências  N ▾",
+ * que abre a planilha — o dia, a situação, o lançamento (com o detalhe e a dica embaixo), banco, razão e diferença.
+ */
 const LIMITE_CORRECOES = 30;
-function CorrigirNoRazao({ itens }: { itens: x.CorrecaoDoRazao[] }) {
+function PendenciasDoBanco({ itens }: { itens: x.CorrecaoDoRazao[] }) {
+  const [aberta, setAberta] = useState(false);
   if (!itens.length) return null;
+  const valor = (n: number | null) => (n == null ? '' : x.valorBR(Math.abs(n)));
   return (
-    <div className="alert imp-corrigir" role="note">
-      <Icone nome="alert" />
-      <div className="imp-corrigir-corpo">
-        <p className="alert-title">O que corrigir no razão <span className="imp-corrigir-qtd">{itens.length}</span></p>
-        <ul className="imp-corrigir-lista">
-          {itens.slice(0, LIMITE_CORRECOES).map((c, i) => (
-            <li key={i}>
-              <span className="imp-corrigir-dia">{x.dataBR(c.data)}</span>
-              <span>{c.texto}{c.dica && <span className="hint imp-corrigir-dica">{c.dica}</span>}</span>
-            </li>
-          ))}
-        </ul>
-        {itens.length > LIMITE_CORRECOES && <p className="hint">E mais {itens.length - LIMITE_CORRECOES}: veja tudo em Extrato × sistema.</p>}
-        <p className="hint">Corrigido no sistema contábil, reimporte o razão do mês: quando tudo bater, a linha vira Ok.</p>
-      </div>
+    <div className={'imp-pend' + (aberta ? ' aberta' : '')}>
+      <button type="button" className="imp-pend-barra" aria-expanded={aberta} onClick={() => setAberta(a => !a)}>
+        <Icone nome="caretDown" className="imp-pend-seta" />
+        <Icone nome="alert" className="imp-pend-ico" />
+        <b>Pendências</b>
+        <span className="imp-pend-qtd">{itens.length}</span>
+        <span className="hint">o que corrigir no razão</span>
+      </button>
+      {aberta && (
+        <div className="imp-pend-corpo">
+          <div className="table-wrap">
+            <table className="table-compact imp-planilha">
+              <thead><tr>
+                <th>Data</th><th>Situação</th><th>Lançamento</th>
+                <th className="num">Banco</th><th className="num">Razão</th><th className="num">Diferença</th>
+              </tr></thead>
+              <tbody>
+                {itens.slice(0, LIMITE_CORRECOES).map((c, i) => (
+                  <tr key={i}>
+                    <td className="imp-planilha-dia">{x.dataBR(c.data)}</td>
+                    <td className="imp-planilha-sit">{x.ROTULO_CORRECAO[c.tipo]}</td>
+                    <td className="imp-planilha-lanc">
+                      {c.lancamento}
+                      {c.detalhe && <span className="hint">{c.detalhe}</span>}
+                      {c.dica && <span className="hint imp-planilha-dica">{c.dica}</span>}
+                    </td>
+                    <td className="num">{valor(c.noBanco)}</td>
+                    <td className="num">{valor(c.noRazao)}</td>
+                    <td className={'num' + (c.diferenca ? ' ext-neg' : '')}>{c.diferenca ? (c.diferenca > 0 ? '+' : '−') + x.valorBR(Math.abs(c.diferenca)) : ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {itens.length > LIMITE_CORRECOES && <p className="hint">E mais {itens.length - LIMITE_CORRECOES}: veja tudo em Extrato × sistema.</p>}
+          <p className="hint">Corrigido no sistema contábil, reimporte o razão do mês: quando tudo bater, a linha vira Ok.</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -622,7 +650,7 @@ export function TarefaExtratos() {
                   </div>
                 )}
               </div>
-              {!ok && <CorrigirNoRazao itens={correcoes[b.id] || []} />}
+              {!ok && <PendenciasDoBanco itens={correcoes[b.id] || []} />}
               {emLote && gradeAberta && <MesesDoBanco meses={meses} competencia={vm.competencia} naTarefa={ponte.naTarefa}
                 travado={ocupadoGeral} aceitarExtrato={cxExtrato.aceitar} aceitarRazao={cxRazao.aceitar}
                 onMes={vm.setCompetencia} onArquivos={(lado, fs) => { void vm.importarArquivos(b.id, lado, fs); }}
