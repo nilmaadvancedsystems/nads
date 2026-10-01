@@ -81,7 +81,8 @@ const COLUNAS_DA_LISTA: { id: e.ColunaDoExplorador; rotulo: string; num?: boolea
 function Lista({ vm, aoMenu, acima, baixarMarcados, faixaFora }: { vm: VmDrive; aoMenu: AoMenu; acima: boolean; baixarMarcados: () => void; faixaFora?: boolean }) {
   // abriu outra pasta (ou acabou de carregar): as linhas chegam em cascata, do jeito do app
   const pastaAberta = vm.trilha.map(t => t.p || t.c).join('/'); // digitar na busca não anima (teclado)
-  const lista = useEntradaAnimada<HTMLDivElement>('tbody > tr', [pastaAberta, vm.carregando], 'lista');
+  // trocar de pasta é o tempo todo: a lista só acende rápido, sem cascata (uma cascata a cada pasta enjoa)
+  const lista = useEntradaAnimada<HTMLDivElement>('.table-wrap', [pastaAberta, vm.carregando], 'repetida');
   // ordenou (ou o robô mexeu na pasta): as linhas deslizam até o lugar novo; trocar de pasta e buscar não
   const linhasQueSeMovem = useLinhasQueSeMovem<HTMLTableElement>(vm.carregando ? '' : vm.entradas.map(x => x.id).join('|'), pastaAberta + '?' + vm.busca);
   const m = vm.marcados.length;
@@ -166,7 +167,7 @@ function Lista({ vm, aoMenu, acima, baixarMarcados, faixaFora }: { vm: VmDrive; 
 function Arvore({ vm, aoMenu }: { vm: VmDrive; aoMenu: (ev: MouseEvent, no: e.NoDaArvore) => void }) {
   const cliente = vm.pastaCliente?.id || '';
   const nos = vm.arvore.filter(no => no.cliente === cliente && no.nivel >= 1);
-  // abriu uma pasta: as subpastas que apareceram descem em cascata (as que já estavam ficam paradas)
+  // abriu uma pasta: as subpastas que apareceram só acendem rápido (as que já estavam ficam paradas)
   const raiz = useRef<HTMLDivElement>(null);
   const antes = useRef<Set<string> | null>(null);
   const chave = nos.map(no => no.id).join('|');
@@ -176,7 +177,7 @@ function Arvore({ vm, aoMenu }: { vm: VmDrive; aoMenu: (ev: MouseEvent, no: e.No
     antes.current = ids;
     if (!eram || !raiz.current) return;
     const novos = Array.from(raiz.current.querySelectorAll<HTMLElement>(':scope > .drive-no')).filter(el => !eram.has(el.dataset.no || ''));
-    if (novos.length && novos.length < ids.size) entrar('lista', novos);
+    if (novos.length && novos.length < ids.size) entrar('repetida', novos);
   }, [chave]);
   return (
     <div ref={raiz} className="subnav-itens" role="tree" aria-label="Pastas">

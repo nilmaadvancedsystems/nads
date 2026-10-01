@@ -55,7 +55,11 @@ export function definirJeito(j: Jeito): void {
 }
 
 /** As peças que animam. */
-export type Peca = 'fundo' | 'janela' | 'gaveta' | 'gavetaItens' | 'menu' | 'aviso' | 'lista' | 'pagina' | 'alerta' | 'login';
+/**
+ * repetida: o que se faz o tempo todo (abrir pasta no Drive, o menu do botão direito) — igual em qualquer jeito, só um
+ * acender rápido, sem cascata nem desfoque (o Vitor, 01/10/2026: no Drive "se repete muito, vai ficar enjoativa").
+ */
+export type Peca = 'fundo' | 'janela' | 'gaveta' | 'gavetaItens' | 'menu' | 'aviso' | 'lista' | 'pagina' | 'alerta' | 'login' | 'repetida' | 'menuRepetido';
 interface Receita {
   /** a entrada (de → para) */
   entra: () => AnimationParams;
@@ -88,6 +92,8 @@ const RECEITAS: Record<Jeito, Record<Peca, Receita>> = {
     pagina: { entra: () => ({ opacity: [0, 1], translateY: [18, 0], duration: 560, ease: ENTRAR }), sai: () => ({ opacity: 0 }) },
     alerta: { entra: () => ({ opacity: [0, 1], translateY: [-14, 0], filter: desfoque(6), duration: 520, ease: ENTRAR }), sai: () => ({ opacity: 0, translateY: -8, filter: 'blur(4px)', duration: 260, ease: ENTRAR }) },
     login: { entra: () => ({ opacity: [0, 1], translateY: [26, 0], filter: desfoque(10), duration: 800, ease: ENTRAR }), sai: () => ({ opacity: 0 }), intervalo: 110, atraso: 100 },
+    repetida: { entra: () => ({ opacity: [0, 1], duration: 140, ease: ENTRAR }), sai: () => ({ opacity: 0, duration: 100 }) },
+    menuRepetido: { entra: () => ({ opacity: [0, 1], scale: [0.97, 1], duration: 130, ease: ENTRAR }), sai: () => ({ opacity: 0, duration: 100, ease: ENTRAR }) },
   },
   viva: {
     fundo: { entra: () => ({ opacity: [0, 1], duration: 360, ease: ENTRAR }), sai: () => ({ opacity: 0, duration: 260, ease: ENTRAR }) },
@@ -106,6 +112,8 @@ const RECEITAS: Record<Jeito, Record<Peca, Receita>> = {
     pagina: { entra: () => ({ opacity: aparece(260), translateY: [30, 0], ease: mola(0.25, 650) }), sai: () => ({ opacity: 0 }) },
     alerta: { entra: () => ({ opacity: aparece(200), translateY: [-18, 0], scale: [0.95, 1], ease: mola(0.45, 600) }), sai: () => ({ opacity: 0, scale: 0.96, translateY: -8, duration: 240, ease: ENTRAR }) },
     login: { entra: () => ({ opacity: aparece(300), translateY: [40, 0], scale: [0.94, 1], ease: mola(0.4, 800) }), sai: () => ({ opacity: 0 }), intervalo: 90 },
+    repetida: { entra: () => ({ opacity: [0, 1], duration: 140, ease: ENTRAR }), sai: () => ({ opacity: 0, duration: 100 }) },
+    menuRepetido: { entra: () => ({ opacity: [0, 1], scale: [0.97, 1], duration: 130, ease: ENTRAR }), sai: () => ({ opacity: 0, duration: 100, ease: ENTRAR }) },
   },
   suave: {
     fundo: { entra: () => ({ opacity: [0, 1], duration: 600, ease: SUAVE }), sai: () => ({ opacity: 0, duration: 380, ease: SUAVE }) },
@@ -121,6 +129,8 @@ const RECEITAS: Record<Jeito, Record<Peca, Receita>> = {
     pagina: { entra: () => ({ opacity: [0, 1], translateY: [16, 0], duration: 700, ease: ENTRAR }), sai: () => ({ opacity: 0 }) },
     alerta: { entra: () => ({ opacity: [0, 1], translateY: [-10, 0], duration: 600, ease: ENTRAR }), sai: () => ({ opacity: 0, translateY: -6, duration: 360, ease: ENTRAR }) },
     login: { entra: () => ({ opacity: [0, 1], translateY: [20, 0], duration: 900, ease: ENTRAR }), sai: () => ({ opacity: 0 }), intervalo: 130, atraso: 120 },
+    repetida: { entra: () => ({ opacity: [0, 1], duration: 140, ease: ENTRAR }), sai: () => ({ opacity: 0, duration: 100 }) },
+    menuRepetido: { entra: () => ({ opacity: [0, 1], scale: [0.97, 1], duration: 130, ease: ENTRAR }), sai: () => ({ opacity: 0, duration: 100, ease: ENTRAR }) },
   },
 };
 

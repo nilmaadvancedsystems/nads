@@ -23,15 +23,16 @@ function abrirAltura(el: HTMLElement) {
   const cs = getComputedStyle(el);
   const h = el.offsetHeight;
   el.style.overflow = 'hidden';
+  // selecionar é o tempo todo: abre rápido (200 ms), só o suficiente para a tabela não pular
   animar(el, {
     height: [0, h], paddingTop: [0, parseFloat(cs.paddingTop)], paddingBottom: [0, parseFloat(cs.paddingBottom)],
-    marginBottom: [0, parseFloat(cs.marginBottom)], opacity: [0, 1], duration: 360, ease: ENTRAR,
+    marginBottom: [0, parseFloat(cs.marginBottom)], opacity: [0, 1], duration: 200, ease: ENTRAR,
     onComplete: a => { cleanInlineStyles(a); el.style.removeProperty('overflow'); },
   });
 }
 function fecharAltura(f: HTMLElement): Promise<unknown> {
   f.style.overflow = 'hidden';
-  return new Promise(ok => animar(f, { height: 0, paddingTop: 0, paddingBottom: 0, marginTop: 0, marginBottom: 0, opacity: 0, duration: 300, ease: ENTRAR, onComplete: () => ok(null) }));
+  return new Promise(ok => animar(f, { height: 0, paddingTop: 0, paddingBottom: 0, marginTop: 0, marginBottom: 0, opacity: 0, duration: 180, ease: ENTRAR, onComplete: () => ok(null) }));
 }
 
 function alertaChegou(el: HTMLElement) {
@@ -89,11 +90,12 @@ const ENTRADAS: [string, Entrada][] = [
     entrar('menu', el);
   }],
   // o menu do botão direito nasce no ponteiro (o canto de cima à esquerda)
+  // o menu do botão direito é usado o tempo todo: abre rápido, no ponteiro, sem desfoque
   ['.ctx-menu', el => {
     encerrarPaginas();
     pegarOrigem(el);
     el.style.transformOrigin = 'top left';
-    entrar('menu', el);
+    entrar('menuRepetido', el);
   }],
   ['#login', el => { entrar('login', el.querySelectorAll(':scope > *, .auth > *')); }],
   // o alerta: a caixa se abre da esquerda para a direita (o recorte, como o "Nilma" da abertura) enquanto desce; a
@@ -153,7 +155,7 @@ const SAIDAS: [string, Saida, 'fixo' | 'no-lugar'][] = [
   // o aviso de liberação (aprovou, recusou, pronto): sai para o lado e os outros fecham o espaço
   ['.liberar-aviso', f => new Promise(ok => animar(f, { opacity: 0, translateX: -40, duration: 240, ease: ENTRAR, onComplete: () => { void fecharAltura(f).then(ok); } })), 'no-lugar'],
   ['.liberar-avisos', f => Promise.all(Array.from(f.querySelectorAll<HTMLElement>('.liberar-aviso')).map(a => new Promise(ok => animar(a, { opacity: 0, translateX: -40, duration: 260, ease: ENTRAR, onComplete: () => ok(null) })))), 'fixo'],
-  ['.ctx-menu', (f, original) => (original && voltarParaOrigem(f, origemDe(original))) || sairComo('menu', f), 'fixo'],
+  ['.ctx-menu', f => sairComo('menuRepetido', f), 'fixo'],
   ['.popover', (f, original) => (original && voltarParaOrigem(f, origemDe(original))) || sairComo('menu', f), 'no-lugar'],
   // a abertura do app: some crescendo de leve e saindo do foco (a tela de baixo aparece por trás)
   ['.abertura', f => new Promise(ok => {
