@@ -249,6 +249,8 @@ export interface RemetenteDoPedido {
   email: string;
   /** a caixa de onde sai (o contábil cai na do robô enquanto a dele não for autorizada) */
   caixa: CaixaDoGmail;
+  /** saindo pela caixa do robô em nome do setor: as respostas vão para a caixa do setor ('' = para o remetente) */
+  respostas: string;
 }
 
 export function setorDoUsuario(u: { departamento?: unknown; roles?: unknown } | null | undefined): 'contabil' | 'fiscal' {
@@ -257,11 +259,16 @@ export function setorDoUsuario(u: { departamento?: unknown; roles?: unknown } | 
   return papeis.includes('fiscal') && !papeis.includes('contabil') ? 'fiscal' : 'contabil';
 }
 
-export function remetenteDoPedido(usuario: { departamento?: unknown; roles?: unknown } | null | undefined, caixas: unknown): RemetenteDoPedido {
+// envioPeloRobo (robo/estado.envioPeloRobo, 01/10/2026): enquanto as contas novas ganham confiança no Gmail, a cobrança
+// do setor sai pela caixa do robô com "responder para" a caixa do setor.
+export function remetenteDoPedido(usuario: { departamento?: unknown; roles?: unknown } | null | undefined, caixas: unknown, envioPeloRobo = false): RemetenteDoPedido {
   const setor = setorDoUsuario(usuario);
   const cx = (caixas && typeof caixas === 'object' ? caixas : {}) as Record<string, { autorizada?: unknown; email?: unknown } | undefined>;
   const endereco = (c: string) => (cx[c] && cx[c]!.autorizada && cx[c]!.email ? String(cx[c]!.email) : '');
-  if (setor === 'fiscal') return { setor, caixa: 'fiscal', email: endereco('fiscal') };
-  if (endereco('contabil')) return { setor, caixa: 'contabil', email: endereco('contabil') };
-  return { setor, caixa: 'robo', email: endereco('robo') || 'nilmacontabilidade@gmail.com' };
+  const doRobo = endereco('robo') || 'nilmacontabilidade@gmail.com';
+  const doSetor = setor === 'fiscal' ? endereco('fiscal') : endereco('contabil');
+  if (setor === 'fiscal' && !doSetor) return { setor, caixa: 'fiscal', email: '', respostas: '' };
+  if (!doSetor) return { setor, caixa: 'robo', email: doRobo, respostas: '' };
+  if (envioPeloRobo) return { setor, caixa: 'robo', email: doRobo, respostas: doSetor };
+  return { setor, caixa: setor, email: doSetor, respostas: '' };
 }

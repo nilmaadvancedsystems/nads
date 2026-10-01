@@ -272,7 +272,7 @@ export function criarDriveFirestore(): cr.RepoDrive {
         getDoc(doc(db, 'usuarios', u.uid)).then(d => d.data() || null, () => null),
         getDoc(doc(db, 'robo', 'estado')).then(d => d.data() || null, () => null),
       ]);
-      return entregas.remetenteDoPedido(usuario, estado?.caixas);
+      return entregas.remetenteDoPedido(usuario, estado?.caixas, estado?.envioPeloRobo === true);
     },
 
     async situacaoDosEmails(ids) {
