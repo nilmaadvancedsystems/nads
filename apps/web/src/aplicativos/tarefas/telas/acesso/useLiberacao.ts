@@ -22,6 +22,8 @@ export function useLiberacao(admin: boolean) {
     pedido,
     /** sem pedido, recusado, revogado ou com o código vencido: mostra "Pedir liberação" */
     pedirDeNovo: usuarios.precisaPedirDeNovo(pedido),
+    /** aprovado por uma tela de admin com o nads desatualizado: o código não vale; o admin atualiza e aprova de novo */
+    adminDesatualizado: usuarios.aprovadoSemPrazo(pedido),
     codigo,
     setCodigo: (v: string) => { setErro(''); setCodigo(usuarios.codigoDigitado(v)); },
     enviando,

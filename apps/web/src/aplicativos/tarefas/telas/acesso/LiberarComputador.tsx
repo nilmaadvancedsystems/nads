@@ -15,7 +15,9 @@ export function LiberarComputador({ vm, nome, sair }: { vm: ReturnType<typeof us
             <>
               {p?.status === 'recusado' && <p className="liberar-erro"><Icone nome="alert" />O pedido anterior foi recusado{p.aprovadoPor ? ' por ' + p.aprovadoPor : ''}.</p>}
               {p?.status === 'revogado' && <p className="liberar-erro"><Icone nome="alert" />A liberação deste login foi revogada{p.revogadoPor ? ' por ' + p.revogadoPor : ''}. Peça de novo: o código será outro.</p>}
-              {p?.status === 'aprovado' && <p className="liberar-erro"><Icone nome="alert" />O código venceu (vale 30 minutos depois da aprovação). Peça de novo.</p>}
+              {p?.status === 'aprovado' && (vm.adminDesatualizado
+                ? <p className="liberar-erro"><Icone nome="alert" />{p.aprovadoPor || 'O administrador'} aprovou com o nads desatualizado e o código não vale. Peça para atualizar a página (F5) e peça de novo.</p>
+                : <p className="liberar-erro"><Icone nome="alert" />O código venceu (vale 30 minutos depois da aprovação). Peça de novo.</p>)}
               <button type="button" className="btn btn-primary liberar-botao" disabled={vm.enviando} onClick={() => void vm.pedir()}>
                 {vm.enviando ? 'Pedindo…' : 'Pedir liberação'}
               </button>
