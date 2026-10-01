@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 import { useAbasParaAEtapa, useAlturaNaEtapa } from './etapa';
 import { Icone, MarcaN, type NomeIcone } from './icones';
 import { SeletorTema } from './tema';
+import { atualizarVersao, useVersaoNova } from './versaoNova';
 
 /** caixa: no lugar do ícone, uma caixinha de checklist (vazia, marcada ou parada) — as etapas de uma tarefa */
 /** titulo: o nome do grupo, em cima da primeira seção dele (Ativo, Passivo…) */
@@ -100,6 +101,8 @@ export function Casca(p: {
 }) {
   const [oculta, setOculta] = useState(lerLateral);
   const [gaveta, setGaveta] = useState(false);
+  // saiu versão nova do nads: um pontinho no ☰ e "Atualizar para …" ao lado da versão, no menu
+  const versaoNova = useVersaoNova(p.versao || '');
   const cabecalho = useRef<HTMLElement>(null);
   // dentro de uma etapa da Tarefas: a página diz a altura dela (quem rola é a Tarefas, uma barra só)
   useAlturaNaEtapa(embutida() && !acoplada());
@@ -161,7 +164,8 @@ export function Casca(p: {
         <div className="gh-header-top" hidden={naEtapa}>
           {!noOutro && (
             <>
-              <button className="gh-hamb" type="button" aria-label="Abrir menu" title="Menu" onClick={() => setGaveta(true)}>
+              <button className="gh-hamb" type="button" aria-label={'Abrir menu' + (versaoNova ? ' (versão nova)' : '')} title={versaoNova ? 'Menu · saiu a versão ' + versaoNova : 'Menu'} onClick={() => setGaveta(true)}>
+                {versaoNova && <span className="gh-hamb-ponto" aria-hidden="true" />}
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
               </button>
               <span className="brand-mark" aria-hidden="true"><MarcaN /></span>
@@ -216,7 +220,7 @@ export function Casca(p: {
           )}
           <div className="drawer-foot">
             <SeletorTema />
-            <p>Versão do sistema: {p.versao}</p>
+            <p>Versão do sistema: {p.versao}{versaoNova && <> · <button type="button" className="drawer-atualizar" onClick={atualizarVersao}>Atualizar para {versaoNova}</button></>}</p>
           </div>
         </aside>
       )}

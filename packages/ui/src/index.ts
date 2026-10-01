@@ -8,6 +8,6 @@ export { Casca, baixarArquivo, baixarBytes, type SecaoCasca, type PaginaCasca } 
 export { EscolherEmpresa, type EmpresaNaLista, type PropsEscolherEmpresa } from './escolherEmpresa';
 export { LOGOS_BANDEIRAS } from './logosBandeiras';
 export { BarraDeCarregamento, useCarregando } from './carregamento';
-export { AvisoDeVersaoNova } from './versaoNova';
+export { atualizarVersao, useVersaoNova } from './versaoNova';
 export { origemConfiavel, origemDoPai, useAbasParaAEtapa, useAlturaNaEtapa, useFerramentaNaEtapa, type AbaDaEtapa } from './etapa';
 export { LogoBanco, LogoDrive, LogoGmail, LogoWhatsApp, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma } from './logos';

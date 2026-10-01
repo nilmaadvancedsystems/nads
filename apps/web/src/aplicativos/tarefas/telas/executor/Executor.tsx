@@ -1,20 +1,23 @@
 // O executor: dentro do cabeçalho padrão (☰, "Tarefas / 292 · EMPRESA / Agosto/2026"), com as etapas em
 // checklist na barra lateral, com o nome de cada grupo em cima (Preparação, Ativo, Passivo, Resultado, Fechamento;
 // caixinha marcada = feita; clicar numa anterior volta para ela e tira o check). A página é só a ferramenta da
-// etapa, com a altura toda; embaixo, a barra com as saídas da etapa (Pedir extrato, Buscar no Drive…), Interromper e
-// Próximo. No canto direito do cabeçalho, como os botões do GitHub: os grupos da rotina (o da vez com o ícone normal,
-// os outros apagados; clicar num de trás volta para ele) e o perfil.
-import { Alerta, Casca, Icone, MenuSuspenso, useCarregando, useFerramentaNaEtapa, type NomeIcone } from '@nads/ui';
+// etapa, com a altura toda. No canto direito do cabeçalho, como os botões do GitHub (Vitor, 01/10/2026: os botões do pé
+// atrapalhavam a ferramenta): os grupos da rotina num menu só (como o "+ ▾"), as saídas da etapa (⚠ ▾), ✕ Interromper,
+// ? (o que falta) ou → Próximo, e o perfil.
+import type { tarefas } from '@nads/core';
+import { Alerta, Casca, Icone, MenuSuspenso, useCarregando, useFerramentaNaEtapa, type ItemMenu, type NomeIcone } from '@nads/ui';
 import { useRef, useState } from 'react';
 import { Navigate, useBlocker, useParams } from 'react-router';
 import { usePonteDaFerramenta } from '../../../../comum/ponte';
 import { BASE } from '../../casca/navegacao';
 import { useCascaTarefas } from '../../casca/useCascaTarefas';
 import { JanelaInterromper } from './partes/JanelaInterromper';
-import { Objecoes } from './partes/Objecoes';
 import { useExecutor } from './useExecutor';
 
 /** O ícone de cada grupo da rotina, no canto do cabeçalho. */
+/** O ícone de cada saída da etapa (o menu ⚠ do cabeçalho). */
+const ICONE_DA_SAIDA: Record<tarefas.Solucao['tipo'], NomeIcone> = { contato: 'link', drive: 'fileDown', orientacao: 'alert', 'nao-se-aplica': 'checkCircle' };
+
 const ICONE_DO_GRUPO: Record<string, NomeIcone> = {
   'Preparação': 'fileUp', Ativo: 'landmark', Passivo: 'relatorio', Resultado: 'barChart', Fechamento: 'checkCircle',
 };
@@ -34,11 +37,9 @@ export function Executor() {
     r => setRequisitos({ url: urlDaFerramenta, ...r }));
   // os requisitos valem só para a ferramenta que mandou (trocou de etapa: some)
   const faltam = requisitos && requisitos.url === urlDaFerramenta && !requisitos.pronto ? requisitos.faltam : null;
-  // no lugar do avançar, o "?": abre o que falta para seguir
-  const [verFaltam, setVerFaltam] = useState(false);
   // a ferramenta do tamanho do conteúdo dela: a página toda rola junto, numa barra só
   // um aplicativo inteiro dentro da etapa (a Conferência) manda as abas dele: elas ficam no cabeçalho, por cima do checklist
-  const { altura, carregando: ferramentaCarregando, janelaAberta, abas, abrirAba } = useFerramentaNaEtapa(iframe, vm.ferramenta?.embutir ? vm.ferramenta.url : undefined);
+  const { altura, carregando: ferramentaCarregando, abas, abrirAba } = useFerramentaNaEtapa(iframe, vm.ferramenta?.embutir ? vm.ferramenta.url : undefined);
   // uma barra só, no alto da página: a da Tarefas e a da ferramenta juntas
   useCarregando(vm.carregando || vm.conferindo || ferramentaCarregando);
   // os botões da etapa só com a tela pronta (a Tarefas e a ferramenta carregadas); o avançar, se a ferramenta tem
@@ -62,16 +63,49 @@ export function Executor() {
     apagada: !!vm.etapa && e.n > (vm.etapas.find(x => x.atual)?.n ?? 0) && e.situacao !== 'feita',
   }));
 
+  // os grupos da rotina num menu só (como o "+ ▾" do GitHub): o ícone do grupo da vez e, aberto, todos (os da frente travados)
+  const grupoDaVez = vm.grupos.find(g => g.atual);
+  const itensDosGrupos: ItemMenu[] = [];
+  vm.grupos.forEach((g, i) => {
+    // separa a Preparação e o Fechamento do meio (Ativo, Passivo, Resultado)
+    if (i > 0 && (i === 1 || i === vm.grupos.length - 1)) itensDosGrupos.push('separador');
+    itensDosGrupos.push({ rotulo: g.nome, icone: ICONE_DO_GRUPO[g.nome] || 'list', dica: g.feitas + '/' + g.total, marcado: g.atual, desabilitado: g.travado, onClick: () => vm.abrirGrupo(g.nome) });
+  });
+  // as saídas da etapa (Pedir extrato, Buscar no Drive, "O Fiscal ainda não fechou as notas"…), num menu
+  const saidas = vm.etapa ? vm.etapa.objecoes.filter(o => !o.soMotivo) : [];
+  const botoesDaEtapa = vm.etapa && telaPronta && !vm.interrompendo && saida.state !== 'blocked';
+
   const topo = (
     <>
-      <nav className="gh-topo-grupos" aria-label="Grupos da rotina">
-        {vm.grupos.map(g => (
-          <button key={g.nome} type="button" className={'gh-topo-btn' + (g.atual ? ' ativo' : '')}
-            disabled={g.travado} onClick={() => vm.abrirGrupo(g.nome)} title={g.nome + ' · ' + g.feitas + '/' + g.total} aria-label={g.nome + ': ' + g.feitas + ' de ' + g.total}
-            aria-current={g.atual ? 'step' : undefined}>
-            <Icone nome={ICONE_DO_GRUPO[g.nome] || 'list'} />
+      <nav className="gh-topo-acoes" aria-label="Etapa">
+        {vm.grupos.length > 0 && (
+          <MenuSuspenso rotulo="" icone={grupoDaVez ? ICONE_DO_GRUPO[grupoDaVez.nome] || 'list' : 'checkCircle'} className="gh-topo-btn gh-topo-menu"
+            dica={grupoDaVez ? grupoDaVez.nome + ' · ' + grupoDaVez.feitas + '/' + grupoDaVez.total : 'Grupos da rotina'} titulo="Grupos da rotina" direita largura={240} itens={itensDosGrupos} />
+        )}
+        {botoesDaEtapa && saidas.length > 0 && (
+          <MenuSuspenso rotulo="" icone="alert" className="gh-topo-btn gh-topo-menu" dica="Se não der para concluir" titulo="Se não der para concluir" direita largura={300}
+            itens={saidas.map(o => ({ rotulo: o.solucao.tipo === 'orientacao' ? o.texto : o.solucao.rotulo, icone: ICONE_DA_SAIDA[o.solucao.tipo], onClick: () => vm.resolver(o) }))} />
+        )}
+        {botoesDaEtapa && (
+          <button type="button" className="gh-topo-btn gh-topo-forte" onClick={vm.abrirInterromper} title="Interromper a etapa" aria-label="Interromper">
+            <Icone nome="x" />
           </button>
-        ))}
+        )}
+        {botoesDaEtapa && faltam && (
+          <MenuSuspenso rotulo="" icone="ajuda" className="gh-topo-btn gh-topo-menu" dica="O que falta para seguir" direita largura={300}
+            conteudo={() => (
+              <div className="executor-faltam">
+                <b>Para seguir, falta:</b>
+                <ul>{faltam.map(t => <li key={t}>{t}</li>)}</ul>
+              </div>
+            )} />
+        )}
+        {botoesDaEtapa && !faltam && requisitosConhecidos && (
+          <button type="button" className="gh-topo-btn gh-topo-proximo" disabled={vm.conferindo} onClick={() => { void vm.proximo(); }}
+            title={vm.conferindo ? 'Conferindo…' : 'Próximo (confere e segue para a próxima etapa)'} aria-label="Próximo">
+            {vm.conferindo ? <span className="btn-spinner" /> : <Icone nome="arrowDown" style={{ transform: 'rotate(-90deg)' }} />}
+          </button>
+        )}
       </nav>
       <span className="gh-topo-sep" aria-hidden="true" />
       <MenuSuspenso rotulo={casca.perfil.iniciais} className="gh-avatar" dica={casca.perfil.nome} titulo={casca.perfil.nome} direita
@@ -122,34 +156,6 @@ export function Executor() {
             )}
           </div>
           {vm.aviso && <Alerta titulo="Ainda não dá para seguir" texto={vm.aviso} />}
-          {/* os botões da etapa soltos por cima da tela, no canto: as saídas (quando a etapa tem), ✕ Interromper e → Próximo */}
-          {/* só na primeira camada: com janela ou menu aberto (aqui ou na ferramenta), os botões saem da frente */}
-          <div className="executor-flutuante" hidden={!telaPronta || janelaAberta || vm.interrompendo || saida.state === 'blocked'}>
-            <Objecoes etapa={vm.etapa} onResolver={vm.resolver} />
-            <button type="button" className="executor-botao" onClick={vm.abrirInterromper} title="Interromper a etapa" aria-label="Interromper">
-              <Icone nome="x" />
-            </button>
-            {faltam && (
-              <span className="executor-ajuda">
-                {verFaltam && (
-                  <div className="executor-faltam" role="dialog" aria-label="O que falta para seguir">
-                    <b>Para seguir, falta:</b>
-                    <ul>{faltam.map(t => <li key={t}>{t}</li>)}</ul>
-                  </div>
-                )}
-                <button type="button" className={'executor-botao' + (verFaltam ? ' ativo' : '')} aria-expanded={verFaltam} onClick={() => setVerFaltam(v => !v)}
-                  title="O que falta para seguir" aria-label="O que falta para seguir">
-                  <Icone nome="ajuda" />
-                </button>
-              </span>
-            )}
-            {!faltam && requisitosConhecidos && (
-              <button type="button" className="executor-botao proximo" disabled={vm.conferindo} onClick={() => { void vm.proximo(); }}
-                title={vm.conferindo ? 'Conferindo…' : 'Próximo (confere e segue para a próxima etapa)'} aria-label="Próximo">
-                {vm.conferindo ? <span className="btn-spinner" /> : <Icone nome="arrowDown" style={{ transform: 'rotate(-90deg)' }} />}
-              </button>
-            )}
-          </div>
           {vm.interrompendo && <JanelaInterromper etapa={vm.etapa} onInterromper={vm.interromper} onCancelar={vm.fecharInterromper} />}
           {/* saiu por outro lugar: a mesma janela; interrompeu, segue para onde clicou; cancelou, fica */}
           {saida.state === 'blocked' && !vm.interrompendo && (

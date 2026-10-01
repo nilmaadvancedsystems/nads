@@ -199,6 +199,15 @@ a{color:var(--accent);}
 .gh-topo-btn.ativo svg{opacity:1;}
 .gh-topo-btn:disabled{cursor:not-allowed;}
 .gh-topo-sep{width:1px;height:20px;background:var(--border);}
+/* o executor no cabeçalho: os grupos num menu só, as saídas, ✕, ? e → (os botões de 32px do GitHub) */
+.gh-topo-acoes{display:flex;align-items:center;gap:8px;}
+.gh-topo-menu{width:auto;gap:2px;padding:0 6px;color:var(--ink);}
+.gh-topo-menu svg,.gh-topo-forte svg{opacity:1;}
+.gh-topo-menu .menu-seta{width:12px;height:12px;}
+.gh-topo-forte{color:var(--ink);}
+.gh-topo-proximo{background:var(--btn-primary);border-color:transparent;color:#FFFFFF;}
+.gh-topo-proximo svg{opacity:1;}
+.gh-topo-proximo:hover:not(:disabled){background:var(--btn-primary-hover);}
 .gh-avatar{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border:1px solid var(--border);border-radius:50%;background:var(--surface-3);color:var(--ink);font-size:12px;font-weight:600;cursor:pointer;}
 .gh-avatar:hover{border-color:var(--border-strong);}
 .gh-avatar .menu-seta{display:none;}
@@ -1150,9 +1159,14 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 /* o checklist da tarefa: as etapas da frente (ainda não feitas) mais apagadas */
 .subnav-item.apagada:not(.active){opacity:.45;}
 .subnav-item.apagada:not(.active):hover{opacity:.75;}
+/* o "?" do cabeçalho do executor (falta requisito): a lista do que falta */
+.executor-faltam{padding:8px 12px;font-size:14px;color:var(--ink);}
+.executor-faltam ul{margin:6px 0 0;padding-left:18px;}
+.executor-faltam li{margin-top:2px;}
+/* o checklist da tarefa: as etapas da frente (ainda não feitas) mais apagadas */
+.subnav-item.apagada:not(.active){opacity:.45;}
+.subnav-item.apagada:not(.active):hover{opacity:.75;}
 /* o "?" no lugar do avançar (falta requisito): abre, por cima dos botões, a lista do que falta */
-.executor-ajuda{position:relative;display:inline-flex;}
-.executor-botao.ativo{background:var(--hover-bg);border-color:var(--border-strong);}
 .executor-faltam{position:absolute;right:0;bottom:calc(100% + 8px);min-width:220px;max-width:320px;padding:12px 16px;border:1px solid var(--border);border-radius:8px;
   background:var(--overlay-bg);box-shadow:var(--shadow-lg);font-size:14px;color:var(--ink);}
 .executor-faltam ul{margin:6px 0 0;padding-left:18px;}
@@ -2085,6 +2099,8 @@ main.main:has(> .content > .explorador){padding:0;}
   .drive-direita{padding:16px;}
 }
 
-/* aviso de versão nova (AvisoDeVersaoNova): faixa no alto, por cima de tudo */
-.versao-nova{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:90;display:flex;align-items:center;gap:10px;max-width:calc(100vw - 32px);padding:8px 10px 8px 14px;border:1px solid var(--accent-border);border-radius:8px;background:var(--surface);color:var(--ink);box-shadow:var(--shadow-lg);font-size:13px;}
-.versao-nova > svg{width:16px;height:16px;color:var(--accent-ink);flex:none;}
+/* versão nova (useVersaoNova): um pontinho no ☰ e, no menu, "Atualizar para …" ao lado da versão */
+.gh-hamb{position:relative;}
+.gh-hamb-ponto{position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--header-bg);}
+.drawer-atualizar{border:none;background:none;padding:0;font:inherit;color:var(--accent-ink);font-weight:600;cursor:pointer;}
+.drawer-atualizar:hover{text-decoration:underline;}
