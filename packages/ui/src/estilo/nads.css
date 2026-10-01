@@ -1156,6 +1156,18 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 .executor-botao.proximo{background:var(--btn-primary);border-color:transparent;color:#FFFFFF;}
 .executor-botao.proximo:hover:not(:disabled){background:var(--btn-primary-hover);}
 .executor-botao:disabled{opacity:.7;cursor:progress;}
+/* a Contabilização da Folha: o checklist pelo balancete (marcar risca, como a conferência) */
+.folha-check{width:100%;max-width:760px;margin:0 auto;padding:16px 20px;align-self:flex-start;}
+.folha-check-topo{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;}
+.folha-check-topo h3{margin:0;font-size:16px;}
+.folha-check-qtd{font-size:12px;font-weight:600;color:var(--ink-muted);}
+.folha-check-lista{list-style:none;margin:0;padding:0;}
+.folha-check-lista li + li{border-top:1px solid var(--border-muted);}
+.folha-check-lista label{display:flex;align-items:flex-start;gap:12px;padding:10px 4px;cursor:pointer;}
+.folha-check-lista input{margin-top:3px;width:16px;height:16px;accent-color:var(--success);flex:none;}
+.folha-check-texto{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.folha-check-texto .hint{margin:0;overflow-wrap:anywhere;}
+.folha-check-lista li.feito b{text-decoration:line-through;color:var(--ink-muted);}
 /* o checklist da tarefa: as etapas da frente (ainda não feitas) mais apagadas */
 .subnav-item.apagada:not(.active){opacity:.45;}
 .subnav-item.apagada:not(.active):hover{opacity:.75;}

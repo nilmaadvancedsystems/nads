@@ -52,6 +52,8 @@ export interface Etapa {
   secao?: string;
   /** o que conferir, item por item (aparece na etapa sem ferramenta, no lugar do "Feito no sistema") */
   conferir?: string[];
+  /** o checklist da folha montado pelo balancete importado (Contabilização da Folha): o avançar só com tudo marcado */
+  checklistDaFolha?: boolean;
 }
 
 export interface Rotina { departamento: Departamento; etapas: Etapa[] }

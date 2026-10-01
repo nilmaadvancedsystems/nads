@@ -57,10 +57,13 @@ export const ROTINA_CONTABIL: Rotina = {
     {
       id: 'dp',
       secao: 'Preparação',
-      nome: 'Importação DP',
-      descricao: 'Importe a folha do Departamento Pessoal: salários, pró-labore, INSS, FGTS e rescisões.',
+      // "Contabilização da Folha" (Vitor, 01/10/2026; antes "Importação DP"; o id continua "dp"): o checklist sai do
+      // balancete importado — só o que a empresa tem (core: tarefas.checklistDaFolha)
+      nome: 'Contabilização da Folha',
+      descricao: 'Contabilize a folha do mês, item por item, conforme o que a empresa tem no balancete.',
       ferramenta: null,
       verificacao: 'manual',
+      checklistDaFolha: true,
       conferir: [
         'A folha do mês está liberada pelo DP.',
         'Importe a folha no Alterdata: salários, pró-labore, férias, rescisões, INSS, FGTS e IRRF.',

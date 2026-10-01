@@ -12,6 +12,7 @@ import { usePonteDaFerramenta } from '../../../../comum/ponte';
 import { BASE } from '../../casca/navegacao';
 import { useCascaTarefas } from '../../casca/useCascaTarefas';
 import { JanelaInterromper } from './partes/JanelaInterromper';
+import { useChecklistDaFolha } from './useChecklistDaFolha';
 import { useExecutor } from './useExecutor';
 
 /** O ícone de cada grupo da rotina, no canto do cabeçalho. */
@@ -36,7 +37,10 @@ export function Executor() {
     vm.varios ? { meses: vm.meses, concluido: vm.periodoConcluido } : null, vm.encerrarPeriodo,
     r => setRequisitos({ url: urlDaFerramenta, ...r }));
   // os requisitos valem só para a ferramenta que mandou (trocou de etapa: some)
-  const faltam = requisitos && requisitos.url === urlDaFerramenta && !requisitos.pronto ? requisitos.faltam : null;
+  // a etapa da folha: o checklist montado pelo balancete (o avançar só com tudo marcado)
+  const folha = useChecklistDaFolha(!!vm.etapa?.checklistDaFolha, vm.empresa?.nome || '', vm.meses.length ? vm.meses : [vm.competencia]);
+  const faltamFerramenta = requisitos && requisitos.url === urlDaFerramenta && !requisitos.pronto ? requisitos.faltam : null;
+  const faltam = vm.etapa?.checklistDaFolha ? (folha.faltam && folha.faltam.length ? folha.faltam : null) : faltamFerramenta;
   // a ferramenta do tamanho do conteúdo dela: a página toda rola junto, numa barra só
   // um aplicativo inteiro dentro da etapa (a Conferência) manda as abas dele: elas ficam no cabeçalho, por cima do checklist
   const { altura, carregando: ferramentaCarregando, abas, abrirAba } = useFerramentaNaEtapa(iframe, vm.ferramenta?.embutir ? vm.ferramenta.url : undefined);
@@ -45,7 +49,7 @@ export function Executor() {
   // os botões da etapa só com a tela pronta (a Tarefas e a ferramenta carregadas); o avançar, se a ferramenta tem
   // requisitos, só depois que ela disser o que falta (antes disso ele apareceria liberado)
   const telaPronta = !vm.carregando && !ferramentaCarregando;
-  const requisitosConhecidos = !vm.ferramenta?.requisitos || requisitos?.url === urlDaFerramenta;
+  const requisitosConhecidos = vm.etapa?.checklistDaFolha ? folha.faltam !== null : !vm.ferramenta?.requisitos || requisitos?.url === urlDaFerramenta;
   // sair da execução por qualquer lugar do app (o cabeçalho, o menu, o voltar do navegador) com a etapa aberta:
   // é interromper, com a justificativa; trocar de mês ou período dentro do executor não conta
   const saida = useBlocker(({ currentLocation, nextLocation }) =>
@@ -142,6 +146,31 @@ export function Executor() {
                 <h4>{vm.ferramenta.nome}</h4>
                 <p>Esta etapa abre em outra aba.</p>
                 <a className="btn btn-primary" href={vm.ferramenta.url} target="_blank" rel="noreferrer">Abrir {vm.ferramenta.nome}</a>
+              </div>
+            ) : vm.etapa.checklistDaFolha && folha.itens ? (
+              // a Contabilização da Folha: o checklist pelo balancete (só o que a empresa tem), marcando ao fazer e conferir
+              <div className="card folha-check">
+                <div className="folha-check-topo">
+                  <h3>Contabilização da Folha</h3>
+                  {folha.itens.length > 0 && <span className="folha-check-qtd">{folha.itens.filter(i => i.marcado).length}/{folha.itens.length}</span>}
+                </div>
+                {folha.itens.length ? (
+                  <ul className="folha-check-lista">
+                    {folha.itens.map(i => (
+                      <li key={i.id} className={i.marcado ? 'feito' : undefined}>
+                        <label>
+                          <input type="checkbox" checked={i.marcado} onChange={() => folha.alternar(i.id)} />
+                          <span className="folha-check-texto">
+                            <b>{i.nome}</b>
+                            <span className="hint">{i.contas.join(' · ')}</span>
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="hint">Pelo balancete importado, a empresa não tem folha (nenhuma conta da folha no Passivo: salários, pró-labore, férias, rescisão, FGTS, INSS).</p>
+                )}
               </div>
             ) : (
               <div className="gh-blank">

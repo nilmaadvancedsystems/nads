@@ -503,6 +503,8 @@ export function TarefaExtratos() {
       nome: b.nome, ok: !!bancosOk[b.id], faltaCheque: diasSemCheque(b.id) > 0, semMovimento: semMovimentoNoPeriodo(b.id),
     })), importados, vm.prestaServico) : null);
   const bancosSemCheque = vm.bancos.filter(b => diasSemCheque(b.id) > 0);
+  // os dias que fecham negativos (somando os bancos), para o aviso da etapa Cheque especial
+  const diasNegativosNoPeriodo = vm.bancos.reduce((t, b) => { const x = situacoes[b.id]; return t + (x && x.tipo !== 'pendente' ? x.negativos.length : 0); }, 0);
   const [cxExtrato, cxRazao] = vm.caixas;
   const [abertas, setAbertas] = useState<string[]>([]);
   const [abaEscolhida, setAba] = useState<AbaImportacao>('bancos');
@@ -574,7 +576,10 @@ export function TarefaExtratos() {
           </div>
         </div>
       ) : vm.bancos.length > 0 && vm.bancos.every(b => bancosOk[b.id] || semMovimentoNoPeriodo(b.id)) ? (
-        <p className="hint imp-cheque-ok">Nenhum dia sem o cheque especial: pode seguir.</p>
+        // sem dia negativo em nenhum banco, nada a fazer; com dia negativo e o cheque no razão, conferido
+        <p className="hint imp-cheque-ok">{diasNegativosNoPeriodo === 0
+          ? 'Nenhum dia com saldo negativo no período: não precisa de cheque especial. Pode seguir.'
+          : 'Cheque especial conferido (' + diasNegativosNoPeriodo + (diasNegativosNoPeriodo === 1 ? ' dia negativo' : ' dias negativos') + '): o saldo final bate sem os lançamentos dele. Pode seguir.'}</p>
       ) : null)}
 
       <div className="imp-lista">
