@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  remetenteDoPedido, setorDoUsuario,
   buscarClientes, buscarNaPasta, caminhoAte, clienteParecido, clientesDoEntregas, entradaDoCliente, entradaDoItem, estadoDoRobo,
   filhosDe, itensDasPartes, linhasDaArvore, mapaDaRaiz, ordenarEntradas, tipoDoItem, mensagemIdValido, pedidoDaPasta, pedidoDeZip, quantosDentro, semCliente, tamanhoLegivel, type ItemDoDrive,
 } from '.';
@@ -97,5 +98,21 @@ describe('caixa do robô do Gmail', () => {
     expect(clienteParecido(e.naoReconhecidos.find(x => x.mensagemId === '3') as never, clientes)?.id).toBe('k1');
     expect(mensagemIdValido('18f0a1b2c3d4e5f6')).toBe(true);
     expect(mensagemIdValido('x')).toBe(false);
+  });
+});
+
+describe('de qual Gmail sai o pedido', () => {
+  const caixas = { robo: { autorizada: true, email: 'nilmacontabilidade@gmail.com' }, contabil: { autorizada: true, email: 'setorcontabilnilma@gmail.com' }, fiscal: { autorizada: true, email: 'setorfiscalnilma@gmail.com' } };
+  it('o setor do cadastro, senão o papel', () => {
+    expect(setorDoUsuario({ departamento: 'fiscal', roles: ['contabil'] })).toBe('fiscal');
+    expect(setorDoUsuario({ roles: ['staff', 'fiscal'] })).toBe('fiscal');
+    expect(setorDoUsuario({ roles: ['admin', 'fiscal', 'contabil'] })).toBe('contabil');
+    expect(setorDoUsuario(null)).toBe('contabil');
+  });
+  it('a caixa do setor (o contábil cai na do robô sem a dele; o fiscal não envia sem a dele)', () => {
+    expect(remetenteDoPedido({ departamento: 'contabil' }, caixas)).toEqual({ setor: 'contabil', caixa: 'contabil', email: 'setorcontabilnilma@gmail.com' });
+    expect(remetenteDoPedido({ departamento: 'fiscal' }, caixas).email).toBe('setorfiscalnilma@gmail.com');
+    expect(remetenteDoPedido({ departamento: 'contabil' }, { ...caixas, contabil: { autorizada: false } })).toEqual({ setor: 'contabil', caixa: 'robo', email: 'nilmacontabilidade@gmail.com' });
+    expect(remetenteDoPedido({ departamento: 'fiscal' }, { robo: caixas.robo }).email).toBe('');
   });
 });

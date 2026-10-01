@@ -2154,3 +2154,6 @@ main.main:has(> .content > .explorador){padding:0;}
 
 /* Gmail: as abas das caixas (Nilma Contabilidade / setor) */
 .gmail-caixas{margin:0 0 12px;}
+
+/* Pedir documentos: o Gmail de onde o pedido sai (o do setor de quem pede) */
+.pedir-de{font-size:14px;line-height:24px;color:var(--ink);font-weight:600;}

@@ -3,6 +3,7 @@
 // no site ligado ao banco, apps/web/src/aplicativos/extratudo/dados/drive.firestore.ts.
 import type { BalanceteDaEmpresa } from './regras/balancete';
 import type { ItemDrive } from './regras/drive';
+import type { RemetenteDoPedido } from '../../entregas/gmail';
 
 export interface AcessoDrive {
   /** já sabe se tem alguém logado (antes disso, não mostra o login) */
@@ -65,6 +66,8 @@ export interface RepoDrive {
   contatoDoCliente?(codigo: number): Promise<ContatoDoCliente | null>;
   /** põe o e-mail na fila do robô do Entregas e espera ele enviar (erro = o motivo); 'na-fila' = o robô ainda não pegou */
   pedirEmail?(p: PedidoDeEmail, passo?: (texto: string) => void): Promise<{ id: string; situacao: 'enviado' | 'na-fila' }>;
+  /** de qual Gmail o pedido vai sair: o do setor de quem pede (a mesma regra do robô); não existe acoplado no Entregas */
+  remetente?(): Promise<RemetenteDoPedido>;
   /** a situação de cada pedido de e-mail na fila do robô (pelo id) */
   situacaoDosEmails?(ids: string[]): Promise<Record<string, SituacaoDoEmail>>;
   assinar(aoMudar: () => void): () => void;

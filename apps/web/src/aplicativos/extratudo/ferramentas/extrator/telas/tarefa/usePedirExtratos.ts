@@ -44,6 +44,8 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
   const { drive, acesso } = useDrive();
   const [etapa, setEtapa] = useState<'fechado' | 'montar' | 'conferir'>('fechado');
   const [contato, setContato] = useState<{ carregando: boolean; erro: string; dados: creditor.ContatoDoCliente | null }>({ carregando: false, erro: '', dados: null });
+  // de qual Gmail sai (o do setor de quem pede, a mesma regra do robô); null = não se sabe (aberto dentro do Entregas)
+  const [de, setDe] = useState<{ carregando: boolean; email: string; erro: string } | null>(null);
   // o que está marcado: 'documento|competência'
   const [marcados, setMarcados] = useState<string[]>([]);
   // os documentos com a lista de "Outros meses" aberta
@@ -55,6 +57,17 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
   const [whats, setWhats] = useState({ ligado: false, texto: '', editado: false });
   const [enviando, setEnviando] = useState('');
   const [historico, setHistorico] = useState<{ aberto: boolean; situacoes: Record<string, creditor.SituacaoDoEmail>; erro: string }>({ aberto: false, situacoes: {}, erro: '' });
+
+  async function carregarRemetente() {
+    if (!drive.remetente) { setDe(null); return; }
+    setDe({ carregando: true, email: '', erro: '' });
+    try {
+      const r = await drive.remetente();
+      setDe({ carregando: false, email: r.email, erro: r.email ? '' : 'O Gmail do setor fiscal ainda não foi autorizado: o robô não consegue enviar.' });
+    } catch (e) {
+      setDe({ carregando: false, email: '', erro: mensagemDeErro(e) });
+    }
+  }
 
   async function carregarContato() {
     if (codigo == null) { setContato({ carregando: false, erro: 'A empresa não tem o código do ERP para achar no cadastro.', dados: null }); return; }
@@ -104,6 +117,7 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
     setEtapa('montar');
     void carregarContato();
     void carregarPasta();
+    void carregarRemetente();
   }
 
   const catalogo = [...x.documentosDoPedido(vm.bancos.map(b => ({ id: b.id, nome: b.nome, marca: b.marca, conta: b.conta || undefined }))), ...extras];
@@ -120,7 +134,7 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
   const textoWhats = whats.editado ? whats.texto : x.textoDoWhatsApp(pedido, prazo);
   const telefone = contato.dados ? x.telefoneParaWhatsApp(contato.dados.telefone) : '';
   const html = etapa === 'conferir' ? x.htmlDoPedido({ pedido, prazo, enviadoEm: new Date(), logo: imagens.logo, logoDoBanco: imagens.logoDoBanco, whatsapp: WHATSAPP_DO_ESCRITORIO }) : '';
-  const podeContinuar = !!contato.dados && emails.length > 0 && pedido.documentos.length > 0 && (!whats.ligado || !!telefone);
+  const podeContinuar = !!contato.dados && emails.length > 0 && pedido.documentos.length > 0 && (!whats.ligado || !!telefone) && !de?.erro;
 
   async function enviar() {
     if (!podeContinuar || enviando || !contato.dados || !drive.pedirEmail) return;
@@ -166,6 +180,8 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
     voltar: () => { if (!enviando) setEtapa('montar'); },
     exemplos: drive.exemplos,
     contato,
+    /** de qual Gmail o pedido sai */
+    de,
     emails: (contato.dados?.emails || []).map(e => ({ email: e, marcado: emails.includes(e) })),
     alternarEmail: (e: string) => setEmails(v => alternar(v, e)),
     competencia: { valor: vm.competencia, rotulo: rotuloMes(vm.competencia) },
@@ -199,7 +215,7 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
       link: contato.dados ? x.linkDoWhatsApp(contato.dados.telefone, textoWhats) : '',
     },
     /** o resumo do que vai ser pedido (a etapa de conferir) */
-    resumo: { documentos: pedido.documentos.length, meses: compsDoPedido.map(rotuloMes), para: emails },
+    resumo: { documentos: pedido.documentos.length, meses: compsDoPedido.map(rotuloMes), para: emails, de: de?.email || '' },
     assunto: x.assuntoDoPedido(pedido),
     html,
     podeContinuar, enviando,

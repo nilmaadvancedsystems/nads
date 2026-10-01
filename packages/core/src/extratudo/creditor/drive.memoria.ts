@@ -56,6 +56,9 @@ export function criarDriveMemoria(): RepoDrive {
       // sem nome: vale o da empresa aberta
       return { id: 'exemplo-' + codigo, nome: '', emails: ['financeiro@exemplo.com.br', 'contato@exemplo.com.br'], telefone: '(38) 99999-0000' };
     },
+    async remetente() {
+      return { setor: 'contabil', caixa: 'contabil', email: 'setorcontabilnilma@gmail.com' };
+    },
     async pedirEmail(_p, passo) {
       // nos exemplos nada sai daqui: só finge a fila do robô
       passo?.('na fila do robô (exemplo)');
