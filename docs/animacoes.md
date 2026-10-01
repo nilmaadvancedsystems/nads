@@ -72,5 +72,10 @@ Fica para depois: a linha que mudou em tempo real (Firestore) piscar o fundo; a 
 | Gmail: o destaque desliza entre De clientes/Sem cliente/Spam; os contadores contam | CaixaDoRobo.tsx |
 | Contador de empresas (Minhas empresas) conta; as barras de andamento andam em vez de pular | MinhasEmpresas.tsx, nads.css |
 
+| Drive: o painel "Arquivos" abre e fecha deslizando, e a lista da direita acompanha (em vez de pular) | ExploradorDoDrive.tsx (`alternarPainel`) |
+| Drive: a faixa "N selecionados" abre e fecha a altura (a tabela desce e sobe junto) | animador.ts (`abrirAltura`/`fecharAltura`) |
+| Drive: "Solte para enviar ao Claudio Secretário" sobe e acende; some descendo | animador.ts |
+| Avisos de liberação de computador: saem para o lado e os outros fecham o espaço | animador.ts |
+
 Foco (Vitor, 01/10/2026): só a Tarefas por enquanto; os outros apps ficam como estão.
 

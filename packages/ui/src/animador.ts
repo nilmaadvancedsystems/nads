@@ -16,6 +16,24 @@ import { afundar, animar, apagarFundo, celebrar, crescerDaOrigem, desenharCheck,
 
 type Entrada = (el: HTMLElement) => void;
 
+// O que entra no meio da página e empurra o resto (a faixa "N selecionados" do Drive): em vez de empurrar de uma vez,
+// abre a altura (o resto desce junto, devagar); ao sair, o fantasma fecha a altura e o resto sobe junto.
+function abrirAltura(el: HTMLElement) {
+  if (semMovimento()) return;
+  const cs = getComputedStyle(el);
+  const h = el.offsetHeight;
+  el.style.overflow = 'hidden';
+  animar(el, {
+    height: [0, h], paddingTop: [0, parseFloat(cs.paddingTop)], paddingBottom: [0, parseFloat(cs.paddingBottom)],
+    marginBottom: [0, parseFloat(cs.marginBottom)], opacity: [0, 1], duration: 360, ease: ENTRAR,
+    onComplete: a => { cleanInlineStyles(a); el.style.removeProperty('overflow'); },
+  });
+}
+function fecharAltura(f: HTMLElement): Promise<unknown> {
+  f.style.overflow = 'hidden';
+  return new Promise(ok => animar(f, { height: 0, paddingTop: 0, paddingBottom: 0, marginTop: 0, marginBottom: 0, opacity: 0, duration: 300, ease: ENTRAR, onComplete: () => ok(null) }));
+}
+
 function alertaChegou(el: HTMLElement) {
   const ok = el.classList.contains('alert-ok') || (el.getAttribute('style') || '').includes('success');
   entrar('alerta', el, { mais: { clipPath: ['inset(0% 100% 0% 0% round 6px)', 'inset(0% 0% 0% 0% round 6px)'] } });
@@ -90,6 +108,13 @@ const ENTRADAS: [string, Entrada][] = [
     const h = el.querySelector<HTMLElement>('h2');
     if (h) revelarTitulo(h);
   }],
+  // a faixa "N selecionados" do Drive: abre a altura (a tabela desce junto, sem pular)
+  ['.drive-card:not(.drive-faixa-so) > .card-head, .drive-faixa-so', el => { abrirAltura(el); }],
+  // "Solte para enviar ao Claudio Secretário": sobe e acende (pelo WAAPI, nas propriedades scale/translate: o CSS dela
+  // já usa transform para centralizar)
+  ['.explorador-soltar', el => {
+    if (!semMovimento()) el.animate([{ opacity: 0, translate: '0 16px', scale: '0.92' }, { opacity: 1, translate: '0 0', scale: '1' }], { duration: 320, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' });
+  }],
   // o Ok do banco (extrato e razão batem): encaixa com mola
   ['.badge-ok', el => { animar(el, { opacity: [0, 1], scale: [0.6, 1], ease: MOLA_VIVA }); }],
 ];
@@ -122,6 +147,12 @@ const SAIDAS: [string, Saida, 'fixo' | 'no-lugar'][] = [
     if (volta) return Promise.all([apagarFundo(f), volta]);
     return Promise.all([sairComo('fundo', f), caixa ? sairComo('janela', caixa) : null]);
   }, 'fixo'],
+  // a faixa "N selecionados": fecha a altura (a tabela sobe junto)
+  ['.drive-card:not(.drive-faixa-so) > .card-head, .drive-faixa-so', f => fecharAltura(f), 'no-lugar'],
+  ['.explorador-soltar', f => f.animate([{ opacity: 1 }, { opacity: 0, translate: '0 12px', scale: '0.94' }], { duration: 220, easing: 'ease-out', fill: 'forwards' }).finished, 'no-lugar'],
+  // o aviso de liberação (aprovou, recusou, pronto): sai para o lado e os outros fecham o espaço
+  ['.liberar-aviso', f => new Promise(ok => animar(f, { opacity: 0, translateX: -40, duration: 240, ease: ENTRAR, onComplete: () => { void fecharAltura(f).then(ok); } })), 'no-lugar'],
+  ['.liberar-avisos', f => Promise.all(Array.from(f.querySelectorAll<HTMLElement>('.liberar-aviso')).map(a => new Promise(ok => animar(a, { opacity: 0, translateX: -40, duration: 260, ease: ENTRAR, onComplete: () => ok(null) })))), 'fixo'],
   ['.ctx-menu', (f, original) => (original && voltarParaOrigem(f, origemDe(original))) || sairComo('menu', f), 'fixo'],
   ['.popover', (f, original) => (original && voltarParaOrigem(f, origemDe(original))) || sairComo('menu', f), 'no-lugar'],
   // a abertura do app: some crescendo de leve e saindo do foco (a tela de baixo aparece por trás)

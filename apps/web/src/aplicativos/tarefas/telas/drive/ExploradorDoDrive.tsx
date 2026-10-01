@@ -8,7 +8,8 @@
 // direito abre o menu (MenuDeContexto); arrastar arquivos, ou Enviar, manda para o Claudio Secretário. Tela cheia cobre
 // o nads (Esc sai). "T" vai para a busca, como no GitHub.
 import type { entregas as e } from '@nads/core';
-import { entrar, Icone, MenuSuspenso, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, useRetorno } from '@nads/ui';
+import { cleanInlineStyles } from 'animejs';
+import { animar, entrar, GAVETA, Icone, MenuSuspenso, semMovimento, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, useRetorno } from '@nads/ui';
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent, type ReactNode, type RefObject } from 'react';
 import { EnviarAoSecretario } from './EnviarAoSecretario';
 import { MeusEnvios } from './MeusEnvios';
@@ -231,6 +232,34 @@ export function ExploradorDoDrive() {
   const busca = useRef<HTMLInputElement>(null);
   const [menu, setMenu] = useState<MenuAberto | null>(null);
   const [soltando, setSoltando] = useState(false);
+  // o painel "Arquivos" abre e fecha deslizando: ao fechar, uma cópia dele sai para a esquerda e a lista da direita
+  // desliza até o lugar novo (em vez de pular); ao abrir, ele entra da esquerda e a lista abre espaço
+  const painel = useRef<HTMLElement>(null);
+  const direita = useRef<HTMLDivElement>(null);
+  const direitaAntes = useRef<number | null>(null);
+  const alternarPainel = () => {
+    direitaAntes.current = direita.current?.getBoundingClientRect().left ?? null;
+    const p = painel.current;
+    if (p && vm.mostrarArvore && !semMovimento()) {
+      const r = p.getBoundingClientRect();
+      const f = p.cloneNode(true) as HTMLElement;
+      f.setAttribute('data-fantasma', '');
+      f.setAttribute('aria-hidden', 'true');
+      Object.assign(f.style, { position: 'fixed', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', margin: '0', zIndex: '6', pointerEvents: 'none' });
+      document.body.appendChild(f);
+      animar(f, { opacity: 0, translateX: -56, duration: 380, ease: GAVETA, onComplete: () => f.remove() });
+    }
+    vm.alternarArvore();
+  };
+  useLayoutEffect(() => {
+    const d = direita.current;
+    const x0 = direitaAntes.current;
+    direitaAntes.current = null;
+    if (!d || x0 === null || semMovimento()) return;
+    const dx = x0 - d.getBoundingClientRect().left;
+    if (Math.abs(dx) > 1) d.animate([{ translate: dx + 'px 0' }, { translate: '0 0' }], { duration: 440, easing: 'cubic-bezier(0.32, 0.72, 0, 1)' });
+    if (vm.mostrarArvore && painel.current) animar(painel.current, { opacity: [0, 1], translateX: [-56, 0], duration: 440, ease: GAVETA, onComplete: a => { cleanInlineStyles(a); } });
+  }, [vm.mostrarArvore]);
   const baixarMarcados = () => { atual.current.linkDosMarcados().then(url => { baixar(url); atual.current.limparSelecao(); }, () => {}); };
   const baixarPasta = () => { atual.current.linkDaPasta().then(baixar, () => {}); };
   const copiar = (texto: string, oque: string) => {
@@ -415,9 +444,9 @@ export function ExploradorDoDrive() {
   ) : (
     <div ref={navegador} className={'drive-navegador' + (vm.mostrarArvore ? '' : ' sem-painel')} style={alturaNav && !vm.telaCheia ? { height: alturaNav } : undefined}>
       {vm.mostrarArvore && (
-        <nav className="subnav drive-painel" aria-label="Arquivos">
+        <nav ref={painel} className="subnav drive-painel" aria-label="Arquivos">
           <div className="tarefas-barra-topo">
-            <button type="button" className="icon-btn" title="Fechar o painel" aria-label="Fechar o painel" onClick={vm.alternarArvore}><Icone nome="painel" /></button>
+            <button type="button" className="icon-btn" title="Fechar o painel" aria-label="Fechar o painel" onClick={alternarPainel}><Icone nome="painel" /></button>
             <span className="drive-painel-titulo">Arquivos</span>
           </div>
           <div className="tarefas-barra-topo">
@@ -431,9 +460,9 @@ export function ExploradorDoDrive() {
           <Arvore vm={vm} aoMenu={menuDaArvore} />
         </nav>
       )}
-      <div className="drive-direita">
+      <div ref={direita} className="drive-direita">
         <div className="tarefas-barra-topo">
-          {!vm.mostrarArvore && <button type="button" className="icon-btn" title="Abrir o painel" aria-label="Abrir o painel" onClick={vm.alternarArvore}><Icone nome="painel" /></button>}
+          {!vm.mostrarArvore && <button type="button" className="icon-btn" title="Abrir o painel" aria-label="Abrir o painel" onClick={alternarPainel}><Icone nome="painel" /></button>}
           <nav className="gh-crumbs drive-trilha" aria-label="Caminho">
             {vm.trilha.map((p, i) => (
               <span key={p.c + '|' + p.p} style={{ display: 'contents' }}>
