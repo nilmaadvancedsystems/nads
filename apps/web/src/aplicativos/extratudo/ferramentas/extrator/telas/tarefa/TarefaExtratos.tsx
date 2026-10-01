@@ -127,7 +127,7 @@ function AdicionarBanco({ bancos, onAdicionar, fechar }: {
  * que abre a planilha — o dia, a situação, o lançamento (com o detalhe e a dica embaixo), banco, razão e diferença.
  */
 const LIMITE_CORRECOES = 30;
-/** A faixa grudada no bloco do banco que abre e fecha (▸ Título  N): Pendências (amarela) e Lançamentos. */
+/** A faixa grudada no bloco do banco que abre e fecha (▸ Título  N): Lançamentos e, embaixo, Pendências (o número em laranja). */
 function FaixaQueAbre({ titulo, qtd, aviso, children }: { titulo: string; qtd: number; aviso?: boolean; children: ReactNode }) {
   const [aberta, setAberta] = useState(false);
   return (
@@ -654,7 +654,6 @@ export function TarefaExtratos() {
                   </div>
                 )}
               </div>
-              {!ok && <PendenciasDoBanco itens={correcoes[b.id] || []} />}
               {emLote && gradeAberta && <MesesDoBanco meses={meses} competencia={vm.competencia} naTarefa={ponte.naTarefa}
                 travado={ocupadoGeral} aceitarExtrato={cxExtrato.aceitar} aceitarRazao={cxRazao.aceitar}
                 onMes={vm.setCompetencia} onArquivos={(lado, fs) => { void vm.importarArquivos(b.id, lado, fs); }}
@@ -668,6 +667,7 @@ export function TarefaExtratos() {
                 </FaixaQueAbre>
               ) : <Movimento m={vm.movimentoDe(b.id)}
                 pdf={doDrive.length ? doDrive[doDrive.length - 1] : null} onPdf={visualizarDoDrive} competencia={vm.competencia} />)}
+              {!ok && <PendenciasDoBanco itens={correcoes[b.id] || []} />}
             </div>
           );
         })}
