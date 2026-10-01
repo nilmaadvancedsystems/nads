@@ -99,10 +99,19 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
    * Clique numa etapa do checklist: dá para voltar a uma etapa anterior já concluída — o check dela sai
    * e ela vira a da vez (as outras ficam como estão). Etapa da vez ou mais à frente: não faz nada.
    */
-  function voltarPara(id: string) {
+  async function voltarPara(id: string) {
     if (!etapa || carregando || conferindo) return;
     const alvo = rotina.etapas.findIndex(e => e.id === id);
-    if (alvo < 0 || alvo >= rotina.etapas.findIndex(e => e.id === etapa.id)) return;
+    const daVez = rotina.etapas.findIndex(e => e.id === etapa.id);
+    if (alvo < 0 || alvo === daVez) return;
+    // uma etapa da frente já marcada (Vitor, 01/10/2026: "desmarque esses"): pergunta e desmarca só ela
+    if (alvo > daVez) {
+      if (!meses.some(m => concluidaEm(id, m))) return;
+      const nome = rotina.etapas[alvo].nome;
+      const ok = await modal({ titulo: 'Desmarcar ' + nome + '?', texto: 'A etapa volta a ficar pendente' + (varios ? ' em todos os meses do período' : '') + '.',
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Desmarcar', valor: true, variante: 'btn-primary' }] });
+      if (!ok) return;
+    }
     // no período: volta em todos os meses em que ela estava feita
     for (const c of meses.filter(m => concluidaEm(id, m))) {
       const v = t.voltarPara(exDe[c], id, op.nome, new Date());
@@ -212,7 +221,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     const i = secoes.indexOf(nome);
     if (i < 0 || i >= iDaVez) return;
     const primeira = rotina.etapas.find(e => (e.secao || '') === nome);
-    if (primeira) voltarPara(primeira.id);
+    if (primeira) void voltarPara(primeira.id);
   }
 
   return {
@@ -234,7 +243,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       : f.app === 'concilia-ai' ? '?meses=' + (juntos && varios ? meses : [competencia]).join(',') + (prestaServico == null ? '' : '&servicos=' + (prestaServico ? 'sim' : 'nao')) : '') } : null,
     /** os meses que a etapa ainda precisa (no período) */
     pendentes: pendentes.map(rotuloCurto),
-    aviso, conferindo, proximo, voltarPara,
+    aviso, conferindo, proximo, voltarPara: (id: string) => { void voltarPara(id); },
     resolver,
     interrompendo, abrirInterromper: () => setInterrompendo(true), fecharInterromper: () => setInterrompendo(false), interromper,
     sair: voltar,
