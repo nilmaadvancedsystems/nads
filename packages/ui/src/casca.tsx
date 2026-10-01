@@ -2,7 +2,8 @@
 // barra lateral das seções (com "Ocultar barra lateral") — ou, com lateral="caixa", a caixa de seções ao lado da página —,
 // gaveta ☰ com tema e a área da página (título + ações no canto direito). Marcação e classes iguais às do conferencia.html (~L973-1033).
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { entrar, revelarTitulo, sairComo, useIndicador } from './animacao';
+import { cleanInlineStyles } from 'animejs';
+import { animar, ENTRAR, entrar, revelarTitulo, sairComo, useIndicador } from './animacao';
 import { useAbasParaAEtapa, useAlturaNaEtapa } from './etapa';
 import { Icone, MarcaN, type NomeIcone } from './icones';
 import { SeletorTema } from './tema';
@@ -122,6 +123,13 @@ export function Casca(p: {
     secaoAntes.current = secaoAtiva;
     if (!el) return;
     const lado = antes >= 0 && secaoAtiva >= 0 && antes !== secaoAtiva ? Math.sign(secaoAtiva - antes) : 0;
+    // com uma ferramenta dentro (o iframe da etapa no executor), a página não desliza: arrastar um iframe inteiro pesa
+    // e a ferramenta já anima a própria página. Trocou de etapa: só acende; trocou só de aba da ferramenta: nada.
+    if (el.querySelector('iframe')) {
+      if (!lado) return;
+      const a = animar(el, { opacity: [0, 1], duration: 420, ease: ENTRAR, onComplete: x => { cleanInlineStyles(x); } });
+      return () => { a.revert(); };
+    }
     const a = entrar('pagina', el, lado ? { mais: { translateX: [lado * 32, 0], translateY: [0, 0] } } : {});
     return () => { a?.revert(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps

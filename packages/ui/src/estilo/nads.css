@@ -2263,3 +2263,6 @@ tr.linha-abre,.imp-linha,.imp-mes-celula,.gh-crumb,.drawer-x{
 .faisca{position:fixed;width:6px;height:6px;border-radius:50%;pointer-events:none;z-index:1000;background:var(--btn-primary);}
 .faisca.prata{background:linear-gradient(135deg,#F2F3F5,#9AA0A8);}
 .previa-anim-pronto{margin:0;padding:32px 16px;}
+/* o "fantasma" (a cópia que anima a saída, animador.ts) não repete as animações de CSS do original: sem isso, o vidro
+   da etapa voltava a acender (e a desfocar) na hora de sair */
+[data-fantasma],[data-fantasma] *{animation:none !important;}
