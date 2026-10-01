@@ -1,14 +1,15 @@
 // Drive › Pastas, com a cara do GitHub e só com as peças do nads (Vitor, 30/09/2026). Na pasta do ano, a página inicial de
-// um repositório: o nome em cima (⋯), a barra (o ano ▾ como o "main ▾", o contador como o "6 Branches", a busca com o T,
-// Enviar ▾ e Baixar ▾), o card com a faixa do mapa do robô e a lista dos clientes, e o Sobre ao lado. Abriu um cliente: o
-// navegador de arquivos — à esquerda, a barra lateral com as pastas dele (a aberta marcada) e, à direita, a trilha
-// (CLIENTE / PASTA /, copiar, Enviar ▾, Baixar ▾, ⋯) e o card com a lista (com o ".."). Um clique abre (a pasta entra; o
+// um repositório: o nome em cima (⋯, onde fica o Baixar), a barra (o ano ▾ como o "main ▾", o contador como o "6 Branches",
+// a busca com o T e Enviar ▾), o card com a lista dos clientes e o Sobre ao lado. Abriu um cliente: o navegador de
+// arquivos — à esquerda, o painel com as pastas e os arquivos dele (a aberta marcada, com a pasta aberta) e, à direita, a
+// trilha (CLIENTE / PASTA /, copiar, Enviar ▾ e o ⋯ com o Baixar) e o card com a lista (com o ".."); o painel e a lista
+// rolam cada um por si, até o fim da janela. Com itens marcados, uma faixa: quantos, Baixar e Limpar. Um clique abre (a pasta entra; o
 // arquivo abre numa aba nova, que nasce no clique e recebe o link quando o robô termina); Ctrl e Shift marcam; o botão
 // direito abre o menu (MenuDeContexto); arrastar arquivos, ou Enviar, manda para o Claudio Secretário. Tela cheia cobre
 // o nads (Esc sai). "T" vai para a busca, como no GitHub.
 import type { entregas as e } from '@nads/core';
 import { Icone, MenuSuspenso, useCarregando, useRetorno } from '@nads/ui';
-import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent, type ReactNode, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent, type ReactNode, type RefObject } from 'react';
 import { EnviarAoSecretario } from './EnviarAoSecretario';
 import { MenuDeContexto, type LinhaDoMenu, type MenuAberto, type OpcaoDoMenu } from './MenuDeContexto';
 import { useEnvioAoSecretario } from './useEnvioAoSecretario';
@@ -70,8 +71,16 @@ function IconeDaEntrada({ x }: { x: e.EntradaDoExplorador }) {
   return <Icone nome={nome} className={'drive-ico' + cor} />;
 }
 
-/** O card da lista: a faixa de cima (o mapa do robô, ou o que está marcado) e a tabela (o ".." quando dá para subir). */
-function Lista({ vm, aoMenu, acima, baixarMarcados }: { vm: VmDrive; aoMenu: AoMenu; acima: boolean; baixarMarcados: () => void }) {
+/** As colunas da lista, como as do GitHub (Name, Last commit message, Last commit date). */
+const COLUNAS_DA_LISTA: { id: e.ColunaDoExplorador; rotulo: string; num?: boolean }[] = [
+  { id: 'nome', rotulo: 'Nome' }, { id: 'tipo', rotulo: 'Detalhes' }, { id: 'data', rotulo: 'Modificado', num: true },
+];
+
+/**
+ * A lista: a faixa (só com itens marcados: quantos e o que fazer com eles) e o card da tabela (o ".." quando dá para subir). faixaFora: a faixa
+ * numa caixa própria, em cima (o navegador de arquivos); sem, dentro do card (a página inicial).
+ */
+function Lista({ vm, aoMenu, acima, baixarMarcados, faixaFora }: { vm: VmDrive; aoMenu: AoMenu; acima: boolean; baixarMarcados: () => void; faixaFora?: boolean }) {
   const m = vm.marcados.length;
   const linha = (x: e.EntradaDoExplorador) => ({
     className: 'linha-abre' + (vm.estaMarcado(x.id) ? ' linha-atual' : ''),
@@ -88,7 +97,16 @@ function Lista({ vm, aoMenu, acima, baixarMarcados }: { vm: VmDrive; aoMenu: AoM
     },
   });
   return (
+    <>
+    {faixaFora && m > 0 && <div className="card drive-card drive-faixa-so"><Faixa /></div>}
     <div className="card drive-card" onContextMenu={ev => aoMenu(ev, null)}>
+      {!faixaFora && m > 0 && <Faixa />}
+      <Tabela />
+    </div>
+    </>
+  );
+  function Faixa() {
+    return (
       <div className="card-head">
         {m > 0 ? (
           <>
@@ -97,21 +115,19 @@ function Lista({ vm, aoMenu, acima, baixarMarcados }: { vm: VmDrive; aoMenu: AoM
             <button type="button" className="btn btn-outline" onClick={baixarMarcados}><Icone nome="download" />Baixar</button>
             <button type="button" className="btn btn-ghost" onClick={vm.limparSelecao}>Limpar</button>
           </>
-        ) : (
-          <>
-            <h3 className="drive-faixa"><Icone nome="robo" />Mapa do robô</h3>
-            <span className="hint">{vm.exemplos ? 'dados de exemplo: as pastas são inventadas e nenhum arquivo abre de verdade' : 'o Drive do escritório, como o robô do Entregas leu'}</span>
-            <span className="tarefas-barra-espaco" />
-            {vm.atualizado && <span className="hint drive-faixa"><Icone nome="clock" />{vm.atualizado}</span>}
-          </>
-        )}
+        ) : null}
       </div>
+    );
+  }
+  function Tabela() {
+    return (
+      <>
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
-              {COLUNAS.map(c => (
-                <th key={c.id} className={'th-sort' + (c.id === 'tamanho' || c.id === 'data' ? ' num' : '')} onClick={() => vm.ordenarPor(c.id)}
+              {COLUNAS_DA_LISTA.map(c => (
+                <th key={c.id} className={'th-sort' + (c.num ? ' num' : '')} onClick={() => vm.ordenarPor(c.id)}
                   aria-sort={vm.coluna === c.id ? (vm.desc ? 'descending' : 'ascending') : undefined}>
                   {c.rotulo}{vm.coluna === c.id && <Icone nome="caretDown" className={'th-seta' + (vm.desc ? '' : ' cima')} />}
                 </th>
@@ -121,14 +137,13 @@ function Lista({ vm, aoMenu, acima, baixarMarcados }: { vm: VmDrive; aoMenu: AoM
           <tbody>
             {acima && (
               <tr className="linha-abre" tabIndex={0} onClick={vm.subir} onKeyDown={ev => { if (ev.key === 'Enter') vm.subir(); }} title="A pasta de cima">
-                <td colSpan={COLUNAS.length}><span className="drive-nome"><Icone nome="pasta" className="drive-ico pasta" />..</span></td>
+                <td colSpan={COLUNAS_DA_LISTA.length}><span className="drive-nome"><Icone nome="pasta" className="drive-ico pasta" />..</span></td>
               </tr>
             )}
             {vm.entradas.map(x => (
               <tr key={x.id} {...linha(x)}>
                 <td className="drive-col-nome"><span className="drive-nome" title={x.nome}><IconeDaEntrada x={x} /><span>{x.nome}{x.onde && <span className="fraco drive-onde">{x.onde}</span>}</span></span></td>
-                <td className="fraco">{x.tipo}</td>
-                <td className="fraco num">{x.pasta ? '' : vm.tamanho(x.bytes)}</td>
+                <td className="fraco">{x.tipo}{!x.pasta && x.bytes ? ' · ' + vm.tamanho(x.bytes) : ''}</td>
                 <td className="fraco num" title={vm.quando(x.data)}>{relativo(x.data)}</td>
               </tr>
             ))}
@@ -136,8 +151,9 @@ function Lista({ vm, aoMenu, acima, baixarMarcados }: { vm: VmDrive; aoMenu: AoM
         </table>
       </div>
       {!vm.carregando && !vm.entradas.length && <p className="empty">{vm.buscando ? 'Nada com essa busca.' : 'Esta pasta está vazia.'}</p>}
-    </div>
-  );
+      </>
+    );
+  }
 }
 
 /** A barra lateral do cliente: as pastas dele (a aberta marcada), nos itens da barra lateral do nads. */
@@ -147,13 +163,22 @@ function Arvore({ vm, aoMenu }: { vm: VmDrive; aoMenu: (ev: MouseEvent, no: e.No
     <div className="subnav-itens" role="tree" aria-label="Pastas">
       {vm.arvore.filter(no => no.cliente === cliente && no.nivel >= 1).map(no => (
         <div key={no.id} className="drive-no" style={{ paddingLeft: (no.nivel - 1) * 16 }} role="treeitem" aria-selected={vm.naPasta(no.id)} aria-expanded={no.temFilhos ? no.aberto : undefined}>
+          {no.arquivo ? (
+            <>
+              <span className="imp-seta" />
+              <button type="button" className="subnav-item" title={no.nome} onClick={() => abrirArquivo(vm, { id: no.id, nome: no.nome, pasta: false, tipo: '', data: null, bytes: 0, onde: '' })}>
+                <Icone nome="arquivo" className="drive-ico" /><span>{no.nome}</span>
+              </button>
+            </>
+          ) : <>
           {no.temFilhos
             ? <button type="button" className={'imp-seta' + (no.aberto ? ' aberta' : '')} aria-label={(no.aberto ? 'Fechar ' : 'Abrir ') + no.nome} onClick={() => vm.alternarNo(no.id)}><Icone nome="caretDown" /></button>
             : <span className="imp-seta" />}
           <button type="button" className={'subnav-item' + (vm.naPasta(no.id) ? ' active' : '')} title={no.nome} onClick={() => vm.abrirNo(no)} onContextMenu={ev => aoMenu(ev, no)}>
-            <Icone nome="pasta" className="drive-ico pasta" /><span>{no.nome}</span>
+            <Icone nome={no.aberto ? 'pastaAberta' : 'pasta'} className="drive-ico pasta" /><span>{no.nome}</span>
             {no.carregando && <span className="drive-girando" aria-label="carregando" />}
           </button>
+          </>}
         </div>
       ))}
     </div>
@@ -207,14 +232,12 @@ export function ExploradorDoDrive() {
   const linhasDoFundo = (): LinhaDoMenu[] => {
     const v = atual.current;
     return [
-      { titulo: 'Exibir' },
-      { rotulo: 'Lista', icone: 'list', marcado: v.exibicao === 'detalhes', onClick: () => atual.current.mudarExibicao('detalhes') },
-      { rotulo: 'Ícones', icone: 'grade', marcado: v.exibicao === 'icones', onClick: () => atual.current.mudarExibicao('icones') },
       { titulo: 'Classificar por' },
       ...COLUNAS.map<OpcaoDoMenu>(c => ({ rotulo: c.rotulo, marcado: v.coluna === c.id, onClick: () => atual.current.ordenarPor(c.id) })),
       'separador',
       { rotulo: 'Selecionar tudo', icone: 'checkCircle', atalho: 'Ctrl+A', desabilitado: !v.entradas.length, onClick: () => atual.current.selecionarTodos() },
       { rotulo: 'Baixar esta pasta (.zip)', icone: 'download', desabilitado: !v.podeBaixarPasta, onClick: baixarPasta },
+      { rotulo: v.marcados.length ? 'Baixar os ' + v.marcados.length + ' marcados' : 'Baixar os marcados', icone: 'download', desabilitado: !v.marcados.length, onClick: baixarMarcados },
       { rotulo: 'Enviar para o Claudio Secretário…', icone: 'upload', onClick: () => envio.abrir() },
       'separador',
       { rotulo: v.telaCheia ? 'Sair da tela cheia' : 'Tela cheia', icone: v.telaCheia ? 'minimizar' : 'maximizar', onClick: () => atual.current.alternarTelaCheia() },
@@ -300,6 +323,30 @@ export function ExploradorDoDrive() {
     window.addEventListener('keydown', tecla);
     return () => window.removeEventListener('keydown', tecla);
   }, []);
+  // no navegador de arquivos (o cliente), como no GitHub: a página não rola; o painel e a lista rolam cada um por si,
+  // do cabeçalho até o fim da janela. No celular, a página rola como sempre.
+  const naRaiz = vm.trilha.length === 0;
+  const navegador = useRef<HTMLDivElement>(null);
+  const [alturaNav, setAlturaNav] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const medir = () => {
+      const el = navegador.current;
+      if (!el || vm.telaCheia || window.innerWidth <= 768) { setAlturaNav(null); return; }
+      setAlturaNav(Math.max(320, Math.floor(window.innerHeight - (el.getBoundingClientRect().top + window.scrollY))));
+    };
+    medir();
+    window.addEventListener('resize', medir);
+    return () => window.removeEventListener('resize', medir);
+  }, [vm.telaCheia, naRaiz, vm.mostrarArvore]);
+  const travar = !naRaiz && alturaNav !== null;
+  useEffect(() => {
+    if (!travar) return;
+    const html = document.documentElement;
+    const antes = html.style.overflow;
+    window.scrollTo(0, 0);
+    html.style.overflow = 'hidden';
+    return () => { html.style.overflow = antes; };
+  }, [travar]);
   // na tela cheia, a página de trás não rola
   useEffect(() => {
     if (!vm.telaCheia) return;
@@ -310,21 +357,13 @@ export function ExploradorDoDrive() {
   }, [vm.telaCheia]);
 
   // a página inicial (só a pasta do ano, com os clientes) ou o navegador de arquivos (o cliente e as pastas dele)
-  const naRaiz = vm.trilha.length === 0;
   const mais = (
     <button type="button" className="icon-btn" title="Mais ações" aria-label="Mais ações"
       onClick={ev => setMenu({ ...pontoDoMenu(ev), topo: [], linhas: linhasDoFundo() })}><Icone nome="mais" /></button>
   );
-  const enviarEBaixar = (
-    <>
-      <MenuSuspenso icone="upload" rotulo="Enviar" direita dica="Mandar arquivos para a pasta Claudio Secretario (a próxima rodada do arquivamento põe na pasta do cliente)"
-        itens={[{ rotulo: 'Enviar para o Claudio Secretário…', icone: 'upload', onClick: () => envio.abrir() }]} />
-      <MenuSuspenso icone="download" rotulo="Baixar" className="btn btn-primary" direita
-        itens={[
-          { rotulo: 'Esta pasta (.zip)', icone: 'pasta', desabilitado: !vm.podeBaixarPasta, onClick: baixarPasta },
-          { rotulo: vm.marcados.length ? 'Os ' + vm.marcados.length + ' marcados' : 'Os marcados', icone: 'download', desabilitado: !vm.marcados.length, onClick: baixarMarcados },
-        ]} />
-    </>
+  const enviar = (
+    <MenuSuspenso icone="upload" rotulo="Enviar" direita dica="Mandar arquivos para a pasta Claudio Secretario (a próxima rodada do arquivamento põe na pasta do cliente)"
+      itens={[{ rotulo: 'Enviar para o Claudio Secretário…', icone: 'upload', onClick: () => envio.abrir() }]} />
   );
   const corpo: ReactNode = naRaiz ? (
     <div className="drive-inicio">
@@ -342,7 +381,7 @@ export function ExploradorDoDrive() {
             <span className="tarefas-contador"><Icone nome="pasta" className="drive-ico pasta" /><b>{vm.entradas.length}</b> {vm.entradas.length === 1 ? 'cliente' : 'clientes'}</span>
             <span className="tarefas-barra-espaco" />
             <Busca vm={vm} campo={busca} />
-            {enviarEBaixar}
+            {enviar}
           </div>
           <Lista vm={vm} aoMenu={abrirMenu} acima={false} baixarMarcados={baixarMarcados} />
         </div>
@@ -358,7 +397,7 @@ export function ExploradorDoDrive() {
       </div>
     </div>
   ) : (
-    <div className={'drive-navegador' + (vm.mostrarArvore ? '' : ' sem-painel')}>
+    <div ref={navegador} className={'drive-navegador' + (vm.mostrarArvore ? '' : ' sem-painel')} style={alturaNav && !vm.telaCheia ? { height: alturaNav } : undefined}>
       {vm.mostrarArvore && (
         <nav className="subnav drive-painel" aria-label="Arquivos">
           <div className="tarefas-barra-topo">
@@ -366,9 +405,11 @@ export function ExploradorDoDrive() {
             <span className="drive-painel-titulo">Arquivos</span>
           </div>
           <div className="tarefas-barra-topo">
-            <Ano vm={vm} />
-            <span className="tarefas-barra-espaco" />
-            <button type="button" className="icon-btn" title="Enviar para o Claudio Secretário" aria-label="Enviar para o Claudio Secretário" onClick={() => envio.abrir()}><Icone nome="plus" /></button>
+            <span className="drive-ano-largo"><Ano vm={vm} /></span>
+            <span className="drive-grupo">
+              <button type="button" className="icon-btn" title="Enviar para o Claudio Secretário" aria-label="Enviar para o Claudio Secretário" onClick={() => envio.abrir()}><Icone nome="plus" /></button>
+              <button type="button" className="icon-btn" title="Ir para arquivo (T)" aria-label="Ir para arquivo" onClick={() => busca.current?.focus()}><Icone nome="search" /></button>
+            </span>
           </div>
           <Busca vm={vm} campo={busca} larga />
           <Arvore vm={vm} aoMenu={menuDaArvore} />
@@ -388,10 +429,10 @@ export function ExploradorDoDrive() {
           </nav>
           <button type="button" className="icon-btn" title="Copiar o caminho" aria-label="Copiar o caminho" onClick={() => copiar(caminhoDaPasta, 'Caminho')}><Icone nome="copiar" /></button>
           <span className="tarefas-barra-espaco" />
-          {enviarEBaixar}
+          {enviar}
           {mais}
         </div>
-        <Lista vm={vm} aoMenu={abrirMenu} acima={vm.podeSubir} baixarMarcados={baixarMarcados} />
+        <Lista vm={vm} aoMenu={abrirMenu} acima={vm.podeSubir} baixarMarcados={baixarMarcados} faixaFora />
       </div>
     </div>
   );

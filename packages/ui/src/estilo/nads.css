@@ -1999,10 +1999,33 @@ main.main:has(> .content > .explorador){padding:0;}
 .drive-card .empty{margin:0;padding:24px 16px;}
 /* a pasta cinza e cheia, como a do GitHub */
 .drive .drive-ico.pasta{color:var(--ink-muted);fill:currentColor;}
-.drive-navegador{display:grid;grid-template-columns:296px minmax(0,1fr);align-items:start;}
+/* a faixa numa caixa própria (o navegador de arquivos), como a do último commit do GitHub */
+.drive-faixa-so{margin-bottom:16px;}
+.drive-faixa-so > .card-head{border-bottom:none;}
+.drive-faixa-arquivo{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:50%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:13px;}
+.drive-faixa-arquivo .hint{margin-left:4px;}
+/* o ano na largura toda do painel, como o main ▾ */
+.drive-ano-largo{flex:1;min-width:0;}
+.drive-ano-largo .popover-wrap,.drive-ano-largo .btn{width:100%;}
+.drive-ano-largo .btn{justify-content:flex-start;}
+.drive-ano-largo .btn .menu-seta{margin-left:auto;}
+/* a trilha: o caminho em link e a pasta aberta em negrito */
+.drive-trilha .gh-crumb{color:var(--accent);font-weight:600;}
+.drive-trilha .gh-crumb-fim{color:var(--ink);font-weight:600;}
+.drive-navegador{display:grid;grid-template-columns:296px minmax(0,1fr);align-items:stretch;}
+/* com a altura medida (a janela), cada coluna rola por si: o painel e a lista */
+.drive-navegador[style] > *{height:100%;overflow:auto;scrollbar-width:thin;}
+.drive.tela-cheia .drive-navegador{height:calc(100vh - 32px);}
+.drive.tela-cheia .drive-navegador > *{height:100%;overflow:auto;}
 .drive-navegador.sem-painel{grid-template-columns:minmax(0,1fr);}
-.drive-painel{position:sticky;top:0;max-height:calc(100vh - var(--hdr-h,64px));overflow:auto;gap:8px;scrollbar-width:thin;}
-.drive-painel .tarefas-barra-topo{margin-bottom:0;}
+.drive-painel{min-height:0;padding:16px;gap:8px;}
+.drive-painel .tarefas-barra-topo{margin-bottom:0;flex-wrap:nowrap;}
+.drive-painel .subnav-itens{margin-top:8px;}
+/* o + e a lupa juntos, como o grupo do GitHub */
+.drive-grupo{display:inline-flex;flex:none;}
+.drive-grupo .icon-btn{border-radius:0;}
+.drive-grupo .icon-btn:first-child{border-radius:6px 0 0 6px;}
+.drive-grupo .icon-btn:last-child{border-radius:0 6px 6px 0;margin-left:-1px;}
 .drive-painel-titulo{font-size:16px;font-weight:600;}
 .drive-no{display:flex;align-items:center;gap:2px;}
 .drive-no .subnav-item{flex:1;min-width:0;}

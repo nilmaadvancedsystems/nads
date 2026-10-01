@@ -50,6 +50,8 @@ const ICONS = {
   hash: '<path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="M16 3l-2 18"/>',
   list: '<path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3.5 6h.01"/><path d="M3.5 12h.01"/><path d="M3.5 18h.01"/>',
   menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  /** a pasta aberta (a da árvore, quando ela está expandida) */
+  pastaAberta: '<path d="M3 6.5a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2V10H8.2a2 2 0 0 0-1.9 1.4L3 18.5Z"/><path d="M6.3 11.4A2 2 0 0 1 8.2 10H21a1 1 0 0 1 .95 1.3l-2.3 7a2 2 0 0 1-1.9 1.2H3Z"/>',
   /** os três pontinhos (mais ações), como o do GitHub */
   mais: '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',
   maximizar: '<path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/>',
