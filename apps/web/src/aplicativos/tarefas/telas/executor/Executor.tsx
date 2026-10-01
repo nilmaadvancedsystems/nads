@@ -169,7 +169,7 @@ export function Executor() {
                     ))}
                   </ul>
                 ) : (
-                  <p className="hint">Pelo balancete importado, a empresa não tem folha (nenhuma conta de salários, pró-labore, encargos ou rescisão com saldo).</p>
+                  <p className="hint">Pelo balancete importado, a empresa não tem folha (nenhuma conta da folha no Passivo: salários, pró-labore, férias, rescisão, FGTS, INSS).</p>
                 )}
               </div>
             ) : (
