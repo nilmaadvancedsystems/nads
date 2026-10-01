@@ -118,7 +118,7 @@ export function importar(e: EmpresaExtrator, lado: Lado, lidos: ArquivoLido[], m
       lanc = nv;
     }
     if (!lanc.length) continue;
-    const a: ArquivoImportado = { id: ids(), lado, nome: l.nome, importadoEm: agora.toISOString(), modo, lancamentos: lanc };
+    const a: ArquivoImportado = { id: ids(), lado, nome: l.nome, importadoEm: agora.toISOString(), modo, lancamentos: lanc, ...(l.saldoAnterior != null ? { saldoAnterior: l.saldoAnterior } : {}) };
     arquivos.push(a);
     gravados += lanc.length;
     novosArquivos++;

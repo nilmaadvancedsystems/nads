@@ -25,6 +25,14 @@ describe('movimento do extrato (a setinha da linha do banco)', () => {
     expect([m.entradas, m.saidas]).toEqual([3000, -1000]);
     expect(movimentoDoExtrato(e, 'itau', 'sicoob', '2026-08').linhas.map(l => l.saldo)).toEqual([777]);
   });
+  it('o saldo anterior do primeiro extrato abre a conta (sem mês antes no sistema)', () => {
+    const jan = { ...arq('jan', [['2026-01-02', 4500]]), saldoAnterior: 1000000 };
+    const e = emp([jan, arq('fev', [['2026-02-03', -500]])]);
+    const m1 = movimentoDoExtrato(e, 'sicoob', 'sicoob', '2026-01');
+    expect([m1.abertura, m1.saldoAnterior, m1.linhas[0].saldo]).toEqual([1000000, 1000000, 1004500]);
+    expect(movimentoDoExtrato(e, 'sicoob', 'sicoob', '2026-02').saldoAnterior).toBe(1004500);
+    expect(movimentoDoExtrato(emp([arq('x', [['2026-01-02', 10]])]), 'sicoob', 'sicoob', '2026-01').abertura).toBeNull();
+  });
   it('"Todos": todos os extratos importados da conta, do primeiro ao último mês', () => {
     const e = emp([arq('jul', [['2026-07-10', 10000]]), arq('ago', [['2026-08-02', -3000]]), arq('itau', [['2026-08-03', 777]], 'itau')]);
     const m = movimentoDoExtrato(e, 'sicoob', 'sicoob', TODOS_OS_MESES.de, TODOS_OS_MESES.ate);
