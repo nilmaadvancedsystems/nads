@@ -1,12 +1,14 @@
 // Insights de "Minhas empresas": os números da competência por situação. Cada número abre a lista
 // de empresas filtrada por aquela situação.
-import { Esqueleto, useCarregando } from '@nads/ui';
+import { Esqueleto, useCarregando, useSemAnimacao } from '@nads/ui';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { useInsights } from './useInsights';
 
 const COR: Record<string, string> = { parada: 'cor-entrada', concluida: 'cor-saida' };
 
 export function Insights() {
+  // tela cheia de caixas (Vitor, 01/10/2026: "tudo que tiver muita box pode reduzir ou remover as animações"): sem animação
+  useSemAnimacao();
   const vm = useInsights();
   useCarregando(vm.carregando);
   if (!vm.temRotina) return <EmDesenvolvimento nome={'A rotina do ' + (vm.departamento === 'fiscal' ? 'Fiscal' : 'Departamento Pessoal')} />;

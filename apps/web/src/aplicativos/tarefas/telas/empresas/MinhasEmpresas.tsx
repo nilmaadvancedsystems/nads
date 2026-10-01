@@ -1,7 +1,7 @@
 // Minhas empresas: a barra de cima, no jeito da do GitHub (competência no lugar do "main ▾", quantas
 // empresas, Insights; à direita a busca curta com atalho "/", Situação ▾ e "Iniciar ▾", que abre
 // o painel para escolher a empresa, em partes/PainelIniciar) e a lista (clicar no título da coluna ordena; clicar na linha abre a página da empresa). Os números por situação ficam em Insights.
-import { Icone, MenuSuspenso, NumeroQueConta, useCarregando, useEntradaAnimada, useLinhasQueSeMovem } from '@nads/ui';
+import { Icone, MenuSuspenso, NumeroQueConta, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, useSemAnimacao } from '@nads/ui';
 import { useEffect, useRef } from 'react';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { PainelIniciar } from './partes/PainelIniciar';
@@ -20,6 +20,8 @@ function Titulo({ vm, coluna, rotulo }: { vm: ReturnType<typeof useMinhasEmpresa
 }
 
 export function MinhasEmpresas() {
+  // tela cheia de caixas (Vitor, 01/10/2026: "tudo que tiver muita box pode reduzir ou remover as animações"): sem animação
+  useSemAnimacao();
   const vm = useMinhasEmpresas();
   const campoBusca = useRef<HTMLInputElement>(null);
   useCarregando(vm.carregando);

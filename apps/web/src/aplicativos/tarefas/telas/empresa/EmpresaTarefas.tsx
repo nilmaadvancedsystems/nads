@@ -2,13 +2,15 @@
 // competência e o botão para abrir o executor; os números da competência; as etapas com quem fez,
 // quando e por que parou; o histórico dos últimos meses (clicar abre aquele mês); e os arquivos que o
 // Extrator tem da empresa.
-import { Esqueleto, Icone, MenuSuspenso, useCarregando } from '@nads/ui';
+import { Esqueleto, Icone, MenuSuspenso, useCarregando, useSemAnimacao } from '@nads/ui';
 import { Navigate } from 'react-router';
 import { BASE } from '../../casca/navegacao';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { useEmpresa } from './useEmpresa';
 
 export function EmpresaTarefas({ rota }: { rota: string }) {
+  // tela cheia de caixas (Vitor, 01/10/2026: "tudo que tiver muita box pode reduzir ou remover as animações"): sem animação
+  useSemAnimacao();
   const vm = useEmpresa(rota);
   useCarregando(vm.pronta && (vm.carregando || vm.carregandoExtratos || vm.historico.some(h => h.carregando)));
   if (!vm.empresa) return <Navigate to={BASE} replace />;
