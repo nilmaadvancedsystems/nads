@@ -2,7 +2,7 @@
 // agora" e o andamento da leitura; as abas (de clientes, sem cliente, spam) com a busca; a lista; e o e-mail aberto
 // numa janela por cima, com o texto inteiro, os anexos, as ações e responder.
 import type { entregas as e } from '@nads/core';
-import { Icone, useCarregando, Segmentado } from '@nads/ui';
+import { Icone, useCarregando, useEntradaAnimada, Segmentado } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useCaixaDoRobo, usePainelDoEmail, type AbaDaCaixa, type VmCaixa } from './useCaixaDoRobo';
 
@@ -151,6 +151,8 @@ function PainelDoEmail({ vm, x }: { vm: VmCaixa; x: e.EmailDaCaixa }) {
 export function CaixaDoRobo() {
   const vm = useCaixaDoRobo();
   useCarregando(vm.carregando);
+  // trocou de caixa ou de aba (ou chegou a lista): os e-mails chegam em cascata, de leve
+  const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [vm.caixa, vm.aba, vm.carregando], { y: 4, duracao: 200, intervalo: 22, maximo: 12 });
   const a = vm.robo.andamento;
   return (
     <section>
@@ -200,7 +202,7 @@ export function CaixaDoRobo() {
       </div>
 
       {!vm.carregando && !vm.linhas.length ? <p className="empty">Nenhum e-mail aqui.</p> : (
-        <div className="table-wrap">
+        <div ref={tabela} className="table-wrap">
           <table className="tabela-empresas gmail-tabela">
             <thead><tr><th>Quando</th><th>De</th><th>Assunto</th><th>Anexos</th><th /></tr></thead>
             <tbody>

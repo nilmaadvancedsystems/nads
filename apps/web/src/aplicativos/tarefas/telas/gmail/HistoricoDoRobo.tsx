@@ -1,13 +1,14 @@
 // Gmail › Histórico: as últimas leituras do robô do Gmail.
-import { Icone, useCarregando } from '@nads/ui';
+import { Icone, useCarregando, useEntradaAnimada } from '@nads/ui';
 import { useHistoricoDoRobo } from './useHistoricoDoRobo';
 
 export function HistoricoDoRobo() {
   const vm = useHistoricoDoRobo();
   useCarregando(vm.carregando);
+  const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [vm.carregando], { y: 4, duracao: 200, intervalo: 22, maximo: 12 });
   if (vm.erro) return <div className="alert"><Icone nome="alert" /><div><p className="alert-text">Não consegui ler o robô ({vm.erro}).</p></div></div>;
   return !vm.carregando && !vm.linhas.length ? <p className="empty">O robô ainda não leu nada.</p> : (
-    <div className="table-wrap">
+    <div ref={tabela} className="table-wrap">
       <table className="tabela-empresas">
         <thead><tr><th>Quando</th><th>Dias lidos</th><th>E-mails</th><th>Marcados</th><th>Anexos</th><th>Sem cliente</th><th>Conversas</th><th>Erros</th><th>Duração</th></tr></thead>
         <tbody>

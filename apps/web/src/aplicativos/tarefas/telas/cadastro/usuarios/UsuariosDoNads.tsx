@@ -1,12 +1,13 @@
 // Cadastro › Usuários: a equipe do Entregas. Cada pessoa: cargo (departamento e nível), papéis, ativo e os
 // computadores liberados (abrindo a linha). Só o admin muda; os outros veem.
 import type { usuarios } from '@nads/core';
-import { Icone, Interruptor, useCarregando } from '@nads/ui';
+import { Icone, Interruptor, useCarregando, useEntradaAnimada } from '@nads/ui';
 import { useUsuariosDoNads } from './useUsuariosDoNads';
 
 export function UsuariosDoNads() {
   const vm = useUsuariosDoNads();
   useCarregando(vm.carregando);
+  const tabela = useEntradaAnimada<HTMLDivElement>(':scope > table > tbody > tr', [vm.carregando], { y: 4, duracao: 220, intervalo: 22, maximo: 12 });
   return (
     <section>
       <div className="tarefas-barra-topo">
@@ -19,7 +20,7 @@ export function UsuariosDoNads() {
         </label>
       </div>
       {vm.exemplos && <p className="hint drive-aviso">Dados de exemplo: a equipe é a de exemplo e nada vai para o banco.</p>}
-      <div className="table-wrap">
+      <div ref={tabela} className="table-wrap">
         <table className="tabela-empresas usuarios-tabela">
           <thead><tr><th>Pessoa</th><th>Departamento</th><th>Nível</th><th>Papéis</th><th>Ativo</th><th>Computadores</th></tr></thead>
           <tbody>

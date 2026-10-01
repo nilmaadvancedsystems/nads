@@ -1,12 +1,14 @@
 // Cadastro (/tarefas/cadastro/empresas): a lista de todas as empresas, com os bancos (do
 // cadastro ou, sem cadastro, os que o robô já sabe) e o plano de contas. A busca e a situação filtram;
 // clicar na linha abre a janela da empresa, por cima da lista.
-import { Icone, Interruptor, LogoBanco, MenuSuspenso, useCarregando } from '@nads/ui';
+import { Icone, Interruptor, LogoBanco, MenuSuspenso, useCarregando, useEntradaAnimada } from '@nads/ui';
 import { SITUACOES, useListaDoCadastro } from './useListaDoCadastro';
 
 export function EscolherEmpresaCadastro() {
   const vm = useListaDoCadastro();
   useCarregando(vm.carregando);
+  // as linhas chegam em cascata quando o banco responde e quando muda o filtro (a busca é teclado: não anima)
+  const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [vm.carregando, vm.situacao], { y: 4, duracao: 220, intervalo: 22, maximo: 12 });
   return (
     <section>
       <div className="tarefas-barra-topo">
@@ -31,7 +33,7 @@ export function EscolherEmpresaCadastro() {
       </div>
 
       {!vm.carregando && !vm.linhas.length ? <p className="empty">Nenhuma empresa com isso.</p> : (
-        <div className="table-wrap">
+        <div ref={tabela} className="table-wrap">
           <table className="tabela-empresas cad-lista">
             <thead><tr><th>Código</th><th>Empresa</th><th>Bancos</th><th>Plano de contas</th><th>Atualizado</th></tr></thead>
             <tbody>

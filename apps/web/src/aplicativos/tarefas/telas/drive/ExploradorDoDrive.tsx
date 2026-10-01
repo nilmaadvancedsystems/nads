@@ -8,7 +8,7 @@
 // direito abre o menu (MenuDeContexto); arrastar arquivos, ou Enviar, manda para o Claudio Secretário. Tela cheia cobre
 // o nads (Esc sai). "T" vai para a busca, como no GitHub.
 import type { entregas as e } from '@nads/core';
-import { Icone, MenuSuspenso, useCarregando, useRetorno } from '@nads/ui';
+import { Icone, MenuSuspenso, useCarregando, useEntradaAnimada, useRetorno } from '@nads/ui';
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent, type ReactNode, type RefObject } from 'react';
 import { EnviarAoSecretario } from './EnviarAoSecretario';
 import { MeusEnvios } from './MeusEnvios';
@@ -78,6 +78,9 @@ const COLUNAS_DA_LISTA: { id: e.ColunaDoExplorador; rotulo: string; num?: boolea
  * numa caixa própria, em cima (o navegador de arquivos); sem, dentro do card (a página inicial).
  */
 function Lista({ vm, aoMenu, acima, baixarMarcados, faixaFora }: { vm: VmDrive; aoMenu: AoMenu; acima: boolean; baixarMarcados: () => void; faixaFora?: boolean }) {
+  // abriu outra pasta (ou acabou de carregar): as linhas chegam em cascata, bem de leve (trocar de pasta é toda hora)
+  const pastaAberta = vm.trilha.map(t => t.p || t.c).join('/'); // digitar na busca não anima (teclado)
+  const lista = useEntradaAnimada<HTMLDivElement>('tbody > tr', [pastaAberta, vm.carregando], { y: 4, duracao: 180, intervalo: 18, maximo: 12 });
   const m = vm.marcados.length;
   const linha = (x: e.EntradaDoExplorador) => ({
     className: 'linha-abre' + (vm.estaMarcado(x.id) ? ' linha-atual' : ''),
@@ -96,7 +99,7 @@ function Lista({ vm, aoMenu, acima, baixarMarcados, faixaFora }: { vm: VmDrive; 
   return (
     <>
     {faixaFora && m > 0 && <div className="card drive-card drive-faixa-so"><Faixa /></div>}
-    <div className="card drive-card" onContextMenu={ev => aoMenu(ev, null)}>
+    <div ref={lista} className="card drive-card" onContextMenu={ev => aoMenu(ev, null)}>
       {!faixaFora && m > 0 && <Faixa />}
       <Tabela />
     </div>

@@ -2,6 +2,7 @@
 // Origem: conferencia.html toast/modal (~L1425-1448). O ViewModel pede com useRetorno();
 // quem desenha é daqui.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { animar, ENTRAR } from './animacao';
 import { Icone, type NomeIcone } from './icones';
 
 export interface BotaoModal<T> { rotulo: string; valor: T; variante?: 'btn-primary' | 'btn-outline' | 'btn-danger' }
@@ -37,7 +38,8 @@ export function useRetorno(): Retorno {
   return r;
 }
 
-interface ModalAberto { o: OpcoesModal<unknown>; resolver: (v: unknown) => void }
+interface ModalAberto { id: number; o: OpcoesModal<unknown>; resolver: (v: unknown) => void }
+let proximaJanela = 0;
 
 export function RetornoProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<{ id: number; texto: string }[]>([]);
@@ -47,11 +49,16 @@ export function RetornoProvider({ children }: { children: ReactNode }) {
   const toast = useCallback((texto: string) => {
     const id = ++seq.current;
     setToasts(t => t.concat({ id, texto }));
+    // a saída (animejs, 01/10/2026): o aviso sai por onde entrou (desce e apaga) antes de sair da lista
+    setTimeout(() => {
+      const el = document.querySelector<HTMLElement>('[data-toast="' + id + '"]');
+      if (el) animar(el, { opacity: 0, translateY: '100%', duration: 220, ease: ENTRAR });
+    }, 3380);
     setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3600);
   }, []);
 
   const modal = useCallback(<T,>(o: OpcoesModal<T>) => new Promise<T>(res => {
-    setAberto({ o: o as OpcoesModal<unknown>, resolver: v => res(v as T) });
+    setAberto({ id: ++proximaJanela, o: o as OpcoesModal<unknown>, resolver: v => res(v as T) });
   }), []);
 
   const valor = useMemo<Retorno>(() => ({ toast, modal }), [toast, modal]);
@@ -59,9 +66,9 @@ export function RetornoProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={valor}>
       {children}
-      {aberto && <Modal aberto={aberto} fechar={v => { setAberto(null); aberto.resolver(v); }} />}
+      {aberto && <Modal key={aberto.id} aberto={aberto} fechar={v => { setAberto(a => (a === aberto ? null : a)); aberto.resolver(v); }} />}
       <div className="toast-region" aria-live="polite">
-        {toasts.map(t => <div key={t.id} className="toast">{t.texto}</div>)}
+        {toasts.map(t => <div key={t.id} className="toast" data-toast={t.id}>{t.texto}</div>)}
       </div>
     </Ctx.Provider>
   );
@@ -70,14 +77,26 @@ export function RetornoProvider({ children }: { children: ReactNode }) {
 function Modal({ aberto, fechar }: { aberto: ModalAberto; fechar: (v: unknown) => void }) {
   const { o } = aberto;
   const primeiro = useRef<HTMLButtonElement>(null);
+  const raiz = useRef<HTMLDivElement>(null);
+  const saindo = useRef(false);
+  // a saída (animejs, 01/10/2026): o fundo apaga e a janela volta a 0,96 (o caminho da entrada, mais rápido); só então ela fecha
+  const fecharAnimado = useCallback((v: unknown) => {
+    if (saindo.current) return;
+    saindo.current = true;
+    const el = raiz.current;
+    if (!el) { fechar(v); return; }
+    const janela = el.querySelector<HTMLElement>('.modal');
+    if (janela) animar(janela, { opacity: 0, scale: 0.96, duration: 150, ease: ENTRAR });
+    animar(el, { opacity: 0, duration: 150, ease: ENTRAR, onComplete: () => fechar(v) });
+  }, [fechar]);
   useEffect(() => { primeiro.current?.focus(); }, []);
   useEffect(() => {
     if (!o.fecharEm) return;
-    const t = setTimeout(() => fechar(o.fecharEm?.valor), o.fecharEm.ms);
+    const t = setTimeout(() => fecharAnimado(o.fecharEm?.valor), o.fecharEm.ms);
     return () => clearTimeout(t);
-  }, [o, fechar]);
+  }, [o, fecharAnimado]);
   return (
-    <div className={'modal-overlay' + (o.obrigatoria ? ' modal-blur' : '')}>
+    <div ref={raiz} className={'modal-overlay' + (o.obrigatoria ? ' modal-blur' : '')}>
       <div className={'modal' + (o.tom === 'ok' ? ' modal-ok' : '')} role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div className="modal-icon"><Icone nome={o.icone || 'landmark'} /></div>
         <h3 id="modalTitle">{o.titulo}</h3>
@@ -85,7 +104,7 @@ function Modal({ aberto, fechar }: { aberto: ModalAberto; fechar: (v: unknown) =
         {o.corpo}
         <div className="modal-actions">
           {o.botoes.map((b, i) => (
-            <button key={b.rotulo} ref={i === 0 ? primeiro : undefined} type="button" className={'btn ' + (b.variante || 'btn-outline')} onClick={() => fechar(b.valor)}>{b.rotulo}</button>
+            <button key={b.rotulo} ref={i === 0 ? primeiro : undefined} type="button" className={'btn ' + (b.variante || 'btn-outline')} onClick={() => fecharAnimado(b.valor)}>{b.rotulo}</button>
           ))}
         </div>
         {o.fecharEm && <div className="modal-ok-barra" />}

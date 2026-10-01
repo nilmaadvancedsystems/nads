@@ -5,7 +5,7 @@
 // ponta): esta só conta a ela quando começa e termina.
 import { animate, utils } from 'animejs';
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { semMovimento } from './animacao';
+import { ENTRAR, semMovimento } from './animacao';
 import { origemDoPai } from './origem';
 
 let ativos = 0;
@@ -48,24 +48,24 @@ export function BarraDeCarregamento() {
     if (fase === 'andando') setFase('terminando');
   }, [carregando, fase]);
 
-  // o movimento é do animejs (01/10/2026): andando, corre no começo e freia perto do fim (nunca chega sozinha);
+  // o movimento é do animejs (01/10/2026), por scaleX (só transform): andando, corre no começo e freia perto do fim (nunca chega sozinha);
   // terminando, completa num instante e apaga; sem movimento, só aparece e some
   const barra = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const el = barra.current;
     if (!el) return;
     if (fase === 'andando') {
-      if (semMovimento()) { utils.set(el, { width: '60%', opacity: 1 }); return; }
-      const a = animate(el, { width: ['0%', '88%'], opacity: [1, 1], duration: 9000, ease: 'out(5)' });
+      if (semMovimento()) { utils.set(el, { scaleX: 0.6, opacity: 1 }); return; }
+      const a = animate(el, { scaleX: [0, 0.88], opacity: [1, 1], duration: 9000, ease: 'out(5)' });
       return () => { a.pause(); };
     }
     if (fase === 'terminando') {
-      const a = animate(el, { width: '100%', duration: semMovimento() ? 0 : 200, ease: 'outQuad', onComplete: () => {
+      const a = animate(el, { scaleX: 1, duration: semMovimento() ? 0 : 200, ease: ENTRAR, onComplete: () => {
         animate(el, { opacity: 0, duration: semMovimento() ? 0 : 240, ease: 'linear', onComplete: () => setFase('parada') });
       } });
       return () => { a.pause(); };
     }
-    utils.set(el, { width: '0%', opacity: 0 });
+    utils.set(el, { scaleX: 0, opacity: 0 });
   }, [fase]);
 
   if (pai) return null;

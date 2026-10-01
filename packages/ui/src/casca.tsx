@@ -2,6 +2,7 @@
 // barra lateral das seções (com "Ocultar barra lateral") — ou, com lateral="caixa", a caixa de seções ao lado da página —,
 // gaveta ☰ com tema e a área da página (título + ações no canto direito). Marcação e classes iguais às do conferencia.html (~L973-1033).
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { animar, GAVETA, useEntradaAnimada } from './animacao';
 import { useAbasParaAEtapa, useAlturaNaEtapa } from './etapa';
 import { Icone, MarcaN, type NomeIcone } from './icones';
 import { SeletorTema } from './tema';
@@ -101,6 +102,17 @@ export function Casca(p: {
 }) {
   const [oculta, setOculta] = useState(lerLateral);
   const [gaveta, setGaveta] = useState(false);
+  // a gaveta sai por onde entrou (animejs, 01/10/2026): desliza para a esquerda e o fundo apaga; só então desmonta.
+  // Pelo Esc (teclado) fecha na hora: atalho de teclado não anima.
+  const gavetaEl = useRef<HTMLElement>(null);
+  const fundoEl = useRef<HTMLDivElement>(null);
+  const fecharGaveta = () => {
+    if (!gavetaEl.current) { setGaveta(false); return; }
+    if (fundoEl.current) animar(fundoEl.current, { opacity: 0, duration: 240, ease: GAVETA });
+    animar(gavetaEl.current, { translateX: '-100%', duration: 240, ease: GAVETA, onComplete: () => setGaveta(false) });
+  };
+  // a página que abriu entra de leve (troca de página é coisa de toda hora: 4 px e 200 ms, quase nada)
+  const conteudo = useEntradaAnimada<HTMLDivElement>(null, [p.titulo, p.paginas?.find(x => x.ativa)?.id, p.secoes.find(s => s.ativa)?.id], { y: 4, duracao: 200 });
   // saiu versão nova do nads: um pontinho no ☰ e "Atualizar para …" ao lado da versão, no menu
   const versaoNova = useVersaoNova(p.versao || '');
   const cabecalho = useRef<HTMLElement>(null);
@@ -144,7 +156,7 @@ export function Casca(p: {
         </div>
         <div id="topbarActions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{p.acoes}</div>
       </header>
-      <div className="content">{p.children}</div>
+      <div ref={conteudo} className="content">{p.children}</div>
     </main>
   );
 
@@ -199,20 +211,20 @@ export function Casca(p: {
         </nav>
       </header>
 
-      {gaveta && <div className="drawer-overlay" onClick={() => setGaveta(false)} />}
+      {gaveta && <div ref={fundoEl} className="drawer-overlay" onClick={fecharGaveta} />}
       {gaveta && (
-        <aside className="drawer" aria-label="Menu">
+        <aside ref={gavetaEl} className="drawer" aria-label="Menu">
           <div className="drawer-head">
             <span className="brand-mark" aria-hidden="true"><MarcaN /></span>
-            <button className="drawer-x" type="button" aria-label="Fechar menu" onClick={() => setGaveta(false)}><Icone nome="x" /></button>
+            <button className="drawer-x" type="button" aria-label="Fechar menu" onClick={fecharGaveta}><Icone nome="x" /></button>
           </div>
-          <button className="drawer-item" type="button" onClick={() => { setGaveta(false); (p.onAplicativos || p.onInicio)(); }}><Icone nome="home" />Início</button>
+          <button className="drawer-item" type="button" onClick={() => { fecharGaveta(); (p.onAplicativos || p.onInicio)(); }}><Icone nome="home" />Início</button>
           {p.aplicativos && p.aplicativos.length > 0 && (
             <>
               <hr className="drawer-sep" />
               {p.aplicativos.map(a => (
                 <button key={a.id} className={'drawer-item' + (a.ativo ? ' active' : '')} type="button" aria-current={a.ativo ? 'page' : undefined}
-                  onClick={() => { setGaveta(false); p.onAplicativo?.(a.id); }}>
+                  onClick={() => { fecharGaveta(); p.onAplicativo?.(a.id); }}>
                   <Icone nome={a.icone} />{a.nome}
                 </button>
               ))}

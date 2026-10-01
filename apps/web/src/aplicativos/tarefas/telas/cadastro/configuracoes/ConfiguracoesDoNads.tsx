@@ -1,11 +1,13 @@
 // Cadastro › Configurações: as chaves do nads (só o admin muda): a proteção do login (liberar cada computador com o
 // código de um admin), o robô que lê a agência e a conta dos extratos e a saúde do robô do Entregas.
-import { Icone, Interruptor, useCarregando } from '@nads/ui';
+import { Icone, Interruptor, useCarregando, useEntradaAnimada } from '@nads/ui';
 import { useConfiguracoesDoNads } from './useConfiguracoesDoNads';
 
 export function ConfiguracoesDoNads() {
   const vm = useConfiguracoesDoNads();
   useCarregando(vm.carregando);
+  // a saúde do robô: os itens chegam em cascata na primeira leitura (a releitura de 30 em 30 s não anima)
+  const saude = useEntradaAnimada<HTMLDivElement>('.saude-lista > li', [!!vm.saude], { y: 6, duracao: 260, intervalo: 40 });
   return (
     <section className="config-nads">
       {!vm.admin && <p className="hint">Só um administrador muda as configurações.</p>}
@@ -32,7 +34,7 @@ export function ConfiguracoesDoNads() {
         </div>
       </div>
       {vm.veSaude && (
-        <div className="card config-item">
+        <div ref={saude} className="card config-item">
           <div className="config-item-topo">
             <Icone nome="monitor" />
             <div>
