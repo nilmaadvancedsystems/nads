@@ -495,17 +495,38 @@ export function crescerDaOrigem(caixa: HTMLElement, o: Origem | null): boolean {
   return true;
 }
 
-/** A tela volta para a origem, encolhendo até o tamanho dela, e some no fim. null: não tem para onde voltar. */
+/**
+ * A tela volta para a origem: o inverso exato da abertura — a mesma duração e a mesma curva, só que encolhendo. Ela vai
+ * inteira (com o conteúdo à vista) diminuindo e andando até o botão/linha; o conteúdo só apaga quando ela já está
+ * pequena, e a caixa só some no último trecho, já em cima da origem. null: não tem para onde voltar.
+ */
 export function voltarParaOrigem(caixa: HTMLElement, o: Origem | null): Promise<void> | null {
   const para = lugarDaOrigem(o);
   if (!para || semMovimento()) return null;
   const v = deLaParaCa(para, caixaDe(caixa));
-  const ms = jeito === 'suave' ? 620 : 480;
+  const ms = jeito === 'suave' ? 680 : 520;
   caixa.style.transformOrigin = '50% 50%';
-  animate(caixa.querySelectorAll(':scope > *'), { opacity: 0, duration: 140, ease: 'linear' });
-  // sai já na direção da origem (a curva da gaveta: rápida no começo) e só apaga no fim, pequena, em cima dela
+  animate(caixa.querySelectorAll(':scope > *'), { opacity: 0, delay: ms * 0.4, duration: ms * 0.25, ease: 'linear' });
   return new Promise(ok => {
-    animate(caixa, { ...v, opacity: { to: 0, delay: ms * 0.6, duration: ms * 0.4, ease: 'linear' }, duration: ms, ease: GAVETA, onComplete: () => ok() });
+    animate(caixa, {
+      translateX: [0, v.translateX], translateY: [0, v.translateY], scaleX: [1, v.scaleX], scaleY: [1, v.scaleY],
+      opacity: { from: 1, to: 0, delay: ms * 0.78, duration: ms * 0.22, ease: 'linear' },
+      duration: ms, ease: MOVER, onComplete: () => ok(),
+    });
+  });
+}
+
+/**
+ * O fundo escuro de uma janela que está voltando para a origem: apaga só a cor (e o desfoque), não a opacidade — a
+ * janela está dentro dele, e apagar a opacidade do fundo levaria a janela junto antes de ela chegar à origem.
+ */
+export function apagarFundo(fundo: HTMLElement): Promise<void> {
+  if (semMovimento()) return Promise.resolve();
+  return new Promise(ok => {
+    animate(fundo, {
+      backgroundColor: 'rgba(0,0,0,0)', backdropFilter: 'blur(0px)',
+      duration: jeito === 'suave' ? 600 : 460, ease: ENTRAR, onComplete: () => ok(),
+    });
   });
 }
 

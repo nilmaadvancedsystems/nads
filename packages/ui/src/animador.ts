@@ -12,7 +12,7 @@
 // O check da janela de sucesso e o das etapas feitas se desenham.
 // Menos movimento (prefers-reduced-motion): só o esmaecer, sem deslocar (animar, em animacao.ts); sem toque nos botões.
 import { cleanInlineStyles, stagger } from 'animejs';
-import { afundar, animar, celebrar, crescerDaOrigem, desenharCheck, ENTRAR, encerrarPaginas, entrar, marcarOrigem, MOLA_VIVA, origemDe, pegarOrigem, revelarTitulo, sairComo, semMovimento, voltar, voltarParaOrigem } from './animacao';
+import { afundar, animar, apagarFundo, celebrar, crescerDaOrigem, desenharCheck, ENTRAR, encerrarPaginas, entrar, marcarOrigem, MOLA_VIVA, origemDe, pegarOrigem, revelarTitulo, sairComo, semMovimento, voltar, voltarParaOrigem } from './animacao';
 
 type Entrada = (el: HTMLElement) => void;
 
@@ -119,7 +119,8 @@ const SAIDAS: [string, Saida, 'fixo' | 'no-lugar'][] = [
     const caixa = (f.querySelector<HTMLElement>('.modal') || f.firstElementChild) as HTMLElement | null;
     // volta para onde foi aberta (o botão, a linha), encolhendo até o tamanho dela; sem origem, sai do jeito do app
     const volta = caixa && original ? voltarParaOrigem(caixa, origemDe(original)) : null;
-    return Promise.all([sairComo('fundo', f), volta || (caixa ? sairComo('janela', caixa) : null)]);
+    if (volta) return Promise.all([apagarFundo(f), volta]);
+    return Promise.all([sairComo('fundo', f), caixa ? sairComo('janela', caixa) : null]);
   }, 'fixo'],
   ['.ctx-menu', (f, original) => (original && voltarParaOrigem(f, origemDe(original))) || sairComo('menu', f), 'fixo'],
   ['.popover', (f, original) => (original && voltarParaOrigem(f, origemDe(original))) || sairComo('menu', f), 'no-lugar'],

@@ -8,7 +8,7 @@ export { Casca, baixarArquivo, baixarBytes, type SecaoCasca, type PaginaCasca } 
 export { EscolherEmpresa, type EmpresaNaLista, type PropsEscolherEmpresa } from './escolherEmpresa';
 export { LOGOS_BANDEIRAS } from './logosBandeiras';
 export { BarraDeCarregamento, useCarregando } from './carregamento';
-export { MOLA, MOLA_VIVA, semMovimento, useEntradaAnimada, useLinhasQueSeMovem, useIndicador, useNumeroAnimado, lerNumero, contar, desenharCheck, revelarTitulo, encerrarPaginas, moverIndicador, marcarOrigem, pegarOrigem, origemDe, crescerDaOrigem, voltarParaOrigem, type Origem, type FormaDoIndicador, animar, entrar, sairComo, afundar, voltar, definirJeito, jeitoAtual, JEITOS, ENTRAR, MOVER, GAVETA, SUAVE, type Jeito, type Peca } from './animacao';
+export { MOLA, MOLA_VIVA, semMovimento, useEntradaAnimada, useLinhasQueSeMovem, useIndicador, useNumeroAnimado, lerNumero, contar, desenharCheck, revelarTitulo, encerrarPaginas, moverIndicador, marcarOrigem, pegarOrigem, origemDe, crescerDaOrigem, voltarParaOrigem, apagarFundo, type Origem, type FormaDoIndicador, animar, entrar, sairComo, afundar, voltar, definirJeito, jeitoAtual, JEITOS, ENTRAR, MOVER, GAVETA, SUAVE, type Jeito, type Peca } from './animacao';
 export { iniciarAnimador } from './animador';
 export { atualizarVersao, useVersaoNova } from './versaoNova';
 export { origemConfiavel, origemDoPai, useAbasParaAEtapa, useAlturaNaEtapa, useFerramentaNaEtapa, type AbaDaEtapa } from './etapa';

@@ -4,7 +4,7 @@
 // Origem: conferencia.html toast/modal (~L1425-1448). O ViewModel pede com useRetorno();
 // quem desenha é daqui.
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { animar, ENTRAR, origemDe, paramsDaPilha, paramsDoAvisoQueChega, sairComo, semMovimento, voltarParaOrigem } from './animacao';
+import { animar, apagarFundo, ENTRAR, origemDe, paramsDaPilha, paramsDoAvisoQueChega, sairComo, semMovimento, voltarParaOrigem } from './animacao';
 import { Icone, type NomeIcone } from './icones';
 
 export interface BotaoModal<T> { rotulo: string; valor: T; variante?: 'btn-primary' | 'btn-outline' | 'btn-danger' }
@@ -150,7 +150,7 @@ function Modal({ aberto, fechar }: { aberto: ModalAberto; fechar: (v: unknown) =
     const janela = el.querySelector<HTMLElement>('.modal');
     // volta para o botão que a abriu (se ele ainda estiver na tela); senão, sai do jeito do app
     const volta = janela ? voltarParaOrigem(janela, origemDe(el)) : null;
-    void Promise.all([sairComo('fundo', el), volta || (janela ? sairComo('janela', janela) : null)]).then(() => fechar(v));
+    void (volta ? Promise.all([apagarFundo(el), volta]) : Promise.all([sairComo('fundo', el), janela ? sairComo('janela', janela) : null])).then(() => fechar(v));
   }, [fechar]);
   // clicar fora fecha (e a janela volta para o botão) quando dá para saber o que isso quer dizer: com um botão só, é ele;
   // com vários, é o de desistir (o contornado, nem o principal nem o de apagar). Janela obrigatória não fecha por fora.
