@@ -45,7 +45,7 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
   const [etapa, setEtapa] = useState<'fechado' | 'montar' | 'conferir'>('fechado');
   const [contato, setContato] = useState<{ carregando: boolean; erro: string; dados: creditor.ContatoDoCliente | null }>({ carregando: false, erro: '', dados: null });
   // de qual Gmail sai (o do setor de quem pede, a mesma regra do robô); null = não se sabe (aberto dentro do Entregas)
-  const [de, setDe] = useState<{ carregando: boolean; email: string; erro: string } | null>(null);
+  const [de, setDe] = useState<{ carregando: boolean; email: string; respostas: string; erro: string } | null>(null);
   // o que está marcado: 'documento|competência'
   const [marcados, setMarcados] = useState<string[]>([]);
   // os documentos com a lista de "Outros meses" aberta
@@ -60,12 +60,12 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
 
   async function carregarRemetente() {
     if (!drive.remetente) { setDe(null); return; }
-    setDe({ carregando: true, email: '', erro: '' });
+    setDe({ carregando: true, email: '', respostas: '', erro: '' });
     try {
       const r = await drive.remetente();
-      setDe({ carregando: false, email: r.email, erro: r.email ? '' : 'O Gmail do setor fiscal ainda não foi autorizado: o robô não consegue enviar.' });
+      setDe({ carregando: false, email: r.email, respostas: r.respostas, erro: r.email ? '' : 'O Gmail do setor fiscal ainda não foi autorizado: o robô não consegue enviar.' });
     } catch (e) {
-      setDe({ carregando: false, email: '', erro: mensagemDeErro(e) });
+      setDe({ carregando: false, email: '', respostas: '', erro: mensagemDeErro(e) });
     }
   }
 

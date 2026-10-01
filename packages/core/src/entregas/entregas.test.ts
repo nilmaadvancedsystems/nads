@@ -110,9 +110,10 @@ describe('de qual Gmail sai o pedido', () => {
     expect(setorDoUsuario(null)).toBe('contabil');
   });
   it('a caixa do setor (o contábil cai na do robô sem a dele; o fiscal não envia sem a dele)', () => {
-    expect(remetenteDoPedido({ departamento: 'contabil' }, caixas)).toEqual({ setor: 'contabil', caixa: 'contabil', email: 'setorcontabilnilma@gmail.com' });
+    expect(remetenteDoPedido({ departamento: 'contabil' }, caixas)).toEqual({ setor: 'contabil', caixa: 'contabil', email: 'setorcontabilnilma@gmail.com', respostas: '' });
+    expect(remetenteDoPedido({ departamento: 'fiscal' }, caixas, true)).toEqual({ setor: 'fiscal', caixa: 'robo', email: 'nilmacontabilidade@gmail.com', respostas: 'setorfiscalnilma@gmail.com' });
     expect(remetenteDoPedido({ departamento: 'fiscal' }, caixas).email).toBe('setorfiscalnilma@gmail.com');
-    expect(remetenteDoPedido({ departamento: 'contabil' }, { ...caixas, contabil: { autorizada: false } })).toEqual({ setor: 'contabil', caixa: 'robo', email: 'nilmacontabilidade@gmail.com' });
+    expect(remetenteDoPedido({ departamento: 'contabil' }, { ...caixas, contabil: { autorizada: false } })).toEqual({ setor: 'contabil', caixa: 'robo', email: 'nilmacontabilidade@gmail.com', respostas: '' });
     expect(remetenteDoPedido({ departamento: 'fiscal' }, { robo: caixas.robo }).email).toBe('');
   });
 });

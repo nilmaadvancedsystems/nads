@@ -38,7 +38,7 @@ export function JanelaPedirExtratos({ p }: { p: P }) {
             {p.de && (
               <div className="pedir-campo">
                 <span className="pedir-rotulo">De</span>
-                {p.de.carregando ? <span className="hint">…</span> : p.de.erro ? <span className="pedir-erro">{p.de.erro}</span> : <span className="pedir-de">{p.de.email}</span>}
+                {p.de.carregando ? <span className="hint">…</span> : p.de.erro ? <span className="pedir-erro">{p.de.erro}</span> : <span className="pedir-de">{p.de.email}{p.de.respostas && <span className="hint"> · as respostas vão para {p.de.respostas}</span>}</span>}
               </div>
             )}
             <div className="pedir-campo">
