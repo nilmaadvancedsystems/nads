@@ -299,6 +299,9 @@ export function useImportacao() {
     // o mesmo banco pode entrar de novo (outra conta, com outra agência/conta)
     bancosParaAdicionar: empresas.BANCOS_CONHECIDOS,
     importarArquivos, importarDoDrive, excluirDoBanco, excluirDoPeriodo, adicionarBanco,
+    /** os extratos que abrem a conta, vindos do Drive sem o saldo anterior (a linha do Drive completa sozinha) */
+    extratosSemSaldo: x.extratosSemSaldoAnterior(s.empresa, primeiro),
+    gravarSaldoAnterior: (arquivoId: string, saldo: number) => s.aplicar(e => x.definirSaldoAnterior(e, arquivoId, saldo, new Date())),
     /** a regra do Cadastro da empresa: presta serviços? (null = não informado, ou o cadastro ainda não chegou) */
     prestaServico: cad.cadastro?.prestaServico ?? null,
     /** os pedidos de documentos feitos ao cliente (o histórico do Pedir extratos) */

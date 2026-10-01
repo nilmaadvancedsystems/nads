@@ -4,7 +4,7 @@
 // Entregas, pede primeiro (o mesmo usuário das Pendências). Não achou um só: a pessoa escolhe entre os
 // candidatos. "Visualizar" pede ao robô um link temporário (~30 min) e só abre; o link não é guardado.
 import { creditor, extrator as x } from '@nads/core';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useDrive } from '../../dados/repo';
 import type { useImportacao } from '../importacao/useImportacao';
 
@@ -21,6 +21,25 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   const [buscando, setBuscando] = useState<string | null>(null);
   // o que fazer depois de entrar, quando o login foi pedido por outra coisa (o Pedir extratos)
   const depois = useRef<(() => void) | null>(null);
+
+  // o saldo anterior dos extratos que abrem a conta e vieram do Drive antes de a leitura guardar o saldo: com o login,
+  // pede o arquivo de novo ao robô e lê só o saldo (uma vez por arquivo; se não der, fica como está)
+  const tentados = useRef(new Set<string>());
+  const semSaldo = vm.extratosSemSaldo.map(a => a.id).join(',');
+  const { gravarSaldoAnterior } = vm;
+  useEffect(() => {
+    if (!acesso.entrou) return;
+    for (const a of vm.extratosSemSaldo) {
+      if (!a.drive || tentados.current.has(a.id)) continue;
+      tentados.current.add(a.id);
+      const doDrive = a.drive;
+      drive.baixar(doDrive.id, doDrive.nome)
+        .then(conteudo => x.lerArquivo(doDrive.nome, new Uint8Array(conteudo), 'banco'))
+        .then(lido => { if (typeof lido.saldoAnterior === 'number') gravarSaldoAnterior(a.id, lido.saldoAnterior); })
+        .catch(() => { /* sem o robô agora: fica sem o saldo (reimportar resolve) */ });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acesso.entrou, semSaldo]);
 
   async function usar(linha: Linha, a: creditor.ArquivoAchado) {
     setEscolha(null);

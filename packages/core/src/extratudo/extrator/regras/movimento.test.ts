@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ItemDrive } from '../../creditor/regras/drive';
 import type { ArquivoImportado, EmpresaExtrator } from '../tipos';
 import { acharExtratoNoDrive } from './drive';
-import { movimentoDoExtrato, TODOS_OS_MESES } from './movimento';
+import { definirSaldoAnterior, extratosSemSaldoAnterior, movimentoDoExtrato, TODOS_OS_MESES } from './movimento';
 
 const arq = (id: string, lancamentos: [string, number][], banco?: string, lado: 'banco' | 'sistema' = 'banco'): ArquivoImportado => ({
   id, lado, nome: id, importadoEm: '2026-09-29T12:00:00Z', modo: 'primeira', ...(banco ? { banco } : {}),
@@ -24,6 +24,17 @@ describe('movimento do extrato (a setinha da linha do banco)', () => {
     expect(m.linhas.map(l => [l.data, l.valor, l.saldo])).toEqual([['2026-08-02', 3000, 10500], ['2026-08-05', -1000, 9500]]);
     expect([m.entradas, m.saidas]).toEqual([3000, -1000]);
     expect(movimentoDoExtrato(e, 'itau', 'sicoob', '2026-08').linhas.map(l => l.saldo)).toEqual([777]);
+  });
+  it('o primeiro extrato do Drive sem o saldo anterior: completa e fica no histórico', () => {
+    const jan = { ...arq('jan', [['2026-01-02', 4500]]), drive: { id: 'd1', nome: '01-2026.pdf' } };
+    const fev = { ...arq('fev', [['2026-02-03', -500]]), drive: { id: 'd2', nome: '02-2026.pdf' } };
+    const itau = arq('itau', [['2026-01-05', 10]], 'itau');
+    const e = emp([fev, jan, itau]);
+    expect(extratosSemSaldoAnterior(e, 'sicoob').map(a => a.id)).toEqual(['jan']);
+    const e2 = definirSaldoAnterior(e, 'jan', 1000000, new Date('2026-10-01T12:00:00Z'));
+    expect(movimentoDoExtrato(e2, 'sicoob', 'sicoob', '2026-01').abertura).toBe(1000000);
+    expect(e2.auditoria[0]).toMatchObject({ acao: 'Leu o saldo anterior' });
+    expect(extratosSemSaldoAnterior(e2, 'sicoob')).toEqual([]);
   });
   it('o saldo anterior do primeiro extrato abre a conta (sem mês antes no sistema)', () => {
     const jan = { ...arq('jan', [['2026-01-02', 4500]]), saldoAnterior: 1000000 };

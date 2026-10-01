@@ -3,7 +3,7 @@
 // entram no "saldo anterior"). O começo é o saldo anterior que o primeiro extrato importado traz (a linha
 // "SALDO ANTERIOR" do PDF; Vitor, 01/10/2026: antes de 2026 não há meses no sistema, então o de janeiro abre a
 // conta); sem ele, conta a partir de zero.
-import type { EmpresaExtrator } from '../tipos';
+import type { ArquivoImportado, EmpresaExtrator, RegistroAuditoria } from '../tipos';
 import { bancoDoArquivo } from './bancos';
 
 export interface LinhaDoMovimento { data: string; historico: string; valor: number; saldo: number }
@@ -38,4 +38,29 @@ export function movimentoDoExtrato(e: EmpresaExtrator, banco: string, primeiro: 
     entradas: linhas.filter(l => l.valor > 0).reduce((t, l) => t + l.valor, 0),
     saidas: linhas.filter(l => l.valor < 0).reduce((t, l) => t + l.valor, 0),
   };
+}
+
+const comecoDo = (a: { lancamentos: { data: string }[] }) => a.lancamentos.reduce((m, l) => (l.data < m ? l.data : m), '9999');
+
+/**
+ * Os extratos que abrem a conta (o primeiro de cada banco) e vieram do Drive sem o saldo anterior — os importados antes
+ * de a leitura guardar o saldo. A tela pede o arquivo ao robô de novo e lê só o saldo (definirSaldoAnterior).
+ */
+export function extratosSemSaldoAnterior(e: EmpresaExtrator, primeiro: string): ArquivoImportado[] {
+  const porBanco = new Map<string, ArquivoImportado>();
+  for (const a of e.arquivos) {
+    if (a.lado !== 'banco' || !a.lancamentos.length) continue;
+    const b = bancoDoArquivo(a, primeiro);
+    const atual = porBanco.get(b);
+    if (!atual || comecoDo(a) < comecoDo(atual)) porBanco.set(b, a);
+  }
+  return [...porBanco.values()].filter(a => typeof a.saldoAnterior !== 'number' && !!a.drive);
+}
+
+/** Grava no arquivo o saldo anterior lido do extrato (fica no histórico). */
+export function definirSaldoAnterior(e: EmpresaExtrator, arquivoId: string, saldo: number, agora: Date): EmpresaExtrator {
+  const a = e.arquivos.find(x => x.id === arquivoId);
+  if (!a || a.saldoAnterior === saldo) return e;
+  const reg: RegistroAuditoria = { ts: agora.toISOString(), acao: 'Leu o saldo anterior', detalhe: a.nome + ' · ' + (saldo / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 }), tom: 'ok' };
+  return { ...e, arquivos: e.arquivos.map(x => (x.id === arquivoId ? { ...x, saldoAnterior: saldo } : x)), auditoria: [reg, ...e.auditoria] };
 }
