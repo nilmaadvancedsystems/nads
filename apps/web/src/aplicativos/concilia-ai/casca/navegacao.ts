@@ -1,6 +1,7 @@
 // Navegação do Concilia aí (a Conferência): seções (barra lateral) → páginas (abas do cabeçalho).
 // Origem: conferencia.html SECOES/VIEWS (~L1678-1707).
 import type { NomeIcone } from '@nads/ui';
+import { SO_ENTRADAS } from '../soEntradas';
 
 export type IdSecao = 'importacao' | 'cadastro' | 'movimento' | 'auditoria';
 
@@ -17,7 +18,7 @@ export interface Pagina {
 
 export interface Secao { id: IdSecao; rotulo: string; icone: NomeIcone; grupo: number; paginas: Pagina[] }
 
-export const SECOES: Secao[] = [
+const TODAS_AS_SECOES: Secao[] = [
   {
     id: 'importacao', grupo: 1, rotulo: 'Importação', icone: 'upload', paginas: [
       { id: 'importacao/balancete', rotulo: 'Balancete', icone: 'landmark', titulo: 'Balancete' },
@@ -45,6 +46,12 @@ export const SECOES: Secao[] = [
     ],
   },
 ];
+
+/** Só conferir entradas (SO_ENTRADAS): Importação (Balancete, Entradas) e Movimento (Relatório, Naturezas). */
+const PAGINAS_SO_ENTRADAS = ['importacao/balancete', 'importacao/entradas', 'movimento/relatorio', 'movimento/checklist'];
+export const SECOES: Secao[] = SO_ENTRADAS
+  ? TODAS_AS_SECOES.map(s => ({ ...s, paginas: s.paginas.filter(p => PAGINAS_SO_ENTRADAS.includes(p.id)) })).filter(s => s.paginas.length)
+  : TODAS_AS_SECOES;
 
 /** Páginas fora do menu (abrem a partir de outra). */
 export const PAGINAS_ESCONDIDAS: Pagina[] = [

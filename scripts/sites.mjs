@@ -35,6 +35,8 @@ const url = site => 'https://' + site + '.web.app';
 const PROJETO_PADRAO = 'conferencia-nilma';
 const SITES = {
   'concilia-ai': { site: 'concilia-ai-nilma', nome: 'Concilia aí', tipo: 'app' },
+  // o Concilia aí só para conferir entradas, ligado ao banco da Conferência (Vitor, 01/10/2026): só como prévia (link à parte)
+  'conferir-entradas': { site: 'concilia-ai-nilma', nome: 'Concilia aí — Conferir entradas', tipo: 'app', banco: true, aplicativo: 'concilia-ai', env: { VITE_SO_ENTRADAS: '1' }, soCanal: true },
   conciliadorzinho: { site: 'conciliadorzinho-nilma', nome: 'Conciliadorzinho', tipo: 'app' },
   extratudo: { site: 'extratudo-nilma', nome: 'Extratudo', tipo: 'app', banco: true },
   tarefas: { site: 'tarefas-nilma', nome: 'Tarefas', tipo: 'app', banco: true },
@@ -56,6 +58,14 @@ if (!ids.length || invalidos.length) {
   process.exit(1);
 }
 
+const soPrevia = ids.filter(id => SITES[id].soCanal);
+if (soPrevia.length && !canal) {
+  console.error('sites: ' + soPrevia.join(', ') + ' só sai como prévia (use --canal=<nome>): o site no ar não pode virar ele.');
+  process.exit(1);
+}
+// quanto tempo a prévia fica no ar (--expira=30d; o Firebase aceita até 30 dias)
+const expira = (argumentos.find(a => a.startsWith('--expira=')) || '--expira=7d').slice('--expira='.length);
+
 if (soExemplos && !canal) {
   console.error('sites: --exemplos só com --canal (o site no ar do ' + ids.join(', ') + ' não pode perder o banco).');
   process.exit(1);
@@ -71,7 +81,7 @@ for (const id of ids) {
     const banco = s.banco && !soExemplos;
     console.log('sites: gerando ' + s.nome + (banco ? ' (ligado ao banco)' : ' (dados de exemplo)') + '…');
     execSync('npx vite build --mode ' + (banco ? 'banco' : 'exemplos') + ' --outDir ' + JSON.stringify(saida) + ' --emptyOutDir', {
-      cwd: web, stdio: ['ignore', 'ignore', 'inherit'], env: { ...process.env, VITE_APLICATIVO: s.aplicativo || id },
+      cwd: web, stdio: ['ignore', 'ignore', 'inherit'], env: { ...process.env, VITE_APLICATIVO: s.aplicativo || id, ...(s.env || {}) },
     });
     continue;
   }
@@ -85,8 +95,8 @@ for (const id of ids) {
 if (canal) {
   // prévia (canal do Firebase Hosting): um link à parte, que some sozinho; o site no ar não muda
   for (const id of ids) {
-    console.log('sites: prévia "' + canal + '" do ' + SITES[id].nome + ' (expira em 7 dias)');
-    execSync('firebase hosting:channel:deploy ' + canal + ' --only ' + SITES[id].site + ' --expires 7d --project ' + (SITES[id].projeto || PROJETO_PADRAO), { cwd: web, stdio: 'inherit' });
+    console.log('sites: prévia "' + canal + '" do ' + SITES[id].nome + ' (expira em ' + expira + ')');
+    execSync('firebase hosting:channel:deploy ' + canal + ' --only ' + SITES[id].site + ' --expires ' + expira + ' --project ' + (SITES[id].projeto || PROJETO_PADRAO), { cwd: web, stdio: 'inherit' });
   }
   process.exit(0);
 }

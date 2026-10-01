@@ -7,6 +7,7 @@ import { conferencia as c, formatos } from '@nads/core';
 import { useEffect } from 'react';
 import { travaDaAba, useMarcarSozinho } from '../relatorio/movimento';
 import { useSessao } from '../../casca/sessao';
+import { SO_ENTRADAS } from '../../soEntradas';
 
 type TipoNat = c.FiltroMovimento['tipo'];
 type Status = c.FiltroMovimento['status'];
@@ -23,15 +24,16 @@ export function useChecklist() {
 
   // recorte travado (sem dados daquele tipo) volta pra Todos
   const perdeu = (s.filtro.tipo === 'Entrada' && !tem.entradas) || (s.filtro.tipo === 'Saída' && !tem.saidas);
-  const filtro: c.FiltroMovimento = perdeu ? { ...s.filtro, tipo: '' } : s.filtro;
+  // só conferir entradas: sempre o recorte Entradas
+  const filtro: c.FiltroMovimento = SO_ENTRADAS ? { ...s.filtro, tipo: 'Entrada' } : perdeu ? { ...s.filtro, tipo: '' } : s.filtro;
   const { setFiltro } = s;
-  useEffect(() => { if (perdeu) setFiltro(f => ({ ...f, tipo: '' })); }, [perdeu, setFiltro]);
+  useEffect(() => { if (perdeu && !SO_ENTRADAS) setFiltro(f => ({ ...f, tipo: '' })); }, [perdeu, setFiltro]);
 
   const recortes: { valor: TipoNat; rotulo: string; travada: string | false }[] = [
-    { valor: '', rotulo: 'Todos', travada: false },
-    { valor: 'Entrada', rotulo: 'Entradas', travada: travaDaAba(tem, 'entradas') },
-    { valor: 'Saída', rotulo: 'Saídas', travada: travaDaAba(tem, 'saidas') },
-  ];
+    { valor: '' as TipoNat, rotulo: 'Todos', travada: false as const },
+    { valor: 'Entrada' as TipoNat, rotulo: 'Entradas', travada: travaDaAba(tem, 'entradas') },
+    { valor: 'Saída' as TipoNat, rotulo: 'Saídas', travada: travaDaAba(tem, 'saidas') },
+  ].filter(r => !SO_ENTRADAS || r.valor === 'Entrada');
   function escolherRecorte(v: TipoNat) {
     const r = recortes.find(x => x.valor === v);
     if (r?.travada) { s.avisoImportar(v === 'Entrada' ? 'entradas' : 'saidas'); return; }
