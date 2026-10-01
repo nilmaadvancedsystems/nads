@@ -4,7 +4,7 @@
 // Origem: conferencia.html toast/modal (~L1425-1448). O ViewModel pede com useRetorno();
 // quem desenha é daqui.
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { animar, ENTRAR, paramsDaPilha, paramsDoAvisoQueChega, sairComo, semMovimento } from './animacao';
+import { animar, ENTRAR, origemDe, paramsDaPilha, paramsDoAvisoQueChega, sairComo, semMovimento, voltarParaOrigem } from './animacao';
 import { Icone, type NomeIcone } from './icones';
 
 export interface BotaoModal<T> { rotulo: string; valor: T; variante?: 'btn-primary' | 'btn-outline' | 'btn-danger' }
@@ -148,9 +148,15 @@ function Modal({ aberto, fechar }: { aberto: ModalAberto; fechar: (v: unknown) =
     const el = raiz.current;
     if (!el) { fechar(v); return; }
     const janela = el.querySelector<HTMLElement>('.modal');
-    if (janela) void sairComo('janela', janela);
-    void sairComo('fundo', el).then(() => fechar(v));
+    // volta para o botão que a abriu (se ele ainda estiver na tela); senão, sai do jeito do app
+    const volta = janela ? voltarParaOrigem(janela, origemDe(el)) : null;
+    void Promise.all([sairComo('fundo', el), volta || (janela ? sairComo('janela', janela) : null)]).then(() => fechar(v));
   }, [fechar]);
+  // clicar fora fecha (e a janela volta para o botão) quando dá para saber o que isso quer dizer: com um botão só, é ele;
+  // com vários, é o de desistir (o contornado, nem o principal nem o de apagar). Janela obrigatória não fecha por fora.
+  const desistir = o.botoes.length === 1 ? o.botoes[0] : o.botoes.find(b => (b.variante || 'btn-outline') === 'btn-outline');
+  const foraFecha = !o.obrigatoria && !!desistir;
+  const valorDeFora = desistir?.valor;
   useEffect(() => { primeiro.current?.focus(); }, []);
   useEffect(() => {
     if (!o.fecharEm) return;
@@ -158,7 +164,8 @@ function Modal({ aberto, fechar }: { aberto: ModalAberto; fechar: (v: unknown) =
     return () => clearTimeout(t);
   }, [o, fecharAnimado]);
   return (
-    <div ref={raiz} data-saida-propria className={'modal-overlay' + (o.obrigatoria ? ' modal-blur' : '')}>
+    <div ref={raiz} data-saida-propria data-fecha-fora={foraFecha ? '' : undefined} className={'modal-overlay' + (o.obrigatoria ? ' modal-blur' : '')}
+      onMouseDown={ev => { if (ev.target === ev.currentTarget && foraFecha) fecharAnimado(valorDeFora); }}>
       <div className={'modal' + (o.tom === 'ok' ? ' modal-ok' : '')} role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div className="modal-icon"><Icone nome={o.icone || 'landmark'} /></div>
         <h3 id="modalTitle">{o.titulo}</h3>

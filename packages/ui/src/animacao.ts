@@ -413,3 +413,67 @@ export function useLinhasQueSeMovem<T extends HTMLElement>(ordem: string, quieto
   return ref;
 }
 
+// ------------------------------------------------------------------ a origem das telas flutuantes
+// Toda tela flutuante (janela, menu, menu do botão direito) nasce de onde foi aberta — o botão, a linha, o ponto do
+// clique direito — e, ao fechar (no × ou clicando fora), volta para lá encolhendo até o tamanho dele (o Vitor,
+// 01/10/2026: "quando eu clique para fechar uma tela flutuante, ou clique fora, ela volte para onde foi aberta").
+// O animador marca a origem no clique (marcarOrigem); a tela que abre logo depois (até 900 ms) fica com ela.
+export interface Origem { el?: Element; ponto?: { x: number; y: number } }
+let ultimaOrigem: { o: Origem; quando: number } | null = null;
+const origens = new WeakMap<Element, Origem>();
+export function marcarOrigem(o: Origem): void { ultimaOrigem = { o, quando: performance.now() }; }
+/** A tela que acabou de abrir fica com a origem do último clique (se foi agora há pouco). */
+export function pegarOrigem(tela: Element): Origem | null {
+  const u = ultimaOrigem;
+  ultimaOrigem = null;
+  if (!u || performance.now() - u.quando > 900) return null;
+  origens.set(tela, u.o);
+  return u.o;
+}
+export const origemDe = (tela: Element): Origem | null => origens.get(tela) || null;
+
+type Caixa = { x: number; y: number; w: number; h: number };
+function caixaDe(el: Element): Caixa { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height }; }
+/** Onde está a origem agora (o botão pode ter saído da tela: aí não tem para onde voltar). */
+function lugarDaOrigem(o: Origem | null): Caixa | null {
+  if (o?.el?.isConnected) {
+    const c = caixaDe(o.el);
+    if (c.w > 0 && c.h > 0) return c;
+  }
+  if (o?.ponto) return { x: o.ponto.x, y: o.ponto.y, w: 24, h: 24 };
+  return null;
+}
+function deLaParaCa(de: Caixa, para: Caixa) {
+  return { translateX: de.x - para.x, translateY: de.y - para.y, scaleX: Math.max(0.06, Math.min(1, de.w / para.w)), scaleY: Math.max(0.04, Math.min(1, de.h / para.h)) };
+}
+
+/** A tela cresce a partir da origem até o tamanho dela; o conteúdo aparece quando ela já está quase pronta. */
+export function crescerDaOrigem(caixa: HTMLElement, o: Origem | null): boolean {
+  const de = lugarDaOrigem(o);
+  if (!de || semMovimento()) return false;
+  const v = deLaParaCa(de, caixaDe(caixa));
+  const ms = jeito === 'suave' ? 680 : 520;
+  caixa.style.transformOrigin = '50% 50%';
+  animate(caixa, {
+    translateX: [v.translateX, 0], translateY: [v.translateY, 0], scaleX: [v.scaleX, 1], scaleY: [v.scaleY, 1],
+    opacity: { from: 0.3, to: 1, duration: 200, ease: 'linear' },
+    ...(jeito === 'viva' ? { ease: mola(0.22, 620) } : { duration: ms, ease: MOVER }),
+    onComplete: a => { cleanInlineStyles(a); },
+  });
+  animate(caixa.querySelectorAll(':scope > *'), { opacity: [0, 1], delay: ms * 0.45, duration: 260, ease: 'linear', onComplete: a => { cleanInlineStyles(a); } });
+  return true;
+}
+
+/** A tela volta para a origem, encolhendo até o tamanho dela, e some no fim. null: não tem para onde voltar. */
+export function voltarParaOrigem(caixa: HTMLElement, o: Origem | null): Promise<void> | null {
+  const para = lugarDaOrigem(o);
+  if (!para || semMovimento()) return null;
+  const v = deLaParaCa(para, caixaDe(caixa));
+  const ms = jeito === 'suave' ? 520 : 400;
+  caixa.style.transformOrigin = '50% 50%';
+  animate(caixa.querySelectorAll(':scope > *'), { opacity: 0, duration: 120, ease: 'linear' });
+  return new Promise(ok => {
+    animate(caixa, { ...v, opacity: { to: 0, delay: ms * 0.55, duration: ms * 0.45, ease: 'linear' }, duration: ms, ease: MOVER, onComplete: () => ok() });
+  });
+}
+

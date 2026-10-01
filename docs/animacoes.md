@@ -64,3 +64,6 @@ Fica para depois: a linha que mudou em tempo real (Firestore) piscar o fundo; a 
 | A abertura: o contorno prateado do N se desenha e as metades pousam dentro dele; a abertura inteira só no primeiro acesso do dia (depois, a logo só acende); a prévia mostra sempre a inteira | abertura.tsx |
 | O alerta: abre da esquerda para a direita (o recorte), a faixa colorida cresce, o título e o texto chegam atrás; o ícone de atenção dá uma balançada, o verde desenha o check; fechar pelo × anima a saída | animador.ts (`alertaChegou`), componentes.tsx (Alerta), nads.css |
 | Executor: a página com a ferramenta não desliza (só acende ao trocar de etapa) e o vidro não pisca ao sair | casca.tsx, nads.css |
+| Toda tela flutuante (janela, janela do cadastro, menu, menu do botão direito) nasce de onde foi aberta — o botão, a linha, o ponto do clique direito — e, ao fechar (no × ou clicando fora), volta para lá encolhendo até o tamanho dele. A janela de confirmação fecha clicando fora quando dá para saber o que isso quer dizer (um botão só, ou o de desistir); a obrigatória não | animacao.ts (`marcarOrigem`, `crescerDaOrigem`, `voltarParaOrigem`), animador.ts, retorno.tsx |
+| A logo na Prévia das animações: abertura inteira, curta e o vidro | PreviaAnimacoes.tsx |
+

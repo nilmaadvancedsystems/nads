@@ -2219,7 +2219,11 @@ main.main:has(> .content > .explorador){padding:0;}
 .previa-anim-jeito b svg{width:16px;height:16px;color:var(--accent);}
 .previa-anim-jeito.on{border-color:var(--accent);background:var(--accent-soft);}
 .previa-anim-botoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;}
-.previa-anim-pagina{padding:20px;display:flex;flex-direction:column;gap:12px;}
+.previa-anim-pagina{position:relative;padding:20px;display:flex;flex-direction:column;gap:12px;}
+.previa-anim-pagina > .abertura.vidro{inset:0;min-height:0;border-radius:6px;}
+.previa-anim-logo{padding:20px;display:flex;flex-direction:column;gap:4px;}
+.previa-anim-logo h3{margin:0;}
+.previa-anim-logo .previa-anim-botoes{margin-top:12px;}
 .previa-anim-pagina h3{margin:0;}
 .previa-anim-stats{display:flex;gap:32px;flex-wrap:wrap;}
 

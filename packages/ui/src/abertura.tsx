@@ -62,11 +62,11 @@ function desenharContorno(tl: ReturnType<typeof createTimeline>, raiz: HTMLEleme
     .add(contorno, { opacity: 0, duration: 360, ease: 'linear' }, apagaEm);
 }
 
-/** inteira: sempre a abertura completa (a prévia), mesmo que já tenha sido vista hoje */
-export function AberturaN({ vidro, inteira }: { vidro?: boolean; inteira?: boolean } = {}) {
+/** inteira: sempre a abertura completa, mesmo já vista hoje; rapida: sempre a curta (as duas para a prévia) */
+export function AberturaN({ vidro, inteira, rapida: soRapida }: { vidro?: boolean; inteira?: boolean; rapida?: boolean } = {}) {
   const raiz = useRef<HTMLDivElement>(null);
   // a abertura inteira: só no primeiro acesso do dia (o vidro, de uma área carregando, é sempre o curto)
-  const [rapida] = useState(() => !vidro && !inteira && jaViuHoje());
+  const [rapida] = useState(() => !vidro && !!(soRapida || (!inteira && jaViuHoje())));
   const anima = !semMovimento() && !rapida;
 
   useLayoutEffect(() => {

@@ -12,7 +12,7 @@
 // O check da janela de sucesso e o das etapas feitas se desenham.
 // Menos movimento (prefers-reduced-motion): só o esmaecer, sem deslocar (animar, em animacao.ts); sem toque nos botões.
 import { cleanInlineStyles, stagger } from 'animejs';
-import { afundar, animar, celebrar, desenharCheck, ENTRAR, encerrarPaginas, entrar, MOLA_VIVA, MOVER, revelarTitulo, sairComo, semMovimento, voltar } from './animacao';
+import { afundar, animar, celebrar, crescerDaOrigem, desenharCheck, ENTRAR, encerrarPaginas, entrar, marcarOrigem, MOLA_VIVA, origemDe, pegarOrigem, revelarTitulo, sairComo, semMovimento, voltar, voltarParaOrigem } from './animacao';
 
 type Entrada = (el: HTMLElement) => void;
 
@@ -32,33 +32,13 @@ function alertaChegou(el: HTMLElement) {
   });
 }
 
-// A linha que vira a janela (o "elemento compartilhado"): clicou numa linha da lista e uma janela abriu logo em
-// seguida (o cadastro da empresa, o e-mail) — a janela nasce do lugar e do tamanho da linha e cresce até o dela; ao
-// fechar, volta para a linha (se ela ainda estiver lá).
-let origem: { linha: HTMLElement; quando: number } | null = null;
-function lugarDe(el: Element) { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height }; }
-function deLaParaCa(de: { x: number; y: number; w: number; h: number }, para: { x: number; y: number; w: number; h: number }) {
-  return { translateX: de.x - para.x, translateY: de.y - para.y, scaleX: Math.max(0.2, de.w / para.w), scaleY: Math.max(0.05, de.h / para.h) };
-}
-const caixasAbertas = new WeakMap<Element, HTMLElement>();
-
+// As telas flutuantes nascem de onde foram abertas (o botão, a linha, o ponto do clique direito) e voltam para lá ao
+// fechar — a origem é marcada no clique (apertar, abaixo) e guardada em animacao.ts (marcarOrigem/pegarOrigem).
 function janela(el: HTMLElement, caixa: HTMLElement | null) {
   encerrarPaginas();
   entrar('fundo', el);
   if (!caixa) return;
-  const linha = origem && performance.now() - origem.quando < 900 && origem.linha.isConnected ? origem.linha : null;
-  origem = null;
-  if (!linha || semMovimento()) { entrar('janela', caixa); return; }
-  caixasAbertas.set(el, linha);
-  const de = deLaParaCa(lugarDe(linha), lugarDe(caixa));
-  caixa.style.transformOrigin = '50% 50%';
-  animar(caixa, {
-    translateX: [de.translateX, 0], translateY: [de.translateY, 0], scaleX: [de.scaleX, 1], scaleY: [de.scaleY, 1],
-    opacity: [{ from: 0.4, to: 1, duration: 220, ease: 'linear' }], duration: 560, ease: MOVER,
-    onComplete: a => { cleanInlineStyles(a); },
-  });
-  // o conteúdo da janela aparece quando ela já está quase no tamanho (sem ver o texto esticado)
-  animar(caixa.querySelectorAll(':scope > *'), { opacity: [0, 1], delay: 260, duration: 300, ease: 'linear', onComplete: a => { cleanInlineStyles(a); } });
+  if (!crescerDaOrigem(caixa, pegarOrigem(el))) entrar('janela', caixa);
 }
 
 const ENTRADAS: [string, Entrada][] = [
@@ -84,6 +64,7 @@ const ENTRADAS: [string, Entrada][] = [
   }],
   // os menus de botão nascem do canto que encosta no botão (o .popover-wrap): à direita ou à esquerda, em cima ou embaixo
   ['.popover', el => {
+    pegarOrigem(el);
     const pai = el.parentElement?.getBoundingClientRect();
     const r = el.getBoundingClientRect();
     if (pai) el.style.transformOrigin = (r.top >= pai.top ? 'top ' : 'bottom ') + (Math.abs(r.right - pai.right) < Math.abs(r.left - pai.left) ? 'right' : 'left');
@@ -92,6 +73,7 @@ const ENTRADAS: [string, Entrada][] = [
   // o menu do botão direito nasce no ponteiro (o canto de cima à esquerda)
   ['.ctx-menu', el => {
     encerrarPaginas();
+    pegarOrigem(el);
     el.style.transformOrigin = 'top left';
     entrar('menu', el);
   }],
@@ -135,21 +117,12 @@ type Saida = (fantasma: HTMLElement, original?: HTMLElement) => Promise<unknown>
 const SAIDAS: [string, Saida, 'fixo' | 'no-lugar'][] = [
   ['.modal-overlay:not([data-saida-propria]), .cad-janela-fundo', (f, original) => {
     const caixa = (f.querySelector<HTMLElement>('.modal') || f.firstElementChild) as HTMLElement | null;
-    // abriu de uma linha que ainda está na lista: volta para ela, encolhendo até o tamanho dela
-    const linha = original ? caixasAbertas.get(original) : undefined;
-    if (caixa && linha?.isConnected && !semMovimento()) {
-      const para = deLaParaCa(lugarDe(linha), lugarDe(caixa));
-      caixa.style.transformOrigin = '50% 50%';
-      return Promise.all([
-        sairComo('fundo', f),
-        new Promise(ok => animar(caixa, { ...para, opacity: [{ to: 0, delay: 200, duration: 220, ease: 'linear' }], duration: 440, ease: MOVER, onComplete: () => ok(null) })),
-        animar(caixa.querySelectorAll(':scope > *'), { opacity: 0, duration: 140, ease: 'linear' }),
-      ]);
-    }
-    return Promise.all([sairComo('fundo', f), caixa ? sairComo('janela', caixa) : null]);
+    // volta para onde foi aberta (o botão, a linha), encolhendo até o tamanho dela; sem origem, sai do jeito do app
+    const volta = caixa && original ? voltarParaOrigem(caixa, origemDe(original)) : null;
+    return Promise.all([sairComo('fundo', f), volta || (caixa ? sairComo('janela', caixa) : null)]);
   }, 'fixo'],
-  ['.ctx-menu', f => sairComo('menu', f), 'fixo'],
-  ['.popover', f => sairComo('menu', f), 'no-lugar'],
+  ['.ctx-menu', (f, original) => (original && voltarParaOrigem(f, origemDe(original))) || sairComo('menu', f), 'fixo'],
+  ['.popover', (f, original) => (original && voltarParaOrigem(f, origemDe(original))) || sairComo('menu', f), 'no-lugar'],
   // a abertura do app: some crescendo de leve e saindo do foco (a tela de baixo aparece por trás)
   ['.abertura', f => new Promise(ok => {
     animar(f, { opacity: 0, ...(f.classList.contains('vidro') ? {} : { scale: 1.04, filter: ['blur(0px)', 'blur(6px)'] }), duration: 480, ease: 'out(3)', onComplete: () => ok(null) });
@@ -215,9 +188,11 @@ function recusar(fundo: HTMLElement) {
 function apertar(ev: PointerEvent) {
   const alvo0 = ev.target as Element | null;
   if (ev.button === 0 && alvo0) {
-    const linha = alvo0.closest<HTMLElement>('tr.linha-abre, .linha-abre');
-    if (linha) origem = { linha, quando: performance.now() };
-    if (alvo0.matches('.modal-overlay, .cad-janela-fundo')) recusar(alvo0 as HTMLElement);
+    // a origem de uma tela que abrir agora: a linha, o botão, o item clicado
+    const de = alvo0.closest<HTMLElement>('tr.linha-abre, .linha-abre, button, a[href], [role="button"], [role="menuitem"], .drive-no');
+    if (de) marcarOrigem({ el: de });
+    // clicou fora de uma janela: se ela não fechar assim, dá o "não" de leve
+    if (alvo0.matches('.cad-janela-fundo') || (alvo0.matches('.modal-overlay') && !alvo0.hasAttribute('data-fecha-fora'))) recusar(alvo0 as HTMLElement);
   }
   const alvo = (ev.target as Element | null)?.closest<HTMLElement>(TOCAVEIS);
   if (!alvo || ev.button !== 0 || semMovimento()) return;
@@ -245,6 +220,8 @@ export function iniciarAnimador(): void {
     }
   }).observe(document.body, { childList: true, subtree: true, characterData: true });
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape') ultimoEsc = performance.now(); }, true);
+  // o clique direito: o menu nasce (e volta) no ponto do clique
+  document.addEventListener('contextmenu', ev => { marcarOrigem({ ponto: { x: ev.clientX, y: ev.clientY } }); }, true);
   document.addEventListener('pointerdown', apertar, true);
   document.addEventListener('pointerup', soltar, true);
   document.addEventListener('pointercancel', soltar, true);

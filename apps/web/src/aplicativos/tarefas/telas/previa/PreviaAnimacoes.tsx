@@ -2,7 +2,7 @@
 // de verdade — janela, aviso, menu, gaveta, lista, página, alerta e o toque nos botões. Escolher um jeito já vale para
 // o app todo neste navegador (fica guardado); o escolhido de vez vira o padrão no código.
 // Não pede login: só mostra as animações (os dados são de mentira).
-import { Alerta, Icone, JEITOS, jeitoAtual, definirJeito, MenuSuspenso, sairComo, Segmentado, Stat, useEntradaAnimada, useLinhasQueSeMovem, useRetorno, type Jeito } from '@nads/ui';
+import { AberturaN, Alerta, Icone, JEITOS, jeitoAtual, definirJeito, MenuSuspenso, sairComo, Segmentado, Stat, useEntradaAnimada, useLinhasQueSeMovem, useRetorno, type Jeito } from '@nads/ui';
 import { useRef, useState } from 'react';
 
 const LINHAS = [
@@ -22,6 +22,9 @@ export function PreviaAnimacoes() {
   const [alerta, setAlerta] = useState(0);
   const [linhas, setLinhas] = useState(LINHAS);
   const [pronto, setPronto] = useState(0);
+  // a logo: a abertura inteira (a do primeiro acesso do dia), a curta (as outras vezes) e o vidro (uma área carregando)
+  const [logo, setLogo] = useState<{ vez: number; jeito: 'inteira' | 'rapida' | 'vidro' } | null>(null);
+  const verLogo = (jeito: 'inteira' | 'rapida' | 'vidro') => setLogo(l => ({ vez: (l?.vez || 0) + 1, jeito }));
   const linhasQueSeMovem = useLinhasQueSeMovem<HTMLTableElement>(linhas.map(l => l[0]).join('|'));
   const embaralhar = () => setLinhas(ls => ls.slice().sort(() => Math.random() - 0.5));
   const tirarUma = () => setLinhas(ls => (ls.length > 2 ? ls.filter((_, i) => i !== 1) : LINHAS));
@@ -81,7 +84,20 @@ export function PreviaAnimacoes() {
         </div>
       </header>
 
+      <section className="card previa-anim-logo">
+        <div>
+          <h3>A logo</h3>
+          <p className="fraco">A abertura do app: o contorno do N se desenha, as metades pousam dentro dele e "Nilma" se revela. A inteira passa no primeiro acesso do dia; nas outras vezes, a curta. O vidro é o N sobre uma área que está carregando (a ferramenta de uma etapa).</p>
+        </div>
+        <div className="previa-anim-botoes">
+          <button type="button" className="btn btn-primary" onClick={() => verLogo('inteira')}><Icone nome="play" />Abertura inteira</button>
+          <button type="button" className="btn btn-outline" onClick={() => verLogo('rapida')}>Abertura curta</button>
+          <button type="button" className="btn btn-outline" onClick={() => verLogo('vidro')}>Carregando uma área (vidro)</button>
+        </div>
+      </section>
+
       <div ref={pagina} className="card previa-anim-pagina">
+        {logo?.jeito === 'vidro' && <AberturaN key={'v' + logo.vez} vidro />}
         <h3>Uma página</h3>
         <p className="fraco">É assim que o conteúdo chega quando você troca de página ou de etapa. As abas abaixo têm o fundo que desliza; os números contam quando mudam.</p>
         <Segmentado valor={aba} onMudar={setAba} opcoes={[{ valor: 'contabil', rotulo: 'Contábil' }, { valor: 'fiscal', rotulo: 'Fiscal' }, { valor: 'pessoal', rotulo: 'Departamento pessoal' }]} />
@@ -104,6 +120,22 @@ export function PreviaAnimacoes() {
           </table>
         </div>
       </div>
+
+      {logo && logo.jeito !== 'vidro' && (
+        <>
+          <AberturaN key={logo.jeito + logo.vez} inteira={logo.jeito === 'inteira'} rapida={logo.jeito === 'rapida'} />
+          <div className="previa-abertura-botoes">
+            <button type="button" className="btn btn-primary" onClick={() => verLogo(logo.jeito)}>Ver de novo</button>
+            <button type="button" className="btn btn-outline" onClick={() => setLogo(null)}>Fechar</button>
+          </div>
+        </>
+      )}
+      {logo?.jeito === 'vidro' && (
+        <div className="previa-abertura-botoes">
+          <button type="button" className="btn btn-primary" onClick={() => verLogo('vidro')}>Ver de novo</button>
+          <button type="button" className="btn btn-outline" onClick={() => setLogo(null)}>Tirar o vidro</button>
+        </div>
+      )}
 
       {pronto > 0 && (
         <div key={pronto} className="card executor-fim previa-anim-pronto">
