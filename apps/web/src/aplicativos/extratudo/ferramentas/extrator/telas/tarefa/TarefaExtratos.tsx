@@ -11,7 +11,7 @@
 // Ao importar, só uma barrinha por cima da tela, que some em 2,7 s.
 import { extrator as x, type conferencia, type empresas, tarefas } from '@nads/core';
 import { Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { usePonteDaTarefa } from '../../../../../../comum/ponte';
 import { useSessao } from '../../casca/sessao';
 import { useImportacao, type Mensagem } from '../importacao/useImportacao';
@@ -127,21 +127,27 @@ function AdicionarBanco({ bancos, onAdicionar, fechar }: {
  * que abre a planilha — o dia, a situação, o lançamento (com o detalhe e a dica embaixo), banco, razão e diferença.
  */
 const LIMITE_CORRECOES = 30;
-function PendenciasDoBanco({ itens }: { itens: x.CorrecaoDoRazao[] }) {
+/** A faixa grudada no bloco do banco que abre e fecha (▸ Título  N): Pendências (amarela) e Lançamentos. */
+function FaixaQueAbre({ titulo, qtd, aviso, children }: { titulo: string; qtd: number; aviso?: boolean; children: ReactNode }) {
   const [aberta, setAberta] = useState(false);
+  return (
+    <div className={'imp-faixa' + (aviso ? ' aviso' : '') + (aberta ? ' aberta' : '')}>
+      <button type="button" className="imp-faixa-barra" aria-expanded={aberta} onClick={() => setAberta(a => !a)}>
+        <Icone nome="caretDown" className="imp-faixa-seta" />
+        <b>{titulo}</b>
+        <span className="imp-faixa-qtd">{qtd}</span>
+      </button>
+      {aberta && <div className="imp-faixa-corpo">{children}</div>}
+    </div>
+  );
+}
+
+function PendenciasDoBanco({ itens }: { itens: x.CorrecaoDoRazao[] }) {
   if (!itens.length) return null;
   const valor = (n: number | null) => (n == null ? '' : x.valorBR(Math.abs(n)));
   return (
-    <div className={'imp-pend' + (aberta ? ' aberta' : '')}>
-      <button type="button" className="imp-pend-barra" aria-expanded={aberta} onClick={() => setAberta(a => !a)}>
-        <Icone nome="caretDown" className="imp-pend-seta" />
-        <Icone nome="alert" className="imp-pend-ico" />
-        <b>Pendências</b>
-        <span className="imp-pend-qtd">{itens.length}</span>
-        <span className="hint">o que corrigir no razão</span>
-      </button>
-      {aberta && (
-        <div className="imp-pend-corpo">
+    <FaixaQueAbre titulo="Pendências" qtd={itens.length} aviso>
+        <>
           <div className="table-wrap">
             <table className="table-compact imp-planilha">
               <thead><tr>
@@ -167,10 +173,8 @@ function PendenciasDoBanco({ itens }: { itens: x.CorrecaoDoRazao[] }) {
             </table>
           </div>
           {itens.length > LIMITE_CORRECOES && <p className="hint">E mais {itens.length - LIMITE_CORRECOES}: veja tudo em Extrato × sistema.</p>}
-          <p className="hint">Corrigido no sistema contábil, reimporte o razão do mês: quando tudo bater, a linha vira Ok.</p>
-        </div>
-      )}
-    </div>
+        </>
+    </FaixaQueAbre>
   );
 }
 
@@ -658,8 +662,12 @@ export function TarefaExtratos() {
                 onDrive={mes => d.buscarNoPeriodo(b, [mes])}
                 onVer={visualizarDoDrive}
                 onSemMovimento={(mes, marcado) => ponte.marcarSemMovimento(b.id, marcado, mes)} />}
-              {verLancamentos && <Movimento m={vm.movimentoDe(b.id)}
-                pdf={doDrive.length ? doDrive[doDrive.length - 1] : null} onPdf={visualizarDoDrive} competencia={vm.competencia} />}
+              {verLancamentos && (emLote ? (
+                <FaixaQueAbre titulo="Lançamentos" qtd={vm.movimentoDe(b.id).linhas.length}>
+                  <Movimento m={vm.movimentoDe(b.id)} pdf={doDrive.length ? doDrive[doDrive.length - 1] : null} onPdf={visualizarDoDrive} competencia={vm.competencia} />
+                </FaixaQueAbre>
+              ) : <Movimento m={vm.movimentoDe(b.id)}
+                pdf={doDrive.length ? doDrive[doDrive.length - 1] : null} onPdf={visualizarDoDrive} competencia={vm.competencia} />)}
             </div>
           );
         })}

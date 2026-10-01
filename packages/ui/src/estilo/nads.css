@@ -1403,19 +1403,19 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-mov thead th{background:var(--surface-2);}
 /* a busca do movimento e, na mesma linha, o total do que ela achou */
 .imp-mov-topo{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
-/* Pendências do banco: a faixa grudada embaixo da linha do banco (abre e fecha) e a planilha das correções */
-.imp-pend{border-top:1px solid var(--border);}
-.imp-pend-barra{display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;border:none;background:var(--warn-soft);color:var(--ink);font:inherit;font-size:14px;text-align:left;cursor:pointer;}
-.imp-pend-barra:hover{background:color-mix(in srgb, var(--warn) 18%, transparent);}
-.imp-pend-barra .hint{margin:0;}
-.imp-pend-qtd{display:inline-block;min-width:20px;padding:0 6px;border-radius:10px;background:var(--surface-3);font-size:12px;font-weight:600;text-align:center;}
-.imp-pend-seta{width:16px;height:16px;flex:none;color:var(--ink-muted);transform:rotate(-90deg);transition:transform .12s ease;}
-.imp-pend.aberta .imp-pend-seta{transform:none;}
-.imp-pend-ico{width:16px;height:16px;flex:none;color:var(--warn);}
-.imp-pend:last-child .imp-pend-barra{border-radius:0 0 6px 6px;}
-.imp-pend.aberta .imp-pend-barra{border-radius:0;}
-.imp-pend-corpo{padding:12px;display:flex;flex-direction:column;gap:8px;}
-.imp-pend-corpo .hint{margin:0;}
+/* As faixas grudadas no bloco do banco que abrem e fecham: Pendências (amarela) e Lançamentos */
+.imp-faixa{border-top:1px solid var(--border);}
+.imp-faixa-barra{display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;border:none;background:var(--surface-2);color:var(--ink);font:inherit;font-size:14px;text-align:left;cursor:pointer;}
+.imp-faixa-barra:hover{background:var(--hover-bg);}
+.imp-faixa.aviso .imp-faixa-barra{background:var(--warn-soft);}
+.imp-faixa.aviso .imp-faixa-barra:hover{background:color-mix(in srgb, var(--warn) 18%, transparent);}
+.imp-faixa-qtd{display:inline-block;min-width:20px;padding:0 6px;border-radius:10px;background:var(--surface-3);font-size:12px;font-weight:600;text-align:center;}
+.imp-faixa-seta{width:16px;height:16px;flex:none;color:var(--ink-muted);transform:rotate(-90deg);transition:transform .12s ease;}
+.imp-faixa.aberta .imp-faixa-seta{transform:none;}
+.imp-faixa:last-child:not(.aberta) .imp-faixa-barra{border-radius:0 0 6px 6px;}
+.imp-faixa-corpo{padding:12px;display:flex;flex-direction:column;gap:8px;}
+.imp-faixa-corpo .hint{margin:0;}
+.imp-faixa-corpo .imp-mov-caixa{margin:0;}
 /* com cara de planilha: as linhas de grade em todas as células */
 .imp-planilha{border-collapse:collapse;}
 .imp-planilha th,.imp-planilha td{border:1px solid var(--border);vertical-align:top;}
@@ -1785,7 +1785,8 @@ td.gmail-erro{color:var(--danger);}
 .imp-periodo-lado .imp-rotulo{width:auto;align-self:center;}
 .imp-periodo-lado .imp-periodo-falta{align-self:center;text-align:right;min-width:0;}
 .imp-mes-celulas{display:grid;gap:6px;}
-.imp-mes-celula{flex-direction:column;align-items:stretch;justify-content:center;gap:4px;padding:6px;min-width:0;}
+/* o mês e o ícone numa linha só (Vitor, 01/10/2026); sem espaço, o ícone desce */
+.imp-mes-celula{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;padding:4px 6px;min-width:0;}
 .imp-mes-celula .imp-mes-nome{text-align:center;padding:0 2px;}
 .imp-mes-icones{display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;min-height:28px;}
 
