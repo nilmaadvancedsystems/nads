@@ -2,6 +2,8 @@
 // período (core: extrator.bancoOkNoPeriodo), a linha troca os botões pelo selo Ok e a setinha não abre mais.
 // Quando um banco fica Ok depois de importar (não ao abrir a tela já Ok), aparece o mesmo "Tudo certo!" do
 // Verificar por conta, que fecha sozinho. Enquanto não bate, "O que corrigir no razão" (core: extrator.correcoesDoRazao).
+// Batendo, mas com dia que fecha negativo e sem o cheque especial no razão: "Conferido" no lugar do Ok; o clique abre a
+// janela que explica (o saldo negativo de cada dia e o que fazer: o Cheque especial, lançar e importar o razão de novo).
 import { extrator as x } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useRef } from 'react';
@@ -15,7 +17,10 @@ type Ponte = ReturnType<typeof usePonteDaTarefa>;
 const escapar = (t: string) => t.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch] as string));
 
 /** ocupado: alguma importação ou busca no Drive rodando (o "Tudo certo!" só vem depois de uma) */
-export function useBancosOk(vm: Vm, ponte: Ponte, ocupado: boolean): { ok: Record<string, boolean>; correcoes: Record<string, x.CorrecaoDoRazao[]> } {
+export function useBancosOk(vm: Vm, ponte: Ponte, ocupado: boolean): {
+  ok: Record<string, boolean>; correcoes: Record<string, x.CorrecaoDoRazao[]>; situacoes: Record<string, x.SituacaoDoBanco>;
+  explicarCheque: (banco: { nome: string; conta?: string }, sit: x.SituacaoDoBanco) => void;
+} {
   const s = useSessao();
   const { modal } = useRetorno();
   const emLote = vm.periodo.length > 1;
@@ -25,14 +30,16 @@ export function useBancosOk(vm: Vm, ponte: Ponte, ocupado: boolean): { ok: Recor
     : ponte.semMovimento.includes(banco) ? meses : [];
   const chaveSemMov = vm.bancos.map(b => b.id + ':' + semMovimentoDe(b.id).join('.')).join(',');
   // a conferência de todos os meses de cada banco: só quando os arquivos, os meses ou os "sem movimento" mudam
-  const { ok, correcoes } = useMemo(() => {
+  const { ok, correcoes, situacoes } = useMemo(() => {
     const ok: Record<string, boolean> = {};
     const correcoes: Record<string, x.CorrecaoDoRazao[]> = {};
+    const situacoes: Record<string, x.SituacaoDoBanco> = {};
     for (const b of vm.bancos) {
-      ok[b.id] = x.bancoOkNoPeriodo(s.empresa, b.id, vm.primeiro, meses, semMovimentoDe(b.id));
-      correcoes[b.id] = ok[b.id] ? [] : x.correcoesDoRazao(s.empresa, b.id, vm.primeiro, meses, semMovimentoDe(b.id));
+      situacoes[b.id] = x.situacaoDoBancoNoPeriodo(s.empresa, b.id, vm.primeiro, meses, semMovimentoDe(b.id));
+      ok[b.id] = situacoes[b.id].tipo === 'ok';
+      correcoes[b.id] = situacoes[b.id].tipo === 'pendente' ? x.correcoesDoRazao(s.empresa, b.id, vm.primeiro, meses, semMovimentoDe(b.id)) : [];
     }
-    return { ok, correcoes };
+    return { ok, correcoes, situacoes };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.empresa, vm.primeiro, meses.join(','), chaveSemMov]);
 
@@ -58,5 +65,19 @@ export function useBancosOk(vm: Vm, ponte: Ponte, ocupado: boolean): { ok: Recor
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chave, ocupado]);
 
-  return { ok, correcoes };
+  /** O clique no "Conferido": o saldo negativo de cada dia e o que fazer. */
+  function explicarCheque(banco: { nome: string; conta?: string }, sit: x.SituacaoDoBanco) {
+    if (sit.tipo !== 'falta-cheque') return;
+    const dias = sit.faltam.map(d => '• ' + x.dataBR(d.data) + ': <b>' + x.valorBR(d.saldo) + '</b>').join('<br>');
+    void modal({
+      icone: 'alert', titulo: 'Saldo negativo no banco',
+      html: '<b>' + escapar(banco.nome) + '</b>' + (banco.conta ? ' ' + escapar(banco.conta) : '') + ' bate com o razão, mas fecha negativo em '
+        + (sit.faltam.length === 1 ? '1 dia' : sit.faltam.length + ' dias') + ':<br>' + dias
+        + '<br><br>Faça o <b>Cheque especial</b>' + (vm.etapaCheque ? '' : ' (a etapa seguinte da Preparação)') + ': gere os lançamentos de ajuste, lance no Alterdata e '
+        + 'importe o razão de novo. A conferência confere o saldo final ignorando os lançamentos do cheque especial.',
+      botoes: [{ rotulo: 'Entendi', valor: true, variante: 'btn-primary' }],
+    });
+  }
+
+  return { ok, correcoes, situacoes, explicarCheque };
 }

@@ -17,12 +17,13 @@ export interface RequisitosDaImportacao {
  * carregou (não está pronto). prestaServico: a regra do Cadastro (só true exige o Prestados).
  */
 export function requisitosDaImportacao(
-  bancos: readonly { nome: string; ok: boolean; semMovimento: boolean }[],
+  bancos: readonly { nome: string; ok: boolean; semMovimento: boolean; faltaCheque?: boolean }[],
   importados: ImportadosDaConferencia | null,
   prestaServico: boolean | null,
 ): RequisitosDaImportacao {
   const faltam: string[] = [];
-  for (const b of bancos) if (!b.ok && !b.semMovimento) faltam.push(b.nome + ': extrato e razão batendo');
+  // batendo, mas com dia negativo sem o cheque especial: na Importação passa (o cheque é a etapa seguinte)
+  for (const b of bancos) if (!b.ok && !b.faltaCheque && !b.semMovimento) faltam.push(b.nome + ': extrato e razão batendo');
   if (!importados) faltam.push('a Conferência carregar');
   else {
     if (!importados.balancete) faltam.push('Balancete');
@@ -30,6 +31,23 @@ export function requisitosDaImportacao(
     if (!importados.saidas) faltam.push('Saídas');
     if (!importados.tomados) faltam.push('Tomados');
     if (prestaServico === true && !importados.prestados) faltam.push('Prestados');
+  }
+  return { pronto: faltam.length === 0, faltam };
+}
+
+/**
+ * Os requisitos da etapa Cheque especial (Vitor, 01/10/2026): todo banco Ok — nos dias que fecham negativos, o razão
+ * importado de novo já tem o cheque especial (o ajuste e o estorno) e, tirando ele, o extrato e o razão batem.
+ */
+export function requisitosDoChequeEspecial(
+  bancos: readonly { nome: string; ok: boolean; semMovimento: boolean; diasSemCheque: number }[],
+): RequisitosDaImportacao {
+  const faltam: string[] = [];
+  for (const b of bancos) {
+    if (b.ok || b.semMovimento) continue;
+    faltam.push(b.diasSemCheque > 0
+      ? b.nome + ': o cheque especial de ' + b.diasSemCheque + (b.diasSemCheque === 1 ? ' dia negativo' : ' dias negativos') + ' e o razão importado de novo'
+      : b.nome + ': extrato e razão batendo');
   }
   return { pronto: faltam.length === 0, faltam };
 }

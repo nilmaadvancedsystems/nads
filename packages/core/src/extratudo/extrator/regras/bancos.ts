@@ -5,8 +5,7 @@
 import { bancosDaEmpresa, rotuloDaConta, type BancoDaEmpresa } from '../../../empresas/bancos';
 import { bancosDoCadastroNa, primeiroBancoDoCadastro } from '../../../empresas/cadastro/regras';
 import type { CadastroDaEmpresa } from '../../../empresas/cadastro/tipos';
-import type { ArquivoImportado, EmpresaExtrator, LancamentoDoArquivo, RegistroAuditoria } from '../tipos';
-import { conferir } from './conferencia';
+import type { ArquivoImportado, EmpresaExtrator, RegistroAuditoria } from '../tipos';
 
 /** O banco de um arquivo (o primeiro banco da empresa, se o arquivo é de antes ou da linha genérica). */
 export function bancoDoArquivo(a: ArquivoImportado, primeiro: string): string {
@@ -39,25 +38,6 @@ export function bancosNaCompetencia(e: EmpresaExtrator, cadastrados: readonly Ba
 /** Os arquivos de um banco e lado com lançamento na competência. */
 export function arquivosDoBanco(e: EmpresaExtrator, banco: string, primeiro: string, lado: ArquivoImportado['lado'], competencia: string): ArquivoImportado[] {
   return e.arquivos.filter(a => a.lado === lado && bancoDoArquivo(a, primeiro) === banco && a.lancamentos.some(l => l.data.startsWith(competencia)));
-}
-
-/**
- * O banco está Ok no período (Vitor, 01/10/2026): todo mês com movimento tem o extrato e o razão, e o extrato
- * e o razão batem entre si — a conferência não deixa nenhuma pendência (cada lançamento com a mesma data e o
- * mesmo valor do outro lado). Os meses marcados "sem movimento" ficam de fora; só com eles, não está Ok.
- */
-export function bancoOkNoPeriodo(e: EmpresaExtrator, banco: string, primeiro: string, meses: readonly string[], semMovimento: readonly string[] = []): boolean {
-  const comMovimento = meses.filter(m => !semMovimento.includes(m));
-  if (!comMovimento.length) return false;
-  const doMes = (lado: ArquivoImportado['lado'], mes: string): LancamentoDoArquivo[] =>
-    arquivosDoBanco(e, banco, primeiro, lado, mes).flatMap(a =>
-      a.lancamentos.flatMap((l, i) => (l.data.startsWith(mes) ? [{ ...l, id: a.id + ':' + i, idArquivo: a.id, lado }] : [])));
-  return comMovimento.every(mes => {
-    const extrato = doMes('banco', mes);
-    const razao = doMes('sistema', mes);
-    if (!extrato.length || !razao.length) return false;
-    return conferir(extrato, razao).linhas.every(l => l.situacao === 'ok');
-  });
 }
 
 /** Adiciona um banco à empresa, valendo desta competência em diante (fica na auditoria). */

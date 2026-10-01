@@ -42,8 +42,8 @@ export function execucoesDeExemplo(agora: Date): Execucao[] {
 
 /** O motivo usado quando a etapa para, nos exemplos. */
 const MOTIVO_EXEMPLO: Record<string, string> = {
-  extratos: 'sem-extrato', fiscal: 'outro', dp: 'dp-pendente', caixa: 'caixa-credor', bancos: 'sem-saldo-diario',
-  clientes: 'sem-relatorio', estoque: 'sem-inventario', emprestimos: 'sem-extrato-contrato', folha: 'dp-pendente', fechamento: 'revisao',
+  extratos: 'sem-extrato', fiscal: 'outro', dp: 'outro', caixa: 'caixa-credor', bancos: 'sem-saldo-diario',
+  clientes: 'sem-relatorio', estoque: 'sem-inventario', emprestimos: 'sem-extrato-contrato', folha: 'outro', fechamento: 'revisao',
 };
 const PESSOAS_EXEMPLO = ['Clara', 'Felipe', 'Vitor'];
 

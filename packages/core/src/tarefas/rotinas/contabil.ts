@@ -5,7 +5,7 @@
 // É o único lugar a mexer: a ordem, os nomes, as ferramentas, o que conferir e as objeções saem daqui.
 import type { Rotina } from '../tipos';
 
-const DP_PENDENTE = { id: 'dp-pendente', texto: 'A folha (Departamento Pessoal) ainda não saiu', solucao: { tipo: 'orientacao' as const, rotulo: 'Como resolver', texto: 'A etapa depende do Departamento Pessoal. Interrompa e retome quando a folha for liberada.' } };
+// sem a saída "A folha ainda não saiu" (Vitor, 01/10/2026): a etapa do DP só é feita com a folha pronta
 const SEM_FUNCIONARIOS = { id: 'sem-funcionarios', texto: 'A empresa não tem funcionários', solucao: { tipo: 'nao-se-aplica' as const, rotulo: 'Não tem funcionários' } };
 const nao = (id: string, texto: string, rotulo = 'Não se aplica') => ({ id, texto, solucao: { tipo: 'nao-se-aplica' as const, rotulo } });
 
@@ -27,6 +27,20 @@ export const ROTINA_CONTABIL: Rotina = {
         { id: 'no-drive', texto: 'O extrato está no Drive do cliente', soMotivo: true, solucao: { tipo: 'drive', rotulo: 'Buscar no Drive' } },
         { id: 'sem-movimento', texto: 'A empresa não teve movimento no banco', soMotivo: true, solucao: { tipo: 'nao-se-aplica', rotulo: 'Não teve movimento' } },
         { id: 'sem-razao', texto: 'O razão da conta ainda não foi gerado no sistema', soMotivo: true, solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Gere o razão da conta do banco no Alterdata (Excel ou PDF) e importe na linha "Lançamentos contábeis".' } },
+      ],
+    },
+    {
+      // Vitor, 01/10/2026: com o extrato e o razão batendo, os dias que fecham negativos pedem o cheque especial — gerar
+      // os lançamentos (a ferramenta Cheque especial), lançar no Alterdata e importar o razão de novo. A mesma página da
+      // Importação, só os bancos: o avançar só aparece com todo banco Ok (o saldo final confere sem o cheque especial).
+      id: 'cheque-especial',
+      secao: 'Preparação',
+      nome: 'Cheque especial',
+      descricao: 'Os dias em que o banco fecha negativo: gere os lançamentos no Cheque especial, lance no Alterdata e importe o razão de novo.',
+      ferramenta: { app: 'extratudo', nome: 'Extrator', caminho: r => '/extratudo/' + r + '/extrator/tarefa/extratos?etapa=cheque', embutir: true, periodo: true, requisitos: true },
+      verificacao: 'manual',
+      objecoes: [
+        { id: 'cheque-nao-lancado', texto: 'O cheque especial ainda não foi lançado no Alterdata', soMotivo: true, solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Gere os lançamentos no Cheque especial, lance no Alterdata e importe o razão da conta do banco de novo.' } },
       ],
     },
     {
@@ -52,7 +66,7 @@ export const ROTINA_CONTABIL: Rotina = {
         'Importe a folha no Alterdata: salários, pró-labore, férias, rescisões, INSS, FGTS e IRRF.',
         'Rescisão no mês: a multa do FGTS (GRRF) também.',
       ],
-      objecoes: [DP_PENDENTE, SEM_FUNCIONARIOS],
+      objecoes: [SEM_FUNCIONARIOS],
     },
 
     // ─── Ativo ────────────────────────────────────────────────────────────────
@@ -219,7 +233,7 @@ export const ROTINA_CONTABIL: Rotina = {
         'INSS a recolher e FGTS a recolher iguais às guias do mês; a guia paga zera o saldo.',
         'Férias, 13º e rescisões pagos baixados (e a multa do FGTS na GRRF).',
       ],
-      objecoes: [DP_PENDENTE, SEM_FUNCIONARIOS],
+      objecoes: [SEM_FUNCIONARIOS],
     },
     {
       id: 'pro-labore',

@@ -1450,6 +1450,13 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-planilha-parte td{color:var(--ink-muted);font-size:13px;border-top-style:dashed;}
 .imp-planilha-parte td:first-child{padding-left:24px;}
 td.imp-planilha-dica{color:var(--warn);font-size:12px;}
+/* o "Conferido" do banco (bate, mas falta o cheque especial dos dias negativos): botão que abre a explicação */
+.imp-conferido{cursor:pointer;font:inherit;font-size:12px;}
+.imp-conferido:hover{filter:brightness(1.1);}
+/* a etapa Cheque especial: o aviso no alto e o botão que abre a ferramenta */
+.imp-cheque{margin:0 0 12px;}
+.imp-cheque-abrir{margin-top:8px;}
+.imp-cheque-ok{margin:0 0 12px;}
 /* banco Ok (extrato e razão batem no período): a setinha fica apagada e não abre */
 .imp-ok .imp-seta{opacity:.35;cursor:default;}
 /* o olho (PDF do Drive) colado na busca e, grudado à direita dele, o mês que a tabela mostra */
