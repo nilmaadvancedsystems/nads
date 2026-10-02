@@ -2,7 +2,7 @@
 // dentre outros, no estilo do Entregas"; "no estilo do Notion, com uma tela flutuante"). Tópicos (a lateral da janela):
 //   Caixa de entrada   o que é da pessoa e pede atenção: os pedidos de liberação de computador (admin), as etapas que
 //                      ela parou (para retomar) e os arquivos que ela mandou ao Claudio Secretário (onde foram parar)
-//   Minha conta        a foto de perfil (a mesma do Entregas, aparece no avatar), nome, e-mail, setor e cargo, sair
+//   Minha conta        a foto de perfil (a mesma do Entregas, aparece no avatar), nome, e-mail, setor, sair
 //   Aparência e telas  o tema e onde a Tarefas abre (neste navegador)
 //   Versão do sistema  a versão e atualizar quando sai uma nova
 // Lê o que as outras telas já leem; grava só a foto (usuarios/{uid}.fotoPerfil, o dono pode) e, neste navegador, o
@@ -145,7 +145,8 @@ export function usePaginaPessoal() {
       trocarFoto: (arquivo: File) => { void reduzir(arquivo).then(gravarFoto, (err: Error) => toast(err.message)); },
       tirarFoto: () => { void gravarFoto(null); },
       email: u?.email || (comLogin ? '' : 'sem login (dados de exemplo)'),
-      cargo: usuarios.rotuloDoCargo({ departamento: op.departamento, nivel: op.nivel, papeis: u?.papeis || [] }),
+      // só o setor (Vitor, 02/10/2026: "coloque só o setor"), sem o nível
+      setor: usuarios.rotuloDoCargo({ departamento: op.departamento, nivel: null, papeis: u?.papeis || [] }),
       admin: op.admin,
       sair: comLogin ? 'Sair da conta' : 'Trocar de pessoa',
       fazerSair: () => escolher(null),

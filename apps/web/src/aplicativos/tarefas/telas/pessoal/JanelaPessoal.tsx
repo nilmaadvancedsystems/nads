@@ -9,7 +9,7 @@ import { usePaginaPessoal, type VmPessoal } from './usePaginaPessoal';
 
 const TOPICOS: { id: TopicoPessoal; rotulo: string; icone: NomeIcone; grupo: string; busca: string }[] = [
   { id: 'caixa', rotulo: 'Caixa de entrada', icone: 'caixaEntrada', grupo: '', busca: 'inbox pendências paradas envios claudio secretário liberação computador' },
-  { id: 'conta', rotulo: 'Minha conta', icone: 'usuario', grupo: 'Conta', busca: 'foto perfil nome e-mail email setor cargo sair senha' },
+  { id: 'conta', rotulo: 'Minha conta', icone: 'usuario', grupo: 'Conta', busca: 'foto perfil nome e-mail email setor sair senha' },
   { id: 'preferencias', rotulo: 'Aparência e telas', icone: 'settings', grupo: 'Preferências', busca: 'tema claro escuro início abrir tela' },
   { id: 'aplicativo', rotulo: 'Versão do sistema', icone: 'download', grupo: 'Aplicativo', busca: 'versão atualizar nova' },
 ];
@@ -107,7 +107,7 @@ function MinhaConta({ vm }: { vm: VmPessoal }) {
       <Cartao titulo="Conta">
         <Linha rotulo="Nome" dica="Como aparece nas tarefas e nos pedidos ao robô.">{c.nome}</Linha>
         <Linha rotulo="E-mail" dica="O login do Entregas (a mesma conta em todo o nads).">{c.email || '—'}</Linha>
-        <Linha rotulo="Setor e cargo" dica="Quem muda é um administrador.">{c.cargo}</Linha>
+        <Linha rotulo="Setor" dica="Quem muda é um administrador.">{c.setor}</Linha>
         <Linha rotulo="Nome e senha" dica="Mudam nas Configurações do Entregas (a mesma conta).">
           <a className="btn btn-outline" href={c.linkDoEntregas} target="_blank" rel="noreferrer">Abrir no Entregas</a>
         </Linha>
@@ -167,7 +167,7 @@ export function JanelaPessoal({ topico, mudar, fechar }: { topico: TopicoPessoal
         <aside className="pessoal-lado">
           <div className="pessoal-quem">
             <Foto foto={vm.conta.foto} iniciais={vm.conta.iniciais} />
-            <div className="pessoal-quem-texto"><b>{vm.conta.nome}</b><span className="fraco">{vm.conta.email || vm.conta.cargo}</span></div>
+            <div className="pessoal-quem-texto"><b>{vm.conta.nome}</b><span className="fraco">{vm.conta.email || vm.conta.setor}</span></div>
           </div>
           <label className="busca-curta pessoal-busca">
             <Icone nome="search" />
