@@ -13,3 +13,8 @@
 .cat-removida .link-btn{appearance:none;border:none;background:none;padding:4px 6px;margin:0;font:inherit;font-size:14px;font-weight:500;
   color:var(--accent);cursor:pointer;border-radius:6px;}
 .cat-removida .link-btn:hover{text-decoration:underline;}
+/* JN-03 Para seguir, falta (janela; saiu em 02/10/2026, virou o sino suspenso) */
+.cat-removida .modal.modal-centro.falta-janela{max-width:520px;}
+.cat-removida .falta-tabela{margin-top:12px;text-align:left;max-height:50vh;}
+.cat-removida .falta-tabela td{vertical-align:middle;}
+.cat-removida .falta-tabela td.num{width:1%;white-space:nowrap;}

@@ -2408,8 +2408,15 @@ tr.nads-destaque > td{background:var(--warn-soft);}
 /* o período na ferramenta da etapa: só a informação (sem seleção), como texto com o ícone */
 .imp-periodo-info{display:inline-flex;align-items:center;gap:6px;min-height:32px;font-size:14px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;}
 .imp-periodo-info svg{width:16px;height:16px;color:var(--ink-muted);}
-/* o "?" do executor: o que falta numa tabelinha, com o Resolver em cada linha */
-.modal.modal-centro.falta-janela{max-width:520px;}
-.falta-tabela{margin-top:12px;text-align:left;max-height:50vh;}
-.falta-tabela td{vertical-align:middle;}
-.falta-tabela td.num{width:1%;white-space:nowrap;}
+/* O que falta (executor): o sino com o número em vermelho no canto (a notificação) e, ao clicar, a lista suspensa no
+   jeito do "Code ▾" do GitHub — o título em negrito e uma linha por pendência, com o Resolver à direita */
+.falta-btn{position:relative;}
+.falta-qtd{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--btn-primary);color:#FFFFFF;
+  font-size:11px;font-weight:700;line-height:18px;text-align:center;box-shadow:0 0 0 2px var(--header-bg);}
+.falta-pop{padding:4px 0;}
+.falta-pop-titulo{margin:0;padding:8px 16px 10px;font-size:14px;font-weight:600;color:var(--ink);border-bottom:1px solid var(--border-muted);}
+.falta-lista{list-style:none;margin:0;padding:4px 0;}
+.falta-lista li{display:flex;align-items:center;gap:12px;padding:8px 16px;}
+.falta-lista li + li{border-top:1px solid var(--border-muted);}
+.falta-texto{flex:1;min-width:0;font-size:13px;color:var(--ink);line-height:1.4;}
+.falta-lista .btn{flex:none;}
