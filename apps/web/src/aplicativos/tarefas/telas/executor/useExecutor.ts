@@ -56,8 +56,9 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const etapa = empresa && meses.length ? rotina.etapas.find(e => meses.some(c => !concluidaEm(e.id, c))) || null : null;
   const pendentes = etapa ? meses.filter(c => !concluidaEm(etapa.id, c)) : [];
   const f = etapa?.ferramenta || null;
-  // a ferramenta trabalha o período inteiro? então as ações valem para todos os meses que faltam; senão, só o primeiro
-  const juntos = !!f?.periodo;
+  // em lote (vários meses: o período escolhido na Importação), toda etapa trabalha o período inteiro, do começo ao fim
+  // (Vitor, 02/10/2026): as ações valem para todos os meses que faltam. Num mês só, a ferramenta de período também.
+  const juntos = varios || !!f?.periodo;
   const alvos = juntos ? pendentes : pendentes.slice(0, 1);
   const competencia = pendentes[0] || meses[meses.length - 1] || '';
   const ex = exDe[competencia] || null;

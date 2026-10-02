@@ -77,10 +77,8 @@ const ENTRADAS: [string, Entrada][] = [
   }],
   ['.cad-janela-fundo', el => { janela(el, el.firstElementChild as HTMLElement | null); }],
   ['.drawer-overlay', el => { entrar('fundo', el); }],
-  ['.drawer', el => {
-    entrar('gaveta', el);
-    entrar('gavetaItens', el.querySelectorAll('.drawer-item'));
-  }],
+  // a gaveta desliza; os itens dela (ícone e nome) já estão no lugar (Vitor, 02/10/2026: sem a animação dos ícones)
+  ['.drawer', el => { entrar('gaveta', el); }],
   // os menus de botão nascem do canto que encosta no botão (o .popover-wrap): à direita ou à esquerda, em cima ou embaixo
   ['.popover', el => {
     pegarOrigem(el);
