@@ -470,14 +470,19 @@ hr{border:0;border-top:1px solid var(--border);margin:24px 0;}
 .modal{background:var(--surface);border-radius:12px;box-shadow:var(--shadow-lg);max-width:448px;width:100%;padding:0;overflow:hidden;
 }
 .modal-icon{display:none;}
-.modal.modal-ok{max-width:360px;text-align:center;padding:28px 24px 22px;position:relative;}
-.modal.modal-ok .modal-icon{display:flex;align-items:center;justify-content:center;width:56px;height:56px;margin:0 auto 14px;padding:0;border-radius:50%;background:var(--success-soft);color:var(--success);}
-.modal.modal-ok .modal-icon svg{width:30px;height:30px;}
-.modal.modal-ok h3{border:0;padding:0;margin:0 0 6px;font-size:18px;}
-.modal.modal-ok p{padding:0;margin:0;font-size:13.5px;line-height:1.5;color:var(--ink-muted);}
-.modal.modal-ok p b{color:var(--ink);font-weight:600;}
-.modal.modal-ok .modal-actions{border:0;padding:18px 0 0;justify-content:center;}
-.modal.modal-ok .modal-actions .btn{min-width:120px;}
+/* Toda janela no desenho do "Tudo certo!" (classeDaJanela, Vitor 02/10/2026): o ícone numa bolinha, título, texto e
+   botões no centro. A bolinha: cinza (padrão), laranja (aviso, ⚠), verde (deu certo). */
+.modal.modal-centro{max-width:400px;text-align:center;padding:28px 24px 22px;position:relative;}
+.modal.modal-centro .modal-icon{display:flex;align-items:center;justify-content:center;width:56px;height:56px;margin:0 auto 14px;padding:0;border-radius:50%;background:var(--hover-bg);color:var(--ink-muted);}
+.modal.modal-centro .modal-icon svg{width:30px;height:30px;}
+.modal.modal-aviso .modal-icon{background:var(--warn-soft);color:var(--warn);}
+.modal.modal-ok{max-width:360px;}
+.modal.modal-ok .modal-icon{background:var(--success-soft);color:var(--success);}
+.modal.modal-centro h3{border:0;padding:0;margin:0 0 6px;font-size:18px;}
+.modal.modal-centro p{padding:0;margin:0;font-size:13.5px;line-height:1.5;color:var(--ink-muted);}
+.modal.modal-centro p b{color:var(--ink);font-weight:600;}
+.modal.modal-centro .modal-actions{border:0;padding:18px 0 0;justify-content:center;}
+.modal.modal-centro .modal-actions .btn{min-width:120px;}
 .saldo-parcial{color:var(--ink-muted);margin-left:2px;cursor:help;}
 .modal-ok-barra{position:absolute;left:0;bottom:0;height:3px;width:100%;background:var(--success);transform-origin:left;animation:okBarra 3.5s linear forwards;}
 @keyframes okBarra{from{transform:scaleX(1);}to{transform:scaleX(0);}}
@@ -1447,7 +1452,9 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-planilha{border-collapse:collapse;}
 .imp-planilha th,.imp-planilha td{border:1px solid var(--border);vertical-align:top;}
 .imp-planilha th{background:var(--surface-2);}
-.imp-planilha-dia,.imp-planilha-sit{white-space:nowrap;}
+.imp-planilha-dia{white-space:nowrap;}
+/* a Situação diz o problema inteiro ("Razão: 17/04 · Correto: 16/04"): quebra a linha, sem ficar larga demais */
+.imp-planilha-sit{min-width:180px;max-width:280px;}
 .imp-planilha-dia{font-variant-numeric:tabular-nums;}
 .imp-planilha-lanc .hint{display:block;margin-top:2px;}
 .imp-planilha-dica{color:var(--warn);}
@@ -2131,13 +2138,14 @@ main.main:has(> .content > .explorador){padding:0;}
 /* Barras de rolagem do nads inteiro (01/10/2026): finas, arredondadas, sem as setinhas, na cor do sistema (o vermelho
    do --accent, suave parado e forte ao passar o mouse). Chrome/Edge pelo ::-webkit-scrollbar; Firefox pelo
    scrollbar-color (só onde não há o ::-webkit, senão o Chrome trocaria pelo padrão dele). */
-::-webkit-scrollbar{width:10px;height:10px;}
+/* mais finas (Vitor, 02/10/2026): 6 px, o polegar com 4 px visíveis */
+::-webkit-scrollbar{width:6px;height:6px;}
 ::-webkit-scrollbar-button{display:none;width:0;height:0;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-corner{background:transparent;}
-::-webkit-scrollbar-thumb{background:color-mix(in srgb, var(--accent) 45%, transparent);border-radius:8px;border:2px solid transparent;background-clip:padding-box;}
-::-webkit-scrollbar-thumb:hover{background:var(--accent);border:2px solid transparent;background-clip:padding-box;}
-::-webkit-scrollbar-thumb:active{background:var(--accent-strong);border:2px solid transparent;background-clip:padding-box;}
+::-webkit-scrollbar-thumb{background:color-mix(in srgb, var(--accent) 45%, transparent);border-radius:6px;border:1px solid transparent;background-clip:padding-box;}
+::-webkit-scrollbar-thumb:hover{background:var(--accent);border:1px solid transparent;background-clip:padding-box;}
+::-webkit-scrollbar-thumb:active{background:var(--accent-strong);border:1px solid transparent;background-clip:padding-box;}
 @supports not selector(::-webkit-scrollbar){
   *{scrollbar-width:thin;scrollbar-color:color-mix(in srgb, var(--accent) 50%, transparent) transparent;}
 }
@@ -2360,17 +2368,30 @@ tr.linha-abre,.imp-linha,.gh-crumb,.drawer-x{
 
 /* Em lote: os meses numa tabela só, embaixo de cada banco (Vitor, 02/10/2026: "tá muito feio"). Meses em cima (clicar
    abre), Extrato e Razão nas linhas, um ícone por mês, sem caixa em volta de cada um. */
-.imp-periodo-linha{padding:4px 16px 10px 52px;border-top:1px dashed var(--border-muted);}
-.imp-meses{width:100%;table-layout:fixed;border-collapse:collapse;}
-.imp-meses th,.imp-meses td{padding:6px 2px;text-align:center;border-bottom:1px solid var(--border-muted);}
+/* (Vitor, 02/10/2026: "desenhe a box melhorzinho, mais homogênea, aproveite a box"): a grade numa caixa com borda, a
+   largura toda; cada mês uma coluna igual, com linha entre elas; o mês aberto com o sublinhado das abas; os ícones todos
+   do mesmo tamanho (28 px). */
+.imp-periodo-linha{padding:10px 16px 14px;border-top:1px dashed var(--border-muted);}
+.imp-meses{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:8px;background:var(--surface);}
+/* cantos arredondados pelas células (overflow:hidden cortaria o menu que abre de dentro) */
+.imp-meses thead tr > :first-child{border-top-left-radius:7px;}
+.imp-meses thead tr > :last-child{border-top-right-radius:7px;}
+.imp-meses tbody tr:last-child > :first-child{border-bottom-left-radius:7px;}
+.imp-meses tbody tr:last-child > :last-child{border-bottom-right-radius:7px;}
+.imp-meses th,.imp-meses td{padding:0 2px;text-align:center;vertical-align:middle;border-bottom:1px solid var(--border-muted);border-left:1px solid var(--border-muted);}
+.imp-meses tr > :first-child{border-left:none;}
 .imp-meses tbody tr:last-child th,.imp-meses tbody tr:last-child td{border-bottom:none;}
-.imp-meses thead th{padding-top:4px;padding-bottom:4px;font-weight:400;}
-.imp-meses th[scope="row"],.imp-meses thead th:first-child{width:64px;text-align:left;font-size:12px;font-weight:500;color:var(--ink-muted);}
-.imp-meses td{height:44px;}
-.imp-meses td.atual,.imp-meses th.atual{background:var(--hover-bg);}
+.imp-meses thead th{height:34px;background:var(--surface-2);border-bottom-color:var(--border);font-weight:400;}
+.imp-meses th[scope="row"],.imp-meses thead th:first-child{width:76px;padding-left:12px;text-align:left;font-size:12px;font-weight:600;color:var(--ink-muted);background:var(--surface-2);}
+.imp-meses td{height:42px;}
+.imp-meses td.atual{background:color-mix(in srgb, var(--hover-bg) 55%, transparent);}
+.imp-meses thead th.atual{box-shadow:inset 0 -2px 0 var(--tab-active);}
 .imp-meses-mes{border:none;background:none;font:inherit;font-size:12px;color:var(--ink-muted);padding:2px 6px;border-radius:6px;cursor:pointer;font-variant-numeric:tabular-nums;}
-.imp-meses-mes:hover{color:var(--ink);text-decoration:underline;}
+.imp-meses-mes:hover{color:var(--ink);background:var(--hover-bg);}
 .imp-meses th.atual .imp-meses-mes{color:var(--ink);font-weight:600;}
 .imp-meses .popover-wrap{display:inline-block;}
 .imp-meses .popover{text-align:left;}
-.imp-meses .imp-mes-menu{height:28px;padding:0 4px;}
+/* só o ícone, do tamanho dos outros: as opções abrem ao clicar */
+.imp-meses .imp-mes-menu{width:28px;height:28px;padding:0;}
+.imp-meses .imp-mes-menu .menu-seta{display:none;}
+.imp-meses .imp-mes-sem{min-width:56px;}

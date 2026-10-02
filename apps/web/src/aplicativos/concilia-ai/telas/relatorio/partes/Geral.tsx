@@ -3,7 +3,7 @@
 // ~L1201-1222; renderGeral ~L3593, renderCcBalancete ~L3508, renderCcChart ~L3419,
 // renderCcRank ~L3447).
 import { conferencia as c, formatos } from '@nads/core';
-import { Stat } from '@nads/ui';
+import { Stat, TituloDaConta } from '@nads/ui';
 import type { useRelatorio } from '../useRelatorio';
 import { IconePassivo, linhaPassivo, SaldoCelula, Situacao } from './Situacao';
 
@@ -82,7 +82,7 @@ function SaldoBalancete({ linhas, onRevisar }: { linhas: c.LinhaSaldo[]; onRevis
               const rotS = l.emServicos === 'tomados' ? 'Tomados' : 'Prestados';
               return (
                 <tr key={chave} className="linha-em-serv" title={'Essa conta também tem notas de serviço: a conferência dela é feita em ' + rotS + ', somando as duas.'}>
-                  <td style={{ whiteSpace: 'nowrap' }}><b>{l.titulo}</b></td>
+                  <td style={{ whiteSpace: 'nowrap' }}><TituloDaConta titulo={l.titulo} /></td>
                   <td className="wrap">{l.cfops.join(', ')}</td>
                   <td className="num">{l.qtdNotas}</td>
                   <td className="num">{brl(l.somaNotas)}</td>
@@ -93,7 +93,7 @@ function SaldoBalancete({ linhas, onRevisar }: { linhas: c.LinhaSaldo[]; onRevis
             }
             return (
               <tr key={chave} {...linhaPassivo(l.avisoPassivo)}>
-                <td style={{ whiteSpace: 'nowrap' }}><IconePassivo aviso={l.avisoPassivo} /><b>{l.titulo}</b></td>
+                <td style={{ whiteSpace: 'nowrap' }}><IconePassivo aviso={l.avisoPassivo} /><TituloDaConta titulo={l.titulo} /></td>
                 <td className="wrap">{l.cfops.join(', ')}</td>
                 <td className="num">{l.qtdNotas}</td>
                 <td className="num">{brl(l.somaNotas)}</td>

@@ -8,6 +8,7 @@ import { extrator as x } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useRef } from 'react';
 import type { usePonteDaTarefa } from '../../../../../../comum/ponte';
+import { caminhoNaFerramenta } from '../../../../casca/caminho';
 import { useSessao } from '../../casca/sessao';
 import type { useImportacao } from '../importacao/useImportacao';
 
@@ -58,7 +59,7 @@ export function useBancosOk(vm: Vm, ponte: Ponte, ocupado: boolean): {
     mexeu.current = false;
     void modal({
       tom: 'ok', icone: 'checkCircle', titulo: 'Tudo certo!',
-      html: novos.map(b => '<b>' + escapar(b.nome) + '</b>' + (b.conta ? ' ' + escapar(b.conta) : '')).join('<br>') + '<br>extrato e razão batem · Ok',
+      html: novos.map(b => '<b>' + escapar(b.nome) + '</b>' + (b.conta ? ' ' + escapar(b.conta) : '')).join('<br>'),
       botoes: [{ rotulo: 'Ok', valor: true, variante: 'btn-primary' }],
       fecharEm: { ms: 3500, valor: true },
     });
@@ -75,7 +76,8 @@ export function useBancosOk(vm: Vm, ponte: Ponte, ocupado: boolean): {
         + (sit.faltam.length === 1 ? '1 dia' : sit.faltam.length + ' dias') + ':<br>' + dias
         + '<br><br>Faça o <b>Cheque especial</b>' + (vm.etapaCheque ? '' : ' (a etapa seguinte da Preparação)') + ': gere os lançamentos de ajuste, lance no Alterdata e '
         + 'importe o razão de novo. A conferência confere o saldo final ignorando os lançamentos do cheque especial.',
-      botoes: [{ rotulo: 'Entendi', valor: true, variante: 'btn-primary' }],
+      // abre o Cheque especial numa aba nova (Vitor, 02/10/2026: no lugar do "Entendi")
+      botoes: [{ rotulo: 'Fazer Cheque Especial', valor: true, variante: 'btn-primary', aoClicar: () => { window.open(caminhoNaFerramenta('cheque-especial', s.rota), '_blank', 'noopener'); } }],
     });
   }
 

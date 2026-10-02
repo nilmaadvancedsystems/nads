@@ -26,7 +26,7 @@ describe('o que corrigir no razão', () => {
   it('para a tabela: o lançamento, o detalhe e os valores de cada lado', () => {
     expect(r.map(c => [c.lancamento, c.detalhe, c.noBanco, c.noRazao, c.diferenca])).toEqual([
       ['CRÉD.LIQ.COBRANÇA DOC.: 1948608', 'No razão: GONCALVES E AQUINO 1.089,10', 95814, 108910, 13096],
-      ['DONA BEIJA', 'No razão em 17/03; no banco em 16/03. Mudar a data.', 94730, 94730, undefined],
+      ['DONA BEIJA', undefined, 94730, 94730, undefined],
       ['CRÉD.LIQ.COBRANÇA DOC.: 2096255', 'No razão: QUEBA 5.109,72 · SANTOS E OLIVEIRA 3.157,50', 839818, 826722, -13096],
     ]);
   });
@@ -36,9 +36,13 @@ describe('o que corrigir no razão', () => {
       { lado: 'razao', historico: 'SANTOS E OLIVEIRA', valor: 315750 },
     ]);
   });
-  it('a mesma diferença ao contrário liga os dois dias', () => {
-    expect(r[0].dica).toBe('Os 130,96 a mais parecem ser de 18/05/2026 (lá faltam 130,96 no razão).');
-    expect(r[2].dica).toBe('Os 130,96 que faltam parecem estar lançados em 06/03/2026 (lá sobram 130,96 no razão).');
+  it('a Situação descreve o problema: a data trocada diz a certa (a do banco)', () => {
+    expect(r[1].situacao).toBe('Razão: 17/03 · Correto: 16/03');
+  });
+  it('a mesma diferença ao contrário liga os dois dias (na Situação)', () => {
+    expect(r[0].situacao).toBe('Os 130,96 a mais parecem ser de 18/05/2026');
+    expect(r[2].situacao).toBe('Os 130,96 que faltam parecem estar lançados em 06/03/2026');
+    expect(r[0].dica).toBeUndefined();
   });
   it('mês sem razão, ou sem movimento, fica de fora', () => {
     expect(correcoesDoRazao(e, 'sicoob', 'sicoob', ['2026-03'], ['2026-03'])).toEqual([]);

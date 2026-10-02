@@ -21,6 +21,11 @@ export interface CorrecaoDoRazao {
   tipo: TipoCorrecao;
   /** a frase inteira (para copiar ou ler) */
   texto: string;
+  /**
+   * A coluna Situação: o problema descrito (Vitor, 02/10/2026: "deixe a descrição do problema, não só Lote não soma").
+   * Ex.: "Razão: 17/04 · Correto: 16/04" (o certo é sempre o do banco), "Os 130,96 que faltam parecem estar lançados em 06/03/2026".
+   */
+  situacao: string;
   /** para a tabela: o lançamento (o histórico do banco, ou do razão quando só ele tem) e o detalhe embaixo */
   lancamento: string;
   detalhe?: string;
@@ -60,12 +65,12 @@ function correcoesDoMes(mes: string, linhas: LinhaConferencia[]): CorrecaoDoRaza
     if (l.situacao === 'ok') continue;
     const e = l.extrato, s = l.sistema;
     if (l.situacao === 'diferente' && e && s) {
-      if (l.tipoDiferenca === 'data') r.push({ mes, data: e.data, tipo: 'data', lancamento: s.historico, detalhe: 'No razão em ' + dia(s.data) + '; no banco em ' + dia(e.data) + '. Mudar a data.', noBanco: e.valor, noRazao: s.valor, texto: s.historico + ' (' + v(s.valor) + ') está no razão em ' + dia(s.data) + '; no banco foi em ' + dia(e.data) + '. Mudar a data.' });
-      else if (l.tipoDiferenca === 'sinal') r.push({ mes, data: e.data, tipo: 'sinal', lancamento: s.historico, detalhe: e.valor > 0 ? 'No banco é entrada; no razão está como saída.' : 'No banco é saída; no razão está como entrada.', noBanco: e.valor, noRazao: s.valor, texto: s.historico + ' (' + v(s.valor) + '): ' + (e.valor > 0 ? 'no banco é entrada e no razão está como saída.' : 'no banco é saída e no razão está como entrada.') });
-      else r.push({ mes, data: e.data, tipo: 'valor', diferenca: s.valor - e.valor, lancamento: e.historico, detalhe: 'No razão: ' + s.historico, noBanco: e.valor, noRazao: s.valor, texto: e.historico + ': no banco ' + v(e.valor) + ', no razão ' + v(s.valor) + ' (' + s.historico + '). Diferença de ' + v(s.valor - e.valor) + '.' });
+      if (l.tipoDiferenca === 'data') r.push({ mes, data: e.data, tipo: 'data', lancamento: s.historico, situacao: 'Razão: ' + dia(s.data) + ' · Correto: ' + dia(e.data), noBanco: e.valor, noRazao: s.valor, texto: s.historico + ' (' + v(s.valor) + ') está no razão em ' + dia(s.data) + '; no banco foi em ' + dia(e.data) + '. Mudar a data.' });
+      else if (l.tipoDiferenca === 'sinal') r.push({ mes, data: e.data, tipo: 'sinal', lancamento: s.historico, situacao: e.valor > 0 ? 'No razão como saída · Correto: entrada' : 'No razão como entrada · Correto: saída', noBanco: e.valor, noRazao: s.valor, texto: s.historico + ' (' + v(s.valor) + '): ' + (e.valor > 0 ? 'no banco é entrada e no razão está como saída.' : 'no banco é saída e no razão está como entrada.') });
+      else r.push({ mes, data: e.data, tipo: 'valor', diferenca: s.valor - e.valor, lancamento: e.historico, detalhe: 'No razão: ' + s.historico, situacao: 'Razão: ' + v(s.valor) + ' · Correto: ' + v(e.valor), noBanco: e.valor, noRazao: s.valor, texto: e.historico + ': no banco ' + v(e.valor) + ', no razão ' + v(s.valor) + ' (' + s.historico + '). Diferença de ' + v(s.valor - e.valor) + '.' });
     } else if (l.situacao === 'duplicado') {
       const x = (e || s)!;
-      r.push({ mes, data: x.data, tipo: 'duplicado', lancamento: x.historico, detalhe: l.ladoDuplicado === 'sistema' ? 'Lançado duas vezes no razão.' : 'Repetido no extrato; uma vez só no razão.', noBanco: e ? e.valor : null, noRazao: s ? s.valor : null, texto: x.historico + ' (' + v(x.valor) + ') ' + (l.ladoDuplicado === 'sistema' ? 'foi lançado duas vezes no razão.' : 'aparece repetido no extrato e uma vez só no razão.') });
+      r.push({ mes, data: x.data, tipo: 'duplicado', lancamento: x.historico, situacao: l.ladoDuplicado === 'sistema' ? 'Lançado duas vezes no razão' : 'Repetido no extrato; uma vez só no razão', noBanco: e ? e.valor : null, noRazao: s ? s.valor : null, texto: x.historico + ' (' + v(x.valor) + ') ' + (l.ladoDuplicado === 'sistema' ? 'foi lançado duas vezes no razão.' : 'aparece repetido no extrato e uma vez só no razão.') });
     } else if (l.situacao === 'faltando' && e) (faltando.get(e.data) || faltando.set(e.data, []).get(e.data)!).push(e);
     else if (l.situacao === 'amais' && s) (amais.get(s.data) || amais.set(s.data, []).get(s.data)!).push(s);
   }
@@ -76,6 +81,7 @@ function correcoesDoMes(mes: string, linhas: LinhaConferencia[]): CorrecaoDoRaza
       const dif = soma(cs) - soma(bs);
       r.push({
         mes, data: d, tipo: 'lote', diferenca: dif,
+        situacao: dif === 0 ? 'Mesmo total, lançamentos diferentes' : 'No dia, ' + v(dif) + (dif > 0 ? ' a mais' : ' a menos') + ' no razão',
         lancamento: bs.length === 1 ? bs[0].historico : bs.length + ' lançamentos no banco', detalhe: 'No razão: ' + soNomes(cs), noBanco: soma(bs), noRazao: soma(cs),
         partes: [
           ...(bs.length > 1 ? bs.map(b => ({ lado: 'banco' as const, historico: b.historico, valor: b.valor })) : []),
@@ -85,8 +91,8 @@ function correcoesDoMes(mes: string, linhas: LinhaConferencia[]): CorrecaoDoRaza
           (dif === 0 ? 'Mesmo total, lançamentos diferentes.' : v(dif) + (dif > 0 ? ' a mais' : ' a menos') + ' no razão.'),
       });
     } else {
-      for (const b of bs) r.push({ mes, data: d, tipo: 'falta', diferenca: -b.valor, lancamento: b.historico, noBanco: b.valor, noRazao: null, texto: b.historico + ' (' + v(b.valor) + ') ' + (b.valor > 0 ? 'entrou' : 'saiu') + ' no banco e não está no razão.' });
-      for (const c of cs) r.push({ mes, data: d, tipo: 'sobra', diferenca: c.valor, lancamento: c.historico, noBanco: null, noRazao: c.valor, texto: c.historico + ' (' + v(c.valor) + ') está no razão e não no banco.' });
+      for (const b of bs) r.push({ mes, data: d, tipo: 'falta', diferenca: -b.valor, lancamento: b.historico, situacao: (b.valor > 0 ? 'Entrou' : 'Saiu') + ' no banco e não está no razão', noBanco: b.valor, noRazao: null, texto: b.historico + ' (' + v(b.valor) + ') ' + (b.valor > 0 ? 'entrou' : 'saiu') + ' no banco e não está no razão.' });
+      for (const c of cs) r.push({ mes, data: d, tipo: 'sobra', diferenca: c.valor, lancamento: c.historico, situacao: 'Está no razão e não no banco', noBanco: null, noRazao: c.valor, texto: c.historico + ' (' + v(c.valor) + ') está no razão e não no banco.' });
     }
   }
   return r;
@@ -112,9 +118,10 @@ export function correcoesDoRazao(e: EmpresaExtrator, banco: string, primeiro: st
   for (const c of todas) {
     if (!c.diferenca) continue;
     const par = todas.find(o => o !== c && o.diferenca === -c.diferenca! && o.data !== c.data);
-    if (par) c.dica = c.diferenca > 0
-      ? 'Os ' + v(c.diferenca) + ' a mais parecem ser de ' + dataBR(par.data) + ' (lá faltam ' + v(c.diferenca) + ' no razão).'
-      : 'Os ' + v(c.diferenca) + ' que faltam parecem estar lançados em ' + dataBR(par.data) + ' (lá sobram ' + v(c.diferenca) + ' no razão).';
+    // a ligação com o outro dia é a própria pendência: vai para a Situação
+    if (par) c.situacao = c.diferenca > 0
+      ? 'Os ' + v(c.diferenca) + ' a mais parecem ser de ' + dataBR(par.data)
+      : 'Os ' + v(c.diferenca) + ' que faltam parecem estar lançados em ' + dataBR(par.data);
   }
   return todas;
 }

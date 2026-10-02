@@ -311,8 +311,8 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
         {!setaAntes && <Icone nome="caretDown" className="menu-seta" />}
       </button>
       {aberto && (
-        <div className={'popover menu-pop' + (direita ? ' direita' : '') + (acima ? ' acima' : '')} role="menu" style={largura ? { width: largura } : undefined}>
-          {titulo && <p className="popover-label">{titulo}</p>}
+        <div className={'popover menu-pop' + (direita ? ' direita' : '') + (acima ? ' acima' : '')} role="menu" aria-label={titulo} style={largura ? { width: largura } : undefined}>
+          {/* sem título em cima (Vitor, 02/10/2026): o título fica só para o leitor de tela */}
           {itens?.map((it, i) => it === 'separador' ? <hr key={i} className="popover-sep" /> : (
             <button key={i} type="button" className="popover-item" role="menuitem" disabled={it.desabilitado}
               onClick={() => { fechar(); it.onClick(); }}>
@@ -327,4 +327,13 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
       )}
     </div>
   );
+}
+
+/**
+ * O nome de uma conta na tabela: o código em negrito e o nome normal (Vitor, 02/10/2026), ex.: **81009** — Honorários
+ * Contábeis; com várias contas ("81009 + 81010 — …"), cada código em negrito.
+ */
+export function TituloDaConta({ titulo }: { titulo: string }) {
+  const partes = titulo.split(/(\b\d{4,6}\b)/);
+  return <>{partes.map((p, i) => (i % 2 ? <b key={i}>{p}</b> : p))}</>;
 }

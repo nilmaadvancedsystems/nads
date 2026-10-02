@@ -1,7 +1,7 @@
 // As peças do catálogo, desenhadas com as MESMAS peças do sistema (@nads/ui e as classes do nads.css). A ordem dentro
 // de cada tipo dá o código (BT-01, BT-02…): peça nova entra no FIM do tipo, para os códigos não mudarem.
 import {
-  Alerta, BotaoAcao, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail,
+  Alerta, BotaoAcao, classeDaJanela, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail,
   LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
 } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
@@ -17,7 +17,7 @@ const nada = () => undefined;
 type Janela = Omit<OpcoesModal<unknown>, 'botoes'> & { botoes: { rotulo: string; variante?: 'btn-primary' | 'btn-outline' | 'btn-danger' }[] };
 function JanelaParada({ o }: { o: Janela }) {
   return (
-    <div className={'modal cat-parado' + (o.tom === 'ok' ? ' modal-ok' : '')} role="dialog">
+    <div className={classeDaJanela(o) + ' cat-parado'} role="dialog">
       <div className="modal-icon"><Icone nome={o.icone || 'landmark'} /></div>
       <h3>{o.titulo}</h3>
       {o.html ? <p dangerouslySetInnerHTML={{ __html: o.html }} /> : o.texto ? <p>{o.texto}</p> : null}
@@ -30,7 +30,7 @@ function JanelaParada({ o }: { o: Janela }) {
 }
 export function janela(id: string, nome: string, telas: string[], o: Janela, descricao?: string): Peca {
   return {
-    id, tipo: 'janelas', nome, descricao, telas, componente: 'useRetorno().modal', classes: ['modal-overlay', 'modal' + (o.tom === 'ok' ? ' modal-ok' : '')],
+    id, tipo: 'janelas', nome, descricao, telas, componente: 'useRetorno().modal', classes: ['modal-overlay', classeDaJanela(o)],
     demo: () => <JanelaParada o={o} />,
     aoVivo: c => { void c.modal({ ...o, botoes: o.botoes.map(b => ({ ...b, valor: b.rotulo })) }); },
   };
@@ -218,23 +218,22 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <><CampoArquivos id="cat-arq" onEscolher={nada} aceitar=".xls,.xlsx" /><CampoArquivos id="cat-arq2" onEscolher={nada} aceitar=".xls" compacto rotulo="Importar todos os meses" /></> },
 
   // ─── Tabelas ────────────────────────────────────────────────────────────────────────────────────────────────────────
-  { id: 'tabela', tipo: 'tabelas', nome: 'Tabela padrão', descricao: 'Cabeçalho grudado; números à direita (.num)', classes: ['table-wrap', 'table-compact', 'th-sort', 'num'], telas: ['c-relatorio', 'c-consulta', 'e-conferencia', 't-empresas'], largo: true,
+  { id: 'tabela', tipo: 'tabelas', nome: 'Tabela padrão', descricao: 'Cabeçalho grudado; números à direita (.num); a conta com o código em negrito e o nome normal', componente: 'TituloDaConta', classes: ['table-wrap', 'table-compact', 'th-sort', 'num'], telas: ['c-relatorio', 'c-consulta', 'e-conferencia', 't-empresas'], largo: true,
     demo: () => (
       <div className="table-wrap"><table className="table-compact"><thead><tr><th className="th-sort">Conta</th><th>Descrição</th><th className="num">Notas</th><th className="num">Soma das notas</th><th className="num">Saldo do balancete</th><th>Situação</th></tr></thead>
         <tbody>
-          <tr><td><b>81009 — Honorários Contábeis</b></td><td>Honorário</td><td className="num">8</td><td className="num">13.470,00</td><td className="num">13.470,00</td><td><span className="badge badge-ok">Ok</span></td></tr>
-          <tr><td><b>81016 — Despesas com Serviços Tomados</b></td><td>Serviços Gerais</td><td className="num">41</td><td className="num">178.236,94</td><td className="num">88.269,75</td><td><span className="badge badge-bad">89.967,19</span></td></tr>
-          <tr><td><b>81003 — Água e Esgoto</b></td><td>CFOP 1949</td><td className="num">7</td><td className="num">871,12</td><td className="num">1.166,12</td><td><span className="badge badge-conferido">Conferido</span></td></tr>
+          <tr><td><b>81009</b> — Honorários Contábeis</td><td>Honorário</td><td className="num">8</td><td className="num">13.470,00</td><td className="num">13.470,00</td><td><span className="badge badge-ok">Ok</span></td></tr>
+          <tr><td><b>81016</b> — Despesas com Serviços Tomados</td><td>Serviços Gerais</td><td className="num">41</td><td className="num">178.236,94</td><td className="num">88.269,75</td><td><span className="badge badge-bad">89.967,19</span></td></tr>
+          <tr><td><b>81003</b> — Água e Esgoto</td><td>CFOP 1949</td><td className="num">7</td><td className="num">871,12</td><td className="num">1.166,12</td><td><span className="badge badge-conferido">Conferido</span></td></tr>
         </tbody></table></div>
     ) },
-  { id: 'planilha', tipo: 'tabelas', nome: 'Planilha (pendências do banco)', descricao: 'Grade completa; o lote quebrado vira um grupo', classes: ['imp-planilha', 'imp-planilha-parte'], telas: ['e-importacao', 't-exec-importacao'], largo: true,
+  { id: 'planilha', tipo: 'tabelas', nome: 'Planilha (pendências do banco)', descricao: 'Grade completa; a Situação diz o problema (o certo é sempre o do banco); o lote quebrado vira um grupo', classes: ['imp-planilha', 'imp-planilha-parte'], telas: ['e-importacao', 't-exec-importacao'], largo: true,
     demo: () => (
       <div className="table-wrap"><table className="table-compact imp-planilha"><thead><tr><th>Data</th><th>Situação</th><th>Lançamento</th><th className="num">Banco</th><th className="num">Razão</th><th className="num">Diferença</th></tr></thead>
         <tbody>
-          <tr><td className="imp-planilha-dia" rowSpan={3}>18/05/2026</td><td className="imp-planilha-sit" rowSpan={3}>Lote não soma</td><td className="imp-planilha-lanc"><b>CRÉD.LIQ.COBRANÇA DOC.: 2096255</b></td><td className="num"><b>8.398,18</b></td><td className="num"><b>8.267,22</b></td><td className="num ext-neg">−130,96</td></tr>
+          <tr><td className="imp-planilha-dia" rowSpan={2}>18/05/2026</td><td className="imp-planilha-sit" rowSpan={2}>Os 130,96 que faltam parecem estar lançados em 06/03/2026</td><td className="imp-planilha-lanc"><b>CRÉD.LIQ.COBRANÇA DOC.: 2096255</b></td><td className="num"><b>8.398,18</b></td><td className="num"><b>8.267,22</b></td><td className="num ext-neg">−130,96</td></tr>
           <tr className="imp-planilha-parte"><td>SUPERMERCADO QUEBA LTDA</td><td className="num" /><td className="num">5.109,72</td><td /></tr>
-          <tr className="imp-planilha-parte"><td colSpan={4} className="imp-planilha-dica">Os 130,96 que faltam parecem estar lançados em 06/03/2026.</td></tr>
-          <tr><td className="imp-planilha-dia">16/04/2026</td><td className="imp-planilha-sit">Data trocada</td><td className="imp-planilha-lanc"><b>SUPERMERCADO DONA BEIJA LTDA</b><span className="hint">No razão em 17/04; no banco em 16/04. Mudar a data.</span></td><td className="num"><b>947,30</b></td><td className="num"><b>947,30</b></td><td className="num" /></tr>
+          <tr><td className="imp-planilha-dia">16/04/2026</td><td className="imp-planilha-sit">Razão: 17/04 · Correto: 16/04</td><td className="imp-planilha-lanc"><b>SUPERMERCADO DONA BEIJA LTDA</b></td><td className="num"><b>947,30</b></td><td className="num"><b>947,30</b></td><td className="num" /></tr>
         </tbody></table></div>
     ) },
   { id: 'linhas', tipo: 'tabelas', nome: 'Linhas especiais', descricao: 'Feita (riscada), a atual, a do Passivo, a excluída', classes: ['tr.feito', 'tr.linha-atual', 'tr.linha-passivo', 'tr.linha-excluida', 'tr.ok', 'tr.bad'], telas: ['c-naturezas', 'c-relatorio', 'e-arquivos'], largo: true,
@@ -251,18 +250,17 @@ export const PECAS_BASE: Peca[] = [
   { id: 'menu-suspenso', tipo: 'menus', nome: 'Menu suspenso (▾)', componente: 'MenuSuspenso', classes: ['popover menu-pop', 'popover-item', 'popover-sep'], telas: TODAS,
     uso: "<MenuSuspenso rotulo=\"Ações\" itens={[{ rotulo: 'Copiar', icone: 'copiar', onClick }, 'separador']} />",
     demo: () => <MenuSuspenso rotulo="Pedir extratos" setaAntes itens={[{ rotulo: 'E-mail', icone: 'envelope', onClick: nada }, { rotulo: 'Histórico', icone: 'clock', dica: '3', onClick: nada }, 'separador', { rotulo: 'Desligado', icone: 'lock', desabilitado: true, onClick: nada }]} /> },
-  { id: 'menu-grupos', tipo: 'menus', nome: 'Grupos da rotina (executor)', descricao: 'Como o "+ ▾" do GitHub: o grupo atual marcado, os da frente travados', componente: 'MenuSuspenso', telas: EXECUTOR,
+  { id: 'menu-grupos', tipo: 'menus', nome: 'Menu suspenso sem nome', descricao: 'Só o ícone e o ▾ (como o "+ ▾" do GitHub): os grupos da rotina e as saídas da etapa, no cabeçalho do executor', componente: 'MenuSuspenso', classes: ['gh-topo-btn gh-topo-menu'], telas: EXECUTOR,
     demo: () => <MenuSuspenso rotulo="" icone="fileUp" className="gh-topo-btn gh-topo-menu" itens={[{ rotulo: 'Preparação', icone: 'fileUp', marcado: true, onClick: nada }, 'separador', { rotulo: 'Ativo', icone: 'landmark', marcado: false, desabilitado: true, onClick: nada }, { rotulo: 'Passivo', icone: 'relatorio', marcado: false, desabilitado: true, onClick: nada }, { rotulo: 'Resultado', icone: 'barChart', marcado: false, desabilitado: true, onClick: nada }, 'separador', { rotulo: 'Fechamento', icone: 'checkCircle', marcado: false, desabilitado: true, onClick: nada }]} /> },
-  { id: 'menu-saidas', tipo: 'menus', nome: 'Saídas da etapa (⚠ ▾)', componente: 'MenuSuspenso', telas: ['t-exec-folha'],
+  { id: 'menu-saidas', removida: { como: 'substituida', por: 'menu-grupos', em: '02/10/2026', motivo: 'Era o mesmo padrão dos Grupos da rotina: os dois viraram uma peça só, o "Menu suspenso sem nome".' }, tipo: 'menus', nome: 'Saídas da etapa (⚠ ▾)', componente: 'MenuSuspenso', telas: ['t-exec-folha'],
     demo: () => <MenuSuspenso rotulo="" icone="alert" className="gh-topo-btn gh-topo-menu" titulo="Se não der para concluir" itens={[{ rotulo: 'Não tem funcionários', icone: 'checkCircle', onClick: nada }]} /> },
   { id: 'menu-perfil', tipo: 'menus', nome: 'Perfil', componente: 'MenuSuspenso', classes: ['gh-avatar'], telas: TAREFAS,
     demo: () => <MenuSuspenso rotulo="V" className="gh-avatar" titulo="Vitor" itens={[{ rotulo: 'Voltar às empresas', icone: 'home', onClick: nada }, { rotulo: 'Sair', icone: 'logOut', onClick: nada }]} /> },
   { id: 'menu-dados-teste', tipo: 'menus', nome: 'Dados de teste (Personaly)', componente: 'MenuSuspenso', telas: ['e-importacao', 't-exec-importacao'],
     demo: () => <MenuSuspenso rotulo="Dados de teste" icone="zap" titulo="Personaly Company · só neste navegador" itens={[{ rotulo: 'Extratos do período', icone: 'landmark', onClick: nada }, 'separador', { rotulo: 'Razão batendo', icone: 'check', onClick: nada }, { rotulo: 'Razão com o cheque especial', icone: 'checkCircle', onClick: nada }, { rotulo: 'Razão com erros', icone: 'alert', onClick: nada }, 'separador', { rotulo: 'Apagar os dados de teste', icone: 'x', onClick: nada }]} /> },
-  { id: 'menu-parado', tipo: 'menus', nome: 'O menu aberto (desenho)', classes: ['popover', 'popover-label', 'popover-item', 'popover-dica', 'popover-sep'], telas: TODAS,
+  { id: 'menu-parado', tipo: 'menus', nome: 'O menu aberto (desenho)', descricao: 'Sem título em cima: só os itens', classes: ['popover', 'popover-item', 'popover-dica', 'popover-sep'], telas: TODAS,
     demo: () => (
       <div className="popover menu-pop cat-parado" role="menu" style={{ minWidth: 220 }}>
-        <p className="popover-label">Título do menu</p>
         <button className="popover-item" type="button"><Icone nome="envelope" /><span className="popover-texto">E-mail</span></button>
         <button className="popover-item" type="button"><Icone nome="clock" /><span className="popover-texto">Histórico</span><span className="popover-dica">3</span></button>
         <hr className="popover-sep" />
@@ -271,8 +269,8 @@ export const PECAS_BASE: Peca[] = [
     ) },
 
   // ─── Janelas (popups) ───────────────────────────────────────────────────────────────────────────────────────────────
-  janela('jn-tudo-certo', 'Tudo certo! (banco Ok / conta sem pendências)', ['e-importacao', 't-exec-importacao', 'c-verificar'], { tom: 'ok', icone: 'checkCircle', titulo: 'Tudo certo!', html: '<b>Sicoob</b> Ag. 3144-5 · C/C 52.166-3<br>extrato e razão batem · Ok', botoes: [{ rotulo: 'Ok', variante: 'btn-primary' }], fecharEm: { ms: 3500, valor: true } }, 'Fecha sozinha em 3,5 s'),
-  janela('jn-saldo-negativo', 'Saldo negativo no banco (clique no Conferido)', ['e-importacao', 't-exec-importacao', 't-exec-cheque'], { icone: 'alert', titulo: 'Saldo negativo no banco', html: '<b>Sicoob</b> bate com o razão, mas fecha negativo em 1 dia:<br>• 03/09/2026: <b>−150,00</b><br><br>Faça o <b>Cheque especial</b>: gere os lançamentos de ajuste, lance no Alterdata e importe o razão de novo.', botoes: [{ rotulo: 'Entendi', variante: 'btn-primary' }] }),
+  janela('jn-tudo-certo', 'Tudo certo! (banco Ok / conta sem pendências)', ['e-importacao', 't-exec-importacao', 'c-verificar'], { tom: 'ok', icone: 'checkCircle', titulo: 'Tudo certo!', html: '<b>Sicoob</b> Ag. 3144-5 · C/C 52.166-3', botoes: [{ rotulo: 'Ok', variante: 'btn-primary' }], fecharEm: { ms: 3500, valor: true } }, 'Fecha sozinha em 3,5 s'),
+  janela('jn-saldo-negativo', 'Saldo negativo no banco (clique em Cheque especial)', ['e-importacao', 't-exec-importacao', 't-exec-cheque'], { icone: 'alert', titulo: 'Saldo negativo no banco', html: '<b>Sicoob</b> bate com o razão, mas fecha negativo em 1 dia:<br>• 03/09/2026: <b>−150,00</b><br><br>Faça o <b>Cheque especial</b>: gere os lançamentos de ajuste, lance no Alterdata e importe o razão de novo.', botoes: [{ rotulo: 'Fazer Cheque Especial', variante: 'btn-primary' }] }),
   janela('jn-falta', 'Para seguir, falta (o ? do executor)', EXECUTOR, { icone: 'ajuda', titulo: 'Para seguir, falta', html: '• Sicoob: extrato e razão batendo<br>• Saídas<br>• Tomados', botoes: [{ rotulo: 'Entendi', variante: 'btn-primary' }] }),
   janela('jn-excluir', 'Excluir a importação?', ['e-importacao', 't-exec-importacao'], { icone: 'alert', titulo: 'Excluir a importação?', html: 'O razão do <b>Sicoob</b>: <b>razao.xls</b> (171). Dá para importar de novo depois.', botoes: [{ rotulo: 'Voltar' }, { rotulo: 'Excluir', variante: 'btn-danger' }] }),
   janela('jn-desmarcar', 'Desmarcar etapa?', EXECUTOR, { titulo: 'Desmarcar Conferência fiscal?', texto: 'A etapa volta a ficar pendente em todos os meses do período.', botoes: [{ rotulo: 'Cancelar' }, { rotulo: 'Desmarcar', variante: 'btn-primary' }] }),

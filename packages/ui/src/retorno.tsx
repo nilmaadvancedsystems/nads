@@ -7,7 +7,11 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import { animar, apagarFundo, ENTRAR, origemDe, paramsDaPilha, paramsDoAvisoQueChega, sairComo, semMovimento, voltarParaOrigem } from './animacao';
 import { Icone, type NomeIcone } from './icones';
 
-export interface BotaoModal<T> { rotulo: string; valor: T; variante?: 'btn-primary' | 'btn-outline' | 'btn-danger' }
+export interface BotaoModal<T> {
+  rotulo: string; valor: T; variante?: 'btn-primary' | 'btn-outline' | 'btn-danger';
+  /** roda no próprio clique, antes de fechar (ex.: abrir uma aba nova, que o navegador só deixa no clique) */
+  aoClicar?: () => void;
+}
 
 export interface OpcoesModal<T> {
   icone?: NomeIcone;
@@ -25,6 +29,15 @@ export interface OpcoesModal<T> {
   fecharEm?: { ms: number; valor: T };
   /** conteúdo livre (ex.: seletor de tema) */
   corpo?: ReactNode;
+}
+
+/**
+ * Toda janela no desenho do "Tudo certo!" (Vitor, 02/10/2026: "redesenhe todas no mesmo padrão do JN-01"): o ícone numa
+ * bolinha, o título, o texto e os botões no centro. A cor da bolinha diz o tom: verde (deu certo), laranja (aviso, ⚠),
+ * cinza (as outras).
+ */
+export function classeDaJanela(o: { tom?: 'ok'; icone?: NomeIcone }): string {
+  return 'modal modal-centro' + (o.tom === 'ok' ? ' modal-ok' : o.icone === 'alert' ? ' modal-aviso' : '');
 }
 
 export interface Retorno {
@@ -166,14 +179,14 @@ function Modal({ aberto, fechar }: { aberto: ModalAberto; fechar: (v: unknown) =
   return (
     <div ref={raiz} data-saida-propria data-fecha-fora={foraFecha ? '' : undefined} className={'modal-overlay' + (o.obrigatoria ? ' modal-blur' : '')}
       onMouseDown={ev => { if (ev.target === ev.currentTarget && foraFecha) fecharAnimado(valorDeFora); }}>
-      <div className={'modal' + (o.tom === 'ok' ? ' modal-ok' : '')} role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div className={classeDaJanela(o)} role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div className="modal-icon"><Icone nome={o.icone || 'landmark'} /></div>
         <h3 id="modalTitle">{o.titulo}</h3>
         {o.html ? <p dangerouslySetInnerHTML={{ __html: o.html }} /> : o.texto ? <p>{o.texto}</p> : null}
         {o.corpo}
         <div className="modal-actions">
           {o.botoes.map((b, i) => (
-            <button key={b.rotulo} ref={i === 0 ? primeiro : undefined} type="button" className={'btn ' + (b.variante || 'btn-outline')} onClick={() => fecharAnimado(b.valor)}>{b.rotulo}</button>
+            <button key={b.rotulo} ref={i === 0 ? primeiro : undefined} type="button" className={'btn ' + (b.variante || 'btn-outline')} onClick={() => { b.aoClicar?.(); fecharAnimado(b.valor); }}>{b.rotulo}</button>
           ))}
         </div>
         {o.fecharEm && <div className="modal-ok-barra" />}

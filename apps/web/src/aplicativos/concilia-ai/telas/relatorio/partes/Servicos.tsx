@@ -2,7 +2,7 @@
 // e lançamento fora do padrão agrupado por fornecedor/cliente.
 // Origem: conferencia.html ~L1225-1231 e renderConfServ (~L4617-4729).
 import { conferencia as c, formatos } from '@nads/core';
-import { Stat } from '@nads/ui';
+import { Stat, TituloDaConta } from '@nads/ui';
 import type { useRelatorio } from '../useRelatorio';
 import { IconePassivo, linhaPassivo, SaldoCelula, Situacao } from './Situacao';
 
@@ -68,7 +68,7 @@ function SaldoServicos({ r, onRevisar }: { r: Serv; onRevisar: (contas: string[]
             <tr key={l.contas.join('+') || 'sem' + i} {...linhaPassivo(l.avisoPassivo)}>
               <td style={{ whiteSpace: 'nowrap' }}>
                 <IconePassivo aviso={l.avisoPassivo} />
-                {l.contas.length ? <b>{l.titulo}</b> : <span style={{ color: 'var(--ink-muted)' }}>{l.titulo}</span>}
+                {l.contas.length ? <TituloDaConta titulo={l.titulo} /> : <span style={{ color: 'var(--ink-muted)' }}>{l.titulo}</span>}
               </td>
               <td className="wrap">{l.descricao}</td>
               <td className="num" title={r.tituloNotas(l)}>{l.qtdNotas}</td>

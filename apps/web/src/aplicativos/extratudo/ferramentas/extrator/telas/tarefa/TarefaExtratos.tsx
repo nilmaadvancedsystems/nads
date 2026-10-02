@@ -125,7 +125,7 @@ function PendenciasDoBanco({ itens }: { itens: x.CorrecaoDoRazao[] }) {
                     <Fragment key={i}>
                       <tr className={partes.length ? 'imp-planilha-grupo' : undefined}>
                         <td className="imp-planilha-dia" rowSpan={linhas}>{x.dataBR(c.data)}</td>
-                        <td className="imp-planilha-sit" rowSpan={linhas}>{x.ROTULO_CORRECAO[c.tipo]}</td>
+                        <td className="imp-planilha-sit" rowSpan={linhas} title={x.ROTULO_CORRECAO[c.tipo]}>{c.situacao}</td>
                         <td className="imp-planilha-lanc">
                           <b>{c.lancamento}</b>
                           {!partes.length && c.detalhe && <span className="hint">{c.detalhe}</span>}
@@ -592,7 +592,7 @@ export function TarefaExtratos() {
           <div>
             <p className="alert-title">Saldo negativo: faça o cheque especial</p>
             <p className="alert-text">
-              {bancosSemCheque.map(b => b.nome).join(', ')} {bancosSemCheque.length === 1 ? 'fecha' : 'fecham'} negativo em alguns dias (clique no <b>Conferido</b> para ver).
+              {bancosSemCheque.map(b => b.nome).join(', ')} {bancosSemCheque.length === 1 ? 'fecha' : 'fecham'} negativo em alguns dias (clique em <b>Cheque especial</b>, no banco, para ver).
               Gere os lançamentos no Cheque especial, lance no Alterdata e importe o razão de novo: a conferência confere o saldo final ignorando os lançamentos do cheque especial.
             </p>
             <a className="btn btn-outline imp-cheque-abrir" href={caminhoNaFerramenta('cheque-especial', s.rota)} target="_blank" rel="noreferrer">
