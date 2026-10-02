@@ -9,6 +9,7 @@ import { useRepo, useVersaoDoRepo } from '../../dados/repo';
 import { caminhoDaEmpresa, caminhoDaPagina, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 import { ACAO } from '../empresas/andamento';
+import { usePerguntaDoPeriodo } from '../periodo/usePerguntaDoPeriodo';
 
 /** Quantos meses o histórico mostra. */
 const MESES_HISTORICO = 6;
@@ -26,6 +27,7 @@ function ultimoToque(ex: t.Execucao | null): { por: string; em: string } | null 
 }
 
 export function useEmpresa(rota: string) {
+  const periodo = usePerguntaDoPeriodo();
   const repo = useRepo();
   useVersaoDoRepo();
   const navegar = useNavigate();
@@ -102,7 +104,11 @@ export function useEmpresa(rota: string) {
     etapas, historico,
     extratos, carregandoExtratos: arquivos === null,
     acao: ACAO[situacao],
-    abrirExecutor: () => navegar(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), competencia)),
+    // iniciar (ainda não começou) pergunta os meses; continuar vai direto
+    abrirExecutor: () => (situacao === 'nao-iniciada'
+      ? periodo.perguntar(empresas.rotaDaEmpresa(empresa), (empresa.codigo != null ? empresa.codigo + ' · ' : '') + empresa.nome, competencia)
+      : navegar(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), competencia))),
+    periodo,
     abrirCompetencia: (c: string) => navegar(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), c)),
     voltar: () => navegar(caminhoDaPagina('minhas-empresas', 'empresas') + '?competencia=' + competencia),
   };

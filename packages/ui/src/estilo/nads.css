@@ -2375,7 +2375,7 @@ tr.linha-abre,.imp-linha,.gh-crumb,.drawer-x{
 .imp-meses{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:8px;background:var(--surface);}
 /* cantos arredondados pelas células (overflow:hidden cortaria o menu que abre de dentro) */
 .imp-meses thead tr > :first-child{border-top-left-radius:7px;}
-.imp-meses thead tr > :last-child{border-top-right-radius:7px;}
+.imp-meses thead tr > :last-child,.imp-meses thead tr > :last-child .imp-meses-mes{border-top-right-radius:7px;}
 .imp-meses tbody tr:last-child > :first-child{border-bottom-left-radius:7px;}
 .imp-meses tbody tr:last-child > :last-child{border-bottom-right-radius:7px;}
 .imp-meses th,.imp-meses td{padding:0 2px;text-align:center;vertical-align:middle;border-bottom:1px solid var(--border-muted);border-left:1px solid var(--border-muted);}
@@ -2386,7 +2386,9 @@ tr.linha-abre,.imp-linha,.gh-crumb,.drawer-x{
 .imp-meses td{height:42px;}
 .imp-meses td.atual{background:color-mix(in srgb, var(--hover-bg) 55%, transparent);}
 .imp-meses thead th.atual{box-shadow:inset 0 -2px 0 var(--tab-active);}
-.imp-meses-mes{border:none;background:none;font:inherit;font-size:12px;color:var(--ink-muted);padding:2px 6px;border-radius:6px;cursor:pointer;font-variant-numeric:tabular-nums;}
+/* a célula inteira do mês é o botão (Vitor, 02/10/2026: clicar no cabeçalho, não só no nome) */
+.imp-meses thead th:not(:first-child){padding:0;}
+.imp-meses-mes{display:flex;align-items:center;justify-content:center;width:100%;height:34px;border:none;background:none;font:inherit;font-size:12px;color:var(--ink-muted);padding:0 6px;border-radius:0;cursor:pointer;font-variant-numeric:tabular-nums;}
 .imp-meses-mes:hover{color:var(--ink);background:var(--hover-bg);}
 .imp-meses th.atual .imp-meses-mes{color:var(--ink);font-weight:600;}
 .imp-meses .popover-wrap{display:inline-block;}
@@ -2398,3 +2400,21 @@ tr.linha-abre,.imp-linha,.gh-crumb,.drawer-x{
 /* na janela, o de apagar é todo vermelho (Vitor, 02/10/2026: "Excluir, botão todo vermelho") */
 .modal.modal-centro .btn-danger{background:var(--danger);border-color:var(--danger);color:#FFFFFF;}
 .modal.modal-centro .btn-danger:hover:not(:disabled){filter:brightness(1.08);background:var(--danger);color:#FFFFFF;}
+.imp-meses th.atual .imp-meses-mes{box-shadow:inset 0 -2px 0 var(--tab-active);}
+/* O "Resolver" do que falta: o lugar do problema contornado em laranja por uns segundos (destaque.ts) */
+.nads-destaque{outline:2px solid var(--warn) !important;outline-offset:2px;border-radius:6px;}
+tr.nads-destaque{outline-offset:-2px;}
+tr.nads-destaque > td{background:var(--warn-soft);}
+/* "Quais meses?" ao iniciar uma empresa (Tarefas): De e Até lado a lado */
+.periodo-campos{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 8px;text-align:left;}
+.periodo-campos .field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--ink-muted);}
+.periodo-campos select{width:100%;}
+.modal.modal-centro p.periodo-resumo{font-size:13px;}
+/* o período na ferramenta da etapa: só a informação (sem seleção), como texto com o ícone */
+.imp-periodo-info{display:inline-flex;align-items:center;gap:6px;min-height:32px;font-size:14px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;}
+.imp-periodo-info svg{width:16px;height:16px;color:var(--ink-muted);}
+/* o "?" do executor: o que falta numa tabelinha, com o Resolver em cada linha */
+.modal.modal-centro.falta-janela{max-width:520px;}
+.falta-tabela{margin-top:12px;text-align:left;max-height:50vh;}
+.falta-tabela td{vertical-align:middle;}
+.falta-tabela td.num{width:1%;white-space:nowrap;}

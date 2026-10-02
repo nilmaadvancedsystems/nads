@@ -3,7 +3,7 @@
 // Origem: conferencia.html renderNav (~L1789), aplicarBloqueios (~L1838), entrar/sair
 // (~L2004-2039), perguntarPrestaServico (~L1781), telaInicialEmpresa (~L1712).
 import { conferencia as c } from '@nads/core';
-import { useRetorno } from '@nads/ui';
+import { destacarNaTela, useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { VERSAO_SISTEMA } from '../../../versao';
@@ -11,7 +11,7 @@ import { useRepo } from '../dados/repo';
 import { PAGINAS_ESCONDIDAS, paginaPorId, SECOES, secaoDaPagina, type IdSecao } from './navegacao';
 import { MSG_CADASTRO_BLOQ, servicosDoEndereco, useSessao, useSincronizarPrestaServico } from './sessao';
 import { caminho } from './caminho';
-import { useRequisitosParaATarefa } from '../../../comum/ponte';
+import { usePonteDaTarefa, useRequisitosParaATarefa } from '../../../comum/ponte';
 
 /** No "?" da Tarefas cabem poucas linhas: as primeiras e "e mais N". */
 const LIMITE_DO_QUE_FALTA = 8;
@@ -41,10 +41,18 @@ export function useCascaConciliaAi() {
   const [mesesDaTarefa] = useState(() => (new URLSearchParams(search).get('meses') || '').split(',').filter(Boolean));
   const faltamFiscal = useMemo(() => {
     const filtro = mesesDaTarefa.length ? c.filtroDoPeriodo(mesesDaTarefa) : s.filtro;
-    const todas = c.pendenciasDaConferenciaFiscal(e, filtro);
-    return todas.length > LIMITE_DO_QUE_FALTA ? [...todas.slice(0, LIMITE_DO_QUE_FALTA), 'e mais ' + (todas.length - LIMITE_DO_QUE_FALTA)] : todas;
+    const todas = c.pendenciasFiscaisComLugar(e, filtro);
+    return todas.length > LIMITE_DO_QUE_FALTA ? [...todas.slice(0, LIMITE_DO_QUE_FALTA), { texto: 'e mais ' + (todas.length - LIMITE_DO_QUE_FALTA), alvo: null }] : todas;
   }, [e, s.filtro, mesesDaTarefa]);
-  useRequisitosParaATarefa(repo.pronto() ? { pronto: faltamFiscal.length === 0, faltam: faltamFiscal } : null);
+  useRequisitosParaATarefa(repo.pronto() ? { pronto: faltamFiscal.length === 0, faltam: faltamFiscal.map(p => p.texto), alvos: faltamFiscal.map(p => p.alvo) } : null);
+  // o "Resolver" da Tarefas: abre o Relatório na aba da pendência e destaca as linhas com diferença (ou o quadro)
+  usePonteDaTarefa(undefined, alvo => {
+    if (!alvo.startsWith('relatorio:')) return;
+    const aba = alvo.slice(10) as c.AbaRelatorio;
+    s.irPara('movimento/relatorio');
+    s.setAbaRelatorio(aba);
+    void destacarNaTela(aba === 'entradas' ? '#confDivEntradas' : aba === 'saidas' ? '#confDivSaidas' : 'tr:has(.badge-bad)');
+  });
 
   // "Essa empresa presta serviço?" — uma vez por empresa, obrigatória, fundo embaçado
   const perguntou = useRef(false);

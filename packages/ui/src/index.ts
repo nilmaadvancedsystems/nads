@@ -15,3 +15,4 @@ export { iniciarContinuidade, atualizarSemPerder } from './continuidade';
 export { origemConfiavel, origemDoPai, useAbasParaAEtapa, useAlturaNaEtapa, useFerramentaNaEtapa, type AbaDaEtapa } from './etapa';
 export { LogoBanco, LogoDrive, LogoGmail, LogoWhatsApp, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma } from './logos';
 export { AberturaN } from './abertura';
+export { destacarNaTela } from './destaque';

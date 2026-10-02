@@ -10,7 +10,7 @@
 //     botãozinho de PDF (abre pelo link temporário). O movimento se vê pela setinha.
 // Ao importar, só uma barrinha por cima da tela, que some em 2,7 s.
 import { extrator as x, type conferencia, tarefas } from '@nads/core';
-import { Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
+import { destacarNaTela, Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
 import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { usePonteDaTarefa, useRequisitosParaATarefa } from '../../../../../../comum/ponte';
 import { useSessao } from '../../casca/sessao';
@@ -440,7 +440,8 @@ function SeletorDeCompetencia({ vm, naTarefa, trocar, periodoDaTarefa, encerrar 
   const [ate, setAte] = useState(cs[0] || vm.competencia);
   const qtd = tarefas.competenciasDoPeriodo(tarefas.rotaDoPeriodo(de, ate)).length;
   const rotulo = periodo.length
-    ? <>{mmaaaa(periodo[0])} a {mmaaaa(periodo[periodo.length - 1])}<span className="imp-periodo-qtd">{periodo.length} meses</span></>
+    // sem a quantidade de meses (Vitor, 02/10/2026): só o período
+    ? <>{mmaaaa(periodo[0])} a {mmaaaa(periodo[periodo.length - 1])}</>
     : vm.rotuloCompetencia;
   const lista = periodo.length ? periodo.map(c => ({ valor: c, rotulo: tarefas.rotuloCompetencia(c) })) : vm.competencias;
   const concluido = !!periodoDaTarefa?.concluido;
@@ -522,7 +523,19 @@ const ABAS_DA_IMPORTACAO: { id: AbaImportacao; rotulo: string; icone: AbaDaEtapa
 export function TarefaExtratos() {
   const vm = useImportacao();
   const s = useSessao();
-  const ponte = usePonteDaTarefa(vm.competencia);
+  // o "Resolver" da Tarefas: vai até o banco (abre a linha) ou a aba da importação e destaca
+  const ponte = usePonteDaTarefa(vm.competencia, alvo => {
+    if (alvo.startsWith('banco:')) {
+      const id = alvo.slice(6);
+      setAba('bancos');
+      setRecolhidas(v => v.filter(a => a !== id));
+      setAbertas(v => (v.includes(id) ? v : [...v, id]));
+      void destacarNaTela('[data-banco="' + CSS.escape(id) + '"]');
+    } else if (alvo.startsWith('aba:')) {
+      const id = alvo.slice(4);
+      if (ABAS_DA_IMPORTACAO.some(a => a.id === id)) { setAba(id as AbaImportacao); void destacarNaTela('[data-destaque="importacao"]'); }
+    }
+  });
   const d = useDriveDaLinha(vm, s.codigo);
   const pe = usePedirExtratos(vm, s.codigo, s.nome, ponte.semMovimento, d.pedirLogin, { logo: urlDoLogoNilma(), logoDoBanco: urlDoLogoBanco });
   // os logos do Pedir extrato (Gmail/WhatsApp) já vêm com a página: no clique, aparecem na hora
@@ -541,9 +554,9 @@ export function TarefaExtratos() {
   const diasSemCheque = (banco: string) => { const t = situacoes[banco]; return t && t.tipo === 'falta-cheque' ? t.faltam.length : 0; };
   // na etapa Cheque especial: todo banco Ok (o cheque dos dias negativos no razão); na Importação, "falta o cheque" passa
   useRequisitosParaATarefa(!ponte.naTarefa ? null : vm.etapaCheque
-    ? x.requisitosDoChequeEspecial(vm.bancos.map(b => ({ nome: b.nome, ok: !!bancosOk[b.id], semMovimento: semMovimentoNoPeriodo(b.id), diasSemCheque: diasSemCheque(b.id) })))
+    ? x.requisitosDoChequeEspecial(vm.bancos.map(b => ({ id: b.id, nome: b.nome, ok: !!bancosOk[b.id], semMovimento: semMovimentoNoPeriodo(b.id), diasSemCheque: diasSemCheque(b.id) })))
     : importados ? x.requisitosDaImportacao(vm.bancos.map(b => ({
-      nome: b.nome, ok: !!bancosOk[b.id], faltaCheque: diasSemCheque(b.id) > 0, semMovimento: semMovimentoNoPeriodo(b.id),
+      id: b.id, nome: b.nome, ok: !!bancosOk[b.id], faltaCheque: diasSemCheque(b.id) > 0, semMovimento: semMovimentoNoPeriodo(b.id),
     })), importados, vm.prestaServico) : null);
   const bancosSemCheque = vm.bancos.filter(b => diasSemCheque(b.id) > 0);
   // os dias que fecham negativos (somando os bancos), para o aviso da etapa Cheque especial
@@ -581,10 +594,18 @@ export function TarefaExtratos() {
           ))}
         </nav>
       )}
-      {aba !== 'bancos' ? <ImportacaoNaEtapa nome={s.nome} tipo={aba} prestaServico={vm.prestaServico} /> : (<>
+      {aba !== 'bancos' ? <div data-destaque="importacao"><ImportacaoNaEtapa nome={s.nome} tipo={aba} prestaServico={vm.prestaServico} /></div> : (<>
       <div className={'imp-topo' + (ocupadoGeral ? ' travado' : '')} aria-busy={ocupadoGeral}>
         {/* à esquerda, como o "⎇ main ▾  6 Branches" do GitHub: a competência e o número de bancos */}
-        <SeletorDeCompetencia vm={vm} naTarefa={ponte.naTarefa} trocar={ponte.trocarCompetencia} periodoDaTarefa={ponte.periodo} encerrar={ponte.encerrarPeriodo} />
+        {/* na Tarefas, os meses se escolhem ao iniciar (a pergunta "Quais meses?"): aqui só a informação (Vitor, 02/10/2026) */}
+        {ponte.naTarefa ? (
+          <span className="imp-periodo-info" title={vm.periodo.length > 1 ? 'Em lote: ' + vm.periodo.map(tarefas.rotuloNumericoCompetencia).join(', ') : undefined}>
+            <Icone nome="calendar" />
+            {vm.periodo.length > 1
+              ? tarefas.rotuloNumericoCompetencia(vm.periodo[0]) + ' a ' + tarefas.rotuloNumericoCompetencia(vm.periodo[vm.periodo.length - 1])
+              : tarefas.rotuloNumericoCompetencia(vm.competencia)}
+          </span>
+        ) : <SeletorDeCompetencia vm={vm} naTarefa={ponte.naTarefa} trocar={ponte.trocarCompetencia} periodoDaTarefa={ponte.periodo} encerrar={ponte.encerrarPeriodo} />}
         <span className="imp-topo-num"><Icone nome="landmark" /><b>{vm.bancos.length}</b> {vm.bancos.length === 1 ? 'banco' : 'bancos'}</span>
         <span className="imp-topo-meio" />
         {/* a empresa de teste (Personaly Company): implanta dados fictícios, só neste navegador */}
@@ -664,7 +685,7 @@ export function TarefaExtratos() {
           const gradeAberta = !recolhidas.includes(b.id) && !ok;
           const verLancamentos = (emLote ? gradeAberta : aberta) && !semMov;
           return (
-            <div key={b.id} className={'imp-bloco' + (semMov ? ' sem-movimento' : '') + (ok ? ' imp-ok' : '')}>
+            <div key={b.id} data-banco={b.id} className={'imp-bloco' + (semMov ? ' sem-movimento' : '') + (ok ? ' imp-ok' : '')}>
               <div className="imp-linha">
                 {ok ? (
                   <span className="imp-seta" aria-hidden="true"><Icone nome="caretDown" /></span>

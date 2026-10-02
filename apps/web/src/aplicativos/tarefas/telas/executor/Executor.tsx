@@ -5,7 +5,7 @@
 // atrapalhavam a ferramenta): os grupos da rotina num menu só (como o "+ ▾"), as saídas da etapa (⚠ ▾), ✕ Interromper,
 // ? (o que falta) ou → Próximo, e o perfil.
 import type { tarefas } from '@nads/core';
-import { AberturaN, Alerta, Casca, Icone, MenuSuspenso, useCarregando, useFerramentaNaEtapa, type ItemMenu, type NomeIcone } from '@nads/ui';
+import { AberturaN, Alerta, Casca, destacarNaTela, Icone, MenuSuspenso, useCarregando, useFerramentaNaEtapa, type ItemMenu, type NomeIcone } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useBlocker, useParams } from 'react-router';
 import { usePonteDaFerramenta } from '../../../../comum/ponte';
@@ -14,6 +14,7 @@ import { useCascaTarefas } from '../../casca/useCascaTarefas';
 import { JanelaInterromper } from './partes/JanelaInterromper';
 import { useChecklistDaFolha } from './useChecklistDaFolha';
 import { useExecutor } from './useExecutor';
+import { JanelaOQueFalta, type ItemQueFalta } from './partes/JanelaOQueFalta';
 
 /** O ícone de cada grupo da rotina, no canto do cabeçalho. */
 /** O ícone de cada saída da etapa (o menu ⚠ do cabeçalho). */
@@ -31,9 +32,9 @@ export function Executor() {
   // a ferramenta da etapa (iframe): recebe os bancos sem movimento e avisa quando a pessoa marca um
   const iframe = useRef<HTMLIFrameElement>(null);
   // a ferramenta que tem requisitos (a Importação) diz o que falta: o avançar só aparece com tudo pronto
-  const [requisitos, setRequisitos] = useState<{ url: string; pronto: boolean; faltam: string[] } | null>(null);
+  const [requisitos, setRequisitos] = useState<{ url: string; pronto: boolean; faltam: string[]; alvos?: (string | null)[] } | null>(null);
   const urlDaFerramenta = vm.ferramenta?.url || '';
-  usePonteDaFerramenta(iframe, vm.semMovimentoPorMes, vm.competencia, vm.marcarSemMovimento, vm.trocarCompetencia,
+  const destacarNaFerramenta = usePonteDaFerramenta(iframe, vm.semMovimentoPorMes, vm.competencia, vm.marcarSemMovimento, vm.trocarCompetencia,
     vm.varios ? { meses: vm.meses, concluido: vm.periodoConcluido } : null, vm.encerrarPeriodo,
     r => setRequisitos({ url: urlDaFerramenta, ...r }));
   // os requisitos valem só para a ferramenta que mandou (trocou de etapa: some)
@@ -41,6 +42,16 @@ export function Executor() {
   const folha = useChecklistDaFolha(!!vm.etapa?.checklistDaFolha, vm.empresa?.nome || '', vm.meses.length ? vm.meses : [vm.competencia]);
   const faltamFerramenta = requisitos && requisitos.url === urlDaFerramenta && !requisitos.pronto ? requisitos.faltam : null;
   const faltam = vm.etapa?.checklistDaFolha ? (folha.faltam && folha.faltam.length ? folha.faltam : null) : faltamFerramenta;
+  // o "?": cada item com o lugar dele (o Resolver leva até lá): na folha, o item da lista; na ferramenta, o que ela mandou
+  const itensQueFaltam: ItemQueFalta[] = (faltam || []).map((texto, i) => ({
+    texto, alvo: vm.etapa?.checklistDaFolha ? 'folha:' + texto : requisitos?.alvos?.[i] ?? null,
+  }));
+  const [vendoFalta, setVendoFalta] = useState(false);
+  const resolver = (alvo: string) => {
+    setVendoFalta(false);
+    if (alvo.startsWith('folha:')) void destacarNaTela('[data-folha="' + CSS.escape(alvo.slice(6)) + '"]');
+    else destacarNaFerramenta(alvo);
+  };
   // a ferramenta do tamanho do conteúdo dela: a página toda rola junto, numa barra só
   // um aplicativo inteiro dentro da etapa (a Conferência) manda as abas dele: elas ficam no cabeçalho, por cima do checklist
   const { altura, carregando: ferramentaCarregando, abrindo: ferramentaAbrindo, fundoAberto, abas, abrirAba } = useFerramentaNaEtapa(iframe, vm.ferramenta?.embutir ? vm.ferramenta.url : undefined);
@@ -67,8 +78,8 @@ export function Executor() {
 
   // o checklist da esquerda: só as etapas do grupo da vez (os outros grupos ficam nos botões do canto); tudo pronto, todas
   const checklist = vm.etapas.filter(e => !vm.etapa || e.secao === vm.etapa.secao).map(e => ({
-    // no período, quantos meses a etapa já tem feitos ("Importação · 1/3")
-    id: e.id, rotulo: e.nome + (vm.varios && e.feitos > 0 && e.feitos < vm.meses.length ? ' · ' + e.feitos + '/' + vm.meses.length : ''), icone: 'check' as const, grupo: e.grupo, titulo: e.secao, ativa: e.atual,
+    // em lote é tudo de uma vez (Vitor, 02/10/2026: "não fica 8/9, são os 9"): só o nome da etapa, sem a contagem de meses
+    id: e.id, rotulo: e.nome, icone: 'check' as const, grupo: e.grupo, titulo: e.secao, ativa: e.atual,
     caixa: e.situacao === 'feita' ? 'marcada' as const : e.situacao === 'interrompida' ? 'parada' as const : 'vazia' as const,
     // as da frente que ainda não foram feitas: mais apagadas
     apagada: !!vm.etapa && e.n > (vm.etapas.find(x => x.atual)?.n ?? 0) && e.situacao !== 'feita',
@@ -82,6 +93,8 @@ export function Executor() {
     if (i > 0 && (i === 1 || i === vm.grupos.length - 1)) itensDosGrupos.push('separador');
     itensDosGrupos.push({ rotulo: g.nome, icone: ICONE_DO_GRUPO[g.nome] || 'list', marcado: g.atual, desabilitado: g.travado, onClick: () => vm.abrirGrupo(g.nome) });
   });
+  // Em lote: o cancelar mora aqui (o seletor do período saiu da ferramenta; Vitor, 02/10/2026)
+  if (vm.varios) itensDosGrupos.push('separador', { rotulo: 'Cancelar o Em lote', icone: 'x', onClick: vm.encerrarPeriodo });
   // as saídas da etapa (Pedir extrato, Buscar no Drive, "O Fiscal ainda não fechou as notas"…), num menu
   const saidas = vm.etapa ? vm.etapa.objecoes.filter(o => !o.soMotivo) : [];
   const botoesDaEtapa = vm.etapa && telaPronta && !vm.interrompendo && saida.state !== 'blocked';
@@ -103,7 +116,7 @@ export function Executor() {
           </button>
         )}
         {botoesDaEtapa && faltam && (
-          <button type="button" className="gh-topo-btn" onClick={() => vm.mostrarOQueFalta(faltam)} title="O que falta para seguir" aria-label="O que falta para seguir">
+          <button type="button" className="gh-topo-btn" onClick={() => setVendoFalta(true)} title="O que falta para seguir" aria-label="O que falta para seguir">
             <Icone nome="ajuda" />
           </button>
         )}
@@ -164,7 +177,7 @@ export function Executor() {
                 {folha.itens.length ? (
                   <ul className="folha-check-lista">
                     {folha.itens.map(i => (
-                      <li key={i.id} className={(i.marcado ? 'feito' : '') + (i.liberado ? '' : ' travado')}>
+                      <li key={i.id} data-folha={i.nome} className={(i.marcado ? 'feito' : '') + (i.liberado ? '' : ' travado')}>
                         <label>
                           <input type="checkbox" checked={i.marcado} disabled={!i.liberado} onChange={() => folha.alternar(i.id)}
                             title={i.liberado ? undefined : i.marcado ? 'Desmarque antes os de baixo' : 'Conclua o item de cima primeiro'} />
@@ -191,6 +204,7 @@ export function Executor() {
             )}
           </div>
           {vm.aviso && <Alerta titulo="Ainda não dá para seguir" texto={vm.aviso} />}
+          {vendoFalta && itensQueFaltam.length > 0 && <JanelaOQueFalta itens={itensQueFaltam} onResolver={resolver} onFechar={() => setVendoFalta(false)} />}
           {vm.interrompendo && <JanelaInterromper etapa={vm.etapa} onInterromper={vm.interromper} onCancelar={vm.fecharInterromper} />}
           {/* saiu por outro lugar: a mesma janela; interrompeu, segue para onde clicou; cancelou, fica */}
           {saida.state === 'blocked' && !vm.interrompendo && (

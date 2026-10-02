@@ -246,14 +246,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     /** os meses que a etapa ainda precisa (no período) */
     pendentes: pendentes.map(rotuloCurto),
     aviso, conferindo, proximo,
-    /** o "?" do cabeçalho: a janela com o que falta para seguir */
-    mostrarOQueFalta: (itens: readonly string[]) => {
-      void modal({
-        icone: 'ajuda', titulo: 'Para seguir, falta',
-        html: itens.map(t => '• ' + t.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch] as string))).join('<br>'),
-        botoes: [{ rotulo: 'Entendi', valor: true, variante: 'btn-primary' }],
-      });
-    }, voltarPara: (id: string) => { void voltarPara(id); },
+    voltarPara: (id: string) => { void voltarPara(id); },
     resolver,
     interrompendo, abrirInterromper: () => setInterrompendo(true), fecharInterromper: () => setInterrompendo(false), interromper,
     sair: voltar,

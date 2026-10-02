@@ -6,6 +6,7 @@ import { useEffect, useRef } from 'react';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { PainelIniciar } from './partes/PainelIniciar';
 import { LIMITE, useMinhasEmpresas, type Coluna } from './useMinhasEmpresas';
+import { JanelaDoPeriodo } from '../periodo/JanelaDoPeriodo';
 
 
 /** Título de coluna que ordena: clicar ordena por ela (crescente), clicar de novo inverte; a setinha cinza só aparece depois do clique. */
@@ -44,6 +45,7 @@ export function MinhasEmpresas() {
   if (!vm.temRotina) return <EmDesenvolvimento nome={'A rotina do ' + (vm.departamento === 'fiscal' ? 'Fiscal' : 'Departamento Pessoal')} />;
   return (
     <section>
+      <JanelaDoPeriodo vm={vm.periodo} />
       <div className="tarefas-barra-topo">
         <MenuSuspenso icone="calendar" rotulo={vm.rotuloCompetencia} titulo="Competência" dica="Trocar a competência"
           itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />

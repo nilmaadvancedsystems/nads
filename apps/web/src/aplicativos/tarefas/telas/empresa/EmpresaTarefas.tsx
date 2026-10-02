@@ -7,6 +7,7 @@ import { Navigate } from 'react-router';
 import { TrilhaDoTopo } from '../../../../comum/topo';
 import { BASE } from '../../casca/navegacao';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
+import { JanelaDoPeriodo } from '../periodo/JanelaDoPeriodo';
 import { useEmpresa } from './useEmpresa';
 
 export function EmpresaTarefas({ rota }: { rota: string }) {
@@ -17,6 +18,7 @@ export function EmpresaTarefas({ rota }: { rota: string }) {
 
   return (
     <section className="empresa-tarefas">
+      <JanelaDoPeriodo vm={vm.periodo} />
       {/* voltar é pela barra de cima: Tarefas / Vitor / Minhas empresas / 292 · … */}
       <TrilhaDoTopo itens={[{ rotulo: 'Minhas empresas', titulo: 'Voltar para Minhas empresas', onClick: vm.voltar }, { rotulo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome }]} />
 

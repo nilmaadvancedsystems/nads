@@ -271,7 +271,17 @@ export const PECAS_BASE: Peca[] = [
   // ─── Janelas (popups) ───────────────────────────────────────────────────────────────────────────────────────────────
   janela('jn-tudo-certo', 'Tudo certo! (banco Ok / conta sem pendências)', ['e-importacao', 't-exec-importacao', 'c-verificar'], { tom: 'ok', icone: 'checkCircle', titulo: 'Tudo certo!', html: '<b>Sicoob</b> Ag. 3144-5 · C/C 52.166-3', botoes: [{ rotulo: 'Ok', variante: 'btn-primary' }], fecharEm: { ms: 3500, valor: true } }, 'Fecha sozinha em 3,5 s'),
   janela('jn-saldo-negativo', 'Saldo negativo no banco (clique em Cheque especial)', ['e-importacao', 't-exec-importacao', 't-exec-cheque'], { icone: 'alert', titulo: 'Saldo negativo no banco', html: '<b>Sicoob</b> Ag. 3144-5 · C/C 52.166-3<br>Dias negativos:<br>→ 03/09/2026: <b>-R$ 150,00</b>', botoes: [{ rotulo: 'Fazer Cheque Especial', variante: 'btn-primary' }] }),
-  janela('jn-falta', 'Para seguir, falta (o ? do executor)', EXECUTOR, { icone: 'ajuda', titulo: 'Para seguir, falta', html: '• Sicoob: extrato e razão batendo<br>• Saídas<br>• Tomados', botoes: [{ rotulo: 'Entendi', variante: 'btn-primary' }] }),
+  { id: 'jn-falta', tipo: 'janelas', nome: 'Para seguir, falta (o ? do executor)', descricao: 'Uma tabelinha: cada item com o Resolver, que leva até o problema e o destaca', componente: 'JanelaOQueFalta', classes: ['modal modal-centro falta-janela', 'falta-tabela', 'nads-destaque'], telas: EXECUTOR,
+    demo: () => (
+      <div className={classeDaJanela({ icone: 'ajuda' }) + ' falta-janela cat-parado'} role="dialog">
+        <div className="modal-icon"><Icone nome="ajuda" /></div>
+        <h3>Para seguir, falta</h3>
+        <div className="table-wrap falta-tabela"><table className="table-compact"><tbody>
+          {['Sicoob: extrato e razão batendo', 'Saídas', 'Tomados'].map(t => <tr key={t}><td className="wrap">{t}</td><td className="num"><button type="button" className="btn">Resolver</button></td></tr>)}
+        </tbody></table></div>
+        <div className="modal-actions"><button type="button" className="btn btn-outline">Fechar</button></div>
+      </div>
+    ) },
   janela('jn-excluir', 'Excluir a importação?', ['e-importacao', 't-exec-importacao'], { icone: 'alert', titulo: 'Excluir a importação?', html: 'Remover “O razão do <b>Sicoob</b>: <b>razao.xls</b> (171)”.<br>Dá para importar de novo depois.', botoes: [{ rotulo: 'Excluir', variante: 'btn-danger' }, { rotulo: 'Cancelar' }] }),
   janela('jn-desmarcar', 'Desmarcar Conferência fiscal?', EXECUTOR, { icone: 'checkCircle', titulo: 'Desmarcar Conferência fiscal?', texto: 'A etapa volta a ficar pendente em todos os meses do período.', botoes: [{ rotulo: 'Cancelar' }, { rotulo: 'Desmarcar', variante: 'btn-primary' }] }),
   janela('jn-presta', 'Esta empresa presta serviço?', ['c-relatorio', 'c-importacao'], { icone: 'briefcase', titulo: 'Esta empresa presta serviços?', texto: 'Decide a aba Prestados e os serviços prestados na conferência.', botoes: [{ rotulo: 'Não' }, { rotulo: 'Sim', variante: 'btn-primary' }], obrigatoria: true }),

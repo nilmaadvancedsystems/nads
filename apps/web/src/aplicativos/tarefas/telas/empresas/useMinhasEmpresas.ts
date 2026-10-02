@@ -4,6 +4,7 @@ import { empresas, tarefas as t } from '@nads/core';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { caminhoDaEmpresa, caminhoDaPagina, caminhoDoExecutor } from '../../casca/navegacao';
+import { usePerguntaDoPeriodo } from '../periodo/usePerguntaDoPeriodo';
 import { SITUACOES, useAndamento } from './andamento';
 
 export const LIMITE = 60;
@@ -29,6 +30,8 @@ type Linha = ReturnType<typeof useAndamento>['linhas'][number];
 
 export function useMinhasEmpresas() {
   const a = useAndamento();
+  // iniciar pergunta os meses antes (um mês ou Em lote)
+  const periodo = usePerguntaDoPeriodo();
   const navegar = useNavigate();
   const [busca, setBusca] = useState('');
   const [buscaIniciar, setBuscaIniciar] = useState('');
@@ -109,7 +112,12 @@ export function useMinhasEmpresas() {
     buscaIniciar, setBuscaIniciar,
     paraIniciar: paraIniciar.slice(0, LIMITE_INICIAR),
     totalParaIniciar: paraIniciar.length,
-    iniciar: (rota: string) => { setBuscaIniciar(''); abrir(rota); },
+    iniciar: (rota: string) => {
+      setBuscaIniciar('');
+      const l = a.linhas.find(x => x.rota === rota);
+      periodo.perguntar(rota, l ? (l.codigo != null ? l.codigo + ' · ' : '') + l.nome : rota, a.competencia);
+    },
+    periodo,
     abaIniciar, setAbaIniciar,
     // Iniciar em lote: marca as empresas (a caixinha à esquerda) e abre uma aba para cada uma
     lote, marcadaNoLote: (rota: string) => lote.includes(rota),
