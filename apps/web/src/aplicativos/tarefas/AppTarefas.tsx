@@ -12,6 +12,7 @@ import { useSessao } from './dados/sessao';
 import { AvisosDeLiberacao } from './telas/acesso/AvisosDeLiberacao';
 import { LiberarComputador } from './telas/acesso/LiberarComputador';
 import { useLiberacao } from './telas/acesso/useLiberacao';
+import { AberturaDoLogin } from './telas/entrar/aberturaDoLogin';
 import { Entrar } from './telas/entrar/Entrar';
 import { QuemSouEu } from './telas/quem/QuemSouEu';
 
@@ -30,6 +31,10 @@ export function AppTarefas() {
   const operador = sessao?.usuario ? operadorDaConta(sessao.usuario) : null;
   const admin = !!sessao?.usuario?.papeis.includes('admin');
   const liberacao = useLiberacao(admin);
+  // a abertura do login fica sempre no mesmo lugar: a tela troca por baixo (entrada → app) sem ela recomeçar
+  return <>{conteudo()}<AberturaDoLogin /></>;
+
+  function conteudo() {
   if (sessao && !operador) return <Entrar sessao={sessao} />;
   // proteção do login: este computador ainda não foi liberado por um admin
   if (sessao && operador && liberacao.carregando) return null;
@@ -45,4 +50,5 @@ export function AppTarefas() {
       </OperadorProvider>
     </RepoProvider>
   );
+  }
 }

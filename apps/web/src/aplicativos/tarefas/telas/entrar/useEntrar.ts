@@ -2,6 +2,7 @@
 // conta que entrou mas não diz o departamento (sem cargo e sem papel de contábil/fiscal/DP).
 import { useState } from 'react';
 import type { Sessao } from '../../dados/sessao';
+import { comecarAberturaDoLogin, pararAberturaDoLogin } from './aberturaDoLogin';
 
 export function useEntrar(sessao: Sessao) {
   const [login, setLogin] = useState('');
@@ -13,10 +14,12 @@ export function useEntrar(sessao: Sessao) {
     if (!login.trim() || !senha || entrando) return;
     setEntrando(true);
     setErro('');
+    comecarAberturaDoLogin();
     try {
       await sessao.entrar(login, senha);
       setSenha('');
     } catch (e) {
+      pararAberturaDoLogin();
       setErro(e instanceof Error ? e.message : 'Nome ou senha inválidos.');
     } finally {
       setEntrando(false);

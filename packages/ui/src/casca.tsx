@@ -302,6 +302,14 @@ export function Casca(p: {
             })}
           </div>
           <div className="subnav-foot">
+            {/* saiu versão nova (Vitor, 02/10/2026: "não na tela toda, na barra lateral; deixe o usuário continuar usando") */}
+            {versaoNova && !oculta && (
+              <div className="versao-card" role="status">
+                <b>Saiu a versão {versaoNova}</b>
+                <span className="hint">Atualize quando quiser: nada do que você fez na tela se perde.</span>
+                <button type="button" className="btn btn-primary" onClick={atualizarVersao}>Atualizar</button>
+              </div>
+            )}
             <button type="button" className="subnav-item subnav-colapsar" aria-expanded={!oculta} title={oculta ? 'Mostrar barra lateral' : 'Ocultar barra lateral'} onClick={alternarLateral}>
               <Icone nome="painel" /><span>{oculta ? 'Mostrar barra lateral' : 'Ocultar barra lateral'}</span>
             </button>

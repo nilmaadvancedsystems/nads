@@ -17,6 +17,7 @@ import { useExecutor } from './useExecutor';
 import { ListaDoQueFalta, type ItemQueFalta } from './partes/OQueFalta';
 import { JanelaDoPeriodo } from '../periodo/JanelaDoPeriodo';
 import { usePerguntaDoPeriodo } from '../periodo/usePerguntaDoPeriodo';
+import { MenuDaRotina } from './partes/MenuDaRotina';
 
 /** O ícone de cada grupo da rotina, no canto do cabeçalho. */
 /** O ícone de cada saída da etapa (o menu ⚠ do cabeçalho). */
@@ -95,16 +96,13 @@ export function Executor() {
     if (i > 0 && (i === 1 || i === vm.grupos.length - 1)) itensDosGrupos.push('separador');
     itensDosGrupos.push({ rotulo: g.nome, icone: ICONE_DO_GRUPO[g.nome] || 'list', marcado: g.atual, desabilitado: g.travado, onClick: () => vm.abrirGrupo(g.nome) });
   });
-  // Em lote: o cancelar mora aqui (o seletor do período saiu da ferramenta; Vitor, 02/10/2026)
-  // alterar o período só na Importação (Vitor, 02/10/2026); cancelar em vermelho, numa linha
-  if (vm.varios) {
-    itensDosGrupos.push('separador');
-    if (vm.etapa?.id === 'extratos') {
-      itensDosGrupos.push({ rotulo: 'Alterar o Em lote', icone: 'calendar', onClick: () => alterarLote.perguntar('', vm.empresa ? (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome : '', vm.meses[0],
-        { ate: vm.meses[vm.meses.length - 1], titulo: 'Alterar o Em lote', botao: 'Alterar', aoEscolher: vm.trocarCompetencia }) });
-    }
-    itensDosGrupos.push({ rotulo: 'Cancelar o Em lote', icone: 'x', perigo: true, onClick: vm.encerrarPeriodo });
-  }
+  // a aba Em lote do menu: o período e as configurações (alterar só na Importação; cancelar)
+  const emLote = vm.varios ? {
+    rotulo: vm.rotuloCompetencia + ' · ' + vm.meses.length + ' meses',
+    onAlterar: vm.etapa?.id === 'extratos' ? () => alterarLote.perguntar('', vm.empresa ? (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome : '', vm.meses[0],
+      { ate: vm.meses[vm.meses.length - 1], titulo: 'Alterar o Em lote', botao: 'Alterar', aoEscolher: vm.trocarCompetencia }) : null,
+    onCancelar: vm.encerrarPeriodo,
+  } : null;
   // as saídas da etapa (Pedir extrato, Buscar no Drive, "O Fiscal ainda não fechou as notas"…), num menu
   const saidas = vm.etapa ? vm.etapa.objecoes.filter(o => !o.soMotivo) : [];
   const botoesDaEtapa = vm.etapa && telaPronta && !vm.interrompendo && saida.state !== 'blocked';
@@ -114,7 +112,7 @@ export function Executor() {
       <nav className="gh-topo-acoes" aria-label="Etapa">
         {vm.grupos.length > 0 && (
           <MenuSuspenso rotulo="" icone={grupoDaVez ? ICONE_DO_GRUPO[grupoDaVez.nome] || 'list' : 'checkCircle'} className="gh-topo-btn gh-topo-menu"
-            dica={grupoDaVez ? grupoDaVez.nome + ' · ' + grupoDaVez.feitas + '/' + grupoDaVez.total : 'Grupos da rotina'} direita itens={itensDosGrupos} />
+            dica={grupoDaVez ? grupoDaVez.nome + ' · ' + grupoDaVez.feitas + '/' + grupoDaVez.total : 'Grupos da rotina'} direita largura={260} conteudo={fechar => <MenuDaRotina grupos={itensDosGrupos} emLote={emLote} fechar={fechar} />} />
         )}
         {botoesDaEtapa && saidas.length > 0 && (
           <MenuSuspenso rotulo="" icone="alert" className="gh-topo-btn gh-topo-menu" dica="Se não der para concluir" titulo="Se não der para concluir" direita largura={300}

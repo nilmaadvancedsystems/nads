@@ -2483,3 +2483,11 @@ tr.nads-destaque > td{background:var(--warn-soft);}
 .interromper-obs textarea:focus{outline:none;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
 .interromper-janela .modal-actions .btn{min-width:160px;}
 .popover-item.perigo .popover-texto{white-space:nowrap;}
+/* versão nova: um cartão no pé da barra lateral (no lugar da trava da tela inteira; o app continua usável) */
+.versao-card{display:flex;flex-direction:column;gap:6px;margin:0 0 8px;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);font-size:13px;color:var(--ink);}
+.versao-card .hint{font-size:12px;line-height:1.4;}
+.versao-card .btn{margin-top:4px;width:100%;justify-content:center;}
+/* o menu do canto do executor com as abas Tarefas / Em lote (como o Code ▾ do GitHub) */
+.rotina-menu .comp-abas{margin-bottom:4px;}
+.rotina-lote-periodo{display:flex;align-items:center;gap:8px;margin:0;padding:8px 16px 10px;font-size:13px;font-weight:600;color:var(--ink);}
+.rotina-lote-periodo svg{width:16px;height:16px;color:var(--ink-muted);}

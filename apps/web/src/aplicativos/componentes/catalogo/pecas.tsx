@@ -8,6 +8,7 @@ import { useState, type ReactNode } from 'react';
 import { CONCILIA, EXECUTOR, EXTRATUDO, TAREFAS, TODAS } from './telas';
 import type { Peca } from './tipos';
 import { BotaoGoogle } from '../../../comum/BotaoGoogle';
+import { MenuDaRotina } from '../../tarefas/telas/executor/partes/MenuDaRotina';
 
 const nada = () => undefined;
 
@@ -264,8 +265,8 @@ export const PECAS_BASE: Peca[] = [
   { id: 'menu-suspenso', tipo: 'menus', nome: 'Menu suspenso (▾)', componente: 'MenuSuspenso', classes: ['popover menu-pop', 'popover-item', 'popover-sep'], telas: TODAS,
     uso: "<MenuSuspenso rotulo=\"Ações\" itens={[{ rotulo: 'Copiar', icone: 'copiar', onClick }, 'separador']} />",
     demo: () => <MenuSuspenso rotulo="Pedir extratos" setaAntes itens={[{ rotulo: 'E-mail', icone: 'envelope', onClick: nada }, { rotulo: 'Histórico', icone: 'clock', dica: '3', onClick: nada }, 'separador', { rotulo: 'Desligado', icone: 'lock', desabilitado: true, onClick: nada }]} /> },
-  { id: 'menu-grupos', tipo: 'menus', nome: 'Menu suspenso sem nome', descricao: 'Só o ícone e o ▾ (como o "+ ▾" do GitHub): os grupos da rotina e as saídas da etapa, no cabeçalho do executor', componente: 'MenuSuspenso', classes: ['gh-topo-btn gh-topo-menu'], telas: EXECUTOR,
-    demo: () => <MenuSuspenso rotulo="" icone="fileUp" className="gh-topo-btn gh-topo-menu" itens={[{ rotulo: 'Preparação', icone: 'fileUp', marcado: true, onClick: nada }, 'separador', { rotulo: 'Ativo', icone: 'landmark', marcado: false, desabilitado: true, onClick: nada }, { rotulo: 'Passivo', icone: 'relatorio', marcado: false, desabilitado: true, onClick: nada }, { rotulo: 'Resultado', icone: 'barChart', marcado: false, desabilitado: true, onClick: nada }, 'separador', { rotulo: 'Fechamento', icone: 'checkCircle', marcado: false, desabilitado: true, onClick: nada }]} /> },
+  { id: 'menu-grupos', tipo: 'menus', nome: 'Menu suspenso sem nome', descricao: 'Só o ícone e o ▾: os grupos da rotina e as saídas da etapa; o dos grupos tem as abas Tarefas e Em lote (alterar e cancelar), como o Code ▾ do GitHub', componente: 'MenuSuspenso', classes: ['gh-topo-btn gh-topo-menu'], telas: EXECUTOR,
+    demo: () => <MenuSuspenso rotulo="" icone="fileUp" className="gh-topo-btn gh-topo-menu" largura={260} conteudo={fechar => <MenuDaRotina fechar={fechar} grupos={[{ rotulo: 'Preparação', icone: 'fileUp', marcado: true, onClick: nada }, 'separador', { rotulo: 'Ativo', icone: 'landmark', desabilitado: true, onClick: nada }, { rotulo: 'Passivo', icone: 'relatorio', desabilitado: true, onClick: nada }, { rotulo: 'Resultado', icone: 'barChart', desabilitado: true, onClick: nada }, 'separador', { rotulo: 'Fechamento', icone: 'checkCircle', desabilitado: true, onClick: nada }]} emLote={{ rotulo: 'Janeiro a Setembro/2026 · 9 meses', onAlterar: nada, onCancelar: nada }} />} /> },
   { id: 'menu-saidas', removida: { como: 'substituida', por: 'menu-grupos', em: '02/10/2026', motivo: 'Era o mesmo padrão dos Grupos da rotina: os dois viraram uma peça só, o "Menu suspenso sem nome".' }, tipo: 'menus', nome: 'Saídas da etapa (⚠ ▾)', componente: 'MenuSuspenso', telas: ['t-exec-folha'],
     demo: () => <MenuSuspenso rotulo="" icone="alert" className="gh-topo-btn gh-topo-menu" titulo="Se não der para concluir" itens={[{ rotulo: 'Não tem funcionários', icone: 'checkCircle', onClick: nada }]} /> },
   { id: 'menu-perfil', tipo: 'menus', nome: 'Perfil', componente: 'MenuSuspenso', classes: ['gh-avatar'], telas: TAREFAS,
