@@ -8,7 +8,8 @@ export function JanelaDoPeriodo({ vm }: { vm: ReturnType<typeof usePerguntaDoPer
   return (
     <div className="modal-overlay" onMouseDown={ev => { if (ev.target === ev.currentTarget) vm.cancelar(); }}>
       <div className={classeDaJanela({ icone: 'calendar' }) + ' periodo-janela'} role="dialog" aria-modal="true" aria-labelledby="periodoTitulo">
-        <h3 id="periodoTitulo">Quais meses?</h3>
+        <button type="button" className="modal-x" aria-label="Fechar" title="Fechar" onClick={vm.cancelar}><Icone nome="x" /></button>
+        <h3 id="periodoTitulo">{p.titulo || 'Quais meses?'}</h3>
         <p><b>{p.nome}</b></p>
         <div className="periodo-campos">
           <label className="field">
@@ -22,8 +23,7 @@ export function JanelaDoPeriodo({ vm }: { vm: ReturnType<typeof usePerguntaDoPer
         </div>
         <p className="periodo-resumo">{vm.qtd > 1 ? <><b>Em lote</b>: {vm.qtd} meses, todas as etapas de uma vez</> : 'Um mês'}</p>
         <div className="modal-actions">
-          <button type="button" className="btn btn-primary" autoFocus onClick={vm.iniciar}><Icone nome="play" />Iniciar</button>
-          <button type="button" className="btn btn-outline" onClick={vm.cancelar}>Cancelar</button>
+          <button type="button" className="btn btn-primary" autoFocus onClick={vm.iniciar}>{p.botao ? p.botao : <><Icone nome="play" />Iniciar</>}</button>
         </div>
       </div>
     </div>

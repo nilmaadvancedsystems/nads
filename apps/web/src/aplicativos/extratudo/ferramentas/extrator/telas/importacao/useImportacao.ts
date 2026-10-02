@@ -189,8 +189,6 @@ export function useImportacao() {
     const nomeBanco = bancos.find(b => b.id === banco)?.nome || 'banco';
     const ok = await modal<boolean>({
       icone: 'alert', titulo: 'Excluir a importação?',
-      html: 'Remover “' + (lado === 'banco' ? 'O extrato' : 'O razão') + ' do <b>' + escapar(nomeBanco) + '</b>: ' +
-        arqs.map(a => '<b>' + escapar(a.nome) + '</b> (' + a.lancamentos.length + ')').join(', ') + '”.<br>Dá para importar de novo depois.',
       botoes: [{ rotulo: 'Excluir', valor: true, variante: 'btn-danger' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
     });
     if (!ok) return;

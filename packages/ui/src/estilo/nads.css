@@ -2420,3 +2420,24 @@ tr.nads-destaque > td{background:var(--warn-soft);}
 .falta-lista li + li{border-top:1px solid var(--border-muted);}
 .falta-texto{flex:1;min-width:0;font-size:13px;color:var(--ink);line-height:1.4;}
 .falta-lista .btn{flex:none;}
+/* janelas: o × no canto de cima no lugar do Cancelar (Vitor, 02/10/2026) */
+.modal-x{position:absolute;top:10px;right:10px;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border:none;background:none;border-radius:6px;color:var(--ink-muted);cursor:pointer;}
+.modal-x:hover{background:var(--hover-bg);color:var(--ink);}
+.modal-x svg{width:16px;height:16px;}
+/* o aviso (useRetorno().aviso): a mesma barrinha do topo, com o texto podendo quebrar */
+.aviso-barra > span{white-space:normal;max-width:min(640px,80vw);}
+.imp-aviso-barra.ok > svg{color:var(--success);}
+/* "Por que interromper?" (Vitor, 02/10/2026: "melhore o design"): o desenho das janelas (centro, × no canto); os motivos
+   em cartões que se escolhem inteiros (o escolhido com a borda e o fundo da marca); a observação embaixo */
+.modal.modal-centro.interromper-janela{max-width:460px;}
+.modal.modal-centro p.interromper-etapa{margin:0;font-size:13px;color:var(--ink-muted);}
+.interromper-opcoes{display:flex;flex-direction:column;gap:8px;margin:18px 0 14px;text-align:left;}
+.interromper-opcao{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);font-size:14px;color:var(--ink);cursor:pointer;}
+.interromper-opcao:hover{background:var(--hover-bg);}
+.interromper-opcao.on{border-color:var(--accent);background:var(--accent-soft);}
+.interromper-opcao input{margin:0;flex:none;accent-color:var(--accent);}
+.interromper-obs{display:flex;flex-direction:column;gap:6px;text-align:left;font-size:12px;font-weight:600;color:var(--ink-muted);}
+.interromper-obs textarea{width:100%;min-height:72px;resize:vertical;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--ink);font:inherit;font-size:14px;font-weight:400;box-shadow:var(--shadow-inset);}
+.interromper-obs textarea:focus{outline:none;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
+.interromper-janela .modal-actions .btn{min-width:160px;}
+.popover-item.perigo .popover-texto{white-space:nowrap;}

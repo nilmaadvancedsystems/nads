@@ -264,7 +264,7 @@ export function CampoArquivos({ id, onEscolher, aceitar, rotulo = 'Escolher arqu
 }
 
 /** Um item do MenuSuspenso. `marcado` (true/false) mostra a coluna do ✓, como os menus do GitHub. */
-export type ItemMenu = { rotulo: ReactNode; icone?: NomeIcone; marcado?: boolean; dica?: ReactNode; desabilitado?: boolean; onClick: () => void } | 'separador';
+export type ItemMenu = { rotulo: ReactNode; icone?: NomeIcone; marcado?: boolean; dica?: ReactNode; desabilitado?: boolean; /** em vermelho (apagar, cancelar) */ perigo?: boolean; onClick: () => void } | 'separador';
 
 /**
  * Botão com menu suspenso (.popover), como os do GitHub ("main ▾", "Code ▾"). A seta é sempre o triângulo
@@ -314,7 +314,7 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
         <div className={'popover menu-pop' + (direita ? ' direita' : '') + (acima ? ' acima' : '')} role="menu" aria-label={titulo} style={largura ? { width: largura } : undefined}>
           {/* sem título em cima (Vitor, 02/10/2026): o título fica só para o leitor de tela */}
           {itens?.map((it, i) => it === 'separador' ? <hr key={i} className="popover-sep" /> : (
-            <button key={i} type="button" className="popover-item" role="menuitem" disabled={it.desabilitado}
+            <button key={i} type="button" className={'popover-item' + (it.perigo ? ' perigo' : '')} role="menuitem" disabled={it.desabilitado}
               onClick={() => { fechar(); it.onClick(); }}>
               {comMarca && <span className="popover-marca">{it.marcado && <Icone nome="check" />}</span>}
               {it.icone && <Icone nome={it.icone} />}

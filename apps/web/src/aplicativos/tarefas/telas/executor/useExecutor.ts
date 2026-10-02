@@ -38,7 +38,7 @@ const CONFERIR_NO_PROXIMO = false;
 export function useExecutor(rotaEmpresa: string, periodo: string) {
   const repo = useRepo();
   const navegar = useNavigate();
-  const { toast, modal } = useRetorno();
+  const { toast, modal, aviso: avisar } = useRetorno();
   const op = useOperador().operador as Operador;
   const rotina = t.ROTINA_CONTABIL;
   // as seções da rotina, na ordem (Preparação, Ativo, Passivo, Resultado, Fechamento)
@@ -205,7 +205,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
 
   /** Solução de uma objeção (os botões embaixo): as que dependem de Drive/Contato ainda estão em desenvolvimento. */
   function resolver(o: t.Objecao) {
-    if (o.solucao.tipo === 'orientacao') { void modal({ icone: 'alert', titulo: o.texto, texto: o.solucao.texto, botoes: [{ rotulo: 'Entendi', valor: true, variante: 'btn-primary' }] }); return; }
+    if (o.solucao.tipo === 'orientacao') { avisar({ tom: 'info', titulo: o.texto, texto: o.solucao.texto }); return; }
     if (o.solucao.tipo === 'nao-se-aplica') { void naoSeAplica(o); return; }
     if (o.solucao.tipo === 'contato') { toast('Contato (e-mail ao cliente): em desenvolvimento.'); return; }
     if (o.solucao.tipo === 'drive') { toast('Drive: em desenvolvimento.'); return; }
@@ -275,7 +275,20 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       navegar(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), ultimo));
     },
     /** A ferramenta trocou a competência ou o período (o seletor dela): a mesma empresa, no outro período. */
-    trocarCompetencia: (c: string) => { if (empresa && c !== periodo && t.competenciasDoPeriodo(c).length) navegar(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), c)); },
+    trocarCompetencia: (c: string) => {
+      if (!empresa || c === periodo || !t.competenciasDoPeriodo(c).length) return;
+      // alterou o período do Em lote (a engrenagem): os meses que saíram dele deixam de estar prometidos
+      if (varios) {
+        const novos = new Set(t.competenciasDoPeriodo(c));
+        for (const m of meses) {
+          // um mês só: ele também sai do Em lote (senão o executor voltaria para o período antigo)
+          if ((novos.has(m) && novos.size > 1) || !exDe[m]?.periodo) continue;
+          const p = t.definirPeriodo(exDe[m], null, op.nome, new Date());
+          repo.gravar(p.execucao, p.evento);
+        }
+      }
+      navegar(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), c));
+    },
     abrirEmpresa: () => { if (empresa) navegar(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), ultimo)); },
   };
 }

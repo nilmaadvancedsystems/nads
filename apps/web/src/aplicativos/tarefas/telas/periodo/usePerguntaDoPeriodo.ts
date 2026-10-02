@@ -6,7 +6,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { caminhoDoExecutor } from '../../casca/navegacao';
 
-export interface PedidoDoPeriodo { rota: string; nome: string; de: string; ate: string }
+export interface PedidoDoPeriodo {
+  rota: string; nome: string; de: string; ate: string;
+  /** alterar o período do Em lote (o menu do executor): outro título e botão, e quem escolhe é o executor */
+  titulo?: string; botao?: string; aoEscolher?: (rota: string) => void;
+}
 
 export function usePerguntaDoPeriodo() {
   const navegar = useNavigate();
@@ -17,7 +21,7 @@ export function usePerguntaDoPeriodo() {
   return {
     pedido, meses, qtd,
     /** abre a pergunta para a empresa, já com o mês que estava escolhido na tela */
-    perguntar: (rota: string, nome: string, competencia: string) => setPedido({ rota, nome, de: competencia, ate: competencia }),
+    perguntar: (rota: string, nome: string, competencia: string, mais?: Partial<PedidoDoPeriodo>) => setPedido({ rota, nome, de: competencia, ate: competencia, ...mais }),
     setDe: (de: string) => setPedido(p => (p ? { ...p, de, ate: p.ate < de ? de : p.ate } : p)),
     setAte: (ate: string) => setPedido(p => (p ? { ...p, ate, de: p.de > ate ? ate : p.de } : p)),
     cancelar: () => setPedido(null),
@@ -25,7 +29,8 @@ export function usePerguntaDoPeriodo() {
       if (!pedido) return;
       const rota = pedido.de === pedido.ate ? pedido.de : t.rotaDoPeriodo(pedido.de, pedido.ate);
       setPedido(null);
-      navegar(caminhoDoExecutor(pedido.rota, rota));
+      if (pedido.aoEscolher) pedido.aoEscolher(rota);
+      else navegar(caminhoDoExecutor(pedido.rota, rota));
     },
   };
 }

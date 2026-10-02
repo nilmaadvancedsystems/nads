@@ -225,7 +225,7 @@ function Ano({ vm }: { vm: VmDrive }) {
 export function ExploradorDoDrive() {
   const vm = useExploradorDoDrive();
   const envio = useEnvioAoSecretario(vm.pastaCliente);
-  const { toast, modal } = useRetorno();
+  const { toast, aviso } = useRetorno();
   useCarregando(vm.carregando);
   // as opções do menu rodam depois de a seleção mudar: usam sempre o ViewModel mais novo
   const atual = useRef(vm);
@@ -270,10 +270,7 @@ export function ExploradorDoDrive() {
   const caminhos = (l: e.EntradaDoExplorador[]) => l.map(i => atual.current.caminhoDe(i)).join('\n');
   const caminhoDaPasta = [vm.ano, ...vm.trilha.map(p => p.nome)].join(' › ');
   const propriedades = (x: e.EntradaDoExplorador) => {
-    void modal({
-      icone: 'fileText', titulo: 'Propriedades de ' + x.nome, botoes: [{ rotulo: 'OK', valor: true, variante: 'btn-primary' }],
-      corpo: <dl className="explorador-propriedades">{atual.current.propriedadesDe(x).map(l => <div key={l.rotulo}><dt>{l.rotulo}</dt><dd>{l.valor}</dd></div>)}</dl>,
-    });
+    aviso({ tom: 'info', icone: 'fileText', titulo: x.nome, texto: atual.current.propriedadesDe(x).map(l => l.rotulo + ': ' + l.valor).join(' · ') });
   };
 
   /** O que o ⋯ e o botão direito no fundo oferecem. */

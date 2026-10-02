@@ -1,7 +1,7 @@
 // Todas as janelas (popups) do sistema que abrem pelo useRetorno().modal — o levantamento de 02/10/2026. Cada uma com
 // o desenho parado e o ▶ que abre a janela de verdade. As janelas próprias (Interromper, Pedir documentos, Janela da
 // empresa…) ficam em pecas.tsx.
-import { janela } from './pecas';
+import { janela, virouAviso } from './pecas';
 import { CONCILIA, EXECUTOR } from './telas';
 import type { Peca } from './tipos';
 
@@ -17,7 +17,7 @@ export const JANELAS: Peca[] = [
   janela('jn-desativar', 'Desativar a pessoa? (Cadastro › Usuários)', ['t-cadastro'], { icone: 'alert', titulo: 'Desativar Clara?', texto: 'A conta deixa de entrar no nads e no Entregas. Dá para reativar depois.', botoes: [...SAIR, { rotulo: 'Desativar', variante: 'btn-danger' }] }),
   janela('jn-protecao', 'Ligar a proteção do login? (Cadastro › Configurações)', ['t-cadastro-config'], { icone: 'lock', titulo: 'Ligar a proteção do login?', texto: 'Quem não é administrador e ainda não foi liberado vai precisar do código para entrar neste computador.', botoes: [...SAIR, { rotulo: 'Ligar', variante: 'btn-primary' }] }),
   // Tarefas › Drive
-  janela('jn-propriedades', 'Propriedades (Drive)', ['t-drive'], { icone: 'fileText', titulo: 'Propriedades de extrato-agosto.pdf', html: 'Tipo: PDF · Tamanho: 182 KB<br>Pasta: 292 › 2026 › Bancos', botoes: [{ rotulo: 'OK', variante: 'btn-primary' }] }),
+  virouAviso(janela('jn-propriedades', 'Propriedades (Drive)', ['t-drive'], { icone: 'fileText', titulo: 'Propriedades de extrato-agosto.pdf', html: 'Tipo: PDF · Tamanho: 182 KB<br>Pasta: 292 › 2026 › Bancos', botoes: [{ rotulo: 'OK', variante: 'btn-primary' }] }), 'av-propriedades'),
   // Extratudo › Extrator
   janela('jn-como-importar', 'Como importar o extrato / o razão?', ['e-importacao', 't-exec-importacao', 't-exec-cheque'], { icone: 'upload', titulo: 'Como importar o razão?', html: 'Já existem <b>171 lançamento(s)</b> nas datas destes arquivos; os arquivos são 1.<br><br><b>Importar apenas novas</b> — mantém o que já está guardado e só acrescenta o que ainda não existe.<br><b>Sobrepor o movimento</b> — apaga o que está guardado nessas datas e fica com o que veio nos arquivos.', botoes: IMPORTAR() }),
   janela('jn-remover-todos', 'Remover todos? (Em lote)', ['e-importacao', 't-exec-importacao'], { icone: 'alert', titulo: 'Remover todos?', html: 'O razão do <b>Sicoob</b> nos 8 meses do período. Dá para importar de novo depois.', botoes: [...SAIR, { rotulo: 'Remover todos', variante: 'btn-danger' }] }),
@@ -31,8 +31,8 @@ export const JANELAS: Peca[] = [
   janela('jn-como-importar-notas', 'Como importar as entradas/saídas/serviços?', ['c-importacao', 't-exec-importacao'], { icone: 'upload', titulo: 'Como importar as entradas?', html: 'Já existem <b>462 nota(s)</b> nesse período.', botoes: IMPORTAR() }),
   janela('jn-apagar-balancete', 'Apagar o balancete? / Apagar as notas?', ['c-importacao'], { icone: 'alert', titulo: 'Apagar o balancete?', texto: 'As 412 contas lidas desta empresa serão removidas.', botoes: [...SAIR, { rotulo: 'Apagar', variante: 'btn-primary' }] }),
   janela('jn-preencha', 'Preencha os lançamentos (Configurações › Saídas)', ['c-cadastro'], { icone: 'alert', titulo: 'Preencha os lançamentos', html: 'Com Vendas à vista e à prazo ligado, cada CFOP precisa do lançamento. Faltam <b>3</b> em <b>2 CFOPs</b>.', botoes: [{ rotulo: 'Preencher', variante: 'btn-primary' }] }),
-  janela('jn-falta-plano', 'Falta importar o plano de contas (Lançamentos automáticos)', ['c-cadastro'], { icone: 'alert', titulo: 'Falta importar o plano de contas', html: 'Os lançamentos automáticos usam as contas do plano. Vá em Plano de contas e leia um balancete primeiro.', botoes: [{ rotulo: 'Entendi', variante: 'btn-primary' }] }),
-  janela('jn-falta-preencher', 'Falta preencher antes de conferir (Verificar por conta)', ['c-verificar'], { icone: 'alert', titulo: 'Falta preencher antes de conferir', html: '• Escolha a conta<br>• Importe o relatório da conta', botoes: [{ rotulo: 'Entendi', variante: 'btn-primary' }] }),
+  virouAviso(janela('jn-falta-plano', 'Falta importar o plano de contas (Lançamentos automáticos)', ['c-cadastro'], { icone: 'alert', titulo: 'Falta importar o plano de contas', html: 'Os lançamentos automáticos usam as contas do plano. Vá em Plano de contas e leia um balancete primeiro.', botoes: [{ rotulo: 'Entendi', variante: 'btn-primary' }] }), 'av-falta-plano'),
+  virouAviso(janela('jn-falta-preencher', 'Falta preencher antes de conferir (Verificar por conta)', ['c-verificar'], { icone: 'alert', titulo: 'Falta preencher antes de conferir', html: '• Escolha a conta<br>• Importe o relatório da conta', botoes: [{ rotulo: 'Entendi', variante: 'btn-primary' }] }), 'av-falta-preencher'),
   janela('jn-qual-relatorio', 'Qual relatório você corrigiu? (Verificar por conta)', ['c-verificar'], { icone: 'upload', titulo: 'Qual relatório você corrigiu?', botoes: [...SAIR, { rotulo: 'Conta 70002', variante: 'btn-primary' }, { rotulo: 'Conta 70006', variante: 'btn-primary' }] }),
   janela('jn-limpar', 'Limpar a conferência? (Verificar por conta)', ['c-verificar'], { icone: 'alert', titulo: 'Limpar a conferência?', texto: 'O relatório lido e o resultado dessa conferência serão descartados (nunca são salvos).', botoes: [...SAIR, { rotulo: 'Limpar', variante: 'btn-primary' }] }),
   // Conciliadorzinho

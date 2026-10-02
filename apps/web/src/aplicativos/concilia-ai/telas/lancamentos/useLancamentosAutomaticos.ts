@@ -9,7 +9,7 @@ export interface GrupoDeContas { grupo: c.Grupo; contas: { codigo: string; nome:
 
 export function useLancamentosAutomaticos() {
   const s = useSessao();
-  const { toast, modal } = useRetorno();
+  const { toast, aviso } = useRetorno();
   const e = s.empresa;
   const temContas = e.contas.length > 0;
   const linhas = c.linhasDp(e);
@@ -38,11 +38,7 @@ export function useLancamentosAutomaticos() {
 
   function preencherAutomatico() {
     if (!e.contas.length) {
-      void modal({
-        icone: 'alert', titulo: 'Falta importar o plano de contas',
-        html: 'Para preencher automaticamente, a ferramenta precisa comparar a natureza de cada lançamento com as contas do balancete desta empresa. Vá em <b>Plano de contas</b> e leia um balancete primeiro.',
-        botoes: [{ rotulo: 'Entendi', valor: true, variante: 'btn-primary' }],
-      });
+      aviso({ tom: 'erro', titulo: 'Falta importar o plano de contas', texto: 'Vá em Plano de contas e leia um balancete primeiro.' });
       return;
     }
     if (!pendentes.length) { toast('Não há lançamento pendente pra preencher.'); return; }

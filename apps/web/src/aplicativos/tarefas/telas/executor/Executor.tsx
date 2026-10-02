@@ -15,6 +15,8 @@ import { JanelaInterromper } from './partes/JanelaInterromper';
 import { useChecklistDaFolha } from './useChecklistDaFolha';
 import { useExecutor } from './useExecutor';
 import { ListaDoQueFalta, type ItemQueFalta } from './partes/OQueFalta';
+import { JanelaDoPeriodo } from '../periodo/JanelaDoPeriodo';
+import { usePerguntaDoPeriodo } from '../periodo/usePerguntaDoPeriodo';
 
 /** O ícone de cada grupo da rotina, no canto do cabeçalho. */
 /** O ícone de cada saída da etapa (o menu ⚠ do cabeçalho). */
@@ -29,6 +31,8 @@ export function Executor() {
   const { empresa: rota = '', competencia: periodo = '' } = useParams();
   const vm = useExecutor(rota, periodo);
   const casca = useCascaTarefas('minhas-empresas', 'empresas');
+  // alterar o período do Em lote: a mesma pergunta do iniciar ("Quais meses?"), com o período de agora
+  const alterarLote = usePerguntaDoPeriodo();
   // a ferramenta da etapa (iframe): recebe os bancos sem movimento e avisa quando a pessoa marca um
   const iframe = useRef<HTMLIFrameElement>(null);
   // a ferramenta que tem requisitos (a Importação) diz o que falta: o avançar só aparece com tudo pronto
@@ -92,7 +96,15 @@ export function Executor() {
     itensDosGrupos.push({ rotulo: g.nome, icone: ICONE_DO_GRUPO[g.nome] || 'list', marcado: g.atual, desabilitado: g.travado, onClick: () => vm.abrirGrupo(g.nome) });
   });
   // Em lote: o cancelar mora aqui (o seletor do período saiu da ferramenta; Vitor, 02/10/2026)
-  if (vm.varios) itensDosGrupos.push('separador', { rotulo: 'Cancelar o Em lote', icone: 'x', onClick: vm.encerrarPeriodo });
+  // alterar o período só na Importação (Vitor, 02/10/2026); cancelar em vermelho, numa linha
+  if (vm.varios) {
+    itensDosGrupos.push('separador');
+    if (vm.etapa?.id === 'extratos') {
+      itensDosGrupos.push({ rotulo: 'Alterar o Em lote', icone: 'calendar', onClick: () => alterarLote.perguntar('', vm.empresa ? (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome : '', vm.meses[0],
+        { ate: vm.meses[vm.meses.length - 1], titulo: 'Alterar o Em lote', botao: 'Alterar', aoEscolher: vm.trocarCompetencia }) });
+    }
+    itensDosGrupos.push({ rotulo: 'Cancelar o Em lote', icone: 'x', perigo: true, onClick: vm.encerrarPeriodo });
+  }
   // as saídas da etapa (Pedir extrato, Buscar no Drive, "O Fiscal ainda não fechou as notas"…), num menu
   const saidas = vm.etapa ? vm.etapa.objecoes.filter(o => !o.soMotivo) : [];
   const botoesDaEtapa = vm.etapa && telaPronta && !vm.interrompendo && saida.state !== 'blocked';
@@ -203,6 +215,7 @@ export function Executor() {
             )}
           </div>
           {vm.aviso && <Alerta titulo="Ainda não dá para seguir" texto={vm.aviso} />}
+          <JanelaDoPeriodo vm={alterarLote} />
           {vm.interrompendo && <JanelaInterromper etapa={vm.etapa} onInterromper={vm.interromper} onCancelar={vm.fecharInterromper} />}
           {/* saiu por outro lugar: a mesma janela; interrompeu, segue para onde clicou; cancelou, fica */}
           {saida.state === 'blocked' && !vm.interrompendo && (

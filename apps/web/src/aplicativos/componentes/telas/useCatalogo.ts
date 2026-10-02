@@ -14,7 +14,7 @@ export function useCatalogo() {
   const [params, setParams] = useSearchParams();
   const navegar = useNavigate();
   const [busca, setBusca] = useState('');
-  const { modal, toast } = useRetorno();
+  const { modal, toast, aviso } = useRetorno();
   // o ▶: redesenha a peça (a animação de entrada roda de novo) ou mostra a peça completa de verdade
   const [vez, setVez] = useState<Record<string, number>>({});
   const [abertura, setAbertura] = useState<'completa' | 'vidro' | null>(null);
@@ -47,6 +47,7 @@ export function useCatalogo() {
       p.aoVivo({
         modal: o => modal(o),
         toast,
+        aviso,
         abertura: tipo => { setAbertura(tipo); setTimeout(() => setAbertura(null), tipo === 'completa' ? 4200 : 2600); },
       });
     },

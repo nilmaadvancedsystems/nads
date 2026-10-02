@@ -18,14 +18,29 @@ type Janela = Omit<OpcoesModal<unknown>, 'botoes'> & { botoes: { rotulo: string;
 function JanelaParada({ o }: { o: Janela }) {
   return (
     <div className={classeDaJanela(o) + ' cat-parado'} role="dialog">
+      {!o.obrigatoria && <button type="button" className="modal-x" aria-label="Fechar"><Icone nome="x" /></button>}
       <h3>{o.titulo}</h3>
       {o.html ? <p dangerouslySetInnerHTML={{ __html: o.html }} /> : o.texto ? <p>{o.texto}</p> : null}
       <div className="modal-actions">
-        {ordemDosBotoes(o.botoes).map(b => <button key={b.rotulo} type="button" className={'btn ' + (b.variante || 'btn-outline')}>{b.rotulo}</button>)}
+        {ordemDosBotoes(o.botoes.filter(b => !/^(Cancelar|Voltar)$/.test(b.rotulo))).map(b => <button key={b.rotulo} type="button" className={'btn ' + (b.variante || 'btn-outline')}>{b.rotulo}</button>)}
       </div>
       {o.fecharEm && <div className="modal-ok-barra" />}
     </div>
   );
+}
+/** O aviso parado (o mesmo desenho do useRetorno().aviso). */
+function AvisoParado({ tom, titulo, texto, icone }: { tom: 'ok' | 'erro' | 'info'; titulo: string; texto?: string; icone?: NomeIcone }) {
+  return (
+    <div className={'imp-aviso-barra aviso-barra ' + tom + ' cat-parado'} role="status">
+      <Icone nome={icone || (tom === 'ok' ? 'checkCircle' : tom === 'erro' ? 'alert' : 'ajuda')} />
+      <span><b>{titulo}</b>{texto && <span className="hint"> · {texto}</span>}</span>
+      <button type="button" aria-label="Fechar">×</button>
+    </div>
+  );
+}
+/** A janela que virou aviso (Vitor, 02/10/2026: "são apenas avisos, onde o usuário não precisa ter uma ação"). */
+export function virouAviso(p: Peca, por: string): Peca {
+  return { ...p, removida: { como: 'substituida', por, em: '02/10/2026', motivo: 'Só informa, sem ação: virou um aviso (a barrinha no topo, com o ×).', sumir: true } };
 }
 export function janela(id: string, nome: string, telas: string[], o: Janela, descricao?: string): Peca {
   return {
@@ -268,8 +283,8 @@ export const PECAS_BASE: Peca[] = [
     ) },
 
   // ─── Janelas (popups) ───────────────────────────────────────────────────────────────────────────────────────────────
-  janela('jn-tudo-certo', 'Tudo certo! (banco Ok / conta sem pendências)', ['e-importacao', 't-exec-importacao', 'c-verificar'], { tom: 'ok', icone: 'checkCircle', titulo: 'Tudo certo!', html: '<b>Sicoob</b> Ag. 3144-5 · C/C 52.166-3', botoes: [{ rotulo: 'Ok', variante: 'btn-primary' }], fecharEm: { ms: 3500, valor: true } }, 'Fecha sozinha em 3,5 s'),
-  janela('jn-saldo-negativo', 'Saldo negativo no banco (clique em Cheque especial)', ['e-importacao', 't-exec-importacao', 't-exec-cheque'], { icone: 'alert', titulo: 'Saldo negativo no banco', html: '<b>Sicoob</b> Ag. 3144-5 · C/C 52.166-3<br><br>→ 03/09/2026: <b>-R$ 150,00</b>', botoes: [{ rotulo: 'Fazer Cheque Especial', variante: 'btn-primary' }] }),
+  virouAviso(janela('jn-tudo-certo', 'Tudo certo! (banco Ok / conta sem pendências)', ['e-importacao', 't-exec-importacao', 'c-verificar'], { tom: 'ok', icone: 'checkCircle', titulo: 'Tudo certo!', html: '<b>Sicoob</b> Ag. 3144-5 · C/C 52.166-3', botoes: [{ rotulo: 'Ok', variante: 'btn-primary' }], fecharEm: { ms: 3500, valor: true } }, 'Fecha sozinha em 3,5 s'), 'av-tudo-certo'),
+  janela('jn-saldo-negativo', 'Saldo negativo no banco (clique em Cheque especial)', ['e-importacao', 't-exec-importacao', 't-exec-cheque'], { icone: 'alert', titulo: 'Saldo negativo no banco', html: '<b>Sicoob</b> Ag. 3144-5 · C/C 52.166-3', botoes: [{ rotulo: 'Fazer Cheque Especial', variante: 'btn-primary' }] }),
   { id: 'menu-falta', tipo: 'menus', nome: 'O que falta (o sino do executor)', descricao: 'O sino com o número de pendências; abre suspenso, como o Code ▾ do GitHub, com o Resolver em cada uma', componente: 'MenuSuspenso + ListaDoQueFalta', classes: ['falta-btn', 'falta-qtd', 'falta-pop', 'falta-lista'], telas: EXECUTOR,
     demo: () => (
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
@@ -294,20 +309,23 @@ export const PECAS_BASE: Peca[] = [
         <div className="modal-actions"><button type="button" className="btn btn-outline">Fechar</button></div>
       </div>
     ) },
-  janela('jn-excluir', 'Excluir a importação?', ['e-importacao', 't-exec-importacao'], { icone: 'alert', titulo: 'Excluir a importação?', html: 'Remover “O razão do <b>Sicoob</b>: <b>razao.xls</b> (171)”.<br>Dá para importar de novo depois.', botoes: [{ rotulo: 'Excluir', variante: 'btn-danger' }, { rotulo: 'Cancelar' }] }),
+  janela('jn-excluir', 'Excluir a importação?', ['e-importacao', 't-exec-importacao'], { icone: 'alert', titulo: 'Excluir a importação?', botoes: [{ rotulo: 'Excluir', variante: 'btn-danger' }, { rotulo: 'Cancelar' }] }),
   janela('jn-desmarcar', 'Desmarcar Conferência fiscal?', EXECUTOR, { icone: 'checkCircle', titulo: 'Desmarcar Conferência fiscal?', texto: 'A etapa volta a ficar pendente em todos os meses do período.', botoes: [{ rotulo: 'Cancelar' }, { rotulo: 'Desmarcar', variante: 'btn-primary' }] }),
   janela('jn-presta', 'Esta empresa presta serviço?', ['c-relatorio', 'c-importacao'], { icone: 'briefcase', titulo: 'Esta empresa presta serviços?', texto: 'Decide a aba Prestados e os serviços prestados na conferência.', botoes: [{ rotulo: 'Não' }, { rotulo: 'Sim', variante: 'btn-primary' }], obrigatoria: true }),
-  janela('jn-orientacao', 'Como resolver (orientação de uma saída)', EXECUTOR, { icone: 'alert', titulo: 'O razão da conta ainda não foi gerado no sistema', texto: 'Gere o razão da conta do banco no Alterdata (Excel ou PDF) e importe na linha "Lançamentos contábeis".', botoes: [{ rotulo: 'Entendi', variante: 'btn-primary' }] }),
-  { id: 'jn-interromper', tipo: 'janelas', nome: 'Por que interromper?', descricao: 'O ✕ do executor, ou sair da etapa por qualquer lugar do app', classes: ['modal-overlay', 'modal'], telas: EXECUTOR,
+  virouAviso(janela('jn-orientacao', 'Como resolver (orientação de uma saída)', EXECUTOR, { icone: 'alert', titulo: 'O razão da conta ainda não foi gerado no sistema', texto: 'Gere o razão da conta do banco no Alterdata (Excel ou PDF) e importe na linha "Lançamentos contábeis".', botoes: [{ rotulo: 'Entendi', variante: 'btn-primary' }] }), 'av-orientacao'),
+  { id: 'jn-interromper', tipo: 'janelas', nome: 'Por que interromper?', descricao: 'O ✕ do executor, ou sair da etapa por qualquer lugar do app: os motivos em cartões e a observação', componente: 'JanelaInterromper', classes: ['interromper-janela', 'interromper-opcao', 'interromper-obs'], telas: EXECUTOR,
     demo: () => (
-      <div className="modal cat-parado" role="dialog" style={{ maxWidth: 420 }}>
+      <div className={classeDaJanela({}) + ' interromper-janela cat-parado'} role="dialog">
+        <button type="button" className="modal-x" aria-label="Fechar"><Icone nome="x" /></button>
         <h3>Por que interromper?</h3>
-        <p className="hint">Importação</p>
-        {['O cliente não enviou o extrato', 'O extrato está no Drive do cliente', 'O razão da conta ainda não foi gerado no sistema', 'Outro motivo'].map((m, i) => (
-          <label key={m} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '4px 0', fontSize: 14 }}><input type="radio" name="cat-motivo" defaultChecked={i === 0} />{m}</label>
-        ))}
-        <div className="field"><label htmlFor="cat-obs">Observação (opcional)</label><input id="cat-obs" type="text" /></div>
-        <div className="modal-actions"><button className="btn btn-outline" type="button">Voltar</button><button className="btn btn-primary" type="button">Interromper</button></div>
+        <p className="interromper-etapa">Importação</p>
+        <div className="interromper-opcoes">
+          {['O cliente não enviou o extrato', 'O extrato está no Drive do cliente', 'O razão da conta ainda não foi gerado no sistema', 'Outro motivo'].map((m, k) => (
+            <label key={m} className={'interromper-opcao' + (k === 0 ? ' on' : '')}><input type="radio" name="cat-motivo" defaultChecked={k === 0} /><span>{m}</span></label>
+          ))}
+        </div>
+        <label className="interromper-obs"><span>Observação (opcional)</span><textarea rows={3} /></label>
+        <div className="modal-actions"><button className="btn btn-danger" type="button">Interromper</button></div>
       </div>
     ) },
   { id: 'jn-cadastro', tipo: 'janelas', nome: 'Janela da empresa (Cadastro)', descricao: 'A janela grande, com abas', classes: ['cad-janela-fundo', 'cad-janela', 'cad-janela-topo', 'cad-janela-abas', 'cad-janela-aba'], telas: ['t-cadastro', 't-cadastro-janela'], largo: true,
@@ -348,6 +366,16 @@ export const PECAS_BASE: Peca[] = [
   { id: 'welcome', tipo: 'avisos', nome: 'Faixa de dados de exemplo', classes: ['welcome-banner'], telas: ['c-entrada', 'e-entrada'], largo: true, demo: () => <div className="welcome-banner">Dados de exemplo (901, 902, 903) · nada é gravado em banco</div> },
 
   // ─── Abas ───────────────────────────────────────────────────────────────────────────────────────────────────────────
+  { id: 'av-tudo-certo', tipo: 'avisos', nome: 'Tudo certo! (banco Ok / conta sem pendências)', descricao: 'useRetorno().aviso: a barrinha no topo; some em 3,7 s (ou no ×)', componente: 'useRetorno().aviso', classes: ['imp-aviso-barra aviso-barra ok'], telas: ['e-importacao', 't-exec-importacao', 'c-verificar'],
+    demo: () => <AvisoParado tom="ok" titulo="Tudo certo!" texto="Sicoob Ag. 3144-5 · C/C 52.166-3" />, aoVivo: c => c.aviso({ tom: 'ok', titulo: 'Tudo certo!', texto: 'Sicoob Ag. 3144-5 · C/C 52.166-3' }) },
+  { id: 'av-orientacao', tipo: 'avisos', nome: 'Como resolver (orientação de uma saída)', descricao: 'useRetorno().aviso: a barrinha no topo; some em 8 s (ou no ×)', componente: 'useRetorno().aviso', classes: ['imp-aviso-barra aviso-barra info'], telas: EXECUTOR,
+    demo: () => <AvisoParado tom="info" titulo="O Fiscal ainda não fechou as notas" texto="Peça ao Fiscal para fechar o mês antes de conferir." />, aoVivo: c => c.aviso({ tom: 'info', titulo: 'O Fiscal ainda não fechou as notas', texto: 'Peça ao Fiscal para fechar o mês antes de conferir.' }) },
+  { id: 'av-propriedades', tipo: 'avisos', nome: 'Propriedades (Drive)', descricao: 'useRetorno().aviso: a barrinha no topo; some em 8 s (ou no ×)', componente: 'useRetorno().aviso', classes: ['imp-aviso-barra aviso-barra info'], telas: ['t-drive'],
+    demo: () => <AvisoParado tom="info" titulo="extrato-agosto.pdf" texto="Tipo: PDF · Tamanho: 182 KB · Pasta: 292 › 2026 › Bancos" icone="fileText" />, aoVivo: c => c.aviso({ tom: 'info', titulo: 'extrato-agosto.pdf', texto: 'Tipo: PDF · Tamanho: 182 KB · Pasta: 292 › 2026 › Bancos', icone: 'fileText' }) },
+  { id: 'av-falta-plano', tipo: 'avisos', nome: 'Falta importar o plano de contas', descricao: 'useRetorno().aviso: a barrinha no topo; some em 8 s (ou no ×)', componente: 'useRetorno().aviso', classes: ['imp-aviso-barra aviso-barra erro'], telas: ['c-cadastro'],
+    demo: () => <AvisoParado tom="erro" titulo="Falta importar o plano de contas" texto="Vá em Plano de contas e leia um balancete primeiro." />, aoVivo: c => c.aviso({ tom: 'erro', titulo: 'Falta importar o plano de contas', texto: 'Vá em Plano de contas e leia um balancete primeiro.' }) },
+  { id: 'av-falta-preencher', tipo: 'avisos', nome: 'Falta preencher antes de conferir', descricao: 'useRetorno().aviso: a barrinha no topo; some em 8 s (ou no ×)', componente: 'useRetorno().aviso', classes: ['imp-aviso-barra aviso-barra erro'], telas: ['c-verificar'],
+    demo: () => <AvisoParado tom="erro" titulo="Falta preencher antes de conferir" texto="Escolha a conta · Importe o relatório da conta" />, aoVivo: c => c.aviso({ tom: 'erro', titulo: 'Falta preencher antes de conferir', texto: 'Escolha a conta · Importe o relatório da conta' }) },
   { id: 'abas-menu', tipo: 'abas', nome: 'Abas sublinhadas', classes: ['menu', 'menu-item', 'menu-contador'], telas: TODAS, largo: true,
     demo: () => <nav className="menu">{([['Bancos', 'landmark', true], ['Balancete', 'scale'], ['Entradas', 'arrowDown'], ['Saídas', 'arrowUp'], ['Tomados', 'fileDown']] as [string, NomeIcone, boolean?][]).map(([r, i, a]) => <button key={r} type="button" className={'menu-item' + (a ? ' active' : '')}><Icone nome={i} /><span>{r}</span></button>)}</nav> },
   { id: 'segmentado', tipo: 'abas', nome: 'Segmentado', componente: 'Segmentado', classes: ['steps', 'step-pill'], telas: ['c-relatorio', 'c-cadastro', 'c-consulta'], demo: () => <SegmentadoVivo /> },

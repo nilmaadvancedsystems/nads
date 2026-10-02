@@ -5,7 +5,7 @@
 // quem desenha é daqui.
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { animar, apagarFundo, ENTRAR, origemDe, paramsDaPilha, paramsDoAvisoQueChega, sairComo, semMovimento, voltarParaOrigem } from './animacao';
-import type { NomeIcone } from './icones';
+import { Icone, type NomeIcone } from './icones';
 
 export interface BotaoModal<T> {
   rotulo: string; valor: T; variante?: 'btn-primary' | 'btn-outline' | 'btn-danger';
@@ -49,9 +49,17 @@ export function ordemDosBotoes<T extends { variante?: string }>(botoes: readonly
   return [...botoes.filter(b => !desiste(b)), ...botoes.filter(desiste)];
 }
 
+/**
+ * Um aviso (Vitor, 02/10/2026: "são apenas avisos, onde o usuário não precisa ter uma ação"): a barrinha no topo da tela
+ * (o desenho dos avisos, AV-04) com o ícone, o título em negrito, o texto ao lado e o ×. O de "deu certo" some em 3,7 s;
+ * os outros, em 8 s (ou no ×).
+ */
+export interface OpcoesAviso { titulo: string; texto?: string; tom?: 'ok' | 'erro' | 'info'; icone?: NomeIcone }
+
 export interface Retorno {
   toast(mensagem: string): void;
   modal<T>(o: OpcoesModal<T>): Promise<T>;
+  aviso(o: OpcoesAviso): void;
 }
 
 const Ctx = createContext<Retorno | null>(null);
@@ -144,11 +152,28 @@ export function RetornoProvider({ children }: { children: ReactNode }) {
     setAberto({ id: ++proximaJanela, o: o as OpcoesModal<unknown>, resolver: v => res(v as T) });
   }), []);
 
-  const valor = useMemo<Retorno>(() => ({ toast, modal }), [toast, modal]);
+  const [avisoAtual, setAviso] = useState<(OpcoesAviso & { id: number }) | null>(null);
+  const aviso = useCallback((o: OpcoesAviso) => setAviso({ ...o, id: ++seq.current }), []);
+  useEffect(() => {
+    if (!avisoAtual) return;
+    const t = setTimeout(() => setAviso(a => (a === avisoAtual ? null : a)), avisoAtual.tom === 'ok' ? 3700 : 8000);
+    return () => clearTimeout(t);
+  }, [avisoAtual]);
+
+  const valor = useMemo<Retorno>(() => ({ toast, modal, aviso }), [toast, modal, aviso]);
 
   return (
     <Ctx.Provider value={valor}>
       {children}
+      {avisoAtual && (
+        <div className="imp-aviso aviso-regiao">
+          <div className={'imp-aviso-barra aviso-barra ' + (avisoAtual.tom || 'info')} role="status">
+            <Icone nome={avisoAtual.icone || (avisoAtual.tom === 'ok' ? 'checkCircle' : avisoAtual.tom === 'erro' ? 'alert' : 'ajuda')} />
+            <span><b>{avisoAtual.titulo}</b>{avisoAtual.texto && <span className="hint"> · {avisoAtual.texto}</span>}</span>
+            <button type="button" aria-label="Fechar" title="Fechar" onClick={() => setAviso(null)}>×</button>
+          </div>
+        </div>
+      )}
       {aberto && <Modal key={aberto.id} aberto={aberto} fechar={v => { setAberto(a => (a === aberto ? null : a)); aberto.resolver(v); }} />}
       <div ref={regiao} className="toast-region" aria-live="polite"
         onMouseEnter={() => { setLeque(true); pausar(true); }} onMouseLeave={() => { setLeque(false); pausar(document.hidden); }}>
@@ -177,9 +202,16 @@ function Modal({ aberto, fechar }: { aberto: ModalAberto; fechar: (v: unknown) =
   // clicar fora fecha (e a janela volta para o botão) quando dá para saber o que isso quer dizer: com um botão só, é ele;
   // com vários, é o de desistir (o contornado, nem o principal nem o de apagar). Janela obrigatória não fecha por fora.
   const desistir = o.botoes.length === 1 ? o.botoes[0] : o.botoes.find(b => (b.variante || 'btn-outline') === 'btn-outline');
+  // sem o botão Cancelar (Vitor, 02/10/2026): o × no canto de cima faz o papel dele; a janela obrigatória não tem ×
+  const cancelar = o.botoes.find(b => /^(Cancelar|Voltar)$/.test(b.rotulo));
+  const botoes = cancelar ? o.botoes.filter(b => b !== cancelar) : o.botoes;
+  const comX = !o.obrigatoria && (!!cancelar || !!desistir);
+  const valorDoX = cancelar ? cancelar.valor : desistir?.valor;
+  const xRef = useRef<HTMLButtonElement>(null);
   const foraFecha = !o.obrigatoria && !!desistir;
   const valorDeFora = desistir?.valor;
-  useEffect(() => { primeiro.current?.focus(); }, []);
+  // o foco: no × quando a ação é de apagar (Enter sem querer não apaga); senão, na primeira ação
+  useEffect(() => { (botoes.some(b => b.variante === 'btn-danger') && xRef.current ? xRef.current : primeiro.current)?.focus(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!o.fecharEm) return;
     const t = setTimeout(() => fecharAnimado(o.fecharEm?.valor), o.fecharEm.ms);
@@ -189,13 +221,13 @@ function Modal({ aberto, fechar }: { aberto: ModalAberto; fechar: (v: unknown) =
     <div ref={raiz} data-saida-propria data-fecha-fora={foraFecha ? '' : undefined} className={'modal-overlay' + (o.obrigatoria ? ' modal-blur' : '')}
       onMouseDown={ev => { if (ev.target === ev.currentTarget && foraFecha) fecharAnimado(valorDeFora); }}>
       <div className={classeDaJanela(o)} role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        {comX && <button ref={xRef} type="button" className="modal-x" aria-label="Fechar" title="Fechar" onClick={() => fecharAnimado(valorDoX)}><Icone nome="x" /></button>}
         <h3 id="modalTitle">{o.titulo}</h3>
         {o.html ? <p dangerouslySetInnerHTML={{ __html: o.html }} /> : o.texto ? <p>{o.texto}</p> : null}
         {o.corpo}
         <div className="modal-actions">
-          {ordemDosBotoes(o.botoes).map((b, i, todos) => (
-            // o foco no Cancelar quando a ação é de apagar (Enter sem querer não apaga); senão, na primeira ação
-            <button key={b.rotulo} ref={i === (todos.some(x => x.variante === 'btn-danger') ? Math.max(0, todos.findIndex(x => !x.variante || x.variante === 'btn-outline')) : 0) ? primeiro : undefined} type="button" className={'btn ' + (b.variante || 'btn-outline')} onClick={() => { b.aoClicar?.(); fecharAnimado(b.valor); }}>{b.rotulo}</button>
+          {ordemDosBotoes(botoes).map((b, i) => (
+            <button key={b.rotulo} ref={i === 0 ? primeiro : undefined} type="button" className={'btn ' + (b.variante || 'btn-outline')} onClick={() => { b.aoClicar?.(); fecharAnimado(b.valor); }}>{b.rotulo}</button>
           ))}
         </div>
         {o.fecharEm && <div className="modal-ok-barra" />}

@@ -23,7 +23,7 @@ export function useBancosOk(vm: Vm, ponte: Ponte, ocupado: boolean): {
   explicarCheque: (banco: { nome: string; conta?: string }, sit: x.SituacaoDoBanco) => void;
 } {
   const s = useSessao();
-  const { modal } = useRetorno();
+  const { modal, aviso } = useRetorno();
   const emLote = vm.periodo.length > 1;
   const meses = emLote ? vm.periodo : [vm.competencia];
   const semMovimentoDe = (banco: string) => emLote
@@ -57,23 +57,18 @@ export function useBancosOk(vm: Vm, ponte: Ponte, ocupado: boolean): {
     const novos = vm.bancos.filter(b => ok[b.id] && anterior[b.id] === false);
     if (!novos.length) return;
     mexeu.current = false;
-    void modal({
-      tom: 'ok', icone: 'checkCircle', titulo: 'Tudo certo!',
-      html: novos.map(b => '<b>' + escapar(b.nome) + '</b>' + (b.conta ? ' ' + escapar(b.conta) : '')).join('<br>'),
-      botoes: [{ rotulo: 'Ok', valor: true, variante: 'btn-primary' }],
-      fecharEm: { ms: 3500, valor: true },
-    });
+    // um aviso, não janela (Vitor, 02/10/2026: não pede ação)
+    aviso({ tom: 'ok', titulo: 'Tudo certo!', texto: novos.map(b => b.nome + (b.conta ? ' ' + b.conta : '')).join(' · ') });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chave, ocupado]);
 
   /** O clique no "Conferido": o saldo negativo de cada dia e o que fazer. */
   function explicarCheque(banco: { nome: string; conta?: string }, sit: x.SituacaoDoBanco) {
     if (sit.tipo !== 'falta-cheque') return;
-    // (Vitor, 02/10/2026) só os dias: "Dias negativos: → 03/09/2026: -R$ 150,00"
-    const dias = sit.faltam.map(d => '→ ' + x.dataBR(d.data) + ': <b>-R$ ' + x.valorBR(Math.abs(d.saldo)) + '</b>').join('<br>');
     void modal({
       icone: 'alert', titulo: 'Saldo negativo no banco',
-      html: '<b>' + escapar(banco.nome) + '</b>' + (banco.conta ? ' ' + escapar(banco.conta) : '') + '<br><br>' + dias,
+      // só o banco (Vitor, 02/10/2026)
+      html: '<b>' + escapar(banco.nome) + '</b>' + (banco.conta ? ' ' + escapar(banco.conta) : ''),
       // abre o Cheque especial numa aba nova (Vitor, 02/10/2026: no lugar do "Entendi")
       botoes: [{ rotulo: 'Fazer Cheque Especial', valor: true, variante: 'btn-primary', aoClicar: () => { window.open(caminhoNaFerramenta('cheque-especial', s.rota), '_blank', 'noopener'); } }],
     });

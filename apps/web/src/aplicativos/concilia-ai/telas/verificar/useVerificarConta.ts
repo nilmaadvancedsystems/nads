@@ -32,7 +32,7 @@ function derivar(e: c.Empresa, v: EstadoVerificar) {
 
 export function useVerificarConta() {
   const s = useSessao();
-  const { toast, modal } = useRetorno();
+  const { toast, modal, aviso } = useRetorno();
   const e = s.empresa;
   const v = s.verificar;
   const d = derivar(e, v);
@@ -88,11 +88,7 @@ export function useVerificarConta() {
       cfopGrupo: dd.cfopGrupo,
     });
     if (falta.length) {
-      void modal({
-        icone: 'alert', titulo: 'Falta preencher antes de conferir',
-        html: '<ul style="margin:0;padding-left:18px;">' + falta.map(f => '<li>' + escapar(f) + '</li>').join('') + '</ul>',
-        botoes: [{ rotulo: 'Entendi', valor: true, variante: 'btn-primary' }],
-      });
+      aviso({ tom: 'erro', titulo: 'Falta preencher antes de conferir', texto: falta.join(' · ') });
       return;
     }
     setComparando(true);
@@ -123,12 +119,8 @@ export function useVerificarConta() {
         // sozinho pro Relatório com a conta Ok. O "Ok" é sempre o sistema que grava (linha 114
         // acima) — não existe botão que o usuário use pra dar Ok na mão.
         if (limpo) {
-          void modal({
-            tom: 'ok', icone: 'checkCircle', titulo: 'Tudo certo!',
-            html: '<b>' + escapar(dd.rotulo) + '</b><br>sem pendências · Ok no Relatório',
-            botoes: [{ rotulo: 'Ok', valor: true, variante: 'btn-primary' }],
-            fecharEm: { ms: 3500, valor: true },
-          }).then(() => s.irPara('movimento/relatorio'));
+          aviso({ tom: 'ok', titulo: 'Tudo certo!', texto: dd.rotulo + ' sem pendências · Ok no Relatório' });
+          setTimeout(() => s.irPara('movimento/relatorio'), 3500);
         }
       } finally {
         setComparando(false);
@@ -250,6 +242,3 @@ function montarResultado(e: c.Empresa, p: c.FiltroMovimento, v: EstadoVerificar,
   };
 }
 
-function escapar(t: string): string {
-  return t.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch] as string));
-}

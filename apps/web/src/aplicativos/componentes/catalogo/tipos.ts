@@ -1,7 +1,7 @@
 // O catálogo de componentes do nads (Vitor, 02/10/2026: "um mini site com TODOS os componentes da aplicação, menu
 // lateral com as telas que têm aquele componente e menu superior com o tipo"). Cada peça é desenhada com as MESMAS
 // peças do sistema (@nads/ui e o nads.css): mudar uma peça aqui é mudar no sistema todo, e o contrário também.
-import type { NomeIcone, OpcoesModal } from '@nads/ui';
+import type { NomeIcone, OpcoesAviso, OpcoesModal } from '@nads/ui';
 import type { ReactNode } from 'react';
 
 export type IdTipo =
@@ -44,12 +44,15 @@ export interface Peca {
    * para onde foi — excluída, movida (para outra tela) ou substituída por outra peça (o id dela) — e o motivo. Guarda o
    * código. Só aqui: na aplicação, a peça simplesmente foi trocada.
    */
-  removida?: { como: 'excluida' | 'movida' | 'substituida'; por?: string; para?: string; em: string; motivo: string };
+  removida?: { como: 'excluida' | 'movida' | 'substituida'; por?: string; para?: string; em: string; motivo: string;
+    /** nem em preto e branco: some do catálogo (só guarda o código; Vitor, 02/10/2026: "remova essas janelas") */
+    sumir?: boolean };
 }
 
 export interface AoVivo {
   modal: (o: OpcoesModal<unknown>) => Promise<unknown>;
   toast: (texto: string) => void;
+  aviso: (o: OpcoesAviso) => void;
   /** a abertura com o N na tela inteira por uns segundos (completa: a logo inteira; vidro: o N no vidro) */
   abertura: (tipo: 'completa' | 'vidro') => void;
 }
