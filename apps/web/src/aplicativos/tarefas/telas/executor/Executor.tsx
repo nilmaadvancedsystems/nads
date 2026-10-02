@@ -135,7 +135,17 @@ export function Executor() {
       </nav>
       <span className="gh-topo-sep" aria-hidden="true" />
       <MenuSuspenso rotulo={casca.perfil.iniciais} className="gh-avatar" dica={casca.perfil.nome} titulo={casca.perfil.nome} direita
-        itens={[{ rotulo: 'Voltar às empresas', icone: 'home', onClick: vm.sair }, { rotulo: casca.perfil.sair, icone: 'logOut', onClick: casca.trocarPessoa }]} />
+        // o mesmo menu do avatar das outras telas (a Minha página) e, aqui, o Voltar às empresas; sair da etapa por
+        // qualquer um deles é interromper (com a justificativa), como o resto do executor
+        itens={[
+          { rotulo: 'Voltar às empresas', icone: 'home', onClick: vm.sair },
+          'separador',
+          { rotulo: 'Caixa de entrada', icone: 'caixaEntrada', onClick: () => casca.abrirPessoal('caixa') },
+          { rotulo: 'Minha conta', icone: 'usuario', onClick: () => casca.abrirPessoal('conta') },
+          { rotulo: 'Aparência e telas', icone: 'settings', onClick: () => casca.abrirPessoal('preferencias') },
+          'separador',
+          { rotulo: casca.perfil.sair, icone: 'logOut', onClick: casca.trocarPessoa },
+        ]} />
       {/* interromper: o último, em vermelho (Vitor, 02/10/2026) */}
       {botoesDaEtapa && (
         <button type="button" className="gh-topo-btn gh-topo-fechar" onClick={vm.abrirInterromper} title="Interromper a etapa" aria-label="Interromper">
