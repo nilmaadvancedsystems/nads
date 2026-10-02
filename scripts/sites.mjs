@@ -38,6 +38,8 @@ const SITES = {
   // o Concilia aí só para conferir entradas, ligado ao banco da Conferência (Vitor, 01/10/2026): só como prévia (link à parte)
   'conferir-entradas': { site: 'concilia-ai-nilma', nome: 'Concilia aí — Conferir entradas', tipo: 'app', banco: true, aplicativo: 'concilia-ai', env: { VITE_SO_ENTRADAS: '1' }, soCanal: true, pasta: 'concilia-ai' },
   conciliadorzinho: { site: 'conciliadorzinho-nilma', nome: 'Conciliadorzinho', tipo: 'app' },
+  // o catálogo de componentes de todo o nads (Vitor, 02/10/2026): as mesmas peças do sistema, com dados de exemplo
+  componentes: { site: 'componentes-nilma', nome: 'Componentes', tipo: 'app' },
   extratudo: { site: 'extratudo-nilma', nome: 'Extratudo', tipo: 'app', banco: true },
   tarefas: { site: 'tarefas-nilma', nome: 'Tarefas', tipo: 'app', banco: true },
   'extratudo-entregas': { site: 'extratudo-entregas', nome: 'Extratudo (Entregas)', tipo: 'app', banco: true, aplicativo: 'extratudo', projeto: 'entregas-2e5e2' },

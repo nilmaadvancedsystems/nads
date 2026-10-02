@@ -1502,7 +1502,15 @@ html.na-etapa .modal-overlay,html.na-etapa .cad-janela-fundo{top:var(--vista-top
 /* a janela centraliza na tela inteira (a Tarefas conta o deslocamento: --vista-dx e --vista-dy), não só no pedaço da ferramenta */
 html.na-etapa .modal-overlay,html.na-etapa .cad-janela-fundo{
   padding-left:max(16px, calc(16px + 2 * var(--vista-dx,0px)));padding-right:max(16px, calc(16px - 2 * var(--vista-dx,0px)));
-  padding-top:max(16px, calc(16px + 2 * var(--vista-dy,0px)));padding-bottom:max(16px, calc(16px - 2 * var(--vista-dy,0px)));}
+  /* na vertical, o deslocamento é limitado (±40 px): uma janela alta não pode sair por cima (Vitor, 02/10/2026: a "Pedir
+     documentos" ficava cortada) */
+  padding-top:max(16px, calc(16px + 2 * clamp(-40px, var(--vista-dy,0px), 40px)));padding-bottom:max(16px, calc(16px - 2 * clamp(-40px, var(--vista-dy,0px), 40px)));
+  overflow:auto;}
+/* dentro da etapa, a janela cabe no pedaço visível (o 100vh do iframe é a ferramenta inteira, não a tela) */
+html.na-etapa .modal-overlay > .modal,html.na-etapa .cad-janela-fundo > .cad-janela{max-height:calc(var(--vista-altura,100vh) - 112px);overflow:auto;}
+/* as janelas com corpo que rola (Pedir documentos, histórico, envio): o título e os botões ficam; só o meio rola */
+html.na-etapa .modal-overlay > .modal.pedir-modal,html.na-etapa .modal-overlay > .modal.pedir-historico,html.na-etapa .modal-overlay > .modal.envio-janela{display:flex;flex-direction:column;overflow:hidden;}
+html.na-etapa .pedir-modal > .pedir-corpo,html.na-etapa .pedir-modal > .pedir-grade-2,html.na-etapa .pedir-hist-lista,html.na-etapa .envio-corpo{max-height:none;flex:1 1 auto;min-height:0;overflow:auto;}
 /* na Tarefas, com uma janela aberta na ferramenta: o cabeçalho e a lateral embaçam e escurecem como o fundo da janela */
 html.fundo-embacado .gh-header,html.fundo-embacado .subnav,html.fundo-embacado .layout-caixa > .caixa-menu{filter:blur(6px) brightness(.55);pointer-events:none;transition:filter .2s ease;}
 html.na-etapa .toast-region{bottom:auto;top:calc(var(--vista-topo,0px) + var(--vista-altura,100vh) - 16px);transform:translateY(-100%);}
@@ -2335,3 +2343,37 @@ tr.linha-abre,.imp-linha,.imp-mes-celula,.gh-crumb,.drawer-x{
 .chip-row.com-indicador .chip-f.on{background:transparent;border-color:transparent;}
 /* as barras de andamento (a leitura do robô, o progresso da empresa) andam em vez de pular */
 .tarefas-barra > span{transition:width .7s var(--ease-out);}
+
+/* O catálogo de componentes (aplicativos/componentes): um cartão por peça — o nome e como se escreve, o desenho ao
+   vivo (com as mesmas peças do sistema), o código e as telas onde ela aparece */
+.cat-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:16px;align-items:start;}
+.cat-peca{padding:0;overflow:hidden;}
+.cat-peca.largo{grid-column:1/-1;}
+.cat-peca-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface-2);}
+.cat-peca-topo h3{margin:0;font-size:14px;font-weight:600;}
+.cat-peca-topo .hint{margin:2px 0 0;}
+.cat-peca-nomes{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;}
+.cat-codigo-chip{font-family:var(--font-num);font-size:11px;padding:1px 6px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink-muted);white-space:nowrap;}
+.cat-palco{padding:20px 16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;min-height:72px;position:relative;}
+.cat-palco.coluna,.cat-peca.largo .cat-palco{flex-direction:column;align-items:stretch;}
+.cat-codigo{margin:0;padding:10px 16px;border-top:1px solid var(--border);background:var(--surface-2);font-family:var(--font-num);font-size:12px;color:var(--ink-muted);white-space:pre-wrap;overflow-wrap:anywhere;}
+.cat-telas{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:10px 16px;border-top:1px solid var(--border);}
+.cat-telas .hint{margin:0 4px 0 0;}
+.cat-tela{border:1px solid var(--border);background:none;border-radius:2em;padding:1px 10px;font:inherit;font-size:12px;color:var(--ink-muted);cursor:pointer;}
+.cat-tela:hover{background:var(--hover-bg);color:var(--ink);}
+.cat-tela.ativa{border-color:var(--accent);color:var(--accent-ink);}
+/* as janelas, os menus e a gaveta desenhados parados dentro do cartão (não por cima da tela) */
+.cat-palco .cat-parado{position:relative;inset:auto;transform:none;z-index:auto;}
+.cat-palco .modal.cat-parado{margin:0 auto;}
+.cat-palco .popover.cat-parado{display:block;animation:none;}
+.cat-moldura{width:100%;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg);}
+.cat-icones{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;width:100%;}
+.cat-icone{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px;border:1px solid var(--border-muted);border-radius:6px;font-size:11px;color:var(--ink-muted);font-family:var(--font-num);}
+.cat-icone svg{width:20px;height:20px;color:var(--ink);}
+.cat-cores{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;width:100%;}
+.cat-cor{display:flex;align-items:center;gap:8px;font-size:12px;font-family:var(--font-num);color:var(--ink-muted);}
+.cat-cor i{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);flex:none;}
+@media (max-width:640px){.cat-lista{grid-template-columns:minmax(0,1fr);}}
+/* o código da peça (BT-01…) e o ▶ */
+.cat-cod{display:inline-block;margin-right:8px;padding:0 6px;border-radius:6px;background:var(--accent);color:var(--on-accent);font-family:var(--font-num);font-size:12px;font-weight:700;vertical-align:1px;}
+.cat-play{color:var(--accent-ink);}

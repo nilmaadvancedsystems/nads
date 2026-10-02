@@ -9,6 +9,7 @@
 // nem entram, e a raiz leva direto a ele. Sem a variável, entram os quatro.
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router';
 import { rotasConciliaAi, rotasConciliaAiNaTarefa } from './aplicativos/concilia-ai/rotas';
+import { rotasComponentes } from './aplicativos/componentes/rotas';
 import { rotasConciliadorzinho } from './aplicativos/conciliadorzinho/rotas';
 import { rotasExtratudo } from './aplicativos/extratudo/rotas';
 import { rotasTarefas } from './aplicativos/tarefas/rotas';
@@ -16,6 +17,8 @@ import { rotasTarefas } from './aplicativos/tarefas/rotas';
 const APLICATIVOS: Record<string, { nome: string; rotas: RouteObject[]; raiz: string }> = {
   'concilia-ai': { nome: 'Concilia aí', rotas: rotasConciliaAi, raiz: '/' },
   conciliadorzinho: { nome: 'Conciliadorzinho', rotas: rotasConciliadorzinho, raiz: '/conciliadorzinho' },
+  // o catálogo de todas as peças do nads (Vitor, 02/10/2026), num link à parte
+  componentes: { nome: 'Componentes', rotas: rotasComponentes, raiz: '/componentes' },
   extratudo: { nome: 'Extratudo', rotas: rotasExtratudo, raiz: '/extratudo' },
   // a Tarefas leva junto o Extratudo e a Conferência (a etapa Conferência fiscal): as ferramentas da etapa abrem
   // no mesmo endereço (o login do Entregas fica guardado no navegador; em outro endereço, dentro do iframe, o Brave apaga)
@@ -29,6 +32,7 @@ export const roteador = createBrowserRouter(so
   ? [...so.rotas, ...(so.raiz !== '/' ? [{ path: '/', element: <Navigate to={so.raiz} replace /> }] : []), { path: '*', element: <Navigate to={so.raiz} replace /> }]
   : [
     ...rotasConciliadorzinho,
+    ...rotasComponentes,
     ...rotasExtratudo,
     ...rotasTarefas,
     ...rotasConciliaAi,
