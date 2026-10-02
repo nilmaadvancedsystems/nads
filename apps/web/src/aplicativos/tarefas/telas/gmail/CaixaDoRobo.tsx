@@ -2,7 +2,7 @@
 // agora" e o andamento da leitura; as abas (de clientes, sem cliente, spam) com a busca; a lista; e o e-mail aberto
 // numa janela por cima, com o texto inteiro, os anexos, as ações e responder.
 import type { entregas as e } from '@nads/core';
-import { Esqueleto, Icone, NumeroQueConta, useCarregando, useEntradaAnimada, useIndicador, useLinhasQueSeMovem, Segmentado, useSemAnimacao } from '@nads/ui';
+import { Esqueleto, Icone, NumeroQueConta, useCarregando, useEntradaAnimada, useIndicador, useLinhasQueSeMovem, Segmentado } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useCaixaDoRobo, usePainelDoEmail, type AbaDaCaixa, type VmCaixa } from './useCaixaDoRobo';
 
@@ -149,8 +149,6 @@ function PainelDoEmail({ vm, x }: { vm: VmCaixa; x: e.EmailDaCaixa }) {
 }
 
 export function CaixaDoRobo() {
-  // tela cheia de caixas (Vitor, 01/10/2026: "tudo que tiver muita box pode reduzir ou remover as animações"): sem animação
-  useSemAnimacao();
   const vm = useCaixaDoRobo();
   useCarregando(vm.carregando);
   // trocou de caixa ou de aba (ou chegou a lista): os e-mails chegam em cascata, do jeito do app

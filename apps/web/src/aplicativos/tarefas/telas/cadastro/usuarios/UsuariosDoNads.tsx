@@ -1,11 +1,10 @@
 // Cadastro › Usuários: a equipe do Entregas. Cada pessoa: cargo (departamento e nível), papéis, ativo e os
 // computadores liberados (abrindo a linha). Só o admin muda; os outros veem.
 import type { usuarios } from '@nads/core';
-import { Icone, Interruptor, useCarregando, useEntradaAnimada, useSemAnimacao } from '@nads/ui';
+import { Icone, Interruptor, useCarregando, useEntradaAnimada } from '@nads/ui';
 import { useUsuariosDoNads } from './useUsuariosDoNads';
 
 export function UsuariosDoNads() {
-  useSemAnimacao(); // o Cadastro não tem animação nenhuma
   const vm = useUsuariosDoNads();
   useCarregando(vm.carregando);
   const tabela = useEntradaAnimada<HTMLDivElement>(null, [vm.carregando], 'repetida');

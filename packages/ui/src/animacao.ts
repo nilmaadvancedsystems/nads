@@ -8,29 +8,12 @@
 //   viva   com mola: as peças chegam com impulso e assentam com um quique
 //   suave  elegante e lenta: deslizam devagar, sem quique
 // Quem anima um elemento da tela usa entrar/sairComo (eventos), useEntradaAnimada (React) ou animar.
-import { animate, cleanInlineStyles, createDrawable, cubicBezier, splitText, spring, stagger, utils, waapi, type AnimationParams, type JSAnimation, type TargetsParam } from 'animejs';
-import { useEffect, useLayoutEffect, useRef, type DependencyList, type RefObject } from 'react';
+import { animate, cleanInlineStyles, createDrawable, cubicBezier, splitText, spring, stagger, waapi, type AnimationParams, type JSAnimation, type TargetsParam } from 'animejs';
+import { useLayoutEffect, useRef, type DependencyList, type RefObject } from 'react';
 
 /** A pessoa pediu menos movimento no sistema: nada desloca, só esmaece. */
 // sem matchMedia (fora de um navegador de verdade: os testes) também não anima: tudo já no lugar
-export const semMovimento = () => typeof window === 'undefined' || typeof window.matchMedia !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches || parado();
-
-/**
- * Uma área sem animação nenhuma (o Cadastro — Vitor, 01/10/2026: "remover todas do cadastro, mesmo as que eu gostei"):
- * enquanto ela está na tela, o <html> tem data-sem-animacao e nada se mexe — nem esmaecer (o CSS também desliga as
- * transições). Quem usa: useSemAnimacao().
- */
-const parado = () => typeof document !== 'undefined' && document.documentElement.hasAttribute('data-sem-animacao');
-let areasParadas = 0;
-export function useSemAnimacao(): void {
-  // já no render: a casca anima a entrada da página no layout effect dela, antes dos efeitos de quem a usa
-  if (typeof document !== 'undefined') document.documentElement.setAttribute('data-sem-animacao', '');
-  useEffect(() => {
-    areasParadas++;
-    document.documentElement.setAttribute('data-sem-animacao', '');
-    return () => { areasParadas--; if (areasParadas <= 0) { areasParadas = 0; document.documentElement.removeAttribute('data-sem-animacao'); } };
-  }, []);
-}
+export const semMovimento = () => typeof window === 'undefined' || typeof window.matchMedia !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** A curva de entrar/sair da tela: rápida no começo, assenta devagar. */
 export const ENTRAR = cubicBezier(0.23, 1, 0.32, 1);
@@ -194,7 +177,7 @@ const INDICADOR: Record<Jeito, () => AnimationParams> = {
 /** Leva o indicador até o lugar (left/top/largura/altura); na primeira vez, aparece já no lugar. */
 export function moverIndicador(el: HTMLElement, lugar: { x: number; y: number; w: number; h: number }, primeira: boolean): void {
   const alvo = { translateX: lugar.x, translateY: lugar.y, width: lugar.w, height: lugar.h };
-  if (primeira || semMovimento()) { utils.set(el, { ...alvo, opacity: 1 }); return; }
+  if (primeira || semMovimento()) { animate(el, { ...alvo, opacity: 1, duration: 0 }); return; }
   animate(el, { ...alvo, opacity: 1, ...INDICADOR[jeito](), composition: 'replace' });
 }
 
@@ -338,19 +321,6 @@ const DESLOCAM = ['translateX', 'translateY', 'scale', 'scaleX', 'scaleY', 'rota
  */
 export function animar(alvos: TargetsParam, params: AnimationParams): JSAnimation {
   if (!semMovimento()) return animate(alvos, params);
-  // área sem animação: tudo vai direto para o fim, na hora (nem o esmaecer, nem esperar o próximo quadro)
-  if (parado()) {
-    const fim: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(params)) {
-      if (['delay', 'duration', 'ease', 'composition', 'onComplete', 'onBegin', 'onUpdate', 'loop', 'alternate'].includes(k)) continue;
-      fim[k] = Array.isArray(v) ? (typeof v[v.length - 1] === 'object' && v[v.length - 1] && 'to' in (v[v.length - 1] as object) ? (v[v.length - 1] as { to: unknown }).to : v[v.length - 1])
-        : v && typeof v === 'object' && 'to' in v ? (v as { to: unknown }).to : v;
-    }
-    const a = utils.set(alvos, fim as AnimationParams);
-    const pronto = params.onComplete;
-    if (typeof pronto === 'function') queueMicrotask(() => pronto(a));
-    return a;
-  }
   const calmo: AnimationParams = {};
   for (const [k, v] of Object.entries(params)) {
     if (DESLOCAM.includes(k)) continue;

@@ -1,10 +1,9 @@
 // Cadastro › Configurações: as chaves do nads (só o admin muda): a proteção do login (liberar cada computador com o
 // código de um admin), o robô que lê a agência e a conta dos extratos e a saúde do robô do Entregas.
-import { Esqueleto, Icone, Interruptor, useCarregando, useEntradaAnimada, useSemAnimacao } from '@nads/ui';
+import { Esqueleto, Icone, Interruptor, useCarregando, useEntradaAnimada } from '@nads/ui';
 import { useConfiguracoesDoNads } from './useConfiguracoesDoNads';
 
 export function ConfiguracoesDoNads() {
-  useSemAnimacao(); // o Cadastro não tem animação nenhuma
   const vm = useConfiguracoesDoNads();
   useCarregando(vm.carregando);
   // a saúde do robô: os itens chegam em cascata na primeira leitura (a releitura de 30 em 30 s não anima)

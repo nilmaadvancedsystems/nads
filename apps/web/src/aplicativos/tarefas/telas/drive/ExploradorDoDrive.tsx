@@ -9,7 +9,7 @@
 // o nads (Esc sai). "T" vai para a busca, como no GitHub.
 import type { entregas as e } from '@nads/core';
 import { cleanInlineStyles } from 'animejs';
-import { animar, entrar, GAVETA, Icone, MenuSuspenso, semMovimento, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, useRetorno, useSemAnimacao } from '@nads/ui';
+import { animar, entrar, GAVETA, Icone, MenuSuspenso, semMovimento, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, useRetorno } from '@nads/ui';
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent, type ReactNode, type RefObject } from 'react';
 import { EnviarAoSecretario } from './EnviarAoSecretario';
 import { MeusEnvios } from './MeusEnvios';
@@ -223,8 +223,6 @@ function Ano({ vm }: { vm: VmDrive }) {
 }
 
 export function ExploradorDoDrive() {
-  // tela cheia de caixas (Vitor, 01/10/2026: "tudo que tiver muita box pode reduzir ou remover as animações"): sem animação
-  useSemAnimacao();
   const vm = useExploradorDoDrive();
   const envio = useEnvioAoSecretario(vm.pastaCliente);
   const { toast, modal } = useRetorno();

@@ -1,10 +1,8 @@
 // Gmail › Histórico: as últimas leituras do robô do Gmail.
-import { Icone, useCarregando, useEntradaAnimada, useSemAnimacao } from '@nads/ui';
+import { Icone, useCarregando, useEntradaAnimada } from '@nads/ui';
 import { useHistoricoDoRobo } from './useHistoricoDoRobo';
 
 export function HistoricoDoRobo() {
-  // tela cheia de caixas (Vitor, 01/10/2026: "tudo que tiver muita box pode reduzir ou remover as animações"): sem animação
-  useSemAnimacao();
   const vm = useHistoricoDoRobo();
   useCarregando(vm.carregando);
   const tabela = useEntradaAnimada<HTMLDivElement>(null, [vm.carregando], 'repetida');
