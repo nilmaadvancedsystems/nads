@@ -12,6 +12,8 @@ import { criarAcessoFirestore } from './acesso.firestore';
 import { criarDriveFirestore } from './drive.firestore';
 import { criarSessaoEntregas, type SessaoEntregas } from './entregas.firestore';
 import { criarGmailFirestore } from './gmail.firestore';
+import { criarPessoalMemoria, type RepoPessoal } from './pessoal';
+import { criarPessoalFirestore } from './pessoal.firestore';
 import { criarSaudeMemoria, type RepoSaude } from './saude';
 import { criarSaudeFirestore } from './saude.firestore';
 import { balanceteNoEntregas, clientesNoEntregas, conferenciaNoBanco, gravarLeituraDeContas, ouvirLeituraDeContas, portaCadastroFirestore } from './cadastro.firestore';
@@ -140,6 +142,16 @@ let saude: RepoSaude | null = null;
 export function repoDaSaude(): RepoSaude {
   if (!saude) saude = noBanco ? criarSaudeFirestore() : criarSaudeMemoria();
   return saude;
+}
+
+let pessoal: RepoPessoal | null = null;
+
+/** O que é só da pessoa (a Minha página): as cobranças dela, as anotações e o que ela arquivou na caixa de entrada. */
+export function repoPessoal(): RepoPessoal {
+  if (!pessoal) {
+    pessoal = noBanco ? criarPessoalFirestore(() => { const q = quemPede(); return q ? { uid: q.uid, email: q.email } : null; }) : criarPessoalMemoria();
+  }
+  return pessoal;
 }
 
 let acesso: RepoAcesso | null = null;

@@ -8,7 +8,8 @@ import type { TopicoPessoal } from './contexto';
 import { usePaginaPessoal, type VmPessoal } from './usePaginaPessoal';
 
 const TOPICOS: { id: TopicoPessoal; rotulo: string; icone: NomeIcone; grupo: string; busca: string }[] = [
-  { id: 'caixa', rotulo: 'Caixa de entrada', icone: 'caixaEntrada', grupo: '', busca: 'inbox pendências paradas envios claudio secretário liberação computador' },
+  { id: 'caixa', rotulo: 'Caixa de entrada', icone: 'caixaEntrada', grupo: '', busca: 'inbox pendências paradas envios claudio secretário liberação computador cobrança e-mail sem cliente arquivados' },
+  { id: 'notas', rotulo: 'Anotações', icone: 'fileText', grupo: '', busca: 'notas lembrete lembrar escrever' },
   { id: 'conta', rotulo: 'Minha conta', icone: 'usuario', grupo: 'Conta', busca: 'foto perfil nome e-mail email setor sair senha' },
   { id: 'preferencias', rotulo: 'Aparência e telas', icone: 'settings', grupo: 'Preferências', busca: 'tema claro escuro início abrir tela' },
   { id: 'aplicativo', rotulo: 'Versão do sistema', icone: 'download', grupo: 'Aplicativo', busca: 'versão atualizar nova' },
@@ -49,12 +50,14 @@ function CaixaDeEntrada({ vm, fechar }: { vm: VmPessoal; fechar: () => void }) {
       <div className="chip-row pessoal-filtros">
         <button type="button" className={'chip-f' + (c.filtro === 'tudo' ? ' on' : '')} onClick={() => c.setFiltro('tudo')}>Tudo <span className="gh-counter">{c.total}</span></button>
         <button type="button" className={'chip-f' + (c.filtro === 'acao' ? ' on' : '')} onClick={() => c.setFiltro('acao')}>Pede ação <span className="gh-counter">{c.pedemAcao}</span></button>
+        <button type="button" className={'chip-f' + (c.filtro === 'arquivados' ? ' on' : '')} onClick={() => c.setFiltro('arquivados')}>Arquivados <span className="gh-counter">{c.arquivados}</span></button>
       </div>
       {c.carregando ? <Esqueleto linhas={4} /> : !c.itens.length ? (
         <div className="card gh-blank">
           <Icone nome="caixaEntrada" />
-          <h4>{c.filtro === 'acao' ? 'Nada pedindo ação' : 'Caixa de entrada vazia'}</h4>
-          <p>Aqui aparecem as etapas que você parou, os arquivos que mandou ao Claudio Secretário{vm.conta.admin ? ' e os pedidos de liberação de computador' : ''}.</p>
+          <h4>{c.filtro === 'acao' ? 'Nada pedindo ação' : c.filtro === 'arquivados' ? 'Nada arquivado' : 'Caixa de entrada vazia'}</h4>
+          <p>{c.filtro === 'arquivados' ? 'O que você arquivar sai da caixa e fica aqui.'
+            : 'Aqui aparecem as etapas que você parou, os e-mails sem cliente da caixa do seu setor, as cobranças que você pediu e os arquivos que mandou ao Claudio Secretário' + (vm.conta.admin ? ', e os pedidos de liberação de computador' : '') + '.'}</p>
         </div>
       ) : (
         <ul className="card pessoal-caixa">
@@ -66,14 +69,68 @@ function CaixaDeEntrada({ vm, fechar }: { vm: VmPessoal; fechar: () => void }) {
                 <span className="fraco">{i.texto}</span>
               </div>
               <span className="pessoal-item-quando fraco">{i.quando}</span>
-              {i.acoes.length > 0 && (
+              {(i.acoes.length > 0 || i.arquivavel) && (
                 <span className="pessoal-item-acoes">
-                  {i.acoes.map(a => (
+                  {c.filtro !== 'arquivados' && i.acoes.map(a => (
                     <button key={a.rotulo} type="button" className={'btn ' + (a.principal ? 'btn-primary' : 'btn-outline')}
                       onClick={() => { a.onClick(); if (a.fecha) fechar(); }}>{a.rotulo}</button>
                   ))}
+                  {i.arquivavel && (c.filtro === 'arquivados'
+                    ? <button type="button" className="btn btn-outline" onClick={() => c.desarquivar(i.id)}>Desarquivar</button>
+                    : <button type="button" className="icon-btn" title="Arquivar (sai da caixa)" aria-label="Arquivar" onClick={() => c.arquivar(i.id)}><Icone nome="arquivo" /></button>)}
                 </span>
               )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
+/** As Anotações (as mesmas do Entregas): escrever (com lembrete, se quiser), marcar feita, editar o texto e apagar. */
+function Anotacoes({ vm }: { vm: VmPessoal }) {
+  const n = vm.notas;
+  const [texto, setTexto] = useState('');
+  const [lembrete, setLembrete] = useState('');
+  const [editando, setEditando] = useState<{ id: string; texto: string } | null>(null);
+  useCarregando(n.carregando);
+  const salvar = () => {
+    if (!texto.trim()) return;
+    n.nova(texto, lembrete ? new Date(lembrete).toISOString() : null);
+    setTexto(''); setLembrete('');
+  };
+  return (
+    <>
+      <form className="card pessoal-nota-nova" onSubmit={ev => { ev.preventDefault(); salvar(); }}>
+        <textarea rows={2} placeholder="Escreva uma anotação… (só você vê; aparece também no Entregas)" value={texto} onChange={ev => setTexto(ev.target.value)}
+          onKeyDown={ev => { if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); salvar(); } }} aria-label="Nova anotação" />
+        <div className="pessoal-nota-nova-pe">
+          <label className="fraco">Lembrar em <input type="datetime-local" value={lembrete} onChange={ev => setLembrete(ev.target.value)} /></label>
+          <button type="submit" className="btn btn-primary" disabled={!texto.trim()}><Icone nome="plus" />Anotar</button>
+        </div>
+      </form>
+      {n.carregando ? <Esqueleto linhas={3} /> : !n.lista.length ? (
+        <div className="card gh-blank"><Icone nome="fileText" /><h4>Nenhuma anotação</h4><p>O que você anotar aqui (ou no Entregas) aparece nos dois.</p></div>
+      ) : (
+        <ul className="card pessoal-caixa pessoal-notas">
+          {n.lista.map(x => (
+            <li key={x.id} className={'pessoal-item' + (x.feito ? ' feita' : '') + (x.atrasada ? ' atrasada' : '')}>
+              <input type="checkbox" checked={x.feito} onChange={ev => n.marcar(x.id, ev.target.checked)} aria-label={x.feito ? 'Desmarcar' : 'Marcar como feita'} />
+              <div className="pessoal-item-texto">
+                {editando?.id === x.id ? (
+                  <textarea rows={2} autoFocus value={editando.texto} onChange={ev => setEditando({ id: x.id, texto: ev.target.value })}
+                    onBlur={() => { if (editando.texto.trim() && editando.texto !== x.texto) n.editar(x.id, editando.texto); setEditando(null); }}
+                    onKeyDown={ev => { if (ev.key === 'Escape') { ev.stopPropagation(); setEditando(null); } if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) (ev.target as HTMLTextAreaElement).blur(); }}
+                    aria-label="Editar a anotação" />
+                ) : (
+                  <button type="button" className="pessoal-nota-texto" title="Editar" onClick={() => setEditando({ id: x.id, texto: x.texto })}>{x.texto}</button>
+                )}
+                {x.lembrete && <span className="fraco">{x.atrasada ? 'Lembrete passou: ' : 'Lembrete: '}{x.lembrete}</span>}
+              </div>
+              <span className="pessoal-item-acoes">
+                <button type="button" className="icon-btn" title="Apagar" aria-label="Apagar a anotação" onClick={() => n.apagar(x.id)}><Icone nome="x" /></button>
+              </span>
             </li>
           ))}
         </ul>
@@ -181,6 +238,7 @@ export function JanelaPessoal({ topico, mudar, fechar }: { topico: TopicoPessoal
                   onClick={() => mudar(t.id)}>
                   <Icone nome={t.icone} />{t.rotulo}
                   {t.id === 'caixa' && vm.caixa.pedemAcao > 0 && <span className="gh-counter">{vm.caixa.pedemAcao}</span>}
+                  {t.id === 'notas' && vm.notas.abertas > 0 && <span className="gh-counter">{vm.notas.abertas}</span>}
                 </button>
               </div>
             ))}
@@ -193,7 +251,8 @@ export function JanelaPessoal({ topico, mudar, fechar }: { topico: TopicoPessoal
             <button type="button" className="drawer-x" aria-label="Fechar" onClick={fechar}><Icone nome="x" /></button>
           </header>
           <div className="pessoal-rola">
-            {topico === 'conta' ? <MinhaConta vm={vm} />
+            {topico === 'notas' ? <Anotacoes vm={vm} />
+              : topico === 'conta' ? <MinhaConta vm={vm} />
               : topico === 'preferencias' ? <Preferencias vm={vm} />
                 : topico === 'aplicativo' ? <Aplicativo vm={vm} />
                   : <CaixaDeEntrada vm={vm} fechar={fechar} />}

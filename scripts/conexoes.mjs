@@ -18,6 +18,9 @@
 // O arquivo abre e baixa pelo link temporário que o robô devolve (navegação, não fetch).
 // E a proteção do login e a equipe (2026-09-30), em aplicativos/tarefas/dados/acesso.firestore.ts: config/nads,
 // nadsPedidos (+codigo), nadsSessoes e usuarios (cargo, papéis, ativo; só o admin grava).
+// E a Minha página (2026-10-02, pedido do Vitor): a própria foto (usuarios/{uid}.fotoPerfil, em acesso.firestore.ts) e,
+// em aplicativos/tarefas/dados/pessoal.firestore.ts, os pedidos de e-mail da pessoa (solicitacoesEmail, só leitura), as
+// Anotações dela (usuarios/{uid}/notas, as mesmas do Entregas) e os arquivados da caixa (usuarios/{uid}.nadsArquivados).
 // Esta checagem falha se:
 //  1. aparecer dependência de rede fora do permitido (só "firebase", e só no apps/web);
 //  2. código fora de apps/web/src/aplicativos/<app>/dados/*.firestore.ts importar/usar Firebase;

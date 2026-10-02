@@ -11,6 +11,7 @@ function AvatarDaPessoa({ vm }: { vm: ReturnType<typeof useCascaTarefas> }) {
     <MenuSuspenso rotulo={vm.perfil.foto ? <img className="gh-avatar-foto" src={vm.perfil.foto} alt="" /> : vm.perfil.iniciais} className={'gh-avatar' + (vm.naPessoal ? ' ativo' : '')} dica={vm.perfil.nome} titulo={vm.perfil.nome} direita
       itens={[
         { rotulo: 'Caixa de entrada', icone: 'caixaEntrada', onClick: () => vm.abrirPessoal('caixa') },
+        { rotulo: 'Anotações', icone: 'fileText', onClick: () => vm.abrirPessoal('notas') },
         { rotulo: 'Minha conta', icone: 'usuario', onClick: () => vm.abrirPessoal('conta') },
         { rotulo: 'Aparência e telas', icone: 'settings', onClick: () => vm.abrirPessoal('preferencias') },
         'separador',

@@ -2541,3 +2541,16 @@ tr.nads-destaque > td{animation:destaquePulsoLinha 1.4s ease-in-out 3 !important
 .modal.pedir-modal.conferir > .modal-actions{flex:none;}
 html.na-etapa .modal-overlay > .modal.pedir-modal{max-height:calc(var(--vista-altura,100vh) - 32px);}
 html.na-etapa .modal-overlay > .modal.pedir-modal.conferir{height:calc(var(--vista-altura,100vh) - 32px);}
+/* Minha página › Anotações: a caixa de escrever em cima (com o lembrete) e a lista; feita fica riscada e apagada,
+   o lembrete que passou fica vermelho */
+.pessoal-nota-nova{display:flex;flex-direction:column;gap:8px;padding:12px;}
+.pessoal-nota-nova textarea,.pessoal-notas textarea{width:100%;resize:vertical;border:1px solid var(--border);border-radius:6px;padding:8px 10px;
+  background:var(--surface);color:var(--ink);font:inherit;font-size:14px;}
+.pessoal-nota-nova-pe{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.pessoal-nota-nova-pe label{display:flex;align-items:center;gap:8px;font-size:13px;}
+.pessoal-nota-nova-pe input{height:30px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px;padding:0 8px;}
+.pessoal-notas .pessoal-item{align-items:flex-start;}
+.pessoal-notas input[type="checkbox"]{margin-top:3px;flex:none;}
+.pessoal-nota-texto{border:none;background:none;padding:0;color:var(--ink);font:inherit;font-size:14px;text-align:left;cursor:text;white-space:pre-wrap;word-break:break-word;}
+.pessoal-notas .feita .pessoal-nota-texto{text-decoration:line-through;color:var(--ink-muted);}
+.pessoal-notas .atrasada .fraco{color:var(--danger);}

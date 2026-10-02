@@ -141,6 +141,7 @@ export function Executor() {
           { rotulo: 'Voltar às empresas', icone: 'home', onClick: vm.sair },
           'separador',
           { rotulo: 'Caixa de entrada', icone: 'caixaEntrada', onClick: () => casca.abrirPessoal('caixa') },
+          { rotulo: 'Anotações', icone: 'fileText', onClick: () => casca.abrirPessoal('notas') },
           { rotulo: 'Minha conta', icone: 'usuario', onClick: () => casca.abrirPessoal('conta') },
           { rotulo: 'Aparência e telas', icone: 'settings', onClick: () => casca.abrirPessoal('preferencias') },
           'separador',

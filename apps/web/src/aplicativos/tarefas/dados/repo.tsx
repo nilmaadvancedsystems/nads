@@ -4,7 +4,8 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { bancosDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude } from './fonte';
+import { bancosDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoPessoal } from './fonte';
+import type { RepoPessoal } from './pessoal';
 
 type Repo = tarefas.RepoTarefas;
 
@@ -109,6 +110,13 @@ export function useSaudeDoRobo(): entregas.DocsDaSaude | null {
   useEffect(() => repo.acompanhar(), [repo]);
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo.docs();
+}
+
+/** O que é só da pessoa (a Minha página): as cobranças, as anotações e os arquivados da caixa de entrada, ao vivo. */
+export function useRepoPessoal(): RepoPessoal {
+  const repo = repoPessoal();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
 }
 
 /** A proteção do login, a equipe e as configurações do nads, ao vivo. */
