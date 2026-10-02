@@ -43,7 +43,7 @@ export function Consulta() {
                 <CampoData id={'fDe-' + g} valor={vm.rascunho.de} onMudar={vm.setDe} rotulo="Data inicial" onEnter={vm.pesquisar} />
                 <span>até</span>
                 <CampoData id={'fAte-' + g} valor={vm.rascunho.ate} onMudar={vm.setAte} rotulo="Data final" onEnter={vm.pesquisar} />
-                <button type="button" className="btn btn-sm" onClick={vm.pesquisar}>Filtrar</button>
+                <button type="button" className="btn" onClick={vm.pesquisar}>Filtrar</button>
                 {vm.temPeriodo && <button type="button" className="link-btn" onClick={vm.limparPeriodo}>Limpar</button>}
               </div>
             </div>

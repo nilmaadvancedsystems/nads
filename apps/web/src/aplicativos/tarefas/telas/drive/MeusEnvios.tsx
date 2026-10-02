@@ -29,7 +29,7 @@ export function MeusEnvios({ vm, abrirDestino }: { vm: VmEnvio; abrirDestino: (c
                     <span>{x.situacao.texto}</span>
                   </div>
                   {x.arquivamento?.situacao === 'arquivado' && x.arquivamento.codigo && (
-                    <button type="button" className="btn btn-outline btn-sm"
+                    <button type="button" className="btn btn-outline"
                       onClick={() => { if (abrirDestino(x.arquivamento?.codigo || '', x.arquivamento?.subpasta || '')) vm.fecharMeus(); }}>
                       <Icone nome="pasta" />Abrir a pasta
                     </button>

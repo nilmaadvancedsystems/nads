@@ -29,7 +29,7 @@ export function ArquivosImportados({ arquivos, onExcluir }: { arquivos: Arquivo[
                   <td style={{ whiteSpace: 'nowrap' }}>{a.periodo}</td>
                   <td className="num">{a.qtd}</td>
                   <td style={{ whiteSpace: 'nowrap' }}>{formatos.dataHora(a.quando)}</td>
-                  <td style={{ textAlign: 'right' }}><button className="btn btn-danger btn-sm" type="button" onClick={() => onExcluir(a.id)}>Excluir</button></td>
+                  <td style={{ textAlign: 'right' }}><button className="btn btn-danger" type="button" onClick={() => onExcluir(a.id)}>Excluir</button></td>
                 </tr>
               ))}
             </tbody>

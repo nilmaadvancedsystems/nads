@@ -8,7 +8,7 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
   useCarregando(vm.carregando);
   if (vm.carregando) return null;
   const opcao = (sim: boolean, rotulo: string) => (
-    <button type="button" className={'btn btn-sm ' + (vm.prestaServico === sim ? 'btn-primary' : 'btn-outline')} aria-pressed={vm.prestaServico === sim}
+    <button type="button" className={'btn ' + (vm.prestaServico === sim ? 'btn-primary' : 'btn-outline')} aria-pressed={vm.prestaServico === sim}
       onClick={() => vm.definirPrestaServico(sim)}>{rotulo}</button>
   );
   return (

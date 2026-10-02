@@ -15,8 +15,8 @@ export function AvisosDeLiberacao({ admin }: { admin: boolean }) {
           <p><Icone nome="lock" /><b>{p.nome || p.email}</b> quer entrar no nads</p>
           <p className="fraco">{p.computador} · pediu às {hora(p.criadoEm)}</p>
           <div className="liberar-aviso-acoes">
-            <button type="button" className="btn btn-outline btn-sm" onClick={() => void vm.recusar(p)}>Recusar</button>
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => void vm.aprovar(p)}>Aprovar</button>
+            <button type="button" className="btn btn-outline" onClick={() => void vm.recusar(p)}>Recusar</button>
+            <button type="button" className="btn btn-primary" onClick={() => void vm.aprovar(p)}>Aprovar</button>
           </div>
         </div>
       ))}
@@ -24,7 +24,7 @@ export function AvisosDeLiberacao({ admin }: { admin: boolean }) {
         <div key={c.codigo} className="liberar-aviso liberado">
           <p>Passe este código para <b>{c.nome}</b> ({c.computador}):</p>
           <p className="liberar-codigo-grande">{c.codigo.slice(0, 3)} {c.codigo.slice(3)}</p>
-          <div className="liberar-aviso-acoes"><button type="button" className="btn btn-outline btn-sm" onClick={() => vm.fecharCodigo(c.codigo)}>Pronto</button></div>
+          <div className="liberar-aviso-acoes"><button type="button" className="btn btn-outline" onClick={() => vm.fecharCodigo(c.codigo)}>Pronto</button></div>
         </div>
       ))}
     </div>

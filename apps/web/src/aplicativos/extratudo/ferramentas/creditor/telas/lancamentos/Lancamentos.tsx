@@ -21,7 +21,7 @@ export function Lancamentos() {
       <div className="card">
         <div className="card-head">
           <h3>Contas e históricos</h3>
-          {vm.temSalvas && <button className="btn btn-ghost btn-sm" type="button" onClick={vm.esquecerContas}>Voltar às sugestões</button>}
+          {vm.temSalvas && <button className="btn btn-ghost" type="button" onClick={vm.esquecerContas}>Voltar às sugestões</button>}
         </div>
         <p className="hint" style={{ marginTop: 0, marginBottom: 8 }}>{vm.fonte}</p>
         <datalist id="contasDoBalancete">

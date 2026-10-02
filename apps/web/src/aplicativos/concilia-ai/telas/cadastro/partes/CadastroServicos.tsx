@@ -59,7 +59,7 @@ function Categoria({ cat, geral }: { cat: CategoriaView; geral: string }) {
           {f.sugestoes.length > 0 && (
             <div className="serv-sug">
               <Icone nome="alert" /><span>Lançados com {cat.lanc} nas notas, mas fora da categoria:</span>
-              {f.sugestoes.map(sg => <button key={sg.nome} type="button" className="btn btn-sm" onClick={sg.colocar}><Icone nome="plus" />{sg.nome}</button>)}
+              {f.sugestoes.map(sg => <button key={sg.nome} type="button" className="btn" onClick={sg.colocar}><Icone nome="plus" />{sg.nome}</button>)}
             </div>
           )}
         </Bloco>
@@ -79,7 +79,7 @@ function FormFornecedor({ fm }: { fm: FormServ }) {
   }, [fm.focarOk]);
   return (
     <div className="serv-add" ref={caixa}>
-      <button type="button" className="btn btn-sm serv-add-btn" hidden={fm.aberto} onClick={fm.abrir}><Icone nome="plus" />Adicionar fornecedor</button>
+      <button type="button" className="btn serv-add-btn" hidden={fm.aberto} onClick={fm.abrir}><Icone nome="plus" />Adicionar fornecedor</button>
       <div className="serv-add-form" hidden={!fm.aberto}>
         <div className="serv-add-campo">
           {fm.aberto && (
@@ -105,8 +105,8 @@ function FormFornecedor({ fm }: { fm: FormServ }) {
             )}
           </div>
         </div>
-        <button ref={ok} type="button" className="btn btn-primary btn-sm" disabled={!fm.escolhido} onClick={fm.confirmar}>Adicionar</button>
-        <button type="button" className="btn btn-sm" onClick={fm.cancelar}>Cancelar</button>
+        <button ref={ok} type="button" className="btn btn-primary" disabled={!fm.escolhido} onClick={fm.confirmar}>Adicionar</button>
+        <button type="button" className="btn" onClick={fm.cancelar}>Cancelar</button>
       </div>
     </div>
   );

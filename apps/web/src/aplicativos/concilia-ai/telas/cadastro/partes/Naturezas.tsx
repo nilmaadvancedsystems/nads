@@ -60,7 +60,7 @@ function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
         ) : (
           <CampoVincular v={it.vinculo} rotulo="Adicionar" titulo="Vincular uma conta a esta natureza"
             extra={escondido => it.podeNaoContabil
-              ? <button type="button" className="btn btn-sm ndp-nao-btn" hidden={escondido} onClick={() => vm.naoContabil(it.k, true)}>Não vai para o Contábil</button>
+              ? <button type="button" className="btn ndp-nao-btn" hidden={escondido} onClick={() => vm.naoContabil(it.k, true)}>Não vai para o Contábil</button>
               : null} />
         )}
       </div>

@@ -67,7 +67,7 @@ function UsuarioLinha({ vm, p }: { vm: Vm; p: Linha }) {
         </td>
         <td><Interruptor ligado={p.ativo} onMudar={() => void vm.ativar(p)} rotulo={(p.ativo ? 'Desativar ' : 'Ativar ') + p.nome} /></td>
         <td>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => vm.alternarAberto(p.uid)} aria-expanded={aberto}>
+          <button type="button" className="btn btn-ghost" onClick={() => vm.alternarAberto(p.uid)} aria-expanded={aberto}>
             <Icone nome="monitor" />{p.computadores.length}
           </button>
         </td>
@@ -80,7 +80,7 @@ function UsuarioLinha({ vm, p }: { vm: Vm; p: Linha }) {
                 {p.computadores.map(s => (
                   <li key={s.id}>
                     <Icone nome="monitor" /><span>{s.computador}</span><span className="fraco">liberado em {vm.quando(s.liberadoEm)}</span>
-                    {vm.admin && <button type="button" className="btn btn-outline btn-sm" onClick={() => void vm.revogar(s)}>Revogar</button>}
+                    {vm.admin && <button type="button" className="btn btn-outline" onClick={() => void vm.revogar(s)}>Revogar</button>}
                   </li>
                 ))}
               </ul>

@@ -98,7 +98,7 @@ function Grupo({ vm, r, tipo, gr, marcado }: { vm: VM; r: Serv; tipo: c.TipoServ
         <div className="serv-div-acoes" style={{ padding: '0 13px 8px 39px' }}>
           <span className="hint">{r.dicaSugestao(gr)}</span>
           {gr.sugerirCategorias.map(x => (
-            <button key={x.id} type="button" className="btn btn-sm" onClick={() => vm.colocarNaCategoria(tipo, x.id, gr.nome)}>Colocar em {x.nome}</button>
+            <button key={x.id} type="button" className="btn" onClick={() => vm.colocarNaCategoria(tipo, x.id, gr.nome)}>Colocar em {x.nome}</button>
           ))}
         </div>
       )}

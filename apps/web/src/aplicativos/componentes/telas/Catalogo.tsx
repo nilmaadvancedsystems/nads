@@ -1,4 +1,5 @@
-// O catálogo de componentes (View): a casca do nads, com os tipos nas abas de cima (Botões, Selos, Janelas…) e as telas
+// O catálogo de componentes (View): a casca do nads, com os tipos na gaveta ☰ (Botões, Selos, Janelas…; Vitor, 02/10/2026:
+// "migre para esse menu lateral", as abas de cima já não cabiam) e as telas
 // do sistema no menu lateral (filtra as peças que aparecem nela). Cada peça num cartão: o desenho ao vivo, como se
 // escreve (componente e classes), o código e as telas onde ela aparece (clicar filtra).
 import { AberturaN, Casca, Icone } from '@nads/ui';
@@ -14,7 +15,8 @@ export function Catalogo() {
   return (
     <Casca sistema="Componentes" empresa={{ codigo: '', nome: 'Catálogo do nads' }} versao={VERSAO_SISTEMA}
       secoes={secoes} rotuloLateral="Telas"
-      paginas={vm.tipos.map(t => ({ id: t.id, rotulo: t.nome, icone: t.icone, ativa: t.ativo, contador: String(t.qtd) }))}
+      paginas={[]}
+      aplicativos={vm.tipos.map(t => ({ id: t.id, nome: t.nome, icone: t.icone, ativo: t.ativo, contador: String(t.qtd) }))} onAplicativo={vm.escolherTipo}
       titulo={vm.tipo.nome} descricao={vm.tipo.descricao + (vm.nomeDaTela ? ' · em ' + vm.nomeDaTela.app + ' › ' + vm.nomeDaTela.nome : '')}
       acoes={(
         <label className="busca-curta">

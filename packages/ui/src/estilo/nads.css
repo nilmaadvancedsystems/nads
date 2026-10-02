@@ -195,24 +195,18 @@ a{color:var(--accent);}
 /* o canto direito do cabeçalho, como o do GitHub: botões quadrados só com ícone, um separador e o perfil (redondo) */
 .gh-topo-direita{display:flex;align-items:center;gap:8px;flex:none;}
 .gh-topo-grupos{display:flex;align-items:center;gap:8px;}
-.gh-topo-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--ink-muted);cursor:pointer;}
-.gh-topo-btn svg{width:16px;height:16px;opacity:.4;}
-.gh-topo-btn:hover:not(:disabled){background:var(--hover-bg);}
-.gh-topo-btn:hover:not(:disabled) svg{opacity:1;}
-/* o grupo da vez: o ícone normal; os outros apagados (como os do GitHub, sem cor) */
-.gh-topo-btn.ativo{color:var(--ink);}
-.gh-topo-btn.ativo svg{opacity:1;}
-.gh-topo-btn:disabled{cursor:not-allowed;}
+/* iguais ao Botão de ícone (BT-08; Vitor, 02/10/2026) */
+.gh-topo-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border:1px solid var(--btn-border);border-radius:6px;background:var(--btn-bg);color:var(--ink-muted);cursor:pointer;flex:none;box-shadow:var(--shadow-xs);}
+.gh-topo-btn svg{width:16px;height:16px;}
+.gh-topo-btn:hover:not(:disabled){background:var(--btn-hover);color:var(--ink);}
+.gh-topo-btn:disabled{cursor:not-allowed;opacity:.5;}
 .gh-topo-sep{width:1px;height:20px;background:var(--border);}
 /* o executor no cabeçalho: os grupos num menu só, as saídas, ✕, ? e → (os botões de 32px do GitHub) */
 .gh-topo-acoes{display:flex;align-items:center;gap:8px;}
-.gh-topo-menu{width:auto;gap:2px;padding:0 6px;color:var(--ink);}
-.gh-topo-menu svg,.gh-topo-forte svg{opacity:1;}
+.gh-topo-menu{width:auto;gap:2px;padding:0 6px;}
 .gh-topo-menu .menu-seta{width:12px;height:12px;}
-.gh-topo-forte{color:var(--ink);}
 .gh-topo-proximo{background:var(--btn-primary);border-color:transparent;color:#FFFFFF;}
-.gh-topo-proximo svg{opacity:1;}
-.gh-topo-proximo:hover:not(:disabled){background:var(--btn-primary-hover);}
+.gh-topo-proximo:hover:not(:disabled){background:var(--btn-primary-hover);color:#FFFFFF;}
 .gh-avatar{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border:1px solid var(--border);border-radius:50%;background:var(--surface-3);color:var(--ink);font-size:12px;font-weight:600;cursor:pointer;}
 .gh-avatar:hover{border-color:var(--border-strong);}
 .gh-avatar .menu-seta{display:none;}
@@ -316,8 +310,6 @@ input[type="checkbox"]:checked::after{
 .btn-danger:hover:not(:disabled){background:var(--destructive);border-color:var(--destructive);color:#FFFFFF;}
 .btn-spinner{display:inline-block;width:16px;height:16px;flex:none;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .6s linear infinite;}
 /* pequeno: só dentro de linhas e caixas (tabela, cartão, janelinha); ação da página usa o padrão */
-.btn-sm{padding:3px 8px;min-height:28px;font-size:12px;gap:4px;}
-.btn-sm svg{width:14px;height:14px;}
 .btn-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:16px;flex-wrap:wrap;}
 #btVoltarMov{margin-bottom:12px !important;padding-left:8px !important;}
 
@@ -565,6 +557,7 @@ button.gh-crumb:hover{background:var(--hover-bg);}
   color:var(--ink);font-size:14px;cursor:pointer;text-align:left;font-family:inherit;}
 .drawer-item:hover{background:var(--hover-bg);}
 .drawer-item svg{width:16px;height:16px;flex:none;color:var(--ink-muted);}
+.drawer-contador{margin-left:auto;}
 .drawer-sep{border:0;border-top:1px solid var(--border);margin:8px 0;}
 .drawer-label{font-size:12px;font-weight:600;color:var(--ink-muted);padding:8px 8px 4px;}
 .drawer-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px;font-size:14px;}
@@ -957,7 +950,7 @@ table.cons-tabela .cons-nome{color:var(--ink);max-width:320px;overflow:hidden;te
 .vc-secao .sub{margin-bottom:10px;}
 .btn.vc-conferido-on{background:var(--danger);border-color:var(--danger);color:#FFFFFF;}
 .btn.vc-conferido-on:hover{filter:brightness(1.08);}
-.btn.vc-conferido-on svg{width:14px;height:14px;}
+.btn.vc-conferido-on svg{width:16px;height:16px;}
 
 /* verificar por conta: resumo com a conta em destaque */
 .vc-resumo{border:1px solid var(--border);border-radius:6px;background:var(--surface);overflow:hidden;}
@@ -1490,7 +1483,7 @@ label.btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-mov-total b{font-weight:600;font-variant-numeric:tabular-nums;margin-left:4px;}
 .imp-mov-total > span:first-child b{margin-left:0;color:var(--ink);}
 .imp-mov-saldo{color:var(--ink);}
-.imp-pdf{gap:4px;padding:3px 10px;}
+.imp-pdf{gap:6px;}
 
 /* a página aberta dentro de uma etapa (iframe esticado até o conteúdo): sem barra de rolagem própria nem altura
    mínima da tela; espaço embaixo para os botões soltos da etapa. Janela e avisos vão para o pedaço que está na
@@ -1734,10 +1727,9 @@ td.cad-acoes .menu-seta{display:none;}
 .imp-periodo select{min-height:28px;padding:3px 26px 3px 8px;font-size:13px;}
 .imp-periodo-abrir{margin:6px 8px 4px;width:calc(100% - 16px);}
 
-/* a Etapa com vários meses: o botão de fora destacado (período), e embaixo de cada banco os meses de Extrato e Razão */
-.btn.imp-periodo-ativo{border-color:var(--accent);background:var(--accent-soft);color:var(--ink);}
-.btn.imp-periodo-ativo svg{color:var(--accent);}
-.imp-periodo-qtd{margin-left:6px;padding:0 7px;border-radius:2em;background:var(--accent);color:#FFFFFF;font-size:11px;font-weight:600;line-height:18px;}
+/* a Etapa com vários meses: o botão de fora (período), e embaixo de cada banco os meses de Extrato e Razão */
+/* em lote: o botão normal, com o contador cinza do GitHub (Vitor, 02/10/2026: "porque essa barra tá vermelha? cadê o padrão github?") */
+.imp-periodo-qtd{margin-left:6px;padding:0 6px;border-radius:2em;background:var(--hover-bg);color:var(--ink);font-size:12px;font-weight:500;line-height:18px;}
 .imp-periodo-linha{display:flex;flex-direction:column;gap:8px;padding:10px 12px 12px 90px;border-top:1px dashed var(--border-muted);}
 .imp-periodo-lado{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .imp-periodo-lado .imp-rotulo{width:52px;flex:none;}
@@ -1836,7 +1828,7 @@ td.gmail-erro{color:var(--danger);}
 
 /* vários meses: "Importar Todos" / "Todos pelo Drive" em cima; embaixo, por mês, os ícones de um mês */
 .btn.imp-todos{gap:6px;}
-.btn.imp-todos svg,.btn.imp-todos .logo-img{width:14px;height:14px;}
+.btn.imp-todos svg,.btn.imp-todos .logo-img{width:16px;height:16px;}
 .imp-mes-celulas{display:inline-flex;flex-wrap:wrap;gap:6px;}
 .imp-mes-celula{display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 2px;border:1px solid var(--border);border-radius:8px;background:var(--surface);}
 .imp-mes-celula.atual{border-color:var(--ink-muted);}
@@ -2377,3 +2369,11 @@ tr.linha-abre,.imp-linha,.imp-mes-celula,.gh-crumb,.drawer-x{
 /* o código da peça (BT-01…) e o ▶ */
 .cat-cod{display:inline-block;margin-right:8px;padding:0 6px;border-radius:6px;background:var(--accent);color:var(--on-accent);font-family:var(--font-num);font-size:12px;font-weight:700;vertical-align:1px;}
 .cat-play{color:var(--accent-ink);}
+
+/* Saiu versão nova: a tela inteira travada e embaçada, só o Atualizar no meio (TravaDeVersaoNova) */
+.versao-trava{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;
+  background:color-mix(in srgb, var(--bg) 55%, transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);}
+.versao-trava-caixa{width:min(360px,100%);padding:24px;border:1px solid var(--border);border-radius:12px;background:var(--surface);box-shadow:var(--shadow-lg);text-align:center;}
+.versao-trava-caixa h3{margin:0 0 6px;font-size:16px;}
+.versao-trava-caixa .hint{margin:0 0 16px;}
+.versao-trava-caixa .btn{width:100%;justify-content:center;}

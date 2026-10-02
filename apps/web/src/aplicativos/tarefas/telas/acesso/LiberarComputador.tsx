@@ -34,7 +34,7 @@ export function LiberarComputador({ vm, nome, sair }: { vm: ReturnType<typeof us
             </form>
           )}
         </div>
-        <p className="hint" style={{ textAlign: 'center' }}><button type="button" className="btn btn-ghost btn-sm" onClick={sair}>Sair da conta</button></p>
+        <p className="hint" style={{ textAlign: 'center' }}><button type="button" className="btn btn-ghost" onClick={sair}>Sair da conta</button></p>
       </div>
     </div>
   );

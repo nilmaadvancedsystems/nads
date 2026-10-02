@@ -46,7 +46,7 @@ export function JanelaDaEmpresa({ rota, aba }: { rota: string; aba: string }) {
       onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
       <div className="cad-janela" role="dialog" aria-modal="true" aria-label={'Cadastro de ' + vm.empresa.nome}>
         <header className="cad-janela-topo">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={fechar} title="Voltar para a lista de empresas">
+          <button type="button" className="btn btn-ghost" onClick={fechar} title="Voltar para a lista de empresas">
             <Icone nome="chevronLeft" />Empresas
           </button>
           <span className="cad-janela-empresa">
@@ -54,7 +54,7 @@ export function JanelaDaEmpresa({ rota, aba }: { rota: string; aba: string }) {
             <span className="cad-janela-nome">{vm.empresa.nome}</span>
             {vm.empresa.regime && <span className="fraco">{vm.empresa.regime}</span>}
           </span>
-          <button type="button" className="btn btn-ghost btn-sm cad-janela-x" onClick={fechar} aria-label="Fechar" title="Fechar (Esc)">
+          <button type="button" className="btn btn-ghost cad-janela-x" onClick={fechar} aria-label="Fechar" title="Fechar (Esc)">
             <Icone nome="x" />
           </button>
         </header>

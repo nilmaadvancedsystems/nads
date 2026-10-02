@@ -96,7 +96,7 @@ export function PainelIniciar({ vm, fechar }: { vm: Vm; fechar: () => void }) {
             <div className="lote-lista">
               <div className="lote-topo">
                 <span className="hint">Para abrir ({vm.loteLinhas.length})</span>
-                <button type="button" className="btn btn-primary btn-sm" disabled={!vm.podeIniciarEmLote} onClick={emLote}
+                <button type="button" className="btn btn-primary" disabled={!vm.podeIniciarEmLote} onClick={emLote}
                   title={vm.podeIniciarEmLote ? 'Abrir uma aba do navegador para cada empresa' : 'Ponha duas ou mais empresas'}>
                   <Icone nome="play" />{vm.podeIniciarEmLote ? 'Abrir ' + vm.loteLinhas.length + ' abas' : 'Ponha mais uma'}
                 </button>

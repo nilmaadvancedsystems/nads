@@ -37,7 +37,7 @@ export function CaixaImportacao({ caixa, ocupado, onEscolher, onTirar, onImporta
       <p className="hint">{caixa.dica}</p>
       {onTeste && (
         <div>
-          <button type="button" className="btn btn-sm btn-outline" disabled={ocupado} onClick={onTeste} title="Protótipo: importa lançamentos inventados, com TESTE no nome do arquivo">
+          <button type="button" className="btn btn-outline" disabled={ocupado} onClick={onTeste} title="Protótipo: importa lançamentos inventados, com TESTE no nome do arquivo">
             <Icone nome="zap" />Importar dados de teste
           </button>
         </div>

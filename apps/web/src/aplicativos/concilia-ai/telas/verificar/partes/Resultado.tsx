@@ -106,8 +106,8 @@ function Todas({ vm, r, t }: { vm: Vm; r: Res; t: NonNullable<Res['todas']> }) {
             <div className="vc-pend-head">
               <h3>Pendências</h3>
               {t.podeConferir && (t.conferido
-                ? <button type="button" className="btn btn-sm vc-conferido-on" title="Marcada como conferida com pendências — clique pra desfazer" onClick={vm.alternarConferido}><Icone nome="check" />Conferido</button>
-                : <button type="button" className="btn btn-sm btn-outline" title="Seguir com essas pendências e marcar a conta como conferida" onClick={vm.alternarConferido}>Marcar como conferido</button>)}
+                ? <button type="button" className="btn vc-conferido-on" title="Marcada como conferida com pendências — clique pra desfazer" onClick={vm.alternarConferido}><Icone nome="check" />Conferido</button>
+                : <button type="button" className="btn btn-outline" title="Seguir com essas pendências e marcar a conta como conferida" onClick={vm.alternarConferido}>Marcar como conferido</button>)}
             </div>
             {t.faltando.length > 0 && <SecaoVc titulo={'Faltando na conta (' + t.faltando.length + ')'} valor={t.somaFaltando}><TabelaFaltando linhas={t.faltando} /></SecaoVc>}
             {t.qtdDuplicadas > 0 && <SecaoVc titulo={'Duplicadas na conta (' + t.qtdDuplicadas + ')'} valor={t.somaDuplicadas}><TabelaVc linhas={t.duplicadas} /></SecaoVc>}

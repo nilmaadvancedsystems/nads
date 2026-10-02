@@ -48,7 +48,7 @@ export function ContasBancarias({ rota }: { rota: string }) {
                 ? 'A lista abaixo junta o que o Extrator usa hoje e o que o robô já sabe do cliente (ele aprende pelo Drive e pelos extratos). Confira e confirme; incluir ou editar uma conta também já grava a lista.'
                 : 'O Extrator mostra uma linha "Banco" só. Inclua as contas da empresa.'}
             </p>
-            {!!vm.linhas.length && <button type="button" className="btn btn-outline btn-sm" onClick={vm.confirmarLista}>Confirmar esta lista</button>}
+            {!!vm.linhas.length && <button type="button" className="btn btn-outline" onClick={vm.confirmarLista}>Confirmar esta lista</button>}
           </div>
         </div>
       )}
@@ -58,7 +58,7 @@ export function ContasBancarias({ rota }: { rota: string }) {
           <div className="card-head">
             <h3>O robô já sabe</h3>
             {vm.sugestoes.some(s => s.comNumero) && vm.sugestoes.length > 1 && (
-              <button type="button" className="btn btn-outline btn-sm" onClick={vm.incluirTodas}>Incluir todas</button>
+              <button type="button" className="btn btn-outline" onClick={vm.incluirTodas}>Incluir todas</button>
             )}
           </div>
           <p className="hint">Bancos e contas que o robô aprendeu pelo Drive e pelos extratos, e que não estão aqui.</p>
@@ -71,9 +71,9 @@ export function ContasBancarias({ rota }: { rota: string }) {
                 </span>
                 <span className="tarefas-barra-espaco" />
                 {s.comNumero ? (
-                  <button type="button" className="btn btn-outline btn-sm" onClick={() => vm.incluirSugestao(s)}>{s.tipo === 'completar' ? 'Completar' : 'Incluir'}</button>
+                  <button type="button" className="btn btn-outline" onClick={() => vm.incluirSugestao(s)}>{s.tipo === 'completar' ? 'Completar' : 'Incluir'}</button>
                 ) : (
-                  <MenuSuspenso rotulo="Incluir" className="btn btn-outline btn-sm" direita largura={400}
+                  <MenuSuspenso rotulo="Incluir" className="btn btn-outline" direita largura={400}
                     conteudo={fechar => <FormConta vm={vm} id={null} inicial={{ marca: s.marca, agencia: '', conta: '', tipo: 'corrente' }} fechar={fechar} />} />
                 )}
               </li>
@@ -112,7 +112,7 @@ export function ContasBancarias({ rota }: { rota: string }) {
                   </td>
                   <td className="fraco">{l.vigencia}{l.encerrada && <span className="badge badge-neutral cad-badge">encerrada</span>}</td>
                   <td className="cad-acoes">
-                    <MenuSuspenso rotulo="" icone="settings" className="btn btn-ghost btn-sm" dica="Editar, encerrar ou excluir" direita largura={400}
+                    <MenuSuspenso rotulo="" icone="settings" className="btn btn-ghost" dica="Editar, encerrar ou excluir" direita largura={400}
                       conteudo={fechar => <AcoesDaConta vm={vm} l={l} fechar={fechar} />} />
                   </td>
                 </tr>

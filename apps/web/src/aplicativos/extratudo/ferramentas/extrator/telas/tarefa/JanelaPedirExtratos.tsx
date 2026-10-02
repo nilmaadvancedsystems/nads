@@ -81,7 +81,7 @@ export function JanelaPedirExtratos({ p }: { p: P }) {
                         <span className="pedir-mes-atual">{d.atual.rotulo}</span>
                         {d.atual.travado && <span className={'badge pedir-tem ' + (d.atual.travado === 'importado' ? 'badge-ok' : 'badge-neutral')}>{d.atual.travado}</span>}
                       </label>
-                      <button type="button" className={'btn btn-ghost btn-sm pedir-outros-btn' + (d.mesesAbertos ? ' aberto' : '')} aria-expanded={d.mesesAbertos} onClick={() => p.alternarMeses(d.id)}>
+                      <button type="button" className={'btn btn-ghost pedir-outros-btn' + (d.mesesAbertos ? ' aberto' : '')} aria-expanded={d.mesesAbertos} onClick={() => p.alternarMeses(d.id)}>
                         Outros meses{d.outrosMarcados.length ? ' (' + d.outrosMarcados.length + ')' : ''}
                         <Icone nome="caretDown" className="menu-seta" />
                       </button>
@@ -103,7 +103,7 @@ export function JanelaPedirExtratos({ p }: { p: P }) {
                 ))}
                 <form className="pedir-outro" onSubmit={e => { e.preventDefault(); adicionar(); }}>
                   <input type="text" placeholder="Outro documento (ex.: Relatórios da LJ)" value={outro} onChange={e => setOutro(e.target.value)} />
-                  <button type="submit" className="btn btn-outline btn-sm" disabled={!outro.trim()}><Icone nome="plus" />Adicionar</button>
+                  <button type="submit" className="btn btn-outline" disabled={!outro.trim()}><Icone nome="plus" />Adicionar</button>
                 </form>
               </div>
             </div>
@@ -125,7 +125,7 @@ export function JanelaPedirExtratos({ p }: { p: P }) {
                 {p.whatsapp.ligado && (
                   <>
                     <textarea className="pedir-whats" rows={8} value={p.whatsapp.texto} onChange={e => p.whatsapp.escrever(e.target.value)} aria-label="Mensagem do WhatsApp" />
-                    {p.whatsapp.editado && <button type="button" className="btn btn-ghost btn-sm pedir-refazer" onClick={p.whatsapp.refazer}>Voltar à mensagem pronta</button>}
+                    {p.whatsapp.editado && <button type="button" className="btn btn-ghost pedir-refazer" onClick={p.whatsapp.refazer}>Voltar à mensagem pronta</button>}
                   </>
                 )}
               </div>
@@ -141,7 +141,7 @@ export function JanelaPedirExtratos({ p }: { p: P }) {
             </div>
             <p className="pedir-assunto">
               <span className="hint">Assunto</span><span className="pedir-assunto-texto">{p.assunto}</span>
-              <button type="button" className="btn btn-outline btn-sm" onClick={() => abrirInteiro(p.html)} title="O e-mail sozinho numa aba nova, como o cliente vai ver">
+              <button type="button" className="btn btn-outline" onClick={() => abrirInteiro(p.html)} title="O e-mail sozinho numa aba nova, como o cliente vai ver">
                 <Icone nome="maximizar" />Abrir o e-mail inteiro
               </button>
             </p>

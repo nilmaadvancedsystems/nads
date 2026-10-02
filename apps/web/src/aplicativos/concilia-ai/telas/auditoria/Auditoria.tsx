@@ -24,7 +24,7 @@ export function Auditoria() {
                       <td className="wrap">{l.detalhe}</td>
                       <td><span className="badge badge-neutral">{l.origem}</span></td>
                       <td style={{ whiteSpace: 'nowrap' }}>
-                        {l.remover && <button className="btn btn-danger btn-sm" type="button" onClick={() => l.remover && vm.remover(l.remover)}>Remover</button>}
+                        {l.remover && <button className="btn btn-danger" type="button" onClick={() => l.remover && vm.remover(l.remover)}>Remover</button>}
                       </td>
                     </tr>
                   ))}

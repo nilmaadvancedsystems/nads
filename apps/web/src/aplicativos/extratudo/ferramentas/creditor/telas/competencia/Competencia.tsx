@@ -28,7 +28,7 @@ export function Competencia() {
           {!d.pronto ? <p className="hint">Conectando ao Entregas…</p> : d.loginDeFora ? (
             <p className="hint">Entre no Entregas para buscar o relatório no Drive.</p>
           ) : d.entrou ? (
-            <p className="hint">Conectado como <b>{d.quem}</b>. <button className="btn btn-ghost btn-sm" type="button" onClick={d.sair}>Sair</button></p>
+            <p className="hint">Conectado como <b>{d.quem}</b>. <button className="btn btn-ghost" type="button" onClick={d.sair}>Sair</button></p>
           ) : (
             <div>
               <p className="hint" style={{ marginTop: 0 }}>Entre com a conta Google do escritório. Fica guardado neste computador: é só uma vez.</p>
@@ -53,7 +53,7 @@ export function Competencia() {
                     <tr key={a.id}>
                       <td>{a.caminho}{a.daCompetencia && <> <span className="badge badge-ok">{vm.mes.slice(5) + '/' + vm.mes.slice(0, 4)}</span></>}</td>
                       <td>{a.modificado ? new Date(a.modificado).toLocaleDateString('pt-BR') : '—'}</td>
-                      <td><button className="btn btn-outline btn-sm" type="button" onClick={() => vm.usar(a)}>Usar este</button></td>
+                      <td><button className="btn btn-outline" type="button" onClick={() => vm.usar(a)}>Usar este</button></td>
                     </tr>
                   ))}
                 </tbody>
@@ -61,7 +61,7 @@ export function Competencia() {
             </div>
           )}
           <div className="btn-row" style={{ justifyContent: 'flex-start', marginTop: 8 }}>
-            <button className="btn btn-ghost btn-sm" type="button" onClick={vm.anexarAMao}>Anexar à mão →</button>
+            <button className="btn btn-ghost" type="button" onClick={vm.anexarAMao}>Anexar à mão →</button>
           </div>
         </Alerta>
       )}

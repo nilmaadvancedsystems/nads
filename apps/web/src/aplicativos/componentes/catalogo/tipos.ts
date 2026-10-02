@@ -39,6 +39,8 @@ export interface Peca {
    * Sem isto, o ▶ só redesenha a peça (a animação de entrada roda de novo).
    */
   aoVivo?: (c: AoVivo) => void;
+  /** a peça saiu do sistema: não aparece, mas guarda o lugar (o código das outras não muda) */
+  removida?: boolean;
 }
 
 export interface AoVivo {

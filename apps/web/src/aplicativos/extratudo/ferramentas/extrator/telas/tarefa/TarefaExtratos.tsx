@@ -316,7 +316,7 @@ function MesesDoBanco({ meses, competencia, travado, aceitarExtrato, aceitarRaza
 /** "Remover todos" (vários meses): com todos os meses importados, exclui o lado do banco no período (pergunta antes). */
 function RemoverTodos({ titulo, travado, onRemover }: { titulo: string; travado: boolean; onRemover: () => void }) {
   return (
-    <button type="button" className="btn btn-outline btn-sm imp-todos" disabled={travado} onClick={onRemover}
+    <button type="button" className="btn btn-outline imp-todos" disabled={travado} onClick={onRemover}
       title={'Todos os meses importados. Remover ' + titulo + ' de todos os meses'}>
       <Icone nome="x" />Remover todos
     </button>
@@ -328,7 +328,7 @@ function ImportarTodos({ titulo, aceitar, travado, onArquivos, restantes }: { ti
   const id = useId();
   return (
     <>
-      <label htmlFor={id} className={'btn btn-outline btn-sm imp-todos' + (travado ? ' is-locked' : '')} title={(restantes ? 'Importar ' + titulo + ' dos meses que faltam' : 'Importar ' + titulo + ' de todos os meses de uma vez') + ' (cada lançamento cai no seu mês)'}>
+      <label htmlFor={id} className={'btn btn-outline imp-todos' + (travado ? ' is-locked' : '')} title={(restantes ? 'Importar ' + titulo + ' dos meses que faltam' : 'Importar ' + titulo + ' de todos os meses de uma vez') + ' (cada lançamento cai no seu mês)'}>
         <Icone nome="upload" />{restantes ? 'Adicionar restantes' : 'Importar Todos'}
       </label>
       <input id={id} type="file" multiple accept={aceitar} className="sr-only" disabled={travado}
@@ -393,7 +393,7 @@ function SeletorDeCompetencia({ vm, naTarefa, trocar, periodoDaTarefa, encerrar 
               {concluido
                 ? <p className="comp-varios-texto ok"><Icone nome="checkCircle" />Todos os meses concluídos: já dá para cancelar a função.</p>
                 : <p className="hint">Para cancelar a função, os {periodo.length} meses precisam estar 100% concluídos (todas as etapas). Até lá, a empresa abre sempre nesses meses.</p>}
-              <button type="button" className="btn btn-primary btn-sm comp-varios-botao" disabled={!concluido} onClick={() => { fechar(); encerrar(); }}>Cancelar função</button>
+              <button type="button" className="btn btn-primary comp-varios-botao" disabled={!concluido} onClick={() => { fechar(); encerrar(); }}>Cancelar função</button>
             </div>
           ) : (
             <div className="comp-varios">
@@ -410,7 +410,7 @@ function SeletorDeCompetencia({ vm, naTarefa, trocar, periodoDaTarefa, encerrar 
                   </select>
                 </label>
               </div>
-              <button type="button" className="btn btn-primary btn-sm comp-varios-botao" disabled={qtd < 2} onClick={() => { fechar(); trocar(tarefas.rotaDoPeriodo(de, ate)); }}>
+              <button type="button" className="btn btn-primary comp-varios-botao" disabled={qtd < 2} onClick={() => { fechar(); trocar(tarefas.rotaDoPeriodo(de, ate)); }}>
                 {qtd > 1 ? 'Iniciar ' + qtd + ' meses' : 'Escolha dois meses ou mais'}
               </button>
             </div>
@@ -541,7 +541,7 @@ export function TarefaExtratos() {
               {bancosSemCheque.map(b => b.nome).join(', ')} {bancosSemCheque.length === 1 ? 'fecha' : 'fecham'} negativo em alguns dias (clique no <b>Conferido</b> para ver).
               Gere os lançamentos no Cheque especial, lance no Alterdata e importe o razão de novo: a conferência confere o saldo final ignorando os lançamentos do cheque especial.
             </p>
-            <a className="btn btn-outline btn-sm imp-cheque-abrir" href={caminhoNaFerramenta('cheque-especial', s.rota)} target="_blank" rel="noreferrer">
+            <a className="btn btn-outline imp-cheque-abrir" href={caminhoNaFerramenta('cheque-especial', s.rota)} target="_blank" rel="noreferrer">
               <Icone nome="link" />Abrir o Cheque especial
             </a>
           </div>
@@ -636,7 +636,7 @@ export function TarefaExtratos() {
                         <>
                           <ImportarTodos titulo="o extrato" restantes={lote.comExtrato.length > 0} aceitar={cxExtrato.aceitar} travado={ocupadoGeral} onArquivos={fs => { void vm.importarArquivos(b.id, 'banco', fs); }} />
                           {/* buscando: o próprio botão vira "Cancelar" (para depois do mês que está baixando); o resto fica travado */}
-                          <button type="button" className={'btn btn-outline btn-sm imp-todos' + (buscando ? ' imp-cancelar' : '')}
+                          <button type="button" className={'btn btn-outline imp-todos' + (buscando ? ' imp-cancelar' : '')}
                             disabled={buscando ? d.cancelando : ocupadoGeral}
                             title={buscando ? 'Cancelar: para depois do mês que está baixando (os meses que já vieram ficam)' : 'Buscar no Drive, na pasta da empresa, o extrato de cada mês que falta e importar'}
                             onClick={() => (buscando ? d.cancelar() : d.buscarNoPeriodo(b, lote.faltamExtrato))}>
@@ -687,12 +687,12 @@ export function TarefaExtratos() {
                     </div>
                     {/* importado: o movimento se vê pela setinha; do Drive, um botãozinho de PDF (link temporário, não guardado) */}
                     {temExtrato ? doDrive.length > 0 && (
-                      <button type="button" className="btn btn-sm btn-outline imp-pdf" title={'Abrir o PDF do Drive: ' + doDrive[doDrive.length - 1].nome}
+                      <button type="button" className="btn btn-outline imp-pdf" title={'Abrir o PDF do Drive: ' + doDrive[doDrive.length - 1].nome}
                         aria-label="Abrir o PDF do Drive" onClick={() => visualizarDoDrive(doDrive[doDrive.length - 1])}>
                         <Icone nome="fileText" />PDF
                       </button>
                     ) : ponte.naTarefa && (
-                      <button type="button" className={'btn btn-sm btn-outline imp-sem-mov' + (semMov ? ' marcado' : '')} aria-pressed={semMov}
+                      <button type="button" className={'btn btn-outline imp-sem-mov' + (semMov ? ' marcado' : '')} aria-pressed={semMov}
                         disabled={!semMov && ocupadoGeral}
                         onClick={() => ponte.marcarSemMovimento(b.id, !semMov)}>{semMov ? 'Desfazer' : 'Não teve movimento'}</button>
                     )}

@@ -207,9 +207,9 @@ export function SeletorMes({ valor, onMudar, id, rotulo, max }: { valor: string;
       {aberto && (
         <div className="popover seletor-mes-pop" role="dialog" aria-label={rotulo}>
           <div className="seletor-mes-ano">
-            <button type="button" className="btn btn-ghost btn-sm" aria-label="Ano anterior" onClick={() => setAnoGrade(a => a - 1)}><Icone nome="chevronLeft" /></button>
+            <button type="button" className="btn btn-ghost" aria-label="Ano anterior" onClick={() => setAnoGrade(a => a - 1)}><Icone nome="chevronLeft" /></button>
             <b>{anoGrade}</b>
-            <button type="button" className="btn btn-ghost btn-sm" aria-label="Próximo ano" disabled={passou(chave(anoGrade + 1, 1))} onClick={() => setAnoGrade(a => a + 1)}><Icone nome="chevronRight" /></button>
+            <button type="button" className="btn btn-ghost" aria-label="Próximo ano" disabled={passou(chave(anoGrade + 1, 1))} onClick={() => setAnoGrade(a => a + 1)}><Icone nome="chevronRight" /></button>
           </div>
           <div className="seletor-mes-grade">
             {MESES.map((nome, i) => {
@@ -249,7 +249,7 @@ export function CampoArquivos({ id, onEscolher, aceitar, rotulo = 'Escolher arqu
   const input = useRef<HTMLInputElement>(null);
   return (
     <>
-      <label className={compacto ? 'btn btn-outline btn-sm' + (desabilitado ? ' is-locked' : '') : 'file-picker'} htmlFor={id} aria-disabled={desabilitado || undefined}>
+      <label className={compacto ? 'btn btn-outline' + (desabilitado ? ' is-locked' : '') : 'file-picker'} htmlFor={id} aria-disabled={desabilitado || undefined}>
         <span><Icone nome="upload" /></span>
         <span className="file-picker-name">{rotulo}</span>
       </label>

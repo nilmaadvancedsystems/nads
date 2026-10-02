@@ -12,8 +12,8 @@ export function BoasVindasBalancete({ autoLimpar, onResponder }: { autoLimpar: b
       <div className="welcome-banner-opcao">
         <span>{autoLimpar ? 'Quer deixar essa função ativada?' : 'Quer ativar essa função?'}</span>
         <span style={{ display: 'inline-flex', gap: 8 }}>
-          <button type="button" className={'btn btn-sm' + (autoLimpar ? ' btn-primary' : '')} onClick={() => onResponder(true)}>Sim</button>
-          <button type="button" className={'btn btn-sm' + (!autoLimpar ? ' btn-primary' : '')} onClick={() => onResponder(false)}>Não</button>
+          <button type="button" className={'btn' + (autoLimpar ? ' btn-primary' : '')} onClick={() => onResponder(true)}>Sim</button>
+          <button type="button" className={'btn' + (!autoLimpar ? ' btn-primary' : '')} onClick={() => onResponder(false)}>Não</button>
         </span>
       </div>
       <div className="welcome-banner-mantido">

@@ -74,7 +74,7 @@ export function Casca(p: {
   onAplicativos?: () => void;
   onEmpresa: () => void;
   /** os aplicativos do nads, na gaveta ☰ (o atual marcado) */
-  aplicativos?: { id: string; nome: string; icone: NomeIcone; ativo?: boolean }[];
+  aplicativos?: { id: string; nome: string; icone: NomeIcone; ativo?: boolean; contador?: string }[];
   onAplicativo?: (id: string) => void;
   /**
    * Como as seções aparecem à esquerda: "barra" (padrão; a barra lateral que oculta) ou "caixa"
@@ -231,7 +231,7 @@ export function Casca(p: {
           </nav>
           {p.topoDireita && <><span className="gh-header-spacer" /><div className="gh-topo-direita">{p.topoDireita}</div></>}
         </div>
-        <nav ref={abasInd} className="menu com-indicador" id="menu" aria-label="Páginas da seção">
+        <nav ref={abasInd} className="menu com-indicador" id="menu" aria-label="Páginas da seção" hidden={!(abasDaEtapa || p.paginas).some(x => !x.oculta)}>
           {(abasDaEtapa || p.paginas).filter(x => !x.oculta).map(x => (
             <button key={x.id} type="button" className={'menu-item' + (x.ativa ? ' active' : '') + (x.travada ? ' is-locked' : '')}
               aria-current={x.ativa ? 'page' : undefined} aria-disabled={x.travada ? 'true' : undefined} onClick={() => (abasDaEtapa && p.onAbaNaEtapa ? p.onAbaNaEtapa : p.onPagina)(x.id)}>
@@ -255,7 +255,7 @@ export function Casca(p: {
               {p.aplicativos.map(a => (
                 <button key={a.id} className={'drawer-item' + (a.ativo ? ' active' : '')} type="button" aria-current={a.ativo ? 'page' : undefined}
                   onClick={() => { fecharGaveta(); p.onAplicativo?.(a.id); }}>
-                  <Icone nome={a.icone} />{a.nome}
+                  <Icone nome={a.icone} />{a.nome}{a.contador && <span className="menu-contador drawer-contador">{a.contador}</span>}
                 </button>
               ))}
             </>

@@ -23,7 +23,7 @@ export function ChipsDeContas({ v }: { v: Vinculo }) {
 export function CampoVincular({ v, rotulo, titulo, extra }: { v: Vinculo; rotulo: string; titulo: string; extra?: (escondido: boolean) => ReactNode }) {
   return (
     <div className={'ndp-add' + (v.aberto ? ' aberto' : '')}>
-      <button type="button" className="btn btn-sm ndp-add-btn" title={titulo} hidden={v.aberto} onClick={v.abrir}><Icone nome="plus" />{rotulo}</button>
+      <button type="button" className="btn ndp-add-btn" title={titulo} hidden={v.aberto} onClick={v.abrir}><Icone nome="plus" />{rotulo}</button>
       {extra?.(v.aberto)}
       <div className="ndp-add-campo" hidden={!v.aberto}>
         {v.aberto && (
@@ -41,7 +41,7 @@ export function CampoVincular({ v, rotulo, titulo, extra }: { v: Vinculo; rotulo
                       <td style={{ width: 84, paddingRight: 0 }}><span className={classeGrupo(a.grupo)}>{classeGrupo(a.grupo) === 'grupo-tag' ? null : a.grupo}</span></td>
                       <td className="num" style={{ width: 70 }}>{a.codigo}</td>
                       <td className="wrap">{a.nome}</td>
-                      <td className="num" style={{ width: 96 }}><button type="button" className="btn btn-primary btn-sm" onClick={() => v.escolher(a.codigo)}>Vincular</button></td>
+                      <td className="num" style={{ width: 96 }}><button type="button" className="btn btn-primary" onClick={() => v.escolher(a.codigo)}>Vincular</button></td>
                     </tr>
                   ))}
                 </tbody>

@@ -20,16 +20,16 @@ function AcoesDaLinha({ vm, x }: { vm: VmCaixa; x: e.EmailDaCaixa }) {
     <span className="gmail-acoes" onClick={ev => ev.stopPropagation()}>
       {vm.aba === 'sem-cliente' ? (
         <>
-          {parecido && <button type="button" className="btn btn-outline btn-sm" title={'Ligar ' + x.remetente + ' a ' + parecido.nome} onClick={() => void vm.ligar(x, parecido.id)}>É {parecido.nome.split(' ').slice(0, 2).join(' ')}</button>}
-          <button type="button" className="btn btn-outline btn-sm" onClick={() => vm.abrir(x.mensagemId)}>Escolher cliente…</button>
+          {parecido && <button type="button" className="btn btn-outline" title={'Ligar ' + x.remetente + ' a ' + parecido.nome} onClick={() => void vm.ligar(x, parecido.id)}>É {parecido.nome.split(' ').slice(0, 2).join(' ')}</button>}
+          <button type="button" className="btn btn-outline" onClick={() => vm.abrir(x.mensagemId)}>Escolher cliente…</button>
         </>
       ) : x.clienteId ? (
         salvo ? <span className="badge badge-ok" title={salvo.pasta}>no Drive</span>
-          : x.arquivos.length > 0 && <button type="button" className="btn btn-outline btn-sm" onClick={() => void vm.salvarNoDrive(x)}>Salvar no Drive</button>
+          : x.arquivos.length > 0 && <button type="button" className="btn btn-outline" onClick={() => void vm.salvarNoDrive(x)}>Salvar no Drive</button>
       ) : (
-        <button type="button" className="btn btn-outline btn-sm" onClick={() => vm.abrir(x.mensagemId)}>De qual cliente?</button>
+        <button type="button" className="btn btn-outline" onClick={() => vm.abrir(x.mensagemId)}>De qual cliente?</button>
       )}
-      <a className="btn btn-ghost btn-sm gmail-icone" href={vm.linkDoGmail(x.mensagemId)} target="_blank" rel="noopener noreferrer" title="Abrir no Gmail" aria-label="Abrir no Gmail"><Icone nome="envelope" /></a>
+      <a className="btn btn-ghost gmail-icone" href={vm.linkDoGmail(x.mensagemId)} target="_blank" rel="noopener noreferrer" title="Abrir no Gmail" aria-label="Abrir no Gmail"><Icone nome="envelope" /></a>
     </span>
   );
 }
@@ -77,9 +77,9 @@ function PainelDoEmail({ vm, x }: { vm: VmCaixa; x: e.EmailDaCaixa }) {
     <div className="cad-janela-fundo" data-volta-para={'[data-linha="' + x.mensagemId + '"]'} onMouseDown={ev => { if (ev.target === ev.currentTarget) fechar(); }}>
       <div className="cad-janela gmail-janela" role="dialog" aria-modal="true" aria-label={x.assunto || 'E-mail'}>
         <header className="cad-janela-topo">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={fechar}><Icone nome="chevronLeft" />E-mails</button>
+          <button type="button" className="btn btn-ghost" onClick={fechar}><Icone nome="chevronLeft" />E-mails</button>
           <span className="cad-janela-empresa"><span className="cad-janela-nome">{x.assunto || '(sem assunto)'}</span></span>
-          <button type="button" className="btn btn-ghost btn-sm cad-janela-x" onClick={fechar} aria-label="Fechar" title="Fechar (Esc)"><Icone nome="x" /></button>
+          <button type="button" className="btn btn-ghost cad-janela-x" onClick={fechar} aria-label="Fechar" title="Fechar (Esc)"><Icone nome="x" /></button>
         </header>
         <div className="cad-janela-conteudo gmail-painel">
           <div className="gmail-de">
@@ -93,9 +93,9 @@ function PainelDoEmail({ vm, x }: { vm: VmCaixa; x: e.EmailDaCaixa }) {
             <div className="gmail-de-acoes">
               {!semDono && (salvo
                 ? <span className="badge badge-ok" title={salvo.pasta}>no Drive</span>
-                : anexos.length > 0 && <button type="button" className="btn btn-outline btn-sm" onClick={() => void vm.salvarNoDrive(x)}><Icone nome="pasta" />Salvar no Drive</button>)}
-              <a className="btn btn-outline btn-sm" href={vm.linkDoGmail(x.mensagemId)} target="_blank" rel="noopener noreferrer"><Icone nome="envelope" />Abrir no Gmail</a>
-              {vm.aba !== 'spam' && vm.admin && <button type="button" className="btn btn-outline btn-sm gmail-spam" onClick={() => void vm.ignorar(x).then(fechar)}>É spam</button>}
+                : anexos.length > 0 && <button type="button" className="btn btn-outline" onClick={() => void vm.salvarNoDrive(x)}><Icone nome="pasta" />Salvar no Drive</button>)}
+              <a className="btn btn-outline" href={vm.linkDoGmail(x.mensagemId)} target="_blank" rel="noopener noreferrer"><Icone nome="envelope" />Abrir no Gmail</a>
+              {vm.aba !== 'spam' && vm.admin && <button type="button" className="btn btn-outline gmail-spam" onClick={() => void vm.ignorar(x).then(fechar)}>É spam</button>}
             </div>
           </div>
 
@@ -139,7 +139,7 @@ function PainelDoEmail({ vm, x }: { vm: VmCaixa; x: e.EmailDaCaixa }) {
             <div className="gmail-responder-pe">
               <label className="gmail-todos"><input type="checkbox" checked={p.todos} onChange={ev => p.setTodos(ev.target.checked)} />Responder a todos</label>
               <span className="tarefas-barra-espaco" />
-              <button type="submit" className="btn btn-primary btn-sm" disabled={!p.texto.trim() || p.enviando}>{p.enviando ? 'Enviando…' : 'Enviar resposta'}</button>
+              <button type="submit" className="btn btn-primary" disabled={!p.texto.trim() || p.enviando}>{p.enviando ? 'Enviando…' : 'Enviar resposta'}</button>
             </div>
           </form>
         </div>
@@ -191,7 +191,7 @@ export function CaixaDoRobo() {
             <b>{a.tipo === 'salvar' ? 'Salvando no Drive' : a.tipo === 'disparo' ? 'Enviando e-mails' : 'Lendo o Gmail'}</b>
             <span className="fraco">{a.total ? Math.round((a.feito / a.total) * 100) + '%' : ''}</span>
             <span className="tarefas-barra-espaco" />
-            <button type="button" className="btn btn-outline btn-sm" onClick={() => void vm.cancelar()}>Cancelar</button>
+            <button type="button" className="btn btn-outline" onClick={() => void vm.cancelar()}>Cancelar</button>
           </div>
           {a.total > 0 && <span className="tarefas-barra larga"><span style={{ width: Math.min(100, (a.feito / a.total) * 100) + '%' }} /></span>}
           <ul className="gmail-andamento-passos">{a.recentes.slice(-4).map((r, i) => <li key={i} className={r.destaque ? 'destaque' : undefined}>{r.texto}</li>)}</ul>

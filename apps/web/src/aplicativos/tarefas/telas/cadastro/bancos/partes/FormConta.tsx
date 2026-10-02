@@ -39,7 +39,7 @@ export function FormConta({ vm, id, inicial, fechar }: { vm: VmContasBancarias; 
     <form className="add-banco-form cad-form" onSubmit={e => { e.preventDefault(); salvar(); }}>
       <div className="add-banco-titulo">
         <span className="add-banco-logo"><LogoBanco banco={marca} cor /></span><b>{banco?.nome || marca}</b>
-        {!id && <button type="button" className="btn btn-ghost btn-sm cad-trocar" onClick={() => setMarca('')}>Trocar banco</button>}
+        {!id && <button type="button" className="btn btn-ghost cad-trocar" onClick={() => setMarca('')}>Trocar banco</button>}
       </div>
       <div className="cad-form-2">
         <label className="field"><span className="hint">Agência</span>
@@ -75,8 +75,8 @@ export function FormConta({ vm, id, inicial, fechar }: { vm: VmContasBancarias; 
         <span className="hint cad-dica">Vazio = desde sempre. O Extrator pede o extrato desta conta a partir dela.</span>
       </label>
       <div className="add-banco-acoes">
-        <button type="button" className="btn btn-outline btn-sm" onClick={fechar}>Cancelar</button>
-        <button type="submit" className="btn btn-primary btn-sm" disabled={!agencia.trim() || !conta.trim()}>{id ? 'Salvar' : 'Incluir'}</button>
+        <button type="button" className="btn btn-outline" onClick={fechar}>Cancelar</button>
+        <button type="submit" className="btn btn-primary" disabled={!agencia.trim() || !conta.trim()}>{id ? 'Salvar' : 'Incluir'}</button>
       </div>
     </form>
   );
@@ -91,8 +91,8 @@ export function FormEncerrar({ vm, id, fechar }: { vm: VmContasBancarias; id: st
         <span className="hint cad-dica">Depois dela, o Extrator deixa de pedir o extrato desta conta. Os meses anteriores ficam.</span>
       </label>
       <div className="add-banco-acoes">
-        <button type="button" className="btn btn-outline btn-sm" onClick={fechar}>Cancelar</button>
-        <button type="submit" className="btn btn-primary btn-sm" disabled={!ate}>Encerrar</button>
+        <button type="button" className="btn btn-outline" onClick={fechar}>Cancelar</button>
+        <button type="submit" className="btn btn-primary" disabled={!ate}>Encerrar</button>
       </div>
     </form>
   );

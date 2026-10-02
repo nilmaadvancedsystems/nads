@@ -12,7 +12,7 @@ import { LIMITE_LINHAS, useConferencia } from './useConferencia';
  */
 export function Conferencia({ naTarefa, doArquivo, competencia }: { naTarefa?: boolean; doArquivo?: (a: x.ArquivoImportado) => boolean; competencia?: string } = {}) {
   const vm = useConferencia(doArquivo, naTarefa ? competencia : undefined);
-  const csv = <button className={'btn ' + (naTarefa ? 'btn-outline btn-sm' : 'btn-primary')} type="button" onClick={() => { const a = vm.csv(); baixarArquivo(a.texto, a.nome); }}>Baixar CSV</button>;
+  const csv = <button className={'btn ' + (naTarefa ? 'btn-outline' : 'btn-primary')} type="button" onClick={() => { const a = vm.csv(); baixarArquivo(a.texto, a.nome); }}>Baixar CSV</button>;
   return (
     <section>
       {!naTarefa && <AcoesDoTopo>{csv}</AcoesDoTopo>}

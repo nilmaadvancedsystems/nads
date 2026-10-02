@@ -98,12 +98,12 @@ export function Executor() {
             itens={saidas.map(o => ({ rotulo: o.solucao.tipo === 'orientacao' ? o.texto : o.solucao.rotulo, icone: ICONE_DA_SAIDA[o.solucao.tipo], onClick: () => vm.resolver(o) }))} />
         )}
         {botoesDaEtapa && (
-          <button type="button" className="gh-topo-btn gh-topo-forte" onClick={vm.abrirInterromper} title="Interromper a etapa" aria-label="Interromper">
+          <button type="button" className="gh-topo-btn" onClick={vm.abrirInterromper} title="Interromper a etapa" aria-label="Interromper">
             <Icone nome="x" />
           </button>
         )}
         {botoesDaEtapa && faltam && (
-          <button type="button" className="gh-topo-btn gh-topo-forte" onClick={() => vm.mostrarOQueFalta(faltam)} title="O que falta para seguir" aria-label="O que falta para seguir">
+          <button type="button" className="gh-topo-btn" onClick={() => vm.mostrarOQueFalta(faltam)} title="O que falta para seguir" aria-label="O que falta para seguir">
             <Icone nome="ajuda" />
           </button>
         )}

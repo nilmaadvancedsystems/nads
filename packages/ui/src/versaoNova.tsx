@@ -1,8 +1,9 @@
 // Versão nova do nads: confere o versao.json do site (a cada 5 min e quando a aba volta a aparecer). Não mostra mais
-// faixa por cima da tela (Vitor, 01/10/2026: "tá chato, deixe o usuário fechar e usar"): a casca põe um pontinho no ☰
+// faixa no alto (Vitor, 01/10/2026); desde 02/10/2026 a tela trava com só o Atualizar no meio (TravaDeVersaoNova), e a casca põe um pontinho no ☰
 // e, no menu, "Atualizar para 0.0.17" ao lado de "Versão do sistema". Não recarrega sozinho (podia cortar um envio no
 // meio). Sem versao.json (rodando local), não faz nada. Uma conferência só para a página toda, por mais telas que usem.
 import { useSyncExternalStore } from 'react';
+import { atualizarSemPerder } from './continuidade';
 
 const A_CADA_MS = 5 * 60 * 1000;
 
@@ -40,7 +41,26 @@ export function useVersaoNova(versaoDaPagina: string): string {
   );
 }
 
-/** Recarrega a página na versão nova. */
+/** Recarrega a página na versão nova, sem perder o que está na tela (continuidade.ts). */
 export function atualizarVersao() {
-  window.location.reload();
+  atualizarSemPerder();
+}
+
+/**
+ * Saiu versão nova (Vitor, 02/10/2026): a tela inteira trava, embaçada, e no meio fica só o Atualizar — que continua
+ * de onde a pessoa parou (o que ela digitou e marcou volta depois). Só na página de cima (dentro das etapas, a de fora
+ * já cobre tudo).
+ */
+export function TravaDeVersaoNova({ atual }: { atual: string }) {
+  const nova = useVersaoNova(atual);
+  if (!nova || window.self !== window.top) return null;
+  return (
+    <div className="versao-trava" role="alertdialog" aria-modal="true" aria-labelledby="versaoTravaTitulo">
+      <div className="versao-trava-caixa">
+        <h3 id="versaoTravaTitulo">Saiu uma versão nova</h3>
+        <p className="hint">Versão {atual} → <b>{nova}</b>. Nada do que você fez na tela se perde.</p>
+        <button type="button" className="btn btn-primary" autoFocus onClick={atualizarSemPerder}>Atualizar</button>
+      </div>
+    </div>
+  );
 }
