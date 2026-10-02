@@ -2504,3 +2504,11 @@ tr.nads-destaque{animation:none !important;}
 tr.nads-destaque > td{animation:destaquePulsoLinha 1.4s ease-in-out 3 !important;}
 .rotina-lote-periodo{white-space:nowrap;}
 .rotina-lote-nota{margin:0;padding:4px 16px 10px;font-size:12px;}
+/* Pedir documentos › Conferir (Vitor, 02/10/2026: "aumente essa aba deixando a maior, e o botão de cobrança sumiu"): a
+   janela ocupa quase a tela toda e a prévia do e-mail fica com o que sobra (ela rola por dentro) — antes a prévia tinha
+   altura fixa e empurrava o rodapé (Voltar / Enviar e-mail) para fora da janela */
+.modal.pedir-modal.conferir{max-width:min(1040px,96vw);height:min(92vh,1040px);display:flex;flex-direction:column;}
+.modal.pedir-modal.conferir > .pedir-conferir{height:auto;flex:1 1 auto;min-height:0;}
+.modal.pedir-modal.conferir > .modal-actions{flex:none;}
+html.na-etapa .modal-overlay > .modal.pedir-modal{max-height:calc(var(--vista-altura,100vh) - 32px);}
+html.na-etapa .modal-overlay > .modal.pedir-modal.conferir{height:calc(var(--vista-altura,100vh) - 32px);}
