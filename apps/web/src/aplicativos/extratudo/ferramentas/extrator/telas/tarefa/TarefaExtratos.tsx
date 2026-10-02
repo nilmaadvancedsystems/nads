@@ -1,5 +1,5 @@
 // A página que a etapa "Importação" da Tarefas abre: por enquanto, só importar (a conferência saiu daqui).
-// Em cima, à direita (como o "New issue" do GitHub): Pedir extrato e Adicionar banco ▾ (escolhe o banco e
+// Em cima, à direita (como o "New issue" do GitHub): Pedir extrato (as contas bancárias se cadastram no Cadastro; antes havia o Adicionar banco ▾ aqui, que escolhia o banco e
 // pede agência e conta). Depois, uma linha por conta da empresa:
 //   ▸ setinha: abre o movimento do extrato (data, descrição, valor, entrou/saiu e o saldo acumulado);
 //   logo, nome, agência e conta (o logo fica colorido quando o extrato está importado);
@@ -9,7 +9,7 @@
 //   à direita: "Não teve movimento" (trava a linha e vira "Desfazer"); com o extrato vindo do Drive, um
 //     botãozinho de PDF (abre pelo link temporário). O movimento se vê pela setinha.
 // Ao importar, só uma barrinha por cima da tela, que some em 2,7 s.
-import { extrator as x, type conferencia, type empresas, tarefas } from '@nads/core';
+import { extrator as x, type conferencia, tarefas } from '@nads/core';
 import { Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
 import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { usePonteDaTarefa, useRequisitosParaATarefa } from '../../../../../../comum/ponte';
@@ -82,47 +82,6 @@ function BotaoDoDrive({ arquivos, travado, rotulo, onExcluir, onVer }: {
   );
 }
 
-/** "Adicionar banco ▾": a lista dos bancos (com logo) e, escolhido um, agência e conta. */
-function AdicionarBanco({ bancos, onAdicionar, fechar }: {
-  bancos: readonly empresas.BancoDaEmpresa[];
-  onAdicionar: (b: empresas.BancoDaEmpresa, agencia: string, conta: string) => void;
-  fechar: () => void;
-}) {
-  const [escolhido, setEscolhido] = useState<empresas.BancoDaEmpresa | null>(null);
-  const [agencia, setAgencia] = useState('');
-  const [conta, setConta] = useState('');
-  const pronto = !!agencia.trim() && !!conta.trim();
-  const adicionar = () => { if (!escolhido || !pronto) return; onAdicionar(escolhido, agencia, conta); fechar(); };
-
-  if (!escolhido) {
-    return (
-      <div className="add-banco-lista" role="menu">
-        {bancos.map(b => (
-          <button key={b.id} type="button" className="popover-item add-banco-item" role="menuitem" onClick={() => setEscolhido(b)}>
-            {b.nome}
-          </button>
-        ))}
-      </div>
-    );
-  }
-  return (
-    <form className="add-banco-form" onSubmit={e => { e.preventDefault(); adicionar(); }}>
-      <div className="add-banco-titulo">
-        <span className="add-banco-logo"><LogoBanco banco={escolhido.id} cor /></span><b>{escolhido.nome}</b>
-      </div>
-      <label className="field"><span className="hint">Agência</span>
-        <input type="text" autoFocus inputMode="numeric" value={agencia} onChange={e => setAgencia(e.target.value)} placeholder="Ex.: 3001" />
-      </label>
-      <label className="field"><span className="hint">Conta</span>
-        <input type="text" inputMode="numeric" value={conta} onChange={e => setConta(e.target.value)} placeholder="Ex.: 12345-6" />
-      </label>
-      <div className="add-banco-acoes">
-        <button type="button" className="btn btn-outline btn-sm" onClick={() => setEscolhido(null)}>Voltar</button>
-        <button type="submit" className="btn btn-primary btn-sm" disabled={!pronto}>Adicionar</button>
-      </div>
-    </form>
-  );
-}
 
 /**
  * As pendências do banco (o que corrigir no razão): uma faixa grudada embaixo da linha do banco, "Pendências  N ▾",
@@ -569,8 +528,7 @@ export function TarefaExtratos() {
               </button>
             </>
           )} />
-        <MenuSuspenso rotulo="Adicionar banco" icone="plus" className="btn btn-primary" direita largura={260}
-          conteudo={fechar => <AdicionarBanco bancos={vm.bancosParaAdicionar} onAdicionar={vm.adicionarBanco} fechar={fechar} />} />
+        {/* "Adicionar banco" saiu daqui (Vitor, 02/10/2026): as contas bancárias se cadastram no Cadastro */}
       </div>
 
       {/* a etapa Cheque especial: o que fazer (ou que está tudo certo) */}
