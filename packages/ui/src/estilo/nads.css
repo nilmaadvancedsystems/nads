@@ -1456,8 +1456,6 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-planilha-parte td:first-child{padding-left:24px;}
 td.imp-planilha-dica{color:var(--warn);font-size:12px;}
 /* o "Conferido" do banco (bate, mas falta o cheque especial dos dias negativos): botão que abre a explicação */
-.imp-conferido{cursor:pointer;font:inherit;font-size:12px;}
-.imp-conferido:hover{filter:brightness(1.1);}
 /* a etapa Cheque especial: o aviso no alto e o botão que abre a ferramenta */
 .imp-cheque{margin:0 0 12px;}
 .imp-cheque-abrir{margin-top:8px;}
@@ -1709,8 +1707,7 @@ td.cad-acoes .menu-seta{display:none;}
 .cad-robo{gap:6px;}
 .cad-robo > svg{width:16px;height:16px;}
 
-/* a Etapa com vários meses na Importação: uma aba por mês (✓ = pronto) e o "Vários meses" do seletor */
-.imp-meses{display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+/* a Etapa com vários meses na Importação: o "Vários meses" do seletor */
 .imp-mes{display:inline-flex;align-items:center;gap:4px;border:none;border-right:1px solid var(--border);background:var(--btn-bg);color:var(--ink);
   font:inherit;font-size:13px;padding:5px 12px;cursor:pointer;}
 .imp-mes:last-child{border-right:none;}
@@ -1724,9 +1721,6 @@ td.cad-acoes .menu-seta{display:none;}
 /* a Etapa com vários meses: o botão de fora (período), e embaixo de cada banco os meses de Extrato e Razão */
 /* em lote: o botão normal, com o contador cinza do GitHub (Vitor, 02/10/2026: "porque essa barra tá vermelha? cadê o padrão github?") */
 .imp-periodo-qtd{margin-left:6px;padding:0 6px;border-radius:2em;background:var(--hover-bg);color:var(--ink);font-size:12px;font-weight:500;line-height:18px;}
-.imp-periodo-linha{display:flex;flex-direction:column;gap:8px;padding:10px 12px 12px 90px;border-top:1px dashed var(--border-muted);}
-.imp-periodo-lado{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.imp-periodo-lado .imp-rotulo{width:52px;flex:none;}
 .imp-mes-chips{display:inline-flex;flex-wrap:wrap;gap:4px;}
 .imp-mes-chip{display:inline-flex;align-items:center;gap:4px;padding:0 8px;min-height:24px;border:1px solid var(--border);border-radius:2em;background:var(--surface);
   color:var(--ink-muted);font:inherit;font-size:12px;cursor:pointer;font-variant-numeric:tabular-nums;}
@@ -1736,9 +1730,6 @@ td.cad-acoes .menu-seta{display:none;}
 .imp-mes-chip.falta{border-style:dashed;}
 .imp-mes-chip.atual{box-shadow:0 0 0 1px var(--ink-muted);font-weight:600;}
 .imp-mes-sem{font-size:10px;}
-.imp-periodo-falta{font-size:12px;color:var(--ink-muted);min-width:64px;}
-.imp-periodo-lado .btn svg{width:14px;height:14px;}
-.imp-periodo-lado .btn .logo-img{width:14px;height:14px;}
 
 .executor-fim-botoes{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px;}
 
@@ -1823,27 +1814,12 @@ td.gmail-erro{color:var(--danger);}
 /* vários meses: "Importar Todos" / "Todos pelo Drive" em cima; embaixo, por mês, os ícones de um mês */
 .btn.imp-todos{gap:6px;}
 .btn.imp-todos svg,.btn.imp-todos .logo-img{width:16px;height:16px;}
-.imp-mes-celulas{display:inline-flex;flex-wrap:wrap;gap:6px;}
-.imp-mes-celula{display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 2px;border:1px solid var(--border);border-radius:8px;background:var(--surface);}
-.imp-mes-celula.atual{border-color:var(--ink-muted);}
-.imp-mes-celula.sem-mov{opacity:.7;}
-.imp-mes-nome{border:none;background:none;color:var(--ink-muted);font:inherit;font-size:12px;padding:2px 6px;cursor:pointer;border-radius:6px;font-variant-numeric:tabular-nums;}
-.imp-mes-nome:hover{background:var(--hover-bg);color:var(--ink);}
-.imp-mes-celula.atual .imp-mes-nome{color:var(--ink);font-weight:600;}
 .imp-mes-sem,.imp-mes-sem-btn{border:1px dashed var(--border);background:none;color:var(--ink-muted);font:inherit;font-size:10px;padding:2px 6px;border-radius:2em;cursor:pointer;}
 .imp-mes-sem{border-style:solid;color:var(--ink);}
 .imp-mes-sem-btn:hover,.imp-mes-sem:hover{background:var(--hover-bg);}
 
 /* vários meses: os meses ocupam a caixa toda (uma coluna igual por mês, até a direita); o mês em cima, os ícones embaixo */
-.imp-periodo-linha{padding:12px 16px 14px 52px;gap:10px;}
-.imp-periodo-lado{display:grid;grid-template-columns:60px minmax(0,1fr);align-items:stretch;gap:10px;}
-.imp-periodo-lado .imp-rotulo{width:auto;align-self:center;}
-.imp-periodo-lado .imp-periodo-falta{align-self:center;text-align:right;min-width:0;}
-.imp-mes-celulas{display:grid;gap:6px;}
 /* o mês e o ícone numa linha só (Vitor, 01/10/2026); sem espaço, o ícone desce */
-.imp-mes-celula{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;padding:4px 6px;min-width:0;}
-.imp-mes-celula .imp-mes-nome{text-align:center;padding:0 2px;}
-.imp-mes-icones{display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;min-height:28px;}
 
 /* Gmail: o e-mail aberto */
 .gmail-janela .gmail-painel{gap:16px;}
@@ -1876,9 +1852,6 @@ td.gmail-erro{color:var(--danger);}
 .gmail-icone svg{width:16px;height:16px;}
 a.btn.gmail-icone,.gmail-de-acoes a.btn{text-decoration:none;}
 /* a caixa do mês é o clique (sem o botão do nome) */
-.imp-mes-celula{cursor:pointer;transition:background 80ms cubic-bezier(.65,0,.35,1),border-color 80ms cubic-bezier(.65,0,.35,1);}
-.imp-mes-celula:hover{background:var(--surface-2);border-color:var(--border-strong);}
-.imp-mes-celula .imp-mes-nome,.imp-mes-celula .imp-mes-nome:hover{background:none;cursor:inherit;}
 /* Acesso: liberar o computador (proteção do login), avisos para o admin, Usuários e Configurações */
 .liberar-caixa{display:flex;flex-direction:column;gap:12px;font-size:14px;}
 .liberar-caixa p{margin:0;}
@@ -2252,10 +2225,10 @@ html[data-theme="light"] .abertura.vidro::after{background:radial-gradient(circl
 /* O destaque de passar o mouse acende na hora e apaga devagar (o do Linear): o app parece responder antes de você
    terminar o gesto, e o rastro que fica ao sair dá a sensação de fluidez */
 .btn,.icon-btn,.explorador-cmd,.chip-f,.step-pill,.subnav-item,.drawer-item,.popover-item,.ctx-lista > button,.caixa-item,
-tr.linha-abre,.imp-linha,.imp-mes-celula,.gh-crumb,.drawer-x{
+tr.linha-abre,.imp-linha,.gh-crumb,.drawer-x{
   transition:background-color .22s var(--ease-out),border-color .22s var(--ease-out),color .22s var(--ease-out),box-shadow .22s var(--ease-out);}
 .btn:hover,.icon-btn:hover,.explorador-cmd:hover,.chip-f:hover,.step-pill:hover,.subnav-item:hover,.drawer-item:hover,.popover-item:hover,
-.ctx-lista > button:hover,.caixa-item:hover,tr.linha-abre:hover,.imp-linha:hover,.imp-mes-celula:hover,.gh-crumb:hover,.drawer-x:hover{transition-duration:0s;}
+.ctx-lista > button:hover,.caixa-item:hover,tr.linha-abre:hover,.imp-linha:hover,.gh-crumb:hover,.drawer-x:hover{transition-duration:0s;}
 .menu-item::before{transition:background-color .22s var(--ease-out);}
 .menu-item:hover::before{transition-duration:0s;}
 
@@ -2384,3 +2357,20 @@ tr.linha-abre,.imp-linha,.imp-mes-celula,.gh-crumb,.drawer-x{
 .abertura.vidro::after{animation:vidroLuz 8s var(--ease-in-out) infinite alternate-reverse !important;}
 /* a barrinha que esvaziava na janela de "feito" era só animação */
 .modal-ok-barra{display:none;}
+
+/* Em lote: os meses numa tabela só, embaixo de cada banco (Vitor, 02/10/2026: "tá muito feio"). Meses em cima (clicar
+   abre), Extrato e Razão nas linhas, um ícone por mês, sem caixa em volta de cada um. */
+.imp-periodo-linha{padding:4px 16px 10px 52px;border-top:1px dashed var(--border-muted);}
+.imp-meses{width:100%;table-layout:fixed;border-collapse:collapse;}
+.imp-meses th,.imp-meses td{padding:6px 2px;text-align:center;border-bottom:1px solid var(--border-muted);}
+.imp-meses tbody tr:last-child th,.imp-meses tbody tr:last-child td{border-bottom:none;}
+.imp-meses thead th{padding-top:4px;padding-bottom:4px;font-weight:400;}
+.imp-meses th[scope="row"],.imp-meses thead th:first-child{width:64px;text-align:left;font-size:12px;font-weight:500;color:var(--ink-muted);}
+.imp-meses td{height:44px;}
+.imp-meses td.atual,.imp-meses th.atual{background:var(--hover-bg);}
+.imp-meses-mes{border:none;background:none;font:inherit;font-size:12px;color:var(--ink-muted);padding:2px 6px;border-radius:6px;cursor:pointer;font-variant-numeric:tabular-nums;}
+.imp-meses-mes:hover{color:var(--ink);text-decoration:underline;}
+.imp-meses th.atual .imp-meses-mes{color:var(--ink);font-weight:600;}
+.imp-meses .popover-wrap{display:inline-block;}
+.imp-meses .popover{text-align:left;}
+.imp-meses .imp-mes-menu{height:28px;padding:0 4px;}

@@ -257,9 +257,10 @@ function resumo(b: Vm['bancos'][number]): string[] {
 }
 
 /**
- * A Etapa com vários meses, embaixo de cada banco: por mês, os ícones de um mês — Extrato: importar (vira ✓, ×
- * para excluir) e o Drive (cinza até o extrato daquele mês vir de lá; aí fica só ele, colorido); sem nada, o
- * "s/ mov." marca que o mês não teve movimento. Razão: importar. Clicar no mês abre ele (a aba de cima).
+ * A Etapa com vários meses, embaixo de cada banco: uma tabela só (Vitor, 02/10/2026: "tá muito feio") — os meses em
+ * cima (clicar abre o mês), Extrato e Razão nas linhas, um ícone por mês: ✓ importado (× para excluir), o Drive
+ * colorido quando veio de lá, "s/ mov." quando o mês não teve movimento. Faltando o extrato, só o ícone de importar,
+ * que abre as opções (do computador, do Drive, sem movimento); faltando o razão, o ícone abre a escolha do arquivo.
  */
 function MesesDoBanco({ meses, competencia, travado, aceitarExtrato, aceitarRazao, onMes, onArquivos, onExcluir, onDrive, onVer, onSemMovimento, naTarefa }: {
   meses: ReturnType<Vm['mesesDoBanco']>;
@@ -267,50 +268,69 @@ function MesesDoBanco({ meses, competencia, travado, aceitarExtrato, aceitarRaza
   onMes: (m: string) => void; onArquivos: (lado: 'banco' | 'sistema', fs: File[]) => void; onExcluir: (lado: 'banco' | 'sistema', mes: string) => void;
   onDrive: (mes: string) => void; onVer: (arquivo: { id: string; nome: string }) => void; onSemMovimento: (mes: string, marcado: boolean) => void;
 }) {
-  const mes = (m: ReturnType<Vm['mesesDoBanco']>[number], lado: 'banco' | 'sistema') => {
+  const celula = (m: ReturnType<Vm['mesesDoBanco']>[number], lado: 'banco' | 'sistema', n: number) => {
     const info = lado === 'banco' ? m.ladoExtrato : m.ladoRazao;
-    const doDrive = lado === 'banco' && info.doDrive.length > 0;
     const trava = travado || m.semMovimento;
-    return (
-      // a caixa toda do mês abre o mês (os ícones dentro dela fazem o deles)
-      <span key={m.mes} className={'imp-mes-celula' + (m.mes === competencia ? ' atual' : '') + (m.semMovimento ? ' sem-mov' : '')}
-        onClick={() => onMes(m.mes)} title={'Abrir ' + m.rotulo}>
-        <span className="imp-mes-nome">{m.rotulo}</span>
-        <span className="imp-mes-icones">
-        {m.semMovimento ? (
-          <button type="button" className="imp-mes-sem" disabled={travado || !naTarefa} onClick={() => onSemMovimento(m.mes, false)} title="Não teve movimento — clique para desfazer">s/ mov.</button>
-        ) : info.lendo ? (
-          <span className="icon-btn icon-btn-sm imp-btn"><span className="btn-spinner" /></span>
-        ) : doDrive ? (
-          <BotaoDoDrive arquivos={info.doDrive} travado={trava} rotulo={'de ' + m.rotulo} onExcluir={() => onExcluir(lado, m.mes)} onVer={onVer} />
-        ) : (
-          <>
-            <BotaoLado lado={info} titulo={(lado === 'banco' ? 'Extrato' : 'Razão') + ' de ' + m.rotulo} aceitar={lado === 'banco' ? aceitarExtrato : aceitarRazao} travado={trava}
-              onArquivos={fs => onArquivos(lado, fs)} onExcluir={() => onExcluir(lado, m.mes)} />
-            {lado === 'banco' && !info.qtdArquivos && (
-              <>
-                <button type="button" className="icon-btn icon-btn-sm imp-btn imp-drive" disabled={trava} title={'Buscar no Drive o extrato de ' + m.rotulo}
-                  aria-label={'Buscar no Drive o extrato de ' + m.rotulo} onClick={() => onDrive(m.mes)}><LogoDrive /></button>
-                {naTarefa && <button type="button" className="imp-mes-sem-btn" disabled={trava} onClick={() => onSemMovimento(m.mes, true)} title={'Não teve movimento em ' + m.rotulo}>s/ mov.</button>}
-              </>
-            )}
-          </>
-        )}
-        </span>
-      </span>
-    );
+    if (m.semMovimento) return <button type="button" className="imp-mes-sem" disabled={travado || !naTarefa} onClick={() => onSemMovimento(m.mes, false)} title="Não teve movimento — clique para desfazer">s/ mov.</button>;
+    if (info.lendo) return <span className="icon-btn icon-btn-sm imp-btn"><span className="btn-spinner" /></span>;
+    if (lado === 'banco' && info.doDrive.length) return <BotaoDoDrive arquivos={info.doDrive} travado={trava} rotulo={'de ' + m.rotulo} onExcluir={() => onExcluir(lado, m.mes)} onVer={onVer} />;
+    if (lado === 'banco' && !info.qtdArquivos) {
+      return <FaltaExtratoDoMes rotulo={m.rotulo} aceitar={aceitarExtrato} travado={trava} naTarefa={naTarefa} direita={n >= meses.length / 2}
+        onArquivos={fs => onArquivos(lado, fs)} onDrive={() => onDrive(m.mes)} onSemMovimento={() => onSemMovimento(m.mes, true)} />;
+    }
+    return <BotaoLado lado={info} titulo={(lado === 'banco' ? 'Extrato' : 'Razão') + ' de ' + m.rotulo} aceitar={lado === 'banco' ? aceitarExtrato : aceitarRazao} travado={trava}
+      onArquivos={fs => onArquivos(lado, fs)} onExcluir={() => onExcluir(lado, m.mes)} />;
   };
   return (
     <div className="imp-periodo-linha">
-      <div className="imp-periodo-lado">
-        <span className="imp-rotulo">Extrato</span>
-        <span className="imp-mes-celulas" style={{ gridTemplateColumns: 'repeat(' + meses.length + ', minmax(0, 1fr))' }}>{meses.map(m => mes(m, 'banco'))}</span>
-      </div>
-      <div className="imp-periodo-lado">
-        <span className="imp-rotulo">Razão</span>
-        <span className="imp-mes-celulas" style={{ gridTemplateColumns: 'repeat(' + meses.length + ', minmax(0, 1fr))' }}>{meses.map(m => mes(m, 'sistema'))}</span>
-      </div>
+      <table className="imp-meses">
+        <thead>
+          <tr>
+            <th scope="col"><span className="sr-only">Mês</span></th>
+            {meses.map(m => (
+              <th key={m.mes} scope="col" className={m.mes === competencia ? 'atual' : undefined}>
+                <button type="button" className="imp-meses-mes" aria-current={m.mes === competencia ? 'true' : undefined} onClick={() => onMes(m.mes)} title={'Abrir ' + m.rotulo}>{m.rotulo}</button>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">Extrato</th>{meses.map((m, n) => <td key={m.mes} className={m.mes === competencia ? 'atual' : undefined}>{celula(m, 'banco', n)}</td>)}</tr>
+          <tr><th scope="row">Razão</th>{meses.map((m, n) => <td key={m.mes} className={m.mes === competencia ? 'atual' : undefined}>{celula(m, 'sistema', n)}</td>)}</tr>
+        </tbody>
+      </table>
     </div>
+  );
+}
+
+/** O extrato que falta num mês: só o ícone de importar; clicou, as opções (do computador, do Drive, sem movimento). */
+function FaltaExtratoDoMes({ rotulo, aceitar, travado, naTarefa, direita, onArquivos, onDrive, onSemMovimento }: {
+  rotulo: string; aceitar: string; travado: boolean; naTarefa: boolean; direita: boolean;
+  onArquivos: (fs: File[]) => void; onDrive: () => void; onSemMovimento: () => void;
+}) {
+  const arquivo = useRef<HTMLInputElement>(null);
+  if (travado) return <span className="icon-btn icon-btn-sm imp-btn is-locked" aria-disabled="true" title={'Extrato de ' + rotulo}><Icone nome="upload" /></span>;
+  return (
+    <>
+      <MenuSuspenso rotulo="" icone="upload" className="gh-topo-btn gh-topo-menu imp-mes-menu" direita={direita} dica={'Importar o extrato de ' + rotulo}
+        conteudo={fechar => (
+          <>
+            <button type="button" className="popover-item" role="menuitem" onClick={() => { fechar(); arquivo.current?.click(); }}>
+              <Icone nome="upload" /><span className="popover-texto">Importar do computador</span>
+            </button>
+            <button type="button" className="popover-item" role="menuitem" onClick={() => { fechar(); onDrive(); }}>
+              <LogoDrive cor /><span className="popover-texto">Buscar no Drive</span>
+            </button>
+            {naTarefa && (
+              <button type="button" className="popover-item" role="menuitem" onClick={() => { fechar(); onSemMovimento(); }}>
+                <Icone nome="x" /><span className="popover-texto">Não teve movimento</span>
+              </button>
+            )}
+          </>
+        )} />
+      <input ref={arquivo} type="file" multiple accept={aceitar} className="sr-only" tabIndex={-1} aria-hidden="true"
+        onChange={ev => { const fs = Array.from(ev.target.files || []); ev.target.value = ''; onArquivos(fs); }} />
+    </>
   );
 }
 
@@ -653,8 +673,9 @@ export function TarefaExtratos() {
                         : <BotaoLado lado={b.razao} titulo="Razão" aceitar={cxRazao.aceitar} travado={travado}
                           onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }} onExcluir={() => { void vm.excluirDoBanco(b.id, 'sistema'); }} />}
                     </div>
-                    <button type="button" className="badge badge-conferido imp-conferido" onClick={() => explicarCheque(b, situacao)}
-                      title="Bate com o razão, mas fecha negativo em algum dia: falta o cheque especial. Clique para ver.">Conferido</button>
+                    {/* bate, mas falta o cheque especial: o botão principal (Vitor, 02/10/2026: no lugar do "Conferido" clicável) */}
+                    <button type="button" className="btn btn-primary" onClick={() => explicarCheque(b, situacao)}
+                      title="Bate com o razão, mas fecha negativo em algum dia: falta o cheque especial. Clique para ver.">Cheque especial</button>
                   </div>
                 ) : vm.periodo.length > 1 ? (
                   // vários meses: os botões de um mês ficam embaixo (por mês); aqui, o de todos de uma vez.

@@ -139,9 +139,6 @@ export function Executor() {
         </div>
       ) : (
         <div className="executor-area">
-          {vm.interrompidaAntes && (
-            <p className="hint">Parada antes por {vm.interrompidaAntes.por}: {vm.etapa.objecoes.find(o => o.id === vm.interrompidaAntes?.objecao)?.texto || vm.interrompidaAntes.observacao || 'outro motivo'}.</p>
-          )}
           <div className="executor-ferramenta">
             {/* a ferramenta carregando: o N no meio, sobre um vidro embaçado (em vez da área vazia) */}
             {vm.ferramenta?.embutir && ferramentaAbrindo && <AberturaN vidro />}

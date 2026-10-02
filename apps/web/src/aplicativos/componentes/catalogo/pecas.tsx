@@ -7,6 +7,7 @@ import {
 import { useState, type ReactNode } from 'react';
 import { CONCILIA, EXECUTOR, EXTRATUDO, TAREFAS, TODAS } from './telas';
 import type { Peca } from './tipos';
+import { BotaoGoogle } from '../../../comum/BotaoGoogle';
 
 const nada = () => undefined;
 
@@ -166,13 +167,14 @@ export const PECAS_BASE: Peca[] = [
       <button className="icon-btn icon-btn-sm imp-btn imp-feito imp-feito-drive" type="button"><span className="imp-feito-ok"><LogoDrive cor /></span><Icone nome="x" className="imp-feito-x" /></button>
       <span className="icon-btn icon-btn-sm imp-btn"><span className="btn-spinner" /></span>
     </> },
-  { id: 'botao-google', tipo: 'botoes', nome: 'Entrar com o Google', classes: ['botao-google'], telas: ['e-importacao', 't-drive'], demo: () => <button type="button" className="btn botao-google">Entrar com o Google</button> },
+  { id: 'botao-google', tipo: 'botoes', nome: 'Entrar com o Google', componente: 'BotaoGoogle', classes: ['btn btn-outline botao-google'], telas: ['e-importacao', 't-drive'],
+    uso: '<BotaoGoogle entrando={x} onClick={entrar} />', demo: () => <><BotaoGoogle onClick={() => undefined} /><BotaoGoogle entrando onClick={() => undefined} /></> },
 
   // ─── Selos ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'badge-ok', tipo: 'selos', nome: 'Ok', descricao: 'Verde: bateu (entra com mola)', classes: ['badge badge-ok'], telas: ['c-relatorio', 'e-importacao', 't-exec-importacao', 't-exec-cheque', 't-exec-fiscal'],
     uso: '<span className="badge badge-ok">Ok</span>', demo: () => <span className="badge badge-ok">Ok</span>, aoVivo: undefined },
-  { id: 'badge-conferido', tipo: 'selos', nome: 'Conferido', descricao: 'Cheio, laranja: conferido à mão, ou o banco que bate mas falta o cheque especial (clica)', classes: ['badge badge-conferido'], telas: ['c-relatorio', 'e-importacao', 't-exec-importacao', 't-exec-cheque'],
-    demo: () => <><span className="badge badge-conferido">Conferido</span><button type="button" className="badge badge-conferido imp-conferido">Conferido</button></> },
+  { id: 'badge-conferido', tipo: 'selos', nome: 'Conferido', descricao: 'Cheio: conferido à mão (o banco que bate mas falta o cheque especial agora é o botão principal "Cheque especial")', classes: ['badge badge-conferido'], telas: ['c-relatorio'],
+    demo: () => <span className="badge badge-conferido">Conferido</span> },
   { id: 'badge-bad', tipo: 'selos', nome: 'Diferença', descricao: 'Laranja com borda: o valor da diferença', classes: ['badge badge-bad'], telas: ['c-relatorio'], demo: () => <><span className="badge badge-bad">89.967,19</span><span className="badge badge-bad">-295,00</span></> },
   { id: 'badge-neutral', tipo: 'selos', nome: 'Neutro', classes: ['badge badge-neutral'], telas: ['c-relatorio', 't-exec-folha'], demo: () => <><span className="badge badge-neutral">0,00</span><span className="badge badge-neutral">Configure em Cadastro › Configurações</span><span className="badge badge-neutral">Lote não soma</span></> },
   { id: 'badge-warn', tipo: 'selos', nome: 'Atenção', classes: ['badge badge-warn'], telas: ['t-gmail'], demo: () => <span className="badge badge-warn">Pendente</span> },
@@ -314,12 +316,25 @@ export const PECAS_BASE: Peca[] = [
   { id: 'abas-menu', tipo: 'abas', nome: 'Abas sublinhadas', classes: ['menu', 'menu-item', 'menu-contador'], telas: TODAS, largo: true,
     demo: () => <nav className="menu">{([['Bancos', 'landmark', true], ['Balancete', 'scale'], ['Entradas', 'arrowDown'], ['Saídas', 'arrowUp'], ['Tomados', 'fileDown']] as [string, NomeIcone, boolean?][]).map(([r, i, a]) => <button key={r} type="button" className={'menu-item' + (a ? ' active' : '')}><Icone nome={i} /><span>{r}</span></button>)}</nav> },
   { id: 'segmentado', tipo: 'abas', nome: 'Segmentado', componente: 'Segmentado', classes: ['steps', 'step-pill'], telas: ['c-relatorio', 'c-cadastro', 'c-consulta'], demo: () => <SegmentadoVivo /> },
-  { id: 'imp-meses', tipo: 'abas', nome: 'Meses do período (Em lote)', classes: ['imp-mes-celula', 'atual', 'sem-mov'], telas: ['e-importacao', 't-exec-importacao'], largo: true,
-    demo: () => (
-      <span className="imp-mes-celulas" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', width: '100%' }}>
-        {['01/2026', '02/2026', '03/2026', '04/2026'].map((m, i) => <span key={m} className={'imp-mes-celula' + (i === 0 ? ' atual' : '')}><span className="imp-mes-nome">{m}</span><span className="imp-mes-icones"><button className="icon-btn icon-btn-sm imp-btn imp-feito" type="button"><Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" /></button></span></span>)}
-      </span>
-    ) },
+  { id: 'imp-meses', tipo: 'abas', nome: 'Meses do período (Em lote)', descricao: 'Uma tabela: meses em cima (clicar abre), Extrato e Razão nas linhas, um ícone por mês', classes: ['imp-meses', 'imp-meses-mes', 'atual', 'imp-mes-sem'], telas: ['e-importacao', 't-exec-importacao'], largo: true,
+    demo: () => {
+      const ok = <button className="icon-btn icon-btn-sm imp-btn imp-feito" type="button"><Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" /></button>;
+      const drive = <button className="icon-btn icon-btn-sm imp-btn imp-feito imp-feito-drive" type="button"><span className="imp-feito-ok"><LogoDrive cor /></span><Icone nome="x" className="imp-feito-x" /></button>;
+      const falta = <button className="gh-topo-btn gh-topo-menu imp-mes-menu" type="button" title="Importar o extrato"><Icone nome="upload" /><Icone nome="caretDown" className="menu-seta" /></button>;
+      const razao = <button className="icon-btn icon-btn-sm imp-btn" type="button" title="Importar o razão"><Icone nome="upload" /></button>;
+      const meses = ['01/2026', '02/2026', '03/2026', '04/2026'];
+      return (
+        <div className="imp-periodo-linha" style={{ width: '100%', padding: 0, border: 'none' }}>
+          <table className="imp-meses">
+            <thead><tr><th scope="col" />{meses.map((m, i) => <th key={m} scope="col" className={i === 0 ? 'atual' : undefined}><button type="button" className="imp-meses-mes">{m}</button></th>)}</tr></thead>
+            <tbody>
+              <tr><th scope="row">Extrato</th><td className="atual">{drive}</td><td>{ok}</td><td>{falta}</td><td><button type="button" className="imp-mes-sem">s/ mov.</button></td></tr>
+              <tr><th scope="row">Razão</th><td className="atual">{ok}</td><td>{ok}</td><td>{razao}</td><td><button type="button" className="imp-mes-sem">s/ mov.</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      );
+    } },
   { id: 'faixas', tipo: 'abas', nome: 'Faixas que abrem (Lançamentos / Pendências)', classes: ['imp-faixa', 'imp-faixa-barra', 'imp-faixa-qtd', 'imp-faixa aviso'], telas: ['e-importacao', 't-exec-importacao'], largo: true,
     demo: () => <div className="cat-moldura"><div className="imp-faixa"><button className="imp-faixa-barra" type="button"><Icone nome="caretDown" className="imp-faixa-seta" /><b>Lançamentos</b><span className="imp-faixa-qtd">131</span></button></div><div className="imp-faixa aviso"><button className="imp-faixa-barra" type="button"><Icone nome="caretDown" className="imp-faixa-seta" /><b>Pendências</b><span className="imp-faixa-qtd">4</span></button></div></div> },
   { id: 'trilha', tipo: 'abas', nome: 'Trilha (onde estou)', classes: ['gh-crumbs', 'gh-crumb', 'gh-sep'], telas: TODAS,
