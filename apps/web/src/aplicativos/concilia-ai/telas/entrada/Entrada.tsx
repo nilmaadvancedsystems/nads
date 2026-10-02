@@ -10,7 +10,7 @@ export function Entrada() {
       rodape={vm.exemplos && (
         <p className="hint" style={{ textAlign: 'center', marginTop: 8 }}>
           Dados de exemplo (901, 902, 903) · nada é gravado em banco ·{' '}
-          <button type="button" className="link-btn" onClick={vm.restaurarExemplos}>restaurar exemplos</button>
+          <button type="button" className="btn" onClick={vm.restaurarExemplos}>Restaurar exemplos</button>
         </p>
       )} />
   );

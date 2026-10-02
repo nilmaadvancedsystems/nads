@@ -1,16 +1,18 @@
 // View da casca da empresa aberta (usa a Casca do design e o ViewModel useCascaConciliaAi).
 import { Casca } from '@nads/ui';
 import type { ReactNode } from 'react';
-import { LugarDasAcoes } from '../../../comum/topo';
+import { LugarDasAcoes, useTrilhaDoTopo } from '../../../comum/topo';
 import { useCascaConciliaAi } from './useCascaConciliaAi';
 
 export function CascaConciliaAi({ children }: { children: ReactNode }) {
   const vm = useCascaConciliaAi();
+  const trilha = useTrilhaDoTopo();
   return (
     <Casca
       sistema="Concilia aí"
       empresa={vm.empresa}
       versao={vm.versao}
+      trilha={trilha}
       secoes={vm.secoes}
       paginas={vm.paginas}
       titulo={vm.titulo}

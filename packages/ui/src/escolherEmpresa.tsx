@@ -61,7 +61,7 @@ export function EscolherEmpresa<T extends EmpresaNaLista>(p: PropsEscolherEmpres
         {p.rodape}
         {p.onAplicativos && (
           <p className="hint" style={{ textAlign: 'center', marginTop: 8 }}>
-            <button type="button" className="link-btn" onClick={p.onAplicativos}>← Outros aplicativos</button>
+            <button type="button" className="btn" onClick={p.onAplicativos}>Outros aplicativos</button>
           </p>
         )}
       </div>

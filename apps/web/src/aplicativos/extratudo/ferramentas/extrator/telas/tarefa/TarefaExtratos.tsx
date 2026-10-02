@@ -324,15 +324,46 @@ function RemoverTodos({ titulo, travado, onRemover }: { titulo: string; travado:
   );
 }
 
-/** "Importar Todos" (vários meses): vários arquivos de uma vez; cada lançamento cai no seu mês. */
+/**
+ * Importar o razão de todos os meses (vários meses): só o ícone (Vitor, 02/10/2026). Clicou, escolhe os arquivos (normalmente
+ * o razão do período inteiro, de uma vez); o sistema vê de que mês é cada lançamento, e os meses que não vieram ficam
+ * vazios embaixo, para importar um a um.
+ */
 function ImportarTodos({ titulo, aceitar, travado, onArquivos, restantes }: { titulo: string; aceitar: string; travado: boolean; onArquivos: (fs: File[]) => void; restantes?: boolean }) {
   const id = useId();
   return (
     <>
-      <label htmlFor={id} className={'btn btn-outline imp-todos' + (travado ? ' is-locked' : '')} title={(restantes ? 'Importar ' + titulo + ' dos meses que faltam' : 'Importar ' + titulo + ' de todos os meses de uma vez') + ' (cada lançamento cai no seu mês)'}>
-        <Icone nome="upload" />{restantes ? 'Adicionar restantes' : 'Importar Todos'}
+      <label htmlFor={id} className={'icon-btn' + (travado ? ' is-locked' : '')} title={(restantes ? 'Importar ' + titulo + ' dos meses que faltam' : 'Importar ' + titulo + ' de todos os meses de uma vez') + ' (cada lançamento cai no seu mês)'}
+        aria-label={restantes ? 'Importar ' + titulo + ' dos meses que faltam' : 'Importar ' + titulo + ' de todos os meses'}>
+        <Icone nome="upload" />
       </label>
       <input id={id} type="file" multiple accept={aceitar} className="sr-only" disabled={travado}
+        onChange={ev => { const fs = Array.from(ev.target.files || []); ev.target.value = ''; onArquivos(fs); }} />
+    </>
+  );
+}
+
+/**
+ * Importar o extrato de todos os meses (vários meses): só o ícone, e ao clicar as duas opções (Vitor, 02/10/2026):
+ * do computador (vários arquivos; cada lançamento cai no seu mês) ou do Drive (os meses que faltam).
+ */
+function ImportarExtratoTodos({ aceitar, travado, restantes, onArquivos, onDrive }: { aceitar: string; travado: boolean; restantes: boolean; onArquivos: (fs: File[]) => void; onDrive: () => void }) {
+  const arquivo = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <MenuSuspenso rotulo="" icone="upload" className="gh-topo-btn gh-topo-menu" direita
+        dica={restantes ? 'Importar o extrato dos meses que faltam' : 'Importar o extrato de todos os meses'}
+        conteudo={fechar => (
+          <>
+            <button type="button" className="popover-item" role="menuitem" disabled={travado} onClick={() => { fechar(); arquivo.current?.click(); }}>
+              <Icone nome="upload" /><span className="popover-texto">{restantes ? 'Importar os restantes do computador' : 'Importar do computador'}</span>
+            </button>
+            <button type="button" className="popover-item" role="menuitem" disabled={travado} onClick={() => { fechar(); onDrive(); }}>
+              <LogoDrive cor /><span className="popover-texto">{restantes ? 'Adicionar restantes do Drive' : 'Todos pelo Drive'}</span>
+            </button>
+          </>
+        )} />
+      <input ref={arquivo} type="file" multiple accept={aceitar} className="sr-only" disabled={travado} tabIndex={-1} aria-hidden="true"
         onChange={ev => { const fs = Array.from(ev.target.files || []); ev.target.value = ''; onArquivos(fs); }} />
     </>
   );
@@ -628,24 +659,24 @@ export function TarefaExtratos() {
                 ) : vm.periodo.length > 1 ? (
                   // vários meses: os botões de um mês ficam embaixo (por mês); aqui, o de todos de uma vez.
                   // Todos os meses importados (à mão ou pelo Drive; sem movimento conta): vira "Remover todos".
-                  // Faltando algum mês (mesmo com os outros do Drive): "Importar Todos" (à mão) e "Todos pelo Drive"; com uns
-                  // importados e outros não, os dois viram "Adicionar restantes" (à mão e pelo Drive).
+                  // Faltando algum mês: no extrato, só o ícone de importar (abre: do computador ou do Drive); no razão, só o
+                  // ícone (abre a escolha dos arquivos).
                   <div className="imp-grupos">
                     <div className="imp-grupo" aria-label="Extrato do banco (todos os meses)">
                       <span className="imp-rotulo">Extrato</span>
                       {lote.extratoCompleto ? (
                         <RemoverTodos titulo="o extrato" travado={ocupadoGeral} onRemover={() => { void vm.excluirDoPeriodo(b.id, 'banco', lote.comExtrato); }} />
                       ) : (
-                        <>
-                          <ImportarTodos titulo="o extrato" restantes={lote.comExtrato.length > 0} aceitar={cxExtrato.aceitar} travado={ocupadoGeral} onArquivos={fs => { void vm.importarArquivos(b.id, 'banco', fs); }} />
-                          {/* buscando: o próprio botão vira "Cancelar" (para depois do mês que está baixando); o resto fica travado */}
-                          <button type="button" className={'btn btn-outline imp-todos' + (buscando ? ' imp-cancelar' : '')}
-                            disabled={buscando ? d.cancelando : ocupadoGeral}
-                            title={buscando ? 'Cancelar: para depois do mês que está baixando (os meses que já vieram ficam)' : 'Buscar no Drive, na pasta da empresa, o extrato de cada mês que falta e importar'}
-                            onClick={() => (buscando ? d.cancelar() : d.buscarNoPeriodo(b, lote.faltamExtrato))}>
-                            {buscando ? <><span className="btn-spinner" />{d.cancelando ? 'Cancelando…' : 'Cancelar'}</> : <><LogoDrive cor />{lote.comExtrato.length > 0 ? 'Adicionar restantes' : 'Todos pelo Drive'}</>}
+                        // buscando no Drive: no lugar do ícone, o "Cancelar" (para depois do mês que está baixando)
+                        buscando ? (
+                          <button type="button" className="btn btn-outline imp-todos imp-cancelar" disabled={d.cancelando}
+                            title="Cancelar: para depois do mês que está baixando (os meses que já vieram ficam)" onClick={() => d.cancelar()}>
+                            <span className="btn-spinner" />{d.cancelando ? 'Cancelando…' : 'Cancelar'}
                           </button>
-                        </>
+                        ) : (
+                          <ImportarExtratoTodos restantes={lote.comExtrato.length > 0} aceitar={cxExtrato.aceitar} travado={ocupadoGeral}
+                            onArquivos={fs => { void vm.importarArquivos(b.id, 'banco', fs); }} onDrive={() => d.buscarNoPeriodo(b, lote.faltamExtrato)} />
+                        )
                       )}
                     </div>
                     <div className="imp-grupo" aria-label="Razão da conta (todos os meses)">

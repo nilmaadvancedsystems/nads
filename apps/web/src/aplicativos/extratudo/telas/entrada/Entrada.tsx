@@ -10,7 +10,7 @@ export function Entrada() {
       rodape={
         <p className="hint" style={{ textAlign: 'center', marginTop: 8 }}>
           {vm.exemplos ? <>Dados de exemplo (901, 902, 903) · nada é gravado em banco ·{' '}
-            <button type="button" className="link-btn" onClick={vm.restaurarExemplos}>restaurar exemplos</button></>
+            <button type="button" className="btn" onClick={vm.restaurarExemplos}>Restaurar exemplos</button></>
             : 'Os PDFs não são guardados: só os lançamentos lidos deles, na nuvem.'}
         </p>
       } />

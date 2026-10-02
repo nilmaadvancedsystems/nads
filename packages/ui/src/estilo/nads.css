@@ -130,6 +130,7 @@ a{color:var(--accent);}
   border-radius:6px;font-size:14px;font-weight:400;color:var(--ink);cursor:pointer;text-align:left;
 }
 .popover-item svg{width:16px;height:16px;flex:none;color:var(--ink-muted);}
+.popover-item .logo-img{width:16px;height:16px;flex:none;object-fit:contain;}
 .popover-item:hover{background:var(--hover-bg);}
 .popover-item.perigo,.popover-item.perigo svg{color:var(--destructive);}
 .popover-item.perigo:hover{background:var(--destructive-soft);}
@@ -311,7 +312,6 @@ input[type="checkbox"]:checked::after{
 .btn-spinner{display:inline-block;width:16px;height:16px;flex:none;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .6s linear infinite;}
 /* pequeno: só dentro de linhas e caixas (tabela, cartão, janelinha); ação da página usa o padrão */
 .btn-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:16px;flex-wrap:wrap;}
-#btVoltarMov{margin-bottom:12px !important;padding-left:8px !important;}
 
 /* ---------------------------------- tabelas ---------------------------------- */
 .table-wrap{border:1px solid var(--border);border-radius:6px;overflow:auto;max-height:440px;background:var(--surface);}
@@ -727,10 +727,6 @@ input[type="checkbox"].chk-auto:hover{box-shadow:none;}
 /* conferido à mão (Naturezas) numa conta que ainda tem diferença com o balancete */
 .badge-conferido{background:var(--danger);border-color:var(--danger);color:#FFFFFF;font-weight:600;cursor:help;}
 
-/* ação em texto (sem cara de botão), como os links do GitHub */
-.link-btn{appearance:none;border:none;background:none;padding:4px 6px;margin:0;font:inherit;font-size:14px;font-weight:500;
-  color:var(--accent);cursor:pointer;border-radius:6px;}
-.link-btn:hover{text-decoration:underline;}
 .modal-actions{flex-wrap:wrap;}
 
 /* ---------------------------------- Importação › Períodos ---------------------------------- */
@@ -1271,8 +1267,6 @@ td.fraco{color:var(--ink-muted);}
 /* ---------------------------------- Tarefas: página da empresa ---------------------------------- */
 tr.linha-abre:hover{background:var(--surface-3);}
 tr.linha-atual > td{background:var(--hover-bg);}
-.empresa-voltar{display:inline-flex;align-items:center;gap:6px;margin-bottom:12px;color:var(--ink-muted);}
-.empresa-voltar svg{width:14px;height:14px;}
 .empresa-cabeca{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px;}
 .empresa-quem{display:flex;align-items:baseline;gap:10px;min-width:0;}
 .empresa-quem h2{font-size:20px;font-weight:600;line-height:1.3;}

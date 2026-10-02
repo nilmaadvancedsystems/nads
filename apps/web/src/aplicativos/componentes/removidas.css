@@ -9,3 +9,7 @@
 .cat-removida .gh-topo-btn{border-color:var(--border);background:transparent;box-shadow:none;}
 .cat-removida .gh-topo-btn:not(.gh-topo-menu):not(.gh-topo-forte):not(.gh-topo-proximo) svg{opacity:.4;}
 .cat-removida .gh-topo-proximo{background:var(--btn-primary);border-color:transparent;color:#FFFFFF;}
+/* BT-09 Ação em texto (saiu em 02/10/2026) */
+.cat-removida .link-btn{appearance:none;border:none;background:none;padding:4px 6px;margin:0;font:inherit;font-size:14px;font-weight:500;
+  color:var(--accent);cursor:pointer;border-radius:6px;}
+.cat-removida .link-btn:hover{text-decoration:underline;}

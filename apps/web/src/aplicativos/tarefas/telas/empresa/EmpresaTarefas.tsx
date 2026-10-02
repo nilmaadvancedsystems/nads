@@ -1,9 +1,10 @@
-// A página de uma empresa na Tarefas (os insights dela). Em cima: voltar, a bolinha e o nome, a
+// A página de uma empresa na Tarefas (os insights dela). Voltar é pela trilha da barra de cima. Em cima: a bolinha e o nome, a
 // competência e o botão para abrir o executor; os números da competência; as etapas com quem fez,
 // quando e por que parou; o histórico dos últimos meses (clicar abre aquele mês); e os arquivos que o
 // Extrator tem da empresa.
 import { Esqueleto, Icone, MenuSuspenso, useCarregando } from '@nads/ui';
 import { Navigate } from 'react-router';
+import { TrilhaDoTopo } from '../../../../comum/topo';
 import { BASE } from '../../casca/navegacao';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { useEmpresa } from './useEmpresa';
@@ -16,9 +17,8 @@ export function EmpresaTarefas({ rota }: { rota: string }) {
 
   return (
     <section className="empresa-tarefas">
-      <button type="button" className="link-btn empresa-voltar" onClick={vm.voltar}>
-        <Icone nome="arrowDown" style={{ transform: 'rotate(90deg)' }} />Minhas empresas
-      </button>
+      {/* voltar é pela barra de cima: Tarefas / Vitor / Minhas empresas / 292 · … */}
+      <TrilhaDoTopo itens={[{ rotulo: 'Minhas empresas', titulo: 'Voltar para Minhas empresas', onClick: vm.voltar }, { rotulo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome }]} />
 
       <div className="empresa-cabeca">
         <div className="empresa-quem">

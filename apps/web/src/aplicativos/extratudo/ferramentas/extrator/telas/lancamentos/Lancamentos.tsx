@@ -13,7 +13,7 @@ export function Lancamentos() {
           <div className="gh-blank">
             <Icone nome="list" />
             <h4>{vm.lado === 'banco' ? 'Nenhum extrato importado' : 'Nenhum lançamento do sistema importado'}</h4>
-            <p><button type="button" className="link-btn" onClick={vm.importar}>Ir para a importação</button></p>
+            <p><button type="button" className="btn" onClick={vm.importar}>Ir para a importação</button></p>
           </div>
         ) : (
           <>

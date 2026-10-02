@@ -44,7 +44,7 @@ export function Consulta() {
                 <span>até</span>
                 <CampoData id={'fAte-' + g} valor={vm.rascunho.ate} onMudar={vm.setAte} rotulo="Data final" onEnter={vm.pesquisar} />
                 <button type="button" className="btn" onClick={vm.pesquisar}>Filtrar</button>
-                {vm.temPeriodo && <button type="button" className="link-btn" onClick={vm.limparPeriodo}>Limpar</button>}
+                {vm.temPeriodo && <button type="button" className="btn" onClick={vm.limparPeriodo}>Limpar</button>}
               </div>
             </div>
             <p className="cons-resumo">
