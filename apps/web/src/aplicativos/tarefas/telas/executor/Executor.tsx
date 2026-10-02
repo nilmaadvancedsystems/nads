@@ -45,7 +45,9 @@ export function Executor() {
   // um aplicativo inteiro dentro da etapa (a Conferência) manda as abas dele: elas ficam no cabeçalho, por cima do checklist
   const { altura, carregando: ferramentaCarregando, abas, abrirAba } = useFerramentaNaEtapa(iframe, vm.ferramenta?.embutir ? vm.ferramenta.url : undefined);
   // uma barra só, no alto da página: a da Tarefas e a da ferramenta juntas
-  useCarregando(vm.carregando || vm.conferindo || ferramentaCarregando);
+  // a etapa da folha esperando o balancete: a mesma barra do topo
+  const folhaCarregando = !!vm.etapa?.checklistDaFolha && folha.itens === null;
+  useCarregando(vm.carregando || vm.conferindo || ferramentaCarregando || folhaCarregando);
   // os botões da etapa só com a tela pronta (a Tarefas e a ferramenta carregadas); o avançar, se a ferramenta tem
   // requisitos, só depois que ela disser o que falta (antes disso ele apareceria liberado)
   const telaPronta = !vm.carregando && !ferramentaCarregando;
@@ -147,6 +149,9 @@ export function Executor() {
                 <p>Esta etapa abre em outra aba.</p>
                 <a className="btn btn-primary" href={vm.ferramenta.url} target="_blank" rel="noreferrer">Abrir {vm.ferramenta.nome}</a>
               </div>
+            ) : vm.etapa.checklistDaFolha && !folha.itens ? (
+              // o balancete ainda carregando: o N sobre o vidro (nada de texto no lugar)
+              <AberturaN vidro />
             ) : vm.etapa.checklistDaFolha && folha.itens ? (
               // a Contabilização da Folha: o checklist pelo balancete (só o que a empresa tem), marcando ao fazer e conferir
               <div className="card folha-check">

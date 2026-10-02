@@ -64,11 +64,6 @@ export const ROTINA_CONTABIL: Rotina = {
       ferramenta: null,
       verificacao: 'manual',
       checklistDaFolha: true,
-      conferir: [
-        'A folha do mês está liberada pelo DP.',
-        'Importe a folha no Alterdata: salários, pró-labore, férias, rescisões, INSS, FGTS e IRRF.',
-        'Rescisão no mês: a multa do FGTS (GRRF) também.',
-      ],
       objecoes: [SEM_FUNCIONARIOS],
     },
 
