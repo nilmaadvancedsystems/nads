@@ -473,7 +473,7 @@ hr{border:0;border-top:1px solid var(--border);margin:24px 0;}
 
 /* ---------------------------------- Dialog / Toast ---------------------------------- */
 .modal-overlay{position:fixed;inset:0;background:#1F232866;display:flex;align-items:center;justify-content:center;padding:16px;
-  z-index:70;}
+  z-index:70;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
 :root[data-theme="dark"] .modal-overlay{background:#01040999;}
 .modal{background:var(--surface);border-radius:12px;box-shadow:var(--shadow-lg);max-width:448px;width:100%;padding:0;overflow:hidden;
 }
@@ -1498,7 +1498,13 @@ label.btn.is-locked{opacity:.5;pointer-events:none;}
 html.na-etapa{overflow:hidden;}
 html.na-etapa body,html.na-etapa #app{min-height:0;}
 html.na-etapa #app.embutida .content{padding-bottom:80px;}
-html.na-etapa .modal-overlay{top:var(--vista-topo,0px);bottom:auto;height:var(--vista-altura,100vh);}
+html.na-etapa .modal-overlay,html.na-etapa .cad-janela-fundo{top:var(--vista-topo,0px);bottom:auto;height:var(--vista-altura,100vh);}
+/* a janela centraliza na tela inteira (a Tarefas conta o deslocamento: --vista-dx e --vista-dy), não só no pedaço da ferramenta */
+html.na-etapa .modal-overlay,html.na-etapa .cad-janela-fundo{
+  padding-left:max(16px, calc(16px + 2 * var(--vista-dx,0px)));padding-right:max(16px, calc(16px - 2 * var(--vista-dx,0px)));
+  padding-top:max(16px, calc(16px + 2 * var(--vista-dy,0px)));padding-bottom:max(16px, calc(16px - 2 * var(--vista-dy,0px)));}
+/* na Tarefas, com uma janela aberta na ferramenta: o cabeçalho e a lateral embaçam e escurecem como o fundo da janela */
+html.fundo-embacado .gh-header,html.fundo-embacado .subnav,html.fundo-embacado .layout-caixa > .caixa-menu{filter:blur(6px) brightness(.55);pointer-events:none;transition:filter .2s ease;}
 html.na-etapa .toast-region{bottom:auto;top:calc(var(--vista-topo,0px) + var(--vista-altura,100vh) - 16px);transform:translateY(-100%);}
 html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 /* o resumo no meio da linha (entre o nome do banco e o Extrato): uma parte embaixo da outra, alinhadas à esquerda */
@@ -1676,7 +1682,7 @@ td.cad-acoes .menu-seta{display:none;}
 .pedir-resumo b{font-weight:600;}
 .pedir-resumo-whats{display:inline-flex;align-items:center;gap:6px;}
 /* Cadastro: a janela flutuante de uma empresa, por cima da lista (abas na lateral) */
-.cad-janela-fundo{position:fixed;inset:0;z-index:60;background:#1F232866;display:flex;align-items:center;justify-content:center;padding:24px;}
+.cad-janela-fundo{position:fixed;inset:0;z-index:60;background:#1F232866;display:flex;align-items:center;justify-content:center;padding:24px;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
 :root[data-theme="dark"] .cad-janela-fundo{background:#01040999;}
 .cad-janela{background:var(--bg, var(--surface));border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-lg);
   width:min(1180px,100%);height:min(820px,100%);display:flex;flex-direction:column;overflow:hidden;}
@@ -2178,7 +2184,8 @@ main.main:has(> .content > .explorador){padding:0;}
 /* o vidro tem cara de vidro mesmo quando atrás não tem nada ainda (a ferramenta acabou de começar a carregar e a área
    está vazia): duas luzes difusas, a vermelha e a prata do N, passeiam devagar por trás de um vidro fosco com um
    reflexo na diagonal e uma borda clara em cima; o que já houver atrás aparece embaçado */
-.abertura.vidro{position:absolute;z-index:5;min-height:calc(100vh - var(--hdr-h,64px) - 16px);overflow:hidden;border-radius:8px;
+/* a abertura com o N cobre a tela inteira, por cima do cabeçalho e da lateral (Vitor, 02/10/2026) */
+.abertura.vidro{position:fixed;inset:0;z-index:200;min-height:0;overflow:hidden;border-radius:0;
   background:
     linear-gradient(120deg, transparent 25%, color-mix(in srgb, #FFFFFF 7%, transparent) 45%, transparent 65%),
     color-mix(in srgb, var(--bg) 45%, transparent);
@@ -2237,7 +2244,7 @@ html[data-theme="light"] .abertura.vidro::after{background:radial-gradient(circl
 .previa-anim-jeito.on{border-color:var(--accent);background:var(--accent-soft);}
 .previa-anim-botoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;}
 .previa-anim-pagina{position:relative;padding:20px;display:flex;flex-direction:column;gap:12px;}
-.previa-anim-pagina > .abertura.vidro{inset:0;min-height:0;border-radius:6px;}
+.previa-anim-pagina > .abertura.vidro{position:absolute;z-index:5;inset:0;min-height:0;border-radius:6px;}
 .previa-anim-logo{padding:20px;display:flex;flex-direction:column;gap:4px;}
 .previa-anim-logo h3{margin:0;}
 .previa-anim-logo .previa-anim-botoes{margin-top:12px;}

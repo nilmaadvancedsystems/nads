@@ -64,20 +64,32 @@ export function useAlturaNaEtapa(ativo: boolean) {
     // uma janela ou um menu aberto aqui dentro: a Tarefas esconde os botões soltos da etapa, que ficariam por cima
     let janela: boolean | null = null;
     const olharJanela = () => {
-      const agora = !!document.querySelector('.modal-overlay, .popover');
+      const agora = !!document.querySelector('.modal-overlay:not([data-fantasma]), .popover:not([data-fantasma])');
       if (agora === janela) return;
       janela = agora;
       window.parent.postMessage({ nads: 'janela', aberta: agora }, pai);
     };
-    const obsJanela = new MutationObserver(olharJanela);
+    // uma janela (popup) aberta aqui dentro: a Tarefas embaça o cabeçalho e a lateral dela (o fundo inteiro embaçado)
+    let fundo: boolean | null = null;
+    const olharFundo = () => {
+      const agora = !!document.querySelector('.modal-overlay:not([data-fantasma]), .cad-janela-fundo:not([data-fantasma])');
+      if (agora === fundo) return;
+      fundo = agora;
+      window.parent.postMessage({ nads: 'fundo', aberto: agora }, pai);
+    };
+    const obsJanela = new MutationObserver(() => { olharJanela(); olharFundo(); });
     obsJanela.observe(document.body, { childList: true, subtree: true });
     olharJanela();
+    olharFundo();
     const ouvir = (e: MessageEvent) => {
       if (e.source !== window.parent || e.origin !== pai) return;
-      const d = e.data as { nads?: string; topo?: unknown; altura?: unknown } | null;
+      const d = e.data as { nads?: string; topo?: unknown; altura?: unknown; dx?: unknown; dy?: unknown } | null;
       if (d?.nads !== 'vista' || typeof d.topo !== 'number' || typeof d.altura !== 'number') return;
       html.style.setProperty('--vista-topo', d.topo + 'px');
       html.style.setProperty('--vista-altura', d.altura + 'px');
+      // quanto o centro da tela inteira está deslocado do centro do pedaço visível (as janelas centralizam na tela toda)
+      html.style.setProperty('--vista-dx', (typeof d.dx === 'number' ? d.dx : 0) + 'px');
+      html.style.setProperty('--vista-dy', (typeof d.dy === 'number' ? d.dy : 0) + 'px');
     };
     window.addEventListener('message', ouvir);
     return () => {
@@ -98,14 +110,20 @@ export function useFerramentaNaEtapa(iframe: RefObject<HTMLIFrameElement | null>
   const [altura, setAltura] = useState<number | null>(null);
   const [carregando, setCarregando] = useState(!!chave);
   const [janelaAberta, setJanelaAberta] = useState(false);
+  // uma janela (popup) aberta na ferramenta: o resto da tela embaça
+  const [fundoAberto, setFundoAberto] = useState(false);
+  // a ferramenta abrindo (do clique até ela terminar de carregar pela primeira vez): a abertura com o N na tela toda
+  const [abrindo, setAbrindo] = useState(!!chave);
   const [abas, setAbas] = useState<AbaDaEtapa[]>([]);
   useEffect(() => {
     setAbas([]);
     setAltura(null);
     setCarregando(!!chave);
+    setAbrindo(!!chave);
     setJanelaAberta(false);
+    setFundoAberto(false);
     let disse = false;
-    const limite = setTimeout(() => { if (!disse) setCarregando(false); }, 10000);
+    const limite = setTimeout(() => { if (!disse) setCarregando(false); setAbrindo(false); }, 10000);
     let quadro = 0;
     const mandarVista = () => {
       cancelAnimationFrame(quadro);
@@ -115,14 +133,18 @@ export function useFerramentaNaEtapa(iframe: RefObject<HTMLIFrameElement | null>
         const r = f.getBoundingClientRect();
         const topo = Math.max(0, -r.top);
         const alturaVista = Math.max(0, Math.min(r.bottom, window.innerHeight) - Math.max(r.top, 0));
-        f.contentWindow.postMessage({ nads: 'vista', topo, altura: alturaVista }, new URL(f.src, window.location.href).origin);
+        // o centro da tela inteira, visto de dentro do pedaço visível da ferramenta
+        const dx = Math.round(window.innerWidth / 2 - r.left - r.width / 2);
+        const dy = Math.round(window.innerHeight / 2 - Math.max(r.top, 0) - alturaVista / 2);
+        f.contentWindow.postMessage({ nads: 'vista', topo, altura: alturaVista, dx, dy }, new URL(f.src, window.location.href).origin);
       });
     };
     const ouvir = (e: MessageEvent) => {
       if (!iframe.current || e.source !== iframe.current.contentWindow || !origemConfiavel(e.origin)) return;
       const d = e.data as { nads?: string; px?: unknown; ativo?: unknown } | null;
       if (d?.nads === 'altura' && typeof d.px === 'number' && d.px > 0) { setAltura(d.px); mandarVista(); }
-      if (d?.nads === 'carregando' && typeof d.ativo === 'boolean') { disse = true; setCarregando(d.ativo); }
+      if (d?.nads === 'carregando' && typeof d.ativo === 'boolean') { disse = true; setCarregando(d.ativo); if (!d.ativo) setAbrindo(false); }
+      if (d?.nads === 'fundo' && typeof (d as { aberto?: unknown }).aberto === 'boolean') { setFundoAberto(!!(d as { aberto?: boolean }).aberto); mandarVista(); }
       if (d?.nads === 'janela' && typeof (d as { aberta?: unknown }).aberta === 'boolean') setJanelaAberta(!!(d as { aberta?: boolean }).aberta);
       const lista = (d as { abas?: unknown } | null)?.abas;
       if (d?.nads === 'abas' && Array.isArray(lista)) setAbas(lista.filter(ehAba).slice(0, 20).map(a => ({ id: a.id, rotulo: a.rotulo, icone: a.icone, ativa: !!a.ativa, travada: !!a.travada })));
@@ -130,7 +152,11 @@ export function useFerramentaNaEtapa(iframe: RefObject<HTMLIFrameElement | null>
     window.addEventListener('message', ouvir);
     window.addEventListener('scroll', mandarVista, { passive: true });
     window.addEventListener('resize', mandarVista);
+    // a lateral recolhendo muda o lugar da ferramenta sem mudar a janela
+    const obsLugar = typeof ResizeObserver === 'function' && iframe.current ? new ResizeObserver(mandarVista) : null;
+    if (obsLugar && iframe.current) obsLugar.observe(iframe.current);
     return () => {
+      obsLugar?.disconnect();
       clearTimeout(limite);
       cancelAnimationFrame(quadro);
       window.removeEventListener('message', ouvir);
@@ -144,5 +170,5 @@ export function useFerramentaNaEtapa(iframe: RefObject<HTMLIFrameElement | null>
     if (!f?.contentWindow) return;
     f.contentWindow.postMessage({ nads: 'aba', id }, new URL(f.src, window.location.href).origin);
   }, [iframe]);
-  return { altura, carregando, janelaAberta, abas, abrirAba };
+  return { altura, carregando, abrindo, janelaAberta, fundoAberto, abas, abrirAba };
 }

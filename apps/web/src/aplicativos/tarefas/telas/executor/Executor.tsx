@@ -6,7 +6,7 @@
 // ? (o que falta) ou → Próximo, e o perfil.
 import type { tarefas } from '@nads/core';
 import { AberturaN, Alerta, Casca, Icone, MenuSuspenso, useCarregando, useFerramentaNaEtapa, type ItemMenu, type NomeIcone } from '@nads/ui';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Navigate, useBlocker, useParams } from 'react-router';
 import { usePonteDaFerramenta } from '../../../../comum/ponte';
 import { BASE } from '../../casca/navegacao';
@@ -43,7 +43,7 @@ export function Executor() {
   const faltam = vm.etapa?.checklistDaFolha ? (folha.faltam && folha.faltam.length ? folha.faltam : null) : faltamFerramenta;
   // a ferramenta do tamanho do conteúdo dela: a página toda rola junto, numa barra só
   // um aplicativo inteiro dentro da etapa (a Conferência) manda as abas dele: elas ficam no cabeçalho, por cima do checklist
-  const { altura, carregando: ferramentaCarregando, abas, abrirAba } = useFerramentaNaEtapa(iframe, vm.ferramenta?.embutir ? vm.ferramenta.url : undefined);
+  const { altura, carregando: ferramentaCarregando, abrindo: ferramentaAbrindo, fundoAberto, abas, abrirAba } = useFerramentaNaEtapa(iframe, vm.ferramenta?.embutir ? vm.ferramenta.url : undefined);
   // uma barra só, no alto da página: a da Tarefas e a da ferramenta juntas
   // a etapa da folha esperando o balancete: a mesma barra do topo
   const folhaCarregando = !!vm.etapa?.checklistDaFolha && folha.itens === null;
@@ -51,6 +51,11 @@ export function Executor() {
   // os botões da etapa só com a tela pronta (a Tarefas e a ferramenta carregadas); o avançar, se a ferramenta tem
   // requisitos, só depois que ela disser o que falta (antes disso ele apareceria liberado)
   const telaPronta = !vm.carregando && !ferramentaCarregando;
+  // uma janela (popup) aberta na ferramenta: o cabeçalho e a lateral embaçam também (o fundo da tela inteira)
+  useEffect(() => {
+    document.documentElement.classList.toggle('fundo-embacado', fundoAberto);
+    return () => document.documentElement.classList.remove('fundo-embacado');
+  }, [fundoAberto]);
   const requisitosConhecidos = vm.etapa?.checklistDaFolha ? folha.faltam !== null : !vm.ferramenta?.requisitos || requisitos?.url === urlDaFerramenta;
   // sair da execução por qualquer lugar do app (o cabeçalho, o menu, o voltar do navegador) com a etapa aberta:
   // é interromper, com a justificativa; trocar de mês ou período dentro do executor não conta
@@ -139,7 +144,7 @@ export function Executor() {
           )}
           <div className="executor-ferramenta">
             {/* a ferramenta carregando: o N no meio, sobre um vidro embaçado (em vez da área vazia) */}
-            {vm.ferramenta?.embutir && ferramentaCarregando && <AberturaN vidro />}
+            {vm.ferramenta?.embutir && ferramentaAbrindo && <AberturaN vidro />}
             {vm.ferramenta?.embutir ? (
               <iframe ref={iframe} key={vm.ferramenta.url} src={vm.ferramenta.url} title={vm.ferramenta.nome} style={altura ? { height: altura } : undefined} />
             ) : vm.ferramenta ? (
