@@ -2502,3 +2502,5 @@ tr.linha-abre,.imp-linha,.gh-crumb,.drawer-x{
 .nads-destaque{border-radius:8px;animation:destaquePulso 1.4s ease-in-out 3 !important;}
 tr.nads-destaque{animation:none !important;}
 tr.nads-destaque > td{animation:destaquePulsoLinha 1.4s ease-in-out 3 !important;}
+.rotina-lote-periodo{white-space:nowrap;}
+.rotina-lote-nota{margin:0;padding:4px 16px 10px;font-size:12px;}

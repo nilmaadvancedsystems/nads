@@ -1,12 +1,12 @@
 // O menu do canto do executor com abas, como o "Code ▾" do GitHub (Vitor, 02/10/2026): Tarefas (os grupos da rotina:
 // o da vez marcado, os da frente travados) e, quando está em lote, Em lote (o período e as configurações da função:
-// alterar — só na Importação — e cancelar, em vermelho).
+// alterar e cancelar — só na Importação; cancelar em vermelho).
 import { Icone, type ItemMenu } from '@nads/ui';
 import { useState } from 'react';
 
 export function MenuDaRotina({ grupos, emLote, fechar }: {
   grupos: ItemMenu[];
-  emLote: { rotulo: string; onAlterar: (() => void) | null; onCancelar: () => void } | null;
+  emLote: { rotulo: string; onAlterar: (() => void) | null; onCancelar: (() => void) | null } | null;
   fechar: () => void;
 }) {
   const [aba, setAba] = useState<'tarefas' | 'lote'>('tarefas');
@@ -35,10 +35,14 @@ export function MenuDaRotina({ grupos, emLote, fechar }: {
               <Icone nome="settings" /><span className="popover-texto">Alterar o período</span>
             </button>
           )}
-          <hr className="popover-sep" />
-          <button type="button" className="popover-item perigo" role="menuitem" onClick={() => { fechar(); emLote.onCancelar(); }}>
-            <Icone nome="x" /><span className="popover-texto">Cancelar o Em lote</span>
-          </button>
+          {emLote.onCancelar ? (
+            <>
+              <hr className="popover-sep" />
+              <button type="button" className="popover-item perigo" role="menuitem" onClick={() => { fechar(); emLote.onCancelar?.(); }}>
+                <Icone nome="x" /><span className="popover-texto">Cancelar o Em lote</span>
+              </button>
+            </>
+          ) : <p className="hint rotina-lote-nota">Alterar e cancelar só na Importação.</p>}
         </div>
       )}
     </div>

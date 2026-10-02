@@ -108,7 +108,8 @@ export function Executor() {
     rotulo: vm.rotuloCompetencia + ' · ' + vm.meses.length + ' meses',
     onAlterar: vm.etapa?.id === 'extratos' ? () => alterarLote.perguntar('', vm.empresa ? (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome : '', vm.meses[0],
       { ate: vm.meses[vm.meses.length - 1], titulo: 'Alterar o Em lote', botao: 'Alterar', aoEscolher: vm.trocarCompetencia }) : null,
-    onCancelar: vm.encerrarPeriodo,
+    // cancelar só na Importação (Vitor, 02/10/2026: "proibido cancelar o Em lote depois de passar da Importação")
+    onCancelar: vm.etapa?.id === 'extratos' ? vm.encerrarPeriodo : null,
   } : null;
   const botoesDaEtapa = vm.etapa && telaPronta && !vm.interrompendo && saida.state !== 'blocked';
 
@@ -117,7 +118,7 @@ export function Executor() {
       <nav className="gh-topo-acoes" aria-label="Etapa">
         {vm.grupos.length > 0 && (
           <MenuSuspenso rotulo="" icone={grupoDaVez ? ICONE_DO_GRUPO[grupoDaVez.nome] || 'list' : 'checkCircle'} className="gh-topo-btn gh-topo-menu"
-            dica={grupoDaVez ? grupoDaVez.nome + ' · ' + grupoDaVez.feitas + '/' + grupoDaVez.total : 'Grupos da rotina'} direita largura={260} conteudo={fechar => <MenuDaRotina grupos={itensDosGrupos} emLote={emLote} fechar={fechar} />} />
+            dica={grupoDaVez ? grupoDaVez.nome + ' · ' + grupoDaVez.feitas + '/' + grupoDaVez.total : 'Grupos da rotina'} direita largura={300} conteudo={fechar => <MenuDaRotina grupos={itensDosGrupos} emLote={emLote} fechar={fechar} />} />
         )}
         {botoesDaEtapa && faltam && (
           // o sino com o número de pendências: abre a lista suspensa (como o Code ▾ do GitHub), cada uma com o Resolver

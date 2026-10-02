@@ -287,6 +287,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     /** Encerra os vários meses (só com todos concluídos): tira a promessa de cada mês e volta ao último mês. */
     encerrarPeriodo: () => {
       if (!varios || !empresa) return;
+      // proibido cancelar depois de passar da Importação (Vitor, 02/10/2026); com tudo concluído, o lote só se encerra
+      if (!concluido && etapa && etapa.id !== 'extratos') { toast('O Em lote só pode ser cancelado na Importação.'); return; }
       if (!concluido && !CANCELAR_LOTE_A_QUALQUER_HORA) { toast('Para cancelar a função, os ' + meses.length + ' meses precisam estar 100% concluídos.'); return; }
       for (const c of meses) {
         if (!exDe[c]?.periodo) continue;
