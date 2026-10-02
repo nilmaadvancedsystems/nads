@@ -1170,7 +1170,7 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 .folha-check-lista{list-style:none;margin:0;padding:0;}
 .folha-check-lista li + li{border-top:1px solid var(--border-muted);}
 .folha-check-lista label{display:flex;align-items:flex-start;gap:12px;padding:10px 4px;cursor:pointer;}
-.folha-check-lista input{margin-top:3px;width:16px;height:16px;accent-color:var(--success);flex:none;}
+.folha-check-lista input{margin:1px 0 0;flex:none;}
 .folha-check-texto{display:flex;flex-direction:column;gap:2px;min-width:0;}
 .folha-check-texto .hint{margin:0;overflow-wrap:anywhere;}
 .folha-check-lista li.feito b{text-decoration:line-through;color:var(--ink-muted);}
