@@ -157,9 +157,10 @@ export function Executor() {
                 {folha.itens.length ? (
                   <ul className="folha-check-lista">
                     {folha.itens.map(i => (
-                      <li key={i.id} className={i.marcado ? 'feito' : undefined}>
+                      <li key={i.id} className={(i.marcado ? 'feito' : '') + (i.liberado ? '' : ' travado')}>
                         <label>
-                          <input type="checkbox" checked={i.marcado} onChange={() => folha.alternar(i.id)} />
+                          <input type="checkbox" checked={i.marcado} disabled={!i.liberado} onChange={() => folha.alternar(i.id)}
+                            title={i.liberado ? undefined : i.marcado ? 'Desmarque antes os de baixo' : 'Conclua o item de cima primeiro'} />
                           <span className="folha-check-texto">
                             <b>{i.nome}</b>
                             <span className="hint">{i.contas.join(' · ')}</span>

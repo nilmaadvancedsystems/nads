@@ -1174,6 +1174,9 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 .folha-check-texto{display:flex;flex-direction:column;gap:2px;min-width:0;}
 .folha-check-texto .hint{margin:0;overflow-wrap:anywhere;}
 .folha-check-lista li.feito b{text-decoration:line-through;color:var(--ink-muted);}
+/* em ordem: o que ainda não está liberado fica escuro e não clica */
+.folha-check-lista li.travado:not(.feito){opacity:.35;}
+.folha-check-lista li.travado label{cursor:not-allowed;}
 /* o checklist da tarefa: as etapas da frente (ainda não feitas) mais apagadas */
 .subnav-item.apagada:not(.active){opacity:.45;}
 .subnav-item.apagada:not(.active):hover{opacity:.75;}
