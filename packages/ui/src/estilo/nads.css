@@ -2413,3 +2413,45 @@ tr.nads-destaque > td{background:var(--warn-soft);}
 .falta-tabela{margin-top:12px;text-align:left;max-height:50vh;}
 .falta-tabela td{vertical-align:middle;}
 .falta-tabela td.num{width:1%;white-space:nowrap;}
+
+/* ---------------------------------- A Minha página (a página pessoal da Tarefas) ----------------------------------
+   O desenho das Configurações do Entregas: cartões com cabeçalho e uma opção por linha (o rótulo e a explicação à
+   esquerda, o controle à direita); a caixa de entrada numa lista, um item por linha, com as ações no canto */
+.pessoal{max-width:880px;}
+.pessoal-cartao{padding-bottom:0;}
+.pessoal-linha{display:flex;align-items:center;gap:16px;padding:12px 0;border-top:1px solid var(--border);}
+.pessoal-cartao .card-head + .pessoal-linha{border-top:none;padding-top:0;}
+.pessoal-linha-texto{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.pessoal-linha-texto b{font-size:14px;font-weight:600;}
+.pessoal-linha-texto .fraco{font-size:13px;color:var(--ink-muted);}
+.pessoal-linha-controle{flex:none;display:flex;align-items:center;gap:8px;font-size:14px;text-align:right;max-width:55%;}
+.pessoal-linha-controle .theme-toggle{margin:0;}
+.pessoal-select{height:32px;padding:0 10px;border:1px solid var(--btn-border);border-radius:6px;background:var(--btn-bg);color:var(--ink);font:inherit;font-size:14px;}
+.pessoal-perfil{display:flex;align-items:center;gap:16px;}
+.pessoal-perfil h2{margin:0;font-size:20px;}
+.pessoal-perfil .fraco{margin:2px 0 0;color:var(--ink-muted);}
+.pessoal-foto{width:64px;height:64px;border-radius:50%;flex:none;object-fit:cover;border:1px solid var(--border);}
+.pessoal-iniciais{display:inline-flex;align-items:center;justify-content:center;background:var(--surface-3);font-size:22px;font-weight:600;color:var(--ink);}
+.pessoal-filtros{margin-top:0;}
+.pessoal-caixa{list-style:none;margin:0;padding:0;}
+.pessoal-item{display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid var(--border);}
+.pessoal-item:first-child{border-top:none;}
+.pessoal-item-icone{flex:none;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:var(--surface-3);}
+.pessoal-item-icone svg{width:16px;height:16px;color:var(--ink-muted);}
+.pessoal-item.tom-acao .pessoal-item-icone{background:var(--accent-soft);}
+.pessoal-item.tom-acao .pessoal-item-icone svg{color:var(--accent);}
+.pessoal-item.tom-ok .pessoal-item-icone svg{color:var(--success);}
+.pessoal-item.tom-aviso .pessoal-item-icone svg{color:var(--warn);}
+.pessoal-item-texto{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.pessoal-item-texto b{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pessoal-item-texto .fraco{font-size:13px;color:var(--ink-muted);}
+.pessoal-item-quando{flex:none;font-size:12px;color:var(--ink-muted);white-space:nowrap;}
+.pessoal-item-acoes{flex:none;display:flex;gap:6px;}
+.badge-pendente{color:var(--warn);border-color:var(--warn);background:none;}
+.gh-avatar.ativo{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);}
+@media (max-width:640px){
+  .pessoal-linha{flex-direction:column;align-items:flex-start;}
+  .pessoal-linha-controle{max-width:none;text-align:left;}
+  .pessoal-item{flex-wrap:wrap;}
+  .pessoal-item-acoes{width:100%;justify-content:flex-end;}
+}

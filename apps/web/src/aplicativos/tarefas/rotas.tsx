@@ -8,10 +8,16 @@ import { AppTarefas } from './AppTarefas';
 import { AplicacaoAberta } from './casca/AplicacaoAberta';
 import { CadastroAberto, CadastroAntigo } from './casca/CadastroAberto';
 import { EmpresaAberta } from './casca/EmpresaAberta';
-import { BASE, caminhoDaPagina } from './casca/navegacao';
+import { BASE, caminhoDoInicio } from './casca/navegacao';
+import { useOperador, type Operador } from './casca/operador';
 import { Executor } from './telas/executor/Executor';
 import { PreviaAbertura } from './telas/previa/PreviaAbertura';
 import { PreviaAnimacoes } from './telas/previa/PreviaAnimacoes';
+
+function Inicio() {
+  const op = useOperador().operador as Operador;
+  return <Navigate to={caminhoDoInicio(op)} replace />;
+}
 
 export const rotasTarefas: RouteObject[] = [
   // a prévia da abertura (a animação da logo), sem login
@@ -21,7 +27,8 @@ export const rotasTarefas: RouteObject[] = [
     path: BASE,
     element: <AppTarefas />,
     children: [
-      { index: true, element: <Navigate to={caminhoDaPagina('minhas-empresas', 'empresas')} replace /> },
+      // onde a Tarefas abre: a pessoa escolhe na Minha página › Aparência e telas (padrão: Minhas empresas)
+      { index: true, element: <Inicio /> },
       { path: 'executar/:empresa/:competencia', element: <Executor /> },
       { path: 'minhas-empresas/empresa/:empresa', element: <EmpresaAberta /> },
       // a lista e a janela usam o mesmo componente: a lista (e a busca dela) fica montada atrás da janela
