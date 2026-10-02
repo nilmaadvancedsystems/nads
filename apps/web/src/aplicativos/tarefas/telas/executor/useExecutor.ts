@@ -128,15 +128,27 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const rotuloCurto = (c: string) => t.rotuloCurtoCompetencia(c);
 
   /** Confere e marca a etapa em cada mês que falta (no período, todos de uma vez); o que não passou vira aviso. */
-  async function proximo() {
+  /**
+   * semCheque: a Importação disse que nenhum banco fecha negativo — o Cheque especial nem aparece: fica dispensado
+   * junto (Vitor, 02/10/2026: "se não tiver saldo negativo, nem coloque essa tarefa").
+   */
+  async function proximo(semCheque = false) {
     if (!ex || !etapa || conferindo) return;
+    const pulaCheque = semCheque && etapa.id === 'extratos';
+    /** grava a etapa feita e, sem dia negativo, o Cheque especial dispensado em cima dela (a mesma execução) */
+    const gravarFeita = (ev: ReturnType<typeof t.fazer>) => {
+      repo.gravar(ev.execucao, ev.evento);
+      if (!pulaCheque) return;
+      const d = t.dispensar(ev.execucao, 'cheque-especial', 'sem-saldo-negativo', '', op.nome, new Date());
+      repo.gravar(d.execucao, d.evento);
+    };
     setConferindo(true);
     try {
       if (!CONFERIR_NO_PROXIMO) {
         // liberado: marca feita em cada mês que falta, sem conferir
         for (const c of alvos) {
           const fz = t.fazer(exDe[c], etapa.id, op.nome, new Date());
-          repo.gravar(fz.execucao, fz.evento);
+          gravarFeita(fz);
         }
         setAviso(null);
         toast(etapa.nome + ': feita' + (varios ? ' em ' + alvos.map(rotuloCurto).join(', ') : '') + '.');
@@ -165,7 +177,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
           continue;
         }
         const fz = t.fazer(exc, etapa.id, op.nome, new Date());
-        repo.gravar(fz.execucao, fz.evento);
+        gravarFeita(fz);
         feitos.push(c);
       }
       setAviso(falhas.length ? falhas.join(' · ') : null);
@@ -235,7 +247,9 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       const parada = meses.some(c => t.situacaoDa(exDe[c] || null, e.id) === 'interrompida');
       // o grupo na barra lateral (Preparação, Ativo, Passivo…): a mesma seção, o mesmo número
       const grupo = secoes.indexOf(e.secao || '');
-      return { id: e.id, n: i + 1, nome: e.nome, secao: e.secao, grupo, situacao: feitos === meses.length && meses.length ? 'feita' as const : parada ? 'interrompida' as const : 'pendente' as const, feitos, atual: e.id === etapa?.id };
+      // o Cheque especial dispensado por não ter dia negativo: some da lista
+      const oculta = e.id === 'cheque-especial' && meses.length > 0 && meses.every(c => exDe[c]?.etapas[e.id]?.objecao === 'sem-saldo-negativo');
+      return { id: e.id, n: i + 1, nome: e.nome, secao: e.secao, grupo, oculta, situacao: feitos === meses.length && meses.length ? 'feita' as const : parada ? 'interrompida' as const : 'pendente' as const, feitos, atual: e.id === etapa?.id };
     }),
     etapa, n: etapa ? rotina.etapas.findIndex(e => e.id === etapa.id) + 1 : 0, total: rotina.etapas.length,
     interrompidaAntes: etapa && ex ? t.estadoDa(ex, etapa.id)?.situacao === 'interrompida' ? t.estadoDa(ex, etapa.id) : null : null,
@@ -248,6 +262,14 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     aviso, conferindo, proximo,
     voltarPara: (id: string) => { void voltarPara(id); },
     resolver,
+    /** o Cheque especial aberto, mas sem nenhum dia negativo: dispensa e segue (Vitor, 02/10/2026) */
+    dispensarSemCheque: () => {
+      if (!etapa || etapa.id !== 'cheque-especial') return;
+      for (const c of alvos) {
+        const d = t.dispensar(exDe[c], etapa.id, 'sem-saldo-negativo', '', op.nome, new Date());
+        repo.gravar(d.execucao, d.evento);
+      }
+    },
     interrompendo, abrirInterromper: () => setInterrompendo(true), fecharInterromper: () => setInterrompendo(false), interromper,
     sair: voltar,
     /** Os bancos sem movimento de cada mês (a ferramenta da etapa mostra a linha marcada no mês que estiver aberto). */

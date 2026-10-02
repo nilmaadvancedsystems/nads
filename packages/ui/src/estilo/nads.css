@@ -2492,3 +2492,6 @@ tr.nads-destaque > td{background:var(--warn-soft);}
 .rotina-menu .comp-abas{margin-bottom:4px;}
 .rotina-lote-periodo{display:flex;align-items:center;gap:8px;margin:0;padding:8px 16px 10px;font-size:13px;font-weight:600;color:var(--ink);}
 .rotina-lote-periodo svg{width:16px;height:16px;color:var(--ink-muted);}
+/* o X do executor (interromper): o último botão do cabeçalho, em vermelho */
+.gh-topo-btn.gh-topo-fechar{color:var(--danger);border-color:color-mix(in srgb, var(--danger) 40%, var(--btn-border));}
+.gh-topo-btn.gh-topo-fechar:hover:not(:disabled){background:var(--danger);border-color:var(--danger);color:#FFFFFF;}

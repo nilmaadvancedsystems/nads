@@ -552,12 +552,17 @@ export function TarefaExtratos() {
   const mesesDaEtapa = vm.periodo.length > 1 ? vm.periodo : [vm.competencia];
   const semMovimentoNoPeriodo = (banco: string) => mesesDaEtapa.every(m => (vm.periodo.length > 1 ? ponte.semMovimentoPorMes[m] || [] : ponte.semMovimento).includes(banco));
   const diasSemCheque = (banco: string) => { const t = situacoes[banco]; return t && t.tipo === 'falta-cheque' ? t.faltam.length : 0; };
+  // algum banco fecha negativo no período: a etapa Cheque especial aparece; sem nenhum, a Tarefas a pula (Vitor, 02/10/2026)
+  const diasNegativosAgora = vm.bancos.reduce((n, b) => { const st = situacoes[b.id]; return n + (st && st.tipo !== 'pendente' ? st.negativos.length : 0); }, 0);
+  // só dá para dizer "não precisa" com todos os bancos conferidos (ou sem movimento); antes disso, não diz nada
+  const chequeConhecido = vm.bancos.every(b => semMovimentoNoPeriodo(b.id) || (situacoes[b.id] && situacoes[b.id].tipo !== 'pendente'));
+  const precisaChequeEspecial = chequeConhecido ? diasNegativosAgora > 0 : undefined;
   // na etapa Cheque especial: todo banco Ok (o cheque dos dias negativos no razão); na Importação, "falta o cheque" passa
   useRequisitosParaATarefa(!ponte.naTarefa ? null : vm.etapaCheque
-    ? x.requisitosDoChequeEspecial(vm.bancos.map(b => ({ id: b.id, nome: b.nome, ok: !!bancosOk[b.id], semMovimento: semMovimentoNoPeriodo(b.id), diasSemCheque: diasSemCheque(b.id) })))
-    : importados ? x.requisitosDaImportacao(vm.bancos.map(b => ({
+    ? { precisaChequeEspecial, ...x.requisitosDoChequeEspecial(vm.bancos.map(b => ({ id: b.id, nome: b.nome, ok: !!bancosOk[b.id], semMovimento: semMovimentoNoPeriodo(b.id), diasSemCheque: diasSemCheque(b.id) }))) }
+    : importados ? { ...x.requisitosDaImportacao(vm.bancos.map(b => ({
       id: b.id, nome: b.nome, ok: !!bancosOk[b.id], faltaCheque: diasSemCheque(b.id) > 0, semMovimento: semMovimentoNoPeriodo(b.id),
-    })), importados, vm.prestaServico) : null);
+    })), importados, vm.prestaServico), precisaChequeEspecial } : null);
   const bancosSemCheque = vm.bancos.filter(b => diasSemCheque(b.id) > 0);
   // os dias que fecham negativos (somando os bancos), para o aviso da etapa Cheque especial
   const diasNegativosNoPeriodo = vm.bancos.reduce((t, b) => { const x = situacoes[b.id]; return t + (x && x.tipo !== 'pendente' ? x.negativos.length : 0); }, 0);
@@ -621,7 +626,8 @@ export function TarefaExtratos() {
               { rotulo: 'Apagar os dados de teste', icone: 'x', onClick: vm.apagarDadosDeTeste },
             ]} />
         )}
-        <MenuSuspenso rotulo="Pedir extratos" setaAntes className="btn btn-outline" direita
+        {/* Pedir extratos só na Importação (Vitor, 02/10/2026) */}
+        {!vm.etapaCheque && <MenuSuspenso rotulo="Pedir extratos" setaAntes className="btn btn-outline" direita
           conteudo={fechar => (
             <>
               <button type="button" className="popover-item" role="menuitem" onClick={() => { fechar(); pe.abrir(); }}>
@@ -632,7 +638,7 @@ export function TarefaExtratos() {
                 {pe.pedidos.length > 0 && <span className="popover-dica">{pe.pedidos.length}</span>}
               </button>
             </>
-          )} />
+          )} />}
         {/* "Adicionar banco" saiu daqui (Vitor, 02/10/2026): as contas bancárias se cadastram no Cadastro */}
       </div>
 

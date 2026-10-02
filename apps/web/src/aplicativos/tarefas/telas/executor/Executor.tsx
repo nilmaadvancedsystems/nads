@@ -4,7 +4,6 @@
 // etapa, com a altura toda. No canto direito do cabeçalho, como os botões do GitHub (Vitor, 01/10/2026: os botões do pé
 // atrapalhavam a ferramenta): os grupos da rotina num menu só (como o "+ ▾"), as saídas da etapa (⚠ ▾), ✕ Interromper,
 // ? (o que falta) ou → Próximo, e o perfil.
-import type { tarefas } from '@nads/core';
 import { AberturaN, Alerta, Casca, destacarNaTela, Icone, MenuSuspenso, useCarregando, useFerramentaNaEtapa, type ItemMenu, type NomeIcone } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useBlocker, useParams } from 'react-router';
@@ -20,8 +19,6 @@ import { usePerguntaDoPeriodo } from '../periodo/usePerguntaDoPeriodo';
 import { MenuDaRotina } from './partes/MenuDaRotina';
 
 /** O ícone de cada grupo da rotina, no canto do cabeçalho. */
-/** O ícone de cada saída da etapa (o menu ⚠ do cabeçalho). */
-const ICONE_DA_SAIDA: Record<tarefas.Solucao['tipo'], NomeIcone> = { contato: 'link', drive: 'fileDown', orientacao: 'alert', 'nao-se-aplica': 'checkCircle' };
 
 const ICONE_DO_GRUPO: Record<string, NomeIcone> = {
   'Preparação': 'fileUp', Ativo: 'landmark', Passivo: 'relatorio', Resultado: 'barChart', Fechamento: 'checkCircle',
@@ -37,7 +34,7 @@ export function Executor() {
   // a ferramenta da etapa (iframe): recebe os bancos sem movimento e avisa quando a pessoa marca um
   const iframe = useRef<HTMLIFrameElement>(null);
   // a ferramenta que tem requisitos (a Importação) diz o que falta: o avançar só aparece com tudo pronto
-  const [requisitos, setRequisitos] = useState<{ url: string; pronto: boolean; faltam: string[]; alvos?: (string | null)[] } | null>(null);
+  const [requisitos, setRequisitos] = useState<{ url: string; pronto: boolean; faltam: string[]; alvos?: (string | null)[]; precisaChequeEspecial?: boolean } | null>(null);
   const urlDaFerramenta = vm.ferramenta?.url || '';
   const destacarNaFerramenta = usePonteDaFerramenta(iframe, vm.semMovimentoPorMes, vm.competencia, vm.marcarSemMovimento, vm.trocarCompetencia,
     vm.varios ? { meses: vm.meses, concluido: vm.periodoConcluido } : null, vm.encerrarPeriodo,
@@ -70,6 +67,14 @@ export function Executor() {
     document.documentElement.classList.toggle('fundo-embacado', fundoAberto);
     return () => document.documentElement.classList.remove('fundo-embacado');
   }, [fundoAberto]);
+  // o Cheque especial já aberto sem nenhum dia negativo (a ferramenta conferiu todos os bancos): dispensa e segue
+  const dispensou = useRef('');
+  const chequeDesnecessario = vm.etapa?.id === 'cheque-especial' && requisitos?.url === urlDaFerramenta && requisitos?.precisaChequeEspecial === false;
+  useEffect(() => {
+    if (!chequeDesnecessario || dispensou.current === urlDaFerramenta) return;
+    dispensou.current = urlDaFerramenta;
+    vm.dispensarSemCheque();
+  }, [chequeDesnecessario, urlDaFerramenta, vm]);
   const requisitosConhecidos = vm.etapa?.checklistDaFolha ? folha.faltam !== null : !vm.ferramenta?.requisitos || requisitos?.url === urlDaFerramenta;
   // sair da execução por qualquer lugar do app (o cabeçalho, o menu, o voltar do navegador) com a etapa aberta:
   // é interromper, com a justificativa; trocar de mês ou período dentro do executor não conta
@@ -80,7 +85,9 @@ export function Executor() {
   if (vm.irParaPeriodo) return <Navigate to={vm.irParaPeriodo} replace />;
 
   // o checklist da esquerda: só as etapas do grupo da vez (os outros grupos ficam nos botões do canto); tudo pronto, todas
-  const checklist = vm.etapas.filter(e => !vm.etapa || e.secao === vm.etapa.secao).map(e => ({
+  // sem dia negativo (a Importação disse), o Cheque especial nem aparece; ao seguir, ele fica dispensado (Vitor, 02/10/2026)
+  const semCheque = vm.etapa?.id === 'extratos' && requisitos?.url === urlDaFerramenta && requisitos?.precisaChequeEspecial === false;
+  const checklist = vm.etapas.filter(e => !e.oculta && !(semCheque && e.id === 'cheque-especial')).filter(e => !vm.etapa || e.secao === vm.etapa.secao).map(e => ({
     // em lote é tudo de uma vez (Vitor, 02/10/2026: "não fica 8/9, são os 9"): só o nome da etapa, sem a contagem de meses
     id: e.id, rotulo: e.nome, icone: 'check' as const, grupo: e.grupo, titulo: e.secao, ativa: e.atual,
     caixa: e.situacao === 'feita' ? 'marcada' as const : e.situacao === 'interrompida' ? 'parada' as const : 'vazia' as const,
@@ -103,8 +110,6 @@ export function Executor() {
       { ate: vm.meses[vm.meses.length - 1], titulo: 'Alterar o Em lote', botao: 'Alterar', aoEscolher: vm.trocarCompetencia }) : null,
     onCancelar: vm.encerrarPeriodo,
   } : null;
-  // as saídas da etapa (Pedir extrato, Buscar no Drive, "O Fiscal ainda não fechou as notas"…), num menu
-  const saidas = vm.etapa ? vm.etapa.objecoes.filter(o => !o.soMotivo) : [];
   const botoesDaEtapa = vm.etapa && telaPronta && !vm.interrompendo && saida.state !== 'blocked';
 
   const topo = (
@@ -114,15 +119,6 @@ export function Executor() {
           <MenuSuspenso rotulo="" icone={grupoDaVez ? ICONE_DO_GRUPO[grupoDaVez.nome] || 'list' : 'checkCircle'} className="gh-topo-btn gh-topo-menu"
             dica={grupoDaVez ? grupoDaVez.nome + ' · ' + grupoDaVez.feitas + '/' + grupoDaVez.total : 'Grupos da rotina'} direita largura={260} conteudo={fechar => <MenuDaRotina grupos={itensDosGrupos} emLote={emLote} fechar={fechar} />} />
         )}
-        {botoesDaEtapa && saidas.length > 0 && (
-          <MenuSuspenso rotulo="" icone="alert" className="gh-topo-btn gh-topo-menu" dica="Se não der para concluir" titulo="Se não der para concluir" direita largura={300}
-            itens={saidas.map(o => ({ rotulo: o.solucao.tipo === 'orientacao' ? o.texto : o.solucao.rotulo, icone: ICONE_DA_SAIDA[o.solucao.tipo], onClick: () => vm.resolver(o) }))} />
-        )}
-        {botoesDaEtapa && (
-          <button type="button" className="gh-topo-btn" onClick={vm.abrirInterromper} title="Interromper a etapa" aria-label="Interromper">
-            <Icone nome="x" />
-          </button>
-        )}
         {botoesDaEtapa && faltam && (
           // o sino com o número de pendências: abre a lista suspensa (como o Code ▾ do GitHub), cada uma com o Resolver
           <MenuSuspenso rotulo={<span className="falta-qtd">{itensQueFaltam.length}</span>} icone="sino" className="gh-topo-btn gh-topo-menu falta-btn"
@@ -130,7 +126,7 @@ export function Executor() {
             conteudo={fechar => <ListaDoQueFalta itens={itensQueFaltam} onResolver={resolver} fechar={fechar} />} />
         )}
         {botoesDaEtapa && !faltam && requisitosConhecidos && (
-          <button type="button" className="gh-topo-btn gh-topo-proximo" disabled={vm.conferindo} onClick={() => { void vm.proximo(); }}
+          <button type="button" className="gh-topo-btn gh-topo-proximo" disabled={vm.conferindo} onClick={() => { void vm.proximo(semCheque); }}
             title={vm.conferindo ? 'Conferindo…' : 'Próximo (confere e segue para a próxima etapa)'} aria-label="Próximo">
             {vm.conferindo ? <span className="btn-spinner" /> : <Icone nome="arrowDown" style={{ transform: 'rotate(-90deg)' }} />}
           </button>
@@ -139,6 +135,12 @@ export function Executor() {
       <span className="gh-topo-sep" aria-hidden="true" />
       <MenuSuspenso rotulo={casca.perfil.iniciais} className="gh-avatar" dica={casca.perfil.nome} titulo={casca.perfil.nome} direita
         itens={[{ rotulo: 'Voltar às empresas', icone: 'home', onClick: vm.sair }, { rotulo: casca.perfil.sair, icone: 'logOut', onClick: casca.trocarPessoa }]} />
+      {/* interromper: o último, em vermelho (Vitor, 02/10/2026) */}
+      {botoesDaEtapa && (
+        <button type="button" className="gh-topo-btn gh-topo-fechar" onClick={vm.abrirInterromper} title="Interromper a etapa" aria-label="Interromper">
+          <Icone nome="x" />
+        </button>
+      )}
     </>
   );
 

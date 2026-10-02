@@ -8,14 +8,18 @@ import { origemConfiavel, origemDoPai } from '@nads/ui';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 
 type ParaTarefa = { nads: 'pronta' } | { nads: 'sem-movimento'; banco: string; marcado: boolean; competencia?: string } | { nads: 'competencia'; competencia: string }
-  | { nads: 'encerrar-periodo' } | { nads: 'requisitos'; pronto: boolean; faltam: string[]; alvos?: (string | null)[] };
+  | { nads: 'encerrar-periodo' } | { nads: 'requisitos'; pronto: boolean; faltam: string[]; alvos?: (string | null)[]; precisaChequeEspecial?: boolean };
 /** o estado da etapa: os bancos sem movimento de cada mês (no período, um por mês; num mês só, só ele) */
 type ParaFerramenta = { nads: 'estado-etapa'; porMes: Record<string, string[]>; periodo?: PeriodoDaEtapa | null }
   // o "Resolver" do que falta (Vitor, 02/10/2026): a ferramenta vai até o lugar (o alvo que ela mesma mandou) e destaca
   | { nads: 'destacar'; alvo: string };
 
 /** O que falta para seguir, com o lugar de cada um na ferramenta (null = sem lugar). */
-export interface Requisitos { pronto: boolean; faltam: string[]; alvos?: (string | null)[] }
+export interface Requisitos {
+  pronto: boolean; faltam: string[]; alvos?: (string | null)[];
+  /** a Importação diz se algum banco fecha negativo (false: a Tarefas pula o Cheque especial) */
+  precisaChequeEspecial?: boolean;
+}
 
 /** Vários meses: os meses do período prometido e se todos já estão concluídos (só aí dá para encerrar). */
 export interface PeriodoDaEtapa { meses: string[]; concluido: boolean }
@@ -87,7 +91,7 @@ export function useRequisitosParaATarefa(requisitos: Requisitos | null) {
   const chave = requisitos ? JSON.stringify(requisitos) : '';
   useEffect(() => {
     if (!pai || !requisitos) return;
-    const msg: ParaTarefa = { nads: 'requisitos', pronto: requisitos.pronto, faltam: requisitos.faltam, ...(requisitos.alvos ? { alvos: requisitos.alvos } : {}) };
+    const msg: ParaTarefa = { nads: 'requisitos', pronto: requisitos.pronto, faltam: requisitos.faltam, ...(requisitos.alvos ? { alvos: requisitos.alvos } : {}), ...(typeof requisitos.precisaChequeEspecial === 'boolean' ? { precisaChequeEspecial: requisitos.precisaChequeEspecial } : {}) };
     window.parent.postMessage(msg, pai);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pai, chave]);
@@ -116,7 +120,7 @@ export function usePonteDaFerramenta(iframe: RefObject<HTMLIFrameElement | null>
   useEffect(() => {
     const ouvir = (e: MessageEvent) => {
       if (!iframe.current || e.source !== iframe.current.contentWindow || !origemConfiavel(e.origin)) return;
-      const d = e.data as Partial<{ nads: string; banco: string; marcado: boolean; competencia: string; pronto: boolean; faltam: unknown; alvos: unknown }> | null;
+      const d = e.data as Partial<{ nads: string; banco: string; marcado: boolean; competencia: string; pronto: boolean; faltam: unknown; alvos: unknown; precisaChequeEspecial: unknown }> | null;
       if (d?.nads === 'pronta') mandar();
       if (d?.nads === 'sem-movimento' && typeof d.banco === 'string') aoMarcar.current(d.banco, !!d.marcado, typeof d.competencia === 'string' ? d.competencia : mesPadrao);
       if (d?.nads === 'competencia' && typeof d.competencia === 'string' && COMPETENCIA_OU_PERIODO.test(d.competencia)) aoTrocar.current?.(d.competencia);
@@ -124,7 +128,7 @@ export function usePonteDaFerramenta(iframe: RefObject<HTMLIFrameElement | null>
       if (d?.nads === 'requisitos') {
         const faltam = Array.isArray(d.faltam) ? d.faltam.filter((x): x is string => typeof x === 'string') : [];
         const alvos = Array.isArray(d.alvos) && d.alvos.length === faltam.length ? d.alvos.map(a => (typeof a === 'string' ? a : null)) : undefined;
-        aoRequisitos.current?.({ pronto: !!d.pronto, faltam, alvos });
+        aoRequisitos.current?.({ pronto: !!d.pronto, faltam, alvos, ...(typeof d.precisaChequeEspecial === 'boolean' ? { precisaChequeEspecial: d.precisaChequeEspecial } : {}) });
       }
     };
     window.addEventListener('message', ouvir);
