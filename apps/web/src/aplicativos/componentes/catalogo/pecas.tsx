@@ -270,7 +270,21 @@ export const PECAS_BASE: Peca[] = [
   // ─── Janelas (popups) ───────────────────────────────────────────────────────────────────────────────────────────────
   janela('jn-tudo-certo', 'Tudo certo! (banco Ok / conta sem pendências)', ['e-importacao', 't-exec-importacao', 'c-verificar'], { tom: 'ok', icone: 'checkCircle', titulo: 'Tudo certo!', html: '<b>Sicoob</b> Ag. 3144-5 · C/C 52.166-3', botoes: [{ rotulo: 'Ok', variante: 'btn-primary' }], fecharEm: { ms: 3500, valor: true } }, 'Fecha sozinha em 3,5 s'),
   janela('jn-saldo-negativo', 'Saldo negativo no banco (clique em Cheque especial)', ['e-importacao', 't-exec-importacao', 't-exec-cheque'], { icone: 'alert', titulo: 'Saldo negativo no banco', html: '<b>Sicoob</b> Ag. 3144-5 · C/C 52.166-3<br><br>→ 03/09/2026: <b>-R$ 150,00</b>', botoes: [{ rotulo: 'Fazer Cheque Especial', variante: 'btn-primary' }] }),
-  { id: 'jn-falta', tipo: 'janelas', nome: 'Para seguir, falta (o ? do executor)', descricao: 'Uma tabelinha: cada item com o Resolver, que leva até o problema e o destaca', componente: 'JanelaOQueFalta', classes: ['modal modal-centro falta-janela', 'falta-tabela', 'nads-destaque'], telas: EXECUTOR,
+  { id: 'menu-falta', tipo: 'menus', nome: 'O que falta (o sino do executor)', descricao: 'O sino com o número de pendências; abre suspenso, como o Code ▾ do GitHub, com o Resolver em cada uma', componente: 'MenuSuspenso + ListaDoQueFalta', classes: ['falta-btn', 'falta-qtd', 'falta-pop', 'falta-lista'], telas: EXECUTOR,
+    demo: () => (
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+        <button type="button" className="gh-topo-btn gh-topo-menu falta-btn"><Icone nome="sino" /><span className="falta-qtd">3</span><Icone nome="caretDown" className="menu-seta" /></button>
+        <div className="popover menu-pop cat-parado" style={{ position: 'static', width: 380 }}>
+          <div className="falta-pop">
+            <p className="falta-pop-titulo">Para seguir, falta</p>
+            <ul className="falta-lista">
+              {['Sicoob: extrato e razão batendo', 'Saídas', 'Tomados'].map(t => <li key={t}><span className="falta-texto">{t}</span><button type="button" className="btn">Resolver</button></li>)}
+            </ul>
+          </div>
+        </div>
+      </div>
+    ) },
+  { id: 'jn-falta', removida: { como: 'substituida', por: 'menu-falta', em: '02/10/2026', motivo: 'Não é mais janela: fica suspensa no sino do cabeçalho (com o número de pendências), como o Code ▾ do GitHub.' }, tipo: 'janelas', nome: 'Para seguir, falta (o ? do executor)', descricao: 'Uma tabelinha: cada item com o Resolver, que leva até o problema e o destaca', componente: 'JanelaOQueFalta', classes: ['modal modal-centro falta-janela', 'falta-tabela', 'nads-destaque'], telas: EXECUTOR,
     demo: () => (
       <div className={classeDaJanela({ icone: 'ajuda' }) + ' falta-janela cat-parado'} role="dialog">
         <h3>Para seguir, falta</h3>

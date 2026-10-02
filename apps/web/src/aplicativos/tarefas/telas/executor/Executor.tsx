@@ -14,7 +14,7 @@ import { useCascaTarefas } from '../../casca/useCascaTarefas';
 import { JanelaInterromper } from './partes/JanelaInterromper';
 import { useChecklistDaFolha } from './useChecklistDaFolha';
 import { useExecutor } from './useExecutor';
-import { JanelaOQueFalta, type ItemQueFalta } from './partes/JanelaOQueFalta';
+import { ListaDoQueFalta, type ItemQueFalta } from './partes/OQueFalta';
 
 /** O ícone de cada grupo da rotina, no canto do cabeçalho. */
 /** O ícone de cada saída da etapa (o menu ⚠ do cabeçalho). */
@@ -46,9 +46,7 @@ export function Executor() {
   const itensQueFaltam: ItemQueFalta[] = (faltam || []).map((texto, i) => ({
     texto, alvo: vm.etapa?.checklistDaFolha ? 'folha:' + texto : requisitos?.alvos?.[i] ?? null,
   }));
-  const [vendoFalta, setVendoFalta] = useState(false);
   const resolver = (alvo: string) => {
-    setVendoFalta(false);
     if (alvo.startsWith('folha:')) void destacarNaTela('[data-folha="' + CSS.escape(alvo.slice(6)) + '"]');
     else destacarNaFerramenta(alvo);
   };
@@ -116,9 +114,10 @@ export function Executor() {
           </button>
         )}
         {botoesDaEtapa && faltam && (
-          <button type="button" className="gh-topo-btn" onClick={() => setVendoFalta(true)} title="O que falta para seguir" aria-label="O que falta para seguir">
-            <Icone nome="ajuda" />
-          </button>
+          // o sino com o número de pendências: abre a lista suspensa (como o Code ▾ do GitHub), cada uma com o Resolver
+          <MenuSuspenso rotulo={<span className="falta-qtd">{itensQueFaltam.length}</span>} icone="sino" className="gh-topo-btn gh-topo-menu falta-btn"
+            dica={'Para seguir, falta: ' + itensQueFaltam.length} titulo="Para seguir, falta" direita largura={380}
+            conteudo={fechar => <ListaDoQueFalta itens={itensQueFaltam} onResolver={resolver} fechar={fechar} />} />
         )}
         {botoesDaEtapa && !faltam && requisitosConhecidos && (
           <button type="button" className="gh-topo-btn gh-topo-proximo" disabled={vm.conferindo} onClick={() => { void vm.proximo(); }}
@@ -204,7 +203,6 @@ export function Executor() {
             )}
           </div>
           {vm.aviso && <Alerta titulo="Ainda não dá para seguir" texto={vm.aviso} />}
-          {vendoFalta && itensQueFaltam.length > 0 && <JanelaOQueFalta itens={itensQueFaltam} onResolver={resolver} onFechar={() => setVendoFalta(false)} />}
           {vm.interrompendo && <JanelaInterromper etapa={vm.etapa} onInterromper={vm.interromper} onCancelar={vm.fecharInterromper} />}
           {/* saiu por outro lugar: a mesma janela; interrompeu, segue para onde clicou; cancelou, fica */}
           {saida.state === 'blocked' && !vm.interrompendo && (
