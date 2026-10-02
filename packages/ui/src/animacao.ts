@@ -8,12 +8,18 @@
 //   viva   com mola: as peças chegam com impulso e assentam com um quique
 //   suave  elegante e lenta: deslizam devagar, sem quique
 // Quem anima um elemento da tela usa entrar/sairComo (eventos), useEntradaAnimada (React) ou animar.
-import { animate, cleanInlineStyles, createDrawable, cubicBezier, splitText, spring, stagger, waapi, type AnimationParams, type JSAnimation, type TargetsParam } from 'animejs';
+import { animate, cleanInlineStyles, createDrawable, cubicBezier, splitText, spring, stagger, utils, waapi, type AnimationParams, type JSAnimation, type TargetsParam } from 'animejs';
 import { useLayoutEffect, useRef, type DependencyList, type RefObject } from 'react';
 
-/** A pessoa pediu menos movimento no sistema: nada desloca, só esmaece. */
-// sem matchMedia (fora de um navegador de verdade: os testes) também não anima: tudo já no lugar
-export const semMovimento = () => typeof window === 'undefined' || typeof window.matchMedia !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+/** A pessoa pediu menos movimento no computador (ou fora de um navegador de verdade: os testes). Vale só para o carregamento. */
+export const prefereMenosMovimento = () => typeof window === 'undefined' || typeof window.matchMedia !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/**
+ * O nads não anima (Vitor, 02/10/2026: "remova todas as animações, deixando apenas as de loading, tá muito cheio de
+ * animação desnecessária"): tudo vai direto para o estado final. Só o carregamento se mexe (a barra do topo, a abertura
+ * com o N, as rodinhas e o esqueleto), e eles usam prefereMenosMovimento. O CSS também desliga as transições (nads.css, fim).
+ */
+export const semMovimento = () => true;
 
 /** A curva de entrar/sair da tela: rápida no começo, assenta devagar. */
 export const ENTRAR = cubicBezier(0.23, 1, 0.32, 1);
@@ -177,7 +183,7 @@ const INDICADOR: Record<Jeito, () => AnimationParams> = {
 /** Leva o indicador até o lugar (left/top/largura/altura); na primeira vez, aparece já no lugar. */
 export function moverIndicador(el: HTMLElement, lugar: { x: number; y: number; w: number; h: number }, primeira: boolean): void {
   const alvo = { translateX: lugar.x, translateY: lugar.y, width: lugar.w, height: lugar.h };
-  if (primeira || semMovimento()) { animate(el, { ...alvo, opacity: 1, duration: 0 }); return; }
+  if (primeira || semMovimento()) { utils.set(el, { ...alvo, opacity: 1 }); return; }
   animate(el, { ...alvo, opacity: 1, ...INDICADOR[jeito](), composition: 'replace' });
 }
 
@@ -311,21 +317,22 @@ export function revelarTitulo(el: HTMLElement): (() => void) | null {
   return () => { a.revert(); partes.revert(); };
 }
 
-const DESLOCAM = ['translateX', 'translateY', 'scale', 'scaleX', 'scaleY', 'rotate', 'x', 'y', 'filter'];
-
 /**
- * animate do animejs com o menos-movimento embutido: quem pediu menos movimento vê só a opacidade (200 ms, linear);
- * sem opacidade no que anima, fica no lugar final na hora.
+ * animate do animejs, mas o nads não anima (semMovimento): a peça vai na hora para onde a animação terminaria.
  */
 export function animar(alvos: TargetsParam, params: AnimationParams): JSAnimation {
   if (!semMovimento()) return animate(alvos, params);
-  const calmo: AnimationParams = {};
+  // sem animação: tudo vai direto para o fim, na hora (nem o esmaecer, nem esperar o próximo quadro)
+  const fim: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(params)) {
-    if (DESLOCAM.includes(k)) continue;
-    (calmo as Record<string, unknown>)[k] = k === 'opacity' && v && typeof v === 'object' && 'to' in v ? [(v as { from?: number }).from ?? 0, (v as { to: number }).to] : v;
+    if (['delay', 'duration', 'ease', 'composition', 'onComplete', 'onBegin', 'onUpdate', 'loop', 'alternate', 'loopDelay'].includes(k)) continue;
+    const ultimo = Array.isArray(v) ? v[v.length - 1] : v;
+    fim[k] = ultimo && typeof ultimo === 'object' && 'to' in ultimo ? (ultimo as { to: unknown }).to : ultimo;
   }
-  const temOpacidade = 'opacity' in calmo;
-  return animate(alvos, { ...calmo, delay: 0, duration: temOpacidade ? 200 : 0, ease: 'linear' });
+  const a = utils.set(alvos, fim as AnimationParams);
+  const pronto = params.onComplete;
+  if (typeof pronto === 'function') queueMicrotask(() => pronto(a));
+  return a;
 }
 
 const limpar = (a: JSAnimation) => { cleanInlineStyles(a); };

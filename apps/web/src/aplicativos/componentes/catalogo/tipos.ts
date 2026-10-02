@@ -41,9 +41,10 @@ export interface Peca {
   aoVivo?: (c: AoVivo) => void;
   /**
    * A peça saiu do sistema (Vitor, 02/10/2026): continua no catálogo, em preto e branco e com o nome riscado, dizendo
-   * para onde foi — excluída, movida (para outra tela) ou substituída por outra peça (o id dela). Guarda o código.
+   * para onde foi — excluída, movida (para outra tela) ou substituída por outra peça (o id dela) — e o motivo. Guarda o
+   * código. Só aqui: na aplicação, a peça simplesmente foi trocada.
    */
-  removida?: { como: 'excluida' | 'movida' | 'substituida'; por?: string; para?: string; em: string };
+  removida?: { como: 'excluida' | 'movida' | 'substituida'; por?: string; para?: string; em: string; motivo: string };
 }
 
 export interface AoVivo {

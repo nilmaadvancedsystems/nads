@@ -134,7 +134,7 @@ export const PECAS_BASE: Peca[] = [
     uso: '<button className="btn btn-primary">Salvar</button>', demo: () => <><button className="btn btn-primary">Salvar</button><button className="btn btn-primary"><Icone nome="plus" />Adicionar</button><button className="btn btn-primary" disabled>Desligado</button></> },
   { id: 'btn-outline', tipo: 'botoes', nome: 'Botão com borda', classes: ['btn btn-outline'], telas: TODAS,
     uso: '<button className="btn btn-outline">Cancelar</button>', demo: () => <><button className="btn btn-outline">Cancelar</button><button className="btn btn-outline"><Icone nome="download" />Baixar CSV</button></> },
-  { id: 'btn-sm', removida: { como: 'substituida', por: 'btn', em: '02/10/2026' }, tipo: 'botoes', nome: 'Botão pequeno', descricao: '28 px, texto de 12 px', classes: ['btn btn-sm'], telas: ['e-importacao', 't-exec-importacao', 't-cadastro-janela'],
+  { id: 'btn-sm', removida: { como: 'substituida', por: 'btn', em: '02/10/2026', motivo: 'Um tamanho de botão só no sistema: o pequeno (28 px, texto de 12 px) virou o padrão em todas as telas.' }, tipo: 'botoes', nome: 'Botão pequeno', descricao: '28 px, texto de 12 px', classes: ['btn btn-sm'], telas: ['e-importacao', 't-exec-importacao', 't-cadastro-janela'],
     demo: () => <><button className="btn btn-sm">Pequeno</button><button className="btn btn-primary btn-sm">Principal</button><button className="btn btn-outline btn-sm"><Icone nome="x" />Remover todos</button></> },
   { id: 'btn-danger', tipo: 'botoes', nome: 'Botão de perigo', descricao: 'Texto vermelho; no passar do mouse, fundo vermelho', classes: ['btn btn-danger'], telas: ['t-cadastro-janela', 'e-importacao'],
     demo: () => <button className="btn btn-danger"><Icone nome="x" />Excluir</button> },
@@ -144,7 +144,7 @@ export const PECAS_BASE: Peca[] = [
   { id: 'icon-btn', tipo: 'botoes', nome: 'Botão de ícone', descricao: '32 px; sempre com título', componente: 'BotaoIcone', classes: ['icon-btn'], telas: TODAS,
     uso: '<BotaoIcone icone="x" titulo="Fechar" />', demo: () => <><BotaoIcone icone="copiar" titulo="Copiar" /><BotaoIcone icone="x" titulo="Fechar" /><BotaoIcone icone="olho" titulo="Ver o PDF" /><button className="icon-btn girando" title="Buscando"><Icone nome="girar" /></button></> },
   { id: 'link-btn', tipo: 'botoes', nome: 'Ação em texto', classes: ['link-btn'], telas: ['c-verificar', 't-empresa'], demo: () => <button className="link-btn">← Voltar para Movimento</button> },
-  { id: 'gh-topo', removida: { como: 'substituida', por: 'icon-btn', em: '02/10/2026' }, tipo: 'botoes', nome: 'Botões do cabeçalho (executor)', descricao: 'Os grupos (▾), as saídas (⚠ ▾), ✕ Interromper, ? O que falta e → Próximo', classes: ['gh-topo-btn', 'gh-topo-menu', 'gh-topo-forte', 'gh-topo-proximo'], telas: EXECUTOR,
+  { id: 'gh-topo', removida: { como: 'substituida', por: 'icon-btn', em: '02/10/2026', motivo: 'Os botões do cabeçalho do executor tinham borda e fundo próprios, com os ícones apagados; agora são iguais ao Botão de ícone.' }, tipo: 'botoes', nome: 'Botões do cabeçalho (executor)', descricao: 'Os grupos (▾), as saídas (⚠ ▾), ✕ Interromper, ? O que falta e → Próximo', classes: ['gh-topo-btn', 'gh-topo-menu', 'gh-topo-forte', 'gh-topo-proximo'], telas: EXECUTOR,
     demo: () => (
       <nav className="gh-topo-acoes">
         <button className="gh-topo-btn gh-topo-menu" type="button"><Icone nome="fileUp" /><Icone nome="caretDown" className="menu-seta" /></button>

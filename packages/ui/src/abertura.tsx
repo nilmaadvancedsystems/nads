@@ -13,7 +13,7 @@
 // várias vezes ao dia não espera a mesma apresentação de novo).
 import { animate, createDrawable, createTimeline } from 'animejs';
 import { useLayoutEffect, useRef, useState } from 'react';
-import { ENTRAR, GAVETA, MOLA_VIVA, semMovimento } from './animacao';
+import { ENTRAR, GAVETA, MOLA_VIVA, prefereMenosMovimento } from './animacao';
 
 const CHAVE_DIA = 'nads-abertura-vista';
 const hoje = () => new Date().toLocaleDateString('sv');
@@ -67,12 +67,12 @@ export function AberturaN({ vidro, inteira, rapida: soRapida }: { vidro?: boolea
   const raiz = useRef<HTMLDivElement>(null);
   // a abertura inteira: só no primeiro acesso do dia (o vidro, de uma área carregando, é sempre o curto)
   const [rapida] = useState(() => !vidro && !!(soRapida || (!inteira && jaViuHoje())));
-  const anima = !semMovimento() && !rapida;
+  const anima = !prefereMenosMovimento() && !rapida;
 
   useLayoutEffect(() => {
     const el = raiz.current;
     // já viu hoje: a logo, montada, só acende e o brilho passa
-    if (el && rapida && !semMovimento()) {
+    if (el && rapida && !prefereMenosMovimento()) {
       const extras = [
         animate(el.querySelector('.abertura-logo')!, { opacity: [0, 1], scale: [0.96, 1], duration: 450, ease: ENTRAR }),
         animate(el.querySelector('.abertura-brilho')!, { backgroundPosition: ['160% 0%', '-60% 0%'], duration: 1400, delay: 300, loopDelay: 1800, loop: true, ease: 'inOutSine' }),

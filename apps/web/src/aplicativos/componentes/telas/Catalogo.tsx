@@ -34,6 +34,7 @@ export function Catalogo() {
                 <div>
                   <h3><span className="cat-cod">{p.cod}</span>{p.removida ? <s>{p.nome}</s> : p.nome}</h3>
                   {p.removida && <p className="cat-destino">{vm.destinoDe(p)}</p>}
+                  {p.removida && <p className="hint cat-motivo">Motivo: {p.removida.motivo}</p>}
                   {p.descricao && <p className="hint">{p.descricao}</p>}
                 </div>
                 <div className="cat-peca-nomes">

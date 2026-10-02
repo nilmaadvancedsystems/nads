@@ -2377,3 +2377,16 @@ tr.linha-abre,.imp-linha,.imp-mes-celula,.gh-crumb,.drawer-x{
 .versao-trava-caixa h3{margin:0 0 6px;font-size:16px;}
 .versao-trava-caixa .hint{margin:0 0 16px;}
 .versao-trava-caixa .btn{width:100%;justify-content:center;}
+/* O nads não anima (Vitor, 02/10/2026: "remova todas as animações, deixando apenas as de loading"): nenhuma transição
+   nem animação de CSS. Só o carregamento continua: as rodinhas, o brilho do esqueleto e a abertura com o N (a barra do
+   topo e o N andam pelo animejs, fora daqui). */
+*,*::before,*::after{transition:none !important;animation:none !important;}
+.btn-spinner{animation:spin .6s linear infinite !important;}
+.drive-girando{animation:drive-gira .8s linear infinite !important;}
+.icon-btn.girando svg{animation:drive-gira 1s linear infinite !important;}
+.esqueleto-linha::after{animation:esqueletoBrilho 1.5s var(--ease-in-out) infinite !important;}
+.abertura.vidro{animation:aberturaVidro .25s ease-out both !important;}
+.abertura.vidro::before{animation:vidroLuz 7s var(--ease-in-out) infinite alternate !important;}
+.abertura.vidro::after{animation:vidroLuz 8s var(--ease-in-out) infinite alternate-reverse !important;}
+/* a barrinha que esvaziava na janela de "feito" era só animação */
+.modal-ok-barra{display:none;}

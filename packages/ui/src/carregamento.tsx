@@ -5,7 +5,7 @@
 // ponta): esta só conta a ela quando começa e termina.
 import { animate, utils } from 'animejs';
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { ENTRAR, semMovimento } from './animacao';
+import { ENTRAR, prefereMenosMovimento } from './animacao';
 import { origemDoPai } from './origem';
 
 let ativos = 0;
@@ -55,13 +55,13 @@ export function BarraDeCarregamento() {
     const el = barra.current;
     if (!el) return;
     if (fase === 'andando') {
-      if (semMovimento()) { utils.set(el, { scaleX: 0.6, opacity: 1 }); return; }
+      if (prefereMenosMovimento()) { utils.set(el, { scaleX: 0.6, opacity: 1 }); return; }
       const a = animate(el, { scaleX: [0, 0.88], opacity: [1, 1], duration: 9000, ease: 'out(5)' });
       return () => { a.pause(); };
     }
     if (fase === 'terminando') {
-      const a = animate(el, { scaleX: 1, duration: semMovimento() ? 0 : 200, ease: ENTRAR, onComplete: () => {
-        animate(el, { opacity: 0, duration: semMovimento() ? 0 : 240, ease: 'linear', onComplete: () => setFase('parada') });
+      const a = animate(el, { scaleX: 1, duration: prefereMenosMovimento() ? 0 : 200, ease: ENTRAR, onComplete: () => {
+        animate(el, { opacity: 0, duration: prefereMenosMovimento() ? 0 : 240, ease: 'linear', onComplete: () => setFase('parada') });
       } });
       return () => { a.pause(); };
     }

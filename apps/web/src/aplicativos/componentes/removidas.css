@@ -3,6 +3,7 @@
 .cat-removida{filter:grayscale(1);opacity:.7;}
 .cat-removida h3 s{color:var(--ink-muted);}
 .cat-destino{margin:4px 0 0;font-size:12px;font-weight:600;color:var(--ink);}
+.cat-removida .cat-motivo{margin:2px 0 0;max-width:520px;}
 .cat-removida .btn-sm{padding:3px 8px;min-height:28px;font-size:12px;gap:4px;}
 .cat-removida .btn-sm svg{width:14px;height:14px;}
 .cat-removida .gh-topo-btn{border-color:var(--border);background:transparent;box-shadow:none;}
