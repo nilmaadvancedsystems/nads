@@ -39,6 +39,34 @@ export function janela(id: string, nome: string, telas: string[], o: Janela, des
 // ---------------------------------------------------------------------------------------------------------------------
 // pedaços que se repetem nos desenhos
 // ---------------------------------------------------------------------------------------------------------------------
+/** O cabeçalho do executor da Tarefas (o de verdade fica no Executor.tsx; as mesmas classes). */
+function CabecalhoDoExecutor({ lote, abas }: { lote?: boolean; abas: { rotulo: string; icone: NomeIcone; ativa?: boolean }[] }) {
+  return (
+    <div className="cat-moldura">
+      <header className="gh-header" style={{ position: 'static' }}>
+        <div className="gh-header-top exec-topo">
+          <span className="brand-mark" aria-hidden="true"><MarcaN /></span>
+          <button type="button" className="exec-topo-empresa">
+            <span className="exec-topo-nome"><b>292</b> · FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA</span>
+            <span className="exec-topo-sub">
+              {lote ? <><span className="exec-topo-lote"><Icone nome="grade" />Em lote</span>Janeiro a Agosto/2026 · 8 meses</> : <><Icone nome="calendar" />Setembro/2026</>}
+              <span> · Preparação 1/4</span>
+            </span>
+          </button>
+          <span className="gh-header-spacer" />
+          <nav className="gh-topo-acoes">
+            <button className="gh-topo-btn gh-topo-menu" type="button"><Icone nome="fileUp" /><Icone nome="caretDown" className="menu-seta" /></button>
+            <button className="gh-topo-btn gh-topo-menu" type="button"><Icone nome="alert" /><Icone nome="caretDown" className="menu-seta" /></button>
+          </nav>
+          <button type="button" className="exec-fechar" title="Fechar"><Icone nome="x" /></button>
+        </div>
+        <nav className="menu">
+          {abas.map(a => <button key={a.rotulo} type="button" className={'menu-item' + (a.ativa ? ' active' : '')}><Icone nome={a.icone} /><span>{a.rotulo}</span></button>)}
+        </nav>
+      </header>
+    </div>
+  );
+}
 function Cabecalho({ trilha, direita, abas }: { trilha: string[]; direita?: ReactNode; abas?: { rotulo: string; icone: NomeIcone; ativa?: boolean; contador?: string }[] }) {
   return (
     <div className="cat-moldura">
@@ -305,8 +333,23 @@ export const PECAS_BASE: Peca[] = [
   { id: 'alerta-ok', tipo: 'avisos', nome: 'Alerta (verde)', componente: 'Alerta', classes: ['alert alert-ok'], telas: ['c-verificar'], largo: true, demo: () => <Alerta tom="ok" titulo="Tudo bate neste período" texto="Nenhuma pendência." /> },
   { id: 'toast', tipo: 'avisos', nome: 'Aviso rápido (toast)', descricao: 'No canto de baixo, some em 4 s', componente: 'useRetorno().toast', classes: ['toast-region', 'toast'], telas: TODAS,
     demo: () => <div className="toast cat-parado">Etapa interrompida: Importação.</div>, aoVivo: c => c.toast('Etapa interrompida: Importação.') },
-  { id: 'imp-aviso', tipo: 'avisos', nome: 'Barrinha no topo (importou)', descricao: 'Por cima da tela, some em 2,7 s', classes: ['imp-aviso', 'imp-aviso-barra', 'erro', 'info'], telas: ['e-importacao', 't-exec-importacao'],
-    demo: () => <><div className="imp-aviso-barra cat-parado">Sicoob: extratos de 01/2026, 02/2026 trazidos do Drive</div><div className="imp-aviso-barra erro cat-parado">Não consegui olhar o Drive</div></> },
+  { id: 'imp-aviso', tipo: 'avisos', nome: 'Barrinha no topo (importou / Drive)', descricao: 'Por cima da tela: o que deu certo some em 2,7 s; o erro (ex.: nada no Drive) fica até o ×', classes: ['imp-aviso', 'imp-aviso-barra', 'erro', 'info'], telas: ['e-importacao', 't-exec-importacao'],
+    demo: () => {
+      const barra = (tom: 'ok' | 'erro' | 'info', titulo: string, texto?: string) => (
+        <div className={'imp-aviso-barra ' + tom + ' cat-parado'} role="status">
+          <Icone nome={tom === 'erro' ? 'alert' : tom === 'info' ? 'clock' : 'checkCircle'} />
+          <span><b>{titulo}</b>{texto && <span className="hint"> · {texto}</span>}</span>
+          <button type="button" aria-label="Fechar" title="Fechar">×</button>
+        </div>
+      );
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+          {barra('ok', 'Sicoob: extratos trazidos do Drive', '01/2026, 02/2026')}
+          {barra('erro', 'Sicoob: nada no Drive', 'Não achei no Drive: 09/2026.')}
+          {barra('info', 'Buscando no Drive…', 'Sicoob, 03/2026')}
+        </div>
+      );
+    } },
   { id: 'parity', tipo: 'avisos', nome: 'Faixa verde (bate)', classes: ['parity'], telas: ['c-relatorio'], largo: true, demo: () => <div className="parity"><Icone nome="checkCircle" />Tudo bate com o balancete.</div> },
   { id: 'welcome', tipo: 'avisos', nome: 'Faixa de dados de exemplo', classes: ['welcome-banner'], telas: ['c-entrada', 'e-entrada'], largo: true, demo: () => <div className="welcome-banner">Dados de exemplo (901, 902, 903) · nada é gravado em banco</div> },
 
@@ -339,10 +382,10 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <nav className="gh-crumbs"><span className="gh-crumb">Tarefas</span><span className="gh-sep">/</span><span className="gh-crumb gh-crumb-fim">292 · FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA</span></nav> },
 
   // ─── Cabeçalhos ─────────────────────────────────────────────────────────────────────────────────────────────────────
-  { id: 'cb-executor', tipo: 'cabecalhos', nome: 'Tarefas › Executor', classes: ['gh-header'], telas: EXECUTOR, largo: true,
-    demo: () => <Cabecalho trilha={['Tarefas', '292 · FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA']} direita={<nav className="gh-topo-acoes"><button className="gh-topo-btn gh-topo-menu" type="button"><Icone nome="fileUp" /><Icone nome="caretDown" className="menu-seta" /></button><button className="gh-topo-btn gh-topo-forte" type="button"><Icone nome="x" /></button><button className="gh-topo-btn gh-topo-proximo" type="button"><Icone nome="arrowDown" style={{ transform: 'rotate(-90deg)' }} /></button><span className="gh-topo-sep" /><Avatar /></nav>} /> },
-  { id: 'cb-executor-fiscal', tipo: 'cabecalhos', nome: 'Tarefas › Executor › Conferência fiscal (as abas sobem)', classes: ['gh-header', 'menu'], telas: ['t-exec-fiscal'], largo: true,
-    demo: () => <Cabecalho trilha={['Tarefas', '292 · FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA']} direita={<Avatar />} abas={[{ rotulo: 'Relatório', icone: 'relatorio', ativa: true }, { rotulo: 'Naturezas', icone: 'checklist' }, { rotulo: 'Consulta', icone: 'search' }, { rotulo: 'Cadastro', icone: 'settings' }, { rotulo: 'Auditoria', icone: 'clock' }]} /> },
+  { id: 'cb-executor', tipo: 'cabecalhos', nome: 'Tarefas › Executor', descricao: 'A empresa em destaque e, embaixo, a competência ou o Em lote; os grupos e as saídas à direita; o fechar no canto, como o do Windows', classes: ['gh-header', 'exec-topo', 'exec-topo-lote', 'exec-fechar'], telas: EXECUTOR, largo: true,
+    demo: () => <CabecalhoDoExecutor lote abas={[{ rotulo: 'Bancos', icone: 'landmark', ativa: true }, { rotulo: 'Balancete', icone: 'barChart' }, { rotulo: 'Entradas', icone: 'arrowDown' }]} /> },
+  { id: 'cb-executor-fiscal', tipo: 'cabecalhos', nome: 'Tarefas › Executor › Conferência fiscal (as abas sobem)', classes: ['gh-header', 'exec-topo', 'menu'], telas: ['t-exec-fiscal'], largo: true,
+    demo: () => <CabecalhoDoExecutor abas={[{ rotulo: 'Relatório', icone: 'relatorio', ativa: true }, { rotulo: 'Naturezas', icone: 'checklist' }, { rotulo: 'Consulta', icone: 'search' }]} /> },
   { id: 'cb-tarefas', tipo: 'cabecalhos', nome: 'Tarefas (listas)', classes: ['gh-header'], telas: ['t-empresas', 't-insights', 't-contabil', 't-cadastro', 't-drive', 't-gmail'], largo: true,
     demo: () => <Cabecalho trilha={['Tarefas', 'Vitor']} direita={<Avatar />} abas={[{ rotulo: 'Empresas', icone: 'briefcase', ativa: true }, { rotulo: 'Insights', icone: 'barChart' }]} /> },
   { id: 'cb-extrator', tipo: 'cabecalhos', nome: 'Extratudo › Extrator', classes: ['gh-header'], telas: ['e-importacao', 'e-arquivos', 'e-conferencia', 'e-historico'], largo: true,

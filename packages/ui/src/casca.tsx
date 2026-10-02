@@ -83,6 +83,11 @@ export function Casca(p: {
   lateral?: 'barra' | 'caixa' | 'nenhuma';
   /** a página usa a largura toda da tela (ex.: a ferramenta de uma etapa) */
   larga?: boolean;
+  /**
+   * A barra de cima inteira, no lugar de ☰ / logo / trilha / canto direito (Vitor, 02/10/2026: o executor da Tarefas tem o
+   * cabeçalho dele — a empresa, a competência ou o Em lote, e o fechar no canto, como o do Windows). As abas continuam embaixo.
+   */
+  topoProprio?: ReactNode;
   /** o canto direito do cabeçalho, como os botões do GitHub (ex.: os grupos da rotina e o perfil, no executor) */
   topoDireita?: ReactNode;
   /** nome da lista da esquerda, para leitor de tela (padrão "Seções") */
@@ -203,7 +208,7 @@ export function Casca(p: {
   return (
     <div id="app" className={'on' + (p.larga ? ' larga' : '') + (noOutro ? ' acoplada' : '')}>
       <header className="gh-header" ref={cabecalho} hidden={abasSobem}>
-        <div className="gh-header-top" hidden={naEtapa}>
+        {p.topoProprio ? <div className="gh-header-top exec-topo" hidden={naEtapa}>{p.topoProprio}</div> : <div className="gh-header-top" hidden={naEtapa}>
           {!noOutro && (
             <>
               <button className="gh-hamb" type="button" aria-label={'Abrir menu' + (versaoNova ? ' (versão nova)' : '')} title={versaoNova ? 'Menu · saiu a versão ' + versaoNova : 'Menu'} onClick={() => setGaveta(true)}>
@@ -230,7 +235,7 @@ export function Casca(p: {
             ))}
           </nav>
           {p.topoDireita && <><span className="gh-header-spacer" /><div className="gh-topo-direita">{p.topoDireita}</div></>}
-        </div>
+        </div>}
         <nav ref={abasInd} className="menu com-indicador" id="menu" aria-label="Páginas da seção" hidden={!(abasDaEtapa || p.paginas).some(x => !x.oculta)}>
           {(abasDaEtapa || p.paginas).filter(x => !x.oculta).map(x => (
             <button key={x.id} type="button" className={'menu-item' + (x.ativa ? ' active' : '') + (x.travada ? ' is-locked' : '')}

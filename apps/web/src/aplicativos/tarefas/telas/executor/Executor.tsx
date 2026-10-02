@@ -5,7 +5,7 @@
 // atrapalhavam a ferramenta): os grupos da rotina num menu só (como o "+ ▾"), as saídas da etapa (⚠ ▾), ✕ Interromper,
 // ? (o que falta) ou → Próximo, e o perfil.
 import type { tarefas } from '@nads/core';
-import { AberturaN, Alerta, Casca, Icone, MenuSuspenso, useCarregando, useFerramentaNaEtapa, type ItemMenu, type NomeIcone } from '@nads/ui';
+import { AberturaN, Alerta, Casca, Icone, MarcaN, MenuSuspenso, useCarregando, useFerramentaNaEtapa, type ItemMenu, type NomeIcone } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useBlocker, useParams } from 'react-router';
 import { usePonteDaFerramenta } from '../../../../comum/ponte';
@@ -86,8 +86,22 @@ export function Executor() {
   const saidas = vm.etapa ? vm.etapa.objecoes.filter(o => !o.soMotivo) : [];
   const botoesDaEtapa = vm.etapa && telaPronta && !vm.interrompendo && saida.state !== 'blocked';
 
+  // o cabeçalho do executor (Vitor, 02/10/2026): sem o ☰ / Tarefas / perfil; a empresa em destaque, embaixo a
+  // competência ou o Em lote; à direita os grupos e as saídas; o fechar no canto, como o do Windows. O → e o ? ficam
+  // soltos embaixo (executor-flutuante).
   const topo = (
     <>
+      <span className="brand-mark" aria-hidden="true"><MarcaN /></span>
+      <button type="button" className="exec-topo-empresa" onClick={vm.abrirEmpresa} title="Abrir a página da empresa">
+        <span className="exec-topo-nome">{vm.empresa.codigo != null && <b>{vm.empresa.codigo}</b>}{vm.empresa.codigo != null ? ' · ' : ''}{vm.empresa.nome}</span>
+        <span className="exec-topo-sub">
+          {vm.varios
+            ? <><span className="exec-topo-lote"><Icone nome="grade" />Em lote</span>{vm.rotuloCompetencia} · {vm.meses.length} meses</>
+            : <><Icone nome="calendar" />{vm.rotuloCompetencia}</>}
+          {grupoDaVez && <span className="exec-topo-grupo"> · {grupoDaVez.nome} {grupoDaVez.feitas}/{grupoDaVez.total}</span>}
+        </span>
+      </button>
+      <span className="gh-header-spacer" />
       <nav className="gh-topo-acoes" aria-label="Etapa">
         {vm.grupos.length > 0 && (
           <MenuSuspenso rotulo="" icone={grupoDaVez ? ICONE_DO_GRUPO[grupoDaVez.nome] || 'list' : 'checkCircle'} className="gh-topo-btn gh-topo-menu"
@@ -97,31 +111,14 @@ export function Executor() {
           <MenuSuspenso rotulo="" icone="alert" className="gh-topo-btn gh-topo-menu" dica="Se não der para concluir" titulo="Se não der para concluir" direita largura={300}
             itens={saidas.map(o => ({ rotulo: o.solucao.tipo === 'orientacao' ? o.texto : o.solucao.rotulo, icone: ICONE_DA_SAIDA[o.solucao.tipo], onClick: () => vm.resolver(o) }))} />
         )}
-        {botoesDaEtapa && (
-          <button type="button" className="gh-topo-btn" onClick={vm.abrirInterromper} title="Interromper a etapa" aria-label="Interromper">
-            <Icone nome="x" />
-          </button>
-        )}
-        {botoesDaEtapa && faltam && (
-          <button type="button" className="gh-topo-btn" onClick={() => vm.mostrarOQueFalta(faltam)} title="O que falta para seguir" aria-label="O que falta para seguir">
-            <Icone nome="ajuda" />
-          </button>
-        )}
-        {botoesDaEtapa && !faltam && requisitosConhecidos && (
-          <button type="button" className="gh-topo-btn gh-topo-proximo" disabled={vm.conferindo} onClick={() => { void vm.proximo(); }}
-            title={vm.conferindo ? 'Conferindo…' : 'Próximo (confere e segue para a próxima etapa)'} aria-label="Próximo">
-            {vm.conferindo ? <span className="btn-spinner" /> : <Icone nome="arrowDown" style={{ transform: 'rotate(-90deg)' }} />}
-          </button>
-        )}
       </nav>
-      <span className="gh-topo-sep" aria-hidden="true" />
-      <MenuSuspenso rotulo={casca.perfil.iniciais} className="gh-avatar" dica={casca.perfil.nome} titulo={casca.perfil.nome} direita
-        itens={[{ rotulo: 'Voltar às empresas', icone: 'home', onClick: vm.sair }, { rotulo: casca.perfil.sair, icone: 'logOut', onClick: casca.trocarPessoa }]} />
+      {/* fechar no canto, como o do Windows: sai do executor (com a etapa aberta, pede a justificativa) */}
+      <button type="button" className="exec-fechar" onClick={vm.sair} title="Fechar" aria-label="Fechar"><Icone nome="x" /></button>
     </>
   );
 
   return (
-    <Casca sistema="Tarefas" larga rotuloLateral="Etapas" topoDireita={topo}
+    <Casca sistema="Tarefas" larga rotuloLateral="Etapas" topoProprio={topo}
       empresa={{ codigo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome, nome: '' }}
 
       versao={casca.versao} secoes={checklist} paginas={abas} titulo=""
@@ -191,6 +188,20 @@ export function Executor() {
             )}
           </div>
           {vm.aviso && <Alerta titulo="Ainda não dá para seguir" texto={vm.aviso} />}
+          {/* prosseguir solto embaixo, por cima da ferramenta (como antes); faltando algo, o ? no lugar (diz o que falta) */}
+          <div className="executor-flutuante" hidden={!botoesDaEtapa || fundoAberto}>
+            {faltam && (
+              <button type="button" className="executor-botao" onClick={() => vm.mostrarOQueFalta(faltam)} title="O que falta para seguir" aria-label="O que falta para seguir">
+                <Icone nome="ajuda" />
+              </button>
+            )}
+            {!faltam && requisitosConhecidos && (
+              <button type="button" className="executor-botao proximo" disabled={vm.conferindo} onClick={() => { void vm.proximo(); }}
+                title={vm.conferindo ? 'Conferindo…' : 'Próximo (confere e segue para a próxima etapa)'} aria-label="Próximo">
+                {vm.conferindo ? <span className="btn-spinner" /> : <Icone nome="arrowDown" style={{ transform: 'rotate(-90deg)' }} />}
+              </button>
+            )}
+          </div>
           {vm.interrompendo && <JanelaInterromper etapa={vm.etapa} onInterromper={vm.interromper} onCancelar={vm.fecharInterromper} />}
           {/* saiu por outro lugar: a mesma janela; interrompeu, segue para onde clicou; cancelou, fica */}
           {saida.state === 'blocked' && !vm.interrompendo && (
