@@ -102,6 +102,12 @@ export function Casca(p: {
   children: ReactNode;
 }) {
   const [oculta, setOculta] = useState(lerLateral);
+  // a Minha página › Aparência e telas recolhe (ou abre) a barra lateral: vale já nesta tela
+  useEffect(() => {
+    const mudou = () => setOculta(lerLateral());
+    window.addEventListener('nads-lateral', mudou);
+    return () => window.removeEventListener('nads-lateral', mudou);
+  }, []);
   const [gaveta, setGaveta] = useState(false);
   // a gaveta sai por onde entrou (animejs, 01/10/2026): desliza para a esquerda e o fundo apaga; só então desmonta.
   // Pelo Esc (teclado) fecha na hora: atalho de teclado não anima.

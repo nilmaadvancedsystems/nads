@@ -4,6 +4,7 @@
 // o executor das etapas é /tarefas/executar/<empresa>/<competência>.
 // O Cadastro é a lista de empresas (/tarefas/cadastro/empresas); a empresa abre numa janela por cima da lista,
 // com as abas dela: /tarefas/cadastro/empresas/<empresa>/<aba>.
+import { tarefas as t } from '@nads/core';
 import type { NomeIcone } from '@nads/ui';
 import type { Operador } from './operador';
 
@@ -63,6 +64,19 @@ export const INICIOS: readonly { valor: string; rotulo: string; caminho: string 
   { valor: 'drive', rotulo: 'Drive', caminho: BASE + '/drive/pastas' },
   { valor: 'gmail', rotulo: 'Gmail', caminho: BASE + '/contato/caixa' },
 ];
+/** A competência em que as telas abrem (Minhas empresas, a página da empresa, o Contábil): a anterior (padrão) ou a atual. */
+export const CHAVE_COMPETENCIA = 'nads-tarefas-competencia';
+export function competenciaEscolhida(): 'anterior' | 'atual' {
+  try { return localStorage.getItem(CHAVE_COMPETENCIA) === 'atual' ? 'atual' : 'anterior'; } catch { return 'anterior'; }
+}
+/** As competências do seletor das telas: as recentes (a primeira é a que abre); com "atual", o mês corrente em primeiro. */
+export function competenciasDaTela(n: number): string[] {
+  const base = t.competenciasRecentes(new Date(), n);
+  if (competenciaEscolhida() !== 'atual') return base;
+  const d = new Date();
+  const atual = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  return [atual, ...base.filter(c => c !== atual)].slice(0, n);
+}
 export function inicioEscolhido(): string {
   try { return localStorage.getItem(CHAVE_INICIO) || 'empresas'; } catch { return 'empresas'; }
 }

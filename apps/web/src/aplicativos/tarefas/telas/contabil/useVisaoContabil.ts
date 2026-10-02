@@ -3,12 +3,13 @@
 import { tarefas as t } from '@nads/core';
 import { useSearchParams } from 'react-router';
 import { useExecucoes, useRepo } from '../../dados/repo';
+import { competenciasDaTela } from '../../casca/navegacao';
 
 export function useVisaoContabil() {
   const repo = useRepo();
   const [params, setParams] = useSearchParams();
   const rotina = t.ROTINA_CONTABIL;
-  const competencias = t.competenciasRecentes(new Date(), 12);
+  const competencias = competenciasDaTela(12);
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
   const { execucoes, carregada } = useExecucoes(competencia, 'contabil');
   const totalEmpresas = repo.listarEmpresas().length;

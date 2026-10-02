@@ -4,6 +4,7 @@ import { empresas, tarefas as t } from '@nads/core';
 import { useSearchParams } from 'react-router';
 import { useExecucoes, useRepo } from '../../dados/repo';
 import { useOperador, type Operador } from '../../casca/operador';
+import { competenciasDaTela } from '../../casca/navegacao';
 
 export const SITUACOES: readonly { valor: t.SituacaoGeral; rotulo: string }[] = [
   { valor: 'parada', rotulo: 'Paradas' },
@@ -19,7 +20,7 @@ export function useAndamento() {
   const repo = useRepo();
   const op = useOperador().operador as Operador;
   const [params, setParams] = useSearchParams();
-  const competencias = t.competenciasRecentes(new Date(), 12);
+  const competencias = competenciasDaTela(12);
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
   const rotina = op.departamento === 'contabil' ? t.ROTINA_CONTABIL : null;
   const { execucoes, carregada } = useExecucoes(competencia, op.departamento);

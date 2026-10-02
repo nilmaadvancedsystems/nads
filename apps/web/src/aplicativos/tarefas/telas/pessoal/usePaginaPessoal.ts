@@ -10,11 +10,12 @@
 // Lê o que as outras telas já leem; grava só a foto (usuarios/{uid}.fotoPerfil, o dono pode) e, neste navegador, o
 // tema e o início.
 import { entregas as e, tarefas as t, usuarios } from '@nads/core';
-import { atualizarVersao, useRetorno, useVersaoNova, type NomeIcone } from '@nads/ui';
+import { atualizarVersao, definirLateralOculta, definirTabelasCompactas, lerLateralOculta, lerTabelasCompactas, useRetorno, useVersaoNova, type NomeIcone } from '@nads/ui';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { VERSAO_SISTEMA } from '../../../../versao';
-import { CHAVE_INICIO, caminhoDoExecutor, INICIOS, inicioEscolhido } from '../../casca/navegacao';
+import { CHAVE_COMPETENCIA, CHAVE_INICIO, caminhoDoExecutor, competenciaEscolhida, INICIOS, inicioEscolhido } from '../../casca/navegacao';
+import { ICONES_DE_PERFIL } from './iconesDePerfil';
 import { useOperador, type Operador } from '../../casca/operador';
 import { useAcesso, useDriveDoEntregas, useExecucoesDoPeriodo, useGmailDoEntregas, useRepoPessoal } from '../../dados/repo';
 import { useSessao } from '../../dados/sessao';
@@ -69,6 +70,9 @@ export function usePaginaPessoal() {
   const { toast, modal } = useRetorno();
   const versaoNova = useVersaoNova(VERSAO_SISTEMA);
   const [inicio, setInicio] = useState(inicioEscolhido);
+  const [lateralOculta, setLateralOculta] = useState(lerLateralOculta);
+  const [compactas, setCompactas] = useState(lerTabelasCompactas);
+  const [competencia, setCompetencia] = useState(competenciaEscolhida);
   const [filtro, setFiltro] = useState<'tudo' | 'acao' | 'arquivados'>('tudo');
   const pessoal = useRepoPessoal();
   const gmail = useGmailDoEntregas();
@@ -199,6 +203,24 @@ export function usePaginaPessoal() {
       /** escolheu um arquivo de imagem: reduz e grava (aparece no avatar do cabeçalho na hora) */
       trocarFoto: (arquivo: File) => { void reduzir(arquivo).then(gravarFoto, (err: Error) => toast(err.message)); },
       tirarFoto: () => { void gravarFoto(null); },
+      /** os ícones do Entregas, para quem não quer foto */
+      icones: ICONES_DE_PERFIL,
+      escolherIcone: (url: string) => { void gravarFoto(url); },
+      // o nome e a senha: só com o login do Entregas (nos exemplos não tem conta)
+      comLogin: !!sessao?.usuario,
+      trocarNome: async (nome: string): Promise<string | null> => {
+        const limpo = nome.replace(/\s+/g, ' ').trim();
+        if (limpo.replace(/[^\p{L}]/gu, '').length < 2) return 'O nome precisa ter pelo menos 2 letras.';
+        if (!sessao) return 'Sem login.';
+        try { await sessao.trocarNome(limpo); toast('Nome trocado para ' + limpo + '.'); return null; } catch (err) { return err instanceof Error ? err.message : String(err); }
+      },
+      trocarSenha: async (atual: string, nova: string, confirma: string): Promise<string | null> => {
+        if (!atual) return 'Digite a senha atual.';
+        if (nova.length < 6) return 'A senha nova precisa ter pelo menos 6 caracteres.';
+        if (nova !== confirma) return 'A confirmação não é igual à senha nova.';
+        if (!sessao) return 'Sem login.';
+        try { await sessao.trocarSenha(atual, nova); toast('Senha trocada.'); return null; } catch (err) { return err instanceof Error ? err.message : String(err); }
+      },
       email: u?.email || (comLogin ? '' : 'sem login (dados de exemplo)'),
       // só o setor (Vitor, 02/10/2026: "coloque só o setor"), sem o nível
       setor: usuarios.rotuloDoCargo({ departamento: op.departamento, nivel: null, papeis: u?.papeis || [] }),
@@ -210,6 +232,29 @@ export function usePaginaPessoal() {
     },
     // Aparência e telas
     preferencias: {
+      lateralOculta,
+      mudarLateral: (v: boolean) => { definirLateralOculta(v); setLateralOculta(v); },
+      compactas,
+      mudarCompactas: (v: boolean) => { definirTabelasCompactas(v); setCompactas(v); },
+      competencia,
+      mudarCompetencia: (v: 'anterior' | 'atual') => {
+        try { localStorage.setItem(CHAVE_COMPETENCIA, v); } catch { /* vale só agora */ }
+        setCompetencia(v);
+        toast(v === 'atual' ? 'As telas vão abrir no mês atual (ao abrir a tela de novo).' : 'As telas vão abrir no mês anterior (ao abrir a tela de novo).');
+      },
+      /** os atalhos de teclado que existem hoje (Drive, Minhas empresas, janelas, anotações) */
+      atalhos: [
+        { teclas: ['/'], onde: 'Minhas empresas', faz: 'Vai para a busca de empresas' },
+        { teclas: ['T'], onde: 'Drive', faz: 'Ir para arquivo (a busca da pasta)' },
+        { teclas: ['Enter'], onde: 'Drive', faz: 'Abre a pasta ou o arquivo marcado' },
+        { teclas: ['Espaço'], onde: 'Drive', faz: 'Marca e desmarca a linha' },
+        { teclas: ['Backspace'], onde: 'Drive', faz: 'Sobe para a pasta de cima' },
+        { teclas: ['Alt', '←'], onde: 'Drive', faz: 'Volta à pasta anterior' },
+        { teclas: ['Alt', '→'], onde: 'Drive', faz: 'Avança (depois de voltar)' },
+        { teclas: ['Alt', '↑'], onde: 'Drive', faz: 'Sobe para a pasta de cima' },
+        { teclas: ['Ctrl', 'Enter'], onde: 'Anotações', faz: 'Salva a anotação' },
+        { teclas: ['Esc'], onde: 'Janelas e menus', faz: 'Fecha' },
+      ],
       inicio,
       inicios: INICIOS.map(i => ({ valor: i.valor, rotulo: i.rotulo })),
       mudarInicio: (v: string) => {

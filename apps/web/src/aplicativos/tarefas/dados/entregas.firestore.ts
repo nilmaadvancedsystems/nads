@@ -1,13 +1,14 @@
 // A Tarefas no banco do Entregas (projeto entregas-2e5e2), pedido do escritório em 30/09/2026: o nads
 // inteiro passa a gravar lá, com as contas de lá. Aqui ficam a conexão e o login:
 //   - Firebase Auth do Entregas (e-mail/senha; o nome vira "nome@nilma.local", como lá);
-//   - usuarios/{uid}: SÓ LEITURA do próprio documento (nome, papéis, cargo, ativo).
+//   - usuarios/{uid}: a leitura do próprio documento (nome, papéis, cargo, ativo) e, na Minha página (02/10/2026), a
+//     troca do próprio nome (o dono pode) e da senha (Firebase Auth, pedindo a atual de novo).
 // As tarefas ficam na coleção `rotinas` (tarefas.firestore.ts), que usa a mesma conexão.
 // O app Firebase se chama 'entregas', o mesmo do Drive do Extratudo: no site com os dois, a sessão é uma só.
 import { usuarios } from '@nads/core';
 import { getApps, initializeApp } from 'firebase/app';
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc, getFirestore, initializeFirestore, type Firestore } from 'firebase/firestore';
+import { EmailAuthProvider, getAuth, onAuthStateChanged, reauthenticateWithCredential, signInWithEmailAndPassword, signOut, updatePassword } from 'firebase/auth';
+import { doc, getDoc, getFirestore, initializeFirestore, updateDoc, type Firestore } from 'firebase/firestore';
 
 /** Configuração web pública do projeto do Entregas (a mesma das páginas de lá). */
 const CONFIG_ENTREGAS = {
@@ -26,6 +27,10 @@ export interface SessaoEntregas {
   estado(): EstadoSessao;
   entrar(login: string, senha: string): Promise<void>;
   sair(): Promise<void>;
+  /** troca a senha (pede a atual de novo, como o Entregas: o Firebase exige o login recente) */
+  trocarSenha(atual: string, nova: string): Promise<void>;
+  /** troca o nome (usuarios/{uid}.nome; o dono pode): vale já em toda a Tarefas */
+  trocarNome(nome: string): Promise<void>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -92,6 +97,23 @@ export function criarSessaoEntregas(): SessaoEntregas {
       }
     },
     async sair() { await signOut(auth); },
+    async trocarSenha(atual, nova) {
+      const u = auth.currentUser;
+      if (!u || !u.email) throw new Error('Sem login.');
+      try {
+        await reauthenticateWithCredential(u, EmailAuthProvider.credential(u.email, atual));
+      } catch (e) {
+        const c = String((e as { code?: string })?.code || '');
+        throw new Error(c === 'auth/wrong-password' || c === 'auth/invalid-credential' ? 'Senha atual incorreta.' : 'Não consegui conferir a senha atual (' + c + ').', { cause: e });
+      }
+      await updatePassword(u, nova);
+    },
+    async trocarNome(nome) {
+      const u = auth.currentUser;
+      if (!u || !estado.usuario) throw new Error('Sem login.');
+      await updateDoc(doc(db, 'usuarios', u.uid), { nome });
+      mudar({ ...estado, usuario: { ...estado.usuario, nome } });
+    },
     assinar(f) {
       ouvintes.add(f);
       return () => { ouvintes.delete(f); };

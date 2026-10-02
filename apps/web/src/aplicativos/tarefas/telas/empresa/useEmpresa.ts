@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { extratorDaEmpresa } from '../../dados/fonte';
 import { useRepo, useVersaoDoRepo } from '../../dados/repo';
-import { caminhoDaEmpresa, caminhoDaPagina, caminhoDoExecutor } from '../../casca/navegacao';
+import { caminhoDaEmpresa, caminhoDaPagina, caminhoDoExecutor, competenciasDaTela } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 import { ACAO } from '../empresas/andamento';
 
@@ -32,7 +32,7 @@ export function useEmpresa(rota: string) {
   const [params, setParams] = useSearchParams();
   const op = useOperador().operador as Operador;
   const rotina = op.departamento === 'contabil' ? t.ROTINA_CONTABIL : null;
-  const competencias = t.competenciasRecentes(new Date(), 12);
+  const competencias = competenciasDaTela(12);
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
   const lote = (params.get('lote') || '').includes('..') && t.competenciasDoPeriodo(params.get('lote') as string).length > 1 ? (params.get('lote') as string) : '';
   const empresa = empresas.empresaPelaRota(repo.listarEmpresas(), rota);

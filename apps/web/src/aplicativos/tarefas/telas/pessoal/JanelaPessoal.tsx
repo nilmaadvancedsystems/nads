@@ -2,7 +2,7 @@
 // que segue o Notion) — à esquerda a pessoa, a busca e os tópicos em grupos; à direita o tópico aberto, em cartões
 // com cabeçalho e uma opção por linha (o rótulo e a explicação à esquerda, o controle à direita). Fecha no ×, no Esc e
 // clicando fora.
-import { Esqueleto, Icone, SeletorTema, useCarregando, type NomeIcone } from '@nads/ui';
+import { Esqueleto, Icone, Interruptor, SeletorTema, useCarregando, type NomeIcone } from '@nads/ui';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { TopicoPessoal } from './contexto';
 import { usePaginaPessoal, type VmPessoal } from './usePaginaPessoal';
@@ -10,8 +10,8 @@ import { usePaginaPessoal, type VmPessoal } from './usePaginaPessoal';
 const TOPICOS: { id: TopicoPessoal; rotulo: string; icone: NomeIcone; grupo: string; busca: string }[] = [
   { id: 'caixa', rotulo: 'Caixa de entrada', icone: 'caixaEntrada', grupo: '', busca: 'inbox pendências paradas envios claudio secretário liberação computador cobrança e-mail sem cliente arquivados' },
   { id: 'notas', rotulo: 'Anotações', icone: 'fileText', grupo: '', busca: 'notas lembrete lembrar escrever' },
-  { id: 'conta', rotulo: 'Minha conta', icone: 'usuario', grupo: 'Conta', busca: 'foto perfil nome e-mail email setor sair senha' },
-  { id: 'preferencias', rotulo: 'Aparência e telas', icone: 'settings', grupo: 'Preferências', busca: 'tema claro escuro início abrir tela' },
+  { id: 'conta', rotulo: 'Minha conta', icone: 'usuario', grupo: 'Conta', busca: 'foto perfil ícone icone nome e-mail email setor sair senha' },
+  { id: 'preferencias', rotulo: 'Aparência e telas', icone: 'settings', grupo: 'Preferências', busca: 'tema claro escuro início abrir tela barra lateral competência mês tabelas compactas atalhos teclado' },
   { id: 'aplicativo', rotulo: 'Versão do sistema', icone: 'download', grupo: 'Aplicativo', busca: 'versão atualizar nova' },
 ];
 
@@ -139,6 +139,57 @@ function Anotacoes({ vm }: { vm: VmPessoal }) {
   );
 }
 
+/** O nome: o texto com o Salvar ao lado (Enter salva). */
+function EditarNome({ atual, salvar }: { atual: string; salvar: (n: string) => Promise<string | null> }) {
+  const [nome, setNome] = useState(atual);
+  const [erro, setErro] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  const mudou = nome.trim() !== atual;
+  const ir = async () => { setSalvando(true); const e = await salvar(nome); setSalvando(false); setErro(e || ''); };
+  return (
+    <span className="pessoal-nome">
+      <input value={nome} onChange={ev => { setNome(ev.target.value); setErro(''); }} onKeyDown={ev => { if (ev.key === 'Enter' && mudou) void ir(); }} aria-label="Nome" />
+      {mudou && <button type="button" className="btn btn-primary" disabled={salvando} onClick={() => void ir()}>{salvando ? <span className="btn-spinner" /> : null}Salvar</button>}
+      {erro && <span className="pessoal-erro">{erro}</span>}
+    </span>
+  );
+}
+
+/** A senha: a atual (o Firebase pede de novo) e a nova duas vezes. */
+function TrocarSenha({ salvar }: { salvar: (atual: string, nova: string, confirma: string) => Promise<string | null> }) {
+  const [aberto, setAberto] = useState(false);
+  const [atual, setAtual] = useState('');
+  const [nova, setNova] = useState('');
+  const [confirma, setConfirma] = useState('');
+  const [erro, setErro] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  if (!aberto) {
+    return (
+      <Linha rotulo="Senha" dica="A mesma do Entregas.">
+        <button type="button" className="btn btn-outline" onClick={() => setAberto(true)}><Icone nome="lock" />Trocar senha</button>
+      </Linha>
+    );
+  }
+  return (
+    <form className="pessoal-form" onSubmit={async ev => {
+      ev.preventDefault(); setSalvando(true);
+      const e = await salvar(atual, nova, confirma);
+      setSalvando(false);
+      if (e) setErro(e); else { setAberto(false); setAtual(''); setNova(''); setConfirma(''); setErro(''); }
+    }}>
+      <b>Trocar senha</b>
+      <input type="password" autoComplete="current-password" placeholder="Senha atual" value={atual} onChange={ev => setAtual(ev.target.value)} />
+      <input type="password" autoComplete="new-password" placeholder="Senha nova (pelo menos 6 caracteres)" value={nova} onChange={ev => setNova(ev.target.value)} />
+      <input type="password" autoComplete="new-password" placeholder="Repita a senha nova" value={confirma} onChange={ev => setConfirma(ev.target.value)} />
+      {erro && <p className="pessoal-erro">{erro}</p>}
+      <span className="pessoal-nome">
+        <button type="submit" className="btn btn-primary" disabled={salvando}>{salvando ? <span className="btn-spinner" /> : null}Trocar</button>
+        <button type="button" className="btn btn-outline" onClick={() => { setAberto(false); setErro(''); }}>Cancelar</button>
+      </span>
+    </form>
+  );
+}
+
 function MinhaConta({ vm }: { vm: VmPessoal }) {
   const c = vm.conta;
   const arquivo = useRef<HTMLInputElement>(null);
@@ -160,14 +211,23 @@ function MinhaConta({ vm }: { vm: VmPessoal }) {
             {c.foto && <button type="button" className="btn btn-outline" disabled={c.salvandoFoto} onClick={c.tirarFoto}>Remover</button>}
           </div>
         </div>
+        <div className="pessoal-linha-texto"><span className="fraco">Ou um ícone (os mesmos do Entregas):</span></div>
+        <div className="pessoal-icones" role="list">
+          {c.icones.map(i => (
+            <button key={i.nome} type="button" role="listitem" className={'pessoal-icone' + (c.foto === i.url ? ' on' : '')} title={i.nome}
+              aria-label={'Usar o ícone ' + i.nome} disabled={c.salvandoFoto} onClick={() => c.escolherIcone(i.url)}>
+              <img src={i.url} alt="" />
+            </button>
+          ))}
+        </div>
       </Cartao>
       <Cartao titulo="Conta">
-        <Linha rotulo="Nome" dica="Como aparece nas tarefas e nos pedidos ao robô.">{c.nome}</Linha>
+        <Linha rotulo="Nome" dica="Como aparece nas tarefas e nos pedidos ao robô (e no Entregas).">
+          {c.comLogin ? <EditarNome atual={c.nome} salvar={c.trocarNome} /> : c.nome}
+        </Linha>
         <Linha rotulo="E-mail" dica="O login do Entregas (a mesma conta em todo o nads).">{c.email || '—'}</Linha>
         <Linha rotulo="Setor" dica="Quem muda é um administrador.">{c.setor}</Linha>
-        <Linha rotulo="Nome e senha" dica="Mudam nas Configurações do Entregas (a mesma conta).">
-          <a className="btn btn-outline" href={c.linkDoEntregas} target="_blank" rel="noreferrer">Abrir no Entregas</a>
-        </Linha>
+        {c.comLogin && <TrocarSenha salvar={c.trocarSenha} />}
         <Linha rotulo={c.sair} dica="Sai deste navegador; para entrar de novo, o login do Entregas.">
           <button type="button" className="btn btn-outline btn-danger" onClick={c.fazerSair}><Icone nome="logOut" />{c.sair}</button>
         </Linha>
@@ -189,6 +249,31 @@ function Preferencias({ vm }: { vm: VmPessoal }) {
             {p.inicios.map(i => <option key={i.valor} value={i.valor}>{i.rotulo}</option>)}
           </select>
         </Linha>
+        <Linha rotulo="Mês em que as telas abrem" dica="Minhas empresas, a página da empresa e o Contábil (dá para trocar na tela).">
+          <select className="pessoal-select" value={p.competencia} onChange={ev => p.mudarCompetencia(ev.target.value as 'anterior' | 'atual')} aria-label="Mês em que as telas abrem">
+            <option value="anterior">O mês anterior</option>
+            <option value="atual">O mês atual</option>
+          </select>
+        </Linha>
+        <Linha rotulo="Barra lateral recolhida" dica="A barra da esquerda começa só com os ícones (dá para abrir nela mesma).">
+          <Interruptor ligado={p.lateralOculta} onMudar={() => p.mudarLateral(!p.lateralOculta)} rotulo="Barra lateral recolhida" />
+        </Linha>
+        <Linha rotulo="Tabelas compactas" dica="Linhas mais baixas: cabe mais na tela.">
+          <Interruptor ligado={p.compactas} onMudar={() => p.mudarCompactas(!p.compactas)} rotulo="Tabelas compactas" />
+        </Linha>
+      </Cartao>
+      <Cartao titulo="Atalhos de teclado">
+        <table className="pessoal-atalhos">
+          <tbody>
+            {p.atalhos.map(a => (
+              <tr key={a.onde + a.teclas.join('+')}>
+                <td>{a.teclas.map((k, i) => <span key={k}>{i > 0 && ' + '}<kbd>{k}</kbd></span>)}</td>
+                <td>{a.faz}</td>
+                <td className="fraco">{a.onde}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </Cartao>
     </>
   );

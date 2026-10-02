@@ -2,7 +2,7 @@
 // pede quem está trabalhando antes de mostrar qualquer tela: no banco, o login com a conta do Entregas
 // (30/09/2026); nos exemplos, a escolha do nome na lista da equipe. Com a proteção do login ligada
 // (Cadastro › Configurações), quem não é admin precisa liberar o computador com o código de um admin.
-import { useRetorno } from '@nads/ui';
+import { aplicarTabelasCompactas, useRetorno } from '@nads/ui';
 import { useEffect, type ReactNode } from 'react';
 import { Outlet } from 'react-router';
 import { OperadorProvider, operadorDaConta, useOperador } from './casca/operador';
@@ -27,6 +27,8 @@ export function AppTarefas() {
   const sessao = useSessao();
   const { toast } = useRetorno();
   useEffect(() => { avisarErrosDoBanco(repo, toast); }, [repo, toast]);
+  // as tabelas compactas (Minha página › Aparência e telas), se a pessoa escolheu neste navegador
+  useEffect(() => { aplicarTabelasCompactas(); }, []);
 
   // no banco: sem conta (ou conta sem departamento), só a entrada
   const operador = sessao?.usuario ? operadorDaConta(sessao.usuario) : null;
