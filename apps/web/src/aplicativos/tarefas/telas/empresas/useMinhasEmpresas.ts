@@ -4,7 +4,6 @@ import { empresas, tarefas as t } from '@nads/core';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { caminhoDaEmpresa, caminhoDaPagina, caminhoDoExecutor } from '../../casca/navegacao';
-import { usePerguntaDoPeriodo } from '../periodo/usePerguntaDoPeriodo';
 import { SITUACOES, useAndamento } from './andamento';
 
 export const LIMITE = 60;
@@ -30,8 +29,6 @@ type Linha = ReturnType<typeof useAndamento>['linhas'][number];
 
 export function useMinhasEmpresas() {
   const a = useAndamento();
-  // iniciar pergunta os meses antes (um mês ou Em lote)
-  const periodo = usePerguntaDoPeriodo();
   const navegar = useNavigate();
   const [busca, setBusca] = useState('');
   const [buscaIniciar, setBuscaIniciar] = useState('');
@@ -62,7 +59,8 @@ export function useMinhasEmpresas() {
   const achadasIniciar = buscaIniciar.trim() ? new Set(empresas.buscarEmpresas(doFiltro.map(l => l.empresa), buscaIniciar)) : null;
   const paraIniciar = doFiltro.filter(l => !achadasIniciar || achadasIniciar.has(l.empresa));
 
-  const abrir = (rota: string) => navegar(caminhoDoExecutor(rota, a.competencia));
+  // começa no que está escolhido no seletor: o Em lote, ou a competência (Vitor, 02/10/2026)
+  const abrir = (rota: string) => navegar(caminhoDoExecutor(rota, a.lote || a.competencia));
 
   // Minhas recentes: onde quem está trabalhando mexeu nesta competência nos últimos 3 dias, a mais recente primeiro
   const minhas = a.linhas.filter(l => l.mexiEm).sort((x, y) => (y.mexiEm as string).localeCompare(x.mexiEm as string));
@@ -112,12 +110,8 @@ export function useMinhasEmpresas() {
     buscaIniciar, setBuscaIniciar,
     paraIniciar: paraIniciar.slice(0, LIMITE_INICIAR),
     totalParaIniciar: paraIniciar.length,
-    iniciar: (rota: string) => {
-      setBuscaIniciar('');
-      const l = a.linhas.find(x => x.rota === rota);
-      periodo.perguntar(rota, l ? (l.codigo != null ? l.codigo + ' · ' : '') + l.nome : rota, a.competencia);
-    },
-    periodo,
+    iniciar: (rota: string) => { setBuscaIniciar(''); abrir(rota); },
+    loteDeMeses: a.lote, setLoteDeMeses: a.setLote,
     abaIniciar, setAbaIniciar,
     // Iniciar em lote: marca as empresas (a caixinha à esquerda) e abre uma aba para cada uma
     lote, marcadaNoLote: (rota: string) => lote.includes(rota),

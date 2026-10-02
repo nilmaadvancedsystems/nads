@@ -2,12 +2,12 @@
 // competência e o botão para abrir o executor; os números da competência; as etapas com quem fez,
 // quando e por que parou; o histórico dos últimos meses (clicar abre aquele mês); e os arquivos que o
 // Extrator tem da empresa.
-import { Esqueleto, Icone, MenuSuspenso, useCarregando } from '@nads/ui';
+import { Esqueleto, Icone, useCarregando } from '@nads/ui';
 import { Navigate } from 'react-router';
 import { TrilhaDoTopo } from '../../../../comum/topo';
 import { BASE } from '../../casca/navegacao';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
-import { JanelaDoPeriodo } from '../periodo/JanelaDoPeriodo';
+import { SeletorDoInicio } from '../periodo/SeletorDoInicio';
 import { useEmpresa } from './useEmpresa';
 
 export function EmpresaTarefas({ rota }: { rota: string }) {
@@ -18,7 +18,6 @@ export function EmpresaTarefas({ rota }: { rota: string }) {
 
   return (
     <section className="empresa-tarefas">
-      <JanelaDoPeriodo vm={vm.periodo} />
       {/* voltar é pela barra de cima: Tarefas / Vitor / Minhas empresas / 292 · … */}
       <TrilhaDoTopo itens={[{ rotulo: 'Minhas empresas', titulo: 'Voltar para Minhas empresas', onClick: vm.voltar }, { rotulo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome }]} />
 
@@ -31,8 +30,7 @@ export function EmpresaTarefas({ rota }: { rota: string }) {
           </div>
         </div>
         <div className="empresa-acoes">
-          <MenuSuspenso icone="calendar" rotulo={vm.rotuloCompetencia} titulo="Competência" direita
-            itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
+          <SeletorDoInicio competencias={vm.competencias} competencia={vm.competencia} lote={vm.lote} onCompetencia={vm.setCompetencia} onLote={vm.setLote} direita />
           <button type="button" className={'btn ' + (vm.situacao === 'concluida' ? 'btn-outline' : 'btn-primary')} onClick={vm.abrirExecutor}>
             <Icone nome="play" />{vm.acao}
           </button>

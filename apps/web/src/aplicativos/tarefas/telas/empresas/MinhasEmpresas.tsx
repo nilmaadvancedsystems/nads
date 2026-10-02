@@ -6,7 +6,7 @@ import { useEffect, useRef } from 'react';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { PainelIniciar } from './partes/PainelIniciar';
 import { LIMITE, useMinhasEmpresas, type Coluna } from './useMinhasEmpresas';
-import { JanelaDoPeriodo } from '../periodo/JanelaDoPeriodo';
+import { SeletorDoInicio } from '../periodo/SeletorDoInicio';
 
 
 /** Título de coluna que ordena: clicar ordena por ela (crescente), clicar de novo inverte; a setinha cinza só aparece depois do clique. */
@@ -45,10 +45,8 @@ export function MinhasEmpresas() {
   if (!vm.temRotina) return <EmDesenvolvimento nome={'A rotina do ' + (vm.departamento === 'fiscal' ? 'Fiscal' : 'Departamento Pessoal')} />;
   return (
     <section>
-      <JanelaDoPeriodo vm={vm.periodo} />
       <div className="tarefas-barra-topo">
-        <MenuSuspenso icone="calendar" rotulo={vm.rotuloCompetencia} titulo="Competência" dica="Trocar a competência"
-          itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
+        <SeletorDoInicio competencias={vm.competencias} competencia={vm.competencia} lote={vm.loteDeMeses} onCompetencia={vm.setCompetencia} onLote={vm.setLoteDeMeses} />
         <button type="button" className="tarefas-contador" disabled={!vm.filtrando} onClick={vm.limparFiltros}
           title={vm.filtrando ? 'Limpar a busca e a situação' : undefined}>
           <Icone nome="briefcase" /><b><NumeroQueConta texto={String(vm.total)} /></b> {vm.total === 1 ? 'empresa' : 'empresas'}

@@ -9,7 +9,6 @@ import { useRepo, useVersaoDoRepo } from '../../dados/repo';
 import { caminhoDaEmpresa, caminhoDaPagina, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 import { ACAO } from '../empresas/andamento';
-import { usePerguntaDoPeriodo } from '../periodo/usePerguntaDoPeriodo';
 
 /** Quantos meses o histórico mostra. */
 const MESES_HISTORICO = 6;
@@ -27,7 +26,6 @@ function ultimoToque(ex: t.Execucao | null): { por: string; em: string } | null 
 }
 
 export function useEmpresa(rota: string) {
-  const periodo = usePerguntaDoPeriodo();
   const repo = useRepo();
   useVersaoDoRepo();
   const navegar = useNavigate();
@@ -36,6 +34,7 @@ export function useEmpresa(rota: string) {
   const rotina = op.departamento === 'contabil' ? t.ROTINA_CONTABIL : null;
   const competencias = t.competenciasRecentes(new Date(), 12);
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
+  const lote = (params.get('lote') || '').includes('..') && t.competenciasDoPeriodo(params.get('lote') as string).length > 1 ? (params.get('lote') as string) : '';
   const empresa = empresas.empresaPelaRota(repo.listarEmpresas(), rota);
   const dep = rotina?.departamento || op.departamento;
   const agora = new Date();
@@ -104,11 +103,9 @@ export function useEmpresa(rota: string) {
     etapas, historico,
     extratos, carregandoExtratos: arquivos === null,
     acao: ACAO[situacao],
-    // iniciar (ainda não começou) pergunta os meses; continuar vai direto
-    abrirExecutor: () => (situacao === 'nao-iniciada'
-      ? periodo.perguntar(empresas.rotaDaEmpresa(empresa), (empresa.codigo != null ? empresa.codigo + ' · ' : '') + empresa.nome, competencia)
-      : navegar(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), competencia))),
-    periodo,
+    // começa no que está escolhido no seletor: o Em lote, ou a competência
+    abrirExecutor: () => navegar(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), lote || competencia)),
+    lote, setLote: (l: string) => setParams({ competencia, lote: l }),
     abrirCompetencia: (c: string) => navegar(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), c)),
     voltar: () => navegar(caminhoDaPagina('minhas-empresas', 'empresas') + '?competencia=' + competencia),
   };

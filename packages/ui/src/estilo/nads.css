@@ -2138,11 +2138,12 @@ main.main:has(> .content > .explorador){padding:0;}
 ::-webkit-scrollbar-button{display:none;width:0;height:0;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-corner{background:transparent;}
-::-webkit-scrollbar-thumb{background:color-mix(in srgb, var(--accent) 45%, transparent);border-radius:6px;border:1px solid transparent;background-clip:padding-box;}
-::-webkit-scrollbar-thumb:hover{background:var(--accent);border:1px solid transparent;background-clip:padding-box;}
-::-webkit-scrollbar-thumb:active{background:var(--accent-strong);border:1px solid transparent;background-clip:padding-box;}
+/* cinzas (Vitor, 02/10/2026) */
+::-webkit-scrollbar-thumb{background:color-mix(in srgb, var(--ink-muted) 45%, transparent);border-radius:6px;border:1px solid transparent;background-clip:padding-box;}
+::-webkit-scrollbar-thumb:hover{background:var(--ink-muted);border:1px solid transparent;background-clip:padding-box;}
+::-webkit-scrollbar-thumb:active{background:var(--ink);border:1px solid transparent;background-clip:padding-box;}
 @supports not selector(::-webkit-scrollbar){
-  *{scrollbar-width:thin;scrollbar-color:color-mix(in srgb, var(--accent) 50%, transparent) transparent;}
+  *{scrollbar-width:thin;scrollbar-color:color-mix(in srgb, var(--ink-muted) 50%, transparent) transparent;}
 }
 .icon-btn.girando svg{transform-origin:50% 50%;}
 /* A abertura do app (AberturaN): o N grande no meio da tela; as metades entram de lados opostos e se encaixam,
