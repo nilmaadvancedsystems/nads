@@ -23,8 +23,8 @@ export function useCatalogo() {
   const q = norm(busca.trim());
 
   const doTipo = PECAS.filter(p => p.tipo === tipo);
-  // as que saíram ficam por último, em preto e branco
-  const pecas = [...doTipo.filter(p => !p.removida), ...doTipo.filter(p => p.removida)]
+  // as que saíram ficam no lugar do código delas (BT-04 entre a BT-03 e a BT-05), em preto e branco
+  const pecas = doTipo
     .filter(p => !tela || p.telas.includes(tela))
     .filter(p => !q || norm([p.cod || '', p.nome, p.descricao || '', p.componente || '', ...(p.classes || [])].join(' ')).includes(q));
 
