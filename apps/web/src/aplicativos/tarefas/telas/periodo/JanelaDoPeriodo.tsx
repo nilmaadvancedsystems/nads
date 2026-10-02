@@ -8,7 +8,6 @@ export function JanelaDoPeriodo({ vm }: { vm: ReturnType<typeof usePerguntaDoPer
   return (
     <div className="modal-overlay" onMouseDown={ev => { if (ev.target === ev.currentTarget) vm.cancelar(); }}>
       <div className={classeDaJanela({ icone: 'calendar' }) + ' periodo-janela'} role="dialog" aria-modal="true" aria-labelledby="periodoTitulo">
-        <div className="modal-icon"><Icone nome="calendar" /></div>
         <h3 id="periodoTitulo">Quais meses?</h3>
         <p><b>{p.nome}</b></p>
         <div className="periodo-campos">

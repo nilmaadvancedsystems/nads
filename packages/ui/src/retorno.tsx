@@ -5,7 +5,7 @@
 // quem desenha é daqui.
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { animar, apagarFundo, ENTRAR, origemDe, paramsDaPilha, paramsDoAvisoQueChega, sairComo, semMovimento, voltarParaOrigem } from './animacao';
-import { Icone, type NomeIcone } from './icones';
+import type { NomeIcone } from './icones';
 
 export interface BotaoModal<T> {
   rotulo: string; valor: T; variante?: 'btn-primary' | 'btn-outline' | 'btn-danger';
@@ -189,7 +189,6 @@ function Modal({ aberto, fechar }: { aberto: ModalAberto; fechar: (v: unknown) =
     <div ref={raiz} data-saida-propria data-fecha-fora={foraFecha ? '' : undefined} className={'modal-overlay' + (o.obrigatoria ? ' modal-blur' : '')}
       onMouseDown={ev => { if (ev.target === ev.currentTarget && foraFecha) fecharAnimado(valorDeFora); }}>
       <div className={classeDaJanela(o)} role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-        <div className="modal-icon"><Icone nome={o.icone || 'landmark'} /></div>
         <h3 id="modalTitle">{o.titulo}</h3>
         {o.html ? <p dangerouslySetInnerHTML={{ __html: o.html }} /> : o.texto ? <p>{o.texto}</p> : null}
         {o.corpo}

@@ -73,7 +73,7 @@ export function useBancosOk(vm: Vm, ponte: Ponte, ocupado: boolean): {
     const dias = sit.faltam.map(d => '→ ' + x.dataBR(d.data) + ': <b>-R$ ' + x.valorBR(Math.abs(d.saldo)) + '</b>').join('<br>');
     void modal({
       icone: 'alert', titulo: 'Saldo negativo no banco',
-      html: '<b>' + escapar(banco.nome) + '</b>' + (banco.conta ? ' ' + escapar(banco.conta) : '') + '<br>Dias negativos:<br>' + dias,
+      html: '<b>' + escapar(banco.nome) + '</b>' + (banco.conta ? ' ' + escapar(banco.conta) : '') + '<br><br>' + dias,
       // abre o Cheque especial numa aba nova (Vitor, 02/10/2026: no lugar do "Entendi")
       botoes: [{ rotulo: 'Fazer Cheque Especial', valor: true, variante: 'btn-primary', aoClicar: () => { window.open(caminhoNaFerramenta('cheque-especial', s.rota), '_blank', 'noopener'); } }],
     });

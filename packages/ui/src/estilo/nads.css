@@ -469,15 +469,10 @@ hr{border:0;border-top:1px solid var(--border);margin:24px 0;}
 :root[data-theme="dark"] .modal-overlay{background:#01040999;}
 .modal{background:var(--surface);border-radius:12px;box-shadow:var(--shadow-lg);max-width:448px;width:100%;padding:0;overflow:hidden;
 }
-.modal-icon{display:none;}
-/* Toda janela no desenho do "Tudo certo!" (classeDaJanela, Vitor 02/10/2026): o ícone numa bolinha, título, texto e
-   botões no centro. A bolinha: cinza (padrão), laranja (aviso, ⚠), verde (deu certo). */
-.modal.modal-centro{max-width:400px;text-align:center;padding:28px 24px 22px;position:relative;}
-.modal.modal-centro .modal-icon{display:flex;align-items:center;justify-content:center;width:56px;height:56px;margin:0 auto 14px;padding:0;border-radius:50%;background:var(--hover-bg);color:var(--ink-muted);}
-.modal.modal-centro .modal-icon svg{width:30px;height:30px;}
-.modal.modal-aviso .modal-icon{background:var(--warn-soft);color:var(--warn);}
+/* Toda janela no desenho do "Tudo certo!" (classeDaJanela, Vitor 02/10/2026): título, texto e botões no centro. Sem o
+   ícone em cima (Vitor, 02/10/2026: "remova todos esses ícones de todas as janelas"). */
+.modal.modal-centro{max-width:400px;text-align:center;padding:24px 24px 22px;position:relative;}
 .modal.modal-ok{max-width:360px;}
-.modal.modal-ok .modal-icon{background:var(--success-soft);color:var(--success);}
 .modal.modal-centro h3{border:0;padding:0;margin:0 0 6px;font-size:18px;}
 .modal.modal-centro p{padding:0;margin:0;font-size:13.5px;line-height:1.5;color:var(--ink-muted);}
 .modal.modal-centro p b{color:var(--ink);font-weight:600;}
