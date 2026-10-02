@@ -2377,13 +2377,3 @@ tr.linha-abre,.imp-linha,.imp-mes-celula,.gh-crumb,.drawer-x{
 .versao-trava-caixa h3{margin:0 0 6px;font-size:16px;}
 .versao-trava-caixa .hint{margin:0 0 16px;}
 .versao-trava-caixa .btn{width:100%;justify-content:center;}
-/* Componentes: a peça que saiu do sistema fica no catálogo em preto e branco, nome riscado e para onde foi (Vitor, 02/10/2026).
-   O desenho dela volta a ser o de antes (as classes já não existem no sistema). */
-.cat-removida{filter:grayscale(1);opacity:.7;}
-.cat-removida h3 s{color:var(--ink-muted);}
-.cat-destino{margin:4px 0 0;font-size:12px;font-weight:600;color:var(--ink);}
-.cat-removida .btn-sm{padding:3px 8px;min-height:28px;font-size:12px;gap:4px;}
-.cat-removida .btn-sm svg{width:14px;height:14px;}
-.cat-removida .gh-topo-btn{border-color:var(--border);background:transparent;box-shadow:none;}
-.cat-removida .gh-topo-btn:not(.gh-topo-menu):not(.gh-topo-forte):not(.gh-topo-proximo) svg{opacity:.4;}
-.cat-removida .gh-topo-proximo{background:var(--btn-primary);border-color:transparent;color:#FFFFFF;}

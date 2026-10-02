@@ -5,6 +5,7 @@
 import { AberturaN, Casca, Icone } from '@nads/ui';
 import { VERSAO_SISTEMA } from '../../../versao';
 import { useCatalogo } from './useCatalogo';
+import '../removidas.css';
 
 export function Catalogo() {
   const vm = useCatalogo();
