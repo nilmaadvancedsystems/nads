@@ -1,9 +1,23 @@
 // View da casca da Tarefas (a Casca comum do nads). telaInteira: sem a barra lateral e sem o título (o Drive).
-import { Casca } from '@nads/ui';
+import { Casca, MenuSuspenso } from '@nads/ui';
 import type { ReactNode } from 'react';
 import { LugarDasAcoes, useTrilhaDoTopo } from '../../../comum/topo';
 import type { IdAplicacao } from './navegacao';
 import { useCascaTarefas } from './useCascaTarefas';
+
+/** O avatar no canto do cabeçalho (como o do Entregas e o do GitHub): as iniciais; aberto, a Minha página e sair. */
+function AvatarDaPessoa({ vm }: { vm: ReturnType<typeof useCascaTarefas> }) {
+  return (
+    <MenuSuspenso rotulo={vm.perfil.iniciais} className={'gh-avatar' + (vm.naPessoal ? ' ativo' : '')} dica={vm.perfil.nome} titulo={vm.perfil.nome} direita
+      itens={[
+        { rotulo: 'Caixa de entrada', icone: 'caixaEntrada', onClick: () => vm.abrirPessoal('caixa') },
+        { rotulo: 'Minha conta', icone: 'usuario', onClick: () => vm.abrirPessoal('conta') },
+        { rotulo: 'Aparência e telas', icone: 'settings', onClick: () => vm.abrirPessoal('preferencias') },
+        'separador',
+        { rotulo: vm.perfil.sair, icone: 'logOut', onClick: vm.trocarPessoa },
+      ]} />
+  );
+}
 
 export function CascaTarefas({ app, pagina, telaInteira, children }: { app: IdAplicacao; pagina: string; telaInteira?: boolean; children: ReactNode }) {
   const vm = useCascaTarefas(app, pagina);
@@ -12,7 +26,8 @@ export function CascaTarefas({ app, pagina, telaInteira, children }: { app: IdAp
     <Casca sistema="Tarefas" empresa={vm.empresa} versao={vm.versao} trilha={trilha} secoes={vm.secoes} paginas={vm.paginas} titulo={telaInteira ? '' : vm.titulo}
       lateral={telaInteira ? 'nenhuma' : undefined} larga={telaInteira}
       acoes={telaInteira ? undefined : <LugarDasAcoes />} onSecao={vm.onSecao} onPagina={() => undefined} onInicio={vm.inicio} onAplicativos={vm.inicio}
-      onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}>
+      onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}
+      topoDireita={<AvatarDaPessoa vm={vm} />}>
       {children}
     </Casca>
   );
