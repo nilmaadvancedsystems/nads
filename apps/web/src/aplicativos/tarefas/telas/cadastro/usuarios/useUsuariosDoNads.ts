@@ -43,7 +43,7 @@ export function useUsuariosDoNads() {
     async ativar(p: usuarios.Usuario) {
       if (p.ativo) {
         const ok = await modal<boolean>({ icone: 'alert', titulo: 'Desativar ' + p.nome + '?', texto: 'A conta deixa de entrar no nads e no Entregas (os robôs e as telas respeitam o "ativo").',
-          botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Desativar', valor: true, variante: 'btn-danger' }] });
+          botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Desativar', valor: true, variante: 'btn-danger' }] });
         if (!ok) return;
       }
       await tentar(() => repo.ativar(p.uid, !p.ativo), p.nome + (p.ativo ? ' desativado.' : ' ativado.'));

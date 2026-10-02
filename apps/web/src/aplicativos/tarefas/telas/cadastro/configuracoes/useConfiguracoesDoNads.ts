@@ -30,7 +30,7 @@ export function useConfiguracoesDoNads() {
       if (ligar) {
         const ok = await modal<boolean>({ icone: 'lock', titulo: 'Ligar a proteção do login?',
           texto: 'Quem não é administrador e ainda não foi liberado vai precisar do código de um administrador na próxima vez que abrir o nads (inclusive quem já está com ele aberto).',
-          botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Ligar', valor: true, variante: 'btn-primary' }] });
+          botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Ligar', valor: true, variante: 'btn-primary' }] });
         if (!ok) return;
       }
       try { await repo.gravarProtecao(ligar); toast(ligar ? 'Proteção do login ligada.' : 'Proteção do login desligada.'); }

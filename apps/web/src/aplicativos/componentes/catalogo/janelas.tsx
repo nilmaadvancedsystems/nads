@@ -5,7 +5,7 @@ import { janela } from './pecas';
 import { CONCILIA, EXECUTOR } from './telas';
 import type { Peca } from './tipos';
 
-const SAIR = [{ rotulo: 'Voltar' }] as const;
+const SAIR = [{ rotulo: 'Cancelar' }] as const;
 const IMPORTAR = () => [{ rotulo: 'Cancelar' }, { rotulo: 'Sobrepor o movimento', variante: 'btn-danger' as const }, { rotulo: 'Importar apenas novas', variante: 'btn-primary' as const }];
 
 export const JANELAS: Peca[] = [

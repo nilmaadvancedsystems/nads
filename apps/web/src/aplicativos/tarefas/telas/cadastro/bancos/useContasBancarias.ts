@@ -123,7 +123,7 @@ export function useContasBancarias(rota: string) {
       const ok = await modal<boolean>({
         icone: 'alert', titulo: 'Excluir esta conta?',
         texto: cad.descreverConta(l) + '. Excluir é para conta cadastrada por engano: a conta que existiu e fechou deve ser encerrada (os meses dela continuam no Extrator).',
-        botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }],
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }],
       });
       if (ok) aplicar(cad.excluirConta(c.cadastro, l.id, c.partida, c.por, new Date()), 'Conta excluída.');
     },

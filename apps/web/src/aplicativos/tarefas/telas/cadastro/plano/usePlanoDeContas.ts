@@ -55,7 +55,7 @@ export function usePlanoDeContas(rota: string) {
     if (m.usadasQueSaem.length) partes.push('<b>Atenção:</b> estas contas usadas no cadastro não estão no plano novo: ' + m.usadasQueSaem.map(escapar).join(', ') + '.');
     const ok = await modal<boolean>({
       icone: 'upload', titulo: c.plano ? 'Trocar o plano de contas?' : 'Importar o plano de contas?', html: partes.join('<br><br>'),
-      botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: c.plano ? 'Trocar' : 'Importar', valor: true, variante: 'btn-primary' }],
+      botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: c.plano ? 'Trocar' : 'Importar', valor: true, variante: 'btn-primary' }],
     });
     if (!ok) return;
     const agora = new Date();

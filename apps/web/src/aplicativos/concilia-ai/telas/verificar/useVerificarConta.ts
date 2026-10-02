@@ -146,7 +146,7 @@ export function useVerificarConta() {
     const abrir = (codigo: string) => { reimportando.current = true; setAbrirArquivo({ codigo, n: Date.now() }); };
     if (!d.multi) { if (d.conta) abrir(d.conta.codigo); return; }
     if (v.abaRes && v.abaRes !== 'todas') { abrir(v.abaRes); return; }
-    const botoes: BotaoModal<string | null>[] = [{ rotulo: 'Voltar', valor: null, variante: 'btn-outline' }];
+    const botoes: BotaoModal<string | null>[] = [{ rotulo: 'Cancelar', valor: null, variante: 'btn-outline' }];
     for (const a of d.grupo) botoes.push({ rotulo: 'Conta ' + a.codigo, valor: a.codigo, variante: 'btn-primary' });
     const cod = await modal<string | null>({ icone: 'upload', titulo: 'Qual relatório você corrigiu?', botoes });
     if (cod) abrir(cod);
@@ -169,7 +169,7 @@ export function useVerificarConta() {
   async function limpar() {
     const ok = await modal<boolean>({
       icone: 'alert', titulo: 'Limpar a conferência?', texto: 'O relatório lido e o resultado dessa conferência serão descartados. A conta continua a mesma.',
-      botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Limpar', valor: true, variante: 'btn-primary' }],
+      botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Limpar', valor: true, variante: 'btn-primary' }],
     });
     if (!ok) return;
     const nv = { ...VERIFICAR_VAZIO, contas: vRef.current.contas };

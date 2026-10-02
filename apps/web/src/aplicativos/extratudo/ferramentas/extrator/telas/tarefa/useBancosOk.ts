@@ -69,13 +69,11 @@ export function useBancosOk(vm: Vm, ponte: Ponte, ocupado: boolean): {
   /** O clique no "Conferido": o saldo negativo de cada dia e o que fazer. */
   function explicarCheque(banco: { nome: string; conta?: string }, sit: x.SituacaoDoBanco) {
     if (sit.tipo !== 'falta-cheque') return;
-    const dias = sit.faltam.map(d => '• ' + x.dataBR(d.data) + ': <b>' + x.valorBR(d.saldo) + '</b>').join('<br>');
+    // (Vitor, 02/10/2026) só os dias: "Dias negativos: → 03/09/2026: -R$ 150,00"
+    const dias = sit.faltam.map(d => '→ ' + x.dataBR(d.data) + ': <b>-R$ ' + x.valorBR(Math.abs(d.saldo)) + '</b>').join('<br>');
     void modal({
       icone: 'alert', titulo: 'Saldo negativo no banco',
-      html: '<b>' + escapar(banco.nome) + '</b>' + (banco.conta ? ' ' + escapar(banco.conta) : '') + ' bate com o razão, mas fecha negativo em '
-        + (sit.faltam.length === 1 ? '1 dia' : sit.faltam.length + ' dias') + ':<br>' + dias
-        + '<br><br>Faça o <b>Cheque especial</b>' + (vm.etapaCheque ? '' : ' (a etapa seguinte da Preparação)') + ': gere os lançamentos de ajuste, lance no Alterdata e '
-        + 'importe o razão de novo. A conferência confere o saldo final ignorando os lançamentos do cheque especial.',
+      html: '<b>' + escapar(banco.nome) + '</b>' + (banco.conta ? ' ' + escapar(banco.conta) : '') + '<br>Dias negativos:<br>' + dias,
       // abre o Cheque especial numa aba nova (Vitor, 02/10/2026: no lugar do "Entendi")
       botoes: [{ rotulo: 'Fazer Cheque Especial', valor: true, variante: 'btn-primary', aoClicar: () => { window.open(caminhoNaFerramenta('cheque-especial', s.rota), '_blank', 'noopener'); } }],
     });

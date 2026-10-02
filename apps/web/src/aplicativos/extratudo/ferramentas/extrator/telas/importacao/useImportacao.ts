@@ -189,9 +189,9 @@ export function useImportacao() {
     const nomeBanco = bancos.find(b => b.id === banco)?.nome || 'banco';
     const ok = await modal<boolean>({
       icone: 'alert', titulo: 'Excluir a importação?',
-      html: (lado === 'banco' ? 'O extrato' : 'O razão') + ' do <b>' + escapar(nomeBanco) + '</b>: ' +
-        arqs.map(a => '<b>' + escapar(a.nome) + '</b> (' + a.lancamentos.length + ')').join(', ') + '. Dá para importar de novo depois.',
-      botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }],
+      html: 'Remover “' + (lado === 'banco' ? 'O extrato' : 'O razão') + ' do <b>' + escapar(nomeBanco) + '</b>: ' +
+        arqs.map(a => '<b>' + escapar(a.nome) + '</b> (' + a.lancamentos.length + ')').join(', ') + '”.<br>Dá para importar de novo depois.',
+      botoes: [{ rotulo: 'Excluir', valor: true, variante: 'btn-danger' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
     });
     if (!ok) return;
     s.aplicar(e => arqs.reduce((acc, a) => x.excluirArquivo(acc, a.id, new Date()), e));
@@ -210,7 +210,7 @@ export function useImportacao() {
       icone: 'alert', titulo: 'Remover todos?',
       html: 'O ' + oQue + ' do <b>' + escapar(nomeBanco) + '</b> nos ' + meses.length + ' meses: ' + arqs.length + (arqs.length === 1 ? ' arquivo' : ' arquivos') +
         ' (' + arqs.reduce((t, a) => t + a.lancamentos.length, 0) + ' lançamentos). Dá para importar de novo depois.',
-      botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Remover todos', valor: true, variante: 'btn-danger' }],
+      botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Remover todos', valor: true, variante: 'btn-danger' }],
     });
     if (!ok) return;
     s.aplicar(e => arqs.reduce((acc, a) => x.excluirArquivo(acc, a.id, new Date()), e));
@@ -237,7 +237,7 @@ export function useImportacao() {
     const ok = await modal<boolean>({
       icone: 'alert', titulo: 'Excluir este arquivo?',
       html: 'Os <b>' + a.lancamentos.length + ' lançamento(s)</b> de <b>' + escapar(a.nome) + '</b> saem da conferência. Dá para importar de novo depois.',
-      botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }],
+      botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }],
     });
     if (!ok) return;
     excluirJa(id);

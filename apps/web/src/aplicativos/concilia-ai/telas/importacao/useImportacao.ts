@@ -185,7 +185,7 @@ export function useImportacao(tipo: TipoImp) {
     if (tipo === 'balancete') {
       if (!e.contas.length) { toast('Não há balancete lido pra apagar.'); return; }
       const ok = await modal<boolean>({ icone: 'alert', titulo: 'Apagar o balancete?', html: 'As <b>' + e.contas.length + ' contas lidas</b> desta empresa serão removidas.',
-        botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Apagar', valor: true, variante: 'btn-primary' }] });
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Apagar', valor: true, variante: 'btn-primary' }] });
       if (!ok) return;
       s.aplicar(x => c.apagarBalancete(x, new Date()));
       limparArquivo(); toast('Balancete apagado.');
@@ -195,7 +195,7 @@ export function useImportacao(tipo: TipoImp) {
       const nome = NOME_TIPO[tipo];
       if (!e[tipo].length) { toast('Não há notas de ' + nome + ' pra apagar.'); return; }
       const ok = await modal<boolean>({ icone: 'alert', titulo: 'Apagar as notas de ' + nome + '?', html: 'Todas as <b>' + e[tipo].length + ' notas de ' + nome + '</b> guardadas desta empresa serão apagadas. O plano de contas continua.',
-        botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Apagar', valor: true, variante: 'btn-primary' }] });
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Apagar', valor: true, variante: 'btn-primary' }] });
       if (!ok) return;
       s.aplicar(x => c.apagarNotas(x, tipo, new Date()));
       limparArquivo(); toast('Notas apagadas.');
@@ -205,7 +205,7 @@ export function useImportacao(tipo: TipoImp) {
     const lista = e[cfgS.campo];
     if (!lista.length) { toast('Não há notas de ' + cfgS.rotulo.toLowerCase() + ' pra apagar.'); return; }
     const ok = await modal<boolean>({ icone: 'alert', titulo: 'Apagar as notas de ' + cfgS.rotulo.toLowerCase() + '?', html: 'Todas as <b>' + lista.length + ' notas</b> de ' + cfgS.rotulo.toLowerCase() + ' guardadas desta empresa serão apagadas. O cadastro de contas continua.',
-      botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Apagar', valor: true, variante: 'btn-primary' }] });
+      botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Apagar', valor: true, variante: 'btn-primary' }] });
     if (!ok) return;
     s.aplicar(x => c.apagarServicos(x, tipo, new Date()));
     limparArquivo(); toast('Notas apagadas.');

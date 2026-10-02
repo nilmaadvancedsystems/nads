@@ -40,6 +40,15 @@ export function classeDaJanela(o: { tom?: 'ok'; icone?: NomeIcone }): string {
   return 'modal modal-centro' + (o.tom === 'ok' ? ' modal-ok' : o.icone === 'alert' ? ' modal-aviso' : '');
 }
 
+/**
+ * A ordem dos botões na janela (Vitor, 02/10/2026: "cancelar sempre na direita"): primeiro as ações, por último o de
+ * desistir (o de borda, sem cor: Cancelar, Agora não, Não). Quem chama pode mandar em qualquer ordem.
+ */
+export function ordemDosBotoes<T extends { variante?: string }>(botoes: readonly T[]): T[] {
+  const desiste = (b: T) => !b.variante || b.variante === 'btn-outline';
+  return [...botoes.filter(b => !desiste(b)), ...botoes.filter(desiste)];
+}
+
 export interface Retorno {
   toast(mensagem: string): void;
   modal<T>(o: OpcoesModal<T>): Promise<T>;
@@ -185,8 +194,9 @@ function Modal({ aberto, fechar }: { aberto: ModalAberto; fechar: (v: unknown) =
         {o.html ? <p dangerouslySetInnerHTML={{ __html: o.html }} /> : o.texto ? <p>{o.texto}</p> : null}
         {o.corpo}
         <div className="modal-actions">
-          {o.botoes.map((b, i) => (
-            <button key={b.rotulo} ref={i === 0 ? primeiro : undefined} type="button" className={'btn ' + (b.variante || 'btn-outline')} onClick={() => { b.aoClicar?.(); fecharAnimado(b.valor); }}>{b.rotulo}</button>
+          {ordemDosBotoes(o.botoes).map((b, i, todos) => (
+            // o foco no Cancelar quando a ação é de apagar (Enter sem querer não apaga); senão, na primeira ação
+            <button key={b.rotulo} ref={i === (todos.some(x => x.variante === 'btn-danger') ? Math.max(0, todos.findIndex(x => !x.variante || x.variante === 'btn-outline')) : 0) ? primeiro : undefined} type="button" className={'btn ' + (b.variante || 'btn-outline')} onClick={() => { b.aoClicar?.(); fecharAnimado(b.valor); }}>{b.rotulo}</button>
           ))}
         </div>
         {o.fecharEm && <div className="modal-ok-barra" />}

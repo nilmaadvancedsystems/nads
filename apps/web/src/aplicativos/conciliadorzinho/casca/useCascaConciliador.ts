@@ -19,7 +19,7 @@ export function useCascaConciliador() {
   async function cancelar() {
     const ok = await modal<boolean>({
       icone: 'alert', titulo: 'Cancelar conciliação?', texto: 'Os arquivos enviados e as contas informadas serão descartados.',
-      botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Cancelar tudo', valor: true, variante: 'btn-primary' }],
+      botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Cancelar tudo', valor: true, variante: 'btn-primary' }],
     });
     if (ok) { s.recomecar(); toast('Processo cancelado.'); }
   }

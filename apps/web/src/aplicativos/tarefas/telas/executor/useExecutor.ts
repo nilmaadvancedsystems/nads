@@ -110,7 +110,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     if (alvo > daVez) {
       if (!meses.some(m => concluidaEm(id, m))) return;
       const nome = rotina.etapas[alvo].nome;
-      const ok = await modal({ titulo: 'Desmarcar ' + nome + '?', texto: 'A etapa volta a ficar pendente' + (varios ? ' em todos os meses do período' : '') + '.',
+      const ok = await modal({ icone: 'checkCircle', titulo: 'Desmarcar ' + nome + '?', texto: 'A etapa volta a ficar pendente' + (varios ? ' em todos os meses do período' : '') + '.',
         botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Desmarcar', valor: true, variante: 'btn-primary' }] });
       if (!ok) return;
     }
@@ -181,7 +181,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     if (!ex || !etapa) return;
     const ok = await modal<boolean>({
       icone: 'checkCircle', titulo: 'Não se aplica?', texto: etapa.nome + ': "' + objecao.texto + '". A etapa conta como concluída nesta competência.',
-      botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Não se aplica', valor: true, variante: 'btn-primary' }],
+      botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Não se aplica', valor: true, variante: 'btn-primary' }],
     });
     if (!ok) return;
     for (const c of alvos) {

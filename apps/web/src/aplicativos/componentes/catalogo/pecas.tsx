@@ -1,7 +1,7 @@
 // As peças do catálogo, desenhadas com as MESMAS peças do sistema (@nads/ui e as classes do nads.css). A ordem dentro
 // de cada tipo dá o código (BT-01, BT-02…): peça nova entra no FIM do tipo, para os códigos não mudarem.
 import {
-  Alerta, BotaoAcao, classeDaJanela, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail,
+  Alerta, BotaoAcao, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail,
   LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
 } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
@@ -22,7 +22,7 @@ function JanelaParada({ o }: { o: Janela }) {
       <h3>{o.titulo}</h3>
       {o.html ? <p dangerouslySetInnerHTML={{ __html: o.html }} /> : o.texto ? <p>{o.texto}</p> : null}
       <div className="modal-actions">
-        {o.botoes.map(b => <button key={b.rotulo} type="button" className={'btn ' + (b.variante || 'btn-outline')}>{b.rotulo}</button>)}
+        {ordemDosBotoes(o.botoes).map(b => <button key={b.rotulo} type="button" className={'btn ' + (b.variante || 'btn-outline')}>{b.rotulo}</button>)}
       </div>
       {o.fecharEm && <div className="modal-ok-barra" />}
     </div>
@@ -39,34 +39,6 @@ export function janela(id: string, nome: string, telas: string[], o: Janela, des
 // ---------------------------------------------------------------------------------------------------------------------
 // pedaços que se repetem nos desenhos
 // ---------------------------------------------------------------------------------------------------------------------
-/** O cabeçalho do executor da Tarefas (o de verdade fica no Executor.tsx; as mesmas classes). */
-function CabecalhoDoExecutor({ lote, abas }: { lote?: boolean; abas: { rotulo: string; icone: NomeIcone; ativa?: boolean }[] }) {
-  return (
-    <div className="cat-moldura">
-      <header className="gh-header" style={{ position: 'static' }}>
-        <div className="gh-header-top exec-topo">
-          <span className="brand-mark" aria-hidden="true"><MarcaN /></span>
-          <button type="button" className="exec-topo-empresa">
-            <span className="exec-topo-nome"><b>292</b> · FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA</span>
-            <span className="exec-topo-sub">
-              {lote ? <><span className="exec-topo-lote"><Icone nome="grade" />Em lote</span>Janeiro a Agosto/2026 · 8 meses</> : <><Icone nome="calendar" />Setembro/2026</>}
-              <span> · Preparação 1/4</span>
-            </span>
-          </button>
-          <span className="gh-header-spacer" />
-          <nav className="gh-topo-acoes">
-            <button className="gh-topo-btn gh-topo-menu" type="button"><Icone nome="fileUp" /><Icone nome="caretDown" className="menu-seta" /></button>
-            <button className="gh-topo-btn gh-topo-menu" type="button"><Icone nome="alert" /><Icone nome="caretDown" className="menu-seta" /></button>
-          </nav>
-          <button type="button" className="exec-fechar" title="Fechar"><Icone nome="x" /></button>
-        </div>
-        <nav className="menu">
-          {abas.map(a => <button key={a.rotulo} type="button" className={'menu-item' + (a.ativa ? ' active' : '')}><Icone nome={a.icone} /><span>{a.rotulo}</span></button>)}
-        </nav>
-      </header>
-    </div>
-  );
-}
 function Cabecalho({ trilha, direita, abas }: { trilha: string[]; direita?: ReactNode; abas?: { rotulo: string; icone: NomeIcone; ativa?: boolean; contador?: string }[] }) {
   return (
     <div className="cat-moldura">
@@ -298,10 +270,10 @@ export const PECAS_BASE: Peca[] = [
 
   // ─── Janelas (popups) ───────────────────────────────────────────────────────────────────────────────────────────────
   janela('jn-tudo-certo', 'Tudo certo! (banco Ok / conta sem pendências)', ['e-importacao', 't-exec-importacao', 'c-verificar'], { tom: 'ok', icone: 'checkCircle', titulo: 'Tudo certo!', html: '<b>Sicoob</b> Ag. 3144-5 · C/C 52.166-3', botoes: [{ rotulo: 'Ok', variante: 'btn-primary' }], fecharEm: { ms: 3500, valor: true } }, 'Fecha sozinha em 3,5 s'),
-  janela('jn-saldo-negativo', 'Saldo negativo no banco (clique em Cheque especial)', ['e-importacao', 't-exec-importacao', 't-exec-cheque'], { icone: 'alert', titulo: 'Saldo negativo no banco', html: '<b>Sicoob</b> bate com o razão, mas fecha negativo em 1 dia:<br>• 03/09/2026: <b>−150,00</b><br><br>Faça o <b>Cheque especial</b>: gere os lançamentos de ajuste, lance no Alterdata e importe o razão de novo.', botoes: [{ rotulo: 'Fazer Cheque Especial', variante: 'btn-primary' }] }),
+  janela('jn-saldo-negativo', 'Saldo negativo no banco (clique em Cheque especial)', ['e-importacao', 't-exec-importacao', 't-exec-cheque'], { icone: 'alert', titulo: 'Saldo negativo no banco', html: '<b>Sicoob</b> Ag. 3144-5 · C/C 52.166-3<br>Dias negativos:<br>→ 03/09/2026: <b>-R$ 150,00</b>', botoes: [{ rotulo: 'Fazer Cheque Especial', variante: 'btn-primary' }] }),
   janela('jn-falta', 'Para seguir, falta (o ? do executor)', EXECUTOR, { icone: 'ajuda', titulo: 'Para seguir, falta', html: '• Sicoob: extrato e razão batendo<br>• Saídas<br>• Tomados', botoes: [{ rotulo: 'Entendi', variante: 'btn-primary' }] }),
-  janela('jn-excluir', 'Excluir a importação?', ['e-importacao', 't-exec-importacao'], { icone: 'alert', titulo: 'Excluir a importação?', html: 'O razão do <b>Sicoob</b>: <b>razao.xls</b> (171). Dá para importar de novo depois.', botoes: [{ rotulo: 'Voltar' }, { rotulo: 'Excluir', variante: 'btn-danger' }] }),
-  janela('jn-desmarcar', 'Desmarcar etapa?', EXECUTOR, { titulo: 'Desmarcar Conferência fiscal?', texto: 'A etapa volta a ficar pendente em todos os meses do período.', botoes: [{ rotulo: 'Cancelar' }, { rotulo: 'Desmarcar', variante: 'btn-primary' }] }),
+  janela('jn-excluir', 'Excluir a importação?', ['e-importacao', 't-exec-importacao'], { icone: 'alert', titulo: 'Excluir a importação?', html: 'Remover “O razão do <b>Sicoob</b>: <b>razao.xls</b> (171)”.<br>Dá para importar de novo depois.', botoes: [{ rotulo: 'Excluir', variante: 'btn-danger' }, { rotulo: 'Cancelar' }] }),
+  janela('jn-desmarcar', 'Desmarcar Conferência fiscal?', EXECUTOR, { icone: 'checkCircle', titulo: 'Desmarcar Conferência fiscal?', texto: 'A etapa volta a ficar pendente em todos os meses do período.', botoes: [{ rotulo: 'Cancelar' }, { rotulo: 'Desmarcar', variante: 'btn-primary' }] }),
   janela('jn-presta', 'Esta empresa presta serviço?', ['c-relatorio', 'c-importacao'], { icone: 'briefcase', titulo: 'Esta empresa presta serviços?', texto: 'Decide a aba Prestados e os serviços prestados na conferência.', botoes: [{ rotulo: 'Não' }, { rotulo: 'Sim', variante: 'btn-primary' }], obrigatoria: true }),
   janela('jn-orientacao', 'Como resolver (orientação de uma saída)', EXECUTOR, { icone: 'alert', titulo: 'O razão da conta ainda não foi gerado no sistema', texto: 'Gere o razão da conta do banco no Alterdata (Excel ou PDF) e importe na linha "Lançamentos contábeis".', botoes: [{ rotulo: 'Entendi', variante: 'btn-primary' }] }),
   { id: 'jn-interromper', tipo: 'janelas', nome: 'Por que interromper?', descricao: 'O ✕ do executor, ou sair da etapa por qualquer lugar do app', classes: ['modal-overlay', 'modal'], telas: EXECUTOR,
@@ -382,10 +354,10 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <nav className="gh-crumbs"><span className="gh-crumb">Tarefas</span><span className="gh-sep">/</span><span className="gh-crumb gh-crumb-fim">292 · FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA</span></nav> },
 
   // ─── Cabeçalhos ─────────────────────────────────────────────────────────────────────────────────────────────────────
-  { id: 'cb-executor', tipo: 'cabecalhos', nome: 'Tarefas › Executor', descricao: 'A empresa em destaque e, embaixo, a competência ou o Em lote; os grupos e as saídas à direita; o fechar no canto, como o do Windows', classes: ['gh-header', 'exec-topo', 'exec-topo-lote', 'exec-fechar'], telas: EXECUTOR, largo: true,
-    demo: () => <CabecalhoDoExecutor lote abas={[{ rotulo: 'Bancos', icone: 'landmark', ativa: true }, { rotulo: 'Balancete', icone: 'barChart' }, { rotulo: 'Entradas', icone: 'arrowDown' }]} /> },
-  { id: 'cb-executor-fiscal', tipo: 'cabecalhos', nome: 'Tarefas › Executor › Conferência fiscal (as abas sobem)', classes: ['gh-header', 'exec-topo', 'menu'], telas: ['t-exec-fiscal'], largo: true,
-    demo: () => <CabecalhoDoExecutor abas={[{ rotulo: 'Relatório', icone: 'relatorio', ativa: true }, { rotulo: 'Naturezas', icone: 'checklist' }, { rotulo: 'Consulta', icone: 'search' }]} /> },
+  { id: 'cb-executor', tipo: 'cabecalhos', nome: 'Tarefas › Executor', classes: ['gh-header'], telas: EXECUTOR, largo: true,
+    demo: () => <Cabecalho trilha={['Tarefas', '292 · FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA']} direita={<nav className="gh-topo-acoes"><button className="gh-topo-btn gh-topo-menu" type="button"><Icone nome="fileUp" /><Icone nome="caretDown" className="menu-seta" /></button><button className="gh-topo-btn gh-topo-forte" type="button"><Icone nome="x" /></button><button className="gh-topo-btn gh-topo-proximo" type="button"><Icone nome="arrowDown" style={{ transform: 'rotate(-90deg)' }} /></button><span className="gh-topo-sep" /><Avatar /></nav>} /> },
+  { id: 'cb-executor-fiscal', tipo: 'cabecalhos', nome: 'Tarefas › Executor › Conferência fiscal (as abas sobem)', classes: ['gh-header', 'menu'], telas: ['t-exec-fiscal'], largo: true,
+    demo: () => <Cabecalho trilha={['Tarefas', '292 · FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA']} direita={<Avatar />} abas={[{ rotulo: 'Relatório', icone: 'relatorio', ativa: true }, { rotulo: 'Naturezas', icone: 'checklist' }, { rotulo: 'Consulta', icone: 'search' }, { rotulo: 'Cadastro', icone: 'settings' }, { rotulo: 'Auditoria', icone: 'clock' }]} /> },
   { id: 'cb-tarefas', tipo: 'cabecalhos', nome: 'Tarefas (listas)', classes: ['gh-header'], telas: ['t-empresas', 't-insights', 't-contabil', 't-cadastro', 't-drive', 't-gmail'], largo: true,
     demo: () => <Cabecalho trilha={['Tarefas', 'Vitor']} direita={<Avatar />} abas={[{ rotulo: 'Empresas', icone: 'briefcase', ativa: true }, { rotulo: 'Insights', icone: 'barChart' }]} /> },
   { id: 'cb-extrator', tipo: 'cabecalhos', nome: 'Extratudo › Extrator', classes: ['gh-header'], telas: ['e-importacao', 'e-arquivos', 'e-conferencia', 'e-historico'], largo: true,
