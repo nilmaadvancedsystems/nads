@@ -117,7 +117,7 @@ export const ICONES: NomeIcone[] = [
   'filtro', 'ordenar', 'copiar', 'search', 'repeat', 'calendar', 'plus', 'fileSearch', 'hash', 'list', 'menu', 'pastaAberta', 'mais',
   'girar', 'maximizar', 'minimizar', 'painel', 'cartao', 'download', 'grade', 'impressora',
 ];
-const BANCOS = ['banco-do-brasil', 'banrisul', 'bradesco', 'btg', 'c6', 'caixa', 'inter', 'itau', 'mercado-pago', 'nubank', 'pagbank', 'safra', 'santander', 'sicoob', 'stone', 'cora', 'sicredi'];
+const BANCOS = ['banco-do-brasil', 'banrisul', 'bradesco', 'btg', 'c6', 'caixa', 'inter', 'itau', 'mercado-pago', 'nubank', 'pagbank', 'safra', 'santander', 'sicoob', 'stone', 'cora', 'sicredi', 'bnb'];
 const CORES = [
   '--bg', '--surface', '--surface-2', '--surface-3', '--border', '--border-strong', '--ink', '--ink-muted', '--accent', '--accent-strong', '--accent-soft',
   '--btn-bg', '--btn-primary', '--btn-primary-hover', '--success', '--success-soft', '--danger', '--danger-soft', '--warn', '--warn-soft', '--info', '--info-soft',
@@ -207,7 +207,7 @@ export const PECAS_BASE: Peca[] = [
     uso: '<label className="busca-curta"><Icone nome="search" /><input /></label>', demo: () => <label className="busca-curta"><Icone nome="search" /><input type="text" placeholder="Buscar no extrato" /><kbd>/</kbd></label> },
   { id: 'field', tipo: 'campos', nome: 'Campo de texto', classes: ['field'], telas: ['t-entrar', 't-cadastro-janela', 'c-cadastro'],
     demo: () => <div className="field" style={{ width: 260 }}><label htmlFor="cat-f1">Agência</label><input id="cat-f1" type="text" placeholder="Ex.: 3001" /></div> },
-  { id: 'select', tipo: 'campos', nome: 'Seleção', descricao: 'Com o triângulo do GitHub', classes: ['field select', 'select-compact'], telas: ['c-cadastro', 'e-conferencia', 'c-relatorio'],
+  { id: 'select', tipo: 'campos', nome: 'Seleção', descricao: 'Com o triângulo do GitHub; a compacta tem o mesmo tamanho (só a largura acompanha o texto)', classes: ['field select', 'select-compact'], telas: ['c-cadastro', 'e-conferencia', 'c-relatorio'],
     demo: () => <><select defaultValue="cfop" style={{ width: 180 }}><option value="cfop">CFOP (A-Z)</option><option>Fornecedor (A-Z)</option></select><select className="select-compact" defaultValue="a"><option value="a">Todas</option></select></> },
   { id: 'checkbox', tipo: 'campos', nome: 'Checkbox', descricao: '18 px; o ✓ é desenhado para 18 px', classes: ['input[type=checkbox]', 'chk-auto'], telas: ['c-naturezas', 'c-relatorio', 't-exec-folha'],
     demo: () => <><input type="checkbox" /><input type="checkbox" defaultChecked /><input type="checkbox" disabled /><input type="checkbox" className="chk-auto" defaultChecked /></> },
@@ -215,7 +215,7 @@ export const PECAS_BASE: Peca[] = [
   { id: 'data', tipo: 'campos', nome: 'Data (dd/mm/aaaa)', componente: 'CampoData', classes: ['data-mask'], telas: ['c-consulta', 'e-cheque'], demo: () => <DataVivo /> },
   { id: 'mes', tipo: 'campos', nome: 'Seletor de mês', componente: 'SeletorMes', classes: ['seletor-mes'], telas: ['t-empresas', 't-contabil'], demo: () => <MesVivo /> },
   { id: 'arquivos', tipo: 'campos', nome: 'Escolher arquivos', componente: 'CampoArquivos', classes: ['file-picker'], telas: ['c-importacao', 'e-cheque', 'e-creditor'],
-    demo: () => <><CampoArquivos id="cat-arq" onEscolher={nada} aceitar=".xls,.xlsx" /><CampoArquivos id="cat-arq2" onEscolher={nada} aceitar=".xls" compacto rotulo="Importar Todos" /></> },
+    demo: () => <><CampoArquivos id="cat-arq" onEscolher={nada} aceitar=".xls,.xlsx" /><CampoArquivos id="cat-arq2" onEscolher={nada} aceitar=".xls" compacto rotulo="Importar todos os meses" /></> },
 
   // ─── Tabelas ────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'tabela', tipo: 'tabelas', nome: 'Tabela padrão', descricao: 'Cabeçalho grudado; números à direita (.num)', classes: ['table-wrap', 'table-compact', 'th-sort', 'num'], telas: ['c-relatorio', 'c-consulta', 'e-conferencia', 't-empresas'], largo: true,

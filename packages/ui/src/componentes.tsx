@@ -183,7 +183,6 @@ export function SeletorMes({ valor, onMudar, id, rotulo, max }: { valor: string;
   const [anoGrade, setAnoGrade] = useState(ano);
   const chave = (a: number, n: number) => a + '-' + String(n).padStart(2, '0');
   const passou = (v: string) => !!max && v > max;
-  const somar = (d: number) => { const t = ano * 12 + (mes - 1) + d; return chave(Math.floor(t / 12), (t % 12) + 1); };
   useEffect(() => {
     if (!aberto) return;
     const fora = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false); };
@@ -198,15 +197,10 @@ export function SeletorMes({ valor, onMudar, id, rotulo, max }: { valor: string;
   }, [aberto]);
   return (
     <div className="seletor-mes popover-wrap" ref={ref}>
-      <button type="button" className="btn btn-outline seletor-mes-passo" aria-label="Mês anterior" title="Mês anterior" onClick={() => onMudar(somar(-1))}>
-        <Icone nome="chevronLeft" />
-      </button>
+      {/* sem as setas dos lados (Vitor, 02/10/2026): o mês se escolhe abrindo o seletor */}
       <button type="button" id={id} className="btn btn-outline seletor-mes-atual" aria-label={rotulo + ': ' + MESES[mes - 1] + ' de ' + ano} aria-haspopup="dialog" aria-expanded={aberto}
         onClick={() => { setAnoGrade(ano); setAberto(a => !a); }}>
         <Icone nome="calendar" /><span>{MESES[mes - 1]} de {ano}</span><Icone nome="caretDown" className="menu-seta" />
-      </button>
-      <button type="button" className="btn btn-outline seletor-mes-passo" aria-label="Próximo mês" title="Próximo mês" disabled={passou(somar(1))} onClick={() => onMudar(somar(1))}>
-        <Icone nome="chevronRight" />
       </button>
       {aberto && (
         <div className="popover seletor-mes-pop" role="dialog" aria-label={rotulo}>
@@ -246,17 +240,23 @@ export function CampoArquivos({ id, onEscolher, aceitar, rotulo = 'Escolher arqu
   onEscolher: (fs: File[]) => void;
   aceitar: string;
   rotulo?: string;
-  /** um botão pequeno no lugar da caixa tracejada (listas) */
+  /** só o ícone de importar no lugar da caixa tracejada (listas); o rótulo vira a dica (Vitor, 02/10/2026) */
   compacto?: boolean;
   desabilitado?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
   return (
     <>
-      <label className={compacto ? 'btn btn-outline' + (desabilitado ? ' is-locked' : '') : 'file-picker'} htmlFor={id} aria-disabled={desabilitado || undefined}>
-        <span><Icone nome="upload" /></span>
-        <span className="file-picker-name">{rotulo}</span>
-      </label>
+      {compacto ? (
+        <label className={'icon-btn' + (desabilitado ? ' is-locked' : '')} htmlFor={id} title={rotulo} aria-label={rotulo} aria-disabled={desabilitado || undefined}>
+          <Icone nome="upload" />
+        </label>
+      ) : (
+        <label className="file-picker" htmlFor={id} aria-disabled={desabilitado || undefined}>
+          <span><Icone nome="upload" /></span>
+          <span className="file-picker-name">{rotulo}</span>
+        </label>
+      )}
       <input ref={input} type="file" id={id} accept={aceitar} multiple className="sr-only" disabled={desabilitado}
         onChange={ev => { const fs = Array.from(ev.target.files || []); if (input.current) input.current.value = ''; if (fs.length) onEscolher(fs); }} />
     </>

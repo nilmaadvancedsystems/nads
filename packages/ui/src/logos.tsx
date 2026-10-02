@@ -8,7 +8,7 @@ import { Icone } from './icones';
 /**
  * Os logos originais (as imagens que o Vitor mandou, 29/09/2026), na pasta logos-bancos/: nome do arquivo = a
  * marca (itau.png, c6.jpg…), e também drive, gmail e whatsapp. Regra do Vitor (30/09/2026): logo com o nome ou o
- * desenho em BRANCO fica com o fundo (Itaú, Stone, Nubank, Bradesco, BTG, C6, Caixa); os outros, sem o fundo
+ * desenho em BRANCO fica com o fundo (Itaú, Stone, Nubank, Bradesco, BTG, C6, Caixa, Cora, Banco do Nordeste); os outros, sem o fundo
  * (as imagens como vieram estão em logos-bancos/originais/). Em cinza até o extrato ser importado, depois
  * coloridos. Sem arquivo, vale o desenho abaixo.
  */
