@@ -28,10 +28,11 @@ export function Catalogo() {
       {vm.pecas.length ? (
         <div className="cat-lista">
           {vm.pecas.map(p => (
-            <section key={p.id} className={'card cat-peca' + (p.largo ? ' largo' : '')} id={p.id}>
+            <section key={p.id} className={'card cat-peca' + (p.largo ? ' largo' : '') + (p.removida ? ' cat-removida' : '')} id={p.id}>
               <header className="cat-peca-topo">
                 <div>
-                  <h3><span className="cat-cod">{p.cod}</span>{p.nome}</h3>
+                  <h3><span className="cat-cod">{p.cod}</span>{p.removida ? <s>{p.nome}</s> : p.nome}</h3>
+                  {p.removida && <p className="cat-destino">{vm.destinoDe(p)}</p>}
                   {p.descricao && <p className="hint">{p.descricao}</p>}
                 </div>
                 <div className="cat-peca-nomes">

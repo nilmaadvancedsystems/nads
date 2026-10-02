@@ -39,8 +39,11 @@ export interface Peca {
    * Sem isto, o ▶ só redesenha a peça (a animação de entrada roda de novo).
    */
   aoVivo?: (c: AoVivo) => void;
-  /** a peça saiu do sistema: não aparece, mas guarda o lugar (o código das outras não muda) */
-  removida?: boolean;
+  /**
+   * A peça saiu do sistema (Vitor, 02/10/2026): continua no catálogo, em preto e branco e com o nome riscado, dizendo
+   * para onde foi — excluída, movida (para outra tela) ou substituída por outra peça (o id dela). Guarda o código.
+   */
+  removida?: { como: 'excluida' | 'movida' | 'substituida'; por?: string; para?: string; em: string };
 }
 
 export interface AoVivo {

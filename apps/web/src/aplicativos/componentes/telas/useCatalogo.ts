@@ -23,7 +23,8 @@ export function useCatalogo() {
   const q = norm(busca.trim());
 
   const doTipo = PECAS.filter(p => p.tipo === tipo);
-  const pecas = doTipo
+  // as que saíram ficam por último, em preto e branco
+  const pecas = [...doTipo.filter(p => !p.removida), ...doTipo.filter(p => p.removida)]
     .filter(p => !tela || p.telas.includes(tela))
     .filter(p => !q || norm([p.cod || '', p.nome, p.descricao || '', p.componente || '', ...(p.classes || [])].join(' ')).includes(q));
 
@@ -32,7 +33,7 @@ export function useCatalogo() {
   const telas = TELAS.map(t => ({ ...t, qtd: doTipo.filter(p => p.telas.includes(t.id)).length, grupo: apps.indexOf(t.app) + 1 }));
 
   return {
-    tipos: TIPOS.map(t => ({ ...t, ativo: t.id === tipo, qtd: PECAS.filter(p => p.tipo === t.id && (!tela || p.telas.includes(tela))).length })),
+    tipos: TIPOS.map(t => ({ ...t, ativo: t.id === tipo, qtd: PECAS.filter(p => p.tipo === t.id && !p.removida && (!tela || p.telas.includes(tela))).length })),
     tipo: TIPOS.find(t => t.id === tipo)!,
     tela, nomeDaTela: TELAS.find(t => t.id === tela),
     telas, apps,
@@ -48,6 +49,14 @@ export function useCatalogo() {
         toast,
         abertura: tipo => { setAbertura(tipo); setTimeout(() => setAbertura(null), tipo === 'completa' ? 4200 : 2600); },
       });
+    },
+    /** para onde foi a peça que saiu: Excluída · Movida para … · Substituída por BT-01 Botão padrão */
+    destinoDe(p: Peca) {
+      const r = p.removida;
+      if (!r) return '';
+      const por = r.por ? PECAS.find(x => x.id === r.por) : undefined;
+      const como = r.como === 'excluida' ? 'Excluída' : r.como === 'movida' ? 'Movida' + (r.para ? ' para ' + r.para : '') : 'Substituída' + (por ? ' por ' + por.cod + ' ' + por.nome : '');
+      return como + ' em ' + r.em;
     },
     nomeDe: (id: string) => { const t = TELAS.find(x => x.id === id); return t ? t.app + ' › ' + t.nome : id; },
     escolherTipo: (id: string) => navegar(BASE + '/' + id + (tela ? '?tela=' + encodeURIComponent(tela) : '')),
