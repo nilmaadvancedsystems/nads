@@ -14,6 +14,7 @@ import { LiberarComputador } from './telas/acesso/LiberarComputador';
 import { useLiberacao } from './telas/acesso/useLiberacao';
 import { AberturaDoLogin } from './telas/entrar/aberturaDoLogin';
 import { Entrar } from './telas/entrar/Entrar';
+import { PessoalProvider } from './telas/pessoal/contexto';
 import { QuemSouEu } from './telas/quem/QuemSouEu';
 
 function PrecisaDeOperador({ children }: { children: ReactNode }) {
@@ -44,8 +45,10 @@ export function AppTarefas() {
     <RepoProvider repo={repo}>
       <OperadorProvider daConta={sessao && operador ? { operador, sair: sessao.sair } : undefined}>
         <PrecisaDeOperador>
-          <Outlet />
-          <AvisosDeLiberacao admin={admin} />
+          <PessoalProvider>
+            <Outlet />
+            <AvisosDeLiberacao admin={admin} />
+          </PessoalProvider>
         </PrecisaDeOperador>
       </OperadorProvider>
     </RepoProvider>

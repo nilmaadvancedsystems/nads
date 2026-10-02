@@ -152,7 +152,12 @@ export function repoDeAcesso(): RepoAcesso {
         const u = sessaoDaTarefas()?.estado().usuario;
         return u ? { uid: u.uid, nome: u.nome, email: u.email, admin: u.papeis.includes('admin') } : null;
       })
-      : criarAcessoMemoria(() => ({ nome: 'você' }));
+      // nos exemplos, quem está é a pessoa escolhida na lista da equipe (operador.tsx guarda o nome neste navegador)
+      : criarAcessoMemoria(() => {
+        let nome = 'você';
+        try { nome = localStorage.getItem('nads-tarefas-operador') || nome; } catch { /* sem storage */ }
+        return { nome };
+      });
   }
   return acesso;
 }

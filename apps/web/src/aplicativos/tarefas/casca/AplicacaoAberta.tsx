@@ -11,7 +11,6 @@ import { HistoricoDoRobo } from '../telas/gmail/HistoricoDoRobo';
 import { MinhasEmpresas } from '../telas/empresas/MinhasEmpresas';
 import { Insights } from '../telas/insights/Insights';
 import { EmDesenvolvimento } from '../telas/em-desenvolvimento/EmDesenvolvimento';
-import { PaginaPessoal } from '../telas/pessoal/PaginaPessoal';
 import { CascaTarefas } from './CascaTarefas';
 import { aplicacao, aplicacoesDe, caminhoDaPagina, type IdAplicacao } from './navegacao';
 import { useOperador, type Operador } from './operador';
@@ -23,7 +22,6 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'cadastro': return pagina === 'configuracoes' ? <ConfiguracoesDoNads /> : <UsuariosDoNads />;
     case 'drive': return <ExploradorDoDrive />;
     case 'contato': return pagina === 'historico' ? <HistoricoDoRobo /> : <CaixaDoRobo />;
-    case 'pessoal': return <PaginaPessoal pagina={pagina} />;
     default: return <EmDesenvolvimento nome={aplicacao(app)?.nome || app} />;
   }
 }

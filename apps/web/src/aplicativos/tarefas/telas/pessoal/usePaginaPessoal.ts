@@ -1,18 +1,18 @@
-// ViewModel da Minha página (a página pessoal da Tarefas — Vitor, 02/10/2026: "a página pessoal, com configs, inbox
-// dentre outros, no estilo do Entregas"). Tópicos (a lateral, como as Configurações do Entregas):
+// ViewModel da Minha página (a janela da pessoa na Tarefas — Vitor, 02/10/2026: "a página pessoal, com configs, inbox
+// dentre outros, no estilo do Entregas"; "no estilo do Notion, com uma tela flutuante"). Tópicos (a lateral da janela):
 //   Caixa de entrada   o que é da pessoa e pede atenção: os pedidos de liberação de computador (admin), as etapas que
 //                      ela parou (para retomar) e os arquivos que ela mandou ao Claudio Secretário (onde foram parar)
-//   Minha conta        quem é (nome, e-mail, setor, cargo, papéis) e sair
-//   Este computador    se este login está liberado (a proteção do login) e o pedido em andamento
+//   Minha conta        a foto de perfil (a mesma do Entregas, aparece no avatar), nome, e-mail, setor e cargo, sair
 //   Aparência e telas  o tema e onde a Tarefas abre (neste navegador)
 //   Versão do sistema  a versão e atualizar quando sai uma nova
-// Só lê o que as outras telas já leem (nada novo no banco); o que muda é deste navegador (o tema, o início).
+// Lê o que as outras telas já leem; grava só a foto (usuarios/{uid}.fotoPerfil, o dono pode) e, neste navegador, o
+// tema e o início.
 import { entregas as e, tarefas as t, usuarios } from '@nads/core';
 import { atualizarVersao, useRetorno, useVersaoNova, type NomeIcone } from '@nads/ui';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { VERSAO_SISTEMA } from '../../../../versao';
-import { BASE, CHAVE_INICIO, caminhoDoExecutor, INICIOS, inicioEscolhido } from '../../casca/navegacao';
+import { CHAVE_INICIO, caminhoDoExecutor, INICIOS, inicioEscolhido } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 import { useAcesso, useDriveDoEntregas, useExecucoesDoPeriodo } from '../../dados/repo';
 import { useSessao } from '../../dados/sessao';
@@ -28,7 +28,29 @@ export interface ItemDaCaixa {
   /** quando aconteceu (ISO), para ordenar; e o que mostra */
   em: string;
   quando: string;
-  acoes: { rotulo: string; principal?: boolean; onClick: () => void }[];
+  /** fecha: a ação leva a outra tela (a janela fecha junto) */
+  acoes: { rotulo: string; principal?: boolean; fecha?: boolean; onClick: () => void }[];
+}
+
+/**
+ * A foto reduzida a 256 px (JPEG), recortada no meio (quadrada: fica redonda no avatar). O documento do Firestore tem
+ * teto de 1 MB (o mesmo das Configurações do Entregas). Sem mexer na página: createImageBitmap + OffscreenCanvas.
+ */
+async function reduzir(arquivo: File, lado = 256, qualidade = 0.85): Promise<string> {
+  let img: ImageBitmap;
+  try { img = await createImageBitmap(arquivo); } catch { throw new Error('Esse arquivo não é uma imagem.'); }
+  const menor = Math.min(img.width, img.height);
+  const tam = Math.min(lado, menor);
+  const tela = new OffscreenCanvas(tam, tam);
+  tela.getContext('2d')?.drawImage(img, (img.width - menor) / 2, (img.height - menor) / 2, menor, menor, 0, 0, tam, tam);
+  img.close();
+  const blob = await tela.convertToBlob({ type: 'image/jpeg', quality: qualidade });
+  return await new Promise<string>((ok, falha) => {
+    const leitor = new FileReader();
+    leitor.onload = () => ok(String(leitor.result));
+    leitor.onerror = () => falha(new Error('Não consegui ler a imagem.'));
+    leitor.readAsDataURL(blob);
+  });
 }
 
 const quandoFoi = (iso: string) => (iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '');
@@ -59,7 +81,7 @@ export function usePaginaPessoal() {
       titulo: etapa.nome + ' parada · ' + (ex.codigo != null ? ex.codigo + ' · ' : '') + ex.empresa,
       texto: (motivo || 'Parada') + (est.observacao ? ' — ' + est.observacao : '') + ' (' + t.rotuloCompetencia(m.competencia) + ')',
       em: est.em, quando: quandoFoi(est.em),
-      acoes: [{ rotulo: 'Retomar', principal: true, onClick: () => navegar(caminhoDoExecutor(rota, m.competencia)) }],
+      acoes: [{ rotulo: 'Retomar', principal: true, fecha: true, onClick: () => navegar(caminhoDoExecutor(rota, m.competencia)) }],
     }];
   }))) : [];
 
@@ -92,9 +114,17 @@ export function usePaginaPessoal() {
   const pedemAcao = liberacoes.length + paradas.length;
 
   const u = sessao?.usuario || null;
-  const minha = acesso.minhaSessao();
-  const config = acesso.config();
-  const pedido = acesso.meuPedido();
+  const [salvandoFoto, setSalvandoFoto] = useState(false);
+  const foto = acesso.minhaFoto() || u?.fotoPerfil || null;
+  async function gravarFoto(nova: string | null) {
+    setSalvandoFoto(true);
+    try {
+      await acesso.salvarMinhaFoto(nova);
+      toast(nova ? 'Foto de perfil atualizada.' : 'Foto de perfil removida.');
+    } catch (err) {
+      toast('Não consegui salvar a foto (' + (err instanceof Error ? err.message : String(err)) + ').');
+    } finally { setSalvandoFoto(false); }
+  }
 
   return {
     // Caixa de entrada
@@ -109,24 +139,18 @@ export function usePaginaPessoal() {
     conta: {
       nome: op.nome,
       iniciais: usuarios.iniciais(op.nome),
-      foto: u?.fotoPerfil || null,
+      foto,
+      salvandoFoto,
+      /** escolheu um arquivo de imagem: reduz e grava (aparece no avatar do cabeçalho na hora) */
+      trocarFoto: (arquivo: File) => { void reduzir(arquivo).then(gravarFoto, (err: Error) => toast(err.message)); },
+      tirarFoto: () => { void gravarFoto(null); },
       email: u?.email || (comLogin ? '' : 'sem login (dados de exemplo)'),
       cargo: usuarios.rotuloDoCargo({ departamento: op.departamento, nivel: op.nivel, papeis: u?.papeis || [] }),
-      papeis: (u?.papeis || []).filter(p => p !== 'staff'),
       admin: op.admin,
       sair: comLogin ? 'Sair da conta' : 'Trocar de pessoa',
       fazerSair: () => escolher(null),
-      // a foto, o nome e a senha mudam nas Configurações do Entregas (a mesma conta)
+      // o nome e a senha mudam nas Configurações do Entregas (a mesma conta)
       linkDoEntregas: 'https://entregas-2e5e2.web.app/entregas.html?config=conta',
-    },
-    // Este computador
-    computador: {
-      carregando: !config.carregada,
-      protecao: config.protecao,
-      admin: op.admin,
-      liberado: op.admin || !config.protecao || minha.liberada,
-      pedido: pedido ? { situacao: pedido.status, computador: pedido.computador, quando: quandoFoi(pedido.criadoEm) } : null,
-      irParaUsuarios: () => navegar(BASE + '/cadastro/usuarios'),
     },
     // Aparência e telas
     preferencias: {

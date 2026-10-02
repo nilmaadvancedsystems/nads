@@ -134,7 +134,7 @@ export function Executor() {
         )}
       </nav>
       <span className="gh-topo-sep" aria-hidden="true" />
-      <MenuSuspenso rotulo={casca.perfil.iniciais} className="gh-avatar" dica={casca.perfil.nome} titulo={casca.perfil.nome} direita
+      <MenuSuspenso rotulo={casca.perfil.foto ? <img className="gh-avatar-foto" src={casca.perfil.foto} alt="" /> : casca.perfil.iniciais} className="gh-avatar" dica={casca.perfil.nome} titulo={casca.perfil.nome} direita
         // o mesmo menu do avatar das outras telas (a Minha página) e, aqui, o Voltar às empresas; sair da etapa por
         // qualquer um deles é interromper (com a justificativa), como o resto do executor
         itens={[

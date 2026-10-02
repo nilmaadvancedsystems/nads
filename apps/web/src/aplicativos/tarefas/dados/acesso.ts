@@ -28,6 +28,10 @@ export interface RepoAcesso {
   equipe(): { carregada: boolean; lista: usuarios.Usuario[]; docs: Record<string, usuarios.DocUsuario> };
   salvarCargo(uid: string, departamento: usuarios.Departamento | null, nivel: usuarios.Nivel | null): Promise<void>;
   salvarPapeis(uid: string, papeis: string[]): Promise<void>;
+  /** a foto de perfil de quem está logado (a mesma do Entregas: usuarios.fotoPerfil), ao vivo */
+  minhaFoto(): string | null;
+  /** troca (ou tira, com null) a foto de perfil de quem está logado */
+  salvarMinhaFoto(foto: string | null): Promise<void>;
   ativar(uid: string, ativo: boolean): Promise<void>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
@@ -82,6 +86,11 @@ export function criarAcessoMemoria(quem: () => { nome: string } | null): RepoAce
     equipe: () => ({ carregada: true, lista: equipe(), docs }),
     async salvarCargo(uid, dep, nivel) { Object.assign(docs[uid], usuarios.mudancaDeCargo(docs[uid], dep, nivel)); mudou(); },
     async salvarPapeis(uid, papeis) { docs[uid].roles = papeis as usuarios.Papel[]; mudou(); },
+    minhaFoto: () => Object.values(docs).find(d => d.nome === quem()?.nome)?.fotoPerfil || null,
+    async salvarMinhaFoto(foto) {
+      const d = Object.values(docs).find(x => x.nome === quem()?.nome);
+      if (d) { d.fotoPerfil = foto || undefined; mudou(); }
+    },
     async ativar(uid, ativo) { docs[uid].ativo = ativo; mudou(); },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,

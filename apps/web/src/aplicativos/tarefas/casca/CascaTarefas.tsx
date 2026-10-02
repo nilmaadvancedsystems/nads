@@ -8,7 +8,7 @@ import { useCascaTarefas } from './useCascaTarefas';
 /** O avatar no canto do cabeçalho (como o do Entregas e o do GitHub): as iniciais; aberto, a Minha página e sair. */
 function AvatarDaPessoa({ vm }: { vm: ReturnType<typeof useCascaTarefas> }) {
   return (
-    <MenuSuspenso rotulo={vm.perfil.iniciais} className={'gh-avatar' + (vm.naPessoal ? ' ativo' : '')} dica={vm.perfil.nome} titulo={vm.perfil.nome} direita
+    <MenuSuspenso rotulo={vm.perfil.foto ? <img className="gh-avatar-foto" src={vm.perfil.foto} alt="" /> : vm.perfil.iniciais} className={'gh-avatar' + (vm.naPessoal ? ' ativo' : '')} dica={vm.perfil.nome} titulo={vm.perfil.nome} direita
       itens={[
         { rotulo: 'Caixa de entrada', icone: 'caixaEntrada', onClick: () => vm.abrirPessoal('caixa') },
         { rotulo: 'Minha conta', icone: 'usuario', onClick: () => vm.abrirPessoal('conta') },

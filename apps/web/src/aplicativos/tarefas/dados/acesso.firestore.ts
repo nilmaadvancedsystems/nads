@@ -132,6 +132,13 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
       await updateDoc(doc(db, 'usuarios', uid), u.mudancaDeCargo(atual, departamento, nivel));
     },
     async salvarPapeis(uid, papeis) { await updateDoc(doc(db, 'usuarios', uid), { roles: papeis }); },
+    minhaFoto: () => { ouvir(); const q = quem(); return (q && equipe.docs[q.uid]?.fotoPerfil) || null; },
+    // as regras deixam o dono mexer na própria foto (usuarios/{uid}.fotoPerfil), como as Configurações do Entregas
+    async salvarMinhaFoto(foto) {
+      const q = quem();
+      if (!q) throw new Error('Sem login.');
+      await updateDoc(doc(db, 'usuarios', q.uid), { fotoPerfil: foto || '' });
+    },
     async ativar(uid, ativo) { await updateDoc(doc(db, 'usuarios', uid), { ativo }); },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
