@@ -2571,3 +2571,41 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .pessoal-atalhos{width:100%;}
 .pessoal-atalhos td{padding:6px 0 !important;border-top:1px solid var(--border-muted);}
 .pessoal-atalhos kbd{display:inline-block;min-width:22px;padding:1px 6px;border:1px solid var(--border);border-bottom-width:2px;border-radius:4px;background:var(--surface-2);font:12px/18px var(--font-mono, monospace);text-align:center;}
+/* Minha página › Perguntar à IA: a conversa enche a janela (a barra em cima, as mensagens rolam, a pergunta embaixo) */
+.pessoal-rola.so-chat{display:flex;flex-direction:column;overflow:hidden;padding:0;}
+.ia-chat{flex:1;min-height:0;display:flex;flex-direction:column;}
+.ia-barra{display:flex;align-items:center;gap:8px;padding:12px 24px;border-bottom:1px solid var(--border-muted);flex-wrap:wrap;}
+.ia-conversas{max-width:280px;}
+.ia-estado{margin-left:auto;font-size:12px;color:var(--ink-muted);}
+.ia-estado.desligada{color:var(--danger);}
+.ia-mensagens{flex:1;min-height:0;overflow:auto;padding:16px 24px;display:flex;flex-direction:column;gap:12px;}
+.ia-msg{max-width:82%;padding:10px 14px;border-radius:10px;font-size:14px;line-height:1.5;}
+.ia-msg.eu{align-self:flex-end;background:var(--accent-subtle, var(--surface-2));border:1px solid var(--border-muted);}
+.ia-msg.ia{align-self:flex-start;background:var(--surface);border:1px solid var(--border);}
+.ia-msg.erro{border-color:var(--danger);}
+.ia-texto p{margin:0 0 6px;}
+.ia-texto p:last-child{margin-bottom:0;}
+.ia-texto ul,.ia-texto ol{margin:0 0 6px;padding-left:20px;}
+.ia-pensando{display:flex;align-items:center;gap:8px;margin:0;font-size:13px;}
+.ia-pensando .btn-spinner{width:12px;height:12px;}
+.ia-aviso{margin:6px 0 0;font-size:13px;color:var(--danger);}
+.ia-boas-vindas{margin:auto;max-width:520px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.ia-boas-vindas > svg{width:28px;height:28px;color:var(--ink-muted);}
+.ia-boas-vindas h4{margin:4px 0 0;font-size:16px;}
+.ia-boas-vindas p{margin:0;font-size:13px;}
+.ia-sugestoes{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:10px;}
+.ia-pergunta{display:flex;gap:8px;align-items:flex-end;padding:12px 24px 16px;border-top:1px solid var(--border-muted);}
+.ia-pergunta textarea{flex:1;min-height:40px;max-height:160px;resize:vertical;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;padding:8px 10px;}
+.link-btn{display:inline-flex;align-items:center;gap:4px;padding:0;border:none;background:none;color:var(--accent);font:inherit;cursor:pointer;}
+.link-btn:hover{text-decoration:underline;}
+.link-btn svg{width:14px;height:14px;}
+/* Minha página › Perguntas frequentes: a busca, as seções e as perguntas que abrem a resposta */
+.faq-busca{width:100%;margin:0 0 16px;}
+.faq-secao h3{margin:0 0 8px;font-size:14px;font-weight:600;color:var(--ink-muted);}
+.faq-lista{padding:0;margin-bottom:20px;}
+.faq-item{border-top:1px solid var(--border-muted);}
+.faq-item:first-child{border-top:none;}
+.faq-item summary{padding:10px 14px;font-size:14px;font-weight:500;cursor:pointer;list-style-position:inside;}
+.faq-item summary:hover{background:var(--hover-bg);}
+.faq-resposta{padding:0 14px 12px 30px;font-size:14px;line-height:1.5;display:flex;flex-direction:column;align-items:flex-start;gap:6px;}
+.faq-pe{font-size:13px;}

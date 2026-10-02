@@ -21,6 +21,8 @@
 // E a Minha página (2026-10-02, pedido do Vitor): a própria foto (usuarios/{uid}.fotoPerfil, em acesso.firestore.ts) e,
 // em aplicativos/tarefas/dados/pessoal.firestore.ts, os pedidos de e-mail da pessoa (solicitacoesEmail, só leitura), as
 // Anotações dela (usuarios/{uid}/notas, as mesmas do Entregas) e os arquivados da caixa (usuarios/{uid}.nadsArquivados).
+// E o chat com a IA (2026-10-02, pedido do Vitor), em aplicativos/tarefas/dados/ia.firestore.ts: o mesmo do Entregas,
+// conversasIA (+mensagens; a pessoa grava a pergunta, o robô responde) e robo/estado (só leitura, se a IA está de pé).
 // Esta checagem falha se:
 //  1. aparecer dependência de rede fora do permitido (só "firebase", e só no apps/web);
 //  2. código fora de apps/web/src/aplicativos/<app>/dados/*.firestore.ts importar/usar Firebase;

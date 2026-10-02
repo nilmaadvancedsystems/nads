@@ -18,7 +18,8 @@
     "versao": "node scripts/versao.mjs",
     "publicar": "npm run build && npm run publicar -w @nads/web",
     "previa": "npm run build:exemplos -w @nads/web && npm run previa -w @nads/web",
-    "sites": "node scripts/sites.mjs"
+    "sites": "node scripts/sites.mjs",
+    "faq": "node scripts/faq-para-ia.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

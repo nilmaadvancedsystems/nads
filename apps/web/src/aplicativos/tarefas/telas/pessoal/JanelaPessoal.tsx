@@ -3,8 +3,10 @@
 // com cabeçalho e uma opção por linha (o rótulo e a explicação à esquerda, o controle à direita). Fecha no ×, no Esc e
 // clicando fora.
 import { Esqueleto, Icone, Interruptor, SeletorTema, useCarregando, type NomeIcone } from '@nads/ui';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { ChatIA } from './ChatIA';
 import type { TopicoPessoal } from './contexto';
+import { PerguntasFrequentes } from './PerguntasFrequentes';
 import { usePaginaPessoal, type VmPessoal } from './usePaginaPessoal';
 
 const TOPICOS: { id: TopicoPessoal; rotulo: string; icone: NomeIcone; grupo: string; busca: string }[] = [
@@ -13,6 +15,8 @@ const TOPICOS: { id: TopicoPessoal; rotulo: string; icone: NomeIcone; grupo: str
   { id: 'conta', rotulo: 'Minha conta', icone: 'usuario', grupo: 'Conta', busca: 'foto perfil ícone icone nome e-mail email setor sair senha' },
   { id: 'preferencias', rotulo: 'Aparência e telas', icone: 'settings', grupo: 'Preferências', busca: 'tema claro escuro início abrir tela barra lateral competência mês tabelas compactas atalhos teclado' },
   { id: 'aplicativo', rotulo: 'Versão do sistema', icone: 'download', grupo: 'Aplicativo', busca: 'versão atualizar nova' },
+  { id: 'ia', rotulo: 'Perguntar à IA', icone: 'robo', grupo: 'Ajuda', busca: 'ia inteligência artificial chat conversa robô claude gemini dúvida' },
+  { id: 'faq', rotulo: 'Perguntas frequentes', icone: 'ajuda', grupo: 'Ajuda', busca: 'faq ajuda dúvidas como usar perguntas' },
 ];
 
 /** Uma opção: o rótulo e a explicação à esquerda, o controle (ou o valor) à direita. */
@@ -294,6 +298,9 @@ function Aplicativo({ vm }: { vm: VmPessoal }) {
 export function JanelaPessoal({ topico, mudar, fechar }: { topico: TopicoPessoal; mudar: (t: TopicoPessoal) => void; fechar: () => void }) {
   const vm = usePaginaPessoal();
   const [busca, setBusca] = useState('');
+  // a pergunta que as Perguntas frequentes mandam para o chat ("Perguntar à IA")
+  const [rascunho, setRascunho] = useState('');
+  const limparRascunho = useCallback(() => setRascunho(''), []);
   // Esc fecha
   useEffect(() => {
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') fechar(); };
@@ -335,8 +342,10 @@ export function JanelaPessoal({ topico, mudar, fechar }: { topico: TopicoPessoal
             <h2>{atual.rotulo}</h2>
             <button type="button" className="drawer-x" aria-label="Fechar" onClick={fechar}><Icone nome="x" /></button>
           </header>
-          <div className="pessoal-rola">
-            {topico === 'notas' ? <Anotacoes vm={vm} />
+          <div className={'pessoal-rola' + (topico === 'ia' ? ' so-chat' : '')}>
+            {topico === 'ia' ? <ChatIA rascunho={rascunho} limparRascunho={limparRascunho} irParaFaq={() => mudar('faq')} />
+              : topico === 'faq' ? <PerguntasFrequentes perguntarIA={t => { setRascunho(t || ' '); mudar('ia'); }} />
+              : topico === 'notas' ? <Anotacoes vm={vm} />
               : topico === 'conta' ? <MinhaConta vm={vm} />
               : topico === 'preferencias' ? <Preferencias vm={vm} />
                 : topico === 'aplicativo' ? <Aplicativo vm={vm} />

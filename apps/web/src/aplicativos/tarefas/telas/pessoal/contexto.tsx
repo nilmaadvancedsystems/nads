@@ -4,12 +4,12 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 import { JanelaPessoal } from './JanelaPessoal';
 
-export type TopicoPessoal = 'caixa' | 'notas' | 'conta' | 'preferencias' | 'aplicativo';
+export type TopicoPessoal = 'caixa' | 'notas' | 'conta' | 'preferencias' | 'aplicativo' | 'ia' | 'faq';
 
 interface Pessoal { topico: TopicoPessoal | null; abrir: (t: string) => void; fechar: () => void }
 
 const Ctx = createContext<Pessoal | null>(null);
-const TOPICOS: readonly string[] = ['caixa', 'notas', 'conta', 'preferencias', 'aplicativo'];
+const TOPICOS: readonly string[] = ['caixa', 'notas', 'conta', 'preferencias', 'aplicativo', 'ia', 'faq'];
 
 export function PessoalProvider({ children }: { children: ReactNode }) {
   const [topico, setTopico] = useState<TopicoPessoal | null>(null);

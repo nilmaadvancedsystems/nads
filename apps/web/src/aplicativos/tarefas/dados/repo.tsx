@@ -4,7 +4,8 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { bancosDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoPessoal } from './fonte';
+import { bancosDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoPessoal } from './fonte';
+import type { RepoIA } from './ia';
 import type { RepoPessoal } from './pessoal';
 
 type Repo = tarefas.RepoTarefas;
@@ -110,6 +111,13 @@ export function useSaudeDoRobo(): entregas.DocsDaSaude | null {
   useEffect(() => repo.acompanhar(), [repo]);
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo.docs();
+}
+
+/** O chat com a IA do escritório, ao vivo (a disponibilidade, as conversas e as mensagens). */
+export function useIA(): RepoIA {
+  const repo = repoDaIA();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
 }
 
 /** O que é só da pessoa (a Minha página): as cobranças, as anotações e os arquivados da caixa de entrada, ao vivo. */

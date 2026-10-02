@@ -12,6 +12,8 @@ import { criarAcessoFirestore } from './acesso.firestore';
 import { criarDriveFirestore } from './drive.firestore';
 import { criarSessaoEntregas, type SessaoEntregas } from './entregas.firestore';
 import { criarGmailFirestore } from './gmail.firestore';
+import { criarIAMemoria, type RepoIA } from './ia';
+import { criarIAFirestore } from './ia.firestore';
 import { criarPessoalMemoria, type RepoPessoal } from './pessoal';
 import { criarPessoalFirestore } from './pessoal.firestore';
 import { criarSaudeMemoria, type RepoSaude } from './saude';
@@ -152,6 +154,14 @@ export function repoPessoal(): RepoPessoal {
     pessoal = noBanco ? criarPessoalFirestore(() => { const q = quemPede(); return q ? { uid: q.uid, email: q.email } : null; }) : criarPessoalMemoria();
   }
   return pessoal;
+}
+
+let ia: RepoIA | null = null;
+
+/** O chat com a IA do escritório (o mesmo do Entregas: conversasIA, respondido pelo robô). */
+export function repoDaIA(): RepoIA {
+  if (!ia) ia = noBanco ? criarIAFirestore(() => { const q = quemPede(); return q ? { uid: q.uid, email: q.email } : null; }) : criarIAMemoria();
+  return ia;
 }
 
 let acesso: RepoAcesso | null = null;
