@@ -23,6 +23,7 @@ import { caminhoNaFerramenta } from '../../../../casca/caminho';
 import { useBancosOk } from './useBancosOk';
 import { useDriveDaLinha } from './useDriveDaLinha';
 import { usePedirExtratos } from './usePedirExtratos';
+import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../../../comum/desenvolvimento';
 
 type Vm = ReturnType<typeof useImportacao>;
 type Lado = { qtdArquivos: number; qtdLancamentos: number; lendo: boolean };
@@ -392,8 +393,10 @@ function SeletorDeCompetencia({ vm, naTarefa, trocar, periodoDaTarefa, encerrar 
               <div className="imp-mes-chips">{periodo.map(m => <span key={m} className="imp-mes-chip">{mmaaaa(m)}</span>)}</div>
               {concluido
                 ? <p className="comp-varios-texto ok"><Icone nome="checkCircle" />Todos os meses concluídos: já dá para cancelar a função.</p>
-                : <p className="hint">Para cancelar a função, os {periodo.length} meses precisam estar 100% concluídos (todas as etapas). Até lá, a empresa abre sempre nesses meses.</p>}
-              <button type="button" className="btn btn-primary comp-varios-botao" disabled={!concluido} onClick={() => { fechar(); encerrar(); }}>Cancelar função</button>
+                : CANCELAR_LOTE_A_QUALQUER_HORA
+                  ? <p className="hint">Em desenvolvimento: dá para cancelar mesmo sem os meses concluídos. O que já foi feito em cada mês continua.</p>
+                  : <p className="hint">Para cancelar a função, os {periodo.length} meses precisam estar 100% concluídos (todas as etapas). Até lá, a empresa abre sempre nesses meses.</p>}
+              <button type="button" className="btn btn-primary comp-varios-botao" disabled={!concluido && !CANCELAR_LOTE_A_QUALQUER_HORA} onClick={() => { fechar(); encerrar(); }}>Cancelar função</button>
             </div>
           ) : (
             <div className="comp-varios">

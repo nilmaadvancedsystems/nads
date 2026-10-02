@@ -14,6 +14,7 @@ import { extratorDaEmpresa, repoDoCadastro } from '../../dados/fonte';
 import { useExecucoesDoPeriodo, usePrestaServico, useRepo } from '../../dados/repo';
 import { caminhoDaEmpresa, caminhoDaPagina, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
+import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../comum/desenvolvimento';
 
 /**
  * Onde cada aplicativo mora. O Extratudo vem junto no site da Tarefas (mesmo endereço: o login do Entregas
@@ -271,7 +272,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     /** Encerra os vários meses (só com todos concluídos): tira a promessa de cada mês e volta ao último mês. */
     encerrarPeriodo: () => {
       if (!varios || !empresa) return;
-      if (!concluido) { toast('Para cancelar a função, os ' + meses.length + ' meses precisam estar 100% concluídos.'); return; }
+      if (!concluido && !CANCELAR_LOTE_A_QUALQUER_HORA) { toast('Para cancelar a função, os ' + meses.length + ' meses precisam estar 100% concluídos.'); return; }
       for (const c of meses) {
         if (!exDe[c]?.periodo) continue;
         const p = t.definirPeriodo(exDe[c], null, op.nome, new Date());

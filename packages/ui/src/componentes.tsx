@@ -188,9 +188,13 @@ export function SeletorMes({ valor, onMudar, id, rotulo, max }: { valor: string;
     if (!aberto) return;
     const fora = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false); };
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setAberto(false); };
+    // clicou na ferramenta da etapa (outra página, num iframe): o clique não chega aqui, mas esta janela perde o foco
+    // (Vitor, 02/10/2026: "quando clicar na aplicação, ele sai, sem precisar clicar no botão de novo")
+    const saiu = () => setAberto(false);
     document.addEventListener('mousedown', fora);
     document.addEventListener('keydown', esc);
-    return () => { document.removeEventListener('mousedown', fora); document.removeEventListener('keydown', esc); };
+    window.addEventListener('blur', saiu);
+    return () => { document.removeEventListener('mousedown', fora); document.removeEventListener('keydown', esc); window.removeEventListener('blur', saiu); };
   }, [aberto]);
   return (
     <div className="seletor-mes popover-wrap" ref={ref}>
@@ -290,9 +294,12 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
     if (!aberto) return;
     const fora = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false); };
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setAberto(false); };
+    // clicou na ferramenta da etapa (outra página, num iframe): o clique não chega aqui, mas esta janela perde o foco
+    const saiu = () => setAberto(false);
     document.addEventListener('mousedown', fora);
     document.addEventListener('keydown', esc);
-    return () => { document.removeEventListener('mousedown', fora); document.removeEventListener('keydown', esc); };
+    window.addEventListener('blur', saiu);
+    return () => { document.removeEventListener('mousedown', fora); document.removeEventListener('keydown', esc); window.removeEventListener('blur', saiu); };
   }, [aberto]);
   const fechar = () => setAberto(false);
   const comMarca = itens?.some(i => i !== 'separador' && i.marcado !== undefined);
