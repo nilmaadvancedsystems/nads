@@ -185,13 +185,11 @@ export function moverIndicador(el: HTMLElement, lugar: { x: number; y: number; w
  * Conta do número que está na tela (atual.v) até o novo, escrevendo no elemento no formato que a tela deu (os números
  * do painel). atual.v acompanha a conta: interrompida no meio, a próxima parte de onde parou.
  */
+// Vitor, 02/10/2026: "remova essas animações de números aumentando de toda a aplicação" — o número aparece direto, já final.
 export function contar(el: HTMLElement, atual: { v: number }, para: number, formatar: (n: number) => string): JSAnimation | null {
-  if (semMovimento() || atual.v === para) { atual.v = para; el.textContent = formatar(para); return null; }
-  return animate(atual, {
-    v: para, duration: jeito === 'suave' ? 1100 : 900, ease: jeito === 'viva' ? mola(0.2, 900) : ENTRAR,
-    onUpdate: () => { el.textContent = formatar(atual.v); },
-    onComplete: () => { el.textContent = formatar(para); },
-  });
+  atual.v = para;
+  el.textContent = formatar(para);
+  return null;
 }
 
 /** "R$ 1.234,56", "58%", "1.200": o número e o que vem antes e depois (pt-BR). Outra coisa (datas, códigos): null. */
