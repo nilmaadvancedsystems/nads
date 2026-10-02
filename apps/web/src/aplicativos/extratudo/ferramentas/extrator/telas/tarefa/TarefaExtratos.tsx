@@ -349,8 +349,30 @@ function RemoverTodos({ titulo, travado, onRemover }: { titulo: string; travado:
  * o razão do período inteiro, de uma vez); o sistema vê de que mês é cada lançamento, e os meses que não vieram ficam
  * vazios embaixo, para importar um a um.
  */
-function ImportarTodos({ titulo, aceitar, travado, onArquivos, restantes }: { titulo: string; aceitar: string; travado: boolean; onArquivos: (fs: File[]) => void; restantes?: boolean }) {
+function ImportarTodos({ titulo, aceitar, travado, onArquivos, restantes, onRemover }: { titulo: string; aceitar: string; travado: boolean; onArquivos: (fs: File[]) => void; restantes?: boolean; onRemover?: () => void }) {
   const id = useId();
+  const arquivo = useRef<HTMLInputElement>(null);
+  // algum mês já tem (Vitor, 02/10/2026): o ícone abre as opções — importar os restantes ou remover todos
+  if (restantes && onRemover && !travado) {
+    return (
+      <>
+        <MenuSuspenso rotulo="" icone="upload" className="gh-topo-btn gh-topo-menu" direita dica={'Importar ' + titulo + ' dos meses que faltam, ou remover todos'}
+          conteudo={fechar => (
+            <>
+              <button type="button" className="popover-item" role="menuitem" onClick={() => { fechar(); arquivo.current?.click(); }}>
+                <Icone nome="upload" /><span className="popover-texto">Importar os restantes do computador</span>
+              </button>
+              <hr className="popover-sep" />
+              <button type="button" className="popover-item perigo" role="menuitem" onClick={() => { fechar(); onRemover(); }}>
+                <Icone nome="x" /><span className="popover-texto">Remover todos</span>
+              </button>
+            </>
+          )} />
+        <input ref={arquivo} type="file" multiple accept={aceitar} className="sr-only" tabIndex={-1} aria-hidden="true"
+          onChange={ev => { const fs = Array.from(ev.target.files || []); ev.target.value = ''; onArquivos(fs); }} />
+      </>
+    );
+  }
   return (
     <>
       <label htmlFor={id} className={'icon-btn' + (travado ? ' is-locked' : '')} title={(restantes ? 'Importar ' + titulo + ' dos meses que faltam' : 'Importar ' + titulo + ' de todos os meses de uma vez') + ' (cada lançamento cai no seu mês)'}
@@ -367,7 +389,7 @@ function ImportarTodos({ titulo, aceitar, travado, onArquivos, restantes }: { ti
  * Importar o extrato de todos os meses (vários meses): só o ícone, e ao clicar as duas opções (Vitor, 02/10/2026):
  * do computador (vários arquivos; cada lançamento cai no seu mês) ou do Drive (os meses que faltam).
  */
-function ImportarExtratoTodos({ aceitar, travado, restantes, onArquivos, onDrive }: { aceitar: string; travado: boolean; restantes: boolean; onArquivos: (fs: File[]) => void; onDrive: () => void }) {
+function ImportarExtratoTodos({ aceitar, travado, restantes, onArquivos, onDrive, onRemover }: { aceitar: string; travado: boolean; restantes: boolean; onArquivos: (fs: File[]) => void; onDrive: () => void; onRemover?: () => void }) {
   const arquivo = useRef<HTMLInputElement>(null);
   return (
     <>
@@ -381,6 +403,14 @@ function ImportarExtratoTodos({ aceitar, travado, restantes, onArquivos, onDrive
             <button type="button" className="popover-item" role="menuitem" disabled={travado} onClick={() => { fechar(); onDrive(); }}>
               <LogoDrive cor /><span className="popover-texto">{restantes ? 'Adicionar restantes do Drive' : 'Todos pelo Drive'}</span>
             </button>
+            {restantes && onRemover && (
+              <>
+                <hr className="popover-sep" />
+                <button type="button" className="popover-item perigo" role="menuitem" disabled={travado} onClick={() => { fechar(); onRemover(); }}>
+                  <Icone nome="x" /><span className="popover-texto">Remover todos</span>
+                </button>
+              </>
+            )}
           </>
         )} />
       <input ref={arquivo} type="file" multiple accept={aceitar} className="sr-only" disabled={travado} tabIndex={-1} aria-hidden="true"
@@ -669,7 +699,8 @@ export function TarefaExtratos() {
                       {vm.periodo.length > 1
                         ? (lote.razaoCompleto
                           ? <RemoverTodos titulo="o razão" travado={ocupadoGeral} onRemover={() => { void vm.excluirDoPeriodo(b.id, 'sistema', lote.comRazao); }} />
-                          : <ImportarTodos titulo="o razão" restantes={lote.comRazao.length > 0} aceitar={cxRazao.aceitar} travado={ocupadoGeral} onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }} />)
+                          : <ImportarTodos titulo="o razão" restantes={lote.comRazao.length > 0} aceitar={cxRazao.aceitar} travado={ocupadoGeral} onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }}
+                            onRemover={() => { void vm.excluirDoPeriodo(b.id, 'sistema', lote.comRazao); }} />)
                         : <BotaoLado lado={b.razao} titulo="Razão" aceitar={cxRazao.aceitar} travado={travado}
                           onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }} onExcluir={() => { void vm.excluirDoBanco(b.id, 'sistema'); }} />}
                     </div>
@@ -696,7 +727,8 @@ export function TarefaExtratos() {
                           </button>
                         ) : (
                           <ImportarExtratoTodos restantes={lote.comExtrato.length > 0} aceitar={cxExtrato.aceitar} travado={ocupadoGeral}
-                            onArquivos={fs => { void vm.importarArquivos(b.id, 'banco', fs); }} onDrive={() => d.buscarNoPeriodo(b, lote.faltamExtrato)} />
+                            onArquivos={fs => { void vm.importarArquivos(b.id, 'banco', fs); }} onDrive={() => d.buscarNoPeriodo(b, lote.faltamExtrato)}
+                            onRemover={() => { void vm.excluirDoPeriodo(b.id, 'banco', lote.comExtrato); }} />
                         )
                       )}
                     </div>
@@ -704,7 +736,8 @@ export function TarefaExtratos() {
                       <span className="imp-rotulo">Razão</span>
                       {lote.razaoCompleto
                         ? <RemoverTodos titulo="o razão" travado={ocupadoGeral} onRemover={() => { void vm.excluirDoPeriodo(b.id, 'sistema', lote.comRazao); }} />
-                        : <ImportarTodos titulo="o razão" restantes={lote.comRazao.length > 0} aceitar={cxRazao.aceitar} travado={ocupadoGeral} onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }} />}
+                        : <ImportarTodos titulo="o razão" restantes={lote.comRazao.length > 0} aceitar={cxRazao.aceitar} travado={ocupadoGeral} onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }}
+                            onRemover={() => { void vm.excluirDoPeriodo(b.id, 'sistema', lote.comRazao); }} />}
                     </div>
                   </div>
                 ) : (
