@@ -26,6 +26,12 @@ const ITENS: { id: ItemDaFolha['id']; nome: string; e: RegExp; nao?: RegExp }[] 
   { id: 'inss', nome: 'INSS', e: /\binss\b/, nao: /provis/ },
 ];
 
+/**
+ * Fora do checklist por enquanto (Vitor, 05/10/2026: "acho que irei tratar elas mais pra frente"): o FGTS, a GRRF e o
+ * INSS. Continuam reconhecidos acima; para voltarem, é só tirar daqui.
+ */
+const FORA_POR_ENQUANTO = new Set<ItemDaFolha['id']>(['fgts', 'grrf', 'inss']);
+
 /** meses: o período da tarefa ('aaaa-mm'), para o 13º (só com novembro ou dezembro). */
 export function checklistDaFolha(contas: readonly ContaDoBalancete[], meses: readonly string[]): ItemDaFolha[] {
   const analiticas = contas.filter(c => !c.sintetica && c.grupo === 'Passivo');
@@ -36,7 +42,7 @@ export function checklistDaFolha(contas: readonly ContaDoBalancete[], meses: rea
   }));
   const tem = (id: ItemDaFolha['id']) => achados.some(a => a.id === id && a.contas.length > 0);
   return achados.filter(a => {
-    if (!a.contas.length) return false;
+    if (!a.contas.length || FORA_POR_ENQUANTO.has(a.id)) return false;
     if (a.id === 'decimo-terceiro') return temNovDez;
     if (a.id === 'grrf') return tem('rescisao');
     return true;

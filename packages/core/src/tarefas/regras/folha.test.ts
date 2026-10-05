@@ -13,22 +13,21 @@ const B292 = [
 const ATE_AGOSTO = ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08'];
 
 describe('checklist da Contabilização da Folha', () => {
-  it('a 292 de janeiro a agosto: só as contas do Passivo (mesmo zeradas), na ordem, sem o 13º', () => {
+  it('a 292 de janeiro a agosto: só as contas do Passivo (mesmo zeradas), na ordem, sem o 13º; FGTS, GRRF e INSS fora por enquanto', () => {
     const r = checklistDaFolha(B292, ATE_AGOSTO);
-    expect(r.map(i => i.id)).toEqual(['salarios', 'pro-labore', 'ferias', 'rescisao', 'fgts', 'grrf', 'inss']);
+    expect(r.map(i => i.id)).toEqual(['salarios', 'pro-labore', 'ferias', 'rescisao']);
     expect(r.find(i => i.id === 'ferias')?.contas).toEqual(['40002 — Férias a Pagar']);
-    expect(r.find(i => i.id === 'inss')?.contas).toEqual(['40004 — INSS a Recolher']);
   });
   it('com novembro ou dezembro no período, o 13º entra', () => {
     expect(checklistDaFolha([...B292, C('40003', '13º Salário a Pagar', 0)], ['2026-11', '2026-12']).map(i => i.id)).toContain('decimo-terceiro');
   });
-  it('sem rescisão, sem GRRF; empresa sem folha, lista vazia', () => {
+  it('sem rescisão, sem a Rescisão; empresa sem folha, lista vazia', () => {
     const semRescisao = B292.filter(c => c.codigo !== '40007');
-    expect(checklistDaFolha(semRescisao, ATE_AGOSTO).map(i => i.id)).not.toContain('grrf');
+    expect(checklistDaFolha(semRescisao, ATE_AGOSTO).map(i => i.id)).not.toContain('rescisao');
     expect(checklistDaFolha([C('11101', 'Caixa', 100)], ATE_AGOSTO)).toEqual([]);
   });
   it('o empréstimo do Crédito do Trabalhador (consignado), quando tem', () => {
     const r = checklistDaFolha([...B292, C('40020', 'Empréstimo Consignado Crédito do Trabalhador', 350)], ATE_AGOSTO);
-    expect(r.map(i => i.id)).toEqual(['salarios', 'pro-labore', 'ferias', 'rescisao', 'fgts', 'credito-trabalhador', 'grrf', 'inss']);
+    expect(r.map(i => i.id)).toEqual(['salarios', 'pro-labore', 'ferias', 'rescisao', 'credito-trabalhador']);
   });
 });
