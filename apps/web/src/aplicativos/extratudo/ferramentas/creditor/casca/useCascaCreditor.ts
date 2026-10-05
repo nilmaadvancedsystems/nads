@@ -20,7 +20,9 @@ export function useCascaCreditor() {
     ferramenta: 'creditor' as const,
     empresa: s.empresa,
     rota: s.rota,
-    titulo: atual ? atual.titulo : '',
+    // a Competência (a primeira) no visual da Importação: sem o título e sem o "Etapa 1 de 5" (Vitor, 05/10/2026)
+    titulo: atual && atual.id !== 'competencia' ? atual.titulo : '',
+    primeira: s.etapa === 'competencia',
     etapaDeTotal: 'Etapa ' + (s.etapas.findIndex(x => x.id === s.etapa) + 1) + ' de ' + s.etapas.length,
     paginas: s.etapas.map(x => ({ id: x.id, rotulo: x.rotulo, icone: x.icone, ativa: x.id === s.etapa, travada: !s.podeAbrir(x.id) })),
     onPagina: (id: string) => s.irPara(id as typeof s.etapa),
