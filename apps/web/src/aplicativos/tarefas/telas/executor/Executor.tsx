@@ -4,7 +4,7 @@
 // etapa, com a altura toda. No canto direito do cabeçalho, como os botões do GitHub (Vitor, 01/10/2026: os botões do pé
 // atrapalhavam a ferramenta): os grupos da rotina num menu só (como o "+ ▾"), as saídas da etapa (⚠ ▾), ✕ Interromper,
 // ? (o que falta) ou → Próximo, e o perfil.
-import { AberturaN, Alerta, Casca, destacarNaTela, Icone, MenuSuspenso, useCarregando, useFerramentaNaEtapa, type ItemMenu, type NomeIcone } from '@nads/ui';
+import { AberturaN, Alerta, Casca, destacarNaTela, Icone, MenuSuspenso, useCarregando, useFerramentaNaEtapa, type NomeIcone } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useBlocker, useParams } from 'react-router';
 import { usePonteDaFerramenta } from '../../../../comum/ponte';
@@ -14,8 +14,10 @@ import { JanelaInterromper } from './partes/JanelaInterromper';
 import { useChecklistDaFolha } from './useChecklistDaFolha';
 import { useExecutor } from './useExecutor';
 import { ListaDoQueFalta, type ItemQueFalta } from './partes/OQueFalta';
-import { MenuDaRotina } from './partes/MenuDaRotina';
+import { MenuDaRotina, type GrupoDoMenu } from './partes/MenuDaRotina';
+import { InssDaEtapa } from './partes/InssDaEtapa';
 import { RazaoDaEtapa } from './partes/RazaoDaEtapa';
+import { useInssDaEtapa } from './useInssDaEtapa';
 import { useRazaoDaEtapa } from './useRazaoDaEtapa';
 
 /** O ícone de cada grupo da rotina, no canto do cabeçalho. */
@@ -32,6 +34,8 @@ export function Executor() {
   // o razão da etapa (o Caixa): importado do computador, vale para a empresa, a etapa e o período abertos; a liquidação
   // de cobrança no caixa põe o Creditor nos meses dela
   const razao = useRazaoDaEtapa(rota + '|' + (vm.etapa?.id || '') + '|' + periodo, vm.meses.length ? vm.meses : [vm.competencia], vm.ajustarCreditor);
+  // a conferência do INSS (a etapa da folha): o razão do INSS a recolher × o PDF das guias pagas
+  const inss = useInssDaEtapa(rota + '|' + (vm.etapa?.id || '') + '|' + periodo, vm.meses.length ? vm.meses : [vm.competencia]);
   // a ferramenta da etapa (iframe): recebe os bancos sem movimento e avisa quando a pessoa marca um
   const iframe = useRef<HTMLIFrameElement>(null);
   // a ferramenta que tem requisitos (a Importação) diz o que falta: o avançar só aparece com tudo pronto
@@ -98,20 +102,21 @@ export function Executor() {
     id: e.id, rotulo: e.nome, icone: 'check' as const, grupo: e.grupo, titulo: e.secao, ativa: e.atual,
     caixa: e.situacao === 'feita' ? 'marcada' as const : e.situacao === 'interrompida' ? 'parada' as const : 'vazia' as const,
     // as da frente que ainda não foram feitas: mais apagadas
-    apagada: !!vm.etapa && e.n > (vm.etapas.find(x => x.atual)?.n ?? 0) && e.situacao !== 'feita',
+    apagada: !!vm.etapa && e.n > (vm.etapas.find(x => x.daVez)?.n ?? 0) && e.situacao !== 'feita',
   }));
 
   // os grupos da rotina num menu só (como o "+ ▾" do GitHub): o ícone do grupo da vez e, aberto, todos (os da frente travados)
-  const grupoDaVez = vm.grupos.find(g => g.atual);
-  const itensDosGrupos: ItemMenu[] = [];
+  const grupoDaVez = vm.grupos.find(g => g.visto) || vm.grupos.find(g => g.atual);
+  const itensDosGrupos: (GrupoDoMenu | 'separador')[] = [];
   vm.grupos.forEach((g, i) => {
     // separa a Preparação e o Fechamento do meio (Ativo, Passivo, Resultado)
     if (i > 0 && (i === 1 || i === vm.grupos.length - 1)) itensDosGrupos.push('separador');
-    itensDosGrupos.push({ rotulo: g.nome, icone: ICONE_DO_GRUPO[g.nome] || 'list', marcado: g.atual, desabilitado: g.travado, onClick: () => vm.abrirGrupo(g.nome) });
+    // feito: check verde; o da vez: o check de sempre; os da frente: apagados (Vitor, 05/10/2026)
+    itensDosGrupos.push({ rotulo: g.nome, icone: ICONE_DO_GRUPO[g.nome] || 'list', marcado: g.atual, feito: g.feito, aberto: g.visto, desabilitado: g.travado, onClick: () => vm.abrirGrupo(g.nome) });
   });
   // o Em lote voltou para a tela da Importação (Vitor, 05/10/2026): o menu é só o dos grupos
   const emLote = null;
-  const botoesDaEtapa = vm.etapa && telaPronta && !vm.interrompendo && saida.state !== 'blocked';
+  const botoesDaEtapa = vm.etapa && telaPronta && !vm.interrompendo && saida.state !== 'blocked' && !vm.revendo;
 
   const topo = (
     <>
@@ -158,7 +163,7 @@ export function Executor() {
       empresa={{ codigo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome, nome: '' }}
 
       versao={casca.versao} secoes={checklist} paginas={abas} titulo=""
-      onSecao={vm.voltarPara} onPagina={abrirAba} onInicio={vm.sair} onAplicativos={casca.inicio}
+      onSecao={vm.abrirEtapa} onPagina={abrirAba} onInicio={vm.sair} onAplicativos={casca.inicio}
       onEmpresa={vm.abrirEmpresa} aplicativos={casca.aplicacoes} onAplicativo={casca.onAplicacao}>
       {vm.carregando ? null : !vm.etapa ? (
         <div className="executor-fim">
@@ -172,7 +177,16 @@ export function Executor() {
         </div>
       ) : (
         <div className="executor-area">
-          <div className="executor-ferramenta">
+          {vm.revendo && (
+            // revendo uma etapa concluída: a barra de cima avisa e só o Editar mexe (Vitor, 05/10/2026)
+            <div className="executor-revendo" role="status">
+              <Icone nome="checkCircle" />
+              <span className="executor-revendo-texto"><b>{vm.etapa.nome}</b> já foi concluída. As ações desta etapa estão travadas.</span>
+              <button type="button" className="btn" onClick={vm.voltarAEtapaDaVez}>Ir para a etapa da vez</button>
+              <button type="button" className="btn btn-primary" onClick={() => { void vm.editar(); }}><Icone nome="lapis" />Editar</button>
+            </div>
+          )}
+          <div className={'executor-ferramenta' + (vm.revendo ? ' revendo' : '')} inert={vm.revendo || undefined} aria-disabled={vm.revendo || undefined}>
             {/* a ferramenta carregando: o N no meio, sobre um vidro embaçado (em vez da área vazia) */}
             {vm.ferramenta?.embutir && ferramentaAbrindo && <AberturaN vidro />}
             {vm.ferramenta?.embutir ? (
@@ -215,6 +229,8 @@ export function Executor() {
                   <p className="hint">Pelo balancete importado, a empresa não tem folha (nenhuma conta da folha no Passivo: salários, pró-labore, férias, rescisão, FGTS, INSS).</p>
                 )}
               </div>
+            ) : vm.etapa.conferenciaDoInss ? (
+              <InssDaEtapa inss={inss} conferir={vm.etapa.conferir} />
             ) : vm.etapa.razao ? (
               <RazaoDaEtapa conta={vm.etapa.razao.conta} razao={razao} conferir={vm.etapa.conferir} />
             ) : (

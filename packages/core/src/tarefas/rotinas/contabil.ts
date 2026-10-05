@@ -243,6 +243,8 @@ export const ROTINA_CONTABIL: Rotina = {
       descricao: 'A folha paga e as guias do mês: salários a pagar zerados, INSS e FGTS iguais às guias.',
       ferramenta: null,
       verificacao: 'manual',
+      // o razão do INSS a recolher × o PDF das guias: o que falta provisionar e baixar (Vitor, 05/10/2026)
+      conferenciaDoInss: true,
       conferir: [
         'Salários a pagar: a folha do mês entra e o pagamento zera; nenhum saldo devedor.',
         'INSS a recolher e FGTS a recolher iguais às guias do mês; a guia paga zera o saldo.',

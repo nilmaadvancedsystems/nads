@@ -5,11 +5,11 @@ import { CascaExtratudo } from '../../../casca/CascaExtratudo';
 import { useCascaCreditor } from './useCascaCreditor';
 
 export function CascaCreditor({ children }: { children: ReactNode }) {
-  const { etapaDeTotal, temDados, cancelar, ...vm } = useCascaCreditor();
+  const { etapaDeTotal, temDados, cancelar, primeira, ...vm } = useCascaCreditor();
   return (
     <CascaExtratudo {...vm}
       acoes={temDados && <button className="btn btn-outline" type="button" onClick={() => { void cancelar(); }}>Cancelar</button>}
-      acima={<p className="page-eyebrow" style={{ marginBottom: 12 }}>{etapaDeTotal}</p>}>
+      acima={!primeira && <p className="page-eyebrow" style={{ marginBottom: 12 }}>{etapaDeTotal}</p>}>
       {children}
     </CascaExtratudo>
   );

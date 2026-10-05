@@ -14,6 +14,8 @@ export interface Estado {
   /** "AAAA-MM" ('' = ainda não escolhida) */
   competencia: string;
   relatorio: cr.RelatorioBanco | null;
+  /** por período: o relatório de cada mês (o relatorio acima é eles juntos); o anexado na etapa do banco vale para todos */
+  porMes: Record<string, { relatorio: cr.RelatorioBanco; origem: string }>;
   /** de onde veio: nome do arquivo, "texto colado", "exemplo" ou "digitado" */
   origemBanco: string;
   decisoes: Record<number, cr.Decisao>;
@@ -23,7 +25,18 @@ export interface Estado {
   alcancada: number;
 }
 
-const INICIAL: Estado = { competencia: '', relatorio: null, origemBanco: '', decisoes: {}, passosFiscal: [], alcancada: 0 };
+const INICIAL: Estado = { competencia: '', relatorio: null, porMes: {}, origemBanco: '', decisoes: {}, passosFiscal: [], alcancada: 0 };
+
+/** Os relatórios dos meses da competência, juntos (relatório novo: descarta as decisões e trava as etapas seguintes). */
+function comOsMeses(e: Estado, porMes: Estado['porMes']): Estado {
+  const meses = cr.mesesDaCompetencia(e.competencia).filter(m => porMes[m]);
+  return {
+    ...e, porMes,
+    relatorio: meses.length ? cr.juntarRelatorios(meses.map(m => porMes[m].relatorio)) : null,
+    origemBanco: meses.map(m => porMes[m].origem).join(' · '),
+    decisoes: {}, passosFiscal: [], alcancada: Math.min(e.alcancada, indiceDaEtapa('banco')),
+  };
+}
 
 /** Os passos da etapa Fiscal (a ordem e o texto de cada um ficam na tela). */
 export const PASSOS_FISCAL = ['baixar', 'exportar-contabil'] as const;
@@ -92,6 +105,10 @@ interface Sessao {
   mudar: (f: (e: Estado) => Estado) => void;
   /** relatório novo (anexado ou do Drive): descarta as decisões e volta a travar as etapas seguintes */
   usarRelatorio: (rel: cr.RelatorioBanco, origem: string) => void;
+  /** por período: o relatório de um mês (os dos meses vão juntos); null tira o do mês */
+  relatorioDoMes: (mes: string, rel: cr.RelatorioBanco | null, origem?: string) => void;
+  /** troca os meses da competência: os relatórios dos meses que saíram saem junto */
+  definirCompetencia: (c: string) => void;
   /** abre a etapa sem conferir os requisitos agora (quem chama acabou de mudar o estado que a libera) */
   avancarPara: (id: IdEtapa) => void;
   /** a conciliação terminou (o arquivo foi baixado): salva as contas e aprende os clientes */
@@ -160,9 +177,21 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
     },
     mudar: f => setEstado(f),
     usarRelatorio: (rel, origem) => setEstado(e => ({
-      ...e, relatorio: rel, origemBanco: origem, decisoes: {}, passosFiscal: [],
+      ...e, relatorio: rel, porMes: {}, origemBanco: origem, decisoes: {}, passosFiscal: [],
       alcancada: Math.min(e.alcancada, indiceDaEtapa('banco')),
     })),
+    relatorioDoMes: (mes, rel, origem = '') => setEstado(e => {
+      const porMes = { ...e.porMes };
+      if (rel) porMes[mes] = { relatorio: rel, origem }; else delete porMes[mes];
+      return comOsMeses(e, porMes);
+    }),
+    definirCompetencia: c => setEstado(e => {
+      if (e.competencia === c) return e;
+      const meses = new Set(cr.mesesDaCompetencia(c));
+      const porMes = Object.fromEntries(Object.entries(e.porMes).filter(([m]) => meses.has(m)));
+      // o anexado inteiro (sem mês) não vale para outra competência
+      return Object.keys(e.porMes).length || !e.relatorio ? comOsMeses({ ...e, competencia: c }, porMes) : { ...INICIAL, competencia: c };
+    }),
     avancarPara: abrir,
     concluir: () => {
       salvar(cr.confirmarContas(config, resolvidas));

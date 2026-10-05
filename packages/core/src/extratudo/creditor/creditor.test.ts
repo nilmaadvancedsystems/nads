@@ -9,7 +9,7 @@ import { emailDoUsuario } from './drive';
 import { BALANCETES_EXEMPLO, EXEMPLO_RELATORIO, EXEMPLO_SISTEMA_CSV } from './exemplos';
 import { aprender, clientesDoDocumento, contaAprendida, decisoesAprendidas } from './regras/aprendizado';
 import { contasDeClientes, cruzarPeloBalancete, mesmoNomeDeCliente } from './regras/clientes';
-import { competenciaPadrao, rotuloCompetencia, titulosForaDaCompetencia } from './regras/competencia';
+import { competenciaDosMeses, competenciaPadrao, competenciaValida, juntarRelatorios, mesesDaCompetencia, rotuloCompetencia, titulosForaDaCompetencia } from './regras/competencia';
 import { acharRelatorioNoDrive, falaDaCompetencia, pastaDoCliente, type ItemDrive } from './regras/drive';
 import { balanceteDoDocumento, CONFIG_VAZIA, configDoDocumento, confirmarContas, escolherConta, mesmaConfig, resolverContas, SEM_BALANCETE, sugerirConta } from './regras/balancete';
 import { conferirGrupo, conferirTotalGeral, relatorioConferido, temTotalImpresso } from './regras/conferencia';
@@ -438,6 +438,26 @@ describe('competência e Drive', () => {
     expect(rotuloCompetencia('2026-08')).toBe('08/2026');
     const t = (liquidacao: string) => ({ id: 1, sacado: '', nossoNumero: '', nf: '1', valor: 1, mora: 0, desconto: 0, outros: 0, liquidacao, cobrado: null });
     expect(titulosForaDaCompetencia([t('31/08/2026'), t('01/09/2026'), t('')], '2026-08').map(x => x.liquidacao)).toEqual(['01/09/2026']);
+  });
+
+  it('liquidação por período: vários meses, o rótulo, os títulos fora e os relatórios juntos', () => {
+    const c = competenciaDosMeses(['2026-08', '2026-06', '2026-07', '2026-08']);
+    expect(c).toBe('2026-06,2026-07,2026-08');
+    expect(competenciaValida(c)).toBe(true);
+    expect(competenciaValida('2026-06,2026-13')).toBe(false);
+    expect(competenciaValida('')).toBe(false);
+    expect(mesesDaCompetencia(c)).toEqual(['2026-06', '2026-07', '2026-08']);
+    expect(rotuloCompetencia(c)).toBe('06/2026 a 08/2026');
+    expect(rotuloCompetencia('2026-06,2026-08')).toBe('06/2026, 08/2026');
+    const t = (id: number, liquidacao: string) => ({ id, sacado: '', nossoNumero: '', nf: '1', valor: 10, mora: 0, desconto: 0, outros: 0, liquidacao, cobrado: null });
+    expect(titulosForaDaCompetencia([t(1, '30/06/2026'), t(2, '10/07/2026'), t(3, '01/08/2026')], '2026-06,2026-08').map(x => x.id)).toEqual([2]);
+    const rel = (ts: ReturnType<typeof t>[]) => ({ grupos: [{ id: 1, titulos: ts, impresso: { valor: 10 * ts.length, mora: 0, desconto: 0, outros: 0, cobrado: null } }],
+      totalGeral: { valor: 10 * ts.length, mora: 0, desconto: 0, outros: 0, cobrado: null }, registrosGeral: ts.length, ignorados: 1, avisos: ['a'] });
+    const j = juntarRelatorios([rel([t(1, '30/06/2026'), t(2, '30/06/2026')]), rel([t(1, '01/08/2026')])]);
+    expect(j.grupos.map(g => g.id)).toEqual([1, 2]);
+    expect(j.grupos.flatMap(g => g.titulos.map(x => x.id))).toEqual([1, 2, 3]);
+    expect(j.totalGeral).toEqual({ valor: 30, mora: 0, desconto: 0, outros: 0, cobrado: null });
+    expect([j.registrosGeral, j.ignorados, j.avisos.length]).toEqual([3, 2, 2]);
   });
 
   it('o nome ou a pasta falam da competência', () => {

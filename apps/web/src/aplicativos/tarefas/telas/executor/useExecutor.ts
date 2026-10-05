@@ -86,6 +86,18 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const [aviso, setAviso] = useState<string | null>(null);
   const [conferindo, setConferindo] = useState(false);
   const [interrompendo, setInterrompendo] = useState(false);
+  // rever uma etapa já concluída (Vitor, 05/10/2026): ela abre como estava, com os checks, tudo ofuscado; só o Editar
+  // (na barra de cima) desmarca e a faz voltar a ser a da vez
+  const [vendo, setVendo] = useState<string | null>(null);
+  const revista = vendo && vendo !== etapa?.id && meses.some(c => concluidaEm(vendo, c)) ? rotina.etapas.find(e => e.id === vendo) || null : null;
+  const vista = revista || etapa;
+  const fv = vista?.ferramenta || null;
+  // a etapa "só quando adicionada" (o Creditor) trabalha os meses em que entrou: os do caixa com CRÉD.LIQ.COBRANÇA
+  // (Vitor, 05/10/2026: "já deixa configurado, de acordo com os meses de cred liq do caixa")
+  const mesesDaEtapa = vista?.soQuandoAdicionada ? meses.filter(c => t.etapaNoMes(exDe[c] || null, vista.id)) : [];
+  const compV = mesesDaEtapa[0] || (revista ? meses[meses.length - 1] || competencia : competencia);
+  const juntosV = varios || !!fv?.periodo;
+  const mesesV = mesesDaEtapa.length ? '&meses=' + mesesDaEtapa.join(',') : juntosV && varios ? '&meses=' + meses.join(',') : '';
 
   // começou (ou voltou a) uma etapa: um evento por etapa aberta (conta o tempo de cada uma)
   const iniciadas = useRef(new Set<string>());
@@ -101,10 +113,10 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   });
 
   /**
-   * Clique numa etapa do checklist: dá para voltar a uma etapa anterior já concluída — o check dela sai
-   * e ela vira a da vez (as outras ficam como estão). Etapa da vez ou mais à frente: não faz nada.
+   * Editar uma etapa concluída (o botão da barra de cima, ao rever): o check dela sai e ela vira a da vez (as outras
+   * ficam como estão). Uma da frente pergunta antes. Etapa da vez: não faz nada.
    */
-  async function voltarPara(id: string) {
+  async function voltarPara(id: string, confirmado = false) {
     if (!etapa || carregando || conferindo) return;
     const alvo = rotina.etapas.findIndex(e => e.id === id);
     const daVez = rotina.etapas.findIndex(e => e.id === etapa.id);
@@ -112,10 +124,13 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     // uma etapa da frente já marcada (Vitor, 01/10/2026: "desmarque esses"): pergunta e desmarca só ela
     if (alvo > daVez) {
       if (!meses.some(m => concluidaEm(id, m))) return;
-      const nome = rotina.etapas[alvo].nome;
-      const ok = await modal({ icone: 'checkCircle', titulo: 'Desmarcar ' + nome + '?', texto: 'A etapa volta a ficar pendente' + (varios ? ' em todos os meses do período' : '') + '.',
-        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Desmarcar', valor: true, variante: 'btn-primary' }] });
-      if (!ok) return;
+      // o Editar já perguntou
+      if (!confirmado) {
+        const nome = rotina.etapas[alvo].nome;
+        const ok = await modal({ icone: 'checkCircle', titulo: 'Desmarcar ' + nome + '?', texto: 'A etapa volta a ficar pendente' + (varios ? ' em todos os meses do período' : '') + '.',
+          botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Desmarcar', valor: true, variante: 'btn-primary' }] });
+        if (!ok) return;
+      }
     }
     // no período: volta em todos os meses em que ela estava feita
     for (const c of meses.filter(m => concluidaEm(id, m))) {
@@ -124,6 +139,14 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       repo.gravar(v.execucao, v.evento);
     }
     setAviso(null);
+    setVendo(null);
+  }
+
+  /** Clique numa etapa do checklist: a concluída abre para rever (sem desmarcar); a da vez volta para ela. */
+  function abrirEtapa(id: string) {
+    if (!etapa || carregando || conferindo) return;
+    if (id === etapa.id) { setVendo(null); return; }
+    if (meses.some(c => concluidaEm(id, c))) { setVendo(id); setAviso(null); }
   }
 
   const ultimo = meses[meses.length - 1] || competencia;
@@ -229,16 +252,19 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   // os grupos da rotina (os botões no canto do cabeçalho): quantas etapas feitas, o da vez e os da frente (travados)
   const concluidaNoPeriodo = (id: string) => meses.length > 0 && meses.every(c => concluidaEm(id, c));
   const iDaVez = etapa ? secoes.indexOf(etapa.secao || '') : secoes.length;
+  const iVisto = vista ? secoes.indexOf(vista.secao || '') : iDaVez;
+  // feito: os de trás (tudo concluído); atual: o da vez; travado: os da frente; visto: o que está na tela
   const grupos = secoes.map((nome, i) => {
     const es = rotina.etapas.filter(e => (e.secao || '') === nome);
-    return { nome, feitas: es.filter(e => concluidaNoPeriodo(e.id)).length, total: es.length, atual: i === iDaVez, travado: i > iDaVez };
+    return { nome, feitas: es.filter(e => concluidaNoPeriodo(e.id)).length, total: es.length, feito: i < iDaVez, atual: i === iDaVez, travado: i > iDaVez, visto: i === iVisto };
   });
-  /** Abrir um grupo de trás: volta para a primeira etapa dele (como clicar nela no checklist). O da vez e os da frente: nada. */
+  /** Abrir um grupo de trás: revê a primeira etapa dele (sem desmarcar nada); o da vez: volta para a etapa da vez. */
   function abrirGrupo(nome: string) {
     const i = secoes.indexOf(nome);
-    if (i < 0 || i >= iDaVez) return;
-    const primeira = rotina.etapas.find(e => (e.secao || '') === nome);
-    if (primeira) void voltarPara(primeira.id);
+    if (i < 0 || i > iDaVez) return;
+    if (i === iDaVez) { setVendo(null); return; }
+    const primeira = rotina.etapas.find(e => (e.secao || '') === nome && meses.some(c => concluidaEm(e.id, c)));
+    if (primeira) { setVendo(primeira.id); setAviso(null); }
   }
 
   return {
@@ -254,18 +280,29 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       // a etapa "só quando adicionada" (o Creditor) que não entrou em nenhum mês: também some
       const oculta = (e.id === 'cheque-especial' && meses.length > 0 && meses.every(c => exDe[c]?.etapas[e.id]?.objecao === 'sem-saldo-negativo'))
         || (!!e.soQuandoAdicionada && !meses.some(c => t.etapaNoMes(exDe[c] || null, e.id)));
-      return { id: e.id, n: i + 1, nome: e.nome, secao: e.secao, grupo, oculta, situacao: feitos === meses.length && meses.length ? 'feita' as const : parada ? 'interrompida' as const : 'pendente' as const, feitos, atual: e.id === etapa?.id };
+      return { id: e.id, n: i + 1, nome: e.nome, secao: e.secao, grupo, oculta, situacao: feitos === meses.length && meses.length ? 'feita' as const : parada ? 'interrompida' as const : 'pendente' as const, feitos, atual: e.id === vista?.id, daVez: e.id === etapa?.id };
     }),
-    etapa, n: etapa ? rotina.etapas.findIndex(e => e.id === etapa.id) + 1 : 0, total: rotina.etapas.length,
+    // a etapa na tela: a da vez ou, revendo, a concluída que a pessoa abriu
+    etapa: vista, n: vista ? rotina.etapas.findIndex(e => e.id === vista.id) + 1 : 0, total: rotina.etapas.length,
+    /** revendo uma etapa concluída: tudo ofuscado, só o Editar */
+    revendo: !!revista,
+    // o Editar pergunta antes de desmarcar (Vitor, 05/10/2026)
+    editar: async () => {
+      if (!revista) return;
+      const ok = await modal<boolean>({ titulo: 'Desmarcar ' + revista.nome + '?', texto: 'A etapa volta a ficar pendente' + (varios ? ' em todos os meses do período' : '') + ' e vira a etapa da vez.',
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Desmarcar', valor: true, variante: 'btn-primary' }] });
+      if (ok) await voltarPara(revista.id, true);
+    },
+    voltarAEtapaDaVez: () => setVendo(null),
     interrompidaAntes: etapa && ex ? t.estadoDa(ex, etapa.id)?.situacao === 'interrompida' ? t.estadoDa(ex, etapa.id) : null : null,
     // no período, a ferramenta que trabalha vários meses recebe todos (abas por mês); as outras, o mês da vez
-    ferramenta: f && empresa ? { nome: f.nome, embutir: f.embutir, requisitos: !!f.requisitos, url: BASES[f.app] + f.caminho(empresas.rotaDaEmpresa(empresa)) + (f.app === 'extratudo' ? (f.caminho('').includes('?') ? '&' : '?') + 'competencia=' + competencia + (juntos && varios ? '&meses=' + meses.join(',') : '')
+    ferramenta: fv && empresa ? { nome: fv.nome, embutir: fv.embutir, requisitos: !!fv.requisitos, url: BASES[fv.app] + fv.caminho(empresas.rotaDaEmpresa(empresa)) + (fv.app === 'extratudo' ? (fv.caminho('').includes('?') ? '&' : '?') + 'competencia=' + compV + mesesV
       // a Conferência roda no período que a pessoa está fazendo (o mês, ou os meses do Em Lote)
-      : f.app === 'concilia-ai' ? '?meses=' + (juntos && varios ? meses : [competencia]).join(',') + (prestaServico == null ? '' : '&servicos=' + (prestaServico ? 'sim' : 'nao')) : '') } : null,
+      : fv.app === 'concilia-ai' ? '?meses=' + (juntosV && varios ? meses : [compV]).join(',') + (prestaServico == null ? '' : '&servicos=' + (prestaServico ? 'sim' : 'nao')) : '') } : null,
     /** os meses que a etapa ainda precisa (no período) */
     pendentes: pendentes.map(rotuloCurto),
     aviso, conferindo, proximo,
-    voltarPara: (id: string) => { void voltarPara(id); },
+    abrirEtapa,
     resolver,
     /** o Cheque especial aberto, mas sem nenhum dia negativo: dispensa e segue (Vitor, 02/10/2026) */
     dispensarSemCheque: () => {

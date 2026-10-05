@@ -25,6 +25,16 @@ const ouvintes = new Set<(t: Tema) => void>();
 // Ao abrir, só impõe o tema se a pessoa escolheu um; em "sistema" deixa como a página veio
 // (quem hospeda pode já ter marcado claro/escuro).
 if (typeof document !== 'undefined' && atual !== 'system') aplicar(atual);
+// Trocou o tema em outra página do mesmo site (a Tarefas, com a ferramenta da etapa dentro dela): esta segue junto.
+// Sem isso, a ferramenta embutida ficava no tema de quando abriu (Vitor, 05/10/2026: a Tarefas clara e o Creditor escuro).
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', e => {
+    if (e.key !== CHAVE) return;
+    atual = lerTema();
+    aplicar(atual);
+    for (const f of ouvintes) f(atual);
+  });
+}
 
 export function useTema(): [Tema, (t: Tema) => void] {
   const [tema, setTema] = useState<Tema>(atual);
