@@ -38,7 +38,13 @@ export function Exclusao() {
                     : <span className="badge badge-bad" title={'Diferença no fim do período: ' + vm.diferencaFinal}>Não bate</span>)}
                 <div className="imp-grupo" aria-label="Razão da conta">
                   <span className="imp-rotulo">Razão</span>
-                  {vm.lendo ? <span className="btn-spinner" /> : (
+                  {vm.lendo ? <span className="btn-spinner" /> : vm.temRazao ? (
+                    // importado: o check que, com o mouse em cima, vira o × e exclui — igual à Importação
+                    <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" onClick={vm.excluirRazao}
+                      title={'Importado: ' + vm.nomeDoRazao + '. Clique para excluir.'} aria-label="Excluir o razão importado">
+                      <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
+                    </button>
+                  ) : (
                     <>
                       <button type="button" className="icon-btn icon-btn-sm imp-btn" title={'Importar o razão da conta ' + vm.contaBanco}
                         aria-label="Importar o razão da conta" onClick={() => arquivo.current?.click()}>

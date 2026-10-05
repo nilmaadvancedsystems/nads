@@ -26,6 +26,8 @@ export interface Estado {
   baixado: boolean;
   /** a Exclusão: o razão do banco reimportado bate com o extrato no período (a Tarefa pode seguir) */
   bancoConferido: boolean;
+  /** o razão do banco importado na própria Exclusão (os arquivos do Extrator e o nome); sem ele, a etapa não diz Ok */
+  razaoDaExclusao?: { ids: string[]; nome: string };
   /** a etapa mais adiante que já foi aberta */
   alcancada: number;
 }
@@ -39,7 +41,7 @@ function comOsMeses(e: Estado, porMes: Estado['porMes']): Estado {
     ...e, porMes,
     relatorio: meses.length ? cr.juntarRelatorios(meses.map(m => porMes[m].relatorio)) : null,
     origemBanco: meses.map(m => porMes[m].origem).join(' · '),
-    decisoes: {}, passosFiscal: [], baixado: false, bancoConferido: false, alcancada: Math.min(e.alcancada, indiceDaEtapa('competencia')),
+    decisoes: {}, passosFiscal: [], baixado: false, bancoConferido: false, razaoDaExclusao: undefined, alcancada: Math.min(e.alcancada, indiceDaEtapa('competencia')),
   };
 }
 
@@ -190,7 +192,7 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
     },
     mudar: f => setEstado(f),
     usarRelatorio: (rel, origem) => setEstado(e => ({
-      ...e, relatorio: rel, porMes: {}, origemBanco: origem, decisoes: {}, passosFiscal: [], baixado: false, bancoConferido: false,
+      ...e, relatorio: rel, porMes: {}, origemBanco: origem, decisoes: {}, passosFiscal: [], baixado: false, bancoConferido: false, razaoDaExclusao: undefined,
       alcancada: Math.min(e.alcancada, indiceDaEtapa('competencia')),
     })),
     relatorioDoMes: (mes, rel, origem = '') => setEstado(e => {
