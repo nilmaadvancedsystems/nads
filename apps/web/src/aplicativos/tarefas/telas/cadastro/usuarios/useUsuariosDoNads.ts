@@ -48,10 +48,18 @@ export function useUsuariosDoNads() {
       rotulosDosPapeis: usuarios.PAPEIS.filter(x => p.papeis.includes(x.id)).map(x => x.rotulo),
       computadores: sessoes.filter(s => s.uid === p.uid),
       online: p.ativo && usuarios.estaOnline(p.vistoNoNads, agora),
+      // o departamento (a etiqueta colorida) e o nível; os papéis que não vêm do cargo (o do departamento e o staff ficam de fora)
+      departamentoRotulo: usuarios.DEPARTAMENTOS.find(d => d.id === p.departamento)?.rotulo || '',
+      nivelRotulo: usuarios.NIVEIS.find(n => n.id === p.nivel)?.rotulo || '',
+      papeisAMais: usuarios.PAPEIS.filter(x => p.papeis.includes(x.id) && x.id !== p.departamento).map(x => x.rotulo),
       presenca: usuarios.rotuloDaPresenca(p.vistoNoNads, agora),
     }))
     // quem está online primeiro, depois os ativos, depois os inativos
     .sort((a, b) => Number(b.online) - Number(a.online) || Number(b.ativo) - Number(a.ativo) || a.nome.localeCompare(b.nome));
+
+  const linhas = todas
+    .filter(p => filtro === 'todos' || (filtro === 'online' ? p.online : filtro === 'ativos' ? p.ativo : !p.ativo))
+    .filter(p => !q || (p.nome + ' ' + p.email + ' ' + p.cargo).toLowerCase().includes(q));
 
   return {
     exemplos: repo.exemplos,
@@ -60,9 +68,13 @@ export function useUsuariosDoNads() {
     busca, setBusca,
     filtro, setFiltro,
     contagem: { todos: todas.length, online: todas.filter(p => p.online).length, ativos: todas.filter(p => p.ativo).length, inativos: todas.filter(p => !p.ativo).length },
-    linhas: todas
-      .filter(p => filtro === 'todos' || (filtro === 'online' ? p.online : filtro === 'ativos' ? p.ativo : !p.ativo))
-      .filter(p => !q || (p.nome + ' ' + p.email + ' ' + p.cargo).toLowerCase().includes(q)),
+    linhas,
+    // em grupos (sem busca, em Todos): quem está online agora, o resto da equipe e os inativos
+    grupos: filtro !== 'todos' || q ? [{ titulo: '', itens: linhas }] : [
+      { titulo: 'Online agora', itens: linhas.filter(p => p.online) },
+      { titulo: 'Equipe', itens: linhas.filter(p => p.ativo && !p.online) },
+      { titulo: 'Inativos', itens: linhas.filter(p => !p.ativo) },
+    ].filter(g => g.itens.length),
     // as janelas: a da pessoa (os dados ao vivo) e a de criar o acesso
     pessoa: janela?.tipo === 'pessoa' ? todas.find(p => p.uid === janela.uid) || null : null,
     novoAberto: janela?.tipo === 'novo',
