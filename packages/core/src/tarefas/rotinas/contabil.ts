@@ -94,7 +94,7 @@ export const ROTINA_CONTABIL: Rotina = {
       secao: 'Ativo',
       nome: 'Creditor',
       descricao: 'As liquidações de cobrança que caíram no caixa conciliadas com o relatório do banco.',
-      ferramenta: { app: 'extratudo', nome: 'Creditor', caminho: r => '/extratudo/' + r + '/creditor/banco', embutir: true },
+      ferramenta: { app: 'extratudo', nome: 'Creditor', caminho: r => '/extratudo/' + r + '/creditor/competencia', embutir: true },
       verificacao: 'manual',
       soQuandoAdicionada: true,
       conferir: ['O razão do caixa tem CRÉD.LIQ.COBRANÇA: concilie as liquidações com o relatório do banco e importe no sistema.'],
@@ -124,7 +124,7 @@ export const ROTINA_CONTABIL: Rotina = {
       secao: 'Ativo',
       nome: 'Clientes',
       descricao: 'Nenhum cliente com saldo credor; os recebimentos do mês baixados.',
-      ferramenta: { app: 'extratudo', nome: 'Creditor', caminho: r => '/extratudo/' + r + '/creditor/banco', embutir: true },
+      ferramenta: { app: 'extratudo', nome: 'Creditor', caminho: r => '/extratudo/' + r + '/creditor/competencia', embutir: true },
       verificacao: 'manual',
       conferir: [
         'Nenhum cliente com saldo credor (recebeu mais do que vendeu: recebimento sem a nota, ou baixa em duplicidade).',

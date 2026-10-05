@@ -1,5 +1,5 @@
 // Onde o Extratudo mora na URL: /extratudo/<código da empresa>/<ferramenta>/<página…>
-// (ex.: /extratudo/292/extrator/conferencia/resultado, /extratudo/292/creditor/banco).
+// (ex.: /extratudo/292/extrator/conferencia/resultado, /extratudo/292/creditor/fiscal).
 export const BASE = '/extratudo';
 
 export type IdFerramenta = 'extrator' | 'cheque-especial' | 'creditor';

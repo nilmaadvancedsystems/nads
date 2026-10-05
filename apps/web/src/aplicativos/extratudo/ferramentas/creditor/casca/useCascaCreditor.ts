@@ -4,7 +4,7 @@ import { useRetorno } from '@nads/ui';
 import { useSessao } from './sessao';
 
 /** as etapas no visual da Importação: sem o título e sem o "Etapa n de 5" em cima (Vitor, 05/10/2026) */
-const NO_VISUAL_DA_IMPORTACAO: string[] = ['competencia', 'banco'];
+const NO_VISUAL_DA_IMPORTACAO: string[] = ['competencia'];
 
 export function useCascaCreditor() {
   const s = useSessao();

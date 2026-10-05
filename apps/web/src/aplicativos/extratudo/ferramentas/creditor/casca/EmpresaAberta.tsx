@@ -5,7 +5,6 @@ import { empresas } from '@nads/core';
 import { Navigate, useLocation, useParams } from 'react-router';
 import { useEmpresaDoExtratudo } from '../../../empresas';
 import { TopoProvider } from '../../../../../comum/topo';
-import { Banco } from '../telas/banco/Banco';
 import { Competencia } from '../telas/competencia/Competencia';
 import { Cruzamento } from '../telas/cruzamento/Cruzamento';
 import { Fiscal } from '../telas/fiscal/Fiscal';
@@ -25,7 +24,6 @@ function Tela() {
   }
   switch (s.etapa) {
     case 'competencia': return <Competencia />;
-    case 'banco': return <Banco />;
     case 'fiscal': return <Fiscal />;
     case 'cruzamento': return <Cruzamento />;
     case 'lancamentos': return <Lancamentos />;

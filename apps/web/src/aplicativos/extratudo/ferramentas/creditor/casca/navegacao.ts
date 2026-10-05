@@ -4,13 +4,12 @@ import type { NomeIcone } from '@nads/ui';
 import { caminho } from './caminho';
 
 // Sem Conferência dos grupos e sem arquivo do sistema (2026-09-29): a conta de cada cliente vem do balancete.
-export type IdEtapa = 'competencia' | 'banco' | 'fiscal' | 'cruzamento' | 'lancamentos';
+export type IdEtapa = 'competencia' | 'fiscal' | 'cruzamento' | 'lancamentos';
 
 export interface Etapa { id: IdEtapa; rotulo: string; titulo: string; icone: NomeIcone }
 
 export const ETAPAS: Etapa[] = [
   { id: 'competencia', rotulo: 'Competência', titulo: 'Competência', icone: 'calendar' },
-  { id: 'banco', rotulo: 'Relatório do banco', titulo: 'Relatório de liquidação do banco', icone: 'landmark' },
   { id: 'fiscal', rotulo: 'Fiscal', titulo: 'Baixa no Fiscal', icone: 'checklist' },
   { id: 'cruzamento', rotulo: 'Contas', titulo: 'Conta de cada cliente', icone: 'repeat' },
   { id: 'lancamentos', rotulo: 'Lançamentos', titulo: 'Lançamentos para importar', icone: 'download' },

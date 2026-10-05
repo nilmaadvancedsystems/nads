@@ -3,7 +3,7 @@
 // computador ou do Drive). Aberto pela Tarefas, já vem nos meses em que o caixa teve CRÉD.LIQ.COBRANÇA (os meses do
 // Creditor). Do Drive, procura na pasta da empresa (CONTÁBIL › RECEBIMENTO DE CLIENTES), baixa pelo robô do Entregas
 // e lê; sem achar, mostra os arquivos da pasta para escolher. Sem o login do Drive, pede antes. Com o relatório de
-// todos os meses, segue para o Relatório do banco (os meses juntos).
+// todos os meses, o Continuar segue para o Fiscal (os meses juntos).
 import { creditor as cr, tarefas } from '@nads/core';
 import { useCarregando, useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
@@ -57,19 +57,18 @@ export function useCompetencia() {
   /** Guarda a competência (é ela que libera a etapa seguinte). */
   const fixar = () => s.definirCompetencia(competencia);
 
-  /** Leu o relatório do mês: guarda; com todos os meses (um só, ou o último que faltava), segue para o Relatório do banco. */
-  function guardar(mes: string, rel: cr.RelatorioBanco, origem: string, seguir: boolean) {
+  /** Leu o relatório do mês: guarda e fica aqui (o resumo na linha); o Continuar segue (Vitor, 05/10/2026: a Competência e o Relatório do banco eram a mesma tela). */
+  function guardar(mes: string, rel: cr.RelatorioBanco, origem: string) {
     fixar();
     s.relatorioDoMes(mes, rel, origem);
     setBusca(PARADO);
-    if (seguir && faltam.every(m => m === mes)) s.avancarPara('banco');
   }
 
-  async function usarDoDrive(mes: string, a: cr.ArquivoAchado, candidatos: cr.ArquivoAchado[], seguir = true): Promise<boolean> {
+  async function usarDoDrive(mes: string, a: cr.ArquivoAchado, candidatos: cr.ArquivoAchado[]): Promise<boolean> {
     setBusca({ mes, fase: 'baixando', texto: 'Baixando ' + a.nome + '…', candidatos });
     try {
       const buf = await drive.baixar(a.id, a.nome, passo => setBusca(b => ({ ...b, texto: a.nome + ': ' + passo + '…' })));
-      guardar(mes, await lerRelatorio(a.nome, buf), 'Drive · ' + a.caminho, seguir);
+      guardar(mes, await lerRelatorio(a.nome, buf), 'Drive · ' + a.caminho);
       return true;
     } catch (e) {
       setBusca({ mes, fase: 'problema', texto: mensagemDeErro(e), candidatos });
@@ -78,13 +77,13 @@ export function useCompetencia() {
   }
 
   /** Procura o relatório de um mês na pasta da empresa (já com o login do Drive). Devolve se veio. */
-  async function procurar(mes: string, seguir = true): Promise<boolean> {
+  async function procurar(mes: string): Promise<boolean> {
     fixar();
     setBusca({ mes, fase: 'procurando', texto: 'Procurando no Drive…', candidatos: [] });
     try {
       const pasta = await drive.pastaDoCliente(s.empresa.codigo);
       const b = cr.acharRelatorioNoDrive(pasta?.itens || [], pasta?.raiz || null, mes);
-      if (b.situacao === 'achou' && b.arquivo) return await usarDoDrive(mes, b.arquivo, b.candidatos, seguir);
+      if (b.situacao === 'achou' && b.arquivo) return await usarDoDrive(mes, b.arquivo, b.candidatos);
       setBusca({ mes, fase: 'problema', texto: cr.mensagemDaBusca(b, cr.rotuloCompetencia(mes)), candidatos: b.candidatos });
     } catch (e) {
       setBusca({ mes, fase: 'problema', texto: mensagemDeErro(e), candidatos: [] });
@@ -99,9 +98,8 @@ export function useCompetencia() {
     const lista = [...faltam];
     for (const m of lista) {
       if (parar.current) return;
-      if (!(await procurar(m, false))) return;
+      if (!(await procurar(m))) return;
     }
-    s.avancarPara('banco');
   }
 
   function buscarNoDrive(mes: string) {
@@ -124,7 +122,7 @@ export function useCompetencia() {
   async function importarDoComputador(mes: string, f: File | undefined) {
     if (!f) return;
     setBusca({ mes, fase: 'lendo', texto: 'Lendo ' + f.name + '…', candidatos: [] });
-    try { guardar(mes, await lerRelatorio(f.name, await f.arrayBuffer()), f.name, true); }
+    try { guardar(mes, await lerRelatorio(f.name, await f.arrayBuffer()), f.name); }
     catch (e) { setBusca({ mes, fase: 'problema', texto: mensagemDeErro(e), candidatos: [] }); }
   }
 
@@ -156,6 +154,13 @@ export function useCompetencia() {
   const opcoes = [...new Set([...meses, ...recentes])].sort().reverse();
   const ocupado = busca.fase === 'procurando' || busca.fase === 'baixando' || busca.fase === 'lendo';
   useCarregando(ocupado);
+  // os avisos do que foi lido: os da leitura e os títulos liquidados fora da competência
+  const lido = s.estado.relatorio && s.estado.competencia === competencia ? s.estado.relatorio : null;
+  const fora = lido ? cr.titulosForaDaCompetencia(lido.grupos.flatMap(g => g.titulos), competencia) : [];
+  const avisos = lido ? [
+    ...lido.avisos,
+    ...(fora.length ? [fora.length + ' título(s) liquidado(s) fora de ' + cr.rotuloCompetencia(competencia) + ' (ex.: NF ' + fora[0].nf + ' em ' + fora[0].liquidacao + '). Confira se é o relatório certo.'] : []),
+  ] : [];
   return {
     meses, lote,
     /** os meses vieram da Tarefa: o seletor não abre */
@@ -171,7 +176,12 @@ export function useCompetencia() {
     /** as linhas: uma por mês */
     linhas: meses.map(m => {
       const r = doMes(m);
+      // o relatório do mês (o anexado inteiro vale para todos: o resumo fica só nele)
+      const rel = s.estado.porMes[m]?.relatorio || (inteiro && m === meses[0] ? s.estado.relatorio : null);
+      const ts = rel ? rel.grupos.flatMap(g => g.titulos) : [];
       return {
+        resumo: rel ? [ts.length + (ts.length === 1 ? ' título' : ' títulos'), 'Liquidado R$ ' + cr.brl(cr.somar(ts.map(t => t.valor)))] : [],
+        titulos: ts.map(t => ({ id: t.id, liquidacao: t.liquidacao, sacado: t.sacado, nf: t.nf, valor: t.valor, juros: t.mora + t.outros, desconto: t.desconto, cobrado: t.cobrado })),
         mes: m, rotulo: cr.rotuloCompetencia(m), carregado: !!r, origem: r?.origem || '', doDrive: !!r?.origem.startsWith('Drive'),
         ocupado: ocupado && busca.mes === m, texto: ocupado && busca.mes === m ? busca.texto : '',
       };
@@ -189,8 +199,13 @@ export function useCompetencia() {
     usar: (a: cr.ArquivoAchado) => { void usarDoDrive(busca.mes, a, busca.candidatos); },
     fecharProblema: () => setBusca(PARADO),
     excluir: (mes: string) => { void excluir(mes); },
+    /** os avisos do que foi lido (os da leitura e os títulos fora da competência) */
+    avisos,
+    /** o exemplo (só sem o banco: dados de exemplo) */
+    exemplo: (mes: string) => guardar(mes, cr.lerRelatorioTexto(cr.EXEMPLO_RELATORIO), 'exemplo'),
     /** todos os meses com o relatório: segue para a etapa seguinte */
-    continuar: () => { fixar(); s.avancarPara('banco'); },
+    podeContinuar: faltam.length === 0 && s.d.conferido,
+    continuar: () => { fixar(); s.avancarPara('fiscal'); },
     login: { aberto: loginPara !== null, entrando, erro: erroLogin, entrar: () => { void entrar(); }, fechar: () => setLoginPara(null) },
   };
 }

@@ -1,32 +1,11 @@
-// Etapa 4 do Creditor: o passo a passo no Fiscal (baixar os clientes no Gerenciador de Duplicatas,
-// exportar para o Contábil e exportar a planilha), com os títulos que precisam de baixa.
+// Etapa do Creditor no Fiscal: os títulos que precisam de baixa (o passo a passo para marcar saiu; Vitor, 05/10/2026).
 import { creditor as cr } from '@nads/core';
-import { Icone } from '@nads/ui';
 import { useFiscal } from './useFiscal';
 
 export function Fiscal() {
   const vm = useFiscal();
   return (
     <section>
-      <div className="card">
-        <h3><span className="import-card-ico"><Icone nome="checklist" /></span>Passo a passo · {vm.empresa}</h3>
-        <p className="hint" style={{ marginTop: 0 }}>Faça cada passo no sistema e marque aqui. A próxima etapa abre com todos marcados.</p>
-        <ol className="passos">
-          {vm.passos.map(p => (
-            <li key={p.id}>
-              <label className={'passo' + (p.feito ? ' feito' : '')}>
-                <input type="checkbox" checked={p.feito} onChange={e => vm.marcar(p.id, e.target.checked)} />
-                <span className="passo-n">{p.feito ? <Icone nome="check" width={12} height={12} /> : p.n}</span>
-                <span>
-                  <span className="passo-titulo">{p.titulo}</span>
-                  <span className="passo-texto">{p.texto}</span>
-                </span>
-              </label>
-            </li>
-          ))}
-        </ol>
-      </div>
-
       <div className="card">
         <div className="card-head">
           <h3>Títulos para baixar</h3>
@@ -52,9 +31,7 @@ export function Fiscal() {
 
       <div className="btn-row">
         <button className="btn btn-ghost" type="button" onClick={vm.voltar}>← Voltar</button>
-        <button className="btn btn-primary" type="button" disabled={!vm.podeContinuar} onClick={vm.continuar}>
-          {vm.podeContinuar ? 'Continuar para as contas' : 'Faltam ' + vm.faltam + ' passo(s)'}
-        </button>
+        <button className="btn btn-primary" type="button" onClick={vm.continuar}>Continuar para as contas</button>
       </div>
     </section>
   );

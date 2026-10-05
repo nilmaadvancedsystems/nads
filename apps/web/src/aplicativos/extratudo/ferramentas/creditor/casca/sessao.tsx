@@ -34,7 +34,7 @@ function comOsMeses(e: Estado, porMes: Estado['porMes']): Estado {
     ...e, porMes,
     relatorio: meses.length ? cr.juntarRelatorios(meses.map(m => porMes[m].relatorio)) : null,
     origemBanco: meses.map(m => porMes[m].origem).join(' · '),
-    decisoes: {}, passosFiscal: [], alcancada: Math.min(e.alcancada, indiceDaEtapa('banco')),
+    decisoes: {}, passosFiscal: [], alcancada: Math.min(e.alcancada, indiceDaEtapa('competencia')),
   };
 }
 
@@ -77,10 +77,10 @@ export function derivar(e: Estado, contas: cr.ContasCreditor, aprendidos: cr.Cli
 function requisitos(id: IdEtapa, e: Estado, d: Derivado): boolean {
   switch (id) {
     case 'competencia': return true;
-    case 'banco': return cr.competenciaValida(e.competencia);
     case 'fiscal': return d.conferido;
-    case 'cruzamento': return d.conferido && d.fiscalFeito;
-    case 'lancamentos': return d.conferido && d.fiscalFeito && d.pendentes.length === 0;
+    // sem o passo a passo do Fiscal (05/10/2026): as Contas abrem com o relatório lido
+    case 'cruzamento': return d.conferido;
+    case 'lancamentos': return d.conferido && d.pendentes.length === 0;
   }
 }
 
@@ -180,7 +180,7 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
     mudar: f => setEstado(f),
     usarRelatorio: (rel, origem) => setEstado(e => ({
       ...e, relatorio: rel, porMes: {}, origemBanco: origem, decisoes: {}, passosFiscal: [],
-      alcancada: Math.min(e.alcancada, indiceDaEtapa('banco')),
+      alcancada: Math.min(e.alcancada, indiceDaEtapa('competencia')),
     })),
     relatorioDoMes: (mes, rel, origem = '') => setEstado(e => {
       const porMes = { ...e.porMes };

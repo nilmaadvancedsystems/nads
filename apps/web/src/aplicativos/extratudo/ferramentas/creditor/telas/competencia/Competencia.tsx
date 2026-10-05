@@ -1,8 +1,10 @@
 // Etapa 1 do Creditor, no visual da Importação (Vitor, 05/10/2026: "o mesmo visual de importação de Drive, de
 // competências"): em cima, a competência (um mês, ou vários pelo Em lote) e quantos relatórios; embaixo, uma linha de
 // relatório de liquidação por mês, com o ícone de importar (do computador ou do Drive). Importado, o check (ou o logo
-// do Drive) que exclui. Com todos os meses, segue.
-import { classeDaJanela, Icone, LogoDrive, MenuSuspenso } from '@nads/ui';
+// do Drive) que exclui, o resumo no meio e a seta com os títulos. Com todos os meses, o Continuar segue para o Fiscal
+// (Vitor, 05/10/2026: a Competência e o Relatório do banco eram a mesma tela; ficou só esta).
+import { creditor as cr } from '@nads/core';
+import { Alerta, classeDaJanela, Icone, LogoDrive, MenuSuspenso } from '@nads/ui';
 import { useRef, useState } from 'react';
 import { BotaoGoogle } from '../../../../../../comum/BotaoGoogle';
 import { useCompetencia } from './useCompetencia';
@@ -25,12 +27,17 @@ export function Competencia() {
           <MenuSuspenso rotulo="" icone="upload" className="gh-topo-btn gh-topo-menu" direita dica="Importar os relatórios que faltam"
             itens={[{ rotulo: 'Buscar os ' + vm.faltam + ' que faltam no Drive', icone: 'pasta', onClick: () => vm.buscarNoDrive('*') }]} />
         )}
-        {vm.lote && vm.todos && <button type="button" className="btn btn-primary" onClick={vm.continuar}>Continuar</button>}
+        <button type="button" className="btn btn-primary" disabled={!vm.podeContinuar || vm.ocupado} onClick={vm.continuar}>Continuar</button>
       </div>
 
       <div className="imp-lista">
         {vm.linhas.map(l => <LinhaDoRelatorio key={l.mes} vm={vm} l={l} comDrive={comDrive} />)}
       </div>
+      {vm.avisos.length > 0 && (
+        <Alerta titulo="Confira">
+          {vm.avisos.map((a, i) => <p key={i} className="alert-text">{a}</p>)}
+        </Alerta>
+      )}
 
       {/* não veio do Drive: a mesma janela da Importação, com os arquivos da pasta para escolher */}
       {b.fase === 'problema' && (
@@ -133,14 +140,20 @@ function SeletorDaCompetencia({ vm }: { vm: VM }) {
 /** Uma linha: o relatório de liquidação de um mês (sem o mês quando é um só). */
 function LinhaDoRelatorio({ vm, l, comDrive }: { vm: VM; l: VM['linhas'][number]; comDrive: boolean }) {
   const arquivo = useRef<HTMLInputElement>(null);
+  const [aberta, setAberta] = useState(false);
+  const temTitulos = l.titulos.length > 0;
   return (
     <div className={'imp-bloco' + (l.carregado ? ' imp-ok' : '')}>
       <div className="imp-linha">
+        <button type="button" className={'imp-seta' + (aberta && temTitulos ? ' aberta' : '')} aria-expanded={aberta && temTitulos} disabled={!temTitulos}
+          title={aberta ? 'Fechar os títulos' : 'Ver os títulos do relatório'} aria-label="Títulos do relatório" onClick={() => setAberta(a => !a)}>
+          <Icone nome="caretDown" />
+        </button>
         <span className="imp-ico imp-logo"><Icone nome="recibo" /></span>
         <div className="imp-txt">
           <span><b>Relatório de liquidação</b>{vm.lote && <span className="imp-conta">{l.rotulo}</span>}</span>
         </div>
-        <div className="imp-resumo">{l.ocupado && <div><span>{l.texto}</span></div>}</div>
+        <div className="imp-resumo">{l.ocupado ? <div><span>{l.texto}</span></div> : l.resumo.length > 0 && <div>{l.resumo.map(t => <span key={t}>{t}</span>)}</div>}</div>
         <div className="imp-grupos">
           {l.carregado ? (
             <>
@@ -153,7 +166,6 @@ function LinhaDoRelatorio({ vm, l, comDrive }: { vm: VM; l: VM['linhas'][number]
                   <Icone nome="x" className="imp-feito-x" />
                 </button>
               </div>
-              {!vm.lote && <button type="button" className="btn btn-primary" onClick={vm.continuar}>Continuar</button>}
             </>
           ) : l.ocupado ? (
             <span className="btn-spinner" aria-label={l.texto} />
@@ -172,6 +184,11 @@ function LinhaDoRelatorio({ vm, l, comDrive }: { vm: VM; l: VM['linhas'][number]
                         <LogoDrive cor /><span className="popover-texto">Buscar no Drive</span>
                       </button>
                     )}
+                    {vm.exemplos && (
+                      <button type="button" className="popover-item" role="menuitem" disabled={vm.ocupado} onClick={() => { fechar(); vm.exemplo(l.mes); }}>
+                        <Icone nome="fileText" /><span className="popover-texto">Testar com o exemplo</span>
+                      </button>
+                    )}
                   </>
                 )} />
               <input ref={arquivo} type="file" accept=".pdf,.txt,.xls,.xlsx,.csv" className="sr-only" tabIndex={-1} aria-hidden="true"
@@ -179,6 +196,47 @@ function LinhaDoRelatorio({ vm, l, comDrive }: { vm: VM; l: VM['linhas'][number]
             </div>
           )}
         </div>
+      </div>
+      {aberta && temTitulos && <Titulos titulos={l.titulos} />}
+    </div>
+  );
+}
+
+/** Os títulos do relatório, como o movimento do extrato na Importação: a busca em cima e a tabela. */
+function Titulos({ titulos }: { titulos: VM['linhas'][number]['titulos'] }) {
+  const [busca, setBusca] = useState('');
+  const q = busca.trim().toLowerCase();
+  const linhas = q ? titulos.filter(t => [t.liquidacao, t.sacado, t.nf, cr.brl(t.valor)].join(' ').toLowerCase().includes(q)) : titulos;
+  return (
+    <div className="imp-mov-caixa">
+      <div className="imp-mov-topo">
+        <label className="busca-curta imp-mov-busca">
+          <Icone nome="search" />
+          <input type="text" placeholder="Buscar no relatório" aria-label="Buscar no relatório (data, cliente, nota ou valor)" value={busca}
+            onChange={e => setBusca(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') setBusca(''); }} />
+        </label>
+        {q && <span className="imp-mov-periodo" aria-live="polite"><b>{linhas.length}</b> {linhas.length === 1 ? 'título' : 'títulos'} · {cr.brl(cr.somar(linhas.map(t => t.valor)))}</span>}
+      </div>
+      <div className="imp-mov">
+        <table className="table-compact">
+          <thead><tr>
+            <th>Liquidação</th><th>Cliente</th><th>Nota</th><th className="num">Valor</th><th className="num">Juros</th><th className="num">Desconto</th><th className="num">Cobrado</th>
+          </tr></thead>
+          <tbody>
+            {!linhas.length && <tr><td colSpan={7} className="hint">Nada com essa busca.</td></tr>}
+            {linhas.map(t => (
+              <tr key={t.id}>
+                <td style={{ whiteSpace: 'nowrap' }}>{t.liquidacao}</td>
+                <td className="wrap">{t.sacado}</td>
+                <td>{t.nf}</td>
+                <td className="num">{cr.brl(t.valor)}</td>
+                <td className="num">{t.juros ? cr.brl(t.juros) : ''}</td>
+                <td className="num">{t.desconto ? cr.brl(t.desconto) : ''}</td>
+                <td className="num">{t.cobrado != null ? cr.brl(t.cobrado) : ''}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
