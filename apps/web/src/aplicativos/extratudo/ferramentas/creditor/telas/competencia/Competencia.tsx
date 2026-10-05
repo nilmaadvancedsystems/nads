@@ -81,15 +81,7 @@ function SeletorDaCompetencia({ vm }: { vm: VM }) {
   const [de, setDe] = useState(vm.meses[0]);
   const [ate, setAte] = useState(vm.meses[vm.meses.length - 1]);
   const qtd = vm.competencias.filter(c => c.valor >= (de < ate ? de : ate) && c.valor <= (de < ate ? ate : de)).length;
-  // aberto pela Tarefa: só a informação, como nas outras etapas (o período se escolhe na Importação)
-  if (vm.travada) {
-    return (
-      <span className="imp-periodo-info" title={'Definido pela Tarefa: os meses do período com CRÉD.LIQ.COBRANÇA no caixa (' + vm.linhas.map(l => l.rotulo).join(', ') + ')'}>
-        <Icone nome="calendar" />{vm.lote ? vm.linhas.map(l => l.rotulo).join(', ') : vm.linhas[0]?.rotulo}<Icone nome="lock" />
-      </span>
-    );
-  }
-  return (
+  const menu = (
     <MenuSuspenso icone="calendar" rotulo={vm.rotulo} largura={300} dica={vm.lote ? 'Em lote: ' + vm.linhas.map(l => l.rotulo).join(', ') : 'Trocar a competência'}
       className={'btn btn-outline' + (vm.lote ? ' imp-periodo-ativo' : '')}
       conteudo={fechar => (
@@ -133,6 +125,9 @@ function SeletorDaCompetencia({ vm }: { vm: VM }) {
         </div>
       )} />
   );
+  // aberto pela Tarefa: o mesmo seletor, apagado e sem clique (Vitor, 05/10/2026: "da mesma maneira que antes, mas
+  // ofuscado") — os meses vêm do caixa e o período só se escolhe na Importação
+  return vm.travada ? <span className="seletor-travado" inert aria-disabled="true">{menu}</span> : menu;
 }
 
 /** Uma linha: o relatório de liquidação de um mês (sem o mês quando é um só). */

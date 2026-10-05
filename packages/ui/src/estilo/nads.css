@@ -2754,3 +2754,5 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
   .usuarios-item{grid-template-columns:40px minmax(0,1fr) auto 16px;}
   .usuarios-cargo,.usuarios-papeis,.usuarios-pcs{display:none;}
 }
+/* o seletor de competência travado (aberto pela Tarefa): o mesmo botão, apagado e sem clique */
+.seletor-travado{display:inline-flex;opacity:.5;pointer-events:none;user-select:none;}
