@@ -1,20 +1,23 @@
 // Visão de cima (Contábil/Fiscal): como está cada etapa em todas as empresas da competência e quais
 // objeções mais param o trabalho. Só leitura.
 import type { Execucao, Rotina } from '../tipos';
-import { situacaoDa } from './execucao';
+import { etapaNoMes, situacaoDa } from './execucao';
 
 export interface ResumoDaEtapa { etapa: string; nome: string; feitas: number; dispensadas: number; interrompidas: number; pendentes: number }
 
 export function resumoPorEtapa(execucoes: readonly Execucao[], rotina: Rotina, totalEmpresas: number): ResumoDaEtapa[] {
   return rotina.etapas.map(e => {
     let feitas = 0, dispensadas = 0, interrompidas = 0;
-    for (const ex of execucoes) {
+    // a etapa "só quando adicionada" (o Creditor) conta só nas empresas em que entrou
+    const daEtapa = e.soQuandoAdicionada ? execucoes.filter(ex => etapaNoMes(ex, e.id)) : execucoes;
+    const total = e.soQuandoAdicionada ? daEtapa.length : totalEmpresas;
+    for (const ex of daEtapa) {
       const s = situacaoDa(ex, e.id);
       if (s === 'feita') feitas++;
       else if (s === 'dispensada') dispensadas++;
       else if (s === 'interrompida') interrompidas++;
     }
-    return { etapa: e.id, nome: e.nome, feitas, dispensadas, interrompidas, pendentes: Math.max(0, totalEmpresas - feitas - dispensadas - interrompidas) };
+    return { etapa: e.id, nome: e.nome, feitas, dispensadas, interrompidas, pendentes: Math.max(0, total - feitas - dispensadas - interrompidas) };
   });
 }
 

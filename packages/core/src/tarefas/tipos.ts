@@ -56,6 +56,13 @@ export interface Etapa {
   checklistDaFolha?: boolean;
   /** as tarefas da etapa, em ordem (a rotina do Fiscal): marca uma a uma; o avançar só com tudo marcado */
   checklist?: ItemDoChecklist[];
+  /** a etapa confere o razão de uma conta: a pessoa importa o XLS da conciliação do Alterdata (conta: "caixa") */
+  razao?: { conta: string };
+  /**
+   * a etapa só entra na rotina do mês quando outra a adiciona (o Creditor, quando o razão do caixa tem liquidação de
+   * cobrança); sem isso, não aparece e conta como concluída
+   */
+  soQuandoAdicionada?: boolean;
 }
 
 /** Uma tarefa do checklist da etapa: o texto e, se tiver, os subitens, um link e um aviso. */
@@ -99,10 +106,12 @@ export interface Execucao {
    * abrir a empresa neste mês leva ao período; só sai quando todos os meses dele estiverem concluídos.
    */
   periodo?: string;
+  /** as etapas "só quando adicionada" que entraram neste mês (o Creditor, pelo razão do caixa) */
+  adicionadas?: string[];
 }
 
 export type TipoEvento = 'inicio' | 'feita' | 'dispensada' | 'interrompida' | 'verificacao-falhou' | 'sem-movimento' | 'com-movimento' | 'reaberta'
-  | 'periodo' | 'periodo-encerrado';
+  | 'periodo' | 'periodo-encerrado' | 'adicionada' | 'retirada';
 
 /** O que aconteceu, quando e com quem (para produtividade e análise das objeções). */
 export interface Evento {

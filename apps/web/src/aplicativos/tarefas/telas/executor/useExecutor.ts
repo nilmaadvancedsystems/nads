@@ -251,7 +251,9 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       // o grupo na barra lateral (Preparação, Ativo, Passivo…): a mesma seção, o mesmo número
       const grupo = secoes.indexOf(e.secao || '');
       // o Cheque especial dispensado por não ter dia negativo: some da lista
-      const oculta = e.id === 'cheque-especial' && meses.length > 0 && meses.every(c => exDe[c]?.etapas[e.id]?.objecao === 'sem-saldo-negativo');
+      // a etapa "só quando adicionada" (o Creditor) que não entrou em nenhum mês: também some
+      const oculta = (e.id === 'cheque-especial' && meses.length > 0 && meses.every(c => exDe[c]?.etapas[e.id]?.objecao === 'sem-saldo-negativo'))
+        || (!!e.soQuandoAdicionada && !meses.some(c => t.etapaNoMes(exDe[c] || null, e.id)));
       return { id: e.id, n: i + 1, nome: e.nome, secao: e.secao, grupo, oculta, situacao: feitos === meses.length && meses.length ? 'feita' as const : parada ? 'interrompida' as const : 'pendente' as const, feitos, atual: e.id === etapa?.id };
     }),
     etapa, n: etapa ? rotina.etapas.findIndex(e => e.id === etapa.id) + 1 : 0, total: rotina.etapas.length,
@@ -315,6 +317,29 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
         }
       }
       navegar(comDep(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), c)));
+    },
+    /**
+     * O razão do caixa importado: o Creditor entra nos meses do período com liquidação de cobrança no caixa
+     * (CRÉD.LIQ.COBRANÇA) e sai dos outros, se ainda não foi feito (Vitor, 05/10/2026). Devolve os meses em que entrou.
+     */
+    ajustarCreditor: (comLiquidacao: readonly string[]): string[] => {
+      if (carregando) return [];
+      const entrou: string[] = [];
+      for (const c of meses) {
+        const exc = exDe[c];
+        if (!exc) continue;
+        const tem = comLiquidacao.includes(c);
+        const esta = !!exc.adicionadas?.includes('creditor');
+        if (tem && !esta) {
+          const a = t.adicionarEtapa(exc, 'creditor', 'CRÉD.LIQ.COBRANÇA no razão do caixa', op.nome, new Date());
+          repo.gravar(a.execucao, a.evento);
+          entrou.push(c);
+        } else if (!tem && esta && !t.estadoDa(exc, 'creditor')) {
+          const r = t.retirarEtapa(exc, 'creditor', 'o razão do caixa não tem CRÉD.LIQ.COBRANÇA', op.nome, new Date());
+          repo.gravar(r.execucao, r.evento);
+        }
+      }
+      return entrou;
     },
     abrirEmpresa: () => { if (empresa) navegar(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), ultimo)); },
   };

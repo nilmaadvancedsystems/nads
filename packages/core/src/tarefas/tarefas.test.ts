@@ -40,7 +40,7 @@ describe('andamento', () => {
     ex = interromper(ex, 'dp', 'outro', '  aguardando  ', 'Clara', agora).execucao;
     expect(ex.etapas.dp).toMatchObject({ situacao: 'interrompida', objecao: 'outro', observacao: 'aguardando' });
     expect(situacaoGeral(ex, R)).toBe('parada');
-    expect(progresso(ex, R)).toMatchObject({ concluidas: 3, total: R.etapas.length, interrompida: etapa('dp') });
+    expect(progresso(ex, R)).toMatchObject({ concluidas: 3, total: R.etapas.filter(e => !e.soQuandoAdicionada).length, interrompida: etapa('dp') });
     ex = dispensar(ex, 'dp', 'sem-funcionarios', '', 'Clara', agora).execucao;
     expect(concluida(ex.etapas.dp.situacao)).toBe(true);
     expect(situacaoGeral(ex, R)).toBe('em-andamento');

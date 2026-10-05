@@ -15,6 +15,8 @@ import { useChecklistDaFolha } from './useChecklistDaFolha';
 import { useExecutor } from './useExecutor';
 import { ListaDoQueFalta, type ItemQueFalta } from './partes/OQueFalta';
 import { MenuDaRotina } from './partes/MenuDaRotina';
+import { RazaoDaEtapa } from './partes/RazaoDaEtapa';
+import { useRazaoDaEtapa } from './useRazaoDaEtapa';
 
 /** O ícone de cada grupo da rotina, no canto do cabeçalho. */
 
@@ -27,6 +29,9 @@ export function Executor() {
   const { empresa: rota = '', competencia: periodo = '' } = useParams();
   const vm = useExecutor(rota, periodo);
   const casca = useCascaTarefas('minhas-empresas', 'empresas');
+  // o razão da etapa (o Caixa): importado do computador, vale para a empresa, a etapa e o período abertos; a liquidação
+  // de cobrança no caixa põe o Creditor nos meses dela
+  const razao = useRazaoDaEtapa(rota + '|' + (vm.etapa?.id || '') + '|' + periodo, vm.meses.length ? vm.meses : [vm.competencia], vm.ajustarCreditor);
   // a ferramenta da etapa (iframe): recebe os bancos sem movimento e avisa quando a pessoa marca um
   const iframe = useRef<HTMLIFrameElement>(null);
   // a ferramenta que tem requisitos (a Importação) diz o que falta: o avançar só aparece com tudo pronto
@@ -42,7 +47,9 @@ export function Executor() {
   const temChecklist = !!(vm.etapa?.checklistDaFolha || vm.etapa?.checklist);
   const folha = useChecklistDaFolha(temChecklist, vm.empresa?.nome || '', vm.meses.length ? vm.meses : [vm.competencia], fixo);
   const faltamFerramenta = requisitos && requisitos.url === urlDaFerramenta && !requisitos.pronto ? requisitos.faltam : null;
-  const faltam = temChecklist ? (folha.faltam && folha.faltam.length ? folha.faltam : null) : faltamFerramenta;
+  // o Caixa: sem o razão importado não dá para saber se o Creditor entra (Vitor, 05/10/2026)
+  const faltaRazao = vm.etapa?.razao && !razao.carregado ? ['Importar o razão do ' + vm.etapa.razao.conta] : null;
+  const faltam = temChecklist ? (folha.faltam && folha.faltam.length ? folha.faltam : null) : faltaRazao || faltamFerramenta;
   // o "?": cada item com o lugar dele (o Resolver leva até lá): na folha, o item da lista; na ferramenta, o que ela mandou
   const itensQueFaltam: ItemQueFalta[] = (faltam || []).map((texto, i) => ({
     texto, alvo: temChecklist ? 'folha:' + texto : requisitos?.alvos?.[i] ?? null,
@@ -208,6 +215,8 @@ export function Executor() {
                   <p className="hint">Pelo balancete importado, a empresa não tem folha (nenhuma conta da folha no Passivo: salários, pró-labore, férias, rescisão, FGTS, INSS).</p>
                 )}
               </div>
+            ) : vm.etapa.razao ? (
+              <RazaoDaEtapa conta={vm.etapa.razao.conta} razao={razao} conferir={vm.etapa.conferir} />
             ) : (
               <div className="gh-blank">
                 <Icone nome="checklist" />

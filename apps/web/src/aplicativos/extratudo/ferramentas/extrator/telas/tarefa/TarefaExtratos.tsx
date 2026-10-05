@@ -11,11 +11,12 @@
 // Ao importar, só uma barrinha por cima da tela, que some em 2,7 s.
 import { extrator as x, type conferencia, tarefas } from '@nads/core';
 import { classeDaJanela, destacarNaTela, Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
-import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { usePonteDaTarefa, useRequisitosParaATarefa } from '../../../../../../comum/ponte';
 import { useSessao } from '../../casca/sessao';
 import { useImportacao, type Mensagem } from '../importacao/useImportacao';
 import { BotaoGoogle } from '../../../../../../comum/BotaoGoogle';
+import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
 import { ImportacaoNaEtapa } from '../../../../../concilia-ai/ImportacaoNaEtapa';
 import { useImportadosDaConferencia } from '../../../../../concilia-ai/importadosNaEtapa';
 import { JanelaHistoricoDePedidos, JanelaPedirExtratos } from './JanelaPedirExtratos';
@@ -83,26 +84,11 @@ function BotaoDoDrive({ arquivos, travado, rotulo, onExcluir, onVer }: {
   );
 }
 
-
 /**
  * As pendências do banco (o que corrigir no razão): uma faixa grudada embaixo da linha do banco, "Pendências  N ▾",
  * que abre a planilha — o dia, a situação, o lançamento (com o detalhe e a dica embaixo), banco, razão e diferença.
  */
 const LIMITE_CORRECOES = 30;
-/** A faixa grudada no bloco do banco que abre e fecha (▸ Título  N): Lançamentos e, embaixo, Pendências (o número em laranja). */
-function FaixaQueAbre({ titulo, qtd, aviso, children }: { titulo: string; qtd: number; aviso?: boolean; children: ReactNode }) {
-  const [aberta, setAberta] = useState(false);
-  return (
-    <div className={'imp-faixa' + (aviso ? ' aviso' : '') + (aberta ? ' aberta' : '')}>
-      <button type="button" className="imp-faixa-barra" aria-expanded={aberta} onClick={() => setAberta(a => !a)}>
-        <Icone nome="caretDown" className="imp-faixa-seta" />
-        <b>{titulo}</b>
-        <span className="imp-faixa-qtd">{qtd}</span>
-      </button>
-      {aberta && <div className="imp-faixa-corpo">{children}</div>}
-    </div>
-  );
-}
 
 function PendenciasDoBanco({ itens }: { itens: x.CorrecaoDoRazao[] }) {
   if (!itens.length) return null;

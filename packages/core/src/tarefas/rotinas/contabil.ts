@@ -75,6 +75,8 @@ export const ROTINA_CONTABIL: Rotina = {
       descricao: 'O caixa nunca fica credor.',
       ferramenta: null,
       verificacao: 'manual',
+      // o botão de importar o razão do caixa (Vitor, 05/10/2026)
+      razao: { conta: 'caixa' },
       conferir: [
         'O saldo do caixa é devedor (ou zero) no fim do mês e em nenhum dia fica credor.',
         'Caixa credor: procure pagamentos lançados no caixa que saíram pelo banco e vendas à vista que faltam.',
@@ -83,6 +85,21 @@ export const ROTINA_CONTABIL: Rotina = {
       objecoes: [
         { id: 'caixa-credor', texto: 'O caixa ficou credor e não achei o motivo', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Interrompa com esta objeção: a competência aparece para os sêniores revisarem.' } },
         nao('sem-caixa', 'A empresa não usa caixa'),
+      ],
+    },
+    {
+      // o caixa recebeu liquidação de cobrança do banco (CRÉD.LIQ.COBRANÇA): o Creditor é obrigatório no mês (Vitor,
+      // 05/10/2026). A etapa só entra quando o razão do caixa importado tem isso.
+      id: 'creditor',
+      secao: 'Ativo',
+      nome: 'Creditor',
+      descricao: 'As liquidações de cobrança que caíram no caixa conciliadas com o relatório do banco.',
+      ferramenta: { app: 'extratudo', nome: 'Creditor', caminho: r => '/extratudo/' + r + '/creditor/banco', embutir: true },
+      verificacao: 'manual',
+      soQuandoAdicionada: true,
+      conferir: ['O razão do caixa tem CRÉD.LIQ.COBRANÇA: concilie as liquidações com o relatório do banco e importe no sistema.'],
+      objecoes: [
+        { id: 'sem-relatorio', texto: 'O relatório de liquidação não chegou', solucao: { tipo: 'contato', rotulo: 'Pedir o relatório ao cliente' } },
       ],
     },
     {

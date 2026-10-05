@@ -1,7 +1,17 @@
 // O andamento das etapas de uma empresa numa competência: o que está feito, o que é a próxima,
 // e as ações da tela (fazer, dispensar, interromper), cada uma devolvendo a execução nova e o evento.
 import type { Departamento } from '../../usuarios/tipos';
+import { ROTINA_CONTABIL } from '../rotinas/contabil';
+import { ROTINA_FISCAL } from '../rotinas/fiscal';
 import type { Etapa, EstadoEtapa, Evento, Execucao, Rotina, SituacaoEtapa } from '../tipos';
+
+/** As etapas que só entram no mês quando outra as adiciona (Etapa.soQuandoAdicionada): o Creditor, pelo caixa. */
+const SO_QUANDO_ADICIONADAS = new Set([...ROTINA_CONTABIL.etapas, ...ROTINA_FISCAL.etapas].filter(e => e.soQuandoAdicionada).map(e => e.id));
+
+/** A etapa faz parte da rotina deste mês? (as "só quando adicionada" só depois de adicionadas) */
+export function etapaNoMes(ex: Execucao | null, etapa: string): boolean {
+  return !SO_QUANDO_ADICIONADAS.has(etapa) || !!ex?.adicionadas?.includes(etapa);
+}
 
 export function execucaoNova(empresa: string, codigo: number | null, competencia: string, departamento: Departamento): Execucao {
   return { empresa, codigo, competencia, departamento, etapas: {} };
@@ -12,7 +22,8 @@ export function estadoDa(ex: Execucao | null, etapa: string): EstadoEtapa | null
 }
 
 export function situacaoDa(ex: Execucao | null, etapa: string): SituacaoEtapa {
-  return estadoDa(ex, etapa)?.situacao || 'pendente';
+  // a etapa que não entrou no mês conta como concluída ("não se aplica")
+  return estadoDa(ex, etapa)?.situacao || (etapaNoMes(ex, etapa) ? 'pendente' : 'dispensada');
 }
 
 /** Feita ou dispensada ("não se aplica") = não precisa mais fazer. */
@@ -28,9 +39,11 @@ export function proximaEtapa(ex: Execucao | null, rotina: Rotina): Etapa | null 
 export interface Progresso { concluidas: number; total: number; interrompida: Etapa | null }
 
 export function progresso(ex: Execucao | null, rotina: Rotina): Progresso {
-  const concluidas = rotina.etapas.filter(e => concluida(situacaoDa(ex, e.id))).length;
+  // só as etapas do mês (a "só quando adicionada" conta quando entrou)
+  const doMes = rotina.etapas.filter(e => etapaNoMes(ex, e.id));
+  const concluidas = doMes.filter(e => concluida(situacaoDa(ex, e.id))).length;
   const proxima = proximaEtapa(ex, rotina);
-  return { concluidas, total: rotina.etapas.length, interrompida: proxima && situacaoDa(ex, proxima.id) === 'interrompida' ? proxima : null };
+  return { concluidas, total: doMes.length, interrompida: proxima && situacaoDa(ex, proxima.id) === 'interrompida' ? proxima : null };
 }
 
 export type SituacaoGeral = 'nao-iniciada' | 'em-andamento' | 'parada' | 'concluida';
@@ -90,6 +103,20 @@ export function voltarPara(ex: Execucao, etapa: string, por: string, agora: Date
   const etapas = { ...ex.etapas };
   delete etapas[etapa];
   return { execucao: { ...ex, etapas }, evento: { tipo: 'reaberta', etapa, por, em: agora.toISOString(), observacao: antes } };
+}
+
+/**
+ * Uma etapa "só quando adicionada" entra no mês (o razão do caixa tem liquidação de cobrança: o Creditor). O motivo vai
+ * no evento.
+ */
+export function adicionarEtapa(ex: Execucao, etapa: string, motivo: string, por: string, agora: Date): { execucao: Execucao; evento: Evento } {
+  const atuais = (ex.adicionadas || []).filter(e => e !== etapa);
+  return { execucao: { ...ex, adicionadas: [...atuais, etapa] }, evento: { tipo: 'adicionada', etapa, por, em: agora.toISOString(), observacao: motivo } };
+}
+
+/** A etapa sai do mês (o razão novo não tem mais o motivo); o que já foi feito nela fica guardado. */
+export function retirarEtapa(ex: Execucao, etapa: string, motivo: string, por: string, agora: Date): { execucao: Execucao; evento: Evento } {
+  return { execucao: { ...ex, adicionadas: (ex.adicionadas || []).filter(e => e !== etapa) }, evento: { tipo: 'retirada', etapa, por, em: agora.toISOString(), observacao: motivo } };
 }
 
 /** O "Próximo" conferiu e ainda não está feita (vira evento: mostra onde as pessoas tropeçam). */

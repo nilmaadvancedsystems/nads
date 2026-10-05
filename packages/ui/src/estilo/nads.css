@@ -1139,6 +1139,8 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 .executor-ferramenta{display:flex;min-height:360px;position:relative;}
 .executor-ferramenta iframe{display:block;width:100%;min-height:calc(100vh - var(--hdr-h,64px) - 16px);border:0;}
 .executor-ferramenta .gh-blank{margin:auto;}
+/* o razão importado na etapa (o Caixa), no desenho da Importação do banco: a largura toda, um embaixo do outro */
+.executor-razao{flex:1;min-width:0;align-self:flex-start;display:flex;flex-direction:column;gap:16px;}
 /* os botões da etapa soltos no canto de baixo, por cima da ferramenta (do tamanho dos do Gmail/WhatsApp) */
 .executor-flutuante{position:fixed;right:24px;bottom:20px;z-index:30;display:flex;align-items:center;gap:8px;}
 .executor-saidas{display:flex;gap:8px;flex-wrap:wrap;}

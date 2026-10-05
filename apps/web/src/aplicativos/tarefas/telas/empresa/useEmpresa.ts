@@ -63,7 +63,8 @@ export function useEmpresa(rota: string) {
   const proxima = t.proximaEtapa(ex, rotina);
   const ultimo = ultimoToque(ex);
 
-  const etapas = rotina.etapas.map((e, i) => {
+  // a etapa "só quando adicionada" (o Creditor) só aparece no mês em que entrou
+  const etapas = rotina.etapas.filter(e => t.etapaNoMes(ex, e.id)).map((e, i) => {
     const est = t.estadoDa(ex, e.id);
     const s = t.situacaoDa(ex, e.id);
     const motivo = est?.objecao ? (e.objecoes.find(o => o.id === est.objecao)?.texto || (est.objecao === 'outro' ? 'Outro motivo' : est.objecao)) : '';
