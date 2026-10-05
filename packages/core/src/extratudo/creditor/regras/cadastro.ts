@@ -52,6 +52,9 @@ export function comCadastro(repo: RepoCreditor, cadastro: RepoCadastro, codigoDe
       if (novo !== atual) cadastro.salvar(nome, novo);
     },
     salvarClientes: (nome, c) => repo.salvarClientes(nome, c),
+    historicos: () => repo.historicos(),
+    historicosCarregados: () => repo.historicosCarregados(),
+    salvarHistoricos: h => repo.salvarHistoricos(h),
     assinar(f) {
       const um = repo.assinar(f);
       const outro = cadastro.assinar(f);

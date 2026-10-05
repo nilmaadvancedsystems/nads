@@ -12,6 +12,7 @@ export * from './regras/clientes';
 export * from './regras/competencia';
 export * from './regras/drive';
 export * from './regras/saidas';
+export * from './regras/historicos';
 export * from './arquivos/planilha';
 export * from './arquivos/banco';
 export * from './arquivos/sistema';

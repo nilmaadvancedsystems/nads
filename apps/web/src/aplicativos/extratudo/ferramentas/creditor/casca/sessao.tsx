@@ -147,7 +147,12 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
     return () => { vivo = false; };
   }, [drive, acesso.entrou, empresa.codigo]);
   const balancete = doEntregas || daEmpresa.balancete;
-  const resolvidas = useMemo(() => cr.resolverContas(balancete, config), [balancete, config]);
+  // os históricos do escritório por cima dos da empresa (Contábil › Configurações; Vitor, 05/10/2026)
+  const historicos = daEmpresa.historicos;
+  const resolvidas = useMemo(() => {
+    const r = cr.resolverContas(balancete, config);
+    return { ...r, contas: cr.comHistoricos(r.contas, historicos) };
+  }, [balancete, config, historicos]);
   const contasClientes = useMemo(() => cr.contasDeClientes(balancete), [balancete]);
   // a conta pela NF no relatório de Saídas importado na Tarefa (a Conferência da empresa; só lê)
   const saidas = useSaidasDaConferencia(empresa.nome);

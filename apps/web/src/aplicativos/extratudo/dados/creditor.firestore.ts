@@ -65,6 +65,21 @@ export function criarRepoCreditorFirestore(): RepoCreditorFirestore {
 
   const carregada = (c: Carga) => c.balanceteChegou && c.configChegou && c.clientesChegaram;
 
+  // os históricos do escritório: um documento só (extrator/escritorio/creditor/historicos), ouvido quando alguém pede
+  let historicos = cr.historicosDoDocumento(null);
+  let historicosChegaram = false;
+  let ouvindoHistoricos = false;
+  const DOC_HISTORICOS = ['extrator', 'escritorio', 'creditor', 'historicos'] as const;
+  function ouvirHistoricos() {
+    if (ouvindoHistoricos) return;
+    ouvindoHistoricos = true;
+    onSnapshot(doc(db, ...DOC_HISTORICOS), s => {
+      historicos = cr.historicosDoDocumento(s.exists() ? s.data() : null);
+      historicosChegaram = true;
+      avisarTodos();
+    }, err => avisar('Não consegui ler os históricos na nuvem: ' + err.message));
+  }
+
   return {
     exemplos: false,
     balancete: nome => carregar(nome).balancete,
@@ -87,6 +102,16 @@ export function criarRepoCreditorFirestore(): RepoCreditorFirestore {
       avisarTodos();
       setDoc(doc(db, 'extrator', formatos.slug(nome), 'creditor', 'clientes'), { clientes: novos, atualizadoEm: new Date().toISOString() })
         .catch((err: Error) => avisar('Não deu para salvar os clientes de "' + nome + '" na nuvem: ' + err.message));
+    },
+    historicos: () => { ouvirHistoricos(); return historicos; },
+    historicosCarregados: () => { ouvirHistoricos(); return historicosChegaram; },
+    salvarHistoricos(h) {
+      ouvirHistoricos();
+      if (!historicosChegaram || cr.mesmosHistoricos(historicos, h)) return; // antes de chegar do banco, nunca grava
+      historicos = h;
+      avisarTodos();
+      setDoc(doc(db, ...DOC_HISTORICOS), { ...h, atualizadoEm: new Date().toISOString() })
+        .catch((err: Error) => avisar('Não deu para salvar os históricos na nuvem: ' + err.message));
     },
     assinar(f) {
       ouvintes.add(f);

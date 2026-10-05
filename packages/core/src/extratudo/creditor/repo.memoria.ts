@@ -3,11 +3,17 @@
 import { BALANCETES_EXEMPLO } from './exemplos';
 import { clientesDoDocumento, type ClientesAprendidos } from './regras/aprendizado';
 import { CONFIG_VAZIA, SEM_BALANCETE, configDoDocumento, type BalanceteDaEmpresa } from './regras/balancete';
+import { historicosDoDocumento, type Historicos } from './regras/historicos';
 import type { RepoCreditor } from './repo';
 
 const NENHUM: ClientesAprendidos = {};
 const CHAVE = 'nads-creditor-exemplos-v1';
 const CHAVE_CLIENTES = 'nads-creditor-clientes-exemplos-v1';
+const CHAVE_HISTORICOS = 'nads-creditor-historicos-exemplos-v1';
+
+function lerHistoricos(): Historicos {
+  try { return historicosDoDocumento(JSON.parse(globalThis.localStorage?.getItem(CHAVE_HISTORICOS) || '{}')); } catch { return historicosDoDocumento(null); }
+}
 
 function ler<T>(chave: string, conferir: (v: Record<string, unknown>) => T): Record<string, T> {
   try {
@@ -25,6 +31,7 @@ function gravar(chave: string, v: unknown) {
 export function criarRepoCreditorMemoria(balancetes: Record<string, BalanceteDaEmpresa> = BALANCETES_EXEMPLO): RepoCreditor {
   let configs = ler(CHAVE, configDoDocumento);
   let clientes = ler(CHAVE_CLIENTES, v => clientesDoDocumento({ clientes: v }));
+  let historicos = lerHistoricos();
   let ver = 0;
   const ouvintes = new Set<() => void>();
   const avisar = () => { ver++; for (const f of ouvintes) f(); };
@@ -42,6 +49,13 @@ export function criarRepoCreditorMemoria(balancetes: Record<string, BalanceteDaE
     salvarClientes(nome, c: ClientesAprendidos) {
       clientes = { ...clientes, [nome]: c };
       gravar(CHAVE_CLIENTES, clientes);
+      avisar();
+    },
+    historicos: () => historicos,
+    historicosCarregados: () => true,
+    salvarHistoricos(h) {
+      historicos = h;
+      gravar(CHAVE_HISTORICOS, h);
       avisar();
     },
     assinar(f) {

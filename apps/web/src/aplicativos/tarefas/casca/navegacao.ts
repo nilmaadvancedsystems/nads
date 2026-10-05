@@ -23,6 +23,8 @@ export const APLICACOES: readonly Aplicacao[] = [
   { id: 'contabil', nome: 'Contábil', icone: 'checklist', pronta: true, paginas: [
     { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Contábil — visão geral' },
     { id: 'paradas', rotulo: 'Paradas', icone: 'alert', titulo: 'Contábil — etapas paradas' },
+    // os históricos do Creditor, os mesmos para todas as empresas (Vitor, 05/10/2026)
+    { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Contábil — configurações' },
   ] },
   { id: 'cadastro', nome: 'Cadastro', icone: 'landmark', pronta: true, paginas: [
     { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Cadastro — empresas' },

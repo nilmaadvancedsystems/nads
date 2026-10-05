@@ -3,6 +3,7 @@
 // apps/web/src/aplicativos/extratudo/dados/creditor.firestore.ts (Firestore da Conferência).
 import type { ClientesAprendidos } from './regras/aprendizado';
 import type { BalanceteDaEmpresa, ConfigCreditor } from './regras/balancete';
+import type { Historicos } from './regras/historicos';
 
 export interface RepoCreditor {
   /** true = dados de exemplo */
@@ -17,6 +18,11 @@ export interface RepoCreditor {
   carregada(nome: string): boolean;
   salvarConfig(nome: string, c: ConfigCreditor): void;
   salvarClientes(nome: string, c: ClientesAprendidos): void;
+  /** os históricos do escritório (valem para todas as empresas; Contábil › Configurações) */
+  historicos(): Historicos;
+  /** os históricos já chegaram (antes disso, nada é gravado) */
+  historicosCarregados(): boolean;
+  salvarHistoricos(h: Historicos): void;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }

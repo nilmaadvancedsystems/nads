@@ -3,7 +3,6 @@
 import { creditor as cr } from '@nads/core';
 import { Alerta, baixarBytes, Icone, Stat } from '@nads/ui';
 import { MenuDeConta } from '../../partes/MenuDeConta';
-import { CampoConta } from './partes/CampoConta';
 import { useLancamentos, type CampoConta as IdCampo } from './useLancamentos';
 
 
@@ -21,20 +20,16 @@ export function Lancamentos() {
       </div>
       <div className="card">
         <div className="card-head">
-          <h3>Contas e históricos</h3>
+          <h3>Contas</h3>
         </div>
         <div className="form-grid">
           {(Object.keys(vm.rotuloConta) as IdCampo[]).map(c => {
             const d = vm.ehDoBalancete(c) ? vm.detalhe[c as keyof typeof vm.detalhe] : null;
             return (
               <div key={c} className="field">
-                {/* a conta do balancete no menu suspenso padrão (Vitor, 05/10/2026: no lugar da lista do navegador); o histórico, campo */}
-                {vm.ehDoBalancete(c) ? (
-                  <>
-                    <label>{vm.rotuloConta[c]}</label>
-                    <MenuDeConta valor={vm.contas[c]} contas={vm.opcoes} onEscolher={v => vm.mudarConta(c, v)} travado={c === 'banco' && d?.origem === 'Salva na empresa'} />
-                  </>
-                ) : <CampoConta id={'fConta-' + c} rotulo={vm.rotuloConta[c]} valor={vm.contas[c]} onGravar={v => vm.mudarConta(c, v)} />}
+                {/* a conta do balancete no menu suspenso padrão (Vitor, 05/10/2026: no lugar da lista do navegador) */}
+                <label>{vm.rotuloConta[c]}</label>
+                <MenuDeConta valor={vm.contas[c]} contas={vm.opcoes} onEscolher={v => vm.mudarConta(c, v)} travado={c === 'banco' && d?.origem === 'Salva na empresa'} />
                 {d && vm.carregada && (
                   <p className="hint" style={{ margin: '4px 0 0' }}>
                     <span className={'badge badge-' + d.tom}>{d.origem}</span>{d.nome && <> {d.nome}</>}

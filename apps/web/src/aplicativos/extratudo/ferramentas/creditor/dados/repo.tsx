@@ -14,6 +14,8 @@ export interface ContasDaEmpresa {
   carregada: boolean;
   salvar: (c: cr.ConfigCreditor) => void;
   salvarClientes: (c: cr.ClientesAprendidos) => void;
+  /** os históricos do escritório (os mesmos para todas as empresas) */
+  historicos: cr.Historicos;
 }
 
 export function useContasDaEmpresa(nome: string): ContasDaEmpresa {
@@ -23,7 +25,20 @@ export function useContasDaEmpresa(nome: string): ContasDaEmpresa {
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   const salvar = useCallback((c: cr.ConfigCreditor) => { if (repo.carregada(nome)) repo.salvarConfig(nome, c); }, [repo, nome]);
   const salvarClientes = useCallback((c: cr.ClientesAprendidos) => { if (repo.carregada(nome)) repo.salvarClientes(nome, c); }, [repo, nome]);
-  return { balancete: repo.balancete(nome), config: repo.config(nome), clientes: repo.clientes(nome), carregada: repo.carregada(nome), salvar, salvarClientes };
+  return { balancete: repo.balancete(nome), config: repo.config(nome), clientes: repo.clientes(nome), carregada: repo.carregada(nome), salvar, salvarClientes, historicos: repo.historicos() };
+}
+
+/**
+ * Os históricos do Creditor do escritório (Contábil › Configurações; valem para todas as empresas), ao vivo, e o
+ * salvar (só depois de chegarem do banco).
+ */
+export function useHistoricosDoEscritorio(): { historicos: cr.Historicos; carregados: boolean; salvar: (h: cr.Historicos) => void } {
+  const repo = repoDoCreditor();
+  const { toast } = useRetorno();
+  useEffect(() => { avisarErrosDoBanco(repo, toast); }, [repo, toast]);
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  const salvar = useCallback((h: cr.Historicos) => { if (repo.historicosCarregados()) repo.salvarHistoricos(h); }, [repo]);
+  return { historicos: repo.historicos(), carregados: repo.historicosCarregados(), salvar };
 }
 
 /** O Drive (login do Entregas, mapa da pasta e download), com o acesso sempre atualizado. */

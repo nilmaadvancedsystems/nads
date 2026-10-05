@@ -8,24 +8,12 @@ import { useSessao } from '../../casca/sessao';
 
 export type CampoConta = keyof cr.ContasCreditor;
 
-export const ROTULO_CONTA: Record<CampoConta, string> = {
+// só as contas: os históricos ficam no Contábil › Configurações, os mesmos para todas as empresas (Vitor, 05/10/2026)
+export const ROTULO_CONTA: Partial<Record<CampoConta, string>> = {
   banco: 'Conta banco', juros: 'Conta de juros/mora', desconto: 'Conta de descontos',
-  histPrincipal: 'Histórico do principal', histJuros: 'Histórico da mora', histDesconto: 'Histórico do desconto',
 };
 
 const ORIGEM: Record<cr.OrigemConta, string> = { salva: 'Salva na empresa', sugerida: 'Sugerida pelo balancete', padrao: 'Padrão', falta: 'Falta escolher' };
-
-const dataCurta = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '');
-
-/** De onde vêm as contas, numa frase. */
-function fonteDasContas(b: cr.BalanceteDaEmpresa, carregada: boolean): string {
-  if (!carregada) return 'Carregando o balancete da empresa…';
-  const em = b.em ? ' (importado em ' + dataCurta(b.em) + ')' : '';
-  if (b.origem === 'cadastro') return 'Contas do plano de contas do Cadastro da empresa (Tarefas)' + em + '. As contas escolhidas aqui ficam no Cadastro.';
-  if (b.origem === 'balancete') return 'Contas do balancete da Conferência' + em + '. Quando o balancete é atualizado lá, as contas acompanham.';
-  if (b.origem === 'plano') return 'O balancete foi apagado ao sair da Conferência: as contas vêm do plano que ficou guardado' + em + '.';
-  return 'Esta empresa não tem balancete na Conferência: valem os padrões. Importe o balancete lá para as contas virem sugeridas.';
-}
 
 export function useLancamentos() {
   const s = useSessao();
@@ -46,12 +34,8 @@ export function useLancamentos() {
     ehDoBalancete: (c: CampoConta) => (cr.CONTAS_DO_LAYOUT as readonly string[]).includes(c),
     /** as contas do balancete para escolher (sem as sintéticas) */
     opcoes: balancete.contas.filter(c => !c.sintetica).map(c => ({ codigo: c.codigo, nome: c.nome })),
-    fonte: fonteDasContas(balancete, carregada),
     carregada,
     mudarConta: (c: CampoConta, v: string) => { if (v.trim() !== resolvidas.contas[c]) s.contas.escolher(c, v); },
-    temSalvas: cr.CONTAS_DO_LAYOUT.some(k => resolvidas.detalhe[k].origem === 'salva')
-      || (['histPrincipal', 'histJuros', 'histDesconto'] as const).some(k => resolvidas.contas[k] !== cr.CONTAS_PADRAO[k]),
-    esquecerContas: s.contas.esquecer,
     contaBanco: resolvidas.contas.banco,
     fechamento,
     lancamentos,
