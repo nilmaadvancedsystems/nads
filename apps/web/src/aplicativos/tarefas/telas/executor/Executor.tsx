@@ -15,7 +15,6 @@ import { useChecklistDaFolha } from './useChecklistDaFolha';
 import { useExecutor } from './useExecutor';
 import { ListaDoQueFalta, type ItemQueFalta } from './partes/OQueFalta';
 import { MenuDaRotina } from './partes/MenuDaRotina';
-import { BotaoDeAjuda } from '../../casca/CascaTarefas';
 
 /** O ícone de cada grupo da rotina, no canto do cabeçalho. */
 
@@ -128,7 +127,6 @@ export function Executor() {
         )}
       </nav>
       <span className="gh-topo-sep" aria-hidden="true" />
-      <BotaoDeAjuda abrir={casca.abrirPessoal} />
       <MenuSuspenso rotulo={casca.perfil.foto ? <img className="gh-avatar-foto" src={casca.perfil.foto} alt="" /> : casca.perfil.iniciais} className="gh-avatar" dica={casca.perfil.nome} titulo={casca.perfil.nome} direita
         // o mesmo menu do avatar das outras telas (a Minha página) e, aqui, o Voltar às empresas; sair da etapa por
         // qualquer um deles é interromper (com a justificativa), como o resto do executor

@@ -6,8 +6,8 @@
 // As tarefas ficam na coleção `rotinas` (tarefas.firestore.ts), que usa a mesma conexão.
 // O app Firebase se chama 'entregas', o mesmo do Drive do Extratudo: no site com os dois, a sessão é uma só.
 import { usuarios } from '@nads/core';
-import { getApps, initializeApp } from 'firebase/app';
-import { EmailAuthProvider, getAuth, onAuthStateChanged, reauthenticateWithCredential, signInWithEmailAndPassword, signOut, updatePassword } from 'firebase/auth';
+import { deleteApp, getApps, initializeApp } from 'firebase/app';
+import { createUserWithEmailAndPassword, EmailAuthProvider, getAuth, onAuthStateChanged, reauthenticateWithCredential, signInWithEmailAndPassword, signOut, updatePassword } from 'firebase/auth';
 import { doc, getDoc, getFirestore, initializeFirestore, updateDoc, type Firestore } from 'firebase/firestore';
 
 /** Configuração web pública do projeto do Entregas (a mesma das páginas de lá). */
@@ -52,6 +52,26 @@ export function contaDoEntregas(): { uid: string; email: string } | null {
 }
 
 /** O banco do Entregas (a mesma conexão para o login e para as rotinas; campo undefined não vai). */
+/**
+ * Cria o login (e-mail/senha) de uma pessoa nova no Firebase Auth do Entregas e devolve o uid — como o "Criar acesso"
+ * do Entregas (criarContaEquipe): numa instância à parte, que é descartada, porque criar no app principal trocaria a
+ * sessão do admin pela da pessoa nova. O cadastro (usuarios/{uid}) quem grava é a sessão do admin (acesso.firestore.ts).
+ */
+export async function criarLoginNoEntregas(email: string, senha: string): Promise<string> {
+  const app = initializeApp(CONFIG_ENTREGAS, 'secundario-' + Date.now());
+  try {
+    const auth = getAuth(app);
+    const cred = await createUserWithEmailAndPassword(auth, email, senha);
+    await signOut(auth);
+    return cred.user.uid;
+  } catch (e) {
+    const c = String((e as { code?: string })?.code || '');
+    throw new Error(c === 'auth/email-already-in-use' ? 'Já existe um acesso com esse nome.' : c === 'auth/weak-password' ? 'A senha é fraca demais.' : 'Não consegui criar o login (' + (c || String(e)) + ').', { cause: e });
+  } finally {
+    await deleteApp(app).catch(() => undefined);
+  }
+}
+
 export function bancoDoEntregas(): Firestore {
   const app = appDoEntregas();
   try {

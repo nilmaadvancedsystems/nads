@@ -33,6 +33,8 @@ export interface RepoAcesso {
   /** troca (ou tira, com null) a foto de perfil de quem está logado */
   salvarMinhaFoto(foto: string | null): Promise<void>;
   ativar(uid: string, ativo: boolean): Promise<void>;
+  /** só o admin: cria a conta (o login no Entregas e o cadastro em usuarios/{uid}); devolve o e-mail do login */
+  criarConta(c: usuarios.NovaConta): Promise<string>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -92,6 +94,14 @@ export function criarAcessoMemoria(quem: () => { nome: string } | null): RepoAce
       if (d) { d.fotoPerfil = foto || undefined; mudou(); }
     },
     async ativar(uid, ativo) { docs[uid].ativo = ativo; mudou(); },
+    async criarConta(c) {
+      const erros = usuarios.conferirNovaConta(c, Object.values(docs).map(d => String(d.email || '')));
+      if (erros.length) throw new Error(erros.join(' '));
+      const novo = usuarios.docDaContaNova(c, new Date());
+      docs['exemplo-' + Date.now()] = novo;
+      mudou();
+      return novo.email || '';
+    },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };
