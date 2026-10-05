@@ -2631,3 +2631,9 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .comp-mes.on,.comp-mes.on:hover{background:var(--btn-primary);border-color:var(--btn-primary);color:#FFFFFF;font-weight:600;}
 .comp-mes:disabled{opacity:.35;cursor:not-allowed;}
 .imp-sem-bancos{margin-top:4px;}
+/* o checklist das tarefas da etapa (o Fiscal): o link (ex.: SIEG) à direita e o cuidado embaixo, em laranja */
+.folha-check-lista li{display:flex;align-items:center;gap:12px;}
+.folha-check-lista li > label{flex:1;min-width:0;}
+.folha-check-link{flex:none;}
+.folha-check-aviso{display:flex;align-items:flex-start;gap:6px;margin-top:2px;font-size:12px;color:var(--warn);}
+.folha-check-aviso svg{width:14px;height:14px;flex:none;margin-top:1px;}

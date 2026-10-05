@@ -40,7 +40,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const navegar = useNavigate();
   const { toast, modal, aviso: avisar } = useRetorno();
   const op = useOperador().operador as Operador;
-  const rotina = t.ROTINA_CONTABIL;
+  // a rotina do departamento de quem está trabalhando (Contábil ou Fiscal)
+  const rotina = t.rotinaDo(op.departamento) || t.ROTINA_CONTABIL;
   // as seções da rotina, na ordem (Preparação, Ativo, Passivo, Resultado, Fechamento)
   const secoes = [...new Set(rotina.etapas.map(e => e.secao || ''))];
   const empresa = empresas.empresaPelaRota(repo.listarEmpresas(), rotaEmpresa);

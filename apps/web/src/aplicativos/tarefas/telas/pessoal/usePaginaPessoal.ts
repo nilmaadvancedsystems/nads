@@ -80,7 +80,7 @@ export function usePaginaPessoal() {
   // as etapas que a pessoa parou nas duas últimas competências (do Contábil: a rotina que existe hoje)
   const competencias = t.competenciasRecentes(new Date(), 2);
   const doPeriodo = useExecucoesDoPeriodo(competencias, 'contabil');
-  const rotina = t.ROTINA_CONTABIL;
+  const rotina = t.rotinaDo(op.departamento) || t.ROTINA_CONTABIL;
   const paradas: ItemDaCaixa[] = op.departamento === 'contabil' || op.admin ? doPeriodo.porMes.flatMap(m => m.execucoes.flatMap(ex => rotina.etapas.flatMap(etapa => {
     const est = t.estadoDa(ex, etapa.id);
     if (!est || est.situacao !== 'interrompida' || est.por !== op.nome) return [];

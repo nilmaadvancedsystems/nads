@@ -22,7 +22,7 @@ export function useAndamento() {
   const [params, setParams] = useSearchParams();
   const competencias = competenciasDaTela(12);
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
-  const rotina = op.departamento === 'contabil' ? t.ROTINA_CONTABIL : null;
+  const rotina = t.rotinaDo(op.departamento);
   const { execucoes, carregada } = useExecucoes(competencia, op.departamento);
   const porNome = new Map(execucoes.map(e => [e.empresa, e]));
 

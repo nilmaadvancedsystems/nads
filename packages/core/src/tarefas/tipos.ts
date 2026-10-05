@@ -54,6 +54,19 @@ export interface Etapa {
   conferir?: string[];
   /** o checklist da folha montado pelo balancete importado (Contabilização da Folha): o avançar só com tudo marcado */
   checklistDaFolha?: boolean;
+  /** as tarefas da etapa, em ordem (a rotina do Fiscal): marca uma a uma; o avançar só com tudo marcado */
+  checklist?: ItemDoChecklist[];
+}
+
+/** Uma tarefa do checklist da etapa: o texto e, se tiver, os subitens, um link e um aviso. */
+export interface ItemDoChecklist {
+  id: string;
+  texto: string;
+  /** o que conferir dentro dela (aparece embaixo, menor) */
+  sub?: string[];
+  link?: { rotulo: string; url: string };
+  /** um cuidado (aparece em destaque embaixo) */
+  aviso?: string;
 }
 
 export interface Rotina { departamento: Departamento; etapas: Etapa[] }

@@ -31,7 +31,7 @@ export function useEmpresa(rota: string) {
   const navegar = useNavigate();
   const [params, setParams] = useSearchParams();
   const op = useOperador().operador as Operador;
-  const rotina = op.departamento === 'contabil' ? t.ROTINA_CONTABIL : null;
+  const rotina = t.rotinaDo(op.departamento);
   const competencias = competenciasDaTela(12);
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
   const empresa = empresas.empresaPelaRota(repo.listarEmpresas(), rota);

@@ -7,19 +7,25 @@ import { tarefas as t } from '@nads/core';
 import { useState } from 'react';
 import { useContasDoBalancete } from '../../../concilia-ai/importadosNaEtapa';
 
-const chaveDe = (empresa: string, meses: readonly string[]) => 'nads-folha:' + empresa + ':' + meses.join(',');
+const chaveDe = (empresa: string, meses: readonly string[], etapa?: string) => (etapa ? 'nads-check:' + etapa + ':' : 'nads-folha:') + empresa + ':' + meses.join(',');
+
+/** Uma tarefa do checklist na tela: o nome, o que vai embaixo (as contas da folha ou os subitens), o link e o aviso. */
+export interface TarefaDoChecklist { id: string; nome: string; contas: string[]; link?: { rotulo: string; url: string }; aviso?: string }
 
 function ler(chave: string): string[] {
   try { const v = JSON.parse(localStorage.getItem(chave) || '[]'); return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []; } catch { return []; }
 }
 
-/** ativo: a etapa da vez é a da folha; null nos itens = o balancete ainda não carregou */
-export function useChecklistDaFolha(ativo: boolean, empresa: string, meses: readonly string[]) {
-  const contas = useContasDoBalancete(ativo ? empresa : '');
-  const chave = chaveDe(empresa, meses);
+/**
+ * ativo: a etapa da vez é a da folha; null nos itens = o balancete ainda não carregou. fixo: as tarefas da etapa (a
+ * rotina do Fiscal, Vitor 05/10/2026) — sem balancete, a lista é ela, com os tiques guardados por etapa.
+ */
+export function useChecklistDaFolha(ativo: boolean, empresa: string, meses: readonly string[], fixo?: { etapa: string; itens: TarefaDoChecklist[] } | null) {
+  const contas = useContasDoBalancete(ativo && !fixo ? empresa : '');
+  const chave = chaveDe(empresa, meses, fixo?.etapa);
   const [marcados, setMarcados] = useState<{ chave: string; ids: string[] }>(() => ({ chave, ids: ler(chave) }));
   const ids = marcados.chave === chave ? marcados.ids : ler(chave);
-  const itens = ativo && contas ? t.checklistDaFolha(contas, meses) : null;
+  const itens: TarefaDoChecklist[] | null = fixo ? fixo.itens : ativo && contas ? t.checklistDaFolha(contas, meses) : null;
   // em ordem: o próximo depois dos marcados fica liberado; dos marcados, só o último pode ser desmarcado
   const feitos = itens ? itens.findIndex(i => !ids.includes(i.id)) : -1;
   const ateOnde = feitos < 0 ? (itens ? itens.length : 0) : feitos;

@@ -2,6 +2,8 @@
 // cada empresa na competência, o check automático, as objeções e a visão de cima. TypeScript puro.
 export * from './tipos';
 export { ROTINA_CONTABIL } from './rotinas/contabil';
+export { ROTINA_FISCAL } from './rotinas/fiscal';
+export { rotinaDo } from './rotinas/rotinaDo';
 export * from './regras/execucao';
 export * from './regras/verificacao';
 export * from './regras/competencias';

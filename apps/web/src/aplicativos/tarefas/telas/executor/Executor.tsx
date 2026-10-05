@@ -38,12 +38,15 @@ export function Executor() {
     r => setRequisitos({ url: urlDaFerramenta, ...r }));
   // os requisitos valem só para a ferramenta que mandou (trocou de etapa: some)
   // a etapa da folha: o checklist montado pelo balancete (o avançar só com tudo marcado)
-  const folha = useChecklistDaFolha(!!vm.etapa?.checklistDaFolha, vm.empresa?.nome || '', vm.meses.length ? vm.meses : [vm.competencia]);
+  // o checklist da etapa: o da folha (pelo balancete) ou as tarefas fixas da etapa (o Fiscal)
+  const fixo = vm.etapa?.checklist ? { etapa: vm.etapa.id, itens: vm.etapa.checklist.map(i => ({ id: i.id, nome: i.texto, contas: i.sub || [], link: i.link, aviso: i.aviso })) } : null;
+  const temChecklist = !!(vm.etapa?.checklistDaFolha || vm.etapa?.checklist);
+  const folha = useChecklistDaFolha(temChecklist, vm.empresa?.nome || '', vm.meses.length ? vm.meses : [vm.competencia], fixo);
   const faltamFerramenta = requisitos && requisitos.url === urlDaFerramenta && !requisitos.pronto ? requisitos.faltam : null;
-  const faltam = vm.etapa?.checklistDaFolha ? (folha.faltam && folha.faltam.length ? folha.faltam : null) : faltamFerramenta;
+  const faltam = temChecklist ? (folha.faltam && folha.faltam.length ? folha.faltam : null) : faltamFerramenta;
   // o "?": cada item com o lugar dele (o Resolver leva até lá): na folha, o item da lista; na ferramenta, o que ela mandou
   const itensQueFaltam: ItemQueFalta[] = (faltam || []).map((texto, i) => ({
-    texto, alvo: vm.etapa?.checklistDaFolha ? 'folha:' + texto : requisitos?.alvos?.[i] ?? null,
+    texto, alvo: temChecklist ? 'folha:' + texto : requisitos?.alvos?.[i] ?? null,
   }));
   const resolver = (alvo: string) => {
     if (alvo.startsWith('folha:')) void destacarNaTela('[data-folha="' + CSS.escape(alvo.slice(6)) + '"]');
@@ -54,7 +57,7 @@ export function Executor() {
   const { altura, carregando: ferramentaCarregando, abrindo: ferramentaAbrindo, fundoAberto, abas, abrirAba } = useFerramentaNaEtapa(iframe, vm.ferramenta?.embutir ? vm.ferramenta.url : undefined);
   // uma barra só, no alto da página: a da Tarefas e a da ferramenta juntas
   // a etapa da folha esperando o balancete: a mesma barra do topo
-  const folhaCarregando = !!vm.etapa?.checklistDaFolha && folha.itens === null;
+  const folhaCarregando = temChecklist && folha.itens === null;
   useCarregando(vm.carregando || vm.conferindo || ferramentaCarregando || folhaCarregando);
   // os botões da etapa só com a tela pronta (a Tarefas e a ferramenta carregadas); o avançar, se a ferramenta tem
   // requisitos, só depois que ela disser o que falta (antes disso ele apareceria liberado)
@@ -72,7 +75,7 @@ export function Executor() {
     dispensou.current = urlDaFerramenta;
     vm.dispensarSemCheque();
   }, [chequeDesnecessario, urlDaFerramenta, vm]);
-  const requisitosConhecidos = vm.etapa?.checklistDaFolha ? folha.faltam !== null : !vm.ferramenta?.requisitos || requisitos?.url === urlDaFerramenta;
+  const requisitosConhecidos = temChecklist ? folha.faltam !== null : !vm.ferramenta?.requisitos || requisitos?.url === urlDaFerramenta;
   // sair da execução por qualquer lugar do app (o cabeçalho, o menu, o voltar do navegador) com a etapa aberta:
   // é interromper, com a justificativa; trocar de mês ou período dentro do executor não conta
   const saida = useBlocker(({ currentLocation, nextLocation }) =>
@@ -176,14 +179,14 @@ export function Executor() {
                 <p>Esta etapa abre em outra aba.</p>
                 <a className="btn btn-primary" href={vm.ferramenta.url} target="_blank" rel="noreferrer">Abrir {vm.ferramenta.nome}</a>
               </div>
-            ) : vm.etapa.checklistDaFolha && !folha.itens ? (
+            ) : temChecklist && !folha.itens ? (
               // o balancete ainda carregando: o N sobre o vidro (nada de texto no lugar)
               <AberturaN vidro />
-            ) : vm.etapa.checklistDaFolha && folha.itens ? (
-              // a Contabilização da Folha: o checklist pelo balancete (só o que a empresa tem), marcando ao fazer e conferir
+            ) : temChecklist && folha.itens ? (
+              // o checklist da etapa: a Contabilização da Folha (pelo balancete) ou as tarefas da etapa (o Fiscal), marcando em ordem
               <div className="card folha-check">
                 <div className="folha-check-topo">
-                  <h3>Contabilização da Folha</h3>
+                  <h3>{vm.etapa.checklistDaFolha ? 'Contabilização da Folha' : vm.etapa.nome}</h3>
                   {folha.itens.length > 0 && <span className="folha-check-qtd">{folha.itens.filter(i => i.marcado).length}/{folha.itens.length}</span>}
                 </div>
                 {folha.itens.length ? (
@@ -195,9 +198,11 @@ export function Executor() {
                             title={i.liberado ? undefined : i.marcado ? 'Desmarque antes os de baixo' : 'Conclua o item de cima primeiro'} />
                           <span className="folha-check-texto">
                             <b>{i.nome}</b>
-                            <span className="hint">{i.contas.join(' · ')}</span>
+                            {i.contas.length > 0 && <span className="hint">{i.contas.join(' · ')}</span>}
+                            {i.aviso && <span className="folha-check-aviso"><Icone nome="alert" />{i.aviso}</span>}
                           </span>
                         </label>
+                        {i.link && <a className="btn folha-check-link" href={i.link.url} target="_blank" rel="noreferrer"><Icone nome="link" />{i.link.rotulo}</a>}
                       </li>
                     ))}
                   </ul>
