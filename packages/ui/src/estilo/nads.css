@@ -2635,24 +2635,27 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .faq-resposta{padding:0 14px 12px 30px;font-size:14px;line-height:1.5;display:flex;flex-direction:column;align-items:flex-start;gap:6px;}
 .faq-pe{font-size:13px;}
 /* "Qual competência?" ao entrar em Minhas empresas */
-/* as réguas de Ano e Mês (Vitor, 05/10/2026: "só com ano e mês, o usuário usa o scroll"): cada uma rola de lado e encaixa
+/* as réguas de Ano e Mês (Vitor, 05/10/2026: "só com ano e mês, o usuário usa o scroll"): cada uma anda de um em um e leva
    o item no meio; o do meio em vermelho e maior, os do lado apagados; embaixo, os tracinhos da régua (rolam junto) e a
    marca vermelha fixa no meio */
 .modal.modal-centro.competencia-janela{max-width:360px;padding:26px 0 18px;}
 .comp-rolos{display:flex;flex-direction:column;gap:18px;}
 .comp-rolo-rotulo{display:block;text-align:center;font-size:13px;font-weight:600;color:var(--ink-muted);margin-bottom:4px;}
-.comp-rolo-caixa{position:relative;}
-.comp-rolo{position:relative;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;outline:none;
-  padding:0 calc(50% - 56px) 12px;
-  background:repeating-linear-gradient(to right,var(--border) 0 1px,transparent 1px 14px) left bottom/100% 7px no-repeat local;
+/* a régua travada (não rola solta): a janela corta, o trilho anda pelo transform e desliza (a única transição fora do
+   carregamento, pedido do Vitor em 05/10/2026: "parecer algo suave"); os tracinhos andam junto com o trilho */
+.comp-rolo{position:relative;overflow:hidden;outline:none;padding-bottom:12px;
   -webkit-mask-image:linear-gradient(to right,transparent,#000 22%,#000 78%,transparent);mask-image:linear-gradient(to right,transparent,#000 22%,#000 78%,transparent);}
-.comp-rolo::-webkit-scrollbar{display:none;}
-.comp-rolo-item{flex:0 0 112px;scroll-snap-align:center;height:42px;border:none;background:none;color:var(--ink-muted);font:inherit;font-size:15px;font-weight:500;cursor:pointer;white-space:nowrap;}
+.comp-rolo-trilho{position:relative;display:flex;width:max-content;}
+.comp-rolo-trilho::after{content:'';position:absolute;left:-480px;right:-480px;bottom:-12px;height:7px;pointer-events:none;
+  background:repeating-linear-gradient(to right,var(--border) 0 1px,transparent 1px 14px);}
+.comp-rolo-trilho.desliza{transition:transform .32s cubic-bezier(.22,.61,.36,1) !important;}
+.comp-rolo-item{flex:0 0 112px;height:42px;border:none;background:none;color:var(--ink-muted);font:inherit;font-size:15px;font-weight:500;cursor:pointer;white-space:nowrap;}
+.comp-rolo-item.desliza,.comp-rolo-trilho.desliza .comp-rolo-item{transition:color .32s ease,font-size .32s ease !important;}
 .comp-rolo-item:hover{color:var(--ink);}
 .comp-rolo-item.on{color:var(--accent-ink);font-size:21px;font-weight:700;}
 .comp-rolo-marca{position:absolute;left:50%;bottom:0;width:2px;height:13px;margin-left:-1px;border-radius:1px;background:var(--btn-primary);pointer-events:none;}
-.comp-rolo:focus-visible ~ .comp-rolo-marca{height:17px;}
-.comp-dica{margin:16px 0 0;text-align:center;font-size:12px;}
+.comp-rolo:focus-visible .comp-rolo-marca{height:17px;}
+.modal.modal-centro p.comp-dica{margin:30px 0 0;text-align:center;font-size:12px;}
 .imp-sem-bancos{margin-top:4px;}
 /* o checklist das tarefas da etapa (o Fiscal): o link (ex.: SIEG) à direita e o cuidado embaixo, em laranja */
 .folha-check-lista li{display:flex;align-items:center;gap:12px;}

@@ -1,10 +1,10 @@
 // Ao entrar em Minhas empresas (Vitor, 05/10/2026: "pergunte em uma popup qual competência ela quer seguir"). Volta do
 // executor ou da página da empresa (a competência no endereço): não pergunta de novo.
 // No formato de régua (Vitor, 05/10/2026: "só com ano e mês, o usuário usa o scroll para rolar o que ele quer"): duas
-// faixas, Ano e Mês, que rolam de lado (a rodinha do mouse também); o que para no meio é o escolhido, em vermelho. Sem
+// faixas, Ano e Mês, que andam de lado de um em um (a rodinha do mouse também), deslizando; o do meio é o escolhido, em vermelho. Sem
 // título e sem o Selecionar: dois cliques (ou Enter) abrem. Só de 2026 para frente e só os meses que já começaram.
 import { classeDaJanela, Icone } from '@nads/ui';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 const NOMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 /** antes disso, nada (o sistema começou em 2026) */
@@ -12,44 +12,69 @@ const PRIMEIRO_ANO = 2026;
 
 interface ItemDoRolo { valor: string; texto: string }
 
-/** Uma régua que rola de lado: o item do meio é o escolhido; clicar leva ele para o meio; dois cliques abrem. */
+/**
+ * Uma régua que anda de um em um (Vitor, 05/10/2026: "trave o scroll lateral, adicione uma animação nessa rolagem, para
+ * parecer algo suave"): não rola solta; cada passo da rodinha (ou seta do teclado, ou clique) leva o item seguinte para o
+ * meio, deslizando. O do meio é o escolhido; dois cliques (ou Enter) abrem.
+ */
 function Rolo({ rotulo, itens, valor, foco, onEscolher, onAbrir }: {
   rotulo: string; itens: ItemDoRolo[]; valor: string; foco?: boolean; onEscolher: (v: string) => void; onAbrir: (v: string) => void;
 }) {
-  const caixa = useRef<HTMLDivElement>(null);
-  // a escolha veio da rolagem da própria pessoa: não recentraliza (senão briga com a rodinha)
-  const pelaRolagem = useRef(false);
-  useLayoutEffect(() => {
-    if (pelaRolagem.current) { pelaRolagem.current = false; return; }
-    const box = caixa.current;
-    const el = box?.querySelector<HTMLElement>('[data-valor="' + valor + '"]');
-    if (box && el) box.scrollLeft = el.offsetLeft + el.offsetWidth / 2 - box.clientWidth / 2;
-  }, [valor, itens.length]);
-  const noMeio = () => {
-    const box = caixa.current;
-    if (!box) return null;
-    const centro = box.scrollLeft + box.clientWidth / 2;
-    let melhor: string | null = null;
-    let dist = Infinity;
-    box.querySelectorAll<HTMLElement>('[data-valor]').forEach(el => {
-      const d = Math.abs(el.offsetLeft + el.offsetWidth / 2 - centro);
-      if (d < dist) { dist = d; melhor = el.dataset.valor || null; }
-    });
-    return melhor;
-  };
+  const janela = useRef<HTMLDivElement>(null);
+  const trilho = useRef<HTMLDivElement>(null);
+  const [deslocamento, setDeslocamento] = useState(0);
+  // a primeira posição vai direto (sem deslizar desde o começo da régua)
+  const [desliza, setDesliza] = useState(false);
+  const centrou = useRef(false);
   const i = itens.findIndex(x => x.valor === valor);
+  const passo = (d: number) => { const n = i + d; if (n >= 0 && n < itens.length) onEscolher(itens[n].valor); };
+  // o escolhido no meio da janela (de novo quando a janela muda de largura: na primeira vez ela ainda pode estar com 0)
+  useLayoutEffect(() => {
+    const box = janela.current;
+    if (!box) return;
+    const centralizar = () => {
+      const el = trilho.current?.querySelector<HTMLElement>('[data-valor="' + valor + '"]');
+      if (!el || !box.clientWidth) return;
+      setDeslocamento(box.clientWidth / 2 - (el.offsetLeft + el.offsetWidth / 2));
+      // só depois de estar no lugar o trilho passa a deslizar (abrir a janela não anima)
+      if (!centrou.current) { centrou.current = true; setTimeout(() => setDesliza(true), 60); }
+    };
+    centralizar();
+    const ro = new ResizeObserver(centralizar);
+    ro.observe(box);
+    return () => ro.disconnect();
+  }, [valor, itens.length]);
+  // a rodinha (e o trackpad): um item por passo, sem deixar a régua rolar solta
+  const passoRef = useRef(passo);
+  passoRef.current = passo;
+  useEffect(() => {
+    const box = janela.current;
+    if (!box) return;
+    let acumulado = 0;
+    let parado = 0;
+    const naRodinha = (e: WheelEvent) => {
+      e.preventDefault();
+      const d = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+      if (performance.now() < parado) return;
+      acumulado += d;
+      if (Math.abs(acumulado) < 40) return;
+      passoRef.current(acumulado > 0 ? 1 : -1);
+      acumulado = 0;
+      parado = performance.now() + 120;
+    };
+    box.addEventListener('wheel', naRodinha, { passive: false });
+    return () => box.removeEventListener('wheel', naRodinha);
+  }, []);
   return (
     <div className="comp-rolo-bloco">
       <span className="comp-rolo-rotulo">{rotulo}</span>
-      <div className="comp-rolo-caixa">
-        <div ref={caixa} className="comp-rolo" role="listbox" aria-label={rotulo} tabIndex={0} autoFocus={foco}
-          onScroll={() => { const m = noMeio(); if (m && m !== valor) { pelaRolagem.current = true; onEscolher(m); } }}
-          onWheel={e => { if (caixa.current && Math.abs(e.deltaY) > Math.abs(e.deltaX)) caixa.current.scrollLeft += e.deltaY; }}
-          onKeyDown={e => {
-            if (e.key === 'ArrowRight' && i < itens.length - 1) { e.preventDefault(); onEscolher(itens[i + 1].valor); }
-            if (e.key === 'ArrowLeft' && i > 0) { e.preventDefault(); onEscolher(itens[i - 1].valor); }
-            if (e.key === 'Enter') { e.preventDefault(); onAbrir(valor); }
-          }}>
+      <div ref={janela} className="comp-rolo" role="listbox" aria-label={rotulo} tabIndex={0} autoFocus={foco}
+        onKeyDown={e => {
+          if (e.key === 'ArrowRight') { e.preventDefault(); passo(1); }
+          if (e.key === 'ArrowLeft') { e.preventDefault(); passo(-1); }
+          if (e.key === 'Enter') { e.preventDefault(); onAbrir(valor); }
+        }}>
+        <div ref={trilho} className={'comp-rolo-trilho' + (desliza ? ' desliza' : '')} style={{ transform: 'translateX(' + deslocamento + 'px)' }}>
           {itens.map(x => (
             <button key={x.valor} type="button" data-valor={x.valor} role="option" aria-selected={x.valor === valor} tabIndex={-1}
               className={'comp-rolo-item' + (x.valor === valor ? ' on' : '')} onClick={() => onEscolher(x.valor)} onDoubleClick={() => onAbrir(x.valor)}>
