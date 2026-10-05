@@ -64,6 +64,13 @@ describe('lerServicos', () => {
       expect((err as ErroTipoErrado).tipoCerto).toBe('tomados');
     }
   });
+  it('a conta contábil, quando o relatório traz a coluna', () => {
+    const r = lerServicos([
+      ['Data', 'Nr.', 'Lanc', 'Nome do Fornecedor', 'Conta Contábil', 'Valor do Documento'],
+      ['05/07/2026', '7', '0160', 'GRAFICA', '22015', '300,00'],
+    ], 'tomados');
+    expect(r.notas[0]).toMatchObject({ numero: '7', conta: '22015', valor: 300 });
+  });
   it('lê notas e conta canceladas', () => {
     const r = lerServicos([
       ['Data', 'Nr.', 'Lanc', 'Nome do Cliente', 'Valor Base', 'ISS Valor', 'Cancelada'],

@@ -65,6 +65,8 @@ export interface NotaServico {
   irrf?: number;
   inss?: number;
   exportado?: '' | 'Sim' | 'Não';
+  /** a conta contábil, quando o relatório traz a coluna (como nas Entradas e Saídas) */
+  conta?: string;
 }
 
 /** Lançamento automático (de-para antigo lançamento → conta). */
