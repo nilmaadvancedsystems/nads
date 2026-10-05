@@ -2621,15 +2621,23 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 /* "Qual competência?" ao entrar em Minhas empresas */
 /* a grade de meses (Vitor, 05/10/2026: "mais interativo"): o ano com as setas e os 12 meses em 4 colunas; o escolhido em
    vermelho, o de hoje com a borda, os fora da lista apagados */
-.modal.modal-centro.competencia-janela{max-width:360px;}
-.comp-ano{display:flex;align-items:center;justify-content:space-between;margin:14px 0 10px;}
-.comp-ano b{font-size:16px;font-variant-numeric:tabular-nums;}
-.comp-grade{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
-.comp-mes{height:40px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;font-weight:500;cursor:pointer;}
-.comp-mes:hover:not(:disabled){background:var(--hover-bg);border-color:var(--border-strong);}
-.comp-mes.atual{border-color:var(--ink-muted);}
-.comp-mes.on,.comp-mes.on:hover{background:var(--btn-primary);border-color:var(--btn-primary);color:#FFFFFF;font-weight:600;}
-.comp-mes:disabled{opacity:.35;cursor:not-allowed;}
+.modal.modal-centro.competencia-janela{max-width:340px;padding:22px 20px 20px;}
+/* o ano: as setas sem caixa (só o círculo ao passar o mouse) e o ano no meio */
+.comp-ano{display:flex;align-items:center;justify-content:space-between;margin:14px 2px 12px;}
+.comp-ano b{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink);}
+.comp-seta{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:none;border-radius:50%;background:none;color:var(--ink-muted);cursor:pointer;}
+.comp-seta:hover:not(:disabled){background:var(--hover-bg);color:var(--ink);}
+.comp-seta:disabled{opacity:.25;cursor:default;}
+.comp-seta svg{width:16px;height:16px;}
+/* os meses: leves (sem borda), o fundo aparece ao passar o mouse; o escolhido em vermelho; o mês de trabalho com o ponto */
+.comp-grade{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.comp-mes{position:relative;height:42px;border:none;border-radius:10px;background:none;color:var(--ink);font:inherit;font-size:14px;font-weight:500;cursor:pointer;}
+.comp-mes:hover:not(:disabled){background:var(--hover-bg);}
+.comp-mes.on,.comp-mes.on:hover{background:var(--btn-primary);color:#FFFFFF;font-weight:600;}
+.comp-mes-ponto{position:absolute;left:50%;bottom:6px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--btn-primary);}
+.comp-mes.on .comp-mes-ponto{background:#FFFFFF;}
+.comp-mes:disabled{color:var(--ink-muted);opacity:.3;cursor:default;}
+.modal.modal-centro .modal-actions .btn.comp-selecionar{width:100%;}
 .imp-sem-bancos{margin-top:4px;}
 /* o checklist das tarefas da etapa (o Fiscal): o link (ex.: SIEG) à direita e o cuidado embaixo, em laranja */
 .folha-check-lista li{display:flex;align-items:center;gap:12px;}
