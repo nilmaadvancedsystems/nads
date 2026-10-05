@@ -2841,3 +2841,9 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .arquivador-janela .pessoal-rola .arquivador-numeros{margin-bottom:12px;}
 /* a marca da régua cresce de baixo (a entrada e a troca animadas pelo animejs, JanelaDaCompetencia) */
 .comp-rolo-marca{transform-origin:50% 100%;}
+/* Selecione a competência, a roda (05/10/2026): o tamanho e a transparência vêm da distância ao meio (JanelaDaCompetencia,
+   a cada quadro); o escolhido só muda de cor e peso, sem pular de tamanho; arrastar a régua (sem selecionar o texto) */
+.comp-rolo{cursor:grab;user-select:none;touch-action:pan-y;}
+.comp-rolo:active{cursor:grabbing;}
+.comp-rolo-item,.comp-rolo-item.on{font-size:16px;transform-origin:50% 60%;transition:color .2s ease !important;}
+.comp-rolo-item.on{font-weight:700;}

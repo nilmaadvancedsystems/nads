@@ -46,19 +46,61 @@ function Rolo({ rotulo, itens, valor, foco, onEscolher, onAbrir }: {
     ro.observe(box);
     return () => ro.disconnect();
   }, [valor, itens.length]);
-  // o trilho até o escolhido: a primeira vez no lugar; depois deslizando com mola, e o nome escolhido dá um salto
-  useLayoutEffect(() => {
+  // a roda (Vitor, 05/10/2026: "melhore a seleção de mês"): o do meio grande e forte, os vizinhos diminuem e apagam
+  // conforme se afastam — recalculado a cada quadro enquanto o trilho anda, então a troca é contínua
+  const atual = useRef(0);
+  const pintar = (x: number) => {
+    const box = janela.current;
     const t = trilho.current;
-    if (!t || deslocamento == null) return;
-    if (!centrou.current || menosMovimento()) { utils.set(t, { translateX: deslocamento }); centrou.current = true; return; }
-    animate(t, { translateX: deslocamento, ease: spring({ bounce: 0.28, duration: 460 }) });
+    if (!box || !t) return;
+    atual.current = x;
+    const meio = box.clientWidth / 2;
+    for (const el of Array.from(t.children) as HTMLElement[]) {
+      const d = Math.abs(el.offsetLeft + el.offsetWidth / 2 + x - meio) / el.offsetWidth;
+      el.style.transform = 'scale(' + Math.max(0.7, 1.32 - d * 0.3).toFixed(3) + ')';
+      el.style.opacity = Math.max(0.15, 1 - d * 0.38).toFixed(3);
+    }
+  };
+  const mover = (x: number, comMola: boolean) => {
+    const t = trilho.current;
+    if (!t) return;
+    if (!comMola || menosMovimento()) { utils.set(t, { translateX: x }); pintar(x); return; }
+    const de = { x: atual.current };
+    animate(de, { x, ease: spring({ bounce: 0.22, duration: 480 }), onUpdate: () => { utils.set(t, { translateX: de.x }); pintar(de.x); } });
+  };
+  // o trilho até o escolhido: a primeira vez no lugar; depois deslizando com mola
+  useLayoutEffect(() => {
+    if (deslocamento == null) return;
+    mover(deslocamento, centrou.current);
+    centrou.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deslocamento]);
+  // arrastar a régua com o mouse (ou o dedo): ela segue o arraste e, ao soltar, encaixa no mês mais perto
+  const arraste = useRef<{ x0: number; base: number; moveu: boolean } | null>(null);
+  // o clique que vem junto com o soltar de um arraste não escolhe nada
+  const arrastouEm = useRef(0);
+  const soltar = () => {
+    const a = arraste.current;
+    arraste.current = null;
+    if (!a?.moveu) return;
+    arrastouEm.current = performance.now();
+    const box = janela.current;
+    const t = trilho.current;
+    if (!box || !t) return;
+    const meio = box.clientWidth / 2;
+    let melhor = i;
+    let menor = Infinity;
+    (Array.from(t.children) as HTMLElement[]).forEach((el, k) => {
+      const d = Math.abs(el.offsetLeft + el.offsetWidth / 2 + atual.current - meio);
+      if (d < menor) { menor = d; melhor = k; }
+    });
+    if (melhor !== i) onEscolher(itens[melhor].valor);
+    else if (deslocamento != null) mover(deslocamento, true);
+  };
   const primeiro = useRef(true);
   useEffect(() => {
     if (primeiro.current) { primeiro.current = false; return; }
     if (menosMovimento()) return;
-    const el = trilho.current?.querySelector<HTMLElement>('[data-valor="' + valor + '"]');
-    if (el) animate(el, { scale: [0.82, 1], ease: spring({ bounce: 0.45, duration: 420 }) });
     const marca = janela.current?.querySelector<HTMLElement>('.comp-rolo-marca');
     if (marca) animate(marca, { scaleY: [1.9, 1], ease: spring({ bounce: 0.35, duration: 380 }) });
   }, [valor]);
@@ -87,6 +129,17 @@ function Rolo({ rotulo, itens, valor, foco, onEscolher, onAbrir }: {
     <div className="comp-rolo-bloco">
       <span className="comp-rolo-rotulo">{rotulo}</span>
       <div ref={janela} className="comp-rolo" role="listbox" aria-label={rotulo} tabIndex={0} autoFocus={foco}
+        onPointerDown={e => { if (e.button === 0) arraste.current = { x0: e.clientX, base: atual.current, moveu: false }; }}
+        onPointerMove={e => {
+          const a = arraste.current;
+          if (!a) return;
+          const dx = e.clientX - a.x0;
+          if (!a.moveu && Math.abs(dx) < 5) return;
+          if (!a.moveu) { a.moveu = true; e.currentTarget.setPointerCapture(e.pointerId); }
+          utils.set(trilho.current!, { translateX: a.base + dx });
+          pintar(a.base + dx);
+        }}
+        onPointerUp={soltar} onPointerCancel={soltar}
         onKeyDown={e => {
           if (e.key === 'ArrowRight') { e.preventDefault(); passo(1); }
           if (e.key === 'ArrowLeft') { e.preventDefault(); passo(-1); }
@@ -95,7 +148,7 @@ function Rolo({ rotulo, itens, valor, foco, onEscolher, onAbrir }: {
         <div ref={trilho} className="comp-rolo-trilho">
           {itens.map(x => (
             <button key={x.valor} type="button" data-valor={x.valor} role="option" aria-selected={x.valor === valor} tabIndex={-1}
-              className={'comp-rolo-item' + (x.valor === valor ? ' on' : '')} onClick={() => onEscolher(x.valor)} onDoubleClick={() => onAbrir(x.valor)}>
+              className={'comp-rolo-item' + (x.valor === valor ? ' on' : '')} onClick={() => { if (performance.now() - arrastouEm.current > 250) onEscolher(x.valor); }} onDoubleClick={() => onAbrir(x.valor)}>
               {x.texto}
             </button>
           ))}
