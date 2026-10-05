@@ -1,13 +1,12 @@
-// Etapa 7 do Creditor: contas, fechamento da conta banco por dia e o arquivo de importação.
+// Etapa Lançamentos do Creditor: as contas e históricos, os avisos (o arquivo que não fecha com o banco, os títulos
+// fora) e o Baixar .xls. Sem a tabela por dia e sem a prévia das 8 colunas (Vitor, 05/10/2026: "não precisa").
 import { creditor as cr } from '@nads/core';
 import { Alerta, baixarBytes, Icone, Stat } from '@nads/ui';
 import { AcoesDoTopo } from '../../../../../../comum/topo';
+import { MenuDeConta } from '../../partes/MenuDeConta';
 import { CampoConta } from './partes/CampoConta';
 import { useLancamentos, type CampoConta as IdCampo } from './useLancamentos';
 
-const BADGE: Record<cr.SituacaoDia, [string, string]> = {
-  ok: ['badge badge-ok', 'Bate'], explicada: ['badge badge-warn', 'Diferença = excluídos'], diverge: ['badge badge-bad', 'Não bate'],
-};
 
 export function Lancamentos() {
   const vm = useLancamentos();
@@ -21,18 +20,21 @@ export function Lancamentos() {
       <div className="card">
         <div className="card-head">
           <h3>Contas e históricos</h3>
-          {vm.temSalvas && <button className="btn btn-ghost" type="button" onClick={vm.esquecerContas}>Voltar às sugestões</button>}
+          {vm.temSalvas && <button className="btn" type="button" onClick={vm.esquecerContas}>Voltar às sugestões</button>}
         </div>
         <p className="hint" style={{ marginTop: 0, marginBottom: 8 }}>{vm.fonte}</p>
-        <datalist id="contasDoBalancete">
-          {vm.opcoes.map(o => <option key={o.codigo} value={o.codigo}>{o.nome}</option>)}
-        </datalist>
         <div className="form-grid">
           {(Object.keys(vm.rotuloConta) as IdCampo[]).map(c => {
             const d = vm.ehDoBalancete(c) ? vm.detalhe[c as keyof typeof vm.detalhe] : null;
             return (
               <div key={c} className="field">
-                <CampoConta id={'fConta-' + c} rotulo={vm.rotuloConta[c]} valor={vm.contas[c]} lista={d && vm.opcoes.length ? 'contasDoBalancete' : undefined} onGravar={v => vm.mudarConta(c, v)} />
+                {/* a conta do balancete no menu suspenso padrão (Vitor, 05/10/2026: no lugar da lista do navegador); o histórico, campo */}
+                {vm.ehDoBalancete(c) ? (
+                  <>
+                    <label>{vm.rotuloConta[c]}</label>
+                    <MenuDeConta valor={vm.contas[c]} contas={vm.opcoes} onEscolher={v => vm.mudarConta(c, v)} />
+                  </>
+                ) : <CampoConta id={'fConta-' + c} rotulo={vm.rotuloConta[c]} valor={vm.contas[c]} onGravar={v => vm.mudarConta(c, v)} />}
                 {d && vm.carregada && (
                   <p className="hint" style={{ margin: '4px 0 0' }}>
                     <span className={'badge badge-' + d.tom}>{d.origem}</span>{d.nome && <> {d.nome}</>}
@@ -43,31 +45,6 @@ export function Lancamentos() {
             );
           })}
         </div>
-      </div>
-
-      <div className="card">
-        <div className="card-head"><h3>Conta {vm.contaBanco} por dia</h3></div>
-        <p className="hint" style={{ marginTop: 0, marginBottom: 8 }}>Débitos − créditos da conta banco no arquivo, contra o que o banco creditou no dia (o total cobrado impresso, ou a soma conferida).</p>
-        <div className="table-wrap">
-          <table>
-            <thead><tr><th>Dia</th><th className="num">Débitos</th><th className="num">Créditos</th><th className="num">Líquido</th><th className="num">Banco creditou</th><th className="num">Fora do arquivo</th><th className="num">Diferença</th><th>Situação</th></tr></thead>
-            <tbody>
-              {vm.fechamento.map(f => (
-                <tr key={f.data} className={f.situacao === 'diverge' ? 'bad' : ''}>
-                  <td>{f.data || 'sem data'}</td>
-                  <td className="num">{cr.reais(f.debitos)}</td>
-                  <td className="num">{cr.reais(f.creditos)}</td>
-                  <td className="num"><b>{cr.reais(f.liquido)}</b></td>
-                  <td className="num" title={f.fonte === 'impresso' ? 'Total cobrado impresso no relatório' : 'Soma conferida dos títulos'}>{cr.reais(f.esperado)}{f.fonte === 'extraido' ? ' *' : ''}</td>
-                  <td className="num">{f.fora ? cr.reais(f.fora) : '—'}</td>
-                  <td className="num">{cr.reais(f.diferenca)}</td>
-                  <td><span className={BADGE[f.situacao][0]}>{BADGE[f.situacao][1]}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {vm.fechamento.some(f => f.fonte === 'extraido') && <p className="hint">* sem total cobrado impresso só daquele dia: vale a soma conferida dos títulos.</p>}
       </div>
 
       {vm.divergentes.length > 0 && (
@@ -89,27 +66,6 @@ export function Lancamentos() {
         <Stat rotulo="Descontos" valor={cr.reais(vm.totais.desconto)} grande={false} />
       </div>
 
-      <div className="card">
-        <div className="card-head"><h3>Arquivo de importação (8 colunas)</h3></div>
-        <div className="table-wrap">
-          <table>
-            <thead><tr>{cr.CABECALHO_8_COLUNAS.map(c => <th key={c} className={c === 'VALOR' || c === 'DOCUMENTO' ? 'num' : ''}>{c}</th>)}</tr></thead>
-            <tbody>
-              {vm.lancamentos.map((l, i) => (
-                <tr key={i}>
-                  <td>{l.automatico}</td><td>{l.data}</td><td>{l.debito}</td><td>{l.credito}</td><td>{l.codHistorico}</td><td>{l.historico}</td>
-                  <td className="num">{cr.reais(l.valor)}</td><td className="num">{l.documento}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* sem o Voltar (Vitor, 05/10/2026: tudo é navegável pela barra de cima) */}
-      <div className="btn-row" style={{ justifyContent: 'flex-end' }}>
-        <button className="btn btn-success" type="button" disabled={!vm.podeBaixar} onClick={baixar}><Icone nome="download" />Baixar .xls</button>
-      </div>
     </section>
   );
 }

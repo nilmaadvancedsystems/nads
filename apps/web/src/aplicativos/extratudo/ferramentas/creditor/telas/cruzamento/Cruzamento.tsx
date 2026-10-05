@@ -3,7 +3,7 @@ import { creditor as cr } from '@nads/core';
 import { Alerta, MenuSuspenso } from '@nads/ui';
 import { Fragment } from 'react';
 import { Celula } from './partes/Celula';
-import { MenuDeConta } from './partes/MenuDeConta';
+import { MenuDeConta } from '../../partes/MenuDeConta';
 import { useCruzamento, type Filtro } from './useCruzamento';
 
 const BADGE: Record<cr.SituacaoCruzamento, string> = {
@@ -50,7 +50,7 @@ export function Cruzamento() {
                         {l.precisa && (l.decisao?.tipo === 'excluir' ? (
                           <span className="decisao">
                             <b>Fica fora do arquivo.</b>
-                            <button className="btn btn-ghost" type="button" onClick={() => vm.desfazer(l.id)}>Desfazer</button>
+                            <button className="btn" type="button" onClick={() => vm.desfazer(l.id)}>Desfazer</button>
                           </span>
                         ) : (
                           <span className="decisao">
@@ -63,7 +63,7 @@ export function Cruzamento() {
                             ))}
                             <MenuDeConta valor={l.decisao?.tipo === 'manual' ? l.decisao.contrapartida : ''} contas={vm.contasClientes} onEscolher={v => vm.manual(l.id, 'contrapartida', v)} />
                             <Celula valor={l.decisao?.tipo === 'manual' ? l.decisao.historico : ''} largura={260} rotulo="Histórico" placeholder={l.historicoPadrao} onGravar={v => vm.manual(l.id, 'historico', v)} />
-                            <button className="btn btn-ghost" type="button" onClick={() => vm.excluir(l.id)}>Excluir título</button>
+                            <button className="btn" type="button" onClick={() => vm.excluir(l.id)}>Excluir título</button>
                           </span>
                         ))}
                       </td>
