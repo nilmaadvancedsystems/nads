@@ -8,6 +8,8 @@ type Servicos = NonNullable<ReturnType<typeof useImportacao>['servicos']>;
 const { brl } = formatos;
 
 export function NotasImportadas({ r }: { r: Notas }) {
+  // a conta contábil, quando o relatório trouxe a coluna (Vitor, 05/10/2026)
+  const comConta = r.linhas.some(n => n.conta);
   return (
     <>
       <div className="stat-grid">
@@ -17,10 +19,10 @@ export function NotasImportadas({ r }: { r: Notas }) {
       </div>
       <div className="table-wrap">
         <table>
-          <thead><tr><th>Data</th><th>Nota</th><th>Fornecedor / cliente</th><th>CFOP</th><th>Lanç.</th><th className="num">Valor</th></tr></thead>
+          <thead><tr><th>Data</th><th>Nota</th><th>Fornecedor / cliente</th><th>CFOP</th><th>Lanç.</th>{comConta && <th>Conta</th>}<th className="num">Valor</th></tr></thead>
           <tbody>
             {r.linhas.map((n, i) => (
-              <tr key={i}><td>{n.data}</td><td>{n.numero}</td><td className="wrap">{n.nome}</td><td>{n.cfop}</td><td>{n.lanc || '—'}</td><td className="num">{brl(n.valor)}</td></tr>
+              <tr key={i}><td>{n.data}</td><td>{n.numero}</td><td className="wrap">{n.nome}</td><td>{n.cfop}</td><td>{n.lanc || '—'}</td>{comConta && <td>{n.conta || '—'}</td>}<td className="num">{brl(n.valor)}</td></tr>
             ))}
           </tbody>
         </table>
@@ -31,6 +33,7 @@ export function NotasImportadas({ r }: { r: Notas }) {
 }
 
 export function ServicosImportados({ r }: { r: Servicos }) {
+  const comConta = r.linhas.some(n => n.conta);
   return (
     <>
       <div className="stat-grid">
@@ -41,10 +44,10 @@ export function ServicosImportados({ r }: { r: Servicos }) {
       </div>
       <div className="table-wrap">
         <table>
-          <thead><tr><th>Data</th><th>Nota</th><th>{r.rotParticipante}</th><th>Lanç.</th>{r.comIss && <th className="num">ISS</th>}<th className="num">{r.rotValor}</th></tr></thead>
+          <thead><tr><th>Data</th><th>Nota</th><th>{r.rotParticipante}</th><th>Lanç.</th>{comConta && <th>Conta</th>}{r.comIss && <th className="num">ISS</th>}<th className="num">{r.rotValor}</th></tr></thead>
           <tbody>
             {r.linhas.map((n, i) => (
-              <tr key={i}><td>{n.data}</td><td>{n.numero}</td><td className="wrap">{n.nome}</td><td>{n.lanc || '—'}</td>{r.comIss && <td className="num">{brl(n.iss || 0)}</td>}<td className="num">{brl(n.valor)}</td></tr>
+              <tr key={i}><td>{n.data}</td><td>{n.numero}</td><td className="wrap">{n.nome}</td><td>{n.lanc || '—'}</td>{comConta && <td>{n.conta || '—'}</td>}{r.comIss && <td className="num">{brl(n.iss || 0)}</td>}<td className="num">{brl(n.valor)}</td></tr>
             ))}
           </tbody>
         </table>

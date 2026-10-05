@@ -73,6 +73,7 @@ export function mesclarServicos(existentes: NotaServico[], novas: NotaServico[],
       const k = chaveServ(n);
       const ex = por[k];
       if (!ex) { const c = { ...n }; atuais.push(c); por[k] = c; add++; continue; }
+      if (n.conta && ex.conta !== n.conta) ex.conta = n.conta;
       if (ex.lanc !== n.lanc || ex.codPart !== n.codPart || ex.iss !== n.iss) { ex.lanc = n.lanc; ex.codPart = n.codPart; ex.iss = n.iss; ex.issRet = n.issRet; atualizadas++; }
       if (n.exportado && ex.exportado !== n.exportado) ex.exportado = n.exportado;
     }

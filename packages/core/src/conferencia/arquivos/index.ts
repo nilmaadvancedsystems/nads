@@ -35,7 +35,7 @@ export function coluna(head: unknown[], ...nomes: string[]): number {
  * A coluna da conta contábil (o relatório de Saídas do Fiscal traz a do cliente): "Conta contábil", "Cta. contábil",
  * "Conta"… — nunca a do valor ("Valor contábil").
  */
-function colunaDaConta(head: unknown[]): number {
+export function colunaDaConta(head: unknown[]): number {
   const n = head.map(c => String(c).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
   const exata = n.findIndex(c => c === 'conta' || c === 'conta contabil' || c === 'cta contabil' || c === 'cta. contabil');
   if (exata >= 0) return exata;
@@ -133,7 +133,7 @@ export function lerServicos(rows: Linhas, tipo: TipoServico): { notas: NotaServi
     data: acha('data'), lanc: acha('lanc'), num: acha('nr.', 'número', 'numero'), cod: acha('conta cont', 'cód', 'cod.'),
     cnpj: acha('cnpj'), nome: acha('nome'), valor: acha('valor base', 'valor do documento'),
     iss: head.indexOf('iss valor'), issRet: acha('iss valor retido', 'iss retido'), irrf: acha('irrf'), inss: acha('inss'), canc: acha('cancel'),
-    exp: acha('exportado', 'exp.'),
+    exp: acha('exportado', 'exp.'), conta: colunaDaConta(rows[h]),
   };
   if (c.valor < 0 || c.nome < 0) throw new Error('Faltou a coluna de valor (Valor Base) ou de nome do participante.');
   const out: NotaServico[] = [];
@@ -155,6 +155,7 @@ export function lerServicos(rows: Linhas, tipo: TipoServico): { notas: NotaServi
     if (c.irrf >= 0) n.irrf = num(r[c.irrf]) || 0;
     if (c.inss >= 0) n.inss = num(r[c.inss]) || 0;
     if (c.exp >= 0) n.exportado = normExportado(r[c.exp]);
+    if (c.conta >= 0 && String(r[c.conta] || '').trim()) n.conta = String(r[c.conta]).trim();
     out.push(n);
   }
   return { notas: out, canceladas };

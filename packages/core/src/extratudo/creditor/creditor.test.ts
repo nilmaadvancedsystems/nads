@@ -543,20 +543,22 @@ describe('conta do cliente pelo balancete', () => {
       { numero: '009857', nome: 'SUPERMERCADO BOA COMPRA', conta: '12301' },
       { numero: '9857', nome: 'SUPERMERCADO BOA COMPRA', conta: '12301' },
       { numero: '9888', nome: 'FULANO DE TAL', conta: '12777' },
-      // a NF do banco que é de outro cliente no Fiscal (292: o título 9889 da BOA COMPRA, a NF 9889 do CIRO VERNER)
+      // o nome do banco é o da loja e o da NF é a razão social (292: o título 9889 da BOA COMPRA, a NF 9889 do CIRO VERNER)
       { numero: '9889', nome: 'CIRO VERNER DE PAULA NUNES - EIRELI', conta: '99241' },
-      // a mesma NF e cliente com contas diferentes não decide
+      // a mesma NF com duas contas: o nome desempata; sem desempate, não decide
       { numero: '100', nome: 'X LTDA', conta: '1' }, { numero: '0100', nome: 'X LTDA', conta: '2' },
+      { numero: '300', nome: 'FULANO DE TAL', conta: '31' }, { numero: '300', nome: 'OUTRO CLIENTE SA', conta: '32' },
       { numero: '200', nome: 'SEM CONTA' },
     ]);
     expect(porNf.get('9857')).toEqual([{ conta: '12301', nome: 'SUPERMERCADO BOA COMPRA' }]);
     expect(porNf.has('200')).toBe(false);
-    const [b, c, d, x] = cruzarPeloBalancete([{ ...t(2, 'SUPERMERCADO BOA COMPRA'), nf: '9857/3/3' }, { ...t(3, 'FULANO DE TAL'), nf: '9888/1/1' },
-      { ...t(4, 'SUPERMERCADO BOA COMPRA'), nf: '9889/1/1' }, { ...t(5, 'X LTDA'), nf: '100' }], cl, {}, porNf);
+    const [b, c, d, x, y] = cruzarPeloBalancete([{ ...t(2, 'SUPERMERCADO BOA COMPRA'), nf: '9857/3/3' }, { ...t(3, 'FULANO DE TAL'), nf: '9888/1/1' },
+      { ...t(4, 'SUPERMERCADO BOA COMPRA'), nf: '9889/1/1' }, { ...t(5, 'X LTDA'), nf: '100' }, { ...t(6, 'FULANO DE TAL'), nf: '300' }], cl, {}, porNf);
     expect([b.situacao, b.linha?.contrapartida, b.pelaSaida, b.nota]).toEqual(['ok', '12301', true, 'Conta pelo relatório de Saídas (NF 9857).']);
     expect([c.situacao, c.linha?.contrapartida, c.linha?.cliente]).toEqual(['ok', '12777', 'FULANO DE TAL']);
-    expect([d.pelaSaida, d.situacao]).toEqual([undefined, 'nao-encontrada']);
+    expect([d.pelaSaida, d.situacao, d.linha?.contrapartida]).toEqual([true, 'ok', '99241']);
     expect(x.pelaSaida).toBeUndefined();
+    expect([y.pelaSaida, y.linha?.contrapartida]).toEqual([true, '31']);
   });
 });
 
