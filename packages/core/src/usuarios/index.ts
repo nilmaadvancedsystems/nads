@@ -7,4 +7,5 @@ export * from './regras/papeis';
 export * from './regras/acesso';
 export * from './regras/conta';
 export * from './regras/liberacao';
+export * from './regras/presenca';
 export { EQUIPE_EXEMPLO } from './__exemplos__/equipe';

@@ -2,11 +2,12 @@
 // pede quem está trabalhando antes de mostrar qualquer tela: no banco, o login com a conta do Entregas
 // (30/09/2026); nos exemplos, a escolha do nome na lista da equipe. Com a proteção do login ligada
 // (Cadastro › Configurações), quem não é admin precisa liberar o computador com o código de um admin.
+import { usuarios } from '@nads/core';
 import { aplicarTabelasCompactas, useRetorno } from '@nads/ui';
 import { useEffect, type ReactNode } from 'react';
 import { Outlet } from 'react-router';
 import { OperadorProvider, operadorDaConta, useOperador } from './casca/operador';
-import { avisarErrosDoBanco, repoDaTarefas } from './dados/fonte';
+import { avisarErrosDoBanco, repoDaTarefas, repoDeAcesso } from './dados/fonte';
 import { RepoProvider } from './dados/repo';
 import { useSessao } from './dados/sessao';
 import { AvisosDeLiberacao } from './telas/acesso/AvisosDeLiberacao';
@@ -17,8 +18,29 @@ import { Entrar } from './telas/entrar/Entrar';
 import { PessoalProvider } from './telas/pessoal/contexto';
 import { QuemSouEu } from './telas/quem/QuemSouEu';
 
+/**
+ * Quem está online (Cadastro › Usuários): enquanto o nads está aberto e a aba visível, bate o ponto a cada 3 minutos
+ * (usuarios/{uid}.nadsVistoEm); voltou para a aba depois de um tempo, bate na hora. Aba escondida não bate (economiza).
+ */
+function usePresenca(ligada: boolean) {
+  useEffect(() => {
+    if (!ligada) return;
+    let ultimo = 0;
+    const bater = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - ultimo < 60 * 1000) return;
+      ultimo = Date.now();
+      void repoDeAcesso().marcarPresenca().catch(() => undefined);
+    };
+    bater();
+    const relogio = setInterval(bater, usuarios.PONTO_DA_PRESENCA_MS);
+    document.addEventListener('visibilitychange', bater);
+    return () => { clearInterval(relogio); document.removeEventListener('visibilitychange', bater); };
+  }, [ligada]);
+}
+
 function PrecisaDeOperador({ children }: { children: ReactNode }) {
   const { operador } = useOperador();
+  usePresenca(!!operador);
   return operador ? <>{children}</> : <QuemSouEu />;
 }
 

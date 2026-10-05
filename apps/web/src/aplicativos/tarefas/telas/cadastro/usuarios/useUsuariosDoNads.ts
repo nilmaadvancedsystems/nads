@@ -4,11 +4,11 @@
 // flutuante como as configurações, na aba de usuários").
 import { usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useOperador } from '../../../casca/operador';
 import { useAcesso } from '../../../dados/repo';
 
-export type FiltroDeUsuarios = 'todos' | 'ativos' | 'inativos';
+export type FiltroDeUsuarios = 'todos' | 'online' | 'ativos' | 'inativos';
 type Janela = { tipo: 'novo' } | { tipo: 'pessoa'; uid: string } | null;
 
 /** Para que serve cada papel (a dica da janela da pessoa). */
@@ -28,6 +28,9 @@ export function useUsuariosDoNads() {
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<FiltroDeUsuarios>('todos');
   const [janela, setJanela] = useState<Janela>(null);
+  // o relógio do "online" (quem parou de bater o ponto sai sem a lista mudar)
+  const [agora, setAgora] = useState(() => new Date());
+  useEffect(() => { const r = setInterval(() => setAgora(new Date()), 30 * 1000); return () => clearInterval(r); }, []);
   const equipe = repo.equipe();
   const sessoes = repo.sessoes();
   const q = busca.trim().toLowerCase();
@@ -44,8 +47,11 @@ export function useUsuariosDoNads() {
       iniciais: usuarios.iniciais(p.nome),
       rotulosDosPapeis: usuarios.PAPEIS.filter(x => p.papeis.includes(x.id)).map(x => x.rotulo),
       computadores: sessoes.filter(s => s.uid === p.uid),
+      online: p.ativo && usuarios.estaOnline(p.vistoNoNads, agora),
+      presenca: usuarios.rotuloDaPresenca(p.vistoNoNads, agora),
     }))
-    .sort((a, b) => Number(b.ativo) - Number(a.ativo) || a.nome.localeCompare(b.nome));
+    // quem está online primeiro, depois os ativos, depois os inativos
+    .sort((a, b) => Number(b.online) - Number(a.online) || Number(b.ativo) - Number(a.ativo) || a.nome.localeCompare(b.nome));
 
   return {
     exemplos: repo.exemplos,
@@ -53,9 +59,9 @@ export function useUsuariosDoNads() {
     carregando: !equipe.carregada,
     busca, setBusca,
     filtro, setFiltro,
-    contagem: { todos: todas.length, ativos: todas.filter(p => p.ativo).length, inativos: todas.filter(p => !p.ativo).length },
+    contagem: { todos: todas.length, online: todas.filter(p => p.online).length, ativos: todas.filter(p => p.ativo).length, inativos: todas.filter(p => !p.ativo).length },
     linhas: todas
-      .filter(p => filtro === 'todos' || (filtro === 'ativos' ? p.ativo : !p.ativo))
+      .filter(p => filtro === 'todos' || (filtro === 'online' ? p.online : filtro === 'ativos' ? p.ativo : !p.ativo))
       .filter(p => !q || (p.nome + ' ' + p.email + ' ' + p.cargo).toLowerCase().includes(q)),
     // as janelas: a da pessoa (os dados ao vivo) e a de criar o acesso
     pessoa: janela?.tipo === 'pessoa' ? todas.find(p => p.uid === janela.uid) || null : null,

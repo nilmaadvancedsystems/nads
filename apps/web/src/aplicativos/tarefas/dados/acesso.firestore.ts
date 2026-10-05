@@ -139,6 +139,11 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
       if (!q) throw new Error('Sem login.');
       await updateDoc(doc(db, 'usuarios', q.uid), { fotoPerfil: foto || '' });
     },
+    // o dono pode mexer no próprio documento (menos roles, email e criadoEm): o ponto de quem está online
+    async marcarPresenca() {
+      const q = quem();
+      if (q) await updateDoc(doc(db, 'usuarios', q.uid), { nadsVistoEm: new Date().toISOString() });
+    },
     async ativar(uid, ativo) { await updateDoc(doc(db, 'usuarios', uid), { ativo }); },
     // o "Criar acesso" do Entregas: o login (numa instância à parte) e o cadastro gravado pela sessão do admin (a regra
     // só deixa o admin criar usuarios/{uid} de outra pessoa)

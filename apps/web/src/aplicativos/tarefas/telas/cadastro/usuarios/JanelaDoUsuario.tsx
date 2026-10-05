@@ -58,7 +58,8 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
         <Foto foto={p.fotoPerfil} iniciais={p.iniciais} />
         <b>{p.nome}</b>
         <span className="fraco">{p.email}</span>
-        <span className={'badge ' + (p.ativo ? 'badge-ok' : 'badge-neutral')}>{p.ativo ? 'Ativo' : 'Inativo'}</span>
+        <span className={'badge ' + (p.online ? 'badge-ok' : 'badge-neutral')}>{!p.ativo ? 'Inativo' : p.online ? 'Online' : 'Ativo'}</span>
+        {p.ativo && !p.online && <span className="fraco">{p.presenca}</span>}
         <span className="fraco">{p.cargo || 'Sem cargo'}</span>
       </div>
     )}>
@@ -87,6 +88,9 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
         ))}
       </Cartao>
       <Cartao titulo="Acesso">
+        <Linha rotulo="No nads" dica="Online = o nads dela está aberto agora (ele avisa a cada 3 minutos).">
+          <span className="usuarios-estado"><span className={'usuarios-ponto' + (p.online ? ' ok' : '')} aria-hidden="true" />{p.presenca}</span>
+        </Linha>
         <Linha rotulo="Conta ativa" dica="Desativada, a pessoa não entra no nads nem no Entregas.">
           <Interruptor ligado={p.ativo} onMudar={() => void vm.ativar(p)} rotulo={(p.ativo ? 'Desativar ' : 'Ativar ') + p.nome} />
         </Linha>

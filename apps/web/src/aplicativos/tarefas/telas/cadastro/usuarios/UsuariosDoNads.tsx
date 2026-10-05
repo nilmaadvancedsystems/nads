@@ -7,6 +7,7 @@ import { useUsuariosDoNads, type FiltroDeUsuarios } from './useUsuariosDoNads';
 
 const FILTROS: { id: FiltroDeUsuarios; rotulo: string }[] = [
   { id: 'todos', rotulo: 'Todos' },
+  { id: 'online', rotulo: 'Online' },
   { id: 'ativos', rotulo: 'Ativos' },
   { id: 'inativos', rotulo: 'Inativos' },
 ];
@@ -44,8 +45,8 @@ export function UsuariosDoNads() {
                 <span className="usuarios-quem"><b>{p.nome}</b><span className="fraco">{p.email}</span></span>
                 <span className={'usuarios-cargo' + (p.cargo ? '' : ' fraco')}>{p.cargo || 'Sem cargo'}</span>
                 <span className="usuarios-papeis">{p.rotulosDosPapeis.map(r => <span key={r} className="badge badge-neutral">{r}</span>)}</span>
-                <span className="usuarios-estado">
-                  <span className={'usuarios-ponto' + (p.ativo ? ' ok' : '')} aria-hidden="true" />{p.ativo ? 'Ativo' : 'Inativo'}
+                <span className="usuarios-estado" title={p.ativo ? p.presenca : 'Conta desativada'}>
+                  <span className={'usuarios-ponto' + (p.online ? ' ok' : '')} aria-hidden="true" />{!p.ativo ? 'Inativo' : p.online ? 'Online' : p.presenca.replace('Visto há ', 'há ').replace('Nunca abriu o nads', 'Nunca abriu')}
                 </span>
                 <span className="usuarios-pcs fraco" title="Computadores liberados"><Icone nome="monitor" />{p.computadores.length}</span>
                 <Icone nome="chevronRight" className="usuarios-seta" />

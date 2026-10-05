@@ -99,6 +99,7 @@ export function lerUsuario(uid: string, doc: DocUsuario): Usuario {
     papeis: arrumar(papeisDoDoc(doc)),
     ativo: doc.ativo !== false,
     fotoPerfil: doc.fotoPerfil || null,
+    vistoNoNads: doc.nadsVistoEm || null,
   };
 }
 
