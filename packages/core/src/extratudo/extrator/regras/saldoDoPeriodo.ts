@@ -56,3 +56,31 @@ export function saldoDoPeriodo(e: EmpresaExtrator, banco: string, primeiro: stri
   }
   return { completo: true, extrato: saldoE, razao: saldoR, bate: saldoE === saldoR, dias };
 }
+
+/** Uma parte do .xls do Creditor que deve estar no razão do banco ('aaaa-mm-dd'; centavos, sem sinal). */
+export interface ParteEsperada { data: string; valor: number; historico: string }
+
+/**
+ * As partes do .xls do Creditor que ainda não estão no razão do banco (Vitor, 05/10/2026: o Ok da Exclusão só vale
+ * com o total trocado pelas partes — antes de importar o .xls, o razão com o total também fecha com o extrato).
+ * Cada parte acha uma linha do razão com a mesma data e o mesmo valor (qualquer sinal), uma linha para cada parte.
+ */
+export function partesForaDoRazao(e: EmpresaExtrator, banco: string, primeiro: string, meses: readonly string[], partes: readonly ParteEsperada[]): ParteEsperada[] {
+  const sobra = new Map<string, number>();
+  for (const m of [...new Set(meses)]) {
+    for (const a of arquivosDoBanco(e, banco, primeiro, 'sistema', m)) {
+      for (const l of a.lancamentos) {
+        if (!l.data.startsWith(m)) continue;
+        const k = l.data + '|' + Math.abs(l.valor);
+        sobra.set(k, (sobra.get(k) || 0) + 1);
+      }
+    }
+  }
+  return partes.filter(p => {
+    const k = p.data + '|' + Math.abs(p.valor);
+    const n = sobra.get(k) || 0;
+    if (!n) return true;
+    sobra.set(k, n - 1);
+    return false;
+  });
+}

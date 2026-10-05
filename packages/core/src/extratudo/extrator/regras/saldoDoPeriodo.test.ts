@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ArquivoImportado, EmpresaExtrator } from '../tipos';
-import { saldoDoPeriodo } from './saldoDoPeriodo';
+import { partesForaDoRazao, saldoDoPeriodo } from './saldoDoPeriodo';
 
 const arq = (id: string, lancamentos: [string, number][], lado: 'banco' | 'sistema' = 'banco', saldoAnterior?: number): ArquivoImportado => ({
   id, lado, nome: id, importadoEm: '2026-09-29T12:00:00Z', modo: 'primeira', banco: 'sicoob',
@@ -26,5 +26,12 @@ describe('saldo do banco no período (a etapa Exclusão do Creditor)', () => {
     const invertido = arq('raz', [['2026-08-03', -100000], ['2026-08-03', -50000], ['2026-08-10', 20000], ['2026-08-11', 0]], 'sistema');
     expect(saldoDoPeriodo(emp([extrato, invertido]), 'sicoob', 'sicoob', ['2026-08']).bate).toBe(true);
     expect(saldoDoPeriodo(emp([extrato]), 'sicoob', 'sicoob', ['2026-08']).completo).toBe(false);
+  });
+  it('as partes do .xls do Creditor no razão: com o total ainda lá, faltam; trocado, nenhuma falta', () => {
+    const partes = [{ data: '2026-08-03', valor: 60000, historico: 'NF 1' }, { data: '2026-08-03', valor: 40000, historico: 'NF 2' }];
+    const comTotal = arq('raz', [['2026-08-03', 100000], ['2026-08-03', 50000], ['2026-08-10', -20000]], 'sistema');
+    expect(partesForaDoRazao(emp([extrato, comTotal]), 'sicoob', 'sicoob', ['2026-08'], partes).map(p => p.historico)).toEqual(['NF 1', 'NF 2']);
+    const trocado = arq('raz', [['2026-08-03', -60000], ['2026-08-03', -40000], ['2026-08-03', 50000]], 'sistema');
+    expect(partesForaDoRazao(emp([extrato, trocado]), 'sicoob', 'sicoob', ['2026-08'], partes)).toEqual([]);
   });
 });
