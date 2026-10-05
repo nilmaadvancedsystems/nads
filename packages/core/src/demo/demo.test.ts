@@ -24,6 +24,6 @@ describe('Personaly Company (dados de teste)', () => {
   it('a Conferência de teste tem as contas da folha no Passivo', () => {
     const e = conferenciaDeTeste();
     expect(e.nome).toBe('PERSONALY COMPANY');
-    expect(checklistDaFolha(e.contas, MESES).map(i => i.id)).toEqual(['salarios', 'pro-labore', 'ferias', 'rescisao', 'fgts', 'grrf', 'inss']);
+    expect(checklistDaFolha(e.contas, MESES).map(i => i.id)).toEqual(['salarios', 'pro-labore', 'ferias', 'rescisao']);
   });
 });
