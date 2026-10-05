@@ -180,12 +180,15 @@ export function Executor() {
           {vm.revendo && (
             // revendo uma etapa concluída: a barra de cima avisa e só o Editar mexe (Vitor, 05/10/2026)
             // o Alerta do catálogo (Vitor, 05/10/2026: só as peças que existem)
+            // numa linha só (Vitor, 05/10/2026: "o mais horizontal possível"): o título, o texto e os botões à direita
+            <div className="alerta-linha">
             <Alerta tom="ok" titulo={vm.etapa.nome + ' já foi concluída'} texto="As ações desta etapa estão travadas.">
-              <div className="btn-row" style={{ justifyContent: 'flex-start', marginTop: 8 }}>
+              <div className="btn-row">
                 <button type="button" className="btn btn-primary" onClick={() => { void vm.editar(); }}>Editar</button>
                 <button type="button" className="btn" onClick={vm.voltarAEtapaDaVez}>Ir para a etapa da vez</button>
               </div>
             </Alerta>
+            </div>
           )}
           <div className={'executor-ferramenta' + (vm.revendo ? ' revendo' : '')} inert={vm.revendo || undefined} aria-disabled={vm.revendo || undefined}>
             {/* a ferramenta carregando: o N no meio, sobre um vidro embaçado (em vez da área vazia) */}

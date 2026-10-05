@@ -60,7 +60,7 @@ export interface Derivado {
   aprendidas: number[];
 }
 
-export function derivar(e: Estado, contas: cr.ContasCreditor, aprendidos: cr.ClientesAprendidos, clientes: readonly cr.ContaDoBalancete[], porNf?: ReadonlyMap<string, cr.ContaDaNota>): Derivado {
+export function derivar(e: Estado, contas: cr.ContasCreditor, aprendidos: cr.ClientesAprendidos, clientes: readonly cr.ContaDoBalancete[], porNf?: ReadonlyMap<string, readonly cr.ContaDaNota[]>): Derivado {
   const titulos = e.relatorio ? e.relatorio.grupos.flatMap(g => g.titulos) : [];
   const conferido = titulos.length > 0;
   const cruzamentos = cr.cruzarPeloBalancete(titulos, clientes, aprendidos, porNf);

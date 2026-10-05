@@ -67,12 +67,14 @@ export function mesmoNomeDeCliente(sacado: string, conta: string): boolean {
   return semelhancaDeNome(sacado, conta) >= SEMELHANCA_MINIMA;
 }
 
-export function cruzarPeloBalancete(titulos: Titulo[], clientes: readonly ContaDoBalancete[], aprendidos: ClientesAprendidos, porNf?: ReadonlyMap<string, ContaDaNota>): Cruzamento[] {
+export function cruzarPeloBalancete(titulos: Titulo[], clientes: readonly ContaDoBalancete[], aprendidos: ClientesAprendidos, porNf?: ReadonlyMap<string, readonly ContaDaNota[]>): Cruzamento[] {
   return titulos.map((t): Cruzamento => {
     const base = { tituloId: t.id, valorBanco: t.valor, valorSistema: null };
     const linha = (contrapartida: string, cliente: string) => ({ linha: 0, nf: t.nf, cliente, contrapartida, historico: '', valor: t.valor });
-    // a NF está no relatório de Saídas com a conta: é ela
-    const daNota = porNf?.get(chaveNf(t.nf));
+    // a NF está no relatório de Saídas com a conta, e a nota é do mesmo cliente (o número do banco nem sempre é a NF):
+    // é ela; mais de uma conta possível, segue pelo balancete
+    const doCliente = (porNf?.get(chaveNf(t.nf)) || []).filter(n => mesmoNomeDeCliente(t.sacado, n.nome));
+    const daNota = doCliente.length === 1 ? doCliente[0] : null;
     if (daNota) {
       const doBalancete = clientes.find(c => c.codigo === daNota.conta);
       return { ...base, situacao: 'ok', linha: linha(daNota.conta, doBalancete?.nome || daNota.nome), nota: 'Conta pelo relatório de Saídas (NF ' + chaveNf(t.nf) + ').', pelaSaida: true };

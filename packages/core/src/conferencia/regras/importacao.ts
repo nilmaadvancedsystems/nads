@@ -46,6 +46,8 @@ export function mesclarNotas(existentes: Nota[], novas: Nota[], modo: ModoImport
       if (!ex) { const c = { ...n }; atuais.push(c); porChave[k] = c; add++; continue; }
       if (n.doc && ex.doc !== n.doc) ex.doc = n.doc;
       if (n.exportado && ex.exportado !== n.exportado) ex.exportado = n.exportado;
+      // a conta contábil do cliente (o Creditor acha a conta pela NF): reimportar o mesmo relatório já traz ela
+      if (n.conta && ex.conta !== n.conta) ex.conta = n.conta;
       if (ex.lanc !== n.lanc || ex.nome !== n.nome || ex.desc !== n.desc) { ex.lanc = n.lanc; ex.nome = n.nome; ex.desc = n.desc; atualizadas++; }
     }
   }

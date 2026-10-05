@@ -2767,3 +2767,9 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .arquivador-pe .fraco{margin:0;color:var(--ink-muted);align-self:stretch;}
 /* o seletor de competência travado (aberto pela Tarefa): o mesmo botão, apagado e sem clique */
 .seletor-travado{display:inline-flex;opacity:.5;pointer-events:none;user-select:none;}
+/* o Alerta numa linha só (o aviso da etapa concluída no executor): título, texto e botões lado a lado — só disposição */
+.alerta-linha .alert{align-items:center;padding:8px 12px;}
+.alerta-linha .alert > svg{margin-top:0;}
+.alerta-linha .alert > div{display:flex;align-items:center;gap:8px 12px;flex:1;flex-wrap:wrap;}
+.alerta-linha .alert-text{margin:0;}
+.alerta-linha .btn-row{margin:0 0 0 auto;}

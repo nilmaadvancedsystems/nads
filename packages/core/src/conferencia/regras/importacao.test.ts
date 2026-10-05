@@ -21,6 +21,11 @@ describe('mesclarNotas', () => {
     expect(r.atualizadas).toBe(0);
     expect(r.notas[0]).toMatchObject({ doc: '99', exportado: 'Sim' });
   });
+  it('"novas": a conta contábil que o relatório passou a trazer entra nas notas já guardadas', () => {
+    const r = mesclarNotas(antigas, [{ ...antigas[0], conta: '86088' }], 'novas');
+    expect(r.atualizadas).toBe(0);
+    expect(r.notas.find(n => n.numero === '1')?.conta).toBe('86088');
+  });
   it('"sobrepor": fica só o arquivo, sem repetidas', () => {
     const r = mesclarNotas(antigas, [nota('1102', '6', 5, '9'), nota('1102', '7', 5, '9')], 'sobrepor');
     expect(r.notas.length).toBe(1);
