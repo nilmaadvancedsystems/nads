@@ -3,7 +3,7 @@
 // No formato de régua (Vitor, 05/10/2026: "só com ano e mês, o usuário usa o scroll para rolar o que ele quer"): duas
 // faixas, Ano e Mês, que andam de lado de um em um (a rodinha do mouse também), deslizando; o do meio é o escolhido, em vermelho. Sem
 // título e sem o Selecionar: dois cliques (ou Enter) abrem. Só de 2026 para frente e só os meses que já começaram.
-import { classeDaJanela, Icone } from '@nads/ui';
+import { classeDaJanela } from '@nads/ui';
 import { animate, spring, stagger, utils } from 'animejs';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
@@ -184,9 +184,10 @@ export function JanelaDaCompetencia({ competencias, competencia, onSeguir }: {
     setC(ms.includes(a + c.slice(4)) ? a + c.slice(4) : ms[ms.length - 1] || c);
   };
   return (
-    <div className="modal-overlay" onMouseDown={ev => { if (ev.target === ev.currentTarget) onSeguir(competencia); }}>
+    // sem fechar (Vitor, 05/10/2026: "não pode ter a opção de fechar caso não tenha selecionado a competência"): nem ×, nem
+    // clicar fora; só sai escolhendo um mês (dois cliques ou Enter)
+    <div className="modal-overlay">
       <div ref={caixa} className={classeDaJanela({}) + ' competencia-janela'} role="dialog" aria-modal="true" aria-label="Competência">
-        <button type="button" className="modal-x" aria-label="Fechar" title="Fechar" onClick={() => onSeguir(competencia)}><Icone nome="x" /></button>
         <div className="comp-rolos">
           <Rolo rotulo="Ano" itens={anos.map(a => ({ valor: a, texto: a }))} valor={ano} onEscolher={trocarAno} onAbrir={() => onSeguir(c)} />
           <Rolo rotulo="Mês" itens={meses.map(v => ({ valor: v, texto: NOMES[Number(v.slice(5, 7)) - 1] }))} valor={c} foco onEscolher={setC} onAbrir={onSeguir} />
