@@ -2847,3 +2847,22 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .comp-rolo:active{cursor:grabbing;}
 .comp-rolo-item,.comp-rolo-item.on{font-size:16px;transform-origin:50% 60%;transition:color .2s ease !important;}
 .comp-rolo-item.on{font-weight:700;}
+/* Arquivar agora › Agora sem nada rodando (Vitor, 05/10/2026: "melhore isso"): o dia e a última rodada em blocos, os
+   clientes com uma barra do tamanho de cada um; o selo verde quando já houve organização hoje */
+.arquivador-bloco{display:flex;flex-direction:column;gap:12px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);}
+.arquivador-bloco + .arquivador-bloco{margin-top:12px;}
+.arquivador-bloco-topo{display:flex;align-items:baseline;justify-content:space-between;gap:8px;}
+.arquivador-bloco-topo b{font-size:14px;}
+.arquivador-bloco-topo .fraco{font-size:12px;color:var(--ink-muted);}
+.arquivador-janela .arquivador-bloco .arquivador-numeros{margin:0;}
+.arquivador-barras{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
+.arquivador-barras li{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(60px,1fr) 44px;align-items:center;gap:10px;font-size:12.5px;}
+.arquivador-barras-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);}
+.arquivador-barras-nome b{color:var(--ink-muted);font-weight:600;margin-right:2px;font-variant-numeric:tabular-nums;}
+.arquivador-barras-trilho{height:6px;border-radius:3px;background:var(--surface-3);overflow:hidden;}
+.arquivador-barras-trilho span{display:block;height:100%;border-radius:3px;background:var(--accent);}
+.arquivador-barras-n{text-align:right;font-variant-numeric:tabular-nums;}
+.arquivador-barras li.arquivador-barras-mais{display:block;font-size:12px;color:var(--ink-muted);}
+.arquivador-selo.em-dia{background:color-mix(in srgb,var(--success) 14%,var(--surface-3));}
+.arquivador-selo.em-dia svg{color:var(--success);}
+.arquivador-quem > .fraco{font-size:12px;color:var(--ink-muted);}

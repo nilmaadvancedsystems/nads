@@ -127,13 +127,34 @@ export function useArquivadorDoDrive() {
     // as últimas execuções, por dia; a aberta mostra os clientes, o relatório e a mensagem final
     execucoes: repo.execucoesRecentes().map(x => ({ id: x.id, ...doId(x.id), arquivados: x.arquivados, clientes: x.codigos.length, semCliente: x.naoIdentificados })),
     execucaoAberta,
+    // o pedido do botão só vai para o Agora aberto ou com erro (os concluídos ficam em Execuções)
+    pedidoNoAgora: !!pedido && (ABERTOS.includes(pedido.status) || pedido.status === 'erro'),
+    // a última rodada publicada (o que o Agora mostra quando nada roda): os números e os clientes que mais receberam
+    ultimaRodada: (() => {
+      const x = repo.execucoesRecentes()[0];
+      if (!x) return null;
+      const d = doId(x.id);
+      const res = repo.resultado(x.id);
+      const clientes = (res?.clientes || []).slice(0, 6);
+      const maior = Math.max(1, ...clientes.map(c => c.n));
+      return {
+        quando: (d.dia === 'Hoje' ? 'hoje' : d.dia) + ' às ' + d.hora,
+        numeros: [
+          { valor: x.arquivados, rotulo: x.arquivados === 1 ? 'arquivo arquivado' : 'arquivos arquivados', aviso: false },
+          { valor: x.codigos.length, rotulo: x.codigos.length === 1 ? 'cliente' : 'clientes', aviso: false },
+          { valor: x.naoIdentificados, rotulo: 'sem cliente', aviso: x.naoIdentificados > 0 },
+        ],
+        clientes: clientes.map(c => ({ chave: c.codigo, codigo: c.codigo, nome: c.nome, n: c.n, pct: Math.round(c.n / maior * 100) })),
+        maisClientes: Math.max(0, (res?.clientes.length || 0) - clientes.length),
+      };
+    })(),
     abrirExecucao: (id: string) => setExecucaoAberta(a => (a === id ? null : id)),
     verExecucao: (id: string) => setExecucaoAberta(id),
     detalheAberto: execucaoAberta ? {
       ...repo.detalhe(execucaoAberta),
       clientes: (repo.resultado(execucaoAberta)?.clientes || []).map(c => ({ chave: c.codigo, rotulo: c.codigo + ' · ' + c.nome, n: c.n })),
     } : null,
-    notaAoPedir: rodandoPorFora ? 'Se pedir agora, começa quando a organização em andamento terminar.' : 'Cada arquivo da pasta Claudio Secretario vai para a pasta do cliente, como na organização das 9h.',
+    notaAoPedir: rodandoPorFora ? 'Se pedir agora, começa quando a organização em andamento terminar.' : 'Organiza a pasta Claudio Secretario agora, como a das 9h.',
     pedido: pedido ? {
       id: pedido.id, status: pedido.status, titulo: TITULOS[pedido.status] || pedido.status, detalhe: detalhe(pedido),
       pct, etapa: aberto?.progresso ? 'Etapa ' + Math.min(aberto.progresso.feitas + 1, aberto.progresso.total) + ' de ' + aberto.progresso.total + (aberto.progresso.atual ? ': ' + aberto.progresso.atual : '') : '',
