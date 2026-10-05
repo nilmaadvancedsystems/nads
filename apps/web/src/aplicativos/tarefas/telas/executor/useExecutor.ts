@@ -92,8 +92,12 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const revista = vendo && vendo !== etapa?.id && meses.some(c => concluidaEm(vendo, c)) ? rotina.etapas.find(e => e.id === vendo) || null : null;
   const vista = revista || etapa;
   const fv = vista?.ferramenta || null;
-  const compV = revista ? meses[meses.length - 1] || competencia : competencia;
+  // a etapa "só quando adicionada" (o Creditor) trabalha os meses em que entrou: os do caixa com CRÉD.LIQ.COBRANÇA
+  // (Vitor, 05/10/2026: "já deixa configurado, de acordo com os meses de cred liq do caixa")
+  const mesesDaEtapa = vista?.soQuandoAdicionada ? meses.filter(c => t.etapaNoMes(exDe[c] || null, vista.id)) : [];
+  const compV = mesesDaEtapa[0] || (revista ? meses[meses.length - 1] || competencia : competencia);
   const juntosV = varios || !!fv?.periodo;
+  const mesesV = mesesDaEtapa.length ? '&meses=' + mesesDaEtapa.join(',') : juntosV && varios ? '&meses=' + meses.join(',') : '';
 
   // começou (ou voltou a) uma etapa: um evento por etapa aberta (conta o tempo de cada uma)
   const iniciadas = useRef(new Set<string>());
@@ -292,7 +296,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     voltarAEtapaDaVez: () => setVendo(null),
     interrompidaAntes: etapa && ex ? t.estadoDa(ex, etapa.id)?.situacao === 'interrompida' ? t.estadoDa(ex, etapa.id) : null : null,
     // no período, a ferramenta que trabalha vários meses recebe todos (abas por mês); as outras, o mês da vez
-    ferramenta: fv && empresa ? { nome: fv.nome, embutir: fv.embutir, requisitos: !!fv.requisitos, url: BASES[fv.app] + fv.caminho(empresas.rotaDaEmpresa(empresa)) + (fv.app === 'extratudo' ? (fv.caminho('').includes('?') ? '&' : '?') + 'competencia=' + compV + (juntosV && varios ? '&meses=' + meses.join(',') : '')
+    ferramenta: fv && empresa ? { nome: fv.nome, embutir: fv.embutir, requisitos: !!fv.requisitos, url: BASES[fv.app] + fv.caminho(empresas.rotaDaEmpresa(empresa)) + (fv.app === 'extratudo' ? (fv.caminho('').includes('?') ? '&' : '?') + 'competencia=' + compV + mesesV
       // a Conferência roda no período que a pessoa está fazendo (o mês, ou os meses do Em Lote)
       : fv.app === 'concilia-ai' ? '?meses=' + (juntosV && varios ? meses : [compV]).join(',') + (prestaServico == null ? '' : '&servicos=' + (prestaServico ? 'sim' : 'nao')) : '') } : null,
     /** os meses que a etapa ainda precisa (no período) */
