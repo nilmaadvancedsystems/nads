@@ -14,12 +14,45 @@ import { useLayoutEffect, useRef, type DependencyList, type RefObject } from 're
 /** A pessoa pediu menos movimento no computador (ou fora de um navegador de verdade: os testes). Vale só para o carregamento. */
 export const prefereMenosMovimento = () => typeof window === 'undefined' || typeof window.matchMedia !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/**
- * O nads não anima (Vitor, 02/10/2026: "remova todas as animações, deixando apenas as de loading, tá muito cheio de
- * animação desnecessária"): tudo vai direto para o estado final. Só o carregamento se mexe (a barra do topo, a abertura
- * com o N, as rodinhas e o esqueleto), e eles usam prefereMenosMovimento. O CSS também desliga as transições (nads.css, fim).
- */
-export const semMovimento = () => true;
+// ------------------------------------------------------------------ quanto o nads anima (Minha página › Aparência e telas)
+// Vitor, 02/10/2026: primeiro "remova todas as animações, deixando apenas as de loading"; depois "quero que tenha uma
+// opção de ligar todas as animações, parcialmente, ou o normal como está agora". Vale para o navegador (localStorage):
+//   normal    só o carregamento se mexe (a barra do topo, a abertura com o N, as rodinhas e o esqueleto); o padrão
+//   parciais  também o que abre e fecha (janelas, menus, avisos, gaveta) e as transições do CSS (passar o mouse);
+//             listas e páginas em cascata, título que se revela, festa, linhas que deslizam e o Drive ficam parados
+//   todas     tudo, no jeito escolhido na Prévia das animações
+// O CSS lê html[data-animacoes] (nads.css, fim).
+export type NivelDeAnimacao = 'normal' | 'parciais' | 'todas';
+export const NIVEIS_DE_ANIMACAO: { id: NivelDeAnimacao; nome: string; dica: string }[] = [
+  { id: 'normal', nome: 'Normal', dica: 'Só as de carregamento: as telas aparecem prontas, sem movimento.' },
+  { id: 'parciais', nome: 'Parciais', dica: 'Também janelas, menus e avisos abrindo e fechando; as listas e páginas aparecem paradas.' },
+  { id: 'todas', nome: 'Todas', dica: 'Todas as animações (listas em cascata, títulos, a festa ao concluir).' },
+];
+const CHAVE_NIVEL = 'nads-animacoes';
+function lerNivel(): NivelDeAnimacao {
+  try {
+    const v = localStorage.getItem(CHAVE_NIVEL);
+    if (v === 'parciais' || v === 'todas') return v;
+  } catch { /* sem storage: o normal */ }
+  return 'normal';
+}
+let nivel: NivelDeAnimacao = typeof window === 'undefined' ? 'normal' : lerNivel();
+function marcarNivelNoHtml() {
+  if (typeof document !== 'undefined') document.documentElement.dataset.animacoes = nivel;
+}
+marcarNivelNoHtml();
+export const nivelDeAnimacao = (): NivelDeAnimacao => nivel;
+/** Troca quanto o nads anima (vale na hora e fica guardado neste navegador). */
+export function definirNivelDeAnimacao(n: NivelDeAnimacao): void {
+  nivel = n;
+  try { localStorage.setItem(CHAVE_NIVEL, n); } catch { /* vale só agora */ }
+  marcarNivelNoHtml();
+}
+
+/** Nada se mexe (o Normal): tudo vai direto para o estado final. Só o carregamento anima (usa prefereMenosMovimento). */
+export const semMovimento = () => nivel === 'normal';
+/** Só nas Todas: o que é mais que abrir e fechar (cascatas, título, festa, linhas deslizando, o Drive). */
+export const semMovimentoForte = () => nivel !== 'todas';
 
 /** A curva de entrar/sair da tela: rápida no começo, assenta devagar. */
 export const ENTRAR = cubicBezier(0.23, 1, 0.32, 1);
@@ -267,7 +300,7 @@ export function useIndicador<T extends HTMLElement>(seletorAtivo: string, deps: 
 
 /** O check se desenha (o traço vai de uma ponta à outra), com o selo crescendo junto. */
 export function desenharCheck(svg: SVGSVGElement, atraso = 0): void {
-  if (semMovimento()) return;
+  if (semMovimentoForte()) return;
   const caminhos = svg.querySelectorAll('path, polyline, circle');
   if (!caminhos.length) return;
   const desenhos = createDrawable(caminhos as unknown as SVGGeometryElement[]);
@@ -280,7 +313,7 @@ export function desenharCheck(svg: SVGSVGElement, atraso = 0): void {
  * vermelhas e prateadas (as cores do N) saem dele. faiscas=false: só o selo e o check (o sucesso do dia a dia).
  */
 export function celebrar(svg: SVGSVGElement, faiscas = true): void {
-  if (semMovimento()) return;
+  if (semMovimentoForte()) return;
   animate(svg, { opacity: [0, 1], scale: [0.4, 1], rotate: [-30, 0], ease: MOLA_VIVA });
   desenharCheck(svg, 120);
   if (!faiscas) return;
@@ -308,7 +341,7 @@ export function celebrar(svg: SVGSVGElement, faiscas = true): void {
  * Devolve o desfazer (o texto volta a ser só texto). O elemento precisa de key={texto} no React.
  */
 export function revelarTitulo(el: HTMLElement): (() => void) | null {
-  if (semMovimento() || !el.textContent?.trim()) return null;
+  if (semMovimentoForte() || !el.textContent?.trim()) return null;
   const partes = splitText(el, { words: { wrap: 'clip' } });
   const a = animate(partes.words, {
     translateY: ['105%', '0%'], ...(jeito === 'marca' ? { filter: desfoque(4) } : {}),
@@ -353,6 +386,8 @@ export function encerrarPaginas(): void {
 export function entrar(peca: Peca, alvos: Element | Element[] | NodeListOf<Element>, o: { maximo?: number; atraso?: number; mais?: AnimationParams } = {}): JSAnimation | null {
   const lista = (alvos instanceof Element ? [alvos] : Array.from(alvos)) as HTMLElement[];
   if (!lista.length) return null;
+  // nas Parciais, as listas e as páginas aparecem paradas (só o que abre e fecha se mexe)
+  if ((peca === 'lista' || peca === 'pagina' || peca === 'gavetaItens' || peca === 'repetida' || peca === 'alerta') && semMovimentoForte()) return null;
   const r = RECEITAS[jeito][peca];
   const animados = lista.slice(0, o.maximo ?? 24);
   const atraso = (r.atraso ?? 0) + (o.atraso ?? 0);
@@ -417,7 +452,7 @@ export function useLinhasQueSeMovem<T extends HTMLElement>(ordem: string, quieto
       const t = tr.textContent || '';
       novo.set(id, t);
       const era = vistos.get(id);
-      if (era !== undefined && era !== t && !semMovimento()) {
+      if (era !== undefined && era !== t && !semMovimentoForte()) {
         tr.querySelectorAll('td').forEach(td => td.animate(
           [{ backgroundColor: 'var(--accent-soft)' }, { backgroundColor: 'var(--accent-soft)', offset: 0.25 }, { backgroundColor: 'transparent' }],
           { duration: 1400, easing: 'ease-out' }));
@@ -434,7 +469,7 @@ export function useLinhasQueSeMovem<T extends HTMLElement>(ordem: string, quieto
     const digitou = quietoAntes.current !== quieto;
     antes.current = agora;
     quietoAntes.current = quieto;
-    if (!eram || !eram.size || digitou || semMovimento()) return;
+    if (!eram || !eram.size || digitou || semMovimentoForte()) return;
     const novas: HTMLElement[] = [];
     const ms = jeito === 'suave' ? 700 : 520;
     for (const tr of linhas) {

@@ -2360,7 +2360,12 @@ tr.linha-abre,.imp-linha,.gh-crumb,.drawer-x{
 /* O nads não anima (Vitor, 02/10/2026: "remova todas as animações, deixando apenas as de loading"): nenhuma transição
    nem animação de CSS. Só o carregamento continua: as rodinhas, o brilho do esqueleto e a abertura com o N (a barra do
    topo e o N andam pelo animejs, fora daqui). */
-*,*::before,*::after{transition:none !important;animation:none !important;}
+/* (o nível vem da Minha página › Aparência e telas, html[data-animacoes]: normal (padrão), parciais ou todas; o :where
+   deixa a regra sem peso, como o * de antes, para as do carregamento abaixo ganharem) */
+:where(html:not([data-animacoes=parciais]):not([data-animacoes=todas])) *,
+:where(html:not([data-animacoes=parciais]):not([data-animacoes=todas])) *::before,
+:where(html:not([data-animacoes=parciais]):not([data-animacoes=todas])) *::after{transition:none !important;animation:none !important;}
+:where(html[data-animacoes=parciais]) *,:where(html[data-animacoes=parciais]) *::before,:where(html[data-animacoes=parciais]) *::after{animation:none !important;}
 .btn-spinner{animation:spin .6s linear infinite !important;}
 .drive-girando{animation:drive-gira .8s linear infinite !important;}
 .icon-btn.girando svg{animation:drive-gira 1s linear infinite !important;}
@@ -2369,7 +2374,7 @@ tr.linha-abre,.imp-linha,.gh-crumb,.drawer-x{
 .abertura.vidro::before{animation:vidroLuz 7s var(--ease-in-out) infinite alternate !important;}
 .abertura.vidro::after{animation:vidroLuz 8s var(--ease-in-out) infinite alternate-reverse !important;}
 /* a barrinha que esvaziava na janela de "feito" era só animação */
-.modal-ok-barra{display:none;}
+html:not([data-animacoes=todas]) .modal-ok-barra{display:none;}
 
 /* Em lote: os meses numa tabela só, embaixo de cada banco (Vitor, 02/10/2026: "tá muito feio"). Meses em cima (clicar
    abre), Extrato e Razão nas linhas, um ícone por mês, sem caixa em volta de cada um. */
@@ -2651,3 +2656,10 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .reinf-acoes .btn + .btn{margin-left:6px;}
 .reinf-retificadas{display:inline-flex;flex-wrap:wrap;gap:4px;}
 .btn.reinf-retificada{border-color:var(--warn);color:var(--warn);}
+/* A barra do robô trabalhando (Gmail › Salvando no Drive, Enviando, Lendo; Vitor, 05/10/2026: "coloque animação nessa
+   barra de progresso"): é carregamento, então anima em qualquer nível — a parte cheia anda até o número novo e um brilho
+   corre por ela enquanto o robô trabalha. */
+.tarefas-barra.andando > span{position:relative;overflow:hidden;transition:width .7s var(--ease-out) !important;}
+.tarefas-barra.andando > span::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.38),transparent);
+  transform:translateX(-100%);animation:barraBrilho 1.6s var(--ease-in-out) infinite !important;}
+@keyframes barraBrilho{to{transform:translateX(100%);}}

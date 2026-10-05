@@ -9,7 +9,7 @@
 // o nads (Esc sai). "T" vai para a busca, como no GitHub.
 import type { entregas as e } from '@nads/core';
 import { cleanInlineStyles } from 'animejs';
-import { animar, entrar, GAVETA, Icone, MenuSuspenso, semMovimento, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, useRetorno } from '@nads/ui';
+import { animar, entrar, GAVETA, Icone, MenuSuspenso, semMovimentoForte, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, useRetorno } from '@nads/ui';
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent, type ReactNode, type RefObject } from 'react';
 import { EnviarAoSecretario } from './EnviarAoSecretario';
 import { MeusEnvios } from './MeusEnvios';
@@ -241,7 +241,7 @@ export function ExploradorDoDrive() {
   const alternarPainel = () => {
     direitaAntes.current = direita.current?.getBoundingClientRect().left ?? null;
     const p = painel.current;
-    if (p && vm.mostrarArvore && !semMovimento()) {
+    if (p && vm.mostrarArvore && !semMovimentoForte()) {
       const r = p.getBoundingClientRect();
       const f = p.cloneNode(true) as HTMLElement;
       f.setAttribute('data-fantasma', '');
@@ -256,7 +256,7 @@ export function ExploradorDoDrive() {
     const d = direita.current;
     const x0 = direitaAntes.current;
     direitaAntes.current = null;
-    if (!d || x0 === null || semMovimento()) return;
+    if (!d || x0 === null || semMovimentoForte()) return;
     const dx = x0 - d.getBoundingClientRect().left;
     if (Math.abs(dx) > 1) d.animate([{ translate: dx + 'px 0' }, { translate: '0 0' }], { duration: 440, easing: 'cubic-bezier(0.32, 0.72, 0, 1)' });
     if (vm.mostrarArvore && painel.current) animar(painel.current, { opacity: [0, 1], translateX: [-56, 0], duration: 440, ease: GAVETA, onComplete: a => { cleanInlineStyles(a); } });
