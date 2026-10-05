@@ -12,6 +12,8 @@ import { criarAcessoFirestore } from './acesso.firestore';
 import { criarDriveFirestore } from './drive.firestore';
 import { criarSessaoEntregas, type SessaoEntregas } from './entregas.firestore';
 import { criarGmailFirestore } from './gmail.firestore';
+import { criarArquivadorMemoria, type RepoArquivador } from './arquivador';
+import { criarArquivadorFirestore } from './arquivador.firestore';
 import { criarIAMemoria, type RepoIA } from './ia';
 import { criarIAFirestore } from './ia.firestore';
 import { criarPessoalMemoria, type RepoPessoal } from './pessoal';
@@ -154,6 +156,17 @@ export function repoPessoal(): RepoPessoal {
     pessoal = noBanco ? criarPessoalFirestore(() => { const q = quemPede(); return q ? { uid: q.uid, email: q.email } : null; }) : criarPessoalMemoria();
   }
   return pessoal;
+}
+
+let arquivador: RepoArquivador | null = null;
+
+/** O "Arquivar agora" (o arquivador do PC do escritório, o mesmo das Pendências do Entregas). */
+export function repoDoArquivador(): RepoArquivador {
+  if (!arquivador) {
+    arquivador = noBanco ? criarArquivadorFirestore(() => { const q = quemPede(); return q ? { nome: q.nome, uid: q.uid } : null; })
+      : criarArquivadorMemoria(() => { try { const n = localStorage.getItem('nads-tarefas-operador'); return n ? { nome: n } : null; } catch { return null; } });
+  }
+  return arquivador;
 }
 
 let ia: RepoIA | null = null;

@@ -2754,3 +2754,20 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
   .usuarios-item{grid-template-columns:40px minmax(0,1fr) auto 16px;}
   .usuarios-cargo,.usuarios-papeis,.usuarios-pcs{display:none;}
 }
+/* Drive › Arquivar agora (o arquivador do PC, como nas Pendências do Entregas): o botão ocupado e o painel */
+.arquivador-btn.ocupado{border-color:var(--accent);color:var(--accent-ink, var(--ink));}
+.arquivador-painel{display:flex;flex-direction:column;gap:12px;padding:12px;font-size:13px;}
+.arquivador-pc{display:flex;align-items:center;gap:8px;margin:0;color:var(--ink-muted);}
+.arquivador-ponto{width:8px;height:8px;border-radius:50%;background:var(--danger);flex:none;}
+.arquivador-pc.ligado .arquivador-ponto{background:var(--success);}
+.arquivador-pedido{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);}
+.arquivador-pedido.erro{border-color:var(--danger);}
+.arquivador-pedido.concluido{border-color:color-mix(in srgb,var(--success) 50%,var(--border));}
+.arquivador-pedido .fraco{color:var(--ink-muted);}
+.arquivador-pedido .tarefas-barra{width:100%;}
+.arquivador-etapa{display:flex;justify-content:space-between;gap:8px;width:100%;}
+.arquivador-passos{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;width:100%;font-size:12px;}
+.arquivador-passos li{display:flex;gap:8px;}
+.arquivador-passos li.sub{padding-left:16px;color:var(--ink-muted);}
+.arquivador-pe{display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
+.arquivador-pe .fraco{margin:0;color:var(--ink-muted);align-self:stretch;}

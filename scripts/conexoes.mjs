@@ -21,6 +21,8 @@
 // E a Minha página (2026-10-02, pedido do Vitor): a própria foto (usuarios/{uid}.fotoPerfil, em acesso.firestore.ts) e,
 // em aplicativos/tarefas/dados/pessoal.firestore.ts, os pedidos de e-mail da pessoa (solicitacoesEmail, só leitura), as
 // Anotações dela (usuarios/{uid}/notas, as mesmas do Entregas) e os arquivados da caixa (usuarios/{uid}.nadsArquivados).
+// Drive › Arquivar agora (2026-10-05, pedido do Vitor), em dados/arquivador.firestore.ts: o pedido em solicitacoesArquivo
+// (o mesmo das Pendências do Entregas; o arquivador do PC atende) e robo/arquivador (só leitura, o ponto do PC).
 // Cadastro › Novo usuário (2026-10-05, pedido do Vitor): o admin cria o login no Firebase Auth do Entregas (numa
 // instância à parte, entregas.firestore.ts criarLoginNoEntregas) e grava usuarios/{uid} (acesso.firestore.ts).
 // E o chat com a IA (2026-10-02, pedido do Vitor), em aplicativos/tarefas/dados/ia.firestore.ts: o mesmo do Entregas,

@@ -11,6 +11,7 @@ import type { entregas as e } from '@nads/core';
 import { cleanInlineStyles } from 'animejs';
 import { animar, entrar, GAVETA, Icone, MenuSuspenso, semMovimentoForte, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, useRetorno } from '@nads/ui';
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent, type ReactNode, type RefObject } from 'react';
+import { BotaoDoArquivador } from './BotaoDoArquivador';
 import { EnviarAoSecretario } from './EnviarAoSecretario';
 import { MeusEnvios } from './MeusEnvios';
 import { MenuDeContexto, type LinhaDoMenu, type MenuAberto } from './MenuDeContexto';
@@ -425,6 +426,7 @@ export function ExploradorDoDrive() {
             <span className="tarefas-barra-espaco" />
             <Busca vm={vm} campo={busca} />
             {enviar}
+            <BotaoDoArquivador />
           </div>
           <Lista vm={vm} aoMenu={abrirMenu} acima={false} baixarMarcados={baixarMarcados} />
         </div>
@@ -473,6 +475,7 @@ export function ExploradorDoDrive() {
           <button type="button" className="icon-btn" title="Copiar o caminho" aria-label="Copiar o caminho" onClick={() => copiar(caminhoDaPasta, 'Caminho')}><Icone nome="copiar" /></button>
           <span className="tarefas-barra-espaco" />
           {enviar}
+          <BotaoDoArquivador />
           {mais}
         </div>
         <Lista vm={vm} aoMenu={abrirMenu} acima={vm.podeSubir} baixarMarcados={baixarMarcados} faixaFora />
