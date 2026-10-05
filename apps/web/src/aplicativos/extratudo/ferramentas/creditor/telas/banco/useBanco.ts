@@ -1,5 +1,5 @@
 // ViewModel da etapa Relatório do banco, no visual da Importação (Vitor, 05/10/2026): a linha do relatório com o que
-// foi lido (títulos, dias, valor), o check (ou o logo do Drive) que exclui, a seta que abre os títulos, e o importar
+// foi lido (os títulos e o valor liquidado), o check (ou o logo do Drive) que exclui, a seta que abre os títulos, e o importar
 // (do computador ou o exemplo) quando ainda não tem. Avisa os títulos liquidados fora da competência.
 import { creditor as cr } from '@nads/core';
 import { useRetorno } from '@nads/ui';
@@ -47,7 +47,6 @@ export function useBanco() {
 
   const titulos = r ? r.grupos.flatMap(g => g.titulos) : [];
   const foraDoMes = cr.titulosForaDaCompetencia(titulos, s.estado.competencia);
-  const dias = new Set(titulos.map(t => t.liquidacao)).size;
   const origem = s.estado.origemBanco;
   return {
     competencia: cr.rotuloCompetencia(s.estado.competencia),
@@ -62,7 +61,8 @@ export function useBanco() {
       doDrive: origem.startsWith('Drive'),
       qtd: titulos.length,
       /** no meio da linha, como o "Extrato: 12 lançamentos" da Importação */
-      resumo: [titulos.length + (titulos.length === 1 ? ' título' : ' títulos'), dias + (dias === 1 ? ' dia' : ' dias') + ' de liquidação', cr.brl(cr.somar(titulos.map(t => t.valor)))],
+      // os títulos e o valor liquidado, com R$ (Vitor, 05/10/2026: sem os dias)
+      resumo: [titulos.length + (titulos.length === 1 ? ' título' : ' títulos'), 'Liquidado R$ ' + cr.brl(cr.somar(titulos.map(t => t.valor)))],
       titulos: titulos.map(t => ({ id: t.id, liquidacao: t.liquidacao, sacado: t.sacado, nf: t.nf, valor: t.valor, juros: t.mora + t.outros, desconto: t.desconto, cobrado: t.cobrado })),
       avisos: [
         ...r.avisos,
