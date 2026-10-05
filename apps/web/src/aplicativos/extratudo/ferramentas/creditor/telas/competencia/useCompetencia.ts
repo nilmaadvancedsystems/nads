@@ -133,7 +133,7 @@ export function useCompetencia() {
       botoes: [{ rotulo: 'Excluir', valor: true, variante: 'btn-danger' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
     });
     if (!ok) return;
-    if (inteiro) s.mudar(e => ({ ...e, relatorio: null, porMes: {}, origemBanco: '', decisoes: {}, passosFiscal: [], alcancada: 0 }));
+    if (inteiro) s.mudar(e => ({ ...e, relatorio: null, porMes: {}, origemBanco: '', decisoes: {}, passosFiscal: [], baixado: false, bancoConferido: false, alcancada: 0 }));
     else s.relatorioDoMes(mes, null);
     aviso({ tom: 'ok', titulo: 'Importação excluída', texto: 'Relatório de liquidação' + (lote ? ' · ' + cr.rotuloCompetencia(mes) : '') });
   }
