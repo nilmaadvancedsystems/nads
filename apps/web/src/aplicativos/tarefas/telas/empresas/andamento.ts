@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router';
 import { useExecucoes, useRepo } from '../../dados/repo';
 import { useOperador, type Operador } from '../../casca/operador';
 import { competenciasDaTela } from '../../casca/navegacao';
+import { useDepartamentoDaTela } from '../../casca/departamento';
 
 export const SITUACOES: readonly { valor: t.SituacaoGeral; rotulo: string }[] = [
   { valor: 'parada', rotulo: 'Paradas' },
@@ -22,8 +23,10 @@ export function useAndamento() {
   const [params, setParams] = useSearchParams();
   const competencias = competenciasDaTela(12);
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
-  const rotina = t.rotinaDo(op.departamento);
-  const { execucoes, carregada } = useExecucoes(competencia, op.departamento);
+  // a rotina da tela: a do Fiscal no módulo Fiscal; senão, a do departamento da pessoa
+  const { dep } = useDepartamentoDaTela();
+  const rotina = t.rotinaDo(dep);
+  const { execucoes, carregada } = useExecucoes(competencia, dep);
   const porNome = new Map(execucoes.map(e => [e.empresa, e]));
 
   const linhas = rotina ? repo.listarEmpresas().map(emp => {

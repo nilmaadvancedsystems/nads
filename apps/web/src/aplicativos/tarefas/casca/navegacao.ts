@@ -29,8 +29,11 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'usuarios', rotulo: 'Usuários', icone: 'checklist', titulo: 'Cadastro — usuários' },
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Cadastro — configurações' },
   ] },
-  { id: 'fiscal', nome: 'Fiscal', icone: 'fileText', pronta: false, paginas: [
-    { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Fiscal' },
+  // o Fiscal no mesmo modelo do Contábil (Vitor, 05/10/2026): as empresas com a rotina do Fiscal, a visão e as paradas
+  { id: 'fiscal', nome: 'Fiscal', icone: 'fileText', pronta: true, paginas: [
+    { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Fiscal — empresas' },
+    { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Fiscal — visão geral' },
+    { id: 'paradas', rotulo: 'Paradas', icone: 'alert', titulo: 'Fiscal — etapas paradas' },
   ] },
   { id: 'drive', nome: 'Drive', icone: 'pasta', pronta: true, paginas: [
     { id: 'pastas', rotulo: 'Pastas', icone: 'pasta', titulo: 'Drive — pasta do ano' },

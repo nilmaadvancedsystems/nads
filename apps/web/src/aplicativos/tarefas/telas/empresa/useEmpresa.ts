@@ -6,9 +6,10 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { extratorDaEmpresa } from '../../dados/fonte';
 import { useRepo, useVersaoDoRepo } from '../../dados/repo';
-import { caminhoDaEmpresa, caminhoDaPagina, caminhoDoExecutor, competenciasDaTela } from '../../casca/navegacao';
+import { caminhoDaEmpresa, caminhoDoExecutor, competenciasDaTela } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 import { ACAO } from '../empresas/andamento';
+import { useDepartamentoDaTela } from '../../casca/departamento';
 
 /** Quantos meses o histórico mostra. */
 const MESES_HISTORICO = 6;
@@ -31,7 +32,8 @@ export function useEmpresa(rota: string) {
   const navegar = useNavigate();
   const [params, setParams] = useSearchParams();
   const op = useOperador().operador as Operador;
-  const rotina = t.rotinaDo(op.departamento);
+  const { dep: depDaTela, comDep, lista } = useDepartamentoDaTela();
+  const rotina = t.rotinaDo(depDaTela);
   const competencias = competenciasDaTela(12);
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
   const empresa = empresas.empresaPelaRota(repo.listarEmpresas(), rota);
@@ -102,8 +104,8 @@ export function useEmpresa(rota: string) {
     etapas, historico,
     extratos, carregandoExtratos: arquivos === null,
     acao: ACAO[situacao],
-    abrirExecutor: () => navegar(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), competencia)),
-    abrirCompetencia: (c: string) => navegar(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), c)),
-    voltar: () => navegar(caminhoDaPagina('minhas-empresas', 'empresas') + '?competencia=' + competencia),
+    abrirExecutor: () => navegar(comDep(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), competencia))),
+    abrirCompetencia: (c: string) => navegar(comDep(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), c))),
+    voltar: () => navegar(lista + '?competencia=' + competencia),
   };
 }

@@ -12,9 +12,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { extratorDaEmpresa, repoDoCadastro } from '../../dados/fonte';
 import { useExecucoesDoPeriodo, usePrestaServico, useRepo } from '../../dados/repo';
-import { caminhoDaEmpresa, caminhoDaPagina, caminhoDoExecutor } from '../../casca/navegacao';
+import { caminhoDaEmpresa, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../comum/desenvolvimento';
+import { useDepartamentoDaTela } from '../../casca/departamento';
 
 /**
  * Onde cada aplicativo mora. O Extratudo vem junto no site da Tarefas (mesmo endereço: o login do Entregas
@@ -41,7 +42,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const { toast, modal, aviso: avisar } = useRetorno();
   const op = useOperador().operador as Operador;
   // a rotina do departamento de quem está trabalhando (Contábil ou Fiscal)
-  const rotina = t.rotinaDo(op.departamento) || t.ROTINA_CONTABIL;
+  const { dep, comDep, lista } = useDepartamentoDaTela();
+  const rotina = t.rotinaDo(dep) || t.ROTINA_CONTABIL;
   // as seções da rotina, na ordem (Preparação, Ativo, Passivo, Resultado, Fechamento)
   const secoes = [...new Set(rotina.etapas.map(e => e.secao || ''))];
   const empresa = empresas.empresaPelaRota(repo.listarEmpresas(), rotaEmpresa);
@@ -125,7 +127,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   }
 
   const ultimo = meses[meses.length - 1] || competencia;
-  const voltar = () => navegar(caminhoDaPagina('minhas-empresas', 'empresas') + '?competencia=' + ultimo);
+  const voltar = () => navegar(lista + '?competencia=' + ultimo);
   const rotuloCurto = (c: string) => t.rotuloCurtoCompetencia(c);
 
   /** Confere e marca a etapa em cada mês que falta (no período, todos de uma vez); o que não passou vira aviso. */
@@ -282,7 +284,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       repo.gravar(m.execucao, m.evento);
     },
     /** o mês aberto faz parte de um período prometido: para onde levar */
-    irParaPeriodo: periodoDoMes && empresa ? caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), periodoDoMes) : null,
+    irParaPeriodo: periodoDoMes && empresa ? comDep(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), periodoDoMes)) : null,
     /** todos os meses do período estão concluídos (só aí dá para encerrar) */
     periodoConcluido: concluido,
     /** Encerra os vários meses (só com todos concluídos): tira a promessa de cada mês e volta ao último mês. */
@@ -297,7 +299,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
         repo.gravar(p.execucao, p.evento);
       }
       toast('Em lote cancelado: ' + t.rotuloDoPeriodo(meses) + '.');
-      navegar(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), ultimo));
+      navegar(comDep(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), ultimo)));
     },
     /** A ferramenta trocou a competência ou o período (o seletor dela): a mesma empresa, no outro período. */
     trocarCompetencia: (c: string) => {
@@ -312,7 +314,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
           repo.gravar(p.execucao, p.evento);
         }
       }
-      navegar(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), c));
+      navegar(comDep(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), c)));
     },
     abrirEmpresa: () => { if (empresa) navegar(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), ultimo)); },
   };

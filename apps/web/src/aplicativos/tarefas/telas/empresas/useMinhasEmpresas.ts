@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { caminhoDaEmpresa, caminhoDaPagina, caminhoDoExecutor } from '../../casca/navegacao';
 import { SITUACOES, useAndamento } from './andamento';
+import { useDepartamentoDaTela } from '../../casca/departamento';
 
 export const LIMITE = 60;
 /** Quantas empresas a lista do "Iniciar" mostra de uma vez. */
@@ -59,7 +60,8 @@ export function useMinhasEmpresas() {
   const achadasIniciar = buscaIniciar.trim() ? new Set(empresas.buscarEmpresas(doFiltro.map(l => l.empresa), buscaIniciar)) : null;
   const paraIniciar = doFiltro.filter(l => !achadasIniciar || achadasIniciar.has(l.empresa));
 
-  const abrir = (rota: string) => navegar(caminhoDoExecutor(rota, a.competencia));
+  const { comDep } = useDepartamentoDaTela();
+  const abrir = (rota: string) => navegar(comDep(caminhoDoExecutor(rota, a.competencia)));
 
   // Minhas recentes: onde quem está trabalhando mexeu nesta competência nos últimos 3 dias, a mais recente primeiro
   const minhas = a.linhas.filter(l => l.mexiEm).sort((x, y) => (y.mexiEm as string).localeCompare(x.mexiEm as string));
@@ -104,7 +106,7 @@ export function useMinhasEmpresas() {
     total: linhas.length,
     abrir,
     /** a página da empresa (insights dela) */
-    abrirEmpresa: (rota: string) => navegar(caminhoDaEmpresa(rota, a.competencia)),
+    abrirEmpresa: (rota: string) => navegar(comDep(caminhoDaEmpresa(rota, a.competencia))),
     // Iniciar
     buscaIniciar, setBuscaIniciar,
     paraIniciar: paraIniciar.slice(0, LIMITE_INICIAR),
