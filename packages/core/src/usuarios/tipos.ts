@@ -28,6 +28,8 @@ export interface DocUsuario {
   nivel?: string;
   /** false = desativado (o Entregas já lê este campo na Tarefas e nos robôs) */
   ativo?: boolean;
+  /** a última vez que o nads (a Tarefas) desta pessoa estava aberto (ISO; o próprio nads grava a cada 3 min) */
+  nadsVistoEm?: string;
 }
 
 /** A pessoa já lida e conferida, pronta para as telas. */
@@ -41,4 +43,6 @@ export interface Usuario {
   papeis: Papel[];
   ativo: boolean;
   fotoPerfil: string | null;
+  /** a última vez que o nads dela estava aberto (ISO), ou null se nunca abriu */
+  vistoNoNads?: string | null;
 }

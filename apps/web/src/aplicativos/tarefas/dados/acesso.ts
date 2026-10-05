@@ -32,6 +32,8 @@ export interface RepoAcesso {
   minhaFoto(): string | null;
   /** troca (ou tira, com null) a foto de perfil de quem está logado */
   salvarMinhaFoto(foto: string | null): Promise<void>;
+  /** o nads de quem está logado está aberto agora (usuarios/{uid}.nadsVistoEm): quem está online, em Usuários */
+  marcarPresenca(): Promise<void>;
   ativar(uid: string, ativo: boolean): Promise<void>;
   /** só o admin: cria a conta (o login no Entregas e o cadastro em usuarios/{uid}); devolve o e-mail do login */
   criarConta(c: usuarios.NovaConta): Promise<string>;
@@ -89,6 +91,10 @@ export function criarAcessoMemoria(quem: () => { nome: string } | null): RepoAce
     async salvarCargo(uid, dep, nivel) { Object.assign(docs[uid], usuarios.mudancaDeCargo(docs[uid], dep, nivel)); mudou(); },
     async salvarPapeis(uid, papeis) { docs[uid].roles = papeis as usuarios.Papel[]; mudou(); },
     minhaFoto: () => Object.values(docs).find(d => d.nome === quem()?.nome)?.fotoPerfil || null,
+    async marcarPresenca() {
+      const d = Object.values(docs).find(x => x.nome === quem()?.nome);
+      if (d) { d.nadsVistoEm = agora(); mudou(); }
+    },
     async salvarMinhaFoto(foto) {
       const d = Object.values(docs).find(x => x.nome === quem()?.nome);
       if (d) { d.fotoPerfil = foto || undefined; mudou(); }
