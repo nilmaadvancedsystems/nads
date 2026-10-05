@@ -113,9 +113,8 @@ export function RazaoDaEtapa({ conta, razao, conferir }: { conta: string; razao:
                     </tr>
                   </thead>
                   <tbody>
-                    <tr><th scope="row">Lançamentos</th>{razao.meses.map(m => <td key={m.mes} className={m.mes === razao.mesAberto ? 'atual' : undefined}>{m.qtd || '—'}</td>)}</tr>
                     <tr><th scope="row">Saldo final</th>{razao.meses.map(m => <td key={m.mes} className={(m.mes === razao.mesAberto ? 'atual ' : '') + 'num' + (m.credor ? ' ext-neg' : '')} title={m.credor ? 'Ficou credor em algum dia do mês' : undefined}>{m.saldoFinal}</td>)}</tr>
-                    <tr><th scope="row">Atenção</th>{razao.meses.map(m => (
+                    <tr><th scope="row">Pendências</th>{razao.meses.map(m => (
                       <td key={m.mes} className={m.mes === razao.mesAberto ? 'atual' : undefined}>
                         {m.creditor ? <span className="badge badge-neutral" title="CRÉD.LIQ.COBRANÇA: o Creditor entrou neste mês">Creditor</span> : m.atencoes || '—'}
                       </td>

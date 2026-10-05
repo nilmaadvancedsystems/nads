@@ -6,7 +6,7 @@
 import { creditor as cr } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { useContasDaEmpresa, useDrive } from '../dados/repo';
 import { caminhoDaEtapa, ETAPAS, indiceDaEtapa, type Etapa, type IdEtapa } from './navegacao';
 
@@ -132,6 +132,8 @@ export const MSG_ETAPA_TRAVADA = 'Resolva as etapas anteriores primeiro';
 
 export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { nome: string; codigo: number | null }; rota: string; etapa: IdEtapa; children: ReactNode }) {
   const navegar = useNavigate();
+  // o ?competencia=&meses= da Tarefa fica no endereço de todas as etapas
+  const { search } = useLocation();
   const { toast } = useRetorno();
   const [estado, setEstado] = useState<Estado>(INICIAL);
   const daEmpresa = useContasDaEmpresa(empresa.nome);
@@ -156,9 +158,9 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
   const abrir = useCallback((id: IdEtapa) => {
     const i = indiceDaEtapa(id);
     setEstado(e => ({ ...e, alcancada: Math.max(e.alcancada, i) }));
-    navegar(caminhoDaEtapa(rota, id));
+    navegar(caminhoDaEtapa(rota, id) + search);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [navegar, rota]);
+  }, [navegar, rota, search]);
 
   const irPara = useCallback((id: IdEtapa) => {
     if (id === etapa) return;
@@ -200,7 +202,7 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
     podeAbrir, irPara,
     proxima: () => { const p = etapas[i + 1]; if (p && requisitos(p.id, estado, d)) abrir(p.id); },
     anterior: () => { if (i > 0) abrir(etapas[i - 1].id); },
-    recomecar: () => { setEstado(INICIAL); navegar(caminhoDaEtapa(rota, 'competencia')); },
+    recomecar: () => { setEstado(INICIAL); navegar(caminhoDaEtapa(rota, 'competencia') + search); },
   };
   return <Ctx.Provider value={s}>{children}</Ctx.Provider>;
 }

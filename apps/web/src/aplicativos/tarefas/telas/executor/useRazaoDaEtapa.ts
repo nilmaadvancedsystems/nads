@@ -69,10 +69,10 @@ export function useRazaoDaEtapa(chave: string, meses: readonly string[], onImpor
     arquivo: atual?.arquivo || '',
     remover: () => setLido(null),
     resumo: atual ? 'Razão: ' + doPeriodo.reduce((n, m) => n + m.lancamentos.length, 0).toLocaleString('pt-BR') + ' lançamentos' : '',
-    /** a grade dos meses: quantos lançamentos, o saldo do fim (credor em vermelho) e quantos pontos de atenção */
+    /** a grade dos meses: o saldo do fim (sem o D; credor com o sinal de menos, em vermelho) e as pendências (Vitor, 05/10/2026) */
     meses: doPeriodo.map(m => ({
       mes: m.mes, rotulo: t.rotuloNumericoCompetencia(m.mes), qtd: m.lancamentos.length,
-      saldoFinal: t.valorComLado(m.saldoFinal), credor: m.diasCredor.length > 0,
+      saldoFinal: (m.saldoFinal > 0 ? '−' : '') + formatos.brl(Math.abs(m.saldoFinal)), credor: m.diasCredor.length > 0,
       atencoes: t.atencoesDoMes(m).reduce((n, p) => n + p.lancamentos.length, 0), creditor: t.precisaDoCreditor(m),
     })),
     mesAberto,

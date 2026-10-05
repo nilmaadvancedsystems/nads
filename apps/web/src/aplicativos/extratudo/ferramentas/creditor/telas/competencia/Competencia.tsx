@@ -141,7 +141,6 @@ function LinhaDoRelatorio({ vm, l, comDrive }: { vm: VM; l: VM['linhas'][number]
   return (
     <div className={'imp-bloco' + (l.carregado ? ' imp-ok' : '')}>
       <div className="imp-linha">
-        <span className="imp-seta" aria-hidden="true"><Icone nome="caretDown" /></span>
         <span className="imp-ico imp-logo"><Icone nome="recibo" /></span>
         <div className="imp-txt">
           <span><b>Relatório de liquidação</b>{vm.lote && <span className="imp-conta">{l.rotulo}</span>}</span>
