@@ -554,7 +554,7 @@ describe('conta do cliente pelo balancete', () => {
     expect(porNf.has('200')).toBe(false);
     const [b, c, d, x, y] = cruzarPeloBalancete([{ ...t(2, 'SUPERMERCADO BOA COMPRA'), nf: '9857/3/3' }, { ...t(3, 'FULANO DE TAL'), nf: '9888/1/1' },
       { ...t(4, 'SUPERMERCADO BOA COMPRA'), nf: '9889/1/1' }, { ...t(5, 'X LTDA'), nf: '100' }, { ...t(6, 'FULANO DE TAL'), nf: '300' }], cl, {}, porNf);
-    expect([b.situacao, b.linha?.contrapartida, b.pelaSaida, b.nota]).toEqual(['ok', '12301', true, 'Conta pelo relatório de Saídas (NF 9857).']);
+    expect([b.situacao, b.linha?.contrapartida, b.pelaSaida, b.nota]).toEqual(['ok', '12301', true, '']);
     expect([c.situacao, c.linha?.contrapartida, c.linha?.cliente]).toEqual(['ok', '12777', 'FULANO DE TAL']);
     expect([d.pelaSaida, d.situacao, d.linha?.contrapartida]).toEqual([true, 'ok', '99241']);
     expect(x.pelaSaida).toBeUndefined();

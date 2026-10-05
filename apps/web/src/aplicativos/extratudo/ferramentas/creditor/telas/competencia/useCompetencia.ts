@@ -3,7 +3,7 @@
 // computador ou do Drive). Aberto pela Tarefas, já vem nos meses em que o caixa teve CRÉD.LIQ.COBRANÇA (os meses do
 // Creditor). Do Drive, procura na pasta da empresa (CONTÁBIL › RECEBIMENTO DE CLIENTES), baixa pelo robô do Entregas
 // e lê; sem achar, mostra os arquivos da pasta para escolher. Sem o login do Drive, pede antes. Com o relatório de
-// todos os meses, o Continuar segue para as Contas (os meses juntos).
+// todos os meses, o Continuar segue para o Relatório de Recebimento (os meses juntos).
 import { creditor as cr, tarefas } from '@nads/core';
 import { useCarregando, useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';

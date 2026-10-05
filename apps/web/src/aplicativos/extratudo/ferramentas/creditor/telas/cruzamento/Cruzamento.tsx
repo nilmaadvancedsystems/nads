@@ -1,6 +1,6 @@
-// Etapa Contas do Creditor: a conta de cada título (aprendida ou do balancete) e, sem conta, a decisão.
+// Etapa Relatório de Recebimento do Creditor: a conta de cada título (aprendida ou do balancete) e, sem conta, a decisão.
 import { creditor as cr } from '@nads/core';
-import { Alerta, Segmentado, Stat } from '@nads/ui';
+import { Alerta, Segmentado } from '@nads/ui';
 import { Fragment } from 'react';
 import { Celula } from './partes/Celula';
 import { MenuDeConta } from './partes/MenuDeConta';
@@ -17,13 +17,6 @@ export function Cruzamento() {
       {vm.semBalancete && (
         <Alerta titulo="Esta empresa não tem balancete" texto="Importe o balancete no contábil para as contas dos clientes virem sozinhas. Até lá, informe a conta de cada cliente (fica aprendida)." />
       )}
-      <div className="dash-grid" style={{ marginBottom: 16 }}>
-        <Stat rotulo="Com conta" valor={vm.resumo.ok} grande={false} />
-        <Stat rotulo="Para decidir" valor={vm.resumo.pendentes + ' de ' + vm.resumo.decidir} cor={vm.resumo.pendentes ? 'entrada' : undefined} grande={false} />
-        <Stat rotulo="Excluídos" valor={vm.resumo.excluidos} grande={false} />
-        {vm.resumo.aprendidas > 0 && <Stat rotulo="Contas aprendidas" valor={vm.resumo.aprendidas} grande={false} />}
-      </div>
-
       <div className="card">
         <div className="card-head">
           <h3>Títulos</h3>
@@ -81,8 +74,8 @@ export function Cruzamento() {
         {!vm.linhas.length && <p className="hint">Nada neste filtro.</p>}
       </div>
 
-      <div className="btn-row">
-        <button className="btn btn-ghost" type="button" onClick={vm.voltar}>← Voltar</button>
+      {/* sem o Voltar (Vitor, 05/10/2026: tudo é navegável pela barra de cima) */}
+      <div className="btn-row" style={{ justifyContent: 'flex-end' }}>
         <button className="btn btn-primary" type="button" disabled={!vm.podeContinuar} onClick={vm.continuar}>
           {vm.resumo.pendentes ? 'Faltam ' + vm.resumo.pendentes + ' decisão(ões)' : 'Continuar para os lançamentos'}
         </button>
