@@ -9,7 +9,7 @@ function Selo({ l }: { l: ce.Lancamento }) {
   return <span className={'badge ' + (l.tipo === 'Ajuste' ? 'badge-warn' : 'badge-ok')}>{l.tipo}</span>;
 }
 
-const valor = (n: number) => formatos.brl(n).replace(/^R\$\s?/, '');
+const valor = (n: number) => formatos.reais(n);
 
 export function Resultado({ r }: { r: ResultadoTela }) {
   const { resumo, res } = r;
@@ -30,7 +30,7 @@ export function Resultado({ r }: { r: ResultadoTela }) {
         <Stat rotulo="Dias analisados" valor={resumo.diasAnalisados} />
         <Stat rotulo="Dias negativos" valor={resumo.diasNegativos} cor="entrada" />
         <Stat rotulo="Lançamentos gerados" valor={resumo.qtdLancamentos} />
-        <Stat rotulo="Total ajustado" valor={'R$ ' + formatos.brl(resumo.totalAjustado)} cor="saida" />
+        <Stat rotulo="Total ajustado" valor={formatos.reais(resumo.totalAjustado)} cor="saida" />
       </div>
       {r.dataProjetada && (
         <Alerta titulo="Estorno projetado"

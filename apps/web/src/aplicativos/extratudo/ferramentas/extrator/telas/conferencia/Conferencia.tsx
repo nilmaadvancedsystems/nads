@@ -43,9 +43,9 @@ export function Conferencia({ naTarefa, doArquivo, competencia }: { naTarefa?: b
       </div>
 
       <div className="stat-grid">
-        <Stat rotulo="Extrato · entradas / saídas" grande={false} valor={<><span className="ext-pos">{x.valorBR(vm.extrato.entradas)}</span> / <span className="ext-neg">{x.valorBR(vm.extrato.saidas)}</span></>} />
-        <Stat rotulo="Sistema · entradas / saídas" grande={false} valor={<><span className="ext-pos">{x.valorBR(vm.sistema.entradas)}</span> / <span className="ext-neg">{x.valorBR(vm.sistema.saidas)}</span></>} />
-        <Stat rotulo="Diferença no movimento" grande={false} valor={<span className={vm.diferenca ? 'ext-neg' : 'ext-pos'}>{vm.diferenca ? x.valorBR(vm.diferenca) : 'Zerada'}</span>} />
+        <Stat rotulo="Extrato · entradas / saídas" grande={false} valor={<><span className="ext-pos">{x.reaisBR(vm.extrato.entradas)}</span> / <span className="ext-neg">{x.reaisBR(vm.extrato.saidas)}</span></>} />
+        <Stat rotulo="Sistema · entradas / saídas" grande={false} valor={<><span className="ext-pos">{x.reaisBR(vm.sistema.entradas)}</span> / <span className="ext-neg">{x.reaisBR(vm.sistema.saidas)}</span></>} />
+        <Stat rotulo="Diferença no movimento" grande={false} valor={<span className={vm.diferenca ? 'ext-neg' : 'ext-pos'}>{vm.diferenca ? x.reaisBR(vm.diferenca) : 'Zerada'}</span>} />
       </div>
       {vm.sistemaInvertido && <p className="hint" style={{ marginBottom: 16 }}>O sistema veio com os sinais trocados (débito como saída). A conferência inverteu; o que foi importado não mudou.</p>}
 

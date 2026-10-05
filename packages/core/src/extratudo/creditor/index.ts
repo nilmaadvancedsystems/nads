@@ -22,4 +22,4 @@ export * from './repo';
 export * from './repo.memoria';
 export * from './drive';
 export * from './drive.memoria';
-export { brl } from '../../formatos';
+export { brl, reais } from '../../formatos';

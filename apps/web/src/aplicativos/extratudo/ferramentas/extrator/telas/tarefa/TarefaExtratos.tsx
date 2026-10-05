@@ -92,7 +92,7 @@ const LIMITE_CORRECOES = 30;
 
 function PendenciasDoBanco({ itens }: { itens: x.CorrecaoDoRazao[] }) {
   if (!itens.length) return null;
-  const valor = (n: number | null) => (n == null ? '' : x.valorBR(Math.abs(n)));
+  const valor = (n: number | null) => (n == null ? '' : x.reaisBR(Math.abs(n)));
   return (
     <FaixaQueAbre titulo="Pendências" qtd={itens.length} aviso>
         <>
@@ -119,7 +119,7 @@ function PendenciasDoBanco({ itens }: { itens: x.CorrecaoDoRazao[] }) {
                         </td>
                         <td className="num"><b>{valor(c.noBanco)}</b></td>
                         <td className="num"><b>{valor(c.noRazao)}</b></td>
-                        <td className={'num' + (c.diferenca ? ' ext-neg' : '')}>{c.diferenca ? (c.diferenca > 0 ? '+' : '−') + x.valorBR(Math.abs(c.diferenca)) : ''}</td>
+                        <td className={'num' + (c.diferenca ? ' ext-neg' : '')}>{c.diferenca ? (c.diferenca > 0 ? '+' : '−') + x.reaisBR(Math.abs(c.diferenca)) : ''}</td>
                       </tr>
                       {partes.map((p, j) => (
                         <tr key={j} className="imp-planilha-parte">
@@ -202,9 +202,9 @@ function Movimento({ m, pdf, onPdf, competencia }: {
         {q && (
           <div className="imp-mov-total" aria-live="polite">
             <span><b>{achadas.length}</b> {achadas.length === 1 ? 'lançamento' : 'lançamentos'}</span>
-            <span>Entrou <b className="ext-pos">{x.valorBR(entrou)}</b></span>
-            <span>Saiu <b className="ext-neg">{x.valorBR(saiu)}</b></span>
-            <span>Saldo <b className={saldoBusca < 0 ? 'ext-neg' : 'imp-mov-saldo'}>{x.valorBR(Math.abs(saldoBusca))}</b></span>
+            <span>Entrou <b className="ext-pos">{x.reaisBR(entrou)}</b></span>
+            <span>Saiu <b className="ext-neg">{x.reaisBR(saiu)}</b></span>
+            <span>Saldo <b className={saldoBusca < 0 ? 'ext-neg' : 'imp-mov-saldo'}>{x.reaisBR(Math.abs(saldoBusca))}</b></span>
           </div>
         )}
       </div>
@@ -217,16 +217,16 @@ function Movimento({ m, pdf, onPdf, competencia }: {
         <tbody>
           <tr className="imp-mov-anterior">
             <td colSpan={4}>Saldo anterior <span className="hint">{m.mesesAntes ? '(dos meses já importados)' : m.abertura != null ? '(do extrato)' : '(o extrato não trouxe)'}</span></td>
-            <td className="num">{x.valorBR(m.saldoAnterior)}</td>
+            <td className="num">{x.reaisBR(m.saldoAnterior)}</td>
           </tr>
           {!linhas.length && <tr><td colSpan={5} className="hint">Nada com essa busca.</td></tr>}
           {linhas.map((l, i) => (
             <tr key={i}>
               <td style={{ whiteSpace: 'nowrap' }}>{x.dataBR(l.data)}</td>
               <td className="wrap">{l.historico}</td>
-              <td className="num">{x.valorBR(Math.abs(l.valor))}</td>
+              <td className="num">{x.reaisBR(Math.abs(l.valor))}</td>
               <td><span className={l.valor > 0 ? 'ext-pos' : 'ext-neg'}>{l.valor > 0 ? 'Entrou' : 'Saiu'}</span></td>
-              <td className={'num' + (l.saldo < 0 ? ' ext-neg' : '')}>{x.valorBR(l.saldo)}</td>
+              <td className={'num' + (l.saldo < 0 ? ' ext-neg' : '')}>{x.reaisBR(l.saldo)}</td>
             </tr>
           ))}
         </tbody>

@@ -55,12 +55,12 @@ export function Lancamentos() {
               {vm.fechamento.map(f => (
                 <tr key={f.data} className={f.situacao === 'diverge' ? 'bad' : ''}>
                   <td>{f.data || 'sem data'}</td>
-                  <td className="num">{cr.brl(f.debitos)}</td>
-                  <td className="num">{cr.brl(f.creditos)}</td>
-                  <td className="num"><b>{cr.brl(f.liquido)}</b></td>
-                  <td className="num" title={f.fonte === 'impresso' ? 'Total cobrado impresso no relatório' : 'Soma conferida dos títulos'}>{cr.brl(f.esperado)}{f.fonte === 'extraido' ? ' *' : ''}</td>
-                  <td className="num">{f.fora ? cr.brl(f.fora) : '—'}</td>
-                  <td className="num">{cr.brl(f.diferenca)}</td>
+                  <td className="num">{cr.reais(f.debitos)}</td>
+                  <td className="num">{cr.reais(f.creditos)}</td>
+                  <td className="num"><b>{cr.reais(f.liquido)}</b></td>
+                  <td className="num" title={f.fonte === 'impresso' ? 'Total cobrado impresso no relatório' : 'Soma conferida dos títulos'}>{cr.reais(f.esperado)}{f.fonte === 'extraido' ? ' *' : ''}</td>
+                  <td className="num">{f.fora ? cr.reais(f.fora) : '—'}</td>
+                  <td className="num">{cr.reais(f.diferenca)}</td>
                   <td><span className={BADGE[f.situacao][0]}>{BADGE[f.situacao][1]}</span></td>
                 </tr>
               ))}
@@ -78,15 +78,15 @@ export function Lancamentos() {
 
       {vm.fora.length > 0 && (
         <Alerta titulo={vm.fora.length + ' título(s) fora do arquivo'}>
-          {vm.fora.map(t => <p key={t.id} className="alert-text">NF {t.nf} · {t.sacado} · {t.liquidacao} · {cr.brl(t.valor)}</p>)}
+          {vm.fora.map(t => <p key={t.id} className="alert-text">NF {t.nf} · {t.sacado} · {t.liquidacao} · {cr.reais(t.valor)}</p>)}
         </Alerta>
       )}
 
       <div className="dash-grid" style={{ margin: '16px 0' }}>
         <Stat rotulo="Lançamentos" valor={vm.totais.qtd} grande={false} />
-        <Stat rotulo="Principal" valor={cr.brl(vm.totais.principal)} grande={false} />
-        <Stat rotulo="Mora" valor={cr.brl(vm.totais.mora)} grande={false} />
-        <Stat rotulo="Descontos" valor={cr.brl(vm.totais.desconto)} grande={false} />
+        <Stat rotulo="Principal" valor={cr.reais(vm.totais.principal)} grande={false} />
+        <Stat rotulo="Mora" valor={cr.reais(vm.totais.mora)} grande={false} />
+        <Stat rotulo="Descontos" valor={cr.reais(vm.totais.desconto)} grande={false} />
       </div>
 
       <div className="card">
@@ -98,7 +98,7 @@ export function Lancamentos() {
               {vm.lancamentos.map((l, i) => (
                 <tr key={i}>
                   <td>{l.automatico}</td><td>{l.data}</td><td>{l.debito}</td><td>{l.credito}</td><td>{l.codHistorico}</td><td>{l.historico}</td>
-                  <td className="num">{cr.brl(l.valor)}</td><td className="num">{l.documento}</td>
+                  <td className="num">{cr.reais(l.valor)}</td><td className="num">{l.documento}</td>
                 </tr>
               ))}
             </tbody>

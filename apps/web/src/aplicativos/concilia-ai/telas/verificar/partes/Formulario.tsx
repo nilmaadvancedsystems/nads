@@ -28,7 +28,7 @@ export function Formulario({ vm, oculto }: { vm: Vm; oculto: boolean }) {
       <div className="field" id="vcServCampo" hidden={!vm.servico}>
         <label>Notas conferidas</label>
         <p className="hint" id="vcServInfo" style={{ margin: 0 }}>
-          {vm.servico && <>{vm.servico.rotulo} ligados a essa conta em Cadastro › Configurações: <b style={{ color: 'var(--ink)' }}>{vm.servico.qtdNotas} nota(s)</b> de {vm.servico.qtdParticipantes} {vm.servico.rotParticipantes} · {formatos.brl(vm.servico.soma)}</>}
+          {vm.servico && <>{vm.servico.rotulo} ligados a essa conta em Cadastro › Configurações: <b style={{ color: 'var(--ink)' }}>{vm.servico.qtdNotas} nota(s)</b> de {vm.servico.qtdParticipantes} {vm.servico.rotParticipantes} · {formatos.reais(vm.servico.soma)}</>}
         </p>
       </div>
       <div className="field" id="vcCfopCampo" hidden={!vm.cfop}>

@@ -8,7 +8,7 @@ import { IconePassivo, linhaPassivo, SaldoCelula, Situacao } from './Situacao';
 
 type VM = ReturnType<typeof useRelatorio>;
 type Serv = NonNullable<VM['serv']>;
-const { brl, lancN, lancComZeros } = formatos;
+const { reais, lancN, lancComZeros } = formatos;
 
 const ESTILO_GRUPO = { border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', marginBottom: 8, background: 'var(--surface)', overflow: 'hidden' } as const;
 const ESTILO_LI = { display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderTop: '1px solid var(--border)', fontSize: 13.5, flexWrap: 'wrap' } as const;
@@ -72,7 +72,7 @@ function SaldoServicos({ r, onRevisar }: { r: Serv; onRevisar: (contas: string[]
               </td>
               <td className="wrap">{l.descricao}</td>
               <td className="num" title={r.tituloNotas(l)}>{l.qtdNotas}</td>
-              <td className="num">{brl(l.somaNotas)}</td>
+              <td className="num">{reais(l.somaNotas)}</td>
               <td className="num"><SaldoCelula saldo={l.saldo} contasFora={l.contasFora} /></td>
               <td><div className="sit"><Situacao sit={l.situacao} contas={l.contas} servico onRevisar={onRevisar} /></div></td>
             </tr>
@@ -113,7 +113,7 @@ function Grupo({ vm, r, tipo, gr, marcado }: { vm: VM; r: Serv; tipo: c.TipoServ
               <span className="hint" style={{ whiteSpace: 'nowrap' }}>
                 Atual {l ? <b style={{ color: 'var(--ink)' }}>{n.lanc}</b> : <span className="pill-vazio">VAZIO</span>} — Lanç. Configurado: <b style={{ color: 'var(--ink)' }}>{l ? lancComZeros(cat.lanc, n.lanc) : cat.lanc}</b>
               </span>
-              <span className="num" style={{ width: 90, textAlign: 'right' }}>{brl(n.valor)}</span>
+              <span className="num" style={{ width: 90, textAlign: 'right' }}>{reais(n.valor)}</span>
             </li>
           );
         })}

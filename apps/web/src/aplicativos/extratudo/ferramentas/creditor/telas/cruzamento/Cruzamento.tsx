@@ -29,7 +29,8 @@ export function Cruzamento() {
         <div className="table-wrap" style={{ maxHeight: 'none' }}>
           <table>
             <thead>
-              <tr><th>NF</th><th>Liquidação</th><th>Sacado (banco)</th><th>Conta no balancete</th><th className="num">Valor</th><th>Contrapartida</th><th>Situação</th></tr>
+              {/* uma coluna só para o cliente: o nome no balancete (sem conta ainda, o nome do banco, apagado); Contrapartida virou Conta (Vitor, 05/10/2026) */}
+              <tr><th>NF</th><th>Liquidação</th><th>Nome no balancete</th><th className="num">Valor</th><th>Conta</th><th>Situação</th></tr>
             </thead>
             <tbody>
               {vm.linhas.map(l => (
@@ -37,15 +38,14 @@ export function Cruzamento() {
                   <tr className={l.decisao?.tipo === 'excluir' ? 'linha-excluida' : l.precisa && !l.resolvida ? 'bad' : ''}>
                     <td>{l.nf}</td>
                     <td>{l.liquidacao}</td>
-                    <td>{l.sacado}</td>
-                    <td>{l.nomeDaConta || '—'}</td>
-                    <td className="num">{cr.brl(l.valorBanco)}</td>
+                    <td>{l.nomeDaConta || <span className="hint" title="O nome do banco: ainda sem conta no balancete">{l.sacado}</span>}</td>
+                    <td className="num">{cr.reais(l.valorBanco)}</td>
                     <td>{l.contrapartida || '—'}</td>
                     <td><span className={BADGE[l.situacao]}>{l.rotulo}</span></td>
                   </tr>
                   {(l.nota || l.precisa) && (
                     <tr className="linha-nota">
-                      <td colSpan={7}>
+                      <td colSpan={6}>
                         {l.nota && <span className="hint" style={{ marginRight: 12 }}>{l.nota}</span>}
                         {l.precisa && (l.decisao?.tipo === 'excluir' ? (
                           <span className="decisao">

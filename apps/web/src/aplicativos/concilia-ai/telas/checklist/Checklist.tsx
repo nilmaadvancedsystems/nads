@@ -4,7 +4,7 @@ import { conferencia as c, formatos } from '@nads/core';
 import { Segmentado } from '@nads/ui';
 import { OPCOES_STATUS, useChecklist } from './useChecklist';
 
-const { brl } = formatos;
+const { reais } = formatos;
 const ESTILO_CONTA = { fontSize: 12, color: 'var(--ink-faint)', marginTop: 2 } as const;
 
 export function Checklist() {
@@ -52,7 +52,7 @@ export function Checklist() {
                         <div style={l.contas.length ? ESTILO_CONTA : { ...ESTILO_CONTA, fontStyle: 'italic' }}>{l.contaTexto}</div>
                       </td>
                       <td className="num">{l.qtdNotas}</td>
-                      <td className="num">{brl(l.total)}</td>
+                      <td className="num">{reais(l.total)}</td>
                     </tr>
                   ))}
                 </tbody>

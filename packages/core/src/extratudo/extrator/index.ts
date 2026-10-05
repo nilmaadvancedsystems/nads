@@ -5,7 +5,7 @@ export type {
   Lado, Lancamento, LancamentoDoArquivo, ModoImportacao, ArquivoImportado, RegistroAuditoria, EmpresaExtrator, BancoAdicionado, PedidoRegistrado,
   ArquivoLido, Situacao, TipoDiferenca, LinhaConferencia, Conferencia,
 } from './tipos';
-export { centavos, temSinal, lerData, numeroDoDia, dataBR, competencia, valorBR, palavras, parecido } from './regras/texto';
+export { centavos, temSinal, lerData, numeroDoDia, dataBR, competencia, valorBR, reaisBR, palavras, parecido } from './regras/texto';
 export { montarLinhas, anoDoTexto, lancamentosDoPdf, type ItemDeTexto } from './regras/extrato';
 export { lancamentosDaPlanilha, type Celula } from './regras/planilha';
 export { ehOfx, lancamentosDoOfx } from './regras/ofx';

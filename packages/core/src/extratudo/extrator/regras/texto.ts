@@ -87,10 +87,15 @@ export function competencia(data: string): string {
   return data.slice(0, 7);
 }
 
+/** centavos → "R$ 1.234,56" (o − na frente quando negativo): o valor na tela */
+export function reaisBR(c: number): string {
+  return (c < 0 ? '\u2212' : '') + 'R$\u00a0' + valorBR(Math.abs(c));
+}
+
 /** centavos → "1.234,56" com "−" na frente quando negativo */
 export function valorBR(c: number): string {
   const v = (Math.abs(c) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return (c < 0 ? '−' : '') + v;
+  return (c < 0 ? '\u2212' : '') + v;
 }
 
 // Palavras que não ajudam a dizer se dois históricos são o mesmo lançamento: conectivos e os

@@ -8,7 +8,7 @@ import type { useRelatorio } from '../useRelatorio';
 import { IconePassivo, linhaPassivo, SaldoCelula, Situacao } from './Situacao';
 
 type VM = ReturnType<typeof useRelatorio>;
-const { brl } = formatos;
+const { reais } = formatos;
 
 export function Geral({ vm }: { vm: VM }) {
   return (
@@ -57,7 +57,7 @@ export function Geral({ vm }: { vm: VM }) {
                 {vm.rank.map(l => (
                   <button key={l.k} type="button" className="rank-item" title={l.titulo} onClick={() => vm.abrirNatureza(l.cfops)}>
                     <span className="rank-nome">{l.nome}</span>
-                    <span className="rank-val">{brl(l.valor)}</span>
+                    <span className="rank-val">{reais(l.valor)}</span>
                     <span className="rank-barra"><span style={{ width: l.largura + '%', background: l.tipo === 'Entrada' ? 'var(--danger)' : 'var(--success)' }} /></span>
                   </button>
                 ))}
@@ -85,7 +85,7 @@ function SaldoBalancete({ linhas, onRevisar }: { linhas: c.LinhaSaldo[]; onRevis
                   <td style={{ whiteSpace: 'nowrap' }}><TituloDaConta titulo={l.titulo} /></td>
                   <td className="wrap">{l.cfops.join(', ')}</td>
                   <td className="num">{l.qtdNotas}</td>
-                  <td className="num">{brl(l.somaNotas)}</td>
+                  <td className="num">{reais(l.somaNotas)}</td>
                   <td className="num">—</td>
                   <td className="num"><span className="badge badge-neutral">Conferida em {rotS}</span><span className="sit-vazio" /></td>
                 </tr>
@@ -96,7 +96,7 @@ function SaldoBalancete({ linhas, onRevisar }: { linhas: c.LinhaSaldo[]; onRevis
                 <td style={{ whiteSpace: 'nowrap' }}><IconePassivo aviso={l.avisoPassivo} /><TituloDaConta titulo={l.titulo} /></td>
                 <td className="wrap">{l.cfops.join(', ')}</td>
                 <td className="num">{l.qtdNotas}</td>
-                <td className="num">{brl(l.somaNotas)}</td>
+                <td className="num">{reais(l.somaNotas)}</td>
                 <td className="num"><SaldoCelula saldo={l.saldo} contasFora={l.contasFora} /></td>
                 <td><div className="sit"><Situacao sit={l.situacao} contas={l.contas} onRevisar={onRevisar} /></div></td>
               </tr>

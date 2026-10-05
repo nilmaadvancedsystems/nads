@@ -4,6 +4,11 @@
 
 export const MES = ['', 'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
+/** 1234.5 → "R$ 1.234,50" (com o espaço que não quebra; negativo com o − na frente): todo valor em dinheiro na tela (Vitor, 05/10/2026) */
+export function reais(n: number): string {
+  return (n < 0 ? '\u2212' : '') + 'R$\u00a0' + brl(Math.abs(n));
+}
+
 /** 1234.5 → "1.234,50" */
 export function brl(n: number): string {
   return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

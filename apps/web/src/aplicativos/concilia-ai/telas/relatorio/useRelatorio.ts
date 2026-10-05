@@ -12,7 +12,7 @@ import { travaDaAba, useMarcarSozinho, type ReqAba } from './movimento';
 import { caminho } from '../../casca/caminho';
 import { SO_ENTRADAS } from '../../soEntradas';
 
-const { brl, rot, mesCurto, capital, lancN } = formatos;
+const { reais, rot, mesCurto, capital, lancN } = formatos;
 
 export const ABAS: { valor: c.AbaRelatorio; rotulo: string }[] = [
   { valor: 'geral', rotulo: 'Geral' },
@@ -124,15 +124,15 @@ export interface StatRelatorio { rotulo: string; valor: string; cor?: 'entrada' 
 function montarStats(r: c.Relatorio, tipoF: '' | c.TipoCfop): StatRelatorio[] {
   if (!tipoF) {
     return [
-      { rotulo: 'Entradas no período', valor: brl(r.totEnt), cor: 'entrada' },
-      { rotulo: 'Saídas no período', valor: brl(r.totSai), cor: 'saida' },
-      { rotulo: 'Total geral', valor: brl(r.totEnt + r.totSai) },
+      { rotulo: 'Entradas no período', valor: reais(r.totEnt), cor: 'entrada' },
+      { rotulo: 'Saídas no período', valor: reais(r.totSai), cor: 'saida' },
+      { rotulo: 'Total geral', valor: reais(r.totEnt + r.totSai) },
       { rotulo: 'Notas no período', valor: String(r.qtdNotas) },
     ];
   }
   const ent = tipoF === 'Entrada';
   return [
-    { rotulo: (ent ? 'Entradas' : 'Saídas') + ' no período', valor: brl(ent ? r.totEnt : r.totSai), cor: ent ? 'entrada' : 'saida' },
+    { rotulo: (ent ? 'Entradas' : 'Saídas') + ' no período', valor: reais(ent ? r.totEnt : r.totSai), cor: ent ? 'entrada' : 'saida' },
     { rotulo: 'Notas no período', valor: String(r.qtdNotas) },
     { rotulo: 'Naturezas de CFOP', valor: String(r.qtdNaturezas) },
   ];
@@ -146,7 +146,7 @@ function montarGrafico(meses: c.MesDoGrafico[], marcados: string[]) {
   return meses.map(d => ({
     comp: d.comp,
     ligado: marcados.indexOf(d.comp) > -1,
-    titulo: rot(d.comp) + ' — entradas ' + brl(d.ent) + ' · saídas ' + brl(d.sai) + ' · ' + d.qtd + ' nota(s)',
+    titulo: rot(d.comp) + ' — entradas ' + reais(d.ent) + ' · saídas ' + reais(d.sai) + ' · ' + d.qtd + ' nota(s)',
     alturaEnt: d.ent ? Math.max(3, Math.round(d.ent / max * ALTURA_BARRA)) : 0,
     alturaSai: d.sai ? Math.max(3, Math.round(d.sai / max * ALTURA_BARRA)) : 0,
     rotulo: mesCurto(d.comp),
@@ -171,10 +171,10 @@ function montarForaDoPadrao(e: c.Empresa, t: c.TipoNotaFiscal, ordem: c.OrdemGru
 function montarServicos(e: c.Empresa, t: c.TipoServico, f: c.FiltroMovimento, ordem: c.OrdemServ) {
   const cfg = c.SV[t];
   const r = c.conferirServicos(e, t, f, ordem);
-  const stats: StatRelatorio[] = [{ rotulo: (t === 'prestados' ? 'Prestados' : 'Tomados') + ' no período', valor: brl(r.totais.valor), cor: t === 'prestados' ? 'saida' : 'entrada' }];
-  if (r.temIss) stats.push({ rotulo: 'ISS do período', valor: brl(r.totais.iss) }, { rotulo: 'ISS retido', valor: brl(r.totais.issRet) });
-  if (r.totais.irrf) stats.push({ rotulo: 'IRRF retido', valor: brl(r.totais.irrf) });
-  if (r.totais.inss) stats.push({ rotulo: 'INSS retido', valor: brl(r.totais.inss) });
+  const stats: StatRelatorio[] = [{ rotulo: (t === 'prestados' ? 'Prestados' : 'Tomados') + ' no período', valor: reais(r.totais.valor), cor: t === 'prestados' ? 'saida' : 'entrada' }];
+  if (r.temIss) stats.push({ rotulo: 'ISS do período', valor: reais(r.totais.iss) }, { rotulo: 'ISS retido', valor: reais(r.totais.issRet) });
+  if (r.totais.irrf) stats.push({ rotulo: 'IRRF retido', valor: reais(r.totais.irrf) });
+  if (r.totais.inss) stats.push({ rotulo: 'INSS retido', valor: reais(r.totais.inss) });
   stats.push({ rotulo: 'Notas', valor: String(r.qtdNotas) }, { rotulo: capital(cfg.parts), valor: String(r.qtdParticipantes) }, { rotulo: 'Fora do padrão', valor: String(r.qtdForaDoPadrao) });
   return {
     ...r,

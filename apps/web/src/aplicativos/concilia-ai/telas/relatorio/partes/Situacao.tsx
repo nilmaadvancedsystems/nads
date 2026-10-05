@@ -4,7 +4,7 @@
 import { conferencia as c, formatos } from '@nads/core';
 import { BotaoIcone, Icone } from '@nads/ui';
 
-const { brl } = formatos;
+const { reais } = formatos;
 
 export function Situacao({ sit, contas, servico, onRevisar }: { sit: c.Situacao; contas: string[]; servico?: boolean; onRevisar: (contas: string[]) => void }) {
   const vazio = <span className="sit-vazio" />;
@@ -21,20 +21,20 @@ export function Situacao({ sit, contas, servico, onRevisar }: { sit: c.Situacao;
     case 'ok':
       return <><span className="badge badge-ok">Ok</span>{vazio}</>;
     case 'ok-pela-revisao':
-      return <><span className="badge badge-ok" title={'Diferença de ' + brl(sit.diferenca) + ' no balancete lido — o relatório da conta foi conferido sem pendências'}>Ok</span>{vazio}</>;
+      return <><span className="badge badge-ok" title={'Diferença de ' + reais(sit.diferenca) + ' no balancete lido — o relatório da conta foi conferido sem pendências'}>Ok</span>{vazio}</>;
     case 'conferido':
-      return <><span className="badge badge-conferido" title={'Diferença de ' + brl(sit.diferenca) + ' — conferido manualmente'}>Conferido</span>{revisar}</>;
+      return <><span className="badge badge-conferido" title={'Diferença de ' + reais(sit.diferenca) + ' — conferido manualmente'}>Conferido</span>{revisar}</>;
     case 'diferenca':
-      return <><span className="badge badge-bad">{brl(sit.diferenca)}</span>{revisar}</>;
+      return <><span className="badge badge-bad">{reais(sit.diferenca)}</span>{revisar}</>;
   }
 }
 
 /** Saldo do balancete; com contas somadas fora do balancete lido, soma só as lidas e marca com *. */
 export function SaldoCelula({ saldo, contasFora }: { saldo: number | null; contasFora: string[] }) {
   if (saldo == null) return <>—</>;
-  if (!contasFora.length) return <>{brl(saldo)}</>;
+  if (!contasFora.length) return <>{reais(saldo)}</>;
   const aviso = (contasFora.length > 1 ? 'As contas ' + contasFora.join(', ') + ' não estão' : 'A conta ' + contasFora[0] + ' não está') + ' no balancete lido: o saldo é só das outras.';
-  return <span title={aviso}>{brl(saldo)}<span className="saldo-parcial">*</span></span>;
+  return <span title={aviso}>{reais(saldo)}<span className="saldo-parcial">*</span></span>;
 }
 
 /** Ícone de alerta da conta do Passivo (vínculo errado vindo de antes) — o avisoPassivo (~L2282). */

@@ -10,7 +10,7 @@ import { useState } from 'react';
 extrator.definirWorkerDoPdf(workerDoPdf);
 
 const dataBR = (d: string) => (d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '');
-const brl = formatos.brl;
+const reais = formatos.reais;
 
 export function useInssDaEtapa(chave: string, meses: readonly string[]) {
   const { aviso } = useRetorno();
@@ -71,8 +71,8 @@ export function useInssDaEtapa(chave: string, meses: readonly string[]) {
       const baixa = m.guia ? c!.baixas.find(b => b.guia === m.guia) : undefined;
       return {
         mes: m.mes, rotulo: t.rotuloNumericoCompetencia(m.mes), foraDoRazao: m.foraDoRazao,
-        provisao: m.foraDoRazao ? '' : brl(m.provisao), guia: m.guia ? brl(m.guia.principal) : '',
-        diferenca: m.foraDoRazao || !m.guia ? '' : brl(m.diferenca), bate: Math.abs(m.diferenca) < 0.01,
+        provisao: m.foraDoRazao ? '' : reais(m.provisao), guia: m.guia ? reais(m.guia.principal) : '',
+        diferenca: m.foraDoRazao || !m.guia ? '' : reais(m.diferenca), bate: Math.abs(m.diferenca) < 0.01,
         // a guia do mês: baixada, sem a baixa, paga depois do período, ou o PDF não trouxe
         baixa: !m.guia ? 'sem-guia' as const : baixa ? (baixa.lancamento ? 'ok' as const : 'falta' as const) : m.guia.pagaEm > ultimoDia || !m.guia.pagaEm ? 'depois' as const : 'fora' as const,
         pagaEm: m.guia ? dataBR(m.guia.pagaEm) : '',
@@ -84,23 +84,23 @@ export function useInssDaEtapa(chave: string, meses: readonly string[]) {
     /** os lançamentos sugeridos (o período todo ou o mês aberto) */
     sugestoes: sugestoes.map((s, i) => ({
       id: i, mes: t.rotuloNumericoCompetencia(s.mes), tipo: s.tipo === 'baixa' ? 'Baixa' : 'Provisão',
-      debito: s.debito, credito: s.credito, valor: brl(s.valor), historico: s.historico, motivo: s.motivo,
+      debito: s.debito, credito: s.credito, valor: reais(s.valor), historico: s.historico, motivo: s.motivo,
     })),
-    totalSugerido: brl(sugestoes.reduce((n, s) => n + s.valor, 0)),
+    totalSugerido: reais(sugestoes.reduce((n, s) => n + s.valor, 0)),
     /** grupo a grupo, nos meses à vista (o que o sistema provisiona e o que não) */
     grupos: (c?.meses || []).filter(m => daVez(m.mes) && m.guia && !m.foraDoRazao).flatMap(m => [
-      ...m.grupos.map(x => ({ id: m.mes + x.grupo, mes: t.rotuloNumericoCompetencia(m.mes), nome: x.nome, razao: brl(x.razao), guia: brl(x.guia), diferenca: brl(x.diferenca), bate: Math.abs(x.diferenca) < 0.01, codigos: '' })),
+      ...m.grupos.map(x => ({ id: m.mes + x.grupo, mes: t.rotuloNumericoCompetencia(m.mes), nome: x.nome, razao: reais(x.razao), guia: reais(x.guia), diferenca: reais(x.diferenca), bate: Math.abs(x.diferenca) < 0.01, codigos: '' })),
       ...m.naoProvisionadas.map(v => ({
-        id: m.mes + v.grupo, mes: t.rotuloNumericoCompetencia(m.mes), nome: v.nome, razao: brl(0), guia: brl(v.valor), diferenca: brl(v.valor), bate: false,
+        id: m.mes + v.grupo, mes: t.rotuloNumericoCompetencia(m.mes), nome: v.nome, razao: reais(0), guia: reais(v.valor), diferenca: reais(v.valor), bate: false,
         codigos: v.itens.map(i => i.codigo + (i.variacao ? '-' + i.variacao : '')).join(', '),
       })),
     ]),
     /** pagamentos do razão sem guia com o mesmo valor */
-    pagamentosSemGuia: (c?.pagamentosSemGuia || []).map(l => dataBR(l.data) + ' · ' + brl(-l.valor) + ' · ' + l.historico),
+    pagamentosSemGuia: (c?.pagamentosSemGuia || []).map(l => dataBR(l.data) + ' · ' + reais(-l.valor) + ' · ' + l.historico),
     fechamento: c ? {
       fim: dataBR(meses[meses.length - 1] + '-' + String(new Date(+meses[meses.length - 1].slice(0, 4), +meses[meses.length - 1].slice(5, 7), 0).getDate())),
       razao: t.valorComLado(c.saldoDoRazao), ajustado: t.valorComLado(c.saldoAjustado), esperado: t.valorComLado(c.saldoEsperado),
-      antes: Math.abs(c.antesDoPeriodo) >= 0.01 ? brl(Math.abs(c.antesDoPeriodo)) : '',
+      antes: Math.abs(c.antesDoPeriodo) >= 0.01 ? reais(Math.abs(c.antesDoPeriodo)) : '',
       inicio: t.rotuloNumericoCompetencia(meses.find(m => !c.meses.find(x => x.mes === m)?.foraDoRazao) || meses[0]),
     } : null,
   };

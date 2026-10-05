@@ -62,7 +62,7 @@ export function useLancamentos() {
       desconto: cr.somar(lancamentos.filter(l => l.tipo === 'desconto').map(l => l.valor)),
     },
     fora: fora.map(t => ({ id: t.id, nf: t.nf, sacado: t.sacado, liquidacao: t.liquidacao, valor: cr.liquidoDoTitulo(t) })),
-    divergentes: divergentes.map(f => f.data + ': diferença de ' + cr.brl(f.diferenca)),
+    divergentes: divergentes.map(f => f.data + ': diferença de ' + cr.reais(f.diferenca)),
     podeBaixar: lancamentos.length > 0 && divergentes.length === 0 && contasOk,
     /** baixar conclui: as contas sugeridas passam a ser salvas e os clientes conciliados são aprendidos */
     baixou: s.concluir,

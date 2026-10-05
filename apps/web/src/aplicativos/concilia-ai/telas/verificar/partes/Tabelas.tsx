@@ -6,7 +6,7 @@ import { Icone } from '@nads/ui';
 import type { CSSProperties, ReactNode } from 'react';
 import { VC_LIMITE_LINHAS } from '../useVerificarConta';
 
-const { brl, nomeNorm } = formatos;
+const { reais, nomeNorm } = formatos;
 
 function AvisoTruncado({ total }: { total: number }) {
   return total > VC_LIMITE_LINHAS ? <p className="hint">Mostrando {VC_LIMITE_LINHAS} de {total}. Baixe o resultado (CSV) pra ver tudo.</p> : null;
@@ -28,7 +28,7 @@ export function TabelaFaltando({ linhas }: { linhas: c.LinhaTabela[] }) {
               <tr key={i} className="bad">
                 <td className="vc-nw">{l.data}</td><td className="vc-nw">{l.nota || '—'}</td>
                 <td className="vc-nome">{l.part || '—'}</td><td className="vc-nw">{l.cfop || '—'}</td>
-                <td className="vc-nw"><Exportado v={l.exportado} /></td><td className="num">{brl(l.valor)}</td>
+                <td className="vc-nw"><Exportado v={l.exportado} /></td><td className="num">{reais(l.valor)}</td>
               </tr>
             ))}
           </tbody>
@@ -50,7 +50,7 @@ export function TabelaVc({ linhas, cls = 'bad' }: { linhas: c.LinhaTabela[]; cls
             {linhas.slice(0, VC_LIMITE_LINHAS).map((l, i) => (
               <tr key={i} className={cls} title={l.txt || undefined}>
                 <td className="vc-nw">{l.data}</td><td className="vc-nw">{l.nota || '—'}</td>
-                <td className="vc-nome">{l.part || '—'}</td><td className="vc-nw">{l.contra || '—'}</td><td className="num">{brl(l.valor)}</td>
+                <td className="vc-nome">{l.part || '—'}</td><td className="vc-nw">{l.contra || '—'}</td><td className="num">{reais(l.valor)}</td>
               </tr>
             ))}
           </tbody>
@@ -65,7 +65,7 @@ export function TabelaVc({ linhas, cls = 'bad' }: { linhas: c.LinhaTabela[]; cls
 export function SecaoVc({ titulo, valor, className = 'vc-secao', children }: { titulo: string; valor: number; className?: string; children: ReactNode }) {
   return (
     <div className={className}>
-      <h4>{titulo} — <span style={{ color: 'var(--ink-muted)', fontWeight: 600 }}>{brl(valor)}</span></h4>
+      <h4>{titulo} — <span style={{ color: 'var(--ink-muted)', fontWeight: 600 }}>{reais(valor)}</span></h4>
       {children}
     </div>
   );

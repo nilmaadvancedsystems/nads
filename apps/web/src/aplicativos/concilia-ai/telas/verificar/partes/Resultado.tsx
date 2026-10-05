@@ -9,7 +9,7 @@ import { AlertaVerde, SecaoVc, TabelaFaltando, TabelaVc } from './Tabelas';
 
 type Vm = ReturnType<typeof useVerificarConta>;
 type Res = NonNullable<Vm['resultado']>;
-const { brl } = formatos;
+const { reais } = formatos;
 
 function Numero({ rotulo, valor, cls }: { rotulo: string; valor: string; cls?: 'ok' | 'bad' }) {
   return <div className={'vc-num' + (cls ? ' ' + cls : '')}><p className="vc-num-rot">{rotulo}</p><p className="vc-num-val">{valor}</p></div>;
@@ -50,8 +50,8 @@ function PorConta({ r, p }: { r: Res; p: NonNullable<Res['porConta']> }) {
       <div className="vc-resumo" id="vcStats">
         <Conta conta={p.conta} fonte={r.fonte} />
         <div className="vc-resumo-nums">
-          <Numero rotulo="Relatório da conta" valor={brl(p.somaConta)} />
-          <Numero rotulo="Pendências na conta" valor={brl(p.pendencias)} cls={p.pendZero ? 'ok' : 'bad'} />
+          <Numero rotulo="Relatório da conta" valor={reais(p.somaConta)} />
+          <Numero rotulo="Pendências na conta" valor={reais(p.pendencias)} cls={p.pendZero ? 'ok' : 'bad'} />
         </div>
       </div>
       <div id="vcResultado">
@@ -76,9 +76,9 @@ function Todas({ vm, r, t }: { vm: Vm; r: Res; t: NonNullable<Res['todas']> }) {
       <div className="vc-resumo" id="vcStats">
         <Conta conta={t.conta} fonte={r.fonte} />
         <div className="vc-resumo-nums">
-          <Numero rotulo={t.multi ? 'Relatório das contas' : 'Relatório da conta'} valor={brl(t.somaRazao)} />
-          <Numero rotulo="Notas fiscais" valor={brl(t.somaFiscal)} />
-          <Numero rotulo="Diferença" valor={brl(t.diferenca)} cls={t.zero ? 'ok' : 'bad'} />
+          <Numero rotulo={t.multi ? 'Relatório das contas' : 'Relatório da conta'} valor={reais(t.somaRazao)} />
+          <Numero rotulo="Notas fiscais" valor={reais(t.somaFiscal)} />
+          <Numero rotulo="Diferença" valor={reais(t.diferenca)} cls={t.zero ? 'ok' : 'bad'} />
         </div>
         {t.composicao && (
           <div className="vc-comp">
@@ -86,7 +86,7 @@ function Todas({ vm, r, t }: { vm: Vm; r: Res; t: NonNullable<Res['todas']> }) {
             <div className="vc-comp-grid">
               {t.composicao.map(it => (
                 <div key={it.rotulo} className={'vc-comp-item' + (it.zero ? ' zero' : '')}>
-                  <p className="vc-num-rot">{it.rotulo}</p><p className="vc-comp-val">{it.zero ? '—' : brl(it.valor)}</p>
+                  <p className="vc-num-rot">{it.rotulo}</p><p className="vc-comp-val">{it.zero ? '—' : reais(it.valor)}</p>
                 </div>
               ))}
             </div>

@@ -25,8 +25,8 @@ export function Lancamentos() {
             </div>
             <p className="cons-resumo">
               <b>{vm.qtd}</b> {vm.qtd === 1 ? 'lançamento' : 'lançamentos'}{vm.qtd !== vm.qtdTotal && <> <span>de {vm.qtdTotal}</span></>}
-              <span className="cons-sep">·</span>entradas <b className="ext-pos">{x.valorBR(vm.entradas)}</b>
-              <span className="cons-sep">·</span>saídas <b className="ext-neg">{x.valorBR(vm.saidas)}</b>
+              <span className="cons-sep">·</span>entradas <b className="ext-pos">{x.reaisBR(vm.entradas)}</b>
+              <span className="cons-sep">·</span>saídas <b className="ext-neg">{x.reaisBR(vm.saidas)}</b>
             </p>
             {!vm.qtd ? (
               <div className="gh-blank"><Icone nome="search" /><h4>Nada bate com a busca</h4><p>Tente outro histórico, valor ou data.</p></div>
@@ -39,7 +39,7 @@ export function Lancamentos() {
                       <tr key={l.id}>
                         <td style={{ whiteSpace: 'nowrap' }}>{l.data}</td>
                         <td className="wrap">{l.historico}</td>
-                        <td className={'num ' + (l.valor < 0 ? 'ext-neg' : 'ext-pos')}>{x.valorBR(l.valor)}</td>
+                        <td className={'num ' + (l.valor < 0 ? 'ext-neg' : 'ext-pos')}>{x.reaisBR(l.valor)}</td>
                         <td className="wrap ext-mut">{l.arquivo}</td>
                       </tr>
                     ))}

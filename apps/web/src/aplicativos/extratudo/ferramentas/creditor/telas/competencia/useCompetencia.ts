@@ -180,7 +180,7 @@ export function useCompetencia() {
       const rel = s.estado.porMes[m]?.relatorio || (inteiro && m === meses[0] ? s.estado.relatorio : null);
       const ts = rel ? rel.grupos.flatMap(g => g.titulos) : [];
       return {
-        resumo: rel ? [ts.length + (ts.length === 1 ? ' título' : ' títulos'), 'Liquidado R$ ' + cr.brl(cr.somar(ts.map(t => t.valor)))] : [],
+        resumo: rel ? [ts.length + (ts.length === 1 ? ' título' : ' títulos'), 'Liquidado ' + cr.reais(cr.somar(ts.map(t => t.valor)))] : [],
         titulos: ts.map(t => ({ id: t.id, liquidacao: t.liquidacao, sacado: t.sacado, nf: t.nf, valor: t.valor, juros: t.mora + t.outros, desconto: t.desconto, cobrado: t.cobrado })),
         mes: m, rotulo: cr.rotuloCompetencia(m), carregado: !!r, origem: r?.origem || '', doDrive: !!r?.origem.startsWith('Drive'),
         ocupado: ocupado && busca.mes === m, texto: ocupado && busca.mes === m ? busca.texto : '',

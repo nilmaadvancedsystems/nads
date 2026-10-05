@@ -9,7 +9,7 @@ const BADGE: Record<x.Situacao, string> = { ok: 'badge-ok', faltando: 'badge-bad
 
 function Valor({ v }: { v: number | null }) {
   if (v == null) return <td className="num ext-mut">—</td>;
-  return <td className={'num ' + (v < 0 ? 'ext-neg' : 'ext-pos')}>{x.valorBR(v)}</td>;
+  return <td className={'num ' + (v < 0 ? 'ext-neg' : 'ext-pos')}>{x.reaisBR(v)}</td>;
 }
 
 export function TabelaConferencia({ linhas }: { linhas: Linha[] }) {

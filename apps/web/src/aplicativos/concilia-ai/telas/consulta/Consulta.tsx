@@ -5,7 +5,7 @@ import { baixarArquivo, CampoData, Icone, Segmentado } from '@nads/ui';
 import { AcoesDoTopo } from '../../../../comum/topo';
 import { useConsulta } from './useConsulta';
 
-const { brl } = formatos;
+const { reais } = formatos;
 type Vm = ReturnType<typeof useConsulta>;
 
 export function Consulta() {
@@ -49,7 +49,7 @@ export function Consulta() {
             </div>
             <p className="cons-resumo">
               <b>{vm.qtd}</b> {vm.qtd === 1 ? 'nota' : 'notas'}{vm.filtrado && <> <span>de {vm.qtdTotal}</span></>}
-              <span className="cons-sep">·</span><b>{brl(vm.total)}</b>
+              <span className="cons-sep">·</span><b>{reais(vm.total)}</b>
             </p>
             {!vm.qtd ? (
               <div className="gh-blank">
@@ -93,9 +93,9 @@ function TabelaConsulta({ vm }: { vm: Vm }) {
                   <td className="cons-data">{n.data}</td>
                   <td className="cons-mut">{n.numero}</td>
                   <td className="cons-nome" title={n.nome}>{n.nome}</td>
-                  {vm.serv ? <td className="num cons-mut">{brl(n.iss)}</td> : <td className="cons-mut">{n.cfop || '—'}</td>}
+                  {vm.serv ? <td className="num cons-mut">{reais(n.iss)}</td> : <td className="cons-mut">{n.cfop || '—'}</td>}
                   <td className="cons-mut">{n.lanc || '—'}</td>
-                  <td className="num cons-valor">{brl(n.valor)}</td>
+                  <td className="num cons-valor">{reais(n.valor)}</td>
                 </tr>
               );
             })}

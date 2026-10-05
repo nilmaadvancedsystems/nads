@@ -12,7 +12,7 @@ function linha(l: t.LancamentoDoRazao, i: number) {
   return {
     id: i, data: dataBR(l.data), contrapartida: l.contrapartida, nomeContrapartida: l.nomeContrapartida, historico: l.historico,
     // negativo = débito no Alterdata; saldo positivo = credor
-    debito: l.valor < 0 ? formatos.brl(-l.valor) : '', credito: l.valor > 0 ? formatos.brl(l.valor) : '',
+    debito: l.valor < 0 ? formatos.reais(-l.valor) : '', credito: l.valor > 0 ? formatos.reais(l.valor) : '',
     saldo: t.valorComLado(l.saldo), credor: l.saldo > 0,
   };
 }
@@ -72,7 +72,7 @@ export function useRazaoDaEtapa(chave: string, meses: readonly string[], onImpor
     /** a grade dos meses: o saldo do fim (sem o D; credor com o sinal de menos, em vermelho) e as pendências (Vitor, 05/10/2026) */
     meses: doPeriodo.map(m => ({
       mes: m.mes, rotulo: t.rotuloNumericoCompetencia(m.mes), qtd: m.lancamentos.length,
-      saldoFinal: (m.saldoFinal > 0 ? '−' : '') + formatos.brl(Math.abs(m.saldoFinal)), credor: m.diasCredor.length > 0,
+      saldoFinal: (m.saldoFinal > 0 ? '−' : '') + formatos.reais(Math.abs(m.saldoFinal)), credor: m.diasCredor.length > 0,
       atencoes: t.atencoesDoMes(m).reduce((n, p) => n + p.lancamentos.length, 0), creditor: t.precisaDoCreditor(m),
     })),
     mesAberto,
@@ -88,7 +88,7 @@ export function useRazaoDaEtapa(chave: string, meses: readonly string[], onImpor
       // "7 lançamentos · 1.234,56"; no caixa credor, "7 dias · maior saldo 1.234,56 C"
       resumo: p.tipo === 'caixa-credor'
         ? p.lancamentos.length + (p.lancamentos.length === 1 ? ' dia' : ' dias') + ' · maior saldo ' + t.valorComLado(p.total)
-        : p.lancamentos.length + (p.lancamentos.length === 1 ? ' lançamento' : ' lançamentos') + ' · ' + formatos.brl(p.total),
+        : p.lancamentos.length + (p.lancamentos.length === 1 ? ' lançamento' : ' lançamentos') + ' · ' + formatos.reais(p.total),
       linhas: p.lancamentos.map(linha),
     })),
     qtdAtencoes: atencoes.reduce((n, p) => n + p.lancamentos.length, 0),

@@ -214,7 +214,7 @@ function Titulos({ titulos }: { titulos: VM['linhas'][number]['titulos'] }) {
           <input type="text" placeholder="Buscar no relatório" aria-label="Buscar no relatório (data, cliente, nota ou valor)" value={busca}
             onChange={e => setBusca(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') setBusca(''); }} />
         </label>
-        {q && <span className="imp-mov-periodo" aria-live="polite"><b>{linhas.length}</b> {linhas.length === 1 ? 'título' : 'títulos'} · {cr.brl(cr.somar(linhas.map(t => t.valor)))}</span>}
+        {q && <span className="imp-mov-periodo" aria-live="polite"><b>{linhas.length}</b> {linhas.length === 1 ? 'título' : 'títulos'} · {cr.reais(cr.somar(linhas.map(t => t.valor)))}</span>}
       </div>
       <div className="imp-mov">
         <table className="table-compact">
@@ -228,10 +228,10 @@ function Titulos({ titulos }: { titulos: VM['linhas'][number]['titulos'] }) {
                 <td style={{ whiteSpace: 'nowrap' }}>{t.liquidacao}</td>
                 <td className="wrap">{t.sacado}</td>
                 <td>{t.nf}</td>
-                <td className="num">{cr.brl(t.valor)}</td>
-                <td className="num">{t.juros ? cr.brl(t.juros) : ''}</td>
-                <td className="num">{t.desconto ? cr.brl(t.desconto) : ''}</td>
-                <td className="num">{t.cobrado != null ? cr.brl(t.cobrado) : ''}</td>
+                <td className="num">{cr.reais(t.valor)}</td>
+                <td className="num">{t.juros ? cr.reais(t.juros) : ''}</td>
+                <td className="num">{t.desconto ? cr.reais(t.desconto) : ''}</td>
+                <td className="num">{t.cobrado != null ? cr.reais(t.cobrado) : ''}</td>
               </tr>
             ))}
           </tbody>
