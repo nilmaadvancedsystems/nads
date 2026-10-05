@@ -3,6 +3,9 @@
 import { useRetorno } from '@nads/ui';
 import { useSessao } from './sessao';
 
+/** as etapas no visual da Importação: sem o título e sem o "Etapa n de 5" em cima (Vitor, 05/10/2026) */
+const NO_VISUAL_DA_IMPORTACAO: string[] = ['competencia', 'banco'];
+
 export function useCascaCreditor() {
   const s = useSessao();
   const { modal, toast } = useRetorno();
@@ -21,9 +24,8 @@ export function useCascaCreditor() {
     empresa: s.empresa,
     rota: s.rota,
     // a Competência (a primeira) no visual da Importação: sem o título e sem o "Etapa 1 de 5" (Vitor, 05/10/2026)
-    titulo: atual && atual.id !== 'competencia' ? atual.titulo : '',
-    primeira: s.etapa === 'competencia',
-    etapaDeTotal: 'Etapa ' + (s.etapas.findIndex(x => x.id === s.etapa) + 1) + ' de ' + s.etapas.length,
+    titulo: atual && !NO_VISUAL_DA_IMPORTACAO.includes(atual.id) ? atual.titulo : '',
+    primeira: NO_VISUAL_DA_IMPORTACAO.includes(s.etapa),
     paginas: s.etapas.map(x => ({ id: x.id, rotulo: x.rotulo, icone: x.icone, ativa: x.id === s.etapa, travada: !s.podeAbrir(x.id) })),
     onPagina: (id: string) => s.irPara(id as typeof s.etapa),
     temDados: !!s.estado.relatorio,

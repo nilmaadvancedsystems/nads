@@ -42,7 +42,7 @@ export function Reinf() {
                   {l.transmitida
                     ? <button type="button" className="btn" onClick={() => vm.desfazer(l.codigo)} title="Desfazer a transmissão desta competência">Desfazer</button>
                     : <button type="button" className="btn btn-primary" onClick={() => vm.transmitir(l.codigo)}>Transmitir</button>}
-                  <button type="button" className={'btn' + (l.retificadaNaCompetencia ? ' reinf-retificada' : '')} onClick={() => vm.retificar(l.codigo)}
+                  <button type="button" className="btn" onClick={() => vm.retificar(l.codigo)}
                     title={l.retificadaNaCompetencia ? 'Tirar a retificação desta competência' : 'Retificou esta competência'}>
                     {l.retificadaNaCompetencia ? 'Retificada' : 'Retificar'}
                   </button>

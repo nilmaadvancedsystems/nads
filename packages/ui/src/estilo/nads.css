@@ -2537,12 +2537,7 @@ html:not([data-animacoes=todas]) .modal-ok-barra{display:none;}
 /* os grupos da rotina: concluído com o check verde, o da vez com o check de sempre, os da frente apagados; o aberto em negrito */
 .rotina-menu .rotina-feito .popover-marca svg{color:var(--success) !important;}
 .rotina-menu .rotina-aberto .popover-texto{font-weight:600;}
-/* rever uma etapa concluída: a barra de cima (com o Editar) e a etapa ofuscada, sem clique */
-.executor-revendo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;border-radius:6px;font-size:14px;
-  border:1px solid color-mix(in srgb, var(--success) 40%, transparent);background:var(--success-soft);color:var(--ink);}
-.executor-revendo > svg{width:16px;height:16px;flex:none;color:var(--success);}
-.executor-revendo-texto{flex:1;min-width:200px;}
-.executor-revendo .btn svg{width:14px;height:14px;}
+/* rever uma etapa concluída: a etapa ofuscada, sem clique (o aviso em cima é o Alerta) */
 .executor-ferramenta.revendo{opacity:.5;pointer-events:none;user-select:none;filter:grayscale(.35);}
 
 .rotina-lote-periodo{display:flex;align-items:center;gap:8px;margin:0;padding:8px 16px 10px;font-size:13px;font-weight:600;color:var(--ink);}
@@ -2670,7 +2665,6 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .reinf-acoes{white-space:nowrap;text-align:right;}
 .reinf-acoes .btn + .btn{margin-left:6px;}
 .reinf-retificadas{display:inline-flex;flex-wrap:wrap;gap:4px;}
-.btn.reinf-retificada{border-color:var(--warn);color:var(--warn);}
 /* A barra do robô trabalhando (Gmail › Salvando no Drive, Enviando, Lendo; Vitor, 05/10/2026: "coloque animação nessa
    barra de progresso"): é carregamento, então anima em qualquer nível — a parte cheia anda até o número novo e um brilho
    corre por ela enquanto o robô trabalha. */
