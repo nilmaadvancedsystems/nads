@@ -4,7 +4,7 @@ import type { NomeIcone } from '@nads/ui';
 import { caminho } from './caminho';
 
 // Sem Conferência dos grupos e sem arquivo do sistema (2026-09-29): a conta de cada cliente vem do balancete.
-export type IdEtapa = 'competencia' | 'cruzamento' | 'lancamentos';
+export type IdEtapa = 'competencia' | 'cruzamento' | 'lancamentos' | 'exclusao';
 
 export interface Etapa { id: IdEtapa; rotulo: string; titulo: string; icone: NomeIcone }
 
@@ -15,6 +15,8 @@ export const ETAPAS: Etapa[] = [
   // a etapa toda se chama assim (Vitor, 05/10/2026)
   { id: 'cruzamento', rotulo: 'Relatório de Recebimento', titulo: 'Relatório de Recebimento', icone: 'repeat' },
   { id: 'lancamentos', rotulo: 'Lançamentos', titulo: 'Lançamentos para importar', icone: 'download' },
+  // depois de importar o .xls no Alterdata: excluir o total e conferir o razão do banco (Vitor, 05/10/2026)
+  { id: 'exclusao', rotulo: 'Exclusão', titulo: 'Exclusão', icone: 'x' },
 ];
 
 export const indiceDaEtapa = (id: string) => ETAPAS.findIndex(e => e.id === id);

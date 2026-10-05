@@ -22,11 +22,15 @@ export interface Estado {
   decisoes: Record<number, cr.Decisao>;
   /** (os passos da antiga etapa Fiscal; a etapa saiu em 05/10/2026) */
   passosFiscal: string[];
+  /** o .xls dos lançamentos já foi baixado (abre a Exclusão) */
+  baixado: boolean;
+  /** a Exclusão: o razão do banco reimportado bate com o extrato no período (a Tarefa pode seguir) */
+  bancoConferido: boolean;
   /** a etapa mais adiante que já foi aberta */
   alcancada: number;
 }
 
-const INICIAL: Estado = { competencia: '', relatorio: null, porMes: {}, origemBanco: '', decisoes: {}, passosFiscal: [], alcancada: 0 };
+const INICIAL: Estado = { competencia: '', relatorio: null, porMes: {}, origemBanco: '', decisoes: {}, passosFiscal: [], baixado: false, bancoConferido: false, alcancada: 0 };
 
 /** Os relatórios dos meses da competência, juntos (relatório novo: descarta as decisões e trava as etapas seguintes). */
 function comOsMeses(e: Estado, porMes: Estado['porMes']): Estado {
@@ -35,7 +39,7 @@ function comOsMeses(e: Estado, porMes: Estado['porMes']): Estado {
     ...e, porMes,
     relatorio: meses.length ? cr.juntarRelatorios(meses.map(m => porMes[m].relatorio)) : null,
     origemBanco: meses.map(m => porMes[m].origem).join(' · '),
-    decisoes: {}, passosFiscal: [], alcancada: Math.min(e.alcancada, indiceDaEtapa('competencia')),
+    decisoes: {}, passosFiscal: [], baixado: false, bancoConferido: false, alcancada: Math.min(e.alcancada, indiceDaEtapa('competencia')),
   };
 }
 
@@ -76,6 +80,7 @@ function requisitos(id: IdEtapa, e: Estado, d: Derivado): boolean {
     // e o relatório de todos os meses da competência (por período, um por mês; ou o anexado inteiro)
     case 'cruzamento': return d.conferido && (!Object.keys(e.porMes).length || cr.mesesDaCompetencia(e.competencia).every(m => e.porMes[m]));
     case 'lancamentos': return d.conferido && d.pendentes.length === 0;
+    case 'exclusao': return d.conferido && d.pendentes.length === 0 && e.baixado;
   }
 }
 
@@ -185,7 +190,7 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
     },
     mudar: f => setEstado(f),
     usarRelatorio: (rel, origem) => setEstado(e => ({
-      ...e, relatorio: rel, porMes: {}, origemBanco: origem, decisoes: {}, passosFiscal: [],
+      ...e, relatorio: rel, porMes: {}, origemBanco: origem, decisoes: {}, passosFiscal: [], baixado: false, bancoConferido: false,
       alcancada: Math.min(e.alcancada, indiceDaEtapa('competencia')),
     })),
     relatorioDoMes: (mes, rel, origem = '') => setEstado(e => {
@@ -202,6 +207,7 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
     }),
     avancarPara: abrir,
     concluir: () => {
+      setEstado(e => ({ ...e, baixado: true }));
       salvar(cr.confirmarContas(config, resolvidas));
       salvarClientes(cr.aprender(clientes, d.titulos, d.cruzamentos, d.decisoes, new Date()));
     },

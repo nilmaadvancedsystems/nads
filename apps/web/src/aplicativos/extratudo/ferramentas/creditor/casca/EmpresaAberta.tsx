@@ -8,6 +8,7 @@ import { TopoProvider } from '../../../../../comum/topo';
 import { Competencia } from '../telas/competencia/Competencia';
 import { Cruzamento } from '../telas/cruzamento/Cruzamento';
 import { Lancamentos } from '../telas/lancamentos/Lancamentos';
+import { Exclusao } from '../telas/exclusao/Exclusao';
 import { CascaCreditor } from './Casca';
 import { caminho } from './caminho';
 import { caminhoDaEtapa, ETAPAS, indiceDaEtapa, type IdEtapa } from './navegacao';
@@ -25,6 +26,7 @@ function Tela() {
     case 'competencia': return <Competencia />;
     case 'cruzamento': return <Cruzamento />;
     case 'lancamentos': return <Lancamentos />;
+    case 'exclusao': return <Exclusao />;
   }
 }
 
