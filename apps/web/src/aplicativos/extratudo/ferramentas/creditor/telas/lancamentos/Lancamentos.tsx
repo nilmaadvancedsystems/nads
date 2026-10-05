@@ -2,7 +2,6 @@
 // fora) e o Baixar .xls. Sem a tabela por dia e sem a prévia das 8 colunas (Vitor, 05/10/2026: "não precisa").
 import { creditor as cr } from '@nads/core';
 import { Alerta, baixarBytes, Icone, Stat } from '@nads/ui';
-import { AcoesDoTopo } from '../../../../../../comum/topo';
 import { MenuDeConta } from '../../partes/MenuDeConta';
 import { CampoConta } from './partes/CampoConta';
 import { useLancamentos, type CampoConta as IdCampo } from './useLancamentos';
@@ -13,10 +12,6 @@ export function Lancamentos() {
   const baixar = () => { const a = vm.arquivo(); baixarBytes(a.bytes, a.nome, a.tipo); vm.baixou(); };
   return (
     <section>
-      <AcoesDoTopo>
-        <button className="btn btn-primary" type="button" disabled={!vm.podeBaixar} onClick={baixar}><Icone nome="download" />Baixar .xls</button>
-      </AcoesDoTopo>
-
       <div className="card">
         <div className="card-head">
           <h3>Contas e históricos</h3>
@@ -66,6 +61,10 @@ export function Lancamentos() {
         <Stat rotulo="Descontos" valor={cr.reais(vm.totais.desconto)} grande={false} />
       </div>
 
+      {/* o Baixar .xls embaixo, no fim da página (Vitor, 05/10/2026) */}
+      <div className="btn-row" style={{ justifyContent: 'flex-end' }}>
+        <button className="btn btn-primary" type="button" disabled={!vm.podeBaixar} onClick={baixar}><Icone nome="download" />Baixar .xls</button>
+      </div>
     </section>
   );
 }

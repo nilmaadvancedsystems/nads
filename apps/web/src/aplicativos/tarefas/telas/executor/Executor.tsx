@@ -10,6 +10,9 @@ import { Navigate, useBlocker, useParams } from 'react-router';
 import { usePonteDaFerramenta } from '../../../../comum/ponte';
 import { BASE } from '../../casca/navegacao';
 import { useCascaTarefas } from '../../casca/useCascaTarefas';
+import { useDepartamentoDaTela } from '../../casca/departamento';
+import { useGuiaUnica } from '../../casca/guiaUnica';
+import { useOperador } from '../../casca/operador';
 import { JanelaInterromper } from './partes/JanelaInterromper';
 import { useChecklistDaFolha } from './useChecklistDaFolha';
 import { useExecutor } from './useExecutor';
@@ -31,6 +34,10 @@ export function Executor() {
   const { empresa: rota = '', competencia: periodo = '' } = useParams();
   const vm = useExecutor(rota, periodo);
   const casca = useCascaTarefas('minhas-empresas', 'empresas');
+  // uma guia só por pessoa, departamento e empresa: a nova pergunta e a anterior volta para a tela inicial (Vitor, 05/10/2026)
+  const operador = useOperador().operador;
+  const { dep } = useDepartamentoDaTela();
+  const guia = useGuiaUnica(vm.empresa && operador ? operador.nome + '|' + dep + '|' + rota : null);
   // o razão da etapa (o Caixa): importado do computador, vale para a empresa, a etapa e o período abertos; a liquidação
   // de cobrança no caixa põe o Creditor nos meses dela
   const razao = useRazaoDaEtapa(rota + '|' + (vm.etapa?.id || '') + '|' + periodo, vm.meses.length ? vm.meses : [vm.competencia], vm.ajustarCreditor);
@@ -89,7 +96,7 @@ export function Executor() {
   // sair da execução por qualquer lugar do app (o cabeçalho, o menu, o voltar do navegador) com a etapa aberta:
   // é interromper, com a justificativa; trocar de mês ou período dentro do executor não conta
   const saida = useBlocker(({ currentLocation, nextLocation }) =>
-    !!vm.etapa && !vm.interrompendo && currentLocation.pathname !== nextLocation.pathname && !nextLocation.pathname.startsWith(BASE + '/executar/'));
+    !!vm.etapa && !vm.interrompendo && !guia.saindo.current && currentLocation.pathname !== nextLocation.pathname && !nextLocation.pathname.startsWith(BASE + '/executar/'));
   if (!vm.empresa) return <Navigate to={BASE} replace />;
   // o mês faz parte de um período prometido (vários meses): abre o período
   if (vm.irParaPeriodo) return <Navigate to={vm.irParaPeriodo} replace />;
