@@ -57,7 +57,8 @@ function lerLateral(): boolean {
 
 export function Casca(p: {
   sistema: string;
-  empresa: { codigo: string; nome: string };
+  /** a empresa aberta na trilha (null: nenhuma — a Tarefas fora de uma empresa) */
+  empresa: { codigo: string; nome: string } | null;
   versao: string;
   secoes: SecaoCasca[];
   paginas: PaginaCasca[];
@@ -223,13 +224,13 @@ export function Casca(p: {
             {!noOutro && (
               <>
                 <button className="gh-crumb" type="button" title="Voltar para a tela inicial" onClick={p.onInicio}>{p.sistema}</button>
-                <span className="gh-sep">/</span>
+                {p.empresa && <span className="gh-sep">/</span>}
               </>
             )}
-            <button className="brand-tag" id="brandTagEmpresa" type="button" title={p.empresa.nome} onClick={p.onEmpresa}>{p.empresa.codigo}</button>
-            {p.trilha?.map(t => (
+            {p.empresa && <button className="brand-tag" id="brandTagEmpresa" type="button" title={p.empresa.nome} onClick={p.onEmpresa}>{p.empresa.codigo}</button>}
+            {p.trilha?.map((t, i) => (
               <span key={t.rotulo} style={{ display: 'contents' }}>
-                <span className="gh-sep">/</span>
+                {(i > 0 || p.empresa || !noOutro) && <span className="gh-sep">/</span>}
                 {t.onClick ? <button className="gh-crumb" type="button" title={t.titulo} onClick={t.onClick}>{t.rotulo}</button>
                   : <span className="gh-crumb gh-crumb-fim" title={t.titulo}>{t.rotulo}</span>}
               </span>

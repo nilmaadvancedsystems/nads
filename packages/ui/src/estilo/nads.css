@@ -2635,25 +2635,24 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .faq-resposta{padding:0 14px 12px 30px;font-size:14px;line-height:1.5;display:flex;flex-direction:column;align-items:flex-start;gap:6px;}
 .faq-pe{font-size:13px;}
 /* "Qual competência?" ao entrar em Minhas empresas */
-/* a grade de meses (Vitor, 05/10/2026: "mais interativo"): o ano com as setas e os 12 meses em 4 colunas; o escolhido em
-   vermelho, o de hoje com a borda, os fora da lista apagados */
-.modal.modal-centro.competencia-janela{max-width:340px;padding:22px 20px 20px;}
-/* o ano: as setas sem caixa (só o círculo ao passar o mouse) e o ano no meio */
-.comp-ano{display:flex;align-items:center;justify-content:space-between;margin:14px 2px 12px;}
-.comp-ano b{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink);}
-.comp-seta{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:none;border-radius:50%;background:none;color:var(--ink-muted);cursor:pointer;}
-.comp-seta:hover:not(:disabled){background:var(--hover-bg);color:var(--ink);}
-.comp-seta:disabled{opacity:.25;cursor:default;}
-.comp-seta svg{width:16px;height:16px;}
-/* os meses: leves (sem borda), o fundo aparece ao passar o mouse; o escolhido em vermelho; o mês de trabalho com o ponto */
-.comp-grade{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
-.comp-mes{position:relative;height:42px;border:none;border-radius:10px;background:none;color:var(--ink);font:inherit;font-size:14px;font-weight:500;cursor:pointer;}
-.comp-mes:hover:not(:disabled){background:var(--hover-bg);}
-.comp-mes.on,.comp-mes.on:hover{background:var(--btn-primary);color:#FFFFFF;font-weight:600;}
-.comp-mes-ponto{position:absolute;left:50%;bottom:6px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--btn-primary);}
-.comp-mes.on .comp-mes-ponto{background:#FFFFFF;}
-.comp-mes:disabled{color:var(--ink-muted);opacity:.3;cursor:default;}
-.modal.modal-centro .modal-actions .btn.comp-selecionar{width:100%;}
+/* as réguas de Ano e Mês (Vitor, 05/10/2026: "só com ano e mês, o usuário usa o scroll"): cada uma rola de lado e encaixa
+   o item no meio; o do meio em vermelho e maior, os do lado apagados; embaixo, os tracinhos da régua (rolam junto) e a
+   marca vermelha fixa no meio */
+.modal.modal-centro.competencia-janela{max-width:360px;padding:26px 0 18px;}
+.comp-rolos{display:flex;flex-direction:column;gap:18px;}
+.comp-rolo-rotulo{display:block;text-align:center;font-size:13px;font-weight:600;color:var(--ink-muted);margin-bottom:4px;}
+.comp-rolo-caixa{position:relative;}
+.comp-rolo{position:relative;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;outline:none;
+  padding:0 calc(50% - 56px) 12px;
+  background:repeating-linear-gradient(to right,var(--border) 0 1px,transparent 1px 14px) left bottom/100% 7px no-repeat local;
+  -webkit-mask-image:linear-gradient(to right,transparent,#000 22%,#000 78%,transparent);mask-image:linear-gradient(to right,transparent,#000 22%,#000 78%,transparent);}
+.comp-rolo::-webkit-scrollbar{display:none;}
+.comp-rolo-item{flex:0 0 112px;scroll-snap-align:center;height:42px;border:none;background:none;color:var(--ink-muted);font:inherit;font-size:15px;font-weight:500;cursor:pointer;white-space:nowrap;}
+.comp-rolo-item:hover{color:var(--ink);}
+.comp-rolo-item.on{color:var(--accent-ink);font-size:21px;font-weight:700;}
+.comp-rolo-marca{position:absolute;left:50%;bottom:0;width:2px;height:13px;margin-left:-1px;border-radius:1px;background:var(--btn-primary);pointer-events:none;}
+.comp-rolo:focus-visible ~ .comp-rolo-marca{height:17px;}
+.comp-dica{margin:16px 0 0;text-align:center;font-size:12px;}
 .imp-sem-bancos{margin-top:4px;}
 /* o checklist das tarefas da etapa (o Fiscal): o link (ex.: SIEG) à direita e o cuidado embaixo, em laranja */
 .folha-check-lista li{display:flex;align-items:center;gap:12px;}

@@ -18,8 +18,9 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const pessoal = usePessoal();
   const acesso = useAcesso();
   return {
-    // no lugar da empresa (a Tarefas não tem uma empresa aberta): quem está trabalhando
-    empresa: { codigo: op.nome, nome: comLogin ? 'Sair da conta' : 'Trocar de pessoa' },
+    // a Tarefas não tem uma empresa aberta: a trilha fica só com o caminho (Vitor, 05/10/2026: sem o "Vitor · Sair da
+    // conta" — sair fica no avatar)
+    empresa: null,
     versao: VERSAO_SISTEMA,
     titulo: a?.paginas.find(p => p.id === pagina)?.titulo || a?.nome || '',
     // o Cadastro com as páginas em abas no alto (Empresas, Usuários, Configurações; Vitor, 05/10/2026), sem a barra lateral
