@@ -1,17 +1,33 @@
-// ViewModel de Cadastro › Usuários: a equipe (usuarios do Entregas) com cargo, papéis e ativo (só o admin muda) e os
-// computadores liberados de cada pessoa (revogar = aquele login precisa de liberação de novo, com outro código).
+// ViewModel de Cadastro › Usuários: a equipe do Entregas numa lista (quem é, o cargo, os papéis que tem, se está ativa e
+// os computadores liberados); clicar numa pessoa abre a janela dela (cargo, papéis, ativo e computadores — só o admin
+// muda), e o "Novo usuário" abre a janela de criar o acesso (Vitor, 05/10/2026: "novo usuário vai ser uma tela
+// flutuante como as configurações, na aba de usuários").
 import { usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { useOperador } from '../../../casca/operador';
 import { useAcesso } from '../../../dados/repo';
 
+export type FiltroDeUsuarios = 'todos' | 'ativos' | 'inativos';
+type Janela = { tipo: 'novo' } | { tipo: 'pessoa'; uid: string } | null;
+
+/** Para que serve cada papel (a dica da janela da pessoa). */
+const DICAS: Partial<Record<usuarios.Papel, string>> = {
+  admin: 'Muda a equipe, as configurações e libera computadores.',
+  office_boy: 'Faz a rota de entregas no Entregas.',
+  contabil: 'Vê e faz a rotina do Contábil.',
+  fiscal: 'Vê e faz a rotina do Fiscal.',
+  dp: 'Vê e faz a rotina do Departamento Pessoal.',
+  equipe_geral: 'Vê o que é de todos no Entregas.',
+};
+
 export function useUsuariosDoNads() {
   const repo = useAcesso();
   const { toast, modal } = useRetorno();
   const admin = !!useOperador().operador?.admin;
   const [busca, setBusca] = useState('');
-  const [aberto, setAberto] = useState<string | null>(null);
+  const [filtro, setFiltro] = useState<FiltroDeUsuarios>('todos');
+  const [janela, setJanela] = useState<Janela>(null);
   const equipe = repo.equipe();
   const sessoes = repo.sessoes();
   const q = busca.trim().toLowerCase();
@@ -21,18 +37,35 @@ export function useUsuariosDoNads() {
     try { await f(); toast(ok); } catch (err) { toast('Não consegui salvar: ' + (err as Error).message); }
   }
 
+  const todas = equipe.lista
+    .map(p => ({
+      ...p,
+      cargo: p.departamento || p.nivel ? usuarios.rotuloDoCargo(p) : '',
+      iniciais: usuarios.iniciais(p.nome),
+      rotulosDosPapeis: usuarios.PAPEIS.filter(x => p.papeis.includes(x.id)).map(x => x.rotulo),
+      computadores: sessoes.filter(s => s.uid === p.uid),
+    }))
+    .sort((a, b) => Number(b.ativo) - Number(a.ativo) || a.nome.localeCompare(b.nome));
+
   return {
     exemplos: repo.exemplos,
     admin,
     carregando: !equipe.carregada,
     busca, setBusca,
-    linhas: equipe.lista
-      .filter(p => !q || (p.nome + ' ' + p.email).toLowerCase().includes(q))
-      .map(p => ({ ...p, cargo: usuarios.rotuloDoCargo(p), computadores: sessoes.filter(s => s.uid === p.uid) })),
+    filtro, setFiltro,
+    contagem: { todos: todas.length, ativos: todas.filter(p => p.ativo).length, inativos: todas.filter(p => !p.ativo).length },
+    linhas: todas
+      .filter(p => filtro === 'todos' || (filtro === 'ativos' ? p.ativo : !p.ativo))
+      .filter(p => !q || (p.nome + ' ' + p.email + ' ' + p.cargo).toLowerCase().includes(q)),
+    // as janelas: a da pessoa (os dados ao vivo) e a de criar o acesso
+    pessoa: janela?.tipo === 'pessoa' ? todas.find(p => p.uid === janela.uid) || null : null,
+    novoAberto: janela?.tipo === 'novo',
+    abrirPessoa: (uid: string) => setJanela({ tipo: 'pessoa', uid }),
+    abrirNovo: () => setJanela({ tipo: 'novo' }),
+    fechar: () => setJanela(null),
     departamentos: usuarios.DEPARTAMENTOS,
     niveis: usuarios.NIVEIS,
-    papeis: usuarios.PAPEIS,
-    aberto, alternarAberto: (uid: string) => setAberto(a => (a === uid ? null : uid)),
+    papeis: usuarios.PAPEIS.map(x => ({ ...x, dica: DICAS[x.id] || '' })),
     mudarCargo: (p: usuarios.Usuario, departamento: usuarios.Departamento | null, nivel: usuarios.Nivel | null) =>
       tentar(() => repo.salvarCargo(p.uid, departamento, nivel), 'Cargo de ' + p.nome + ' salvo.'),
     alternarPapel(p: usuarios.Usuario, papel: usuarios.Papel) {
@@ -52,3 +85,5 @@ export function useUsuariosDoNads() {
     quando: (iso: string) => (iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : ''),
   };
 }
+
+export type VmUsuarios = ReturnType<typeof useUsuariosDoNads>;

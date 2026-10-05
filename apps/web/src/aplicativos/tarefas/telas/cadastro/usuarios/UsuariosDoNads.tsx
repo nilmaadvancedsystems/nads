@@ -1,93 +1,61 @@
-// Cadastro › Usuários: a equipe do Entregas. Cada pessoa: cargo (departamento e nível), papéis, ativo e os
-// computadores liberados (abrindo a linha). Só o admin muda; os outros veem.
-import type { usuarios } from '@nads/core';
-import { Icone, Interruptor, useCarregando, useEntradaAnimada } from '@nads/ui';
-import { useUsuariosDoNads } from './useUsuariosDoNads';
+// Cadastro › Usuários: a equipe do Entregas numa lista limpa — a foto (ou as iniciais), o nome e o e-mail, o cargo, os
+// papéis que a pessoa tem, se está ativa e os computadores liberados. Clicar abre a janela da pessoa; "Novo usuário"
+// abre a de criar o acesso (as duas flutuantes, no desenho da Minha página).
+import { Esqueleto, Icone, useCarregando } from '@nads/ui';
+import { JanelaDoUsuario, JanelaNovoUsuario } from './JanelaDoUsuario';
+import { useUsuariosDoNads, type FiltroDeUsuarios } from './useUsuariosDoNads';
+
+const FILTROS: { id: FiltroDeUsuarios; rotulo: string }[] = [
+  { id: 'todos', rotulo: 'Todos' },
+  { id: 'ativos', rotulo: 'Ativos' },
+  { id: 'inativos', rotulo: 'Inativos' },
+];
 
 export function UsuariosDoNads() {
   const vm = useUsuariosDoNads();
   useCarregando(vm.carregando);
-  const tabela = useEntradaAnimada<HTMLDivElement>(null, [vm.carregando], 'repetida');
   return (
-    <section>
+    <section className="usuarios">
       <div className="tarefas-barra-topo">
-        <span className="tarefas-contador"><Icone nome="briefcase" /><b>{vm.linhas.length}</b> pessoas</span>
-        {!vm.admin && <span className="fraco usuarios-aviso">Só um administrador muda a equipe.</span>}
+        <div className="chip-row usuarios-filtros">
+          {FILTROS.map(f => (
+            <button key={f.id} type="button" className={'chip-f' + (vm.filtro === f.id ? ' on' : '')} onClick={() => vm.setFiltro(f.id)}>
+              {f.rotulo} <span className="gh-counter">{vm.contagem[f.id]}</span>
+            </button>
+          ))}
+        </div>
         <span className="tarefas-barra-espaco" />
         <label className="busca-curta">
           <Icone nome="search" />
           <input type="text" placeholder="Buscar pessoa" aria-label="Buscar pessoa" value={vm.busca} onChange={ev => vm.setBusca(ev.target.value)} />
         </label>
+        {vm.admin && <button type="button" className="btn btn-primary" onClick={vm.abrirNovo}><Icone nome="plus" />Novo usuário</button>}
       </div>
+      {!vm.admin && <p className="hint">Só um administrador muda a equipe; aqui você vê quem é quem.</p>}
       {vm.exemplos && <p className="hint drive-aviso">Dados de exemplo: a equipe é a de exemplo e nada vai para o banco.</p>}
-      <div ref={tabela} className="table-wrap">
-        <table className="tabela-empresas usuarios-tabela">
-          <thead><tr><th>Pessoa</th><th>Departamento</th><th>Nível</th><th>Papéis</th><th>Ativo</th><th>Computadores</th></tr></thead>
-          <tbody>
-            {!vm.carregando && vm.linhas.map(p => (
-              <UsuarioLinha key={p.uid} vm={vm} p={p} />
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-type Vm = ReturnType<typeof useUsuariosDoNads>;
-type Linha = Vm['linhas'][number];
-
-function UsuarioLinha({ vm, p }: { vm: Vm; p: Linha }) {
-  const aberto = vm.aberto === p.uid;
-  return (
-    <>
-      <tr className={p.ativo ? undefined : 'cad-encerrada'}>
-        <td><span className="cad-conta"><b>{p.nome}</b><span className="fraco">{p.email}</span></span></td>
-        <td>
-          <select value={p.departamento || ''} disabled={!vm.admin} aria-label={'Departamento de ' + p.nome}
-            onChange={ev => void vm.mudarCargo(p, (ev.target.value || null) as usuarios.Departamento | null, p.nivel)}>
-            <option value="">—</option>
-            {vm.departamentos.map(d => <option key={d.id} value={d.id}>{d.rotulo}</option>)}
-          </select>
-        </td>
-        <td>
-          <select value={p.nivel || ''} disabled={!vm.admin} aria-label={'Nível de ' + p.nome}
-            onChange={ev => void vm.mudarCargo(p, p.departamento, (ev.target.value || null) as usuarios.Nivel | null)}>
-            <option value="">—</option>
-            {vm.niveis.map(n => <option key={n.id} value={n.id}>{n.rotulo}</option>)}
-          </select>
-        </td>
-        <td>
-          <span className="usuarios-papeis">
-            {vm.papeis.map(x => (
-              <button key={x.id} type="button" className={'chip-f' + (p.papeis.includes(x.id) ? ' on' : '')} disabled={!vm.admin}
-                aria-pressed={p.papeis.includes(x.id)} onClick={() => void vm.alternarPapel(p, x.id)}>{x.rotulo}</button>
-            ))}
-          </span>
-        </td>
-        <td><Interruptor ligado={p.ativo} onMudar={() => void vm.ativar(p)} rotulo={(p.ativo ? 'Desativar ' : 'Ativar ') + p.nome} /></td>
-        <td>
-          <button type="button" className="btn btn-ghost" onClick={() => vm.alternarAberto(p.uid)} aria-expanded={aberto}>
-            <Icone nome="monitor" />{p.computadores.length}
-          </button>
-        </td>
-      </tr>
-      {aberto && (
-        <tr className="usuarios-computadores">
-          <td colSpan={6}>
-            {!p.computadores.length ? <p className="fraco">Nenhum computador liberado (a proteção do login só pede liberação quando está ligada).</p> : (
-              <ul>
-                {p.computadores.map(s => (
-                  <li key={s.id}>
-                    <Icone nome="monitor" /><span>{s.computador}</span><span className="fraco">liberado em {vm.quando(s.liberadoEm)}</span>
-                    {vm.admin && <button type="button" className="btn btn-outline" onClick={() => void vm.revogar(s)}>Revogar</button>}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </td>
-        </tr>
+      {vm.carregando ? <Esqueleto linhas={6} /> : !vm.linhas.length ? (
+        <div className="card gh-blank"><Icone nome="usuario" /><h4>Ninguém aqui</h4><p>{vm.busca ? 'Nenhuma pessoa com "' + vm.busca + '".' : 'Nenhuma pessoa neste filtro.'}</p></div>
+      ) : (
+        <ul className="card usuarios-lista">
+          {vm.linhas.map(p => (
+            <li key={p.uid}>
+              <button type="button" className={'usuarios-item' + (p.ativo ? '' : ' inativo')} onClick={() => vm.abrirPessoa(p.uid)} aria-label={'Abrir ' + p.nome}>
+                {p.fotoPerfil ? <img className="usuarios-foto" src={p.fotoPerfil} alt="" /> : <span className="usuarios-foto usuarios-iniciais" aria-hidden="true">{p.iniciais}</span>}
+                <span className="usuarios-quem"><b>{p.nome}</b><span className="fraco">{p.email}</span></span>
+                <span className={'usuarios-cargo' + (p.cargo ? '' : ' fraco')}>{p.cargo || 'Sem cargo'}</span>
+                <span className="usuarios-papeis">{p.rotulosDosPapeis.map(r => <span key={r} className="badge badge-neutral">{r}</span>)}</span>
+                <span className="usuarios-estado">
+                  <span className={'usuarios-ponto' + (p.ativo ? ' ok' : '')} aria-hidden="true" />{p.ativo ? 'Ativo' : 'Inativo'}
+                </span>
+                <span className="usuarios-pcs fraco" title="Computadores liberados"><Icone nome="monitor" />{p.computadores.length}</span>
+                <Icone nome="chevronRight" className="usuarios-seta" />
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
-    </>
+      {vm.pessoa && <JanelaDoUsuario vm={vm} />}
+      {vm.novoAberto && <JanelaNovoUsuario fechar={vm.fechar} />}
+    </section>
   );
 }

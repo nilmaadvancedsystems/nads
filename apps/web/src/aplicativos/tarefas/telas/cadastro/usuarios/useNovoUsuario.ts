@@ -1,4 +1,4 @@
-// ViewModel de Cadastro › Novo usuário (o "Criar acesso" do Entregas): nome, senha, departamento, nível e os papéis a
+// ViewModel da janela Novo usuário (Cadastro › Usuários; o "Criar acesso" do Entregas): nome, senha, departamento, nível e os papéis a
 // mais; mostra o login que a pessoa vai usar e os papéis que a conta vai ter. Só o admin cria (as regras do Entregas).
 import { usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
@@ -9,7 +9,7 @@ import { useAcesso } from '../../../dados/repo';
 /** Os papéis que se dão à mão (o resto vem do departamento e do nível). */
 const EXTRAS: readonly usuarios.Papel[] = ['admin', 'office_boy', 'equipe_geral'];
 
-export function useNovoUsuario() {
+export function useNovoUsuario(aoCriar: () => void = () => {}) {
   const repo = useAcesso();
   const { toast } = useRetorno();
   const admin = !!useOperador().operador?.admin;
@@ -20,7 +20,6 @@ export function useNovoUsuario() {
   const [extras, setExtras] = useState<usuarios.Papel[]>([]);
   const [tentou, setTentou] = useState(false);
   const [criando, setCriando] = useState(false);
-  const [criados, setCriados] = useState<{ nome: string; login: string }[]>([]);
 
   const conta: usuarios.NovaConta = { nome, senha, departamento, nivel, extras };
   const emails = repo.equipe().lista.map(p => p.email);
@@ -41,8 +40,8 @@ export function useNovoUsuario() {
     /** os papéis que a conta vai ter (os do cargo + os marcados) */
     papeis: papeis.map(p => usuarios.PAPEIS.find(x => x.id === p)?.rotulo || p),
     erros: tentou ? erros : [],
+    iniciais: limpo ? usuarios.iniciais(limpo) : '?',
     criando,
-    criados,
     async criar() {
       setTentou(true);
       if (!admin) { toast('Só um administrador cadastra pessoas.'); return; }
@@ -50,9 +49,8 @@ export function useNovoUsuario() {
       setCriando(true);
       try {
         const login = await repo.criarConta(conta);
-        toast('Acesso criado para ' + limpo + '.');
-        setCriados(l => [{ nome: limpo, login }, ...l]);
-        setNome(''); setSenha(''); setDepartamento(''); setNivel(''); setExtras([]); setTentou(false);
+        toast('Acesso criado para ' + limpo + ' (entra como ' + login + ').');
+        aoCriar();
       } catch (err) {
         toast(err instanceof Error ? err.message : String(err));
       } finally { setCriando(false); }
