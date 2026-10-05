@@ -4,16 +4,18 @@
 import { Icone, MenuSuspenso } from '@nads/ui';
 import { useState } from 'react';
 
-export function MenuDeConta({ valor, contas, onEscolher }: {
+export function MenuDeConta({ valor, contas, onEscolher, travado }: {
   valor: string;
   contas: readonly { codigo: string; nome: string }[];
   onEscolher: (codigo: string) => void;
+  /** já salva na empresa: o mesmo botão, apagado e sem clique (Vitor, 05/10/2026) */
+  travado?: boolean;
 }) {
   const [busca, setBusca] = useState('');
   const q = busca.trim().toLowerCase();
   const achadas = (q ? contas.filter(c => (c.codigo + ' ' + c.nome).toLowerCase().includes(q)) : contas).slice(0, 80);
   const codigoDigitado = /^\d+$/.test(busca.trim()) && !contas.some(c => c.codigo === busca.trim()) ? busca.trim() : '';
-  return (
+  const menu = (
     <MenuSuspenso rotulo={valor || 'Conta'} className="btn btn-outline" largura={340} dica="Escolher a conta do cliente"
       conteudo={fechar => (
         <>
@@ -30,12 +32,13 @@ export function MenuDeConta({ valor, contas, onEscolher }: {
           )}
           {achadas.map(c => (
             <button key={c.codigo} type="button" className="popover-item" role="menuitem" onClick={() => { fechar(); onEscolher(c.codigo); setBusca(''); }}>
-              <span className="popover-texto">{c.codigo}</span>
-              <span className="popover-dica">{c.nome}</span>
+              {/* o código em cima e o nome embaixo (Vitor, 05/10/2026: a dica à direita embolava com nome comprido) */}
+              <span className="popover-texto"><b>{c.codigo}</b><br /><span className="hint">{c.nome}</span></span>
             </button>
           ))}
           {!achadas.length && !codigoDigitado && <p className="hint">Nenhuma conta com essa busca.</p>}
         </>
       )} />
   );
+  return travado ? <span className="seletor-travado" inert aria-disabled="true">{menu}</span> : menu;
 }

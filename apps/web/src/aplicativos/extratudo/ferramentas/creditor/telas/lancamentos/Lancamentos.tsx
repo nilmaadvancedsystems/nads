@@ -12,12 +12,17 @@ export function Lancamentos() {
   const baixar = () => { const a = vm.arquivo(); baixarBytes(a.bytes, a.nome, a.tipo); vm.baixou(); };
   return (
     <section>
+      {/* os números em cima, numa linha só (Vitor, 05/10/2026) */}
+      <div className="stat-grid">
+        <Stat rotulo="Lançamentos" valor={vm.totais.qtd} grande={false} />
+        <Stat rotulo="Principal" valor={cr.reais(vm.totais.principal)} grande={false} />
+        <Stat rotulo="Mora" valor={cr.reais(vm.totais.mora)} grande={false} />
+        <Stat rotulo="Descontos" valor={cr.reais(vm.totais.desconto)} grande={false} />
+      </div>
       <div className="card">
         <div className="card-head">
           <h3>Contas e históricos</h3>
-          {vm.temSalvas && <button className="btn" type="button" onClick={vm.esquecerContas}>Voltar às sugestões</button>}
         </div>
-        <p className="hint" style={{ marginTop: 0, marginBottom: 8 }}>{vm.fonte}</p>
         <div className="form-grid">
           {(Object.keys(vm.rotuloConta) as IdCampo[]).map(c => {
             const d = vm.ehDoBalancete(c) ? vm.detalhe[c as keyof typeof vm.detalhe] : null;
@@ -27,7 +32,7 @@ export function Lancamentos() {
                 {vm.ehDoBalancete(c) ? (
                   <>
                     <label>{vm.rotuloConta[c]}</label>
-                    <MenuDeConta valor={vm.contas[c]} contas={vm.opcoes} onEscolher={v => vm.mudarConta(c, v)} />
+                    <MenuDeConta valor={vm.contas[c]} contas={vm.opcoes} onEscolher={v => vm.mudarConta(c, v)} travado={c === 'banco' && d?.origem === 'Salva na empresa'} />
                   </>
                 ) : <CampoConta id={'fConta-' + c} rotulo={vm.rotuloConta[c]} valor={vm.contas[c]} onGravar={v => vm.mudarConta(c, v)} />}
                 {d && vm.carregada && (
@@ -54,12 +59,6 @@ export function Lancamentos() {
         </Alerta>
       )}
 
-      <div className="dash-grid" style={{ margin: '16px 0' }}>
-        <Stat rotulo="Lançamentos" valor={vm.totais.qtd} grande={false} />
-        <Stat rotulo="Principal" valor={cr.reais(vm.totais.principal)} grande={false} />
-        <Stat rotulo="Mora" valor={cr.reais(vm.totais.mora)} grande={false} />
-        <Stat rotulo="Descontos" valor={cr.reais(vm.totais.desconto)} grande={false} />
-      </div>
 
       {/* o Baixar .xls embaixo, no fim da página (Vitor, 05/10/2026) */}
       <div className="btn-row" style={{ justifyContent: 'flex-end' }}>
