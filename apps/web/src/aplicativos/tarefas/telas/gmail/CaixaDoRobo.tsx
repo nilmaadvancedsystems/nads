@@ -193,7 +193,7 @@ export function CaixaDoRobo() {
             <span className="tarefas-barra-espaco" />
             <button type="button" className="btn btn-outline" onClick={() => void vm.cancelar()}>Cancelar</button>
           </div>
-          {a.total > 0 && <span className="tarefas-barra larga"><span style={{ width: Math.min(100, (a.feito / a.total) * 100) + '%' }} /></span>}
+          {a.total > 0 && <span className="tarefas-barra larga andando"><span style={{ width: Math.min(100, (a.feito / a.total) * 100) + '%' }} /></span>}
           <ul className="gmail-andamento-passos">{a.recentes.slice(-4).map((r, i) => <li key={i} className={r.destaque ? 'destaque' : undefined}>{r.texto}</li>)}</ul>
         </div>
       )}

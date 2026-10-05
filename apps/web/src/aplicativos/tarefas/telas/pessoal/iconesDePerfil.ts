@@ -38,4 +38,20 @@ function urlIcone(ic: IconeDePerfil): string {
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 }
 
+// Os ícones de personagem (Vitor, 05/10/2026: "coloque os ícones", da pasta icones): imagens 48x48 que entram no código
+// como data: (?inline), então vão gravadas inteiras em usuarios.fotoPerfil e aparecem no Entregas também. Para pôr
+// outro, é só soltar o .webp em ./icones (o nome vem do arquivo: Little_Wolf_profileicon.webp → "Little Wolf").
+const PERSONAGENS = import.meta.glob<string>('./icones/*.webp', { eager: true, query: '?inline', import: 'default' });
+const nomeDoArquivo = (caminho: string) => caminho.replace(/^.*\//, '').replace(/_profileicon\.webp$|\.webp$/i, '').replace(/_/g, ' ');
+
 export const ICONES_DE_PERFIL: readonly { nome: string; url: string }[] = ICONES.map(ic => ({ nome: ic.nome, url: urlIcone(ic) }));
+const ICONES_DE_PERSONAGEM: readonly { nome: string; url: string }[] = Object.entries(PERSONAGENS)
+  .sort(([a], [b]) => a.localeCompare(b)).map(([caminho, url]) => ({ nome: nomeDoArquivo(caminho), url }));
+
+/** Quem vê os de personagem (Vitor, 05/10/2026: "só vão ser liberados para os usuários Gustavo.S e Vitor"), pelo login. */
+const LIBERADOS_PERSONAGENS = ['gustavo.s@nilma.local', 'vitor@nilma.local'];
+
+/** Os ícones que a pessoa pode escolher: os 12 emblemas para todos; os de personagem só para os liberados. */
+export function iconesDePerfilPara(email: string): readonly { nome: string; url: string }[] {
+  return LIBERADOS_PERSONAGENS.includes(email.trim().toLowerCase()) ? [...ICONES_DE_PERFIL, ...ICONES_DE_PERSONAGEM] : ICONES_DE_PERFIL;
+}

@@ -10,7 +10,7 @@
 import { usuarios as u } from '@nads/core';
 import { addDoc, collection, doc, onSnapshot, orderBy, query, setDoc, Timestamp, updateDoc, where, writeBatch, limit } from 'firebase/firestore';
 import type { RepoAcesso } from './acesso';
-import { bancoDoEntregas, horaDoLogin } from './entregas.firestore';
+import { bancoDoEntregas, criarLoginNoEntregas, horaDoLogin } from './entregas.firestore';
 
 type Quem = { uid: string; nome: string; email: string; admin: boolean } | null;
 
@@ -140,6 +140,16 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
       await updateDoc(doc(db, 'usuarios', q.uid), { fotoPerfil: foto || '' });
     },
     async ativar(uid, ativo) { await updateDoc(doc(db, 'usuarios', uid), { ativo }); },
+    // o "Criar acesso" do Entregas: o login (numa instância à parte) e o cadastro gravado pela sessão do admin (a regra
+    // só deixa o admin criar usuarios/{uid} de outra pessoa)
+    async criarConta(c) {
+      const erros = u.conferirNovaConta(c, Object.values(equipe.docs).map(d => String(d.email || '')));
+      if (erros.length) throw new Error(erros.join(' '));
+      const novo = u.docDaContaNova(c, new Date());
+      const uid = await criarLoginNoEntregas(String(novo.email), c.senha);
+      await setDoc(doc(db, 'usuarios', uid), novo);
+      return String(novo.email);
+    },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };

@@ -15,7 +15,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { VERSAO_SISTEMA } from '../../../../versao';
 import { CHAVE_COMPETENCIA, CHAVE_INICIO, caminhoDoExecutor, competenciaEscolhida, INICIOS, inicioEscolhido } from '../../casca/navegacao';
-import { ICONES_DE_PERFIL } from './iconesDePerfil';
+import { iconesDePerfilPara } from './iconesDePerfil';
 import { useOperador, type Operador } from '../../casca/operador';
 import { useAcesso, useDriveDoEntregas, useExecucoesDoPeriodo, useGmailDoEntregas, useRepoPessoal } from '../../dados/repo';
 import { useSessao } from '../../dados/sessao';
@@ -204,7 +204,8 @@ export function usePaginaPessoal() {
       trocarFoto: (arquivo: File) => { void reduzir(arquivo).then(gravarFoto, (err: Error) => toast(err.message)); },
       tirarFoto: () => { void gravarFoto(null); },
       /** os ícones do Entregas, para quem não quer foto */
-      icones: ICONES_DE_PERFIL,
+      // (os de personagem só para o Gustavo.S e o Vitor; nos exemplos, pelo nome de quem escolheu)
+      icones: iconesDePerfilPara(u?.email || usuarios.emailDoNome(op.nome)),
       escolherIcone: (url: string) => { void gravarFoto(url); },
       // o nome e a senha: só com o login do Entregas (nos exemplos não tem conta)
       comLogin: !!sessao?.usuario,

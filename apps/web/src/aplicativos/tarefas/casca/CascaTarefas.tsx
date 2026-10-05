@@ -5,17 +5,6 @@ import { LugarDasAcoes, useTrilhaDoTopo } from '../../../comum/topo';
 import type { IdAplicacao } from './navegacao';
 import { useCascaTarefas } from './useCascaTarefas';
 
-/** A ajuda ao lado do avatar (Vitor, 02/10/2026: "quero que a IA/FAQ fique do lado do perfil"): a IA e o FAQ. */
-export function BotaoDeAjuda({ abrir }: { abrir: (topico: string) => void }) {
-  return (
-    <MenuSuspenso rotulo="" icone="ajuda" className="gh-topo-btn gh-topo-menu ajuda-btn" dica="Ajuda: perguntar à IA e perguntas frequentes" titulo="Ajuda" direita
-      itens={[
-        { rotulo: 'Perguntar à IA', icone: 'robo', onClick: () => abrir('ia') },
-        { rotulo: 'Perguntas frequentes', icone: 'ajuda', onClick: () => abrir('faq') },
-      ]} />
-  );
-}
-
 /** O avatar no canto do cabeçalho (como o do Entregas e o do GitHub): as iniciais; aberto, a Minha página e sair. */
 function AvatarDaPessoa({ vm }: { vm: ReturnType<typeof useCascaTarefas> }) {
   return (
@@ -36,7 +25,7 @@ export function CascaTarefas({ app, pagina, telaInteira, children }: { app: IdAp
       lateral={telaInteira || vm.comAbas ? 'nenhuma' : undefined} larga={telaInteira}
       acoes={telaInteira ? undefined : <LugarDasAcoes />} onSecao={vm.onSecao} onPagina={vm.onSecao} onInicio={vm.inicio} onAplicativos={vm.inicio}
       onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}
-      topoDireita={<><BotaoDeAjuda abrir={vm.abrirPessoal} /><AvatarDaPessoa vm={vm} /></>}>
+      topoDireita={<AvatarDaPessoa vm={vm} />}>
       {children}
     </Casca>
   );
