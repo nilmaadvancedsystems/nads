@@ -2795,3 +2795,5 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
    o "Desativar fulano?" abria por baixo da janela da pessoa (Vitor, 05/10/2026); abaixo só da abertura do login (100) */
 .modal-overlay[data-saida-propria]{z-index:95;}
 .toast-region{z-index:96;}
+/* Arquivar agora: as rodadas de hoje (sem nada rodando) */
+.arquivador-hoje{display:flex;flex-direction:column;gap:6px;}

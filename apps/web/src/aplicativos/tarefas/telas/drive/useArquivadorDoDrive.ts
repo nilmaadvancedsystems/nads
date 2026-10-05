@@ -1,12 +1,21 @@
 // ViewModel do "Arquivar agora" no Drive (o mesmo botão das Pendências do Entregas): se o PC do arquivador está ligado
-// (o ponto em robo/arquivador, até 3 minutos), o pedido aberto (ou o último, se foi nas últimas 24 h) com a % e os
-// últimos passos, pedir (com confirmação) e cancelar enquanto não começou. Some para quem não pode (só admin e contábil).
+// (o ponto em robo/arquivador, até 3 minutos), o pedido aberto (ou o último, se foi nas últimas 24 h) com a %, a
+// organização rodando por fora do botão (a das 9h: a fase em que está; Vitor, 05/10/2026: "quero que mostre que está
+// rodando"), as rodadas de hoje somadas, pedir (com confirmação) e cancelar enquanto não começou. Some para quem não pode
+// (só admin e contábil).
 import { useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useArquivador } from '../../dados/repo';
 import type { PedidoDeArquivo } from '../../dados/arquivador';
 
 const ABERTOS = ['pendente', 'aguardando', 'processando'];
+/** As fases da rotina (01-ORQUESTRADOR), em português de quem usa. */
+const FASES: readonly (readonly [string, string])[] = [
+  ['0', 'Abrindo'], ['1', 'Vendo o que chegou'], ['1b', 'Abrindo os compactados (.zip, .rar)'], ['2', 'Separando os PDFs'],
+  ['3-4', 'Descobrindo o cliente de cada arquivo'], ['4b', 'Separando as exceções'], ['5', 'Conferindo'], ['6', 'Conferindo a integridade'],
+  ['7', 'Registrando e guardando'], ['8', 'Fechando'],
+];
+const hojeNoId = () => { const d = new Date(); return 'EXEC-' + d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0') + '-'; };
 const TITULOS: Record<string, string> = {
   pendente: 'Arquivamento pedido',
   aguardando: 'Esperando para começar',
@@ -64,6 +73,22 @@ export function useArquivadorDoDrive() {
   }
   const resultado = pedido?.status === 'concluido' ? repo.resultado(pedido.execucao) : null;
 
+  // a organização rodando por fora do botão (a das 9h): com o PC ligado e sem pedido aberto
+  const r = e.rotina;
+  const rodandoPorFora = ligado && !!r?.ativa && !r.deUmPedido && !aberto;
+  const iFase = r?.fase ? FASES.findIndex(f => f[0] === r.fase) : -1;
+  const pctRotina = rodandoPorFora && iFase >= 0 ? Math.min(99, Math.round((iFase + 0.5) / FASES.length * 100)) : null;
+  // as rodadas de hoje (cada execução publicada é uma rodada)
+  const deHoje = repo.execucoesRecentes().filter(x => x.id.startsWith(hojeNoId()));
+  const hoje = deHoje.length ? {
+    rodadas: deHoje.length,
+    numeros: [
+      { valor: deHoje.reduce((s, x) => s + x.arquivados, 0), rotulo: 'arquivados hoje', aviso: false },
+      { valor: new Set(deHoje.flatMap(x => x.codigos)).size, rotulo: 'clientes', aviso: false },
+      { valor: deHoje.reduce((s, x) => s + x.naoIdentificados, 0), rotulo: 'sem cliente', aviso: deHoje.some(x => x.naoIdentificados > 0) },
+    ],
+  } : null;
+
   return {
     exemplos: repo.exemplos,
     visivel: !e.semPermissao,
@@ -71,8 +96,18 @@ export function useArquivadorDoDrive() {
     pc: ligado
       ? 'PC do arquivador ligado' + (e.situacao === 'rodando' ? ' · organizando agora' : e.situacao === 'aguardando' ? ' · esperando para começar' : '')
       : 'PC do arquivador desligado' + (e.em && Date.parse(e.em) > 0 ? ' desde ' + quando(e.desligadoEm || e.em) : ''),
-    rotulo: aberto ? (aberto.status === 'processando' ? 'Organizando' + (pct != null ? ' ' + pct + '%' : '…') : 'Arquivamento pedido') : 'Arquivar agora',
-    ocupado: !!aberto,
+    rotulo: aberto ? (aberto.status === 'processando' ? 'Organizando' + (pct != null ? ' ' + pct + '%' : '…') : 'Arquivamento pedido')
+      : rodandoPorFora ? 'Organizando' + (pctRotina != null ? ' ' + pctRotina + '%' : '…') : 'Arquivar agora',
+    ocupado: !!aberto || rodandoPorFora,
+    podePedir: !aberto,
+    rotina: rodandoPorFora && r ? {
+      titulo: 'Organização em andamento',
+      detalhe: (r.inicio ? 'Começou ' + quando(r.inicio) + ' (há ' + duracao(r.inicio, agora) + ')' : 'Rodando agora') + (r.ultimoSinalEm ? ' · último sinal há ' + duracao(r.ultimoSinalEm, agora) : '') + '.',
+      etapa: iFase >= 0 ? 'Fase ' + (iFase + 1) + ' de ' + FASES.length + ': ' + FASES[iFase][1] : '',
+      pct: pctRotina,
+    } : null,
+    hoje,
+    notaAoPedir: rodandoPorFora ? 'Se pedir agora, começa quando a organização em andamento terminar.' : 'Cada arquivo da pasta Claudio Secretario vai para a pasta do cliente, como na organização das 9h.',
     pedido: pedido ? {
       id: pedido.id, status: pedido.status, titulo: TITULOS[pedido.status] || pedido.status, detalhe: detalhe(pedido),
       pct, etapa: aberto?.progresso ? 'Etapa ' + Math.min(aberto.progresso.feitas + 1, aberto.progresso.total) + ' de ' + aberto.progresso.total + (aberto.progresso.atual ? ': ' + aberto.progresso.atual : '') : '',

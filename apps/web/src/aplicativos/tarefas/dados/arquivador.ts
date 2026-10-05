@@ -35,6 +35,26 @@ export interface ResultadoDoArquivamento {
   clientes: { codigo: string; nome: string; n: number }[];
 }
 
+/**
+ * A rotina rodando por fora do botão (a tarefa das 9h, ou alguém rodando à mão): o arquivador do PC lê a trava que ela
+ * cria (_CONTROLE/_execucao.lock: a execução, o início, o modo e a fase) e o último arquivo que ela mexeu, e manda no ponto.
+ */
+export interface RotinaRodando {
+  ativa: boolean;
+  execucao: string;
+  /** ISO, ou '' quando só há sinal (sem a trava) */
+  inicio: string;
+  modo: string;
+  /** a fase do 01-ORQUESTRADOR: 0, 1, 1b, 2, 3-4, 4b, 5, 6, 7 ou 8 */
+  fase: string;
+  ultimoSinalEm: string;
+  /** é a execução de um pedido do botão (aí o painel mostra pelo pedido) */
+  deUmPedido: boolean;
+}
+
+/** Uma execução já publicada (o resumo em arquivamentos/{EXEC-…}): as rodadas do dia somam no painel. */
+export interface ExecucaoPublicada { id: string; em: string; arquivados: number; naoIdentificados: number; codigos: string[] }
+
 export interface EstadoDoArquivador {
   carregado: boolean;
   /** quem não é admin nem contábil não lê (as regras do Entregas): o botão some */
@@ -43,6 +63,7 @@ export interface EstadoDoArquivador {
   em: string;
   situacao: string;
   desligadoEm: string;
+  rotina: RotinaRodando | null;
 }
 
 export interface RepoArquivador {
@@ -50,6 +71,8 @@ export interface RepoArquivador {
   estado(): EstadoDoArquivador;
   /** os últimos pedidos, o mais novo primeiro */
   pedidos(): PedidoDeArquivo[];
+  /** as últimas execuções publicadas, a mais nova primeiro */
+  execucoesRecentes(): ExecucaoPublicada[];
   /** o resultado de uma execução (null enquanto não chegou) */
   resultado(execucao: string): ResultadoDoArquivamento | null;
   pedir(): Promise<void>;
@@ -59,16 +82,26 @@ export interface RepoArquivador {
 }
 
 /** Nos exemplos não há PC: o pedido anda sozinho (espera, organiza em etapas e conclui) para ver a tela funcionando. */
-export function criarArquivadorMemoria(quem: () => { nome: string } | null): RepoArquivador {
+export function criarArquivadorMemoria(quem: () => { nome: string } | null): RepoArquivador & { simularRotina(fase: string | null): void } {
   let ver = 0;
   const ouvintes = new Set<() => void>();
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   const agora = () => new Date().toISOString();
   const pedidos: PedidoDeArquivo[] = [];
+  // a rotina por fora, só para ver a tela (no console: simularRotina('2'); simularRotina(null) para parar)
+  let rotina: RotinaRodando | null = null;
   const ETAPAS = ['Ler a pasta Claudio Secretario', 'Identificar o cliente de cada arquivo', 'Mover para as pastas dos clientes', 'Conferir e registrar'];
   return {
     exemplos: true,
-    estado: () => ({ carregado: true, semPermissao: false, em: agora(), situacao: pedidos.some(p => p.status === 'processando') ? 'rodando' : 'livre', desligadoEm: '' }),
+    estado: () => ({ carregado: true, semPermissao: false, em: agora(), situacao: pedidos.some(p => p.status === 'processando') ? 'rodando' : 'livre', desligadoEm: '', rotina }),
+    execucoesRecentes: () => (rotina ? [
+      { id: 'EXEC-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-132848', em: agora(), arquivados: 587, naoIdentificados: 1, codigos: ['575', '573'] },
+      { id: 'EXEC-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-142056', em: agora(), arquivados: 2, naoIdentificados: 3, codigos: ['591', '560'] },
+    ] : []),
+    simularRotina(fase) {
+      rotina = fase == null ? null : { ativa: true, execucao: 'EXEC-exemplo', inicio: new Date(Date.now() - 25 * 60000).toISOString(), modo: 'PRODUCAO', fase, ultimoSinalEm: agora(), deUmPedido: false };
+      mudou();
+    },
     pedidos: () => pedidos,
     resultado: execucao => (execucao ? {
       arquivados: 12, naoIdentificados: 2, duplicados: 1,
