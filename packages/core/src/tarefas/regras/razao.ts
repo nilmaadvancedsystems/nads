@@ -179,3 +179,18 @@ export function atencoesDoMes(m: MesDoRazao): PontoDeAtencao[] {
 export function precisaDoCreditor(m: MesDoRazao): boolean {
   return m.lancamentos.some(l => atencaoDoHistorico(l.historico) === 'liquidacao-cobranca');
 }
+
+/**
+ * O razão × o período da tarefa (Vitor, 05/10/2026: "respeite rigorosamente: se faltar um mês, avise; se for mês a mais,
+ * avise; mas trabalhe apenas no período"): os meses do período sem nenhum lançamento, os meses do razão fora do período e,
+ * desses, os que têm CRÉD.LIQ.COBRANÇA (o Creditor deles não entra agora).
+ */
+export function coberturaDoRazao(r: RazaoDaConta, meses: readonly string[]): { faltam: string[]; aMais: string[]; liquidacaoFora: string[] } {
+  const doRazao = [...new Set(r.lancamentos.map(l => l.data.slice(0, 7)))].sort();
+  const aMais = doRazao.filter(m => !meses.includes(m));
+  return {
+    faltam: meses.filter(m => !doRazao.includes(m)),
+    aMais,
+    liquidacaoFora: aMais.filter(m => r.lancamentos.some(l => l.data.startsWith(m) && atencaoDoHistorico(l.historico) === 'liquidacao-cobranca')),
+  };
+}

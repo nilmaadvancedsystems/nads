@@ -94,7 +94,9 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const fv = vista?.ferramenta || null;
   // a etapa "só quando adicionada" (o Creditor) trabalha os meses em que entrou: os do caixa com CRÉD.LIQ.COBRANÇA
   // (Vitor, 05/10/2026: "já deixa configurado, de acordo com os meses de cred liq do caixa")
-  const mesesDaEtapa = vista?.soQuandoAdicionada ? meses.filter(c => t.etapaNoMes(exDe[c] || null, vista.id)) : [];
+  // (só os que faltam concluir; revendo a etapa já feita, todos em que ela entrou)
+  const entrouEm = vista?.soQuandoAdicionada ? meses.filter(c => t.etapaNoMes(exDe[c] || null, vista.id)) : [];
+  const mesesDaEtapa = revista ? entrouEm : entrouEm.filter(c => !concluidaEm(vista!.id, c));
   const compV = mesesDaEtapa[0] || (revista ? meses[meses.length - 1] || competencia : competencia);
   const juntosV = varios || !!fv?.periodo;
   const mesesV = mesesDaEtapa.length ? '&meses=' + mesesDaEtapa.join(',') : juntosV && varios ? '&meses=' + meses.join(',') : '';
@@ -343,6 +345,9 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     /** A ferramenta trocou a competência ou o período (o seletor dela): a mesma empresa, no outro período. */
     trocarCompetencia: (c: string) => {
       if (!empresa || c === periodo || !t.competenciasDoPeriodo(c).length) return;
+      // o período só se escolhe na primeira etapa (a Importação); nas outras, as ferramentas seguem o período à risca
+      // (Vitor, 05/10/2026: "essa seleção de mês é só na primeira etapa")
+      if (etapa && etapa.id !== rotina.etapas[0].id) { toast('O período só se escolhe na Importação.'); return; }
       // alterou o período do Em lote (a engrenagem): os meses que saíram dele deixam de estar prometidos
       if (varios) {
         const novos = new Set(t.competenciasDoPeriodo(c));

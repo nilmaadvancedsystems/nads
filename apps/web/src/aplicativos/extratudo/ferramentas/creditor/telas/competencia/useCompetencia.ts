@@ -6,7 +6,7 @@
 // todos os meses, segue para o Relatório do banco (os meses juntos).
 import { creditor as cr, tarefas } from '@nads/core';
 import { useCarregando, useRetorno } from '@nads/ui';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useSessao } from '../../casca/sessao';
 import { useDrive } from '../../dados/repo';
@@ -32,8 +32,17 @@ export function useCompetencia() {
   const { modal, aviso } = useRetorno();
   const [params] = useSearchParams();
   const maximo = new Date().toISOString().slice(0, 7);
-  const [meses, setMeses] = useState(() => mesesIniciais(s.estado.competencia, params));
+  // aberto pela Tarefa: os meses vêm prontos (os do período com CRÉD.LIQ.COBRANÇA no caixa) e ficam travados — o
+  // período só se escolhe na primeira etapa da Tarefa (Vitor, 05/10/2026: "automático e bloqueado pro usuário não mexer")
+  const daTarefa = cr.mesesDaCompetencia(params.get('meses') || '');
+  const travada = daTarefa.length > 0;
+  const [meses, setMeses] = useState(() => (travada ? daTarefa : mesesIniciais(s.estado.competencia, params)));
   const competencia = cr.competenciaDosMeses(meses);
+  // a sessão guardada com outros meses (de antes): passa para os da Tarefa
+  const daTarefaJuntos = cr.competenciaDosMeses(daTarefa);
+  useEffect(() => {
+    if (travada && s.estado.competencia && s.estado.competencia !== daTarefaJuntos) s.definirCompetencia(daTarefaJuntos);
+  }, [travada, daTarefaJuntos, s]);
   const [entrando, setEntrando] = useState(false);
   const [erroLogin, setErroLogin] = useState('');
   // a janela de entrar no Drive: para buscar um mês, ou todos os que faltam ('*')
@@ -133,6 +142,7 @@ export function useCompetencia() {
 
   /** Troca os meses (o seletor): os relatórios dos meses que saíram saem junto. */
   function trocar(novos: string[]) {
+    if (travada) return;
     const ms = cr.mesesDaCompetencia(novos.join(','));
     if (!ms.length) return;
     parar.current = true;
@@ -148,6 +158,8 @@ export function useCompetencia() {
   useCarregando(ocupado);
   return {
     meses, lote,
+    /** os meses vieram da Tarefa: o seletor não abre */
+    travada,
     rotulo: lote ? cr.rotuloCompetencia(competencia) : tarefas.rotuloCurtoCompetencia(meses[0]),
     competencias: opcoes.map(c => ({ valor: c, rotulo: tarefas.rotuloCompetencia(c), curto: cr.rotuloCompetencia(c) })),
     escolherMes: (c: string) => trocar([c]),

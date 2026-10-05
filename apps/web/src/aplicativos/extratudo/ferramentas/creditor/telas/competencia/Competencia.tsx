@@ -81,6 +81,14 @@ function SeletorDaCompetencia({ vm }: { vm: VM }) {
   const [de, setDe] = useState(vm.meses[0]);
   const [ate, setAte] = useState(vm.meses[vm.meses.length - 1]);
   const qtd = vm.competencias.filter(c => c.valor >= (de < ate ? de : ate) && c.valor <= (de < ate ? ate : de)).length;
+  // aberto pela Tarefa: só a informação, como nas outras etapas (o período se escolhe na Importação)
+  if (vm.travada) {
+    return (
+      <span className="imp-periodo-info" title={'Definido pela Tarefa: os meses do período com CRÉD.LIQ.COBRANÇA no caixa (' + vm.linhas.map(l => l.rotulo).join(', ') + ')'}>
+        <Icone nome="calendar" />{vm.lote ? vm.linhas.map(l => l.rotulo).join(', ') : vm.linhas[0]?.rotulo}<Icone nome="lock" />
+      </span>
+    );
+  }
   return (
     <MenuSuspenso icone="calendar" rotulo={vm.rotulo} largura={300} dica={vm.lote ? 'Em lote: ' + vm.linhas.map(l => l.rotulo).join(', ') : 'Trocar a competência'}
       className={'btn btn-outline' + (vm.lote ? ' imp-periodo-ativo' : '')}

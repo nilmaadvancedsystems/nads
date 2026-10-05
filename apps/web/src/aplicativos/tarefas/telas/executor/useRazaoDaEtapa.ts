@@ -78,6 +78,8 @@ export function useRazaoDaEtapa(chave: string, meses: readonly string[], onImpor
     mesAberto,
     /** clicar no mês aberto volta para o período todo */
     abrirMes: (m: string) => setMesAberto(a => (a === m ? null : m)),
+    /** o período da tarefa ("01/2026 a 08/2026") */
+    periodo: t.rotuloDoPeriodo([...meses]),
     mostrando: mesAberto ? t.rotuloCompetencia(mesAberto) : t.rotuloDoPeriodo([...meses]),
     saldoAnterior: vistos.length ? t.valorComLado(vistos[0].saldoInicial) : '',
     lancamentos: lancamentos.map(linha),
@@ -90,6 +92,12 @@ export function useRazaoDaEtapa(chave: string, meses: readonly string[], onImpor
       linhas: p.lancamentos.map(linha),
     })),
     qtdAtencoes: atencoes.reduce((n, p) => n + p.lancamentos.length, 0),
+    /** o razão × o período: só avisa (a etapa trabalha só nos meses do período) */
+    cobertura: atual ? (() => {
+      const c = t.coberturaDoRazao(atual.razao, meses);
+      const r = (ms: string[]) => ms.map(t.rotuloNumericoCompetencia);
+      return { faltam: r(c.faltam), aMais: r(c.aMais), liquidacaoFora: r(c.liquidacaoFora) };
+    })() : null,
     /** os meses do período com CRÉD.LIQ.COBRANÇA: o Creditor é obrigatório neles */
     creditor: comCreditor.map(t.rotuloNumericoCompetencia),
   };

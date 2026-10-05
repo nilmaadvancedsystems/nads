@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { atencaoDoHistorico, atencoesDoMes, dataDoRazao, lerRazao, mesesDoRazao, precisaDoCreditor, valorComLado } from './razao';
+import { atencaoDoHistorico, atencoesDoMes, coberturaDoRazao, dataDoRazao, lerRazao, mesesDoRazao, precisaDoCreditor, valorComLado } from './razao';
 import { ROTINA_CONTABIL } from '../rotinas/contabil';
 import { adicionarEtapa, etapaNoMes, execucaoNova, fazer, proximaEtapa, retirarEtapa, situacaoDa } from './execucao';
 
@@ -74,6 +74,11 @@ describe('o caixa mês a mês e os pontos de atenção', () => {
     expect(atencoesDoMes(jul).map(p => p.tipo)).toEqual(['impostos-federais']);
     expect(atencoesDoMes(ago)[0]).toMatchObject({ tipo: 'liquidacao-cobranca', obrigatorio: true, total: 1712.08 });
     expect([fev, jul, ago].map(precisaDoCreditor)).toEqual([false, false, true]);
+  });
+
+  it('o razão × o período: o mês que falta, os meses a mais e a liquidação fora do período', () => {
+    expect(coberturaDoRazao(R, ['2026-01', '2026-02', '2026-03'])).toEqual({ faltam: ['2026-03'], aMais: ['2026-07', '2026-08'], liquidacaoFora: ['2026-08'] });
+    expect(coberturaDoRazao(R, ['2026-01', '2026-02', '2026-07', '2026-08'])).toEqual({ faltam: [], aMais: [], liquidacaoFora: [] });
   });
 });
 

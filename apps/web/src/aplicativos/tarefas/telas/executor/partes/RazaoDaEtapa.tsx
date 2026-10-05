@@ -48,6 +48,23 @@ export function RazaoDaEtapa({ conta, razao, conferir }: { conta: string; razao:
           </div>
         </div>
       )}
+      {razao.cobertura && (razao.cobertura.faltam.length > 0 || razao.cobertura.aMais.length > 0) && (
+        <div className="alert">
+          <Icone nome="alert" />
+          <div>
+            <p className="alert-title">O razão não bate com o período da tarefa ({razao.periodo})</p>
+            {razao.cobertura.faltam.length > 0 && (
+              <p className="alert-text">Sem nenhum lançamento em {razao.cobertura.faltam.join(', ')}: confira se o razão foi exportado com o período todo.</p>
+            )}
+            {razao.cobertura.aMais.length > 0 && (
+              <p className="alert-text">
+                O razão traz meses fora do período ({razao.cobertura.aMais.join(', ')}): eles ficam de fora desta etapa.
+                {razao.cobertura.liquidacaoFora.length > 0 && <> Tem CRÉD.LIQ.COBRANÇA em <b>{razao.cobertura.liquidacaoFora.join(', ')}</b>: o Creditor {razao.cobertura.liquidacaoFora.length === 1 ? 'desse mês' : 'desses meses'} não entra agora; ele entra quando a tarefa for desse período.</>}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
       <div className="imp-lista">
         <div className="imp-bloco">
           <div className="imp-linha">
