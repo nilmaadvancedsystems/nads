@@ -6,9 +6,11 @@
 //   - robo/arquivador (só leitura): o ponto do PC (em) e o que ele está fazendo (situacao);
 //   - arquivamentos/{execucao} (só leitura): o resumo da execução (arquivados, não identificados, clientes); as 15
 //     últimas somam as rodadas do dia no painel;
-//   - robo/arquivador.rotina: a rotina rodando por fora do botão (a das 9h), que o arquivador manda no ponto.
-import { addDoc, collection, doc, limit, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore';
-import type { EstadoDoArquivador, ExecucaoPublicada, PedidoDeArquivo, RepoArquivador, ResultadoDoArquivamento, RotinaRodando } from './arquivador';
+//   - robo/arquivador.rotina: a rotina rodando por fora do botão (a das 9h), que o arquivador manda no ponto;
+//   - robo/arquivadorConversa (só leitura): a conversa do Claude que roda a rotina e o relatório do dia;
+//   - arquivamentos/{execucao}/detalhe/tudo (só leitura, quando pedem): o relatório e a mensagem final da execução.
+import { addDoc, collection, doc, getDoc, limit, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore';
+import type { ConversaDaRotina, DetalheDaExecucao, EstadoDoArquivador, ExecucaoPublicada, PedidoDeArquivo, RepoArquivador, ResultadoDoArquivamento, RotinaRodando } from './arquivador';
 import { bancoDoEntregas } from './entregas.firestore';
 
 type Quem = { nome: string; uid: string } | null;
@@ -33,6 +35,8 @@ export function criarArquivadorFirestore(quem: () => Quem): RepoArquivador {
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   let estado: EstadoDoArquivador = { carregado: false, semPermissao: false, em: '', situacao: '', desligadoEm: '', rotina: null };
   let execucoes: ExecucaoPublicada[] = [];
+  let conversa: ConversaDaRotina = { carregada: false, atualizadaEm: '', mensagens: [], relatorio: null };
+  const detalhes = new Map<string, DetalheDaExecucao>();
   let pedidos: PedidoDeArquivo[] = [];
   let ouvindo = false;
   const resultados = new Map<string, ResultadoDoArquivamento | null>();
@@ -54,6 +58,16 @@ export function criarArquivadorFirestore(quem: () => Quem): RepoArquivador {
       pedidos = s.docs.map(d => lerPedido(d.id, d.data()));
       mudou();
     }, () => { estado = { ...estado, carregado: true, semPermissao: true }; mudou(); });
+    onSnapshot(doc(db, 'robo', 'arquivadorConversa'), s => {
+      const d = s.data() || {};
+      const rel = d.relatorio as Record<string, unknown> | null | undefined;
+      conversa = {
+        carregada: true, atualizadaEm: texto(d.atualizadaEm),
+        mensagens: Array.isArray(d.mensagens) ? (d.mensagens as Record<string, unknown>[]).map(m => ({ em: texto(m.em), quem: m.quem === 'voce' ? 'voce' as const : 'claude' as const, texto: texto(m.texto) })) : [],
+        relatorio: rel ? { arquivo: texto(rel.arquivo), em: texto(rel.em), texto: texto(rel.texto) } : null,
+      };
+      mudou();
+    }, () => { conversa = { ...conversa, carregada: true }; mudou(); });
     onSnapshot(query(collection(db, 'arquivamentos'), orderBy('em', 'desc'), limit(15)), s => {
       execucoes = s.docs.map(d => {
         const x = d.data();
@@ -69,6 +83,19 @@ export function criarArquivadorFirestore(quem: () => Quem): RepoArquivador {
     estado: () => { ouvir(); return estado; },
     pedidos: () => { ouvir(); return pedidos; },
     execucoesRecentes: () => { ouvir(); return execucoes; },
+    conversa: () => { ouvir(); return conversa; },
+    detalhe(execucao) {
+      const pronto = detalhes.get(execucao);
+      if (pronto) return pronto;
+      const vazio: DetalheDaExecucao = { carregado: false, relatorio: '', resposta: '' };
+      detalhes.set(execucao, vazio);
+      getDoc(doc(db, 'arquivamentos', execucao, 'detalhe', 'tudo')).then(s => {
+        const d = s.data() || {};
+        detalhes.set(execucao, { carregado: true, relatorio: texto(d.relatorio), resposta: texto(d.resposta) });
+        mudou();
+      }, () => { detalhes.set(execucao, { carregado: true, relatorio: '', resposta: '' }); mudou(); });
+      return vazio;
+    },
     resultado(execucao) {
       if (!execucao) return null;
       if (!resultados.has(execucao)) {

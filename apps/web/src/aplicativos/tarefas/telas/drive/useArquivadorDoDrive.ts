@@ -31,6 +31,7 @@ export function useArquivadorDoDrive() {
   const [agora, setAgora] = useState(() => Date.now());
   useEffect(() => { const r = setInterval(() => setAgora(Date.now()), 15 * 1000); return () => clearInterval(r); }, []);
   const [pedindo, setPedindo] = useState(false);
+  const [execucaoAberta, setExecucaoAberta] = useState<string | null>(null);
 
   const e = repo.estado();
   const pedidos = repo.pedidos();
@@ -78,6 +79,13 @@ export function useArquivadorDoDrive() {
   const rodandoPorFora = ligado && !!r?.ativa && !r.deUmPedido && !aberto;
   const iFase = r?.fase ? FASES.findIndex(f => f[0] === r.fase) : -1;
   const pctRotina = rodandoPorFora && iFase >= 0 ? Math.min(99, Math.round((iFase + 0.5) / FASES.length * 100)) : null;
+  const conversa = repo.conversa();
+  const hora = (iso: string) => (iso ? new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '');
+  /** EXEC-20261005-132848 → o dia e a hora em que a execução começou */
+  const doId = (id: string) => {
+    const m = /^EXEC-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/.exec(id);
+    return m ? { dia: id.startsWith(hojeNoId()) ? 'Hoje' : m[3] + '/' + m[2], hora: m[4] + ':' + m[5] } : { dia: '', hora: '' };
+  };
   // as rodadas de hoje (cada execução publicada é uma rodada)
   const deHoje = repo.execucoesRecentes().filter(x => x.id.startsWith(hojeNoId()));
   const hoje = deHoje.length ? {
@@ -107,6 +115,24 @@ export function useArquivadorDoDrive() {
       pct: pctRotina,
     } : null,
     hoje,
+    // as 10 fases da rotina: as feitas, a de agora e as que faltam (como a lista de passos do Claude)
+    fases: rodandoPorFora && iFase >= 0 ? FASES.map((f, i) => ({ nome: f[1], estado: i < iFase ? 'feita' : i === iFase ? 'atual' : 'falta' })) : [],
+    // a conversa do Claude que roda a rotina e o relatório do dia (o arquivador do PC publica)
+    conversa: {
+      mensagens: conversa.mensagens.map((m, i) => ({ ...m, chave: i + ':' + m.em, hora: hora(m.em) })),
+      atualizada: conversa.atualizadaEm ? quando(conversa.atualizadaEm) : '',
+    },
+    relatorioDoDia: conversa.relatorio ? { arquivo: conversa.relatorio.arquivo, quando: quando(conversa.relatorio.em), texto: conversa.relatorio.texto } : null,
+    rodadasHoje: deHoje.map(x => ({ id: x.id, hora: doId(x.id).hora, arquivados: x.arquivados, clientes: x.codigos.length, semCliente: x.naoIdentificados })),
+    // as últimas execuções, por dia; a aberta mostra os clientes, o relatório e a mensagem final
+    execucoes: repo.execucoesRecentes().map(x => ({ id: x.id, ...doId(x.id), arquivados: x.arquivados, clientes: x.codigos.length, semCliente: x.naoIdentificados })),
+    execucaoAberta,
+    abrirExecucao: (id: string) => setExecucaoAberta(a => (a === id ? null : id)),
+    verExecucao: (id: string) => setExecucaoAberta(id),
+    detalheAberto: execucaoAberta ? {
+      ...repo.detalhe(execucaoAberta),
+      clientes: (repo.resultado(execucaoAberta)?.clientes || []).map(c => ({ chave: c.codigo, rotulo: c.codigo + ' · ' + c.nome, n: c.n })),
+    } : null,
     notaAoPedir: rodandoPorFora ? 'Se pedir agora, começa quando a organização em andamento terminar.' : 'Cada arquivo da pasta Claudio Secretario vai para a pasta do cliente, como na organização das 9h.',
     pedido: pedido ? {
       id: pedido.id, status: pedido.status, titulo: TITULOS[pedido.status] || pedido.status, detalhe: detalhe(pedido),

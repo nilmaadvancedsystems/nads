@@ -55,6 +55,20 @@ export interface RotinaRodando {
 /** Uma execução já publicada (o resumo em arquivamentos/{EXEC-…}): as rodadas do dia somam no painel. */
 export interface ExecucaoPublicada { id: string; em: string; arquivados: number; naoIdentificados: number; codigos: string[] }
 
+/** Uma mensagem da conversa do Claude que roda a rotina (o texto; as ferramentas ficam de fora). */
+export interface MensagemDaRotina { em: string; quem: 'claude' | 'voce'; texto: string }
+
+/** A conversa mais recente da rotina e o relatório do dia, que o arquivador do PC publica (robo/arquivadorConversa). */
+export interface ConversaDaRotina {
+  carregada: boolean;
+  atualizadaEm: string;
+  mensagens: MensagemDaRotina[];
+  relatorio: { arquivo: string; em: string; texto: string } | null;
+}
+
+/** O relatório e a mensagem final de uma execução (arquivamentos/{EXEC-…}/detalhe/tudo). */
+export interface DetalheDaExecucao { carregado: boolean; relatorio: string; resposta: string }
+
 export interface EstadoDoArquivador {
   carregado: boolean;
   /** quem não é admin nem contábil não lê (as regras do Entregas): o botão some */
@@ -71,6 +85,10 @@ export interface RepoArquivador {
   estado(): EstadoDoArquivador;
   /** os últimos pedidos, o mais novo primeiro */
   pedidos(): PedidoDeArquivo[];
+  /** a conversa do Claude que roda a rotina e o relatório do dia */
+  conversa(): ConversaDaRotina;
+  /** o relatório e a mensagem final de uma execução (lê quando pedem) */
+  detalhe(execucao: string): DetalheDaExecucao;
   /** as últimas execuções publicadas, a mais nova primeiro */
   execucoesRecentes(): ExecucaoPublicada[];
   /** o resultado de uma execução (null enquanto não chegou) */
@@ -94,6 +112,16 @@ export function criarArquivadorMemoria(quem: () => { nome: string } | null): Rep
   return {
     exemplos: true,
     estado: () => ({ carregado: true, semPermissao: false, em: agora(), situacao: pedidos.some(p => p.status === 'processando') ? 'rodando' : 'livre', desligadoEm: '', rotina }),
+    conversa: () => ({
+      carregada: true, atualizadaEm: rotina ? agora() : '',
+      mensagens: rotina ? [
+        { em: agora(), quem: 'claude', texto: 'Continuo com os separadores que faltam: **23 PDFs** de `593` e `584`. Como há limite de 20 simultâneos, despacho 20 agora e os 3 restantes depois.' },
+        { em: agora(), quem: 'voce', texto: 'continue' },
+        { em: agora(), quem: 'claude', texto: 'O K001 (balancete 2024) saiu `NAO_IDENTIFICADO`, sem CNPJ do cliente.\n\nPendentes do primeiro lote:\n- L007\n- L016\n- L018' },
+      ] : [],
+      relatorio: rotina ? { arquivo: 'RELATORIO-exemplo.txt', em: agora(), texto: 'RELATORIO DA RODADA — Organização Claudio Secretario\nmodo: PRODUCAO (rodadas parciais)\n\nPASTAS PROCESSADAS\n2026-10   587 copiados   Concluída' } : null,
+    }),
+    detalhe: () => ({ carregado: true, relatorio: 'RELATORIO DA EXECUÇÃO (exemplo)\n\n12 arquivos arquivados em 3 clientes; 2 sem cliente.', resposta: 'A rotina terminou com o veredito **OK**.' }),
     execucoesRecentes: () => (rotina ? [
       { id: 'EXEC-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-132848', em: agora(), arquivados: 587, naoIdentificados: 1, codigos: ['575', '573'] },
       { id: 'EXEC-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-142056', em: agora(), arquivados: 2, naoIdentificados: 3, codigos: ['591', '560'] },
