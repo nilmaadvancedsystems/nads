@@ -9,7 +9,7 @@ export function Exclusao() {
   const vm = useExclusao();
   const arquivo = useRef<HTMLInputElement>(null);
   const [aberta, setAberta] = useState(false);
-  const temDias = vm.dias.length > 0;
+  const temDias = vm.dias.length > 0 || vm.partesFaltando.length > 0;
   return (
     <section>
       <p className="hint" style={{ marginTop: 0 }}>
@@ -33,7 +33,9 @@ export function Exclusao() {
               <div className="imp-grupos">
                 {vm.temRazao && (vm.bate
                   ? <span className="badge badge-ok" title="O saldo do razão bate com o do extrato, dia a dia e no fim do período">Ok</span>
-                  : <span className="badge badge-bad" title={'Diferença no fim do período: ' + vm.diferencaFinal}>Não bate</span>)}
+                  : vm.partesFaltando.length
+                    ? <span className="badge badge-bad" title="As partes do .xls do Creditor ainda não estão no razão: importe o .xls no Alterdata e exclua o total">Faltam {vm.partesFaltando.length} partes</span>
+                    : <span className="badge badge-bad" title={'Diferença no fim do período: ' + vm.diferencaFinal}>Não bate</span>)}
                 <div className="imp-grupo" aria-label="Razão da conta">
                   <span className="imp-rotulo">Razão</span>
                   {vm.lendo ? <span className="btn-spinner" /> : (
@@ -49,7 +51,21 @@ export function Exclusao() {
                 </div>
               </div>
             </div>
-            {aberta && temDias && (
+            {aberta && vm.partesFaltando.length > 0 && (
+              <div className="imp-mov-caixa">
+                <div className="imp-mov">
+                  <table className="table-compact">
+                    <thead><tr><th>Dia</th><th>Parte do .xls que não está no razão</th><th className="num">Valor</th></tr></thead>
+                    <tbody>
+                      {vm.partesFaltando.map((p, i) => (
+                        <tr key={i}><td>{p.data}</td><td className="wrap">{p.historico}</td><td className="num">{p.valor}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            {aberta && vm.dias.length > 0 && (
               <div className="imp-mov-caixa">
                 <div className="imp-mov">
                   <table className="table-compact">

@@ -23,7 +23,7 @@ export {
   bancoOkNoPeriodo, situacaoDoBancoNoPeriodo, conferenciaDoBanco, diasNegativos, chequeEspecialNoRazao,
   type SituacaoDoBanco, type DiaNegativo, type ConferenciaDoBanco, type ChequeNoRazao,
 } from './regras/situacaoDoBanco';
-export { saldoDoPeriodo, type SaldoDoPeriodo, type DiaDoSaldo } from './regras/saldoDoPeriodo';
+export { saldoDoPeriodo, partesForaDoRazao, type SaldoDoPeriodo, type DiaDoSaldo, type ParteEsperada } from './regras/saldoDoPeriodo';
 export { movimentoDoExtrato, TODOS_OS_MESES, extratosSemSaldoAnterior, definirSaldoAnterior, type LinhaDoMovimento, type MovimentoDoExtrato } from './regras/movimento';
 export { requisitosDaImportacao, requisitosDoChequeEspecial, type ImportadosDaConferencia, type RequisitosDaImportacao } from './regras/requisitos';
 export { correcoesDoRazao, ROTULO_CORRECAO, type CorrecaoDoRazao, type TipoCorrecao } from './regras/correcoes';

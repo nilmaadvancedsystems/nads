@@ -25,9 +25,14 @@ export function useExclusao() {
   const banco = bancos.find(b => b.id === ligado) || (bancos.length === 1 ? bancos[0] : null);
   const saldo = banco && meses.length ? x.saldoDoPeriodo(emp, banco.id, primeiro, meses) : null;
   const [lendo, setLendo] = useState(false);
+  // as partes do .xls (cada lançamento que mexe na conta banco) têm de estar no razão: com o total ainda lá, faltam
+  const iso = (d: string) => d.slice(6, 10) + '-' + d.slice(3, 5) + '-' + d.slice(0, 2);
+  const partes = s.d.lancamentos.filter(l => l.debito === contaBanco || l.credito === contaBanco)
+    .map(l => ({ data: iso(l.data), valor: Math.round(l.valor * 100), historico: l.historico }));
+  const faltam = banco && saldo?.completo ? x.partesForaDoRazao(emp, banco.id, primeiro, meses, partes) : [];
 
   // bateu: a Tarefa pode seguir (a setinha libera)
-  const bate = !!saldo?.completo && saldo.bate;
+  const bate = !!saldo?.completo && saldo.bate && partes.length > 0 && faltam.length === 0;
   useEffect(() => {
     if (s.estado.bancoConferido !== bate) s.mudar(e => ({ ...e, bancoConferido: bate }));
   }, [bate, s]);
@@ -64,6 +69,8 @@ export function useExclusao() {
     resumo: saldo?.completo ? ['Extrato ' + x.reaisBR(saldo.extrato), 'Razão ' + x.reaisBR(saldo.razao)] : [],
     dias: (saldo?.dias || []).map(d => ({ data: x.dataBR(d.data), extrato: x.reaisBR(d.extrato), razao: x.reaisBR(d.razao), diferenca: x.reaisBR(d.diferenca) })),
     diferencaFinal: saldo?.completo && !saldo.bate ? x.reaisBR(saldo.razao - saldo.extrato) : '',
+    /** as partes do .xls do Creditor que não estão no razão (o total ainda não foi trocado no Alterdata) */
+    partesFaltando: faltam.map(p => ({ data: x.dataBR(p.data), valor: x.reaisBR(p.valor), historico: p.historico })),
     importarRazao: (f: File | undefined) => { void importarRazao(f); },
   };
 }
