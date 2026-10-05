@@ -73,6 +73,29 @@ describe('extrato no Drive', () => {
   });
 });
 
+describe('extrato no Drive: pasta de cada banco (empresa 58, BNB e Sicoob)', () => {
+  const d = (i: string, n: string, p: string) => ({ i, n, p, t: 'd' as const });
+  const f = (i: string, n: string, p: string) => ({ i, n, p, t: 'f' as const });
+  const itens = [
+    d('c', 'CONTÁBIL', 'raiz'), d('e', 'EXTRATOS', 'c'), d('a', '2026', 'e'),
+    ...['05', '06', '07', '08', '09'].flatMap(m => [d('m' + m, m, 'a'), d('b' + m, 'BANCÁRIOS', 'm' + m), d('bnb' + m, 'BNB', 'b' + m), d('sic' + m, 'SICOOB', 'b' + m),
+      f('fb' + m, m + '-2026.pdf', 'bnb' + m), f('fs' + m, m + '-2026.pdf', 'sic' + m)]),
+  ];
+  it('Sicoob: acha o do Sicoob do mês, sem perguntar', () => {
+    const b = acharExtratoNoDrive(itens, 'raiz', '2026-08', { nome: 'Sicoob', marca: 'sicoob' });
+    expect(b.situacao).toBe('achou');
+    expect(b.arquivo?.id).toBe('fs08');
+  });
+  it('Banco do Nordeste: acha pela pasta BNB', () => {
+    expect(acharExtratoNoDrive(itens, 'raiz', '2026-08', { nome: 'Banco do Nordeste', marca: 'bnb' }).arquivo?.id).toBe('fb08');
+  });
+  it('banco sem nome: pergunta, mas só entre os do mês', () => {
+    const b = acharExtratoNoDrive(itens, 'raiz', '2026-08', { nome: 'Banco', marca: 'banco' });
+    expect(b.situacao).toBe('varios');
+    expect(b.candidatos.map(c => c.id).sort()).toEqual(['fb08', 'fs08']);
+  });
+});
+
 describe('extrato no Drive: comprovantes da mesma competência não atrapalham', () => {
   it('acha o extrato em BANCÁRIOS mesmo com vários comprovantes do mês em COMPROVANTES', () => {
     const d = (i: string, n: string, p: string) => ({ i, n, p, t: 'd' as const });

@@ -14,6 +14,7 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const { escolher, comLogin } = useOperador();
   const op = useOperador().operador as Operador;
   const a = aplicacao(app);
+  const comAbas = app === 'cadastro';
   const pessoal = usePessoal();
   const acesso = useAcesso();
   return {
@@ -21,8 +22,10 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
     empresa: { codigo: op.nome, nome: comLogin ? 'Sair da conta' : 'Trocar de pessoa' },
     versao: VERSAO_SISTEMA,
     titulo: a?.paginas.find(p => p.id === pagina)?.titulo || a?.nome || '',
-    secoes: (a?.paginas || []).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, grupo: 1, ativa: p.id === pagina })),
-    paginas: [],
+    // o Cadastro com as páginas em abas no alto (Empresas, Usuários, Configurações; Vitor, 05/10/2026), sem a barra lateral
+    comAbas,
+    secoes: comAbas ? [] : (a?.paginas || []).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, grupo: 1, ativa: p.id === pagina })),
+    paginas: comAbas ? (a?.paginas || []).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, ativa: p.id === pagina })) : [],
     aplicacoes: aplicacoesDe(op).map(x => ({ id: x.id, nome: x.nome, icone: x.icone, ativo: x.id === app })),
     // páginas da mesma aplicação mantêm a competência escolhida (fica na URL)
     onSecao: (id: string) => navegar(caminhoDaPagina(app, id) + search),

@@ -34,7 +34,6 @@ export function useEmpresa(rota: string) {
   const rotina = op.departamento === 'contabil' ? t.ROTINA_CONTABIL : null;
   const competencias = competenciasDaTela(12);
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
-  const lote = (params.get('lote') || '').includes('..') && t.competenciasDoPeriodo(params.get('lote') as string).length > 1 ? (params.get('lote') as string) : '';
   const empresa = empresas.empresaPelaRota(repo.listarEmpresas(), rota);
   const dep = rotina?.departamento || op.departamento;
   const agora = new Date();
@@ -103,9 +102,7 @@ export function useEmpresa(rota: string) {
     etapas, historico,
     extratos, carregandoExtratos: arquivos === null,
     acao: ACAO[situacao],
-    // começa no que está escolhido no seletor: o Em lote, ou a competência
-    abrirExecutor: () => navegar(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), lote || competencia)),
-    lote, setLote: (l: string) => setParams({ competencia, lote: l }),
+    abrirExecutor: () => navegar(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), competencia)),
     abrirCompetencia: (c: string) => navegar(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), c)),
     voltar: () => navegar(caminhoDaPagina('minhas-empresas', 'empresas') + '?competencia=' + competencia),
   };

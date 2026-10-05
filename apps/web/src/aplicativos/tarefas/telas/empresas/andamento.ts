@@ -57,10 +57,9 @@ export function useAndamento() {
     departamento: op.departamento,
     competencia,
     competencias: competencias.map(c => ({ valor: c, rotulo: t.rotuloCompetencia(c) })),
-    setCompetencia: (c: string) => { const novo = new URLSearchParams(params); novo.set('competencia', c); novo.delete('lote'); setParams(novo); },
-    /** o Em lote escolhido no seletor (o Iniciar começa nele): 'aaaa-mm..aaaa-mm', ou '' */
-    lote: (params.get('lote') || '').includes('..') && t.competenciasDoPeriodo(params.get('lote') as string).length > 1 ? (params.get('lote') as string) : '',
-    setLote: (rota: string) => mudar('lote', rota),
+    setCompetencia: (c: string) => mudar('competencia', c),
+    /** a competência veio no endereço (voltou de outra tela): não pergunta de novo */
+    competenciaEscolhida: params.has('competencia'),
     params, setParams, mudar,
     carregando: !carregada,
     linhas,

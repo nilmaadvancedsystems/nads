@@ -59,8 +59,7 @@ export function useMinhasEmpresas() {
   const achadasIniciar = buscaIniciar.trim() ? new Set(empresas.buscarEmpresas(doFiltro.map(l => l.empresa), buscaIniciar)) : null;
   const paraIniciar = doFiltro.filter(l => !achadasIniciar || achadasIniciar.has(l.empresa));
 
-  // começa no que está escolhido no seletor: o Em lote, ou a competência (Vitor, 02/10/2026)
-  const abrir = (rota: string) => navegar(caminhoDoExecutor(rota, a.lote || a.competencia));
+  const abrir = (rota: string) => navegar(caminhoDoExecutor(rota, a.competencia));
 
   // Minhas recentes: onde quem está trabalhando mexeu nesta competência nos últimos 3 dias, a mais recente primeiro
   const minhas = a.linhas.filter(l => l.mexiEm).sort((x, y) => (y.mexiEm as string).localeCompare(x.mexiEm as string));
@@ -111,7 +110,8 @@ export function useMinhasEmpresas() {
     paraIniciar: paraIniciar.slice(0, LIMITE_INICIAR),
     totalParaIniciar: paraIniciar.length,
     iniciar: (rota: string) => { setBuscaIniciar(''); abrir(rota); },
-    loteDeMeses: a.lote, setLoteDeMeses: a.setLote,
+    /** ao entrar: a janela "Qual competência?" (sem a competência no endereço) */
+    perguntarCompetencia: !a.competenciaEscolhida,
     abaIniciar, setAbaIniciar,
     // Iniciar em lote: marca as empresas (a caixinha à esquerda) e abre uma aba para cada uma
     lote, marcadaNoLote: (rota: string) => lote.includes(rota),

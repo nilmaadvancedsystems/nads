@@ -1341,7 +1341,7 @@ tr.linha-atual > td{background:var(--hover-bg);}
 label.imp-btn{cursor:pointer;display:inline-flex;align-items:center;justify-content:center;}
 label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-btn .btn-spinner{width:12px;height:12px;}
-.imp-drive svg{width:15px;height:15px;color:var(--ink-muted);}
+.imp-drive svg{width:14px;height:14px;color:var(--ink-muted);}
 .imp-drive:hover svg{color:var(--ink);}
 /* importado: check verde; com o mouse em cima, × vermelho (clicar exclui) */
 .imp-feito{border-color:var(--success);color:var(--success);}
@@ -1385,13 +1385,21 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 /* extrato do Drive: o logo colorido; com o mouse em cima, × vermelho */
 .imp-feito-drive{border-color:var(--border);}
 .imp-feito-drive .imp-feito-ok{display:inline-flex;}
-.imp-feito-drive .imp-feito-ok svg{width:15px;height:15px;}
+.imp-feito-drive .imp-feito-ok svg{width:14px;height:14px;}
 .imp-feito-drive:hover .imp-feito-ok{display:none;}
 /* login do Drive e a escolha do arquivo */
 .drive-login,.drive-escolha{text-align:left;}
 .drive-login .field{display:flex;flex-direction:column;gap:4px;padding:0 16px;margin-bottom:10px;}
-.drive-candidatos{display:flex;flex-direction:column;max-height:300px;overflow:auto;padding:0 8px 8px;}
-.drive-candidatos .popover-texto{white-space:normal;}
+/* a escolha do extrato no Drive: um por linha, o nome do arquivo em cima e a pasta embaixo (Vitor, 05/10/2026) */
+.drive-candidatos{display:flex;flex-direction:column;gap:6px;max-height:320px;overflow:auto;margin-top:14px;text-align:left;}
+.drive-candidato{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
+.drive-candidato:hover{background:var(--hover-bg);border-color:var(--border-strong);}
+.drive-candidato-logo{flex:none;display:inline-flex;width:20px;height:20px;}
+.drive-candidato-logo .logo-img,.drive-candidato-logo svg{width:20px;height:20px;}
+.drive-candidato-txt{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.drive-candidato-txt b{font-size:13px;font-weight:600;}
+.drive-candidato-txt .hint{font-size:11.5px;overflow-wrap:anywhere;}
+.modal.modal-centro.drive-escolha{max-width:480px;}
 .btn .menu-seta.antes{margin:0 -2px 0 -4px;}
 /* Iniciar em lote: a caixinha de cada empresa; o botão na linha das abas; o "Iniciar" de cima fica cinza com o painel aberto */
 .iniciar-abas{align-items:center;}
@@ -1419,12 +1427,13 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-logo .logo-img,.add-banco-logo .logo-img{border-radius:0;}
 .add-banco-logo .logo-img{width:24px;height:24px;}
 .logo-img.app{border-radius:0;}
-.imp-drive .logo-img,.imp-feito-drive .logo-img{width:18px;height:18px;}
+/* o Drive do tamanho dos outros ícones da linha (Vitor, 05/10/2026: "tá maior que os outros") */
+.imp-drive .logo-img,.imp-feito-drive .logo-img{width:14px;height:14px;}
 .apps-contato .logo-img{width:24px;height:24px;}
 .imp-logo{width:40px;height:40px;}
 .imp-logo:has(.logo-img){background:none;}
 .add-banco-logo{width:24px;height:24px;}
-.imp-btn.imp-drive,.imp-btn.imp-feito-drive{width:32px;height:32px;}
+.imp-btn.imp-drive,.imp-btn.imp-feito-drive{width:28px;height:28px;}
 .imp-mov th.th-sort{cursor:pointer;user-select:none;}
 .imp-mov th.th-sort:hover{color:var(--ink);}
 .imp-mov thead th{background:var(--surface-2);}
@@ -2609,3 +2618,7 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .faq-item summary:hover{background:var(--hover-bg);}
 .faq-resposta{padding:0 14px 12px 30px;font-size:14px;line-height:1.5;display:flex;flex-direction:column;align-items:flex-start;gap:6px;}
 .faq-pe{font-size:13px;}
+/* "Qual competência?" ao entrar em Minhas empresas */
+.modal.modal-centro.competencia-janela{max-width:340px;}
+.competencia-campo{margin-top:14px;}
+.competencia-campo select{width:100%;}

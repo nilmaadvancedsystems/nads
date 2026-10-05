@@ -21,10 +21,7 @@ function AvatarDaPessoa({ vm }: { vm: ReturnType<typeof useCascaTarefas> }) {
   return (
     <MenuSuspenso rotulo={vm.perfil.foto ? <img className="gh-avatar-foto" src={vm.perfil.foto} alt="" /> : vm.perfil.iniciais} className={'gh-avatar' + (vm.naPessoal ? ' ativo' : '')} dica={vm.perfil.nome} titulo={vm.perfil.nome} direita
       itens={[
-        { rotulo: 'Caixa de entrada', icone: 'caixaEntrada', onClick: () => vm.abrirPessoal('caixa') },
-        { rotulo: 'Anotações', icone: 'fileText', onClick: () => vm.abrirPessoal('notas') },
         { rotulo: 'Minha conta', icone: 'usuario', onClick: () => vm.abrirPessoal('conta') },
-        { rotulo: 'Aparência e telas', icone: 'settings', onClick: () => vm.abrirPessoal('preferencias') },
         'separador',
         { rotulo: vm.perfil.sair, icone: 'logOut', onClick: vm.trocarPessoa },
       ]} />
@@ -36,8 +33,8 @@ export function CascaTarefas({ app, pagina, telaInteira, children }: { app: IdAp
   const trilha = useTrilhaDoTopo();
   return (
     <Casca sistema="Tarefas" empresa={vm.empresa} versao={vm.versao} trilha={trilha} secoes={vm.secoes} paginas={vm.paginas} titulo={telaInteira ? '' : vm.titulo}
-      lateral={telaInteira ? 'nenhuma' : undefined} larga={telaInteira}
-      acoes={telaInteira ? undefined : <LugarDasAcoes />} onSecao={vm.onSecao} onPagina={() => undefined} onInicio={vm.inicio} onAplicativos={vm.inicio}
+      lateral={telaInteira || vm.comAbas ? 'nenhuma' : undefined} larga={telaInteira}
+      acoes={telaInteira ? undefined : <LugarDasAcoes />} onSecao={vm.onSecao} onPagina={vm.onSecao} onInicio={vm.inicio} onAplicativos={vm.inicio}
       onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}
       topoDireita={<><BotaoDeAjuda abrir={vm.abrirPessoal} /><AvatarDaPessoa vm={vm} /></>}>
       {children}

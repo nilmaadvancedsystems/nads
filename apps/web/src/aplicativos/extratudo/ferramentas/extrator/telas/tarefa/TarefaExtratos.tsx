@@ -10,7 +10,7 @@
 //     botãozinho de PDF (abre pelo link temporário). O movimento se vê pela setinha.
 // Ao importar, só uma barrinha por cima da tela, que some em 2,7 s.
 import { extrator as x, type conferencia, tarefas } from '@nads/core';
-import { destacarNaTela, Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
+import { classeDaJanela, destacarNaTela, Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
 import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { usePonteDaTarefa, useRequisitosParaATarefa } from '../../../../../../comum/ponte';
 import { useSessao } from '../../casca/sessao';
@@ -602,8 +602,9 @@ export function TarefaExtratos() {
       {aba !== 'bancos' ? <div data-destaque="importacao"><ImportacaoNaEtapa nome={s.nome} tipo={aba} prestaServico={vm.prestaServico} /></div> : (<>
       <div className={'imp-topo' + (ocupadoGeral ? ' travado' : '')} aria-busy={ocupadoGeral}>
         {/* à esquerda, como o "⎇ main ▾  6 Branches" do GitHub: a competência e o número de bancos */}
-        {/* na Tarefas, os meses se escolhem ao iniciar (a pergunta "Quais meses?"): aqui só a informação (Vitor, 02/10/2026) */}
-        {ponte.naTarefa ? (
+        {/* o Em lote (escolher, alterar, cancelar) mora aqui, só na Importação (Vitor, 05/10/2026: "volte para dentro da tela
+            da importação, igual estava antes"); nas outras etapas, só a informação do período */}
+        {ponte.naTarefa && vm.etapaCheque ? (
           <span className="imp-periodo-info" title={vm.periodo.length > 1 ? 'Em lote: ' + vm.periodo.map(tarefas.rotuloNumericoCompetencia).join(', ') : undefined}>
             <Icone nome="calendar" />
             {vm.periodo.length > 1
@@ -857,23 +858,24 @@ export function TarefaExtratos() {
 
       {d.escolha && (
         <div className="modal-overlay" role="presentation" onClick={d.fecharEscolha}>
-          <div className="modal drive-escolha" role="dialog" aria-modal="true" aria-labelledby="tituloEscolha" onClick={e => e.stopPropagation()}>
+          <div className={classeDaJanela({}) + ' drive-escolha'} role="dialog" aria-modal="true" aria-labelledby="tituloEscolha" onClick={e => e.stopPropagation()}>
+            <button type="button" className="modal-x" aria-label="Fechar" title="Fechar" onClick={d.fecharEscolha}><Icone nome="x" /></button>
             <h3 id="tituloEscolha">Extrato do {d.escolha.linha.nome} no Drive</h3>
-            <p className="hint">{d.escolha.texto}</p>
+            <p>{d.escolha.texto}</p>
             {d.escolha.candidatos.length > 0 && (
               <div className="drive-candidatos">
-                {d.escolha.candidatos.slice(0, 12).map(a => (
-                  <button key={a.id} type="button" className="popover-item" onClick={() => d.usar(a)}>
-                    <span className="add-banco-logo"><LogoDrive /></span>
-                    <span className="popover-texto">{a.caminho}</span>
-                    {a.daCompetencia && <span className="popover-dica">{vm.competencia.slice(5) + '/' + vm.competencia.slice(0, 4)}</span>}
-                  </button>
-                ))}
+                {d.escolha.candidatos.slice(0, 12).map(a => {
+                  // o nome do arquivo em cima e a pasta embaixo (o caminho inteiro numa linha embolava)
+                  const partes = a.caminho.split(' › ');
+                  return (
+                    <button key={a.id} type="button" className="drive-candidato" onClick={() => d.usar(a)}>
+                      <span className="drive-candidato-logo"><LogoDrive cor /></span>
+                      <span className="drive-candidato-txt"><b>{partes[partes.length - 1]}</b><span className="hint">{partes.slice(0, -1).join(' › ')}</span></span>
+                    </button>
+                  );
+                })}
               </div>
             )}
-            <div className="modal-actions">
-              <button type="button" className="btn btn-outline" onClick={d.fecharEscolha}>Fechar</button>
-            </div>
           </div>
         </div>
       )}

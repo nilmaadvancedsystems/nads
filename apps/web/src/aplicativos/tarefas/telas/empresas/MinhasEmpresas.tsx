@@ -1,12 +1,12 @@
 // Minhas empresas: a barra de cima, no jeito da do GitHub (competência no lugar do "main ▾", quantas
 // empresas, Insights; à direita a busca curta com atalho "/", Situação ▾ e "Iniciar ▾", que abre
 // o painel para escolher a empresa, em partes/PainelIniciar) e a lista (clicar no título da coluna ordena; clicar na linha abre a página da empresa). Os números por situação ficam em Insights.
-import { Icone, MenuSuspenso, NumeroQueConta, useCarregando, useEntradaAnimada, useLinhasQueSeMovem } from '@nads/ui';
+import { Icone, MenuSuspenso, useCarregando, useEntradaAnimada, useLinhasQueSeMovem } from '@nads/ui';
 import { useEffect, useRef } from 'react';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { PainelIniciar } from './partes/PainelIniciar';
 import { LIMITE, useMinhasEmpresas, type Coluna } from './useMinhasEmpresas';
-import { SeletorDoInicio } from '../periodo/SeletorDoInicio';
+import { JanelaDaCompetencia } from './partes/JanelaDaCompetencia';
 
 
 /** Título de coluna que ordena: clicar ordena por ela (crescente), clicar de novo inverte; a setinha cinza só aparece depois do clique. */
@@ -46,14 +46,10 @@ export function MinhasEmpresas() {
   return (
     <section>
       <div className="tarefas-barra-topo">
-        <SeletorDoInicio competencias={vm.competencias} competencia={vm.competencia} lote={vm.loteDeMeses} onCompetencia={vm.setCompetencia} onLote={vm.setLoteDeMeses} />
-        <button type="button" className="tarefas-contador" disabled={!vm.filtrando} onClick={vm.limparFiltros}
-          title={vm.filtrando ? 'Limpar a busca e a situação' : undefined}>
-          <Icone nome="briefcase" /><b><NumeroQueConta texto={String(vm.total)} /></b> {vm.total === 1 ? 'empresa' : 'empresas'}
-        </button>
-        <button type="button" className="tarefas-contador" onClick={vm.abrirInsights}>
-          <Icone nome="barChart" />Insights
-        </button>
+        {vm.perguntarCompetencia && <JanelaDaCompetencia competencias={vm.competencias} competencia={vm.competencia} onSeguir={vm.setCompetencia} />}
+        <MenuSuspenso icone="calendar" rotulo={vm.rotuloCompetencia} titulo="Competência" dica="Trocar a competência"
+          itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
+        {/* o número de empresas e os Insights saíram daqui por enquanto (Vitor, 05/10/2026) */}
 
         <span className="tarefas-barra-espaco" />
 

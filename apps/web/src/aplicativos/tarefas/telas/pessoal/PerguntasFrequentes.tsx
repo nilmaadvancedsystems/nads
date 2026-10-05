@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { buscarNoFaq, FAQ, type PerguntaFrequente } from '../../ajuda/faq';
 import { TextoIA } from './ChatIA';
 
-export function PerguntasFrequentes({ perguntarIA }: { perguntarIA: (texto: string) => void }) {
+export function PerguntasFrequentes() {
   const [busca, setBusca] = useState('');
   const achadas = busca.trim() ? buscarNoFaq(busca) : FAQ;
   const secoes: { secao: string; itens: PerguntaFrequente[] }[] = [];
@@ -24,8 +24,6 @@ export function PerguntasFrequentes({ perguntarIA }: { perguntarIA: (texto: stri
         <div className="card gh-blank">
           <Icone nome="ajuda" />
           <h4>Nenhuma pergunta com "{busca}"</h4>
-          <p>A IA do escritório pode saber.</p>
-          <button type="button" className="btn btn-primary" onClick={() => perguntarIA(busca.trim())}><Icone nome="robo" />Perguntar à IA</button>
         </div>
       ) : secoes.map(s => (
         <section key={s.secao || 'busca'} className="faq-secao">
@@ -36,16 +34,12 @@ export function PerguntasFrequentes({ perguntarIA }: { perguntarIA: (texto: stri
                 <summary>{f.pergunta}</summary>
                 <div className="faq-resposta">
                   <TextoIA texto={f.resposta} />
-                  <button type="button" className="link-btn" onClick={() => perguntarIA('Sobre "' + f.pergunta + '": ')}><Icone nome="robo" />Não resolveu? Perguntar à IA</button>
                 </div>
               </details>
             ))}
           </div>
         </section>
       ))}
-      {achadas.length > 0 && (
-        <p className="fraco faq-pe">Não achou? <button type="button" className="link-btn" onClick={() => perguntarIA(busca.trim())}>Pergunte à IA do escritório</button>.</p>
-      )}
     </>
   );
 }

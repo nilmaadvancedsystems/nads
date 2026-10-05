@@ -9,13 +9,13 @@ export type TopicoPessoal = 'caixa' | 'notas' | 'conta' | 'preferencias' | 'apli
 interface Pessoal { topico: TopicoPessoal | null; abrir: (t: string) => void; fechar: () => void }
 
 const Ctx = createContext<Pessoal | null>(null);
-const TOPICOS: readonly string[] = ['caixa', 'notas', 'conta', 'preferencias', 'aplicativo', 'ia', 'faq'];
+const TOPICOS: readonly string[] = ['conta', 'aplicativo'];
 
 export function PessoalProvider({ children }: { children: ReactNode }) {
   const [topico, setTopico] = useState<TopicoPessoal | null>(null);
   const valor = useMemo<Pessoal>(() => ({
     topico,
-    abrir: (t: string) => setTopico((TOPICOS.includes(t) ? t : 'caixa') as TopicoPessoal),
+    abrir: (t: string) => setTopico((TOPICOS.includes(t) ? t : 'conta') as TopicoPessoal),
     fechar: () => setTopico(null),
   }), [topico]);
   return (

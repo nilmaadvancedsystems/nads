@@ -13,10 +13,10 @@ export function MenuDaRotina({ grupos, emLote, fechar }: {
   const naAba = emLote ? aba : 'tarefas';
   return (
     <div className="rotina-menu">
-      <div className="iniciar-abas comp-abas" role="tablist">
+      {emLote && <div className="iniciar-abas comp-abas" role="tablist">
         <button type="button" role="tab" className="iniciar-aba" aria-selected={naAba === 'tarefas'} onClick={() => setAba('tarefas')}>Tarefas</button>
-        {emLote && <button type="button" role="tab" className="iniciar-aba" aria-selected={naAba === 'lote'} onClick={() => setAba('lote')}>Em lote</button>}
-      </div>
+        <button type="button" role="tab" className="iniciar-aba" aria-selected={naAba === 'lote'} onClick={() => setAba('lote')}>Em lote</button>
+      </div>}
       {naAba === 'tarefas' ? (
         <div role="menu">
           {grupos.map((it, i) => it === 'separador' ? <hr key={i} className="popover-sep" /> : (

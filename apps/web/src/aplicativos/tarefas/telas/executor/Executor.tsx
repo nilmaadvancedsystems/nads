@@ -14,8 +14,6 @@ import { JanelaInterromper } from './partes/JanelaInterromper';
 import { useChecklistDaFolha } from './useChecklistDaFolha';
 import { useExecutor } from './useExecutor';
 import { ListaDoQueFalta, type ItemQueFalta } from './partes/OQueFalta';
-import { JanelaDoPeriodo } from '../periodo/JanelaDoPeriodo';
-import { usePerguntaDoPeriodo } from '../periodo/usePerguntaDoPeriodo';
 import { MenuDaRotina } from './partes/MenuDaRotina';
 import { BotaoDeAjuda } from '../../casca/CascaTarefas';
 
@@ -30,8 +28,6 @@ export function Executor() {
   const { empresa: rota = '', competencia: periodo = '' } = useParams();
   const vm = useExecutor(rota, periodo);
   const casca = useCascaTarefas('minhas-empresas', 'empresas');
-  // alterar o período do Em lote: a mesma pergunta do iniciar ("Quais meses?"), com o período de agora
-  const alterarLote = usePerguntaDoPeriodo();
   // a ferramenta da etapa (iframe): recebe os bancos sem movimento e avisa quando a pessoa marca um
   const iframe = useRef<HTMLIFrameElement>(null);
   // a ferramenta que tem requisitos (a Importação) diz o que falta: o avançar só aparece com tudo pronto
@@ -104,14 +100,8 @@ export function Executor() {
     if (i > 0 && (i === 1 || i === vm.grupos.length - 1)) itensDosGrupos.push('separador');
     itensDosGrupos.push({ rotulo: g.nome, icone: ICONE_DO_GRUPO[g.nome] || 'list', marcado: g.atual, desabilitado: g.travado, onClick: () => vm.abrirGrupo(g.nome) });
   });
-  // a aba Em lote do menu: o período e as configurações (alterar só na Importação; cancelar)
-  const emLote = vm.varios ? {
-    rotulo: vm.rotuloCompetencia + ' · ' + vm.meses.length + ' meses',
-    onAlterar: vm.etapa?.id === 'extratos' ? () => alterarLote.perguntar('', vm.empresa ? (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome : '', vm.meses[0],
-      { ate: vm.meses[vm.meses.length - 1], titulo: 'Alterar o Em lote', botao: 'Alterar', aoEscolher: vm.trocarCompetencia }) : null,
-    // cancelar só na Importação (Vitor, 02/10/2026: "proibido cancelar o Em lote depois de passar da Importação")
-    onCancelar: vm.etapa?.id === 'extratos' ? vm.encerrarPeriodo : null,
-  } : null;
+  // o Em lote voltou para a tela da Importação (Vitor, 05/10/2026): o menu é só o dos grupos
+  const emLote = null;
   const botoesDaEtapa = vm.etapa && telaPronta && !vm.interrompendo && saida.state !== 'blocked';
 
   const topo = (
@@ -142,10 +132,7 @@ export function Executor() {
         itens={[
           { rotulo: 'Voltar às empresas', icone: 'home', onClick: vm.sair },
           'separador',
-          { rotulo: 'Caixa de entrada', icone: 'caixaEntrada', onClick: () => casca.abrirPessoal('caixa') },
-          { rotulo: 'Anotações', icone: 'fileText', onClick: () => casca.abrirPessoal('notas') },
           { rotulo: 'Minha conta', icone: 'usuario', onClick: () => casca.abrirPessoal('conta') },
-          { rotulo: 'Aparência e telas', icone: 'settings', onClick: () => casca.abrirPessoal('preferencias') },
           'separador',
           { rotulo: casca.perfil.sair, icone: 'logOut', onClick: casca.trocarPessoa },
         ]} />
@@ -229,7 +216,6 @@ export function Executor() {
             )}
           </div>
           {vm.aviso && <Alerta titulo="Ainda não dá para seguir" texto={vm.aviso} />}
-          <JanelaDoPeriodo vm={alterarLote} />
           {vm.interrompendo && <JanelaInterromper etapa={vm.etapa} onInterromper={vm.interromper} onCancelar={vm.fecharInterromper} />}
           {/* saiu por outro lugar: a mesma janela; interrompeu, segue para onde clicou; cancelou, fica */}
           {saida.state === 'blocked' && !vm.interrompendo && (
