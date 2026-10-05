@@ -334,7 +334,8 @@ tr.bad td{background:var(--danger-soft);}
 /* ---------------------------------- rótulos ---------------------------------- */
 .badge{display:inline-block;font-size:12px;font-weight:500;line-height:18px;padding:0 7px;border:1px solid var(--border);
   border-radius:2em;white-space:nowrap;color:var(--ink-muted);}
-.badge-ok{color:var(--success);border-color:var(--success);background:none;}
+/* o Ok preenchido de verde (Vitor, 05/10/2026: regra do app todo); o texto na cor do fundo, legível no claro e no escuro */
+.badge-ok{color:var(--bg);border-color:var(--success);background:var(--success);font-weight:600;}
 .badge-bad{color:var(--danger);border-color:var(--danger);background:none;}
 .badge-neutral{color:var(--ink-muted);border-color:var(--border);}
 

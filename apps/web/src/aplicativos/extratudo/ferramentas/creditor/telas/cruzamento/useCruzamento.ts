@@ -6,7 +6,8 @@ import { creditor as cr } from '@nads/core';
 import { useState } from 'react';
 import { useSessao } from '../../casca/sessao';
 
-export type Filtro = 'todos' | 'decidir' | 'avisos';
+/** Todos ou Pendentes (Vitor, 05/10/2026: no dropdown; Pendentes apagado quando não tem) */
+export type Filtro = 'todos' | 'pendentes';
 
 export const ROTULO_SITUACAO: Record<cr.SituacaoCruzamento, string> = {
   ok: 'Ok', dividido: 'Duplicatas juntas', 'valor-diverge': 'Valor diverge', 'cliente-diverge': 'Cliente diverge', 'nao-encontrada': 'Sem conta',
@@ -38,7 +39,7 @@ export function useCruzamento() {
     };
   });
 
-  const visiveis = linhas.filter(l => filtro === 'todos' || (filtro === 'decidir' ? l.precisa : !!l.nota));
+  const visiveis = linhas.filter(l => filtro === 'todos' || l.precisa);
   const conta = (f: (l: (typeof linhas)[number]) => boolean) => linhas.filter(f).length;
 
   return {
@@ -61,8 +62,6 @@ export function useCruzamento() {
       const base = atual?.tipo === 'manual' ? atual : { tipo: 'manual' as const, contrapartida: '', historico: '' };
       decidir(id, { ...base, [campo]: v.trim() });
     },
-    podeContinuar: s.d.pendentes.length === 0 && linhas.length > 0,
-    continuar: s.proxima,
     voltar: s.anterior,
   };
 }

@@ -1,6 +1,6 @@
 // Etapa Relatório de Recebimento do Creditor: a conta de cada título (aprendida ou do balancete) e, sem conta, a decisão.
 import { creditor as cr } from '@nads/core';
-import { Alerta, Segmentado } from '@nads/ui';
+import { Alerta, MenuSuspenso } from '@nads/ui';
 import { Fragment } from 'react';
 import { Celula } from './partes/Celula';
 import { MenuDeConta } from './partes/MenuDeConta';
@@ -20,8 +20,11 @@ export function Cruzamento() {
       <div className="card">
         <div className="card-head">
           <h3>Títulos</h3>
-          <Segmentado<Filtro> valor={vm.filtro} onMudar={vm.setFiltro}
-            opcoes={[{ valor: 'todos', rotulo: 'Todos' }, { valor: 'avisos', rotulo: 'Com aviso' }, { valor: 'decidir', rotulo: 'Para decidir' }]} />
+          {/* Todos / Pendentes no menu suspenso padrão; sem pendência, o Pendentes fica apagado */}
+          <MenuSuspenso rotulo={vm.filtro === 'pendentes' ? 'Pendentes' : 'Todos'} className="btn btn-outline" direita dica="Filtrar os títulos"
+            itens={([['todos', 'Todos'], ['pendentes', 'Pendentes' + (vm.resumo.decidir ? ' (' + vm.resumo.decidir + ')' : '')]] as [Filtro, string][]).map(([v, r]) => ({
+              rotulo: r, marcado: vm.filtro === v, desabilitado: v === 'pendentes' && !vm.resumo.decidir, onClick: () => vm.setFiltro(v),
+            }))} />
         </div>
         <div className="table-wrap" style={{ maxHeight: 'none' }}>
           <table>
@@ -74,12 +77,6 @@ export function Cruzamento() {
         {!vm.linhas.length && <p className="hint">Nada neste filtro.</p>}
       </div>
 
-      {/* sem o Voltar (Vitor, 05/10/2026: tudo é navegável pela barra de cima) */}
-      <div className="btn-row" style={{ justifyContent: 'flex-end' }}>
-        <button className="btn btn-primary" type="button" disabled={!vm.podeContinuar} onClick={vm.continuar}>
-          {vm.resumo.pendentes ? 'Faltam ' + vm.resumo.pendentes + ' decisão(ões)' : 'Continuar para os lançamentos'}
-        </button>
-      </div>
     </section>
   );
 }

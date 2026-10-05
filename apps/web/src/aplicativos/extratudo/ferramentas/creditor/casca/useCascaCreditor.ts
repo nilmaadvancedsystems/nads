@@ -1,10 +1,7 @@
 // ViewModel do Creditor dentro da casca do Extratudo: as etapas nas abas de cima (travadas até serem
-// liberadas), o título, "Etapa n de 5" e o Cancelar (com confirmação).
+// liberadas), o título e, na linha das etapas, o Cancelar (com confirmação) e o Próximo.
 import { useRetorno } from '@nads/ui';
 import { useSessao } from './sessao';
-
-/** as etapas no visual da Importação: sem o título e sem o "Etapa n de 5" em cima (Vitor, 05/10/2026) */
-const NO_VISUAL_DA_IMPORTACAO: string[] = ['competencia'];
 
 export function useCascaCreditor() {
   const s = useSessao();
@@ -23,12 +20,13 @@ export function useCascaCreditor() {
     ferramenta: 'creditor' as const,
     empresa: s.empresa,
     rota: s.rota,
-    // a Competência (a primeira) no visual da Importação: sem o título e sem o "Etapa 1 de 5" (Vitor, 05/10/2026)
-    titulo: atual && !NO_VISUAL_DA_IMPORTACAO.includes(atual.id) ? atual.titulo : '',
-    primeira: NO_VISUAL_DA_IMPORTACAO.includes(s.etapa),
+    // o título e as etapas desde a primeira (Vitor, 05/10/2026)
+    titulo: atual ? atual.titulo : '',
     paginas: s.etapas.map(x => ({ id: x.id, rotulo: x.rotulo, icone: x.icone, ativa: x.id === s.etapa, travada: !s.podeAbrir(x.id) })),
     onPagina: (id: string) => s.irPara(id as typeof s.etapa),
     temDados: !!s.estado.relatorio,
     cancelar,
+    /** o Próximo: some na última etapa; travado com pendência (sem o relatório, com conta para decidir) */
+    temProxima: s.temProxima, podeSeguir: s.podeSeguir, proximo: s.proxima,
   };
 }

@@ -1,7 +1,7 @@
 // Etapa 1 do Creditor, no visual da Importação (Vitor, 05/10/2026: "o mesmo visual de importação de Drive, de
 // competências"): em cima, a competência (um mês, ou vários pelo Em lote) e quantos relatórios; embaixo, uma linha de
 // relatório de liquidação por mês, com o ícone de importar (do computador ou do Drive). Importado, o check (ou o logo
-// do Drive) que exclui, o resumo no meio e a seta com os títulos. Com todos os meses, o Continuar segue para o Relatório de Recebimento
+// do Drive) que exclui, o resumo no meio e a seta com os títulos. Com todos os meses, o Próximo (ao lado do Cancelar) segue para o Relatório de Recebimento
 // (Vitor, 05/10/2026: a Competência e o Relatório do banco eram a mesma tela; ficou só esta).
 import { creditor as cr } from '@nads/core';
 import { Alerta, classeDaJanela, Icone, LogoDrive, MenuSuspenso } from '@nads/ui';
@@ -27,7 +27,6 @@ export function Competencia() {
           <MenuSuspenso rotulo="" icone="upload" className="gh-topo-btn gh-topo-menu" direita dica="Importar os relatórios que faltam"
             itens={[{ rotulo: 'Buscar os ' + vm.faltam + ' que faltam no Drive', icone: 'pasta', onClick: () => vm.buscarNoDrive('*') }]} />
         )}
-        <button type="button" className="btn btn-primary" disabled={!vm.podeContinuar || vm.ocupado} onClick={vm.continuar}>Continuar</button>
       </div>
 
       <div className="imp-lista">

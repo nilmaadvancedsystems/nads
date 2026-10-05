@@ -186,7 +186,7 @@ export const PECAS_BASE: Peca[] = [
     uso: '<BotaoGoogle entrando={x} onClick={entrar} />', demo: () => <><BotaoGoogle onClick={() => undefined} /><BotaoGoogle entrando onClick={() => undefined} /></> },
 
   // ─── Selos ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  { id: 'badge-ok', tipo: 'selos', nome: 'Ok', descricao: 'Verde: bateu (entra com mola)', classes: ['badge badge-ok'], telas: ['c-relatorio', 'e-importacao', 't-exec-importacao', 't-exec-cheque', 't-exec-fiscal'],
+  { id: 'badge-ok', tipo: 'selos', nome: 'Ok', descricao: 'Verde preenchido: bateu (regra do app todo, 05/10/2026)', classes: ['badge badge-ok'], telas: ['c-relatorio', 'e-importacao', 't-exec-importacao', 't-exec-cheque', 't-exec-fiscal'],
     uso: '<span className="badge badge-ok">Ok</span>', demo: () => <span className="badge badge-ok">Ok</span>, aoVivo: undefined },
   { id: 'badge-conferido', tipo: 'selos', nome: 'Conferido', descricao: 'Cheio: conferido à mão (o banco que bate mas falta o cheque especial agora é o botão principal "Cheque especial")', classes: ['badge badge-conferido'], telas: ['c-relatorio'],
     demo: () => <span className="badge badge-conferido">Conferido</span> },

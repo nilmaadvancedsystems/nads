@@ -73,7 +73,8 @@ function requisitos(id: IdEtapa, e: Estado, d: Derivado): boolean {
   switch (id) {
     case 'competencia': return true;
     // sem o passo a passo do Fiscal (05/10/2026): as Contas abrem com o relatório lido
-    case 'cruzamento': return d.conferido;
+    // e o relatório de todos os meses da competência (por período, um por mês; ou o anexado inteiro)
+    case 'cruzamento': return d.conferido && (!Object.keys(e.porMes).length || cr.mesesDaCompetencia(e.competencia).every(m => e.porMes[m]));
     case 'lancamentos': return d.conferido && d.pendentes.length === 0;
   }
 }
@@ -110,6 +111,9 @@ interface Sessao {
   podeAbrir: (id: IdEtapa) => boolean;
   irPara: (id: IdEtapa) => void;
   proxima: () => void;
+  /** tem etapa seguinte e ela já pode abrir (o Próximo ao lado do Cancelar) */
+  podeSeguir: boolean;
+  temProxima: boolean;
   anterior: () => void;
   recomecar: () => void;
 }
@@ -198,6 +202,8 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
     },
     podeAbrir, irPara,
     proxima: () => { const p = etapas[i + 1]; if (p && requisitos(p.id, estado, d)) abrir(p.id); },
+    podeSeguir: !!etapas[i + 1] && requisitos(etapas[i + 1].id, estado, d),
+    temProxima: !!etapas[i + 1],
     anterior: () => { if (i > 0) abrir(etapas[i - 1].id); },
     recomecar: () => { setEstado(INICIAL); navegar(caminhoDaEtapa(rota, 'competencia') + search); },
   };
