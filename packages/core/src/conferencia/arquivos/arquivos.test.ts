@@ -40,6 +40,15 @@ describe('lerNotas', () => {
     expect(n[0]).toEqual({ cfop: '1102', lanc: '00006', valor: 1234.56, numero: '4101', nome: 'FORN A', data: '05/07/2026', desc: 'Compra', doc: '11.222.333/0001-00', exportado: 'Sim', comp: '2026-07' });
     expect(n[1]).toMatchObject({ cfop: '5102', exportado: 'Não' });
   });
+  it('a conta contábil do cliente, quando o relatório traz (e nunca a coluna do valor contábil)', () => {
+    const n = lerNotas([
+      ['CFOP', 'Lanc', 'Valor Contábil', 'Número', 'Nome Forn/Cliente', 'Dt. Escritura', 'Conta Contábil'],
+      ['5102', '1', '10,00', '009857', 'ATACAREJO', '06/08/2026', '99115'],
+      ['5102', '1', '20,00', '9858', 'OUTRO', '06/08/2026', ''],
+    ]);
+    expect(n.map(x => x.conta)).toEqual(['99115', undefined]);
+    expect(lerNotas(rows)[0].conta).toBeUndefined();
+  });
   it('sem coluna CFOP: erro', () => {
     expect(() => lerNotas([['Data', 'Valor']])).toThrow('Não achei a coluna CFOP');
   });

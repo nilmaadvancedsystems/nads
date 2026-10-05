@@ -40,6 +40,8 @@ export interface Nota {
   exportado?: '' | 'Sim' | 'Não';
   /** competência aaaa-mm */
   comp: string;
+  /** a conta contábil do cliente/fornecedor, quando o relatório traz a coluna (o Creditor acha a conta pela NF) */
+  conta?: string;
 }
 
 /** Nota com o tipo do CFOP já resolvido (Entrada/Saída). */

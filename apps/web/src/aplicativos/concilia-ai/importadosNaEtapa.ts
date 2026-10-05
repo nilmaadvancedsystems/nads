@@ -26,3 +26,15 @@ export function useContasDoBalancete(nome: string): c.Conta[] | null {
   const achada = repo.empresaPelaRota(formatos.slug(nome));
   return repo.obter(achada?.nome || nome)?.contas || [];
 }
+
+/**
+ * As notas de Saída importadas na Conferência (a Importação da Tarefa): o Creditor acha a conta de cada título pela NF
+ * delas (Vitor, 05/10/2026). Só lê. null = carregando; sem nome, nem liga a Conferência.
+ */
+export function useSaidasDaConferencia(nome: string): c.Nota[] | null {
+  const repo = nome ? repoDaConferencia() : null;
+  useSyncExternalStore(repo ? repo.assinar : semAssinar, repo ? repo.versao : versaoZero, repo ? repo.versao : versaoZero);
+  if (!repo || !repo.pronto()) return null;
+  const achada = repo.empresaPelaRota(formatos.slug(nome));
+  return repo.obter(achada?.nome || nome)?.saidas || [];
+}

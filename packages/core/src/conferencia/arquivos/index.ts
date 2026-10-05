@@ -31,6 +31,17 @@ export function coluna(head: unknown[], ...nomes: string[]): number {
   return -1;
 }
 
+/**
+ * A coluna da conta contábil (o relatório de Saídas do Fiscal traz a do cliente): "Conta contábil", "Cta. contábil",
+ * "Conta"… — nunca a do valor ("Valor contábil").
+ */
+function colunaDaConta(head: unknown[]): number {
+  const n = head.map(c => String(c).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+  const exata = n.findIndex(c => c === 'conta' || c === 'conta contabil' || c === 'cta contabil' || c === 'cta. contabil');
+  if (exata >= 0) return exata;
+  return n.findIndex(c => !c.includes('valor') && /\b(conta|cta\.?) ?(contabil|cont\.|do cliente|cliente)/.test(c));
+}
+
 // ---------- notas fiscais (entradas/saídas) ----------
 export function lerNotas(rows: Linhas): Nota[] {
   const h = acharCabecalho(rows, ['cfop']);
@@ -40,7 +51,7 @@ export function lerNotas(rows: Linhas): Nota[] {
     cfop: coluna(head, 'cfop'), lanc: coluna(head, 'lanc'), val: coluna(head, 'valor contábil', 'valor contabil', 'valor'),
     num: coluna(head, 'número', 'numero'), nome: coluna(head, 'nome forn', 'forn/cliente', 'nome'),
     dt: coluna(head, 'dt. escritura', 'data'), desc: coluna(head, 'descrição do cfop', 'descricao do cfop'),
-    doc: coluna(head, 'cnpj/cpf', 'cpf/cnpj', 'cnpj', 'cpf'), exp: coluna(head, 'exportado', 'exp.'),
+    doc: coluna(head, 'cnpj/cpf', 'cpf/cnpj', 'cnpj', 'cpf'), exp: coluna(head, 'exportado', 'exp.'), conta: colunaDaConta(head),
   };
   if (c.cfop < 0 || c.val < 0) throw new Error('Faltou coluna de CFOP ou de valor.');
   const out: Nota[] = [];
@@ -56,6 +67,7 @@ export function lerNotas(rows: Linhas): Nota[] {
       numero: String(r[c.num] || '').trim(), nome: String(r[c.nome] || '').trim(), data,
       desc: c.desc >= 0 ? String(r[c.desc] || '').trim() : '', doc: c.doc >= 0 ? String(r[c.doc] || '').trim() : '',
       exportado: c.exp >= 0 ? normExportado(r[c.exp]) : '', comp: comp(data),
+      ...(c.conta >= 0 && String(r[c.conta] || '').trim() ? { conta: String(r[c.conta]).trim().replace(/\.0$/, '') } : {}),
     });
   }
   return out;

@@ -1,7 +1,8 @@
 // A conta de cada cliente vem do balancete (pedido do escritório, 2026-09-29): os apps do contábil já
 // importam o extrato e o balancete no banco, e no balancete estão as contas dos clientes — não precisa
 // mais do arquivo do sistema. O banco manda (valor e cliente); daqui sai só a conta:
-//   1. a conta aprendida do cliente (conciliado antes; a pessoa confirmou), que sempre vence;
+//   0. a conta da NF no relatório de Saídas importado na Tarefa, quando ele traz a conta (vence tudo);
+//   1. a conta aprendida do cliente (conciliado antes; a pessoa confirmou);
 //   2. a conta de cliente do balancete com o mesmo nome do sacado, quando só uma parece;
 //   3. sem nenhuma: a pessoa informa a conta (e ela fica aprendida quando o arquivo é baixado).
 import { nomeNorm } from '../../../formatos';
@@ -9,6 +10,8 @@ import type { Titulo } from '../tipos';
 import { contaAprendida, type ClientesAprendidos } from './aprendizado';
 import type { BalanceteDaEmpresa, ContaDoBalancete } from './balancete';
 import type { Cruzamento } from './cruzamento';
+import { chaveNf } from './numeros';
+import type { ContaDaNota } from './saidas';
 
 /** Sintética que abre as contas de clientes ("CLIENTES", "DUPLICATAS A RECEBER", "CONTAS A RECEBER"). */
 const SECAO_CLIENTES = /\bclientes?\b|duplicatas? a receber|contas? a receber/;
@@ -64,10 +67,16 @@ export function mesmoNomeDeCliente(sacado: string, conta: string): boolean {
   return semelhancaDeNome(sacado, conta) >= SEMELHANCA_MINIMA;
 }
 
-export function cruzarPeloBalancete(titulos: Titulo[], clientes: readonly ContaDoBalancete[], aprendidos: ClientesAprendidos): Cruzamento[] {
+export function cruzarPeloBalancete(titulos: Titulo[], clientes: readonly ContaDoBalancete[], aprendidos: ClientesAprendidos, porNf?: ReadonlyMap<string, ContaDaNota>): Cruzamento[] {
   return titulos.map((t): Cruzamento => {
     const base = { tituloId: t.id, valorBanco: t.valor, valorSistema: null };
     const linha = (contrapartida: string, cliente: string) => ({ linha: 0, nf: t.nf, cliente, contrapartida, historico: '', valor: t.valor });
+    // a NF está no relatório de Saídas com a conta: é ela
+    const daNota = porNf?.get(chaveNf(t.nf));
+    if (daNota) {
+      const doBalancete = clientes.find(c => c.codigo === daNota.conta);
+      return { ...base, situacao: 'ok', linha: linha(daNota.conta, doBalancete?.nome || daNota.nome), nota: 'Conta pelo relatório de Saídas (NF ' + chaveNf(t.nf) + ').', pelaSaida: true };
+    }
     // a conta mais parecida vence; empate no topo (o mesmo nome em mais de uma conta) pergunta
     const notas = clientes.map(c => ({ c, n: semelhancaDeNome(t.sacado, c.nome) })).filter(x => x.n >= SEMELHANCA_MINIMA);
     const topo = Math.max(0, ...notas.map(x => x.n));

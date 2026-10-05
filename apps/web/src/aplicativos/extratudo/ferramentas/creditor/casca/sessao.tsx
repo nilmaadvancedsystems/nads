@@ -8,6 +8,7 @@ import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useContasDaEmpresa, useDrive } from '../dados/repo';
+import { useSaidasDaConferencia } from '../../../../concilia-ai/importadosNaEtapa';
 import { caminhoDaEtapa, ETAPAS, indiceDaEtapa, type Etapa, type IdEtapa } from './navegacao';
 
 export interface Estado {
@@ -59,10 +60,10 @@ export interface Derivado {
   aprendidas: number[];
 }
 
-export function derivar(e: Estado, contas: cr.ContasCreditor, aprendidos: cr.ClientesAprendidos, clientes: readonly cr.ContaDoBalancete[]): Derivado {
+export function derivar(e: Estado, contas: cr.ContasCreditor, aprendidos: cr.ClientesAprendidos, clientes: readonly cr.ContaDoBalancete[], porNf?: ReadonlyMap<string, cr.ContaDaNota>): Derivado {
   const titulos = e.relatorio ? e.relatorio.grupos.flatMap(g => g.titulos) : [];
   const conferido = titulos.length > 0;
-  const cruzamentos = cr.cruzarPeloBalancete(titulos, clientes, aprendidos);
+  const cruzamentos = cr.cruzarPeloBalancete(titulos, clientes, aprendidos, porNf);
   const auto = cr.decisoesAprendidas(titulos, cruzamentos, aprendidos, e.decisoes);
   const decisoes = { ...auto, ...e.decisoes };
   const pendentes = cr.pendentes(cruzamentos, decisoes);
@@ -151,7 +152,10 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
   const balancete = doEntregas || daEmpresa.balancete;
   const resolvidas = useMemo(() => cr.resolverContas(balancete, config), [balancete, config]);
   const contasClientes = useMemo(() => cr.contasDeClientes(balancete), [balancete]);
-  const d = useMemo(() => derivar(estado, resolvidas.contas, clientes, contasClientes), [estado, resolvidas, clientes, contasClientes]);
+  // a conta pela NF no relatório de Saídas importado na Tarefa (a Conferência da empresa; só lê)
+  const saidas = useSaidasDaConferencia(empresa.nome);
+  const porNf = useMemo(() => cr.contasPorNf(saidas || []), [saidas]);
+  const d = useMemo(() => derivar(estado, resolvidas.contas, clientes, contasClientes, porNf), [estado, resolvidas, clientes, contasClientes, porNf]);
 
   const podeAbrir = useCallback((id: IdEtapa) => indiceDaEtapa(id) <= estado.alcancada && requisitos(id, estado, d), [estado, d]);
 

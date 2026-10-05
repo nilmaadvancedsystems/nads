@@ -11,6 +11,7 @@ export * from './regras/aprendizado';
 export * from './regras/clientes';
 export * from './regras/competencia';
 export * from './regras/drive';
+export * from './regras/saidas';
 export * from './arquivos/planilha';
 export * from './arquivos/banco';
 export * from './arquivos/sistema';

@@ -21,6 +21,8 @@ export interface Cruzamento {
   nota: string;
   /** a conta veio do que foi aprendido do cliente (cruzarPeloBalancete) */
   aprendida?: boolean;
+  /** a conta veio do relatório de Saídas importado na Tarefa (a NF da nota) */
+  pelaSaida?: boolean;
   /** sem conta decidida, as contas do balancete entre as quais a pessoa escolhe (filiais de nome igual) */
   opcoes?: { codigo: string; nome: string }[];
 }

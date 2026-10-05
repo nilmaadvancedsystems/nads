@@ -9,6 +9,7 @@ import { emailDoUsuario } from './drive';
 import { BALANCETES_EXEMPLO, EXEMPLO_RELATORIO, EXEMPLO_SISTEMA_CSV } from './exemplos';
 import { aprender, clientesDoDocumento, contaAprendida, decisoesAprendidas } from './regras/aprendizado';
 import { contasDeClientes, cruzarPeloBalancete, mesmoNomeDeCliente } from './regras/clientes';
+import { contasPorNf } from './regras/saidas';
 import { competenciaDosMeses, competenciaPadrao, competenciaValida, juntarRelatorios, mesesDaCompetencia, rotuloCompetencia, titulosForaDaCompetencia } from './regras/competencia';
 import { acharRelatorioNoDrive, falaDaCompetencia, pastaDoCliente, type ItemDrive } from './regras/drive';
 import { balanceteDoDocumento, CONFIG_VAZIA, configDoDocumento, confirmarContas, escolherConta, mesmaConfig, resolverContas, SEM_BALANCETE, sugerirConta } from './regras/balancete';
@@ -534,6 +535,22 @@ describe('conta do cliente pelo balancete', () => {
     expect([b2.situacao, b2.nota]).toEqual(['nao-encontrada', expect.stringMatching(/Da última vez: 12301/)]);
     expect(c.situacao).toBe('nao-encontrada');
     expect([d.situacao, d.linha?.contrapartida, d.aprendida]).toEqual(['ok', '12999', true]);
+  });
+
+  it('a conta pelo relatório de Saídas (NF da nota) vence: filiais de nome igual e cliente sem conta', () => {
+    const cl = contasDeClientes(bal);
+    const porNf = contasPorNf([
+      { numero: '009857', nome: 'SUPERMERCADO BOA COMPRA', conta: '12301' },
+      { numero: '9889', nome: 'FULANO DE TAL', conta: '12777' },
+      // a mesma NF com contas diferentes não decide
+      { numero: '100', nome: 'X', conta: '1' }, { numero: '0100', nome: 'X', conta: '2' },
+      { numero: '200', nome: 'SEM CONTA' },
+    ]);
+    expect([...porNf.keys()]).toEqual(['9857', '9889']);
+    const [b, c, x] = cruzarPeloBalancete([{ ...t(2, 'SUPERMERCADO BOA COMPRA'), nf: '9857/3/3' }, { ...t(3, 'FULANO DE TAL'), nf: '9889/1/1' }, { ...t(5, 'X'), nf: '100' }], cl, {}, porNf);
+    expect([b.situacao, b.linha?.contrapartida, b.pelaSaida, b.nota]).toEqual(['ok', '12301', true, 'Conta pelo relatório de Saídas (NF 9857).']);
+    expect([c.situacao, c.linha?.contrapartida, c.linha?.cliente]).toEqual(['ok', '12777', 'FULANO DE TAL']);
+    expect(x.pelaSaida).toBeUndefined();
   });
 });
 
