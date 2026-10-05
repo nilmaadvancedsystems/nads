@@ -296,6 +296,8 @@ export function useImportacao() {
         (x.arquivosDoBanco(s.empresa, b.id, primeiro, 'banco', competencia).length > 0 && x.arquivosDoBanco(s.empresa, b.id, primeiro, 'sistema', competencia).length > 0));
     },
     primeiro,
+    /** a empresa não tem conta bancária no Cadastro (só a linha genérica "Banco"): um administrador precisa cadastrar */
+    semBancosCadastrados: !!cad.cadastro && bancos.every(b => b.id === 'banco'),
     bancos: bancos.map(b => {
       const lado = (l: x.Lado) => {
         const arqs = x.arquivosDoBanco(s.empresa, b.id, primeiro, l, competenciaDeTeste);

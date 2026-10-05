@@ -2619,6 +2619,15 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .faq-resposta{padding:0 14px 12px 30px;font-size:14px;line-height:1.5;display:flex;flex-direction:column;align-items:flex-start;gap:6px;}
 .faq-pe{font-size:13px;}
 /* "Qual competência?" ao entrar em Minhas empresas */
-.modal.modal-centro.competencia-janela{max-width:340px;}
-.competencia-campo{margin-top:14px;}
-.competencia-campo select{width:100%;}
+/* a grade de meses (Vitor, 05/10/2026: "mais interativo"): o ano com as setas e os 12 meses em 4 colunas; o escolhido em
+   vermelho, o de hoje com a borda, os fora da lista apagados */
+.modal.modal-centro.competencia-janela{max-width:360px;}
+.comp-ano{display:flex;align-items:center;justify-content:space-between;margin:14px 0 10px;}
+.comp-ano b{font-size:16px;font-variant-numeric:tabular-nums;}
+.comp-grade{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.comp-mes{height:40px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;font-weight:500;cursor:pointer;}
+.comp-mes:hover:not(:disabled){background:var(--hover-bg);border-color:var(--border-strong);}
+.comp-mes.atual{border-color:var(--ink-muted);}
+.comp-mes.on,.comp-mes.on:hover{background:var(--btn-primary);border-color:var(--btn-primary);color:#FFFFFF;font-weight:600;}
+.comp-mes:disabled{opacity:.35;cursor:not-allowed;}
+.imp-sem-bancos{margin-top:4px;}

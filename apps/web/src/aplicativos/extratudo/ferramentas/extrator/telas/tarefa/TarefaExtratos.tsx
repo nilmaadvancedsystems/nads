@@ -558,7 +558,9 @@ export function TarefaExtratos() {
   const chequeConhecido = vm.bancos.every(b => semMovimentoNoPeriodo(b.id) || (situacoes[b.id] && situacoes[b.id].tipo !== 'pendente'));
   const precisaChequeEspecial = chequeConhecido ? diasNegativosAgora > 0 : undefined;
   // na etapa Cheque especial: todo banco Ok (o cheque dos dias negativos no razão); na Importação, "falta o cheque" passa
-  useRequisitosParaATarefa(!ponte.naTarefa ? null : vm.etapaCheque
+  useRequisitosParaATarefa(!ponte.naTarefa ? null : vm.semBancosCadastrados
+    ? { pronto: false, faltam: ['Os bancos da empresa no Cadastro (peça a um administrador)'], alvos: [null] }
+    : vm.etapaCheque
     ? { precisaChequeEspecial, ...x.requisitosDoChequeEspecial(vm.bancos.map(b => ({ id: b.id, nome: b.nome, ok: !!bancosOk[b.id], semMovimento: semMovimentoNoPeriodo(b.id), diasSemCheque: diasSemCheque(b.id) }))) }
     : importados ? { ...x.requisitosDaImportacao(vm.bancos.map(b => ({
       id: b.id, nome: b.nome, ok: !!bancosOk[b.id], faltaCheque: diasSemCheque(b.id) > 0, semMovimento: semMovimentoNoPeriodo(b.id),
@@ -665,8 +667,16 @@ export function TarefaExtratos() {
           : 'Cheque especial conferido (' + diasNegativosNoPeriodo + (diasNegativosNoPeriodo === 1 ? ' dia negativo' : ' dias negativos') + '): o saldo final bate sem os lançamentos dele. Pode seguir.'}</p>
       ) : null)}
 
+      {/* sem conta bancária no Cadastro (Vitor, 05/10/2026): pede para o administrador cadastrar, no lugar da linha "Banco" */}
+      {vm.semBancosCadastrados && (
+        <div className="card gh-blank imp-sem-bancos">
+          <Icone nome="landmark" />
+          <h4>Os bancos desta empresa não estão cadastrados</h4>
+          <p>Peça a um administrador para cadastrar as contas bancárias da empresa (Cadastro › Empresas › a empresa › Contas bancárias). Depois disso, o extrato e o razão de cada banco aparecem aqui.</p>
+        </div>
+      )}
       <div className="imp-lista">
-        {vm.bancos.map(b => {
+        {!vm.semBancosCadastrados && vm.bancos.map(b => {
           const semMov = ponte.semMovimento.includes(b.id);
           const buscando = d.buscando === b.id;
           // sem movimento: a linha toda trava (só o Desfazer fica)
