@@ -2789,3 +2789,7 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 /* Cadastro › Usuários: as janelas em painéis laterais (os tópicos embaixo de quem é, como na Minha página) */
 .usuario-lado nav{display:flex;flex-direction:column;gap:2px;margin-top:4px;padding-top:8px;border-top:1px solid var(--border-muted);}
 .usuario-topico-alerta{margin-left:auto;width:8px;height:8px;border-radius:50%;background:var(--danger);flex:none;}
+/* A confirmação e os avisos do sistema (retorno.tsx) por cima das janelas flutuantes (Minha página, Usuários: 90) — antes
+   o "Desativar fulano?" abria por baixo da janela da pessoa (Vitor, 05/10/2026); abaixo só da abertura do login (100) */
+.modal-overlay[data-saida-propria]{z-index:95;}
+.toast-region{z-index:96;}
