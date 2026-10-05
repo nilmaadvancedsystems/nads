@@ -1,8 +1,7 @@
 // A conta de cada título pelo relatório de Saídas que a pessoa importou na Importação da Tarefa (Vitor, 05/10/2026:
 // "essas contas para decidir, puxe o relatório de saídas… lá tem a coluna da nota fiscal e a coluna de conta
 // contábil"). A NF do título ("9857/3/3") acha a nota ("009857") pela chave da NF; a conta da nota é a do cliente.
-// O "Seu Número" do banco nem sempre é a NF (na 292, o título 9889 é da BOA COMPRA e a NF 9889 é de outro cliente):
-// quem usa confere o nome do cliente antes de aceitar a conta.
+// O nome do banco pode ser outro (o nome da loja; na NF, a razão social da filial): a NF decide; o nome só desempata.
 import { chaveNf } from './numeros';
 
 /** A conta (e o nome do cliente) que o relatório de Saídas traz para uma NF. */

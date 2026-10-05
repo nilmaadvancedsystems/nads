@@ -71,9 +71,11 @@ export function cruzarPeloBalancete(titulos: Titulo[], clientes: readonly ContaD
   return titulos.map((t): Cruzamento => {
     const base = { tituloId: t.id, valorBanco: t.valor, valorSistema: null };
     const linha = (contrapartida: string, cliente: string) => ({ linha: 0, nf: t.nf, cliente, contrapartida, historico: '', valor: t.valor });
-    // a NF está no relatório de Saídas com a conta, e a nota é do mesmo cliente (o número do banco nem sempre é a NF):
-    // é ela; mais de uma conta possível, segue pelo balancete
-    const doCliente = (porNf?.get(chaveNf(t.nf)) || []).filter(n => mesmoNomeDeCliente(t.sacado, n.nome));
+    // a NF está no relatório de Saídas com a conta: é ela, mesmo com o nome diferente (na 292, o banco diz SUPERMERCADOS
+    // BOA COMPRA -TAI1 e a NF 9889 diz CIRO VERNER: a mesma raiz de CNPJ, a filial com a razão social). A mesma NF com
+    // mais de uma conta: o nome do cliente desempata; sem desempate, segue pelo balancete
+    const daNf = porNf?.get(chaveNf(t.nf)) || [];
+    const doCliente = daNf.length > 1 ? daNf.filter(n => mesmoNomeDeCliente(t.sacado, n.nome)) : daNf;
     const daNota = doCliente.length === 1 ? doCliente[0] : null;
     if (daNota) {
       const doBalancete = clientes.find(c => c.codigo === daNota.conta);

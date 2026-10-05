@@ -3,6 +3,7 @@ import { creditor as cr } from '@nads/core';
 import { Alerta, Segmentado, Stat } from '@nads/ui';
 import { Fragment } from 'react';
 import { Celula } from './partes/Celula';
+import { MenuDeConta } from './partes/MenuDeConta';
 import { useCruzamento, type Filtro } from './useCruzamento';
 
 const BADGE: Record<cr.SituacaoCruzamento, string> = {
@@ -22,10 +23,6 @@ export function Cruzamento() {
         <Stat rotulo="Excluídos" valor={vm.resumo.excluidos} grande={false} />
         {vm.resumo.aprendidas > 0 && <Stat rotulo="Contas aprendidas" valor={vm.resumo.aprendidas} grande={false} />}
       </div>
-
-      <datalist id="contasClientes">
-        {vm.contasClientes.map(c => <option key={c.codigo} value={c.codigo}>{c.nome}</option>)}
-      </datalist>
 
       <div className="card">
         <div className="card-head">
@@ -68,7 +65,7 @@ export function Cruzamento() {
                                 {o.codigo}
                               </button>
                             ))}
-                            <Celula valor={l.decisao?.tipo === 'manual' ? l.decisao.contrapartida : ''} largura={90} rotulo="Contrapartida" placeholder="Conta" lista="contasClientes" onGravar={v => vm.manual(l.id, 'contrapartida', v)} />
+                            <MenuDeConta valor={l.decisao?.tipo === 'manual' ? l.decisao.contrapartida : ''} contas={vm.contasClientes} onEscolher={v => vm.manual(l.id, 'contrapartida', v)} />
                             <Celula valor={l.decisao?.tipo === 'manual' ? l.decisao.historico : ''} largura={260} rotulo="Histórico" placeholder={l.historicoPadrao} onGravar={v => vm.manual(l.id, 'historico', v)} />
                             <button className="btn btn-ghost" type="button" onClick={() => vm.excluir(l.id)}>Excluir título</button>
                           </span>
