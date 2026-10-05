@@ -68,7 +68,7 @@ export function Executor() {
   // uma barra só, no alto da página: a da Tarefas e a da ferramenta juntas
   // a etapa da folha esperando o balancete: a mesma barra do topo
   const folhaCarregando = temChecklist && folha.itens === null;
-  useCarregando(vm.carregando || vm.conferindo || ferramentaCarregando || folhaCarregando);
+  useCarregando(vm.carregando || vm.conferindo || (ferramentaCarregando && !vm.revendo) || folhaCarregando);
   // os botões da etapa só com a tela pronta (a Tarefas e a ferramenta carregadas); o avançar, se a ferramenta tem
   // requisitos, só depois que ela disser o que falta (antes disso ele apareceria liberado)
   const telaPronta = !vm.carregando && !ferramentaCarregando;
@@ -192,7 +192,8 @@ export function Executor() {
           )}
           <div className={'executor-ferramenta' + (vm.revendo ? ' revendo' : '')} inert={vm.revendo || undefined} aria-disabled={vm.revendo || undefined}>
             {/* a ferramenta carregando: o N no meio, sobre um vidro embaçado (em vez da área vazia) */}
-            {vm.ferramenta?.embutir && ferramentaAbrindo && <AberturaN vidro />}
+            {/* revendo uma etapa concluída: sem a abertura com o N (é só para olhar; Vitor, 05/10/2026: "o loading tá bugando") */}
+            {vm.ferramenta?.embutir && ferramentaAbrindo && !vm.revendo && <AberturaN vidro />}
             {vm.ferramenta?.embutir ? (
               <iframe ref={iframe} key={vm.ferramenta.url} src={vm.ferramenta.url} title={vm.ferramenta.nome} style={altura ? { height: altura } : undefined} />
             ) : vm.ferramenta ? (
