@@ -11,6 +11,7 @@ export * from './regras/visao';
 export * from './regras/quando';
 export * from './regras/folha';
 export * from './regras/razao';
+export * from './regras/inss';
 export { idDaExecucao, type RepoTarefas } from './repo';
 export { criarRepoTarefasMemoria, execucoesDeExemplo, execucoesVariadas, type GuardaTarefas } from './repo.memoria';
 export * from './reinf/reinf';

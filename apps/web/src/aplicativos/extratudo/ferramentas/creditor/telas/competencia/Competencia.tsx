@@ -40,12 +40,20 @@ export function Competencia() {
               <span><b>Relatório de liquidação</b><span className="imp-conta">{vm.pasta}</span></span>
             </div>
             <div className="imp-resumo">
-              {b.ocupado ? <div><span>{b.texto}</span></div> : vm.jaCarregado && vm.origemCarregada ? <div><span>{vm.origemCarregada}</span></div> : null}
+              {b.ocupado && <div><span>{b.texto}</span></div>}
             </div>
             <div className="imp-grupos">
               {vm.jaCarregado ? (
                 <>
-                  <span className="badge badge-ok" title="O relatório desta competência já foi lido">Ok</span>
+                  {/* importado: o check (ou o logo do Drive) que, com o mouse em cima, vira o × e exclui — igual à Importação */}
+                  <div className="imp-grupo" aria-label="Relatório de liquidação">
+                    <span className="imp-rotulo">Relatório</span>
+                    <button type="button" className={'icon-btn icon-btn-sm imp-btn imp-feito' + (vm.doDrive ? ' imp-feito-drive' : '')} onClick={vm.excluir}
+                      title={'Importado: ' + vm.origemCarregada + '. Clique para excluir.'} aria-label="Excluir o relatório de liquidação">
+                      {vm.doDrive ? <span className="imp-feito-ok"><LogoDrive cor /></span> : <Icone nome="check" className="imp-feito-ok" />}
+                      <Icone nome="x" className="imp-feito-x" />
+                    </button>
+                  </div>
                   <button type="button" className="btn btn-primary" onClick={vm.continuar}>Continuar</button>
                 </>
               ) : b.ocupado ? (

@@ -112,7 +112,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
    * Editar uma etapa concluída (o botão da barra de cima, ao rever): o check dela sai e ela vira a da vez (as outras
    * ficam como estão). Uma da frente pergunta antes. Etapa da vez: não faz nada.
    */
-  async function voltarPara(id: string) {
+  async function voltarPara(id: string, confirmado = false) {
     if (!etapa || carregando || conferindo) return;
     const alvo = rotina.etapas.findIndex(e => e.id === id);
     const daVez = rotina.etapas.findIndex(e => e.id === etapa.id);
@@ -120,10 +120,13 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     // uma etapa da frente já marcada (Vitor, 01/10/2026: "desmarque esses"): pergunta e desmarca só ela
     if (alvo > daVez) {
       if (!meses.some(m => concluidaEm(id, m))) return;
-      const nome = rotina.etapas[alvo].nome;
-      const ok = await modal({ icone: 'checkCircle', titulo: 'Desmarcar ' + nome + '?', texto: 'A etapa volta a ficar pendente' + (varios ? ' em todos os meses do período' : '') + '.',
-        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Desmarcar', valor: true, variante: 'btn-primary' }] });
-      if (!ok) return;
+      // o Editar já perguntou
+      if (!confirmado) {
+        const nome = rotina.etapas[alvo].nome;
+        const ok = await modal({ icone: 'checkCircle', titulo: 'Desmarcar ' + nome + '?', texto: 'A etapa volta a ficar pendente' + (varios ? ' em todos os meses do período' : '') + '.',
+          botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Desmarcar', valor: true, variante: 'btn-primary' }] });
+        if (!ok) return;
+      }
     }
     // no período: volta em todos os meses em que ela estava feita
     for (const c of meses.filter(m => concluidaEm(id, m))) {
@@ -279,7 +282,13 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     etapa: vista, n: vista ? rotina.etapas.findIndex(e => e.id === vista.id) + 1 : 0, total: rotina.etapas.length,
     /** revendo uma etapa concluída: tudo ofuscado, só o Editar */
     revendo: !!revista,
-    editar: () => { if (revista) void voltarPara(revista.id); },
+    // o Editar pergunta antes de desmarcar (Vitor, 05/10/2026)
+    editar: async () => {
+      if (!revista) return;
+      const ok = await modal<boolean>({ titulo: 'Desmarcar ' + revista.nome + '?', texto: 'A etapa volta a ficar pendente' + (varios ? ' em todos os meses do período' : '') + ' e vira a etapa da vez.',
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Desmarcar', valor: true, variante: 'btn-primary' }] });
+      if (ok) await voltarPara(revista.id, true);
+    },
     voltarAEtapaDaVez: () => setVendo(null),
     interrompidaAntes: etapa && ex ? t.estadoDa(ex, etapa.id)?.situacao === 'interrompida' ? t.estadoDa(ex, etapa.id) : null : null,
     // no período, a ferramenta que trabalha vários meses recebe todos (abas por mês); as outras, o mês da vez

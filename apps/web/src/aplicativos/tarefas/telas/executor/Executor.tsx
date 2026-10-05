@@ -179,7 +179,7 @@ export function Executor() {
               <Icone nome="checkCircle" />
               <span className="executor-revendo-texto"><b>{vm.etapa.nome}</b> já foi concluída. As ações desta etapa estão travadas.</span>
               <button type="button" className="btn" onClick={vm.voltarAEtapaDaVez}>Ir para a etapa da vez</button>
-              <button type="button" className="btn btn-primary" onClick={vm.editar}><Icone nome="lapis" />Editar</button>
+              <button type="button" className="btn btn-primary" onClick={() => { void vm.editar(); }}><Icone nome="lapis" />Editar</button>
             </div>
           )}
           <div className={'executor-ferramenta' + (vm.revendo ? ' revendo' : '')} inert={vm.revendo || undefined} aria-disabled={vm.revendo || undefined}>

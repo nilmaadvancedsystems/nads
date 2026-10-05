@@ -3,7 +3,7 @@
 // pasta da empresa (CONTÁBIL › RECEBIMENTO DE CLIENTES), baixa pelo robô do Entregas, lê e segue para o Relatório do
 // banco já preenchido; sem achar, mostra os arquivos da pasta para escolher. Sem o login do Drive, pede antes.
 import { creditor as cr, tarefas } from '@nads/core';
-import { useCarregando } from '@nads/ui';
+import { useCarregando, useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useSessao } from '../../casca/sessao';
@@ -15,6 +15,7 @@ type Fase = 'parado' | 'procurando' | 'baixando' | 'lendo' | 'problema';
 export function useCompetencia() {
   const s = useSessao();
   const { drive, acesso } = useDrive();
+  const { modal, aviso } = useRetorno();
   // aberto pela Tarefas: a competência (e os meses do Em lote) vêm no endereço
   const [params] = useSearchParams();
   const daTarefa = params.get('competencia') || '';
@@ -88,6 +89,17 @@ export function useCompetencia() {
     }
   }
 
+  /** O check da linha (como na Importação): exclui o relatório lido (pergunta antes); as decisões das contas vão junto. */
+  async function excluir() {
+    const ok = await modal<boolean>({
+      icone: 'alert', titulo: 'Excluir a importação?',
+      botoes: [{ rotulo: 'Excluir', valor: true, variante: 'btn-danger' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
+    });
+    if (!ok) return;
+    s.mudar(e => ({ ...e, relatorio: null, origemBanco: '', decisoes: {}, passosFiscal: [], alcancada: 0 }));
+    aviso({ tom: 'ok', titulo: 'Importação excluída', texto: 'Relatório de liquidação' });
+  }
+
   // os meses do seletor: os do Em lote, quando a Tarefa mandou; senão, os recentes (sem mês que ainda não começou)
   const competencias = (mesesDaTarefa.length > 1 ? mesesDaTarefa : tarefas.competenciasRecentes(new Date(), 24).filter(c => c <= maximo))
     .map(c => ({ valor: c, rotulo: tarefas.rotuloCompetencia(c) }));
@@ -110,6 +122,8 @@ export function useCompetencia() {
     fecharProblema: () => setBusca({ fase: 'parado', texto: '', candidatos: [] }),
     jaCarregado,
     origemCarregada: jaCarregado ? s.estado.origemBanco : '',
+    doDrive: jaCarregado && s.estado.origemBanco.startsWith('Drive'),
+    excluir: () => { void excluir(); },
     /** o relatório já lido: segue para a etapa seguinte */
     continuar: () => { fixar(); s.avancarPara('banco'); },
     login: { aberto: loginAberto, entrando, erro: erroLogin, entrar: () => { void entrar(); }, fechar: () => setLoginAberto(false) },
