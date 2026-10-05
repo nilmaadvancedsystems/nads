@@ -3,9 +3,10 @@
 //   - solicitacoesArquivo: o pedido {status: 'pendente', modo: 'PRODUCAO', criadoEm, criadoPor, criadoPorUid} (só essas
 //     chaves); cancelar = {status: 'cancelado', canceladoEm, canceladoPor} enquanto pendente ou aguardando. O arquivador
 //     do PC escreve o resto no próprio pedido (aguardando, processando, progresso, andamento, concluido ou erro);
-//   - robo/arquivador (só leitura): o ponto do PC (em) e o que ele está fazendo (situacao).
+//   - robo/arquivador (só leitura): o ponto do PC (em) e o que ele está fazendo (situacao);
+//   - arquivamentos/{execucao} (só leitura): o resumo da execução (arquivados, não identificados, clientes).
 import { addDoc, collection, doc, limit, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore';
-import type { EstadoDoArquivador, PedidoDeArquivo, RepoArquivador } from './arquivador';
+import type { EstadoDoArquivador, PedidoDeArquivo, RepoArquivador, ResultadoDoArquivamento } from './arquivador';
 import { bancoDoEntregas } from './entregas.firestore';
 
 type Quem = { nome: string; uid: string } | null;
@@ -19,6 +20,7 @@ function lerPedido(id: string, x: Record<string, unknown>): PedidoDeArquivo {
     erro: texto(x.erro), passos: Number(x.passos) || 0,
     progresso: g && Number(g.total) ? { feitas: Number(g.feitas) || 0, total: Number(g.total), atual: texto(g.atual) } : null,
     andamento: Array.isArray(x.andamento) ? (x.andamento as Record<string, unknown>[]).map(l => ({ em: texto(l.em), texto: texto(l.texto), sub: !!l.sub })) : [],
+    execucao: texto(x.execucao),
   };
 }
 
@@ -30,6 +32,7 @@ export function criarArquivadorFirestore(quem: () => Quem): RepoArquivador {
   let estado: EstadoDoArquivador = { carregado: false, semPermissao: false, em: '', situacao: '', desligadoEm: '' };
   let pedidos: PedidoDeArquivo[] = [];
   let ouvindo = false;
+  const resultados = new Map<string, ResultadoDoArquivamento | null>();
 
   function ouvir() {
     if (ouvindo || !quem()) return;
@@ -49,6 +52,22 @@ export function criarArquivadorFirestore(quem: () => Quem): RepoArquivador {
     exemplos: false,
     estado: () => { ouvir(); return estado; },
     pedidos: () => { ouvir(); return pedidos; },
+    resultado(execucao) {
+      if (!execucao) return null;
+      if (!resultados.has(execucao)) {
+        resultados.set(execucao, null);
+        onSnapshot(doc(db, 'arquivamentos', execucao), s => {
+          const d = s.data();
+          if (!d) return;
+          resultados.set(execucao, {
+            arquivados: Number(d.arquivados) || 0, naoIdentificados: Number(d.naoIdentificados) || 0, duplicados: Number(d.duplicados) || 0,
+            clientes: Array.isArray(d.clientes) ? (d.clientes as Record<string, unknown>[]).map(c => ({ codigo: texto(c.codigo), nome: texto(c.nome), n: Number(c.n) || 0 })) : [],
+          });
+          mudou();
+        }, () => undefined);
+      }
+      return resultados.get(execucao) || null;
+    },
     async pedir() {
       const q = quem();
       if (!q) throw new Error('Sem login.');

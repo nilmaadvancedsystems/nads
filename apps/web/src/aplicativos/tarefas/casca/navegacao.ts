@@ -54,7 +54,9 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     // o Drive do robô: as regras do Entregas só deixam o admin e o contábil lerem; o Gmail (01/10/2026): o contábil
     // e o fiscal (cada um vê a caixa da Nilma e a do próprio setor)
     (a.id !== 'drive' || op.admin || op.departamento === 'contabil') &&
-    (a.id !== 'contato' || op.admin || op.departamento === 'contabil' || op.departamento === 'fiscal'));
+    (a.id !== 'contato' || op.admin || op.departamento === 'contabil' || op.departamento === 'fiscal') &&
+    // o Cadastro (empresas, usuários e configurações): só o admin e o diretor (Vitor, 05/10/2026)
+    (a.id !== 'cadastro' || op.admin || op.nivel === 'diretor'));
 }
 
 export function aplicacao(id: string): Aplicacao | undefined {
