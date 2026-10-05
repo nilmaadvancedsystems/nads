@@ -63,6 +63,8 @@ export interface Etapa {
    * cobrança); sem isso, não aparece e conta como concluída
    */
   soQuandoAdicionada?: boolean;
+  /** a conferência do INSS (razão do INSS a recolher × o PDF das guias pagas) dentro da etapa */
+  conferenciaDoInss?: boolean;
 }
 
 /** Uma tarefa do checklist da etapa: o texto e, se tiver, os subitens, um link e um aviso. */
