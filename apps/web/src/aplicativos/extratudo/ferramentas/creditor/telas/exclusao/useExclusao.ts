@@ -12,7 +12,7 @@ const novoId = () => Date.now().toString(36) + Math.random().toString(36).slice(
 
 export function useExclusao() {
   const s = useSessao();
-  const { aviso } = useRetorno();
+  const { aviso, modal } = useRetorno();
   const nome = s.empresa.nome;
   const emp = useEmpresa(nome);
   const aplicar = useAplicar(nome);
@@ -29,10 +29,13 @@ export function useExclusao() {
   const iso = (d: string) => d.slice(6, 10) + '-' + d.slice(3, 5) + '-' + d.slice(0, 2);
   const partes = s.d.lancamentos.filter(l => l.debito === contaBanco || l.credito === contaBanco)
     .map(l => ({ data: iso(l.data), valor: Math.round(l.valor * 100), historico: l.historico }));
-  const faltam = banco && saldo?.completo ? x.partesForaDoRazao(emp, banco.id, primeiro, meses, partes) : [];
+  // o razão importado aqui (Vitor, 05/10/2026: "tire o Ok antes do usuário upar o razão"): só ele conta
+  const doPasso = s.estado.razaoDaExclusao;
+  const temRazao = !!doPasso && doPasso.ids.some(id => emp.arquivos.some(a => a.id === id)) && !!saldo?.completo;
+  const faltam = banco && temRazao ? x.partesForaDoRazao(emp, banco.id, primeiro, meses, partes) : [];
 
   // bateu: a Tarefa pode seguir (a setinha libera)
-  const bate = !!saldo?.completo && saldo.bate && partes.length > 0 && faltam.length === 0;
+  const bate = temRazao && !!saldo?.bate && partes.length > 0 && faltam.length === 0;
   useEffect(() => {
     if (s.estado.bancoConferido !== bate) s.mudar(e => ({ ...e, bancoConferido: bate }));
   }, [bate, s]);
@@ -45,16 +48,32 @@ export function useExclusao() {
       const lido = await x.lerArquivo(f.name, new Uint8Array(await f.arrayBuffer()), 'sistema');
       if (lido.erro || !lido.lancamentos.length) { aviso({ tom: 'erro', titulo: 'Nada para importar', texto: f.name + ': ' + (lido.erro || 'nenhum lançamento') }); return; }
       const doBanco = (a: x.ArquivoImportado) => x.bancoDoArquivo(a, primeiro) === banco.id;
+      const novos: string[] = [];
       aplicar(e => {
         const agora = { ...e, arquivos: e.arquivos.filter(doBanco) };
         const modo = x.jaTemNoPeriodo(agora, 'sistema', [lido]) ? 'sobrepor' : 'primeira';
         const res = x.importar(agora, 'sistema', [lido], modo, new Date(), novoId);
         const antes = new Set(agora.arquivos.map(a => a.id));
         const outros = e.arquivos.filter(a => !doBanco(a));
+        novos.splice(0, novos.length, ...res.empresa.arquivos.filter(a => !antes.has(a.id)).map(a => a.id));
         return { ...res.empresa, arquivos: [...outros, ...res.empresa.arquivos.map(a => (antes.has(a.id) ? a : { ...a, banco: banco.id }))] };
       });
+      s.mudar(e => ({ ...e, razaoDaExclusao: { ids: novos, nome: f.name } }));
       aviso({ tom: 'ok', titulo: 'Razão importado', texto: banco.nome + ' · ' + lido.lancamentos.length + ' lançamento(s)' });
     } finally { setLendo(false); }
+  }
+
+  /** O check do razão (como na Importação): exclui o razão importado aqui (pergunta antes). */
+  async function excluirRazao() {
+    if (!doPasso) return;
+    const ok = await modal<boolean>({
+      icone: 'alert', titulo: 'Excluir a importação?',
+      botoes: [{ rotulo: 'Excluir', valor: true, variante: 'btn-danger' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
+    });
+    if (!ok) return;
+    aplicar(e => doPasso.ids.reduce((acc, id) => x.excluirArquivo(acc, id, new Date()), e));
+    s.mudar(e => ({ ...e, razaoDaExclusao: undefined, bancoConferido: false }));
+    aviso({ tom: 'ok', titulo: 'Importação excluída', texto: 'Razão da conta ' + contaBanco });
   }
 
   return {
@@ -63,12 +82,14 @@ export function useExclusao() {
     banco: banco ? { id: banco.id, nome: banco.nome, marca: banco.marca, conta: [banco.agencia && 'Ag. ' + banco.agencia, banco.conta && 'C/C ' + banco.conta].filter(Boolean).join(' · ') } : null,
     lendo,
     /** o razão do banco no período já está aqui (sem ele, só o importar) */
-    temRazao: !!saldo?.completo,
+    temRazao,
+    nomeDoRazao: doPasso?.nome || '',
+    excluirRazao: () => { void excluirRazao(); },
     bate,
     /** o resumo no meio da linha: o saldo final do extrato e o do razão */
-    resumo: saldo?.completo ? ['Extrato ' + x.reaisBR(saldo.extrato), 'Razão ' + x.reaisBR(saldo.razao)] : [],
-    dias: (saldo?.dias || []).map(d => ({ data: x.dataBR(d.data), extrato: x.reaisBR(d.extrato), razao: x.reaisBR(d.razao), diferenca: x.reaisBR(d.diferenca) })),
-    diferencaFinal: saldo?.completo && !saldo.bate ? x.reaisBR(saldo.razao - saldo.extrato) : '',
+    resumo: temRazao && saldo ? ['Extrato ' + x.reaisBR(saldo.extrato), 'Razão ' + x.reaisBR(saldo.razao)] : [],
+    dias: (temRazao && saldo ? saldo.dias : []).map(d => ({ data: x.dataBR(d.data), extrato: x.reaisBR(d.extrato), razao: x.reaisBR(d.razao), diferenca: x.reaisBR(d.diferenca) })),
+    diferencaFinal: temRazao && saldo && !saldo.bate ? x.reaisBR(saldo.razao - saldo.extrato) : '',
     /** as partes do .xls do Creditor que não estão no razão (o total ainda não foi trocado no Alterdata) */
     partesFaltando: faltam.map(p => ({ data: x.dataBR(p.data), valor: x.reaisBR(p.valor), historico: p.historico })),
     importarRazao: (f: File | undefined) => { void importarRazao(f); },
