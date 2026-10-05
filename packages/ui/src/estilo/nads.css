@@ -2771,3 +2771,5 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .arquivador-passos li.sub{padding-left:16px;color:var(--ink-muted);}
 .arquivador-pe{display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
 .arquivador-pe .fraco{margin:0;color:var(--ink-muted);align-self:stretch;}
+/* o seletor de competência travado (aberto pela Tarefa): o mesmo botão, apagado e sem clique */
+.seletor-travado{display:inline-flex;opacity:.5;pointer-events:none;user-select:none;}
