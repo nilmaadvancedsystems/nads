@@ -33,6 +33,8 @@ export const APLICACOES: readonly Aplicacao[] = [
   { id: 'fiscal', nome: 'Fiscal', icone: 'fileText', pronta: true, paginas: [
     { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Fiscal — empresas' },
     { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Fiscal — visão geral' },
+    // a REINF (o fluxo do Notion do Heverton), logo abaixo da Visão geral
+    { id: 'reinf', rotulo: 'REINF', icone: 'fileUp', titulo: 'Fiscal — REINF' },
     { id: 'paradas', rotulo: 'Paradas', icone: 'alert', titulo: 'Fiscal — etapas paradas' },
   ] },
   { id: 'drive', nome: 'Drive', icone: 'pasta', pronta: true, paginas: [

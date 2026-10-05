@@ -11,6 +11,7 @@ import { HistoricoDoRobo } from '../telas/gmail/HistoricoDoRobo';
 import { MinhasEmpresas } from '../telas/empresas/MinhasEmpresas';
 import { Insights } from '../telas/insights/Insights';
 import { EmDesenvolvimento } from '../telas/em-desenvolvimento/EmDesenvolvimento';
+import { Reinf } from '../telas/fiscal/reinf/Reinf';
 import { CascaTarefas } from './CascaTarefas';
 import { aplicacao, aplicacoesDe, caminhoDaPagina, type IdAplicacao } from './navegacao';
 import { useOperador, type Operador } from './operador';
@@ -19,7 +20,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
   switch (app) {
     case 'minhas-empresas': return pagina === 'insights' ? <Insights /> : <MinhasEmpresas />;
     case 'contabil': return <VisaoContabil pagina={pagina} />;
-    case 'fiscal': return pagina === 'empresas' ? <MinhasEmpresas /> : <VisaoContabil pagina={pagina} dep="fiscal" />;
+    case 'fiscal': return pagina === 'empresas' ? <MinhasEmpresas /> : pagina === 'reinf' ? <Reinf /> : <VisaoContabil pagina={pagina} dep="fiscal" />;
     case 'cadastro': return pagina === 'configuracoes' ? <ConfiguracoesDoNads /> : <UsuariosDoNads />;
     case 'drive': return <ExploradorDoDrive />;
     case 'contato': return pagina === 'historico' ? <HistoricoDoRobo /> : <CaixaDoRobo />;
