@@ -1,11 +1,15 @@
 // O menu do canto do executor com abas, como o "Code ▾" do GitHub (Vitor, 02/10/2026): Tarefas (os grupos da rotina:
-// o da vez marcado, os da frente travados) e, quando está em lote, Em lote (o período e as configurações da função:
+// os concluídos com o check verde, o da vez com o check de sempre, os da frente apagados e travados; o que está na
+// tela em negrito) e, quando está em lote, Em lote (o período e as configurações da função:
 // alterar e cancelar — só na Importação; cancelar em vermelho).
 import { Icone, type ItemMenu } from '@nads/ui';
 import { useState } from 'react';
 
+/** Um grupo da rotina no menu: feito (check verde), marcado (o da vez), aberto (o que está na tela). */
+export type GrupoDoMenu = Exclude<ItemMenu, 'separador'> & { feito?: boolean; aberto?: boolean };
+
 export function MenuDaRotina({ grupos, emLote, fechar }: {
-  grupos: ItemMenu[];
+  grupos: (GrupoDoMenu | 'separador')[];
   emLote: { rotulo: string; onAlterar: (() => void) | null; onCancelar: (() => void) | null } | null;
   fechar: () => void;
 }) {
@@ -20,8 +24,8 @@ export function MenuDaRotina({ grupos, emLote, fechar }: {
       {naAba === 'tarefas' ? (
         <div role="menu">
           {grupos.map((it, i) => it === 'separador' ? <hr key={i} className="popover-sep" /> : (
-            <button key={i} type="button" className="popover-item" role="menuitem" disabled={it.desabilitado} onClick={() => { fechar(); it.onClick(); }}>
-              <span className="popover-marca">{it.marcado && <Icone nome="check" />}</span>
+            <button key={i} type="button" className={'popover-item' + (it.feito ? ' rotina-feito' : '') + (it.aberto ? ' rotina-aberto' : '')} role="menuitem" aria-current={it.aberto || undefined} disabled={it.desabilitado} onClick={() => { fechar(); it.onClick(); }}>
+              <span className="popover-marca">{(it.marcado || it.feito) && <Icone nome="check" />}</span>
               {it.icone && <Icone nome={it.icone} />}
               <span className="popover-texto">{it.rotulo}</span>
             </button>
