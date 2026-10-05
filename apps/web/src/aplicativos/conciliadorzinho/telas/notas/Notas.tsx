@@ -26,8 +26,8 @@ export function Notas() {
         </Alerta>
       )}
 
-      <div className="btn-row">
-        <button className="btn btn-ghost" type="button" onClick={vm.voltar}>← Voltar</button>
+      {/* sem o Voltar (Vitor, 05/10/2026: tudo é navegável pela barra de cima) */}
+      <div className="btn-row" style={{ justifyContent: 'flex-end' }}>
         {vm.podeContinuar && <button className="btn btn-primary" type="button" onClick={vm.continuar}>Continuar</button>}
       </div>
     </section>

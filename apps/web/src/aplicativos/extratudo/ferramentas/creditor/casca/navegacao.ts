@@ -12,7 +12,8 @@ export const ETAPAS: Etapa[] = [
   // o relatório de liquidação (Vitor, 05/10/2026: a Competência e o Fiscal num só, chamado "Arquivo"; os títulos
   // ficam na seta da linha)
   { id: 'competencia', rotulo: 'Arquivo', titulo: 'Arquivo', icone: 'recibo' },
-  { id: 'cruzamento', rotulo: 'Contas', titulo: 'Conta de cada cliente', icone: 'repeat' },
+  // a etapa toda se chama assim (Vitor, 05/10/2026)
+  { id: 'cruzamento', rotulo: 'Relatório de Recebimento', titulo: 'Relatório de Recebimento', icone: 'repeat' },
   { id: 'lancamentos', rotulo: 'Lançamentos', titulo: 'Lançamentos para importar', icone: 'download' },
 ];
 

@@ -79,7 +79,7 @@ export function cruzarPeloBalancete(titulos: Titulo[], clientes: readonly ContaD
     const daNota = doCliente.length === 1 ? doCliente[0] : null;
     if (daNota) {
       const doBalancete = clientes.find(c => c.codigo === daNota.conta);
-      return { ...base, situacao: 'ok', linha: linha(daNota.conta, doBalancete?.nome || daNota.nome), nota: 'Conta pelo relatório de Saídas (NF ' + chaveNf(t.nf) + ').', pelaSaida: true };
+      return { ...base, situacao: 'ok', linha: linha(daNota.conta, doBalancete?.nome || daNota.nome), nota: '', pelaSaida: true };
     }
     // a conta mais parecida vence; empate no topo (o mesmo nome em mais de uma conta) pergunta
     const notas = clientes.map(c => ({ c, n: semelhancaDeNome(t.sacado, c.nome) })).filter(x => x.n >= SEMELHANCA_MINIMA);
