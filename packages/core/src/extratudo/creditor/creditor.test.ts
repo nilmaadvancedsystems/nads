@@ -599,4 +599,18 @@ describe('Creditor com o Cadastro da empresa', () => {
     expect(cadastro.cadastro('FITO', 292).historico[0]).toMatchObject({ por: 'Creditor', acao: 'Mudou conta padrão' });
     expect(repo.config('FITO').contas).toEqual({ juros: '97304' });
   });
+  it('o histórico do cadastro leva quem mexeu (não o nome da ferramenta)', async () => {
+    const cadastro = criarRepoCadastroMemoria({ cadastros: {}, planos: {} });
+    const repo = comCadastro(criarRepoCreditorMemoria({}), cadastro, () => 292, () => 'Vitor');
+    repo.salvarConfig('FITO', { contas: { juros: '97304' }, nomes: {} }); // ainda não chegou: ignorado
+    expect(repo.carregada('FITO')).toBe(false);
+    await Promise.resolve();
+    expect(repo.carregada('FITO')).toBe(true);
+    expect(repo.config('FITO').contas).toEqual({});
+    repo.salvarConfig('FITO', { contas: { juros: '97304' }, nomes: { juros: 'JUROS RECEBIDOS' } });
+    await Promise.resolve();
+    expect(cadastro.cadastro('FITO', 292).contasPadrao).toEqual({ contas: { juros: '97304' }, nomes: { juros: 'JUROS RECEBIDOS' } });
+    expect(cadastro.cadastro('FITO', 292).historico[0]).toMatchObject({ por: 'Vitor', acao: 'Mudou conta padrão' });
+    expect(repo.config('FITO').contas).toEqual({ juros: '97304' });
+  });
 });

@@ -35,7 +35,7 @@ export function criarArquivadorFirestore(quem: () => Quem): RepoArquivador {
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   let estado: EstadoDoArquivador = { carregado: false, semPermissao: false, em: '', situacao: '', desligadoEm: '', rotina: null };
   let execucoes: ExecucaoPublicada[] = [];
-  let conversa: ConversaDaRotina = { carregada: false, atualizadaEm: '', mensagens: [], relatorio: null };
+  let conversa: ConversaDaRotina = { carregada: false, atualizadaEm: '', mensagens: [], relatorio: null, agentes: [] };
   const detalhes = new Map<string, DetalheDaExecucao>();
   let pedidos: PedidoDeArquivo[] = [];
   let ouvindo = false;
@@ -65,6 +65,10 @@ export function criarArquivadorFirestore(quem: () => Quem): RepoArquivador {
         carregada: true, atualizadaEm: texto(d.atualizadaEm),
         mensagens: Array.isArray(d.mensagens) ? (d.mensagens as Record<string, unknown>[]).map(m => ({ em: texto(m.em), quem: m.quem === 'voce' ? 'voce' as const : 'claude' as const, texto: texto(m.texto) })) : [],
         relatorio: rel ? { arquivo: texto(rel.arquivo), em: texto(rel.em), texto: texto(rel.texto) } : null,
+        agentes: Array.isArray(d.agentes) ? (d.agentes as Record<string, unknown>[]).map(a => ({
+          id: texto(a.id), descricao: texto(a.descricao), tipo: texto(a.tipo), em: texto(a.em),
+          status: a.status === 'concluido' ? 'concluido' as const : a.status === 'erro' ? 'erro' as const : 'rodando' as const,
+        })) : [],
       };
       mudou();
     }, () => { conversa = { ...conversa, carregada: true }; mudou(); });

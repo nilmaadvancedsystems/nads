@@ -36,7 +36,9 @@ export function configComCadastro(c: CadastroDaEmpresa, salvaNoCreditor: ConfigC
  * O repositório do Creditor lendo e gravando as contas no Cadastro. `codigoDe` dá o código do ERP da empresa
  * (para o documento do cadastro nascer com ele). Os clientes aprendidos continuam onde estavam.
  */
-export function comCadastro(repo: RepoCreditor, cadastro: RepoCadastro, codigoDe: (nome: string) => number | null = () => null): RepoCreditor {
+export function comCadastro(repo: RepoCreditor, cadastro: RepoCadastro, codigoDe: (nome: string) => number | null = () => null,
+  /** quem está mexendo: vai no histórico do cadastro (Vitor, 05/10/2026: "está nomeando quem mudou a ferramenta, não o usuário") */
+  quem: () => string = () => ''): RepoCreditor {
   const doCadastro = (nome: string) => cadastro.cadastro(nome, codigoDe(nome));
   return {
     exemplos: repo.exemplos,
@@ -48,7 +50,7 @@ export function comCadastro(repo: RepoCreditor, cadastro: RepoCadastro, codigoDe
       if (!repo.carregada(nome) || !cadastro.carregada(nome)) return; // antes de chegar do banco, nunca grava
       if (!cadastro.disponivel(nome)) { repo.salvarConfig(nome, c); return; } // sem o cadastro: onde gravava antes
       const atual = doCadastro(nome);
-      const novo = comContasPadrao(atual, { contas: c.contas, nomes: c.nomes }, 'Creditor', new Date());
+      const novo = comContasPadrao(atual, { contas: c.contas, nomes: c.nomes }, quem().trim() || 'Creditor', new Date());
       if (novo !== atual) cadastro.salvar(nome, novo);
     },
     salvarClientes: (nome, c) => repo.salvarClientes(nome, c),

@@ -5,11 +5,11 @@
 // clientes, o relatório e a mensagem final de cada uma); no pé, Organizar agora.
 import { Icone, type NomeIcone } from '@nads/ui';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Cartao, JanelaLateral, Linha, type TopicoDaJanela } from '../janela/JanelaLateral';
+import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
 import type { useArquivadorDoDrive } from './useArquivadorDoDrive';
 
 type Vm = ReturnType<typeof useArquivadorDoDrive>;
-type Topico = 'agora' | 'conversa' | 'relatorio' | 'hoje' | 'execucoes';
+type Topico = 'agora' | 'conversa' | 'relatorio' | 'execucoes';
 
 const ICONES: Record<string, NomeIcone> = { pendente: 'clock', aguardando: 'clock', processando: 'girar', concluido: 'checkCircle', erro: 'alert', cancelado: 'x' };
 
@@ -54,89 +54,56 @@ function TextoDoClaude({ texto }: { texto: string }) {
   return <>{blocos}</>;
 }
 
-function Numeros({ numeros }: { numeros: { valor: number; rotulo: string; aviso: boolean }[] }) {
-  return (
-    <div className="arquivador-numeros">
-      {numeros.map(n => <div key={n.rotulo} className={'arquivador-numero' + (n.aviso ? ' aviso' : '')}><b>{n.valor}</b><span>{n.rotulo}</span></div>)}
-    </div>
-  );
-}
-
-/** Os clientes que mais receberam arquivos, com uma barra do tamanho de cada um. */
-function ClientesComBarras({ clientes, mais }: { clientes: { chave: string; codigo: string; nome: string; n: number; pct: number }[]; mais: number }) {
-  return (
-    <ul className="arquivador-barras">
-      {clientes.map(c => (
-        <li key={c.chave}>
-          <span className="arquivador-barras-nome"><b>{c.codigo}</b> {c.nome}</span>
-          <span className="arquivador-barras-trilho"><span style={{ width: c.pct + '%' }} /></span>
-          <b className="arquivador-barras-n">{c.n}</b>
-        </li>
-      ))}
-      {mais > 0 && <li className="arquivador-barras-mais">e mais {mais} {mais === 1 ? 'cliente' : 'clientes'}</li>}
-    </ul>
-  );
-}
-
+/** O Agora enxuto (Vitor, 05/10/2026: "muita informação e tá feio"): um destaque só — organizando (a %, o que está
+ * fazendo e a barra), o pedido aberto ou com erro, ou o dia (tudo em dia: os arquivados de hoje, num número grande). */
 function Agora({ vm }: { vm: Vm }) {
   const r = vm.rotina;
   const p = vm.pedidoNoAgora ? vm.pedido : null;
-  const u = vm.ultimaRodada;
+  const ab = p && p.status === 'processando';
+  if (r || ab) {
+    const pct = r ? r.pct : p!.pct;
+    const fazendo = r ? r.etapa.replace(/^Fase (\d+) de (\d+): (.*)$/, '$3 · fase $1 de $2') : p!.etapa;
+    return (
+      <div className="arquivador-hero">
+        <span className="arquivador-hero-icone ativo"><Icone nome="girar" /></span>
+        <h3>Organizando</h3>
+        {pct != null && <b className="arquivador-hero-numero">{pct}%</b>}
+        {fazendo && <p className="arquivador-hero-texto">{fazendo}</p>}
+        <span className="tarefas-barra larga andando arquivador-hero-barra"><span style={{ width: (pct ?? 8) + '%' }} /></span>
+        {r?.lote && <p className="arquivador-hero-texto">{r.lote}</p>}
+        <p className="arquivador-hero-nota">{r ? r.detalhe : p!.detalhe}</p>
+        {r && r.etapas.length > 0 && (
+          <ul className="arquivador-etapas">
+            {r.etapas.map(e => <li key={e.chave} className={e.estado}><Icone nome={e.estado === 'feita' ? 'checkCircle' : e.estado === 'erro' ? 'alert' : 'girar'} /><span>{e.nome}</span></li>)}
+          </ul>
+        )}
+      </div>
+    );
+  }
+  if (p) {
+    return (
+      <div className="arquivador-hero">
+        <span className={'arquivador-hero-icone ' + p.status}><Icone nome={ICONES[p.status] || 'arquivo'} /></span>
+        <h3>{p.titulo}</h3>
+        <p className="arquivador-hero-nota">{p.detalhe}</p>
+      </div>
+    );
+  }
+  const n = vm.hoje?.numeros;
   return (
-    <>
-      {r && (
-        <section className="arquivador-pedido processando">
-          <header className="arquivador-pedido-topo"><Icone nome="girar" /><b>{r.titulo}</b>{r.pct != null && <span className="arquivador-pct">{r.pct}%</span>}</header>
-          <p className="arquivador-detalhe">{r.detalhe}</p>
-          <span className="tarefas-barra larga andando"><span style={{ width: (r.pct ?? 8) + '%' }} /></span>
-          {vm.fases.length > 0 && (
-            <ol className="arquivador-fases">
-              {vm.fases.map(f => <li key={f.nome} className={f.estado}><Icone nome={f.estado === 'feita' ? 'checkCircle' : f.estado === 'atual' ? 'girar' : 'clock'} />{f.nome}</li>)}
-            </ol>
-          )}
-        </section>
+    <div className="arquivador-hero">
+      <span className={'arquivador-hero-icone' + (vm.hoje ? ' em-dia' : '')}><Icone nome={vm.hoje ? 'checkCircle' : 'arquivo'} /></span>
+      <h3>{vm.hoje ? 'Tudo em dia' : 'Nada rodando agora'}</h3>
+      {vm.ultimaRodada && <p className="arquivador-hero-texto">Última rodada {vm.ultimaRodada.quando}</p>}
+      {n && (
+        <>
+          <b className="arquivador-hero-numero">{n[0].valor}</b>
+          <p className="arquivador-hero-texto">arquivos arquivados hoje</p>
+          <p className="arquivador-hero-nota">{n[1].valor} {n[1].valor === 1 ? 'cliente' : 'clientes'}{n[2].valor ? ' · ' + n[2].valor + ' sem cliente' : ''}</p>
+        </>
       )}
-      {p && (
-        <section className={'arquivador-pedido ' + p.status}>
-          <header className="arquivador-pedido-topo"><Icone nome={ICONES[p.status] || 'arquivo'} /><b>{p.titulo}</b>{p.pct != null && <span className="arquivador-pct">{p.pct}%</span>}</header>
-          <p className="arquivador-detalhe">{p.detalhe}</p>
-          {p.status === 'processando' && (
-            <>
-              <span className="tarefas-barra larga andando"><span style={{ width: (p.pct ?? 5) + '%' }} /></span>
-              {p.etapa && <p className="arquivador-etapa">{p.etapa}</p>}
-            </>
-          )}
-          {p.resultado && (p.resultado.vazio ? <p className="arquivador-detalhe">Não havia nada novo para arquivar.</p> : (
-            <>
-              <Numeros numeros={p.resultado.numeros} />
-              {p.resultado.clientes.length > 0 && (
-                <ul className="arquivador-clientes">
-                  {p.resultado.clientes.map(c => <li key={c.chave}><span>{c.rotulo}</span><b>{c.n}</b></li>)}
-                  {p.resultado.maisClientes > 0 && <li className="fraco">e mais {p.resultado.maisClientes} {p.resultado.maisClientes === 1 ? 'cliente' : 'clientes'}</li>}
-                </ul>
-              )}
-            </>
-          ))}
-          {p.semResultado && <p className="arquivador-detalhe">A rotina não gerou relatório novo (nada para arquivar).</p>}
-        </section>
-      )}
-      {!r && !p && vm.hoje && (
-        <section className="arquivador-bloco">
-          <header className="arquivador-bloco-topo"><b>Hoje</b><span className="fraco">{vm.hoje.rodadas} {vm.hoje.rodadas === 1 ? 'rodada' : 'rodadas'}</span></header>
-          <Numeros numeros={vm.hoje.numeros} />
-        </section>
-      )}
-      {!r && !p && u && (
-        <section className="arquivador-bloco">
-          <header className="arquivador-bloco-topo"><b>Última rodada</b><span className="fraco">{u.quando}</span></header>
-          <Numeros numeros={u.numeros} />
-          {u.clientes.length > 0 && <ClientesComBarras clientes={u.clientes} mais={u.maisClientes} />}
-        </section>
-      )}
-      {!r && !p && !u && (
-        <div className="card gh-blank"><Icone nome="arquivo" /><h4>Nada rodando agora</h4><p>A organização das 9h roda sozinha todo dia. Para organizar antes, use o Organizar agora.</p></div>
-      )}
-    </>
+      {!n && <p className="arquivador-hero-nota">A organização das 9h roda sozinha todo dia.</p>}
+    </div>
   );
 }
 
@@ -169,22 +136,6 @@ function Relatorio({ vm }: { vm: Vm }) {
     <>
       <p className="arquivador-etapa">{r.arquivo} · atualizado {r.quando}</p>
       <pre className="arquivador-relatorio">{r.texto}</pre>
-    </>
-  );
-}
-
-function Hoje({ vm, ver }: { vm: Vm; ver: (id: string) => void }) {
-  if (!vm.hoje) return <div className="card gh-blank"><Icone nome="calendar" /><h4>Nenhuma rodada hoje</h4><p>As rodadas da organização de hoje aparecem aqui, somadas.</p></div>;
-  return (
-    <>
-      <Numeros numeros={vm.hoje.numeros} />
-      <Cartao titulo={vm.hoje.rodadas + (vm.hoje.rodadas === 1 ? ' rodada' : ' rodadas')}>
-        {vm.rodadasHoje.map(x => (
-          <Linha key={x.id} rotulo={'Rodada das ' + x.hora} dica={x.arquivados + ' arquivados · ' + x.clientes + (x.clientes === 1 ? ' cliente' : ' clientes') + (x.semCliente ? ' · ' + x.semCliente + ' sem cliente' : '')}>
-            <button type="button" className="btn btn-outline" onClick={() => ver(x.id)}>Ver</button>
-          </Linha>
-        ))}
-      </Cartao>
     </>
   );
 }
@@ -236,17 +187,15 @@ export function JanelaDoArquivador({ vm, fechar }: { vm: Vm; fechar: () => void 
     { id: 'agora', rotulo: 'Agora', icone: vm.ocupado ? 'girar' : 'arquivo' },
     { id: 'conversa', rotulo: 'Conversa do Claude', icone: 'robo' },
     { id: 'relatorio', rotulo: 'Relatório', icone: 'fileText' },
-    { id: 'hoje', rotulo: 'Hoje', icone: 'calendar', contador: vm.hoje?.rodadas },
-    { id: 'execucoes', rotulo: 'Execuções', icone: 'clock' },
+    { id: 'execucoes', rotulo: 'Histórico', icone: 'clock' },
   ];
   const p = vm.pedido;
   return (
     <JanelaLateral rotulo="Arquivar" topicos={topicos} topico={topico} mudar={setTopico} fechar={fechar} classe="arquivador-janela"
       resumo={(
         <div className="usuario-quem arquivador-quem">
-          <span className={'arquivador-selo' + (vm.ocupado ? ' ativo' : vm.hoje ? ' em-dia' : '')}><Icone nome={vm.ocupado ? 'girar' : vm.hoje ? 'checkCircle' : 'arquivo'} /></span>
-          <b>{vm.ocupado ? vm.rotulo : 'Nada rodando agora'}</b>
-          {!vm.ocupado && vm.ultimaRodada && <span className="fraco">Última rodada {vm.ultimaRodada.quando}</span>}
+          <span className={'arquivador-selo' + (vm.ocupado ? ' ativo' : '')}><Icone nome={vm.ocupado ? 'girar' : 'arquivo'} /></span>
+          <b>Arquivador</b>
           <span className={'arquivador-pc' + (vm.ligado ? ' ligado' : '')}><span className="arquivador-ponto" aria-hidden="true" />{vm.pc}</span>
         </div>
       )}
@@ -265,7 +214,6 @@ export function JanelaDoArquivador({ vm, fechar }: { vm: Vm; fechar: () => void 
       {topico === 'agora' && <Agora vm={vm} />}
       {topico === 'conversa' && <Conversa vm={vm} />}
       {topico === 'relatorio' && <Relatorio vm={vm} />}
-      {topico === 'hoje' && <Hoje vm={vm} ver={id => { vm.verExecucao(id); setTopico('execucoes'); }} />}
       {topico === 'execucoes' && <Execucoes vm={vm} />}
     </JanelaLateral>
   );

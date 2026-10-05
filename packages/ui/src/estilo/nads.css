@@ -2866,3 +2866,28 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .arquivador-selo.em-dia{background:color-mix(in srgb,var(--success) 14%,var(--surface-3));}
 .arquivador-selo.em-dia svg{color:var(--success);}
 .arquivador-quem > .fraco{font-size:12px;color:var(--ink-muted);}
+/* Arquivar agora › Agora enxuto: um destaque só, no meio (o estado, um número grande e uma linha) */
+.arquivador-hero{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:36px 16px 28px;}
+.arquivador-hero-icone{width:64px;height:64px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-3);margin-bottom:8px;}
+.arquivador-hero-icone svg{width:30px;height:30px;color:var(--ink-muted);}
+.arquivador-hero-icone.em-dia,.arquivador-hero-icone.concluido{background:color-mix(in srgb,var(--success) 14%,var(--surface-3));}
+.arquivador-hero-icone.em-dia svg,.arquivador-hero-icone.concluido svg{color:var(--success);}
+.arquivador-hero-icone.erro svg{color:var(--danger);}
+.arquivador-hero-icone.ativo svg{color:var(--accent);animation:spin 1.6s linear infinite !important;}
+.arquivador-hero h3{margin:0;font-size:18px;font-weight:600;}
+.arquivador-hero-numero{margin-top:14px;font-size:44px;line-height:1;font-weight:700;font-variant-numeric:tabular-nums;}
+.arquivador-hero-texto{margin:0;font-size:14px;color:var(--ink-muted);}
+.arquivador-hero-nota{margin:10px 0 0;font-size:12.5px;color:var(--ink-muted);max-width:420px;line-height:1.5;}
+.arquivador-hero-barra{width:min(360px,100%) !important;margin-top:14px;}
+/* a janela do arquivador maior (Vitor, 05/10/2026: "pode aumentar") */
+.usuario-janela.arquivador-janela{width:min(1180px,96vw);height:min(860px,92vh);}
+/* Arquivar agora › as etapas do lote (os agentes que a rotina despachou): pronto com visto, rodando girando */
+.arquivador-etapas{list-style:none;margin:18px 0 0;padding:0;width:min(560px,100%);display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px 16px;text-align:left;font-size:12.5px;}
+.arquivador-etapas li{display:flex;align-items:center;gap:8px;min-width:0;color:var(--ink-muted);}
+.arquivador-etapas li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.arquivador-etapas li svg{width:14px;height:14px;flex:none;}
+.arquivador-etapas li.feita{color:var(--ink);}
+.arquivador-etapas li.feita svg{color:var(--success);}
+.arquivador-etapas li.atual{color:var(--ink);}
+.arquivador-etapas li.atual svg{color:var(--accent);animation:spin 1.4s linear infinite !important;}
+.arquivador-etapas li.erro svg{color:var(--danger);}

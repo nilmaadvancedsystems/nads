@@ -24,10 +24,17 @@ export function driveDoCreditor(): cr.RepoDrive {
   return drive;
 }
 
+/** Quem está mexendo (vai no histórico do cadastro): a pessoa escolhida na Tarefas ou quem entrou no Entregas. */
+function quemMexe(): string {
+  let escolhido = '';
+  try { escolhido = localStorage.getItem('nads-tarefas-operador') || ''; } catch { /* sem storage */ }
+  return escolhido || driveDoCreditor().acesso().quem || '';
+}
+
 export function repoDoCreditor(): cr.RepoCreditor {
   if (!repo) {
     doCreditor = noBanco ? criarRepoCreditorFirestore() : cr.criarRepoCreditorMemoria();
-    repo = cr.comCadastro(doCreditor, repoDoCadastro(), codigoDaEmpresa);
+    repo = cr.comCadastro(doCreditor, repoDoCadastro(), codigoDaEmpresa, quemMexe);
   }
   return repo;
 }

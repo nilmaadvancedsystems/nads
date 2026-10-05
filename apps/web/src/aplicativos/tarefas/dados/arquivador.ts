@@ -64,6 +64,8 @@ export interface ConversaDaRotina {
   atualizadaEm: string;
   mensagens: MensagemDaRotina[];
   relatorio: { arquivo: string; em: string; texto: string } | null;
+  /** os agentes que a rotina despachou (as etapas que se veem e a % do lote) */
+  agentes: { id: string; descricao: string; tipo: string; em: string; status: 'rodando' | 'concluido' | 'erro' }[];
 }
 
 /** O relatório e a mensagem final de uma execução (arquivamentos/{EXEC-…}/detalhe/tudo). */
@@ -119,6 +121,7 @@ export function criarArquivadorMemoria(quem: () => { nome: string } | null): Rep
         { em: agora(), quem: 'voce', texto: 'continue' },
         { em: agora(), quem: 'claude', texto: 'O K001 (balancete 2024) saiu `NAO_IDENTIFICADO`, sem CNPJ do cliente.\n\nPendentes do primeiro lote:\n- L007\n- L016\n- L018' },
       ] : [],
+      agentes: rotina ? ['L023', 'L024', 'L025', 'L026', 'L027', 'L028'].map((l, k) => ({ id: 'a' + k, descricao: 'Separa PDF ' + l, tipo: 'separador', em: agora(), status: k < 4 ? 'concluido' as const : 'rodando' as const })) : [],
       relatorio: rotina ? { arquivo: 'RELATORIO-exemplo.txt', em: agora(), texto: 'RELATORIO DA RODADA — Organização Claudio Secretario\nmodo: PRODUCAO (rodadas parciais)\n\nPASTAS PROCESSADAS\n2026-10   587 copiados   Concluída' } : null,
     }),
     detalhe: () => ({ carregado: true, relatorio: 'RELATORIO DA EXECUÇÃO (exemplo)\n\n12 arquivos arquivados em 3 clientes; 2 sem cliente.', resposta: 'A rotina terminou com o veredito **OK**.' }),

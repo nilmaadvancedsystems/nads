@@ -78,7 +78,16 @@ export function useArquivadorDoDrive() {
   const r = e.rotina;
   const rodandoPorFora = ligado && !!r?.ativa && !r.deUmPedido && !aberto;
   const iFase = r?.fase ? FASES.findIndex(f => f[0] === r.fase) : -1;
-  const pctRotina = rodandoPorFora && iFase >= 0 ? Math.min(99, Math.round((iFase + 0.5) / FASES.length * 100)) : null;
+  // o lote de agentes de agora (os despachados até 20 min antes do mais novo): as etapas que se veem e quanto do lote já foi
+  const conversaRot = repo.conversa();
+  const maisNovo = Math.max(0, ...conversaRot.agentes.map(a => Date.parse(a.em) || 0));
+  const lote = rodandoPorFora ? conversaRot.agentes.filter(a => maisNovo - (Date.parse(a.em) || 0) < 20 * 60000) : [];
+  const prontos = lote.filter(a => a.status !== 'rodando').length;
+  const fracLote = lote.length ? prontos / lote.length : 0.5;
+  // a %: a fase (do 01-ORQUESTRADOR) mais quanto do lote já foi; sem a trava de fase, só o lote
+  const pctRotina = !rodandoPorFora ? null
+    : iFase >= 0 ? Math.min(99, Math.round((iFase + fracLote) / FASES.length * 100))
+      : lote.length ? Math.min(99, Math.round(fracLote * 100)) : null;
   const conversa = repo.conversa();
   const hora = (iso: string) => (iso ? new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '');
   /** EXEC-20261005-132848 → o dia e a hora em que a execução começou */
@@ -112,6 +121,8 @@ export function useArquivadorDoDrive() {
       titulo: 'Organização em andamento',
       detalhe: (r.inicio ? 'Começou ' + quando(r.inicio) + ' (há ' + duracao(r.inicio, agora) + ')' : 'Rodando agora') + (r.ultimoSinalEm ? ' · último sinal há ' + duracao(r.ultimoSinalEm, agora) : '') + '.',
       etapa: iFase >= 0 ? 'Fase ' + (iFase + 1) + ' de ' + FASES.length + ': ' + FASES[iFase][1] : '',
+      lote: lote.length ? prontos + ' de ' + lote.length + (lote.length === 1 ? ' agente pronto' : ' agentes prontos') : '',
+      etapas: lote.map(a => ({ chave: a.id, nome: a.descricao, estado: a.status === 'concluido' ? 'feita' : a.status === 'erro' ? 'erro' : 'atual' })),
       pct: pctRotina,
     } : null,
     hoje,
