@@ -20,7 +20,7 @@ export interface Estado {
   /** de onde veio: nome do arquivo, "texto colado", "exemplo" ou "digitado" */
   origemBanco: string;
   decisoes: Record<number, cr.Decisao>;
-  /** os passos da etapa Fiscal que a pessoa marcou como feitos */
+  /** (os passos da antiga etapa Fiscal; a etapa saiu em 05/10/2026) */
   passosFiscal: string[];
   /** a etapa mais adiante que já foi aberta */
   alcancada: number;
@@ -39,9 +39,6 @@ function comOsMeses(e: Estado, porMes: Estado['porMes']): Estado {
   };
 }
 
-/** Os passos da etapa Fiscal (a ordem e o texto de cada um ficam na tela). */
-export const PASSOS_FISCAL = ['baixar', 'exportar-contabil'] as const;
-export type PassoFiscal = (typeof PASSOS_FISCAL)[number];
 
 /** Tudo o que sai do estado (as telas só leem daqui). */
 export interface Derivado {
@@ -52,8 +49,6 @@ export interface Derivado {
   lancamentos: cr.Lancamento[];
   fora: cr.Titulo[];
   fechamento: cr.FechamentoDia[];
-  /** a baixa no Fiscal foi feita (todos os passos marcados) */
-  fiscalFeito: boolean;
   /** as decisões que valem: as da pessoa por cima das resolvidas pela conta aprendida */
   decisoes: Record<number, cr.Decisao>;
   /** títulos resolvidos pela conta aprendida do cliente */
@@ -70,15 +65,13 @@ export function derivar(e: Estado, contas: cr.ContasCreditor, aprendidos: cr.Cli
   const lancamentos = cr.gerarLancamentos(titulos, cruzamentos, decisoes, contas);
   const fora = cr.titulosFora(titulos, cruzamentos, decisoes);
   const fechamento = e.relatorio ? cr.fecharPorDia(e.relatorio.grupos, lancamentos, fora, contas) : [];
-  const fiscalFeito = PASSOS_FISCAL.every(p => e.passosFiscal.includes(p));
-  return { titulos, conferido, cruzamentos, pendentes, lancamentos, fora, fechamento, fiscalFeito, decisoes, aprendidas: Object.keys(auto).map(Number) };
+  return { titulos, conferido, cruzamentos, pendentes, lancamentos, fora, fechamento, decisoes, aprendidas: Object.keys(auto).map(Number) };
 }
 
 /** A etapa já pode abrir? (o que ela precisa das anteriores) */
 function requisitos(id: IdEtapa, e: Estado, d: Derivado): boolean {
   switch (id) {
     case 'competencia': return true;
-    case 'fiscal': return d.conferido;
     // sem o passo a passo do Fiscal (05/10/2026): as Contas abrem com o relatório lido
     case 'cruzamento': return d.conferido;
     case 'lancamentos': return d.conferido && d.pendentes.length === 0;
