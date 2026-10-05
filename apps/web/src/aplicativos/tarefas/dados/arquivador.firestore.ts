@@ -4,9 +4,11 @@
 //     chaves); cancelar = {status: 'cancelado', canceladoEm, canceladoPor} enquanto pendente ou aguardando. O arquivador
 //     do PC escreve o resto no próprio pedido (aguardando, processando, progresso, andamento, concluido ou erro);
 //   - robo/arquivador (só leitura): o ponto do PC (em) e o que ele está fazendo (situacao);
-//   - arquivamentos/{execucao} (só leitura): o resumo da execução (arquivados, não identificados, clientes).
+//   - arquivamentos/{execucao} (só leitura): o resumo da execução (arquivados, não identificados, clientes); as 15
+//     últimas somam as rodadas do dia no painel;
+//   - robo/arquivador.rotina: a rotina rodando por fora do botão (a das 9h), que o arquivador manda no ponto.
 import { addDoc, collection, doc, limit, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore';
-import type { EstadoDoArquivador, PedidoDeArquivo, RepoArquivador, ResultadoDoArquivamento } from './arquivador';
+import type { EstadoDoArquivador, ExecucaoPublicada, PedidoDeArquivo, RepoArquivador, ResultadoDoArquivamento, RotinaRodando } from './arquivador';
 import { bancoDoEntregas } from './entregas.firestore';
 
 type Quem = { nome: string; uid: string } | null;
@@ -29,7 +31,8 @@ export function criarArquivadorFirestore(quem: () => Quem): RepoArquivador {
   let ver = 0;
   const ouvintes = new Set<() => void>();
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
-  let estado: EstadoDoArquivador = { carregado: false, semPermissao: false, em: '', situacao: '', desligadoEm: '' };
+  let estado: EstadoDoArquivador = { carregado: false, semPermissao: false, em: '', situacao: '', desligadoEm: '', rotina: null };
+  let execucoes: ExecucaoPublicada[] = [];
   let pedidos: PedidoDeArquivo[] = [];
   let ouvindo = false;
   const resultados = new Map<string, ResultadoDoArquivamento | null>();
@@ -39,19 +42,33 @@ export function criarArquivadorFirestore(quem: () => Quem): RepoArquivador {
     ouvindo = true;
     onSnapshot(doc(db, 'robo', 'arquivador'), s => {
       const d = s.data() || {};
-      estado = { ...estado, carregado: true, em: texto(d.em), situacao: texto(d.situacao), desligadoEm: texto(d.desligadoEm) };
+      const r = d.rotina as Record<string, unknown> | null | undefined;
+      const rotina: RotinaRodando | null = r ? {
+        ativa: !!r.ativa, execucao: texto(r.execucao), inicio: texto(r.inicio), modo: texto(r.modo), fase: texto(r.fase),
+        ultimoSinalEm: texto(r.ultimoSinalEm), deUmPedido: !!r.deUmPedido,
+      } : null;
+      estado = { ...estado, carregado: true, em: texto(d.em), situacao: texto(d.situacao), desligadoEm: texto(d.desligadoEm), rotina };
       mudou();
     }, () => { estado = { ...estado, carregado: true, semPermissao: true }; mudou(); });
     onSnapshot(query(collection(db, 'solicitacoesArquivo'), orderBy('criadoEm', 'desc'), limit(5)), s => {
       pedidos = s.docs.map(d => lerPedido(d.id, d.data()));
       mudou();
     }, () => { estado = { ...estado, carregado: true, semPermissao: true }; mudou(); });
+    onSnapshot(query(collection(db, 'arquivamentos'), orderBy('em', 'desc'), limit(15)), s => {
+      execucoes = s.docs.map(d => {
+        const x = d.data();
+        return { id: d.id, em: texto(x.em), arquivados: Number(x.arquivados) || 0, naoIdentificados: Number(x.naoIdentificados) || 0,
+          codigos: Array.isArray(x.codigos) ? (x.codigos as unknown[]).map(texto) : [] };
+      });
+      mudou();
+    }, () => undefined);
   }
 
   return {
     exemplos: false,
     estado: () => { ouvir(); return estado; },
     pedidos: () => { ouvir(); return pedidos; },
+    execucoesRecentes: () => { ouvir(); return execucoes; },
     resultado(execucao) {
       if (!execucao) return null;
       if (!resultados.has(execucao)) {
