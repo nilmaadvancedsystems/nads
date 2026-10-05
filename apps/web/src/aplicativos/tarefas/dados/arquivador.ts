@@ -22,6 +22,17 @@ export interface PedidoDeArquivo {
   /** a lista de etapas que o Claude mantém enquanto organiza (vira a %) */
   progresso: { feitas: number; total: number; atual: string } | null;
   andamento: PassoDoArquivador[];
+  /** a execução da rotina que o pedido gerou (EXEC-…): o resultado fica em arquivamentos/{execucao} */
+  execucao: string;
+}
+
+/** O que a execução arquivou (o resumo que o arquivador publica do manifesto da rotina). */
+export interface ResultadoDoArquivamento {
+  arquivados: number;
+  naoIdentificados: number;
+  duplicados: number;
+  /** os clientes que receberam arquivos, os que mais receberam primeiro */
+  clientes: { codigo: string; nome: string; n: number }[];
 }
 
 export interface EstadoDoArquivador {
@@ -39,6 +50,8 @@ export interface RepoArquivador {
   estado(): EstadoDoArquivador;
   /** os últimos pedidos, o mais novo primeiro */
   pedidos(): PedidoDeArquivo[];
+  /** o resultado de uma execução (null enquanto não chegou) */
+  resultado(execucao: string): ResultadoDoArquivamento | null;
   pedir(): Promise<void>;
   cancelar(id: string): Promise<void>;
   assinar(aoMudar: () => void): () => void;
@@ -57,10 +70,14 @@ export function criarArquivadorMemoria(quem: () => { nome: string } | null): Rep
     exemplos: true,
     estado: () => ({ carregado: true, semPermissao: false, em: agora(), situacao: pedidos.some(p => p.status === 'processando') ? 'rodando' : 'livre', desligadoEm: '' }),
     pedidos: () => pedidos,
+    resultado: execucao => (execucao ? {
+      arquivados: 12, naoIdentificados: 2, duplicados: 1,
+      clientes: [{ codigo: '462', nome: '3M EMPREENDIMENTOS FLORESTAIS LTDA', n: 5 }, { codigo: '356', nome: 'A7 COMERCIO DE VEICULOS LTDA', n: 4 }, { codigo: '205', nome: 'ADEMILSON OLIVEIRA CRUZ', n: 3 }],
+    } : null),
     async pedir() {
       const p: PedidoDeArquivo = {
         id: 'p' + Date.now(), status: 'pendente', criadoPor: quem()?.nome || 'alguém', criadoEm: agora(), processandoEm: '', concluidoEm: '', erroEm: '',
-        canceladoEm: '', aguardandoMotivo: '', erro: '', passos: 0, progresso: null, andamento: [],
+        canceladoEm: '', aguardandoMotivo: '', erro: '', passos: 0, progresso: null, andamento: [], execucao: '',
       };
       pedidos.unshift(p);
       mudou();
@@ -73,7 +90,7 @@ export function criarArquivadorMemoria(quem: () => { nome: string } | null): Rep
           feitas++;
           p.passos += 3;
           p.andamento = [...p.andamento, { em: agora(), texto: 'Feito: ' + ETAPAS[feitas - 1], sub: false }];
-          if (feitas >= ETAPAS.length) { clearInterval(r); p.status = 'concluido'; p.concluidoEm = agora(); p.progresso = null; }
+          if (feitas >= ETAPAS.length) { clearInterval(r); p.status = 'concluido'; p.concluidoEm = agora(); p.progresso = null; p.execucao = 'EXEC-exemplo'; }
           else p.progresso = { feitas, total: ETAPAS.length, atual: ETAPAS[feitas] };
           mudou();
         }, 2500);

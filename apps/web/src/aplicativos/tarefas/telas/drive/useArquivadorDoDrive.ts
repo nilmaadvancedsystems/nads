@@ -10,13 +10,11 @@ const ABERTOS = ['pendente', 'aguardando', 'processando'];
 const TITULOS: Record<string, string> = {
   pendente: 'Arquivamento pedido',
   aguardando: 'Esperando para começar',
-  processando: 'Organizando a pasta Claudio Secretario',
+  processando: 'Organizando',
   concluido: 'Arquivamento concluído',
   erro: 'O arquivamento deu erro',
   cancelado: 'Pedido cancelado',
 };
-
-const hora = (iso: string) => (iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '');
 
 export function useArquivadorDoDrive() {
   const repo = useArquivador();
@@ -34,18 +32,37 @@ export function useArquivadorDoDrive() {
   const pedido = ultimo && (aberto || agora - fimDe(ultimo) < 24 * 3600 * 1000) ? ultimo : null;
   const pct = aberto?.status === 'processando' && aberto.progresso ? Math.min(99, Math.round((aberto.progresso.feitas + 0.5) / aberto.progresso.total * 100)) : null;
 
+  /** "1 h 16 min", "12 min", "menos de 1 min" */
+  function duracao(de: string, ate: number): string {
+    const min = Math.max(0, Math.round((ate - Date.parse(de)) / 60000));
+    if (!de || isNaN(min)) return '';
+    if (min < 1) return 'menos de 1 min';
+    return min < 60 ? min + ' min' : Math.floor(min / 60) + ' h' + (min % 60 ? ' ' + (min % 60) + ' min' : '');
+  }
+  /** "hoje às 09:23", "ontem às 18:02" ou "03/10 às 09:10" */
+  function quando(iso: string): string {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const h = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const dias = Math.round((new Date(new Date().toDateString()).getTime() - new Date(d.toDateString()).getTime()) / 86400000);
+    return (dias === 0 ? 'hoje' : dias === 1 ? 'ontem' : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })) + ' às ' + h;
+  }
   function detalhe(p: PedidoDeArquivo): string {
-    if (p.status === 'pendente') return 'Pedido por ' + (p.criadoPor || 'alguém') + ' · ' + (ligado ? 'o arquivador vai começar em instantes.' : 'o PC do arquivador está desligado: começa quando ele ligar.');
-    if (p.status === 'aguardando') return (p.aguardandoMotivo || 'Esperando outra execução terminar') + '.';
+    if (p.status === 'pendente') return ligado ? 'Pedido por ' + (p.criadoPor || 'alguém') + '. Começa em instantes.' : 'Pedido por ' + (p.criadoPor || 'alguém') + '. Começa quando o PC do arquivador ligar.';
+    if (p.status === 'aguardando') return 'Esperando outra organização terminar para não mexer nos mesmos arquivos.';
     if (p.status === 'processando') {
-      const min = Math.max(0, Math.round((agora - Date.parse(p.processandoEm)) / 60000));
-      return 'Começou ' + hora(p.processandoEm) + ' · há ' + (min < 1 ? 'menos de 1 min' : min + ' min') + '. Costuma levar de 10 a 30 minutos.';
+      const ultimo = p.andamento[p.andamento.length - 1]?.em;
+      return 'Começou ' + quando(p.processandoEm) + ' (há ' + duracao(p.processandoEm, agora) + ')' + (ultimo ? ' · último sinal há ' + duracao(ultimo, agora) : '') + '. Costuma levar de 10 a 30 minutos.';
     }
-    if (p.status === 'concluido') return 'Terminou ' + hora(p.concluidoEm) + (p.passos ? ' · ' + p.passos + ' passos' : '') + '.';
-    if (p.status === 'erro') return p.erro || 'Sem detalhe do erro.';
-    if (p.status === 'cancelado') return 'Cancelado ' + hora(p.canceladoEm) + '.';
+    if (p.status === 'concluido') return 'Terminou ' + quando(p.concluidoEm) + (p.processandoEm ? ' · levou ' + duracao(p.processandoEm, Date.parse(p.concluidoEm)) : '') + '.';
+    if (p.status === 'erro') {
+      const msg = (p.erro || '').split('\n')[0].slice(0, 160);
+      return 'Parou ' + quando(p.erroEm) + (msg ? ': ' + msg : '') + '. Tente de novo; se repetir, avise o administrador.';
+    }
+    if (p.status === 'cancelado') return 'Cancelado ' + quando(p.canceladoEm) + '.';
     return '';
   }
+  const resultado = pedido?.status === 'concluido' ? repo.resultado(pedido.execucao) : null;
 
   return {
     exemplos: repo.exemplos,
@@ -53,13 +70,24 @@ export function useArquivadorDoDrive() {
     ligado,
     pc: ligado
       ? 'PC do arquivador ligado' + (e.situacao === 'rodando' ? ' · organizando agora' : e.situacao === 'aguardando' ? ' · esperando para começar' : '')
-      : 'PC do arquivador desligado' + (e.em && Date.parse(e.em) > 0 ? ' desde ' + hora(e.desligadoEm || e.em) : '') + ': o pedido sai quando ele ligar',
+      : 'PC do arquivador desligado' + (e.em && Date.parse(e.em) > 0 ? ' desde ' + quando(e.desligadoEm || e.em) : ''),
     rotulo: aberto ? (aberto.status === 'processando' ? 'Organizando' + (pct != null ? ' ' + pct + '%' : '…') : 'Arquivamento pedido') : 'Arquivar agora',
     ocupado: !!aberto,
     pedido: pedido ? {
       id: pedido.id, status: pedido.status, titulo: TITULOS[pedido.status] || pedido.status, detalhe: detalhe(pedido),
       pct, etapa: aberto?.progresso ? 'Etapa ' + Math.min(aberto.progresso.feitas + 1, aberto.progresso.total) + ' de ' + aberto.progresso.total + (aberto.progresso.atual ? ': ' + aberto.progresso.atual : '') : '',
-      passos: pedido.andamento.slice(-4).map(l => ({ ...l, hora: l.em ? new Date(l.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '' })),
+      // o resumo da execução (concluído): os números e os clientes que mais receberam
+      resultado: resultado ? {
+        numeros: [
+          { valor: resultado.arquivados, rotulo: resultado.arquivados === 1 ? 'arquivo arquivado' : 'arquivos arquivados', aviso: false },
+          { valor: resultado.clientes.length, rotulo: resultado.clientes.length === 1 ? 'cliente' : 'clientes', aviso: false },
+          { valor: resultado.naoIdentificados, rotulo: 'sem cliente', aviso: resultado.naoIdentificados > 0 },
+        ],
+        vazio: resultado.arquivados === 0,
+        clientes: resultado.clientes.slice(0, 4).map(c => ({ chave: c.codigo, rotulo: c.codigo + ' · ' + c.nome, n: c.n })),
+        maisClientes: Math.max(0, resultado.clientes.length - 4),
+      } : null,
+      semResultado: pedido.status === 'concluido' && !pedido.execucao,
       podeCancelar: pedido.status === 'pendente' || pedido.status === 'aguardando',
     } : null,
     pedindo,
