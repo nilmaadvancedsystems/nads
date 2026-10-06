@@ -1,0 +1,54 @@
+import { describe, expect, it } from 'vitest';
+import { lerRazao } from '../../tarefas/regras/razao';
+import { conferirRazaoDoCliente, razaoDaMarca } from './razao';
+import { textoDaMensagem, textoDasNotas } from './index';
+
+// o formato do razão da conciliação do Alterdata (conta de um cliente), com valores inventados
+const CAB = ['', 'Status conciliação', 'Data', 'Lançamento automático', 'Contrapartida', 'Descrição', 'Valor', 'Histórico', 'Descrição histórico', 'Saldo', 'Observação'];
+let saldo = 0;
+const L = (data: string, contra: string, nome: string, valor: number, hist: string, conta = true) => {
+  if (conta) saldo = Math.round((saldo + valor) * 100) / 100;
+  return ['Falso', 'Conciliação manual', data, '', contra, nome, valor, '', hist, saldo, ''];
+};
+const CNPJ = '11222333000144-CLIENTE TESTE LTDA';
+const ROWS = [CAB,
+  // NF 100: vendida e recebida em duas parcelas (fecha)
+  L('05/07/2026', '96504', 'Venda de Produção', -800, 'Pelas vendas de produtos conf. Nf-e ? - 100-' + CNPJ),
+  L('05/07/2026', '96501', 'Vendas de Mercadorias', -200, 'Pelas vendas de mercadorias a prazo conforme Nota Fiscal Eletronica n°  - 100-' + CNPJ),
+  L('20/07/2026', '10503', 'Banco', 500, 'Recebimento de clientes  100 -DUP.001 -' + CNPJ),
+  L('27/07/2026', '10503', 'Banco', 500, 'Recebimento de clientes 100/002 - CLIENTE TESTE LTDA'),
+  // NF 101: recebida a menos (fica 150,00 em aberto) e uma devolução sem nota
+  L('10/07/2026', '96504', 'Venda de Produção', -1000, 'Pelas vendas de produtos conf. Nf-e ? - 101-' + CNPJ),
+  L('12/07/2026', '60501', '(-) Devolução de vendas', 90, 'Pelo valor de devolução de vendas de mercadorias/produtos conf NF-e ? - 5555-' + CNPJ + '//NF: 99,101'),
+  L('30/07/2026', '10503', 'Banco', 850, 'Recebimento de clientes 101/001 - CLIENTE TESTE LTDA'),
+  // NF 102: recebida no Caixa e no Banco no mesmo dia (duplicidade: o saldo do Alterdata conta uma vez)
+  L('01/08/2026', '96504', 'Venda de Produção', -300, 'Pelas vendas de produtos conf. Nf-e ? - 102-' + CNPJ),
+  L('15/08/2026', '10101', 'Caixa Geral', 300, 'Recebimento de clientes  102 -DUP.001 -' + CNPJ),
+  L('15/08/2026', '10503', 'Banco', 300, 'Recebimento de clientes  102 - CLIENTE TESTE LTDA', false),
+  // NF 103: vendida em agosto, nada recebido
+  L('20/08/2026', '96501', 'Vendas de Mercadorias', -420.5, 'Pelas vendas de mercadorias a prazo conforme Nota Fiscal Eletronica n°  - 103-' + CNPJ),
+  // setembro: fora do mês
+  L('05/09/2026', '96501', 'Vendas de Mercadorias', -999, 'Pelas vendas de mercadorias a prazo conforme Nota Fiscal Eletronica n°  - 104-' + CNPJ),
+];
+
+describe('o razão do cliente', () => {
+  const r = conferirRazaoDoCliente(lerRazao(ROWS), '2026-08');
+  it('acha as notas que o pagamento não fechou, até o fim do mês', () => {
+    expect(r.emAberto.map(n => [n.nf, n.aberto])).toEqual([['101', 150], ['103', 420.5]]);
+    expect(r.aMais).toEqual([]);
+  });
+  it('a duplicidade conta uma vez e aparece; a devolução abate e diz as notas citadas', () => {
+    expect(r.duplicados.map(d => [d.nf, d.valor, d.contas.length])).toEqual([['102', 300, 2]]);
+    expect(r.devolucoes.map(d => [d.nf, d.valor, d.notas])).toEqual([['5555', 90, ['99', '101']]]);
+  });
+  it('o saldo achado bate com a coluna Saldo do razão no fim do mês', () => {
+    expect(r.saldo).toBe(480.5);
+    expect(r.saldoDoRazao).toBe(480.5);
+  });
+  it('as notas vão para a relação do cliente', () => {
+    const m = razaoDaMarca('razao.xls', r);
+    expect(textoDasNotas(m.notas)).toBe('NF 101 (R$ 150,00), NF 103 (R$ 420,50)');
+    expect(textoDaMensagem('{lista}', 'E', '08/2026', [{ codigo: '1', nome: 'CLIENTE TESTE', saldo: 480.5, obs: '', notas: m.notas }]))
+      .toBe('• CLIENTE TESTE — R$ 480,50 — em aberto: NF 101 (R$ 150,00), NF 103 (R$ 420,50)');
+  });
+});

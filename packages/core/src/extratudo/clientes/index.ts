@@ -5,6 +5,9 @@
 import * as XLSX from 'xlsx';
 import { normalizarTexto } from '../../formatos';
 import type { Conta } from '../../conferencia/tipos';
+import type { RazaoDaMarca } from './razao';
+
+export * from './razao';
 
 // ─── o balancete dinâmico ────────────────────────────────────────────────────
 
@@ -98,8 +101,8 @@ export function credores(clientes: readonly ContaDeCliente[]): ContaDeCliente[] 
 /** Pendente (o valor devedor, em laranja), Ok (zerado) ou Conferido (vai para o cliente, com a observação). */
 export type SituacaoCliente = 'pendente' | 'ok' | 'conferido';
 
-/** O que a pessoa marcou (guardado no mês): a situação e a observação. */
-export interface MarcaDoCliente { nome: string; saldo: number; situacao: SituacaoCliente; obs?: string }
+/** O que a pessoa marcou (guardado no mês): a situação, a observação e, com o razão importado, as notas em aberto. */
+export interface MarcaDoCliente { nome: string; saldo: number; situacao: SituacaoCliente; obs?: string; razao?: RazaoDaMarca }
 export interface DocClientes { contas: Record<string, MarcaDoCliente>; atualizadoEm?: string }
 
 /** Sem marca: zerado é Ok, com saldo é Pendente. */
@@ -120,9 +123,24 @@ export function docDoDocumento(d: unknown): DocClientes {
   for (const [k, v] of Object.entries(contas)) {
     const s = v?.situacao;
     if (s !== 'pendente' && s !== 'ok' && s !== 'conferido') continue;
-    certo[k] = { nome: String(v.nome ?? ''), saldo: typeof v.saldo === 'number' ? v.saldo : 0, situacao: s, ...(typeof v.obs === 'string' && v.obs ? { obs: v.obs } : {}) };
+    const r = razaoGuardado(v.razao);
+    certo[k] = { nome: String(v.nome ?? ''), saldo: typeof v.saldo === 'number' ? v.saldo : 0, situacao: s, ...(typeof v.obs === 'string' && v.obs ? { obs: v.obs } : {}), ...(r ? { razao: r } : {}) };
   }
   return { contas: certo, ...(typeof o.atualizadoEm === 'string' ? { atualizadoEm: o.atualizadoEm } : {}) };
+}
+
+/** O razão guardado na marca, conferido (o que não tiver o formato, fora). */
+function razaoGuardado(d: unknown): RazaoDaMarca | null {
+  if (!d || typeof d !== 'object') return null;
+  const o = d as Record<string, unknown>;
+  if (typeof o.arquivo !== 'string' || !Array.isArray(o.notas)) return null;
+  const notas = (o.notas as Record<string, unknown>[]).filter(n => n && typeof n.nf === 'string' && typeof n.aberto === 'number')
+    .map(n => ({ nf: n.nf as string, data: typeof n.data === 'string' ? n.data : '', aberto: n.aberto as number }));
+  return {
+    arquivo: o.arquivo, notas, saldo: typeof o.saldo === 'number' ? o.saldo : 0,
+    devolucoes: typeof o.devolucoes === 'number' ? o.devolucoes : 0,
+    duplicadas: Array.isArray(o.duplicadas) ? o.duplicadas.filter((x): x is string => typeof x === 'string') : [],
+  };
 }
 
 /** Os conferidos de um mês anterior que ainda não estão neste (passam para o mês seguinte). */
@@ -133,17 +151,23 @@ export function conferidosQuePassam(anterior: DocClientes | null, atual: DocClie
 
 // ─── para o cliente ──────────────────────────────────────────────────────────
 
-export interface LinhaParaCliente { codigo: string; nome: string; saldo: number; obs: string }
-
 const brl = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+export interface LinhaParaCliente { codigo: string; nome: string; saldo: number; obs: string; notas?: { nf: string; aberto: number }[] }
+
+/** As notas em aberto numa linha: "NF 9242 (R$ 1.600,00), NF 10086 (R$ 19.599,52)". */
+export function textoDasNotas(notas: readonly { nf: string; aberto: number }[] = []): string {
+  return notas.map(n => 'NF ' + n.nf + ' (R$ ' + brl(n.aberto) + ')').join(', ');
+}
+
 
 /** A planilha para o cliente responder (.xlsx): a conta, o cliente, o saldo, a nossa observação e a resposta. */
 export function planilhaParaCliente(linhas: readonly LinhaParaCliente[]): Uint8Array {
   const ws = XLSX.utils.aoa_to_sheet([
-    ['Conta', 'Cliente', 'Saldo (R$)', 'Observação do escritório', 'Resposta da empresa'],
-    ...linhas.map(l => [l.codigo, l.nome, Math.round(l.saldo * 100) / 100, l.obs, '']),
+    ['Conta', 'Cliente', 'Saldo (R$)', 'Notas em aberto', 'Observação do escritório', 'Resposta da empresa'],
+    ...linhas.map(l => [l.codigo, l.nome, Math.round(l.saldo * 100) / 100, textoDasNotas(l.notas), l.obs, '']),
   ]);
-  ws['!cols'] = [{ wch: 10 }, { wch: 42 }, { wch: 14 }, { wch: 48 }, { wch: 48 }];
+  ws['!cols'] = [{ wch: 10 }, { wch: 42 }, { wch: 14 }, { wch: 40 }, { wch: 48 }, { wch: 48 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Clientes');
   return new Uint8Array(XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer);
@@ -156,6 +180,6 @@ export const MENSAGEM_PADRAO = 'Olá! Na conferência dos clientes de {mes} da {
 
 /** O texto da mensagem com a lista dos conferidos (uma linha por cliente: o nome, o saldo e a observação). */
 export function textoDaMensagem(modelo: string, empresa: string, mes: string, linhas: readonly LinhaParaCliente[]): string {
-  const lista = linhas.map(l => '• ' + l.nome + ' — R$ ' + brl(l.saldo) + (l.obs ? ' — ' + l.obs : '')).join('\n');
+  const lista = linhas.map(l => '• ' + l.nome + ' — R$ ' + brl(l.saldo) + (l.notas?.length ? ' — em aberto: ' + textoDasNotas(l.notas) : '') + (l.obs ? ' — ' + l.obs : '')).join('\n');
   return (modelo || MENSAGEM_PADRAO).replace(/\{empresa\}/g, empresa).replace(/\{mes\}/g, mes).replace(/\{lista\}/g, lista);
 }
