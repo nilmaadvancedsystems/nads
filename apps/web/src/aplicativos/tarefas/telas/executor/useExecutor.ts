@@ -17,6 +17,7 @@ import { useOperador, type Operador } from '../../casca/operador';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../comum/desenvolvimento';
 import { useDepartamentoDaTela } from '../../casca/departamento';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
+import { apagarTiques } from './useChecklistDaFolha';
 
 /**
  * Onde cada aplicativo mora. O Extratudo vem junto no site da Tarefas (mesmo endereço: o login do Entregas
@@ -305,6 +306,30 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     voltarAEtapaDaVez: () => setVendo(null),
     /** o modo desenvolvedor: só ver (o Avançar azul vai para a próxima etapa sem marcar nada) */
     dev,
+    /**
+     * O ⚡ › Apagar início (Vitor, 06/10/2026): a rotina volta ao começo — toda etapa pendente, em todos os meses do
+     * período, e os tiques dos checklists apagados. Só no modo desenvolvedor: nada vai para o banco (fica só nesta tela).
+     */
+    apagarInicio: async () => {
+      if (!dev || !empresa) return;
+      const ok = await modal<boolean>({ icone: 'alert', titulo: 'Apagar o início?', texto: 'Todas as etapas de ' + empresa.nome + ' voltam a ficar pendentes' + (varios ? ' em todos os meses do período' : '') + ' e os checklists ficam sem tiques. Modo desenvolvedor: só nesta tela, nada muda no banco.',
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Apagar o início', valor: true, variante: 'btn-primary' }] });
+      if (!ok) return;
+      const agora = new Date();
+      for (const c of meses) {
+        let atual = exDe[c];
+        if (!atual) continue;
+        for (const id of Object.keys(atual.etapas || {})) {
+          const v = t.voltarPara(atual, id, op.nome, agora);
+          repo.gravar(v.execucao, v.evento);
+          atual = v.execucao;
+        }
+      }
+      apagarTiques(empresa.nome);
+      iniciadas.current.clear();
+      setAviso(null);
+      setVendo(null);
+    },
     temAvancar: dev && !!vista && rotina.etapas.findIndex(e => e.id === vista.id) < rotina.etapas.length - 1,
     avancar: () => {
       const i = vista ? rotina.etapas.findIndex(e => e.id === vista.id) : -1;

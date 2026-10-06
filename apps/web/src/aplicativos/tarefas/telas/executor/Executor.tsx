@@ -24,6 +24,7 @@ import { MenuDaRotina, type GrupoDoMenu } from './partes/MenuDaRotina';
 import { InssDaEtapa } from './partes/InssDaEtapa';
 import { RazaoDaEtapa } from './partes/RazaoDaEtapa';
 import { ChecklistDisfarcado } from './partes/ChecklistDisfarcado';
+import { animarPronto } from './partes/animarPainel';
 import { useInssDaEtapa } from './useInssDaEtapa';
 import { useRazaoDaEtapa } from './useRazaoDaEtapa';
 import type { ItemDeTeste } from '../../../../comum/BotaoDeTeste';
@@ -88,6 +89,10 @@ export function Executor() {
   // o checklist da etapa: o da folha (pelo balancete) ou as tarefas fixas da etapa (o Fiscal)
   const fixo = vm.etapa?.checklist ? { etapa: vm.etapa.id, itens: vm.etapa.checklist.map(i => ({ id: i.id, nome: i.texto, contas: i.sub || [], link: i.link, aviso: i.aviso })) } : null;
   const temChecklist = !!(vm.etapa?.checklistDaFolha || vm.etapa?.checklist);
+  // o "Tudo pronto" do fim: anima ao aparecer (Vitor, 06/10/2026: "animação disso aqui")
+  const fim = useRef<HTMLDivElement>(null);
+  const terminou = !vm.carregando && !vm.etapa;
+  useEffect(() => { if (terminou) animarPronto(fim.current); }, [terminou]);
   const folha = useChecklistDaFolha(temChecklist, vm.empresa?.nome || '', vm.meses.length ? vm.meses : [vm.competencia], fixo);
   const faltamFerramenta = vm.tela
     ? requisitosDaTela && requisitosDaTela.chave === chaveDaTela && !requisitosDaTela.pronto ? requisitosDaTela.faltam : null
@@ -182,7 +187,12 @@ export function Executor() {
         {vm.dev && (
           // as opções vêm da ferramenta aberta (Vitor, 06/10/2026: "o raiozinho em tudo que é para importar")
           <MenuSuspenso rotulo="" icone="zap" className="gh-topo-btn gh-topo-menu" direita dica="Dados de teste"
-            itens={opcoesDeTeste.length ? opcoesDeTeste : [{ rotulo: 'Nada para importar nesta tela', icone: 'zap', desabilitado: true, onClick: () => {} }]} />
+            itens={[
+              ...(opcoesDeTeste.length ? opcoesDeTeste : [{ rotulo: 'Nada para importar nesta tela', icone: 'zap' as NomeIcone, desabilitado: true, onClick: () => {} }]),
+              'separador' as const,
+              // recomeçar a rotina do zero (Vitor, 06/10/2026: "uma função de apagar início no raio")
+              { rotulo: 'Apagar início (recomeçar a rotina)', icone: 'repeat' as NomeIcone, perigo: true, onClick: () => { void vm.apagarInicio(); } },
+            ]} />
         )}
         {vm.dev && vm.temAvancar && (
           <button type="button" className="gh-topo-btn gh-topo-proximo dev" onClick={vm.avancar} title="Avançar (modo desenvolvedor: só ver, não marca nada)" aria-label="Avançar">
@@ -220,7 +230,8 @@ export function Executor() {
       onSecao={vm.abrirEtapa} onPagina={abrirAba} onInicio={vm.sair} onAplicativos={casca.inicio}
       onEmpresa={vm.abrirEmpresa} aplicativos={casca.aplicacoes} onAplicativo={casca.onAplicacao}>
       {vm.carregando ? null : !vm.etapa ? (
-        <div className="executor-fim">
+        <div className="executor-fim" ref={fim}>
+          <span className="executor-fim-onda" aria-hidden="true" />
           <Icone nome="checkCircle" />
           <h2>Tudo pronto em {vm.rotuloCompetencia}</h2>
           <p className="hint">Todas as etapas desta empresa estão concluídas{vm.varios ? ' nos ' + vm.meses.length + ' meses' : ''}.</p>

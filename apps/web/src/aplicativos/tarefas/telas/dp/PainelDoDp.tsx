@@ -1,10 +1,11 @@
-// O Painel do DP (Vitor, 06/10/2026: o Checklist Folha no visual do nads): a competência e os filtros em cima; os números
+// O Painel do DP (Vitor, 06/10/2026: o Checklist Folha no visual do nads), uma página por aba do alto (Resumo, Folha,
+// eSocial, Guias, Entrega): a competência e os filtros em cima; no Resumo, os números
 // do mês; as barras por responsável, enquadramento e movimento; o progresso de cada responsável; e a lista dos clientes
 // com as obrigações do mês (– não tem, vazio a fazer, ✓ feita, ! parada). Tudo roda aqui: clicar na bolinha marca a
 // obrigação como feita, clicar de novo desfaz (sem o checklist).
 import { Esqueleto, Icone, Segmentado, useCarregando } from '@nads/ui';
 import { Fragment } from 'react';
-import { usePainelDoDp, type Agrupar, type EstadoDaObrigacao } from './usePainelDoDp';
+import { usePainelDoDp, type AbaDoPainel, type Agrupar, type EstadoDaObrigacao, type ParteDoDp } from './usePainelDoDp';
 
 const MARCA: Record<EstadoDaObrigacao, { simbolo: string; dica: string }> = {
   'nao-tem': { simbolo: '–', dica: 'não tem no mês' },
@@ -27,8 +28,8 @@ function Selecao({ rotulo, valor, mudar, opcoes }: { rotulo: string; valor: stri
   );
 }
 
-export function PainelDoDp() {
-  const vm = usePainelDoDp();
+export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
+  const vm = usePainelDoDp(aba);
   const f = vm.filtros;
   useCarregando(vm.carregando);
   return (
@@ -57,7 +58,7 @@ export function PainelDoDp() {
         {f.algum && <button type="button" className="btn btn-ghost dp-limpar" onClick={f.limpar}><Icone nome="x" />Limpar filtros</button>}
       </div>
 
-      {vm.carregando ? <Esqueleto numeros={4} linhas={6} /> : (
+      {vm.carregando ? <Esqueleto numeros={4} linhas={6} /> : vm.resumo ? (
         <>
           <div className="stat-grid dp-numeros">
             {vm.numeros.map(n => (
@@ -102,11 +103,19 @@ export function PainelDoDp() {
               ))}
             </div>
           </section>
+        </>
+      ) : (
+        <>
+          {/* o submenu das Obrigações (Vitor, 06/10/2026: "algumas podem entrar com opções e submenus") */}
+          <div className="dp-submenu">
+            <Segmentado valor={(vm.parte || 'folha') as ParteDoDp} opcoes={vm.partes} onMudar={vm.setParte} />
+          </div>
 
           <section className="card dp-lista">
             <div className="dp-lista-topo">
-              <h3 className="dp-titulo">Clientes</h3>
+              <h3 className="dp-titulo">{vm.tituloDaParte}</h3>
               <span className="badge badge-neutral">{vm.quantas}</span>
+              {vm.faltam > 0 ? <span className="hint">{vm.faltam} {vm.faltam === 1 ? 'falta' : 'faltam'}</span> : <span className="hint">tudo feito</span>}
               <span className="tarefas-barra-espaco" />
               <span className="hint">Agrupar por</span>
               <Segmentado valor={f.agrupar} opcoes={AGRUPAR} onMudar={f.setAgrupar} />
@@ -117,7 +126,7 @@ export function PainelDoDp() {
                   <thead>
                     <tr className="dp-cabeca-grupo">
                       <th colSpan={3} />
-                      <th colSpan={vm.colunas.length} className="dp-ob-grupo">Obrigações do mês</th>
+                      <th colSpan={vm.colunas.length} className="dp-ob-grupo">{vm.tituloDaParte} do mês</th>
                       <th />
                     </tr>
                     <tr>

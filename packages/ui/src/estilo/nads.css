@@ -3016,44 +3016,18 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .pt-tarefa.travada{opacity:.55;}
 .pt-tarefa .imp-faixa-corpo{gap:12px;}
 .pt-janela .imp-conf-topo .page-title{display:none;}
-/* os gráficos novos do catálogo (Componentes › Gráficos GR-03 a GR-05); as cores das classes de CFOP (paleta validada,
-   claro e escuro; sempre com o nome e o valor ao lado) */
-:root{--cat-1:#2a78d6;--cat-2:#eb6834;--cat-3:#1baf7a;--cat-4:#eda100;--cat-5:#e87ba4;--cat-6:#008300;--cat-7:#4a3aa7;}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--cat-1:#3987e5;--cat-2:#d95926;--cat-3:#199e70;--cat-4:#c98500;--cat-5:#d55181;--cat-6:#008300;--cat-7:#9085e9;}}
-:root[data-theme="dark"]{--cat-1:#3987e5;--cat-2:#d95926;--cat-3:#199e70;--cat-4:#c98500;--cat-5:#d55181;--cat-6:#008300;--cat-7:#9085e9;}
+/* o painel de cada tarefa do Fiscal (só peças do catálogo: Stat, rank, tabela, Alerta, gh-blank) */
 .graf-painel{display:flex;flex-direction:column;gap:12px;}
 .graf-painel > .stat-grid{margin-bottom:0;}
 .graf-painel > .rank{margin-top:0;}
 .graf-painel > .gh-blank{padding:20px 16px;}
 .graf-marcas{display:flex;gap:6px;flex-wrap:wrap;margin:0;}
 .graf-celula-barra .rank-barra{display:block;margin-top:4px;height:6px;}
-.graf-celula-barra .rank-barra > span,.rank-barra > span,.graf-faixa > span{transform-origin:left;}
-.graf-dias{margin:0;display:flex;flex-direction:column;gap:6px;}
-.graf-dias-topo{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;}
-.graf-dias-topo .hint{margin:0;}
-.graf-dias-barras{display:flex;align-items:flex-end;gap:2px;height:84px;border-bottom:1px solid var(--border);}
-.graf-dia{flex:1;height:100%;display:flex;align-items:flex-end;}
-.graf-dia > span{display:block;width:100%;background:var(--accent);border-radius:4px 4px 0 0;opacity:.75;transform-origin:bottom;}
-.graf-dia.sobre > span{opacity:1;}
-.graf-dias-eixo{display:flex;justify-content:space-between;margin:0;}
-.graf-rosca{display:grid;grid-template-columns:148px 1fr;gap:24px;align-items:center;}
-.graf-rosca-grafico{position:relative;width:148px;height:148px;}
-.graf-rosca-grafico svg{display:block;}
-.graf-rosca-fundo{fill:none;stroke:var(--surface-3);stroke-width:14;}
-.graf-rosca-fatia{fill:none;stroke-width:14;}
-.graf-rosca-meio{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 26px;pointer-events:none;}
-.graf-rosca-meio b{font-size:14px;}
-.graf-rosca-meio .hint{margin:0;font-size:10.5px;line-height:1.2;}
-.graf-legenda{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;}
-.graf-legenda li{display:grid;grid-template-columns:10px 1fr auto auto;gap:8px;align-items:center;font-size:13px;}
-.graf-legenda i{width:10px;height:10px;border-radius:3px;}
-.graf-legenda .hint{margin:0;min-width:96px;text-align:right;}
-.graf-legenda.em-linha{flex-direction:row;flex-wrap:wrap;gap:6px 16px;}
-.graf-legenda.em-linha li{display:inline-grid;grid-template-columns:10px auto auto;}
-.graf-faixa-bloco{display:flex;flex-direction:column;gap:10px;}
-.graf-faixa{display:flex;gap:2px;height:22px;border-radius:6px;overflow:hidden;}
-.graf-faixa > span{display:block;height:100%;}
-@media (max-width:640px){.graf-rosca{grid-template-columns:1fr;justify-items:center;}.pt-tarefa-acoes{margin-left:0;}}
+.graf-celula-barra .rank-barra > span,.rank-barra > span{transform-origin:left;}
+.pt-tarefa-acoes .btn{white-space:nowrap;}
+/* o Tudo pronto do fim da rotina (animado no animarPainel.ts): a onda verde que sai do ✓ */
+.executor-fim{position:relative;}
+.executor-fim-onda{position:absolute;top:0;left:50%;width:40px;height:40px;margin-left:-20px;border-radius:50%;background:var(--success);opacity:0;pointer-events:none;}
 /* DP › tabelão (06/10/2026: tudo roda na tabela): a bolinha é o botão que marca a obrigação */
 button.dp-marca{padding:0;background:transparent;cursor:pointer;color:inherit;font:inherit;font-size:11px;font-weight:700;}
 button.dp-marca.a-fazer:hover{border-color:var(--success);background:var(--success-soft);}
@@ -3098,3 +3072,12 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .dp-config .dp-empilhado .select-compact,.dp-config .dp-empilhado .dp-agrup{width:150px;max-width:150px;}
 .dp-config .dp-chips{min-width:250px;max-width:270px;}
 .dp-resp{min-width:180px;}
+/* DP em abas no alto (06/10/2026): cada parte tem poucas colunas, as bolinhas com mais espaço */
+.dp-tabela .dp-ob{width:84px;min-width:84px;}
+/* DP › Configurações no estilo do Cadastro (06/10/2026): a lista (clicar abre a janela do cliente) */
+.dp-linha-abre{cursor:pointer;}
+.dp-linha-abre:hover td{background:var(--hover-bg);}
+.dp-config-lista .dp-obrig-texto{white-space:normal;font-size:12.5px;color:var(--ink-muted);max-width:300px;}
+.dp-selo-mudado{margin-left:8px;font-size:11px;vertical-align:middle;}
+/* DP › Obrigações: o submenu das partes (Folha, eSocial, Guias, REINF, Entrega), acima da tabela */
+.dp-submenu{margin:0 0 12px;}

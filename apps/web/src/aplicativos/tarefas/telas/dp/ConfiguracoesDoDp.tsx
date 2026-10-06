@@ -1,11 +1,20 @@
-// DP › Configurações: os parâmetros de cada cliente do DP, um por linha — o movimento, as obrigações do mês (clicar liga e
-// desliga), a REINF, a entrega e o agrupamento. Grava ao mudar; o que foi mudado ganha o "Voltar à planilha".
+// DP › Configurações, no estilo do Cadastro (Vitor, 06/10/2026): a lista dos clientes do DP com os parâmetros de cada um,
+// só para ler; clicar no cliente abre a janela dele (a mesma janela com painéis laterais do Cadastro) — Obrigações (o
+// movimento, as obrigações do mês e a REINF) e Entrega (como recebe e o agrupamento). Grava ao mudar; o que foi mudado
+// ganha o selo "mudado" e o "Voltar à planilha".
 import { Esqueleto, Icone, useCarregando } from '@nads/ui';
-import { useConfiguracoesDoDp } from './useConfiguracoesDoDp';
+import { Cartao, JanelaLateral, Linha, type TopicoDaJanela } from '../janela/JanelaLateral';
+import { useConfiguracoesDoDp, type TopicoDoClienteDp } from './useConfiguracoesDoDp';
+
+const TOPICOS: TopicoDaJanela<TopicoDoClienteDp>[] = [
+  { id: 'obrigacoes', rotulo: 'Obrigações', icone: 'checklist' },
+  { id: 'entrega', rotulo: 'Entrega', icone: 'envelope' },
+];
 
 export function ConfiguracoesDoDp() {
   const vm = useConfiguracoesDoDp();
   useCarregando(vm.carregando);
+  const c = vm.cliente;
   return (
     <section className="dp-painel">
       <div className="tarefas-filtros dp-filtros">
@@ -25,59 +34,88 @@ export function ConfiguracoesDoDp() {
           Só os mudados ({vm.mudados})
         </label>
       </div>
-      <p className="hint dp-config-dica">Os parâmetros de cada cliente vêm da planilha do DP. O que você mudar aqui vale na tabela do Painel na hora; o responsável fica em Cadastro › Responsáveis.</p>
       {vm.carregando ? <Esqueleto linhas={8} /> : (
         <section className="card dp-lista">
           <div className="dp-lista-topo">
             <h3 className="dp-titulo">Clientes do DP</h3>
             <span className="badge badge-neutral">{vm.linhas.length}</span>
+            <span className="tarefas-barra-espaco" />
+            <span className="hint">Clique no cliente para mudar. O que não foi mudado vale o da planilha.</span>
           </div>
           <div className="table-wrap">
-            <table className="dp-tabela dp-config">
-              <thead>
-                <tr><th>Cód.</th><th>Cliente</th><th>Movimento</th><th>Obrigações do mês</th><th className="dp-centro" title="REINF autorizada">REINF</th><th>Entrega e agrupamento</th><th /></tr>
-              </thead>
+            <table className="dp-tabela dp-config-lista">
+              <thead><tr><th>Cód.</th><th>Cliente</th><th>Movimento</th><th>Obrigações do mês</th><th>REINF</th><th>Entrega</th><th>Agrupamento</th></tr></thead>
               <tbody>
-                {vm.linhas.map(c => (
-                  <tr key={c.codigo} className={c.mudado ? 'dp-mudado' : undefined}>
-                    <td className="num fraco">{c.codigo}</td>
-                    <td className="dp-cliente"><span className="dp-cliente-nome">{c.nomeNaTela}</span><span className="dp-cliente-info">{c.enquadramento}</span></td>
-                    <td>
-                      <select className="select-compact" value={c.movimento} onChange={e => vm.mudarMovimento(c.codigo, e.target.value)} aria-label={'Movimento de ' + c.nomeNaTela}>
-                        {vm.movimentos.map(m => <option key={m} value={m}>{m}</option>)}
-                      </select>
+                {vm.linhas.map(l => (
+                  <tr key={l.codigo} className="dp-linha-abre" onClick={() => vm.abrir(l.codigo)} title={'Abrir ' + l.nomeNaTela}>
+                    <td className="num fraco">{l.codigo}</td>
+                    <td className="dp-cliente">
+                      <span className="dp-cliente-nome">{l.nomeNaTela}{l.mudado && <span className="badge badge-neutral dp-selo-mudado">mudado</span>}</span>
+                      <span className="dp-cliente-info">{l.enquadramento}</span>
                     </td>
-                    <td>
-                      <div className="dp-chips" role="group" aria-label={'Obrigações de ' + c.nomeNaTela}>
-                        {vm.obrigacoes.map(o => {
-                          const tem = (c.obrigacoes as string[]).includes(o.id);
-                          return <button key={o.id} type="button" className={'dp-chip' + (tem ? ' ligado' : '')} aria-pressed={tem} title={o.nome}
-                            onClick={() => vm.alternarObrigacao(c.codigo, o.id)}>{o.rotulo}</button>;
-                        })}
-                      </div>
-                    </td>
-                    <td className="dp-centro">
-                      <input type="checkbox" checked={c.reinfAutorizada} onChange={e => vm.mudarReinf(c.codigo, e.target.checked)} aria-label={'REINF autorizada de ' + c.nomeNaTela} />
-                    </td>
-                    <td className="dp-empilhado">
-                      <select className="select-compact" value={c.entrega} onChange={e => vm.mudarEntrega(c.codigo, e.target.value)} aria-label={'Entrega de ' + c.nomeNaTela}>
-                        {[...new Set([...vm.entregas, c.entrega])].filter(Boolean).map(x => <option key={x} value={x}>{x}</option>)}
-                      </select>
-                      <input type="text" className="dp-agrup" list="dp-agrupamentos" defaultValue={c.agrupamento} key={c.agrupamento} placeholder="—"
-                        aria-label={'Agrupamento de ' + c.nomeNaTela}
-                        onBlur={e => { if (e.target.value.trim() !== c.agrupamento) vm.mudarAgrupamento(c.codigo, e.target.value); }}
-                        onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
-                    </td>
-                    <td className="num">
-                      {c.mudado && <button type="button" className="icon-btn icon-btn-sm" title="Voltar à planilha (desfaz o que foi mudado)" aria-label="Voltar à planilha" onClick={() => vm.voltarAPlanilha(c.codigo)}><Icone nome="girar" /></button>}
-                    </td>
+                    <td>{l.movimento}</td>
+                    <td className="dp-obrig-texto">{l.obrigacoesTexto}</td>
+                    <td>{l.reinfAutorizada ? 'Autorizada' : <span className="fraco">Não</span>}</td>
+                    <td>{l.entrega || <span className="fraco">—</span>}</td>
+                    <td>{l.agrupamento || <span className="fraco">—</span>}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <datalist id="dp-agrupamentos">{vm.agrupamentos.map(a => <option key={a} value={a} />)}</datalist>
           </div>
         </section>
+      )}
+
+      {c && (
+        <JanelaLateral rotulo={c.nomeNaTela} topicos={TOPICOS} topico={vm.topico} mudar={vm.setTopico} fechar={vm.fechar} resumo={(
+          <div className="usuario-quem">
+            <b>{c.nomeNaTela}</b>
+            <span className="fraco">Código {c.codigo} · {c.enquadramento}</span>
+            {c.responsavel && <span className="fraco">Responsável no Fiscal: {c.responsavel.split('.').map(x => x.charAt(0) + x.slice(1).toLowerCase()).join('.')}</span>}
+            <span className={'badge ' + (c.mudado ? 'badge-warn' : 'badge-neutral')}>{c.mudado ? 'Mudado' : 'Igual à planilha'}</span>
+            {c.mudado && <button type="button" className="btn" onClick={() => vm.voltarAPlanilha(c.codigo)}><Icone nome="girar" />Voltar à planilha</button>}
+          </div>
+        )}>
+          {vm.topico === 'obrigacoes' && (
+            <>
+              <Cartao titulo="Movimento">
+                <Linha rotulo="Movimento do mês" dica="Folha, Pró-labore, Sem movimento ou Apenas REINF.">
+                  <select className="pessoal-select" value={c.movimento} aria-label="Movimento" onChange={e => vm.mudarMovimento(c.codigo, e.target.value)}>
+                    {vm.movimentos.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </Linha>
+                <Linha rotulo="REINF autorizada" dica="Com a REINF autorizada, a aba REINF do DP mostra este cliente.">
+                  <input type="checkbox" checked={c.reinfAutorizada} aria-label="REINF autorizada" onChange={e => vm.mudarReinf(c.codigo, e.target.checked)} />
+                </Linha>
+              </Cartao>
+              <Cartao titulo="Obrigações do mês">
+                {vm.obrigacoes.map(o => {
+                  const tem = (c.obrigacoes as string[]).includes(o.id);
+                  return (
+                    <Linha key={o.id} rotulo={o.nome}>
+                      <input type="checkbox" checked={tem} aria-label={o.nome} onChange={() => vm.alternarObrigacao(c.codigo, o.id)} />
+                    </Linha>
+                  );
+                })}
+              </Cartao>
+            </>
+          )}
+          {vm.topico === 'entrega' && (
+            <Cartao titulo="Entrega">
+              <Linha rotulo="Como recebe" dica="Como as guias e os recibos chegam ao cliente.">
+                <select className="pessoal-select" value={c.entrega} aria-label="Entrega" onChange={e => vm.mudarEntrega(c.codigo, e.target.value)}>
+                  {[...new Set([...vm.entregas, c.entrega])].filter(Boolean).map(x => <option key={x} value={x}>{x}</option>)}
+                </select>
+              </Linha>
+              <Linha rotulo="Agrupamento" dica="O grupo do cliente (agrupa a lista do DP).">
+                <input type="text" className="pessoal-select" list="dp-agrupamentos" defaultValue={c.agrupamento} key={c.codigo + '|' + c.agrupamento} placeholder="—"
+                  aria-label="Agrupamento" onBlur={e => { if (e.target.value.trim() !== c.agrupamento) vm.mudarAgrupamento(c.codigo, e.target.value); }}
+                  onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
+              </Linha>
+              <datalist id="dp-agrupamentos">{vm.agrupamentos.map(a => <option key={a} value={a} />)}</datalist>
+            </Cartao>
+          )}
+        </JanelaLateral>
       )}
     </section>
   );

@@ -1,6 +1,7 @@
 // ViewModel de Cadastro › Responsáveis (Vitor, 06/10/2026: "na parte de cadastro tem que haver o cadastro por
-// responsável"): cada empresa com quem cuida dela no DP, no Fiscal e no Contábil, escolhido entre as pessoas da equipe
-// daquele departamento. Grava no cadastro da empresa. No DP, sem escolha vale o da planilha do DP (mostrado como tal).
+// responsável"): cada empresa com quem cuida dela no Fiscal e no Contábil, escolhido entre as pessoas da equipe daquele
+// departamento. Grava no cadastro da empresa. No Fiscal, sem escolha vale o da planilha do Checklist Folha (os responsáveis
+// dela são do Fiscal, Vitor 06/10/2026), mostrado como tal.
 // Em cima, cada pessoa com quantas empresas tem (clicar filtra).
 import { empresas, formatos } from '@nads/core';
 import { useState } from 'react';
@@ -31,12 +32,12 @@ export function useResponsaveisDoCadastro() {
     const valor = (d: Dep) => c?.responsaveis?.[d] || '';
     return {
       chave: (e.codigo ?? '') + e.nome, codigo: e.codigo, nome: e.nome, regime: e.regime,
-      responsaveis: { dp: valor('dp'), fiscal: valor('fiscal'), contabil: valor('contabil') } as Record<Dep, string>,
-      /** o do DP que vem da planilha (quando ninguém foi escolhido no Cadastro) */
-      dpDaPlanilha: !valor('dp') && daPlanilha ? nomeDaEquipe(daPlanilha) || daPlanilha.split('.').map(x => x.charAt(0) + x.slice(1).toLowerCase()).join('.') : '',
+      responsaveis: { fiscal: valor('fiscal'), contabil: valor('contabil') } as Record<Dep, string>,
+      /** o do Fiscal que vem da planilha (quando ninguém foi escolhido no Cadastro) */
+      daPlanilha: !valor('fiscal') && daPlanilha ? nomeDaEquipe(daPlanilha) || daPlanilha.split('.').map(x => x.charAt(0) + x.slice(1).toLowerCase()).join('.') : '',
     };
   });
-  const efetivo = (l: (typeof linhas)[number], d: Dep) => l.responsaveis[d] || (d === 'dp' ? l.dpDaPlanilha : '');
+  const efetivo = (l: (typeof linhas)[number], d: Dep) => l.responsaveis[d] || (d === 'fiscal' ? l.daPlanilha : '');
 
   const achadas = busca.trim() ? new Set(empresas.buscarEmpresas(linhas.map(l => ({ codigo: l.codigo, nome: l.nome, regime: l.regime })), busca).map(e => e.nome)) : null;
   const filtradas = linhas.filter(l => (!achadas || achadas.has(l.nome))
@@ -48,11 +49,11 @@ export function useResponsaveisDoCadastro() {
   for (const l of linhas) for (const d of cad.DEPARTAMENTOS_DO_RESPONSAVEL) {
     const n = efetivo(l, d.id);
     if (!n) continue;
-    const r = contagem.get(n) || { dp: 0, fiscal: 0, contabil: 0 };
+    const r = contagem.get(n) || { fiscal: 0, contabil: 0 };
     r[d.id]++;
     contagem.set(n, r);
   }
-  const pessoas = [...contagem.entries()].map(([nome, r]) => ({ nome, ...r, total: r.dp + r.fiscal + r.contabil }))
+  const pessoas = [...contagem.entries()].map(([nome, r]) => ({ nome, ...r, total: r.fiscal + r.contabil }))
     .sort((a, b) => b.total - a.total || a.nome.localeCompare(b.nome, 'pt-BR'));
 
   return {

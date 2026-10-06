@@ -55,6 +55,11 @@ export const ROTINA_DP: Rotina = {
       item('emitir', 'Emitir a guia do FGTS', { link: FGTS }),
       item('conferir', 'Conferir o valor com a folha'),
     ], { obrigacaoDp: 'fgts' }),
+    // a REINF (Vitor, 06/10/2026: "faltou a reinf"): só para quem tem a REINF autorizada na planilha
+    etapa('dp-reinf', 'Guias', 'EFD-REINF', 'Transmita a EFD-REINF do mês.', [
+      item('transmitir', 'Transmitir a EFD-REINF', { link: ECAC }),
+      item('recibo', 'Baixar o recibo'),
+    ], { obrigacaoDp: 'reinf' }),
     // ─── Envio ────────────────────────────────────────────────────────────────
     etapa('dp-envio', 'Envio', 'Entrega ao cliente', 'Envie as guias e os recibos ao cliente.', [
       item('enviar', 'Enviar as guias e os recibos ao cliente'),

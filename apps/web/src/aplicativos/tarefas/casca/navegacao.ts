@@ -29,7 +29,7 @@ export const APLICACOES: readonly Aplicacao[] = [
   { id: 'cadastro', nome: 'Cadastro', icone: 'landmark', pronta: true, paginas: [
     { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Cadastro — empresas' },
     { id: 'usuarios', rotulo: 'Usuários', icone: 'checklist', titulo: 'Cadastro — usuários' },
-    // quem cuida de cada empresa no DP, no Fiscal e no Contábil (Vitor, 06/10/2026)
+    // quem cuida de cada empresa no Fiscal e no Contábil (Vitor, 06/10/2026)
     { id: 'responsaveis', rotulo: 'Responsáveis', icone: 'usuario', titulo: 'Cadastro — responsáveis' },
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Cadastro — configurações' },
   ] },
@@ -44,8 +44,10 @@ export const APLICACOES: readonly Aplicacao[] = [
   // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
   // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas
   { id: 'dp', nome: 'Departamento Pessoal', icone: 'usuario', pronta: true, paginas: [
-    // tudo no tabelão do Painel (Vitor, 06/10/2026: "sem a parte de checklist"): sem a lista de empresas e o executor
-    { id: 'painel', rotulo: 'Painel', icone: 'painel', titulo: 'DP — painel do mês' },
+    // tudo no tabelão (Vitor, 06/10/2026: "sem a parte de checklist"), em abas no alto como o Cadastro; poucas abas ("quero
+    // que fique menos coisas aqui"): as partes da rotina (Folha, eSocial, Guias, REINF, Entrega) são o submenu de Obrigações
+    { id: 'resumo', rotulo: 'Resumo', icone: 'painel', titulo: 'DP — resumo do mês' },
+    { id: 'obrigacoes', rotulo: 'Obrigações', icone: 'checklist', titulo: 'DP — obrigações do mês' },
     { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'DP — visão geral' },
     // os parâmetros de cada cliente (Vitor, 06/10/2026: "quero que o dp tenha a própria aba de configurações")
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'DP — configurações' },
