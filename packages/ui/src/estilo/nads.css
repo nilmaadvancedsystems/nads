@@ -2921,3 +2921,27 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
   --accent:#58A6FF; --accent-strong:#79C0FF; --accent-soft:#388BFD1A; --accent-border:#58A6FF55; --accent-ink:#79C0FF;
   --btn-primary:#1F6FEB; --btn-primary-hover:#388BFD; --tab-active:#58A6FF;
 }
+/* O SIEG na etapa do Fiscal (06/10/2026): as notas do mês e a sequência das saídas, dentro do checklist */
+.sieg-painel{display:flex;flex-direction:column;gap:10px;margin:0 0 14px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);font-size:13px;}
+.sieg-topo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.sieg-topo b{font-size:13px;letter-spacing:.04em;}
+.sieg-painel .fraco{color:var(--ink-muted);margin:0;}
+.sieg-aviso{display:inline-flex;align-items:center;gap:6px;color:var(--warn);margin:0;}
+.sieg-aviso svg{width:14px;height:14px;}
+.sieg-contagem{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.sieg-numero{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px solid var(--border-muted);border-radius:8px;background:var(--surface);}
+.sieg-numero b{font-size:22px;line-height:1.1;font-variant-numeric:tabular-nums;}
+.sieg-numero span{font-size:12px;color:var(--ink-muted);}
+.sieg-numero small{font-size:11.5px;color:var(--ink-muted);}
+.sieg-numero.zero b{color:var(--warn);}
+.sieg-quando{grid-column:1/-1;font-size:12px;}
+.sieg-saidas{display:flex;flex-direction:column;gap:8px;}
+.sieg-resumo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.sieg-resumo svg{width:16px;height:16px;}
+.sieg-resumo.ok svg{color:var(--success);}
+.sieg-resumo.falta svg,.sieg-resumo.falta b{color:var(--warn);}
+.sieg-series{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;}
+.sieg-series li{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border-muted);}
+.sieg-serie-nome{font-weight:600;}
+.sieg-falta{color:var(--warn);}
+.sieg-acoes{display:flex;justify-content:flex-end;}

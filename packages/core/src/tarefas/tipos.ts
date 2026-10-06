@@ -58,6 +58,8 @@ export interface Etapa {
   checklist?: ItemDoChecklist[];
   /** a etapa confere o razão de uma conta: a pessoa importa o XLS da conciliação do Alterdata (conta: "caixa") */
   razao?: { conta: string };
+  /** o painel do SIEG na etapa (Fiscal, 06/10/2026): as notas do mês (contagem) ou a sequência das saídas */
+  sieg?: 'contagem' | 'saidas';
   /**
    * a etapa só entra na rotina do mês quando outra a adiciona (o Creditor, quando o razão do caixa tem liquidação de
    * cobrança); sem isso, não aparece e conta como concluída
