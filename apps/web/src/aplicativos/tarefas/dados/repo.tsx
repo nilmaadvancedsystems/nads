@@ -4,7 +4,8 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { bancosDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDoArquivador, repoPessoal } from './fonte';
+import { bancosDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDoArquivador, repoDoSieg, repoPessoal } from './fonte';
+import type { RepoSieg } from './sieg';
 import type { RepoArquivador } from './arquivador';
 import type { RepoIA } from './ia';
 import type { RepoPessoal } from './pessoal';
@@ -112,6 +113,13 @@ export function useSaudeDoRobo(): entregas.DocsDaSaude | null {
   useEffect(() => repo.acompanhar(), [repo]);
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo.docs();
+}
+
+/** O SIEG no Fiscal, ao vivo. */
+export function useSieg(): RepoSieg {
+  const repo = repoDoSieg();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
 }
 
 /** O arquivador (o "Arquivar agora"), ao vivo: o ponto do PC e os últimos pedidos. */

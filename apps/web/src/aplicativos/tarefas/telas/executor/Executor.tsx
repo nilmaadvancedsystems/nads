@@ -21,6 +21,7 @@ import { ListaDoQueFalta, type ItemQueFalta } from './partes/OQueFalta';
 import { MenuDaRotina, type GrupoDoMenu } from './partes/MenuDaRotina';
 import { InssDaEtapa } from './partes/InssDaEtapa';
 import { RazaoDaEtapa } from './partes/RazaoDaEtapa';
+import { SiegDaEtapa } from './partes/SiegDaEtapa';
 import { useInssDaEtapa } from './useInssDaEtapa';
 import { useRazaoDaEtapa } from './useRazaoDaEtapa';
 
@@ -252,6 +253,7 @@ export function Executor() {
                   <h3>{vm.etapa.checklistDaFolha ? 'Contabilização da Folha' : vm.etapa.nome}</h3>
                   {folha.itens.length > 0 && <span className="folha-check-qtd">{folha.itens.filter(i => i.marcado).length}/{folha.itens.length}</span>}
                 </div>
+                {vm.etapa.sieg && vm.empresa.codigo != null && <SiegDaEtapa tipo={vm.etapa.sieg} codigo={String(vm.empresa.codigo)} competencia={vm.competencia} />}
                 {folha.itens.length ? (
                   <ul className="folha-check-lista">
                     {folha.itens.map(i => (

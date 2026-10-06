@@ -13,6 +13,8 @@ import { criarDriveFirestore } from './drive.firestore';
 import { criarSessaoEntregas, type SessaoEntregas } from './entregas.firestore';
 import { criarGmailFirestore } from './gmail.firestore';
 import { criarArquivadorMemoria, type RepoArquivador } from './arquivador';
+import { criarSiegMemoria, type RepoSieg } from './sieg';
+import { criarSiegFirestore } from './sieg.firestore';
 import { criarArquivadorFirestore } from './arquivador.firestore';
 import { criarIAMemoria, type RepoIA } from './ia';
 import { criarIAFirestore } from './ia.firestore';
@@ -157,6 +159,14 @@ export function repoPessoal(): RepoPessoal {
     pessoal = noBanco ? criarPessoalFirestore(() => { const q = quemPede(); return q ? { uid: q.uid, email: q.email } : null; }) : criarPessoalMemoria();
   }
   return pessoal;
+}
+
+let sieg: RepoSieg | null = null;
+
+/** O SIEG no Fiscal: as notas do mês e a sequência das saídas (o robô do PC do escritório). */
+export function repoDoSieg(): RepoSieg {
+  if (!sieg) sieg = noBanco ? criarSiegFirestore(() => { const q = quemPede(); return q ? { nome: q.nome, uid: q.uid } : null; }) : criarSiegMemoria();
+  return sieg;
 }
 
 let arquivador: RepoArquivador | null = null;

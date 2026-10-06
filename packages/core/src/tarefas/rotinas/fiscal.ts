@@ -9,8 +9,8 @@
 import type { Etapa, ItemDoChecklist, Rotina } from '../tipos';
 
 const item = (id: string, texto: string, mais: Omit<ItemDoChecklist, 'id' | 'texto'> = {}): ItemDoChecklist => ({ id, texto, ...mais });
-const etapa = (id: string, secao: string, nome: string, descricao: string, checklist: ItemDoChecklist[]): Etapa => ({
-  id, secao, nome, descricao, ferramenta: null, verificacao: 'manual', objecoes: [], checklist,
+const etapa = (id: string, secao: string, nome: string, descricao: string, checklist: ItemDoChecklist[], mais: Partial<Etapa> = {}): Etapa => ({
+  id, secao, nome, descricao, ferramenta: null, verificacao: 'manual', objecoes: [], checklist, ...mais,
 });
 
 export const ROTINA_FISCAL: Rotina = {
@@ -20,7 +20,7 @@ export const ROTINA_FISCAL: Rotina = {
     etapa('fiscal-inicial', 'Importação de Notas', 'Inicial', 'Baixe as notas do mês no SIEG e receba as saídas.', [
       item('sieg', 'Download SIEG', { link: { rotulo: 'SIEG - Login', url: 'https://auth.sieg.com/login' } }),
       item('recebimento-saidas', 'Recebimento de Saídas'),
-    ]),
+    ], { sieg: 'contagem' }),
     etapa('fiscal-importacao', 'Importação de Notas', 'Importação no Alterdata', 'Importe as notas no Alterdata.', [
       item('entradas', 'Entradas'),
       item('saidas', 'Saídas'),
@@ -32,7 +32,7 @@ export const ROTINA_FISCAL: Rotina = {
     etapa('fiscal-conf-saidas', 'Conferência', 'Saídas', 'Confira a sequência e as notas de saída.', [
       item('sequencia-saidas', 'Sequência de Saídas'),
       item('conferencia-nfs', 'Conferência das Notas Fiscais', { aviso: 'Se atentar caso os produtos sejam Monofásico, ST, Imune ou Isento. Observar cancelamentos.' }),
-    ]),
+    ], { sieg: 'saidas' }),
     etapa('fiscal-conf-entradas', 'Conferência', 'Entradas', 'Confira o faturamento, a tributação e o SINTEGRA.', [
       item('faturamento-x-emitidas', 'Conferência de Faturamento x Notas Emitidas'),
       item('tributacao-entradas', 'Tributação das Entradas'),
