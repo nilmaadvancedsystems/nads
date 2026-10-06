@@ -88,7 +88,10 @@ function PainelDoEmail({ vm, x }: { vm: VmCaixa; x: e.EmailDaCaixa }) {
               <p><b>{x.nome || x.remetente}</b> <span className="fraco">&lt;{x.remetente}&gt;</span></p>
               <p className="fraco">{'Para ' + (m?.para || 'a caixa do escritório')}{m?.cc ? ' · Cc ' + m.cc : ''}</p>
               <p className="fraco">{x.em ? new Date(x.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : ''}
-                {x.clienteNome && <> · <span className="badge badge-neutral">{x.clienteNome}</span></>}</p>
+                {x.clienteNome && <> · <span className="badge badge-neutral">{x.clienteNome}</span>
+                  {/* marcou a empresa errada (Vitor, 06/10/2026): tira o remetente dela e o e-mail volta para Sem cliente */}
+                  <button type="button" className="btn btn-ghost gmail-desligar" onClick={() => void vm.desligar(x).then(ok => { if (ok) fechar(); })}
+                    title={'Não é de ' + x.clienteNome + ': tirar e escolher de novo'}><Icone nome="x" />Não é deste cliente</button></>}</p>
             </div>
             <div className="gmail-de-acoes">
               {!semDono && (salvo

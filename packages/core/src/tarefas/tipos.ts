@@ -91,7 +91,21 @@ export interface ItemDoChecklist {
   link?: { rotulo: string; url: string };
   /** um cuidado (aparece em destaque embaixo) */
   aviso?: string;
+  /** o painel da tarefa (a "checklist disfarçada" do Fiscal, 06/10/2026): a tabelinha e o gráfico do que ela confere */
+  painel?: PainelDaTarefa;
+  /** os relatórios do Alterdata que a tarefa usa e que dá para importar dali (vão para a Conferência, a do Contábil) */
+  importar?: RelatorioImportavel[];
 }
+
+/** Os relatórios de notas que a Conferência importa. */
+export type RelatorioImportavel = 'entradas' | 'saidas' | 'tomados' | 'prestados';
+
+/**
+ * O que o painel de uma tarefa mostra: a contagem do SIEG, a sequência das saídas, as notas por CFOP e por dia, o
+ * faturamento × SIEG, as retenções, a receita e a composição da base.
+ */
+export type PainelDaTarefa = 'sieg' | 'recebimento' | 'sequencia' | 'saidas' | 'faturamento' | 'entradas' | 'entradas-sieg'
+  | 'iss-retido' | 'inss-retido' | 'receitas' | 'base' | 'icms' | 'prestados' | 'irpj';
 
 export interface Rotina { departamento: Departamento; etapas: Etapa[] }
 

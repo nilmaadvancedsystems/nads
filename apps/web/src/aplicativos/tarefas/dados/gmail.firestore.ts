@@ -7,7 +7,7 @@
 //   solicitacoesEmail       os pedidos ao robô: verificar, cancelar, salvar no Drive, responder (mesmos campos das Pendências)
 //   leiturasGmail           o texto inteiro de um e-mail (o robô responde no próprio pedido; cada um lê só o seu)
 import { entregas as e } from '@nads/core';
-import { addDoc as addDocBruto, arrayUnion, collection, doc, onSnapshot, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
+import { addDoc as addDocBruto, arrayRemove, arrayUnion, collection, doc, onSnapshot, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 
@@ -93,6 +93,13 @@ export function criarGmailFirestore(quem: () => (e.Quem | null), competencia: ()
       const endereco = email.trim().toLowerCase();
       if (c && !c.email) await updateDoc(ref, { email: endereco });
       else await updateDoc(ref, { emails: arrayUnion(endereco) });
+    },
+    async desligarRemetente(mensagemId, clienteId, email) {
+      const c = clientes.lista.find(x => x.id === clienteId);
+      const endereco = email.trim().toLowerCase();
+      // o remetente sai do cadastro (o principal só se era ele); o robô faz o resto (a caixa, a memória e o mês)
+      await updateDoc(doc(db, 'clientes', clienteId), c && c.email.trim().toLowerCase() === endereco ? { email: '', emails: arrayRemove(endereco) } : { emails: arrayRemove(endereco) });
+      await pedir({ tipo: 'desligar', mensagemId, clienteId, clienteNome: c?.nome || '', remetente: endereco });
     },
     async ignorar(email) {
       const q = pessoa();

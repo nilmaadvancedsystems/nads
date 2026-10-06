@@ -38,3 +38,16 @@ export function useSaidasDaConferencia(nome: string): c.Nota[] | null {
   const achada = repo.empresaPelaRota(formatos.slug(nome));
   return repo.obter(achada?.nome || nome)?.saidas || [];
 }
+
+/**
+ * As notas importadas na Conferência (Entradas, Saídas, Tomados, Prestados), para o painel das tarefas do Fiscal (a
+ * "checklist disfarçada", Vitor 06/10/2026). Só lê. null = carregando; sem nome, nem liga a Conferência.
+ */
+export function useNotasDaConferencia(nome: string): { entradas: c.Nota[]; saidas: c.Nota[]; tomados: c.NotaServico[]; prestados: c.NotaServico[] } | null {
+  const repo = nome ? repoDaConferencia() : null;
+  useSyncExternalStore(repo ? repo.assinar : semAssinar, repo ? repo.versao : versaoZero, repo ? repo.versao : versaoZero);
+  if (!repo || !repo.pronto()) return null;
+  const achada = repo.empresaPelaRota(formatos.slug(nome));
+  const e = repo.obter(achada?.nome || nome);
+  return { entradas: e?.entradas || [], saidas: e?.saidas || [], tomados: e?.servTomados || [], prestados: e?.servPrestados || [] };
+}

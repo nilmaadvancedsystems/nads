@@ -28,7 +28,7 @@ export function quandoFoi(iso: string, agora = Date.now()): string {
 
 export function useCaixaDoRobo() {
   const repo = useGmailDoEntregas();
-  const { toast } = useRetorno();
+  const { toast, modal } = useRetorno();
   const operador = useOperador().operador;
   const admin = !!operador?.admin;
   const caixas = e.caixasDaPessoa({ admin, departamento: operador?.departamento });
@@ -89,6 +89,17 @@ export function useCaixaDoRobo() {
     cancelar: () => tentar('parar', () => repo.cancelar(), 'Pedido para parar na fila do robô.'),
     salvarNoDrive: (x: e.EmailDaCaixa, clienteId?: string | null) =>
       tentar('pedir', () => repo.salvarNoDrive(x.mensagemId, clienteId ?? x.clienteId), 'O robô vai salvar os anexos no Drive.'),
+    /** "Não é deste cliente": tira o remetente do cliente e o e-mail volta para "sem cliente" */
+    async desligar(x: e.EmailDaCaixa) {
+      if (!x.clienteId) return false;
+      const ok = await modal({ icone: 'alert', titulo: 'Não é de ' + (x.clienteNome || 'deste cliente') + '?',
+        texto: x.remetente + ' sai do cadastro de ' + (x.clienteNome || 'cliente') + ' e este e-mail volta para Sem cliente (o que o robô marcou no mês por causa dele é desfeito). Depois, escolha o cliente certo lá.',
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Tirar do cliente', valor: true, variante: 'btn-primary' }] });
+      if (!ok) return false;
+      await tentar('tirar do cliente', () => repo.desligarRemetente(x.mensagemId, x.clienteId as string, x.remetente),
+        x.remetente + ' não é mais de ' + (x.clienteNome || 'cliente') + '. O e-mail volta para Sem cliente em instantes.');
+      return true;
+    },
     ligar: (x: e.EmailDaCaixa, clienteId: string) => {
       const c = clientes.find(k => k.id === clienteId);
       return tentar('ligar o remetente', () => repo.ligarRemetente(clienteId, x.remetente), x.remetente + ' agora é de ' + (c?.nome || 'cliente') + '.');
