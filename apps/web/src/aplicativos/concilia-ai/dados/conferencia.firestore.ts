@@ -10,7 +10,11 @@
 // Este é o ÚNICO arquivo do nads que fala com o Firebase (a trava scripts/conexoes.mjs garante).
 import { conferencia as c, formatos } from '@nads/core';
 import { initializeApp } from 'firebase/app';
-import { collection, doc, initializeFirestore, onSnapshot, setDoc } from 'firebase/firestore';
+import { collection, doc, initializeFirestore, onSnapshot, setDoc as setDocBruto } from 'firebase/firestore';
+import { guardar } from '../../../comum/modoDesenvolvedor';
+
+// a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
+const setDoc = guardar(setDocBruto) as typeof setDocBruto;
 
 /** Configuração web pública do projeto conferencia-nilma (a mesma do conferencia.html). */
 const CONFIG_CONFERENCIA = {

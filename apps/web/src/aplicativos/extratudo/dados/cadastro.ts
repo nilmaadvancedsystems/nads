@@ -3,8 +3,9 @@
 // `cadastro` (ver cadastro.firestore.ts); nos exemplos, neste navegador. Criado quando alguém precisa dele.
 import { demo, empresas } from '@nads/core';
 import { portaCadastroFirestore } from './cadastro.firestore';
+import { ligadoAoBanco } from '../../../comum/modoDesenvolvedor';
 
-const noBanco = import.meta.env.VITE_FONTE === 'banco';
+const noBanco = ligadoAoBanco(); // no modo desenvolvedor, os dados de exemplo (nada vai para o banco)
 
 let repo: empresas.cadastro.RepoCadastro | null = null;
 

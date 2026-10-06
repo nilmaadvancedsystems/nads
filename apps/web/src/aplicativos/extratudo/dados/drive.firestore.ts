@@ -17,7 +17,11 @@
 import { creditor as cr, entregas } from '@nads/core';
 import { getApps, initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
-import { addDoc, collection, doc, getDoc, getDocs, getFirestore, limit, onSnapshot, query, serverTimestamp, where } from 'firebase/firestore';
+import { addDoc as addDocBruto, collection, doc, getDoc, getDocs, getFirestore, limit, onSnapshot, query, serverTimestamp, where } from 'firebase/firestore';
+import { guardar } from '../../../comum/modoDesenvolvedor';
+
+// a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
+const addDoc = guardar(addDocBruto) as typeof addDocBruto;
 
 /** Configuração web pública do projeto do Entregas (a mesma do app Pendências). */
 const CONFIG_ENTREGAS = {

@@ -22,8 +22,9 @@ import { criarSaudeMemoria, type RepoSaude } from './saude';
 import { criarSaudeFirestore } from './saude.firestore';
 import { balanceteNoEntregas, clientesNoEntregas, conferenciaNoBanco, gravarLeituraDeContas, ouvirLeituraDeContas, portaCadastroFirestore } from './cadastro.firestore';
 import { criarRepoTarefasFirestore, extratorNoBanco, type RepoTarefasFirestore } from './tarefas.firestore';
+import { ligadoAoBanco } from '../../../comum/modoDesenvolvedor';
 
-export const noBanco = import.meta.env.VITE_FONTE === 'banco';
+export const noBanco = ligadoAoBanco(); // no modo desenvolvedor, os dados de exemplo (nada vai para o banco)
 
 let repo: tarefas.RepoTarefas | null = null;
 let sessao: SessaoEntregas | null = null;

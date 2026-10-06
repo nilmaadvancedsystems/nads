@@ -9,9 +9,14 @@
 //   - robo/arquivador.rotina: a rotina rodando por fora do botão (a das 9h), que o arquivador manda no ponto;
 //   - robo/arquivadorConversa (só leitura): a conversa do Claude que roda a rotina e o relatório do dia;
 //   - arquivamentos/{execucao}/detalhe/tudo (só leitura, quando pedem): o relatório e a mensagem final da execução.
-import { addDoc, collection, doc, getDoc, limit, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore';
+import { addDoc as addDocBruto, collection, doc, getDoc, limit, onSnapshot, orderBy, query, updateDoc as updateDocBruto } from 'firebase/firestore';
 import type { ConversaDaRotina, DetalheDaExecucao, EstadoDoArquivador, ExecucaoPublicada, PedidoDeArquivo, RepoArquivador, ResultadoDoArquivamento, RotinaRodando } from './arquivador';
 import { bancoDoEntregas } from './entregas.firestore';
+import { guardar } from '../../../comum/modoDesenvolvedor';
+
+// a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
+const addDoc = guardar(addDocBruto) as typeof addDocBruto;
+const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
 
 type Quem = { nome: string; uid: string } | null;
 const texto = (v: unknown) => (v == null ? '' : String(v));

@@ -8,8 +8,14 @@
 //                                                    robô grava no Drive, apaga os pedaços e responde no próprio envio.
 // As partes de uma pasta só são lidas de novo quando o robô atualiza a pasta (atualizadoEm), como nas Pendências.
 import { entregas as e } from '@nads/core';
-import { addDoc, Bytes, collection, doc, getDocs, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import { addDoc as addDocBruto, Bytes, collection, doc, getDocs, onSnapshot, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
+import { guardar } from '../../../comum/modoDesenvolvedor';
+
+// a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
+const setDoc = guardar(setDocBruto) as typeof setDocBruto;
+const addDoc = guardar(addDocBruto) as typeof addDocBruto;
+const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
 
 interface Pasta { carregados: boolean; itens: e.ItemDoDrive[]; atualizadoEm: string }
 

@@ -2,6 +2,7 @@
 import { Casca, MenuSuspenso } from '@nads/ui';
 import type { ReactNode } from 'react';
 import { LugarDasAcoes, useTrilhaDoTopo } from '../../../comum/topo';
+import { useAvisoDeBloqueio } from '../../../comum/modoDesenvolvedor';
 import type { IdAplicacao } from './navegacao';
 import { useCascaTarefas } from './useCascaTarefas';
 
@@ -11,6 +12,8 @@ function AvatarDaPessoa({ vm }: { vm: ReturnType<typeof useCascaTarefas> }) {
     <MenuSuspenso rotulo={vm.perfil.foto ? <img className="gh-avatar-foto" src={vm.perfil.foto} alt="" /> : vm.perfil.iniciais} className={'gh-avatar' + (vm.naPessoal ? ' ativo' : '')} dica={vm.perfil.nome} titulo={vm.perfil.nome} direita
       itens={[
         { rotulo: 'Minha conta', icone: 'usuario', onClick: () => vm.abrirPessoal('conta') },
+        // só ver tudo, sem alterar nada (Vitor, 06/10/2026)
+        { rotulo: 'Modo desenvolvedor', icone: 'settings', marcado: vm.dev, onClick: () => vm.setDev(!vm.dev) },
         'separador',
         { rotulo: vm.perfil.sair, icone: 'logOut', onClick: vm.trocarPessoa },
       ]} />
@@ -20,6 +23,7 @@ function AvatarDaPessoa({ vm }: { vm: ReturnType<typeof useCascaTarefas> }) {
 export function CascaTarefas({ app, pagina, telaInteira, children }: { app: IdAplicacao; pagina: string; telaInteira?: boolean; children: ReactNode }) {
   const vm = useCascaTarefas(app, pagina);
   const trilha = useTrilhaDoTopo();
+  useAvisoDeBloqueio();
   return (
     <Casca sistema="Tarefas" temaNaGaveta={false} empresa={vm.empresa} versao={vm.versao} trilha={trilha} secoes={vm.secoes} paginas={vm.paginas} titulo={telaInteira ? '' : vm.titulo}
       lateral={telaInteira || vm.comAbas ? 'nenhuma' : undefined} larga={telaInteira}

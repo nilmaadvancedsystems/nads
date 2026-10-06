@@ -25,6 +25,7 @@ import { useBancosOk } from './useBancosOk';
 import { useDriveDaLinha } from './useDriveDaLinha';
 import { usePedirExtratos } from './usePedirExtratos';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../../../comum/desenvolvimento';
+import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
 
 type Vm = ReturnType<typeof useImportacao>;
 type Lado = { qtdArquivos: number; qtdLancamentos: number; lendo: boolean };
@@ -508,6 +509,22 @@ const ABAS_DA_IMPORTACAO: { id: AbaImportacao; rotulo: string; icone: AbaDaEtapa
 
 export function TarefaExtratos() {
   const vm = useImportacao();
+  // o ⚡ do modo desenvolvedor na Tarefa (Vitor, 06/10/2026): os dados de teste (no modo, os dados são hipotéticos)
+  const implantar = useRef(vm.implantarDadosDeTeste);
+  implantar.current = vm.implantarDadosDeTeste;
+  const ehTeste = vm.ehEmpresaDeTeste || modoDesenvolvedor();
+  const primeiroBanco = vm.bancos[0]?.id;
+  const apagarTeste = vm.apagarDadosDeTeste;
+  useEffect(() => {
+    const ouvir = (e: MessageEvent) => {
+      const d = e.data as { nads?: string; tipo?: string } | null;
+      if (e.source !== window.parent || e.origin !== window.location.origin || d?.nads !== 'dados-de-teste' || !ehTeste) return;
+      if (d.tipo === 'apagar') { apagarTeste(); return; }
+      if (primeiroBanco && (d.tipo === 'extratos' || d.tipo === 'bate' || d.tipo === 'cheque' || d.tipo === 'erros')) void implantar.current(primeiroBanco, d.tipo);
+    };
+    window.addEventListener('message', ouvir);
+    return () => window.removeEventListener('message', ouvir);
+  }, [ehTeste, primeiroBanco, apagarTeste]);
   const s = useSessao();
   // o "Resolver" da Tarefas: vai até o banco (abre a linha) ou a aba da importação e destaca
   const ponte = usePonteDaTarefa(vm.competencia, alvo => {

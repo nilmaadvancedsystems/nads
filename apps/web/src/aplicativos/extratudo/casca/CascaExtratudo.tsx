@@ -3,6 +3,7 @@
 import { Casca } from '@nads/ui';
 import type { ReactNode } from 'react';
 import { LugarDasAcoes } from '../../../comum/topo';
+import { useAvisoDeBloqueio } from '../../../comum/modoDesenvolvedor';
 import { useCascaExtratudo, type PropsCascaExtratudo } from './useCascaExtratudo';
 
 export function CascaExtratudo({ acoes, acima, children, ...p }: PropsCascaExtratudo & {
@@ -13,6 +14,7 @@ export function CascaExtratudo({ acoes, acima, children, ...p }: PropsCascaExtra
   children: ReactNode;
 }) {
   const vm = useCascaExtratudo(p);
+  useAvisoDeBloqueio();
   return (
     <Casca sistema="Extratudo" empresa={vm.empresa} versao={vm.versao} secoes={vm.secoes} paginas={vm.paginas} titulo={vm.titulo}
       acoes={<>{acoes}<LugarDasAcoes /></>} onSecao={vm.onSecao} onPagina={vm.onPagina} onInicio={vm.inicio} onEmpresa={vm.empresaInicio}>

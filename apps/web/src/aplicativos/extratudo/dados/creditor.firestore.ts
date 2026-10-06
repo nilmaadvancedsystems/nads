@@ -10,8 +10,12 @@
 // Cuidados, os mesmos da Conferência: carrega só a empresa aberta; nada é gravado antes de as duas
 // leituras chegarem; grava só o que mudou; se falhar, avisa 'Não deu para salvar "…" na nuvem: …'.
 import { creditor as cr, formatos } from '@nads/core';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc as setDocBruto } from 'firebase/firestore';
 import { bancoDaConferencia } from './extrator.firestore';
+import { guardar } from '../../../comum/modoDesenvolvedor';
+
+// a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
+const setDoc = guardar(setDocBruto) as typeof setDocBruto;
 
 type Aviso = (mensagem: string) => void;
 

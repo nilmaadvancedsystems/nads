@@ -11,7 +11,11 @@
 // Este, o creditor.firestore.ts (ao lado) e os dados/*.firestore.ts dos outros aplicativos são os únicos arquivos do nads que falam com o Firebase.
 import { extrator as x, formatos, type empresas } from '@nads/core';
 import { getApps, initializeApp } from 'firebase/app';
-import { collection, doc, getFirestore, initializeFirestore, onSnapshot, writeBatch, type Firestore } from 'firebase/firestore';
+import { collection, doc, getFirestore, initializeFirestore, onSnapshot, writeBatch as writeBatchBruto, type Firestore } from 'firebase/firestore';
+import { guardarLote } from '../../../comum/modoDesenvolvedor';
+
+// a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
+const writeBatch = ((...a: Parameters<typeof writeBatchBruto>) => guardarLote(writeBatchBruto(...a))) as typeof writeBatchBruto;
 
 /** Configuração web pública do projeto conferencia-nilma (a mesma da Conferência). */
 const CONFIG_CONFERENCIA = {

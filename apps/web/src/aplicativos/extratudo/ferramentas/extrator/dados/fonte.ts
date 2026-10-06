@@ -8,8 +8,9 @@
 import { creditor, demo, empresas, extrator } from '@nads/core';
 import { criarDriveFirestore } from '../../../dados/drive.firestore';
 import { criarRepoExtratorFirestore, type RepoExtratorFirestore } from '../../../dados/extrator.firestore';
+import { ligadoAoBanco } from '../../../../../comum/modoDesenvolvedor';
 
-export const noBanco = import.meta.env.VITE_FONTE === 'banco';
+export const noBanco = ligadoAoBanco(); // no modo desenvolvedor, os dados de exemplo (nada vai para o banco)
 
 let repo: extrator.RepoExtrator | null = null;
 let drive: creditor.RepoDrive | null = null;

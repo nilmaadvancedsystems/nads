@@ -8,8 +8,12 @@
 // A lógica fica no core (empresas.cadastro.criarRepoCadastro); aqui é só a porta.
 import type { empresas } from '@nads/core';
 import { getAuth } from 'firebase/auth';
-import { collection, doc, getFirestore, initializeFirestore, onSnapshot, writeBatch, type Firestore } from 'firebase/firestore';
+import { collection, doc, getFirestore, initializeFirestore, onSnapshot, writeBatch as writeBatchBruto, type Firestore } from 'firebase/firestore';
 import { appDoEntregas } from './drive.firestore';
+import { guardarLote } from '../../../comum/modoDesenvolvedor';
+
+// a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
+const writeBatch = ((...a: Parameters<typeof writeBatchBruto>) => guardarLote(writeBatchBruto(...a))) as typeof writeBatchBruto;
 
 function bancoDoEntregas(): Firestore {
   const app = appDoEntregas();

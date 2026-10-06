@@ -10,9 +10,14 @@
 // aprende pelo Drive e pelos extratos). E o interruptor dessa leitura do robô: config/indiceDrive.contas (só o
 // admin grava, pela regra do Entregas; a gravação mexe só nesse campo).
 import { formatos, type empresas } from '@nads/core';
-import { collection, doc, getDoc, getDocs, onSnapshot, setDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, onSnapshot, setDoc as setDocBruto, writeBatch as writeBatchBruto } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 import { bancoDaConferencia } from './tarefas.firestore';
+import { guardar, guardarLote } from '../../../comum/modoDesenvolvedor';
+
+// a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
+const setDoc = guardar(setDocBruto) as typeof setDocBruto;
+const writeBatch = ((...a: Parameters<typeof writeBatchBruto>) => guardarLote(writeBatchBruto(...a))) as typeof writeBatchBruto;
 
 export function portaCadastroFirestore(): empresas.cadastro.PortaCadastro {
   const db = bancoDoEntregas();

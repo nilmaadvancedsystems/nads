@@ -7,8 +7,14 @@
 //   solicitacoesEmail       os pedidos ao robô: verificar, cancelar, salvar no Drive, responder (mesmos campos das Pendências)
 //   leiturasGmail           o texto inteiro de um e-mail (o robô responde no próprio pedido; cada um lê só o seu)
 import { entregas as e } from '@nads/core';
-import { addDoc, arrayUnion, collection, doc, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import { addDoc as addDocBruto, arrayUnion, collection, doc, onSnapshot, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
+import { guardar } from '../../../comum/modoDesenvolvedor';
+
+// a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
+const setDoc = guardar(setDocBruto) as typeof setDocBruto;
+const addDoc = guardar(addDocBruto) as typeof addDocBruto;
+const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
 
 const ESPERA_LEITURA_MS = 90 * 1000;
 

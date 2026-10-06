@@ -8,7 +8,11 @@
 import { usuarios } from '@nads/core';
 import { deleteApp, getApps, initializeApp } from 'firebase/app';
 import { createUserWithEmailAndPassword, EmailAuthProvider, getAuth, onAuthStateChanged, reauthenticateWithCredential, signInWithEmailAndPassword, signOut, updatePassword } from 'firebase/auth';
-import { doc, getDoc, getFirestore, initializeFirestore, updateDoc, type Firestore } from 'firebase/firestore';
+import { doc, getDoc, getFirestore, initializeFirestore, updateDoc as updateDocBruto, type Firestore } from 'firebase/firestore';
+import { guardar } from '../../../comum/modoDesenvolvedor';
+
+// a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
+const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
 
 /** Configuração web pública do projeto do Entregas (a mesma das páginas de lá). */
 const CONFIG_ENTREGAS = {

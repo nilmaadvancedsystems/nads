@@ -5,9 +5,15 @@
 //     ({papel: 'model', texto, estado: gerando/pronta/erro, consultando, erro, acoes});
 //   - robo/estado.ia (só leitura): se a IA está de pé — o motor (claude no PC do escritório, gemini na nuvem) e o
 //     ponto que ele bate. Quem não pode ler robo/estado (só admin, contábil e fiscal) vê a IA como desligada.
-import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc, where } from 'firebase/firestore';
+import { addDoc as addDocBruto, collection, deleteDoc as deleteDocBruto, doc, onSnapshot, orderBy, query, updateDoc as updateDocBruto, where } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 import type { ConversaIA, MensagemIA, RepoIA } from './ia';
+import { guardar } from '../../../comum/modoDesenvolvedor';
+
+// a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
+const addDoc = guardar(addDocBruto) as typeof addDocBruto;
+const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
+const deleteDoc = guardar(deleteDocBruto) as typeof deleteDocBruto;
 
 type Quem = { uid: string; email: string } | null;
 const texto = (v: unknown) => (v == null ? '' : String(v));

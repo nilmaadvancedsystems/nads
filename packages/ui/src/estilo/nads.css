@@ -2902,3 +2902,6 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .arquivador-etapas li.atual{color:var(--ink);}
 .arquivador-etapas li.atual svg{color:var(--accent);animation:spin 1.4s linear infinite !important;}
 .arquivador-etapas li.erro svg{color:var(--danger);}
+/* o Avançar do modo desenvolvedor: o mesmo botão do Próximo, em azul (Vitor, 06/10/2026) */
+.gh-topo-btn.gh-topo-proximo.dev{background:var(--info);}
+.gh-topo-btn.gh-topo-proximo.dev:hover:not(:disabled){background:var(--info);filter:brightness(1.1);}

@@ -5,9 +5,15 @@
 //   - usuarios/{uid}/notas: as Anotações (as mesmas do Entregas) — só a dona lê e grava;
 //   - usuarios/{uid}.nadsArquivados: os itens da caixa de entrada que ela arquivou (o dono mexe no próprio documento,
 //     menos em roles/email/criadoEm).
-import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
+import { addDoc as addDocBruto, arrayRemove, arrayUnion, collection, deleteDoc as deleteDocBruto, doc, onSnapshot, query, updateDoc as updateDocBruto, where } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 import { cobrancasRecentes, ordenarNotas, type CobrancaMinha, type Nota, type RepoPessoal, type TipoDeCobranca } from './pessoal';
+import { guardar } from '../../../comum/modoDesenvolvedor';
+
+// a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
+const addDoc = guardar(addDocBruto) as typeof addDocBruto;
+const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
+const deleteDoc = guardar(deleteDocBruto) as typeof deleteDocBruto;
 
 type Quem = { uid: string; email: string } | null;
 

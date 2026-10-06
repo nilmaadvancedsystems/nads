@@ -4,8 +4,9 @@
 // O repositório só é criado quando alguém abre a Conferência, e uma vez só.
 import { conferencia, demo } from '@nads/core';
 import { criarRepoConferenciaFirestore, type RepoConferenciaFirestore } from './conferencia.firestore';
+import { ligadoAoBanco } from '../../../comum/modoDesenvolvedor';
 
-export const noBanco = import.meta.env.VITE_FONTE === 'banco';
+export const noBanco = ligadoAoBanco(); // no modo desenvolvedor, os dados de exemplo (nada vai para o banco)
 
 let repo: conferencia.RepoConferencia | null = null;
 

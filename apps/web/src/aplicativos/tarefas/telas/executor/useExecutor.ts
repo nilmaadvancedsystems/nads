@@ -16,6 +16,7 @@ import { caminhoDaEmpresa, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../comum/desenvolvimento';
 import { useDepartamentoDaTela } from '../../casca/departamento';
+import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 
 /**
  * Onde cada aplicativo mora. O Extratudo vem junto no site da Tarefas (mesmo endereço: o login do Entregas
@@ -41,6 +42,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const navegar = useNavigate();
   const { toast, modal, aviso: avisar } = useRetorno();
   const op = useOperador().operador as Operador;
+  // o modo desenvolvedor (Vitor, 06/10/2026): navega por todas as etapas, sem marcar nem desmarcar nada
+  const [dev] = useModoDesenvolvedor();
   // a rotina do departamento de quem está trabalhando (Contábil ou Fiscal)
   const { dep, comDep, lista } = useDepartamentoDaTela();
   const rotina = t.rotinaDo(dep) || t.ROTINA_CONTABIL;
@@ -74,7 +77,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   // abriu o período: grava a promessa em cada mês dele (uma vez)
   const gravouPeriodo = useRef('');
   useEffect(() => {
-    if (!varios || !carregada || !empresa || gravouPeriodo.current === periodo) return;
+    if (dev || !varios || !carregada || !empresa || gravouPeriodo.current === periodo) return;
     gravouPeriodo.current = periodo;
     for (const c of meses) {
       if (exDe[c] && exDe[c].periodo !== periodo) {
@@ -89,7 +92,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   // rever uma etapa já concluída (Vitor, 05/10/2026): ela abre como estava, com os checks, tudo ofuscado; só o Editar
   // (na barra de cima) desmarca e a faz voltar a ser a da vez
   const [vendo, setVendo] = useState<string | null>(null);
-  const revista = vendo && vendo !== etapa?.id && meses.some(c => concluidaEm(vendo, c)) ? rotina.etapas.find(e => e.id === vendo) || null : null;
+  const revista = vendo && vendo !== etapa?.id && (dev || meses.some(c => concluidaEm(vendo, c))) ? rotina.etapas.find(e => e.id === vendo) || null : null;
   const vista = revista || etapa;
   const fv = vista?.ferramenta || null;
   // a etapa "só quando adicionada" (o Creditor) trabalha os meses em que entrou: os do caixa com CRÉD.LIQ.COBRANÇA
@@ -105,7 +108,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const iniciadas = useRef(new Set<string>());
   const chaveDosAlvos = alvos.join(',');
   useEffect(() => {
-    if (!carregada || !etapa) return;
+    if (!carregada || !etapa || dev) return;
     for (const c of chaveDosAlvos.split(',').filter(Boolean)) {
       const k = etapa.id + '|' + c;
       if (iniciadas.current.has(k) || !exDe[c]) continue;
@@ -146,6 +149,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
 
   /** Clique numa etapa do checklist: a concluída abre para rever (sem desmarcar); a da vez volta para ela. */
   function abrirEtapa(id: string) {
+    // desenvolvedor: abre qualquer uma, só para ver
+    if (dev) { setVendo(id === etapa?.id ? null : id); return; }
     if (!etapa || carregando || conferindo) return;
     if (id === etapa.id) { setVendo(null); return; }
     if (meses.some(c => concluidaEm(id, c))) { setVendo(id); setAviso(null); }
@@ -258,10 +263,11 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   // feito: os de trás (tudo concluído); atual: o da vez; travado: os da frente; visto: o que está na tela
   const grupos = secoes.map((nome, i) => {
     const es = rotina.etapas.filter(e => (e.secao || '') === nome);
-    return { nome, feitas: es.filter(e => concluidaNoPeriodo(e.id)).length, total: es.length, feito: i < iDaVez, atual: i === iDaVez, travado: i > iDaVez, visto: i === iVisto };
+    return { nome, feitas: es.filter(e => concluidaNoPeriodo(e.id)).length, total: es.length, feito: i < iDaVez, atual: i === iDaVez, travado: !dev && i > iDaVez, visto: i === iVisto };
   });
   /** Abrir um grupo de trás: revê a primeira etapa dele (sem desmarcar nada); o da vez: volta para a etapa da vez. */
   function abrirGrupo(nome: string) {
+    if (dev) { const p = rotina.etapas.find(e => (e.secao || '') === nome); if (p) setVendo(p.id === etapa?.id ? null : p.id); return; }
     const i = secoes.indexOf(nome);
     if (i < 0 || i > iDaVez) return;
     if (i === iDaVez) { setVendo(null); return; }
@@ -287,7 +293,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     // a etapa na tela: a da vez ou, revendo, a concluída que a pessoa abriu
     etapa: vista, n: vista ? rotina.etapas.findIndex(e => e.id === vista.id) + 1 : 0, total: rotina.etapas.length,
     /** revendo uma etapa concluída: tudo ofuscado, só o Editar */
-    revendo: !!revista,
+    // (no modo desenvolvedor, a etapa da frente aberta para ver não é "concluída": fica livre, sem a barra do Editar)
+    revendo: !!revista && meses.some(c => concluidaEm(revista.id, c)),
     // o Editar pergunta antes de desmarcar (Vitor, 05/10/2026)
     editar: async () => {
       if (!revista) return;
@@ -296,6 +303,14 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       if (ok) await voltarPara(revista.id, true);
     },
     voltarAEtapaDaVez: () => setVendo(null),
+    /** o modo desenvolvedor: só ver (o Avançar azul vai para a próxima etapa sem marcar nada) */
+    dev,
+    temAvancar: dev && !!vista && rotina.etapas.findIndex(e => e.id === vista.id) < rotina.etapas.length - 1,
+    avancar: () => {
+      const i = vista ? rotina.etapas.findIndex(e => e.id === vista.id) : -1;
+      const p = rotina.etapas[i + 1];
+      if (p) setVendo(p.id === etapa?.id ? null : p.id);
+    },
     interrompidaAntes: etapa && ex ? t.estadoDa(ex, etapa.id)?.situacao === 'interrompida' ? t.estadoDa(ex, etapa.id) : null : null,
     // no período, a ferramenta que trabalha vários meses recebe todos (abas por mês); as outras, o mês da vez
     ferramenta: fv && empresa ? { nome: fv.nome, embutir: fv.embutir, requisitos: !!fv.requisitos, url: BASES[fv.app] + fv.caminho(empresas.rotaDaEmpresa(empresa)) + (fv.app === 'extratudo' ? (fv.caminho('').includes('?') ? '&' : '?') + 'competencia=' + compV + mesesV

@@ -8,6 +8,8 @@ import { AberturaN, Alerta, Casca, destacarNaTela, Icone, MenuSuspenso, useCarre
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useBlocker, useParams } from 'react-router';
 import { usePonteDaFerramenta } from '../../../../comum/ponte';
+import { useAvisoDeBloqueio } from '../../../../comum/modoDesenvolvedor';
+import { demo } from '@nads/core';
 import { BASE } from '../../casca/navegacao';
 import { useCascaTarefas } from '../../casca/useCascaTarefas';
 import { useDepartamentoDaTela } from '../../casca/departamento';
@@ -34,6 +36,8 @@ export function Executor() {
   const { empresa: rota = '', competencia: periodo = '' } = useParams();
   const vm = useExecutor(rota, periodo);
   const casca = useCascaTarefas('minhas-empresas', 'empresas');
+  // o modo desenvolvedor: o aviso quando uma gravação é barrada
+  useAvisoDeBloqueio();
   // uma guia só por pessoa, departamento e empresa: a nova pergunta e a anterior volta para a tela inicial (Vitor, 05/10/2026)
   const operador = useOperador().operador;
   const { dep } = useDepartamentoDaTela();
@@ -124,6 +128,10 @@ export function Executor() {
   // o Em lote voltou para a tela da Importação (Vitor, 05/10/2026): o menu é só o dos grupos
   const emLote = null;
   const botoesDaEtapa = vm.etapa && telaPronta && !vm.interrompendo && saida.state !== 'blocked' && !vm.revendo;
+  // o ⚡ dos dados de teste: no modo desenvolvedor (dados hipotéticos) ou na empresa de teste; vai para a ferramenta da
+  // etapa (a Importação implanta)
+  const ehTeste = vm.dev || demo.ehEmpresaDemo(vm.empresa?.nome);
+  const mandarDadosDeTeste = (tipo: string) => iframe.current?.contentWindow?.postMessage({ nads: 'dados-de-teste', tipo }, window.location.origin);
 
   const topo = (
     <>
@@ -144,6 +152,19 @@ export function Executor() {
             {vm.conferindo ? <span className="btn-spinner" /> : <Icone nome="arrowDown" style={{ transform: 'rotate(-90deg)' }} />}
           </button>
         )}
+        {/* modo desenvolvedor (Vitor, 06/10/2026): o ⚡ dos dados de teste e o Avançar azul (vai para a próxima etapa sem marcar nada) */}
+        {vm.dev && (
+          <MenuSuspenso rotulo="" icone="zap" className="gh-topo-btn gh-topo-menu" direita dica="Dados de teste"
+            itens={([
+              ['extratos', 'Extratos do período (1º mês com dia negativo)', 'landmark'], ['bate', 'Razão batendo', 'check'],
+              ['cheque', 'Razão com o cheque especial', 'checkCircle'], ['erros', 'Razão com erros', 'alert'], ['apagar', 'Apagar os dados de teste', 'x'],
+            ] as [string, string, NomeIcone][]).map(([tipo, rotulo, icone]) => ({ rotulo, icone, desabilitado: !ehTeste, onClick: () => mandarDadosDeTeste(tipo) }))} />
+        )}
+        {vm.dev && vm.temAvancar && (
+          <button type="button" className="gh-topo-btn gh-topo-proximo dev" onClick={vm.avancar} title="Avançar (modo desenvolvedor: só ver, não marca nada)" aria-label="Avançar">
+            <Icone nome="arrowDown" style={{ transform: 'rotate(-90deg)' }} />
+          </button>
+        )}
       </nav>
       <span className="gh-topo-sep" aria-hidden="true" />
       <MenuSuspenso rotulo={casca.perfil.foto ? <img className="gh-avatar-foto" src={casca.perfil.foto} alt="" /> : casca.perfil.iniciais} className="gh-avatar" dica={casca.perfil.nome} titulo={casca.perfil.nome} direita
@@ -153,6 +174,7 @@ export function Executor() {
           { rotulo: 'Voltar às empresas', icone: 'home', onClick: vm.sair },
           'separador',
           { rotulo: 'Minha conta', icone: 'usuario', onClick: () => casca.abrirPessoal('conta') },
+          { rotulo: 'Modo desenvolvedor', icone: 'settings', marcado: casca.dev, onClick: () => casca.setDev(!casca.dev) },
           'separador',
           { rotulo: casca.perfil.sair, icone: 'logOut', onClick: casca.trocarPessoa },
         ]} />
@@ -184,7 +206,11 @@ export function Executor() {
         </div>
       ) : (
         <div className="executor-area">
-          {vm.revendo && (
+          {vm.dev && !vm.revendo ? (
+            <div className="alerta-linha">
+              <Alerta titulo="Modo desenvolvedor" texto="Dados hipotéticos: faça o que quiser; nada vai para o banco." />
+            </div>
+          ) : vm.revendo && (
             // revendo uma etapa concluída: a barra de cima avisa e só o Editar mexe (Vitor, 05/10/2026)
             // o Alerta do catálogo (Vitor, 05/10/2026: só as peças que existem)
             // numa linha só (Vitor, 05/10/2026: "o mais horizontal possível"): o título, o texto e os botões à direita

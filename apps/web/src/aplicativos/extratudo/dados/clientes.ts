@@ -4,8 +4,9 @@
 import { clientes as cl, demo, formatos } from '@nads/core';
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { gravarMarcasNoBanco, ouvirMarcasNoBanco } from './clientes.firestore';
+import { ligadoAoBanco } from '../../../comum/modoDesenvolvedor';
 
-const noBanco = import.meta.env.VITE_FONTE === 'banco';
+const noBanco = ligadoAoBanco(); // no modo desenvolvedor, os dados de exemplo (nada vai para o banco)
 const CHAVE_LOCAL = 'nads-clientes-marcas-v1';
 const CHAVE_MENSAGEM = 'nads-clientes-mensagem-v1';
 

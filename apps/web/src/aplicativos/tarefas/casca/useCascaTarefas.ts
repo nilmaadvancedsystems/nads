@@ -7,6 +7,7 @@ import { aplicacao, aplicacoesDe, BASE, caminhoDaPagina, type IdAplicacao } from
 import { useOperador, type Operador } from './operador';
 import { useAcesso } from '../dados/repo';
 import { usePessoal } from '../telas/pessoal/contexto';
+import { useModoDesenvolvedor } from '../../../comum/modoDesenvolvedor';
 
 export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const navegar = useNavigate();
@@ -17,6 +18,8 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const comAbas = app === 'cadastro';
   const pessoal = usePessoal();
   const acesso = useAcesso();
+  // o modo desenvolvedor (no avatar): só ver, sem alterar (Vitor, 06/10/2026)
+  const [dev, setDev] = useModoDesenvolvedor();
   return {
     // a Tarefas não tem uma empresa aberta: a trilha fica só com o caminho (Vitor, 05/10/2026: sem o "Vitor · Sair da
     // conta" — sair fica no avatar)
@@ -38,5 +41,6 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
     /** a Minha página (a janela flutuante da pessoa, como as Configurações do Notion), aberta pelo avatar: um tópico dela */
     abrirPessoal: (topico: string) => pessoal.abrir(topico),
     naPessoal: pessoal.topico !== null,
+    dev, setDev,
   };
 }

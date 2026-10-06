@@ -2,11 +2,13 @@
 import { Casca } from '@nads/ui';
 import type { ReactNode } from 'react';
 import { LugarDasAcoes, useTrilhaDoTopo } from '../../../comum/topo';
+import { useAvisoDeBloqueio } from '../../../comum/modoDesenvolvedor';
 import { useCascaConciliaAi } from './useCascaConciliaAi';
 
 export function CascaConciliaAi({ children }: { children: ReactNode }) {
   const vm = useCascaConciliaAi();
   const trilha = useTrilhaDoTopo();
+  useAvisoDeBloqueio();
   return (
     <Casca
       sistema="Concilia aí"

@@ -11,8 +11,9 @@ import { creditor as cr } from '@nads/core';
 import { codigoDaEmpresa, repoDoCadastro } from '../../../dados/cadastro';
 import { criarRepoCreditorFirestore, type RepoCreditorFirestore } from '../../../dados/creditor.firestore';
 import { criarDriveFirestore } from '../../../dados/drive.firestore';
+import { ligadoAoBanco } from '../../../../../comum/modoDesenvolvedor';
 
-const noBanco = import.meta.env.VITE_FONTE === 'banco';
+const noBanco = ligadoAoBanco(); // no modo desenvolvedor, os dados de exemplo (nada vai para o banco)
 
 let repo: cr.RepoCreditor | null = null;
 /** o do Creditor sozinho (sem o Cadastro por cima): é ele que avisa os erros do banco dele */
