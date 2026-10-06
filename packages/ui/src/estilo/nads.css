@@ -3152,3 +3152,10 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
   .pt-ranking li{grid-template-columns:26px 1fr auto;}
   .pt-ranking li .pt-barra{display:none;}
 }
+/* DP › tabelão (06/10/2026: tudo roda na tabela): a bolinha é o botão que marca a obrigação */
+button.dp-marca{padding:0;background:transparent;cursor:pointer;color:inherit;font:inherit;font-size:11px;font-weight:700;}
+button.dp-marca.a-fazer:hover{border-color:var(--success);background:var(--success-soft);}
+button.dp-marca.feita{background:var(--success-soft);color:var(--success-ink);border:0;}
+button.dp-marca.feita:hover{background:var(--success);color:var(--on-accent);}
+button.dp-marca:disabled{cursor:default;opacity:.6;}
+.dp-linha{cursor:default;}
