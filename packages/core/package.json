@@ -13,6 +13,7 @@
     "./conciliadorzinho": "./src/conciliadorzinho/index.ts",
     "./creditor": "./src/extratudo/creditor/index.ts",
     "./extrator": "./src/extratudo/extrator/index.ts",
+    "./conversor": "./src/extratudo/conversor/index.ts",
     "./usuarios": "./src/usuarios/index.ts",
     "./entregas": "./src/entregas/index.ts",
     "./tarefas": "./src/tarefas/index.ts"

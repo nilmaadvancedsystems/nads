@@ -42,6 +42,8 @@ const SITES = {
   componentes: { site: 'componentes-nilma', nome: 'Componentes', tipo: 'app' },
   extratudo: { site: 'extratudo-nilma', nome: 'Extratudo', tipo: 'app', banco: true },
   tarefas: { site: 'tarefas-nilma', nome: 'Tarefas', tipo: 'app', banco: true },
+  // extrato do banco → .xls, sem banco de dados (Vitor, 06/10/2026)
+  conversor: { site: 'conversor-nilma', nome: 'Conversor', tipo: 'app' },
   'extratudo-entregas': { site: 'extratudo-entregas', nome: 'Extratudo (Entregas)', tipo: 'app', banco: true, aplicativo: 'extratudo', projeto: 'entregas-2e5e2' },
   // viraram ferramentas do Extratudo
   extrator: { site: 'extrator-nilma', nome: 'Extrator', tipo: 'mudou', para: 'extratudo' },
