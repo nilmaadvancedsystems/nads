@@ -2982,9 +2982,13 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .dp-lista-topo .dp-titulo{margin:0;}
 .dp-lista .table-wrap{border:0;border-radius:0;margin:0;}
 .dp-vazio{padding:24px 16px;margin:0;}
+.dp-lista .table-wrap{max-height:none;overflow-x:hidden;}
+.dp-tabela{width:100%;table-layout:auto;}
 .dp-tabela td,.dp-tabela th{white-space:nowrap;}
-.dp-tabela .dp-cliente{min-width:220px;max-width:340px;white-space:normal;}
-.dp-tabela .dp-ob{text-align:center;padding-left:6px;padding-right:6px;}
+.dp-tabela .dp-cliente{white-space:normal;width:100%;}
+.dp-cliente-nome{display:block;font-weight:500;}
+.dp-cliente-info{display:block;font-size:12px;color:var(--ink-muted);margin-top:2px;}
+.dp-tabela .dp-ob{text-align:center;padding-left:1px;padding-right:1px;width:40px;font-size:11px;}
 .dp-linha{cursor:pointer;}
 .dp-linha.feita td{color:var(--ink-muted);}
 .dp-grupo td{background:var(--hover-bg);font-weight:600;font-size:12.5px;}

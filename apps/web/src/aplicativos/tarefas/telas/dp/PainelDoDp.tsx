@@ -115,27 +115,27 @@ export function PainelDoDp() {
                 <table className="dp-tabela">
                   <thead>
                     <tr>
-                      <th>Cód.</th><th>Cliente</th><th>Enquadramento</th><th>Responsável</th><th>Movimento</th><th>REINF</th>
+                      <th>Cód.</th><th>Cliente</th><th>Responsável</th>
                       {vm.obrigacoesDp.map(o => <th key={o.id} className="dp-ob" title={o.nome}>{o.rotulo}</th>)}
-                      <th>Entrega</th><th>Situação</th>
+                      <th>Situação</th>
                     </tr>
                   </thead>
                   <tbody>
                     {vm.grupos.map(g => (
                       <Fragment key={g.nome || 'todos'}>
-                        {g.nome && <tr className="dp-grupo"><td colSpan={8 + vm.obrigacoesDp.length}>{g.nome} <span className="hint">{g.feitas}/{g.linhas.length} concluídos</span></td></tr>}
+                        {g.nome && <tr className="dp-grupo"><td colSpan={4 + vm.obrigacoesDp.length}>{g.nome} <span className="hint">{g.feitas}/{g.linhas.length} concluídos</span></td></tr>}
                         {g.linhas.map(c => (
                           <tr key={c.chave} className={'dp-linha' + (c.concluida ? ' feita' : '')} onClick={() => vm.abrir(c.rota)} title="Abrir a rotina do DP deste cliente">
                             <td className="num fraco">{c.codigo}</td>
-                            <td className="wrap dp-cliente">{c.nomeNaTela}</td>
-                            <td><span className="badge badge-neutral">{c.enquadramento}</span></td>
+                            {/* o enquadramento, o movimento, a REINF e a entrega embaixo do nome (a tabela cabe sem rolar de lado) */}
+                            <td className="dp-cliente">
+                              <span className="dp-cliente-nome">{c.nomeNaTela}</span>
+                              <span className="dp-cliente-info">{[c.enquadramento, c.movimento, c.reinfAutorizada ? 'REINF autorizada' : '', c.entrega].filter(Boolean).join(' · ')}</span>
+                            </td>
                             <td>{c.responsavel ? c.responsavelNome : <span className="fraco">—</span>}</td>
-                            <td>{c.movimento}</td>
-                            <td>{c.reinfAutorizada ? 'Autorizada' : <span className="fraco">Não</span>}</td>
                             {c.obrigacoes.map(o => (
                               <td key={o.id} className="dp-ob"><span className={'dp-marca ' + o.estado} title={MARCA[o.estado].dica}>{MARCA[o.estado].simbolo}</span></td>
                             ))}
-                            <td className="fraco">{c.entrega}</td>
                             <td><span className={'badge ' + (c.concluida ? 'badge-ok' : c.parada ? 'badge-warn' : 'badge-neutral')}>{c.situacao}</span></td>
                           </tr>
                         ))}
