@@ -297,6 +297,8 @@ input[type="checkbox"]:checked::after{
   background:var(--btn-bg);color:var(--ink);border:1px solid var(--btn-border);box-shadow:var(--shadow-xs);
   transition:background 80ms cubic-bezier(.65,0,.35,1),border-color 80ms cubic-bezier(.65,0,.35,1),color 80ms cubic-bezier(.65,0,.35,1);}
 .btn svg{width:16px;height:16px;flex:none;color:var(--ink-muted);}
+.btn .logo-img{width:16px;height:16px;flex:none;}
+a.btn,a.btn:hover{text-decoration:none;}
 .btn:hover:not(:disabled){background:var(--btn-hover);}
 .btn:disabled{opacity:.55;cursor:not-allowed;}
 .btn-primary{background:var(--btn-primary);color:#FFFFFF;border-color:var(--btn-primary-border);}
