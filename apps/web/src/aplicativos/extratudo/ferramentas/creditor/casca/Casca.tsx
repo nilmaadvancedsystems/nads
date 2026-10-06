@@ -15,7 +15,8 @@ export function CascaCreditor({ children }: { children: ReactNode }) {
           <Segmentado valor={atual.id} onMudar={vm.onPagina}
             opcoes={vm.paginas.map(p => ({ valor: p.id, rotulo: p.rotulo, travada: p.travada ? 'Resolva as etapas anteriores primeiro' : false }))} />
           <span className="tarefas-barra-espaco" />
-          {temDados && <button className="btn btn-outline" type="button" onClick={() => { void cancelar(); }}>Cancelar</button>}
+          {/* na última etapa (a Exclusão) sem o Cancelar (Vitor, 06/10/2026) */}
+          {temDados && temProxima && <button className="btn btn-outline" type="button" onClick={() => { void cancelar(); }}>Cancelar</button>}
           {temProxima && <button className="btn btn-primary" type="button" disabled={!podeSeguir} onClick={proximo}
             title={podeSeguir ? undefined : 'Resolva as pendências desta etapa primeiro'}>Próximo</button>}
         </div>

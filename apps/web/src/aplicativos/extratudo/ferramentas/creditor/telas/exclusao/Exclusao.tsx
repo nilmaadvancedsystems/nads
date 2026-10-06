@@ -12,7 +12,7 @@ export function Exclusao() {
   const temDias = vm.dias.length > 0 || vm.partesFaltando.length > 0;
   return (
     <section>
-      <p className="hint" style={{ marginTop: 0 }}>
+      <p className="hint" style={{ marginTop: 0, marginBottom: 12 }}>
         No Alterdata, importe o .xls do Creditor e exclua o lançamento do total (CRÉD.LIQ.COBRANÇA) que ele substituiu. Depois, reimporte aqui o razão da conta {vm.contaBanco}.
       </p>
       {!vm.banco ? (
