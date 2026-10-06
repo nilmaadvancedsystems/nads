@@ -18,6 +18,14 @@ export function Clientes() {
         <Segmentado<TelaClientes> valor={vm.tela} onMudar={vm.irPara} opcoes={vm.telas} />
         <span className="tarefas-barra-espaco" />
         {vm.temProxima && <button type="button" className="btn btn-primary" disabled={!vm.podeSeguir} onClick={vm.proximo}>Próximo</button>}
+        {/* no Envio, as saídas na linha das etapas (Vitor, 06/10/2026) */}
+        {vm.tela === 'envio' && vm.conferidos.length > 0 && (
+          <div className="btn-row">
+            <button type="button" className="btn" onClick={vm.baixarPlanilha}><Icone nome="download" />Baixar planilha</button>
+            <a className="btn" href={vm.email} target="_blank" rel="noreferrer"><LogoGmail />E-mail</a>
+            <a className="btn" href={vm.whatsapp} target="_blank" rel="noreferrer"><LogoWhatsApp />WhatsApp</a>
+          </div>
+        )}
       </div>
       {vm.tela === 'arquivos' && <Arquivos vm={vm} />}
       {vm.tela === 'credor' && <Credor vm={vm} />}
@@ -169,11 +177,6 @@ function Envio({ vm }: { vm: VM }) {
           <textarea id="fMensagemClientes" rows={5} value={vm.mensagem} onChange={e => vm.mudarMensagem(e.target.value)} style={{ width: '100%' }} />
         </div>
         <p className="hint" style={{ whiteSpace: 'pre-wrap' }}>{vm.texto}</p>
-        <div className="btn-row" style={{ justifyContent: 'flex-end' }}>
-          <button type="button" className="btn" onClick={vm.baixarPlanilha}><Icone nome="download" />Baixar planilha</button>
-          <a className="btn" href={vm.email} target="_blank" rel="noreferrer"><LogoGmail />E-mail</a>
-          <a className="btn" href={vm.whatsapp} target="_blank" rel="noreferrer"><LogoWhatsApp />WhatsApp</a>
-        </div>
       </div>
     </>
   );

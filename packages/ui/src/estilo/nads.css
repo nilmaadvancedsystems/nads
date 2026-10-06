@@ -297,6 +297,8 @@ input[type="checkbox"]:checked::after{
   background:var(--btn-bg);color:var(--ink);border:1px solid var(--btn-border);box-shadow:var(--shadow-xs);
   transition:background 80ms cubic-bezier(.65,0,.35,1),border-color 80ms cubic-bezier(.65,0,.35,1),color 80ms cubic-bezier(.65,0,.35,1);}
 .btn svg{width:16px;height:16px;flex:none;color:var(--ink-muted);}
+.btn .logo-img{width:16px;height:16px;flex:none;}
+a.btn,a.btn:hover{text-decoration:none;}
 .btn:hover:not(:disabled){background:var(--btn-hover);}
 .btn:disabled{opacity:.55;cursor:not-allowed;}
 .btn-primary{background:var(--btn-primary);color:#FFFFFF;border-color:var(--btn-primary-border);}
@@ -3070,3 +3072,10 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .dp-config .dp-empilhado .select-compact,.dp-config .dp-empilhado .dp-agrup{width:150px;max-width:150px;}
 .dp-config .dp-chips{min-width:250px;max-width:270px;}
 .dp-resp{min-width:180px;}
+/* DP em abas no alto (06/10/2026): cada parte tem poucas colunas, as bolinhas com mais espaço */
+.dp-tabela .dp-ob{width:84px;min-width:84px;}
+/* DP › Configurações no estilo do Cadastro (06/10/2026): a lista (clicar abre a janela do cliente) */
+.dp-linha-abre{cursor:pointer;}
+.dp-linha-abre:hover td{background:var(--hover-bg);}
+.dp-config-lista .dp-obrig-texto{white-space:normal;font-size:12.5px;color:var(--ink-muted);max-width:300px;}
+.dp-selo-mudado{margin-left:8px;font-size:11px;vertical-align:middle;}

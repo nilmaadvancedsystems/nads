@@ -81,9 +81,9 @@ export interface Etapa {
   meses?: number[];
   /**
    * a obrigação do DP que a etapa faz (empresas/dp.ts): só entra para quem tem essa obrigação na planilha do DP;
-   * 'envio' entra para quem tem ao menos uma
+   * 'envio' entra para quem tem ao menos uma; 'reinf', para quem tem a REINF autorizada
    */
-  obrigacaoDp?: ObrigacaoDp | 'envio';
+  obrigacaoDp?: ObrigacaoDp | 'envio' | 'reinf';
   /** a conferência do INSS (razão do INSS a recolher × o PDF das guias pagas) dentro da etapa */
   conferenciaDoInss?: boolean;
 }

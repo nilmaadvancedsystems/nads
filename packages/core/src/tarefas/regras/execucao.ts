@@ -36,7 +36,8 @@ export function etapaNoMes(ex: Execucao | null, etapa: string): boolean {
     // o DP (06/10/2026): só as obrigações que a empresa tem na planilha do DP (fora dela, entra)
     const dp = e.obrigacaoDp ? clienteDoDp(ex.codigo) : null;
     if (dp && e.obrigacaoDp === 'envio' && !dp.obrigacoes.length) return false;
-    if (dp && e.obrigacaoDp && e.obrigacaoDp !== 'envio' && !dp.obrigacoes.includes(e.obrigacaoDp)) return false;
+    if (dp && e.obrigacaoDp === 'reinf' && !dp.reinfAutorizada) return false;
+    if (dp && e.obrigacaoDp && e.obrigacaoDp !== 'envio' && e.obrigacaoDp !== 'reinf' && !dp.obrigacoes.includes(e.obrigacaoDp)) return false;
   }
   return true;
 }

@@ -29,7 +29,7 @@ export const APLICACOES: readonly Aplicacao[] = [
   { id: 'cadastro', nome: 'Cadastro', icone: 'landmark', pronta: true, paginas: [
     { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Cadastro — empresas' },
     { id: 'usuarios', rotulo: 'Usuários', icone: 'checklist', titulo: 'Cadastro — usuários' },
-    // quem cuida de cada empresa no DP, no Fiscal e no Contábil (Vitor, 06/10/2026)
+    // quem cuida de cada empresa no Fiscal e no Contábil (Vitor, 06/10/2026)
     { id: 'responsaveis', rotulo: 'Responsáveis', icone: 'usuario', titulo: 'Cadastro — responsáveis' },
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Cadastro — configurações' },
   ] },
@@ -44,8 +44,14 @@ export const APLICACOES: readonly Aplicacao[] = [
   // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
   // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas
   { id: 'dp', nome: 'Departamento Pessoal', icone: 'usuario', pronta: true, paginas: [
-    // tudo no tabelão do Painel (Vitor, 06/10/2026: "sem a parte de checklist"): sem a lista de empresas e o executor
-    { id: 'painel', rotulo: 'Painel', icone: 'painel', titulo: 'DP — painel do mês' },
+    // tudo no tabelão (Vitor, 06/10/2026: "sem a parte de checklist"), quebrado em abas no alto como o Cadastro ("quebre
+    // nesse estilo"): o Resumo (números, gráficos, progresso) e uma aba por parte da rotina, cada uma só com as colunas dela
+    { id: 'resumo', rotulo: 'Resumo', icone: 'painel', titulo: 'DP — resumo do mês' },
+    { id: 'folha', rotulo: 'Folha', icone: 'fileText', titulo: 'DP — folha' },
+    { id: 'esocial', rotulo: 'eSocial', icone: 'upload', titulo: 'DP — eSocial' },
+    { id: 'guias', rotulo: 'Guias', icone: 'recibo', titulo: 'DP — guias' },
+    { id: 'reinf', rotulo: 'REINF', icone: 'fileUp', titulo: 'DP — EFD-REINF' },
+    { id: 'entrega', rotulo: 'Entrega', icone: 'envelope', titulo: 'DP — entrega ao cliente' },
     { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'DP — visão geral' },
     // os parâmetros de cada cliente (Vitor, 06/10/2026: "quero que o dp tenha a própria aba de configurações")
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'DP — configurações' },
