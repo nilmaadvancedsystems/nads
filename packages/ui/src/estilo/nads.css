@@ -1140,7 +1140,10 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 /* a etapa sem ferramenta: o que conferir, item por item */
 .executor-conferir{max-width:620px;margin:8px auto 0;padding-left:20px;text-align:left;color:var(--ink);font-size:14px;line-height:1.5;}
 .executor-conferir li+li{margin-top:6px;}
-.executor-ferramenta{display:flex;min-height:360px;position:relative;}
+.executor-ferramenta{display:flex;min-height:360px;position:relative;container-type:inline-size;}
+.executor-ferramenta > section{flex:1;min-width:0;}
+/* a tela própria da etapa: o resumo da linha de importação no meio só com lugar (a largura da etapa, como era no iframe) */
+@container (max-width:899px){.executor-ferramenta .imp-resumo > div{position:static;transform:none;}}
 .executor-ferramenta iframe{display:block;width:100%;min-height:calc(100vh - var(--hdr-h,64px) - 16px);border:0;}
 .executor-ferramenta .gh-blank{margin:auto;}
 /* o razão importado na etapa (o Caixa), no desenho da Importação do banco: a largura toda, um embaixo do outro */

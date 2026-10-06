@@ -65,7 +65,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const f = etapa?.ferramenta || null;
   // em lote (vários meses: o período escolhido na Importação), toda etapa trabalha o período inteiro, do começo ao fim
   // (Vitor, 02/10/2026): as ações valem para todos os meses que faltam. Num mês só, a ferramenta de período também.
-  const juntos = varios || !!f?.periodo;
+  const juntos = varios || !!f?.periodo || !!etapa?.tela?.periodo;
   const alvos = juntos ? pendentes : pendentes.slice(0, 1);
   const competencia = pendentes[0] || meses[meses.length - 1] || '';
   const ex = exDe[competencia] || null;
@@ -101,7 +101,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const entrouEm = vista?.soQuandoAdicionada ? meses.filter(c => t.etapaNoMes(exDe[c] || null, vista.id)) : [];
   const mesesDaEtapa = revista ? entrouEm : entrouEm.filter(c => !concluidaEm(vista!.id, c));
   const compV = mesesDaEtapa[0] || (revista ? meses[meses.length - 1] || competencia : competencia);
-  const juntosV = varios || !!fv?.periodo;
+  const juntosV = varios || !!fv?.periodo || !!vista?.tela?.periodo;
   const mesesV = mesesDaEtapa.length ? '&meses=' + mesesDaEtapa.join(',') : juntosV && varios ? '&meses=' + meses.join(',') : '';
 
   // começou (ou voltou a) uma etapa: um evento por etapa aberta (conta o tempo de cada uma)
@@ -316,6 +316,11 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     ferramenta: fv && empresa ? { nome: fv.nome, embutir: fv.embutir, requisitos: !!fv.requisitos, url: BASES[fv.app] + fv.caminho(empresas.rotaDaEmpresa(empresa)) + (fv.app === 'extratudo' ? (fv.caminho('').includes('?') ? '&' : '?') + 'competencia=' + compV + mesesV
       // a Conferência roda no período que a pessoa está fazendo (o mês, ou os meses do Em Lote)
       : fv.app === 'concilia-ai' ? '?meses=' + (juntosV && varios ? meses : [compV]).join(',') + (prestaServico == null ? '' : '&servicos=' + (prestaServico ? 'sim' : 'nao')) : '') } : null,
+    /** a tela própria da etapa (no lugar da ferramenta em iframe): a empresa e os meses que ela trabalha */
+    tela: vista?.tela && empresa ? {
+      id: vista.tela.id,
+      etapa: { nome: empresa.nome, codigo: empresa.codigo, competencia: compV, meses: mesesDaEtapa.length ? mesesDaEtapa : juntosV && varios ? [...meses] : [compV], dev },
+    } : null,
     /** os meses que a etapa ainda precisa (no período) */
     pendentes: pendentes.map(rotuloCurto),
     aviso, conferindo, proximo,

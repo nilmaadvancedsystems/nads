@@ -6,23 +6,18 @@
 import { clientes as cl, conferencia as c, demo, tarefas } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router';
-import { useDadosDeTesteNaTarefa, useRequisitosParaATarefa } from '../../../../../../comum/ponte';
-import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
 import { gravarMensagem, lerMensagem, useMarcasDoMes } from '../../../../dados/clientes';
-import { useSessao } from '../../casca/sessao';
+import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 
 export type TelaClientes = 'arquivos' | 'credor' | 'clientes' | 'envio';
 export type FiltroClientes = 'todos' | 'pendente' | 'ok' | 'conferido';
 
 const mesAntes = (m: string) => { const [a, mm] = m.split('-').map(Number); return mm === 1 ? (a - 1) + '-12' : a + '-' + String(mm - 1).padStart(2, '0'); };
 
-export function useClientesDaTarefa() {
-  const s = useSessao();
+export function useClientes() {
+  const s = useEtapaAberta();
   const { aviso } = useRetorno();
-  const [params] = useSearchParams();
-  const meses = [...(params.get('meses') || '').split(','), params.get('competencia') || ''].filter(m => /^\d{4}-\d{2}$/.test(m)).sort();
-  const mes = meses[meses.length - 1] || '';
+  const mes = s.meses[s.meses.length - 1] || '';
   const [tela, setTela] = useState<TelaClientes>('arquivos');
   const [dinamico, setDinamico] = useState<{ nome: string; d: cl.BalanceteDinamico } | null>(null);
   const [filtro, setFiltro] = useState<FiltroClientes>('todos');
@@ -44,7 +39,7 @@ export function useClientesDaTarefa() {
   }
 
   // o ⚡ do modo desenvolvedor na Tarefa: um balancete dinâmico fictício do mês (com ou sem credores), como se importado
-  const teste = useDadosDeTesteNaTarefa(mes && (modoDesenvolvedor() || demo.ehEmpresaDemo(s.nome)) && tela !== 'envio' ? [
+  const teste = useDadosDeTesteDaEtapa(mes && (s.dev || demo.ehEmpresaDemo(s.nome)) && tela !== 'envio' ? [
     { id: 'dinamico', rotulo: 'Balancete dinâmico (sem credores)' },
     { id: 'dinamico-credores', rotulo: 'Balancete dinâmico (com saldo credor)' },
   ] : [], id => {
@@ -75,7 +70,7 @@ export function useClientesDaTarefa() {
   const podeSeguir = tela === 'arquivos' ? arquivosProntos && contas.length > 0 : tela === 'credor' ? credores.length === 0 : tela === 'clientes';
   // na Tarefa: os arquivos e nenhum credor (a pessoa pode dar o check normal depois; os conferidos passam para o mês seguinte)
   const faltam = !arquivosProntos ? ['Importar o balancete dinâmico'] : credores.length ? ['Corrigir ' + credores.length + (credores.length === 1 ? ' cliente' : ' clientes') + ' com saldo credor'] : [];
-  useRequisitosParaATarefa({ pronto: !faltam.length, faltam });
+  useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
 
   const conferidos = linhas.filter(l => l.situacao === 'conferido');
   const paraCliente: cl.LinhaParaCliente[] = conferidos.map(l => ({ codigo: l.codigo, nome: l.nome, saldo: l.saldo, obs: l.obs }));

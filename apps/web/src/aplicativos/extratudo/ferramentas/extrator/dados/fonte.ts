@@ -5,14 +5,13 @@
 // O Drive (o extrato da competência na pasta da empresa): no banco, o do escritório pelo Entregas (o mesmo
 // login e o mesmo robô do Creditor, ver ../../../dados/drive.firestore.ts); nos exemplos, a pasta de exemplo
 // da empresa 901. O repositório e o Drive são criados uma vez, quando alguém abre o Extratudo.
-import { creditor, demo, empresas, extrator } from '@nads/core';
+import { creditor, type extrator } from '@nads/core';
 import { criarDriveFirestore } from '../../../dados/drive.firestore';
-import { criarRepoExtratorFirestore, type RepoExtratorFirestore } from '../../../dados/extrator.firestore';
+import { avisarErrosDoExtrator, repoDoExtrator as repoDaTarefa } from '../../../../tarefas/dados/extrator';
 import { ligadoAoBanco } from '../../../../../comum/modoDesenvolvedor';
 
 export const noBanco = ligadoAoBanco(); // no modo desenvolvedor, os dados de exemplo (nada vai para o banco)
 
-let repo: extrator.RepoExtrator | null = null;
 let drive: creditor.RepoDrive | null = null;
 
 export function driveDoExtrator(): creditor.RepoDrive {
@@ -20,13 +19,12 @@ export function driveDoExtrator(): creditor.RepoDrive {
   return drive;
 }
 
+/** O mesmo repositório da Tarefa (um só no site). */
 export function repoDoExtrator(): extrator.RepoExtrator {
-  // a empresa de teste (Personaly Company) fica neste navegador; o resto, no banco (ou nos exemplos)
-  if (!repo) repo = demo.extratorComDemo(noBanco ? criarRepoExtratorFirestore(empresas.EMPRESAS) : extrator.criarRepoExtratorMemoria({ exemplos: true }));
-  return repo;
+  return repoDaTarefa();
 }
 
 /** Os erros do banco (salvar/ler) vão para o toast da tela. */
 export function avisarErrosDoBanco(r: extrator.RepoExtrator, aviso: (mensagem: string) => void): void {
-  if (noBanco) (r as RepoExtratorFirestore).definirAviso(aviso);
+  avisarErrosDoExtrator(r, aviso);
 }
