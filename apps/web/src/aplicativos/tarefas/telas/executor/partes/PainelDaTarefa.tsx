@@ -1,20 +1,27 @@
 // O painel de uma tarefa do Fiscal (a "checklist disfarçada", Vitor 06/10/2026), montado com as peças prontas do catálogo
 // (Vitor: "resolva os elementos que já tinham sido criados… ao invés de usar os prontos"): os números no Stat, as
 // comparações no ranking (rank), as notas por CFOP na tabela padrão (com a barra do rank), os avisos no Alerta, as
-// marcas no badge e o vazio no gh-blank. Só o que o catálogo não tinha é novo: as barras por dia, a rosca e a faixa
-// 100% (Graficos.tsx, registrados em Componentes › Gráficos). Ao aparecer, anima (animarPainel.ts, animejs).
+// marcas no badge e o vazio no gh-blank. Os gráficos novos (barras por dia, rosca, faixa 100%) saíram (Vitor: "não
+// curti nenhum dos gráficos novos"): a composição virou o rank. Ao aparecer, anima (animarPainel.ts, animejs).
 import { formatos, tarefas as t } from '@nads/core';
 import { Alerta, Icone, Stat } from '@nads/ui';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { ROTULO_DO_RELATORIO, type VmPainelDoFiscal } from '../usePainelDoFiscal';
 import { animarPainel } from './animarPainel';
-import { BarrasPorDia, Conta, Faixa, Rosca, type Fatia } from './Graficos';
 import { SiegDaEtapa } from './SiegDaEtapa';
 
 const { reais } = formatos;
-/** a cor de cada classe de CFOP (sempre a mesma, na ordem da paleta) */
-const COR: Record<t.painel.ClasseDoCfop, number> = { venda: 1, st: 2, servico: 3, devolucao: 4, remessa: 5, ativo: 6, outras: 7 };
-const fatias = (f: readonly t.painel.FatiaDaComposicao[]): Fatia[] => f.map(x => ({ chave: x.classe, rotulo: x.rotulo, valor: x.valor, pct: x.pct, cor: COR[x.classe] }));
+type Formato = 'reais' | 'int';
+
+/** Um número que conta do zero ao aparecer (vai como o valor do Stat; animarPainel.ts conta). */
+function Conta({ valor, formato = 'int' }: { valor: number; formato?: Formato }) {
+  return <span data-conta={valor} data-formato={formato}>{formato === 'reais' ? reais(valor) : Math.round(valor).toLocaleString('pt-BR')}</span>;
+}
+
+/** A composição (por natureza do CFOP) no rank: o nome, a fatia e o valor, a barra pela fatia. */
+const composicao = (f: readonly t.painel.FatiaDaComposicao[]) => f.map(x => ({
+  chave: x.classe, nome: x.rotulo, valor: x.valor, texto: x.pct.toLocaleString('pt-BR') + '% · ' + reais(x.valor),
+}));
 
 function Vazio({ relatorio, competencia, importar }: { relatorio: t.RelatorioImportavel; competencia: string; importar?: () => void }) {
   return (
@@ -55,7 +62,7 @@ function TabelaPorCfop({ r }: { r: t.painel.ResumoDeNotas }) {
               <td><b className="num">{l.cfop}</b></td>
               <td className="wrap">{l.desc} {(l.classe === 'st' || l.classe === 'devolucao') && <span className="badge badge-warn">{t.painel.CLASSES[l.classe]}</span>}</td>
               <td className="num">{l.qtd}</td>
-              <td className="num graf-celula-barra">{reais(l.valor)}<span className="rank-barra"><span style={{ width: max ? (l.valor / max) * 100 + '%' : 0, background: 'var(--cat-' + COR[l.classe] + ')' }} /></span></td>
+              <td className="num graf-celula-barra">{reais(l.valor)}<span className="rank-barra"><span style={{ width: max ? (l.valor / max) * 100 + '%' : 0, background: 'var(--accent)' }} /></span></td>
             </tr>
           ))}
         </tbody>
@@ -127,7 +134,6 @@ function Corpo({ painel, vm, codigo, competencia, importar }: { painel: t.Painel
             <Stat rotulo="Notas no Alterdata" valor={<Conta valor={vm.saidas.qtd} />} />
             <Stat rotulo="Emitidas no SIEG" valor={vm.sieg ? <Conta valor={vm.sieg.emitidasNFe} /> : '—'} />
           </div>
-          <BarrasPorDia dias={vm.saidas.porDia} rotulo={'Faturamento por dia de ' + comp} />
           <Veredito sieg={vm.sieg?.emitidasNFe ?? null} importadas={vm.saidas.qtd} oQue="notas emitidas" />
         </>
       );
@@ -162,13 +168,21 @@ function Corpo({ painel, vm, codigo, competencia, importar }: { painel: t.Painel
     case 'irpj': {
       if (!vm.receita.length) return vazio('saidas');
       const receita = vm.receita.filter(f => f.classe === 'venda' || f.classe === 'st' || f.classe === 'servico').reduce((s, f) => s + f.valor, 0);
-      return <Rosca fatias={fatias(vm.receita)} centro={receita} rotuloCentro={painel === 'irpj' ? 'receita do mês (o trimestre soma os 3)' : 'receita do mês'} />;
+      return (
+        <>
+          <div className="stat-grid">
+            <Stat rotulo={painel === 'irpj' ? 'Receita do mês (o trimestre soma os 3)' : 'Receita do mês'} valor={<Conta valor={receita} formato="reais" />} cor="saida" />
+            <Stat rotulo="Serviços prestados" valor={<Conta valor={vm.prestados.total} formato="reais" />} />
+          </div>
+          <Rank linhas={composicao(vm.receita)} />
+        </>
+      );
     }
     case 'base':
       if (!vm.base.length) return vazio('saidas');
       return (
         <>
-          <Faixa fatias={fatias(vm.base)} />
+          <Rank linhas={composicao(vm.base)} />
           {(pctDe('st') > 0 || pctDe('devolucao') > 0) && <Alerta titulo="Tire da base o que já teve o imposto pago antes" texto={'As saídas com ST' + (pctDe('devolucao') ? ' e as devoluções' : '') + ' não entram na base.'} />}
         </>
       );
@@ -180,7 +194,7 @@ function Corpo({ painel, vm, codigo, competencia, importar }: { painel: t.Painel
             <Stat rotulo="Saídas (débitos)" valor={<Conta valor={vm.saidas.total} formato="reais" />} cor="saida" />
             <Stat rotulo="Entradas (créditos)" valor={<Conta valor={vm.entradas.total} formato="reais" />} cor="entrada" />
           </div>
-          {vm.base.length > 0 && <Faixa fatias={fatias(vm.base)} />}
+          {vm.base.length > 0 && <Rank linhas={composicao(vm.base)} />}
         </>
       );
     case 'prestados':

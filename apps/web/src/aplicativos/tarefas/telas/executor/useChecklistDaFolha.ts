@@ -4,13 +4,23 @@
 // o último marcado pode ser desmarcado. O avançar da etapa só
 // aparece com todos marcados (o "?" lista os que faltam). Os tiques ficam neste navegador, por empresa e período.
 import { tarefas as t } from '@nads/core';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useContasDoBalancete } from '../../../concilia-ai/importadosNaEtapa';
 
 const chaveDe = (empresa: string, meses: readonly string[], etapa?: string) => (etapa ? 'nads-check:' + etapa + ':' : 'nads-folha:') + empresa + ':' + meses.join(',');
 
 /** Uma tarefa do checklist na tela: o nome, o que vai embaixo (as contas da folha ou os subitens), o link e o aviso. */
 export interface TarefaDoChecklist { id: string; nome: string; contas: string[]; link?: { rotulo: string; url: string }; aviso?: string }
+
+const APAGADOS = 'nads-tiques-apagados';
+
+/** O ⚡ › Apagar início: tira os tiques dos checklists da empresa (todas as etapas e períodos) e avisa quem está aberto. */
+export function apagarTiques(empresa: string) {
+  try {
+    for (const k of Object.keys(localStorage)) if ((k.startsWith('nads-check:') || k.startsWith('nads-folha:')) && k.includes(':' + empresa + ':')) localStorage.removeItem(k);
+  } catch { /* sem armazenamento: não havia tiques guardados */ }
+  window.dispatchEvent(new Event(APAGADOS));
+}
 
 function ler(chave: string): string[] {
   try { const v = JSON.parse(localStorage.getItem(chave) || '[]'); return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []; } catch { return []; }
@@ -25,6 +35,12 @@ export function useChecklistDaFolha(ativo: boolean, empresa: string, meses: read
   const chave = chaveDe(empresa, meses, fixo?.etapa);
   const [marcados, setMarcados] = useState<{ chave: string; ids: string[] }>(() => ({ chave, ids: ler(chave) }));
   const ids = marcados.chave === chave ? marcados.ids : ler(chave);
+  // o Apagar início: relê (vazio)
+  useEffect(() => {
+    const f = () => setMarcados({ chave, ids: ler(chave) });
+    window.addEventListener(APAGADOS, f);
+    return () => window.removeEventListener(APAGADOS, f);
+  }, [chave]);
   const itens: TarefaDoChecklist[] | null = fixo ? fixo.itens : ativo && contas ? t.checklistDaFolha(contas, meses) : null;
   // em ordem: o próximo depois dos marcados fica liberado; dos marcados, só o último pode ser desmarcado
   const feitos = itens ? itens.findIndex(i => !ids.includes(i.id)) : -1;
