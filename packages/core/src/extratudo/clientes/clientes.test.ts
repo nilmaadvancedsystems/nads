@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  clientesDoDinamico, comBalancete, conferidosQuePassam, credores, docDoDocumento, lerBalanceteDinamico, proximaSituacao, situacaoDe, textoDaMensagem,
+  clientesDoDinamico, comBalancete, conferidosQuePassam, credores, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, proximaSituacao, situacaoDe, textoDaMensagem,
 } from './index';
 
 // o formato do balancete dinâmico do Alterdata (292, bdinamico.xls)
@@ -42,5 +42,16 @@ describe('clientes (a etapa Clientes da Tarefa)', () => {
   it('a mensagem com a lista dos conferidos', () => {
     const t = textoDaMensagem('{empresa} {mes}: {lista}', 'FITO', '08/2026', [{ codigo: '1', nome: 'M', saldo: 1234.5, obs: 'NF 9' }]);
     expect(t).toBe('FITO 08/2026: • M — R$ 1.234,50 — NF 9');
+  });
+});
+
+describe('dinamicoDeTeste', () => {
+  it('traz os clientes do mês, com ou sem credores', () => {
+    const sem = clientesDoDinamico(dinamicoDeTeste('2026-01', false), '2026-01');
+    expect(sem.length).toBe(8);
+    expect(credores(sem)).toEqual([]);
+    const com = dinamicoDeTeste('2026-01', true);
+    expect(com.meses).toEqual(['2025-12', '2026-01']);
+    expect(credores(clientesDoDinamico(com, '2026-01')).length).toBe(2);
   });
 });

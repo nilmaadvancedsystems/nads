@@ -8,6 +8,8 @@ import { creditor as cr, tarefas } from '@nads/core';
 import { useCarregando, useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
+import { useDadosDeTesteNaTarefa } from '../../../../../../comum/ponte';
+import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
 import { useSessao } from '../../casca/sessao';
 import { useDrive } from '../../dados/repo';
 import { lerRelatorio, mensagemDeErro } from '../../leitura';
@@ -148,6 +150,11 @@ export function useCompetencia() {
     setBusca(PARADO);
     if (s.estado.competencia) s.definirCompetencia(cr.competenciaDosMeses(ms));
   }
+
+  // o ⚡ do modo desenvolvedor na Tarefa: o relatório de exemplo nos meses que faltam (como se importado; nada vai para o banco)
+  useDadosDeTesteNaTarefa((modoDesenvolvedor() || drive.exemplos) && faltam.length ? [{ id: 'relatorio', rotulo: 'Relatório de liquidação de exemplo' + (faltam.length > 1 ? ' (' + faltam.length + ' meses)' : '') }] : [], () => {
+    for (const m of faltam) guardar(m, cr.lerRelatorioTexto(cr.exemploDoRelatorioNoMes(m)), 'exemplo');
+  });
 
   // os meses do seletor: os recentes (sem mês que ainda não começou) e os já escolhidos, o mais novo em cima
   const recentes = tarefas.competenciasRecentes(new Date(), 24).filter(c => c <= maximo);

@@ -7,9 +7,8 @@
 import { AberturaN, Alerta, Casca, destacarNaTela, Icone, MenuSuspenso, useCarregando, useFerramentaNaEtapa, type NomeIcone } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useBlocker, useParams } from 'react-router';
-import { usePonteDaFerramenta } from '../../../../comum/ponte';
+import { useDadosDeTesteDaFerramenta, usePonteDaFerramenta } from '../../../../comum/ponte';
 import { useAvisoDeBloqueio } from '../../../../comum/modoDesenvolvedor';
-import { demo } from '@nads/core';
 import { BASE } from '../../casca/navegacao';
 import { useCascaTarefas } from '../../casca/useCascaTarefas';
 import { useDepartamentoDaTela } from '../../casca/departamento';
@@ -52,6 +51,19 @@ export function Executor() {
   // a ferramenta que tem requisitos (a Importação) diz o que falta: o avançar só aparece com tudo pronto
   const [requisitos, setRequisitos] = useState<{ url: string; pronto: boolean; faltam: string[]; alvos?: (string | null)[]; precisaChequeEspecial?: boolean } | null>(null);
   const urlDaFerramenta = vm.ferramenta?.url || '';
+  // o ⚡ do modo desenvolvedor: as opções de dados de teste que a ferramenta aberta oferece (mudam com a tela dela)
+  const teste = useDadosDeTesteDaFerramenta(iframe, urlDaFerramenta);
+  // o ⚡: as opções da ferramenta aberta, ou as do que a própria etapa importa (o razão do Caixa, o INSS)
+  const opcoesDeTeste = vm.ferramenta
+    ? teste.opcoes.map(o => ({ rotulo: o.rotulo, icone: 'zap' as NomeIcone, onClick: () => teste.mandar(o.id) }))
+    : vm.etapa?.conferenciaDoInss
+      ? [{ rotulo: 'Razão e guias do INSS de teste', icone: 'zap' as NomeIcone, onClick: inss.implantarTeste }]
+      : vm.etapa?.razao
+        ? [
+          { rotulo: 'Razão do caixa de teste', icone: 'zap' as NomeIcone, onClick: () => razao.implantarTeste(false) },
+          { rotulo: 'Razão do caixa de teste (com CRÉD.LIQ.COBRANÇA)', icone: 'zap' as NomeIcone, onClick: () => razao.implantarTeste(true) },
+        ]
+        : [];
   const destacarNaFerramenta = usePonteDaFerramenta(iframe, vm.semMovimentoPorMes, vm.competencia, vm.marcarSemMovimento, vm.trocarCompetencia,
     vm.varios ? { meses: vm.meses, concluido: vm.periodoConcluido } : null, vm.encerrarPeriodo,
     r => setRequisitos({ url: urlDaFerramenta, ...r }));
@@ -128,10 +140,6 @@ export function Executor() {
   // o Em lote voltou para a tela da Importação (Vitor, 05/10/2026): o menu é só o dos grupos
   const emLote = null;
   const botoesDaEtapa = vm.etapa && telaPronta && !vm.interrompendo && saida.state !== 'blocked' && !vm.revendo;
-  // o ⚡ dos dados de teste: no modo desenvolvedor (dados hipotéticos) ou na empresa de teste; vai para a ferramenta da
-  // etapa (a Importação implanta)
-  const ehTeste = vm.dev || demo.ehEmpresaDemo(vm.empresa?.nome);
-  const mandarDadosDeTeste = (tipo: string) => iframe.current?.contentWindow?.postMessage({ nads: 'dados-de-teste', tipo }, window.location.origin);
 
   const topo = (
     <>
@@ -154,11 +162,9 @@ export function Executor() {
         )}
         {/* modo desenvolvedor (Vitor, 06/10/2026): o ⚡ dos dados de teste e o Avançar azul (vai para a próxima etapa sem marcar nada) */}
         {vm.dev && (
+          // as opções vêm da ferramenta aberta (Vitor, 06/10/2026: "o raiozinho em tudo que é para importar")
           <MenuSuspenso rotulo="" icone="zap" className="gh-topo-btn gh-topo-menu" direita dica="Dados de teste"
-            itens={([
-              ['extratos', 'Extratos do período (1º mês com dia negativo)', 'landmark'], ['bate', 'Razão batendo', 'check'],
-              ['cheque', 'Razão com o cheque especial', 'checkCircle'], ['erros', 'Razão com erros', 'alert'], ['apagar', 'Apagar os dados de teste', 'x'],
-            ] as [string, string, NomeIcone][]).map(([tipo, rotulo, icone]) => ({ rotulo, icone, desabilitado: !ehTeste, onClick: () => mandarDadosDeTeste(tipo) }))} />
+            itens={opcoesDeTeste.length ? opcoesDeTeste : [{ rotulo: 'Nada para importar nesta tela', icone: 'zap', desabilitado: true, onClick: () => {} }]} />
         )}
         {vm.dev && vm.temAvancar && (
           <button type="button" className="gh-topo-btn gh-topo-proximo dev" onClick={vm.avancar} title="Avançar (modo desenvolvedor: só ver, não marca nada)" aria-label="Avançar">

@@ -146,3 +146,55 @@ export function usePonteDaFerramenta(iframe: RefObject<HTMLIFrameElement | null>
     f.contentWindow.postMessage(msg, new URL(f.src, window.location.href).origin);
   }, [iframe]);
 }
+
+// ─── o ⚡ do modo desenvolvedor (Vitor, 06/10/2026: "deixa o raiozinho em tudo que é para importar") ─────────────────
+
+/** Uma opção de dados de teste que a ferramenta sabe implantar (o ⚡ da Tarefa lista e manda a escolhida). */
+export interface OpcaoDeTeste { id: string; rotulo: string }
+
+/**
+ * Na ferramenta: avisa a Tarefa das opções de dados de teste desta tela e implanta a escolhida. Fora da Tarefa (sem o
+ * pai), não faz nada. A ferramenta muda as opções conforme a tela (o que ela importa ali).
+ */
+export function useDadosDeTesteNaTarefa(opcoes: OpcaoDeTeste[], implantar: (id: string) => void) {
+  const [pai] = useState(origemDoPai);
+  const aoImplantar = useRef(implantar);
+  useEffect(() => { aoImplantar.current = implantar; });
+  const chave = JSON.stringify(opcoes);
+  useEffect(() => {
+    if (!pai) return;
+    window.parent.postMessage({ nads: 'teste-opcoes', opcoes }, pai);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pai, chave]);
+  useEffect(() => {
+    if (!pai) return;
+    const ouvir = (e: MessageEvent) => {
+      const d = e.data as { nads?: string; tipo?: unknown } | null;
+      if (e.source !== window.parent || e.origin !== pai || d?.nads !== 'dados-de-teste' || typeof d.tipo !== 'string') return;
+      aoImplantar.current(d.tipo);
+    };
+    window.addEventListener('message', ouvir);
+    return () => window.removeEventListener('message', ouvir);
+  }, [pai]);
+}
+
+/** Na Tarefa: as opções de dados de teste da ferramenta aberta (mudam com a tela dela) e o mandar a escolhida. */
+export function useDadosDeTesteDaFerramenta(iframe: RefObject<HTMLIFrameElement | null>, chave: string) {
+  const [opcoes, setOpcoes] = useState<OpcaoDeTeste[]>([]);
+  useEffect(() => {
+    setOpcoes([]);
+    const ouvir = (e: MessageEvent) => {
+      if (!iframe.current || e.source !== iframe.current.contentWindow || !origemConfiavel(e.origin)) return;
+      const d = e.data as { nads?: string; opcoes?: unknown } | null;
+      if (d?.nads !== 'teste-opcoes' || !Array.isArray(d.opcoes)) return;
+      setOpcoes(d.opcoes.filter((o): o is OpcaoDeTeste => !!o && typeof (o as OpcaoDeTeste).id === 'string' && typeof (o as OpcaoDeTeste).rotulo === 'string').slice(0, 20));
+    };
+    window.addEventListener('message', ouvir);
+    return () => window.removeEventListener('message', ouvir);
+  }, [iframe, chave]);
+  const mandar = useCallback((tipo: string) => {
+    const f = iframe.current;
+    if (f?.contentWindow) f.contentWindow.postMessage({ nads: 'dados-de-teste', tipo }, new URL(f.src, window.location.href).origin);
+  }, [iframe]);
+  return { opcoes, mandar };
+}

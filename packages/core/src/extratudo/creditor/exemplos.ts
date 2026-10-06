@@ -73,3 +73,10 @@ export const BALANCETES_EXEMPLO: Record<string, BalanceteDaEmpresa> = {
     ],
   },
 };
+
+/** O relatório de exemplo com as datas no mês pedido ('aaaa-mm'): o de dados de teste (o ⚡ do modo desenvolvedor). */
+export function exemploDoRelatorioNoMes(mes: string): string {
+  const [a, m] = mes.split('-').map(Number);
+  const antes = m === 1 ? '12/' + (a - 1) : String(m - 1).padStart(2, '0') + '/' + a;
+  return EXEMPLO_RELATORIO.replace(/\/08\/2026/g, '/' + antes).replace(/\/09\/2026/g, '/' + String(m).padStart(2, '0') + '/' + a);
+}

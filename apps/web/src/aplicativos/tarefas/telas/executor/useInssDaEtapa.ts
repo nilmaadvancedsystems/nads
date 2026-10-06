@@ -65,6 +65,13 @@ export function useInssDaEtapa(chave: string, meses: readonly string[]) {
     temRazao: !!r, temGuias: !!g, pronto: !!c,
     arquivoRazao: r?.arquivo || '',
     removerRazao: () => setRazao(null), removerGuias: () => setGuias(null),
+    /** o ⚡ do modo desenvolvedor: o razão e as guias de teste do período */
+    implantarTeste: () => {
+      const d = t.inssDeTeste(meses);
+      setRazao({ chave, arquivo: 'TESTE razão do INSS.xls', razao: d.razao });
+      setGuias({ chave, arquivos: ['TESTE guias do INSS.pdf'], guias: d.guias });
+      setMesAberto(null);
+    },
     resumo: [r ? 'Razão: ' + r.razao.lancamentos.length.toLocaleString('pt-BR') + ' lançamentos' : '', g ? 'Guias: ' + g.guias.length : ''].filter(Boolean),
     /** a grade dos meses: provisão, guia, diferença e a baixa da guia do mês */
     meses: (c?.meses || []).map(m => {

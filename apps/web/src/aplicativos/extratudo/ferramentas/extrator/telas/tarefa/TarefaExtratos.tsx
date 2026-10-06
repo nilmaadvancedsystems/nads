@@ -12,7 +12,7 @@
 import { extrator as x, type conferencia, tarefas } from '@nads/core';
 import { classeDaJanela, destacarNaTela, Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
 import { Fragment, useEffect, useId, useRef, useState } from 'react';
-import { usePonteDaTarefa, useRequisitosParaATarefa } from '../../../../../../comum/ponte';
+import { useDadosDeTesteNaTarefa, usePonteDaTarefa, useRequisitosParaATarefa, type OpcaoDeTeste } from '../../../../../../comum/ponte';
 import { useSessao } from '../../casca/sessao';
 import { useImportacao, type Mensagem } from '../importacao/useImportacao';
 import { BotaoGoogle } from '../../../../../../comum/BotaoGoogle';
@@ -89,6 +89,15 @@ function BotaoDoDrive({ arquivos, travado, rotulo, onExcluir, onVer }: {
  * As pendências do banco (o que corrigir no razão): uma faixa grudada embaixo da linha do banco, "Pendências  N ▾",
  * que abre a planilha — o dia, a situação, o lançamento (com o detalhe e a dica embaixo), banco, razão e diferença.
  */
+/** O que o ⚡ da Tarefa implanta nesta tela (os extratos e o razão de teste do primeiro banco). */
+const OPCOES_DE_TESTE: OpcaoDeTeste[] = [
+  { id: 'extratos', rotulo: 'Extratos do período (1º mês com dia negativo)' },
+  { id: 'bate', rotulo: 'Razão batendo' },
+  { id: 'cheque', rotulo: 'Razão com o cheque especial' },
+  { id: 'erros', rotulo: 'Razão com erros (para ver as pendências)' },
+  { id: 'apagar', rotulo: 'Apagar os dados de teste' },
+];
+
 const LIMITE_CORRECOES = 30;
 
 function PendenciasDoBanco({ itens }: { itens: x.CorrecaoDoRazao[] }) {
@@ -509,22 +518,13 @@ const ABAS_DA_IMPORTACAO: { id: AbaImportacao; rotulo: string; icone: AbaDaEtapa
 
 export function TarefaExtratos() {
   const vm = useImportacao();
-  // o ⚡ do modo desenvolvedor na Tarefa (Vitor, 06/10/2026): os dados de teste (no modo, os dados são hipotéticos)
-  const implantar = useRef(vm.implantarDadosDeTeste);
-  implantar.current = vm.implantarDadosDeTeste;
+  // o ⚡ do modo desenvolvedor na Tarefa (Vitor, 06/10/2026): os dados de teste de cada tela que importa
   const ehTeste = vm.ehEmpresaDeTeste || modoDesenvolvedor();
   const primeiroBanco = vm.bancos[0]?.id;
-  const apagarTeste = vm.apagarDadosDeTeste;
-  useEffect(() => {
-    const ouvir = (e: MessageEvent) => {
-      const d = e.data as { nads?: string; tipo?: string } | null;
-      if (e.source !== window.parent || e.origin !== window.location.origin || d?.nads !== 'dados-de-teste' || !ehTeste) return;
-      if (d.tipo === 'apagar') { apagarTeste(); return; }
-      if (primeiroBanco && (d.tipo === 'extratos' || d.tipo === 'bate' || d.tipo === 'cheque' || d.tipo === 'erros')) void implantar.current(primeiroBanco, d.tipo);
-    };
-    window.addEventListener('message', ouvir);
-    return () => window.removeEventListener('message', ouvir);
-  }, [ehTeste, primeiroBanco, apagarTeste]);
+  useDadosDeTesteNaTarefa(ehTeste && primeiroBanco ? OPCOES_DE_TESTE : [], tipo => {
+    if (tipo === 'apagar') { vm.apagarDadosDeTeste(); return; }
+    if (primeiroBanco && (tipo === 'extratos' || tipo === 'bate' || tipo === 'cheque' || tipo === 'erros')) void vm.implantarDadosDeTeste(primeiroBanco, tipo);
+  });
   const s = useSessao();
   // o "Resolver" da Tarefas: vai até o banco (abre a linha) ou a aba da importação e destaca
   const ponte = usePonteDaTarefa(vm.competencia, alvo => {

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { atencaoDoHistorico, atencoesDoMes, coberturaDoRazao, dataDoRazao, lerRazao, mesesDoRazao, precisaDoCreditor, valorComLado } from './razao';
+import { caixaDeTeste, inssDeTeste } from './deTeste';
+import { conferirInss } from './inss';
 import { ROTINA_CONTABIL } from '../rotinas/contabil';
 import { adicionarEtapa, etapaNoMes, execucaoNova, fazer, proximaEtapa, retirarEtapa, situacaoDa } from './execucao';
 
@@ -100,5 +102,22 @@ describe('a etapa Creditor só quando adicionada', () => {
     for (const e of ROTINA_CONTABIL.etapas.slice(0, ate)) feita = fazer(feita, e.id, 'Vitor', agora).execucao;
     expect(proximaEtapa(feita, ROTINA_CONTABIL)?.id).toBe('creditor');
     expect(situacaoDa(retirarEtapa(a.execucao, 'creditor', '', 'Vitor', agora).execucao, 'creditor')).toBe('dispensada');
+  });
+});
+
+describe('os razões de teste (o ⚡ do modo desenvolvedor)', () => {
+  it('o caixa: o Creditor só com o CRÉD.LIQ.COBRANÇA, e dias de caixa credor', () => {
+    const com = mesesDoRazao(caixaDeTeste(['2026-07', '2026-08'], true), ['2026-07', '2026-08']);
+    expect(com.filter(precisaDoCreditor).map(m => m.mes)).toEqual(['2026-07']);
+    expect(atencoesDoMes(com[0]).map(a => a.tipo)).toContain('caixa-credor');
+    const sem = mesesDoRazao(caixaDeTeste(['2026-08'], false), ['2026-08']);
+    expect(sem.some(precisaDoCreditor)).toBe(false);
+  });
+  it('o INSS: a guia do último mês com a patronal 10,00 a mais e o Adicional GILRAT fora da provisão', () => {
+    const { razao, guias } = inssDeTeste(['2026-07', '2026-08']);
+    const c = conferirInss(razao, guias, ['2026-07', '2026-08']);
+    const ago = c.meses.find(m => m.mes === '2026-08');
+    expect(ago?.grupos.find(g => g.grupo === 'patronal')?.diferenca).toBe(10);
+    expect(ago?.naoProvisionadas.map(v => v.grupo)).toEqual(['adicional-gilrat']);
   });
 });

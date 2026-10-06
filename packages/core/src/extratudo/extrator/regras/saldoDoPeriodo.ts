@@ -3,7 +3,7 @@
 // razão do banco e o nads confere se o saldo bate no período). O razão não traz saldo de abertura: ele começa do mesmo
 // saldo anterior do extrato e anda com o próprio movimento. O cheque especial do razão (ajuste e estorno, que não
 // estão no extrato) fica de fora, como na conferência do banco. Valores em centavos.
-import type { EmpresaExtrator, LancamentoDoArquivo } from '../tipos';
+import type { ArquivoLido, EmpresaExtrator, LancamentoDoArquivo } from '../tipos';
 import { arquivosDoBanco } from './bancos';
 import { conferenciaDoBanco } from './situacaoDoBanco';
 import { conferir } from './conferencia';
@@ -83,4 +83,24 @@ export function partesForaDoRazao(e: EmpresaExtrator, banco: string, primeiro: s
     sobra.set(k, n - 1);
     return false;
   });
+}
+
+/** Uma parte com sinal (centavos: + entra no banco, − sai), para o razão de teste. */
+export interface ParteComSinal { data: string; valor: number; historico: string }
+
+const TOTAL_DO_CREDITOR = /cr[eé]d\.?\s*liq/i;
+
+/**
+ * O razão de teste da Exclusão (o ⚡ do modo desenvolvedor): o extrato do período como razão; com as partes, o total do
+ * CRÉD.LIQ. de cada dia sai e entram as partes do .xls do Creditor (o caso que dá Ok); sem elas, fica o total (o caso
+ * de antes de excluir no Alterdata: o saldo bate, mas faltam as partes).
+ */
+export function razaoDeTesteDaExclusao(e: EmpresaExtrator, banco: string, primeiro: string, meses: readonly string[], partes: readonly ParteComSinal[] | null): ArquivoLido {
+  const ms = [...new Set(meses)].sort();
+  const extrato = ms.flatMap(m => arquivosDoBanco(e, banco, primeiro, 'banco', m).flatMap(a => a.lancamentos.filter(l => l.data.startsWith(m))));
+  const lancamentos = partes
+    ? [...extrato.filter(l => !TOTAL_DO_CREDITOR.test(l.historico)), ...partes.filter(p => ms.some(m => p.data.startsWith(m)))]
+    : extrato.slice();
+  lancamentos.sort((a, b) => a.data.localeCompare(b.data));
+  return { nome: 'TESTE razão ' + (ms.length > 1 ? ms[0] + ' a ' + ms[ms.length - 1] : ms[0] || '') + (partes ? ' (com as partes)' : ' (com o total)') + '.xls', lancamentos, erro: null };
 }

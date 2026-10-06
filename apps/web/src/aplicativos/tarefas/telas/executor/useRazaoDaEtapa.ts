@@ -39,12 +39,16 @@ export function useRazaoDaEtapa(chave: string, meses: readonly string[], onImpor
       aviso({ tom: 'erro', titulo: 'Não consegui ler o razão', texto: e instanceof Error ? e.message : String(e) });
       return;
     }
+    usar(f.name, razao);
+  }
+
+  function usar(arquivo: string, razao: t.RazaoDaConta) {
     const ms = t.mesesDoRazao(razao, meses);
     if (!ms.some(m => m.lancamentos.length)) {
       aviso({ tom: 'erro', titulo: 'O razão não é deste período', texto: 'Nenhum lançamento entre ' + t.rotuloDoPeriodo([...meses]) + '.' });
       return;
     }
-    setLido({ chave, arquivo: f.name, razao });
+    setLido({ chave, arquivo, razao });
     setMesAberto(null);
     const entrou = onImportado(ms.filter(t.precisaDoCreditor).map(m => m.mes));
     if (entrou.length) aviso({ tom: 'info', titulo: 'O Creditor entrou na rotina', texto: 'Liquidação de cobrança no caixa em ' + entrou.map(t.rotuloCurtoCompetencia).join(', ') + '.' });
@@ -68,6 +72,8 @@ export function useRazaoDaEtapa(chave: string, meses: readonly string[], onImpor
     carregado: !!atual,
     arquivo: atual?.arquivo || '',
     remover: () => setLido(null),
+    /** o ⚡ do modo desenvolvedor: o caixa de teste do período (com ou sem o CRÉD.LIQ.COBRANÇA) */
+    implantarTeste: (comCreditor: boolean) => usar('TESTE razão do caixa.xls', t.caixaDeTeste(meses, comCreditor)),
     resumo: atual ? 'Razão: ' + doPeriodo.reduce((n, m) => n + m.lancamentos.length, 0).toLocaleString('pt-BR') + ' lançamentos' : '',
     /** a grade dos meses: o saldo do fim (sem o D; credor com o sinal de menos, em vermelho) e as pendências (Vitor, 05/10/2026) */
     meses: doPeriodo.map(m => ({

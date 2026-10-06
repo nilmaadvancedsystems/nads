@@ -43,6 +43,25 @@ export function lerBalanceteDinamico(rows: readonly (readonly unknown[])[]): Bal
   return { meses: meses.map(m => m.mes), linhas };
 }
 
+/** Os clientes fictícios do balancete dinâmico de teste (o ⚡ do modo desenvolvedor): nome e saldo no mês. */
+const CLIENTES_DE_TESTE: [string, number][] = [
+  ['MERCADO BOM PRECO LTDA', 1250.4], ['ANA PAULA SOUZA', 0], ['CONSTRUTORA ALFA LTDA', 8730], ['PADARIA DO JOAO', 312.9],
+  ['JOSE CARLOS PEREIRA', 0], ['FARMACIA SAUDE LTDA', 2045.15], ['AUTO PECAS CENTRAL', 0], ['ESCOLA PEQUENO SABER', 640],
+];
+
+/** Um balancete dinâmico de teste com o mês (e o anterior): os clientes fictícios; com credores, dois deles ficam negativos. */
+export function dinamicoDeTeste(mes: string, comCredores: boolean): BalanceteDinamico {
+  const [a, m] = mes.split('-').map(Number);
+  const antes = m === 1 ? (a - 1) + '-12' : a + '-' + String(m - 1).padStart(2, '0');
+  const linhas: LinhaDinamico[] = [{ codigo: '100', classificacao: '1.1.2.01', descricao: 'CLIENTES', saldoAnterior: 0, saldos: {} }];
+  CLIENTES_DE_TESTE.forEach(([nome, saldo], i) => {
+    const valor = comCredores && (i === 1 || i === 4) ? -(150 + i * 35.5) : saldo;
+    linhas.push({ codigo: String(101 + i), classificacao: '1.1.2.01.' + String(i + 1).padStart(3, '0'), descricao: nome, saldoAnterior: 0, saldos: { [antes]: saldo, [mes]: valor } });
+  });
+  linhas[0].saldos = { [antes]: CLIENTES_DE_TESTE.reduce((t, [, v]) => t + v, 0), [mes]: linhas.slice(1).reduce((t, l) => t + (l.saldos[mes] ?? 0), 0) };
+  return { meses: [antes, mes], linhas };
+}
+
 // ─── as contas de cliente ────────────────────────────────────────────────────
 
 /** Uma conta de cliente: o saldo no mês (positivo = devedor, negativo = credor) e o do balancete atual, quando veio. */

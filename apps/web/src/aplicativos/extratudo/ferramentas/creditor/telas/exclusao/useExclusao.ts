@@ -6,6 +6,8 @@ import { creditor as cr, extrator as x } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useAplicar, useCadastroDaEmpresa, useEmpresa } from '../../../extrator/dados/repo';
+import { useDadosDeTesteNaTarefa } from '../../../../../../comum/ponte';
+import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
 import { useSessao } from '../../casca/sessao';
 
 const novoId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -41,27 +43,42 @@ export function useExclusao() {
   }, [bate, s]);
 
   /** O razão novo da conta banco: sobrepõe o que estava nas mesmas datas (a reimportação) e fica com o banco certo. */
+  function aplicarRazao(lido: x.ArquivoLido) {
+    if (!banco) return;
+    const doBanco = (a: x.ArquivoImportado) => x.bancoDoArquivo(a, primeiro) === banco.id;
+    const novos: string[] = [];
+    aplicar(e => {
+      const agora = { ...e, arquivos: e.arquivos.filter(doBanco) };
+      const modo = x.jaTemNoPeriodo(agora, 'sistema', [lido]) ? 'sobrepor' : 'primeira';
+      const res = x.importar(agora, 'sistema', [lido], modo, new Date(), novoId);
+      const antes = new Set(agora.arquivos.map(a => a.id));
+      const outros = e.arquivos.filter(a => !doBanco(a));
+      novos.splice(0, novos.length, ...res.empresa.arquivos.filter(a => !antes.has(a.id)).map(a => a.id));
+      return { ...res.empresa, arquivos: [...outros, ...res.empresa.arquivos.map(a => (antes.has(a.id) ? a : { ...a, banco: banco.id }))] };
+    });
+    s.mudar(e => ({ ...e, razaoDaExclusao: { ids: novos, nome: lido.nome } }));
+    aviso({ tom: 'ok', titulo: 'Razão importado', texto: banco.nome + ' · ' + lido.lancamentos.length + ' lançamento(s)' });
+  }
+
   async function importarRazao(f: File | undefined) {
     if (!f || !banco) return;
     setLendo(true);
     try {
       const lido = await x.lerArquivo(f.name, new Uint8Array(await f.arrayBuffer()), 'sistema');
       if (lido.erro || !lido.lancamentos.length) { aviso({ tom: 'erro', titulo: 'Nada para importar', texto: f.name + ': ' + (lido.erro || 'nenhum lançamento') }); return; }
-      const doBanco = (a: x.ArquivoImportado) => x.bancoDoArquivo(a, primeiro) === banco.id;
-      const novos: string[] = [];
-      aplicar(e => {
-        const agora = { ...e, arquivos: e.arquivos.filter(doBanco) };
-        const modo = x.jaTemNoPeriodo(agora, 'sistema', [lido]) ? 'sobrepor' : 'primeira';
-        const res = x.importar(agora, 'sistema', [lido], modo, new Date(), novoId);
-        const antes = new Set(agora.arquivos.map(a => a.id));
-        const outros = e.arquivos.filter(a => !doBanco(a));
-        novos.splice(0, novos.length, ...res.empresa.arquivos.filter(a => !antes.has(a.id)).map(a => a.id));
-        return { ...res.empresa, arquivos: [...outros, ...res.empresa.arquivos.map(a => (antes.has(a.id) ? a : { ...a, banco: banco.id }))] };
-      });
-      s.mudar(e => ({ ...e, razaoDaExclusao: { ids: novos, nome: f.name } }));
-      aviso({ tom: 'ok', titulo: 'Razão importado', texto: banco.nome + ' · ' + lido.lancamentos.length + ' lançamento(s)' });
+      aplicarRazao(lido);
     } finally { setLendo(false); }
   }
+
+  // o ⚡ do modo desenvolvedor na Tarefa: o razão de teste feito do extrato (com as partes, dá Ok; com o total, faltam as partes)
+  const comSinal = s.d.lancamentos.filter(l => l.debito === contaBanco || l.credito === contaBanco)
+    .map(l => ({ data: iso(l.data), valor: Math.round(l.valor * 100) * (l.debito === contaBanco ? 1 : -1), historico: l.historico }));
+  useDadosDeTesteNaTarefa(modoDesenvolvedor() && banco && meses.length && !temRazao ? [
+    { id: 'partes', rotulo: 'Razão de teste com as partes (dá Ok)' },
+    { id: 'total', rotulo: 'Razão de teste com o total (faltam as partes)' },
+  ] : [], id => {
+    if (banco) aplicarRazao(x.razaoDeTesteDaExclusao(emp, banco.id, primeiro, meses, id === 'partes' ? comSinal : null));
+  });
 
   /** O check do razão (como na Importação): exclui o razão importado aqui (pergunta antes). */
   async function excluirRazao() {

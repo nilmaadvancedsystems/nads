@@ -15,3 +15,4 @@ export * from './regras/inss';
 export { idDaExecucao, type RepoTarefas } from './repo';
 export { criarRepoTarefasMemoria, execucoesDeExemplo, execucoesVariadas, type GuardaTarefas } from './repo.memoria';
 export * from './reinf/reinf';
+export * from './regras/deTeste';

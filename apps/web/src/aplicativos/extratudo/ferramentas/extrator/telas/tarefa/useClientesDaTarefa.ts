@@ -3,11 +3,12 @@
 // dinâmico), Clientes (todas as contas de cliente com o botão Pendente → Ok → Conferido e a observação do conferido) e
 // Envio (a relação dos conferidos para o cliente: a planilha, o e-mail e o WhatsApp, com a mensagem configurável).
 // As marcas ficam guardadas por mês; os conferidos do mês anterior aparecem de novo para revisar.
-import { clientes as cl, conferencia as c, tarefas } from '@nads/core';
+import { clientes as cl, conferencia as c, demo, tarefas } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { useRequisitosParaATarefa } from '../../../../../../comum/ponte';
+import { useDadosDeTesteNaTarefa, useRequisitosParaATarefa } from '../../../../../../comum/ponte';
+import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
 import { gravarMensagem, lerMensagem, useMarcasDoMes } from '../../../../dados/clientes';
 import { useSessao } from '../../casca/sessao';
 
@@ -41,6 +42,16 @@ export function useClientesDaTarefa() {
       aviso({ tom: 'ok', titulo: 'Balancete dinâmico importado', texto: f.name });
     } catch (e) { aviso({ tom: 'erro', titulo: 'Não deu para ler ' + f.name, texto: e instanceof Error ? e.message : String(e) }); }
   }
+
+  // o ⚡ do modo desenvolvedor na Tarefa: um balancete dinâmico fictício do mês (com ou sem credores), como se importado
+  useDadosDeTesteNaTarefa(mes && (modoDesenvolvedor() || demo.ehEmpresaDemo(s.nome)) && tela !== 'envio' ? [
+    { id: 'dinamico', rotulo: 'Balancete dinâmico (sem credores)' },
+    { id: 'dinamico-credores', rotulo: 'Balancete dinâmico (com saldo credor)' },
+  ] : [], id => {
+    const d = cl.dinamicoDeTeste(mes, id === 'dinamico-credores');
+    setDinamico({ nome: 'balancete-dinamico-de-teste.xls', d });
+    aviso({ tom: 'ok', titulo: 'Balancete dinâmico de teste', texto: 'Só nesta tela: nada vai para o banco.' });
+  });
 
   const contas = useMemo(() => (dinamico && mes ? cl.clientesDoDinamico(dinamico.d, mes) : []), [dinamico, mes]);
   const credores = cl.credores(contas);
