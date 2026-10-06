@@ -12,6 +12,7 @@ import { Importacao } from '../telas/importacao/Importacao';
 import { Lancamentos } from '../telas/lancamentos/Lancamentos';
 import { TarefaExtratos } from '../telas/tarefa/TarefaExtratos';
 import { RelatorioDosBancos } from '../telas/tarefa/RelatorioDosBancos';
+import { ClientesDaTarefa } from '../telas/tarefa/ClientesDaTarefa';
 import { caminho } from './caminho';
 import { CascaExtrator } from './CascaExtrator';
 import { PAGINA_INICIAL, paginaPorId } from './navegacao';
@@ -26,6 +27,7 @@ function Tela() {
     case 'auditoria/historico': return <Auditoria />;
     case 'tarefa/extratos': return <TarefaExtratos />;
     case 'tarefa/bancos': return <RelatorioDosBancos />;
+    case 'tarefa/clientes': return <ClientesDaTarefa />;
     default: return null;
   }
 }

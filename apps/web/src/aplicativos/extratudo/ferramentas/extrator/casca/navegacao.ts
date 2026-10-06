@@ -40,6 +40,8 @@ export const PAGINAS_DA_TAREFA: Pagina[] = [
   { id: 'tarefa/extratos', rotulo: 'Importação', icone: 'fileUp', titulo: '' },
   // a etapa Bancos: o relatório do que passou pelos bancos no período (só olhar; Vitor, 06/10/2026)
   { id: 'tarefa/bancos', rotulo: 'Bancos', icone: 'landmark', titulo: 'Relatório Bancário' },
+  // a etapa Clientes: o balancete e o dinâmico, o saldo credor, a situação de cada cliente e o envio (Vitor, 06/10/2026)
+  { id: 'tarefa/clientes', rotulo: 'Clientes', icone: 'usuario', titulo: 'Clientes' },
 ];
 
 export const PAGINA_INICIAL = 'importacao/arquivos';

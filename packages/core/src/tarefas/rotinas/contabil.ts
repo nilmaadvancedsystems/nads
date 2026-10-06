@@ -125,7 +125,8 @@ export const ROTINA_CONTABIL: Rotina = {
       secao: 'Ativo',
       nome: 'Clientes',
       descricao: 'Nenhum cliente com saldo credor; os recebimentos do mês baixados.',
-      ferramenta: { app: 'extratudo', nome: 'Creditor', caminho: r => '/extratudo/' + r + '/creditor/competencia', embutir: true, requisitos: true },
+      // a ferramenta Clientes (Vitor, 06/10/2026): o balancete e o dinâmico, o saldo credor, a situação de cada cliente e o envio
+      ferramenta: { app: 'extratudo', nome: 'Clientes', caminho: r => '/extratudo/' + r + '/extrator/tarefa/clientes', embutir: true, periodo: true, requisitos: true },
       verificacao: 'manual',
       conferir: [
         'Nenhum cliente com saldo credor (recebeu mais do que vendeu: recebimento sem a nota, ou baixa em duplicidade).',
