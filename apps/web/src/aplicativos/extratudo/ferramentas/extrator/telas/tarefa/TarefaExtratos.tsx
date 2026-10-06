@@ -9,7 +9,7 @@
 //   à direita: "Não teve movimento" (trava a linha e vira "Desfazer"); com o extrato vindo do Drive, um
 //     botãozinho de PDF (abre pelo link temporário). O movimento se vê pela setinha.
 // Ao importar, só uma barrinha por cima da tela, que some em 2,7 s.
-import { extrator as x, type conferencia, tarefas } from '@nads/core';
+import { demo, extrator as x, type conferencia, tarefas } from '@nads/core';
 import { classeDaJanela, destacarNaTela, Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
 import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { useDadosDeTesteNaTarefa, usePonteDaTarefa, useRequisitosParaATarefa, type OpcaoDeTeste } from '../../../../../../comum/ponte';
@@ -18,7 +18,7 @@ import { useImportacao, type Mensagem } from '../importacao/useImportacao';
 import { BotaoGoogle } from '../../../../../../comum/BotaoGoogle';
 import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
 import { ImportacaoNaEtapa } from '../../../../../concilia-ai/ImportacaoNaEtapa';
-import { useImportadosDaConferencia } from '../../../../../concilia-ai/importadosNaEtapa';
+import { implantarNotasFiscaisDeTeste, useImportadosDaConferencia } from '../../../../../concilia-ai/importadosNaEtapa';
 import { JanelaHistoricoDePedidos, JanelaPedirExtratos } from './JanelaPedirExtratos';
 import { caminhoNaFerramenta } from '../../../../casca/caminho';
 import { useBancosOk } from './useBancosOk';
@@ -524,7 +524,9 @@ export function TarefaExtratos() {
   // o ⚡ do modo desenvolvedor na Tarefa (Vitor, 06/10/2026): os dados de teste de cada tela que importa
   const ehTeste = vm.ehEmpresaDeTeste || modoDesenvolvedor();
   const primeiroBanco = vm.bancos[0]?.id;
-  useDadosDeTesteNaTarefa(ehTeste && primeiroBanco ? OPCOES_DE_TESTE : [], tipo => {
+  // na Importação do Fiscal (?etapa=fiscal), o ⚡ põe as notas de teste do Fiscal (Vitor, 06/10/2026: "para os parâmetros do fiscal")
+  useDadosDeTesteNaTarefa(!ehTeste ? [] : vm.etapaFiscal ? [...demo.OPCOES_FISCAIS_DE_TESTE] : primeiroBanco ? OPCOES_DE_TESTE : [], tipo => {
+    if (vm.etapaFiscal) { implantarNotasFiscaisDeTeste(s.nome, vm.periodo.length > 1 ? vm.periodo : [vm.competencia], tipo); return; }
     if (tipo === 'apagar') { vm.apagarDadosDeTeste(); return; }
     if (primeiroBanco && (tipo === 'extratos' || tipo === 'bate' || tipo === 'cheque' || tipo === 'erros')) void vm.implantarDadosDeTeste(primeiroBanco, tipo);
   });

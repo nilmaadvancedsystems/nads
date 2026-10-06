@@ -282,3 +282,5 @@ export function portaCadastroComDemo(real: PortaCadastro): PortaCadastro {
     },
   };
 }
+
+export { OPCOES_FISCAIS_DE_TESTE, comNotasFiscaisDeTeste, semNotasFiscaisDeTeste, type NotasFiscaisDeTeste } from './fiscal';

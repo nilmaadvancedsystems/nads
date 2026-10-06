@@ -2993,3 +2993,66 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .dp-marca.a-fazer{border:1.5px solid var(--border-strong);}
 .dp-marca.feita{background:var(--success-soft);color:var(--success-ink);}
 .dp-marca.parada{background:var(--warn-soft);color:var(--warn);}
+/* Fiscal › a checklist disfarçada (06/10/2026): um cartão por tarefa, com o painel (números, tabelinha, gráfico) e o Importar */
+.pt-lista{display:flex;flex-direction:column;gap:12px;max-width:1080px;margin:0 auto;width:100%;padding:16px 20px 32px;align-self:flex-start;box-sizing:border-box;}
+.pt-cabeca{display:flex;align-items:center;gap:16px;justify-content:space-between;flex-wrap:wrap;}
+.pt-cabeca h3{margin:0;font-size:18px;}
+.pt-progresso{display:flex;align-items:center;gap:10px;min-width:180px;}
+.pt-progresso-barra{flex:1;height:6px;border-radius:99px;background:var(--border);overflow:hidden;}
+.pt-progresso-barra span{display:block;height:100%;background:var(--success);border-radius:99px;}
+.pt-lista ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;}
+.pt-cartao{padding:14px 16px;display:flex;flex-direction:column;gap:12px;}
+.pt-cartao.da-vez{border-color:var(--accent-border);box-shadow:var(--shadow-md);}
+.pt-cartao.travado{opacity:.6;}
+.pt-topo{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.pt-num{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none;
+  font:600 13px/1 var(--font-num);background:var(--hover-bg);color:var(--ink-muted);border:1px solid var(--border);}
+.pt-cartao.da-vez .pt-num{background:var(--accent-soft);color:var(--accent-ink);border-color:var(--accent-border);}
+.pt-cartao.feito .pt-num{background:var(--success-soft);color:var(--success-ink);border-color:transparent;}
+.pt-num svg{width:14px;height:14px;}
+.pt-titulo{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+.pt-titulo h4{margin:0;font-size:15px;}
+.pt-titulo .fraco{font-size:12.5px;color:var(--ink-muted);}
+.pt-acoes{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto;}
+.pt-importado{width:14px;height:14px;color:var(--success);margin-left:2px;}
+.pt-espera{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-muted);}
+.pt-espera svg{width:13px;height:13px;}
+.pt-aviso{display:flex;align-items:flex-start;gap:6px;margin:0;font-size:12.5px;color:var(--warn);}
+.pt-aviso svg{width:14px;height:14px;flex:none;margin-top:1px;}
+.pt-corpo{display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--border-muted);padding-top:12px;}
+.pt-vazio{display:flex;align-items:center;gap:8px;margin:0;font-size:13px;color:var(--ink-muted);}
+.pt-vazio svg{width:15px;height:15px;}
+.pt-nota{display:flex;align-items:center;gap:6px;margin:0;font-size:12.5px;}
+.pt-nota svg{width:13px;height:13px;color:var(--warn);}
+/* os números grandes */
+.pt-numeros{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;}
+.pt-numero{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);}
+.pt-numero b{font-size:20px;line-height:1.2;color:var(--ink);display:inline-flex;align-items:center;}
+.pt-numero b svg{width:20px;height:20px;}
+.pt-numero span{font-size:12px;color:var(--ink-muted);}
+.pt-numero.ok b{color:var(--success-ink);}
+.pt-numero.ok{border-color:var(--success);background:var(--success-soft);}
+.pt-numero.atencao{border-color:var(--warn);background:var(--warn-soft);}
+/* as barras por dia */
+.pt-dias{margin:0;display:flex;flex-direction:column;gap:6px;}
+.pt-dias-topo{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;flex-wrap:wrap;}
+.pt-dias-barras{display:flex;align-items:flex-end;gap:2px;height:84px;border-bottom:1px solid var(--border);}
+.pt-dia{flex:1;height:100%;display:flex;align-items:flex-end;cursor:default;}
+.pt-dia-barra{display:block;width:100%;background:var(--accent);border-radius:4px 4px 0 0;opacity:.75;}
+.pt-dia.sobre .pt-dia-barra{opacity:1;}
+.pt-dias-eixo{display:flex;justify-content:space-between;font-size:11px;}
+/* a tabelinha com barras */
+.pt-tabela table{width:100%;}
+.pt-tabela td,.pt-tabela th{padding:6px 10px;font-size:13px;}
+.pt-col-barra{width:28%;min-width:80px;}
+.pt-barra{display:block;height:8px;border-radius:99px;background:var(--hover-bg);overflow:hidden;}
+.pt-barra span{display:block;height:100%;background:var(--accent);border-radius:99px;opacity:.75;}
+.pt-destaque .pt-barra span{opacity:1;}
+.pt-rotulo{display:block;}
+.pt-dica{display:block;font-size:11.5px;color:var(--ink-muted);}
+.pt-destaque .pt-dica{color:var(--warn);font-weight:600;}
+/* a janela de importar */
+.pt-janela-resumo{display:flex;flex-direction:column;gap:4px;padding:4px 4px 12px;}
+.pt-janela-resumo .fraco{font-size:12.5px;color:var(--ink-muted);}
+@media (max-width:640px){.pt-acoes{margin-left:0;width:100%;}.pt-col-barra{display:none;}}
+.pt-janela .imp-conf-topo .page-title{display:none;}
