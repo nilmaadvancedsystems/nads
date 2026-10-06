@@ -10,6 +10,7 @@ import { useSearchParams } from 'react-router';
 import { competenciasDaTela } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 import { useExecucoes, useRepo } from '../../dados/repo';
+import { useClientesDoDp } from './useClientesDoDp';
 
 /** Como cada obrigação está no mês: não tem, a fazer, feita, parada. */
 export type EstadoDaObrigacao = 'nao-tem' | 'a-fazer' | 'feita' | 'parada';
@@ -31,9 +32,8 @@ export function usePainelDoDp() {
   const competencias = competenciasDaTela(12);
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
   const { execucoes, carregada } = useExecucoes(competencia, 'dp');
-  const rotina = t.ROTINA_DP;
   const porNome = new Map(execucoes.map(e => [e.empresa, e]));
-  const daLista = new Map(repo.listarEmpresas().filter(e => e.codigo != null).map(e => [e.codigo as number, e]));
+  const doDp = useClientesDoDp();
 
   const [busca, setBusca] = useState('');
   const [responsavel, setResponsavel] = useState('');
@@ -43,9 +43,9 @@ export function usePainelDoDp() {
   const [agrupamento, setAgrupamento] = useState('');
   const [agrupar, setAgrupar] = useState<Agrupar>('nenhum');
 
-  const todas = empresas.CLIENTES_DO_DP.map(c => {
-    const emp = daLista.get(c.codigo) || { codigo: c.codigo, nome: c.nome, regime: c.enquadramento };
-    const ex = porNome.get(emp.nome) || null;
+  // os clientes como valem hoje (a planilha com o que mudou no Cadastro e nas Configurações do DP)
+  const todas = doDp.clientes.map(c => {
+    const ex = porNome.get(c.nomeNaTela) || null;
     const temAlguma = c.obrigacoes.length > 0;
     const estadoDe = (etapa: string, tem: boolean): EstadoDaObrigacao => {
       if (!tem) return 'nao-tem';
@@ -60,13 +60,16 @@ export function usePainelDoDp() {
       const est = t.estadoDa(ex, o.etapa);
       return { ...o, quem: est && o.estado === 'feita' ? est.por + ' em ' + new Date(est.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '' };
     });
-    const situacao = t.situacaoGeral(ex, rotina);
-    // concluída: a rotina do mês fechada (quem não tem nenhuma obrigação não tem o que fazer)
-    const concluida = !temAlguma || situacao === 'concluida';
+    // a situação pelo que a tabela mostra: todas as obrigações que o cliente tem (e o Entregue) feitas = concluída
+    const tem = obrigacoes.filter(o => o.estado !== 'nao-tem');
+    const feitas = tem.filter(o => o.estado === 'feita').length;
+    const parada = tem.some(o => o.estado === 'parada');
+    const concluida = !temAlguma || feitas === tem.length;
+    const situacao: t.SituacaoGeral = concluida ? 'concluida' : parada ? 'parada' : feitas > 0 ? 'em-andamento' : 'nao-iniciada';
     return {
-      ...c, chave: String(c.codigo), nomeNaTela: emp.nome, responsavelNome: nomeDe(c.responsavel), ex,
+      ...c, chave: String(c.codigo), responsavelNome: nomeDe(c.responsavel), ex,
       obrigacoes, concluida, temAlguma,
-      situacao: !temAlguma ? 'Nada no mês' : t.ROTULO_SITUACAO_GERAL[situacao], parada: situacao === 'parada',
+      situacao: !temAlguma ? 'Nada no mês' : t.ROTULO_SITUACAO_GERAL[situacao], parada,
     };
   });
 
@@ -89,7 +92,7 @@ export function usePainelDoDp() {
   const responsaveis = contar(todas.map(c => c.responsavelNome)).map(r => r.rotulo);
 
   return {
-    carregando: !carregada,
+    carregando: !carregada || !doDp.carregado,
     competencia,
     competencias: competencias.map(c => ({ valor: c, rotulo: t.rotuloCompetencia(c) })),
     setCompetencia: (c: string) => setParams({ competencia: c }),
@@ -127,7 +130,7 @@ export function usePainelDoDp() {
     },
     /** a bolinha da obrigação: a fazer → feita; feita → volta a fazer (grava com quem e quando, como o executor) */
     alternar(codigo: number, etapa: string) {
-      if (!carregada) return;
+      if (!carregada || !doDp.carregado) return;
       const c = todas.find(x => x.codigo === codigo);
       const o = c?.obrigacoes.find(x => x.etapa === etapa);
       if (!c || !o || o.estado === 'nao-tem') return;

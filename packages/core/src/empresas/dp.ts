@@ -294,3 +294,26 @@ export const SO_DO_DP: readonly EmpresaDoEscritorio[] = CLIENTES_DO_DP.filter(c 
 
 /** A lista do escritório com os clientes que só o DP tem (para a Tarefas achar a empresa em qualquer rotina). */
 export const EMPRESAS_COM_DP: readonly EmpresaDoEscritorio[] = [...EMPRESAS, ...SO_DO_DP];
+
+/**
+ * O cliente do DP com o que foi mudado no Cadastro (o responsável do DP) e nas Configurações do DP (os parâmetros):
+ * o que não foi mudado vale o da planilha.
+ */
+export function clienteDoDpNoCadastro(base: ClienteDoDp, cad: { responsaveis?: { dp?: string }; dp?: { movimento?: string; obrigacoes?: string[]; reinfAutorizada?: boolean; entrega?: string; agrupamento?: string } } | null | undefined): ClienteDoDp {
+  if (!cad) return base;
+  const d = cad.dp || {};
+  const obrigacoes = d.obrigacoes;
+  return {
+    ...base,
+    responsavel: cad.responsaveis?.dp ?? base.responsavel,
+    movimento: (d.movimento as MovimentoDp | undefined) ?? base.movimento,
+    obrigacoes: obrigacoes ? OBRIGACOES_DP.filter(o => obrigacoes.includes(o.id)).map(o => o.id) : base.obrigacoes,
+    reinfAutorizada: d.reinfAutorizada ?? base.reinfAutorizada,
+    entrega: d.entrega ?? base.entrega,
+    agrupamento: d.agrupamento ?? base.agrupamento,
+  };
+}
+
+/** Os movimentos e as entregas (para escolher nas Configurações do DP). */
+export const MOVIMENTOS_DP: readonly MovimentoDp[] = ['Folha', 'Pró-Labore', 'Sem Movimento', 'Apenas REINF'];
+export const ENTREGAS_DP: readonly string[] = ['Office boy', 'eContador', 'WhatsApp', 'E-mail', 'Malote', 'Em mãos'];

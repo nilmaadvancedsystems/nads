@@ -32,3 +32,25 @@ describe('rotina do DP (o Checklist Folha)', () => {
     expect(SO_DO_DP.length).toBeGreaterThan(0);
   });
 });
+
+describe('o DP no cadastro da empresa (responsáveis e parâmetros)', () => {
+  it('grava e lê o responsável e os parâmetros do DP; o que não mudou vale o da planilha', async () => {
+    const { cadastroVazio, definirResponsavel, definirParametrosDp, documentoDoCadastro, cadastroDoDocumento } = await import('../../empresas/cadastro/regras');
+    const { clienteDoDpNoCadastro } = await import('../../empresas/dp');
+    const base = CLIENTES_DO_DP.find(c => c.movimento === 'Folha' && c.obrigacoes.length === 8)!;
+    let c = cadastroVazio(base.nome, base.codigo);
+    c = definirResponsavel(c, 'dp', 'Gustavo.P', 'Vitor', new Date('2026-10-06T12:00:00Z'));
+    c = definirParametrosDp(c, { movimento: 'Sem Movimento', obrigacoes: ['s1299', 'dctfweb'] }, 'Vitor', new Date('2026-10-06T12:00:00Z'));
+    const lido = cadastroDoDocumento(base.nome, base.codigo, documentoDoCadastro(c));
+    expect(lido.responsaveis).toEqual({ dp: 'Gustavo.P' });
+    const cli = clienteDoDpNoCadastro(base, lido);
+    expect(cli.responsavel).toBe('Gustavo.P');
+    expect(cli.movimento).toBe('Sem Movimento');
+    expect(cli.obrigacoes).toEqual(['s1299', 'dctfweb']);
+    expect(cli.entrega).toBe(base.entrega);
+    // voltar à planilha
+    const volta = definirParametrosDp(lido, { movimento: null, obrigacoes: null }, 'Vitor', new Date());
+    expect(clienteDoDpNoCadastro(base, volta).obrigacoes).toEqual(base.obrigacoes);
+    expect(lido.historico.length).toBe(2);
+  });
+});

@@ -66,6 +66,19 @@ export function useCadastro(nome: string, codigo: number | null): CadastroAoVivo
   return { cadastro: repo.cadastro(nome, codigo), plano: repo.plano(nome), carregada: repo.carregada(nome), exemplos: repo.exemplos, salvar, salvarPlano };
 }
 
+/**
+ * Muda o cadastro de qualquer empresa (as telas em lote: Cadastro › Responsáveis e as Configurações do DP): espera o
+ * cadastro dela chegar do banco (o repositório só grava depois disso), aplica a mudança e grava.
+ */
+export function useGravarCadastro() {
+  const repo = repoDoCadastro();
+  return useCallback(async (nome: string, codigo: number | null, mudar: (c: empresas.cadastro.CadastroDaEmpresa) => empresas.cadastro.CadastroDaEmpresa) => {
+    const atual = await repo.obter(nome, codigo);
+    const novo = mudar(atual);
+    if (novo !== atual) repo.salvar(nome, novo);
+  }, [repo]);
+}
+
 /** Todos os cadastros (sem os planos), para a lista de empresas do Cadastro. */
 export function useTodosOsCadastros() {
   const repo = repoDoCadastro();

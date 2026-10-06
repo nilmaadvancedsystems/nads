@@ -3159,3 +3159,40 @@ button.dp-marca.feita{background:var(--success-soft);color:var(--success-ink);bo
 button.dp-marca.feita:hover{background:var(--success);color:var(--on-accent);}
 button.dp-marca:disabled{cursor:default;opacity:.6;}
 .dp-linha{cursor:default;}
+/* DP (06/10/2026, "ficou incoerente" / "embolada e feia"): os números numa linha só, sem buraco; a tabela com respiro */
+.dp-numeros{display:flex;flex-wrap:wrap;}
+.dp-numeros .stat{flex:1 1 140px;}
+.dp-tabela th{font-size:11.5px;font-weight:600;color:var(--ink-muted);letter-spacing:.01em;}
+.dp-tabela td{padding-top:10px;padding-bottom:10px;vertical-align:middle;}
+.dp-cabeca-grupo th{padding-top:8px;padding-bottom:0;border-bottom:0;}
+.dp-ob-grupo{text-align:center;font-size:10.5px !important;text-transform:uppercase;letter-spacing:.08em !important;color:var(--ink-faint) !important;}
+.dp-tabela .dp-ob{width:54px;min-width:54px;}
+.dp-tabela .dp-ob-primeira{border-left:1px solid var(--border);}
+.dp-tabela tbody tr:hover td{background:var(--hover-bg);}
+.dp-cliente-nome{font-weight:500;font-size:13.5px;line-height:1.3;}
+.dp-marca{width:18px;height:18px;}
+.dp-marca.a-fazer{border:1.5px solid var(--border-strong);}
+/* DP › Configurações e Cadastro › Responsáveis */
+.dp-config-dica{margin:0 0 12px;}
+.dp-check{display:inline-flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap;align-self:flex-end;padding-bottom:6px;}
+.dp-config td{white-space:nowrap;}
+.dp-chips{display:flex;flex-wrap:wrap;gap:4px;max-width:380px;}
+.dp-chip{border:1px solid var(--border);background:transparent;color:var(--ink-faint);border-radius:999px;padding:2px 8px;font-size:11.5px;cursor:pointer;}
+.dp-chip:hover{border-color:var(--border-strong);color:var(--ink-muted);}
+.dp-chip.ligado{background:var(--success-soft);border-color:transparent;color:var(--success-ink);font-weight:600;}
+.dp-agrup{width:150px;}
+.dp-mudado td:first-child{box-shadow:inset 3px 0 0 var(--accent);}
+.dp-resp{width:100%;min-width:130px;}
+.dp-config .dp-chips{min-width:330px;max-width:360px;}
+.dp-config .dp-agrup{width:170px;}
+.dp-config .dp-cliente{min-width:200px;}
+.dp-config .dp-chips{min-width:280px;max-width:300px;}
+.dp-config .select-compact{max-width:150px;}
+.dp-config .dp-agrup{width:140px;}
+.dp-config .dp-cliente{min-width:180px;}
+.dp-centro{text-align:center;}
+.dp-empilhado{display:table-cell;}
+.dp-empilhado > *{display:block;margin:2px 0;}
+.dp-config .dp-empilhado .select-compact,.dp-config .dp-empilhado .dp-agrup{width:150px;max-width:150px;}
+.dp-config .dp-chips{min-width:250px;max-width:270px;}
+.dp-resp{min-width:180px;}

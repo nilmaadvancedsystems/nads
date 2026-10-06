@@ -115,9 +115,14 @@ export function PainelDoDp() {
               <div className="table-wrap">
                 <table className="dp-tabela">
                   <thead>
+                    <tr className="dp-cabeca-grupo">
+                      <th colSpan={3} />
+                      <th colSpan={vm.colunas.length} className="dp-ob-grupo">Obrigações do mês</th>
+                      <th />
+                    </tr>
                     <tr>
                       <th>Cód.</th><th>Cliente</th><th>Responsável</th>
-                      {vm.colunas.map(o => <th key={o.id} className="dp-ob" title={o.nome}>{o.rotulo}</th>)}
+                      {vm.colunas.map((o, i) => <th key={o.id} className={'dp-ob' + (i === 0 ? ' dp-ob-primeira' : '')} title={o.nome}>{o.rotulo}</th>)}
                       <th>Situação</th>
                     </tr>
                   </thead>
@@ -134,8 +139,8 @@ export function PainelDoDp() {
                               <span className="dp-cliente-info">{[c.enquadramento, c.movimento, c.reinfAutorizada ? 'REINF autorizada' : '', c.entrega].filter(Boolean).join(' · ')}</span>
                             </td>
                             <td>{c.responsavel ? c.responsavelNome : <span className="fraco">—</span>}</td>
-                            {c.obrigacoes.map(o => (
-                              <td key={o.id} className="dp-ob">
+                            {c.obrigacoes.map((o, i) => (
+                              <td key={o.id} className={'dp-ob' + (i === 0 ? ' dp-ob-primeira' : '')}>
                                 {o.estado === 'nao-tem' ? <span className="dp-marca nao-tem" title="não tem no mês">–</span> : (
                                   <button type="button" className={'dp-marca ' + o.estado} disabled={vm.carregando} onClick={() => vm.alternar(c.codigo, o.etapa)}
                                     title={(vm.colunas.find(x => x.id === o.id)?.nome || '') + ': ' + (o.estado === 'feita' ? 'feita por ' + o.quem + ' (clique para desfazer)' : 'clique quando fizer')}

@@ -4,9 +4,8 @@
 // usava (a lista provisória de empresas/bancos.ts e os bancos adicionados na tela dele).
 import { nomeNorm } from '../../formatos';
 import { BANCOS_CONHECIDOS, bancosDaEmpresa, idDaConta, rotuloDaConta, type BancoDaEmpresa } from '../bancos';
-import type {
-  CadastroDaEmpresa, CampoContaPadrao, ContaBancaria, ContaDoPlano, ContaPadraoDoPlano, ContasPadrao, PlanoDeContas,
-  RegistroCadastro, Socio, TipoContaBancaria,
+import {
+  type CadastroDaEmpresa, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, DEPARTAMENTOS_DO_RESPONSAVEL,
 } from './tipos';
 
 /** Quantos registros do histórico ficam guardados (os mais novos). */
@@ -64,6 +63,26 @@ function contasPadraoDoDocumento(v: unknown): ContasPadrao | null {
   return { contas, nomes };
 }
 
+function responsaveisDoDocumento(v: unknown): { responsaveis?: Partial<Record<DepartamentoDoResponsavel, string>> } {
+  if (!v || typeof v !== 'object') return {};
+  const o = v as Record<string, unknown>;
+  const r: Partial<Record<DepartamentoDoResponsavel, string>> = {};
+  for (const d of DEPARTAMENTOS_DO_RESPONSAVEL) if (texto(o[d.id])) r[d.id] = texto(o[d.id]);
+  return Object.keys(r).length ? { responsaveis: r } : {};
+}
+
+function dpDoDocumento(v: unknown): { dp?: ParametrosDoDp } {
+  if (!v || typeof v !== 'object') return {};
+  const o = v as Record<string, unknown>;
+  const p: ParametrosDoDp = {};
+  if (texto(o.movimento)) p.movimento = texto(o.movimento);
+  if (Array.isArray(o.obrigacoes)) p.obrigacoes = o.obrigacoes.map(texto).filter(Boolean);
+  if (typeof o.reinfAutorizada === 'boolean') p.reinfAutorizada = o.reinfAutorizada;
+  if (typeof o.entrega === 'string') p.entrega = texto(o.entrega);
+  if (typeof o.agrupamento === 'string') p.agrupamento = texto(o.agrupamento);
+  return Object.keys(p).length ? { dp: p } : {};
+}
+
 /** O documento `cadastro/{slug}` conferido (campo estranho ou vazio fica de fora). */
 export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Record<string, unknown> | null | undefined): CadastroDaEmpresa {
   if (!doc) return cadastroVazio(nome, codigo);
@@ -77,6 +96,7 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     nome, codigo, bancos, contasPadrao: contasPadraoDoDocumento(doc.contasPadrao), historico, ...(plano ? { plano } : {}),
     ...(typeof doc.prestaServico === 'boolean' ? { prestaServico: doc.prestaServico } : {}),
     ...(Array.isArray(doc.socios) ? { socios: (doc.socios as Record<string, unknown>[]).map(s => ({ nome: texto(s?.nome), cpf: texto(s?.cpf) })).filter(s => s.nome || s.cpf) } : {}), atualizadoEm: opcional(doc.atualizadoEm),
+    ...responsaveisDoDocumento(doc.responsaveis), ...dpDoDocumento(doc.dp),
   };
 }
 
@@ -89,6 +109,8 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(c.plano ? { plano: c.plano } : {}),
     ...(typeof c.prestaServico === 'boolean' ? { prestaServico: c.prestaServico } : {}),
     ...(c.socios?.length ? { socios: c.socios } : {}),
+    ...(c.responsaveis && Object.keys(c.responsaveis).length ? { responsaveis: c.responsaveis } : {}),
+    ...(c.dp && Object.keys(c.dp).length ? { dp: c.dp } : {}),
     historico: c.historico.slice(0, MAX_HISTORICO),
     atualizadoEm: c.atualizadoEm || new Date().toISOString(),
   };
@@ -144,6 +166,30 @@ export function definirSocios(c: CadastroDaEmpresa, socios: readonly Socio[], po
 }
 
 /** Registra no histórico a troca do plano de contas (o plano mora em outro documento). */
+/** Quem cuida da empresa num departamento (vazio = ninguém). Igual ao que já está: não muda nada. */
+export function definirResponsavel(c: CadastroDaEmpresa, dep: DepartamentoDoResponsavel, nome: string, por: string, agora: Date): CadastroDaEmpresa {
+  const novo = texto(nome);
+  if ((c.responsaveis?.[dep] || '') === novo) return c;
+  const responsaveis = { ...(c.responsaveis || {}) };
+  if (novo) responsaveis[dep] = novo; else delete responsaveis[dep];
+  const rotulo = DEPARTAMENTOS_DO_RESPONSAVEL.find(d => d.id === dep)?.rotulo || dep;
+  return registrar({ ...c, responsaveis }, por, agora, 'Responsável', rotulo + ': ' + (novo || 'ninguém'));
+}
+
+/** Muda parâmetros do DP (os que vierem); null tira o parâmetro (volta o da planilha do DP). */
+export function definirParametrosDp(c: CadastroDaEmpresa, mudar: { [K in keyof ParametrosDoDp]?: ParametrosDoDp[K] | null }, por: string, agora: Date): CadastroDaEmpresa {
+  const dp: ParametrosDoDp = { ...(c.dp || {}) };
+  const partes: string[] = [];
+  for (const [k, v] of Object.entries(mudar) as [keyof ParametrosDoDp, unknown][]) {
+    if (v === undefined) continue;
+    if (v === null) { delete dp[k]; partes.push(k + ': o da planilha'); continue; }
+    (dp as Record<string, unknown>)[k] = v;
+    partes.push(k + ': ' + (Array.isArray(v) ? v.join(', ') || 'nenhuma' : typeof v === 'boolean' ? (v ? 'sim' : 'não') : String(v) || '—'));
+  }
+  if (!partes.length) return c;
+  return registrar({ ...c, dp }, por, agora, 'DP', partes.join(' · '));
+}
+
 export function registrarPlano(c: CadastroDaEmpresa, p: PlanoDeContas, por: string, agora: Date): CadastroDaEmpresa {
   const de = p.origem === 'balancete' ? 'de um balancete' : (p.arquivo ? 'de ' + p.arquivo : 'de um arquivo');
   const comResumo = { ...c, plano: { contas: p.contas.length, importadoEm: p.importadoEm } };

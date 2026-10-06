@@ -29,6 +29,8 @@ export const APLICACOES: readonly Aplicacao[] = [
   { id: 'cadastro', nome: 'Cadastro', icone: 'landmark', pronta: true, paginas: [
     { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Cadastro — empresas' },
     { id: 'usuarios', rotulo: 'Usuários', icone: 'checklist', titulo: 'Cadastro — usuários' },
+    // quem cuida de cada empresa no DP, no Fiscal e no Contábil (Vitor, 06/10/2026)
+    { id: 'responsaveis', rotulo: 'Responsáveis', icone: 'usuario', titulo: 'Cadastro — responsáveis' },
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Cadastro — configurações' },
   ] },
   // o Fiscal no mesmo modelo do Contábil (Vitor, 05/10/2026): as empresas com a rotina do Fiscal, a visão e as paradas
@@ -45,6 +47,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     // tudo no tabelão do Painel (Vitor, 06/10/2026: "sem a parte de checklist"): sem a lista de empresas e o executor
     { id: 'painel', rotulo: 'Painel', icone: 'painel', titulo: 'DP — painel do mês' },
     { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'DP — visão geral' },
+    // os parâmetros de cada cliente (Vitor, 06/10/2026: "quero que o dp tenha a própria aba de configurações")
+    { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'DP — configurações' },
   ] },
   { id: 'drive', nome: 'Drive', icone: 'pasta', pronta: true, paginas: [
     { id: 'pastas', rotulo: 'Pastas', icone: 'pasta', titulo: 'Drive — pasta do ano' },
