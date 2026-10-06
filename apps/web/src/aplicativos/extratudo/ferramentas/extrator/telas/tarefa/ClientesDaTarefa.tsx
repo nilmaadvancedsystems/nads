@@ -66,10 +66,20 @@ function LinhaDoArquivo({ titulo, dica, feito, onArquivo, onTirar }: {
 }
 
 function Credor({ vm }: { vm: VM }) {
+  const arquivo = useRef<HTMLInputElement>(null);
   return (
     <>
-      <Alerta titulo={vm.credores.length + (vm.credores.length === 1 ? ' cliente com saldo credor' : ' clientes com saldo credor')}
-        texto="Corrija estes no Alterdata primeiro e reimporte o balancete dinâmico (em Arquivos)." />
+      {/* o Reimportar no próprio aviso (Vitor, 06/10/2026): o dinâmico novo substitui o anterior */}
+      <div className="alerta-linha">
+        <Alerta titulo={vm.credores.length + (vm.credores.length === 1 ? ' cliente com saldo credor' : ' clientes com saldo credor')}
+          texto="Corrija estes no Alterdata primeiro e reimporte o balancete dinâmico.">
+          <div className="btn-row">
+            <button type="button" className="btn btn-primary" onClick={() => arquivo.current?.click()}><Icone nome="upload" />Reimportar</button>
+            <input ref={arquivo} type="file" accept=".xls,.xlsx,.csv" className="sr-only" tabIndex={-1} aria-hidden="true"
+              onChange={ev => { const f = ev.target.files?.[0]; ev.target.value = ''; vm.importar(f); }} />
+          </div>
+        </Alerta>
+      </div>
       <div className="table-wrap" style={{ marginTop: 12 }}>
         <table className="table-compact">
           <thead><tr><th>Conta</th><th>Cliente</th><th className="num">Saldo</th></tr></thead>
