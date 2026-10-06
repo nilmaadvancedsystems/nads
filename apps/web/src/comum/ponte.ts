@@ -154,7 +154,8 @@ export interface OpcaoDeTeste { id: string; rotulo: string }
 
 /**
  * Na ferramenta: avisa a Tarefa das opções de dados de teste desta tela e implanta a escolhida. Fora da Tarefa (sem o
- * pai), não faz nada. A ferramenta muda as opções conforme a tela (o que ela importa ali).
+ * pai), não avisa ninguém. A ferramenta muda as opções conforme a tela (o que ela importa ali). Devolve os itens para o
+ * ⚡ da própria linha de importação (comum/BotaoDeTeste).
  */
 export function useDadosDeTesteNaTarefa(opcoes: OpcaoDeTeste[], implantar: (id: string) => void) {
   const [pai] = useState(origemDoPai);
@@ -176,6 +177,7 @@ export function useDadosDeTesteNaTarefa(opcoes: OpcaoDeTeste[], implantar: (id: 
     window.addEventListener('message', ouvir);
     return () => window.removeEventListener('message', ouvir);
   }, [pai]);
+  return opcoes.map(o => ({ rotulo: o.rotulo, onClick: () => aoImplantar.current(o.id) }));
 }
 
 /** Na Tarefa: as opções de dados de teste da ferramenta aberta (mudam com a tela dela) e o mandar a escolhida. */

@@ -73,7 +73,7 @@ export function useExclusao() {
   // o ⚡ do modo desenvolvedor na Tarefa: o razão de teste feito do extrato (com as partes, dá Ok; com o total, faltam as partes)
   const comSinal = s.d.lancamentos.filter(l => l.debito === contaBanco || l.credito === contaBanco)
     .map(l => ({ data: iso(l.data), valor: Math.round(l.valor * 100) * (l.debito === contaBanco ? 1 : -1), historico: l.historico }));
-  useDadosDeTesteNaTarefa(modoDesenvolvedor() && banco && meses.length && !temRazao ? [
+  const teste = useDadosDeTesteNaTarefa(modoDesenvolvedor() && banco && meses.length && !temRazao ? [
     { id: 'partes', rotulo: 'Razão de teste com as partes (dá Ok)' },
     { id: 'total', rotulo: 'Razão de teste com o total (faltam as partes)' },
   ] : [], id => {
@@ -110,5 +110,7 @@ export function useExclusao() {
     /** as partes do .xls do Creditor que não estão no razão (o total ainda não foi trocado no Alterdata) */
     partesFaltando: faltam.map(p => ({ data: x.dataBR(p.data), valor: x.reaisBR(p.valor), historico: p.historico })),
     importarRazao: (f: File | undefined) => { void importarRazao(f); },
+    /** o ⚡ do modo desenvolvedor na linha */
+    teste,
   };
 }

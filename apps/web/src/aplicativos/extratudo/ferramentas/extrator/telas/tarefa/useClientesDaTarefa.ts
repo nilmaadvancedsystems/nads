@@ -44,7 +44,7 @@ export function useClientesDaTarefa() {
   }
 
   // o ⚡ do modo desenvolvedor na Tarefa: um balancete dinâmico fictício do mês (com ou sem credores), como se importado
-  useDadosDeTesteNaTarefa(mes && (modoDesenvolvedor() || demo.ehEmpresaDemo(s.nome)) && tela !== 'envio' ? [
+  const teste = useDadosDeTesteNaTarefa(mes && (modoDesenvolvedor() || demo.ehEmpresaDemo(s.nome)) && tela !== 'envio' ? [
     { id: 'dinamico', rotulo: 'Balancete dinâmico (sem credores)' },
     { id: 'dinamico-credores', rotulo: 'Balancete dinâmico (com saldo credor)' },
   ] : [], id => {
@@ -96,6 +96,8 @@ export function useClientesDaTarefa() {
     dinamico: dinamico ? { nome: dinamico.nome, resumo: contas.length + ' clientes · ' + rotuloMes } : null,
     importar: (f: File | undefined) => { void importar(f); },
     tirar: () => setDinamico(null),
+    /** o ⚡ do modo desenvolvedor na linha */
+    teste,
     // Saldo credor
     credores: credores.map(k => ({ codigo: k.codigo, nome: k.nome, saldo: reais(k.saldo) })),
     // Clientes

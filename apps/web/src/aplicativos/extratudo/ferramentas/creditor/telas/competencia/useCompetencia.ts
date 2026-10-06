@@ -209,7 +209,9 @@ export function useCompetencia() {
     /** os avisos do que foi lido (os da leitura e os títulos fora da competência) */
     avisos,
     /** o exemplo (só sem o banco: dados de exemplo) */
-    exemplo: (mes: string) => guardar(mes, cr.lerRelatorioTexto(cr.EXEMPLO_RELATORIO), 'exemplo'),
+    exemplo: (mes: string) => guardar(mes, cr.lerRelatorioTexto(cr.exemploDoRelatorioNoMes(mes)), 'exemplo'),
+    /** o ⚡ do modo desenvolvedor na linha do mês */
+    teste: modoDesenvolvedor(),
     login: { aberto: loginPara !== null, entrando, erro: erroLogin, entrar: () => { void entrar(); }, fechar: () => setLoginPara(null) },
   };
 }

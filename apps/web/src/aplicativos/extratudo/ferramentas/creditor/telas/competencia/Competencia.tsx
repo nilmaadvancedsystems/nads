@@ -8,6 +8,7 @@ import { Alerta, classeDaJanela, Icone, LogoDrive, MenuSuspenso } from '@nads/ui
 import { useRef, useState } from 'react';
 import { BotaoGoogle } from '../../../../../../comum/BotaoGoogle';
 import { useCompetencia } from './useCompetencia';
+import { BotaoDeTeste } from '../../../../../../comum/BotaoDeTeste';
 
 type VM = ReturnType<typeof useCompetencia>;
 
@@ -171,6 +172,7 @@ function LinhaDoRelatorio({ vm, l, comDrive }: { vm: VM; l: VM['linhas'][number]
           ) : (
             <div className="imp-grupo" aria-label="Relatório de liquidação">
               <span className="imp-rotulo">Relatório</span>
+              {vm.teste && <BotaoDeTeste desabilitado={vm.ocupado} itens={[{ rotulo: 'Relatório de liquidação de exemplo', onClick: () => vm.exemplo(l.mes) }]} />}
               {/* só o ícone de importar; clicou, as opções (como o extrato na Importação) */}
               <MenuSuspenso rotulo="" icone="upload" className="gh-topo-btn gh-topo-menu imp-mes-menu" direita dica={'Importar o relatório de liquidação' + (vm.lote ? ' de ' + l.rotulo : '')}
                 conteudo={fechar => (

@@ -4,6 +4,7 @@
 import { Alerta, Icone, LogoBanco } from '@nads/ui';
 import { useRef, useState } from 'react';
 import { useExclusao } from './useExclusao';
+import { BotaoDeTeste } from '../../../../../../comum/BotaoDeTeste';
 
 export function Exclusao() {
   const vm = useExclusao();
@@ -46,6 +47,7 @@ export function Exclusao() {
                     </button>
                   ) : (
                     <>
+                      <BotaoDeTeste itens={vm.teste} />
                       <button type="button" className="icon-btn icon-btn-sm imp-btn" title={'Importar o razão da conta ' + vm.contaBanco}
                         aria-label="Importar o razão da conta" onClick={() => arquivo.current?.click()}>
                         <Icone nome="upload" />

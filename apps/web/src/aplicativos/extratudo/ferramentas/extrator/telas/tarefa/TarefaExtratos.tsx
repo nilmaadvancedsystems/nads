@@ -619,9 +619,9 @@ export function TarefaExtratos() {
         ) : <SeletorDeCompetencia vm={vm} naTarefa={ponte.naTarefa} trocar={ponte.trocarCompetencia} periodoDaTarefa={ponte.periodo} encerrar={ponte.encerrarPeriodo} />}
         <span className="imp-topo-num"><Icone nome="landmark" /><b>{vm.bancos.length}</b> {vm.bancos.length === 1 ? 'banco' : 'bancos'}</span>
         <span className="imp-topo-meio" />
-        {/* a empresa de teste (Personaly Company): implanta dados fictícios, só neste navegador */}
-        {vm.ehEmpresaDeTeste && vm.bancos.length > 0 && (
-          <MenuSuspenso rotulo="Dados de teste" icone="zap" className="btn btn-outline" direita largura={300} titulo="Personaly Company · só neste navegador"
+        {/* a empresa de teste (Personaly Company) e o modo desenvolvedor: implanta dados fictícios, só nesta tela */}
+        {ehTeste && vm.bancos.length > 0 && (
+          <MenuSuspenso rotulo="Dados de teste" icone="zap" className="btn btn-outline" direita largura={300} titulo={vm.ehEmpresaDeTeste ? 'Personaly Company · só neste navegador' : 'Modo desenvolvedor · nada vai para o banco'}
             itens={[
               { rotulo: 'Extratos do período (1º mês com dia negativo)', icone: 'landmark', onClick: () => { void vm.implantarDadosDeTeste(vm.bancos[0].id, 'extratos'); } },
               'separador',

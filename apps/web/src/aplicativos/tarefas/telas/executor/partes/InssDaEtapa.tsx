@@ -5,6 +5,7 @@ import { Icone } from '@nads/ui';
 import { useId, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import type { InssDaEtapa as Inss } from '../useInssDaEtapa';
+import { BotaoDeTeste, type ItemDeTeste } from '../../../../../comum/BotaoDeTeste';
 
 const BAIXA: Record<Inss['meses'][number]['baixa'], string> = { ok: '✓', falta: 'Falta', depois: 'Depois', fora: '—', 'sem-guia': '—' };
 
@@ -27,7 +28,7 @@ function Importado({ titulo, onExcluir }: { titulo: string; onExcluir: () => voi
   );
 }
 
-export function InssDaEtapa({ inss, conferir }: { inss: Inss; conferir?: string[] }) {
+export function InssDaEtapa({ inss, conferir, teste = [] }: { inss: Inss; conferir?: string[]; teste?: ItemDeTeste[] }) {
   const idRazao = useId();
   const idGuias = useId();
   const [aberta, setAberta] = useState(true);
@@ -49,7 +50,7 @@ export function InssDaEtapa({ inss, conferir }: { inss: Inss; conferir?: string[
               <div className="imp-grupo" aria-label="Razão do INSS a recolher">
                 <span className="imp-rotulo">Razão</span>
                 {inss.temRazao ? <Importado titulo="o razão do INSS" onExcluir={inss.removerRazao} />
-                  : <Importar id={idRazao} titulo="o razão do INSS a recolher (XLS da conciliação do Alterdata)" aceitar=".xls,.xlsx,.ods" onArquivos={fs => { void inss.importarRazao(fs[0] || null); }} />}
+                  : <><BotaoDeTeste itens={teste} /><Importar id={idRazao} titulo="o razão do INSS a recolher (XLS da conciliação do Alterdata)" aceitar=".xls,.xlsx,.ods" onArquivos={fs => { void inss.importarRazao(fs[0] || null); }} /></>}
               </div>
               <div className="imp-grupo" aria-label="Guias do INSS">
                 <span className="imp-rotulo">Guias</span>

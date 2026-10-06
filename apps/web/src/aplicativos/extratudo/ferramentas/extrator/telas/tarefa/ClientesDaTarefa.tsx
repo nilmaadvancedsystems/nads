@@ -4,6 +4,7 @@
 // conferido abre a observação; o envio com a planilha, o e-mail e o WhatsApp. Só o balancete dinâmico (Vitor, 06/10/2026).
 import { Alerta, Icone, LogoGmail, LogoWhatsApp, MenuSuspenso, Segmentado } from '@nads/ui';
 import { useRef } from 'react';
+import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { useClientesDaTarefa, type FiltroClientes, type TelaClientes } from './useClientesDaTarefa';
 
 type VM = ReturnType<typeof useClientesDaTarefa>;
@@ -28,13 +29,13 @@ export function ClientesDaTarefa() {
 function Arquivos({ vm }: { vm: VM }) {
   return (
     <div className="imp-lista">
-      <LinhaDoArquivo titulo="Balancete dinâmico" dica={'O balancete dinâmico atualizado, com ' + vm.mes} feito={vm.dinamico} onArquivo={vm.importar} onTirar={vm.tirar} />
+      <LinhaDoArquivo titulo="Balancete dinâmico" dica={'O balancete dinâmico atualizado, com ' + vm.mes} feito={vm.dinamico} onArquivo={vm.importar} onTirar={vm.tirar} teste={vm.teste} />
     </div>
   );
 }
 
-function LinhaDoArquivo({ titulo, dica, feito, onArquivo, onTirar }: {
-  titulo: string; dica: string; feito: { nome: string; resumo: string } | null; onArquivo: (f: File | undefined) => void; onTirar: () => void;
+function LinhaDoArquivo({ titulo, dica, feito, onArquivo, onTirar, teste }: {
+  titulo: string; dica: string; feito: { nome: string; resumo: string } | null; onArquivo: (f: File | undefined) => void; onTirar: () => void; teste: ItemDeTeste[];
 }) {
   const arquivo = useRef<HTMLInputElement>(null);
   return (
@@ -51,6 +52,7 @@ function LinhaDoArquivo({ titulo, dica, feito, onArquivo, onTirar }: {
               </button>
             ) : (
               <>
+                <BotaoDeTeste itens={teste} />
                 <button type="button" className="icon-btn icon-btn-sm imp-btn" title={'Importar o ' + titulo.toLowerCase()} aria-label={'Importar o ' + titulo.toLowerCase()} onClick={() => arquivo.current?.click()}>
                   <Icone nome="upload" />
                 </button>

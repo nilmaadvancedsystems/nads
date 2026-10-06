@@ -274,9 +274,9 @@ export function Executor() {
                 )}
               </div>
             ) : vm.etapa.conferenciaDoInss ? (
-              <InssDaEtapa inss={inss} conferir={vm.etapa.conferir} />
+              <InssDaEtapa inss={inss} conferir={vm.etapa.conferir} teste={vm.dev ? opcoesDeTeste : []} />
             ) : vm.etapa.razao ? (
-              <RazaoDaEtapa conta={vm.etapa.razao.conta} razao={razao} conferir={vm.etapa.conferir} />
+              <RazaoDaEtapa conta={vm.etapa.razao.conta} razao={razao} conferir={vm.etapa.conferir} teste={vm.dev ? opcoesDeTeste : []} />
             ) : (
               <div className="gh-blank">
                 <Icone nome="checklist" />

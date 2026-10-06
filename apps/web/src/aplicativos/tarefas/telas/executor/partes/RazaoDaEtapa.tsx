@@ -5,6 +5,7 @@ import { Icone } from '@nads/ui';
 import { useId, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import type { RazaoDaEtapa as Razao } from '../useRazaoDaEtapa';
+import { BotaoDeTeste, type ItemDeTeste } from '../../../../../comum/BotaoDeTeste';
 
 type Linha = Razao['lancamentos'][number];
 
@@ -31,7 +32,7 @@ function TabelaDeLancamentos({ linhas, saldoAnterior }: { linhas: Linha[]; saldo
   );
 }
 
-export function RazaoDaEtapa({ conta, razao, conferir }: { conta: string; razao: Razao; conferir?: string[] }) {
+export function RazaoDaEtapa({ conta, razao, conferir, teste = [] }: { conta: string; razao: Razao; conferir?: string[]; teste?: ItemDeTeste[] }) {
   const id = useId();
   const [aberta, setAberta] = useState(true);
   const nome = conta.charAt(0).toUpperCase() + conta.slice(1);
@@ -87,6 +88,7 @@ export function RazaoDaEtapa({ conta, razao, conferir }: { conta: string; razao:
                   </button>
                 ) : (
                   <>
+                    <BotaoDeTeste itens={teste} />
                     <label htmlFor={id} className="icon-btn icon-btn-sm imp-btn" title={'Importar o razão do ' + conta + ' (XLS da conciliação do Alterdata)'} aria-label={'Importar o razão do ' + conta}>
                       <Icone nome="upload" />
                     </label>
