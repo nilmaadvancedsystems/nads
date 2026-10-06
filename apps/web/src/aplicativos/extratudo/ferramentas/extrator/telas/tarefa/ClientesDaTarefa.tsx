@@ -1,7 +1,7 @@
 // A etapa Clientes da Tarefa (Vitor, 06/10/2026), com as peças do catálogo: as etapas no Segmentado com o Próximo à
 // direita; os arquivos na linha da Importação (o ícone de importar; importado, o check que vira × e tira); o saldo credor
 // e os clientes em tabela; o botão de cada cliente é o selo (Pendente laranja com o valor → Ok verde → Conferido), e o
-// conferido abre a observação; o envio com a planilha, o e-mail e o WhatsApp.
+// conferido abre a observação; o envio com a planilha, o e-mail e o WhatsApp. Só o balancete dinâmico (Vitor, 06/10/2026).
 import { Alerta, Icone, LogoGmail, LogoWhatsApp, MenuSuspenso, Segmentado } from '@nads/ui';
 import { useRef } from 'react';
 import { useClientesDaTarefa, type FiltroClientes, type TelaClientes } from './useClientesDaTarefa';
@@ -28,8 +28,7 @@ export function ClientesDaTarefa() {
 function Arquivos({ vm }: { vm: VM }) {
   return (
     <div className="imp-lista">
-      <LinhaDoArquivo titulo="Balancete" dica={'O balancete atual (Alterdata) de ' + vm.mes} feito={vm.balancete} onArquivo={f => vm.importar('balancete', f)} onTirar={() => vm.tirar('balancete')} />
-      <LinhaDoArquivo titulo="Balancete dinâmico" dica={'O balancete dinâmico atualizado, com ' + vm.mes} feito={vm.dinamico} onArquivo={f => vm.importar('dinamico', f)} onTirar={() => vm.tirar('dinamico')} />
+      <LinhaDoArquivo titulo="Balancete dinâmico" dica={'O balancete dinâmico atualizado, com ' + vm.mes} feito={vm.dinamico} onArquivo={vm.importar} onTirar={vm.tirar} />
     </div>
   );
 }
@@ -73,10 +72,10 @@ function Credor({ vm }: { vm: VM }) {
         texto="Corrija estes no Alterdata primeiro e reimporte o balancete dinâmico (em Arquivos)." />
       <div className="table-wrap" style={{ marginTop: 12 }}>
         <table className="table-compact">
-          <thead><tr><th>Conta</th><th>Cliente</th><th className="num">No dinâmico</th><th className="num">No balancete</th></tr></thead>
+          <thead><tr><th>Conta</th><th>Cliente</th><th className="num">Saldo</th></tr></thead>
           <tbody>
             {vm.credores.map(k => (
-              <tr key={k.codigo}><td>{k.codigo}</td><td className="wrap">{k.nome}</td><td className="num ext-neg">{k.saldo}</td><td className="num">{k.noBalancete}</td></tr>
+              <tr key={k.codigo}><td>{k.codigo}</td><td className="wrap">{k.nome}</td><td className="num ext-neg">{k.saldo}</td></tr>
             ))}
           </tbody>
         </table>
