@@ -21,7 +21,7 @@ export function CascaTarefas({ app, pagina, telaInteira, children }: { app: IdAp
   const vm = useCascaTarefas(app, pagina);
   const trilha = useTrilhaDoTopo();
   return (
-    <Casca sistema="Tarefas" empresa={vm.empresa} versao={vm.versao} trilha={trilha} secoes={vm.secoes} paginas={vm.paginas} titulo={telaInteira ? '' : vm.titulo}
+    <Casca sistema="Tarefas" temaNaGaveta={false} empresa={vm.empresa} versao={vm.versao} trilha={trilha} secoes={vm.secoes} paginas={vm.paginas} titulo={telaInteira ? '' : vm.titulo}
       lateral={telaInteira || vm.comAbas ? 'nenhuma' : undefined} larga={telaInteira}
       acoes={telaInteira ? undefined : <LugarDasAcoes />} onSecao={vm.onSecao} onPagina={vm.onSecao} onInicio={vm.inicio} onAplicativos={vm.inicio}
       onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}

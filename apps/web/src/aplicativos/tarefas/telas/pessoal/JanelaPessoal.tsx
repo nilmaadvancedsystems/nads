@@ -2,13 +2,13 @@
 // que segue o Notion) — à esquerda a pessoa, a busca e os tópicos em grupos; à direita o tópico aberto, em cartões
 // com cabeçalho e uma opção por linha (o rótulo e a explicação à esquerda, o controle à direita). Fecha no ×, no Esc e
 // clicando fora.
-import { Icone, type NomeIcone } from '@nads/ui';
+import { Icone, SeletorTema, type NomeIcone } from '@nads/ui';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { TopicoPessoal } from './contexto';
 import { usePaginaPessoal, type VmPessoal } from './usePaginaPessoal';
 
 const TOPICOS: { id: TopicoPessoal; rotulo: string; icone: NomeIcone; grupo: string; busca: string }[] = [
-  { id: 'conta', rotulo: 'Minha conta', icone: 'usuario', grupo: 'Conta', busca: 'foto perfil ícone icone nome e-mail email setor sair senha' },
+  { id: 'conta', rotulo: 'Minha conta', icone: 'usuario', grupo: 'Conta', busca: 'foto perfil ícone icone nome e-mail email setor sair senha tema claro escuro aparência' },
   { id: 'aplicativo', rotulo: 'Versão do sistema', icone: 'download', grupo: 'Aplicativo', busca: 'versão atualizar nova' },
 ];
 
@@ -127,6 +127,7 @@ function MinhaConta({ vm }: { vm: VmPessoal }) {
         </Linha>
         <Linha rotulo="E-mail" dica="O login do Entregas (a mesma conta em todo o nads).">{c.email || '—'}</Linha>
         <Linha rotulo="Setor" dica="Quem muda é um administrador.">{c.setor}</Linha>
+        <Linha rotulo="Tema" dica="Claro, escuro ou o mesmo do computador. Fica guardado neste navegador."><SeletorTema /></Linha>
         {c.comLogin && <TrocarSenha salvar={c.trocarSenha} />}
         <Linha rotulo={c.sair} dica="Sai deste navegador; para entrar de novo, o login do Entregas.">
           <button type="button" className="btn btn-outline btn-danger" onClick={c.fazerSair}><Icone nome="logOut" />{c.sair}</button>

@@ -66,6 +66,8 @@ export function Casca(p: {
   /** uma linha embaixo do título (cinza) */
   descricao?: string;
   acoes?: ReactNode;
+  /** o seletor de tema no pé da gaveta ☰ (false: o app tem a página do usuário e o tema fica lá — a Tarefas) */
+  temaNaGaveta?: boolean;
   /** mais pedaços da trilha depois da empresa ("Sistema / Empresa / …") */
   trilha?: { rotulo: string; titulo?: string; onClick?: () => void }[];
   onSecao: (id: string) => void;
@@ -268,7 +270,7 @@ export function Casca(p: {
             </>
           )}
           <div className="drawer-foot">
-            <SeletorTema />
+            {p.temaNaGaveta !== false && <SeletorTema />}
             <p>Versão do sistema: {p.versao}{versaoNova && <> · <button type="button" className="drawer-atualizar" onClick={atualizarVersao}>Atualizar para {versaoNova}</button></>}</p>
           </div>
         </aside>

@@ -1,5 +1,5 @@
-// O menu do botão direito do Explorador (como o do Windows 11): a fileira de ícones em cima (as ações mais usadas)
-// e a lista embaixo, com atalho à direita e ✓ nas opções marcadas. Abre onde o mouse está (sem sair da tela),
+// O menu do botão direito do Explorador (como o do Windows 11): a lista, com atalho à direita e ✓ nas opções marcadas
+// (a fileira de ícones em cima saiu em 06/10/2026: repetia a lista). Abre onde o mouse está (sem sair da tela),
 // fecha ao clicar fora, com Esc, ao rolar ou ao mudar o tamanho da janela; setas ↑ ↓ andam pelas opções.
 import { Icone, type NomeIcone } from '@nads/ui';
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
@@ -15,7 +15,7 @@ export interface OpcaoDoMenu {
 }
 export type LinhaDoMenu = OpcaoDoMenu | 'separador' | { titulo: string };
 
-export interface MenuAberto { x: number; y: number; topo: OpcaoDoMenu[]; linhas: LinhaDoMenu[] }
+export interface MenuAberto { x: number; y: number; linhas: LinhaDoMenu[] }
 
 export function MenuDeContexto({ menu, onFechar }: { menu: MenuAberto; onFechar: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -57,15 +57,6 @@ export function MenuDeContexto({ menu, onFechar }: { menu: MenuAberto; onFechar:
 
   return (
     <div ref={ref} className="ctx-menu" role="menu" style={{ left: pos.x, top: pos.y }} onKeyDown={teclas} onContextMenu={ev => ev.preventDefault()}>
-      {menu.topo.length > 0 && (
-        <div className="ctx-topo">
-          {menu.topo.map(o => (
-            <button key={o.rotulo} type="button" role="menuitem" title={o.rotulo} aria-label={o.rotulo} disabled={o.desabilitado} onClick={() => escolher(o)}>
-              {o.icone && <Icone nome={o.icone} />}
-            </button>
-          ))}
-        </div>
-      )}
       <div className="ctx-lista">
         {menu.linhas.map((l, i) => {
           if (l === 'separador') return <hr key={'s' + i} className="ctx-sep" />;

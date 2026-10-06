@@ -1991,11 +1991,6 @@ main.main:has(> .content > .explorador){padding:0;}
 /* ── Drive: menu do botão direito (como o do Windows 11), Propriedades, arrastar e "Enviar para o Claudio Secretário" ── */
 .explorador:not(.tela-cheia){position:relative;}
 .ctx-menu{position:fixed;z-index:75;min-width:240px;max-width:340px;padding:4px;border:1px solid var(--border);border-radius:8px;background:var(--surface);box-shadow:var(--shadow-lg);font-size:13px;}
-.ctx-topo{display:flex;gap:2px;padding:2px 2px 4px;margin-bottom:4px;border-bottom:1px solid var(--border-muted);}
-.ctx-topo button{display:inline-flex;align-items:center;justify-content:center;width:34px;height:32px;border:0;border-radius:6px;background:none;color:var(--ink);cursor:pointer;}
-.ctx-topo button svg{width:17px;height:17px;}
-.ctx-topo button:hover:not(:disabled),.ctx-topo button:focus-visible{background:var(--hover-bg);outline:none;}
-.ctx-topo button:disabled{opacity:.4;cursor:default;}
 .ctx-lista{display:flex;flex-direction:column;}
 .ctx-lista button{display:flex;align-items:center;gap:10px;width:100%;height:32px;padding:0 10px 0 8px;border:0;border-radius:6px;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
 .ctx-lista button:hover:not(:disabled),.ctx-lista button:focus-visible{background:var(--hover-bg);outline:none;}
@@ -2383,6 +2378,22 @@ tr.linha-abre,.imp-linha,.gh-crumb,.drawer-x{
 .abertura.vidro::after{animation:vidroLuz 8s var(--ease-in-out) infinite alternate-reverse !important;}
 /* a barrinha que esvaziava na janela de "feito" era só animação */
 html:not([data-animacoes=todas]) .modal-ok-barra{display:none;}
+/* a entrada da gaveta ☰ (Vitor, 06/10/2026: "faça uma animação de entrada desse menu lateral"): ela desliza da esquerda, o
+   fundo escurece e os itens chegam um atrás do outro; exceção pedida à regra de não animar */
+.drawer{animation:gavetaEntra .34s var(--ease-drawer) both !important;}
+.drawer-overlay{animation:gavetaFundo .26s ease-out both !important;}
+.drawer > *{animation:gavetaItem .3s var(--ease-out) both !important;}
+.drawer > :nth-child(2){animation-delay:.05s !important;}
+.drawer > :nth-child(3){animation-delay:.08s !important;}
+.drawer > :nth-child(4){animation-delay:.11s !important;}
+.drawer > :nth-child(5){animation-delay:.14s !important;}
+.drawer > :nth-child(6){animation-delay:.17s !important;}
+.drawer > :nth-child(7){animation-delay:.2s !important;}
+.drawer > :nth-child(8){animation-delay:.23s !important;}
+.drawer > :nth-child(n+9){animation-delay:.26s !important;}
+@keyframes gavetaEntra{from{transform:translateX(-100%);}to{transform:none;}}
+@keyframes gavetaFundo{from{opacity:0;}to{opacity:1;}}
+@keyframes gavetaItem{from{opacity:0;transform:translateX(-12px);}to{opacity:1;transform:none;}}
 
 /* Em lote: os meses numa tabela só, embaixo de cada banco (Vitor, 02/10/2026: "tá muito feio"). Meses em cima (clicar
    abre), Extrato e Razão nas linhas, um ícone por mês, sem caixa em volta de cada um. */

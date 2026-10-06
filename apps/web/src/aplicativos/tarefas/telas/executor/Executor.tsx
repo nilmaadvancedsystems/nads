@@ -166,7 +166,7 @@ export function Executor() {
   );
 
   return (
-    <Casca sistema="Tarefas" larga rotuloLateral="Etapas" topoDireita={topo}
+    <Casca sistema="Tarefas" temaNaGaveta={false} larga rotuloLateral="Etapas" topoDireita={topo}
       empresa={{ codigo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome, nome: '' }}
 
       versao={casca.versao} secoes={checklist} paginas={abas} titulo=""

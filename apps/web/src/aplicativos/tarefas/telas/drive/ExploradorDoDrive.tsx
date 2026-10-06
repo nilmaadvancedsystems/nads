@@ -226,7 +226,7 @@ function Ano({ vm }: { vm: VmDrive }) {
 export function ExploradorDoDrive() {
   const vm = useExploradorDoDrive();
   const envio = useEnvioAoSecretario(vm.pastaCliente);
-  const { toast, aviso } = useRetorno();
+  const { toast } = useRetorno();
   useCarregando(vm.carregando);
   // as opções do menu rodam depois de a seleção mudar: usam sempre o ViewModel mais novo
   const atual = useRef(vm);
@@ -268,11 +268,7 @@ export function ExploradorDoDrive() {
     navigator.clipboard.writeText(texto).then(() => toast(oque + ' copiado.'), () => toast('Não consegui copiar (o navegador não deixou).'));
   };
   const nomes = (l: e.EntradaDoExplorador[]) => l.map(i => i.nome).join('\n');
-  const caminhos = (l: e.EntradaDoExplorador[]) => l.map(i => atual.current.caminhoDe(i)).join('\n');
   const caminhoDaPasta = [vm.ano, ...vm.trilha.map(p => p.nome)].join(' › ');
-  const propriedades = (x: e.EntradaDoExplorador) => {
-    aviso({ tom: 'info', icone: 'fileText', titulo: x.nome, texto: atual.current.propriedadesDe(x).map(l => l.rotulo + ': ' + l.valor).join(' · ') });
-  };
 
   /** O que o ⋯ e o botão direito no fundo oferecem. */
   const linhasDoFundo = (): LinhaDoMenu[] => {
@@ -286,31 +282,21 @@ export function ExploradorDoDrive() {
     ev.preventDefault();
     ev.stopPropagation();
     const v = atual.current;
-    if (!x) { setMenu({ ...pontoDoMenu(ev), topo: [], linhas: linhasDoFundo() }); return; }
+    if (!x) { setMenu({ ...pontoDoMenu(ev), linhas: linhasDoFundo() }); return; }
     v.selecionarParaMenu(x.id);
     const varios = v.estaMarcado(x.id) && v.marcados.length > 1 ? v.marcados : [x];
     const n = varios.length;
     const soPastas = n > 1 && varios.every(i => i.pasta);
     const baixarRotulo = n > 1 ? 'Baixar ' + n + ' itens (.zip)' : x.pasta ? 'Baixar pasta (.zip)' : 'Baixar';
+    // enxuto (Vitor, 06/10/2026: "muitos botões com funções idênticas"): sem a fileira de ícones (repetia a lista), sem
+    // Propriedades, Copiar caminho, Selecionar tudo (é o Ctrl+A) e Enviar (é o botão Enviar ▾, não é do item)
     setMenu({
       ...pontoDoMenu(ev),
-      topo: [
-        { rotulo: baixarRotulo, icone: 'download', desabilitado: soPastas, onClick: baixarMarcados },
-        { rotulo: 'Copiar nome', icone: 'copiar', onClick: () => copiar(nomes(varios), n > 1 ? 'Nomes' : 'Nome') },
-        { rotulo: 'Copiar caminho', icone: 'link', onClick: () => copiar(caminhos(varios), 'Caminho') },
-        { rotulo: 'Propriedades', icone: 'settings', desabilitado: n > 1, onClick: () => propriedades(x) },
-      ],
       linhas: [
         { rotulo: 'Abrir', icone: x.pasta ? 'pasta' : 'arquivo', atalho: 'Enter', desabilitado: n > 1, onClick: () => abrir(atual.current, x) },
         { rotulo: baixarRotulo, icone: 'download', desabilitado: soPastas, onClick: baixarMarcados },
         'separador',
-        { rotulo: 'Copiar nome', icone: 'copiar', onClick: () => copiar(nomes(varios), n > 1 ? 'Nomes' : 'Nome') },
-        { rotulo: 'Copiar caminho', icone: 'link', atalho: 'Ctrl+Shift+C', onClick: () => copiar(caminhos(varios), 'Caminho') },
-        'separador',
-        { rotulo: 'Enviar para o Claudio Secretário…', icone: 'upload', onClick: () => envio.abrir() },
-        { rotulo: 'Selecionar tudo', icone: 'checkCircle', atalho: 'Ctrl+A', onClick: () => atual.current.selecionarTodos() },
-        'separador',
-        { rotulo: 'Propriedades', icone: 'settings', atalho: 'Alt+Enter', desabilitado: n > 1, onClick: () => propriedades(x) },
+        { rotulo: n > 1 ? 'Copiar nomes' : 'Copiar nome', icone: 'copiar', onClick: () => copiar(nomes(varios), n > 1 ? 'Nomes' : 'Nome') },
       ],
     });
   };
@@ -319,10 +305,8 @@ export function ExploradorDoDrive() {
     ev.stopPropagation();
     const linhas: LinhaDoMenu[] = [{ rotulo: 'Abrir', icone: 'pasta', onClick: () => atual.current.abrirNo(no) }];
     if (no.temFilhos) linhas.push({ rotulo: no.aberto ? 'Recolher' : 'Expandir', icone: no.aberto ? 'caretDown' : 'chevronRight', onClick: () => atual.current.alternarNo(no.id) });
-    linhas.push('separador',
-      { rotulo: 'Copiar nome', icone: 'copiar', onClick: () => copiar(no.nome, 'Nome') },
-      { rotulo: 'Enviar para o Claudio Secretário…', icone: 'upload', onClick: () => envio.abrir() });
-    setMenu({ ...pontoDoMenu(ev), topo: [], linhas });
+    linhas.push('separador', { rotulo: 'Copiar nome', icone: 'copiar', onClick: () => copiar(no.nome, 'Nome') });
+    setMenu({ ...pontoDoMenu(ev), linhas });
   };
   // arrastar arquivos do computador para o Drive: abre o envio com eles
   const temArquivos = (ev: DragEvent) => Array.from(ev.dataTransfer?.types || []).includes('Files');
@@ -336,13 +320,6 @@ export function ExploradorDoDrive() {
 
   const teclas = (ev: KeyboardEvent) => {
     if (ev.target instanceof HTMLInputElement || ev.target instanceof HTMLSelectElement) return;
-    const um = vm.marcados.length === 1 ? vm.marcados[0] : null;
-    if (ev.altKey && ev.key === 'Enter' && um) { ev.preventDefault(); propriedades(um); return; }
-    if ((ev.ctrlKey || ev.metaKey) && ev.shiftKey && ev.key.toLowerCase() === 'c' && vm.marcados.length) {
-      ev.preventDefault();
-      copiar(caminhos(vm.marcados), 'Caminho');
-      return;
-    }
     if (ev.altKey && ev.key === 'ArrowLeft') { ev.preventDefault(); vm.voltar(); }
     else if (ev.altKey && ev.key === 'ArrowRight') { ev.preventDefault(); vm.avancar(); }
     else if ((ev.altKey && ev.key === 'ArrowUp') || ev.key === 'Backspace') { ev.preventDefault(); vm.subir(); }
@@ -399,7 +376,7 @@ export function ExploradorDoDrive() {
       <button type="button" className={'icon-btn' + (vm.atualizandoMapa ? ' girando' : '')} title={vm.atualizandoMapa || vm.dicaDoAtualizar}
         aria-label="Atualizar o mapa" disabled={!!vm.atualizandoMapa} onClick={vm.atualizarMapa}><Icone nome={vm.atualizandoMapa ? 'girar' : 'repeat'} /></button>
       <button type="button" className="icon-btn" title="Mais ações" aria-label="Mais ações"
-        onClick={ev => setMenu({ ...pontoDoMenu(ev), topo: [], linhas: linhasDoFundo() })}><Icone nome="mais" /></button>
+        onClick={ev => setMenu({ ...pontoDoMenu(ev), linhas: linhasDoFundo() })}><Icone nome="mais" /></button>
     </>
   );
   const enviar = (
