@@ -21,7 +21,8 @@ const contar = (xs: readonly string[]) => {
   for (const x of xs) m.set(x, (m.get(x) || 0) + 1);
   return [...m.entries()].map(([rotulo, qtd]) => ({ rotulo, qtd })).sort((a, b) => b.qtd - a.qtd || a.rotulo.localeCompare(b.rotulo, 'pt-BR'));
 };
-const nomeDe = (r: string) => (r ? r.charAt(0) + r.slice(1).toLowerCase() : SEM_RESPONSAVEL);
+// o nome da planilha (em maiúsculas) como se escreve: FABIANA → Fabiana; GUSTAVO.P → Gustavo.P
+const nomeDe = (r: string) => (r ? r.split('.').map(p => p.charAt(0) + p.slice(1).toLowerCase()).join('.') : SEM_RESPONSAVEL);
 
 export function usePainelDoDp() {
   const repo = useRepo();
