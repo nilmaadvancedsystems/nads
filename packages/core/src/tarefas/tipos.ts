@@ -65,6 +65,10 @@ export interface Etapa {
    * cobrança); sem isso, não aparece e conta como concluída
    */
   soQuandoAdicionada?: boolean;
+  /** só para estes regimes (o da lista de empresas: 'Simples', 'Presumido', 'Real'…); fora deles, "não se aplica" */
+  regimes?: string[];
+  /** só nestes meses da competência (1–12): a apuração trimestral (IRPJ/CSLL) entra em março, junho, setembro e dezembro */
+  meses?: number[];
   /** a conferência do INSS (razão do INSS a recolher × o PDF das guias pagas) dentro da etapa */
   conferenciaDoInss?: boolean;
 }

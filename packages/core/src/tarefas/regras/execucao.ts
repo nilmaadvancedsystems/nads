@@ -1,5 +1,6 @@
 // O andamento das etapas de uma empresa numa competência: o que está feito, o que é a próxima,
 // e as ações da tela (fazer, dispensar, interromper), cada uma devolvendo a execução nova e o evento.
+import { EMPRESAS } from '../../empresas/lista';
 import type { Departamento } from '../../usuarios/tipos';
 import { ROTINA_CONTABIL } from '../rotinas/contabil';
 import { ROTINA_FISCAL } from '../rotinas/fiscal';
@@ -8,9 +9,29 @@ import type { Etapa, EstadoEtapa, Evento, Execucao, Rotina, SituacaoEtapa } from
 /** As etapas que só entram no mês quando outra as adiciona (Etapa.soQuandoAdicionada): o Creditor, pelo caixa. */
 const SO_QUANDO_ADICIONADAS = new Set([...ROTINA_CONTABIL.etapas, ...ROTINA_FISCAL.etapas].filter(e => e.soQuandoAdicionada).map(e => e.id));
 
-/** A etapa faz parte da rotina deste mês? (as "só quando adicionada" só depois de adicionadas) */
+/** As etapas que valem só para alguns regimes ou só em alguns meses (Fiscal, 06/10/2026: a rotina pelo regime). */
+const RESTRITAS = new Map([...ROTINA_CONTABIL.etapas, ...ROTINA_FISCAL.etapas].filter(e => e.regimes || e.meses).map(e => [e.id, e]));
+const REGIME_POR_CODIGO = new Map(EMPRESAS.filter(e => e.codigo != null).map(e => [e.codigo, e.regime]));
+
+/** O regime da empresa (o da lista de empresas), ou '' quando não se sabe. */
+export function regimeDaEmpresa(codigo: number | null | undefined): string {
+  return codigo == null ? '' : REGIME_POR_CODIGO.get(codigo) || '';
+}
+
+/**
+ * A etapa faz parte da rotina deste mês? As "só quando adicionada", só depois de adicionadas; as de alguns regimes, só
+ * para eles (regime desconhecido: entra, para nada sumir por engano); as de alguns meses, só neles.
+ */
 export function etapaNoMes(ex: Execucao | null, etapa: string): boolean {
-  return !SO_QUANDO_ADICIONADAS.has(etapa) || !!ex?.adicionadas?.includes(etapa);
+  if (SO_QUANDO_ADICIONADAS.has(etapa) && !ex?.adicionadas?.includes(etapa)) return false;
+  const e = RESTRITAS.get(etapa);
+  if (e && ex) {
+    const regime = regimeDaEmpresa(ex.codigo);
+    if (e.regimes && regime && !e.regimes.includes(regime)) return false;
+    const mes = Number(ex.competencia.slice(5, 7));
+    if (e.meses && mes && !e.meses.includes(mes)) return false;
+  }
+  return true;
 }
 
 export function execucaoNova(empresa: string, codigo: number | null, competencia: string, departamento: Departamento): Execucao {

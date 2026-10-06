@@ -113,7 +113,7 @@ export function Executor() {
   // sair da execução por qualquer lugar do app (o cabeçalho, o menu, o voltar do navegador) com a etapa aberta:
   // é interromper, com a justificativa; trocar de mês ou período dentro do executor não conta
   const saida = useBlocker(({ currentLocation, nextLocation }) =>
-    !!vm.etapa && !vm.interrompendo && !guia.saindo.current && currentLocation.pathname !== nextLocation.pathname && !nextLocation.pathname.startsWith(BASE + '/executar/'));
+    !vm.dev && !!vm.etapa && !vm.interrompendo && !guia.saindo.current && currentLocation.pathname !== nextLocation.pathname && !nextLocation.pathname.startsWith(BASE + '/executar/'));
   if (!vm.empresa) return <Navigate to={BASE} replace />;
   // o mês faz parte de um período prometido (vários meses): abre o período
   if (vm.irParaPeriodo) return <Navigate to={vm.irParaPeriodo} replace />;
@@ -187,7 +187,8 @@ export function Executor() {
         ]} />
       {/* interromper: o último, em vermelho (Vitor, 02/10/2026) */}
       {botoesDaEtapa && (
-        <button type="button" className="gh-topo-btn gh-topo-fechar" onClick={vm.abrirInterromper} title="Interromper a etapa" aria-label="Interromper">
+        // no modo desenvolvedor (Vitor, 06/10/2026: "remova essa opção"): o X só sai, sem o "Por que interromper?"
+        <button type="button" className="gh-topo-btn gh-topo-fechar" onClick={vm.dev ? vm.sair : vm.abrirInterromper} title={vm.dev ? 'Sair da etapa' : 'Interromper a etapa'} aria-label={vm.dev ? 'Sair' : 'Interromper'}>
           <Icone nome="x" />
         </button>
       )}
