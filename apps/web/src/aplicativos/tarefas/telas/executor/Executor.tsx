@@ -208,7 +208,7 @@ export function Executor() {
         <div className="executor-area">
           {vm.dev && !vm.revendo ? (
             <div className="alerta-linha">
-              <Alerta titulo="Modo desenvolvedor" texto="Dados hipotéticos: faça o que quiser; nada vai para o banco." />
+              <Alerta titulo="Modo desenvolvedor" texto="Os dados de verdade, mas o que você fizer fica só nesta tela: nada vai para o banco." />
             </div>
           ) : vm.revendo && (
             // revendo uma etapa concluída: a barra de cima avisa e só o Editar mexe (Vitor, 05/10/2026)

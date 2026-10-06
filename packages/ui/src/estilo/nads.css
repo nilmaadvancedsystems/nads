@@ -2905,3 +2905,19 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 /* o Avançar do modo desenvolvedor: o mesmo botão do Próximo, em azul (Vitor, 06/10/2026) */
 .gh-topo-btn.gh-topo-proximo.dev{background:var(--info);}
 .gh-topo-btn.gh-topo-proximo.dev:hover:not(:disabled){background:var(--info);filter:brightness(1.1);}
+/* o modo desenvolvedor (Vitor, 06/10/2026): a interface toda em azul no lugar do vermelho da marca, para nunca confundir
+   com o uso de verdade (o <html> ganha data-dev; comum/modoDesenvolvedor.ts) */
+:root[data-dev]{
+  --accent:#0969DA; --accent-strong:#0550AE; --accent-soft:#DDF4FF; --accent-border:#0969DA40; --accent-ink:#0969DA;
+  --btn-primary:#0969DA; --btn-primary-hover:#0550AE; --tab-active:#0969DA;
+}
+@media (prefers-color-scheme: dark){
+  :root[data-dev]:not([data-theme="light"]){
+    --accent:#58A6FF; --accent-strong:#79C0FF; --accent-soft:#388BFD1A; --accent-border:#58A6FF55; --accent-ink:#79C0FF;
+    --btn-primary:#1F6FEB; --btn-primary-hover:#388BFD; --tab-active:#58A6FF;
+  }
+}
+:root[data-dev][data-theme="dark"]{
+  --accent:#58A6FF; --accent-strong:#79C0FF; --accent-soft:#388BFD1A; --accent-border:#58A6FF55; --accent-ink:#79C0FF;
+  --btn-primary:#1F6FEB; --btn-primary-hover:#388BFD; --tab-active:#58A6FF;
+}

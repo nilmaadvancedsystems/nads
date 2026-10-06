@@ -11,11 +11,11 @@ import { usuarios as u } from '@nads/core';
 import { addDoc as addDocBruto, collection, doc, onSnapshot, orderBy, query, setDoc as setDocBruto, Timestamp, updateDoc as updateDocBruto, where, writeBatch as writeBatchBruto, limit } from 'firebase/firestore';
 import type { RepoAcesso } from './acesso';
 import { bancoDoEntregas, criarLoginNoEntregas, horaDoLogin } from './entregas.firestore';
-import { guardar, guardarLote } from '../../../comum/modoDesenvolvedor';
+import { guardar, guardarLote, guardarPedido } from '../../../comum/modoDesenvolvedor';
 
 // a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
 const setDoc = guardar(setDocBruto) as typeof setDocBruto;
-const addDoc = guardar(addDocBruto) as typeof addDocBruto;
+const addDoc = guardarPedido(addDocBruto) as typeof addDocBruto;
 const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
 const writeBatch = ((...a: Parameters<typeof writeBatchBruto>) => guardarLote(writeBatchBruto(...a))) as typeof writeBatchBruto;
 

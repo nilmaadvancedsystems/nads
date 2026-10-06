@@ -8,10 +8,10 @@
 import { addDoc as addDocBruto, arrayRemove, arrayUnion, collection, deleteDoc as deleteDocBruto, doc, onSnapshot, query, updateDoc as updateDocBruto, where } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 import { cobrancasRecentes, ordenarNotas, type CobrancaMinha, type Nota, type RepoPessoal, type TipoDeCobranca } from './pessoal';
-import { guardar } from '../../../comum/modoDesenvolvedor';
+import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 
 // a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
-const addDoc = guardar(addDocBruto) as typeof addDocBruto;
+const addDoc = guardarPedido(addDocBruto) as typeof addDocBruto;
 const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
 const deleteDoc = guardar(deleteDocBruto) as typeof deleteDocBruto;
 
