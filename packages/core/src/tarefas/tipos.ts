@@ -28,6 +28,13 @@ export interface FerramentaDaEtapa {
   requisitos?: boolean;
 }
 
+/**
+ * A tela própria da etapa, dentro da Tarefa (Vitor, 06/10/2026: as ferramentas que abriam em iframe viram telas do nads).
+ * A tela diz o que falta para seguir; periodo: trabalha todos os meses do período de uma vez.
+ */
+export type TelaDaEtapa = 'bancos' | 'clientes';
+export interface TelaPropria { id: TelaDaEtapa; periodo?: boolean }
+
 /** O que a tela oferece para resolver uma objeção. */
 export type Solucao =
   | { tipo: 'contato'; rotulo: string }
@@ -46,6 +53,8 @@ export interface Etapa {
   /** uma linha: o que fazer */
   descricao: string;
   ferramenta: FerramentaDaEtapa | null;
+  /** a tela própria da etapa na Tarefa (no lugar da ferramenta em iframe) */
+  tela?: TelaPropria;
   verificacao: Verificacao;
   objecoes: Objecao[];
   /** o grupo da etapa na barra lateral (Preparação, Ativo, Passivo, Resultado, Fechamento) */

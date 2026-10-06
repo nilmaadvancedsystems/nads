@@ -108,7 +108,8 @@ export const ROTINA_CONTABIL: Rotina = {
       nome: 'Bancos',
       descricao: 'O saldo de cada banco é o do extrato no último dia; banco negativo vai para o cheque especial.',
       // só o relatório do que passou pelos bancos no período (Vitor, 06/10/2026): a pessoa vê os saldos e dá Próximo
-      ferramenta: { app: 'extratudo', nome: 'Bancos', caminho: r => '/extratudo/' + r + '/extrator/tarefa/bancos', embutir: true, periodo: true, requisitos: true },
+      ferramenta: null,
+      tela: { id: 'bancos', periodo: true },
       verificacao: 'manual',
       conferir: [
         'O saldo contábil de cada banco é igual ao saldo do extrato no último dia do mês.',
@@ -126,7 +127,8 @@ export const ROTINA_CONTABIL: Rotina = {
       nome: 'Clientes',
       descricao: 'Nenhum cliente com saldo credor; os recebimentos do mês baixados.',
       // a ferramenta Clientes (Vitor, 06/10/2026): o balancete e o dinâmico, o saldo credor, a situação de cada cliente e o envio
-      ferramenta: { app: 'extratudo', nome: 'Clientes', caminho: r => '/extratudo/' + r + '/extrator/tarefa/clientes', embutir: true, periodo: true, requisitos: true },
+      ferramenta: null,
+      tela: { id: 'clientes', periodo: true },
       verificacao: 'manual',
       conferir: [
         'Nenhum cliente com saldo credor (recebeu mais do que vendeu: recebimento sem a nota, ou baixa em duplicidade).',

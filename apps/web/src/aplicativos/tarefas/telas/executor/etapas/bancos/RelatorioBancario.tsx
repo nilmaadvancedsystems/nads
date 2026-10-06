@@ -4,14 +4,15 @@
 // ranking mostra a relação dos lançamentos dela embaixo (Vitor, 06/10/2026).
 import { Alerta, Icone, LogoBanco } from '@nads/ui';
 import { useState } from 'react';
-import { useRelatorioDosBancos } from './useRelatorioDosBancos';
+import { useRelatorioBancario } from './useRelatorioBancario';
 
-type Banco = ReturnType<typeof useRelatorioDosBancos>['bancos'][number];
+type Banco = ReturnType<typeof useRelatorioBancario>['bancos'][number];
 
-export function RelatorioDosBancos() {
-  const vm = useRelatorioDosBancos();
+export function RelatorioBancario() {
+  const vm = useRelatorioBancario();
   return (
     <section>
+      <header className="topbar"><div><h2 className="page-title">Relatório Bancário</h2></div></header>
       <div className="imp-topo">
         <span className="imp-periodo-info"><Icone nome="calendar" />{vm.periodo}</span>
         <span className="imp-topo-num"><Icone nome="landmark" /><b>{vm.bancos.length}</b> {vm.bancos.length === 1 ? 'banco' : 'bancos'}</span>

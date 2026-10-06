@@ -3,24 +3,21 @@
 // saldo do começo e do fim do período, as entradas e saídas mês a mês (as colunas) e as categorias pelo histórico do
 // extrato (o ranking): CRÉD.LIQ.COBRANÇA, despesas bancárias, boletos, transferência para o sócio (do Cadastro), água, luz.
 import { extrator as x, tarefas } from '@nads/core';
-import { useSearchParams } from 'react-router';
-import { useRequisitosParaATarefa } from '../../../../../../comum/ponte';
-import { useCadastroDaEmpresa } from '../../dados/repo';
-import { useSessao } from '../../casca/sessao';
+import { useCadastro } from '../../../../dados/repo';
+import { useExtratorDaEmpresa } from '../../../../dados/extrator';
+import { useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 
 const ALTURA = 110;
 
-export function useRelatorioDosBancos() {
-  const s = useSessao();
-  const { cadastro } = useCadastroDaEmpresa(s.nome, s.codigo);
-  const [params] = useSearchParams();
-  const doEndereco = (params.get('meses') || '').split(',').filter(m => /^\d{4}-\d{2}$/.test(m));
-  const competencia = /^\d{4}-\d{2}$/.test(params.get('competencia') || '') ? (params.get('competencia') as string) : '';
-  const meses = doEndereco.length ? [...doEndereco].sort() : competencia ? [competencia] : [];
-  const { bancos, primeiro } = x.bancosDaEmpresaNa(s.empresa, cadastro, s.codigo, meses[meses.length - 1] || '');
-  const resumo = x.resumoDosBancos(s.empresa, bancos, primeiro, meses, cadastro?.socios || []);
+export function useRelatorioBancario() {
+  const { nome, codigo, meses } = useEtapaAberta();
+  const vivo = useCadastro(nome, codigo);
+  const cadastro = vivo.carregada ? vivo.cadastro : null;
+  const empresa = useExtratorDaEmpresa(nome);
+  const { bancos, primeiro } = x.bancosDaEmpresaNa(empresa, cadastro, codigo, meses[meses.length - 1] || '');
+  const resumo = x.resumoDosBancos(empresa, bancos, primeiro, meses, cadastro?.socios || []);
   // só olhar: a Tarefa pode seguir (o Próximo)
-  useRequisitosParaATarefa({ pronto: true, faltam: [] });
+  useRequisitosDaEtapa({ pronto: true, faltam: [] });
   return {
     periodo: meses.length > 1 ? tarefas.rotuloNumericoCompetencia(meses[0]) + ' a ' + tarefas.rotuloNumericoCompetencia(meses[meses.length - 1]) : meses[0] ? tarefas.rotuloNumericoCompetencia(meses[0]) : '',
     semSocios: !cadastro?.socios?.length,

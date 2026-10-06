@@ -24,6 +24,9 @@ import { RazaoDaEtapa } from './partes/RazaoDaEtapa';
 import { SiegDaEtapa } from './partes/SiegDaEtapa';
 import { useInssDaEtapa } from './useInssDaEtapa';
 import { useRazaoDaEtapa } from './useRazaoDaEtapa';
+import type { ItemDeTeste } from '../../../../comum/BotaoDeTeste';
+import { EtapaProvider } from './etapas/contexto';
+import { TelaDaEtapa } from './etapas/TelaDaEtapa';
 
 /** O ícone de cada grupo da rotina, no canto do cabeçalho. */
 
@@ -54,8 +57,14 @@ export function Executor() {
   const urlDaFerramenta = vm.ferramenta?.url || '';
   // o ⚡ do modo desenvolvedor: as opções de dados de teste que a ferramenta aberta oferece (mudam com a tela dela)
   const teste = useDadosDeTesteDaFerramenta(iframe, urlDaFerramenta);
+  // a tela própria da etapa (sem iframe): diz o que falta e oferece os dados de teste pelo contexto (etapas/contexto.tsx)
+  const chaveDaTela = vm.tela ? rota + '|' + vm.tela.id + '|' + vm.tela.etapa.meses.join(',') : '';
+  const [requisitosDaTela, setRequisitosDaTela] = useState<{ chave: string; pronto: boolean; faltam: string[] } | null>(null);
+  const [testeDaTela, setTesteDaTela] = useState<ItemDeTeste[]>([]);
   // o ⚡: as opções da ferramenta aberta, ou as do que a própria etapa importa (o razão do Caixa, o INSS)
-  const opcoesDeTeste = vm.ferramenta
+  const opcoesDeTeste = vm.tela
+    ? testeDaTela.map(o => ({ rotulo: o.rotulo, icone: 'zap' as NomeIcone, onClick: o.onClick }))
+    : vm.ferramenta
     ? teste.opcoes.map(o => ({ rotulo: o.rotulo, icone: 'zap' as NomeIcone, onClick: () => teste.mandar(o.id) }))
     : vm.etapa?.conferenciaDoInss
       ? [{ rotulo: 'Razão e guias do INSS de teste', icone: 'zap' as NomeIcone, onClick: inss.implantarTeste }]
@@ -74,7 +83,9 @@ export function Executor() {
   const fixo = vm.etapa?.checklist ? { etapa: vm.etapa.id, itens: vm.etapa.checklist.map(i => ({ id: i.id, nome: i.texto, contas: i.sub || [], link: i.link, aviso: i.aviso })) } : null;
   const temChecklist = !!(vm.etapa?.checklistDaFolha || vm.etapa?.checklist);
   const folha = useChecklistDaFolha(temChecklist, vm.empresa?.nome || '', vm.meses.length ? vm.meses : [vm.competencia], fixo);
-  const faltamFerramenta = requisitos && requisitos.url === urlDaFerramenta && !requisitos.pronto ? requisitos.faltam : null;
+  const faltamFerramenta = vm.tela
+    ? requisitosDaTela && requisitosDaTela.chave === chaveDaTela && !requisitosDaTela.pronto ? requisitosDaTela.faltam : null
+    : requisitos && requisitos.url === urlDaFerramenta && !requisitos.pronto ? requisitos.faltam : null;
   // o Caixa: sem o razão importado não dá para saber se o Creditor entra (Vitor, 05/10/2026)
   const faltaRazao = vm.etapa?.razao && !razao.carregado ? ['Importar o razão do ' + vm.etapa.razao.conta] : null;
   const faltam = temChecklist ? (folha.faltam && folha.faltam.length ? folha.faltam : null) : faltaRazao || faltamFerramenta;
@@ -109,7 +120,7 @@ export function Executor() {
     dispensou.current = urlDaFerramenta;
     vm.dispensarSemCheque();
   }, [chequeDesnecessario, urlDaFerramenta, vm]);
-  const requisitosConhecidos = temChecklist ? folha.faltam !== null : !vm.ferramenta?.requisitos || requisitos?.url === urlDaFerramenta;
+  const requisitosConhecidos = temChecklist ? folha.faltam !== null : vm.tela ? requisitosDaTela?.chave === chaveDaTela : !vm.ferramenta?.requisitos || requisitos?.url === urlDaFerramenta;
   // sair da execução por qualquer lugar do app (o cabeçalho, o menu, o voltar do navegador) com a etapa aberta:
   // é interromper, com a justificativa; trocar de mês ou período dentro do executor não conta
   const saida = useBlocker(({ currentLocation, nextLocation }) =>
@@ -235,7 +246,11 @@ export function Executor() {
             {/* a ferramenta carregando: o N no meio, sobre um vidro embaçado (em vez da área vazia) */}
             {/* revendo uma etapa concluída: sem a abertura com o N (é só para olhar; Vitor, 05/10/2026: "o loading tá bugando") */}
             {vm.ferramenta?.embutir && ferramentaAbrindo && !vm.revendo && <AberturaN vidro />}
-            {vm.ferramenta?.embutir ? (
+            {vm.tela ? (
+              <EtapaProvider etapa={vm.tela.etapa} onRequisitos={r => setRequisitosDaTela({ chave: chaveDaTela, ...r })} onTeste={setTesteDaTela}>
+                <TelaDaEtapa id={vm.tela.id} />
+              </EtapaProvider>
+            ) : vm.ferramenta?.embutir ? (
               <iframe ref={iframe} key={vm.ferramenta.url} src={vm.ferramenta.url} title={vm.ferramenta.nome} style={altura ? { height: altura } : undefined} />
             ) : vm.ferramenta ? (
               <div className="gh-blank">

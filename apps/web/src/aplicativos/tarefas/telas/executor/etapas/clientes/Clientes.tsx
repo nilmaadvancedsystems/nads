@@ -5,14 +5,15 @@
 import { Alerta, Icone, LogoGmail, LogoWhatsApp, MenuSuspenso, Segmentado } from '@nads/ui';
 import { useRef } from 'react';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeTeste';
-import { useClientesDaTarefa, type FiltroClientes, type TelaClientes } from './useClientesDaTarefa';
+import { useClientes, type FiltroClientes, type TelaClientes } from './useClientes';
 
-type VM = ReturnType<typeof useClientesDaTarefa>;
+type VM = ReturnType<typeof useClientes>;
 
-export function ClientesDaTarefa() {
-  const vm = useClientesDaTarefa();
+export function Clientes() {
+  const vm = useClientes();
   return (
     <section>
+      <header className="topbar"><div><h2 className="page-title">Clientes</h2></div></header>
       <div className="tarefas-barra-topo">
         <Segmentado<TelaClientes> valor={vm.tela} onMudar={vm.irPara} opcoes={vm.telas} />
         <span className="tarefas-barra-espaco" />
@@ -20,7 +21,7 @@ export function ClientesDaTarefa() {
       </div>
       {vm.tela === 'arquivos' && <Arquivos vm={vm} />}
       {vm.tela === 'credor' && <Credor vm={vm} />}
-      {vm.tela === 'clientes' && <Clientes vm={vm} />}
+      {vm.tela === 'clientes' && <ListaDeClientes vm={vm} />}
       {vm.tela === 'envio' && <Envio vm={vm} />}
     </section>
   );
@@ -98,7 +99,7 @@ function Credor({ vm }: { vm: VM }) {
 
 const ROTULO_FILTRO: Record<FiltroClientes, string> = { todos: 'Todos', pendente: 'Pendentes', ok: 'Ok', conferido: 'Conferidos' };
 
-function Clientes({ vm }: { vm: VM }) {
+function ListaDeClientes({ vm }: { vm: VM }) {
   return (
     <>
       <div className="tarefas-barra-topo">
