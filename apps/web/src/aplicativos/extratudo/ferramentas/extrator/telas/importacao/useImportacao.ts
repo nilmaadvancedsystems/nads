@@ -272,6 +272,8 @@ export function useImportacao() {
     periodo: (params.get('meses') || '').split(',').filter(m => /^\d{4}-\d{2}$/.test(m)),
     /** aberta pela etapa Cheque especial da Tarefas (a mesma página, só os bancos, com o aviso do cheque) */
     etapaCheque: params.get('etapa') === 'cheque',
+    /** aberta pela Importação no Alterdata do Fiscal: só as abas das notas (Entradas, Saídas, Tomados, Prestados) */
+    etapaFiscal: params.get('etapa') === 'fiscal',
     /** De cada mês do período, o que o banco já tem: extrato, razão, sem movimento. */
     mesesDoBanco: (banco: string, semMovimentoPorMes: Record<string, string[]>) =>
       (params.get('meses') || '').split(',').filter(m => /^\d{4}-\d{2}$/.test(m)).map(mes => {

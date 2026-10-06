@@ -9,6 +9,7 @@ import { CONCILIA, EXECUTOR, EXTRATUDO, TAREFAS, TODAS } from './telas';
 import type { Peca } from './tipos';
 import { BotaoGoogle } from '../../../comum/BotaoGoogle';
 import { MenuDaRotina } from '../../tarefas/telas/executor/partes/MenuDaRotina';
+import { BarrasPorDia, Faixa, Rosca } from '../../tarefas/telas/executor/partes/Graficos';
 
 const nada = () => undefined;
 
@@ -188,11 +189,11 @@ export const PECAS_BASE: Peca[] = [
   // ─── Selos ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'badge-ok', tipo: 'selos', nome: 'Ok', descricao: 'Verde preenchido: bateu (regra do app todo, 05/10/2026)', classes: ['badge badge-ok'], telas: ['c-relatorio', 'e-importacao', 't-exec-importacao', 't-exec-cheque', 't-exec-fiscal'],
     uso: '<span className="badge badge-ok">Ok</span>', demo: () => <span className="badge badge-ok">Ok</span>, aoVivo: undefined },
-  { id: 'badge-conferido', tipo: 'selos', nome: 'Conferido', descricao: 'Cheio: conferido à mão (o banco que bate mas falta o cheque especial agora é o botão principal "Cheque especial")', classes: ['badge badge-conferido'], telas: ['c-relatorio'],
+  { id: 'badge-conferido', tipo: 'selos', nome: 'Conferido', descricao: 'Cheio: conferido à mão (o banco que bate mas falta o cheque especial agora é o botão principal "Cheque especial")', classes: ['badge badge-conferido'], telas: ['c-relatorio', 't-exec-fiscal-rotina'],
     demo: () => <span className="badge badge-conferido">Conferido</span> },
   { id: 'badge-bad', tipo: 'selos', nome: 'Diferença', descricao: 'Laranja com borda: o valor da diferença', classes: ['badge badge-bad'], telas: ['c-relatorio'], demo: () => <><span className="badge badge-bad">89.967,19</span><span className="badge badge-bad">-295,00</span></> },
   { id: 'badge-neutral', tipo: 'selos', nome: 'Neutro', classes: ['badge badge-neutral'], telas: ['c-relatorio', 't-exec-folha'], demo: () => <><span className="badge badge-neutral">0,00</span><span className="badge badge-neutral">Configure em Cadastro › Configurações</span><span className="badge badge-neutral">Lote não soma</span></> },
-  { id: 'badge-warn', tipo: 'selos', nome: 'Atenção', classes: ['badge badge-warn'], telas: ['t-gmail'], demo: () => <span className="badge badge-warn">Pendente</span> },
+  { id: 'badge-warn', tipo: 'selos', nome: 'Atenção', classes: ['badge badge-warn'], telas: ['t-gmail', 't-exec-fiscal-rotina'], demo: () => <span className="badge badge-warn">Pendente</span> },
   { id: 'badge-falta', tipo: 'selos', nome: 'Falta / duplicado (extrato)', classes: ['badge ext-badge-falta', 'badge ext-badge-dup'], telas: ['e-conferencia'], demo: () => <><span className="badge ext-badge-falta">Faltando</span><span className="badge ext-badge-dup">Duplicado</span></> },
   { id: 'bolinha-sit', tipo: 'selos', nome: 'Bolinha de situação', classes: ['bolinha-sit nao-iniciada', 'em-andamento', 'parada', 'concluida'], telas: ['t-empresas', 't-contabil'],
     demo: () => <>{(['nao-iniciada', 'em-andamento', 'parada', 'concluida'] as const).map(s => <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}><span className={'bolinha-sit ' + s} />{s}</span>)}</> },
@@ -341,9 +342,9 @@ export const PECAS_BASE: Peca[] = [
     ) },
 
   // ─── Avisos ─────────────────────────────────────────────────────────────────────────────────────────────────────────
-  { id: 'alerta', tipo: 'avisos', nome: 'Alerta (amarelo)', componente: 'Alerta', classes: ['alert', 'alert-title', 'alert-text'], telas: ['t-exec-cheque', 'c-verificar', 'e-importacao'], largo: true,
+  { id: 'alerta', tipo: 'avisos', nome: 'Alerta (amarelo)', componente: 'Alerta', classes: ['alert', 'alert-title', 'alert-text'], telas: ['t-exec-cheque', 'c-verificar', 'e-importacao', 't-exec-fiscal-rotina'], largo: true,
     demo: () => <Alerta titulo="Saldo negativo: faça o cheque especial" texto="Gere os lançamentos no Cheque especial, lance no Alterdata e importe o razão de novo." /> },
-  { id: 'alerta-ok', tipo: 'avisos', nome: 'Alerta (verde)', componente: 'Alerta', classes: ['alert alert-ok'], telas: ['c-verificar'], largo: true, demo: () => <Alerta tom="ok" titulo="Tudo bate neste período" texto="Nenhuma pendência." /> },
+  { id: 'alerta-ok', tipo: 'avisos', nome: 'Alerta (verde)', componente: 'Alerta', classes: ['alert alert-ok'], telas: ['c-verificar', 't-exec-fiscal-rotina'], largo: true, demo: () => <Alerta tom="ok" titulo="Tudo bate neste período" texto="Nenhuma pendência." /> },
   { id: 'toast', tipo: 'avisos', nome: 'Aviso rápido (toast)', descricao: 'No canto de baixo, some em 4 s', componente: 'useRetorno().toast', classes: ['toast-region', 'toast'], telas: TODAS,
     demo: () => <div className="toast cat-parado">Etapa interrompida: Importação.</div>, aoVivo: c => c.toast('Etapa interrompida: Importação.') },
   { id: 'imp-aviso', tipo: 'avisos', nome: 'Barrinha no topo (importou / Drive)', descricao: 'Por cima da tela: o que deu certo some em 2,7 s; o erro (ex.: nada no Drive) fica até o ×', classes: ['imp-aviso', 'imp-aviso-barra', 'erro', 'info'], telas: ['e-importacao', 't-exec-importacao'],
@@ -399,7 +400,7 @@ export const PECAS_BASE: Peca[] = [
         </div>
       );
     } },
-  { id: 'faixas', tipo: 'abas', nome: 'Faixas que abrem (Lançamentos / Pendências)', classes: ['imp-faixa', 'imp-faixa-barra', 'imp-faixa-qtd', 'imp-faixa aviso'], telas: ['e-importacao', 't-exec-importacao'], largo: true,
+  { id: 'faixas', tipo: 'abas', nome: 'Faixas que abrem (Lançamentos / Pendências)', classes: ['imp-faixa', 'imp-faixa-barra', 'imp-faixa-qtd', 'imp-faixa aviso'], telas: ['e-importacao', 't-exec-importacao', 't-exec-fiscal-rotina'], largo: true,
     demo: () => <div className="cat-moldura"><div className="imp-faixa"><button className="imp-faixa-barra" type="button"><Icone nome="caretDown" className="imp-faixa-seta" /><b>Lançamentos</b><span className="imp-faixa-qtd">131</span></button></div><div className="imp-faixa aviso"><button className="imp-faixa-barra" type="button"><Icone nome="caretDown" className="imp-faixa-seta" /><b>Pendências</b><span className="imp-faixa-qtd">4</span></button></div></div> },
   { id: 'trilha', tipo: 'abas', nome: 'Trilha (onde estou)', classes: ['gh-crumbs', 'gh-crumb', 'gh-sep'], telas: TODAS,
     demo: () => <nav className="gh-crumbs"><span className="gh-crumb">Tarefas</span><span className="gh-sep">/</span><span className="gh-crumb gh-crumb-fim">292 · FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA</span></nav> },
@@ -441,7 +442,7 @@ export const PECAS_BASE: Peca[] = [
   // ─── Cartões ────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'card', tipo: 'cartoes', nome: 'Cartão', descricao: 'O h3 vira a faixa cinza do topo', classes: ['card', 'card-head'], telas: TODAS,
     demo: () => <div className="card" style={{ width: '100%' }}><h3>Contabilização da Folha</h3><p style={{ padding: '0 16px' }} className="hint">O conteúdo do cartão.</p></div> },
-  { id: 'stat', tipo: 'cartoes', nome: 'Números (stat)', componente: 'Stat', classes: ['stat-grid', 'stat', 'stat-label', 'stat-value'], telas: ['c-relatorio', 't-insights', 'e-conferencia', 'c-verificar'], largo: true,
+  { id: 'stat', tipo: 'cartoes', nome: 'Números (stat)', componente: 'Stat', classes: ['stat-grid', 'stat', 'stat-label', 'stat-value'], telas: ['c-relatorio', 't-insights', 'e-conferencia', 'c-verificar', 't-exec-fiscal-rotina'], largo: true,
     demo: () => <div className="stat-grid" style={{ width: '100%' }}><Stat rotulo="Notas" valor="462" /><Stat rotulo="Valor total" valor="1.622.422,77" /><Stat rotulo="Entradas no período" valor="63.390,44" cor="entrada" /><Stat rotulo="Saídas no período" valor="63.734,30" cor="saida" /></div> },
   { id: 'banco', tipo: 'cartoes', nome: 'Linha do banco (Importação)', classes: ['imp-bloco', 'imp-linha'], telas: ['e-importacao', 't-exec-importacao', 't-exec-cheque'], largo: true,
     demo: () => (
@@ -455,7 +456,7 @@ export const PECAS_BASE: Peca[] = [
         </div>
       </div>
     ) },
-  { id: 'folha', tipo: 'cartoes', nome: 'Checklist da folha', classes: ['card folha-check', 'folha-check-lista'], telas: ['t-exec-folha'], largo: true,
+  { id: 'folha', tipo: 'cartoes', nome: 'Checklist da folha', classes: ['card folha-check', 'folha-check-lista'], telas: ['t-exec-folha', 't-exec-fiscal-rotina'], largo: true,
     demo: () => (
       <div className="card folha-check">
         <div className="folha-check-topo"><h3>Contabilização da Folha</h3><span className="folha-check-qtd">1/3</span></div>
@@ -468,11 +469,20 @@ export const PECAS_BASE: Peca[] = [
     ) },
   { id: 'vazio', tipo: 'cartoes', nome: 'Vazio (nada aqui)', classes: ['gh-blank'], telas: TODAS,
     demo: () => <div className="gh-blank"><Icone nome="search" /><h4>Nenhum pedido</h4><p>Nenhum pedido feito para esta empresa ainda.</p></div> },
+  { id: 'checklist-fiscal', tipo: 'cartoes', nome: 'Checklist disfarçada (rotina do Fiscal)', descricao: 'O cartão com a barra de progresso; cada tarefa uma faixa que abre (caixinha, contador, Importar, Conferido) com o painel dela (Stat, rank, tabela, gráficos)', componente: 'ChecklistDisfarcado', classes: ['card folha-check pt-check', 'imp-faixa pt-tarefa', 'subnav-caixa', 'tarefas-barra'], telas: ['t-exec-fiscal-rotina'], largo: true,
+    demo: () => (
+      <div className="card folha-check pt-check" style={{ width: '100%' }}>
+        <div className="card-head"><h3>Conferência › Saídas</h3><span className="card-head-ctl"><span className="tarefas-barra"><span style={{ width: '50%' }} /></span>1/2</span></div>
+        <div className="imp-faixa pt-tarefa"><div className="imp-faixa-barra pt-tarefa-barra"><span className="pt-tarefa-abrir"><span className="subnav-caixa marcada"><Icone nome="check" /></span><Icone nome="caretDown" className="imp-faixa-seta" /><b>Sequência de Saídas</b></span><span className="pt-tarefa-acoes"><span className="badge badge-conferido">Conferido</span></span></div></div>
+        <div className="imp-faixa pt-tarefa aberta da-vez"><div className="imp-faixa-barra pt-tarefa-barra"><span className="pt-tarefa-abrir"><span className="subnav-caixa vazia" /><Icone nome="caretDown" className="imp-faixa-seta" /><b>Conferência das Notas Fiscais</b><span className="imp-faixa-qtd">24</span></span><span className="pt-tarefa-acoes"><button className="btn btn-outline" type="button"><Icone nome="upload" />Importar Saídas</button><button className="btn btn-primary" type="button"><Icone nome="check" />Conferido</button></span></div>
+          <div className="imp-faixa-corpo"><div className="stat-grid"><Stat rotulo="Notas de saída" valor="24" /><Stat rotulo="Valor contábil" valor="58.076,76" cor="saida" /><Stat rotulo="CFOPs" valor="5" /></div></div></div>
+      </div>
+    ) },
 
   // ─── Listas ─────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'chips', tipo: 'listas', nome: 'Chips de filtro', classes: ['chip-row', 'chip-lbl', 'chip-f', 'on'], telas: ['c-consulta', 'c-naturezas'],
     demo: () => <div className="chip-row"><span className="chip-lbl">Tipo</span><button className="chip-f on" type="button">Todos</button><button className="chip-f" type="button">Entradas</button><button className="chip-f" type="button">Saídas</button></div> },
-  { id: 'contadores', tipo: 'listas', nome: 'Contadores', classes: ['tarefas-contador', 'menu-contador', 'imp-faixa-qtd'], telas: ['t-empresas', 'e-importacao'],
+  { id: 'contadores', tipo: 'listas', nome: 'Contadores', classes: ['tarefas-contador', 'menu-contador', 'imp-faixa-qtd'], telas: ['t-empresas', 'e-importacao', 't-exec-fiscal-rotina'],
     demo: () => <><button className="tarefas-contador" type="button"><Icone nome="briefcase" /><b>235</b> empresas</button><span className="menu-contador">12</span><span className="imp-faixa-qtd">4</span></> },
   { id: 'emp-list', tipo: 'listas', nome: 'Lista de empresas (entrar)', classes: ['emp-list', 'emp-item'], telas: ['c-entrada', 'e-entrada', 'z-entrada'],
     demo: () => <div className="emp-list" style={{ width: 320 }}>{[[292, 'FITO INDUSTRIA E COMERCIO'], [9999, 'PERSONALY COMPANY']].map(([c, n]) => <button key={c} className="emp-item" type="button"><span className="emp-cod">{c}</span><span className="emp-txt"><span className="emp-nome">{n}</span></span></button>)}</div> },
@@ -488,10 +498,17 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <p className="hint">Use o ▶ para ver na tela inteira.</p>, aoVivo: c => c.abertura('vidro') },
 
   // ─── Gráficos ───────────────────────────────────────────────────────────────────────────────────────────────────────
-  { id: 'progresso', tipo: 'graficos', nome: 'Barra de progresso', classes: ['tarefas-barra', 'parada'], telas: ['t-empresas', 't-contabil'],
+  { id: 'progresso', tipo: 'graficos', nome: 'Barra de progresso', classes: ['tarefas-barra', 'parada'], telas: ['t-empresas', 't-contabil', 't-exec-fiscal-rotina'],
     demo: () => <><span className="tarefas-barra"><span style={{ width: '40%' }} /></span><span className="tarefas-barra"><span className="parada" style={{ width: '70%' }} /></span></> },
-  { id: 'rank', tipo: 'graficos', nome: 'Ranking', classes: ['rank', 'rank-item', 'rank-barra'], telas: ['c-relatorio'], largo: true,
+  { id: 'rank', tipo: 'graficos', nome: 'Ranking', classes: ['rank', 'rank-item', 'rank-barra'], telas: ['c-relatorio', 't-exec-fiscal-rotina'], largo: true,
     demo: () => <div className="rank" style={{ width: '100%' }}>{[['5101 — Venda de produção', 72], ['1101 — Compra para industrialização', 41], ['2910 — Bonificação', 9]].map(([n, v]) => <button key={n} className="rank-item" type="button"><span className="rank-nome">{n}</span><span className="rank-val">{v}%</span><span className="rank-barra"><span style={{ width: v + '%', background: 'var(--accent)' }} /></span></button>)}</div> },
+
+  { id: 'barras-dia', tipo: 'graficos', nome: 'Barras por dia do mês', descricao: 'Uma barra por dia; o dia, as notas e o valor ao passar o mouse (as barras sobem ao aparecer)', componente: 'BarrasPorDia', classes: ['graf-dias', 'graf-dia'], telas: ['t-exec-fiscal-rotina'], largo: true,
+    uso: '<BarrasPorDia dias={resumo.porDia} rotulo="Faturamento por dia de 09/2026" />', demo: () => <div style={{ width: '100%' }}><BarrasPorDia rotulo="Faturamento por dia de 09/2026" dias={[{ dia: 1, valor: 2919, qtd: 2 }, { dia: 2, valor: 0, qtd: 0 }, { dia: 3, valor: 0, qtd: 0 }, { dia: 4, valor: 1676, qtd: 2 }, { dia: 5, valor: 0, qtd: 0 }, { dia: 6, valor: 0, qtd: 0 }, { dia: 7, valor: 433, qtd: 2 }, { dia: 8, valor: 0, qtd: 0 }, { dia: 9, valor: 0, qtd: 0 }, { dia: 10, valor: 4190, qtd: 2 }, { dia: 11, valor: 0, qtd: 0 }, { dia: 12, valor: 0, qtd: 0 }, { dia: 13, valor: 2947, qtd: 2 }, { dia: 14, valor: 0, qtd: 0 }, { dia: 15, valor: 0, qtd: 0 }, { dia: 16, valor: 1704, qtd: 2 }, { dia: 17, valor: 0, qtd: 0 }, { dia: 18, valor: 0, qtd: 0 }, { dia: 19, valor: 461, qtd: 2 }, { dia: 20, valor: 0, qtd: 0 }, { dia: 21, valor: 0, qtd: 0 }, { dia: 22, valor: 4218, qtd: 2 }, { dia: 23, valor: 0, qtd: 0 }, { dia: 24, valor: 0, qtd: 0 }, { dia: 25, valor: 2975, qtd: 2 }, { dia: 26, valor: 0, qtd: 0 }, { dia: 27, valor: 0, qtd: 0 }, { dia: 28, valor: 1732, qtd: 2 }, { dia: 29, valor: 0, qtd: 0 }, { dia: 30, valor: 0, qtd: 0 }]} /></div> },
+  { id: 'rosca', tipo: 'graficos', nome: 'Rosca (composição)', descricao: 'O total no meio e a legenda com a fatia e o valor; cada classe de CFOP sempre com a mesma cor (--cat-1 a --cat-7)', componente: 'Rosca', classes: ['graf-rosca', 'graf-legenda'], telas: ['t-exec-fiscal-rotina'], largo: true,
+    uso: '<Rosca fatias={fatias} centro={receita} rotuloCentro="receita do mês" />', demo: () => <Rosca centro={61142.74} rotuloCentro="receita do mês" fatias={[{ chave: 'venda', rotulo: 'Venda', valor: 34060.2, pct: 55.7, cor: 1 }, { chave: 'st', rotulo: 'Com ST', valor: 15440.34, pct: 25.3, cor: 2 }, { chave: 'servico', rotulo: 'Serviço', valor: 11642.2, pct: 19, cor: 3 }]} /> },
+  { id: 'faixa-100', tipo: 'graficos', nome: 'Faixa 100% (composição)', descricao: 'A composição numa barra só, com a legenda embaixo', componente: 'Faixa', classes: ['graf-faixa', 'graf-legenda em-linha'], telas: ['t-exec-fiscal-rotina'], largo: true,
+    uso: '<Faixa fatias={fatias} />', demo: () => <div style={{ width: '100%' }}><Faixa fatias={[{ chave: 'venda', rotulo: 'Venda', valor: 34060.2, pct: 58.6, cor: 1 }, { chave: 'st', rotulo: 'Com ST', valor: 15440.34, pct: 26.6, cor: 2 }, { chave: 'remessa', rotulo: 'Remessa', valor: 4407.48, pct: 7.6, cor: 5 }, { chave: 'devolucao', rotulo: 'Devolução', valor: 4168.74, pct: 7.2, cor: 4 }]} /></div> },
 
   // ─── Cores ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'cores', tipo: 'cores', nome: 'As cores do sistema', descricao: 'Mude o tema no ☰ para ver o escuro', telas: TODAS, largo: true,

@@ -9,7 +9,7 @@
 //   à direita: "Não teve movimento" (trava a linha e vira "Desfazer"); com o extrato vindo do Drive, um
 //     botãozinho de PDF (abre pelo link temporário). O movimento se vê pela setinha.
 // Ao importar, só uma barrinha por cima da tela, que some em 2,7 s.
-import { extrator as x, type conferencia, tarefas } from '@nads/core';
+import { demo, extrator as x, type conferencia, tarefas } from '@nads/core';
 import { classeDaJanela, destacarNaTela, Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
 import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { useDadosDeTesteNaTarefa, usePonteDaTarefa, useRequisitosParaATarefa, type OpcaoDeTeste } from '../../../../../../comum/ponte';
@@ -18,7 +18,7 @@ import { useImportacao, type Mensagem } from '../importacao/useImportacao';
 import { BotaoGoogle } from '../../../../../../comum/BotaoGoogle';
 import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
 import { ImportacaoNaEtapa } from '../../../../../concilia-ai/ImportacaoNaEtapa';
-import { useImportadosDaConferencia } from '../../../../../concilia-ai/importadosNaEtapa';
+import { implantarNotasFiscaisDeTeste, useImportadosDaConferencia } from '../../../../../concilia-ai/importadosNaEtapa';
 import { JanelaHistoricoDePedidos, JanelaPedirExtratos } from './JanelaPedirExtratos';
 import { caminhoNaFerramenta } from '../../../../casca/caminho';
 import { useBancosOk } from './useBancosOk';
@@ -516,12 +516,17 @@ const ABAS_DA_IMPORTACAO: { id: AbaImportacao; rotulo: string; icone: AbaDaEtapa
   { id: 'prestados', rotulo: 'Prestados', icone: 'fileUp' },
 ];
 
+/** As abas da Importação no Alterdata do Fiscal (?etapa=fiscal): só as notas, sem os bancos e o balancete. */
+const ABAS_DAS_NOTAS: AbaImportacao[] = ['entradas', 'saidas', 'tomados', 'prestados'];
+
 export function TarefaExtratos() {
   const vm = useImportacao();
   // o ⚡ do modo desenvolvedor na Tarefa (Vitor, 06/10/2026): os dados de teste de cada tela que importa
   const ehTeste = vm.ehEmpresaDeTeste || modoDesenvolvedor();
   const primeiroBanco = vm.bancos[0]?.id;
-  useDadosDeTesteNaTarefa(ehTeste && primeiroBanco ? OPCOES_DE_TESTE : [], tipo => {
+  // na Importação do Fiscal (?etapa=fiscal), o ⚡ põe as notas de teste do Fiscal (Vitor, 06/10/2026: "para os parâmetros do fiscal")
+  useDadosDeTesteNaTarefa(!ehTeste ? [] : vm.etapaFiscal ? [...demo.OPCOES_FISCAIS_DE_TESTE] : primeiroBanco ? OPCOES_DE_TESTE : [], tipo => {
+    if (vm.etapaFiscal) { implantarNotasFiscaisDeTeste(s.nome, vm.periodo.length > 1 ? vm.periodo : [vm.competencia], tipo); return; }
     if (tipo === 'apagar') { vm.apagarDadosDeTeste(); return; }
     if (primeiroBanco && (tipo === 'extratos' || tipo === 'bate' || tipo === 'cheque' || tipo === 'erros')) void vm.implantarDadosDeTeste(primeiroBanco, tipo);
   });
@@ -561,7 +566,9 @@ export function TarefaExtratos() {
   const chequeConhecido = vm.bancos.every(b => semMovimentoNoPeriodo(b.id) || (situacoes[b.id] && situacoes[b.id].tipo !== 'pendente'));
   const precisaChequeEspecial = chequeConhecido ? diasNegativosAgora > 0 : undefined;
   // na etapa Cheque especial: todo banco Ok (o cheque dos dias negativos no razão); na Importação, "falta o cheque" passa
-  useRequisitosParaATarefa(!ponte.naTarefa ? null : vm.semBancosCadastrados
+  useRequisitosParaATarefa(!ponte.naTarefa ? null : vm.etapaFiscal
+    ? importados ? x.requisitosDasNotas(importados, vm.prestaServico) : null
+    : vm.semBancosCadastrados
     ? { pronto: false, faltam: ['Os bancos da empresa no Cadastro (peça a um administrador)'], alvos: [null] }
     : vm.etapaCheque
     ? { precisaChequeEspecial, ...x.requisitosDoChequeEspecial(vm.bancos.map(b => ({ id: b.id, nome: b.nome, ok: !!bancosOk[b.id], semMovimento: semMovimentoNoPeriodo(b.id), diasSemCheque: diasSemCheque(b.id) }))) }
@@ -573,10 +580,10 @@ export function TarefaExtratos() {
   const diasNegativosNoPeriodo = vm.bancos.reduce((t, b) => { const x = situacoes[b.id]; return t + (x && x.tipo !== 'pendente' ? x.negativos.length : 0); }, 0);
   const [cxExtrato, cxRazao] = vm.caixas;
   const [abertas, setAbertas] = useState<string[]>([]);
-  const [abaEscolhida, setAba] = useState<AbaImportacao>('bancos');
-  // Prestados só para quem presta serviço (a regra do Cadastro; sem informar, aparece)
-  const visiveis = ABAS_DA_IMPORTACAO.filter(a => a.id !== 'prestados' || vm.prestaServico !== false);
-  const aba = visiveis.some(a => a.id === abaEscolhida) ? abaEscolhida : 'bancos';
+  const [abaEscolhida, setAba] = useState<AbaImportacao>(vm.etapaFiscal ? 'entradas' : 'bancos');
+  // Prestados só para quem presta serviço (a regra do Cadastro; sem informar, aparece); no Fiscal, só as notas
+  const visiveis = ABAS_DA_IMPORTACAO.filter(a => (a.id !== 'prestados' || vm.prestaServico !== false) && (!vm.etapaFiscal || ABAS_DAS_NOTAS.includes(a.id)));
+  const aba = visiveis.some(a => a.id === abaEscolhida) ? abaEscolhida : visiveis[0].id;
   const abas = visiveis.map(a => ({ ...a, ativa: a.id === aba }));
   useAbasParaAEtapa(ponte.naTarefa && !vm.etapaCheque ? abas : null, id => { if (ABAS_DA_IMPORTACAO.some(a => a.id === id)) setAba(id as AbaImportacao); });
   const alternar = (id: string) => setAbertas(v => (v.includes(id) ? v.filter(a => a !== id) : [...v, id]));

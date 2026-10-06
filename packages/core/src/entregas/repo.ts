@@ -53,6 +53,11 @@ export interface RepoGmailDoEntregas {
   salvarNoDrive(mensagemId: string, clienteId: string | null): Promise<void>;
   /** o e-mail passa a ser do cliente (clientes.email, ou em clientes.emails se ele já tem um) */
   ligarRemetente(clienteId: string, email: string): Promise<void>;
+  /**
+   * "Não é deste cliente" (06/10/2026): o remetente sai do cadastro do cliente (clientes.email/emails) e o robô põe o
+   * e-mail de volta em "sem cliente" (e tira a conversa e as marcas dele do mês do cliente)
+   */
+  desligarRemetente(mensagemId: string, clienteId: string, email: string): Promise<void>;
   /** o remetente vira spam (só o admin grava, pela regra do banco) */
   ignorar(email: string): Promise<void>;
   /** o e-mail inteiro (o robô busca e devolve; até 90 s) */

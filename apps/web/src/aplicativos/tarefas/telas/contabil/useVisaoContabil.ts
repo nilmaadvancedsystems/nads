@@ -5,14 +5,14 @@ import { useSearchParams } from 'react-router';
 import { useExecucoes, useRepo } from '../../dados/repo';
 import { competenciasDaTela } from '../../casca/navegacao';
 
-export function useVisaoContabil(dep: 'contabil' | 'fiscal' = 'contabil') {
+export function useVisaoContabil(dep: 'contabil' | 'fiscal' | 'dp' = 'contabil') {
   const repo = useRepo();
   const [params, setParams] = useSearchParams();
   const rotina = t.rotinaDo(dep) || t.ROTINA_CONTABIL;
   const competencias = competenciasDaTela(12);
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
   const { execucoes, carregada } = useExecucoes(competencia, dep);
-  const totalEmpresas = repo.listarEmpresas().length;
+  const totalEmpresas = t.empresasDaRotina(dep, repo.listarEmpresas()).length;
 
   const paradas = execucoes.flatMap(ex => rotina.etapas.flatMap(e => {
     const est = t.estadoDa(ex, e.id);

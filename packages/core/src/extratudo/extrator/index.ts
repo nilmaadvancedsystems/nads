@@ -26,7 +26,7 @@ export {
 export { resumoDosBancos, categoriaDoLancamento, ROTULO_CATEGORIA, type ResumoDoBanco, type CategoriaBancaria, type CategoriaNoPeriodo, type MesDoBanco, type SocioDoCadastro } from './regras/resumoDosBancos';
 export { saldoDoPeriodo, partesForaDoRazao, razaoDeTesteDaExclusao, type SaldoDoPeriodo, type DiaDoSaldo, type ParteEsperada, type ParteComSinal } from './regras/saldoDoPeriodo';
 export { movimentoDoExtrato, TODOS_OS_MESES, extratosSemSaldoAnterior, definirSaldoAnterior, type LinhaDoMovimento, type MovimentoDoExtrato } from './regras/movimento';
-export { requisitosDaImportacao, requisitosDoChequeEspecial, type ImportadosDaConferencia, type RequisitosDaImportacao } from './regras/requisitos';
+export { requisitosDaImportacao, requisitosDasNotas, requisitosDoChequeEspecial, type ImportadosDaConferencia, type RequisitosDaImportacao } from './regras/requisitos';
 export { correcoesDoRazao, ROTULO_CORRECAO, type CorrecaoDoRazao, type TipoCorrecao } from './regras/correcoes';
 export { acharExtratoNoDrive, mensagemDaBuscaDoExtrato, type ContaProcurada } from './regras/drive';
 export { gravacao, semMudanca, empresaDoBanco, type Gravacao, type DocEmpresaExtrator } from './regras/banco';

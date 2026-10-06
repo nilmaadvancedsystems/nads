@@ -43,6 +43,21 @@ export function requisitosDaImportacao(
 }
 
 /**
+ * Os requisitos da Importação no Alterdata do Fiscal (Vitor, 06/10/2026): só as notas na Conferência — Entradas, Saídas,
+ * Tomados e (se presta serviço) Prestados.
+ */
+export function requisitosDasNotas(importados: ImportadosDaConferencia, prestaServico: boolean | null): RequisitosDaImportacao {
+  const faltam: string[] = [];
+  const alvos: (string | null)[] = [];
+  const falta = (t: string, alvo: string) => { faltam.push(t); alvos.push(alvo); };
+  if (!importados.entradas) falta('Entradas', 'aba:entradas');
+  if (!importados.saidas) falta('Saídas', 'aba:saidas');
+  if (!importados.tomados) falta('Tomados', 'aba:tomados');
+  if (prestaServico === true && !importados.prestados) falta('Prestados', 'aba:prestados');
+  return { pronto: faltam.length === 0, faltam, alvos };
+}
+
+/**
  * Os requisitos da etapa Cheque especial (Vitor, 01/10/2026): todo banco Ok — nos dias que fecham negativos, o razão
  * importado de novo já tem o cheque especial (o ajuste e o estorno) e, tirando ele, o extrato e o razão batem.
  */

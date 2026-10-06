@@ -156,6 +156,12 @@ export function criarGmailDoEntregasMemoria(): RepoGmailDoEntregas {
       if (!c.email) c.email = email.toLowerCase(); else c.emails.push(email.toLowerCase());
       o.mudou();
     },
+    async desligarRemetente(id, clienteId, email) {
+      const c = clientes.find(x => x.id === clienteId);
+      const end = email.toLowerCase();
+      if (c) { if (c.email === end) c.email = ''; c.emails = c.emails.filter(x => x !== end); }
+      mudar({ caixa: (doc.caixa as Record<string, unknown>[]).map(x => (x.mensagemId === id ? { ...x, clienteId: null, clienteNome: '', candidatos: [] } : x)) });
+    },
     async ignorar(email) { ignorados = [...ignorados, email.toLowerCase()]; o.mudou(); },
     async ler(id): Promise<EmailLido> {
       await espera(500);

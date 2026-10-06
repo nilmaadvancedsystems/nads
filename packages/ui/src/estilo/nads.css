@@ -2950,3 +2950,112 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .sieg-serie-nome{font-weight:600;}
 .sieg-falta{color:var(--warn);}
 .sieg-acoes{display:flex;justify-content:flex-end;}
+/* DP › Painel (06/10/2026): o Checklist Folha no visual do nads — filtros, números, barras, progresso por responsável e a lista */
+.dp-filtros{flex-wrap:wrap;align-items:flex-end;gap:10px;}
+.dp-filtro{margin-bottom:0;min-width:140px;}
+.dp-busca{min-width:220px;flex:1 1 220px;max-width:320px;}
+.dp-busca input{width:100%;}
+.dp-limpar{align-self:flex-end;}
+.dp-numero-dica{margin:2px 0 0;font-size:12px;}
+.dp-titulo{margin:0 0 12px;font-size:14px;font-weight:600;}
+.dp-graficos{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:14px;}
+.dp-grafico{padding:16px;}
+.dp-barras{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;}
+.dp-barras li{display:grid;grid-template-columns:minmax(90px,38%) 1fr 34px;align-items:center;gap:10px;font-size:13px;}
+.dp-barra-rotulo{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-muted);}
+.dp-barra{height:8px;border-radius:4px;background:var(--hover-bg);overflow:hidden;}
+.dp-barra span{display:block;height:100%;border-radius:4px;background:var(--accent);}
+.dp-barras b{text-align:right;font-weight:600;}
+.dp-progresso{padding:16px;margin-bottom:14px;}
+.dp-progresso-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;}
+.dp-pessoa{display:flex;flex-direction:column;gap:6px;padding:12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);text-align:left;cursor:pointer;color:var(--ink);}
+.dp-pessoa:hover{border-color:var(--border-strong);}
+.dp-pessoa.ativa{border-color:var(--accent);box-shadow:var(--shadow-accent);}
+.dp-pessoa-topo{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+.dp-pessoa-barra{height:6px;border-radius:3px;background:var(--hover-bg);overflow:hidden;}
+.dp-pessoa-barra span{display:block;height:100%;border-radius:3px;background:var(--success);}
+.dp-pessoa .hint{margin:0;font-size:12px;}
+.dp-lista{padding:0;overflow:hidden;}
+.dp-lista-topo{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.dp-lista-topo .dp-titulo{margin:0;}
+.dp-lista .table-wrap{border:0;border-radius:0;margin:0;}
+.dp-vazio{padding:24px 16px;margin:0;}
+.dp-lista .table-wrap{max-height:none;overflow-x:hidden;}
+.dp-tabela{width:100%;table-layout:auto;}
+.dp-tabela td,.dp-tabela th{white-space:nowrap;}
+.dp-tabela .dp-cliente{white-space:normal;width:100%;}
+.dp-cliente-nome{display:block;font-weight:500;}
+.dp-cliente-info{display:block;font-size:12px;color:var(--ink-muted);margin-top:2px;}
+.dp-tabela .dp-ob{text-align:center;padding-left:1px;padding-right:1px;width:40px;font-size:11px;}
+.dp-linha{cursor:pointer;}
+.dp-linha.feita td{color:var(--ink-muted);}
+.dp-grupo td{background:var(--hover-bg);font-weight:600;font-size:12.5px;}
+.dp-marca{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;font-size:11px;font-weight:700;}
+.dp-marca.nao-tem{color:var(--ink-faint);}
+.dp-marca.a-fazer{border:1.5px solid var(--border-strong);}
+.dp-marca.feita{background:var(--success-soft);color:var(--success-ink);}
+.dp-marca.parada{background:var(--warn-soft);color:var(--warn);}
+/* Fiscal › a checklist disfarçada (06/10/2026), com as peças do catálogo: o cartão (card, card-head), as faixas que abrem
+   (imp-faixa), a caixinha da etapa (subnav-caixa), a barra (tarefas-barra), Stat, rank, tabela, Alerta, gh-blank. Aqui, só o
+   encaixe delas: a largura do cartão, a linha da tarefa (o botão que abre + as ações) e o que a da vez destaca. */
+.folha-check.pt-check{max-width:1080px;padding:0;overflow:hidden;}
+.pt-check > .card-head{margin:0;}
+.pt-check .card-head-ctl .tarefas-barra{width:120px;}
+.pt-check .card-head-ctl .tarefas-barra > span{width:0;}
+.pt-tarefa .pt-tarefa-barra{cursor:default;gap:12px;flex-wrap:wrap;}
+.pt-tarefa-abrir{display:flex;align-items:center;gap:8px;flex:1;min-width:0;border:0;background:none;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer;}
+.pt-tarefa-abrir:disabled{cursor:default;}
+.pt-tarefa-abrir b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pt-tarefa-abrir .hint{margin:0;}
+.pt-tarefa-acoes{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto;}
+.pt-tarefa-acoes .hint{display:inline-flex;align-items:center;gap:4px;margin:0;}
+.pt-tarefa-acoes .hint svg,.pt-tarefa .imp-faixa-corpo > .hint svg{width:13px;height:13px;vertical-align:-2px;}
+.pt-tarefa.da-vez > .pt-tarefa-barra{background:var(--accent-soft);}
+.pt-tarefa.travada{opacity:.55;}
+.pt-tarefa .imp-faixa-corpo{gap:12px;}
+.pt-janela .imp-conf-topo .page-title{display:none;}
+/* os gráficos novos do catálogo (Componentes › Gráficos GR-03 a GR-05); as cores das classes de CFOP (paleta validada,
+   claro e escuro; sempre com o nome e o valor ao lado) */
+:root{--cat-1:#2a78d6;--cat-2:#eb6834;--cat-3:#1baf7a;--cat-4:#eda100;--cat-5:#e87ba4;--cat-6:#008300;--cat-7:#4a3aa7;}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--cat-1:#3987e5;--cat-2:#d95926;--cat-3:#199e70;--cat-4:#c98500;--cat-5:#d55181;--cat-6:#008300;--cat-7:#9085e9;}}
+:root[data-theme="dark"]{--cat-1:#3987e5;--cat-2:#d95926;--cat-3:#199e70;--cat-4:#c98500;--cat-5:#d55181;--cat-6:#008300;--cat-7:#9085e9;}
+.graf-painel{display:flex;flex-direction:column;gap:12px;}
+.graf-painel > .stat-grid{margin-bottom:0;}
+.graf-painel > .rank{margin-top:0;}
+.graf-painel > .gh-blank{padding:20px 16px;}
+.graf-marcas{display:flex;gap:6px;flex-wrap:wrap;margin:0;}
+.graf-celula-barra .rank-barra{display:block;margin-top:4px;height:6px;}
+.graf-celula-barra .rank-barra > span,.rank-barra > span,.graf-faixa > span{transform-origin:left;}
+.graf-dias{margin:0;display:flex;flex-direction:column;gap:6px;}
+.graf-dias-topo{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.graf-dias-topo .hint{margin:0;}
+.graf-dias-barras{display:flex;align-items:flex-end;gap:2px;height:84px;border-bottom:1px solid var(--border);}
+.graf-dia{flex:1;height:100%;display:flex;align-items:flex-end;}
+.graf-dia > span{display:block;width:100%;background:var(--accent);border-radius:4px 4px 0 0;opacity:.75;transform-origin:bottom;}
+.graf-dia.sobre > span{opacity:1;}
+.graf-dias-eixo{display:flex;justify-content:space-between;margin:0;}
+.graf-rosca{display:grid;grid-template-columns:148px 1fr;gap:24px;align-items:center;}
+.graf-rosca-grafico{position:relative;width:148px;height:148px;}
+.graf-rosca-grafico svg{display:block;}
+.graf-rosca-fundo{fill:none;stroke:var(--surface-3);stroke-width:14;}
+.graf-rosca-fatia{fill:none;stroke-width:14;}
+.graf-rosca-meio{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 26px;pointer-events:none;}
+.graf-rosca-meio b{font-size:14px;}
+.graf-rosca-meio .hint{margin:0;font-size:10.5px;line-height:1.2;}
+.graf-legenda{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;}
+.graf-legenda li{display:grid;grid-template-columns:10px 1fr auto auto;gap:8px;align-items:center;font-size:13px;}
+.graf-legenda i{width:10px;height:10px;border-radius:3px;}
+.graf-legenda .hint{margin:0;min-width:96px;text-align:right;}
+.graf-legenda.em-linha{flex-direction:row;flex-wrap:wrap;gap:6px 16px;}
+.graf-legenda.em-linha li{display:inline-grid;grid-template-columns:10px auto auto;}
+.graf-faixa-bloco{display:flex;flex-direction:column;gap:10px;}
+.graf-faixa{display:flex;gap:2px;height:22px;border-radius:6px;overflow:hidden;}
+.graf-faixa > span{display:block;height:100%;}
+@media (max-width:640px){.graf-rosca{grid-template-columns:1fr;justify-items:center;}.pt-tarefa-acoes{margin-left:0;}}
+/* DP › tabelão (06/10/2026: tudo roda na tabela): a bolinha é o botão que marca a obrigação */
+button.dp-marca{padding:0;background:transparent;cursor:pointer;color:inherit;font:inherit;font-size:11px;font-weight:700;}
+button.dp-marca.a-fazer:hover{border-color:var(--success);background:var(--success-soft);}
+button.dp-marca.feita{background:var(--success-soft);color:var(--success-ink);border:0;}
+button.dp-marca.feita:hover{background:var(--success);color:var(--on-accent);}
+button.dp-marca:disabled{cursor:default;opacity:.6;}
+.dp-linha{cursor:default;}

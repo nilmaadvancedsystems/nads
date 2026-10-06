@@ -5,10 +5,12 @@
 // atrapalhavam a ferramenta): os grupos da rotina num menu só (como o "+ ▾"), as saídas da etapa (⚠ ▾), ✕ Interromper,
 // ? (o que falta) ou → Próximo, e o perfil.
 import { AberturaN, Alerta, Casca, destacarNaTela, Icone, MenuSuspenso, useCarregando, useFerramentaNaEtapa, type NomeIcone } from '@nads/ui';
+import { demo } from '@nads/core';
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useBlocker, useParams } from 'react-router';
 import { useDadosDeTesteDaFerramenta, usePonteDaFerramenta } from '../../../../comum/ponte';
 import { useAvisoDeBloqueio } from '../../../../comum/modoDesenvolvedor';
+import { implantarNotasFiscaisDeTeste } from '../../../concilia-ai/importadosNaEtapa';
 import { BASE } from '../../casca/navegacao';
 import { useCascaTarefas } from '../../casca/useCascaTarefas';
 import { useDepartamentoDaTela } from '../../casca/departamento';
@@ -21,7 +23,7 @@ import { ListaDoQueFalta, type ItemQueFalta } from './partes/OQueFalta';
 import { MenuDaRotina, type GrupoDoMenu } from './partes/MenuDaRotina';
 import { InssDaEtapa } from './partes/InssDaEtapa';
 import { RazaoDaEtapa } from './partes/RazaoDaEtapa';
-import { SiegDaEtapa } from './partes/SiegDaEtapa';
+import { ChecklistDisfarcado } from './partes/ChecklistDisfarcado';
 import { useInssDaEtapa } from './useInssDaEtapa';
 import { useRazaoDaEtapa } from './useRazaoDaEtapa';
 import type { ItemDeTeste } from '../../../../comum/BotaoDeTeste';
@@ -73,7 +75,11 @@ export function Executor() {
           { rotulo: 'Razão do caixa de teste', icone: 'zap' as NomeIcone, onClick: () => razao.implantarTeste(false) },
           { rotulo: 'Razão do caixa de teste (com CRÉD.LIQ.COBRANÇA)', icone: 'zap' as NomeIcone, onClick: () => razao.implantarTeste(true) },
         ]
-        : [];
+        : vm.etapa?.checklist && vm.empresa
+          // o checklist do Fiscal: as notas de teste do mês na Conferência (as tabelinhas e os gráficos das tarefas usam)
+          ? demo.OPCOES_FISCAIS_DE_TESTE.map(o => ({ rotulo: o.rotulo, icone: 'zap' as NomeIcone,
+            onClick: () => { implantarNotasFiscaisDeTeste(vm.empresa!.nome, vm.meses.length ? vm.meses : [vm.competencia], o.id); } }))
+          : [];
   const destacarNaFerramenta = usePonteDaFerramenta(iframe, vm.semMovimentoPorMes, vm.competencia, vm.marcarSemMovimento, vm.trocarCompetencia,
     vm.varios ? { meses: vm.meses, concluido: vm.periodoConcluido } : null, vm.encerrarPeriodo,
     r => setRequisitos({ url: urlDaFerramenta, ...r }));
@@ -124,7 +130,7 @@ export function Executor() {
   // sair da execução por qualquer lugar do app (o cabeçalho, o menu, o voltar do navegador) com a etapa aberta:
   // é interromper, com a justificativa; trocar de mês ou período dentro do executor não conta
   const saida = useBlocker(({ currentLocation, nextLocation }) =>
-    !!vm.etapa && !vm.interrompendo && !guia.saindo.current && currentLocation.pathname !== nextLocation.pathname && !nextLocation.pathname.startsWith(BASE + '/executar/'));
+    !vm.dev && !!vm.etapa && !vm.interrompendo && !guia.saindo.current && currentLocation.pathname !== nextLocation.pathname && !nextLocation.pathname.startsWith(BASE + '/executar/'));
   if (!vm.empresa) return <Navigate to={BASE} replace />;
   // o mês faz parte de um período prometido (vários meses): abre o período
   if (vm.irParaPeriodo) return <Navigate to={vm.irParaPeriodo} replace />;
@@ -198,7 +204,8 @@ export function Executor() {
         ]} />
       {/* interromper: o último, em vermelho (Vitor, 02/10/2026) */}
       {botoesDaEtapa && (
-        <button type="button" className="gh-topo-btn gh-topo-fechar" onClick={vm.abrirInterromper} title="Interromper a etapa" aria-label="Interromper">
+        // no modo desenvolvedor (Vitor, 06/10/2026: "remova essa opção"): o X só sai, sem o "Por que interromper?"
+        <button type="button" className="gh-topo-btn gh-topo-fechar" onClick={vm.dev ? vm.sair : vm.abrirInterromper} title={vm.dev ? 'Sair da etapa' : 'Interromper a etapa'} aria-label={vm.dev ? 'Sair' : 'Interromper'}>
           <Icone nome="x" />
         </button>
       )}
@@ -261,6 +268,10 @@ export function Executor() {
             ) : temChecklist && !folha.itens ? (
               // o balancete ainda carregando: o N sobre o vidro (nada de texto no lugar)
               <AberturaN vidro />
+            ) : vm.etapa.checklist && folha.itens ? (
+              // o Fiscal: a checklist disfarçada (Vitor, 06/10/2026) — um cartão por tarefa, com o painel e o Importar
+              <ChecklistDisfarcado titulo={vm.etapa.nome} itens={folha.itens} definicao={vm.etapa.checklist} alternar={folha.alternar}
+                empresa={vm.empresa.nome} codigo={vm.empresa.codigo != null ? String(vm.empresa.codigo) : ''} competencia={vm.competencia} meses={vm.meses} />
             ) : temChecklist && folha.itens ? (
               // o checklist da etapa: a Contabilização da Folha (pelo balancete) ou as tarefas da etapa (o Fiscal), marcando em ordem
               <div className="card folha-check">
@@ -268,7 +279,6 @@ export function Executor() {
                   <h3>{vm.etapa.checklistDaFolha ? 'Contabilização da Folha' : vm.etapa.nome}</h3>
                   {folha.itens.length > 0 && <span className="folha-check-qtd">{folha.itens.filter(i => i.marcado).length}/{folha.itens.length}</span>}
                 </div>
-                {vm.etapa.sieg && vm.empresa.codigo != null && <SiegDaEtapa tipo={vm.etapa.sieg} codigo={String(vm.empresa.codigo)} competencia={vm.competencia} />}
                 {folha.itens.length ? (
                   <ul className="folha-check-lista">
                     {folha.itens.map(i => (
