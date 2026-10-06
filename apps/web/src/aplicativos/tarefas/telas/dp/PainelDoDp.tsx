@@ -5,7 +5,7 @@
 // obrigação como feita, clicar de novo desfaz (sem o checklist).
 import { Esqueleto, Icone, Segmentado, useCarregando } from '@nads/ui';
 import { Fragment } from 'react';
-import { usePainelDoDp, type AbaDoPainel, type Agrupar, type EstadoDaObrigacao, type ParteDoDp } from './usePainelDoDp';
+import { usePainelDoDp, type AbaDoPainel, type Agrupar, type EstadoDaObrigacao } from './usePainelDoDp';
 
 const MARCA: Record<EstadoDaObrigacao, { simbolo: string; dica: string }> = {
   'nao-tem': { simbolo: '–', dica: 'não tem no mês' },
@@ -106,10 +106,6 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
         </>
       ) : (
         <>
-          {/* o submenu das Obrigações (Vitor, 06/10/2026: "algumas podem entrar com opções e submenus") */}
-          <div className="dp-submenu">
-            <Segmentado valor={(vm.parte || 'folha') as ParteDoDp} opcoes={vm.partes} onMudar={vm.setParte} />
-          </div>
 
           <section className="card dp-lista">
             <div className="dp-lista-topo">

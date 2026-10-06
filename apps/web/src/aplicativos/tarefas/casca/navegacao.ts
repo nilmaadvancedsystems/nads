@@ -44,8 +44,8 @@ export const APLICACOES: readonly Aplicacao[] = [
   // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
   // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas
   { id: 'dp', nome: 'Departamento Pessoal', icone: 'usuario', pronta: true, paginas: [
-    // tudo no tabelão (Vitor, 06/10/2026: "sem a parte de checklist"), em abas no alto como o Cadastro; poucas abas ("quero
-    // que fique menos coisas aqui"): as partes da rotina (Folha, eSocial, Guias, REINF, Entrega) são o submenu de Obrigações
+    // tudo no tabelão (Vitor, 06/10/2026: "sem a parte de checklist"); as páginas na barra lateral ("eu ainda quero uma
+    // barra lateral") e, em Obrigações, as partes da rotina nas abas do alto (PARTES_DO_DP)
     { id: 'resumo', rotulo: 'Resumo', icone: 'painel', titulo: 'DP — resumo do mês' },
     { id: 'obrigacoes', rotulo: 'Obrigações', icone: 'checklist', titulo: 'DP — obrigações do mês' },
     { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'DP — visão geral' },
@@ -80,6 +80,18 @@ export function aplicacao(id: string): Aplicacao | undefined {
 }
 
 export const caminhoDaPagina = (app: IdAplicacao, pagina: string) => BASE + '/' + app + '/' + pagina;
+
+/**
+ * As partes da rotina do DP: as abas no alto da página Obrigações (Vitor, 06/10/2026: o tabelão "em submenus no estilo
+ * GitHub", com a barra lateral das páginas do DP ao lado). Na URL: ?parte= (sem = a primeira).
+ */
+export const PARTES_DO_DP: readonly { id: string; rotulo: string; icone: NomeIcone }[] = [
+  { id: 'folha', rotulo: 'Folha', icone: 'fileText' },
+  { id: 'esocial', rotulo: 'eSocial', icone: 'upload' },
+  { id: 'guias', rotulo: 'Guias', icone: 'recibo' },
+  { id: 'reinf', rotulo: 'REINF', icone: 'fileUp' },
+  { id: 'entrega', rotulo: 'Entrega', icone: 'envelope' },
+];
 /** Onde a Tarefas abre (a pessoa escolhe na Minha página, a janela do avatar › Aparência e telas; neste navegador). */
 export const CHAVE_INICIO = 'nads-tarefas-inicio';
 export const INICIOS: readonly { valor: string; rotulo: string; caminho: string }[] = [
