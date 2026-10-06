@@ -88,15 +88,15 @@ function PainelDoEmail({ vm, x }: { vm: VmCaixa; x: e.EmailDaCaixa }) {
               <p><b>{x.nome || x.remetente}</b> <span className="fraco">&lt;{x.remetente}&gt;</span></p>
               <p className="fraco">{'Para ' + (m?.para || 'a caixa do escritório')}{m?.cc ? ' · Cc ' + m.cc : ''}</p>
               <p className="fraco">{x.em ? new Date(x.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : ''}
-                {x.clienteNome && <> · <span className="badge badge-neutral">{x.clienteNome}</span>
-                  {/* marcou a empresa errada (Vitor, 06/10/2026): tira o remetente dela e o e-mail volta para Sem cliente */}
-                  <button type="button" className="btn btn-ghost gmail-desligar" onClick={() => void vm.desligar(x).then(ok => { if (ok) fechar(); })}
-                    title={'Não é de ' + x.clienteNome + ': tirar e escolher de novo'}><Icone nome="x" />Não é deste cliente</button></>}</p>
+                {x.clienteNome && <> · <span className="badge badge-neutral">{x.clienteNome}</span></>}</p>
             </div>
             <div className="gmail-de-acoes">
               {!semDono && (salvo
                 ? <span className="badge badge-ok" title={salvo.pasta}>no Drive</span>
                 : anexos.length > 0 && <button type="button" className="btn btn-outline" onClick={() => void vm.salvarNoDrive(x)}><Icone nome="pasta" />Salvar no Drive</button>)}
+              {/* marcou a empresa errada (Vitor, 06/10/2026): tira o remetente dela e o e-mail volta para Sem cliente */}
+              {!semDono && <button type="button" className="btn btn-outline" onClick={() => void vm.desligar(x).then(ok => { if (ok) fechar(); })}
+                title={'Não é de ' + x.clienteNome + ': tirar e escolher de novo'}><Icone nome="x" />Não é deste cliente</button>}
               <a className="btn btn-outline" href={vm.linkDoGmail(x.mensagemId)} target="_blank" rel="noopener noreferrer"><Icone nome="envelope" />Abrir no Gmail</a>
               {vm.aba !== 'spam' && vm.admin && <button type="button" className="btn btn-outline gmail-spam" onClick={() => void vm.ignorar(x).then(fechar)}>É spam</button>}
             </div>
