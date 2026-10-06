@@ -44,14 +44,10 @@ export const APLICACOES: readonly Aplicacao[] = [
   // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
   // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas
   { id: 'dp', nome: 'Departamento Pessoal', icone: 'usuario', pronta: true, paginas: [
-    // tudo no tabelão (Vitor, 06/10/2026: "sem a parte de checklist"), quebrado em abas no alto como o Cadastro ("quebre
-    // nesse estilo"): o Resumo (números, gráficos, progresso) e uma aba por parte da rotina, cada uma só com as colunas dela
+    // tudo no tabelão (Vitor, 06/10/2026: "sem a parte de checklist"), em abas no alto como o Cadastro; poucas abas ("quero
+    // que fique menos coisas aqui"): as partes da rotina (Folha, eSocial, Guias, REINF, Entrega) são o submenu de Obrigações
     { id: 'resumo', rotulo: 'Resumo', icone: 'painel', titulo: 'DP — resumo do mês' },
-    { id: 'folha', rotulo: 'Folha', icone: 'fileText', titulo: 'DP — folha' },
-    { id: 'esocial', rotulo: 'eSocial', icone: 'upload', titulo: 'DP — eSocial' },
-    { id: 'guias', rotulo: 'Guias', icone: 'recibo', titulo: 'DP — guias' },
-    { id: 'reinf', rotulo: 'REINF', icone: 'fileUp', titulo: 'DP — EFD-REINF' },
-    { id: 'entrega', rotulo: 'Entrega', icone: 'envelope', titulo: 'DP — entrega ao cliente' },
+    { id: 'obrigacoes', rotulo: 'Obrigações', icone: 'checklist', titulo: 'DP — obrigações do mês' },
     { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'DP — visão geral' },
     // os parâmetros de cada cliente (Vitor, 06/10/2026: "quero que o dp tenha a própria aba de configurações")
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'DP — configurações' },

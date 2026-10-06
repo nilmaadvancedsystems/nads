@@ -20,9 +20,11 @@ export type Agrupar = 'nenhum' | 'responsavel' | 'agrupamento';
  * As abas do DP (Vitor, 06/10/2026: "quebre o tabelão em submenus no estilo GitHub"): o Resumo (números, gráficos e o
  * progresso) e uma por parte da rotina, cada uma só com as colunas dela.
  */
-export type AbaDoPainel = 'resumo' | 'folha' | 'esocial' | 'guias' | 'reinf' | 'entrega';
-export const ABAS_DO_PAINEL: readonly AbaDoPainel[] = ['resumo', 'folha', 'esocial', 'guias', 'reinf', 'entrega'];
-const PARTES_DO_DP: readonly { id: Exclude<AbaDoPainel, 'resumo'>; rotulo: string; obrigacoes: readonly string[] }[] = [
+export type AbaDoPainel = 'resumo' | 'obrigacoes';
+export const ABAS_DO_PAINEL: readonly AbaDoPainel[] = ['resumo', 'obrigacoes'];
+/** As partes da rotina: o submenu da aba Obrigações (na URL: ?parte=). */
+export type ParteDoDp = 'folha' | 'esocial' | 'guias' | 'reinf' | 'entrega';
+const PARTES_DO_DP: readonly { id: ParteDoDp; rotulo: string; obrigacoes: readonly string[] }[] = [
   { id: 'folha', rotulo: 'Folha', obrigacoes: ['recibos', 'folha'] },
   { id: 'esocial', rotulo: 'eSocial', obrigacoes: ['s1200', 's1210', 's1299'] },
   { id: 'guias', rotulo: 'Guias', obrigacoes: ['dctfweb', 'darf', 'fgts'] },
@@ -99,7 +101,9 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   const chaveDoGrupo = (c: (typeof todas)[number]) => (agrupar === 'responsavel' ? c.responsavelNome : agrupar === 'agrupamento' ? c.agrupamento || 'Sem agrupamento' : '');
 
   // fora do Resumo: só os clientes que têm a parte, com as colunas dela e a situação só dela
-  const parte = PARTES_DO_DP.find(p => p.id === aba) || null;
+  const parte = aba === 'obrigacoes' ? PARTES_DO_DP.find(p => p.id === params.get('parte')) || PARTES_DO_DP[0] : null;
+  const faltaNa = (c: (typeof todas)[number], p: (typeof PARTES_DO_DP)[number]) =>
+    c.obrigacoes.some(o => p.obrigacoes.includes(o.id) && o.estado !== 'nao-tem' && o.estado !== 'feita');
   const linhasDaParte = parte ? filtradas.flatMap(c => {
     const minhas = c.obrigacoes.filter(o => parte.obrigacoes.includes(o.id) && o.estado !== 'nao-tem');
     if (!minhas.length) return [];
@@ -125,6 +129,13 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
     competencias: competencias.map(c => ({ valor: c, rotulo: t.rotuloCompetencia(c) })),
     setCompetencia: (c: string) => mudarParam('competencia', c),
     resumo: !parte,
+    /** o submenu das Obrigações: cada parte com quantos clientes ainda faltam nela */
+    parte: parte ? parte.id : null,
+    partes: PARTES_DO_DP.map(p => {
+      const n = filtradas.filter(c => faltaNa(c, p)).length;
+      return { valor: p.id, rotulo: p.rotulo + (n ? ' · ' + n : '') };
+    }),
+    setParte: (p: ParteDoDp) => mudarParam('parte', p === PARTES_DO_DP[0].id ? '' : p),
     tituloDaParte: parte ? parte.rotulo : '',
     /** quantos clientes ainda faltam nesta parte */
     faltam: linhasDaParte.filter(c => !c.concluida).length,
