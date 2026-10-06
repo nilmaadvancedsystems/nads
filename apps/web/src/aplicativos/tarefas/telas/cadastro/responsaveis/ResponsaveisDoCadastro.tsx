@@ -1,4 +1,4 @@
-// Cadastro › Responsáveis: quem cuida de cada empresa no DP, no Fiscal e no Contábil. Em cima, as pessoas com quantas
+// Cadastro › Responsáveis: quem cuida de cada empresa no Fiscal e no Contábil. Em cima, as pessoas com quantas
 // empresas têm (clicar filtra a lista); embaixo, a lista com um seletor por departamento (grava ao escolher).
 import { Esqueleto, Icone, useCarregando } from '@nads/ui';
 import { useResponsaveisDoCadastro } from './useResponsaveisDoCadastro';
@@ -33,7 +33,7 @@ export function ResponsaveisDoCadastro() {
                 <button key={p.nome} type="button" className={'dp-pessoa' + (vm.pessoa === p.nome ? ' ativa' : '')} onClick={() => vm.setPessoa(vm.pessoa === p.nome ? '' : p.nome)}
                   title={'Ver as empresas de ' + p.nome}>
                   <span className="dp-pessoa-topo"><b>{p.nome}</b><span className="num">{p.total}</span></span>
-                  <span className="hint">{[p.dp ? p.dp + ' no DP' : '', p.fiscal ? p.fiscal + ' no Fiscal' : '', p.contabil ? p.contabil + ' no Contábil' : ''].filter(Boolean).join(' · ')}</span>
+                  <span className="hint">{[p.fiscal ? p.fiscal + ' no Fiscal' : '', p.contabil ? p.contabil + ' no Contábil' : ''].filter(Boolean).join(' · ')}</span>
                 </button>
               ))}
             </div>
@@ -58,7 +58,7 @@ export function ResponsaveisDoCadastro() {
                           <td key={d.id}>
                             <select className="select-compact dp-resp" value={valor} onChange={e => vm.definir(l.nome, l.codigo, d.id, e.target.value)}
                               aria-label={'Responsável ' + d.rotulo + ' de ' + l.nome}>
-                              <option value="">{d.id === 'dp' && l.dpDaPlanilha ? l.dpDaPlanilha + ' (planilha)' : '—'}</option>
+                              <option value="">{d.id === 'fiscal' && l.daPlanilha ? l.daPlanilha + ' (planilha)' : '—'}</option>
                               {opcoes.map(n => <option key={n} value={n}>{n}</option>)}
                             </select>
                           </td>

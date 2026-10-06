@@ -16,6 +16,20 @@ import { useClientesDoDp } from './useClientesDoDp';
 export type EstadoDaObrigacao = 'nao-tem' | 'a-fazer' | 'feita' | 'parada';
 export type Agrupar = 'nenhum' | 'responsavel' | 'agrupamento';
 
+/**
+ * As abas do DP (Vitor, 06/10/2026: "quebre o tabelão em submenus no estilo GitHub"): o Resumo (números, gráficos e o
+ * progresso) e uma por parte da rotina, cada uma só com as colunas dela.
+ */
+export type AbaDoPainel = 'resumo' | 'folha' | 'esocial' | 'guias' | 'reinf' | 'entrega';
+export const ABAS_DO_PAINEL: readonly AbaDoPainel[] = ['resumo', 'folha', 'esocial', 'guias', 'reinf', 'entrega'];
+const PARTES_DO_DP: readonly { id: Exclude<AbaDoPainel, 'resumo'>; rotulo: string; obrigacoes: readonly string[] }[] = [
+  { id: 'folha', rotulo: 'Folha', obrigacoes: ['recibos', 'folha'] },
+  { id: 'esocial', rotulo: 'eSocial', obrigacoes: ['s1200', 's1210', 's1299'] },
+  { id: 'guias', rotulo: 'Guias', obrigacoes: ['dctfweb', 'darf', 'fgts'] },
+  { id: 'reinf', rotulo: 'REINF', obrigacoes: ['reinf'] },
+  { id: 'entrega', rotulo: 'Entrega', obrigacoes: ['envio'] },
+];
+
 const SEM_RESPONSAVEL = 'Sem responsável';
 const contar = (xs: readonly string[]) => {
   const m = new Map<string, number>();
@@ -25,7 +39,7 @@ const contar = (xs: readonly string[]) => {
 // o nome da planilha (em maiúsculas) como se escreve: FABIANA → Fabiana; GUSTAVO.P → Gustavo.P
 const nomeDe = (r: string) => (r ? r.split('.').map(p => p.charAt(0) + p.slice(1).toLowerCase()).join('.') : SEM_RESPONSAVEL);
 
-export function usePainelDoDp() {
+export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   const repo = useRepo();
   const op = useOperador().operador as Operador;
   const [params, setParams] = useSearchParams();
@@ -55,6 +69,8 @@ export function usePainelDoDp() {
     // as obrigações e, no fim, o Entregue (a entrega ao cliente fecha o mês)
     const obrigacoes = [
       ...empresas.OBRIGACOES_DP.map(o => ({ id: o.id as string, etapa: 'dp-' + o.id, estado: estadoDe('dp-' + o.id, c.obrigacoes.includes(o.id)) })),
+      // a REINF, para quem tem a REINF autorizada ("faltou a reinf")
+      { id: 'reinf', etapa: 'dp-reinf', estado: estadoDe('dp-reinf', c.reinfAutorizada) },
       { id: 'envio', etapa: 'dp-envio', estado: estadoDe('dp-envio', temAlguma) },
     ].map(o => {
       const est = t.estadoDa(ex, o.etapa);
@@ -81,12 +97,24 @@ export function usePainelDoDp() {
 
   // a tabela em grupos (por responsável ou agrupamento), cada um com quantos já fecharam
   const chaveDoGrupo = (c: (typeof todas)[number]) => (agrupar === 'responsavel' ? c.responsavelNome : agrupar === 'agrupamento' ? c.agrupamento || 'Sem agrupamento' : '');
-  const grupos = agrupar === 'nenhum'
-    ? [{ nome: '', linhas: filtradas, feitas: 0 }]
-    : [...new Set(filtradas.map(chaveDoGrupo))].sort((a, b) => a.localeCompare(b, 'pt-BR')).map(nome => {
-      const linhas = filtradas.filter(c => chaveDoGrupo(c) === nome);
-      return { nome, linhas, feitas: linhas.filter(c => c.concluida).length };
-    });
+
+  // fora do Resumo: só os clientes que têm a parte, com as colunas dela e a situação só dela
+  const parte = PARTES_DO_DP.find(p => p.id === aba) || null;
+  const linhasDaParte = parte ? filtradas.flatMap(c => {
+    const minhas = c.obrigacoes.filter(o => parte.obrigacoes.includes(o.id) && o.estado !== 'nao-tem');
+    if (!minhas.length) return [];
+    const feitas = minhas.filter(o => o.estado === 'feita').length;
+    const parada = minhas.some(o => o.estado === 'parada');
+    return [{
+      ...c, obrigacoes: c.obrigacoes.filter(o => parte.obrigacoes.includes(o.id)), concluida: feitas === minhas.length, parada,
+      situacao: feitas === minhas.length ? 'Feito' : parada ? 'Parada' : feitas ? 'Falta ' + (minhas.length - feitas) : 'A fazer',
+    }];
+  }) : filtradas;
+  const mudarParam = (chave: string, valor: string) => {
+    const novo = new URLSearchParams(params);
+    if (valor) novo.set(chave, valor); else novo.delete(chave);
+    setParams(novo);
+  };
 
   const concluidas = filtradas.filter(c => c.concluida).length;
   const responsaveis = contar(todas.map(c => c.responsavelNome)).map(r => r.rotulo);
@@ -95,7 +123,11 @@ export function usePainelDoDp() {
     carregando: !carregada || !doDp.carregado,
     competencia,
     competencias: competencias.map(c => ({ valor: c, rotulo: t.rotuloCompetencia(c) })),
-    setCompetencia: (c: string) => setParams({ competencia: c }),
+    setCompetencia: (c: string) => mudarParam('competencia', c),
+    resumo: !parte,
+    tituloDaParte: parte ? parte.rotulo : '',
+    /** quantos clientes ainda faltam nesta parte */
+    faltam: linhasDaParte.filter(c => !c.concluida).length,
     numeros: [
       { rotulo: 'Clientes', valor: filtradas.length, dica: '' },
       { rotulo: 'Concluídos', valor: concluidas, dica: filtradas.length ? Math.round((concluidas / filtradas.length) * 100) + '% do mês' : '' },
@@ -115,9 +147,15 @@ export function usePainelDoDp() {
       const feitos = deles.filter(c => c.concluida).length;
       return { nome: r, total: deles.length, feitos, pct: deles.length ? Math.round((feitos / deles.length) * 100) : 0, parados: deles.filter(c => c.parada).length };
     }).filter(r => r.total > 0),
-    colunas: [...empresas.OBRIGACOES_DP.map(o => ({ id: o.id as string, rotulo: o.rotulo, nome: o.nome })), { id: 'envio', rotulo: 'Entregue', nome: 'Entrega ao cliente' }],
-    grupos,
-    quantas: filtradas.length,
+    colunas: [...empresas.OBRIGACOES_DP.map(o => ({ id: o.id as string, rotulo: o.rotulo, nome: o.nome })), { id: 'reinf', rotulo: 'REINF', nome: 'EFD-REINF' }, { id: 'envio', rotulo: 'Entregue', nome: 'Entrega ao cliente' }]
+      .filter(o => !parte || parte.obrigacoes.includes(o.id)),
+    grupos: agrupar === 'nenhum'
+      ? [{ nome: '', linhas: linhasDaParte, feitas: 0 }]
+      : [...new Set(linhasDaParte.map(chaveDoGrupo))].sort((a, b) => a.localeCompare(b, 'pt-BR')).map(nome => {
+        const linhas = linhasDaParte.filter(c => chaveDoGrupo(c) === nome);
+        return { nome, linhas, feitas: linhas.filter(c => c.concluida).length };
+      }),
+    quantas: linhasDaParte.length,
     filtros: {
       busca, setBusca, responsavel, setResponsavel, movimento, setMovimento, enquadramento, setEnquadramento,
       status, setStatus, agrupamento, setAgrupamento, agrupar, setAgrupar,

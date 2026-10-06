@@ -14,6 +14,7 @@ import { Insights } from '../telas/insights/Insights';
 import { EmDesenvolvimento } from '../telas/em-desenvolvimento/EmDesenvolvimento';
 import { Reinf } from '../telas/fiscal/reinf/Reinf';
 import { PainelDoDp } from '../telas/dp/PainelDoDp';
+import { ABAS_DO_PAINEL, type AbaDoPainel } from '../telas/dp/usePainelDoDp';
 import { ConfiguracoesDoDp } from '../telas/dp/ConfiguracoesDoDp';
 import { ResponsaveisDoCadastro } from '../telas/cadastro/responsaveis/ResponsaveisDoCadastro';
 import { CascaTarefas } from './CascaTarefas';
@@ -25,7 +26,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'minhas-empresas': return pagina === 'insights' ? <Insights /> : <MinhasEmpresas />;
     case 'contabil': return pagina === 'configuracoes' ? <ConfiguracoesContabil /> : <VisaoContabil pagina={pagina} />;
     case 'fiscal': return pagina === 'empresas' ? <MinhasEmpresas /> : pagina === 'reinf' ? <Reinf /> : <VisaoContabil pagina={pagina} dep="fiscal" />;
-    case 'dp': return pagina === 'painel' ? <PainelDoDp /> : pagina === 'configuracoes' ? <ConfiguracoesDoDp /> : <VisaoContabil pagina={pagina} dep="dp" />;
+    case 'dp': return ABAS_DO_PAINEL.includes(pagina as AbaDoPainel) ? <PainelDoDp aba={pagina as AbaDoPainel} /> : pagina === 'configuracoes' ? <ConfiguracoesDoDp /> : <VisaoContabil pagina={pagina} dep="dp" />;
     case 'cadastro': return pagina === 'configuracoes' ? <ConfiguracoesDoNads /> : pagina === 'responsaveis' ? <ResponsaveisDoCadastro /> : <UsuariosDoNads />;
     case 'drive': return <ExploradorDoDrive />;
     case 'contato': return pagina === 'historico' ? <HistoricoDoRobo /> : <CaixaDoRobo />;

@@ -93,8 +93,8 @@ export interface CadastroDaEmpresa {
   /** os sócios, com o nome e o CPF (Vitor, 06/10/2026): a etapa Bancos acha a transferência para o sócio no extrato */
   socios?: Socio[];
   /**
-   * quem cuida da empresa em cada departamento (Vitor, 06/10/2026: "o cadastro por responsável"): o nome da pessoa da
-   * equipe. Sem = ninguém escolhido (no DP, vale o da planilha do DP).
+   * quem cuida da empresa no Fiscal e no Contábil (Vitor, 06/10/2026: "o cadastro por responsável"): o nome da pessoa
+   * da equipe. Sem = ninguém escolhido (no Fiscal, vale o da planilha do Checklist Folha, que é do Fiscal).
    */
   responsaveis?: Partial<Record<DepartamentoDoResponsavel, string>>;
   /** os parâmetros do DP mudados nas Configurações do DP (o que não está aqui vale o da planilha do DP) */
@@ -105,10 +105,10 @@ export interface CadastroDaEmpresa {
   atualizadoEm?: string;
 }
 
-/** Os departamentos que têm responsável por empresa. */
-export type DepartamentoDoResponsavel = 'dp' | 'fiscal' | 'contabil';
+/** Os departamentos que têm responsável por empresa (Vitor, 06/10/2026: os responsáveis da planilha são do Fiscal; o DP não tem). */
+export type DepartamentoDoResponsavel = 'fiscal' | 'contabil';
 export const DEPARTAMENTOS_DO_RESPONSAVEL: readonly { id: DepartamentoDoResponsavel; rotulo: string }[] = [
-  { id: 'dp', rotulo: 'DP' }, { id: 'fiscal', rotulo: 'Fiscal' }, { id: 'contabil', rotulo: 'Contábil' },
+  { id: 'fiscal', rotulo: 'Fiscal' }, { id: 'contabil', rotulo: 'Contábil' },
 ];
 
 /** Os parâmetros do DP de uma empresa (Configurações do DP): só os que foram mudados. */

@@ -15,7 +15,8 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const { escolher, comLogin } = useOperador();
   const op = useOperador().operador as Operador;
   const a = aplicacao(app);
-  const comAbas = app === 'cadastro';
+  // o Cadastro e o DP com as páginas em abas no alto (Vitor, 06/10/2026: o DP "nesse estilo")
+  const comAbas = app === 'cadastro' || app === 'dp';
   const pessoal = usePessoal();
   const acesso = useAcesso();
   // o modo desenvolvedor (no avatar): só ver, sem alterar (Vitor, 06/10/2026)
