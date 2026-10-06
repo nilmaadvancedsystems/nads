@@ -23,13 +23,14 @@ export const ROTINA_FISCAL: Rotina = {
       item('sieg', 'Download SIEG', { link: { rotulo: 'SIEG - Login', url: 'https://auth.sieg.com/login' } }),
       item('recebimento-saidas', 'Recebimento de Saídas'),
     ], { sieg: 'contagem' }),
-    etapa('fiscal-importacao', 'Importação de Notas', 'Importação no Alterdata', 'Importe as notas no Alterdata.', [
-      item('entradas', 'Entradas'),
-      item('saidas', 'Saídas'),
-      item('tomados', 'Serviços Tomados'),
-      item('prestados', 'Serviços Prestados'),
-      item('cte', 'CT-e'),
-    ], { checklistEmAbas: true }),
+    // a Importação do Contábil, só as abas das notas (Vitor, 06/10/2026: "a pessoa do fiscal vai importar as notas com a
+    // conta contábil e vlr contábil … e já vai ser considerado para os apps do contábil"): o relatório de cada tipo vai para
+    // a Conferência da empresa (a mesma do Concilia aí e do Creditor), com o Valor contábil, o Lanç. e a Conta contábil.
+    // O CT-e vem no relatório de Entradas.
+    etapa('fiscal-importacao', 'Importação de Notas', 'Importação no Alterdata', 'Importe os relatórios de notas do Alterdata (com a conta contábil): Entradas, Saídas, Tomados e Prestados.', [], {
+      checklist: undefined,
+      ferramenta: { app: 'extratudo', nome: 'Importação', caminho: r => '/extratudo/' + r + '/extrator/tarefa/extratos?etapa=fiscal', embutir: true, periodo: true, requisitos: true },
+    }),
     // ─── Conferência ──────────────────────────────────────────────────────────
     etapa('fiscal-conf-saidas', 'Conferência', 'Saídas', 'Confira a sequência e as notas de saída.', [
       item('sequencia-saidas', 'Sequência de Saídas'),

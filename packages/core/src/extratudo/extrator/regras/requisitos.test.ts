@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { requisitosDaImportacao, requisitosDoChequeEspecial } from './requisitos';
+import { requisitosDaImportacao, requisitosDasNotas, requisitosDoChequeEspecial } from './requisitos';
 
 const TUDO = { balancete: true, entradas: true, saidas: true, tomados: true, prestados: true };
 
@@ -28,5 +28,18 @@ describe('requisitos da etapa Cheque especial', () => {
   });
   it('o banco com id diz onde resolver', () => {
     expect(requisitosDaImportacao([{ id: 'sicoob', nome: 'Sicoob', ok: false, semMovimento: false }], TUDO, false).alvos).toEqual(['banco:sicoob']);
+  });
+});
+
+describe('requisitosDasNotas (a Importação no Alterdata do Fiscal)', () => {
+  const notas = { balancete: false, entradas: true, saidas: true, tomados: true, prestados: false };
+  it('só as notas: sem balancete e sem prestados (quem não presta) passa', () => {
+    expect(requisitosDasNotas(notas, false).pronto).toBe(true);
+    expect(requisitosDasNotas(notas, null).pronto).toBe(true);
+  });
+  it('falta cada tipo, com a aba para resolver', () => {
+    const r = requisitosDasNotas({ ...notas, saidas: false }, true);
+    expect(r.faltam).toEqual(['Saídas', 'Prestados']);
+    expect(r.alvos).toEqual(['aba:saidas', 'aba:prestados']);
   });
 });

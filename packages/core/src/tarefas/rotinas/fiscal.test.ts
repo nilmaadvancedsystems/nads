@@ -8,8 +8,12 @@ describe('rotina do Fiscal (o Notion do Heverton)', () => {
   it('os grupos na ordem: Importação de Notas, Conferência, Apuração, Envio', () => {
     expect([...new Set(ROTINA_FISCAL.etapas.map(e => e.secao))]).toEqual(['Importação de Notas', 'Conferência', 'Apuração', 'Obrigações', 'Envio']);
   });
-  it('toda etapa é um checklist, com ids únicos', () => {
+  it('toda etapa é um checklist (menos a Importação, que abre a do Contábil), com ids únicos', () => {
+    const imp = ROTINA_FISCAL.etapas.find(e => e.id === 'fiscal-importacao')!;
+    expect(imp.ferramenta?.caminho('x')).toBe('/extratudo/x/extrator/tarefa/extratos?etapa=fiscal');
+    expect(imp.ferramenta?.requisitos).toBe(true);
     for (const e of ROTINA_FISCAL.etapas) {
+      if (e === imp) continue;
       expect(e.checklist?.length).toBeGreaterThan(0);
       expect(new Set(e.checklist?.map(i => i.id)).size).toBe(e.checklist?.length);
     }

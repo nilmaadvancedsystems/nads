@@ -20,7 +20,7 @@ function ler(chave: string): string[] {
  * ativo: a etapa da vez é a da folha; null nos itens = o balancete ainda não carregou. fixo: as tarefas da etapa (a
  * rotina do Fiscal, Vitor 05/10/2026) — sem balancete, a lista é ela, com os tiques guardados por etapa.
  */
-export function useChecklistDaFolha(ativo: boolean, empresa: string, meses: readonly string[], fixo?: { etapa: string; itens: TarefaDoChecklist[] } | null, livre = false) {
+export function useChecklistDaFolha(ativo: boolean, empresa: string, meses: readonly string[], fixo?: { etapa: string; itens: TarefaDoChecklist[] } | null) {
   const contas = useContasDoBalancete(ativo && !fixo ? empresa : '');
   const chave = chaveDe(empresa, meses, fixo?.etapa);
   const [marcados, setMarcados] = useState<{ chave: string; ids: string[] }>(() => ({ chave, ids: ler(chave) }));
@@ -29,29 +29,19 @@ export function useChecklistDaFolha(ativo: boolean, empresa: string, meses: read
   // em ordem: o próximo depois dos marcados fica liberado; dos marcados, só o último pode ser desmarcado
   const feitos = itens ? itens.findIndex(i => !ids.includes(i.id)) : -1;
   const ateOnde = feitos < 0 ? (itens ? itens.length : 0) : feitos;
-  // livre (o checklist em abas): qualquer ordem; cada item feito ("id") ou que a empresa não tem ("id:nao")
-  const liberado = (i: number) => livre || (i === ateOnde) || (i === ateOnde - 1);
-  const feito = (id: string, k: number) => (livre ? ids.includes(id) || ids.includes(id + ':nao') : k < ateOnde);
-  function gravar(novos: string[]) {
-    setMarcados({ chave, ids: novos });
-    try { localStorage.setItem(chave, JSON.stringify(novos)); } catch { /* sem armazenamento: só nesta tela */ }
-  }
+  const liberado = (i: number) => (i === ateOnde) || (i === ateOnde - 1);
   function alternar(id: string) {
     const pos = itens ? itens.findIndex(i => i.id === id) : -1;
     if (pos < 0 || !liberado(pos)) return;
-    if (livre) { gravar(ids.includes(id) || ids.includes(id + ':nao') ? ids.filter(x => x !== id && x !== id + ':nao') : [...ids, id]); return; }
-    gravar(ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id]);
-  }
-  /** o item não existe nesta empresa (ex.: sem CT-e): conta como feito */
-  function naoTem(id: string) {
-    gravar([...ids.filter(x => x !== id && x !== id + ':nao'), id + ':nao']);
+    const novos = ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id];
+    setMarcados({ chave, ids: novos });
+    try { localStorage.setItem(chave, JSON.stringify(novos)); } catch { /* sem armazenamento: só nesta tela */ }
   }
   return {
     /** null = carregando o balancete; [] = pelo balancete, a empresa não tem folha */
-    itens: itens ? itens.map((i, k) => ({ ...i, marcado: feito(i.id, k), naoTem: ids.includes(i.id + ':nao'), liberado: liberado(k) })) : null,
+    itens: itens ? itens.map((i, k) => ({ ...i, marcado: k < ateOnde, liberado: liberado(k) })) : null,
     alternar,
-    naoTem,
     /** o que falta marcar (null = ainda não dá para saber) */
-    faltam: itens ? (livre ? itens.filter((i, k) => !feito(i.id, k)).map(i => i.nome) : itens.slice(ateOnde).map(i => i.nome)) : null,
+    faltam: itens ? itens.slice(ateOnde).map(i => i.nome) : null,
   };
 }

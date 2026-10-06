@@ -69,9 +69,6 @@ export interface Etapa {
   razao?: { conta: string };
   /** o painel do SIEG na etapa (Fiscal, 06/10/2026): as notas do mês (contagem) ou a sequência das saídas */
   sieg?: 'contagem' | 'saidas';
-  /** o checklist vira as abas do cabeçalho (Fiscal › Importação no Alterdata, 06/10/2026): uma aba por item, em qualquer
-   *  ordem, cada uma com Importei ou Não tem */
-  checklistEmAbas?: boolean;
   /**
    * a etapa só entra na rotina do mês quando outra a adiciona (o Creditor, quando o razão do caixa tem liquidação de
    * cobrança); sem isso, não aparece e conta como concluída

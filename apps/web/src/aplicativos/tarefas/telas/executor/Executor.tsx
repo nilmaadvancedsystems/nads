@@ -22,7 +22,6 @@ import { MenuDaRotina, type GrupoDoMenu } from './partes/MenuDaRotina';
 import { InssDaEtapa } from './partes/InssDaEtapa';
 import { RazaoDaEtapa } from './partes/RazaoDaEtapa';
 import { SiegDaEtapa } from './partes/SiegDaEtapa';
-import { ImportacaoEmAbas } from './partes/ImportacaoEmAbas';
 import { useInssDaEtapa } from './useInssDaEtapa';
 import { useRazaoDaEtapa } from './useRazaoDaEtapa';
 import type { ItemDeTeste } from '../../../../comum/BotaoDeTeste';
@@ -83,13 +82,7 @@ export function Executor() {
   // o checklist da etapa: o da folha (pelo balancete) ou as tarefas fixas da etapa (o Fiscal)
   const fixo = vm.etapa?.checklist ? { etapa: vm.etapa.id, itens: vm.etapa.checklist.map(i => ({ id: i.id, nome: i.texto, contas: i.sub || [], link: i.link, aviso: i.aviso })) } : null;
   const temChecklist = !!(vm.etapa?.checklistDaFolha || vm.etapa?.checklist);
-  const emAbas = !!vm.etapa?.checklistEmAbas;
-  const folha = useChecklistDaFolha(temChecklist, vm.empresa?.nome || '', vm.meses.length ? vm.meses : [vm.competencia], fixo, emAbas);
-  // o checklist em abas (a Importação no Alterdata do Fiscal): a aba aberta; sem escolha, a primeira que falta
-  const [abaDoChecklist, setAbaDoChecklist] = useState<string | null>(null);
-  const itensEmAbas = emAbas && folha.itens ? folha.itens : null;
-  const abaAberta = itensEmAbas ? itensEmAbas.find(i => i.id === abaDoChecklist) || itensEmAbas.find(i => !i.marcado) || itensEmAbas[0] : null;
-  const abasDoChecklist = itensEmAbas ? itensEmAbas.map(i => ({ id: i.id, rotulo: i.nome, icone: (i.marcado ? 'checkCircle' : 'fileUp') as NomeIcone, ativa: i.id === abaAberta?.id })) : null;
+  const folha = useChecklistDaFolha(temChecklist, vm.empresa?.nome || '', vm.meses.length ? vm.meses : [vm.competencia], fixo);
   const faltamFerramenta = vm.tela
     ? requisitosDaTela && requisitosDaTela.chave === chaveDaTela && !requisitosDaTela.pronto ? requisitosDaTela.faltam : null
     : requisitos && requisitos.url === urlDaFerramenta && !requisitos.pronto ? requisitos.faltam : null;
@@ -217,8 +210,8 @@ export function Executor() {
     <Casca sistema="Tarefas" temaNaGaveta={false} larga rotuloLateral="Etapas" topoDireita={topo}
       empresa={{ codigo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome, nome: '' }}
 
-      versao={casca.versao} secoes={checklist} paginas={abasDoChecklist || abas} titulo=""
-      onSecao={vm.abrirEtapa} onPagina={abasDoChecklist ? setAbaDoChecklist : abrirAba} onInicio={vm.sair} onAplicativos={casca.inicio}
+      versao={casca.versao} secoes={checklist} paginas={abas} titulo=""
+      onSecao={vm.abrirEtapa} onPagina={abrirAba} onInicio={vm.sair} onAplicativos={casca.inicio}
       onEmpresa={vm.abrirEmpresa} aplicativos={casca.aplicacoes} onAplicativo={casca.onAplicacao}>
       {vm.carregando ? null : !vm.etapa ? (
         <div className="executor-fim">
@@ -269,9 +262,6 @@ export function Executor() {
             ) : temChecklist && !folha.itens ? (
               // o balancete ainda carregando: o N sobre o vidro (nada de texto no lugar)
               <AberturaN vidro />
-            ) : abaAberta ? (
-              <ImportacaoEmAbas item={abaAberta} codigo={vm.empresa.codigo != null ? String(vm.empresa.codigo) : ''} competencia={vm.competencia}
-                onImportei={() => folha.alternar(abaAberta.id)} onNaoTem={() => folha.naoTem(abaAberta.id)} onDesfazer={() => folha.alternar(abaAberta.id)} />
             ) : temChecklist && folha.itens ? (
               // o checklist da etapa: a Contabilização da Folha (pelo balancete) ou as tarefas da etapa (o Fiscal), marcando em ordem
               <div className="card folha-check">
