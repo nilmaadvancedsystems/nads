@@ -1,8 +1,11 @@
 // O andamento das etapas de uma empresa numa competência: o que está feito, o que é a próxima,
 // e as ações da tela (fazer, dispensar, interromper), cada uma devolvendo a execução nova e o evento.
+import { clienteDoDp, SO_DO_DP } from '../../empresas/dp';
 import { EMPRESAS } from '../../empresas/lista';
+import type { EmpresaDoEscritorio } from '../../empresas/tipos';
 import type { Departamento } from '../../usuarios/tipos';
 import { ROTINA_CONTABIL } from '../rotinas/contabil';
+import { ROTINA_DP } from '../rotinas/dp';
 import { ROTINA_FISCAL } from '../rotinas/fiscal';
 import type { Etapa, EstadoEtapa, Evento, Execucao, Rotina, SituacaoEtapa } from '../tipos';
 
@@ -10,7 +13,7 @@ import type { Etapa, EstadoEtapa, Evento, Execucao, Rotina, SituacaoEtapa } from
 const SO_QUANDO_ADICIONADAS = new Set([...ROTINA_CONTABIL.etapas, ...ROTINA_FISCAL.etapas].filter(e => e.soQuandoAdicionada).map(e => e.id));
 
 /** As etapas que valem só para alguns regimes ou só em alguns meses (Fiscal, 06/10/2026: a rotina pelo regime). */
-const RESTRITAS = new Map([...ROTINA_CONTABIL.etapas, ...ROTINA_FISCAL.etapas].filter(e => e.regimes || e.meses).map(e => [e.id, e]));
+const RESTRITAS = new Map([...ROTINA_CONTABIL.etapas, ...ROTINA_FISCAL.etapas, ...ROTINA_DP.etapas].filter(e => e.regimes || e.meses || e.obrigacaoDp).map(e => [e.id, e]));
 const REGIME_POR_CODIGO = new Map(EMPRESAS.filter(e => e.codigo != null).map(e => [e.codigo, e.regime]));
 
 /** O regime da empresa (o da lista de empresas), ou '' quando não se sabe. */
@@ -30,6 +33,10 @@ export function etapaNoMes(ex: Execucao | null, etapa: string): boolean {
     if (e.regimes && regime && !e.regimes.includes(regime)) return false;
     const mes = Number(ex.competencia.slice(5, 7));
     if (e.meses && mes && !e.meses.includes(mes)) return false;
+    // o DP (06/10/2026): só as obrigações que a empresa tem na planilha do DP (fora dela, entra)
+    const dp = e.obrigacaoDp ? clienteDoDp(ex.codigo) : null;
+    if (dp && e.obrigacaoDp === 'envio' && !dp.obrigacoes.length) return false;
+    if (dp && e.obrigacaoDp && e.obrigacaoDp !== 'envio' && !dp.obrigacoes.includes(e.obrigacaoDp)) return false;
   }
   return true;
 }
@@ -175,4 +182,14 @@ export function periodoConcluido(execucoes: readonly (Execucao | null)[], rotina
 /** Todos os bancos da empresa sem movimento? (aí a etapa dos extratos conta como "não se aplica") */
 export function todosSemMovimento(ex: Execucao | null, bancos: readonly { id: string }[]): boolean {
   return bancos.length > 0 && bancos.every(b => ex?.semMovimento?.includes(b.id));
+}
+
+const SO_DO_DP_CODIGOS = new Set(SO_DO_DP.map(e => e.codigo));
+
+/**
+ * As empresas da rotina do departamento (06/10/2026): o DP trabalha os clientes da planilha do DP (inclusive os que só ele
+ * tem: pessoa física, domésticas…); o Contábil e o Fiscal, a lista do escritório.
+ */
+export function empresasDaRotina<E extends EmpresaDoEscritorio>(departamento: Departamento | string, lista: readonly E[]): E[] {
+  return departamento === 'dp' ? lista.filter(e => !!clienteDoDp(e.codigo)) : lista.filter(e => e.codigo == null || !SO_DO_DP_CODIGOS.has(e.codigo));
 }

@@ -3,6 +3,7 @@
 export * from './tipos';
 export { ROTINA_CONTABIL } from './rotinas/contabil';
 export { ROTINA_FISCAL } from './rotinas/fiscal';
+export { ROTINA_DP } from './rotinas/dp';
 export { rotinaDo } from './rotinas/rotinaDo';
 export * from './regras/execucao';
 export * from './regras/verificacao';

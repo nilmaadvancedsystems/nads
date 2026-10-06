@@ -29,7 +29,8 @@ export function useAndamento() {
   const { execucoes, carregada } = useExecucoes(competencia, dep);
   const porNome = new Map(execucoes.map(e => [e.empresa, e]));
 
-  const linhas = rotina ? repo.listarEmpresas().map(emp => {
+  // as empresas da rotina: o DP, os clientes da planilha do DP; o Contábil e o Fiscal, a lista do escritório
+  const linhas = rotina ? t.empresasDaRotina(dep, repo.listarEmpresas()).map(emp => {
     const ex = porNome.get(emp.nome) || null;
     const p = t.progresso(ex, rotina);
     const situacao = t.situacaoGeral(ex, rotina);

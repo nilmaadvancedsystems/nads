@@ -10,13 +10,14 @@ export function useDepartamentoDaTela() {
   const op = useOperador().operador as Operador;
   const { pathname, search } = useLocation();
   const q = new URLSearchParams(search).get('dep');
-  const dep: usuarios.Departamento = pathname.startsWith(BASE + '/fiscal') ? 'fiscal' : q === 'fiscal' || q === 'contabil' ? q : op.departamento;
+  const dep: usuarios.Departamento = pathname.startsWith(BASE + '/fiscal') ? 'fiscal' : pathname.startsWith(BASE + '/dp') ? 'dp'
+    : q === 'fiscal' || q === 'contabil' || q === 'dp' ? q : op.departamento;
   const outro = dep !== op.departamento;
   return {
     dep,
     /** o endereço com o ?dep= quando a rotina não é a do departamento da pessoa */
     comDep: (url: string) => (outro ? url + (url.includes('?') ? '&' : '?') + 'dep=' + dep : url),
-    /** a lista para onde voltar: o módulo Fiscal, ou Minhas empresas */
-    lista: outro && dep === 'fiscal' ? caminhoDaPagina('fiscal', 'empresas') : caminhoDaPagina('minhas-empresas', 'empresas'),
+    /** a lista para onde voltar: o módulo Fiscal ou o DP, ou Minhas empresas */
+    lista: outro && (dep === 'fiscal' || dep === 'dp') ? caminhoDaPagina(dep, 'empresas') : caminhoDaPagina('minhas-empresas', 'empresas'),
   };
 }

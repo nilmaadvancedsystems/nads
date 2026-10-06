@@ -10,7 +10,7 @@ import type { Operador } from './operador';
 
 export const BASE = '/tarefas';
 
-export type IdAplicacao = 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'drive' | 'contato';
+export type IdAplicacao = 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'drive' | 'contato';
 
 export interface Pagina { id: string; rotulo: string; icone: NomeIcone; titulo: string }
 export interface Aplicacao { id: IdAplicacao; nome: string; icone: NomeIcone; paginas: Pagina[]; pronta: boolean }
@@ -39,6 +39,14 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'reinf', rotulo: 'REINF', icone: 'fileUp', titulo: 'Fiscal — REINF' },
     { id: 'paradas', rotulo: 'Paradas', icone: 'alert', titulo: 'Fiscal — etapas paradas' },
   ] },
+  // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
+  // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas
+  { id: 'dp', nome: 'Departamento Pessoal', icone: 'usuario', pronta: true, paginas: [
+    { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'DP — empresas' },
+    { id: 'painel', rotulo: 'Painel', icone: 'painel', titulo: 'DP — painel do mês' },
+    { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'DP — visão geral' },
+    { id: 'paradas', rotulo: 'Paradas', icone: 'alert', titulo: 'DP — etapas paradas' },
+  ] },
   { id: 'drive', nome: 'Drive', icone: 'pasta', pronta: true, paginas: [
     { id: 'pastas', rotulo: 'Pastas', icone: 'pasta', titulo: 'Drive — pasta do ano' },
   ] },
@@ -52,6 +60,7 @@ export const APLICACOES: readonly Aplicacao[] = [
 export function aplicacoesDe(op: Operador): Aplicacao[] {
   return APLICACOES.filter(a =>
     (a.id !== 'fiscal' || op.admin || op.departamento === 'fiscal') &&
+    (a.id !== 'dp' || op.admin || op.departamento === 'dp') &&
     (a.id !== 'contabil' || op.admin || op.departamento === 'contabil') &&
     // o Drive do robô: as regras do Entregas só deixam o admin e o contábil lerem; o Gmail (01/10/2026): o contábil
     // e o fiscal (cada um vê a caixa da Nilma e a do próprio setor)

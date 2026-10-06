@@ -40,7 +40,7 @@ export function sessaoDaTarefas(): SessaoEntregas | null {
 
 export function repoDaTarefas(): tarefas.RepoTarefas {
   // a empresa de teste (Personaly Company) fica neste navegador; o resto, no banco (ou nos exemplos)
-  if (!repo) repo = demo.tarefasComDemo(noBanco ? criarRepoTarefasFirestore(empresas.EMPRESAS) : tarefas.criarRepoTarefasMemoria({ empresas: empresas.EMPRESAS }));
+  if (!repo) repo = demo.tarefasComDemo(noBanco ? criarRepoTarefasFirestore(empresas.EMPRESAS_COM_DP) : tarefas.criarRepoTarefasMemoria({ empresas: empresas.EMPRESAS_COM_DP }));
   return repo;
 }
 

@@ -37,6 +37,6 @@ describe('rotina do Fiscal (o Notion do Heverton)', () => {
   it('cada departamento com a sua rotina', () => {
     expect(rotinaDo('fiscal')).toBe(ROTINA_FISCAL);
     expect(rotinaDo('contabil')?.departamento).toBe('contabil');
-    expect(rotinaDo('dp')).toBeNull();
+    expect(rotinaDo('dp')?.departamento).toBe('dp');
   });
 });

@@ -3,7 +3,7 @@
 import { useCarregando } from '@nads/ui';
 import { useVisaoContabil } from './useVisaoContabil';
 
-export function VisaoContabil({ pagina, dep }: { pagina: string; dep?: 'contabil' | 'fiscal' }) {
+export function VisaoContabil({ pagina, dep }: { pagina: string; dep?: 'contabil' | 'fiscal' | 'dp' }) {
   const vm = useVisaoContabil(dep);
   useCarregando(vm.carregando);
   return (

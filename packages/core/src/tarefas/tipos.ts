@@ -2,6 +2,7 @@
 // departamento, uma de cada vez, numa tela só. O sistema confere sozinho o que dá para conferir
 // (check automático) e, quando a pessoa para, guarda o motivo (a objeção). Tudo vira evento com
 // hora e pessoa, para ver produtividade e onde as coisas travam.
+import type { ObrigacaoDp } from '../empresas/dp';
 import type { Departamento } from '../usuarios/tipos';
 
 /** Como o "Próximo" confere a etapa. */
@@ -78,6 +79,11 @@ export interface Etapa {
   regimes?: string[];
   /** só nestes meses da competência (1–12): a apuração trimestral (IRPJ/CSLL) entra em março, junho, setembro e dezembro */
   meses?: number[];
+  /**
+   * a obrigação do DP que a etapa faz (empresas/dp.ts): só entra para quem tem essa obrigação na planilha do DP;
+   * 'envio' entra para quem tem ao menos uma
+   */
+  obrigacaoDp?: ObrigacaoDp | 'envio';
   /** a conferência do INSS (razão do INSS a recolher × o PDF das guias pagas) dentro da etapa */
   conferenciaDoInss?: boolean;
 }
