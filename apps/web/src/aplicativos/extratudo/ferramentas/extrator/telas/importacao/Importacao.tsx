@@ -4,6 +4,7 @@ import { Alerta, MensagemFlutuante, useCarregando } from '@nads/ui';
 import { ArquivosImportados } from './partes/ArquivosImportados';
 import { CaixaImportacao } from './partes/CaixaImportacao';
 import { useImportacao, type Mensagem } from './useImportacao';
+import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
 
 export function Importacao() {
   const vm = useImportacao();
@@ -13,7 +14,7 @@ export function Importacao() {
       <div className="import-grid ext-import-grid">
         {vm.caixas.map(c => (
           <CaixaImportacao key={c.lado} caixa={c} ocupado={vm.ocupado}
-            onEscolher={fs => vm.escolher(c.lado, fs)} onTirar={i => vm.tirar(c.lado, i)} onImportar={() => { void vm.importar(c.lado); }} onTeste={() => { void vm.importarTeste(c.lado); }} />
+            onEscolher={fs => vm.escolher(c.lado, fs)} onTirar={i => vm.tirar(c.lado, i)} onImportar={() => { void vm.importar(c.lado); }} onTeste={vm.ehEmpresaDeTeste || modoDesenvolvedor() ? () => { void vm.importarTeste(c.lado); } : undefined} />
         ))}
       </div>
 

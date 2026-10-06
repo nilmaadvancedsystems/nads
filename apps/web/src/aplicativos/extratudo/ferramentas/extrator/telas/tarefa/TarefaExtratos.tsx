@@ -800,8 +800,11 @@ export function TarefaExtratos() {
                             onArquivos={fs => { void vm.importarArquivos(b.id, 'banco', fs); }} onExcluir={() => undefined} />
                           <button type="button" className="icon-btn icon-btn-sm imp-btn imp-drive" disabled={travado} title="Buscar no Drive" aria-label="Buscar no Drive"
                             onClick={() => d.buscar(b)}><LogoDrive /></button>
-                          <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={travado} title="Protótipo: importar um extrato de teste" aria-label="Extrato de teste"
-                            onClick={() => { void vm.importarTeste('banco', b.id); }}><Icone nome="zap" /></button>
+                          {/* o ⚡ só no modo desenvolvedor e na empresa de teste (Vitor, 06/10/2026) */}
+                          {ehTeste && (
+                            <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={travado} title="Dados de teste: um extrato de teste" aria-label="Extrato de teste"
+                              onClick={() => { void vm.importarTeste('banco', b.id); }}><Icone nome="zap" /></button>
+                          )}
                         </>
                       )}
                     </div>
@@ -809,8 +812,8 @@ export function TarefaExtratos() {
                       <span className="imp-rotulo">Razão</span>
                       <BotaoLado lado={b.razao} titulo="Razão" aceitar={cxRazao.aceitar} travado={travado}
                         onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }} onExcluir={() => { void vm.excluirDoBanco(b.id, 'sistema'); }} />
-                      {!b.razao.qtdArquivos && (
-                        <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={travado} title="Protótipo: importar um razão de teste" aria-label="Razão de teste"
+                      {ehTeste && !b.razao.qtdArquivos && (
+                        <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={travado} title="Dados de teste: um razão de teste" aria-label="Razão de teste"
                           onClick={() => { void vm.importarTeste('sistema', b.id); }}><Icone nome="zap" /></button>
                       )}
                     </div>
