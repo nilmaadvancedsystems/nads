@@ -98,21 +98,25 @@ export function credores(clientes: readonly ContaDeCliente[]): ContaDeCliente[] 
 
 // ─── a situação de cada um ───────────────────────────────────────────────────
 
-/** Pendente (o valor devedor, em laranja), Ok (zerado) ou Conferido (vai para o cliente, com a observação). */
+/**
+ * Pendente (o saldo, em laranja) ou Conferido (vai para o cliente, com a observação; laranja também): só esses dois a
+ * pessoa troca. Ok é do sistema: a conta zerada (Vitor, 06/10/2026: "o Ok é só o sistema que dá").
+ */
 export type SituacaoCliente = 'pendente' | 'ok' | 'conferido';
 
 /** O que a pessoa marcou (guardado no mês): a situação, a observação e, com o razão importado, as notas em aberto. */
 export interface MarcaDoCliente { nome: string; saldo: number; situacao: SituacaoCliente; obs?: string; razao?: RazaoDaMarca }
 export interface DocClientes { contas: Record<string, MarcaDoCliente>; atualizadoEm?: string }
 
-/** Sem marca: zerado é Ok, com saldo é Pendente. */
+/** Zerado é Ok (sempre, do sistema); com saldo, Conferido se a pessoa marcou, senão Pendente. */
 export function situacaoDe(c: ContaDeCliente, marca?: MarcaDoCliente): SituacaoCliente {
-  return marca ? marca.situacao : zero(c.saldo) ? 'ok' : 'pendente';
+  if (zero(c.saldo)) return 'ok';
+  return marca?.situacao === 'conferido' ? 'conferido' : 'pendente';
 }
 
-/** O clique no botão: Pendente → Ok → Conferido → Pendente. */
+/** O clique no selo: Pendente ↔ Conferido (o Ok não muda: é do sistema). */
 export function proximaSituacao(s: SituacaoCliente): SituacaoCliente {
-  return s === 'pendente' ? 'ok' : s === 'ok' ? 'conferido' : 'pendente';
+  return s === 'pendente' ? 'conferido' : s === 'conferido' ? 'pendente' : 'ok';
 }
 
 /** O documento guardado conferido (o que não for de cliente, fora). */

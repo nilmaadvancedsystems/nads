@@ -1,6 +1,6 @@
 // A etapa Clientes da Tarefa (Vitor, 06/10/2026), com as peças do catálogo: as etapas no Segmentado com o Próximo à
 // direita; os arquivos na linha da Importação (o ícone de importar; importado, o check que vira × e tira); o saldo credor
-// e os clientes em tabela; o botão de cada cliente é o selo (Pendente laranja com o valor → Ok verde → Conferido), e o
+// e os clientes em tabela; o selo de cada cliente troca entre o saldo e Conferido (os dois em laranja; o Ok é do sistema), e o
 // conferido abre a observação; o envio com a planilha, o e-mail e o WhatsApp. Só o balancete dinâmico (Vitor, 06/10/2026).
 import { Alerta, Icone, LogoGmail, LogoWhatsApp, MenuSuspenso, Segmentado } from '@nads/ui';
 import { useRef } from 'react';
@@ -128,7 +128,7 @@ function ListaDeClientes({ vm }: { vm: VM }) {
       </div>
       <div className="table-wrap">
         <table className="table-compact">
-          <thead><tr><th>Conta</th><th>Cliente</th><th>Situação</th></tr></thead>
+          <thead><tr><th>Conta</th><th>Cliente</th><th>Situação</th><th className="num">Razão</th></tr></thead>
           <tbody>
             {vm.linhas.map(l => (
               <tr key={l.codigo}>
@@ -153,15 +153,17 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                   )}
                 </td>
                 <td>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <button type="button" disabled={!vm.carregado} onClick={() => vm.clicar(l.codigo)}
-                    className={'badge ' + (l.situacao === 'pendente' ? 'badge-warn' : l.situacao === 'ok' ? 'badge-ok' : 'badge-neutral')}
-                    title={l.situacao === 'pendente' ? 'Pendente (saldo devedor). Clique: Ok' : l.situacao === 'ok' ? 'Ok. Clique: Conferido' : 'Conferido (vai para o cliente). Clique: Pendente'}
-                    style={{ cursor: 'pointer' }}>
-                    {l.situacao === 'pendente' ? l.valor : l.situacao === 'ok' ? 'Ok' : 'Conferido'}
-                  </button>
-                  {/* o razão da conta (Vitor, 06/10/2026): importar; importado, o check que vira × e tira */}
-                  {l.razao ? (
+                  {/* Saldo ↔ Conferido, os dois em laranja; o Ok é do sistema (a conta zerada) e não é botão (Vitor, 06/10/2026) */}
+                  {l.situacao === 'ok' ? <span className="badge badge-ok">Ok</span> : (
+                    <button type="button" className="badge badge-warn" disabled={!vm.carregado} onClick={() => vm.clicar(l.codigo)} style={{ cursor: 'pointer' }}
+                      title={l.situacao === 'pendente' ? 'Saldo em aberto. Clique: Conferido (vai para o cliente)' : 'Conferido (vai para o cliente). Clique: volta para o saldo'}>
+                      {l.situacao === 'pendente' ? l.valor : 'Conferido'}
+                    </button>
+                  )}
+                </td>
+                {/* o razão da conta, no fim da linha (Vitor, 06/10/2026): importar; importado, o check que vira × e tira; Ok não tem */}
+                <td className="num">
+                  {l.situacao === 'ok' ? null : l.razao ? (
                     <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" disabled={!vm.carregado} onClick={() => vm.tirarRazao(l.codigo)}
                       title={'Razão importado: ' + l.razao.arquivo + '. Clique para tirar.'} aria-label={'Tirar o razão de ' + l.nome}>
                       <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
@@ -173,11 +175,10 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                       <Icone nome="upload" />
                     </button>
                   )}
-                  </span>
                 </td>
               </tr>
             ))}
-            {!vm.linhas.length && <tr><td colSpan={3} className="hint">Nenhum cliente neste filtro.</td></tr>}
+            {!vm.linhas.length && <tr><td colSpan={4} className="hint">Nenhum cliente neste filtro.</td></tr>}
           </tbody>
         </table>
       </div>

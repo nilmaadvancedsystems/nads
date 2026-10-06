@@ -1,6 +1,6 @@
 // ViewModel da etapa Clientes da Tarefa (Vitor, 06/10/2026). Quatro telas, nas etapas de cima (o Segmentado) com o
 // Próximo: Arquivos (só o balancete dinâmico: na 292, os 162 clientes têm o mesmo saldo do balancete; Vitor, 06/10/2026), Saldo credor (só quando tem: corrigir e reimportar o
-// dinâmico), Clientes (todas as contas de cliente com o botão Pendente → Ok → Conferido e a observação do conferido) e
+// dinâmico), Clientes (todas as contas de cliente com o selo Saldo ↔ Conferido, o Ok do sistema na conta zerada, a observação do conferido e o razão da conta no fim da linha) e
 // Envio (a relação dos conferidos para o cliente: a planilha, o e-mail e o WhatsApp, com a mensagem configurável).
 // As marcas ficam guardadas por mês; os conferidos do mês anterior aparecem de novo para revisar.
 import { clientes as cl, conferencia as c, demo, tarefas } from '@nads/core';

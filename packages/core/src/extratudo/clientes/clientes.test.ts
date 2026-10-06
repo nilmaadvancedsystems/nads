@@ -31,7 +31,9 @@ describe('clientes (a etapa Clientes da Tarefa)', () => {
   it('a situação: zerado é Ok, com saldo é Pendente; o clique gira Pendente → Ok → Conferido → Pendente', () => {
     const [m, b] = clientesDoDinamico(lerBalanceteDinamico(ROWS), '2026-08');
     expect([situacaoDe(m), situacaoDe(b), situacaoDe(m, { nome: '', saldo: 0, situacao: 'conferido' })]).toEqual(['pendente', 'ok', 'conferido']);
-    expect([proximaSituacao('pendente'), proximaSituacao('ok'), proximaSituacao('conferido')]).toEqual(['ok', 'conferido', 'pendente']);
+    // o Ok é do sistema: a marca não muda a conta zerada, nem um Ok marcado antes vale para quem tem saldo
+    expect([situacaoDe(b, { nome: '', saldo: 0, situacao: 'conferido' }), situacaoDe(m, { nome: '', saldo: 0, situacao: 'ok' })]).toEqual(['ok', 'pendente']);
+    expect([proximaSituacao('pendente'), proximaSituacao('ok'), proximaSituacao('conferido')]).toEqual(['conferido', 'ok', 'pendente']);
   });
   it('os conferidos passam para o mês seguinte; o guardado é conferido', () => {
     const ant = docDoDocumento({ contas: { 12006: { nome: 'M', saldo: 10, situacao: 'conferido', obs: 'NF 1' }, 12013: { nome: 'B', saldo: 0, situacao: 'ok' }, x: { situacao: 'outra' } } });
