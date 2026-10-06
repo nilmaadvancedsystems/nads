@@ -1,9 +1,11 @@
 // A "checklist disfarçada" do Fiscal (Vitor, 06/10/2026: "quero fazer uma checklist disfarçada, com tabelinha, gráfico
-// para evitar de ficar sem graça; o que pode ser importado coloque para importar"): cada tarefa da etapa vira um cartão
-// com o número, o nome, o painel do que ela confere (números, tabelinha, gráfico) e, quando a tarefa usa um relatório do
-// Alterdata, o Importar (a Importação da Conferência numa janela, a mesma do Contábil). Continua em ordem: o "Conferido"
-// só no cartão da vez; o "Desfazer" só no último conferido. Os conferidos se recolhem (um clique abre de novo) e, com o
-// animejs (Vitor: "quero mais animações"), os cartões entram em sequência, o check pula e a tela desce até o próximo.
+// para evitar de ficar sem graça; o que pode ser importado coloque para importar"), montada com as peças prontas do
+// catálogo (Vitor: "use os prontos"): o cartão com a faixa cinza (card-head) e a barra de progresso (tarefas-barra); cada
+// tarefa é uma faixa que abre (imp-faixa), com a caixinha da etapa (subnav-caixa), o contador (imp-faixa-qtd), o
+// Importar (a Importação da Conferência numa janela, a mesma do Contábil) e o Conferido (badge-conferido). Em ordem: o
+// "Conferido" só na da vez; o "Desfazer" só no último conferido. A da vez fica aberta; as conferidas, fechadas (um clique
+// abre). Com o animejs (Vitor: "quero mais animações"): as faixas entram em sequência, a caixinha pula ao conferir, a
+// barra anda e a tela desce até a próxima.
 import type { tarefas as t } from '@nads/core';
 import { Icone } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
@@ -24,89 +26,88 @@ export function ChecklistDisfarcado({ titulo, itens, definicao, alternar, empres
   const feitos = itens.filter(i => i.marcado).length;
   const daVez = itens.findIndex(i => !i.marcado);
   const raiz = useRef<HTMLDivElement>(null);
-  // os conferidos ficam recolhidos; estes foram abertos de novo
-  const [abertos, setAbertos] = useState<string[]>([]);
-  const alternarAberto = (id: string) => setAbertos(v => (v.includes(id) ? v.filter(x => x !== id) : [...v, id]));
-  // a etapa abriu: os cartões entram em sequência
-  useEffect(() => { animarCartoes(raiz.current); }, [titulo]);
-  // a barra de progresso anda (desenhada pelo animejs: o CSS do app não anima)
   const progresso = useRef<HTMLSpanElement>(null);
+  // as conferidas ficam fechadas; estas foram abertas de novo (e a da vez pode ser fechada)
+  const [trocadas, setTrocadas] = useState<string[]>([]);
+  const trocar = (id: string) => setTrocadas(v => (v.includes(id) ? v.filter(x => x !== id) : [...v, id]));
+  // a etapa abriu: as faixas entram em sequência
+  useEffect(() => { animarCartoes(raiz.current); }, [titulo]);
+  // a barra de progresso anda (pelo animejs: o CSS do app não anima)
   useEffect(() => { andarProgresso(progresso.current, itens.length ? feitos / itens.length : 0); }, [feitos, itens.length]);
-  // conferiu: o check pula e a tela desce até o cartão da vez
+  // conferiu: a caixinha pula e a tela desce até a da vez
   const antes = useRef(feitos);
   useEffect(() => {
     if (feitos > antes.current && raiz.current) {
-      const cartoes = raiz.current.querySelectorAll('.pt-cartao');
-      pularCheck(cartoes[feitos - 1]?.querySelector('.pt-num') || null);
-      cartoes[feitos]?.scrollIntoView({ behavior: menosMovimento() ? 'auto' : 'smooth', block: 'nearest' });
+      const faixas = raiz.current.querySelectorAll('.pt-tarefa');
+      pularCheck(faixas[feitos - 1]?.querySelector('.subnav-caixa') || null);
+      faixas[feitos]?.scrollIntoView({ behavior: menosMovimento() ? 'auto' : 'smooth', block: 'nearest' });
     }
     antes.current = feitos;
   }, [feitos]);
   return (
-    <div className="pt-lista" ref={raiz}>
-      <header className="pt-cabeca">
+    <div className="card folha-check pt-check" ref={raiz}>
+      <div className="card-head">
         <h3>{titulo}</h3>
-        <div className="pt-progresso" aria-label={feitos + ' de ' + itens.length + ' conferidas'}>
-          <span className="pt-progresso-barra"><span ref={progresso} /></span>
-          <b className="num">{feitos}/{itens.length}</b>
-        </div>
-      </header>
-      <ol>
-        {itens.map((i, k) => {
-          const def = definicao.find(d => d.id === i.id);
-          const importar = def?.importar || [];
-          const vez = k === daVez;
-          const aberto = vez || (i.marcado && abertos.includes(i.id));
-          return (
-            <li key={i.id} data-folha={i.nome} className={'card pt-cartao' + (i.marcado ? ' feito' : '') + (vez ? ' da-vez' : '') + (!i.liberado && !i.marcado ? ' travado' : '')}>
-              <div className="pt-topo">
-                <span className="pt-num" aria-hidden="true">{i.marcado ? <Icone nome="check" /> : k + 1}</span>
-                <div className={'pt-titulo' + (i.marcado && def?.painel ? ' clicavel' : '')} onClick={i.marcado && def?.painel ? () => alternarAberto(i.id) : undefined}
-                  role={i.marcado && def?.painel ? 'button' : undefined} aria-expanded={i.marcado && def?.painel ? aberto : undefined}>
-                  <h4>{i.nome}{i.marcado && def?.painel && <Icone nome="caretDown" className={'pt-seta' + (aberto ? ' aberta' : '')} />}</h4>
-                  {i.contas.length > 0 && <span className="fraco">{i.contas.join(' · ')}</span>}
-                </div>
-                <div className="pt-acoes">
-                  {importar.length > 0 && (
-                    <button type="button" className="btn btn-outline" onClick={() => vm.importar(importar)}
-                      title={'Importar ' + importar.map(r => ROTULO_DO_RELATORIO[r]).join(', ') + ' (vai para a Conferência, a mesma do Contábil)'}>
-                      <Icone nome="upload" />Importar{importar.length === 1 ? ' ' + ROTULO_DO_RELATORIO[importar[0]] : ''}
-                      {importar.every(r => vm.importado[r] > 0) && <Icone nome="checkCircle" className="pt-importado" />}
-                    </button>
-                  )}
-                  {i.link && <a className="btn btn-outline" href={i.link.url} target="_blank" rel="noreferrer"><Icone nome="link" />{i.link.rotulo}</a>}
-                  {i.marcado ? (
-                    <>
-                      <span className="badge badge-ok">Conferido</span>
-                      {i.liberado && <button type="button" className="btn btn-ghost" onClick={() => alternar(i.id)}>Desfazer</button>}
-                    </>
-                  ) : i.liberado ? (
-                    <button type="button" className="btn btn-primary" onClick={() => alternar(i.id)}><Icone nome="check" />Conferido</button>
-                  ) : (
-                    <span className="fraco pt-espera"><Icone nome="lock" />Depois da anterior</span>
-                  )}
-                </div>
+        <span className="card-head-ctl"><span className="tarefas-barra"><span ref={progresso} /></span>{feitos}/{itens.length}</span>
+      </div>
+      {itens.map((i, k) => {
+        const def = definicao.find(d => d.id === i.id);
+        const importar = def?.importar || [];
+        const vez = k === daVez;
+        const temPainel = !!def?.painel;
+        const aberta = temPainel && (vez || i.marcado) && (vez ? !trocadas.includes(i.id) : trocadas.includes(i.id));
+        const importadas = importar.reduce((s, r) => s + vm.importado[r], 0);
+        return (
+          <div key={i.id} data-folha={i.nome} className={'imp-faixa pt-tarefa' + (aberta ? ' aberta' : '') + (vez ? ' da-vez' : '') + (!i.liberado && !i.marcado ? ' travada' : '')}>
+            <div className="imp-faixa-barra pt-tarefa-barra">
+              <button type="button" className="pt-tarefa-abrir" disabled={!temPainel || (!vez && !i.marcado)} onClick={() => trocar(i.id)} aria-expanded={temPainel ? aberta : undefined}>
+                <span className={'subnav-caixa ' + (i.marcado ? 'marcada' : 'vazia')}>{i.marcado && <Icone nome="check" />}</span>
+                {temPainel && <Icone nome="caretDown" className="imp-faixa-seta" />}
+                <b>{i.nome}</b>
+                {importar.length > 0 && importadas > 0 && <span className="imp-faixa-qtd" title={importadas + ' notas importadas'}>{importadas}</span>}
+                {i.contas.length > 0 && <span className="hint">{i.contas.join(' · ')}</span>}
+              </button>
+              <span className="pt-tarefa-acoes">
+                {importar.length > 0 && (vez || i.marcado) && (
+                  <button type="button" className="btn btn-outline" onClick={() => vm.importar(importar)}
+                    title={'Importar ' + importar.map(r => ROTULO_DO_RELATORIO[r]).join(', ') + ' (vai para a Conferência, a mesma do Contábil)'}>
+                    <Icone nome="upload" />Importar{importar.length === 1 ? ' ' + ROTULO_DO_RELATORIO[importar[0]] : ''}
+                  </button>
+                )}
+                {i.link && (vez || i.marcado) && <a className="btn btn-outline" href={i.link.url} target="_blank" rel="noreferrer"><Icone nome="link" />{i.link.rotulo}</a>}
+                {i.marcado ? (
+                  <>
+                    <span className="badge badge-conferido">Conferido</span>
+                    {i.liberado && <button type="button" className="btn btn-ghost" onClick={() => alternar(i.id)}>Desfazer</button>}
+                  </>
+                ) : i.liberado ? (
+                  <button type="button" className="btn btn-primary" onClick={() => alternar(i.id)}><Icone nome="check" />Conferido</button>
+                ) : (
+                  <span className="hint"><Icone nome="lock" /> Depois da anterior</span>
+                )}
+              </span>
+            </div>
+            {(aberta || (vez && i.aviso)) && (
+              <div className="imp-faixa-corpo">
+                {i.aviso && vez && <p className="hint"><Icone nome="alert" /> {i.aviso}</p>}
+                {aberta && def?.painel && <PainelDaTarefa painel={def.painel} vm={vm} codigo={codigo} competencia={competencia} importar={vm.importar} />}
               </div>
-              {i.aviso && <p className="pt-aviso"><Icone nome="alert" />{i.aviso}</p>}
-              {def?.painel && aberto && (
-                <div className="pt-corpo"><PainelDaTarefa painel={def.painel} vm={vm} codigo={codigo} competencia={competencia} /></div>
-              )}
-            </li>
-          );
-        })}
-      </ol>
+            )}
+          </div>
+        );
+      })}
       {vm.importando && <JanelaDeImportacao vm={vm} empresa={empresa} />}
     </div>
   );
 }
 
-/** A Importação da Conferência numa janela, com um tópico por relatório da tarefa. */
+/** A Importação da Conferência numa janela (a janela com painéis laterais), um tópico por relatório da tarefa. */
 function JanelaDeImportacao({ vm, empresa }: { vm: VmPainelDoFiscal; empresa: string }) {
   const imp = vm.importando!;
   const topicos: TopicoDaJanela<t.RelatorioImportavel>[] = imp.relatorios.map(r => ({ id: r, rotulo: ROTULO_DO_RELATORIO[r], icone: 'fileUp', contador: vm.importado[r] || undefined }));
   return (
     <JanelaLateral rotulo="Importar do Alterdata" topicos={topicos} topico={imp.atual} mudar={vm.trocarRelatorio} fechar={vm.fecharImportacao} classe="pt-janela"
-      resumo={<div className="pt-janela-resumo"><b>Importar do Alterdata</b><span className="fraco">Vai para a Conferência da empresa: o Contábil já usa.</span></div>}>
+      resumo={<div className="usuario-quem"><b>Importar do Alterdata</b><span className="fraco">Vai para a Conferência da empresa: o Contábil já usa.</span></div>}>
       <ImportacaoNaEtapa key={imp.atual} nome={empresa} tipo={imp.atual} prestaServico={null} />
     </JanelaLateral>
   );
