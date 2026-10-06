@@ -3056,3 +3056,95 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .pt-janela-resumo .fraco{font-size:12.5px;color:var(--ink-muted);}
 @media (max-width:640px){.pt-acoes{margin-left:0;width:100%;}.pt-col-barra{display:none;}}
 .pt-janela .imp-conf-topo .page-title{display:none;}
+/* Fiscal › painéis variados (06/10/2026: "achei repetitivo"): as cores das classes de CFOP (paleta validada, claro e escuro) */
+:root{--cat-1:#2a78d6;--cat-2:#eb6834;--cat-3:#1baf7a;--cat-4:#eda100;--cat-5:#e87ba4;--cat-6:#008300;--cat-7:#4a3aa7;}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--cat-1:#3987e5;--cat-2:#d95926;--cat-3:#199e70;--cat-4:#c98500;--cat-5:#d55181;--cat-6:#008300;--cat-7:#9085e9;}}
+:root[data-theme="dark"]{--cat-1:#3987e5;--cat-2:#d95926;--cat-3:#199e70;--cat-4:#c98500;--cat-5:#d55181;--cat-6:#008300;--cat-7:#9085e9;}
+.pt-painel{display:flex;flex-direction:column;gap:14px;}
+.pt-dia-barra{transform-origin:bottom;}
+.pt-barra > span,.pt-medidor-barra > span,.pt-balanca-barra > span{transform-origin:left;}
+.pt-faixa > span{transform-origin:left;}
+.pt-titulo.clicavel{cursor:pointer;}
+.pt-titulo h4{display:flex;align-items:center;gap:6px;}
+.pt-seta{width:14px;height:14px;color:var(--ink-muted);transform:rotate(-90deg);}
+.pt-seta.aberta{transform:none;}
+.pt-cartao.feito:not(:has(.pt-corpo)){padding-top:10px;padding-bottom:10px;}
+.pt-veredito{display:flex;align-items:center;gap:8px;margin:0;font-size:13px;}
+.pt-veredito svg{width:15px;height:15px;color:var(--warn);}
+/* o destaque */
+.pt-destaque-num{display:flex;flex-direction:column;gap:4px;}
+.pt-destaque-num > .fraco{font-size:12.5px;color:var(--ink-muted);}
+.pt-destaque-num > b{font-size:30px;line-height:1.1;letter-spacing:-.02em;}
+.pt-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;}
+.pt-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;background:var(--hover-bg);border:1px solid var(--border);font-size:12px;color:var(--ink);}
+.pt-chip svg{width:12px;height:12px;color:var(--ink-muted);}
+.pt-chip.atencao{background:var(--warn-soft);border-color:var(--warn);}
+.pt-chip.atencao svg{color:var(--warn);}
+/* o anel */
+.pt-anel{display:grid;grid-template-columns:132px 1fr;align-items:center;gap:20px;position:relative;}
+.pt-anel svg{display:block;}
+.pt-anel-fundo{fill:none;stroke:var(--hover-bg);stroke-width:12;}
+.pt-anel-arco{fill:none;stroke:var(--accent);stroke-width:12;stroke-linecap:round;}
+.pt-anel.ok .pt-anel-arco{stroke:var(--success);}
+.pt-anel.atencao .pt-anel-arco{stroke:var(--warn);}
+.pt-anel-meio{position:absolute;left:0;top:50%;width:132px;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;pointer-events:none;}
+.pt-anel-meio b{font-size:24px;line-height:1.1;}
+.pt-anel-meio .fraco{font-size:11.5px;color:var(--ink-muted);}
+.pt-anel-lado{display:flex;flex-direction:column;gap:8px;}
+.pt-anel-lado p{margin:0;display:flex;justify-content:space-between;gap:12px;align-items:baseline;border-bottom:1px dashed var(--border);padding-bottom:6px;font-size:13px;}
+.pt-anel-lado p b{font-size:18px;}
+.pt-anel-lado .pt-anel-veredito{border:0;justify-content:flex-start;gap:8px;font-weight:600;}
+.pt-anel-veredito svg{width:16px;height:16px;}
+.pt-anel.ok .pt-anel-veredito{color:var(--success-ink);}
+.pt-anel.atencao .pt-anel-veredito svg{color:var(--warn);}
+/* o medidor */
+.pt-medidor{display:flex;flex-direction:column;gap:10px;}
+.pt-medidor-linha{display:grid;grid-template-columns:190px 1fr auto;align-items:center;gap:12px;font-size:13px;}
+.pt-medidor-linha b{font-size:18px;min-width:48px;text-align:right;}
+.pt-medidor-barra{display:block;height:14px;border-radius:99px;background:var(--hover-bg);overflow:hidden;}
+.pt-medidor-barra span{display:block;height:100%;border-radius:99px;background:var(--accent);}
+.pt-medidor-linha.fraco .pt-medidor-barra span{background:var(--ink-faint);}
+/* a rosca e a faixa */
+.pt-rosca{display:grid;grid-template-columns:148px 1fr;gap:24px;align-items:center;}
+.pt-rosca-grafico{position:relative;width:148px;height:148px;}
+.pt-rosca-grafico svg{display:block;}
+.pt-rosca-fatia{fill:none;stroke-width:14;}
+.pt-rosca-meio{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 26px;pointer-events:none;}
+.pt-rosca-meio b{font-size:14px;}
+.pt-rosca-meio .fraco{font-size:10.5px;color:var(--ink-muted);line-height:1.2;}
+.pt-legenda{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;}
+.pt-legenda li{display:grid;grid-template-columns:10px 1fr auto auto;gap:8px;align-items:center;font-size:13px;}
+.pt-legenda i{width:10px;height:10px;border-radius:3px;}
+.pt-legenda .fraco{font-size:12px;color:var(--ink-muted);min-width:96px;text-align:right;}
+.pt-legenda-linha{flex-direction:row;flex-wrap:wrap;gap:6px 16px;}
+.pt-legenda-linha li{display:inline-grid;grid-template-columns:10px auto auto;}
+.pt-faixa{display:flex;gap:2px;height:22px;border-radius:6px;overflow:hidden;}
+.pt-faixa span{display:block;height:100%;}
+.pt-faixa-bloco{display:flex;flex-direction:column;gap:10px;}
+/* o ranking */
+.pt-ranking{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;}
+.pt-ranking li{display:grid;grid-template-columns:26px minmax(0,1.4fr) minmax(60px,1fr) auto;gap:12px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border-muted);font-size:13px;}
+.pt-ranking-pos{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--accent-ink);font:600 12px/1 var(--font-num);}
+.pt-ranking-nome{display:flex;flex-direction:column;min-width:0;}
+.pt-ranking-nome b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pt-ranking-nome .fraco{font-size:11.5px;color:var(--ink-muted);}
+/* a balança */
+.pt-balanca{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center;}
+.pt-balanca-prato{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);}
+.pt-balanca-prato .fraco{font-size:12px;color:var(--ink-muted);}
+.pt-balanca-prato b{font-size:20px;}
+.pt-balanca-barra{display:block;height:8px;border-radius:99px;background:var(--hover-bg);overflow:hidden;}
+.pt-balanca-barra span{display:block;height:100%;border-radius:99px;background:var(--accent);}
+.pt-balanca-prato.dir .pt-balanca-barra span{background:var(--cat-3);}
+.pt-balanca-meio{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;max-width:140px;}
+.pt-balanca-meio svg{width:26px;height:26px;color:var(--ink-muted);}
+.pt-balanca-meio .fraco{font-size:12px;color:var(--ink-muted);}
+@media (max-width:640px){
+  .pt-anel,.pt-rosca{grid-template-columns:1fr;justify-items:center;}
+  .pt-anel-meio{left:50%;transform:translate(-50%,-50%);top:66px;}
+  .pt-balanca{grid-template-columns:1fr;}
+  .pt-medidor-linha{grid-template-columns:1fr auto;}
+  .pt-medidor-barra{grid-column:1 / -1;grid-row:2;}
+  .pt-ranking li{grid-template-columns:26px 1fr auto;}
+  .pt-ranking li .pt-barra{display:none;}
+}

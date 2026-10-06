@@ -1,17 +1,23 @@
-// O painel de uma tarefa do Fiscal (a "checklist disfarçada", Vitor 06/10/2026): os números, a tabelinha e o gráfico do
-// que a tarefa confere — o SIEG, as notas por CFOP e por dia, o faturamento × SIEG, as retenções, a receita e a base.
+// O painel de uma tarefa do Fiscal (a "checklist disfarçada", Vitor 06/10/2026), cada tarefa com o seu desenho (Vitor:
+// "achei repetitivo"): o anel do SIEG × Alterdata no Recebimento, o destaque com as barras por dia no Faturamento, a
+// tabelinha por CFOP na Conferência e na Tributação, o medidor no SINTEGRA, o ranking nas retenções, a rosca na receita,
+// a faixa 100% na base de cálculo e a balança no ICMS. Ao aparecer, anima (animarPainel.ts, animejs).
 import { formatos, tarefas as t } from '@nads/core';
 import { Icone } from '@nads/ui';
+import { useEffect, useRef } from 'react';
 import { ROTULO_DO_RELATORIO, type VmPainelDoFiscal } from '../usePainelDoFiscal';
-import { BarrasPorDia, Numeros, TabelaComBarras, type LinhaDeBarra } from './Graficos';
+import { animarPainel } from './animarPainel';
+import { Anel, Balanca, BarrasPorDia, Destaque, Faixa, Medidor, Ranking, Rosca, TabelaComBarras, type Fatia, type LinhaDeBarra } from './Graficos';
 import { SiegDaEtapa } from './SiegDaEtapa';
 
 const { reais } = formatos;
 const DESTAQUES = new Set<t.painel.ClasseDoCfop>(['st', 'devolucao']);
+/** a cor de cada classe de CFOP (sempre a mesma, na ordem da paleta) */
+const COR: Record<t.painel.ClasseDoCfop, number> = { venda: 1, st: 2, servico: 3, devolucao: 4, remessa: 5, ativo: 6, outras: 7 };
 
 function Vazio({ relatorio, competencia }: { relatorio: t.RelatorioImportavel; competencia: string }) {
   return (
-    <p className="pt-vazio"><Icone nome="fileUp" />Sem {ROTULO_DO_RELATORIO[relatorio]} de {t.rotuloNumericoCompetencia(competencia)} importadas. Importe o relatório para ver aqui.</p>
+    <p className="pt-vazio pt-entra"><Icone nome="fileUp" />Sem {ROTULO_DO_RELATORIO[relatorio]} de {t.rotuloNumericoCompetencia(competencia)} importadas. Importe o relatório para ver aqui.</p>
   );
 }
 
@@ -20,129 +26,118 @@ const linhasPorCfop = (r: t.painel.ResumoDeNotas): LinhaDeBarra[] => r.porCfop.m
   extra: l.qtd, destaque: DESTAQUES.has(l.classe),
 }));
 
-const linhasDaComposicao = (fatias: readonly t.painel.FatiaDaComposicao[]): LinhaDeBarra[] => fatias.map(f => ({
-  chave: f.classe, rotulo: f.rotulo, valor: f.valor, texto: reais(f.valor), extra: f.pct.toLocaleString('pt-BR') + '%', destaque: DESTAQUES.has(f.classe),
-}));
+const fatias = (f: readonly t.painel.FatiaDaComposicao[]): Fatia[] => f.map(x => ({ chave: x.classe, rotulo: x.rotulo, valor: x.valor, pct: x.pct, cor: COR[x.classe] }));
 
-/** O número da comparação com o SIEG: igual (verde) ou a diferença (amarelo). */
-function comparar(sieg: number | null, importadas: number) {
-  if (sieg == null) return { rotulo: 'diferença (sem a contagem do SIEG)', valor: '—' };
-  const dif = importadas - sieg;
-  return dif === 0
-    ? { rotulo: 'bate com o SIEG', valor: <Icone nome="check" />, tom: 'ok' as const }
-    : { rotulo: dif > 0 ? 'a mais que o SIEG' : 'faltam no Alterdata', valor: Math.abs(dif), tom: 'atencao' as const };
+function SemConta({ r }: { r: t.painel.ResumoDeNotas }) {
+  return r.comConta ? null : <p className="fraco pt-nota pt-entra"><Icone nome="alert" />O relatório veio sem a conta contábil: o Contábil precisa dela (ligue a coluna no Alterdata e reimporte).</p>;
 }
 
-function NotasPorCfop({ r, rotuloDia }: { r: t.painel.ResumoDeNotas; rotuloDia: string }) {
-  return (
-    <>
-      <BarrasPorDia dias={r.porDia} formatar={reais} rotulo={rotuloDia} />
-      <TabelaComBarras linhas={linhasPorCfop(r)} colunas={{ rotulo: 'CFOP', extra: 'Notas' }} />
-      {!r.comConta && <p className="fraco pt-nota"><Icone nome="alert" />O relatório veio sem a conta contábil: o Contábil precisa dela (ligue a coluna no Alterdata e reimporte).</p>}
-    </>
-  );
-}
-
-function Retencoes({ r, imposto }: { r: t.painel.ResumoDeRetencao; imposto: string }) {
-  if (!r.qtd) return <p className="pt-vazio"><Icone nome="checkCircle" />Nenhuma nota de serviço com {imposto} retido no mês.</p>;
-  return (
-    <>
-      <Numeros itens={[{ rotulo: imposto + ' retido', valor: reais(r.total) }, { rotulo: r.qtd === 1 ? 'nota com retenção' : 'notas com retenção', valor: r.qtd }]} />
-      <TabelaComBarras colunas={{ rotulo: 'Prestador / tomador', extra: 'Serviço', valor: 'Retido' }}
-        linhas={r.linhas.map((l, i) => ({ chave: l.numero + i, rotulo: l.nome, dica: l.tipo + ' · nº ' + l.numero, valor: l.retido, texto: reais(l.retido), extra: reais(l.valor) }))} />
-    </>
-  );
-}
-
-export function PainelDaTarefa({ painel, vm, codigo, competencia }: { painel: t.PainelDaTarefa; vm: VmPainelDoFiscal; codigo: string; competencia: string }) {
+function Corpo({ painel, vm, codigo, competencia }: { painel: t.PainelDaTarefa; vm: VmPainelDoFiscal; codigo: string; competencia: string }) {
   const comp = t.rotuloNumericoCompetencia(competencia);
+  const pctDe = (classe: t.painel.ClasseDoCfop) => vm.base.find(f => f.classe === classe)?.pct || 0;
   switch (painel) {
     case 'sieg':
       return codigo ? <SiegDaEtapa tipo="contagem" codigo={codigo} competencia={competencia} /> : null;
     case 'sequencia':
       return codigo ? <SiegDaEtapa tipo="saidas" codigo={codigo} competencia={competencia} /> : null;
     case 'recebimento':
-      return (
-        <Numeros itens={[
-          { rotulo: 'emitidas no SIEG (NF-e e NFC-e)', valor: vm.sieg ? vm.sieg.emitidasNFe : '—' },
-          { rotulo: 'saídas importadas', valor: vm.importado.saidas },
-          comparar(vm.sieg?.emitidasNFe ?? null, vm.importado.saidas),
-        ]} />
-      );
+      return <Anel sieg={vm.sieg ? vm.sieg.emitidasNFe : null} importadas={vm.importado.saidas} rotuloSieg="emitidas no SIEG (NF-e e NFC-e)" rotuloImportadas="saídas no Alterdata" />;
     case 'saidas':
       if (!vm.saidas.qtd) return <Vazio relatorio="saidas" competencia={competencia} />;
       return (
         <>
-          <Numeros itens={[{ rotulo: 'notas de saída', valor: vm.saidas.qtd }, { rotulo: 'valor contábil', valor: reais(vm.saidas.total) }, { rotulo: 'CFOPs', valor: vm.saidas.porCfop.length }]} />
-          <NotasPorCfop r={vm.saidas} rotuloDia={'Saídas por dia de ' + comp} />
+          <Destaque rotulo={'Saídas de ' + comp + ' (valor contábil)'} valor={vm.saidas.total} chips={[
+            { icone: 'fileText', texto: vm.saidas.qtd + ' notas' }, { icone: 'hash', texto: vm.saidas.porCfop.length + ' CFOPs' },
+            ...(pctDe('st') ? [{ icone: 'alert' as const, texto: pctDe('st').toLocaleString('pt-BR') + '% com ST', tom: 'atencao' as const }] : []),
+            ...(pctDe('devolucao') ? [{ icone: 'repeat' as const, texto: pctDe('devolucao').toLocaleString('pt-BR') + '% devolução', tom: 'atencao' as const }] : []),
+          ]} />
+          <TabelaComBarras linhas={linhasPorCfop(vm.saidas)} colunas={{ rotulo: 'CFOP', extra: 'Notas' }} />
+          <SemConta r={vm.saidas} />
         </>
       );
     case 'faturamento':
       if (!vm.saidas.qtd) return <Vazio relatorio="saidas" competencia={competencia} />;
       return (
         <>
-          <Numeros itens={[
-            { rotulo: 'faturamento (saídas)', valor: reais(vm.saidas.total) },
-            { rotulo: 'notas importadas', valor: vm.saidas.qtd },
-            { rotulo: 'emitidas no SIEG', valor: vm.sieg ? vm.sieg.emitidasNFe : '—' },
-            comparar(vm.sieg?.emitidasNFe ?? null, vm.saidas.qtd),
+          <Destaque rotulo={'Faturamento de ' + comp} valor={vm.saidas.total} chips={[
+            { icone: 'fileText', texto: vm.saidas.qtd + ' notas no Alterdata' },
+            vm.sieg ? (vm.sieg.emitidasNFe === vm.saidas.qtd ? { icone: 'checkCircle', texto: 'bate com as ' + vm.sieg.emitidasNFe + ' do SIEG' }
+              : { icone: 'alert', texto: vm.sieg.emitidasNFe + ' emitidas no SIEG', tom: 'atencao' }) : { icone: 'clock', texto: 'SIEG ainda sem contagem' },
           ]} />
-          <BarrasPorDia dias={vm.saidas.porDia} formatar={reais} rotulo={'Faturamento por dia de ' + comp} />
+          <BarrasPorDia dias={vm.saidas.porDia} rotulo={'Faturamento por dia de ' + comp} />
         </>
       );
     case 'entradas':
       if (!vm.entradas.qtd) return <Vazio relatorio="entradas" competencia={competencia} />;
       return (
         <>
-          <Numeros itens={[{ rotulo: 'notas de entrada', valor: vm.entradas.qtd }, { rotulo: 'valor contábil', valor: reais(vm.entradas.total) }, { rotulo: 'CFOPs', valor: vm.entradas.porCfop.length }]} />
-          <NotasPorCfop r={vm.entradas} rotuloDia={'Entradas por dia de ' + comp} />
+          <Destaque rotulo={'Entradas de ' + comp + ' (valor contábil)'} valor={vm.entradas.total} formato="reais"
+            chips={[{ icone: 'fileText', texto: vm.entradas.qtd + ' notas' }, { icone: 'hash', texto: vm.entradas.porCfop.length + ' CFOPs' }]} />
+          <TabelaComBarras linhas={linhasPorCfop(vm.entradas)} colunas={{ rotulo: 'CFOP', extra: 'Notas' }} />
+          <SemConta r={vm.entradas} />
         </>
       );
     case 'entradas-sieg':
       if (!vm.entradas.qtd) return <Vazio relatorio="entradas" competencia={competencia} />;
       return (
         <>
-          <Numeros itens={[
-            { rotulo: 'recebidas no SIEG (NF-e)', valor: vm.sieg ? vm.sieg.recebidasNFe : '—' },
-            { rotulo: 'entradas importadas', valor: vm.entradas.qtd },
-            comparar(vm.sieg?.recebidasNFe ?? null, vm.entradas.qtd),
+          <Medidor itens={[
+            { rotulo: 'Recebidas no SIEG (NF-e)', valor: vm.sieg ? vm.sieg.recebidasNFe : 0, tom: 'fraco' },
+            { rotulo: 'Entradas no Alterdata', valor: vm.entradas.qtd },
           ]} />
-          <TabelaComBarras linhas={linhasPorCfop(vm.entradas)} colunas={{ rotulo: 'CFOP', extra: 'Notas' }} />
+          <p className="pt-veredito pt-entra">{!vm.sieg ? <><Icone nome="clock" />O SIEG ainda não contou este mês: confira pelo SINTEGRA.</>
+            : vm.sieg.recebidasNFe === vm.entradas.qtd ? <><Icone nome="checkCircle" />As entradas batem com o SIEG.</>
+              : <><Icone nome="alert" />{Math.abs(vm.sieg.recebidasNFe - vm.entradas.qtd)} de diferença: confira no SINTEGRA quais faltam.</>}</p>
         </>
       );
     case 'iss-retido':
-      return vm.importado.tomados || vm.importado.prestados ? <Retencoes r={vm.issRetido} imposto="ISS" /> : <Vazio relatorio="tomados" competencia={competencia} />;
-    case 'inss-retido':
-      return vm.importado.tomados || vm.importado.prestados ? <Retencoes r={vm.inssRetido} imposto="INSS" /> : <Vazio relatorio="tomados" competencia={competencia} />;
+    case 'inss-retido': {
+      if (!vm.importado.tomados && !vm.importado.prestados) return <Vazio relatorio="tomados" competencia={competencia} />;
+      const r = painel === 'iss-retido' ? vm.issRetido : vm.inssRetido;
+      const imposto = painel === 'iss-retido' ? 'ISS' : 'INSS';
+      if (!r.qtd) return <p className="pt-vazio pt-entra"><Icone nome="checkCircle" />Nenhuma nota de serviço com {imposto} retido em {comp}.</p>;
+      return (
+        <>
+          <Destaque rotulo={imposto + ' retido em ' + comp} valor={r.total} chips={[{ icone: 'recibo', texto: r.qtd + (r.qtd === 1 ? ' nota' : ' notas') + ' com retenção' }]} />
+          <Ranking linhas={r.linhas.map((l, i) => ({ chave: l.numero + i, nome: l.nome, dica: l.tipo + ' · nº ' + l.numero + ' · serviço ' + reais(l.valor), valor: l.retido }))} />
+        </>
+      );
+    }
     case 'receitas':
     case 'irpj': {
       if (!vm.receita.length) return <Vazio relatorio="saidas" competencia={competencia} />;
       const receita = vm.receita.filter(f => f.classe === 'venda' || f.classe === 'st' || f.classe === 'servico').reduce((s, f) => s + f.valor, 0);
-      return (
-        <>
-          <Numeros itens={[
-            { rotulo: painel === 'irpj' ? 'receita do mês (o trimestre soma os 3)' : 'receita do mês', valor: reais(receita) },
-            { rotulo: 'serviços prestados', valor: reais(vm.prestados.total) },
-          ]} />
-          <TabelaComBarras linhas={linhasDaComposicao(vm.receita)} colunas={{ rotulo: 'Composição', extra: 'Fatia' }} />
-        </>
-      );
+      return <Rosca fatias={fatias(vm.receita)} centro={receita} rotuloCentro={painel === 'irpj' ? 'receita do mês (o trimestre soma os 3)' : 'receita do mês'} />;
     }
     case 'base':
       if (!vm.base.length) return <Vazio relatorio="saidas" competencia={competencia} />;
-      return <TabelaComBarras linhas={linhasDaComposicao(vm.base)} colunas={{ rotulo: 'Saídas por natureza', extra: 'Fatia' }} />;
-    case 'icms':
-      if (!vm.saidas.qtd && !vm.entradas.qtd) return <Vazio relatorio="saidas" competencia={competencia} />;
       return (
         <>
-          <Numeros itens={[{ rotulo: 'saídas (débitos)', valor: reais(vm.saidas.total) }, { rotulo: 'entradas (créditos)', valor: reais(vm.entradas.total) }]} />
-          <TabelaComBarras linhas={linhasDaComposicao(vm.base)} colunas={{ rotulo: 'Saídas por natureza', extra: 'Fatia' }} />
+          <Faixa fatias={fatias(vm.base)} />
+          {(pctDe('st') > 0 || pctDe('devolucao') > 0) && (
+            <p className="pt-veredito pt-entra"><Icone nome="alert" />Tire da base o que já teve o imposto pago antes (ST{pctDe('devolucao') ? ') e as devoluções' : ')'}.</p>
+          )}
         </>
       );
+    case 'icms': {
+      if (!vm.saidas.qtd && !vm.entradas.qtd) return <Vazio relatorio="saidas" competencia={competencia} />;
+      const dif = vm.saidas.total - vm.entradas.total;
+      return <Balanca esquerda={{ rotulo: 'Saídas (débitos)', valor: vm.saidas.total }} direita={{ rotulo: 'Entradas (créditos)', valor: vm.entradas.total }}
+        saldo={dif >= 0 ? 'saídas ' + reais(dif) + ' acima' : 'entradas ' + reais(-dif) + ' acima'} />;
+    }
     case 'prestados':
       if (!vm.prestados.qtd) return <Vazio relatorio="prestados" competencia={competencia} />;
-      return <Numeros itens={[{ rotulo: 'notas de serviço', valor: vm.prestados.qtd }, { rotulo: 'valor dos serviços', valor: reais(vm.prestados.total) }, { rotulo: 'ISS', valor: reais(vm.prestados.iss) }]} />;
+      return <Destaque rotulo={'Serviços prestados em ' + comp} valor={vm.prestados.total}
+        chips={[{ icone: 'fileText', texto: vm.prestados.qtd + ' notas' }, { icone: 'recibo', texto: 'ISS ' + reais(vm.prestados.iss) }]} />;
     default:
       return null;
   }
+}
+
+export function PainelDaTarefa(p: { painel: t.PainelDaTarefa; vm: VmPainelDoFiscal; codigo: string; competencia: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  // anima quando o painel aparece e quando os dados chegam (a importação ou o ⚡)
+  const chave = p.painel + '|' + p.vm.importado.entradas + '|' + p.vm.importado.saidas + '|' + p.vm.importado.tomados + '|' + p.vm.importado.prestados + '|' + (p.vm.sieg ? 1 : 0);
+  useEffect(() => { animarPainel(ref.current); }, [chave]);
+  return <div ref={ref} className="pt-painel"><Corpo {...p} /></div>;
 }
