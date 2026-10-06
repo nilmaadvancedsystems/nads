@@ -28,8 +28,8 @@ export const ROTINA_FISCAL: Rotina = {
       item('saidas', 'Saídas'),
       item('tomados', 'Serviços Tomados'),
       item('prestados', 'Serviços Prestados'),
-      item('cte', 'CTE'),
-    ]),
+      item('cte', 'CT-e'),
+    ], { checklistEmAbas: true }),
     // ─── Conferência ──────────────────────────────────────────────────────────
     etapa('fiscal-conf-saidas', 'Conferência', 'Saídas', 'Confira a sequência e as notas de saída.', [
       item('sequencia-saidas', 'Sequência de Saídas'),
