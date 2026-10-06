@@ -39,7 +39,7 @@ export const SECOES: Secao[] = [
 export const PAGINAS_DA_TAREFA: Pagina[] = [
   { id: 'tarefa/extratos', rotulo: 'Importação', icone: 'fileUp', titulo: '' },
   // a etapa Bancos: o relatório do que passou pelos bancos no período (só olhar; Vitor, 06/10/2026)
-  { id: 'tarefa/bancos', rotulo: 'Bancos', icone: 'landmark', titulo: '' },
+  { id: 'tarefa/bancos', rotulo: 'Bancos', icone: 'landmark', titulo: 'Relatório Bancário' },
 ];
 
 export const PAGINA_INICIAL = 'importacao/arquivos';

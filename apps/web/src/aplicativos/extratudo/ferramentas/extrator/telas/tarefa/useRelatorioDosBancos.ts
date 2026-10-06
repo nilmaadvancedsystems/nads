@@ -31,13 +31,17 @@ export function useRelatorioDosBancos() {
       return {
         id: r.id, nome: r.nome, marca: b?.marca || '', temExtrato: r.temExtrato,
         conta: b ? [b.agencia && 'Ag. ' + b.agencia, b.conta && 'C/C ' + b.conta].filter(Boolean).join(' · ') : '',
-        resumo: ['Saldo inicial ' + x.reaisBR(r.saldoInicial), 'Saldo final ' + x.reaisBR(r.saldoFinal)],
+        saldoInicial: x.reaisBR(r.saldoInicial), saldoFinal: x.reaisBR(r.saldoFinal),
         meses: r.meses.map(m => ({
           mes: m.mes, rotulo: tarefas.rotuloCurtoCompetencia(m.mes),
           titulo: tarefas.rotuloCompetencia(m.mes) + ' — entradas ' + x.reaisBR(m.entradas) + ' · saídas ' + x.reaisBR(m.saidas) + ' · saldo ' + x.reaisBR(m.saldoFinal),
           alturaEnt: Math.round((m.entradas / maior) * ALTURA), alturaSai: Math.round((m.saidas / maior) * ALTURA),
         })),
-        categorias: r.categorias.map(c => ({ id: c.id, rotulo: c.rotulo + ' · ' + c.qtd, valor: x.reaisBR(c.total), largura: Math.max(2, Math.round((c.total / maiorCat) * 100)), entrada: c.id === 'credliq' || c.id === 'outras-entradas' })),
+        // sem o número de lançamentos (Vitor, 06/10/2026); o clique mostra a relação embaixo
+        categorias: r.categorias.map(c => ({
+          id: c.id, rotulo: c.rotulo, valor: x.reaisBR(c.total), largura: Math.max(2, Math.round((c.total / maiorCat) * 100)), entrada: c.id === 'credliq' || c.id === 'outras-entradas',
+          lancamentos: c.lancamentos.map(l => ({ data: x.dataBR(l.data), historico: l.historico, valor: x.reaisBR(Math.abs(l.valor)) })),
+        })),
       };
     }),
   };

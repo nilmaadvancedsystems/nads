@@ -51,7 +51,8 @@ export function categoriaDoLancamento(historico: string, valor: number, socios: 
   return 'outras-saidas';
 }
 
-export interface CategoriaNoPeriodo { id: CategoriaBancaria; rotulo: string; total: number; qtd: number }
+/** Uma categoria no período, com os lançamentos dela (o clique no ranking mostra a relação). */
+export interface CategoriaNoPeriodo { id: CategoriaBancaria; rotulo: string; total: number; qtd: number; lancamentos: { data: string; historico: string; valor: number }[] }
 export interface MesDoBanco { mes: string; entradas: number; saidas: number; saldoFinal: number }
 export interface ResumoDoBanco {
   id: string; nome: string;
@@ -69,11 +70,11 @@ export function resumoDosBancos(e: EmpresaExtrator, bancos: readonly { id: strin
   return bancos.map(b => {
     const mov = movimentoDoExtrato(e, b.id, primeiro, ms[0], ms[ms.length - 1]);
     const linhas = mov.linhas.filter(l => ms.includes(l.data.slice(0, 7)));
-    const porCat = new Map<CategoriaBancaria, { total: number; qtd: number }>();
+    const porCat = new Map<CategoriaBancaria, { total: number; qtd: number; lancamentos: { data: string; historico: string; valor: number }[] }>();
     for (const l of linhas) {
       const c = categoriaDoLancamento(l.historico, l.valor, socios);
-      const a = porCat.get(c) || { total: 0, qtd: 0 };
-      porCat.set(c, { total: a.total + Math.abs(l.valor), qtd: a.qtd + 1 });
+      const a = porCat.get(c) || { total: 0, qtd: 0, lancamentos: [] };
+      porCat.set(c, { total: a.total + Math.abs(l.valor), qtd: a.qtd + 1, lancamentos: [...a.lancamentos, { data: l.data, historico: l.historico, valor: l.valor }] });
     }
     let saldo = mov.saldoAnterior;
     const porMes: MesDoBanco[] = ms.map(m => {

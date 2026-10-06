@@ -33,5 +33,6 @@ describe('relatório dos bancos (a etapa Bancos da Tarefa)', () => {
     expect([b.saldoInicial, b.saldoFinal, b.entradas, b.saidas, b.temExtrato]).toEqual([10000, 138490, 150000, 21510, true]);
     expect(b.meses.map(m => [m.mes, m.entradas, m.saidas, m.saldoFinal])).toEqual([['2026-07', 100000, 510, 109490], ['2026-08', 50000, 21000, 138490]]);
     expect(b.categorias.map(c => [c.id, c.total, c.qtd])).toEqual([['credliq', 150000, 2], ['boletos', 20000, 1], ['despesas', 1510, 2]]);
+    expect(b.categorias[2].lancamentos.map(l => [l.data, l.valor])).toEqual([['2026-07-04', -510], ['2026-08-06', -1000]]);
   });
 });
