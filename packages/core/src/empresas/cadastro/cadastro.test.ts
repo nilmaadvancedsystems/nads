@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
-  criarRepoCadastro, criarRepoCadastroMemoria, definirContaPadrao, definirPrestaServico, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
+  criarRepoCadastro, criarRepoCadastroMemoria, definirContaPadrao, definirPrestaServico, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
   bancosDoEntregasDoDocumento, bancosDoEntregasPorCodigo, contasDoEntregas, juntarComEntregas, sugestoesDoEntregas,
   lerPlanilhaDoPlano, linhasDoTexto, registrarPlano, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
   type PlanoDeContas,
@@ -253,6 +253,11 @@ describe('presta serviços (a regra no Cadastro)', () => {
     expect(sim.prestaServico).toBe(true);
     expect(sim.historico[0]).toMatchObject({ acao: 'Presta serviços', detalhe: 'Sim', por: 'Vitor' });
     expect(definirPrestaServico(sim, true, 'Vitor', AGORA)).toBe(sim);
+    // os sócios (a etapa Bancos acha a transferência para o sócio pelo nome)
+    const comSocio = definirSocios(c0, [{ nome: ' Marcos  Antonio ', cpf: '123.405.586-90' }, { nome: '', cpf: '' }], 'Vitor', AGORA);
+    expect(comSocio.socios).toEqual([{ nome: 'Marcos Antonio', cpf: '12340558690' }]);
+    expect(documentoDoCadastro(comSocio).socios).toEqual([{ nome: 'Marcos Antonio', cpf: '12340558690' }]);
+    expect(definirSocios(comSocio, [{ nome: 'Marcos Antonio', cpf: '12340558690' }], 'Vitor', AGORA)).toBe(comSocio);
     const doc = documentoDoCadastro(sim);
     expect(doc.prestaServico).toBe(true);
     expect(cadastroDoDocumento('FITO', 292, doc).prestaServico).toBe(true);

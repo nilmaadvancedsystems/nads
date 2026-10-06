@@ -75,6 +75,9 @@ export interface RegistroCadastro {
   detalhe: string;
 }
 
+/** Um sócio da empresa: o nome e o CPF (só os dígitos). */
+export interface Socio { nome: string; cpf: string }
+
 export interface CadastroDaEmpresa {
   nome: string;
   codigo: number | null;
@@ -87,6 +90,8 @@ export interface CadastroDaEmpresa {
    * e os serviços prestados na Conferência. Sem = ainda não informado.
    */
   prestaServico?: boolean;
+  /** os sócios, com o nome e o CPF (Vitor, 06/10/2026): a etapa Bancos acha a transferência para o sócio no extrato */
+  socios?: Socio[];
   historico: RegistroCadastro[];
   /** o resumo do plano de contas (o plano mora em outro documento): para a lista de empresas */
   plano?: { contas: number; importadoEm: string };

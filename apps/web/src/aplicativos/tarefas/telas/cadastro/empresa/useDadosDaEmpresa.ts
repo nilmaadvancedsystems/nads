@@ -18,5 +18,13 @@ export function useDadosDaEmpresa(rota: string) {
       const novo = empresas.cadastro.definirPrestaServico(c.cadastro, atual === sim ? null : sim, c.por, new Date());
       if (novo !== c.cadastro) c.salvar(novo);
     },
+    /** os sócios, com o nome e o CPF (a etapa Bancos acha a transferência para o sócio no extrato) */
+    socios: c.cadastro.socios || [],
+    /** grava a lista inteira (a linha vazia some) */
+    definirSocios(lista: { nome: string; cpf: string }[]) {
+      if (c.carregando) return;
+      const novo = empresas.cadastro.definirSocios(c.cadastro, lista, c.por, new Date());
+      if (novo !== c.cadastro) c.salvar(novo);
+    },
   };
 }

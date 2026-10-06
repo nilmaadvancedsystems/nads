@@ -6,7 +6,7 @@ import { nomeNorm } from '../../formatos';
 import { BANCOS_CONHECIDOS, bancosDaEmpresa, idDaConta, rotuloDaConta, type BancoDaEmpresa } from '../bancos';
 import type {
   CadastroDaEmpresa, CampoContaPadrao, ContaBancaria, ContaDoPlano, ContaPadraoDoPlano, ContasPadrao, PlanoDeContas,
-  RegistroCadastro, TipoContaBancaria,
+  RegistroCadastro, Socio, TipoContaBancaria,
 } from './tipos';
 
 /** Quantos registros do histórico ficam guardados (os mais novos). */
@@ -75,7 +75,8 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
   const plano = pl && typeof pl.contas === 'number' ? { contas: pl.contas, importadoEm: texto(pl.importadoEm) } : undefined;
   return {
     nome, codigo, bancos, contasPadrao: contasPadraoDoDocumento(doc.contasPadrao), historico, ...(plano ? { plano } : {}),
-    ...(typeof doc.prestaServico === 'boolean' ? { prestaServico: doc.prestaServico } : {}), atualizadoEm: opcional(doc.atualizadoEm),
+    ...(typeof doc.prestaServico === 'boolean' ? { prestaServico: doc.prestaServico } : {}),
+    ...(Array.isArray(doc.socios) ? { socios: (doc.socios as Record<string, unknown>[]).map(s => ({ nome: texto(s?.nome), cpf: texto(s?.cpf) })).filter(s => s.nome || s.cpf) } : {}), atualizadoEm: opcional(doc.atualizadoEm),
   };
 }
 
@@ -87,6 +88,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(c.contasPadrao ? { contasPadrao: c.contasPadrao } : {}),
     ...(c.plano ? { plano: c.plano } : {}),
     ...(typeof c.prestaServico === 'boolean' ? { prestaServico: c.prestaServico } : {}),
+    ...(c.socios?.length ? { socios: c.socios } : {}),
     historico: c.historico.slice(0, MAX_HISTORICO),
     atualizadoEm: c.atualizadoEm || new Date().toISOString(),
   };
@@ -126,6 +128,19 @@ export function definirPrestaServico(c: CadastroDaEmpresa, sim: boolean | null, 
   delete resto.prestaServico;
   const novo = sim == null ? resto : { ...resto, prestaServico: sim };
   return registrar(novo, por, agora, 'Presta serviços', sim == null ? 'Não informado' : sim ? 'Sim' : 'Não');
+}
+
+/**
+ * Os sócios da empresa: o nome (sem espaço sobrando) e o CPF (só os dígitos); sem nome nem CPF fica de fora. Fica no
+ * histórico; sem mudança, devolve o mesmo.
+ */
+export function definirSocios(c: CadastroDaEmpresa, socios: readonly Socio[], por: string, agora: Date): CadastroDaEmpresa {
+  const novos = socios.map(s => ({ nome: s.nome.trim().replace(/\s+/g, ' '), cpf: s.cpf.replace(/\D/g, '') })).filter(s => s.nome || s.cpf);
+  const chave = (l: readonly Socio[]) => l.map(s => s.nome + '#' + s.cpf).join('|');
+  if (chave(novos) === chave(c.socios || [])) return c;
+  const resto: CadastroDaEmpresa = { ...c };
+  delete resto.socios;
+  return registrar(novos.length ? { ...resto, socios: novos } : resto, por, agora, 'Sócios', novos.map(s => s.nome || s.cpf).join(', ') || 'Nenhum');
 }
 
 /** Registra no histórico a troca do plano de contas (o plano mora em outro documento). */

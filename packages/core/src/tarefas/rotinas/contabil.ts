@@ -107,7 +107,8 @@ export const ROTINA_CONTABIL: Rotina = {
       secao: 'Ativo',
       nome: 'Bancos',
       descricao: 'O saldo de cada banco é o do extrato no último dia; banco negativo vai para o cheque especial.',
-      ferramenta: { app: 'extratudo', nome: 'Cheque especial', caminho: r => '/extratudo/' + r + '/cheque-especial/ajuste/saldo-negativo', embutir: true },
+      // só o relatório do que passou pelos bancos no período (Vitor, 06/10/2026): a pessoa vê os saldos e dá Próximo
+      ferramenta: { app: 'extratudo', nome: 'Bancos', caminho: r => '/extratudo/' + r + '/extrator/tarefa/bancos', embutir: true, periodo: true, requisitos: true },
       verificacao: 'manual',
       conferir: [
         'O saldo contábil de cada banco é igual ao saldo do extrato no último dia do mês.',

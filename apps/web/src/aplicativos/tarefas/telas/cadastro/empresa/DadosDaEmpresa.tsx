@@ -1,16 +1,29 @@
 // Cadastro › Empresa: as regras da empresa. "Presta serviços?" com Sim / Não (clicar de novo no marcado volta
-// para "não informado").
-import { useCarregando } from '@nads/ui';
+// para "não informado") e os sócios (o nome e o CPF de cada um).
+import { Icone, useCarregando } from '@nads/ui';
+import { useState } from 'react';
 import { useDadosDaEmpresa } from './useDadosDaEmpresa';
 
 export function DadosDaEmpresa({ rota }: { rota: string }) {
   const vm = useDadosDaEmpresa(rota);
+  // a linha nova (vazia) do Adicionar sócio, até ganhar um nome ou um CPF
+  const [novo, setNovo] = useState(false);
   useCarregando(vm.carregando);
   if (vm.carregando) return null;
   const opcao = (sim: boolean, rotulo: string) => (
     <button type="button" className={'btn ' + (vm.prestaServico === sim ? 'btn-primary' : 'btn-outline')} aria-pressed={vm.prestaServico === sim}
       onClick={() => vm.definirPrestaServico(sim)}>{rotulo}</button>
   );
+  const linhas = [...vm.socios, ...(novo ? [{ nome: '', cpf: '' }] : [])];
+  /** grava ao sair do campo: a lista inteira, com esta linha trocada */
+  const mudar = (i: number, campo: 'nome' | 'cpf', v: string) => {
+    const lista = [...vm.socios];
+    if (i < vm.socios.length) lista[i] = { ...lista[i], [campo]: v };
+    else { lista.push({ nome: '', cpf: '', [campo]: v }); if (v.trim()) setNovo(false); }
+    vm.definirSocios(lista);
+  };
+  const tirar = (i: number) => { if (i >= vm.socios.length) setNovo(false); else vm.definirSocios(vm.socios.filter((_, j) => j !== i)); };
+  const enter = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') e.currentTarget.blur(); };
   return (
     <section>
       <div className="cad-regra">
@@ -26,6 +39,42 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
           {opcao(false, 'Não')}
         </div>
       </div>
+      {/* os sócios, com o nome e o CPF (Vitor, 06/10/2026): o relatório da etapa Bancos mostra a transferência para eles */}
+      <div className="cad-regra">
+        <div className="cad-regra-txt">
+          <span className="cad-campo-rotulo">Sócios</span>
+          <span className="hint">O nome e o CPF de cada sócio. A etapa Bancos mostra a transferência para eles (pelo nome ou pelo CPF do PIX).</span>
+        </div>
+        <div className="cad-regra-opcoes">
+          <button type="button" className="btn" disabled={novo} onClick={() => setNovo(true)}><Icone nome="plus" />Adicionar sócio</button>
+        </div>
+      </div>
+      {linhas.length > 0 && (
+        <div className="table-wrap">
+          <table className="table-compact">
+            <thead><tr><th>Nome</th><th>CPF</th><th /></tr></thead>
+            <tbody>
+              {linhas.map((so, i) => (
+                <tr key={i + '|' + so.nome + '|' + so.cpf}>
+                  <td>
+                    <input type="text" aria-label="Nome do sócio" defaultValue={so.nome} placeholder="Nome completo" autoFocus={i >= vm.socios.length}
+                      onBlur={e => { if (e.target.value.trim() !== so.nome) mudar(i, 'nome', e.target.value); }} onKeyDown={enter} />
+                  </td>
+                  <td>
+                    <input type="text" aria-label="CPF do sócio" inputMode="numeric" defaultValue={so.cpf} placeholder="000.000.000-00"
+                      onBlur={e => { if (e.target.value.replace(/\D/g, '') !== so.cpf) mudar(i, 'cpf', e.target.value); }} onKeyDown={enter} />
+                  </td>
+                  <td className="num">
+                    <button type="button" className="icon-btn icon-btn-sm" title="Tirar o sócio" aria-label="Tirar o sócio" onClick={() => tirar(i)}>
+                      <Icone nome="x" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   );
 }
