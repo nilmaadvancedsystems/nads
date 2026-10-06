@@ -1,6 +1,7 @@
 // O Painel do DP (Vitor, 06/10/2026: o Checklist Folha no visual do nads): a competência e os filtros em cima; os números
 // do mês; as barras por responsável, enquadramento e movimento; o progresso de cada responsável; e a lista dos clientes
-// com as obrigações do mês (– não tem, vazio a fazer, ✓ feita, ! parada). Clicar no cliente abre a rotina do DP dele.
+// com as obrigações do mês (– não tem, vazio a fazer, ✓ feita, ! parada). Tudo roda aqui: clicar na bolinha marca a
+// obrigação como feita, clicar de novo desfaz (sem o checklist).
 import { Esqueleto, Icone, Segmentado, useCarregando } from '@nads/ui';
 import { Fragment } from 'react';
 import { usePainelDoDp, type Agrupar, type EstadoDaObrigacao } from './usePainelDoDp';
@@ -116,16 +117,16 @@ export function PainelDoDp() {
                   <thead>
                     <tr>
                       <th>Cód.</th><th>Cliente</th><th>Responsável</th>
-                      {vm.obrigacoesDp.map(o => <th key={o.id} className="dp-ob" title={o.nome}>{o.rotulo}</th>)}
+                      {vm.colunas.map(o => <th key={o.id} className="dp-ob" title={o.nome}>{o.rotulo}</th>)}
                       <th>Situação</th>
                     </tr>
                   </thead>
                   <tbody>
                     {vm.grupos.map(g => (
                       <Fragment key={g.nome || 'todos'}>
-                        {g.nome && <tr className="dp-grupo"><td colSpan={4 + vm.obrigacoesDp.length}>{g.nome} <span className="hint">{g.feitas}/{g.linhas.length} concluídos</span></td></tr>}
+                        {g.nome && <tr className="dp-grupo"><td colSpan={4 + vm.colunas.length}>{g.nome} <span className="hint">{g.feitas}/{g.linhas.length} concluídos</span></td></tr>}
                         {g.linhas.map(c => (
-                          <tr key={c.chave} className={'dp-linha' + (c.concluida ? ' feita' : '')} onClick={() => vm.abrir(c.rota)} title="Abrir a rotina do DP deste cliente">
+                          <tr key={c.chave} className={'dp-linha' + (c.concluida ? ' feita' : '')}>
                             <td className="num fraco">{c.codigo}</td>
                             {/* o enquadramento, o movimento, a REINF e a entrega embaixo do nome (a tabela cabe sem rolar de lado) */}
                             <td className="dp-cliente">
@@ -134,7 +135,15 @@ export function PainelDoDp() {
                             </td>
                             <td>{c.responsavel ? c.responsavelNome : <span className="fraco">—</span>}</td>
                             {c.obrigacoes.map(o => (
-                              <td key={o.id} className="dp-ob"><span className={'dp-marca ' + o.estado} title={MARCA[o.estado].dica}>{MARCA[o.estado].simbolo}</span></td>
+                              <td key={o.id} className="dp-ob">
+                                {o.estado === 'nao-tem' ? <span className="dp-marca nao-tem" title="não tem no mês">–</span> : (
+                                  <button type="button" className={'dp-marca ' + o.estado} disabled={vm.carregando} onClick={() => vm.alternar(c.codigo, o.etapa)}
+                                    title={(vm.colunas.find(x => x.id === o.id)?.nome || '') + ': ' + (o.estado === 'feita' ? 'feita por ' + o.quem + ' (clique para desfazer)' : 'clique quando fizer')}
+                                    aria-label={(vm.colunas.find(x => x.id === o.id)?.nome || '') + ' de ' + c.nomeNaTela + (o.estado === 'feita' ? ': feita' : ': a fazer')} aria-pressed={o.estado === 'feita'}>
+                                    {MARCA[o.estado].simbolo}
+                                  </button>
+                                )}
+                              </td>
                             ))}
                             <td><span className={'badge ' + (c.concluida ? 'badge-ok' : c.parada ? 'badge-warn' : 'badge-neutral')}>{c.situacao}</span></td>
                           </tr>

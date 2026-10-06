@@ -23,7 +23,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'minhas-empresas': return pagina === 'insights' ? <Insights /> : <MinhasEmpresas />;
     case 'contabil': return pagina === 'configuracoes' ? <ConfiguracoesContabil /> : <VisaoContabil pagina={pagina} />;
     case 'fiscal': return pagina === 'empresas' ? <MinhasEmpresas /> : pagina === 'reinf' ? <Reinf /> : <VisaoContabil pagina={pagina} dep="fiscal" />;
-    case 'dp': return pagina === 'empresas' ? <MinhasEmpresas /> : pagina === 'painel' ? <PainelDoDp /> : <VisaoContabil pagina={pagina} dep="dp" />;
+    case 'dp': return pagina === 'painel' ? <PainelDoDp /> : <VisaoContabil pagina={pagina} dep="dp" />;
     case 'cadastro': return pagina === 'configuracoes' ? <ConfiguracoesDoNads /> : <UsuariosDoNads />;
     case 'drive': return <ExploradorDoDrive />;
     case 'contato': return pagina === 'historico' ? <HistoricoDoRobo /> : <CaixaDoRobo />;

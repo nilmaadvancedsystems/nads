@@ -18,6 +18,6 @@ export function useDepartamentoDaTela() {
     /** o endereço com o ?dep= quando a rotina não é a do departamento da pessoa */
     comDep: (url: string) => (outro ? url + (url.includes('?') ? '&' : '?') + 'dep=' + dep : url),
     /** a lista para onde voltar: o módulo Fiscal ou o DP, ou Minhas empresas */
-    lista: outro && (dep === 'fiscal' || dep === 'dp') ? caminhoDaPagina(dep, 'empresas') : caminhoDaPagina('minhas-empresas', 'empresas'),
+    lista: outro && dep === 'fiscal' ? caminhoDaPagina('fiscal', 'empresas') : outro && dep === 'dp' ? caminhoDaPagina('dp', 'painel') : caminhoDaPagina('minhas-empresas', 'empresas'),
   };
 }

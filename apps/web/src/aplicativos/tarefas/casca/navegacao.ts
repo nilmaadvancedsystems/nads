@@ -42,10 +42,9 @@ export const APLICACOES: readonly Aplicacao[] = [
   // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
   // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas
   { id: 'dp', nome: 'Departamento Pessoal', icone: 'usuario', pronta: true, paginas: [
-    { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'DP — empresas' },
+    // tudo no tabelão do Painel (Vitor, 06/10/2026: "sem a parte de checklist"): sem a lista de empresas e o executor
     { id: 'painel', rotulo: 'Painel', icone: 'painel', titulo: 'DP — painel do mês' },
     { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'DP — visão geral' },
-    { id: 'paradas', rotulo: 'Paradas', icone: 'alert', titulo: 'DP — etapas paradas' },
   ] },
   { id: 'drive', nome: 'Drive', icone: 'pasta', pronta: true, paginas: [
     { id: 'pastas', rotulo: 'Pastas', icone: 'pasta', titulo: 'Drive — pasta do ano' },
