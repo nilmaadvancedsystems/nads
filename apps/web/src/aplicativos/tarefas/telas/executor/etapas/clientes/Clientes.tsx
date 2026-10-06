@@ -108,8 +108,13 @@ function Credor({ vm }: { vm: VM }) {
 const ROTULO_FILTRO: Record<FiltroClientes, string> = { todos: 'Todos', pendente: 'Pendentes', ok: 'Ok', conferido: 'Conferidos' };
 
 function ListaDeClientes({ vm }: { vm: VM }) {
+  // um campo de arquivo só para a lista: guarda de qual conta é o razão
+  const arquivo = useRef<HTMLInputElement>(null);
+  const conta = useRef('');
   return (
     <>
+      <input ref={arquivo} type="file" accept=".xls,.xlsx,.ods" className="sr-only" tabIndex={-1} aria-hidden="true"
+        onChange={ev => { const f = ev.target.files?.[0]; ev.target.value = ''; vm.importarRazao(conta.current, f); }} />
       <div className="tarefas-barra-topo">
         <MenuSuspenso rotulo={ROTULO_FILTRO[vm.filtro]} className="btn btn-outline" dica="Filtrar os clientes"
           itens={(Object.keys(ROTULO_FILTRO) as FiltroClientes[]).map(f => ({
@@ -130,6 +135,15 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                 <td>{l.codigo}</td>
                 <td className="wrap">
                   {l.nome}{l.doMesAnterior && <> <span className="badge badge-neutral" title="Conferido no mês anterior: revise">do mês anterior</span></>}
+                  {/* o que o razão achou: as notas em aberto (vão para o cliente), as devoluções e a duplicidade */}
+                  {l.razao && (
+                    <span className="hint" style={{ display: 'block', marginTop: 2 }}>
+                      {l.razao.notas ? 'Em aberto: ' + l.razao.notas : 'Nenhuma nota em aberto'}
+                      {l.razao.devolucoes && ' · Devoluções ' + l.razao.devolucoes}
+                      {l.razao.duplicadas && <> · <span className="ext-neg">Recebida em duplicidade: {l.razao.duplicadas}</span></>}
+                      {l.razao.naoBate && <> · <span className="ext-neg">O razão fecha em {l.razao.naoBate}</span></>}
+                    </span>
+                  )}
                   {/* o conferido abre a observação (vai para o cliente) */}
                   {l.situacao === 'conferido' && (
                     <input key={l.obs} type="text" aria-label={'Observação de ' + l.nome} placeholder="Observação para o cliente" defaultValue={l.obs}
@@ -139,12 +153,27 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                   )}
                 </td>
                 <td>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   <button type="button" disabled={!vm.carregado} onClick={() => vm.clicar(l.codigo)}
                     className={'badge ' + (l.situacao === 'pendente' ? 'badge-warn' : l.situacao === 'ok' ? 'badge-ok' : 'badge-neutral')}
                     title={l.situacao === 'pendente' ? 'Pendente (saldo devedor). Clique: Ok' : l.situacao === 'ok' ? 'Ok. Clique: Conferido' : 'Conferido (vai para o cliente). Clique: Pendente'}
                     style={{ cursor: 'pointer' }}>
                     {l.situacao === 'pendente' ? l.valor : l.situacao === 'ok' ? 'Ok' : 'Conferido'}
                   </button>
+                  {/* o razão da conta (Vitor, 06/10/2026): importar; importado, o check que vira × e tira */}
+                  {l.razao ? (
+                    <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" disabled={!vm.carregado} onClick={() => vm.tirarRazao(l.codigo)}
+                      title={'Razão importado: ' + l.razao.arquivo + '. Clique para tirar.'} aria-label={'Tirar o razão de ' + l.nome}>
+                      <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
+                    </button>
+                  ) : (
+                    <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={!vm.carregado}
+                      onClick={() => { conta.current = l.codigo; arquivo.current?.click(); }}
+                      title={'Importar o razão da conta ' + l.codigo + ' (as notas em aberto vão para a relação do cliente)'} aria-label={'Importar o razão de ' + l.nome}>
+                      <Icone nome="upload" />
+                    </button>
+                  )}
+                  </span>
                 </td>
               </tr>
             ))}
@@ -162,10 +191,10 @@ function Envio({ vm }: { vm: VM }) {
     <>
       <div className="table-wrap">
         <table className="table-compact">
-          <thead><tr><th>Conta</th><th>Cliente</th><th className="num">Saldo</th><th>Observação</th></tr></thead>
+          <thead><tr><th>Conta</th><th>Cliente</th><th className="num">Saldo</th><th>Notas em aberto</th><th>Observação</th></tr></thead>
           <tbody>
             {vm.conferidos.map(l => (
-              <tr key={l.codigo}><td>{l.codigo}</td><td className="wrap">{l.nome}</td><td className="num">{l.valor}</td><td className="wrap">{l.obs || '—'}</td></tr>
+              <tr key={l.codigo}><td>{l.codigo}</td><td className="wrap">{l.nome}</td><td className="num">{l.valor}</td><td className="wrap">{l.notas || '—'}</td><td className="wrap">{l.obs || '—'}</td></tr>
             ))}
           </tbody>
         </table>

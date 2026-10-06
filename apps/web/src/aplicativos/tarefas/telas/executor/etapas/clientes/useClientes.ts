@@ -54,14 +54,36 @@ export function useClientes() {
   const linhas = contas.map(k => {
     const marca = marcas.doc.contas[k.codigo] || passam[k.codigo];
     const situacao = cl.situacaoDe(k, marca);
-    return { codigo: k.codigo, nome: k.nome, saldo: k.saldo, situacao, obs: marca?.obs || '', doMesAnterior: !marcas.doc.contas[k.codigo] && !!passam[k.codigo] };
+    return { codigo: k.codigo, nome: k.nome, saldo: k.saldo, situacao, obs: marca?.obs || '', razao: marca?.razao, doMesAnterior: !marcas.doc.contas[k.codigo] && !!passam[k.codigo] };
   });
 
   function marcar(codigo: string, mudar: (m: cl.MarcaDoCliente) => cl.MarcaDoCliente) {
     const l = linhas.find(x => x.codigo === codigo);
     if (!l || !marcas.carregado) return;
-    const atual: cl.MarcaDoCliente = { nome: l.nome, saldo: l.saldo, situacao: l.situacao, ...(l.obs ? { obs: l.obs } : {}) };
+    const atual: cl.MarcaDoCliente = { nome: l.nome, saldo: l.saldo, situacao: l.situacao, ...(l.obs ? { obs: l.obs } : {}), ...(l.razao ? { razao: l.razao } : {}) };
     marcas.salvar({ contas: { ...marcas.doc.contas, [codigo]: mudar(atual) } });
+  }
+
+  /**
+   * O razão da conta do cliente (Vitor, 06/10/2026): acha as notas que o pagamento não fechou; com nota em aberto, o
+   * cliente vai para a relação (Conferido) com os números. O saldo achado tem de bater com o do balancete dinâmico.
+   */
+  async function importarRazao(codigo: string, f: File | undefined) {
+    const l = linhas.find(x => x.codigo === codigo);
+    if (!f || !l || !marcas.carregado) return;
+    try {
+      const r = cl.conferirRazaoDoCliente(tarefas.lerRazaoDoArquivo(await f.arrayBuffer()), mes);
+      const razao = cl.razaoDaMarca(f.name, r);
+      marcar(codigo, m => ({ ...m, situacao: razao.notas.length ? 'conferido' : m.situacao, razao }));
+      const bate = Math.abs(r.saldo - l.saldo) < 0.005;
+      const partes = [
+        razao.notas.length ? (razao.notas.length === 1 ? '1 nota em aberto' : razao.notas.length + ' notas em aberto') : 'Nenhuma nota em aberto',
+        ...(razao.duplicadas.length ? ['recebimento em duplicidade: NF ' + razao.duplicadas.join(', ')] : []),
+      ];
+      aviso(bate
+        ? { tom: 'ok', titulo: l.nome, texto: partes.join(' · ') }
+        : { tom: 'erro', titulo: 'O razão não bate com o balancete', texto: l.nome + ': o razão fecha ' + rotuloMes + ' em ' + reais(r.saldo) + '; o balancete dinâmico, ' + reais(l.saldo) + '. Confira se é o razão desta conta.' });
+    } catch (e) { aviso({ tom: 'erro', titulo: 'Não deu para ler ' + f.name, texto: e instanceof Error ? e.message : String(e) }); }
   }
 
   const arquivosProntos = !!dinamico;
@@ -73,7 +95,7 @@ export function useClientes() {
   useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
 
   const conferidos = linhas.filter(l => l.situacao === 'conferido');
-  const paraCliente: cl.LinhaParaCliente[] = conferidos.map(l => ({ codigo: l.codigo, nome: l.nome, saldo: l.saldo, obs: l.obs }));
+  const paraCliente: cl.LinhaParaCliente[] = conferidos.map(l => ({ codigo: l.codigo, nome: l.nome, saldo: l.saldo, obs: l.obs, notas: l.razao?.notas }));
   const rotuloMes = mes ? tarefas.rotuloNumericoCompetencia(mes) : '';
   const texto = cl.textoDaMensagem(mensagem, s.nome, rotuloMes, paraCliente);
   const q = busca.trim().toLowerCase();
@@ -102,12 +124,29 @@ export function useClientes() {
     linhas: linhas
       .filter(l => filtro === 'todos' || l.situacao === filtro)
       .filter(l => !q || (l.codigo + ' ' + l.nome).toLowerCase().includes(q))
-      .map(l => ({ ...l, valor: reais(l.saldo) })),
+      .map(l => ({
+        ...l, valor: reais(l.saldo),
+        // o resumo do razão importado, embaixo do nome
+        razao: l.razao ? {
+          arquivo: l.razao.arquivo,
+          notas: cl.textoDasNotas(l.razao.notas),
+          devolucoes: l.razao.devolucoes ? reais(l.razao.devolucoes) : '',
+          duplicadas: l.razao.duplicadas.map(nf => 'NF ' + nf).join(', '),
+          naoBate: Math.abs(l.razao.saldo - l.saldo) >= 0.005 ? reais(l.razao.saldo) : '',
+        } : null,
+      })),
     clicar: (codigo: string) => marcar(codigo, m => ({ ...m, situacao: cl.proximaSituacao(m.situacao) })),
     // sem campo vazio (o banco não aceita undefined)
-    observar: (codigo: string, obs: string) => marcar(codigo, m => ({ nome: m.nome, saldo: m.saldo, situacao: m.situacao, ...(obs.trim() ? { obs: obs.trim() } : {}) })),
+    observar: (codigo: string, obs: string) => marcar(codigo, m => {
+      const n = { ...m };
+      delete n.obs;
+      return obs.trim() ? { ...n, obs: obs.trim() } : n;
+    }),
+    /** o razão da conta: importar (acha as notas em aberto) e tirar */
+    importarRazao: (codigo: string, f: File | undefined) => { void importarRazao(codigo, f); },
+    tirarRazao: (codigo: string) => marcar(codigo, m => { const n = { ...m }; delete n.razao; return n; }),
     // Envio
-    conferidos: conferidos.map(l => ({ codigo: l.codigo, nome: l.nome, valor: reais(l.saldo), obs: l.obs })),
+    conferidos: conferidos.map(l => ({ codigo: l.codigo, nome: l.nome, valor: reais(l.saldo), obs: l.obs, notas: cl.textoDasNotas(l.razao?.notas) })),
     mensagem, texto,
     mudarMensagem: (t: string) => { setMensagem(t); gravarMensagem(t); },
     baixarPlanilha: () => baixarBytes(cl.planilhaParaCliente(paraCliente), 'clientes_' + (s.codigo ?? s.nome) + '_' + mes + '.xlsx', cl.TIPO_XLSX),
