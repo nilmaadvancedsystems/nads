@@ -1130,8 +1130,10 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
    fixa com as saídas da etapa (Pedir extrato, Buscar no Drive…), Interromper e Próximo */
 #app.larga .content,#app.larga .topbar{max-width:none;}
 #app.larga .content{padding-bottom:0;}
-/* a etapa encosta a ferramenta (e a barra de rolagem dela) na borda direita da tela */
-#app.larga .main{padding-right:0;}
+/* a margem da direita igual à da esquerda (Vitor, 06/10/2026: "tá tudo grudado na borda"); só a ferramenta em iframe
+   (enquanto houver) encosta na borda direita da tela, com a barra de rolagem dela */
+#app.larga .executor-ferramenta:has(> iframe){margin-right:-24px;}
+@media (max-width:768px){#app.larga .executor-ferramenta:has(> iframe){margin-right:-16px;}}
 #app.larga .topbar[hidden] + .content{padding-top:16px;}
 /* a ferramenta da etapa do tamanho do conteúdo dela (quem rola é a página, com o cabeçalho junto); no mínimo, até o
    fim da tela */
