@@ -26,6 +26,7 @@ import { useDriveDaLinha } from './useDriveDaLinha';
 import { usePedirExtratos } from './usePedirExtratos';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../../../comum/desenvolvimento';
 import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
+import { useColunaAjustavel } from '../../../../../../comum/GradeDosMeses';
 
 type Vm = ReturnType<typeof useImportacao>;
 type Lado = { qtdArquivos: number; qtdLancamentos: number; lendo: boolean };
@@ -264,6 +265,7 @@ function MesesDoBanco({ meses, competencia, travado, aceitarExtrato, aceitarRaza
   onMes: (m: string) => void; onArquivos: (lado: 'banco' | 'sistema', fs: File[]) => void; onExcluir: (lado: 'banco' | 'sistema', mes: string) => void;
   onDrive: (mes: string) => void; onVer: (arquivo: { id: string; nome: string }) => void; onSemMovimento: (mes: string, marcado: boolean) => void;
 }) {
+  const grade = useColunaAjustavel('importacao', '96px', meses.length);
   const celula = (m: ReturnType<Vm['mesesDoBanco']>[number], lado: 'banco' | 'sistema', n: number) => {
     const info = lado === 'banco' ? m.ladoExtrato : m.ladoRazao;
     const trava = travado || m.semMovimento;
@@ -279,10 +281,11 @@ function MesesDoBanco({ meses, competencia, travado, aceitarExtrato, aceitarRaza
   };
   return (
     <div className="imp-periodo-linha">
-      <table className="imp-meses">
+      <table className="imp-meses" style={grade.tabela}>
+        <colgroup><col style={{ width: grade.largura }} /></colgroup>
         <thead>
           <tr>
-            <th scope="col"><span className="sr-only">Mês</span></th>
+            <th scope="col"><span className="sr-only">Mês</span>{grade.alca}</th>
             {meses.map(m => (
               <th key={m.mes} scope="col" className={m.mes === competencia ? 'atual' : undefined}>
                 <button type="button" className="imp-meses-mes" aria-current={m.mes === competencia ? 'true' : undefined} onClick={() => onMes(m.mes)} title={'Abrir ' + m.rotulo}>{m.rotulo}</button>

@@ -6,6 +6,7 @@ import { Alerta, Icone, LogoGmail, LogoWhatsApp, MenuSuspenso, Segmentado } from
 import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { useClientes, type FiltroClientes, type TelaClientes } from './useClientes';
+import { useColunaAjustavel, ValorNaGrade } from '../../../../../../comum/GradeDosMeses';
 
 type VM = ReturnType<typeof useClientes>;
 
@@ -36,24 +37,27 @@ export function Clientes() {
 }
 
 function Arquivos({ vm }: { vm: VM }) {
+  // a primeira coluna (os clientes) encolhe um pouco quando há mais meses, para os 12 caberem (Vitor, 07/10/2026)
+  const grade = useColunaAjustavel('clientes-credores', Math.max(18, 30 - vm.mesesDosCredores.length) + '%', vm.mesesDosCredores.length);
   return (
     <div className="imp-lista">
       <LinhaDoArquivo titulo="Balancete dinâmico" dica={'O balancete dinâmico atualizado, com ' + vm.mes} feito={vm.dinamico} onArquivo={vm.importar} onTirar={vm.tirar} teste={vm.teste}>
         {/* importado: os credores em algum mês, na grade dos meses do Caixa (Vitor, 07/10/2026); o mês credor em vermelho */}
         {vm.dinamico && vm.credoresNoPeriodo.length > 0 && (
           <div className="imp-periodo-linha">
-            <table className="imp-meses">
+            <table className="imp-meses" style={grade.tabela}>
+              <colgroup><col style={{ width: grade.largura }} /></colgroup>
               <thead>
                 <tr>
-                  <th scope="col">Credores em algum mês ({vm.credoresNoPeriodo.length})</th>
+                  <th scope="col">Credores em algum mês ({vm.credoresNoPeriodo.length}){grade.alca}</th>
                   {vm.mesesDosCredores.map(m => <th key={m} scope="col">{m}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {vm.credoresNoPeriodo.map(c => (
                   <tr key={c.codigo}>
-                    <th scope="row" style={{ textAlign: 'left' }}><b>{c.codigo}</b> — {c.nome}</th>
-                    {c.saldos.map(x => <td key={x.mes} className={'num' + (x.credor ? ' ext-neg' : '')} title={x.credor ? 'Credor neste mês' : undefined}>{x.valor}</td>)}
+                    <th scope="row" style={{ textAlign: 'left' }} title={c.codigo + ' — ' + c.nome}><b>{c.codigo}</b> — {c.nome}</th>
+                    {c.saldos.map(x => <td key={x.mes} className={'num' + (x.credor ? ' ext-neg' : '')} title={x.credor ? 'Credor neste mês' : undefined}>{x.valor === '—' ? x.valor : <ValorNaGrade texto={x.valor} />}</td>)}
                   </tr>
                 ))}
               </tbody>
