@@ -296,6 +296,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   }
 
   return {
+    departamento: rotina.departamento,
     grupos, abrirGrupo,
     empresa, competencia, periodo, meses, varios, rotuloCompetencia: t.rotuloDoPeriodo(meses.length ? meses : [competencia]),
     carregando: !carregada,
@@ -306,8 +307,10 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       const grupo = secoes.indexOf(e.secao || '');
       // o Cheque especial dispensado por não ter dia negativo: some da lista
       // a etapa "só quando adicionada" (o Creditor) que não entrou em nenhum mês: também some
+      // e a etapa de outro mês do ano (o Estoque só em dezembro; Vitor, 07/10/2026): fora dele, nem aparece
       const oculta = (e.id === 'cheque-especial' && meses.length > 0 && meses.every(c => exDe[c]?.etapas[e.id]?.objecao === 'sem-saldo-negativo'))
-        || (!!e.soQuandoAdicionada && !meses.some(c => t.etapaNoMes(exDe[c] || null, e.id)));
+        || (!!e.soQuandoAdicionada && !meses.some(c => t.etapaNoMes(exDe[c] || null, e.id)))
+        || (!!e.meses && meses.length > 0 && !meses.some(c => t.etapaNoMesDoAno(e, c)));
       return { id: e.id, n: i + 1, nome: e.nome, secao: e.secao, grupo, oculta, situacao: feitos === meses.length && meses.length ? 'feita' as const : parada ? 'interrompida' as const : 'pendente' as const, feitos, atual: e.id === vista?.id, daVez: e.id === etapa?.id };
     }),
     // a etapa na tela: a da vez ou, revendo, a concluída que a pessoa abriu

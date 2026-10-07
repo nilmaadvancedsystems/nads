@@ -76,7 +76,7 @@ export function Executor() {
           { rotulo: 'Razão do caixa de teste', icone: 'zap' as NomeIcone, onClick: () => razao.implantarTeste(false) },
           { rotulo: 'Razão do caixa de teste (com CRÉD.LIQ.COBRANÇA)', icone: 'zap' as NomeIcone, onClick: () => razao.implantarTeste(true) },
         ]
-        : vm.etapa?.checklist && vm.empresa
+        : vm.etapa?.checklist && vm.empresa && vm.departamento !== 'contabil'
           // o checklist do Fiscal: as notas de teste do mês na Conferência (as tabelinhas e os gráficos das tarefas usam)
           ? demo.OPCOES_FISCAIS_DE_TESTE.map(o => ({ rotulo: o.rotulo, icone: 'zap' as NomeIcone,
             onClick: () => { implantarNotasFiscaisDeTeste(vm.empresa!.nome, vm.meses.length ? vm.meses : [vm.competencia], o.id); } }))
@@ -279,13 +279,14 @@ export function Executor() {
             ) : temChecklist && !folha.itens ? (
               // o balancete ainda carregando: o N sobre o vidro (nada de texto no lugar)
               <AberturaN vidro />
-            ) : vm.etapa.checklist && folha.itens ? (
+            ) : vm.etapa.checklist && folha.itens && vm.departamento !== 'contabil' ? (
               // o Fiscal: a checklist disfarçada (Vitor, 06/10/2026) — um cartão por tarefa, com o painel e o Importar
               <ChecklistDisfarcado titulo={vm.etapa.nome} itens={folha.itens} definicao={vm.etapa.checklist} alternar={folha.alternar}
                 empresa={vm.empresa.nome} codigo={vm.empresa.codigo != null ? String(vm.empresa.codigo) : ''} competencia={vm.competencia} meses={vm.meses}
                 valores={vm.valores} informar={vm.informarValor} relatorio={vm.relatorio} />
             ) : temChecklist && folha.itens ? (
-              // o checklist da etapa: a Contabilização da Folha (pelo balancete) ou as tarefas da etapa (o Fiscal), marcando em ordem
+              // o checklist da etapa: a Contabilização da Folha (pelo balancete) ou as tarefas fixas do Contábil (o Estoque de
+              // dezembro: enviado e lançado), marcando em ordem
               <div className="card folha-check">
                 <div className="folha-check-topo">
                   <h3>{vm.etapa.checklistDaFolha ? 'Contabilização da Folha' : vm.etapa.nome}</h3>
