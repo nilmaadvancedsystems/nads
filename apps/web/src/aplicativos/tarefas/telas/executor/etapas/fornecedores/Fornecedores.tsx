@@ -24,7 +24,7 @@ export function Fornecedores() {
             WhatsApp da empresa, os do Cadastro */}
         {vm.tela === 'envio' && vm.conferidos.length > 0 && (
           <button type="button" className="btn btn-primary" disabled={vm.faltaNoCadastro.length > 0} onClick={vm.mandarPeloMandei}
-            title={vm.faltaNoCadastro.length ? 'Falta no Cadastro da empresa: ' + vm.faltaNoCadastro.join(' e ') : 'Mandar para ' + vm.contato.email + ' e para o WhatsApp ' + vm.contato.whatsapp}>
+            title={vm.faltaNoCadastro.length ? 'Falta no Cadastro da empresa: ' + vm.faltaNoCadastro.join(' e ') : 'Mandar para ' + [vm.contato.email, vm.contato.whatsapp && 'o WhatsApp ' + vm.contato.whatsapp].filter(Boolean).join(' e ')}>
             <Icone nome="caixaEntrada" />Mandar pelo Mandei
           </button>
         )}

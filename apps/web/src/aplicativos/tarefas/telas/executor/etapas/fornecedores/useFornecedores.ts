@@ -193,14 +193,15 @@ export function useFornecedores() {
     // o Mandei: um ticket com os conferidos (cada um, um item com a nossa pergunta), o link vai por e-mail
     /** o e-mail e o WhatsApp da empresa, do Cadastro */
     contato: { email: vivo.cadastro.contato?.email || '', whatsapp: vivo.cadastro.contato?.whatsapp || '' },
-    /** o que falta no Cadastro para mandar (vazio = pode mandar) */
-    faltaNoCadastro: vivo.carregada ? [...(!vivo.cadastro.contato?.email ? ['o e-mail'] : []), ...(!vivo.cadastro.contato?.whatsapp ? ['o WhatsApp'] : [])] : ['o cadastro (carregando)'],
+    /** o que falta no Cadastro para mandar (vazio = pode): um dos dois basta (Vitor, 07/10/2026) */
+    faltaNoCadastro: !vivo.carregada ? ['o cadastro (carregando)'] : vivo.cadastro.contato?.email || vivo.cadastro.contato?.whatsapp ? [] : ['o e-mail ou o WhatsApp'],
     mandarPeloMandei: () => {
       const email = vivo.cadastro.contato?.email || '';
       const whatsapp = vivo.cadastro.contato?.whatsapp || '';
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { aviso({ tom: 'erro', titulo: 'Mandei', texto: 'Informe o e-mail do cliente.' }); return; }
+      // um dos dois basta (Vitor, 07/10/2026: "não precisa ser obrigatório ter e-mail e WhatsApp")
+      if (!email && !whatsapp) { aviso({ tom: 'erro', titulo: 'Mandei', texto: 'Cadastre o e-mail ou o WhatsApp da empresa em Cadastro › Empresa.' }); return; }
       const t = criarTicket({
-        empresa: { nome: s.nome, codigo: s.codigo }, para: { nome: '', email, whatsapp },
+        empresa: { nome: s.nome, codigo: s.codigo }, para: { nome: '', email, ...(whatsapp ? { whatsapp } : {}) },
         assunto: 'Fornecedores em aberto — ' + rotuloMes,
         mensagem: 'Na conferência dos fornecedores de ' + rotuloMes + ', estes saldos ficaram em aberto. Pode nos dizer o que aconteceu com cada um?',
         criadoPor: { nome: op?.nome || '' },
@@ -208,7 +209,7 @@ export function useFornecedores() {
         // os lançamentos de cada um (a nota em aberto com a data e o número; o pagamento solto com a data e o banco)
         itens: paraEnviar.map(l => ({ id: l.codigo, titulo: l.nome, valor: reais(l.saldo), opcoes: md.OPCOES_PADRAO, linhas: cl.linhasParaOTicket(l.razao, l.saldo, mes, l.perguntar) })),
       });
-      aviso({ tom: 'ok', titulo: 'Ticket ' + md.rotuloDoNumero(t.numero) + ' mandado', texto: email + ' e WhatsApp ' + whatsapp + ' · acompanhe em Mandei' });
+      aviso({ tom: 'ok', titulo: 'Ticket ' + md.rotuloDoNumero(t.numero) + ' mandado', texto: [email, whatsapp && 'WhatsApp ' + whatsapp].filter(Boolean).join(' e ') + ' · acompanhe em Mandei' });
     },
   };
 }

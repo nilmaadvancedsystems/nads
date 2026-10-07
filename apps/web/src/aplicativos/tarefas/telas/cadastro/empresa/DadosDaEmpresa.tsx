@@ -93,7 +93,7 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
         <div className="cad-regra-txt">
           <span className="cad-campo-rotulo">E-mail e WhatsApp</span>
           <span className="hint">
-            Para onde o Mandei manda as perguntas de Clientes e Fornecedores (o link chega pelos dois). O WhatsApp com o DDD.
+            Para onde o Mandei manda as perguntas de Clientes e Fornecedores: um dos dois basta (com os dois, o link chega pelos dois). O WhatsApp com o DDD.
             {erroDoContato && <> <b>{erroDoContato}</b></>}
           </span>
         </div>
