@@ -83,6 +83,9 @@ export function useEmprestimos() {
     const banco = bancos.find(b => b.id === x.banco) || null;
     // os contratos dentro do razão, até o fim do período (o número vem do histórico)
     const c = t.contratosDoRazao(x.r, meses[meses.length - 1]);
+    // o banco já gravado no Cadastro para os contratos deste razão é permanente (Vitor, 07/10/2026: "uma vez colocada, só o
+    // adm pode tirar"): para quem não é administrador, o Trocar trava
+    const gravado = !!x.banco && t.bancoPelosContratos(t.contratosDoRazao(x.r).contratos, cadastrados) === x.banco;
     const emAberto = c.contratos.filter(k => Math.abs(k.saldo) >= 0.01 && !k.completadoSemNumero);
     return {
       id: x.id, arquivo: x.arquivo,
@@ -111,6 +114,8 @@ export function useEmprestimos() {
       ],
       // a marca do banco: o logo dele na linha (Vitor, 07/10/2026)
       banco: banco ? { id: banco.id, rotulo: banco.nome + (banco.detalhe ? ' · ' + banco.detalhe : ''), marca: banco.marca || banco.id } : null,
+      /** o banco está gravado no Cadastro e quem está trabalhando não é administrador: não dá para trocar */
+      travado: gravado && !op?.admin,
       meses: doPeriodo.map(m => ({
         mes: m.mes, rotulo: t.rotuloNumericoCompetencia(m.mes), qtd: m.lancamentos.length,
         saldo: t.valorComLado(m.saldoFinal), devedor: m.saldoFinal < -0.005,
@@ -139,6 +144,8 @@ export function useEmprestimos() {
     tirar: (id: number) => setRazoes(l => l.filter(x => x.id !== id)),
     escolherBanco: (id: number, banco: string) => {
       const x = razoes.find(z => z.id === id);
+      // gravado no Cadastro: só o administrador troca
+      if (x?.banco && !op?.admin && t.bancoPelosContratos(t.contratosDoRazao(x.r).contratos, cadastrados) === x.banco) return;
       if (x) guardar(x.r, banco);
       setRazoes(l => l.map(z => (z.id === id ? { ...z, banco } : z)));
     },

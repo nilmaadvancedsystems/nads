@@ -24,10 +24,12 @@ function Emprestimo({ e, vm }: { e: VmEmprestimos['emprestimos'][number]; vm: Vm
         <div className="imp-grupos">
           <div className="imp-grupo">
             <span className="imp-rotulo">Banco</span>
-            <MenuSuspenso rotulo={e.banco ? 'Trocar' : 'Escolher'} direita largura={320} className={e.banco ? 'btn btn-outline' : 'btn btn-primary'}
+            {e.travado ? (
+              <span className="imp-periodo-info" title="Gravado no Cadastro da empresa: só um administrador troca o banco deste empréstimo"><Icone nome="lock" />Gravado</span>
+            ) : <MenuSuspenso rotulo={e.banco ? 'Trocar' : 'Escolher'} direita largura={320} className={e.banco ? 'btn btn-outline' : 'btn btn-primary'}
               dica="O banco deste empréstimo (os bancos do Cadastro)"
               itens={vm.bancos.length ? vm.bancos.map(b => ({ rotulo: b.rotulo, icone: 'landmark' as const, marcado: e.banco?.id === b.id, onClick: () => vm.escolherBanco(e.id, b.id) }))
-                : [{ rotulo: 'Nenhum banco no Cadastro da empresa', desabilitado: true, onClick: () => undefined }]} />
+                : [{ rotulo: 'Nenhum banco no Cadastro da empresa', desabilitado: true, onClick: () => undefined }]} />}
             <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" onClick={() => vm.tirar(e.id)} title={'Importado: ' + e.arquivo + '. Clique para tirar.'} aria-label="Tirar o razão">
               <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
             </button>
@@ -148,12 +150,12 @@ export function Emprestimos() {
         <div className="card">
           <div className="card-head"><h3>Empréstimos da empresa em {vm.periodo}</h3><span className="hint">do Cadastro: o banco e os meses de cada contrato, guardados quando o razão foi importado</span></div>
           <div className="table-wrap">
-            <table className="table-compact">
+            <table className="table-compact emp-tabela">
               <thead><tr><th>Contrato</th><th>Banco</th><th>Desde</th><th>Até</th><th>Razão</th></tr></thead>
               <tbody>
                 {vm.noPeriodo.map(e => (
                   <tr key={e.numero}>
-                    <td className="num"><b>{e.numero}</b></td>
+                    <td><b>{e.numero}</b></td>
                     <td><span className="emp-banco"><span className="imp-ico imp-logo"><LogoBanco banco={e.marca} cor /></span>{e.banco}</span></td>
                     <td>{e.desde}</td>
                     <td>{e.ate || 'em aberto'}</td>
