@@ -216,10 +216,10 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                   <td colSpan={4}>
                     <div className="table-wrap">
                       <table className="table-compact">
-                        <thead><tr><th>Data</th><th>Descrição</th><th className="num">Valor</th><th>Status</th></tr></thead>
+                        <thead><tr><th>Data</th><th>Nota fiscal</th><th>Descrição</th><th className="num">Valor</th><th>Status</th></tr></thead>
                         <tbody>
                           {l.razao.itens.map((i, k) => (
-                            <tr key={k}><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td className="wrap">{i.descricao}</td><td className={'num' + (i.abate ? ' ext-neg' : '')}>{i.valor}</td>
+                            <tr key={k}><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td>{i.nf}</td><td className="wrap">{i.descricao}</td><td className={'num' + (i.abate ? ' ext-neg' : '')}>{i.valor}</td>
                               <td><span className={'badge ' + (i.status === 'aberto' ? 'badge-warn' : 'badge-neutral')}>{i.rotulo}</span></td></tr>
                           ))}
                         </tbody>

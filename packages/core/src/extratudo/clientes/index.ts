@@ -194,7 +194,8 @@ function razaoGuardado(d: unknown): RazaoDaMarca | null {
     duplicadas: Array.isArray(o.duplicadas) ? o.duplicadas.filter((x): x is string => typeof x === 'string') : [],
     itens: Array.isArray(o.itens) ? (o.itens as Record<string, unknown>[]).filter(i => i && typeof i.descricao === 'string' && typeof i.valor === 'number')
       .map(i => ({
-        data: typeof i.data === 'string' ? i.data : '', descricao: i.descricao as string, valor: i.valor as number,
+        data: typeof i.data === 'string' ? i.data : '', nf: typeof i.nf === 'string' ? i.nf : '', descricao: i.descricao as string, valor: i.valor as number,
+        ...(i.interno === true ? { interno: true } : {}),
         status: i.status === 'aberto' || i.status === 'pagamento' || i.status === 'devolucao' ? i.status : (i.valor as number) > 0 ? 'aberto' as const : 'pagamento' as const,
       })) : [],
   };
