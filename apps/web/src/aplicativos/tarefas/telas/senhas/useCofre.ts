@@ -186,12 +186,12 @@ export function useCofre() {
       if (!d || !aberta || aberta.dono !== id) return null;
       return c.decifrar<c.SegredosDaEmpresa>(aberta.chave, d);
     },
-    async salvar(empresa: string, codigo: number | null, segredos: c.SegredosDaEmpresa) {
+    async salvar(empresa: string, codigo: number | null, segredos: c.SegredosDaEmpresa, avisar = true) {
       if (!aberta || aberta.dono !== id || !config || !eu) return;
       if (modoDesenvolvedor()) { toast(AVISO_DEV); return; }
       const cifrado = await c.cifrar(aberta.chave, segredos);
       await repo.salvar(formatos.slug(empresa), { empresa, codigo, versao: config.versao, ...cifrado, ...c.metaDosSegredos(segredos), atualizadoEm: agora(), atualizadoPor: eu.nome });
-      toast('Guardado no cofre.');
+      if (avisar) toast('Guardado no cofre.');
     },
   };
 }

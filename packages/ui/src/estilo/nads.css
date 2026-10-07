@@ -3207,3 +3207,58 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .medalha-bronze{--medalha:#b0703a;--medalha-claro:#e3a46c;--medalha-borda:#8a5226;color:#c98a4f;}
 .medalha-prata{--medalha:#9fa6ad;--medalha-claro:#eef1f3;--medalha-borda:#7d858c;color:var(--ink-muted);}
 .medalha-ouro{--medalha:#d4a826;--medalha-claro:#fbe38a;--medalha-borda:#a8821a;color:#c99a1c;}
+/* Senhas › o certificado A1 (07/10/2026: "aumente isso… importação bonitinha e animada") */
+.cofre-janela{width:min(1100px,96vw);height:min(720px,92vh);}
+.cert{display:flex;flex-direction:column;gap:18px;}
+.cert-soltar{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:260px;padding:32px;
+  border:2px dashed var(--border-strong);border-radius:14px;background:var(--surface);color:var(--ink);cursor:pointer;font:inherit;font-size:15px;
+  transition:border-color .2s ease,background .2s ease,transform .2s ease;}
+.cert-soltar:hover{border-color:var(--accent);background:var(--hover-bg);}
+.cert-soltar.sobre{border-color:var(--accent);background:var(--accent-soft);transform:scale(1.015);}
+.cert-soltar-icone{display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:50%;background:var(--hover-bg);color:var(--accent);}
+.cert-soltar-icone svg{width:28px;height:28px;}
+.cert-soltar.sobre .cert-soltar-icone{animation:certPulsa 1s ease-in-out infinite;}
+@keyframes certPulsa{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+.cert-cartao{position:relative;overflow:hidden;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:20px;padding:24px 26px;border-radius:16px;
+  border:1px solid var(--border-strong);background:linear-gradient(135deg,var(--surface),var(--hover-bg));animation:certEntra .45s cubic-bezier(.2,.8,.2,1) both;}
+.cert-cartao.lido{border-color:var(--success);}
+.cert-cartao.lido.vence{border-color:var(--warn);}
+.cert-cartao.lido.vencido{border-color:var(--danger);}
+@keyframes certEntra{from{opacity:0;transform:translateY(10px) scale(.98);}to{opacity:1;transform:none;}}
+.cert-cartao-chip{display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:12px;background:var(--accent-soft);color:var(--accent);}
+.cert-cartao.lido .cert-cartao-chip{background:var(--success-soft);color:var(--success);animation:certOk .5s cubic-bezier(.3,1.6,.5,1) both;}
+@keyframes certOk{from{transform:scale(.6);}to{transform:scale(1);}}
+.cert-cartao-chip svg{width:24px;height:24px;}
+.cert-cartao-corpo{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.cert-cartao-tipo{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-muted);}
+.cert-cartao-nome{font-size:19px;line-height:1.25;}
+.cert-cartao-doc{font-size:14px;color:var(--ink-muted);}
+.cert-cartao-validade{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+.cert-cartao-validade b{font-size:18px;}
+.cert-cartao-brilho{position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.08) 50%,transparent 70%);animation:certBrilho 1.1s linear infinite;}
+@keyframes certBrilho{from{transform:translateX(-100%);}to{transform:translateX(100%);}}
+.cert-campos{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.cert-campo{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--ink-muted);}
+.cert-campo .pessoal-select,.cert-campo .cofre-senha input{width:100%;height:38px;font-size:15px;}
+.cert-campo .cofre-senha{justify-content:flex-start;flex-wrap:nowrap;}
+.cert-erro{display:inline-flex;align-items:center;gap:6px;color:var(--danger);font-size:12.5px;}
+.cert-erro svg{width:14px;height:14px;}
+.cert-acoes{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.cert-arquivo{display:flex;align-items:center;gap:6px;margin:0;font-size:12px;}
+.cert-arquivo svg{width:13px;height:13px;}
+@media (prefers-reduced-motion:reduce){.cert-cartao,.cert-cartao.lido .cert-cartao-chip,.cert-soltar.sobre .cert-soltar-icone,.cert-cartao-brilho{animation:none;}}
+@media (max-width:760px){.cert-campos{grid-template-columns:1fr;}.cert-cartao{grid-template-columns:auto 1fr;}.cert-cartao-validade{grid-column:1/-1;align-items:flex-start;}}
+
+/* Senhas › Importar certificados (07/10/2026: vários .pfx, a empresa pelo CNPJ) */
+.imp-cert{width:min(980px,96vw);height:min(760px,92vh);display:flex;flex-direction:column;}
+.imp-cert-corpo{flex:1;min-height:0;overflow:auto;padding:16px 20px;display:flex;flex-direction:column;gap:14px;}
+.cert-soltar.compacto{min-height:96px;padding:16px;flex-direction:row;gap:14px;}
+.cert-soltar.compacto .cert-soltar-icone{width:44px;height:44px;}
+.imp-cert-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;}
+.imp-cert-item{grid-template-columns:auto 1fr minmax(260px,auto);padding:18px 20px;}
+.imp-cert-acoes{display:flex;gap:6px;margin-top:6px;}
+.imp-cert-acoes .btn{height:28px;font-size:12px;}
+.imp-cert-senha{display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
+.imp-cert-busca{display:flex;flex-direction:column;gap:2px;padding:6px;max-height:340px;overflow:auto;}
+.imp-cert-busca input{margin-bottom:6px;}
+@media (max-width:760px){.imp-cert-item{grid-template-columns:auto 1fr;}.imp-cert-senha{grid-column:1/-1;align-items:flex-start;}}
