@@ -156,9 +156,9 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                   {l.nome}{l.doMesAnterior && <> <span className="badge badge-neutral" title="Conferido no mês anterior: revise">do mês anterior</span></>}
                   {/* o razão que não bate com o balancete (as notas ficam na relação embaixo; Vitor, 07/10/2026) */}
                   {l.razao?.naoBate && <span className="hint ext-neg" style={{ display: 'block', marginTop: 2 }}>O razão fecha em {l.razao.naoBate}: confira se é desta conta</span>}
-                  {/* o conferido mostra o que vai para o cliente (o que foi adicionado no "+" de cada linha da relação; Vitor, 07/10/2026) */}
+                  {/* o conferido mostra o que vai para o cliente (o que foi adicionado no "+" de cada linha da relação, em texto: "Vai para o cliente: NF 9971 · NF 10111"; Vitor, 07/10/2026) */}
                   {l.situacao === 'conferido' && (l.perguntar
-                    ? <span style={{ display: 'block', marginTop: 6 }}><span className="msg-balao" title="O que vai para o cliente responder no Mandei"><Icone nome="caixaEntrada" />{l.perguntar}</span></span>
+                    ? <span style={{ display: 'block', marginTop: 4 }}><span className="hint">Vai para o cliente: </span>{l.perguntar}</span>
                     : <span className="hint" style={{ display: 'block', marginTop: 4 }}>Use o + nas linhas para perguntar ao cliente.</span>)}
                 </td>
                 <td>

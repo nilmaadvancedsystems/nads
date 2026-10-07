@@ -156,7 +156,7 @@ function ListaDeFornecedores({ vm }: { vm: VM }) {
                   {l.razao?.naoBate && <span className="hint ext-neg" style={{ display: 'block', marginTop: 2 }}>O razão fecha em {l.razao.naoBate}: confira se é desta conta</span>}
                   {/* o conferido mostra o que vai para o fornecedor (o que foi adicionado no "+" de cada linha da relação; Vitor, 07/10/2026) */}
                   {l.situacao === 'conferido' && (l.perguntar
-                    ? <span style={{ display: 'block', marginTop: 6 }}><span className="msg-balao" title="O que vai para o fornecedor responder no Mandei"><Icone nome="caixaEntrada" />{l.perguntar}</span></span>
+                    ? <span style={{ display: 'block', marginTop: 4 }}><span className="hint">Vai para o fornecedor: </span>{l.perguntar}</span>
                     : <span className="hint" style={{ display: 'block', marginTop: 4 }}>Use o + nas linhas para perguntar ao fornecedor.</span>)}
                 </td>
                 <td>
