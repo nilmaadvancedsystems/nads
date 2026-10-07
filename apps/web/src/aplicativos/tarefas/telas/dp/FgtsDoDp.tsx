@@ -1,6 +1,6 @@
 // DP › FGTS Digital (07/10/2026): o robô da nuvem emite a guia mensal de cada cliente no portal do FGTS Digital, com o
 // certificado do escritório (procuração no SPE). Em cima, o robô (ligado com o certificado, ou por que está desligado);
-// a competência, os filtros e "Emitir as que faltam"; na lista, cada cliente com FGTS no mês: a situação da guia,
+// a competência, os filtros e "Emitir as que faltam"; na lista, cada cliente com folha no mês: a situação da guia,
 // Emitir / Ensaio e, pronta, Baixar o PDF. Clicar na situação abre os passos do robô (as telas por onde passou).
 import { Esqueleto, Icone, Segmentado, useCarregando } from '@nads/ui';
 import { useEffect, useState } from 'react';
@@ -110,7 +110,7 @@ export function FgtsDoDp() {
             </tbody>
           </table>
         </div>
-      ) : <div className="card gh-blank"><Icone nome="search" /><h4>Nenhuma empresa aqui</h4><p>Nenhum cliente do DP com FGTS neste filtro.</p></div>}
+      ) : <div className="card gh-blank"><Icone nome="search" /><h4>Nenhuma empresa aqui</h4><p>Nenhum cliente do DP com folha neste filtro.</p></div>}
 
       {aberto && pedidoAberto && (
         <JanelaLateral rotulo={aberto.nome} topicos={[{ id: 'passos', rotulo: 'Passos do robô', icone: 'list' }]} topico="passos" mudar={() => undefined} fechar={vm.fechar} classe="fgts-janela" resumo={(
