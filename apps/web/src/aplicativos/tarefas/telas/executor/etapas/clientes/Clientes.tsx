@@ -309,6 +309,12 @@ function Envio({ vm }: { vm: VM }) {
       <div className="card" style={{ marginTop: 16 }}>
         <div className="card-head"><h3>Mandar pelo Mandei</h3></div>
         <p className="hint" style={{ padding: '0 16px' }}>O cliente recebe um link (vale 3 dias úteis) para responder cada um e anexar os comprovantes; acompanhe em Mandei.</p>
+        {vm.semRazao.length > 0 && (
+          <div className="alerta-linha" style={{ padding: '0 16px 12px' }}>
+            <Alerta titulo={vm.semRazao.length === 1 ? '1 sem o razão importado' : vm.semRazao.length + ' sem o razão importado'}
+              texto={'O cliente verá só o saldo do mês, sem a nota, a data e o banco: importe o razão em Clientes (' + vm.semRazao.slice(0, 3).join(', ') + (vm.semRazao.length > 3 ? '…' : '') + ').'} />
+          </div>
+        )}
         <div className="btn-row" style={{ padding: '0 16px 16px', alignItems: 'flex-end' }}>
           <div className="field" style={{ flex: 1, margin: 0 }}>
             <label htmlFor="fEmailMandei">E-mail do cliente</label>

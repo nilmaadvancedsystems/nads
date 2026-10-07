@@ -3501,6 +3501,10 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .mandei-lanc .mandei-data{font-weight:600;font-variant-numeric:tabular-nums;background:var(--surface-2);border-radius:6px;padding:2px 8px;font-size:12px;}
 .mandei-lanc .mandei-desc{min-width:0;}
 .mandei-lanc .mandei-desc small{display:block;color:var(--ink-muted);font-size:12px;}
+.mandei-lanc .mandei-desc b{display:block;font-size:14px;}
+.mandei-tipo{display:inline-block;font-size:11px;font-weight:600;border-radius:999px;padding:1px 8px;margin-bottom:2px;background:var(--surface-2);color:var(--ink-muted);border:1px solid var(--border);}
+.mandei-tipo.nota{background:var(--accent-soft);color:var(--accent-ink);border-color:var(--accent-border);}
+.mandei-tipo.pagamento{background:var(--success-soft);color:var(--success-ink);border-color:transparent;}
 .mandei-lanc .mandei-valor{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;}
 .mandei-msg{display:flex;gap:10px;align-items:flex-start;}
 .mandei-msg .brand-mark{width:32px;height:32px;flex:none;border-radius:50%;background:var(--surface-2);border:1px solid var(--border);padding:6px;}

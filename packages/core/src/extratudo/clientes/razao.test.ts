@@ -75,7 +75,7 @@ describe('o pagamento solto', () => {
     ];
     const r = conferirRazaoDoCliente(lerRazao(linhas), '2026-08');
     expect(r.saldo).toBe(60);
-    expect(razaoDaMarca('x.xls', r).itens.map(i => [i.status, i.valor])).toEqual([['aberto', 100], ['pagamento', -40]]);
+    expect(razaoDaMarca('x.xls', r).itens.map(i => [i.status, i.valor, i.conta || ''])).toEqual([['aberto', 100, ''], ['pagamento', -40, 'Banco']]);
   });
 });
 

@@ -14,8 +14,6 @@ import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '..
 export type TelaClientes = 'arquivos' | 'credor' | 'clientes' | 'envio';
 export type FiltroClientes = 'todos' | 'pendente' | 'ok' | 'conferido';
 
-const dataBR = (d: string) => (d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '');
-const fimDoMesBR = (m: string) => { const [a, mm] = m.split('-').map(Number); return String(new Date(a, mm, 0).getDate()).padStart(2, '0') + '/' + String(mm).padStart(2, '0') + '/' + a; };
 const mesAntes = (m: string) => { const [a, mm] = m.split('-').map(Number); return mm === 1 ? (a - 1) + '-12' : a + '-' + String(mm - 1).padStart(2, '0'); };
 
 export function useClientes() {
@@ -176,6 +174,8 @@ export function useClientes() {
     mudarMensagem: (t: string) => { setMensagem(t); gravarMensagem(t); },
     // o Mandei: um ticket com os conferidos (cada um, um item com a nossa pergunta), o link vai por e-mail
     emailDoCliente, setEmailDoCliente,
+    /** os conferidos sem o razão: no ticket, o cliente vê só o saldo do mês (sem a nota, a data e o banco) */
+    semRazao: conferidos.filter(l => !l.razao?.itens.some(i => !i.interno)).map(l => l.nome),
     mandarPeloMandei: () => {
       const email = emailDoCliente.trim();
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { aviso({ tom: 'erro', titulo: 'Mandei', texto: 'Informe o e-mail do cliente.' }); return; }
@@ -189,9 +189,7 @@ export function useClientes() {
         // duplicidade, que é só nossa) ou, sem o razão, o saldo do fim do mês
         itens: conferidos.map(l => ({
           id: l.codigo, titulo: l.nome, valor: reais(l.saldo), ...(l.obs ? { detalhe: l.obs } : {}), opcoes: md.OPCOES_PADRAO,
-          linhas: l.razao?.itens.some(i => !i.interno)
-            ? l.razao.itens.filter(i => !i.interno).map(i => ({ data: dataBR(i.data), nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor) }))
-            : [{ data: fimDoMesBR(mes), nf: '—', descricao: 'Saldo em aberto em ' + rotuloMes, valor: reais(l.saldo) }],
+          linhas: cl.linhasParaOTicket(l.razao, l.saldo, mes),
         })),
       });
       aviso({ tom: 'ok', titulo: 'Ticket ' + md.rotuloDoNumero(t.numero) + ' mandado', texto: email + ' · acompanhe em Mandei' });

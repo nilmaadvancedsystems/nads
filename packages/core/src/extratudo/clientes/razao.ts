@@ -22,7 +22,7 @@ export interface RazaoConferido {
   devolucoes: DevolucaoDoCliente[];
   duplicados: RecebimentoDuplicado[];
   /** recebimentos que citam uma nota que não está no razão (vendida antes do começo dele) ou nenhuma */
-  semNota: { data: string; valor: number; historico: string }[];
+  semNota: { data: string; valor: number; historico: string; conta: string }[];
   /** o saldo no fim do mês pelo que foi achado (positivo = devedor) */
   saldo: number;
   /** o saldo da coluna Saldo do razão no fim do mês (positivo = devedor); null = sem lançamento até lá */
@@ -114,7 +114,8 @@ export function conferirRazaoDoCliente(razao: RazaoDaConta, mes: string, lado: L
       vistos.set(chave, { conta });
       saldo -= valor;
       if (nf && notas.has(nf)) nota(nf, l.data).recebido = centavos(nota(nf, l.data).recebido + valor);
-      else semNota.push({ data: l.data, valor, historico: l.historico });
+      // a conta do lançamento (o banco ou o caixa por onde entrou): o cliente precisa dela para achar o pagamento
+      else semNota.push({ data: l.data, valor, historico: l.historico, conta: (l.nomeContrapartida || l.contrapartida || '').trim() });
       continue;
     }
     saldo -= valor;
@@ -156,6 +157,8 @@ export interface ItemDoRazao {
   descricao: string; valor: number; status: StatusDoItem;
   /** só para o escritório (a duplicidade de recebimento): não vai para o cliente */
   interno?: boolean;
+  /** a conta do lançamento solto (o banco ou o caixa por onde o pagamento passou) — Vitor, 07/10/2026 */
+  conta?: string;
 }
 export type StatusDoItem = 'aberto' | 'pagamento' | 'devolucao';
 export const ROTULO_DO_STATUS: Record<StatusDoItem, string> = { aberto: 'Em aberto', pagamento: 'Apenas pagamento', devolucao: 'Devolução' };
@@ -165,13 +168,13 @@ const brl = reais;
 
 /** A relação em ordem de data: as notas em aberto, os recebimentos soltos (sem nota), as devoluções e as duplicidades. */
 function itensDoRazao(r: RazaoConferido, lado: LadoDaConta): ItemDoRazao[] {
-  const item = (data: string, nf: string, descricao: string, valor: number, status: StatusDoItem, interno = false): ItemDoRazao =>
-    ({ data, nf, descricao, valor, status, ...(interno ? { interno } : {}) });
+  const item = (data: string, nf: string, descricao: string, valor: number, status: StatusDoItem, interno = false, conta = ''): ItemDoRazao =>
+    ({ data, nf, descricao, valor, status, ...(interno ? { interno } : {}), ...(conta ? { conta } : {}) });
   const [vendido, recebido, recebida, recebimento, venda] = lado === 'clientes' ? ['vendido', 'recebido', 'Recebida', 'Recebimento', 'Venda a prazo'] : ['comprado', 'pago', 'Paga', 'Pagamento', 'Compra a prazo'];
   return [
     ...r.emAberto.map(n => item(n.data, n.nf, venda + (n.recebido ? ' (' + vendido + ' ' + brl(n.vendido) + ', ' + recebido + ' ' + brl(n.recebido) + ')' : ''), n.aberto, 'aberto')),
     ...r.aMais.map(n => item(n.data, n.nf, recebida + ' a mais', n.aberto, 'pagamento')),
-    ...r.semNota.map(x => item(x.data, '', x.historico, centavos(-x.valor), 'pagamento')),
+    ...r.semNota.map(x => item(x.data, '', x.historico, centavos(-x.valor), 'pagamento', false, x.conta)),
     ...r.devolucoes.map(d => item(d.data, d.nf, 'Devolução' + (d.notas.length ? ' (cita NF ' + d.notas.join(', ') + ')' : ''), centavos(-d.valor), 'devolucao')),
     ...r.duplicados.map(d => item(d.data, d.nf, recebimento + ' em duplicidade: ' + d.contas.join(' e '), centavos(d.valor), 'pagamento', true)),
   ].sort((a, b) => a.data.localeCompare(b.data));
@@ -191,4 +194,28 @@ export function razaoDaMarca(arquivo: string, r: RazaoConferido, lado: LadoDaCon
     duplicadas: [...new Set(r.duplicados.map(d => d.nf).filter(Boolean))],
     itens: itensDoRazao(r, lado),
   };
+}
+
+/** Uma linha para o formulário do cliente (o Mandei): data, nota fiscal, o que é, o valor, o tipo e a conta. */
+export interface LinhaParaOTicket { data: string; nf: string; descricao: string; valor: string; tipo: 'nota' | 'pagamento' | 'devolucao' | 'saldo'; conta?: string }
+
+const dataDoRazaoBR = (d: string) => (d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '');
+
+/**
+ * Os lançamentos que o cliente vê no ticket (Vitor, 07/10/2026): os do razão importado (sem a duplicidade, que é só do
+ * escritório), cada um com a data, a nota (a nota em aberto) ou a conta (o pagamento solto: o banco); sem o razão, o
+ * saldo do fim do mês ('aaaa-mm').
+ */
+export function linhasParaOTicket(razao: RazaoDaMarca | undefined, saldo: number, mes: string): LinhaParaOTicket[] {
+  const doRazao = (razao?.itens || []).filter(i => !i.interno);
+  if (doRazao.length) {
+    return doRazao.map(i => ({
+      data: dataDoRazaoBR(i.data), nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor),
+      tipo: i.status === 'aberto' ? 'nota' as const : i.status === 'devolucao' ? 'devolucao' as const : 'pagamento' as const,
+      ...(i.conta ? { conta: i.conta } : {}),
+    }));
+  }
+  const [a, m] = mes.split('-').map(Number);
+  const fim = String(new Date(a, m, 0).getDate()).padStart(2, '0') + '/' + String(m).padStart(2, '0') + '/' + a;
+  return [{ data: fim, nf: '—', descricao: 'Saldo em aberto em ' + String(m).padStart(2, '0') + '/' + a, valor: reais(saldo), tipo: 'saldo' }];
 }

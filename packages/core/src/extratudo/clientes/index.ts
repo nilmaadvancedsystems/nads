@@ -196,6 +196,7 @@ function razaoGuardado(d: unknown): RazaoDaMarca | null {
       .map(i => ({
         data: typeof i.data === 'string' ? i.data : '', nf: typeof i.nf === 'string' ? i.nf : '', descricao: i.descricao as string, valor: i.valor as number,
         ...(i.interno === true ? { interno: true } : {}),
+        ...(typeof i.conta === 'string' && i.conta ? { conta: i.conta } : {}),
         status: i.status === 'aberto' || i.status === 'pagamento' || i.status === 'devolucao' ? i.status : (i.valor as number) > 0 ? 'aberto' as const : 'pagamento' as const,
       })) : [],
   };

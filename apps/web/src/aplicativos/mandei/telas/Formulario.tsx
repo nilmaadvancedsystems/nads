@@ -7,6 +7,20 @@ import type { ReactNode } from 'react';
 import { useFormulario } from './useFormulario';
 
 type VM = ReturnType<typeof useFormulario>;
+type Linhas = VM['itens'][number]['linhas'];
+
+const TIPO = { nota: 'Nota em aberto', pagamento: 'Pagamento sem nota', devolucao: 'Devolução', saldo: 'Saldo do mês' } as const;
+
+/** "2 notas em aberto · 1 pagamento sem nota" (o resumo no alto do cliente). */
+function resumoDasLinhas(linhas: Linhas): string {
+  const n = (t: string) => (linhas || []).filter(l => l.tipo === t).length;
+  const notas = n('nota'), pagamentos = n('pagamento'), devolucoes = n('devolucao');
+  return [
+    notas ? notas + (notas === 1 ? ' nota em aberto' : ' notas em aberto') : '',
+    pagamentos ? pagamentos + (pagamentos === 1 ? ' pagamento sem nota' : ' pagamentos sem nota') : '',
+    devolucoes ? devolucoes + (devolucoes === 1 ? ' devolução' : ' devoluções') : '',
+  ].filter(Boolean).join(' · ');
+}
 
 /** O ícone de cada resposta pronta (pelo começo do texto); as outras, o check. */
 function iconeDaOpcao(o: string): NomeIcone {
@@ -99,7 +113,7 @@ function Passo({ vm }: { vm: VM }) {
           <span className="mandei-avatar" aria-hidden="true">{it.iniciais}</span>
           <div style={{ minWidth: 0 }}>
             <h2>{it.titulo}</h2>
-            <span className="mandei-de">{it.respondido ? 'Respondido' : 'Aguardando a sua resposta'}</span>
+            <span className="mandei-de">{resumoDasLinhas(it.linhas) || (it.respondido ? 'Respondido' : 'Aguardando a sua resposta')}</span>
           </div>
           {it.valor && <div className="mandei-saldo"><span>Em aberto</span><b>{it.valor}</b></div>}
         </div>
@@ -109,9 +123,15 @@ function Passo({ vm }: { vm: VM }) {
               <div className="mandei-rotulo">Lançamentos</div>
               <div className="mandei-lancs">
                 {it.linhas.map((l, k) => (
+                  // o que é cada lançamento (Vitor, 07/10/2026): a nota em aberto com a data e o número; o pagamento solto
+                  // com a data e o banco (a conta por onde passou)
                   <div key={k} className="mandei-lanc">
                     <span className="mandei-data">{l.data}</span>
-                    <span className="mandei-desc">{l.descricao}<small>{l.nf && l.nf !== '—' ? 'Nota fiscal ' + l.nf : 'Sem nota fiscal'}</small></span>
+                    <span className="mandei-desc">
+                      <span className={'mandei-tipo ' + (l.tipo || 'saldo')}>{TIPO[l.tipo || 'saldo']}</span>
+                      <b>{l.nf && l.nf !== '—' ? 'Nota fiscal ' + l.nf : l.conta ? l.conta : l.descricao}</b>
+                      <small>{l.nf && l.nf !== '—' ? l.descricao : l.conta ? l.descricao : ''}</small>
+                    </span>
                     <span className="mandei-valor">{l.valor}</span>
                   </div>
                 ))}

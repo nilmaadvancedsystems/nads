@@ -4,8 +4,12 @@
 // Cada ticket tem um número (#0001) de controle interno. Os textos e as seleções ficam no banco; os arquivos vão para o
 // Drive (pelo robô, na pasta do Claudio Secretário). TypeScript puro: quem chama guarda e manda o e-mail.
 
-/** Uma linha do lançamento do item (Vitor, 07/10/2026: "Data, nota fiscal, descrição, valor"), já no formato da tela. */
-export interface LinhaDoItem { data: string; nf: string; descricao: string; valor: string }
+/**
+ * Uma linha do lançamento do item, já no formato da tela (Vitor, 07/10/2026: "Data, nota fiscal, descrição, valor";
+ * "se foi uma nota em aberto, qual a data e o número da nota? Se for um pagamento solto, qual a data, o banco?").
+ * tipo: a nota em aberto, o pagamento sem nota (com a conta: o banco), a devolução ou só o saldo (sem o razão).
+ */
+export interface LinhaDoItem { data: string; nf: string; descricao: string; valor: string; tipo?: 'nota' | 'pagamento' | 'devolucao' | 'saldo'; conta?: string }
 
 /** Um item do formulário: o que perguntamos (ex.: um cliente com saldo em aberto, os lançamentos e a nossa pergunta). */
 export interface ItemDoTicket { id: string; titulo: string; valor?: string; detalhe?: string; linhas?: LinhaDoItem[]; opcoes: string[] }
