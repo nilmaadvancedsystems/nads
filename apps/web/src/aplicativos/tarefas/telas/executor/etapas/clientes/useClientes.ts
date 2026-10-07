@@ -1,6 +1,6 @@
-// ViewModel da etapa Clientes da Tarefa (Vitor, 06/10/2026). Quatro telas, nas etapas de cima (o Segmentado) com o
-// Próximo: Arquivos (só o balancete dinâmico: na 292, os 162 clientes têm o mesmo saldo do balancete; Vitor, 06/10/2026), Saldo credor (só quando tem: corrigir e reimportar o
-// dinâmico), Clientes (todas as contas de cliente com o selo Saldo ↔ Conferido, o Ok do sistema na conta zerada, a observação do conferido e o razão da conta no fim da linha) e
+// ViewModel da etapa Clientes da Tarefa (Vitor, 06/10/2026). Três telas, nas etapas de cima (o Segmentado) com o
+// Próximo: Arquivos (só o balancete dinâmico: na 292, os 162 clientes têm o mesmo saldo do balancete; Vitor, 06/10/2026; com credor, o
+// "Corrigi, irei reimportar" no lugar do Próximo), Clientes (todas as contas de cliente com o selo Saldo ↔ Conferido, o Ok do sistema na conta zerada, a observação do conferido e o razão da conta no fim da linha) e
 // Envio (a relação dos conferidos para o cliente: a planilha, o e-mail e o WhatsApp, com a mensagem configurável).
 // As marcas ficam guardadas por mês; os conferidos do mês anterior aparecem de novo para revisar.
 import { clientes as cl, conferencia as c, demo, formatos, mandei as md, tarefas } from '@nads/core';
@@ -11,7 +11,7 @@ import { criarTicket } from '../../../../dados/mandei';
 import { useOperador } from '../../../../casca/operador';
 import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 
-export type TelaClientes = 'arquivos' | 'credor' | 'clientes' | 'envio';
+export type TelaClientes = 'arquivos' | 'clientes' | 'envio';
 export type FiltroClientes = 'todos' | 'pendente' | 'ok' | 'conferido';
 
 const mesAntes = (m: string) => { const [a, mm] = m.split('-').map(Number); return mm === 1 ? (a - 1) + '-12' : a + '-' + String(mm - 1).padStart(2, '0'); };
@@ -98,9 +98,11 @@ export function useClientes() {
   }
 
   const arquivosProntos = !!dinamico;
-  const telas: TelaClientes[] = ['arquivos', ...(arquivosProntos && credores.length ? ['credor' as const] : []), 'clientes', 'envio'];
+  // sem a etapa Saldo credor (Vitor, 07/10/2026: "remove esse saldo credor e deixe só arquivos"): o credor fica na grade dos
+  // Arquivos e, no lugar do Próximo travado, o "Corrigi, irei reimportar" (tira o dinâmico para importar o corrigido)
+  const telas: TelaClientes[] = ['arquivos', 'clientes', 'envio'];
   const i = telas.indexOf(tela);
-  const podeSeguir = tela === 'arquivos' ? arquivosProntos && contas.length > 0 : tela === 'credor' ? credores.length === 0 : tela === 'clientes';
+  const podeSeguir = tela === 'arquivos' ? arquivosProntos && contas.length > 0 && !credores.length : tela === 'clientes';
   // na Tarefa: os arquivos e nenhum credor (a pessoa pode dar o check normal depois; os conferidos passam para o mês seguinte)
   const faltam = !arquivosProntos ? ['Importar o balancete dinâmico'] : credores.length ? ['Corrigir ' + credores.length + (credores.length === 1 ? ' cliente' : ' clientes') + ' com saldo credor'] : [];
   useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
@@ -115,11 +117,13 @@ export function useClientes() {
   return {
     mes: rotuloMes,
     tela: telas.includes(tela) ? tela : 'arquivos',
-    telas: telas.map(t => ({ valor: t, rotulo: t === 'arquivos' ? 'Arquivos' : t === 'credor' ? 'Saldo credor' : t === 'clientes' ? 'Clientes' : 'Envio' })),
+    telas: telas.map(t => ({ valor: t, rotulo: t === 'arquivos' ? 'Arquivos' : t === 'clientes' ? 'Clientes' : 'Envio' })),
     irPara: (t: TelaClientes) => setTela(t),
     temProxima: i < telas.length - 1,
     podeSeguir,
     proximo: () => { if (podeSeguir && i < telas.length - 1) setTela(telas[i + 1]); },
+    /** nos Arquivos com cliente credor no mês: o "Corrigi, irei reimportar" no lugar do Próximo (deu tudo ok, volta o Próximo) */
+    corrigir: (telas.includes(tela) ? tela : 'arquivos') === 'arquivos' && arquivosProntos && credores.length > 0,
     // Arquivos
     dinamico: dinamico ? { nome: dinamico.nome, resumo: contas.length + ' clientes · ' + rotuloMes } : null,
     importar: (f: File | undefined) => { void importar(f); },
@@ -133,8 +137,6 @@ export function useClientes() {
       // sem sinal (Vitor, 07/10/2026): o certo (devedor) em branco; o errado (credor) em vermelho
       saldos: c.saldos.map(x => ({ mes: x.mes, valor: x.saldo ? reais(Math.abs(x.saldo)) : '—', credor: x.saldo < -0.005, cor: x.saldo < -0.005 ? 'ext-neg' : '' })),
     })),
-    // Saldo credor
-    credores: credores.map(k => ({ codigo: k.codigo, nome: k.nome, saldo: reais(Math.abs(k.saldo)) })),
     // Clientes
     carregado: marcas.carregado,
     /** as perguntas prontas para o cliente (o menu da observação) */
