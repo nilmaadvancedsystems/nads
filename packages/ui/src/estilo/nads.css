@@ -3194,3 +3194,4 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .dp-tabela td,.dp-tabela th{padding-left:8px;padding-right:8px;}
 .dp-tabela .badge{font-size:11px;padding:1px 7px;}
 .dp-tabela .dp-cliente-nome{max-width:205px;}
+.cofre-dev{margin:0 0 10px;color:var(--warn);font-size:13px;}
