@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx';
 import { describe, expect, it } from 'vitest';
 import type { ItemDeTexto } from '../extrator/regras/extrato';
 import {
-  bancoDoTexto, bancoNoNomeDoArquivo, ehExtratoDoBancoDoBrasil, lancamentosDoBancoDoBrasil, marcaDoBanco, nomeDaAba, nomeDoXls, planilhaDoExtrato,
+  bancoDoTexto, bancoNoNomeDoArquivo, ehExtratoDaCora, ehExtratoDoBancoDoBrasil, lancamentosDaCora, lancamentosDoBancoDoBrasil, marcaDoBanco, nomeDaAba, nomeDoXls, planilhaDoExtrato,
 } from '.';
 
 // Página do extrato do BB montada à mão, nas posições do PDF de verdade (x: Dia 30, Lote 99, Documento 148,
@@ -46,6 +46,52 @@ describe('extrato do Banco do Brasil', () => {
       { data: '2026-09-02', valor: -966090, historico: 'Pix - Enviado 02/09 08:38 CLAUDINEIA FERREIRA BARRO' },
       { data: '2026-09-03', valor: 5740, historico: 'Recebimentos Diversos 06.207.421/0001-74 REDEFLEX COMERCIO E' },
       { data: '2026-09-30', valor: 122619, historico: 'BB Rende Fácil' },
+    ]);
+  });
+});
+
+// Páginas do extrato da Cora montadas à mão, nas posições do PDF de verdade (nomes e documentos inventados): a linha do
+// dia em x 30 com "Saldo do dia"; o lançamento em x 54, o nome em 219, as reticências em ~317, o documento em 347 e o
+// valor com o sinal em ~500.
+const linhaDoDia = (y: number, data: string, saldo: string) => [t(data, 30, y), t('Saldo do dia', 430, y), t('R$ ' + saldo, 501, y)];
+const lancCora = (y: number, desc: string, nome: string, doc: string, valor: string) =>
+  [t(desc, 54, y), t(nome, 219, y), t('…', 317, y), ...(doc ? [t(doc, 347, y)] : []), t(valor, 500, y)];
+const RODAPE = (p: number) => [t('Cora SCFI - CNPJ 37.880.206/0001-63', 34, 42), t('Extrato gerado no dia 07/10/2026 às 11:04', 34, 12), t('pág ' + p + ' de 2', 511, 12)];
+const CORA_1: ItemDeTexto[] = [
+  t('EMPRESA EXEMPLO LTDA', 32, 788), t('Agência: 0001 - Conta: 1234567-0', 32, 749),
+  t('Extrato do período', 30, 682), t('01/09/2026 a 30/09/2026', 427, 684),
+  t('Saldo inicial disponível', 30, 641), t('R$ 1.000,00', 501, 641),
+  t('Total de entradas', 30, 611), t('+ R$ 750,00', 483, 611),
+  t('Total de saídas', 30, 581), t('- R$ 357,35', 488, 581),
+  t('Transações', 30, 501),
+  ...linhaDoDia(457, '30/09/2026', '1.392,65'),
+  ...lancCora(424, 'Transf Pix recebida', 'FULANO DE TAL', '000.111.222-33', '+ R$ 600,00'),
+  ...lancCora(397, 'Boleto pago', 'Cemig Distribuicao', '', '- R$ 157,35'),
+  ...linhaDoDia(304, '29/09/2026', '950,00'),
+  ...RODAPE(1),
+];
+const CORA_2: ItemDeTexto[] = [
+  t('EMPRESA EXEMPLO LTDA', 32, 788), t('Agência: 0001 - Conta: 1234567-0', 32, 749),
+  // continua o dia 29 da página anterior
+  ...lancCora(702, 'Transf Pix enviada', 'BELTRANO SILVA', '12.345.678/0001-90', '- R$ 1.200,00'),
+  ...linhaDoDia(663, '01/09/2026', '2.150,00'),
+  ...lancCora(630, 'Devolução Pix enviada', 'CICLANO SOUZA', '444.555.666-77', '+ R$ 150,00'),
+  ...RODAPE(2),
+];
+
+describe('extrato da Cora', () => {
+  it('reconhece o layout (e não confunde com o do BB)', () => {
+    expect(ehExtratoDaCora([CORA_1, CORA_2])).toBe(true);
+    expect(ehExtratoDaCora([PAGINA_1, PAGINA_2])).toBe(false);
+    expect(ehExtratoDoBancoDoBrasil([CORA_1, CORA_2])).toBe(false);
+  });
+
+  it('um lançamento por linha, no dia de cima (também o que passou de página); sem o resumo e os saldos; do mais velho para o mais novo', () => {
+    expect(lancamentosDaCora([CORA_1, CORA_2])).toEqual([
+      { data: '2026-09-01', valor: 15000, historico: 'Devolução Pix enviada CICLANO SOUZA 444.555.666-77' },
+      { data: '2026-09-29', valor: -120000, historico: 'Transf Pix enviada BELTRANO SILVA 12.345.678/0001-90' },
+      { data: '2026-09-30', valor: -15735, historico: 'Boleto pago Cemig Distribuicao' },
+      { data: '2026-09-30', valor: 60000, historico: 'Transf Pix recebida FULANO DE TAL 000.111.222-33' },
     ]);
   });
 });

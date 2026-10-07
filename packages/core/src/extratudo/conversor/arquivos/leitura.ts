@@ -1,11 +1,12 @@
-// Lê o extrato escolhido e devolve as linhas do .xls. Primeiro tenta o leitor do layout do banco (por enquanto o
-// Banco do Brasil); se não for um layout conhecido, usa o leitor genérico do Extrator (PDF, OFX, Excel, CSV).
+// Lê o extrato escolhido e devolve as linhas do .xls. Primeiro tenta o leitor do layout do banco (o Banco do Brasil
+// e a Cora); se não for um layout conhecido, usa o leitor genérico do Extrator (PDF, OFX, Excel, CSV).
 // O arquivo é lido na memória e descartado: nada é guardado.
 import { lerArquivo } from '../../extrator/arquivos/leitura';
 import { ehPdf, itensDoPdf } from '../../extrator/arquivos/pdf';
 import { montarLinhas } from '../../extrator/regras/extrato';
 import { bancoDoTexto } from '../regras/arquivo';
 import { ehExtratoDoBancoDoBrasil, lancamentosDoBancoDoBrasil } from '../regras/bancoDoBrasil';
+import { ehExtratoDaCora, lancamentosDaCora } from '../regras/cora';
 import type { ExtratoConvertido } from '../tipos';
 
 export const EXTENSOES_CONVERSOR: readonly string[] = ['.pdf', '.ofx', '.xlsx', '.xls', '.csv', '.txt'];
@@ -22,6 +23,10 @@ export async function converterArquivo(nome: string, bytes: Uint8Array, anoPadra
       if (ehExtratoDoBancoDoBrasil(paginas)) {
         const linhas = lancamentosDoBancoDoBrasil(paginas);
         return { arquivo: nome, banco: 'Banco do Brasil', leitor: 'banco-do-brasil', linhas, erro: linhas.length ? null : 'Não achei lançamentos neste extrato do Banco do Brasil.' };
+      }
+      if (ehExtratoDaCora(paginas)) {
+        const linhas = lancamentosDaCora(paginas);
+        return { arquivo: nome, banco: 'Cora', leitor: 'cora', linhas, erro: linhas.length ? null : 'Não achei lançamentos neste extrato da Cora.' };
       }
       const lido = await lerArquivo(nome, bytes, 'banco', anoPadrao);
       return { arquivo: nome, banco: bancoDoTexto(topoDaPrimeiraPagina(paginas), nome), leitor: 'generico', linhas: lido.lancamentos, erro: lido.erro };

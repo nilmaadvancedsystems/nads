@@ -10,7 +10,7 @@ export interface LinhaConvertida {
 }
 
 /** Quem leu o arquivo: o leitor do layout do banco, ou o leitor genérico (o do Extrator). */
-export type Leitor = 'banco-do-brasil' | 'generico';
+export type Leitor = 'banco-do-brasil' | 'cora' | 'generico';
 
 export interface ExtratoConvertido {
   /** o nome do arquivo escolhido */
