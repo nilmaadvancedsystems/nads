@@ -57,10 +57,23 @@ describe('a relação e a observação pronta', () => {
   const r = conferirRazaoDoCliente(lerRazao(ROWS), '2026-08');
   const m = razaoDaMarca('razao.xls', r);
   it('a relação em ordem de data: notas em aberto, devolução e duplicidade', () => {
-    expect(m.itens.map(i => [i.data, i.valor])).toEqual([['2026-07-10', 150], ['2026-07-12', -90], ['2026-08-15', 300], ['2026-08-20', 420.5]]);
-    expect(m.itens[0].descricao).toBe('NF 101 em aberto (vendido R$ 1.000,00, recebido R$ 850,00)');
+    expect(m.itens.map(i => [i.data, i.valor, i.status])).toEqual([['2026-07-10', 150, 'aberto'], ['2026-07-12', -90, 'devolucao'], ['2026-08-15', 300, 'pagamento'], ['2026-08-20', 420.5, 'aberto']]);
+    expect(m.itens[0].descricao).toBe('NF 101 (vendido R$ 1.000,00, recebido R$ 850,00)');
   });
   it('a observação: no meu sistema, está em aberto', () => {
     expect(observacaoDoRazao(m)).toBe('No meu sistema, estão em aberto: 10/07/2026 - NF 101 - R$ 150,00; 20/08/2026 - NF 103 - R$ 420,50');
+  });
+});
+
+describe('o pagamento solto', () => {
+  it('a transferência sem a nota entra como apenas pagamento e abate o saldo', () => {
+    const C = '11222333000144-CLIENTE TESTE LTDA';
+    const linhas = [CAB,
+      ['Falso', '', '05/08/2026', '', '96501', 'Vendas', -100, '', 'Pelas vendas de mercadorias a prazo conforme Nota Fiscal Eletronica n°  - 300-' + C, -100, ''],
+      ['Falso', '', '20/08/2026', '', '10503', 'Banco', 40, '', 'TRANSFERENCIA PIX CLIENTE TESTE', -60, ''],
+    ];
+    const r = conferirRazaoDoCliente(lerRazao(linhas), '2026-08');
+    expect(r.saldo).toBe(60);
+    expect(razaoDaMarca('x.xls', r).itens.map(i => [i.status, i.valor])).toEqual([['aberto', 100], ['pagamento', -40]]);
   });
 });

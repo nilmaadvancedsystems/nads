@@ -365,6 +365,8 @@ export const PECAS_BASE: Peca[] = [
         </div>
       );
     } },
+  { id: 'msg-balao', tipo: 'avisos', nome: 'Mensagem para o cliente (balão)', descricao: 'A observação que vai para o cliente, num balão de conversa; ao lado, o check que vira × e apaga (Vitor, 07/10/2026)', classes: ['msg-balao'], telas: ['t-exec-clientes'],
+    demo: () => <span className="msg-balao"><Icone nome="mensagem" />No meu sistema, está em aberto: 25/08/2026 - NF 10111 - R$ 1.514,65</span> },
   { id: 'parity', tipo: 'avisos', nome: 'Faixa verde (bate)', classes: ['parity'], telas: ['c-relatorio'], largo: true, demo: () => <div className="parity"><Icone nome="checkCircle" />Tudo bate com o balancete.</div> },
   { id: 'welcome', tipo: 'avisos', nome: 'Faixa de dados de exemplo', classes: ['welcome-banner'], telas: ['c-entrada', 'e-entrada'], largo: true, demo: () => <div className="welcome-banner">Dados de exemplo (901, 902, 903) · nada é gravado em banco</div> },
 
