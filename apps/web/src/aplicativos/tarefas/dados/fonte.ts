@@ -26,6 +26,8 @@ import { balanceteNoEntregas, clientesNoEntregas, conferenciaNoBanco, gravarLeit
 import { criarRepoTarefasFirestore, extratorNoBanco, type RepoTarefasFirestore } from './tarefas.firestore';
 import { ligadoAoBanco } from '../../../comum/modoDesenvolvedor';
 import { definirEmpresasExtras } from '../../../comum/empresaDaRota';
+import { criarCofreMemoria, type RepoCofre } from './cofre';
+import { criarCofreFirestore } from './cofre.firestore';
 
 export const noBanco = ligadoAoBanco(); // no modo desenvolvedor, os dados de exemplo (nada vai para o banco)
 
@@ -185,6 +187,17 @@ export function repoPessoal(): RepoPessoal {
     pessoal = noBanco ? criarPessoalFirestore(() => { const q = quemPede(); return q ? { uid: q.uid, email: q.email } : null; }) : criarPessoalMemoria();
   }
   return pessoal;
+}
+
+let cofreRepo: RepoCofre | null = null;
+
+/** O cofre de senhas gov.br e certificados (07/10/2026). */
+export function repoDoCofre(): RepoCofre {
+  if (!cofreRepo) {
+    cofreRepo = noBanco ? criarCofreFirestore(() => { const q = quemPede(); return q ? { uid: q.uid, nome: q.nome } : null; })
+      : criarCofreMemoria(() => { try { const n = localStorage.getItem('nads-tarefas-operador'); return n ? { uid: n, nome: n } : null; } catch { return null; } });
+  }
+  return cofreRepo;
 }
 
 let sieg: RepoSieg | null = null;

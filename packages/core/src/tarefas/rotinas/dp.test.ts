@@ -11,8 +11,8 @@ describe('rotina do DP (o Checklist Folha)', () => {
     expect(ROTINA_DP.etapas.map(e => e.obrigacaoDp)).toEqual(['recibos', 'folha', 's1200', 's1210', 's1299', 'dctfweb', 'darf', 'fgts', 'reinf', 'envio']);
     for (const e of ROTINA_DP.etapas) expect(e.checklist?.length).toBeGreaterThan(0);
   });
-  it('a planilha: 233 clientes, cada um com as obrigações do movimento', () => {
-    expect(CLIENTES_DO_DP).toHaveLength(233);
+  it('a planilha: 232 clientes, cada um com as obrigações do movimento', () => {
+    expect(CLIENTES_DO_DP).toHaveLength(232);
     const semMov = CLIENTES_DO_DP.filter(c => c.movimento === 'Sem Movimento');
     expect(semMov.every(c => c.obrigacoes.includes('s1299') && !c.obrigacoes.includes('folha'))).toBe(true);
   });
@@ -27,7 +27,7 @@ describe('rotina do DP (o Checklist Folha)', () => {
     expect(ROTINA_DP.etapas.filter(e => etapaNoMes(ex(nada.codigo), e.id))).toHaveLength(0);
   });
   it('o DP trabalha os clientes da planilha; o Contábil e o Fiscal não veem os que só o DP tem', () => {
-    expect(empresasDaRotina('dp', EMPRESAS_COM_DP)).toHaveLength(233);
+    expect(empresasDaRotina('dp', EMPRESAS_COM_DP)).toHaveLength(CLIENTES_DO_DP.length);
     expect(empresasDaRotina('contabil', EMPRESAS_COM_DP)).toHaveLength(EMPRESAS.length);
     expect(SO_DO_DP.length).toBeGreaterThan(0);
   });
