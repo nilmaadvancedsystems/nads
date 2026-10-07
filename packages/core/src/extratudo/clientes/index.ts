@@ -160,6 +160,8 @@ function razaoGuardado(d: unknown): RazaoDaMarca | null {
     arquivo: o.arquivo, notas, saldo: typeof o.saldo === 'number' ? o.saldo : 0,
     devolucoes: typeof o.devolucoes === 'number' ? o.devolucoes : 0,
     duplicadas: Array.isArray(o.duplicadas) ? o.duplicadas.filter((x): x is string => typeof x === 'string') : [],
+    itens: Array.isArray(o.itens) ? (o.itens as Record<string, unknown>[]).filter(i => i && typeof i.descricao === 'string' && typeof i.valor === 'number')
+      .map(i => ({ data: typeof i.data === 'string' ? i.data : '', descricao: i.descricao as string, valor: i.valor as number })) : [],
   };
 }
 
