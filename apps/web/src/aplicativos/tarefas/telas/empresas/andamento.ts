@@ -2,7 +2,7 @@
 // a competência escolhida (na URL), e para cada empresa as etapas feitas, a situação e a próxima etapa.
 import { empresas, tarefas as t } from '@nads/core';
 import { useSearchParams } from 'react-router';
-import { useExecucoes, useRepo } from '../../dados/repo';
+import { useExecucoes, useExecucoesDoPeriodo, useRepo } from '../../dados/repo';
 import { useOperador, type Operador } from '../../casca/operador';
 import { competenciasDaTela } from '../../casca/navegacao';
 import { useDepartamentoDaTela } from '../../casca/departamento';
@@ -17,15 +17,21 @@ export const SITUACOES: readonly { valor: t.SituacaoGeral; rotulo: string }[] = 
 const ORDEM: Record<t.SituacaoGeral, number> = { parada: 0, 'em-andamento': 1, 'nao-iniciada': 2, concluida: 3 };
 export const ACAO: Record<t.SituacaoGeral, string> = { parada: 'Retomar', 'em-andamento': 'Continuar', 'nao-iniciada': 'Iniciar', concluida: 'Ver' };
 
+/** Quantos meses para trás procurar trabalho em progresso (o que a página da empresa também mostra no histórico). */
+export const MESES_EM_PROGRESSO = 6;
+
 export function useAndamento() {
   const repo = useRepo();
   const op = useOperador().operador as Operador;
   const [params, setParams] = useSearchParams();
   const competencias = competenciasDaTela(12);
-  const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
   // a rotina da tela: a do Fiscal no módulo Fiscal; senão, a do departamento da pessoa
   const { dep } = useDepartamentoDaTela();
   const rotina = t.rotinaDo(dep);
+  // sem competência no endereço, a que tem trabalho em progresso vem primeiro, mesmo com o mês virado (Vitor, 07/10/2026)
+  const recentes = useExecucoesDoPeriodo(competencias.slice(0, MESES_EM_PROGRESSO), dep);
+  const emProgresso = rotina && recentes.carregada ? t.competenciaEmProgresso(recentes.porMes, rotina) : null;
+  const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : emProgresso || competencias[0];
   const { execucoes, carregada } = useExecucoes(competencia, dep);
   const porNome = new Map(execucoes.map(e => [e.empresa, e]));
 
@@ -64,6 +70,8 @@ export function useAndamento() {
     setCompetencia: (c: string) => mudar('competencia', c),
     /** a competência veio no endereço (voltou de outra tela): não pergunta de novo */
     competenciaEscolhida: params.has('competencia'),
+    /** os últimos meses já carregados: dá para saber qual competência está em progresso */
+    sabeOEmProgresso: recentes.carregada,
     params, setParams, mudar,
     carregando: !carregada,
     linhas,

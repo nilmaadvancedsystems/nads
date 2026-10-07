@@ -112,8 +112,11 @@ export function useMinhasEmpresas() {
     paraIniciar: paraIniciar.slice(0, LIMITE_INICIAR),
     totalParaIniciar: paraIniciar.length,
     iniciar: (rota: string) => { setBuscaIniciar(''); abrir(rota); },
-    /** ao entrar: a janela "Qual competência?" (sem a competência no endereço) */
-    perguntarCompetencia: !a.competenciaEscolhida,
+    /**
+     * ao entrar: a janela "Qual competência?" (sem a competência no endereço), já na competência em progresso — por isso
+     * só abre depois de carregar os últimos meses
+     */
+    perguntarCompetencia: !a.competenciaEscolhida && a.sabeOEmProgresso,
     abaIniciar, setAbaIniciar,
     // Iniciar em lote: marca as empresas (a caixinha à esquerda) e abre uma aba para cada uma
     lote, marcadaNoLote: (rota: string) => lote.includes(rota),
