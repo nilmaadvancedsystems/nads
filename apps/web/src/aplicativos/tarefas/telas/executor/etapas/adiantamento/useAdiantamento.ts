@@ -8,6 +8,9 @@ import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 
+/** a cor pela natureza do saldo (Vitor, 07/10/2026): credor em vermelho, devedor em azul, zerado sem cor */
+const corDoSaldo = (saldo: number) => (saldo > 0.005 ? 'ext-neg' : saldo < -0.005 ? 'ext-azul' : '');
+
 const dataBr = (iso: string) => iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4);
 
 export function useAdiantamento(lado: t.LadoDoAdiantamento = 'fornecedores') {
@@ -56,7 +59,7 @@ export function useAdiantamento(lado: t.LadoDoAdiantamento = 'fornecedores') {
     /** a grade: um mês por coluna — saldo do fim (credor em vermelho) e quantos lançamentos */
     meses: doPeriodo.map(m => ({
       mes: m.mes, rotulo: rotulo(m.mes), qtd: m.lancamentos.length,
-      saldo: t.valorComLado(m.saldoFinal), credor: t.saldoErrado(m.saldoFinal, lado), zerado: Math.abs(m.saldoFinal) < 0.005,
+      saldo: t.valorComLado(m.saldoFinal), credor: t.saldoErrado(m.saldoFinal, lado), cor: corDoSaldo(m.saldoFinal), zerado: Math.abs(m.saldoFinal) < 0.005,
     })),
     credores: credores.map(rotulo),
     /** meses do razão fora do período: avisa (ficam de fora) */
@@ -66,7 +69,7 @@ export function useAdiantamento(lado: t.LadoDoAdiantamento = 'fornecedores') {
       id: i, data: dataBr(l.data), contrapartida: l.contrapartida + (l.nomeContrapartida ? ' — ' + l.nomeContrapartida : ''), historico: l.historico,
       // negativo = débito no Alterdata; saldo positivo = credor
       debito: l.valor < 0 ? formatos.brl(-l.valor) : '', credito: l.valor > 0 ? formatos.brl(l.valor) : '',
-      saldo: t.valorComLado(l.saldo), credor: t.saldoErrado(l.saldo, lado),
+      saldo: t.valorComLado(l.saldo), credor: t.saldoErrado(l.saldo, lado), cor: corDoSaldo(l.saldo),
     })),
   };
 }

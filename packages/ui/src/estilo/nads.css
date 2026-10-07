@@ -1049,7 +1049,7 @@ table.vc-tabela .vc-mut{color:var(--ink-muted);max-width:180px;overflow:hidden;t
 .ext-origem svg{width:14px;height:14px;color:var(--ink-muted);}
 .ext-pos{color:var(--success-ink);}
 .ext-neg{color:var(--destructive);}
-/* o saldo do lado errado em azul (Vitor, 07/10/2026: na etapa Fornecedores, o devedor fica azul e o certo branco) */
+/* o saldo devedor em azul (Vitor, 07/10/2026: credor em vermelho, .ext-neg; devedor em azul) */
 .ext-azul{color:var(--info);}
 .ext-mut{color:var(--ink-muted);}
 .ext-sub{display:block;font-size:12px;color:var(--ink-muted);margin-top:2px;}

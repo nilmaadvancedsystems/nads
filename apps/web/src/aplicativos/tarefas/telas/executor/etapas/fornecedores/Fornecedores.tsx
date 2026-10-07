@@ -55,7 +55,7 @@ function Arquivos({ vm }: { vm: VM }) {
                 {vm.credoresNoPeriodo.map(c => (
                   <tr key={c.codigo}>
                     <th scope="row" style={{ textAlign: 'left' }} title={c.codigo + ' — ' + c.nome}><b>{c.codigo}</b> — {c.nome}</th>
-                    {c.saldos.map(x => <td key={x.mes} className={'num' + (x.credor ? ' ext-azul' : '')} title={x.credor ? 'Devedor neste mês' : undefined}>{x.valor === '—' ? x.valor : <ValorNaGrade texto={x.valor} />}</td>)}
+                    {c.saldos.map(x => <td key={x.mes} className={'num ' + x.cor} title={x.credor ? 'Devedor neste mês' : undefined}>{x.valor === '—' ? x.valor : <ValorNaGrade texto={x.valor} />}</td>)}
                   </tr>
                 ))}
               </tbody>

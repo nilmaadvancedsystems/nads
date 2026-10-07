@@ -72,7 +72,7 @@ export function Adiantamento({ lado = 'fornecedores' }: { lado?: 'fornecedores' 
                   </thead>
                   <tbody>
                     <tr><th scope="row" style={{ textAlign: 'left' }} title="O saldo no fim do mês">Saldo final</th>
-                      {vm.meses.map(m => <td key={m.mes} className={'num' + (m.credor ? ' ext-neg' : '')} title={m.credor ? (lado === 'fornecedores' ? 'Credor' : 'Devedor') + ': corrija no Alterdata' : m.zerado ? 'Zerado' : (lado === 'fornecedores' ? 'Devedor' : 'Credor')}><ValorNaGrade texto={m.saldo} /></td>)}
+                      {vm.meses.map(m => <td key={m.mes} className={'num ' + m.cor} title={m.credor ? (lado === 'fornecedores' ? 'Credor' : 'Devedor') + ': corrija no Alterdata' : m.zerado ? 'Zerado' : (lado === 'fornecedores' ? 'Devedor' : 'Credor')}><ValorNaGrade texto={m.saldo} /></td>)}
                     </tr>
                     <tr><th scope="row" style={{ textAlign: 'left' }}>Lançamentos</th>
                       {vm.meses.map(m => <td key={m.mes} className="num">{m.qtd || '—'}</td>)}
@@ -93,7 +93,7 @@ export function Adiantamento({ lado = 'fornecedores' }: { lado?: 'fornecedores' 
                           <td className="wrap">{l.historico}</td>
                           <td className="num">{l.debito}</td>
                           <td className="num">{l.credito}</td>
-                          <td className={'num' + (l.credor ? ' ext-neg' : '')}>{l.saldo}</td>
+                          <td className={'num ' + l.cor}>{l.saldo}</td>
                         </tr>
                       ))}
                     </tbody>
