@@ -81,6 +81,22 @@ export function clientesDoDinamico(d: BalanceteDinamico, mes: string): ContaDeCl
     .map(l => ({ codigo: l.codigo, nome: l.descricao.replace(/\s+/g, ' '), saldo: l.saldos[mes] ?? 0, noBalancete: null }));
 }
 
+/** Um cliente que ficou credor em algum mês: o saldo de cada mês (positivo = devedor, negativo = credor). */
+export interface CredorNoPeriodo { codigo: string; nome: string; saldos: { mes: string; saldo: number }[] }
+
+/**
+ * Os clientes credores em algum mês do dinâmico até o mês da etapa (Vitor, 07/10/2026: "tem alguns que estão
+ * credores em alguns meses, depois ficam devedor"), com o saldo mês a mês; na ordem do dinâmico.
+ */
+export function credoresNoPeriodo(d: BalanceteDinamico, ateMes: string): CredorNoPeriodo[] {
+  const meses = d.meses.filter(m => m <= ateMes);
+  const clientes = new Set(clientesDoDinamico(d, ateMes).map(c => c.codigo));
+  return d.linhas
+    .filter(l => clientes.has(l.codigo))
+    .map(l => ({ codigo: l.codigo, nome: l.descricao.replace(/\s+/g, ' '), saldos: meses.map(m => ({ mes: m, saldo: l.saldos[m] ?? 0 })) }))
+    .filter(c => c.saldos.some(x => x.saldo < 0 && !zero(x.saldo)));
+}
+
 /** O saldo de cada cliente no balancete atual (o do Alterdata: D positivo, C negativo). */
 export function comBalancete(clientes: readonly ContaDeCliente[], balancete: Record<string, Conta>): ContaDeCliente[] {
   return clientes.map(c => {

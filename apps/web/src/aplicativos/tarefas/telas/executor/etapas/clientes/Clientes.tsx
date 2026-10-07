@@ -39,6 +39,25 @@ function Arquivos({ vm }: { vm: VM }) {
   return (
     <div className="imp-lista">
       <LinhaDoArquivo titulo="Balancete dinâmico" dica={'O balancete dinâmico atualizado, com ' + vm.mes} feito={vm.dinamico} onArquivo={vm.importar} onTirar={vm.tirar} teste={vm.teste} />
+      {/* importado: os clientes credores em algum mês, com o saldo mês a mês e o mês credor no selo Diferença (Vitor, 07/10/2026) */}
+      {vm.dinamico && vm.credoresNoPeriodo.length > 0 && (
+        <div className="card" style={{ marginTop: 8 }}>
+          <h3>Credores em algum mês ({vm.credoresNoPeriodo.length})</h3>
+          <div className="table-wrap">
+            <table className="table-compact">
+              <thead><tr><th>Conta</th>{vm.mesesDosCredores.map(m => <th key={m} className="num">{m}</th>)}</tr></thead>
+              <tbody>
+                {vm.credoresNoPeriodo.map(c => (
+                  <tr key={c.codigo}>
+                    <td className="wrap"><b>{c.codigo}</b> — {c.nome}</td>
+                    {c.saldos.map(x => <td key={x.mes} className="num">{x.credor ? <span className="badge badge-bad">{x.valor}</span> : x.valor}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

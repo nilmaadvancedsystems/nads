@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  clientesDoDinamico, comBalancete, conferidosQuePassam, credores, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, proximaSituacao, situacaoDe, textoDaMensagem,
+  clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, proximaSituacao, situacaoDe, textoDaMensagem,
 } from './index';
 
 // o formato do balancete dinâmico do Alterdata (292, bdinamico.xls)
@@ -28,7 +28,7 @@ describe('clientes (a etapa Clientes da Tarefa)', () => {
     });
     expect(credores(c).map(x => x.codigo)).toEqual(['12006', '12014']);
   });
-  it('a situação: zerado é Ok, com saldo é Pendente; o clique gira Pendente → Ok → Conferido → Pendente', () => {
+  it('a situação: zerado é Ok (do sistema), com saldo é Pendente; o clique troca Pendente ↔ Conferido', () => {
     const [m, b] = clientesDoDinamico(lerBalanceteDinamico(ROWS), '2026-08');
     expect([situacaoDe(m), situacaoDe(b), situacaoDe(m, { nome: '', saldo: 0, situacao: 'conferido' })]).toEqual(['pendente', 'ok', 'conferido']);
     // o Ok é do sistema: a marca não muda a conta zerada, nem um Ok marcado antes vale para quem tem saldo
@@ -55,5 +55,15 @@ describe('dinamicoDeTeste', () => {
     const com = dinamicoDeTeste('2026-01', true);
     expect(com.meses).toEqual(['2025-12', '2026-01']);
     expect(credores(clientesDoDinamico(com, '2026-01')).length).toBe(2);
+  });
+});
+
+describe('credoresNoPeriodo', () => {
+  it('os clientes credores em algum mês até o da etapa, com o saldo mês a mês', () => {
+    const d = lerBalanceteDinamico(ROWS);
+    expect(credoresNoPeriodo(d, '2026-08')).toEqual([
+      { codigo: '12014', nome: 'AMORIM SUPERMERCADOS LTDA', saldos: [{ mes: '2026-07', saldo: 519.87 }, { mes: '2026-08', saldo: -150 }] },
+    ]);
+    expect(credoresNoPeriodo(d, '2026-07')).toEqual([]);
   });
 });
