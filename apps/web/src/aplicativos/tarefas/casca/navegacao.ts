@@ -55,6 +55,8 @@ export const APLICACOES: readonly Aplicacao[] = [
   // as senhas gov.br e os certificados digitais, no cofre com a chave por pessoa (Vitor, 07/10/2026); todo o escritório
   { id: 'senhas', nome: 'Senhas', icone: 'lock', pronta: true, paginas: [
     { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Senhas — gov.br e certificados' },
+    // o painel dos certificados: próximos a vencer, vencidos e válidos (07/10/2026)
+    { id: 'certificados', rotulo: 'Certificados', icone: 'barChart', titulo: 'Senhas — certificados' },
     // as contas gov.br de pessoas (CPF), importadas da planilha (Vitor, 07/10/2026)
     { id: 'gov', rotulo: 'Contas gov.br', icone: 'usuario', titulo: 'Senhas — contas gov.br' },
     { id: 'acesso', rotulo: 'Acesso', icone: 'usuario', titulo: 'Senhas — acesso ao cofre' },

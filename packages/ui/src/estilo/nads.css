@@ -3297,3 +3297,15 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 @media (max-width:760px){.imp-cert-item{grid-template-columns:auto 1fr;}.imp-cert-senha{grid-column:1/-1;align-items:flex-start;}}
 /* DP: a situação Em andamento em laranja e a Parada em vermelho (07/10/2026) */
 .badge-parada{color:var(--danger);border-color:var(--danger);background:none;}
+
+/* Senhas › Certificados (07/10/2026: o painel próximos a vencer, vencidos e válidos): cada número filtra a lista */
+.cert-painel .cert-painel-num{all:unset;cursor:pointer;display:block;border-bottom:3px solid transparent;}
+.cert-painel .cert-painel-num:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+.cert-painel .cert-painel-num.ativo{border-bottom-color:currentColor;}
+.cert-painel-vence{color:var(--warn);}
+.cert-painel-vencido{color:var(--danger);}
+.cert-painel-ok{color:var(--success);}
+.cert-painel-sem{color:var(--ink-muted);}
+.cert-painel .cert-painel-num .stat-value{color:inherit;}
+.cert-painel .cert-painel-num .stat-label{color:var(--ink-muted);}
+.cert-painel-vazio{padding:24px 4px;}
