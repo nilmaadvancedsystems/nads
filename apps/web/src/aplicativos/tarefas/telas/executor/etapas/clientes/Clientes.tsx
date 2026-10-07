@@ -208,8 +208,7 @@ function ListaDeClientes({ vm }: { vm: VM }) {
               </tr>
               {l.razao && l.razao.itens.length > 0 && !fechadas.has(l.codigo) && (
                 <tr>
-                  <td />
-                  <td colSpan={3}>
+                  <td colSpan={4}>
                     <div className="table-wrap">
                       <table className="table-compact">
                         <thead><tr><th>Data</th><th>Descrição</th><th className="num">Valor</th><th>Status</th></tr></thead>
