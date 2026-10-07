@@ -2,6 +2,7 @@
 // na Conferência de Saídas, a sequência (série por série: da primeira à última, os números que faltam e as canceladas),
 // com o Baixar do SIEG (o robô do PC baixa as saídas do mês) e o Atualizar.
 import { BotaoAcao, Icone } from '@nads/ui';
+import { createPortal } from 'react-dom';
 import { useSiegDaEtapa } from '../useSiegDaEtapa';
 
 export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 'saidas'; codigo: string; competencia: string }) {
@@ -13,6 +14,25 @@ export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 
         {vm.exemplos && <span className="fraco">dados de exemplo</span>}
         {vm.desligado && <span className="sieg-aviso"><Icone nome="alert" />{vm.desligado}</span>}
       </header>
+      {/* o andamento do "Contar agora", flutuando no canto (fica no body: a faixa animada prenderia o fixo) */}
+      {vm.andamento && createPortal(
+        <div className="card gmail-andamento sieg-flutuante" role="status" aria-live="polite">
+          <div className="gmail-andamento-topo">
+            <b>{vm.andamento.erro ? 'A contagem não deu certo' : vm.andamento.pronto ? 'Contagem pronta' : 'Contando no SIEG'}</b>
+            <span className="fraco">{vm.andamento.erro ? '' : vm.andamento.pct + '%'}</span>
+            <span className="tarefas-barra-espaco" />
+            <button type="button" className="btn btn-ghost" onClick={vm.fecharAndamento} aria-label="Fechar" title="Fechar"><Icone nome="x" /></button>
+          </div>
+          {!vm.andamento.erro && <span className={'tarefas-barra larga' + (vm.andamento.pronto ? '' : ' andando')}><span style={{ width: vm.andamento.pct + '%' }} /></span>}
+          {vm.andamento.erro ? <p className="sieg-aviso" style={{ marginTop: 8 }}><Icone nome="alert" />{vm.andamento.erro}</p> : (
+            <ul className="gmail-andamento-passos">
+              {vm.andamento.passos.map(p => <li key={p.texto} className={p.atual || p.feito ? 'destaque' : undefined}>{p.feito ? '✓ ' : p.atual ? '… ' : ''}{p.texto}</li>)}
+            </ul>
+          )}
+          {vm.andamento.resultado && <p className="hint" style={{ margin: '8px 0 0' }}><b>{vm.andamento.resultado.emitidas}</b> emitidas · <b>{vm.andamento.resultado.recebidas}</b> recebidas</p>}
+        </div>,
+        document.body,
+      )}
       {vm.tipo === 'contagem' ? (
         <>{!vm.contagemCarregada ? <p className="fraco">Carregando…</p> : vm.contagem ? (
           <div className="sieg-contagem">
