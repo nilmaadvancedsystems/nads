@@ -189,14 +189,15 @@ function ListaDeClientes({ vm }: { vm: VM }) {
               {l.razao && l.razao.itens.length > 0 && !fechadas.has(l.codigo) && (
                 <tr>
                   <td colSpan={4}>
-                    <div className="table-wrap">
+                    {/* a relação isolada: o cabeçalho fixo dela não passa por cima do menu "Perguntar" da linha de cima */}
+                    <div className="table-wrap" style={{ isolation: 'isolate' }}>
                       <table className="table-compact">
                         <thead><tr><th>Data</th><th>Nota fiscal</th><th>Descrição</th><th className="num">Valor</th><th>Status</th>{l.situacao === 'conferido' && <th className="num">Mandei</th>}</tr></thead>
                         <tbody>
                           {l.razao.itens.map((i, k) => (
                             <tr key={k}><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td>{i.nf}</td><td className="wrap">{i.descricao}</td><td className={'num' + (i.abate ? ' ext-neg' : '')}>{i.valor}</td>
                               <td><span className={'badge ' + (i.status === 'aberto' ? 'badge-warn' : 'badge-neutral')}>{i.rotulo}</span></td>
-                              {l.situacao === 'conferido' && <td className="num">{i.marcado ? <span title="Vai para o Mandei"><Icone nome="check" /></span> : null}</td>}</tr>
+                              {l.situacao === 'conferido' && <td className="num">{i.marcado ? <span className="badge badge-neutral" title="Vai para o Mandei">Vai</span> : null}</td>}</tr>
                           ))}
                         </tbody>
                       </table>
