@@ -3,7 +3,7 @@
 // movimento e as obrigações do mês; a REINF é do Fiscal) e Entrega (como recebe e o agrupamento). Grava ao mudar; o que foi mudado
 // ganha o selo "mudado" e o "Voltar à planilha".
 import { MenuDeAgrupamento } from './MenuDeAgrupamento';
-import { Esqueleto, Icone, useCarregando, MenuSuspenso } from '@nads/ui';
+import { BotaoIcone, Esqueleto, Icone, useCarregando, useRetorno, MenuSuspenso } from '@nads/ui';
 import { Cartao, JanelaLateral, Linha, type TopicoDaJanela } from '../janela/JanelaLateral';
 import { useConfiguracoesDoDp, type TopicoDoClienteDp } from './useConfiguracoesDoDp';
 
@@ -14,7 +14,22 @@ const TOPICOS: TopicoDaJanela<TopicoDoClienteDp>[] = [
 
 export function ConfiguracoesDoDp() {
   const vm = useConfiguracoesDoDp();
+  const { toast } = useRetorno();
   useCarregando(vm.carregando);
+  /** copia o CNPJ/CPF só com os dígitos (para colar nos sites do governo) */
+  const copiar = (doc: string) => {
+    // o jeito antigo quando o navegador recusa a área de transferência (um campo escondido e o "copiar" do navegador)
+    const antigo = () => {
+      const campo = Object.assign(document.createElement('textarea'), { value: doc });
+      campo.style.position = 'fixed'; campo.style.opacity = '0';
+      document.body.appendChild(campo); campo.select();
+      const ok = document.execCommand('copy');
+      campo.remove();
+      toast(ok ? 'Copiado: ' + doc : 'Não consegui copiar.');
+    };
+    if (navigator.clipboard?.writeText) void navigator.clipboard.writeText(doc).then(() => toast('Copiado: ' + doc), antigo);
+    else antigo();
+  };
   const c = vm.cliente;
   return (
     <section className="dp-painel">
@@ -27,7 +42,7 @@ export function ConfiguracoesDoDp() {
         </div>
         <label className="field dp-filtro dp-busca">
           <span className="hint">Buscar cliente</span>
-          <input type="text" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} placeholder="Nome ou código" aria-label="Buscar cliente (nome ou código)" />
+          <input type="text" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} placeholder="Nome, código ou CNPJ/CPF" aria-label="Buscar cliente (nome, código ou CNPJ/CPF)" />
         </label>
         <label className="field dp-filtro">
           <span className="hint">Movimento</span>
@@ -49,13 +64,21 @@ export function ConfiguracoesDoDp() {
           </div>
           <div className="table-wrap">
             <table className="dp-tabela dp-config-lista">
-              <thead><tr><th>Cód.</th><th>Cliente</th><th>Movimento</th><th>Obrigações do mês</th><th>Entrega</th><th>Agrupamento</th></tr></thead>
+              <thead><tr><th>Cód.</th><th>Cliente</th><th>CNPJ/CPF</th><th>Movimento</th><th>Obrigações do mês</th><th>Entrega</th><th>Agrupamento</th></tr></thead>
               <tbody>
                 {vm.linhas.map(l => (
                   <tr key={l.codigo} className="dp-linha-abre" onClick={() => vm.abrir(l.codigo)} title={'Abrir ' + l.nomeNaTela}>
                     <td className="num fraco">{l.codigo}</td>
                     <td className="dp-cliente">
                       <span className="dp-cliente-nome">{l.nomeNaTela}{l.mudadoNoMes ? <span className="badge badge-warn dp-selo-mudado">muda em {vm.competencia.slice(5, 7)}/{vm.competencia.slice(0, 4)}</span> : l.mudado && <span className="badge badge-neutral dp-selo-mudado">mudado</span>}</span>
+                    </td>
+                    <td className="dp-documento" onClick={e => e.stopPropagation()}>
+                      {l.documento ? (
+                        <span className="dp-documento-celula">
+                          <span className="num">{l.documento}</span>
+                          <BotaoIcone icone="copiar" titulo={'Copiar ' + l.documento} pequeno onClick={() => copiar(l.documento)} />
+                        </span>
+                      ) : <span className="pill-vazio">sem cadastro</span>}
                     </td>
                     <td>{l.movimento}</td>
                     <td className="dp-obrig-texto">{l.obrigacoesTexto}</td>

@@ -5,6 +5,7 @@
 // Tudo roda no tabelão (Vitor, 06/10/2026: "quero que tudo rode no tabelão, sem a parte de checklist"): clicar na
 // bolinha da obrigação marca a etapa como feita (com quem e quando, como o executor grava); clicar de novo desfaz.
 import { empresas, tarefas as t } from '@nads/core';
+import type { NomeIcone } from '@nads/ui';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { competenciasDaTela } from '../../casca/navegacao';
@@ -21,6 +22,8 @@ export type Agrupar = 'nenhum' | 'responsavel' | 'agrupamento';
  * progresso) e uma por parte da rotina, cada uma só com as colunas dela.
  */
 export type AbaDoPainel = 'resumo' | 'obrigacoes';
+/** a cor do painel do número (DP › Resumo) */
+export type TomDoNumero = 'info' | 'ok' | 'aviso' | 'marca' | 'neutro';
 export const ABAS_DO_PAINEL: readonly AbaDoPainel[] = ['resumo', 'obrigacoes'];
 /** As partes da rotina: o submenu da aba Obrigações (na URL: ?parte=). */
 export type ParteDoDp = 'folha' | 'esocial' | 'guias' | 'reinf' | 'entrega';
@@ -158,15 +161,18 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
     primeiras: new Set(PARTES_DO_DP.map(p => p.obrigacoes[0])),
     /** quantos clientes ainda faltam nesta parte */
     faltam: linhasDaParte.filter(c => !c.concluida).length,
+    // os painéis coloridos (Sávio, 07/10/2026: "painéis coloridos para os totais de clientes, totais de concluídos, totais
+    // de pendentes"): o tom diz o que é (azul o total, verde o feito, amarelo o que falta, o vermelho do nads a folha;
+    // o resto neutro)
     numeros: [
-      { rotulo: 'Clientes', valor: filtradas.length, dica: '' },
-      { rotulo: 'Concluídos', valor: concluidas, dica: filtradas.length ? Math.round((concluidas / filtradas.length) * 100) + '% do mês' : '' },
-      { rotulo: 'Pendentes', valor: filtradas.length - concluidas, dica: '' },
-      { rotulo: 'Com folha', valor: filtradas.filter(c => c.movimento === 'Folha').length, dica: '' },
-      { rotulo: 'Pró-labore', valor: filtradas.filter(c => c.movimento === 'Pró-Labore').length, dica: '' },
-      { rotulo: 'Sem movimento', valor: filtradas.filter(c => c.movimento === 'Sem Movimento').length, dica: '' },
-      { rotulo: 'REINF autorizada', valor: filtradas.filter(c => c.reinfAutorizada).length, dica: '' },
-    ],
+      { rotulo: 'Clientes', valor: filtradas.length, dica: '', tom: 'info', icone: 'briefcase' },
+      { rotulo: 'Concluídos', valor: concluidas, dica: filtradas.length ? Math.round((concluidas / filtradas.length) * 100) + '% do mês' : '', tom: 'ok', icone: 'check' },
+      { rotulo: 'Pendentes', valor: filtradas.length - concluidas, dica: '', tom: 'aviso', icone: 'clock' },
+      { rotulo: 'Com folha', valor: filtradas.filter(c => c.movimento === 'Folha').length, dica: '', tom: 'marca', icone: 'usuario' },
+      { rotulo: 'Pró-labore', valor: filtradas.filter(c => c.movimento === 'Pró-Labore').length, dica: '', tom: 'neutro', icone: 'usuario' },
+      { rotulo: 'Sem movimento', valor: filtradas.filter(c => c.movimento === 'Sem Movimento').length, dica: '', tom: 'neutro', icone: 'list' },
+      { rotulo: 'REINF autorizada', valor: filtradas.filter(c => c.reinfAutorizada).length, dica: '', tom: 'neutro', icone: 'fileUp' },
+    ] as { rotulo: string; valor: number; dica: string; tom: TomDoNumero; icone: NomeIcone }[],
     barras: [
       { titulo: 'Por responsável', linhas: contar(filtradas.map(c => c.responsavelNome)) },
       { titulo: 'Enquadramento', linhas: contar(filtradas.map(c => c.enquadramento)) },

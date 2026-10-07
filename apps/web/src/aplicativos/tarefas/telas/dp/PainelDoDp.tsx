@@ -97,7 +97,8 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
         <>
           <div className="stat-grid dp-numeros">
             {vm.numeros.map(n => (
-              <div key={n.rotulo} className="stat">
+              <div key={n.rotulo} className={'stat painel-numero painel-' + n.tom}>
+                <span className="painel-numero-icone" aria-hidden="true"><Icone nome={n.icone} /></span>
                 <p className="stat-label">{n.rotulo}</p>
                 <p className="stat-value">{n.valor}</p>
                 {n.dica && <p className="hint dp-numero-dica">{n.dica}</p>}
