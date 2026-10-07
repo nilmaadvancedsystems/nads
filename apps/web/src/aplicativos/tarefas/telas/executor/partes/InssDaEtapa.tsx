@@ -9,6 +9,7 @@ import { BotaoDeTeste, type ItemDeTeste } from '../../../../../comum/BotaoDeTest
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosMeses';
 import type { RazaoDaFolha as VmFolha } from '../useRazaoDaFolha';
 import { RazaoDaFolha } from './RazaoDaFolha';
+import { MenuDeConta } from '../../../../extratudo/ferramentas/creditor/partes/MenuDeConta';
 
 const BAIXA: Record<Inss['meses'][number]['baixa'], string> = { ok: '✓', falta: 'Falta', depois: 'Depois', fora: '—', 'sem-guia': '—' };
 
@@ -107,6 +108,23 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha }: {
               <FaixaQueAbre titulo="Lançamentos sugeridos" qtd={inss.sugestoes.length} aviso={inss.sugestoes.length > 0}>
                 <div className="imp-mov-caixa">
                   <span className="imp-mov-periodo">Mostrando {inss.mostrando}</span>
+                  {/* a exportação para o Alterdata (Vitor, 07/10/2026): a conta do INSS a recolher, a contrapartida de cada
+                      lançamento e o .xls de importação (as 8 colunas, o mesmo do Creditor) */}
+                  {inss.sugestoes.length > 0 && (
+                    <div className="tarefas-barra-topo">
+                      <label className="busca-curta" title="O código da conta do INSS a recolher no plano de contas">
+                        <Icone nome="hash" />
+                        <input type="text" inputMode="numeric" placeholder="Conta do INSS a recolher" aria-label="Código da conta do INSS a recolher"
+                          value={inss.contaInss} onChange={e => inss.setContaInss(e.target.value)} />
+                      </label>
+                      <span className="tarefas-barra-espaco" />
+                      {inss.faltaContrapartida > 0 && <span className="hint">Falta a contrapartida de {inss.faltaContrapartida} {inss.faltaContrapartida === 1 ? 'lançamento' : 'lançamentos'}</span>}
+                      <button type="button" className="btn btn-primary" disabled={!inss.podeExportar} onClick={inss.baixarXls}
+                        title={inss.podeExportar ? 'Baixar o .xls de importação do Alterdata com todos os lançamentos do período' : 'Informe a conta do INSS a recolher e a contrapartida de cada lançamento'}>
+                        <Icone nome="download" />Baixar .xls
+                      </button>
+                    </div>
+                  )}
                   {!inss.sugestoes.length ? <p className="hint">Nada a lançar: o razão bate com as guias.</p> : (
                     <div className="imp-mov">
                       <table className="table-compact">
@@ -116,8 +134,17 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha }: {
                             <tr key={s.id}>
                               <td>{s.mes}</td>
                               <td>{s.tipo}</td>
-                              <td>{s.debito}</td>
-                              <td>{s.credito}</td>
+                              {/* o lado do INSS a recolher mostra a conta digitada em cima; o outro lado pergunta a contrapartida */}
+                              {(['debito', 'credito'] as const).map(lado => (
+                                <td key={lado}>
+                                  {s.lado === lado ? (
+                                    <>
+                                      <MenuDeConta valor={s.contrapartida} contas={inss.contas} onEscolher={c => inss.escolherContrapartida(s.chave, c)} />
+                                      <span className="hint" style={{ display: 'block', marginTop: 2 }}>{s.sugerida}</span>
+                                    </>
+                                  ) : (inss.contaInss.trim() || 'INSS a recolher')}
+                                </td>
+                              ))}
                               <td className="num">{s.valor}</td>
                               <td className="wrap">{s.historico}<br /><span className="hint">{s.motivo}</span></td>
                             </tr>

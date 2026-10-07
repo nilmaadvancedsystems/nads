@@ -153,6 +153,8 @@ export interface GrupoConferido { grupo: GrupoDoInss; nome: string; razao: numbe
 export interface SugestaoDoInss {
   /** 'aaaa-mm' de onde ela vem */
   mes: string;
+  /** a data do lançamento ('aaaa-mm-dd'): a provisão no último dia do mês; a baixa no dia em que a guia foi paga */
+  data: string;
   tipo: 'provisao' | 'baixa';
   debito: string;
   credito: string;
@@ -205,6 +207,8 @@ function maisComum(xs: string[]): string {
 }
 
 const conta = (l: LancamentoDoRazao) => (l.contrapartida + (l.nomeContrapartida ? ' ' + l.nomeContrapartida : '')).trim();
+/** o último dia do mês ('aaaa-mm' → 'aaaa-mm-dd') */
+const fimDoMes = (mes: string) => mes + '-' + String(new Date(+mes.slice(0, 4), +mes.slice(5, 7), 0).getDate()).padStart(2, '0');
 const rotuloMes = (mes: string) => mes.slice(5, 7) + '/' + mes.slice(0, 4);
 
 /** O razão do INSS a recolher × as guias, nos meses do período. */
@@ -242,7 +246,7 @@ export function conferirInss(razao: RazaoDaConta, guias: readonly GuiaDoInss[], 
         const despesa = contraDoGrupo(g.grupo) || despesaPatronal;
         const sobra = g.diferenca < 0;
         sugestoes.push({
-          mes, tipo: 'provisao', debito: sobra ? 'INSS a recolher' : despesa, credito: sobra ? despesa : 'INSS a recolher', valor: Math.abs(g.diferenca),
+          mes, data: fimDoMes(mes), tipo: 'provisao', debito: sobra ? 'INSS a recolher' : despesa, credito: sobra ? despesa : 'INSS a recolher', valor: Math.abs(g.diferenca),
           historico: 'Pelo valor de INSS ' + (sobra ? 'provisionado a maior' : 'a recolher') + ' — ' + g.nome + ' ' + ref,
           motivo: g.nome + ': razão ' + brl(g.razao) + ' × guia ' + brl(g.guia),
         });
@@ -250,7 +254,7 @@ export function conferirInss(razao: RazaoDaConta, guias: readonly GuiaDoInss[], 
       for (const v of naoProvisionadas) {
         const rural = v.grupo === 'producao-rural';
         sugestoes.push({
-          mes, tipo: 'provisao', debito: rural ? 'Fornecedor (produtor rural PF)' : despesaPatronal, credito: 'INSS a recolher', valor: v.valor,
+          mes, data: fimDoMes(mes), tipo: 'provisao', debito: rural ? 'Fornecedor (produtor rural PF)' : despesaPatronal, credito: 'INSS a recolher', valor: v.valor,
           historico: rural ? 'INSS sobre aquisição de produção rural de PF (sub-rogação) ' + ref : 'Pelo valor de INSS a recolher — ' + v.nome + ' ' + ref,
           motivo: v.nome + ' na guia (' + v.itens.map(i => i.codigo + (i.variacao ? '-' + i.variacao : '') + ' ' + brl(i.principal)).join(', ') + ') e não no razão',
         });
@@ -258,7 +262,7 @@ export function conferirInss(razao: RazaoDaConta, guias: readonly GuiaDoInss[], 
       // o arredondamento só vira lançamento quando sobra algum centavo no mês
       if (Math.abs(arredondamento) >= 0.01) {
         sugestoes.push({
-          mes, tipo: 'provisao', debito: arredondamento > 0 ? despesaPatronal : 'INSS a recolher', credito: arredondamento > 0 ? 'INSS a recolher' : despesaPatronal,
+          mes, data: fimDoMes(mes), tipo: 'provisao', debito: arredondamento > 0 ? despesaPatronal : 'INSS a recolher', credito: arredondamento > 0 ? 'INSS a recolher' : despesaPatronal,
           valor: Math.abs(arredondamento), historico: 'Ajuste de centavos do INSS a recolher ' + ref, motivo: 'Arredondamento entre os grupos (centavos)',
         });
       }
@@ -279,7 +283,7 @@ export function conferirInss(razao: RazaoDaConta, guias: readonly GuiaDoInss[], 
     if (lancamento) usados.add(lancamento);
     else {
       sugestoes.push({
-        mes: guia.competencia, tipo: 'baixa', debito: 'INSS a recolher', credito: banco, valor: guia.total,
+        mes: guia.competencia, data: guia.pagaEm, tipo: 'baixa', debito: 'INSS a recolher', credito: banco, valor: guia.total,
         historico: 'Pagamento de INSS ref ' + rotuloMes(guia.competencia) + ' conforme DARF.',
         motivo: 'Guia de ' + rotuloMes(guia.competencia) + ' paga em ' + guia.pagaEm.split('-').reverse().join('/') + ' sem a baixa no razão'
           + (guia.total > guia.principal ? ' (multa e juros de ' + brl(centavos(guia.total - guia.principal)) + ' vão para a despesa)' : ''),
@@ -303,4 +307,35 @@ export function conferirInss(razao: RazaoDaConta, guias: readonly GuiaDoInss[], 
     meses: mesesConferidos, baixas, pagamentosSemGuia, sugestoes,
     saldoDoRazao, saldoEsperado, saldoAjustado, antesDoPeriodo: centavos(saldoEsperado - saldoAjustado),
   };
+}
+
+// ─── a exportação para o Alterdata (Vitor, 07/10/2026) ───────────────────────────────────────────────────────────────
+
+/** A conta do INSS a recolher nas sugestões (o lado que não é a contrapartida). */
+export const INSS_A_RECOLHER = 'INSS a recolher';
+
+/** De que lado da sugestão fica a contrapartida (o outro é o INSS a recolher) e o que a conferência sugeriu para ela. */
+export function contrapartidaDaSugestao(s: SugestaoDoInss): { lado: 'debito' | 'credito'; sugerida: string } {
+  return s.debito === INSS_A_RECOLHER ? { lado: 'credito', sugerida: s.credito } : { lado: 'debito', sugerida: s.debito };
+}
+
+/** O código no começo da conta sugerida ("81002 INSS-Encargos da Empresa" → "81002"); sem código, ''. */
+export function codigoDaConta(texto: string): string {
+  return /^([0-9]{3,})(?![0-9])/.exec(texto.trim())?.[1] || '';
+}
+
+/** A chave de uma sugestão (para guardar a contrapartida escolhida, sem depender da ordem). */
+export const chaveDaSugestao = (s: SugestaoDoInss) => s.mes + '|' + s.tipo + '|' + s.historico + '|' + s.valor;
+
+/** Uma linha do arquivo de importação do Alterdata (as 8 colunas): a data DD/MM/AAAA e as contas em código. */
+export interface LinhaDoAlterdata { data: string; debito: string; credito: string; historico: string; valor: number }
+
+/** As sugestões → as linhas do Alterdata, com a conta do INSS a recolher e a contrapartida escolhida de cada uma. */
+export function linhasDoAlterdata(sugestoes: readonly SugestaoDoInss[], contaInss: string, contrapartidas: Readonly<Record<string, string>>): LinhaDoAlterdata[] {
+  return sugestoes.map(s => {
+    const c = contrapartidaDaSugestao(s);
+    const contra = contrapartidas[chaveDaSugestao(s)] || codigoDaConta(c.sugerida);
+    const data = s.data.split('-').reverse().join('/');
+    return { data, debito: c.lado === 'debito' ? contra : contaInss, credito: c.lado === 'credito' ? contra : contaInss, historico: s.historico, valor: s.valor };
+  });
 }

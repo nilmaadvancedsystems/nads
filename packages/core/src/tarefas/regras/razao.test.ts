@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { atencaoDoHistorico, atencoesDoMes, coberturaDoRazao, mesesCredores, mesesErrados, saldoErrado, sobrasDaFolha, razaoDeTeste, dataDoRazao, lerRazao, mesesDoRazao, precisaDoCreditor, valorComLado } from './razao';
 import { caixaDeTeste, inssDeTeste, razaoDaFolhaDeTeste } from './deTeste';
-import { conferirInss } from './inss';
+import { chaveDaSugestao, codigoDaConta, conferirInss, contrapartidaDaSugestao, linhasDoAlterdata } from './inss';
 import { ROTINA_CONTABIL } from '../rotinas/contabil';
 import { adicionarEtapa, etapaNoMes, execucaoNova, fazer, proximaEtapa, retirarEtapa, situacaoDa } from './execucao';
 
@@ -178,5 +178,20 @@ describe('o razão de teste de salários com sobra', () => {
   it('a folha de antes paga a menos no último mês', () => {
     const meses = ['2026-07', '2026-08'];
     expect(sobrasDaFolha(mesesDoRazao(razaoDaFolhaDeTeste(meses, 'salarios', 'sobra'), meses))).toEqual([{ mes: '2026-08', sobra: 640 }]);
+  });
+});
+
+describe('os lançamentos sugeridos do INSS para o Alterdata', () => {
+  it('a contrapartida escolhida (ou o código da sugerida) e a conta do INSS no outro lado', () => {
+    const { razao, guias } = inssDeTeste(['2026-07', '2026-08']);
+    const c = conferirInss(razao, guias, ['2026-07', '2026-08']);
+    expect(c.sugestoes.length).toBeGreaterThan(0);
+    const [s] = c.sugestoes;
+    const lado = contrapartidaDaSugestao(s).lado;
+    const [l] = linhasDoAlterdata([s], '21410', { [chaveDaSugestao(s)]: '81002' });
+    expect(lado === 'debito' ? [l.debito, l.credito] : [l.credito, l.debito]).toEqual(['81002', '21410']);
+    expect(l.data).toMatch(/^\d{2}\/\d{2}\/2026$/);
+    expect(codigoDaConta('81002 INSS-Encargos da Empresa')).toBe('81002');
+    expect(codigoDaConta('INSS a recolher')).toBe('');
   });
 });

@@ -2,8 +2,8 @@
 // (XLS da conciliação do Alterdata) e o PDF dos comprovantes de arrecadação; a tela mostra, mês a mês, provisão × guia,
 // as verbas que o sistema não provisionou, as guias pagas sem baixa e o lançamento sugerido de cada diferença.
 // Fica só na tela (em memória): trocou de etapa, empresa ou período, some.
-import { extrator, formatos, tarefas as t } from '@nads/core';
-import { useRetorno } from '@nads/ui';
+import { creditor, extrator, formatos, tarefas as t } from '@nads/core';
+import { baixarBytes, useRetorno } from '@nads/ui';
 import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useState } from 'react';
 
@@ -19,6 +19,9 @@ export function useInssDaEtapa(chave: string, meses: readonly string[]) {
   const [lendo, setLendo] = useState(false);
   // o mês aberto (null = o período todo)
   const [mesAberto, setMesAberto] = useState<string | null>(null);
+  // a exportação para o Alterdata (Vitor, 07/10/2026): o código da conta do INSS a recolher e a contrapartida de cada sugestão
+  const [contaInss, setContaInss] = useState('');
+  const [contrapartidas, setContrapartidas] = useState<Record<string, string>>({});
   const r = razao && razao.chave === chave ? razao : null;
   const g = guias && guias.chave === chave ? guias : null;
   const c = r && g ? t.conferirInss(r.razao, g.guias, meses) : null;
@@ -59,6 +62,11 @@ export function useInssDaEtapa(chave: string, meses: readonly string[]) {
   const ultimoDia = meses.length ? meses[meses.length - 1] + '-31' : '';
   const daVez = (mes: string) => !mesAberto || mes === mesAberto;
   const sugestoes = (c?.sugestoes || []).filter(s => daVez(s.mes));
+  const todas = c?.sugestoes || [];
+  const contraDe = (x: t.SugestaoDoInss) => contrapartidas[t.chaveDaSugestao(x)] || t.codigoDaConta(t.contrapartidaDaSugestao(x).sugerida);
+  const faltaContra = todas.filter(x => !contraDe(x)).length;
+  // as contas que o razão já usa, para escolher a contrapartida (o código e o nome)
+  const contas = r ? [...new Map(r.razao.lancamentos.filter(l => l.contrapartida).map(l => [l.contrapartida, { codigo: l.contrapartida, nome: l.nomeContrapartida }])).values()] : [];
 
   return {
     importarRazao, importarGuias, lendo,
@@ -95,10 +103,27 @@ export function useInssDaEtapa(chave: string, meses: readonly string[]) {
     abrirMes: (m: string) => setMesAberto(a => (a === m ? null : m)),
     mostrando: mesAberto ? t.rotuloCompetencia(mesAberto) : t.rotuloDoPeriodo([...meses]),
     /** os lançamentos sugeridos (o período todo ou o mês aberto) */
-    sugestoes: sugestoes.map((s, i) => ({
-      id: i, mes: t.rotuloNumericoCompetencia(s.mes), tipo: s.tipo === 'baixa' ? 'Baixa' : 'Provisão',
-      debito: s.debito, credito: s.credito, valor: reais(s.valor), historico: s.historico, motivo: s.motivo,
-    })),
+    sugestoes: sugestoes.map((s, i) => {
+      const k = t.chaveDaSugestao(s);
+      const cp = t.contrapartidaDaSugestao(s);
+      return {
+        id: i, chave: k, mes: t.rotuloNumericoCompetencia(s.mes), tipo: s.tipo === 'baixa' ? 'Baixa' : 'Provisão',
+        debito: s.debito, credito: s.credito, valor: reais(s.valor), historico: s.historico, motivo: s.motivo,
+        /** de que lado fica a contrapartida, o que a conferência sugeriu e o código escolhido ('' = falta escolher) */
+        lado: cp.lado, sugerida: cp.sugerida, contrapartida: contraDe(s),
+      };
+    }),
+    contas, contaInss, setContaInss,
+    escolherContrapartida: (chave: string, codigo: string) => setContrapartidas(x => ({ ...x, [chave]: codigo })),
+    /** quantas sugestões (do período todo) ainda sem a contrapartida */
+    faltaContrapartida: faltaContra,
+    podeExportar: todas.length > 0 && !faltaContra && /^[0-9]+$/.test(contaInss.trim()),
+    /** o .xls de importação do Alterdata (as 8 colunas, o mesmo do Creditor), com todas as sugestões do período */
+    baixarXls: () => {
+      const linhas = t.linhasDoAlterdata(todas, contaInss.trim(), contrapartidas);
+      const bytes = creditor.planilhaDeImportacao(linhas.map(l => ({ automatico: '', codHistorico: '', documento: '', tipo: 'principal' as const, tituloId: 0, ...l })));
+      baixarBytes(bytes, 'lancamentos-inss-' + meses[0] + (meses.length > 1 ? '-a-' + meses[meses.length - 1] : '') + '.xls', creditor.TIPO_XLS);
+    },
     totalSugerido: reais(sugestoes.reduce((n, s) => n + s.valor, 0)),
     /** grupo a grupo, nos meses à vista (o que o sistema provisiona e o que não) */
     grupos: (c?.meses || []).filter(m => daVez(m.mes) && m.guia && !m.foraDoRazao).flatMap(m => [
