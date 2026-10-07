@@ -33,6 +33,11 @@ export function Mandei({ pagina }: { pagina: 'meus' | 'central' }) {
         <MenuSuspenso rotulo={ROTULO_DO_FILTRO[vm.filtro]} className="btn btn-outline" dica="Filtrar os tickets"
           itens={(Object.keys(ROTULO_DO_FILTRO) as FiltroDoMandei[]).map(f => ({ rotulo: ROTULO_DO_FILTRO[f] + ' (' + vm.contagem[f] + ')', marcado: vm.filtro === f, onClick: () => vm.setFiltro(f) }))} />
         <span className="tarefas-barra-espaco" />
+        {/* o ⚡ do modo desenvolvedor: o ticket de teste e as simulações do ticket aberto */}
+        {vm.testes.length > 0 && (
+          <MenuSuspenso rotulo="" icone="zap" className="btn btn-outline" direita largura={380} dica="Dados de teste (modo desenvolvedor)"
+            itens={vm.testes.map(i => ({ rotulo: i.rotulo, icone: 'zap' as const, onClick: i.onClick }))} />
+        )}
         <label className="busca-curta">
           <Icone nome="search" />
           <input type="text" placeholder="Buscar ticket, empresa ou e-mail" aria-label="Buscar ticket" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} />

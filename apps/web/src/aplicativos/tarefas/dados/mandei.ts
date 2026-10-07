@@ -41,3 +41,48 @@ export function arquivoParaBaixar(a: m.ArquivoDoTicket): string | null { return 
 
 /** Os dados de exemplo (neste navegador): o e-mail não sai de verdade. */
 export const MANDEI_NO_EXEMPLO = true;
+
+// ─── o ⚡ do modo desenvolvedor (Vitor, 07/10/2026): simular o caminho do ticket sem esperar os prazos ──────────
+
+/** Um ticket de teste (empresa 9999, três itens), como se tivesse saído do Clientes › Envio. */
+export function criarTicketDeTeste(por: string): m.Ticket {
+  return criarTicket({
+    empresa: { nome: 'PERSONALY COMPANY', codigo: 9999 }, para: { nome: 'Cliente de teste', email: 'teste@exemplo.com' },
+    assunto: 'Clientes em aberto — teste', mensagem: 'Ticket de teste do modo desenvolvedor: pode responder à vontade.',
+    criadoPor: { nome: por }, origem: { titulo: 'Teste (modo desenvolvedor)', rota: '' },
+    itens: [
+      { id: 't1', titulo: 'MERCADO BOM PRECO LTDA', valor: 'R$ 1.250,40', detalhe: 'Não encontrei, onde está esse valor?', opcoes: m.OPCOES_PADRAO },
+      { id: 't2', titulo: 'CONSTRUTORA ALFA LTDA', valor: 'R$ 8.730,00', detalhe: 'Foi pago em dinheiro?', opcoes: m.OPCOES_PADRAO },
+      { id: 't3', titulo: 'PADARIA DO JOAO', valor: 'R$ 312,90', detalhe: 'No meu sistema, está em aberto: 10/07/2026 - NF 200 - R$ 312,90', opcoes: m.OPCOES_PADRAO },
+    ],
+  });
+}
+
+export type SimulacaoDoMandei = 'abriu' | 'respondeu' | 'anexou' | 'vencer' | 'apagar';
+export const ROTULO_DA_SIMULACAO: Record<SimulacaoDoMandei, string> = {
+  abriu: 'Simular: o cliente abriu o link',
+  respondeu: 'Simular: o cliente respondeu (sem arquivo)',
+  anexou: 'Simular: o cliente anexou um arquivo',
+  vencer: 'Simular: vencer o link atual',
+  apagar: 'Apagar este ticket',
+};
+
+/** Faz o que o cliente (ou o tempo) faria com o ticket: abrir, responder, anexar, vencer o link; ou apagar. */
+export function simular(t: m.Ticket, acao: SimulacaoDoMandei, agora = new Date()) {
+  const l = m.linkAtual(t);
+  if (acao === 'apagar') { exemplo.apagar(t.id); return; }
+  if (acao === 'abriu') { exemplo.gravar(m.linkAberto(t, l.codigo, agora)); return; }
+  if (acao === 'respondeu') {
+    exemplo.gravar(m.responder(m.linkAberto(t, l.codigo, agora), Object.fromEntries(t.itens.map(it => [it.id, { opcao: it.opcoes[0], texto: 'Resposta de teste' }])), agora));
+    return;
+  }
+  if (acao === 'anexou') {
+    const id = 'arq-teste-' + agora.getTime().toString(36);
+    exemplo.guardarArquivo(id, 'data:text/plain;base64,' + btoa('comprovante de teste'));
+    exemplo.gravar(m.comArquivo(m.linkAberto(t, l.codigo, agora), { id, nome: 'comprovante-teste.txt', tamanho: 20, itemId: t.itens[0]?.id, enviadoEm: agora.toISOString(), status: 'na-fila' }));
+    return;
+  }
+  // vencer: o prazo do link atual passa para ontem (o 2º link sai sozinho na tela de quem mandou; vencido o 2º, "Ligar")
+  const ontem = new Date(agora.getTime() - 24 * 3600 * 1000).toISOString();
+  exemplo.gravar({ ...t, links: t.links.map(x => (x.codigo === l.codigo ? { ...x, validoAte: ontem } : x)) });
+}

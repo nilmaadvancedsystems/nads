@@ -43,6 +43,10 @@ export const exemplo = {
     const g = ler();
     gravar({ ...g, tickets: g.tickets.map(x => (x.id === t.id ? t : x)) });
   },
+  apagar(id: string) {
+    const g = ler();
+    gravar({ ...g, tickets: g.tickets.filter(t => t.id !== id) });
+  },
   /** O ticket do link (pelo código de qualquer um dos links dele). */
   doLink: (codigo: string): m.Ticket | null => ler().tickets.find(t => t.links.some(l => l.codigo === codigo)) || null,
   guardarArquivo(id: string, dataUrl: string) {

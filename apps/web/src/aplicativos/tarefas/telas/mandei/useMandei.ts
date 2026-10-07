@@ -7,7 +7,8 @@ import { baixarBytes, useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useOperador } from '../../casca/operador';
-import { arquivoParaBaixar, gerarSegundoLink, gravarTicket, MANDEI_NO_EXEMPLO, urlDoLink, useTicketsDoMandei } from '../../dados/mandei';
+import { arquivoParaBaixar, criarTicketDeTeste, gerarSegundoLink, gravarTicket, MANDEI_NO_EXEMPLO, ROTULO_DA_SIMULACAO, simular, urlDoLink, useTicketsDoMandei, type SimulacaoDoMandei } from '../../dados/mandei';
+import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 
 export type FiltroDoMandei = 'abertos' | 'respondidos' | 'resolvidos' | 'todos';
 const FILTROS: Record<FiltroDoMandei, (s: m.SituacaoDoTicket) => boolean> = {
@@ -40,6 +41,7 @@ export function useMandei(pagina: 'meus' | 'central') {
   const [filtro, setFiltro] = useState<FiltroDoMandei>('abertos');
   const [busca, setBusca] = useState('');
   const [aberto, setAberto] = useState<string | null>(null);
+  const [dev] = useModoDesenvolvedor();
 
   // o 1º link vencido sem arquivo: o 2º sai sozinho (pela tela de quem mandou o ticket)
   useEffect(() => {
@@ -82,6 +84,11 @@ export function useMandei(pagina: 'meus' | 'central') {
 
   return {
     exemplo: MANDEI_NO_EXEMPLO,
+    /** o ⚡ do modo desenvolvedor (Vitor, 07/10/2026): criar um ticket de teste e simular o cliente e os prazos */
+    testes: dev && MANDEI_NO_EXEMPLO ? [
+      { rotulo: 'Criar ticket de teste', onClick: () => { const n = criarTicketDeTeste(op?.nome || ''); setFiltro('todos'); setAberto(n.id); toast('Ticket ' + m.rotuloDoNumero(n.numero) + ' de teste criado'); } },
+      ...(t ? (Object.keys(ROTULO_DA_SIMULACAO) as SimulacaoDoMandei[]).map(a => ({ rotulo: ROTULO_DA_SIMULACAO[a] + ' (' + m.rotuloDoNumero(t.numero) + ')', onClick: () => { simular(t, a); if (a === 'apagar') setAberto(null); setAgora(new Date()); } })) : []),
+    ] : [],
     filtro, setFiltro, contagem, busca, setBusca,
     linhas,
     respondidos: contagem.respondidos,
