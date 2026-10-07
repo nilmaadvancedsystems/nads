@@ -95,7 +95,7 @@ function Item({ vm }: { vm: VM }) {
         {it.valor && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
             <span className="hint">Em aberto</span>
-            <span className="badge badge-bad num" style={{ fontSize: 20, lineHeight: '28px', padding: '2px 12px', fontWeight: 600 }}>{it.valor}</span>
+            <b className="num" style={{ fontSize: 20, lineHeight: '28px' }}>{it.valor}</b>
           </div>
         )}
       </div>
