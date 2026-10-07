@@ -122,8 +122,10 @@ export function useEmprestimos() {
        * saldo do próprio contrato; e os sem número. A faixa Lançamentos escolhe um deles (ou os do período).
        */
       porContrato: [
-        ...c.contratos.map(k => ({ id: k.numero, rotulo: k.numero, lancamentos: comSaldo(k.lancamentos) })),
-        ...(c.semNumero.length ? [{ id: 'sem-numero', rotulo: 'Sem número', lancamentos: comSaldo(c.semNumero) }] : []),
+        // a situação de cada contrato (Vitor, 07/10/2026: escolhido o contrato, "mostre ao invés do número de lançamentos, ele quitado")
+        ...c.contratos.map(k => ({ id: k.numero, rotulo: k.numero, lancamentos: comSaldo(k.lancamentos), saldo: t.valorComLado(k.saldo), comSemNumero: k.completadoSemNumero,
+          situacao: k.quitadoComSaldo ? 'quitado-com-saldo' as const : Math.abs(k.saldo) < 0.01 || k.completadoSemNumero ? 'quitado' as const : 'aberto' as const })),
+        ...(c.semNumero.length ? [{ id: 'sem-numero', rotulo: 'Sem número', lancamentos: comSaldo(c.semNumero), saldo: t.valorComLado(c.somaSemNumero), comSemNumero: false, situacao: null }] : []),
       ],
       // a marca do banco: o logo dele na linha (Vitor, 07/10/2026)
       banco: banco ? { id: banco.id, rotulo: banco.nome + (banco.detalhe ? ' · ' + banco.detalhe : ''), marca: banco.marca || banco.id } : null,

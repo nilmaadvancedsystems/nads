@@ -46,9 +46,7 @@ function Emprestimo({ e, vm }: { e: VmEmprestimos['emprestimos'][number]; vm: Vm
                   <td>{k.liberado}</td>
                   <td>{k.parcelas}</td>
                   <td className={'num' + (k.situacao === 'quitado-com-saldo' ? ' ext-neg' : '')}>{k.saldo}</td>
-                  <td>{k.situacao === 'aberto' ? <span className="badge badge-neutral">Em aberto</span>
-                    : k.situacao === 'quitado' ? <span className="badge badge-ok" title={k.comSemNumero ? 'Zera com os lançamentos sem número (são dele)' : undefined}>{k.comSemNumero ? 'Quitado (com os sem número)' : 'Quitado'}</span>
-                    : <span className="badge badge-neutral ext-neg" title="Pagou todas as parcelas e ainda tem saldo: lançamento com o número errado, ou parcela que faltou">Quitado com saldo</span>}</td>
+                  <td><SeloDoContrato situacao={k.situacao} comSemNumero={k.comSemNumero} /></td>
                 </tr>
               ))}
               {e.semNumero && (
@@ -73,6 +71,13 @@ function Emprestimo({ e, vm }: { e: VmEmprestimos['emprestimos'][number]; vm: Vm
 }
 
 /** A tela Lançamentos: um empréstimo de cada vez (o menu, com mais de um) e o filtro por contrato. */
+/** O selo da situação do contrato (na lista de contratos e no filtro dos lançamentos). */
+function SeloDoContrato({ situacao, comSemNumero, saldo }: { situacao: 'aberto' | 'quitado' | 'quitado-com-saldo'; comSemNumero: boolean; saldo?: string }) {
+  return situacao === 'aberto' ? <span className="badge badge-neutral" title={saldo ? 'Saldo ' + saldo : undefined}>Em aberto</span>
+    : situacao === 'quitado' ? <span className="badge badge-ok" title={comSemNumero ? 'Zera com os lançamentos sem número (são dele)' : undefined}>{comSemNumero ? 'Quitado (com os sem número)' : 'Quitado'}</span>
+    : <span className="badge badge-neutral ext-neg" title="Pagou todas as parcelas e ainda tem saldo: lançamento com o número errado, ou parcela que faltou">Quitado com saldo</span>;
+}
+
 function Lancamentos({ vm }: { vm: VmEmprestimos }) {
   const [qual, setQual] = useState<number | null>(null);
   const [filtro, setFiltro] = useState('periodo');
@@ -98,7 +103,9 @@ function Lancamentos({ vm }: { vm: VmEmprestimos }) {
               'separador' as const,
               ...e.porContrato.map(k => ({ rotulo: k.id === 'sem-numero' ? 'Sem número de contrato' : 'Contrato ' + k.rotulo, dica: k.lancamentos.length + ' lançamentos', marcado: filtro === k.id, onClick: () => setFiltro(k.id) })),
             ]} />
-          <span className="tarefas-contador"><b>{linhas.length}</b> {linhas.length === 1 ? 'lançamento' : 'lançamentos'}</span>
+          {/* escolhido um contrato, no lugar da contagem: a situação dele (Vitor, 07/10/2026) */}
+          {doContrato?.situacao ? <SeloDoContrato situacao={doContrato.situacao} comSemNumero={doContrato.comSemNumero} saldo={doContrato.saldo} />
+            : <span className="tarefas-contador"><b>{linhas.length}</b> {linhas.length === 1 ? 'lançamento' : 'lançamentos'}</span>}
         </div>
         <div className="imp-mov-caixa">
           <div className="imp-mov">
