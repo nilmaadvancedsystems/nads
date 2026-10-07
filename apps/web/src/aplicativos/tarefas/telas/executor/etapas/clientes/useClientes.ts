@@ -84,7 +84,9 @@ export function useClientes() {
         razao.notas.length ? (razao.notas.length === 1 ? '1 nota em aberto' : razao.notas.length + ' notas em aberto') : 'Nenhuma nota em aberto',
         ...(razao.duplicadas.length ? ['recebimento em duplicidade: NF ' + razao.duplicadas.join(', ')] : []),
       ];
-      aviso(bate
+      // zerado no razão: o Ok do sistema (Vitor, 07/10/2026)
+      const zerado = Math.abs(r.saldo) < 0.005 && !razao.notas.length;
+      aviso(zerado ? { tom: 'ok', titulo: l.nome, texto: 'Zerado no razão: Ok' } : bate
         ? { tom: 'ok', titulo: l.nome, texto: partes.join(' · ') }
         : { tom: 'erro', titulo: 'O razão não bate com o balancete', texto: l.nome + ': o razão fecha ' + rotuloMes + ' em ' + reais(r.saldo) + '; o balancete dinâmico, ' + reais(l.saldo) + '. Confira se é o razão desta conta.' });
     } catch (e) { aviso({ tom: 'erro', titulo: 'Não deu para ler ' + f.name, texto: e instanceof Error ? e.message : String(e) }); }
@@ -144,7 +146,8 @@ export function useClientes() {
           notas: cl.textoDasNotas(l.razao.notas),
           devolucoes: l.razao.devolucoes ? reais(l.razao.devolucoes) : '',
           duplicadas: l.razao.duplicadas.map(nf => 'NF ' + nf).join(', '),
-          naoBate: Math.abs(l.razao.saldo - l.saldo) >= 0.005 ? reais(l.razao.saldo) : '',
+          naoBate: Math.abs(l.razao.saldo - l.saldo) >= 0.005 && Math.abs(l.razao.saldo) >= 0.005 ? reais(l.razao.saldo) : '',
+          zerado: Math.abs(l.razao.saldo) < 0.005 && !l.razao.notas.length,
           // a mini tabela embaixo do cliente: as notas em aberto e o que ficou solto
           itens: l.razao.itens.map(i => ({ data: i.data ? i.data.slice(8, 10) + '/' + i.data.slice(5, 7) + '/' + i.data.slice(0, 4) : '', descricao: i.descricao, valor: reais(i.valor), abate: i.valor < 0, status: i.status, rotulo: cl.ROTULO_DO_STATUS[i.status] })),
         } : null,
