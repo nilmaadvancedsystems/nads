@@ -26,6 +26,7 @@ const PARA_QUE: Record<empresas.cadastro.CampoContaPadrao, string> = {
   histPrincipal: 'O código de histórico do recebimento (principal).',
   histJuros: 'O código de histórico dos juros.',
   histDesconto: 'O código de histórico dos descontos.',
+  cartao: 'A conta do cartão de crédito empresarial: o débito de cada compra da fatura (Cartões).',
 };
 
 export function useContasPadrao(rota: string) {
@@ -36,9 +37,11 @@ export function useContasPadrao(rota: string) {
   const campos: CampoPadrao[] = cad.CAMPOS_CONTA_PADRAO.map(k => {
     const valor = cp?.contas[k] || '';
     const doPlano = (cad.CONTAS_PADRAO_DO_PLANO as readonly string[]).includes(k);
-    const seVazio = k === 'banco' && sicoob
-      ? 'a conta contábil do Sicoob no cadastro (' + sicoob.contaContabil + ')'
-      : doPlano ? 'o Creditor sugere pelo plano (ou usa ' + creditor.CONTAS_PADRAO[k] + ')' : 'o padrão do Creditor (' + creditor.CONTAS_PADRAO[k] + ')';
+    // a do cartão não tem padrão: o Cartões pergunta na primeira fatura
+    const seVazio = k === 'cartao' ? 'o Cartões pergunta na primeira fatura'
+      : k === 'banco' && sicoob
+        ? 'a conta contábil do Sicoob no cadastro (' + sicoob.contaContabil + ')'
+        : doPlano ? 'o Creditor sugere pelo plano (ou usa ' + creditor.CONTAS_PADRAO[k] + ')' : 'o padrão do Creditor (' + creditor.CONTAS_PADRAO[k] + ')';
     return {
       id: k, rotulo: cad.ROTULO_CONTA_PADRAO[k], doPlano, valor,
       nome: doPlano && valor ? cad.contaNoPlano(c.plano, valor)?.nome : undefined,

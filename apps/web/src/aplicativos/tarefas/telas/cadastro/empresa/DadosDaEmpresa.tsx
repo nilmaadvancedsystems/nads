@@ -1,5 +1,5 @@
-// Cadastro › Empresa: as regras da empresa. "Presta serviços?" com Sim / Não (clicar de novo no marcado volta
-// para "não informado") e os sócios (o nome e o CPF de cada um).
+// Cadastro › Empresa: as regras da empresa. "Presta serviços?", "Cartão empresarial" e "Vende no cartão" com Sim / Não
+// (clicar de novo no marcado volta para "não informado") e os sócios (o nome e o CPF de cada um).
 import { Icone, useCarregando } from '@nads/ui';
 import { useState } from 'react';
 import { useDadosDaEmpresa } from './useDadosDaEmpresa';
@@ -13,6 +13,10 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
   const opcao = (sim: boolean, rotulo: string) => (
     <button type="button" className={'btn ' + (vm.prestaServico === sim ? 'btn-primary' : 'btn-outline')} aria-pressed={vm.prestaServico === sim}
       onClick={() => vm.definirPrestaServico(sim)}>{rotulo}</button>
+  );
+  const opcaoDoCartao = (campo: 'cartaoEmpresarial' | 'vendeNoCartao', sim: boolean, rotulo: string) => (
+    <button type="button" className={'btn ' + (vm[campo] === sim ? 'btn-primary' : 'btn-outline')} aria-pressed={vm[campo] === sim}
+      onClick={() => vm.definirCartao(campo, sim)}>{rotulo}</button>
   );
   const linhas = [...vm.socios, ...(novo ? [{ nome: '', cpf: '' }] : [])];
   /** grava ao sair do campo: a lista inteira, com esta linha trocada */
@@ -37,6 +41,33 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
         <div className="cad-regra-opcoes" role="group" aria-label="Presta serviços">
           {opcao(true, 'Sim')}
           {opcao(false, 'Não')}
+        </div>
+      </div>
+      {/* os cartões (Vitor, 07/10/2026): ligam a etapa Cartões na Tarefas */}
+      <div className="cad-regra">
+        <div className="cad-regra-txt">
+          <span className="cad-campo-rotulo">Cartão empresarial</span>
+          <span className="hint">
+            Compras no cartão de crédito da empresa: a etapa Cartões quebra a fatura no razão do cartão.
+            {vm.cartaoEmpresarial == null && ' Ainda não informado.'}
+          </span>
+        </div>
+        <div className="cad-regra-opcoes" role="group" aria-label="Cartão empresarial">
+          {opcaoDoCartao('cartaoEmpresarial', true, 'Sim')}
+          {opcaoDoCartao('cartaoEmpresarial', false, 'Não')}
+        </div>
+      </div>
+      <div className="cad-regra">
+        <div className="cad-regra-txt">
+          <span className="cad-campo-rotulo">Vende no cartão</span>
+          <span className="hint">
+            Vendas pelas maquininhas (Cielo, Rede, Getnet, Stone, PagBank): a etapa Cartões concilia com as notas.
+            {vm.vendeNoCartao == null && ' Ainda não informado.'}
+          </span>
+        </div>
+        <div className="cad-regra-opcoes" role="group" aria-label="Vende no cartão">
+          {opcaoDoCartao('vendeNoCartao', true, 'Sim')}
+          {opcaoDoCartao('vendeNoCartao', false, 'Não')}
         </div>
       </div>
       {/* os sócios, com o nome e o CPF (Vitor, 06/10/2026): o relatório da etapa Bancos mostra a transferência para eles */}
