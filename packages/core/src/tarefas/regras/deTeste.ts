@@ -85,3 +85,24 @@ export function inssDeTeste(meses: readonly string[]): { razao: RazaoDaConta; gu
   });
   return { razao: montar(porMes, 0), guias };
 }
+
+/** Uma conta do passivo da folha com o razão próprio na etapa Salários, INSS e FGTS (Vitor, 07/10/2026). */
+export type ContaDaFolha = 'salarios' | 'fgts';
+
+/**
+ * O razão de teste de Salários a pagar ou do FGTS a recolher (o ⚡): a folha (ou a guia) do mês entra a crédito e é paga
+ * no mês seguinte; o último mês fica credor. Com devedor, o pagamento do último mês sai a maior e o mês fecha devedor.
+ */
+export function razaoDaFolhaDeTeste(meses: readonly string[], conta: ContaDaFolha, comDevedor: boolean): RazaoDaConta {
+  const base = conta === 'salarios' ? 12480.5 : 1004.2;
+  const porMes = meses.map((mes, i) => {
+    const valor = centavos(base + i * 137.35);
+    const anterior = i > 0 ? centavos(base + (i - 1) * 137.35) : 0;
+    const pago = comDevedor && i === meses.length - 1 ? centavos(anterior + valor + 850) : anterior;
+    const linhas: Linha[] = [];
+    if (i > 0) linhas.push([5, '10503', 'Banco Sicoob', -pago, conta === 'salarios' ? 'Pagamento dos salários de ' + mesBR(meses[i - 1]) : 'Pagamento do FGTS de ' + mesBR(meses[i - 1])]);
+    linhas.push([28, conta === 'salarios' ? '41201' : '41205', conta === 'salarios' ? 'Salários e ordenados' : 'FGTS', valor, conta === 'salarios' ? 'Folha de pagamento de ' + mesBR(mes) : 'FGTS sobre a folha de ' + mesBR(mes)]);
+    return { mes, linhas };
+  });
+  return montar(porMes, 0);
+}

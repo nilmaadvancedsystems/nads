@@ -72,6 +72,12 @@ export function useInssDaEtapa(chave: string, meses: readonly string[]) {
       setGuias({ chave, arquivos: ['TESTE guias do INSS.pdf'], guias: d.guias });
       setMesAberto(null);
     },
+    /** o ⚡ de cada linha (Vitor, 07/10/2026: "quero testar as guias também"): só o razão, ou só as guias */
+    implantarRazaoDeTeste: () => { setRazao({ chave, arquivo: 'TESTE razão do INSS.xls', razao: t.inssDeTeste(meses).razao }); setMesAberto(null); },
+    implantarGuiasDeTeste: () => { setGuias({ chave, arquivos: ['TESTE guias do INSS.pdf'], guias: t.inssDeTeste(meses).guias }); setMesAberto(null); },
+    /** os meses da etapa (o período), para as linhas de Salários e FGTS */
+    periodo: meses,
+    chave,
     resumo: [r ? 'Razão: ' + r.razao.lancamentos.length.toLocaleString('pt-BR') + ' lançamentos' : '', g ? 'Guias: ' + g.guias.length : ''].filter(Boolean),
     /** a grade dos meses: provisão, guia, diferença e a baixa da guia do mês */
     meses: (c?.meses || []).map(m => {

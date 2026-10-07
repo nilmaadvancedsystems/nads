@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { atencaoDoHistorico, atencoesDoMes, coberturaDoRazao, mesesCredores, mesesErrados, saldoErrado, razaoDeTeste, dataDoRazao, lerRazao, mesesDoRazao, precisaDoCreditor, valorComLado } from './razao';
-import { caixaDeTeste, inssDeTeste } from './deTeste';
+import { caixaDeTeste, inssDeTeste, razaoDaFolhaDeTeste } from './deTeste';
 import { conferirInss } from './inss';
 import { ROTINA_CONTABIL } from '../rotinas/contabil';
 import { adicionarEtapa, etapaNoMes, execucaoNova, fazer, proximaEtapa, retirarEtapa, situacaoDa } from './execucao';
@@ -145,5 +145,13 @@ describe('adiantamento de clientes (o de fornecedores ao contrário)', () => {
   it('o de fornecedores continua: o mês credor é o errado', () => {
     expect(mesesErrados(mesesDoRazao(razaoDeTeste(meses, true), meses), 'fornecedores')).toEqual(['2026-02']);
     expect([saldoErrado(10, 'fornecedores'), saldoErrado(-10, 'fornecedores'), saldoErrado(-10, 'clientes'), saldoErrado(10, 'clientes')]).toEqual([true, false, true, false]);
+  });
+});
+
+describe('salários e FGTS a recolher (o razão de teste da etapa da folha)', () => {
+  const meses = ['2026-06', '2026-07', '2026-08'];
+  it('fica credor ou zera; com devedor, o último mês fecha devedor', () => {
+    expect(mesesErrados(mesesDoRazao(razaoDaFolhaDeTeste(meses, 'salarios', false), meses), 'clientes')).toEqual([]);
+    expect(mesesErrados(mesesDoRazao(razaoDaFolhaDeTeste(meses, 'fgts', true), meses), 'clientes')).toEqual(['2026-08']);
   });
 });
