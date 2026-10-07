@@ -5,6 +5,7 @@ import { Adiantamento } from './adiantamento/Adiantamento';
 import { RelatorioBancario } from './bancos/RelatorioBancario';
 import { Bens } from './bens/Bens';
 import { Clientes } from './clientes/Clientes';
+import { Emprestimos } from './emprestimos/Emprestimos';
 import { Fornecedores } from './fornecedores/Fornecedores';
 
 export function TelaDaEtapa({ id }: { id: tarefas.TelaDaEtapa }) {
@@ -15,5 +16,6 @@ export function TelaDaEtapa({ id }: { id: tarefas.TelaDaEtapa }) {
     case 'adiantamento-fornecedores': return <Adiantamento />;
     case 'adiantamento-clientes': return <Adiantamento lado="clientes" />;
     case 'bens': return <Bens />;
+    case 'emprestimos': return <Emprestimos />;
   }
 }

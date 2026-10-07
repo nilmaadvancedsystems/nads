@@ -3,7 +3,7 @@
 // devedor ou zera" — mês fechando credor trava o Próximo até corrigir no Alterdata e reimportar. O razão fica só na tela.
 // A mesma tela serve ao Adiantamento de clientes (Vitor, 07/10/2026: "ao contrário"): a conta é do passivo, fica credor ou
 // zera, e o mês devedor é que trava.
-import { demo, formatos, tarefas as t } from '@nads/core';
+import { demo, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
@@ -68,7 +68,8 @@ export function useAdiantamento(lado: t.LadoDoAdiantamento = 'fornecedores') {
     lancamentos: doPeriodo.flatMap(m => m.lancamentos).map((l, i) => ({
       id: i, data: dataBr(l.data), contrapartida: l.contrapartida + (l.nomeContrapartida ? ' — ' + l.nomeContrapartida : ''), historico: l.historico,
       // negativo = débito no Alterdata; saldo positivo = credor
-      debito: l.valor < 0 ? formatos.brl(-l.valor) : '', credito: l.valor > 0 ? formatos.brl(l.valor) : '',
+      // débito e crédito numa coluna só, o Valor (Vitor, 07/10/2026): com D/C, débito em azul e crédito em vermelho
+      valor: t.valorComLado(l.valor), corDoValor: corDoSaldo(l.valor),
       saldo: t.valorComLado(l.saldo), credor: t.saldoErrado(l.saldo, lado), cor: corDoSaldo(l.saldo),
     })),
   };

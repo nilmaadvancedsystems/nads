@@ -92,6 +92,19 @@ export function situacaoGeral(ex: Execucao | null, rotina: Rotina): SituacaoGera
   return p.concluidas === 0 && !Object.keys(ex?.etapas || {}).length ? 'nao-iniciada' : 'em-andamento';
 }
 
+/**
+ * A competência a continuar (Vitor, 07/10/2026: "sempre priorize continuar o que estava em progresso no contábil, mesmo que
+ * o mês tenha virado"): das competências dadas, a mais antiga com alguma execução em andamento ou parada — só as da
+ * empresa, quando ela é informada. null = nada em progresso.
+ */
+export function competenciaEmProgresso(
+  porMes: readonly { competencia: string; execucoes: readonly Execucao[] }[], rotina: Rotina, empresa?: string,
+): string | null {
+  const emProgresso = porMes.filter(m => m.execucoes.some(ex => (!empresa || ex.empresa === empresa)
+    && (situacaoGeral(ex, rotina) === 'em-andamento' || situacaoGeral(ex, rotina) === 'parada')));
+  return emProgresso.map(m => m.competencia).sort()[0] || null;
+}
+
 export const ROTULO_SITUACAO_GERAL: Record<SituacaoGeral, string> = {
   'nao-iniciada': 'Não iniciada', 'em-andamento': 'Em andamento', parada: 'Parada', concluida: 'Concluída',
 };

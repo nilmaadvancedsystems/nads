@@ -83,17 +83,16 @@ export function Adiantamento({ lado = 'fornecedores' }: { lado?: 'fornecedores' 
               <FaixaQueAbre titulo="Lançamentos" qtd={vm.lancamentos.length}>
                 <div className="imp-mov">
                   <table className="table-compact">
-                    <thead><tr><th>Data</th><th>Contrapartida</th><th>Histórico</th><th className="num">Débito</th><th className="num">Crédito</th><th className="num">Saldo</th></tr></thead>
+                    <thead><tr><th>Data</th><th>Contrapartida</th><th>Histórico</th><th className="num">Valor</th><th className="num">Saldo</th></tr></thead>
                     <tbody>
-                      <tr className="imp-mov-anterior"><td colSpan={5}>Saldo anterior</td><td className="num">{vm.saldoAnterior}</td></tr>
+                      <tr className="imp-mov-anterior"><td colSpan={4}>Saldo anterior</td><td className="num">{vm.saldoAnterior}</td></tr>
                       {vm.lancamentos.map(l => (
                         <tr key={l.id}>
                           <td style={{ whiteSpace: 'nowrap' }}>{l.data}</td>
                           <td>{l.contrapartida}</td>
                           <td className="wrap">{l.historico}</td>
-                          {/* o lançamento devedor em azul e o credor em vermelho (Vitor, 07/10/2026) */}
-                          <td className="num ext-azul">{l.debito}</td>
-                          <td className="num ext-neg">{l.credito}</td>
+                          {/* débito e crédito numa coluna só (Vitor, 07/10/2026): o devedor em azul e o credor em vermelho */}
+                          <td className={'num ' + l.corDoValor}>{l.valor}</td>
                           <td className={'num ' + l.cor}>{l.saldo}</td>
                         </tr>
                       ))}
