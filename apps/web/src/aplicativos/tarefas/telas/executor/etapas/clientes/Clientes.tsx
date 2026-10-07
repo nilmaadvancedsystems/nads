@@ -153,9 +153,9 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                   )}
                 </td>
                 <td>
-                  {/* Saldo ↔ Conferido, os dois em laranja; o Ok é do sistema (a conta zerada) e não é botão (Vitor, 06/10/2026) */}
+                  {/* os selos do catálogo: o saldo (Diferença, SE-03) ↔ Conferido (SE-02); o Ok (SE-01) é do sistema e não é botão (Vitor, 06/10/2026) */}
                   {l.situacao === 'ok' ? <span className="badge badge-ok">Ok</span> : (
-                    <button type="button" className="badge badge-warn" disabled={!vm.carregado} onClick={() => vm.clicar(l.codigo)} style={{ cursor: 'pointer' }}
+                    <button type="button" className={'badge ' + (l.situacao === 'pendente' ? 'badge-bad' : 'badge-conferido')} disabled={!vm.carregado} onClick={() => vm.clicar(l.codigo)} style={{ cursor: 'pointer' }}
                       title={l.situacao === 'pendente' ? 'Saldo em aberto. Clique: Conferido (vai para o cliente)' : 'Conferido (vai para o cliente). Clique: volta para o saldo'}>
                       {l.situacao === 'pendente' ? l.valor : 'Conferido'}
                     </button>
