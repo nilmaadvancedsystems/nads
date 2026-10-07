@@ -113,6 +113,8 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...(typeof doc.prestaServico === 'boolean' ? { prestaServico: doc.prestaServico } : {}),
     ...(Array.isArray(doc.socios) ? { socios: (doc.socios as Record<string, unknown>[]).map(s => ({ nome: texto(s?.nome), cpf: texto(s?.cpf) })).filter(s => s.nome || s.cpf) } : {}), atualizadoEm: opcional(doc.atualizadoEm),
     ...responsaveisDoDocumento(doc.responsaveis), ...dpDoDocumento(doc.dp), ...transferenciasDoDocumento(doc.transferencias),
+    ...(doc.nova && typeof doc.nova === 'object' && texto((doc.nova as Record<string, unknown>).regime)
+      ? { nova: { regime: texto((doc.nova as Record<string, unknown>).regime), criadaEm: texto((doc.nova as Record<string, unknown>).criadaEm) } } : {}),
   };
 }
 
@@ -128,6 +130,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(c.responsaveis && Object.keys(c.responsaveis).length ? { responsaveis: c.responsaveis } : {}),
     ...(c.dp && Object.keys(c.dp).length ? { dp: c.dp } : {}),
     ...(c.transferencias && Object.keys(c.transferencias).length ? { transferencias: c.transferencias } : {}),
+    ...(c.nova ? { nova: c.nova } : {}),
     historico: c.historico.slice(0, MAX_HISTORICO),
     atualizadoEm: c.atualizadoEm || new Date().toISOString(),
   };
@@ -282,6 +285,20 @@ export function transferenciasParaResponder(cadastros: Iterable<CadastroDaEmpres
     }
   }
   return lista.sort((a, b) => a.t.em.localeCompare(b.t.em));
+}
+
+/** A empresa nova, cadastrada pelo nads: o código do ERP (se tiver), o nome e o regime. */
+export function cadastrarEmpresa(nome: string, codigo: number | null, regime: string, por: string, agora: Date): CadastroDaEmpresa {
+  const n = texto(nome).toUpperCase();
+  return registrar({ ...cadastroVazio(n, codigo), nova: { regime: texto(regime), criadaEm: agora.toISOString() } }, por, agora,
+    'Cadastrou a empresa', (codigo != null ? codigo + ' · ' : '') + n + ' · ' + texto(regime));
+}
+
+/** As empresas cadastradas pelo nads (para juntar à lista do escritório). */
+export function empresasCadastradasNoNads(cadastros: Iterable<CadastroDaEmpresa>): { codigo: number | null; nome: string; regime: string }[] {
+  const lista: { codigo: number | null; nome: string; regime: string }[] = [];
+  for (const c of cadastros) if (c.nova) lista.push({ codigo: c.codigo, nome: c.nome, regime: c.nova.regime });
+  return lista.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 
 /** Registra no histórico a troca do plano de contas (o plano mora em outro documento). */

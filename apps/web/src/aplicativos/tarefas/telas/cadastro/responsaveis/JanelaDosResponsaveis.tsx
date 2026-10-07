@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { JanelaLateral, type TopicoDaJanela } from '../../janela/JanelaLateral';
 import { EmpresasDaPessoa, EmpresasSemResponsavel } from './EmpresasDaPessoa';
+import { FotoDaPessoa } from './FotoDaPessoa';
 import { useEmpresasPorResponsavel } from './useEmpresasPorResponsavel';
 
 const SEM = '__sem__';
@@ -12,7 +13,7 @@ export function JanelaDosResponsaveis({ fechar }: { fechar: () => void }) {
   const vm = useEmpresasPorResponsavel();
   const [topico, setTopico] = useState<string>('');
   const topicos: TopicoDaJanela<string>[] = [
-    ...vm.pessoas.map(p => ({ id: p.nome, rotulo: p.nome, icone: 'usuario' as const, contador: p.total })),
+    ...vm.pessoas.map(p => ({ id: p.nome, rotulo: p.nome, icone: 'usuario' as const, contador: p.total, foto: <FotoDaPessoa {...vm.fotoDe(p.nome)} /> })),
     { id: SEM, rotulo: 'Sem responsável', icone: 'alert' as const, contador: vm.semResponsavel('fiscal').length + vm.semResponsavel('contabil').length },
   ];
   const atual = topico || topicos[0]?.id || SEM;

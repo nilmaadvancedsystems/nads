@@ -5,7 +5,7 @@
 import { Icone, type NomeIcone } from '@nads/ui';
 import { useEffect, type ReactNode } from 'react';
 
-export interface TopicoDaJanela<T extends string> { id: T; rotulo: string; icone: NomeIcone; alerta?: boolean; contador?: number }
+export interface TopicoDaJanela<T extends string> { id: T; rotulo: string; icone: NomeIcone; alerta?: boolean; contador?: number; /** no lugar do ícone (a foto da pessoa) */ foto?: ReactNode }
 
 export function Linha({ rotulo, dica, children }: { rotulo: ReactNode; dica?: ReactNode; children?: ReactNode }) {
   return (
@@ -38,7 +38,7 @@ export function JanelaLateral<T extends string>({ rotulo, resumo, topicos, topic
           <nav aria-label="Tópicos">
             {topicos.map(t => (
               <button key={t.id} type="button" className={'pessoal-topico' + (t.id === topico ? ' ativo' : '')} aria-current={t.id === topico ? 'page' : undefined} onClick={() => mudar(t.id)}>
-                <Icone nome={t.icone} />{t.rotulo}
+                {t.foto ?? <Icone nome={t.icone} />}{t.rotulo}
                 {t.contador != null && t.contador > 0 && <span className="gh-counter">{t.contador}</span>}
                 {t.alerta && <span className="usuario-topico-alerta" aria-label="falta preencher" />}
               </button>

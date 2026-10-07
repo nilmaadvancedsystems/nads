@@ -25,6 +25,7 @@ import { criarSaudeFirestore } from './saude.firestore';
 import { balanceteNoEntregas, clientesNoEntregas, conferenciaNoBanco, gravarLeituraDeContas, ouvirLeituraDeContas, portaCadastroFirestore } from './cadastro.firestore';
 import { criarRepoTarefasFirestore, extratorNoBanco, type RepoTarefasFirestore } from './tarefas.firestore';
 import { ligadoAoBanco } from '../../../comum/modoDesenvolvedor';
+import { definirEmpresasExtras } from '../../../comum/empresaDaRota';
 
 export const noBanco = ligadoAoBanco(); // no modo desenvolvedor, os dados de exemplo (nada vai para o banco)
 
@@ -40,8 +41,33 @@ export function sessaoDaTarefas(): SessaoEntregas | null {
 
 export function repoDaTarefas(): tarefas.RepoTarefas {
   // a empresa de teste (Personaly Company) fica neste navegador; o resto, no banco (ou nos exemplos)
-  if (!repo) repo = demo.tarefasComDemo(noBanco ? criarRepoTarefasFirestore(empresas.EMPRESAS_COM_DP) : tarefas.criarRepoTarefasMemoria({ empresas: empresas.EMPRESAS_COM_DP }));
+  if (!repo) {
+    const r = demo.tarefasComDemo(noBanco ? criarRepoTarefasFirestore(empresas.EMPRESAS_COM_DP) : tarefas.criarRepoTarefasMemoria({ empresas: empresas.EMPRESAS_COM_DP }));
+    // a lista do escritório com as empresas cadastradas pelo nads (Cadastro › Nova empresa)
+    const listar = r.listarEmpresas.bind(r);
+    let cache: { base: readonly empresas.EmpresaDoEscritorio[]; novas: readonly empresas.EmpresaDoEscritorio[]; junto: readonly empresas.EmpresaDoEscritorio[] } | null = null;
+    r.listarEmpresas = () => {
+      const base = listar();
+      const novas = empresasNovas();
+      if (!cache || cache.base !== base || cache.novas !== novas) cache = { base, novas, junto: novas.length ? [...base, ...novas] : base };
+      return cache.junto;
+    };
+    definirEmpresasExtras(empresasNovas);
+    repo = r;
+  }
   return repo;
+}
+
+let novasCache: { ver: number; lista: readonly empresas.EmpresaDoEscritorio[] } | null = null;
+/** As empresas cadastradas pelo nads (no cadastro, com o regime), sem as que já estão na lista do escritório. */
+export function empresasNovas(): readonly empresas.EmpresaDoEscritorio[] {
+  const c = repoDoCadastro();
+  const ver = c.versao();
+  if (novasCache && novasCache.ver === ver) return novasCache.lista;
+  const ja = new Set(empresas.EMPRESAS_COM_DP.map(e => e.nome));
+  const lista = empresas.cadastro.empresasCadastradasNoNads(c.todos().porId.values()).filter(e => !ja.has(e.nome));
+  novasCache = { ver, lista };
+  return lista;
 }
 
 /** Os erros do banco (salvar/ler) vão para o toast da tela. */

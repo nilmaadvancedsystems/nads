@@ -1,10 +1,10 @@
 // ViewModel do cartão "Trocas para você responder" (Vitor, 07/10/2026): os pedidos em que quem está trabalhando é um dos
 // lados e ainda não aceitou, agrupados pela troca (as empresas que saem e as que entram), com um Aceitar / Recusar para a
 // troca inteira. Fica em Minhas empresas.
-import { empresas } from '@nads/core';
+import { empresas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useOperador } from '../../../casca/operador';
-import { useGravarCadastro, useTodosOsCadastros } from '../../../dados/repo';
+import { useAcesso, useGravarCadastro, useTodosOsCadastros } from '../../../dados/repo';
 
 const cad = empresas.cadastro;
 
@@ -13,6 +13,7 @@ export function useTransferenciasPendentes() {
   const gravar = useGravarCadastro();
   const eu = useOperador().operador?.nome || '';
   const { toast } = useRetorno();
+  const equipe = useAcesso().equipe().lista;
   const pedidos = todos.carregada ? cad.transferenciasParaResponder(todos.porId.values(), eu) : [];
   const grupos = new Map<string, typeof pedidos>();
   for (const p of pedidos) {
@@ -24,6 +25,7 @@ export function useTransferenciasPendentes() {
       const outro = itens[0].papel === 'emitente' ? itens[0].t.para : itens[0].t.de;
       return {
         chave, outro,
+        foto: { foto: equipe.find(p => p.nome.toLowerCase() === outro.toLowerCase())?.fotoPerfil || null, iniciais: usuarios.iniciais(outro) },
         saem: itens.filter(i => i.papel === 'emitente').map(i => i.cadastro.nome),
         entram: itens.filter(i => i.papel === 'destinatario').map(i => i.cadastro.nome),
         responder(aceita: boolean) {
