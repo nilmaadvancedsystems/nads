@@ -88,7 +88,7 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
             const r = d?.resultado as Record<string, unknown> | undefined;
             pedidos.set(t + '|' + k, d ? {
               status: texto(d.status), andamento: texto(d.andamento), erro: texto(d.erro), em: texto(d.criadoEm),
-              ...(r ? { resultado: { arquivos: Number(r.arquivos) || 0, novos: Number(r.novos) || 0, pasta: texto(r.pasta), emitidas: Number(r.emitidas) || 0, recebidas: Number(r.recebidas) || 0 } } : {}),
+              ...(r ? { resultado: { arquivos: Number(r.arquivos) || 0, novos: Number(r.novos) || 0, pasta: texto(r.pasta), zip: texto(r.zip), emitidas: Number(r.emitidas) || 0, recebidas: Number(r.recebidas) || 0 } } : {}),
             } : null);
           }
           mudou();

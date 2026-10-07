@@ -63,7 +63,7 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
       resultado: !pronto ? '' : janela === 'contagem'
         ? (cont.dados ? t.sieg.totalDe(cont.dados.emitidas) + ' emitidas · ' + t.sieg.totalDe(cont.dados.recebidas) + ' recebidas' : '')
         : (pJanela?.resultado ? pJanela.resultado.arquivos + ' XMLs (' + pJanela.resultado.novos + ' novos) · ' + pJanela.resultado.emitidas + ' notas emitidas e '
-          + pJanela.resultado.recebidas + ' recebidas · em ' + pJanela.resultado.pasta : ''),
+          + pJanela.resultado.recebidas + ' recebidas · em ' + pJanela.resultado.pasta + (pJanela.resultado.zip ? ' (com o ' + pJanela.resultado.zip + ')' : '') : ''),
     };
   })() : null;
 

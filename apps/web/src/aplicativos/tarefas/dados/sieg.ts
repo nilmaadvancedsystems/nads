@@ -6,7 +6,7 @@ import { tarefas as t } from '@nads/core';
 export interface PedidoSieg {
   status: string; andamento: string; erro: string; em: string;
   /** o "Baixar XMLs" pronto: quantos arquivos, quantos novos, onde, e quantas notas */
-  resultado?: { arquivos: number; novos: number; pasta: string; emitidas: number; recebidas: number };
+  resultado?: { arquivos: number; novos: number; pasta: string; emitidas: number; recebidas: number; zip?: string };
 }
 
 /** O que se pede ao robô: baixar as saídas (a sequência) ou contar as notas do mês agora (sem esperar a madrugada). */
