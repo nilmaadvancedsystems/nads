@@ -32,6 +32,8 @@ export const TELAS: Tela[] = [
   { id: 't-exec-cheque', app: 'Tarefas', nome: 'Executor › Cheque especial' },
   { id: 't-exec-fiscal', app: 'Tarefas', nome: 'Executor › Conferência fiscal' },
   { id: 't-exec-folha', app: 'Tarefas', nome: 'Executor › Contabilização da Folha' },
+  { id: 't-exec-bancos', app: 'Tarefas', nome: 'Executor › Relatório Bancário' },
+  { id: 't-exec-clientes', app: 'Tarefas', nome: 'Executor › Clientes' },
   { id: 't-exec-fiscal-rotina', app: 'Tarefas', nome: 'Executor › Rotina do Fiscal (checklist disfarçada)' },
   { id: 't-cadastro', app: 'Tarefas', nome: 'Cadastro (lista)' },
   { id: 't-cadastro-janela', app: 'Tarefas', nome: 'Cadastro › Janela da empresa' },
@@ -66,6 +68,6 @@ export const TODAS = TELAS.map(t => t.id);
 export const TAREFAS = tudoDe('Tarefas');
 export const EXTRATUDO = tudoDe('Extratudo');
 export const CONCILIA = tudoDe('Concilia aí');
-export const EXECUTOR = ['t-exec-importacao', 't-exec-cheque', 't-exec-fiscal', 't-exec-folha', 't-exec-fiscal-rotina'];
+export const EXECUTOR = ['t-exec-importacao', 't-exec-cheque', 't-exec-fiscal', 't-exec-folha', 't-exec-bancos', 't-exec-clientes', 't-exec-fiscal-rotina'];
 
 export type { IdTipo };
