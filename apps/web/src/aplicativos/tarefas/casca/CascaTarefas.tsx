@@ -6,6 +6,7 @@ import { useAvisoDeBloqueio } from '../../../comum/modoDesenvolvedor';
 import type { IdAplicacao } from './navegacao';
 import { useCascaTarefas } from './useCascaTarefas';
 import { JanelaDeFeedback } from '../telas/feedback/JanelaDeFeedback';
+import { ItemDosFeedbacks, JanelaDosFeedbacks } from '../telas/feedback/FeedbacksDoNads';
 
 /** O avatar no canto do cabeçalho (como o do Entregas e o do GitHub): as iniciais; aberto, a Minha página e sair. */
 function AvatarDaPessoa({ vm, abrirFeedback }: { vm: ReturnType<typeof useCascaTarefas>; abrirFeedback: () => void }) {
@@ -27,14 +28,17 @@ export function CascaTarefas({ app, pagina, telaInteira, larga, children }: { ap
   const vm = useCascaTarefas(app, pagina);
   const trilha = useTrilhaDoTopo();
   const [feedback, setFeedback] = useState(false);
+  const [feedbacks, setFeedbacks] = useState(false);
   useAvisoDeBloqueio();
   return (
     <Casca sistema="Tarefas" temaNaGaveta={false} empresa={vm.empresa} versao={vm.versao} trilha={trilha} secoes={vm.secoes} paginas={vm.paginas} titulo={telaInteira ? '' : vm.titulo}
       lateral={telaInteira || vm.comAbas ? 'nenhuma' : undefined} larga={telaInteira || larga}
       acoes={telaInteira ? undefined : <LugarDasAcoes />} onSecao={vm.onSecao} onPagina={vm.onPagina} onInicio={vm.inicio} onAplicativos={vm.inicio}
       onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}
-      topoDireita={<AvatarDaPessoa vm={vm} abrirFeedback={() => setFeedback(true)} />}>
+      topoDireita={<AvatarDaPessoa vm={vm} abrirFeedback={() => setFeedback(true)} />}
+      peDaGaveta={vm.admin ? fechar => <ItemDosFeedbacks abrir={() => { fechar(); setFeedbacks(true); }} /> : undefined}>
       {feedback && <JanelaDeFeedback fechar={() => setFeedback(false)} />}
+      {feedbacks && <JanelaDosFeedbacks fechar={() => setFeedbacks(false)} />}
       {children}
     </Casca>
   );

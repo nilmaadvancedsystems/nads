@@ -3309,3 +3309,6 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .cert-painel .cert-painel-num .stat-value{color:inherit;}
 .cert-painel .cert-painel-num .stat-label{color:var(--ink-muted);}
 .cert-painel-vazio{padding:24px 4px;}
+/* os Feedbacks numa janela flutuante, abertos no pé da gaveta ☰ (07/10/2026) */
+.feedbacks-janela{width:min(980px,96vw);}
+.drawer-foot .drawer-item{margin:0 0 8px;}
