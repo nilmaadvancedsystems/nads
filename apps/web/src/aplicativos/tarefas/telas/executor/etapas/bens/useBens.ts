@@ -1,13 +1,18 @@
 // ViewModel da etapa Bens da Tarefa (Vitor, 07/10/2026): as notas de entrada de bem do ativo imobilizado (1551, 2551
 // e os CFOPs ligados), as saídas que baixam bem e o uso e consumo com item de bem, das notas importadas na Conferência,
 // no período da tarefa. Só olhar: nada é gravado. O ⚡ do modo desenvolvedor põe notas de teste só nesta tela.
+// A verificação só roda no clique do Verificar (Vitor, 07/10/2026: abrir a etapa travava enquanto olhava os CFOPs), com a
+// barra do topo por pelo menos 3 segundos.
 import { demo, formatos, tarefas } from '@nads/core';
-import { useRetorno } from '@nads/ui';
-import { useMemo, useState } from 'react';
+import { useCarregando, useRetorno } from '@nads/ui';
+import { useEffect, useState } from 'react';
 import { useNotasDaConferencia } from '../../../../../concilia-ai/importadosNaEtapa';
 import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 
 type Linha = tarefas.NotaDeBem;
+
+/** o tempo da verificação: a barra anda pelo menos isso depois do clique */
+const TEMPO_DA_VERIFICACAO = 3000;
 
 export function useBens() {
   const s = useEtapaAberta();
@@ -23,10 +28,27 @@ export function useBens() {
 
   const fonte = teste || lidas;
   const chave = meses.join(',');
-  const b = useMemo(() => tarefas.bensDoPeriodo(fonte?.entradas || [], fonte?.saidas || [], chave.split(',')), [fonte, chave]);
+  // o clique do Verificar: a hora em que começou; o resultado, quando a conta e os 3 segundos acabam
+  const [desde, setDesde] = useState<number | null>(null);
+  const [b, setB] = useState<ReturnType<typeof tarefas.bensDoPeriodo> | null>(null);
+  // outras notas (as de teste, ou as da empresa de volta): verificar de novo
+  useEffect(() => { setB(null); setDesde(null); }, [fonte, chave]);
+  useEffect(() => {
+    if (desde === null || !fonte) return;
+    // a conta depois de a barra aparecer, para a tela não travar antes dela
+    let fim: ReturnType<typeof setTimeout> | undefined;
+    const conta = setTimeout(() => {
+      const r = tarefas.bensDoPeriodo(fonte.entradas || [], fonte.saidas || [], chave.split(','));
+      fim = setTimeout(() => { setB(r); setDesde(null); }, Math.max(0, TEMPO_DA_VERIFICACAO - (Date.now() - desde)));
+    }, 50);
+    return () => { clearTimeout(conta); clearTimeout(fim); };
+  }, [desde, fonte, chave]);
+  const verificando = desde !== null;
+  useCarregando(verificando);
+  const verificar = () => { if (!verificando) setDesde(Date.now()); };
   const entradas = fonte?.entradas || [];
 
-  useRequisitosDaEtapa(lidas || teste ? { pronto: true, faltam: [] } : { pronto: false, faltam: ['Carregando as notas da Conferência'] });
+  useRequisitosDaEtapa(b ? { pronto: true, faltam: [] } : { pronto: false, faltam: ['Verificar as notas de bem'] });
 
   const reais = formatos.reais;
   const linha = (n: Linha) => ({
@@ -34,8 +56,12 @@ export function useBens() {
     ncms: n.ncms.join(', '), conta: n.conta, naoMexe: n.efeito === 'nao-mexe',
   });
 
+  if (!b) return { verificado: false as const, verificando, verificar, deTeste: !!teste, tirarTeste: () => setTeste(null) };
+
   return {
-    carregado: !!lidas || !!teste,
+    verificado: true as const,
+    verificando,
+    verificar,
     deTeste: !!teste,
     tirarTeste: () => setTeste(null),
     periodo: meses.length > 1 ? tarefas.rotuloNumericoCompetencia(meses[0]) + ' a ' + tarefas.rotuloNumericoCompetencia(meses[meses.length - 1]) : tarefas.rotuloNumericoCompetencia(meses[0]),
