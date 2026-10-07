@@ -32,6 +32,7 @@ export function useFgtsDoDp() {
   const [competencia, setCompetencia] = useState(competencias[0]);
   const [filtro, setFiltro] = useState<FiltroFgts>('todos');
   const [busca, setBusca] = useState('');
+  const [responsavel, setResponsavel] = useState('');
   const [aberto, setAberto] = useState<string | null>(null);
   const [pedindo, setPedindo] = useState(false);
   const doDp = useClientesDoDp(competencia);
@@ -44,16 +45,18 @@ export function useFgtsDoDp() {
     // só quem tem folha no mês (Vitor, 07/10/2026: "só apareça na emissão do FGTS empresas que tem folha"): o movimento do DP
     .filter(c => c.movimento === 'Folha')
     .map(c => {
-      const cnpj = cnpjDoCodigo.get(c.codigo) || '';
+      // nos exemplos não há cadastro do Entregas: um CNPJ inventado pelo código, para a tela andar
+      const cnpj = cnpjDoCodigo.get(c.codigo) || (repo.exemplos ? String(c.codigo).padStart(8, '0') + '000100' : '');
       const pedido = cnpj ? porCnpj.get(cnpj) : undefined;
-      return { codigo: c.codigo, nome: c.nomeNaTela, cnpj, pedido, situacao: situacaoDoPedido(pedido, !!cnpj) };
+      return { codigo: c.codigo, nome: c.nomeNaTela, cnpj, responsavel: c.responsavel, pedido, situacao: situacaoDoPedido(pedido, !!cnpj) };
     })
     .sort((a, b) => a.codigo - b.codigo);
   const q = busca.trim().toLowerCase();
   const qDigitos = q.replace(/\D/g, '');
-  const linhas = todas.filter(l => (!q || l.nome.toLowerCase().includes(q) || String(l.codigo).includes(q) || (!!qDigitos && l.cnpj.includes(qDigitos)))
+  const doResponsavel = responsavel ? todas.filter(l => l.responsavel === responsavel) : todas;
+  const linhas = doResponsavel.filter(l => (!q || l.nome.toLowerCase().includes(q) || String(l.codigo).includes(q) || (!!qDigitos && l.cnpj.includes(qDigitos)))
     && (filtro === 'todos' || (filtro === 'emitidas' ? l.situacao === 'emitida' : filtro === 'problemas' ? ['erro', 'captcha', 'sem-cnpj'].includes(l.situacao) : !['emitida', 'sem-cnpj'].includes(l.situacao))));
-  const faltam = todas.filter(l => l.cnpj && ['nada', 'erro', 'ensaio-ok'].includes(l.situacao));
+  const faltam = doResponsavel.filter(l => l.cnpj && ['nada', 'erro', 'ensaio-ok'].includes(l.situacao));
 
   async function pedir(l: (typeof todas)[number], modo: ModoFgts) {
     if (!l.cnpj) return;
@@ -68,11 +71,14 @@ export function useFgtsDoDp() {
     competencias: competencias.map(c => ({ valor: c, rotulo: t.rotuloCompetencia(c) })),
     setCompetencia,
     filtro, setFiltro, busca, setBusca,
+    responsavel, setResponsavel,
+    responsaveis: [...new Set(todas.map(l => l.responsavel).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
     contagem: {
-      todos: todas.length,
-      faltam: todas.filter(l => !['emitida', 'sem-cnpj'].includes(l.situacao)).length,
-      emitidas: todas.filter(l => l.situacao === 'emitida').length,
-      problemas: todas.filter(l => ['erro', 'captcha', 'sem-cnpj'].includes(l.situacao)).length,
+      todos: doResponsavel.length,
+      faltam: doResponsavel.filter(l => !['emitida', 'sem-cnpj'].includes(l.situacao)).length,
+      emitidas: doResponsavel.filter(l => l.situacao === 'emitida').length,
+      problemas: doResponsavel.filter(l => ['erro', 'captcha', 'sem-cnpj'].includes(l.situacao)).length,
+      andando: doResponsavel.filter(l => l.situacao === 'fila' || l.situacao === 'trabalhando').length,
     },
     linhas,
     faltam: faltam.length,

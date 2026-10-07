@@ -3388,3 +3388,21 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .fgts-tela{margin:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface);}
 .fgts-tela img{display:block;width:100%;height:auto;}
 .fgts-tela figcaption{padding:6px 10px;font-size:12px;}
+
+/* DP › FGTS Digital (07/10/2026, "melhore a interface"): o resumo do mês com a barra, o robô numa linha e o botão */
+.fgts-resumo{padding:16px 18px;display:flex;flex-direction:column;gap:12px;}
+.fgts-resumo-topo{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;}
+.fgts-resumo-titulo{display:flex;flex-direction:column;gap:2px;margin-right:auto;min-width:0;}
+.fgts-resumo-titulo h3{margin:0;font-size:16px;}
+.fgts-robo-linha{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-muted);}
+.tarefas-barra.fgts-barra{display:flex;width:100%;height:8px;}
+.fgts-situacao .fraco,.fgts-situacao .badge,.fgts-situacao .pill-vazio{white-space:nowrap;}
+.fgts-pedido-pdf{margin-left:auto;height:28px;font-size:12px;}
+.fgts-pedido-erro{color:var(--danger);}
+.fgts-passos{list-style:none;padding:4px 16px 14px;gap:0;}
+.fgts-passos li{display:grid;grid-template-columns:24px 1fr;gap:10px;position:relative;padding-bottom:12px;}
+.fgts-passos li:not(:last-child)::before{content:"";position:absolute;left:11px;top:24px;bottom:0;width:2px;background:var(--border);}
+.fgts-passo-marca{width:24px;height:24px;border-radius:50%;background:var(--surface-3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;}
+.fgts-nome{min-width:200px;}
+.fgts-cnpj{white-space:nowrap;}
+.fgts-acoes{align-items:center;}

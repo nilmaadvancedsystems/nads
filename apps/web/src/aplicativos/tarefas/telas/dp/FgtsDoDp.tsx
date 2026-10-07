@@ -2,7 +2,7 @@
 // certificado do escritório (procuração no SPE). Em cima, o robô (ligado com o certificado, ou por que está desligado);
 // a competência, os filtros e "Emitir as que faltam"; na lista, cada cliente com folha no mês: a situação da guia,
 // Emitir / Ensaio e, pronta, Baixar o PDF. Clicar na situação abre os passos do robô (as telas por onde passou).
-import { Esqueleto, Icone, Segmentado, useCarregando } from '@nads/ui';
+import { BotaoAcao, BotaoIcone, Esqueleto, Icone, Segmentado, SeletorMes, useCarregando } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { JanelaLateral } from '../janela/JanelaLateral';
 import { useFgtsDoDp, type FiltroFgts, type SituacaoFgts } from './useFgtsDoDp';
@@ -45,39 +45,66 @@ export function FgtsDoDp() {
   const vm = useFgtsDoDp();
   useCarregando(vm.carregando);
   const r = vm.robo;
+  const c = vm.contagem;
   const filtros: { valor: FiltroFgts; rotulo: string }[] = [
-    { valor: 'todos', rotulo: 'Todos · ' + vm.contagem.todos },
-    { valor: 'faltam', rotulo: 'Faltam · ' + vm.contagem.faltam },
-    { valor: 'emitidas', rotulo: 'Emitidas · ' + vm.contagem.emitidas },
-    { valor: 'problemas', rotulo: 'Com problema · ' + vm.contagem.problemas },
+    { valor: 'todos', rotulo: 'Todas · ' + c.todos },
+    { valor: 'faltam', rotulo: 'Faltam · ' + c.faltam },
+    { valor: 'emitidas', rotulo: 'Emitidas · ' + c.emitidas },
+    { valor: 'problemas', rotulo: 'Com problema · ' + c.problemas },
   ];
+  const mes = vm.competencias.find(x => x.valor === vm.competencia)?.rotulo || vm.competencia.split('-').reverse().join('/');
   const aberto = vm.aberto;
   const pedidoAberto = aberto?.pedido;
   return (
-    <section>
-      {r.carregado && (
-        r.ligado && r.certificado
-          ? <div className="alert alert-ok fgts-robo"><Icone nome="check" /><div><p className="alert-title">Robô do FGTS ligado</p><p className="alert-text">Certificado de {r.certificado.titular}, válido até {data(r.certificado.validade)}.</p></div></div>
-          : <div className="alert fgts-robo"><Icone nome="alert" /><div><p className="alert-title">Robô do FGTS desligado</p><p className="alert-text">{r.motivo || 'Sem o certificado do escritório na máquina do robô.'}</p></div></div>
+    <section className="dp-painel">
+      {r.carregado && !r.ligado && (
+        <div className="alert fgts-robo"><Icone nome="alert" /><div><p className="alert-title">Robô do FGTS desligado</p><p className="alert-text">{r.motivo || 'Sem o certificado do escritório na máquina do robô.'}</p></div></div>
       )}
-      <div className="tarefas-barra-topo">
-        <select className="select-compact" value={vm.competencia} onChange={e => vm.setCompetencia(e.target.value)} aria-label="Competência">
-          {vm.competencias.map(c => <option key={c.valor} value={c.valor}>{c.rotulo}</option>)}
-        </select>
-        <Segmentado valor={vm.filtro} opcoes={filtros} onMudar={vm.setFiltro} />
-        <span className="tarefas-barra-espaco" />
-        <label className="busca-curta">
-          <Icone nome="search" />
-          <input type="text" placeholder="Buscar empresa ou CNPJ" aria-label="Buscar empresa" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} />
+      <div className="tarefas-filtros dp-filtros">
+        <div className="field dp-filtro">
+          <span className="hint">Competência</span>
+          <SeletorMes valor={vm.competencia} onMudar={vm.setCompetencia} rotulo="Competência" />
+        </div>
+        <label className="field dp-filtro dp-busca">
+          <span className="hint">Buscar cliente</span>
+          <input type="text" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} placeholder="Nome, código ou CNPJ" aria-label="Buscar cliente" />
         </label>
-        <button type="button" className="btn btn-primary" disabled={!r.ligado || !vm.faltam || vm.pedindo} onClick={() => void vm.emitirTodas()}>
-          <Icone nome="fileDown" />Emitir as que faltam{vm.faltam ? ' · ' + vm.faltam : ''}
-        </button>
+        <label className="field dp-filtro">
+          <span className="hint">Responsável</span>
+          <select className="select-compact" value={vm.responsavel} onChange={e => vm.setResponsavel(e.target.value)}>
+            <option value="">Todos</option>
+            {vm.responsaveis.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </label>
+      </div>
+
+      <section className="card fgts-resumo">
+        <div className="fgts-resumo-topo">
+          <div className="fgts-resumo-titulo">
+            <h3>Guias de {mes}</h3>
+            <span className="hint"><b className="num">{c.emitidas}</b> de <b className="num">{c.todos}</b> emitidas{c.andando ? ' · ' + c.andando + ' com o robô agora' : ''}</span>
+          </div>
+          {r.carregado && r.ligado && r.certificado && (
+            <span className="fgts-robo-linha" title={'Certificado de ' + r.certificado.titular}>
+              <span className="bolinha-sit concluida" aria-hidden="true" />Robô ligado · certificado até {data(r.certificado.validade)}
+            </span>
+          )}
+          <BotaoAcao carregando={vm.pedindo} textoCarregando="Pedindo…" disabled={!r.ligado || !vm.faltam} onClick={() => void vm.emitirTodas()}>
+            <Icone nome="fileDown" />Emitir as que faltam{vm.faltam ? ' · ' + vm.faltam : ''}
+          </BotaoAcao>
+        </div>
+        <span className="tarefas-barra fgts-barra" role="progressbar" aria-valuemin={0} aria-valuemax={c.todos} aria-valuenow={c.emitidas} aria-label="Guias emitidas">
+          <span style={{ width: (c.todos ? (c.emitidas / c.todos) * 100 : 0) + '%' }} />
+        </span>
+      </section>
+
+      <div className="tarefas-barra-topo">
+        <Segmentado valor={vm.filtro} opcoes={filtros} onMudar={vm.setFiltro} />
       </div>
       {vm.carregando ? <Esqueleto linhas={8} /> : vm.linhas.length ? (
         <div className="table-wrap">
           <table className="table-compact">
-            <thead><tr><th>Cód.</th><th>Empresa</th><th>CNPJ</th><th>Guia</th><th /></tr></thead>
+            <thead><tr><th>Cód.</th><th>Empresa</th><th>CNPJ</th><th>Responsável</th><th>Guia</th><th /></tr></thead>
             <tbody>
               {vm.linhas.map(l => {
                 const selo = SELO[l.situacao];
@@ -85,8 +112,9 @@ export function FgtsDoDp() {
                 return (
                   <tr key={l.codigo}>
                     <td><span className="emp-cod">{l.codigo}</span></td>
-                    <td className="cofre-nome">{l.nome}</td>
-                    <td className="num fraco">{l.cnpj ? cnpjFormatado(l.cnpj) : ''}</td>
+                    <td className="fgts-nome">{l.nome}</td>
+                    <td className="num fraco fgts-cnpj">{l.cnpj ? cnpjFormatado(l.cnpj) : ''}</td>
+                    <td className="fraco">{l.responsavel}</td>
                     <td>
                       {p ? (
                         <button type="button" className="fgts-situacao" title={p.erro || p.resultado || ''} onClick={() => vm.abrir(p.id)}>
@@ -99,8 +127,12 @@ export function FgtsDoDp() {
                       {p && l.situacao === 'emitida' && <button type="button" className="btn btn-outline" onClick={() => void vm.baixar(p)}><Icone nome="download" />PDF</button>}
                       {l.cnpj && !['fila', 'trabalhando'].includes(l.situacao) && (
                         <>
-                          <button type="button" className="btn btn-ghost" disabled={!r.ligado} onClick={() => void vm.pedir(l.codigo, 'ensaio')}>Ensaio</button>
-                          <button type="button" className="btn btn-outline" disabled={!r.ligado} onClick={() => void vm.pedir(l.codigo, 'emitir')}>{l.situacao === 'emitida' ? 'Emitir de novo' : 'Emitir'}</button>
+                          {l.situacao === 'emitida'
+                            ? <BotaoIcone icone="repeat" titulo="Emitir de novo" pequeno disabled={!r.ligado} onClick={() => void vm.pedir(l.codigo, 'emitir')} />
+                            : <>
+                              <button type="button" className="btn btn-ghost" disabled={!r.ligado} onClick={() => void vm.pedir(l.codigo, 'ensaio')}>Ensaio</button>
+                              <button type="button" className="btn btn-outline" disabled={!r.ligado} onClick={() => void vm.pedir(l.codigo, 'emitir')}>Emitir</button>
+                            </>}
                         </>
                       )}
                     </td>
@@ -121,11 +153,12 @@ export function FgtsDoDp() {
             <div className="fgts-pedido">
               <span className={SELO[aberto.situacao].classe}>{SELO[aberto.situacao].rotulo}</span>
               <span className="fraco">pedido por {pedidoAberto.criadoPor} · {hora(pedidoAberto.criadoEm)}</span>
-              {(pedidoAberto.erro || pedidoAberto.resultado) && <p>{pedidoAberto.erro || pedidoAberto.resultado}</p>}
+              {aberto.situacao === 'emitida' && <button type="button" className="btn btn-outline fgts-pedido-pdf" onClick={() => void vm.baixar(pedidoAberto)}><Icone nome="download" />PDF da guia</button>}
+              {(pedidoAberto.erro || pedidoAberto.resultado) && <p className={pedidoAberto.erro ? 'fgts-pedido-erro' : ''}>{pedidoAberto.erro || pedidoAberto.resultado}</p>}
             </div>
             <ol className="fgts-passos">
               {pedidoAberto.passos.map(p => (
-                <li key={p.n}><b>{p.nome}</b> <span className="fraco">{hora(p.quando)}</span><div className="fraco fgts-url">{p.url}</div></li>
+                <li key={p.n}><span className="fgts-passo-marca" aria-hidden="true">{p.n}</span><div><b>{p.nome}</b> <span className="fraco">{hora(p.quando)}</span><div className="fraco fgts-url">{p.url}</div></div></li>
               ))}
             </ol>
           </div>
