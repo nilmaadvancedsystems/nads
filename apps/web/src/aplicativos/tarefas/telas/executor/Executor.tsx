@@ -171,6 +171,10 @@ export function Executor() {
   const topo = (
     <>
       <nav className="gh-topo-acoes" aria-label="Etapa">
+        {/* o período no cabeçalho, no canto direito, em todas as etapas do Contábil (Vitor, 07/10/2026); só a Importação troca */}
+        {vm.departamento === 'contabil' && vm.empresa && vm.etapa && !COM_A_LINHA_DO_PERIODO.has(vm.etapa.id) && (
+          <PeriodoDaTarefa nome={vm.empresa.nome} codigo={vm.empresa.codigo} meses={vm.meses.length ? vm.meses : [vm.competencia]} />
+        )}
         {vm.grupos.length > 0 && (
           <MenuSuspenso rotulo="" icone={grupoDaVez ? ICONE_DO_GRUPO[grupoDaVez.nome] || 'list' : 'checkCircle'} className="gh-topo-btn gh-topo-menu"
             dica={grupoDaVez ? grupoDaVez.nome + ' · ' + grupoDaVez.feitas + '/' + grupoDaVez.total : 'Grupos da rotina'} direita largura={300} conteudo={fechar => <MenuDaRotina grupos={itensDosGrupos} emLote={emLote} fechar={fechar} />} />
@@ -263,10 +267,6 @@ export function Executor() {
         </div>
       ) : (
         <div className="executor-area">
-          {/* o botão do período e os bancos em todas as etapas do Contábil (Vitor, 07/10/2026); só a Importação troca o período */}
-          {vm.departamento === 'contabil' && !COM_A_LINHA_DO_PERIODO.has(vm.etapa.id) && (
-            <PeriodoDaTarefa nome={vm.empresa.nome} codigo={vm.empresa.codigo} meses={vm.meses.length ? vm.meses : [vm.competencia]} />
-          )}
           <div className={'executor-ferramenta' + (vm.revendo ? ' revendo' : '')} inert={vm.revendo || undefined} aria-disabled={vm.revendo || undefined}>
             {/* a ferramenta carregando: o N no meio, sobre um vidro embaçado (em vez da área vazia) */}
             {/* revendo uma etapa concluída: sem a abertura com o N (é só para olhar; Vitor, 05/10/2026: "o loading tá bugando") */}
