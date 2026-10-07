@@ -3097,3 +3097,21 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .resp-pendentes-lista li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--border);flex-wrap:wrap;}
 .resp-pendentes-texto{display:flex;flex-direction:column;gap:2px;min-width:0;}
 .resp-pendentes-texto .hint{margin:0;font-size:12.5px;}
+/* As empresas da pessoa (Usuários › janela, a janela Empresas por responsável e a Minha página; 07/10/2026) */
+.resp-janela{width:min(1100px,96vw);}
+.emp-pessoa{display:flex;flex-direction:column;gap:10px;}
+.emp-pessoa-busca{max-width:340px;}
+.emp-pessoa-vazio{margin:8px 0;}
+.emp-pessoa-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.emp-pessoa-lista li{display:flex;align-items:center;gap:12px;padding:10px 12px;border-top:1px solid var(--border);}
+.emp-pessoa-lista li:first-child{border-top:0;}
+.emp-pessoa-lista li:hover{background:var(--hover-bg);}
+.emp-pessoa-transf{box-shadow:inset 3px 0 0 var(--warn);}
+.emp-pessoa-cod{width:40px;flex:none;}
+.emp-pessoa-nome{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+.emp-pessoa-nome b{font-weight:500;font-size:13.5px;}
+.emp-pessoa-nome .hint{margin:0;font-size:12px;}
+.emp-pessoa-ic{width:12px;height:12px;vertical-align:-2px;margin-right:3px;color:var(--warn);}
+.emp-pessoa-acoes{display:inline-flex;gap:6px;flex:none;}
+.emp-pessoa-acoes .btn{height:28px;padding:0 10px;font-size:12px;}
+.emp-sem{display:flex;flex-direction:column;gap:6px;}
