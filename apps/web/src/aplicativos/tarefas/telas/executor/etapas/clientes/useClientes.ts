@@ -3,10 +3,12 @@
 // dinâmico), Clientes (todas as contas de cliente com o selo Saldo ↔ Conferido, o Ok do sistema na conta zerada, a observação do conferido e o razão da conta no fim da linha) e
 // Envio (a relação dos conferidos para o cliente: a planilha, o e-mail e o WhatsApp, com a mensagem configurável).
 // As marcas ficam guardadas por mês; os conferidos do mês anterior aparecem de novo para revisar.
-import { clientes as cl, conferencia as c, demo, formatos, tarefas } from '@nads/core';
+import { clientes as cl, conferencia as c, demo, formatos, mandei as md, tarefas } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
 import { gravarMensagem, lerMensagem, useMarcasDoMes } from '../../../../dados/clientes';
+import { criarTicket } from '../../../../dados/mandei';
+import { useOperador } from '../../../../casca/operador';
 import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 
 export type TelaClientes = 'arquivos' | 'credor' | 'clientes' | 'envio';
@@ -23,6 +25,9 @@ export function useClientes() {
   const [filtro, setFiltro] = useState<FiltroClientes>('todos');
   const [busca, setBusca] = useState('');
   const [mensagem, setMensagem] = useState(lerMensagem);
+  // o Mandei (Vitor, 07/10/2026): o ticket com o link para o cliente responder, anexar e a gente acompanhar
+  const op = useOperador().operador;
+  const [emailDoCliente, setEmailDoCliente] = useState('');
   const avisar = (m: string) => aviso({ tom: 'erro', titulo: 'Clientes', texto: m });
   const marcas = useMarcasDoMes(s.nome, mes, avisar);
   const anterior = useMarcasDoMes(s.nome, mes ? mesAntes(mes) : '');
@@ -166,6 +171,21 @@ export function useClientes() {
     conferidos: conferidos.map(l => ({ codigo: l.codigo, nome: l.nome, valor: reais(l.saldo), obs: l.obs, notas: cl.textoDasNotas(l.razao?.notas) })),
     mensagem, texto,
     mudarMensagem: (t: string) => { setMensagem(t); gravarMensagem(t); },
+    // o Mandei: um ticket com os conferidos (cada um, um item com a nossa pergunta), o link vai por e-mail
+    emailDoCliente, setEmailDoCliente,
+    mandarPeloMandei: () => {
+      const email = emailDoCliente.trim();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { aviso({ tom: 'erro', titulo: 'Mandei', texto: 'Informe o e-mail do cliente.' }); return; }
+      const t = criarTicket({
+        empresa: { nome: s.nome, codigo: s.codigo }, para: { nome: '', email },
+        assunto: 'Clientes em aberto — ' + rotuloMes,
+        mensagem: 'Na conferência dos clientes de ' + rotuloMes + ', estes saldos ficaram em aberto. Pode nos dizer o que aconteceu com cada um?',
+        criadoPor: { nome: op?.nome || '' },
+        origem: { titulo: 'Clientes · ' + rotuloMes, rota: window.location.pathname, competencia: mes },
+        itens: conferidos.map(l => ({ id: l.codigo, titulo: l.nome, valor: reais(l.saldo), ...(l.obs ? { detalhe: l.obs } : {}), opcoes: md.OPCOES_PADRAO })),
+      });
+      aviso({ tom: 'ok', titulo: 'Ticket ' + md.rotuloDoNumero(t.numero) + ' mandado', texto: email + ' · acompanhe em Mandei' });
+    },
     baixarPlanilha: () => baixarBytes(cl.planilhaParaCliente(paraCliente), 'clientes_' + (s.codigo ?? s.nome) + '_' + mes + '.xlsx', cl.TIPO_XLSX),
     email: 'mailto:?subject=' + encodeURIComponent('Clientes em aberto — ' + rotuloMes) + '&body=' + encodeURIComponent(texto),
     whatsapp: 'https://wa.me/?text=' + encodeURIComponent(texto),
