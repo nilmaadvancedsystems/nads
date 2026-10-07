@@ -306,6 +306,14 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     voltarAEtapaDaVez: () => setVendo(null),
     /** o modo desenvolvedor: só ver (o Avançar azul vai para a próxima etapa sem marcar nada) */
     dev,
+    /** os valores que as etapas informaram neste mês (o total da folha do DP) */
+    valores: ex?.valores || {},
+    /** a etapa informa um valor (o DP, o total da folha): fica na execução do mês */
+    informarValor: (chave: string, valor: number) => {
+      if (!ex || !etapa) return;
+      const v = t.informarValor(ex, etapa.id, chave, valor, op.nome, new Date());
+      repo.gravar(v.execucao, v.evento);
+    },
     /**
      * O ⚡ › Apagar início (Vitor, 06/10/2026): a rotina volta ao começo — toda etapa pendente, em todos os meses do
      * período, e os tiques dos checklists apagados. Só no modo desenvolvedor: nada vai para o banco (fica só nesta tela).

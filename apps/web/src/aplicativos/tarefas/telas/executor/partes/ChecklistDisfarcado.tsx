@@ -18,9 +18,11 @@ import { PainelDaTarefa } from './PainelDaTarefa';
 
 type ItemNaTela = TarefaDoChecklist & { marcado: boolean; liberado: boolean };
 
-export function ChecklistDisfarcado({ titulo, itens, definicao, alternar, empresa, codigo, competencia, meses }: {
+export function ChecklistDisfarcado({ titulo, itens, definicao, alternar, empresa, codigo, competencia, meses, valores, informar }: {
   titulo: string; itens: readonly ItemNaTela[]; definicao: readonly t.ItemDoChecklist[]; alternar: (id: string) => void;
   empresa: string; codigo: string; competencia: string; meses: readonly string[];
+  /** os valores da execução (o total da folha do DP) e como informar um */
+  valores?: Record<string, number>; informar?: (chave: string, valor: number) => void;
 }) {
   const vm = usePainelDoFiscal(empresa, codigo, competencia, meses);
   const feitos = itens.filter(i => i.marcado).length;
@@ -60,8 +62,12 @@ export function ChecklistDisfarcado({ titulo, itens, definicao, alternar, empres
         return (
           <div key={i.id} data-folha={i.nome} className={'imp-faixa pt-tarefa' + (aberta ? ' aberta' : '') + (vez ? ' da-vez' : '') + (!i.liberado && !i.marcado ? ' travada' : '')}>
             <div className="imp-faixa-barra pt-tarefa-barra">
-              <button type="button" className="pt-tarefa-abrir" disabled={!temPainel || (!vez && !i.marcado)} onClick={() => trocar(i.id)} aria-expanded={temPainel ? aberta : undefined}>
+              {/* o check marca e desmarca (Vitor, 07/10/2026); em ordem: só o da vez marca e só o último marcado desmarca */}
+              <button type="button" className="pt-caixa" onClick={() => alternar(i.id)} disabled={!i.liberado} aria-pressed={i.marcado}
+                title={i.liberado ? (i.marcado ? 'Desmarcar' : 'Marcar como conferido') : i.marcado ? 'Desmarque antes os de baixo' : 'Conclua a anterior primeiro'}>
                 <span className={'subnav-caixa ' + (i.marcado ? 'marcada' : 'vazia')}>{i.marcado && <Icone nome="check" />}</span>
+              </button>
+              <button type="button" className="pt-tarefa-abrir" disabled={!temPainel || (!vez && !i.marcado)} onClick={() => trocar(i.id)} aria-expanded={temPainel ? aberta : undefined}>
                 {temPainel && <Icone nome="caretDown" className="imp-faixa-seta" />}
                 <b>{i.nome}</b>
                 {importar.length > 0 && importadas > 0 && <span className="imp-faixa-qtd" title={importadas + ' notas importadas'}>{importadas}</span>}
@@ -90,7 +96,7 @@ export function ChecklistDisfarcado({ titulo, itens, definicao, alternar, empres
             {(aberta || (vez && i.aviso)) && (
               <div className="imp-faixa-corpo">
                 {i.aviso && vez && <p className="hint"><Icone nome="alert" /> {i.aviso}</p>}
-                {aberta && def?.painel && <PainelDaTarefa painel={def.painel} vm={vm} codigo={codigo} competencia={competencia} importar={vm.importar} />}
+                {aberta && def?.painel && <PainelDaTarefa painel={def.painel} vm={vm} codigo={codigo} competencia={competencia} importar={vm.importar} valores={valores} informar={informar} />}
               </div>
             )}
           </div>

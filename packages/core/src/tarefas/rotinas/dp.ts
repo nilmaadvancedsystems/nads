@@ -28,6 +28,8 @@ export const ROTINA_DP: Rotina = {
     etapa('dp-folha', 'Folha', 'Folha de pagamento', 'Calcule a folha do mês e confira os totais.', [
       item('calcular', 'Calcular a folha'),
       item('conferir', 'Conferir proventos, descontos e líquidos', { aviso: 'Confira admissões, demissões, férias e afastamentos do mês.' }),
+      // o total da folha do mês: o Fiscal vê ao lado do faturamento (Vitor, 07/10/2026: "trazer quanto é gasto em folha do DP")
+      item('total-folha', 'Informar o total da folha do mês', { painel: 'folha-total' }),
     ], { obrigacaoDp: 'folha' }),
     // ─── eSocial ──────────────────────────────────────────────────────────────
     etapa('dp-s1200', 'eSocial', 'S-1200', 'Envie as remunerações do mês ao eSocial.', [

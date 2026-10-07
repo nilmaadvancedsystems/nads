@@ -4,7 +4,7 @@
 import { tarefas as t } from '@nads/core';
 import { useMemo, useState } from 'react';
 import { useNotasDaConferencia } from '../../../concilia-ai/importadosNaEtapa';
-import { useSieg } from '../../dados/repo';
+import { useExecucoes, useSieg } from '../../dados/repo';
 
 const VAZIO: t.painel.NotasDoPainel = { entradas: [], saidas: [], tomados: [], prestados: [] };
 
@@ -28,13 +28,24 @@ export function usePainelDoFiscal(empresa: string, codigo: string, competencia: 
       base: t.painel.composicao(saidas, p),
       issRetido: t.painel.retencoes(tomados, prestados, p, 'issRet'),
       inssRetido: t.painel.retencoes(tomados, prestados, p, 'inss'),
+      // a verificação (Vitor, 07/10/2026): os itens por NCM/CST/CEST, os serviços com o que cada nota retém, as interestaduais
+      fiscalSaidas: t.painel.porNcmCstCest(saidas, p),
+      fiscalEntradas: t.painel.porNcmCstCest(entradas, p),
+      servicos: t.painel.servicosComRetencoes(tomados, prestados, p),
+      interestaduais: t.painel.interestaduais(entradas, p),
     };
   }, [entradas, saidas, tomados, prestados, chave]);
   const c = cont?.dados || null;
+  // a folha do DP (Vitor, 07/10/2026: "trazer quanto é gasto em folha do DP"): o total que o DP informou na etapa Folha
+  // de pagamento do mesmo mês (pelo código da empresa)
+  const dp = useExecucoes(competencia, 'dp');
+  const exDp = codigo ? dp.execucoes.find(e => String(e.codigo) === codigo) : null;
+  const folhaDoDp = exDp?.valores?.folha ?? null;
   // a janela de importar: os relatórios da tarefa, um por tópico
   const [importando, setImportando] = useState<{ relatorios: t.RelatorioImportavel[]; atual: t.RelatorioImportavel } | null>(null);
   return {
     carregado: !!lidas,
+    folhaDoDp,
     ...resumo,
     /** a contagem do SIEG do mês (null = ainda não contou) */
     sieg: c ? {

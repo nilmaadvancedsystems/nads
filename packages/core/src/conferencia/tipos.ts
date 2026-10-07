@@ -42,6 +42,11 @@ export interface Nota {
   comp: string;
   /** a conta contábil do cliente/fornecedor, quando o relatório traz a coluna (o Creditor acha a conta pela NF) */
   conta?: string;
+  /** do item, quando o relatório do Alterdata traz as colunas (a verificação do Fiscal, 07/10/2026) */
+  ncm?: string;
+  /** CST ou CSOSN */
+  cst?: string;
+  cest?: string;
 }
 
 /** Nota com o tipo do CFOP já resolvido (Entrada/Saída). */
@@ -67,6 +72,12 @@ export interface NotaServico {
   exportado?: '' | 'Sim' | 'Não';
   /** a conta contábil, quando o relatório traz a coluna (como nas Entradas e Saídas) */
   conta?: string;
+  /** as outras retenções e o serviço, quando o relatório traz as colunas (a verificação do Fiscal, 07/10/2026) */
+  pis?: number;
+  cofins?: number;
+  csll?: number;
+  nbs?: string;
+  descricao?: string;
 }
 
 /** Lançamento automático (de-para antigo lançamento → conta). */
