@@ -91,14 +91,18 @@ export type ContaDaFolha = 'salarios' | 'fgts';
 
 /**
  * O razão de teste de Salários a pagar ou do FGTS a recolher (o ⚡): a folha (ou a guia) do mês entra a crédito e é paga
- * no mês seguinte; o último mês fica credor. Com devedor, o pagamento do último mês sai a maior e o mês fecha devedor.
+ * no mês seguinte; o último mês fica credor. Com devedor, o pagamento do último mês sai a maior e o mês fecha devedor; com
+ * sobra, sai a menor e a folha de antes não zera.
  */
-export function razaoDaFolhaDeTeste(meses: readonly string[], conta: ContaDaFolha, comDevedor: boolean): RazaoDaConta {
+export function razaoDaFolhaDeTeste(meses: readonly string[], conta: ContaDaFolha, erro: boolean | 'devedor' | 'sobra'): RazaoDaConta {
+  const comDevedor = erro === true || erro === 'devedor';
   const base = conta === 'salarios' ? 12480.5 : 1004.2;
   const porMes = meses.map((mes, i) => {
     const valor = centavos(base + i * 137.35);
     const anterior = i > 0 ? centavos(base + (i - 1) * 137.35) : 0;
-    const pago = comDevedor && i === meses.length - 1 ? centavos(anterior + valor + 850) : anterior;
+    // com sobra: a folha do penúltimo mês paga a menos no último (o saldo antigo não zera)
+    const pago = comDevedor && i === meses.length - 1 ? centavos(anterior + valor + 850)
+      : erro === 'sobra' && i === meses.length - 1 ? centavos(anterior - 640) : anterior;
     const linhas: Linha[] = [];
     if (i > 0) linhas.push([5, '10503', 'Banco Sicoob', -pago, conta === 'salarios' ? 'Pagamento dos salários de ' + mesBR(meses[i - 1]) : 'Pagamento do FGTS de ' + mesBR(meses[i - 1])]);
     linhas.push([28, conta === 'salarios' ? '41201' : '41205', conta === 'salarios' ? 'Salários e ordenados' : 'FGTS', valor, conta === 'salarios' ? 'Folha de pagamento de ' + mesBR(mes) : 'FGTS sobre a folha de ' + mesBR(mes)]);

@@ -219,6 +219,20 @@ export function mesesErrados(meses: readonly MesDoRazao[], lado: LadoDoAdiantame
 }
 
 /**
+ * Salários a pagar tem que zerar (Vitor, 07/10/2026): o mês pode fechar credor com a folha dele, mas o que vinha de antes
+ * tem de ser pago no mês. A sobra é o saldo do fim além do que entrou a crédito no mês (a folha do mês): saldo antigo que
+ * não foi pago. Só os meses com sobra (positivo = credor, como o saldo do razão).
+ */
+export function sobrasDaFolha(meses: readonly MesDoRazao[]): { mes: string; sobra: number }[] {
+  return meses
+    .map(m => {
+      const creditos = m.lancamentos.filter(l => l.valor > 0).reduce((t, l) => t + l.valor, 0);
+      return { mes: m.mes, sobra: centavos(m.saldoFinal - creditos) };
+    })
+    .filter(x => x.sobra > 0.005);
+}
+
+/**
  * Um razão fictício para o ⚡ do modo desenvolvedor: um adiantamento por mês, baixado no mês seguinte pela nota; com
  * credor, a baixa do penúltimo mês sai maior que o adiantamento (o mês fecha credor).
  */

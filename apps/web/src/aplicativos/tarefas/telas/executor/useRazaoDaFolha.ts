@@ -25,6 +25,8 @@ export function useRazaoDaFolha(conta: t.ContaDaFolha, chave: string, meses: rea
   const doPeriodo = r ? t.mesesDoRazao(r.razao, meses) : [];
   // o passivo fica credor ou zera: o errado é o devedor (a mesma regra do Adiantamento de clientes)
   const devedores = t.mesesErrados(doPeriodo, 'clientes');
+  // Salários tem que zerar (Vitor, 07/10/2026): a folha de antes paga no mês; a sobra trava
+  const sobras = conta === 'salarios' ? t.sobrasDaFolha(doPeriodo) : [];
   return {
     conta, nome: NOME[conta],
     temRazao: !!r, arquivo: r?.arquivo || '',
@@ -32,15 +34,26 @@ export function useRazaoDaFolha(conta: t.ContaDaFolha, chave: string, meses: rea
     /** o ⚡: um razão de teste do período, certo ou com um mês devedor */
     teste: [
       { rotulo: NOME[conta] + ' de teste (credor e zerando)', onClick: () => setRazao({ chave, arquivo: 'TESTE razão de ' + NOME[conta] + '.xls', razao: t.razaoDaFolhaDeTeste(meses, conta, false) }) },
-      { rotulo: NOME[conta] + ' de teste (com mês devedor)', onClick: () => setRazao({ chave, arquivo: 'TESTE razão de ' + NOME[conta] + '.xls', razao: t.razaoDaFolhaDeTeste(meses, conta, true) }) },
+      { rotulo: NOME[conta] + ' de teste (com mês devedor)', onClick: () => setRazao({ chave, arquivo: 'TESTE razão de ' + NOME[conta] + '.xls', razao: t.razaoDaFolhaDeTeste(meses, conta, 'devedor') }) },
+      ...(conta === 'salarios' ? [{ rotulo: NOME[conta] + ' de teste (folha que não zerou)', onClick: () => setRazao({ chave, arquivo: 'TESTE razão de ' + NOME[conta] + '.xls', razao: t.razaoDaFolhaDeTeste(meses, conta, 'sobra') }) }] : []),
     ],
-    resumo: r ? [doPeriodo.reduce((n, m) => n + m.lancamentos.length, 0) + ' lançamentos', devedores.length ? 'Devedor em ' + devedores.map(t.rotuloNumericoCompetencia).join(', ') : 'Ok'] : [],
-    ok: !!r && !devedores.length,
+    resumo: r ? [
+      doPeriodo.reduce((n, m) => n + m.lancamentos.length, 0) + ' lançamentos',
+      ...(devedores.length ? ['Devedor em ' + devedores.map(t.rotuloNumericoCompetencia).join(', ')] : []),
+      ...(sobras.length ? ['Não zerou em ' + sobras.map(x => t.rotuloNumericoCompetencia(x.mes)).join(', ')] : []),
+      ...(!devedores.length && !sobras.length ? ['Ok'] : []),
+    ] : [],
+    ok: !!r && !devedores.length && !sobras.length,
+    /** o razão é obrigatório (Salários) */
+    obrigatorio: conta === 'salarios',
     devedores: devedores.map(t.rotuloNumericoCompetencia),
+    /** os meses em que a folha de antes não foi paga toda: o mês e quanto sobrou */
+    sobras: sobras.map(x => ({ mes: t.rotuloNumericoCompetencia(x.mes), valor: formatos.reais(x.sobra) })),
     /** a grade: o saldo do fim de cada mês, sem D/C — o certo (credor ou zero) em branco, o devedor em azul */
     meses: doPeriodo.map(m => ({
       mes: m.mes, rotulo: t.rotuloNumericoCompetencia(m.mes), qtd: m.lancamentos.length,
       saldo: formatos.brl(Math.abs(m.saldoFinal)), errado: t.saldoErrado(m.saldoFinal, 'clientes'),
+      sobra: sobras.some(x => x.mes === m.mes),
     })),
   };
 }

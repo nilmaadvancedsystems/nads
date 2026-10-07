@@ -54,7 +54,7 @@ export function RazaoDaFolha({ vm, dev }: { vm: Vm; dev: boolean }) {
             </thead>
             <tbody>
               <tr><th scope="row" title="O saldo no fim do mês">Saldo final</th>
-                {vm.meses.map(m => <td key={m.mes} className={'num' + (m.errado ? ' ext-azul' : '')} title={m.errado ? 'Devedor: corrija no Alterdata' : undefined}><ValorNaGrade texto={m.saldo} /></td>)}
+                {vm.meses.map(m => <td key={m.mes} className={'num' + (m.errado ? ' ext-azul' : m.sobra ? ' ext-neg' : '')} title={m.errado ? 'Devedor: corrija no Alterdata' : m.sobra ? 'A folha de antes não zerou neste mês' : undefined}><ValorNaGrade texto={m.saldo} /></td>)}
               </tr>
               <tr><th scope="row">Lançamentos</th>{vm.meses.map(m => <td key={m.mes} className="num">{m.qtd || '—'}</td>)}</tr>
             </tbody>

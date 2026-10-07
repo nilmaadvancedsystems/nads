@@ -13,7 +13,12 @@ export function useSalarios() {
   const fgts = useRazaoDaFolha('fgts', chave, s.meses);
   // o ⚡ de cima: o INSS (razão e guias juntos); cada linha tem o ⚡ dela
   const teste = useDadosDeTesteDaEtapa(s.dev ? [{ id: 'inss', rotulo: 'Razão e guias do INSS de teste' }] : [], () => inss.implantarTeste());
-  const faltam = [salarios, fgts].filter(v => v.devedores.length).map(v => 'Corrigir o saldo devedor de ' + v.nome + ' em ' + v.devedores.join(', '));
+  const faltam = [
+    // Salários é obrigatório e tem que zerar (Vitor, 07/10/2026)
+    ...(!salarios.temRazao ? ['Importar o razão de Salários a pagar'] : []),
+    ...salarios.sobras.map(x => 'A folha de antes não zerou em Salários a pagar em ' + x.mes + ' (sobrou ' + x.valor + ')'),
+    ...[salarios, fgts].filter(v => v.devedores.length).map(v => 'Corrigir o saldo devedor de ' + v.nome + ' em ' + v.devedores.join(', ')),
+  ];
   useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
   return { inss, folha: { salarios, fgts }, teste };
 }

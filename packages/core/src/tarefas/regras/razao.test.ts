@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { atencaoDoHistorico, atencoesDoMes, coberturaDoRazao, mesesCredores, mesesErrados, saldoErrado, razaoDeTeste, dataDoRazao, lerRazao, mesesDoRazao, precisaDoCreditor, valorComLado } from './razao';
+import { atencaoDoHistorico, atencoesDoMes, coberturaDoRazao, mesesCredores, mesesErrados, saldoErrado, sobrasDaFolha, razaoDeTeste, dataDoRazao, lerRazao, mesesDoRazao, precisaDoCreditor, valorComLado } from './razao';
 import { caixaDeTeste, inssDeTeste, razaoDaFolhaDeTeste } from './deTeste';
 import { conferirInss } from './inss';
 import { ROTINA_CONTABIL } from '../rotinas/contabil';
@@ -153,5 +153,30 @@ describe('salários e FGTS a recolher (o razão de teste da etapa da folha)', ()
   it('fica credor ou zera; com devedor, o último mês fecha devedor', () => {
     expect(mesesErrados(mesesDoRazao(razaoDaFolhaDeTeste(meses, 'salarios', false), meses), 'clientes')).toEqual([]);
     expect(mesesErrados(mesesDoRazao(razaoDaFolhaDeTeste(meses, 'fgts', true), meses), 'clientes')).toEqual(['2026-08']);
+  });
+});
+
+describe('salários a pagar tem que zerar', () => {
+  const meses = ['2026-06', '2026-07', '2026-08'];
+  it('a folha paga no mês seguinte zera: sem sobra', () => {
+    expect(sobrasDaFolha(mesesDoRazao(razaoDaFolhaDeTeste(meses, 'salarios', false), meses))).toEqual([]);
+  });
+  it('a folha de antes que não foi paga sobra no mês', () => {
+    const r = lerRazao([
+      ['Data', 'Contrapartida', 'Descrição', 'Valor', 'Histórico', 'Descrição histórico', 'Saldo'],
+      ['28/06/2026', '41201', 'Salários', 1000, '', 'Folha de 06/2026', 1000],
+      ['05/07/2026', '10503', 'Banco', -800, '', 'Pagamento dos salários de 06/2026', 200],
+      ['28/07/2026', '41201', 'Salários', 1100, '', 'Folha de 07/2026', 1300],
+      ['05/08/2026', '10503', 'Banco', -1300, '', 'Pagamento dos salários de 06 e 07/2026', 0],
+      ['28/08/2026', '41201', 'Salários', 1200, '', 'Folha de 08/2026', 1200],
+    ]);
+    expect(sobrasDaFolha(mesesDoRazao(r, meses))).toEqual([{ mes: '2026-07', sobra: 200 }]);
+  });
+});
+
+describe('o razão de teste de salários com sobra', () => {
+  it('a folha de antes paga a menos no último mês', () => {
+    const meses = ['2026-07', '2026-08'];
+    expect(sobrasDaFolha(mesesDoRazao(razaoDaFolhaDeTeste(meses, 'salarios', 'sobra'), meses))).toEqual([{ mes: '2026-08', sobra: 640 }]);
   });
 });
