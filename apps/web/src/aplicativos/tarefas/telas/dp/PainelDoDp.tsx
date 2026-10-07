@@ -122,12 +122,12 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
                   <thead>
                     <tr className="dp-cabeca-grupo">
                       <th colSpan={3} />
-                      <th colSpan={vm.colunas.length} className="dp-ob-grupo">{vm.tituloDaParte} do mês</th>
+                      {vm.gruposDeColunas.map(g => <th key={g.rotulo} colSpan={g.colunas} className="dp-ob-grupo dp-ob-primeira">{g.rotulo}</th>)}
                       <th />
                     </tr>
                     <tr>
                       <th>Cód.</th><th>Cliente</th><th>Responsável</th>
-                      {vm.colunas.map((o, i) => <th key={o.id} className={'dp-ob' + (i === 0 ? ' dp-ob-primeira' : '')} title={o.nome}>{o.rotulo}</th>)}
+                      {vm.colunas.map(o => <th key={o.id} className={'dp-ob' + (vm.primeiras.has(o.id) ? ' dp-ob-primeira' : '')} title={o.nome}>{o.rotulo}</th>)}
                       <th>Situação</th>
                     </tr>
                   </thead>
@@ -138,14 +138,10 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
                         {g.linhas.map(c => (
                           <tr key={c.chave} className={'dp-linha' + (c.concluida ? ' feita' : '')}>
                             <td className="num fraco">{c.codigo}</td>
-                            {/* o enquadramento, o movimento, a REINF e a entrega embaixo do nome (a tabela cabe sem rolar de lado) */}
-                            <td className="dp-cliente">
-                              <span className="dp-cliente-nome">{c.nomeNaTela}</span>
-                              <span className="dp-cliente-info">{[c.enquadramento, c.movimento, c.reinfAutorizada ? 'REINF autorizada' : '', c.entrega].filter(Boolean).join(' · ')}</span>
-                            </td>
+                            <td className="dp-cliente"><span className="dp-cliente-nome" title={c.nomeNaTela}>{c.nomeNaTela}</span></td>
                             <td>{c.responsavel ? c.responsavelNome : <span className="fraco">—</span>}</td>
-                            {c.obrigacoes.map((o, i) => (
-                              <td key={o.id} className={'dp-ob' + (i === 0 ? ' dp-ob-primeira' : '')}>
+                            {c.obrigacoes.map(o => (
+                              <td key={o.id} className={'dp-ob' + (vm.primeiras.has(o.id) ? ' dp-ob-primeira' : '')}>
                                 {o.estado === 'nao-tem' ? <span className="dp-marca nao-tem" title="não tem no mês">–</span> : (
                                   <button type="button" className={'dp-marca ' + o.estado} disabled={vm.carregando} onClick={() => vm.alternar(c.codigo, o.etapa)}
                                     title={(vm.colunas.find(x => x.id === o.id)?.nome || '') + ': ' + (o.estado === 'feita' ? 'feita por ' + o.quem + ' (clique para desfazer)' : 'clique quando fizer')}

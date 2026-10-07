@@ -89,6 +89,23 @@ export function useEmpresasPorResponsavel() {
     cancelar(nome: string, codigo: number | null, dep: Dep) {
       void gravar(nome, codigo, atual => cad.cancelarTransferencia(atual, dep, por, new Date()));
     },
+    /** as pessoas que podem entrar numa troca (as da equipe do Fiscal e do Contábil e quem já tem empresas) */
+    pessoasDaTroca: [...new Set([...opcoes.fiscal, ...opcoes.contabil, ...contagem.keys()])].sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    /**
+     * Pede a troca (Vitor, 07/10/2026: "realmente uma troca"): as empresas marcadas de A vão para B e as de B (se houver)
+     * vêm para A; cada uma só muda com o aceite dos dois, e as da mesma troca andam juntas (o mesmo id).
+     */
+    pedirTroca(a: string, daA: readonly { nome: string; codigo: number | null; dep: Dep }[], b: string, daB: readonly { nome: string; codigo: number | null; dep: Dep }[]) {
+      if (!todos.carregada || !a || !b || !daA.length) return;
+      const troca = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const agora = new Date();
+      const pedir = (x: { nome: string; codigo: number | null; dep: Dep }, de: string, para: string) =>
+        void gravar(x.nome, x.codigo, atual => { const r = cad.pedirTransferencia(atual, x.dep, de, para, por, agora, troca); return r.erro ? atual : r.cadastro; });
+      daA.forEach(x => pedir(x, a, b));
+      daB.forEach(x => pedir(x, b, a));
+      const quem = [a, b].filter(n => !igual(n, por));
+      toast('Troca pedida' + (quem.length ? ': falta o aceite de ' + quem.join(' e ') + '.' : '.'));
+    },
     /** escolhe direto quem cuida de uma empresa sem responsável */
     definir(nome: string, codigo: number | null, dep: Dep, quem: string) {
       if (!todos.carregada) return;

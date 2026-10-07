@@ -139,4 +139,6 @@ export interface TransferenciaDeResponsavel {
   aceiteDe?: string;
   /** quando o destinatário aceitou (ISO) */
   aceitePara?: string;
+  /** a troca de que faz parte (Vitor, 07/10/2026: "realmente uma troca"): as empresas de uma troca vão e voltam juntas */
+  troca?: string;
 }

@@ -101,7 +101,9 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   const chaveDoGrupo = (c: (typeof todas)[number]) => (agrupar === 'responsavel' ? c.responsavelNome : agrupar === 'agrupamento' ? c.agrupamento || 'Sem agrupamento' : '');
 
   // fora do Resumo: só os clientes que têm a parte, com as colunas dela e a situação só dela
-  const parte = aba === 'obrigacoes' ? PARTES_DO_DP.find(p => p.id === params.get('parte')) || PARTES_DO_DP[0] : null;
+  // uma tabela só, com as colunas agrupadas pelas partes (Vitor, 07/10/2026: "unifique isso de maneira organizada, acho que
+  // quebrou demais as tabelas"): sem parte escolhida
+  const parte = null as (typeof PARTES_DO_DP)[number] | null;
   const faltaNa = (c: (typeof todas)[number], p: (typeof PARTES_DO_DP)[number]) =>
     c.obrigacoes.some(o => p.obrigacoes.includes(o.id) && o.estado !== 'nao-tem' && o.estado !== 'feita');
   const linhasDaParte = parte ? filtradas.flatMap(c => {
@@ -128,7 +130,7 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
     competencia,
     competencias: competencias.map(c => ({ valor: c, rotulo: t.rotuloCompetencia(c) })),
     setCompetencia: (c: string) => mudarParam('competencia', c),
-    resumo: !parte,
+    resumo: aba === 'resumo',
     /** o submenu das Obrigações: cada parte com quantos clientes ainda faltam nela */
     parte: parte ? parte.id : null,
     partes: PARTES_DO_DP.map(p => {
@@ -136,7 +138,10 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
       return { valor: p.id, rotulo: p.rotulo + (n ? ' · ' + n : '') };
     }),
     setParte: (p: ParteDoDp) => mudarParam('parte', p === PARTES_DO_DP[0].id ? '' : p),
-    tituloDaParte: parte ? parte.rotulo : '',
+    tituloDaParte: parte ? parte.rotulo : 'Obrigações do mês',
+    /** os grupos do cabeçalho (Folha, eSocial, Guias, REINF, Entrega), na ordem das colunas, e a primeira coluna de cada um */
+    gruposDeColunas: PARTES_DO_DP.map(p => ({ rotulo: p.rotulo, colunas: p.obrigacoes.length })),
+    primeiras: new Set(PARTES_DO_DP.map(p => p.obrigacoes[0])),
     /** quantos clientes ainda faltam nesta parte */
     faltam: linhasDaParte.filter(c => !c.concluida).length,
     numeros: [

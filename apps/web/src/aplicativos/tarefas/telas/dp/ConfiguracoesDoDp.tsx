@@ -39,8 +39,6 @@ export function ConfiguracoesDoDp() {
           <div className="dp-lista-topo">
             <h3 className="dp-titulo">Clientes do DP</h3>
             <span className="badge badge-neutral">{vm.linhas.length}</span>
-            <span className="tarefas-barra-espaco" />
-            <span className="hint">Clique no cliente para mudar. O que não foi mudado vale o da planilha.</span>
           </div>
           <div className="table-wrap">
             <table className="dp-tabela dp-config-lista">
@@ -51,7 +49,6 @@ export function ConfiguracoesDoDp() {
                     <td className="num fraco">{l.codigo}</td>
                     <td className="dp-cliente">
                       <span className="dp-cliente-nome">{l.nomeNaTela}{l.mudado && <span className="badge badge-neutral dp-selo-mudado">mudado</span>}</span>
-                      <span className="dp-cliente-info">{l.enquadramento}</span>
                     </td>
                     <td>{l.movimento}</td>
                     <td className="dp-obrig-texto">{l.obrigacoesTexto}</td>
@@ -79,12 +76,12 @@ export function ConfiguracoesDoDp() {
           {vm.topico === 'obrigacoes' && (
             <>
               <Cartao titulo="Movimento">
-                <Linha rotulo="Movimento do mês" dica="Folha, Pró-labore, Sem movimento ou Apenas REINF.">
+                <Linha rotulo="Movimento do mês">
                   <select className="pessoal-select" value={c.movimento} aria-label="Movimento" onChange={e => vm.mudarMovimento(c.codigo, e.target.value)}>
                     {vm.movimentos.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </Linha>
-                <Linha rotulo="REINF autorizada" dica="Com a REINF autorizada, a aba REINF do DP mostra este cliente.">
+                <Linha rotulo="REINF autorizada">
                   <input type="checkbox" checked={c.reinfAutorizada} aria-label="REINF autorizada" onChange={e => vm.mudarReinf(c.codigo, e.target.checked)} />
                 </Linha>
               </Cartao>
@@ -102,12 +99,12 @@ export function ConfiguracoesDoDp() {
           )}
           {vm.topico === 'entrega' && (
             <Cartao titulo="Entrega">
-              <Linha rotulo="Como recebe" dica="Como as guias e os recibos chegam ao cliente.">
+              <Linha rotulo="Como recebe">
                 <select className="pessoal-select" value={c.entrega} aria-label="Entrega" onChange={e => vm.mudarEntrega(c.codigo, e.target.value)}>
                   {[...new Set([...vm.entregas, c.entrega])].filter(Boolean).map(x => <option key={x} value={x}>{x}</option>)}
                 </select>
               </Linha>
-              <Linha rotulo="Agrupamento" dica="O grupo do cliente (agrupa a lista do DP).">
+              <Linha rotulo="Agrupamento">
                 <input type="text" className="pessoal-select" list="dp-agrupamentos" defaultValue={c.agrupamento} key={c.codigo + '|' + c.agrupamento} placeholder="—"
                   aria-label="Agrupamento" onBlur={e => { if (e.target.value.trim() !== c.agrupamento) vm.mudarAgrupamento(c.codigo, e.target.value); }}
                   onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
