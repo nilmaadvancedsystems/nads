@@ -1156,11 +1156,8 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 .executor-ferramenta iframe{display:block;width:100%;min-height:calc(100vh - var(--hdr-h,64px) - 16px);border:0;}
 .executor-ferramenta .gh-blank{margin:auto;}
 /* o razão importado na etapa (o Caixa), no desenho da Importação do banco: a largura toda, um embaixo do outro */
-/* Empréstimos: o logo do banco ao lado do nome na tabela dos contratos do Cadastro */
-.emp-banco{display:inline-flex;align-items:center;justify-content:center;gap:8px;}
-.emp-banco .imp-ico{width:24px;height:24px;flex:none;}
-/* o logo do tamanho da linha (o da Importação é 40px) */
-.emp-banco .imp-logo .logo-img,.emp-banco .imp-logo svg{width:22px;height:22px;}
+/* Empréstimos: os contratos à vista no bloco (sem a faixa que abre) */
+.emp-contratos{margin:0;padding:0 12px 12px;}
 /* (Vitor, 07/10/2026: "centralize e alinhe as coisas") as colunas no meio, na horizontal e na vertical — também na tabela dos
    contratos (os números com o mesmo tamanho de dígito, para os valores ficarem um embaixo do outro) */
 .emp-tabela th,.emp-tabela td,.emp-tabela th.num,.emp-tabela td.num{text-align:center;vertical-align:middle;font-variant-numeric:tabular-nums;}
@@ -3459,108 +3456,3 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .fgts-nome{min-width:200px;}
 .fgts-cnpj{white-space:nowrap;}
 .fgts-acoes{align-items:center;}
-/* ───────────────── Mandei: o formulário do cliente, em formato de jornal (Vitor, 07/10/2026) ─────────────────
-   "Faz em um formato jornal, preto e branco, fácil de interpretar": papel claro e tinta preta (em qualquer tema), a letra
-   Inter ("remova esse Mandei e altere a fonte para Inter"), a faixa do cabeçalho no alto, fios separando as seções, a manchete com o nome do cliente, os lançamentos
-   numa tabela com fio (com a linha do saldo), a pergunta do escritório num quadro, as respostas em quadradinhos e a
-   barra de baixo em preto e branco. Classes .mandei-* (só na página pública do link). */
-.mandei{
-  --accent:#111;--accent-strong:#000;--accent-soft:#EFEEEA;--accent-ink:#111;--accent-border:#111;--on-accent:#FFF;
-  --success:#111;--success-soft:#EFEEEA;--success-ink:#111;--danger:#111;
-  --bg:#FAF9F6;--surface:#FAF9F6;--surface-2:#F1F0EC;--surface-3:#DDDCD7;
-  --border:#111;--border-muted:#C9C8C3;--border-strong:#111;--ink:#111;--ink-muted:#4A4A48;
-  min-height:100vh;background:var(--bg);color:var(--ink);color-scheme:light;
-  /* a letra: a Inter (Vitor, 07/10/2026), carregada só nesta página */
-  font-family:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif;font-variant-numeric:tabular-nums;
-}
-.mandei .brand-mark{filter:grayscale(1) contrast(1.4);}
-/* o cabeçalho do jornal */
-.mandei-topo{max-width:760px;margin:0 auto;padding:24px 16px 0;text-align:center;}
-.mandei-topo .mandei-linha{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:6px 0;
-  border-top:3px double var(--ink);border-bottom:1px solid var(--ink);font-size:12px;letter-spacing:.08em;text-transform:uppercase;}
-.mandei-topo .mandei-linha span{display:inline-flex;align-items:center;gap:6px;}
-.mandei-topo .brand-mark{width:18px;height:18px;}
-.mandei-corpo{max-width:760px;margin:0 auto;padding:8px 16px 120px;}
-/* a manchete e o chapéu */
-.mandei-chapeu{display:block;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin:24px 0 4px;}
-.mandei-manchete{font-size:34px;line-height:1.1;font-weight:700;margin:0 0 8px;}
-.mandei-lide{font-size:17px;line-height:1.5;margin:0 0 12px;}
-.mandei-prazo{display:inline-block;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--ink);padding:4px 10px;}
-.mandei-fio{border:0;border-top:1px solid var(--ink);margin:20px 0;}
-/* o passo a passo em três colunas, com fios entre elas */
-.mandei-colunas{display:grid;grid-template-columns:repeat(3,1fr);margin:8px 0 20px;border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);}
-.mandei-coluna{padding:14px 14px 16px;}
-.mandei-coluna + .mandei-coluna{border-left:1px solid var(--ink);}
-.mandei-coluna b{display:block;font-size:16px;margin-bottom:4px;}
-.mandei-coluna .mandei-num{display:block;font-size:30px;font-weight:700;line-height:1;margin-bottom:6px;}
-.mandei-coluna span{font-size:14px;line-height:1.4;}
-@media (max-width:600px){.mandei-colunas{grid-template-columns:1fr;}.mandei-coluna + .mandei-coluna{border-left:0;border-top:1px solid var(--ink-muted);}}
-.mandei-grande{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:50px;border:2px solid var(--ink);border-radius:0;
-  background:var(--ink);color:var(--bg);font:inherit;font-size:18px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;}
-.mandei-grande:hover{background:var(--bg);color:var(--ink);}
-.mandei-grande svg{width:18px;height:18px;}
-.mandei-seguro{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:12px;font-size:13px;font-style:italic;}
-.mandei-seguro svg{width:13px;height:13px;}
-/* o item: a seção do jornal */
-.mandei-secao{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:20px 0 6px;padding-bottom:4px;border-bottom:3px double var(--ink);
-  font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;}
-.mandei-pontos{display:inline-flex;gap:4px;}
-.mandei-pontos button{width:22px;height:22px;border:1px solid var(--ink);background:var(--bg);color:var(--ink);font:inherit;font-size:11px;font-weight:700;padding:0;cursor:pointer;border-radius:0;}
-.mandei-pontos button.feito{background:var(--surface-3);}
-.mandei-pontos button.atual{background:var(--ink);color:var(--bg);}
-.mandei-subtitulo{font-size:16px;font-style:italic;margin:0 0 4px;}
-.mandei-rotulo{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin:18px 0 6px;}
-/* os lançamentos: a tabela com fio */
-.mandei-tabela{width:100%;border-collapse:collapse;font-size:15px;}
-.mandei-tabela th{text-align:left;font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:6px 8px;border-top:2px solid var(--ink);border-bottom:1px solid var(--ink);background:none;position:static;color:var(--ink);}
-.mandei-tabela td{padding:8px;border-bottom:1px solid var(--border-muted);vertical-align:top;}
-.mandei-tabela .num{text-align:right;white-space:nowrap;}
-.mandei-tabela td.mandei-quando{white-space:nowrap;}
-.mandei-tabela tfoot td{border-top:2px solid var(--ink);border-bottom:3px double var(--ink);font-weight:700;}
-.mandei-tabela small{display:block;font-size:13px;font-style:italic;color:var(--ink-muted);}
-.mandei-tipo{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;}
-@media (max-width:600px){.mandei-tabela .mandei-sem-celular{display:none;}}
-.mandei-tabela .mandei-celular-desc{display:none;}
-@media (max-width:600px){.mandei-tabela .mandei-celular-desc{display:block;}}
-/* a pergunta do escritório */
-.mandei-pergunta{border:2px solid var(--ink);padding:12px 16px;margin:16px 0 0;}
-.mandei-pergunta span{display:block;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-bottom:4px;}
-.mandei-pergunta p{margin:0;font-size:18px;font-style:italic;line-height:1.4;}
-/* as respostas: quadradinhos */
-.mandei-opcoes{display:flex;flex-direction:column;border-top:1px solid var(--ink);}
-.mandei-opcao{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 4px;border:0;border-bottom:1px solid var(--border-muted);
-  background:none;color:var(--ink);font:inherit;font-size:16px;cursor:pointer;}
-.mandei-opcao::before{content:"";width:16px;height:16px;flex:none;border:1.5px solid var(--ink);}
-.mandei-opcao.on{font-weight:700;}
-.mandei-opcao.on::before{background:var(--ink);box-shadow:inset 0 0 0 3px var(--bg);}
-.mandei-opcao:hover{background:var(--surface-2);}
-.mandei-texto{width:100%;min-height:72px;resize:vertical;border:1px solid var(--ink);border-radius:0;padding:10px 12px;background:var(--surface);color:var(--ink);font:inherit;font-size:16px;margin-top:12px;}
-.mandei-texto:focus{outline:2px solid var(--ink);outline-offset:1px;}
-.mandei-anexo{display:flex;align-items:center;gap:12px;margin-top:12px;padding:14px;border:1.5px dashed var(--ink);cursor:pointer;background:none;}
-.mandei-anexo:hover{background:var(--surface-2);}
-.mandei-anexo svg{width:20px;height:20px;flex:none;}
-.mandei-anexo b{display:block;font-size:16px;}
-.mandei-anexo span{font-size:13px;font-style:italic;}
-.mandei-arquivos{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
-.mandei-arquivo{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border:1px solid var(--ink);font-size:13px;}
-.mandei-arquivo svg{width:12px;height:12px;}
-/* a revisão: o índice */
-.mandei-indice{border-top:2px solid var(--ink);}
-.mandei-indice button{display:flex;align-items:baseline;gap:8px;width:100%;text-align:left;padding:10px 4px;border:0;border-bottom:1px solid var(--border-muted);background:none;color:var(--ink);font:inherit;font-size:16px;cursor:pointer;}
-.mandei-indice button:hover{background:var(--surface-2);}
-.mandei-indice .mandei-pontilhado{flex:1;border-bottom:1px dotted var(--ink);transform:translateY(-4px);}
-.mandei-indice small{display:block;font-size:13px;font-style:italic;color:var(--ink-muted);}
-.mandei-indice .mandei-status{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;}
-/* a barra de baixo */
-.mandei-barra{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:3px double var(--ink);z-index:5;}
-.mandei-barra > div{max-width:760px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:12px;}
-.mandei-progresso{flex:1;min-width:0;font-size:13px;letter-spacing:.06em;text-transform:uppercase;}
-.mandei-progresso i{display:block;height:4px;background:var(--surface-3);margin-top:6px;}
-.mandei-progresso i > b{display:block;height:100%;background:var(--ink);}
-.mandei-barra .mandei-botao{min-height:40px;padding:8px 18px;border:2px solid var(--ink);border-radius:0;background:var(--bg);color:var(--ink);font:inherit;font-size:15px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;}
-.mandei-barra .mandei-botao.principal{background:var(--ink);color:var(--bg);}
-/* fim */
-.mandei-fim{text-align:center;margin:56px auto;max-width:480px;}
-.mandei-fim svg{width:36px;height:36px;}
-.mandei-fim h1{font-size:30px;margin:8px 0;}
-.mandei-fim p{font-size:17px;line-height:1.5;margin:0 0 20px;}

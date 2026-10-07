@@ -42,6 +42,9 @@ export const TELAS: Tela[] = [
   { id: 't-cadastro-config', app: 'Tarefas', nome: 'Cadastro › Configurações' },
   { id: 't-drive', app: 'Tarefas', nome: 'Drive' },
   { id: 't-gmail', app: 'Tarefas', nome: 'Gmail' },
+  { id: 't-mandei', app: 'Tarefas', nome: 'Mandei (tickets)' },
+  // Mandei: o formulário que o cliente abre pelo link
+  { id: 'm-formulario', app: 'Mandei', nome: 'Formulário do cliente' },
   // Extratudo
   { id: 'e-entrada', app: 'Extratudo', nome: 'Entrar no Extratudo' },
   { id: 'e-importacao', app: 'Extratudo', nome: 'Extrator › Importação (bancos)' },
