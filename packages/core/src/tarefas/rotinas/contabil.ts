@@ -211,6 +211,23 @@ export const ROTINA_CONTABIL: Rotina = {
       objecoes: [nao('sem-fornecedores', 'A empresa não compra a prazo')],
     },
     {
+      // o cartão de crédito empresarial (Vitor, 07/10/2026): a fatura quebrada no razão do cartão, uma linha por compra
+      // (D Cartão de Crédito / C Banco) no dia em que o banco pagou. Só entra na empresa com "Cartão empresarial: Sim" no
+      // Cadastro (a Tarefa põe a etapa nos meses do período).
+      id: 'cartoes',
+      secao: 'Passivo',
+      nome: 'Cartões',
+      descricao: 'A fatura do cartão empresarial quebrada no razão do cartão, no dia do pagamento.',
+      ferramenta: { app: 'extratudo', nome: 'Cartões', caminho: r => '/extratudo/' + r + '/cartoes/compras/fatura', embutir: true, requisitos: true },
+      verificacao: 'manual',
+      soQuandoAdicionada: true,
+      conferir: ['Cada compra da fatura no razão do cartão, no dia em que o banco pagou; a soma igual ao total da fatura.'],
+      objecoes: [
+        { id: 'sem-fatura', texto: 'A fatura do cartão não chegou', solucao: { tipo: 'contato', rotulo: 'Pedir a fatura ao cliente' } },
+        nao('sem-compras-cartao', 'Não teve compra no cartão no mês', 'Sem fatura no mês'),
+      ],
+    },
+    {
       id: 'adiantamento-clientes',
       secao: 'Passivo',
       nome: 'Adiantamento de clientes',

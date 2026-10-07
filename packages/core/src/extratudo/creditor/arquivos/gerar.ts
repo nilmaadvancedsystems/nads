@@ -4,6 +4,9 @@
 import * as XLSX from 'xlsx';
 import type { Lancamento } from '../tipos';
 
+/** O que o arquivo precisa de cada lançamento (o Creditor e o Cartões usam o mesmo layout). */
+export type LinhaDeImportacao = Pick<Lancamento, 'automatico' | 'data' | 'debito' | 'credito' | 'codHistorico' | 'historico' | 'valor' | 'documento'>;
+
 export const CABECALHO_8_COLUNAS = ['LANC AUTOMÁTICO', 'DATA', 'DÉBITO', 'CRÉDITO', 'COD HISTÓRICO', 'HISTÓRICO', 'VALOR', 'DOCUMENTO'] as const;
 
 function serialExcel(dataBr: string): number | string {
@@ -14,7 +17,7 @@ function serialExcel(dataBr: string): number | string {
 
 const numeroOuTexto = (s: string): number | string => (/^\d+$/.test(s) ? Number(s) : s);
 
-export function livroDeImportacao(lancamentos: Lancamento[]): XLSX.WorkBook {
+export function livroDeImportacao(lancamentos: readonly LinhaDeImportacao[]): XLSX.WorkBook {
   const aoa: (string | number)[][] = [[...CABECALHO_8_COLUNAS]];
   for (const l of lancamentos) {
     aoa.push([l.automatico, serialExcel(l.data), numeroOuTexto(l.debito), numeroOuTexto(l.credito), numeroOuTexto(l.codHistorico), l.historico, l.valor, numeroOuTexto(l.documento)]);
@@ -33,7 +36,7 @@ export function livroDeImportacao(lancamentos: Lancamento[]): XLSX.WorkBook {
 }
 
 /** Bytes do .xls (Excel 97-2003). */
-export function planilhaDeImportacao(lancamentos: Lancamento[]): Uint8Array {
+export function planilhaDeImportacao(lancamentos: readonly LinhaDeImportacao[]): Uint8Array {
   return new Uint8Array(XLSX.write(livroDeImportacao(lancamentos), { bookType: 'biff8', type: 'array' }) as ArrayBuffer);
 }
 

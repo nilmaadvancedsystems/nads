@@ -6,6 +6,7 @@ import { BASE } from './casca/caminho';
 import { EmpresaAberta as ExtratorAberto } from './ferramentas/extrator/casca/EmpresaAberta';
 import { rotasDoChequeEspecial } from './ferramentas/cheque-especial/rotas';
 import { rotasDoCreditor } from './ferramentas/creditor/rotas';
+import { rotasDosCartoes } from './ferramentas/cartoes/rotas';
 import { rotasDoExtrator } from './ferramentas/extrator/rotas';
 import { PreviaPedirExtratos } from './ferramentas/extrator/telas/tarefa/PreviaPedirExtratos';
 import { Entrada } from './telas/entrada/Entrada';
@@ -19,6 +20,7 @@ export const rotasExtratudo: RouteObject[] = [
       ...rotasDoExtrator,
       ...rotasDoChequeEspecial,
       ...rotasDoCreditor,
+      ...rotasDosCartoes,
       // prévia só da janela do Pedir extratos (para trabalhar a tela separada)
       { path: 'previa/pedir-extratos', element: <PreviaPedirExtratos /> },
       // só a empresa: abre o Extrator

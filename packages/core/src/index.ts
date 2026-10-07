@@ -8,6 +8,7 @@ export * as conferencia from './conferencia';
 export * as chequeEspecial from './extratudo/cheque-especial';
 export * as conciliadorzinho from './conciliadorzinho';
 export * as creditor from './extratudo/creditor';
+export * as cartoes from './extratudo/cartoes';
 export * as extrator from './extratudo/extrator';
 export * as clientes from './extratudo/clientes';
 export * as conversor from './extratudo/conversor';

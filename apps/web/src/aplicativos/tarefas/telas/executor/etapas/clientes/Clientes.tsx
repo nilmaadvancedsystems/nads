@@ -45,7 +45,7 @@ function Arquivos({ vm }: { vm: VM }) {
             <table className="imp-meses">
               <thead>
                 <tr>
-                  <th scope="col" style={{ width: '28%' }}>Credores em algum mês ({vm.credoresNoPeriodo.length})</th>
+                  <th scope="col">Credores em algum mês ({vm.credoresNoPeriodo.length})</th>
                   {vm.mesesDosCredores.map(m => <th key={m} scope="col">{m}</th>)}
                 </tr>
               </thead>

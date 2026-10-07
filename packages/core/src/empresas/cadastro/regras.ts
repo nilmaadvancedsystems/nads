@@ -14,8 +14,8 @@ export const MAX_HISTORICO = 200;
 export const MAX_BANCOS = 60;
 export const MAX_CONTAS_NO_PLANO = 5000;
 
-export const CAMPOS_CONTA_PADRAO: readonly CampoContaPadrao[] = ['banco', 'juros', 'desconto', 'histPrincipal', 'histJuros', 'histDesconto'];
-export const CONTAS_PADRAO_DO_PLANO: readonly ContaPadraoDoPlano[] = ['banco', 'juros', 'desconto'];
+export const CAMPOS_CONTA_PADRAO: readonly CampoContaPadrao[] = ['banco', 'juros', 'desconto', 'histPrincipal', 'histJuros', 'histDesconto', 'cartao'];
+export const CONTAS_PADRAO_DO_PLANO: readonly ContaPadraoDoPlano[] = ['banco', 'juros', 'desconto', 'cartao'];
 export const TIPOS_CONTA: readonly { id: TipoContaBancaria; rotulo: string }[] = [
   { id: 'corrente', rotulo: 'Conta corrente' },
   { id: 'aplicacao', rotulo: 'Aplicação' },
@@ -111,6 +111,8 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
   return {
     nome, codigo, bancos, contasPadrao: contasPadraoDoDocumento(doc.contasPadrao), historico, ...(plano ? { plano } : {}),
     ...(typeof doc.prestaServico === 'boolean' ? { prestaServico: doc.prestaServico } : {}),
+    ...(typeof doc.cartaoEmpresarial === 'boolean' ? { cartaoEmpresarial: doc.cartaoEmpresarial } : {}),
+    ...(typeof doc.vendeNoCartao === 'boolean' ? { vendeNoCartao: doc.vendeNoCartao } : {}),
     ...(Array.isArray(doc.socios) ? { socios: (doc.socios as Record<string, unknown>[]).map(s => ({ nome: texto(s?.nome), cpf: texto(s?.cpf) })).filter(s => s.nome || s.cpf) } : {}), atualizadoEm: opcional(doc.atualizadoEm),
     ...responsaveisDoDocumento(doc.responsaveis), ...dpDoDocumento(doc.dp), ...transferenciasDoDocumento(doc.transferencias),
     ...(doc.nova && typeof doc.nova === 'object' && texto((doc.nova as Record<string, unknown>).regime)
@@ -126,6 +128,8 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(c.contasPadrao ? { contasPadrao: c.contasPadrao } : {}),
     ...(c.plano ? { plano: c.plano } : {}),
     ...(typeof c.prestaServico === 'boolean' ? { prestaServico: c.prestaServico } : {}),
+    ...(typeof c.cartaoEmpresarial === 'boolean' ? { cartaoEmpresarial: c.cartaoEmpresarial } : {}),
+    ...(typeof c.vendeNoCartao === 'boolean' ? { vendeNoCartao: c.vendeNoCartao } : {}),
     ...(c.socios?.length ? { socios: c.socios } : {}),
     ...(c.responsaveis && Object.keys(c.responsaveis).length ? { responsaveis: c.responsaveis } : {}),
     ...(c.dp && Object.keys(c.dp).length ? { dp: c.dp } : {}),
@@ -464,6 +468,7 @@ export const ROTULO_CONTA_PADRAO: Record<CampoContaPadrao, string> = {
   histPrincipal: 'Histórico do principal',
   histJuros: 'Histórico dos juros',
   histDesconto: 'Histórico dos descontos',
+  cartao: 'Cartão de crédito',
 };
 
 /** Grava uma conta padrão (vazio = volta ao padrão do aplicativo). Se for do plano, guarda o nome dela. */
@@ -483,19 +488,30 @@ export function definirContaPadrao(c: CadastroDaEmpresa, campo: CampoContaPadrao
   return registrar({ ...c, contasPadrao: { contas, nomes } }, por, agora, 'Mudou conta padrão', detalhe);
 }
 
+/** Os cartões da empresa: tem cartão empresarial / vende no cartão — sim, não, ou volta a "não informado" (null). */
+export function definirCartao(c: CadastroDaEmpresa, campo: 'cartaoEmpresarial' | 'vendeNoCartao', sim: boolean | null, por: string, agora: Date): CadastroDaEmpresa {
+  if ((c[campo] ?? null) === sim) return c;
+  const resto: CadastroDaEmpresa = { ...c };
+  delete resto[campo];
+  const novo = sim == null ? resto : { ...resto, [campo]: sim };
+  return registrar(novo, por, agora, campo === 'cartaoEmpresarial' ? 'Cartão empresarial' : 'Vende no cartão', sim == null ? 'Não informado' : sim ? 'Sim' : 'Não');
+}
+
 /**
  * Troca as contas padrão de uma vez (quem grava é outro aplicativo, como o Creditor ao confirmar as contas).
  * Nada mudou = o mesmo cadastro (não grava à toa); mudou = registra quais campos.
  */
 export function comContasPadrao(c: CadastroDaEmpresa, novas: ContasPadrao, por: string, agora: Date): CadastroDaEmpresa {
   const antes = c.contasPadrao ?? { contas: {}, nomes: {} };
-  const mudaram = CAMPOS_CONTA_PADRAO.filter(k => (antes.contas[k] || '') !== (novas.contas[k] || ''));
-  const nomesMudaram = CONTAS_PADRAO_DO_PLANO.some(k => (antes.nomes[k] || '') !== (novas.nomes[k] || ''));
+  const mudaram = CAMPOS_CONTA_PADRAO.filter(k => !(k === 'cartao' && novas.contas.cartao === undefined) && (antes.contas[k] || '') !== (novas.contas[k] || ''));
+  const nomesMudaram = CONTAS_PADRAO_DO_PLANO.some(k => !(k === 'cartao' && novas.contas.cartao === undefined) && (antes.nomes[k] || '') !== (novas.nomes[k] || ''));
   if (c.contasPadrao && !mudaram.length && !nomesMudaram) return c;
   const contas: ContasPadrao['contas'] = {};
   const nomes: ContasPadrao['nomes'] = {};
   for (const k of CAMPOS_CONTA_PADRAO) if (texto(novas.contas[k])) contas[k] = texto(novas.contas[k]);
   for (const k of CONTAS_PADRAO_DO_PLANO) if (texto(novas.nomes[k])) nomes[k] = texto(novas.nomes[k]);
+  // a conta do cartão é do Cartões, não do Creditor: quem não mandou ela (undefined) não a apaga
+  if (novas.contas.cartao === undefined && antes.contas.cartao) { contas.cartao = antes.contas.cartao; if (antes.nomes.cartao) nomes.cartao = antes.nomes.cartao; }
   const detalhe = mudaram.length ? mudaram.map(k => ROTULO_CONTA_PADRAO[k] + ': ' + (contas[k] || 'padrão do aplicativo')).join('; ') : 'nomes das contas conferidos';
   return registrar({ ...c, contasPadrao: { contas, nomes } }, por, agora, 'Mudou conta padrão', detalhe);
 }

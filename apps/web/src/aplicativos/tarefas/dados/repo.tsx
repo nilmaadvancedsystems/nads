@@ -172,6 +172,14 @@ export function useAcesso(): RepoAcesso {
 }
 
 /** Só a regra "presta serviços?" do Cadastro da empresa (null = não informado, ou o cadastro ainda não chegou). */
+/** O Cadastro diz que a empresa tem cartão empresarial? (true, false ou null = não informado/ainda carregando) */
+export function useCartaoEmpresarial(nome: string | null, codigo: number | null): boolean | null {
+  const repo = repoDoCadastro();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  if (!nome || !repo.carregada(nome)) return null;
+  return repo.cadastro(nome, codigo).cartaoEmpresarial ?? null;
+}
+
 export function usePrestaServico(nome: string | null, codigo: number | null): boolean | null {
   const repo = repoDoCadastro();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
