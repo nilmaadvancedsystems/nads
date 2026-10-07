@@ -6,6 +6,7 @@ import { empresas, tarefas as t } from '@nads/core';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { competenciasDaTela } from '../../casca/navegacao';
+import { useGmailDoEntregas } from '../../dados/repo';
 import { useClientesDoDp } from './useClientesDoDp';
 
 export type TopicoDoClienteDp = 'obrigacoes' | 'entrega';
@@ -24,19 +25,30 @@ export function useConfiguracoesDoDp() {
   const atual = competenciasDaTela(1)[0];
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : atual;
   const dp = useClientesDoDp(competencia);
+  // o CNPJ/CPF de cada cliente (Sávio, 07/10/2026: "copiar o CNPJ ou CPF de cada cliente sem pontos ou traços para acesso
+  // aos sites do governo"): do cadastro do Entregas, pelo código; só os dígitos
+  const gmail = useGmailDoEntregas();
+  const documentoDoCodigo = new Map(gmail.clientes().lista.filter(c => c.documento).map(c => [Number(c.codigo), c.documento as string]));
+  // nos exemplos não há cadastro do Entregas: um CNPJ inventado pelo código, para a coluna aparecer
+  if (gmail.exemplos) for (const c of dp.clientes) if (!documentoDoCodigo.has(c.codigo)) documentoDoCodigo.set(c.codigo, String(c.codigo).padStart(8, '0') + '000100');
   const [busca, setBusca] = useState('');
   const [movimento, setMovimento] = useState('');
   const [soMudados, setSoMudados] = useState(false);
   const [aberto, setAberto] = useState<number | null>(null);
   const [topico, setTopico] = useState<TopicoDoClienteDp>('obrigacoes');
+  const buscaDigitos = busca.replace(/\D/g, '');
   const achadas = busca.trim()
-    ? new Set(empresas.buscarEmpresas(dp.clientes.map(c => ({ codigo: c.codigo, nome: c.nomeNaTela, regime: c.enquadramento })), busca).map(e => e.codigo))
+    ? new Set([
+      ...empresas.buscarEmpresas(dp.clientes.map(c => ({ codigo: c.codigo, nome: c.nomeNaTela, regime: c.enquadramento })), busca).map(e => e.codigo),
+      // a busca pelo CNPJ/CPF (com ou sem pontos)
+      ...(buscaDigitos.length >= 5 ? dp.clientes.filter(c => (documentoDoCodigo.get(c.codigo) || '').includes(buscaDigitos)).map(c => c.codigo) : []),
+    ])
     : null;
   const rotuloDe = (id: string) => empresas.OBRIGACOES_DP.find(o => o.id === id)?.rotulo || id;
   const linhas = dp.clientes
     .filter(c => (!achadas || achadas.has(c.codigo)) && (!movimento || c.movimento === movimento) && (!soMudados || c.mudado))
     .sort((a, b) => a.nomeNaTela.localeCompare(b.nomeNaTela, 'pt-BR'))
-    .map(c => ({ ...c, obrigacoesTexto: c.obrigacoes.length ? (c.obrigacoes as string[]).map(rotuloDe).join(' · ') : 'Nenhuma' }));
+    .map(c => ({ ...c, documento: documentoDoCodigo.get(c.codigo) || '', obrigacoesTexto: c.obrigacoes.length ? (c.obrigacoes as string[]).map(rotuloDe).join(' · ') : 'Nenhuma' }));
   const cliente = aberto != null ? dp.clientes.find(c => c.codigo === aberto) || null : null;
   return {
     carregando: !dp.carregado,

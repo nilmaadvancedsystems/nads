@@ -3459,3 +3459,19 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .fgts-nome{min-width:200px;}
 .fgts-cnpj{white-space:nowrap;}
 .fgts-acoes{align-items:center;}
+
+/* Os painéis coloridos dos números (DP › Resumo; Sávio, 07/10/2026): cada número no tom do que ele é, com o ícone */
+.dp-numeros{gap:10px;}
+.stat.painel-numero{position:relative;border:1px solid var(--tom-borda,var(--border));border-radius:10px;margin:0;background:var(--tom-fundo,var(--surface));padding:14px 16px 14px 56px;min-height:76px;}
+.painel-numero .stat-value{color:var(--tom,var(--ink));}
+.painel-numero-icone{position:absolute;left:14px;top:16px;width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--tom-icone,var(--surface-3));color:var(--tom,var(--ink-muted));}
+.painel-numero-icone svg{width:16px;height:16px;}
+.painel-info{--tom:var(--info);--tom-fundo:var(--info-soft);--tom-icone:var(--info-soft);--tom-borda:var(--info-soft);}
+.painel-ok{--tom:var(--success);--tom-fundo:var(--success-soft);--tom-icone:var(--success-soft);--tom-borda:var(--success-soft);}
+.painel-aviso{--tom:var(--warn);--tom-fundo:var(--warn-soft);--tom-icone:var(--warn-soft);--tom-borda:var(--warn-soft);}
+.painel-marca{--tom:var(--accent);--tom-fundo:var(--accent-soft);--tom-icone:var(--accent-soft);--tom-borda:var(--accent-soft);}
+.painel-neutro{--tom:var(--ink);--tom-fundo:var(--surface);--tom-icone:var(--surface-3);--tom-borda:var(--border);}
+/* a coluna CNPJ/CPF das Configurações do DP: só os dígitos e o copiar */
+.dp-documento{white-space:nowrap;cursor:default;}
+.dp-documento-celula{display:inline-flex;align-items:center;gap:4px;}
+.stat-grid.dp-numeros{border:0;background:none;overflow:visible;}
