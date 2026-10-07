@@ -1,6 +1,6 @@
 // ViewModel das Configurações do DP (Vitor, 06/10/2026: "quero que o dp tenha a própria aba de configurações"; "faça no
 // estilo do cadastro"): a lista dos clientes do DP com os parâmetros de cada um (o movimento, as obrigações do mês, a
-// REINF, a entrega e o agrupamento); clicar abre a janela do cliente, onde se muda. Começa com o da planilha; o que mudar
+// entrega e o agrupamento; a REINF é do Fiscal); clicar abre a janela do cliente, onde se muda. Começa com o da planilha; o que mudar
 // grava no cadastro da empresa e vale nas abas do DP na hora. "Voltar à planilha" tira o que foi mudado.
 import { empresas } from '@nads/core';
 import { useState } from 'react';
@@ -46,7 +46,6 @@ export function useConfiguracoesDoDp() {
       const atuais: string[] = c.obrigacoes;
       dp.mudarDp(codigo, { obrigacoes: atuais.includes(id) ? atuais.filter(o => o !== id) : [...atuais, id] });
     },
-    mudarReinf: (codigo: number, v: boolean) => dp.mudarDp(codigo, { reinfAutorizada: v }),
     mudarEntrega: (codigo: number, v: string) => dp.mudarDp(codigo, { entrega: v }),
     mudarAgrupamento: (codigo: number, v: string) => dp.mudarDp(codigo, { agrupamento: v.trim() }),
     voltarAPlanilha: (codigo: number) => dp.mudarDp(codigo, { movimento: null, obrigacoes: null, reinfAutorizada: null, entrega: null, agrupamento: null }),
