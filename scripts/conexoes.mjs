@@ -49,7 +49,11 @@ const ONDE_PODE_FETCH = /[\\/]apps[\\/]web[\\/]src[\\/]aplicativos[\\/]extratudo
 const ONDE_PODE_FETCH_VERSAO = /[\\/]packages[\\/]ui[\\/]src[\\/]versaoNova\.tsx$/;
 
 const achados = [];
-const ignorar = new Set(['node_modules', '.git', 'dist', 'dist-sites', 'dist-tipos', '.claude', 'docs', '.firebase']);
+// robo/: o robô do escritório (Gmail, Drive, avisos, arquivador, SIEG, FGTS), movido do Entregas para cá a pedido do
+// usuário (07/10/2026: "quero que o robô entre no nads completamente… movido pro repositório do nads"). Ele é um serviço
+// (na máquina do Google e no PC), não o app: fala com a rede e com o Admin SDK por natureza, e não vai para o navegador.
+// Esta trava continua valendo para o app (apps/ e packages/).
+const ignorar = new Set(['node_modules', '.git', 'dist', 'dist-sites', 'dist-tipos', '.claude', 'docs', '.firebase', 'robo']);
 
 function varrer(dir, fn) {
   for (const nome of fs.readdirSync(dir)) {
