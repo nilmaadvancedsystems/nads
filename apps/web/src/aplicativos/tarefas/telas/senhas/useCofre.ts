@@ -8,6 +8,7 @@ import { useRetorno } from '@nads/ui';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { guardarChavePrivada, idDaChave, lerChavePrivada } from '../../dados/chaveLocal';
 import { useCofreRepo } from '../../dados/repo';
+import { imprimirCodigoDoCofre } from './imprimirCodigo';
 
 // a chave aberta é de quem abriu (trocou de pessoa na mesma aba: fecha)
 let aberta: { versao: number; chave: CryptoKey; dono: string } | null = null;
@@ -49,9 +50,14 @@ export function useCofre() {
   const estado: EstadoDoCofre = !carregado ? 'carregando' : repo.erro() ? 'erro' : !config ? 'novo'
     : aberta && aberta.versao === config.versao && aberta.dono === id ? 'aberto' : minha && temPrivada && !minha.trancada ? 'aguardando' : 'sem-chave';
 
+  /** mostra o código até a pessoa dizer que guardou; o Imprimir abre a folha para imprimir e volta para cá */
   async function mostrarCodigo(codigo: string, titulo: string) {
-    await modal({ icone: 'lock', titulo, texto: codigo + ' — guarde fora do sistema (impresso). É a única forma de abrir o cofre se todos perderem o acesso.',
-      botoes: [{ rotulo: 'Guardei o código', valor: true, variante: 'btn-primary' }] });
+    for (;;) {
+      const r = await modal<'imprimir' | 'guardei'>({ icone: 'lock', titulo, texto: codigo + ' — guarde fora do sistema (impresso). É a única forma de abrir o cofre se todos perderem o acesso.',
+        botoes: [{ rotulo: 'Imprimir', valor: 'imprimir', variante: 'btn-outline' }, { rotulo: 'Guardei o código', valor: 'guardei', variante: 'btn-primary' }] });
+      if (r !== 'imprimir') return;
+      if (!imprimirCodigoDoCofre(codigo, titulo)) toast('O navegador bloqueou a janela de impressão: libere as janelas deste site.');
+    }
   }
   async function tentar(f: () => Promise<void>) {
     if (ocupado) return;
