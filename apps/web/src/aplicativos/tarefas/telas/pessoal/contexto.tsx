@@ -4,7 +4,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 import { JanelaPessoal } from './JanelaPessoal';
 
-export type TopicoPessoal = 'caixa' | 'notas' | 'conta' | 'preferencias' | 'aplicativo' | 'ia' | 'faq';
+export type TopicoPessoal = 'caixa' | 'notas' | 'conta' | 'empresas' | 'preferencias' | 'aplicativo' | 'ia' | 'faq';
 
 interface Pessoal { topico: TopicoPessoal | null; abrir: (t: string) => void; fechar: () => void }
 
