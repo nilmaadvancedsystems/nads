@@ -2,3 +2,4 @@
 export * from './tipos';
 export * from './cripto';
 export * from './regras';
+export * from './planilha';

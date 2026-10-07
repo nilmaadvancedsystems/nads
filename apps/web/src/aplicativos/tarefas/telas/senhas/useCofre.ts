@@ -150,6 +150,36 @@ export function useCofre() {
       await repo.salvarConfig({ ...config, recuperacao: await c.trancarComCodigo(aberta.chave, codigo) });
       await mostrarCodigo(codigo, 'O código de recuperação novo');
     }),
+    /** as contas gov.br de pessoas (importadas da planilha) */
+    contasGov: [...repo.itens()].filter(([, d]) => d.tipo === 'gov').map(([k, d]) => ({ id: k, nome: d.empresa, nivel: d.nivel || '', atualizadoEm: d.atualizadoEm, atualizadoPor: d.atualizadoPor })),
+    /** embaralha cada conta da planilha com a chave do cofre (no navegador) e grava; devolve quantas */
+    async importarContasGov(contas: readonly c.ContaGovDaPlanilha[]): Promise<number> {
+      if (!aberta || aberta.dono !== id || !config || !eu) return 0;
+      if (modoDesenvolvedor()) { toast(AVISO_DEV); return 0; }
+      const itens: { id: string; doc: c.DocDoCofre }[] = [];
+      for (const k of contas) {
+        const segredos: c.SegredosDaEmpresa = { gov: { login: k.cpf, senha: k.senha, ...(k.obs ? { obs: k.obs } : {}) } };
+        itens.push({ id: await c.idDaContaGov(k.cpf), doc: {
+          tipo: 'gov', empresa: k.nome, codigo: null, nivel: k.nivel, versao: config.versao, ...(await c.cifrar(aberta.chave, segredos)),
+          temGov: true, temCertificado: false, atualizadoEm: agora(), atualizadoPor: eu.nome,
+        } });
+      }
+      await repo.salvarVarios(itens);
+      return itens.length;
+    },
+    /** os segredos de um documento do cofre pelo id (as contas gov.br) */
+    async lerPorId(docId: string): Promise<c.SegredosDaEmpresa | null> {
+      const d = repo.itens().get(docId);
+      if (!d || !aberta || aberta.dono !== id) return null;
+      return c.decifrar<c.SegredosDaEmpresa>(aberta.chave, d);
+    },
+    async salvarConta(docId: string, gov: c.SenhaGov) {
+      const d = repo.itens().get(docId);
+      if (!d || !aberta || aberta.dono !== id || !config || !eu) return;
+      if (modoDesenvolvedor()) { toast(AVISO_DEV); return; }
+      await repo.salvar(docId, { ...d, versao: config.versao, ...(await c.cifrar(aberta.chave, { gov })), atualizadoEm: agora(), atualizadoPor: eu.nome });
+      toast('Guardado no cofre.');
+    },
     /** os segredos de uma empresa (null = ainda não tem nada no cofre) */
     async ler(empresa: string): Promise<c.SegredosDaEmpresa | null> {
       const d = repo.itens().get(formatos.slug(empresa));

@@ -3185,3 +3185,8 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 /* DP: a REINF é do Fiscal, só leitura (07/10/2026) */
 .dp-marca.leitura.a-fazer{border-style:dashed;opacity:.55;}
 .cofre-dev{margin:0 0 10px;color:var(--warn);font-size:13px;}
+/* Senhas › Contas gov.br: a prévia da importação da planilha */
+.cofre-previa{margin:0 0 16px;padding:0;overflow:hidden;}
+.cofre-previa .card-head{display:flex;align-items:center;gap:8px;padding:12px 16px;}
+.cofre-previa .card-head h3{margin:0;font-size:14px;}
+.cofre-previa .table-wrap{border:0;border-radius:0;max-height:460px;}
