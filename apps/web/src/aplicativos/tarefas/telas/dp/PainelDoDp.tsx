@@ -201,7 +201,7 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
                               </td>
                             ))}
                             <td className="dp-onde fraco">{c.entrega || '—'}</td>
-                            <td><span className={'badge ' + (c.concluida ? 'badge-ok' : c.parada ? 'badge-warn' : 'badge-neutral')}>{c.situacao}</span></td>
+                            <td><span className={'badge ' + (c.concluida ? 'badge-ok' : c.parada ? 'badge-parada' : 'andamento' in c && c.andamento ? 'badge-warn' : 'badge-neutral')}>{c.situacao}</span></td>
                           </tr>
                         ))}
                       </Fragment>
