@@ -133,11 +133,11 @@ export function useFornecedores() {
     mesesDosCredores: (credoresNoPeriodo[0]?.saldos || []).map(x => tarefas.rotuloNumericoCompetencia(x.mes)),
     credoresNoPeriodo: credoresNoPeriodo.map(c => ({
       codigo: c.codigo, nome: c.nome,
-      // a cor pela natureza do saldo (Vitor, 07/10/2026): credor em vermelho, devedor em azul (aqui o saldo vem trocado)
-      saldos: c.saldos.map(x => ({ mes: x.mes, valor: x.saldo ? reais(x.saldo) : '—', credor: x.saldo < -0.005, cor: x.saldo > 0.005 ? 'ext-neg' : x.saldo < -0.005 ? 'ext-azul' : '' })),
+      // sem sinal (Vitor, 07/10/2026): o certo (credor) em branco; o errado (devedor) em azul
+      saldos: c.saldos.map(x => ({ mes: x.mes, valor: x.saldo ? reais(Math.abs(x.saldo)) : '—', credor: x.saldo < -0.005, cor: x.saldo < -0.005 ? 'ext-azul' : '' })),
     })),
     // Saldo devedor
-    credores: credores.map(k => ({ codigo: k.codigo, nome: k.nome, saldo: reais(k.saldo) })),
+    credores: credores.map(k => ({ codigo: k.codigo, nome: k.nome, saldo: reais(Math.abs(k.saldo)) })),
     // Fornecedores
     carregado: marcas.carregado,
     /** as perguntas prontas para o cliente (o menu da observação) */
