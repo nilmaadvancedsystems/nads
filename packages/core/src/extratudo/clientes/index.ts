@@ -124,10 +124,18 @@ export type SituacaoCliente = 'pendente' | 'ok' | 'conferido';
 export interface MarcaDoCliente { nome: string; saldo: number; situacao: SituacaoCliente; obs?: string; razao?: RazaoDaMarca }
 export interface DocClientes { contas: Record<string, MarcaDoCliente>; atualizadoEm?: string }
 
-/** Zerado é Ok (sempre, do sistema); com saldo, Conferido se a pessoa marcou, senão Pendente. */
+/**
+ * Zerado é Ok (sempre, do sistema): no dinâmico, ou no razão importado (Vitor, 07/10/2026: "se ele reupar o razão e
+ * tiver zerado, dá Ok automático"); com saldo, Conferido se a pessoa marcou, senão Pendente.
+ */
 export function situacaoDe(c: ContaDeCliente, marca?: MarcaDoCliente): SituacaoCliente {
-  if (zero(c.saldo)) return 'ok';
+  if (zero(c.saldo) || zeradoNoRazao(marca)) return 'ok';
   return marca?.situacao === 'conferido' ? 'conferido' : 'pendente';
+}
+
+/** O razão importado fecha em zero, sem nota em aberto. */
+export function zeradoNoRazao(marca?: MarcaDoCliente): boolean {
+  return !!marca?.razao && zero(marca.razao.saldo) && !marca.razao.notas.length;
 }
 
 /** O clique no selo: Pendente ↔ Conferido (o Ok não muda: é do sistema). */
