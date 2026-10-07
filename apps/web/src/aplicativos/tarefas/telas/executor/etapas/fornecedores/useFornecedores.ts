@@ -23,7 +23,11 @@ export function useFornecedores() {
   const s = useEtapaAberta();
   const { aviso } = useRetorno();
   const mes = s.meses[s.meses.length - 1] || '';
-  const [tela, setTela] = useState<TelaFornecedores>('arquivos');
+  const [tela, setTelaDaVez] = useState<TelaFornecedores>('arquivos');
+  // até onde a pessoa já chegou: as abas depois disso ficam apagadas (Vitor, 07/10/2026: "deixar ofuscado as próximas tarefas")
+  const [alcancada, setAlcancada] = useState(0);
+  const ORDEM: TelaFornecedores[] = ['arquivos', 'fornecedores', 'envio'];
+  const setTela = (t: TelaFornecedores) => { setTelaDaVez(t); setAlcancada(a => Math.max(a, ORDEM.indexOf(t))); };
   const [dinamico, setDinamico] = useState<{ nome: string; d: cl.BalanceteDinamico } | null>(null);
   const [filtro, setFiltro] = useState<FiltroFornecedores>('todos');
   const [busca, setBusca] = useState('');
@@ -75,13 +79,13 @@ export function useFornecedores() {
   const linhas = contas.map(k => {
     const marca = marcas.doc.contas[k.codigo] || passam[k.codigo];
     const situacao = cl.situacaoDe(k, marca);
-    return { codigo: k.codigo, nome: k.nome, saldo: k.saldo, situacao, obs: marca?.obs || '', razao: marca?.razao, doMesAnterior: !marcas.doc.contas[k.codigo] && !!passam[k.codigo] };
+    return { codigo: k.codigo, nome: k.nome, saldo: k.saldo, situacao, obs: marca?.obs || '', razao: marca?.razao, perguntar: marca?.perguntar, doMesAnterior: !marcas.doc.contas[k.codigo] && !!passam[k.codigo] };
   });
 
   function marcar(codigo: string, mudar: (m: cl.MarcaDoCliente) => cl.MarcaDoCliente) {
     const l = linhas.find(x => x.codigo === codigo);
     if (!l || !marcas.carregado) return;
-    const atual: cl.MarcaDoCliente = { nome: l.nome, saldo: l.saldo, situacao: l.situacao, ...(l.obs ? { obs: l.obs } : {}), ...(l.razao ? { razao: l.razao } : {}) };
+    const atual: cl.MarcaDoCliente = { nome: l.nome, saldo: l.saldo, situacao: l.situacao, ...(l.obs ? { obs: l.obs } : {}), ...(l.razao ? { razao: l.razao } : {}), ...(l.perguntar?.length ? { perguntar: l.perguntar } : {}) };
     marcas.salvar({ contas: { ...marcas.doc.contas, [codigo]: mudar(atual) } });
   }
 
@@ -96,8 +100,7 @@ export function useFornecedores() {
       const r = cl.conferirRazaoDoCliente(tarefas.lerRazaoDoArquivo(await f.arrayBuffer()), mes, LADO);
       const razao = cl.razaoDaMarca(f.name, r, LADO);
       // com nota em aberto, a observação já vem escrita (Vitor, 07/10/2026): "No meu sistema, está em aberto…"
-      const pronta = cl.observacaoDoRazao(razao);
-      marcar(codigo, m => ({ ...m, situacao: cl.razaoComPendencia(razao) ? 'conferido' : 'pendente', razao, ...(!m.obs && pronta ? { obs: pronta } : {}) }));
+      marcar(codigo, m => { const n = { ...m, situacao: cl.razaoComPendencia(razao) ? 'conferido' as const : 'pendente' as const, razao }; delete n.perguntar; return n; });
       const bate = Math.abs(r.saldo - l.saldo) < 0.005;
       const partes = [
         razao.notas.length ? (razao.notas.length === 1 ? '1 nota em aberto' : razao.notas.length + ' notas em aberto') : 'Nenhuma nota em aberto',
@@ -129,8 +132,8 @@ export function useFornecedores() {
   return {
     mes: rotuloMes,
     tela: telas.includes(tela) ? tela : 'arquivos',
-    telas: telas.map(t => ({ valor: t, rotulo: t === 'arquivos' ? 'Arquivos' : t === 'fornecedores' ? 'Fornecedores' : 'Envio' })),
-    irPara: (t: TelaFornecedores) => setTela(t),
+    telas: telas.map((t, k) => ({ valor: t, rotulo: t === 'arquivos' ? 'Arquivos' : t === 'fornecedores' ? 'Fornecedores' : 'Envio', travada: k > alcancada ? 'Chega aqui pelo Próximo' : false as const })),
+    irPara: (t: TelaFornecedores) => { if (telas.indexOf(t) <= alcancada) setTela(t); },
     temProxima: i < telas.length - 1,
     podeSeguir,
     proximo: () => { if (podeSeguir && i < telas.length - 1) setTela(telas[i + 1]); },
@@ -151,8 +154,6 @@ export function useFornecedores() {
     })),
     // Fornecedores
     carregado: marcas.carregado,
-    /** as perguntas prontas para o cliente (o menu da observação) */
-    objecoes: cl.OBJECOES_DO_FORNECEDOR,
     filtro, setFiltro, busca, setBusca,
     contagem: { todos: linhas.length, pendente: linhas.filter(l => l.situacao === 'pendente').length, ok: linhas.filter(l => l.situacao === 'ok').length, conferido: conferidos.length },
     linhas: linhas
@@ -169,20 +170,28 @@ export function useFornecedores() {
           naoBate: Math.abs(l.razao.saldo - l.saldo) >= 0.005 && Math.abs(l.razao.saldo) >= 0.005 ? reais(l.razao.saldo) : '',
           zerado: Math.abs(l.razao.saldo) < 0.005 && !l.razao.notas.length,
           // a mini tabela embaixo do fornecedor: as notas em aberto e o que ficou solto
-          itens: l.razao.itens.map(i => ({ data: i.data ? i.data.slice(8, 10) + '/' + i.data.slice(5, 7) + '/' + i.data.slice(0, 4) : '', nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor), abate: i.valor < 0, status: i.status, rotulo: cl.ROTULO_DO_STATUS[i.status] })),
+          itens: l.razao.itens.map(i => ({ chave: i.interno ? '' : cl.chaveDoItem(i), marcado: !i.interno && cl.itensEscolhidos(l.razao, l.perguntar).includes(i), data: i.data ? i.data.slice(8, 10) + '/' + i.data.slice(5, 7) + '/' + i.data.slice(0, 4) : '', nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor), abate: i.valor < 0, status: i.status, rotulo: cl.ROTULO_DO_STATUS[i.status] })),
+        } : null,
+        // o que perguntar no Mandei: o fornecedor todo ou os itens escolhidos no "+"
+        perguntar: l.razao ? {
+          todos: !l.perguntar?.length || cl.itensEscolhidos(l.razao, l.perguntar).length === cl.itensPerguntaveis(l.razao).length,
+          rotulo: cl.itensEscolhidos(l.razao, l.perguntar).map(cl.rotuloDoItem).join(' · '),
+          opcoes: cl.itensPerguntaveis(l.razao).map(i => ({ chave: cl.chaveDoItem(i), rotulo: cl.rotuloDoItem(i) + ' · ' + reais(i.valor), marcado: !!l.perguntar?.length && cl.itensEscolhidos(l.razao, l.perguntar).includes(i) })),
         } : null,
       })),
     // sem campo vazio (o banco não aceita undefined)
-    observar: (codigo: string, obs: string) => marcar(codigo, m => {
+    /** o "+" do Mandei: liga ou desliga um item da relação (null = o fornecedor todo) */
+    alternarPergunta: (codigo: string, chave: string | null) => marcar(codigo, m => {
       const n = { ...m };
-      delete n.obs;
-      return obs.trim() ? { ...n, obs: obs.trim() } : n;
+      const novo = chave ? cl.alternarItem(m.razao, m.perguntar, chave) : undefined;
+      delete n.perguntar;
+      return novo?.length ? { ...n, perguntar: novo } : n;
     }),
     /** o razão da conta: importar (acha as notas em aberto) e tirar */
     importarRazao: (codigo: string, f: File | undefined) => { void importarRazao(codigo, f); },
     tirarRazao: (codigo: string) => marcar(codigo, m => { const n = { ...m }; delete n.razao; return n; }),
     // Envio
-    conferidos: conferidos.map(l => ({ codigo: l.codigo, nome: l.nome, valor: reais(l.saldo), obs: l.obs, notas: cl.textoDasNotas(l.razao?.notas) })),
+    conferidos: conferidos.map(l => ({ codigo: l.codigo, nome: l.nome, valor: reais(l.saldo), perguntar: cl.itensEscolhidos(l.razao, l.perguntar).map(cl.rotuloDoItem).join(' · '), notas: cl.textoDasNotas(l.razao?.notas) })),
     // o Mandei: um ticket com os conferidos (cada um, um item com a nossa pergunta), o link vai por e-mail
     /** o e-mail e o WhatsApp da empresa, do Cadastro */
     contato: { email: vivo.cadastro.contato?.email || '', whatsapp: vivo.cadastro.contato?.whatsapp || '' },
@@ -199,7 +208,7 @@ export function useFornecedores() {
         criadoPor: { nome: op?.nome || '' },
         origem: { titulo: 'Fornecedores · ' + rotuloMes, rota: window.location.pathname, competencia: mes },
         // os lançamentos de cada um (a nota em aberto com a data e o número; o pagamento solto com a data e o banco)
-        itens: conferidos.map(l => ({ id: l.codigo, titulo: l.nome, valor: reais(l.saldo), ...(l.obs ? { detalhe: l.obs } : {}), opcoes: md.OPCOES_PADRAO, linhas: cl.linhasParaOTicket(l.razao, l.saldo, mes) })),
+        itens: conferidos.map(l => ({ id: l.codigo, titulo: l.nome, valor: reais(l.saldo), opcoes: md.OPCOES_PADRAO, linhas: cl.linhasParaOTicket(l.razao, l.saldo, mes, l.perguntar) })),
       });
       aviso({ tom: 'ok', titulo: 'Ticket ' + md.rotuloDoNumero(t.numero) + ' mandado', texto: email + ' e WhatsApp ' + whatsapp + ' · acompanhe em Mandei' });
     },

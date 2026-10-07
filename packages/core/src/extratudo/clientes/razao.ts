@@ -196,6 +196,46 @@ export function razaoDaMarca(arquivo: string, r: RazaoConferido, lado: LadoDaCon
   };
 }
 
+// ─── o que perguntar no Mandei (Vitor, 07/10/2026: no lugar da observação digitada, o "+" com o cliente todo ou as notas) ──
+
+/** A chave de um item da relação: o que a pessoa escolhe para perguntar (guardada na marca do cliente). */
+export function chaveDoItem(i: Pick<ItemDoRazao, 'data' | 'nf' | 'valor' | 'status'>): string {
+  return i.data + '|' + (i.nf || '') + '|' + i.valor.toFixed(2) + '|' + i.status;
+}
+
+/** O que pode ir para o cliente: a relação sem o que é só do escritório (a duplicidade). */
+export function itensPerguntaveis(razao?: RazaoDaMarca): ItemDoRazao[] {
+  return (razao?.itens || []).filter(i => !i.interno);
+}
+
+/** Os itens escolhidos; sem escolha (ou com a escolha que não existe mais no razão), o cliente todo. */
+export function itensEscolhidos(razao: RazaoDaMarca | undefined, perguntar?: readonly string[]): ItemDoRazao[] {
+  const todos = itensPerguntaveis(razao);
+  if (!perguntar?.length) return todos;
+  const escolha = new Set(perguntar);
+  const esses = todos.filter(i => escolha.has(chaveDoItem(i)));
+  return esses.length ? esses : todos;
+}
+
+/** O nome curto de um item: "NF 9971", "Pagamento 20/08/2026" ou "Devolução 03/08/2026". */
+export function rotuloDoItem(i: Pick<ItemDoRazao, 'data' | 'nf' | 'status'>): string {
+  if (i.nf) return 'NF ' + i.nf;
+  return (i.status === 'devolucao' ? 'Devolução ' : 'Pagamento ') + (i.data ? dataBR(i.data) : '');
+}
+
+/**
+ * Liga ou desliga um item na escolha. Do "cliente todo", escolher um item fica só com ele; desligar o último, ou ligar
+ * todos, volta ao cliente todo (undefined).
+ */
+export function alternarItem(razao: RazaoDaMarca | undefined, perguntar: readonly string[] | undefined, chave: string): string[] | undefined {
+  const todos = itensPerguntaveis(razao).map(chaveDoItem);
+  if (!todos.includes(chave)) return perguntar?.length ? [...perguntar] : undefined;
+  const atual = (perguntar || []).filter(c => todos.includes(c));
+  if (!atual.length) return [chave];
+  const novo = atual.includes(chave) ? atual.filter(c => c !== chave) : [...atual, chave];
+  return novo.length && novo.length < todos.length ? novo : undefined;
+}
+
 /** Uma linha para o formulário do cliente (o Mandei): data, nota fiscal, o que é, o valor, o tipo e a conta. */
 export interface LinhaParaOTicket { data: string; nf: string; descricao: string; valor: string; tipo: 'nota' | 'pagamento' | 'devolucao' | 'saldo'; conta?: string }
 
@@ -206,8 +246,9 @@ const dataDoRazaoBR = (d: string) => (d ? d.slice(8, 10) + '/' + d.slice(5, 7) +
  * escritório), cada um com a data, a nota (a nota em aberto) ou a conta (o pagamento solto: o banco); sem o razão, o
  * saldo do fim do mês ('aaaa-mm').
  */
-export function linhasParaOTicket(razao: RazaoDaMarca | undefined, saldo: number, mes: string): LinhaParaOTicket[] {
-  const doRazao = (razao?.itens || []).filter(i => !i.interno);
+export function linhasParaOTicket(razao: RazaoDaMarca | undefined, saldo: number, mes: string, perguntar?: readonly string[]): LinhaParaOTicket[] {
+  // só o que a pessoa escolheu no "+" (sem escolha, o cliente todo)
+  const doRazao = itensEscolhidos(razao, perguntar);
   if (doRazao.length) {
     return doRazao.map(i => ({
       data: dataDoRazaoBR(i.data), nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor),

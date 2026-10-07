@@ -7,6 +7,7 @@ import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { useClientes, type FiltroClientes, type TelaClientes } from './useClientes';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../../comum/GradeDosMeses';
+import { OQuePerguntar } from './OQuePerguntar';
 
 type VM = ReturnType<typeof useClientes>;
 
@@ -156,8 +157,8 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                   {l.nome}{l.doMesAnterior && <> <span className="badge badge-neutral" title="Conferido no mês anterior: revise">do mês anterior</span></>}
                   {/* o razão que não bate com o balancete (as notas ficam na relação embaixo; Vitor, 07/10/2026) */}
                   {l.razao?.naoBate && <span className="hint ext-neg" style={{ display: 'block', marginTop: 2 }}>O razão fecha em {l.razao.naoBate}: confira se é desta conta</span>}
-                  {/* o conferido abre a observação (vai para o cliente) */}
-                  {l.situacao === 'conferido' && <Observacao nome={l.nome} obs={l.obs} objecoes={vm.objecoes} desabilitado={!vm.carregado} onMudar={t => vm.observar(l.codigo, t)} />}
+                  {/* o conferido mostra o que vai para o Mandei e o "+" para escolher (Vitor, 07/10/2026: sem digitar) */}
+                  {l.situacao === 'conferido' && l.perguntar && <OQuePerguntar nome={l.nome} quem="cliente" vm={l.perguntar} desabilitado={!vm.carregado} onAlternar={ch => vm.alternarPergunta(l.codigo, ch)} />}
                 </td>
                 <td>
                   {/* os selos do catálogo: o saldo (Diferença, SE-03), Conferido (SE-02) e Ok (SE-01), todos do sistema: o Ok é a conta
@@ -190,11 +191,12 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                   <td colSpan={4}>
                     <div className="table-wrap">
                       <table className="table-compact">
-                        <thead><tr><th>Data</th><th>Nota fiscal</th><th>Descrição</th><th className="num">Valor</th><th>Status</th></tr></thead>
+                        <thead><tr><th>Data</th><th>Nota fiscal</th><th>Descrição</th><th className="num">Valor</th><th>Status</th>{l.situacao === 'conferido' && <th className="num">Mandei</th>}</tr></thead>
                         <tbody>
                           {l.razao.itens.map((i, k) => (
                             <tr key={k}><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td>{i.nf}</td><td className="wrap">{i.descricao}</td><td className={'num' + (i.abate ? ' ext-neg' : '')}>{i.valor}</td>
-                              <td><span className={'badge ' + (i.status === 'aberto' ? 'badge-warn' : 'badge-neutral')}>{i.rotulo}</span></td></tr>
+                              <td><span className={'badge ' + (i.status === 'aberto' ? 'badge-warn' : 'badge-neutral')}>{i.rotulo}</span></td>
+                              {l.situacao === 'conferido' && <td className="num">{i.marcado ? <span title="Vai para o Mandei"><Icone nome="check" /></span> : null}</td>}</tr>
                           ))}
                         </tbody>
                       </table>
@@ -212,61 +214,16 @@ function ListaDeClientes({ vm }: { vm: VM }) {
   );
 }
 
-/**
- * A observação do conferido (Vitor, 07/10/2026): o menu com as perguntas mais comuns e o lápis para escrever; o lápis
- * troca o menu pelo campo, com o check para guardar. Guardada, fica embaixo do nome com o check da importação (passou o
- * mouse, vira o × e apaga).
- */
-function Observacao({ nome, obs, objecoes, desabilitado, onMudar }: {
-  nome: string; obs: string; objecoes: readonly string[]; desabilitado: boolean; onMudar: (texto: string) => void;
-}) {
-  const [escrevendo, setEscrevendo] = useState(false);
-  const [texto, setTexto] = useState('');
-  const guardar = () => { if (texto.trim()) onMudar(texto); setEscrevendo(false); };
-  if (obs) {
-    return (
-      <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
-        {/* a mensagem para o cliente no balão (Vitor, 07/10/2026: "um feedback visual de que é uma mensagem") */}
-        <span className="msg-balao" title="Mensagem para o cliente"><Icone nome="mensagem" />{obs}</span>
-        <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" disabled={desabilitado} onClick={() => onMudar('')}
-          title="Observação guardada. Clique para apagar." aria-label={'Apagar a observação de ' + nome}>
-          <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
-        </button>
-      </span>
-    );
-  }
-  return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
-      {escrevendo ? (
-        <>
-          <input type="text" autoFocus aria-label={'Observação de ' + nome} placeholder="Observação para o cliente" value={texto}
-            style={{ flex: 1, minWidth: 0 }} onChange={e => setTexto(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') guardar(); if (e.key === 'Escape') setEscrevendo(false); }} />
-          <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={desabilitado || !texto.trim()} onClick={guardar}
-            title="Guardar a observação" aria-label={'Guardar a observação de ' + nome}><Icone nome="check" /></button>
-        </>
-      ) : (
-        <>
-          <MenuSuspenso rotulo="Pergunta para o cliente" className="btn btn-outline" dica="Escolher uma pergunta pronta" largura={420}
-            itens={objecoes.map(o => ({ rotulo: o, desabilitado, onClick: () => onMudar(o) }))} />
-          <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={desabilitado} onClick={() => { setTexto(''); setEscrevendo(true); }}
-            title="Escrever a observação" aria-label={'Escrever a observação de ' + nome}><Icone nome="lapis" /></button>
-        </>
-      )}
-    </span>
-  );
-}
-
 function Envio({ vm }: { vm: VM }) {
   if (!vm.conferidos.length) return <p className="hint">Nenhum cliente conferido: em Clientes, importe o razão da conta; com nota em aberto ou pagamento solto, ele vira Conferido.</p>;
   return (
     <>
       <div className="table-wrap">
         <table className="table-compact">
-          <thead><tr><th>Conta</th><th>Cliente</th><th className="num">Saldo</th><th>Notas em aberto</th><th>Observação</th></tr></thead>
+          <thead><tr><th>Conta</th><th>Cliente</th><th className="num">Saldo</th><th>Notas em aberto</th><th>No Mandei</th></tr></thead>
           <tbody>
             {vm.conferidos.map(l => (
-              <tr key={l.codigo}><td>{l.codigo}</td><td className="wrap">{l.nome}</td><td className="num">{l.valor}</td><td className="wrap">{l.notas || '—'}</td><td className="wrap">{l.obs || '—'}</td></tr>
+              <tr key={l.codigo}><td>{l.codigo}</td><td className="wrap">{l.nome}</td><td className="num">{l.valor}</td><td className="wrap">{l.notas || '—'}</td><td className="wrap">{l.perguntar || '—'}</td></tr>
             ))}
           </tbody>
         </table>

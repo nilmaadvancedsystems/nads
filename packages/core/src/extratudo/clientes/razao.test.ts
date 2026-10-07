@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { lerRazao } from '../../tarefas/regras/razao';
-import { conferirRazaoDoCliente, observacaoDoRazao, razaoDaMarca } from './razao';
+import { alternarItem, chaveDoItem, conferirRazaoDoCliente, itensEscolhidos, linhasParaOTicket, observacaoDoRazao, razaoDaMarca, rotuloDoItem } from './razao';
 import { situacaoDe, textoDaMensagem, textoDasNotas } from './index';
 
 // o formato do razão da conciliação do Alterdata (conta de um cliente), com valores inventados
@@ -91,5 +91,30 @@ describe('o razão zerado', () => {
     expect(situacaoDe(conta, { nome: 'CLIENTE TESTE', saldo: 100, situacao: 'conferido', razao })).toBe('ok');
     // sem o razão, o conferido marcado à mão não vale (Vitor, 07/10/2026)
     expect(situacaoDe(conta, { nome: 'CLIENTE TESTE', saldo: 100, situacao: 'conferido' })).toBe('pendente');
+  });
+});
+
+describe('o que perguntar no Mandei (o "+", 07/10/2026)', () => {
+  const item = (nf: string, valor: number, status: 'aberto' | 'pagamento' | 'devolucao' = 'aberto', interno = false) =>
+    ({ data: '2026-08-05', nf, descricao: '', valor, status, ...(interno ? { interno } : {}) });
+  const razao = { arquivo: 'x.xls', notas: [], saldo: 0, devolucoes: 0, duplicadas: [], itens: [item('9971', 839.33), item('10111', 1514.65), item('', -200, 'pagamento'), item('9971', 839.33, 'pagamento', true)] };
+  const [a, b, c] = razao.itens.map(chaveDoItem);
+  it('sem escolha, o cliente todo (sem a duplicidade, que é do escritório)', () => {
+    expect(itensEscolhidos(razao).map(rotuloDoItem)).toEqual(['NF 9971', 'NF 10111', 'Pagamento 05/08/2026']);
+  });
+  it('do cliente todo, escolher uma nota fica só com ela; depois soma e tira; ligar todas ou tirar a última volta ao todo', () => {
+    const so = alternarItem(razao, undefined, b);
+    expect(so).toEqual([b]);
+    expect(itensEscolhidos(razao, so).map(rotuloDoItem)).toEqual(['NF 10111']);
+    const duas = alternarItem(razao, so, a);
+    expect(duas).toEqual([b, a]);
+    expect(alternarItem(razao, duas, c)).toBeUndefined();
+    expect(alternarItem(razao, so, b)).toBeUndefined();
+    // a chave que não existe mais (o razão mudou) não estraga a escolha
+    expect(itensEscolhidos(razao, ['velha']).length).toBe(3);
+  });
+  it('o ticket leva só o escolhido', () => {
+    expect(linhasParaOTicket(razao, 0, '2026-08', [b]).map(l => l.nf)).toEqual(['10111']);
+    expect(linhasParaOTicket(razao, 0, '2026-08').length).toBe(3);
   });
 });

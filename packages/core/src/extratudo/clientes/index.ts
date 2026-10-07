@@ -146,7 +146,14 @@ export function credores(clientes: readonly ContaDeCliente[]): ContaDeCliente[] 
 export type SituacaoCliente = 'pendente' | 'ok' | 'conferido';
 
 /** O que a pessoa marcou (guardado no mês): a situação, a observação e, com o razão importado, as notas em aberto. */
-export interface MarcaDoCliente { nome: string; saldo: number; situacao: SituacaoCliente; obs?: string; razao?: RazaoDaMarca }
+export interface MarcaDoCliente {
+  nome: string; saldo: number; situacao: SituacaoCliente;
+  /** a observação digitada de antes (a tela não escreve mais: no lugar, o que perguntar) */
+  obs?: string;
+  razao?: RazaoDaMarca;
+  /** o que perguntar no Mandei: as chaves dos itens da relação (chaveDoItem); sem = o cliente todo */
+  perguntar?: string[];
+}
 export interface DocClientes { contas: Record<string, MarcaDoCliente>; atualizadoEm?: string }
 
 /**
@@ -181,7 +188,11 @@ export function docDoDocumento(d: unknown): DocClientes {
     const s = v?.situacao;
     if (s !== 'pendente' && s !== 'ok' && s !== 'conferido') continue;
     const r = razaoGuardado(v.razao);
-    certo[k] = { nome: String(v.nome ?? ''), saldo: typeof v.saldo === 'number' ? v.saldo : 0, situacao: s, ...(typeof v.obs === 'string' && v.obs ? { obs: v.obs } : {}), ...(r ? { razao: r } : {}) };
+    const perguntar = Array.isArray(v.perguntar) ? (v.perguntar as unknown[]).filter((x): x is string => typeof x === 'string') : [];
+    certo[k] = {
+      nome: String(v.nome ?? ''), saldo: typeof v.saldo === 'number' ? v.saldo : 0, situacao: s, ...(typeof v.obs === 'string' && v.obs ? { obs: v.obs } : {}), ...(r ? { razao: r } : {}),
+      ...(perguntar.length ? { perguntar } : {}),
+    };
   }
   return { contas: certo, ...(typeof o.atualizadoEm === 'string' ? { atualizadoEm: o.atualizadoEm } : {}) };
 }
