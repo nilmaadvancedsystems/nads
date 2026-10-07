@@ -3300,3 +3300,10 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 /* os Feedbacks numa janela flutuante, abertos no pé da gaveta ☰ (07/10/2026) */
 .feedbacks-janela{width:min(980px,96vw);}
 .drawer-foot .drawer-item{margin:0 0 8px;}
+/* clicar no feedback abre a solicitação numa janela (07/10/2026); na lista, o texto em duas linhas */
+.feedback-abre{width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;}
+.feedback-abre:hover{border-color:var(--border-strong);}
+.feedback-abre .feedback-mini{width:96px;height:60px;cursor:pointer;}
+.feedback-txt-curto{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.feedback-janela .pessoal-topo{gap:10px;}
+.feedback-amplia{padding:0;cursor:zoom-in;}

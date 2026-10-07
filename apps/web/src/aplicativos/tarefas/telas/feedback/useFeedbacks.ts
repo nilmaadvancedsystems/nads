@@ -9,6 +9,12 @@ export function useFeedbacks() {
   const todos = repo.todos();
   const [filtro, setFiltro] = useState<SituacaoDoFeedback | ''>('novo');
   const [aberta, setAberta] = useState('');
+  // o feedback aberto na janela dele (Vitor, 07/10/2026: "quando eu clique no feedback abra outra janela flutuante")
+  const [aberto, setAberto] = useState('');
+  const comQuando = (f: (typeof todos.lista)[number]) => ({
+    ...f, quando: f.criadoEm ? new Date(f.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
+  });
+  const doAberto = todos.lista.find(f => f.id === aberto);
   const conta = (s: SituacaoDoFeedback) => todos.lista.filter(f => f.status === s).length;
   return {
     carregando: !todos.carregados,
@@ -19,9 +25,11 @@ export function useFeedbacks() {
       { valor: 'feito' as const, rotulo: 'Feitos', qtd: conta('feito') },
       { valor: '' as const, rotulo: 'Todos', qtd: todos.lista.length },
     ],
-    lista: todos.lista.filter(f => !filtro || f.status === filtro).map(f => ({
-      ...f, quando: f.criadoEm ? new Date(f.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
-    })),
+    lista: todos.lista.filter(f => !filtro || f.status === filtro).map(comQuando),
+    /** o feedback aberto na janela dele (segue o banco: muda o selo ao marcar) */
+    aberto: doAberto ? comQuando(doAberto) : null,
+    abrir: setAberto,
+    fecharAberto: () => setAberto(''),
     /** a imagem aberta em tamanho grande */
     aberta, setAberta,
     marcar: (id: string, status: SituacaoDoFeedback) => void repo.marcar(id, status),

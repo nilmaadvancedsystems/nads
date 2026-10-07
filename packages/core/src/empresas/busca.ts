@@ -8,6 +8,14 @@ export function buscarEmpresas<T extends EmpresaDoEscritorio>(lista: readonly T[
   const q = texto.trim().toLowerCase();
   if (!q) return [];
   const peso = (x: T) => { const cod = x.codigo != null ? String(x.codigo) : ''; return cod === q ? 0 : cod.indexOf(q) === 0 ? 1 : 2; };
+  // só números (Vitor, 07/10/2026: "quando eu pesquisar números vai filtrar a empresa"): é o código — não pega número
+  // no meio do nome (CPF, CNPJ); com um código igual, só ela
+  if (/^\d+$/.test(q)) {
+    const exata = lista.filter(x => x.codigo != null && String(x.codigo) === q);
+    if (exata.length) return exata;
+    return lista.filter(x => x.codigo != null && String(x.codigo).indexOf(q) > -1)
+      .map((x, i) => [x, i] as const).sort((a, b) => peso(a[0]) - peso(b[0]) || a[1] - b[1]).map(x => x[0]);
+  }
   return lista
     .filter(x => x.nome.toLowerCase().indexOf(q) > -1 || (x.codigo != null && String(x.codigo).indexOf(q) > -1))
     .map((x, i) => [x, i] as const)
