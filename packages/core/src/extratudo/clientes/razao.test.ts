@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { lerRazao } from '../../tarefas/regras/razao';
-import { alternarItem, chaveDoItem, conferirRazaoDoCliente, itensEscolhidos, linhasParaOTicket, observacaoDoRazao, razaoDaMarca, rotuloDoItem } from './razao';
+import { alternarItem, chaveDoItem, definirItem, conferirRazaoDoCliente, itensEscolhidos, linhasParaOTicket, observacaoDoRazao, razaoDaMarca, rotuloDoItem } from './razao';
 import { situacaoDe, textoDaMensagem, textoDasNotas } from './index';
 
 // o formato do razão da conciliação do Alterdata (conta de um cliente), com valores inventados
@@ -112,6 +112,15 @@ describe('o que perguntar no Mandei (o "+", 07/10/2026)', () => {
     expect(alternarItem(razao, so, b)).toBeUndefined();
     // a chave que não existe mais (o razão mudou) não estraga a escolha
     expect(itensEscolhidos(razao, ['velha']).length).toBe(3);
+  });
+  it('Enviar para o cliente? Sim/Não por linha: só ela muda; todas com Sim é o todo; todas com Não, nada', () => {
+    const semB = definirItem(razao, undefined, b, false);
+    expect(semB).toEqual([a, c]);
+    expect(definirItem(razao, semB, b, true)).toBeUndefined();
+    const nada = definirItem(razao, definirItem(razao, semB, a, false), c, false);
+    expect(nada).toEqual([]);
+    expect(itensEscolhidos(razao, nada)).toEqual([]);
+    expect(linhasParaOTicket(razao, 0, '2026-08', [b]).map(l => l.nf)).toEqual(['10111']);
   });
   it('o ticket leva só o escolhido', () => {
     expect(linhasParaOTicket(razao, 0, '2026-08', [b]).map(l => l.nf)).toEqual(['10111']);

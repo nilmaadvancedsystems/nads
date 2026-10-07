@@ -151,7 +151,7 @@ export interface MarcaDoCliente {
   /** a observação digitada de antes (a tela não escreve mais: no lugar, o que perguntar) */
   obs?: string;
   razao?: RazaoDaMarca;
-  /** o que perguntar no Mandei: as chaves dos itens da relação (chaveDoItem); sem = o cliente todo */
+  /** o que vai para o cliente: as chaves dos itens da relação (chaveDoItem); sem = o cliente todo; [] = nada */
   perguntar?: string[];
 }
 export interface DocClientes { contas: Record<string, MarcaDoCliente>; atualizadoEm?: string }
@@ -191,7 +191,7 @@ export function docDoDocumento(d: unknown): DocClientes {
     const perguntar = Array.isArray(v.perguntar) ? (v.perguntar as unknown[]).filter((x): x is string => typeof x === 'string') : [];
     certo[k] = {
       nome: String(v.nome ?? ''), saldo: typeof v.saldo === 'number' ? v.saldo : 0, situacao: s, ...(typeof v.obs === 'string' && v.obs ? { obs: v.obs } : {}), ...(r ? { razao: r } : {}),
-      ...(perguntar.length ? { perguntar } : {}),
+      ...(Array.isArray(v.perguntar) ? { perguntar } : {}),
     };
   }
   return { contas: certo, ...(typeof o.atualizadoEm === 'string' ? { atualizadoEm: o.atualizadoEm } : {}) };

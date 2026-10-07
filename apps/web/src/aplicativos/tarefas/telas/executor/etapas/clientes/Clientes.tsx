@@ -192,12 +192,17 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                     {/* a relação isolada: o cabeçalho fixo dela não passa por cima do menu "Perguntar" da linha de cima */}
                     <div className="table-wrap" style={{ isolation: 'isolate' }}>
                       <table className="table-compact">
-                        <thead><tr><th>Data</th><th>Nota fiscal</th><th>Descrição</th><th className="num">Valor</th><th>Status</th>{l.situacao === 'conferido' && <th className="num">Mandei</th>}</tr></thead>
+                        <thead><tr><th>Data</th><th>Nota fiscal</th><th>Descrição</th><th className="num">Valor</th><th>Status</th>{l.situacao === 'conferido' && <th className="num">Enviar para o cliente?</th>}</tr></thead>
                         <tbody>
                           {l.razao.itens.map((i, k) => (
                             <tr key={k}><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td>{i.nf}</td><td className="wrap">{i.descricao}</td><td className={'num' + (i.abate ? ' ext-neg' : '')}>{i.valor}</td>
                               <td><span className={'badge ' + (i.status === 'aberto' ? 'badge-warn' : 'badge-neutral')}>{i.rotulo}</span></td>
-                              {l.situacao === 'conferido' && <td className="num">{i.marcado ? <span className="badge badge-neutral" title="Vai para o Mandei">Vai</span> : null}</td>}</tr>
+                              {/* Sim/Não por linha (Vitor, 07/10/2026): o selo do catálogo como botão, como o selo do saldo de antes; um clique troca */}
+                              {l.situacao === 'conferido' && <td className="num">{i.chave ? (
+                                <button type="button" className={'badge ' + (i.marcado ? 'badge-ok' : 'badge-neutral')} disabled={!vm.carregado} style={{ cursor: 'pointer' }}
+                                  onClick={() => vm.definirEnvio(l.codigo, i.chave, !i.marcado)}
+                                  title={i.marcado ? 'Vai para o cliente. Clique: Não' : 'Não vai para o cliente. Clique: Sim'}>{i.marcado ? 'Sim' : 'Não'}</button>
+                              ) : <span className="hint" title="Só do escritório">—</span>}</td>}</tr>
                           ))}
                         </tbody>
                       </table>

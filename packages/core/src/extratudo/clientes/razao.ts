@@ -208,10 +208,14 @@ export function itensPerguntaveis(razao?: RazaoDaMarca): ItemDoRazao[] {
   return (razao?.itens || []).filter(i => !i.interno);
 }
 
-/** Os itens escolhidos; sem escolha (ou com a escolha que não existe mais no razão), o cliente todo. */
+/**
+ * Os itens escolhidos. Sem escolha (undefined), o cliente todo; a escolha vazia ([]), nada (todos com "Não": o cliente não
+ * vai); a escolha que não existe mais no razão (o razão mudou), o cliente todo.
+ */
 export function itensEscolhidos(razao: RazaoDaMarca | undefined, perguntar?: readonly string[]): ItemDoRazao[] {
   const todos = itensPerguntaveis(razao);
-  if (!perguntar?.length) return todos;
+  if (!perguntar) return todos;
+  if (!perguntar.length) return [];
   const escolha = new Set(perguntar);
   const esses = todos.filter(i => escolha.has(chaveDoItem(i)));
   return esses.length ? esses : todos;
@@ -234,6 +238,19 @@ export function alternarItem(razao: RazaoDaMarca | undefined, perguntar: readonl
   if (!atual.length) return [chave];
   const novo = atual.includes(chave) ? atual.filter(c => c !== chave) : [...atual, chave];
   return novo.length && novo.length < todos.length ? novo : undefined;
+}
+
+/**
+ * O "Enviar para o cliente? Sim/Não" de cada linha da relação (Vitor, 07/10/2026): liga ou desliga só ela, sem mexer nas
+ * outras. Todas com Sim voltam ao cliente todo (undefined); todas com Não ficam vazias ([]: o cliente não vai).
+ */
+export function definirItem(razao: RazaoDaMarca | undefined, perguntar: readonly string[] | undefined, chave: string, sim: boolean): string[] | undefined {
+  const todos = itensPerguntaveis(razao).map(chaveDoItem);
+  if (!todos.includes(chave)) return perguntar ? [...perguntar] : undefined;
+  const vao = new Set(itensEscolhidos(razao, perguntar).map(chaveDoItem));
+  if (sim) vao.add(chave); else vao.delete(chave);
+  const lista = todos.filter(c => vao.has(c));
+  return lista.length === todos.length ? undefined : lista;
 }
 
 /** Uma linha para o formulário do cliente (o Mandei): data, nota fiscal, o que é, o valor, o tipo e a conta. */

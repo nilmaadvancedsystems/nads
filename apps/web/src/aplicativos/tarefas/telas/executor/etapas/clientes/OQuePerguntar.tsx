@@ -7,6 +7,8 @@ import { Icone, MenuSuspenso } from '@nads/ui';
 export interface VmDoQuePerguntar {
   /** o cliente (ou fornecedor) todo vai */
   todos: boolean;
+  /** todas as linhas com Não: não vai */
+  nenhum: boolean;
   /** o que vai, em poucas palavras: "NF 9971 · NF 10111" */
   rotulo: string;
   opcoes: { chave: string; rotulo: string; marcado: boolean }[];
@@ -18,7 +20,7 @@ export function OQuePerguntar({ nome, quem, vm, desabilitado, onAlternar }: {
   return (
     <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
       <span className="msg-balao" title={'O que vai para o ' + quem + ' responder no Mandei'}>
-        <Icone nome="caixaEntrada" />{vm.todos ? 'O ' + quem + ' todo' : vm.rotulo}
+        <Icone nome="caixaEntrada" />{vm.nenhum ? 'Não vai para o ' + quem : vm.todos ? 'O ' + quem + ' todo' : vm.rotulo}
       </span>
       {vm.opcoes.length > 0 && (
         <MenuSuspenso rotulo="Perguntar" icone="plus" className="btn btn-outline" dica={'Escolher o que perguntar sobre ' + nome} largura={320}

@@ -82,7 +82,7 @@ export function useClientes() {
   function marcar(codigo: string, mudar: (m: cl.MarcaDoCliente) => cl.MarcaDoCliente) {
     const l = linhas.find(x => x.codigo === codigo);
     if (!l || !marcas.carregado) return;
-    const atual: cl.MarcaDoCliente = { nome: l.nome, saldo: l.saldo, situacao: l.situacao, ...(l.obs ? { obs: l.obs } : {}), ...(l.razao ? { razao: l.razao } : {}), ...(l.perguntar?.length ? { perguntar: l.perguntar } : {}) };
+    const atual: cl.MarcaDoCliente = { nome: l.nome, saldo: l.saldo, situacao: l.situacao, ...(l.obs ? { obs: l.obs } : {}), ...(l.razao ? { razao: l.razao } : {}), ...(l.perguntar ? { perguntar: l.perguntar } : {}) };
     marcas.salvar({ contas: { ...marcas.doc.contas, [codigo]: mudar(atual) } });
   }
 
@@ -122,6 +122,8 @@ export function useClientes() {
   useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
 
   const conferidos = linhas.filter(l => l.situacao === 'conferido');
+  // o que vai para o cliente: os conferidos com alguma linha em Sim (todas com Não, não vai)
+  const paraEnviar = conferidos.filter(l => cl.itensEscolhidos(l.razao, l.perguntar).length > 0);
   const rotuloMes = mes ? tarefas.rotuloNumericoCompetencia(mes) : '';
   const q = busca.trim().toLowerCase();
   const reais = formatos.reais;
@@ -171,9 +173,10 @@ export function useClientes() {
         } : null,
         // o que perguntar no Mandei: o cliente todo ou os itens escolhidos no "+"
         perguntar: l.razao ? {
-          todos: !l.perguntar?.length || cl.itensEscolhidos(l.razao, l.perguntar).length === cl.itensPerguntaveis(l.razao).length,
+          todos: !l.perguntar || cl.itensEscolhidos(l.razao, l.perguntar).length === cl.itensPerguntaveis(l.razao).length,
+          nenhum: !cl.itensEscolhidos(l.razao, l.perguntar).length,
           rotulo: cl.itensEscolhidos(l.razao, l.perguntar).map(cl.rotuloDoItem).join(' · '),
-          opcoes: cl.itensPerguntaveis(l.razao).map(i => ({ chave: cl.chaveDoItem(i), rotulo: cl.rotuloDoItem(i) + ' · ' + reais(i.valor), marcado: !!l.perguntar?.length && cl.itensEscolhidos(l.razao, l.perguntar).includes(i) })),
+          opcoes: cl.itensPerguntaveis(l.razao).map(i => ({ chave: cl.chaveDoItem(i), rotulo: cl.rotuloDoItem(i) + ' · ' + reais(i.valor), marcado: !!l.perguntar && cl.itensEscolhidos(l.razao, l.perguntar).includes(i) })),
         } : null,
       })),
     // sem campo vazio (o banco não aceita undefined)
@@ -182,13 +185,20 @@ export function useClientes() {
       const n = { ...m };
       const novo = chave ? cl.alternarItem(m.razao, m.perguntar, chave) : undefined;
       delete n.perguntar;
-      return novo?.length ? { ...n, perguntar: novo } : n;
+      return novo ? { ...n, perguntar: novo } : n;
+    }),
+    /** o "Enviar para o cliente? Sim/Não" de uma linha da relação: só ela muda (todas com Não, o cliente não vai) */
+    definirEnvio: (codigo: string, chave: string, sim: boolean) => marcar(codigo, m => {
+      const n = { ...m };
+      const novo = cl.definirItem(m.razao, m.perguntar, chave, sim);
+      delete n.perguntar;
+      return novo ? { ...n, perguntar: novo } : n;
     }),
     /** o razão da conta: importar (acha as notas em aberto) e tirar */
     importarRazao: (codigo: string, f: File | undefined) => { void importarRazao(codigo, f); },
     tirarRazao: (codigo: string) => marcar(codigo, m => { const n = { ...m }; delete n.razao; return n; }),
     // Envio
-    conferidos: conferidos.map(l => ({ codigo: l.codigo, nome: l.nome, valor: reais(l.saldo), perguntar: cl.itensEscolhidos(l.razao, l.perguntar).map(cl.rotuloDoItem).join(' · '), notas: cl.textoDasNotas(l.razao?.notas) })),
+    conferidos: paraEnviar.map(l => ({ codigo: l.codigo, nome: l.nome, valor: reais(l.saldo), perguntar: cl.itensEscolhidos(l.razao, l.perguntar).map(cl.rotuloDoItem).join(' · '), notas: cl.textoDasNotas(l.razao?.notas) })),
     // o Mandei: um ticket com os conferidos (cada um, um item com a nossa pergunta), o link vai por e-mail
     /** o e-mail e o WhatsApp da empresa, do Cadastro */
     contato: { email: vivo.cadastro.contato?.email || '', whatsapp: vivo.cadastro.contato?.whatsapp || '' },
@@ -206,7 +216,7 @@ export function useClientes() {
         origem: { titulo: 'Clientes · ' + rotuloMes, rota: window.location.pathname, competencia: mes },
         // os lançamentos de cada um (Vitor, 07/10/2026: "Data, nota fiscal, descrição, valor"): os do razão importado (sem a
         // duplicidade, que é só nossa) ou, sem o razão, o saldo do fim do mês
-        itens: conferidos.map(l => ({
+        itens: paraEnviar.map(l => ({
           id: l.codigo, titulo: l.nome, valor: reais(l.saldo), opcoes: md.OPCOES_PADRAO,
           linhas: cl.linhasParaOTicket(l.razao, l.saldo, mes, l.perguntar),
         })),
