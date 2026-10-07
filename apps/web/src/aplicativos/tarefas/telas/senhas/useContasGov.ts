@@ -16,6 +16,9 @@ export function useContasGov() {
   const [importando, setImportando] = useState(false);
   const [aberta, setAberta] = useState<string | null>(null);
   const [conta, setConta] = useState<c.SenhaGov | null>(null);
+  // a conta nova, digitada à mão (07/10/2026: "coloca um botão de adicionar senha gov")
+  const [nova, setNova] = useState<{ nome: string; cpf: string; senha: string; obs: string } | null>(null);
+  const [guardandoNova, setGuardandoNova] = useState(false);
   const q = busca.trim().toLowerCase();
   const contas = cofre.contasGov.filter(x => !q || x.nome.toLowerCase().includes(q)).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   const daAberta = aberta ? cofre.contasGov.find(x => x.id === aberta) || null : null;
@@ -58,5 +61,20 @@ export function useContasGov() {
     abrir: (id: string) => setAberta(id),
     fechar: () => setAberta(null),
     async salvarConta() { if (aberta && conta) await cofre.salvarConta(aberta, conta); },
+    nova, setNova,
+    guardandoNova,
+    adicionar: () => setNova({ nome: '', cpf: '', senha: '', obs: '' }),
+    /** o que falta para guardar a conta nova ('' = pode guardar) */
+    faltaNaNova: !nova ? '' : !nova.nome.trim() ? 'Falta o nome' : nova.cpf.length !== 11 ? 'O CPF tem 11 dígitos' : !nova.senha ? 'Falta a senha' : '',
+    async guardarNova() {
+      if (!nova || guardandoNova) return;
+      setGuardandoNova(true);
+      try {
+        const id = await c.idDaContaGov(nova.cpf);
+        if (cofre.contasGov.some(x => x.id === id)) { toast('Esse CPF já está no cofre.'); setNova(null); setAberta(id); return; }
+        const n = await cofre.importarContasGov([{ nome: nova.nome.trim().toUpperCase(), cpf: nova.cpf, senha: nova.senha, obs: nova.obs.trim(), nivel: '' }]);
+        if (n) { toast('Guardada no cofre.'); setNova(null); }
+      } catch (e) { toast('Não deu: ' + (e instanceof Error ? e.message : String(e))); } finally { setGuardandoNova(false); }
+    },
   };
 }
