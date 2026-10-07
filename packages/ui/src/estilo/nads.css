@@ -3298,17 +3298,60 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 /* DP: a situação Em andamento em laranja e a Parada em vermelho (07/10/2026) */
 .badge-parada{color:var(--danger);border-color:var(--danger);background:none;}
 
-/* Senhas › Certificados (07/10/2026: o painel próximos a vencer, vencidos e válidos): cada número filtra a lista */
-.cert-painel .cert-painel-num{all:unset;cursor:pointer;display:block;border-bottom:3px solid transparent;}
-.cert-painel .cert-painel-num:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
-.cert-painel .cert-painel-num.ativo{border-bottom-color:currentColor;}
-.cert-painel-vence{color:var(--warn);}
-.cert-painel-vencido{color:var(--danger);}
-.cert-painel-ok{color:var(--success);}
-.cert-painel-sem{color:var(--ink-muted);}
-.cert-painel .cert-painel-num .stat-value{color:inherit;}
-.cert-painel .cert-painel-num .stat-label{color:var(--ink-muted);}
-.cert-painel-vazio{padding:24px 4px;}
+/* Senhas › Certificados (07/10/2026: "algo mais gráfico"): a rosca das situações, as barras dos vencimentos por mês,
+   os cartões com o anel da contagem regressiva e a lista. As cores de cada situação em .cert-cor-* (currentColor). */
+.cert-cor-vence{color:var(--warn);}
+.cert-cor-vencido{color:var(--danger);}
+.cert-cor-ok{color:var(--success);}
+.cert-cor-sem{color:var(--ink-muted);}
+.cert-dash{display:grid;grid-template-columns:minmax(300px,420px) 1fr;gap:16px;margin-bottom:16px;}
+.cert-dash-bloco{display:flex;flex-direction:column;min-width:0;}
+.cert-dash > .card,.cert-urgentes > .card{margin:0;}
+.cert-rosca{display:flex;align-items:center;gap:22px;padding-top:8px;}
+.cert-rosca-svg{width:168px;height:168px;flex:none;}
+.cert-rosca-fundo{fill:none;stroke:var(--border);stroke-width:5;}
+.cert-rosca-fatia{fill:none;stroke:currentColor;stroke-width:5;cursor:pointer;}
+.cert-rosca-fatia.ativa{stroke-width:7;}
+.cert-rosca-total{font-size:8px;font-weight:700;text-anchor:middle;fill:var(--ink);font-variant-numeric:tabular-nums;}
+.cert-rosca-sub{font-size:2.6px;text-anchor:middle;fill:var(--ink-muted);}
+.cert-legenda{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;}
+.cert-legenda-item{all:unset;box-sizing:border-box;width:100%;cursor:pointer;display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;font-size:13px;}
+.cert-legenda-item:hover{background:var(--hover-bg);}
+.cert-legenda-item.ativo{background:var(--hover-bg);font-weight:600;}
+.cert-legenda-item:focus-visible{outline:2px solid var(--accent);}
+.cert-legenda-item b{margin-left:auto;font-size:16px;}
+.cert-legenda-cor{width:12px;height:12px;border-radius:3px;background:currentColor;flex:none;}
+.cert-barras{flex:1;display:grid;grid-template-columns:repeat(12,1fr);gap:8px;align-items:end;padding-top:8px;min-height:210px;}
+.cert-barra{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;border-radius:6px;padding:4px 0;}
+.cert-barra:disabled{cursor:default;}
+.cert-barra:not(:disabled):hover{background:var(--hover-bg);}
+.cert-barra:focus-visible{outline:2px solid var(--accent);}
+.cert-barra-num{font-size:12px;font-weight:600;min-height:16px;}
+.cert-barra-trilho{flex:1;width:60%;max-width:34px;display:flex;align-items:flex-end;border-radius:5px 5px 2px 2px;background:var(--hover-bg);min-height:120px;}
+.cert-barra-cheia{display:block;width:100%;border-radius:5px 5px 2px 2px;background:var(--success);}
+.cert-barra.logo .cert-barra-cheia{background:var(--warn);}
+.cert-barra.ativa .cert-barra-cheia{background:var(--accent);}
+.cert-barra.ativa .cert-barra-mes{color:var(--accent);font-weight:700;}
+.cert-barra-mes{font-size:12px;text-transform:capitalize;}
+.cert-barra-ano{font-size:10px;min-height:13px;}
+.cert-urgentes{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-bottom:16px;}
+.cert-urgente{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid var(--border);border-radius:10px;background:var(--surface);border-left:4px solid var(--warn);}
+.cert-urgente.vencido{border-left-color:var(--danger);}
+.cert-urgente:hover{background:var(--hover-bg);}
+.cert-urgente:focus-visible{outline:2px solid var(--accent);}
+.cert-urgente-texto{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.cert-urgente-texto b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cert-urgente-texto span{font-size:12px;}
+.cert-contagem{position:relative;width:58px;height:58px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.cert-contagem svg{position:absolute;inset:0;width:100%;height:100%;}
+.cert-contagem-arco{fill:none;stroke:currentColor;stroke-width:4;stroke-linecap:round;}
+.cert-contagem .cert-rosca-fundo{stroke-width:4;}
+.cert-contagem-num{font-size:17px;font-weight:700;line-height:1;}
+.cert-contagem-txt{font-size:9px;color:var(--ink-muted);line-height:1.2;}
+.cert-lista .cofre-tabela{border:0;}
+.cert-painel-vazio{padding:24px 16px;}
+@media (max-width:900px){.cert-dash{grid-template-columns:1fr;}}
+@media (max-width:520px){.cert-rosca{flex-direction:column;}.cert-barras{gap:3px;padding:8px 8px 12px;}}
 /* os Feedbacks numa janela flutuante, abertos no pé da gaveta ☰ (07/10/2026) */
 .feedbacks-janela{width:min(980px,96vw);}
 .drawer-foot .drawer-item{margin:0 0 8px;}
@@ -3319,3 +3362,6 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .feedback-txt-curto{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 .feedback-janela .pessoal-topo{gap:10px;}
 .feedback-amplia{padding:0;cursor:zoom-in;}
+/* o andamento do "Contar agora" do SIEG (07/10/2026): o cartão de andamento do robô, fixo no canto da tela */
+.sieg-flutuante{position:fixed;right:16px;bottom:16px;z-index:70;width:min(380px,calc(100vw - 32px));margin:0;box-shadow:var(--shadow-lg);}
+.sieg-flutuante .tarefas-barra-espaco{flex:1;}

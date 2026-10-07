@@ -30,7 +30,8 @@ export function useVisaoContabil(dep: 'contabil' | 'fiscal' | 'dp' = 'contabil')
     setCompetencia: (c: string) => setParams({ competencia: c }),
     carregando: !carregada,
     totalEmpresas,
-    etapas: t.resumoPorEtapa(execucoes, rotina, totalEmpresas),
+    // só as etapas que existem no mês do ano da competência (o Estoque só em dezembro)
+    etapas: t.resumoPorEtapa(execucoes, { ...rotina, etapas: rotina.etapas.filter(e => t.etapaNoMesDoAno(e, competencia)) }, totalEmpresas),
     objecoes: t.objecoesMaisComuns(execucoes, rotina).slice(0, 8),
     paradas,
   };

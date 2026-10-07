@@ -4,7 +4,7 @@
 //     chaves); o robô escreve o andamento, o concluído ou o erro no próprio pedido;
 //   - robo/sieg (só leitura): o robô ligado (com as credenciais) e o ponto.
 import { tarefas as t } from '@nads/core';
-import { addDoc, collection, doc, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore';
+import { addDoc, collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 import type { PedidoSieg, RepoSieg } from './sieg';
 
@@ -78,9 +78,11 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
         pedidos.set('saidas|' + k, null);
         pedidos.set('contagem|' + k, null);
         // os últimos pedidos da empresa e mês: o mais novo de cada tipo (sem tipo = as saídas, os pedidos de antes)
-        onSnapshot(query(collection(db, 'pedidosSieg'), where('codigo', '==', soDigitos(codigo)), where('competencia', '==', competencia), orderBy('criadoEm', 'desc'), limit(10)), s => {
+        // só igualdades (sem orderBy: pedia um índice que não existe e o erro sumia calado; 07/10/2026): o mais novo aqui
+        onSnapshot(query(collection(db, 'pedidosSieg'), where('codigo', '==', soDigitos(codigo)), where('competencia', '==', competencia)), s => {
+          const todos = s.docs.map(x => x.data()).sort((a, b) => texto(b.criadoEm).localeCompare(texto(a.criadoEm)));
           for (const t of ['saidas', 'contagem'] as const) {
-            const d = s.docs.map(x => x.data()).find(x => (x.tipo || 'saidas') === t);
+            const d = todos.find(x => (x.tipo || 'saidas') === t);
             pedidos.set(t + '|' + k, d ? { status: texto(d.status), andamento: texto(d.andamento), erro: texto(d.erro), em: texto(d.criadoEm) } : null);
           }
           mudou();

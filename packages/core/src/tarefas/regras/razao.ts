@@ -194,3 +194,32 @@ export function coberturaDoRazao(r: RazaoDaConta, meses: readonly string[]): { f
     liquidacaoFora: aMais.filter(m => r.lancamentos.some(l => l.data.startsWith(m) && atencaoDoHistorico(l.historico) === 'liquidacao-cobranca')),
   };
 }
+
+// ─── Contas do ativo que não podem ficar credoras (Adiantamento a fornecedores; Vitor, 07/10/2026) ──────────────────
+
+/** Os meses que fecharam credor (o saldo do fim do mês positivo no Alterdata): "ou fica devedor ou zera". */
+export function mesesCredores(meses: readonly MesDoRazao[]): string[] {
+  return meses.filter(m => m.saldoFinal > 0.005).map(m => m.mes);
+}
+
+/**
+ * Um razão fictício para o ⚡ do modo desenvolvedor: um adiantamento por mês, baixado no mês seguinte pela nota; com
+ * credor, a baixa do penúltimo mês sai maior que o adiantamento (o mês fecha credor).
+ */
+export function razaoDeTeste(meses: readonly string[], comCredor: boolean): RazaoDaConta {
+  const lancamentos: LancamentoDoRazao[] = [];
+  let saldo = 0;
+  const lancar = (data: string, valor: number, contrapartida: string, nomeContrapartida: string, historico: string) => {
+    saldo = centavos(saldo + valor);
+    lancamentos.push({ data, valor, saldo, contrapartida, nomeContrapartida, codigoHistorico: '', historico });
+  };
+  meses.forEach((m, i) => {
+    const valor = 1000 + i * 250;
+    lancar(m + '-05', -valor, '10503', 'Banco Sicoob - 01', 'Pagamento de título nº ' + (100 + i) + ' - FORNECEDOR TESTE LTDA');
+    const baixa = comCredor && i === meses.length - 2 ? valor + 1500 : valor;
+    if (i < meses.length - 1 || meses.length === 1) lancar(m + '-25', baixa, '21000', 'FORNECEDOR TESTE LTDA', 'Pela baixa do adiantamento conf NF ' + (100 + i) + ' - FORNECEDOR TESTE LTDA');
+  });
+  const primeiro = lancamentos[0];
+  const ultimo = lancamentos[lancamentos.length - 1];
+  return { lancamentos, saldoInicial: 0, saldoFinal: ultimo.saldo, inicio: primeiro.data, fim: ultimo.data };
+}

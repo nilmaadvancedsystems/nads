@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { atencaoDoHistorico, atencoesDoMes, coberturaDoRazao, dataDoRazao, lerRazao, mesesDoRazao, precisaDoCreditor, valorComLado } from './razao';
+import { atencaoDoHistorico, atencoesDoMes, coberturaDoRazao, mesesCredores, razaoDeTeste, dataDoRazao, lerRazao, mesesDoRazao, precisaDoCreditor, valorComLado } from './razao';
 import { caixaDeTeste, inssDeTeste } from './deTeste';
 import { conferirInss } from './inss';
 import { ROTINA_CONTABIL } from '../rotinas/contabil';
@@ -119,5 +119,19 @@ describe('os razões de teste (o ⚡ do modo desenvolvedor)', () => {
     const ago = c.meses.find(m => m.mes === '2026-08');
     expect(ago?.grupos.find(g => g.grupo === 'patronal')?.diferenca).toBe(10);
     expect(ago?.naoProvisionadas.map(v => v.grupo)).toEqual(['adicional-gilrat']);
+  });
+});
+
+describe('adiantamento a fornecedores: ou fica devedor ou zera', () => {
+  it('o razão de verdade (devedor e zerando) não tem mês credor; um mês fechando credor aparece', () => {
+    const L = (data: string, valor: number, saldo: number) => ['', '', data, '', '10503', 'Banco', valor, '', 'x', saldo, ''];
+    const r = lerRazao([CAB, L('06/01/2026', -1520, -1520), L('12/01/2026', 1520, 0), L('05/02/2026', -800, -800), L('20/02/2026', 1000, 200), L('10/03/2026', -200, 0)]);
+    expect(mesesCredores(mesesDoRazao(r, ['2026-01', '2026-02', '2026-03']))).toEqual(['2026-02']);
+    expect(mesesCredores(mesesDoRazao(r, ['2026-01', '2026-03']))).toEqual([]);
+  });
+  it('o razão de teste do ⚡: sem credor fica devedor/zerado; com credor, o penúltimo mês fecha credor', () => {
+    const ms = ['2026-06', '2026-07', '2026-08'];
+    expect(mesesCredores(mesesDoRazao(razaoDeTeste(ms, false), ms))).toEqual([]);
+    expect(mesesCredores(mesesDoRazao(razaoDeTeste(ms, true), ms))).toEqual(['2026-07']);
   });
 });

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ArquivoImportado } from '../extratudo/extrator/tipos';
 import {
   competenciasRecentes, concluida, criarRepoTarefasMemoria, dispensar, execucaoNova, fazer, idDaExecucao, interromper,
-  objecoesMaisComuns, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar, execucoesVariadas, marcarSemMovimento, todosSemMovimento, voltarPara, rotuloCurtoCompetencia, competenciasDoPeriodo, rotaDoPeriodo, rotuloDoPeriodo, definirPeriodo, periodoConcluido,
+  etapaNoMes, etapaNoMesDoAno, objecoesMaisComuns, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar, execucoesVariadas, marcarSemMovimento, todosSemMovimento, voltarPara, rotuloCurtoCompetencia, competenciasDoPeriodo, rotaDoPeriodo, rotuloDoPeriodo, definirPeriodo, periodoConcluido,
 } from '.';
 
 const R = ROTINA_CONTABIL;
@@ -40,7 +40,7 @@ describe('andamento', () => {
     ex = interromper(ex, 'dp', 'outro', '  aguardando  ', 'Clara', agora).execucao;
     expect(ex.etapas.dp).toMatchObject({ situacao: 'interrompida', objecao: 'outro', observacao: 'aguardando' });
     expect(situacaoGeral(ex, R)).toBe('parada');
-    expect(progresso(ex, R)).toMatchObject({ concluidas: 3, total: R.etapas.filter(e => !e.soQuandoAdicionada).length, interrompida: etapa('dp') });
+    expect(progresso(ex, R)).toMatchObject({ concluidas: 3, total: R.etapas.filter(e => !e.soQuandoAdicionada && etapaNoMesDoAno(e, '2026-08')).length, interrompida: etapa('dp') });
     ex = dispensar(ex, 'dp', 'sem-funcionarios', '', 'Clara', agora).execucao;
     expect(concluida(ex.etapas.dp.situacao)).toBe(true);
     expect(situacaoGeral(ex, R)).toBe('em-andamento');
@@ -206,5 +206,22 @@ describe('check por banco', () => {
     expect(verificar(etapa('extratos'), '2026-08', [doBanco('banco'), doBanco('sistema')], contas()).motivo).toBe('Falta o extrato do Itaú de agosto/2026.');
     expect(verificar(etapa('extratos'), '2026-08', [doBanco('banco'), doBanco('sistema'), doBanco('banco', 'itau')], contas()).motivo).toBe('Falta o razão do Itaú de agosto/2026.');
     expect(verificar(etapa('extratos'), '2026-08', [doBanco('banco'), doBanco('sistema')], contas(['itau'])).ok).toBe(true);
+  });
+});
+
+describe('Estoque só em dezembro (Vitor, 07/10/2026)', () => {
+  it('fora da competência 12 a etapa não existe: não conta no progresso nem é a próxima', () => {
+    const out = execucaoNova('X', null, '2026-10', 'contabil');
+    expect(etapaNoMes(out, 'estoque')).toBe(false);
+    expect(etapaNoMesDoAno(etapa('estoque'), '2026-10')).toBe(false);
+    expect(R.etapas.filter(e => etapaNoMes(out, e.id)).map(e => e.id)).not.toContain('estoque');
+  });
+  it('na competência 12 entra, com os dois checks em ordem: enviado e lançado', () => {
+    expect(etapaNoMes(execucaoNova('X', null, '2026-12', 'contabil'), 'estoque')).toBe(true);
+    expect(etapaNoMesDoAno(etapa('estoque'), '2026-12')).toBe(true);
+    expect(etapa('estoque').checklist?.map(i => i.texto)).toEqual(['Estoque enviado', 'Estoque lançado']);
+  });
+  it('etapa sem meses existe em todo mês', () => {
+    expect(etapaNoMesDoAno(etapa('bens'), '2026-10')).toBe(true);
   });
 });

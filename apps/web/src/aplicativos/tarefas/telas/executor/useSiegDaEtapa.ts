@@ -3,6 +3,7 @@
 // baixa quando pedem. O robô desligado (sem as credenciais do SIEG) aparece como aviso.
 import { tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
+import { useState } from 'react';
 import { useSieg } from '../../dados/repo';
 
 const quando = (iso: string) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '');
@@ -16,6 +17,13 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
   const pedido = repo.pedido(codigo, competencia, 'saidas');
   const pedidoContagem = repo.pedido(codigo, competencia, 'contagem');
   const contando = !!pedidoContagem && (pedidoContagem.status === 'pendente' || pedidoContagem.status === 'processando');
+  // a janela do andamento (Vitor, 07/10/2026: "quero uma barra de progresso/tela flutuante para a pessoa ter o feedback"): abre
+  // no clique, acompanha o pedido e fica até o × (quando termina, mostra o resultado)
+  const [janela, setJanela] = useState(false);
+  const passoAtual = !pedidoContagem ? 0 : pedidoContagem.status === 'pendente' ? 1
+    : pedidoContagem.status === 'processando' ? (pedidoContagem.andamento === 'recebidas' ? 3 : 2)
+      : pedidoContagem.status === 'concluido' ? 4 : 0;
+  const PASSOS = ['Pedido enviado ao robô', 'O robô pegou o pedido', 'Contando as notas emitidas no SIEG', 'Contando as notas recebidas no SIEG', 'Pronto'];
   const conf = sai.dados ? t.sieg.conferirSaidas(sai.dados) : null;
   const linhas = (r: Record<t.sieg.TipoDeNota, number>) => t.sieg.TIPOS_DE_NOTA.filter(x => r[x.id] > 0).map(x => ({ rotulo: x.rotulo, n: r[x.id] }));
   const pedindo = !!pedido && (pedido.status === 'pendente' || pedido.status === 'processando');
@@ -40,10 +48,20 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
     /** o "Contar agora": o robô conta as notas desta empresa no mês (o painel atualiza sozinho quando chega) */
     contando,
     erroDaContagem: pedidoContagem?.status === 'erro' ? pedidoContagem.erro : '',
+    /** a janela flutuante do andamento: os passos, a barra (%), o resultado ou o erro */
+    andamento: janela ? {
+      erro: pedidoContagem?.status === 'erro' ? pedidoContagem.erro || 'o robô não conseguiu contar' : '',
+      pronto: passoAtual === 4,
+      pct: [8, 25, 50, 78, 100][passoAtual],
+      passos: PASSOS.map((texto, i) => ({ texto, feito: i < passoAtual || passoAtual === 4, atual: i === passoAtual && passoAtual < 4 })),
+      resultado: passoAtual === 4 && cont.dados ? { emitidas: t.sieg.totalDe(cont.dados.emitidas), recebidas: t.sieg.totalDe(cont.dados.recebidas) } : null,
+    } : null,
+    fecharAndamento: () => setJanela(false),
     async contar() {
       if (contando || !codigo) return;
-      try { await repo.pedirContagem(codigo, competencia); toast('Pedido ao SIEG: o robô conta as notas deste mês (alguns segundos).'); }
-      catch (err) { toast('Não consegui pedir ao SIEG: ' + (err instanceof Error ? err.message : String(err))); }
+      setJanela(true);
+      try { await repo.pedirContagem(codigo, competencia); }
+      catch (err) { setJanela(false); toast('Não consegui pedir ao SIEG: ' + (err instanceof Error ? err.message : String(err))); }
     },
     async baixar() {
       if (pedindo) return;

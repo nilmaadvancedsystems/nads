@@ -5,7 +5,7 @@
 import { nomeNorm } from '../../formatos';
 import { BANCOS_CONHECIDOS, bancosDaEmpresa, idDaConta, rotuloDaConta, type BancoDaEmpresa } from '../bancos';
 import {
-  type CadastroDaEmpresa, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel,
+  type CadastroDaEmpresa, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, type ParametrosDoDpDoMes, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel,
 } from './tipos';
 
 /** Quantos registros do histórico ficam guardados (os mais novos). */
@@ -90,13 +90,27 @@ function transferenciasDoDocumento(v: unknown): { transferencias?: Partial<Recor
 function dpDoDocumento(v: unknown): { dp?: ParametrosDoDp } {
   if (!v || typeof v !== 'object') return {};
   const o = v as Record<string, unknown>;
-  const p: ParametrosDoDp = {};
+  const p: ParametrosDoDp = camposDoDp(o);
+  if (o.porCompetencia && typeof o.porCompetencia === 'object') {
+    const pc: Record<string, ParametrosDoDpDoMes> = {};
+    for (const [k, x] of Object.entries(o.porCompetencia as Record<string, unknown>)) {
+      if (!/^\d{4}-\d{2}$/.test(k) || !x || typeof x !== 'object') continue;
+      const m = camposDoDp(x as Record<string, unknown>);
+      if (Object.keys(m).length) pc[k] = m;
+    }
+    if (Object.keys(pc).length) p.porCompetencia = pc;
+  }
+  return Object.keys(p).length ? { dp: p } : {};
+}
+
+function camposDoDp(o: Record<string, unknown>): ParametrosDoDpDoMes {
+  const p: ParametrosDoDpDoMes = {};
   if (texto(o.movimento)) p.movimento = texto(o.movimento);
   if (Array.isArray(o.obrigacoes)) p.obrigacoes = o.obrigacoes.map(texto).filter(Boolean);
   if (typeof o.reinfAutorizada === 'boolean') p.reinfAutorizada = o.reinfAutorizada;
   if (typeof o.entrega === 'string') p.entrega = texto(o.entrega);
   if (typeof o.agrupamento === 'string') p.agrupamento = texto(o.agrupamento);
-  return Object.keys(p).length ? { dp: p } : {};
+  return p;
 }
 
 /** O documento `cadastro/{slug}` conferido (campo estranho ou vazio fica de fora). */
@@ -200,17 +214,45 @@ export function definirResponsavel(c: CadastroDaEmpresa, dep: DepartamentoDoResp
 }
 
 /** Muda parâmetros do DP (os que vierem); null tira o parâmetro (volta o da planilha do DP). */
-export function definirParametrosDp(c: CadastroDaEmpresa, mudar: { [K in keyof ParametrosDoDp]?: ParametrosDoDp[K] | null }, por: string, agora: Date): CadastroDaEmpresa {
+const mesAno = (comp: string) => comp.slice(5, 7) + '/' + comp.slice(0, 4);
+
+/**
+ * Muda parâmetros do DP (null = volta o de antes). Com a competência (AAAA-MM), a mudança vale dela em diante (Vitor,
+ * 07/10/2026: "configurações por competência"); sem ela, vale sempre (o que vinha antes das competências).
+ */
+export function definirParametrosDp(c: CadastroDaEmpresa, mudar: { [K in keyof ParametrosDoDpDoMes]?: ParametrosDoDpDoMes[K] | null }, por: string, agora: Date, competencia?: string): CadastroDaEmpresa {
   const dp: ParametrosDoDp = { ...(c.dp || {}) };
+  const alvo: ParametrosDoDpDoMes = competencia ? { ...(dp.porCompetencia?.[competencia] || {}) } : dp;
   const partes: string[] = [];
-  for (const [k, v] of Object.entries(mudar) as [keyof ParametrosDoDp, unknown][]) {
+  for (const [k, v] of Object.entries(mudar) as [keyof ParametrosDoDpDoMes, unknown][]) {
     if (v === undefined) continue;
-    if (v === null) { delete dp[k]; partes.push(k + ': o da planilha'); continue; }
-    (dp as Record<string, unknown>)[k] = v;
+    if (v === null) { delete alvo[k]; partes.push(k + ': o de antes'); continue; }
+    (alvo as Record<string, unknown>)[k] = v;
     partes.push(k + ': ' + (Array.isArray(v) ? v.join(', ') || 'nenhuma' : typeof v === 'boolean' ? (v ? 'sim' : 'não') : String(v) || '—'));
   }
   if (!partes.length) return c;
-  return registrar({ ...c, dp }, por, agora, 'DP', partes.join(' · '));
+  if (competencia) {
+    const pc = { ...(dp.porCompetencia || {}) };
+    if (Object.keys(alvo).length) pc[competencia] = alvo; else delete pc[competencia];
+    if (Object.keys(pc).length) dp.porCompetencia = pc; else delete dp.porCompetencia;
+  }
+  return registrar({ ...c, dp }, por, agora, 'DP', (competencia ? 'a partir de ' + mesAno(competencia) + ': ' : '') + partes.join(' · '));
+}
+
+/** Tira o que foi mudado no DP: só o de uma competência, ou tudo (volta à planilha). */
+export function voltarDpAPlanilha(c: CadastroDaEmpresa, por: string, agora: Date, competencia?: string): CadastroDaEmpresa {
+  if (!c.dp) return c;
+  if (competencia) {
+    if (!c.dp.porCompetencia?.[competencia]) return c;
+    const pc = { ...c.dp.porCompetencia };
+    delete pc[competencia];
+    const dp: ParametrosDoDp = { ...c.dp };
+    if (Object.keys(pc).length) dp.porCompetencia = pc; else delete dp.porCompetencia;
+    return registrar({ ...c, dp }, por, agora, 'DP', 'desfeito o de ' + mesAno(competencia));
+  }
+  const resto: CadastroDaEmpresa = { ...c };
+  delete resto.dp;
+  return registrar(resto, por, agora, 'DP', 'voltou à planilha');
 }
 
 const nomeIgual = (a: string, b: string) => texto(a).toLowerCase() === texto(b).toLowerCase();

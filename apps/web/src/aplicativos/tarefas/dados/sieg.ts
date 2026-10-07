@@ -44,13 +44,16 @@ export function criarSiegMemoria(): RepoSieg {
     pedido: (codigo, competencia, tipo = 'saidas') => pedidos.get(tipo + '|' + codigo + '_' + competencia) || null,
     async pedirContagem(codigo, competencia) {
       const k = codigo + '_' + competencia;
-      pedidos.set('contagem|' + k, { status: 'processando', andamento: '', erro: '', em: agora() });
+      const em = agora();
+      pedidos.set('contagem|' + k, { status: 'pendente', andamento: '', erro: '', em });
       mudou();
+      setTimeout(() => { pedidos.set('contagem|' + k, { status: 'processando', andamento: 'emitidas', erro: '', em }); mudou(); }, 700);
+      setTimeout(() => { pedidos.set('contagem|' + k, { status: 'processando', andamento: 'recebidas', erro: '', em }); mudou(); }, 1600);
       setTimeout(() => {
         contadasAgora.set(k, { codigo, competencia, em: agora(), emitidas: { NFe: 220, NFCe: 0, NFSe: 3, CTe: 0, CFe: 0 }, recebidas: { NFe: 90, NFCe: 0, NFSe: 5, CTe: 12, CFe: 0 } });
-        pedidos.set('contagem|' + k, { status: 'concluido', andamento: '', erro: '', em: agora() });
+        pedidos.set('contagem|' + k, { status: 'concluido', andamento: '', erro: '', em });
         mudou();
-      }, 1500);
+      }, 2600);
     },
     async pedirSaidas(codigo, competencia) {
       const k = codigo + '_' + competencia;

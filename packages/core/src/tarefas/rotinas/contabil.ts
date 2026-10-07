@@ -145,6 +145,8 @@ export const ROTINA_CONTABIL: Rotina = {
       nome: 'Adiantamento a fornecedores',
       descricao: 'Os adiantamentos baixados quando a nota do fornecedor chega.',
       ferramenta: null,
+      // o razão da conta, mês a mês: credor trava o Próximo (Vitor, 07/10/2026: "ou ele fica devedor ou zera")
+      tela: { id: 'adiantamento-fornecedores', periodo: true },
       verificacao: 'manual',
       conferir: [
         'Nenhum adiantamento com saldo credor.',
@@ -154,15 +156,18 @@ export const ROTINA_CONTABIL: Rotina = {
       objecoes: [nao('sem-adiantamento', 'A empresa não teve adiantamento a fornecedor')],
     },
     {
+      // só na competência 12 (Vitor, 07/10/2026): fora dela a etapa nem aparece; nela, dois checks em ordem — o cliente
+      // enviou o estoque e o estoque foi lançado
       id: 'estoque',
       secao: 'Ativo',
       nome: 'Estoque',
-      descricao: 'O estoque final atualizado com o inventário do cliente.',
+      descricao: 'O inventário do fim do ano: o cliente envia o estoque e ele é lançado.',
       ferramenta: null,
       verificacao: 'manual',
-      conferir: [
-        'O estoque final do mês (ou do inventário) está lançado; no balancete, o estoque parado desde o início do ano é o sinal de que não foi.',
-        'O custo das mercadorias vendidas (CMV) fecha com estoque inicial + compras − estoque final.',
+      meses: [12],
+      checklist: [
+        { id: 'estoque-enviado', texto: 'Estoque enviado', sub: ['O cliente mandou o inventário de 31/12'] },
+        { id: 'estoque-lancado', texto: 'Estoque lançado', sub: ['O estoque final lançado no Alterdata'] },
       ],
       objecoes: [
         { id: 'sem-inventario', texto: 'O cliente não mandou o inventário', solucao: { tipo: 'contato', rotulo: 'Pedir o inventário' } },
