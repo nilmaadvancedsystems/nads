@@ -25,6 +25,7 @@ export const TELAS: Tela[] = [
   // Tarefas
   { id: 't-entrar', app: 'Tarefas', nome: 'Entrar' },
   { id: 't-empresas', app: 'Tarefas', nome: 'Minhas empresas' },
+  { id: 't-senhas', app: 'Tarefas', nome: 'Senhas (gov.br e certificados)' },
   { id: 't-insights', app: 'Tarefas', nome: 'Insights' },
   { id: 't-contabil', app: 'Tarefas', nome: 'Contábil' },
   { id: 't-empresa', app: 'Tarefas', nome: 'Página da empresa' },
