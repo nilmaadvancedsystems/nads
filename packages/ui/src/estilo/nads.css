@@ -3297,3 +3297,6 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 @media (max-width:760px){.imp-cert-item{grid-template-columns:auto 1fr;}.imp-cert-senha{grid-column:1/-1;align-items:flex-start;}}
 /* DP: a situação Em andamento em laranja e a Parada em vermelho (07/10/2026) */
 .badge-parada{color:var(--danger);border-color:var(--danger);background:none;}
+/* os Feedbacks numa janela flutuante, abertos no pé da gaveta ☰ (07/10/2026) */
+.feedbacks-janela{width:min(980px,96vw);}
+.drawer-foot .drawer-item{margin:0 0 8px;}
