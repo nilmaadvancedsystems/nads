@@ -3,7 +3,7 @@
 // dinâmico), Clientes (todas as contas de cliente com o selo Saldo ↔ Conferido, o Ok do sistema na conta zerada, a observação do conferido e o razão da conta no fim da linha) e
 // Envio (a relação dos conferidos para o cliente: a planilha, o e-mail e o WhatsApp, com a mensagem configurável).
 // As marcas ficam guardadas por mês; os conferidos do mês anterior aparecem de novo para revisar.
-import { clientes as cl, conferencia as c, demo, tarefas } from '@nads/core';
+import { clientes as cl, conferencia as c, demo, formatos, tarefas } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
 import { gravarMensagem, lerMensagem, useMarcasDoMes } from '../../../../dados/clientes';
@@ -50,6 +50,8 @@ export function useClientes() {
 
   const contas = useMemo(() => (dinamico && mes ? cl.clientesDoDinamico(dinamico.d, mes) : []), [dinamico, mes]);
   const credores = cl.credores(contas);
+  // os credores em algum mês do dinâmico até o da etapa (Vitor, 07/10/2026), com o saldo mês a mês
+  const credoresNoPeriodo = useMemo(() => (dinamico && mes ? cl.credoresNoPeriodo(dinamico.d, mes) : []), [dinamico, mes]);
   const passam = cl.conferidosQuePassam(anterior.doc, marcas.doc);
   const linhas = contas.map(k => {
     const marca = marcas.doc.contas[k.codigo] || passam[k.codigo];
@@ -99,7 +101,7 @@ export function useClientes() {
   const rotuloMes = mes ? tarefas.rotuloNumericoCompetencia(mes) : '';
   const texto = cl.textoDaMensagem(mensagem, s.nome, rotuloMes, paraCliente);
   const q = busca.trim().toLowerCase();
-  const reais = (n: number) => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const reais = formatos.reais;
 
   return {
     mes: rotuloMes,
@@ -115,6 +117,12 @@ export function useClientes() {
     tirar: () => setDinamico(null),
     /** o ⚡ do modo desenvolvedor na linha */
     teste,
+    // Arquivos: os credores em algum mês, mês a mês
+    mesesDosCredores: (credoresNoPeriodo[0]?.saldos || []).map(x => tarefas.rotuloNumericoCompetencia(x.mes)),
+    credoresNoPeriodo: credoresNoPeriodo.map(c => ({
+      codigo: c.codigo, nome: c.nome,
+      saldos: c.saldos.map(x => ({ mes: x.mes, valor: x.saldo ? reais(x.saldo) : '—', credor: x.saldo < -0.005 })),
+    })),
     // Saldo credor
     credores: credores.map(k => ({ codigo: k.codigo, nome: k.nome, saldo: reais(k.saldo) })),
     // Clientes
