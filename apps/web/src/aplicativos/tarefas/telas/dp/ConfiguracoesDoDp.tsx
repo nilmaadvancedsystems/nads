@@ -1,8 +1,8 @@
 // DP › Configurações, no estilo do Cadastro (Vitor, 06/10/2026): a lista dos clientes do DP com os parâmetros de cada um,
 // só para ler; clicar no cliente abre a janela dele (a mesma janela com painéis laterais do Cadastro) — Obrigações (o
-// movimento, as obrigações do mês e a REINF) e Entrega (como recebe e o agrupamento). Grava ao mudar; o que foi mudado
+// movimento e as obrigações do mês; a REINF é do Fiscal) e Entrega (como recebe e o agrupamento). Grava ao mudar; o que foi mudado
 // ganha o selo "mudado" e o "Voltar à planilha".
-import { Esqueleto, Icone, useCarregando } from '@nads/ui';
+import { Esqueleto, Icone, useCarregando, MenuSuspenso } from '@nads/ui';
 import { Cartao, JanelaLateral, Linha, type TopicoDaJanela } from '../janela/JanelaLateral';
 import { useConfiguracoesDoDp, type TopicoDoClienteDp } from './useConfiguracoesDoDp';
 
@@ -42,7 +42,7 @@ export function ConfiguracoesDoDp() {
           </div>
           <div className="table-wrap">
             <table className="dp-tabela dp-config-lista">
-              <thead><tr><th>Cód.</th><th>Cliente</th><th>Movimento</th><th>Obrigações do mês</th><th>REINF</th><th>Entrega</th><th>Agrupamento</th></tr></thead>
+              <thead><tr><th>Cód.</th><th>Cliente</th><th>Movimento</th><th>Obrigações do mês</th><th>Entrega</th><th>Agrupamento</th></tr></thead>
               <tbody>
                 {vm.linhas.map(l => (
                   <tr key={l.codigo} className="dp-linha-abre" onClick={() => vm.abrir(l.codigo)} title={'Abrir ' + l.nomeNaTela}>
@@ -52,7 +52,6 @@ export function ConfiguracoesDoDp() {
                     </td>
                     <td>{l.movimento}</td>
                     <td className="dp-obrig-texto">{l.obrigacoesTexto}</td>
-                    <td>{l.reinfAutorizada ? 'Autorizada' : <span className="fraco">Não</span>}</td>
                     <td>{l.entrega || <span className="fraco">—</span>}</td>
                     <td>{l.agrupamento || <span className="fraco">—</span>}</td>
                   </tr>
@@ -77,12 +76,8 @@ export function ConfiguracoesDoDp() {
             <>
               <Cartao titulo="Movimento">
                 <Linha rotulo="Movimento do mês">
-                  <select className="pessoal-select" value={c.movimento} aria-label="Movimento" onChange={e => vm.mudarMovimento(c.codigo, e.target.value)}>
-                    {vm.movimentos.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </Linha>
-                <Linha rotulo="REINF autorizada">
-                  <input type="checkbox" checked={c.reinfAutorizada} aria-label="REINF autorizada" onChange={e => vm.mudarReinf(c.codigo, e.target.checked)} />
+                  <MenuSuspenso rotulo={c.movimento} className="btn btn-outline" titulo="Movimento" direita largura={200}
+                    itens={vm.movimentos.map(m => ({ rotulo: m, marcado: m === c.movimento, onClick: () => vm.mudarMovimento(c.codigo, m) }))} />
                 </Linha>
               </Cartao>
               <Cartao titulo="Obrigações do mês">
@@ -100,9 +95,8 @@ export function ConfiguracoesDoDp() {
           {vm.topico === 'entrega' && (
             <Cartao titulo="Entrega">
               <Linha rotulo="Como recebe">
-                <select className="pessoal-select" value={c.entrega} aria-label="Entrega" onChange={e => vm.mudarEntrega(c.codigo, e.target.value)}>
-                  {[...new Set([...vm.entregas, c.entrega])].filter(Boolean).map(x => <option key={x} value={x}>{x}</option>)}
-                </select>
+                <MenuSuspenso rotulo={c.entrega || 'Escolher'} className="btn btn-outline" titulo="Como recebe" direita largura={200}
+                  itens={[...new Set([...vm.entregas, c.entrega])].filter(Boolean).map(x => ({ rotulo: x, marcado: x === c.entrega, onClick: () => vm.mudarEntrega(c.codigo, x) }))} />
               </Linha>
               <Linha rotulo="Agrupamento">
                 <input type="text" className="pessoal-select" list="dp-agrupamentos" defaultValue={c.agrupamento} key={c.codigo + '|' + c.agrupamento} placeholder="—"
