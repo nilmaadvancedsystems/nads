@@ -337,3 +337,14 @@ export function TituloDaConta({ titulo }: { titulo: string }) {
   const partes = titulo.split(/(\b\d{4,6}\b)/);
   return <>{partes.map((p, i) => (i % 2 ? <b key={i}>{p}</b> : p))}</>;
 }
+
+/**
+ * O nível da conta gov.br como medalha (Vitor, 07/10/2026: "os níveis como medalhas: P = prata, B = bronze, O = ouro"):
+ * a moeda na cor do metal e o nome. Aceita a letra ou o nome; sem nível, o traço.
+ */
+export function MedalhaGov({ nivel }: { nivel: string }) {
+  const n = nivel.trim().toUpperCase().charAt(0);
+  const m = n === 'O' ? { classe: 'ouro', rotulo: 'Ouro' } : n === 'P' ? { classe: 'prata', rotulo: 'Prata' } : n === 'B' ? { classe: 'bronze', rotulo: 'Bronze' } : null;
+  if (!m) return <span className="fraco">{nivel.trim() || '—'}</span>;
+  return <span className={'medalha medalha-' + m.classe} title={'Nível ' + m.rotulo + ' (gov.br)'}><span className="medalha-moeda" aria-hidden="true">{m.rotulo.charAt(0)}</span>{m.rotulo}</span>;
+}
