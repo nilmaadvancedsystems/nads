@@ -1,5 +1,5 @@
 // ViewModel de DP › FGTS Digital (07/10/2026: "tenho que baixar FGTS toda vez pelo site do governo manualmente… daria
-// pra mandar a vm fazer isso?"): os clientes do DP com FGTS no mês, o CNPJ (do cadastro do Entregas), o último pedido
+// pra mandar a vm fazer isso?"): os clientes do DP com folha no mês (o movimento Folha), o CNPJ (do cadastro do Entregas), o último pedido
 // de cada um ao robô e o estado do robô (o certificado do escritório). Pedir: um cliente (Ensaio ou Emitir) ou todos os
 // que faltam. A guia pronta baixa o PDF; os passos do robô (o que ele viu em cada tela) abrem numa janela.
 import { tarefas as t } from '@nads/core';
@@ -41,7 +41,8 @@ export function useFgtsDoDp() {
   const cnpjDoCodigo = new Map(clientesDoEntregas.lista.filter(c => c.documento && c.documento.length === 14).map(c => [Number(c.codigo), c.documento as string]));
 
   const todas = doDp.clientes
-    .filter(c => c.obrigacoes.includes('fgts'))
+    // só quem tem folha no mês (Vitor, 07/10/2026: "só apareça na emissão do FGTS empresas que tem folha"): o movimento do DP
+    .filter(c => c.movimento === 'Folha')
     .map(c => {
       const cnpj = cnpjDoCodigo.get(c.codigo) || '';
       const pedido = cnpj ? porCnpj.get(cnpj) : undefined;
