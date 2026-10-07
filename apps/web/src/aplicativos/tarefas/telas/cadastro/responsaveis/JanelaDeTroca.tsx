@@ -2,7 +2,7 @@
 // pessoa, escolhe a empresa que quer transferir e escolhe a outra pessoa e uma empresa dela para transferir ou não"): dois
 // lados — a pessoa e as empresas dela, marcando as que vão para o outro lado. Do lado B, marcar é opcional. A troca só
 // vale com o aceite dos dois.
-import { Icone } from '@nads/ui';
+import { Icone, MenuSuspenso } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import type { Dep, VmEmpresasPorResponsavel } from './useEmpresasPorResponsavel';
 
@@ -20,13 +20,15 @@ function Lado({ vm, rotulo, pessoa, setPessoa, outra, marcadas, setMarcadas }: {
   const alternar = (k: string) => { const s = new Set(marcadas); if (s.has(k)) s.delete(k); else s.add(k); setMarcadas(s); };
   return (
     <section className="troca-lado">
-      <label className="troca-pessoa">
+      {/* a pessoa no menu suspenso dos componentes (Vitor, 07/10/2026: "siga as seleções dos componentes") */}
+      <div className="troca-pessoa">
         <span className="hint">{rotulo}</span>
-        <select className="pessoal-select" value={pessoa} onChange={e => { setPessoa(e.target.value); setMarcadas(new Set()); }} aria-label={rotulo}>
-          <option value="">Escolher…</option>
-          {vm.pessoasDaTroca.filter(n => !vm.igual(n, outra)).map(n => <option key={n} value={n}>{n}</option>)}
-        </select>
-      </label>
+        <MenuSuspenso rotulo={pessoa || 'Escolher pessoa'} icone="usuario" className="btn btn-outline troca-escolher" titulo={rotulo} largura={260}
+          itens={vm.pessoasDaTroca.filter(n => !vm.igual(n, outra)).map(n => ({
+            rotulo: n, icone: 'usuario' as const, marcado: vm.igual(n, pessoa), dica: String(vm.pessoas.find(p => vm.igual(p.nome, n))?.total ?? 0),
+            onClick: () => { setPessoa(n); setMarcadas(new Set()); },
+          }))} />
+      </div>
       {pessoa && (
         <>
           <label className="busca-curta">
