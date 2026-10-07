@@ -1,12 +1,13 @@
-// A etapa Empréstimos e financiamentos da Tarefa (Vitor, 07/10/2026), no desenho das outras etapas de razão: duas telas no
-// menu de cima (o Segmentado, como em Clientes). Empréstimos: o importar (vários razões de uma vez) e um bloco por
+// A etapa Empréstimos e financiamentos da Tarefa (Vitor, 07/10/2026), no desenho das outras etapas de razão: duas telas nas
+// abas embaixo do cabeçalho (como as da Importação; Vitor, 07/10/2026: "no menu superior abaixo do cabeçalho"). Empréstimos: o importar (vários razões de uma vez) e um bloco por
 // empréstimo — o arquivo, o banco no menu (já sugerido; gravado, só o administrador troca), o check que tira e as faixas
 // Contratos (os achados no histórico; sem a grade de saldo: "já pode ir direto para contratos") e Pendências (o que
 // conferir, no lugar dos avisos do topo: "deixe isso em pendências, em um dropdown igual a esses").
 // Lançamentos: os de cada empréstimo, filtrados por contrato.
-import { Icone, LogoBanco, MenuSuspenso, Segmentado } from '@nads/ui';
+import { Icone, LogoBanco, MenuSuspenso, useRetorno } from '@nads/ui';
 import { useRef, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
+import { useAbasDaEtapa } from '../contexto';
 import { useEmprestimos, type VmEmprestimos } from './useEmprestimos';
 
 function Emprestimo({ e, vm }: { e: VmEmprestimos['emprestimos'][number]; vm: VmEmprestimos }) {
@@ -133,14 +134,19 @@ export function Emprestimos() {
   // as duas telas no menu de cima (Vitor, 07/10/2026: "a aba lançamentos, deixe em outra tela, no menu superior")
   const [tela, setTela] = useState<Tela>('emprestimos');
   const qtdLancamentos = vm.emprestimos.reduce((n, e) => n + e.lancamentos.length, 0);
+  const { aviso } = useRetorno();
+  const semRazao = !vm.emprestimos.length;
+  useAbasDaEtapa([
+    { id: 'emprestimos', rotulo: 'Empréstimos', icone: 'landmark', ativa: tela === 'emprestimos' },
+    { id: 'lancamentos', rotulo: 'Lançamentos' + (qtdLancamentos ? ' (' + qtdLancamentos + ')' : ''), icone: 'list', ativa: tela === 'lancamentos', travada: semRazao },
+  ], id => {
+    if (id === 'lancamentos' && semRazao) { aviso({ tom: 'erro', titulo: 'Lançamentos', texto: 'Importe o razão primeiro.' }); return; }
+    setTela(id as Tela);
+  });
   return (
     <section>
       <header className="topbar"><div><h2 className="page-title">Empréstimos e financiamentos</h2></div></header>
       <div className="tarefas-barra-topo">
-        <Segmentado<Tela> valor={tela} onMudar={setTela} opcoes={[
-          { valor: 'emprestimos', rotulo: 'Empréstimos' },
-          { valor: 'lancamentos', rotulo: 'Lançamentos' + (qtdLancamentos ? ' (' + qtdLancamentos + ')' : ''), travada: vm.emprestimos.length ? false : 'Importe o razão primeiro' },
-        ]} />
         <span className="tarefas-contador"><Icone nome="landmark" /><b>{vm.emprestimos.length}</b> {vm.emprestimos.length === 1 ? 'empréstimo' : 'empréstimos'}</span>
         <span className="tarefas-barra-espaco" />
         {/* importar: só o ícone (vários razões de uma vez, um por contrato) */}

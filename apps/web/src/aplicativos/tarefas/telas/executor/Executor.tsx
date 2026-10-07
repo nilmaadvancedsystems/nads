@@ -28,7 +28,7 @@ import { animarPronto } from './partes/animarPainel';
 import { useInssDaEtapa } from './useInssDaEtapa';
 import { useRazaoDaEtapa } from './useRazaoDaEtapa';
 import type { ItemDeTeste } from '../../../../comum/BotaoDeTeste';
-import { EtapaProvider } from './etapas/contexto';
+import { EtapaProvider, type AbasDaEtapa } from './etapas/contexto';
 import { TelaDaEtapa } from './etapas/TelaDaEtapa';
 import { PeriodoDaTarefa } from './partes/PeriodoDaTarefa';
 
@@ -68,6 +68,8 @@ export function Executor() {
   const chaveDaTela = vm.tela ? rota + '|' + vm.tela.id + '|' + vm.tela.etapa.meses.join(',') : '';
   const [requisitosDaTela, setRequisitosDaTela] = useState<{ chave: string; pronto: boolean; faltam: string[] } | null>(null);
   const [testeDaTela, setTesteDaTela] = useState<ItemDeTeste[]>([]);
+  // as telas da etapa (a tela própria) nas abas embaixo do cabeçalho, no lugar do Segmentado (Vitor, 07/10/2026)
+  const [abasDaTela, setAbasDaTela] = useState<AbasDaEtapa | null>(null);
   // o ⚡: as opções da ferramenta aberta, ou as do que a própria etapa importa (o razão do Caixa, o INSS)
   const opcoesDeTeste = vm.tela
     ? testeDaTela.map(o => ({ rotulo: o.rotulo, icone: 'zap' as NomeIcone, onClick: o.onClick }))
@@ -251,8 +253,8 @@ export function Executor() {
     <Casca sistema="Tarefas" temaNaGaveta={false} larga rotuloLateral="Etapas" topoDireita={topo} acimaDoCabecalho={avisos}
       empresa={{ codigo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome, nome: '' }}
 
-      versao={casca.versao} secoes={checklist} paginas={abas} titulo=""
-      onSecao={vm.abrirEtapa} onPagina={abrirAba} onInicio={vm.sair} onAplicativos={casca.inicio}
+      versao={casca.versao} secoes={checklist} paginas={vm.tela && abasDaTela ? abasDaTela.paginas : abas} titulo=""
+      onSecao={vm.abrirEtapa} onPagina={vm.tela && abasDaTela ? abasDaTela.abrir : abrirAba} onInicio={vm.sair} onAplicativos={casca.inicio}
       onEmpresa={vm.abrirEmpresa} aplicativos={casca.aplicacoes} onAplicativo={casca.onAplicacao}>
       {vm.carregando ? null : !vm.etapa ? (
         <div className="executor-fim" ref={fim}>
@@ -272,7 +274,7 @@ export function Executor() {
             {/* revendo uma etapa concluída: sem a abertura com o N (é só para olhar; Vitor, 05/10/2026: "o loading tá bugando") */}
             {vm.ferramenta?.embutir && ferramentaAbrindo && !vm.revendo && <AberturaN vidro />}
             {vm.tela ? (
-              <EtapaProvider etapa={vm.tela.etapa} onRequisitos={r => setRequisitosDaTela({ chave: chaveDaTela, ...r })} onTeste={setTesteDaTela}>
+              <EtapaProvider etapa={vm.tela.etapa} onRequisitos={r => setRequisitosDaTela({ chave: chaveDaTela, ...r })} onTeste={setTesteDaTela} onAbas={setAbasDaTela}>
                 <TelaDaEtapa id={vm.tela.id} />
               </EtapaProvider>
             ) : vm.ferramenta?.embutir ? (

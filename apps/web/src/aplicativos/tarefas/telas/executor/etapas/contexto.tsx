@@ -1,6 +1,8 @@
 // A etapa aberta no Executor, para a tela própria dela (Vitor, 06/10/2026: as ferramentas que abriam em iframe viram
 // telas da Tarefa). No lugar da URL e das mensagens da ponte (comum/ponte.ts): a tela recebe a empresa e os meses por
-// aqui, diz o que falta para seguir (useRequisitosDaEtapa) e oferece os dados de teste do ⚡ (useDadosDeTesteDaEtapa).
+// aqui, diz o que falta para seguir (useRequisitosDaEtapa), oferece os dados de teste do ⚡ (useDadosDeTesteDaEtapa) e põe as
+// telas dela nas abas embaixo do cabeçalho (useAbasDaEtapa).
+import type { PaginaCasca } from '@nads/ui';
 import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react';
 import type { ItemDeTeste } from '../../../../../comum/BotaoDeTeste';
 
@@ -18,17 +20,20 @@ export interface EtapaAberta {
 /** O que falta para seguir (o Próximo da Tarefa só libera com tudo pronto). */
 export interface RequisitosDaEtapa { pronto: boolean; faltam: string[] }
 
-interface Ligacoes { requisitos: (r: RequisitosDaEtapa) => void; teste: (itens: ItemDeTeste[]) => void }
+/** As abas da tela no cabeçalho (como as da Importação: Bancos, Balancete…) e o que fazer ao clicar numa. */
+export interface AbasDaEtapa { paginas: PaginaCasca[]; abrir: (id: string) => void }
+
+interface Ligacoes { requisitos: (r: RequisitosDaEtapa) => void; teste: (itens: ItemDeTeste[]) => void; abas: (a: AbasDaEtapa | null) => void }
 
 const Ctx = createContext<{ etapa: EtapaAberta; ligacoes: Ligacoes } | null>(null);
 
-export function EtapaProvider({ etapa, onRequisitos, onTeste, children }: {
-  etapa: EtapaAberta; onRequisitos: Ligacoes['requisitos']; onTeste: Ligacoes['teste']; children: ReactNode;
+export function EtapaProvider({ etapa, onRequisitos, onTeste, onAbas, children }: {
+  etapa: EtapaAberta; onRequisitos: Ligacoes['requisitos']; onTeste: Ligacoes['teste']; onAbas: Ligacoes['abas']; children: ReactNode;
 }) {
-  const ligacoes = useRef<Ligacoes>({ requisitos: onRequisitos, teste: onTeste });
-  ligacoes.current = { requisitos: onRequisitos, teste: onTeste };
+  const ligacoes = useRef<Ligacoes>({ requisitos: onRequisitos, teste: onTeste, abas: onAbas });
+  ligacoes.current = { requisitos: onRequisitos, teste: onTeste, abas: onAbas };
   // as ligações sempre as mais novas, sem trocar o valor do contexto a cada desenho
-  const estavel = useRef<Ligacoes>({ requisitos: r => ligacoes.current.requisitos(r), teste: i => ligacoes.current.teste(i) });
+  const estavel = useRef<Ligacoes>({ requisitos: r => ligacoes.current.requisitos(r), teste: i => ligacoes.current.teste(i), abas: a => ligacoes.current.abas(a) });
   return <Ctx.Provider value={{ etapa, ligacoes: estavel.current }}>{children}</Ctx.Provider>;
 }
 
@@ -67,4 +72,20 @@ export function useDadosDeTesteDaEtapa(opcoes: { id: string; rotulo: string }[],
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ligacoes, chave]);
   return itens;
+}
+
+/**
+ * As telas da etapa nas abas embaixo do cabeçalho (Vitor, 07/10/2026: "no menu superior abaixo do cabeçalho"), no lugar do
+ * Segmentado na página. Saiu da tela, as abas somem.
+ */
+export function useAbasDaEtapa(paginas: PaginaCasca[], abrir: (id: string) => void) {
+  const { ligacoes } = useCtx();
+  const aoAbrir = useRef(abrir);
+  useEffect(() => { aoAbrir.current = abrir; });
+  const chave = JSON.stringify(paginas);
+  useEffect(() => {
+    ligacoes.abas({ paginas, abrir: id => aoAbrir.current(id) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ligacoes, chave]);
+  useEffect(() => () => ligacoes.abas(null), [ligacoes]);
 }
