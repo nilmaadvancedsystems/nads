@@ -72,22 +72,31 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
       }
       return saidas.get(k)!;
     },
-    pedido(codigo, competencia) {
+    pedido(codigo, competencia, tipo = 'saidas') {
       const k = soDigitos(codigo) + '_' + competencia;
-      if (!pedidos.has(k)) {
-        pedidos.set(k, null);
-        onSnapshot(query(collection(db, 'pedidosSieg'), where('codigo', '==', soDigitos(codigo)), where('competencia', '==', competencia), orderBy('criadoEm', 'desc'), limit(1)), s => {
-          const d = s.docs[0]?.data();
-          pedidos.set(k, d ? { status: texto(d.status), andamento: texto(d.andamento), erro: texto(d.erro), em: texto(d.criadoEm) } : null);
+      if (!pedidos.has('saidas|' + k)) {
+        pedidos.set('saidas|' + k, null);
+        pedidos.set('contagem|' + k, null);
+        // os últimos pedidos da empresa e mês: o mais novo de cada tipo (sem tipo = as saídas, os pedidos de antes)
+        onSnapshot(query(collection(db, 'pedidosSieg'), where('codigo', '==', soDigitos(codigo)), where('competencia', '==', competencia), orderBy('criadoEm', 'desc'), limit(10)), s => {
+          for (const t of ['saidas', 'contagem'] as const) {
+            const d = s.docs.map(x => x.data()).find(x => (x.tipo || 'saidas') === t);
+            pedidos.set(t + '|' + k, d ? { status: texto(d.status), andamento: texto(d.andamento), erro: texto(d.erro), em: texto(d.criadoEm) } : null);
+          }
           mudou();
         }, () => undefined);
       }
-      return pedidos.get(k) || null;
+      return pedidos.get(tipo + '|' + k) || null;
     },
     async pedirSaidas(codigo, competencia) {
       const q = quem();
       if (!q) throw new Error('Sem login.');
       await addDoc(collection(db, 'pedidosSieg'), { status: 'pendente', codigo: soDigitos(codigo), competencia, criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorUid: q.uid });
+    },
+    async pedirContagem(codigo, competencia) {
+      const q = quem();
+      if (!q) throw new Error('Sem login.');
+      await addDoc(collection(db, 'pedidosSieg'), { status: 'pendente', tipo: 'contagem', codigo: soDigitos(codigo), competencia, criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorUid: q.uid });
     },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,

@@ -10,8 +10,12 @@ const L = [
 
 describe('empresas', () => {
   it('código exato primeiro, depois começa com, depois o resto', () => {
-    expect(buscarEmpresas(L, '29').map(x => x.codigo)).toEqual([29, 292, 1292]);
-    expect(buscarEmpresas(L, '292').map(x => x.codigo)).toEqual([292, 29, 1292]);
+    // só números: o código; com um igual, só ele (o 292 no nome da ALFA não conta)
+    expect(buscarEmpresas(L, '29').map(x => x.codigo)).toEqual([29]);
+    expect(buscarEmpresas(L, '292').map(x => x.codigo)).toEqual([292]);
+    expect(buscarEmpresas(L, '2').map(x => x.codigo)).toEqual([292, 29, 1292]);
+    expect(buscarEmpresas(L, '12').map(x => x.codigo)).toEqual([1292]);
+    expect(buscarEmpresas(L, 'alfa').map(x => x.codigo)).toEqual([29]);
     expect(buscarEmpresas(L, '  ')).toEqual([]);
   });
   it('Enter', () => {

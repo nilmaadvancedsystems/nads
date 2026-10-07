@@ -2,6 +2,7 @@
 // só para ler; clicar no cliente abre a janela dele (a mesma janela com painéis laterais do Cadastro) — Obrigações (o
 // movimento e as obrigações do mês; a REINF é do Fiscal) e Entrega (como recebe e o agrupamento). Grava ao mudar; o que foi mudado
 // ganha o selo "mudado" e o "Voltar à planilha".
+import { MenuDeAgrupamento } from './MenuDeAgrupamento';
 import { Esqueleto, Icone, useCarregando, MenuSuspenso } from '@nads/ui';
 import { Cartao, JanelaLateral, Linha, type TopicoDaJanela } from '../janela/JanelaLateral';
 import { useConfiguracoesDoDp, type TopicoDoClienteDp } from './useConfiguracoesDoDp';
@@ -99,11 +100,8 @@ export function ConfiguracoesDoDp() {
                   itens={[...new Set([...vm.entregas, c.entrega])].filter(Boolean).map(x => ({ rotulo: x, marcado: x === c.entrega, onClick: () => vm.mudarEntrega(c.codigo, x) }))} />
               </Linha>
               <Linha rotulo="Agrupamento">
-                <input type="text" className="pessoal-select" list="dp-agrupamentos" defaultValue={c.agrupamento} key={c.codigo + '|' + c.agrupamento} placeholder="—"
-                  aria-label="Agrupamento" onBlur={e => { if (e.target.value.trim() !== c.agrupamento) vm.mudarAgrupamento(c.codigo, e.target.value); }}
-                  onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
+                <MenuDeAgrupamento valor={c.agrupamento} agrupamentos={vm.agrupamentos} onEscolher={v => vm.mudarAgrupamento(c.codigo, v)} />
               </Linha>
-              <datalist id="dp-agrupamentos">{vm.agrupamentos.map(a => <option key={a} value={a} />)}</datalist>
             </Cartao>
           )}
         </JanelaLateral>
