@@ -1,10 +1,10 @@
 // A etapa Bens da Tarefa (Vitor, 07/10/2026), com as peças do catálogo (o período e os bancos ficam na linha de cima, a do executor): o que entra e o que sai do
 // imobilizado (Stat); as compras de bem (1551, 2551 e os CFOPs ligados), as saídas que baixam bem e o uso e consumo com
-// item de bem, cada um num card com a tabela padrão. Só olhar.
-import { Alerta, Stat } from '@nads/ui';
+// item de bem, cada um num card com a tabela padrão. Só olhar. Só aparece depois do Verificar (Vitor, 07/10/2026).
+import { Alerta, BotaoAcao, Stat } from '@nads/ui';
 import { useBens } from './useBens';
 
-type VM = ReturnType<typeof useBens>;
+type VM = Extract<ReturnType<typeof useBens>, { verificado: true }>;
 type Linha = VM['entradas'][number];
 
 export function Bens() {
@@ -12,6 +12,12 @@ export function Bens() {
   return (
     <section>
       <header className="topbar"><div><h2 className="page-title">Bens</h2></div></header>
+      {/* o Verificar (Vitor, 07/10/2026): a barra do topo anda 3 segundos enquanto olha os CFOPs das notas */}
+      <div className="tarefas-barra-topo">
+        <BotaoAcao className={vm.verificado ? 'btn btn-outline' : 'btn btn-primary'} carregando={vm.verificando} textoCarregando="Verificando" onClick={vm.verificar}>
+          {vm.verificado ? 'Verificar de novo' : 'Verificar'}
+        </BotaoAcao>
+      </div>
       {vm.deTeste && (
         <div className="imp-topo">
           <span className="badge badge-neutral" title="Notas do ⚡: só nesta tela">Notas de teste</span>
@@ -19,7 +25,7 @@ export function Bens() {
           <button type="button" className="btn btn-outline" onClick={vm.tirarTeste}>Voltar às notas da empresa</button>
         </div>
       )}
-      {!vm.carregado ? null : vm.nenhuma ? (
+      {!vm.verificado ? null : vm.nenhuma ? (
         <Alerta tom="ok" titulo="Nenhuma nota de bem no período" texto="Nenhuma entrada 1551, 2551 ou de CFOP ligado a bem, nenhuma saída de bem e nenhum uso e consumo com item de bem nas notas importadas." />
       ) : (
         <>

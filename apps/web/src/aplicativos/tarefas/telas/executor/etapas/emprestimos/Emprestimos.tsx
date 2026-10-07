@@ -48,6 +48,30 @@ function Emprestimo({ e, vm }: { e: VmEmprestimos['emprestimos'][number]; vm: Vm
           </tbody>
         </table>
       </div>
+      {/* os contratos achados no histórico (Vitor, 07/10/2026) */}
+      <FaixaQueAbre titulo="Contratos" qtd={e.contratos.length} aviso={e.quitadosComSaldo.length > 0}>
+        <div className="imp-mov">
+          <table className="table-compact">
+            <thead><tr><th>Contrato</th><th>Liberado</th><th>Parcelas pagas</th><th className="num">Saldo</th><th>Situação</th></tr></thead>
+            <tbody>
+              {e.contratos.map(k => (
+                <tr key={k.numero} title={k.periodo}>
+                  <td className="num"><b>{k.numero}</b></td>
+                  <td>{k.liberado}</td>
+                  <td>{k.parcelas}</td>
+                  <td className={'num' + (k.situacao === 'quitado-com-saldo' ? ' ext-neg' : '')}>{k.saldo}</td>
+                  <td>{k.situacao === 'aberto' ? <span className="badge badge-neutral">Em aberto</span>
+                    : k.situacao === 'quitado' ? <span className="badge badge-ok" title={k.comSemNumero ? 'Zera com os lançamentos sem número (são dele)' : undefined}>{k.comSemNumero ? 'Quitado (com os sem número)' : 'Quitado'}</span>
+                    : <span className="badge badge-neutral ext-neg" title="Pagou todas as parcelas e ainda tem saldo: lançamento com o número errado, ou parcela que faltou">Quitado com saldo</span>}</td>
+                </tr>
+              ))}
+              {e.semNumero && (
+                <tr className="imp-mov-anterior"><td colSpan={3}>Sem número de contrato ({e.semNumero.qtd} {e.semNumero.qtd === 1 ? 'lançamento' : 'lançamentos'}: implantação de saldo, histórico incompleto){e.semNumero.de && ' · são do ' + e.semNumero.de}</td><td className="num">{e.semNumero.soma}</td><td /></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </FaixaQueAbre>
       <FaixaQueAbre titulo="Lançamentos" qtd={e.lancamentos.length}>
         <div className="imp-mov">
           <table className="table-compact">
@@ -76,6 +100,7 @@ export function Emprestimos() {
   const vm = useEmprestimos();
   const arquivo = useRef<HTMLInputElement>(null);
   const devedores = vm.emprestimos.filter(e => e.devedores.length);
+  const quitadosComSaldo = vm.emprestimos.flatMap(e => e.quitadosComSaldo);
   return (
     <section>
       <header className="topbar"><div><h2 className="page-title">Empréstimos e financiamentos</h2></div></header>
@@ -94,6 +119,13 @@ export function Emprestimos() {
         <div className="alerta-linha">
           <Alerta titulo="Empréstimo com saldo devedor"
             texto={devedores.map(e => (e.banco?.rotulo || e.arquivo) + ': ' + e.devedores.join(', ')).join(' · ') + '. O empréstimo fica credor ou zera: confira a parcela paga a mais ou lançada no empréstimo errado.'} />
+        </div>
+      )}
+
+      {quitadosComSaldo.length > 0 && (
+        <div className="alerta-linha">
+          <Alerta titulo={quitadosComSaldo.length === 1 ? 'Contrato quitado com saldo' : 'Contratos quitados com saldo'}
+            texto={'Pagou todas as parcelas e ainda tem saldo: ' + quitadosComSaldo.join(', ') + '. Costuma ser encargo ou parcela lançada com o número de outro contrato.'} />
         </div>
       )}
 

@@ -229,7 +229,7 @@ export function Executor() {
   // os avisos acima do cabeçalho (Vitor, 07/10/2026: "essas notificações, deixe acima do cabeçalho"): o modo
   // desenvolvedor e, revendo uma etapa concluída, o aviso com o Editar (só ele mexe; Vitor, 05/10/2026), numa linha só
   const avisos = vm.carregando || !vm.etapa ? null : vm.dev && !vm.revendo ? (
-    <div className="alerta-linha">
+    <div className="alerta-linha faixa-dev">
       <Alerta titulo="Modo desenvolvedor" texto="Os dados de verdade, mas o que você fizer fica só nesta tela: nada vai para o banco." />
     </div>
   ) : vm.revendo ? (

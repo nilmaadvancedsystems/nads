@@ -51,9 +51,15 @@ export function criarTicketDeTeste(por: string): m.Ticket {
     assunto: 'Clientes em aberto — teste', mensagem: 'Ticket de teste do modo desenvolvedor: pode responder à vontade.',
     criadoPor: { nome: por }, origem: { titulo: 'Teste (modo desenvolvedor)', rota: '' },
     itens: [
-      { id: 't1', titulo: 'MERCADO BOM PRECO LTDA', valor: 'R$ 1.250,40', detalhe: 'Não encontrei, onde está esse valor?', opcoes: m.OPCOES_PADRAO },
-      { id: 't2', titulo: 'CONSTRUTORA ALFA LTDA', valor: 'R$ 8.730,00', detalhe: 'Foi pago em dinheiro?', opcoes: m.OPCOES_PADRAO },
-      { id: 't3', titulo: 'PADARIA DO JOAO', valor: 'R$ 312,90', detalhe: 'No meu sistema, está em aberto: 10/07/2026 - NF 200 - R$ 312,90', opcoes: m.OPCOES_PADRAO },
+      { id: 't1', titulo: 'MERCADO BOM PRECO LTDA', valor: 'R$ 1.250,40', detalhe: 'Não encontrei, onde está esse valor?', opcoes: m.OPCOES_PADRAO,
+        linhas: [{ data: '31/08/2026', nf: '—', descricao: 'Saldo em aberto em 08/2026', valor: 'R$ 1.250,40' }] },
+      { id: 't2', titulo: 'CONSTRUTORA ALFA LTDA', valor: 'R$ 8.730,00', detalhe: 'Foi pago em dinheiro?', opcoes: m.OPCOES_PADRAO,
+        linhas: [{ data: '05/08/2026', nf: '9971', descricao: 'Venda a prazo', valor: 'R$ 8.730,00' }] },
+      { id: 't3', titulo: 'PADARIA DO JOAO', valor: 'R$ 312,90', detalhe: 'No meu sistema, está em aberto: 10/07/2026 - NF 200 - R$ 312,90', opcoes: m.OPCOES_PADRAO,
+        linhas: [
+          { data: '10/07/2026', nf: '200', descricao: 'Venda a prazo (vendido R$ 500,00, recebido R$ 187,10)', valor: 'R$ 312,90' },
+          { data: '20/08/2026', nf: '—', descricao: 'TRANSFERENCIA PIX PADARIA DO JOAO', valor: '−R$ 50,00' },
+        ] },
     ],
   });
 }

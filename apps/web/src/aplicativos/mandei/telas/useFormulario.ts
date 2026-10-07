@@ -22,6 +22,8 @@ export function useFormulario() {
   const valido = !!t && m.linkValido(t, codigo, new Date());
   const [respostas, setRespostas] = useState<Record<string, m.RespostaDoItem>>({});
   const [enviado, setEnviado] = useState(false);
+  // a tela de entrada (Vitor, 07/10/2026): quem é, o que é o Mandei e um botão só para começar
+  const [comecou, setComecou] = useState(false);
   const [erro, setErro] = useState('');
 
   // abriu o link: fica marcado (a central vê "Aberto")
@@ -47,6 +49,8 @@ export function useFormulario() {
 
   return {
     codigo, existe: !!t, valido, enviado, erro,
+    comecou, comecar: () => setComecou(true),
+    quantos: vista?.itens.length || 0,
     numero: vista?.numero || '', empresa: vista?.empresa || '', mensagem: vista?.mensagem || '',
     validoAte: vista ? dataBR(vista.validoAte) : '',
     itens: (vista?.itens || []).map(it => ({

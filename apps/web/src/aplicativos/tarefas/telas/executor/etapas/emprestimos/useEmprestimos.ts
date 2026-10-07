@@ -36,6 +36,11 @@ export function useEmprestimos() {
     for (const f of fs) {
       try {
         const r = t.lerRazaoDoArquivo(await f.arrayBuffer());
+        // o mesmo razão de novo (o mesmo arquivo, os mesmos lançamentos e o mesmo saldo): não entra duas vezes
+        if ([...razoes, ...novos].some(x => x.arquivo === f.name && x.r.lancamentos.length === r.lancamentos.length && x.r.saldoFinal === r.saldoFinal)) {
+          aviso({ tom: 'info', titulo: 'Esse razão já está importado', texto: f.name });
+          continue;
+        }
         novos.push({ id: n++, arquivo: f.name, r, banco: t.bancoDoRazao(r, bancos) });
       } catch (e) { aviso({ tom: 'erro', titulo: 'Não deu para ler ' + f.name, texto: e instanceof Error ? e.message : String(e) }); }
     }
@@ -47,9 +52,26 @@ export function useEmprestimos() {
     const doPeriodo = t.mesesDoRazao(x.r, meses);
     const devedores = t.mesesDevedores(doPeriodo);
     const banco = bancos.find(b => b.id === x.banco) || null;
+    // os contratos dentro do razão, até o fim do período (o número vem do histórico)
+    const c = t.contratosDoRazao(x.r, meses[meses.length - 1]);
+    const emAberto = c.contratos.filter(k => Math.abs(k.saldo) >= 0.01 && !k.completadoSemNumero);
     return {
       id: x.id, arquivo: x.arquivo,
-      resumo: doPeriodo.reduce((n, m) => n + m.lancamentos.length, 0) + ' lançamentos · saldo ' + (doPeriodo.length ? t.valorComLado(doPeriodo[doPeriodo.length - 1].saldoFinal) : '—'),
+      resumo: c.contratos.length + (c.contratos.length === 1 ? ' contrato' : ' contratos') + ' (' + emAberto.length + ' em aberto) · saldo ' + (doPeriodo.length ? t.valorComLado(doPeriodo[doPeriodo.length - 1].saldoFinal) : '—'),
+      /** os contratos: o número, a liberação, as parcelas pagas e o saldo de cada um; os em aberto primeiro */
+      contratos: [...c.contratos].sort((a, b) => Number(emAberto.includes(b)) - Number(emAberto.includes(a)) || b.inicio.localeCompare(a.inicio)).map(k => ({
+        numero: k.numero,
+        liberado: k.liberadoEm ? formatos.brl(k.liberado) + ' em ' + dataBr(k.liberadoEm) : '—',
+        parcelas: k.parcelas ? k.pagas + ' de ' + k.parcelas : k.pagas + (k.pagas === 1 ? ' paga' : ' pagas'),
+        saldo: t.valorComLado(k.saldo),
+        situacao: k.quitadoComSaldo ? 'quitado-com-saldo' as const : Math.abs(k.saldo) < 0.01 || k.completadoSemNumero ? 'quitado' as const : 'aberto' as const,
+        /** quitado junto com os lançamentos sem número (que são dele) */
+        comSemNumero: k.completadoSemNumero,
+        periodo: dataBr(k.inicio) + ' a ' + dataBr(k.fim),
+      })),
+      /** os lançamentos sem número de contrato (implantação de saldo, histórico incompleto) */
+      semNumero: c.semNumero.length ? { qtd: c.semNumero.length, soma: t.valorComLado(c.somaSemNumero), de: c.contratos.find(k => k.completadoSemNumero)?.numero || '' } : null,
+      quitadosComSaldo: c.contratos.filter(k => k.quitadoComSaldo).map(k => k.numero + ' (' + t.valorComLado(k.saldo) + ')'),
       banco: banco ? { id: banco.id, rotulo: banco.nome + (banco.detalhe ? ' · ' + banco.detalhe : '') } : null,
       meses: doPeriodo.map(m => ({
         mes: m.mes, rotulo: t.rotuloNumericoCompetencia(m.mes), qtd: m.lancamentos.length,
