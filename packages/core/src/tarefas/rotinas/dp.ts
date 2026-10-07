@@ -57,6 +57,11 @@ export const ROTINA_DP: Rotina = {
       item('emitir', 'Emitir a guia do FGTS', { link: FGTS }),
       item('conferir', 'Conferir o valor com a folha'),
     ], { obrigacaoDp: 'fgts' }),
+    // o eConsignado (Vitor, 07/10/2026): só para quem tem o crédito do trabalhador
+    etapa('dp-econsignado', 'Guias', 'eConsignado', 'Confira os descontos do eConsignado e a guia do mês.', [
+      item('descontos', 'Conferir os descontos do eConsignado na folha'),
+      item('guia', 'Emitir a guia do eConsignado', { link: FGTS }),
+    ], { obrigacaoDp: 'econsignado' }),
     // a REINF (Vitor, 06/10/2026: "faltou a reinf"): só para quem tem a REINF autorizada na planilha
     etapa('dp-reinf', 'Guias', 'EFD-REINF', 'Transmita a EFD-REINF do mês.', [
       item('transmitir', 'Transmitir a EFD-REINF', { link: ECAC }),

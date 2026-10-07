@@ -20,13 +20,13 @@ function AvatarDaPessoa({ vm }: { vm: ReturnType<typeof useCascaTarefas> }) {
   );
 }
 
-export function CascaTarefas({ app, pagina, telaInteira, children }: { app: IdAplicacao; pagina: string; telaInteira?: boolean; children: ReactNode }) {
+export function CascaTarefas({ app, pagina, telaInteira, larga, children }: { app: IdAplicacao; pagina: string; telaInteira?: boolean; larga?: boolean; children: ReactNode }) {
   const vm = useCascaTarefas(app, pagina);
   const trilha = useTrilhaDoTopo();
   useAvisoDeBloqueio();
   return (
     <Casca sistema="Tarefas" temaNaGaveta={false} empresa={vm.empresa} versao={vm.versao} trilha={trilha} secoes={vm.secoes} paginas={vm.paginas} titulo={telaInteira ? '' : vm.titulo}
-      lateral={telaInteira || vm.comAbas ? 'nenhuma' : undefined} larga={telaInteira}
+      lateral={telaInteira || vm.comAbas ? 'nenhuma' : undefined} larga={telaInteira || larga}
       acoes={telaInteira ? undefined : <LugarDasAcoes />} onSecao={vm.onSecao} onPagina={vm.onPagina} onInicio={vm.inicio} onAplicativos={vm.inicio}
       onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}
       topoDireita={<AvatarDaPessoa vm={vm} />}>
