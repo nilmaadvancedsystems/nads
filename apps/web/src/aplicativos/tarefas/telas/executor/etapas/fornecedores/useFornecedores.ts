@@ -174,23 +174,11 @@ export function useFornecedores() {
           // a mini tabela embaixo do fornecedor: as notas em aberto e o que ficou solto
           itens: l.razao.itens.map(i => ({ chave: i.interno ? '' : cl.chaveDoItem(i), marcado: !i.interno && cl.itensEscolhidos(l.razao, l.perguntar).includes(i), data: i.data ? i.data.slice(8, 10) + '/' + i.data.slice(5, 7) + '/' + i.data.slice(0, 4) : '', nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor), abate: i.valor < 0, status: i.status, rotulo: cl.ROTULO_DO_STATUS[i.status] })),
         } : null,
-        // o que perguntar no Mandei: o fornecedor todo ou os itens escolhidos no "+"
-        perguntar: l.razao ? {
-          todos: !l.perguntar || cl.itensEscolhidos(l.razao, l.perguntar).length === cl.itensPerguntaveis(l.razao).length,
-          nenhum: !cl.itensEscolhidos(l.razao, l.perguntar).length,
-          rotulo: cl.itensEscolhidos(l.razao, l.perguntar).map(cl.rotuloDoItem).join(' · '),
-          opcoes: cl.itensPerguntaveis(l.razao).map(i => ({ chave: cl.chaveDoItem(i), rotulo: cl.rotuloDoItem(i) + ' · ' + reais(i.valor), marcado: !!l.perguntar && cl.itensEscolhidos(l.razao, l.perguntar).includes(i) })),
-        } : null,
+        // o que vai para o fornecedor (o que foi adicionado no "+" de cada linha da relação; nada = não vai)
+        perguntar: l.razao ? cl.itensEscolhidos(l.razao, l.perguntar).map(cl.rotuloDoItem).join(' · ') : '',
       })),
     // sem campo vazio (o banco não aceita undefined)
-    /** o "+" do Mandei: liga ou desliga um item da relação (null = o fornecedor todo) */
-    alternarPergunta: (codigo: string, chave: string | null) => marcar(codigo, m => {
-      const n = { ...m };
-      const novo = chave ? cl.alternarItem(m.razao, m.perguntar, chave) : undefined;
-      delete n.perguntar;
-      return novo ? { ...n, perguntar: novo } : n;
-    }),
-    /** o "Enviar para o fornecedor? Sim/Não" de uma linha da relação: só ela muda (todas com Não, o fornecedor não vai) */
+    /** o "+" de uma linha da relação: adiciona ao que vai para o fornecedor, ou tira (Vitor, 07/10/2026) */
     definirEnvio: (codigo: string, chave: string, sim: boolean) => marcar(codigo, m => {
       const n = { ...m };
       const novo = cl.definirItem(m.razao, m.perguntar, chave, sim);

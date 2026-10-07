@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { lerRazao } from '../../tarefas/regras/razao';
-import { alternarItem, chaveDoItem, definirItem, conferirRazaoDoCliente, itensEscolhidos, linhasParaOTicket, observacaoDoRazao, razaoDaMarca, rotuloDoItem } from './razao';
+import { chaveDoItem, definirItem, conferirRazaoDoCliente, itensEscolhidos, linhasParaOTicket, observacaoDoRazao, razaoDaMarca, rotuloDoItem } from './razao';
 import { situacaoDe, textoDaMensagem, textoDasNotas } from './index';
 
 // o formato do razão da conciliação do Alterdata (conta de um cliente), com valores inventados
@@ -94,36 +94,29 @@ describe('o razão zerado', () => {
   });
 });
 
-describe('o que perguntar no Mandei (o "+", 07/10/2026)', () => {
+describe('o que vai para o cliente: o + de cada linha (07/10/2026)', () => {
   const item = (nf: string, valor: number, status: 'aberto' | 'pagamento' | 'devolucao' = 'aberto', interno = false) =>
     ({ data: '2026-08-05', nf, descricao: '', valor, status, ...(interno ? { interno } : {}) });
   const razao = { arquivo: 'x.xls', notas: [], saldo: 0, devolucoes: 0, duplicadas: [], itens: [item('9971', 839.33), item('10111', 1514.65), item('', -200, 'pagamento'), item('9971', 839.33, 'pagamento', true)] };
-  const [a, b, c] = razao.itens.map(chaveDoItem);
-  it('sem escolha, o cliente todo (sem a duplicidade, que é do escritório)', () => {
-    expect(itensEscolhidos(razao).map(rotuloDoItem)).toEqual(['NF 9971', 'NF 10111', 'Pagamento 05/08/2026']);
+  const [a, b, c, dup] = razao.itens.map(chaveDoItem);
+  it('sem nada adicionado, nada vai', () => {
+    expect(itensEscolhidos(razao)).toEqual([]);
+    expect(itensEscolhidos(razao, [])).toEqual([]);
   });
-  it('do cliente todo, escolher uma nota fica só com ela; depois soma e tira; ligar todas ou tirar a última volta ao todo', () => {
-    const so = alternarItem(razao, undefined, b);
-    expect(so).toEqual([b]);
-    expect(itensEscolhidos(razao, so).map(rotuloDoItem)).toEqual(['NF 10111']);
-    const duas = alternarItem(razao, so, a);
-    expect(duas).toEqual([b, a]);
-    expect(alternarItem(razao, duas, c)).toBeUndefined();
-    expect(alternarItem(razao, so, b)).toBeUndefined();
-    // a chave que não existe mais (o razão mudou) não estraga a escolha
-    expect(itensEscolhidos(razao, ['velha']).length).toBe(3);
+  it('o + adiciona só a linha, na ordem do razão; o × tira; tirar a última volta a nada', () => {
+    const umaa = definirItem(razao, undefined, b, true);
+    expect(umaa).toEqual([b]);
+    const duas = definirItem(razao, umaa, a, true);
+    expect(duas).toEqual([a, b]);
+    expect(itensEscolhidos(razao, duas).map(rotuloDoItem)).toEqual(['NF 9971', 'NF 10111']);
+    expect(definirItem(razao, [c], c, false)).toBeUndefined();
+    // a duplicidade é só do escritório: não entra
+    expect(definirItem(razao, umaa, dup, true)).toEqual([b]);
+    // a chave que não existe mais (o razão mudou) sai sozinha
+    expect(itensEscolhidos(razao, ['velha', b]).map(rotuloDoItem)).toEqual(['NF 10111']);
+    expect(rotuloDoItem(razao.itens[2])).toBe('Pagamento 05/08/2026');
   });
-  it('Enviar para o cliente? Sim/Não por linha: só ela muda; todas com Sim é o todo; todas com Não, nada', () => {
-    const semB = definirItem(razao, undefined, b, false);
-    expect(semB).toEqual([a, c]);
-    expect(definirItem(razao, semB, b, true)).toBeUndefined();
-    const nada = definirItem(razao, definirItem(razao, semB, a, false), c, false);
-    expect(nada).toEqual([]);
-    expect(itensEscolhidos(razao, nada)).toEqual([]);
-    expect(linhasParaOTicket(razao, 0, '2026-08', [b]).map(l => l.nf)).toEqual(['10111']);
-  });
-  it('o ticket leva só o escolhido', () => {
-    expect(linhasParaOTicket(razao, 0, '2026-08', [b]).map(l => l.nf)).toEqual(['10111']);
-    expect(linhasParaOTicket(razao, 0, '2026-08').length).toBe(3);
+  it('o ticket leva só o adicionado', () => {
+    expect(linhasParaOTicket(razao, 0, '2026-08', [b, c]).map(l => l.nf)).toEqual(['10111', '—']);
   });
 });

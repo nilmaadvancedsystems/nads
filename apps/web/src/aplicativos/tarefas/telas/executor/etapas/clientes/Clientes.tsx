@@ -7,7 +7,6 @@ import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { useClientes, type FiltroClientes, type TelaClientes } from './useClientes';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../../comum/GradeDosMeses';
-import { OQuePerguntar } from './OQuePerguntar';
 
 type VM = ReturnType<typeof useClientes>;
 
@@ -157,8 +156,10 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                   {l.nome}{l.doMesAnterior && <> <span className="badge badge-neutral" title="Conferido no mês anterior: revise">do mês anterior</span></>}
                   {/* o razão que não bate com o balancete (as notas ficam na relação embaixo; Vitor, 07/10/2026) */}
                   {l.razao?.naoBate && <span className="hint ext-neg" style={{ display: 'block', marginTop: 2 }}>O razão fecha em {l.razao.naoBate}: confira se é desta conta</span>}
-                  {/* o conferido mostra o que vai para o Mandei e o "+" para escolher (Vitor, 07/10/2026: sem digitar) */}
-                  {l.situacao === 'conferido' && l.perguntar && <OQuePerguntar nome={l.nome} quem="cliente" vm={l.perguntar} desabilitado={!vm.carregado} onAlternar={ch => vm.alternarPergunta(l.codigo, ch)} />}
+                  {/* o conferido mostra o que vai para o cliente (o que foi adicionado no "+" de cada linha da relação; Vitor, 07/10/2026) */}
+                  {l.situacao === 'conferido' && (l.perguntar
+                    ? <span style={{ display: 'block', marginTop: 6 }}><span className="msg-balao" title="O que vai para o cliente responder no Mandei"><Icone nome="caixaEntrada" />{l.perguntar}</span></span>
+                    : <span className="hint" style={{ display: 'block', marginTop: 4 }}>Use o + nas linhas para perguntar ao cliente.</span>)}
                 </td>
                 <td>
                   {/* os selos do catálogo: o saldo (Diferença, SE-03), Conferido (SE-02) e Ok (SE-01), todos do sistema: o Ok é a conta
@@ -192,17 +193,24 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                     {/* a relação isolada: o cabeçalho fixo dela não passa por cima do menu "Perguntar" da linha de cima */}
                     <div className="table-wrap" style={{ isolation: 'isolate' }}>
                       <table className="table-compact">
-                        <thead><tr><th>Data</th><th>Nota fiscal</th><th>Descrição</th><th className="num">Valor</th><th>Status</th>{l.situacao === 'conferido' && <th className="num">Enviar para o cliente?</th>}</tr></thead>
+                        <thead><tr><th>Data</th><th>Nota fiscal</th><th>Descrição</th><th className="num">Valor</th><th>Status</th>{l.situacao === 'conferido' && <th className="num">Perguntar</th>}</tr></thead>
                         <tbody>
                           {l.razao.itens.map((i, k) => (
                             <tr key={k}><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td>{i.nf}</td><td className="wrap">{i.descricao}</td><td className={'num' + (i.abate ? ' ext-neg' : '')}>{i.valor}</td>
                               <td><span className={'badge ' + (i.status === 'aberto' ? 'badge-warn' : 'badge-neutral')}>{i.rotulo}</span></td>
-                              {/* Sim/Não por linha (Vitor, 07/10/2026): o selo do catálogo como botão, como o selo do saldo de antes; um clique troca */}
-                              {l.situacao === 'conferido' && <td className="num">{i.chave ? (
-                                <button type="button" className={'badge ' + (i.marcado ? 'badge-ok' : 'badge-neutral')} disabled={!vm.carregado} style={{ cursor: 'pointer' }}
-                                  onClick={() => vm.definirEnvio(l.codigo, i.chave, !i.marcado)}
-                                  title={i.marcado ? 'Vai para o cliente. Clique: Não' : 'Não vai para o cliente. Clique: Sim'}>{i.marcado ? 'Sim' : 'Não'}</button>
-                              ) : <span className="hint" title="Só do escritório">—</span>}</td>}</tr>
+                              {/* o "+" de cada linha (Vitor, 07/10/2026: "colocando esse + em cada linha"): adiciona ao que vai para o cliente;
+                                  adicionada, o check que vira × e tira (o mesmo botão da importação) */}
+                              {l.situacao === 'conferido' && <td className="num">{!i.chave ? <span className="hint" title="Só do escritório">—</span> : i.marcado ? (
+                                <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" disabled={!vm.carregado} onClick={() => vm.definirEnvio(l.codigo, i.chave, false)}
+                                  title="Vai para o cliente. Clique para tirar." aria-label={'Tirar ' + (i.nf !== '—' ? 'a NF ' + i.nf : 'o pagamento') + ' do que vai para o cliente'}>
+                                  <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
+                                </button>
+                              ) : (
+                                <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={!vm.carregado} onClick={() => vm.definirEnvio(l.codigo, i.chave, true)}
+                                  title="Perguntar ao cliente sobre esta linha" aria-label={'Perguntar ao cliente sobre ' + (i.nf !== '—' ? 'a NF ' + i.nf : 'o pagamento')}>
+                                  <Icone nome="plus" />
+                                </button>
+                              )}</td>}</tr>
                           ))}
                         </tbody>
                       </table>

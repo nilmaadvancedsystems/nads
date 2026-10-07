@@ -209,16 +209,14 @@ export function itensPerguntaveis(razao?: RazaoDaMarca): ItemDoRazao[] {
 }
 
 /**
- * Os itens escolhidos. Sem escolha (undefined), o cliente todo; a escolha vazia ([]), nada (todos com "Não": o cliente não
- * vai); a escolha que não existe mais no razão (o razão mudou), o cliente todo.
+ * Os itens que vão para o cliente: os que a pessoa adicionou no "+" de cada linha da relação (Vitor, 07/10/2026: "colocando
+ * esse + em cada linha"). Sem nada adicionado, nada vai (o Mandei é opcional); a chave que não existe mais no razão (o razão
+ * mudou) sai sozinha.
  */
 export function itensEscolhidos(razao: RazaoDaMarca | undefined, perguntar?: readonly string[]): ItemDoRazao[] {
-  const todos = itensPerguntaveis(razao);
-  if (!perguntar) return todos;
-  if (!perguntar.length) return [];
+  if (!perguntar?.length) return [];
   const escolha = new Set(perguntar);
-  const esses = todos.filter(i => escolha.has(chaveDoItem(i)));
-  return esses.length ? esses : todos;
+  return itensPerguntaveis(razao).filter(i => escolha.has(chaveDoItem(i)));
 }
 
 /** O nome curto de um item: "NF 9971", "Pagamento 20/08/2026" ou "Devolução 03/08/2026". */
@@ -227,30 +225,14 @@ export function rotuloDoItem(i: Pick<ItemDoRazao, 'data' | 'nf' | 'status'>): st
   return (i.status === 'devolucao' ? 'Devolução ' : 'Pagamento ') + (i.data ? dataBR(i.data) : '');
 }
 
-/**
- * Liga ou desliga um item na escolha. Do "cliente todo", escolher um item fica só com ele; desligar o último, ou ligar
- * todos, volta ao cliente todo (undefined).
- */
-export function alternarItem(razao: RazaoDaMarca | undefined, perguntar: readonly string[] | undefined, chave: string): string[] | undefined {
-  const todos = itensPerguntaveis(razao).map(chaveDoItem);
-  if (!todos.includes(chave)) return perguntar?.length ? [...perguntar] : undefined;
-  const atual = (perguntar || []).filter(c => todos.includes(c));
-  if (!atual.length) return [chave];
-  const novo = atual.includes(chave) ? atual.filter(c => c !== chave) : [...atual, chave];
-  return novo.length && novo.length < todos.length ? novo : undefined;
-}
-
-/**
- * O "Enviar para o cliente? Sim/Não" de cada linha da relação (Vitor, 07/10/2026): liga ou desliga só ela, sem mexer nas
- * outras. Todas com Sim voltam ao cliente todo (undefined); todas com Não ficam vazias ([]: o cliente não vai).
- */
+/** O "+" de uma linha: adiciona (sim) ou tira só ela. Sem nada, undefined. */
 export function definirItem(razao: RazaoDaMarca | undefined, perguntar: readonly string[] | undefined, chave: string, sim: boolean): string[] | undefined {
   const todos = itensPerguntaveis(razao).map(chaveDoItem);
-  if (!todos.includes(chave)) return perguntar ? [...perguntar] : undefined;
+  if (!todos.includes(chave)) return perguntar?.length ? [...perguntar] : undefined;
   const vao = new Set(itensEscolhidos(razao, perguntar).map(chaveDoItem));
   if (sim) vao.add(chave); else vao.delete(chave);
   const lista = todos.filter(c => vao.has(c));
-  return lista.length === todos.length ? undefined : lista;
+  return lista.length ? lista : undefined;
 }
 
 /** Uma linha para o formulário do cliente (o Mandei): data, nota fiscal, o que é, o valor, o tipo e a conta. */
