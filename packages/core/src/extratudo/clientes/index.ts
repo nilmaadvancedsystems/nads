@@ -161,7 +161,10 @@ function razaoGuardado(d: unknown): RazaoDaMarca | null {
     devolucoes: typeof o.devolucoes === 'number' ? o.devolucoes : 0,
     duplicadas: Array.isArray(o.duplicadas) ? o.duplicadas.filter((x): x is string => typeof x === 'string') : [],
     itens: Array.isArray(o.itens) ? (o.itens as Record<string, unknown>[]).filter(i => i && typeof i.descricao === 'string' && typeof i.valor === 'number')
-      .map(i => ({ data: typeof i.data === 'string' ? i.data : '', descricao: i.descricao as string, valor: i.valor as number })) : [],
+      .map(i => ({
+        data: typeof i.data === 'string' ? i.data : '', descricao: i.descricao as string, valor: i.valor as number,
+        status: i.status === 'aberto' || i.status === 'pagamento' || i.status === 'devolucao' ? i.status : (i.valor as number) > 0 ? 'aberto' as const : 'pagamento' as const,
+      })) : [],
   };
 }
 
@@ -198,14 +201,14 @@ export function planilhaParaCliente(linhas: readonly LinhaParaCliente[]): Uint8A
 export const TIPO_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 /**
- * As perguntas mais comuns para o cliente (Vitor, 07/10/2026), no menu da observação de quem vai para o cliente.
- * "Não achei pagamento" e "Qual banco recebeu?" viraram uma só.
+ * As perguntas mais comuns para o cliente (Vitor, 07/10/2026, com as palavras dele), no menu da observação de quem
+ * vai para o cliente.
  */
 export const OBJECOES_DO_CLIENTE = [
-  'Não encontramos o recebimento. Em qual banco ou conta o valor entrou?',
+  'Não encontrei, onde está esse valor?',
   'Foi pago em dinheiro?',
-  'O pagamento veio de outra empresa (outro CNPJ)?',
-  'O valor foi recebido na conta pessoal (pessoa física)?',
+  'O pagamento foi feito em outra conta?',
+  'O valor foi recebido na conta pessoal?',
   'Pode nos enviar a relação de recebimentos deste cliente?',
 ] as const;
 

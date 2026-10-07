@@ -52,7 +52,9 @@ type Tipo = 'venda' | 'recebimento' | 'devolucao' | 'outro';
 
 function tipoDe(l: LancamentoDoRazao): Tipo {
   if (/devolu/i.test(l.historico)) return 'devolucao';
-  if (/receb/i.test(l.historico) && l.valor > 0) return 'recebimento';
+  // todo crédito na conta do cliente que não é devolução é pagamento (o "Recebimento de clientes" e também a
+  // transferência ou o Pix solto, sem a nota: aparecem como "Apenas pagamento"; Vitor, 07/10/2026)
+  if (l.valor > 0) return 'recebimento';
   if (/venda/i.test(l.historico) && l.valor < 0) return 'venda';
   return 'outro';
 }
@@ -121,20 +123,27 @@ export interface RazaoDaMarca {
   itens: ItemDoRazao[];
 }
 
-/** Uma linha da relação: a data ('aaaa-mm-dd'), o que é e o valor (positivo = o cliente deve; negativo = abate). */
-export interface ItemDoRazao { data: string; descricao: string; valor: number }
+/**
+ * Uma linha da relação: a data ('aaaa-mm-dd'), o que é, o valor (positivo = o cliente deve; negativo = abate) e o status
+ * (Vitor, 07/10/2026): em aberto (a nota que o pagamento não fechou), apenas pagamento (transferência ou pagamento solto,
+ * sem a nota, ou a mais) e devolução.
+ */
+export interface ItemDoRazao { data: string; descricao: string; valor: number; status: StatusDoItem }
+export type StatusDoItem = 'aberto' | 'pagamento' | 'devolucao';
+export const ROTULO_DO_STATUS: Record<StatusDoItem, string> = { aberto: 'Em aberto', pagamento: 'Apenas pagamento', devolucao: 'Devolução' };
 
 const dataBR = (d: string) => d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4);
 const brl = reais;
 
 /** A relação em ordem de data: as notas em aberto, os recebimentos soltos (sem nota), as devoluções e as duplicidades. */
 function itensDoRazao(r: RazaoConferido): ItemDoRazao[] {
+  const item = (data: string, descricao: string, valor: number, status: StatusDoItem): ItemDoRazao => ({ data, descricao, valor, status });
   return [
-    ...r.emAberto.map(n => ({ data: n.data, descricao: 'NF ' + n.nf + ' em aberto' + (n.recebido ? ' (vendido ' + brl(n.vendido) + ', recebido ' + brl(n.recebido) + ')' : ''), valor: n.aberto })),
-    ...r.aMais.map(n => ({ data: n.data, descricao: 'NF ' + n.nf + ' recebida a mais', valor: n.aberto })),
-    ...r.semNota.map(x => ({ data: x.data, descricao: 'Recebimento sem nota: ' + x.historico, valor: centavos(-x.valor) })),
-    ...r.devolucoes.map(d => ({ data: d.data, descricao: 'Devolução' + (d.nf ? ' NF ' + d.nf : '') + (d.notas.length ? ' (cita NF ' + d.notas.join(', ') + ')' : ''), valor: centavos(-d.valor) })),
-    ...r.duplicados.map(d => ({ data: d.data, descricao: 'Recebimento em duplicidade' + (d.nf ? ' da NF ' + d.nf : '') + ': ' + d.contas.join(' e '), valor: centavos(d.valor) })),
+    ...r.emAberto.map(n => item(n.data, 'NF ' + n.nf + (n.recebido ? ' (vendido ' + brl(n.vendido) + ', recebido ' + brl(n.recebido) + ')' : ''), n.aberto, 'aberto')),
+    ...r.aMais.map(n => item(n.data, 'NF ' + n.nf + ' recebida a mais', n.aberto, 'pagamento')),
+    ...r.semNota.map(x => item(x.data, x.historico, centavos(-x.valor), 'pagamento')),
+    ...r.devolucoes.map(d => item(d.data, 'NF ' + (d.nf || '?') + (d.notas.length ? ' (cita NF ' + d.notas.join(', ') + ')' : ''), centavos(-d.valor), 'devolucao')),
+    ...r.duplicados.map(d => item(d.data, 'Recebimento em duplicidade' + (d.nf ? ' da NF ' + d.nf : '') + ': ' + d.contas.join(' e '), centavos(d.valor), 'pagamento')),
   ].sort((a, b) => a.data.localeCompare(b.data));
 }
 

@@ -319,6 +319,9 @@ a.btn,a.btn:hover{text-decoration:none;}
 table{border-collapse:collapse;width:100%;font-size:14px;}
 thead th{position:sticky;top:0;z-index:1;background:var(--surface-2);text-align:left;padding:8px 16px;font-weight:600;
   color:var(--ink-muted);font-size:12px;border-bottom:1px solid var(--border);white-space:nowrap;}
+/* o menu aberto numa linha da tabela rola junto com ela e passa por baixo do cabeçalho grudado (Vitor, 07/10/2026) */
+.table-wrap thead th{z-index:3;}
+.table-wrap tbody .popover{z-index:2;}
 tbody td{padding:8px 16px;border-top:1px solid var(--border-muted);font-variant-numeric:tabular-nums;vertical-align:middle;}
 tbody tr:first-child td{border-top:none;}
 tbody td.wrap{white-space:normal;}
@@ -2425,6 +2428,9 @@ html:not([data-animacoes=todas]) .modal-ok-barra{display:none;}
 .imp-meses th[scope="row"],.imp-meses thead th:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:12px;position:sticky;left:0;z-index:1;padding-left:12px;text-align:left;font-size:12px;font-weight:600;color:var(--ink-muted);background:var(--surface-2);}
 .imp-meses td{height:42px;}
 /* a alça da primeira coluna e o valor que perde o "R$" no mês estreito */
+/* o balão da mensagem para o cliente (Clientes: a observação do conferido) */
+.msg-balao{display:inline-flex;align-items:flex-start;gap:6px;max-width:100%;padding:6px 10px;border-radius:12px 12px 12px 4px;background:var(--surface-2);border:1px solid var(--border);font-size:13px;line-height:1.4;color:var(--ink);}
+.msg-balao svg{width:14px;height:14px;flex:none;margin-top:2px;color:var(--ink-muted);}
 .grade-alca{position:absolute;top:0;right:0;width:6px;height:100%;cursor:col-resize;z-index:2;touch-action:none;}
 .grade-alca:hover,.grade-alca:active{background:color-mix(in srgb, var(--accent) 35%, transparent);}
 .grade-valor{display:block;container-type:inline-size;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}

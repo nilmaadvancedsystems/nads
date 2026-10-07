@@ -176,15 +176,8 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                 </td>
                 <td className="wrap">
                   {l.nome}{l.doMesAnterior && <> <span className="badge badge-neutral" title="Conferido no mês anterior: revise">do mês anterior</span></>}
-                  {/* o que o razão achou: as notas em aberto (vão para o cliente), as devoluções e a duplicidade */}
-                  {l.razao && (
-                    <span className="hint" style={{ display: 'block', marginTop: 2 }}>
-                      {l.razao.notas ? 'Em aberto: ' + l.razao.notas : 'Nenhuma nota em aberto'}
-                      {l.razao.devolucoes && ' · Devoluções ' + l.razao.devolucoes}
-                      {l.razao.duplicadas && <> · <span className="ext-neg">Recebida em duplicidade: {l.razao.duplicadas}</span></>}
-                      {l.razao.naoBate && <> · <span className="ext-neg">O razão fecha em {l.razao.naoBate}</span></>}
-                    </span>
-                  )}
+                  {/* o razão que não bate com o balancete (as notas ficam na relação embaixo; Vitor, 07/10/2026) */}
+                  {l.razao?.naoBate && <span className="hint ext-neg" style={{ display: 'block', marginTop: 2 }}>O razão fecha em {l.razao.naoBate}: confira se é desta conta</span>}
                   {/* o conferido abre a observação (vai para o cliente) */}
                   {l.situacao === 'conferido' && <Observacao nome={l.nome} obs={l.obs} objecoes={vm.objecoes} desabilitado={!vm.carregado} onMudar={t => vm.observar(l.codigo, t)} />}
                 </td>
@@ -219,10 +212,11 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                   <td colSpan={3}>
                     <div className="table-wrap">
                       <table className="table-compact">
-                        <thead><tr><th>Data</th><th>Descrição</th><th className="num">Valor</th></tr></thead>
+                        <thead><tr><th>Data</th><th>Descrição</th><th className="num">Valor</th><th>Status</th></tr></thead>
                         <tbody>
                           {l.razao.itens.map((i, k) => (
-                            <tr key={k}><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td className="wrap">{i.descricao}</td><td className={'num' + (i.abate ? ' ext-neg' : '')}>{i.valor}</td></tr>
+                            <tr key={k}><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td className="wrap">{i.descricao}</td><td className={'num' + (i.abate ? ' ext-neg' : '')}>{i.valor}</td>
+                              <td><span className={'badge ' + (i.status === 'aberto' ? 'badge-warn' : 'badge-neutral')}>{i.rotulo}</span></td></tr>
                           ))}
                         </tbody>
                       </table>
@@ -254,7 +248,8 @@ function Observacao({ nome, obs, objecoes, desabilitado, onMudar }: {
   if (obs) {
     return (
       <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
-        <span className="hint">{obs}</span>
+        {/* a mensagem para o cliente no balão (Vitor, 07/10/2026: "um feedback visual de que é uma mensagem") */}
+        <span className="msg-balao" title="Mensagem para o cliente"><Icone nome="mensagem" />{obs}</span>
         <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" disabled={desabilitado} onClick={() => onMudar('')}
           title="Observação guardada. Clique para apagar." aria-label={'Apagar a observação de ' + nome}>
           <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
