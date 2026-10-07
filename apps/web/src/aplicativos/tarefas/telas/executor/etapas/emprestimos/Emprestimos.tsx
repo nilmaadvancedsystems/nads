@@ -2,7 +2,7 @@
 // Clientes): o importar em cima (vários razões de uma vez, um por contrato) e um bloco por empréstimo — o arquivo, o banco
 // no menu (já sugerido pelo razão), o check que tira, a grade com o saldo do fim de cada mês (devedor em vermelho) e a
 // faixa com os lançamentos.
-import { Alerta, Icone, MenuSuspenso } from '@nads/ui';
+import { Alerta, Icone, LogoBanco, MenuSuspenso } from '@nads/ui';
 import { useRef } from 'react';
 import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../../comum/GradeDosMeses';
@@ -13,7 +13,8 @@ function Emprestimo({ e, vm }: { e: VmEmprestimos['emprestimos'][number]; vm: Vm
   return (
     <div className={'imp-bloco' + (e.banco && !e.devedores.length ? ' imp-ok' : '')}>
       <div className="imp-linha">
-        <span className="imp-ico imp-logo"><Icone nome="landmark" /></span>
+        {/* o logo do banco escolhido (como na Importação); sem banco, o ícone */}
+        <span className="imp-ico imp-logo">{e.banco ? <LogoBanco banco={e.banco.marca} cor /> : <Icone nome="landmark" />}</span>
         <div className="imp-txt"><span><b>{e.banco ? e.banco.rotulo : 'Escolha o banco'}</b><span className="imp-conta">{e.arquivo}</span></span></div>
         <div className="imp-resumo"><div><span>{e.resumo}</span></div></div>
         <div className="imp-grupos">
