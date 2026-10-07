@@ -1,7 +1,7 @@
 // A conferência do INSS na etapa da folha, no desenho da Importação do banco (Vitor, 05/10/2026): a linha "INSS a recolher"
 // com o Razão (XLS) e as Guias (PDF dos comprovantes) à direita, a grade dos meses (provisão, guia, diferença, baixa; clicar
 // abre o mês) e as faixas Lançamentos sugeridos e Grupo a grupo; embaixo, o fechamento do saldo.
-import { Icone } from '@nads/ui';
+import { Icone, LogoInss } from '@nads/ui';
 import { useId, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import type { InssDaEtapa as Inss } from '../useInssDaEtapa';
@@ -58,7 +58,8 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha }: {
               title={aberta ? 'Recolher a conferência' : 'Abrir a conferência'} aria-label="A conferência do INSS" onClick={() => setAberta(a => !a)}>
               <Icone nome="caretDown" />
             </button>
-            <span className="imp-ico"><Icone nome="scale" /></span>
+            {/* o logo do INSS (Vitor, 07/10/2026): cinza até importar */}
+            <span className="imp-ico imp-logo"><LogoInss cor={inss.temRazao || inss.temGuias} /></span>
             <div className="imp-txt">
               <span><b>INSS a recolher</b>{inss.arquivoRazao && <span className="imp-conta">{inss.arquivoRazao}</span>}</span>
             </div>

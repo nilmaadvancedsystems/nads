@@ -232,3 +232,51 @@ export function LogoDrive({ cor }: { cor?: boolean }) {
   if (imagem) return <img src={imagem} alt="" aria-hidden="true" className={'logo-img app' + (cor ? '' : ' cinza')} />;
   return <Drive cor={cor} />;
 }
+
+/** Cinza até o arquivo ser importado, como os logos dos bancos. */
+const cinzaSeNao = (cor?: boolean) => (cor ? undefined : { filter: 'grayscale(1)', opacity: 0.75 });
+
+/**
+ * O logo do INSS (Vitor, 07/10/2026), desenhado a partir da imagem que ele mandou: o oval branco, a meia-lua verde à
+ * esquerda, a amarela à direita e o globo azul de quadradinhos no meio.
+ */
+export function LogoInss({ cor }: { cor?: boolean }) {
+  const quadros: [number, number, number][] = [];
+  // o globo: quadradinhos numa grade, menores perto da borda (a esfera)
+  for (let l = -3; l <= 3; l++) {
+    for (let c = -3; c <= 3; c++) {
+      const d = Math.hypot(l, c);
+      if (d > 3.4) continue;
+      const lado = 3.6 * (1 - d / 6);
+      quadros.push([50 + c * 4.6 - lado / 2, 35 + l * 4.6 - lado / 2, lado]);
+    }
+  }
+  return (
+    <svg viewBox="0 0 100 70" width="100%" height="100%" aria-hidden="true" style={cinzaSeNao(cor)}>
+      <ellipse cx="50" cy="35" rx="48" ry="32" fill="#fff" stroke="#d9dde3" strokeWidth="1.5" />
+      <path fill="#0A9B3A" d="M40 8 C18 12 6 26 8 40 C10 54 26 62 46 62 C30 54 26 46 30 38 C34 30 30 20 40 8 Z" />
+      <path fill="#F6BE2C" d="M60 8 C80 10 94 22 92 36 C90 50 76 60 56 62 C70 54 74 46 70 38 C66 30 70 20 60 8 Z" />
+      {quadros.map(([x, y, s], i) => <rect key={i} x={x} y={y} width={s} height={s} rx={0.6} fill="#1D5BBF" />)}
+    </svg>
+  );
+}
+
+/** O logo do FGTS (Vitor, 07/10/2026): as letras em verde e, no F, a bandeirinha (o triângulo amarelo e o azul). */
+export function LogoFgts({ cor }: { cor?: boolean }) {
+  return (
+    <svg viewBox="0 0 120 34" width="100%" height="100%" aria-hidden="true" style={cinzaSeNao(cor)}>
+      {/* o F: a barra de cima e o canto com a bandeirinha */}
+      <path fill="#0A9B3A" d="M2 4 H28 V10 H10 L2 18 Z" />
+      <path fill="#0A9B3A" d="M2 18 L10 10 V30 H2 Z" />
+      <path fill="#F6D21C" d="M10 12 V28 L4 28 Z" />
+      <path fill="#1C86E0" d="M10 18 A6 6 0 0 0 6 28 H10 Z" />
+      <path fill="#0A9B3A" d="M10 15 H24 V21 H10 Z" />
+      {/* G */}
+      <path fill="none" stroke="#0A9B3A" strokeWidth="6" d="M58 7 H38 V27 H55 V19 H48" />
+      {/* T */}
+      <path fill="none" stroke="#0A9B3A" strokeWidth="6" d="M62 7 H88 M75 7 V30" />
+      {/* S */}
+      <path fill="none" stroke="#0A9B3A" strokeWidth="6" d="M117 7 H96 V17 H114 V27 H92" />
+    </svg>
+  );
+}
