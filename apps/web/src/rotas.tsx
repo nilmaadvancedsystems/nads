@@ -15,6 +15,7 @@ import { rotasConciliadorzinho } from './aplicativos/conciliadorzinho/rotas';
 import { rotasConversor } from './aplicativos/conversor/rotas';
 import { rotasExtratudo } from './aplicativos/extratudo/rotas';
 import { rotasTarefas } from './aplicativos/tarefas/rotas';
+import { rotasMandei } from './aplicativos/mandei/rotas';
 
 const APLICATIVOS: Record<string, { nome: string; rotas: RouteObject[]; raiz: string }> = {
   'concilia-ai': { nome: 'Concilia aí', rotas: rotasConciliaAi, raiz: '/' },
@@ -24,9 +25,11 @@ const APLICATIVOS: Record<string, { nome: string; rotas: RouteObject[]; raiz: st
   extratudo: { nome: 'Extratudo', rotas: rotasExtratudo, raiz: '/extratudo' },
   // extrato do banco → .xls no layout do escritório, num link à parte e sem banco de dados (Vitor, 06/10/2026)
   conversor: { nome: 'Conversor', rotas: rotasConversor, raiz: '/conversor' },
+  // o formulário do cliente (o link do ticket do Mandei, Vitor, 07/10/2026), num site próprio
+  mandei: { nome: 'Mandei', rotas: rotasMandei, raiz: '/mandei' },
   // a Tarefas leva junto o Extratudo e a Conferência (a etapa Conferência fiscal): as ferramentas da etapa abrem
   // no mesmo endereço (o login do Entregas fica guardado no navegador; em outro endereço, dentro do iframe, o Brave apaga)
-  tarefas: { nome: 'Tarefas', rotas: [...rotasTarefas, ...rotasExtratudo, ...rotasConciliaAiNaTarefa], raiz: '/tarefas' },
+  tarefas: { nome: 'Tarefas', rotas: [...rotasTarefas, ...rotasExtratudo, ...rotasConciliaAiNaTarefa, ...rotasMandei], raiz: '/tarefas' },
 };
 
 const so = APLICATIVOS[import.meta.env.VITE_APLICATIVO || ''];
@@ -37,6 +40,7 @@ export const roteador = createBrowserRouter(so
   : [
     ...rotasConciliadorzinho,
     ...rotasConversor,
+    ...rotasMandei,
     ...rotasComponentes,
     ...rotasExtratudo,
     ...rotasTarefas,

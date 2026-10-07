@@ -53,6 +53,25 @@ describe('o DP no cadastro da empresa (responsáveis e parâmetros)', () => {
     expect(clienteDoDpNoCadastro(base, volta).obrigacoes).toEqual(base.obrigacoes);
     expect(lido.historico.length).toBe(2);
   });
+  it('por competência: vale dela em diante, até a próxima; desfazer tira só aquela', async () => {
+    const { cadastroVazio, definirParametrosDp, documentoDoCadastro, cadastroDoDocumento, voltarDpAPlanilha } = await import('../../empresas/cadastro/regras');
+    const { clienteDoDpNoCadastro } = await import('../../empresas/dp');
+    const base = CLIENTES_DO_DP.find(c => c.movimento === 'Folha')!;
+    const d = new Date('2026-10-07T12:00:00Z');
+    let c = cadastroVazio(base.nome, base.codigo);
+    c = definirParametrosDp(c, { movimento: 'Sem Movimento' }, 'Vitor', d, '2026-11');
+    c = definirParametrosDp(c, { movimento: 'Pró-Labore', entrega: 'Malote' }, 'Vitor', d, '2027-02');
+    c = cadastroDoDocumento(base.nome, base.codigo, documentoDoCadastro(c));
+    expect(clienteDoDpNoCadastro(base, c, '2026-10').movimento).toBe('Folha');
+    expect(clienteDoDpNoCadastro(base, c, '2026-11').movimento).toBe('Sem Movimento');
+    expect(clienteDoDpNoCadastro(base, c, '2027-01').movimento).toBe('Sem Movimento');
+    expect(clienteDoDpNoCadastro(base, c, '2027-03').movimento).toBe('Pró-Labore');
+    expect(clienteDoDpNoCadastro(base, c, '2027-03').entrega).toBe('Malote');
+    expect(c.historico[0].detalhe).toContain('a partir de 02/2027');
+    const sem = voltarDpAPlanilha(c, 'Vitor', d, '2026-11');
+    expect(clienteDoDpNoCadastro(base, sem, '2027-01').movimento).toBe('Folha');
+    expect(clienteDoDpNoCadastro(base, voltarDpAPlanilha(c, 'Vitor', d), '2027-03').movimento).toBe('Folha');
+  });
 });
 
 describe('a transferência de responsável (com o aceite do emitente e do destinatário)', () => {

@@ -56,7 +56,7 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
   const { execucoes, carregada } = useExecucoes(competencia, 'dp');
   const porNome = new Map(execucoes.map(e => [e.empresa, e]));
-  const doDp = useClientesDoDp();
+  const doDp = useClientesDoDp(competencia);
 
   const [busca, setBusca] = useState('');
   const [responsavel, setResponsavel] = useState('');

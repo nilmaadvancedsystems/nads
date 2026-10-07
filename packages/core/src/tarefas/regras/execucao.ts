@@ -31,8 +31,7 @@ export function etapaNoMes(ex: Execucao | null, etapa: string): boolean {
   if (e && ex) {
     const regime = regimeDaEmpresa(ex.codigo);
     if (e.regimes && regime && !e.regimes.includes(regime)) return false;
-    const mes = Number(ex.competencia.slice(5, 7));
-    if (e.meses && mes && !e.meses.includes(mes)) return false;
+    if (!etapaNoMesDoAno(e, ex.competencia)) return false;
     // o DP (06/10/2026): só as obrigações que a empresa tem na planilha do DP (fora dela, entra)
     const dp = e.obrigacaoDp ? clienteDoDp(ex.codigo) : null;
     if (dp && e.obrigacaoDp === 'envio' && !dp.obrigacoes.length) return false;
@@ -40,6 +39,15 @@ export function etapaNoMes(ex: Execucao | null, etapa: string): boolean {
     if (dp && e.obrigacaoDp && e.obrigacaoDp !== 'envio' && e.obrigacaoDp !== 'reinf' && !dp.obrigacoes.includes(e.obrigacaoDp)) return false;
   }
   return true;
+}
+
+/**
+ * A etapa existe nesta competência pelo mês do ano (Etapa.meses)? O Estoque só em dezembro, as apurações trimestrais só
+ * em março, junho, setembro e dezembro. Fora do mês a etapa some da tela (Vitor, 07/10/2026: "não vai ter essa etapa").
+ */
+export function etapaNoMesDoAno(etapa: Pick<Etapa, 'meses'>, competencia: string): boolean {
+  const mes = Number(competencia.slice(5, 7));
+  return !etapa.meses || !mes || etapa.meses.includes(mes);
 }
 
 export function execucaoNova(empresa: string, codigo: number | null, competencia: string, departamento: Departamento): Execucao {

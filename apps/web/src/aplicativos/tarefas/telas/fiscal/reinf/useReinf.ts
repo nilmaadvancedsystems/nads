@@ -40,7 +40,7 @@ export function useReinf() {
   const [filtro, setFiltro] = useState<Filtro>('todas');
   // a REINF do DP do mesmo mês (a aba REINF do Painel do DP lê a etapa dp-reinf da execução do DP)
   const dp = useExecucoes(competencia, 'dp');
-  const doDp = useClientesDoDp();
+  const doDp = useClientesDoDp(competencia);
   function marcarNoDp(codigo: number, desfazer: boolean): string {
     const c = doDp.clientes.find(x => x.codigo === codigo);
     if (!c || !dp.carregada) return '';

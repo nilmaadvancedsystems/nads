@@ -122,13 +122,21 @@ export const DEPARTAMENTOS_DO_RESPONSAVEL: readonly { id: DepartamentoDoResponsa
 ];
 
 /** Os parâmetros do DP de uma empresa (Configurações do DP): só os que foram mudados. */
-export interface ParametrosDoDp {
+export interface ParametrosDoDpDoMes {
   movimento?: string;
   /** as obrigações do mês (recibos, folha, s1200, s1210, s1299, dctfweb, darf, fgts) */
   obrigacoes?: string[];
   reinfAutorizada?: boolean;
   entrega?: string;
   agrupamento?: string;
+}
+
+/**
+ * Os parâmetros do DP: os de sempre e os por competência (Vitor, 07/10/2026: "configurações por competência"). Cada
+ * competência (AAAA-MM) vale dela em diante, até a próxima que mudar o mesmo campo.
+ */
+export interface ParametrosDoDp extends ParametrosDoDpDoMes {
+  porCompetencia?: Record<string, ParametrosDoDpDoMes>;
 }
 
 /**
