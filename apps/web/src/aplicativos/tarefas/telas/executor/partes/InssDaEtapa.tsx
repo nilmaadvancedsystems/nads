@@ -7,6 +7,8 @@ import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import type { InssDaEtapa as Inss } from '../useInssDaEtapa';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../comum/BotaoDeTeste';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosMeses';
+import { useRazaoDaFolha } from '../useRazaoDaFolha';
+import { RazaoDaFolha } from './RazaoDaFolha';
 
 const BAIXA: Record<Inss['meses'][number]['baixa'], string> = { ok: '✓', falta: 'Falta', depois: 'Depois', fora: '—', 'sem-guia': '—' };
 
@@ -34,9 +36,18 @@ export function InssDaEtapa({ inss, conferir, teste = [] }: { inss: Inss; confer
   const idGuias = useId();
   const [aberta, setAberta] = useState(true);
   const grade = useColunaAjustavel('inss', '96px', inss.meses.length);
+  // Salários a pagar e FGTS a recolher: só o razão de cada um (Vitor, 07/10/2026)
+  const salarios = useRazaoDaFolha('salarios', inss.chave, inss.periodo);
+  const fgts = useRazaoDaFolha('fgts', inss.chave, inss.periodo);
+  // o ⚡ de cada coisa a importar: o razão e as guias do INSS separados (para testar as guias também)
+  const dev = teste.length > 0;
+  const testeRazao: ItemDeTeste[] = dev ? [{ rotulo: 'Razão do INSS de teste', onClick: inss.implantarRazaoDeTeste }] : [];
+  const testeGuias: ItemDeTeste[] = dev ? [{ rotulo: 'Guias do INSS de teste', onClick: inss.implantarGuiasDeTeste }] : [];
   return (
     <div className="executor-razao">
       <div className="imp-lista">
+        {/* na ordem do nome da etapa: Salários, INSS e FGTS */}
+        <RazaoDaFolha vm={salarios} dev={dev} />
         <div className="imp-bloco">
           <div className="imp-linha">
             <button type="button" className={'imp-seta' + (aberta ? ' aberta' : '')} aria-expanded={aberta} disabled={!inss.pronto}
@@ -52,12 +63,12 @@ export function InssDaEtapa({ inss, conferir, teste = [] }: { inss: Inss; confer
               <div className="imp-grupo" aria-label="Razão do INSS a recolher">
                 <span className="imp-rotulo">Razão</span>
                 {inss.temRazao ? <Importado titulo="o razão do INSS" onExcluir={inss.removerRazao} />
-                  : <><BotaoDeTeste itens={teste} /><Importar id={idRazao} titulo="o razão do INSS a recolher (XLS da conciliação do Alterdata)" aceitar=".xls,.xlsx,.ods" onArquivos={fs => { void inss.importarRazao(fs[0] || null); }} /></>}
+                  : <><BotaoDeTeste itens={testeRazao} /><Importar id={idRazao} titulo="o razão do INSS a recolher (XLS da conciliação do Alterdata)" aceitar=".xls,.xlsx,.ods" onArquivos={fs => { void inss.importarRazao(fs[0] || null); }} /></>}
               </div>
               <div className="imp-grupo" aria-label="Guias do INSS">
                 <span className="imp-rotulo">Guias</span>
                 {inss.temGuias ? <Importado titulo="as guias do INSS" onExcluir={inss.removerGuias} />
-                  : <Importar id={idGuias} titulo="as guias do INSS (PDF dos comprovantes de arrecadação)" aceitar=".pdf" varios lendo={inss.lendo} onArquivos={fs => { void inss.importarGuias(fs); }} />}
+                  : <><BotaoDeTeste itens={testeGuias} /><Importar id={idGuias} titulo="as guias do INSS (PDF dos comprovantes de arrecadação)" aceitar=".pdf" varios lendo={inss.lendo} onArquivos={fs => { void inss.importarGuias(fs); }} /></>}
               </div>
             </div>
           </div>
@@ -155,13 +166,14 @@ export function InssDaEtapa({ inss, conferir, teste = [] }: { inss: Inss; confer
             </>
           )}
         </div>
+        <RazaoDaFolha vm={fgts} dev={dev} />
       </div>
-      {!inss.pronto && (
+      {!inss.pronto && !inss.temRazao && !inss.temGuias && !salarios.temRazao && !fgts.temRazao && (
         <div className="gh-blank">
           <Icone nome="checklist" />
           <h4>O que conferir</h4>
           {conferir && <ul className="executor-conferir">{conferir.map(x => <li key={x}>{x}</li>)}</ul>}
-          <p>Para conferir o INSS, importe o razão do INSS a recolher e o PDF das guias pagas nos ícones acima. Os dois são opcionais.</p>
+          <p>Importe nos ícones acima o razão de Salários a pagar e do FGTS a recolher (fica credor ou zera) e, para conferir o INSS, o razão do INSS a recolher e o PDF das guias pagas. Todos são opcionais.</p>
         </div>
       )}
     </div>
