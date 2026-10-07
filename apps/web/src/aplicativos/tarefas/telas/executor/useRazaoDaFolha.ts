@@ -6,7 +6,7 @@ import { formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 
-const NOME: Record<t.ContaDaFolha, string> = { salarios: 'Salários a pagar', fgts: 'FGTS a recolher' };
+const NOME: Record<t.ContaDaFolha, string> = { salarios: 'Salários a pagar', fgts: 'FGTS a recolher', prolabore: 'Pró-labore a pagar' };
 
 export function useRazaoDaFolha(conta: t.ContaDaFolha, chave: string, meses: readonly string[]) {
   const { aviso } = useRetorno();
@@ -26,7 +26,7 @@ export function useRazaoDaFolha(conta: t.ContaDaFolha, chave: string, meses: rea
   // o passivo fica credor ou zera: o errado é o devedor (a mesma regra do Adiantamento de clientes)
   const devedores = t.mesesErrados(doPeriodo, 'clientes');
   // Salários tem que zerar (Vitor, 07/10/2026): a folha de antes paga no mês; a sobra trava
-  const sobras = conta === 'salarios' ? t.sobrasDaFolha(doPeriodo) : [];
+  const sobras = t.CONTAS_QUE_ZERAM.includes(conta) ? t.sobrasDaFolha(doPeriodo) : [];
   return {
     conta, nome: NOME[conta],
     temRazao: !!r, arquivo: r?.arquivo || '',
@@ -35,7 +35,7 @@ export function useRazaoDaFolha(conta: t.ContaDaFolha, chave: string, meses: rea
     teste: [
       { rotulo: NOME[conta] + ' de teste (credor e zerando)', onClick: () => setRazao({ chave, arquivo: 'TESTE razão de ' + NOME[conta] + '.xls', razao: t.razaoDaFolhaDeTeste(meses, conta, false) }) },
       { rotulo: NOME[conta] + ' de teste (com mês devedor)', onClick: () => setRazao({ chave, arquivo: 'TESTE razão de ' + NOME[conta] + '.xls', razao: t.razaoDaFolhaDeTeste(meses, conta, 'devedor') }) },
-      ...(conta === 'salarios' ? [{ rotulo: NOME[conta] + ' de teste (folha que não zerou)', onClick: () => setRazao({ chave, arquivo: 'TESTE razão de ' + NOME[conta] + '.xls', razao: t.razaoDaFolhaDeTeste(meses, conta, 'sobra') }) }] : []),
+      ...(t.CONTAS_QUE_ZERAM.includes(conta) ? [{ rotulo: NOME[conta] + ' de teste (não zerou)', onClick: () => setRazao({ chave, arquivo: 'TESTE razão de ' + NOME[conta] + '.xls', razao: t.razaoDaFolhaDeTeste(meses, conta, 'sobra') }) }] : []),
     ],
     resumo: r ? [
       doPeriodo.reduce((n, m) => n + m.lancamentos.length, 0) + ' lançamentos',
@@ -45,7 +45,7 @@ export function useRazaoDaFolha(conta: t.ContaDaFolha, chave: string, meses: rea
     ] : [],
     ok: !!r && !devedores.length && !sobras.length,
     /** o razão é obrigatório (Salários) */
-    obrigatorio: conta === 'salarios',
+    obrigatorio: t.CONTAS_QUE_ZERAM.includes(conta),
     devedores: devedores.map(t.rotuloNumericoCompetencia),
     /** os meses em que a folha de antes não foi paga toda: o mês e quanto sobrou */
     sobras: sobras.map(x => ({ mes: t.rotuloNumericoCompetencia(x.mes), valor: formatos.reais(x.sobra) })),

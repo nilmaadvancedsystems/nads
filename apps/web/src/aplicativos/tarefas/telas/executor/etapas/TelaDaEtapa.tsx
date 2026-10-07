@@ -8,6 +8,7 @@ import { Clientes } from './clientes/Clientes';
 import { Emprestimos } from './emprestimos/Emprestimos';
 import { Fornecedores } from './fornecedores/Fornecedores';
 import { Salarios } from './salarios/Salarios';
+import { ProLabore } from './prolabore/ProLabore';
 
 export function TelaDaEtapa({ id }: { id: tarefas.TelaDaEtapa }) {
   switch (id) {
@@ -19,5 +20,6 @@ export function TelaDaEtapa({ id }: { id: tarefas.TelaDaEtapa }) {
     case 'bens': return <Bens />;
     case 'emprestimos': return <Emprestimos />;
     case 'salarios': return <Salarios />;
+    case 'pro-labore': return <ProLabore />;
   }
 }

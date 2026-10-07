@@ -87,7 +87,16 @@ export function inssDeTeste(meses: readonly string[]): { razao: RazaoDaConta; gu
 }
 
 /** Uma conta do passivo da folha com o razão próprio na etapa Salários, INSS e FGTS (Vitor, 07/10/2026). */
-export type ContaDaFolha = 'salarios' | 'fgts';
+export type ContaDaFolha = 'salarios' | 'fgts' | 'prolabore';
+
+/** As contas que têm de zerar (a obrigação do mês de antes paga no mês): Salários e Pró-labore (Vitor, 07/10/2026). */
+export const CONTAS_QUE_ZERAM: readonly ContaDaFolha[] = ['salarios', 'prolabore'];
+
+const TEXTO_DA_FOLHA: Record<ContaDaFolha, { base: number; contra: string; nome: string; paga: string; entra: string }> = {
+  salarios: { base: 12480.5, contra: '41201', nome: 'Salários e ordenados', paga: 'Pagamento dos salários de ', entra: 'Folha de pagamento de ' },
+  fgts: { base: 1004.2, contra: '41205', nome: 'FGTS', paga: 'Pagamento do FGTS de ', entra: 'FGTS sobre a folha de ' },
+  prolabore: { base: 3036, contra: '41210', nome: 'Pró-labore', paga: 'Pagamento do pró-labore de ', entra: 'Pró-labore de ' },
+};
 
 /**
  * O razão de teste de Salários a pagar ou do FGTS a recolher (o ⚡): a folha (ou a guia) do mês entra a crédito e é paga
@@ -96,7 +105,8 @@ export type ContaDaFolha = 'salarios' | 'fgts';
  */
 export function razaoDaFolhaDeTeste(meses: readonly string[], conta: ContaDaFolha, erro: boolean | 'devedor' | 'sobra'): RazaoDaConta {
   const comDevedor = erro === true || erro === 'devedor';
-  const base = conta === 'salarios' ? 12480.5 : 1004.2;
+  const x = TEXTO_DA_FOLHA[conta];
+  const base = x.base;
   const porMes = meses.map((mes, i) => {
     const valor = centavos(base + i * 137.35);
     const anterior = i > 0 ? centavos(base + (i - 1) * 137.35) : 0;
@@ -104,8 +114,8 @@ export function razaoDaFolhaDeTeste(meses: readonly string[], conta: ContaDaFolh
     const pago = comDevedor && i === meses.length - 1 ? centavos(anterior + valor + 850)
       : erro === 'sobra' && i === meses.length - 1 ? centavos(anterior - 640) : anterior;
     const linhas: Linha[] = [];
-    if (i > 0) linhas.push([5, '10503', 'Banco Sicoob', -pago, conta === 'salarios' ? 'Pagamento dos salários de ' + mesBR(meses[i - 1]) : 'Pagamento do FGTS de ' + mesBR(meses[i - 1])]);
-    linhas.push([28, conta === 'salarios' ? '41201' : '41205', conta === 'salarios' ? 'Salários e ordenados' : 'FGTS', valor, conta === 'salarios' ? 'Folha de pagamento de ' + mesBR(mes) : 'FGTS sobre a folha de ' + mesBR(mes)]);
+    if (i > 0) linhas.push([5, '10503', 'Banco Sicoob', -pago, x.paga + mesBR(meses[i - 1])]);
+    linhas.push([28, x.contra, x.nome, valor, x.entra + mesBR(mes)]);
     return { mes, linhas };
   });
   return montar(porMes, 0);

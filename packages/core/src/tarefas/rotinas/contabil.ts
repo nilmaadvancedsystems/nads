@@ -283,6 +283,8 @@ export const ROTINA_CONTABIL: Rotina = {
       nome: 'Pró-labore',
       descricao: 'O pró-labore a pagar recebe a despesa do mês e zera no pagamento.',
       ferramenta: null,
+      // só o razão do Pró-labore a pagar: obrigatório e tem que zerar (Vitor, 07/10/2026)
+      tela: { id: 'pro-labore', periodo: true },
       verificacao: 'manual',
       conferir: [
         'O crédito do mês no pró-labore a pagar é igual à despesa de pró-labore.',
