@@ -183,6 +183,17 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
       limpar: () => { setBusca(''); setResponsavel(''); setMovimento(''); setEnquadramento(''); setStatus(''); setAgrupamento(''); },
     },
     /** a bolinha da obrigação: a fazer → feita; feita → volta a fazer (grava com quem e quando, como o executor) */
+    /** o total da folha do mês que o DP informou (o Fiscal vê ao lado do faturamento; Vitor, 07/10/2026) */
+    folhaDe: (codigo: number): number | null => todas.find(x => x.codigo === codigo)?.ex?.valores?.folha ?? null,
+    /** o DP informa o total da folha do mês do cliente (fica na execução do DP: valores.folha) */
+    informarFolha(codigo: number, valor: number) {
+      if (!carregada || !doDp.carregado) return;
+      const c = todas.find(x => x.codigo === codigo);
+      if (!c) return;
+      const ex = c.ex || t.execucaoNova(c.nomeNaTela, c.codigo, competencia, 'dp');
+      const r = t.informarValor(ex, 'dp-folha', 'folha', valor, op.nome, new Date());
+      repo.gravar(r.execucao, r.evento);
+    },
     alternar(codigo: number, etapa: string) {
       if (!carregada || !doDp.carregado) return;
       const c = todas.find(x => x.codigo === codigo);

@@ -3,9 +3,36 @@
 // do mês; as barras por responsável, enquadramento e movimento; o progresso de cada responsável; e a lista dos clientes
 // com as obrigações do mês (– não tem, vazio a fazer, ✓ feita, ! parada). Tudo roda aqui: clicar na bolinha marca a
 // obrigação como feita, clicar de novo desfaz (sem o checklist).
+import { formatos } from '@nads/core';
 import { Esqueleto, Icone, Segmentado, useCarregando } from '@nads/ui';
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
 import { usePainelDoDp, type AbaDoPainel, type Agrupar, type EstadoDaObrigacao } from './usePainelDoDp';
+
+/**
+ * O total da folha do mês na linha do cliente (Vitor, 07/10/2026: "trazer quanto é gasto em folha do DP"): mostra o valor
+ * (ou "Informar"); um clique abre o campo; Enter grava, Esc desiste. O Fiscal vê ao lado do faturamento.
+ */
+function FolhaNaLinha({ valor, informar, travado }: { valor: number | null; informar: (v: number) => void; travado: boolean }) {
+  const [texto, setTexto] = useState<string | null>(null);
+  if (texto == null) {
+    return (
+      <button type="button" className="btn btn-ghost dp-folha" disabled={travado} title="O total da folha do mês (salários, pró-labore e encargos)"
+        onClick={() => setTexto(valor != null ? valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '')}>
+        {valor != null ? <span className="num">{formatos.reais(valor)}</span> : <span className="fraco">Informar</span>}
+      </button>
+    );
+  }
+  const gravar = () => {
+    const v = Number(texto.replace(/\./g, '').replace(',', '.'));
+    if (texto.trim() !== '' && Number.isFinite(v) && v >= 0) informar(v);
+    setTexto(null);
+  };
+  return (
+    <input className="field dp-folha-campo" autoFocus inputMode="decimal" value={texto} aria-label="Total da folha do mês"
+      onChange={e => setTexto(e.target.value)} onBlur={gravar}
+      onKeyDown={e => { if (e.key === 'Enter') gravar(); if (e.key === 'Escape') setTexto(null); }} />
+  );
+}
 
 const MARCA: Record<EstadoDaObrigacao, { simbolo: string; dica: string }> = {
   'nao-tem': { simbolo: '–', dica: 'não tem no mês' },
@@ -121,12 +148,12 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
                 <table className="dp-tabela">
                   <thead>
                     <tr className="dp-cabeca-grupo">
-                      <th colSpan={3} />
+                      <th colSpan={4} />
                       {vm.gruposDeColunas.map(g => <th key={g.rotulo} colSpan={g.colunas} className="dp-ob-grupo dp-ob-primeira">{g.rotulo}</th>)}
                       <th />
                     </tr>
                     <tr>
-                      <th>Cód.</th><th>Cliente</th><th>Responsável</th>
+                      <th>Cód.</th><th>Cliente</th><th>Responsável</th><th className="num" title="O total da folha do mês (o Fiscal vê ao lado do faturamento)">Folha do mês</th>
                       {vm.colunas.map(o => <th key={o.id} className={'dp-ob' + (vm.primeiras.has(o.id) ? ' dp-ob-primeira' : '')} title={o.nome}>{o.rotulo}</th>)}
                       <th>Situação</th>
                     </tr>
@@ -134,12 +161,15 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
                   <tbody>
                     {vm.grupos.map(g => (
                       <Fragment key={g.nome || 'todos'}>
-                        {g.nome && <tr className="dp-grupo"><td colSpan={4 + vm.colunas.length}>{g.nome} <span className="hint">{g.feitas}/{g.linhas.length} concluídos</span></td></tr>}
+                        {g.nome && <tr className="dp-grupo"><td colSpan={5 + vm.colunas.length}>{g.nome} <span className="hint">{g.feitas}/{g.linhas.length} concluídos</span></td></tr>}
                         {g.linhas.map(c => (
                           <tr key={c.chave} className={'dp-linha' + (c.concluida ? ' feita' : '')}>
                             <td className="num fraco">{c.codigo}</td>
                             <td className="dp-cliente"><span className="dp-cliente-nome" title={c.nomeNaTela}>{c.nomeNaTela}</span></td>
                             <td>{c.responsavel ? c.responsavelNome : <span className="fraco">—</span>}</td>
+                            <td className="num">{c.obrigacoes.some(o => o.id === 'folha' && o.estado !== 'nao-tem')
+                              ? <FolhaNaLinha valor={vm.folhaDe(c.codigo)} informar={v => vm.informarFolha(c.codigo, v)} travado={vm.carregando} />
+                              : <span className="fraco">—</span>}</td>
                             {c.obrigacoes.map(o => (
                               <td key={o.id} className={'dp-ob' + (vm.primeiras.has(o.id) ? ' dp-ob-primeira' : '')}>
                                 {o.estado === 'nao-tem' ? <span className="dp-marca nao-tem" title="não tem no mês">–</span> : (

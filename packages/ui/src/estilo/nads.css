@@ -3149,6 +3149,9 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .troca-nome{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .troca-pe{display:flex;align-items:center;gap:8px;}
 @media (max-width:760px){.troca-corpo{grid-template-columns:1fr;}.troca-meio{display:none;}}
+/* DP › Obrigações: o total da folha do mês na linha (07/10/2026) */
+.dp-tabela .dp-folha{padding:0 6px;white-space:nowrap;}
+.dp-tabela .dp-folha-campo{width:110px;text-align:right;}
 .troca-escolher{align-self:flex-start;min-width:200px;justify-content:space-between;}
 /* A foto antes do nome (07/10/2026): a da lista de Usuários, pequena */
 .usuarios-foto.foto-mini{width:20px;height:20px;font-size:9px;flex:none;}
