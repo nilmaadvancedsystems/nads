@@ -1,6 +1,6 @@
 // A conferência do INSS na etapa da folha, no desenho da Importação do banco (Vitor, 05/10/2026): a linha "INSS a recolher"
 // com o Razão (XLS) e as Guias (PDF dos comprovantes) à direita, a grade dos meses (provisão, guia, diferença, baixa; clicar
-// abre o mês) e as faixas Lançamentos sugeridos e Grupo a grupo; embaixo, o fechamento do saldo.
+// abre o mês) e a faixa Lançamentos sugeridos (o Grupo a grupo saiu: Vitor, 07/10/2026); embaixo, o fechamento do saldo.
 import { Icone, LogoInss } from '@nads/ui';
 import { useId, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
@@ -158,27 +158,6 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha }: {
                   {inss.pagamentosSemGuia.length > 0 && (
                     <p className="hint">Pagamentos no razão sem guia com o mesmo valor: {inss.pagamentosSemGuia.join(' · ')}</p>
                   )}
-                </div>
-              </FaixaQueAbre>
-              <FaixaQueAbre titulo="Grupo a grupo" qtd={inss.grupos.filter(x => !x.bate).length} aviso={inss.grupos.some(x => !x.bate)}>
-                <div className="imp-mov-caixa">
-                  <span className="imp-mov-periodo">Mostrando {inss.mostrando}</span>
-                  <div className="imp-mov">
-                    <table className="table-compact">
-                      <thead><tr><th>Mês</th><th>Grupo</th><th className="num">Razão</th><th className="num">Guia</th><th className="num">Diferença</th></tr></thead>
-                      <tbody>
-                        {inss.grupos.map(x => (
-                          <tr key={x.id}>
-                            <td>{x.mes}</td>
-                            <td>{x.nome}{x.codigos && <span className="hint"> · não provisionado ({x.codigos})</span>}</td>
-                            <td className="num">{x.razao}</td>
-                            <td className="num">{x.guia}</td>
-                            <td className={'num' + (x.bate ? '' : ' ext-neg')}>{x.diferenca}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
                 </div>
               </FaixaQueAbre>
               {inss.fechamento && (
