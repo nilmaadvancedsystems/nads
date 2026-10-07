@@ -40,7 +40,7 @@ function Arquivos({ vm }: { vm: VM }) {
   return (
     <div className="imp-lista">
       <LinhaDoArquivo titulo="Balancete dinâmico" feito={vm.dinamico} onArquivo={vm.importar} onTirar={vm.tirar} teste={vm.teste}>
-        {/* importado: os devedores em algum mês, na grade dos meses do Caixa; o mês devedor em vermelho (o saldo do lado do fornecedor: negativo = devedor) */}
+        {/* importado: os devedores em algum mês, na grade dos meses do Caixa; o mês devedor em azul (Vitor, 07/10/2026) (o saldo do lado do fornecedor: negativo = devedor) */}
         {vm.dinamico && vm.credoresNoPeriodo.length > 0 && (
           <div className="imp-periodo-linha">
             <table className="imp-meses" style={grade.tabela}>
@@ -55,7 +55,7 @@ function Arquivos({ vm }: { vm: VM }) {
                 {vm.credoresNoPeriodo.map(c => (
                   <tr key={c.codigo}>
                     <th scope="row" style={{ textAlign: 'left' }} title={c.codigo + ' — ' + c.nome}><b>{c.codigo}</b> — {c.nome}</th>
-                    {c.saldos.map(x => <td key={x.mes} className={'num' + (x.credor ? ' ext-neg' : '')} title={x.credor ? 'Devedor neste mês' : undefined}>{x.valor === '—' ? x.valor : <ValorNaGrade texto={x.valor} />}</td>)}
+                    {c.saldos.map(x => <td key={x.mes} className={'num' + (x.credor ? ' ext-azul' : '')} title={x.credor ? 'Devedor neste mês' : undefined}>{x.valor === '—' ? x.valor : <ValorNaGrade texto={x.valor} />}</td>)}
                   </tr>
                 ))}
               </tbody>
@@ -122,7 +122,7 @@ function Devedor({ vm }: { vm: VM }) {
           <thead><tr><th>Conta</th><th>Fornecedor</th><th className="num">Saldo</th></tr></thead>
           <tbody>
             {vm.credores.map(k => (
-              <tr key={k.codigo}><td>{k.codigo}</td><td className="wrap">{k.nome}</td><td className="num ext-neg">{k.saldo}</td></tr>
+              <tr key={k.codigo}><td>{k.codigo}</td><td className="wrap">{k.nome}</td><td className="num ext-azul">{k.saldo}</td></tr>
             ))}
           </tbody>
         </table>
