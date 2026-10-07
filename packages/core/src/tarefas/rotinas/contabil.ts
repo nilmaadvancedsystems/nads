@@ -258,6 +258,8 @@ export const ROTINA_CONTABIL: Rotina = {
       nome: 'Empréstimos e financiamentos',
       descricao: 'O saldo de cada contrato igual ao do banco: parcela paga, juros e saldo devedor.',
       ferramenta: null,
+      // o razão de cada empréstimo com o banco dele, mês a mês (Vitor, 07/10/2026)
+      tela: { id: 'emprestimos', periodo: true },
       verificacao: 'manual',
       conferir: [
         'Cada empréstimo tem saldo credor igual ao saldo devedor do contrato no banco.',

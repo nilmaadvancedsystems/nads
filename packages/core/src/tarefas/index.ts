@@ -13,6 +13,7 @@ export * from './regras/quando';
 export * from './regras/folha';
 export * from './regras/planilha';
 export * from './regras/razao';
+export * from './regras/emprestimos';
 export * from './regras/inss';
 export * from './regras/bens';
 export { idDaExecucao, type RepoTarefas } from './repo';
