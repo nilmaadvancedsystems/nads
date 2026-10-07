@@ -1,6 +1,7 @@
 // O cartão "Trocas para você responder" (Vitor, 07/10/2026): cada troca com a outra pessoa, as empresas que saem e as que
 // entram, e o Aceitar / Recusar. Sem pedidos, não aparece.
 import { Icone } from '@nads/ui';
+import { PessoaComFoto } from './FotoDaPessoa';
 import { useTransferenciasPendentes } from './useTransferenciasPendentes';
 
 export function TransferenciasPendentes() {
@@ -17,7 +18,7 @@ export function TransferenciasPendentes() {
         {vm.trocas.map(t => (
           <li key={t.chave}>
             <div className="resp-pendentes-texto">
-              <b>Com {t.outro}</b>
+              <b className="resp-pendentes-com">Com <PessoaComFoto nome={t.outro} {...t.foto} /></b>
               {t.saem.length > 0 && <span><span className="fraco">Saem: </span>{t.saem.join(', ')}</span>}
               {t.entram.length > 0 && <span><span className="fraco">Entram: </span>{t.entram.join(', ')}</span>}
             </div>

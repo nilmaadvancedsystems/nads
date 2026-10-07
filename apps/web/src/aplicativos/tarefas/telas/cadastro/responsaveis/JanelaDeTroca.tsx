@@ -4,6 +4,7 @@
 // vale com o aceite dos dois.
 import { Icone, MenuSuspenso } from '@nads/ui';
 import { useEffect, useState } from 'react';
+import { PessoaComFoto } from './FotoDaPessoa';
 import type { Dep, VmEmpresasPorResponsavel } from './useEmpresasPorResponsavel';
 
 type Empresa = { chave: string; nome: string; codigo: number | null; dep: Dep };
@@ -23,9 +24,10 @@ function Lado({ vm, rotulo, pessoa, setPessoa, outra, marcadas, setMarcadas }: {
       {/* a pessoa no menu suspenso dos componentes (Vitor, 07/10/2026: "siga as seleções dos componentes") */}
       <div className="troca-pessoa">
         <span className="hint">{rotulo}</span>
-        <MenuSuspenso rotulo={pessoa || 'Escolher pessoa'} icone="usuario" className="btn btn-outline troca-escolher" titulo={rotulo} largura={260}
+        <MenuSuspenso rotulo={pessoa ? <PessoaComFoto nome={pessoa} {...vm.fotoDe(pessoa)} /> : 'Escolher pessoa'} icone={pessoa ? undefined : 'usuario'}
+          className="btn btn-outline troca-escolher" titulo={rotulo} largura={260}
           itens={vm.pessoasDaTroca.filter(n => !vm.igual(n, outra)).map(n => ({
-            rotulo: n, icone: 'usuario' as const, marcado: vm.igual(n, pessoa), dica: String(vm.pessoas.find(p => vm.igual(p.nome, n))?.total ?? 0),
+            rotulo: <PessoaComFoto nome={n} {...vm.fotoDe(n)} />, marcado: vm.igual(n, pessoa), dica: String(vm.pessoas.find(p => vm.igual(p.nome, n))?.total ?? 0),
             onClick: () => { setPessoa(n); setMarcadas(new Set()); },
           }))} />
       </div>
