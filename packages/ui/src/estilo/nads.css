@@ -3120,3 +3120,32 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .emp-pessoa-acoes{display:inline-flex;gap:6px;flex:none;}
 .emp-pessoa-acoes .btn{height:28px;padding:0 10px;font-size:12px;}
 .emp-sem{display:flex;flex-direction:column;gap:6px;}
+/* DP › Obrigações numa tabela só e compacta (07/10/2026: "muito grande e com espaço sobrando"; "unifique") */
+.dp-tabela td{padding-top:6px;padding-bottom:6px;}
+.dp-tabela .dp-ob{width:46px;min-width:46px;padding-left:2px;padding-right:2px;}
+.dp-tabela .dp-cliente{max-width:380px;}
+.dp-tabela .dp-cliente-nome{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px;}
+.dp-cabeca-grupo .dp-ob-grupo{text-transform:none;letter-spacing:0 !important;font-size:11.5px !important;font-weight:600;color:var(--ink-muted) !important;border-left:1px solid var(--border);padding-bottom:4px;}
+.dp-tabela thead tr:last-child th.dp-ob{font-size:11px;font-weight:500;}
+/* A troca de empresas (07/10/2026) e a lista de empresas da pessoa, uma linha por empresa */
+.emp-pessoa-topo{display:flex;align-items:center;gap:8px;}
+.emp-pessoa-nome{display:block;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13.5px;}
+.emp-pessoa-lista li{padding:8px 12px;}
+.emp-pessoa-lista .badge svg{width:12px;height:12px;margin-right:4px;vertical-align:-2px;}
+.emp-pessoa-escolher{width:160px;flex:none;}
+.troca-janela{width:min(1080px,96vw);height:min(680px,92vh);display:flex;flex-direction:column;grid-template-columns:none;}
+.troca-corpo{flex:1;min-height:0;display:grid;grid-template-columns:1fr auto 1fr;gap:16px;padding:16px 20px;}
+.troca-lado{display:flex;flex-direction:column;gap:10px;min-height:0;}
+.troca-pessoa{display:flex;flex-direction:column;gap:4px;}
+.troca-pessoa .hint{margin:0;}
+.troca-meio{align-self:center;color:var(--ink-muted);}
+.troca-meio svg{width:20px;height:20px;}
+.troca-lista{list-style:none;margin:0;padding:0;overflow:auto;flex:1;min-height:0;border:1px solid var(--border);border-radius:var(--radius);}
+.troca-lista li{border-top:1px solid var(--border);}
+.troca-lista li:first-child{border-top:0;}
+.troca-lista label{display:flex;align-items:center;gap:10px;padding:7px 10px;cursor:pointer;font-size:13px;}
+.troca-lista label:hover{background:var(--hover-bg);}
+.troca-lista .num{width:34px;flex:none;}
+.troca-nome{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.troca-pe{display:flex;align-items:center;gap:8px;}
+@media (max-width:760px){.troca-corpo{grid-template-columns:1fr;}.troca-meio{display:none;}}

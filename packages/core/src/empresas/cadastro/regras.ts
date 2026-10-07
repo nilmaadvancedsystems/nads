@@ -81,6 +81,7 @@ function transferenciasDoDocumento(v: unknown): { transferencias?: Partial<Recor
     r[d.id] = {
       de: texto(t.de), para: texto(t.para), pedidoPor: texto(t.pedidoPor), em: texto(t.em),
       ...(texto(t.aceiteDe) ? { aceiteDe: texto(t.aceiteDe) } : {}), ...(texto(t.aceitePara) ? { aceitePara: texto(t.aceitePara) } : {}),
+      ...(texto(t.troca) ? { troca: texto(t.troca) } : {}),
     };
   }
   return Object.keys(r).length ? { transferencias: r } : {};
@@ -217,7 +218,7 @@ const semTransferencia = (c: CadastroDaEmpresa, dep: DepartamentoDoResponsavel) 
  * Pede a transferência da empresa de 'de' (o responsável de hoje) para 'para' (Vitor, 07/10/2026). Só vale com o aceite
  * dos dois: quem pede sendo o emitente ou o destinatário, o aceite dele já vai junto. Devolve o erro, se não der.
  */
-export function pedirTransferencia(c: CadastroDaEmpresa, dep: DepartamentoDoResponsavel, de: string, para: string, por: string, agora: Date): ResultadoCadastro {
+export function pedirTransferencia(c: CadastroDaEmpresa, dep: DepartamentoDoResponsavel, de: string, para: string, por: string, agora: Date, troca?: string): ResultadoCadastro {
   const emitente = texto(de);
   const destino = texto(para);
   if (!emitente) return { cadastro: c, erro: 'A empresa ainda não tem responsável: escolha um direto.' };
@@ -228,6 +229,7 @@ export function pedirTransferencia(c: CadastroDaEmpresa, dep: DepartamentoDoResp
   const t: TransferenciaDeResponsavel = {
     de: emitente, para: destino, pedidoPor: texto(por), em,
     ...(nomeIgual(por, emitente) ? { aceiteDe: em } : {}), ...(nomeIgual(por, destino) ? { aceitePara: em } : {}),
+    ...(troca ? { troca } : {}),
   };
   const novo = registrar({ ...c, transferencias: { ...(c.transferencias || {}), [dep]: t } }, por, agora, 'Pediu transferência',
     rotuloDoDep(dep) + ': de ' + emitente + ' para ' + destino);

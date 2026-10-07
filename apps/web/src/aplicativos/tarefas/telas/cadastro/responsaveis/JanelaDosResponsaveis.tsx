@@ -20,7 +20,6 @@ export function JanelaDosResponsaveis({ fechar }: { fechar: () => void }) {
     <JanelaLateral rotulo="Empresas por responsável" topicos={topicos} topico={atual} mudar={setTopico} fechar={fechar} classe="resp-janela" resumo={(
       <div className="usuario-quem">
         <b>Empresas por responsável</b>
-        <span className="fraco">Quem cuida de cada empresa no Fiscal e no Contábil. Transferir só vale com o aceite de quem cuida hoje e de quem recebe.</span>
       </div>
     )}>
       {atual === SEM ? <EmpresasSemResponsavel vm={vm} /> : <EmpresasDaPessoa pessoa={atual} vm={vm} />}

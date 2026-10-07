@@ -1,6 +1,6 @@
-// ViewModel do cartão "Transferências para você responder" (Vitor, 07/10/2026: a empresa é transferida com a permissão do
-// emitente e do destinatário): os pedidos em que quem está trabalhando é o emitente (o responsável de hoje) ou o
-// destinatário e ainda não aceitou, com o Aceitar e o Recusar. Fica em Minhas empresas (o Cadastro é só do admin).
+// ViewModel do cartão "Trocas para você responder" (Vitor, 07/10/2026): os pedidos em que quem está trabalhando é um dos
+// lados e ainda não aceitou, agrupados pela troca (as empresas que saem e as que entram), com um Aceitar / Recusar para a
+// troca inteira. Fica em Minhas empresas.
 import { empresas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useOperador } from '../../../casca/operador';
@@ -14,24 +14,23 @@ export function useTransferenciasPendentes() {
   const eu = useOperador().operador?.nome || '';
   const { toast } = useRetorno();
   const pedidos = todos.carregada ? cad.transferenciasParaResponder(todos.porId.values(), eu) : [];
+  const grupos = new Map<string, typeof pedidos>();
+  for (const p of pedidos) {
+    const k = p.t.troca || p.cadastro.nome + '|' + p.dep;
+    grupos.set(k, [...(grupos.get(k) || []), p]);
+  }
   return {
-    pedidos: pedidos.map(p => ({
-      chave: p.cadastro.nome + '|' + p.dep,
-      empresa: p.cadastro.nome,
-      codigo: p.cadastro.codigo,
-      dep: p.dep,
-      departamento: cad.DEPARTAMENTOS_DO_RESPONSAVEL.find(d => d.id === p.dep)?.rotulo || p.dep,
-      de: p.t.de,
-      para: p.t.para,
-      pedidoPor: p.t.pedidoPor,
-      quando: p.t.em ? new Date(p.t.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
-      papel: p.papel,
-      /** o outro lado ainda precisa aceitar? */
-      faltaOutro: cad.faltamAceitar(p.t).length > 1,
-    })),
-    responder(empresa: string, codigo: number | null, dep: empresas.cadastro.DepartamentoDoResponsavel, aceita: boolean, faltaOutro: boolean) {
-      void gravar(empresa, codigo, atual => cad.responderTransferencia(atual, dep, eu, aceita, new Date()));
-      toast(!aceita ? 'Transferência recusada.' : faltaOutro ? 'Aceito. Falta o aceite do outro lado.' : 'Transferência feita.');
-    },
+    trocas: [...grupos.entries()].map(([chave, itens]) => {
+      const outro = itens[0].papel === 'emitente' ? itens[0].t.para : itens[0].t.de;
+      return {
+        chave, outro,
+        saem: itens.filter(i => i.papel === 'emitente').map(i => i.cadastro.nome),
+        entram: itens.filter(i => i.papel === 'destinatario').map(i => i.cadastro.nome),
+        responder(aceita: boolean) {
+          for (const i of itens) void gravar(i.cadastro.nome, i.cadastro.codigo, atual => cad.responderTransferencia(atual, i.dep, eu, aceita, new Date()));
+          toast(aceita ? 'Troca aceita.' : 'Troca recusada.');
+        },
+      };
+    }),
   };
 }
