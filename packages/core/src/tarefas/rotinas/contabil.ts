@@ -145,6 +145,8 @@ export const ROTINA_CONTABIL: Rotina = {
       nome: 'Adiantamento a fornecedores',
       descricao: 'Os adiantamentos baixados quando a nota do fornecedor chega.',
       ferramenta: null,
+      // o razão da conta, mês a mês: credor trava o Próximo (Vitor, 07/10/2026: "ou ele fica devedor ou zera")
+      tela: { id: 'adiantamento-fornecedores', periodo: true },
       verificacao: 'manual',
       conferir: [
         'Nenhum adiantamento com saldo credor.',
