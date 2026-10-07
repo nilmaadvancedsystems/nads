@@ -30,6 +30,10 @@ import { useRazaoDaEtapa } from './useRazaoDaEtapa';
 import type { ItemDeTeste } from '../../../../comum/BotaoDeTeste';
 import { EtapaProvider } from './etapas/contexto';
 import { TelaDaEtapa } from './etapas/TelaDaEtapa';
+import { PeriodoDaTarefa } from './partes/PeriodoDaTarefa';
+
+// as etapas cuja ferramenta (o Extrator) já tem a linha do período: a Importação, com o seletor que troca, e o Cheque especial
+const COM_A_LINHA_DO_PERIODO = new Set(['extratos', 'cheque-especial']);
 
 /** O ícone de cada grupo da rotina, no canto do cabeçalho. */
 
@@ -258,6 +262,10 @@ export function Executor() {
               </div>
             </Alerta>
             </div>
+          )}
+          {/* o botão do período e os bancos em todas as etapas do Contábil (Vitor, 07/10/2026); só a Importação troca o período */}
+          {vm.departamento === 'contabil' && !COM_A_LINHA_DO_PERIODO.has(vm.etapa.id) && (
+            <PeriodoDaTarefa nome={vm.empresa.nome} codigo={vm.empresa.codigo} meses={vm.meses.length ? vm.meses : [vm.competencia]} />
           )}
           <div className={'executor-ferramenta' + (vm.revendo ? ' revendo' : '')} inert={vm.revendo || undefined} aria-disabled={vm.revendo || undefined}>
             {/* a ferramenta carregando: o N no meio, sobre um vidro embaçado (em vez da área vazia) */}

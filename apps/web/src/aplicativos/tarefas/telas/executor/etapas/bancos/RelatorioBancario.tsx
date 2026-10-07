@@ -2,7 +2,7 @@
 // da Importação (o logo e, no canto direito, o saldo inicial pequeno e o final grande) e, embaixo, os dois gráficos do
 // catálogo: as colunas de entradas × saídas por mês e o ranking do que passou pelo banco. Clicar numa categoria do
 // ranking mostra a relação dos lançamentos dela embaixo (Vitor, 06/10/2026).
-import { Alerta, Icone, LogoBanco } from '@nads/ui';
+import { Alerta, LogoBanco } from '@nads/ui';
 import { useState } from 'react';
 import { useRelatorioBancario } from './useRelatorioBancario';
 
@@ -13,11 +13,6 @@ export function RelatorioBancario() {
   return (
     <section>
       <header className="topbar"><div><h2 className="page-title">Relatório Bancário</h2></div></header>
-      <div className="imp-topo">
-        <span className="imp-periodo-info"><Icone nome="calendar" />{vm.periodo}</span>
-        <span className="imp-topo-num"><Icone nome="landmark" /><b>{vm.bancos.length}</b> {vm.bancos.length === 1 ? 'banco' : 'bancos'}</span>
-        <span className="imp-topo-meio" />
-      </div>
       {vm.semSocios && <Alerta titulo="Sem sócios no Cadastro" texto="Informe os sócios em Cadastro › Empresa para a transferência para o sócio aparecer separada." />}
       <div className="imp-lista">
         {vm.bancos.map(b => <BlocoDoBanco key={b.id} b={b} />)}

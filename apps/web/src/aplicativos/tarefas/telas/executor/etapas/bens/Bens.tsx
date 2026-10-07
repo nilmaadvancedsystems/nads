@@ -1,7 +1,7 @@
-// A etapa Bens da Tarefa (Vitor, 07/10/2026), com as peças do catálogo: o período em cima; o que entra e o que sai do
+// A etapa Bens da Tarefa (Vitor, 07/10/2026), com as peças do catálogo (o período e os bancos ficam na linha de cima, a do executor): o que entra e o que sai do
 // imobilizado (Stat); as compras de bem (1551, 2551 e os CFOPs ligados), as saídas que baixam bem e o uso e consumo com
 // item de bem, cada um num card com a tabela padrão. Só olhar.
-import { Alerta, Icone, Stat } from '@nads/ui';
+import { Alerta, Stat } from '@nads/ui';
 import { useBens } from './useBens';
 
 type VM = ReturnType<typeof useBens>;
@@ -12,12 +12,13 @@ export function Bens() {
   return (
     <section>
       <header className="topbar"><div><h2 className="page-title">Bens</h2></div></header>
-      <div className="imp-topo">
-        <span className="imp-periodo-info"><Icone nome="calendar" />{vm.periodo}</span>
-        {vm.deTeste && <span className="badge badge-neutral" title="Notas do ⚡: só nesta tela">Notas de teste</span>}
-        <span className="imp-topo-meio" />
-        {vm.deTeste && <button type="button" className="btn btn-outline" onClick={vm.tirarTeste}>Voltar às notas da empresa</button>}
-      </div>
+      {vm.deTeste && (
+        <div className="imp-topo">
+          <span className="badge badge-neutral" title="Notas do ⚡: só nesta tela">Notas de teste</span>
+          <span className="imp-topo-meio" />
+          <button type="button" className="btn btn-outline" onClick={vm.tirarTeste}>Voltar às notas da empresa</button>
+        </div>
+      )}
       {!vm.carregado ? null : vm.nenhuma ? (
         <Alerta tom="ok" titulo="Nenhuma nota de bem no período" texto="Nenhuma entrada 1551, 2551 ou de CFOP ligado a bem, nenhuma saída de bem e nenhum uso e consumo com item de bem nas notas importadas." />
       ) : (

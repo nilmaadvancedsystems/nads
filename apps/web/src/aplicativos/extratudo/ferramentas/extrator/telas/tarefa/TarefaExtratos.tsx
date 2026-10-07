@@ -620,12 +620,8 @@ export function TarefaExtratos() {
         {/* o Em lote (escolher, alterar, cancelar) mora aqui, só na Importação (Vitor, 05/10/2026: "volte para dentro da tela
             da importação, igual estava antes"); nas outras etapas, só a informação do período */}
         {ponte.naTarefa && vm.etapaCheque ? (
-          <span className="imp-periodo-info" title={vm.periodo.length > 1 ? 'Em lote: ' + vm.periodo.map(tarefas.rotuloNumericoCompetencia).join(', ') : undefined}>
-            <Icone nome="calendar" />
-            {vm.periodo.length > 1
-              ? tarefas.rotuloNumericoCompetencia(vm.periodo[0]) + ' a ' + tarefas.rotuloNumericoCompetencia(vm.periodo[vm.periodo.length - 1])
-              : tarefas.rotuloNumericoCompetencia(vm.competencia)}
-          </span>
+          // o mesmo botão da Importação, só mostrando o período (Vitor, 07/10/2026: em todas as etapas; só a Importação troca)
+          <PeriodoSoMostra meses={vm.periodo.length > 1 ? vm.periodo : [vm.competencia]} />
         ) : <SeletorDeCompetencia vm={vm} naTarefa={ponte.naTarefa} trocar={ponte.trocarCompetencia} periodoDaTarefa={ponte.periodo} encerrar={ponte.encerrarPeriodo} />}
         <span className="imp-topo-num"><Icone nome="landmark" /><b>{vm.bancos.length}</b> {vm.bancos.length === 1 ? 'banco' : 'bancos'}</span>
         <span className="imp-topo-meio" />
@@ -919,5 +915,36 @@ function Aviso({ m, onFechar }: { m: Mensagem; onFechar: () => void }) {
       <span><b>{m.titulo}</b>{m.textos.length > 0 && <span className="hint"> · {m.textos.map(t => t.texto).join(' · ')}</span>}</span>
       <button type="button" aria-label="Fechar" title="Fechar" onClick={onFechar}>×</button>
     </div>
+  );
+}
+
+/** O botão do período fora da Importação (o Cheque especial na Tarefa): o mesmo desenho do seletor, só mostrando os meses. */
+function PeriodoSoMostra({ meses }: { meses: string[] }) {
+  const mmaaaa = tarefas.rotuloNumericoCompetencia;
+  const emLote = meses.length > 1;
+  const rotulo = emLote ? mmaaaa(meses[0]) + ' a ' + mmaaaa(meses[meses.length - 1]) : tarefas.rotuloCurtoCompetencia(meses[0]);
+  return (
+    <MenuSuspenso icone="calendar" rotulo={rotulo} largura={300} dica={emLote ? 'Em lote: ' + meses.map(mmaaaa).join(', ') : 'A competência da tarefa'}
+      className={'btn btn-outline' + (emLote ? ' imp-periodo-ativo' : '')}
+      conteudo={() => (
+        <div className="comp-pop">
+          <div className="comp-varios">
+            {emLote ? (
+              <>
+                <p className="comp-varios-texto">A empresa está nos meses <b>{rotulo}</b> ({meses.length} meses).</p>
+                <div className="imp-mes-chips">{meses.map(m => <span key={m} className="imp-mes-chip">{mmaaaa(m)}</span>)}</div>
+              </>
+            ) : (
+              <div className="comp-lista">
+                <span className="popover-item" role="menuitem" aria-disabled="true">
+                  <span className="popover-marca"><Icone nome="check" /></span>
+                  <span className="popover-texto">{tarefas.rotuloCompetencia(meses[0])}</span>
+                </span>
+              </div>
+            )}
+            <p className="hint">{emLote ? 'O período' : 'A competência'} se troca na Importação, a primeira etapa.</p>
+          </div>
+        </div>
+      )} />
   );
 }
