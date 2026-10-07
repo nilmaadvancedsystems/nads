@@ -7,7 +7,7 @@ import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import type { InssDaEtapa as Inss } from '../useInssDaEtapa';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../comum/BotaoDeTeste';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosMeses';
-import { useRazaoDaFolha } from '../useRazaoDaFolha';
+import type { RazaoDaFolha as VmFolha } from '../useRazaoDaFolha';
 import { RazaoDaFolha } from './RazaoDaFolha';
 
 const BAIXA: Record<Inss['meses'][number]['baixa'], string> = { ok: '✓', falta: 'Falta', depois: 'Depois', fora: '—', 'sem-guia': '—' };
@@ -31,14 +31,17 @@ function Importado({ titulo, onExcluir }: { titulo: string; onExcluir: () => voi
   );
 }
 
-export function InssDaEtapa({ inss, conferir, teste = [] }: { inss: Inss; conferir?: string[]; teste?: ItemDeTeste[] }) {
+export function InssDaEtapa({ inss, conferir, teste = [], folha }: {
+  inss: Inss; conferir?: string[]; teste?: ItemDeTeste[];
+  /** as linhas de Salários a pagar e FGTS a recolher (a tela da etapa; Vitor, 07/10/2026) */
+  folha?: { salarios: VmFolha; fgts: VmFolha };
+}) {
   const idRazao = useId();
   const idGuias = useId();
   const [aberta, setAberta] = useState(true);
   const grade = useColunaAjustavel('inss', '96px', inss.meses.length);
-  // Salários a pagar e FGTS a recolher: só o razão de cada um (Vitor, 07/10/2026)
-  const salarios = useRazaoDaFolha('salarios', inss.chave, inss.periodo);
-  const fgts = useRazaoDaFolha('fgts', inss.chave, inss.periodo);
+  const salarios = folha?.salarios;
+  const fgts = folha?.fgts;
   // o ⚡ de cada coisa a importar: o razão e as guias do INSS separados (para testar as guias também)
   const dev = teste.length > 0;
   const testeRazao: ItemDeTeste[] = dev ? [{ rotulo: 'Razão do INSS de teste', onClick: inss.implantarRazaoDeTeste }] : [];
@@ -47,7 +50,7 @@ export function InssDaEtapa({ inss, conferir, teste = [] }: { inss: Inss; confer
     <div className="executor-razao">
       <div className="imp-lista">
         {/* na ordem do nome da etapa: Salários, INSS e FGTS */}
-        <RazaoDaFolha vm={salarios} dev={dev} />
+        {salarios && <RazaoDaFolha vm={salarios} dev={dev} />}
         <div className="imp-bloco">
           <div className="imp-linha">
             <button type="button" className={'imp-seta' + (aberta ? ' aberta' : '')} aria-expanded={aberta} disabled={!inss.pronto}
@@ -166,9 +169,9 @@ export function InssDaEtapa({ inss, conferir, teste = [] }: { inss: Inss; confer
             </>
           )}
         </div>
-        <RazaoDaFolha vm={fgts} dev={dev} />
+        {fgts && <RazaoDaFolha vm={fgts} dev={dev} />}
       </div>
-      {!inss.pronto && !inss.temRazao && !inss.temGuias && !salarios.temRazao && !fgts.temRazao && (
+      {!inss.pronto && !inss.temRazao && !inss.temGuias && !salarios?.temRazao && !fgts?.temRazao && (
         <div className="gh-blank">
           <Icone nome="checklist" />
           <h4>O que conferir</h4>

@@ -7,6 +7,7 @@ import { Bens } from './bens/Bens';
 import { Clientes } from './clientes/Clientes';
 import { Emprestimos } from './emprestimos/Emprestimos';
 import { Fornecedores } from './fornecedores/Fornecedores';
+import { Salarios } from './salarios/Salarios';
 
 export function TelaDaEtapa({ id }: { id: tarefas.TelaDaEtapa }) {
   switch (id) {
@@ -17,5 +18,6 @@ export function TelaDaEtapa({ id }: { id: tarefas.TelaDaEtapa }) {
     case 'adiantamento-clientes': return <Adiantamento lado="clientes" />;
     case 'bens': return <Bens />;
     case 'emprestimos': return <Emprestimos />;
+    case 'salarios': return <Salarios />;
   }
 }
