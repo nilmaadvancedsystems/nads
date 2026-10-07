@@ -72,6 +72,12 @@ export const OPCOES_PADRAO = [
   'Outro (explico abaixo)',
 ];
 
+/** O campo de explicação só abre no "Outro" e no "Foi pago de outra conta" (Vitor, 07/10/2026). */
+export const pedeExplicacao = (opcao: string): boolean => /^outro|^foi pago de outra conta/i.test(opcao.trim());
+
+/** O anexar só abre em "Já foi pago" e "Foi pago de outra conta" (Vitor, 07/10/2026). */
+export const pedeComprovante = (opcao: string): boolean => /^já foi pago|^foi pago de outra conta/i.test(opcao.trim());
+
 export const PRAZO_DO_1O_LINK_DIAS_UTEIS = 3;
 export const PRAZO_DO_2O_LINK_DIAS = 5;
 
