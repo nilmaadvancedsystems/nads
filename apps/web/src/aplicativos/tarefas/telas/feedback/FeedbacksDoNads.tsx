@@ -1,24 +1,22 @@
-// Cadastro › Feedbacks: cada feedback com o print (clicar amplia), o texto, quem, quando, a tela e a versão; Visto e Feito.
-import { Esqueleto, Icone, useCarregando } from '@nads/ui';
+// Os feedbacks da equipe (Vitor, 07/10/2026: "abra uma janela flutuante", aberta no pé da gaveta ☰, junto da versão):
+// à esquerda Novos / Vistos / Feitos / Todos; à direita cada feedback com o print (clicar amplia), o texto, quem,
+// quando, a tela e a versão; Visto e Feito.
+import { Esqueleto, Icone } from '@nads/ui';
+import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
+import type { SituacaoDoFeedback } from '../../dados/feedback';
 import { useFeedbacks } from './useFeedbacks';
 
 const SELO = { novo: 'badge-warn', visto: 'badge-neutral', feito: 'badge-ok' } as const;
 const NOME = { novo: 'Novo', visto: 'Visto', feito: 'Feito' } as const;
+const ICONE = { novo: 'envelope', visto: 'olho', feito: 'check', '': 'relatorio' } as const;
+const TODOS = 'todos';
 
-export function FeedbacksDoNads() {
+export function JanelaDosFeedbacks({ fechar }: { fechar: () => void }) {
   const vm = useFeedbacks();
-  useCarregando(vm.carregando);
+  const topicos: TopicoDaJanela<string>[] = vm.filtros.map(f => ({ id: f.valor || TODOS, rotulo: f.rotulo, icone: ICONE[f.valor], contador: f.qtd }));
   return (
-    <section>
-      <div className="tarefas-barra-topo">
-        <div className="chip-row">
-          {vm.filtros.map(f => (
-            <button key={f.rotulo} type="button" className={'chip-f' + (vm.filtro === f.valor ? ' on' : '')} onClick={() => vm.setFiltro(f.valor)}>
-              {f.rotulo} <span className="gh-counter">{f.qtd}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+    <JanelaLateral rotulo="Feedbacks" topicos={topicos} topico={vm.filtro || TODOS} mudar={id => vm.setFiltro(id === TODOS ? '' : id as SituacaoDoFeedback)} fechar={fechar}
+      classe="feedbacks-janela" resumo={<div className="usuario-quem"><b>Feedbacks</b></div>}>
       {vm.carregando ? <Esqueleto linhas={6} /> : !vm.lista.length ? <p className="empty">Nenhum feedback.</p> : (
         <ul className="feedback-lista">
           {vm.lista.map(f => (
@@ -51,6 +49,16 @@ export function FeedbacksDoNads() {
           <img src={vm.aberta} alt="O print do feedback" />
         </div>
       )}
-    </section>
+    </JanelaLateral>
+  );
+}
+
+/** O item Feedbacks no pé da gaveta ☰ (só o admin), com quantos novos. */
+export function ItemDosFeedbacks({ abrir }: { abrir: () => void }) {
+  const novos = useFeedbacks().filtros[0].qtd;
+  return (
+    <button type="button" className="drawer-item" onClick={abrir}>
+      <Icone nome="envelope" />Feedbacks{novos > 0 && <span className="menu-contador drawer-contador">{novos}</span>}
+    </button>
   );
 }

@@ -441,7 +441,7 @@ export const PECAS_BASE: Peca[] = [
           <button className="drawer-item" type="button"><Icone nome="home" />Início</button>
           <hr className="drawer-sep" />
           {([['Minhas empresas', 'briefcase'], ['Contábil', 'checklist'], ['Cadastro', 'landmark'], ['Fiscal', 'fileText'], ['Drive', 'pasta'], ['Gmail', 'envelope']] as [string, NomeIcone][]).map(([n, i]) => <button key={n} className="drawer-item" type="button"><Icone nome={i} />{n}</button>)}
-          <div className="drawer-foot"><SeletorTema /><p>Versão do sistema: 0.0.44 · <button type="button" className="drawer-atualizar">Atualizar para 0.0.45</button></p></div>
+          <div className="drawer-foot"><SeletorTema /><button className="drawer-item" type="button"><Icone nome="envelope" />Feedbacks<span className="menu-contador drawer-contador">2</span></button><p>Versão do sistema: 0.0.44 · <button type="button" className="drawer-atualizar">Atualizar para 0.0.45</button></p></div>
         </aside>
       </div>
     ) },

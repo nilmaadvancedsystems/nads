@@ -44,5 +44,7 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
     abrirPessoal: (topico: string) => pessoal.abrir(topico),
     naPessoal: pessoal.topico !== null,
     dev, setDev,
+    /** os Feedbacks no pé da gaveta (só o admin) */
+    admin: op.admin,
   };
 }
