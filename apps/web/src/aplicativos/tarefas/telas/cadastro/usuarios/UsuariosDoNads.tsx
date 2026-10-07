@@ -2,7 +2,9 @@
 // papéis que a pessoa tem, se está ativa e os computadores liberados. Clicar abre a janela da pessoa; "Novo usuário"
 // abre a de criar o acesso (as duas flutuantes, no desenho da Minha página).
 import { Esqueleto, Icone, useCarregando } from '@nads/ui';
+import { useState } from 'react';
 import { JanelaDoUsuario, JanelaNovoUsuario } from './JanelaDoUsuario';
+import { JanelaDosResponsaveis } from '../responsaveis/JanelaDosResponsaveis';
 import { useUsuariosDoNads, type FiltroDeUsuarios } from './useUsuariosDoNads';
 
 const FILTROS: { id: FiltroDeUsuarios; rotulo: string }[] = [
@@ -14,6 +16,8 @@ const FILTROS: { id: FiltroDeUsuarios; rotulo: string }[] = [
 
 export function UsuariosDoNads() {
   const vm = useUsuariosDoNads();
+  // a janela Empresas por responsável (Vitor, 07/10/2026: "um botão que abra uma janela flutuante")
+  const [responsaveis, setResponsaveis] = useState(false);
   useCarregando(vm.carregando);
   return (
     <section className="usuarios">
@@ -30,6 +34,7 @@ export function UsuariosDoNads() {
           <Icone nome="search" />
           <input type="text" placeholder="Buscar pessoa" aria-label="Buscar pessoa" value={vm.busca} onChange={ev => vm.setBusca(ev.target.value)} />
         </label>
+        <button type="button" className="btn btn-outline" onClick={() => setResponsaveis(true)}><Icone nome="briefcase" />Empresas por responsável</button>
         {vm.admin && <button type="button" className="btn btn-primary" onClick={vm.abrirNovo}><Icone nome="plus" />Novo usuário</button>}
       </div>
       {!vm.admin && <p className="hint">Só um administrador muda a equipe; aqui você vê quem é quem.</p>}
@@ -68,6 +73,7 @@ export function UsuariosDoNads() {
       )}
       {vm.pessoa && <JanelaDoUsuario vm={vm} />}
       {vm.novoAberto && <JanelaNovoUsuario fechar={vm.fechar} />}
+      {responsaveis && <JanelaDosResponsaveis fechar={() => setResponsaveis(false)} />}
     </section>
   );
 }

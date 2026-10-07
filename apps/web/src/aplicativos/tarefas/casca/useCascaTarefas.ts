@@ -3,7 +3,7 @@
 import { usuarios } from '@nads/core';
 import { useLocation, useNavigate } from 'react-router';
 import { VERSAO_SISTEMA } from '../../../versao';
-import { aplicacao, aplicacoesDe, BASE, caminhoDaPagina, type IdAplicacao, PARTES_DO_DP } from './navegacao';
+import { aplicacao, aplicacoesDe, BASE, caminhoDaPagina, type IdAplicacao } from './navegacao';
 import { useOperador, type Operador } from './operador';
 import { useAcesso } from '../dados/repo';
 import { usePessoal } from '../telas/pessoal/contexto';
@@ -16,9 +16,6 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const op = useOperador().operador as Operador;
   const a = aplicacao(app);
   const comAbas = app === 'cadastro';
-  // o DP › Obrigações: as partes da rotina nas abas do alto, com a barra lateral das páginas ao lado
-  const partes = app === 'dp' && pagina === 'obrigacoes';
-  const parteAtual = new URLSearchParams(search).get('parte') || PARTES_DO_DP[0].id;
   const pessoal = usePessoal();
   const acesso = useAcesso();
   // o modo desenvolvedor (no avatar): só ver, sem alterar (Vitor, 06/10/2026)
@@ -32,16 +29,9 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
     // o Cadastro com as páginas em abas no alto (Empresas, Usuários, Configurações; Vitor, 05/10/2026), sem a barra lateral
     comAbas,
     secoes: comAbas ? [] : (a?.paginas || []).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, grupo: 1, ativa: p.id === pagina })),
-    paginas: comAbas ? (a?.paginas || []).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, ativa: p.id === pagina }))
-      : partes ? PARTES_DO_DP.map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, ativa: p.id === parteAtual })) : [],
-    /** a aba do alto: a página (Cadastro) ou a parte da rotina (DP › Obrigações, mantendo a competência) */
-    onPagina: (id: string) => {
-      if (!partes) { navegar(caminhoDaPagina(app, id) + search); return; }
-      const q = new URLSearchParams(search);
-      if (id === PARTES_DO_DP[0].id) q.delete('parte'); else q.set('parte', id);
-      const s = q.toString();
-      navegar(caminhoDaPagina(app, pagina) + (s ? '?' + s : ''));
-    },
+    paginas: comAbas ? (a?.paginas || []).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, ativa: p.id === pagina })) : [],
+    /** a aba do alto (o Cadastro): a página, mantendo a competência */
+    onPagina: (id: string) => navegar(caminhoDaPagina(app, id) + search),
     aplicacoes: aplicacoesDe(op).map(x => ({ id: x.id, nome: x.nome, icone: x.icone, ativo: x.id === app })),
     // páginas da mesma aplicação mantêm a competência escolhida (fica na URL)
     onSecao: (id: string) => navegar(caminhoDaPagina(app, id) + search),

@@ -8,13 +8,14 @@ import { Icone, Interruptor } from '@nads/ui';
 import { useState } from 'react';
 import { Cartao, JanelaLateral, Linha, type TopicoDaJanela } from '../../janela/JanelaLateral';
 import { useNovoUsuario } from './useNovoUsuario';
+import { EmpresasDaPessoa } from '../responsaveis/EmpresasDaPessoa';
 import type { VmUsuarios } from './useUsuariosDoNads';
 
 function Foto({ foto, iniciais }: { foto?: string | null; iniciais: string }) {
   return foto ? <img className="pessoal-foto grande" src={foto} alt="" /> : <span className="pessoal-foto grande pessoal-iniciais" aria-hidden="true">{iniciais}</span>;
 }
 
-type TopicoDaPessoa = 'cargo' | 'papeis' | 'acesso';
+type TopicoDaPessoa = 'cargo' | 'papeis' | 'acesso' | 'empresas';
 
 export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
   const [topico, setTopico] = useState<TopicoDaPessoa>('cargo');
@@ -24,6 +25,8 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
     { id: 'cargo', rotulo: 'Cargo', icone: 'briefcase' },
     { id: 'papeis', rotulo: 'Papéis', icone: 'checklist' },
     { id: 'acesso', rotulo: 'Acesso', icone: 'lock' },
+    // as empresas de que a pessoa cuida, com o Transferir (Vitor, 07/10/2026: "dentro de cada usuário vai ter as empresas dele")
+    { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase' },
   ];
   return (
     <JanelaLateral rotulo={p.nome} topicos={topicos} topico={topico} mudar={setTopico} fechar={vm.fechar} resumo={(
@@ -36,7 +39,8 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
         <span className="fraco">{p.cargo || 'Sem cargo'}</span>
       </div>
     )}>
-      {!vm.admin && <p className="hint">Só um administrador muda a equipe.</p>}
+      {!vm.admin && topico !== 'empresas' && <p className="hint">Só um administrador muda a equipe.</p>}
+      {topico === 'empresas' && <EmpresasDaPessoa pessoa={p.nome} />}
       {topico === 'cargo' && (
         <Cartao titulo="Cargo">
           <Linha rotulo="Departamento" dica="A rotina que a pessoa faz na Tarefas.">
