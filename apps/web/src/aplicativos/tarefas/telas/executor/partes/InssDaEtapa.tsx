@@ -32,7 +32,9 @@ function Importado({ titulo, onExcluir }: { titulo: string; onExcluir: () => voi
   );
 }
 
-export function InssDaEtapa({ inss, conferir, teste = [], folha }: {
+export function InssDaEtapa({ inss, conferir, teste = [], folha, so }: {
+  /** só uma parte (as abas Salários / INSS / FGTS da tela; Vitor, 07/10/2026); sem isso, tudo junto */
+  so?: 'salarios' | 'inss' | 'fgts';
   inss: Inss; conferir?: string[]; teste?: ItemDeTeste[];
   /** as linhas de Salários a pagar e FGTS a recolher (a tela da etapa; Vitor, 07/10/2026) */
   folha?: { salarios: VmFolha; fgts: VmFolha };
@@ -51,8 +53,8 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha }: {
     <div className="executor-razao">
       <div className="imp-lista">
         {/* na ordem do nome da etapa: Salários, INSS e FGTS */}
-        {salarios && <RazaoDaFolha vm={salarios} dev={dev} />}
-        <div className="imp-bloco">
+        {salarios && (!so || so === 'salarios') && <RazaoDaFolha vm={salarios} dev={dev} />}
+        {(!so || so === 'inss') && <div className="imp-bloco">
           <div className="imp-linha">
             <button type="button" className={'imp-seta' + (aberta ? ' aberta' : '')} aria-expanded={aberta} disabled={!inss.pronto}
               title={aberta ? 'Recolher a conferência' : 'Abrir a conferência'} aria-label="A conferência do INSS" onClick={() => setAberta(a => !a)}>
@@ -118,6 +120,7 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha }: {
                         <input type="text" inputMode="numeric" placeholder="Conta do INSS a recolher" aria-label="Código da conta do INSS a recolher"
                           value={inss.contaInss} onChange={e => inss.setContaInss(e.target.value)} />
                       </label>
+                      {inss.nomeDaContaInss && <span className="hint" title="Do balancete da empresa">{inss.nomeDaContaInss}</span>}
                       <span className="tarefas-barra-espaco" />
                       {inss.faltaContrapartida > 0 && <span className="hint">Falta a contrapartida de {inss.faltaContrapartida} {inss.faltaContrapartida === 1 ? 'lançamento' : 'lançamentos'}</span>}
                       <button type="button" className="btn btn-primary" disabled={!inss.podeExportar} onClick={inss.baixarXls}
@@ -129,28 +132,22 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha }: {
                   {!inss.sugestoes.length ? <p className="hint">Nada a lançar: o razão bate com as guias.</p> : (
                     <div className="imp-mov">
                       <table className="table-compact">
-                        <thead><tr><th>Mês</th><th>Tipo</th><th>Débito</th><th>Crédito</th><th className="num">Valor</th><th>Histórico</th></tr></thead>
+                        <thead><tr><th>Mês</th><th>Débito</th><th className="num">Valor</th><th>Histórico</th></tr></thead>
                         <tbody>
                           {inss.sugestoes.map(s => (
                             <tr key={s.id}>
                               <td>{s.mes}</td>
-                              <td>{s.tipo}</td>
-                              {/* o lado do INSS a recolher mostra a conta digitada em cima; o outro lado pergunta a contrapartida */}
-                              {(['debito', 'credito'] as const).map(lado => (
-                                <td key={lado}>
-                                  {s.lado === lado ? (
-                                    <>
-                                      <MenuDeConta valor={s.contrapartida} contas={inss.contas} onEscolher={c => inss.escolherContrapartida(s.chave, c)} />
-                                      <span className="hint" style={{ display: 'block', marginTop: 2 }}>{s.sugerida}</span>
-                                    </>
-                                  ) : (inss.contaInss.trim() || 'INSS a recolher')}
-                                </td>
-                              ))}
+                              {/* só o Débito (Vitor, 07/10/2026: sem Tipo e sem Crédito — o crédito é o INSS a recolher, a conta de cima):
+                                  a contrapartida de cada lançamento; quando ela é o crédito (provisão a maior), o aviso embaixo */}
+                              <td>
+                                <MenuDeConta valor={s.contrapartida} contas={inss.contas} onEscolher={c => inss.escolherContrapartida(s.chave, c)} />
+                                <span className="hint" style={{ display: 'block', marginTop: 2 }}>{s.lado === 'credito' ? 'Vai a crédito (o INSS a recolher a débito)' : s.sugerida}</span>
+                              </td>
                               <td className="num">{s.valor}</td>
-                              <td className="wrap">{s.historico}<br /><span className="hint">{s.motivo}</span></td>
+                              <td className="wrap">{s.historico}</td>
                             </tr>
                           ))}
-                          <tr className="imp-mov-anterior"><td colSpan={4}>Total</td><td className="num">{inss.totalSugerido}</td><td /></tr>
+                          <tr className="imp-mov-anterior"><td colSpan={2}>Total</td><td className="num">{inss.totalSugerido}</td><td /></tr>
                         </tbody>
                       </table>
                     </div>
@@ -175,10 +172,10 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha }: {
               )}
             </>
           )}
-        </div>
-        {fgts && <RazaoDaFolha vm={fgts} dev={dev} />}
+        </div>}
+        {fgts && (!so || so === 'fgts') && <RazaoDaFolha vm={fgts} dev={dev} />}
       </div>
-      {!inss.pronto && !inss.temRazao && !inss.temGuias && !salarios?.temRazao && !fgts?.temRazao && (
+      {(so === 'inss' ? !inss.temRazao && !inss.temGuias : !so && !inss.pronto && !inss.temRazao && !inss.temGuias && !salarios?.temRazao && !fgts?.temRazao) && (
         <div className="gh-blank">
           <Icone nome="checklist" />
           <h4>O que conferir</h4>
