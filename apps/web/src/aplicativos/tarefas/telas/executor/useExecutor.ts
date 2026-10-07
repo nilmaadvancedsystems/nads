@@ -306,6 +306,14 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     voltarAEtapaDaVez: () => setVendo(null),
     /** o modo desenvolvedor: só ver (o Avançar azul vai para a próxima etapa sem marcar nada) */
     dev,
+    /** o relatório (início e fim): o regime e as etapas que entram no mês, cada uma com a situação, quem e quando */
+    relatorio: {
+      regime: t.regimeDaEmpresa(empresa?.codigo ?? null),
+      etapas: rotina.etapas.filter(e => t.etapaNoMes(ex, e.id) && e.secao !== 'Relatório inicial' && e.secao !== 'Relatório final').map(e => {
+        const est = t.estadoDa(ex, e.id);
+        return { id: e.id, nome: e.nome, secao: e.secao || '', situacao: est?.situacao || ('pendente' as const), por: est?.por || '', em: est?.em || '' };
+      }),
+    },
     /** os valores que as etapas informaram neste mês (o total da folha do DP) */
     valores: ex?.valores || {},
     /** a etapa informa um valor (o DP, o total da folha): fica na execução do mês */

@@ -112,7 +112,7 @@ export type RelatorioImportavel = 'entradas' | 'saidas' | 'tomados' | 'prestados
  */
 export type PainelDaTarefa = 'sieg' | 'recebimento' | 'sequencia' | 'saidas' | 'faturamento' | 'entradas' | 'entradas-sieg'
   | 'iss-retido' | 'inss-retido' | 'irrf-retido' | 'interestaduais' | 'receitas' | 'base' | 'icms' | 'prestados' | 'irpj'
-  | 'servicos' | 'folha-total';
+  | 'servicos' | 'folha-total' | 'relatorio-inicio' | 'relatorio-fim';
 
 export interface Rotina { departamento: Departamento; etapas: Etapa[] }
 

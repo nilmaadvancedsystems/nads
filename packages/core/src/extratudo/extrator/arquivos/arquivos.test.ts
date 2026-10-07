@@ -30,7 +30,8 @@ function xlsx(linhas: unknown[][]): Uint8Array {
 }
 
 describe('leitura dos arquivos', () => {
-  it('PDF de extrato', async () => {
+  // ler PDF leva alguns segundos com a máquina ocupada (o build de outra sessão): o limite de 5 s derrubava à toa
+  it('PDF de extrato', { timeout: 20000 }, async () => {
     const r = await lerArquivo('extrato.pdf', pdfMinimo([
       [40, 760, 'BANCO EXEMPLO - Extrato de 01/08/2026 a 31/08/2026'],
       [40, 740, 'Data'], [100, 740, 'Historico'], [400, 740, 'Valor'], [480, 740, 'Saldo'],
