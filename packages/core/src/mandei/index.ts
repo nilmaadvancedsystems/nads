@@ -4,8 +4,11 @@
 // Cada ticket tem um número (#0001) de controle interno. Os textos e as seleções ficam no banco; os arquivos vão para o
 // Drive (pelo robô, na pasta do Claudio Secretário). TypeScript puro: quem chama guarda e manda o e-mail.
 
-/** Um item do formulário: o que perguntamos (ex.: um cliente com saldo em aberto e a nossa pergunta). */
-export interface ItemDoTicket { id: string; titulo: string; valor?: string; detalhe?: string; opcoes: string[] }
+/** Uma linha do lançamento do item (Vitor, 07/10/2026: "Data, nota fiscal, descrição, valor"), já no formato da tela. */
+export interface LinhaDoItem { data: string; nf: string; descricao: string; valor: string }
+
+/** Um item do formulário: o que perguntamos (ex.: um cliente com saldo em aberto, os lançamentos e a nossa pergunta). */
+export interface ItemDoTicket { id: string; titulo: string; valor?: string; detalhe?: string; linhas?: LinhaDoItem[]; opcoes: string[] }
 
 export type StatusDoArquivo = 'subindo' | 'na-fila' | 'no-drive' | 'erro';
 /** Um arquivo que o cliente anexou (o arquivo em si vai para o Drive; aqui, o nome e o andamento). */

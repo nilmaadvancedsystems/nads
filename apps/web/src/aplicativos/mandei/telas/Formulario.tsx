@@ -15,6 +15,18 @@ export function Formulario() {
         <div className="gh-blank"><Icone nome="link" /><h4>Link não encontrado</h4><p>Confira o endereço que recebeu por e-mail.</p></div>
       ) : !vm.valido ? (
         <div className="gh-blank"><Icone nome="clock" /><h4>Este link venceu</h4><p>Se ainda precisar responder, fale com o escritório: enviaremos um novo link.</p></div>
+      ) : !vm.comecou ? (
+        // a entrada: onde o cliente está e para que serve, com um botão só
+        <div className="gh-blank" style={{ maxWidth: 520, margin: '48px auto' }}>
+          <Icone nome="caixaEntrada" />
+          <h4>Olá! Aqui é a Nilma Contabilidade</h4>
+          <p>
+            Este é o <b>Mandei</b>, o canal seguro do escritório para você responder às nossas perguntas sobre a
+            <b> {vm.empresa}</b> e enviar os comprovantes. {vm.quantos === 1 ? 'É 1 item' : 'São ' + vm.quantos + ' itens'} e
+            leva poucos minutos; o link vale até {vm.validoAte}.
+          </p>
+          <button type="button" className="btn btn-primary" onClick={vm.comecar}>Começar</button>
+        </div>
       ) : vm.enviado ? (
         <div className="gh-blank">
           <Icone nome="checkCircle" /><h4>Recebemos a sua resposta</h4>
@@ -27,8 +39,17 @@ export function Formulario() {
           <p className="hint" style={{ marginTop: 0 }}>{vm.mensagem} Responda até {vm.validoAte}.</p>
           {vm.itens.map(it => (
             <div key={it.id} className="card" style={{ marginTop: 12 }}>
-              <div className="card-head"><h3>{it.titulo}{it.valor && <span className="hint" style={{ marginLeft: 8 }}>{it.valor}</span>}</h3></div>
+              <div className="card-head"><h3>{it.titulo}</h3></div>
               <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {/* os lançamentos (Vitor, 07/10/2026): Data, nota fiscal, descrição, valor */}
+                {it.linhas && it.linhas.length > 0 ? (
+                  <div className="table-wrap">
+                    <table className="table-compact">
+                      <thead><tr><th>Data</th><th>Nota fiscal</th><th>Descrição</th><th className="num">Valor</th></tr></thead>
+                      <tbody>{it.linhas.map((l, k) => <tr key={k}><td style={{ whiteSpace: 'nowrap' }}>{l.data}</td><td>{l.nf}</td><td className="wrap">{l.descricao}</td><td className="num">{l.valor}</td></tr>)}</tbody>
+                    </table>
+                  </div>
+                ) : it.valor && <p className="hint" style={{ margin: 0 }}>Saldo em aberto: {it.valor}</p>}
                 {it.detalhe && <span className="msg-balao"><Icone nome="mensagem" />{it.detalhe}</span>}
                 <div className="field">
                   <label htmlFor={'op-' + it.id}>Resposta</label>

@@ -66,9 +66,10 @@ describe('o razão do fornecedor', () => {
   });
   it('a relação fala de compra e pagamento', () => {
     const m = razaoDaMarca('razao.xls', r, 'fornecedores');
-    expect(m.itens.map(i => [i.descricao.replace(/\s/g, ' '), i.valor, i.status])).toEqual([
-      ['NF 501 (comprado R$ 700,00, pago R$ 500,00)', 200, 'aberto'],
-      ['Pix enviado FORNECEDOR TESTE', -50, 'pagamento'],
+    // a nota fiscal na coluna dela (Vitor, 07/10/2026: "Data, nota fiscal, descrição, valor")
+    expect(m.itens.map(i => [i.nf, i.descricao.replace(/\s/g, ' '), i.valor, i.status])).toEqual([
+      ['501', 'Compra a prazo (comprado R$ 700,00, pago R$ 500,00)', 200, 'aberto'],
+      ['', 'Pix enviado FORNECEDOR TESTE', -50, 'pagamento'],
     ]);
   });
 });

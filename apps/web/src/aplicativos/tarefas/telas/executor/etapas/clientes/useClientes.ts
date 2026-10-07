@@ -14,6 +14,8 @@ import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '..
 export type TelaClientes = 'arquivos' | 'credor' | 'clientes' | 'envio';
 export type FiltroClientes = 'todos' | 'pendente' | 'ok' | 'conferido';
 
+const dataBR = (d: string) => (d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '');
+const fimDoMesBR = (m: string) => { const [a, mm] = m.split('-').map(Number); return String(new Date(a, mm, 0).getDate()).padStart(2, '0') + '/' + String(mm).padStart(2, '0') + '/' + a; };
 const mesAntes = (m: string) => { const [a, mm] = m.split('-').map(Number); return mm === 1 ? (a - 1) + '-12' : a + '-' + String(mm - 1).padStart(2, '0'); };
 
 export function useClientes() {
@@ -155,7 +157,7 @@ export function useClientes() {
           naoBate: Math.abs(l.razao.saldo - l.saldo) >= 0.005 && Math.abs(l.razao.saldo) >= 0.005 ? reais(l.razao.saldo) : '',
           zerado: Math.abs(l.razao.saldo) < 0.005 && !l.razao.notas.length,
           // a mini tabela embaixo do cliente: as notas em aberto e o que ficou solto
-          itens: l.razao.itens.map(i => ({ data: i.data ? i.data.slice(8, 10) + '/' + i.data.slice(5, 7) + '/' + i.data.slice(0, 4) : '', descricao: i.descricao, valor: reais(i.valor), abate: i.valor < 0, status: i.status, rotulo: cl.ROTULO_DO_STATUS[i.status] })),
+          itens: l.razao.itens.map(i => ({ data: i.data ? i.data.slice(8, 10) + '/' + i.data.slice(5, 7) + '/' + i.data.slice(0, 4) : '', nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor), abate: i.valor < 0, status: i.status, rotulo: cl.ROTULO_DO_STATUS[i.status] })),
         } : null,
       })),
     clicar: (codigo: string) => marcar(codigo, m => ({ ...m, situacao: cl.proximaSituacao(m.situacao) })),
@@ -183,7 +185,14 @@ export function useClientes() {
         mensagem: 'Na conferência dos clientes de ' + rotuloMes + ', estes saldos ficaram em aberto. Pode nos dizer o que aconteceu com cada um?',
         criadoPor: { nome: op?.nome || '' },
         origem: { titulo: 'Clientes · ' + rotuloMes, rota: window.location.pathname, competencia: mes },
-        itens: conferidos.map(l => ({ id: l.codigo, titulo: l.nome, valor: reais(l.saldo), ...(l.obs ? { detalhe: l.obs } : {}), opcoes: md.OPCOES_PADRAO })),
+        // os lançamentos de cada um (Vitor, 07/10/2026: "Data, nota fiscal, descrição, valor"): os do razão importado (sem a
+        // duplicidade, que é só nossa) ou, sem o razão, o saldo do fim do mês
+        itens: conferidos.map(l => ({
+          id: l.codigo, titulo: l.nome, valor: reais(l.saldo), ...(l.obs ? { detalhe: l.obs } : {}), opcoes: md.OPCOES_PADRAO,
+          linhas: l.razao?.itens.some(i => !i.interno)
+            ? l.razao.itens.filter(i => !i.interno).map(i => ({ data: dataBR(i.data), nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor) }))
+            : [{ data: fimDoMesBR(mes), nf: '—', descricao: 'Saldo em aberto em ' + rotuloMes, valor: reais(l.saldo) }],
+        })),
       });
       aviso({ tom: 'ok', titulo: 'Ticket ' + md.rotuloDoNumero(t.numero) + ' mandado', texto: email + ' · acompanhe em Mandei' });
     },

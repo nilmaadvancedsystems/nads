@@ -58,7 +58,8 @@ describe('a relação e a observação pronta', () => {
   const m = razaoDaMarca('razao.xls', r);
   it('a relação em ordem de data: notas em aberto, devolução e duplicidade', () => {
     expect(m.itens.map(i => [i.data, i.valor, i.status])).toEqual([['2026-07-10', 150, 'aberto'], ['2026-07-12', -90, 'devolucao'], ['2026-08-15', 300, 'pagamento'], ['2026-08-20', 420.5, 'aberto']]);
-    expect(m.itens[0].descricao).toBe('NF 101 (vendido R$ 1.000,00, recebido R$ 850,00)');
+    expect([m.itens[0].nf, m.itens[0].descricao]).toEqual(['101', 'Venda a prazo (vendido R$ 1.000,00, recebido R$ 850,00)']);
+    expect(m.itens.filter(i => i.interno).map(i => i.nf)).toEqual(['102']);
   });
   it('a observação: no meu sistema, está em aberto', () => {
     expect(observacaoDoRazao(m)).toBe('No meu sistema, estão em aberto: 10/07/2026 - NF 101 - R$ 150,00; 20/08/2026 - NF 103 - R$ 420,50');
