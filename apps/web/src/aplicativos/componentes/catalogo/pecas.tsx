@@ -1,7 +1,7 @@
 // As peças do catálogo, desenhadas com as MESMAS peças do sistema (@nads/ui e as classes do nads.css). A ordem dentro
 // de cada tipo dá o código (BT-01, BT-02…): peça nova entra no FIM do tipo, para os códigos não mudarem.
 import {
-  Alerta, BotaoAcao, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail,
+  Alerta, BotaoAcao, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail,
   LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
 } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
@@ -192,6 +192,8 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <span className="badge badge-conferido">Conferido</span> },
   { id: 'badge-bad', tipo: 'selos', nome: 'Diferença', descricao: 'Laranja com borda: o valor da diferença', classes: ['badge badge-bad'], telas: ['c-relatorio', 't-exec-clientes'], demo: () => <><span className="badge badge-bad">89.967,19</span><span className="badge badge-bad">-295,00</span></> },
   { id: 'badge-neutral', tipo: 'selos', nome: 'Neutro', classes: ['badge badge-neutral'], telas: ['c-relatorio', 't-exec-folha', 't-exec-clientes'], demo: () => <><span className="badge badge-neutral">0,00</span><span className="badge badge-neutral">Configure em Cadastro › Configurações</span><span className="badge badge-neutral">Lote não soma</span></> },
+  { id: 'medalha-gov', tipo: 'selos', nome: 'Nível gov.br (medalha)', descricao: 'Bronze, Prata e Ouro: a moeda na cor do metal e o nome (B, P, O)', componente: 'MedalhaGov', classes: ['medalha', 'medalha-moeda', 'medalha-bronze', 'medalha-prata', 'medalha-ouro'], telas: ['t-senhas'],
+    demo: () => <><MedalhaGov nivel="B" /><MedalhaGov nivel="P" /><MedalhaGov nivel="O" /></> },
   { id: 'badge-warn', tipo: 'selos', nome: 'Atenção', classes: ['badge badge-warn'], telas: ['t-gmail', 't-exec-fiscal-rotina'], demo: () => <span className="badge badge-warn">Pendente</span> },
   { id: 'badge-falta', tipo: 'selos', nome: 'Falta / duplicado (extrato)', classes: ['badge ext-badge-falta', 'badge ext-badge-dup'], telas: ['e-conferencia'], demo: () => <><span className="badge ext-badge-falta">Faltando</span><span className="badge ext-badge-dup">Duplicado</span></> },
   { id: 'bolinha-sit', tipo: 'selos', nome: 'Bolinha de situação', classes: ['bolinha-sit nao-iniciada', 'em-andamento', 'parada', 'concluida'], telas: ['t-empresas', 't-contabil'],

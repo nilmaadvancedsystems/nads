@@ -4,7 +4,7 @@
 // com as obrigações do mês (– não tem, vazio a fazer, ✓ feita, ! parada). Tudo roda aqui: clicar na bolinha marca a
 // obrigação como feita, clicar de novo desfaz (sem o checklist).
 import { formatos } from '@nads/core';
-import { Esqueleto, Icone, Segmentado, useCarregando } from '@nads/ui';
+import { baixarBytes, Esqueleto, Icone, Segmentado, useCarregando } from '@nads/ui';
 import { Fragment, useState } from 'react';
 import { usePainelDoDp, type AbaDoPainel, type Agrupar, type EstadoDaObrigacao } from './usePainelDoDp';
 
@@ -88,6 +88,7 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
             {f.partes.map(p => <option key={p.valor} value={p.valor}>{p.rotulo}</option>)}
           </select>
         </label>
+        <Selecao rotulo="Entrega" valor={f.entrega} mudar={f.setEntrega} opcoes={f.entregas} />
         <Selecao rotulo="Agrupamento" valor={f.agrupamento} mudar={f.setAgrupamento} opcoes={f.agrupamentos} />
         {f.algum && <button type="button" className="btn btn-ghost dp-limpar" onClick={f.limpar}><Icone nome="x" />Limpar filtros</button>}
       </div>
@@ -147,6 +148,10 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
               <span className="badge badge-neutral">{vm.quantas}</span>
               {vm.faltam > 0 ? <span className="hint">{vm.faltam} {vm.faltam === 1 ? 'falta' : 'faltam'}</span> : <span className="hint">tudo feito</span>}
               <span className="tarefas-barra-espaco" />
+              {/* a tabela atual em Excel (Vitor, 07/10/2026) */}
+              <button type="button" className="btn btn-outline" onClick={() => { const x = vm.exportar(); baixarBytes(x.bytes, x.nome, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); }}>
+                <Icone nome="download" />Exportar Excel
+              </button>
               <span className="hint">Agrupar por</span>
               <Segmentado valor={f.agrupar} opcoes={AGRUPAR} onMudar={f.setAgrupar} />
             </div>

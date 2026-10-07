@@ -58,7 +58,13 @@ export function SegredosDaEmpresa({ vm: cofre, empresa, codigo, parte }: { vm: V
               <CampoArquivo id={'pfx-' + empresa} arquivo={null} aceitar=".pfx,.p12" onEscolher={f => void vm.escolherArquivo(f)} />
             </span>
           </Linha>
-          <Linha rotulo="Senha"><Senha valor={vm.cert.senha} onMudar={v => vm.setCert({ ...vm.cert, senha: v })} rotulo="Senha do certificado" /></Linha>
+          <Linha rotulo="Senha">
+            <span className="cofre-senha">
+              <Senha valor={vm.cert.senha} onMudar={v => vm.setCert({ ...vm.cert, senha: v })} rotulo="Senha do certificado" />
+              {vm.leitura.erro && <span className="badge badge-danger">{vm.leitura.erro}</span>}
+            </span>
+          </Linha>
+          {vm.cert.titular && <Linha rotulo="Titular"><span className="cofre-arquivo">{vm.cert.titular.replace(':', ' · ')}</span></Linha>}
           <Linha rotulo="Validade">
             <span className="cofre-senha">
               <CampoData valor={vm.cert.validade} onMudar={v => vm.setCert({ ...vm.cert, validade: v })} rotulo="Validade do certificado" />
@@ -69,7 +75,13 @@ export function SegredosDaEmpresa({ vm: cofre, empresa, codigo, parte }: { vm: V
           <Linha rotulo="Observação">
             <input type="text" className="pessoal-select cofre-obs" value={vm.cert.obs} onChange={e => vm.setCert({ ...vm.cert, obs: e.target.value })} aria-label="Observação do certificado" />
           </Linha>
-          {vm.mudouCert && <div className="cofre-salvar"><button type="button" className="btn btn-primary" disabled={cofre.ocupado} onClick={() => void vm.salvarCert()}>Salvar</button></div>}
+          {(vm.mudouCert || vm.temCertificado) && (
+            <div className="cofre-salvar">
+              {vm.temCertificado && <button type="button" className="btn btn-danger" disabled={cofre.ocupado} onClick={() => void vm.excluirCert()}>Excluir certificado</button>}
+              <span className="tarefas-barra-espaco" />
+              {vm.mudouCert && <button type="button" className="btn btn-primary" disabled={cofre.ocupado} onClick={() => void vm.salvarCert()}>Salvar</button>}
+            </div>
+          )}
         </Cartao>
       )}
     </>

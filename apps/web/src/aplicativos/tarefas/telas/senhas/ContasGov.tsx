@@ -1,7 +1,7 @@
 // Senhas › Contas gov.br (07/10/2026): as contas gov.br de pessoas (nome e nível), a busca e o Importar planilha (a
 // prévia antes de gravar). Clicar abre a conta: o CPF, a senha (mostrar e copiar) e a observação.
 import { cofre as c } from '@nads/core';
-import { BotaoAcao, BotaoIcone, CampoArquivo, Esqueleto, Icone, useCarregando, useRetorno } from '@nads/ui';
+import { BotaoAcao, BotaoIcone, CampoArquivo, Esqueleto, Icone, MedalhaGov, useCarregando, useRetorno } from '@nads/ui';
 import { Cartao, JanelaLateral, Linha } from '../janela/JanelaLateral';
 import { CofreFechado } from './CofreFechado';
 import { Senha } from './SegredosDaEmpresa';
@@ -41,7 +41,7 @@ export function ContasGov() {
               <tbody>
                 {vm.previa.contas.map(x => (
                   <tr key={x.id}>
-                    <td>{x.nome}</td><td className="num fraco">{c.cpfMascarado(x.cpf)}</td><td>{x.nivel || '—'}</td>
+                    <td>{x.nome}</td><td className="num fraco">{c.cpfMascarado(x.cpf)}</td><td><MedalhaGov nivel={x.nivel} /></td>
                     <td>{x.existe ? <span className="badge badge-neutral">Atualiza</span> : <span className="badge badge-ok">Nova</span>}</td>
                   </tr>
                 ))}
@@ -60,7 +60,7 @@ export function ContasGov() {
                 {vm.contas.map(x => (
                   <tr key={x.id} className="dp-linha-abre" onClick={() => vm.abrir(x.id)}>
                     <td className="cofre-nome">{x.nome}</td>
-                    <td>{x.nivel ? <span className="badge badge-neutral">{x.nivel}</span> : <span className="fraco">—</span>}</td>
+                    <td><MedalhaGov nivel={x.nivel} /></td>
                     <td className="fraco">{x.atualizadoPor}{x.atualizadoEm ? ' · ' + new Date(x.atualizadoEm).toLocaleDateString('pt-BR') : ''}</td>
                   </tr>
                 ))}
@@ -72,7 +72,7 @@ export function ContasGov() {
 
       {vm.aberta && (
         <JanelaLateral rotulo={vm.aberta.nome} topicos={[{ id: 'gov', rotulo: 'gov.br', icone: 'usuario' }]} topico="gov" mudar={() => {}} fechar={vm.fechar} resumo={(
-          <div className="usuario-quem"><b>{vm.aberta.nome}</b>{vm.aberta.nivel && <span className="badge badge-neutral">{vm.aberta.nivel}</span>}</div>
+          <div className="usuario-quem"><b>{vm.aberta.nome}</b>{vm.aberta.nivel && <MedalhaGov nivel={vm.aberta.nivel} />}</div>
         )}>
           {!aberto ? <CofreFechado vm={vm.cofre} /> : !vm.conta ? <Esqueleto linhas={3} /> : (
             <Cartao titulo="gov.br">

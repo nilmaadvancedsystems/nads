@@ -3,7 +3,7 @@
 export { Icone, DefsMarca, MarcaN, type NomeIcone } from './icones';
 export { RetornoProvider, useRetorno, classeDaJanela, ordemDosBotoes, type Retorno, type OpcoesAviso, type OpcoesModal, type BotaoModal } from './retorno';
 export { useTema, SeletorTema, type Tema } from './tema';
-export { Alerta, Esqueleto, NumeroQueConta, MensagemFlutuante, CampoArquivo, CampoArquivos, Segmentado, Stat, Interruptor, SeletorMes, BotaoAcao, BotaoIcone, CampoData, useEstadoPorChave, MenuSuspenso, TituloDaConta, type ItemMenu } from './componentes';
+export { Alerta, Esqueleto, NumeroQueConta, MensagemFlutuante, CampoArquivo, CampoArquivos, Segmentado, Stat, Interruptor, SeletorMes, BotaoAcao, BotaoIcone, CampoData, useEstadoPorChave, MenuSuspenso, TituloDaConta, MedalhaGov, type ItemMenu } from './componentes';
 export { Casca, baixarArquivo, baixarBytes, type SecaoCasca, type PaginaCasca } from './casca';
 export { EscolherEmpresa, type EmpresaNaLista, type PropsEscolherEmpresa } from './escolherEmpresa';
 export { LOGOS_BANDEIRAS } from './logosBandeiras';
