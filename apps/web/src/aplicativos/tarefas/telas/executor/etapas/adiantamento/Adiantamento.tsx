@@ -1,7 +1,8 @@
 // A etapa Adiantamento a fornecedores da Tarefa (Vitor, 07/10/2026), no esquema de Clientes: a linha do arquivo (o ícone de
 // importar o razão; importado, o check que vira × e tira), a grade dos meses com o saldo do fim de cada mês (o credor em
-// vermelho) e a faixa com os lançamentos. Mês credor: o aviso com o Reimportar, e o Próximo da Tarefa fica travado.
-import { Alerta, Icone } from '@nads/ui';
+// vermelho) e a faixa com os lançamentos. Mês credor: no cabeçalho, só "<adiantamento> está credor" e o "Corrigi, irei
+// reimportar" (tira o razão para importar o corrigido; Vitor, 07/10/2026), e o Próximo da Tarefa fica travado.
+import { Icone } from '@nads/ui';
 import { useRef } from 'react';
 import { BotaoDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
@@ -12,24 +13,21 @@ export function Adiantamento({ lado = 'fornecedores' }: { lado?: 'fornecedores' 
   const vm = useAdiantamento(lado);
   const Nome = vm.nome.charAt(0).toUpperCase() + vm.nome.slice(1);
   const arquivo = useRef<HTMLInputElement>(null);
-  const reimportar = useRef<HTMLInputElement>(null);
   const grade = useColunaAjustavel('adiantamento-' + lado, Math.max(14, 22 - vm.meses.length) + '%', vm.meses.length);
   const escolher = (ev: React.ChangeEvent<HTMLInputElement>) => { const f = ev.target.files?.[0]; ev.target.value = ''; vm.importar(f); };
   return (
     <section>
-      <header className="topbar"><div><h2 className="page-title">{Nome}</h2></div></header>
-
-      {vm.credores.length > 0 && (
-        <div className="alerta-linha">
-          <Alerta titulo={'Saldo ' + vm.errado + ' em ' + vm.credores.join(', ')}
-            texto={Nome + ' fica ' + (lado === 'fornecedores' ? 'devedor' : 'credor') + ' ou zera. Corrija no Alterdata (baixa a maior, nota lançada no adiantamento errado) e reimporte o razão.'}>
-            <div className="btn-row">
-              <button type="button" className="btn btn-primary" onClick={() => reimportar.current?.click()}><Icone nome="upload" />Reimportar</button>
-              <input ref={reimportar} type="file" accept=".xls,.xlsx,.ods" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={escolher} />
-            </div>
-          </Alerta>
-        </div>
-      )}
+      <header className="topbar">
+        <div><h2 className="page-title">{Nome}</h2></div>
+        {/* o mês do lado errado, no cabeçalho (Vitor, 07/10/2026: "escreva só '… está credor' e o botão"): o Corrigi tira o
+            razão, para importar o corrigido */}
+        {vm.credores.length > 0 && (
+          <div className="btn-row" style={{ alignItems: 'center' }}>
+            <span className="badge badge-warn" title={'Saldo ' + vm.errado + ' em ' + vm.credores.join(', ')}>{Nome} está {vm.errado}</span>
+            <button type="button" className="btn btn-primary" onClick={vm.tirar}>Corrigi, irei reimportar</button>
+          </div>
+        )}
+      </header>
       {vm.aMais.length > 0 && (
         <p className="hint">O razão traz meses fora do período da tarefa ({vm.aMais.join(', ')}): eles ficam de fora.</p>
       )}
