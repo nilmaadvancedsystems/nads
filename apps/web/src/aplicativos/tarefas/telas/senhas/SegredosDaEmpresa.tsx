@@ -75,7 +75,13 @@ export function SegredosDaEmpresa({ vm: cofre, empresa, codigo, parte }: { vm: V
           <Linha rotulo="Observação">
             <input type="text" className="pessoal-select cofre-obs" value={vm.cert.obs} onChange={e => vm.setCert({ ...vm.cert, obs: e.target.value })} aria-label="Observação do certificado" />
           </Linha>
-          {vm.mudouCert && <div className="cofre-salvar"><button type="button" className="btn btn-primary" disabled={cofre.ocupado} onClick={() => void vm.salvarCert()}>Salvar</button></div>}
+          {(vm.mudouCert || vm.temCertificado) && (
+            <div className="cofre-salvar">
+              {vm.temCertificado && <button type="button" className="btn btn-danger" disabled={cofre.ocupado} onClick={() => void vm.excluirCert()}>Excluir certificado</button>}
+              <span className="tarefas-barra-espaco" />
+              {vm.mudouCert && <button type="button" className="btn btn-primary" disabled={cofre.ocupado} onClick={() => void vm.salvarCert()}>Salvar</button>}
+            </div>
+          )}
         </Cartao>
       )}
     </>

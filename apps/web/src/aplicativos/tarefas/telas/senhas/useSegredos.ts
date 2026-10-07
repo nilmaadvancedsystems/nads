@@ -1,12 +1,14 @@
 // ViewModel dos segredos de uma empresa (a janela do módulo Senhas e a aba Senhas do Cadastro): lê do cofre aberto,
 // guarda o que a pessoa edita e grava embaralhado. O certificado: o .pfx em base64, a senha e a validade.
 import { cofre as c } from '@nads/core';
+import { useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import type { VmCofre } from './useCofre';
 
 const dataIso = (br: string) => (/^\d{2}\/\d{2}\/\d{4}$/.test(br) ? br.slice(6) + '-' + br.slice(3, 5) + '-' + br.slice(0, 2) : '');
 
 export function useSegredos(cofre: VmCofre, empresa: string, codigo: number | null) {
+  const { modal } = useRetorno();
   const [carregado, setCarregado] = useState(false);
   const [segredos, setSegredos] = useState<c.SegredosDaEmpresa>({});
   const [gov, setGov] = useState({ login: '', senha: '', obs: '' });
@@ -73,6 +75,18 @@ export function useSegredos(cofre: VmCofre, empresa: string, codigo: number | nu
       const novo: c.SegredosDaEmpresa = { ...segredos, certificado: cert.arquivo ? { nomeArquivo: cert.nomeArquivo, arquivo: cert.arquivo, senha: cert.senha, validade, ...(cert.titular ? { titular: cert.titular } : {}), ...(cert.obs.trim() ? { obs: cert.obs.trim() } : {}) } : undefined };
       await cofre.salvar(empresa, codigo, novo);
       setSegredos(novo);
+    },
+    /** exclui o certificado do cofre, com a confirmação (Vitor, 07/10/2026); a senha gov.br fica */
+    async excluirCert() {
+      if (!segredos.certificado?.arquivo) return;
+      const ok = await modal({ icone: 'alert', titulo: 'Excluir o certificado de ' + empresa + '?',
+        texto: (segredos.certificado.nomeArquivo || 'O certificado') + ' sai do cofre. Não dá para desfazer.',
+        botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }] });
+      if (!ok) return;
+      const novo: c.SegredosDaEmpresa = { ...segredos, certificado: undefined };
+      await cofre.salvar(empresa, codigo, novo);
+      setSegredos(novo);
+      setCert({ nomeArquivo: '', arquivo: '', senha: '', validade: '', titular: '', obs: '' });
     },
     /** o .pfx de volta, para baixar */
     arquivoParaBaixar(): { nome: string; dados: Uint8Array<ArrayBuffer> } | null {
