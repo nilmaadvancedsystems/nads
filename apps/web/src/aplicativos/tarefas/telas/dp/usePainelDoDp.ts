@@ -66,6 +66,8 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   const [agrupamento, setAgrupamento] = useState('');
   const [agrupar, setAgrupar] = useState<Agrupar>('nenhum');
   const [pendenteEm, setPendenteEm] = useState<'' | ParteDoDp>('');
+  // o filtro de Entrega (Vitor, 07/10/2026: como chega ao cliente)
+  const [entrega, setEntrega] = useState('');
 
   // os clientes como valem hoje (a planilha com o que mudou no Cadastro e nas Configurações do DP)
   const todas = doDp.clientes.map(c => {
@@ -103,7 +105,7 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   // o filtro Pendente em (Vitor, 07/10/2026): só quem ainda tem o que fazer naquela parte
   const pendente = PARTES_DO_DP.find(p => p.id === pendenteEm) || null;
   const filtradas = todas.filter(c => (!pendente || c.obrigacoes.some(o => pendente.obrigacoes.includes(o.id) && o.estado !== 'nao-tem' && o.estado !== 'feita'))
-    && (!achadas || achadas.has(c.codigo)) && (!responsavel || c.responsavelNome === responsavel)
+    && (!achadas || achadas.has(c.codigo)) && (!responsavel || c.responsavelNome === responsavel) && (!entrega || c.entrega === entrega)
     && (!movimento || c.movimento === movimento) && (!enquadramento || c.enquadramento === enquadramento)
     && (!agrupamento || c.agrupamento === agrupamento) && (!status || (status === 'concluidas') === c.concluida))
     .sort((a, b) => a.nomeNaTela.localeCompare(b.nomeNaTela, 'pt-BR'));
@@ -190,10 +192,26 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
       movimentos: contar(todas.map(c => c.movimento)).map(x => x.rotulo),
       enquadramentos: contar(todas.map(c => c.enquadramento)).map(x => x.rotulo),
       agrupamentos: contar(todas.map(c => c.agrupamento).filter(Boolean)).map(x => x.rotulo).sort((a, b) => a.localeCompare(b, 'pt-BR')),
-      pendenteEm, setPendenteEm,
+      pendenteEm, setPendenteEm, entrega, setEntrega,
+      entregas: contar(todas.map(c => c.entrega).filter(Boolean)).map(x => x.rotulo),
       partes: PARTES_DO_DP.map(p => ({ valor: p.id, rotulo: p.rotulo })),
-      algum: !!(busca || responsavel || movimento || enquadramento || status || agrupamento || pendenteEm),
-      limpar: () => { setBusca(''); setResponsavel(''); setMovimento(''); setEnquadramento(''); setStatus(''); setAgrupamento(''); setPendenteEm(''); },
+      algum: !!(busca || responsavel || movimento || enquadramento || status || agrupamento || pendenteEm || entrega),
+      limpar: () => { setBusca(''); setResponsavel(''); setMovimento(''); setEnquadramento(''); setStatus(''); setAgrupamento(''); setPendenteEm(''); setEntrega(''); },
+    },
+    /** a tabela que está na tela (com os filtros e a ordem dela), em Excel (Vitor, 07/10/2026) */
+    exportar() {
+      const ROTULO: Record<EstadoDaObrigacao, string> = { 'nao-tem': '—', 'a-fazer': 'A fazer', feita: 'Feita', parada: 'Parada' };
+      const cols = ORDEM_DAS_COLUNAS.map(id => COLUNA[id]);
+      const agrupado = agrupar !== 'nenhum';
+      const linhas = (agrupar === 'nenhum' ? [{ nome: '', linhas: linhasDaParte }] : [...new Set(linhasDaParte.map(chaveDoGrupo))]
+        .sort((a, b) => a.localeCompare(b, 'pt-BR')).map(nome => ({ nome, linhas: linhasDaParte.filter(c => chaveDoGrupo(c) === nome) })))
+        .flatMap(g => g.linhas.map(c => [
+          ...(agrupado ? [g.nome] : []), c.codigo, c.nomeNaTela, c.responsavelNome, c.ex?.valores?.folha ?? null,
+          ...cols.map(col => ROTULO[c.obrigacoes.find(o => o.id === col.id)?.estado || 'nao-tem']), c.entrega, c.situacao,
+        ]));
+      const cabecalho = [...(agrupado ? [agrupar === 'responsavel' ? 'Responsável (grupo)' : 'Agrupamento'] : []), 'Cód.', 'Cliente', 'Responsável', 'Folha do mês',
+        ...cols.map(col => col.nome), 'Onde', 'Situação'];
+      return { bytes: t.planilhaXlsx('Obrigações ' + competencia.slice(5, 7) + '-' + competencia.slice(0, 4), cabecalho, linhas), nome: 'DP obrigações ' + competencia + '.xlsx' };
     },
     /** a bolinha da obrigação: a fazer → feita; feita → volta a fazer (grava com quem e quando, como o executor) */
     /** o total da folha do mês que o DP informou (o Fiscal vê ao lado do faturamento; Vitor, 07/10/2026) */
