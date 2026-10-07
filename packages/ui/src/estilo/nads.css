@@ -3149,3 +3149,4 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .troca-nome{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .troca-pe{display:flex;align-items:center;gap:8px;}
 @media (max-width:760px){.troca-corpo{grid-template-columns:1fr;}.troca-meio{display:none;}}
+.troca-escolher{align-self:flex-start;min-width:200px;justify-content:space-between;}

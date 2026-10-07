@@ -1,7 +1,7 @@
 // As empresas de uma pessoa (Vitor, 07/10/2026), uma por linha, com o Trocar em cima (a janela da troca). Uma troca em
 // andamento mostra para quem vai e o Aceitar / Recusar / Cancelar de quem pode. Usada na janela Empresas por responsável,
 // no tópico Empresas do usuário e no Minhas empresas da Minha página.
-import { Esqueleto, Icone } from '@nads/ui';
+import { Esqueleto, Icone, MenuSuspenso } from '@nads/ui';
 import { useState } from 'react';
 import { JanelaDeTroca } from './JanelaDeTroca';
 import { useEmpresasPorResponsavel, type VmEmpresasPorResponsavel } from './useEmpresasPorResponsavel';
@@ -80,10 +80,8 @@ export function EmpresasSemResponsavel({ vm }: { vm: VmEmpresasPorResponsavel })
                 <li key={l.chave}>
                   <span className="emp-pessoa-cod num fraco">{l.codigo ?? ''}</span>
                   <span className="emp-pessoa-nome" title={l.nome}>{l.nome}</span>
-                  <select className="pessoal-select emp-pessoa-escolher" value="" aria-label={'Responsável ' + d.rotulo + ' de ' + l.nome} onChange={e => vm.definir(l.nome, l.codigo, d.id, e.target.value)}>
-                    <option value="">Escolher…</option>
-                    {vm.opcoes[d.id].map(n => <option key={n} value={n}>{n}</option>)}
-                  </select>
+                  <MenuSuspenso rotulo="Escolher" icone="usuario" className="btn btn-outline" titulo={'Responsável no ' + d.rotulo} direita largura={220}
+                    itens={vm.opcoes[d.id].map(n => ({ rotulo: n, icone: 'usuario' as const, onClick: () => vm.definir(l.nome, l.codigo, d.id, n) }))} />
                 </li>
               ))}
             </ul>
