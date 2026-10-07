@@ -127,6 +127,8 @@ export function useClientes() {
     credores: credores.map(k => ({ codigo: k.codigo, nome: k.nome, saldo: reais(k.saldo) })),
     // Clientes
     carregado: marcas.carregado,
+    /** as perguntas prontas para o cliente (o menu da observação) */
+    objecoes: cl.OBJECOES_DO_CLIENTE,
     filtro, setFiltro, busca, setBusca,
     contagem: { todos: linhas.length, pendente: linhas.filter(l => l.situacao === 'pendente').length, ok: linhas.filter(l => l.situacao === 'ok').length, conferido: conferidos.length },
     linhas: linhas

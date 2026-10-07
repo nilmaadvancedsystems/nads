@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
-  criarRepoCadastro, criarRepoCadastroMemoria, definirContaPadrao, definirPrestaServico, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
+  comContasPadrao, criarRepoCadastro, criarRepoCadastroMemoria, definirCartao, definirContaPadrao, definirPrestaServico, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
   bancosDoEntregasDoDocumento, bancosDoEntregasPorCodigo, contasDoEntregas, juntarComEntregas, sugestoesDoEntregas,
   lerPlanilhaDoPlano, linhasDoTexto, registrarPlano, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
   type PlanoDeContas,
@@ -266,5 +266,22 @@ describe('presta serviços (a regra no Cadastro)', () => {
     const volta = definirPrestaServico(nao, null, 'Vitor', AGORA);
     expect('prestaServico' in documentoDoCadastro(volta)).toBe(false);
     expect(volta.historico[0].detalhe).toBe('Não informado');
+  });
+});
+
+describe('os cartões da empresa (07/10/2026)', () => {
+  it('cartão empresarial e vende no cartão: sim, não, não informado; vão e voltam do documento', () => {
+    const c = definirCartao(definirCartao(vazio(), 'cartaoEmpresarial', true, 'Vitor', AGORA), 'vendeNoCartao', false, 'Vitor', AGORA);
+    expect([c.cartaoEmpresarial, c.vendeNoCartao]).toEqual([true, false]);
+    expect(c.historico[0]).toMatchObject({ acao: 'Vende no cartão', detalhe: 'Não' });
+    const volta = cadastroDoDocumento('FITO', 292, documentoDoCadastro(c));
+    expect([volta.cartaoEmpresarial, volta.vendeNoCartao]).toEqual([true, false]);
+    expect('cartaoEmpresarial' in definirCartao(c, 'cartaoEmpresarial', null, 'Vitor', AGORA)).toBe(false);
+  });
+  it('a conta do cartão fica nas contas padrão, e o Creditor gravando as dele não a apaga', () => {
+    const c = definirContaPadrao(vazio(), 'cartao', '21105', null, 'Vitor', AGORA);
+    expect(c.contasPadrao?.contas.cartao).toBe('21105');
+    const doCreditor = comContasPadrao(c, { contas: { banco: '10503' }, nomes: {} }, 'Creditor', AGORA);
+    expect(doCreditor.contasPadrao?.contas).toEqual({ banco: '10503', cartao: '21105' });
   });
 });

@@ -195,6 +195,18 @@ export function planilhaParaCliente(linhas: readonly LinhaParaCliente[]): Uint8A
 
 export const TIPO_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
+/**
+ * As perguntas mais comuns para o cliente (Vitor, 07/10/2026), no menu da observação de quem vai para o cliente.
+ * "Não achei pagamento" e "Qual banco recebeu?" viraram uma só.
+ */
+export const OBJECOES_DO_CLIENTE = [
+  'Não encontramos o recebimento. Em qual banco ou conta o valor entrou?',
+  'Foi pago em dinheiro?',
+  'O pagamento veio de outra empresa (outro CNPJ)?',
+  'O valor foi recebido na conta pessoal (pessoa física)?',
+  'Pode nos enviar a relação de recebimentos deste cliente?',
+] as const;
+
 /** A mensagem padrão (dá para trocar na tela): {empresa}, {mes} e {lista} viram os dados. */
 export const MENSAGEM_PADRAO = 'Olá! Na conferência dos clientes de {mes} da {empresa}, estes saldos ficaram em aberto. Pode nos dizer o que aconteceu com cada um?\n\n{lista}\n\nObrigado!';
 

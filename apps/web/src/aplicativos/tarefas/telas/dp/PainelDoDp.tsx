@@ -81,6 +81,13 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
             <option value="">Todos</option><option value="concluidas">Concluídos</option><option value="pendentes">Pendentes</option>
           </select>
         </label>
+        <label className="field dp-filtro">
+          <span className="hint">Pendente em</span>
+          <select className="select-compact" value={f.pendenteEm} onChange={e => f.setPendenteEm(e.target.value as typeof f.pendenteEm)}>
+            <option value="">Todas as partes</option>
+            {f.partes.map(p => <option key={p.valor} value={p.valor}>{p.rotulo}</option>)}
+          </select>
+        </label>
         <Selecao rotulo="Agrupamento" valor={f.agrupamento} mudar={f.setAgrupamento} opcoes={f.agrupamentos} />
         {f.algum && <button type="button" className="btn btn-ghost dp-limpar" onClick={f.limpar}><Icone nome="x" />Limpar filtros</button>}
       </div>
@@ -155,6 +162,7 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
                     <tr>
                       <th>Cód.</th><th>Cliente</th><th>Responsável</th><th className="num" title="O total da folha do mês (o Fiscal vê ao lado do faturamento)">Folha do mês</th>
                       {vm.colunas.map(o => <th key={o.id} className={'dp-ob' + (vm.primeiras.has(o.id) ? ' dp-ob-primeira' : '')} title={o.nome}>{o.rotulo}</th>)}
+                      <th className="dp-onde">Onde</th>
                       <th>Situação</th>
                     </tr>
                   </thead>
@@ -187,6 +195,7 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
                                 )}
                               </td>
                             ))}
+                            <td className="dp-onde fraco">{c.entrega || '—'}</td>
                             <td><span className={'badge ' + (c.concluida ? 'badge-ok' : c.parada ? 'badge-warn' : 'badge-neutral')}>{c.situacao}</span></td>
                           </tr>
                         ))}

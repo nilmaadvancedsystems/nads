@@ -3184,6 +3184,16 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .cofre-lista li svg{width:16px;height:16px;color:var(--ink-muted);flex:none;}
 /* DP: a REINF é do Fiscal, só leitura (07/10/2026) */
 .dp-marca.leitura.a-fazer{border-style:dashed;opacity:.55;}
+/* DP › Obrigações larga e completa (07/10/2026: "tabela completa parando de cortar e maior"); a coluna Onde da entrega */
+.dp-tabela .dp-cliente{max-width:none;}
+.dp-tabela .dp-onde{white-space:nowrap;font-size:12px;}
+.dp-tabela .dp-cliente-nome{max-width:300px;}
+.dp-tabela .dp-cliente-nome{max-width:220px;}
+.dp-tabela .dp-ob{width:38px;min-width:38px;padding-left:1px;padding-right:1px;}
+.dp-tabela thead tr:last-child th.dp-ob{font-size:10.5px;letter-spacing:-.01em;}
+.dp-tabela td,.dp-tabela th{padding-left:8px;padding-right:8px;}
+.dp-tabela .badge{font-size:11px;padding:1px 7px;}
+.dp-tabela .dp-cliente-nome{max-width:205px;}
 .cofre-dev{margin:0 0 10px;color:var(--warn);font-size:13px;}
 /* Senhas › Contas gov.br: a prévia da importação da planilha */
 .cofre-previa{margin:0 0 16px;padding:0;overflow:hidden;}
