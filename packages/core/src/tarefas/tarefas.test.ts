@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ArquivoImportado } from '../extratudo/extrator/tipos';
 import {
   competenciasRecentes, concluida, criarRepoTarefasMemoria, dispensar, execucaoNova, fazer, idDaExecucao, interromper,
-  competenciaEmProgresso, etapaNoMes, etapaNoMesDoAno, objecoesMaisComuns, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar, execucoesVariadas, marcarSemMovimento, todosSemMovimento, voltarPara, rotuloCurtoCompetencia, competenciasDoPeriodo, rotaDoPeriodo, rotuloDoPeriodo, definirPeriodo, periodoConcluido,
+  etapaNoMes, etapaNoMesDoAno, objecoesMaisComuns, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar, execucoesVariadas, marcarSemMovimento, todosSemMovimento, voltarPara, rotuloCurtoCompetencia, competenciasDoPeriodo, rotaDoPeriodo, rotuloDoPeriodo, definirPeriodo, periodoConcluido,
 } from '.';
 
 const R = ROTINA_CONTABIL;
@@ -223,32 +223,5 @@ describe('Estoque só em dezembro (Vitor, 07/10/2026)', () => {
   });
   it('etapa sem meses existe em todo mês', () => {
     expect(etapaNoMesDoAno(etapa('bens'), '2026-10')).toBe(true);
-  });
-});
-
-describe('competência em progresso (Vitor, 07/10/2026: "priorize continuar o que estava em progresso")', () => {
-  const nova = (empresa: string, c: string) => execucaoNova(empresa, null, c, 'contabil');
-  const andando = (empresa: string, c: string) => fazer(nova(empresa, c), 'extratos', 'Clara', agora).execucao;
-  const parada = (empresa: string, c: string) => interromper(nova(empresa, c), 'extratos', 'outro', '', 'Clara', agora).execucao;
-  const tudoFeito = (empresa: string, c: string) => { let ex = nova(empresa, c); for (const e of R.etapas) ex = fazer(ex, e.id, 'Clara', agora).execucao; return ex; };
-
-  it('o mês virou e setembro ainda está em andamento: setembro vem primeiro', () => {
-    const porMes = [{ competencia: '2026-10', execucoes: [] }, { competencia: '2026-09', execucoes: [andando('FITO', '2026-09')] }];
-    expect(competenciaEmProgresso(porMes, R)).toBe('2026-09');
-  });
-  it('a mais antiga em progresso ganha; parada também conta; concluída e não iniciada não', () => {
-    const porMes = [
-      { competencia: '2026-10', execucoes: [andando('A', '2026-10')] },
-      { competencia: '2026-09', execucoes: [tudoFeito('A', '2026-09')] },
-      { competencia: '2026-08', execucoes: [parada('B', '2026-08')] },
-    ];
-    expect(competenciaEmProgresso(porMes, R)).toBe('2026-08');
-    expect(competenciaEmProgresso(porMes.slice(0, 2), R)).toBe('2026-10');
-    expect(competenciaEmProgresso([{ competencia: '2026-09', execucoes: [tudoFeito('A', '2026-09')] }], R)).toBeNull();
-  });
-  it('por empresa: só o que é dela', () => {
-    const porMes = [{ competencia: '2026-10', execucoes: [andando('A', '2026-10')] }, { competencia: '2026-08', execucoes: [parada('B', '2026-08')] }];
-    expect(competenciaEmProgresso(porMes, R, 'A')).toBe('2026-10');
-    expect(competenciaEmProgresso(porMes, R, 'C')).toBeNull();
   });
 });

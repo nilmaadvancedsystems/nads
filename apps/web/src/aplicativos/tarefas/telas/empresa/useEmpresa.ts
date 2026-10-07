@@ -35,13 +35,9 @@ export function useEmpresa(rota: string) {
   const { dep: depDaTela, comDep, lista } = useDepartamentoDaTela();
   const rotina = t.rotinaDo(depDaTela);
   const competencias = competenciasDaTela(12);
+  const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
   const empresa = empresas.empresaPelaRota(repo.listarEmpresas(), rota);
   const dep = rotina?.departamento || op.departamento;
-  // sem competência no endereço: a desta empresa que está em progresso, mesmo com o mês virado (Vitor, 07/10/2026)
-  const recentes = competencias.slice(0, MESES_HISTORICO).map(c => ({ competencia: c, execucoes: repo.execucoes(c, dep) }));
-  const emProgresso = empresa && rotina && recentes.every(m => repo.carregada(m.competencia, dep))
-    ? t.competenciaEmProgresso(recentes, rotina, empresa.nome) : null;
-  const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : emProgresso || competencias[0];
   const agora = new Date();
 
   // o que o Extrator guardou da empresa (uma leitura ao abrir a página)
