@@ -14,15 +14,17 @@ import { JanelaLateral, type TopicoDaJanela } from '../../janela/JanelaLateral';
 import { ROTULO_DO_RELATORIO, usePainelDoFiscal, type VmPainelDoFiscal } from '../usePainelDoFiscal';
 import type { TarefaDoChecklist } from '../useChecklistDaFolha';
 import { andarProgresso, animarCartoes, menosMovimento, pularCheck } from './animarPainel';
-import { PainelDaTarefa } from './PainelDaTarefa';
+import { PainelDaTarefa, type DadosDoRelatorio } from './PainelDaTarefa';
 
 type ItemNaTela = TarefaDoChecklist & { marcado: boolean; liberado: boolean };
 
-export function ChecklistDisfarcado({ titulo, itens, definicao, alternar, empresa, codigo, competencia, meses, valores, informar }: {
+export function ChecklistDisfarcado({ titulo, itens, definicao, alternar, empresa, codigo, competencia, meses, valores, informar, relatorio }: {
   titulo: string; itens: readonly ItemNaTela[]; definicao: readonly t.ItemDoChecklist[]; alternar: (id: string) => void;
   empresa: string; codigo: string; competencia: string; meses: readonly string[];
   /** os valores da execução (o total da folha do DP) e como informar um */
   valores?: Record<string, number>; informar?: (chave: string, valor: number) => void;
+  /** o relatório (início e fim): o regime e as etapas do mês */
+  relatorio?: DadosDoRelatorio;
 }) {
   const vm = usePainelDoFiscal(empresa, codigo, competencia, meses);
   const feitos = itens.filter(i => i.marcado).length;
@@ -96,7 +98,7 @@ export function ChecklistDisfarcado({ titulo, itens, definicao, alternar, empres
             {(aberta || (vez && i.aviso)) && (
               <div className="imp-faixa-corpo">
                 {i.aviso && vez && <p className="hint"><Icone nome="alert" /> {i.aviso}</p>}
-                {aberta && def?.painel && <PainelDaTarefa painel={def.painel} vm={vm} codigo={codigo} competencia={competencia} importar={vm.importar} valores={valores} informar={informar} />}
+                {aberta && def?.painel && <PainelDaTarefa painel={def.painel} vm={vm} codigo={codigo} competencia={competencia} importar={vm.importar} valores={valores} informar={informar} relatorio={relatorio} />}
               </div>
             )}
           </div>

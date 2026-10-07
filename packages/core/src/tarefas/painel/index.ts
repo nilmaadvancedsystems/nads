@@ -34,7 +34,7 @@ const doPeriodo = <T extends { comp: string }>(lista: readonly T[], meses: reado
 const centavos = (v: number) => Math.round(v * 100) / 100;
 const soma = (xs: readonly { valor: number }[]) => centavos(xs.reduce((t, x) => t + (Number(x.valor) || 0), 0));
 
-export interface LinhaPorCfop { cfop: string; desc: string; classe: ClasseDoCfop; qtd: number; valor: number }
+export interface LinhaPorCfop { cfop: string; desc: string; classe: ClasseDoCfop; qtd: number; valor: number; notas: Nota[] }
 export interface DiaDoMes { dia: number; valor: number; qtd: number }
 export interface ResumoDeNotas { qtd: number; total: number; porCfop: LinhaPorCfop[]; porDia: DiaDoMes[]; semConta: number; comConta: boolean }
 
@@ -45,8 +45,8 @@ export function resumoDeNotas(notas: readonly Nota[], meses: readonly string[]):
   const dias = new Map<number, DiaDoMes>();
   for (const n of doMes) {
     const v = Number(n.valor) || 0;
-    const l = cfops.get(n.cfop) || { cfop: n.cfop, desc: descDoCfop(n.cfop, n.desc), classe: classeDoCfop(n.cfop), qtd: 0, valor: 0 };
-    l.qtd++; l.valor = centavos(l.valor + v);
+    const l = cfops.get(n.cfop) || { cfop: n.cfop, desc: descDoCfop(n.cfop, n.desc), classe: classeDoCfop(n.cfop), qtd: 0, valor: 0, notas: [] };
+    l.qtd++; l.valor = centavos(l.valor + v); l.notas.push(n);
     cfops.set(n.cfop, l);
     const dia = Number(String(n.data || '').split('/')[0]) || 0;
     if (dia) {
@@ -134,7 +134,7 @@ export function interestaduais(entradas: readonly Nota[], meses: readonly string
   return { qtd: fora.length, total: soma(fora), linhas: [...por.values()].sort((a, b) => b.valor - a.valor) };
 }
 
-export interface LinhaFiscal { ncm: string; cst: string; cest: string; itens: number; valor: number }
+export interface LinhaFiscal { ncm: string; cst: string; cest: string; itens: number; valor: number; notas: Nota[] }
 export interface ResumoFiscal { temColunas: boolean; linhas: LinhaFiscal[] }
 
 /**
@@ -148,8 +148,8 @@ export function porNcmCstCest(notas: readonly Nota[], meses: readonly string[]):
   const por = new Map<string, LinhaFiscal>();
   for (const n of doMes) {
     const k = (n.ncm || '') + '|' + (n.cst || '') + '|' + (n.cest || '');
-    const l = por.get(k) || { ncm: n.ncm || '', cst: n.cst || '', cest: n.cest || '', itens: 0, valor: 0 };
-    l.itens++; l.valor = centavos(l.valor + (Number(n.valor) || 0));
+    const l = por.get(k) || { ncm: n.ncm || '', cst: n.cst || '', cest: n.cest || '', itens: 0, valor: 0, notas: [] };
+    l.itens++; l.valor = centavos(l.valor + (Number(n.valor) || 0)); l.notas.push(n);
     por.set(k, l);
   }
   return { temColunas, linhas: [...por.values()].sort((a, b) => b.valor - a.valor) };

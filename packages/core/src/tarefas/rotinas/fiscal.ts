@@ -21,6 +21,10 @@ const etapa = (id: string, secao: string, nome: string, descricao: string, check
 export const ROTINA_FISCAL: Rotina = {
   departamento: 'fiscal',
   etapas: [
+    // ─── Relatório inicial (Vitor, 07/10/2026: "faça uma aba de relatório no final e no início") ─────────────
+    etapa('fiscal-relatorio-inicio', 'Relatório inicial', 'Relatório', 'O mês antes de começar: o regime, as etapas que entram, o SIEG e o que já foi importado.', [
+      item('relatorio-inicio', 'Conferi o relatório do início', { painel: 'relatorio-inicio' }),
+    ]),
     // ─── Importação de Notas ──────────────────────────────────────────────────
     etapa('fiscal-inicial', 'Importação de Notas', 'Inicial', 'Baixe as notas do mês no SIEG e receba as saídas.', [
       item('sieg', 'Download SIEG', { link: { rotulo: 'SIEG - Login', url: 'https://auth.sieg.com/login' }, painel: 'sieg' }),
@@ -147,6 +151,10 @@ export const ROTINA_FISCAL: Rotina = {
       item('guias-cliente', 'Enviar as guias ao cliente (DAS, DAE, ISS, DARF)'),
       item('arquivar', 'Arquivar guias, recibos e declarações no Drive (por cliente e mês)'),
       item('enviado', 'Enviado'),
+    ]),
+    // ─── Relatório final: o mês fechado (os números, cada etapa com quem e quando, o que ficou pendente) ───────
+    etapa('fiscal-relatorio-fim', 'Relatório final', 'Relatório', 'O mês fechado: os números, cada etapa com quem fez e quando, e o que ficou pendente.', [
+      item('relatorio-fim', 'Conferi o relatório do fim', { painel: 'relatorio-fim' }),
     ]),
   ],
 };

@@ -3158,3 +3158,7 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .pessoa-com-foto{display:inline-flex;align-items:center;gap:8px;}
 .pessoal-topico .usuarios-foto.foto-mini{margin-right:2px;}
 .resp-pendentes-com{display:inline-flex;align-items:center;gap:6px;}
+/* as linhas que abrem as notas (Fiscal, 07/10/2026): a mão e o realce do passar o mouse da tabela */
+.graf-linha-abre{cursor:pointer;}
+.graf-linha-abre:hover td{background:var(--hover-bg);}
+.graf-linha-abre:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}

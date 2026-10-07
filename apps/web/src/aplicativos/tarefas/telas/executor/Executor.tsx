@@ -283,7 +283,7 @@ export function Executor() {
               // o Fiscal: a checklist disfarçada (Vitor, 06/10/2026) — um cartão por tarefa, com o painel e o Importar
               <ChecklistDisfarcado titulo={vm.etapa.nome} itens={folha.itens} definicao={vm.etapa.checklist} alternar={folha.alternar}
                 empresa={vm.empresa.nome} codigo={vm.empresa.codigo != null ? String(vm.empresa.codigo) : ''} competencia={vm.competencia} meses={vm.meses}
-                valores={vm.valores} informar={vm.informarValor} />
+                valores={vm.valores} informar={vm.informarValor} relatorio={vm.relatorio} />
             ) : temChecklist && folha.itens ? (
               // o checklist da etapa: a Contabilização da Folha (pelo balancete) ou as tarefas da etapa (o Fiscal), marcando em ordem
               <div className="card folha-check">
