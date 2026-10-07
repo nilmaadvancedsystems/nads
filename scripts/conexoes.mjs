@@ -29,6 +29,9 @@
 // instância à parte, entregas.firestore.ts criarLoginNoEntregas) e grava usuarios/{uid} (acesso.firestore.ts).
 // E o chat com a IA (2026-10-02, pedido do Vitor), em aplicativos/tarefas/dados/ia.firestore.ts: o mesmo do Entregas,
 // conversasIA (+mensagens; a pessoa grava a pergunta, o robô responde) e robo/estado (só leitura, se a IA está de pé).
+// O FGTS Digital no DP (2026-10-07, pedido do Vitor), em dados/fgts.firestore.ts: só o banco do Entregas (robo/fgts para
+// ler; pedidosFgts para pedir e acompanhar, com o PDF e as telas que o robô da nuvem grava). Quem fala com o portal do
+// FGTS é o robô (robo/fgts-digital.js), nunca o app.
 // Esta checagem falha se:
 //  1. aparecer dependência de rede fora do permitido (só "firebase", e só no apps/web);
 //  2. código fora de apps/web/src/aplicativos/<app>/dados/*.firestore.ts importar/usar Firebase;

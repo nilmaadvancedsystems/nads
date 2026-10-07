@@ -13,6 +13,8 @@ import { criarDriveFirestore } from './drive.firestore';
 import { criarSessaoEntregas, type SessaoEntregas } from './entregas.firestore';
 import { criarGmailFirestore } from './gmail.firestore';
 import { criarArquivadorMemoria, type RepoArquivador } from './arquivador';
+import { criarFgtsMemoria, type RepoFgts } from './fgts';
+import { criarFgtsFirestore } from './fgts.firestore';
 import { criarSiegMemoria, type RepoSieg } from './sieg';
 import { criarSiegFirestore } from './sieg.firestore';
 import { criarArquivadorFirestore } from './arquivador.firestore';
@@ -208,6 +210,14 @@ let sieg: RepoSieg | null = null;
 export function repoDoSieg(): RepoSieg {
   if (!sieg) sieg = noBanco ? criarSiegFirestore(() => { const q = quemPede(); return q ? { nome: q.nome, uid: q.uid } : null; }) : criarSiegMemoria();
   return sieg;
+}
+
+let fgts: RepoFgts | null = null;
+
+/** O FGTS Digital pelo robô da nuvem (07/10/2026): os pedidos de guia do DP e o estado do robô. */
+export function repoDoFgts(): RepoFgts {
+  if (!fgts) fgts = noBanco ? criarFgtsFirestore(() => { const q = quemPede(); return q ? { nome: q.nome, uid: q.uid } : null; }) : criarFgtsMemoria();
+  return fgts;
 }
 
 let arquivador: RepoArquivador | null = null;
