@@ -3081,3 +3081,19 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .dp-selo-mudado{margin-left:8px;font-size:11px;vertical-align:middle;}
 /* DP › Obrigações: o submenu das partes (Folha, eSocial, Guias, REINF, Entrega), acima da tabela */
 .dp-submenu{margin:0 0 12px;}
+/* Cadastro › Responsáveis: a transferência com o aceite do emitente e do destinatário (07/10/2026) */
+.resp-atual{display:flex;align-items:center;gap:8px;justify-content:space-between;min-width:180px;}
+.resp-transferir{height:28px;padding:0 8px;font-size:12px;}
+.resp-transf{display:flex;flex-direction:column;gap:4px;min-width:200px;}
+.resp-transf-nomes{display:inline-flex;align-items:center;gap:6px;font-size:13px;}
+.resp-transf-nomes svg{width:14px;height:14px;color:var(--warn);}
+.resp-transf .hint{margin:0;font-size:12px;}
+.resp-transf-botoes{display:inline-flex;gap:6px;flex-wrap:wrap;}
+.resp-transf-botoes .btn{height:28px;padding:0 10px;font-size:12px;}
+.resp-pendentes{padding:14px 16px;margin:0 0 16px;border-color:var(--warn);}
+.resp-pendentes-topo{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.resp-pendentes-topo svg{width:16px;height:16px;color:var(--warn);}
+.resp-pendentes-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;}
+.resp-pendentes-lista li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--border);flex-wrap:wrap;}
+.resp-pendentes-texto{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.resp-pendentes-texto .hint{margin:0;font-size:12.5px;}

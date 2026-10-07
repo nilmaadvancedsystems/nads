@@ -7,6 +7,7 @@ import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { PainelIniciar } from './partes/PainelIniciar';
 import { LIMITE, useMinhasEmpresas, type Coluna } from './useMinhasEmpresas';
 import { JanelaDaCompetencia } from './partes/JanelaDaCompetencia';
+import { TransferenciasPendentes } from '../cadastro/responsaveis/TransferenciasPendentes';
 
 
 /** Título de coluna que ordena: clicar ordena por ela (crescente), clicar de novo inverte; a setinha cinza só aparece depois do clique. */
@@ -45,6 +46,8 @@ export function MinhasEmpresas() {
   if (!vm.temRotina) return <EmDesenvolvimento nome={'A rotina do ' + (vm.departamento === 'fiscal' ? 'Fiscal' : 'Departamento Pessoal')} />;
   return (
     <section>
+      {/* as transferências de empresa em que a pessoa é o emitente ou o destinatário (Vitor, 07/10/2026) */}
+      <TransferenciasPendentes />
       <div className="tarefas-barra-topo">
         {vm.perguntarCompetencia && <JanelaDaCompetencia competencias={vm.competencias} competencia={vm.competencia} onSeguir={vm.setCompetencia} />}
         <MenuSuspenso icone="calendar" rotulo={vm.rotuloCompetencia} titulo="Competência" dica="Trocar a competência"

@@ -54,3 +54,34 @@ describe('o DP no cadastro da empresa (responsáveis e parâmetros)', () => {
     expect(lido.historico.length).toBe(2);
   });
 });
+
+describe('a transferência de responsável (com o aceite do emitente e do destinatário)', () => {
+  it('só muda o responsável com os dois aceites; a recusa derruba o pedido', async () => {
+    const cad = await import('../../empresas/cadastro/regras');
+    const agora = new Date('2026-10-07T12:00:00Z');
+    let c = cad.definirResponsavel(cad.cadastroVazio('EMPRESA X', 1), 'fiscal', 'Heverton', 'Vitor', agora);
+    // pedido pelo admin: falta o aceite dos dois
+    const r = cad.pedirTransferencia(c, 'fiscal', 'Heverton', 'Nilma', 'Vitor', agora);
+    expect(r.erro).toBeNull();
+    c = r.cadastro;
+    expect(cad.faltamAceitar(c.transferencias!.fiscal!)).toEqual(['Heverton', 'Nilma']);
+    expect(cad.transferenciasParaResponder([c], 'Nilma').map(x => x.papel)).toEqual(['destinatario']);
+    // um terceiro não muda nada
+    expect(cad.responderTransferencia(c, 'fiscal', 'Fabiana', true, agora)).toBe(c);
+    c = cad.responderTransferencia(c, 'fiscal', 'heverton', true, agora);
+    expect(c.responsaveis?.fiscal).toBe('Heverton');
+    c = cad.responderTransferencia(c, 'fiscal', 'Nilma', true, agora);
+    expect(c.responsaveis?.fiscal).toBe('Nilma');
+    expect(c.transferencias?.fiscal).toBeUndefined();
+    // pedido pelo próprio emitente já leva o aceite dele; o destinatário recusa
+    const r2 = cad.pedirTransferencia(c, 'fiscal', 'Nilma', 'Adivania', 'Nilma', agora);
+    expect(cad.faltamAceitar(r2.cadastro.transferencias!.fiscal!)).toEqual(['Adivania']);
+    const recusada = cad.responderTransferencia(r2.cadastro, 'fiscal', 'Adivania', false, agora);
+    expect(recusada.transferencias?.fiscal).toBeUndefined();
+    expect(recusada.responsaveis?.fiscal).toBe('Nilma');
+    // o pedido sobrevive ao documento do banco
+    const lido = cad.cadastroDoDocumento('EMPRESA X', 1, cad.documentoDoCadastro(r2.cadastro));
+    expect(lido.transferencias?.fiscal?.para).toBe('Adivania');
+    expect(cad.pedirTransferencia(c, 'fiscal', 'Nilma', 'Nilma', 'Vitor', agora).erro).toMatch(/já é de/);
+  });
+});

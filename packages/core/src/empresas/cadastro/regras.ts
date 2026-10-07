@@ -5,7 +5,7 @@
 import { nomeNorm } from '../../formatos';
 import { BANCOS_CONHECIDOS, bancosDaEmpresa, idDaConta, rotuloDaConta, type BancoDaEmpresa } from '../bancos';
 import {
-  type CadastroDaEmpresa, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, DEPARTAMENTOS_DO_RESPONSAVEL,
+  type CadastroDaEmpresa, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel,
 } from './tipos';
 
 /** Quantos registros do histórico ficam guardados (os mais novos). */
@@ -71,6 +71,21 @@ function responsaveisDoDocumento(v: unknown): { responsaveis?: Partial<Record<De
   return Object.keys(r).length ? { responsaveis: r } : {};
 }
 
+function transferenciasDoDocumento(v: unknown): { transferencias?: Partial<Record<DepartamentoDoResponsavel, TransferenciaDeResponsavel>> } {
+  if (!v || typeof v !== 'object') return {};
+  const o = v as Record<string, unknown>;
+  const r: Partial<Record<DepartamentoDoResponsavel, TransferenciaDeResponsavel>> = {};
+  for (const d of DEPARTAMENTOS_DO_RESPONSAVEL) {
+    const t = (o[d.id] || null) as Record<string, unknown> | null;
+    if (!t || !texto(t.de) || !texto(t.para)) continue;
+    r[d.id] = {
+      de: texto(t.de), para: texto(t.para), pedidoPor: texto(t.pedidoPor), em: texto(t.em),
+      ...(texto(t.aceiteDe) ? { aceiteDe: texto(t.aceiteDe) } : {}), ...(texto(t.aceitePara) ? { aceitePara: texto(t.aceitePara) } : {}),
+    };
+  }
+  return Object.keys(r).length ? { transferencias: r } : {};
+}
+
 function dpDoDocumento(v: unknown): { dp?: ParametrosDoDp } {
   if (!v || typeof v !== 'object') return {};
   const o = v as Record<string, unknown>;
@@ -96,7 +111,7 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     nome, codigo, bancos, contasPadrao: contasPadraoDoDocumento(doc.contasPadrao), historico, ...(plano ? { plano } : {}),
     ...(typeof doc.prestaServico === 'boolean' ? { prestaServico: doc.prestaServico } : {}),
     ...(Array.isArray(doc.socios) ? { socios: (doc.socios as Record<string, unknown>[]).map(s => ({ nome: texto(s?.nome), cpf: texto(s?.cpf) })).filter(s => s.nome || s.cpf) } : {}), atualizadoEm: opcional(doc.atualizadoEm),
-    ...responsaveisDoDocumento(doc.responsaveis), ...dpDoDocumento(doc.dp),
+    ...responsaveisDoDocumento(doc.responsaveis), ...dpDoDocumento(doc.dp), ...transferenciasDoDocumento(doc.transferencias),
   };
 }
 
@@ -111,6 +126,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(c.socios?.length ? { socios: c.socios } : {}),
     ...(c.responsaveis && Object.keys(c.responsaveis).length ? { responsaveis: c.responsaveis } : {}),
     ...(c.dp && Object.keys(c.dp).length ? { dp: c.dp } : {}),
+    ...(c.transferencias && Object.keys(c.transferencias).length ? { transferencias: c.transferencias } : {}),
     historico: c.historico.slice(0, MAX_HISTORICO),
     atualizadoEm: c.atualizadoEm || new Date().toISOString(),
   };
@@ -165,7 +181,6 @@ export function definirSocios(c: CadastroDaEmpresa, socios: readonly Socio[], po
   return registrar(novos.length ? { ...resto, socios: novos } : resto, por, agora, 'Sócios', novos.map(s => s.nome || s.cpf).join(', ') || 'Nenhum');
 }
 
-/** Registra no histórico a troca do plano de contas (o plano mora em outro documento). */
 /** Quem cuida da empresa num departamento (vazio = ninguém). Igual ao que já está: não muda nada. */
 export function definirResponsavel(c: CadastroDaEmpresa, dep: DepartamentoDoResponsavel, nome: string, por: string, agora: Date): CadastroDaEmpresa {
   const novo = texto(nome);
@@ -190,6 +205,84 @@ export function definirParametrosDp(c: CadastroDaEmpresa, mudar: { [K in keyof P
   return registrar({ ...c, dp }, por, agora, 'DP', partes.join(' · '));
 }
 
+const nomeIgual = (a: string, b: string) => texto(a).toLowerCase() === texto(b).toLowerCase();
+const rotuloDoDep = (dep: DepartamentoDoResponsavel) => DEPARTAMENTOS_DO_RESPONSAVEL.find(d => d.id === dep)?.rotulo || dep;
+const semTransferencia = (c: CadastroDaEmpresa, dep: DepartamentoDoResponsavel) => {
+  const transferencias = { ...(c.transferencias || {}) };
+  delete transferencias[dep];
+  return transferencias;
+};
+
+/**
+ * Pede a transferência da empresa de 'de' (o responsável de hoje) para 'para' (Vitor, 07/10/2026). Só vale com o aceite
+ * dos dois: quem pede sendo o emitente ou o destinatário, o aceite dele já vai junto. Devolve o erro, se não der.
+ */
+export function pedirTransferencia(c: CadastroDaEmpresa, dep: DepartamentoDoResponsavel, de: string, para: string, por: string, agora: Date): ResultadoCadastro {
+  const emitente = texto(de);
+  const destino = texto(para);
+  if (!emitente) return { cadastro: c, erro: 'A empresa ainda não tem responsável: escolha um direto.' };
+  if (!destino) return { cadastro: c, erro: 'Escolha para quem transferir.' };
+  if (nomeIgual(emitente, destino)) return { cadastro: c, erro: 'A empresa já é de ' + destino + '.' };
+  if (c.transferencias?.[dep]) return { cadastro: c, erro: 'Já há uma transferência pedida desta empresa no ' + rotuloDoDep(dep) + '.' };
+  const em = agora.toISOString();
+  const t: TransferenciaDeResponsavel = {
+    de: emitente, para: destino, pedidoPor: texto(por), em,
+    ...(nomeIgual(por, emitente) ? { aceiteDe: em } : {}), ...(nomeIgual(por, destino) ? { aceitePara: em } : {}),
+  };
+  const novo = registrar({ ...c, transferencias: { ...(c.transferencias || {}), [dep]: t } }, por, agora, 'Pediu transferência',
+    rotuloDoDep(dep) + ': de ' + emitente + ' para ' + destino);
+  return { cadastro: novo, erro: null };
+}
+
+/**
+ * O emitente ou o destinatário responde ao pedido. Recusou: o pedido cai. Aceitou: marca o aceite dele; com os dois
+ * aceites, o destinatário vira o responsável e o pedido sai. Quem não é nenhum dos dois não muda nada.
+ */
+export function responderTransferencia(c: CadastroDaEmpresa, dep: DepartamentoDoResponsavel, quem: string, aceita: boolean, agora: Date): CadastroDaEmpresa {
+  const t = c.transferencias?.[dep];
+  if (!t) return c;
+  const ehDe = nomeIgual(quem, t.de);
+  const ehPara = nomeIgual(quem, t.para);
+  if (!ehDe && !ehPara) return c;
+  const detalhe = rotuloDoDep(dep) + ': de ' + t.de + ' para ' + t.para;
+  if (!aceita) return registrar({ ...c, transferencias: semTransferencia(c, dep) }, quem, agora, 'Recusou a transferência', detalhe);
+  const em = agora.toISOString();
+  const novo: TransferenciaDeResponsavel = { ...t, ...(ehDe ? { aceiteDe: em } : {}), ...(ehPara ? { aceitePara: em } : {}) };
+  if (novo.aceiteDe && novo.aceitePara) {
+    return registrar({ ...c, responsaveis: { ...(c.responsaveis || {}), [dep]: t.para }, transferencias: semTransferencia(c, dep) },
+      quem, agora, 'Transferida', detalhe + ' (os dois aceitaram)');
+  }
+  return registrar({ ...c, transferencias: { ...(c.transferencias || {}), [dep]: novo } }, quem, agora, 'Aceitou a transferência', detalhe);
+}
+
+/** Quem pediu (ou um administrador) desiste do pedido. */
+export function cancelarTransferencia(c: CadastroDaEmpresa, dep: DepartamentoDoResponsavel, por: string, agora: Date): CadastroDaEmpresa {
+  const t = c.transferencias?.[dep];
+  if (!t) return c;
+  return registrar({ ...c, transferencias: semTransferencia(c, dep) }, por, agora, 'Cancelou a transferência', rotuloDoDep(dep) + ': de ' + t.de + ' para ' + t.para);
+}
+
+/** Falta o aceite de quem? (os nomes, emitente primeiro) */
+export function faltamAceitar(t: TransferenciaDeResponsavel): string[] {
+  return [...(t.aceiteDe ? [] : [t.de]), ...(t.aceitePara ? [] : [t.para])];
+}
+
+/** O que a pessoa tem para responder: as transferências em que ela é emitente ou destinatário e ainda não aceitou. */
+export function transferenciasParaResponder(cadastros: Iterable<CadastroDaEmpresa>, quem: string): { cadastro: CadastroDaEmpresa; dep: DepartamentoDoResponsavel; t: TransferenciaDeResponsavel; papel: 'emitente' | 'destinatario' }[] {
+  const lista: { cadastro: CadastroDaEmpresa; dep: DepartamentoDoResponsavel; t: TransferenciaDeResponsavel; papel: 'emitente' | 'destinatario' }[] = [];
+  if (!texto(quem)) return lista;
+  for (const c of cadastros) {
+    for (const d of DEPARTAMENTOS_DO_RESPONSAVEL) {
+      const t = c.transferencias?.[d.id];
+      if (!t) continue;
+      if (nomeIgual(quem, t.de) && !t.aceiteDe) lista.push({ cadastro: c, dep: d.id, t, papel: 'emitente' });
+      else if (nomeIgual(quem, t.para) && !t.aceitePara) lista.push({ cadastro: c, dep: d.id, t, papel: 'destinatario' });
+    }
+  }
+  return lista.sort((a, b) => a.t.em.localeCompare(b.t.em));
+}
+
+/** Registra no histórico a troca do plano de contas (o plano mora em outro documento). */
 export function registrarPlano(c: CadastroDaEmpresa, p: PlanoDeContas, por: string, agora: Date): CadastroDaEmpresa {
   const de = p.origem === 'balancete' ? 'de um balancete' : (p.arquivo ? 'de ' + p.arquivo : 'de um arquivo');
   const comResumo = { ...c, plano: { contas: p.contas.length, importadoEm: p.importadoEm } };

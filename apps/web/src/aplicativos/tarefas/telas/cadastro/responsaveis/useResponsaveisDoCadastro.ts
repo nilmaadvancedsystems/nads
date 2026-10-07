@@ -4,6 +4,7 @@
 // dela são do Fiscal, Vitor 06/10/2026), mostrado como tal.
 // Em cima, cada pessoa com quantas empresas tem (clicar filtra).
 import { empresas, formatos } from '@nads/core';
+import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { useOperador } from '../../../casca/operador';
 import { useAcesso, useGravarCadastro, useTodosOsCadastros } from '../../../dados/repo';
@@ -15,7 +16,9 @@ export function useResponsaveisDoCadastro() {
   const todos = useTodosOsCadastros();
   const gravar = useGravarCadastro();
   const equipe = useAcesso().equipe();
-  const por = useOperador().operador?.nome || '';
+  const op = useOperador().operador;
+  const por = op?.nome || '';
+  const { toast } = useRetorno();
   const [busca, setBusca] = useState('');
   const [pessoa, setPessoa] = useState('');
   const [semEm, setSemEm] = useState<'' | Dep>('');
@@ -33,6 +36,8 @@ export function useResponsaveisDoCadastro() {
     return {
       chave: (e.codigo ?? '') + e.nome, codigo: e.codigo, nome: e.nome, regime: e.regime,
       responsaveis: { fiscal: valor('fiscal'), contabil: valor('contabil') } as Record<Dep, string>,
+      /** a transferência pedida e ainda não aceita pelos dois, por departamento */
+      transferencias: (c?.transferencias || {}) as Partial<Record<Dep, empresas.cadastro.TransferenciaDeResponsavel>>,
       /** o do Fiscal que vem da planilha (quando ninguém foi escolhido no Cadastro) */
       daPlanilha: !valor('fiscal') && daPlanilha ? nomeDaEquipe(daPlanilha) || daPlanilha.split('.').map(x => x.charAt(0) + x.slice(1).toLowerCase()).join('.') : '',
     };
@@ -65,6 +70,32 @@ export function useResponsaveisDoCadastro() {
     semResponsavel: Object.fromEntries(cad.DEPARTAMENTOS_DO_RESPONSAVEL.map(d => [d.id, linhas.filter(l => !efetivo(l, d.id)).length])) as Record<Dep, number>,
     pessoas,
     busca, setBusca, pessoa, setPessoa, semEm, setSemEm,
+    eu: por,
+    admin: !!op?.admin,
+    /** o responsável que vale hoje (o escolhido, ou o da planilha no Fiscal) */
+    atual: (l: (typeof linhas)[number], d: Dep) => efetivo(l, d),
+    faltam: (t: empresas.cadastro.TransferenciaDeResponsavel) => cad.faltamAceitar(t),
+    /**
+     * Pede a transferência (Vitor, 07/10/2026): só vale com o aceite do emitente (quem é hoje) e do destinatário; quem
+     * pede sendo um dos dois já aceita junto.
+     */
+    transferir(nome: string, codigo: number | null, dep: Dep, de: string, para: string) {
+      if (!todos.carregada) return;
+      const previa = cad.pedirTransferencia(todos.porId.get(formatos.slug(nome)) || cad.cadastroVazio(nome, codigo), dep, de, para, por, new Date());
+      if (previa.erro) { toast(previa.erro); return; }
+      void gravar(nome, codigo, atual => {
+        const r = cad.pedirTransferencia(atual, dep, de, para, por, new Date());
+        return r.erro ? atual : r.cadastro;
+      });
+      const falta = cad.faltamAceitar(previa.cadastro.transferencias![dep]!);
+      toast('Transferência pedida: ' + de + ' → ' + para + '. Falta o aceite de ' + falta.join(' e ') + '.');
+    },
+    responder(nome: string, codigo: number | null, dep: Dep, aceita: boolean) {
+      void gravar(nome, codigo, atual => cad.responderTransferencia(atual, dep, por, aceita, new Date()));
+    },
+    cancelar(nome: string, codigo: number | null, dep: Dep) {
+      void gravar(nome, codigo, atual => cad.cancelarTransferencia(atual, dep, por, new Date()));
+    },
     /** escolhe quem cuida da empresa no departamento ('' = ninguém) */
     definir(nome: string, codigo: number | null, dep: Dep, quem: string) {
       if (!todos.carregada) return;

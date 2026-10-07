@@ -1,6 +1,7 @@
-// Cadastro › Responsáveis: quem cuida de cada empresa no Fiscal e no Contábil. Em cima, as pessoas com quantas
+// Cadastro › Responsáveis: quem cuida de cada empresa no Fiscal e no Contábil. Sem responsável, escolhe direto; com
+// responsável, só pela transferência (Vitor, 07/10/2026), que vale com o aceite do emitente e do destinatário. Em cima, as pessoas com quantas
 // empresas têm (clicar filtra a lista); embaixo, a lista com um seletor por departamento (grava ao escolher).
-import { Esqueleto, Icone, useCarregando } from '@nads/ui';
+import { Esqueleto, Icone, MenuSuspenso, useCarregando } from '@nads/ui';
 import { useResponsaveisDoCadastro } from './useResponsaveisDoCadastro';
 
 export function ResponsaveisDoCadastro() {
@@ -54,6 +55,41 @@ export function ResponsaveisDoCadastro() {
                       {vm.departamentos.map(d => {
                         const valor = l.responsaveis[d.id];
                         const opcoes = [...new Set([...vm.opcoes[d.id], valor].filter(Boolean))];
+                        const t = l.transferencias[d.id];
+                        const atual = vm.atual(l, d.id);
+                        const igual = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+                        if (t) {
+                          // o pedido em andamento: de → para, quem falta aceitar e o que eu posso fazer
+                          const falta = vm.faltam(t);
+                          const souEu = falta.some(n => igual(n, vm.eu));
+                          return (
+                            <td key={d.id}>
+                              <div className="resp-transf">
+                                <span className="resp-transf-nomes"><Icone nome="repeat" /><b>{t.de}</b> → <b>{t.para}</b></span>
+                                <span className="hint">Falta o aceite de {falta.join(' e ')}</span>
+                                <span className="resp-transf-botoes">
+                                  {souEu && <button type="button" className="btn btn-primary" onClick={() => vm.responder(l.nome, l.codigo, d.id, true)}><Icone nome="check" />Aceitar</button>}
+                                  {souEu && <button type="button" className="btn" onClick={() => vm.responder(l.nome, l.codigo, d.id, false)}>Recusar</button>}
+                                  {(igual(t.pedidoPor, vm.eu) || vm.admin) && <button type="button" className="btn btn-ghost" onClick={() => vm.cancelar(l.nome, l.codigo, d.id)}>Cancelar</button>}
+                                </span>
+                              </div>
+                            </td>
+                          );
+                        }
+                        if (atual) {
+                          // com responsável: só pela transferência (com o aceite dos dois)
+                          const outros = vm.opcoes[d.id].filter(n => !igual(n, atual));
+                          return (
+                            <td key={d.id}>
+                              <div className="resp-atual">
+                                <span>{atual}{!valor && <span className="hint"> (planilha)</span>}</span>
+                                <MenuSuspenso rotulo="Transferir" icone="repeat" className="btn btn-outline resp-transferir" titulo={'Transferir para (' + d.rotulo + ')'} direita
+                                  itens={outros.length ? outros.map(n => ({ rotulo: n, icone: 'usuario' as const, onClick: () => vm.transferir(l.nome, l.codigo, d.id, atual, n) }))
+                                    : [{ rotulo: 'Ninguém mais no ' + d.rotulo, icone: 'usuario' as const, desabilitado: true, onClick: () => {} }]} />
+                              </div>
+                            </td>
+                          );
+                        }
                         return (
                           <td key={d.id}>
                             <select className="select-compact dp-resp" value={valor} onChange={e => vm.definir(l.nome, l.codigo, d.id, e.target.value)}

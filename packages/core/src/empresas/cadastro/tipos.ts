@@ -97,6 +97,8 @@ export interface CadastroDaEmpresa {
    * da equipe. Sem = ninguém escolhido (no Fiscal, vale o da planilha do Checklist Folha, que é do Fiscal).
    */
   responsaveis?: Partial<Record<DepartamentoDoResponsavel, string>>;
+  /** as transferências de responsável pedidas e ainda não aceitas pelos dois (uma por departamento) */
+  transferencias?: Partial<Record<DepartamentoDoResponsavel, TransferenciaDeResponsavel>>;
   /** os parâmetros do DP mudados nas Configurações do DP (o que não está aqui vale o da planilha do DP) */
   dp?: ParametrosDoDp;
   historico: RegistroCadastro[];
@@ -119,4 +121,22 @@ export interface ParametrosDoDp {
   reinfAutorizada?: boolean;
   entrega?: string;
   agrupamento?: string;
+}
+
+/**
+ * Uma transferência de responsável (Vitor, 07/10/2026: "a empresa seria transferida com a permissão do emitente e do
+ * destinatário"): pedida por alguém; só vira o novo responsável quando o emitente (quem é hoje) e o destinatário aceitam.
+ */
+export interface TransferenciaDeResponsavel {
+  /** o emitente: o responsável de hoje */
+  de: string;
+  /** o destinatário */
+  para: string;
+  pedidoPor: string;
+  /** ISO */
+  em: string;
+  /** quando o emitente aceitou (ISO) */
+  aceiteDe?: string;
+  /** quando o destinatário aceitou (ISO) */
+  aceitePara?: string;
 }
