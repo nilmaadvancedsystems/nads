@@ -18,6 +18,8 @@ import { criarSiegFirestore } from './sieg.firestore';
 import { criarArquivadorFirestore } from './arquivador.firestore';
 import { criarIAMemoria, type RepoIA } from './ia';
 import { criarIAFirestore } from './ia.firestore';
+import { criarFeedbackMemoria, type RepoFeedback } from './feedback';
+import { criarFeedbackFirestore } from './feedback.firestore';
 import { criarPessoalMemoria, type RepoPessoal } from './pessoal';
 import { criarPessoalFirestore } from './pessoal.firestore';
 import { criarSaudeMemoria, type RepoSaude } from './saude';
@@ -222,6 +224,18 @@ export function repoDoArquivador(): RepoArquivador {
 let ia: RepoIA | null = null;
 
 /** O chat com a IA do escritório (o mesmo do Entregas: conversasIA, respondido pelo robô). */
+let feedback: RepoFeedback | null = null;
+
+/** Os feedbacks (o print e o que melhorar): no banco, a coleção feedbacks do Entregas; nos exemplos, na memória. */
+export function repoDeFeedback(): RepoFeedback {
+  if (!feedback) {
+    feedback = noBanco
+      ? criarFeedbackFirestore(() => { const q = quemPede(); return q ? { uid: q.uid, email: q.email, nome: q.nome } : null; })
+      : criarFeedbackMemoria(() => { try { return localStorage.getItem('nads-tarefas-operador') || ''; } catch { return ''; } });
+  }
+  return feedback;
+}
+
 export function repoDaIA(): RepoIA {
   if (!ia) ia = noBanco ? criarIAFirestore(() => { const q = quemPede(); return q ? { uid: q.uid, email: q.email } : null; }) : criarIAMemoria();
   return ia;

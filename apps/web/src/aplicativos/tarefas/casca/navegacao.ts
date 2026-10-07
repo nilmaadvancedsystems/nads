@@ -29,6 +29,8 @@ export const APLICACOES: readonly Aplicacao[] = [
   { id: 'cadastro', nome: 'Cadastro', icone: 'landmark', pronta: true, paginas: [
     { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Cadastro — empresas' },
     { id: 'usuarios', rotulo: 'Usuários', icone: 'checklist', titulo: 'Cadastro — usuários' },
+    // o que a equipe mandou pelo Enviar feedback (o print e o que melhorar; Vitor, 07/10/2026)
+    { id: 'feedbacks', rotulo: 'Feedbacks', icone: 'envelope', titulo: 'Cadastro — feedbacks' },
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Cadastro — configurações' },
   ] },
   // o Fiscal no mesmo modelo do Contábil (Vitor, 05/10/2026): as empresas com a rotina do Fiscal, a visão e as paradas

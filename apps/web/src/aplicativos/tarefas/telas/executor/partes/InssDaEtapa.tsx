@@ -6,6 +6,7 @@ import { useId, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import type { InssDaEtapa as Inss } from '../useInssDaEtapa';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../comum/BotaoDeTeste';
+import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosMeses';
 
 const BAIXA: Record<Inss['meses'][number]['baixa'], string> = { ok: '✓', falta: 'Falta', depois: 'Depois', fora: '—', 'sem-guia': '—' };
 
@@ -32,6 +33,7 @@ export function InssDaEtapa({ inss, conferir, teste = [] }: { inss: Inss; confer
   const idRazao = useId();
   const idGuias = useId();
   const [aberta, setAberta] = useState(true);
+  const grade = useColunaAjustavel('inss', '96px', inss.meses.length);
   return (
     <div className="executor-razao">
       <div className="imp-lista">
@@ -62,10 +64,11 @@ export function InssDaEtapa({ inss, conferir, teste = [] }: { inss: Inss; confer
           {inss.pronto && aberta && (
             <>
               <div className="imp-periodo-linha">
-                <table className="imp-meses">
+                <table className="imp-meses" style={grade.tabela}>
+                  <colgroup><col style={{ width: grade.largura }} /></colgroup>
                   <thead>
                     <tr>
-                      <th scope="col"><span className="sr-only">Mês</span></th>
+                      <th scope="col"><span className="sr-only">Mês</span>{grade.alca}</th>
                       {inss.meses.map(m => (
                         <th key={m.mes} scope="col" className={m.mes === inss.mesAberto ? 'atual' : undefined}>
                           <button type="button" className="imp-meses-mes" aria-current={m.mes === inss.mesAberto ? 'true' : undefined} onClick={() => inss.abrirMes(m.mes)}
@@ -75,9 +78,9 @@ export function InssDaEtapa({ inss, conferir, teste = [] }: { inss: Inss; confer
                     </tr>
                   </thead>
                   <tbody>
-                    <tr><th scope="row">Provisão</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '')} title={m.foraDoRazao ? 'O razão começa depois deste mês' : undefined}>{m.foraDoRazao ? 'fora do razão' : m.provisao}</td>)}</tr>
-                    <tr><th scope="row">Guia</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '')}>{m.guia || '—'}</td>)}</tr>
-                    <tr><th scope="row">Diferença</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '') + (m.diferenca && !m.bate ? ' ext-neg' : '')}>{m.diferenca || '—'}</td>)}</tr>
+                    <tr><th scope="row">Provisão</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '')} title={m.foraDoRazao ? 'O razão começa depois deste mês' : undefined}>{m.foraDoRazao ? 'fora do razão' : <ValorNaGrade texto={m.provisao} />}</td>)}</tr>
+                    <tr><th scope="row">Guia</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '')}>{m.guia ? <ValorNaGrade texto={m.guia} /> : '—'}</td>)}</tr>
+                    <tr><th scope="row">Diferença</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '') + (m.diferenca && !m.bate ? ' ext-neg' : '')}>{m.diferenca ? <ValorNaGrade texto={m.diferenca} /> : '—'}</td>)}</tr>
                     <tr><th scope="row">Baixa</th>{inss.meses.map(m => (
                       <td key={m.mes} className={(m.mes === inss.mesAberto ? 'atual' : '') + (m.baixa === 'falta' ? ' ext-neg' : '')}
                         title={m.baixa === 'falta' ? 'Guia paga em ' + m.pagaEm + ' sem a baixa no razão' : m.baixa === 'depois' ? 'Paga em ' + (m.pagaEm || '?') + ', depois do período' : m.pagaEm ? 'Paga em ' + m.pagaEm : undefined}>

@@ -4,12 +4,13 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { bancosDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDoArquivador, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
+import { bancosDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDoArquivador, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoSieg } from './sieg';
 import type { RepoArquivador } from './arquivador';
 import type { RepoIA } from './ia';
 import type { RepoPessoal } from './pessoal';
+import type { RepoFeedback } from './feedback';
 
 type Repo = tarefas.RepoTarefas;
 
@@ -146,6 +147,13 @@ export function useSieg(): RepoSieg {
 /** O arquivador (o "Arquivar agora"), ao vivo: o ponto do PC e os últimos pedidos. */
 export function useArquivador(): RepoArquivador {
   const repo = repoDoArquivador();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** Os feedbacks (enviar; o admin vê todos), ao vivo. */
+export function useFeedback(): RepoFeedback {
+  const repo = repoDeFeedback();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
 }
