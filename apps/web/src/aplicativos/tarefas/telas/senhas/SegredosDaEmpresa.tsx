@@ -7,7 +7,7 @@ import { CofreFechado } from './CofreFechado';
 import type { VmCofre } from './useCofre';
 import { useSegredos } from './useSegredos';
 
-function Senha({ valor, onMudar, rotulo }: { valor: string; onMudar: (v: string) => void; rotulo: string }) {
+export function Senha({ valor, onMudar, rotulo }: { valor: string; onMudar: (v: string) => void; rotulo: string }) {
   const [ver, setVer] = useState(false);
   const { toast } = useRetorno();
   return (

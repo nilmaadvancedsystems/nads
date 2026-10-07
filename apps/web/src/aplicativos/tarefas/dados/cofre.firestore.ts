@@ -49,6 +49,14 @@ export function criarCofreFirestore(eu: () => { uid: string; nome: string } | nu
     liberar: (id, trancada, versao, por) => setDoc(doc(db, 'cofreChaves', id), { trancada, versao, liberadoPor: por, liberadoEm: new Date().toISOString() }, { merge: true }),
     apagarChave: id => deleteDoc(doc(db, 'cofreChaves', id)),
     salvar: (id, d) => setDoc(doc(db, 'cofre', id), limpo(d)),
+    async salvarVarios(lista) {
+      // o Firestore aceita até 500 por lote
+      for (let i = 0; i < lista.length; i += 400) {
+        const b = guardarLote(writeBatch(db));
+        for (const x of lista.slice(i, i + 400)) b.set(doc(db, 'cofre', x.id), limpo(x.doc));
+        await b.commit();
+      }
+    },
     salvarConfig: c => setDoc(doc(db, 'cofreConfig', 'atual'), limpo(c)),
     async trocarChave(c, chaves, novos) {
       const b = guardarLote(writeBatch(db));

@@ -34,6 +34,11 @@ export interface Cifrado { iv: string; dados: string }
 
 /** cofre/{empresa}: o documento de uma empresa no banco. */
 export interface DocDoCofre extends Cifrado {
+  /** 'gov' = uma conta gov.br de pessoa (CPF), importada da planilha; sem = os segredos de uma empresa */
+  tipo?: 'gov';
+  /** o nível da conta gov.br (Bronze, Prata, Ouro), às claras */
+  nivel?: string;
+  /** a empresa (nos documentos de empresa) ou o nome da pessoa (nas contas gov.br) */
   empresa: string;
   codigo: number | null;
   /** a versão da chave do cofre que embaralhou */
