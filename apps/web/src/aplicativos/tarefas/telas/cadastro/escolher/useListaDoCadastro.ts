@@ -46,7 +46,9 @@ export function useListaDoCadastro() {
   const admin = !!useOperador().operador?.admin;
   const { toast } = useRetorno();
 
-  const linhas = useMemo<LinhaEmpresa[]>(() => demo.comEmpresaDemo(empresas.EMPRESAS, demo.EMPRESA_DEMO).map(x => {
+  // a lista do escritório com as empresas cadastradas pelo nads (Nova empresa)
+  const linhas = useMemo<LinhaEmpresa[]>(() => [...demo.comEmpresaDemo(empresas.EMPRESAS, demo.EMPRESA_DEMO), ...cad.empresasCadastradasNoNads(todos.porId.values())
+    .filter(n => !empresas.EMPRESAS.some(e => e.nome === n.nome))].map(x => {
     const c = todos.porId.get(formatos.slug(x.nome)) || null;
     const doRobo = x.codigo != null ? entregas.porCodigo.get(x.codigo) : undefined;
     const contas = c?.bancos ? c.bancos.filter(b => !b.ate) : cad.contasDoEntregas(doRobo);

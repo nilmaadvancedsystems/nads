@@ -101,6 +101,8 @@ export interface CadastroDaEmpresa {
   transferencias?: Partial<Record<DepartamentoDoResponsavel, TransferenciaDeResponsavel>>;
   /** os parâmetros do DP mudados nas Configurações do DP (o que não está aqui vale o da planilha do DP) */
   dp?: ParametrosDoDp;
+  /** a empresa foi cadastrada pelo nads (Vitor, 07/10/2026: "um cadastro de empresas sem o botão de cadastrar empresa"): o regime */
+  nova?: { regime: string; criadaEm: string };
   historico: RegistroCadastro[];
   /** o resumo do plano de contas (o plano mora em outro documento): para a lista de empresas */
   plano?: { contas: number; importadoEm: string };

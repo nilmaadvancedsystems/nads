@@ -2,9 +2,13 @@
 // cadastro ou, sem cadastro, os que o robô já sabe) e o plano de contas. A busca e a situação filtram;
 // clicar na linha abre a janela da empresa, por cima da lista.
 import { Icone, Interruptor, LogoBanco, MenuSuspenso, useCarregando, useEntradaAnimada, useLinhasQueSeMovem } from '@nads/ui';
+import { useState } from 'react';
+import { JanelaNovaEmpresa } from './JanelaNovaEmpresa';
 import { SITUACOES, useListaDoCadastro } from './useListaDoCadastro';
 
 export function EscolherEmpresaCadastro() {
+  // a Nova empresa (Vitor, 07/10/2026: "um cadastro de empresas sem o botão de cadastrar empresa")
+  const [nova, setNova] = useState(false);
   const vm = useListaDoCadastro();
   useCarregando(vm.carregando);
   // as linhas chegam em cascata quando o banco responde
@@ -14,6 +18,7 @@ export function EscolherEmpresaCadastro() {
   const linhasQueSeMovem = useLinhasQueSeMovem<HTMLTableElement>(vm.carregando ? '' : vm.linhas.map(l => l.chave).join('|'), vm.busca);
   return (
     <section>
+      {nova && <JanelaNovaEmpresa fechar={() => setNova(false)} />}
       <div className="tarefas-barra-topo">
         <span className="tarefas-contador"><Icone nome="briefcase" /><b>{vm.total}</b> empresas</span>
         <span className="tarefas-contador"><Icone nome="landmark" /><b>{vm.cadastradas}</b> com bancos cadastrados</span>
@@ -33,6 +38,7 @@ export function EscolherEmpresaCadastro() {
         <MenuSuspenso rotulo={vm.rotuloSituacao} titulo="Situação" direita className={'btn btn-outline' + (vm.situacao ? ' ativo' : '')}
           itens={[{ rotulo: 'Todas', marcado: !vm.situacao, onClick: () => vm.setSituacao('') },
             ...SITUACOES.map(s => ({ rotulo: s.rotulo, marcado: s.valor === vm.situacao, onClick: () => vm.setSituacao(s.valor) }))]} />
+        <button type="button" className="btn btn-primary" onClick={() => setNova(true)}><Icone nome="plus" />Nova empresa</button>
       </div>
 
       {!vm.carregando && !vm.linhas.length ? <p className="empty">Nenhuma empresa com isso.</p> : (
