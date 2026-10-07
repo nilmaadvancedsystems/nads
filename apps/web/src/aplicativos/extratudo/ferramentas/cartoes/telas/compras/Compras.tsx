@@ -14,8 +14,8 @@ function Fatura({ f, vm }: { f: VmCompras['faturas'][number]; vm: VmCompras }) {
     <div className={'imp-bloco' + (f.noPeriodo ? '' : ' sem-movimento')}>
       <div className="imp-linha">
         <span className="imp-ico"><Icone nome="cartao" /></span>
-        <div className="imp-txt">
-          <span><b>{f.rotulo}</b><span className="imp-conta">venc. {f.vencimento} · cartão {f.cartao}</span></span>
+        <div className="imp-txt" title={'Cartão ' + f.cartao + ' · ' + f.arquivo}>
+          <span><b>{f.rotulo}</b><span className="imp-conta">venc. {f.vencimento}</span></span>
         </div>
         <div className="imp-resumo">
           <div>
