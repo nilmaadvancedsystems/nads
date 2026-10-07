@@ -3,7 +3,7 @@
 // e os clientes em tabela; o selo de cada cliente troca entre o saldo e Conferido (os dois em laranja; o Ok é do sistema), e o
 // conferido abre a observação; o envio com a planilha, o e-mail e o WhatsApp. Só o balancete dinâmico (Vitor, 06/10/2026).
 import { Alerta, Icone, LogoGmail, LogoWhatsApp, MenuSuspenso, Segmentado } from '@nads/ui';
-import { useRef, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { useClientes, type FiltroClientes, type TelaClientes } from './useClientes';
 
@@ -169,12 +169,7 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                     </span>
                   )}
                   {/* o conferido abre a observação (vai para o cliente) */}
-                  {l.situacao === 'conferido' && (
-                    <input key={l.obs} type="text" aria-label={'Observação de ' + l.nome} placeholder="Observação para o cliente" defaultValue={l.obs}
-                      style={{ display: 'block', width: '100%', marginTop: 6 }}
-                      onBlur={e => { if (e.target.value.trim() !== l.obs) vm.observar(l.codigo, e.target.value); }}
-                      onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
-                  )}
+                  {l.situacao === 'conferido' && <Observacao nome={l.nome} obs={l.obs} objecoes={vm.objecoes} desabilitado={!vm.carregado} onMudar={t => vm.observar(l.codigo, t)} />}
                 </td>
                 <td>
                   {/* os selos do catálogo: o saldo (Diferença, SE-03) ↔ Conferido (SE-02); o Ok (SE-01) é do sistema e não é botão (Vitor, 06/10/2026) */}
@@ -207,6 +202,50 @@ function ListaDeClientes({ vm }: { vm: VM }) {
         </table>
       </div>
     </>
+  );
+}
+
+/**
+ * A observação do conferido (Vitor, 07/10/2026): o menu com as perguntas mais comuns e o lápis para escrever; o lápis
+ * troca o menu pelo campo, com o check para guardar. Guardada, fica embaixo do nome com o check da importação (passou o
+ * mouse, vira o × e apaga).
+ */
+function Observacao({ nome, obs, objecoes, desabilitado, onMudar }: {
+  nome: string; obs: string; objecoes: readonly string[]; desabilitado: boolean; onMudar: (texto: string) => void;
+}) {
+  const [escrevendo, setEscrevendo] = useState(false);
+  const [texto, setTexto] = useState('');
+  const guardar = () => { if (texto.trim()) onMudar(texto); setEscrevendo(false); };
+  if (obs) {
+    return (
+      <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+        <span className="hint">{obs}</span>
+        <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" disabled={desabilitado} onClick={() => onMudar('')}
+          title="Observação guardada. Clique para apagar." aria-label={'Apagar a observação de ' + nome}>
+          <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
+        </button>
+      </span>
+    );
+  }
+  return (
+    <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+      {escrevendo ? (
+        <>
+          <input type="text" autoFocus aria-label={'Observação de ' + nome} placeholder="Observação para o cliente" value={texto}
+            style={{ flex: 1, minWidth: 0 }} onChange={e => setTexto(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') guardar(); if (e.key === 'Escape') setEscrevendo(false); }} />
+          <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={desabilitado || !texto.trim()} onClick={guardar}
+            title="Guardar a observação" aria-label={'Guardar a observação de ' + nome}><Icone nome="check" /></button>
+        </>
+      ) : (
+        <>
+          <MenuSuspenso rotulo="Pergunta para o cliente" className="btn btn-outline" dica="Escolher uma pergunta pronta" largura={420}
+            itens={objecoes.map(o => ({ rotulo: o, desabilitado, onClick: () => onMudar(o) }))} />
+          <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={desabilitado} onClick={() => { setTexto(''); setEscrevendo(true); }}
+            title="Escrever a observação" aria-label={'Escrever a observação de ' + nome}><Icone nome="lapis" /></button>
+        </>
+      )}
+    </span>
   );
 }
 
