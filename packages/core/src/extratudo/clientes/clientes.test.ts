@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, proximaSituacao, situacaoDe, textoDaMensagem,
+  clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
 } from './index';
 
 // o formato do balancete dinâmico do Alterdata (292, bdinamico.xls)
@@ -28,16 +28,27 @@ describe('clientes (a etapa Clientes da Tarefa)', () => {
     });
     expect(credores(c).map(x => x.codigo)).toEqual(['12006', '12014']);
   });
-  it('a situação: zerado é Ok (do sistema), com saldo é Pendente; o clique troca Pendente ↔ Conferido', () => {
-    const [m, b] = clientesDoDinamico(lerBalanceteDinamico(ROWS), '2026-08');
-    expect([situacaoDe(m), situacaoDe(b), situacaoDe(m, { nome: '', saldo: 0, situacao: 'conferido' })]).toEqual(['pendente', 'ok', 'conferido']);
-    // o Ok é do sistema: a marca não muda a conta zerada, nem um Ok marcado antes vale para quem tem saldo
-    expect([situacaoDe(b, { nome: '', saldo: 0, situacao: 'conferido' }), situacaoDe(m, { nome: '', saldo: 0, situacao: 'ok' })]).toEqual(['ok', 'pendente']);
-    expect([proximaSituacao('pendente'), proximaSituacao('ok'), proximaSituacao('conferido')]).toEqual(['conferido', 'ok', 'pendente']);
+  // um razão importado com um só item (Vitor, 07/10/2026: o Conferido é só do razão: nota em aberto ou pagamento solto)
+  const razaoCom = (status: 'aberto' | 'pagamento' | 'devolucao', interno = false) => ({
+    arquivo: 'x.xls', notas: [], saldo: 10, devolucoes: 0, duplicadas: [],
+    itens: [{ data: '2026-08-05', nf: status === 'aberto' ? '1' : '', descricao: '', valor: 10, status, ...(interno ? { interno } : {}) }],
   });
-  it('os conferidos passam para o mês seguinte; o guardado é conferido', () => {
-    const ant = docDoDocumento({ contas: { 12006: { nome: 'M', saldo: 10, situacao: 'conferido', obs: 'NF 1' }, 12013: { nome: 'B', saldo: 0, situacao: 'ok' }, x: { situacao: 'outra' } } });
-    expect(Object.keys(ant.contas)).toEqual(['12006', '12013']);
+  it('a situação: zerado é Ok, com saldo é Pendente; Conferido só pelo razão (nota em aberto ou pagamento solto)', () => {
+    const [m, b] = clientesDoDinamico(lerBalanceteDinamico(ROWS), '2026-08');
+    expect([situacaoDe(m), situacaoDe(b)]).toEqual(['pendente', 'ok']);
+    // o conferido manual de antes (sem razão) não vale mais
+    expect(situacaoDe(m, { nome: '', saldo: 0, situacao: 'conferido' })).toBe('pendente');
+    expect(situacaoDe(m, { nome: '', saldo: 0, situacao: 'pendente', razao: razaoCom('aberto') })).toBe('conferido');
+    expect(situacaoDe(m, { nome: '', saldo: 0, situacao: 'pendente', razao: razaoCom('pagamento') })).toBe('conferido');
+    // só devolução, ou só a duplicidade (que é do escritório): não é o que perguntar ao cliente
+    expect(situacaoDe(m, { nome: '', saldo: 0, situacao: 'pendente', razao: razaoCom('devolucao') })).toBe('pendente');
+    expect(razaoComPendencia(razaoCom('pagamento', true))).toBe(false);
+    // o Ok é do sistema: a conta zerada é Ok mesmo com razão; um Ok marcado antes não vale para quem tem saldo
+    expect([situacaoDe(b, { nome: '', saldo: 0, situacao: 'conferido', razao: razaoCom('aberto') }), situacaoDe(m, { nome: '', saldo: 0, situacao: 'ok' })]).toEqual(['ok', 'pendente']);
+  });
+  it('os conferidos pelo razão passam para o mês seguinte; o conferido manual, não', () => {
+    const ant = docDoDocumento({ contas: { 12006: { nome: 'M', saldo: 10, situacao: 'conferido', obs: 'NF 1', razao: razaoCom('aberto') }, 12014: { nome: 'C', saldo: 5, situacao: 'conferido' }, 12013: { nome: 'B', saldo: 0, situacao: 'ok' }, x: { situacao: 'outra' } } });
+    expect(Object.keys(ant.contas)).toEqual(['12006', '12013', '12014']);
     expect(Object.keys(conferidosQuePassam(ant, { contas: {} }))).toEqual(['12006']);
     expect(conferidosQuePassam(ant, { contas: { 12006: { nome: 'M', saldo: 0, situacao: 'ok' } } })).toEqual({});
   });

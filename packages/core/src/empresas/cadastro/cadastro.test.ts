@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
-  comContasPadrao, criarRepoCadastro, criarRepoCadastroMemoria, definirCartao, definirContaPadrao, definirNotaDeHonorario, definirPrestaServico, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
+  comContasPadrao, criarRepoCadastro, criarRepoCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirNotaDeHonorario, definirPrestaServico, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
   bancosDoEntregasDoDocumento, bancosDoEntregasPorCodigo, contasDoEntregas, juntarComEntregas, sugestoesDoEntregas,
   lerPlanilhaDoPlano, linhasDoTexto, registrarPlano, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
   type PlanoDeContas,
@@ -296,5 +296,20 @@ describe('a nota de honorário (07/10/2026)', () => {
     const nada = definirNotaDeHonorario(c, null, 'Vitor', AGORA);
     expect('emiteNotaHonorario' in nada).toBe(false);
     expect('emiteNotaHonorario' in documentoDoCadastro(nada)).toBe(false);
+  });
+});
+
+describe('o contato da empresa para o Mandei (07/10/2026)', () => {
+  it('e-mail e WhatsApp (só os números); inválido não grava; vazio tira; vai e volta do documento', () => {
+    let c = definirContato(vazio(), 'whatsapp', '(38) 99999-8888', 'Vitor', AGORA);
+    c = definirContato(c, 'email', ' financeiro@fito.com.br ', 'Vitor', AGORA);
+    expect(c.contato).toEqual({ whatsapp: '38999998888', email: 'financeiro@fito.com.br' });
+    expect(c.historico[0]).toMatchObject({ acao: 'E-mail da empresa', detalhe: 'financeiro@fito.com.br' });
+    expect(definirContato(c, 'email', 'sem-arroba', 'Vitor', AGORA)).toBe(c);
+    expect(definirContato(c, 'whatsapp', '123', 'Vitor', AGORA)).toBe(c);
+    expect(cadastroDoDocumento('FITO', 292, documentoDoCadastro(c)).contato).toEqual(c.contato);
+    const sem = definirContato(definirContato(c, 'email', '', 'Vitor', AGORA), 'whatsapp', '', 'Vitor', AGORA);
+    expect('contato' in sem).toBe(false);
+    expect('contato' in documentoDoCadastro(sem)).toBe(false);
   });
 });

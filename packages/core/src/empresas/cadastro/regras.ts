@@ -128,6 +128,7 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...(typeof doc.cartaoEmpresarial === 'boolean' ? { cartaoEmpresarial: doc.cartaoEmpresarial } : {}),
     ...(typeof doc.vendeNoCartao === 'boolean' ? { vendeNoCartao: doc.vendeNoCartao } : {}),
     ...(typeof doc.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: doc.emiteNotaHonorario } : {}),
+    ...contatoDoDocumento(doc.contato),
     ...(Array.isArray(doc.emprestimos) ? { emprestimos: (doc.emprestimos as Record<string, unknown>[]).map(e => ({ numero: texto(e?.numero), banco: texto(e?.banco), desde: texto(e?.desde), ...(texto(e?.ate) ? { ate: texto(e?.ate) } : {}) })).filter(e => e.numero && e.banco) } : {}),
     ...(Array.isArray(doc.socios) ? { socios: (doc.socios as Record<string, unknown>[]).map(s => ({ nome: texto(s?.nome), cpf: texto(s?.cpf) })).filter(s => s.nome || s.cpf) } : {}), atualizadoEm: opcional(doc.atualizadoEm),
     ...responsaveisDoDocumento(doc.responsaveis), ...dpDoDocumento(doc.dp), ...transferenciasDoDocumento(doc.transferencias),
@@ -147,6 +148,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(typeof c.cartaoEmpresarial === 'boolean' ? { cartaoEmpresarial: c.cartaoEmpresarial } : {}),
     ...(typeof c.vendeNoCartao === 'boolean' ? { vendeNoCartao: c.vendeNoCartao } : {}),
     ...(typeof c.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: c.emiteNotaHonorario } : {}),
+    ...(c.contato && (c.contato.email || c.contato.whatsapp) ? { contato: c.contato } : {}),
     ...(c.socios?.length ? { socios: c.socios } : {}),
     ...(c.emprestimos?.length ? { emprestimos: c.emprestimos } : {}),
     ...(c.responsaveis && Object.keys(c.responsaveis).length ? { responsaveis: c.responsaveis } : {}),
@@ -556,6 +558,42 @@ export function definirCartao(c: CadastroDaEmpresa, campo: 'cartaoEmpresarial' |
   delete resto[campo];
   const novo = sim == null ? resto : { ...resto, [campo]: sim };
   return registrar(novo, por, agora, campo === 'cartaoEmpresarial' ? 'Cartão empresarial' : 'Vende no cartão', sim == null ? 'Não informado' : sim ? 'Sim' : 'Não');
+}
+
+// ─── contato (o e-mail e o WhatsApp do Mandei) ──────────────────────────────
+
+/** O e-mail tem cara de e-mail. */
+export function emailValido(email: string): boolean {
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
+}
+
+/** O WhatsApp só com os números; com DDD são 10 ou 11 dígitos (com o 55 na frente, 12 ou 13). '' = inválido. */
+export function whatsappLimpo(numero: string): string {
+  const d = numero.replace(/\D/g, '');
+  return d.length >= 10 && d.length <= 13 ? d : '';
+}
+
+function contatoDoDocumento(v: unknown): Pick<CadastroDaEmpresa, 'contato'> {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
+  const email = texto(o.email);
+  const whatsapp = texto(o.whatsapp);
+  return email || whatsapp ? { contato: { ...(email ? { email } : {}), ...(whatsapp ? { whatsapp } : {}) } } : {};
+}
+
+/**
+ * Grava o e-mail ou o WhatsApp da empresa (vazio = tira). O WhatsApp fica só com os números. Valor inválido não grava
+ * (quem chama avisa).
+ */
+export function definirContato(c: CadastroDaEmpresa, campo: 'email' | 'whatsapp', valor: string, por: string, agora: Date): CadastroDaEmpresa {
+  const v = campo === 'whatsapp' ? (valor.trim() ? whatsappLimpo(valor) : '') : valor.trim();
+  if (valor.trim() && (campo === 'email' ? !emailValido(v) : !v)) return c;
+  if ((c.contato?.[campo] || '') === v) return c;
+  const contato = { ...(c.contato || {}) };
+  if (v) contato[campo] = v; else delete contato[campo];
+  const resto: CadastroDaEmpresa = { ...c };
+  delete resto.contato;
+  const novo = contato.email || contato.whatsapp ? { ...resto, contato } : resto;
+  return registrar(novo, por, agora, campo === 'email' ? 'E-mail da empresa' : 'WhatsApp da empresa', v || 'Tirou');
 }
 
 /** O escritório emite nota de honorário para a empresa: sim, não, ou volta a "não informado" (null). */

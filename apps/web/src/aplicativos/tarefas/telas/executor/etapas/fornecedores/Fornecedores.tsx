@@ -1,6 +1,6 @@
 // A etapa Fornecedores da Tarefa (Vitor, 07/10/2026): a mesma tela do Clientes, peça por peça, com o fornecedor devedor no
 // lugar do cliente credor (com ele, o "Corrigi, irei reimportar" no lugar do Próximo, até reimportar o dinâmico corrigido).
-import { Alerta, Icone, LogoGmail, LogoWhatsApp, MenuSuspenso, Segmentado } from '@nads/ui';
+import { Icone, MenuSuspenso, Segmentado } from '@nads/ui';
 import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { useFornecedores, type FiltroFornecedores, type TelaFornecedores } from './useFornecedores';
@@ -20,13 +20,13 @@ export function Fornecedores() {
             corrigido; deu tudo ok, volta o Próximo (Vitor, 07/10/2026) */}
         {vm.corrigir ? <button type="button" className="btn btn-primary" onClick={vm.tirar}>Corrigi, irei reimportar</button>
           : vm.temProxima && <button type="button" className="btn btn-primary" disabled={!vm.podeSeguir} onClick={vm.proximo}>Próximo</button>}
-        {/* no Envio, as saídas na linha das etapas (Vitor, 06/10/2026) */}
+        {/* no Envio, só o Mandar pelo Mandei (Vitor, 07/10/2026: "remove isso tudo, deixa só o botão"): vai para o e-mail e o
+            WhatsApp da empresa, os do Cadastro */}
         {vm.tela === 'envio' && vm.conferidos.length > 0 && (
-          <div className="btn-row">
-            <button type="button" className="btn" onClick={vm.baixarPlanilha}><Icone nome="download" />Baixar planilha</button>
-            <a className="btn" href={vm.email} target="_blank" rel="noreferrer"><LogoGmail />E-mail</a>
-            <a className="btn" href={vm.whatsapp} target="_blank" rel="noreferrer"><LogoWhatsApp />WhatsApp</a>
-          </div>
+          <button type="button" className="btn btn-primary" disabled={vm.faltaNoCadastro.length > 0} onClick={vm.mandarPeloMandei}
+            title={vm.faltaNoCadastro.length ? 'Falta no Cadastro da empresa: ' + vm.faltaNoCadastro.join(' e ') : 'Mandar para ' + vm.contato.email + ' e para o WhatsApp ' + vm.contato.whatsapp}>
+            <Icone nome="caixaEntrada" />Mandar pelo Mandei
+          </button>
         )}
       </div>
       {vm.tela === 'arquivos' && <Arquivos vm={vm} />}
@@ -158,12 +158,13 @@ function ListaDeFornecedores({ vm }: { vm: VM }) {
                   {l.situacao === 'conferido' && <Observacao nome={l.nome} obs={l.obs} objecoes={vm.objecoes} desabilitado={!vm.carregado} onMudar={t => vm.observar(l.codigo, t)} />}
                 </td>
                 <td>
-                  {/* os selos do catálogo: o saldo (Diferença, SE-03) ↔ Conferido (SE-02); o Ok (SE-01) é do sistema e não é botão (Vitor, 06/10/2026) */}
+                  {/* os selos do catálogo: o saldo (Diferença, SE-03), Conferido (SE-02) e Ok (SE-01), todos do sistema: o Ok é a conta
+                      zerada; o Conferido, o razão com nota em aberto ou pagamento solto (Vitor, 07/10/2026: sem o conferido manual) */}
                   {l.situacao === 'ok' ? <span className="badge badge-ok" title={l.razao?.zerado ? 'Zerado no razão importado' : 'Saldo zerado'}>Ok</span> : (
-                    <button type="button" className={'badge ' + (l.situacao === 'pendente' ? 'badge-bad' : 'badge-conferido')} disabled={!vm.carregado} onClick={() => vm.clicar(l.codigo)} style={{ cursor: 'pointer' }}
-                      title={l.situacao === 'pendente' ? 'Saldo em aberto. Clique: Conferido (vai para o cliente)' : 'Conferido (vai para o cliente). Clique: volta para o saldo'}>
+                    <span className={'badge ' + (l.situacao === 'pendente' ? 'badge-bad' : 'badge-conferido')}
+                      title={l.situacao === 'pendente' ? 'Saldo em aberto: importe o razão da conta (com nota em aberto ou pagamento solto, vira Conferido)' : 'Conferido pelo razão: vai para o fornecedor responder'}>
                       {l.situacao === 'pendente' ? l.valor : 'Conferido'}
-                    </button>
+                    </span>
                   )}
                 </td>
                 {/* o razão da conta, no fim da linha (Vitor, 06/10/2026): importar; importado, o check que vira × e tira; o Ok do dinâmico não tem (o Ok do razão zerado mostra o check, para tirar) */}
@@ -255,7 +256,7 @@ function Observacao({ nome, obs, objecoes, desabilitado, onMudar }: {
 }
 
 function Envio({ vm }: { vm: VM }) {
-  if (!vm.conferidos.length) return <p className="hint">Nenhum fornecedor conferido: em Fornecedores, marque como Conferido o que vai para o cliente responder.</p>;
+  if (!vm.conferidos.length) return <p className="hint">Nenhum fornecedor conferido: em Fornecedores, importe o razão da conta; com nota em aberto ou pagamento solto, ele vira Conferido.</p>;
   return (
     <>
       <div className="table-wrap">
@@ -268,32 +269,8 @@ function Envio({ vm }: { vm: VM }) {
           </tbody>
         </table>
       </div>
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="card-head"><h3>Mensagem para o cliente</h3></div>
-        <div className="field">
-          <label htmlFor="fMensagemFornecedores">Modelo ({'{empresa}'}, {'{mes}'} e {'{lista}'} viram os dados)</label>
-          <textarea id="fMensagemFornecedores" rows={5} value={vm.mensagem} onChange={e => vm.mudarMensagem(e.target.value)} style={{ width: '100%' }} />
-        </div>
-        <p className="hint" style={{ whiteSpace: 'pre-wrap' }}>{vm.texto}</p>
-      </div>
-      {/* o Mandei (Vitor, 07/10/2026): o cliente responde por um link (escolhe, escreve, anexa) e a gente acompanha */}
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="card-head"><h3>Mandar pelo Mandei</h3></div>
-        <p className="hint" style={{ padding: '0 16px' }}>O cliente recebe um link (vale 3 dias úteis) para responder cada um e anexar os comprovantes; acompanhe em Mandei.</p>
-        {vm.semRazao.length > 0 && (
-          <div className="alerta-linha" style={{ padding: '0 16px 12px' }}>
-            <Alerta titulo={vm.semRazao.length === 1 ? '1 sem o razão importado' : vm.semRazao.length + ' sem o razão importado'}
-              texto={'O cliente verá só o saldo do mês, sem a nota, a data e o banco: importe o razão em Fornecedores (' + vm.semRazao.slice(0, 3).join(', ') + (vm.semRazao.length > 3 ? '…' : '') + ').'} />
-          </div>
-        )}
-        <div className="btn-row" style={{ padding: '0 16px 16px', alignItems: 'flex-end' }}>
-          <div className="field" style={{ flex: 1, margin: 0 }}>
-            <label htmlFor="fEmailMandeiFornecedores">E-mail do cliente</label>
-            <input id="fEmailMandeiFornecedores" type="email" value={vm.emailDoCliente} onChange={e => vm.setEmailDoCliente(e.target.value)} placeholder="financeiro@empresa.com.br" />
-          </div>
-          <button type="button" className="btn btn-primary" onClick={vm.mandarPeloMandei}><Icone nome="caixaEntrada" />Mandar pelo Mandei</button>
-        </div>
-      </div>
+      {/* sem o e-mail ou o WhatsApp no Cadastro, o Mandar fica travado */}
+      {vm.faltaNoCadastro.length > 0 && <p className="hint" style={{ marginTop: 12 }}>Para mandar pelo Mandei, cadastre {vm.faltaNoCadastro.join(' e ')} da empresa em Cadastro › Empresa.</p>}
     </>
   );
 }
