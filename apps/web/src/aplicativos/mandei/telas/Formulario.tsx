@@ -1,10 +1,10 @@
 // O formulário do cliente (Mandei) em formato de jornal (Vitor, 07/10/2026: "preto e branco, fácil de interpretar";
-// as classes .mandei-* no nads.css): o cabeçalho do jornal (Mandei, a Nilma, o ticket e o prazo); a entrada com a
+// as classes .mandei-* no nads.css): a faixa do alto (a Nilma, o ticket e o prazo; sem o título, Vitor 07/10/2026), na letra Inter; a entrada com a
 // manchete, o lide e o passo a passo em três colunas; um cliente por vez (a seção, a manchete com o nome, os
 // lançamentos numa tabela com fio e a linha do saldo, a pergunta do escritório num quadro, as respostas em
 // quadradinhos, o texto e o anexar); o índice para revisar; a barra de baixo. Link vencido ou inválido: o aviso.
 import { CampoArquivos, Icone, MarcaN, type NomeIcone } from '@nads/ui';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useFormulario } from './useFormulario';
 
 type VM = ReturnType<typeof useFormulario>;
@@ -27,10 +27,18 @@ const hoje = () => { const d = new Date(); return String(d.getDate()).padStart(2
 
 export function Formulario() {
   const vm = useFormulario();
+  // a letra Inter (Vitor, 07/10/2026), só nesta página: o link do Google Fonts entra uma vez
+  useEffect(() => {
+    if (document.getElementById('fonte-inter')) return;
+    const l = document.createElement('link');
+    l.id = 'fonte-inter';
+    l.rel = 'stylesheet';
+    l.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
+    document.head.appendChild(l);
+  }, []);
   return (
     <div className="mandei">
       <header className="mandei-topo">
-        <p className="mandei-nome">Mandei</p>
         <div className="mandei-linha">
           <span><span className="brand-mark" aria-hidden="true"><MarcaN /></span>Nilma Contabilidade</span>
           <span>{vm.numero ? 'Ticket ' + vm.numero : 'Edição de ' + hoje()}</span>

@@ -3460,8 +3460,8 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .fgts-cnpj{white-space:nowrap;}
 .fgts-acoes{align-items:center;}
 /* ───────────────── Mandei: o formulário do cliente, em formato de jornal (Vitor, 07/10/2026) ─────────────────
-   "Faz em um formato jornal, preto e branco, fácil de interpretar": papel claro e tinta preta (em qualquer tema), letra
-   serifada, o cabeçalho do jornal no alto, fios separando as seções, a manchete com o nome do cliente, os lançamentos
+   "Faz em um formato jornal, preto e branco, fácil de interpretar": papel claro e tinta preta (em qualquer tema), a letra
+   Inter ("remova esse Mandei e altere a fonte para Inter"), a faixa do cabeçalho no alto, fios separando as seções, a manchete com o nome do cliente, os lançamentos
    numa tabela com fio (com a linha do saldo), a pergunta do escritório num quadro, as respostas em quadradinhos e a
    barra de baixo em preto e branco. Classes .mandei-* (só na página pública do link). */
 .mandei{
@@ -3470,13 +3470,13 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
   --bg:#FAF9F6;--surface:#FAF9F6;--surface-2:#F1F0EC;--surface-3:#DDDCD7;
   --border:#111;--border-muted:#C9C8C3;--border-strong:#111;--ink:#111;--ink-muted:#4A4A48;
   min-height:100vh;background:var(--bg);color:var(--ink);color-scheme:light;
-  font-family:"Times New Roman", Times, Georgia, serif;font-variant-numeric:lining-nums tabular-nums;
+  /* a letra: a Inter (Vitor, 07/10/2026), carregada só nesta página */
+  font-family:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif;font-variant-numeric:tabular-nums;
 }
 .mandei .brand-mark{filter:grayscale(1) contrast(1.4);}
 /* o cabeçalho do jornal */
 .mandei-topo{max-width:760px;margin:0 auto;padding:24px 16px 0;text-align:center;}
-.mandei-topo .mandei-nome{font-size:44px;line-height:1;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin:0;}
-.mandei-topo .mandei-linha{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:10px;padding:6px 0;
+.mandei-topo .mandei-linha{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:6px 0;
   border-top:3px double var(--ink);border-bottom:1px solid var(--ink);font-size:12px;letter-spacing:.08em;text-transform:uppercase;}
 .mandei-topo .mandei-linha span{display:inline-flex;align-items:center;gap:6px;}
 .mandei-topo .brand-mark{width:18px;height:18px;}
