@@ -11,17 +11,18 @@ export function CofreFechado({ vm }: { vm: VmCofre }) {
   return (
     <div className="card gh-blank cofre-fechado">
       <Icone nome="lock" />
+      {vm.dev && <p className="cofre-dev">{vm.avisoDev}</p>}
       {vm.estado === 'novo' ? (
         <>
           <h4>O cofre ainda não existe</h4>
-          <BotaoAcao carregando={vm.ocupado} textoCarregando="Criando…" onClick={() => void vm.criar()}>Criar o cofre</BotaoAcao>
+          <BotaoAcao carregando={vm.ocupado} textoCarregando="Criando…" disabled={vm.dev} onClick={() => void vm.criar()}>Criar o cofre</BotaoAcao>
         </>
       ) : vm.estado === 'aguardando' ? (
         <h4>Aguardando a liberação</h4>
       ) : (
         <>
           <h4>Sem acesso ao cofre neste computador</h4>
-          <BotaoAcao carregando={vm.ocupado} textoCarregando="Pedindo…" onClick={() => void vm.pedirAcesso()}>Pedir acesso</BotaoAcao>
+          <BotaoAcao carregando={vm.ocupado} textoCarregando="Pedindo…" disabled={vm.dev} onClick={() => void vm.pedirAcesso()}>Pedir acesso</BotaoAcao>
         </>
       )}
       {vm.estado !== 'novo' && (
