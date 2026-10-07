@@ -58,7 +58,13 @@ export function SegredosDaEmpresa({ vm: cofre, empresa, codigo, parte }: { vm: V
               <CampoArquivo id={'pfx-' + empresa} arquivo={null} aceitar=".pfx,.p12" onEscolher={f => void vm.escolherArquivo(f)} />
             </span>
           </Linha>
-          <Linha rotulo="Senha"><Senha valor={vm.cert.senha} onMudar={v => vm.setCert({ ...vm.cert, senha: v })} rotulo="Senha do certificado" /></Linha>
+          <Linha rotulo="Senha">
+            <span className="cofre-senha">
+              <Senha valor={vm.cert.senha} onMudar={v => vm.setCert({ ...vm.cert, senha: v })} rotulo="Senha do certificado" />
+              {vm.leitura.erro && <span className="badge badge-danger">{vm.leitura.erro}</span>}
+            </span>
+          </Linha>
+          {vm.cert.titular && <Linha rotulo="Titular"><span className="cofre-arquivo">{vm.cert.titular.replace(':', ' · ')}</span></Linha>}
           <Linha rotulo="Validade">
             <span className="cofre-senha">
               <CampoData valor={vm.cert.validade} onMudar={v => vm.setCert({ ...vm.cert, validade: v })} rotulo="Validade do certificado" />

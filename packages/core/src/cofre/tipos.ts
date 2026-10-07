@@ -20,6 +20,8 @@ export interface Certificado {
   senha: string;
   /** aaaa-mm-dd */
   validade: string;
+  /** o titular lido do certificado (o nome e o CPF/CNPJ do CN) */
+  titular?: string;
   obs?: string;
 }
 
