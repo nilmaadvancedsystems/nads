@@ -3,7 +3,7 @@
 // e os clientes em tabela; o selo de cada cliente troca entre o saldo e Conferido (os dois em laranja; o Ok é do sistema), e o
 // conferido abre a observação; o envio com a planilha, o e-mail e o WhatsApp. Só o balancete dinâmico (Vitor, 06/10/2026).
 import { Alerta, Icone, LogoGmail, LogoWhatsApp, MenuSuspenso, Segmentado } from '@nads/ui';
-import { useRef, useState, type ReactNode } from 'react';
+import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { useClientes, type FiltroClientes, type TelaClientes } from './useClientes';
 
@@ -135,6 +135,9 @@ function ListaDeClientes({ vm }: { vm: VM }) {
   // um campo de arquivo só para a lista: guarda de qual conta é o razão
   const arquivo = useRef<HTMLInputElement>(null);
   const conta = useRef('');
+  // a mini tabela do razão de cada cliente: aberta; a seta do lado da conta esconde
+  const [fechadas, setFechadas] = useState<ReadonlySet<string>>(new Set());
+  const alternar = (codigo: string) => setFechadas(f => { const n = new Set(f); if (n.has(codigo)) n.delete(codigo); else n.add(codigo); return n; });
   return (
     <>
       <input ref={arquivo} type="file" accept=".xls,.xlsx,.ods" className="sr-only" tabIndex={-1} aria-hidden="true"
@@ -155,8 +158,18 @@ function ListaDeClientes({ vm }: { vm: VM }) {
           <thead><tr><th>Conta</th><th>Cliente</th><th>Situação</th><th className="num">Razão</th></tr></thead>
           <tbody>
             {vm.linhas.map(l => (
-              <tr key={l.codigo}>
-                <td>{l.codigo}</td>
+              <Fragment key={l.codigo}>
+              <tr>
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  {/* a seta do razão (Vitor, 07/10/2026): mostra ou esconde a relação embaixo */}
+                  {l.razao && l.razao.itens.length > 0 && (
+                    <button type="button" className={'imp-seta' + (fechadas.has(l.codigo) ? '' : ' aberta')} aria-expanded={!fechadas.has(l.codigo)}
+                      title={fechadas.has(l.codigo) ? 'Ver a relação do razão' : 'Esconder a relação do razão'} aria-label={'A relação do razão de ' + l.nome} onClick={() => alternar(l.codigo)}>
+                      <Icone nome="caretDown" />
+                    </button>
+                  )}
+                  {l.codigo}
+                </td>
                 <td className="wrap">
                   {l.nome}{l.doMesAnterior && <> <span className="badge badge-neutral" title="Conferido no mês anterior: revise">do mês anterior</span></>}
                   {/* o que o razão achou: as notas em aberto (vão para o cliente), as devoluções e a duplicidade */}
@@ -196,6 +209,24 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                   )}
                 </td>
               </tr>
+              {l.razao && l.razao.itens.length > 0 && !fechadas.has(l.codigo) && (
+                <tr>
+                  <td />
+                  <td colSpan={3}>
+                    <div className="table-wrap">
+                      <table className="table-compact">
+                        <thead><tr><th>Data</th><th>Descrição</th><th className="num">Valor</th></tr></thead>
+                        <tbody>
+                          {l.razao.itens.map((i, k) => (
+                            <tr key={k}><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td className="wrap">{i.descricao}</td><td className={'num' + (i.abate ? ' ext-neg' : '')}>{i.valor}</td></tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </td>
+                </tr>
+              )}
+              </Fragment>
             ))}
             {!vm.linhas.length && <tr><td colSpan={4} className="hint">Nenhum cliente neste filtro.</td></tr>}
           </tbody>

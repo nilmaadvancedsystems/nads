@@ -76,7 +76,9 @@ export function useClientes() {
     try {
       const r = cl.conferirRazaoDoCliente(tarefas.lerRazaoDoArquivo(await f.arrayBuffer()), mes);
       const razao = cl.razaoDaMarca(f.name, r);
-      marcar(codigo, m => ({ ...m, situacao: razao.notas.length ? 'conferido' : m.situacao, razao }));
+      // com nota em aberto, a observação já vem escrita (Vitor, 07/10/2026): "No meu sistema, está em aberto…"
+      const pronta = cl.observacaoDoRazao(razao);
+      marcar(codigo, m => ({ ...m, situacao: razao.notas.length ? 'conferido' : m.situacao, razao, ...(!m.obs && pronta ? { obs: pronta } : {}) }));
       const bate = Math.abs(r.saldo - l.saldo) < 0.005;
       const partes = [
         razao.notas.length ? (razao.notas.length === 1 ? '1 nota em aberto' : razao.notas.length + ' notas em aberto') : 'Nenhuma nota em aberto',
@@ -143,6 +145,8 @@ export function useClientes() {
           devolucoes: l.razao.devolucoes ? reais(l.razao.devolucoes) : '',
           duplicadas: l.razao.duplicadas.map(nf => 'NF ' + nf).join(', '),
           naoBate: Math.abs(l.razao.saldo - l.saldo) >= 0.005 ? reais(l.razao.saldo) : '',
+          // a mini tabela embaixo do cliente: as notas em aberto e o que ficou solto
+          itens: l.razao.itens.map(i => ({ data: i.data ? i.data.slice(8, 10) + '/' + i.data.slice(5, 7) + '/' + i.data.slice(0, 4) : '', descricao: i.descricao, valor: reais(i.valor), abate: i.valor < 0 })),
         } : null,
       })),
     clicar: (codigo: string) => marcar(codigo, m => ({ ...m, situacao: cl.proximaSituacao(m.situacao) })),

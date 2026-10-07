@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { lerRazao } from '../../tarefas/regras/razao';
-import { conferirRazaoDoCliente, razaoDaMarca } from './razao';
+import { conferirRazaoDoCliente, observacaoDoRazao, razaoDaMarca } from './razao';
 import { textoDaMensagem, textoDasNotas } from './index';
 
 // o formato do razão da conciliação do Alterdata (conta de um cliente), com valores inventados
@@ -50,5 +50,17 @@ describe('o razão do cliente', () => {
     expect(textoDasNotas(m.notas)).toBe('NF 101 (R$ 150,00), NF 103 (R$ 420,50)');
     expect(textoDaMensagem('{lista}', 'E', '08/2026', [{ codigo: '1', nome: 'CLIENTE TESTE', saldo: 480.5, obs: '', notas: m.notas }]))
       .toBe('• CLIENTE TESTE — R$ 480,50 — em aberto: NF 101 (R$ 150,00), NF 103 (R$ 420,50)');
+  });
+});
+
+describe('a relação e a observação pronta', () => {
+  const r = conferirRazaoDoCliente(lerRazao(ROWS), '2026-08');
+  const m = razaoDaMarca('razao.xls', r);
+  it('a relação em ordem de data: notas em aberto, devolução e duplicidade', () => {
+    expect(m.itens.map(i => [i.data, i.valor])).toEqual([['2026-07-10', 150], ['2026-07-12', -90], ['2026-08-15', 300], ['2026-08-20', 420.5]]);
+    expect(m.itens[0].descricao).toBe('NF 101 em aberto (vendido R$ 1.000,00, recebido R$ 850,00)');
+  });
+  it('a observação: no meu sistema, está em aberto', () => {
+    expect(observacaoDoRazao(m)).toBe('No meu sistema, estão em aberto: 10/07/2026 - NF 101 - R$ 150,00; 20/08/2026 - NF 103 - R$ 420,50');
   });
 });

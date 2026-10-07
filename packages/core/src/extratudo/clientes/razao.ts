@@ -3,6 +3,7 @@
 // Cada nota: o que foi vendido (as linhas de venda com o número dela) menos o que foi recebido (os recebimentos que
 // citam o número). O mesmo recebimento lançado em duas contas no mesmo dia (Caixa e Banco) conta uma vez só e aparece
 // como duplicidade. As devoluções abatem o saldo, mas não dizem de qual nota são. Vale o que foi lançado até o fim do mês.
+import { reais } from '../../formatos';
 import type { LancamentoDoRazao, RazaoDaConta } from '../../tarefas/regras/razao';
 
 /** Uma nota de venda do cliente no razão: vendido, recebido e o que ficou em aberto (positivo = o cliente deve). */
@@ -116,6 +117,32 @@ export function conferirRazaoDoCliente(razao: RazaoDaConta, mes: string): RazaoC
 export interface RazaoDaMarca {
   arquivo: string; notas: { nf: string; data: string; aberto: number }[]; saldo: number;
   devolucoes: number; duplicadas: string[];
+  /** a relação para conferir (a mini tabela embaixo do cliente): as notas em aberto e o que ficou solto */
+  itens: ItemDoRazao[];
+}
+
+/** Uma linha da relação: a data ('aaaa-mm-dd'), o que é e o valor (positivo = o cliente deve; negativo = abate). */
+export interface ItemDoRazao { data: string; descricao: string; valor: number }
+
+const dataBR = (d: string) => d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4);
+const brl = reais;
+
+/** A relação em ordem de data: as notas em aberto, os recebimentos soltos (sem nota), as devoluções e as duplicidades. */
+function itensDoRazao(r: RazaoConferido): ItemDoRazao[] {
+  return [
+    ...r.emAberto.map(n => ({ data: n.data, descricao: 'NF ' + n.nf + ' em aberto' + (n.recebido ? ' (vendido ' + brl(n.vendido) + ', recebido ' + brl(n.recebido) + ')' : ''), valor: n.aberto })),
+    ...r.aMais.map(n => ({ data: n.data, descricao: 'NF ' + n.nf + ' recebida a mais', valor: n.aberto })),
+    ...r.semNota.map(x => ({ data: x.data, descricao: 'Recebimento sem nota: ' + x.historico, valor: centavos(-x.valor) })),
+    ...r.devolucoes.map(d => ({ data: d.data, descricao: 'Devolução' + (d.nf ? ' NF ' + d.nf : '') + (d.notas.length ? ' (cita NF ' + d.notas.join(', ') + ')' : ''), valor: centavos(-d.valor) })),
+    ...r.duplicados.map(d => ({ data: d.data, descricao: 'Recebimento em duplicidade' + (d.nf ? ' da NF ' + d.nf : '') + ': ' + d.contas.join(' e '), valor: centavos(d.valor) })),
+  ].sort((a, b) => a.data.localeCompare(b.data));
+}
+
+/** A observação pronta para o cliente (Vitor, 07/10/2026): "No meu sistema, está em aberto: 19/08/2026 - NF 10086 - R$ 19.599,52". */
+export function observacaoDoRazao(m: RazaoDaMarca): string {
+  if (!m.notas.length) return '';
+  const lista = m.notas.map(n => dataBR(n.data) + ' - NF ' + n.nf + ' - ' + brl(n.aberto)).join('; ');
+  return 'No meu sistema, ' + (m.notas.length === 1 ? 'está' : 'estão') + ' em aberto: ' + lista;
 }
 
 export function razaoDaMarca(arquivo: string, r: RazaoConferido): RazaoDaMarca {
@@ -123,5 +150,6 @@ export function razaoDaMarca(arquivo: string, r: RazaoConferido): RazaoDaMarca {
     arquivo, notas: r.emAberto.map(n => ({ nf: n.nf, data: n.data, aberto: n.aberto })), saldo: r.saldo,
     devolucoes: centavos(r.devolucoes.reduce((t, d) => t + d.valor, 0)),
     duplicadas: [...new Set(r.duplicados.map(d => d.nf).filter(Boolean))],
+    itens: itensDoRazao(r),
   };
 }
