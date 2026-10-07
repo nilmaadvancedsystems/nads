@@ -13,3 +13,4 @@ export * as clientes from './extratudo/clientes';
 export * as conversor from './extratudo/conversor';
 export * as tarefas from './tarefas';
 export * as demo from './demo';
+export * as cofre from './cofre';

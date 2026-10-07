@@ -8,6 +8,7 @@ import { DadosDaEmpresa } from '../empresa/DadosDaEmpresa';
 import { HistoricoCadastro } from '../historico/HistoricoCadastro';
 import { PlanoDeContas } from '../plano/PlanoDeContas';
 import { useJanelaDaEmpresa } from './useJanelaDaEmpresa';
+import { SenhasNoCadastro } from '../../senhas/SenhasNoCadastro';
 
 function Aba({ rota, aba }: { rota: string; aba: string }) {
   switch (aba) {
@@ -15,6 +16,7 @@ function Aba({ rota, aba }: { rota: string; aba: string }) {
     case 'plano': return <PlanoDeContas rota={rota} />;
     case 'contas-padrao': return <ContasPadrao rota={rota} />;
     case 'historico': return <HistoricoCadastro rota={rota} />;
+    case 'senhas': return <SenhasNoCadastro rota={rota} />;
     default: return <ContasBancarias rota={rota} />;
   }
 }

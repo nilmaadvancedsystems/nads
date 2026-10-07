@@ -3158,3 +3158,18 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .pessoa-com-foto{display:inline-flex;align-items:center;gap:8px;}
 .pessoal-topico .usuarios-foto.foto-mini{margin-right:2px;}
 .resp-pendentes-com{display:inline-flex;align-items:center;gap:6px;}
+/* Senhas (o cofre de senhas gov.br e certificados, 07/10/2026) */
+.cofre-fechado{margin:0 0 16px;}
+.cofre-codigo{display:flex;gap:8px;justify-content:center;margin-top:12px;}
+.cofre-codigo input{width:300px;font-family:var(--font-num);letter-spacing:.04em;}
+.cofre-senha{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+.cofre-senha input{width:220px;}
+.cofre-obs{width:280px;}
+.cofre-arquivo{font-size:13px;}
+.cofre-salvar{display:flex;justify-content:flex-end;padding:10px 14px;}
+.cofre-tabela td{padding-top:8px;padding-bottom:8px;}
+.cofre-nome{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:480px;}
+.cofre-acesso{display:flex;flex-direction:column;gap:14px;}
+.cofre-acesso .card-head{display:flex;align-items:center;gap:8px;}
+.cofre-lista{border:0;border-radius:0;}
+.cofre-lista li svg{width:16px;height:16px;color:var(--ink-muted);flex:none;}
