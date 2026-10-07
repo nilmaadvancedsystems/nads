@@ -19,6 +19,12 @@ export function ConfiguracoesDoDp() {
   return (
     <section className="dp-painel">
       <div className="tarefas-filtros dp-filtros">
+        {/* a competência (Vitor, 07/10/2026): o que mudar vale dela em diante */}
+        <div className="field dp-filtro">
+          <span className="hint">A partir de</span>
+          <MenuSuspenso rotulo={vm.rotuloCompetencia} className="btn btn-outline" titulo="Competência" largura={200}
+            itens={vm.competencias.map(x => ({ rotulo: x.rotulo, marcado: x.valor === vm.competencia, onClick: () => vm.setCompetencia(x.valor) }))} />
+        </div>
         <label className="field dp-filtro dp-busca">
           <span className="hint">Buscar cliente</span>
           <input type="text" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} placeholder="Nome ou código" aria-label="Buscar cliente (nome ou código)" />
@@ -49,7 +55,7 @@ export function ConfiguracoesDoDp() {
                   <tr key={l.codigo} className="dp-linha-abre" onClick={() => vm.abrir(l.codigo)} title={'Abrir ' + l.nomeNaTela}>
                     <td className="num fraco">{l.codigo}</td>
                     <td className="dp-cliente">
-                      <span className="dp-cliente-nome">{l.nomeNaTela}{l.mudado && <span className="badge badge-neutral dp-selo-mudado">mudado</span>}</span>
+                      <span className="dp-cliente-nome">{l.nomeNaTela}{l.mudadoNoMes ? <span className="badge badge-warn dp-selo-mudado">muda em {vm.competencia.slice(5, 7)}/{vm.competencia.slice(0, 4)}</span> : l.mudado && <span className="badge badge-neutral dp-selo-mudado">mudado</span>}</span>
                     </td>
                     <td>{l.movimento}</td>
                     <td className="dp-obrig-texto">{l.obrigacoesTexto}</td>
@@ -69,8 +75,10 @@ export function ConfiguracoesDoDp() {
             <b>{c.nomeNaTela}</b>
             <span className="fraco">Código {c.codigo} · {c.enquadramento}</span>
             {c.responsavel && <span className="fraco">Responsável no Fiscal: {c.responsavel.split('.').map(x => x.charAt(0) + x.slice(1).toLowerCase()).join('.')}</span>}
-            <span className={'badge ' + (c.mudado ? 'badge-warn' : 'badge-neutral')}>{c.mudado ? 'Mudado' : 'Igual à planilha'}</span>
-            {c.mudado && <button type="button" className="btn" onClick={() => vm.voltarAPlanilha(c.codigo)}><Icone nome="girar" />Voltar à planilha</button>}
+            <span className="fraco">A partir de {vm.rotuloCompetencia}</span>
+            <span className={'badge ' + (c.mudadoNoMes ? 'badge-warn' : c.mudado ? 'badge-neutral' : 'badge-neutral')}>{c.mudadoNoMes ? 'Muda neste mês' : c.mudado ? 'Mudado' : 'Igual à planilha'}</span>
+            {c.mudadoNoMes && <button type="button" className="btn" onClick={() => vm.desfazerMes(c.codigo)}><Icone nome="girar" />Desfazer {vm.competencia.slice(5, 7)}/{vm.competencia.slice(0, 4)}</button>}
+            {c.mudado && <button type="button" className="btn btn-ghost" onClick={() => vm.voltarAPlanilha(c.codigo)}>Voltar à planilha</button>}
           </div>
         )}>
           {vm.topico === 'obrigacoes' && (

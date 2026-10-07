@@ -178,8 +178,11 @@ export const ROTINA_CONTABIL: Rotina = {
       id: 'bens',
       secao: 'Ativo',
       nome: 'Bens',
-      descricao: 'As compras e vendas de bens do mês lançadas no imobilizado.',
+      descricao: 'As compras e vendas de bens do período lançadas no imobilizado.',
+      // a tela Bens (Vitor, 07/10/2026): as notas de entrada 1551/2551 e os CFOPs ligados a bem, as saídas que baixam bem e
+      // o uso e consumo com item de bem, das notas importadas na Conferência, no período da tarefa
       ferramenta: null,
+      tela: { id: 'bens', periodo: true },
       verificacao: 'manual',
       conferir: [
         'Nota de compra de veículo, máquina, equipamento, móvel ou computador: lançada no imobilizado, não na despesa.',

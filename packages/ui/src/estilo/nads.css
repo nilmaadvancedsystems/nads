@@ -3365,3 +3365,21 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 /* o andamento do "Contar agora" do SIEG (07/10/2026): o cartão de andamento do robô, fixo no canto da tela */
 .sieg-flutuante{position:fixed;right:16px;bottom:16px;z-index:70;width:min(380px,calc(100vw - 32px));margin:0;box-shadow:var(--shadow-lg);}
 .sieg-flutuante .tarefas-barra-espaco{flex:1;}
+.sieg-acoes{gap:8px;flex-wrap:wrap;align-items:center;}
+
+/* DP › FGTS Digital (07/10/2026: a guia pelo robô da nuvem) */
+.fgts-robo{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px;}
+.fgts-situacao{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:8px;border-radius:6px;padding:2px 4px;}
+.fgts-situacao:hover{background:var(--hover-bg);}
+.fgts-situacao:focus-visible{outline:2px solid var(--accent);}
+.fgts-acoes{display:flex;gap:6px;justify-content:flex-end;white-space:nowrap;}
+.fgts-acoes .btn{height:28px;font-size:12px;}
+.fgts-janela{width:min(1100px,96vw);height:min(760px,92vh);}
+.fgts-pedido{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:0 16px 8px;}
+.fgts-pedido p{flex-basis:100%;margin:4px 0 0;}
+.fgts-passos{margin:0;padding:4px 16px 12px 36px;display:flex;flex-direction:column;gap:6px;font-size:13px;}
+.fgts-url{font-size:11px;word-break:break-all;}
+.fgts-telas{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
+.fgts-tela{margin:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface);}
+.fgts-tela img{display:block;width:100%;height:auto;}
+.fgts-tela figcaption{padding:6px 10px;font-size:12px;}

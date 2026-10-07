@@ -5,6 +5,7 @@
 // Gerado da planilha; para mudar um cliente, mude a linha dele aqui.
 import { EMPRESAS } from './lista';
 import type { EmpresaDoEscritorio } from './tipos';
+import type { ParametrosDoDp, ParametrosDoDpDoMes } from './cadastro/tipos';
 
 export type MovimentoDp = 'Folha' | 'Sem Movimento' | 'Pró-Labore' | 'Apenas REINF';
 
@@ -300,9 +301,21 @@ export const EMPRESAS_COM_DP: readonly EmpresaDoEscritorio[] = [...EMPRESAS, ...
  * O cliente do DP com o que foi mudado no Cadastro (o responsável do Fiscal) e nas Configurações do DP (os parâmetros):
  * o que não foi mudado vale o da planilha.
  */
-export function clienteDoDpNoCadastro(base: ClienteDoDp, cad: { responsaveis?: { fiscal?: string }; dp?: { movimento?: string; obrigacoes?: string[]; reinfAutorizada?: boolean; entrega?: string; agrupamento?: string } } | null | undefined): ClienteDoDp {
+/**
+ * Os parâmetros do DP que valem numa competência (Vitor, 07/10/2026): os de sempre e, por cima, os de cada competência
+ * até ela, em ordem (cada uma vale dela em diante). Sem competência: só os de sempre.
+ */
+export function parametrosDoDpNaCompetencia(dp: ParametrosDoDp | undefined, competencia?: string): ParametrosDoDpDoMes {
+  if (!dp) return {};
+  const { porCompetencia, ...sempre } = dp;
+  if (!competencia || !porCompetencia) return sempre;
+  return Object.keys(porCompetencia).filter(k => k <= competencia).sort()
+    .reduce<ParametrosDoDpDoMes>((v, k) => ({ ...v, ...porCompetencia[k] }), sempre);
+}
+
+export function clienteDoDpNoCadastro(base: ClienteDoDp, cad: { responsaveis?: { fiscal?: string }; dp?: ParametrosDoDp } | null | undefined, competencia?: string): ClienteDoDp {
   if (!cad) return base;
-  const d = cad.dp || {};
+  const d = parametrosDoDpNaCompetencia(cad.dp, competencia);
   const obrigacoes = d.obrigacoes;
   return {
     ...base,

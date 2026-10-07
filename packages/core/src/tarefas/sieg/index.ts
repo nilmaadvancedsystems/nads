@@ -20,6 +20,36 @@ export interface ContagemSieg {
 /** Uma série de notas de saída: os números que existem no SIEG e os cancelados. */
 export interface SerieDeSaida { modelo: string; serie: string; numeros: number[]; canceladas: number[]; valor: number }
 
+/** Um item de NF-e/NFC-e no XML. */
+export interface ItemDoXml { ncm: string; cfop: string; cst: string; cest: string; valor: number }
+
+/** Uma nota lida do XML do SIEG (o resumo; o arquivo fica na pasta do cliente no Drive). */
+export interface NotaDoSieg {
+  tipo: 'NF-e' | 'NFC-e' | 'CT-e' | 'NFS-e';
+  chave: string; numero: string; serie: string;
+  /** dd/mm/aaaa */
+  data: string;
+  emitente: { doc: string; nome: string };
+  destinatario: { doc: string; nome: string };
+  valor: number;
+  cancelada?: boolean;
+  itens?: ItemDoXml[];
+  cfop?: string;
+  /** NFS-e */
+  nbs?: string; descricao?: string; retencoes?: { imposto: string; valor: number }[];
+}
+
+/** siegNotas/{codigo}_{AAAA-MM}: o "Baixar XMLs do SIEG" (07/10/2026): onde os XMLs foram salvos e o resumo das notas. */
+export interface NotasSieg {
+  codigo: string; competencia: string; em: string;
+  /** Claudio Secretario/AAAA-MM/<cliente> */
+  pasta: string;
+  arquivos: number; novos: number;
+  emitidas: NotaDoSieg[]; recebidas: NotaDoSieg[];
+  /** o resumo passou do tamanho de um documento: saíram os itens */
+  itensCortados?: boolean;
+}
+
 /** siegSaidas/{codigo}_{AAAA-MM}: as saídas do mês (NF-e e NFC-e), série por série. */
 export interface SaidasSieg { codigo: string; competencia: string; em: string; series: SerieDeSaida[] }
 

@@ -3,6 +3,7 @@
 import type { tarefas } from '@nads/core';
 import { Adiantamento } from './adiantamento/Adiantamento';
 import { RelatorioBancario } from './bancos/RelatorioBancario';
+import { Bens } from './bens/Bens';
 import { Clientes } from './clientes/Clientes';
 import { Fornecedores } from './fornecedores/Fornecedores';
 
@@ -12,5 +13,6 @@ export function TelaDaEtapa({ id }: { id: tarefas.TelaDaEtapa }) {
     case 'clientes': return <Clientes />;
     case 'fornecedores': return <Fornecedores />;
     case 'adiantamento-fornecedores': return <Adiantamento />;
+    case 'bens': return <Bens />;
   }
 }

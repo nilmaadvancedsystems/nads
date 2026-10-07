@@ -21,6 +21,7 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
   let ouvindoRobo = false;
   const contagens = new Map<string, { carregada: boolean; dados: t.sieg.ContagemSieg | null }>();
   const saidas = new Map<string, { carregadas: boolean; dados: t.sieg.SaidasSieg | null }>();
+  const notas = new Map<string, { carregadas: boolean; dados: t.sieg.NotasSieg | null }>();
   const pedidos = new Map<string, PedidoSieg | null>();
 
   const tipos = (r: unknown) => {
@@ -77,13 +78,18 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
       if (!pedidos.has('saidas|' + k)) {
         pedidos.set('saidas|' + k, null);
         pedidos.set('contagem|' + k, null);
+        pedidos.set('xmls|' + k, null);
         // os últimos pedidos da empresa e mês: o mais novo de cada tipo (sem tipo = as saídas, os pedidos de antes)
         // só igualdades (sem orderBy: pedia um índice que não existe e o erro sumia calado; 07/10/2026): o mais novo aqui
         onSnapshot(query(collection(db, 'pedidosSieg'), where('codigo', '==', soDigitos(codigo)), where('competencia', '==', competencia)), s => {
           const todos = s.docs.map(x => x.data()).sort((a, b) => texto(b.criadoEm).localeCompare(texto(a.criadoEm)));
-          for (const t of ['saidas', 'contagem'] as const) {
+          for (const t of ['saidas', 'contagem', 'xmls'] as const) {
             const d = todos.find(x => (x.tipo || 'saidas') === t);
-            pedidos.set(t + '|' + k, d ? { status: texto(d.status), andamento: texto(d.andamento), erro: texto(d.erro), em: texto(d.criadoEm) } : null);
+            const r = d?.resultado as Record<string, unknown> | undefined;
+            pedidos.set(t + '|' + k, d ? {
+              status: texto(d.status), andamento: texto(d.andamento), erro: texto(d.erro), em: texto(d.criadoEm),
+              ...(r ? { resultado: { arquivos: Number(r.arquivos) || 0, novos: Number(r.novos) || 0, pasta: texto(r.pasta), zip: texto(r.zip), emitidas: Number(r.emitidas) || 0, recebidas: Number(r.recebidas) || 0 } } : {}),
+            } : null);
           }
           mudou();
         }, () => undefined);
@@ -94,6 +100,31 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
       const q = quem();
       if (!q) throw new Error('Sem login.');
       await addDoc(collection(db, 'pedidosSieg'), { status: 'pendente', codigo: soDigitos(codigo), competencia, criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorUid: q.uid });
+    },
+    notas(codigo, competencia) {
+      const k = soDigitos(codigo) + '_' + competencia;
+      if (!notas.has(k)) {
+        notas.set(k, { carregadas: false, dados: null });
+        onSnapshot(doc(db, 'siegNotas', k), s => {
+          const d = s.data();
+          notas.set(k, {
+            carregadas: true,
+            dados: d ? {
+              codigo: texto(d.codigo), competencia: texto(d.competencia), em: texto(d.em), pasta: texto(d.pasta),
+              arquivos: Number(d.arquivos) || 0, novos: Number(d.novos) || 0, itensCortados: !!d.itensCortados,
+              emitidas: Array.isArray(d.emitidas) ? (d.emitidas as t.sieg.NotaDoSieg[]) : [],
+              recebidas: Array.isArray(d.recebidas) ? (d.recebidas as t.sieg.NotaDoSieg[]) : [],
+            } : null,
+          });
+          mudou();
+        }, () => { notas.set(k, { carregadas: true, dados: null }); mudou(); });
+      }
+      return notas.get(k)!;
+    },
+    async pedirXmls(codigo, competencia) {
+      const q = quem();
+      if (!q) throw new Error('Sem login.');
+      await addDoc(collection(db, 'pedidosSieg'), { status: 'pendente', tipo: 'xmls', codigo: soDigitos(codigo), competencia, criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorUid: q.uid });
     },
     async pedirContagem(codigo, competencia) {
       const q = quem();
