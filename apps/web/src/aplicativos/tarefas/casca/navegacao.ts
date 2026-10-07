@@ -10,7 +10,7 @@ import type { Operador } from './operador';
 
 export const BASE = '/tarefas';
 
-export type IdAplicacao = 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'drive' | 'contato';
+export type IdAplicacao = 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato';
 
 export interface Pagina { id: string; rotulo: string; icone: NomeIcone; titulo: string }
 export interface Aplicacao { id: IdAplicacao; nome: string; icone: NomeIcone; paginas: Pagina[]; pronta: boolean }
@@ -49,6 +49,11 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'DP — visão geral' },
     // os parâmetros de cada cliente (Vitor, 06/10/2026: "quero que o dp tenha a própria aba de configurações")
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'DP — configurações' },
+  ] },
+  // as senhas gov.br e os certificados digitais, no cofre com a chave por pessoa (Vitor, 07/10/2026); todo o escritório
+  { id: 'senhas', nome: 'Senhas', icone: 'lock', pronta: true, paginas: [
+    { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Senhas — gov.br e certificados' },
+    { id: 'acesso', rotulo: 'Acesso', icone: 'usuario', titulo: 'Senhas — acesso ao cofre' },
   ] },
   { id: 'drive', nome: 'Drive', icone: 'pasta', pronta: true, paginas: [
     { id: 'pastas', rotulo: 'Pastas', icone: 'pasta', titulo: 'Drive — pasta do ano' },
@@ -117,6 +122,7 @@ export const ABAS_DO_CADASTRO: readonly { id: string; rotulo: string; icone: Nom
   { id: 'bancos', rotulo: 'Contas bancárias', icone: 'landmark' },
   { id: 'plano', rotulo: 'Plano de contas', icone: 'list' },
   { id: 'contas-padrao', rotulo: 'Contas padrão', icone: 'settings' },
+  { id: 'senhas', rotulo: 'Senhas', icone: 'lock' },
   { id: 'historico', rotulo: 'Histórico', icone: 'clock' },
 ];
 
