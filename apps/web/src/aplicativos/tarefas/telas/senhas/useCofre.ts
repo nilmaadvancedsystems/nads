@@ -9,6 +9,10 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { guardarChavePrivada, idDaChave, lerChavePrivada } from '../../dados/chaveLocal';
 import { useCofreRepo } from '../../dados/repo';
 import { imprimirCodigoDoCofre } from './imprimirCodigo';
+import { modoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
+
+/** No modo desenvolvedor nada vai para o banco: o cofre não grava (Vitor, 07/10/2026: criou o cofre no modo e não abriu). */
+const AVISO_DEV = 'Modo desenvolvedor ligado: o cofre não grava nada. Desligue no avatar › Modo desenvolvedor para usar o cofre.';
 
 // a chave aberta é de quem abriu (trocou de pessoa na mesma aba: fecha)
 let aberta: { versao: number; chave: CryptoKey; dono: string } | null = null;
@@ -61,6 +65,7 @@ export function useCofre() {
   }
   async function tentar(f: () => Promise<void>) {
     if (ocupado) return;
+    if (modoDesenvolvedor()) { toast(AVISO_DEV); return; }
     setOcupado(true);
     try { await f(); } catch (e) { toast('Não deu: ' + (e instanceof Error ? e.message : String(e))); } finally { setOcupado(false); }
   }
@@ -75,6 +80,9 @@ export function useCofre() {
   return {
     estado,
     ocupado,
+    /** o modo desenvolvedor está ligado (o cofre não grava) */
+    dev: modoDesenvolvedor(),
+    avisoDev: AVISO_DEV,
     exemplos: repo.exemplos,
     erro: repo.erro(),
     eu: eu?.nome || '',
@@ -150,6 +158,7 @@ export function useCofre() {
     },
     async salvar(empresa: string, codigo: number | null, segredos: c.SegredosDaEmpresa) {
       if (!aberta || aberta.dono !== id || !config || !eu) return;
+      if (modoDesenvolvedor()) { toast(AVISO_DEV); return; }
       const cifrado = await c.cifrar(aberta.chave, segredos);
       await repo.salvar(formatos.slug(empresa), { empresa, codigo, versao: config.versao, ...cifrado, ...c.metaDosSegredos(segredos), atualizadoEm: agora(), atualizadoPor: eu.nome });
       toast('Guardado no cofre.');
