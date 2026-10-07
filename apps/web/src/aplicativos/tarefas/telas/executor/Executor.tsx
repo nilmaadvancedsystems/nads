@@ -226,8 +226,25 @@ export function Executor() {
     </>
   );
 
+  // os avisos acima do cabeçalho (Vitor, 07/10/2026: "essas notificações, deixe acima do cabeçalho"): o modo
+  // desenvolvedor e, revendo uma etapa concluída, o aviso com o Editar (só ele mexe; Vitor, 05/10/2026), numa linha só
+  const avisos = vm.carregando || !vm.etapa ? null : vm.dev && !vm.revendo ? (
+    <div className="alerta-linha">
+      <Alerta titulo="Modo desenvolvedor" texto="Os dados de verdade, mas o que você fizer fica só nesta tela: nada vai para o banco." />
+    </div>
+  ) : vm.revendo ? (
+    <div className="alerta-linha">
+      <Alerta tom="ok" titulo={vm.etapa.nome + ' já foi concluída'} texto="As ações desta etapa estão travadas.">
+        <div className="btn-row">
+          <button type="button" className="btn btn-primary" onClick={() => { void vm.editar(); }}>Editar</button>
+          <button type="button" className="btn" onClick={vm.voltarAEtapaDaVez}>Ir para a etapa da vez</button>
+        </div>
+      </Alerta>
+    </div>
+  ) : null;
+
   return (
-    <Casca sistema="Tarefas" temaNaGaveta={false} larga rotuloLateral="Etapas" topoDireita={topo}
+    <Casca sistema="Tarefas" temaNaGaveta={false} larga rotuloLateral="Etapas" topoDireita={topo} acimaDoCabecalho={avisos}
       empresa={{ codigo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome, nome: '' }}
 
       versao={casca.versao} secoes={checklist} paginas={abas} titulo=""
@@ -246,23 +263,6 @@ export function Executor() {
         </div>
       ) : (
         <div className="executor-area">
-          {vm.dev && !vm.revendo ? (
-            <div className="alerta-linha">
-              <Alerta titulo="Modo desenvolvedor" texto="Os dados de verdade, mas o que você fizer fica só nesta tela: nada vai para o banco." />
-            </div>
-          ) : vm.revendo && (
-            // revendo uma etapa concluída: a barra de cima avisa e só o Editar mexe (Vitor, 05/10/2026)
-            // o Alerta do catálogo (Vitor, 05/10/2026: só as peças que existem)
-            // numa linha só (Vitor, 05/10/2026: "o mais horizontal possível"): o título, o texto e os botões à direita
-            <div className="alerta-linha">
-            <Alerta tom="ok" titulo={vm.etapa.nome + ' já foi concluída'} texto="As ações desta etapa estão travadas.">
-              <div className="btn-row">
-                <button type="button" className="btn btn-primary" onClick={() => { void vm.editar(); }}>Editar</button>
-                <button type="button" className="btn" onClick={vm.voltarAEtapaDaVez}>Ir para a etapa da vez</button>
-              </div>
-            </Alerta>
-            </div>
-          )}
           {/* o botão do período e os bancos em todas as etapas do Contábil (Vitor, 07/10/2026); só a Importação troca o período */}
           {vm.departamento === 'contabil' && !COM_A_LINHA_DO_PERIODO.has(vm.etapa.id) && (
             <PeriodoDaTarefa nome={vm.empresa.nome} codigo={vm.empresa.codigo} meses={vm.meses.length ? vm.meses : [vm.competencia]} />

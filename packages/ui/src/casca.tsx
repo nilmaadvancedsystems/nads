@@ -88,6 +88,8 @@ export function Casca(p: {
   lateral?: 'barra' | 'caixa' | 'nenhuma';
   /** a página usa a largura toda da tela (ex.: a ferramenta de uma etapa) */
   larga?: boolean;
+  /** os avisos da página acima do cabeçalho (Vitor, 07/10/2026: o "Modo desenvolvedor" e o "… já foi concluída" do executor) */
+  acimaDoCabecalho?: ReactNode;
   /** o canto direito do cabeçalho, como os botões do GitHub (ex.: os grupos da rotina e o perfil, no executor) */
   topoDireita?: ReactNode;
   /** nome da lista da esquerda, para leitor de tela (padrão "Seções") */
@@ -213,6 +215,7 @@ export function Casca(p: {
   let grupoAnt: number | null = null;
   return (
     <div id="app" className={'on' + (p.larga ? ' larga' : '') + (noOutro ? ' acoplada' : '')}>
+      {p.acimaDoCabecalho && <div className="acima-do-cabecalho">{p.acimaDoCabecalho}</div>}
       <header className="gh-header" ref={cabecalho} hidden={abasSobem}>
         <div className="gh-header-top" hidden={naEtapa}>
           {!noOutro && (

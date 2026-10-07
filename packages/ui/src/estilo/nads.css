@@ -2827,6 +2827,9 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .alerta-linha .alert > div{display:flex;align-items:center;gap:8px 12px;flex:1;flex-wrap:wrap;}
 .alerta-linha .alert-text{margin:0;}
 .alerta-linha .btn-row{margin:0 0 0 auto;}
+/* os avisos acima do cabeçalho (Vitor, 07/10/2026): o Alerta do catálogo, numa faixa antes da barra de cima — só disposição */
+.acima-do-cabecalho{display:flex;flex-direction:column;gap:8px;padding:8px 16px;}
+.acima-do-cabecalho .alert{margin:0;}
 /* Cadastro › Usuários: as janelas em painéis laterais (os tópicos embaixo de quem é, como na Minha página) */
 .usuario-lado nav{display:flex;flex-direction:column;gap:2px;margin-top:4px;padding-top:8px;border-top:1px solid var(--border-muted);}
 .usuario-topico-alerta{margin-left:auto;width:8px;height:8px;border-radius:50%;background:var(--danger);flex:none;}
