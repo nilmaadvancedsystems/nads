@@ -111,7 +111,8 @@ export type RelatorioImportavel = 'entradas' | 'saidas' | 'tomados' | 'prestados
  * faturamento × SIEG, as retenções, a receita e a composição da base.
  */
 export type PainelDaTarefa = 'sieg' | 'recebimento' | 'sequencia' | 'saidas' | 'faturamento' | 'entradas' | 'entradas-sieg'
-  | 'iss-retido' | 'inss-retido' | 'receitas' | 'base' | 'icms' | 'prestados' | 'irpj';
+  | 'iss-retido' | 'inss-retido' | 'irrf-retido' | 'interestaduais' | 'receitas' | 'base' | 'icms' | 'prestados' | 'irpj'
+  | 'servicos' | 'folha-total';
 
 export interface Rotina { departamento: Departamento; etapas: Etapa[] }
 
@@ -145,10 +146,12 @@ export interface Execucao {
   periodo?: string;
   /** as etapas "só quando adicionada" que entraram neste mês (o Creditor, pelo razão do caixa) */
   adicionadas?: string[];
+  /** os valores que as etapas informam (07/10/2026: o DP informa o total da folha; o Fiscal lê ao lado do faturamento) */
+  valores?: Record<string, number>;
 }
 
 export type TipoEvento = 'inicio' | 'feita' | 'dispensada' | 'interrompida' | 'verificacao-falhou' | 'sem-movimento' | 'com-movimento' | 'reaberta'
-  | 'periodo' | 'periodo-encerrado' | 'adicionada' | 'retirada';
+  | 'periodo' | 'periodo-encerrado' | 'adicionada' | 'retirada' | 'valor';
 
 /** O que aconteceu, quando e com quem (para produtividade e análise das objeções). */
 export interface Evento {

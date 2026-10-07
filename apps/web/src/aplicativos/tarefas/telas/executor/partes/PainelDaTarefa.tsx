@@ -3,9 +3,11 @@
 // comparações no ranking (rank), as notas por CFOP na tabela padrão (com a barra do rank), os avisos no Alerta, as
 // marcas no badge e o vazio no gh-blank. Os gráficos novos (barras por dia, rosca, faixa 100%) saíram (Vitor: "não
 // curti nenhum dos gráficos novos"): a composição virou o rank. Ao aparecer, anima (animarPainel.ts, animejs).
+// A verificação (Vitor, 07/10/2026): NCM, CST e CEST nas entradas e saídas; os serviços com NBS, descrição, valor e o que
+// cada nota retém; o faturamento com saídas e entradas lado a lado e a folha que o DP informou.
 import { formatos, tarefas as t } from '@nads/core';
 import { Alerta, Icone, Stat } from '@nads/ui';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ROTULO_DO_RELATORIO, type VmPainelDoFiscal } from '../usePainelDoFiscal';
 import { animarPainel } from './animarPainel';
 import { SiegDaEtapa } from './SiegDaEtapa';
@@ -80,11 +82,84 @@ function Veredito({ sieg, importadas, oQue }: { sieg: number | null; importadas:
     : <Alerta titulo={(importadas - sieg) + ' ' + oQue + ' a mais que o SIEG'} texto={'O Alterdata tem ' + importadas + '; o SIEG, ' + sieg + '. Confira se há nota lançada duas vezes ou de outro mês.'} />;
 }
 
+/** Os itens por NCM, CST e CEST (quando o relatório do Alterdata traz as colunas). */
+function TabelaFiscal({ r }: { r: t.painel.ResumoFiscal }) {
+  if (!r.temColunas) return <p className="hint">O relatório não trouxe NCM, CST e CEST: exporte do Alterdata com essas colunas e reimporte para ver por item.</p>;
+  return (
+    <div className="table-wrap table-compact">
+      <table>
+        <thead><tr><th>NCM</th><th>CST</th><th>CEST</th><th className="num">Itens</th><th className="num">Valor</th></tr></thead>
+        <tbody>
+          {r.linhas.map(l => (
+            <tr key={l.ncm + '|' + l.cst + '|' + l.cest}>
+              <td className="num">{l.ncm || '—'}</td><td className="num">{l.cst || '—'}</td><td className="num">{l.cest || '—'}</td>
+              <td className="num">{l.itens}</td><td className="num">{reais(l.valor)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Os serviços do mês com NBS, descrição, valor e o que cada nota retém (lido da nota). */
+function TabelaDeServicos({ linhas }: { linhas: readonly t.painel.ServicoNaVerificacao[] }) {
+  const semColunas = !linhas.some(l => l.nbs || l.descricao);
+  return (
+    <>
+      <div className="table-wrap table-compact">
+        <table>
+          <thead><tr><th>Nota</th><th>NBS</th><th>Descrição</th><th className="num">Valor</th><th>Retidos</th></tr></thead>
+          <tbody>
+            {linhas.map((l, i) => (
+              <tr key={l.tipo + l.numero + i}>
+                <td className="wrap"><b>{l.nome}</b><span className="hint" style={{ display: 'block', margin: 0 }}>{l.tipo} · nº {l.numero}</span></td>
+                <td className="num">{l.nbs || '—'}</td>
+                <td className="wrap">{l.descricao || '—'}</td>
+                <td className="num">{reais(l.valor)}</td>
+                <td>{l.retencoes.length
+                  ? <span className="graf-marcas">{l.retencoes.map(r => <span key={r.imposto} className="badge badge-warn">{r.imposto} {reais(r.valor)}</span>)}</span>
+                  : <span className="hint" style={{ margin: 0 }}>nenhuma</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {semColunas && <p className="hint">O relatório não trouxe NBS e descrição do serviço: exporte do Alterdata com essas colunas e reimporte.</p>}
+    </>
+  );
+}
+
+/** O DP informa o total da folha do mês (o Fiscal vê ao lado do faturamento). */
+function FolhaTotal({ valor, informar }: { valor: number | null; informar?: (v: number) => void }) {
+  const [texto, setTexto] = useState(valor != null ? valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '');
+  const lido = Number(texto.replace(/\./g, '').replace(',', '.'));
+  const valido = texto.trim() !== '' && Number.isFinite(lido) && lido >= 0;
+  return (
+    <>
+      <div className="stat-grid">
+        <Stat rotulo="Total da folha informado" valor={valor != null ? <Conta valor={valor} formato="reais" /> : '—'} />
+      </div>
+      <form className="graf-marcas" onSubmit={e => { e.preventDefault(); if (valido && informar) informar(lido); }}>
+        <input className="field" inputMode="decimal" placeholder="Total da folha do mês (salários, pró-labore e encargos)" value={texto} onChange={e => setTexto(e.target.value)} style={{ maxWidth: 360 }} />
+        <button type="submit" className="btn btn-primary" disabled={!valido || !informar}><Icone nome="check" />Salvar</button>
+      </form>
+      <p className="hint">O Fiscal vê este valor ao lado do faturamento (Conferência de Faturamento × Notas Emitidas).</p>
+    </>
+  );
+}
+
 function SemConta({ r }: { r: t.painel.ResumoDeNotas }) {
   return r.comConta ? null : <Alerta titulo="O relatório veio sem a conta contábil" texto="O Contábil precisa dela: ligue a coluna no Alterdata e reimporte." />;
 }
 
-function Corpo({ painel, vm, codigo, competencia, importar }: { painel: t.PainelDaTarefa; vm: VmPainelDoFiscal; codigo: string; competencia: string; importar: (r: t.RelatorioImportavel[]) => void }) {
+interface PropsDoPainel {
+  painel: t.PainelDaTarefa; vm: VmPainelDoFiscal; codigo: string; competencia: string; importar: (r: t.RelatorioImportavel[]) => void;
+  /** os valores da execução aberta (o total da folha que o DP informou) e como informar um */
+  valores?: Record<string, number>; informar?: (chave: string, valor: number) => void;
+}
+
+function Corpo({ painel, vm, codigo, competencia, importar, valores, informar }: PropsDoPainel) {
   const comp = t.rotuloNumericoCompetencia(competencia);
   const pctDe = (classe: t.painel.ClasseDoCfop) => vm.base.find(f => f.classe === classe)?.pct || 0;
   const vazio = (r: t.RelatorioImportavel) => <Vazio relatorio={r} competencia={competencia} importar={() => importar([r])} />;
@@ -121,22 +196,68 @@ function Corpo({ painel, vm, codigo, competencia, importar }: { painel: t.Painel
             </p>
           )}
           <TabelaPorCfop r={r} />
+          <TabelaFiscal r={painel === 'saidas' ? vm.fiscalSaidas : vm.fiscalEntradas} />
           <SemConta r={r} />
         </>
       );
     }
-    case 'faturamento':
-      if (!vm.saidas.qtd) return vazio('saidas');
+    case 'faturamento': {
+      if (!vm.saidas.qtd && !vm.entradas.qtd) return vazio('saidas');
+      const folha = vm.folhaDoDp;
+      const linha = (rotulo: string, sai: ReactNode, ent: ReactNode) => <tr><td>{rotulo}</td><td className="num">{sai}</td><td className="num">{ent}</td></tr>;
       return (
         <>
           <div className="stat-grid">
             <Stat rotulo={'Faturamento de ' + comp} valor={<Conta valor={vm.saidas.total} formato="reais" />} cor="saida" />
-            <Stat rotulo="Notas no Alterdata" valor={<Conta valor={vm.saidas.qtd} />} />
-            <Stat rotulo="Emitidas no SIEG" valor={vm.sieg ? <Conta valor={vm.sieg.emitidasNFe} /> : '—'} />
+            <Stat rotulo="Folha do mês (DP)" valor={folha != null ? <Conta valor={folha} formato="reais" /> : '—'} />
+            <Stat rotulo="Folha ÷ faturamento" valor={folha != null && vm.saidas.total ? (Math.round((folha / vm.saidas.total) * 1000) / 10).toLocaleString('pt-BR') + '%' : '—'} />
+          </div>
+          {folha == null && <p className="hint">O DP ainda não informou o total da folha deste mês (na etapa Folha de pagamento).</p>}
+          {/* saídas e entradas lado a lado (Vitor, 07/10/2026) */}
+          <div className="table-wrap table-compact">
+            <table>
+              <thead><tr><th /><th className="num">Saídas</th><th className="num">Entradas</th></tr></thead>
+              <tbody>
+                {linha('Notas no Alterdata', vm.saidas.qtd, vm.entradas.qtd)}
+                {linha('No SIEG', vm.sieg ? vm.sieg.emitidasNFe : '—', vm.sieg ? vm.sieg.recebidasNFe : '—')}
+                {linha('Diferença', vm.sieg ? vm.saidas.qtd - vm.sieg.emitidasNFe : '—', vm.sieg ? vm.entradas.qtd - vm.sieg.recebidasNFe : '—')}
+                {linha('Valor contábil', reais(vm.saidas.total), reais(vm.entradas.total))}
+                {linha('CFOPs', vm.saidas.porCfop.length, vm.entradas.porCfop.length)}
+              </tbody>
+            </table>
           </div>
           <Veredito sieg={vm.sieg?.emitidasNFe ?? null} importadas={vm.saidas.qtd} oQue="notas emitidas" />
         </>
       );
+    }
+    case 'servicos': {
+      if (!vm.importado.tomados && !vm.importado.prestados) return vazio('tomados');
+      const comRetencao = vm.servicos.filter(s => s.retido > 0);
+      return (
+        <>
+          <div className="stat-grid">
+            <Stat rotulo="Notas de serviço" valor={<Conta valor={vm.servicos.length} />} />
+            <Stat rotulo="Com retenção" valor={<Conta valor={comRetencao.length} />} />
+            <Stat rotulo="Total retido" valor={<Conta valor={comRetencao.reduce((s, x) => s + x.retido, 0)} formato="reais" />} />
+          </div>
+          <TabelaDeServicos linhas={vm.servicos} />
+        </>
+      );
+    }
+    case 'interestaduais':
+      if (!vm.entradas.qtd) return vazio('entradas');
+      if (!vm.interestaduais.qtd) return <Alerta tom="ok" titulo={'Nenhuma entrada de fora do estado em ' + comp} texto="Sem Antecipação, ST ou DIFAL das entradas neste mês." />;
+      return (
+        <>
+          <div className="stat-grid">
+            <Stat rotulo="Entradas interestaduais" valor={<Conta valor={vm.interestaduais.qtd} />} />
+            <Stat rotulo="Valor" valor={<Conta valor={vm.interestaduais.total} formato="reais" />} cor="entrada" />
+          </div>
+          <Rank linhas={vm.interestaduais.linhas.map(l => ({ chave: l.nome, nome: <><b>{l.nome}</b> <span className="hint">{l.qtd} {l.qtd === 1 ? 'nota' : 'notas'} · CFOP {l.ufCfop}</span></>, valor: l.valor, texto: reais(l.valor) }))} />
+        </>
+      );
+    case 'folha-total':
+      return <FolhaTotal valor={valores?.folha ?? null} informar={informar ? v => informar('folha', v) : undefined} />;
     case 'entradas-sieg':
       if (!vm.entradas.qtd) return vazio('entradas');
       return (
@@ -211,7 +332,7 @@ function Corpo({ painel, vm, codigo, competencia, importar }: { painel: t.Painel
   }
 }
 
-export function PainelDaTarefa(p: { painel: t.PainelDaTarefa; vm: VmPainelDoFiscal; codigo: string; competencia: string; importar: (r: t.RelatorioImportavel[]) => void }) {
+export function PainelDaTarefa(p: PropsDoPainel) {
   const ref = useRef<HTMLDivElement>(null);
   // anima quando o painel aparece e quando os dados chegam (a importação ou o ⚡)
   const chave = p.painel + '|' + p.vm.importado.entradas + '|' + p.vm.importado.saidas + '|' + p.vm.importado.tomados + '|' + p.vm.importado.prestados + '|' + (p.vm.sieg ? 1 : 0);

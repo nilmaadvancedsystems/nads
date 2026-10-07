@@ -37,6 +37,8 @@ const CFOPS_ENTRADA: LinhaCfop[] = [
 ];
 
 /** Um valor "de verdade" (centavos quebrados), estável para a mesma nota. */
+// os itens de teste: NCM, CST/CSOSN e CEST (a verificação do Fiscal, 07/10/2026)
+const ITENS: [string, string, string][] = [['2202.10.00', '500', '03.007.00'], ['0402.21.10', '102', ''], ['1905.90.90', '500', '17.049.00'], ['2106.90.10', '102', ''], ['3401.11.90', '102', '']];
 const valor = (i: number, fator: number) => Math.round((380 + ((i * 7919) % 2600) + (i % 3) * 0.37) * fator * 100) / 100;
 const data = (dia: number, mes: string) => String(dia).padStart(2, '0') + '/' + mes.slice(5, 7) + '/' + mes.slice(0, 4);
 const diasDoMes = (mes: string) => new Date(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)), 0).getDate();
@@ -50,6 +52,7 @@ function notas(mes: string, tabela: LinhaCfop[], nomes: string[], inicio: number
     return {
       cfop, lanc, conta, desc, valor: valor(inicio + i, peso > 2 ? 1.6 : 1), numero: 'T' + (inicio + i), nome: nomes[i % nomes.length] + MARCA,
       data: data(1 + ((i * 3) % ult), mes), doc: '00.000.000/0001-' + String(10 + (i % nomes.length)), exportado: 'Não' as const, comp: mes,
+      ncm: ITENS[i % ITENS.length][0], cst: ITENS[i % ITENS.length][1], ...(ITENS[i % ITENS.length][2] ? { cest: ITENS[i % ITENS.length][2] } : {}),
     };
   });
 }
@@ -70,6 +73,9 @@ function servicos(mes: string, tipo: 'tomados' | 'prestados', inicio: number, qt
       codPart: String(500 + quem), cnpj: '11.111.111/0001-' + String(20 + quem), nome: nomes[quem] + MARCA,
       valor: v, iss: c(v, 0.05), issRet, inss: tipo === 'tomados' && (quem === 1 || quem === 2) ? c(v, 0.11) : 0,
       irrf: tipo === 'tomados' && quem === 3 ? c(v, 0.015) : 0, exportado: 'Não' as const, conta: tipo === 'tomados' ? '40230' : '30201',
+      // a consultoria também retém PIS, COFINS e CSLL; o NBS e a descrição do serviço
+      ...(tipo === 'tomados' && quem === 3 ? { pis: c(v, 0.0065), cofins: c(v, 0.03), csll: c(v, 0.01) } : {}),
+      nbs: ['1.1502.10.00', '1.2001.10.00', '1.2001.30.00', '1.1303.10.00'][quem % 4], descricao: ['Licença de software de gestão', 'Limpeza e conservação', 'Manutenção predial', 'Consultoria empresarial'][quem % 4],
     };
   });
 }

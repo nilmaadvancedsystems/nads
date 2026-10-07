@@ -52,8 +52,12 @@ export function lerNotas(rows: Linhas): Nota[] {
     num: coluna(head, 'número', 'numero'), nome: coluna(head, 'nome forn', 'forn/cliente', 'nome'),
     dt: coluna(head, 'dt. escritura', 'data'), desc: coluna(head, 'descrição do cfop', 'descricao do cfop'),
     doc: coluna(head, 'cnpj/cpf', 'cpf/cnpj', 'cnpj', 'cpf'), exp: coluna(head, 'exportado', 'exp.'), conta: colunaDaConta(head),
+    // do item (a verificação do Fiscal, 07/10/2026): só quando o relatório traz as colunas
+    ncm: coluna(head, 'ncm', 'classificação fiscal', 'classificacao fiscal'), cst: coluna(head, 'cst', 'csosn', 'sit. trib', 'situação tributária', 'situacao tributaria'),
+    cest: coluna(head, 'cest'),
   };
   if (c.cfop < 0 || c.val < 0) throw new Error('Faltou coluna de CFOP ou de valor.');
+  const texto = (r: unknown[], i: number) => (i >= 0 ? String(r[i] ?? '').trim().replace(/\.0$/, '') : '');
   const out: Nota[] = [];
   for (let i = h + 1; i < rows.length; i++) {
     const r = rows[i];
@@ -68,6 +72,9 @@ export function lerNotas(rows: Linhas): Nota[] {
       desc: c.desc >= 0 ? String(r[c.desc] || '').trim() : '', doc: c.doc >= 0 ? String(r[c.doc] || '').trim() : '',
       exportado: c.exp >= 0 ? normExportado(r[c.exp]) : '', comp: comp(data),
       ...(c.conta >= 0 && String(r[c.conta] || '').trim() ? { conta: String(r[c.conta]).trim().replace(/\.0$/, '') } : {}),
+      ...(texto(r, c.ncm) ? { ncm: texto(r, c.ncm) } : {}),
+      ...(texto(r, c.cst) ? { cst: texto(r, c.cst) } : {}),
+      ...(texto(r, c.cest) ? { cest: texto(r, c.cest) } : {}),
     });
   }
   return out;
@@ -134,6 +141,8 @@ export function lerServicos(rows: Linhas, tipo: TipoServico): { notas: NotaServi
     cnpj: acha('cnpj'), nome: acha('nome'), valor: acha('valor base', 'valor do documento'),
     iss: head.indexOf('iss valor'), issRet: acha('iss valor retido', 'iss retido'), irrf: acha('irrf'), inss: acha('inss'), canc: acha('cancel'),
     exp: acha('exportado', 'exp.'), conta: colunaDaConta(rows[h]),
+    // as outras retenções e o serviço (a verificação do Fiscal, 07/10/2026): só quando o relatório traz as colunas
+    pis: acha('pis'), cofins: acha('cofins'), csll: acha('csll'), nbs: acha('nbs'), desc: acha('discrimina', 'descrição do serviço', 'descricao do servico'),
   };
   if (c.valor < 0 || c.nome < 0) throw new Error('Faltou a coluna de valor (Valor Base) ou de nome do participante.');
   const out: NotaServico[] = [];
@@ -156,6 +165,12 @@ export function lerServicos(rows: Linhas, tipo: TipoServico): { notas: NotaServi
     if (c.inss >= 0) n.inss = num(r[c.inss]) || 0;
     if (c.exp >= 0) n.exportado = normExportado(r[c.exp]);
     if (c.conta >= 0 && String(r[c.conta] || '').trim()) n.conta = String(r[c.conta]).trim();
+    // PIS/COFINS/CSLL numa coluna só (a CSRF): fica no PIS
+    if (c.pis >= 0) n.pis = num(r[c.pis]) || 0;
+    if (c.cofins >= 0 && c.cofins !== c.pis) n.cofins = num(r[c.cofins]) || 0;
+    if (c.csll >= 0 && c.csll !== c.pis && c.csll !== c.cofins) n.csll = num(r[c.csll]) || 0;
+    if (c.nbs >= 0 && String(r[c.nbs] ?? '').trim()) n.nbs = String(r[c.nbs]).trim().replace(/\.0$/, '');
+    if (c.desc >= 0 && c.desc !== c.nome && String(r[c.desc] ?? '').trim()) n.descricao = String(r[c.desc]).trim();
     out.push(n);
   }
   return { notas: out, canceladas };

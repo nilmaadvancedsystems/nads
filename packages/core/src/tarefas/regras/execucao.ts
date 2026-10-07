@@ -134,6 +134,12 @@ export function voltarPara(ex: Execucao, etapa: string, por: string, agora: Date
   return { execucao: { ...ex, etapas }, evento: { tipo: 'reaberta', etapa, por, em: agora.toISOString(), observacao: antes } };
 }
 
+/** A etapa informa um valor do mês (ex.: o DP, o total da folha): fica na execução; o evento guarda o que mudou. */
+export function informarValor(ex: Execucao, etapa: string, chave: string, valor: number, por: string, agora: Date): { execucao: Execucao; evento: Evento } {
+  const valores = { ...(ex.valores || {}), [chave]: Math.round(valor * 100) / 100 };
+  return { execucao: { ...ex, valores }, evento: { tipo: 'valor', etapa, por, em: agora.toISOString(), observacao: chave + '=' + valores[chave] } };
+}
+
 /**
  * Uma etapa "só quando adicionada" entra no mês (o razão do caixa tem liquidação de cobrança: o Creditor). O motivo vai
  * no evento.

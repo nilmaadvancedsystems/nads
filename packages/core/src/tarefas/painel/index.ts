@@ -57,7 +57,8 @@ export function resumoDeNotas(notas: readonly Nota[], meses: readonly string[]):
   }
   const ultimo = meses.length === 1 ? new Date(Number(meses[0].slice(0, 4)), Number(meses[0].slice(5, 7)), 0).getDate() : 31;
   return {
-    qtd: doMes.length,
+    // o relatório por item repete a nota em várias linhas: conta cada nota uma vez
+    qtd: new Set(doMes.map(n => n.numero + '|' + n.nome + '|' + n.data)).size,
     total: soma(doMes),
     porCfop: [...cfops.values()].sort((a, b) => b.valor - a.valor),
     porDia: Array.from({ length: ultimo }, (_, i) => dias.get(i + 1) || { dia: i + 1, valor: 0, qtd: 0 }),
@@ -112,4 +113,70 @@ export function importadoNoPeriodo(n: NotasDoPainel, meses: readonly string[]) {
     tomados: doPeriodo(n.tomados, meses).length,
     prestados: doPeriodo(n.prestados, meses).length,
   };
+}
+
+export interface LinhaInterestadual { nome: string; ufCfop: string; qtd: number; valor: number }
+export interface ResumoInterestadual { qtd: number; total: number; linhas: LinhaInterestadual[] }
+
+/**
+ * As entradas de fora do estado (CFOP 2xxx) do período, por fornecedor (Processos do Fiscal, ROT-09: o ICMS das notas
+ * recebidas — Antecipação, ST e DIFAL — começa por elas). Do maior valor ao menor; os CFOPs de cada fornecedor juntos.
+ */
+export function interestaduais(entradas: readonly Nota[], meses: readonly string[]): ResumoInterestadual {
+  const fora = doPeriodo(entradas, meses).filter(n => String(n.cfop || '').startsWith('2'));
+  const por = new Map<string, LinhaInterestadual>();
+  for (const n of fora) {
+    const l = por.get(n.nome) || { nome: n.nome, ufCfop: '', qtd: 0, valor: 0 };
+    l.qtd++; l.valor = centavos(l.valor + (Number(n.valor) || 0));
+    if (!l.ufCfop.split(', ').includes(n.cfop)) l.ufCfop = l.ufCfop ? l.ufCfop + ', ' + n.cfop : n.cfop;
+    por.set(n.nome, l);
+  }
+  return { qtd: fora.length, total: soma(fora), linhas: [...por.values()].sort((a, b) => b.valor - a.valor) };
+}
+
+export interface LinhaFiscal { ncm: string; cst: string; cest: string; itens: number; valor: number }
+export interface ResumoFiscal { temColunas: boolean; linhas: LinhaFiscal[] }
+
+/**
+ * Os itens do período por NCM, CST e CEST (Vitor, 07/10/2026: "Entrada/Saída: CST, CEST, NCM, valor"), do maior valor ao
+ * menor. temColunas = o relatório trouxe ao menos uma das colunas (sem elas, a tela pede o relatório com elas).
+ */
+export function porNcmCstCest(notas: readonly Nota[], meses: readonly string[]): ResumoFiscal {
+  const doMes = doPeriodo(notas, meses);
+  const temColunas = doMes.some(n => n.ncm || n.cst || n.cest);
+  if (!temColunas) return { temColunas, linhas: [] };
+  const por = new Map<string, LinhaFiscal>();
+  for (const n of doMes) {
+    const k = (n.ncm || '') + '|' + (n.cst || '') + '|' + (n.cest || '');
+    const l = por.get(k) || { ncm: n.ncm || '', cst: n.cst || '', cest: n.cest || '', itens: 0, valor: 0 };
+    l.itens++; l.valor = centavos(l.valor + (Number(n.valor) || 0));
+    por.set(k, l);
+  }
+  return { temColunas, linhas: [...por.values()].sort((a, b) => b.valor - a.valor) };
+}
+
+export interface ServicoNaVerificacao {
+  tipo: 'Tomado' | 'Prestado'; numero: string; nome: string; nbs: string; descricao: string; valor: number;
+  /** a soma das retenções da nota */
+  retido: number;
+  /** quais (ex.: ISS 50,00) */
+  retencoes: { imposto: string; valor: number }[];
+}
+
+const RETENCOES: ['issRet' | 'inss' | 'irrf' | 'pis' | 'cofins' | 'csll', string][] = [['issRet', 'ISS'], ['inss', 'INSS'], ['irrf', 'IRRF'], ['pis', 'PIS'], ['cofins', 'COFINS'], ['csll', 'CSLL']];
+
+/**
+ * Os serviços do período com o que a nota retém (Vitor, 07/10/2026: "Serviços: NBS, descrição, valor, retidos; ler da NF
+ * se tem alguma retenção"): primeiro as que retêm, da maior retenção para a menor; depois as outras, pelo valor.
+ */
+export function servicosComRetencoes(tomados: readonly NotaServico[], prestados: readonly NotaServico[], meses: readonly string[]): ServicoNaVerificacao[] {
+  const linha = (n: NotaServico, tipo: ServicoNaVerificacao['tipo']): ServicoNaVerificacao => {
+    const retencoes = RETENCOES.map(([k, imposto]) => ({ imposto, valor: Number(n[k]) || 0 })).filter(r => r.valor > 0);
+    return {
+      tipo, numero: n.numero, nome: n.nome, nbs: n.nbs || '', descricao: n.descricao || '', valor: Number(n.valor) || 0,
+      retido: centavos(retencoes.reduce((t, r) => t + r.valor, 0)), retencoes,
+    };
+  };
+  return [...doPeriodo(tomados, meses).map(n => linha(n, 'Tomado')), ...doPeriodo(prestados, meses).map(n => linha(n, 'Prestado'))]
+    .sort((a, b) => b.retido - a.retido || b.valor - a.valor);
 }

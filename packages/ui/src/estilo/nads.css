@@ -3081,3 +3081,8 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .dp-selo-mudado{margin-left:8px;font-size:11px;vertical-align:middle;}
 /* DP › Obrigações: o submenu das partes (Folha, eSocial, Guias, REINF, Entrega), acima da tabela */
 .dp-submenu{margin:0 0 12px;}
+/* o check da tarefa (07/10/2026): um botão só da caixinha, que marca e desmarca */
+.pt-caixa{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin:-4px 0 -4px -4px;padding:0;border:0;border-radius:4px;background:none;cursor:pointer;flex:none;}
+.pt-caixa:hover:not(:disabled) .subnav-caixa{border-color:var(--success);}
+.pt-caixa:disabled{cursor:not-allowed;}
+.pt-caixa:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
