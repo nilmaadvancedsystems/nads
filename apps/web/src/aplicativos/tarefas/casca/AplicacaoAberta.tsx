@@ -20,6 +20,7 @@ import { Certificados } from '../telas/senhas/Certificados';
 import { ContasGov } from '../telas/senhas/ContasGov';
 import { ABAS_DO_PAINEL, type AbaDoPainel } from '../telas/dp/usePainelDoDp';
 import { ConfiguracoesDoDp } from '../telas/dp/ConfiguracoesDoDp';
+import { Mandei } from '../telas/mandei/Mandei';
 import { CascaTarefas } from './CascaTarefas';
 import { aplicacao, aplicacoesDe, caminhoDaPagina, type IdAplicacao } from './navegacao';
 import { useOperador, type Operador } from './operador';
@@ -32,6 +33,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'dp': return ABAS_DO_PAINEL.includes(pagina as AbaDoPainel) ? <PainelDoDp aba={pagina as AbaDoPainel} /> : pagina === 'configuracoes' ? <ConfiguracoesDoDp /> : <VisaoContabil pagina={pagina} dep="dp" />;
     case 'senhas': return pagina === 'acesso' ? <AcessoAoCofre /> : pagina === 'gov' ? <ContasGov /> : pagina === 'certificados' ? <Certificados /> : <SenhasDasEmpresas />;
     case 'cadastro': return pagina === 'configuracoes' ? <ConfiguracoesDoNads /> : <UsuariosDoNads />;
+    case 'mandei': return <Mandei pagina={pagina === 'central' ? 'central' : 'meus'} />;
     case 'drive': return <ExploradorDoDrive />;
     case 'contato': return pagina === 'historico' ? <HistoricoDoRobo /> : <CaixaDoRobo />;
     default: return <EmDesenvolvimento nome={aplicacao(app)?.nome || app} />;

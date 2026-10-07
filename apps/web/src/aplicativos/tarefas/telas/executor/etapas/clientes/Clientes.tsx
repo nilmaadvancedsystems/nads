@@ -41,7 +41,7 @@ function Arquivos({ vm }: { vm: VM }) {
   const grade = useColunaAjustavel('clientes-credores', Math.max(18, 30 - vm.mesesDosCredores.length) + '%', vm.mesesDosCredores.length);
   return (
     <div className="imp-lista">
-      <LinhaDoArquivo titulo="Balancete dinâmico" dica={'O balancete dinâmico atualizado, com ' + vm.mes} feito={vm.dinamico} onArquivo={vm.importar} onTirar={vm.tirar} teste={vm.teste}>
+      <LinhaDoArquivo titulo="Balancete dinâmico" feito={vm.dinamico} onArquivo={vm.importar} onTirar={vm.tirar} teste={vm.teste}>
         {/* importado: os credores em algum mês, na grade dos meses do Caixa (Vitor, 07/10/2026); o mês credor em vermelho */}
         {vm.dinamico && vm.credoresNoPeriodo.length > 0 && (
           <div className="imp-periodo-linha">
@@ -69,8 +69,8 @@ function Arquivos({ vm }: { vm: VM }) {
   );
 }
 
-function LinhaDoArquivo({ titulo, dica, feito, onArquivo, onTirar, teste, children }: {
-  titulo: string; dica: string; feito: { nome: string; resumo: string } | null; onArquivo: (f: File | undefined) => void; onTirar: () => void; teste: ItemDeTeste[];
+function LinhaDoArquivo({ titulo, dica = '', feito, onArquivo, onTirar, teste, children }: {
+  titulo: string; dica?: string; feito: { nome: string; resumo: string } | null; onArquivo: (f: File | undefined) => void; onTirar: () => void; teste: ItemDeTeste[];
   children?: ReactNode;
 }) {
   const arquivo = useRef<HTMLInputElement>(null);
@@ -78,7 +78,7 @@ function LinhaDoArquivo({ titulo, dica, feito, onArquivo, onTirar, teste, childr
     <div className={'imp-bloco' + (feito ? ' imp-ok' : '')}>
       <div className="imp-linha">
         <span className="imp-ico imp-logo"><Icone nome="fileText" /></span>
-        <div className="imp-txt"><span><b>{titulo}</b><span className="imp-conta">{feito ? feito.nome : dica}</span></span></div>
+        <div className="imp-txt"><span><b>{titulo}</b>{(feito || dica) && <span className="imp-conta">{feito ? feito.nome : dica}</span>}</span></div>
         <div className="imp-resumo">{feito && <div><span>{feito.resumo}</span></div>}</div>
         <div className="imp-grupos">
           <div className="imp-grupo">
@@ -304,6 +304,18 @@ function Envio({ vm }: { vm: VM }) {
           <textarea id="fMensagemClientes" rows={5} value={vm.mensagem} onChange={e => vm.mudarMensagem(e.target.value)} style={{ width: '100%' }} />
         </div>
         <p className="hint" style={{ whiteSpace: 'pre-wrap' }}>{vm.texto}</p>
+      </div>
+      {/* o Mandei (Vitor, 07/10/2026): o cliente responde por um link (escolhe, escreve, anexa) e a gente acompanha */}
+      <div className="card" style={{ marginTop: 16 }}>
+        <div className="card-head"><h3>Mandar pelo Mandei</h3></div>
+        <p className="hint" style={{ padding: '0 16px' }}>O cliente recebe um link (vale 3 dias úteis) para responder cada um e anexar os comprovantes; acompanhe em Mandei.</p>
+        <div className="btn-row" style={{ padding: '0 16px 16px', alignItems: 'flex-end' }}>
+          <div className="field" style={{ flex: 1, margin: 0 }}>
+            <label htmlFor="fEmailMandei">E-mail do cliente</label>
+            <input id="fEmailMandei" type="email" value={vm.emailDoCliente} onChange={e => vm.setEmailDoCliente(e.target.value)} placeholder="financeiro@empresa.com.br" />
+          </div>
+          <button type="button" className="btn btn-primary" onClick={vm.mandarPeloMandei}><Icone nome="caixaEntrada" />Mandar pelo Mandei</button>
+        </div>
       </div>
     </>
   );
