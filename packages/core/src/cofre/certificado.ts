@@ -7,6 +7,12 @@ export type LeituraDoCertificado =
 
 type Cert = import('node-forge').pki.Certificate;
 
+/** O CNPJ no nome do arquivo (ex.: "EMPRESA LTDA_27872981000113.pfx" ou com pontos e barra), só os dígitos; '' se não tem. */
+export function cnpjDoNomeDoArquivo(nome: string): string {
+  const m = nome.match(/\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/);
+  return m ? m[0].replace(/\D/g, '') : '';
+}
+
 const dataLocal = (d: Date) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 
 export async function lerCertificado(arquivoBase64: string, senha: string): Promise<LeituraDoCertificado> {

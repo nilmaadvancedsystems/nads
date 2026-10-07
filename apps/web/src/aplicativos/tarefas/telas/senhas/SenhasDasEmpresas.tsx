@@ -4,6 +4,7 @@ import { Esqueleto, Icone, Segmentado, useCarregando } from '@nads/ui';
 import { useState } from 'react';
 import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
 import { CofreFechado } from './CofreFechado';
+import { ImportarCertificados } from './ImportarCertificados';
 import { SegredosDaEmpresa } from './SegredosDaEmpresa';
 import { useSenhasDasEmpresas, type FiltroDeSenhas } from './useSenhasDasEmpresas';
 
@@ -13,6 +14,7 @@ const TOPICOS: TopicoDaJanela<Topico>[] = [{ id: 'gov', rotulo: 'gov.br', icone:
 export function SenhasDasEmpresas() {
   const vm = useSenhasDasEmpresas();
   const [topico, setTopico] = useState<Topico>('gov');
+  const [importando, setImportando] = useState(false);
   useCarregando(vm.cofre.estado === 'carregando');
   if (vm.cofre.estado === 'carregando') return <Esqueleto linhas={8} />;
   const filtros: { valor: FiltroDeSenhas; rotulo: string }[] = [
@@ -26,6 +28,7 @@ export function SenhasDasEmpresas() {
       <div className="tarefas-barra-topo">
         <Segmentado valor={vm.filtro} opcoes={filtros} onMudar={vm.setFiltro} />
         <span className="tarefas-barra-espaco" />
+        {vm.cofre.estado === 'aberto' && <button type="button" className="btn btn-outline" onClick={() => setImportando(true)}><Icone nome="upload" />Importar certificados</button>}
         <label className="busca-curta">
           <Icone nome="search" />
           <input type="text" placeholder="Buscar empresa" aria-label="Buscar empresa" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} />
@@ -51,8 +54,9 @@ export function SenhasDasEmpresas() {
           </tbody>
         </table>
       </div>
+      {importando && <ImportarCertificados cofre={vm.cofre} fechar={() => setImportando(false)} />}
       {vm.aberta && (
-        <JanelaLateral rotulo={vm.aberta.nome} topicos={TOPICOS} topico={topico} mudar={setTopico} fechar={vm.fechar} resumo={(
+        <JanelaLateral rotulo={vm.aberta.nome} topicos={TOPICOS} topico={topico} mudar={setTopico} fechar={vm.fechar} classe="cofre-janela" resumo={(
           <div className="usuario-quem"><b>{vm.aberta.nome}</b>{vm.aberta.codigo != null && <span className="fraco">{vm.aberta.codigo}</span>}</div>
         )}>
           <SegredosDaEmpresa vm={vm.cofre} empresa={vm.aberta.nome} codigo={vm.aberta.codigo} parte={topico} />

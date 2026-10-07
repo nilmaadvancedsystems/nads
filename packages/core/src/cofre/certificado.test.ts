@@ -1,6 +1,6 @@
 import forge from 'node-forge';
 import { describe, expect, it } from 'vitest';
-import { lerCertificado } from './certificado';
+import { cnpjDoNomeDoArquivo, lerCertificado } from './certificado';
 
 /** Um .pfx sintético (chave pequena, só para o teste), com o CN no formato do e-CNPJ. */
 function pfxDeTeste(senha: string, fim: Date): string {
@@ -17,6 +17,14 @@ function pfxDeTeste(senha: string, fim: Date): string {
   const p12 = forge.pkcs12.toPkcs12Asn1(chaves.privateKey, [cert], senha, { algorithm: '3des' });
   return forge.util.encode64(forge.asn1.toDer(p12).getBytes());
 }
+
+describe('o CNPJ no nome do arquivo', () => {
+  it('só os dígitos, com ou sem pontuação', () => {
+    expect(cnpjDoNomeDoArquivo('EMPRESA LTDA_27872981000113.pfx')).toBe('27872981000113');
+    expect(cnpjDoNomeDoArquivo('cert 27.872.981/0001-13.p12')).toBe('27872981000113');
+    expect(cnpjDoNomeDoArquivo('certificado.pfx')).toBe('');
+  });
+});
 
 describe('ler o certificado A1', () => {
   const arquivo = pfxDeTeste('1234', new Date(2027, 2, 15, 12));

@@ -131,6 +131,8 @@ export interface ClienteDoEntregas {
   codigo: string;
   email: string;
   emails: string[];
+  /** o CNPJ/CPF do cadastro do Entregas (só os dígitos) */
+  documento?: string;
 }
 
 /** Os clientes do Entregas (os ativos), com os e-mails em minúsculas. */
@@ -141,6 +143,7 @@ export function clientesDoEntregas(docs: readonly { id: string; dados: Record<st
       id: d.id, nome: texto(d.dados.nome), codigo: texto(d.dados.codigoOrigem).trim(),
       email: texto(d.dados.email).trim().toLowerCase(),
       emails: (Array.isArray(d.dados.emails) ? d.dados.emails : []).map(e => texto(e).trim().toLowerCase()).filter(Boolean),
+      documento: texto(d.dados.documento).replace(/\D/g, ''),
     }))
     .sort((a, b) => (Number(a.codigo) || 1e9) - (Number(b.codigo) || 1e9) || a.nome.localeCompare(b.nome, 'pt-BR'));
 }

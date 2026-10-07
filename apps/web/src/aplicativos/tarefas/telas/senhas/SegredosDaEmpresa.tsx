@@ -1,8 +1,9 @@
 // Os segredos de uma empresa (07/10/2026): a senha gov.br e o certificado digital A1, em cartões com uma opção por linha.
 // Mostrar/esconder e copiar a senha; escolher e baixar o .pfx. Usado na janela do módulo Senhas e na aba Senhas do Cadastro.
-import { BotaoIcone, CampoArquivo, CampoData, Esqueleto, useRetorno } from '@nads/ui';
+import { BotaoIcone, Esqueleto, useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { Cartao, Linha } from '../janela/JanelaLateral';
+import { CertificadoA1 } from './CertificadoA1';
 import { CofreFechado } from './CofreFechado';
 import type { VmCofre } from './useCofre';
 import { useSegredos } from './useSegredos';
@@ -49,41 +50,7 @@ export function SegredosDaEmpresa({ vm: cofre, empresa, codigo, parte }: { vm: V
           {vm.mudouGov && <div className="cofre-salvar"><button type="button" className="btn btn-primary" disabled={cofre.ocupado} onClick={() => void vm.salvarGov()}>Salvar</button></div>}
         </Cartao>
       )}
-      {(parte === 'certificado' || parte === 'tudo') && (
-        <Cartao titulo="Certificado digital A1">
-          <Linha rotulo="Arquivo .pfx">
-            <span className="cofre-senha">
-              {vm.cert.arquivo ? <span className="cofre-arquivo">{vm.cert.nomeArquivo}</span> : null}
-              {vm.temCertificado && vm.cert.arquivo && <BotaoIcone icone="download" titulo="Baixar o .pfx" onClick={baixar} />}
-              <CampoArquivo id={'pfx-' + empresa} arquivo={null} aceitar=".pfx,.p12" onEscolher={f => void vm.escolherArquivo(f)} />
-            </span>
-          </Linha>
-          <Linha rotulo="Senha">
-            <span className="cofre-senha">
-              <Senha valor={vm.cert.senha} onMudar={v => vm.setCert({ ...vm.cert, senha: v })} rotulo="Senha do certificado" />
-              {vm.leitura.erro && <span className="badge badge-danger">{vm.leitura.erro}</span>}
-            </span>
-          </Linha>
-          {vm.cert.titular && <Linha rotulo="Titular"><span className="cofre-arquivo">{vm.cert.titular.replace(':', ' · ')}</span></Linha>}
-          <Linha rotulo="Validade">
-            <span className="cofre-senha">
-              <CampoData valor={vm.cert.validade} onMudar={v => vm.setCert({ ...vm.cert, validade: v })} rotulo="Validade do certificado" />
-              {vm.certSituacao.situacao === 'vencido' && <span className="badge badge-danger">Vencido</span>}
-              {vm.certSituacao.situacao === 'vence' && <span className="badge badge-warn">Vence em {vm.certSituacao.dias} dias</span>}
-            </span>
-          </Linha>
-          <Linha rotulo="Observação">
-            <input type="text" className="pessoal-select cofre-obs" value={vm.cert.obs} onChange={e => vm.setCert({ ...vm.cert, obs: e.target.value })} aria-label="Observação do certificado" />
-          </Linha>
-          {(vm.mudouCert || vm.temCertificado) && (
-            <div className="cofre-salvar">
-              {vm.temCertificado && <button type="button" className="btn btn-danger" disabled={cofre.ocupado} onClick={() => void vm.excluirCert()}>Excluir certificado</button>}
-              <span className="tarefas-barra-espaco" />
-              {vm.mudouCert && <button type="button" className="btn btn-primary" disabled={cofre.ocupado} onClick={() => void vm.salvarCert()}>Salvar</button>}
-            </div>
-          )}
-        </Cartao>
-      )}
+      {(parte === 'certificado' || parte === 'tudo') && <CertificadoA1 vm={vm} ocupado={cofre.ocupado} baixar={baixar} />}
     </>
   );
 }
