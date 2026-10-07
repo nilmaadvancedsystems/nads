@@ -89,6 +89,7 @@ describe('o razão zerado', () => {
     const razao = razaoDaMarca('x.xls', conferirRazaoDoCliente(lerRazao(linhas), '2026-08'));
     const conta = { codigo: '1', nome: 'CLIENTE TESTE', saldo: 100, noBalancete: null };
     expect(situacaoDe(conta, { nome: 'CLIENTE TESTE', saldo: 100, situacao: 'conferido', razao })).toBe('ok');
-    expect(situacaoDe(conta, { nome: 'CLIENTE TESTE', saldo: 100, situacao: 'conferido' })).toBe('conferido');
+    // sem o razão, o conferido marcado à mão não vale (Vitor, 07/10/2026)
+    expect(situacaoDe(conta, { nome: 'CLIENTE TESTE', saldo: 100, situacao: 'conferido' })).toBe('pendente');
   });
 });

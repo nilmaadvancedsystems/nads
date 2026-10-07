@@ -34,7 +34,8 @@ export interface Ticket {
   id: string;
   numero: number;
   empresa: { nome: string; codigo: number | null };
-  para: { nome: string; email: string };
+  /** o e-mail e o WhatsApp da empresa (os do Cadastro): o link vai pelos dois (Vitor, 07/10/2026) */
+  para: { nome: string; email: string; whatsapp?: string };
   assunto: string;
   /** a mensagem do topo do formulário */
   mensagem: string;

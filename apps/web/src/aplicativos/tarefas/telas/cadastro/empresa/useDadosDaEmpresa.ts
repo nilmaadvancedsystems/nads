@@ -37,6 +37,17 @@ export function useDadosDaEmpresa(rota: string) {
       const novo = empresas.cadastro.definirNotaDeHonorario(c.cadastro, atual === sim ? null : sim, c.por, new Date());
       if (novo !== c.cadastro) c.salvar(novo);
     },
+    /** o e-mail e o WhatsApp da empresa (Vitor, 07/10/2026): para onde o Mandei manda as perguntas de Clientes e Fornecedores */
+    email: c.cadastro.contato?.email || '',
+    whatsapp: c.cadastro.contato?.whatsapp || '',
+    /** grava ao sair do campo; inválido não grava e devolve o aviso (null = gravou ou não mudou) */
+    definirContato(campo: 'email' | 'whatsapp', valor: string): string | null {
+      if (c.carregando) return null;
+      const novo = empresas.cadastro.definirContato(c.cadastro, campo, valor, c.por, new Date());
+      if (novo !== c.cadastro) { c.salvar(novo); return null; }
+      const igual = (c.cadastro.contato?.[campo] || '') === (campo === 'whatsapp' ? empresas.cadastro.whatsappLimpo(valor) : valor.trim());
+      return igual || !valor.trim() ? null : campo === 'email' ? 'E-mail inválido.' : 'WhatsApp inválido: o número com o DDD (10 ou 11 dígitos).';
+    },
     /** os sócios, com o nome e o CPF (a etapa Bancos acha a transferência para o sócio no extrato) */
     socios: c.cadastro.socios || [],
     /** grava a lista inteira (a linha vazia some) */

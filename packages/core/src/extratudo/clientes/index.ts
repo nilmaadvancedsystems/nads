@@ -139,8 +139,9 @@ export function credores(clientes: readonly ContaDeCliente[]): ContaDeCliente[] 
 // ─── a situação de cada um ───────────────────────────────────────────────────
 
 /**
- * Pendente (o saldo, em laranja) ou Conferido (vai para o cliente, com a observação; laranja também): só esses dois a
- * pessoa troca. Ok é do sistema: a conta zerada (Vitor, 06/10/2026: "o Ok é só o sistema que dá").
+ * Pendente (o saldo, em laranja), Conferido (vai para o cliente, com a observação; laranja também) ou Ok (a conta zerada).
+ * Todos do sistema: o Ok é a conta zerada (Vitor, 06/10/2026: "o Ok é só o sistema que dá") e o Conferido, o razão que
+ * achou o que perguntar (Vitor, 07/10/2026: sem o conferido manual).
  */
 export type SituacaoCliente = 'pendente' | 'ok' | 'conferido';
 
@@ -150,21 +151,25 @@ export interface DocClientes { contas: Record<string, MarcaDoCliente>; atualizad
 
 /**
  * Zerado é Ok (sempre, do sistema): no dinâmico, ou no razão importado (Vitor, 07/10/2026: "se ele reupar o razão e
- * tiver zerado, dá Ok automático"); com saldo, Conferido se a pessoa marcou, senão Pendente.
+ * tiver zerado, dá Ok automático"); com saldo, Conferido só se o razão importado achou nota em aberto ou pagamento solto
+ * (Vitor, 07/10/2026: "remova o conferido manual"), senão Pendente. A situação guardada na marca não decide mais nada.
  */
 export function situacaoDe(c: ContaDeCliente, marca?: MarcaDoCliente): SituacaoCliente {
   if (zero(c.saldo) || zeradoNoRazao(marca)) return 'ok';
-  return marca?.situacao === 'conferido' ? 'conferido' : 'pendente';
+  return razaoComPendencia(marca?.razao) ? 'conferido' : 'pendente';
+}
+
+/**
+ * O razão importado achou o que perguntar: nota em aberto ou pagamento solto (sem a nota, ou a mais). A duplicidade, que
+ * é só do escritório, e a devolução sozinha não contam.
+ */
+export function razaoComPendencia(razao?: RazaoDaMarca): boolean {
+  return !!razao?.itens.some(i => !i.interno && (i.status === 'aberto' || i.status === 'pagamento'));
 }
 
 /** O razão importado fecha em zero, sem nota em aberto. */
 export function zeradoNoRazao(marca?: MarcaDoCliente): boolean {
   return !!marca?.razao && zero(marca.razao.saldo) && !marca.razao.notas.length;
-}
-
-/** O clique no selo: Pendente ↔ Conferido (o Ok não muda: é do sistema). */
-export function proximaSituacao(s: SituacaoCliente): SituacaoCliente {
-  return s === 'pendente' ? 'conferido' : s === 'conferido' ? 'pendente' : 'ok';
 }
 
 /** O documento guardado conferido (o que não for de cliente, fora). */
@@ -202,10 +207,13 @@ function razaoGuardado(d: unknown): RazaoDaMarca | null {
   };
 }
 
-/** Os conferidos de um mês anterior que ainda não estão neste (passam para o mês seguinte). */
+/**
+ * Os conferidos de um mês anterior que ainda não estão neste (passam para o mês seguinte): só os que o razão conferiu (o
+ * conferido manual de antes fica para trás).
+ */
 export function conferidosQuePassam(anterior: DocClientes | null, atual: DocClientes): Record<string, MarcaDoCliente> {
   if (!anterior) return {};
-  return Object.fromEntries(Object.entries(anterior.contas).filter(([k, m]) => m.situacao === 'conferido' && !atual.contas[k]));
+  return Object.fromEntries(Object.entries(anterior.contas).filter(([k, m]) => razaoComPendencia(m.razao) && !atual.contas[k]));
 }
 
 // ─── para o cliente ──────────────────────────────────────────────────────────

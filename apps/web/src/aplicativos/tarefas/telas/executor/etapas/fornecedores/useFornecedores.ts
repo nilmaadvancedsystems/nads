@@ -1,12 +1,13 @@
 // ViewModel da etapa Fornecedores da Tarefa (Vitor, 07/10/2026: "a mesma coisa que o Clientes, mas o fornecedor errado é o
 // devedor"). As mesmas três telas: Arquivos (o balancete dinâmico; com devedor, o "Corrigi, irei reimportar" no lugar do Próximo),
-// Fornecedores (o selo Saldo ↔ Conferido, o Ok do sistema na conta zerada, a observação e o razão da conta) e Envio.
+// Fornecedores (o selo do sistema: Saldo, Conferido pelo razão ou Ok, o Ok do sistema na conta zerada, a observação e o razão da conta) e Envio.
 // As regras são as do Clientes (@nads/core clientes) com o lado 'fornecedores': o saldo vem com o sinal trocado (positivo =
 // a empresa deve), então o "credor" das regras é o fornecedor devedor. As marcas ficam por mês, por enquanto só neste navegador.
 import { clientes as cl, conferencia as c, demo, formatos, mandei as md, tarefas } from '@nads/core';
-import { baixarBytes, useRetorno } from '@nads/ui';
+import { useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
-import { gravarMensagem, lerMensagem, useMarcasDoMes } from '../../../../dados/clientes';
+import { useMarcasDoMes } from '../../../../dados/clientes';
+import { useCadastro } from '../../../../dados/repo';
 import { criarTicket } from '../../../../dados/mandei';
 import { useOperador } from '../../../../casca/operador';
 import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
@@ -26,10 +27,10 @@ export function useFornecedores() {
   const [dinamico, setDinamico] = useState<{ nome: string; d: cl.BalanceteDinamico } | null>(null);
   const [filtro, setFiltro] = useState<FiltroFornecedores>('todos');
   const [busca, setBusca] = useState('');
-  const [mensagem, setMensagem] = useState(() => lerMensagem(LADO));
   // o Mandei (Vitor, 07/10/2026): o ticket com o link para o cliente responder, anexar e a gente acompanhar
   const op = useOperador().operador;
-  const [emailDoCliente, setEmailDoCliente] = useState('');
+  // o e-mail e o WhatsApp da empresa ficam no Cadastro (Vitor, 07/10/2026): o Mandei manda pelos dois
+  const vivo = useCadastro(s.nome, s.codigo);
   const avisar = (m: string) => aviso({ tom: 'erro', titulo: 'Fornecedores', texto: m });
   const marcas = useMarcasDoMes(s.nome, mes, avisar, LADO);
   const anterior = useMarcasDoMes(s.nome, mes ? mesAntes(mes) : '', undefined, LADO);
@@ -86,7 +87,7 @@ export function useFornecedores() {
       const razao = cl.razaoDaMarca(f.name, r, LADO);
       // com nota em aberto, a observação já vem escrita (Vitor, 07/10/2026): "No meu sistema, está em aberto…"
       const pronta = cl.observacaoDoRazao(razao);
-      marcar(codigo, m => ({ ...m, situacao: razao.notas.length ? 'conferido' : m.situacao, razao, ...(!m.obs && pronta ? { obs: pronta } : {}) }));
+      marcar(codigo, m => ({ ...m, situacao: cl.razaoComPendencia(razao) ? 'conferido' : 'pendente', razao, ...(!m.obs && pronta ? { obs: pronta } : {}) }));
       const bate = Math.abs(r.saldo - l.saldo) < 0.005;
       const partes = [
         razao.notas.length ? (razao.notas.length === 1 ? '1 nota em aberto' : razao.notas.length + ' notas em aberto') : 'Nenhuma nota em aberto',
@@ -111,9 +112,7 @@ export function useFornecedores() {
   useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
 
   const conferidos = linhas.filter(l => l.situacao === 'conferido');
-  const paraCliente: cl.LinhaParaCliente[] = conferidos.map(l => ({ codigo: l.codigo, nome: l.nome, saldo: l.saldo, obs: l.obs, notas: l.razao?.notas }));
   const rotuloMes = mes ? tarefas.rotuloNumericoCompetencia(mes) : '';
-  const texto = cl.textoDaMensagem(mensagem, s.nome, rotuloMes, paraCliente);
   const q = busca.trim().toLowerCase();
   const reais = formatos.reais;
 
@@ -163,7 +162,6 @@ export function useFornecedores() {
           itens: l.razao.itens.map(i => ({ data: i.data ? i.data.slice(8, 10) + '/' + i.data.slice(5, 7) + '/' + i.data.slice(0, 4) : '', nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor), abate: i.valor < 0, status: i.status, rotulo: cl.ROTULO_DO_STATUS[i.status] })),
         } : null,
       })),
-    clicar: (codigo: string) => marcar(codigo, m => ({ ...m, situacao: cl.proximaSituacao(m.situacao) })),
     // sem campo vazio (o banco não aceita undefined)
     observar: (codigo: string, obs: string) => marcar(codigo, m => {
       const n = { ...m };
@@ -175,17 +173,17 @@ export function useFornecedores() {
     tirarRazao: (codigo: string) => marcar(codigo, m => { const n = { ...m }; delete n.razao; return n; }),
     // Envio
     conferidos: conferidos.map(l => ({ codigo: l.codigo, nome: l.nome, valor: reais(l.saldo), obs: l.obs, notas: cl.textoDasNotas(l.razao?.notas) })),
-    mensagem, texto,
-    mudarMensagem: (t: string) => { setMensagem(t); gravarMensagem(t, LADO); },
     // o Mandei: um ticket com os conferidos (cada um, um item com a nossa pergunta), o link vai por e-mail
-    emailDoCliente, setEmailDoCliente,
-    /** os conferidos sem o razão: no ticket, o cliente vê só o saldo do mês (sem a nota, a data e o banco) */
-    semRazao: conferidos.filter(l => !l.razao?.itens.some(i => !i.interno)).map(l => l.nome),
+    /** o e-mail e o WhatsApp da empresa, do Cadastro */
+    contato: { email: vivo.cadastro.contato?.email || '', whatsapp: vivo.cadastro.contato?.whatsapp || '' },
+    /** o que falta no Cadastro para mandar (vazio = pode mandar) */
+    faltaNoCadastro: vivo.carregada ? [...(!vivo.cadastro.contato?.email ? ['o e-mail'] : []), ...(!vivo.cadastro.contato?.whatsapp ? ['o WhatsApp'] : [])] : ['o cadastro (carregando)'],
     mandarPeloMandei: () => {
-      const email = emailDoCliente.trim();
+      const email = vivo.cadastro.contato?.email || '';
+      const whatsapp = vivo.cadastro.contato?.whatsapp || '';
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { aviso({ tom: 'erro', titulo: 'Mandei', texto: 'Informe o e-mail do cliente.' }); return; }
       const t = criarTicket({
-        empresa: { nome: s.nome, codigo: s.codigo }, para: { nome: '', email },
+        empresa: { nome: s.nome, codigo: s.codigo }, para: { nome: '', email, whatsapp },
         assunto: 'Fornecedores em aberto — ' + rotuloMes,
         mensagem: 'Na conferência dos fornecedores de ' + rotuloMes + ', estes saldos ficaram em aberto. Pode nos dizer o que aconteceu com cada um?',
         criadoPor: { nome: op?.nome || '' },
@@ -193,10 +191,7 @@ export function useFornecedores() {
         // os lançamentos de cada um (a nota em aberto com a data e o número; o pagamento solto com a data e o banco)
         itens: conferidos.map(l => ({ id: l.codigo, titulo: l.nome, valor: reais(l.saldo), ...(l.obs ? { detalhe: l.obs } : {}), opcoes: md.OPCOES_PADRAO, linhas: cl.linhasParaOTicket(l.razao, l.saldo, mes) })),
       });
-      aviso({ tom: 'ok', titulo: 'Ticket ' + md.rotuloDoNumero(t.numero) + ' mandado', texto: email + ' · acompanhe em Mandei' });
+      aviso({ tom: 'ok', titulo: 'Ticket ' + md.rotuloDoNumero(t.numero) + ' mandado', texto: email + ' e WhatsApp ' + whatsapp + ' · acompanhe em Mandei' });
     },
-    baixarPlanilha: () => baixarBytes(cl.planilhaParaCliente(paraCliente, LADO), 'fornecedores_' + (s.codigo ?? s.nome) + '_' + mes + '.xlsx', cl.TIPO_XLSX),
-    email: 'mailto:?subject=' + encodeURIComponent('Fornecedores em aberto — ' + rotuloMes) + '&body=' + encodeURIComponent(texto),
-    whatsapp: 'https://wa.me/?text=' + encodeURIComponent(texto),
   };
 }

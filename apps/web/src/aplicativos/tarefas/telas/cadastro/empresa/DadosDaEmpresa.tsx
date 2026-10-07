@@ -8,6 +8,8 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
   const vm = useDadosDaEmpresa(rota);
   // a linha nova (vazia) do Adicionar sócio, até ganhar um nome ou um CPF
   const [novo, setNovo] = useState(false);
+  // o e-mail ou o WhatsApp inválido não grava: o aviso fica ao lado, até a próxima tentativa
+  const [erroDoContato, setErroDoContato] = useState<string | null>(null);
   useCarregando(vm.carregando);
   if (vm.carregando) return null;
   const opcao = (sim: boolean, rotulo: string) => (
@@ -84,6 +86,28 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
             <button key={String(sim)} type="button" className={'btn ' + (vm.emiteNotaHonorario === sim ? 'btn-primary' : 'btn-outline')} aria-pressed={vm.emiteNotaHonorario === sim}
               onClick={() => vm.definirNotaDeHonorario(sim)}>{sim ? 'Sim' : 'Não'}</button>
           ))}
+        </div>
+      </div>
+      {/* o contato da empresa (Vitor, 07/10/2026): o Mandei manda as perguntas de Clientes e Fornecedores para os dois */}
+      <div className="cad-regra">
+        <div className="cad-regra-txt">
+          <span className="cad-campo-rotulo">E-mail e WhatsApp</span>
+          <span className="hint">
+            Para onde o Mandei manda as perguntas de Clientes e Fornecedores (o link chega pelos dois). O WhatsApp com o DDD.
+            {erroDoContato && <> <b>{erroDoContato}</b></>}
+          </span>
+        </div>
+        <div className="cad-regra-opcoes">
+          <label className="busca-curta" title="O e-mail da empresa">
+            <Icone nome="envelope" />
+            <input key={'email|' + vm.email} type="email" aria-label="E-mail da empresa" defaultValue={vm.email} placeholder="financeiro@empresa.com.br"
+              onBlur={e => setErroDoContato(vm.definirContato('email', e.target.value))} onKeyDown={enter} />
+          </label>
+          <label className="busca-curta" title="O WhatsApp da empresa, com o DDD">
+            <Icone nome="mensagem" />
+            <input key={'whatsapp|' + vm.whatsapp} type="tel" inputMode="numeric" aria-label="WhatsApp da empresa" defaultValue={vm.whatsapp} placeholder="(38) 99999-8888"
+              onBlur={e => setErroDoContato(vm.definirContato('whatsapp', e.target.value))} onKeyDown={enter} />
+          </label>
         </div>
       </div>
       {/* os sócios, com o nome e o CPF (Vitor, 06/10/2026): o relatório da etapa Bancos mostra a transferência para eles */}

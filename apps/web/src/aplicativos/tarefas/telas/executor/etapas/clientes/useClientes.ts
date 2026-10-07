@@ -1,12 +1,13 @@
 // ViewModel da etapa Clientes da Tarefa (Vitor, 06/10/2026). Três telas, nas etapas de cima (o Segmentado) com o
 // Próximo: Arquivos (só o balancete dinâmico: na 292, os 162 clientes têm o mesmo saldo do balancete; Vitor, 06/10/2026; com credor, o
-// "Corrigi, irei reimportar" no lugar do Próximo), Clientes (todas as contas de cliente com o selo Saldo ↔ Conferido, o Ok do sistema na conta zerada, a observação do conferido e o razão da conta no fim da linha) e
-// Envio (a relação dos conferidos para o cliente: a planilha, o e-mail e o WhatsApp, com a mensagem configurável).
+// "Corrigi, irei reimportar" no lugar do Próximo), Clientes (todas as contas de cliente com o selo do sistema: Saldo, Conferido pelo razão ou Ok, o Ok do sistema na conta zerada, a observação do conferido e o razão da conta no fim da linha) e
+// Envio (a relação dos conferidos e o Mandar pelo Mandei, para o e-mail e o WhatsApp da empresa no Cadastro).
 // As marcas ficam guardadas por mês; os conferidos do mês anterior aparecem de novo para revisar.
 import { clientes as cl, conferencia as c, demo, formatos, mandei as md, tarefas } from '@nads/core';
-import { baixarBytes, useRetorno } from '@nads/ui';
+import { useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
-import { gravarMensagem, lerMensagem, useMarcasDoMes } from '../../../../dados/clientes';
+import { useMarcasDoMes } from '../../../../dados/clientes';
+import { useCadastro } from '../../../../dados/repo';
 import { criarTicket } from '../../../../dados/mandei';
 import { useOperador } from '../../../../casca/operador';
 import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
@@ -24,10 +25,10 @@ export function useClientes() {
   const [dinamico, setDinamico] = useState<{ nome: string; d: cl.BalanceteDinamico } | null>(null);
   const [filtro, setFiltro] = useState<FiltroClientes>('todos');
   const [busca, setBusca] = useState('');
-  const [mensagem, setMensagem] = useState(lerMensagem);
   // o Mandei (Vitor, 07/10/2026): o ticket com o link para o cliente responder, anexar e a gente acompanhar
   const op = useOperador().operador;
-  const [emailDoCliente, setEmailDoCliente] = useState('');
+  // o e-mail e o WhatsApp da empresa ficam no Cadastro (Vitor, 07/10/2026): o Mandei manda pelos dois
+  const vivo = useCadastro(s.nome, s.codigo);
   const avisar = (m: string) => aviso({ tom: 'erro', titulo: 'Clientes', texto: m });
   const marcas = useMarcasDoMes(s.nome, mes, avisar);
   const anterior = useMarcasDoMes(s.nome, mes ? mesAntes(mes) : '');
@@ -83,7 +84,7 @@ export function useClientes() {
       const razao = cl.razaoDaMarca(f.name, r);
       // com nota em aberto, a observação já vem escrita (Vitor, 07/10/2026): "No meu sistema, está em aberto…"
       const pronta = cl.observacaoDoRazao(razao);
-      marcar(codigo, m => ({ ...m, situacao: razao.notas.length ? 'conferido' : m.situacao, razao, ...(!m.obs && pronta ? { obs: pronta } : {}) }));
+      marcar(codigo, m => ({ ...m, situacao: cl.razaoComPendencia(razao) ? 'conferido' : 'pendente', razao, ...(!m.obs && pronta ? { obs: pronta } : {}) }));
       const bate = Math.abs(r.saldo - l.saldo) < 0.005;
       const partes = [
         razao.notas.length ? (razao.notas.length === 1 ? '1 nota em aberto' : razao.notas.length + ' notas em aberto') : 'Nenhuma nota em aberto',
@@ -108,9 +109,7 @@ export function useClientes() {
   useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
 
   const conferidos = linhas.filter(l => l.situacao === 'conferido');
-  const paraCliente: cl.LinhaParaCliente[] = conferidos.map(l => ({ codigo: l.codigo, nome: l.nome, saldo: l.saldo, obs: l.obs, notas: l.razao?.notas }));
   const rotuloMes = mes ? tarefas.rotuloNumericoCompetencia(mes) : '';
-  const texto = cl.textoDaMensagem(mensagem, s.nome, rotuloMes, paraCliente);
   const q = busca.trim().toLowerCase();
   const reais = formatos.reais;
 
@@ -160,7 +159,6 @@ export function useClientes() {
           itens: l.razao.itens.map(i => ({ data: i.data ? i.data.slice(8, 10) + '/' + i.data.slice(5, 7) + '/' + i.data.slice(0, 4) : '', nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor), abate: i.valor < 0, status: i.status, rotulo: cl.ROTULO_DO_STATUS[i.status] })),
         } : null,
       })),
-    clicar: (codigo: string) => marcar(codigo, m => ({ ...m, situacao: cl.proximaSituacao(m.situacao) })),
     // sem campo vazio (o banco não aceita undefined)
     observar: (codigo: string, obs: string) => marcar(codigo, m => {
       const n = { ...m };
@@ -172,17 +170,17 @@ export function useClientes() {
     tirarRazao: (codigo: string) => marcar(codigo, m => { const n = { ...m }; delete n.razao; return n; }),
     // Envio
     conferidos: conferidos.map(l => ({ codigo: l.codigo, nome: l.nome, valor: reais(l.saldo), obs: l.obs, notas: cl.textoDasNotas(l.razao?.notas) })),
-    mensagem, texto,
-    mudarMensagem: (t: string) => { setMensagem(t); gravarMensagem(t); },
     // o Mandei: um ticket com os conferidos (cada um, um item com a nossa pergunta), o link vai por e-mail
-    emailDoCliente, setEmailDoCliente,
-    /** os conferidos sem o razão: no ticket, o cliente vê só o saldo do mês (sem a nota, a data e o banco) */
-    semRazao: conferidos.filter(l => !l.razao?.itens.some(i => !i.interno)).map(l => l.nome),
+    /** o e-mail e o WhatsApp da empresa, do Cadastro */
+    contato: { email: vivo.cadastro.contato?.email || '', whatsapp: vivo.cadastro.contato?.whatsapp || '' },
+    /** o que falta no Cadastro para mandar (vazio = pode mandar) */
+    faltaNoCadastro: vivo.carregada ? [...(!vivo.cadastro.contato?.email ? ['o e-mail'] : []), ...(!vivo.cadastro.contato?.whatsapp ? ['o WhatsApp'] : [])] : ['o cadastro (carregando)'],
     mandarPeloMandei: () => {
-      const email = emailDoCliente.trim();
+      const email = vivo.cadastro.contato?.email || '';
+      const whatsapp = vivo.cadastro.contato?.whatsapp || '';
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { aviso({ tom: 'erro', titulo: 'Mandei', texto: 'Informe o e-mail do cliente.' }); return; }
       const t = criarTicket({
-        empresa: { nome: s.nome, codigo: s.codigo }, para: { nome: '', email },
+        empresa: { nome: s.nome, codigo: s.codigo }, para: { nome: '', email, whatsapp },
         assunto: 'Clientes em aberto — ' + rotuloMes,
         mensagem: 'Na conferência dos clientes de ' + rotuloMes + ', estes saldos ficaram em aberto. Pode nos dizer o que aconteceu com cada um?',
         criadoPor: { nome: op?.nome || '' },
@@ -194,10 +192,7 @@ export function useClientes() {
           linhas: cl.linhasParaOTicket(l.razao, l.saldo, mes),
         })),
       });
-      aviso({ tom: 'ok', titulo: 'Ticket ' + md.rotuloDoNumero(t.numero) + ' mandado', texto: email + ' · acompanhe em Mandei' });
+      aviso({ tom: 'ok', titulo: 'Ticket ' + md.rotuloDoNumero(t.numero) + ' mandado', texto: email + ' e WhatsApp ' + whatsapp + ' · acompanhe em Mandei' });
     },
-    baixarPlanilha: () => baixarBytes(cl.planilhaParaCliente(paraCliente), 'clientes_' + (s.codigo ?? s.nome) + '_' + mes + '.xlsx', cl.TIPO_XLSX),
-    email: 'mailto:?subject=' + encodeURIComponent('Clientes em aberto — ' + rotuloMes) + '&body=' + encodeURIComponent(texto),
-    whatsapp: 'https://wa.me/?text=' + encodeURIComponent(texto),
   };
 }
