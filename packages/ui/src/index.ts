@@ -14,6 +14,6 @@ export { atualizarVersao, useVersaoNova, TravaDeVersaoNova } from './versaoNova'
 export { aplicarTabelasCompactas, definirLateralOculta, definirTabelasCompactas, lerLateralOculta, lerTabelasCompactas } from './preferencias';
 export { iniciarContinuidade, atualizarSemPerder } from './continuidade';
 export { origemConfiavel, origemDoPai, useAbasParaAEtapa, useAlturaNaEtapa, useFerramentaNaEtapa, type AbaDaEtapa } from './etapa';
-export { LogoBanco, LogoDrive, LogoGmail, LogoWhatsApp, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma } from './logos';
+export { LogoBanco, LogoDrive, LogoFgts, LogoGmail, LogoInss, LogoWhatsApp, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma } from './logos';
 export { AberturaN } from './abertura';
 export { destacarNaTela } from './destaque';

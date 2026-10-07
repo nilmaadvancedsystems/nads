@@ -1,7 +1,7 @@
 // A linha de Salários a pagar ou do FGTS a recolher na etapa da folha (Vitor, 07/10/2026), no desenho da linha do INSS: o
 // nome, o resumo e só o Razão à direita (o ⚡ e o importar; importado, o check que vira × e tira). Embaixo, a grade dos meses
 // com o saldo do fim de cada um, sem D/C: o certo (credor ou zero) em branco, o devedor em azul.
-import { Icone } from '@nads/ui';
+import { Icone, LogoFgts } from '@nads/ui';
 import { useId, useState } from 'react';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../comum/BotaoDeTeste';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosMeses';
@@ -19,7 +19,8 @@ export function RazaoDaFolha({ vm, dev }: { vm: Vm; dev: boolean }) {
           title={aberta ? 'Recolher' : 'Abrir'} aria-label={'Os meses de ' + vm.nome} onClick={() => setAberta(a => !a)}>
           <Icone nome="caretDown" />
         </button>
-        <span className="imp-ico"><Icone nome="scale" /></span>
+        {/* o FGTS com o logo dele (Vitor, 07/10/2026), cinza até importar; Salários e Pró-labore com o ícone */}
+        <span className={'imp-ico' + (vm.conta === 'fgts' ? ' imp-logo' : '')}>{vm.conta === 'fgts' ? <LogoFgts cor={vm.temRazao} /> : <Icone nome="scale" />}</span>
         <div className="imp-txt">
           <span><b>{vm.nome}</b>{vm.arquivo && <span className="imp-conta">{vm.arquivo}</span>}</span>
         </div>
