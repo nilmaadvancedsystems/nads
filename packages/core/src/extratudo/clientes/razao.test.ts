@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { lerRazao } from '../../tarefas/regras/razao';
 import { conferirRazaoDoCliente, observacaoDoRazao, razaoDaMarca } from './razao';
-import { textoDaMensagem, textoDasNotas } from './index';
+import { situacaoDe, textoDaMensagem, textoDasNotas } from './index';
 
 // o formato do razão da conciliação do Alterdata (conta de um cliente), com valores inventados
 const CAB = ['', 'Status conciliação', 'Data', 'Lançamento automático', 'Contrapartida', 'Descrição', 'Valor', 'Histórico', 'Descrição histórico', 'Saldo', 'Observação'];
@@ -75,5 +75,19 @@ describe('o pagamento solto', () => {
     const r = conferirRazaoDoCliente(lerRazao(linhas), '2026-08');
     expect(r.saldo).toBe(60);
     expect(razaoDaMarca('x.xls', r).itens.map(i => [i.status, i.valor])).toEqual([['aberto', 100], ['pagamento', -40]]);
+  });
+});
+
+describe('o razão zerado', () => {
+  it('dá o Ok do sistema, mesmo com saldo no dinâmico', () => {
+    const C = '11222333000144-CLIENTE TESTE LTDA';
+    const linhas = [CAB,
+      ['Falso', '', '05/08/2026', '', '96501', 'Vendas', -100, '', 'Pelas vendas de mercadorias a prazo conforme Nota Fiscal Eletronica n°  - 300-' + C, -100, ''],
+      ['Falso', '', '20/08/2026', '', '10503', 'Banco', 100, '', 'Recebimento de clientes 300 - CLIENTE TESTE', 0, ''],
+    ];
+    const razao = razaoDaMarca('x.xls', conferirRazaoDoCliente(lerRazao(linhas), '2026-08'));
+    const conta = { codigo: '1', nome: 'CLIENTE TESTE', saldo: 100, noBalancete: null };
+    expect(situacaoDe(conta, { nome: 'CLIENTE TESTE', saldo: 100, situacao: 'conferido', razao })).toBe('ok');
+    expect(situacaoDe(conta, { nome: 'CLIENTE TESTE', saldo: 100, situacao: 'conferido' })).toBe('conferido');
   });
 });

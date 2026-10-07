@@ -183,16 +183,16 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                 </td>
                 <td>
                   {/* os selos do catálogo: o saldo (Diferença, SE-03) ↔ Conferido (SE-02); o Ok (SE-01) é do sistema e não é botão (Vitor, 06/10/2026) */}
-                  {l.situacao === 'ok' ? <span className="badge badge-ok">Ok</span> : (
+                  {l.situacao === 'ok' ? <span className="badge badge-ok" title={l.razao?.zerado ? 'Zerado no razão importado' : 'Saldo zerado'}>Ok</span> : (
                     <button type="button" className={'badge ' + (l.situacao === 'pendente' ? 'badge-bad' : 'badge-conferido')} disabled={!vm.carregado} onClick={() => vm.clicar(l.codigo)} style={{ cursor: 'pointer' }}
                       title={l.situacao === 'pendente' ? 'Saldo em aberto. Clique: Conferido (vai para o cliente)' : 'Conferido (vai para o cliente). Clique: volta para o saldo'}>
                       {l.situacao === 'pendente' ? l.valor : 'Conferido'}
                     </button>
                   )}
                 </td>
-                {/* o razão da conta, no fim da linha (Vitor, 06/10/2026): importar; importado, o check que vira × e tira; Ok não tem */}
+                {/* o razão da conta, no fim da linha (Vitor, 06/10/2026): importar; importado, o check que vira × e tira; o Ok do dinâmico não tem (o Ok do razão zerado mostra o check, para tirar) */}
                 <td className="num">
-                  {l.situacao === 'ok' ? null : l.razao ? (
+                  {l.situacao === 'ok' && !l.razao ? null : l.razao ? (
                     <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" disabled={!vm.carregado} onClick={() => vm.tirarRazao(l.codigo)}
                       title={'Razão importado: ' + l.razao.arquivo + '. Clique para tirar.'} aria-label={'Tirar o razão de ' + l.nome}>
                       <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
