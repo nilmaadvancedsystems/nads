@@ -203,21 +203,43 @@ export function mesesCredores(meses: readonly MesDoRazao[]): string[] {
 }
 
 /**
+ * De que adiantamento é a conta (Vitor, 07/10/2026: o de clientes é "a mesma coisa que o de fornecedor, mas ao
+ * contrário"): o a fornecedores (Ativo) fica devedor ou zera; o de clientes (Passivo) fica credor ou zera.
+ */
+export type LadoDoAdiantamento = 'fornecedores' | 'clientes';
+
+/** O saldo (o do razão: positivo = credor) está do lado errado da conta? */
+export function saldoErrado(saldo: number, lado: LadoDoAdiantamento): boolean {
+  return lado === 'fornecedores' ? saldo > 0.005 : saldo < -0.005;
+}
+
+/** Os meses que fecham do lado errado: credor no adiantamento a fornecedores, devedor no de clientes. */
+export function mesesErrados(meses: readonly MesDoRazao[], lado: LadoDoAdiantamento): string[] {
+  return meses.filter(m => saldoErrado(m.saldoFinal, lado)).map(m => m.mes);
+}
+
+/**
  * Um razão fictício para o ⚡ do modo desenvolvedor: um adiantamento por mês, baixado no mês seguinte pela nota; com
  * credor, a baixa do penúltimo mês sai maior que o adiantamento (o mês fecha credor).
  */
-export function razaoDeTeste(meses: readonly string[], comCredor: boolean): RazaoDaConta {
+export function razaoDeTeste(meses: readonly string[], comCredor: boolean, lado: LadoDoAdiantamento = 'fornecedores'): RazaoDaConta {
   const lancamentos: LancamentoDoRazao[] = [];
   let saldo = 0;
+  // no de clientes, tudo ao contrário: o cliente adianta (crédito) e a nota de venda baixa (débito)
+  const sinal = lado === 'fornecedores' ? 1 : -1;
   const lancar = (data: string, valor: number, contrapartida: string, nomeContrapartida: string, historico: string) => {
-    saldo = centavos(saldo + valor);
-    lancamentos.push({ data, valor, saldo, contrapartida, nomeContrapartida, codigoHistorico: '', historico });
+    saldo = centavos(saldo + sinal * valor);
+    lancamentos.push({ data, valor: sinal * valor, saldo, contrapartida, nomeContrapartida, codigoHistorico: '', historico });
   };
   meses.forEach((m, i) => {
     const valor = 1000 + i * 250;
-    lancar(m + '-05', -valor, '10503', 'Banco Sicoob - 01', 'Pagamento de título nº ' + (100 + i) + ' - FORNECEDOR TESTE LTDA');
+    if (lado === 'fornecedores') lancar(m + '-05', -valor, '10503', 'Banco Sicoob - 01', 'Pagamento de título nº ' + (100 + i) + ' - FORNECEDOR TESTE LTDA');
+    else lancar(m + '-05', -valor, '10503', 'Banco Sicoob - 01', 'Recebimento antecipado nº ' + (100 + i) + ' - CLIENTE TESTE LTDA');
     const baixa = comCredor && i === meses.length - 2 ? valor + 1500 : valor;
-    if (i < meses.length - 1 || meses.length === 1) lancar(m + '-25', baixa, '21000', 'FORNECEDOR TESTE LTDA', 'Pela baixa do adiantamento conf NF ' + (100 + i) + ' - FORNECEDOR TESTE LTDA');
+    if (i < meses.length - 1 || meses.length === 1) {
+      if (lado === 'fornecedores') lancar(m + '-25', baixa, '21000', 'FORNECEDOR TESTE LTDA', 'Pela baixa do adiantamento conf NF ' + (100 + i) + ' - FORNECEDOR TESTE LTDA');
+      else lancar(m + '-25', baixa, '12000', 'CLIENTE TESTE LTDA', 'Pela baixa do adiantamento conf NF de venda ' + (100 + i) + ' - CLIENTE TESTE LTDA');
+    }
   });
   const primeiro = lancamentos[0];
   const ultimo = lancamentos[lancamentos.length - 1];

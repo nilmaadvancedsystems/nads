@@ -8,20 +8,21 @@ import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../../comum/GradeDosMeses';
 import { useAdiantamento } from './useAdiantamento';
 
-export function Adiantamento() {
-  const vm = useAdiantamento();
+export function Adiantamento({ lado = 'fornecedores' }: { lado?: 'fornecedores' | 'clientes' }) {
+  const vm = useAdiantamento(lado);
+  const Nome = vm.nome.charAt(0).toUpperCase() + vm.nome.slice(1);
   const arquivo = useRef<HTMLInputElement>(null);
   const reimportar = useRef<HTMLInputElement>(null);
-  const grade = useColunaAjustavel('adiantamento-fornecedores', Math.max(14, 22 - vm.meses.length) + '%', vm.meses.length);
+  const grade = useColunaAjustavel('adiantamento-' + lado, Math.max(14, 22 - vm.meses.length) + '%', vm.meses.length);
   const escolher = (ev: React.ChangeEvent<HTMLInputElement>) => { const f = ev.target.files?.[0]; ev.target.value = ''; vm.importar(f); };
   return (
     <section>
-      <header className="topbar"><div><h2 className="page-title">Adiantamento a fornecedores</h2></div></header>
+      <header className="topbar"><div><h2 className="page-title">{Nome}</h2></div></header>
 
       {vm.credores.length > 0 && (
         <div className="alerta-linha">
-          <Alerta titulo={'Saldo credor em ' + vm.credores.join(', ')}
-            texto="O adiantamento a fornecedores fica devedor ou zera. Corrija no Alterdata (baixa a maior, nota lançada no adiantamento errado) e reimporte o razão.">
+          <Alerta titulo={'Saldo ' + vm.errado + ' em ' + vm.credores.join(', ')}
+            texto={Nome + ' fica ' + (lado === 'fornecedores' ? 'devedor' : 'credor') + ' ou zera. Corrija no Alterdata (baixa a maior, nota lançada no adiantamento errado) e reimporte o razão.'}>
             <div className="btn-row">
               <button type="button" className="btn btn-primary" onClick={() => reimportar.current?.click()}><Icone nome="upload" />Reimportar</button>
               <input ref={reimportar} type="file" accept=".xls,.xlsx,.ods" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={escolher} />
@@ -37,7 +38,7 @@ export function Adiantamento() {
         <div className={'imp-bloco' + (vm.razao && !vm.credores.length ? ' imp-ok' : '')}>
           <div className="imp-linha">
             <span className="imp-ico imp-logo"><Icone nome="fileText" /></span>
-            <div className="imp-txt"><span><b>Razão do adiantamento a fornecedores</b><span className="imp-conta">{vm.razao ? vm.razao.nome : 'O XLS da conciliação do Alterdata, com ' + vm.periodo}</span></span></div>
+            <div className="imp-txt"><span><b>Razão do {vm.nome}</b><span className="imp-conta">{vm.razao ? vm.razao.nome : 'O XLS da conciliação do Alterdata, com ' + vm.periodo}</span></span></div>
             <div className="imp-resumo">{vm.razao && <div><span>{vm.razao.resumo}</span></div>}</div>
             <div className="imp-grupos">
               <div className="imp-grupo">
@@ -48,7 +49,7 @@ export function Adiantamento() {
                 ) : (
                   <>
                     <BotaoDeTeste itens={vm.teste} />
-                    <button type="button" className="icon-btn icon-btn-sm imp-btn" title="Importar o razão do adiantamento a fornecedores" aria-label="Importar o razão" onClick={() => arquivo.current?.click()}>
+                    <button type="button" className="icon-btn icon-btn-sm imp-btn" title={'Importar o razão do ' + vm.nome} aria-label="Importar o razão" onClick={() => arquivo.current?.click()}>
                       <Icone nome="upload" />
                     </button>
                     <input ref={arquivo} type="file" accept=".xls,.xlsx,.ods" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={escolher} />
@@ -71,7 +72,7 @@ export function Adiantamento() {
                   </thead>
                   <tbody>
                     <tr><th scope="row" style={{ textAlign: 'left' }} title="O saldo no fim do mês">Saldo final</th>
-                      {vm.meses.map(m => <td key={m.mes} className={'num' + (m.credor ? ' ext-neg' : '')} title={m.credor ? 'Credor: corrija no Alterdata' : m.zerado ? 'Zerado' : 'Devedor'}><ValorNaGrade texto={m.saldo} /></td>)}
+                      {vm.meses.map(m => <td key={m.mes} className={'num' + (m.credor ? ' ext-neg' : '')} title={m.credor ? (lado === 'fornecedores' ? 'Credor' : 'Devedor') + ': corrija no Alterdata' : m.zerado ? 'Zerado' : (lado === 'fornecedores' ? 'Devedor' : 'Credor')}><ValorNaGrade texto={m.saldo} /></td>)}
                     </tr>
                     <tr><th scope="row" style={{ textAlign: 'left' }}>Lançamentos</th>
                       {vm.meses.map(m => <td key={m.mes} className="num">{m.qtd || '—'}</td>)}

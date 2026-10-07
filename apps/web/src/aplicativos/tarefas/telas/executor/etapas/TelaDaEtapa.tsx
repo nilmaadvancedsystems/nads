@@ -13,6 +13,7 @@ export function TelaDaEtapa({ id }: { id: tarefas.TelaDaEtapa }) {
     case 'clientes': return <Clientes />;
     case 'fornecedores': return <Fornecedores />;
     case 'adiantamento-fornecedores': return <Adiantamento />;
+    case 'adiantamento-clientes': return <Adiantamento lado="clientes" />;
     case 'bens': return <Bens />;
   }
 }

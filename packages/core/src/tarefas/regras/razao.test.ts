@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { atencaoDoHistorico, atencoesDoMes, coberturaDoRazao, mesesCredores, razaoDeTeste, dataDoRazao, lerRazao, mesesDoRazao, precisaDoCreditor, valorComLado } from './razao';
+import { atencaoDoHistorico, atencoesDoMes, coberturaDoRazao, mesesCredores, mesesErrados, saldoErrado, razaoDeTeste, dataDoRazao, lerRazao, mesesDoRazao, precisaDoCreditor, valorComLado } from './razao';
 import { caixaDeTeste, inssDeTeste } from './deTeste';
 import { conferirInss } from './inss';
 import { ROTINA_CONTABIL } from '../rotinas/contabil';
@@ -133,5 +133,17 @@ describe('adiantamento a fornecedores: ou fica devedor ou zera', () => {
     const ms = ['2026-06', '2026-07', '2026-08'];
     expect(mesesCredores(mesesDoRazao(razaoDeTeste(ms, false), ms))).toEqual([]);
     expect(mesesCredores(mesesDoRazao(razaoDeTeste(ms, true), ms))).toEqual(['2026-07']);
+  });
+});
+
+describe('adiantamento de clientes (o de fornecedores ao contrário)', () => {
+  const meses = ['2026-01', '2026-02', '2026-03'];
+  it('o de clientes fica credor ou zera: o mês devedor é o errado', () => {
+    expect(mesesErrados(mesesDoRazao(razaoDeTeste(meses, false, 'clientes'), meses), 'clientes')).toEqual([]);
+    expect(mesesErrados(mesesDoRazao(razaoDeTeste(meses, true, 'clientes'), meses), 'clientes')).toEqual(['2026-02']);
+  });
+  it('o de fornecedores continua: o mês credor é o errado', () => {
+    expect(mesesErrados(mesesDoRazao(razaoDeTeste(meses, true), meses), 'fornecedores')).toEqual(['2026-02']);
+    expect([saldoErrado(10, 'fornecedores'), saldoErrado(-10, 'fornecedores'), saldoErrado(-10, 'clientes'), saldoErrado(10, 'clientes')]).toEqual([true, false, true, false]);
   });
 });
