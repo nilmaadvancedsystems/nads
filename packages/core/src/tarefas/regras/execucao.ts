@@ -134,6 +134,24 @@ export function voltarPara(ex: Execucao, etapa: string, por: string, agora: Date
   return { execucao: { ...ex, etapas }, evento: { tipo: 'reaberta', etapa, por, em: agora.toISOString(), observacao: antes } };
 }
 
+/**
+ * O Fiscal transmitiu a REINF (Vitor, 07/10/2026: "quando transmitir a REINF, quero que apareça para o responsável do DP
+ * na aba de REINF e o notifique"): a etapa REINF do DP fica feita "pelo Fiscal" e guarda quem avisar (o robô manda o
+ * aviso no celular, o mesmo das entregas, e grava avisadoEm).
+ */
+export function reinfPeloFiscal(ex: Execucao, por: string, avisar: string, agora: Date): { execucao: Execucao; evento: Evento } {
+  const r = fazer(ex, 'dp-reinf', por + ' (Fiscal)', agora);
+  const etapas = { ...r.execucao.etapas, 'dp-reinf': { ...r.execucao.etapas['dp-reinf'], ...(avisar ? { avisar } : {}) } };
+  return { execucao: { ...r.execucao, etapas }, evento: { ...r.evento, observacao: 'REINF transmitida pelo Fiscal' + (avisar ? '; avisar ' + avisar : '') } };
+}
+
+/** O Fiscal desfez a transmissão: a REINF do DP volta a fazer, se foi o Fiscal que marcou. */
+export function reinfDesfeitaPeloFiscal(ex: Execucao, por: string, agora: Date): { execucao: Execucao; evento: Evento } | null {
+  const e = ex.etapas['dp-reinf'];
+  if (!e || !e.por.endsWith('(Fiscal)')) return null;
+  return voltarPara(ex, 'dp-reinf', por + ' (Fiscal)', agora);
+}
+
 /** A etapa informa um valor do mês (ex.: o DP, o total da folha): fica na execução; o evento guarda o que mudou. */
 export function informarValor(ex: Execucao, etapa: string, chave: string, valor: number, por: string, agora: Date): { execucao: Execucao; evento: Evento } {
   const valores = { ...(ex.valores || {}), [chave]: Math.round(valor * 100) / 100 };

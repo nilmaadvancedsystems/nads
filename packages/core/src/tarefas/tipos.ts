@@ -127,6 +127,9 @@ export interface EstadoEtapa {
   /** interrompida/dispensada: a objeção escolhida */
   objecao?: string;
   observacao?: string;
+  /** quem avisar no celular (07/10/2026: a REINF que o Fiscal transmitiu avisa o responsável do DP); o robô grava avisadoEm */
+  avisar?: string;
+  avisadoEm?: string;
 }
 
 /** A competência de uma empresa num departamento: o estado de cada etapa. */
