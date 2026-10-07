@@ -51,17 +51,23 @@ export function useFormulario() {
     const opcao = resposta(it.id).opcao || '', texto = resposta(it.id).texto || '';
     const arquivos = (vista?.arquivos || []).filter(a => a.itemId === it.id).map(a => a.nome);
     const iniciais = it.titulo.split(/\s+/).filter(w => w.length > 2).slice(0, 2).map(w => w[0]).join('') || it.titulo.slice(0, 2);
-    return { ...it, opcao, texto, arquivos, iniciais: iniciais.toUpperCase(), respondido: !!(opcao || texto.trim() || arquivos.length),
-      explicar: m.pedeExplicacao(opcao), comprovar: m.pedeComprovante(opcao) };
+    const explicar = m.pedeExplicacao(opcao);
+    // respondido = escolheu uma resposta e, se ela pede, explicou (Vitor, 07/10/2026: "não deixa dar próximo sem responder")
+    return { ...it, opcao, texto, arquivos, iniciais: iniciais.toUpperCase(), respondido: !!opcao && (!explicar || !!texto.trim()),
+      falta: !opcao ? 'Escolha uma resposta para continuar' : explicar && !texto.trim() ? 'Explique para continuar' : '',
+      explicar, comprovar: m.pedeComprovante(opcao) };
   });
   const respondidos = itens.filter(i => i.respondido).length;
+  // só anda até o primeiro item sem resposta (a revisão só depois de todos)
+  const pendente = itens.findIndex(i => !i.respondido);
+  const limite = pendente < 0 ? itens.length : pendente;
   const dias = vista ? Math.max(0, Math.ceil((new Date(vista.validoAte).getTime() - Date.now()) / 86400000)) : 0;
 
   return {
     codigo, existe: !!t, valido, enviado, erro,
     quantos: itens.length, respondidos, dias,
-    passo, revisao: passo >= itens.length,
-    irPara: (n: number) => { setPasso(Math.max(0, Math.min(itens.length, n))); window.scrollTo({ top: 0 }); },
+    passo, revisao: passo >= itens.length, podeAvancar: passo < limite,
+    irPara: (n: number) => { setPasso(Math.max(0, Math.min(limite, n))); window.scrollTo({ top: 0 }); },
     numero: vista?.numero || '', empresa: vista?.empresa || '', mensagem: vista?.mensagem || '',
     validoAte: vista ? dataBR(vista.validoAte) : '',
     itens,
@@ -71,7 +77,7 @@ export function useFormulario() {
     anexar: (id: string, fs: File[]) => { void anexar(id, fs); },
     enviar: () => {
       const atual = exemplo.doLink(codigo);
-      if (!atual || !m.linkValido(atual, codigo, new Date())) return;
+      if (!atual || !m.linkValido(atual, codigo, new Date()) || pendente >= 0) return;
       exemplo.gravar(m.responder(atual, { ...atual.respostas, ...respostas }, new Date()));
       setEnviado(true);
     },

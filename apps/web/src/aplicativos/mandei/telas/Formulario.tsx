@@ -69,10 +69,12 @@ function Respostas({ vm }: { vm: VM }) {
       <div className="tarefas-barra-topo">
         <span className="hint">{vm.revisao ? 'Revisão' : 'Item ' + (vm.passo + 1) + ' de ' + vm.quantos}</span>
         <span className="tarefas-barra-espaco" />
+        {!vm.revisao && vm.itens[vm.passo]?.falta && <span className="hint">{vm.itens[vm.passo]?.falta}</span>}
         {(vm.passo > 0 || vm.revisao) && <button type="button" className="btn" onClick={() => vm.irPara(vm.passo - 1)}>Anterior</button>}
         {vm.revisao
           ? <button type="button" className="btn btn-primary" onClick={vm.enviar}>Enviar resposta</button>
-          : <button type="button" className="btn btn-primary" onClick={() => vm.irPara(vm.passo + 1)}>{ultimo ? 'Revisar' : 'Próximo'}</button>}
+          : <button type="button" className="btn btn-primary" disabled={!vm.podeAvancar} title={vm.itens[vm.passo]?.falta || undefined}
+              onClick={() => vm.irPara(vm.passo + 1)}>{ultimo ? 'Revisar' : 'Próximo'}</button>}
       </div>
       {vm.revisao ? <Revisao vm={vm} /> : <Item vm={vm} />}
     </>
@@ -176,7 +178,7 @@ function Revisao({ vm }: { vm: VM }) {
   return (
     <>
       <p className="hint" style={{ marginTop: 0 }}>
-        {vm.respondidos === vm.quantos ? 'Você respondeu todos os itens.' : 'Faltam ' + (vm.quantos - vm.respondidos) + ' de ' + vm.quantos + ' itens: dá para enviar assim mesmo e completar depois pelo mesmo link.'}
+        Você respondeu todos os itens. Confira e envie; até {vm.validoAte} dá para voltar pelo mesmo link e mandar mais arquivos.
       </p>
       <div className="table-wrap">
         <table className="table-compact">
