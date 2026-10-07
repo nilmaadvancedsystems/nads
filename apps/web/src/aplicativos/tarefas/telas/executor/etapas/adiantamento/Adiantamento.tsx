@@ -91,8 +91,9 @@ export function Adiantamento({ lado = 'fornecedores' }: { lado?: 'fornecedores' 
                           <td style={{ whiteSpace: 'nowrap' }}>{l.data}</td>
                           <td>{l.contrapartida}</td>
                           <td className="wrap">{l.historico}</td>
-                          <td className="num">{l.debito}</td>
-                          <td className="num">{l.credito}</td>
+                          {/* o lançamento devedor em azul e o credor em vermelho (Vitor, 07/10/2026) */}
+                          <td className="num ext-azul">{l.debito}</td>
+                          <td className="num ext-neg">{l.credito}</td>
                           <td className={'num ' + l.cor}>{l.saldo}</td>
                         </tr>
                       ))}
