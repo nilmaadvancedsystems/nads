@@ -4,11 +4,13 @@ import type { tarefas } from '@nads/core';
 import { Adiantamento } from './adiantamento/Adiantamento';
 import { RelatorioBancario } from './bancos/RelatorioBancario';
 import { Clientes } from './clientes/Clientes';
+import { Fornecedores } from './fornecedores/Fornecedores';
 
 export function TelaDaEtapa({ id }: { id: tarefas.TelaDaEtapa }) {
   switch (id) {
     case 'bancos': return <RelatorioBancario />;
     case 'clientes': return <Clientes />;
+    case 'fornecedores': return <Fornecedores />;
     case 'adiantamento-fornecedores': return <Adiantamento />;
   }
 }

@@ -5,7 +5,7 @@
 import * as XLSX from 'xlsx';
 import { normalizarTexto } from '../../formatos';
 import type { Conta } from '../../conferencia/tipos';
-import type { RazaoDaMarca } from './razao';
+import type { LadoDaConta, RazaoDaMarca } from './razao';
 
 export * from './razao';
 
@@ -52,16 +52,27 @@ const CLIENTES_DE_TESTE: [string, number][] = [
   ['JOSE CARLOS PEREIRA', 0], ['FARMACIA SAUDE LTDA', 2045.15], ['AUTO PECAS CENTRAL', 0], ['ESCOLA PEQUENO SABER', 640],
 ];
 
-/** Um balancete dinâmico de teste com o mês (e o anterior): os clientes fictícios; com credores, dois deles ficam negativos. */
-export function dinamicoDeTeste(mes: string, comCredores: boolean): BalanceteDinamico {
+/** Os fornecedores fictícios (o ⚡ na etapa Fornecedores): nome e o que a empresa deve no mês. */
+const FORNECEDORES_DE_TESTE: [string, number][] = [
+  ['DISTRIBUIDORA NORTE LTDA', 4380.25], ['EMBALAGENS SAO JOSE', 0], ['ATACADAO DO GRAO LTDA', 12750], ['TRANSPORTES RAPIDO', 890.4],
+  ['GRAFICA CENTRAL ME', 0], ['FRIGORIFICO BOA CARNE', 6210.8], ['ENERGIA E GAS LTDA', 0], ['LATICINIOS SERRA AZUL', 1540],
+];
+
+/**
+ * Um balancete dinâmico de teste com o mês (e o anterior): os clientes (ou fornecedores) fictícios; com o saldo errado,
+ * dois deles ficam do lado errado (o cliente credor, o fornecedor devedor). Os valores com o sinal do Alterdata
+ * (devedor positivo, credor negativo).
+ */
+export function dinamicoDeTeste(mes: string, comCredores: boolean, lado: LadoDaConta = 'clientes'): BalanceteDinamico {
   const [a, m] = mes.split('-').map(Number);
   const antes = m === 1 ? (a - 1) + '-12' : a + '-' + String(m - 1).padStart(2, '0');
-  const linhas: LinhaDinamico[] = [{ codigo: '100', classificacao: '1.1.2.01', descricao: 'CLIENTES', saldoAnterior: 0, saldos: {} }];
-  CLIENTES_DE_TESTE.forEach(([nome, saldo], i) => {
+  const [cod, cla, nome, lista] = lado === 'clientes' ? ['100', '1.1.2.01', 'CLIENTES', CLIENTES_DE_TESTE] : ['320', '2.1.1.01', 'FORNECEDORES', FORNECEDORES_DE_TESTE];
+  const linhas: LinhaDinamico[] = [{ codigo: cod, classificacao: cla, descricao: nome, saldoAnterior: 0, saldos: {} }];
+  lista.forEach(([n, saldo], i) => {
     const valor = comCredores && (i === 1 || i === 4) ? -(150 + i * 35.5) : saldo;
-    linhas.push({ codigo: String(101 + i), classificacao: '1.1.2.01.' + String(i + 1).padStart(3, '0'), descricao: nome, saldoAnterior: 0, saldos: { [antes]: saldo, [mes]: valor } });
+    linhas.push({ codigo: String(+cod + 1 + i), classificacao: cla + '.' + String(i + 1).padStart(3, '0'), descricao: n, saldoAnterior: 0, saldos: { [antes]: noLado(lado, saldo), [mes]: noLado(lado, valor) } });
   });
-  linhas[0].saldos = { [antes]: CLIENTES_DE_TESTE.reduce((t, [, v]) => t + v, 0), [mes]: linhas.slice(1).reduce((t, l) => t + (l.saldos[mes] ?? 0), 0) };
+  linhas[0].saldos = { [antes]: linhas.slice(1).reduce((t, l) => t + (l.saldos[antes] ?? 0), 0), [mes]: linhas.slice(1).reduce((t, l) => t + (l.saldos[mes] ?? 0), 0) };
   return { meses: [antes, mes], linhas };
 }
 
@@ -70,15 +81,28 @@ export function dinamicoDeTeste(mes: string, comCredores: boolean): BalanceteDin
 /** Uma conta de cliente: o saldo no mês (positivo = devedor, negativo = credor) e o do balancete atual, quando veio. */
 export interface ContaDeCliente { codigo: string; nome: string; saldo: number; noBalancete: number | null }
 
-const SECAO_CLIENTES = /^(clientes?|duplicatas? a receber|contas? a receber)\b/;
+const SECAO: Record<LadoDaConta, RegExp> = {
+  clientes: /^(clientes?|duplicatas? a receber|contas? a receber)\b/,
+  // no Passivo (2…): a sintética FORNECEDORES (o "Adiantamento a fornecedores" do Ativo não entra)
+  fornecedores: /^(fornecedores?|duplicatas? a pagar|contas? a pagar)\b/,
+};
 
-/** As contas de cliente do dinâmico no mês: as analíticas debaixo da sintética de clientes (pela classificação). */
-export function clientesDoDinamico(d: BalanceteDinamico, mes: string): ContaDeCliente[] {
-  const secoes = d.linhas.filter(l => SECAO_CLIENTES.test(normalizarTexto(l.descricao)) && l.classificacao);
+/**
+ * O saldo visto do lado do cliente: positivo = o normal da conta, negativo = o errado (o cliente credor, o fornecedor
+ * devedor). O dinâmico do Alterdata traz devedor positivo e credor negativo; no fornecedor, troca o sinal.
+ */
+const noLado = (lado: LadoDaConta, v: number) => (lado === 'clientes' ? v : -v);
+
+/**
+ * As contas de cliente (ou de fornecedor) do dinâmico no mês: as analíticas debaixo da sintética (pela classificação).
+ * No fornecedor, o saldo vem com o sinal trocado: positivo = a empresa deve, negativo = o fornecedor devedor.
+ */
+export function clientesDoDinamico(d: BalanceteDinamico, mes: string, lado: LadoDaConta = 'clientes'): ContaDeCliente[] {
+  const secoes = d.linhas.filter(l => SECAO[lado].test(normalizarTexto(l.descricao)) && l.classificacao && (lado === 'clientes' || l.classificacao.startsWith('2')));
   const tem = (l: LinhaDinamico) => d.linhas.some(o => o !== l && o.classificacao.startsWith(l.classificacao + '.'));
   return d.linhas
     .filter(l => secoes.some(s => l.classificacao.startsWith(s.classificacao + '.')) && !tem(l))
-    .map(l => ({ codigo: l.codigo, nome: l.descricao.replace(/\s+/g, ' '), saldo: l.saldos[mes] ?? 0, noBalancete: null }));
+    .map(l => ({ codigo: l.codigo, nome: l.descricao.replace(/\s+/g, ' '), saldo: noLado(lado, l.saldos[mes] ?? 0), noBalancete: null }));
 }
 
 /** Um cliente que ficou credor em algum mês: o saldo de cada mês (positivo = devedor, negativo = credor). */
@@ -88,12 +112,12 @@ export interface CredorNoPeriodo { codigo: string; nome: string; saldos: { mes: 
  * Os clientes credores em algum mês do dinâmico até o mês da etapa (Vitor, 07/10/2026: "tem alguns que estão
  * credores em alguns meses, depois ficam devedor"), com o saldo mês a mês; na ordem do dinâmico.
  */
-export function credoresNoPeriodo(d: BalanceteDinamico, ateMes: string): CredorNoPeriodo[] {
+export function credoresNoPeriodo(d: BalanceteDinamico, ateMes: string, lado: LadoDaConta = 'clientes'): CredorNoPeriodo[] {
   const meses = d.meses.filter(m => m <= ateMes);
-  const clientes = new Set(clientesDoDinamico(d, ateMes).map(c => c.codigo));
+  const clientes = new Set(clientesDoDinamico(d, ateMes, lado).map(c => c.codigo));
   return d.linhas
     .filter(l => clientes.has(l.codigo))
-    .map(l => ({ codigo: l.codigo, nome: l.descricao.replace(/\s+/g, ' '), saldos: meses.map(m => ({ mes: m, saldo: l.saldos[m] ?? 0 })) }))
+    .map(l => ({ codigo: l.codigo, nome: l.descricao.replace(/\s+/g, ' '), saldos: meses.map(m => ({ mes: m, saldo: noLado(lado, l.saldos[m] ?? 0) })) }))
     .filter(c => c.saldos.some(x => x.saldo < 0 && !zero(x.saldo)));
 }
 
@@ -195,14 +219,15 @@ export function textoDasNotas(notas: readonly { nf: string; aberto: number }[] =
 
 
 /** A planilha para o cliente responder (.xlsx): a conta, o cliente, o saldo, a nossa observação e a resposta. */
-export function planilhaParaCliente(linhas: readonly LinhaParaCliente[]): Uint8Array {
+export function planilhaParaCliente(linhas: readonly LinhaParaCliente[], lado: LadoDaConta = 'clientes'): Uint8Array {
+  const quem = lado === 'clientes' ? 'Cliente' : 'Fornecedor';
   const ws = XLSX.utils.aoa_to_sheet([
-    ['Conta', 'Cliente', 'Saldo (R$)', 'Notas em aberto', 'Observação do escritório', 'Resposta da empresa'],
+    ['Conta', quem, 'Saldo (R$)', 'Notas em aberto', 'Observação do escritório', 'Resposta da empresa'],
     ...linhas.map(l => [l.codigo, l.nome, Math.round(l.saldo * 100) / 100, textoDasNotas(l.notas), l.obs, '']),
   ]);
   ws['!cols'] = [{ wch: 10 }, { wch: 42 }, { wch: 14 }, { wch: 40 }, { wch: 48 }, { wch: 48 }];
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Clientes');
+  XLSX.utils.book_append_sheet(wb, ws, lado === 'clientes' ? 'Clientes' : 'Fornecedores');
   return new Uint8Array(XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer);
 }
 
@@ -220,8 +245,20 @@ export const OBJECOES_DO_CLIENTE = [
   'Pode nos enviar a relação de recebimentos deste cliente?',
 ] as const;
 
+/** As perguntas da observação na etapa Fornecedores: as mesmas do Clientes, do lado do pagamento. */
+export const OBJECOES_DO_FORNECEDOR = [
+  'Não encontrei, onde está esse valor?',
+  'Foi pago em dinheiro?',
+  'O pagamento foi feito por outra conta?',
+  'O valor foi pago pela conta pessoal?',
+  'Pode nos enviar a nota fiscal deste pagamento?',
+] as const;
+
+/** A mensagem padrão da etapa Fornecedores. */
+export const MENSAGEM_PADRAO_FORNECEDORES = 'Olá! Na conferência dos fornecedores de {mes} da {empresa}, estes saldos ficaram em aberto. Pode nos dizer o que aconteceu com cada um?\n\n{lista}\n\nObrigado!';
+
 /** A mensagem padrão (dá para trocar na tela): {empresa}, {mes} e {lista} viram os dados. */
-export const MENSAGEM_PADRAO = 'Olá! Na conferência dos clientes de {mes} da {empresa}, estes saldos ficaram em aberto. Pode nos dizer o que aconteceu com cada um?\n\n{lista}\n\nObrigado!';
+export const MENSAGEM_PADRAO ='Olá! Na conferência dos clientes de {mes} da {empresa}, estes saldos ficaram em aberto. Pode nos dizer o que aconteceu com cada um?\n\n{lista}\n\nObrigado!';
 
 /** O texto da mensagem com a lista dos conferidos (uma linha por cliente: o nome, o saldo e a observação). */
 export function textoDaMensagem(modelo: string, empresa: string, mes: string, linhas: readonly LinhaParaCliente[]): string {

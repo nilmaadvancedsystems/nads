@@ -42,6 +42,19 @@ function nfDoRecebimento(h: string): string | null {
   return /receb\w*\s+de\s+clientes?\D*?(\d{3,9})/i.exec(h)?.[1] ?? null;
 }
 
+/** O número da nota no pagamento ao fornecedor: "Pagamento a fornecedores 9078 …", "Pagto fornecedor 9242/002"; senão, o do histórico da nota. */
+function nfDoPagamento(h: string): string | null {
+  return /pag\w*\.?\s+(?:a\s+|de\s+|ao\s+)?fornecedor\w*\D*?(\d{3,9})/i.exec(h)?.[1] ?? nfDoHistorico(h);
+}
+
+/**
+ * De que lado é a conta (Vitor, 07/10/2026: Fornecedores é "a mesma coisa que o Clientes", com o devedor no lugar do
+ * credor). No razão do Alterdata o crédito é positivo: no cliente, a venda é débito e o recebimento crédito; no
+ * fornecedor, a compra é crédito e o pagamento débito. Por isso o fornecedor é o cliente com o sinal trocado.
+ */
+export type LadoDaConta = 'clientes' | 'fornecedores';
+const sinalDo = (lado: LadoDaConta) => (lado === 'clientes' ? 1 : -1);
+
 /** As notas citadas numa devolução ("//NF: 7811,7952,8535"). */
 function notasCitadas(h: string): string[] {
   const m = /NF:\s*([\d,\s]+)/i.exec(h.split('//').slice(1).join('//'));
@@ -50,8 +63,10 @@ function notasCitadas(h: string): string[] {
 
 type Tipo = 'venda' | 'recebimento' | 'devolucao' | 'outro';
 
-function tipoDe(l: LancamentoDoRazao): Tipo {
+function tipoDe(l: LancamentoDoRazao, lado: LadoDaConta): Tipo {
   if (/devolu/i.test(l.historico)) return 'devolucao';
+  // no fornecedor: todo débito é pagamento; o crédito com o número da nota é a compra
+  if (lado === 'fornecedores') return l.valor < 0 ? 'recebimento' : nfDoHistorico(l.historico) ? 'venda' : 'outro';
   // todo crédito na conta do cliente que não é devolução é pagamento (o "Recebimento de clientes" e também a
   // transferência ou o Pix solto, sem a nota: aparecem como "Apenas pagamento"; Vitor, 07/10/2026)
   if (l.valor > 0) return 'recebimento';
@@ -62,8 +77,12 @@ function tipoDe(l: LancamentoDoRazao): Tipo {
 /** O fim do mês ('aaaa-mm' → 'aaaa-mm-31', vale para comparar datas 'aaaa-mm-dd'). */
 const fimDoMes = (mes: string) => mes + '-31';
 
-/** Confere o razão do cliente até o fim do mês: as notas em aberto, as devoluções e as duplicidades. */
-export function conferirRazaoDoCliente(razao: RazaoDaConta, mes: string): RazaoConferido {
+/**
+ * Confere o razão do cliente (ou do fornecedor) até o fim do mês: as notas em aberto, as devoluções e as duplicidades.
+ * No fornecedor, "vendido" é o comprado, "recebido" é o pago e o saldo positivo é o que a empresa deve (credor).
+ */
+export function conferirRazaoDoCliente(razao: RazaoDaConta, mes: string, lado: LadoDaConta = 'clientes'): RazaoConferido {
+  const sinal = sinalDo(lado);
   const ate = fimDoMes(mes);
   const ls = razao.lancamentos.filter(l => l.data <= ate);
   const notas = new Map<string, NotaDoCliente>();
@@ -78,28 +97,30 @@ export function conferirRazaoDoCliente(razao: RazaoDaConta, mes: string): RazaoC
     return n;
   };
   for (const l of ls) {
-    const tipo = tipoDe(l);
+    const tipo = tipoDe(l, lado);
+    // o valor visto do lado do cliente (no fornecedor, com o sinal trocado)
+    const valor = sinal * l.valor;
     if (tipo === 'recebimento') {
-      const nf = nfDoRecebimento(l.historico);
-      const chave = (nf || l.historico) + '|' + l.data + '|' + l.valor;
+      const nf = lado === 'clientes' ? nfDoRecebimento(l.historico) : nfDoPagamento(l.historico);
+      const chave = (nf || l.historico) + '|' + l.data + '|' + valor;
       const antes = vistos.get(chave);
       const conta = (l.contrapartida + ' ' + l.nomeContrapartida).trim();
       // o mesmo recebimento em outra conta no mesmo dia: duplicidade (conta uma vez)
       if (antes && antes.conta !== conta) {
-        if (!antes.dup) { antes.dup = { nf: nf || '', data: l.data, valor: l.valor, contas: [antes.conta] }; duplicados.push(antes.dup); }
+        if (!antes.dup) { antes.dup = { nf: nf || '', data: l.data, valor, contas: [antes.conta] }; duplicados.push(antes.dup); }
         antes.dup.contas.push(conta);
         continue;
       }
       vistos.set(chave, { conta });
-      saldo -= l.valor;
-      if (nf && notas.has(nf)) nota(nf, l.data).recebido = centavos(nota(nf, l.data).recebido + l.valor);
-      else semNota.push({ data: l.data, valor: l.valor, historico: l.historico });
+      saldo -= valor;
+      if (nf && notas.has(nf)) nota(nf, l.data).recebido = centavos(nota(nf, l.data).recebido + valor);
+      else semNota.push({ data: l.data, valor, historico: l.historico });
       continue;
     }
-    saldo -= l.valor;
+    saldo -= valor;
     const nf = nfDoHistorico(l.historico);
-    if (tipo === 'venda' && nf) nota(nf, l.data).vendido = centavos(nota(nf, l.data).vendido - l.valor);
-    else if (tipo === 'devolucao') devolucoes.push({ nf: nf || '', data: l.data, valor: centavos(l.valor), notas: notasCitadas(l.historico) });
+    if (tipo === 'venda' && nf) nota(nf, l.data).vendido = centavos(nota(nf, l.data).vendido - valor);
+    else if (tipo === 'devolucao') devolucoes.push({ nf: nf || '', data: l.data, valor: centavos(valor), notas: notasCitadas(l.historico) });
   }
   const todas = [...notas.values()].map(n => ({ ...n, aberto: centavos(n.vendido - n.recebido) }));
   const ultimo = ls[ls.length - 1];
@@ -108,7 +129,7 @@ export function conferirRazaoDoCliente(razao: RazaoDaConta, mes: string): RazaoC
     aMais: todas.filter(n => n.aberto < 0 && !zero(n.aberto)),
     devolucoes, duplicados, semNota,
     saldo: centavos(saldo),
-    saldoDoRazao: ultimo ? centavos(-ultimo.saldo) : null,
+    saldoDoRazao: ultimo ? centavos(-sinal * ultimo.saldo) : null,
   };
 }
 
@@ -136,14 +157,15 @@ const dataBR = (d: string) => d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.sli
 const brl = reais;
 
 /** A relação em ordem de data: as notas em aberto, os recebimentos soltos (sem nota), as devoluções e as duplicidades. */
-function itensDoRazao(r: RazaoConferido): ItemDoRazao[] {
+function itensDoRazao(r: RazaoConferido, lado: LadoDaConta): ItemDoRazao[] {
   const item = (data: string, descricao: string, valor: number, status: StatusDoItem): ItemDoRazao => ({ data, descricao, valor, status });
+  const [vendido, recebido, recebida, recebimento] = lado === 'clientes' ? ['vendido', 'recebido', 'recebida', 'Recebimento'] : ['comprado', 'pago', 'paga', 'Pagamento'];
   return [
-    ...r.emAberto.map(n => item(n.data, 'NF ' + n.nf + (n.recebido ? ' (vendido ' + brl(n.vendido) + ', recebido ' + brl(n.recebido) + ')' : ''), n.aberto, 'aberto')),
-    ...r.aMais.map(n => item(n.data, 'NF ' + n.nf + ' recebida a mais', n.aberto, 'pagamento')),
+    ...r.emAberto.map(n => item(n.data, 'NF ' + n.nf + (n.recebido ? ' (' + vendido + ' ' + brl(n.vendido) + ', ' + recebido + ' ' + brl(n.recebido) + ')' : ''), n.aberto, 'aberto')),
+    ...r.aMais.map(n => item(n.data, 'NF ' + n.nf + ' ' + recebida + ' a mais', n.aberto, 'pagamento')),
     ...r.semNota.map(x => item(x.data, x.historico, centavos(-x.valor), 'pagamento')),
     ...r.devolucoes.map(d => item(d.data, 'NF ' + (d.nf || '?') + (d.notas.length ? ' (cita NF ' + d.notas.join(', ') + ')' : ''), centavos(-d.valor), 'devolucao')),
-    ...r.duplicados.map(d => item(d.data, 'Recebimento em duplicidade' + (d.nf ? ' da NF ' + d.nf : '') + ': ' + d.contas.join(' e '), centavos(d.valor), 'pagamento')),
+    ...r.duplicados.map(d => item(d.data, recebimento + ' em duplicidade' + (d.nf ? ' da NF ' + d.nf : '') + ': ' + d.contas.join(' e '), centavos(d.valor), 'pagamento')),
   ].sort((a, b) => a.data.localeCompare(b.data));
 }
 
@@ -154,11 +176,11 @@ export function observacaoDoRazao(m: RazaoDaMarca): string {
   return 'No meu sistema, ' + (m.notas.length === 1 ? 'está' : 'estão') + ' em aberto: ' + lista;
 }
 
-export function razaoDaMarca(arquivo: string, r: RazaoConferido): RazaoDaMarca {
+export function razaoDaMarca(arquivo: string, r: RazaoConferido, lado: LadoDaConta = 'clientes'): RazaoDaMarca {
   return {
     arquivo, notas: r.emAberto.map(n => ({ nf: n.nf, data: n.data, aberto: n.aberto })), saldo: r.saldo,
     devolucoes: centavos(r.devolucoes.reduce((t, d) => t + d.valor, 0)),
     duplicadas: [...new Set(r.duplicados.map(d => d.nf).filter(Boolean))],
-    itens: itensDoRazao(r),
+    itens: itensDoRazao(r, lado),
   };
 }

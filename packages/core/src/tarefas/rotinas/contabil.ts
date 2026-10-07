@@ -208,6 +208,8 @@ export const ROTINA_CONTABIL: Rotina = {
       nome: 'Fornecedores',
       descricao: 'Nenhum fornecedor com saldo devedor; as notas de entrada e os pagamentos do mês lançados.',
       ferramenta: null,
+      // a mesma tela do Clientes, com o fornecedor devedor no lugar do cliente credor (Vitor, 07/10/2026)
+      tela: { id: 'fornecedores', periodo: true },
       verificacao: 'manual',
       conferir: [
         'Nenhum fornecedor com saldo devedor (pagou mais do que comprou: pagamento sem a nota, ou nota que faltou entrar).',
