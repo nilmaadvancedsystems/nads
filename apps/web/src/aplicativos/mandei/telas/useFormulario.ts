@@ -22,8 +22,6 @@ export function useFormulario() {
   const valido = !!t && m.linkValido(t, codigo, new Date());
   const [respostas, setRespostas] = useState<Record<string, m.RespostaDoItem>>({});
   const [enviado, setEnviado] = useState(false);
-  // a tela de entrada (Vitor, 07/10/2026): quem é, o que é o Mandei e um botão só para começar
-  const [comecou, setComecou] = useState(false);
   // um cliente por vez (o passo); depois do último, a revisão
   const [passo, setPasso] = useState(0);
   const [erro, setErro] = useState('');
@@ -53,21 +51,22 @@ export function useFormulario() {
     const opcao = resposta(it.id).opcao || '', texto = resposta(it.id).texto || '';
     const arquivos = (vista?.arquivos || []).filter(a => a.itemId === it.id).map(a => a.nome);
     const iniciais = it.titulo.split(/\s+/).filter(w => w.length > 2).slice(0, 2).map(w => w[0]).join('') || it.titulo.slice(0, 2);
-    return { ...it, opcao, texto, arquivos, iniciais: iniciais.toUpperCase(), respondido: !!(opcao || texto.trim() || arquivos.length) };
+    return { ...it, opcao, texto, arquivos, iniciais: iniciais.toUpperCase(), respondido: !!(opcao || texto.trim() || arquivos.length),
+      explicar: m.pedeExplicacao(opcao), comprovar: m.pedeComprovante(opcao) };
   });
   const respondidos = itens.filter(i => i.respondido).length;
   const dias = vista ? Math.max(0, Math.ceil((new Date(vista.validoAte).getTime() - Date.now()) / 86400000)) : 0;
 
   return {
     codigo, existe: !!t, valido, enviado, erro,
-    comecou, comecar: () => { setComecou(true); setPasso(0); },
     quantos: itens.length, respondidos, dias,
     passo, revisao: passo >= itens.length,
     irPara: (n: number) => { setPasso(Math.max(0, Math.min(itens.length, n))); window.scrollTo({ top: 0 }); },
     numero: vista?.numero || '', empresa: vista?.empresa || '', mensagem: vista?.mensagem || '',
     validoAte: vista ? dataBR(vista.validoAte) : '',
     itens,
-    escolher: (id: string, opcao: string) => setRespostas(r => ({ ...r, [id]: { ...resposta(id), opcao } })),
+    // trocou para uma resposta que não pede explicação: o texto digitado no "Outro" sai junto
+    escolher: (id: string, opcao: string) => setRespostas(r => ({ ...r, [id]: m.pedeExplicacao(opcao) ? { ...resposta(id), opcao } : { ...resposta(id), opcao, texto: '' } })),
     escrever: (id: string, texto: string) => setRespostas(r => ({ ...r, [id]: { ...resposta(id), texto } })),
     anexar: (id: string, fs: File[]) => { void anexar(id, fs); },
     enviar: () => {

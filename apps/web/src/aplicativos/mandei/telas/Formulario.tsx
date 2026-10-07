@@ -1,10 +1,12 @@
 // O formulário do cliente (Mandei), no layout do nads e só com as peças do catálogo (Vitor, 07/10/2026: "deixa no
-// layout do nosso programa, usando os mesmos componentes"): no alto, o N, a Nilma e o ticket; a entrada num cartão;
-// os itens no Segmentado com Anterior e Próximo à direita (como as etapas do Clientes) e a barra de progresso; cada
+// layout do nosso programa, usando os mesmos componentes"): no alto, o N, a Nilma e o prazo em destaque (o número do
+// ticket é só nosso, o cliente não vê); sem a tela de entrada (o link
+// já abre no primeiro item, Vitor 07/10/2026);
+// só Anterior e Próximo à direita, sem os números dos itens (Vitor, 07/10/2026), e a barra de progresso; cada
 // cliente num cartão com o selo do valor, os lançamentos na tabela padrão, a nossa pergunta no balão, as respostas em
 // chips, o campo de texto e o Escolher arquivos; a revisão na tabela; o fim e o link vencido no vazio (gh-blank).
-import { CampoArquivos, Icone, MarcaN, Segmentado, type NomeIcone } from '@nads/ui';
-import type { ReactNode } from 'react';
+import { Icone, MarcaN, type NomeIcone } from '@nads/ui';
+import { useRef, type ReactNode } from 'react';
 import { useFormulario } from './useFormulario';
 
 type VM = ReturnType<typeof useFormulario>;
@@ -30,7 +32,11 @@ export function Formulario() {
       <header style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0 16px', borderBottom: '1px solid var(--border)' }}>
         <span className="brand-mark" aria-hidden="true"><MarcaN /></span><b>Nilma Contabilidade</b>
         <span style={{ flex: 1 }} />
-        {vm.numero && <span className="badge badge-neutral">Ticket {vm.numero}</span>}
+        {vm.existe && vm.valido && !vm.enviado && (
+          <span className="badge badge-warn" style={{ fontSize: 13, padding: '4px 10px' }}>
+            Responda até {vm.validoAte}{vm.dias > 0 ? ' · ' + (vm.dias === 1 ? 'falta 1 dia' : 'faltam ' + vm.dias + ' dias') : ''}
+          </span>
+        )}
       </header>
       {!vm.existe ? (
         <Vazio icone="link" titulo="Link não encontrado" texto="Confira o endereço que você recebeu por e-mail." />
@@ -39,42 +45,13 @@ export function Formulario() {
       ) : vm.enviado ? (
         <Vazio icone="checkCircle" titulo="Recebemos a sua resposta" texto={'Obrigado! Até ' + vm.validoAte + ' dá para voltar por este mesmo link e mandar mais arquivos.'}
           acao={<button type="button" className="btn" onClick={vm.voltar}>Voltar às respostas</button>} />
-      ) : !vm.comecou ? <Entrada vm={vm} /> : <Respostas vm={vm} />}
+      ) : <Respostas vm={vm} />}
     </div>
   );
 }
 
 function Vazio({ icone, titulo, texto, acao }: { icone: NomeIcone; titulo: string; texto: string; acao?: ReactNode }) {
   return <div className="gh-blank" style={{ marginTop: 48 }}><Icone nome={icone} /><h4>{titulo}</h4><p>{texto}</p>{acao}</div>;
-}
-
-function Entrada({ vm }: { vm: VM }) {
-  return (
-    <>
-      <header className="topbar"><div>
-        <h2 className="page-title">{vm.empresa}</h2>
-        <p className="page-desc">Pedido da Nilma Contabilidade · responda até {vm.validoAte}{vm.dias > 0 ? ' (' + (vm.dias === 1 ? 'falta 1 dia' : 'faltam ' + vm.dias + ' dias') + ')' : ''}</p>
-      </div></header>
-      <div className="card">
-        <h3>Como responder</h3>
-        <div style={{ padding: '0 16px 16px' }}>
-          <p className="hint" style={{ marginTop: 0 }}>
-            Este é o canal seguro do escritório para você responder às nossas perguntas e enviar os comprovantes.
-            {' '}{vm.quantos === 1 ? 'É 1 item' : 'São ' + vm.quantos + ' itens'} e leva poucos minutos.
-          </p>
-          <ol style={{ margin: '0 0 16px', paddingLeft: 20, lineHeight: 1.7 }}>
-            <li><b>Veja os lançamentos:</b> a data, a nota fiscal (ou o banco) e o valor de cada um.</li>
-            <li><b>Responda:</b> escolha a opção que explica e, se quiser, escreva.</li>
-            <li><b>Anexe:</b> o comprovante, o extrato ou a nota.</li>
-          </ol>
-          <div className="btn-row">
-            <button type="button" className="btn btn-primary" onClick={vm.comecar}>Começar</button>
-            <span className="hint">Só quem tem este link vê estas informações.</span>
-          </div>
-        </div>
-      </div>
-    </>
-  );
 }
 
 function Respostas({ vm }: { vm: VM }) {
@@ -85,13 +62,12 @@ function Respostas({ vm }: { vm: VM }) {
         <h2 className="page-title">{vm.empresa}</h2>
         <p className="page-desc">
           <span className="tarefas-barra" style={{ marginRight: 8 }}><span style={{ width: (vm.quantos ? (vm.respondidos / vm.quantos) * 100 : 0) + '%' }} /></span>
-          {vm.respondidos} de {vm.quantos} respondidos · responda até {vm.validoAte}
+          {vm.respondidos} de {vm.quantos} respondidos
         </p>
       </div></header>
-      {/* os itens no Segmentado, com Anterior e Próximo à direita (como as etapas do Clientes) */}
+      {/* só Anterior e Próximo à direita (Vitor, 07/10/2026: sem os números dos itens) */}
       <div className="tarefas-barra-topo">
-        <Segmentado<string> valor={String(vm.revisao ? vm.quantos : vm.passo)} onMudar={v => vm.irPara(Number(v))}
-          opcoes={[...vm.itens.map((it, i) => ({ valor: String(i), rotulo: (i + 1) + (it.respondido ? ' ✓' : '') })), { valor: String(vm.quantos), rotulo: 'Revisão' }]} />
+        <span className="hint">{vm.revisao ? 'Revisão' : 'Item ' + (vm.passo + 1) + ' de ' + vm.quantos}</span>
         <span className="tarefas-barra-espaco" />
         {(vm.passo > 0 || vm.revisao) && <button type="button" className="btn" onClick={() => vm.irPara(vm.passo - 1)}>Anterior</button>}
         {vm.revisao
@@ -108,12 +84,22 @@ function Item({ vm }: { vm: VM }) {
   if (!it) return null;
   const resumo = resumoDasLinhas(it.linhas);
   return (
-    <div className="card">
-      <div className="card-head">
-        <h3>{it.titulo}{resumo && <span className="hint" style={{ marginLeft: 8, fontWeight: 400 }}>{resumo}</span>}</h3>
-        {it.valor && <span className="card-head-ctl">Em aberto <span className="badge badge-bad">{it.valor}</span></span>}
+    // o lançamento é o protagonista (Vitor, 07/10/2026: "tá parecendo um cabeçalho"): o cartão de resumo do catálogo,
+    // com o nome grande e o valor em aberto em destaque
+    <section className="card fgts-resumo">
+      <div className="fgts-resumo-topo">
+        <div className="fgts-resumo-titulo">
+          <h3 style={{ fontSize: 20 }}>{it.titulo}</h3>
+          {resumo && <span className="hint">{resumo}</span>}
+        </div>
+        {it.valor && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+            <span className="hint">Em aberto</span>
+            <span className="badge badge-bad num" style={{ fontSize: 20, lineHeight: '28px', padding: '2px 12px', fontWeight: 600 }}>{it.valor}</span>
+          </div>
+        )}
       </div>
-      <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {it.linhas && it.linhas.length > 0 && (
           <div className="table-wrap">
             <table className="table-compact">
@@ -145,19 +131,44 @@ function Item({ vm }: { vm: VM }) {
             ))}
           </div>
         </div>
-        <div className="field" style={{ margin: 0 }}>
-          <label htmlFor={'tx-' + it.id}>Explique, se quiser</label>
-          <textarea id={'tx-' + it.id} rows={3} value={it.texto} onChange={e => vm.escrever(it.id, e.target.value)} style={{ width: '100%' }} />
-        </div>
-        <div>
-          <CampoArquivos id={'arq-' + it.id} aceitar=".pdf,.png,.jpg,.jpeg,.xls,.xlsx,.ofx,.txt" rotulo="Anexar comprovantes (PDF, foto ou planilha)" onEscolher={fs => vm.anexar(it.id, fs)} />
+        {/* a explicação só no "Outro"; o anexar só em "Já foi pago" e "Foi pago de outra conta" (Vitor, 07/10/2026) */}
+        {it.explicar && (
+          <div className="field" style={{ margin: 0 }}>
+            <label htmlFor={'tx-' + it.id}>Explique</label>
+            <textarea id={'tx-' + it.id} rows={3} value={it.texto} placeholder="Conte o que aconteceu com este valor" onChange={e => vm.escrever(it.id, e.target.value)} />
+          </div>
+        )}
+        {(it.comprovar || it.arquivos.length > 0) && <div>
+          {it.comprovar && (
+            // três jeitos de mandar o comprovante (Vitor, 07/10/2026): galeria, câmera (no celular abre direto) e arquivo
+            <div className="field" style={{ margin: 0 }}>
+              <label>Comprovante</label>
+              <div className="btn-row" style={{ justifyContent: 'flex-start' }}>
+                <BotaoDeArquivo id={'gal-' + it.id} icone="imagem" rotulo="Galeria" aceitar="image/*" onEscolher={fs => vm.anexar(it.id, fs)} />
+                <BotaoDeArquivo id={'cam-' + it.id} icone="camera" rotulo="Câmera" aceitar="image/*" camera onEscolher={fs => vm.anexar(it.id, fs)} />
+                <BotaoDeArquivo id={'arq-' + it.id} icone="arquivo" rotulo="Arquivo" aceitar=".pdf,.png,.jpg,.jpeg,.xls,.xlsx,.ofx,.txt" onEscolher={fs => vm.anexar(it.id, fs)} />
+              </div>
+            </div>
+          )}
           {it.arquivos.length > 0 && (
-            <div className="btn-row" style={{ marginTop: 8 }}>{it.arquivos.map(n => <span key={n} className="badge badge-ok">{n}</span>)}</div>
+            <div className="btn-row" style={{ marginTop: 8, justifyContent: 'flex-start' }}>{it.arquivos.map(n => <span key={n} className="badge badge-ok">{n}</span>)}</div>
           )}
           {vm.erro && <p className="hint ext-neg" style={{ margin: '8px 0 0' }}>{vm.erro}</p>}
-        </div>
+        </div>}
       </div>
-    </div>
+    </section>
+  );
+}
+
+/** Um botão normal que abre o seletor de arquivo (com camera, o celular abre a câmera direto). */
+function BotaoDeArquivo({ id, icone, rotulo, aceitar, camera, onEscolher }: { id: string; icone: NomeIcone; rotulo: string; aceitar: string; camera?: boolean; onEscolher: (fs: File[]) => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <label className="btn" htmlFor={id}><Icone nome={icone} />{rotulo}</label>
+      <input ref={input} type="file" id={id} accept={aceitar} multiple={!camera} capture={camera ? 'environment' : undefined} className="sr-only"
+        onChange={ev => { const fs = Array.from(ev.target.files || []); if (input.current) input.current.value = ''; if (fs.length) onEscolher(fs); }} />
+    </>
   );
 }
 
