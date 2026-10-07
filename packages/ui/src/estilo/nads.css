@@ -2829,15 +2829,22 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .alerta-linha .btn-row{margin:0 0 0 auto;}
 /* os avisos acima do cabeçalho (Vitor, 07/10/2026): o Alerta do catálogo virado faixa de ponta a ponta, sem caixa ("preencha
    todo esse espaço"), com as cores fortes: atenção em amarelo, concluída em verde, o modo desenvolvedor em azul */
-:root{--faixa-atencao:#EAC54F;--faixa-atencao-ink:#1F2328;--faixa-ok:#1A7F37;--faixa-ok-ink:#FFFFFF;--faixa-dev:#0969DA;--faixa-dev-ink:#FFFFFF;}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--faixa-atencao:#9E6A03;--faixa-atencao-ink:#FFFFFF;--faixa-ok:#238636;--faixa-dev:#1F6FEB;}}
-:root[data-theme="dark"]{--faixa-atencao:#9E6A03;--faixa-atencao-ink:#FFFFFF;--faixa-ok:#238636;--faixa-dev:#1F6FEB;}
+:root{--faixa-atencao:#EAC54F;--faixa-atencao-ink:#1F2328;--faixa-ok:#1A7F37;--faixa-ok-ink:#FFFFFF;--faixa-dev:#0969DA;--faixa-dev-ink:#FFFFFF;--faixa-erro:#CF222E;--faixa-erro-ink:#FFFFFF;}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--faixa-atencao:#9E6A03;--faixa-atencao-ink:#FFFFFF;--faixa-ok:#238636;--faixa-dev:#1F6FEB;--faixa-erro:#DA3633;}}
+:root[data-theme="dark"]{--faixa-atencao:#9E6A03;--faixa-atencao-ink:#FFFFFF;--faixa-ok:#238636;--faixa-dev:#1F6FEB;--faixa-erro:#DA3633;}
 .acima-do-cabecalho{display:flex;flex-direction:column;}
 .acima-do-cabecalho .alert{margin:0;border:0;border-radius:0;box-shadow:none;padding:8px 16px;background:var(--faixa-atencao);color:var(--faixa-atencao-ink);}
 .acima-do-cabecalho .alert::before{display:none;}
 .acima-do-cabecalho .alert svg,.acima-do-cabecalho .alert-text,.acima-do-cabecalho .alert-title{color:inherit;}
 .acima-do-cabecalho .alert-ok{background:var(--faixa-ok);color:var(--faixa-ok-ink);}
 .acima-do-cabecalho .faixa-dev .alert{background:var(--faixa-dev);color:var(--faixa-dev-ink);}
+/* as cores (Vitor, 07/10/2026): azul = modo desenvolvedor; vermelho = erro interno do sistema (faixa-erro); amarelo = erro ou aviso
+   para o usuário (o Alerta normal); verde = ok (alert-ok). Centralizadas e sem o ícone */
+.acima-do-cabecalho .faixa-erro .alert{background:var(--faixa-erro);color:var(--faixa-erro-ink);}
+.acima-do-cabecalho .alert{justify-content:center;text-align:center;}
+.acima-do-cabecalho .alert > svg{display:none;}
+.acima-do-cabecalho .alerta-linha .alert > div{flex:0 1 auto;justify-content:center;}
+.acima-do-cabecalho .alerta-linha .btn-row{margin:0;}
 /* Cadastro › Usuários: as janelas em painéis laterais (os tópicos embaixo de quem é, como na Minha página) */
 .usuario-lado nav{display:flex;flex-direction:column;gap:2px;margin-top:4px;padding-top:8px;border-top:1px solid var(--border-muted);}
 .usuario-topico-alerta{margin-left:auto;width:8px;height:8px;border-radius:50%;background:var(--danger);flex:none;}
@@ -2941,6 +2948,20 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 /* o Avançar do modo desenvolvedor: o mesmo botão do Próximo, em azul (Vitor, 06/10/2026) */
 .gh-topo-btn.gh-topo-proximo.dev{background:var(--info);}
 .gh-topo-btn.gh-topo-proximo.dev:hover:not(:disabled){background:var(--info);filter:brightness(1.1);}
+/* o cabeçalho azul no modo desenvolvedor (Vitor, 07/10/2026): as cores dentro dele trocam para o azul (texto e ícones
+   brancos); os menus que abrem dele voltam às cores da página (guardadas em --*-pagina) */
+:root[data-dev]{--ink-pagina:var(--ink);--ink-muted-pagina:var(--ink-muted);--border-pagina:var(--border);--btn-bg-pagina:var(--btn-bg);
+  --btn-border-pagina:var(--btn-border);--btn-hover-pagina:var(--btn-hover);--hover-bg-pagina:var(--hover-bg);--tab-active-pagina:var(--tab-active);
+  --cabecalho-dev:#0550AE;--cabecalho-dev-borda:#033D8B;}
+@media (prefers-color-scheme: dark){:root[data-dev]:not([data-theme="light"]){--cabecalho-dev:#0D419D;--cabecalho-dev-borda:#1158C7;}}
+:root[data-dev][data-theme="dark"]{--cabecalho-dev:#0D419D;--cabecalho-dev-borda:#1158C7;}
+:root[data-dev] .gh-header{--header-bg:var(--cabecalho-dev);--ink:#FFFFFF;--ink-muted:#FFFFFFCC;--border:var(--cabecalho-dev-borda);
+  --btn-bg:#FFFFFF1F;--btn-border:#FFFFFF4D;--btn-hover:#FFFFFF2E;--hover-bg:#FFFFFF2E;--tab-active:#FFFFFF;}
+:root[data-dev] .gh-header .popover{--ink:var(--ink-pagina);--ink-muted:var(--ink-muted-pagina);--border:var(--border-pagina);--btn-bg:var(--btn-bg-pagina);
+  --btn-border:var(--btn-border-pagina);--btn-hover:var(--btn-hover-pagina);--hover-bg:var(--hover-bg-pagina);--tab-active:var(--tab-active-pagina);}
+/* o Próximo e o Avançar no cabeçalho azul: brancos, com a seta azul */
+:root[data-dev] .gh-header .gh-topo-btn.gh-topo-proximo{background:#FFFFFF;color:var(--cabecalho-dev);}
+:root[data-dev] .gh-header .gh-topo-btn.gh-topo-proximo:hover:not(:disabled){background:#FFFFFF;color:var(--cabecalho-dev);filter:brightness(.92);}
 /* o modo desenvolvedor (Vitor, 06/10/2026): a interface toda em azul no lugar do vermelho da marca, para nunca confundir
    com o uso de verdade (o <html> ganha data-dev; comum/modoDesenvolvedor.ts) */
 :root[data-dev]{
