@@ -56,9 +56,9 @@ export interface PlanoDeContas {
 }
 
 /** As contas padrão dos lançamentos (as mesmas chaves do layout do Creditor). */
-export type CampoContaPadrao = 'banco' | 'juros' | 'desconto' | 'histPrincipal' | 'histJuros' | 'histDesconto';
+export type CampoContaPadrao = 'banco' | 'juros' | 'desconto' | 'histPrincipal' | 'histJuros' | 'histDesconto' | 'cartao';
 /** As que são contas do plano (os históricos não são). */
-export type ContaPadraoDoPlano = 'banco' | 'juros' | 'desconto';
+export type ContaPadraoDoPlano = 'banco' | 'juros' | 'desconto' | 'cartao';
 
 export interface ContasPadrao {
   contas: Partial<Record<CampoContaPadrao, string>>;
@@ -90,6 +90,12 @@ export interface CadastroDaEmpresa {
    * e os serviços prestados na Conferência. Sem = ainda não informado.
    */
   prestaServico?: boolean;
+  /**
+   * Os cartões da empresa (Vitor, 07/10/2026: "se a empresa tem cartão empresarial ou venda de cartão, vai ficar no
+   * cadastro"): ligam a etapa Cartões na Tarefas. Sem = ainda não informado.
+   */
+  cartaoEmpresarial?: boolean;
+  vendeNoCartao?: boolean;
   /** os sócios, com o nome e o CPF (Vitor, 06/10/2026): a etapa Bancos acha a transferência para o sócio no extrato */
   socios?: Socio[];
   /**

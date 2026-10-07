@@ -11,7 +11,7 @@ import { useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { extratorDaEmpresa, repoDoCadastro } from '../../dados/fonte';
-import { useExecucoesDoPeriodo, usePrestaServico, useRepo } from '../../dados/repo';
+import { useCartaoEmpresarial, useExecucoesDoPeriodo, usePrestaServico, useRepo } from '../../dados/repo';
 import { caminhoDaEmpresa, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../comum/desenvolvimento';
@@ -53,6 +53,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const empresa = empresas.empresaPelaRota(repo.listarEmpresas(), rotaEmpresa);
   // a regra do Cadastro da empresa (presta serviços?): vai para a Conferência fiscal (?servicos=)
   const prestaServico = usePrestaServico(empresa?.nome ?? null, empresa?.codigo ?? null);
+  // o Cadastro diz se a empresa tem cartão empresarial: a etapa Cartões entra (ou sai) nos meses do período
+  const cartaoEmpresarial = useCartaoEmpresarial(empresa?.nome ?? null, empresa?.codigo ?? null);
   const meses = t.competenciasDoPeriodo(periodo);
   const varios = meses.length > 1;
   const { porMes, carregada } = useExecucoesDoPeriodo(meses, rotina.departamento);
@@ -84,6 +86,23 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       if (exDe[c] && exDe[c].periodo !== periodo) {
         const p = t.definirPeriodo(exDe[c], periodo, op.nome, new Date());
         repo.gravar(p.execucao, p.evento);
+      }
+    }
+  });
+  // a etapa Cartões segue o Cadastro (Vitor, 07/10/2026): "Cartão empresarial: Sim" põe ela nos meses do período; "Não"
+  // tira a que ainda não foi feita; não informado, não mexe. Só grava o que mudou (a próxima volta já vê igual).
+  useEffect(() => {
+    if (dev || !carregada || !empresa || cartaoEmpresarial == null) return;
+    for (const c of meses) {
+      const exc = exDe[c];
+      if (!exc) continue;
+      const esta = !!exc.adicionadas?.includes('cartoes');
+      if (cartaoEmpresarial && !esta) {
+        const a = t.adicionarEtapa(exc, 'cartoes', 'Cadastro: cartão empresarial', op.nome, new Date());
+        repo.gravar(a.execucao, a.evento);
+      } else if (!cartaoEmpresarial && esta && !t.estadoDa(exc, 'cartoes')) {
+        const r = t.retirarEtapa(exc, 'cartoes', 'Cadastro: sem cartão empresarial', op.nome, new Date());
+        repo.gravar(r.execucao, r.evento);
       }
     }
   });

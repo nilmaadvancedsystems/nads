@@ -2,7 +2,7 @@
 // (ex.: /extratudo/292/extrator/conferencia/resultado, /extratudo/292/creditor/fiscal).
 export const BASE = '/extratudo';
 
-export type IdFerramenta = 'extrator' | 'cheque-especial' | 'creditor';
+export type IdFerramenta = 'extrator' | 'cheque-especial' | 'creditor' | 'cartoes';
 
 /**
  * Caminho dentro de uma ferramenta. `resto` vem como cada ferramenta já montava:

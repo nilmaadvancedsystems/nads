@@ -2407,8 +2407,12 @@ html:not([data-animacoes=todas]) .modal-ok-barra{display:none;}
 /* (Vitor, 02/10/2026: "desenhe a box melhorzinho, mais homogênea, aproveite a box"): a grade numa caixa com borda, a
    largura toda; cada mês uma coluna igual, com linha entre elas; o mês aberto com o sublinhado das abas; os ícones todos
    do mesmo tamanho (28 px). */
-.imp-periodo-linha{padding:10px 16px 14px;border-top:1px dashed var(--border-muted);}
-.imp-meses{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:8px;background:var(--surface);}
+.imp-periodo-linha{padding:10px 16px 14px;border-top:1px dashed var(--border-muted);overflow-x:auto;}
+/* um menu aberto dentro da grade (o importar do mês) não fica cortado pela rolagem */
+.imp-periodo-linha:has(.popover){overflow:visible;}
+/* a grade dos meses (Vitor, 07/10/2026): a primeira coluna do tamanho do que tem nela; os meses do mesmo tamanho,
+   com um mínimo; não cabendo (12 meses, nomes longos), rola para o lado com a primeira coluna parada */
+.imp-meses{width:auto;min-width:100%;table-layout:auto;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:8px;background:var(--surface);}
 /* cantos arredondados pelas células (overflow:hidden cortaria o menu que abre de dentro) */
 .imp-meses thead tr > :first-child{border-top-left-radius:7px;}
 .imp-meses thead tr > :last-child,.imp-meses thead tr > :last-child .imp-meses-mes{border-top-right-radius:7px;}
@@ -2418,7 +2422,8 @@ html:not([data-animacoes=todas]) .modal-ok-barra{display:none;}
 .imp-meses tr > :first-child{border-left:none;}
 .imp-meses tbody tr:last-child th,.imp-meses tbody tr:last-child td{border-bottom:none;}
 .imp-meses thead th{height:34px;background:var(--surface-2);border-bottom-color:var(--border);font-weight:400;}
-.imp-meses th[scope="row"],.imp-meses thead th:first-child{width:76px;padding-left:12px;text-align:left;font-size:12px;font-weight:600;color:var(--ink-muted);background:var(--surface-2);}
+.imp-meses tr > :not(:first-child){min-width:112px;}
+.imp-meses th[scope="row"],.imp-meses thead th:first-child{width:1%;white-space:nowrap;padding-right:12px;position:sticky;left:0;z-index:1;padding-left:12px;text-align:left;font-size:12px;font-weight:600;color:var(--ink-muted);background:var(--surface-2);}
 .imp-meses td{height:42px;}
 .imp-meses td.atual{background:color-mix(in srgb, var(--hover-bg) 55%, transparent);}
 .imp-meses thead th.atual{box-shadow:inset 0 -2px 0 var(--tab-active);}
