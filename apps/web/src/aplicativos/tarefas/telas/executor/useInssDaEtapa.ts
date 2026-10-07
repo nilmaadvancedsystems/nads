@@ -12,7 +12,14 @@ extrator.definirWorkerDoPdf(workerDoPdf);
 const dataBR = (d: string) => (d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '');
 const reais = formatos.reais;
 
-export function useInssDaEtapa(chave: string, meses: readonly string[]) {
+/** Uma conta do balancete da empresa (o código e o nome). */
+export interface ContaDoPlano { codigo: string; nome: string }
+
+/**
+ * balancete: as contas analíticas do balancete importado na Conferência (Vitor, 07/10/2026: "essa conta do INSS a recolher,
+ * você puxa diretamente do balancete, tem o nome certinho lá"); sem ele, a pessoa digita.
+ */
+export function useInssDaEtapa(chave: string, meses: readonly string[], balancete: readonly ContaDoPlano[] = []) {
   const { aviso } = useRetorno();
   const [razao, setRazao] = useState<{ chave: string; arquivo: string; razao: t.RazaoDaConta } | null>(null);
   const [guias, setGuias] = useState<{ chave: string; arquivos: string[]; guias: t.GuiaDoInss[] } | null>(null);
@@ -20,7 +27,10 @@ export function useInssDaEtapa(chave: string, meses: readonly string[]) {
   // o mês aberto (null = o período todo)
   const [mesAberto, setMesAberto] = useState<string | null>(null);
   // a exportação para o Alterdata (Vitor, 07/10/2026): o código da conta do INSS a recolher e a contrapartida de cada sugestão
-  const [contaInss, setContaInss] = useState('');
+  const [contaDigitada, setContaInss] = useState('');
+  // a conta do INSS a recolher no balancete, pelo nome
+  const doBalancete = balancete.find(x => /inss\s+a\s+recolher/i.test(x.nome)) || null;
+  const contaInss = contaDigitada || doBalancete?.codigo || '';
   const [contrapartidas, setContrapartidas] = useState<Record<string, string>>({});
   const r = razao && razao.chave === chave ? razao : null;
   const g = guias && guias.chave === chave ? guias : null;
@@ -66,7 +76,11 @@ export function useInssDaEtapa(chave: string, meses: readonly string[]) {
   const contraDe = (x: t.SugestaoDoInss) => contrapartidas[t.chaveDaSugestao(x)] || t.codigoDaConta(t.contrapartidaDaSugestao(x).sugerida);
   const faltaContra = todas.filter(x => !contraDe(x)).length;
   // as contas que o razão já usa, para escolher a contrapartida (o código e o nome)
-  const contas = r ? [...new Map(r.razao.lancamentos.filter(l => l.contrapartida).map(l => [l.contrapartida, { codigo: l.contrapartida, nome: l.nomeContrapartida }])).values()] : [];
+  // as contas para a contrapartida: as que o razão já usa primeiro e depois as do balancete
+  const contas = [...new Map([
+    ...(r ? r.razao.lancamentos.filter(l => l.contrapartida).map(l => [l.contrapartida, { codigo: l.contrapartida, nome: l.nomeContrapartida }] as const) : []),
+    ...balancete.map(x => [x.codigo, x] as const),
+  ]).values()];
 
   return {
     importarRazao, importarGuias, lendo,
@@ -114,6 +128,8 @@ export function useInssDaEtapa(chave: string, meses: readonly string[]) {
       };
     }),
     contas, contaInss, setContaInss,
+    /** o nome da conta do INSS a recolher (do balancete), para mostrar ao lado do código */
+    nomeDaContaInss: (balancete.find(x => x.codigo === contaInss.trim()) || null)?.nome || '',
     escolherContrapartida: (chave: string, codigo: string) => setContrapartidas(x => ({ ...x, [chave]: codigo })),
     /** quantas sugestões (do período todo) ainda sem a contrapartida */
     faltaContrapartida: faltaContra,
