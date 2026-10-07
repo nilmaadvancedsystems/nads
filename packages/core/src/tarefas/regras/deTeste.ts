@@ -87,15 +87,16 @@ export function inssDeTeste(meses: readonly string[]): { razao: RazaoDaConta; gu
 }
 
 /** Uma conta do passivo da folha com o razão próprio na etapa Salários, INSS e FGTS (Vitor, 07/10/2026). */
-export type ContaDaFolha = 'salarios' | 'fgts' | 'prolabore';
+export type ContaDaFolha = 'salarios' | 'fgts' | 'prolabore' | 'honorarios';
 
-/** As contas que têm de zerar (a obrigação do mês de antes paga no mês): Salários e Pró-labore (Vitor, 07/10/2026). */
-export const CONTAS_QUE_ZERAM: readonly ContaDaFolha[] = ['salarios', 'prolabore'];
+/** As contas que têm de zerar (a obrigação do mês de antes paga no mês): Salários, Pró-labore e Honorários (Vitor, 07/10/2026). */
+export const CONTAS_QUE_ZERAM: readonly ContaDaFolha[] = ['salarios', 'prolabore', 'honorarios'];
 
 const TEXTO_DA_FOLHA: Record<ContaDaFolha, { base: number; contra: string; nome: string; paga: string; entra: string }> = {
   salarios: { base: 12480.5, contra: '41201', nome: 'Salários e ordenados', paga: 'Pagamento dos salários de ', entra: 'Folha de pagamento de ' },
   fgts: { base: 1004.2, contra: '41205', nome: 'FGTS', paga: 'Pagamento do FGTS de ', entra: 'FGTS sobre a folha de ' },
   prolabore: { base: 3036, contra: '41210', nome: 'Pró-labore', paga: 'Pagamento do pró-labore de ', entra: 'Pró-labore de ' },
+  honorarios: { base: 1650, contra: '42105', nome: 'Honorários contábeis', paga: 'Pagamento dos honorários de ', entra: 'Honorários contábeis de ' },
 };
 
 /**

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
-  comContasPadrao, criarRepoCadastro, criarRepoCadastroMemoria, definirCartao, definirContaPadrao, definirPrestaServico, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
+  comContasPadrao, criarRepoCadastro, criarRepoCadastroMemoria, definirCartao, definirContaPadrao, definirNotaDeHonorario, definirPrestaServico, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
   bancosDoEntregasDoDocumento, bancosDoEntregasPorCodigo, contasDoEntregas, juntarComEntregas, sugestoesDoEntregas,
   lerPlanilhaDoPlano, linhasDoTexto, registrarPlano, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
   type PlanoDeContas,
@@ -283,5 +283,18 @@ describe('os cartões da empresa (07/10/2026)', () => {
     expect(c.contasPadrao?.contas.cartao).toBe('21105');
     const doCreditor = comContasPadrao(c, { contas: { banco: '10503' }, nomes: {} }, 'Creditor', AGORA);
     expect(doCreditor.contasPadrao?.contas).toEqual({ banco: '10503', cartao: '21105' });
+  });
+});
+
+describe('a nota de honorário (07/10/2026)', () => {
+  it('sim, não, não informado; vai e volta do documento, com o histórico', () => {
+    const c = definirNotaDeHonorario(vazio(), false, 'Vitor', AGORA);
+    expect(c.emiteNotaHonorario).toBe(false);
+    expect(c.historico[0]).toMatchObject({ acao: 'Nota de honorário', detalhe: 'Não' });
+    expect(cadastroDoDocumento('FITO', 292, documentoDoCadastro(c)).emiteNotaHonorario).toBe(false);
+    expect(definirNotaDeHonorario(c, false, 'Vitor', AGORA)).toBe(c);
+    const nada = definirNotaDeHonorario(c, null, 'Vitor', AGORA);
+    expect('emiteNotaHonorario' in nada).toBe(false);
+    expect('emiteNotaHonorario' in documentoDoCadastro(nada)).toBe(false);
   });
 });

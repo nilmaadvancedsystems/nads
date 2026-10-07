@@ -127,6 +127,7 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...(typeof doc.prestaServico === 'boolean' ? { prestaServico: doc.prestaServico } : {}),
     ...(typeof doc.cartaoEmpresarial === 'boolean' ? { cartaoEmpresarial: doc.cartaoEmpresarial } : {}),
     ...(typeof doc.vendeNoCartao === 'boolean' ? { vendeNoCartao: doc.vendeNoCartao } : {}),
+    ...(typeof doc.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: doc.emiteNotaHonorario } : {}),
     ...(Array.isArray(doc.emprestimos) ? { emprestimos: (doc.emprestimos as Record<string, unknown>[]).map(e => ({ numero: texto(e?.numero), banco: texto(e?.banco), desde: texto(e?.desde), ...(texto(e?.ate) ? { ate: texto(e?.ate) } : {}) })).filter(e => e.numero && e.banco) } : {}),
     ...(Array.isArray(doc.socios) ? { socios: (doc.socios as Record<string, unknown>[]).map(s => ({ nome: texto(s?.nome), cpf: texto(s?.cpf) })).filter(s => s.nome || s.cpf) } : {}), atualizadoEm: opcional(doc.atualizadoEm),
     ...responsaveisDoDocumento(doc.responsaveis), ...dpDoDocumento(doc.dp), ...transferenciasDoDocumento(doc.transferencias),
@@ -145,6 +146,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(typeof c.prestaServico === 'boolean' ? { prestaServico: c.prestaServico } : {}),
     ...(typeof c.cartaoEmpresarial === 'boolean' ? { cartaoEmpresarial: c.cartaoEmpresarial } : {}),
     ...(typeof c.vendeNoCartao === 'boolean' ? { vendeNoCartao: c.vendeNoCartao } : {}),
+    ...(typeof c.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: c.emiteNotaHonorario } : {}),
     ...(c.socios?.length ? { socios: c.socios } : {}),
     ...(c.emprestimos?.length ? { emprestimos: c.emprestimos } : {}),
     ...(c.responsaveis && Object.keys(c.responsaveis).length ? { responsaveis: c.responsaveis } : {}),
@@ -554,6 +556,15 @@ export function definirCartao(c: CadastroDaEmpresa, campo: 'cartaoEmpresarial' |
   delete resto[campo];
   const novo = sim == null ? resto : { ...resto, [campo]: sim };
   return registrar(novo, por, agora, campo === 'cartaoEmpresarial' ? 'Cartão empresarial' : 'Vende no cartão', sim == null ? 'Não informado' : sim ? 'Sim' : 'Não');
+}
+
+/** O escritório emite nota de honorário para a empresa: sim, não, ou volta a "não informado" (null). */
+export function definirNotaDeHonorario(c: CadastroDaEmpresa, sim: boolean | null, por: string, agora: Date): CadastroDaEmpresa {
+  if ((c.emiteNotaHonorario ?? null) === sim) return c;
+  const resto: CadastroDaEmpresa = { ...c };
+  delete resto.emiteNotaHonorario;
+  const novo = sim == null ? resto : { ...resto, emiteNotaHonorario: sim };
+  return registrar(novo, por, agora, 'Nota de honorário', sim == null ? 'Não informado' : sim ? 'Sim' : 'Não');
 }
 
 /**

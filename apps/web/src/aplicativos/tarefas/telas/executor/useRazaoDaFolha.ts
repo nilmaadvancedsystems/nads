@@ -6,7 +6,7 @@ import { formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 
-const NOME: Record<t.ContaDaFolha, string> = { salarios: 'Salários a pagar', fgts: 'FGTS a recolher', prolabore: 'Pró-labore a pagar' };
+const NOME: Record<t.ContaDaFolha, string> = { salarios: 'Salários a pagar', fgts: 'FGTS a recolher', prolabore: 'Pró-labore a pagar', honorarios: 'Honorários a pagar' };
 
 export function useRazaoDaFolha(conta: t.ContaDaFolha, chave: string, meses: readonly string[]) {
   const { aviso } = useRetorno();
@@ -30,6 +30,8 @@ export function useRazaoDaFolha(conta: t.ContaDaFolha, chave: string, meses: rea
   return {
     conta, nome: NOME[conta],
     temRazao: !!r, arquivo: r?.arquivo || '',
+    /** o razão importado (o Honorários tira dele a conta de despesa das provisões de antes) */
+    razao: r?.razao ?? null,
     importar, remover: () => setRazao(null),
     /** o ⚡: um razão de teste do período, certo ou com um mês devedor */
     teste: [

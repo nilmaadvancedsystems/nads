@@ -298,6 +298,9 @@ export const ROTINA_CONTABIL: Rotina = {
       nome: 'Honorários',
       descricao: 'O honorário a pagar recebe a despesa do mês e zera no pagamento.',
       ferramenta: null,
+      // o razão do Honorários a pagar, obrigatório e tem que zerar; sem nota de honorário (Cadastro), o Extrato por
+      // cobrança vira os lançamentos na data de emissão, no arquivo do Alterdata (Vitor, 07/10/2026)
+      tela: { id: 'honorarios', periodo: true },
       verificacao: 'manual',
       conferir: [
         'O crédito do mês em honorários a pagar é igual à despesa de honorários contábeis.',

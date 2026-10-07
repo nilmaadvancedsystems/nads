@@ -28,6 +28,15 @@ export function useDadosDaEmpresa(rota: string) {
       const novo = empresas.cadastro.definirCartao(c.cadastro, campo, atual === sim ? null : sim, c.por, new Date());
       if (novo !== c.cadastro) c.salvar(novo);
     },
+    /** o escritório emite nota de honorário para a empresa (Vitor, 07/10/2026): decide o que a etapa Honorários pede */
+    emiteNotaHonorario: c.cadastro.emiteNotaHonorario ?? null,
+    definirNotaDeHonorario(sim: boolean) {
+      if (c.carregando) return;
+      const atual = c.cadastro.emiteNotaHonorario ?? null;
+      // clicar no que já está marcado volta para "não informado"
+      const novo = empresas.cadastro.definirNotaDeHonorario(c.cadastro, atual === sim ? null : sim, c.por, new Date());
+      if (novo !== c.cadastro) c.salvar(novo);
+    },
     /** os sócios, com o nome e o CPF (a etapa Bancos acha a transferência para o sócio no extrato) */
     socios: c.cadastro.socios || [],
     /** grava a lista inteira (a linha vazia some) */

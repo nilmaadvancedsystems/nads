@@ -99,6 +99,12 @@ export interface CadastroDaEmpresa {
    */
   cartaoEmpresarial?: boolean;
   vendeNoCartao?: boolean;
+  /**
+   * O escritório emite nota de honorário para a empresa? (Vitor, 07/10/2026.) Sim: a provisão chega pela nota (Fiscal) e a
+   * etapa Honorários só confere o razão. Não: a pessoa importa o Extrato por cobrança e baixa os lançamentos para o
+   * Alterdata. Sem = ainda não informado.
+   */
+  emiteNotaHonorario?: boolean;
   /** os sócios, com o nome e o CPF (Vitor, 06/10/2026): a etapa Bancos acha a transferência para o sócio no extrato */
   socios?: Socio[];
   /**

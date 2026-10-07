@@ -70,6 +70,22 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
           {opcaoDoCartao('vendeNoCartao', false, 'Não')}
         </div>
       </div>
+      {/* a nota de honorário (Vitor, 07/10/2026): sem nota, a etapa Honorários pede o Extrato por cobrança */}
+      <div className="cad-regra">
+        <div className="cad-regra-txt">
+          <span className="cad-campo-rotulo">Emite nota de honorário</span>
+          <span className="hint">
+            O escritório emite nota de honorário para a empresa. Sem nota, a etapa Honorários lança as cobranças pelo Extrato por cobrança.
+            {vm.emiteNotaHonorario == null && ' Ainda não informado.'}
+          </span>
+        </div>
+        <div className="cad-regra-opcoes" role="group" aria-label="Emite nota de honorário">
+          {[true, false].map(sim => (
+            <button key={String(sim)} type="button" className={'btn ' + (vm.emiteNotaHonorario === sim ? 'btn-primary' : 'btn-outline')} aria-pressed={vm.emiteNotaHonorario === sim}
+              onClick={() => vm.definirNotaDeHonorario(sim)}>{sim ? 'Sim' : 'Não'}</button>
+          ))}
+        </div>
+      </div>
       {/* os sócios, com o nome e o CPF (Vitor, 06/10/2026): o relatório da etapa Bancos mostra a transferência para eles */}
       <div className="cad-regra">
         <div className="cad-regra-txt">

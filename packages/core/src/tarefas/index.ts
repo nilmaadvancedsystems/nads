@@ -16,6 +16,7 @@ export * from './regras/razao';
 export * from './regras/emprestimos';
 export * from './regras/inss';
 export * from './regras/bens';
+export * from './regras/honorarios';
 export { idDaExecucao, type RepoTarefas } from './repo';
 export { criarRepoTarefasMemoria, execucoesDeExemplo, execucoesVariadas, type GuardaTarefas } from './repo.memoria';
 export * from './reinf/reinf';
