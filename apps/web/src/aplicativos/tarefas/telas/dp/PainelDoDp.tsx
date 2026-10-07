@@ -172,7 +172,13 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
                               : <span className="fraco">—</span>}</td>
                             {c.obrigacoes.map(o => (
                               <td key={o.id} className={'dp-ob' + (vm.primeiras.has(o.id) ? ' dp-ob-primeira' : '')}>
-                                {o.estado === 'nao-tem' ? <span className="dp-marca nao-tem" title="não tem no mês">–</span> : (
+                                {o.estado === 'nao-tem' ? <span className="dp-marca nao-tem" title="não tem no mês">–</span> : o.id === 'reinf' ? (
+                                  // a REINF é o Fiscal que transmite (Vitor, 07/10/2026): no DP só aparece se já foi
+                                  <span className={'dp-marca leitura ' + o.estado} title={o.estado === 'feita' ? 'Transmitida pelo Fiscal' + (o.quem ? ': ' + o.quem : '') : 'Aguardando o Fiscal transmitir'}
+                                    aria-label={'REINF de ' + c.nomeNaTela + (o.estado === 'feita' ? ': transmitida' : ': não transmitida')}>
+                                    {o.estado === 'feita' ? '✓' : ''}
+                                  </span>
+                                ) : (
                                   <button type="button" className={'dp-marca ' + o.estado} disabled={vm.carregando} onClick={() => vm.alternar(c.codigo, o.etapa)}
                                     title={(vm.colunas.find(x => x.id === o.id)?.nome || '') + ': ' + (o.estado === 'feita' ? 'feita por ' + o.quem + ' (clique para desfazer)' : 'clique quando fizer')}
                                     aria-label={(vm.colunas.find(x => x.id === o.id)?.nome || '') + ' de ' + c.nomeNaTela + (o.estado === 'feita' ? ': feita' : ': a fazer')} aria-pressed={o.estado === 'feita'}>

@@ -198,7 +198,8 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
       if (!carregada || !doDp.carregado) return;
       const c = todas.find(x => x.codigo === codigo);
       const o = c?.obrigacoes.find(x => x.etapa === etapa);
-      if (!c || !o || o.estado === 'nao-tem') return;
+      // a REINF só o Fiscal marca (ao transmitir); no DP é só leitura
+      if (!c || !o || o.estado === 'nao-tem' || etapa === 'dp-reinf') return;
       const ex = c.ex || t.execucaoNova(c.nomeNaTela, c.codigo, competencia, 'dp');
       const r = o.estado === 'feita' ? t.voltarPara(ex, etapa, op.nome, new Date()) : t.fazer(ex, etapa, op.nome, new Date());
       repo.gravar(r.execucao, r.evento);
