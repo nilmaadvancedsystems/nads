@@ -68,13 +68,20 @@ if [ ! -d "$CODIGO/.git" ]; then
   git clone -q --depth 50 --branch "$RAMO" "$REPO" "$CODIGO"
 fi
 # A troca do Entregas para o nads: o que não é código (credenciais, memória do
-# robô, registros) vem da pasta antiga, sem sobrescrever o que já houver aqui.
-if [ -d "$ANTIGO" ] && [ ! -f "$SCRIPTS/.migrado-do-entregas" ]; then
-  ( cd "$ANTIGO" && git -C "$BASE/Entregas" ls-files --others -- scripts \
-      | sed 's#^scripts/##' | grep -v '^node_modules/' \
-      | while IFS= read -r f; do [ -e "$SCRIPTS/$f" ] || { mkdir -p "$SCRIPTS/$(dirname "$f")"; cp -p "$f" "$SCRIPTS/$f"; }; done )
-  date -Is > "$SCRIPTS/.migrado-do-entregas"
-  echo "iniciar-maquina: credenciais e estado copiados de $ANTIGO" > /dev/console
+# robô, registros) vem da pasta antiga.
+# (Sem git aqui: como root, o git recusa a pasta do usuário "robo" e a lista saía vazia — 07/10/2026.)
+if [ -d "$ANTIGO" ] && [ ! -f "$SCRIPTS/.migrado-do-entregas-2" ]; then
+  # o que é código do nads (a lista sai do git rodando como "robo") nunca é tocado; o resto vem da pasta antiga,
+  # por cima do que o robô novo tenha criado vazio antes da cópia (a memória dos e-mails, por exemplo)
+  sudo -u robo git -C "$CODIGO" ls-files robo | sed 's#^robo/##' > /tmp/robo-codigo.txt
+  n=0
+  while IFS= read -r f; do
+    f=${f#./}
+    grep -Fxq "$f" /tmp/robo-codigo.txt && continue
+    mkdir -p "$SCRIPTS/$(dirname "$f")" && cp -p "$ANTIGO/$f" "$SCRIPTS/$f" && n=$((n+1))
+  done < <(cd "$ANTIGO" && find . -path ./node_modules -prune -o -type f -print)
+  date -Is > "$SCRIPTS/.migrado-do-entregas-2"
+  echo "iniciar-maquina: $n arquivo(s) de credenciais e estado copiados de $ANTIGO" > /dev/console
 fi
 chown -R robo:robo "$BASE"
 if [ ! -d "$SCRIPTS/node_modules" ]; then
