@@ -6,6 +6,7 @@ import { useId, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import type { RazaoDaEtapa as Razao } from '../useRazaoDaEtapa';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../comum/BotaoDeTeste';
+import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosMeses';
 
 type Linha = Razao['lancamentos'][number];
 
@@ -36,6 +37,7 @@ export function RazaoDaEtapa({ conta, razao, conferir, teste = [] }: { conta: st
   const id = useId();
   const [aberta, setAberta] = useState(true);
   const nome = conta.charAt(0).toUpperCase() + conta.slice(1);
+  const grade = useColunaAjustavel('caixa', '96px', razao.meses.length);
   return (
     <div className="executor-razao">
       {razao.creditor.length > 0 && (
@@ -102,10 +104,11 @@ export function RazaoDaEtapa({ conta, razao, conferir, teste = [] }: { conta: st
           {razao.carregado && aberta && (
             <>
               <div className="imp-periodo-linha">
-                <table className="imp-meses">
+                <table className="imp-meses" style={grade.tabela}>
+                  <colgroup><col style={{ width: grade.largura }} /></colgroup>
                   <thead>
                     <tr>
-                      <th scope="col"><span className="sr-only">Mês</span></th>
+                      <th scope="col"><span className="sr-only">Mês</span>{grade.alca}</th>
                       {razao.meses.map(m => (
                         <th key={m.mes} scope="col" className={m.mes === razao.mesAberto ? 'atual' : undefined}>
                           <button type="button" className="imp-meses-mes" aria-current={m.mes === razao.mesAberto ? 'true' : undefined} onClick={() => razao.abrirMes(m.mes)}
@@ -115,7 +118,7 @@ export function RazaoDaEtapa({ conta, razao, conferir, teste = [] }: { conta: st
                     </tr>
                   </thead>
                   <tbody>
-                    <tr><th scope="row">Saldo final</th>{razao.meses.map(m => <td key={m.mes} className={(m.mes === razao.mesAberto ? 'atual ' : '') + 'num' + (m.credor ? ' ext-neg' : '')} title={m.credor ? 'Ficou credor em algum dia do mês' : undefined}>{m.saldoFinal}</td>)}</tr>
+                    <tr><th scope="row">Saldo final</th>{razao.meses.map(m => <td key={m.mes} className={(m.mes === razao.mesAberto ? 'atual ' : '') + 'num' + (m.credor ? ' ext-neg' : '')} title={m.credor ? 'Ficou credor em algum dia do mês' : undefined}><ValorNaGrade texto={m.saldoFinal} /></td>)}</tr>
                     <tr><th scope="row">Pendências</th>{razao.meses.map(m => (
                       <td key={m.mes} className={m.mes === razao.mesAberto ? 'atual' : undefined}>
                         {m.creditor ? <span className="badge badge-neutral" title="CRÉD.LIQ.COBRANÇA: o Creditor entrou neste mês">Creditor</span> : m.atencoes || '—'}
