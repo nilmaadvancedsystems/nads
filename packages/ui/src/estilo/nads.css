@@ -1156,8 +1156,11 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 .executor-ferramenta iframe{display:block;width:100%;min-height:calc(100vh - var(--hdr-h,64px) - 16px);border:0;}
 .executor-ferramenta .gh-blank{margin:auto;}
 /* o razão importado na etapa (o Caixa), no desenho da Importação do banco: a largura toda, um embaixo do outro */
-/* Empréstimos: os contratos à vista no bloco (sem a faixa que abre) */
-.emp-contratos{margin:0;padding:0 12px 12px;}
+/* Empréstimos: a lista da faixa Pendências (o ícone e, ao lado, o título e a explicação) */
+.emp-pendencias{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;}
+.emp-pendencias li{display:flex;align-items:flex-start;gap:8px;}
+.emp-pendencias li > svg{width:16px;height:16px;flex:none;margin-top:2px;color:var(--warn);}
+.emp-pendencias li > span{display:flex;flex-direction:column;gap:2px;}
 /* (Vitor, 07/10/2026: "centralize e alinhe as coisas") as colunas no meio, na horizontal e na vertical — também na tabela dos
    contratos (os números com o mesmo tamanho de dígito, para os valores ficarem um embaixo do outro) */
 .emp-tabela th,.emp-tabela td,.emp-tabela th.num,.emp-tabela td.num{text-align:center;vertical-align:middle;font-variant-numeric:tabular-nums;}

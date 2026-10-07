@@ -93,7 +93,8 @@ export function useEmprestimos() {
       /** os contratos: o número, a liberação, as parcelas pagas e o saldo de cada um; os em aberto primeiro */
       contratos: [...c.contratos].sort((a, b) => Number(emAberto.includes(b)) - Number(emAberto.includes(a)) || b.inicio.localeCompare(a.inicio)).map(k => ({
         numero: k.numero,
-        liberado: k.liberadoEm ? formatos.brl(k.liberado) + ' em ' + dataBr(k.liberadoEm) : '—',
+        // a liberação em duas colunas (Vitor, 07/10/2026: "separe data inicial e valor")
+        liberadoEm: k.liberadoEm ? dataBr(k.liberadoEm) : '—', liberado: k.liberadoEm ? formatos.brl(k.liberado) : '—',
         parcelas: k.parcelas ? k.pagas + ' de ' + k.parcelas : k.pagas + (k.pagas === 1 ? ' paga' : ' pagas'),
         saldo: t.valorComLado(k.saldo),
         situacao: k.quitadoComSaldo ? 'quitado-com-saldo' as const : Math.abs(k.saldo) < 0.01 || k.completadoSemNumero ? 'quitado' as const : 'aberto' as const,
@@ -104,6 +105,18 @@ export function useEmprestimos() {
       /** os lançamentos sem número de contrato (implantação de saldo, histórico incompleto) */
       semNumero: c.semNumero.length ? { qtd: c.semNumero.length, soma: t.valorComLado(c.somaSemNumero), de: c.contratos.find(k => k.completadoSemNumero)?.numero || '' } : null,
       quitadosComSaldo: c.contratos.filter(k => k.quitadoComSaldo).map(k => k.numero + ' (' + t.valorComLado(k.saldo) + ')'),
+      /** as pendências do empréstimo (a faixa Pendências): contrato quitado com saldo, mês devedor, sem banco */
+      pendencias: [
+        ...c.contratos.filter(k => k.quitadoComSaldo).map(k => ({
+          titulo: 'Contrato ' + k.numero + ' quitado com saldo (' + t.valorComLado(k.saldo) + ')',
+          texto: 'Pagou todas as parcelas e ainda tem saldo. Costuma ser encargo ou parcela lançada com o número de outro contrato.',
+        })),
+        ...(devedores.length ? [{
+          titulo: 'Saldo devedor em ' + devedores.map(t.rotuloNumericoCompetencia).join(', '),
+          texto: 'O empréstimo fica credor ou zera: confira a parcela paga a mais ou lançada no empréstimo errado.',
+        }] : []),
+        ...(banco ? [] : [{ titulo: 'Sem banco', texto: 'Escolha o banco deste empréstimo (os bancos do Cadastro).' }]),
+      ],
       /**
        * Os lançamentos de cada contrato até o mês consultado (Vitor, 07/10/2026: "filtre de acordo com cada contrato"), com o
        * saldo do próprio contrato; e os sem número. A faixa Lançamentos escolhe um deles (ou os do período).
@@ -149,12 +162,6 @@ export function useEmprestimos() {
       if (x) guardar(x.r, banco);
       setRazoes(l => l.map(z => (z.id === id ? { ...z, banco } : z)));
     },
-    /** os empréstimos do Cadastro que valem no período (antes de importar: o que esperar), com o banco e se já veio no razão */
-    noPeriodo: t.emprestimosNoPeriodo(cadastrados, meses).map(e => {
-      const b = bancos.find(x => x.id === e.banco);
-      const noRazao = razoes.some(x => t.contratosDoRazao(x.r).contratos.some(k => k.numero === e.numero));
-      return { numero: e.numero, banco: b ? b.nome : e.banco, marca: b?.marca || e.banco, desde: t.rotuloNumericoCompetencia(e.desde), ate: e.ate ? t.rotuloNumericoCompetencia(e.ate) : '', noRazao };
-    }),
     emprestimos: lista,
   };
 }
