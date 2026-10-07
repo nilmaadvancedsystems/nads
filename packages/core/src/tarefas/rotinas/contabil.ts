@@ -190,19 +190,8 @@ export const ROTINA_CONTABIL: Rotina = {
       ],
       objecoes: [nao('sem-bens', 'A empresa não tem bens')],
     },
-    {
-      id: 'depreciacao',
-      secao: 'Ativo',
-      nome: 'Depreciação',
-      descricao: 'A depreciação do mês lançada: a conta de depreciação acumulada anda todo mês.',
-      ferramenta: null,
-      verificacao: 'manual',
-      conferir: [
-        'A depreciação acumulada é credora e cresce todo mês (parada no balancete = depreciação não lançada).',
-        'A depreciação acumulada de cada bem não passa do valor dele.',
-      ],
-      objecoes: [nao('sem-depreciacao', 'A empresa não tem bens a depreciar')],
-    },
+    // a etapa Depreciação saiu por enquanto (Vitor, 07/10/2026: "remova essa função de depreciação por enquanto"). Para
+    // voltar: id 'depreciacao', secao 'Ativo', depois de Bens — o histórico do git tem o texto dela.
 
     // ─── Passivo ──────────────────────────────────────────────────────────────
     {
