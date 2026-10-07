@@ -97,7 +97,7 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
     return {
       ...c, chave: String(c.codigo), responsavelNome: nomeDe(c.responsavel), ex,
       obrigacoes, concluida, temAlguma,
-      situacao: !temAlguma ? 'Nada no mês' : t.ROTULO_SITUACAO_GERAL[situacao], parada,
+      situacao: !temAlguma ? 'Nada no mês' : t.ROTULO_SITUACAO_GERAL[situacao], parada, andamento: situacao === 'em-andamento',
     };
   });
 

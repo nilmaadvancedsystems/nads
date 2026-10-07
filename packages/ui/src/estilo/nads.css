@@ -3229,3 +3229,5 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .medalha-bronze{--medalha:#b0703a;--medalha-claro:#e3a46c;--medalha-borda:#8a5226;color:#c98a4f;}
 .medalha-prata{--medalha:#9fa6ad;--medalha-claro:#eef1f3;--medalha-borda:#7d858c;color:var(--ink-muted);}
 .medalha-ouro{--medalha:#d4a826;--medalha-claro:#fbe38a;--medalha-borda:#a8821a;color:#c99a1c;}
+/* DP: a situação Em andamento em laranja e a Parada em vermelho (07/10/2026) */
+.badge-parada{color:var(--danger);border-color:var(--danger);background:none;}
