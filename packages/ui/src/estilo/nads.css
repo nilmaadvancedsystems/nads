@@ -3322,3 +3322,4 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 /* o andamento do "Contar agora" do SIEG (07/10/2026): o cartão de andamento do robô, fixo no canto da tela */
 .sieg-flutuante{position:fixed;right:16px;bottom:16px;z-index:70;width:min(380px,calc(100vw - 32px));margin:0;box-shadow:var(--shadow-lg);}
 .sieg-flutuante .tarefas-barra-espaco{flex:1;}
+.sieg-acoes{gap:8px;flex-wrap:wrap;align-items:center;}

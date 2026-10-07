@@ -18,7 +18,7 @@ export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 
       {vm.andamento && createPortal(
         <div className="card gmail-andamento sieg-flutuante" role="status" aria-live="polite">
           <div className="gmail-andamento-topo">
-            <b>{vm.andamento.erro ? 'A contagem não deu certo' : vm.andamento.pronto ? 'Contagem pronta' : 'Contando no SIEG'}</b>
+            <b>{vm.andamento.erro ? vm.andamento.tituloDoErro : vm.andamento.titulo}</b>
             <span className="fraco">{vm.andamento.erro ? '' : vm.andamento.pct + '%'}</span>
             <span className="tarefas-barra-espaco" />
             <button type="button" className="btn btn-ghost" onClick={vm.fecharAndamento} aria-label="Fechar" title="Fechar"><Icone nome="x" /></button>
@@ -29,7 +29,8 @@ export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 
               {vm.andamento.passos.map(p => <li key={p.texto} className={p.atual || p.feito ? 'destaque' : undefined}>{p.feito ? '✓ ' : p.atual ? '… ' : ''}{p.texto}</li>)}
             </ul>
           )}
-          {vm.andamento.resultado && <p className="hint" style={{ margin: '8px 0 0' }}><b>{vm.andamento.resultado.emitidas}</b> emitidas · <b>{vm.andamento.resultado.recebidas}</b> recebidas</p>}
+          {vm.andamento.detalhe && <p className="hint" style={{ margin: '8px 0 0' }}>{vm.andamento.detalhe}</p>}
+          {vm.andamento.resultado && <p className="hint" style={{ margin: '8px 0 0' }}>{vm.andamento.resultado}</p>}
         </div>,
         document.body,
       )}
@@ -42,15 +43,21 @@ export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 
               <small>{vm.contagem.linhasRecebidas.map(l => l.rotulo + ' ' + l.n).join(' · ') || 'nenhuma'}</small></div>
             <p className="fraco sieg-quando">Contadas no SIEG em {vm.contagem.quando}.{vm.contagem.emitidas === 0 ? ' Nenhuma nota emitida: confira o certificado e a captura no SIEG.' : ''}</p>
             {/* contar de novo, na hora (07/10/2026: "tem como ter um botão para puxar na hora?") */}
-            <div className="sieg-acoes"><BotaoAcao className="btn btn-outline" carregando={vm.contando} textoCarregando="Contando…" onClick={() => { void vm.contar(); }}><Icone nome="girar" />Contar de novo</BotaoAcao></div>
+            <div className="sieg-acoes">
+              <BotaoAcao className="btn btn-outline" carregando={vm.contando} textoCarregando="Contando…" onClick={() => { void vm.contar(); }}><Icone nome="girar" />Contar de novo</BotaoAcao>
+              <BotaoAcao className="btn btn-primary" carregando={vm.baixandoXmls} textoCarregando="Baixando…" onClick={() => { void vm.baixarXmls(); }}><Icone nome="download" />Baixar XMLs do SIEG</BotaoAcao>
+            </div>
           </div>
         ) : (
           <div className="sieg-acoes">
             <p className="fraco" style={{ margin: 0, flex: 1 }}>O SIEG ainda não contou as notas deste mês (a contagem roda de madrugada).</p>
-            <BotaoAcao className="btn btn-primary" carregando={vm.contando} textoCarregando="Contando…" onClick={() => { void vm.contar(); }}><Icone nome="girar" />Contar agora</BotaoAcao>
+            <BotaoAcao className="btn btn-outline" carregando={vm.contando} textoCarregando="Contando…" onClick={() => { void vm.contar(); }}><Icone nome="girar" />Contar agora</BotaoAcao>
+            <BotaoAcao className="btn btn-primary" carregando={vm.baixandoXmls} textoCarregando="Baixando…" onClick={() => { void vm.baixarXmls(); }}><Icone nome="download" />Baixar XMLs do SIEG</BotaoAcao>
           </div>
         )}
-        {vm.erroDaContagem && <p className="fraco sieg-aviso"><Icone nome="alert" />A contagem não deu certo: {vm.erroDaContagem}</p>}</>
+        {vm.erroDaContagem && <p className="fraco sieg-aviso"><Icone nome="alert" />A contagem não deu certo: {vm.erroDaContagem}</p>}
+        {/* o último "Baixar XMLs do SIEG" (07/10/2026): quantos e onde estão */}
+        {vm.xmls && <p className="hint" style={{ margin: '8px 0 0' }}><Icone nome="checkCircle" /> {vm.xmls.arquivos} XMLs baixados em {vm.xmls.quando} ({vm.xmls.emitidas} notas emitidas, {vm.xmls.recebidas} recebidas) · {vm.xmls.pasta}</p>}</>
       ) : (
         <>
           {vm.saidas ? (
