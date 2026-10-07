@@ -22,11 +22,11 @@ export function useEmprestimos() {
   // os bancos da empresa no Cadastro (o nome, a agência e a conta para escolher; a conta contábil para sugerir); sem
   // bancos no Cadastro, a lista de antes (a mesma do Extrator), sem a linha genérica "Banco"
   const doCadastro = (cadastro.bancos || []).map(b => ({
-    id: b.id, nome: b.apelido || b.nome, contaContabil: b.contaContabil as string | undefined,
+    id: b.id, nome: b.apelido || b.nome, marca: b.marca as string | undefined, contaContabil: b.contaContabil as string | undefined,
     detalhe: [b.agencia && 'Ag. ' + b.agencia, b.conta && 'C/C ' + b.conta].filter(Boolean).join(' · '),
   }));
   const bancos = doCadastro.length ? doCadastro : empresas.bancosDaEmpresa(s.codigo).filter(b => b.id !== 'banco').map(b => ({
-    id: b.id, nome: b.nome, contaContabil: undefined as string | undefined,
+    id: b.id, nome: b.nome, marca: b.marca as string | undefined, contaContabil: undefined as string | undefined,
     detalhe: [b.agencia && 'Ag. ' + b.agencia, b.conta && 'C/C ' + b.conta].filter(Boolean).join(' · '),
   }));
 
@@ -72,7 +72,8 @@ export function useEmprestimos() {
       /** os lançamentos sem número de contrato (implantação de saldo, histórico incompleto) */
       semNumero: c.semNumero.length ? { qtd: c.semNumero.length, soma: t.valorComLado(c.somaSemNumero), de: c.contratos.find(k => k.completadoSemNumero)?.numero || '' } : null,
       quitadosComSaldo: c.contratos.filter(k => k.quitadoComSaldo).map(k => k.numero + ' (' + t.valorComLado(k.saldo) + ')'),
-      banco: banco ? { id: banco.id, rotulo: banco.nome + (banco.detalhe ? ' · ' + banco.detalhe : '') } : null,
+      // a marca do banco: o logo dele na linha (Vitor, 07/10/2026)
+      banco: banco ? { id: banco.id, rotulo: banco.nome + (banco.detalhe ? ' · ' + banco.detalhe : ''), marca: banco.marca || banco.id } : null,
       meses: doPeriodo.map(m => ({
         mes: m.mes, rotulo: t.rotuloNumericoCompetencia(m.mes), qtd: m.lancamentos.length,
         saldo: t.valorComLado(m.saldoFinal), devedor: m.saldoFinal < -0.005,
