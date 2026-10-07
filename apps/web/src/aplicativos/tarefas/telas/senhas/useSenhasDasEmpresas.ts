@@ -17,8 +17,9 @@ export function useSenhasDasEmpresas() {
     const cert = c.situacaoDoCertificado(d?.temCertificado ? d.validade : undefined, hoje);
     return { chave: (e.codigo ?? '') + e.nome, codigo: e.codigo, nome: e.nome, temGov: !!d?.temGov, temCertificado: !!d?.temCertificado, validade: d?.validade || '', ...cert };
   });
-  const achadas = busca.trim() ? new Set(empresas.buscarEmpresas(todas.map(l => ({ codigo: l.codigo, nome: l.nome, regime: '' })), busca).map(e => e.nome)) : null;
-  const linhas = todas.filter(l => (!achadas || achadas.has(l.nome))
+  // a busca na ordem dela (o código igual primeiro); a chave tem o código (dois clientes com o mesmo nome)
+  const achadas = busca.trim() ? empresas.buscarEmpresas(todas.map(l => ({ ...l, regime: '' })), busca).map(e => e.chave) : null;
+  const linhas = (achadas ? achadas.map(k => todas.find(l => l.chave === k)!) : todas).filter(l => l
     && (filtro === 'todas' || (filtro === 'vencendo' ? l.situacao === 'vence' || l.situacao === 'vencido' : !l.temGov || !l.temCertificado)));
   return {
     cofre: vm,

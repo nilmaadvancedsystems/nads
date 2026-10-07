@@ -13,7 +13,9 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
   const robo = repo.robo();
   const cont = repo.contagem(codigo, competencia);
   const sai = repo.saidas(codigo, competencia);
-  const pedido = repo.pedido(codigo, competencia);
+  const pedido = repo.pedido(codigo, competencia, 'saidas');
+  const pedidoContagem = repo.pedido(codigo, competencia, 'contagem');
+  const contando = !!pedidoContagem && (pedidoContagem.status === 'pendente' || pedidoContagem.status === 'processando');
   const conf = sai.dados ? t.sieg.conferirSaidas(sai.dados) : null;
   const linhas = (r: Record<t.sieg.TipoDeNota, number>) => t.sieg.TIPOS_DE_NOTA.filter(x => r[x.id] > 0).map(x => ({ rotulo: x.rotulo, n: r[x.id] }));
   const pedindo = !!pedido && (pedido.status === 'pendente' || pedido.status === 'processando');
@@ -35,6 +37,14 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
     saidasCarregadas: sai.carregadas,
     pedido: pedido ? { ...pedido, pedindo } : null,
     pedindo,
+    /** o "Contar agora": o robô conta as notas desta empresa no mês (o painel atualiza sozinho quando chega) */
+    contando,
+    erroDaContagem: pedidoContagem?.status === 'erro' ? pedidoContagem.erro : '',
+    async contar() {
+      if (contando || !codigo) return;
+      try { await repo.pedirContagem(codigo, competencia); toast('Pedido ao SIEG: o robô conta as notas deste mês (alguns segundos).'); }
+      catch (err) { toast('Não consegui pedir ao SIEG: ' + (err instanceof Error ? err.message : String(err))); }
+    },
     async baixar() {
       if (pedindo) return;
       try { await repo.pedirSaidas(codigo, competencia); toast('Pedido ao SIEG: o robô baixa as saídas do mês (alguns minutos).'); }

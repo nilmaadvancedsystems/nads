@@ -2,6 +2,7 @@
 // à esquerda Novos / Vistos / Feitos / Todos; à direita cada feedback com o print (clicar amplia), o texto, quem,
 // quando, a tela e a versão; Visto e Feito.
 import { Esqueleto, Icone } from '@nads/ui';
+import { useEffect } from 'react';
 import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
 import type { SituacaoDoFeedback } from '../../dados/feedback';
 import { useFeedbacks } from './useFeedbacks';
@@ -20,36 +21,69 @@ export function JanelaDosFeedbacks({ fechar }: { fechar: () => void }) {
       {vm.carregando ? <Esqueleto linhas={6} /> : !vm.lista.length ? <p className="empty">Nenhum feedback.</p> : (
         <ul className="feedback-lista">
           {vm.lista.map(f => (
-            <li key={f.id} className="card feedback-item">
-              {f.imagem && (
-                <button type="button" className="feedback-mini" onClick={() => vm.setAberta(f.imagem)} title="Ampliar">
-                  <img src={f.imagem} alt="" />
-                </button>
-              )}
-              <div className="feedback-conteudo">
-                <div className="feedback-quem">
-                  <b>{f.nome || f.email || '—'}</b>
-                  <span className="fraco">{f.quando}</span>
-                  <span className={'badge ' + SELO[f.status]}>{NOME[f.status]}</span>
-                </div>
-                <p className="feedback-txt">{f.texto}</p>
-                <span className="fraco feedback-onde">{f.tela}{f.versao ? ' · ' + f.versao : ''}</span>
-              </div>
-              <div className="feedback-acoes">
-                {f.status === 'novo' && <button type="button" className="btn btn-outline" onClick={() => vm.marcar(f.id, 'visto')}><Icone nome="olho" />Visto</button>}
-                {f.status !== 'feito' && <button type="button" className="btn btn-primary" onClick={() => vm.marcar(f.id, 'feito')}><Icone nome="check" />Feito</button>}
-                {f.status === 'feito' && <button type="button" className="btn btn-ghost" onClick={() => vm.marcar(f.id, 'novo')}>Reabrir</button>}
-              </div>
+            <li key={f.id}>
+              <button type="button" className="card feedback-item feedback-abre" onClick={() => vm.abrir(f.id)}>
+                {f.imagem && <span className="feedback-mini"><img src={f.imagem} alt="" /></span>}
+                <span className="feedback-conteudo">
+                  <span className="feedback-quem">
+                    <b>{f.nome || f.email || '—'}</b>
+                    <span className="fraco">{f.quando}</span>
+                    <span className={'badge ' + SELO[f.status]}>{NOME[f.status]}</span>
+                  </span>
+                  <span className="feedback-txt feedback-txt-curto">{f.texto}</span>
+                </span>
+              </button>
             </li>
           ))}
         </ul>
       )}
+      {vm.aberto && <JanelaDoFeedback f={vm.aberto} fechar={vm.fecharAberto} ampliar={vm.setAberta} marcar={vm.marcar} />}
       {vm.aberta && (
         <div className="modal-overlay pessoal-fundo feedback-zoom" onMouseDown={() => vm.setAberta('')}>
           <img src={vm.aberta} alt="O print do feedback" />
         </div>
       )}
     </JanelaLateral>
+  );
+}
+
+/** A solicitação inteira numa janela flutuante por cima da lista: o print (clicar amplia), o texto, quem, quando, a tela
+ * e a versão; embaixo Visto / Feito / Reabrir. O Esc fecha só esta janela. */
+function JanelaDoFeedback({ f, fechar, ampliar, marcar }: {
+  f: NonNullable<ReturnType<typeof useFeedbacks>['aberto']>; fechar: () => void; ampliar: (img: string) => void; marcar: (id: string, s: SituacaoDoFeedback) => void;
+}) {
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); fechar(); } };
+    window.addEventListener('keydown', esc, true);
+    return () => window.removeEventListener('keydown', esc, true);
+  }, [fechar]);
+  return (
+    <div className="modal-overlay pessoal-fundo" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
+      <div className="pessoal-janela feedback-janela" role="dialog" aria-modal="true" aria-label={'Feedback de ' + (f.nome || f.email)}>
+        <header className="pessoal-topo">
+          <h2>{f.nome || f.email || '—'}</h2>
+          <span className="fraco">{f.quando}</span>
+          <span className={'badge ' + SELO[f.status]}>{NOME[f.status]}</span>
+          <span className="tarefas-barra-espaco" />
+          <button type="button" className="drawer-x" aria-label="Fechar" onClick={fechar}><Icone nome="x" /></button>
+        </header>
+        <div className="feedback-corpo">
+          {f.imagem && (
+            <button type="button" className="feedback-imagem feedback-amplia" title="Ampliar" onClick={() => ampliar(f.imagem)}>
+              <img src={f.imagem} alt="O print do feedback" />
+            </button>
+          )}
+          <p className="feedback-txt">{f.texto}</p>
+          <span className="fraco feedback-onde">{f.tela}{f.versao ? ' · ' + f.versao : ''}</span>
+        </div>
+        <footer className="usuario-pe">
+          <span className="tarefas-barra-espaco" />
+          {f.status === 'novo' && <button type="button" className="btn btn-outline" onClick={() => marcar(f.id, 'visto')}><Icone nome="olho" />Visto</button>}
+          {f.status !== 'feito' && <button type="button" className="btn btn-primary" onClick={() => marcar(f.id, 'feito')}><Icone nome="check" />Feito</button>}
+          {f.status === 'feito' && <button type="button" className="btn btn-outline" onClick={() => marcar(f.id, 'novo')}>Reabrir</button>}
+        </footer>
+      </div>
+    </div>
   );
 }
 
