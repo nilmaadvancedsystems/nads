@@ -8,7 +8,7 @@ import { rotinaDo } from './rotinaDo';
 describe('rotina do DP (o Checklist Folha)', () => {
   it('é a rotina do departamento dp, com uma etapa por obrigação e o envio', () => {
     expect(rotinaDo('dp')).toBe(ROTINA_DP);
-    expect(ROTINA_DP.etapas.map(e => e.obrigacaoDp)).toEqual(['recibos', 'folha', 's1200', 's1210', 's1299', 'dctfweb', 'darf', 'fgts', 'reinf', 'envio']);
+    expect(ROTINA_DP.etapas.map(e => e.obrigacaoDp)).toEqual(['recibos', 'folha', 's1200', 's1210', 's1299', 'dctfweb', 'darf', 'fgts', 'econsignado', 'reinf', 'envio']);
     for (const e of ROTINA_DP.etapas) expect(e.checklist?.length).toBeGreaterThan(0);
   });
   it('a planilha: 232 clientes, cada um com as obrigações do movimento', () => {

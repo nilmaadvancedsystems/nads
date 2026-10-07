@@ -25,12 +25,19 @@ export const ABAS_DO_PAINEL: readonly AbaDoPainel[] = ['resumo', 'obrigacoes'];
 /** As partes da rotina: o submenu da aba Obrigações (na URL: ?parte=). */
 export type ParteDoDp = 'folha' | 'esocial' | 'guias' | 'reinf' | 'entrega';
 const PARTES_DO_DP: readonly { id: ParteDoDp; rotulo: string; obrigacoes: readonly string[] }[] = [
-  { id: 'folha', rotulo: 'Folha', obrigacoes: ['recibos', 'folha'] },
+  // a Folha antes dos Recibos (Vitor, 07/10/2026)
+  { id: 'folha', rotulo: 'Folha', obrigacoes: ['folha', 'recibos'] },
   { id: 'esocial', rotulo: 'eSocial', obrigacoes: ['s1200', 's1210', 's1299'] },
-  { id: 'guias', rotulo: 'Guias', obrigacoes: ['dctfweb', 'darf', 'fgts'] },
+  { id: 'guias', rotulo: 'Guias', obrigacoes: ['dctfweb', 'darf', 'fgts', 'econsignado'] },
   { id: 'reinf', rotulo: 'REINF', obrigacoes: ['reinf'] },
   { id: 'entrega', rotulo: 'Entrega', obrigacoes: ['envio'] },
 ];
+/** As colunas na ordem das partes (a Folha antes dos Recibos; o eConsignado nas Guias). */
+const ORDEM_DAS_COLUNAS: readonly string[] = PARTES_DO_DP.flatMap(p => p.obrigacoes);
+const COLUNA: Record<string, { id: string; rotulo: string; nome: string }> = Object.fromEntries([
+  ...empresas.OBRIGACOES_DP.map(o => ({ id: o.id as string, rotulo: o.rotulo, nome: o.nome })),
+  { id: 'reinf', rotulo: 'REINF', nome: 'EFD-REINF' }, { id: 'envio', rotulo: 'Entregue', nome: 'Entrega ao cliente' },
+].map(o => [o.id, o]));
 
 const SEM_RESPONSAVEL = 'Sem responsável';
 const contar = (xs: readonly string[]) => {
@@ -58,6 +65,7 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   const [status, setStatus] = useState<'' | 'concluidas' | 'pendentes'>('');
   const [agrupamento, setAgrupamento] = useState('');
   const [agrupar, setAgrupar] = useState<Agrupar>('nenhum');
+  const [pendenteEm, setPendenteEm] = useState<'' | ParteDoDp>('');
 
   // os clientes como valem hoje (a planilha com o que mudou no Cadastro e nas Configurações do DP)
   const todas = doDp.clientes.map(c => {
@@ -74,7 +82,7 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
       // a REINF, para quem tem a REINF autorizada ("faltou a reinf")
       { id: 'reinf', etapa: 'dp-reinf', estado: estadoDe('dp-reinf', c.reinfAutorizada) },
       { id: 'envio', etapa: 'dp-envio', estado: estadoDe('dp-envio', temAlguma) },
-    ].map(o => {
+    ].sort((a, b) => ORDEM_DAS_COLUNAS.indexOf(a.id) - ORDEM_DAS_COLUNAS.indexOf(b.id)).map(o => {
       const est = t.estadoDa(ex, o.etapa);
       return { ...o, quem: est && o.estado === 'feita' ? est.por + ' em ' + new Date(est.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '' };
     });
@@ -92,7 +100,10 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   });
 
   const achadas = busca.trim() ? new Set(empresas.buscarEmpresas(todas.map(c => ({ codigo: c.codigo, nome: c.nomeNaTela, regime: c.enquadramento })), busca).map(e => e.codigo)) : null;
-  const filtradas = todas.filter(c => (!achadas || achadas.has(c.codigo)) && (!responsavel || c.responsavelNome === responsavel)
+  // o filtro Pendente em (Vitor, 07/10/2026): só quem ainda tem o que fazer naquela parte
+  const pendente = PARTES_DO_DP.find(p => p.id === pendenteEm) || null;
+  const filtradas = todas.filter(c => (!pendente || c.obrigacoes.some(o => pendente.obrigacoes.includes(o.id) && o.estado !== 'nao-tem' && o.estado !== 'feita'))
+    && (!achadas || achadas.has(c.codigo)) && (!responsavel || c.responsavelNome === responsavel)
     && (!movimento || c.movimento === movimento) && (!enquadramento || c.enquadramento === enquadramento)
     && (!agrupamento || c.agrupamento === agrupamento) && (!status || (status === 'concluidas') === c.concluida))
     .sort((a, b) => a.nomeNaTela.localeCompare(b.nomeNaTela, 'pt-BR'));
@@ -140,7 +151,8 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
     setParte: (p: ParteDoDp) => mudarParam('parte', p === PARTES_DO_DP[0].id ? '' : p),
     tituloDaParte: parte ? parte.rotulo : 'Obrigações do mês',
     /** os grupos do cabeçalho (Folha, eSocial, Guias, REINF, Entrega), na ordem das colunas, e a primeira coluna de cada um */
-    gruposDeColunas: PARTES_DO_DP.map(p => ({ rotulo: p.rotulo, colunas: p.obrigacoes.length })),
+    // a Entrega com a coluna Onde (como chega ao cliente)
+    gruposDeColunas: PARTES_DO_DP.map(p => ({ rotulo: p.rotulo, colunas: p.obrigacoes.length + (p.id === 'entrega' ? 1 : 0) })),
     primeiras: new Set(PARTES_DO_DP.map(p => p.obrigacoes[0])),
     /** quantos clientes ainda faltam nesta parte */
     faltam: linhasDaParte.filter(c => !c.concluida).length,
@@ -163,8 +175,7 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
       const feitos = deles.filter(c => c.concluida).length;
       return { nome: r, total: deles.length, feitos, pct: deles.length ? Math.round((feitos / deles.length) * 100) : 0, parados: deles.filter(c => c.parada).length };
     }).filter(r => r.total > 0),
-    colunas: [...empresas.OBRIGACOES_DP.map(o => ({ id: o.id as string, rotulo: o.rotulo, nome: o.nome })), { id: 'reinf', rotulo: 'REINF', nome: 'EFD-REINF' }, { id: 'envio', rotulo: 'Entregue', nome: 'Entrega ao cliente' }]
-      .filter(o => !parte || parte.obrigacoes.includes(o.id)),
+    colunas: ORDEM_DAS_COLUNAS.map(id => COLUNA[id]).filter(o => !parte || parte.obrigacoes.includes(o.id)),
     grupos: agrupar === 'nenhum'
       ? [{ nome: '', linhas: linhasDaParte, feitas: 0 }]
       : [...new Set(linhasDaParte.map(chaveDoGrupo))].sort((a, b) => a.localeCompare(b, 'pt-BR')).map(nome => {
@@ -179,8 +190,10 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
       movimentos: contar(todas.map(c => c.movimento)).map(x => x.rotulo),
       enquadramentos: contar(todas.map(c => c.enquadramento)).map(x => x.rotulo),
       agrupamentos: contar(todas.map(c => c.agrupamento).filter(Boolean)).map(x => x.rotulo).sort((a, b) => a.localeCompare(b, 'pt-BR')),
-      algum: !!(busca || responsavel || movimento || enquadramento || status || agrupamento),
-      limpar: () => { setBusca(''); setResponsavel(''); setMovimento(''); setEnquadramento(''); setStatus(''); setAgrupamento(''); },
+      pendenteEm, setPendenteEm,
+      partes: PARTES_DO_DP.map(p => ({ valor: p.id, rotulo: p.rotulo })),
+      algum: !!(busca || responsavel || movimento || enquadramento || status || agrupamento || pendenteEm),
+      limpar: () => { setBusca(''); setResponsavel(''); setMovimento(''); setEnquadramento(''); setStatus(''); setAgrupamento(''); setPendenteEm(''); },
     },
     /** a bolinha da obrigação: a fazer → feita; feita → volta a fazer (grava com quem e quando, como o executor) */
     /** o total da folha do mês que o DP informou (o Fiscal vê ao lado do faturamento; Vitor, 07/10/2026) */

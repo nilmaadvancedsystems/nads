@@ -18,6 +18,8 @@ export const OBRIGACOES_DP = [
   { id: 'dctfweb', rotulo: 'DCTFWeb', nome: 'DCTFWeb' },
   { id: 'darf', rotulo: 'DARF', nome: 'DARF (INSS/IRRF)' },
   { id: 'fgts', rotulo: 'FGTS', nome: 'FGTS Digital' },
+  // o crédito do trabalhador (Vitor, 07/10/2026: "uma opção de eConsignado")
+  { id: 'econsignado', rotulo: 'eConsig.', nome: 'eConsignado' },
 ] as const;
 export type ObrigacaoDp = (typeof OBRIGACOES_DP)[number]['id'];
 
