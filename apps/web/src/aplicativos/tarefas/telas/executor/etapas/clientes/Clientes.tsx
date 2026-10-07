@@ -1,6 +1,6 @@
 // A etapa Clientes da Tarefa (Vitor, 06/10/2026), com as peças do catálogo: as etapas no Segmentado com o Próximo à
-// direita; os arquivos na linha da Importação (o ícone de importar; importado, o check que vira × e tira); o saldo credor
-// e os clientes em tabela; o selo de cada cliente troca entre o saldo e Conferido (os dois em laranja; o Ok é do sistema), e o
+// direita; os arquivos na linha da Importação (o ícone de importar; importado, o check que vira × e tira); o credor na
+// grade dos Arquivos (com ele, o "Corrigi, irei reimportar" no lugar do Próximo); os clientes em tabela; o selo de cada cliente troca entre o saldo e Conferido (os dois em laranja; o Ok é do sistema), e o
 // conferido abre a observação; o envio com a planilha, o e-mail e o WhatsApp. Só o balancete dinâmico (Vitor, 06/10/2026).
 import { Alerta, Icone, LogoGmail, LogoWhatsApp, MenuSuspenso, Segmentado } from '@nads/ui';
 import { Fragment, useRef, useState, type ReactNode } from 'react';
@@ -18,7 +18,10 @@ export function Clientes() {
       <div className="tarefas-barra-topo">
         <Segmentado<TelaClientes> valor={vm.tela} onMudar={vm.irPara} opcoes={vm.telas} />
         <span className="tarefas-barra-espaco" />
-        {vm.temProxima && <button type="button" className="btn btn-primary" disabled={!vm.podeSeguir} onClick={vm.proximo}>Próximo</button>}
+        {/* com cliente credor, o "Corrigi, irei reimportar" no lugar do Próximo travado: tira o dinâmico para importar o
+            corrigido; deu tudo ok, volta o Próximo (Vitor, 07/10/2026) */}
+        {vm.corrigir ? <button type="button" className="btn btn-primary" onClick={vm.tirar}>Corrigi, irei reimportar</button>
+          : vm.temProxima && <button type="button" className="btn btn-primary" disabled={!vm.podeSeguir} onClick={vm.proximo}>Próximo</button>}
         {/* no Envio, as saídas na linha das etapas (Vitor, 06/10/2026) */}
         {vm.tela === 'envio' && vm.conferidos.length > 0 && (
           <div className="btn-row">
@@ -29,7 +32,6 @@ export function Clientes() {
         )}
       </div>
       {vm.tela === 'arquivos' && <Arquivos vm={vm} />}
-      {vm.tela === 'credor' && <Credor vm={vm} />}
       {vm.tela === 'clientes' && <ListaDeClientes vm={vm} />}
       {vm.tela === 'envio' && <Envio vm={vm} />}
     </section>
@@ -101,35 +103,6 @@ function LinhaDoArquivo({ titulo, dica = '', feito, onArquivo, onTirar, teste, c
       </div>
       {children}
     </div>
-  );
-}
-
-function Credor({ vm }: { vm: VM }) {
-  const arquivo = useRef<HTMLInputElement>(null);
-  return (
-    <>
-      {/* o Reimportar no próprio aviso (Vitor, 06/10/2026): o dinâmico novo substitui o anterior */}
-      <div className="alerta-linha">
-        <Alerta titulo={vm.credores.length + (vm.credores.length === 1 ? ' cliente com saldo credor' : ' clientes com saldo credor')}
-          texto="Corrija estes no Alterdata primeiro e reimporte o balancete dinâmico.">
-          <div className="btn-row">
-            <button type="button" className="btn btn-primary" onClick={() => arquivo.current?.click()}><Icone nome="upload" />Reimportar</button>
-            <input ref={arquivo} type="file" accept=".xls,.xlsx,.csv" className="sr-only" tabIndex={-1} aria-hidden="true"
-              onChange={ev => { const f = ev.target.files?.[0]; ev.target.value = ''; vm.importar(f); }} />
-          </div>
-        </Alerta>
-      </div>
-      <div className="table-wrap" style={{ marginTop: 12 }}>
-        <table className="table-compact">
-          <thead><tr><th>Conta</th><th>Cliente</th><th className="num">Saldo</th></tr></thead>
-          <tbody>
-            {vm.credores.map(k => (
-              <tr key={k.codigo}><td>{k.codigo}</td><td className="wrap">{k.nome}</td><td className="num ext-neg">{k.saldo}</td></tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </>
   );
 }
 

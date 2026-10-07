@@ -1,5 +1,5 @@
 // ViewModel da etapa Fornecedores da Tarefa (Vitor, 07/10/2026: "a mesma coisa que o Clientes, mas o fornecedor errado é o
-// devedor"). As mesmas quatro telas: Arquivos (o balancete dinâmico), Saldo devedor (só quando tem: corrigir e reimportar),
+// devedor"). As mesmas três telas: Arquivos (o balancete dinâmico; com devedor, o "Corrigi, irei reimportar" no lugar do Próximo),
 // Fornecedores (o selo Saldo ↔ Conferido, o Ok do sistema na conta zerada, a observação e o razão da conta) e Envio.
 // As regras são as do Clientes (@nads/core clientes) com o lado 'fornecedores': o saldo vem com o sinal trocado (positivo =
 // a empresa deve), então o "credor" das regras é o fornecedor devedor. As marcas ficam por mês, por enquanto só neste navegador.
@@ -11,7 +11,7 @@ import { criarTicket } from '../../../../dados/mandei';
 import { useOperador } from '../../../../casca/operador';
 import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 
-export type TelaFornecedores = 'arquivos' | 'devedor' | 'fornecedores' | 'envio';
+export type TelaFornecedores = 'arquivos' | 'fornecedores' | 'envio';
 export type FiltroFornecedores = 'todos' | 'pendente' | 'ok' | 'conferido';
 
 const mesAntes = (m: string) => { const [a, mm] = m.split('-').map(Number); return mm === 1 ? (a - 1) + '-12' : a + '-' + String(mm - 1).padStart(2, '0'); };
@@ -101,9 +101,11 @@ export function useFornecedores() {
   }
 
   const arquivosProntos = !!dinamico;
-  const telas: TelaFornecedores[] = ['arquivos', ...(arquivosProntos && credores.length ? ['devedor' as const] : []), 'fornecedores', 'envio'];
+  // sem a etapa Saldo devedor (Vitor, 07/10/2026: "remove esse saldo devedor e deixe só arquivos"): o devedor fica na grade dos
+  // Arquivos e, no lugar do Próximo travado, o "Corrigi, irei reimportar" (tira o dinâmico para importar o corrigido)
+  const telas: TelaFornecedores[] = ['arquivos', 'fornecedores', 'envio'];
   const i = telas.indexOf(tela);
-  const podeSeguir = tela === 'arquivos' ? arquivosProntos && contas.length > 0 : tela === 'devedor' ? credores.length === 0 : tela === 'fornecedores';
+  const podeSeguir = tela === 'arquivos' ? arquivosProntos && contas.length > 0 && !credores.length : tela === 'fornecedores';
   // na Tarefa: os arquivos e nenhum credor (a pessoa pode dar o check normal depois; os conferidos passam para o mês seguinte)
   const faltam = !arquivosProntos ? ['Importar o balancete dinâmico'] : credores.length ? ['Corrigir ' + credores.length + (credores.length === 1 ? ' fornecedor' : ' fornecedores') + ' com saldo devedor'] : [];
   useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
@@ -118,11 +120,13 @@ export function useFornecedores() {
   return {
     mes: rotuloMes,
     tela: telas.includes(tela) ? tela : 'arquivos',
-    telas: telas.map(t => ({ valor: t, rotulo: t === 'arquivos' ? 'Arquivos' : t === 'devedor' ? 'Saldo devedor' : t === 'fornecedores' ? 'Fornecedores' : 'Envio' })),
+    telas: telas.map(t => ({ valor: t, rotulo: t === 'arquivos' ? 'Arquivos' : t === 'fornecedores' ? 'Fornecedores' : 'Envio' })),
     irPara: (t: TelaFornecedores) => setTela(t),
     temProxima: i < telas.length - 1,
     podeSeguir,
     proximo: () => { if (podeSeguir && i < telas.length - 1) setTela(telas[i + 1]); },
+    /** nos Arquivos com fornecedor devedor no mês: o "Corrigi, irei reimportar" no lugar do Próximo (deu tudo ok, volta o Próximo) */
+    corrigir: (telas.includes(tela) ? tela : 'arquivos') === 'arquivos' && arquivosProntos && credores.length > 0,
     // Arquivos
     dinamico: dinamico ? { nome: dinamico.nome, resumo: contas.length + ' fornecedores · ' + rotuloMes } : null,
     importar: (f: File | undefined) => { void importar(f); },
@@ -136,8 +140,6 @@ export function useFornecedores() {
       // sem sinal (Vitor, 07/10/2026): o certo (credor) em branco; o errado (devedor) em azul
       saldos: c.saldos.map(x => ({ mes: x.mes, valor: x.saldo ? reais(Math.abs(x.saldo)) : '—', credor: x.saldo < -0.005, cor: x.saldo < -0.005 ? 'ext-azul' : '' })),
     })),
-    // Saldo devedor
-    credores: credores.map(k => ({ codigo: k.codigo, nome: k.nome, saldo: reais(Math.abs(k.saldo)) })),
     // Fornecedores
     carregado: marcas.carregado,
     /** as perguntas prontas para o cliente (o menu da observação) */
