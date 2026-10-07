@@ -35,13 +35,23 @@ export function useFornecedores() {
   const marcas = useMarcasDoMes(s.nome, mes, avisar, LADO);
   const anterior = useMarcasDoMes(s.nome, mes ? mesAntes(mes) : '', undefined, LADO);
 
+  /**
+   * Põe o dinâmico na tela. Tudo certo (com contas e nenhum devedor no mês), já segue para a lista, sem o Próximo (Vitor,
+   * 07/10/2026: "quando importar o dinâmico e estiver tudo certo, já pode prosseguir"); com devedor, fica nos Arquivos.
+   */
+  function entrarComDinamico(nome: string, d: cl.BalanceteDinamico) {
+    setDinamico({ nome, d });
+    const doMes = cl.clientesDoDinamico(d, mes, LADO);
+    if (doMes.length && !cl.credores(doMes).length) setTela('fornecedores');
+  }
+
   async function importar(f: File | undefined) {
     if (!f) return;
     try {
       const rows = c.lerPlanilha(await f.arrayBuffer());
       const d = cl.lerBalanceteDinamico(rows);
       if (!d.meses.includes(mes)) throw new Error('O balancete dinâmico não tem o mês ' + tarefas.rotuloNumericoCompetencia(mes) + '.');
-      setDinamico({ nome: f.name, d });
+      entrarComDinamico(f.name, d);
       aviso({ tom: 'ok', titulo: 'Balancete dinâmico importado', texto: f.name });
     } catch (e) { aviso({ tom: 'erro', titulo: 'Não deu para ler ' + f.name, texto: e instanceof Error ? e.message : String(e) }); }
   }
@@ -52,7 +62,7 @@ export function useFornecedores() {
     { id: 'dinamico-credores', rotulo: 'Balancete dinâmico (com saldo devedor)' },
   ] : [], id => {
     const d = cl.dinamicoDeTeste(mes, id === 'dinamico-credores', LADO);
-    setDinamico({ nome: 'balancete-dinamico-de-teste.xls', d });
+    entrarComDinamico('balancete-dinamico-de-teste.xls', d);
     aviso({ tom: 'ok', titulo: 'Balancete dinâmico de teste', texto: 'Só nesta tela: nada vai para o banco.' });
   });
 
