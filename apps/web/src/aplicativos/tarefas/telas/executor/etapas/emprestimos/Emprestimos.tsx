@@ -3,13 +3,17 @@
 // no menu (já sugerido pelo razão), o check que tira, a grade com o saldo do fim de cada mês (devedor em vermelho) e a
 // faixa com os lançamentos.
 import { Alerta, Icone, LogoBanco, MenuSuspenso } from '@nads/ui';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../../comum/GradeDosMeses';
 import { useEmprestimos, type VmEmprestimos } from './useEmprestimos';
 
 function Emprestimo({ e, vm }: { e: VmEmprestimos['emprestimos'][number]; vm: VmEmprestimos }) {
   const grade = useColunaAjustavel('emprestimos', Math.max(14, 22 - e.meses.length) + '%', e.meses.length);
+  // o filtro da faixa Lançamentos: os do período (a conta toda) ou os de um contrato (até o mês consultado)
+  const [filtro, setFiltro] = useState('periodo');
+  const doContrato = e.porContrato.find(k => k.id === filtro) || null;
+  const linhas = doContrato ? doContrato.lancamentos : e.lancamentos;
   return (
     <div className={'imp-bloco' + (e.banco && !e.devedores.length ? ' imp-ok' : '')}>
       <div className="imp-linha">
@@ -73,13 +77,22 @@ function Emprestimo({ e, vm }: { e: VmEmprestimos['emprestimos'][number]; vm: Vm
           </table>
         </div>
       </FaixaQueAbre>
-      <FaixaQueAbre titulo="Lançamentos" qtd={e.lancamentos.length}>
+      <FaixaQueAbre titulo="Lançamentos" qtd={linhas.length}>
+        <div className="imp-mov-topo">
+          <MenuSuspenso rotulo={doContrato ? (doContrato.id === 'sem-numero' ? 'Sem número de contrato' : 'Contrato ' + doContrato.rotulo) : 'Lançamentos do período'} className="btn btn-outline" largura={280}
+            dica="Filtrar os lançamentos por contrato"
+            itens={[
+              { rotulo: 'Lançamentos do período', marcado: !doContrato, onClick: () => setFiltro('periodo') },
+              'separador' as const,
+              ...e.porContrato.map(k => ({ rotulo: k.id === 'sem-numero' ? 'Sem número de contrato' : 'Contrato ' + k.rotulo, dica: k.lancamentos.length + ' lançamentos', marcado: filtro === k.id, onClick: () => setFiltro(k.id) })),
+            ]} />
+        </div>
         <div className="imp-mov">
           <table className="table-compact">
             <thead><tr><th>Data</th><th>Contrapartida</th><th>Histórico</th><th className="num">Débito</th><th className="num">Crédito</th><th className="num">Saldo</th></tr></thead>
             <tbody>
-              <tr className="imp-mov-anterior"><td colSpan={5}>Saldo anterior</td><td className="num">{e.saldoAnterior}</td></tr>
-              {e.lancamentos.map(l => (
+              {!doContrato && <tr className="imp-mov-anterior"><td colSpan={5}>Saldo anterior</td><td className="num">{e.saldoAnterior}</td></tr>}
+              {linhas.map(l => (
                 <tr key={l.id}>
                   <td style={{ whiteSpace: 'nowrap' }}>{l.data}</td>
                   <td>{l.contrapartida}</td>
@@ -130,11 +143,34 @@ export function Emprestimos() {
         </div>
       )}
 
+      {/* os empréstimos que o Cadastro já conhece neste período (de razões importados antes) */}
+      {vm.noPeriodo.length > 0 && (
+        <div className="card">
+          <div className="card-head"><h3>Empréstimos da empresa em {vm.periodo}</h3><span className="hint">do Cadastro: o banco e os meses de cada contrato, guardados quando o razão foi importado</span></div>
+          <div className="table-wrap">
+            <table className="table-compact">
+              <thead><tr><th>Contrato</th><th>Banco</th><th>Desde</th><th>Até</th><th>Razão</th></tr></thead>
+              <tbody>
+                {vm.noPeriodo.map(e => (
+                  <tr key={e.numero}>
+                    <td className="num"><b>{e.numero}</b></td>
+                    <td><span className="emp-banco"><span className="imp-ico imp-logo"><LogoBanco banco={e.marca} cor /></span>{e.banco}</span></td>
+                    <td>{e.desde}</td>
+                    <td>{e.ate || 'em aberto'}</td>
+                    <td>{e.noRazao ? <span className="badge badge-ok">Importado</span> : <span className="badge badge-neutral">Falta importar</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       <div className="imp-lista">
         {vm.emprestimos.map(e => <Emprestimo key={e.id} e={e} vm={vm} />)}
       </div>
 
-      {!vm.emprestimos.length && (
+      {!vm.emprestimos.length && !vm.noPeriodo.length && (
         <div className="gh-blank">
           <Icone nome="landmark" />
           <h4>Importe o razão de cada empréstimo</h4>

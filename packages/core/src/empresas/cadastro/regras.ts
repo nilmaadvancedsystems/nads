@@ -5,7 +5,7 @@
 import { nomeNorm } from '../../formatos';
 import { BANCOS_CONHECIDOS, bancosDaEmpresa, idDaConta, rotuloDaConta, type BancoDaEmpresa } from '../bancos';
 import {
-  type CadastroDaEmpresa, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, type ParametrosDoDpDoMes, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel,
+  type CadastroDaEmpresa, type EmprestimoDaEmpresa, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, type ParametrosDoDpDoMes, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel,
 } from './tipos';
 
 /** Quantos registros do histórico ficam guardados (os mais novos). */
@@ -127,6 +127,7 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...(typeof doc.prestaServico === 'boolean' ? { prestaServico: doc.prestaServico } : {}),
     ...(typeof doc.cartaoEmpresarial === 'boolean' ? { cartaoEmpresarial: doc.cartaoEmpresarial } : {}),
     ...(typeof doc.vendeNoCartao === 'boolean' ? { vendeNoCartao: doc.vendeNoCartao } : {}),
+    ...(Array.isArray(doc.emprestimos) ? { emprestimos: (doc.emprestimos as Record<string, unknown>[]).map(e => ({ numero: texto(e?.numero), banco: texto(e?.banco), desde: texto(e?.desde), ...(texto(e?.ate) ? { ate: texto(e?.ate) } : {}) })).filter(e => e.numero && e.banco) } : {}),
     ...(Array.isArray(doc.socios) ? { socios: (doc.socios as Record<string, unknown>[]).map(s => ({ nome: texto(s?.nome), cpf: texto(s?.cpf) })).filter(s => s.nome || s.cpf) } : {}), atualizadoEm: opcional(doc.atualizadoEm),
     ...responsaveisDoDocumento(doc.responsaveis), ...dpDoDocumento(doc.dp), ...transferenciasDoDocumento(doc.transferencias),
     ...(doc.nova && typeof doc.nova === 'object' && texto((doc.nova as Record<string, unknown>).regime)
@@ -145,6 +146,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(typeof c.cartaoEmpresarial === 'boolean' ? { cartaoEmpresarial: c.cartaoEmpresarial } : {}),
     ...(typeof c.vendeNoCartao === 'boolean' ? { vendeNoCartao: c.vendeNoCartao } : {}),
     ...(c.socios?.length ? { socios: c.socios } : {}),
+    ...(c.emprestimos?.length ? { emprestimos: c.emprestimos } : {}),
     ...(c.responsaveis && Object.keys(c.responsaveis).length ? { responsaveis: c.responsaveis } : {}),
     ...(c.dp && Object.keys(c.dp).length ? { dp: c.dp } : {}),
     ...(c.transferencias && Object.keys(c.transferencias).length ? { transferencias: c.transferencias } : {}),
@@ -201,6 +203,21 @@ export function definirSocios(c: CadastroDaEmpresa, socios: readonly Socio[], po
   const resto: CadastroDaEmpresa = { ...c };
   delete resto.socios;
   return registrar(novos.length ? { ...resto, socios: novos } : resto, por, agora, 'Sócios', novos.map(s => s.nome || s.cpf).join(', ') || 'Nenhum');
+}
+
+/**
+ * Os empréstimos achados num razão, com o banco escolhido: entram no Cadastro (o mesmo contrato é atualizado, os outros
+ * ficam). Igual ao que já está: não muda nada.
+ */
+export function registrarEmprestimos(c: CadastroDaEmpresa, itens: readonly EmprestimoDaEmpresa[], por: string, agora: Date): CadastroDaEmpresa {
+  const atuais = c.emprestimos || [];
+  const porNumero = new Map(atuais.map(e => [e.numero, e]));
+  for (const e of itens) porNumero.set(e.numero, { numero: e.numero, banco: e.banco, desde: e.desde, ...(e.ate ? { ate: e.ate } : {}) });
+  const novos = [...porNumero.values()].sort((a, b) => a.desde.localeCompare(b.desde) || a.numero.localeCompare(b.numero));
+  const chave = (l: readonly EmprestimoDaEmpresa[]) => l.map(e => e.numero + '#' + e.banco + '#' + e.desde + '#' + (e.ate || '')).join('|');
+  if (chave(novos) === chave(atuais)) return c;
+  const mudaram = itens.filter(e => { const a = porNumero.get(e.numero); return a && chave([a]) !== chave(atuais.filter(x => x.numero === e.numero)); });
+  return registrar({ ...c, emprestimos: novos }, por, agora, 'Empréstimos', mudaram.map(e => e.numero + ' (' + e.banco + ')').join(', ') || 'atualizados');
 }
 
 /** Quem cuida da empresa num departamento (vazio = ninguém). Igual ao que já está: não muda nada. */

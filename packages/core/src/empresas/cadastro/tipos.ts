@@ -78,6 +78,9 @@ export interface RegistroCadastro {
 /** Um sócio da empresa: o nome e o CPF (só os dígitos). */
 export interface Socio { nome: string; cpf: string }
 
+/** Um empréstimo no Cadastro: o contrato, o banco (id da conta bancária) e de quando até quando ele vale ('aaaa-mm'). */
+export interface EmprestimoDaEmpresa { numero: string; banco: string; desde: string; ate?: string }
+
 export interface CadastroDaEmpresa {
   nome: string;
   codigo: number | null;
@@ -98,6 +101,11 @@ export interface CadastroDaEmpresa {
   vendeNoCartao?: boolean;
   /** os sócios, com o nome e o CPF (Vitor, 06/10/2026): a etapa Bancos acha a transferência para o sócio no extrato */
   socios?: Socio[];
+  /**
+   * Os empréstimos da empresa (Vitor, 07/10/2026): o número do contrato, o banco e os meses em que ele vale. Nascem quando
+   * a pessoa importa o razão na etapa Empréstimos e escolhe o banco; nas outras competências, a etapa já sabe quais valem.
+   */
+  emprestimos?: EmprestimoDaEmpresa[];
   /**
    * quem cuida da empresa no Fiscal e no Contábil (Vitor, 06/10/2026: "o cadastro por responsável"): o nome da pessoa
    * da equipe. Sem = ninguém escolhido (no Fiscal, vale o da planilha do Checklist Folha, que é do Fiscal).

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bancoDoRazao, contratosDoRazao, mesesDevedores, numeroDoContrato } from './emprestimos';
+import { bancoDoRazao, bancoPelosContratos, contratosDoRazao, emprestimosNoPeriodo, emprestimosParaOCadastro, mesesDevedores, numeroDoContrato } from './emprestimos';
 import { lerRazao, mesesDoRazao } from './razao';
 
 const CAB = ['', 'Status conciliação', 'Data', 'Lançamento automático', 'Contrapartida', 'Descrição', 'Valor', 'Histórico', 'Descrição histórico', 'Saldo', 'Observação'];
@@ -64,5 +64,19 @@ describe('os contratos dentro do razão', () => {
     ]);
     const c = contratosDoRazao(r);
     expect(c.contratos.map(k => [k.numero, k.saldo, k.completadoSemNumero])).toEqual([['901149', -1000, true]]);
+  });
+  it('vai para o Cadastro com o banco e os meses; nas outras competências, valem os do período e o banco vem pelos contratos', () => {
+    const H = (data: string, valor: number, hist: string) => ['', '', data, '', '10503', 'x', valor, '', hist, 0, ''];
+    const r = lerRazao([CAB,
+      H('10/01/2025', 2000, 'Pelo valor de empréstimos - doc. 1111111 2 parcelas'), H('10/02/2025', -1000, '1111111 DÉB.EMPRÉSTIMO'), H('10/03/2025', -1000, '1111111 DÉB.EMPRÉSTIMO'),
+      H('20/06/2025', 5000, '2222222 CRÉD.EMPRÉSTIMO'), H('20/07/2025', -1000, '2222222 DÉB.EMPRÉSTIMO'),
+    ]);
+    const cad = emprestimosParaOCadastro(contratosDoRazao(r).contratos, 'sicoob');
+    expect(cad).toEqual([{ numero: '1111111', banco: 'sicoob', desde: '2025-01', ate: '2025-03' }, { numero: '2222222', banco: 'sicoob', desde: '2025-06' }]);
+    expect(emprestimosNoPeriodo(cad, ['2025-04', '2025-05']).map(e => e.numero)).toEqual([]);
+    expect(emprestimosNoPeriodo(cad, ['2025-03', '2025-04', '2025-05', '2025-06']).map(e => e.numero)).toEqual(['1111111', '2222222']);
+    expect(emprestimosNoPeriodo(cad, ['2026-01']).map(e => e.numero)).toEqual(['2222222']);
+    expect(bancoPelosContratos([{ numero: '2222222' }, { numero: '3333333' }], cad)).toBe('sicoob');
+    expect(bancoPelosContratos([{ numero: '3333333' }], cad)).toBeNull();
   });
 });

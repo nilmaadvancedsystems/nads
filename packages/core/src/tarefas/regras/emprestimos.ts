@@ -94,3 +94,31 @@ export function contratosDoRazao(r: RazaoDaConta, ate?: string): { contratos: Co
     semNumero, somaSemNumero,
   };
 }
+
+// ─── Os empréstimos guardados no Cadastro (Vitor, 07/10/2026: "o usuário deixando selecionado aqui, você já adiciona nas
+// outras competências, de acordo com o razão, quando e qual empréstimo entra até a competência consultada") ───────────
+
+/** O que vai para o Cadastro de cada contrato do razão: o banco escolhido e os meses em que ele valeu (quitado: até o fim). */
+export function emprestimosParaOCadastro(contratos: readonly ContratoDoRazao[], banco: string): { numero: string; banco: string; desde: string; ate?: string }[] {
+  return contratos.map(k => {
+    const quitado = Math.abs(k.saldo) < 0.01 || k.completadoSemNumero;
+    return { numero: k.numero, banco, desde: (k.liberadoEm || k.inicio).slice(0, 7), ...(quitado ? { ate: k.fim.slice(0, 7) } : {}) };
+  });
+}
+
+/** Os empréstimos do Cadastro que valem no período ('aaaa-mm', em ordem): começaram até o fim e não acabaram antes do início. */
+export function emprestimosNoPeriodo<T extends { desde: string; ate?: string }>(cadastrados: readonly T[], meses: readonly string[]): T[] {
+  if (!meses.length) return [];
+  const [ini, fim] = [meses[0], meses[meses.length - 1]];
+  return cadastrados.filter(e => e.desde <= fim && (!e.ate || e.ate >= ini));
+}
+
+/** O banco do razão pelos contratos já guardados (o que mais aparece); null = nenhum contrato dele está no Cadastro. */
+export function bancoPelosContratos(contratos: readonly { numero: string }[], cadastrados: readonly { numero: string; banco: string }[]): string | null {
+  const vezes = new Map<string, number>();
+  for (const k of contratos) {
+    const b = cadastrados.find(e => e.numero === k.numero)?.banco;
+    if (b) vezes.set(b, (vezes.get(b) || 0) + 1);
+  }
+  return [...vezes].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+}
