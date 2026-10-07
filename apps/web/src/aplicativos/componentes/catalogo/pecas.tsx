@@ -373,6 +373,8 @@ export const PECAS_BASE: Peca[] = [
         </div>
       );
     } },
+  { id: 'mandei-formulario', tipo: 'cartoes', nome: 'Mandei — o formulário do cliente', descricao: 'A página pública do link (Vitor, 07/10/2026): a entrada com o passo a passo, um cliente por vez com os lançamentos, a pergunta como mensagem, as respostas em cartões com ícone, o anexar, a revisão e a barra com o progresso. Classes .mandei-* (só nessa página).', classes: ['mandei', 'mandei-item', 'mandei-opcao', 'mandei-lanc', 'mandei-msg', 'mandei-anexo', 'mandei-barra'], telas: [],
+    demo: () => <div className="mandei-opcoes" style={{ width: '100%' }}><button type="button" className="mandei-opcao on"><span className="mandei-opcao-ico"><Icone nome="cartao" /></span>Foi pago em dinheiro</button><button type="button" className="mandei-opcao"><span className="mandei-opcao-ico"><Icone nome="landmark" /></span>Foi pago de outra conta</button></div> },
   { id: 'msg-balao', tipo: 'avisos', nome: 'Mensagem para o cliente (balão)', descricao: 'A observação que vai para o cliente, num balão de conversa; ao lado, o check que vira × e apaga (Vitor, 07/10/2026)', classes: ['msg-balao'], telas: ['t-exec-clientes'],
     demo: () => <span className="msg-balao"><Icone nome="mensagem" />No meu sistema, está em aberto: 25/08/2026 - NF 10111 - R$ 1.514,65</span> },
   { id: 'parity', tipo: 'avisos', nome: 'Faixa verde (bate)', classes: ['parity'], telas: ['c-relatorio'], largo: true, demo: () => <div className="parity"><Icone nome="checkCircle" />Tudo bate com o balancete.</div> },
