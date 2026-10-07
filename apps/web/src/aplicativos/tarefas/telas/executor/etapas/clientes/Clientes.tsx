@@ -3,7 +3,7 @@
 // e os clientes em tabela; o selo de cada cliente troca entre o saldo e Conferido (os dois em laranja; o Ok é do sistema), e o
 // conferido abre a observação; o envio com a planilha, o e-mail e o WhatsApp. Só o balancete dinâmico (Vitor, 06/10/2026).
 import { Alerta, Icone, LogoGmail, LogoWhatsApp, MenuSuspenso, Segmentado } from '@nads/ui';
-import { useRef } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { useClientes, type FiltroClientes, type TelaClientes } from './useClientes';
 
@@ -38,32 +38,36 @@ export function Clientes() {
 function Arquivos({ vm }: { vm: VM }) {
   return (
     <div className="imp-lista">
-      <LinhaDoArquivo titulo="Balancete dinâmico" dica={'O balancete dinâmico atualizado, com ' + vm.mes} feito={vm.dinamico} onArquivo={vm.importar} onTirar={vm.tirar} teste={vm.teste} />
-      {/* importado: os clientes credores em algum mês, com o saldo mês a mês e o mês credor no selo Diferença (Vitor, 07/10/2026) */}
-      {vm.dinamico && vm.credoresNoPeriodo.length > 0 && (
-        <div className="card" style={{ marginTop: 8 }}>
-          <h3>Credores em algum mês ({vm.credoresNoPeriodo.length})</h3>
-          <div className="table-wrap">
-            <table className="table-compact">
-              <thead><tr><th>Conta</th>{vm.mesesDosCredores.map(m => <th key={m} className="num">{m}</th>)}</tr></thead>
+      <LinhaDoArquivo titulo="Balancete dinâmico" dica={'O balancete dinâmico atualizado, com ' + vm.mes} feito={vm.dinamico} onArquivo={vm.importar} onTirar={vm.tirar} teste={vm.teste}>
+        {/* importado: os credores em algum mês, na grade dos meses do Caixa (Vitor, 07/10/2026); o mês credor em vermelho */}
+        {vm.dinamico && vm.credoresNoPeriodo.length > 0 && (
+          <div className="imp-periodo-linha">
+            <table className="imp-meses">
+              <thead>
+                <tr>
+                  <th scope="col" style={{ width: '28%' }}>Credores em algum mês ({vm.credoresNoPeriodo.length})</th>
+                  {vm.mesesDosCredores.map(m => <th key={m} scope="col">{m}</th>)}
+                </tr>
+              </thead>
               <tbody>
                 {vm.credoresNoPeriodo.map(c => (
                   <tr key={c.codigo}>
-                    <td className="wrap"><b>{c.codigo}</b> — {c.nome}</td>
-                    {c.saldos.map(x => <td key={x.mes} className="num">{x.credor ? <span className="badge badge-bad">{x.valor}</span> : x.valor}</td>)}
+                    <th scope="row" style={{ textAlign: 'left' }}><b>{c.codigo}</b> — {c.nome}</th>
+                    {c.saldos.map(x => <td key={x.mes} className={'num' + (x.credor ? ' ext-neg' : '')} title={x.credor ? 'Credor neste mês' : undefined}>{x.valor}</td>)}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        )}
+      </LinhaDoArquivo>
     </div>
   );
 }
 
-function LinhaDoArquivo({ titulo, dica, feito, onArquivo, onTirar, teste }: {
+function LinhaDoArquivo({ titulo, dica, feito, onArquivo, onTirar, teste, children }: {
   titulo: string; dica: string; feito: { nome: string; resumo: string } | null; onArquivo: (f: File | undefined) => void; onTirar: () => void; teste: ItemDeTeste[];
+  children?: ReactNode;
 }) {
   const arquivo = useRef<HTMLInputElement>(null);
   return (
@@ -91,6 +95,7 @@ function LinhaDoArquivo({ titulo, dica, feito, onArquivo, onTirar, teste }: {
           </div>
         </div>
       </div>
+      {children}
     </div>
   );
 }
