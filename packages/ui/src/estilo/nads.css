@@ -1161,8 +1161,9 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 .emp-banco .imp-ico{width:24px;height:24px;flex:none;}
 /* o logo do tamanho da linha (o da Importação é 40px) */
 .emp-banco .imp-logo .logo-img,.emp-banco .imp-logo svg{width:22px;height:22px;}
-/* (Vitor, 07/10/2026: "centralize mais") as colunas no meio, na horizontal e na vertical */
-.emp-tabela th,.emp-tabela td{text-align:center;vertical-align:middle;}
+/* (Vitor, 07/10/2026: "centralize e alinhe as coisas") as colunas no meio, na horizontal e na vertical — também na tabela dos
+   contratos (os números com o mesmo tamanho de dígito, para os valores ficarem um embaixo do outro) */
+.emp-tabela th,.emp-tabela td,.emp-tabela th.num,.emp-tabela td.num{text-align:center;vertical-align:middle;font-variant-numeric:tabular-nums;}
 .executor-razao{flex:1;min-width:0;align-self:flex-start;display:flex;flex-direction:column;gap:16px;}
 /* os botões da etapa soltos no canto de baixo, por cima da ferramenta (do tamanho dos do Gmail/WhatsApp) */
 .executor-flutuante{position:fixed;right:24px;bottom:20px;z-index:30;display:flex;align-items:center;gap:8px;}

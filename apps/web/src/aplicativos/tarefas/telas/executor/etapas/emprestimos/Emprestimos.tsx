@@ -58,7 +58,7 @@ function Emprestimo({ e, vm }: { e: VmEmprestimos['emprestimos'][number]; vm: Vm
       {/* os contratos achados no histórico (Vitor, 07/10/2026) */}
       <FaixaQueAbre titulo="Contratos" qtd={e.contratos.length} aviso={e.quitadosComSaldo.length > 0}>
         <div className="imp-mov">
-          <table className="table-compact">
+          <table className="table-compact emp-tabela">
             <thead><tr><th>Contrato</th><th>Liberado</th><th>Parcelas pagas</th><th className="num">Saldo</th><th>Situação</th></tr></thead>
             <tbody>
               {e.contratos.map(k => (
