@@ -70,6 +70,8 @@ export function Executor() {
   const [testeDaTela, setTesteDaTela] = useState<ItemDeTeste[]>([]);
   // as telas da etapa (a tela própria) nas abas embaixo do cabeçalho, no lugar do Segmentado (Vitor, 07/10/2026)
   const [abasDaTela, setAbasDaTela] = useState<AbasDaEtapa | null>(null);
+  // o lugar dos avisos da tela da etapa, na faixa acima do cabeçalho
+  const [alvoDosAvisos, setAlvoDosAvisos] = useState<HTMLDivElement | null>(null);
   // o ⚡: as opções da ferramenta aberta, ou as do que a própria etapa importa (o razão do Caixa, o INSS)
   const opcoesDeTeste = vm.tela
     ? testeDaTela.map(o => ({ rotulo: o.rotulo, icone: 'zap' as NomeIcone, onClick: o.onClick }))
@@ -234,7 +236,7 @@ export function Executor() {
 
   // os avisos acima do cabeçalho (Vitor, 07/10/2026: "essas notificações, deixe acima do cabeçalho"): o modo
   // desenvolvedor e, revendo uma etapa concluída, o aviso com o Editar (só ele mexe; Vitor, 05/10/2026), numa linha só
-  const avisos = vm.carregando || !vm.etapa ? null : vm.dev && !vm.revendo ? (
+  const avisosDoExecutor = vm.carregando || !vm.etapa ? null : vm.dev && !vm.revendo ? (
     <div className="alerta-linha faixa-dev">
       <Alerta titulo="Modo desenvolvedor" texto="Os dados de verdade, mas o que você fizer fica só nesta tela: nada vai para o banco." />
     </div>
@@ -248,6 +250,8 @@ export function Executor() {
       </Alerta>
     </div>
   ) : null;
+  // e embaixo deles, os da tela da etapa (AvisoAcimaDoCabecalho)
+  const avisos = vm.tela && !vm.carregando ? <>{avisosDoExecutor}<div ref={setAlvoDosAvisos} className="avisos-da-etapa" /></> : avisosDoExecutor;
 
   return (
     <Casca sistema="Tarefas" temaNaGaveta={false} larga rotuloLateral="Etapas" topoDireita={topo} acimaDoCabecalho={avisos}
@@ -274,7 +278,7 @@ export function Executor() {
             {/* revendo uma etapa concluída: sem a abertura com o N (é só para olhar; Vitor, 05/10/2026: "o loading tá bugando") */}
             {vm.ferramenta?.embutir && ferramentaAbrindo && !vm.revendo && <AberturaN vidro />}
             {vm.tela ? (
-              <EtapaProvider etapa={vm.tela.etapa} onRequisitos={r => setRequisitosDaTela({ chave: chaveDaTela, ...r })} onTeste={setTesteDaTela} onAbas={setAbasDaTela}>
+              <EtapaProvider etapa={vm.tela.etapa} onRequisitos={r => setRequisitosDaTela({ chave: chaveDaTela, ...r })} onTeste={setTesteDaTela} onAbas={setAbasDaTela} alvoDosAvisos={alvoDosAvisos}>
                 <TelaDaEtapa id={vm.tela.id} />
               </EtapaProvider>
             ) : vm.ferramenta?.embutir ? (

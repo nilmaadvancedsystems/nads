@@ -1,9 +1,10 @@
 // A etapa aberta no Executor, para a tela própria dela (Vitor, 06/10/2026: as ferramentas que abriam em iframe viram
 // telas da Tarefa). No lugar da URL e das mensagens da ponte (comum/ponte.ts): a tela recebe a empresa e os meses por
 // aqui, diz o que falta para seguir (useRequisitosDaEtapa), oferece os dados de teste do ⚡ (useDadosDeTesteDaEtapa) e põe as
-// telas dela nas abas embaixo do cabeçalho (useAbasDaEtapa).
+// telas dela nas abas embaixo do cabeçalho (useAbasDaEtapa) e os avisos dela acima do cabeçalho (AvisoAcimaDoCabecalho).
 import type { PaginaCasca } from '@nads/ui';
 import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import type { ItemDeTeste } from '../../../../../comum/BotaoDeTeste';
 
 export interface EtapaAberta {
@@ -25,22 +26,33 @@ export interface AbasDaEtapa { paginas: PaginaCasca[]; abrir: (id: string) => vo
 
 interface Ligacoes { requisitos: (r: RequisitosDaEtapa) => void; teste: (itens: ItemDeTeste[]) => void; abas: (a: AbasDaEtapa | null) => void }
 
-const Ctx = createContext<{ etapa: EtapaAberta; ligacoes: Ligacoes } | null>(null);
+const Ctx = createContext<{ etapa: EtapaAberta; ligacoes: Ligacoes; alvoDosAvisos: HTMLElement | null } | null>(null);
 
-export function EtapaProvider({ etapa, onRequisitos, onTeste, onAbas, children }: {
-  etapa: EtapaAberta; onRequisitos: Ligacoes['requisitos']; onTeste: Ligacoes['teste']; onAbas: Ligacoes['abas']; children: ReactNode;
+export function EtapaProvider({ etapa, onRequisitos, onTeste, onAbas, alvoDosAvisos, children }: {
+  etapa: EtapaAberta; onRequisitos: Ligacoes['requisitos']; onTeste: Ligacoes['teste']; onAbas: Ligacoes['abas'];
+  /** o lugar dos avisos da etapa, na faixa acima do cabeçalho */
+  alvoDosAvisos: HTMLElement | null; children: ReactNode;
 }) {
   const ligacoes = useRef<Ligacoes>({ requisitos: onRequisitos, teste: onTeste, abas: onAbas });
   ligacoes.current = { requisitos: onRequisitos, teste: onTeste, abas: onAbas };
   // as ligações sempre as mais novas, sem trocar o valor do contexto a cada desenho
   const estavel = useRef<Ligacoes>({ requisitos: r => ligacoes.current.requisitos(r), teste: i => ligacoes.current.teste(i), abas: a => ligacoes.current.abas(a) });
-  return <Ctx.Provider value={{ etapa, ligacoes: estavel.current }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ etapa, ligacoes: estavel.current, alvoDosAvisos }}>{children}</Ctx.Provider>;
 }
 
 function useCtx() {
   const c = useContext(Ctx);
   if (!c) throw new Error('A tela da etapa precisa estar dentro do EtapaProvider');
   return c;
+}
+
+/**
+ * Um aviso da etapa na faixa acima do cabeçalho, junto do "Modo desenvolvedor" (Vitor, 07/10/2026: o "Emite nota de
+ * honorário?" ainda não respondido). Saiu da tela, o aviso some.
+ */
+export function AvisoAcimaDoCabecalho({ children }: { children: ReactNode }) {
+  const { alvoDosAvisos } = useCtx();
+  return alvoDosAvisos ? createPortal(children, alvoDosAvisos) : null;
 }
 
 /** A empresa e os meses da etapa aberta. */

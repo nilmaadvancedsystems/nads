@@ -2,10 +2,11 @@
 // que zerar) e a pergunta do Cadastro, "o escritório emite nota de honorário?". Sem nota, a linha do Extrato por cobrança
 // (o PDF do Alterdata): as cobranças do período e o .xls de importação com a provisão de cada uma na data de emissão.
 // Só peças que já existem: a linha da Importação (imp-bloco), a regra do Cadastro (cad-regra), a tabela e a barra.
-import { Icone } from '@nads/ui';
+import { Alerta, Icone } from '@nads/ui';
 import { useId, useState } from 'react';
 import { BotaoDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { RazaoDaFolha } from '../../partes/RazaoDaFolha';
+import { AvisoAcimaDoCabecalho } from '../contexto';
 import { useHonorarios } from './useHonorarios';
 
 type Vm = ReturnType<typeof useHonorarios>;
@@ -15,8 +16,21 @@ export function Honorarios() {
   return (
     <section>
       <header className="topbar"><div><h2 className="page-title">Honorários</h2></div></header>
-      {/* a regra do Cadastro, perguntada aqui na primeira vez (e trocada aqui ou no Cadastro › Empresa) */}
-      {vm.emiteNota !== undefined && <NotaDeHonorario vm={vm} />}
+      {/* a regra do Cadastro: sem resposta, a pergunta vai para o aviso acima do cabeçalho (Vitor, 07/10/2026); respondida,
+          fica aqui para trocar (ou no Cadastro › Empresa) */}
+      {vm.emiteNota === null && (
+        <AvisoAcimaDoCabecalho>
+          <div className="alerta-linha">
+            <Alerta titulo="Emite nota de honorário?" texto="O escritório emite nota de honorário para esta empresa? Fica guardado no Cadastro.">
+              <div className="btn-row">
+                <button type="button" className="btn" onClick={() => vm.definirEmiteNota(true)}>Sim</button>
+                <button type="button" className="btn" onClick={() => vm.definirEmiteNota(false)}>Não</button>
+              </div>
+            </Alerta>
+          </div>
+        </AvisoAcimaDoCabecalho>
+      )}
+      {vm.emiteNota != null && <NotaDeHonorario vm={vm} />}
       <div className="imp-lista">
         <RazaoDaFolha vm={vm.razao} dev={vm.dev} />
         {vm.emiteNota === false && <ExtratoPorCobranca vm={vm} />}
