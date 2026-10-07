@@ -141,6 +141,8 @@ function ListaDeClientes({ vm }: { vm: VM }) {
   const conta = useRef('');
   // a mini tabela do razão de cada cliente: aberta; a seta do lado da conta esconde
   const [fechadas, setFechadas] = useState<ReadonlySet<string>>(new Set());
+  // alguma linha com a relação do razão: todas guardam o lugar da seta
+  const comSeta = vm.linhas.some(l => !!l.razao && l.razao.itens.length > 0);
   const alternar = (codigo: string) => setFechadas(f => { const n = new Set(f); if (n.has(codigo)) n.delete(codigo); else n.add(codigo); return n; });
   return (
     <>
@@ -165,14 +167,17 @@ function ListaDeClientes({ vm }: { vm: VM }) {
               <Fragment key={l.codigo}>
               <tr>
                 <td style={{ whiteSpace: 'nowrap' }}>
-                  {/* a seta do razão (Vitor, 07/10/2026): mostra ou esconde a relação embaixo */}
-                  {l.razao && l.razao.itens.length > 0 && (
-                    <button type="button" className={'imp-seta' + (fechadas.has(l.codigo) ? '' : ' aberta')} aria-expanded={!fechadas.has(l.codigo)}
-                      title={fechadas.has(l.codigo) ? 'Ver a relação do razão' : 'Esconder a relação do razão'} aria-label={'A relação do razão de ' + l.nome} onClick={() => alternar(l.codigo)}>
-                      <Icone nome="caretDown" />
-                    </button>
-                  )}
-                  {l.codigo}
+                  {/* a seta do razão (Vitor, 07/10/2026): mostra ou esconde a relação embaixo; a seta e o número na mesma
+                      linha, e o lugar da seta guardado em todas as linhas para os números ficarem alinhados */}
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    {comSeta && (l.razao && l.razao.itens.length > 0 ? (
+                      <button type="button" className={'imp-seta' + (fechadas.has(l.codigo) ? '' : ' aberta')} aria-expanded={!fechadas.has(l.codigo)} style={{ margin: 0 }}
+                        title={fechadas.has(l.codigo) ? 'Ver a relação do razão' : 'Esconder a relação do razão'} aria-label={'A relação do razão de ' + l.nome} onClick={() => alternar(l.codigo)}>
+                        <Icone nome="caretDown" />
+                      </button>
+                    ) : <span style={{ width: 26, flex: 'none' }} />)}
+                    {l.codigo}
+                  </span>
                 </td>
                 <td className="wrap">
                   {l.nome}{l.doMesAnterior && <> <span className="badge badge-neutral" title="Conferido no mês anterior: revise">do mês anterior</span></>}
