@@ -3153,3 +3153,8 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .dp-tabela .dp-folha{padding:0 6px;white-space:nowrap;}
 .dp-tabela .dp-folha-campo{width:110px;text-align:right;}
 .troca-escolher{align-self:flex-start;min-width:200px;justify-content:space-between;}
+/* A foto antes do nome (07/10/2026): a da lista de Usuários, pequena */
+.usuarios-foto.foto-mini{width:20px;height:20px;font-size:9px;flex:none;}
+.pessoa-com-foto{display:inline-flex;align-items:center;gap:8px;}
+.pessoal-topico .usuarios-foto.foto-mini{margin-right:2px;}
+.resp-pendentes-com{display:inline-flex;align-items:center;gap:6px;}

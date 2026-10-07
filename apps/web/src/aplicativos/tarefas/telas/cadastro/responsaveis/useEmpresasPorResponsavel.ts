@@ -3,7 +3,7 @@
 // empresas dele"): cada empresa com quem cuida dela no Fiscal e no Contábil (no Fiscal, sem escolha vale o da planilha
 // do Checklist Folha) e a transferência pedida. Usado pela janela Empresas por responsável (Cadastro › Usuários), pelo
 // tópico Empresas da janela do usuário e pelo Minhas empresas da Minha página. Grava no cadastro da empresa.
-import { empresas, formatos } from '@nads/core';
+import { empresas, formatos, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useOperador } from '../../../casca/operador';
 import { useAcesso, useGravarCadastro, useTodosOsCadastros } from '../../../dados/repo';
@@ -89,6 +89,8 @@ export function useEmpresasPorResponsavel() {
     cancelar(nome: string, codigo: number | null, dep: Dep) {
       void gravar(nome, codigo, atual => cad.cancelarTransferencia(atual, dep, por, new Date()));
     },
+    /** a foto de perfil (ou as iniciais) de quem é da equipe, para pôr antes do nome */
+    fotoDe: (nome: string) => ({ foto: ativos.find(p => igual(p.nome, nome))?.fotoPerfil || null, iniciais: usuarios.iniciais(nome) }),
     /** as pessoas que podem entrar numa troca (as da equipe do Fiscal e do Contábil e quem já tem empresas) */
     pessoasDaTroca: [...new Set([...opcoes.fiscal, ...opcoes.contabil, ...contagem.keys()])].sort((a, b) => a.localeCompare(b, 'pt-BR')),
     /**
