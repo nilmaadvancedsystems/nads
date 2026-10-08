@@ -115,11 +115,10 @@ export function useVerificarConta() {
         vRef.current = nv;
         s.setVerificar(nv);
         setSeqResultado(x => x + 1);
-        // conferiu sem pendência (na primeira vez ou reconferindo): aviso limpo; em 3,5s volta
-        // sozinho pro Relatório com a conta Ok. O "Ok" é sempre o sistema que grava (linha 114
+        // conferiu sem pendência (na primeira vez ou reconferindo): em 3,5s volta sozinho pro Relatório com a conta Ok. Sem o
+        // "Tudo certo!" no topo (Vitor, 08/10/2026: só o verde "Nenhuma pendência nessa conta" do resultado). O "Ok" é sempre o sistema que grava (linha 114
         // acima) — não existe botão que o usuário use pra dar Ok na mão.
         if (limpo) {
-          aviso({ tom: 'ok', titulo: 'Tudo certo!', texto: dd.rotulo + ' sem pendências · Ok no Relatório' });
           setTimeout(() => s.irPara('movimento/relatorio'), 3500);
         }
       } finally {
