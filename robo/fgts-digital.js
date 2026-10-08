@@ -253,7 +253,10 @@ function ligarFgtsDigital(db, log, avisos) {
 
       await clicar(page, PASSOS_DO_PORTAL.trocarPerfil, 'Trocar perfil');
       await esperarCarregar(page);
-      await clicar(page, PASSOS_DO_PORTAL.procurador, 'Procurador');
+      // a janela "Trocar Perfil" (08/10/2026, vista no primeiro login): a lista Perfil (abre e escolhe a de procurador)
+      // e o "Empregador a ser representado" (o CNPJ, digitado), depois Selecionar
+      const perfil = await escolherPerfilProcurador(page);
+      await registrar('perfil: ' + perfil.escolhido + ' (opções: ' + perfil.opcoes.join(' / ') + ')');
       await preencherCnpj(page, p.cnpj);
       await esperarCarregar(page);
       await registrar('perfil do cliente');
@@ -402,16 +405,41 @@ async function esperarSairDe(page, re, ms) {
   await esperarCarregar(page);
 }
 
+/**
+ * A lista Perfil da janela "Trocar Perfil": abre, lê as opções e escolhe a de procurador (de pessoa jurídica, se houver
+ * mais de uma). Devolve a escolhida e as que viu (vão para o passo, para acertar o nome se o portal mudar).
+ */
+async function escolherPerfilProcurador(page) {
+  const caixa = (await page.evaluateHandle(() => {
+    const janela = [...document.querySelectorAll('[role=dialog], .br-modal, .modal, dialog, .modal-content')].find(e => e.offsetParent !== null && /trocar perfil/i.test(e.innerText)) || document.body;
+    return [...janela.querySelectorAll('input')].find(i => i.offsetParent !== null && !/cnpj|cpf/i.test((i.placeholder || '') + (i.name || '') + (i.id || ''))) || null;
+  })).asElement();
+  if (!caixa) throw new Error('não achei a lista Perfil na troca de perfil');
+  await caixa.click();
+  await dormir(900);
+  const SELETOR = '[role=option], .br-item, .ng-option, .mat-option, .p-dropdown-item, li';
+  const opcoes = [...new Set(await page.evaluate(sel => [...document.querySelectorAll(sel)]
+    .filter(e => e.offsetParent !== null && (e.innerText || '').trim() && e.innerText.trim().length < 120)
+    .map(e => e.innerText.trim().replace(/\s+/g, ' ')), SELETOR))];
+  const alvo = opcoes.find(t => /procurador/i.test(t) && /jur/i.test(t)) || opcoes.find(t => /procurador/i.test(t));
+  if (!alvo) throw new Error('a lista Perfil não tem procurador (opções: ' + (opcoes.slice(0, 10).join(' / ') || 'nenhuma') + ')');
+  const item = (await page.evaluateHandle((sel, t) => [...document.querySelectorAll(sel)]
+    .find(e => e.offsetParent !== null && e.innerText.trim().replace(/\s+/g, ' ') === t) || null, SELETOR, alvo)).asElement();
+  await item.click();
+  await dormir(700);
+  return { escolhido: alvo, opcoes };
+}
+
+/** O "Empregador a ser representado": o CNPJ digitado como uma pessoa (o campo tem máscara), depois Selecionar. */
 async function preencherCnpj(page, cnpj) {
-  const ok = await page.evaluate(c => {
-    const campo = [...document.querySelectorAll('input')].find(i => i.offsetParent !== null && /cnpj|inscri|cpf/i.test((i.name || '') + (i.id || '') + (i.placeholder || '') + (i.getAttribute('aria-label') || '')));
-    if (!campo) return false;
-    campo.focus(); campo.value = c;
-    campo.dispatchEvent(new Event('input', { bubbles: true })); campo.dispatchEvent(new Event('change', { bubbles: true }));
-    return true;
-  }, cnpj);
-  if (!ok) throw new Error('não achei o campo do CNPJ na troca de perfil');
-  await clicar(page, [/^selecionar$/, /^confirmar$/, /^ok$/, /^entrar$/, /^pesquisar$/, /^buscar$/], 'Confirmar o perfil');
+  const campo = (await page.evaluateHandle(() => [...document.querySelectorAll('input')]
+    .find(i => i.offsetParent !== null && /cnpj|cpf|inscri/i.test((i.placeholder || '') + (i.name || '') + (i.id || '') + (i.getAttribute('aria-label') || ''))) || null)).asElement();
+  if (!campo) throw new Error('não achei o campo do CNPJ na troca de perfil');
+  await campo.click({ clickCount: 3 });
+  await page.keyboard.press('Backspace');
+  await campo.type(cnpj, { delay: 60 });
+  await dormir(600);
+  await clicar(page, [/^selecionar$/, /^confirmar$/, /^ok$/, /^entrar$/], 'Selecionar o perfil');
 }
 
 async function preencherCompetencia(page, competencia) {
