@@ -7,6 +7,7 @@ import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { useClientes, type FiltroClientes, type TelaClientes } from './useClientes';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../../comum/GradeDosMeses';
+import { DigitarLancamento } from './DigitarLancamento';
 
 type VM = ReturnType<typeof useClientes>;
 
@@ -114,6 +115,8 @@ function ListaDeClientes({ vm }: { vm: VM }) {
   const conta = useRef('');
   // a mini tabela do razão de cada cliente: começa fechada (Vitor, 08/10/2026: "abra recuado"); a seta do lado da conta abre
   const [abertas, setAbertas] = useState<ReadonlySet<string>>(new Set());
+  // o formulário do lançamento digitado, aberto embaixo de qual conta (Vitor, 08/10/2026)
+  const [digitando, setDigitando] = useState<string | null>(null);
   // alguma linha com a relação do razão: todas guardam o lugar da seta
   const comSeta = vm.linhas.some(l => !!l.razao && l.razao.itens.length > 0);
   const alternar = (codigo: string) => setAbertas(f => { const n = new Set(f); if (n.has(codigo)) n.delete(codigo); else n.add(codigo); return n; });
@@ -173,6 +176,15 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                 </td>
                 {/* o razão da conta, no fim da linha (Vitor, 06/10/2026): importar; importado, o check que vira × e tira; o Ok do dinâmico não tem (o Ok do razão zerado mostra o check, para tirar) */}
                 <td className="num">
+                  <span style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end' }}>
+                  {/* digitar o lançamento à mão, sem upar o razão (Vitor, 08/10/2026) */}
+                  {!(l.situacao === 'ok' && !l.razao) && (
+                    <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={!vm.carregado} aria-expanded={digitando === l.codigo}
+                      onClick={() => setDigitando(x => (x === l.codigo ? null : l.codigo))}
+                      title="Digitar um lançamento (sem upar o razão)" aria-label={'Digitar um lançamento de ' + l.nome}>
+                      <Icone nome="lapis" />
+                    </button>
+                  )}
                   {l.situacao === 'ok' && !l.razao ? null : l.razao ? (
                     <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" disabled={!vm.carregado} onClick={() => vm.tirarRazao(l.codigo)}
                       title={'Razão importado: ' + l.razao.arquivo + '. Clique para tirar.'} aria-label={'Tirar o razão de ' + l.nome}>
@@ -185,22 +197,36 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                       <Icone nome="upload" />
                     </button>
                   )}
+                  </span>
                 </td>
               </tr>
+              {digitando === l.codigo && (
+                <tr>
+                  <td colSpan={4}>
+                    <DigitarLancamento nome={l.nome} onFechar={() => setDigitando(null)}
+                      onAdicionar={x => { vm.digitarLancamento(l.codigo, x); setAbertas(a => new Set(a).add(l.codigo)); }} />
+                  </td>
+                </tr>
+              )}
               {l.razao && l.razao.itens.length > 0 && abertas.has(l.codigo) && (
                 <tr>
                   <td colSpan={4}>
                     {/* a relação isolada: o cabeçalho fixo dela não passa por cima do menu "Perguntar" da linha de cima */}
                     <div className="table-wrap" style={{ isolation: 'isolate' }}>
                       <table className="table-compact">
-                        <thead><tr><th>Data</th><th>Nota fiscal</th><th>Descrição</th><th className="num">Valor</th><th>Status</th>{l.situacao === 'conferido' && <th className="num">Perguntar</th>}</tr></thead>
+                        <thead><tr><th>Data</th><th>Nota fiscal</th><th>Descrição</th><th className="num">Valor</th><th>Status</th>{(l.situacao === 'conferido' || !!l.razao?.itens.some(x => x.digitado)) && <th className="num">Perguntar</th>}</tr></thead>
                         <tbody>
                           {l.razao.itens.map((i, k) => (
-                            <tr key={k}><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td>{i.nf}</td><td className="wrap">{i.descricao}</td><td className={'num' + (i.abate ? ' ext-neg' : '')}>{i.valor}</td>
+                            <tr key={k}><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td>{i.nf}</td><td className="wrap">{i.descricao}{i.digitado && <span className="hint"> · digitado</span>}</td><td className={'num' + (i.abate ? ' ext-neg' : '')}>{i.valor}</td>
                               <td className={i.status === 'aberto' ? undefined : 'hint'}>{i.rotulo}</td>
                               {/* o "+" de cada linha (Vitor, 07/10/2026: "colocando esse + em cada linha"): adiciona ao que vai para o cliente;
                                   adicionada, o check que vira × e tira (o mesmo botão da importação) */}
-                              {l.situacao === 'conferido' && <td className="num">{!i.chave ? <span className="hint" title="Só do escritório">—</span> : i.marcado ? (
+                              {(l.situacao === 'conferido' || !!l.razao?.itens.some(x => x.digitado)) && <td className="num">{!i.chave ? <span className="hint" title="Só do escritório">—</span> : i.digitado ? (
+                                <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" disabled={!vm.carregado} onClick={() => vm.tirarDigitado(l.codigo, i.chave)}
+                                  title="Lançamento digitado: vai para o cliente. Clique para tirar." aria-label="Tirar o lançamento digitado">
+                                  <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
+                                </button>
+                              ) : i.marcado ? (
                                 <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" disabled={!vm.carregado} onClick={() => vm.definirEnvio(l.codigo, i.chave, false)}
                                   title="Vai para o cliente. Clique para tirar." aria-label={'Tirar ' + (i.nf !== '—' ? 'a NF ' + i.nf : 'o pagamento') + ' do que vai para o cliente'}>
                                   <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />

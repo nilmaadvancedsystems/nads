@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { lerRazao } from '../../tarefas/regras/razao';
-import { chaveDoItem, definirItem, conferirRazaoDoCliente, itensEscolhidos, linhasParaOTicket, observacaoDoRazao, razaoDaMarca, rotuloDoItem } from './razao';
+import { chaveDoItem, comLancamentoDigitado, definirItem, semLancamentoDigitado, conferirRazaoDoCliente, itensEscolhidos, linhasParaOTicket, observacaoDoRazao, razaoDaMarca, rotuloDoItem } from './razao';
 import { situacaoDe, textoDaMensagem, textoDasNotas } from './index';
 
 // o formato do razão da conciliação do Alterdata (conta de um cliente), com valores inventados
@@ -122,5 +122,27 @@ describe('o que vai para o cliente: o + de cada linha (07/10/2026)', () => {
     expect(linhasParaOTicket(razao, 0, '2026-08', [b]).map(l => l.operacao)).toEqual(['Venda']);
     expect(linhasParaOTicket(razao, 0, '2026-08', [b], 'fornecedores').map(l => l.operacao)).toEqual(['Compra']);
     expect(linhasParaOTicket(undefined, 10, '2026-08', undefined, 'fornecedores').map(l => [l.tipo, l.operacao])).toEqual([['saldo', 'Compra']]);
+  });
+});
+
+describe('o lançamento digitado à mão (08/10/2026)', () => {
+  it('sem razão: vira a relação só de digitados, com o sinal da relação e a nota em aberto nas notas', () => {
+    const r = comLancamentoDigitado(undefined, { data: '2026-08-05', nf: ' 9971 ', descricao: '', valor: 839.33, status: 'aberto' }, 2353.98);
+    expect(r).toMatchObject({ manual: true, saldo: 2353.98, notas: [{ nf: '9971', data: '2026-08-05', aberto: 839.33 }] });
+    expect(r.itens[0]).toEqual({ data: '2026-08-05', nf: '9971', descricao: 'Em aberto', valor: 839.33, status: 'aberto', digitado: true });
+    const r2 = comLancamentoDigitado(r, { data: '2026-08-01', nf: '', descricao: 'PIX', valor: 100, status: 'pagamento' }, 0);
+    expect(r2.itens.map(i => i.valor)).toEqual([-100, 839.33]);
+    // tira um; tirar o último tira a relação
+    const r3 = semLancamentoDigitado(r2, chaveDoItem(r2.itens[1]));
+    expect(r3?.notas).toEqual([]);
+    expect(semLancamentoDigitado(r3, chaveDoItem(r3!.itens[0]))).toBeUndefined();
+  });
+  it('no razão importado: entra junto, e tirar não mexe no que veio do arquivo', () => {
+    const imp = { arquivo: 'x.xls', notas: [], saldo: 50, devolucoes: 0, duplicadas: [], itens: [{ data: '2026-08-02', nf: '1', descricao: 'Venda a prazo', valor: 50, status: 'aberto' as const }] };
+    const r = comLancamentoDigitado(imp, { data: '2026-08-09', nf: '', descricao: '', valor: 20, status: 'devolucao' }, 0);
+    expect(r.manual).toBeUndefined();
+    expect(r.itens.length).toBe(2);
+    expect(semLancamentoDigitado(r, chaveDoItem(imp.itens[0]))).toBe(r);
+    expect(semLancamentoDigitado(r, chaveDoItem(r.itens[1]))?.itens.length).toBe(1);
   });
 });

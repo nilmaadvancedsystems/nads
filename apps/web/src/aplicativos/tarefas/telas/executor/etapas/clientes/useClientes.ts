@@ -118,6 +118,8 @@ export function useClientes() {
   // sem a etapa Saldo credor (Vitor, 07/10/2026: "remove esse saldo credor e deixe só arquivos"): o credor fica na grade dos
   // Arquivos e, no lugar do Próximo travado, o "Corrigi, irei reimportar" (tira o dinâmico para importar o corrigido)
   const telas: TelaClientes[] = ['arquivos', 'clientes', 'envio'];
+  // algum razão importado (ou lançamento digitado): sem nenhum, o Envio some e o Próximo da lista também (Vitor, 08/10/2026)
+  const algumRazao = linhas.some(l => !!l.razao);
   const i = telas.indexOf(tela);
   const podeSeguir = tela === 'arquivos' ? arquivosProntos && contas.length > 0 && !credores.length : tela === 'clientes';
   // na Tarefa: os arquivos e nenhum credor (a pessoa pode dar o check normal depois; os conferidos passam para o mês seguinte)
@@ -139,9 +141,9 @@ export function useClientes() {
   return {
     mes: rotuloMes,
     tela: telas.includes(tela) ? tela : 'arquivos',
-    telas: telas.map((t, k) => ({ valor: t, rotulo: t === 'arquivos' ? 'Arquivos' : t === 'clientes' ? 'Clientes' : 'Envio', travada: k > alcancada ? 'Chega aqui pelo Próximo' : false as const })),
+    telas: telas.map((t, k) => ({ valor: t, rotulo: t === 'arquivos' ? 'Arquivos' : t === 'clientes' ? 'Clientes' : 'Envio', oculta: t === 'envio' && !algumRazao, travada: k > alcancada ? 'Chega aqui pelo Próximo' : false as const })),
     irPara: (t: TelaClientes) => { if (telas.indexOf(t) <= alcancada) setTela(t); },
-    temProxima: i < telas.length - 1,
+    temProxima: i < telas.length - 1 && (telas[i] !== 'clientes' || algumRazao),
     podeSeguir,
     proximo: () => { if (podeSeguir && i < telas.length - 1) setTela(telas[i + 1]); },
     /** nos Arquivos com cliente credor no mês: o "Corrigi, irei reimportar" no lugar do Próximo (deu tudo ok, volta o Próximo) */
@@ -177,7 +179,7 @@ export function useClientes() {
           naoBate: Math.abs(l.razao.saldo - l.saldo) >= 0.005 && Math.abs(l.razao.saldo) >= 0.005 ? reais(l.razao.saldo) : '',
           zerado: Math.abs(l.razao.saldo) < 0.005 && !l.razao.notas.length,
           // a mini tabela embaixo do cliente: as notas em aberto e o que ficou solto
-          itens: l.razao.itens.map(i => ({ chave: i.interno ? '' : cl.chaveDoItem(i), marcado: !i.interno && cl.itensEscolhidos(l.razao, l.perguntar).includes(i), data: i.data ? i.data.slice(8, 10) + '/' + i.data.slice(5, 7) + '/' + i.data.slice(0, 4) : '', nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor), abate: i.valor < 0, status: i.status, rotulo: cl.ROTULO_DO_STATUS[i.status] })),
+          itens: l.razao.itens.map(i => ({ chave: i.interno ? '' : cl.chaveDoItem(i), marcado: !i.interno && cl.itensEscolhidos(l.razao, l.perguntar).includes(i), data: i.data ? i.data.slice(8, 10) + '/' + i.data.slice(5, 7) + '/' + i.data.slice(0, 4) : '', nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor), abate: i.valor < 0, status: i.status, rotulo: cl.ROTULO_DO_STATUS[i.status], digitado: !!i.digitado })),
         } : null,
         // o que vai para o cliente (o que foi adicionado no "+" de cada linha da relação; nada = não vai)
         perguntar: l.razao ? cl.itensEscolhidos(l.razao, l.perguntar).map(cl.rotuloDoItem).join(' · ') : '',
@@ -193,6 +195,23 @@ export function useClientes() {
     /** o razão da conta: importar (acha as notas em aberto) e tirar */
     importarRazao: (codigo: string, f: File | undefined) => { void importarRazao(codigo, f); },
     // tirou o razão: sai o conferido e o que ia ser questionado; volta ao saldo e não trava o avançar (Vitor, 08/10/2026)
+    /** o lançamento digitado à mão (sem upar o razão, ou junto dele): entra na relação e já vai para o questionar */
+    digitarLancamento: (codigo: string, l: cl.LancamentoDigitado) => marcar(codigo, m => {
+      const razao = cl.comLancamentoDigitado(m.razao, l, m.saldo);
+      const novo = razao.itens.find(i => !m.razao?.itens.includes(i));
+      const perguntar = novo ? cl.definirItem(razao, m.perguntar, cl.chaveDoItem(novo), true) : m.perguntar;
+      const n = { ...m, razao, situacao: cl.razaoComPendencia(razao) ? 'conferido' as const : 'pendente' as const };
+      delete n.perguntar;
+      return perguntar ? { ...n, perguntar } : n;
+    }),
+    /** tira um lançamento digitado (o último da relação só de digitados tira a relação: volta ao saldo) */
+    tirarDigitado: (codigo: string, chave: string) => marcar(codigo, m => {
+      const razao = cl.semLancamentoDigitado(m.razao, chave);
+      const perguntar = (m.perguntar || []).filter(c => c !== chave);
+      const n = { ...m, situacao: razao && cl.razaoComPendencia(razao) ? 'conferido' as const : 'pendente' as const };
+      delete n.razao; delete n.perguntar;
+      return { ...n, ...(razao ? { razao } : {}), ...(perguntar.length ? { perguntar } : {}) };
+    }),
     tirarRazao: (codigo: string) => marcar(codigo, m => { const n = { ...m, situacao: 'pendente' as const }; delete n.razao; delete n.perguntar; return n; }),
     // Envio
     conferidos: paraEnviar.map(l => ({ codigo: l.codigo, nome: l.nome, valor: reais(l.saldo), perguntar: cl.itensEscolhidos(l.razao, l.perguntar).map(cl.rotuloDoItem).join(' · '), notas: cl.textoDasNotas(l.razao?.notas) })),

@@ -143,6 +143,8 @@ export interface RazaoDaMarca {
   devolucoes: number; duplicadas: string[];
   /** a relação para conferir (a mini tabela embaixo do cliente): as notas em aberto e o que ficou solto */
   itens: ItemDoRazao[];
+  /** sem razão importado: a relação só com os lançamentos digitados à mão (Vitor, 08/10/2026) */
+  manual?: boolean;
 }
 
 /**
@@ -159,6 +161,8 @@ export interface ItemDoRazao {
   interno?: boolean;
   /** a conta do lançamento solto (o banco ou o caixa por onde o pagamento passou) — Vitor, 07/10/2026 */
   conta?: string;
+  /** digitado à mão na etapa (Vitor, 08/10/2026: "a opção de digitar manualmente caso não queira upar o razão") */
+  digitado?: boolean;
 }
 export type StatusDoItem = 'aberto' | 'pagamento' | 'devolucao';
 export const ROTULO_DO_STATUS: Record<StatusDoItem, string> = { aberto: 'Em aberto', pagamento: 'Apenas pagamento', devolucao: 'Devolução' };
@@ -263,4 +267,35 @@ export function linhasParaOTicket(razao: RazaoDaMarca | undefined, saldo: number
   const [a, m] = mes.split('-').map(Number);
   const fim = String(new Date(a, m, 0).getDate()).padStart(2, '0') + '/' + String(m).padStart(2, '0') + '/' + a;
   return [{ data: fim, nf: '—', descricao: 'Saldo em aberto em ' + String(m).padStart(2, '0') + '/' + a, valor: reais(saldo), tipo: 'saldo', operacao: OPERACAO[lado].saldo }];
+}
+
+// ─── o lançamento digitado à mão (Vitor, 08/10/2026: "dê a opção de digitar manualmente e preencher caso não queira upar o
+// razão: adicionar lançamento, com os parâmetros que estabelecemos") ───────────────────────────────────────────────
+
+/** O que a pessoa digita: data (AAAA-MM-DD), nota fiscal, descrição, o valor (positivo) e o que é. */
+export interface LancamentoDigitado { data: string; nf: string; descricao: string; valor: number; status: StatusDoItem }
+
+/**
+ * Põe o lançamento digitado na relação: no razão importado, junto dos outros; sem razão, numa relação só de digitados
+ * (manual). O valor vai com o sinal da relação: em aberto soma (o cliente deve), pagamento e devolução abatem. A nota em
+ * aberto entra também nas notas (a coluna "Notas em aberto" do Envio).
+ */
+export function comLancamentoDigitado(razao: RazaoDaMarca | undefined, l: LancamentoDigitado, saldoDaConta: number): RazaoDaMarca {
+  const valor = centavos(Math.abs(l.valor) * (l.status === 'aberto' ? 1 : -1));
+  const item: ItemDoRazao = { data: l.data, nf: l.nf.trim(), descricao: l.descricao.trim() || ROTULO_DO_STATUS[l.status], valor, status: l.status, digitado: true };
+  const base: RazaoDaMarca = razao ?? { arquivo: 'Digitado à mão', notas: [], saldo: saldoDaConta, devolucoes: 0, duplicadas: [], itens: [], manual: true };
+  const itens = [...base.itens, item].sort((a, b) => a.data.localeCompare(b.data));
+  const notas = l.status === 'aberto' && item.nf ? [...base.notas, { nf: item.nf, data: item.data, aberto: valor }] : base.notas;
+  return { ...base, itens, notas };
+}
+
+/** Tira um lançamento digitado (pela chave). Na relação só de digitados, tirar o último tira a relação (undefined). */
+export function semLancamentoDigitado(razao: RazaoDaMarca | undefined, chave: string): RazaoDaMarca | undefined {
+  if (!razao) return razao;
+  const sai = razao.itens.find(i => i.digitado && chaveDoItem(i) === chave);
+  if (!sai) return razao;
+  const itens = razao.itens.filter(i => i !== sai);
+  if (razao.manual && !itens.length) return undefined;
+  const notas = sai.status === 'aberto' && sai.nf ? razao.notas.filter(n => !(n.nf === sai.nf && n.data === sai.data && n.aberto === sai.valor)) : razao.notas;
+  return { ...razao, itens, notas };
 }

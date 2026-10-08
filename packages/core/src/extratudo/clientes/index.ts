@@ -188,7 +188,8 @@ export function razaoComPendencia(razao?: RazaoDaMarca): boolean {
 
 /** O razão importado fecha em zero, sem nota em aberto. */
 export function zeradoNoRazao(marca?: MarcaDoCliente): boolean {
-  return !!marca?.razao && zero(marca.razao.saldo) && !marca.razao.notas.length;
+  // a relação só de digitados não diz que a conta zerou
+  return !!marca?.razao && !marca.razao.manual && zero(marca.razao.saldo) && !marca.razao.notas.length;
 }
 
 /** O documento guardado conferido (o que não for de cliente, fora). */
@@ -224,9 +225,11 @@ function razaoGuardado(d: unknown): RazaoDaMarca | null {
       .map(i => ({
         data: typeof i.data === 'string' ? i.data : '', nf: typeof i.nf === 'string' ? i.nf : '', descricao: i.descricao as string, valor: i.valor as number,
         ...(i.interno === true ? { interno: true } : {}),
+        ...(i.digitado === true ? { digitado: true } : {}),
         ...(typeof i.conta === 'string' && i.conta ? { conta: i.conta } : {}),
         status: i.status === 'aberto' || i.status === 'pagamento' || i.status === 'devolucao' ? i.status : (i.valor as number) > 0 ? 'aberto' as const : 'pagamento' as const,
       })) : [],
+    ...(o.manual === true ? { manual: true } : {}),
   };
 }
 
