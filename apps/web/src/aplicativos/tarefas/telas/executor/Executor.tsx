@@ -238,11 +238,11 @@ export function Executor() {
   // desenvolvedor e, revendo uma etapa concluída, o aviso com o Editar (só ele mexe; Vitor, 05/10/2026), numa linha só
   const avisosDoExecutor = vm.carregando || !vm.etapa ? null : vm.dev && !vm.revendo ? (
     <div className="alerta-linha faixa-dev">
-      <Alerta titulo="Modo desenvolvedor" texto="Os dados de verdade, mas o que você fizer fica só nesta tela: nada vai para o banco." />
+      <Alerta naLinha titulo="Modo desenvolvedor" texto="Os dados de verdade, mas o que você fizer fica só nesta tela: nada vai para o banco." />
     </div>
   ) : vm.revendo ? (
     <div className="alerta-linha">
-      <Alerta tom="ok" titulo={vm.etapa.nome + ' já foi concluída'} texto="As ações desta etapa estão travadas.">
+      <Alerta naLinha tom="ok" titulo={vm.etapa.nome + ' já foi concluída'} texto="As ações desta etapa estão travadas.">
         <div className="btn-row">
           <button type="button" className="btn btn-primary" onClick={() => { void vm.editar(); }}>Editar</button>
           <button type="button" className="btn" onClick={vm.voltarAEtapaDaVez}>Ir para a etapa da vez</button>

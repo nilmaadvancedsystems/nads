@@ -1,5 +1,5 @@
 // Peças pequenas da Conferência, com as mesmas classes do CSS original.
-import { useEffect, useRef, useState, type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useIndicador, useNumeroAnimado } from './animacao';
 import { Icone, type NomeIcone } from './icones';
@@ -7,33 +7,38 @@ import { Icone, type NomeIcone } from './icones';
 /** Quanto o alerta fica no topo (Vitor, 08/10/2026: "suma depois de 3 segundos"); com o mouse em cima, para. */
 export const TEMPO_DO_ALERTA = 3000;
 
-/** A faixa fixa no topo da página, acima do cabeçalho, onde os alertas aparecem (um embaixo do outro). */
+/** O lugar dos alertas: a faixa acima do cabeçalho da Casca; sem ela, uma faixa fixa no alto da página. */
 function faixaDosAlertas(): HTMLElement {
-  let el = document.getElementById('alertas-topo');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'alertas-topo';
-    el.className = 'alertas-topo';
-    el.setAttribute('aria-live', 'polite');
-    document.body.appendChild(el);
+  const daCasca = document.getElementById('alertas-topo');
+  if (daCasca) return daCasca;
+  let solta = document.getElementById('alertas-soltos');
+  if (!solta) {
+    solta = document.createElement('div');
+    solta.id = 'alertas-soltos';
+    solta.className = 'acima-do-cabecalho alertas-soltos';
+    solta.setAttribute('aria-live', 'polite');
+    document.body.appendChild(solta);
   }
-  return el;
+  return solta;
 }
 
 /**
  * Aviso numa caixa (.alert); tom "ok" = verde. Desde 08/10/2026 (Vitor: "mude esses avisos tudo para o topo da página,
- * acima do cabeçalho, e suma depois de 3 segundos ou um x no final para o usuário fechar, faça uma animação de entrada"):
- * aparece no topo da página, entra descendo, some em 3 s (o mouse em cima segura) ou no ×; quando some, chama o onFechar.
+ * acima do cabeçalho, e suma depois de 3 segundos ou um x no final para o usuário fechar, faça uma animação de entrada";
+ * "uma barra que ocupe toda a parte superior do cabeçalho, que use apenas uma linha"): vira a faixa de ponta a ponta acima
+ * do cabeçalho, numa linha e sem o ícone, entra descendo, some em 3 s (o mouse em cima segura) ou no ×; quando some, chama
+ * o onFechar.
  * Aparece de novo quando o título ou o texto mudam, ou quando a tela abre outra vez. naLinha: na própria tela (o catálogo).
+ * A pergunta (pergunta, ou o título que acaba em "?") não some nem tem ×: fica até a pessoa responder (Vitor, 08/10/2026).
  */
-export function Alerta(p: { titulo: string; texto?: ReactNode; tom?: 'ok'; children?: ReactNode; onFechar?: () => void; naLinha?: boolean }) {
+export function Alerta(p: { titulo: string; texto?: ReactNode; tom?: 'ok'; children?: ReactNode; onFechar?: () => void; naLinha?: boolean; pergunta?: boolean }) {
   if (p.naLinha) return <CaixaDoAlerta {...p} />;
   return <AlertaNoTopo key={p.titulo + '|' + (typeof p.texto === 'string' || typeof p.texto === 'number' ? p.texto : '')} {...p} />;
 }
 
-function CaixaDoAlerta({ titulo, texto, tom, children, fechar, saindo, ...resto }: { titulo: string; texto?: ReactNode; tom?: 'ok'; children?: ReactNode; fechar?: () => void; saindo?: boolean } & HTMLAttributes<HTMLDivElement>) {
+function CaixaDoAlerta({ titulo, texto, tom, children, fechar }: { titulo: string; texto?: ReactNode; tom?: 'ok'; children?: ReactNode; fechar?: () => void }) {
   return (
-    <div className={'alert' + (tom === 'ok' ? ' alert-ok' : '') + (saindo ? ' saindo' : '')} role="status" {...resto}>
+    <div className={'alert' + (tom === 'ok' ? ' alert-ok' : '')} role="status">
       <Icone nome={tom === 'ok' ? 'checkCircle' : 'alert'} />
       <div>
         <p className="alert-title">{titulo}</p>
@@ -45,28 +50,33 @@ function CaixaDoAlerta({ titulo, texto, tom, children, fechar, saindo, ...resto 
   );
 }
 
-function AlertaNoTopo({ titulo, texto, tom, children, onFechar }: { titulo: string; texto?: ReactNode; tom?: 'ok'; children?: ReactNode; onFechar?: () => void }) {
+function AlertaNoTopo({ titulo, texto, tom, children, onFechar, pergunta }: { titulo: string; texto?: ReactNode; tom?: 'ok'; children?: ReactNode; onFechar?: () => void; pergunta?: boolean }) {
+  const fica = pergunta ?? /\?\s*$/.test(titulo);
   const [fase, setFase] = useState<'aberto' | 'saindo' | 'fechado'>('aberto');
+  // o lugar depois de montar (no primeiro desenho a Casca ainda não está na página)
+  const [alvo, setAlvo] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => { setAlvo(faixaDosAlertas()); }, []);
   const [segura, setSegura] = useState(false);
   const aoFechar = useRef(onFechar);
   useEffect(() => { aoFechar.current = onFechar; });
   // 3 s e sai (o mouse em cima segura; ao tirar, conta de novo)
   useEffect(() => {
-    if (fase !== 'aberto' || segura) return;
+    if (fase !== 'aberto' || segura || fica) return;
     const t = setTimeout(() => setFase('saindo'), TEMPO_DO_ALERTA);
     return () => clearTimeout(t);
-  }, [fase, segura]);
+  }, [fase, segura, fica]);
   // a saída (sobe e apaga, 200 ms) e só então some da tela
   useEffect(() => {
     if (fase !== 'saindo') return;
     const t = setTimeout(() => { setFase('fechado'); aoFechar.current?.(); }, 200);
     return () => clearTimeout(t);
   }, [fase]);
-  if (fase === 'fechado') return null;
+  if (fase === 'fechado' || !alvo) return null;
   return createPortal(
-    <CaixaDoAlerta titulo={titulo} texto={texto} tom={tom} saindo={fase === 'saindo'} fechar={() => setFase('saindo')}
-      onMouseEnter={() => setSegura(true)} onMouseLeave={() => setSegura(false)}>{children}</CaixaDoAlerta>,
-    faixaDosAlertas(),
+    <div className={'alerta-linha alerta-no-topo' + (fase === 'saindo' ? ' saindo' : '')} onMouseEnter={() => setSegura(true)} onMouseLeave={() => setSegura(false)}>
+      <CaixaDoAlerta titulo={titulo} texto={texto} tom={tom} fechar={fica ? undefined : () => setFase('saindo')}>{children}</CaixaDoAlerta>
+    </div>,
+    alvo,
   );
 }
 

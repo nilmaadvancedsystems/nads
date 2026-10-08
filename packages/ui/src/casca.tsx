@@ -215,7 +215,8 @@ export function Casca(p: {
   let grupoAnt: number | null = null;
   return (
     <div id="app" className={'on' + (p.larga ? ' larga' : '') + (noOutro ? ' acoplada' : '')}>
-      {p.acimaDoCabecalho && <div className="acima-do-cabecalho">{p.acimaDoCabecalho}</div>}
+      {/* a faixa acima do cabeçalho: os avisos da tela (acimaDoCabecalho) e o lugar dos Alerta (Vitor, 08/10/2026) */}
+      <div className="acima-do-cabecalho">{p.acimaDoCabecalho}<div id="alertas-topo" className="alertas-topo" aria-live="polite" /></div>
       <header className="gh-header" ref={cabecalho} hidden={abasSobem}>
         <div className="gh-header-top" hidden={naEtapa}>
           {!noOutro && (
