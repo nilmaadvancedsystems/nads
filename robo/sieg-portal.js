@@ -26,8 +26,12 @@ const SEM_LOGIN = 'o portal do SIEG pediu login de novo';
 const soDigitos = v => String(v || '').replace(/\D/g, '');
 const ultimoDia = comp => { const [a, m] = comp.split('-').map(Number); return comp + '-' + String(new Date(a, m, 0).getDate()).padStart(2, '0'); };
 
+// a sessão fica na memória entre um pedido e outro (abrir o Chrome custa de 2 s a mais de 1 min); recusada, abre de novo
+let sessao = null;
+
 /** A sessão do perfil do robô: abre o Chrome escondido, confere se ainda está logado e devolve os cookies do app. */
 async function cookiesDoPortal() {
+  if (sessao) return sessao;
   if (!fs.existsSync(PERFIL)) throw new Error(SEM_LOGIN + ' (o perfil do robô ainda não existe)');
   const puppeteer = require('puppeteer-core');
   const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, userDataDir: PERFIL, ignoreDefaultArgs: ['--enable-automation'], args: ['--lang=pt-BR'] });
@@ -37,7 +41,8 @@ async function cookiesDoPortal() {
     const texto = await pg.evaluate(() => document.body ? document.body.innerText : '');
     if (/auth\.sieg\.com/.test(pg.url()) || !/^\s*\{/.test(texto)) throw new Error(SEM_LOGIN);
     const cookies = await pg.cookies(APP);
-    return cookies.map(c => c.name + '=' + c.value).join('; ');
+    sessao = cookies.map(c => c.name + '=' + c.value).join('; ');
+    return sessao;
   } finally { await browser.close().catch(() => {}); }
 }
 
@@ -51,7 +56,7 @@ async function zipDoPeriodo(cookie, doc, tipo, competencia) {
     signal: AbortSignal.timeout(10 * 60000),
   });
   if (r.status === 204) return null;
-  if (r.status === 401 || r.status === 403) throw new Error(SEM_LOGIN);
+  if (r.status === 401 || r.status === 403 || /auth\.sieg\.com/.test(r.url)) { sessao = null; throw new Error(SEM_LOGIN); }
   if (!r.ok) throw new Error('o portal do SIEG respondeu ' + r.status);
   const buf = Buffer.from(await r.arrayBuffer());
   if (buf.length < 4 || buf.readUInt32LE(0) !== 0x04034b50) throw new Error('o portal do SIEG não mandou um .zip');
@@ -65,14 +70,21 @@ async function zipDoPeriodo(cookie, doc, tipo, competencia) {
 async function xmlsPeloPortal(doc, competencia, aoAndar, lerZip) {
   doc = soDigitos(doc);
   if (aoAndar) await aoAndar('Entrando no portal do SIEG');
-  const cookie = await cookiesDoPortal();
+  let cookie = await cookiesDoPortal();
   const arquivos = new Map();
   const resumo = { emitidas: [], recebidas: [] };
   const contagem = { emitidas: { NFe: 0, NFCe: 0, CTe: 0, NFSe: 0, CFe: 0 }, recebidas: { NFe: 0, NFCe: 0, CTe: 0, NFSe: 0, CFe: 0 } };
   const canceladas = new Set();
   for (const [nome, tipo] of TIPOS) {
     if (aoAndar) await aoAndar('Portal · ' + nome + ' (' + arquivos.size + ' XMLs até agora)');
-    const zip = await zipDoPeriodo(cookie, doc, tipo, competencia);
+    let zip;
+    try { zip = await zipDoPeriodo(cookie, doc, tipo, competencia); }
+    catch (err) {
+      // a sessão guardada venceu: pega a do perfil (o Chrome) e tenta uma vez mais
+      if (err.message !== SEM_LOGIN) throw err;
+      cookie = await cookiesDoPortal();
+      zip = await zipDoPeriodo(cookie, doc, tipo, competencia);
+    }
     if (!zip) continue;
     for (const x of lerZip(zip)) {
       arquivos.set(sx.nomeDoArquivo(x), x);

@@ -235,10 +235,10 @@ async function xmlsDoMes(c, doc, competencia, aoAndar) {
 }
 
 /** Grava um arquivo sem duplicar: o mesmo nome e o mesmo conteúdo já estão lá = não grava. Devolve se gravou. */
-function gravarSeNovo(pasta, nome, texto) {
+async function gravarSeNovo(pasta, nome, texto) {
   const destino = path.join(pasta, nome);
-  try { if (fs.readFileSync(destino, 'utf8') === texto) return false; } catch (e) { /* ainda não existe */ }
-  fs.writeFileSync(destino, texto);
+  try { if (await fs.promises.readFile(destino, 'utf8') === texto) return false; } catch (e) { /* ainda não existe */ }
+  await fs.promises.writeFile(destino, texto);
   return true;
 }
 
@@ -346,8 +346,12 @@ function iniciarSieg({ db, log }) {
             const nomeDaPasta = (cli.nome || 'cliente ' + p.codigo).replace(/[\\/:*?"<>|]/g, '_').trim().slice(0, 80);
             const pasta = path.join(PASTA_DO_DRIVE, p.competencia, nomeDaPasta);
             fs.mkdirSync(pasta, { recursive: true });
+            // em paralelo (16 por vez): no Drive cada arquivo leva ~120 ms, um por um 850 XMLs levavam 100 s
             let novos = 0;
-            for (const a of arquivos) if (gravarSeNovo(pasta, a.nome, a.xml)) novos++;
+            const fila = arquivos.slice();
+            await Promise.all(Array.from({ length: 16 }, async () => {
+              for (let a = fila.shift(); a; a = fila.shift()) if (await gravarSeNovo(pasta, a.nome, a.xml)) novos++;
+            }));
             // e um .zip com todos, na mesma pasta (07/10/2026: "quero que ele também salve um arquivo .zip na hora")
             const nomeDoZip = 'SIEG ' + p.competencia + ' - ' + nomeDaPasta + '.zip';
             if (arquivos.length) fs.writeFileSync(path.join(pasta, nomeDoZip), sx.zipDe(arquivos));
