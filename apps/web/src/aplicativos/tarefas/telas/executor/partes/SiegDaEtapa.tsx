@@ -31,6 +31,11 @@ export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 
           )}
           {vm.andamento.detalhe && <p className="hint" style={{ margin: '8px 0 0' }}>{vm.andamento.detalhe}</p>}
           {vm.andamento.resultado && <p className="hint" style={{ margin: '8px 0 0' }}>{vm.andamento.resultado}</p>}
+          {vm.andamento.xmls && vm.zip && (
+            <div className="sieg-acoes" style={{ marginTop: 8 }}>
+              <BotaoAcao className="btn btn-outline" carregando={vm.baixandoZip} textoCarregando="Baixando…" onClick={() => { void vm.baixarZip(); }}><Icone nome="download" />Baixar o .zip ({vm.zip.tamanho})</BotaoAcao>
+            </div>
+          )}
         </div>,
         document.body,
       )}

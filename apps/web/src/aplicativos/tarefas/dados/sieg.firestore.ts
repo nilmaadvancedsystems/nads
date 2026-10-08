@@ -4,7 +4,7 @@
 //     chaves); o robô escreve o andamento, o concluído ou o erro no próprio pedido;
 //   - robo/sieg (só leitura): o robô ligado (com as credenciais) e o ponto.
 import { tarefas as t } from '@nads/core';
-import { addDoc, collection, doc, onSnapshot, query, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 import type { PedidoSieg, RepoSieg } from './sieg';
 
@@ -82,12 +82,14 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
         // os últimos pedidos da empresa e mês: o mais novo de cada tipo (sem tipo = as saídas, os pedidos de antes)
         // só igualdades (sem orderBy: pedia um índice que não existe e o erro sumia calado; 07/10/2026): o mais novo aqui
         onSnapshot(query(collection(db, 'pedidosSieg'), where('codigo', '==', soDigitos(codigo)), where('competencia', '==', competencia)), s => {
-          const todos = s.docs.map(x => x.data()).sort((a, b) => texto(b.criadoEm).localeCompare(texto(a.criadoEm)));
+          const todos = s.docs.map(x => ({ ...x.data(), id: x.id }) as Record<string, unknown>).sort((a, b) => texto(b.criadoEm).localeCompare(texto(a.criadoEm)));
           for (const t of ['saidas', 'contagem', 'xmls'] as const) {
             const d = todos.find(x => (x.tipo || 'saidas') === t);
             const r = d?.resultado as Record<string, unknown> | undefined;
+            const z = d?.zip as Record<string, unknown> | undefined;
             pedidos.set(t + '|' + k, d ? {
-              status: texto(d.status), andamento: texto(d.andamento), erro: texto(d.erro), em: texto(d.criadoEm),
+              id: texto(d.id), status: texto(d.status), andamento: texto(d.andamento), erro: texto(d.erro), em: texto(d.criadoEm),
+              ...(z && Array.isArray(z.partes) && z.partes.length ? { zip: { nome: texto(z.nome), partes: (z.partes as unknown[]).map(texto), bytes: Number(z.bytes) || 0 } } : {}),
               ...(r ? { resultado: { arquivos: Number(r.arquivos) || 0, novos: Number(r.novos) || 0, pasta: texto(r.pasta), zip: texto(r.zip), emitidas: Number(r.emitidas) || 0, recebidas: Number(r.recebidas) || 0 } } : {}),
             } : null);
           }
@@ -120,6 +122,14 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
         }, () => { notas.set(k, { carregadas: true, dados: null }); mudou(); });
       }
       return notas.get(k)!;
+    },
+    // o .zip vem em pedaços de Base64 (siegNotas/{codigo}_{AAAA-MM}~zip~01…), que o fiscal já lê
+    async baixarZip(zip) {
+      const pedacos = await Promise.all(zip.partes.map(async nome => texto((await getDoc(doc(db, 'siegNotas', nome))).data()?.dados)));
+      const bin = atob(pedacos.join(''));
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return bytes;
     },
     async pedirXmls(codigo, competencia) {
       const q = quem();

@@ -4,8 +4,8 @@
 // (os buracos e as canceladas), que o robô baixa quando pedem. O robô desligado (sem as credenciais do SIEG) aparece como
 // aviso. Cada pedido abre a janela flutuante do andamento (os passos, a barra e o resultado, ou o erro).
 import { tarefas as t } from '@nads/core';
-import { useRetorno } from '@nads/ui';
-import { useState } from 'react';
+import { baixarBytes, useRetorno } from '@nads/ui';
+import { useEffect, useRef, useState } from 'react';
 import type { PedidoSieg } from '../../dados/sieg';
 import { useSieg } from '../../dados/repo';
 
@@ -21,10 +21,13 @@ function passosDe(tipo: Janela, p: PedidoSieg | null): { passos: string[]; atual
     const atual = !p ? 0 : p.status === 'pendente' ? 1 : p.status === 'processando' ? (p.andamento === 'recebidas' ? 3 : 2) : p.status === 'concluido' ? 4 : 0;
     return { passos, atual, pct: [8, 25, 50, 78, 100][atual] };
   }
-  const salvando = !!p && /^Salvando/.test(p.andamento);
-  const passos = ['Pedido enviado ao robô', 'O robô pegou o pedido', 'Baixando os XMLs do SIEG', 'Salvando na pasta do cliente no Drive', 'Pronto'];
-  const atual = !p ? 0 : p.status === 'pendente' ? 1 : p.status === 'processando' ? (salvando ? 3 : 2) : p.status === 'concluido' ? 4 : 0;
-  return { passos, atual, pct: [5, 12, 50, 90, 100][atual] };
+  // a ordem (08/10/2026: "seja entregue para a pessoa o zip dos XML, depois que ele introduza esses XML no sistema (nads),
+  // depois que ele salve no drive"): o .zip, as notas no nads, o Drive
+  const a = p ? p.andamento : '';
+  const passos = ['Pedido enviado ao robô', 'O robô pegou o pedido', 'Baixando os XMLs do SIEG', 'O .zip no seu computador', 'Lendo as notas no nads', 'Salvando na pasta do cliente no Drive', 'Pronto'];
+  const fase = /^Salvando/.test(a) ? 5 : /^Lendo/.test(a) ? 4 : /^Entregando/.test(a) ? 3 : 2;
+  const atual = !p ? 0 : p.status === 'pendente' ? 1 : p.status === 'processando' ? fase : p.status === 'concluido' ? 6 : 0;
+  return { passos, atual, pct: [5, 10, 40, 60, 72, 86, 100][atual] };
 }
 
 export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, competencia: string) {
@@ -49,7 +52,7 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
   const pJanela = janela === 'contagem' ? pedidoContagem : janela === 'xmls' ? pedidoXmls : null;
   const andamento = janela ? (() => {
     const { passos, atual, pct } = passosDe(janela, pJanela);
-    const pronto = atual === 4;
+    const pronto = atual === passos.length - 1;
     return {
       titulo: janela === 'contagem'
         ? (pronto ? 'Contagem pronta' : 'Contando no SIEG')
@@ -57,6 +60,8 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
       tituloDoErro: janela === 'contagem' ? 'A contagem não deu certo' : 'Os XMLs não vieram',
       erro: pJanela?.status === 'erro' ? pJanela.erro || 'o robô não conseguiu' : '',
       pronto, pct,
+      /** a janela do "Baixar XMLs" (mostra o "Baixar o .zip") */
+      xmls: janela === 'xmls',
       // o que o robô está fazendo agora (ex.: "Recebidas · NF-e (120 XMLs até agora)")
       detalhe: pJanela?.status === 'processando' && pJanela.andamento && !['emitidas', 'recebidas'].includes(pJanela.andamento) ? pJanela.andamento : '',
       passos: passos.map((texto, i) => ({ texto, feito: i < atual || pronto, atual: i === atual && !pronto })),
@@ -66,6 +71,26 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
           + pJanela.resultado.recebidas + ' recebidas · em ' + pJanela.resultado.pasta + (pJanela.resultado.zip ? ' (com o ' + pJanela.resultado.zip + ')' : '') : ''),
     };
   })() : null;
+
+  // o .zip dos XMLs: assim que o robô entrega, baixa sozinho para quem pediu nesta tela (uma vez por pedido); depois
+  // fica o "Baixar o .zip" (o robô guarda por 1 dia)
+  const zipBaixado = useRef('');
+  const [baixandoZip, setBaixandoZip] = useState(false);
+  async function baixarZip() {
+    const z = pedidoXmls?.zip;
+    if (!z || baixandoZip) return;
+    setBaixandoZip(true);
+    try { baixarBytes(await repo.baixarZip(z), z.nome, 'application/zip'); }
+    catch (err) { toast('Não consegui baixar o .zip: ' + (err instanceof Error ? err.message : String(err))); }
+    finally { setBaixandoZip(false); }
+  }
+  const zipDaVez = janela === 'xmls' && pedidoXmls?.zip && pedidoXmls.id ? pedidoXmls.id : '';
+  useEffect(() => {
+    if (!zipDaVez || zipBaixado.current === zipDaVez) return;
+    zipBaixado.current = zipDaVez;
+    void baixarZip();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zipDaVez]);
 
   async function pedir(qual: Janela) {
     if (!codigo || (qual === 'contagem' ? contando : baixandoXmls)) return;
@@ -103,6 +128,10 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
     erroDaContagem: pedidoContagem?.status === 'erro' ? pedidoContagem.erro : '',
     andamento,
     fecharAndamento: () => setJanela(null),
+    /** o .zip do último "Baixar XMLs" (enquanto o robô guarda) */
+    zip: pedidoXmls?.zip ? { nome: pedidoXmls.zip.nome, tamanho: (pedidoXmls.zip.bytes / 1048576).toFixed(1).replace('.', ',') + ' MB' } : null,
+    baixandoZip,
+    baixarZip,
     contar: () => pedir('contagem'),
     baixarXmls: () => pedir('xmls'),
     async baixar() {

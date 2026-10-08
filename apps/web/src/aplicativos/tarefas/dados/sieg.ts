@@ -7,6 +7,10 @@ export interface PedidoSieg {
   status: string; andamento: string; erro: string; em: string;
   /** o "Baixar XMLs" pronto: quantos arquivos, quantos novos, onde, e quantas notas */
   resultado?: { arquivos: number; novos: number; pasta: string; emitidas: number; recebidas: number; zip?: string };
+  /** o .zip dos XMLs para quem pediu (08/10/2026): o robô entrega antes de ler as notas e salvar no Drive; fica 1 dia */
+  zip?: { nome: string; partes: string[]; bytes: number };
+  /** o id do pedido (para baixar o .zip uma vez só) */
+  id?: string;
 }
 
 /** O que se pede ao robô: baixar as saídas (a sequência) ou contar as notas do mês agora (sem esperar a madrugada). */
@@ -27,6 +31,8 @@ export interface RepoSieg {
   pedirXmls(codigo: string, competencia: string): Promise<void>;
   /** o resumo das notas do último "Baixar XMLs" (siegNotas) */
   notas(codigo: string, competencia: string): { carregadas: boolean; dados: t.sieg.NotasSieg | null };
+  /** os bytes do .zip que o robô entregou no pedido */
+  baixarZip(zip: NonNullable<PedidoSieg['zip']>): Promise<Uint8Array>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -51,6 +57,8 @@ export function criarSiegMemoria(): RepoSieg {
     }),
     saidas: (codigo, competencia) => ({ carregadas: true, dados: saidas.get(codigo + '_' + competencia) || null }),
     notas: (codigo, competencia) => ({ carregadas: true, dados: notasBaixadas.get(codigo + '_' + competencia) || null }),
+    // nos exemplos o .zip vem vazio (um zip sem arquivos)
+    baixarZip: async () => new Uint8Array([0x50, 0x4b, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
     async pedirXmls(codigo, competencia) {
       const k = codigo + '_' + competencia;
       const em = agora();
@@ -59,6 +67,7 @@ export function criarSiegMemoria(): RepoSieg {
       mudou();
       passo('processando', 'Emitidas · NF-e (0 XMLs até agora)', 600);
       passo('processando', 'Recebidas · NF-e (62 XMLs até agora)', 1400);
+      passo('processando', 'Lendo as notas no nads', 1800);
       passo('processando', 'Salvando 104 XMLs no Drive', 2200);
       setTimeout(() => {
         const pasta = 'Claudio Secretario/' + competencia + '/EMPRESA ' + codigo;
