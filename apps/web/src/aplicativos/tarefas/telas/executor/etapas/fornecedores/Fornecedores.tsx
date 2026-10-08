@@ -110,11 +110,11 @@ function ListaDeFornecedores({ vm }: { vm: VM }) {
   // um campo de arquivo só para a lista: guarda de qual conta é o razão
   const arquivo = useRef<HTMLInputElement>(null);
   const conta = useRef('');
-  // a mini tabela do razão de cada fornecedor: aberta; a seta do lado da conta esconde
-  const [fechadas, setFechadas] = useState<ReadonlySet<string>>(new Set());
+  // a mini tabela do razão de cada fornecedor: começa fechada (Vitor, 08/10/2026: "abra recuado"); a seta do lado da conta abre
+  const [abertas, setAbertas] = useState<ReadonlySet<string>>(new Set());
   // alguma linha com a relação do razão: todas guardam o lugar da seta
   const comSeta = vm.linhas.some(l => !!l.razao && l.razao.itens.length > 0);
-  const alternar = (codigo: string) => setFechadas(f => { const n = new Set(f); if (n.has(codigo)) n.delete(codigo); else n.add(codigo); return n; });
+  const alternar = (codigo: string) => setAbertas(f => { const n = new Set(f); if (n.has(codigo)) n.delete(codigo); else n.add(codigo); return n; });
   return (
     <>
       <input ref={arquivo} type="file" accept=".xls,.xlsx,.ods" className="sr-only" tabIndex={-1} aria-hidden="true"
@@ -142,8 +142,8 @@ function ListaDeFornecedores({ vm }: { vm: VM }) {
                       linha, e o lugar da seta guardado em todas as linhas para os números ficarem alinhados */}
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     {comSeta && (l.razao && l.razao.itens.length > 0 ? (
-                      <button type="button" className={'imp-seta' + (fechadas.has(l.codigo) ? '' : ' aberta')} aria-expanded={!fechadas.has(l.codigo)} style={{ margin: 0 }}
-                        title={fechadas.has(l.codigo) ? 'Ver a relação do razão' : 'Esconder a relação do razão'} aria-label={'A relação do razão de ' + l.nome} onClick={() => alternar(l.codigo)}>
+                      <button type="button" className={'imp-seta' + (abertas.has(l.codigo) ? ' aberta' : '')} aria-expanded={abertas.has(l.codigo)} style={{ margin: 0 }}
+                        title={abertas.has(l.codigo) ? 'Esconder a relação do razão' : 'Ver a relação do razão'} aria-label={'A relação do razão de ' + l.nome} onClick={() => alternar(l.codigo)}>
                         <Icone nome="caretDown" />
                       </button>
                     ) : <span style={{ width: 26, flex: 'none' }} />)}
@@ -156,7 +156,7 @@ function ListaDeFornecedores({ vm }: { vm: VM }) {
                   {l.razao?.naoBate && <span className="hint ext-neg" style={{ display: 'block', marginTop: 2 }}>O razão fecha em {l.razao.naoBate}: confira se é desta conta</span>}
                   {/* o conferido mostra o que vai para o fornecedor (o que foi adicionado no "+" de cada linha da relação; Vitor, 07/10/2026) */}
                   {l.situacao === 'conferido' && (l.perguntar
-                    ? <span style={{ display: 'block', marginTop: 4 }}><span className="hint">Vai para o fornecedor: </span>{l.perguntar}</span>
+                    ? <span style={{ display: 'block', marginTop: 4 }}><span className="hint">Questionar: </span>{l.perguntar}</span>
                     : <span className="hint" style={{ display: 'block', marginTop: 4 }}>Use o + nas linhas para perguntar ao fornecedor.</span>)}
                 </td>
                 <td>
@@ -185,7 +185,7 @@ function ListaDeFornecedores({ vm }: { vm: VM }) {
                   )}
                 </td>
               </tr>
-              {l.razao && l.razao.itens.length > 0 && !fechadas.has(l.codigo) && (
+              {l.razao && l.razao.itens.length > 0 && abertas.has(l.codigo) && (
                 <tr>
                   <td colSpan={4}>
                     {/* a relação isolada: o cabeçalho fixo dela não passa por cima do menu "Perguntar" da linha de cima */}
@@ -195,7 +195,7 @@ function ListaDeFornecedores({ vm }: { vm: VM }) {
                         <tbody>
                           {l.razao.itens.map((i, k) => (
                             <tr key={k}><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td>{i.nf}</td><td className="wrap">{i.descricao}</td><td className={'num' + (i.abate ? ' ext-neg' : '')}>{i.valor}</td>
-                              <td><span className={'badge ' + (i.status === 'aberto' ? 'badge-warn' : 'badge-neutral')}>{i.rotulo}</span></td>
+                              <td className={i.status === 'aberto' ? undefined : 'hint'}>{i.rotulo}</td>
                               {/* o "+" de cada linha (Vitor, 07/10/2026: "colocando esse + em cada linha"): adiciona ao que vai para o fornecedor;
                                   adicionada, o check que vira × e tira (o mesmo botão da importação) */}
                               {l.situacao === 'conferido' && <td className="num">{!i.chave ? <span className="hint" title="Só do escritório">—</span> : i.marcado ? (
