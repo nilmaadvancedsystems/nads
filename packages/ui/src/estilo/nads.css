@@ -3503,3 +3503,5 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .arquivador-escrever-andamento.erro{color:var(--danger);}
 .arquivador-escrever-caixa{display:flex;gap:8px;align-items:flex-end;}
 .arquivador-escrever-caixa textarea{flex:1;min-width:0;resize:vertical;min-height:44px;max-height:200px;font:inherit;font-size:13.5px;}
+/* o ícone dentro das linhas de texto do painel do SIEG (07/10/2026: o ✓ do "XMLs baixados" saiu gigante) */
+.sieg-painel .hint svg,.sieg-painel .fraco svg{width:14px;height:14px;flex:none;vertical-align:-2px;}
