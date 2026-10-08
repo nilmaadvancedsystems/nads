@@ -330,9 +330,13 @@ function iniciarSieg({ db, log }) {
 
   // uma coisa por vez (o limite é por API Key): os pedidos do nads passam na frente da contagem da noite
   let ocupado = false;
+  // o pedido que chega enquanto o robô atende outro não pode ficar esquecido (08/10/2026: o 380 do Gustavo ficou parado
+  // porque chegou durante o 62): ao terminar, olha a fila de novo
+  let chegouOutro = false;
   async function atenderPedidos() {
-    if (ocupado) return;
+    if (ocupado) { chegouOutro = true; return; }
     ocupado = true;
+    chegouOutro = false;
     try {
       await apagarZipsVelhos().catch(err => log('SIEG: não consegui apagar os .zip velhos -', err.message));
       const snap = await db.collection('pedidosSieg').where('status', '==', 'pendente').limit(5).get();
@@ -383,33 +387,25 @@ function iniciarSieg({ db, log }) {
             // já baixou antes? (08/10/2026: "caso tenham baixado esses XMLs, para acelerar, verifica se tem todos no Drive,
             // aí puxa de lá, baixando apenas os excedentes"): conta agora no SIEG (2 consultas rápidas) e compara, tipo por
             // tipo, com as notas do último download; o tipo que não mudou sai do .zip que está na pasta, sem baixar
-            let doDrive = [];
-            let soTipos = null;
+            // a conferência roda JUNTO com os downloads (08/10/2026: "tá demorando em média 3 minutos, queria que demorasse
+            // 1"): quando ela diz que um tipo não mudou, o download dele é cancelado e ele sai do .zip do Drive
             const anterior = (await db.collection('siegNotas').doc(id).get().catch(() => null))?.data();
             const zipAntigo = path.join(pasta, nomeDoZip);
-            if (anterior && Array.isArray(anterior.emitidas) && fs.existsSync(zipAntigo)) {
-              try {
-                await andar('baixando', 'Conferindo o que já está no Drive', 0, true);
-                const agora = await contagemDoMes(c, cnpj, p.competencia);
-                const antes = {};
-                for (const n of [...anterior.emitidas, ...(anterior.recebidas || [])]) antes[n.tipo] = (antes[n.tipo] || 0) + 1;
-                const CHAVE = { 'NF-e': 'NFe', 'NFC-e': 'NFCe', 'CT-e': 'CTe', 'NFS-e': 'NFSe', 'CF-e': 'CFe' };
-                const iguais = Object.keys(CHAVE).filter(t => (agora.emitidas[CHAVE[t]] || 0) + (agora.recebidas[CHAVE[t]] || 0) === (antes[t] || 0));
-                soTipos = Object.keys(CHAVE).filter(t => !iguais.includes(t));
-                const velhos = lerZip(await fs.promises.readFile(zipAntigo));
-                doDrive = velhos.filter(x => iguais.includes(sx.tipoDeNota(x)));
-                // o peso da barra: só o que vai baixar
-                for (const t of iguais) if (esperado) esperado[t] = 0;
-                log('SIEG: XMLs de', p.codigo, '- do Drive:', iguais.join(', ') || 'nada', '· baixar:', soTipos.join(', ') || 'nada');
-                await andar('baixando', soTipos.length ? 'Já no Drive: ' + doDrive.length + ' XMLs · baixando ' + soTipos.join(', ') : 'Tudo já estava no Drive (' + doDrive.length + ' XMLs)', 0.05, true);
-              } catch (err) { log('SIEG: não deu para usar o Drive (' + err.message + '), baixando tudo'); doDrive = []; soTipos = null; }
-            }
+            const reaproveitar = anterior && Array.isArray(anterior.emitidas) && fs.existsSync(zipAntigo) ? (async () => {
+              const agora = await contagemDoMes(c, cnpj, p.competencia);
+              const antes = {};
+              for (const n of [...anterior.emitidas, ...(anterior.recebidas || [])]) antes[n.tipo] = (antes[n.tipo] || 0) + 1;
+              const CHAVE = { 'NF-e': 'NFe', 'NFC-e': 'NFCe', 'CT-e': 'CTe', 'NFS-e': 'NFSe', 'CF-e': 'CFe' };
+              const tipos = Object.keys(CHAVE).filter(t => (agora.emitidas[CHAVE[t]] || 0) + (agora.recebidas[CHAVE[t]] || 0) === (antes[t] || 0));
+              log('SIEG: XMLs de', p.codigo, '- não mudaram desde o último download:', tipos.join(', ') || 'nenhum');
+              return { tipos, xmls: lerZip(await fs.promises.readFile(zipAntigo)) };
+            })().catch(err => { log('SIEG: não deu para usar o Drive (' + err.message + '), baixando tudo'); return null; }) : null;
             // pelo portal primeiro (08/10/2026: "tem clientes com 1000 xml de uma vez, quero que ele vá no site e baixe"):
-            // um .zip por tipo de nota, em segundos; sem a sessão do portal ou com erro, pela API (mais lenta)
+            // os tipos de nota ao mesmo tempo, em segundos; sem a sessão do portal ou com erro, pela API (mais lenta)
             let baixado;
             try {
-              baixado = await require('./sieg-portal').xmlsPeloPortal(cnpj, p.competencia, (t, f) => andar('baixando', t, f), lerZip, soTipos, esperado, doDrive);
-              log('SIEG: XMLs de', p.codigo, 'pelo portal');
+              baixado = await require('./sieg-portal').xmlsPeloPortal(cnpj, p.competencia, (t, f) => andar('baixando', t, f), lerZip, null, esperado, reaproveitar);
+              log('SIEG: XMLs de', p.codigo, 'pelo portal' + (baixado.tiposDoDrive.length ? ' (do Drive: ' + baixado.tiposDoDrive.join(', ') + ')' : ''));
             } catch (err) {
               log('SIEG: portal não deu (' + err.message + '), XMLs de', p.codigo, 'pela API');
               await andar('baixando', 'O portal não deu (' + err.message + '): baixando pela API', null, true);
@@ -417,7 +413,7 @@ function iniciarSieg({ db, log }) {
             }
             const { arquivos, resumo, contagem } = baixado;
             numeros.xmls = arquivos.length;
-            numeros.doDrive = doDrive.length;
+            numeros.doDrive = baixado.doDrive || 0;
             const zip = arquivos.length ? sx.zipDe(arquivos) : null;
             // a ordem (Vitor, 08/10/2026: "seja entregue para a pessoa o zip dos XML, depois que ele introduza esses XML
             // no sistema (nads), depois que ele salve no drive"): 1) o .zip para quem pediu, que o nads baixa na hora
@@ -494,7 +490,7 @@ function iniciarSieg({ db, log }) {
         }
       }
     } catch (err) { log('SIEG: não consegui ler os pedidos -', err.message); }
-    finally { situacao = 'livre'; ocupado = false; }
+    finally { situacao = 'livre'; ocupado = false; if (chegouOutro) setTimeout(atenderPedidos, 0); }
   }
   const pararPedidos = db.collection('pedidosSieg').where('status', '==', 'pendente').onSnapshot(s => { if (!s.empty) atenderPedidos(); }, err => log('SIEG: pedidos -', err.message));
 
