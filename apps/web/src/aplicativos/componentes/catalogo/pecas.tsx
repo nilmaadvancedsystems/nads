@@ -209,6 +209,8 @@ export const PECAS_BASE: Peca[] = [
   { id: 'caixas-etapa', tipo: 'selos', nome: 'Caixinha da etapa', descricao: 'Vazia, marcada (feita) e parada (interrompida)', classes: ['subnav-caixa vazia', 'subnav-caixa marcada', 'subnav-caixa parada'], telas: EXECUTOR,
     demo: () => <><span className="subnav-caixa vazia" /><span className="subnav-caixa marcada"><Icone nome="check" /></span><span className="subnav-caixa parada" /></> },
   { id: 'emp-cod', tipo: 'selos', nome: 'Código da empresa', classes: ['emp-cod'], telas: ['c-entrada', 'e-entrada', 'z-entrada'], demo: () => <span className="emp-cod">292</span> },
+  { id: 'ponto-vermelho', tipo: 'selos', nome: 'Pontinho vermelho (falta configurar)', descricao: 'Ao lado do nome: na aba, no seletor e na linha que falta configurar (a dica diz o quê)', classes: ['ponto-vermelho'], telas: ['c-cadastro'],
+    demo: () => <><span>Cadastro<span className="ponto-vermelho" /></span><span>5102, 6102 — Venda de mercadoria<span className="ponto-vermelho" /></span></> },
   { id: 'pill-vazio', tipo: 'selos', nome: 'Pílula vazia', classes: ['pill-vazio'], telas: ['c-cadastro'], demo: () => <span className="pill-vazio">sem conta</span> },
   { id: 'grupo-tag', tipo: 'selos', nome: 'Grupo da conta', classes: ['grupo-tag g-a', 'g-p', 'g-d', 'g-r'], telas: ['c-cadastro', 't-cadastro-janela'],
     demo: () => <><span className="grupo-tag g-a">Ativo</span><span className="grupo-tag g-p">Passivo</span><span className="grupo-tag g-d">Despesa</span><span className="grupo-tag g-r">Receita</span></> },

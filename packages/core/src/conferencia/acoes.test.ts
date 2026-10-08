@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { conta, empresa, nota } from './__legado__/fixtures';
-import { aoSair, gravarLancVista, gravarVerificacao, importarNotas, marcarAutomaticos, marcarNatureza } from './acoes';
+import { aoSair, gravarLancVista, gravarVerificacao, importarNotas, marcarAutomaticos, marcarNaoContabil, marcarNatureza, vincularConta } from './acoes';
+import { naturezasSemConta } from './regras/empresa';
 import { verifChave } from './regras/conciliacao';
 import { FILTRO_MOVIMENTO_VAZIO } from './tipos';
 
@@ -80,5 +81,23 @@ describe('gravarLancVista', () => {
     const r2 = gravarLancVista(e, V, 'vista', '');
     expect(r2.empresa.vendaVista.lancs).toEqual({});
     expect(r2.mensagem).toBe('Lançamento à vista removido.');
+  });
+});
+
+describe('naturezasSemConta (o pontinho vermelho do Cadastro)', () => {
+  it('as naturezas sem conta e sem o "Não vai para o Contábil"; por tipo; sem balancete ou sem notas, nenhuma', () => {
+    const base = empresa({
+      contas: [conta('10', 'Fornecedores')],
+      entradas: [nota('1102', 'E', 100, '1'), nota('1556', 'E', 50, '2')],
+      saidas: [nota('5102', 'S', 300, '3')],
+    });
+    const todas = naturezasSemConta(base);
+    expect(todas.length).toBe(3);
+    expect(naturezasSemConta(base, 'Saída').length).toBe(1);
+    const [k1, k2] = naturezasSemConta(base, 'Entrada');
+    const configurada = marcarNaoContabil(vincularConta(base, k1, '10'), k2, true);
+    expect(naturezasSemConta(configurada, 'Entrada')).toEqual([]);
+    expect(naturezasSemConta(empresa({ entradas: base.entradas }))).toEqual([]);
+    expect(naturezasSemConta(empresa({ contas: base.contas }))).toEqual([]);
   });
 });

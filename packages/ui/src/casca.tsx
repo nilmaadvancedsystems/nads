@@ -14,7 +14,8 @@ import { atualizarVersao, useVersaoNova } from './versaoNova';
 /** foraDaEtapa: a seção some quando o aplicativo está inteiro dentro de uma etapa (ex.: a Importação da Conferência, que foi para a primeira etapa) */
 export interface SecaoCasca { id: string; rotulo: string; icone: NomeIcone; grupo: number; ativa?: boolean; travada?: boolean; caixa?: 'vazia' | 'marcada' | 'parada'; titulo?: string; foraDaEtapa?: boolean; apagada?: boolean }
 /** contador: o número ao lado do nome, como o "Issues 12" do GitHub (ex.: "2/7") */
-export interface PaginaCasca { id: string; rotulo: string; icone: NomeIcone; ativa?: boolean; travada?: boolean; oculta?: boolean; contador?: string }
+/** ponto: o pontinho vermelho de "falta configurar" ao lado do nome (Vitor, 08/10/2026); o texto vai na dica */
+export interface PaginaCasca { id: string; rotulo: string; icone: NomeIcone; ativa?: boolean; travada?: boolean; oculta?: boolean; contador?: string; ponto?: string }
 
 /**
  * A tela está dentro de outra (um iframe, como quando a Tarefas abre uma ferramenta na etapa)? Aí
@@ -251,6 +252,7 @@ export function Casca(p: {
             <button key={x.id} type="button" className={'menu-item' + (x.ativa ? ' active' : '') + (x.travada ? ' is-locked' : '')}
               aria-current={x.ativa ? 'page' : undefined} aria-disabled={x.travada ? 'true' : undefined} onClick={() => (abasDaEtapa && p.onAbaNaEtapa ? p.onAbaNaEtapa : p.onPagina)(x.id)}>
               <Icone nome={x.icone} /><span>{x.rotulo}</span>{x.contador && <span className="menu-contador">{x.contador}</span>}
+              {x.ponto && <span className="ponto-vermelho" title={x.ponto} aria-label={x.ponto} />}
             </button>
           ))}
         </nav>

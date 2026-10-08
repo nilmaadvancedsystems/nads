@@ -10,7 +10,7 @@ import type { NomeIcone } from './icones';
 import { origemConfiavel, origemDoPai } from './origem';
 
 /** Uma aba de um aplicativo inteiro dentro da etapa (a Conferência): a Tarefas a desenha no cabeçalho dela. */
-export interface AbaDaEtapa { id: string; rotulo: string; icone: NomeIcone; ativa?: boolean; travada?: boolean }
+export interface AbaDaEtapa { id: string; rotulo: string; icone: NomeIcone; ativa?: boolean; travada?: boolean; ponto?: string }
 
 /**
  * Na ferramenta (um aplicativo inteiro dentro da etapa): as abas dele sobem para o cabeçalho da Tarefas, que ocupa
