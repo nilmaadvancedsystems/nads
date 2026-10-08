@@ -3,7 +3,7 @@
 // tópicos — Agora (a organização em andamento com as 10 fases, ou o pedido), Conversa do Claude (o que ele vai
 // respondendo enquanto organiza), Relatório (o do dia), Hoje (as rodadas somadas) e Execuções (as últimas, com os
 // clientes, o relatório e a mensagem final de cada uma); no pé, Organizar agora.
-import { Icone, type NomeIcone } from '@nads/ui';
+import { BotaoAcao, Icone, type NomeIcone } from '@nads/ui';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
 import type { useArquivadorDoDrive } from './useArquivadorDoDrive';
@@ -125,7 +125,25 @@ function Conversa({ vm }: { vm: Vm }) {
         ))}
         <div ref={fim} />
       </div>
+      {vm.escrever && <Escrever e={vm.escrever} />}
     </>
+  );
+}
+
+/** A caixa para escrever ao Claude da rotina (só o admin): Enter manda, Shift+Enter quebra a linha. */
+function Escrever({ e }: { e: NonNullable<Vm['escrever']> }) {
+  return (
+    <div className="arquivador-escrever">
+      {e.andamento.map(m => (
+        <p key={m.id} className={'arquivador-escrever-andamento' + (m.erro ? ' erro' : '')}><b>{m.situacao}</b> · {m.texto}</p>
+      ))}
+      <form className="arquivador-escrever-caixa" onSubmit={ev => { ev.preventDefault(); void e.mandar(); }}>
+        <textarea className="field" rows={2} value={e.rascunho} onChange={ev => e.setRascunho(ev.target.value)} maxLength={4000}
+          placeholder={e.semSessao ? 'Sem conversa do Claude neste PC ainda' : 'Escrever para o Claude'} aria-label="Mensagem para o Claude" disabled={e.semSessao}
+          onKeyDown={ev => { if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); void e.mandar(); } }} />
+        <BotaoAcao type="submit" carregando={e.mandando} textoCarregando="Mandando…" disabled={!e.podeMandar}><Icone nome="arrowUp" />Mandar</BotaoAcao>
+      </form>
+    </div>
   );
 }
 

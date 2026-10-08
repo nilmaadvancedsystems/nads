@@ -8,9 +8,11 @@
 //     últimas somam as rodadas do dia no painel;
 //   - robo/arquivador.rotina: a rotina rodando por fora do botão (a das 9h), que o arquivador manda no ponto;
 //   - robo/arquivadorConversa (só leitura): a conversa do Claude que roda a rotina e o relatório do dia;
+//   - arquivadorMensagens (07/10/2026, só o admin): o que se escreve para o Claude da rotina; o arquivador do PC retoma a
+//     sessão com a mensagem e escreve o andamento (status, erro) no próprio documento;
 //   - arquivamentos/{execucao}/detalhe/tudo (só leitura, quando pedem): o relatório e a mensagem final da execução.
 import { addDoc as addDocBruto, collection, doc, getDoc, limit, onSnapshot, orderBy, query, updateDoc as updateDocBruto } from 'firebase/firestore';
-import type { ConversaDaRotina, DetalheDaExecucao, EstadoDoArquivador, ExecucaoPublicada, PedidoDeArquivo, RepoArquivador, ResultadoDoArquivamento, RotinaRodando } from './arquivador';
+import type { ConversaDaRotina, DetalheDaExecucao, EstadoDoArquivador, ExecucaoPublicada, MensagemParaOClaude, PedidoDeArquivo, RepoArquivador, ResultadoDoArquivamento, RotinaRodando } from './arquivador';
 import { bancoDoEntregas } from './entregas.firestore';
 import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 
@@ -40,7 +42,9 @@ export function criarArquivadorFirestore(quem: () => Quem): RepoArquivador {
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   let estado: EstadoDoArquivador = { carregado: false, semPermissao: false, em: '', situacao: '', desligadoEm: '', rotina: null };
   let execucoes: ExecucaoPublicada[] = [];
-  let conversa: ConversaDaRotina = { carregada: false, atualizadaEm: '', mensagens: [], relatorio: null, agentes: [] };
+  let conversa: ConversaDaRotina = { carregada: false, atualizadaEm: '', sessao: '', mensagens: [], relatorio: null, agentes: [] };
+  let escritas: MensagemParaOClaude[] = [];
+  let ouvindoEscritas = false;
   const detalhes = new Map<string, DetalheDaExecucao>();
   let pedidos: PedidoDeArquivo[] = [];
   let ouvindo = false;
@@ -67,7 +71,7 @@ export function criarArquivadorFirestore(quem: () => Quem): RepoArquivador {
       const d = s.data() || {};
       const rel = d.relatorio as Record<string, unknown> | null | undefined;
       conversa = {
-        carregada: true, atualizadaEm: texto(d.atualizadaEm),
+        carregada: true, atualizadaEm: texto(d.atualizadaEm), sessao: texto(d.sessao),
         mensagens: Array.isArray(d.mensagens) ? (d.mensagens as Record<string, unknown>[]).map(m => ({ em: texto(m.em), quem: m.quem === 'voce' ? 'voce' as const : 'claude' as const, texto: texto(m.texto) })) : [],
         relatorio: rel ? { arquivo: texto(rel.arquivo), em: texto(rel.em), texto: texto(rel.texto) } : null,
         agentes: Array.isArray(d.agentes) ? (d.agentes as Record<string, unknown>[]).map(a => ({
@@ -93,6 +97,22 @@ export function criarArquivadorFirestore(quem: () => Quem): RepoArquivador {
     pedidos: () => { ouvir(); return pedidos; },
     execucoesRecentes: () => { ouvir(); return execucoes; },
     conversa: () => { ouvir(); return conversa; },
+    mensagens() {
+      // só o admin lê (as regras do Entregas); quem não pode fica sem a lista, sem erro na tela
+      if (!ouvindoEscritas && quem()) {
+        ouvindoEscritas = true;
+        onSnapshot(query(collection(db, 'arquivadorMensagens'), orderBy('criadoEm', 'desc'), limit(8)), s => {
+          escritas = s.docs.map(d => { const x = d.data(); return { id: d.id, texto: texto(x.texto), status: texto(x.status), erro: texto(x.erro), criadoEm: texto(x.criadoEm), criadoPor: texto(x.criadoPor) }; });
+          mudou();
+        }, () => undefined);
+      }
+      return escritas;
+    },
+    async mandarMensagem(t, sessao) {
+      const q = quem();
+      if (!q) throw new Error('Sem login.');
+      await addDoc(collection(db, 'arquivadorMensagens'), { status: 'pendente', texto: t, sessao, criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorUid: q.uid });
+    },
     detalhe(execucao) {
       const pronto = detalhes.get(execucao);
       if (pronto) return pronto;

@@ -62,10 +62,23 @@ export interface MensagemDaRotina { em: string; quem: 'claude' | 'voce'; texto: 
 export interface ConversaDaRotina {
   carregada: boolean;
   atualizadaEm: string;
+  /** a sessão do Claude desta conversa (o arquivador retoma ela quando alguém escreve pelo nads) */
+  sessao: string;
   mensagens: MensagemDaRotina[];
   relatorio: { arquivo: string; em: string; texto: string } | null;
   /** os agentes que a rotina despachou (as etapas que se veem e a % do lote) */
   agentes: { id: string; descricao: string; tipo: string; em: string; status: 'rodando' | 'concluido' | 'erro' }[];
+}
+
+/** Uma mensagem escrita no nads para o Claude da rotina (07/10/2026: "coloque para eu conversar com o claude aqui"). */
+export interface MensagemParaOClaude {
+  id: string;
+  texto: string;
+  /** pendente, aguardando (a rotina está rodando), respondendo, respondida, erro */
+  status: string;
+  erro: string;
+  criadoEm: string;
+  criadoPor: string;
 }
 
 /** O relatório e a mensagem final de uma execução (arquivamentos/{EXEC-…}/detalhe/tudo). */
@@ -89,6 +102,10 @@ export interface RepoArquivador {
   pedidos(): PedidoDeArquivo[];
   /** a conversa do Claude que roda a rotina e o relatório do dia */
   conversa(): ConversaDaRotina;
+  /** as últimas mensagens escritas no nads para o Claude da rotina (a mais nova primeiro) */
+  mensagens(): MensagemParaOClaude[];
+  /** escreve para o Claude da rotina: o arquivador do PC retoma a sessão com a mensagem (só o admin) */
+  mandarMensagem(texto: string, sessao: string): Promise<void>;
   /** o relatório e a mensagem final de uma execução (lê quando pedem) */
   detalhe(execucao: string): DetalheDaExecucao;
   /** as últimas execuções publicadas, a mais nova primeiro */
@@ -108,6 +125,7 @@ export function criarArquivadorMemoria(quem: () => { nome: string } | null): Rep
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   const agora = () => new Date().toISOString();
   const pedidos: PedidoDeArquivo[] = [];
+  let escritas: MensagemParaOClaude[] = [];
   // a rotina por fora, só para ver a tela (no console: simularRotina('2'); simularRotina(null) para parar)
   let rotina: RotinaRodando | null = null;
   const ETAPAS = ['Ler a pasta Claudio Secretario', 'Identificar o cliente de cada arquivo', 'Mover para as pastas dos clientes', 'Conferir e registrar'];
@@ -115,7 +133,7 @@ export function criarArquivadorMemoria(quem: () => { nome: string } | null): Rep
     exemplos: true,
     estado: () => ({ carregado: true, semPermissao: false, em: agora(), situacao: pedidos.some(p => p.status === 'processando') ? 'rodando' : 'livre', desligadoEm: '', rotina }),
     conversa: () => ({
-      carregada: true, atualizadaEm: rotina ? agora() : '',
+      carregada: true, atualizadaEm: rotina ? agora() : '', sessao: 'exemplo',
       mensagens: rotina ? [
         { em: agora(), quem: 'claude', texto: 'Continuo com os separadores que faltam: **23 PDFs** de `593` e `584`. Como há limite de 20 simultâneos, despacho 20 agora e os 3 restantes depois.' },
         { em: agora(), quem: 'voce', texto: 'continue' },
@@ -124,6 +142,14 @@ export function criarArquivadorMemoria(quem: () => { nome: string } | null): Rep
       agentes: rotina ? ['L023', 'L024', 'L025', 'L026', 'L027', 'L028'].map((l, k) => ({ id: 'a' + k, descricao: 'Separa PDF ' + l, tipo: 'separador', em: agora(), status: k < 4 ? 'concluido' as const : 'rodando' as const })) : [],
       relatorio: rotina ? { arquivo: 'RELATORIO-exemplo.txt', em: agora(), texto: 'RELATORIO DA RODADA — Organização Claudio Secretario\nmodo: PRODUCAO (rodadas parciais)\n\nPASTAS PROCESSADAS\n2026-10   587 copiados   Concluída' } : null,
     }),
+    mensagens: () => escritas,
+    async mandarMensagem(texto) {
+      const m = { id: 'ex-' + Date.now(), texto, status: 'pendente', erro: '', criadoEm: agora(), criadoPor: quem()?.nome || 'exemplo' };
+      escritas = [m, ...escritas];
+      mudou();
+      setTimeout(() => { escritas = escritas.map(x => (x.id === m.id ? { ...x, status: 'respondendo' } : x)); mudou(); }, 700);
+      setTimeout(() => { escritas = escritas.map(x => (x.id === m.id ? { ...x, status: 'respondida' } : x)); mudou(); }, 2200);
+    },
     detalhe: () => ({ carregado: true, relatorio: 'RELATORIO DA EXECUÇÃO (exemplo)\n\n12 arquivos arquivados em 3 clientes; 2 sem cliente.', resposta: 'A rotina terminou com o veredito **OK**.' }),
     execucoesRecentes: () => (rotina ? [
       { id: 'EXEC-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-132848', em: agora(), arquivados: 587, naoIdentificados: 1, codigos: ['575', '573'] },

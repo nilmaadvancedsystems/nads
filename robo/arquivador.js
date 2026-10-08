@@ -217,6 +217,67 @@ async function publicarConversa() {
   } catch (err) { log('não consegui publicar a conversa da rotina:', err.message); }
 }
 
+// ---------- escrever para o Claude da rotina pelo nads ----------
+// (07/10/2026: "coloque para eu conversar com o claude aqui") O admin escreve na janela do Arquivador (Drive) e a mensagem
+// chega em arquivadorMensagens. Aqui, uma por vez: com a rotina parada, retoma a sessão da conversa (claude --resume
+// <sessão> -p "<mensagem>", com as mesmas permissões e pasta da rotina); a resposta entra no arquivo da conversa e sobe
+// para o nads pela publicação de sempre (publicarConversa). Com a rotina rodando (o botão ou a das 9h), espera ela
+// terminar: duas execuções na mesma conversa se atropelariam.
+const mensagensRef = db.collection('arquivadorMensagens');
+let respondendo = false;
+const SESSAO_VALIDA = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function responderNaSessao(sessao, texto) {
+  return new Promise(resolve => {
+    const env = Object.assign(ambienteLimpo(), { CLAUDE_CODE_SUBAGENT_MODEL: MODELO_EXECUTOR });
+    const filho = spawn(CLAUDE, ['--resume', sessao, '-p', texto, '--model', MODELO_ORQUESTRADOR, '--permission-mode', 'bypassPermissions',
+      '--add-dir', DRIVE, '--output-format', 'json'], { cwd: RAIZ, windowsHide: true, env, stdio: ['ignore', 'pipe', 'pipe'] });
+    let saida = '', erros = '';
+    filho.stdout.on('data', b => { saida += String(b); });
+    filho.stderr.on('data', b => { erros += String(b); if (erros.length > 4000) erros = erros.slice(-4000); });
+    const relogio = setTimeout(() => { try { filho.kill(); } catch (e) {} }, LIMITE_EXECUCAO_MS);
+    filho.on('error', err => { clearTimeout(relogio); resolve({ ok: false, texto: err.message }); });
+    filho.on('close', code => {
+      clearTimeout(relogio);
+      let r = null; try { r = JSON.parse(saida); } catch (e) { /* saída que não é JSON */ }
+      const texto = String((r && r.result) || saida || erros).trim();
+      resolve({ ok: code === 0 && !(r && r.is_error), texto });
+    });
+  });
+}
+
+async function atenderMensagens() {
+  if (respondendo || ocupado) return;
+  respondendo = true;
+  try {
+    for (;;) {
+      const snap = await mensagensRef.where('status', 'in', ['pendente', 'aguardando']).get();
+      const fila = snap.docs.sort((a, b) => String(a.data().criadoEm).localeCompare(String(b.data().criadoEm)));
+      if (!fila.length) break;
+      const doc = fila[0];
+      const m = doc.data();
+      const texto = String(m.texto || '').trim().slice(0, 4000);
+      if (!texto) { await doc.ref.update({ status: 'erro', erro: 'mensagem vazia', fimEm: agora() }); continue; }
+      // a sessão: a que a tela mostrava; se não vale ou sumiu, a mais nova desta pasta
+      let sessao = SESSAO_VALIDA.test(String(m.sessao || '')) && fs.existsSync(path.join(PASTA_CONVERSAS, m.sessao + '.jsonl')) ? m.sessao : null;
+      if (!sessao) { const c = lerConversaDaRotina(); sessao = c ? c.sessao : null; }
+      if (!sessao) { await doc.ref.update({ status: 'erro', erro: 'não há conversa do Claude neste PC', fimEm: agora() }); continue; }
+      const espera = ocupado ? 'um pedido do botão está rodando' : motivoPraEsperar();
+      if (espera) {
+        if (m.status !== 'aguardando') await doc.ref.update({ status: 'aguardando', aguardandoMotivo: espera, aguardandoEm: agora() });
+        break;   // tenta de novo na próxima volta
+      }
+      await doc.ref.update({ status: 'respondendo', sessao, inicioEm: agora() });
+      log('mensagem do nads para o Claude da rotina (' + (m.criadoPor || '?') + ')');
+      const r = await responderNaSessao(sessao, texto);
+      await doc.ref.update(r.ok ? { status: 'respondida', resposta: r.texto.slice(0, 3000), fimEm: agora() } : { status: 'erro', erro: r.texto.slice(0, 600) || 'o Claude não respondeu', fimEm: agora() });
+      assinaturaConversa = '';   // publica a conversa de novo já com a resposta
+      await publicarConversa();
+    }
+  } catch (err) { log('mensagens para o Claude:', err.message); }
+  finally { respondendo = false; }
+}
+
 // Motivo pra esperar, ou null se pode começar.
 function motivoPraEsperar() {
   const mes = new Date().toISOString().slice(0, 7);
@@ -490,6 +551,9 @@ async function iniciar() {
   // a conversa do Claude da rotina e o relatório do dia (o nads mostra no Arquivar agora)
   void publicarConversa();
   setInterval(() => { void publicarConversa(); }, 60 * 1000);
+  // as mensagens escritas no nads para o Claude da rotina (só o admin escreve)
+  mensagensRef.where('status', '==', 'pendente').onSnapshot(() => { void atenderMensagens(); }, err => log('mensagens para o Claude:', err.message));
+  setInterval(() => { void atenderMensagens(); }, 60 * 1000);
 
   ouvir('pedidos de arquivamento', () => fila.where('status', '==', 'pendente'), snap => { if (!snap.empty) atenderFila(); }, log);
   // Pedido que está esperando a das 9h terminar: confere de 2 em 2 minutos.

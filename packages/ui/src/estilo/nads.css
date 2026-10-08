@@ -3480,3 +3480,10 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .dp-documento{white-space:nowrap;cursor:default;}
 .dp-documento-celula{display:inline-flex;align-items:center;gap:4px;}
 .stat-grid.dp-numeros{border:0;background:none;overflow:visible;}
+
+/* Escrever para o Claude da rotina (Drive › Arquivador, 07/10/2026; só o admin) */
+.arquivador-escrever{position:sticky;bottom:0;display:flex;flex-direction:column;gap:6px;margin-top:12px;padding:10px 0 2px;background:var(--surface);}
+.arquivador-escrever-andamento{margin:0;font-size:12px;color:var(--ink-muted);}
+.arquivador-escrever-andamento.erro{color:var(--danger);}
+.arquivador-escrever-caixa{display:flex;gap:8px;align-items:flex-end;}
+.arquivador-escrever-caixa textarea{flex:1;min-width:0;resize:vertical;min-height:44px;max-height:200px;font:inherit;font-size:13.5px;}

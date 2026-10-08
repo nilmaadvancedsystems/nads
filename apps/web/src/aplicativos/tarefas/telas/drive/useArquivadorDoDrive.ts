@@ -5,6 +5,7 @@
 // (só admin e contábil).
 import { useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
+import { useOperador } from '../../casca/operador';
 import { useArquivador } from '../../dados/repo';
 import type { PedidoDeArquivo } from '../../dados/arquivador';
 
@@ -28,6 +29,10 @@ const TITULOS: Record<string, string> = {
 export function useArquivadorDoDrive() {
   const repo = useArquivador();
   const { toast, modal } = useRetorno();
+  // escrever para o Claude da rotina (07/10/2026: "coloque para eu conversar com o claude aqui"): só o admin
+  const admin = !!useOperador().operador?.admin;
+  const [rascunho, setRascunho] = useState('');
+  const [mandando, setMandando] = useState(false);
   const [agora, setAgora] = useState(() => Date.now());
   useEffect(() => { const r = setInterval(() => setAgora(Date.now()), 15 * 1000); return () => clearInterval(r); }, []);
   const [pedindo, setPedindo] = useState(false);
@@ -133,6 +138,26 @@ export function useArquivadorDoDrive() {
       mensagens: conversa.mensagens.map((m, i) => ({ ...m, chave: i + ':' + m.em, hora: hora(m.em) })),
       atualizada: conversa.atualizadaEm ? quando(conversa.atualizadaEm) : '',
     },
+    /** a caixa para escrever ao Claude da rotina (o arquivador do PC retoma a sessão com a mensagem) */
+    escrever: admin ? {
+      rascunho, setRascunho, mandando,
+      podeMandar: !!rascunho.trim() && !mandando && !!conversa.sessao,
+      semSessao: !conversa.sessao,
+      // as que ainda não terminaram e a última que deu erro (a resposta aparece na própria conversa)
+      andamento: repo.mensagens().filter((m, i) => ['pendente', 'aguardando', 'respondendo'].includes(m.status) || (i === 0 && m.status === 'erro')).map(m => ({
+        id: m.id, texto: m.texto.length > 80 ? m.texto.slice(0, 80) + '…' : m.texto,
+        situacao: m.status === 'pendente' ? 'Na fila do PC' : m.status === 'aguardando' ? 'Esperando a rotina terminar' : m.status === 'respondendo' ? 'O Claude está respondendo…' : 'Não deu: ' + (m.erro || 'erro sem detalhe'),
+        erro: m.status === 'erro',
+      })),
+      async mandar() {
+        const t = rascunho.trim();
+        if (!t || mandando || !conversa.sessao) return;
+        setMandando(true);
+        try { await repo.mandarMensagem(t.slice(0, 4000), conversa.sessao); setRascunho(''); }
+        catch (e) { toast('Não deu: ' + (e instanceof Error ? e.message : String(e))); }
+        finally { setMandando(false); }
+      },
+    } : null,
     relatorioDoDia: conversa.relatorio ? { arquivo: conversa.relatorio.arquivo, quando: quando(conversa.relatorio.em), texto: conversa.relatorio.texto } : null,
     rodadasHoje: deHoje.map(x => ({ id: x.id, hora: doId(x.id).hora, arquivados: x.arquivados, clientes: x.codigos.length, semCliente: x.naoIdentificados })),
     // as últimas execuções, por dia; a aberta mostra os clientes, o relatório e a mensagem final
