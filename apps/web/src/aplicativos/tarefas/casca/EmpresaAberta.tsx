@@ -8,7 +8,7 @@ export function EmpresaAberta() {
   const { empresa = '' } = useParams();
   return (
     <TopoProvider>
-      <CascaTarefas app="minhas-empresas" pagina="empresas">
+      <CascaTarefas app="minhas-empresas" pagina="empresas" larga>
         <EmpresaTarefas rota={empresa} />
       </CascaTarefas>
     </TopoProvider>
