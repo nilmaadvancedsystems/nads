@@ -317,7 +317,18 @@ function ligarFgtsDigital(db, log, avisos) {
           while (cliques.length) {
             const c = cliques.shift();
             const { x, y } = c.data();
-            if (Number.isFinite(x) && Number.isFinite(y)) await page.mouse.click(Math.max(0, Math.min(LARGURA, x)), Math.max(0, Math.min(ALTURA, y))).catch(() => {});
+            // como a mão de uma pessoa (08/10/2026: o "Próximo" do hCaptcha ignorava o clique seco): o mouse vai até o
+            // ponto em alguns passos, para em cima e o botão fica apertado um instante
+            if (Number.isFinite(x) && Number.isFinite(y)) {
+              const cx = Math.max(0, Math.min(LARGURA, x));
+              const cy = Math.max(0, Math.min(ALTURA, y));
+              log('FGTS: clique da pessoa em', Math.round(cx), Math.round(cy));
+              await page.mouse.move(cx, cy, { steps: 12 }).catch(() => {});
+              await dormir(120);
+              await page.mouse.down().catch(() => {});
+              await dormir(90);
+              await page.mouse.up().catch(() => {});
+            }
             await c.ref.delete().catch(() => {});
             ultimaFoto = 0;
           }
