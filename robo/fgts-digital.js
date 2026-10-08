@@ -158,15 +158,18 @@ function ligarFgtsDigital(db, log, avisos) {
     clearTimeout(fecharParado);
     const s = sessao;
     sessao = null;
-    if (s) s.browser.close().catch(() => {});
+    if (s) s.browser.close().catch(() => {}).finally(() => { if (s.perfil) setTimeout(() => fs.rmSync(s.perfil, { recursive: true, force: true }), 2000); });
   }
   async function abrirSessao() {
     clearTimeout(fecharParado);
     if (sessao && sessao.browser.isConnected()) return sessao;
+    // cada sessão começa limpa (Vitor, 08/10/2026: "se os cookies forem limpos não dá erro"): um perfil novo, sem os
+    // cookies do hCaptcha das tentativas anteriores; apagado quando a sessão fecha. O certificado vem da regra do Edge.
+    const perfil = NO_PC ? fs.mkdtempSync(PERFIL_PC + '-') : '';
     const browser = await puppeteer.launch(NO_PC ? {
       executablePath: NAVEGADOR,
       headless: false,
-      userDataDir: PERFIL_PC,
+      userDataDir: perfil,
       ignoreDefaultArgs: ['--enable-automation'],
       args: ['--lang=pt-BR', '--window-size=' + (LARGURA + 16) + ',' + (ALTURA + 140), '--disable-blink-features=AutomationControlled', '--no-first-run', '--no-default-browser-check',
         // a janela atrás de outras, minimizada ou com a tela bloqueada continua desenhando (a tela ao vivo e os cliques)
@@ -193,7 +196,7 @@ function ligarFgtsDigital(db, log, avisos) {
     page.on('console', m => { if (m.type() === 'error') log('FGTS console:', m.text().slice(0, 200)); });
     await page.setExtraHTTPHeaders({ 'Accept-Language': 'pt-BR,pt;q=0.9' });
     const cdp = await page.createCDPSession();
-    const nova = { browser, page, cdp, pdf: null };
+    const nova = { browser, page, cdp, pdf: null, perfil };
     // o PDF da guia pode vir como resposta (aberto numa aba) em vez de download
     const guardarPdf = async r => {
       if (nova.pdf || !/application\/pdf/i.test(r.headers()['content-type'] || '')) return;
@@ -206,7 +209,10 @@ function ligarFgtsDigital(db, log, avisos) {
     });
     page.on('response', guardarPdf);
     // fecharam a janela: o próximo pedido abre outra
-    browser.on('disconnected', () => { if (sessao === nova) sessao = null; });
+    browser.on('disconnected', () => {
+      if (sessao === nova) sessao = null;
+      if (perfil) setTimeout(() => fs.rmSync(perfil, { recursive: true, force: true }), 2000);
+    });
     sessao = nova;
     return nova;
   }
