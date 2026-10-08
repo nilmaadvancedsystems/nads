@@ -25,6 +25,11 @@ export function situacaoDoPedido(p: PedidoFgts | undefined, temCnpj: boolean): S
   return 'nada';
 }
 
+/** o responsável como nas Obrigações (Vitor, 08/10/2026: "igual às Obrigações"): HEVERTON → Heverton, GUSTAVO.P → Gustavo.P */
+const nomeDe = (r: string) => (r ? r.split('.').map(p => p.charAt(0) + p.slice(1).toLowerCase()).join('.') : '');
+/** marcar para o lote: tem CNPJ e não está com o robô */
+const podeMarcar = (situacao: SituacaoFgts, cnpj: string) => !!cnpj && !['fila', 'trabalhando', 'verificacao'].includes(situacao);
+
 export function useFgtsDoDp() {
   const repo = useFgts();
   const gmail = useGmailDoEntregas();
@@ -36,6 +41,8 @@ export function useFgtsDoDp() {
   const [responsavel, setResponsavel] = useState('');
   const [aberto, setAberto] = useState<string | null>(null);
   const [pedindo, setPedindo] = useState(false);
+  // as marcadas para o lote (Vitor, 08/10/2026: "marcar várias e emitir")
+  const [marcadas, setMarcadas] = useState<ReadonlySet<number>>(new Set());
   const doDp = useClientesDoDp(competencia);
   const robo = repo.robo();
   const { carregados, porCnpj } = repo.pedidos(competencia);
@@ -49,7 +56,8 @@ export function useFgtsDoDp() {
       // nos exemplos não há cadastro do Entregas: um CNPJ inventado pelo código, para a tela andar
       const cnpj = cnpjDoCodigo.get(c.codigo) || (repo.exemplos ? String(c.codigo).padStart(8, '0') + '000100' : '');
       const pedido = cnpj ? porCnpj.get(cnpj) : undefined;
-      return { codigo: c.codigo, nome: c.nomeNaTela, cnpj, responsavel: c.responsavel, pedido, situacao: situacaoDoPedido(pedido, !!cnpj) };
+      const situacao = situacaoDoPedido(pedido, !!cnpj);
+      return { codigo: c.codigo, nome: c.nomeNaTela, cnpj, responsavel: nomeDe(c.responsavel), pedido, situacao, podeMarcar: podeMarcar(situacao, cnpj) };
     })
     .sort((a, b) => a.codigo - b.codigo);
   const q = busca.trim().toLowerCase();
@@ -58,6 +66,12 @@ export function useFgtsDoDp() {
   const linhas = doResponsavel.filter(l => (!q || l.nome.toLowerCase().includes(q) || String(l.codigo).includes(q) || (!!qDigitos && l.cnpj.includes(qDigitos)))
     && (filtro === 'todos' || (filtro === 'emitidas' ? l.situacao === 'emitida' : filtro === 'problemas' ? ['erro', 'captcha', 'sem-cnpj'].includes(l.situacao) : !['emitida', 'sem-cnpj'].includes(l.situacao))));
   const faltam = doResponsavel.filter(l => l.cnpj && ['nada', 'erro', 'ensaio-ok'].includes(l.situacao));
+
+  const marcadasValidas = todas.filter(l => l.podeMarcar && marcadas.has(l.codigo));
+  // o robô agora (Vitor, 08/10/2026: "acompanhar o robô"): a empresa com ele, o último passo e a fila do lote
+  const comORobo = todas.find(l => l.situacao === 'trabalhando' || l.situacao === 'verificacao') || null;
+  const ultimoPasso = comORobo?.pedido?.passos[comORobo.pedido.passos.length - 1];
+  const naFila = todas.filter(l => l.situacao === 'fila').sort((a, b) => (a.pedido?.criadoEm || '').localeCompare(b.pedido?.criadoEm || ''));
 
   async function pedir(l: (typeof todas)[number], modo: ModoFgts) {
     if (!l.cnpj) return;
@@ -103,6 +117,28 @@ export function useFgtsDoDp() {
       if (!a) { toast('O PDF não está no pedido.'); return; }
       baixarBytes(Uint8Array.from(atob(a.base64), ch => ch.charCodeAt(0)), a.nome, 'application/pdf');
     },
+    /** o lote marcado */
+    marcadas: marcadasValidas.length,
+    marcada: (codigo: number) => marcadas.has(codigo),
+    alternarMarca: (codigo: number) => setMarcadas(m => { const n = new Set(m); if (n.has(codigo)) n.delete(codigo); else n.add(codigo); return n; }),
+    /** todas as que dá para marcar, na tela (com os filtros), ou nenhuma */
+    marcarTodas: (sim: boolean) => setMarcadas(sim ? new Set(linhas.filter(l => l.podeMarcar).map(l => l.codigo)) : new Set()),
+    todasMarcadas: linhas.some(l => l.podeMarcar) && linhas.filter(l => l.podeMarcar).every(l => marcadas.has(l.codigo)),
+    async emitirMarcadas() {
+      if (pedindo || !marcadasValidas.length) return;
+      setPedindo(true);
+      try {
+        for (const l of marcadasValidas) await pedir(l, 'emitir');
+        toast(marcadasValidas.length + (marcadasValidas.length === 1 ? ' guia pedida' : ' guias pedidas') + ' ao robô.');
+        setMarcadas(new Set());
+      } catch (e) { toast('Parou no meio: ' + (e instanceof Error ? e.message : String(e))); } finally { setPedindo(false); }
+    },
+    /** o robô agora: a empresa com ele e o último passo; a fila do lote */
+    roboAgora: comORobo && comORobo.pedido ? {
+      codigo: comORobo.codigo, nome: comORobo.nome, situacao: comORobo.situacao, pedidoId: comORobo.pedido.id,
+      modo: comORobo.pedido.modo, passo: ultimoPasso?.nome || 'começando', quando: ultimoPasso?.quando || comORobo.pedido.criadoEm,
+    } : null,
+    fila: naFila.map(l => ({ codigo: l.codigo, nome: l.nome })),
     aberto: aberto ? todas.find(l => l.pedido?.id === aberto) || null : null,
     abrir: (id: string) => setAberto(id),
     fechar: () => setAberto(null),
