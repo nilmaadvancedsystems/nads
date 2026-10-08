@@ -2,7 +2,7 @@
 // e os CFOPs ligados), as saídas que baixam bem e o uso e consumo com item de bem, das notas importadas na Conferência,
 // no período da tarefa. Só olhar: nada é gravado. O ⚡ do modo desenvolvedor põe notas de teste só nesta tela.
 // A verificação só roda no clique do Verificar (Vitor, 07/10/2026: abrir a etapa travava enquanto olhava os CFOPs), com a
-// barra do topo por pelo menos 3 segundos.
+// barra do topo e o botão girando por 2,7 segundos (Vitor, 08/10/2026).
 import { demo, formatos, tarefas } from '@nads/core';
 import { useCarregando, useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
@@ -11,8 +11,8 @@ import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '..
 
 type Linha = tarefas.NotaDeBem;
 
-/** o tempo da verificação: a barra anda pelo menos isso depois do clique */
-const TEMPO_DA_VERIFICACAO = 3000;
+/** o tempo da verificação: o botão gira e a barra anda isso depois do clique (Vitor, 08/10/2026: 2,7 s) */
+const TEMPO_DA_VERIFICACAO = 2700;
 
 export function useBens() {
   const s = useEtapaAberta();
@@ -27,22 +27,25 @@ export function useBens() {
   });
 
   const fonte = teste || lidas;
+  // as listas, não o objeto: o useNotasDaConferencia devolve um objeto novo a cada desenho, e o efeito de baixo zerava o
+  // clique do Verificar na hora (Vitor, 08/10/2026: "não funciona")
+  const ent = fonte?.entradas, sai = fonte?.saidas, carregou = !!fonte;
   const chave = meses.join(',');
   // o clique do Verificar: a hora em que começou; o resultado, quando a conta e os 3 segundos acabam
   const [desde, setDesde] = useState<number | null>(null);
   const [b, setB] = useState<ReturnType<typeof tarefas.bensDoPeriodo> | null>(null);
   // outras notas (as de teste, ou as da empresa de volta): verificar de novo
-  useEffect(() => { setB(null); setDesde(null); }, [fonte, chave]);
+  useEffect(() => { setB(null); setDesde(null); }, [ent, sai, chave]);
   useEffect(() => {
-    if (desde === null || !fonte) return;
+    if (desde === null || !carregou) return;
     // a conta depois de a barra aparecer, para a tela não travar antes dela
     let fim: ReturnType<typeof setTimeout> | undefined;
     const conta = setTimeout(() => {
-      const r = tarefas.bensDoPeriodo(fonte.entradas || [], fonte.saidas || [], chave.split(','));
+      const r = tarefas.bensDoPeriodo(ent || [], sai || [], chave.split(','));
       fim = setTimeout(() => { setB(r); setDesde(null); }, Math.max(0, TEMPO_DA_VERIFICACAO - (Date.now() - desde)));
     }, 50);
     return () => { clearTimeout(conta); clearTimeout(fim); };
-  }, [desde, fonte, chave]);
+  }, [desde, carregou, ent, sai, chave]);
   const verificando = desde !== null;
   useCarregando(verificando);
   const verificar = () => { if (!verificando) setDesde(Date.now()); };

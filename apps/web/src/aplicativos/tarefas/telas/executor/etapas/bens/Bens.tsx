@@ -12,7 +12,7 @@ export function Bens() {
   return (
     <section>
       <header className="topbar"><div><h2 className="page-title">Bens</h2></div></header>
-      {/* o Verificar (Vitor, 07/10/2026): a barra do topo anda 3 segundos enquanto olha os CFOPs das notas */}
+      {/* o Verificar (Vitor, 07/10/2026): o botão gira e a barra do topo anda 2,7 segundos enquanto olha os CFOPs das notas */}
       <div className="tarefas-barra-topo">
         <BotaoAcao className={vm.verificado ? 'btn btn-outline' : 'btn btn-primary'} carregando={vm.verificando} textoCarregando="Verificando" onClick={vm.verificar}>
           {vm.verificado ? 'Verificar de novo' : 'Verificar'}
