@@ -100,6 +100,11 @@ export interface CadastroDaEmpresa {
   cartaoEmpresarial?: boolean;
   vendeNoCartao?: boolean;
   /**
+   * A empresa recebe liquidação de cobrança do banco no caixa (CRÉD.LIQ.COBRANÇA)? (Vitor, 08/10/2026.) Sim: a etapa
+   * Creditor entra em todos os meses do período. Não ou sem resposta: entra só nos meses do razão do caixa com a liquidação.
+   */
+  credLiquidacao?: boolean;
+  /**
    * O escritório emite nota de honorário para a empresa? (Vitor, 07/10/2026.) Sim: a provisão chega pela nota (Fiscal) e a
    * etapa Honorários só confere o razão. Não: a pessoa importa o Extrato por cobrança e baixa os lançamentos para o
    * Alterdata. Sem = ainda não informado.

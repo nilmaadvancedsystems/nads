@@ -21,7 +21,9 @@ export function useDadosDaEmpresa(rota: string) {
     /** os cartões (Vitor, 07/10/2026): true, false ou null (não informado); ligam a etapa Cartões na Tarefas */
     cartaoEmpresarial: c.cadastro.cartaoEmpresarial ?? null,
     vendeNoCartao: c.cadastro.vendeNoCartao ?? null,
-    definirCartao(campo: 'cartaoEmpresarial' | 'vendeNoCartao', sim: boolean) {
+    /** a liquidação de cobrança no caixa (Vitor, 08/10/2026): Sim põe o Creditor em todos os meses da Tarefa */
+    credLiquidacao: c.cadastro.credLiquidacao ?? null,
+    definirCartao(campo: 'cartaoEmpresarial' | 'vendeNoCartao' | 'credLiquidacao', sim: boolean) {
       if (c.carregando) return;
       const atual = c.cadastro[campo] ?? null;
       // clicar no que já está marcado volta para "não informado"

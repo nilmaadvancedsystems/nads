@@ -11,7 +11,7 @@ import { useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { extratorDaEmpresa, repoDoCadastro } from '../../dados/fonte';
-import { useCartaoEmpresarial, useExecucoesDoPeriodo, usePrestaServico, useRepo } from '../../dados/repo';
+import { useCartaoEmpresarial, useCredLiquidacao, useExecucoesDoPeriodo, usePrestaServico, useRepo } from '../../dados/repo';
 import { caminhoDaEmpresa, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../comum/desenvolvimento';
@@ -55,6 +55,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const prestaServico = usePrestaServico(empresa?.nome ?? null, empresa?.codigo ?? null);
   // o Cadastro diz se a empresa tem cartão empresarial: a etapa Cartões entra (ou sai) nos meses do período
   const cartaoEmpresarial = useCartaoEmpresarial(empresa?.nome ?? null, empresa?.codigo ?? null);
+  // e se recebe liquidação de cobrança no caixa: Sim põe o Creditor em todos os meses (Vitor, 08/10/2026)
+  const credLiquidacao = useCredLiquidacao(empresa?.nome ?? null, empresa?.codigo ?? null);
   const meses = t.competenciasDoPeriodo(periodo);
   const varios = meses.length > 1;
   const { porMes, carregada } = useExecucoesDoPeriodo(meses, rotina.departamento);
@@ -104,6 +106,17 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
         const r = t.retirarEtapa(exc, 'cartoes', 'Cadastro: sem cartão empresarial', op.nome, new Date());
         repo.gravar(r.execucao, r.evento);
       }
+    }
+  });
+  // o Creditor segue o Cadastro (Vitor, 08/10/2026): "Liquidação de cobrança: Sim" põe ele em todos os meses do período.
+  // Não ou sem resposta, não mexe aqui: ele entra pelo razão do caixa (ajustarCreditor).
+  useEffect(() => {
+    if (dev || !carregada || !empresa || credLiquidacao !== true) return;
+    for (const c of meses) {
+      const exc = exDe[c];
+      if (!exc || exc.adicionadas?.includes('creditor')) continue;
+      const a = t.adicionarEtapa(exc, 'creditor', 'Cadastro: liquidação de cobrança', op.nome, new Date());
+      repo.gravar(a.execucao, a.evento);
     }
   });
   const [aviso, setAviso] = useState<string | null>(null);
@@ -459,7 +472,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
           const a = t.adicionarEtapa(exc, 'creditor', 'CRÉD.LIQ.COBRANÇA no razão do caixa', op.nome, new Date());
           repo.gravar(a.execucao, a.evento);
           entrou.push(c);
-        } else if (!tem && esta && !t.estadoDa(exc, 'creditor')) {
+        } else if (!tem && esta && !t.estadoDa(exc, 'creditor') && credLiquidacao !== true) {
           const r = t.retirarEtapa(exc, 'creditor', 'o razão do caixa não tem CRÉD.LIQ.COBRANÇA', op.nome, new Date());
           repo.gravar(r.execucao, r.evento);
         }

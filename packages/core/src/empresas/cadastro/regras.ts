@@ -127,6 +127,7 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...(typeof doc.prestaServico === 'boolean' ? { prestaServico: doc.prestaServico } : {}),
     ...(typeof doc.cartaoEmpresarial === 'boolean' ? { cartaoEmpresarial: doc.cartaoEmpresarial } : {}),
     ...(typeof doc.vendeNoCartao === 'boolean' ? { vendeNoCartao: doc.vendeNoCartao } : {}),
+    ...(typeof doc.credLiquidacao === 'boolean' ? { credLiquidacao: doc.credLiquidacao } : {}),
     ...(typeof doc.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: doc.emiteNotaHonorario } : {}),
     ...contatoDoDocumento(doc.contato),
     ...(Array.isArray(doc.emprestimos) ? { emprestimos: (doc.emprestimos as Record<string, unknown>[]).map(e => ({ numero: texto(e?.numero), banco: texto(e?.banco), desde: texto(e?.desde), ...(texto(e?.ate) ? { ate: texto(e?.ate) } : {}) })).filter(e => e.numero && e.banco) } : {}),
@@ -147,6 +148,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(typeof c.prestaServico === 'boolean' ? { prestaServico: c.prestaServico } : {}),
     ...(typeof c.cartaoEmpresarial === 'boolean' ? { cartaoEmpresarial: c.cartaoEmpresarial } : {}),
     ...(typeof c.vendeNoCartao === 'boolean' ? { vendeNoCartao: c.vendeNoCartao } : {}),
+    ...(typeof c.credLiquidacao === 'boolean' ? { credLiquidacao: c.credLiquidacao } : {}),
     ...(typeof c.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: c.emiteNotaHonorario } : {}),
     ...(c.contato && (c.contato.email || c.contato.whatsapp) ? { contato: c.contato } : {}),
     ...(c.socios?.length ? { socios: c.socios } : {}),
@@ -551,13 +553,16 @@ export function definirContaPadrao(c: CadastroDaEmpresa, campo: CampoContaPadrao
   return registrar({ ...c, contasPadrao: { contas, nomes } }, por, agora, 'Mudou conta padrão', detalhe);
 }
 
-/** Os cartões da empresa: tem cartão empresarial / vende no cartão — sim, não, ou volta a "não informado" (null). */
-export function definirCartao(c: CadastroDaEmpresa, campo: 'cartaoEmpresarial' | 'vendeNoCartao', sim: boolean | null, por: string, agora: Date): CadastroDaEmpresa {
+/**
+ * Os cartões da empresa e a liquidação de cobrança (o Creditor): tem cartão empresarial / vende no cartão / recebe
+ * CRÉD.LIQ.COBRANÇA — sim, não, ou volta a "não informado" (null).
+ */
+export function definirCartao(c: CadastroDaEmpresa, campo: 'cartaoEmpresarial' | 'vendeNoCartao' | 'credLiquidacao', sim: boolean | null, por: string, agora: Date): CadastroDaEmpresa {
   if ((c[campo] ?? null) === sim) return c;
   const resto: CadastroDaEmpresa = { ...c };
   delete resto[campo];
   const novo = sim == null ? resto : { ...resto, [campo]: sim };
-  return registrar(novo, por, agora, campo === 'cartaoEmpresarial' ? 'Cartão empresarial' : 'Vende no cartão', sim == null ? 'Não informado' : sim ? 'Sim' : 'Não');
+  return registrar(novo, por, agora, campo === 'cartaoEmpresarial' ? 'Cartão empresarial' : campo === 'vendeNoCartao' ? 'Vende no cartão' : 'Liquidação de cobrança (Creditor)', sim == null ? 'Não informado' : sim ? 'Sim' : 'Não');
 }
 
 // ─── contato (o e-mail e o WhatsApp do Mandei) ──────────────────────────────

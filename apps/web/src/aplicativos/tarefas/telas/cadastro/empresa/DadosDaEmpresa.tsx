@@ -16,7 +16,7 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
     <button type="button" className={'btn ' + (vm.prestaServico === sim ? 'btn-primary' : 'btn-outline')} aria-pressed={vm.prestaServico === sim}
       onClick={() => vm.definirPrestaServico(sim)}>{rotulo}</button>
   );
-  const opcaoDoCartao = (campo: 'cartaoEmpresarial' | 'vendeNoCartao', sim: boolean, rotulo: string) => (
+  const opcaoDoCartao = (campo: 'cartaoEmpresarial' | 'vendeNoCartao' | 'credLiquidacao', sim: boolean, rotulo: string) => (
     <button type="button" className={'btn ' + (vm[campo] === sim ? 'btn-primary' : 'btn-outline')} aria-pressed={vm[campo] === sim}
       onClick={() => vm.definirCartao(campo, sim)}>{rotulo}</button>
   );
@@ -70,6 +70,21 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
         <div className="cad-regra-opcoes" role="group" aria-label="Vende no cartão">
           {opcaoDoCartao('vendeNoCartao', true, 'Sim')}
           {opcaoDoCartao('vendeNoCartao', false, 'Não')}
+        </div>
+      </div>
+      {/* o Creditor (Vitor, 08/10/2026): a empresa recebe liquidação de cobrança do banco (CRÉD.LIQ.COBRANÇA) */}
+      <div className="cad-regra">
+        <div className="cad-regra-txt">
+          <span className="cad-campo-rotulo">Liquidação de cobrança (Creditor)</span>
+          <span className="hint">
+            O banco credita as cobranças liquidadas no caixa (CRÉD.LIQ.COBRANÇA): a etapa Creditor entra em todos os meses da Tarefa.
+            Sem resposta ou Não, ela entra só nos meses em que o razão do caixa tiver a liquidação.
+            {vm.credLiquidacao == null && ' Ainda não informado.'}
+          </span>
+        </div>
+        <div className="cad-regra-opcoes" role="group" aria-label="Liquidação de cobrança (Creditor)">
+          {opcaoDoCartao('credLiquidacao', true, 'Sim')}
+          {opcaoDoCartao('credLiquidacao', false, 'Não')}
         </div>
       </div>
       {/* a nota de honorário (Vitor, 07/10/2026): sem nota, a etapa Honorários pede o Extrato por cobrança */}
