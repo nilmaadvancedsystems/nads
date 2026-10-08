@@ -67,7 +67,7 @@ export function useFormulario() {
     const respostas = linhas.length ? linhas : [doItem];
     const semOpcao = respostas.some(x => !x.opcao), semTexto = respostas.some(x => x.explicar && !x.texto.trim());
     return { ...it, linhas, doItem, iniciais: iniciais.toUpperCase(), respondido: respostas.every(x => x.respondido),
-      falta: semOpcao ? (linhas.length > 1 ? 'Responda cada linha para continuar' : 'Escolha uma resposta para continuar') : semTexto ? 'Explique para continuar' : '',
+      falta: semOpcao ? (linhas.length > 1 ? 'Responda cada linha para continuar' : 'Escolha uma resposta para continuar') : semTexto ? (linhas.length ? 'Explique e confirme (✓) para continuar' : 'Explique para continuar') : '',
       /** a revisão: o que respondeu em cada linha e quantos arquivos */
       resumo: linhas.length
         ? linhas.map(x => ({ chave: x.chave, linha: (x.nf && x.nf !== '—' ? 'NF ' + x.nf : x.conta || x.data) + ' · ' + x.valor, resposta: [x.opcao, x.texto].filter(Boolean).join(': ') }))

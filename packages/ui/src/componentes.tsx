@@ -271,7 +271,7 @@ export type ItemMenu = { rotulo: ReactNode; icone?: NomeIcone; marcado?: boolean
  * preenchido (padrão do app todo). Fecha ao escolher, ao clicar
  * fora e no Esc. Em vez de `itens`, pode receber `conteudo` (ex.: uma lista com busca), que ganha o `fechar`.
  */
-export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn-outline', classeAberto, itens, conteudo, direita, acima, largura, setaAntes }: {
+export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn-outline', classeAberto, itens, conteudo, direita, acima, largura, setaAntes, semSeta }: {
   rotulo: ReactNode;
   icone?: NomeIcone;
   titulo?: string;
@@ -284,6 +284,8 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
   acima?: boolean;
   /** a setinha à esquerda do texto (no lugar do ícone), em vez de à direita */
   setaAntes?: boolean;
+  /** sem a setinha: só o ícone (Vitor, 08/10/2026: o comprovante do Mandei) */
+  semSeta?: boolean;
   /** classe a mais no botão enquanto o menu está aberto (ex.: apagar o botão de cima) */
   classeAberto?: string;
   largura?: number;
@@ -306,9 +308,9 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
   return (
     <div className="popover-wrap" ref={ref}>
       <button type="button" className={className + (aberto && classeAberto ? ' ' + classeAberto : '')} title={dica} aria-haspopup="menu" aria-expanded={aberto} onClick={() => setAberto(a => !a)}>
-        {setaAntes && <Icone nome="caretDown" className="menu-seta antes" />}
+        {setaAntes && !semSeta && <Icone nome="caretDown" className="menu-seta antes" />}
         {icone && <Icone nome={icone} />}{rotulo}
-        {!setaAntes && <Icone nome="caretDown" className="menu-seta" />}
+        {!setaAntes && !semSeta && <Icone nome="caretDown" className="menu-seta" />}
       </button>
       {aberto && (
         <div className={'popover menu-pop' + (direita ? ' direita' : '') + (acima ? ' acima' : '')} role="menu" aria-label={titulo} style={largura ? { width: largura } : undefined}>

@@ -10,7 +10,7 @@
 // e a coluna Operação (Compra, Venda…) no lugar da Descrição e do Tipo; tudo da linha numa linha só (Vitor, 08/10/2026):
 // a resposta, o Explique (campo curto) e o comprovante (o ícone com o menu Galeria, Câmera, Arquivo).
 import { Icone, MarcaN, MenuSuspenso, type NomeIcone } from '@nads/ui';
-import { useRef, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { useFormulario } from './useFormulario';
 
 type VM = ReturnType<typeof useFormulario>;
@@ -130,8 +130,7 @@ function Item({ vm }: { vm: VM }) {
                     {/* o que a resposta pede, na mesma linha: o Explique (Outro, outra conta) e o comprovante (já foi pago, outra conta) */}
                     <td>
                       {l.explicar && (
-                        <input type="text" value={l.texto} placeholder="Explique" style={{ width: '100%', minWidth: 120 }} onChange={e => vm.escrever(l.chave, e.target.value)}
-                          aria-label={'Explique: ' + (l.nf && l.nf !== '—' ? 'NF ' + l.nf : l.data)} />
+                        <Explique texto={l.texto} rotulo={l.nf && l.nf !== '—' ? 'NF ' + l.nf : l.data} onGuardar={t => vm.escrever(l.chave, t)} />
                       )}
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
@@ -204,6 +203,39 @@ function OQueAResposta({ pede, vm }: { pede: Resposta; vm: VM }) {
 }
 
 /**
+ * O Explique da linha (Vitor, 08/10/2026: "com o ícone do lápis e um botão de confirmar, para o cliente saber que
+ * inputou corretamente"): o campo com o lápis e o ✓ que confirma (ou o Enter); só confirmado vale como resposta.
+ * Confirmado, o texto no balão com o check da importação (passou o mouse, vira o × e volta a editar).
+ */
+function Explique({ texto, rotulo, onGuardar }: { texto: string; rotulo: string; onGuardar: (texto: string) => void }) {
+  const [rascunho, setRascunho] = useState(texto);
+  const [editando, setEditando] = useState(!texto);
+  const confirmar = () => { if (!rascunho.trim()) return; onGuardar(rascunho.trim()); setEditando(false); };
+  if (!editando && texto) {
+    return (
+      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span className="msg-balao" title={texto}><Icone nome="mensagem" />{texto}</span>
+        <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" onClick={() => { setRascunho(texto); onGuardar(''); setEditando(true); }}
+          title="Explicação confirmada. Clique para corrigir." aria-label={'Corrigir a explicação de ' + rotulo}>
+          <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
+        </button>
+      </span>
+    );
+  }
+  return (
+    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <label className="busca-curta" style={{ flex: 1, minWidth: 120, width: 'auto' }}>
+        <Icone nome="lapis" />
+        <input type="text" value={rascunho} placeholder="Explique" aria-label={'Explique: ' + rotulo}
+          onChange={e => setRascunho(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') confirmar(); }} />
+      </label>
+      <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={!rascunho.trim()} onClick={confirmar}
+        title="Confirmar a explicação" aria-label={'Confirmar a explicação de ' + rotulo}><Icone nome="check" /></button>
+    </span>
+  );
+}
+
+/**
  * O "Anexar comprovante ▾" (Vitor, 08/10/2026: "coloque em um único botão, clicou aparece as opções"): o menu com
  * Galeria, Câmera (no celular abre a câmera direto) e Arquivo; cada opção abre o seletor de arquivo dela. Na linha da
  * tabela, compacto: só o ícone.
@@ -214,8 +246,8 @@ function AnexarComprovante({ id, compacto, onEscolher }: { id: string; compacto?
   const opcao = (rotulo: string, icone: NomeIcone, input: React.RefObject<HTMLInputElement | null>) => ({ rotulo, icone, onClick: () => input.current?.click() });
   return (
     <>
-      {/* na linha da tabela, só o ícone (compacto) */}
-      <MenuSuspenso rotulo={compacto ? '' : 'Anexar comprovante'} icone="upload" className="btn" largura={200} direita={compacto} dica="Anexar comprovante"
+      {/* na linha da tabela, só o ícone (compacto), sem a setinha (Vitor, 08/10/2026) */}
+      <MenuSuspenso rotulo={compacto ? '' : 'Anexar comprovante'} icone="upload" className={compacto ? 'icon-btn icon-btn-sm imp-btn' : 'btn'} semSeta={compacto} largura={200} direita={compacto} dica="Anexar comprovante"
         itens={[opcao('Galeria', 'imagem', galeria), opcao('Câmera', 'camera', camera), opcao('Arquivo', 'arquivo', arquivo)]} />
       <input ref={galeria} type="file" id={'gal-' + id} accept="image/*" multiple className="sr-only" tabIndex={-1} aria-hidden="true" onChange={escolheu} />
       <input ref={camera} type="file" id={'cam-' + id} accept="image/*" capture="environment" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={escolheu} />
