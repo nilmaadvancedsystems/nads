@@ -3,14 +3,16 @@
 import { tarefas as t } from '@nads/core';
 import { useSearchParams } from 'react-router';
 import { useExecucoes, useRepo } from '../../dados/repo';
-import { competenciasDaTela } from '../../casca/navegacao';
+import { competenciasDaTela, competenciasDoDp } from '../../casca/navegacao';
 
 export function useVisaoContabil(dep: 'contabil' | 'fiscal' | 'dp' = 'contabil') {
   const repo = useRepo();
   const [params, setParams] = useSearchParams();
   const rotina = t.rotinaDo(dep) || t.ROTINA_CONTABIL;
-  const competencias = competenciasDaTela(12);
-  const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
+  // no DP, do dia 20 em diante, o mês corrente também (a folha que está fechando)
+  const meses = dep === 'dp' ? competenciasDoDp(12) : { lista: competenciasDaTela(12), padrao: competenciasDaTela(1)[0] };
+  const competencias = meses.lista;
+  const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : meses.padrao;
   const { execucoes, carregada } = useExecucoes(competencia, dep);
   const totalEmpresas = t.empresasDaRotina(dep, repo.listarEmpresas()).length;
 
