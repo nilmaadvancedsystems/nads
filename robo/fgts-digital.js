@@ -355,7 +355,8 @@ function ligarFgtsDigital(db, log, avisos) {
       const ate = Date.now() + ESPERA_PESSOA_MS;
       let ultimaFoto = 0;
       try {
-        while (Date.now() < ate && /acesso\.gov\.br/.test(page.url())) {
+        // fecharam a janela do robô (08/10/2026): para na hora, sem esperar os 10 minutos
+        while (Date.now() < ate && !page.isClosed() && /acesso\.gov\.br/.test(page.url())) {
           while (cliques.length) {
             const c = cliques.shift();
             const { x, y } = c.data();
@@ -387,6 +388,7 @@ function ligarFgtsDigital(db, log, avisos) {
         parar();
         await aoVivo.delete().catch(() => {});
       }
+      if (page.isClosed()) throw new Error('a janela do navegador do robô foi fechada; peça de novo');
       if (/acesso\.gov\.br/.test(page.url())) return false;
       await ref.update({ status: 'trabalhando' }).catch(() => {});
       await esperarCarregar(page);
