@@ -67,7 +67,7 @@ async function zipDoPeriodo(cookie, doc, tipo, competencia) {
  * Todos os XMLs do mês pelo portal, no mesmo formato do xmlsDoMes da API: { arquivos, resumo, contagem }. A nota é
  * emitida quando o emitente é o cliente; o resto é recebida.
  */
-async function xmlsPeloPortal(doc, competencia, aoAndar, lerZip) {
+async function xmlsPeloPortal(doc, competencia, aoAndar, lerZip, soTipos) {
   doc = soDigitos(doc);
   if (aoAndar) await aoAndar('Entrando no portal do SIEG');
   let cookie = await cookiesDoPortal();
@@ -76,6 +76,7 @@ async function xmlsPeloPortal(doc, competencia, aoAndar, lerZip) {
   const contagem = { emitidas: { NFe: 0, NFCe: 0, CTe: 0, NFSe: 0, CFe: 0 }, recebidas: { NFe: 0, NFCe: 0, CTe: 0, NFSe: 0, CFe: 0 } };
   const canceladas = new Set();
   for (const [nome, tipo] of TIPOS) {
+    if (soTipos && !soTipos.includes(nome)) continue;
     if (aoAndar) await aoAndar('Portal · ' + nome + ' (' + arquivos.size + ' XMLs até agora)');
     let zip;
     try { zip = await zipDoPeriodo(cookie, doc, tipo, competencia); }

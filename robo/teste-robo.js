@@ -738,6 +738,17 @@ const nfeItensT = '<nfeProc><NFe><infNFe Id="NFe31260919449248000162550010000102
 igual('SIEG: o resumo da NF-e com o item', sxT.resumoDaNota(nfeItensT).itens, [{ ncm: '21069090', cfop: '5102', cst: '000', cest: '1704900', valor: 100.5 }]);
 igual('SIEG: o nome do arquivo da NF-e', sxT.nomeDoArquivo(nfeItensT), '31260919449248000162550010000102701620070002-nfe.xml');
 igual('SIEG: o cancelamento no resumo', sxT.resumoDaNota(cancT), { cancela: '31260919449248000162550010000102701620070002' });
+// as saídas montadas das notas do "Baixar XMLs" (08/10/2026): só NF-e e NFC-e, por série, a cancelada fora do valor
+const siegT = require('./sieg');
+igual('SIEG: as saídas do resumo das notas', siegT.seriesDasNotas(siegT.saidasDoResumo([
+  { tipo: 'NF-e', serie: '1', numero: '12', valor: 10, chave: 'a' },
+  { tipo: 'NF-e', serie: '1', numero: '10', valor: 5, chave: 'b', cancelada: true },
+  { tipo: 'NFC-e', serie: '2', numero: '7', valor: 3, chave: 'c' },
+  { tipo: 'NFS-e', numero: '1', valor: 99 },
+])), [
+  { modelo: '55', serie: '1', numeros: [10, 12], canceladas: [10], valor: 10 },
+  { modelo: '65', serie: '2', numeros: [7], canceladas: [], valor: 3 },
+]);
 
 // --- razão social vale mais que o nome fantasia (FITO, 01/10/2026) ---
 const fitos = [{ id: '292', nome: 'FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA', nomeFantasia: 'FITO ALIMENTOS' }, { id: '309', nome: 'FITO ALIMENTOS LTDA', nomeFantasia: 'FITO ALIMENTOS', grupoLocal: '292' }];

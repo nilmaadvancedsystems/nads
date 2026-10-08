@@ -272,17 +272,29 @@ async function saidasDoMes(c, cnpj, competencia, aoAndar) {
       if (notasNaPagina < 50) break;
     }
   }
+  return seriesDasNotas([...notas.values()].map(n => Object.assign({}, n, { cancelada: canceladas.has(n.chave) })));
+}
+
+/**
+ * A sequência das saídas, série por série, de notas { modelo, serie, numero, valor, cancelada }. Serve às saídas pela API e
+ * ao "Baixar XMLs" (08/10/2026: "se eu já baixei, por que não vem para cá direto"): as NF-e e NFC-e emitidas do resumo.
+ */
+function seriesDasNotas(notas) {
   const series = new Map();
-  for (const n of notas.values()) {
+  for (const n of notas) {
     const k = n.modelo + '|' + n.serie;
     const s = series.get(k) || { modelo: n.modelo, serie: n.serie, numeros: [], canceladas: [], valor: 0 };
     s.numeros.push(n.numero);
-    if (canceladas.has(n.chave)) s.canceladas.push(n.numero);
+    if (n.cancelada) s.canceladas.push(n.numero);
     else s.valor += n.valor;
     series.set(k, s);
   }
   return [...series.values()].map(s => ({ ...s, numeros: s.numeros.sort((a, b) => a - b), canceladas: s.canceladas.sort((a, b) => a - b), valor: Math.round(s.valor * 100) / 100 }));
 }
+
+/** As saídas (NF-e e NFC-e emitidas) do resumo das notas dos XMLs, no formato do seriesDasNotas. */
+const saidasDoResumo = emitidas => emitidas.filter(n => n.tipo === 'NF-e' || n.tipo === 'NFC-e')
+  .map(n => ({ chave: n.chave, modelo: n.tipo === 'NFC-e' ? '65' : '55', serie: String(n.serie || ''), numero: Number(n.numero) || 0, valor: Number(n.valor) || 0, cancelada: !!n.cancelada }));
 
 const competenciaDe = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
 
@@ -389,6 +401,8 @@ function iniciarSieg({ db, log }) {
               codigo: soDigitos(p.codigo), competencia: p.competencia, em: new Date().toISOString(), pasta: onde, zip: zip ? nomeDoZip : '', arquivos: arquivos.length, novos: arquivos.length,
               emitidas: resumo.emitidas, recebidas: resumo.recebidas,
             }));
+            // e a sequência das saídas (a Conferência de Saídas lê daqui, sem outro pedido)
+            await db.collection('siegSaidas').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), series: seriesDasNotas(saidasDoResumo(resumo.emitidas)) });
             // 3) a pasta do cliente no Drive (os XMLs para o Alterdata e o .zip)
             await andar('Salvando ' + arquivos.length + ' XMLs no Drive');
             const pasta = path.join(PASTA_DO_DRIVE, p.competencia, nomeDaPasta);
@@ -419,7 +433,16 @@ function iniciarSieg({ db, log }) {
             log('SIEG: contagem de', p.codigo, p.competencia, 'pedida pelo nads');
             continue;
           }
-          const series = await saidasDoMes(c, cnpj, p.competencia, t => d.ref.update({ andamento: t }).catch(() => {}));
+          // pelo portal primeiro (só NF-e e NFC-e: segundos), sem a sessão ou com erro pela API (50 por chamada)
+          const andarSaidas = t => d.ref.update({ andamento: t }).catch(() => {});
+          let series;
+          try {
+            const r = await require('./sieg-portal').xmlsPeloPortal(cnpj, p.competencia, andarSaidas, lerZip, ['NF-e', 'NFC-e']);
+            series = seriesDasNotas(saidasDoResumo(r.resumo.emitidas));
+          } catch (err) {
+            log('SIEG: portal não deu (' + err.message + '), saídas de', p.codigo, 'pela API');
+            series = await saidasDoMes(c, cnpj, p.competencia, andarSaidas);
+          }
           await db.collection('siegSaidas').doc(id).set({ codigo: String(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), series });
           await d.ref.update({ status: 'concluido', concluidoEm: new Date().toISOString() });
           log('SIEG: saídas de', p.codigo, p.competencia, '-', series.reduce((s, x) => s + x.numeros.length, 0), 'notas');
@@ -466,4 +489,4 @@ function iniciarSieg({ db, log }) {
   return () => { clearInterval(relogio); clearInterval(relogioNoite); pararPedidos(); };
 }
 
-module.exports = { iniciarSieg, lerXml, xmlsDaResposta, lerZip, periodo, contagemDoMes, saidasDoMes, xmlsDoMes, resumoQueCabe };
+module.exports = { seriesDasNotas, saidasDoResumo, iniciarSieg, lerXml, xmlsDaResposta, lerZip, periodo, contagemDoMes, saidasDoMes, xmlsDoMes, resumoQueCabe };
