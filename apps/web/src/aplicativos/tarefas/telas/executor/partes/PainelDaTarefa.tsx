@@ -94,10 +94,17 @@ function Veredito({ sieg, importadas, oQue }: { sieg: number | null; importadas:
     : <Alerta titulo={(importadas - sieg) + ' ' + oQue + ' a mais que o SIEG'} texto={'O Alterdata tem ' + importadas + '; o SIEG, ' + sieg + '. Confira se há nota lançada duas vezes ou de outro mês.'} />;
 }
 
-/** Os itens por NCM, CST e CEST (quando o relatório do Alterdata traz as colunas). */
-function TabelaFiscal({ r, abrir }: { r: t.painel.ResumoFiscal; abrir: (n: NotasAbertas) => void }) {
-  if (!r.temColunas) return <p className="hint">O relatório não trouxe NCM, CST e CEST: exporte do Alterdata com essas colunas e reimporte para ver por item.</p>;
+/** De onde vem a tabela de verificação: os XMLs do SIEG (08/10/2026) ou o relatório do Alterdata. */
+function Origem({ xml, quando }: { xml: boolean; quando?: string }) {
+  return <p className="hint" style={{ margin: '8px 0 4px' }}>{xml ? 'Dos XMLs do SIEG' + (quando ? ' (baixados em ' + quando + ')' : '') + ': item por item, como está na nota.' : 'Do relatório do Alterdata.'}</p>;
+}
+
+/** Os itens por NCM, CST e CEST (dos XMLs do SIEG, ou do relatório do Alterdata quando traz as colunas). */
+function TabelaFiscal({ r, abrir, xml, quando }: { r: t.painel.ResumoFiscal; abrir: (n: NotasAbertas) => void; xml?: boolean; quando?: string }) {
+  if (!r.temColunas) return <p className="hint">Sem NCM, CST e CEST: baixe os XMLs do SIEG (na etapa Inicial) ou exporte do Alterdata com essas colunas e reimporte.</p>;
   return (
+    <>
+    <Origem xml={!!xml} quando={quando} />
     <div className="table-wrap table-compact">
       <table>
         <thead><tr><th>NCM</th><th>CST</th><th>CEST</th><th className="num">Itens</th><th className="num">Valor</th></tr></thead>
@@ -111,6 +118,31 @@ function TabelaFiscal({ r, abrir }: { r: t.painel.ResumoFiscal; abrir: (n: Notas
         </tbody>
       </table>
     </div>
+    </>
+  );
+}
+
+/** As notas que estão nos XMLs do SIEG e ainda não no Alterdata (pelo número). */
+function FaltamNoAlterdata({ faltam, oQue }: { faltam: readonly t.sieg.NotaQueFalta[]; oQue: string }) {
+  if (!faltam.length) return <Alerta naLinha tom="ok" titulo={'Todas as ' + oQue + ' dos XMLs estão no Alterdata'} texto="Conferido pelo número de cada nota." />;
+  return (
+    <>
+      <Alerta naLinha titulo={faltam.length + ' ' + oQue + (faltam.length === 1 ? ' está' : ' estão') + ' nos XMLs e não no Alterdata'} texto="Importe no Alterdata e reimporte o relatório." />
+      <div className="table-wrap table-compact">
+        <table>
+          <thead><tr><th>Nota</th><th>Data</th><th className="num">Valor</th></tr></thead>
+          <tbody>
+            {faltam.slice(0, 50).map(n => (
+              <tr key={n.tipo + n.numero + n.nome}>
+                <td className="wrap"><b>{n.nome}</b><span className="hint" style={{ display: 'block', margin: 0 }}>{n.tipo} · nº {n.numero}</span></td>
+                <td>{n.data}</td><td className="num">{reais(n.valor)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {faltam.length > 50 && <p className="hint">E mais {faltam.length - 50}.</p>}
+    </>
   );
 }
 
@@ -346,7 +378,10 @@ function Corpo({ painel, vm, codigo, competencia, importar, valores, informar, a
     case 'saidas':
     case 'entradas': {
       const r = painel === 'saidas' ? vm.saidas : vm.entradas;
-      if (!r.qtd) return vazio(painel);
+      const fiscal = painel === 'saidas' ? vm.fiscalSaidas : vm.fiscalEntradas;
+      const doXml = painel === 'saidas' ? vm.doXml.saidas : vm.doXml.entradas;
+      // sem o relatório do Alterdata: o que os XMLs já mostram, e o importar
+      if (!r.qtd) return doXml ? <>{vazio(painel)}<TabelaFiscal r={fiscal} abrir={abrir} xml quando={vm.xml?.quando} /></> : vazio(painel);
       return (
         <>
           <div className="stat-grid">
@@ -361,7 +396,8 @@ function Corpo({ painel, vm, codigo, competencia, importar, valores, informar, a
             </p>
           )}
           <TabelaPorCfop r={r} abrir={abrir} />
-          <TabelaFiscal r={painel === 'saidas' ? vm.fiscalSaidas : vm.fiscalEntradas} abrir={abrir} />
+          {vm.xml && <FaltamNoAlterdata faltam={painel === 'saidas' ? vm.faltamSaidas : vm.faltamEntradas} oQue={painel === 'saidas' ? 'notas emitidas' : 'notas recebidas'} />}
+          <TabelaFiscal r={fiscal} abrir={abrir} xml={doXml} quando={vm.xml?.quando} />
           <SemConta r={r} />
         </>
       );
@@ -396,7 +432,7 @@ function Corpo({ painel, vm, codigo, competencia, importar, valores, informar, a
       );
     }
     case 'servicos': {
-      if (!vm.importado.tomados && !vm.importado.prestados) return vazio('tomados');
+      if (!vm.importado.tomados && !vm.importado.prestados && !vm.doXml.servicos) return vazio('tomados');
       const comRetencao = vm.servicos.filter(s => s.retido > 0);
       return (
         <>
@@ -405,6 +441,7 @@ function Corpo({ painel, vm, codigo, competencia, importar, valores, informar, a
             <Stat rotulo="Com retenção" valor={<Conta valor={comRetencao.length} />} />
             <Stat rotulo="Total retido" valor={<Conta valor={comRetencao.reduce((s, x) => s + x.retido, 0)} formato="reais" />} />
           </div>
+          <Origem xml={vm.doXml.servicos} quando={vm.xml?.quando} />
           <TabelaDeServicos linhas={vm.servicos} />
         </>
       );

@@ -1,6 +1,7 @@
 // O SIEG no Fiscal (Vitor, 06/10/2026: "integre a API do SIEG ao app"). O robô do PC do escritório
 // (Entregas/scripts/sieg.js) conta as notas de cada cliente na madrugada (siegContagens) e, quando a etapa pede, baixa as
 // saídas do mês e grava os números por série e as canceladas (siegSaidas). Aqui: os tipos e a conferência da sequência.
+import type { Nota, NotaServico } from '../../conferencia/tipos';
 
 export type TipoDeNota = 'NFe' | 'NFCe' | 'NFSe' | 'CTe' | 'CFe';
 export const TIPOS_DE_NOTA: readonly { id: TipoDeNota; rotulo: string }[] = [
@@ -121,4 +122,60 @@ export function emFaixas(nums: number[]): string {
     i = j;
   }
   return partes.join(', ');
+}
+
+// ---------- os XMLs nas tabelas de verificação (Vitor, 08/10/2026: "usa os dados do xml nas tabelas de verificação") ----------
+
+/** As notas dos XMLs no formato da Conferência: um registro por item da NF-e (NCM, CST, CEST, CFOP) e por NFS-e. */
+export interface NotasDoXml { saidas: Nota[]; entradas: Nota[]; prestados: NotaServico[]; tomados: NotaServico[]; itensCortados: boolean }
+
+const ret = (n: NotaDoSieg, imposto: string) => (n.retencoes || []).filter(r => r.imposto === imposto).reduce((t, r) => t + (Number(r.valor) || 0), 0);
+
+/**
+ * O resumo do "Baixar XMLs do SIEG" (siegNotas) virado em notas da Conferência, para as mesmas tabelas: NF-e e NFC-e
+ * emitidas = saídas, NF-e recebidas = entradas (item por item, o nome é o da outra parte), NFS-e emitidas = prestados e
+ * recebidas = tomados (com o NBS, a descrição e as retenções da nota). As canceladas ficam de fora; o CT-e não entra.
+ */
+export function notasDoXml(x: NotasSieg): NotasDoXml {
+  const itens = (n: NotaDoSieg, outra: { doc: string; nome: string }): Nota[] => (n.itens || []).map(i => ({
+    cfop: i.cfop, lanc: '', valor: Number(i.valor) || 0, numero: n.numero, nome: outra.nome, data: n.data, desc: '',
+    doc: outra.doc, comp: x.competencia, ncm: i.ncm, cst: i.cst, cest: i.cest,
+  }));
+  const servico = (n: NotaDoSieg, outra: { doc: string; nome: string }): NotaServico => ({
+    data: n.data, comp: x.competencia, numero: n.numero, lanc: '', codPart: '', cnpj: outra.doc, nome: outra.nome,
+    valor: Number(n.valor) || 0, issRet: ret(n, 'ISS'), inss: ret(n, 'INSS'), irrf: ret(n, 'IRRF'),
+    pis: ret(n, 'PIS'), cofins: ret(n, 'COFINS'), csll: ret(n, 'CSLL'), nbs: n.nbs || '', descricao: n.descricao || '',
+  });
+  const valem = (l: NotaDoSieg[]) => l.filter(n => !n.cancelada);
+  const mercadoria = (n: NotaDoSieg) => n.tipo === 'NF-e' || n.tipo === 'NFC-e';
+  return {
+    saidas: valem(x.emitidas).filter(mercadoria).flatMap(n => itens(n, n.destinatario)),
+    entradas: valem(x.recebidas).filter(n => n.tipo === 'NF-e').flatMap(n => itens(n, n.emitente)),
+    prestados: valem(x.emitidas).filter(n => n.tipo === 'NFS-e').map(n => servico(n, n.destinatario)),
+    tomados: valem(x.recebidas).filter(n => n.tipo === 'NFS-e').map(n => servico(n, n.emitente)),
+    itensCortados: !!x.itensCortados,
+  };
+}
+
+const semZeros = (v: string) => String(v || '').replace(/\D/g, '').replace(/^0+/, '');
+
+/** Uma nota que está no XML e não no relatório do Alterdata. */
+export interface NotaQueFalta { numero: string; nome: string; data: string; valor: number; tipo: string }
+
+/**
+ * As notas do XML que o Alterdata ainda não tem (pelo número, sem os zeros; mesma lista: saídas com saídas, entradas com
+ * entradas). Só NF-e/NFC-e; canceladas não contam.
+ */
+export function faltamNoAlterdata(doXml: NotaDoSieg[], doAlterdata: readonly Nota[], lado: 'emitidas' | 'recebidas'): NotaQueFalta[] {
+  const tem = new Set(doAlterdata.map(n => semZeros(n.numero)));
+  const vistas = new Set<string>();
+  const faltam: NotaQueFalta[] = [];
+  for (const n of doXml) {
+    if (n.cancelada || !(n.tipo === 'NF-e' || n.tipo === 'NFC-e')) continue;
+    const k = semZeros(n.numero);
+    if (!k || tem.has(k) || vistas.has(k + '|' + n.emitente.doc)) continue;
+    vistas.add(k + '|' + n.emitente.doc);
+    faltam.push({ numero: n.numero, nome: (lado === 'emitidas' ? n.destinatario : n.emitente).nome, data: n.data, valor: Number(n.valor) || 0, tipo: n.tipo });
+  }
+  return faltam.sort((a, b) => Number(semZeros(a.numero)) - Number(semZeros(b.numero)));
 }

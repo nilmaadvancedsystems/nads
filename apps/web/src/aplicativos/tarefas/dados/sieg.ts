@@ -37,6 +37,29 @@ export interface RepoSieg {
   versao(): number;
 }
 
+/** Os XMLs de exemplo (TESTE): duas NF-e emitidas com itens, uma recebida e uma NFS-e com ISS e IRRF retidos. */
+function xmlsDeExemplo(competencia: string): Pick<t.sieg.NotasSieg, 'emitidas' | 'recebidas'> {
+  const [a, m] = competencia.split('-');
+  const dia = (d: number) => String(d).padStart(2, '0') + '/' + m + '/' + a;
+  const eu = { doc: '11222333000181', nome: 'EMPRESA (TESTE)' };
+  const cli = { doc: '44555666000172', nome: 'CLIENTE EXEMPLO (TESTE)' };
+  const forn = { doc: '77888999000163', nome: 'FORNECEDOR EXEMPLO (TESTE)' };
+  return {
+    emitidas: [
+      { tipo: 'NF-e', chave: 'T1', numero: 'T901', serie: '1', data: dia(3), emitente: eu, destinatario: cli, valor: 1500,
+        itens: [{ ncm: '21069090', cfop: '5102', cst: '000', cest: '', valor: 1000 }, { ncm: '22021000', cfop: '5405', cst: '060', cest: '0300700', valor: 500 }] },
+      { tipo: 'NF-e', chave: 'T2', numero: 'T902', serie: '1', data: dia(9), emitente: eu, destinatario: cli, valor: 800,
+        itens: [{ ncm: '21069090', cfop: '5102', cst: '000', cest: '', valor: 800 }] },
+      { tipo: 'NFS-e', chave: '', numero: 'T77', serie: '', data: dia(12), emitente: eu, destinatario: cli, valor: 3000, nbs: '1.1506.10.00',
+        descricao: 'Consultoria em gestão (TESTE)', retencoes: [{ imposto: 'ISS', valor: 150 }, { imposto: 'IRRF', valor: 45 }] },
+    ],
+    recebidas: [
+      { tipo: 'NF-e', chave: 'T3', numero: 'T501', serie: '1', data: dia(5), emitente: forn, destinatario: eu, valor: 2200,
+        itens: [{ ncm: '39232990', cfop: '6102', cst: '090', cest: '', valor: 2200 }] },
+    ],
+  };
+}
+
 /** Nos exemplos: contagens inventadas e uma sequência com dois buracos e uma cancelada (o pedido "baixa" em 2 s). */
 export function criarSiegMemoria(): RepoSieg {
   let ver = 0;
@@ -56,7 +79,12 @@ export function criarSiegMemoria(): RepoSieg {
         || { codigo, competencia, em: agora(), emitidas: { NFe: 214, NFCe: 0, NFSe: 3, CTe: 0, CFe: 0 }, recebidas: { NFe: 87, NFCe: 0, NFSe: 5, CTe: 12, CFe: 0 } },
     }),
     saidas: (codigo, competencia) => ({ carregadas: true, dados: saidas.get(codigo + '_' + competencia) || null }),
-    notas: (codigo, competencia) => ({ carregadas: true, dados: notasBaixadas.get(codigo + '_' + competencia) || null }),
+    // como a contagem: os XMLs de exemplo já estão "baixados" (as tabelas de verificação aparecem sem pedir)
+    notas(codigo, competencia) {
+      const k = codigo + '_' + competencia;
+      if (!notasBaixadas.has(k)) notasBaixadas.set(k, { codigo, competencia, em: agora(), pasta: 'Claudio Secretario/' + competencia + '/EMPRESA ' + codigo, arquivos: 4, novos: 4, ...xmlsDeExemplo(competencia) });
+      return { carregadas: true, dados: notasBaixadas.get(k)! };
+    },
     // nos exemplos o .zip vem vazio (um zip sem arquivos)
     baixarZip: async () => new Uint8Array([0x50, 0x4b, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
     async pedirXmls(codigo, competencia) {
@@ -77,7 +105,7 @@ export function criarSiegMemoria(): RepoSieg {
       passo('processando', 'Salvando 104 XMLs no Drive', 2200);
       setTimeout(() => {
         const pasta = 'Claudio Secretario/' + competencia + '/EMPRESA ' + codigo;
-        notasBaixadas.set(k, { codigo, competencia, em: agora(), pasta, arquivos: 104, novos: 104, emitidas: [], recebidas: [] });
+        notasBaixadas.set(k, { codigo, competencia, em: agora(), pasta, arquivos: 104, novos: 104, ...xmlsDeExemplo(competencia) });
         pedidos.set('xmls|' + k, { id, status: 'concluido', andamento: '', erro: '', em, zip, resultado: { arquivos: 104, novos: 104, pasta, zip: zip.nome, emitidas: 62, recebidas: 38 } });
         mudou();
       }, 3000);
