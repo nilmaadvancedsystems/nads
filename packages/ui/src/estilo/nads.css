@@ -3519,6 +3519,7 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .sieg-painel .hint svg,.sieg-painel .fraco svg{width:14px;height:14px;flex:none;vertical-align:-2px;}
 /* FGTS: a verificação do gov.br com a pessoa (08/10/2026): a faixa no alto e a tela ao vivo do robô (clicar = clicar lá) */
 .fgts-verificacao{display:flex;align-items:center;gap:10px;padding:10px 14px;margin-bottom:12px;border-color:var(--warn,#d97706);}
+.fgts-verificacao>svg{width:18px;height:18px;flex:none;color:var(--warn,#d97706);}
 .fgts-ao-vivo{position:relative;margin-bottom:14px;border:1px solid var(--border-strong);border-radius:var(--radius);overflow:hidden;line-height:0;}
 .fgts-ao-vivo img{width:100%;height:auto;cursor:pointer;display:block;}
 .fgts-ao-vivo-marca{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid var(--brand,#c8102e);pointer-events:none;}
