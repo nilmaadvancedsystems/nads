@@ -878,6 +878,16 @@ async function main() {
         resultado = { mensagemId: id, pasta: listaPastas.join(' e '), arquivos: salvos, cliente: cliente.nome };
       }
 
+      // XMLs de nota no e-mail (08/10/2026): vão sozinhos para o nads e o Drive (robo/xmls-do-email.js; o robô do PC lança)
+      if (comBytes.some(a => /\.(xml|zip)$/i.test(a.filename || ''))) {
+        try {
+          const n = await require('./xmls-do-email').mandarXmlsDoEmail({
+            db, cliente, anexos: comBytes, mensagemId: id, competencia, simular: SIMULAR, log: m => console.log('  ' + m),
+          });
+          if (n) andamento({ texto: cliente.nome + ': ' + n + ' XMLs de nota mandados ao nads', destaque: true });
+        } catch (err) { console.error('  XMLs do e-mail: não consegui mandar -', err.message); }
+      }
+
       // Comprovante de parcela (PGFN, Simples, Receita...): marca a parcela
       // paga no parcelamento cadastrado do cliente (scripts/parcela-paga.js).
       if (comBytes.length && comParcelamento.has(cliente.id)) {

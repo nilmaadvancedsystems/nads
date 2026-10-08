@@ -160,7 +160,7 @@ export function notasDoXml(x: NotasSieg): NotasDoXml {
 const semZeros = (v: string) => String(v || '').replace(/\D/g, '').replace(/^0+/, '');
 
 /** Uma nota que está no XML e não no relatório do Alterdata. */
-export interface NotaQueFalta { numero: string; nome: string; data: string; valor: number; tipo: string }
+export interface NotaQueFalta { numero: string; nome: string; data: string; valor: number; tipo: string; chave: string }
 
 /**
  * As notas do XML que o Alterdata ainda não tem (pelo número, sem os zeros; mesma lista: saídas com saídas, entradas com
@@ -175,7 +175,7 @@ export function faltamNoAlterdata(doXml: NotaDoSieg[], doAlterdata: readonly Not
     const k = semZeros(n.numero);
     if (!k || tem.has(k) || vistas.has(k + '|' + n.emitente.doc)) continue;
     vistas.add(k + '|' + n.emitente.doc);
-    faltam.push({ numero: n.numero, nome: (lado === 'emitidas' ? n.destinatario : n.emitente).nome, data: n.data, valor: Number(n.valor) || 0, tipo: n.tipo });
+    faltam.push({ numero: n.numero, nome: (lado === 'emitidas' ? n.destinatario : n.emitente).nome, data: n.data, valor: Number(n.valor) || 0, tipo: n.tipo, chave: n.chave });
   }
   return faltam.sort((a, b) => Number(semZeros(a.numero)) - Number(semZeros(b.numero)));
 }

@@ -2,7 +2,8 @@
 // graça; o que pode ser importado coloque para importar"): as notas importadas na Conferência (a mesma do Contábil) e a
 // contagem do SIEG, resumidas para o painel de cada tarefa; e a janela de importar (os relatórios da tarefa).
 import { tarefas as t } from '@nads/core';
-import { useMemo, useState } from 'react';
+import { baixarBytes, useRetorno } from '@nads/ui';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNotasDaConferencia } from '../../../concilia-ai/importadosNaEtapa';
 import { useExecucoes, useSieg } from '../../dados/repo';
 
@@ -20,6 +21,22 @@ export function usePainelDoFiscal(empresa: string, codigo: string, competencia: 
   // os XMLs do "Baixar XMLs do SIEG" (Vitor, 08/10/2026: "usa os dados do xml nas tabelas de verificação"): quando há,
   // as tabelas de NCM/CST/CEST e dos serviços saem deles (o item e a retenção vêm da própria nota); sem eles, do Alterdata
   const xmlDados = (codigo ? sieg.notas(codigo, competencia) : null)?.dados || null;
+  // o .zip das notas que faltam no Alterdata (08/10/2026: "3"): o robô pega as chaves no SIEG; quando entrega, baixa aqui
+  const { toast } = useRetorno();
+  const pedidoFaltam = codigo ? sieg.pedido(codigo, competencia, 'zipFaltam') : null;
+  const [pediuFaltam, setPediuFaltam] = useState(false);
+  const baixouFaltam = useRef('');
+  const zipFaltam = pediuFaltam && pedidoFaltam?.status === 'concluido' && pedidoFaltam.zip && pedidoFaltam.id ? pedidoFaltam : null;
+  useEffect(() => {
+    if (!zipFaltam || baixouFaltam.current === zipFaltam.id) return;
+    baixouFaltam.current = zipFaltam.id!;
+    setPediuFaltam(false);
+    sieg.baixarZip(zipFaltam.zip!).then(b => baixarBytes(b, zipFaltam.zip!.nome, 'application/zip'))
+      .catch(err => toast('Não consegui baixar o .zip: ' + (err instanceof Error ? err.message : String(err))));
+  }, [zipFaltam, sieg, toast]);
+  useEffect(() => {
+    if (pediuFaltam && pedidoFaltam?.status === 'erro') { setPediuFaltam(false); toast('O .zip das que faltam não saiu: ' + (pedidoFaltam.erro || 'o robô não conseguiu')); }
+  }, [pediuFaltam, pedidoFaltam, toast]);
   const doXml = useMemo(() => (xmlDados ? t.sieg.notasDoXml(xmlDados) : null), [xmlDados]);
   const n = lidas || VAZIO;
   const chave = (meses.length ? meses : [competencia]).join(',');
@@ -66,6 +83,14 @@ export function usePainelDoFiscal(empresa: string, codigo: string, competencia: 
   return {
     carregado: !!lidas,
     folhaDoDp,
+    /** o .zip das notas que faltam no Alterdata: pedindo ao robô (até ele entregar e baixar) */
+    baixandoFaltam: pediuFaltam,
+    async baixarFaltam(chaves: string[]) {
+      if (!codigo || !chaves.length || pediuFaltam) return;
+      setPediuFaltam(true);
+      try { await sieg.pedirZipFaltam(codigo, competencia, chaves); }
+      catch (err) { setPediuFaltam(false); toast('Não consegui pedir o .zip: ' + (err instanceof Error ? err.message : String(err))); }
+    },
     /** o último "Baixar XMLs do SIEG" (quando e quantos), para dizer de onde vêm as tabelas */
     xml: xmlDados ? { quando: xmlDados.em ? new Date(xmlDados.em).toLocaleDateString('pt-BR') : '', arquivos: xmlDados.arquivos } : null,
     ...resumo,

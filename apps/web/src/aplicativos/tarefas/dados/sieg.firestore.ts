@@ -80,11 +80,12 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
         pedidos.set('contagem|' + k, null);
         pedidos.set('xmls|' + k, null);
         pedidos.set('xmlsCliente|' + k, null);
+        pedidos.set('zipFaltam|' + k, null);
         // os últimos pedidos da empresa e mês: o mais novo de cada tipo (sem tipo = as saídas, os pedidos de antes)
         // só igualdades (sem orderBy: pedia um índice que não existe e o erro sumia calado; 07/10/2026): o mais novo aqui
         onSnapshot(query(collection(db, 'pedidosSieg'), where('codigo', '==', soDigitos(codigo)), where('competencia', '==', competencia)), s => {
           const todos = s.docs.map(x => ({ ...x.data(), id: x.id }) as Record<string, unknown>).sort((a, b) => texto(b.criadoEm).localeCompare(texto(a.criadoEm)));
-          for (const t of ['saidas', 'contagem', 'xmls', 'xmlsCliente'] as const) {
+          for (const t of ['saidas', 'contagem', 'xmls', 'xmlsCliente', 'zipFaltam'] as const) {
             const d = todos.find(x => (x.tipo || 'saidas') === t);
             const r = d?.resultado as Record<string, unknown> | undefined;
             const z = d?.zip as Record<string, unknown> | undefined;
@@ -150,6 +151,11 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
         await setDoc(doc(db, 'pedidosSieg', ref.id, 'xmls', String(n).padStart(3, '0')), { n, dados: texto.slice(i, i + PEDACO) });
       }
       await setDoc(ref, { status: 'pendente', tipo: 'xmlsCliente', codigo: soDigitos(codigo), competencia, criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorUid: q.uid, partes: n });
+    },
+    async pedirZipFaltam(codigo, competencia, chaves) {
+      const q = quem();
+      if (!q) throw new Error('Sem login.');
+      await addDoc(collection(db, 'pedidosSieg'), { status: 'pendente', tipo: 'zipFaltam', codigo: soDigitos(codigo), competencia, chaves: chaves.slice(0, 2000), criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorUid: q.uid });
     },
     async pedirXmls(codigo, competencia) {
       const q = quem();

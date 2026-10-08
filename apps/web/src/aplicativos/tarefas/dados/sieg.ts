@@ -18,7 +18,7 @@ export interface PedidoSieg {
 }
 
 /** O que se pede ao robô: baixar as saídas (a sequência) ou contar as notas do mês agora (sem esperar a madrugada). */
-export type TipoDePedidoSieg = 'saidas' | 'contagem' | 'xmls' | 'xmlsCliente';
+export type TipoDePedidoSieg = 'saidas' | 'contagem' | 'xmls' | 'xmlsCliente' | 'zipFaltam';
 
 export interface RepoSieg {
   exemplos: boolean;
@@ -40,6 +40,8 @@ export interface RepoSieg {
    * clientes mandam"): o texto de cada XML vai ao robô, que fica com os do cliente, lança no nads e salva no Drive
    */
   enviarXmlsDoCliente(codigo: string, competencia: string, xmls: string[]): Promise<void>;
+  /** o .zip das notas que estão nos XMLs e faltam no Alterdata (08/10/2026): o robô pega essas chaves no SIEG e entrega */
+  pedirZipFaltam(codigo: string, competencia: string, chaves: string[]): Promise<void>;
   /** os bytes do .zip que o robô entregou no pedido */
   baixarZip(zip: NonNullable<PedidoSieg['zip']>): Promise<Uint8Array>;
   assinar(aoMudar: () => void): () => void;
@@ -113,6 +115,18 @@ export function criarSiegMemoria(): RepoSieg {
           resultado: { arquivos: xmls.length + 4, novos: xmls.length, pasta: 'Claudio Secretario/' + competencia + '/EMPRESA ' + codigo, emitidas: 3, recebidas: 1 } });
         mudou();
       }, 2600);
+    },
+    async pedirZipFaltam(codigo, competencia, chaves) {
+      const k = codigo + '_' + competencia;
+      const em = agora();
+      const id = 'exemplo-faltam-' + em;
+      pedidos.set('zipFaltam|' + k, { id, status: 'pendente', andamento: '', erro: '', em });
+      mudou();
+      setTimeout(() => {
+        pedidos.set('zipFaltam|' + k, { id, status: 'concluido', andamento: '', erro: '', em, pct: 100, fase: 'pronto',
+          zip: { nome: 'Faltam no Alterdata ' + competencia + ' - ' + codigo + '.zip', partes: ['exemplo'], bytes: 22 } });
+        mudou();
+      }, 1200 + chaves.length * 10);
     },
     // nos exemplos o .zip vem vazio (um zip sem arquivos)
     baixarZip: async () => new Uint8Array([0x50, 0x4b, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),

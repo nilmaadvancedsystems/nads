@@ -173,6 +173,42 @@ async function xmlsPeloPortal(doc, competencia, aoAndar, lerZip, soTipos, espera
 }
 
 /**
+ * Só as notas destas chaves, pelo "baixar por chaves" do portal (o que a pessoa fez na gravação, 08/10/2026): para o .zip das
+ * notas que faltam no Alterdata. Agrupa pelo modelo da chave (55 NF-e, 65 NFC-e, 57 CT-e) e pede de 500 em 500.
+ */
+async function xmlsPorChaves(doc, chaves, lerZip) {
+  doc = soDigitos(doc);
+  const id = EMPRESA + '-' + doc;
+  const MODELO = { 55: 10, 65: 30, 57: 20, 67: 20, 59: 40 };
+  const grupos = new Map();
+  for (const ch of chaves) {
+    const tipo = MODELO[String(ch).slice(20, 22)];
+    if (!tipo) continue;
+    if (!grupos.has(tipo)) grupos.set(tipo, []);
+    grupos.get(tipo).push(String(ch));
+  }
+  const xmls = [];
+  let cookie = await cookiesDoPortal();
+  for (const [tipo, lista] of grupos) {
+    for (let i = 0; i < lista.length; i += 500) {
+      const pedir = () => fetch(APP + '/api/v1/client-details/docs-fiscals/' + encodeURIComponent(id) + '/xmls/download/access-keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: cookie, Origin: APP, Referer: APP + '/detalhes-do-cliente/docs-fiscais?id=' + id },
+        body: JSON.stringify({ clientId: id, fiscalDocumentType: tipo, accessKeys: lista.slice(i, i + 500), fileType: 1 }),
+        signal: AbortSignal.timeout(5 * 60000),
+      });
+      let r = await pedir();
+      if (r.status === 401 || r.status === 403 || /auth\.sieg\.com/.test(r.url)) { cookie = await cookiesDoPortal(true); r = await pedir(); }
+      if (r.status === 204) continue;
+      if (!r.ok) throw new Error('o portal do SIEG respondeu ' + r.status);
+      const buf = Buffer.from(await r.arrayBuffer());
+      if (buf.length > 4 && buf.readUInt32LE(0) === 0x04034b50) xmls.push(...lerZip(buf));
+    }
+  }
+  return xmls;
+}
+
+/**
  * Os XMLs de qualquer origem (o .zip do Drive, os que o cliente mandou) no mesmo formato do download: { arquivos, resumo,
  * contagem }. Emitida = o emitente é o cliente; o resto, recebida. As canceladas vêm marcadas.
  */
@@ -234,4 +270,4 @@ async function entrar() {
 
 if (require.main === module && process.argv[2] === 'entrar') entrar().catch(e => { console.error(e.message); process.exit(1); });
 
-module.exports = { xmlsPeloPortal, montarXmls, soDoCliente, SEM_LOGIN, PERFIL };
+module.exports = { xmlsPeloPortal, xmlsPorChaves, montarXmls, soDoCliente, SEM_LOGIN, PERFIL };

@@ -8,7 +8,7 @@
 // CFOP ou por NCM/CST/CEST) abre as notas dela na janela do catálogo (Vitor, 07/10/2026: "quando eu clique, abra os
 // detalhes da nota").
 import { conferencia as c, formatos, tarefas as t } from '@nads/core';
-import { Alerta, Icone, Stat } from '@nads/ui';
+import { Alerta, BotaoAcao, Icone, Stat } from '@nads/ui';
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { ROTULO_DO_RELATORIO, type VmPainelDoFiscal } from '../usePainelDoFiscal';
@@ -123,11 +123,18 @@ function TabelaFiscal({ r, abrir, xml, quando }: { r: t.painel.ResumoFiscal; abr
 }
 
 /** As notas que estão nos XMLs do SIEG e ainda não no Alterdata (pelo número). */
-function FaltamNoAlterdata({ faltam, oQue }: { faltam: readonly t.sieg.NotaQueFalta[]; oQue: string }) {
+function FaltamNoAlterdata({ faltam, oQue, baixar, baixando }: { faltam: readonly t.sieg.NotaQueFalta[]; oQue: string; baixar: (chaves: string[]) => void; baixando: boolean }) {
   if (!faltam.length) return <Alerta naLinha tom="ok" titulo={'Todas as ' + oQue + ' dos XMLs estão no Alterdata'} texto="Conferido pelo número de cada nota." />;
   return (
     <>
-      <Alerta naLinha titulo={faltam.length + ' ' + oQue + (faltam.length === 1 ? ' está' : ' estão') + ' nos XMLs e não no Alterdata'} texto="Importe no Alterdata e reimporte o relatório." />
+      <Alerta naLinha titulo={faltam.length + ' ' + oQue + (faltam.length === 1 ? ' está' : ' estão') + ' nos XMLs e não no Alterdata'} texto="Baixe o .zip só com elas, importe no Alterdata e reimporte o relatório.">
+        {/* o .zip só com as que faltam (08/10/2026: "3"): o robô pega essas notas no SIEG pela chave */}
+        <div className="sieg-acoes" style={{ marginTop: 8 }}>
+          <BotaoAcao className="btn btn-primary" carregando={baixando} textoCarregando="O robô está montando o .zip…" onClick={() => baixar(faltam.map(n => n.chave).filter(Boolean))}>
+            <Icone nome="download" />Baixar .zip das que faltam ({faltam.length})
+          </BotaoAcao>
+        </div>
+      </Alerta>
       <div className="table-wrap table-compact">
         <table>
           <thead><tr><th>Nota</th><th>Data</th><th className="num">Valor</th></tr></thead>
@@ -396,7 +403,7 @@ function Corpo({ painel, vm, codigo, competencia, importar, valores, informar, a
             </p>
           )}
           <TabelaPorCfop r={r} abrir={abrir} />
-          {vm.xml && <FaltamNoAlterdata faltam={painel === 'saidas' ? vm.faltamSaidas : vm.faltamEntradas} oQue={painel === 'saidas' ? 'notas emitidas' : 'notas recebidas'} />}
+          {vm.xml && <FaltamNoAlterdata faltam={painel === 'saidas' ? vm.faltamSaidas : vm.faltamEntradas} oQue={painel === 'saidas' ? 'notas emitidas' : 'notas recebidas'} baixar={c => { void vm.baixarFaltam(c); }} baixando={vm.baixandoFaltam} />}
           <TabelaFiscal r={fiscal} abrir={abrir} xml={doXml} quando={vm.xml?.quando} />
           <SemConta r={r} />
         </>

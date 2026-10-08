@@ -435,7 +435,7 @@ function iniciarSieg({ db, log }) {
             const zip = arquivos.length ? sx.zipDe(arquivos) : null;
             // a ordem (Vitor, 08/10/2026: "seja entregue para a pessoa o zip dos XML, depois que ele introduza esses XML
             // no sistema (nads), depois que ele salve no drive"): 1) o .zip para quem pediu, que o nads baixa na hora
-            if (zip && !doCliente) {
+            if (zip && !doCliente && !p.madrugada) {
               await andar('entregando', 'Entregando o .zip (' + arquivos.length + ' XMLs)', 0, true);
               const partes = await entregarZip(d.ref.id, id, zip, (i, n) => andar('entregando', 'Entregando o .zip (parte ' + i + ' de ' + n + ')', i / n));
               await d.ref.update({ zip: { nome: nomeDoZip, partes, bytes: zip.length }, zipApagarEm: new Date(Date.now() + ZIP_GUARDADO_MS).toISOString() });
@@ -477,6 +477,39 @@ function iniciarSieg({ db, log }) {
               resultado: { arquivos: arquivos.length, novos, jaSalvos: numeros.jaSalvos, pasta: onde, zip: arquivos.length ? nomeDoZip : '', emitidas: resumo.emitidas.length, recebidas: resumo.recebidas.length },
             });
             log('SIEG: XMLs de', p.codigo, p.competencia, '-', arquivos.length, 'arquivos (' + novos + ' novos) em', onde);
+            continue;
+          }
+          // o .zip das notas que faltam no Alterdata (08/10/2026: "3"): só essas chaves, pelo portal (ou do .zip do Drive), e
+          // entregue como o do "Baixar XMLs" (o nads baixa na hora)
+          if (p.tipo === 'zipFaltam') {
+            situacao = 'montando o .zip das que faltam de ' + p.codigo;
+            const chaves = (Array.isArray(p.chaves) ? p.chaves : []).map(String).filter(ch => /^\d{44}$/.test(ch));
+            if (!chaves.length) throw new Error('nenhuma chave de nota no pedido');
+            await d.ref.update({ andamento: 'Pegando ' + chaves.length + ' notas no SIEG', pct: 20, fase: 'baixando' });
+            const quero = new Set(chaves);
+            const daChave = x => ((/Id="(?:NFe|CTe)(\d{44})"/.exec(x)) || [])[1] || '';
+            let xmls = [];
+            try { xmls = await require('./sieg-portal').xmlsPorChaves(cnpj, chaves, lerZip); }
+            catch (err) { log('SIEG: portal não deu nas chaves (' + err.message + '), tentando o .zip do Drive'); }
+            if (xmls.filter(x => quero.has(daChave(x))).length < chaves.length) {
+              // o que faltou, do .zip do Drive (se a pasta do mês ainda está lá)
+              const nota = (await db.collection('siegNotas').doc(id).get()).data();
+              const nomeDaPasta = nota && nota.pasta ? nota.pasta.split('/').pop() : '';
+              const zipDoDrive = nomeDaPasta ? path.join(PASTA_DO_DRIVE, p.competencia, nomeDaPasta, 'SIEG ' + p.competencia + ' - ' + nomeDaPasta + '.zip') : '';
+              if (zipDoDrive && fs.existsSync(zipDoDrive)) xmls.push(...lerZip(await fs.promises.readFile(zipDoDrive)));
+            }
+            const arquivos = [...new Map(xmls.filter(x => quero.has(daChave(x))).map(x => [sx.nomeDoArquivo(x), x]))].map(([nome, xml]) => ({ nome, xml }));
+            if (!arquivos.length) throw new Error('o SIEG não devolveu nenhuma dessas notas');
+            await d.ref.update({ andamento: 'Entregando o .zip (' + arquivos.length + ' notas)', pct: 80, fase: 'entregando' });
+            const zip = sx.zipDe(arquivos);
+            const nomeDoZip = 'Faltam no Alterdata ' + p.competencia + ' - ' + p.codigo + '.zip';
+            const partes = await entregarZip(d.ref.id, id + '_faltam', zip);
+            await d.ref.update({
+              status: 'concluido', concluidoEm: new Date().toISOString(), andamento: '', pct: 100, fase: 'pronto',
+              zip: { nome: nomeDoZip, partes, bytes: zip.length }, zipApagarEm: new Date(Date.now() + ZIP_GUARDADO_MS).toISOString(),
+              resultado: { arquivos: arquivos.length, novos: 0, pasta: '', emitidas: 0, recebidas: 0, zip: nomeDoZip, faltaram: chaves.length - arquivos.length },
+            });
+            log('SIEG: .zip das que faltam no Alterdata de', p.codigo, '-', arquivos.length, 'de', chaves.length, 'notas');
             continue;
           }
           // o "Contar agora" do nads (07/10/2026): só a contagem desta empresa e mês, sem esperar a madrugada
@@ -529,6 +562,8 @@ function iniciarSieg({ db, log }) {
       log('SIEG: contando as notas de', comCnpj.length, 'clientes em', comps.join(' e '));
       for (const comp of comps) {
         for (const cli of comCnpj) {
+          // um pedido do nads chegou no meio da noite (ou da manhã: em 08/10 a contagem foi até 7:46): atende antes de seguir
+          if (chegouOutro) { ocupado = false; await atenderPedidos(); ocupado = true; }
           situacao = 'contando ' + codigoDe(cli) + ' (' + comp + ')';
           try {
             const r = await contagemDoMes(c, soDigitos(cli.documento), comp);
@@ -539,6 +574,42 @@ function iniciarSieg({ db, log }) {
       log('SIEG: contagem da noite pronta');
     } catch (err) { log('SIEG: contagem da noite falhou -', err.message); }
     finally { situacao = 'livre'; ocupado = false; }
+    await xmlsDaMadrugada().catch(err => log('SIEG: XMLs da madrugada falharam -', err.message));
+  }
+
+  /**
+   * Os XMLs prontos de manhã (Vitor, 08/10/2026: "1"): depois da contagem, o mês anterior (o da rotina do Fiscal) de cada
+   * cliente que teve nota e ainda não está completo no nads e no Drive (pela contagem: o mesmo número de notas por tipo).
+   * Um por vez, pelo mesmo caminho do "Baixar XMLs" (sem o .zip para baixar), e os pedidos do nads passam na frente.
+   */
+  async function xmlsDaMadrugada() {
+    const hoje = new Date();
+    const comp = competenciaDe(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1));
+    const ativos = [];
+    (await require('./clientes-cache').clientesAtivos(db)).forEach(d => ativos.push(d.data()));
+    const comCnpj = ativos.filter(x => documentoValido(soDigitos(x.documento)) && codigoDe(x));
+    const CHAVE = { 'NF-e': 'NFe', 'NFC-e': 'NFCe', 'CT-e': 'CTe', 'NFS-e': 'NFSe', 'CF-e': 'CFe' };
+    let feitos = 0;
+    for (const cli of comCnpj) {
+      const id = codigoDe(cli) + '_' + comp;
+      const cont = (await db.collection('siegContagens').doc(id).get()).data();
+      if (!cont) continue;
+      const esperado = t => ((cont.emitidas || {})[CHAVE[t]] || 0) + ((cont.recebidas || {})[CHAVE[t]] || 0);
+      if (!Object.keys(CHAVE).some(t => esperado(t) > 0)) continue;
+      const notas = (await db.collection('siegNotas').doc(id).get()).data();
+      if (notas && Array.isArray(notas.emitidas)) {
+        const tem = {};
+        for (const n of [...notas.emitidas, ...(notas.recebidas || [])]) tem[n.tipo] = (tem[n.tipo] || 0) + 1;
+        if (Object.keys(CHAVE).every(t => (tem[t] || 0) === esperado(t))) continue;
+      }
+      // o pedido, como se fosse do nads (a tela mostra "XMLs baixados" de manhã), e a fila atende na hora
+      await db.collection('pedidosSieg').add({ status: 'pendente', tipo: 'xmls', codigo: codigoDe(cli), competencia: comp, madrugada: true,
+        criadoEm: new Date().toISOString(), criadoPor: 'Robô (madrugada)', criadoPorUid: 'robo' });
+      await atenderPedidos();
+      while (ocupado) await dormir(2000);
+      feitos++;
+    }
+    log('SIEG: XMLs da madrugada prontos -', feitos, 'clientes em', comp);
   }
   const relogioNoite = setInterval(() => { contarTodos(); if (!ocupado) atenderPedidos(); }, 10 * 60 * 1000);
   log('SIEG ligado: contagem da madrugada e os pedidos do nads');
