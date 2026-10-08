@@ -103,7 +103,15 @@ function Detalhe({ vm }: { vm: VM }) {
                 <tr key={it.id}>
                   <td className="wrap"><b>{it.titulo}</b>{it.valor && <span className="hint" style={{ display: 'block' }}>{it.valor}</span>}</td>
                   <td className="wrap">{it.detalhe ? <span className="msg-balao"><Icone nome="mensagem" />{it.detalhe}</span> : '—'}</td>
-                  <td className="wrap">{it.opcao || it.texto ? <>{it.opcao && <b style={{ display: 'block' }}>{it.opcao}</b>}{it.texto}</> : <span className="hint">sem resposta</span>}</td>
+                  <td className="wrap">
+                    {/* a resposta de cada linha (Vitor, 08/10/2026) */}
+                    {it.respostas.map(x => (
+                      <span key={x.chave} style={{ display: 'block', marginBottom: 4 }}>
+                        {x.linha && <span className="hint" style={{ display: 'block' }}>{x.linha}</span>}
+                        {x.opcao || x.texto ? <>{x.opcao && <b>{x.opcao}</b>}{x.opcao && x.texto ? ': ' : ''}{x.texto}</> : <span className="hint">sem resposta</span>}
+                      </span>
+                    ))}
+                  </td>
                   <td className="wrap">
                     {it.arquivos.length ? it.arquivos.map(a => (
                       <button key={a.id} type="button" className="btn" style={{ margin: '2px 4px 2px 0' }} onClick={() => vm.baixar(a)}><Icone nome="download" />{a.nome}</button>

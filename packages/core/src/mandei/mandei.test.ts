@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  codigoDoLink, comArquivo, comSegundoLink, emailDoLink, linkAberto, linkValido, novoTicket, responder, resolver, rotuloDoNumero,
+  chavesDoItem, codigoDoLink, comArquivo, itemDaChave, operacaoDaLinha, comSegundoLink, emailDoLink, linkAberto, linkValido, novoTicket, responder, resolver, rotuloDoNumero,
   situacaoDoTicket, somarDias, somarDiasUteis, vistaDoCliente, type DadosDoTicket,
 } from './index';
 
@@ -51,6 +51,18 @@ describe('o ticket', () => {
     const f = resolver(a, 'Vitor', AGORA);
     expect(situacaoDoTicket(f, AGORA)).toBe('resolvido');
     expect(linkValido(f, 'COD1', AGORA)).toBe(false);
+  });
+  it('com os lançamentos, o cliente responde cada linha (a chave <item>/<n>); o item sem linhas, inteiro', () => {
+    const linhas = [{ data: '28/07/2026', nf: '9971', descricao: 'Venda a prazo', valor: 'R$ 839,33', tipo: 'nota' as const, operacao: 'Venda' }, { data: '25/08/2026', nf: '10111', descricao: 'Venda a prazo', valor: 'R$ 1.514,65', tipo: 'nota' as const }];
+    const comLinhas = novoTicket({ ...DADOS, itens: [{ ...DADOS.itens[0], linhas }] }, 't2', 2, 'COD9', AGORA);
+    expect(chavesDoItem(comLinhas.itens[0])).toEqual(['12006/0', '12006/1']);
+    expect(chavesDoItem(t.itens[0])).toEqual(['12006']);
+    expect(itemDaChave('12006/1')).toBe('12006');
+    const r = responder(comLinhas, { '12006/0': { opcao: 'Foi pago em dinheiro' }, '12006/1': { opcao: 'Outro', texto: ' devolveram ' }, '12006/2': { opcao: 'Outro' }, '12006': { opcao: 'Outro' } }, AGORA);
+    expect(r.respostas).toEqual({ '12006/0': { opcao: 'Foi pago em dinheiro' }, '12006/1': { opcao: 'Outro', texto: 'devolveram' } });
+    // a operação: a da linha; nos tickets de antes, pela descrição
+    expect(linhas.map(operacaoDaLinha)).toEqual(['Venda', 'Venda']);
+    expect(operacaoDaLinha({ data: '', nf: '', descricao: 'Compra a prazo', valor: '' })).toBe('Compra');
   });
   it('o cliente vê só o formulário; o e-mail leva o link e o prazo', () => {
     const v = vistaDoCliente(t);

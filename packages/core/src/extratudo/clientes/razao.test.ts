@@ -118,5 +118,9 @@ describe('o que vai para o cliente: o + de cada linha (07/10/2026)', () => {
   });
   it('o ticket leva só o adicionado', () => {
     expect(linhasParaOTicket(razao, 0, '2026-08', [b, c]).map(l => l.nf)).toEqual(['10111', '—']);
+    // a operação pelo lado da conta (Vitor, 08/10/2026): a nota do cliente é Venda; a do fornecedor, Compra
+    expect(linhasParaOTicket(razao, 0, '2026-08', [b]).map(l => l.operacao)).toEqual(['Venda']);
+    expect(linhasParaOTicket(razao, 0, '2026-08', [b], 'fornecedores').map(l => l.operacao)).toEqual(['Compra']);
+    expect(linhasParaOTicket(undefined, 10, '2026-08', undefined, 'fornecedores').map(l => [l.tipo, l.operacao])).toEqual([['saldo', 'Compra']]);
   });
 });

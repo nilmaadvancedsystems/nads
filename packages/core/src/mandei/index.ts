@@ -8,8 +8,17 @@
  * Uma linha do lançamento do item, já no formato da tela (Vitor, 07/10/2026: "Data, nota fiscal, descrição, valor";
  * "se foi uma nota em aberto, qual a data e o número da nota? Se for um pagamento solto, qual a data, o banco?").
  * tipo: a nota em aberto, o pagamento sem nota (com a conta: o banco), a devolução ou só o saldo (sem o razão).
+ * operacao: o que o cliente vê na coluna Operação (Venda, Compra, Recebimento, Pagamento, Devolução; Vitor, 08/10/2026).
  */
-export interface LinhaDoItem { data: string; nf: string; descricao: string; valor: string; tipo?: 'nota' | 'pagamento' | 'devolucao' | 'saldo'; conta?: string }
+export interface LinhaDoItem { data: string; nf: string; descricao: string; valor: string; tipo?: 'nota' | 'pagamento' | 'devolucao' | 'saldo'; operacao?: string; conta?: string }
+
+/** A operação da linha; nos tickets de antes (sem ela), pela descrição ou pelo tipo. */
+export function operacaoDaLinha(l: LinhaDoItem): string {
+  if (l.operacao) return l.operacao;
+  if (/compra/i.test(l.descricao)) return 'Compra';
+  if (/venda/i.test(l.descricao)) return 'Venda';
+  return l.tipo === 'devolucao' ? 'Devolução' : l.tipo === 'pagamento' ? 'Pagamento' : '—';
+}
 
 /** Um item do formulário: o que perguntamos (ex.: um cliente com saldo em aberto, os lançamentos e a nossa pergunta). */
 export interface ItemDoTicket { id: string; titulo: string; valor?: string; detalhe?: string; linhas?: LinhaDoItem[]; opcoes: string[] }
@@ -18,8 +27,16 @@ export type StatusDoArquivo = 'subindo' | 'na-fila' | 'no-drive' | 'erro';
 /** Um arquivo que o cliente anexou (o arquivo em si vai para o Drive; aqui, o nome e o andamento). */
 export interface ArquivoDoTicket { id: string; nome: string; tamanho: number; itemId?: string; enviadoEm: string; status: StatusDoArquivo; envioId?: string; erro?: string }
 
-/** A resposta de um item: a opção escolhida e/ou o texto. */
+/** A resposta de um item (ou de uma linha dele): a opção escolhida e/ou o texto. */
 export interface RespostaDoItem { opcao?: string; texto?: string }
+
+// O cliente responde por linha (Vitor, 08/10/2026: "ela responde por linha"): a resposta e o arquivo de cada lançamento
+// ficam na chave '<item>/<n>' (n = a posição da linha); o item sem linhas responde inteiro, na chave dele.
+export const chaveDaLinha = (itemId: string, n: number): string => itemId + '/' + n;
+/** O item de uma chave (a resposta ou o arquivo de uma linha é do item dela). */
+export const itemDaChave = (chave: string): string => chave.split('/')[0];
+/** As chaves que o item responde: uma por linha; sem linhas, a do próprio item. */
+export const chavesDoItem = (it: Pick<ItemDoTicket, 'id' | 'linhas'>): string[] => (it.linhas?.length ? it.linhas.map((_, n) => chaveDaLinha(it.id, n)) : [it.id]);
 
 /** Um link do ticket: o 1º (3 dias úteis) ou o 2º (5 dias corridos). O código é o segredo do link. */
 export interface LinkDoTicket {
@@ -175,15 +192,17 @@ export function linkAberto(t: Ticket, codigo: string, agora: Date): Ticket {
   return noLink(t, codigo, l => (l.abertoEm ? l : { ...l, abertoEm: agora.toISOString() }));
 }
 
-/** O cliente mandou as respostas (só dos itens do ticket; sem campo vazio). */
+/** O cliente mandou as respostas (só das linhas dos itens do ticket, ou do item sem linhas; sem campo vazio). */
 export function responder(t: Ticket, respostas: Record<string, RespostaDoItem>, agora: Date): Ticket {
   const certas: Record<string, RespostaDoItem> = {};
   for (const it of t.itens) {
-    const r = respostas[it.id];
-    if (!r) continue;
-    const opcao = r.opcao && it.opcoes.includes(r.opcao) ? r.opcao : undefined;
-    const texto = r.texto?.trim().slice(0, 2000) || undefined;
-    if (opcao || texto) certas[it.id] = { ...(opcao ? { opcao } : {}), ...(texto ? { texto } : {}) };
+    for (const chave of chavesDoItem(it)) {
+      const r = respostas[chave];
+      if (!r) continue;
+      const opcao = r.opcao && it.opcoes.includes(r.opcao) ? r.opcao : undefined;
+      const texto = r.texto?.trim().slice(0, 2000) || undefined;
+      if (opcao || texto) certas[chave] = { ...(opcao ? { opcao } : {}), ...(texto ? { texto } : {}) };
+    }
   }
   return { ...t, respostas: { ...t.respostas, ...certas }, respondidoEm: agora.toISOString() };
 }

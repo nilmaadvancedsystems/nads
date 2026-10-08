@@ -235,27 +235,32 @@ export function definirItem(razao: RazaoDaMarca | undefined, perguntar: readonly
   return lista.length ? lista : undefined;
 }
 
-/** Uma linha para o formulário do cliente (o Mandei): data, nota fiscal, o que é, o valor, o tipo e a conta. */
-export interface LinhaParaOTicket { data: string; nf: string; descricao: string; valor: string; tipo: 'nota' | 'pagamento' | 'devolucao' | 'saldo'; conta?: string }
+/** Uma linha para o formulário do cliente (o Mandei): data, nota fiscal, o que é, o valor, o tipo, a operação e a conta. */
+export interface LinhaParaOTicket { data: string; nf: string; descricao: string; valor: string; tipo: 'nota' | 'pagamento' | 'devolucao' | 'saldo'; operacao: string; conta?: string }
+
+/** A operação de cada linha para o cliente (Vitor, 08/10/2026: "coloque Operação (Compra, Venda)"), pelo lado da conta. */
+const OPERACAO: Record<LadoDaConta, Record<LinhaParaOTicket['tipo'], string>> = {
+  clientes: { nota: 'Venda', pagamento: 'Recebimento', devolucao: 'Devolução', saldo: 'Venda' },
+  fornecedores: { nota: 'Compra', pagamento: 'Pagamento', devolucao: 'Devolução', saldo: 'Compra' },
+};
 
 const dataDoRazaoBR = (d: string) => (d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '');
 
 /**
  * Os lançamentos que o cliente vê no ticket (Vitor, 07/10/2026): os do razão importado (sem a duplicidade, que é só do
  * escritório), cada um com a data, a nota (a nota em aberto) ou a conta (o pagamento solto: o banco); sem o razão, o
- * saldo do fim do mês ('aaaa-mm').
+ * saldo do fim do mês ('aaaa-mm'). A operação (Venda, Compra…) vem do lado da conta.
  */
-export function linhasParaOTicket(razao: RazaoDaMarca | undefined, saldo: number, mes: string, perguntar?: readonly string[]): LinhaParaOTicket[] {
+export function linhasParaOTicket(razao: RazaoDaMarca | undefined, saldo: number, mes: string, perguntar?: readonly string[], lado: LadoDaConta = 'clientes'): LinhaParaOTicket[] {
   // só o que a pessoa escolheu no "+" (sem escolha, o cliente todo)
   const doRazao = itensEscolhidos(razao, perguntar);
   if (doRazao.length) {
-    return doRazao.map(i => ({
-      data: dataDoRazaoBR(i.data), nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor),
-      tipo: i.status === 'aberto' ? 'nota' as const : i.status === 'devolucao' ? 'devolucao' as const : 'pagamento' as const,
-      ...(i.conta ? { conta: i.conta } : {}),
-    }));
+    return doRazao.map(i => {
+      const tipo = i.status === 'aberto' ? 'nota' as const : i.status === 'devolucao' ? 'devolucao' as const : 'pagamento' as const;
+      return { data: dataDoRazaoBR(i.data), nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor), tipo, operacao: OPERACAO[lado][tipo], ...(i.conta ? { conta: i.conta } : {}) };
+    });
   }
   const [a, m] = mes.split('-').map(Number);
   const fim = String(new Date(a, m, 0).getDate()).padStart(2, '0') + '/' + String(m).padStart(2, '0') + '/' + a;
-  return [{ data: fim, nf: '—', descricao: 'Saldo em aberto em ' + String(m).padStart(2, '0') + '/' + a, valor: reais(saldo), tipo: 'saldo' }];
+  return [{ data: fim, nf: '—', descricao: 'Saldo em aberto em ' + String(m).padStart(2, '0') + '/' + a, valor: reais(saldo), tipo: 'saldo', operacao: OPERACAO[lado].saldo }];
 }

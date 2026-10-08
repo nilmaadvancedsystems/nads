@@ -218,7 +218,7 @@ export function useFornecedores() {
         criadoPor: { nome: op?.nome || '' },
         origem: { titulo: 'Fornecedores · ' + rotuloMes, rota: window.location.pathname, competencia: mes },
         // os lançamentos de cada um (a nota em aberto com a data e o número; o pagamento solto com a data e o banco)
-        itens: paraEnviar.map(l => ({ id: l.codigo, titulo: l.nome, valor: reais(l.saldo), opcoes: md.OPCOES_PADRAO, linhas: cl.linhasParaOTicket(l.razao, l.saldo, mes, l.perguntar) })),
+        itens: paraEnviar.map(l => ({ id: l.codigo, titulo: l.nome, valor: reais(l.saldo), opcoes: md.OPCOES_PADRAO, linhas: cl.linhasParaOTicket(l.razao, l.saldo, mes, l.perguntar, LADO) })),
       });
       marcas.salvar({ ...marcas.doc, enviado: assinatura });
       aviso({ tom: 'ok', titulo: 'Ticket ' + md.rotuloDoNumero(t.numero) + ' mandado', texto: [email, whatsapp && 'WhatsApp ' + whatsapp].filter(Boolean).join(' e ') + ' · acompanhe em Mandei' });

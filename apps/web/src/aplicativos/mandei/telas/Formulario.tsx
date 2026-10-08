@@ -5,14 +5,17 @@
 // só Anterior e Próximo à direita, sem os números dos itens (Vitor, 07/10/2026), e a barra de progresso; cada
 // cliente num cartão com o selo do valor, os lançamentos na tabela padrão, a nossa pergunta no balão, as respostas em
 // chips, o campo de texto e o Escolher arquivos; a revisão na tabela; o fim e o link vencido no vazio (gh-blank).
+// Com os lançamentos, a resposta é por linha (Vitor, 08/10/2026: "ela responde por linha"), na Seleção da coluna Resposta
+// (a nativa: no celular abre a lista do aparelho e não corta dentro da tabela),
+// e a coluna Operação (Compra, Venda…) no lugar da Descrição e do Tipo; o explicar e o comprovante embaixo da linha.
 import { Icone, MarcaN, type NomeIcone } from '@nads/ui';
-import { useRef, type ReactNode } from 'react';
+import { Fragment, useRef, type ReactNode } from 'react';
 import { useFormulario } from './useFormulario';
 
 type VM = ReturnType<typeof useFormulario>;
-type Linhas = VM['itens'][number]['linhas'];
-
-const TIPO = { nota: 'Nota em aberto', pagamento: 'Pagamento sem nota', devolucao: 'Devolução', saldo: 'Saldo do mês' } as const;
+type Item = VM['itens'][number];
+type Linhas = Item['linhas'];
+type Resposta = Item['doItem'];
 
 /** "2 notas em aberto · 1 pagamento sem nota" (embaixo do nome do cliente). */
 function resumoDasLinhas(linhas: Linhas): string {
@@ -29,7 +32,7 @@ export function Formulario() {
   const vm = useFormulario();
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '16px 16px 64px' }}>
-      <header style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0 16px', borderBottom: '1px solid var(--border)' }}>
+      <header style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, padding: '8px 0 16px', borderBottom: '1px solid var(--border)' }}>
         <span className="brand-mark" aria-hidden="true"><MarcaN /></span><b>Nilma Contabilidade</b>
         <span style={{ flex: 1 }} />
         {vm.existe && vm.valido && !vm.enviado && (
@@ -105,60 +108,86 @@ function Item({ vm }: { vm: VM }) {
         {it.linhas && it.linhas.length > 0 && (
           <div className="table-wrap">
             <table className="table-compact">
-              <thead><tr><th>Data</th><th>Tipo</th><th>Nota fiscal / banco</th><th>Descrição</th><th className="num">Valor</th></tr></thead>
+              <thead><tr><th>Data</th><th>Operação</th><th>Nota fiscal / banco</th><th className="num">Valor</th><th>Resposta</th></tr></thead>
               <tbody>
-                {it.linhas.map((l, k) => (
+                {it.linhas.map(l => (
                   // o que é cada lançamento (Vitor, 07/10/2026): a nota em aberto com a data e o número; o pagamento solto
-                  // com a data e o banco (a conta por onde passou)
-                  <tr key={k}>
-                    <td style={{ whiteSpace: 'nowrap' }}>{l.data}</td>
-                    <td><span className={'badge ' + (l.tipo === 'nota' ? 'badge-warn' : 'badge-neutral')}>{TIPO[l.tipo || 'saldo']}</span></td>
-                    <td>{l.nf && l.nf !== '—' ? 'NF ' + l.nf : l.conta || '—'}</td>
-                    <td className="wrap">{l.descricao}</td>
-                    <td className="num">{l.valor}</td>
-                  </tr>
+                  // com a data e o banco (a conta por onde passou); e a resposta da linha (Vitor, 08/10/2026)
+                  <Fragment key={l.chave}>
+                    <tr>
+                      <td style={{ whiteSpace: 'nowrap' }}>{l.data}</td>
+                      <td>{l.operacao}</td>
+                      <td>{l.nf && l.nf !== '—' ? 'NF ' + l.nf : l.conta || '—'}</td>
+                      <td className="num">{l.valor}</td>
+                      <td>
+                        <select className="select-compact" style={{ maxWidth: 240 }} value={l.opcao} onChange={e => vm.escolher(l.chave, e.target.value)}
+                          aria-label={'Resposta para ' + (l.nf && l.nf !== '—' ? 'a NF ' + l.nf : 'o lançamento de ' + l.data)}>
+                          <option value="" disabled>Responder</option>
+                          {it.opcoes.map(o => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      </td>
+                    </tr>
+                    {(l.explicar || l.comprovar || l.arquivos.length > 0) && (
+                      <tr><td colSpan={5}><OQueAResposta pede={l} vm={vm} /></td></tr>
+                    )}
+                  </Fragment>
                 ))}
-                {it.valor && <tr><td colSpan={4}><b>Saldo em aberto</b></td><td className="num"><b>{it.valor}</b></td></tr>}
+                {it.valor && <tr><td colSpan={3}><b>Saldo em aberto</b></td><td className="num"><b>{it.valor}</b></td><td /></tr>}
               </tbody>
             </table>
           </div>
         )}
         {it.detalhe && <span className="msg-balao"><Icone nome="mensagem" />{it.detalhe}</span>}
+        {!it.linhas.length && <>
         <div className="field" style={{ margin: 0 }}>
           <label>Sua resposta</label>
           <div className="chip-row" style={{ margin: '4px 0 0' }} role="radiogroup" aria-label={'Resposta para ' + it.titulo}>
             {it.opcoes.map(o => (
-              <button key={o} type="button" role="radio" aria-checked={it.opcao === o} className={'chip-f' + (it.opcao === o ? ' on' : '')}
-                onClick={() => vm.escolher(it.id, it.opcao === o ? '' : o)}>{o}</button>
+              <button key={o} type="button" role="radio" aria-checked={it.doItem.opcao === o} className={'chip-f' + (it.doItem.opcao === o ? ' on' : '')}
+                onClick={() => vm.escolher(it.id, it.doItem.opcao === o ? '' : o)}>{o}</button>
             ))}
           </div>
         </div>
-        {/* a explicação só no "Outro"; o anexar só em "Já foi pago" e "Foi pago de outra conta" (Vitor, 07/10/2026) */}
-        {it.explicar && (
-          <div className="field" style={{ margin: 0 }}>
-            <label htmlFor={'tx-' + it.id}>Explique</label>
-            <textarea id={'tx-' + it.id} rows={3} value={it.texto} placeholder="Conte o que aconteceu com este valor" onChange={e => vm.escrever(it.id, e.target.value)} />
-          </div>
-        )}
-        {(it.comprovar || it.arquivos.length > 0) && <div>
-          {it.comprovar && (
-            // três jeitos de mandar o comprovante (Vitor, 07/10/2026): galeria, câmera (no celular abre direto) e arquivo
-            <div className="field" style={{ margin: 0 }}>
-              <label>Comprovante</label>
-              <div className="btn-row" style={{ justifyContent: 'flex-start' }}>
-                <BotaoDeArquivo id={'gal-' + it.id} icone="imagem" rotulo="Galeria" aceitar="image/*" onEscolher={fs => vm.anexar(it.id, fs)} />
-                <BotaoDeArquivo id={'cam-' + it.id} icone="camera" rotulo="Câmera" aceitar="image/*" camera onEscolher={fs => vm.anexar(it.id, fs)} />
-                <BotaoDeArquivo id={'arq-' + it.id} icone="arquivo" rotulo="Arquivo" aceitar=".pdf,.png,.jpg,.jpeg,.xls,.xlsx,.ofx,.txt" onEscolher={fs => vm.anexar(it.id, fs)} />
-              </div>
-            </div>
-          )}
-          {it.arquivos.length > 0 && (
-            <div className="btn-row" style={{ marginTop: 8, justifyContent: 'flex-start' }}>{it.arquivos.map(n => <span key={n} className="badge badge-ok">{n}</span>)}</div>
-          )}
-          {vm.erro && <p className="hint ext-neg" style={{ margin: '8px 0 0' }}>{vm.erro}</p>}
-        </div>}
+        <OQueAResposta pede={it.doItem} vm={vm} />
+        </>}
       </div>
     </section>
+  );
+}
+
+/**
+ * O que a resposta pede, embaixo da linha (ou do item sem linhas): a explicação só no "Outro"; o anexar só em "Já foi
+ * pago" e "Foi pago de outra conta" (Vitor, 07/10/2026); e os arquivos já mandados.
+ */
+function OQueAResposta({ pede, vm }: { pede: Resposta; vm: VM }) {
+  if (!pede.explicar && !pede.comprovar && !pede.arquivos.length) return null;
+  const id = pede.chave.replace(/\W/g, '-');
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {pede.explicar && (
+        <div className="field" style={{ margin: 0 }}>
+          <label htmlFor={'tx-' + id}>Explique</label>
+          <textarea id={'tx-' + id} rows={3} value={pede.texto} placeholder="Conte o que aconteceu com este valor" onChange={e => vm.escrever(pede.chave, e.target.value)} />
+        </div>
+      )}
+      {(pede.comprovar || pede.arquivos.length > 0) && <div>
+        {pede.comprovar && (
+          // três jeitos de mandar o comprovante (Vitor, 07/10/2026): galeria, câmera (no celular abre direto) e arquivo
+          <div className="field" style={{ margin: 0 }}>
+            <label>Comprovante</label>
+            <div className="btn-row" style={{ justifyContent: 'flex-start' }}>
+              <BotaoDeArquivo id={'gal-' + id} icone="imagem" rotulo="Galeria" aceitar="image/*" onEscolher={fs => vm.anexar(pede.chave, fs)} />
+              <BotaoDeArquivo id={'cam-' + id} icone="camera" rotulo="Câmera" aceitar="image/*" camera onEscolher={fs => vm.anexar(pede.chave, fs)} />
+              <BotaoDeArquivo id={'arq-' + id} icone="arquivo" rotulo="Arquivo" aceitar=".pdf,.png,.jpg,.jpeg,.xls,.xlsx,.ofx,.txt" onEscolher={fs => vm.anexar(pede.chave, fs)} />
+            </div>
+          </div>
+        )}
+        {pede.arquivos.length > 0 && (
+          <div className="btn-row" style={{ marginTop: 8, justifyContent: 'flex-start' }}>{pede.arquivos.map(n => <span key={n} className="badge badge-ok">{n}</span>)}</div>
+        )}
+        {vm.erro && <p className="hint ext-neg" style={{ margin: '8px 0 0' }}>{vm.erro}</p>}
+      </div>}
+    </div>
   );
 }
 
@@ -187,8 +216,12 @@ function Revisao({ vm }: { vm: VM }) {
             {vm.itens.map((it, i) => (
               <tr key={it.id} className="linha-abre" tabIndex={0} onClick={() => vm.irPara(i)} onKeyDown={e => { if (e.key === 'Enter') vm.irPara(i); }}>
                 <td className="wrap"><b>{i + 1}. {it.titulo}</b></td>
-                <td className="wrap">{it.opcao || it.texto || <span className="hint">Sem resposta</span>}</td>
-                <td className="num">{it.arquivos.length || '—'}</td>
+                <td className="wrap">
+                  {it.resumo.map(x => (
+                    <span key={x.chave} style={{ display: 'block' }}>{x.linha && <span className="hint">{x.linha}: </span>}{x.resposta || <span className="hint">Sem resposta</span>}</span>
+                  ))}
+                </td>
+                <td className="num">{it.anexos || '—'}</td>
                 <td><span className={'badge ' + (it.respondido ? 'badge-ok' : 'badge-warn')}>{it.respondido ? 'Respondido' : 'Pendente'}</span></td>
               </tr>
             ))}

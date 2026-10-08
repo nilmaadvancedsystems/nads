@@ -1,5 +1,6 @@
 // ViewModel do formulário do cliente (Mandei, Vitor, 07/10/2026): o ticket do link (só o que o cliente precisa ver),
-// as respostas de cada item (escolher, digitar) e os arquivos anexados. Vale até o fim do prazo do link; vencido, ou
+// as respostas de cada linha do item (Vitor, 08/10/2026: "ela responde por linha"; o item sem linhas responde inteiro:
+// escolher, digitar) e os arquivos anexados. Vale até o fim do prazo do link; vencido, ou
 // com o ticket resolvido, não aceita mais nada. Por enquanto com os dados de exemplo (comum/mandeiExemplo.ts).
 import { mandei as m } from '@nads/core';
 import { useEffect, useState, useSyncExternalStore } from 'react';
@@ -35,7 +36,7 @@ export function useFormulario() {
   const vista = t ? m.vistaDoCliente(t) : null;
   const resposta = (id: string): m.RespostaDoItem => respostas[id] ?? vista?.respostas[id] ?? {};
 
-  async function anexar(itemId: string, fs: File[]) {
+  async function anexar(chave: string, fs: File[]) {
     setErro('');
     for (const f of fs) {
       const atual = exemplo.doLink(codigo);
@@ -43,19 +44,35 @@ export function useFormulario() {
       if (f.size > MAIOR_ARQUIVO_NO_EXEMPLO) { setErro(f.name + ': maior que 2 MB (no exemplo).'); continue; }
       const id = 'arq-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       if (!exemplo.guardarArquivo(id, await lerComoDataUrl(f))) { setErro(f.name + ': não coube neste navegador.'); continue; }
-      exemplo.gravar(m.comArquivo(atual, { id, nome: f.name, tamanho: f.size, itemId, enviadoEm: new Date().toISOString(), status: 'na-fila' }));
+      exemplo.gravar(m.comArquivo(atual, { id, nome: f.name, tamanho: f.size, itemId: chave, enviadoEm: new Date().toISOString(), status: 'na-fila' }));
     }
   }
 
-  const itens = (vista?.itens || []).map(it => {
-    const opcao = resposta(it.id).opcao || '', texto = resposta(it.id).texto || '';
-    const arquivos = (vista?.arquivos || []).filter(a => a.itemId === it.id).map(a => a.nome);
-    const iniciais = it.titulo.split(/\s+/).filter(w => w.length > 2).slice(0, 2).map(w => w[0]).join('') || it.titulo.slice(0, 2);
+  /** a resposta de uma chave (a linha, ou o item sem linhas): a opção, o texto, os arquivos e o que ela pede */
+  const daChave = (chave: string) => {
+    const opcao = resposta(chave).opcao || '', texto = resposta(chave).texto || '';
     const explicar = m.pedeExplicacao(opcao);
-    // respondido = escolheu uma resposta e, se ela pede, explicou (Vitor, 07/10/2026: "não deixa dar próximo sem responder")
-    return { ...it, opcao, texto, arquivos, iniciais: iniciais.toUpperCase(), respondido: !!opcao && (!explicar || !!texto.trim()),
-      falta: !opcao ? 'Escolha uma resposta para continuar' : explicar && !texto.trim() ? 'Explique para continuar' : '',
-      explicar, comprovar: m.pedeComprovante(opcao) };
+    return {
+      chave, opcao, texto, explicar, comprovar: m.pedeComprovante(opcao),
+      arquivos: (vista?.arquivos || []).filter(a => a.itemId === chave).map(a => a.nome),
+      // respondido = escolheu uma resposta e, se ela pede, explicou (Vitor, 07/10/2026: "não deixa dar próximo sem responder")
+      respondido: !!opcao && (!explicar || !!texto.trim()),
+    };
+  };
+  const itens = (vista?.itens || []).map(it => {
+    const iniciais = it.titulo.split(/\s+/).filter(w => w.length > 2).slice(0, 2).map(w => w[0]).join('') || it.titulo.slice(0, 2);
+    // cada lançamento com a operação (Compra, Venda…) e a resposta dele; sem lançamentos, a resposta do item
+    const linhas = (it.linhas || []).map((l, n) => ({ ...l, operacao: m.operacaoDaLinha(l), ...daChave(m.chaveDaLinha(it.id, n)) }));
+    const doItem = daChave(it.id);
+    const respostas = linhas.length ? linhas : [doItem];
+    const semOpcao = respostas.some(x => !x.opcao), semTexto = respostas.some(x => x.explicar && !x.texto.trim());
+    return { ...it, linhas, doItem, iniciais: iniciais.toUpperCase(), respondido: respostas.every(x => x.respondido),
+      falta: semOpcao ? (linhas.length > 1 ? 'Responda cada linha para continuar' : 'Escolha uma resposta para continuar') : semTexto ? 'Explique para continuar' : '',
+      /** a revisão: o que respondeu em cada linha e quantos arquivos */
+      resumo: linhas.length
+        ? linhas.map(x => ({ chave: x.chave, linha: (x.nf && x.nf !== '—' ? 'NF ' + x.nf : x.conta || x.data) + ' · ' + x.valor, resposta: [x.opcao, x.texto].filter(Boolean).join(': ') }))
+        : [{ chave: doItem.chave, linha: '', resposta: [doItem.opcao, doItem.texto].filter(Boolean).join(': ') }],
+      anexos: respostas.reduce((n, x) => n + x.arquivos.length, 0) };
   });
   const respondidos = itens.filter(i => i.respondido).length;
   // só anda até o primeiro item sem resposta (a revisão só depois de todos)
@@ -72,9 +89,10 @@ export function useFormulario() {
     validoAte: vista ? dataBR(vista.validoAte) : '',
     itens,
     // trocou para uma resposta que não pede explicação: o texto digitado no "Outro" sai junto
-    escolher: (id: string, opcao: string) => setRespostas(r => ({ ...r, [id]: m.pedeExplicacao(opcao) ? { ...resposta(id), opcao } : { ...resposta(id), opcao, texto: '' } })),
-    escrever: (id: string, texto: string) => setRespostas(r => ({ ...r, [id]: { ...resposta(id), texto } })),
-    anexar: (id: string, fs: File[]) => { void anexar(id, fs); },
+    // a chave é a da linha ('<item>/<n>') ou a do item sem linhas
+    escolher: (chave: string, opcao: string) => setRespostas(r => ({ ...r, [chave]: m.pedeExplicacao(opcao) ? { ...resposta(chave), opcao } : { ...resposta(chave), opcao, texto: '' } })),
+    escrever: (chave: string, texto: string) => setRespostas(r => ({ ...r, [chave]: { ...resposta(chave), texto } })),
+    anexar: (chave: string, fs: File[]) => { void anexar(chave, fs); },
     enviar: () => {
       const atual = exemplo.doLink(codigo);
       if (!atual || !m.linkValido(atual, codigo, new Date()) || pendente >= 0) return;

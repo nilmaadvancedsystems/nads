@@ -74,10 +74,14 @@ export function useMandei(pagina: 'meus' | 'central') {
     links: t.links.map(l => ({ numero: l.numero + 'º link', enviado: dataHora(l.enviadoEm) || 'não enviado', aberto: dataHora(l.abertoEm) || '—', vence: data(l.validoAte), url: urlDoLink(l.codigo) })),
     itens: t.itens.map(it => ({
       id: it.id, titulo: it.titulo, valor: it.valor || '', detalhe: it.detalhe || '',
-      opcao: t.respostas[it.id]?.opcao || '', texto: t.respostas[it.id]?.texto || '',
-      arquivos: t.arquivos.filter(a => a.itemId === it.id),
+      // a resposta de cada linha (Vitor, 08/10/2026: o cliente responde por linha); o item sem linhas, inteiro
+      respostas: m.chavesDoItem(it).map((chave, n) => {
+        const l = it.linhas?.[n];
+        return { chave, linha: l ? m.operacaoDaLinha(l) + ' · ' + (l.nf && l.nf !== '—' ? 'NF ' + l.nf : l.conta || l.data) + ' · ' + l.valor : '', opcao: t.respostas[chave]?.opcao || '', texto: t.respostas[chave]?.texto || '' };
+      }),
+      arquivos: t.arquivos.filter(a => !!a.itemId && m.itemDaChave(a.itemId) === it.id),
     })),
-    arquivosSoltos: t.arquivos.filter(a => !a.itemId || !t.itens.some(it => it.id === a.itemId)),
+    arquivosSoltos: t.arquivos.filter(a => !a.itemId || !t.itens.some(it => it.id === m.itemDaChave(a.itemId as string))),
     podeResolver: s === 'respondido' || s === 'ligar' || s === 'aguardando' || s === 'aguardando-2',
     url: urlDoLink(m.linkAtual(t).codigo),
   } : null;
