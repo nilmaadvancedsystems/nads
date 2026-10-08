@@ -34,8 +34,10 @@ export function useBens() {
   // o clique do Verificar: a hora em que começou; o resultado, quando a conta e os 3 segundos acabam
   const [desde, setDesde] = useState<number | null>(null);
   const [b, setB] = useState<ReturnType<typeof tarefas.bensDoPeriodo> | null>(null);
-  // outras notas (as de teste, ou as da empresa de volta): verificar de novo
-  useEffect(() => { setB(null); setDesde(null); }, [ent, sai, chave]);
+  // outras notas (as de teste, ou as da empresa de volta) ou outro período: verificar de novo. Não pelas listas: a
+  // Conferência entrega listas novas quando termina de carregar, e isso apagava o resultado do primeiro clique (Vitor,
+  // 08/10/2026: "no primeiro clique carrega e não faz nada, no segundo funciona")
+  useEffect(() => { setB(null); setDesde(null); }, [teste, chave]);
   useEffect(() => {
     if (desde === null || !carregou) return;
     // a conta depois de a barra aparecer, para a tela não travar antes dela
