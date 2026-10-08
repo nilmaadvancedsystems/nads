@@ -61,7 +61,7 @@ const PASSOS_DO_PORTAL = {
   certificado: [/seu certificado digital/, /certificado digital/],
   trocarPerfil: [/trocar perfil/, /alterar perfil/, /selecionar perfil/],
   procurador: [/procurador/],
-  emissao: [/emissao de guia/, /emitir guia/],
+  emissao: [/emissao de guia/, /emitir guia/, /^emissao/, /guia rapida/, /guia mensal/],
   guiaMensal: [/guia (rapida|mensal)/, /mensal/],
   emitir: [/emitir guia/, /^emitir$/, /gerar guia/],
   baixar: [/baixar|download|imprimir|pdf/],
@@ -274,9 +274,9 @@ function ligarFgtsDigital(db, log, avisos) {
       }
 
       // o menu do portal (08/10/2026, visto no ensaio): GESTÃO DE GUIAS abre as opções de emissão
-      await clicar(page, [/^gestao de guias$/], 'Gestão de guias').catch(() => {});
-      await esperarCarregar(page);
-      await registrar('gestão de guias');
+      // são cartões (08/10/2026, vistos na tela): as opções aparecem com o mouse em cima, como na mão de uma pessoa
+      await passarMouse(page, /^gestao de guias$/, 'Gestão de guias');
+      await registrar('gestão de guias (as opções)');
       await clicar(page, PASSOS_DO_PORTAL.emissao, 'Emissão de guia');
       await esperarCarregar(page);
       await clicar(page, PASSOS_DO_PORTAL.guiaMensal, 'Guia mensal');
@@ -401,6 +401,30 @@ async function temTexto(page, padroes) {
     const res = lista.map(s => new RegExp(s));
     return [...document.querySelectorAll('button, a, [role=button]')].some(e => e.offsetParent !== null && res.some(re => re.test(norm(e.innerText || e.getAttribute('aria-label')))));
   }, padroes.map(r => r.source)).catch(() => false);
+}
+
+/** Põe o mouse em cima do menor elemento cujo texto é este (os cartões do portal abrem as opções assim). */
+async function passarMouse(page, padrao, nome) {
+  for (let i = 0; i < 15; i++) {
+    const caixa = await page.evaluate(fonte => {
+      const re = new RegExp(fonte);
+      const norm = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+      const achados = [...document.querySelectorAll('body *')].filter(e => e.offsetParent !== null && re.test(norm(e.innerText)));
+      const el = achados.sort((a, b) => a.getBoundingClientRect().width * a.getBoundingClientRect().height - b.getBoundingClientRect().width * b.getBoundingClientRect().height)[0];
+      if (!el) return null;
+      el.scrollIntoView({ block: 'center' });
+      const r = el.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    }, padrao.source).catch(() => null);
+    if (caixa) {
+      await page.mouse.move(caixa.x - 40, caixa.y - 40);
+      await page.mouse.move(caixa.x, caixa.y, { steps: 10 });
+      await dormir(1200);
+      return;
+    }
+    await dormir(1000);
+  }
+  throw new Error('não achei "' + nome + '" na tela');
 }
 
 async function esperarCarregar(page) {
