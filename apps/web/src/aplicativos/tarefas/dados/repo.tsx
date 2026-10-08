@@ -4,7 +4,7 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { bancosDoEntregas, contatosDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDoArquivador, repoDoFgts, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
+import { bancosDoEntregas, contatosDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDeCategoriasDp, repoDoArquivador, repoDoFgts, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoSieg } from './sieg';
 import type { RepoFgts } from './fgts';
@@ -12,6 +12,7 @@ import type { RepoArquivador } from './arquivador';
 import type { RepoIA } from './ia';
 import type { RepoPessoal } from './pessoal';
 import type { RepoFeedback } from './feedback';
+import type { RepoCategoriasDp } from './categoriasDp';
 
 type Repo = tarefas.RepoTarefas;
 
@@ -166,6 +167,13 @@ export function useFgts(): RepoFgts {
 /** O arquivador (o "Arquivar agora"), ao vivo: o ponto do PC e os últimos pedidos. */
 export function useArquivador(): RepoArquivador {
   const repo = repoDoArquivador();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** As categorias novas de obrigações do DP, ao vivo (a lista; o admin cria e tira). */
+export function useCategoriasDp(): RepoCategoriasDp {
+  const repo = repoDeCategoriasDp();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
 }

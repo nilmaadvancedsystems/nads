@@ -74,6 +74,23 @@ describe('o DP no cadastro da empresa (responsáveis e parâmetros)', () => {
   });
 });
 
+describe('as categorias novas de obrigações do DP', () => {
+  it('cria pelo nome (id x-), recusa repetida e vale no cliente junto das da planilha', async () => {
+    const { novaCategoriaDoDp, categoriasDoDpDoDocumento, clienteDoDpNoCadastro } = await import('../../empresas/dp');
+    const { cadastroVazio, definirParametrosDp } = await import('../../empresas/cadastro/regras');
+    const c1 = novaCategoriaDoDp('  Vale Transporte ', 'VT', 'guias', []);
+    expect(c1).toEqual({ id: 'x-vale-transporte', nome: 'Vale Transporte', rotulo: 'VT', parte: 'guias' });
+    expect(novaCategoriaDoDp('vale transporte', '', 'outras', [c1 as never])).toEqual({ erro: 'Já existe uma obrigação com esse nome.' });
+    expect(novaCategoriaDoDp('FGTS Digital', '', 'guias', [])).toEqual({ erro: 'Já existe uma obrigação com esse nome.' });
+    expect(novaCategoriaDoDp('  ', '', 'guias', [])).toEqual({ erro: 'Dê um nome à categoria.' });
+    expect(categoriasDoDpDoDocumento({ lista: [c1, { id: 'ruim', nome: 'x' }, { id: 'x-sindicato', nome: 'Sindicato', parte: 'nada' }] }))
+      .toEqual([c1, { id: 'x-sindicato', nome: 'Sindicato', rotulo: 'Sindicato', parte: 'outras' }]);
+    const base = CLIENTES_DO_DP.find(c => c.movimento === 'Folha')!;
+    const cad = definirParametrosDp(cadastroVazio(base.nome, base.codigo), { obrigacoes: ['x-vale-transporte', 'folha', 'nao-existe'] }, 'Vitor', new Date('2026-10-08T12:00:00Z'));
+    expect(clienteDoDpNoCadastro(base, cad).obrigacoes).toEqual(['folha', 'x-vale-transporte']);
+  });
+});
+
 describe('a transferência de responsável (com o aceite do emitente e do destinatário)', () => {
   it('só muda o responsável com os dois aceites; a recusa derruba o pedido', async () => {
     const cad = await import('../../empresas/cadastro/regras');
