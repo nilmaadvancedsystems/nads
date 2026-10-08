@@ -19,6 +19,8 @@
   --danger:#BC4C00; --danger-strong:#953800; --danger-soft:#FFF1E5; --danger-ink:#953800;
   --warn:#9A6700; --warn-soft:#FFF8C5;
   --info:#0969DA; --info-soft:#DDF4FF;
+  /* mais dois tons para os painéis coloridos (DP › Resumo, 08/10/2026: "quero que colora todos") */
+  --roxo:#8250DF; --roxo-soft:#FBEFFF; --ciano:#0E7C86; --ciano-soft:#DDF6F6;
   --header-bg:#F7F7F8; --tab-active:#C62B32; --hover-bg:#8C8C9226;
   --drawer-bg:#FFFFFF; color-scheme:light; --destructive:#CF222E; --destructive-soft:#FFEBE9;
   --shadow-xs:0 1px 0 #1D1C1F0A;
@@ -45,7 +47,7 @@
     --success:#3FB950; --success-soft:#2EA04326; --success-ink:#3FB950;
     --danger:#DB6D28; --danger-strong:#F0883E; --danger-soft:#DB6D281A; --danger-ink:#F0883E;
     --warn:#D29922; --warn-soft:#BB800926;
-    --info:#58A6FF; --info-soft:#388BFD26;
+    --info:#58A6FF; --info-soft:#388BFD26; --roxo:#BC8CFF; --roxo-soft:#A371F726; --ciano:#39C5CF; --ciano-soft:#39C5CF26;
     --header-bg:#08080A; --tab-active:#F0626A; --hover-bg:#8C8C9233;
     --drawer-bg:#08080A; color-scheme:dark; --destructive:#F85149; --destructive-soft:#F851491A;
     --shadow-md:0 3px 6px #000; --shadow-lg:0 8px 24px #000, 0 0 0 1px #34343A;
@@ -64,7 +66,7 @@
   --success:#3FB950; --success-soft:#2EA04326; --success-ink:#3FB950;
   --danger:#DB6D28; --danger-strong:#F0883E; --danger-soft:#DB6D281A; --danger-ink:#F0883E;
   --warn:#D29922; --warn-soft:#BB800926;
-  --info:#58A6FF; --info-soft:#388BFD26;
+  --info:#58A6FF; --info-soft:#388BFD26; --roxo:#BC8CFF; --roxo-soft:#A371F726; --ciano:#39C5CF; --ciano-soft:#39C5CF26;
   --header-bg:#08080A; --tab-active:#F0626A; --hover-bg:#8C8C9233;
   --drawer-bg:#08080A; color-scheme:dark; --destructive:#F85149; --destructive-soft:#F851491A;
   --shadow-md:0 3px 6px #000; --shadow-lg:0 8px 24px #000, 0 0 0 1px #34343A;
@@ -3491,6 +3493,9 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .painel-ok{--tom:var(--success);--tom-fundo:var(--success-soft);--tom-icone:var(--success-soft);--tom-borda:var(--success-soft);}
 .painel-aviso{--tom:var(--warn);--tom-fundo:var(--warn-soft);--tom-icone:var(--warn-soft);--tom-borda:var(--warn-soft);}
 .painel-marca{--tom:var(--accent);--tom-fundo:var(--accent-soft);--tom-icone:var(--accent-soft);--tom-borda:var(--accent-soft);}
+.painel-laranja{--tom:var(--danger);--tom-fundo:var(--danger-soft);--tom-icone:var(--danger-soft);--tom-borda:var(--danger-soft);}
+.painel-roxo{--tom:var(--roxo);--tom-fundo:var(--roxo-soft);--tom-icone:var(--roxo-soft);--tom-borda:var(--roxo-soft);}
+.painel-ciano{--tom:var(--ciano);--tom-fundo:var(--ciano-soft);--tom-icone:var(--ciano-soft);--tom-borda:var(--ciano-soft);}
 .painel-neutro{--tom:var(--ink);--tom-fundo:var(--surface);--tom-icone:var(--surface-3);--tom-borda:var(--border);}
 /* a coluna CNPJ/CPF das Configurações do DP: só os dígitos e o copiar */
 .dp-documento{white-space:nowrap;cursor:default;}

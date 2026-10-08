@@ -5,7 +5,7 @@
 import { tarefas as t } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useState } from 'react';
-import { competenciasDaTela } from '../../casca/navegacao';
+import { competenciasDoDp } from '../../casca/navegacao';
 import { useFgts, useGmailDoEntregas } from '../../dados/repo';
 import type { ModoFgts, PedidoFgts } from '../../dados/fgts';
 import { useClientesDoDp } from './useClientesDoDp';
@@ -28,8 +28,8 @@ export function useFgtsDoDp() {
   const repo = useFgts();
   const gmail = useGmailDoEntregas();
   const { toast } = useRetorno();
-  const competencias = competenciasDaTela(12);
-  const [competencia, setCompetencia] = useState(competencias[0]);
+  const { lista: competencias, padrao } = competenciasDoDp(12);
+  const [competencia, setCompetencia] = useState(padrao);
   const [filtro, setFiltro] = useState<FiltroFgts>('todos');
   const [busca, setBusca] = useState('');
   const [responsavel, setResponsavel] = useState('');

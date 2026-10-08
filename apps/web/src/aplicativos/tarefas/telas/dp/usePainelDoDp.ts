@@ -8,7 +8,7 @@ import { empresas, tarefas as t } from '@nads/core';
 import type { NomeIcone } from '@nads/ui';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { competenciasDaTela } from '../../casca/navegacao';
+import { competenciasDoDp } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 import { useExecucoes, useRepo } from '../../dados/repo';
 import { useClientesDoDp } from './useClientesDoDp';
@@ -23,7 +23,7 @@ export type Agrupar = 'nenhum' | 'responsavel' | 'agrupamento';
  */
 export type AbaDoPainel = 'resumo' | 'obrigacoes';
 /** a cor do painel do número (DP › Resumo) */
-export type TomDoNumero = 'info' | 'ok' | 'aviso' | 'marca' | 'neutro';
+export type TomDoNumero = 'info' | 'ok' | 'aviso' | 'marca' | 'laranja' | 'roxo' | 'ciano' | 'neutro';
 export const ABAS_DO_PAINEL: readonly AbaDoPainel[] = ['resumo', 'obrigacoes'];
 /** As partes da rotina: o submenu da aba Obrigações (na URL: ?parte=). */
 export type ParteDoDp = 'folha' | 'esocial' | 'guias' | 'reinf' | 'entrega';
@@ -55,8 +55,9 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   const repo = useRepo();
   const op = useOperador().operador as Operador;
   const [params, setParams] = useSearchParams();
-  const competencias = competenciasDaTela(12);
-  const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
+  // do dia 20 em diante, o mês corrente também (a folha que está fechando)
+  const { lista: competencias, padrao } = competenciasDoDp(12);
+  const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : padrao;
   const { execucoes, carregada } = useExecucoes(competencia, 'dp');
   const porNome = new Map(execucoes.map(e => [e.empresa, e]));
   const doDp = useClientesDoDp(competencia);
@@ -162,16 +163,16 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
     /** quantos clientes ainda faltam nesta parte */
     faltam: linhasDaParte.filter(c => !c.concluida).length,
     // os painéis coloridos (Sávio, 07/10/2026: "painéis coloridos para os totais de clientes, totais de concluídos, totais
-    // de pendentes"): o tom diz o que é (azul o total, verde o feito, amarelo o que falta, o vermelho do nads a folha;
-    // o resto neutro)
+    // de pendentes"; 08/10: "quero que colora todos"): o tom diz o que é (azul o total, verde o feito, amarelo o que falta,
+    // o vermelho do nads a folha; laranja o pró-labore, roxo o sem movimento, ciano a REINF)
     numeros: [
       { rotulo: 'Clientes', valor: filtradas.length, dica: '', tom: 'info', icone: 'briefcase' },
       { rotulo: 'Concluídos', valor: concluidas, dica: filtradas.length ? Math.round((concluidas / filtradas.length) * 100) + '% do mês' : '', tom: 'ok', icone: 'check' },
       { rotulo: 'Pendentes', valor: filtradas.length - concluidas, dica: '', tom: 'aviso', icone: 'clock' },
       { rotulo: 'Com folha', valor: filtradas.filter(c => c.movimento === 'Folha').length, dica: '', tom: 'marca', icone: 'usuario' },
-      { rotulo: 'Pró-labore', valor: filtradas.filter(c => c.movimento === 'Pró-Labore').length, dica: '', tom: 'neutro', icone: 'usuario' },
-      { rotulo: 'Sem movimento', valor: filtradas.filter(c => c.movimento === 'Sem Movimento').length, dica: '', tom: 'neutro', icone: 'list' },
-      { rotulo: 'REINF autorizada', valor: filtradas.filter(c => c.reinfAutorizada).length, dica: '', tom: 'neutro', icone: 'fileUp' },
+      { rotulo: 'Pró-labore', valor: filtradas.filter(c => c.movimento === 'Pró-Labore').length, dica: '', tom: 'laranja', icone: 'usuario' },
+      { rotulo: 'Sem movimento', valor: filtradas.filter(c => c.movimento === 'Sem Movimento').length, dica: '', tom: 'roxo', icone: 'list' },
+      { rotulo: 'REINF autorizada', valor: filtradas.filter(c => c.reinfAutorizada).length, dica: '', tom: 'ciano', icone: 'fileUp' },
     ] as { rotulo: string; valor: number; dica: string; tom: TomDoNumero; icone: NomeIcone }[],
     barras: [
       { titulo: 'Por responsável', linhas: contar(filtradas.map(c => c.responsavelNome)) },
