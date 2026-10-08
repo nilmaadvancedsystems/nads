@@ -52,14 +52,15 @@ export function Importacao({ tipo, naEtapa }: { tipo: c.PaginaImportacao; naEtap
   );
 }
 
+/**
+ * A mensagem da importação (Vitor, 08/10/2026: "feio demais, esse aviso e amarelo"): uma cor só e uma linha só. Com
+ * algum aviso (nota fora do padrão do CFOP, CFOP do outro tipo), a faixa toda fica amarela; sem aviso, verde.
+ */
 function MensagemImportacao({ m, onFechar }: { m: Mensagem; onFechar: () => void }) {
+  const comAviso = m.textos.some(t => t.tom === 'aviso');
   return (
-    <Alerta titulo={m.titulo} tom={m.tom === 'ok' ? 'ok' : undefined} onFechar={onFechar}>
-      {m.textos.map((t, i) => (
-        <p key={i} className="alert-text" style={t.separado ? { marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--success)', color: 'var(--warn)' } : t.tom === 'aviso' ? { color: 'var(--warn)' } : undefined}>
-          {t.texto}
-        </p>
-      ))}
+    <Alerta titulo={m.titulo} tom={m.tom === 'ok' && !comAviso ? 'ok' : undefined} onFechar={onFechar}>
+      {m.textos.length > 0 && <p className="alert-text">{m.textos.map(t => t.texto).join(' · ')}</p>}
     </Alerta>
   );
 }

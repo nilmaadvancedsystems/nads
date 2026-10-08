@@ -29,11 +29,22 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { execFileSync } = require('child_process');
 const { ouvir } = require('./ouvinte');
 
 const CERTIFICADO = path.join(__dirname, 'fgts_certificado.pfx');
 const SENHA = path.join(__dirname, 'fgts_certificado.senha');
 const CHROMIUM = process.env.FGTS_CHROMIUM || '/usr/bin/chromium';
+// No PC do escritório (08/10/2026: na máquina do Google o gov.br travava e depois devolvia o login em branco — o
+// endereço de nuvem e o navegador sem tela): roda junto do arquivador, no Edge (o Chrome do dia a dia fica livre para
+// os certificados dos clientes), com a janela aparecendo, um perfil próprio (fgts-perfil-edge: o gov.br lembra dele) e
+// o certificado instalado no Windows (Usuário Atual). A regra do Edge que escolhe o certificado sozinho no gov.br é
+// posta por quem usa o PC. A verificação do gov.br é igual à da nuvem: a tela ao vivo no nads e os cliques da pessoa.
+// Onde roda: config/fgts.onde ('pc', o padrão, ou 'nuvem'); o outro lado fica parado.
+const NO_PC = process.platform === 'win32';
+const EDGE_PC = process.env.FGTS_EDGE || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
+const PERFIL_PC = path.join(__dirname, 'fgts-perfil-edge');
+const CNPJ_ESCRITORIO = '27872981000113';
 const PORTAL = 'https://fgtsdigital.sistema.gov.br/portal/';
 const PASTA_TELAS = path.join(__dirname, 'fgts-telas');
 // a espera pela pessoa na verificação entra no tempo do pedido
@@ -79,19 +90,42 @@ function lerCertificado() {
   }
 }
 
+/** O certificado do escritório no Windows deste PC (Usuário Atual, com a chave): o titular e a validade, sem a chave. */
+function lerCertificadoDoWindows() {
+  try {
+    const cmd = "Get-ChildItem Cert:\\CurrentUser\\My | Where-Object { $_.Subject -match '" + CNPJ_ESCRITORIO + "' -and $_.HasPrivateKey -and $_.NotAfter -gt (Get-Date) }"
+      + " | Sort-Object NotAfter -Descending | Select-Object -First 1 | ForEach-Object { $_.GetNameInfo('SimpleName', $false) + '|' + $_.NotAfter.ToString('yyyy-MM-dd') }";
+    const saida = execFileSync('powershell', ['-NoProfile', '-Command', cmd], { encoding: 'utf8', windowsHide: true, timeout: 30000 }).trim();
+    if (!saida) return { erro: 'o certificado do escritório não está instalado no Windows deste PC' };
+    const [cn, validade] = saida.split('|');
+    return { titular: cn.split(':')[0].trim(), documento: CNPJ_ESCRITORIO, validade };
+  } catch (err) {
+    return { erro: 'não consegui ler os certificados do Windows (' + String(err.message).split('\n')[0] + ')' };
+  }
+}
+
 function iniciarFgtsDigital(db, log, avisos) {
+  const aqui = NO_PC ? 'pc' : 'nuvem';
+  db.collection('config').doc('fgts').get().then(s => (s.exists && s.data().onde) || 'pc', () => 'pc').then(onde => {
+    if (onde !== aqui) { log('FGTS: roda no ' + onde + ' (config/fgts), não aqui'); return; }
+    ligarFgtsDigital(db, log, avisos);
+  });
+}
+
+function ligarFgtsDigital(db, log, avisos) {
   const estado = db.collection('robo').doc('fgts');
   const pedidos = db.collection('pedidosFgts');
   const marcar = dados => estado.set(Object.assign({ atualizadoEm: agora() }, dados), { merge: true }).catch(err => log('FGTS: não gravei o estado:', err.message));
 
-  if (!fs.existsSync(CERTIFICADO) || !fs.existsSync(SENHA)) {
+  if (!NO_PC && (!fs.existsSync(CERTIFICADO) || !fs.existsSync(SENHA))) {
     marcar({ ligado: false, motivo: 'falta o certificado do escritório na máquina do robô' });
     log('FGTS: desligado (falta o certificado do escritório)');
     return;
   }
-  if (!fs.existsSync(CHROMIUM)) {
-    marcar({ ligado: false, motivo: 'falta o navegador (Chromium) na máquina do robô' });
-    log('FGTS: desligado (falta o Chromium em ' + CHROMIUM + ')');
+  const NAVEGADOR = NO_PC ? EDGE_PC : CHROMIUM;
+  if (!fs.existsSync(NAVEGADOR)) {
+    marcar({ ligado: false, motivo: 'falta o navegador (' + (NO_PC ? 'Edge' : 'Chromium') + ') na máquina do robô' });
+    log('FGTS: desligado (falta o navegador em ' + NAVEGADOR + ')');
     return;
   }
   let puppeteer;
@@ -100,10 +134,15 @@ function iniciarFgtsDigital(db, log, avisos) {
     log('FGTS: desligado (puppeteer-core):', err.message);
     return;
   }
-  const cert = lerCertificado();
-  marcar({ ligado: !cert.erro, motivo: cert.erro || '', certificado: cert.erro ? null : cert });
-  if (cert.erro) { log('FGTS: desligado (' + cert.erro + ')'); return; }
-  log('FGTS: ligado (certificado de ' + cert.titular + ', até ' + cert.validade + ')');
+  // no PC o certificado pode ser instalado com o robô ligado: confere de novo a cada 2 minutos até achar
+  const cert = NO_PC ? lerCertificadoDoWindows() : lerCertificado();
+  marcar({ ligado: !cert.erro, motivo: cert.erro || '', certificado: cert.erro ? null : cert, onde: NO_PC ? 'pc' : 'nuvem' });
+  if (cert.erro) {
+    log('FGTS: desligado (' + cert.erro + ')');
+    if (NO_PC) setTimeout(() => ligarFgtsDigital(db, log, avisos), 2 * 60 * 1000);
+    return;
+  }
+  log('FGTS: ligado (certificado de ' + cert.titular + ', até ' + cert.validade + (NO_PC ? ', no Windows deste PC' : '') + ')');
 
   // pedido que ficou "trabalhando" quando o robô caiu: volta como erro (a pessoa pede de novo)
   pedidos.where('status', '==', 'trabalhando').get().then(s => Promise.all(s.docs.map(d =>
@@ -156,8 +195,15 @@ function iniciarFgtsDigital(db, log, avisos) {
     try {
       fs.mkdirSync(PASTA_TELAS, { recursive: true });
       const baixados = fs.mkdtempSync(path.join(PASTA_TELAS, 'pdf-'));
-      browser = await puppeteer.launch({
-        executablePath: CHROMIUM,
+      browser = await puppeteer.launch(NO_PC ? {
+        executablePath: NAVEGADOR,
+        headless: false,
+        userDataDir: PERFIL_PC,
+        ignoreDefaultArgs: ['--enable-automation'],
+        args: ['--lang=pt-BR', '--window-size=' + (LARGURA + 16) + ',' + (ALTURA + 140), '--disable-blink-features=AutomationControlled', '--no-first-run', '--no-default-browser-check'],
+        defaultViewport: { width: LARGURA, height: ALTURA },
+      } : {
+        executablePath: NAVEGADOR,
         headless: true,
         // sem a marca de "navegador controlado por automação"
         ignoreDefaultArgs: ['--enable-automation'],
@@ -189,14 +235,17 @@ function iniciarFgtsDigital(db, log, avisos) {
 
       await page.goto(PORTAL, { waitUntil: 'networkidle2', timeout: 60000 });
       await registrar('portal');
-      await clicar(page, PASSOS_DO_PORTAL.entrar, 'Entrar com gov.br');
-      await esperarCarregar(page);
-      await registrar('gov.br');
-      await clicar(page, PASSOS_DO_PORTAL.certificado, 'Seu certificado digital');
-      // o certificado é escolhido sozinho (a regra do Chromium) e o gov.br devolve ao portal; travou no gov.br: a
-      // verificação — a tela vai ao vivo para o nads e a pessoa clica
-      await esperarSairDe(page, /acesso\.gov\.br/, 20000);
-      if (/acesso\.gov\.br/.test(page.url()) && !await esperarAPessoa()) return await pararCaptcha();
+      // o perfil do PC guarda o login: com ele ainda valendo, o portal já abre logado
+      if (/acesso\.gov\.br|\/login/.test(page.url()) || await temTexto(page, PASSOS_DO_PORTAL.entrar)) {
+        await clicar(page, PASSOS_DO_PORTAL.entrar, 'Entrar com gov.br');
+        await esperarCarregar(page);
+        await registrar('gov.br');
+        await clicar(page, PASSOS_DO_PORTAL.certificado, 'Seu certificado digital');
+        // o certificado é escolhido sozinho (a regra do navegador) e o gov.br devolve ao portal; travou no gov.br: a
+        // verificação — a tela vai ao vivo para o nads e a pessoa clica
+        await esperarSairDe(page, /acesso\.gov\.br/, 20000);
+        if (/acesso\.gov\.br/.test(page.url()) && !await esperarAPessoa()) return await pararCaptcha();
+      }
       if (/acesso\.gov\.br/.test(page.url())) throw new Error('o gov.br não aceitou o certificado (a tela ficou no login)');
       await registrar('entrou');
 
@@ -318,6 +367,15 @@ async function clicar(page, padroes, nome) {
     await dormir(1000);
   }
   throw new Error('não achei "' + nome + '" na tela');
+}
+
+/** Algum botão/link com um destes textos na tela? */
+async function temTexto(page, padroes) {
+  return page.evaluate(lista => {
+    const norm = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+    const res = lista.map(s => new RegExp(s));
+    return [...document.querySelectorAll('button, a, [role=button]')].some(e => e.offsetParent !== null && res.some(re => re.test(norm(e.innerText || e.getAttribute('aria-label')))));
+  }, padroes.map(r => r.source)).catch(() => false);
 }
 
 async function esperarCarregar(page) {
