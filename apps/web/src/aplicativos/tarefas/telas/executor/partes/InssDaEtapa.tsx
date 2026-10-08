@@ -113,7 +113,7 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so }: {
                   {/* numa linha só (Vitor, 08/10/2026): o período, a conta do INSS a recolher (o mesmo menu de conta da tabela;
                       travada quando vem do balancete) e o Importar no meu Sistema (o .xls do Alterdata, as 8 colunas do Creditor) */}
                   <div className="tarefas-barra-topo">
-                    <span className="imp-mov-periodo">{inss.mostrando}</span>
+                    <span className="seletor-travado" aria-disabled="true" title="O período da tarefa (escolhido na Importação)"><span className="imp-mov-periodo">{inss.mostrando}</span></span>
                     {inss.sugestoes.length > 0 && (
                       <>
                         <span className="hint">Crédito</span>
