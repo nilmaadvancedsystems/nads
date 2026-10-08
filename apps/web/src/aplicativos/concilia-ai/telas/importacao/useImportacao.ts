@@ -20,7 +20,7 @@ export interface ConfigImportacao {
 }
 
 export const CONFIG: Record<TipoImp, ConfigImportacao> = {
-  balancete: { titulo: 'Importar balancete', icone: 'landmark', dica: 'Excel do balancete (XLS Dados Arquivo)', aceitar: '.xls,.xlsx,.xlsm,.xlsb,.csv,.ods', idMensagem: 'planoMsg', idArquivo: 'fPlano' },
+  balancete: { titulo: 'Importar balancete', icone: 'landmark', dica: 'Excel do balancete normal (XLS Dados Arquivo) ou do dinâmico', aceitar: '.xls,.xlsx,.xlsm,.xlsb,.csv,.ods', idMensagem: 'planoMsg', idArquivo: 'fPlano' },
   entradas: { titulo: 'Importar entradas', icone: 'arrowDown', dica: 'Relatório de entradas em Excel', aceitar: '.xls,.xlsx,.csv', idMensagem: 'msgEnt', idArquivo: 'fEnt' },
   saidas: { titulo: 'Importar saídas', icone: 'arrowUp', dica: 'Relatório de saídas em Excel', aceitar: '.xls,.xlsx,.csv', idMensagem: 'msgSai', idArquivo: 'fSai' },
   tomados: { titulo: 'Importar serviços tomados', icone: 'fileDown', dica: 'Relatório de ISS de serviços tomados em Excel (data, nota, fornecedor, lançamento e valor)', aceitar: '.xls,.xlsx,.csv', idMensagem: 'msgTom', idArquivo: 'fTom' },
@@ -80,13 +80,16 @@ export function useImportacao(tipo: TipoImp) {
   }
 
   async function importarBalancete(rows: c.Linhas) {
-    const lista = c.ordenarBalancete(c.lerBalancete(rows));
-    if (!lista.length) { terminar(); erro('Não achei contas nesse arquivo', 'O balancete precisa ter o código da conta entre colchetes.'); return; }
+    // o normal ou o dinâmico (Vitor, 08/10/2026); do dinâmico, o saldo do último mês com movimento
+    const lido = c.lerBalanceteDoArquivo(rows);
+    const lista = c.ordenarBalancete(lido.contas);
+    if (!lista.length) { terminar(); erro('Não achei contas nesse arquivo', 'Use o balancete do Alterdata: o normal (XLS Dados Arquivo, com o código da conta entre colchetes) ou o dinâmico (uma coluna por mês).'); return; }
+    const doMes = lido.dinamico ? ' (balancete dinâmico, saldo de ' + lido.dinamico.mes.slice(5) + '/' + lido.dinamico.mes.slice(0, 4) + ')' : '';
     const v = c.verificarBalancete(e, lista);
     const concluir = (forcado: boolean) => {
       s.aplicar(x => c.importarBalancete(x, lista, new Date(), forcado ? v.problemas.map(p => p.replace(/<[^>]+>/g, '')).join(' ') : undefined));
       setReimportando(false); limparArquivo(); terminar();
-      toast(lista.length + ' contas lidas.');
+      toast(lista.length + ' contas lidas' + doMes + '.');
     };
     if (!v.problemas.length) { concluir(false); return; }
     const ok = await modal<boolean>({
