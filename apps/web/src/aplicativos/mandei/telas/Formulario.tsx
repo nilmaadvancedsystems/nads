@@ -7,8 +7,8 @@
 // chips, o campo de texto e o Escolher arquivos; a revisão na tabela; o fim e o link vencido no vazio (gh-blank).
 // Com os lançamentos, a resposta é por linha (Vitor, 08/10/2026: "ela responde por linha"), na Seleção da coluna Resposta
 // (a nativa: no celular abre a lista do aparelho e não corta dentro da tabela),
-// e a coluna Operação (Compra, Venda…) no lugar da Descrição e do Tipo; o explicar e o comprovante de cada linha logo
-// embaixo da tabela, com o nome da linha (o menu do comprovante não cabe dentro da tabela, que rola no celular).
+// e a coluna Operação (Compra, Venda…) no lugar da Descrição e do Tipo; tudo da linha numa linha só (Vitor, 08/10/2026):
+// a resposta, o Explique (campo curto) e o comprovante (o ícone com o menu Galeria, Câmera, Arquivo).
 import { Icone, MarcaN, MenuSuspenso, type NomeIcone } from '@nads/ui';
 import { useRef, type ReactNode } from 'react';
 import { useFormulario } from './useFormulario';
@@ -107,9 +107,10 @@ function Item({ vm }: { vm: VM }) {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {it.linhas && it.linhas.length > 0 && (
-          <div className="table-wrap">
+          // sem a rolagem própria no computador (o menu do comprovante abre por cima); no celular, a tabela rola de lado
+          <div className="table-wrap mandei-linhas">
             <table className="table-compact">
-              <thead><tr><th>Data</th><th>Operação</th><th>Nota fiscal / banco</th><th className="num">Valor</th><th>Resposta</th></tr></thead>
+              <thead><tr><th>Data</th><th>Operação</th><th>Nota fiscal / banco</th><th className="num">Valor</th><th colSpan={3}>Resposta</th></tr></thead>
               <tbody>
                 {it.linhas.map(l => (
                   // o que é cada lançamento (Vitor, 07/10/2026): a nota em aberto com a data e o número; o pagamento solto
@@ -120,25 +121,35 @@ function Item({ vm }: { vm: VM }) {
                     <td>{l.nf && l.nf !== '—' ? 'NF ' + l.nf : l.conta || '—'}</td>
                     <td className="num">{l.valor}</td>
                     <td>
-                      <select className="select-compact" style={{ maxWidth: 240 }} value={l.opcao} onChange={e => vm.escolher(l.chave, e.target.value)}
+                      <select className="select-compact" style={{ maxWidth: 200 }} value={l.opcao} onChange={e => vm.escolher(l.chave, e.target.value)}
                         aria-label={'Resposta para ' + (l.nf && l.nf !== '—' ? 'a NF ' + l.nf : 'o lançamento de ' + l.data)}>
                         <option value="" disabled>Responder</option>
                         {it.opcoes.map(o => <option key={o} value={o}>{o}</option>)}
                       </select>
                     </td>
+                    {/* o que a resposta pede, na mesma linha: o Explique (Outro, outra conta) e o comprovante (já foi pago, outra conta) */}
+                    <td>
+                      {l.explicar && (
+                        <input type="text" value={l.texto} placeholder="Explique" style={{ width: '100%', minWidth: 120 }} onChange={e => vm.escrever(l.chave, e.target.value)}
+                          aria-label={'Explique: ' + (l.nf && l.nf !== '—' ? 'NF ' + l.nf : l.data)} />
+                      )}
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      {(l.comprovar || l.arquivos.length > 0) && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          {l.comprovar && <AnexarComprovante id={l.chave.replace(/\W/g, '-')} compacto onEscolher={fs => vm.anexar(l.chave, fs)} />}
+                          {l.arquivos.length > 0 && <span className="badge badge-ok" title={l.arquivos.join('\n')}>{l.arquivos.length === 1 ? '1 anexo' : l.arquivos.length + ' anexos'}</span>}
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))}
-                {it.valor && <tr><td colSpan={3}><b>Saldo em aberto</b></td><td className="num"><b>{it.valor}</b></td><td /></tr>}
+                {it.valor && <tr><td colSpan={3}><b>Saldo em aberto</b></td><td className="num"><b>{it.valor}</b></td><td colSpan={3} /></tr>}
               </tbody>
             </table>
           </div>
         )}
-        {it.linhas.filter(l => l.explicar || l.comprovar || l.arquivos.length > 0).map(l => (
-          <div key={l.chave} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <b>{l.nf && l.nf !== '—' ? 'NF ' + l.nf : l.conta || l.data} · {l.operacao} · {l.valor}</b>
-            <OQueAResposta pede={l} vm={vm} />
-          </div>
-        ))}
+        {it.linhas.length > 0 && vm.erro && <p className="hint ext-neg" style={{ margin: 0 }}>{vm.erro}</p>}
         {it.detalhe && <span className="msg-balao"><Icone nome="mensagem" />{it.detalhe}</span>}
         {!it.linhas.length && <>
         <div className="field" style={{ margin: 0 }}>
@@ -158,7 +169,7 @@ function Item({ vm }: { vm: VM }) {
 }
 
 /**
- * O que a resposta pede, embaixo da linha (ou do item sem linhas): a explicação só no "Outro"; o anexar só em "Já foi
+ * O que a resposta do item sem linhas pede, embaixo dela: a explicação só no "Outro"; o anexar só em "Já foi
  * pago" e "Foi pago de outra conta" (Vitor, 07/10/2026); e os arquivos já mandados.
  */
 function OQueAResposta({ pede, vm }: { pede: Resposta; vm: VM }) {
@@ -194,15 +205,17 @@ function OQueAResposta({ pede, vm }: { pede: Resposta; vm: VM }) {
 
 /**
  * O "Anexar comprovante ▾" (Vitor, 08/10/2026: "coloque em um único botão, clicou aparece as opções"): o menu com
- * Galeria, Câmera (no celular abre a câmera direto) e Arquivo; cada opção abre o seletor de arquivo dela.
+ * Galeria, Câmera (no celular abre a câmera direto) e Arquivo; cada opção abre o seletor de arquivo dela. Na linha da
+ * tabela, compacto: só o ícone.
  */
-function AnexarComprovante({ id, onEscolher }: { id: string; onEscolher: (fs: File[]) => void }) {
+function AnexarComprovante({ id, compacto, onEscolher }: { id: string; compacto?: boolean; onEscolher: (fs: File[]) => void }) {
   const galeria = useRef<HTMLInputElement>(null), camera = useRef<HTMLInputElement>(null), arquivo = useRef<HTMLInputElement>(null);
   const escolheu = (ev: React.ChangeEvent<HTMLInputElement>) => { const fs = Array.from(ev.target.files || []); ev.target.value = ''; if (fs.length) onEscolher(fs); };
   const opcao = (rotulo: string, icone: NomeIcone, input: React.RefObject<HTMLInputElement | null>) => ({ rotulo, icone, onClick: () => input.current?.click() });
   return (
     <>
-      <MenuSuspenso rotulo="Anexar comprovante" icone="upload" className="btn" largura={200} dica="Mandar o comprovante"
+      {/* na linha da tabela, só o ícone (compacto) */}
+      <MenuSuspenso rotulo={compacto ? '' : 'Anexar comprovante'} icone="upload" className="btn" largura={200} direita={compacto} dica="Anexar comprovante"
         itens={[opcao('Galeria', 'imagem', galeria), opcao('Câmera', 'camera', camera), opcao('Arquivo', 'arquivo', arquivo)]} />
       <input ref={galeria} type="file" id={'gal-' + id} accept="image/*" multiple className="sr-only" tabIndex={-1} aria-hidden="true" onChange={escolheu} />
       <input ref={camera} type="file" id={'cam-' + id} accept="image/*" capture="environment" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={escolheu} />

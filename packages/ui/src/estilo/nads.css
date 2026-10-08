@@ -327,6 +327,10 @@ thead th{position:sticky;top:0;z-index:1;background:var(--surface-2);text-align:
 /* o menu aberto numa linha da tabela rola junto com ela e passa por baixo do cabeçalho grudado (Vitor, 07/10/2026) */
 .table-wrap thead th{z-index:3;}
 .table-wrap tbody .popover{z-index:2;}
+/* Mandei: a tabela das linhas sem a rolagem própria no computador (o menu do comprovante abre por cima); no celular,
+   a tabela rola de lado */
+.table-wrap.mandei-linhas{overflow:visible;max-height:none;}
+@media (max-width:940px){.table-wrap.mandei-linhas{overflow:auto;position:relative;}}
 tbody td{padding:8px 16px;border-top:1px solid var(--border-muted);font-variant-numeric:tabular-nums;vertical-align:middle;}
 tbody tr:first-child td{border-top:none;}
 tbody td.wrap{white-space:normal;}
