@@ -18,8 +18,11 @@
 // Cada passo fica no pedido (passos: a tela, o endereço e o texto visível) e a foto da tela em telas/{n}: quando o
 // portal mudar, dá para ver onde parou sem entrar na máquina.
 //
-// Nunca passa por cima de verificação de robô: se o gov.br pedir CAPTCHA, o pedido para com status 'captcha' e
-// a pessoa faz à mão. Um pedido por vez (a máquina tem 1 GB de memória).
+// Nunca passa por cima de verificação de robô. Quando o gov.br trava no login (a verificação "não sou um robô"), o
+// pedido fica em 'verificacao' (08/10/2026: "deixar isso rodando na VM e lá eu clicar em não sou um robô"): o robô
+// manda a tela ao vivo (pedidosFgts/{id}/ao-vivo/tela) e repete no navegador os cliques que a pessoa do DP faz na
+// imagem, no nads (pedidosFgts/{id}/cliques). Quem clica na verificação é sempre a pessoa. Sem ninguém em 10 minutos,
+// o pedido para com status 'captcha' e a guia fica para fazer à mão. Um pedido por vez (a máquina tem 1 GB de memória).
 //
 // O caminho no portal (os textos dos botões em PASSOS_DO_PORTAL) foi escrito pelo manual, sem ter entrado ainda:
 // é a primeira coisa a acertar com o modo 'ensaio' quando o certificado chegar.
@@ -33,7 +36,12 @@ const SENHA = path.join(__dirname, 'fgts_certificado.senha');
 const CHROMIUM = process.env.FGTS_CHROMIUM || '/usr/bin/chromium';
 const PORTAL = 'https://fgtsdigital.sistema.gov.br/portal/';
 const PASTA_TELAS = path.join(__dirname, 'fgts-telas');
-const LIMITE_MS = 6 * 60 * 1000;
+// a espera pela pessoa na verificação entra no tempo do pedido
+const ESPERA_PESSOA_MS = 10 * 60 * 1000;
+const LIMITE_MS = 6 * 60 * 1000 + ESPERA_PESSOA_MS;
+const LARGURA = 1280;
+const ALTURA = 900;
+const LINK_FGTS = 'https://tarefas-nilma.web.app/tarefas/dp/fgts';
 
 // Os textos do caminho no portal (sem acento e minúsculos para comparar). Ajustar aqui quando o ensaio mostrar o
 // nome certo de cada botão.
@@ -151,8 +159,10 @@ function iniciarFgtsDigital(db, log, avisos) {
       browser = await puppeteer.launch({
         executablePath: CHROMIUM,
         headless: true,
-        args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--lang=pt-BR', '--window-size=1280,900'],
-        defaultViewport: { width: 1280, height: 900 },
+        // sem a marca de "navegador controlado por automação"
+        ignoreDefaultArgs: ['--enable-automation'],
+        args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--lang=pt-BR', '--window-size=' + LARGURA + ',' + ALTURA, '--disable-blink-features=AutomationControlled'],
+        defaultViewport: { width: LARGURA, height: ALTURA },
       });
       page = await browser.newPage();
       await page.setExtraHTTPHeaders({ 'Accept-Language': 'pt-BR,pt;q=0.9' });
@@ -174,12 +184,12 @@ function iniciarFgtsDigital(db, log, avisos) {
       await registrar('portal');
       await clicar(page, PASSOS_DO_PORTAL.entrar, 'Entrar com gov.br');
       await esperarCarregar(page);
-      if (await temCaptcha(page)) return await pararCaptcha();
       await registrar('gov.br');
       await clicar(page, PASSOS_DO_PORTAL.certificado, 'Seu certificado digital');
-      // o certificado é escolhido sozinho (a regra do Chromium) e o gov.br devolve ao portal
-      await esperarSairDe(page, /acesso\.gov\.br/, 90000);
-      if (await temCaptcha(page)) return await pararCaptcha();
+      // o certificado é escolhido sozinho (a regra do Chromium) e o gov.br devolve ao portal; travou no gov.br: a
+      // verificação — a tela vai ao vivo para o nads e a pessoa clica
+      await esperarSairDe(page, /acesso\.gov\.br/, 20000);
+      if (/acesso\.gov\.br/.test(page.url()) && !await esperarAPessoa()) return await pararCaptcha();
       if (/acesso\.gov\.br/.test(page.url())) throw new Error('o gov.br não aceitou o certificado (a tela ficou no login)');
       await registrar('entrou');
 
@@ -224,9 +234,58 @@ function iniciarFgtsDigital(db, log, avisos) {
       if (browser) await browser.close().catch(() => {});
     }
 
+    /**
+     * A verificação com a pessoa: a tela ao vivo para o nads (a cada 1,5 s) e os cliques dela no navegador, até sair do
+     * gov.br (true) ou passar o tempo (false). Avisa no celular quem pediu e o admin.
+     */
+    async function esperarAPessoa() {
+      await registrar('verificação: esperando a pessoa');
+      await ref.update({ status: 'verificacao', verificacaoDesde: agora() });
+      log('FGTS: verificação do gov.br; esperando a pessoa no nads', p.cnpj);
+      const corpo = 'Abra DP › FGTS Digital e clique em "não sou um robô" na tela de ' + (p.empresa || p.cnpj) + '.';
+      if (avisos) {
+        if (p.criadoPorUid) avisos.enviarPara([p.criadoPorUid], 'FGTS: o gov.br pediu a verificação', corpo, 'fgts', LINK_FGTS).catch(() => {});
+        avisos.enviar('admin', '', 'FGTS: o gov.br pediu a verificação', corpo, 'fgts', LINK_FGTS).catch(() => {});
+      }
+      const aoVivo = ref.collection('ao-vivo').doc('tela');
+      const cliques = [];
+      const parar = ref.collection('cliques').onSnapshot(s => {
+        for (const ch of s.docChanges()) if (ch.type === 'added') cliques.push(ch.doc);
+      }, () => {});
+      const ate = Date.now() + ESPERA_PESSOA_MS;
+      let ultimaFoto = 0;
+      try {
+        while (Date.now() < ate && /acesso\.gov\.br/.test(page.url())) {
+          while (cliques.length) {
+            const c = cliques.shift();
+            const { x, y } = c.data();
+            if (Number.isFinite(x) && Number.isFinite(y)) await page.mouse.click(Math.max(0, Math.min(LARGURA, x)), Math.max(0, Math.min(ALTURA, y))).catch(() => {});
+            await c.ref.delete().catch(() => {});
+            ultimaFoto = 0;
+          }
+          if (Date.now() - ultimaFoto > 1500) {
+            ultimaFoto = Date.now();
+            try {
+              const imagem = await page.screenshot({ type: 'jpeg', quality: 50, fullPage: false, encoding: 'base64' });
+              await aoVivo.set({ imagem, largura: LARGURA, altura: ALTURA, quando: agora() });
+            } catch (_) { /* a página está trocando; a próxima foto vem */ }
+          }
+          await dormir(300);
+        }
+      } finally {
+        parar();
+        await aoVivo.delete().catch(() => {});
+      }
+      if (/acesso\.gov\.br/.test(page.url())) return false;
+      await ref.update({ status: 'trabalhando' }).catch(() => {});
+      await esperarCarregar(page);
+      log('FGTS: a pessoa passou da verificação', p.cnpj);
+      return true;
+    }
+
     async function pararCaptcha() {
       await registrar('captcha');
-      await ref.update({ status: 'captcha', erro: 'o gov.br pediu a verificação "não sou um robô"; faça esta guia à mão', fimEm: agora() });
+      await ref.update({ status: 'captcha', erro: 'ninguém fez a verificação "não sou um robô" do gov.br a tempo; peça de novo ou faça esta guia à mão', fimEm: agora() });
       log('FGTS: o gov.br pediu CAPTCHA; parei', p.cnpj);
       if (avisos) avisos.enviar('admin', '', 'FGTS: o gov.br pediu verificação', 'O robô parou; a guia de ' + (p.empresa || p.cnpj) + ' fica para fazer à mão.', 'fgts').catch(() => {});
     }
@@ -263,11 +322,6 @@ async function esperarSairDe(page, re, ms) {
   const ate = Date.now() + ms;
   while (Date.now() < ate && re.test(page.url())) await dormir(1000);
   await esperarCarregar(page);
-}
-
-async function temCaptcha(page) {
-  return page.evaluate(() => !![...document.querySelectorAll('iframe[src*="hcaptcha"], iframe[src*="recaptcha"], .h-captcha, .g-recaptcha, [data-hcaptcha-widget-id]')]
-    .find(e => e.offsetParent !== null || e.tagName === 'IFRAME'));
 }
 
 async function preencherCnpj(page, cnpj) {
