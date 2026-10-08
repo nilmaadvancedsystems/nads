@@ -3524,3 +3524,20 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .fgts-ao-vivo img{width:100%;height:auto;cursor:pointer;display:block;}
 .fgts-ao-vivo-marca{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid var(--brand,#c8102e);pointer-events:none;}
 .fgts-janela{width:min(1180px,96vw);}
+/* DP › FGTS Digital como as Obrigações (08/10/2026): o painel do robô (agora e a fila), a caixinha do lote e o ⋯ */
+.fgts-robo-painel{padding:14px 18px;display:flex;flex-direction:column;gap:10px;margin-bottom:12px;}
+.fgts-robo-cabeca{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.fgts-robo-cabeca .dp-titulo{margin:0;}
+.fgts-robo-agora{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;min-height:30px;}
+.fgts-robo-rotulo{min-width:76px;}
+.fgts-fila{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.fgts-tabela .fgts-marca{width:32px;text-align:center;}
+.fgts-tabela .fgts-acoes{width:1%;}
+.fgts-tabela .fgts-acoes .btn svg{width:14px;height:14px;flex:none;}
+.fgts-mais{height:28px;padding:0 6px;}
+.fgts-mais svg{width:16px;height:16px;flex:none;}
+.bolinha-sit.parada{background:var(--danger);}
+/* a célula das ações fica célula (o flex vai num div dentro: no td, o flex tirava a célula da tabela e o botão invadia a Guia) */
+.fgts-tabela td.fgts-acoes{display:table-cell;}
+.fgts-acoes-linha{display:flex;align-items:center;gap:6px;justify-content:flex-end;}
+.fgts-tabela .dp-cliente-nome{max-width:none;}
