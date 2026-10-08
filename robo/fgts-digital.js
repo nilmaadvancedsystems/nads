@@ -265,8 +265,10 @@ function ligarFgtsDigital(db, log, avisos) {
       ses.pdf = null;
       await ses.cdp.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: baixados }).catch(() => {});
 
-      await page.goto(PORTAL, { waitUntil: 'networkidle2', timeout: 60000 });
-      await registrar('portal');
+      // no lote, a sessão já está dentro do portal: não recarrega nem sai da conta, só troca o perfil (Vitor, 08/10/2026)
+      const jaDentro = /fgtsdigital\.sistema\.gov\.br\/portal\/(?!login)/.test(page.url());
+      if (!jaDentro) await page.goto(PORTAL, { waitUntil: 'networkidle2', timeout: 60000 });
+      await registrar(jaDentro ? 'portal (a sessão do lote)' : 'portal');
       // a sessão aberta (ou o login guardado no perfil): o portal já abre logado e pula o gov.br
       if (/acesso\.gov\.br|\/login/.test(page.url()) || await temTexto(page, PASSOS_DO_PORTAL.entrar)) {
         await clicar(page, PASSOS_DO_PORTAL.entrar, 'Entrar com gov.br');
