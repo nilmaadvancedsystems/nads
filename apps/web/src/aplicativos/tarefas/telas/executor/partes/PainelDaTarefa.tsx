@@ -88,10 +88,10 @@ function TabelaPorCfop({ r, abrir }: { r: t.painel.ResumoDeNotas; abrir: (n: Not
 /** SIEG × Alterdata: o Alerta verde quando bate; o amarelo com a diferença; nada sem a contagem. */
 function Veredito({ sieg, importadas, oQue }: { sieg: number | null; importadas: number; oQue: string }) {
   if (sieg == null) return <p className="hint">O SIEG ainda não contou este mês (a contagem roda de madrugada).</p>;
-  if (sieg === importadas) return <Alerta tom="ok" titulo={'As ' + oQue + ' batem com o SIEG'} texto={importadas + ' de ' + sieg + '.'} />;
+  if (sieg === importadas) return <Alerta naLinha tom="ok" titulo={'As ' + oQue + ' batem com o SIEG'} texto={importadas + ' de ' + sieg + '.'} />;
   return importadas < sieg
-    ? <Alerta titulo={'Faltam ' + (sieg - importadas) + ' ' + oQue + ' no Alterdata'} texto={'O SIEG tem ' + sieg + '; o Alterdata, ' + importadas + '. Importe as que faltam e reimporte o relatório.'} />
-    : <Alerta titulo={(importadas - sieg) + ' ' + oQue + ' a mais que o SIEG'} texto={'O Alterdata tem ' + importadas + '; o SIEG, ' + sieg + '. Confira se há nota lançada duas vezes ou de outro mês.'} />;
+    ? <Alerta naLinha titulo={'Faltam ' + (sieg - importadas) + ' ' + oQue + ' no Alterdata'} texto={'O SIEG tem ' + sieg + '; o Alterdata, ' + importadas + '. Importe as que faltam e reimporte o relatório.'} />
+    : <Alerta naLinha titulo={(importadas - sieg) + ' ' + oQue + ' a mais que o SIEG'} texto={'O Alterdata tem ' + importadas + '; o SIEG, ' + sieg + '. Confira se há nota lançada duas vezes ou de outro mês.'} />;
 }
 
 /** De onde vem a tabela de verificação: os XMLs do SIEG (08/10/2026) ou o relatório do Alterdata. */
@@ -249,7 +249,7 @@ function JanelaDasNotas({ aberta, fechar }: { aberta: NotasAbertas; fechar: () =
 }
 
 function SemConta({ r }: { r: t.painel.ResumoDeNotas }) {
-  return r.comConta ? null : <Alerta titulo="O relatório veio sem a conta contábil" texto="O Contábil precisa dela: ligue a coluna no Alterdata e reimporte." />;
+  return r.comConta ? null : <Alerta naLinha titulo="O relatório veio sem a conta contábil" texto="O Contábil precisa dela: ligue a coluna no Alterdata e reimporte." />;
 }
 
 /** O que o relatório (início e fim) recebe do executor: o regime e as etapas que entram no mês. */
@@ -302,7 +302,7 @@ function RelatorioInicio({ vm, relatorio, competencia, importar }: { vm: VmPaine
         </table>
       </div>
       {faltam.length > 0 && (
-        <Alerta titulo={'Falta importar: ' + faltam.map(x => ROTULO_DO_RELATORIO[x]).join(', ')} texto="Importe agora ou na etapa Importação no Alterdata.">
+        <Alerta naLinha titulo={'Falta importar: ' + faltam.map(x => ROTULO_DO_RELATORIO[x]).join(', ')} texto="Importe agora ou na etapa Importação no Alterdata.">
           <button type="button" className="btn btn-outline" onClick={() => importar(faltam)}><Icone nome="upload" />Importar</button>
         </Alerta>
       )}
@@ -335,8 +335,8 @@ function RelatorioFim({ vm, relatorio, competencia }: { vm: VmPainelDoFiscal; re
         <Stat rotulo="Folha do mês (DP)" valor={vm.folhaDoDp != null ? <Conta valor={vm.folhaDoDp} formato="reais" /> : '—'} />
       </div>
       {abertas.length
-        ? <Alerta titulo={abertas.length === 1 ? '1 etapa ainda aberta' : abertas.length + ' etapas ainda abertas'} texto={abertas.map(e => e.nome).join(', ')} />
-        : <Alerta tom="ok" titulo="Mês fechado" texto="Todas as etapas do mês estão feitas." />}
+        ? <Alerta naLinha titulo={abertas.length === 1 ? '1 etapa ainda aberta' : abertas.length + ' etapas ainda abertas'} texto={abertas.map(e => e.nome).join(', ')} />
+        : <Alerta naLinha tom="ok" titulo="Mês fechado" texto="Todas as etapas do mês estão feitas." />}
       <div className="table-wrap table-compact">
         <table>
           <thead><tr><th>Etapa</th><th>Situação</th><th>Quem</th><th>Quando</th></tr></thead>
@@ -448,7 +448,7 @@ function Corpo({ painel, vm, codigo, competencia, importar, valores, informar, a
     }
     case 'interestaduais':
       if (!vm.entradas.qtd) return vazio('entradas');
-      if (!vm.interestaduais.qtd) return <Alerta tom="ok" titulo={'Nenhuma entrada de fora do estado em ' + comp} texto="Sem Antecipação, ST ou DIFAL das entradas neste mês." />;
+      if (!vm.interestaduais.qtd) return <Alerta naLinha tom="ok" titulo={'Nenhuma entrada de fora do estado em ' + comp} texto="Sem Antecipação, ST ou DIFAL das entradas neste mês." />;
       return (
         <>
           <div className="stat-grid">
@@ -480,7 +480,7 @@ function Corpo({ painel, vm, codigo, competencia, importar, valores, informar, a
       if (!vm.importado.tomados && !vm.importado.prestados) return vazio('tomados');
       const r = painel === 'iss-retido' ? vm.issRetido : vm.inssRetido;
       const imposto = painel === 'iss-retido' ? 'ISS' : 'INSS';
-      if (!r.qtd) return <Alerta tom="ok" titulo={'Nenhum ' + imposto + ' retido em ' + comp} texto="Nenhuma nota de serviço do mês tem retenção." />;
+      if (!r.qtd) return <Alerta naLinha tom="ok" titulo={'Nenhum ' + imposto + ' retido em ' + comp} texto="Nenhuma nota de serviço do mês tem retenção." />;
       return (
         <>
           <div className="stat-grid">
@@ -510,7 +510,7 @@ function Corpo({ painel, vm, codigo, competencia, importar, valores, informar, a
       return (
         <>
           <Rank linhas={composicao(vm.base)} />
-          {(pctDe('st') > 0 || pctDe('devolucao') > 0) && <Alerta titulo="Tire da base o que já teve o imposto pago antes" texto={'As saídas com ST' + (pctDe('devolucao') ? ' e as devoluções' : '') + ' não entram na base.'} />}
+          {(pctDe('st') > 0 || pctDe('devolucao') > 0) && <Alerta naLinha titulo="Tire da base o que já teve o imposto pago antes" texto={'As saídas com ST' + (pctDe('devolucao') ? ' e as devoluções' : '') + ' não entram na base.'} />}
         </>
       );
     case 'icms':
