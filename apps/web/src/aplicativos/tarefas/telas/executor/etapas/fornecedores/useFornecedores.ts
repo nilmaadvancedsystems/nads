@@ -7,7 +7,7 @@ import { clientes as cl, conferencia as c, demo, formatos, mandei as md, tarefas
 import { useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
 import { useMarcasDoMes } from '../../../../dados/clientes';
-import { useCadastro } from '../../../../dados/repo';
+import { useCadastro, useContatoDoEntregas } from '../../../../dados/repo';
 import { criarTicket } from '../../../../dados/mandei';
 import { useOperador } from '../../../../casca/operador';
 import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
@@ -35,6 +35,9 @@ export function useFornecedores() {
   const op = useOperador().operador;
   // o e-mail e o WhatsApp da empresa ficam no Cadastro (Vitor, 07/10/2026): o Mandei manda pelos dois
   const vivo = useCadastro(s.nome, s.codigo);
+  // sem o contato no Cadastro do nads, o que o Entregas já tem do cliente (Vitor, 08/10/2026: "já tenho no mínimo 1 canal")
+  const doEntregas = useContatoDoEntregas(s.codigo);
+  const contato = { email: vivo.cadastro.contato?.email || doEntregas?.email || '', whatsapp: vivo.cadastro.contato?.whatsapp || doEntregas?.whatsapp || '' };
   const avisar = (m: string) => aviso({ tom: 'erro', titulo: 'Fornecedores', texto: m });
   const marcas = useMarcasDoMes(s.nome, mes, avisar, LADO);
   const anterior = useMarcasDoMes(s.nome, mes ? mesAntes(mes) : '', undefined, LADO);
@@ -198,14 +201,14 @@ export function useFornecedores() {
     conferidos: paraEnviar.map(l => ({ codigo: l.codigo, nome: l.nome, valor: reais(l.saldo), perguntar: cl.itensEscolhidos(l.razao, l.perguntar).map(cl.rotuloDoItem).join(' · '), notas: cl.textoDasNotas(l.razao?.notas) })),
     // o Mandei: um ticket com os conferidos (cada um, um item com a nossa pergunta), o link vai por e-mail
     /** o e-mail e o WhatsApp da empresa, do Cadastro */
-    contato: { email: vivo.cadastro.contato?.email || '', whatsapp: vivo.cadastro.contato?.whatsapp || '' },
+    contato,
     /** o que falta no Cadastro para mandar (vazio = pode): um dos dois basta (Vitor, 07/10/2026) */
-    faltaNoCadastro: !vivo.carregada ? ['o cadastro (carregando)'] : vivo.cadastro.contato?.email || vivo.cadastro.contato?.whatsapp ? [] : ['o e-mail ou o WhatsApp'],
+    faltaNoCadastro: !vivo.carregada ? ['o cadastro (carregando)'] : contato.email || contato.whatsapp ? [] : ['o e-mail ou o WhatsApp'],
     /** o que vai ser questionado já foi mandado (e não mudou depois) */
     jaMandado: !!assinatura && !faltaMandar,
     mandarPeloMandei: () => {
-      const email = vivo.cadastro.contato?.email || '';
-      const whatsapp = vivo.cadastro.contato?.whatsapp || '';
+      const email = contato.email;
+      const whatsapp = contato.whatsapp;
       // um dos dois basta (Vitor, 07/10/2026: "não precisa ser obrigatório ter e-mail e WhatsApp")
       if (!email && !whatsapp) { aviso({ tom: 'erro', titulo: 'Mandei', texto: 'Cadastre o e-mail ou o WhatsApp da empresa em Cadastro › Empresa.' }); return; }
       const t = criarTicket({

@@ -243,7 +243,9 @@ function Envio({ vm }: { vm: VM }) {
         </table>
       </div>
       {/* sem o e-mail ou o WhatsApp no Cadastro, o Mandar fica travado */}
-      {vm.faltaNoCadastro.length > 0 && <p className="hint" style={{ marginTop: 12 }}>Para mandar pelo Mandei, cadastre {vm.faltaNoCadastro.join(' e ')} da empresa em Cadastro › Empresa.</p>}
+      {vm.faltaNoCadastro.length > 0
+        ? <p className="hint" style={{ marginTop: 12 }}>Para mandar pelo Mandei, cadastre {vm.faltaNoCadastro.join(' e ')} da empresa em Cadastro › Empresa.</p>
+        : <p className="hint" style={{ marginTop: 12 }}>O Mandei manda para {[vm.contato.email, vm.contato.whatsapp && 'o WhatsApp ' + vm.contato.whatsapp].filter(Boolean).join(' e ')}.</p>}
     </>
   );
 }

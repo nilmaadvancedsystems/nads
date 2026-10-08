@@ -4,7 +4,7 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { bancosDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDoArquivador, repoDoFgts, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
+import { bancosDoEntregas, contatosDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDoArquivador, repoDoFgts, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoSieg } from './sieg';
 import type { RepoFgts } from './fgts';
@@ -100,6 +100,17 @@ export function useBancosDoEntregas(): { carregado: boolean; porCodigo: Readonly
     return () => { vale = false; };
   }, []);
   return estado;
+}
+
+/** O e-mail e o WhatsApp que o Entregas tem da empresa (null = ainda lendo, ou não tem). */
+export function useContatoDoEntregas(codigo: number | null): empresas.cadastro.ContatoDoEntregas | null {
+  const [contato, setContato] = useState<empresas.cadastro.ContatoDoEntregas | null>(null);
+  useEffect(() => {
+    let vale = true;
+    if (codigo != null) void contatosDoEntregas().then(m => { if (vale) setContato(m.get(codigo) || null); });
+    return () => { vale = false; };
+  }, [codigo]);
+  return contato;
 }
 
 /** O interruptor do robô que lê a agência e a conta dos extratos: ao vivo, e como mudar. */

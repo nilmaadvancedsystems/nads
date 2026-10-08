@@ -121,16 +121,29 @@ const CLIENTES_EXEMPLO: Record<string, unknown>[] = [
   { codigoOrigem: '58', bancos: ['sicoob', 'nubank'] },
 ];
 
+let docsDoEntregas: Promise<Record<string, unknown>[]> | null = null;
 let doEntregas: Promise<Map<number, empresas.cadastro.BancosDoEntregas>> | null = null;
+let contatosEntregas: Promise<Map<number, empresas.cadastro.ContatoDoEntregas>> | null = null;
+
+/** Os clientes do Entregas (só leitura), lidos uma vez por sessão e usados pelos bancos e pelo contato (falha = vazio). */
+function clientesDoEntregas(): Promise<Record<string, unknown>[]> {
+  if (!docsDoEntregas) docsDoEntregas = (noBanco ? clientesNoEntregas() : Promise.resolve(CLIENTES_EXEMPLO)).catch(() => []);
+  return docsDoEntregas;
+}
 
 /** Os bancos que o Entregas já sabe de cada cliente, por código do ERP (lido uma vez por sessão; falha = vazio). */
 export function bancosDoEntregas(): Promise<Map<number, empresas.cadastro.BancosDoEntregas>> {
-  if (!doEntregas) {
-    doEntregas = (noBanco ? clientesNoEntregas() : Promise.resolve(CLIENTES_EXEMPLO))
-      .then(docs => empresas.cadastro.bancosDoEntregasPorCodigo(docs))
-      .catch(() => new Map());
-  }
+  if (!doEntregas) doEntregas = clientesDoEntregas().then(docs => empresas.cadastro.bancosDoEntregasPorCodigo(docs)).catch(() => new Map());
   return doEntregas;
+}
+
+/**
+ * O e-mail e o WhatsApp que o Entregas já tem de cada cliente, por código do ERP (Vitor, 08/10/2026): o Mandei usa quando o
+ * Cadastro do nads não tem. Os mesmos documentos dos bancos (sem leitura nova).
+ */
+export function contatosDoEntregas(): Promise<Map<number, empresas.cadastro.ContatoDoEntregas>> {
+  if (!contatosEntregas) contatosEntregas = clientesDoEntregas().then(docs => empresas.cadastro.contatosDoEntregasPorCodigo(docs)).catch(() => new Map());
+  return contatosEntregas;
 }
 
 /**

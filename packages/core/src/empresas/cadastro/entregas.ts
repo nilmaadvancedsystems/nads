@@ -111,3 +111,26 @@ export function juntarComEntregas(partida: readonly ContaBancaria[], e: BancosDo
   }
   return lista;
 }
+
+// ─── o contato (e-mail e telefone) que o Entregas já tem do cliente ─────────
+
+/** O e-mail e o WhatsApp do cliente no Entregas (os mesmos do "Pedir extratos"). */
+export interface ContatoDoEntregas { email: string; whatsapp: string }
+
+/**
+ * O contato de cada cliente do Entregas por código do ERP (Vitor, 08/10/2026: "já tenho no mínimo 1 canal de comunicação no
+ * cadastro"): o primeiro e-mail (email ou a lista emails) e o telefone só com os números (10 a 13 dígitos; senão, nenhum).
+ * Só os ativos e com código; sem e-mail e sem telefone, fica de fora.
+ */
+export function contatosDoEntregasPorCodigo(docs: readonly Record<string, unknown>[]): Map<number, ContatoDoEntregas> {
+  const m = new Map<number, ContatoDoEntregas>();
+  for (const d of docs) {
+    const codigo = Number(texto(d.codigoOrigem));
+    if (!Number.isInteger(codigo) || codigo <= 0 || d.ativo === false) continue;
+    const emails = [d.email, ...(Array.isArray(d.emails) ? d.emails : [])].map(e => texto(e).toLowerCase()).filter(e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e));
+    const fone = texto(d.telefone).replace(/\D/g, '');
+    const whatsapp = fone.length >= 10 && fone.length <= 13 ? fone : '';
+    if (emails[0] || whatsapp) m.set(codigo, { email: emails[0] || '', whatsapp });
+  }
+  return m;
+}

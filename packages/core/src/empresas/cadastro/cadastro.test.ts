@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
   comContasPadrao, criarRepoCadastro, criarRepoCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirNotaDeHonorario, definirPrestaServico, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
-  bancosDoEntregasDoDocumento, bancosDoEntregasPorCodigo, contasDoEntregas, juntarComEntregas, sugestoesDoEntregas,
+  bancosDoEntregasDoDocumento, bancosDoEntregasPorCodigo, contatosDoEntregasPorCodigo, contasDoEntregas, juntarComEntregas, sugestoesDoEntregas,
   lerPlanilhaDoPlano, linhasDoTexto, registrarPlano, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
   type PlanoDeContas,
 } from '.';
@@ -311,5 +311,20 @@ describe('o contato da empresa para o Mandei (07/10/2026)', () => {
     const sem = definirContato(definirContato(c, 'email', '', 'Vitor', AGORA), 'whatsapp', '', 'Vitor', AGORA);
     expect('contato' in sem).toBe(false);
     expect('contato' in documentoDoCadastro(sem)).toBe(false);
+  });
+});
+
+describe('o contato que o Entregas já tem do cliente (08/10/2026)', () => {
+  it('o primeiro e-mail válido e o telefone só com os números; inativo, sem código ou sem contato fica de fora', () => {
+    const m = contatosDoEntregasPorCodigo([
+      { codigoOrigem: '292', email: ' Financeiro@Fito.com.br ', telefone: '(38) 99999-8888' },
+      { codigoOrigem: '309', email: '', emails: ['sem-arroba', 'contato@x.com'], telefone: '123' },
+      { codigoOrigem: '10', ativo: false, email: 'a@b.com' },
+      { codigoOrigem: '11' },
+      { email: 'sem@codigo.com' },
+    ]);
+    expect(m.get(292)).toEqual({ email: 'financeiro@fito.com.br', whatsapp: '38999998888' });
+    expect(m.get(309)).toEqual({ email: 'contato@x.com', whatsapp: '' });
+    expect([...m.keys()]).toEqual([292, 309]);
   });
 });
