@@ -165,6 +165,13 @@ function iniciarFgtsDigital(db, log, avisos) {
         defaultViewport: { width: LARGURA, height: ALTURA },
       });
       page = await browser.newPage();
+      // o que o gov.br faz no login (08/10/2026: travava no "Seu certificado digital" sem verificação na tela): os
+      // pedidos de rede do acesso.gov.br e do hCaptcha, só o endereço e o resultado — para no certificado ou na verificação?
+      const daRede = u => /acesso\.gov\.br|hcaptcha/.test(u);
+      page.on('requestfailed', r => { if (daRede(r.url())) log('FGTS rede: falhou', r.url().split('?')[0], (r.failure() || {}).errorText || ''); });
+      page.on('response', r => { if (daRede(r.url()) && ['document', 'xhr', 'fetch'].includes(r.request().resourceType())) log('FGTS rede:', r.status(), r.request().resourceType(), r.url().split('?')[0]); });
+      page.on('console', m => { if (m.type() === 'error') log('FGTS console:', m.text().slice(0, 200)); });
+      browser.on('targetcreated', t => log('FGTS janela nova:', t.type(), t.url().split('?')[0]));
       await page.setExtraHTTPHeaders({ 'Accept-Language': 'pt-BR,pt;q=0.9' });
       const cdp = await page.createCDPSession();
       await cdp.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: baixados }).catch(() => {});
