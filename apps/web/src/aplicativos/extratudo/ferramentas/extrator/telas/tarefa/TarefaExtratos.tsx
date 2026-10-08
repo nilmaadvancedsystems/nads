@@ -579,6 +579,8 @@ export function TarefaExtratos() {
       id: b.id, nome: b.nome, ok: !!bancosOk[b.id], faltaCheque: diasSemCheque(b.id) > 0, semMovimento: semMovimentoNoPeriodo(b.id),
     })), importados, vm.prestaServico), precisaChequeEspecial } : null);
   const bancosSemCheque = vm.bancos.filter(b => diasSemCheque(b.id) > 0);
+  // todo banco Ok (ou sem movimento no período): não tem extrato para pedir
+  const bancosTodosOk = vm.bancos.length > 0 && vm.bancos.every(b => !!bancosOk[b.id] || semMovimentoNoPeriodo(b.id));
   // os dias que fecham negativos (somando os bancos), para o aviso da etapa Cheque especial
   const diasNegativosNoPeriodo = vm.bancos.reduce((t, b) => { const x = situacoes[b.id]; return t + (x && x.tipo !== 'pendente' ? x.negativos.length : 0); }, 0);
   const [cxExtrato, cxRazao] = vm.caixas;
@@ -638,8 +640,9 @@ export function TarefaExtratos() {
               { rotulo: 'Apagar os dados de teste', icone: 'x', onClick: vm.apagarDadosDeTeste },
             ]} />
         )}
-        {/* Pedir extratos só na Importação (Vitor, 02/10/2026) */}
-        {!vm.etapaCheque && <MenuSuspenso rotulo="Pedir extratos" setaAntes className="btn btn-outline" direita
+        {/* Pedir extratos só na Importação (Vitor, 02/10/2026) e só enquanto falta banco (Vitor, 08/10/2026: "se tiver tudo certo, pode
+            remover o botão pedir extratos") */}
+        {!vm.etapaCheque && !bancosTodosOk && <MenuSuspenso rotulo="Pedir extratos" setaAntes className="btn btn-outline" direita
           conteudo={fechar => (
             <>
               <button type="button" className="popover-item" role="menuitem" onClick={() => { fechar(); pe.abrir(); }}>
