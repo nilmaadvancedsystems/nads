@@ -220,16 +220,14 @@ async function xmlsDoMes(c, doc, competencia, aoAndar) {
         // a NFS-e só aceita dia/mês/ano, sem a hora ("Certifique-se de apenas passar dia/mês/ano em NFSe", 07/10/2026)
         const datas = tipo === TIPO.NFSe ? { DataEmissaoInicio: p.DataEmissaoInicio, DataEmissaoFim: p.DataEmissaoFim.slice(0, 10) } : p;
         const xmls = xmlsDaResposta(await chamar(c, 'baixar-xmls', Object.assign({ TipoXml: tipo, Take: 50, Skip: skip, [campo]: doc, BaixarEventos: true }, datas)));
-        let notasNaPagina = 0;
         for (const x of xmls) {
           arquivos.set(sx.nomeDoArquivo(x), x);
           const r = sx.resumoDaNota(x);
           if (!r) continue;
           if (r.cancela) { canceladas.add(r.cancela); continue; }
-          notasNaPagina++;
           resumo[grupo].push(r);
         }
-        if (notasNaPagina < 50) break;
+        if (xmls.length < 50) break; // a página vem com 50 XMLs, contando os eventos (08/10/2026: parar pelas notas perdia metade)
       }
     }
   }
@@ -261,15 +259,14 @@ async function saidasDoMes(c, cnpj, competencia, aoAndar) {
     for (let skip = 0; skip < 50000; skip += 50) {
       const resp = await chamar(c, 'baixar-xmls', Object.assign({ TipoXml: tipo, Take: 50, Skip: skip, CnpjEmit: cnpj, BaixarEventos: true }, p));
       const xmls = xmlsDaResposta(resp);
-      let notasNaPagina = 0;
       for (const x of xmls) {
         const n = lerXml(x);
         if (!n) continue;
         if (n.cancela) canceladas.add(n.cancela);
-        else { notas.set(n.chave, n); notasNaPagina++; }
+        else notas.set(n.chave, n);
       }
       if (aoAndar) aoAndar(nome + ': ' + notas.size + ' notas');
-      if (notasNaPagina < 50) break;
+      if (xmls.length < 50) break; // a página vem com 50 XMLs, contando os eventos (08/10/2026: parar pelas notas perdia metade)
     }
   }
   return seriesDasNotas([...notas.values()].map(n => Object.assign({}, n, { cancelada: canceladas.has(n.chave) })));
