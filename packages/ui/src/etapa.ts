@@ -147,7 +147,7 @@ export function useFerramentaNaEtapa(iframe: RefObject<HTMLIFrameElement | null>
       if (d?.nads === 'fundo' && typeof (d as { aberto?: unknown }).aberto === 'boolean') { setFundoAberto(!!(d as { aberto?: boolean }).aberto); mandarVista(); }
       if (d?.nads === 'janela' && typeof (d as { aberta?: unknown }).aberta === 'boolean') setJanelaAberta(!!(d as { aberta?: boolean }).aberta);
       const lista = (d as { abas?: unknown } | null)?.abas;
-      if (d?.nads === 'abas' && Array.isArray(lista)) setAbas(lista.filter(ehAba).slice(0, 20).map(a => ({ id: a.id, rotulo: a.rotulo, icone: a.icone, ativa: !!a.ativa, travada: !!a.travada })));
+      if (d?.nads === 'abas' && Array.isArray(lista)) setAbas(lista.filter(ehAba).slice(0, 20).map(a => ({ id: a.id, rotulo: a.rotulo, icone: a.icone, ativa: !!a.ativa, travada: !!a.travada, ...(typeof a.ponto === 'string' && a.ponto ? { ponto: a.ponto.slice(0, 80) } : {}) })));
     };
     window.addEventListener('message', ouvir);
     window.addEventListener('scroll', mandarVista, { passive: true });

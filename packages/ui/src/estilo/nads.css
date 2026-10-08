@@ -2143,6 +2143,11 @@ main.main:has(> .content > .explorador){padding:0;}
 .gh-hamb{position:relative;}
 /* o pontinho vermelho ao lado de um nome: falta configurar (Vitor, 08/10/2026), o mesmo do ☰ com versão nova */
 .ponto-vermelho{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none;margin-left:6px;vertical-align:middle;}
+/* no seletor e na aba: no canto de cima, um pouco fora da caixa (Vitor, 08/10/2026: "coloca em cima, um pouco fora da box") */
+.step-pill{position:relative;}
+.step-pill > .ponto-vermelho,.menu-item > .ponto-vermelho{position:absolute;margin:0;box-shadow:0 0 0 2px var(--bg);}
+.step-pill > .ponto-vermelho{top:-4px;right:-3px;}
+.menu-item > .ponto-vermelho{top:6px;right:-3px;}
 .gh-hamb-ponto{position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--header-bg);}
 .drawer-atualizar{border:none;background:none;padding:0;font:inherit;color:var(--accent-ink);font-weight:600;cursor:pointer;}
 .drawer-atualizar:hover{text-decoration:underline;}
