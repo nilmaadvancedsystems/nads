@@ -7,9 +7,10 @@
 // chips, o campo de texto e o Escolher arquivos; a revisão na tabela; o fim e o link vencido no vazio (gh-blank).
 // Com os lançamentos, a resposta é por linha (Vitor, 08/10/2026: "ela responde por linha"), na Seleção da coluna Resposta
 // (a nativa: no celular abre a lista do aparelho e não corta dentro da tabela),
-// e a coluna Operação (Compra, Venda…) no lugar da Descrição e do Tipo; o explicar e o comprovante embaixo da linha.
-import { Icone, MarcaN, type NomeIcone } from '@nads/ui';
-import { Fragment, useRef, type ReactNode } from 'react';
+// e a coluna Operação (Compra, Venda…) no lugar da Descrição e do Tipo; o explicar e o comprovante de cada linha logo
+// embaixo da tabela, com o nome da linha (o menu do comprovante não cabe dentro da tabela, que rola no celular).
+import { Icone, MarcaN, MenuSuspenso, type NomeIcone } from '@nads/ui';
+import { useRef, type ReactNode } from 'react';
 import { useFormulario } from './useFormulario';
 
 type VM = ReturnType<typeof useFormulario>;
@@ -113,30 +114,31 @@ function Item({ vm }: { vm: VM }) {
                 {it.linhas.map(l => (
                   // o que é cada lançamento (Vitor, 07/10/2026): a nota em aberto com a data e o número; o pagamento solto
                   // com a data e o banco (a conta por onde passou); e a resposta da linha (Vitor, 08/10/2026)
-                  <Fragment key={l.chave}>
-                    <tr>
-                      <td style={{ whiteSpace: 'nowrap' }}>{l.data}</td>
-                      <td>{l.operacao}</td>
-                      <td>{l.nf && l.nf !== '—' ? 'NF ' + l.nf : l.conta || '—'}</td>
-                      <td className="num">{l.valor}</td>
-                      <td>
-                        <select className="select-compact" style={{ maxWidth: 240 }} value={l.opcao} onChange={e => vm.escolher(l.chave, e.target.value)}
-                          aria-label={'Resposta para ' + (l.nf && l.nf !== '—' ? 'a NF ' + l.nf : 'o lançamento de ' + l.data)}>
-                          <option value="" disabled>Responder</option>
-                          {it.opcoes.map(o => <option key={o} value={o}>{o}</option>)}
-                        </select>
-                      </td>
-                    </tr>
-                    {(l.explicar || l.comprovar || l.arquivos.length > 0) && (
-                      <tr><td colSpan={5}><OQueAResposta pede={l} vm={vm} /></td></tr>
-                    )}
-                  </Fragment>
+                  <tr key={l.chave}>
+                    <td style={{ whiteSpace: 'nowrap' }}>{l.data}</td>
+                    <td>{l.operacao}</td>
+                    <td>{l.nf && l.nf !== '—' ? 'NF ' + l.nf : l.conta || '—'}</td>
+                    <td className="num">{l.valor}</td>
+                    <td>
+                      <select className="select-compact" style={{ maxWidth: 240 }} value={l.opcao} onChange={e => vm.escolher(l.chave, e.target.value)}
+                        aria-label={'Resposta para ' + (l.nf && l.nf !== '—' ? 'a NF ' + l.nf : 'o lançamento de ' + l.data)}>
+                        <option value="" disabled>Responder</option>
+                        {it.opcoes.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </td>
+                  </tr>
                 ))}
                 {it.valor && <tr><td colSpan={3}><b>Saldo em aberto</b></td><td className="num"><b>{it.valor}</b></td><td /></tr>}
               </tbody>
             </table>
           </div>
         )}
+        {it.linhas.filter(l => l.explicar || l.comprovar || l.arquivos.length > 0).map(l => (
+          <div key={l.chave} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <b>{l.nf && l.nf !== '—' ? 'NF ' + l.nf : l.conta || l.data} · {l.operacao} · {l.valor}</b>
+            <OQueAResposta pede={l} vm={vm} />
+          </div>
+        ))}
         {it.detalhe && <span className="msg-balao"><Icone nome="mensagem" />{it.detalhe}</span>}
         {!it.linhas.length && <>
         <div className="field" style={{ margin: 0 }}>
@@ -172,13 +174,12 @@ function OQueAResposta({ pede, vm }: { pede: Resposta; vm: VM }) {
       )}
       {(pede.comprovar || pede.arquivos.length > 0) && <div>
         {pede.comprovar && (
-          // três jeitos de mandar o comprovante (Vitor, 07/10/2026): galeria, câmera (no celular abre direto) e arquivo
+          // três jeitos de mandar o comprovante (Vitor, 07/10/2026): galeria, câmera (no celular abre direto) e arquivo, num
+          // botão só que abre as opções (Vitor, 08/10/2026)
           <div className="field" style={{ margin: 0 }}>
             <label>Comprovante</label>
             <div className="btn-row" style={{ justifyContent: 'flex-start' }}>
-              <BotaoDeArquivo id={'gal-' + id} icone="imagem" rotulo="Galeria" aceitar="image/*" onEscolher={fs => vm.anexar(pede.chave, fs)} />
-              <BotaoDeArquivo id={'cam-' + id} icone="camera" rotulo="Câmera" aceitar="image/*" camera onEscolher={fs => vm.anexar(pede.chave, fs)} />
-              <BotaoDeArquivo id={'arq-' + id} icone="arquivo" rotulo="Arquivo" aceitar=".pdf,.png,.jpg,.jpeg,.xls,.xlsx,.ofx,.txt" onEscolher={fs => vm.anexar(pede.chave, fs)} />
+              <AnexarComprovante id={id} onEscolher={fs => vm.anexar(pede.chave, fs)} />
             </div>
           </div>
         )}
@@ -191,14 +192,21 @@ function OQueAResposta({ pede, vm }: { pede: Resposta; vm: VM }) {
   );
 }
 
-/** Um botão normal que abre o seletor de arquivo (com camera, o celular abre a câmera direto). */
-function BotaoDeArquivo({ id, icone, rotulo, aceitar, camera, onEscolher }: { id: string; icone: NomeIcone; rotulo: string; aceitar: string; camera?: boolean; onEscolher: (fs: File[]) => void }) {
-  const input = useRef<HTMLInputElement>(null);
+/**
+ * O "Anexar comprovante ▾" (Vitor, 08/10/2026: "coloque em um único botão, clicou aparece as opções"): o menu com
+ * Galeria, Câmera (no celular abre a câmera direto) e Arquivo; cada opção abre o seletor de arquivo dela.
+ */
+function AnexarComprovante({ id, onEscolher }: { id: string; onEscolher: (fs: File[]) => void }) {
+  const galeria = useRef<HTMLInputElement>(null), camera = useRef<HTMLInputElement>(null), arquivo = useRef<HTMLInputElement>(null);
+  const escolheu = (ev: React.ChangeEvent<HTMLInputElement>) => { const fs = Array.from(ev.target.files || []); ev.target.value = ''; if (fs.length) onEscolher(fs); };
+  const opcao = (rotulo: string, icone: NomeIcone, input: React.RefObject<HTMLInputElement | null>) => ({ rotulo, icone, onClick: () => input.current?.click() });
   return (
     <>
-      <label className="btn" htmlFor={id}><Icone nome={icone} />{rotulo}</label>
-      <input ref={input} type="file" id={id} accept={aceitar} multiple={!camera} capture={camera ? 'environment' : undefined} className="sr-only"
-        onChange={ev => { const fs = Array.from(ev.target.files || []); if (input.current) input.current.value = ''; if (fs.length) onEscolher(fs); }} />
+      <MenuSuspenso rotulo="Anexar comprovante" icone="upload" className="btn" largura={200} dica="Mandar o comprovante"
+        itens={[opcao('Galeria', 'imagem', galeria), opcao('Câmera', 'camera', camera), opcao('Arquivo', 'arquivo', arquivo)]} />
+      <input ref={galeria} type="file" id={'gal-' + id} accept="image/*" multiple className="sr-only" tabIndex={-1} aria-hidden="true" onChange={escolheu} />
+      <input ref={camera} type="file" id={'cam-' + id} accept="image/*" capture="environment" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={escolheu} />
+      <input ref={arquivo} type="file" id={'arq-' + id} accept=".pdf,.png,.jpg,.jpeg,.xls,.xlsx,.ofx,.txt" multiple className="sr-only" tabIndex={-1} aria-hidden="true" onChange={escolheu} />
     </>
   );
 }
