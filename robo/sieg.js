@@ -186,8 +186,14 @@ async function xmlsDoMes(c, doc, competencia, aoAndar) {
   const arquivos = new Map();
   const resumo = { emitidas: [], recebidas: [] };
   const canceladas = new Set();
+  // conta antes (2 chamadas rápidas: o SIEG aceita 5 contagens por minuto) e só baixa os tipos que têm nota — o download
+  // é que é lento (2 por minuto, até 1,5 min cada; 08/10/2026: "eu acho que demora muito")
+  if (aoAndar) await aoAndar('Contando as notas no SIEG');
+  const contagem = await contagemDoMes(c, doc, competencia);
+  const CHAVE = { 'NF-e': 'NFe', 'NFC-e': 'NFCe', 'CT-e': 'CTe', 'NFS-e': 'NFSe' };
   for (const [grupo, campo, tipos] of grupos) {
     for (const [nome, tipo] of tipos) {
+      if (!contagem[grupo][CHAVE[nome]]) continue;
       for (let skip = 0; skip < 50000; skip += 50) {
         if (aoAndar) await aoAndar((grupo === 'emitidas' ? 'Emitidas' : 'Recebidas') + ' · ' + nome + ' (' + arquivos.size + ' XMLs até agora)');
         // a NFS-e só aceita dia/mês/ano, sem a hora ("Certifique-se de apenas passar dia/mês/ano em NFSe", 07/10/2026)
@@ -207,7 +213,7 @@ async function xmlsDoMes(c, doc, competencia, aoAndar) {
     }
   }
   for (const g of ['emitidas', 'recebidas']) for (const n of resumo[g]) if (n.chave && canceladas.has(n.chave)) n.cancelada = true;
-  return { arquivos: [...arquivos].map(([nome, xml]) => ({ nome, xml })), resumo };
+  return { arquivos: [...arquivos].map(([nome, xml]) => ({ nome, xml })), resumo, contagem };
 }
 
 /** Grava um arquivo sem duplicar: o mesmo nome e o mesmo conteúdo já estão lá = não grava. Devolve se gravou. */
@@ -303,7 +309,9 @@ function iniciarSieg({ db, log }) {
             if (!cli) throw new Error('o cliente ' + p.codigo + ' não está no cadastro');
             if (!fs.existsSync(PASTA_DO_DRIVE)) throw new Error('a pasta do Drive deste PC não está em ' + PASTA_DO_DRIVE);
             await d.ref.update({ andamento: 'Baixando do SIEG' });
-            const { arquivos, resumo } = await xmlsDoMes(c, cnpj, p.competencia, t => d.ref.update({ andamento: t }).catch(() => {}));
+            const { arquivos, resumo, contagem } = await xmlsDoMes(c, cnpj, p.competencia, t => d.ref.update({ andamento: t }).catch(() => {}));
+            // a contagem que veio junto atualiza o painel do SIEG (o mesmo do Contar agora)
+            await db.collection('siegContagens').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), ...contagem });
             await d.ref.update({ andamento: 'Salvando ' + arquivos.length + ' XMLs no Drive' });
             const nomeDaPasta = (cli.nome || 'cliente ' + p.codigo).replace(/[\\/:*?"<>|]/g, '_').trim().slice(0, 80);
             const pasta = path.join(PASTA_DO_DRIVE, p.competencia, nomeDaPasta);
