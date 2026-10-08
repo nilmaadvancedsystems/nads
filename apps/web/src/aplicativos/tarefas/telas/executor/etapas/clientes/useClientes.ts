@@ -83,7 +83,7 @@ export function useClientes() {
     const l = linhas.find(x => x.codigo === codigo);
     if (!l || !marcas.carregado) return;
     const atual: cl.MarcaDoCliente = { nome: l.nome, saldo: l.saldo, situacao: l.situacao, ...(l.obs ? { obs: l.obs } : {}), ...(l.razao ? { razao: l.razao } : {}), ...(l.perguntar ? { perguntar: l.perguntar } : {}) };
-    marcas.salvar({ contas: { ...marcas.doc.contas, [codigo]: mudar(atual) } });
+    marcas.salvar({ ...marcas.doc, contas: { ...marcas.doc.contas, [codigo]: mudar(atual) } });
   }
 
   /**
@@ -118,12 +118,17 @@ export function useClientes() {
   const i = telas.indexOf(tela);
   const podeSeguir = tela === 'arquivos' ? arquivosProntos && contas.length > 0 && !credores.length : tela === 'clientes';
   // na Tarefa: os arquivos e nenhum credor (a pessoa pode dar o check normal depois; os conferidos passam para o mês seguinte)
-  const faltam = !arquivosProntos ? ['Importar o balancete dinâmico'] : credores.length ? ['Corrigir ' + credores.length + (credores.length === 1 ? ' cliente' : ' clientes') + ' com saldo credor'] : [];
-  useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
 
   const conferidos = linhas.filter(l => l.situacao === 'conferido');
-  // o que vai para o cliente: os conferidos com alguma linha em Sim (todas com Não, não vai)
+  // o que vai para o cliente: os conferidos com alguma linha adicionada no +
   const paraEnviar = conferidos.filter(l => cl.itensEscolhidos(l.razao, l.perguntar).length > 0);
+  const faltamDosArquivos = !arquivosProntos ? ['Importar o balancete dinâmico'] : credores.length ? ['Corrigir ' + credores.length + (credores.length === 1 ? ' cliente' : ' clientes') + ' com saldo credor'] : [];
+  // o que vai ser questionado e ainda não foi mandado trava o avançar da Tarefa (Vitor, 08/10/2026: "a partir do momento
+  // que a pessoa upa e quer questionar, bloqueie o avançar"); mudou depois de mandar, trava de novo
+  const assinatura = cl.assinaturaDoEnvio(paraEnviar.map(l => ({ codigo: l.codigo, perguntar: cl.itensEscolhidos(l.razao, l.perguntar).map(cl.chaveDoItem) })));
+  const faltaMandar = !!assinatura && marcas.doc.enviado !== assinatura;
+  const faltam = [...faltamDosArquivos, ...(faltaMandar ? ['Mandar pelo Mandei o que vai ser questionado (' + paraEnviar.length + (paraEnviar.length === 1 ? ' cliente)' : ' clientes)')] : [])];
+  useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
   const rotuloMes = mes ? tarefas.rotuloNumericoCompetencia(mes) : '';
   const q = busca.trim().toLowerCase();
   const reais = formatos.reais;
@@ -184,7 +189,8 @@ export function useClientes() {
     }),
     /** o razão da conta: importar (acha as notas em aberto) e tirar */
     importarRazao: (codigo: string, f: File | undefined) => { void importarRazao(codigo, f); },
-    tirarRazao: (codigo: string) => marcar(codigo, m => { const n = { ...m }; delete n.razao; return n; }),
+    // tirou o razão: sai o conferido e o que ia ser questionado; volta ao saldo e não trava o avançar (Vitor, 08/10/2026)
+    tirarRazao: (codigo: string) => marcar(codigo, m => { const n = { ...m, situacao: 'pendente' as const }; delete n.razao; delete n.perguntar; return n; }),
     // Envio
     conferidos: paraEnviar.map(l => ({ codigo: l.codigo, nome: l.nome, valor: reais(l.saldo), perguntar: cl.itensEscolhidos(l.razao, l.perguntar).map(cl.rotuloDoItem).join(' · '), notas: cl.textoDasNotas(l.razao?.notas) })),
     // o Mandei: um ticket com os conferidos (cada um, um item com a nossa pergunta), o link vai por e-mail
@@ -192,6 +198,8 @@ export function useClientes() {
     contato: { email: vivo.cadastro.contato?.email || '', whatsapp: vivo.cadastro.contato?.whatsapp || '' },
     /** o que falta no Cadastro para mandar (vazio = pode): um dos dois basta (Vitor, 07/10/2026) */
     faltaNoCadastro: !vivo.carregada ? ['o cadastro (carregando)'] : vivo.cadastro.contato?.email || vivo.cadastro.contato?.whatsapp ? [] : ['o e-mail ou o WhatsApp'],
+    /** o que vai ser questionado já foi mandado (e não mudou depois) */
+    jaMandado: !!assinatura && !faltaMandar,
     mandarPeloMandei: () => {
       const email = vivo.cadastro.contato?.email || '';
       const whatsapp = vivo.cadastro.contato?.whatsapp || '';
@@ -210,6 +218,7 @@ export function useClientes() {
           linhas: cl.linhasParaOTicket(l.razao, l.saldo, mes, l.perguntar),
         })),
       });
+      marcas.salvar({ ...marcas.doc, enviado: assinatura });
       aviso({ tom: 'ok', titulo: 'Ticket ' + md.rotuloDoNumero(t.numero) + ' mandado', texto: [email, whatsapp && 'WhatsApp ' + whatsapp].filter(Boolean).join(' e ') + ' · acompanhe em Mandei' });
     },
   };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
+  assinaturaDoEnvio, clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
 } from './index';
 
 // o formato do balancete dinâmico do Alterdata (292, bdinamico.xls)
@@ -76,5 +76,17 @@ describe('credoresNoPeriodo', () => {
       { codigo: '12014', nome: 'AMORIM SUPERMERCADOS LTDA', saldos: [{ mes: '2026-07', saldo: 519.87 }, { mes: '2026-08', saldo: -150 }] },
     ]);
     expect(credoresNoPeriodo(d, '2026-07')).toEqual([]);
+  });
+});
+
+describe('o avançar trava até mandar o que vai ser questionado (08/10/2026)', () => {
+  it('a assinatura: as contas com linhas adicionadas, em qualquer ordem; sem nada, vazia; guardada no documento do mês', () => {
+    const a = assinaturaDoEnvio([{ codigo: '12006', perguntar: ['b', 'a'] }, { codigo: '12013' }]);
+    expect(a).toBe('12006=a,b');
+    expect(assinaturaDoEnvio([{ codigo: '12006', perguntar: ['a', 'b'] }])).toBe(a);
+    expect(assinaturaDoEnvio([{ codigo: '12006', perguntar: ['a'] }])).not.toBe(a);
+    expect(assinaturaDoEnvio([])).toBe('');
+    expect(docDoDocumento({ contas: {}, enviado: a }).enviado).toBe(a);
+    expect('enviado' in docDoDocumento({ contas: {} })).toBe(false);
   });
 });

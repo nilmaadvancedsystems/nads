@@ -25,9 +25,9 @@ export function Clientes() {
         {/* no Envio, só o Mandar pelo Mandei (Vitor, 07/10/2026: "remove isso tudo, deixa só o botão"): vai para o e-mail e o
             WhatsApp da empresa, os do Cadastro */}
         {vm.tela === 'envio' && vm.conferidos.length > 0 && (
-          <button type="button" className="btn btn-primary" disabled={vm.faltaNoCadastro.length > 0} onClick={vm.mandarPeloMandei}
+          <button type="button" className="btn btn-primary" disabled={vm.faltaNoCadastro.length > 0 || vm.jaMandado} onClick={vm.mandarPeloMandei}
             title={vm.faltaNoCadastro.length ? 'Falta no Cadastro da empresa: ' + vm.faltaNoCadastro.join(' e ') : 'Mandar para ' + [vm.contato.email, vm.contato.whatsapp && 'o WhatsApp ' + vm.contato.whatsapp].filter(Boolean).join(' e ')}>
-            <Icone nome="caixaEntrada" />Mandar pelo Mandei
+            <Icone nome={vm.jaMandado ? 'check' : 'caixaEntrada'} />{vm.jaMandado ? 'Mandado pelo Mandei' : 'Mandar pelo Mandei'}
           </button>
         )}
       </div>

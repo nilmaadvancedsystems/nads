@@ -154,7 +154,19 @@ export interface MarcaDoCliente {
   /** o que vai para o cliente: as chaves dos itens da relação (chaveDoItem); sem = o cliente todo; [] = nada */
   perguntar?: string[];
 }
-export interface DocClientes { contas: Record<string, MarcaDoCliente>; atualizadoEm?: string }
+export interface DocClientes {
+  contas: Record<string, MarcaDoCliente>; atualizadoEm?: string;
+  /** o que já foi mandado pelo Mandei neste mês (assinaturaDoEnvio): mudou depois, tem de mandar de novo */
+  enviado?: string;
+}
+
+/**
+ * A assinatura do que vai para o cliente (Vitor, 08/10/2026: "a partir do momento que a pessoa upa e quer questionar,
+ * bloqueie o avançar"): cada conta com as linhas adicionadas no +, em ordem. Igual à guardada = já mandado. '' = nada.
+ */
+export function assinaturaDoEnvio(linhas: readonly { codigo: string; perguntar?: readonly string[] }[]): string {
+  return linhas.filter(l => l.perguntar?.length).map(l => l.codigo + '=' + [...(l.perguntar || [])].sort().join(',')).sort().join(';');
+}
 
 /**
  * Zerado é Ok (sempre, do sistema): no dinâmico, ou no razão importado (Vitor, 07/10/2026: "se ele reupar o razão e
@@ -194,7 +206,7 @@ export function docDoDocumento(d: unknown): DocClientes {
       ...(Array.isArray(v.perguntar) ? { perguntar } : {}),
     };
   }
-  return { contas: certo, ...(typeof o.atualizadoEm === 'string' ? { atualizadoEm: o.atualizadoEm } : {}) };
+  return { contas: certo, ...(typeof o.atualizadoEm === 'string' ? { atualizadoEm: o.atualizadoEm } : {}), ...(typeof o.enviado === 'string' && o.enviado ? { enviado: o.enviado } : {}) };
 }
 
 /** O razão guardado na marca, conferido (o que não tiver o formato, fora). */
