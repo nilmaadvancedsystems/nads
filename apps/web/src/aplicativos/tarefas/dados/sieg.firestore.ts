@@ -4,7 +4,7 @@
 //     chaves); o robô escreve o andamento, o concluído ou o erro no próprio pedido;
 //   - robo/sieg (só leitura): o robô ligado (com as credenciais) e o ponto.
 import { tarefas as t } from '@nads/core';
-import { addDoc, collection, doc, getDoc, onSnapshot, query, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, onSnapshot, query, setDoc, where } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 import type { PedidoSieg, RepoSieg } from './sieg';
 
@@ -79,11 +79,12 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
         pedidos.set('saidas|' + k, null);
         pedidos.set('contagem|' + k, null);
         pedidos.set('xmls|' + k, null);
+        pedidos.set('xmlsCliente|' + k, null);
         // os últimos pedidos da empresa e mês: o mais novo de cada tipo (sem tipo = as saídas, os pedidos de antes)
         // só igualdades (sem orderBy: pedia um índice que não existe e o erro sumia calado; 07/10/2026): o mais novo aqui
         onSnapshot(query(collection(db, 'pedidosSieg'), where('codigo', '==', soDigitos(codigo)), where('competencia', '==', competencia)), s => {
           const todos = s.docs.map(x => ({ ...x.data(), id: x.id }) as Record<string, unknown>).sort((a, b) => texto(b.criadoEm).localeCompare(texto(a.criadoEm)));
-          for (const t of ['saidas', 'contagem', 'xmls'] as const) {
+          for (const t of ['saidas', 'contagem', 'xmls', 'xmlsCliente'] as const) {
             const d = todos.find(x => (x.tipo || 'saidas') === t);
             const r = d?.resultado as Record<string, unknown> | undefined;
             const z = d?.zip as Record<string, unknown> | undefined;
@@ -92,7 +93,7 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
               id: texto(d.id), status: texto(d.status), andamento: texto(d.andamento), erro: texto(d.erro), em: texto(d.criadoEm),
               ...(typeof d.pct === 'number' ? { pct: d.pct } : {}),
               ...(d.fase ? { fase: texto(d.fase) as PedidoSieg['fase'] } : {}),
-              ...(nn ? { numeros: { xmls: Number(nn.xmls) || 0, novos: Number(nn.novos) || 0, jaSalvos: Number(nn.jaSalvos) || 0, doDrive: Number(nn.doDrive) || 0 } } : {}),
+              ...(nn ? { numeros: { xmls: Number(nn.xmls) || 0, novos: Number(nn.novos) || 0, jaSalvos: Number(nn.jaSalvos) || 0, doDrive: Number(nn.doDrive) || 0, doCliente: Number(nn.doCliente) || 0, deOutros: Number(nn.deOutros) || 0 } } : {}),
               ...(z && Array.isArray(z.partes) && z.partes.length ? { zip: { nome: texto(z.nome), partes: (z.partes as unknown[]).map(texto), bytes: Number(z.bytes) || 0 } } : {}),
               ...(r ? { resultado: { arquivos: Number(r.arquivos) || 0, novos: Number(r.novos) || 0, jaSalvos: Number(r.jaSalvos) || 0, pasta: texto(r.pasta), zip: texto(r.zip), emitidas: Number(r.emitidas) || 0, recebidas: Number(r.recebidas) || 0 } } : {}),
             } : null);
@@ -134,6 +135,21 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
       const bytes = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
       return bytes;
+    },
+    // os XMLs do cliente: os pedaços primeiro (o texto em JSON, 350 mil caracteres cada: com acento passa de 1 byte por
+    // letra e o documento vai até 1 MB) e depois o pedido, que o robô só vê quando os pedaços já estão lá
+    async enviarXmlsDoCliente(codigo, competencia, xmls) {
+      const q = quem();
+      if (!q) throw new Error('Sem login.');
+      const ref = doc(collection(db, 'pedidosSieg'));
+      const texto = JSON.stringify(xmls);
+      const PEDACO = 350000;
+      let n = 0;
+      for (let i = 0; i < texto.length; i += PEDACO) {
+        n++;
+        await setDoc(doc(db, 'pedidosSieg', ref.id, 'xmls', String(n).padStart(3, '0')), { n, dados: texto.slice(i, i + PEDACO) });
+      }
+      await setDoc(ref, { status: 'pendente', tipo: 'xmlsCliente', codigo: soDigitos(codigo), competencia, criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorUid: q.uid, partes: n });
     },
     async pedirXmls(codigo, competencia) {
       const q = quem();

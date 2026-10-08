@@ -8,6 +8,9 @@ import { useExecucoes, useSieg } from '../../dados/repo';
 
 const VAZIO: t.painel.NotasDoPainel = { entradas: [], saidas: [], tomados: [], prestados: [] };
 
+/** Um tópico da janela de importar: um relatório do Alterdata ou os XMLs que o cliente mandou. */
+export type TopicoDeImportar = t.RelatorioImportavel | 'xmls';
+
 export const ROTULO_DO_RELATORIO: Record<t.RelatorioImportavel, string> = { entradas: 'Entradas', saidas: 'Saídas', tomados: 'Tomados', prestados: 'Prestados' };
 
 export function usePainelDoFiscal(empresa: string, codigo: string, competencia: string, meses: readonly string[]) {
@@ -58,8 +61,8 @@ export function usePainelDoFiscal(empresa: string, codigo: string, competencia: 
   const dp = useExecucoes(competencia, 'dp');
   const exDp = codigo ? dp.execucoes.find(e => String(e.codigo) === codigo) : null;
   const folhaDoDp = exDp?.valores?.folha ?? null;
-  // a janela de importar: os relatórios da tarefa, um por tópico
-  const [importando, setImportando] = useState<{ relatorios: t.RelatorioImportavel[]; atual: t.RelatorioImportavel } | null>(null);
+  // a janela de importar: os relatórios da tarefa, um por tópico, e o "XMLs do cliente" (08/10/2026)
+  const [importando, setImportando] = useState<{ relatorios: t.RelatorioImportavel[]; atual: TopicoDeImportar } | null>(null);
   return {
     carregado: !!lidas,
     folhaDoDp,
@@ -73,8 +76,8 @@ export function usePainelDoFiscal(empresa: string, codigo: string, competencia: 
       modelos: t.sieg.TIPOS_DE_NOTA.map(x => ({ rotulo: x.rotulo, emitidas: c.emitidas[x.id], recebidas: c.recebidas[x.id] })).filter(x => x.emitidas || x.recebidas),
     } : null,
     importando,
-    importar: (relatorios: t.RelatorioImportavel[]) => setImportando({ relatorios, atual: relatorios[0] }),
-    trocarRelatorio: (r: t.RelatorioImportavel) => setImportando(v => (v ? { ...v, atual: r } : v)),
+    importar: (relatorios: t.RelatorioImportavel[], atual?: TopicoDeImportar) => setImportando({ relatorios, atual: atual || relatorios[0] || 'xmls' }),
+    trocarRelatorio: (r: TopicoDeImportar) => setImportando(v => (v ? { ...v, atual: r } : v)),
     fecharImportacao: () => setImportando(null),
   };
 }

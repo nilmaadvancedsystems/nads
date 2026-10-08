@@ -3568,3 +3568,8 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 /* abre subindo um pouco (a abertura do gmail-andamento cresce até 320 px e cortaria esta janela, que é mais alta) */
 .gmail-andamento.sieg-andamento{animation:siegAbre .32s var(--ease-out) backwards !important;}
 @keyframes siegAbre{from{opacity:0;transform:translateY(10px);}}
+/* Os XMLs do cliente na janela de importar (08/10/2026): a área de soltar dos certificados, o que foi lido e o andamento */
+.xmls-cliente{display:flex;flex-direction:column;gap:12px;}
+.xmls-cliente-lidos{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;}
+.xmls-cliente-lidos .tarefas-barra-espaco{flex:1;}
+.xmls-cliente .sieg-andamento{width:auto;}

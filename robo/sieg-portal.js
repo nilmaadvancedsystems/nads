@@ -172,6 +172,55 @@ async function xmlsPeloPortal(doc, competencia, aoAndar, lerZip, soTipos, espera
   return { arquivos: [...arquivos].map(([nome, xml]) => ({ nome, xml })), resumo, contagem, doDrive: xmlsDoDrive.length, tiposDoDrive: [...doDrive] };
 }
 
+/**
+ * Os XMLs de qualquer origem (o .zip do Drive, os que o cliente mandou) no mesmo formato do download: { arquivos, resumo,
+ * contagem }. Emitida = o emitente é o cliente; o resto, recebida. As canceladas vêm marcadas.
+ */
+function montarXmls(doc, xmls) {
+  doc = soDigitos(doc);
+  const arquivos = new Map();
+  const resumo = { emitidas: [], recebidas: [] };
+  const contagem = { emitidas: { NFe: 0, NFCe: 0, CTe: 0, NFSe: 0, CFe: 0 }, recebidas: { NFe: 0, NFCe: 0, CTe: 0, NFSe: 0, CFe: 0 } };
+  const canceladas = new Set();
+  for (const x of xmls) {
+    const nome = sx.nomeDoArquivo(x);
+    if (arquivos.has(nome)) continue;
+    arquivos.set(nome, x);
+    const r = sx.resumoDaNota(x);
+    if (!r) continue;
+    if (r.cancela) { canceladas.add(r.cancela); continue; }
+    const grupo = soDigitos(r.emitente && r.emitente.doc) === doc ? 'emitidas' : 'recebidas';
+    resumo[grupo].push(r);
+    const chave = r.tipo.replace('-', '');
+    if (chave in contagem[grupo]) contagem[grupo][chave]++;
+  }
+  for (const g of ['emitidas', 'recebidas']) for (const n of resumo[g]) if (n.chave && canceladas.has(n.chave)) n.cancelada = true;
+  return { arquivos: [...arquivos].map(([nome, xml]) => ({ nome, xml })), resumo, contagem };
+}
+
+/**
+ * Dos XMLs que o cliente mandou, só os dele (08/10/2026: "importar os XMLs que os clientes mandam"): a nota em que ele é o
+ * emitente, o destinatário ou o tomador, e o evento (cancelamento) de uma dessas notas ou com o CNPJ dele na chave.
+ */
+function soDoCliente(doc, xmls) {
+  doc = soDigitos(doc);
+  const notas = [];
+  const eventos = [];
+  const chaves = new Set();
+  for (const x of xmls) {
+    if (!sx.tipoDoXml(x)) continue;
+    const r = sx.resumoDaNota(x);
+    if (r && r.cancela) { eventos.push([x, r.cancela]); continue; }
+    if (!r) { eventos.push([x, ((/<(?:\w+:)?ch(?:NFe|CTe)>(\d{44})</.exec(x)) || [])[1] || '']); continue; }
+    const dele = [r.emitente, r.destinatario].some(p => p && soDigitos(p.doc) === doc);
+    if (!dele) continue;
+    notas.push(x);
+    if (r.chave) chaves.add(r.chave);
+  }
+  const deles = eventos.filter(([, chave]) => chave && (chaves.has(chave) || chave.slice(6, 20) === doc)).map(([x]) => x);
+  return [...notas, ...deles];
+}
+
 /** node sieg-portal.js entrar: abre o Chrome do robô, visível, para a pessoa entrar no SIEG (a sessão fica no perfil). */
 async function entrar() {
   fs.mkdirSync(PERFIL, { recursive: true });
@@ -185,4 +234,4 @@ async function entrar() {
 
 if (require.main === module && process.argv[2] === 'entrar') entrar().catch(e => { console.error(e.message); process.exit(1); });
 
-module.exports = { xmlsPeloPortal, SEM_LOGIN, PERFIL };
+module.exports = { xmlsPeloPortal, montarXmls, soDoCliente, SEM_LOGIN, PERFIL };

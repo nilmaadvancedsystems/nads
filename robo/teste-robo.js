@@ -742,6 +742,12 @@ igual('SIEG: o cancelamento no resumo', sxT.resumoDaNota(cancT), { cancela: '312
 igual('SIEG: o tipo da NF-e', sxT.tipoDeNota(nfeItensT), 'NF-e');
 igual('SIEG: o tipo do cancelamento da NF-e (pela chave do evento)', sxT.tipoDeNota(cancT), 'NF-e');
 igual('SIEG: o evento de uma NFC-e', sxT.tipoDeNota('<evento><tpEvento>110111</tpEvento><chNFe>31260919449248000162650010000102701620070002</chNFe></evento>'), 'NFC-e');
+// os XMLs que o cliente mandou (08/10/2026): só os dele (a nota em que ele aparece e o cancelamento dela)
+const spT = require('./sieg-portal');
+igual('SIEG: XMLs do cliente, a nota e o cancelamento dele', spT.soDoCliente('19449248000162', [nfeItensT, cancT]).length, 2);
+igual('SIEG: XMLs do cliente, de outra empresa ficam de fora', spT.soDoCliente('22222222000122', [nfeItensT, cancT]).length, 0);
+igual('SIEG: XMLs do cliente, o destinatário também é dele', spT.soDoCliente('11111111000111', [nfeItensT]).length, 1);
+igual('SIEG: montar os XMLs marca a cancelada', spT.montarXmls('19449248000162', [nfeItensT, cancT]).resumo.emitidas.map(n => !!n.cancelada), [true]);
 // as saídas montadas das notas do "Baixar XMLs" (08/10/2026): só NF-e e NFC-e, por série, a cancelada fora do valor
 const siegT = require('./sieg');
 igual('SIEG: as saídas do resumo das notas', siegT.seriesDasNotas(siegT.saidasDoResumo([

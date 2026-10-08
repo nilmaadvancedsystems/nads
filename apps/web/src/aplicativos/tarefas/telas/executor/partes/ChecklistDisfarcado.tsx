@@ -11,10 +11,11 @@ import { Icone } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { ImportacaoNaEtapa } from '../../../../concilia-ai/ImportacaoNaEtapa';
 import { JanelaLateral, type TopicoDaJanela } from '../../janela/JanelaLateral';
-import { ROTULO_DO_RELATORIO, usePainelDoFiscal, type VmPainelDoFiscal } from '../usePainelDoFiscal';
+import { ROTULO_DO_RELATORIO, usePainelDoFiscal, type TopicoDeImportar, type VmPainelDoFiscal } from '../usePainelDoFiscal';
 import type { TarefaDoChecklist } from '../useChecklistDaFolha';
 import { andarProgresso, animarCartoes, menosMovimento, pularCheck } from './animarPainel';
 import { PainelDaTarefa, type DadosDoRelatorio } from './PainelDaTarefa';
+import { XmlsDoCliente } from './XmlsDoCliente';
 
 type ItemNaTela = TarefaDoChecklist & { marcado: boolean; liberado: boolean };
 
@@ -82,6 +83,12 @@ export function ChecklistDisfarcado({ titulo, itens, definicao, alternar, empres
                     <Icone nome="upload" />Importar{importar.length === 1 ? ' ' + ROTULO_DO_RELATORIO[importar[0]] : ''}
                   </button>
                 )}
+                {/* os XMLs que o cliente mandou (08/10/2026), junto do Importar do Alterdata */}
+                {importar.length > 0 && (vez || i.marcado) && (
+                  <button type="button" className="btn btn-outline" onClick={() => vm.importar(importar, 'xmls')} title="Importar os XMLs que o cliente mandou (.xml ou .zip): vão para o nads e para o Drive">
+                    <Icone nome="arquivo" />XMLs do cliente
+                  </button>
+                )}
                 {i.link && (vez || i.marcado) && <a className="btn btn-outline" href={i.link.url} target="_blank" rel="noreferrer"><Icone nome="link" />{i.link.rotulo}</a>}
                 {i.marcado ? (
                   <>
@@ -104,19 +111,22 @@ export function ChecklistDisfarcado({ titulo, itens, definicao, alternar, empres
           </div>
         );
       })}
-      {vm.importando && <JanelaDeImportacao vm={vm} empresa={empresa} />}
+      {vm.importando && <JanelaDeImportacao vm={vm} empresa={empresa} codigo={codigo} competencia={competencia} />}
     </div>
   );
 }
 
 /** A Importação da Conferência numa janela (a janela com painéis laterais), um tópico por relatório da tarefa. */
-function JanelaDeImportacao({ vm, empresa }: { vm: VmPainelDoFiscal; empresa: string }) {
+function JanelaDeImportacao({ vm, empresa, codigo, competencia }: { vm: VmPainelDoFiscal; empresa: string; codigo: string; competencia: string }) {
   const imp = vm.importando!;
-  const topicos: TopicoDaJanela<t.RelatorioImportavel>[] = imp.relatorios.map(r => ({ id: r, rotulo: ROTULO_DO_RELATORIO[r], icone: 'fileUp', contador: vm.importado[r] || undefined }));
+  const topicos: TopicoDaJanela<TopicoDeImportar>[] = [
+    ...imp.relatorios.map(r => ({ id: r, rotulo: ROTULO_DO_RELATORIO[r], icone: 'fileUp' as const, contador: vm.importado[r] || undefined })),
+    { id: 'xmls', rotulo: 'XMLs do cliente', icone: 'arquivo', contador: vm.xml?.arquivos || undefined },
+  ];
   return (
     <JanelaLateral rotulo="Importar do Alterdata" topicos={topicos} topico={imp.atual} mudar={vm.trocarRelatorio} fechar={vm.fecharImportacao} classe="pt-janela"
       resumo={<div className="usuario-quem"><b>Importar do Alterdata</b><span className="fraco">Vai para a Conferência da empresa: o Contábil já usa.</span></div>}>
-      <ImportacaoNaEtapa key={imp.atual} nome={empresa} tipo={imp.atual} prestaServico={null} />
+      {imp.atual === 'xmls' ? <XmlsDoCliente codigo={codigo} competencia={competencia} /> : <ImportacaoNaEtapa key={imp.atual} nome={empresa} tipo={imp.atual} prestaServico={null} />}
     </JanelaLateral>
   );
 }

@@ -14,11 +14,11 @@ export interface PedidoSieg {
   /** o andamento de verdade (08/10/2026): a porcentagem, a fase e os números que o robô grava enquanto trabalha */
   pct?: number;
   fase?: 'baixando' | 'entregando' | 'nads' | 'drive' | 'pronto';
-  numeros?: { xmls: number; novos: number; jaSalvos: number; doDrive: number };
+  numeros?: { xmls: number; novos: number; jaSalvos: number; doDrive: number; doCliente?: number; deOutros?: number };
 }
 
 /** O que se pede ao robô: baixar as saídas (a sequência) ou contar as notas do mês agora (sem esperar a madrugada). */
-export type TipoDePedidoSieg = 'saidas' | 'contagem' | 'xmls';
+export type TipoDePedidoSieg = 'saidas' | 'contagem' | 'xmls' | 'xmlsCliente';
 
 export interface RepoSieg {
   exemplos: boolean;
@@ -35,6 +35,11 @@ export interface RepoSieg {
   pedirXmls(codigo: string, competencia: string): Promise<void>;
   /** o resumo das notas do último "Baixar XMLs" (siegNotas) */
   notas(codigo: string, competencia: string): { carregadas: boolean; dados: t.sieg.NotasSieg | null };
+  /**
+   * os XMLs que o cliente mandou (08/10/2026: "um botão juntamente à importação do Alterdata para importar os XMLs que os
+   * clientes mandam"): o texto de cada XML vai ao robô, que fica com os do cliente, lança no nads e salva no Drive
+   */
+  enviarXmlsDoCliente(codigo: string, competencia: string, xmls: string[]): Promise<void>;
   /** os bytes do .zip que o robô entregou no pedido */
   baixarZip(zip: NonNullable<PedidoSieg['zip']>): Promise<Uint8Array>;
   assinar(aoMudar: () => void): () => void;
@@ -88,6 +93,26 @@ export function criarSiegMemoria(): RepoSieg {
       const k = codigo + '_' + competencia;
       if (!notasBaixadas.has(k)) notasBaixadas.set(k, { codigo, competencia, em: agora(), pasta: 'Claudio Secretario/' + competencia + '/EMPRESA ' + codigo, arquivos: 4, novos: 4, ...xmlsDeExemplo(competencia) });
       return { carregadas: true, dados: notasBaixadas.get(k)! };
+    },
+    async enviarXmlsDoCliente(codigo, competencia, xmls) {
+      const k = codigo + '_' + competencia;
+      const em = agora();
+      const id = 'exemplo-cliente-' + em;
+      const passo = (ms: number, fase: NonNullable<PedidoSieg['fase']>, pct: number, andamento: string, novos = 0) => setTimeout(() => {
+        pedidos.set('xmlsCliente|' + k, { id, status: 'processando', andamento, erro: '', em, fase, pct, numeros: { xmls: xmls.length + 4, novos, jaSalvos: 4, doDrive: 4, doCliente: xmls.length, deOutros: 0 } });
+        mudou();
+      }, ms);
+      pedidos.set('xmlsCliente|' + k, { id, status: 'pendente', andamento: '', erro: '', em });
+      mudou();
+      passo(500, 'baixando', 30, 'Lendo os XMLs que o cliente mandou');
+      passo(1200, 'nads', 82, 'Lendo as notas no nads');
+      passo(1800, 'drive', 92, 'Salvando no Drive', Math.ceil(xmls.length / 2));
+      setTimeout(() => {
+        pedidos.set('xmlsCliente|' + k, { id, status: 'concluido', andamento: '', erro: '', em, fase: 'pronto', pct: 100,
+          numeros: { xmls: xmls.length + 4, novos: xmls.length, jaSalvos: 4, doDrive: 4, doCliente: xmls.length, deOutros: 0 },
+          resultado: { arquivos: xmls.length + 4, novos: xmls.length, pasta: 'Claudio Secretario/' + competencia + '/EMPRESA ' + codigo, emitidas: 3, recebidas: 1 } });
+        mudou();
+      }, 2600);
     },
     // nos exemplos o .zip vem vazio (um zip sem arquivos)
     baixarZip: async () => new Uint8Array([0x50, 0x4b, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),

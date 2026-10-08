@@ -356,8 +356,11 @@ function iniciarSieg({ db, log }) {
             if (!documentoValido(cnpj)) throw new Error('o cliente ' + p.codigo + ' não tem CNPJ nem CPF no cadastro');
           }
           // "Baixar XMLs do SIEG" (07/10/2026): todos os XMLs do mês na pasta do cliente (Drive deste PC) e o resumo no banco
-          if (p.tipo === 'xmls') {
-            situacao = 'baixando os XMLs de ' + p.codigo;
+          // e os XMLs que o cliente mandou (xmlsCliente, 08/10/2026): o nads manda os arquivos em pedaços
+          // (pedidosSieg/{id}/xmls); o robô junta com os do Drive e segue o mesmo caminho, sem o SIEG e sem o .zip para baixar
+          if (p.tipo === 'xmls' || p.tipo === 'xmlsCliente') {
+            const doCliente = p.tipo === 'xmlsCliente';
+            situacao = (doCliente ? 'lendo os XMLs do cliente ' : 'baixando os XMLs de ') + p.codigo;
             const lista = [];
             (await require('./clientes-cache').clientesAtivos(db)).forEach(x => lista.push(x.data()));
             const cli = lista.find(x => codigoDe(x) === soDigitos(p.codigo));
@@ -389,7 +392,7 @@ function iniciarSieg({ db, log }) {
             // tipo, com as notas do último download; o tipo que não mudou sai do .zip que está na pasta, sem baixar
             // a conferência roda JUNTO com os downloads (08/10/2026: "tá demorando em média 3 minutos, queria que demorasse
             // 1"): quando ela diz que um tipo não mudou, o download dele é cancelado e ele sai do .zip do Drive
-            const anterior = (await db.collection('siegNotas').doc(id).get().catch(() => null))?.data();
+            const anterior = doCliente ? null : (await db.collection('siegNotas').doc(id).get().catch(() => null))?.data();
             const zipAntigo = path.join(pasta, nomeDoZip);
             const reaproveitar = anterior && Array.isArray(anterior.emitidas) && fs.existsSync(zipAntigo) ? (async () => {
               const agora = await contagemDoMes(c, cnpj, p.competencia);
@@ -403,7 +406,22 @@ function iniciarSieg({ db, log }) {
             // pelo portal primeiro (08/10/2026: "tem clientes com 1000 xml de uma vez, quero que ele vá no site e baixe"):
             // os tipos de nota ao mesmo tempo, em segundos; sem a sessão do portal ou com erro, pela API (mais lenta)
             let baixado;
-            try {
+            if (doCliente) {
+              const sp = require('./sieg-portal');
+              await andar('baixando', 'Lendo os XMLs que o cliente mandou', 0.1, true);
+              const pedacos = await d.ref.collection('xmls').get();
+              const mandados = JSON.parse(pedacos.docs.sort((a, b) => a.data().n - b.data().n).map(x => x.data().dados).join('') || '[]');
+              const deles = sp.soDoCliente(cnpj, mandados);
+              // os do Drive (o último .zip da pasta) entram junto: o resumo do mês fica com tudo
+              const velhos = fs.existsSync(zipAntigo) ? lerZip(await fs.promises.readFile(zipAntigo)) : [];
+              baixado = sp.montarXmls(cnpj, [...velhos, ...deles]);
+              baixado.doDrive = velhos.length;
+              numeros.doCliente = deles.length;
+              numeros.deOutros = mandados.length - deles.length;
+              await andar('baixando', deles.length + ' XMLs do cliente' + (numeros.deOutros ? ' (' + numeros.deOutros + ' de outra empresa ficaram de fora)' : ''), 1, true);
+              await Promise.all(pedacos.docs.map(x => x.ref.delete().catch(() => {})));
+              log('SIEG: XMLs do cliente', p.codigo, p.competencia, '-', deles.length, 'dele,', numeros.deOutros, 'de outra empresa');
+            } else try {
               baixado = await require('./sieg-portal').xmlsPeloPortal(cnpj, p.competencia, (t, f) => andar('baixando', t, f), lerZip, null, esperado, reaproveitar);
               log('SIEG: XMLs de', p.codigo, 'pelo portal' + (baixado.tiposDoDrive.length ? ' (do Drive: ' + baixado.tiposDoDrive.join(', ') + ')' : ''));
             } catch (err) {
@@ -417,14 +435,14 @@ function iniciarSieg({ db, log }) {
             const zip = arquivos.length ? sx.zipDe(arquivos) : null;
             // a ordem (Vitor, 08/10/2026: "seja entregue para a pessoa o zip dos XML, depois que ele introduza esses XML
             // no sistema (nads), depois que ele salve no drive"): 1) o .zip para quem pediu, que o nads baixa na hora
-            if (zip) {
+            if (zip && !doCliente) {
               await andar('entregando', 'Entregando o .zip (' + arquivos.length + ' XMLs)', 0, true);
               const partes = await entregarZip(d.ref.id, id, zip, (i, n) => andar('entregando', 'Entregando o .zip (parte ' + i + ' de ' + n + ')', i / n));
               await d.ref.update({ zip: { nome: nomeDoZip, partes, bytes: zip.length }, zipApagarEm: new Date(Date.now() + ZIP_GUARDADO_MS).toISOString() });
             }
             // 2) as notas no nads (o resumo e a contagem)
             await andar('nads', 'Lendo as notas no nads', 0, true);
-            await db.collection('siegContagens').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), ...contagem });
+            if (!doCliente) await db.collection('siegContagens').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), ...contagem });
             const onde = 'Claudio Secretario/' + p.competencia + '/' + nomeDaPasta;
             await db.collection('siegNotas').doc(id).set(resumoQueCabe({
               codigo: soDigitos(p.codigo), competencia: p.competencia, em: new Date().toISOString(), pasta: onde, zip: zip ? nomeDoZip : '', arquivos: arquivos.length, novos: arquivos.length,
