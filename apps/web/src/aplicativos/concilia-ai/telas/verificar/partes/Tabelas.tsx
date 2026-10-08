@@ -2,8 +2,8 @@
 // Origem: conferencia.html vcTabelaFaltando/vcTabela (~L3807-3822), vcAvisoTruncado (~L4119),
 // alerta verde (vcInfoLidos ~L3713 / "Nenhuma pendência" ~L4165).
 import { type conferencia as c, formatos } from '@nads/core';
-import { Icone } from '@nads/ui';
-import type { CSSProperties, ReactNode } from 'react';
+import { Alerta } from '@nads/ui';
+import type { ReactNode } from 'react';
 import { VC_LIMITE_LINHAS } from '../useVerificarConta';
 
 const { reais, nomeNorm } = formatos;
@@ -71,17 +71,7 @@ export function SecaoVc({ titulo, valor, className = 'vc-secao', children }: { t
   );
 }
 
-const ESTILO_OK: CSSProperties = { borderColor: 'var(--success)', background: 'var(--success-soft)', color: 'var(--success-ink)' };
-
-/** Aviso verde (.alert com as cores de sucesso), com margem opcional como no original. */
-export function AlertaVerde({ titulo, children, margem }: { titulo: string; children?: ReactNode; margem?: string }) {
-  return (
-    <div className="alert" style={margem ? { ...ESTILO_OK, margin: margem } : ESTILO_OK}>
-      <Icone nome="checkCircle" />
-      <div>
-        <p className="alert-title">{titulo}</p>
-        {children}
-      </div>
-    </div>
-  );
+/** Aviso verde: o Alerta "ok" (no topo da página, some em 3 s; Vitor, 08/10/2026). A margem ficou do original. */
+export function AlertaVerde({ titulo, children }: { titulo: string; children?: ReactNode; margem?: string }) {
+  return <Alerta tom="ok" titulo={titulo}>{children}</Alerta>;
 }

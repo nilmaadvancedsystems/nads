@@ -2399,6 +2399,18 @@ tr.linha-abre,.imp-linha,.gh-crumb,.drawer-x{
 :where(html:not([data-animacoes=parciais]):not([data-animacoes=todas])) *::after{transition:none !important;animation:none !important;}
 :where(html[data-animacoes=parciais]) *,:where(html[data-animacoes=parciais]) *::before,:where(html[data-animacoes=parciais]) *::after{animation:none !important;}
 .btn-spinner{animation:spin .6s linear infinite !important;}
+/* os alertas no topo da página, acima do cabeçalho (Vitor, 08/10/2026): entram descendo e saem subindo, em qualquer nível
+   de animação (pedido dele); somem em 3 s ou no × (o Alerta do packages/ui) */
+.alertas-topo{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:70;width:min(720px,calc(100vw - 32px));
+  display:flex;flex-direction:column;gap:8px;pointer-events:none;}
+.alertas-topo:empty{display:none;}
+.alertas-topo > .alert{pointer-events:auto;margin:0;padding-right:44px;box-shadow:0 8px 24px color-mix(in srgb, #000 22%, transparent);
+  background:linear-gradient(var(--warn-soft),var(--warn-soft)),var(--surface);animation:alertaEntra .36s cubic-bezier(.23,1,.32,1) both !important;}
+.alertas-topo > .alert.alert-ok{background:linear-gradient(var(--success-soft),var(--success-soft)),var(--surface);}
+.alertas-topo > .alert.saindo{animation:alertaSai .2s ease-in both !important;}
+@keyframes alertaEntra{from{opacity:0;transform:translateY(-24px) scale(.98);}to{opacity:1;transform:none;}}
+@keyframes alertaSai{from{opacity:1;transform:none;}to{opacity:0;transform:translateY(-16px);}}
+@media (prefers-reduced-motion: reduce){.alertas-topo > .alert,.alertas-topo > .alert.saindo{animation-duration:.001ms !important;}}
 .drive-girando{animation:drive-gira .8s linear infinite !important;}
 .icon-btn.girando svg{animation:drive-gira 1s linear infinite !important;}
 .esqueleto-linha::after{animation:esqueletoBrilho 1.5s var(--ease-in-out) infinite !important;}

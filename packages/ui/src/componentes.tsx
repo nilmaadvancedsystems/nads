@@ -1,15 +1,39 @@
 // Peças pequenas da Conferência, com as mesmas classes do CSS original.
-import { useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
-import { sairComo, useIndicador, useNumeroAnimado } from './animacao';
+import { useEffect, useRef, useState, type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { useIndicador, useNumeroAnimado } from './animacao';
 import { Icone, type NomeIcone } from './icones';
 
-/** Aviso dentro de uma caixa (.alert). tom "ok" = verde. */
-export function Alerta({ titulo, texto, tom, children, onFechar }: { titulo: string; texto?: ReactNode; tom?: 'ok'; children?: ReactNode; onFechar?: () => void }) {
-  // fechar pelo ×: o alerta sai (sobe e apaga) e só então some da tela
-  const caixa = useRef<HTMLDivElement>(null);
-  const fechar = onFechar && (() => { if (caixa.current) void sairComo('alerta', caixa.current).then(onFechar); else onFechar(); });
+/** Quanto o alerta fica no topo (Vitor, 08/10/2026: "suma depois de 3 segundos"); com o mouse em cima, para. */
+export const TEMPO_DO_ALERTA = 3000;
+
+/** A faixa fixa no topo da página, acima do cabeçalho, onde os alertas aparecem (um embaixo do outro). */
+function faixaDosAlertas(): HTMLElement {
+  let el = document.getElementById('alertas-topo');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'alertas-topo';
+    el.className = 'alertas-topo';
+    el.setAttribute('aria-live', 'polite');
+    document.body.appendChild(el);
+  }
+  return el;
+}
+
+/**
+ * Aviso numa caixa (.alert); tom "ok" = verde. Desde 08/10/2026 (Vitor: "mude esses avisos tudo para o topo da página,
+ * acima do cabeçalho, e suma depois de 3 segundos ou um x no final para o usuário fechar, faça uma animação de entrada"):
+ * aparece no topo da página, entra descendo, some em 3 s (o mouse em cima segura) ou no ×; quando some, chama o onFechar.
+ * Aparece de novo quando o título ou o texto mudam, ou quando a tela abre outra vez. naLinha: na própria tela (o catálogo).
+ */
+export function Alerta(p: { titulo: string; texto?: ReactNode; tom?: 'ok'; children?: ReactNode; onFechar?: () => void; naLinha?: boolean }) {
+  if (p.naLinha) return <CaixaDoAlerta {...p} />;
+  return <AlertaNoTopo key={p.titulo + '|' + (typeof p.texto === 'string' || typeof p.texto === 'number' ? p.texto : '')} {...p} />;
+}
+
+function CaixaDoAlerta({ titulo, texto, tom, children, fechar, saindo, ...resto }: { titulo: string; texto?: ReactNode; tom?: 'ok'; children?: ReactNode; fechar?: () => void; saindo?: boolean } & HTMLAttributes<HTMLDivElement>) {
   return (
-    <div ref={caixa} className={'alert' + (tom === 'ok' ? ' alert-ok' : '')}>
+    <div className={'alert' + (tom === 'ok' ? ' alert-ok' : '') + (saindo ? ' saindo' : '')} role="status" {...resto}>
       <Icone nome={tom === 'ok' ? 'checkCircle' : 'alert'} />
       <div>
         <p className="alert-title">{titulo}</p>
@@ -18,6 +42,31 @@ export function Alerta({ titulo, texto, tom, children, onFechar }: { titulo: str
       </div>
       {fechar && <button type="button" className="alert-x" title="Fechar" aria-label="Fechar" onClick={fechar}>×</button>}
     </div>
+  );
+}
+
+function AlertaNoTopo({ titulo, texto, tom, children, onFechar }: { titulo: string; texto?: ReactNode; tom?: 'ok'; children?: ReactNode; onFechar?: () => void }) {
+  const [fase, setFase] = useState<'aberto' | 'saindo' | 'fechado'>('aberto');
+  const [segura, setSegura] = useState(false);
+  const aoFechar = useRef(onFechar);
+  useEffect(() => { aoFechar.current = onFechar; });
+  // 3 s e sai (o mouse em cima segura; ao tirar, conta de novo)
+  useEffect(() => {
+    if (fase !== 'aberto' || segura) return;
+    const t = setTimeout(() => setFase('saindo'), TEMPO_DO_ALERTA);
+    return () => clearTimeout(t);
+  }, [fase, segura]);
+  // a saída (sobe e apaga, 200 ms) e só então some da tela
+  useEffect(() => {
+    if (fase !== 'saindo') return;
+    const t = setTimeout(() => { setFase('fechado'); aoFechar.current?.(); }, 200);
+    return () => clearTimeout(t);
+  }, [fase]);
+  if (fase === 'fechado') return null;
+  return createPortal(
+    <CaixaDoAlerta titulo={titulo} texto={texto} tom={tom} saindo={fase === 'saindo'} fechar={() => setFase('saindo')}
+      onMouseEnter={() => setSegura(true)} onMouseLeave={() => setSegura(false)}>{children}</CaixaDoAlerta>,
+    faixaDosAlertas(),
   );
 }
 

@@ -352,8 +352,8 @@ export const PECAS_BASE: Peca[] = [
 
   // ─── Avisos ─────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'alerta', tipo: 'avisos', nome: 'Alerta (amarelo)', componente: 'Alerta', classes: ['alert', 'alert-title', 'alert-text'], telas: ['t-exec-cheque', 'c-verificar', 'e-importacao', 't-exec-fiscal-rotina'], largo: true,
-    demo: () => <Alerta titulo="Saldo negativo: faça o cheque especial" texto="Gere os lançamentos no Cheque especial, lance no Alterdata e importe o razão de novo." /> },
-  { id: 'alerta-ok', tipo: 'avisos', nome: 'Alerta (verde)', componente: 'Alerta', classes: ['alert alert-ok'], telas: ['c-verificar', 't-exec-fiscal-rotina'], largo: true, demo: () => <Alerta tom="ok" titulo="Tudo bate neste período" texto="Nenhuma pendência." /> },
+    demo: () => <Alerta naLinha titulo="Saldo negativo: faça o cheque especial" texto="Gere os lançamentos no Cheque especial, lance no Alterdata e importe o razão de novo." /> },
+  { id: 'alerta-ok', tipo: 'avisos', nome: 'Alerta (verde)', componente: 'Alerta', classes: ['alert alert-ok'], telas: ['c-verificar', 't-exec-fiscal-rotina'], largo: true, demo: () => <Alerta naLinha tom="ok" titulo="Tudo bate neste período" texto="Nenhuma pendência." /> },
   { id: 'toast', tipo: 'avisos', nome: 'Aviso rápido (toast)', descricao: 'No canto de baixo, some em 4 s', componente: 'useRetorno().toast', classes: ['toast-region', 'toast'], telas: TODAS,
     demo: () => <div className="toast cat-parado">Etapa interrompida: Importação.</div>, aoVivo: c => c.toast('Etapa interrompida: Importação.') },
   { id: 'imp-aviso', tipo: 'avisos', nome: 'Barrinha no topo (importou / Drive)', descricao: 'Por cima da tela: o que deu certo some em 2,7 s; o erro (ex.: nada no Drive) fica até o ×', classes: ['imp-aviso', 'imp-aviso-barra', 'erro', 'info'], telas: ['e-importacao', 't-exec-importacao'],
