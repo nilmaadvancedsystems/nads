@@ -25,9 +25,13 @@ function passosDe(tipo: Janela, p: PedidoSieg | null): { passos: string[]; atual
   // depois que ele salve no drive"): o .zip, as notas no nads, o Drive
   const a = p ? p.andamento : '';
   const passos = ['Pedido enviado ao robô', 'O robô pegou o pedido', 'Baixando os XMLs do SIEG', 'O .zip no seu computador', 'Lendo as notas no nads', 'Salvando na pasta do cliente no Drive', 'Pronto'];
-  const fase = /^Salvando/.test(a) ? 5 : /^Lendo/.test(a) ? 4 : /^Entregando/.test(a) ? 3 : 2;
+  // a fase que o robô grava (08/10/2026); sem ela (o robô antigo), pelo texto do andamento
+  const PELA_FASE = { baixando: 2, entregando: 3, nads: 4, drive: 5, pronto: 6 } as const;
+  const fase = p?.fase ? PELA_FASE[p.fase] : /^Salvando/.test(a) ? 5 : /^Lendo/.test(a) ? 4 : /^Entregando/.test(a) ? 3 : 2;
   const atual = !p ? 0 : p.status === 'pendente' ? 1 : p.status === 'processando' ? fase : p.status === 'concluido' ? 6 : 0;
-  return { passos, atual, pct: [5, 10, 40, 60, 72, 86, 100][atual] };
+  // a porcentagem de verdade quando o robô manda (o download pesado pela contagem, o Drive arquivo por arquivo)
+  const pct = atual === 6 ? 100 : p?.status === 'processando' && typeof p.pct === 'number' ? Math.max(2, Math.min(99, p.pct)) : [0, 1, 40, 72, 82, 90, 100][atual];
+  return { passos, atual, pct };
 }
 
 export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, competencia: string) {
@@ -45,11 +49,19 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
   // a janela do andamento (Vitor, 07/10/2026: "quero uma barra de progresso/tela flutuante para a pessoa ter o feedback"):
   // abre no clique, acompanha o pedido e fica até o ×
   const [janela, setJanela] = useState<Janela | null>(null);
+  // o relógio da janela (o tempo passado e o que falta), de segundo em segundo enquanto o robô trabalha
+  const [agora, setAgora] = useState(() => Date.now());
   const conf = sai.dados ? t.sieg.conferirSaidas(sai.dados) : null;
   const linhas = (r: Record<t.sieg.TipoDeNota, number>) => t.sieg.TIPOS_DE_NOTA.filter(x => r[x.id] > 0).map(x => ({ rotulo: x.rotulo, n: r[x.id] }));
   const pedindo = rodando(pedido);
 
   const pJanela = janela === 'contagem' ? pedidoContagem : janela === 'xmls' ? pedidoXmls : null;
+  const trabalhando = rodando(pJanela);
+  useEffect(() => {
+    if (!trabalhando) return;
+    const r = setInterval(() => setAgora(Date.now()), 1000);
+    return () => clearInterval(r);
+  }, [trabalhando]);
   const andamento = janela ? (() => {
     const { passos, atual, pct } = passosDe(janela, pJanela);
     const pronto = atual === passos.length - 1;
@@ -65,10 +77,22 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
       // o que o robô está fazendo agora (ex.: "Recebidas · NF-e (120 XMLs até agora)")
       detalhe: pJanela?.status === 'processando' && pJanela.andamento && !['emitidas', 'recebidas'].includes(pJanela.andamento) ? pJanela.andamento : '',
       passos: passos.map((texto, i) => ({ texto, feito: i < atual || pronto, atual: i === atual && !pronto })),
+      /** o tempo: quanto já foi e, com a barra andando, quanto falta (pela velocidade até aqui) */
+      tempo: (() => {
+        const ini = pJanela?.em ? Date.parse(pJanela.em) : NaN;
+        if (!pJanela || Number.isNaN(ini) || pronto) return '';
+        const foi = Math.max(0, Math.round((agora - ini) / 1000));
+        const falta = pct >= 8 && pct < 100 ? Math.round((foi * (100 - pct)) / pct) : null;
+        const mmss = (s: number) => (s >= 60 ? Math.floor(s / 60) + ' min ' + String(s % 60).padStart(2, '0') + ' s' : s + ' s');
+        return mmss(foi) + (falta != null ? ' · falta uns ' + mmss(Math.max(1, falta)) : '');
+      })(),
+      /** os números do "Baixar XMLs": quantos XMLs, quantos vieram do Drive e quantos foram gravados agora */
+      numeros: janela === 'xmls' && pJanela?.numeros && pJanela.numeros.xmls ? pJanela.numeros : null,
       resultado: !pronto ? '' : janela === 'contagem'
         ? (cont.dados ? t.sieg.totalDe(cont.dados.emitidas) + ' emitidas · ' + t.sieg.totalDe(cont.dados.recebidas) + ' recebidas' : '')
-        : (pJanela?.resultado ? pJanela.resultado.arquivos + ' XMLs (' + pJanela.resultado.novos + ' novos) · ' + pJanela.resultado.emitidas + ' notas emitidas e '
-          + pJanela.resultado.recebidas + ' recebidas · em ' + pJanela.resultado.pasta + (pJanela.resultado.zip ? ' (com o ' + pJanela.resultado.zip + ')' : '') : ''),
+        // os números ficam nos painéis; aqui, as notas e onde estão
+        : (pJanela?.resultado ? pJanela.resultado.emitidas + ' notas emitidas e ' + pJanela.resultado.recebidas + ' recebidas · na pasta ' + pJanela.resultado.pasta
+          + (pJanela.numeros ? '' : ' (' + pJanela.resultado.arquivos + ' XMLs, ' + pJanela.resultado.novos + ' novos)') : ''),
     };
   })() : null;
 

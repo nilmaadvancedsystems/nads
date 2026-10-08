@@ -232,14 +232,14 @@ nav.menu::-webkit-scrollbar{display:none;}
 .menu-item .dot{width:8px;height:8px;border-radius:50%;background:var(--danger);flex:none;}
 
 main.main{min-width:0;padding:0 24px;}
-.topbar{max-width:1216px;margin:24px auto 16px;padding:0 0 8px;border-bottom:1px solid var(--border);
+.topbar{max-width:none;margin:24px auto 16px;padding:0 0 8px;border-bottom:1px solid var(--border);
   display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;}
 .page-eyebrow{display:inline-block;font-size:12px;font-weight:500;line-height:18px;padding:0 7px;border:1px solid var(--border);
   border-radius:2em;color:var(--ink-muted);margin-bottom:8px;}
 .page-eyebrow:empty{display:none;}
 .page-title{font-size:24px;font-weight:400;line-height:1.25;}
 .page-desc{color:var(--ink-muted);font-size:14px;margin-top:4px;max-width:70ch;}
-.content{max-width:1216px;margin:0 auto;padding:0 0 64px;}
+.content{max-width:none;margin:0 auto;padding:0 0 64px;}
 .content > section > .card:first-child,.content > section > .steps:first-child{margin-top:0;}
 #view-importacoes,#view-cfopconta,#view-contas,#view-auditoria,#view-depara{padding-top:0;}
 #app .topbar[hidden] + .content{padding-top:24px;}
@@ -605,7 +605,7 @@ button.gh-crumb:hover{background:var(--hover-bg);}
 main.main{padding:0 24px;}
 .topbar{border-bottom:none;padding:0;margin:24px auto 16px;align-items:center;}
 .page-title{font-size:20px;font-weight:600;}
-.content{max-width:1216px;}
+.content{max-width:none;}
 @media (max-width:768px){
   .layout{grid-template-columns:minmax(0,1fr);}
   .subnav{min-height:0;flex-direction:row;overflow-x:auto;border-right:none;border-bottom:1px solid var(--border);padding:8px 16px;gap:4px;}
@@ -1081,7 +1081,7 @@ table.vc-tabela .vc-mut{color:var(--ink-muted);max-width:180px;overflow:hidden;t
 
 /* Casca com lateral="caixa" (Conciliei): no lugar da barra lateral, uma caixa com borda ao lado da
    página, no estilo "Insights" do GitHub. O item aberto ganha a faixa vermelha à esquerda. */
-.layout-caixa{display:grid;grid-template-columns:296px minmax(0,1fr);gap:24px;align-items:start;max-width:1280px;margin:0 auto;padding:24px 32px 0;}
+.layout-caixa{display:grid;grid-template-columns:296px minmax(0,1fr);gap:24px;align-items:start;max-width:none;margin:0 auto;padding:24px 32px 0;}
 .layout-caixa main.main{padding:0;}
 .layout-caixa .topbar{max-width:none;margin:0 0 16px;padding:0 0 12px;border-bottom:1px solid var(--border);align-items:center;min-height:45px;}
 .layout-caixa .content{max-width:none;}
@@ -1189,7 +1189,7 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 .executor-botao.proximo:hover:not(:disabled){background:var(--btn-primary-hover);}
 .executor-botao:disabled{opacity:.7;cursor:progress;}
 /* a Contabilização da Folha: o checklist pelo balancete (marcar risca, como a conferência) */
-.folha-check{width:100%;max-width:760px;margin:0 auto;padding:16px 20px;align-self:flex-start;}
+.folha-check{width:100%;max-width:none;margin:0 auto;padding:16px 20px;align-self:flex-start;}
 .folha-check-topo{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;}
 .folha-check-topo h3{margin:0;font-size:16px;}
 .folha-check-qtd{font-size:12px;font-weight:600;color:var(--ink-muted);}
@@ -2069,7 +2069,7 @@ main.main:has(> .content > .explorador){padding:0;}
    no cliente, a barra lateral das pastas e a lista. */
 .drive{position:relative;}
 .drive.tela-cheia{position:fixed;inset:0;z-index:900;background:var(--bg);overflow:auto;padding:16px;}
-.drive-inicio{max-width:1280px;margin:0 auto;}
+.drive-inicio{max-width:none;margin:0 auto;}
 .drive-titulo{padding-bottom:16px;border-bottom:1px solid var(--border);}
 .drive-titulo .page-title{margin:0;}
 .drive-colunas{display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:24px;align-items:start;}
@@ -3104,7 +3104,7 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 /* Fiscal › a checklist disfarçada (06/10/2026), com as peças do catálogo: o cartão (card, card-head), as faixas que abrem
    (imp-faixa), a caixinha da etapa (subnav-caixa), a barra (tarefas-barra), Stat, rank, tabela, Alerta, gh-blank. Aqui, só o
    encaixe delas: a largura do cartão, a linha da tarefa (o botão que abre + as ações) e o que a da vez destaca. */
-.folha-check.pt-check{max-width:1080px;padding:0;overflow:hidden;}
+.folha-check.pt-check{max-width:none;padding:0;overflow:hidden;}
 .pt-check > .card-head{margin:0;}
 .pt-check .card-head-ctl .tarefas-barra{width:120px;}
 .pt-check .card-head-ctl .tarefas-barra > span{width:0;}
@@ -3524,3 +3524,25 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .fgts-ao-vivo img{width:100%;height:auto;cursor:pointer;display:block;}
 .fgts-ao-vivo-marca{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid var(--brand,#c8102e);pointer-events:none;}
 .fgts-janela{width:min(1180px,96vw);}
+/* a tela toda (Vitor, 08/10/2026: "tá parecendo app mobile, atualize todas as telas para pegar a tela toda"): as páginas,
+   a barra de cima, a caixa com a lateral, o Drive e as checklists sem largura máxima; janelas e formulários seguem do tamanho deles */
+/* A janela do andamento do SIEG (08/10/2026: "uma porcentagem melhor e uma tela mais bem produzida"): o resumo do FGTS
+   (título, barra, a linha do robô), os números em painéis e os passos numa linha do tempo, que vão ficando verdes */
+.sieg-andamento{width:min(420px,calc(100vw - 32px));padding:16px 18px;display:flex;flex-direction:column;gap:12px;}
+.sieg-andamento .fgts-resumo-topo{flex-wrap:nowrap;gap:12px;}
+.sieg-andamento-pct{font-size:24px;line-height:1;font-variant-numeric:tabular-nums;}
+.sieg-andamento .tarefas-barra.fgts-barra > span{transition:width .9s var(--ease-out);}
+.sieg-andamento-numeros{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+.sieg-andamento-numeros .stat.painel-numero{min-height:0;padding:10px 10px 10px 46px;}
+.sieg-andamento-numeros .painel-numero-icone{left:10px;top:12px;width:26px;height:26px;}
+.sieg-andamento-numeros .stat-value{font-size:18px;}
+.sieg-andamento-passos{padding:0;}
+.sieg-andamento-passos li{padding-bottom:8px;color:var(--ink-muted);}
+.sieg-andamento-passos li.atual,.sieg-andamento-passos li.feito{color:var(--ink);}
+.sieg-andamento-passos li.feito .fgts-passo-marca{background:var(--success-soft);color:var(--success);}
+.sieg-andamento-passos li.atual .fgts-passo-marca{background:var(--accent);color:var(--on-accent);}
+.sieg-andamento-passos .fgts-passo-marca svg{width:13px;height:13px;}
+.sieg-andamento .sieg-aviso{margin:0;}
+/* abre subindo um pouco (a abertura do gmail-andamento cresce até 320 px e cortaria esta janela, que é mais alta) */
+.gmail-andamento.sieg-andamento{animation:siegAbre .32s var(--ease-out) backwards !important;}
+@keyframes siegAbre{from{opacity:0;transform:translateY(10px);}}

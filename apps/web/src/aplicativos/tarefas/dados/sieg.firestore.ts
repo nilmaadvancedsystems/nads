@@ -87,10 +87,14 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
             const d = todos.find(x => (x.tipo || 'saidas') === t);
             const r = d?.resultado as Record<string, unknown> | undefined;
             const z = d?.zip as Record<string, unknown> | undefined;
+            const nn = d?.numeros as Record<string, unknown> | undefined;
             pedidos.set(t + '|' + k, d ? {
               id: texto(d.id), status: texto(d.status), andamento: texto(d.andamento), erro: texto(d.erro), em: texto(d.criadoEm),
+              ...(typeof d.pct === 'number' ? { pct: d.pct } : {}),
+              ...(d.fase ? { fase: texto(d.fase) as PedidoSieg['fase'] } : {}),
+              ...(nn ? { numeros: { xmls: Number(nn.xmls) || 0, novos: Number(nn.novos) || 0, jaSalvos: Number(nn.jaSalvos) || 0, doDrive: Number(nn.doDrive) || 0 } } : {}),
               ...(z && Array.isArray(z.partes) && z.partes.length ? { zip: { nome: texto(z.nome), partes: (z.partes as unknown[]).map(texto), bytes: Number(z.bytes) || 0 } } : {}),
-              ...(r ? { resultado: { arquivos: Number(r.arquivos) || 0, novos: Number(r.novos) || 0, pasta: texto(r.pasta), zip: texto(r.zip), emitidas: Number(r.emitidas) || 0, recebidas: Number(r.recebidas) || 0 } } : {}),
+              ...(r ? { resultado: { arquivos: Number(r.arquivos) || 0, novos: Number(r.novos) || 0, jaSalvos: Number(r.jaSalvos) || 0, pasta: texto(r.pasta), zip: texto(r.zip), emitidas: Number(r.emitidas) || 0, recebidas: Number(r.recebidas) || 0 } } : {}),
             } : null);
           }
           mudou();

@@ -30,8 +30,18 @@ const ultimoDia = comp => { const [a, m] = comp.split('-').map(Number); return c
 let sessao = null;
 
 /** A sessão do perfil do robô: abre o Chrome escondido, confere se ainda está logado e devolve os cookies do app. */
+// 3 tentativas antes de desistir do portal (08/10/2026: às 15:43 uma abertura falhou, o pedido caiu na API e levou
+// 14 minutos): o Chrome às vezes não abre de primeira (o perfil ainda preso pelo anterior)
 async function cookiesDoPortal() {
   if (sessao) return sessao;
+  let erro;
+  for (let i = 0; i < 3; i++) {
+    try { return await abrirSessao(); } catch (err) { erro = err; await new Promise(r => setTimeout(r, 3000)); }
+  }
+  throw erro;
+}
+
+async function abrirSessao() {
   if (!fs.existsSync(PERFIL)) throw new Error(SEM_LOGIN + ' (o perfil do robô ainda não existe)');
   const puppeteer = require('puppeteer-core');
   const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, userDataDir: PERFIL, ignoreDefaultArgs: ['--enable-automation'], args: ['--lang=pt-BR'] });
@@ -39,7 +49,7 @@ async function cookiesDoPortal() {
     const pg = await browser.newPage();
     await pg.goto(APP + '/api/v1/entitlements/features', { waitUntil: 'domcontentloaded', timeout: 60000 });
     const texto = await pg.evaluate(() => document.body ? document.body.innerText : '');
-    if (/auth\.sieg\.com/.test(pg.url()) || !/^\s*\{/.test(texto)) throw new Error(SEM_LOGIN);
+    if (/auth\.sieg\.com/.test(pg.url()) || !/^\s*\{/.test(texto)) throw new Error(SEM_LOGIN + ' (' + pg.url().slice(0, 60) + ')');
     const cookies = await pg.cookies(APP);
     sessao = cookies.map(c => c.name + '=' + c.value).join('; ');
     return sessao;
@@ -119,7 +129,7 @@ async function xmlsPeloPortal(doc, competencia, aoAndar, lerZip, soTipos, espera
       try { zip = await zipDoPeriodo(cookie, doc, tipo, competencia); }
       catch (err) {
         // a sessão guardada venceu: pega a do perfil (o Chrome) e tenta uma vez mais
-        if (err.message !== SEM_LOGIN) throw err;
+        if (!err.message.startsWith(SEM_LOGIN)) throw err;
         cookie = await cookiesDoPortal();
         zip = await zipDoPeriodo(cookie, doc, tipo, competencia);
       }

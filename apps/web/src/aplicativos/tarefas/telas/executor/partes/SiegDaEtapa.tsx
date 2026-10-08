@@ -16,23 +16,41 @@ export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 
       </header>
       {/* o andamento do "Contar agora", flutuando no canto (fica no body: a faixa animada prenderia o fixo) */}
       {vm.andamento && createPortal(
-        <div className="card gmail-andamento sieg-flutuante" role="status" aria-live="polite">
-          <div className="gmail-andamento-topo">
-            <b>{vm.andamento.erro ? vm.andamento.tituloDoErro : vm.andamento.titulo}</b>
-            <span className="fraco">{vm.andamento.erro ? '' : vm.andamento.pct + '%'}</span>
-            <span className="tarefas-barra-espaco" />
+        // a janela do andamento (08/10/2026: "quero uma porcentagem melhor e uma tela mais bem produzida"): as peças do
+        // catálogo — o resumo com a barra (FGTS), a linha do robô, os números em painéis e os passos numa linha do tempo
+        <div className="card gmail-andamento sieg-flutuante sieg-andamento" role="status" aria-live="polite">
+          <div className="fgts-resumo-topo">
+            <div className="fgts-resumo-titulo">
+              <h3>{vm.andamento.erro ? vm.andamento.tituloDoErro : vm.andamento.titulo}</h3>
+              {!vm.andamento.erro && <span className="hint">{vm.andamento.pronto ? 'Concluído' : vm.andamento.tempo || 'Começando…'}</span>}
+            </div>
+            {!vm.andamento.erro && <b className="sieg-andamento-pct num">{vm.andamento.pct}%</b>}
             <button type="button" className="btn btn-ghost" onClick={vm.fecharAndamento} aria-label="Fechar" title="Fechar"><Icone nome="x" /></button>
           </div>
-          {!vm.andamento.erro && <span className={'tarefas-barra larga' + (vm.andamento.pronto ? '' : ' andando')}><span style={{ width: vm.andamento.pct + '%' }} /></span>}
-          {vm.andamento.erro ? <p className="sieg-aviso" style={{ marginTop: 8 }}><Icone nome="alert" />{vm.andamento.erro}</p> : (
-            <ul className="gmail-andamento-passos">
-              {vm.andamento.passos.map(p => <li key={p.texto} className={p.atual || p.feito ? 'destaque' : undefined}>{p.feito ? '✓ ' : p.atual ? '… ' : ''}{p.texto}</li>)}
-            </ul>
+          {!vm.andamento.erro && <span className={'tarefas-barra fgts-barra' + (vm.andamento.pronto ? '' : ' andando')}><span style={{ width: vm.andamento.pct + '%' }} /></span>}
+          {vm.andamento.erro ? <p className="sieg-aviso"><Icone nome="alert" />{vm.andamento.erro}</p> : (
+            <span className="fgts-robo-linha"><span className={'bolinha-sit ' + (vm.andamento.pronto ? 'concluida' : 'em-andamento')} aria-hidden="true" />{vm.andamento.pronto ? 'Robô terminou' : vm.andamento.detalhe || 'O robô está trabalhando'}</span>
           )}
-          {vm.andamento.detalhe && <p className="hint" style={{ margin: '8px 0 0' }}>{vm.andamento.detalhe}</p>}
-          {vm.andamento.resultado && <p className="hint" style={{ margin: '8px 0 0' }}>{vm.andamento.resultado}</p>}
+          {vm.andamento.numeros && (
+            <div className="stat-grid sieg-andamento-numeros">
+              <div className="stat painel-numero painel-info"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="arquivo" /></span><p className="stat-label">XMLs</p><p className="stat-value num">{vm.andamento.numeros.xmls}</p></div>
+              <div className="stat painel-numero painel-roxo"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="pasta" /></span><p className="stat-label">Já no Drive</p><p className="stat-value num">{vm.andamento.numeros.jaSalvos || vm.andamento.numeros.doDrive}</p></div>
+              <div className="stat painel-numero painel-ok"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="check" /></span><p className="stat-label">Novos salvos</p><p className="stat-value num">{vm.andamento.numeros.novos}</p></div>
+            </div>
+          )}
+          {!vm.andamento.erro && (
+            <ol className="fgts-passos sieg-andamento-passos">
+              {vm.andamento.passos.map((p, i) => (
+                <li key={p.texto} className={p.feito ? 'feito' : p.atual ? 'atual' : undefined}>
+                  <span className="fgts-passo-marca" aria-hidden="true">{p.feito ? <Icone nome="check" /> : i + 1}</span>
+                  <div>{p.atual ? <b>{p.texto}</b> : p.texto}</div>
+                </li>
+              ))}
+            </ol>
+          )}
+          {vm.andamento.resultado && <p className="hint" style={{ margin: 0 }}>{vm.andamento.resultado}</p>}
           {vm.andamento.xmls && vm.zip && (
-            <div className="sieg-acoes" style={{ marginTop: 8 }}>
+            <div className="sieg-acoes">
               <BotaoAcao className="btn btn-outline" carregando={vm.baixandoZip} textoCarregando="Baixando…" onClick={() => { void vm.baixarZip(); }}><Icone nome="download" />Baixar o .zip ({vm.zip.tamanho})</BotaoAcao>
             </div>
           )}

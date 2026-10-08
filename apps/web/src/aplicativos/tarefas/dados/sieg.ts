@@ -6,11 +6,15 @@ import { tarefas as t } from '@nads/core';
 export interface PedidoSieg {
   status: string; andamento: string; erro: string; em: string;
   /** o "Baixar XMLs" pronto: quantos arquivos, quantos novos, onde, e quantas notas */
-  resultado?: { arquivos: number; novos: number; pasta: string; emitidas: number; recebidas: number; zip?: string };
+  resultado?: { arquivos: number; novos: number; pasta: string; emitidas: number; recebidas: number; zip?: string; jaSalvos?: number };
   /** o .zip dos XMLs para quem pediu (08/10/2026): o robô entrega antes de ler as notas e salvar no Drive; fica 1 dia */
   zip?: { nome: string; partes: string[]; bytes: number };
   /** o id do pedido (para baixar o .zip uma vez só) */
   id?: string;
+  /** o andamento de verdade (08/10/2026): a porcentagem, a fase e os números que o robô grava enquanto trabalha */
+  pct?: number;
+  fase?: 'baixando' | 'entregando' | 'nads' | 'drive' | 'pronto';
+  numeros?: { xmls: number; novos: number; jaSalvos: number; doDrive: number };
 }
 
 /** O que se pede ao robô: baixar as saídas (a sequência) ou contar as notas do mês agora (sem esperar a madrugada). */
@@ -93,22 +97,26 @@ export function criarSiegMemoria(): RepoSieg {
       // o .zip entra junto com o "Lendo as notas" (o robô entrega antes), e o pedido novo tem outro id (baixa de novo)
       const id = 'exemplo-' + em;
       const zip = { nome: 'SIEG ' + competencia + ' - EMPRESA ' + codigo + '.zip', partes: ['exemplo'], bytes: 22 };
-      const passo = (status: string, andamento: string, ms: number) => setTimeout(() => {
-        pedidos.set('xmls|' + k, { id, status, andamento, erro: '', em, ...(/^(Lendo|Salvando)/.test(andamento) ? { zip } : {}) });
+      // como o robô: a porcentagem, a fase e os números, de segundo em segundo (60 do Drive, 44 novos)
+      type Fase = NonNullable<PedidoSieg['fase']>;
+      const passo = (ms: number, fase: Fase, pct: number, andamento: string, numeros = { xmls: 0, novos: 0, jaSalvos: 0, doDrive: 0 }) => setTimeout(() => {
+        pedidos.set('xmls|' + k, { id, status: 'processando', andamento, erro: '', em, fase, pct, numeros, ...(pct >= 80 ? { zip } : {}) });
         mudou();
       }, ms);
       pedidos.set('xmls|' + k, { status: 'pendente', andamento: '', erro: '', em });
       mudou();
-      passo('processando', 'Emitidas · NF-e (0 XMLs até agora)', 600);
-      passo('processando', 'Recebidas · NF-e (62 XMLs até agora)', 1400);
-      passo('processando', 'Lendo as notas no nads', 1800);
-      passo('processando', 'Salvando 104 XMLs no Drive', 2200);
+      passo(500, 'baixando', 3, 'Conferindo o que já está no Drive');
+      passo(1200, 'baixando', 12, 'Já no Drive: 60 XMLs · baixando NF-e', { xmls: 0, novos: 0, jaSalvos: 0, doDrive: 60 });
+      for (let i = 1; i <= 5; i++) passo(1200 + i * 450, 'baixando', 12 + i * 11, 'Baixando NF-e do portal', { xmls: 0, novos: 0, jaSalvos: 0, doDrive: 60 });
+      passo(3800, 'entregando', 76, 'Entregando o .zip (parte 1 de 1)', { xmls: 104, novos: 0, jaSalvos: 0, doDrive: 60 });
+      passo(4300, 'nads', 82, 'Lendo as notas no nads', { xmls: 104, novos: 0, jaSalvos: 0, doDrive: 60 });
+      for (let i = 1; i <= 4; i++) passo(4600 + i * 300, 'drive', 84 + i * 3, 'Salvando no Drive (' + i * 11 + ' de 44)', { xmls: 104, novos: i * 11, jaSalvos: 60, doDrive: 60 });
       setTimeout(() => {
         const pasta = 'Claudio Secretario/' + competencia + '/EMPRESA ' + codigo;
         notasBaixadas.set(k, { codigo, competencia, em: agora(), pasta, arquivos: 104, novos: 104, ...xmlsDeExemplo(competencia) });
-        pedidos.set('xmls|' + k, { id, status: 'concluido', andamento: '', erro: '', em, zip, resultado: { arquivos: 104, novos: 104, pasta, zip: zip.nome, emitidas: 62, recebidas: 38 } });
+        pedidos.set('xmls|' + k, { id, status: 'concluido', andamento: '', erro: '', em, zip, fase: 'pronto', pct: 100, numeros: { xmls: 104, novos: 44, jaSalvos: 60, doDrive: 60 }, resultado: { arquivos: 104, novos: 44, jaSalvos: 60, pasta, zip: zip.nome, emitidas: 62, recebidas: 38 } });
         mudou();
-      }, 3000);
+      }, 6200);
     },
     pedido: (codigo, competencia, tipo = 'saidas') => pedidos.get(tipo + '|' + codigo + '_' + competencia) || null,
     async pedirContagem(codigo, competencia) {
