@@ -110,25 +110,24 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so }: {
               </div>
               <FaixaQueAbre titulo="Lançamentos sugeridos" qtd={inss.sugestoes.length} aviso={inss.sugestoes.length > 0}>
                 <div className="imp-mov-caixa">
-                  <span className="imp-mov-periodo">Mostrando {inss.mostrando}</span>
-                  {/* a exportação para o Alterdata (Vitor, 07/10/2026): a conta do INSS a recolher, a contrapartida de cada
-                      lançamento e o .xls de importação (as 8 colunas, o mesmo do Creditor) */}
-                  {inss.sugestoes.length > 0 && (
-                    <div className="tarefas-barra-topo">
-                      <label className="busca-curta" title={inss.contaTravada ? 'A conta do INSS a recolher do balancete da empresa (travada)' : 'O código da conta do INSS a recolher no plano de contas'}>
-                        <Icone nome={inss.contaTravada ? 'lock' : 'hash'} />
-                        <input type="text" inputMode="numeric" placeholder="Conta do INSS a recolher" aria-label="Código da conta do INSS a recolher"
-                          value={inss.contaInss} readOnly={inss.contaTravada} disabled={inss.contaTravada} onChange={e => inss.setContaInss(e.target.value)} />
-                      </label>
-                      {inss.nomeDaContaInss && <span className="hint" title="Do balancete da empresa">{inss.nomeDaContaInss}</span>}
-                      <span className="tarefas-barra-espaco" />
-                      {inss.faltaContrapartida > 0 && <span className="hint">Falta a contrapartida de {inss.faltaContrapartida} {inss.faltaContrapartida === 1 ? 'lançamento' : 'lançamentos'}</span>}
-                      <button type="button" className="btn btn-primary" disabled={!inss.podeExportar} onClick={inss.baixarXls}
-                        title={inss.podeExportar ? 'Baixar o .xls de importação do Alterdata com todos os lançamentos do período' : 'Informe a conta do INSS a recolher e a contrapartida de cada lançamento'}>
-                        <Icone nome="download" />Baixar .xls
-                      </button>
-                    </div>
-                  )}
+                  {/* numa linha só (Vitor, 08/10/2026): o período, a conta do INSS a recolher (o mesmo menu de conta da tabela;
+                      travada quando vem do balancete) e o Importar no meu Sistema (o .xls do Alterdata, as 8 colunas do Creditor) */}
+                  <div className="tarefas-barra-topo">
+                    <span className="imp-mov-periodo">Mostrando {inss.mostrando}</span>
+                    {inss.sugestoes.length > 0 && (
+                      <>
+                        <span className="hint">Crédito</span>
+                        <MenuDeConta valor={inss.contaInss} contas={inss.contas} onEscolher={inss.setContaInss} travado={inss.contaTravada} />
+                        {inss.nomeDaContaInss && <span className="hint" title={inss.contaTravada ? 'Do balancete da empresa' : undefined}>{inss.nomeDaContaInss}</span>}
+                        <span className="tarefas-barra-espaco" />
+                        {inss.faltaContrapartida > 0 && <span className="hint">Falta a contrapartida de {inss.faltaContrapartida} {inss.faltaContrapartida === 1 ? 'lançamento' : 'lançamentos'}</span>}
+                        <button type="button" className="btn btn-primary" disabled={!inss.podeExportar} onClick={inss.baixarXls}
+                          title={inss.podeExportar ? 'Baixar o .xls de importação do Alterdata com todos os lançamentos do período' : 'Informe a conta do INSS a recolher e a contrapartida de cada lançamento'}>
+                          <Icone nome="download" />Importar no meu Sistema
+                        </button>
+                      </>
+                    )}
+                  </div>
                   {!inss.sugestoes.length ? <p className="hint">Nada a lançar: o razão bate com as guias.</p> : (
                     <div className="imp-mov">
                       <table className="table-compact">
@@ -141,7 +140,7 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so }: {
                                   a contrapartida de cada lançamento; quando ela é o crédito (provisão a maior), o aviso embaixo */}
                               <td>
                                 <MenuDeConta valor={s.contrapartida} contas={inss.contas} onEscolher={c => inss.escolherContrapartida(s.chave, c)} />
-                                <span className="hint" style={{ display: 'block', marginTop: 2 }}>{s.lado === 'credito' ? 'Vai a crédito (o INSS a recolher a débito)' : s.sugerida}</span>
+                                <span className="hint" style={{ display: 'block', marginTop: 2 }}>{s.nomeDaContrapartida}{s.lado === 'credito' ? ' · vai a crédito (o INSS a recolher a débito)' : ''}</span>
                               </td>
                               <td className="num">{s.valor}</td>
                               <td className="wrap">{s.historico}</td>

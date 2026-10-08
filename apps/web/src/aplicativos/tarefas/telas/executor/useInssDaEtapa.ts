@@ -126,6 +126,8 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
         debito: s.debito, credito: s.credito, valor: reais(s.valor), historico: s.historico, motivo: s.motivo,
         /** de que lado fica a contrapartida, o que a conferência sugeriu e o código escolhido ('' = falta escolher) */
         lado: cp.lado, sugerida: cp.sugerida, contrapartida: contraDe(s),
+        /** o nome da conta escolhida (do balancete ou do razão); sem ela na lista, o texto sugerido sem o código */
+        nomeDaContrapartida: contas.find(x => x.codigo === contraDe(s))?.nome || cp.sugerida.replace(/^[0-9]+ */, ''),
       };
     }),
     contas, contaInss, setContaInss,
