@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ErroTipoErrado, lerBalancete, lerNotas, lerRazao, lerServicos } from './index';
+import { ErroTipoErrado, lerBalancete, lerBalanceteDoArquivo, lerNotas, lerRazao, lerServicos } from './index';
 
 const linhaBal = (desc: string, saldo: string) => ['', '', desc, '', '', '', '', saldo];
 
@@ -94,5 +94,27 @@ describe('lerRazao', () => {
       { txt: 'Compra NF 100-11222333000100-FORN', data: '05/07/2026', valor: 1234.56, sinal: -1, contra: '21101' },
       { txt: 'Pagamento ', data: '06/07/2026', valor: 50, sinal: 1, contra: '' },
     ]);
+  });
+});
+
+describe('balancete dinâmico (Vitor, 08/10/2026)', () => {
+  const rows = [
+    ['Código', 'Classificação', 'Descrição', 'Saldo Anterior', '07/2026', '08/2026', '09/2026'],
+    ['1', '1', 'ATIVO', 100, 120, 150, 0],
+    ['10101', '1.1.1.01.001', 'Caixa', 100, 120, 150, 0],
+    ['36475', '1.1.2.01.186', 'MEIRY SUPERMERCADO LTDA', 0, 0, -44.68, 0],
+    ['00030', '2', 'PASSIVO', -100, -120, -150, 0],
+    ['21101', '2.1.3.01.001', 'Fornecedor X', -100, -120, -150, 0],
+  ];
+  const d = lerBalanceteDoArquivo(rows.map(r => r.map(String)));
+  it('o normal vazio cai no dinâmico, com o saldo do último mês com movimento', () => {
+    expect(d.dinamico).toEqual({ mes: '2026-08' });
+    expect(d.contas['10101']).toMatchObject({ valor: 150, dc: 'D', grupo: 'Ativo', sintetica: false });
+    expect(d.contas['36475']).toMatchObject({ valor: 44.68, dc: 'C', grupo: 'Ativo' });
+    expect(d.contas['21101']).toMatchObject({ valor: 150, dc: 'C', grupo: 'Passivo' });
+    expect(d.contas['1'].sintetica).toBe(true);
+  });
+  it('o normal continua lido como antes', () => {
+    expect(lerBalanceteDoArquivo([linhaBal('Caixa Geral - [11101]', '10,00 D')]).dinamico).toBeUndefined();
   });
 });
