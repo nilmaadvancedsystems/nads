@@ -62,7 +62,13 @@ export function criarSiegMemoria(): RepoSieg {
     async pedirXmls(codigo, competencia) {
       const k = codigo + '_' + competencia;
       const em = agora();
-      const passo = (status: string, andamento: string, ms: number) => setTimeout(() => { pedidos.set('xmls|' + k, { status, andamento, erro: '', em }); mudou(); }, ms);
+      // o .zip entra junto com o "Lendo as notas" (o robô entrega antes), e o pedido novo tem outro id (baixa de novo)
+      const id = 'exemplo-' + em;
+      const zip = { nome: 'SIEG ' + competencia + ' - EMPRESA ' + codigo + '.zip', partes: ['exemplo'], bytes: 22 };
+      const passo = (status: string, andamento: string, ms: number) => setTimeout(() => {
+        pedidos.set('xmls|' + k, { id, status, andamento, erro: '', em, ...(/^(Lendo|Salvando)/.test(andamento) ? { zip } : {}) });
+        mudou();
+      }, ms);
       pedidos.set('xmls|' + k, { status: 'pendente', andamento: '', erro: '', em });
       mudou();
       passo('processando', 'Emitidas · NF-e (0 XMLs até agora)', 600);
@@ -72,7 +78,7 @@ export function criarSiegMemoria(): RepoSieg {
       setTimeout(() => {
         const pasta = 'Claudio Secretario/' + competencia + '/EMPRESA ' + codigo;
         notasBaixadas.set(k, { codigo, competencia, em: agora(), pasta, arquivos: 104, novos: 104, emitidas: [], recebidas: [] });
-        pedidos.set('xmls|' + k, { status: 'concluido', andamento: '', erro: '', em, resultado: { arquivos: 104, novos: 104, pasta, emitidas: 62, recebidas: 38 } });
+        pedidos.set('xmls|' + k, { id, status: 'concluido', andamento: '', erro: '', em, zip, resultado: { arquivos: 104, novos: 104, pasta, zip: zip.nome, emitidas: 62, recebidas: 38 } });
         mudou();
       }, 3000);
     },
