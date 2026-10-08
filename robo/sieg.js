@@ -114,6 +114,24 @@ async function chamar(c, rota, corpo) {
 // ---------- ZIP (o baixar-xmls pode mandar os XMLs num .zip em Base64): leitor mínimo, sem biblioteca ----------
 function lerZip(buf) {
   const saida = [];
+  // pelo índice do fim do arquivo (o zip do portal, 08/10/2026, grava os tamanhos depois dos dados: o cabeçalho de cada
+  // arquivo vem com tamanho 0)
+  let fim = buf.length - 22;
+  while (fim >= 0 && buf.readUInt32LE(fim) !== 0x06054b50) fim--;
+  if (fim >= 0) {
+    const total = buf.readUInt16LE(fim + 10);
+    let j = buf.readUInt32LE(fim + 16);
+    for (let n = 0; n < total && buf.readUInt32LE(j) === 0x02014b50; n++) {
+      const metodo = buf.readUInt16LE(j + 10);
+      const tam = buf.readUInt32LE(j + 20);
+      const local = buf.readUInt32LE(j + 42);
+      const ini = local + 30 + buf.readUInt16LE(local + 26) + buf.readUInt16LE(local + 28);
+      const dados = buf.subarray(ini, ini + tam);
+      saida.push((metodo === 8 ? zlib.inflateRawSync(dados) : dados).toString('utf8'));
+      j += 46 + buf.readUInt16LE(j + 28) + buf.readUInt16LE(j + 30) + buf.readUInt16LE(j + 32);
+    }
+    return saida;
+  }
   let i = 0;
   while (i + 30 <= buf.length && buf.readUInt32LE(i) === 0x04034b50) {
     const metodo = buf.readUInt16LE(i + 8);
@@ -309,7 +327,19 @@ function iniciarSieg({ db, log }) {
             if (!cli) throw new Error('o cliente ' + p.codigo + ' não está no cadastro');
             if (!fs.existsSync(PASTA_DO_DRIVE)) throw new Error('a pasta do Drive deste PC não está em ' + PASTA_DO_DRIVE);
             await d.ref.update({ andamento: 'Baixando do SIEG' });
-            const { arquivos, resumo, contagem } = await xmlsDoMes(c, cnpj, p.competencia, t => d.ref.update({ andamento: t }).catch(() => {}));
+            const andar = t => d.ref.update({ andamento: t }).catch(() => {});
+            // pelo portal primeiro (08/10/2026: "tem clientes com 1000 xml de uma vez, quero que ele vá no site e baixe"):
+            // um .zip por tipo de nota, em segundos; sem a sessão do portal ou com erro, pela API (mais lenta)
+            let baixado;
+            try {
+              baixado = await require('./sieg-portal').xmlsPeloPortal(cnpj, p.competencia, andar, lerZip);
+              log('SIEG: XMLs de', p.codigo, 'pelo portal');
+            } catch (err) {
+              log('SIEG: portal não deu (' + err.message + '), XMLs de', p.codigo, 'pela API');
+              await andar('O portal não deu (' + err.message + '): baixando pela API');
+              baixado = await xmlsDoMes(c, cnpj, p.competencia, andar);
+            }
+            const { arquivos, resumo, contagem } = baixado;
             // a contagem que veio junto atualiza o painel do SIEG (o mesmo do Contar agora)
             await db.collection('siegContagens').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), ...contagem });
             await d.ref.update({ andamento: 'Salvando ' + arquivos.length + ' XMLs no Drive' });
