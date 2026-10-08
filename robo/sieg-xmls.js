@@ -28,6 +28,13 @@ function tipoDoXml(xml) {
   return null;
 }
 
+/** O tipo de nota de qualquer XML do mês, a nota ou um evento dela (pelo modelo na chave: 55, 65, 57, 59); '' se não sabe. */
+function tipoDeNota(xml) {
+  if (tipoDoXml(xml) === 'nfse') return 'NFS-e';
+  const m = /Id="(?:NFe|CTe)(\d{44})"/.exec(xml) || /<(?:\w+:)?ch(?:NFe|CTe)>(\d{44})</.exec(xml);
+  return m ? ({ 55: 'NF-e', 65: 'NFC-e', 57: 'CT-e', 67: 'CT-e', 59: 'CF-e' }[m[1].slice(20, 22)] || '') : '';
+}
+
 /** O nome do arquivo na pasta: a chave (NF-e/CT-e), a chave e o evento, ou o número da NFS-e. Sempre o mesmo para o mesmo XML. */
 function nomeDoArquivo(xml) {
   const t = tipoDoXml(xml);
@@ -124,4 +131,4 @@ function zipDe(arquivos) {
   return Buffer.concat([...locais, dir, fim]);
 }
 
-module.exports = { tipoDoXml, nomeDoArquivo, resumoDaNota, zipDe, crc32 };
+module.exports = { tipoDoXml, tipoDeNota, nomeDoArquivo, resumoDaNota, zipDe, crc32 };

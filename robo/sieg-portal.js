@@ -63,31 +63,26 @@ async function zipDoPeriodo(cookie, doc, tipo, competencia) {
   return buf;
 }
 
+// o ritmo do portal (08/10/2026: de 10 a 25 XMLs por segundo, mais uns 2 s para começar): só para a barra andar
+const XMLS_POR_SEGUNDO = 12;
+
 /**
  * Todos os XMLs do mês pelo portal, no mesmo formato do xmlsDoMes da API: { arquivos, resumo, contagem }. A nota é
  * emitida quando o emitente é o cliente; o resto é recebida.
+ *
+ * aoAndar(texto, fracao): fracao vai de 0 a 1 ao longo do download (08/10/2026: "quero uma porcentagem melhor… pra
+ * espera não ficar estranha"). Cada tipo de nota pesa o que a contagem do SIEG espera dele (esperado: { 'NF-e': 300 … });
+ * enquanto o .zip não chega, a barra anda sozinha devagarinho, chegando perto do fim do tipo sem passar dele.
  */
-async function xmlsPeloPortal(doc, competencia, aoAndar, lerZip, soTipos) {
+async function xmlsPeloPortal(doc, competencia, aoAndar, lerZip, soTipos, esperado, jaTenho) {
   doc = soDigitos(doc);
-  if (aoAndar) await aoAndar('Entrando no portal do SIEG');
-  let cookie = await cookiesDoPortal();
+  const andar = (t, f) => (aoAndar ? aoAndar(t, Math.max(0, Math.min(1, f))) : undefined);
   const arquivos = new Map();
   const resumo = { emitidas: [], recebidas: [] };
   const contagem = { emitidas: { NFe: 0, NFCe: 0, CTe: 0, NFSe: 0, CFe: 0 }, recebidas: { NFe: 0, NFCe: 0, CTe: 0, NFSe: 0, CFe: 0 } };
   const canceladas = new Set();
-  for (const [nome, tipo] of TIPOS) {
-    if (soTipos && !soTipos.includes(nome)) continue;
-    if (aoAndar) await aoAndar('Portal · ' + nome + ' (' + arquivos.size + ' XMLs até agora)');
-    let zip;
-    try { zip = await zipDoPeriodo(cookie, doc, tipo, competencia); }
-    catch (err) {
-      // a sessão guardada venceu: pega a do perfil (o Chrome) e tenta uma vez mais
-      if (err.message !== SEM_LOGIN) throw err;
-      cookie = await cookiesDoPortal();
-      zip = await zipDoPeriodo(cookie, doc, tipo, competencia);
-    }
-    if (!zip) continue;
-    for (const x of lerZip(zip)) {
+  const juntar = xmls => {
+    for (const x of xmls) {
       arquivos.set(sx.nomeDoArquivo(x), x);
       const r = sx.resumoDaNota(x);
       if (!r) continue;
@@ -97,7 +92,42 @@ async function xmlsPeloPortal(doc, competencia, aoAndar, lerZip, soTipos) {
       const chave = r.tipo.replace('-', '');
       if (chave in contagem[grupo]) contagem[grupo][chave]++;
     }
+  };
+  // os que já estavam no Drive (os tipos que não mudaram desde o último download; 08/10/2026)
+  if (jaTenho && jaTenho.length) juntar(jaTenho);
+  const tipos = TIPOS.filter(([nome]) => !soTipos || soTipos.includes(nome));
+  // nada a baixar (tudo já estava no Drive): nem abre o portal
+  let cookie = null;
+  if (tipos.length) { await andar('Entrando no portal do SIEG', 0); cookie = await cookiesDoPortal(); }
+  // o peso de cada tipo: as notas esperadas (com os eventos, uns 20% a mais) e um mínimo (o pedido sem nota leva ~1 s)
+  const peso = nome => Math.max(3, ((esperado && esperado[nome]) || 0) * 1.2);
+  const total = tipos.reduce((t, [nome]) => t + peso(nome), 0);
+  let feito = 0;
+  for (const [nome, tipo] of tipos) {
+    const p = peso(nome);
+    const segundos = 2 + p / XMLS_POR_SEGUNDO;
+    const inicio = Date.now();
+    const texto = () => 'Baixando ' + nome + ' do portal' + (arquivos.size ? ' (' + arquivos.size + ' XMLs até agora)' : '');
+    await andar(texto(), feito / total);
+    // a barra anda enquanto o portal monta o .zip: 1 − e^(−t/T), nunca chega ao fim do tipo antes da hora
+    const relogio = setInterval(() => {
+      const f = 1 - Math.exp(-((Date.now() - inicio) / 1000) / segundos);
+      andar(texto(), (feito + p * Math.min(0.95, f)) / total);
+    }, 1000);
+    let zip;
+    try {
+      try { zip = await zipDoPeriodo(cookie, doc, tipo, competencia); }
+      catch (err) {
+        // a sessão guardada venceu: pega a do perfil (o Chrome) e tenta uma vez mais
+        if (err.message !== SEM_LOGIN) throw err;
+        cookie = await cookiesDoPortal();
+        zip = await zipDoPeriodo(cookie, doc, tipo, competencia);
+      }
+    } finally { clearInterval(relogio); }
+    feito += p;
+    if (zip) juntar(lerZip(zip));
   }
+  await andar('Baixados ' + arquivos.size + ' XMLs', 1);
   for (const g of ['emitidas', 'recebidas']) for (const n of resumo[g]) if (n.chave && canceladas.has(n.chave)) n.cancelada = true;
   return { arquivos: [...arquivos].map(([nome, xml]) => ({ nome, xml })), resumo, contagem };
 }

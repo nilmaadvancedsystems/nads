@@ -235,14 +235,6 @@ async function xmlsDoMes(c, doc, competencia, aoAndar) {
   return { arquivos: [...arquivos].map(([nome, xml]) => ({ nome, xml })), resumo, contagem };
 }
 
-/** Grava um arquivo sem duplicar: o mesmo nome e o mesmo conteúdo já estão lá = não grava. Devolve se gravou. */
-async function gravarSeNovo(pasta, nome, texto) {
-  const destino = path.join(pasta, nome);
-  try { if (await fs.promises.readFile(destino, 'utf8') === texto) return false; } catch (e) { /* ainda não existe */ }
-  await fs.promises.writeFile(destino, texto);
-  return true;
-}
-
 /** O resumo para o banco, cabendo num documento (até ~900 KB): se passar, sai o detalhe dos itens (fica o resto da nota). */
 function resumoQueCabe(doc) {
   if (Buffer.byteLength(JSON.stringify(doc)) < 900000) return doc;
@@ -312,13 +304,14 @@ function iniciarSieg({ db, log }) {
    * O .zip para o nads baixar na hora: em pedaços de ~900 KB (o limite de um documento é 1 MB) em siegNotas, que o fiscal
    * já lê ({codigo}_{AAAA-MM}~zip~01, ~02…; sem regra nova). Ficam 1 dia; depois o robô apaga (apagarZipsVelhos).
    */
-  async function entregarZip(pedidoId, id, zip) {
+  async function entregarZip(pedidoId, id, zip, aoAndar) {
     const b64 = zip.toString('base64');
     const partes = [];
     for (let i = 0, n = 1; i < b64.length; i += ZIP_PEDACO, n++) {
       const nome = id + '~zip~' + String(n).padStart(2, '0');
       await db.collection('siegNotas').doc(nome).set({ pedido: pedidoId, n, dados: b64.slice(i, i + ZIP_PEDACO) });
       partes.push(nome);
+      if (aoAndar) await aoAndar(n, Math.ceil(b64.length / ZIP_PEDACO));
     }
     return partes;
   }
@@ -366,32 +359,75 @@ function iniciarSieg({ db, log }) {
             const cli = lista.find(x => codigoDe(x) === soDigitos(p.codigo));
             if (!cli) throw new Error('o cliente ' + p.codigo + ' não está no cadastro');
             if (!fs.existsSync(PASTA_DO_DRIVE)) throw new Error('a pasta do Drive deste PC não está em ' + PASTA_DO_DRIVE);
-            await d.ref.update({ andamento: 'Baixando do SIEG' });
-            const andar = t => d.ref.update({ andamento: t }).catch(() => {});
+            // o andamento de verdade (08/10/2026: "quero uma porcentagem melhor… pra espera não ficar estranha"): cada fase
+            // tem a sua faixa da barra (baixar 0–70%, o .zip 70–80, o nads 80–84, o Drive 84–99) e o pedido guarda a
+            // porcentagem, a fase e os números (gravado no máximo a cada 0,8 s, para não encher o banco)
+            const FAIXA = { baixando: [0, 70], entregando: [70, 80], nads: [80, 84], drive: [84, 99] };
+            const numeros = { xmls: 0, novos: 0, jaSalvos: 0 };
+            let ultimo = 0;
+            let pct = 1;
+            const andar = (fase, texto, fracao, forcar) => {
+              if (fracao != null) pct = Math.max(pct, Math.round(FAIXA[fase][0] + (FAIXA[fase][1] - FAIXA[fase][0]) * fracao));
+              if (!forcar && Date.now() - ultimo < 800) return Promise.resolve();
+              ultimo = Date.now();
+              return d.ref.update({ andamento: texto, fase, pct, numeros }).catch(() => {});
+            };
+            await andar('baixando', 'Entrando no SIEG', 0, true);
+            // o que a contagem espera de cada tipo (pesa a barra do download)
+            const cont = (await db.collection('siegContagens').doc(id).get().catch(() => null))?.data();
+            const soma = k => ((cont && cont.emitidas && cont.emitidas[k]) || 0) + ((cont && cont.recebidas && cont.recebidas[k]) || 0);
+            const esperado = cont ? { 'NF-e': soma('NFe'), 'NFC-e': soma('NFCe'), 'CT-e': soma('CTe'), 'NFS-e': soma('NFSe'), 'CF-e': soma('CFe') } : null;
+            const nomeDaPasta = (cli.nome || 'cliente ' + p.codigo).replace(/[\\/:*?"<>|]/g, '_').trim().slice(0, 80);
+            const nomeDoZip = 'SIEG ' + p.competencia + ' - ' + nomeDaPasta + '.zip';
+            const pasta = path.join(PASTA_DO_DRIVE, p.competencia, nomeDaPasta);
+            // já baixou antes? (08/10/2026: "caso tenham baixado esses XMLs, para acelerar, verifica se tem todos no Drive,
+            // aí puxa de lá, baixando apenas os excedentes"): conta agora no SIEG (2 consultas rápidas) e compara, tipo por
+            // tipo, com as notas do último download; o tipo que não mudou sai do .zip que está na pasta, sem baixar
+            let doDrive = [];
+            let soTipos = null;
+            const anterior = (await db.collection('siegNotas').doc(id).get().catch(() => null))?.data();
+            const zipAntigo = path.join(pasta, nomeDoZip);
+            if (anterior && Array.isArray(anterior.emitidas) && fs.existsSync(zipAntigo)) {
+              try {
+                await andar('baixando', 'Conferindo o que já está no Drive', 0, true);
+                const agora = await contagemDoMes(c, cnpj, p.competencia);
+                const antes = {};
+                for (const n of [...anterior.emitidas, ...(anterior.recebidas || [])]) antes[n.tipo] = (antes[n.tipo] || 0) + 1;
+                const CHAVE = { 'NF-e': 'NFe', 'NFC-e': 'NFCe', 'CT-e': 'CTe', 'NFS-e': 'NFSe', 'CF-e': 'CFe' };
+                const iguais = Object.keys(CHAVE).filter(t => (agora.emitidas[CHAVE[t]] || 0) + (agora.recebidas[CHAVE[t]] || 0) === (antes[t] || 0));
+                soTipos = Object.keys(CHAVE).filter(t => !iguais.includes(t));
+                const velhos = lerZip(await fs.promises.readFile(zipAntigo));
+                doDrive = velhos.filter(x => iguais.includes(sx.tipoDeNota(x)));
+                // o peso da barra: só o que vai baixar
+                for (const t of iguais) if (esperado) esperado[t] = 0;
+                log('SIEG: XMLs de', p.codigo, '- do Drive:', iguais.join(', ') || 'nada', '· baixar:', soTipos.join(', ') || 'nada');
+                await andar('baixando', soTipos.length ? 'Já no Drive: ' + doDrive.length + ' XMLs · baixando ' + soTipos.join(', ') : 'Tudo já estava no Drive (' + doDrive.length + ' XMLs)', 0.05, true);
+              } catch (err) { log('SIEG: não deu para usar o Drive (' + err.message + '), baixando tudo'); doDrive = []; soTipos = null; }
+            }
             // pelo portal primeiro (08/10/2026: "tem clientes com 1000 xml de uma vez, quero que ele vá no site e baixe"):
             // um .zip por tipo de nota, em segundos; sem a sessão do portal ou com erro, pela API (mais lenta)
             let baixado;
             try {
-              baixado = await require('./sieg-portal').xmlsPeloPortal(cnpj, p.competencia, andar, lerZip);
+              baixado = await require('./sieg-portal').xmlsPeloPortal(cnpj, p.competencia, (t, f) => andar('baixando', t, f), lerZip, soTipos, esperado, doDrive);
               log('SIEG: XMLs de', p.codigo, 'pelo portal');
             } catch (err) {
               log('SIEG: portal não deu (' + err.message + '), XMLs de', p.codigo, 'pela API');
-              await andar('O portal não deu (' + err.message + '): baixando pela API');
-              baixado = await xmlsDoMes(c, cnpj, p.competencia, andar);
+              await andar('baixando', 'O portal não deu (' + err.message + '): baixando pela API', null, true);
+              baixado = await xmlsDoMes(c, cnpj, p.competencia, t => andar('baixando', t, null));
             }
             const { arquivos, resumo, contagem } = baixado;
-            const nomeDaPasta = (cli.nome || 'cliente ' + p.codigo).replace(/[\\/:*?"<>|]/g, '_').trim().slice(0, 80);
-            const nomeDoZip = 'SIEG ' + p.competencia + ' - ' + nomeDaPasta + '.zip';
+            numeros.xmls = arquivos.length;
+            numeros.doDrive = doDrive.length;
             const zip = arquivos.length ? sx.zipDe(arquivos) : null;
             // a ordem (Vitor, 08/10/2026: "seja entregue para a pessoa o zip dos XML, depois que ele introduza esses XML
             // no sistema (nads), depois que ele salve no drive"): 1) o .zip para quem pediu, que o nads baixa na hora
             if (zip) {
-              await andar('Entregando o .zip (' + arquivos.length + ' XMLs)');
-              const partes = await entregarZip(d.ref.id, id, zip);
+              await andar('entregando', 'Entregando o .zip (' + arquivos.length + ' XMLs)', 0, true);
+              const partes = await entregarZip(d.ref.id, id, zip, (i, n) => andar('entregando', 'Entregando o .zip (parte ' + i + ' de ' + n + ')', i / n));
               await d.ref.update({ zip: { nome: nomeDoZip, partes, bytes: zip.length }, zipApagarEm: new Date(Date.now() + ZIP_GUARDADO_MS).toISOString() });
             }
             // 2) as notas no nads (o resumo e a contagem)
-            await andar('Lendo as notas no nads');
+            await andar('nads', 'Lendo as notas no nads', 0, true);
             await db.collection('siegContagens').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), ...contagem });
             const onde = 'Claudio Secretario/' + p.competencia + '/' + nomeDaPasta;
             await db.collection('siegNotas').doc(id).set(resumoQueCabe({
@@ -400,22 +436,31 @@ function iniciarSieg({ db, log }) {
             }));
             // e a sequência das saídas (a Conferência de Saídas lê daqui, sem outro pedido)
             await db.collection('siegSaidas').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), series: seriesDasNotas(saidasDoResumo(resumo.emitidas)) });
-            // 3) a pasta do cliente no Drive (os XMLs para o Alterdata e o .zip)
-            await andar('Salvando ' + arquivos.length + ' XMLs no Drive');
-            const pasta = path.join(PASTA_DO_DRIVE, p.competencia, nomeDaPasta);
-            fs.mkdirSync(pasta, { recursive: true });
-            // em paralelo (16 por vez): no Drive cada arquivo leva ~120 ms, um por um 850 XMLs levavam 100 s
+            // 3) a pasta do cliente no Drive: só os XMLs que ainda não estão lá (08/10/2026: "se já foi salvo uma vez, só
+            // sobreponha os a mais e não salve no drive o que já foi salvo"). O nome do arquivo é a chave da nota: o mesmo
+            // nome é a mesma nota. O .zip só é refeito quando entrou XML novo (ou quando ainda não existe)
+            await fs.promises.mkdir(pasta, { recursive: true });
+            const jaTem = new Set(await fs.promises.readdir(pasta).catch(() => []));
+            const faltam = arquivos.filter(a => !jaTem.has(a.nome));
+            numeros.jaSalvos = arquivos.length - faltam.length;
+            await andar('drive', faltam.length ? 'Salvando ' + faltam.length + ' XMLs novos no Drive' : 'Todos os XMLs já estavam no Drive', 0, true);
+            // em paralelo (16 por vez): no Drive cada arquivo leva ~120 ms
             let novos = 0;
-            const fila = arquivos.slice();
+            const fila = faltam.slice();
             await Promise.all(Array.from({ length: 16 }, async () => {
-              for (let a = fila.shift(); a; a = fila.shift()) if (await gravarSeNovo(pasta, a.nome, a.xml)) novos++;
+              for (let a = fila.shift(); a; a = fila.shift()) {
+                await fs.promises.writeFile(path.join(pasta, a.nome), a.xml);
+                novos++;
+                numeros.novos = novos;
+                andar('drive', 'Salvando no Drive (' + novos + ' de ' + faltam.length + ')', novos / faltam.length);
+              }
             }));
             // e o .zip com todos, na mesma pasta (07/10/2026: "quero que ele também salve um arquivo .zip na hora")
-            if (zip) await fs.promises.writeFile(path.join(pasta, nomeDoZip), zip);
+            if (zip && (novos || !jaTem.has(nomeDoZip))) await fs.promises.writeFile(path.join(pasta, nomeDoZip), zip);
             await db.collection('siegNotas').doc(id).update({ novos }).catch(() => {});
             await d.ref.update({
-              status: 'concluido', concluidoEm: new Date().toISOString(), andamento: '',
-              resultado: { arquivos: arquivos.length, novos, pasta: onde, zip: arquivos.length ? nomeDoZip : '', emitidas: resumo.emitidas.length, recebidas: resumo.recebidas.length },
+              status: 'concluido', concluidoEm: new Date().toISOString(), andamento: '', pct: 100, fase: 'pronto', numeros,
+              resultado: { arquivos: arquivos.length, novos, jaSalvos: numeros.jaSalvos, pasta: onde, zip: arquivos.length ? nomeDoZip : '', emitidas: resumo.emitidas.length, recebidas: resumo.recebidas.length },
             });
             log('SIEG: XMLs de', p.codigo, p.competencia, '-', arquivos.length, 'arquivos (' + novos + ' novos) em', onde);
             continue;

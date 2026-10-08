@@ -738,6 +738,10 @@ const nfeItensT = '<nfeProc><NFe><infNFe Id="NFe31260919449248000162550010000102
 igual('SIEG: o resumo da NF-e com o item', sxT.resumoDaNota(nfeItensT).itens, [{ ncm: '21069090', cfop: '5102', cst: '000', cest: '1704900', valor: 100.5 }]);
 igual('SIEG: o nome do arquivo da NF-e', sxT.nomeDoArquivo(nfeItensT), '31260919449248000162550010000102701620070002-nfe.xml');
 igual('SIEG: o cancelamento no resumo', sxT.resumoDaNota(cancT), { cancela: '31260919449248000162550010000102701620070002' });
+// o tipo de nota de qualquer XML, a nota ou o evento (pelo modelo na chave; 08/10/2026: o Drive como atalho)
+igual('SIEG: o tipo da NF-e', sxT.tipoDeNota(nfeItensT), 'NF-e');
+igual('SIEG: o tipo do cancelamento da NF-e (pela chave do evento)', sxT.tipoDeNota(cancT), 'NF-e');
+igual('SIEG: o evento de uma NFC-e', sxT.tipoDeNota('<evento><tpEvento>110111</tpEvento><chNFe>31260919449248000162650010000102701620070002</chNFe></evento>'), 'NFC-e');
 // as saídas montadas das notas do "Baixar XMLs" (08/10/2026): só NF-e e NFC-e, por série, a cancelada fora do valor
 const siegT = require('./sieg');
 igual('SIEG: as saídas do resumo das notas', siegT.seriesDasNotas(siegT.saidasDoResumo([
