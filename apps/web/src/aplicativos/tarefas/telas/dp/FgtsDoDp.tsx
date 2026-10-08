@@ -1,8 +1,9 @@
-// DP › FGTS Digital (07/10/2026): o robô da nuvem emite a guia mensal de cada cliente no portal do FGTS Digital, com o
-// certificado do escritório (procuração no SPE). Em cima, o robô (ligado com o certificado, ou por que está desligado);
-// a competência, os filtros e "Emitir as que faltam"; na lista, cada cliente com folha no mês: a situação da guia,
-// Emitir / Ensaio e, pronta, Baixar o PDF. Clicar na situação abre os passos do robô (as telas por onde passou).
-import { BotaoAcao, BotaoIcone, Esqueleto, Icone, Segmentado, SeletorMes, useCarregando } from '@nads/ui';
+// DP › FGTS Digital (07/10/2026): o robô emite a guia mensal de cada cliente no portal do FGTS Digital, com o
+// certificado do escritório (procuração no SPE). Como as Obrigações (Vitor, 08/10/2026: "igual às Obrigações", "ações
+// mais limpas", "marcar várias e emitir", "acompanhar o robô"): os filtros numa linha; o painel do robô (o que ele faz
+// agora, a verificação do gov.br e a fila); a tabela com a caixinha para o lote, a situação como selo e, na linha, só
+// Emitir (ou o PDF) e o ⋯ (Ensaio, Emitir de novo, Passos do robô). Clicar na situação abre os passos do robô.
+import { BotaoAcao, Esqueleto, Icone, MenuSuspenso, SeletorMes, useCarregando } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { JanelaLateral } from '../janela/JanelaLateral';
 import { useFgtsDoDp, type FiltroFgts, type SituacaoFgts } from './useFgtsDoDp';
@@ -11,17 +12,21 @@ const cnpjFormatado = (d: string) => d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d
 const data = (iso: string) => (iso ? iso.slice(0, 10).split('-').reverse().join('/') : '');
 const hora = (iso: string) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '');
 
+// os selos como a Situação das Obrigações: verde feito, laranja andando, vermelho parado, cinza o resto
 const SELO: Record<SituacaoFgts, { classe: string; rotulo: string }> = {
-  'sem-cnpj': { classe: 'pill-vazio', rotulo: 'sem CNPJ no cadastro' },
-  nada: { classe: 'pill-vazio', rotulo: 'não pedida' },
-  fila: { classe: 'badge badge-neutral', rotulo: 'Na fila do robô' },
-  trabalhando: { classe: 'badge badge-warn', rotulo: 'O robô está no portal…' },
-  verificacao: { classe: 'badge badge-warn', rotulo: 'Clique na verificação' },
-  emitida: { classe: 'badge badge-ok', rotulo: 'Guia emitida' },
-  'ensaio-ok': { classe: 'badge badge-neutral', rotulo: 'Ensaio: entrou' },
-  erro: { classe: 'badge badge-danger', rotulo: 'Não deu' },
-  captcha: { classe: 'badge badge-warn', rotulo: 'Fazer à mão' },
+  'sem-cnpj': { classe: 'badge badge-neutral', rotulo: 'Sem CNPJ' },
+  nada: { classe: 'badge badge-neutral', rotulo: 'Não pedida' },
+  fila: { classe: 'badge badge-neutral', rotulo: 'Na fila' },
+  trabalhando: { classe: 'badge badge-warn', rotulo: 'Com o robô' },
+  verificacao: { classe: 'badge badge-warn', rotulo: 'Verificação' },
+  emitida: { classe: 'badge badge-ok', rotulo: 'Emitida' },
+  'ensaio-ok': { classe: 'badge badge-neutral', rotulo: 'Ensaio ok' },
+  erro: { classe: 'badge badge-parada', rotulo: 'Não deu' },
+  captcha: { classe: 'badge badge-parada', rotulo: 'Fazer à mão' },
 };
+const SITUACOES: { valor: FiltroFgts; rotulo: string }[] = [
+  { valor: 'todos', rotulo: 'Todas' }, { valor: 'faltam', rotulo: 'Faltam' }, { valor: 'emitidas', rotulo: 'Emitidas' }, { valor: 'problemas', rotulo: 'Com problema' },
+];
 
 type Tela = { n: string; nome: string; imagem: string };
 
@@ -71,15 +76,11 @@ export function FgtsDoDp() {
   useCarregando(vm.carregando);
   const r = vm.robo;
   const c = vm.contagem;
-  const filtros: { valor: FiltroFgts; rotulo: string }[] = [
-    { valor: 'todos', rotulo: 'Todas · ' + c.todos },
-    { valor: 'faltam', rotulo: 'Faltam · ' + c.faltam },
-    { valor: 'emitidas', rotulo: 'Emitidas · ' + c.emitidas },
-    { valor: 'problemas', rotulo: 'Com problema · ' + c.problemas },
-  ];
   const mes = vm.competencias.find(x => x.valor === vm.competencia)?.rotulo || vm.competencia.split('-').reverse().join('/');
   const aberto = vm.aberto;
   const pedidoAberto = aberto?.pedido;
+  const agora = vm.roboAgora;
+  const qtdSituacao: Record<FiltroFgts, number> = { todos: c.todos, faltam: c.faltam, emitidas: c.emitidas, problemas: c.problemas };
   return (
     <section className="dp-painel">
       {r.carregado && !r.ligado && (
@@ -101,81 +102,120 @@ export function FgtsDoDp() {
             {vm.responsaveis.map(o => <option key={o} value={o}>{o}</option>)}
           </select>
         </label>
+        <label className="field dp-filtro">
+          <span className="hint">Situação</span>
+          <select className="select-compact" value={vm.filtro} onChange={e => vm.setFiltro(e.target.value as FiltroFgts)}>
+            {SITUACOES.map(o => <option key={o.valor} value={o.valor}>{o.rotulo} ({qtdSituacao[o.valor]})</option>)}
+          </select>
+        </label>
       </div>
 
-      <section className="card fgts-resumo">
-        <div className="fgts-resumo-topo">
-          <div className="fgts-resumo-titulo">
-            <h3>Guias de {mes}</h3>
-            <span className="hint"><b className="num">{c.emitidas}</b> de <b className="num">{c.todos}</b> emitidas{c.andando ? ' · ' + c.andando + ' com o robô agora' : ''}</span>
-          </div>
-          {r.carregado && r.ligado && r.certificado && (
-            <span className="fgts-robo-linha" title={'Certificado de ' + r.certificado.titular}>
-              <span className="bolinha-sit concluida" aria-hidden="true" />Robô ligado · certificado até {data(r.certificado.validade)}
-            </span>
-          )}
-          <BotaoAcao carregando={vm.pedindo} textoCarregando="Pedindo…" disabled={!r.ligado || !vm.faltam} onClick={() => void vm.emitirTodas()}>
-            <Icone nome="fileDown" />Emitir as que faltam{vm.faltam ? ' · ' + vm.faltam : ''}
-          </BotaoAcao>
+      {/* o robô agora: ligado, com quem está, o último passo, a verificação e a fila */}
+      <section className="card fgts-robo-painel">
+        <div className="fgts-robo-cabeca">
+          <h3 className="dp-titulo">Robô</h3>
+          {r.carregado && (r.ligado
+            ? <span className="fgts-robo-linha"><span className="bolinha-sit concluida" aria-hidden="true" />Ligado{r.certificado ? ' · certificado até ' + data(r.certificado.validade) : ''}</span>
+            : <span className="fgts-robo-linha"><span className="bolinha-sit parada" aria-hidden="true" />Desligado</span>)}
+          <span className="tarefas-barra-espaco" />
+          <span className="hint"><b className="num">{c.emitidas}</b> de <b className="num">{c.todos}</b> emitidas em {mes}</span>
         </div>
         <span className="tarefas-barra fgts-barra" role="progressbar" aria-valuemin={0} aria-valuemax={c.todos} aria-valuenow={c.emitidas} aria-label="Guias emitidas">
           <span style={{ width: (c.todos ? (c.emitidas / c.todos) * 100 : 0) + '%' }} />
         </span>
+        <div className="fgts-robo-agora">
+          <span className="hint fgts-robo-rotulo">Agora</span>
+          {agora ? (
+            <>
+              <span className="num fraco">{agora.codigo}</span>
+              <b>{agora.nome}</b>
+              <span className={SELO[agora.situacao].classe}>{SELO[agora.situacao].rotulo}</span>
+              <span className="fraco">{agora.passo} · {hora(agora.quando)}</span>
+              <span className="tarefas-barra-espaco" />
+              {agora.situacao === 'verificacao'
+                ? <button type="button" className="btn btn-primary" onClick={() => vm.abrir(agora.pedidoId)}>Fazer a verificação</button>
+                : <button type="button" className="btn btn-outline" onClick={() => vm.abrir(agora.pedidoId)}>Ver passos</button>}
+            </>
+          ) : <span className="fraco">parado</span>}
+        </div>
+        {vm.fila.length > 0 && (
+          <div className="fgts-robo-agora">
+            <span className="hint fgts-robo-rotulo">Na fila · {vm.fila.length}</span>
+            <span className="fgts-fila">
+              {vm.fila.slice(0, 6).map(f => <span key={f.codigo} className="badge badge-neutral" title={f.nome}>{f.codigo}</span>)}
+              {vm.fila.length > 6 && <span className="hint">+{vm.fila.length - 6}</span>}
+            </span>
+          </div>
+        )}
       </section>
 
-      {vm.verificando.map(l => l.pedido && (
-        <div key={l.pedido.id} className="card fgts-verificacao">
-          <Icone nome="alert" />
-          <span><b>{l.nome}</b>: o gov.br pediu a verificação "não sou um robô".</span>
+      <section className="card dp-lista">
+        <div className="dp-lista-topo">
+          <h3 className="dp-titulo">Guias de {mes}</h3>
+          <span className="badge badge-neutral">{vm.linhas.length}</span>
+          {c.faltam > 0 ? <span className="hint">{c.faltam} {c.faltam === 1 ? 'falta' : 'faltam'}</span> : <span className="hint">todas emitidas</span>}
           <span className="tarefas-barra-espaco" />
-          <button type="button" className="btn btn-primary" onClick={() => vm.abrir(l.pedido!.id)}>Fazer a verificação</button>
+          {vm.marcadas > 0 ? (
+            <BotaoAcao carregando={vm.pedindo} textoCarregando="Pedindo…" disabled={!r.ligado} onClick={() => void vm.emitirMarcadas()}>
+              <Icone nome="fileDown" />Emitir marcadas · {vm.marcadas}
+            </BotaoAcao>
+          ) : (
+            <BotaoAcao carregando={vm.pedindo} textoCarregando="Pedindo…" disabled={!r.ligado || !vm.faltam} onClick={() => void vm.emitirTodas()}>
+              <Icone nome="fileDown" />Emitir as que faltam{vm.faltam ? ' · ' + vm.faltam : ''}
+            </BotaoAcao>
+          )}
         </div>
-      ))}
-      <div className="tarefas-barra-topo">
-        <Segmentado valor={vm.filtro} opcoes={filtros} onMudar={vm.setFiltro} />
-      </div>
-      {vm.carregando ? <Esqueleto linhas={8} /> : vm.linhas.length ? (
-        <div className="table-wrap">
-          <table className="table-compact">
-            <thead><tr><th>Cód.</th><th>Empresa</th><th>CNPJ</th><th>Responsável</th><th>Guia</th><th /></tr></thead>
-            <tbody>
-              {vm.linhas.map(l => {
-                const selo = SELO[l.situacao];
-                const p = l.pedido;
-                return (
-                  <tr key={l.codigo}>
-                    <td><span className="emp-cod">{l.codigo}</span></td>
-                    <td className="fgts-nome">{l.nome}</td>
-                    <td className="num fraco fgts-cnpj">{l.cnpj ? cnpjFormatado(l.cnpj) : ''}</td>
-                    <td className="fraco">{l.responsavel}</td>
-                    <td>
-                      {p ? (
-                        <button type="button" className="fgts-situacao" title={p.erro || p.resultado || ''} onClick={() => vm.abrir(p.id)}>
-                          <span className={selo.classe}>{selo.rotulo}</span>
-                          <span className="fraco">{hora(p.fimEm || p.criadoEm)}</span>
-                        </button>
-                      ) : <span className={selo.classe}>{selo.rotulo}</span>}
-                    </td>
-                    <td className="fgts-acoes">
-                      {p && l.situacao === 'emitida' && <button type="button" className="btn btn-outline" onClick={() => void vm.baixar(p)}><Icone nome="download" />PDF</button>}
-                      {l.cnpj && !['fila', 'trabalhando'].includes(l.situacao) && (
-                        <>
-                          {l.situacao === 'emitida'
-                            ? <BotaoIcone icone="repeat" titulo="Emitir de novo" pequeno disabled={!r.ligado} onClick={() => void vm.pedir(l.codigo, 'emitir')} />
-                            : <>
-                              <button type="button" className="btn btn-ghost" disabled={!r.ligado} onClick={() => void vm.pedir(l.codigo, 'ensaio')}>Ensaio</button>
-                              <button type="button" className="btn btn-outline" disabled={!r.ligado} onClick={() => void vm.pedir(l.codigo, 'emitir')}>Emitir</button>
-                            </>}
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      ) : <div className="card gh-blank"><Icone nome="search" /><h4>Nenhuma empresa aqui</h4><p>Nenhum cliente do DP com folha neste filtro.</p></div>}
+        {vm.carregando ? <Esqueleto linhas={8} /> : !vm.linhas.length ? <p className="hint dp-vazio">Nenhum cliente com esses filtros.</p> : (
+          <div className="table-wrap">
+            <table className="dp-tabela fgts-tabela">
+              <thead>
+                <tr>
+                  <th className="fgts-marca"><input type="checkbox" checked={vm.todasMarcadas} onChange={e => vm.marcarTodas(e.target.checked)} aria-label="Marcar todas" title="Marcar todas da tela" /></th>
+                  <th>Cód.</th><th>Cliente</th><th>CNPJ</th><th>Responsável</th><th>Guia</th><th />
+                </tr>
+              </thead>
+              <tbody>
+                {vm.linhas.map(l => {
+                  const selo = SELO[l.situacao];
+                  const p = l.pedido;
+                  const itens = [
+                    ...(l.cnpj && l.podeMarcar ? [{ rotulo: 'Ensaio (só entrar)', icone: 'play' as const, desabilitado: !r.ligado, onClick: () => void vm.pedir(l.codigo, 'ensaio') }] : []),
+                    ...(l.situacao === 'emitida' ? [{ rotulo: 'Emitir de novo', icone: 'repeat' as const, desabilitado: !r.ligado, onClick: () => void vm.pedir(l.codigo, 'emitir') }] : []),
+                    ...(p ? [{ rotulo: 'Passos do robô', icone: 'list' as const, onClick: () => vm.abrir(p.id) }] : []),
+                  ];
+                  return (
+                    <tr key={l.codigo} className={'dp-linha' + (l.situacao === 'emitida' ? ' feita' : '')}>
+                      <td className="fgts-marca">
+                        <input type="checkbox" checked={vm.marcada(l.codigo)} disabled={!l.podeMarcar} onChange={() => vm.alternarMarca(l.codigo)} aria-label={'Marcar ' + l.nome} />
+                      </td>
+                      <td className="num fraco">{l.codigo}</td>
+                      <td className="dp-cliente"><span className="dp-cliente-nome" title={l.nome}>{l.nome}</span></td>
+                      <td className="num fraco fgts-cnpj">{l.cnpj ? cnpjFormatado(l.cnpj) : '—'}</td>
+                      <td>{l.responsavel || <span className="fraco">—</span>}</td>
+                      <td>
+                        {p ? (
+                          <button type="button" className="fgts-situacao" title={p.erro || p.resultado || 'Passos do robô'} onClick={() => vm.abrir(p.id)}>
+                            <span className={selo.classe}>{selo.rotulo}</span>
+                            <span className="fraco">{hora(p.fimEm || p.criadoEm)}</span>
+                          </button>
+                        ) : <span className={selo.classe}>{selo.rotulo}</span>}
+                      </td>
+                      <td className="fgts-acoes">
+                        <div className="fgts-acoes-linha">
+                        {p && l.situacao === 'emitida'
+                          ? <button type="button" className="btn btn-outline" onClick={() => void vm.baixar(p)}><Icone nome="download" />PDF</button>
+                          : l.podeMarcar && <button type="button" className="btn btn-outline" disabled={!r.ligado} onClick={() => void vm.pedir(l.codigo, 'emitir')}>Emitir</button>}
+                        {itens.length > 0 && <MenuSuspenso rotulo="" icone="mais" className="btn btn-ghost fgts-mais" dica="Mais" titulo={'Mais de ' + l.nome} direita itens={itens} />}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       {aberto && pedidoAberto && (
         <JanelaLateral rotulo={aberto.nome} topicos={[{ id: 'passos', rotulo: 'Passos do robô', icone: 'list' }]} topico="passos" mudar={() => undefined} fechar={vm.fechar} classe="fgts-janela" resumo={(

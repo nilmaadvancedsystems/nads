@@ -298,7 +298,7 @@ export const PECAS_BASE: Peca[] = [
     ) },
 
   // ─── Janelas (popups) ───────────────────────────────────────────────────────────────────────────────────────────────
-  virouAviso(janela('jn-tudo-certo', 'Tudo certo! (banco Ok / conta sem pendências)', ['e-importacao', 't-exec-importacao', 'c-verificar'], { tom: 'ok', icone: 'checkCircle', titulo: 'Tudo certo!', html: '<b>Sicoob</b> Ag. 3144-5 · C/C 52.166-3', botoes: [{ rotulo: 'Ok', variante: 'btn-primary' }], fecharEm: { ms: 3500, valor: true } }, 'Fecha sozinha em 3,5 s'), 'av-tudo-certo'),
+  virouAviso(janela('jn-tudo-certo', 'Tudo certo! (banco Ok / conta sem pendências)', ['e-importacao', 't-exec-importacao'], { tom: 'ok', icone: 'checkCircle', titulo: 'Tudo certo!', html: '<b>Sicoob</b> Ag. 3144-5 · C/C 52.166-3', botoes: [{ rotulo: 'Ok', variante: 'btn-primary' }], fecharEm: { ms: 3500, valor: true } }, 'Fecha sozinha em 3,5 s'), 'av-tudo-certo'),
   janela('jn-saldo-negativo', 'Saldo negativo no banco (clique em Cheque especial)', ['e-importacao', 't-exec-importacao', 't-exec-cheque'], { icone: 'alert', titulo: 'Saldo negativo no banco', html: '<b>Sicoob</b> Ag. 3144-5 · C/C 52.166-3', botoes: [{ rotulo: 'Fazer Cheque Especial', variante: 'btn-primary' }] }),
   { id: 'menu-falta', tipo: 'menus', nome: 'O que falta (o sino do executor)', descricao: 'O sino com o número de pendências; abre suspenso, como o Code ▾ do GitHub, com o Resolver em cada uma', componente: 'MenuSuspenso + ListaDoQueFalta', classes: ['falta-btn', 'falta-qtd', 'falta-pop', 'falta-lista'], telas: EXECUTOR,
     demo: () => (
@@ -383,7 +383,7 @@ export const PECAS_BASE: Peca[] = [
   { id: 'welcome', tipo: 'avisos', nome: 'Faixa de dados de exemplo', classes: ['welcome-banner'], telas: ['c-entrada', 'e-entrada'], largo: true, demo: () => <div className="welcome-banner">Dados de exemplo (901, 902, 903) · nada é gravado em banco</div> },
 
   // ─── Abas ───────────────────────────────────────────────────────────────────────────────────────────────────────────
-  { id: 'av-tudo-certo', tipo: 'avisos', nome: 'Tudo certo! (banco Ok / conta sem pendências)', descricao: 'useRetorno().aviso: a barrinha no topo; some em 3,7 s (ou no ×)', componente: 'useRetorno().aviso', classes: ['imp-aviso-barra aviso-barra ok'], telas: ['e-importacao', 't-exec-importacao', 'c-verificar'],
+  { id: 'av-tudo-certo', tipo: 'avisos', nome: 'Tudo certo! (banco Ok / conta sem pendências)', descricao: 'useRetorno().aviso: a barrinha no topo; some em 3,7 s (ou no ×)', componente: 'useRetorno().aviso', classes: ['imp-aviso-barra aviso-barra ok'], telas: ['e-importacao', 't-exec-importacao'],
     demo: () => <AvisoParado tom="ok" titulo="Tudo certo!" texto="Sicoob Ag. 3144-5 · C/C 52.166-3" />, aoVivo: c => c.aviso({ tom: 'ok', titulo: 'Tudo certo!', texto: 'Sicoob Ag. 3144-5 · C/C 52.166-3' }) },
   { id: 'av-orientacao', tipo: 'avisos', nome: 'Como resolver (orientação de uma saída)', descricao: 'useRetorno().aviso: a barrinha no topo; some em 8 s (ou no ×)', componente: 'useRetorno().aviso', classes: ['imp-aviso-barra aviso-barra info'], telas: EXECUTOR,
     demo: () => <AvisoParado tom="info" titulo="O Fiscal ainda não fechou as notas" texto="Peça ao Fiscal para fechar o mês antes de conferir." />, aoVivo: c => c.aviso({ tom: 'info', titulo: 'O Fiscal ainda não fechou as notas', texto: 'Peça ao Fiscal para fechar o mês antes de conferir.' }) },
