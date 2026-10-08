@@ -16,8 +16,9 @@ function Emprestimo({ e, vm }: { e: VmEmprestimos['emprestimos'][number]; vm: Vm
       <div className="imp-linha">
         {/* o logo do banco escolhido (como na Importação); sem banco, o ícone */}
         <span className="imp-ico imp-logo">{e.banco ? <LogoBanco banco={e.banco.marca} cor /> : <Icone nome="landmark" />}</span>
-        <div className="imp-txt"><span><b>{e.banco ? e.banco.rotulo : 'Escolha o banco'}</b><span className="imp-conta">{e.arquivo}</span></span></div>
-        <div className="imp-resumo"><div><span>{e.resumo}</span></div></div>
+        {/* só o banco (Vitor, 08/10/2026: sem o nome do arquivo e sem o resumo dos contratos; o arquivo fica no título do check) */}
+        <div className="imp-txt"><span><b>{e.banco ? e.banco.rotulo : 'Escolha o banco'}</b></span></div>
+        <div className="imp-resumo" />
         <div className="imp-grupos">
           <div className="imp-grupo">
             <span className="imp-rotulo">Banco</span>
