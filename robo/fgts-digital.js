@@ -273,6 +273,10 @@ function ligarFgtsDigital(db, log, avisos) {
         return;
       }
 
+      // o menu do portal (08/10/2026, visto no ensaio): GESTÃO DE GUIAS abre as opções de emissão
+      await clicar(page, [/^gestao de guias$/], 'Gestão de guias').catch(() => {});
+      await esperarCarregar(page);
+      await registrar('gestão de guias');
       await clicar(page, PASSOS_DO_PORTAL.emissao, 'Emissão de guia');
       await esperarCarregar(page);
       await clicar(page, PASSOS_DO_PORTAL.guiaMensal, 'Guia mensal');
@@ -372,6 +376,7 @@ function ligarFgtsDigital(db, log, avisos) {
 async function clicar(page, padroes, nome) {
   const fontes = padroes.map(r => r.source);
   for (let i = 0; i < 20; i++) {
+    // a página pode trocar no meio (08/10/2026: o gov.br recarregava o login depois da checagem dele): espera e tenta de novo
     const ok = await page.evaluate(lista => {
       const norm = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
       const res = lista.map(s => new RegExp(s));
@@ -382,7 +387,7 @@ async function clicar(page, padroes, nome) {
         if (el) { el.scrollIntoView({ block: 'center' }); el.click(); return true; }
       }
       return false;
-    }, fontes);
+    }, fontes).catch(err => { if (/context was destroyed|navigation|detached/i.test(err.message)) return false; throw err; });
     if (ok) { await dormir(800); return; }
     await dormir(1000);
   }
