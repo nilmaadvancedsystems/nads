@@ -10,8 +10,14 @@ describe('numerosDoHistorico', () => {
     expect(numerosDoHistorico('NF 12345 ref 9876543210123 e 777 12', false)).toEqual(['12345', '777']);
   });
   it('nota de 1 dígito com espaços em volta do traço (serviços tomados da 292)', () => {
-    expect(numerosDoHistorico('Pelo valor de Serviços Tomados conf. NF nº - 6 - 27203457000150-RAIMUNDO PINHEIRO DOS SANTOS NETO 006679', true)).toEqual(['006679', '6']);
+    // o número no fim do nome ("NETO 006679") não é nota (Vitor, 08/10/2026)
+    expect(numerosDoHistorico('Pelo valor de Serviços Tomados conf. NF nº - 6 - 27203457000150-RAIMUNDO PINHEIRO DOS SANTOS NETO 006679', true)).toEqual(['6']);
     expect(numerosDoHistorico('Pelo valor de Serviços Tomados conf. NF nº - 002600000000107 - 30295591000132-LEONEL RODRIGUES FREITAS', true)).toEqual(['002600000000107']);
+  });
+  it('o CNPJ com barra não vira nota: o "/0001-" não é a NF 1 (309, 08/10/2026)', () => {
+    expect(numerosDoHistorico('Pelo valor de Serviços Tomados conf. NF nº - 002600000006032 - 08760011/0001-81-DIGITEC COPIADORA E IFORMATICA LTDA ME', true)).toEqual(['002600000006032']);
+    expect(numerosDoHistorico('Pelo valor de Serviços Tomados conf. NF nº - 002600000003194 - 71400253/0001-09-ALEXSANDRO DE OLIVEIRA - CPF 96164395615', true)).toEqual(['002600000003194']);
+    expect(numerosDoHistorico('conf NF 4521 - 08.760.011/0001-81 - DIGITEC', false)).toEqual(['4521']);
   });
   it('serviço: aceita até 15 dígitos, mas não 11 (CPF) nem 14 (CNPJ)', () => {
     expect(numerosDoHistorico('NFS 202600000012345 CNPJ 11222333000100 CPF 12345678901 nr 777', true)).toEqual(['202600000012345', '777']);

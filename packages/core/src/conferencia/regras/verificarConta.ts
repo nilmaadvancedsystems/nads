@@ -40,6 +40,14 @@ const semZeros = (t: string) => t.replace(/^0+/, '') || t;
 export function numerosDoHistorico(txt: string, serv: boolean): string[] {
   const m = txt.match(/(\d{1,9})-(\d{14})-/);
   if (m) return [m[1]];
+  // "nota - documento - nome" (o CNPJ com ou sem pontuação, o CPF): a nota é o número de antes do documento; os números do
+  // documento e do nome não são nota (Vitor, 08/10/2026: na 309, o "/0001-" do CNPJ "08760011/0001-81" virava a NF 1 do
+  // Raimundo, e 6 lançamentos de outros fornecedores apareciam em "Duplicadas na conta", 4.206,00, sem nada duplicado no razão)
+  const ndn = txt.match(NOTA_DOC_NOME);
+  if (ndn && ndn.index != null) {
+    const antes = (txt.slice(0, ndn.index).match(/\d{3,}/g) || []).filter(t => (serv ? t.length <= 15 && t.length !== 11 && t.length !== 14 : t.length < 11));
+    return antes.includes(ndn[1]) ? antes : [...antes, ndn[1]];
+  }
   // com espaços em volta do traço (o relatório de serviços tomados): "NF nº - 6 - 27203457000150-NOME" — sem isso, a
   // nota de 1 ou 2 dígitos sumia (Vitor, 01/10/2026: a nota 6 do Raimundo, na 80005 da 292). Entra junto com os outros
   // números (como o original fazia), só quando ainda não veio

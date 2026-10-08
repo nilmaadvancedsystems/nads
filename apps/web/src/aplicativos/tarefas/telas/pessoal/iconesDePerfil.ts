@@ -41,8 +41,9 @@ function urlIcone(ic: IconeDePerfil): string {
 // Os ícones de personagem (Vitor, 05/10/2026: "coloque os ícones", da pasta icones): imagens 48x48 que entram no código
 // como data: (?inline), então vão gravadas inteiras em usuarios.fotoPerfil e aparecem no Entregas também. Para pôr
 // outro, é só soltar o .webp em ./icones (o nome vem do arquivo: Little_Wolf_profileicon.webp → "Little Wolf").
-const PERSONAGENS = import.meta.glob<string>('./icones/*.webp', { eager: true, query: '?inline', import: 'default' });
-const nomeDoArquivo = (caminho: string) => caminho.replace(/^.*\//, '').replace(/_profileicon\.webp$|\.webp$/i, '').replace(/_/g, ' ');
+// (08/10/2026: "upe os novos ícones") também .jpg e .png; o "48px-" do começo do nome sai
+const PERSONAGENS = import.meta.glob<string>('./icones/*.{webp,jpg,png}', { eager: true, query: '?inline', import: 'default' });
+const nomeDoArquivo = (caminho: string) => caminho.replace(/^.*\//, '').replace(/^\d+px-/i, '').replace(/(_profileicon)?\.(webp|jpg|png)$/i, '').replace(/_/g, ' ');
 
 export const ICONES_DE_PERFIL: readonly { nome: string; url: string }[] = ICONES.map(ic => ({ nome: ic.nome, url: urlIcone(ic) }));
 const ICONES_DE_PERSONAGEM: readonly { nome: string; url: string }[] = Object.entries(PERSONAGENS)

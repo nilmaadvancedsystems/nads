@@ -29,21 +29,23 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { execFileSync } = require('child_process');
+const { execFileSync, spawn } = require('child_process');
 const { ouvir } = require('./ouvinte');
 
 const CERTIFICADO = path.join(__dirname, 'fgts_certificado.pfx');
 const SENHA = path.join(__dirname, 'fgts_certificado.senha');
 const CHROMIUM = process.env.FGTS_CHROMIUM || '/usr/bin/chromium';
 // No PC do escritório (08/10/2026: na máquina do Google o gov.br travava e depois devolvia o login em branco — o
-// endereço de nuvem e o navegador sem tela): roda junto do arquivador, no Edge (o Chrome do dia a dia fica livre para
-// os certificados dos clientes), com a janela aparecendo, um perfil próprio (fgts-perfil-edge: o gov.br lembra dele) e
-// o certificado instalado no Windows (Usuário Atual). A regra do Edge que escolhe o certificado sozinho no gov.br é
-// posta por quem usa o PC. A verificação do gov.br é igual à da nuvem: a tela ao vivo no nads e os cliques da pessoa.
+// endereço de nuvem e o navegador sem tela): roda junto do arquivador, no Chrome (Vitor, 08/10/2026: "usa o Chrome"),
+// com a janela aparecendo e um perfil fixo só do robô (fgts-perfil-chrome: guarda os cookies, e o gov.br vai conhecendo o
+// navegador). O Chrome do robô é aberto à parte (com a porta de controle) e o robô só se liga nele: reiniciar o robô
+// (uma atualização) não fecha o navegador nem perde o login. O certificado é o do Windows (Usuário Atual), escolhido
+// sozinho pela regra do Chrome posta por quem usa o PC. A verificação do gov.br: a tela ao vivo no nads e os cliques.
 // Onde roda: config/fgts.onde ('pc', o padrão, ou 'nuvem'); o outro lado fica parado.
 const NO_PC = process.platform === 'win32';
-const EDGE_PC = process.env.FGTS_EDGE || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
-const PERFIL_PC = path.join(__dirname, 'fgts-perfil-edge');
+const CHROME_PC = process.env.FGTS_CHROME || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const PERFIL_PC = path.join(__dirname, 'fgts-perfil-chrome');
+const PORTA_PC = 9333;
 const CNPJ_ESCRITORIO = '27872981000113';
 const PORTAL = 'https://fgtsdigital.sistema.gov.br/portal/';
 const PASTA_TELAS = path.join(__dirname, 'fgts-telas');
@@ -122,9 +124,9 @@ function ligarFgtsDigital(db, log, avisos) {
     log('FGTS: desligado (falta o certificado do escritório)');
     return;
   }
-  const NAVEGADOR = NO_PC ? EDGE_PC : CHROMIUM;
+  const NAVEGADOR = NO_PC ? CHROME_PC : CHROMIUM;
   if (!fs.existsSync(NAVEGADOR)) {
-    marcar({ ligado: false, motivo: 'falta o navegador (' + (NO_PC ? 'Edge' : 'Chromium') + ') na máquina do robô' });
+    marcar({ ligado: false, motivo: 'falta o navegador (' + (NO_PC ? 'Chrome' : 'Chromium') + ') na máquina do robô' });
     log('FGTS: desligado (falta o navegador em ' + NAVEGADOR + ')');
     return;
   }
@@ -150,7 +152,7 @@ function ligarFgtsDigital(db, log, avisos) {
 
   // Uma sessão só para vários pedidos (08/10/2026: cada guia fazia login e verificação de novo, e o gov.br acabou
   // segurando o hCaptcha de tantos logins seguidos): o navegador fica aberto e logado entre um pedido e outro; a troca
-  // de cliente é pelo Trocar Perfil. Fecha depois de 20 minutos parado, se o pedido der erro ou se fecharem a janela.
+  // de cliente é pelo Trocar Perfil. Fecha depois de 20 minutos parado ou se fecharem a janela (na nuvem, também no erro).
   const PARADO_MS = 20 * 60 * 1000;
   let sessao = null;
   let fecharParado = null;
@@ -158,32 +160,37 @@ function ligarFgtsDigital(db, log, avisos) {
     clearTimeout(fecharParado);
     const s = sessao;
     sessao = null;
-    if (s) s.browser.close().catch(() => {}).finally(() => { if (s.perfil) setTimeout(() => fs.rmSync(s.perfil, { recursive: true, force: true }), 2000); });
+    if (s) s.browser.close().catch(() => {});
   }
   async function abrirSessao() {
     clearTimeout(fecharParado);
     if (sessao && sessao.browser.isConnected()) return sessao;
-    // cada sessão começa limpa (Vitor, 08/10/2026: "se os cookies forem limpos não dá erro"): um perfil novo, sem os
-    // cookies do hCaptcha das tentativas anteriores; apagado quando a sessão fecha. O certificado vem da regra do Edge.
-    const perfil = NO_PC ? fs.mkdtempSync(PERFIL_PC + '-') : '';
-    const browser = await puppeteer.launch(NO_PC ? {
-      executablePath: NAVEGADOR,
-      headless: false,
-      userDataDir: perfil,
-      ignoreDefaultArgs: ['--enable-automation'],
-      args: ['--lang=pt-BR', '--window-size=' + (LARGURA + 16) + ',' + (ALTURA + 140), '--disable-blink-features=AutomationControlled', '--no-first-run', '--no-default-browser-check',
-        // a janela atrás de outras, minimizada ou com a tela bloqueada continua desenhando (a tela ao vivo e os cliques)
-        '--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', '--disable-background-timer-throttling'],
-      defaultViewport: { width: LARGURA, height: ALTURA },
-    } : {
-      executablePath: NAVEGADOR,
-      headless: true,
-      // sem a marca de "navegador controlado por automação"
-      ignoreDefaultArgs: ['--enable-automation'],
-      args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--lang=pt-BR', '--window-size=' + LARGURA + ',' + ALTURA, '--disable-blink-features=AutomationControlled'],
-      defaultViewport: { width: LARGURA, height: ALTURA },
-    });
-    const page = await browser.newPage();
+    let browser;
+    if (NO_PC) {
+      // o Chrome do robô já aberto (de antes de uma atualização): só liga nele; senão, abre e liga
+      const ligar = () => puppeteer.connect({ browserURL: 'http://127.0.0.1:' + PORTA_PC, defaultViewport: null }).catch(() => null);
+      browser = await ligar();
+      if (!browser) {
+        fs.mkdirSync(PERFIL_PC, { recursive: true });
+        const filho = spawn(NAVEGADOR, ['--remote-debugging-port=' + PORTA_PC, '--user-data-dir=' + PERFIL_PC, '--no-first-run', '--no-default-browser-check',
+          '--lang=pt-BR', '--window-size=' + (LARGURA + 16) + ',' + (ALTURA + 140),
+          // a janela atrás de outras, minimizada ou com a tela bloqueada continua desenhando (a tela ao vivo e os cliques)
+          '--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', '--disable-background-timer-throttling',
+          'about:blank'], { detached: true, stdio: 'ignore' });
+        filho.unref();
+        for (let i = 0; i < 40 && !browser; i++) { await dormir(500); browser = await ligar(); }
+        if (!browser) throw new Error('o Chrome do robô não abriu');
+      }
+    } else {
+      browser = await puppeteer.launch({
+        executablePath: NAVEGADOR,
+        headless: true,
+        args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--lang=pt-BR', '--window-size=' + LARGURA + ',' + ALTURA],
+        defaultViewport: { width: LARGURA, height: ALTURA },
+      });
+    }
+    const page = (await browser.pages()).find(pg => !pg.url().startsWith('devtools')) || await browser.newPage();
+    await page.setViewport({ width: LARGURA, height: ALTURA });
     // localização, notificações e o resto: recusado sem perguntar (08/10/2026: o gov.br pedia a localização no login)
     for (const origem of ['https://sso.acesso.gov.br', 'https://certificado.sso.acesso.gov.br', 'https://fgtsdigital.sistema.gov.br']) {
       await browser.defaultBrowserContext().overridePermissions(origem, []).catch(() => {});
@@ -196,7 +203,7 @@ function ligarFgtsDigital(db, log, avisos) {
     page.on('console', m => { if (m.type() === 'error') log('FGTS console:', m.text().slice(0, 200)); });
     await page.setExtraHTTPHeaders({ 'Accept-Language': 'pt-BR,pt;q=0.9' });
     const cdp = await page.createCDPSession();
-    const nova = { browser, page, cdp, pdf: null, perfil };
+    const nova = { browser, page, cdp, pdf: null };
     // o PDF da guia pode vir como resposta (aberto numa aba) em vez de download
     const guardarPdf = async r => {
       if (nova.pdf || !/application\/pdf/i.test(r.headers()['content-type'] || '')) return;
@@ -209,10 +216,7 @@ function ligarFgtsDigital(db, log, avisos) {
     });
     page.on('response', guardarPdf);
     // fecharam a janela: o próximo pedido abre outra
-    browser.on('disconnected', () => {
-      if (sessao === nova) sessao = null;
-      if (perfil) setTimeout(() => fs.rmSync(perfil, { recursive: true, force: true }), 2000);
-    });
+    browser.on('disconnected', () => { if (sessao === nova) sessao = null; });
     sessao = nova;
     return nova;
   }
@@ -312,10 +316,19 @@ function ligarFgtsDigital(db, log, avisos) {
       // são cartões (08/10/2026, vistos na tela): as opções aparecem com o mouse em cima, como na mão de uma pessoa
       await passarMouse(page, /^gestao de guias$/, 'Gestão de guias');
       await registrar('gestão de guias (as opções)');
+      // o caminho da emissão ainda não foi visto (08/10/2026): sem a opção com o mouse em cima, clica no cartão e fotografa
+      // a página que abrir, para acertar os nomes de uma vez
+      if (!await temTexto(page, PASSOS_DO_PORTAL.emissao)) {
+        await clicarNoTexto(page, /^gestao de guias$/);
+        await esperarCarregar(page);
+        await registrar('gestão de guias (a página)');
+      }
       await clicar(page, PASSOS_DO_PORTAL.emissao, 'Emissão de guia');
+      await registrar('emissão de guia');
       await esperarCarregar(page);
       await clicar(page, PASSOS_DO_PORTAL.guiaMensal, 'Guia mensal');
       await esperarCarregar(page);
+      await registrar('guia mensal');
       await preencherCompetencia(page, p.competencia);
       await registrar('competência');
       await clicar(page, PASSOS_DO_PORTAL.emitir, 'Emitir guia');
@@ -337,7 +350,9 @@ function ligarFgtsDigital(db, log, avisos) {
       clearTimeout(fim);
       if (baixados) fs.rmSync(baixados, { recursive: true, force: true });
       // deu certo: a sessão fica para o próximo pedido (fecha depois de 20 min parada); deu errado: fecha (estado incerto)
-      if (deuCerto && sessao) { clearTimeout(fecharParado); fecharParado = setTimeout(fecharSessao, PARADO_MS); } else fecharSessao();
+      // no PC a sessão fica mesmo no erro (o login vale; o próximo pedido volta ao portal), até 20 min parada; na nuvem, o
+      // erro fecha (estado incerto)
+      if (sessao && (deuCerto || NO_PC)) { clearTimeout(fecharParado); fecharParado = setTimeout(fecharSessao, PARADO_MS); } else fecharSessao();
     }
 
     /**
@@ -440,6 +455,20 @@ async function temTexto(page, padroes) {
     const res = lista.map(s => new RegExp(s));
     return [...document.querySelectorAll('button, a, [role=button]')].some(e => e.offsetParent !== null && res.some(re => re.test(norm(e.innerText || e.getAttribute('aria-label')))));
   }, padroes.map(r => r.source)).catch(() => false);
+}
+
+/** Clica no menor elemento cujo texto é este (os cartões do portal não são botões nem links). */
+async function clicarNoTexto(page, padrao) {
+  const caixa = await page.evaluate(fonte => {
+    const re = new RegExp(fonte);
+    const norm = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+    const achados = [...document.querySelectorAll('body *')].filter(e => e.offsetParent !== null && re.test(norm(e.innerText)));
+    const el = achados.sort((a, b) => a.getBoundingClientRect().width * a.getBoundingClientRect().height - b.getBoundingClientRect().width * b.getBoundingClientRect().height)[0];
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }, padrao.source).catch(() => null);
+  if (caixa) await page.mouse.click(caixa.x, caixa.y);
 }
 
 /** Põe o mouse em cima do menor elemento cujo texto é este (os cartões do portal abrem as opções assim). */
