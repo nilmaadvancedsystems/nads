@@ -213,6 +213,10 @@ function ligarFgtsDigital(db, log, avisos) {
         defaultViewport: { width: LARGURA, height: ALTURA },
       });
       page = await browser.newPage();
+      // localização, notificações e o resto: recusado sem perguntar (08/10/2026: o gov.br pedia a localização no login)
+      for (const origem of ['https://sso.acesso.gov.br', 'https://certificado.sso.acesso.gov.br', 'https://fgtsdigital.sistema.gov.br']) {
+        await browser.defaultBrowserContext().overridePermissions(origem, []).catch(() => {});
+      }
       // o que o gov.br faz no login (08/10/2026: travava no "Seu certificado digital" sem verificação na tela): os
       // pedidos de rede do acesso.gov.br e do hCaptcha, só o endereço e o resultado — para no certificado ou na verificação?
       const daRede = u => /acesso\.gov\.br|hcaptcha/.test(u);
