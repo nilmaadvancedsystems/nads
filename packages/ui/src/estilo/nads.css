@@ -3524,3 +3524,8 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .fgts-ao-vivo img{width:100%;height:auto;cursor:pointer;display:block;}
 .fgts-ao-vivo-marca{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid var(--brand,#c8102e);pointer-events:none;}
 .fgts-janela{width:min(1180px,96vw);}
+
+/* Senhas preenche a tela (08/10/2026: "resolva esses problemas de não preencher a tela no senhas"): a página larga e a
+   lista vai até o pé da janela (no painel dos Certificados, a lista não tem teto e a página rola) */
+.cofre-tabela{max-height:max(320px, calc(100dvh - 165px));}
+.cert-lista .cofre-tabela{max-height:none;}
