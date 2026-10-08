@@ -2141,6 +2141,8 @@ main.main:has(> .content > .explorador){padding:0;}
 
 /* versão nova (useVersaoNova): um pontinho no ☰ e, no menu, "Atualizar para …" ao lado da versão */
 .gh-hamb{position:relative;}
+/* o pontinho vermelho ao lado de um nome: falta configurar (Vitor, 08/10/2026), o mesmo do ☰ com versão nova */
+.ponto-vermelho{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none;margin-left:6px;vertical-align:middle;}
 .gh-hamb-ponto{position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--header-bg);}
 .drawer-atualizar{border:none;background:none;padding:0;font:inherit;color:var(--accent-ink);font-weight:600;cursor:pointer;}
 .drawer-atualizar:hover{text-decoration:underline;}

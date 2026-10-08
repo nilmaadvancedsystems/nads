@@ -200,7 +200,9 @@ function ligarFgtsDigital(db, log, avisos) {
         headless: false,
         userDataDir: PERFIL_PC,
         ignoreDefaultArgs: ['--enable-automation'],
-        args: ['--lang=pt-BR', '--window-size=' + (LARGURA + 16) + ',' + (ALTURA + 140), '--disable-blink-features=AutomationControlled', '--no-first-run', '--no-default-browser-check'],
+        args: ['--lang=pt-BR', '--window-size=' + (LARGURA + 16) + ',' + (ALTURA + 140), '--disable-blink-features=AutomationControlled', '--no-first-run', '--no-default-browser-check',
+          // a janela atrás de outras, minimizada ou com a tela bloqueada continua desenhando (a tela ao vivo e os cliques)
+          '--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', '--disable-background-timer-throttling'],
         defaultViewport: { width: LARGURA, height: ALTURA },
       } : {
         executablePath: NAVEGADOR,

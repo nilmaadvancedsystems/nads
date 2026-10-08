@@ -155,6 +155,16 @@ export function todosGruposNatureza(e: Empresa) {
   return agruparTotaisPorNatureza(todasNotasComTipo(e));
 }
 
+/**
+ * As naturezas de CFOP (entrada ou saída) sem conta no Cadastro › Configurações e sem o "Não vai para o Contábil": o
+ * pontinho vermelho para configurar (Vitor, 08/10/2026). Sem o balancete ou sem as notas, não dá para configurar: nenhuma.
+ */
+export function naturezasSemConta(e: Empresa, tipo?: 'Entrada' | 'Saída'): string[] {
+  if (!e.contas.length || (!e.entradas.length && !e.saidas.length)) return [];
+  const grupos = todosGruposNatureza(e);
+  return Object.keys(grupos).filter(k => (!tipo || grupos[k].tipo === tipo) && !contasDaNatureza(e, k).length && !naoContabil(e, k));
+}
+
 export function importacoesOk(e: Empresa): boolean {
   return !!(e.contas.length && ((e.entradas.length && e.saidas.length) || e.servPrestados.length || e.servTomados.length));
 }

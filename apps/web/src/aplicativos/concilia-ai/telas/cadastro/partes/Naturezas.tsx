@@ -43,7 +43,7 @@ export function Naturezas({ n, entradas, vm }: { n: Naturezas; entradas: boolean
 function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
   return (
     <div className={'ndp-item' + (it.nao ? ' ndp-nao-contabil' : '')}>
-      <div className="ndp-natureza">{it.titulo}</div>
+      <div className="ndp-natureza">{it.titulo}{it.semConta && <span className="ponto-vermelho" title="Sem conta: vincule uma conta ou marque Não vai para o Contábil" aria-label="Sem conta" />}</div>
       {it.vista && (
         <div className="vista-row">
           {it.vista.slots.map(sl => <Slot key={sl.t} k={it.k} sl={sl} vm={vm} />)}

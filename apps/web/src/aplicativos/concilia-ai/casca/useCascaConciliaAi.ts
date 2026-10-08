@@ -104,6 +104,7 @@ export function useCascaConciliaAi() {
    * de um repositório do GitHub — Relatório · Naturezas · Consulta · Cadastro · Auditoria (a Importação está na
    * primeira etapa). "Checklist" vira "Naturezas" (o título da página) para não confundir com o checklist das etapas.
    */
+  const semConta = c.naturezasSemConta(e).length;
   const NA_ETAPA: { id: string; rotulo: string; secao: IdSecao }[] = [
     { id: 'movimento/relatorio', rotulo: 'Relatório', secao: 'movimento' },
     { id: 'movimento/checklist', rotulo: 'Naturezas', secao: 'movimento' },
@@ -114,6 +115,8 @@ export function useCascaConciliaAi() {
   const abasNaEtapa = NA_ETAPA.map(a => ({
     id: a.id, rotulo: a.rotulo, icone: paginaPorId(a.id)?.icone || 'list' as const, ativa: a.id === abaAcesa,
     travada: !!secoes.find(x => x.id === a.secao)?.travada,
+    // o pontinho vermelho no Cadastro: natureza sem conta (Vitor, 08/10/2026)
+    ...(a.id === 'cadastro/configuracoes' && semConta ? { ponto: semConta === 1 ? '1 natureza sem conta' : semConta + ' naturezas sem conta' } : {}),
   }));
   function onAbaNaEtapa(id: string) {
     const a = NA_ETAPA.find(x => x.id === id);
