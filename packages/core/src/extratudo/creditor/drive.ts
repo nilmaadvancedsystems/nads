@@ -4,6 +4,7 @@
 import type { BalanceteDaEmpresa } from './regras/balancete';
 import type { ItemDrive } from './regras/drive';
 import type { RemetenteDoPedido } from '../../entregas/gmail';
+import type { ExtratoRecebido } from '../extrator/regras/recebidos';
 
 export interface AcessoDrive {
   /** já sabe se tem alguém logado (antes disso, não mostra o login) */
@@ -70,6 +71,15 @@ export interface RepoDrive {
   remetente?(): Promise<RemetenteDoPedido>;
   /** a situação de cada pedido de e-mail na fila do robô (pelo id) */
   situacaoDosEmails?(ids: string[]): Promise<Record<string, SituacaoDoEmail>>;
+  /**
+   * Os extratos que chegaram por e-mail (o robô do Gmail; 08/10/2026: "ele já jogue o extrato para o nads"), ainda não
+   * importados, do cliente e do mês. Não existe acoplado no Entregas nem nos exemplos.
+   */
+  extratosRecebidos?(codigo: number, competencia: string): Promise<ExtratoRecebido[]>;
+  /** o arquivo do extrato recebido */
+  baixarRecebido?(id: string): Promise<ArrayBuffer>;
+  /** importado (em que linha) ou ignorado: sai da lista */
+  marcarRecebido?(id: string, status: 'importado' | 'ignorado', linha: string): Promise<void>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }

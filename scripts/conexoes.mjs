@@ -32,6 +32,9 @@
 // O FGTS Digital no DP (2026-10-07, pedido do Vitor), em dados/fgts.firestore.ts: só o banco do Entregas (robo/fgts para
 // ler; pedidosFgts para pedir e acompanhar, com o PDF e as telas que o robô da nuvem grava). Quem fala com o portal do
 // FGTS é o robô (robo/fgts-digital.js), nunca o app.
+// Os extratos que chegam por e-mail (2026-10-08, liberado pelo Vitor: "ele já jogue o extrato para o nads"), em
+// extratudo/dados/drive.firestore.ts: extratosRecebidos (o robô do Gmail grava; o app lê a lista, os pedaços do arquivo
+// e marca importado/ignorado). Sem fetch.
 // Esta checagem falha se:
 //  1. aparecer dependência de rede fora do permitido (só "firebase", e só no apps/web);
 //  2. código fora de apps/web/src/aplicativos/<app>/dados/*.firestore.ts importar/usar Firebase;

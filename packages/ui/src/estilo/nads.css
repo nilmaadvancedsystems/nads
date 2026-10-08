@@ -3576,3 +3576,8 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .xmls-cliente-lidos{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;}
 .xmls-cliente-lidos .tarefas-barra-espaco{flex:1;}
 .xmls-cliente .sieg-andamento{width:auto;}
+/* Os extratos que chegaram por e-mail (Extrator, 08/10/2026): um por linha, com o banco a escolher, Importar e Ignorar */
+.imp-recebidos{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;}
+.imp-recebidos li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.imp-recebidos-nome{display:flex;flex-direction:column;flex:1 1 220px;min-width:0;}
+.imp-recebidos-nome .hint{margin:0;}

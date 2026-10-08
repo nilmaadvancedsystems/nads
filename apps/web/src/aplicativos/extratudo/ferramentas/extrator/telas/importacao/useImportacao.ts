@@ -111,14 +111,24 @@ export function useImportacao() {
     setLendoLinha(null);
   }
 
+  /** O extrato que chegou por e-mail (08/10/2026): lê e importa para aquele banco (o arquivo não fica guardado). */
+  async function importarRecebido(banco: string, nome: string, conteudo: ArrayBuffer) {
+    setMensagemBruta(null);
+    setLendoLinha(banco + '|banco');
+    const lido = await x.lerArquivo(nome, new Uint8Array(conteudo), 'banco');
+    const ok = await gravarLidos('banco', [lido], banco);
+    setLendoLinha(null);
+    return ok;
+  }
+
   /** O que vem depois de ler: pergunta o modo (se já houver movimento nas datas), importa e avisa. */
-  async function gravarLidos(lado: x.Lado, lidos: x.ArquivoLido[], banco?: string, doDrive?: { id: string; nome: string }) {
+  async function gravarLidos(lado: x.Lado, lidos: x.ArquivoLido[], banco?: string, doDrive?: { id: string; nome: string }): Promise<boolean> {
     const falhas = lidos.filter(l => l.erro || !l.lancamentos.length);
     const bons = lidos.filter(l => !l.erro && l.lancamentos.length);
     if (!bons.length) {
       setLendo(null);
       setMensagem({ tom: 'erro', titulo: 'Nada para importar', textos: falhas.map(f => ({ texto: f.nome + ': ' + (f.erro || 'nenhum lançamento') })) });
-      return;
+      return false;
     }
     const qtdLida = bons.reduce((t, l) => t + l.lancamentos.length, 0);
     let modo: x.ModoImportacao | 'primeira' = 'primeira';
@@ -134,7 +144,7 @@ export function useImportacao() {
           '<b>Sobrepor o movimento</b> — apaga o que está guardado nessas datas e fica com o que veio nos arquivos.',
         botoes: [{ rotulo: 'Cancelar', valor: null, variante: 'btn-outline' }, { rotulo: 'Sobrepor o movimento', valor: 'sobrepor', variante: 'btn-danger' }, { rotulo: 'Importar apenas novas', valor: 'novas', variante: 'btn-primary' }],
       });
-      if (!escolha) { setLendo(null); toast('Importação cancelada — nada foi alterado.'); return; }
+      if (!escolha) { setLendo(null); toast('Importação cancelada — nada foi alterado.'); return false; }
       modo = escolha;
     }
     // importa sobre a empresa guardada agora (não a desta tela): "Todos pelo Drive" grava um mês atrás do outro
@@ -150,13 +160,14 @@ export function useImportacao() {
     });
     setLendo(null);
     const res = feito.res;
-    if (!res) { setMensagem({ tom: 'erro', titulo: 'A empresa ainda está carregando', textos: [{ texto: 'Espere um instante e tente de novo.' }] }); return; }
+    if (!res) { setMensagem({ tom: 'erro', titulo: 'A empresa ainda está carregando', textos: [{ texto: 'Espere um instante e tente de novo.' }] }); return false; }
     setEscolhidos(e => ({ ...e, [lado]: [] }));
     const textos: Mensagem['textos'] = [];
     if (res.jaExistiam) textos.push({ texto: res.jaExistiam + ' já estavam guardados e ficaram como estavam.' });
     if (res.substituidos) textos.push({ texto: res.substituidos + ' lançamento(s) que estavam guardados nessas datas foram substituídos.' });
     for (const f of falhas) textos.push({ texto: f.nome + ' ficou de fora: ' + (f.erro || 'nenhum lançamento') + '.', tom: 'aviso' });
     setMensagem({ tom: 'ok', titulo: res.gravados + ' lançamento(s) importado(s)' + (modo === 'sobrepor' ? ' — movimento sobreposto' : ''), textos });
+    return true;
   }
 
   /**
@@ -313,7 +324,7 @@ export function useImportacao() {
     }),
     // o mesmo banco pode entrar de novo (outra conta, com outra agência/conta)
     bancosParaAdicionar: empresas.BANCOS_CONHECIDOS,
-    importarArquivos, importarDoDrive, excluirDoBanco, excluirDoPeriodo, adicionarBanco,
+    importarArquivos, importarDoDrive, importarRecebido, excluirDoBanco, excluirDoPeriodo, adicionarBanco,
     /** a empresa de teste (Personaly Company): os botões de dados fictícios (nada vai para o banco) */
     ehEmpresaDeTeste: demo.ehEmpresaDemo(s.nome),
     implantarDadosDeTeste,

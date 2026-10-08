@@ -878,6 +878,18 @@ async function main() {
         resultado = { mensagemId: id, pasta: listaPastas.join(' e '), arquivos: salvos, cliente: cliente.nome };
       }
 
+      // extratos no e-mail (08/10/2026: "ele já jogue o extrato para o nads"): vão para a fila do Extratudo
+      // (robo/extratos-do-email.js); o Extratudo importa ao abrir a tarefa de extratos do cliente
+      if (comBytes.some(a => /\.(pdf|ofx|xlsx?|csv)$/i.test(a.filename || ''))) {
+        try {
+          const n = await require('./extratos-do-email').mandarExtratosDoEmail({
+            db, cliente, anexos: comBytes, mensagemId: id, competencia, remetente, simular: SIMULAR, log: m => console.log('  ' + m),
+            textoDoPdf, ehExtratoPdf: async a => detectarTipos(a.filename + ' ' + (await textoDoPdf(a)).slice(0, 4000)).includes('extrato'),
+          });
+          if (n) andamento({ texto: cliente.nome + ': ' + n + (n === 1 ? ' extrato mandado' : ' extratos mandados') + ' ao nads', destaque: true });
+        } catch (err) { console.error('  extratos do e-mail: não consegui mandar -', err.message); }
+      }
+
       // XMLs de nota no e-mail (08/10/2026): vão sozinhos para o nads e o Drive (robo/xmls-do-email.js; o robô do PC lança)
       if (comBytes.some(a => /\.(xml|zip)$/i.test(a.filename || ''))) {
         try {

@@ -35,7 +35,15 @@ function conteudo(id: string): string {
 }
 
 export function criarDriveMemoria(): RepoDrive {
+  // nos exemplos, um extrato "chegou por e-mail" para a 901 (o OFX de exemplo); importado ou ignorado, sai da lista
+  const marcados = new Set<string>();
   return {
+    async extratosRecebidos(codigo, competencia) {
+      if (codigo !== 901 || marcados.has('ex-email-1')) return [];
+      return [{ id: 'ex-email-1', nome: 'EXTRATO ' + competencia + ' (TESTE).ofx', competencia, bancos: [], contas: [], em: new Date().toISOString(), remetente: 'financeiro@exemplo.com.br' }];
+    },
+    async baixarRecebido() { return new TextEncoder().encode(EXEMPLO_EXTRATO_OFX).buffer as ArrayBuffer; },
+    async marcarRecebido(id) { marcados.add(id); },
     exemplos: true,
     acesso: () => ({ pronto: true, entrou: true, quem: 'exemplo' }),
     async entrar() { /* nos exemplos já está dentro */ },

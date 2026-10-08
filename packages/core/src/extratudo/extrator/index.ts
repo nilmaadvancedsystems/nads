@@ -29,6 +29,7 @@ export { movimentoDoExtrato, TODOS_OS_MESES, extratosSemSaldoAnterior, definirSa
 export { requisitosDaImportacao, requisitosDasNotas, requisitosDoChequeEspecial, type ImportadosDaConferencia, type RequisitosDaImportacao } from './regras/requisitos';
 export { correcoesDoRazao, ROTULO_CORRECAO, type CorrecaoDoRazao, type TipoCorrecao } from './regras/correcoes';
 export { acharExtratoNoDrive, mensagemDaBuscaDoExtrato, type ContaProcurada } from './regras/drive';
+export { linhaDoRecebido, type ExtratoRecebido, type LinhaParaRecebido } from './regras/recebidos';
 export { gravacao, semMudanca, empresaDoBanco, type Gravacao, type DocEmpresaExtrator } from './regras/banco';
 export { criarRepoExtratorMemoria, type Guarda } from './repo.memoria';
 export {

@@ -10,7 +10,7 @@
 //     botãozinho de PDF (abre pelo link temporário). O movimento se vê pela setinha.
 // Ao importar, só uma barrinha por cima da tela, que some em 2,7 s.
 import { demo, extrator as x, type conferencia, tarefas } from '@nads/core';
-import { classeDaJanela, destacarNaTela, Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
+import { Alerta, classeDaJanela, destacarNaTela, Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
 import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { useDadosDeTesteNaTarefa, usePonteDaTarefa, useRequisitosParaATarefa, type OpcaoDeTeste } from '../../../../../../comum/ponte';
 import { useSessao } from '../../casca/sessao';
@@ -23,6 +23,7 @@ import { JanelaHistoricoDePedidos, JanelaPedirExtratos } from './JanelaPedirExtr
 import { caminhoNaFerramenta } from '../../../../casca/caminho';
 import { useBancosOk } from './useBancosOk';
 import { useDriveDaLinha } from './useDriveDaLinha';
+import { useRecebidosPorEmail } from './useRecebidosPorEmail';
 import { usePedirExtratos } from './usePedirExtratos';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../../../comum/desenvolvimento';
 import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
@@ -548,6 +549,8 @@ export function TarefaExtratos() {
     }
   });
   const d = useDriveDaLinha(vm, s.codigo);
+  // os extratos que chegaram por e-mail (08/10/2026): entram sozinhos na linha certa; os outros ficam no aviso
+  const rec = useRecebidosPorEmail(vm, s.codigo);
   const pe = usePedirExtratos(vm, s.codigo, s.nome, ponte.semMovimento, d.pedirLogin, { logo: urlDoLogoNilma(), logoDoBanco: urlDoLogoBanco });
   // os logos do Pedir extrato (Gmail/WhatsApp) já vêm com a página: no clique, aparecem na hora
   useEffect(preCarregarLogosDosApps, []);
@@ -686,6 +689,25 @@ export function TarefaExtratos() {
           <h4>Os bancos desta empresa não estão cadastrados</h4>
           <p>Peça a um administrador para cadastrar as contas bancárias da empresa (Cadastro › Empresas › a empresa › Contas bancárias). Depois disso, o extrato e o razão de cada banco aparecem aqui.</p>
         </div>
+      )}
+      {/* os extratos que chegaram por e-mail e não entraram sozinhos (08/10/2026): escolher a linha e importar, ou ignorar */}
+      {!vm.semBancosCadastrados && rec.pendentes.length > 0 && (
+        <Alerta naLinha titulo={rec.pendentes.length === 1 ? '1 extrato chegou por e-mail' : rec.pendentes.length + ' extratos chegaram por e-mail'}
+          texto="Escolha em qual banco entra cada um. Se o banco já tiver extrato no mês, o Extrator pergunta se importa só o que é novo.">
+          <ul className="imp-recebidos">
+            {rec.pendentes.map(p => (
+              <li key={p.id}>
+                <span className="imp-recebidos-nome"><b>{p.nome}</b><span className="hint">{p.em}{p.remetente ? ' · ' + p.remetente : ''}{p.jaTemExtrato ? ' · o banco já tem extrato no mês' : ''}</span></span>
+                <select className="select-compact" value={p.escolhida} onChange={e => rec.escolher(p.id, e.target.value)} aria-label={'Banco do ' + p.nome}>
+                  <option value="">Escolha o banco…</option>
+                  {p.candidatas.map(c => <option key={c.id} value={c.id}>{c.nome}{c.conta ? ' · ' + c.conta : ''}</option>)}
+                </select>
+                <button type="button" className="btn btn-primary" disabled={!p.escolhida || p.importando || ocupadoGeral} onClick={() => rec.importar(p.id)}><Icone nome="upload" />{p.importando ? 'Importando…' : 'Importar'}</button>
+                <button type="button" className="btn btn-ghost" disabled={p.importando} onClick={() => { void rec.ignorar(p.id); }}>Ignorar</button>
+              </li>
+            ))}
+          </ul>
+        </Alerta>
       )}
       <div className="imp-lista">
         {!vm.semBancosCadastrados && vm.bancos.map(b => {

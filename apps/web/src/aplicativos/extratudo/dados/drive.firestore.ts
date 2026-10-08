@@ -14,14 +14,18 @@
 // usuário e senha — os mesmos pedidos (mapa das pastas e pedido ao robô) vão por mensagem para a
 // página do Entregas (nilma-ponte-extratudo.js), que responde com o login dela. O download continua
 // daqui, do mesmo link do robô.
-import { creditor as cr, entregas } from '@nads/core';
+// E os extratos que chegam por e-mail (liberado pelo Vitor em 08/10/2026, "ele já jogue o extrato para o nads"):
+// extratosRecebidos (o robô do Gmail grava; aqui só ler a lista do cliente e mês, ler os pedaços do arquivo e marcar
+// importado/ignorado). Nenhuma outra coleção nova.
+import { creditor as cr, entregas, extrator as ex } from '@nads/core';
 import { getApps, initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
-import { addDoc as addDocBruto, collection, doc, getDoc, getDocs, getFirestore, limit, onSnapshot, query, serverTimestamp, where } from 'firebase/firestore';
-import { guardarPedido } from '../../../comum/modoDesenvolvedor';
+import { addDoc as addDocBruto, collection, doc, getDoc, getDocs, getFirestore, limit, onSnapshot, query, serverTimestamp, updateDoc as updateDocBruto, where } from 'firebase/firestore';
+import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 
 // a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
 const addDoc = guardarPedido(addDocBruto) as typeof addDocBruto;
+const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
 
 /** Configuração web pública do projeto do Entregas (a mesma do app Pendências). */
 const CONFIG_ENTREGAS = {
@@ -205,6 +209,32 @@ export function criarDriveFirestore(): cr.RepoDrive {
 
     async baixar(id, nome, passo) {
       return baixarDoRobo(await this.link(id, nome, passo, 'baixar'), passo);
+    },
+
+    // os extratos que chegaram por e-mail (o robô do Gmail grava em extratosRecebidos; 08/10/2026)
+    async extratosRecebidos(codigo, competencia) {
+      if (codigo == null) return [];
+      const s = await getDocs(query(collection(db, 'extratosRecebidos'), where('codigo', '==', String(codigo)), where('competencia', '==', competencia)));
+      return s.docs.filter(d => d.data().status === 'novo').map(d => {
+        const x = d.data();
+        return {
+          id: d.id, nome: String(x.nome || ''), competencia: String(x.competencia || ''),
+          bancos: Array.isArray(x.bancos) ? x.bancos.map(String) : [],
+          contas: Array.isArray(x.contas) ? (x.contas as { agencia?: unknown; conta?: unknown }[]).map(c => ({ agencia: String(c.agencia || ''), conta: String(c.conta || '') })) : [],
+          em: String(x.em || ''), remetente: String(x.remetente || ''),
+        } satisfies ex.ExtratoRecebido;
+      }).sort((a, b) => a.em.localeCompare(b.em));
+    },
+    async baixarRecebido(id) {
+      const s = await getDocs(collection(db, 'extratosRecebidos', id, 'partes'));
+      const b64 = s.docs.sort((a, b) => Number(a.data().n) - Number(b.data().n)).map(d => String(d.data().dados || '')).join('');
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return bytes.buffer;
+    },
+    async marcarRecebido(id, status, linha) {
+      await updateDoc(doc(db, 'extratosRecebidos', id), { status, linha, importadoEm: new Date().toISOString(), importadoPor: acesso.quem || '' });
     },
 
     /**
