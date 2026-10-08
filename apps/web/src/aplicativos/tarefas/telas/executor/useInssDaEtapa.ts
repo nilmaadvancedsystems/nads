@@ -30,7 +30,8 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
   const [contaDigitada, setContaInss] = useState('');
   // a conta do INSS a recolher no balancete, pelo nome
   const doBalancete = balancete.find(x => /inss\s+a\s+recolher/i.test(x.nome)) || null;
-  const contaInss = contaDigitada || doBalancete?.codigo || '';
+  // a do balancete manda (travada); sem ela no balancete, a digitada
+  const contaInss = doBalancete?.codigo || contaDigitada;
   const [contrapartidas, setContrapartidas] = useState<Record<string, string>>({});
   const r = razao && razao.chave === chave ? razao : null;
   const g = guias && guias.chave === chave ? guias : null;
@@ -129,6 +130,8 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
     }),
     contas, contaInss, setContaInss,
     /** o nome da conta do INSS a recolher (do balancete), para mostrar ao lado do código */
+    /** a conta veio do balancete: fica travada (Vitor, 08/10/2026: "deixe a conta bloqueada") */
+    contaTravada: !!doBalancete,
     nomeDaContaInss: (balancete.find(x => x.codigo === contaInss.trim()) || null)?.nome || '',
     escolherContrapartida: (chave: string, codigo: string) => setContrapartidas(x => ({ ...x, [chave]: codigo })),
     /** quantas sugestões (do período todo) ainda sem a contrapartida */

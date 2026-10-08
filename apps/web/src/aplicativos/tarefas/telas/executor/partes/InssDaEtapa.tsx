@@ -115,10 +115,10 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so }: {
                       lançamento e o .xls de importação (as 8 colunas, o mesmo do Creditor) */}
                   {inss.sugestoes.length > 0 && (
                     <div className="tarefas-barra-topo">
-                      <label className="busca-curta" title="O código da conta do INSS a recolher no plano de contas">
-                        <Icone nome="hash" />
+                      <label className="busca-curta" title={inss.contaTravada ? 'A conta do INSS a recolher do balancete da empresa (travada)' : 'O código da conta do INSS a recolher no plano de contas'}>
+                        <Icone nome={inss.contaTravada ? 'lock' : 'hash'} />
                         <input type="text" inputMode="numeric" placeholder="Conta do INSS a recolher" aria-label="Código da conta do INSS a recolher"
-                          value={inss.contaInss} onChange={e => inss.setContaInss(e.target.value)} />
+                          value={inss.contaInss} readOnly={inss.contaTravada} disabled={inss.contaTravada} onChange={e => inss.setContaInss(e.target.value)} />
                       </label>
                       {inss.nomeDaContaInss && <span className="hint" title="Do balancete da empresa">{inss.nomeDaContaInss}</span>}
                       <span className="tarefas-barra-espaco" />
