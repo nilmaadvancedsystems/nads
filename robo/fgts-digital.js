@@ -145,7 +145,7 @@ function ligarFgtsDigital(db, log, avisos) {
   log('FGTS: ligado (certificado de ' + cert.titular + ', até ' + cert.validade + (NO_PC ? ', no Windows deste PC' : '') + ')');
 
   // pedido que ficou "trabalhando" quando o robô caiu: volta como erro (a pessoa pede de novo)
-  pedidos.where('status', '==', 'trabalhando').get().then(s => Promise.all(s.docs.map(d =>
+  pedidos.where('status', 'in', ['trabalhando', 'verificacao']).get().then(s => Promise.all(s.docs.map(d =>
     d.ref.update({ status: 'erro', erro: 'o robô reiniciou no meio; peça de novo', fimEm: agora() })))).catch(() => {});
 
   const fila = [];
