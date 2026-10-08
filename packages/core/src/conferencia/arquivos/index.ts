@@ -116,6 +116,48 @@ export function lerBalancete(rows: Linhas): Record<string, Conta> {
   return m;
 }
 
+/**
+ * O balancete dinâmico do Alterdata (Vitor, 08/10/2026: "ensine o nads a ler balancete normal e dinâmico"): o cabeçalho
+ * Código, Classificação, Descrição, Saldo Anterior e uma coluna por mês (MM/AAAA), o saldo com sinal (+ devedor, − credor).
+ * Vira o mesmo balancete do normal com o saldo do último mês que tem movimento. null = não é o dinâmico.
+ */
+export function lerBalanceteDinamicoComoContas(rows: Linhas): { contas: Record<string, Conta>; mes: string } | null {
+  const baixo = (v: unknown) => String(v ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const h = rows.slice(0, 20).findIndex(r => r.some(v => baixo(v) === 'codigo') && r.some(v => baixo(v) === 'classificacao'));
+  if (h < 0) return null;
+  const head = rows[h].map(v => String(v ?? '').trim());
+  const col = (n: string) => head.findIndex(v => baixo(v) === n);
+  const cCod = col('codigo'), cCla = col('classificacao'), cDes = col('descricao');
+  const meses = head.map((v, i) => { const m = /^(\d{2})\/(\d{4})$/.exec(v); return m ? { i, mes: m[2] + '-' + m[1] } : null; })
+    .filter((x): x is { i: number; mes: string } => !!x);
+  if (cCod < 0 || cDes < 0 || !meses.length) return null;
+  const valor = (v: unknown) => (typeof v === 'number' ? v : num(v) ?? 0);
+  const linhas = rows.slice(h + 1).filter(r => String(r[cCod] ?? '').trim());
+  // o último mês com algum saldo (o Alterdata pode trazer meses à frente zerados)
+  const ultimo = [...meses].reverse().find(m => linhas.some(r => Math.abs(valor(r[m.i])) >= 0.005)) || meses[meses.length - 1];
+  const m: Record<string, Conta> = {};
+  let grupoAtual: Grupo | '' = '';
+  linhas.forEach((r, i) => {
+    const codigo = String(r[cCod]).trim();
+    const nome = String(r[cDes] ?? '').trim() || codigo;
+    const cla = cCla >= 0 ? String(r[cCla] ?? '').trim() : '';
+    if (cla && !cla.includes('.')) { const g = classificarGrupo(nome); if (g) grupoAtual = g; }
+    const saldo = Math.round(valor(r[ultimo.i]) * 100) / 100;
+    const prox = linhas[i + 1];
+    const sintetica = !!cla && !!prox && cCla >= 0 && String(prox[cCla] ?? '').trim().startsWith(cla + '.');
+    m[codigo] = { codigo, nome: nome.slice(0, 70), valor: Math.abs(saldo), dc: saldo < 0 ? 'C' : 'D', grupo: grupoAtual || 'Outros', ordem: i, sintetica };
+  });
+  return { contas: m, mes: ultimo.mes };
+}
+
+/** O balancete normal ([código] na descrição) ou o dinâmico (uma coluna por mês). */
+export function lerBalanceteDoArquivo(rows: Linhas): { contas: Record<string, Conta>; dinamico?: { mes: string } } {
+  const normal = lerBalancete(rows);
+  if (Object.keys(normal).length) return { contas: normal };
+  const d = lerBalanceteDinamicoComoContas(rows);
+  return d ? { contas: d.contas, dinamico: { mes: d.mes } } : { contas: {} };
+}
+
 // ---------- serviços (relatório de ISS) ----------
 /** O relatório é do outro tipo (tem fornecedor em vez de cliente, ou o contrário). */
 export class ErroTipoErrado extends Error {
