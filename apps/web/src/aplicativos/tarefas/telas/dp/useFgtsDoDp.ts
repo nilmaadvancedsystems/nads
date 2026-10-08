@@ -10,7 +10,7 @@ import { useFgts, useGmailDoEntregas } from '../../dados/repo';
 import type { ModoFgts, PedidoFgts } from '../../dados/fgts';
 import { useClientesDoDp } from './useClientesDoDp';
 
-export type SituacaoFgts = 'sem-cnpj' | 'nada' | 'fila' | 'trabalhando' | 'emitida' | 'ensaio-ok' | 'erro' | 'captcha';
+export type SituacaoFgts = 'sem-cnpj' | 'nada' | 'fila' | 'trabalhando' | 'verificacao' | 'emitida' | 'ensaio-ok' | 'erro' | 'captcha';
 export type FiltroFgts = 'todos' | 'faltam' | 'emitidas' | 'problemas';
 
 export function situacaoDoPedido(p: PedidoFgts | undefined, temCnpj: boolean): SituacaoFgts {
@@ -18,6 +18,7 @@ export function situacaoDoPedido(p: PedidoFgts | undefined, temCnpj: boolean): S
   if (!p) return 'nada';
   if (p.status === 'pendente') return 'fila';
   if (p.status === 'trabalhando') return 'trabalhando';
+  if (p.status === 'verificacao') return 'verificacao';
   if (p.status === 'captcha') return 'captcha';
   if (p.status === 'erro') return 'erro';
   if (p.status === 'pronto') return p.modo === 'emitir' ? 'emitida' : 'ensaio-ok';
@@ -78,7 +79,7 @@ export function useFgtsDoDp() {
       faltam: doResponsavel.filter(l => !['emitida', 'sem-cnpj'].includes(l.situacao)).length,
       emitidas: doResponsavel.filter(l => l.situacao === 'emitida').length,
       problemas: doResponsavel.filter(l => ['erro', 'captcha', 'sem-cnpj'].includes(l.situacao)).length,
-      andando: doResponsavel.filter(l => l.situacao === 'fila' || l.situacao === 'trabalhando').length,
+      andando: doResponsavel.filter(l => l.situacao === 'fila' || l.situacao === 'trabalhando' || l.situacao === 'verificacao').length,
     },
     linhas,
     faltam: faltam.length,
@@ -106,5 +107,9 @@ export function useFgtsDoDp() {
     abrir: (id: string) => setAberto(id),
     fechar: () => setAberto(null),
     telas: repo.telas,
+    /** os pedidos esperando a pessoa na verificação do gov.br (a faixa no alto abre a tela ao vivo) */
+    verificando: todas.filter(l => l.situacao === 'verificacao'),
+    aoVivo: repo.aoVivo,
+    clicarNaTela: (id: string, x: number, y: number) => { void repo.clicar(id, x, y).catch(e => toast('O clique não foi: ' + (e instanceof Error ? e.message : String(e)))); },
   };
 }

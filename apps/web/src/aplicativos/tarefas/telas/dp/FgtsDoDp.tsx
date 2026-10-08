@@ -16,6 +16,7 @@ const SELO: Record<SituacaoFgts, { classe: string; rotulo: string }> = {
   nada: { classe: 'pill-vazio', rotulo: 'não pedida' },
   fila: { classe: 'badge badge-neutral', rotulo: 'Na fila do robô' },
   trabalhando: { classe: 'badge badge-warn', rotulo: 'O robô está no portal…' },
+  verificacao: { classe: 'badge badge-warn', rotulo: 'Clique na verificação' },
   emitida: { classe: 'badge badge-ok', rotulo: 'Guia emitida' },
   'ensaio-ok': { classe: 'badge badge-neutral', rotulo: 'Ensaio: entrou' },
   erro: { classe: 'badge badge-danger', rotulo: 'Não deu' },
@@ -23,6 +24,30 @@ const SELO: Record<SituacaoFgts, { classe: string; rotulo: string }> = {
 };
 
 type Tela = { n: string; nome: string; imagem: string };
+
+/**
+ * A tela do navegador do robô, ao vivo, enquanto o gov.br pede a verificação (08/10/2026): clicar na imagem é clicar
+ * lá (o robô repete o clique). Some sozinha quando o robô passa do gov.br.
+ */
+function TelaAoVivo({ id, vm }: { id: string; vm: ReturnType<typeof useFgtsDoDp> }) {
+  const [tela, setTela] = useState<{ imagem: string; largura: number; altura: number } | null | undefined>(undefined);
+  const [marca, setMarca] = useState<{ x: number; y: number } | null>(null);
+  const { aoVivo } = vm;
+  useEffect(() => aoVivo(id, setTela), [id, aoVivo]);
+  if (tela === undefined) return <Esqueleto linhas={4} />;
+  if (!tela) return <p className="fraco">Esperando a tela do robô…</p>;
+  const clique = (e: React.MouseEvent<HTMLImageElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    vm.clicarNaTela(id, (e.clientX - r.left) * tela.largura / r.width, (e.clientY - r.top) * tela.altura / r.height);
+    setMarca({ x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100 });
+  };
+  return (
+    <div className="fgts-ao-vivo">
+      <img src={'data:image/jpeg;base64,' + tela.imagem} alt="A tela do navegador do robô" onClick={clique} />
+      {marca && <span className="fgts-ao-vivo-marca" style={{ left: marca.x + '%', top: marca.y + '%' }} aria-hidden="true" />}
+    </div>
+  );
+}
 
 function Telas({ id, telas }: { id: string; telas: (id: string) => Promise<Tela[]> }) {
   const [fotos, setFotos] = useState<{ id: string; lista: Tela[] } | null>(null);
@@ -98,6 +123,14 @@ export function FgtsDoDp() {
         </span>
       </section>
 
+      {vm.verificando.map(l => l.pedido && (
+        <div key={l.pedido.id} className="card fgts-verificacao">
+          <Icone nome="alert" />
+          <span><b>{l.nome}</b>: o gov.br pediu a verificação "não sou um robô".</span>
+          <span className="tarefas-barra-espaco" />
+          <button type="button" className="btn btn-primary" onClick={() => vm.abrir(l.pedido!.id)}>Fazer a verificação</button>
+        </div>
+      ))}
       <div className="tarefas-barra-topo">
         <Segmentado valor={vm.filtro} opcoes={filtros} onMudar={vm.setFiltro} />
       </div>
@@ -148,6 +181,7 @@ export function FgtsDoDp() {
         <JanelaLateral rotulo={aberto.nome} topicos={[{ id: 'passos', rotulo: 'Passos do robô', icone: 'list' }]} topico="passos" mudar={() => undefined} fechar={vm.fechar} classe="fgts-janela" resumo={(
           <div className="usuario-quem"><span className="emp-cod">{aberto.codigo}</span><b>{aberto.nome}</b></div>
         )}>
+          {aberto.situacao === 'verificacao' && <TelaAoVivo id={pedidoAberto.id} vm={vm} />}
           <div className="card">
             <h3>{pedidoAberto.modo === 'emitir' ? 'Emitir a guia' : 'Ensaio'} · {pedidoAberto.competencia.split('-').reverse().join('/')}</h3>
             <div className="fgts-pedido">

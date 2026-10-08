@@ -15,7 +15,7 @@ export interface PedidoFgts {
   empresa: string;
   competencia: string;
   modo: ModoFgts;
-  /** pendente, trabalhando, pronto, erro, captcha */
+  /** pendente, trabalhando, verificacao (esperando a pessoa no gov.br), pronto, erro, captcha */
   status: string;
   erro: string;
   resultado: string;
@@ -25,6 +25,9 @@ export interface PedidoFgts {
   fimEm: string;
   passos: PassoFgts[];
 }
+
+/** a tela do navegador do robô enquanto ele espera a verificação do gov.br */
+export interface TelaAoVivo { imagem: string; largura: number; altura: number; quando: string }
 
 export interface RoboFgts {
   carregado: boolean;
@@ -44,6 +47,10 @@ export interface RepoFgts {
   pdf(id: string): Promise<{ base64: string; nome: string } | null>;
   /** as fotos das telas por onde o robô passou (pedidosFgts/{id}/telas) */
   telas(id: string): Promise<{ n: string; nome: string; imagem: string }[]>;
+  /** a tela ao vivo (pedidosFgts/{id}/ao-vivo/tela); null quando o robô não está esperando */
+  aoVivo(id: string, chegou: (t: TelaAoVivo | null) => void): () => void;
+  /** um clique da pessoa na tela ao vivo (nas coordenadas do navegador do robô) */
+  clicar(id: string, x: number, y: number): Promise<void>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -73,6 +80,8 @@ export function criarFgtsMemoria(): RepoFgts {
     },
     pdf: async () => null,
     telas: async () => [],
+    aoVivo: (_id, chegou) => { chegou(null); return () => undefined; },
+    clicar: async () => undefined,
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };

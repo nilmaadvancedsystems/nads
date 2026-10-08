@@ -6,6 +6,8 @@
 import { addDoc, collection, doc, getDoc, getDocs, onSnapshot, query, where } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 import type { ModoFgts, PedidoFgts, RepoFgts, RoboFgts } from './fgts';
+// a verificação do gov.br (08/10/2026): pedidosFgts/{id}/ao-vivo/tela (o robô escreve) e pedidosFgts/{id}/cliques
+// ({x, y, em, por}: o DP ou o admin cria; o robô repete no navegador e apaga)
 
 type Quem = { nome: string; uid: string } | null;
 const texto = (v: unknown) => (v == null ? '' : String(v));
@@ -69,6 +71,15 @@ export function criarFgtsFirestore(quem: () => Quem): RepoFgts {
     async telas(id) {
       const s = await getDocs(collection(db, 'pedidosFgts', id, 'telas'));
       return s.docs.map(x => ({ n: x.id, nome: texto(x.data().nome), imagem: texto(x.data().imagem) })).sort((a, b) => a.n.localeCompare(b.n));
+    },
+    aoVivo(id, chegou) {
+      return onSnapshot(doc(db, 'pedidosFgts', id, 'ao-vivo', 'tela'), s => {
+        const d = s.data();
+        chegou(d ? { imagem: texto(d.imagem), largura: Number(d.largura) || 1280, altura: Number(d.altura) || 900, quando: texto(d.quando) } : null);
+      }, () => chegou(null));
+    },
+    async clicar(id, x, y) {
+      await addDoc(collection(db, 'pedidosFgts', id, 'cliques'), { x: Math.round(x), y: Math.round(y), em: new Date().toISOString(), por: quem()?.nome || '' });
     },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,

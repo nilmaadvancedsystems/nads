@@ -3510,3 +3510,9 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .arquivador-escrever-caixa textarea{flex:1;min-width:0;resize:vertical;min-height:44px;max-height:200px;font:inherit;font-size:13.5px;}
 /* o ícone dentro das linhas de texto do painel do SIEG (07/10/2026: o ✓ do "XMLs baixados" saiu gigante) */
 .sieg-painel .hint svg,.sieg-painel .fraco svg{width:14px;height:14px;flex:none;vertical-align:-2px;}
+/* FGTS: a verificação do gov.br com a pessoa (08/10/2026): a faixa no alto e a tela ao vivo do robô (clicar = clicar lá) */
+.fgts-verificacao{display:flex;align-items:center;gap:10px;padding:10px 14px;margin-bottom:12px;border-color:var(--warn,#d97706);}
+.fgts-ao-vivo{position:relative;margin-bottom:14px;border:1px solid var(--border-strong);border-radius:var(--radius);overflow:hidden;line-height:0;}
+.fgts-ao-vivo img{width:100%;height:auto;cursor:pointer;display:block;}
+.fgts-ao-vivo-marca{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid var(--brand,#c8102e);pointer-events:none;}
+.fgts-janela{width:min(1180px,96vw);}
