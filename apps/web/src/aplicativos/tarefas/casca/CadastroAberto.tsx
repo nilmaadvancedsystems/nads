@@ -18,7 +18,7 @@ export function CadastroAberto() {
   if (!abaExiste) return <Navigate to={caminhoDoCadastro(empresa)} replace />;
   return (
     <TopoProvider>
-      <CascaTarefas app="cadastro" pagina="empresas">
+      <CascaTarefas app="cadastro" pagina="empresas" larga>
         <EscolherEmpresaCadastro />
         {empresa && <JanelaDaEmpresa key={empresa} rota={empresa} aba={aba} />}
       </CascaTarefas>
