@@ -3,6 +3,7 @@
 // Pró-Labore, Sem Movimento ou Apenas REINF), se a REINF está autorizada, quais obrigações do mês cada um tem, como recebe
 // (a entrega) e o agrupamento. A rotina do DP usa as obrigações para saber quais etapas valem para a empresa.
 // Gerado da planilha; para mudar um cliente, mude a linha dele aqui.
+import { slug } from '../formatos';
 import { EMPRESAS } from './lista';
 import type { EmpresaDoEscritorio } from './tipos';
 import type { ParametrosDoDp, ParametrosDoDpDoMes } from './cadastro/tipos';
@@ -33,7 +34,8 @@ export interface ClienteDoDp {
   responsavel: string;
   movimento: MovimentoDp;
   reinfAutorizada: boolean;
-  obrigacoes: ObrigacaoDp[];
+  /** as da planilha (ObrigacaoDp) e as categorias criadas no nads (x-…) */
+  obrigacoes: string[];
   /** como as guias chegam ao cliente (Office boy, eContador, WhatsApp, E-mail, Malote, Em mãos) */
   entrega: string;
   agrupamento: string;
@@ -321,11 +323,54 @@ export function clienteDoDpNoCadastro(base: ClienteDoDp, cad: { responsaveis?: {
     ...base,
     responsavel: cad.responsaveis?.fiscal ?? base.responsavel,
     movimento: (d.movimento as MovimentoDp | undefined) ?? base.movimento,
-    obrigacoes: obrigacoes ? OBRIGACOES_DP.filter(o => obrigacoes.includes(o.id)).map(o => o.id) : base.obrigacoes,
+    // as da planilha na ordem dela e, depois, as categorias criadas no nads (Vitor, 07/10/2026)
+    obrigacoes: obrigacoes ? [...OBRIGACOES_DP.filter(o => obrigacoes.includes(o.id)).map(o => o.id as string), ...obrigacoes.filter(ehCategoriaDoDp)] : base.obrigacoes,
     reinfAutorizada: d.reinfAutorizada ?? base.reinfAutorizada,
     entrega: d.entrega ?? base.entrega,
     agrupamento: d.agrupamento ?? base.agrupamento,
   };
+}
+
+/**
+ * As categorias novas de obrigações (Vitor, 07/10/2026: "uma opção onde posso criar novas categorias"): criadas pelo
+ * admin nas Configurações do DP (config/dpCategorias), cada uma vira uma obrigação marcável no cliente, uma coluna na
+ * tabela das Obrigações (na parte escolhida) e uma etapa da rotina do mês (dp-<id>). O id começa com x- para nunca bater
+ * com as da planilha.
+ */
+export type ParteDaCategoriaDp = 'folha' | 'esocial' | 'guias' | 'outras';
+export const PARTES_DAS_CATEGORIAS_DP: readonly { id: ParteDaCategoriaDp; rotulo: string }[] = [
+  { id: 'folha', rotulo: 'Folha' }, { id: 'esocial', rotulo: 'eSocial' }, { id: 'guias', rotulo: 'Guias' }, { id: 'outras', rotulo: 'Outras' },
+];
+export interface CategoriaDoDp { id: string; nome: string; rotulo: string; parte: ParteDaCategoriaDp }
+
+export function ehCategoriaDoDp(id: string): boolean {
+  return /^x-[a-z0-9-]+$/.test(id);
+}
+
+/** Cria a categoria (o id pelo nome); devolve o erro se o nome faltar ou já existir (entre as da planilha ou as criadas). */
+export function novaCategoriaDoDp(nome: string, rotulo: string, parte: ParteDaCategoriaDp, existentes: readonly CategoriaDoDp[]): CategoriaDoDp | { erro: string } {
+  const n = nome.trim().replace(/\s+/g, ' ');
+  if (!n) return { erro: 'Dê um nome à categoria.' };
+  const id = 'x-' + slug(n);
+  if (id === 'x-') return { erro: 'Use letras ou números no nome.' };
+  const igual = (a: string) => slug(a) === slug(n);
+  if (OBRIGACOES_DP.some(o => igual(o.nome) || igual(o.rotulo) || o.id === slug(n)) || existentes.some(c => c.id === id || igual(c.nome))) return { erro: 'Já existe uma obrigação com esse nome.' };
+  const r = (rotulo.trim() || n).slice(0, 10);
+  return { id, nome: n, rotulo: r, parte: PARTES_DAS_CATEGORIAS_DP.some(p => p.id === parte) ? parte : 'outras' };
+}
+
+/** Lê a lista do banco (só as categorias válidas). */
+export function categoriasDoDpDoDocumento(v: unknown): CategoriaDoDp[] {
+  const lista = v && typeof v === 'object' && Array.isArray((v as { lista?: unknown }).lista) ? (v as { lista: unknown[] }).lista : [];
+  return lista.flatMap(x => {
+    if (!x || typeof x !== 'object') return [];
+    const o = x as Record<string, unknown>;
+    const id = String(o.id || '');
+    const nome = String(o.nome || '').trim();
+    if (!ehCategoriaDoDp(id) || !nome) return [];
+    const parte = PARTES_DAS_CATEGORIAS_DP.some(p => p.id === o.parte) ? (o.parte as ParteDaCategoriaDp) : 'outras';
+    return [{ id, nome, rotulo: String(o.rotulo || nome).slice(0, 10), parte }];
+  });
 }
 
 /** Os movimentos e as entregas (para escolher nas Configurações do DP). */

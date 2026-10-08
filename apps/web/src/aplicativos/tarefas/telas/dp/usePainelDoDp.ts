@@ -10,7 +10,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { competenciasDoDp } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
-import { useExecucoes, useRepo } from '../../dados/repo';
+import { useCategoriasDp, useExecucoes, useRepo } from '../../dados/repo';
 import { useClientesDoDp } from './useClientesDoDp';
 
 /** Como cada obrigação está no mês: não tem, a fazer, feita, parada. */
@@ -26,7 +26,7 @@ export type AbaDoPainel = 'resumo' | 'obrigacoes';
 export type TomDoNumero = 'info' | 'ok' | 'aviso' | 'marca' | 'laranja' | 'roxo' | 'ciano' | 'neutro';
 export const ABAS_DO_PAINEL: readonly AbaDoPainel[] = ['resumo', 'obrigacoes'];
 /** As partes da rotina: o submenu da aba Obrigações (na URL: ?parte=). */
-export type ParteDoDp = 'folha' | 'esocial' | 'guias' | 'reinf' | 'entrega';
+export type ParteDoDp = 'folha' | 'esocial' | 'guias' | 'outras' | 'reinf' | 'entrega';
 const PARTES_DO_DP: readonly { id: ParteDoDp; rotulo: string; obrigacoes: readonly string[] }[] = [
   // a Folha antes dos Recibos (Vitor, 07/10/2026)
   { id: 'folha', rotulo: 'Folha', obrigacoes: ['folha', 'recibos'] },
@@ -35,12 +35,22 @@ const PARTES_DO_DP: readonly { id: ParteDoDp; rotulo: string; obrigacoes: readon
   { id: 'reinf', rotulo: 'REINF', obrigacoes: ['reinf'] },
   { id: 'entrega', rotulo: 'Entrega', obrigacoes: ['envio'] },
 ];
-/** As colunas na ordem das partes (a Folha antes dos Recibos; o eConsignado nas Guias). */
-const ORDEM_DAS_COLUNAS: readonly string[] = PARTES_DO_DP.flatMap(p => p.obrigacoes);
 const COLUNA: Record<string, { id: string; rotulo: string; nome: string }> = Object.fromEntries([
   ...empresas.OBRIGACOES_DP.map(o => ({ id: o.id as string, rotulo: o.rotulo, nome: o.nome })),
   { id: 'reinf', rotulo: 'REINF', nome: 'EFD-REINF' }, { id: 'envio', rotulo: 'Entregue', nome: 'Entrega ao cliente' },
 ].map(o => [o.id, o]));
+
+/**
+ * As partes com as categorias novas (Vitor, 07/10/2026): cada uma no fim da parte dela; as de "Outras" numa parte própria,
+ * antes da REINF.
+ */
+function partesCom(categorias: readonly empresas.CategoriaDoDp[]) {
+  const da = (parte: string) => categorias.filter(c => c.parte === parte).map(c => c.id);
+  const lista = PARTES_DO_DP.map(p => ({ ...p, obrigacoes: [...p.obrigacoes, ...da(p.id)] }));
+  const outras = da('outras');
+  if (outras.length) lista.splice(lista.findIndex(p => p.id === 'reinf'), 0, { id: 'outras', rotulo: 'Outras', obrigacoes: outras });
+  return lista;
+}
 
 const SEM_RESPONSAVEL = 'Sem responsável';
 const contar = (xs: readonly string[]) => {
@@ -61,6 +71,11 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   const { execucoes, carregada } = useExecucoes(competencia, 'dp');
   const porNome = new Map(execucoes.map(e => [e.empresa, e]));
   const doDp = useClientesDoDp(competencia);
+  // as categorias novas: colunas na parte delas e a etapa dp-<id> da rotina do mês
+  const categorias = useCategoriasDp().lista().lista;
+  const partes = partesCom(categorias);
+  const ordem = partes.flatMap(p => p.obrigacoes);
+  const coluna: Record<string, { id: string; rotulo: string; nome: string }> = { ...COLUNA, ...Object.fromEntries(categorias.map(c => [c.id, { id: c.id, rotulo: c.rotulo, nome: c.nome }])) };
 
   const [busca, setBusca] = useState('');
   const [responsavel, setResponsavel] = useState('');
@@ -85,10 +100,11 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
     // as obrigações e, no fim, o Entregue (a entrega ao cliente fecha o mês)
     const obrigacoes = [
       ...empresas.OBRIGACOES_DP.map(o => ({ id: o.id as string, etapa: 'dp-' + o.id, estado: estadoDe('dp-' + o.id, c.obrigacoes.includes(o.id)) })),
+      ...categorias.map(o => ({ id: o.id, etapa: 'dp-' + o.id, estado: estadoDe('dp-' + o.id, c.obrigacoes.includes(o.id)) })),
       // a REINF, para quem tem a REINF autorizada ("faltou a reinf")
       { id: 'reinf', etapa: 'dp-reinf', estado: estadoDe('dp-reinf', c.reinfAutorizada) },
       { id: 'envio', etapa: 'dp-envio', estado: estadoDe('dp-envio', temAlguma) },
-    ].sort((a, b) => ORDEM_DAS_COLUNAS.indexOf(a.id) - ORDEM_DAS_COLUNAS.indexOf(b.id)).map(o => {
+    ].sort((a, b) => ordem.indexOf(a.id) - ordem.indexOf(b.id)).map(o => {
       const est = t.estadoDa(ex, o.etapa);
       return { ...o, quem: est && o.estado === 'feita' ? est.por + ' em ' + new Date(est.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '' };
     });
@@ -107,7 +123,7 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
 
   const achadas = busca.trim() ? new Set(empresas.buscarEmpresas(todas.map(c => ({ codigo: c.codigo, nome: c.nomeNaTela, regime: c.enquadramento })), busca).map(e => e.codigo)) : null;
   // o filtro Pendente em (Vitor, 07/10/2026): só quem ainda tem o que fazer naquela parte
-  const pendente = PARTES_DO_DP.find(p => p.id === pendenteEm) || null;
+  const pendente = partes.find(p => p.id === pendenteEm) || null;
   const filtradas = todas.filter(c => (!pendente || c.obrigacoes.some(o => pendente.obrigacoes.includes(o.id) && o.estado !== 'nao-tem' && o.estado !== 'feita'))
     && (!achadas || achadas.has(c.codigo)) && (!responsavel || c.responsavelNome === responsavel) && (!entrega || c.entrega === entrega)
     && (!movimento || c.movimento === movimento) && (!enquadramento || c.enquadramento === enquadramento)
@@ -150,16 +166,16 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
     resumo: aba === 'resumo',
     /** o submenu das Obrigações: cada parte com quantos clientes ainda faltam nela */
     parte: parte ? parte.id : null,
-    partes: PARTES_DO_DP.map(p => {
+    partes: partes.map(p => {
       const n = filtradas.filter(c => faltaNa(c, p)).length;
       return { valor: p.id, rotulo: p.rotulo + (n ? ' · ' + n : '') };
     }),
-    setParte: (p: ParteDoDp) => mudarParam('parte', p === PARTES_DO_DP[0].id ? '' : p),
+    setParte: (p: ParteDoDp) => mudarParam('parte', p === partes[0].id ? '' : p),
     tituloDaParte: parte ? parte.rotulo : 'Obrigações do mês',
     /** os grupos do cabeçalho (Folha, eSocial, Guias, REINF, Entrega), na ordem das colunas, e a primeira coluna de cada um */
     // a Entrega com a coluna Onde (como chega ao cliente)
-    gruposDeColunas: PARTES_DO_DP.map(p => ({ rotulo: p.rotulo, colunas: p.obrigacoes.length + (p.id === 'entrega' ? 1 : 0) })),
-    primeiras: new Set(PARTES_DO_DP.map(p => p.obrigacoes[0])),
+    gruposDeColunas: partes.map(p => ({ rotulo: p.rotulo, colunas: p.obrigacoes.length + (p.id === 'entrega' ? 1 : 0) })),
+    primeiras: new Set(partes.map(p => p.obrigacoes[0])),
     /** quantos clientes ainda faltam nesta parte */
     faltam: linhasDaParte.filter(c => !c.concluida).length,
     // os painéis coloridos (Sávio, 07/10/2026: "painéis coloridos para os totais de clientes, totais de concluídos, totais
@@ -184,7 +200,7 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
       const feitos = deles.filter(c => c.concluida).length;
       return { nome: r, total: deles.length, feitos, pct: deles.length ? Math.round((feitos / deles.length) * 100) : 0, parados: deles.filter(c => c.parada).length };
     }).filter(r => r.total > 0),
-    colunas: ORDEM_DAS_COLUNAS.map(id => COLUNA[id]).filter(o => !parte || parte.obrigacoes.includes(o.id)),
+    colunas: ordem.map(id => coluna[id]).filter(o => !parte || parte.obrigacoes.includes(o.id)),
     grupos: agrupar === 'nenhum'
       ? [{ nome: '', linhas: linhasDaParte, feitas: 0 }]
       : [...new Set(linhasDaParte.map(chaveDoGrupo))].sort((a, b) => a.localeCompare(b, 'pt-BR')).map(nome => {
@@ -201,14 +217,14 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
       agrupamentos: contar(todas.map(c => c.agrupamento).filter(Boolean)).map(x => x.rotulo).sort((a, b) => a.localeCompare(b, 'pt-BR')),
       pendenteEm, setPendenteEm, entrega, setEntrega,
       entregas: contar(todas.map(c => c.entrega).filter(Boolean)).map(x => x.rotulo),
-      partes: PARTES_DO_DP.map(p => ({ valor: p.id, rotulo: p.rotulo })),
+      partes: partes.map(p => ({ valor: p.id, rotulo: p.rotulo })),
       algum: !!(busca || responsavel || movimento || enquadramento || status || agrupamento || pendenteEm || entrega),
       limpar: () => { setBusca(''); setResponsavel(''); setMovimento(''); setEnquadramento(''); setStatus(''); setAgrupamento(''); setPendenteEm(''); setEntrega(''); },
     },
     /** a tabela que está na tela (com os filtros e a ordem dela), em Excel (Vitor, 07/10/2026) */
     exportar() {
       const ROTULO: Record<EstadoDaObrigacao, string> = { 'nao-tem': '—', 'a-fazer': 'A fazer', feita: 'Feita', parada: 'Parada' };
-      const cols = ORDEM_DAS_COLUNAS.map(id => COLUNA[id]);
+      const cols = ordem.map(id => coluna[id]);
       const agrupado = agrupar !== 'nenhum';
       const linhas = (agrupar === 'nenhum' ? [{ nome: '', linhas: linhasDaParte }] : [...new Set(linhasDaParte.map(chaveDoGrupo))]
         .sort((a, b) => a.localeCompare(b, 'pt-BR')).map(nome => ({ nome, linhas: linhasDaParte.filter(c => chaveDoGrupo(c) === nome) })))

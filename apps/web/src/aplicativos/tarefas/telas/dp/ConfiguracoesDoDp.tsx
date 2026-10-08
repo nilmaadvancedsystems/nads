@@ -55,6 +55,12 @@ export function ConfiguracoesDoDp() {
           <input type="checkbox" checked={vm.soMudados} onChange={e => vm.setSoMudados(e.target.checked)} />
           Só os mudados ({vm.mudados})
         </label>
+        {vm.admin && (
+          <>
+            <span className="tarefas-barra-espaco" />
+            <button type="button" className="btn btn-outline dp-categorias-botao" onClick={vm.abrirCategorias}><Icone nome="plus" />Categorias</button>
+          </>
+        )}
       </div>
       {vm.carregando ? <Esqueleto linhas={8} /> : (
         <section className="card dp-lista">
@@ -133,6 +139,40 @@ export function ConfiguracoesDoDp() {
               <Linha rotulo="Agrupamento">
                 <MenuDeAgrupamento valor={c.agrupamento} agrupamentos={vm.agrupamentos} onEscolher={v => vm.mudarAgrupamento(c.codigo, v)} />
               </Linha>
+            </Cartao>
+          )}
+        </JanelaLateral>
+      )}
+
+      {/* as categorias novas de obrigações (Vitor, 07/10/2026): criar e tirar (só o admin) */}
+      {vm.categoriasAbertas && (
+        <JanelaLateral rotulo="Categorias do DP" topicos={[{ id: 'categorias', rotulo: 'Categorias', icone: 'checklist' }]} topico="categorias" mudar={() => undefined}
+          fechar={vm.fecharCategorias} resumo={<div className="usuario-quem"><b>Categorias do DP</b><span className="fraco">{vm.categorias.length} criada{vm.categorias.length === 1 ? '' : 's'}</span></div>}>
+          <Cartao titulo="Nova categoria">
+            <Linha rotulo="Nome">
+              <input type="text" className="pessoal-select" value={vm.nova.nome} onChange={e => vm.mudarNova({ nome: e.target.value })} placeholder="Ex.: Vale-transporte" aria-label="Nome da categoria"
+                onKeyDown={e => { if (e.key === 'Enter') void vm.criarCategoria(); }} />
+            </Linha>
+            <Linha rotulo="Coluna">
+              <input type="text" className="pessoal-select" maxLength={10} value={vm.nova.rotulo} onChange={e => vm.mudarNova({ rotulo: e.target.value })} placeholder="Ex.: VT" aria-label="Rótulo da coluna" />
+            </Linha>
+            <Linha rotulo="Parte">
+              <MenuSuspenso rotulo={vm.partesDasCategorias.find(p => p.id === vm.nova.parte)?.rotulo || ''} className="btn btn-outline" titulo="Parte" direita largura={180}
+                itens={vm.partesDasCategorias.map(p => ({ rotulo: p.rotulo, marcado: p.id === vm.nova.parte, onClick: () => vm.mudarNova({ parte: p.id }) }))} />
+            </Linha>
+            <div className="dp-categoria-pe">
+              {vm.nova.erro && <span className="feedback-erro">{vm.nova.erro}</span>}
+              <span className="tarefas-barra-espaco" />
+              <button type="button" className="btn btn-primary" disabled={!vm.nova.nome.trim()} onClick={() => void vm.criarCategoria()}>Criar</button>
+            </div>
+          </Cartao>
+          {vm.categorias.length > 0 && (
+            <Cartao titulo="Criadas">
+              {vm.categorias.map(k => (
+                <Linha key={k.id} rotulo={k.nome} dica={k.rotulo + ' · ' + k.parteRotulo}>
+                  <BotaoIcone icone="x" titulo={'Tirar ' + k.nome} onClick={() => void vm.tirarCategoria(k.id)} />
+                </Linha>
+              ))}
             </Cartao>
           )}
         </JanelaLateral>

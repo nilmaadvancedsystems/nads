@@ -21,6 +21,8 @@ import { criarArquivadorFirestore } from './arquivador.firestore';
 import { criarIAMemoria, type RepoIA } from './ia';
 import { criarIAFirestore } from './ia.firestore';
 import { criarFeedbackMemoria, type RepoFeedback } from './feedback';
+import { criarCategoriasDpMemoria, type RepoCategoriasDp } from './categoriasDp';
+import { criarCategoriasDpFirestore } from './categoriasDp.firestore';
 import { criarFeedbackFirestore } from './feedback.firestore';
 import { criarPessoalMemoria, type RepoPessoal } from './pessoal';
 import { criarPessoalFirestore } from './pessoal.firestore';
@@ -257,6 +259,14 @@ export function repoDeFeedback(): RepoFeedback {
       : criarFeedbackMemoria(() => { try { return localStorage.getItem('nads-tarefas-operador') || ''; } catch { return ''; } });
   }
   return feedback;
+}
+
+let categoriasDp: RepoCategoriasDp | null = null;
+
+/** As categorias novas de obrigações do DP: no banco, config/dpCategorias; nos exemplos, na memória. */
+export function repoDeCategoriasDp(): RepoCategoriasDp {
+  if (!categoriasDp) categoriasDp = noBanco ? criarCategoriasDpFirestore(() => quemPede()?.nome || '') : criarCategoriasDpMemoria();
+  return categoriasDp;
 }
 
 export function repoDaIA(): RepoIA {

@@ -6,7 +6,9 @@ import { empresas, tarefas as t } from '@nads/core';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { competenciasDaTela } from '../../casca/navegacao';
-import { useGmailDoEntregas } from '../../dados/repo';
+import { useRetorno } from '@nads/ui';
+import { useOperador } from '../../casca/operador';
+import { useCategoriasDp, useGmailDoEntregas } from '../../dados/repo';
 import { useClientesDoDp } from './useClientesDoDp';
 
 export type TopicoDoClienteDp = 'obrigacoes' | 'entrega';
@@ -25,6 +27,13 @@ export function useConfiguracoesDoDp() {
   const atual = competenciasDaTela(1)[0];
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : atual;
   const dp = useClientesDoDp(competencia);
+  // as categorias novas de obrigações (Vitor, 07/10/2026: "uma opção onde posso criar novas categorias"): só o admin cria
+  const repoCategorias = useCategoriasDp();
+  const categorias = repoCategorias.lista().lista;
+  const admin = !!useOperador().operador?.admin;
+  const { modal, toast } = useRetorno();
+  const [categoriasAbertas, setCategoriasAbertas] = useState(false);
+  const [nova, setNova] = useState<{ nome: string; rotulo: string; parte: empresas.ParteDaCategoriaDp; erro: string }>({ nome: '', rotulo: '', parte: 'guias', erro: '' });
   // o CNPJ/CPF de cada cliente (Sávio, 07/10/2026: "copiar o CNPJ ou CPF de cada cliente sem pontos ou traços para acesso
   // aos sites do governo"): do cadastro do Entregas, pelo código; só os dígitos
   const gmail = useGmailDoEntregas();
@@ -44,7 +53,7 @@ export function useConfiguracoesDoDp() {
       ...(buscaDigitos.length >= 5 ? dp.clientes.filter(c => (documentoDoCodigo.get(c.codigo) || '').includes(buscaDigitos)).map(c => c.codigo) : []),
     ])
     : null;
-  const rotuloDe = (id: string) => empresas.OBRIGACOES_DP.find(o => o.id === id)?.rotulo || id;
+  const rotuloDe = (id: string) => empresas.OBRIGACOES_DP.find(o => o.id === id)?.rotulo || categorias.find(c => c.id === id)?.rotulo || id;
   const linhas = dp.clientes
     .filter(c => (!achadas || achadas.has(c.codigo)) && (!movimento || c.movimento === movimento) && (!soMudados || c.mudado))
     .sort((a, b) => a.nomeNaTela.localeCompare(b.nomeNaTela, 'pt-BR'))
@@ -55,7 +64,7 @@ export function useConfiguracoesDoDp() {
     linhas,
     total: dp.clientes.length,
     mudados: dp.clientes.filter(c => c.mudado).length,
-    obrigacoes: empresas.OBRIGACOES_DP,
+    obrigacoes: [...empresas.OBRIGACOES_DP.map(o => ({ id: o.id as string, nome: o.nome, rotulo: o.rotulo })), ...categorias],
     movimentos: empresas.MOVIMENTOS_DP,
     entregas: empresas.ENTREGAS_DP,
     agrupamentos: [...new Set(dp.clientes.map(c => c.agrupamento).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
@@ -82,5 +91,31 @@ export function useConfiguracoesDoDp() {
     voltarAPlanilha: (codigo: number) => dp.voltar(codigo, false),
     /** tira só o que foi mudado nesta competência */
     desfazerMes: (codigo: number) => dp.voltar(codigo, true),
+    /** as categorias novas (a janela Categorias, só o admin) */
+    admin,
+    categorias: categorias.map(c => ({ ...c, parteRotulo: empresas.PARTES_DAS_CATEGORIAS_DP.find(p => p.id === c.parte)?.rotulo || '' })),
+    partesDasCategorias: empresas.PARTES_DAS_CATEGORIAS_DP,
+    categoriasAbertas,
+    abrirCategorias: () => setCategoriasAbertas(true),
+    fecharCategorias: () => { setCategoriasAbertas(false); setNova(n => ({ ...n, erro: '' })); },
+    nova,
+    mudarNova: (m: Partial<Omit<typeof nova, 'erro'>>) => setNova(n => ({ ...n, ...m, erro: '' })),
+    async criarCategoria() {
+      const r = empresas.novaCategoriaDoDp(nova.nome, nova.rotulo, nova.parte, categorias);
+      if ('erro' in r) { setNova(n => ({ ...n, erro: r.erro })); return; }
+      try {
+        await repoCategorias.salvar([...categorias, r]);
+        setNova({ nome: '', rotulo: '', parte: nova.parte, erro: '' });
+        toast('Categoria ' + r.nome + ' criada.');
+      } catch (e) { setNova(n => ({ ...n, erro: 'Não gravou: ' + (e instanceof Error ? e.message : String(e)) })); }
+    },
+    async tirarCategoria(id: string) {
+      const c = categorias.find(x => x.id === id);
+      if (!c) return;
+      const ok = await modal({ icone: 'alert', titulo: 'Tirar a categoria ' + c.nome + '?', texto: 'A coluna sai da tabela das Obrigações. O que já foi marcado nos meses fica guardado.',
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Tirar', valor: true, variante: 'btn-primary' }] });
+      if (!ok) return;
+      await repoCategorias.salvar(categorias.filter(x => x.id !== id)).catch(e => toast('Não gravou: ' + (e instanceof Error ? e.message : String(e))));
+    },
   };
 }

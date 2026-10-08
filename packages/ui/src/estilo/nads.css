@@ -3568,3 +3568,6 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 /* abre subindo um pouco (a abertura do gmail-andamento cresce até 320 px e cortaria esta janela, que é mais alta) */
 .gmail-andamento.sieg-andamento{animation:siegAbre .32s var(--ease-out) backwards !important;}
 @keyframes siegAbre{from{opacity:0;transform:translateY(10px);}}
+/* DP › Configurações: as categorias novas de obrigações (08/10/2026) */
+.dp-categorias-botao svg{width:16px;height:16px;flex:none;}
+.dp-categoria-pe{display:flex;align-items:center;gap:10px;padding:10px 16px 14px;}
