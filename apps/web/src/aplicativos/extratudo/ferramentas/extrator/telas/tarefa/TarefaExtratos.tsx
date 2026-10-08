@@ -24,6 +24,7 @@ import { caminhoNaFerramenta } from '../../../../casca/caminho';
 import { useBancosOk } from './useBancosOk';
 import { useDriveDaLinha } from './useDriveDaLinha';
 import { useRecebidosPorEmail } from './useRecebidosPorEmail';
+import { AndamentoDosExtratos } from './AndamentoDosExtratos';
 import { usePedirExtratos } from './usePedirExtratos';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../../../comum/desenvolvimento';
 import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
@@ -582,6 +583,8 @@ export function TarefaExtratos() {
       id: b.id, nome: b.nome, ok: !!bancosOk[b.id], faltaCheque: diasSemCheque(b.id) > 0, semMovimento: semMovimentoNoPeriodo(b.id),
     })), importados, vm.prestaServico), precisaChequeEspecial } : null);
   const bancosSemCheque = vm.bancos.filter(b => diasSemCheque(b.id) > 0);
+  // "Pedir os que faltam" (08/10/2026): os bancos sem extrato no mês, fora os sem movimento e os que já têm extrato na fila
+  const faltamPedir = vm.bancos.filter(b => b.id !== 'banco' && b.extrato.qtdArquivos === 0 && !semMovimentoNoPeriodo(b.id) && !rec.linhasComRecebido.has(b.id)).length;
   // todo banco Ok (ou sem movimento no período): não tem extrato para pedir
   const bancosTodosOk = vm.bancos.length > 0 && vm.bancos.every(b => !!bancosOk[b.id] || semMovimentoNoPeriodo(b.id));
   // os dias que fecham negativos (somando os bancos), para o aviso da etapa Cheque especial
@@ -645,7 +648,7 @@ export function TarefaExtratos() {
         )}
         {/* Pedir extratos só na Importação (Vitor, 02/10/2026) e só enquanto falta banco (Vitor, 08/10/2026: "se tiver tudo certo, pode
             remover o botão pedir extratos") */}
-        {!vm.etapaCheque && !bancosTodosOk && <MenuSuspenso rotulo="Pedir extratos" setaAntes className="btn btn-outline" direita
+        {!vm.etapaCheque && !bancosTodosOk && <MenuSuspenso rotulo={faltamPedir ? 'Pedir os que faltam · ' + faltamPedir : 'Pedir extratos'} setaAntes className="btn btn-outline" direita
           conteudo={fechar => (
             <>
               <button type="button" className="popover-item" role="menuitem" onClick={() => { fechar(); pe.abrir(); }}>
@@ -692,12 +695,12 @@ export function TarefaExtratos() {
       )}
       {/* os extratos que chegaram por e-mail e não entraram sozinhos (08/10/2026): escolher a linha e importar, ou ignorar */}
       {!vm.semBancosCadastrados && rec.pendentes.length > 0 && (
-        <Alerta naLinha titulo={rec.pendentes.length === 1 ? '1 extrato chegou por e-mail' : rec.pendentes.length + ' extratos chegaram por e-mail'}
+        <Alerta naLinha titulo={rec.pendentes.length === 1 ? '1 extrato esperando o banco' : rec.pendentes.length + ' extratos esperando o banco'}
           texto="Escolha em qual banco entra cada um. Se o banco já tiver extrato no mês, o Extrator pergunta se importa só o que é novo.">
           <ul className="imp-recebidos">
             {rec.pendentes.map(p => (
               <li key={p.id}>
-                <span className="imp-recebidos-nome"><b>{p.nome}</b><span className="hint">{p.em}{p.remetente ? ' · ' + p.remetente : ''}{p.jaTemExtrato ? ' · o banco já tem extrato no mês' : ''}</span></span>
+                <span className="imp-recebidos-nome"><b>{p.nome}</b><span className="hint">{p.doDrive ? 'do Drive' : 'por e-mail'} · {p.em}{p.remetente ? ' · ' + p.remetente : ''}{p.jaTemExtrato ? ' · o banco já tem extrato no mês' : ''}</span></span>
                 <select className="select-compact" value={p.escolhida} onChange={e => rec.escolher(p.id, e.target.value)} aria-label={'Banco do ' + p.nome}>
                   <option value="">Escolha o banco…</option>
                   {p.candidatas.map(c => <option key={c.id} value={c.id}>{c.nome}{c.conta ? ' · ' + c.conta : ''}</option>)}
@@ -709,6 +712,9 @@ export function TarefaExtratos() {
           </ul>
         </Alerta>
       )}
+      {/* as janelas do andamento: os extratos que entram sozinhos e o "Todos pelo Drive" (08/10/2026) */}
+      {rec.andamento && <AndamentoDosExtratos a={rec.andamento} fechar={rec.fecharAndamento} />}
+      {!rec.andamento && d.andamento && <AndamentoDosExtratos a={d.andamento} fechar={d.fecharAndamento} />}
       <div className="imp-lista">
         {!vm.semBancosCadastrados && vm.bancos.map(b => {
           const semMov = ponte.semMovimento.includes(b.id);

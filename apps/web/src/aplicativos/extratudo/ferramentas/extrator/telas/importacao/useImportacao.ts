@@ -112,17 +112,18 @@ export function useImportacao() {
   }
 
   /** O extrato que chegou por e-mail (08/10/2026): lê e importa para aquele banco (o arquivo não fica guardado). */
-  async function importarRecebido(banco: string, nome: string, conteudo: ArrayBuffer) {
+  async function importarRecebido(banco: string, nome: string, conteudo: ArrayBuffer, sozinho = false) {
     setMensagemBruta(null);
     setLendoLinha(banco + '|banco');
     const lido = await x.lerArquivo(nome, new Uint8Array(conteudo), 'banco');
-    const ok = await gravarLidos('banco', [lido], banco);
+    // sozinho (ao abrir a tarefa): sem pergunta — se já houver movimento nas datas, só o que é novo (nunca apaga)
+    const ok = await gravarLidos('banco', [lido], banco, undefined, sozinho ? 'novas' : undefined);
     setLendoLinha(null);
     return ok;
   }
 
   /** O que vem depois de ler: pergunta o modo (se já houver movimento nas datas), importa e avisa. */
-  async function gravarLidos(lado: x.Lado, lidos: x.ArquivoLido[], banco?: string, doDrive?: { id: string; nome: string }): Promise<boolean> {
+  async function gravarLidos(lado: x.Lado, lidos: x.ArquivoLido[], banco?: string, doDrive?: { id: string; nome: string }, modoFixo?: x.ModoImportacao): Promise<boolean> {
     const falhas = lidos.filter(l => l.erro || !l.lancamentos.length);
     const bons = lidos.filter(l => !l.erro && l.lancamentos.length);
     if (!bons.length) {
@@ -136,7 +137,8 @@ export function useImportacao() {
     const doBanco = (a: x.ArquivoImportado) => !banco || x.bancoDoArquivo(a, primeiro) === banco;
     const base = banco ? { ...s.empresa, arquivos: s.empresa.arquivos.filter(doBanco) } : s.empresa;
     const existentes = x.jaTemNoPeriodo(base, lado, bons);
-    if (existentes) {
+    if (existentes && modoFixo) modo = modoFixo;
+    else if (existentes) {
       const escolha = await modal<x.ModoImportacao | null>({
         icone: 'upload', titulo: 'Como importar ' + NOME[lado] + '?',
         html: 'Já existem <b>' + existentes + ' lançamento(s)</b> nas datas destes arquivos; os arquivos têm <b>' + qtdLida + '</b>.<br><br>' +

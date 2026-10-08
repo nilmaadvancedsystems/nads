@@ -369,7 +369,62 @@ async function releituraDoCliente(db, pasta, porCodigo, log, soEnsaio) {
   // agência e conta, dos extratos da pasta (independe da marcação: só acrescenta no cadastro)
   try { await aprenderContasDaPasta(db, cliente, achados, log); }
   catch (err) { log('pasta do cliente:', (cliente && cliente.nome) || pasta.name, '- contas não lidas:', err.message); }
+  // e os extratos do mês na fila do Extratudo (prontos para entrar quando abrirem a tarefa; 08/10/2026)
+  try { await filaDeExtratosDoDrive(db, cliente, achados, log); }
+  catch (err) { log('pasta do cliente:', (cliente && cliente.nome) || pasta.name, '- extratos não foram para a fila:', err.message); }
   return { resumo, marcados, itens };
+}
+
+// ---------- os extratos do Drive na fila do Extratudo (Vitor, 08/10/2026: "extratos prontos de manhã") ----------
+// Os extratos do mês atual e do anterior que estão em CONTÁBIL/EXTRATOS/AAAA/MM/BANCÁRIOS vão para a mesma fila dos que
+// chegam por e-mail (extratosRecebidos, origem 'drive', id drive_<arquivo>): ao abrir a tarefa de extratos, entram na
+// hora, sem pedir um por um ao robô. O mesmo arquivo (o md5 do conteúdo) que já veio por e-mail não entra de novo.
+const RECEBIDOS_POR_VEZ = 5;
+const RECEBIDO_MAX_BYTES = 8 * 1024 * 1024;
+const PEDACO_RECEBIDO = 900000;
+async function filaDeExtratosDoDrive(db, cliente, achados, log) {
+  if (!cliente) return;
+  const codigo = String(cliente.codigo != null && cliente.codigo !== '' ? cliente.codigo : cliente.codigoOrigem || '').replace(/\D/g, '');
+  if (!codigo) return;
+  const hoje = new Date();
+  const mes = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  const meses = [mes(hoje), mes(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1))];
+  let feitos = 0;
+  for (const [chave, arquivos] of achados) {
+    const [competencia, tipo] = chave.split('|');
+    if (tipo !== 'extrato' || !meses.includes(competencia)) continue;
+    for (const x of arquivos) {
+      if (feitos >= RECEBIDOS_POR_VEZ) return;
+      if (!/\.(pdf|ofx|xlsx?|csv)$/i.test(x.nome || '')) continue;
+      const ref = db.collection('extratosRecebidos').doc('drive_' + x.id);
+      if ((await ref.get()).exists) continue;
+      const meta = (await comPrazo(getDrive().files.get({ fileId: x.id, fields: 'md5Checksum,size' }), BAIXAR_MS, 'ler o arquivo')).data;
+      const md5 = meta.md5Checksum || '';
+      const base = { codigo, clienteId: cliente.id, clienteNome: cliente.nome || '', competencia, nome: x.nome, origem: 'drive', fileId: x.id, md5, em: new Date().toISOString() };
+      if (Number(meta.size) > RECEBIDO_MAX_BYTES) { await ref.set(Object.assign({ status: 'grande' }, base)); continue; }
+      if (md5 && !(await db.collection('extratosRecebidos').where('codigo', '==', codigo).where('md5', '==', md5).limit(1).get()).empty) {
+        await ref.set(Object.assign({ status: 'repetido' }, base));
+        continue;
+      }
+      const r = await comPrazo(getDrive().files.get({ fileId: x.id, alt: 'media' }, { responseType: 'arraybuffer', timeout: BAIXAR_MS }), BAIXAR_MS + 5000, 'baixar');
+      const buffer = Buffer.from(r.data);
+      let texto = '';
+      if (/\.ofx$/i.test(x.nome)) texto = buffer.toString('latin1');
+      else if (/\.pdf$/i.test(x.nome)) { try { texto = (await comPrazo(require('pdf-parse')(buffer), LER_PDF_MS, 'ler o PDF')).text || ''; } catch (_) { /* sem texto: sem banco lido */ } }
+      const doTexto = texto ? require('./bancos').bancosDoTexto(texto) : [];
+      const bancos = x.banco ? [x.banco] : doTexto;
+      const contas = texto ? require('./contas-bancarias').contasDoTexto(texto).map(c => ({ agencia: String(c.agencia || ''), conta: String(c.conta || '') })) : [];
+      const b64 = buffer.toString('base64');
+      let n = 0;
+      for (let i = 0; i < b64.length; i += PEDACO_RECEBIDO) {
+        n++;
+        await ref.collection('partes').doc(String(n).padStart(3, '0')).set({ n, dados: b64.slice(i, i + PEDACO_RECEBIDO) });
+      }
+      await ref.set(Object.assign({ status: 'novo', bancos, contas, tamanho: buffer.length, partes: n, remetente: '' }, base));
+      feitos++;
+      log('extratos: ' + (cliente.nome || codigo) + ' — ' + x.nome + ' (' + competencia + ') na fila do Extratudo');
+    }
+  }
 }
 
 // ---------- agência e conta dos extratos (Cadastro do nads, 30/09/2026) ----------

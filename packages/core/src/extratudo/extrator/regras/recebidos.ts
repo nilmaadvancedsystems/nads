@@ -18,6 +18,10 @@ export interface ExtratoRecebido {
   /** quando chegou (ISO) e de quem */
   em: string;
   remetente: string;
+  /** de onde veio: o e-mail do cliente, ou a pasta do cliente no Drive (o robô junta os do mês; 08/10/2026) */
+  origem?: 'email' | 'drive';
+  /** o arquivo no Drive (origem drive): o que já foi importado do Drive antes sai da lista */
+  fileId?: string;
 }
 
 /** Uma linha (conta) da tarefa de extratos. */

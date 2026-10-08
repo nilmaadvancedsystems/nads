@@ -31,6 +31,9 @@ async function mandarExtratosDoEmail({ db, cliente, anexos, mensagemId, competen
     const id = mensagemId + '_' + crypto.createHash('md5').update(nome).digest('hex').slice(0, 8);
     const ref = db.collection('extratosRecebidos').doc(id);
     if ((await ref.get()).exists) continue;
+    // o mesmo arquivo (pelo conteúdo) que já está na fila (do Drive ou de outro e-mail) não entra de novo
+    const md5 = crypto.createHash('md5').update(a.buffer).digest('hex');
+    if (!(await db.collection('extratosRecebidos').where('codigo', '==', codigo).where('md5', '==', md5).limit(1).get()).empty) continue;
     const bancos = texto ? bancosDoTexto(texto) : [];
     const contas = texto ? cb.contasDoTexto(texto).map(c => ({ agencia: String(c.agencia || ''), conta: String(c.conta || '') })) : [];
     if (simular) { if (log) log('extrato do e-mail (simulado): ' + nome + ' ' + bancos.join(',')); continue; }
@@ -41,7 +44,7 @@ async function mandarExtratosDoEmail({ db, cliente, anexos, mensagemId, competen
       await ref.collection('partes').doc(String(n).padStart(3, '0')).set({ n, dados: b64.slice(i, i + PEDACO) });
     }
     await ref.set({
-      status: 'novo', codigo, clienteId: cliente.id, clienteNome: cliente.nome || '', competencia, nome, bancos, contas,
+      status: 'novo', origem: 'email', md5, codigo, clienteId: cliente.id, clienteNome: cliente.nome || '', competencia, nome, bancos, contas,
       tamanho: a.buffer.length, partes: n, mensagemId, remetente: remetente || '', em: new Date().toISOString(),
     });
     mandados++;

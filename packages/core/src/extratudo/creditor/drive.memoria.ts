@@ -39,8 +39,12 @@ export function criarDriveMemoria(): RepoDrive {
   const marcados = new Set<string>();
   return {
     async extratosRecebidos(codigo, competencia) {
-      if (codigo !== 901 || marcados.has('ex-email-1')) return [];
-      return [{ id: 'ex-email-1', nome: 'EXTRATO ' + competencia + ' (TESTE).ofx', competencia, bancos: [], contas: [], em: new Date().toISOString(), remetente: 'financeiro@exemplo.com.br' }];
+      if (codigo !== 901) return [];
+      const em = new Date().toISOString();
+      return [
+        { id: 'ex-email-1', nome: 'EXTRATO SICOOB ' + competencia + ' (TESTE).ofx', competencia, bancos: ['sicoob'], contas: [], em, remetente: 'financeiro@exemplo.com.br', origem: 'email' as const },
+        { id: 'ex-drive-1', nome: 'EXTRATO ITAU ' + competencia + ' (TESTE).ofx', competencia, bancos: ['itau'], contas: [], em, remetente: '', origem: 'drive' as const, fileId: 'ex-drive-arquivo-1' },
+      ].filter(r => !marcados.has(r.id));
     },
     async baixarRecebido() { return new TextEncoder().encode(EXEMPLO_EXTRATO_OFX).buffer as ArrayBuffer; },
     async marcarRecebido(id) { marcados.add(id); },

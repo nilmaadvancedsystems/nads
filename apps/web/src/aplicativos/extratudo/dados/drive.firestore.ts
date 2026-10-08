@@ -222,6 +222,7 @@ export function criarDriveFirestore(): cr.RepoDrive {
           bancos: Array.isArray(x.bancos) ? x.bancos.map(String) : [],
           contas: Array.isArray(x.contas) ? (x.contas as { agencia?: unknown; conta?: unknown }[]).map(c => ({ agencia: String(c.agencia || ''), conta: String(c.conta || '') })) : [],
           em: String(x.em || ''), remetente: String(x.remetente || ''),
+          origem: x.origem === 'drive' ? 'drive' : 'email', ...(x.fileId ? { fileId: String(x.fileId) } : {}),
         } satisfies ex.ExtratoRecebido;
       }).sort((a, b) => a.em.localeCompare(b.em));
     },
