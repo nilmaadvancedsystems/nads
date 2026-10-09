@@ -114,6 +114,8 @@ export interface RepoArquivador {
   resultado(execucao: string): ResultadoDoArquivamento | null;
   pedir(): Promise<void>;
   cancelar(id: string): Promise<void>;
+  /** para a organização que está rodando no PC (a do botão ou a das 9h; 09/10/2026: "um botão de cancelar a organização") */
+  pararOrganizacao(): Promise<void>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -185,6 +187,11 @@ export function criarArquivadorMemoria(quem: () => { nome: string } | null): Rep
           mudou();
         }, 2500);
       }, 2000);
+    },
+    async pararOrganizacao() {
+      for (const p of pedidos) if (p.status === 'processando') { p.status = 'cancelado'; p.canceladoEm = agora(); }
+      rotina = null;
+      mudou();
     },
     async cancelar(id) {
       const p = pedidos.find(x => x.id === id);

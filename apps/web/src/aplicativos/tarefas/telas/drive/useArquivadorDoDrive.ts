@@ -32,6 +32,7 @@ export function useArquivadorDoDrive() {
   // escrever para o Claude da rotina (07/10/2026: "coloque para eu conversar com o claude aqui"): só o admin
   const admin = !!useOperador().operador?.admin;
   const [rascunho, setRascunho] = useState('');
+  const [parando, setParando] = useState(false);
   const [mandando, setMandando] = useState(false);
   const [agora, setAgora] = useState(() => Date.now());
   useEffect(() => { const r = setInterval(() => setAgora(Date.now()), 15 * 1000); return () => clearInterval(r); }, []);
@@ -221,6 +222,17 @@ export function useArquivadorDoDrive() {
       } catch (err) {
         toast('Não consegui pedir o arquivamento: ' + (err instanceof Error ? err.message : String(err)));
       } finally { setPedindo(false); }
+    },
+    // parar a organização que está rodando (09/10/2026: "um botão de cancelar a organização")
+    podeParar: (!!aberto && aberto.status === 'processando') || rodandoPorFora,
+    parando: parando && ((!!aberto && aberto.status === 'processando') || rodandoPorFora),
+    async parar() {
+      const ok = await modal<boolean>({ icone: 'alert', titulo: 'Cancelar a organização que está rodando?', texto: 'O Claude para no meio. O que já foi para as pastas dos clientes fica lá; o resto continua na Claudio Secretario e entra na próxima organização.',
+        botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Cancelar a organização', valor: true, variante: 'btn-danger' }] });
+      if (!ok) return;
+      setParando(true);
+      try { await repo.pararOrganizacao(); toast('Pedido para parar enviado ao PC do arquivador.'); }
+      catch (err) { setParando(false); toast('Não consegui pedir para parar: ' + (err instanceof Error ? err.message : String(err))); }
     },
     cancelar(id: string) {
       void repo.cancelar(id).then(() => toast('Pedido cancelado.'), (err: Error) => toast('Não consegui cancelar: ' + err.message));
