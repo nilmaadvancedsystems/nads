@@ -10,7 +10,7 @@ export interface ExtratoDoMes { mes: string; nome: string; bytes: Uint8Array }
 
 /** "Extrato CAIXA 01-2026.pdf" */
 export function nomeDoExtratoDoMes(banco: string, mes: string, extensao: string): string {
-  const b = banco.replace(/[\/:*?"<>|]+/g, ' ').replace(/s+/g, ' ').trim().toUpperCase() || 'BANCO';
+  const b = banco.replace(/[/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase() || 'BANCO';
   return 'Extrato ' + b + ' ' + mes.slice(5) + '-' + mes.slice(0, 4) + extensao;
 }
 

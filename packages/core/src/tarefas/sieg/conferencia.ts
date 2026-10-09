@@ -23,11 +23,17 @@ const cfopFim = (cfop: string) => String(cfop || '').slice(1);
 const ehCfopSt = (cfop: string) => ['401', '402', '403', '405'].includes(cfopFim(cfop));
 const ehCfopVenda = (cfop: string) => ['101', '102'].includes(cfopFim(cfop));
 
-/** O código do item: CSOSN tem 4 dígitos (origem + 3), CST tem 3 (origem + 2). */
+// os CSOSN que existem (o resumo do robô guarda o CSOSN sem a origem, "102", e o CST com ela, "060": o tamanho não basta)
+const CSOSNS = ['101', '102', '103', '201', '202', '203', '300', '400', '500', '900'];
+const CSTS = ['00', '10', '20', '30', '40', '41', '50', '51', '60', '70', '90'];
+
+/** O código do item: CSOSN (101…900, com ou sem a origem na frente) ou CST (a origem + 2 dígitos). */
 function codigoDoItem(cst: string): { csosn: boolean; codigo: string } | null {
   const c = String(cst || '').replace(/\D/g, '');
-  if (c.length === 4) return { csosn: true, codigo: c.slice(1) };
-  if (c.length === 3) return { csosn: false, codigo: c.slice(1) };
+  if (c.length === 4 && CSOSNS.includes(c.slice(1))) return { csosn: true, codigo: c.slice(1) };
+  if (c.length === 3 && CSOSNS.includes(c)) return { csosn: true, codigo: c };
+  if (c.length === 3 && CSTS.includes(c.slice(1))) return { csosn: false, codigo: c.slice(1) };
+  if (c.length === 2 && CSTS.includes(c)) return { csosn: false, codigo: c };
   return null;
 }
 
