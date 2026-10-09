@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { anoDoTexto, lancamentosDoPdf, paginasPorMes, periodoDoExtrato, saldoAnteriorDoPdf, type ItemDeTexto } from './extrato';
+import { anoDoTexto, ehConsultasDoBB, lancamentosDoPdf, paginasPorMes, periodoDoExtrato, saldoAnteriorDoPdf, type ItemDeTexto } from './extrato';
 
 /** Monta uma página: cada linha é [texto, x] com a mesma altura; as linhas descem de 14 em 14. */
 function pagina(linhas: [string, number][][]): ItemDeTexto[] {
@@ -139,5 +139,58 @@ describe('BB "Consultas - Extrato de conta corrente": o período do extrato mand
     expect(lancamentosDoPdf([p], 'banco', 2026).map(l => [l.data, l.valor])).toEqual([
       ['2026-02-02', 2000000], ['2026-02-02', 60825], ['2026-02-02', -27],
     ]);
+  });
+});
+
+describe('BB "Consultas": vale a Dt. movimento (empresa 380)', () => {
+  it('reconhece o layout e usa a 2ª data, também dentro do mês', () => {
+    const p = pagina([
+      [['Consultas - Extrato de conta corrente', 120]],
+      [['Período do', 40], ['01 / 2026', 160]],
+      [['Dt.', 40], ['Dt.', 100], ['Histórico', 200], ['Valor R$', 400], ['Saldo', 480]],
+      [['balancete', 40], ['movimento', 100]],
+      [['31/12/2025', 40], ['000 Saldo Anterior', 200], ['24,28 D', 480]],
+      [['02/01/2026', 40], ['02/01/2026', 100], ['624 Cobrança', 200], ['300,69 C', 400]],
+      [['02/01/2026', 40], ['05/01/2026', 100], ['610 Estorno de Débito', 200], ['276,41 C', 400]],
+      [['05/01/2026', 40], ['06/01/2026', 100], ['610 Estorno de Débito', 200], ['152,48 C', 400]],
+    ]);
+    expect(ehConsultasDoBB(p.map(i => i.texto).join('\n'))).toBe(true);
+    expect(lancamentosDoPdf([p], 'banco', 2026).map(l => [l.data, l.valor])).toEqual([
+      ['2026-01-02', 30069], ['2026-01-05', 27641], ['2026-01-06', 15248],
+    ]);
+  });
+});
+
+describe('BB "Consultas": cada extrato só com o seu mês, sem repetir (empresa 380)', () => {
+  const cab = (mes: string): [string, number][][] => [
+    [['Consultas - Extrato de conta corrente', 120]], [['Período do', 40], [mes + ' / 2026', 160]],
+    [['Dt.', 40], ['Dt.', 100], ['Histórico', 200], ['Valor R$', 400], ['Saldo', 480]], [['balancete', 40], ['movimento', 100]],
+  ];
+  it('janeiro não leva o 30/01 → 02/02 (vem no de fevereiro); o S A L D O do fim não é lançamento', () => {
+    const jan = pagina([...cab('01'),
+      [['31/12/2025', 40], ['000 Saldo Anterior', 200], ['24,28 D', 480]],
+      [['05/01/2026', 40], ['05/01/2026', 100], ['624 Cobrança', 200], ['1.000,00 C', 400]],
+      [['30/01/2026', 40], ['02/02/2026', 100], ['610 Estorno de Débito', 200], ['608,25 C', 400], ['1.583,97 C', 480]],
+      [['31/01/2026', 40], ['0000', 160], ['00000', 180], ['999 S A L D O', 200], ['1.583,97 C', 480]],
+    ]);
+    const fev = pagina([...cab('02'),
+      [['30/01/2026', 40], ['000 Saldo Anterior', 200], ['975,72 C', 480]],
+      [['30/01/2026', 40], ['02/02/2026', 100], ['610 Estorno de Débito', 200], ['608,25 C', 400]],
+      [['03/02/2026', 40], ['03/02/2026', 100], ['624 Cobrança', 200], ['10,00 C', 400]],
+    ]);
+    expect(lancamentosDoPdf([jan], 'banco', 2026).map(x => [x.data, x.valor])).toEqual([['2026-01-05', 100000]]);
+    expect(lancamentosDoPdf([fev], 'banco', 2026).map(x => [x.data, x.valor])).toEqual([['2026-02-02', 60825], ['2026-02-03', 1000]]);
+  });
+});
+
+describe('BB "Consultas": o valor com * (bloqueado) não é lançamento (empresa 380)', () => {
+  it('"911 Depósito bloquead.1d útil 4.837,00 *" fica de fora', () => {
+    const p = pagina([
+      [['Consultas - Extrato de conta corrente', 120]], [['Período do', 40], ['05 / 2026', 160]],
+      [['Dt.', 40], ['Dt.', 100], ['Histórico', 200], ['Valor R$', 400], ['Saldo', 480]], [['balancete', 40], ['movimento', 100]],
+      [['29/05/2026', 40], ['911 Depósito bloquead.1d útil', 200], ['4.837,00', 400], ['*', 440]],
+      [['29/05/2026', 40], ['624 Cobrança', 200], ['4.636,48 C', 400]],
+    ]);
+    expect(lancamentosDoPdf([p], 'banco', 2026).map(x => [x.data, x.valor])).toEqual([['2026-05-29', 463648]]);
   });
 });

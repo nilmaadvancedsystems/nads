@@ -19,9 +19,10 @@ const RE_SINAL = /^(?:[CD]|\(\+\)|\(-\)|[+-]|\*)$/i;
 /**
  * Linha de saldo, total ou resumo: não é lançamento. A palavra tem de abrir a linha ("SALDO ANTERIOR", "Total de
  * créditos", "Limite disponível"…), ou ser um saldo explícito no meio dela ("… SALDO DO DIA"). Solta no histórico, não
- * vale (Vitor, 09/10/2026: o "IOF S/ UTILIZACAO LIMITE" da 380 sumia, como "… TRANSPORTES LTDA" ou "TOTAL ATACADO").
+ * vale (Vitor, 09/10/2026: o "IOF S/ UTILIZACAO LIMITE" da 380 sumia, como "… TRANSPORTES LTDA" ou "TOTAL ATACADO"). O
+ * "S A L D O" espaçado vale também no meio (o "0000 00000 999 S A L D O" do fim do extrato do BB "Consultas").
  */
-const RE_SALDO = /^[\s(+\-*]*(?:s\s?a\s?l\s?d\s?o|sdo\b|total|resumo|limite|bloquead|dispon[ií]vel|a transportar|transporte\b)|\bsaldo (?:anterior|inicial|final|atual|do dia|em\b|disponivel|disponível|bloqueado)/i;
+const RE_SALDO = /^[\s(+\-*]*(?:s\s?a\s?l\s?d\s?o|sdo\b|total|resumo|limite|bloquead|dispon[ií]vel|a transportar|transporte\b)|\bsaldo (?:anterior|inicial|final|atual|do dia|em\b|disponivel|disponível|bloqueado)|\bs a l d o\b/i;
 const RE_SAIDA = /\b(pagto|pagamento|pag\b|tarifa|tar\b|saque|debito|deb\b|compra|enviad|envio|iof|juros|encargo|tributo|darf|gps|das\b|pago|aplicacao|cesta|mensalidade|cheque compensado|chq)/;
 const RE_ENTRADA = /\b(recebid|receb\b|credito|cred\b|deposito|dep\b|resgate|estorno|rendimento|liquidacao cobranca|cobranca)/;
 
@@ -121,6 +122,15 @@ export function periodoDoExtrato(texto: string): string | null {
   return m && Number(m[1]) >= 1 && Number(m[1]) <= 12 ? m[2] + '-' + m[1].padStart(2, '0') : null;
 }
 
+/**
+ * O extrato do BB "Consultas - Extrato de conta corrente" (o do BB Empresa), com as colunas Dt. balancete e Dt. movimento:
+ * nele, a data certa do lançamento é a Dt. movimento (Vitor, 09/10/2026).
+ */
+export function ehConsultasDoBB(texto: string): boolean {
+  const t = normalizarTexto(texto);
+  return /consultas extrato de conta corrente/.test(t) && /\bbalancete\b/.test(t) && /\bmovimento\b/.test(t);
+}
+
 export function lancamentosDoPdf(paginas: ItemDeTexto[][], lado: Lado, anoPadrao = new Date().getFullYear()): Lancamento[] {
   return lancamentosComPagina(paginas, lado, anoPadrao).lancamentos;
 }
@@ -155,7 +165,9 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   // histórico quebrado ("REM: FULANO" / "21/03"), não um dia novo (Vitor, 09/10/2026: a 380 jogava o 23/03 no 21/03)
   const xDasDatas = todas.flat().map(l => l.tokens[0]).filter(t => t && RE_DATA.test(t.s) && /\d{4}$/.test(t.s)).map(t => t.x);
   const naColunaDaData = (x: number) => !xDasDatas.length || xDasDatas.some(d => Math.abs(d - x) <= 20);
-  const periodo = periodoDoExtrato(todas.map(p => p.map(l => l.texto).join('\n')).join('\n'));
+  const textoTodo = todas.map(p => p.map(l => l.texto).join('\n')).join('\n');
+  const periodo = periodoDoExtrato(textoTodo);
+  const pelaDtMovimento = ehConsultasDoBB(textoTodo);
 
   for (const [nPagina, linhas] of todas.entries()) {
     col = colunas(linhas) || col;
@@ -175,6 +187,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       if (data) dataAtual = data;
 
       const valores: Token[] = [];
+      const bloqueados = new Set<Token>();
       const resto: string[] = [];
       for (let i = 0; i < t.length; i++) {
         const s = t[i].s;
@@ -182,6 +195,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
           const v = { ...t[i] };
           const prox = t[i + 1];
           if (prox && RE_SINAL.test(prox.s) && !RE_VALOR.test(prox.s)) {
+            if (prox.s === '*') bloqueados.add(v);
             v.s += prox.s === '*' ? '' : ' ' + prox.s.replace(/[()]/g, '');
             v.x2 = prox.x2;
             i++;
@@ -212,6 +226,9 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
         if (!candidatos.length) candidatos = [valores[0]];
       }
       const v = candidatos[0];
+      // no BB "Consultas", o valor com * é bloqueado ("911 Depósito bloquead.1d útil 4.837,00 *"): não mexe no saldo, não é
+      // lançamento (Vitor, 09/10/2026: a 380 não fechava maio com junho)
+      if (pelaDtMovimento && bloqueados.has(v)) { solta = null; continue; }
       let c = centavos(v.s);
       if (c == null || c === 0) continue;
       if (!temSinal(v.s)) {
@@ -226,11 +243,16 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       if (!h && solta) { h = solta; solta = null; }
       else if (solta && ultimo) { ultimo.historico = (ultimo.historico + ' ' + solta).trim(); solta = null; }
       else solta = null;
-      // o extrato de um mês só ("Período do extrato 02 / 2026", o do BB): a linha com a 1ª data fora do mês e a 2ª dentro
-      // é do mês do extrato (Vitor, 09/10/2026: a 380 punha em 30/01 o que é de 02/2026)
-      const dataDoLanc = periodo && segunda && !dataAtual.startsWith(periodo) && segunda.startsWith(periodo) ? segunda : dataAtual;
+      // o BB "Consultas": vale a Dt. movimento (a 2ª data), quando a linha tem (Vitor, 09/10/2026: "nesse layout, siga a
+      // Dt. movimento"); nos outros, o extrato de um mês só ("Período do extrato 02 / 2026"): a linha com a 1ª data fora do
+      // mês e a 2ª dentro é do mês do extrato
+      const dataDoLanc = segunda && pelaDtMovimento ? segunda
+        : periodo && segunda && !dataAtual.startsWith(periodo) && segunda.startsWith(periodo) ? segunda : dataAtual;
       ultimo = { data: dataDoLanc, valor: c, historico: h || '(sem histórico)' };
       ultimaY = l.y;
+      // a Dt. movimento no mês seguinte: o lançamento vem no extrato do outro mês (senão entraria duas vezes; o saldo
+      // anterior do extrato seguinte já é o de antes dele)
+      if (pelaDtMovimento && periodo && !dataDoLanc.startsWith(periodo)) continue;
       saida.push(ultimo);
       paginaDe.push(nPagina);
     }
