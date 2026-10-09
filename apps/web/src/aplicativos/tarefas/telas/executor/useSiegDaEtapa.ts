@@ -64,6 +64,7 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
   }, [trabalhando]);
   const andamento = janela ? (() => {
     const { passos, atual, pct } = passosDe(janela, pJanela);
+    const driveAndando = janela === 'xmls' && pJanela?.status === 'concluido' && pJanela.drive && !pJanela.drive.pronto ? pJanela.drive : null;
     const pronto = atual === passos.length - 1;
     return {
       titulo: janela === 'contagem'
@@ -75,8 +76,13 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
       /** a janela do "Baixar XMLs" (mostra o "Baixar o .zip") */
       xmls: janela === 'xmls',
       // o que o robô está fazendo agora (ex.: "Recebidas · NF-e (120 XMLs até agora)")
-      detalhe: pJanela?.status === 'processando' && pJanela.andamento && !['emitidas', 'recebidas'].includes(pJanela.andamento) ? pJanela.andamento : '',
-      passos: passos.map((texto, i) => ({ texto, feito: i < atual || pronto, atual: i === atual && !pronto })),
+      // pronto para a pessoa e o Drive ainda gravando por trás (09/10/2026): o passo do Drive segue andando
+      detalhe: driveAndando ? 'Salvando no Drive por trás (' + driveAndando.feitos + ' de ' + driveAndando.total + '): pode seguir'
+        : pJanela?.drive?.erro ? 'O Drive parou (' + pJanela.drive.erro + '): o próximo pedido salva o que faltou'
+          : pJanela?.status === 'processando' && pJanela.andamento && !['emitidas', 'recebidas'].includes(pJanela.andamento) ? pJanela.andamento : '',
+      passos: passos.map((texto, i) => (driveAndando && texto === 'Salvando na pasta do cliente no Drive'
+        ? { texto: texto + ' (por trás)', feito: false, atual: true }
+        : { texto, feito: i < atual || pronto, atual: i === atual && !pronto })),
       /** o tempo: quanto já foi e, com a barra andando, quanto falta (pela velocidade até aqui) */
       tempo: (() => {
         const ini = pJanela?.em ? Date.parse(pJanela.em) : NaN;
@@ -87,7 +93,7 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
         return mmss(foi) + (falta != null ? ' · falta uns ' + mmss(Math.max(1, falta)) : '');
       })(),
       /** os números do "Baixar XMLs": quantos XMLs, quantos vieram do Drive e quantos foram gravados agora */
-      numeros: janela === 'xmls' && pJanela?.numeros && pJanela.numeros.xmls ? pJanela.numeros : null,
+      numeros: janela === 'xmls' && pJanela?.numeros && pJanela.numeros.xmls ? { ...pJanela.numeros, novos: pJanela.drive ? pJanela.drive.feitos : pJanela.numeros.novos } : null,
       resultado: !pronto ? '' : janela === 'contagem'
         ? (cont.dados ? t.sieg.totalDe(cont.dados.emitidas) + ' emitidas · ' + t.sieg.totalDe(cont.dados.recebidas) + ' recebidas' : '')
         // os números ficam nos painéis; aqui, as notas e onde estão

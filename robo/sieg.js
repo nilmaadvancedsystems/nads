@@ -590,28 +590,44 @@ function iniciarSieg({ db, log }) {
             // nome é a mesma nota. O .zip só é refeito quando entrou XML novo (ou quando ainda não existe)
             const jaTem = new Set([...(await noDrive).nomes, ...(await fs.promises.readdir(pasta).catch(() => []))]);
             const faltam = arquivos.filter(a => !jaTem.has(a.nome));
-            if (faltam.length) await fs.promises.mkdir(pasta, { recursive: true });
             numeros.jaSalvos = arquivos.length - faltam.length;
-            await andar('drive', faltam.length ? 'Salvando ' + faltam.length + ' XMLs novos no Drive' : 'Todos os XMLs já estavam no Drive', 0, true);
-            // em paralelo (16 por vez): no Drive cada arquivo leva ~120 ms
-            let novos = 0;
-            const fila = faltam.slice();
-            await Promise.all(Array.from({ length: 16 }, async () => {
-              for (let a = fila.shift(); a; a = fila.shift()) {
-                await fs.promises.writeFile(path.join(pasta, a.nome), a.xml);
-                novos++;
-                numeros.novos = novos;
-                andar('drive', 'Salvando no Drive (' + novos + ' de ' + faltam.length + ')', novos / faltam.length);
-              }
-            }));
-            // e o .zip com todos, na mesma pasta (07/10/2026: "quero que ele também salve um arquivo .zip na hora")
-            if (zip && novos) await fs.promises.writeFile(path.join(pasta, nomeDoZip), zip);
-            await db.collection('siegNotas').doc(id).update({ novos }).catch(() => {});
+            // a pessoa já está livre (09/10/2026: "sim" — liberar quando o .zip e as notas estão no nads): o pedido fica
+            // concluído agora e o Drive termina por trás, contando em drive { total, feitos, pronto }
             await d.ref.update({
               status: 'concluido', concluidoEm: new Date().toISOString(), andamento: '', pct: 100, fase: 'pronto', numeros,
-              // nada novo: não gravou no Claudio Secretario (já estava tudo arquivado ou lá)
-              resultado: { arquivos: arquivos.length, novos, jaSalvos: numeros.jaSalvos, pasta: novos ? onde : 'o Drive do cliente (já estava tudo lá)', zip: novos ? nomeDoZip : '', emitidas: resumo.emitidas.length, recebidas: resumo.recebidas.length },
+              drive: { total: faltam.length, feitos: 0, pronto: !faltam.length },
+              // nada novo: não grava no Claudio Secretario (já estava tudo arquivado ou lá)
+              resultado: { arquivos: arquivos.length, novos: 0, jaSalvos: numeros.jaSalvos, pasta: faltam.length ? onde : 'o Drive do cliente (já estava tudo lá)', zip: faltam.length ? nomeDoZip : '', emitidas: resumo.emitidas.length, recebidas: resumo.recebidas.length },
             });
+            // em paralelo (48 por vez; 16 levavam 34 s para 1292 XMLs): o andamento do Drive no máximo a cada 1 s
+            let novos = 0;
+            if (faltam.length) {
+              let ultimoDrive = 0;
+              const contar = forcar => {
+                if (!forcar && Date.now() - ultimoDrive < 1000) return Promise.resolve();
+                ultimoDrive = Date.now();
+                return d.ref.update({ 'drive.feitos': novos }).catch(() => {});
+              };
+              try {
+                await fs.promises.mkdir(pasta, { recursive: true });
+                const fila = faltam.slice();
+                await Promise.all(Array.from({ length: 48 }, async () => {
+                  for (let a = fila.shift(); a; a = fila.shift()) {
+                    await fs.promises.writeFile(path.join(pasta, a.nome), a.xml);
+                    novos++;
+                    contar(false);
+                  }
+                }));
+                // e o .zip com todos, na mesma pasta (07/10/2026: "quero que ele também salve um arquivo .zip na hora")
+                if (zip && novos) await fs.promises.writeFile(path.join(pasta, nomeDoZip), zip);
+                await d.ref.update({ drive: { total: faltam.length, feitos: novos, pronto: true, em: new Date().toISOString() }, 'numeros.novos': novos, 'resultado.novos': novos }).catch(() => {});
+              } catch (err) {
+                // o Drive falhou depois de a pessoa já ter o .zip e as notas: fica o aviso no pedido (o próximo pedido salva o que faltou)
+                await d.ref.update({ drive: { total: faltam.length, feitos: novos, pronto: true, erro: err.message } }).catch(() => {});
+                log('SIEG: Drive de', p.codigo, '- parou em', novos, 'de', faltam.length, '-', err.message);
+              }
+            }
+            await db.collection('siegNotas').doc(id).update({ novos }).catch(() => {});
             log('SIEG: XMLs de', p.codigo, p.competencia, '-', arquivos.length, 'arquivos (' + novos + ' novos) em', onde);
             continue;
           }
