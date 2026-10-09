@@ -3585,3 +3585,10 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .imp-recebidos li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .imp-recebidos-nome{display:flex;flex-direction:column;flex:1 1 220px;min-width:0;}
 .imp-recebidos-nome .hint{margin:0;}
+/* FGTS: o número, o valor e o vencimento da guia na tabela (09/10/2026) */
+.fgts-tabela .fgts-numero{white-space:nowrap;font-size:12px;}
+/* FGTS: o ⋯ só com os três pontos (sem a setinha) e o menu dele por cima da tabela, sem cortar (09/10/2026) */
+.fgts-mais .menu-seta{display:none;}
+.fgts-mais{width:28px;justify-content:center;padding:0;}
+.dp-lista .table-wrap:has(.fgts-tabela){overflow:visible;}
+.fgts-tabela td,.fgts-tabela th{padding-left:8px;padding-right:8px;}

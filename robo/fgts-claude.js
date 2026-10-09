@@ -47,37 +47,49 @@ function ambienteLimpo() {
   return env;
 }
 
-/** O que o Claude faz, passo a passo; termina com RESULTADO: {json}. */
-function instrucoes(p, modo) {
-  const [ano, mes] = p.competencia.split('-');
-  const cnpj = p.cnpj;
+/**
+ * O que o Claude faz, para o lote inteiro numa sessão só (Vitor, 09/10/2026: "tem como acelerar a emissão?"): entra uma
+ * vez e, para cada cliente, só troca o perfil e emite. Escreve PASSO [cnpj]: … a cada etapa e RESULTADO [cnpj]: {json}
+ * ao terminar cada cliente.
+ */
+function instrucoesDoLote(itens) {
+  const lista = itens.map((p, i) => {
+    const [ano, mes] = p.competencia.split('-');
+    return (i + 1) + '. ' + (p.empresa || '') + ' — CNPJ ' + p.cnpj + ' — competência ' + mes + '/' + ano + ' — ' + (p.modo === 'emitir' ? 'EMITIR' : 'ENSAIO (não emitir)');
+  });
   return [
-    'Você está emitindo a guia mensal do FGTS de um cliente no portal FGTS Digital, usando as ferramentas do Claude in Chrome.',
-    'O Chrome deste PC já está logado no gov.br com o certificado do escritório (NILMA CONTABILIDADE, procuradora dos clientes).',
+    'Você vai emitir guias mensais do FGTS no portal FGTS Digital, usando as ferramentas do Claude in Chrome, para estes clientes,',
+    'nesta ordem, numa aba só do seu grupo:',
+    ...lista,
     '',
-    'Cliente: ' + (p.empresa || '') + ' — CNPJ ' + cnpj + '. Competência de apuração: ' + mes + '/' + ano + '.',
+    'O Chrome deste PC usa o certificado do escritório (NILMA CONTABILIDADE, procuradora dos clientes). Seja rápido: para ler a',
+    'página prefira o texto e a busca de elementos a tirar print; tire print só quando precisar ver onde clicar.',
     '',
-    'Faça exatamente assim, numa aba do seu grupo:',
-    '1. Abra ' + PORTAL + '.',
-    '2. Se aparecer a tela de login do gov.br ou "Entrar com gov.br", NÃO faça login: pare e responda RESULTADO: {"erro":"login"}.',
-    '   Se aparecer qualquer verificação "não sou um robô"/captcha, NÃO resolva: pare e responda RESULTADO: {"erro":"captcha"}.',
-    '3. Escolha o perfil do cliente: na janela "Definir Perfil" (ou pelo botão "Trocar Perfil" no alto), abra a lista Perfil, escolha',
-    '   "Procurador", digite o CNPJ ' + cnpj + ' em "Empregador a ser representado" e clique em Definir/Selecionar. Confira que o alto',
-    '   da página mostra "Empregador: ' + cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') + '". Se o portal disser que não há procuração, responda RESULTADO: {"erro":"sem procuração"}.',
-    '4. Vá direto para a Emissão de Guia Rápida (sempre a Guia Rápida): abra ' + GUIA_RAPIDA + ' na mesma aba (se não abrir, use o cartão GESTÃO DE GUIAS e depois EMISSÃO DE GUIA RÁPIDA).',
-    '5. Em "Competência de Apuração", abra a lista e escolha ' + mes + '/' + ano + '. Se essa competência não estiver na lista, responda',
-    '   RESULTADO: {"erro":"sem débito em aberto na competência"}. Deixe os tipos de débito como estão e clique em Pesquisar.',
-    '6. Leia o Resumo da Pesquisa: o Total Devedor e o vencimento da guia.',
-    modo === 'emitir'
-      ? '7. Clique em "Emitir guia" (uma vez só). O PDF baixa sozinho. Leia o número da guia que aparece ao lado do vencimento.'
-      : '7. NÃO clique em "Emitir guia" (é só um ensaio).',
+    'Uma vez, no começo:',
+    'A. Abra ' + PORTAL + '.',
+    'B. Se o portal pedir login: clique em "Entrar com gov.br" e depois em "Seu certificado digital" (o Chrome escolhe sozinho o',
+    '   certificado da NILMA; nunca digite CPF, senha ou código). Espere voltar ao portal. Se aparecer qualquer verificação',
+    '   "não sou um robô"/captcha, NÃO resolva: pare tudo e responda RESULTADO: {"erro":"captcha"}. Se não voltar ao portal em',
+    '   1 minuto, pare tudo e responda RESULTADO: {"erro":"login"}.',
     '',
-    'A cada etapa, escreva uma linha começando com "PASSO: " dizendo o que fez (ex.: PASSO: perfil do cliente definido).',
-    'No fim, escreva uma linha só:',
-    modo === 'emitir'
-      ? 'RESULTADO: {"numero":"<número da guia>","valor":"<total, ex. 917,42>","vencimento":"<dd/mm/aaaa>"}'
-      : 'RESULTADO: {"ensaio":true,"valor":"<total>","vencimento":"<dd/mm/aaaa>"}',
-    'Se algo der errado, RESULTADO: {"erro":"<o que aconteceu, curto>"}. Não faça nada além disso no portal.',
+    'Para cada cliente da lista:',
+    '1. Escolha o perfil do cliente: na janela "Definir Perfil" ou pelo botão "Trocar Perfil" no alto, abra a lista Perfil, escolha',
+    '   "Procurador", digite o CNPJ em "Empregador a ser representado" e clique em Definir/Selecionar. Confira que o alto da página',
+    '   mostra "Empregador:" com o CNPJ dele. Se o portal disser que não há procuração, o resultado dele é {"erro":"sem procuração"}.',
+    '2. Abra ' + GUIA_RAPIDA + ' (a Emissão de Guia Rápida; se não abrir, use o cartão GESTÃO DE GUIAS e EMISSÃO DE GUIA RÁPIDA).',
+    '3. Em "Competência de Apuração", abra a lista e escolha a competência do cliente. Se ela não estiver na lista, o resultado',
+    '   dele é {"erro":"sem débito em aberto na competência"}. Deixe os tipos de débito como estão e clique em Pesquisar.',
+    '4. Leia o Total Devedor e o vencimento da guia.',
+    '5. Se o cliente é EMITIR: clique em "Emitir guia" (uma vez só); o PDF baixa sozinho; leia o número da guia ao lado do',
+    '   vencimento. Se é ENSAIO: NÃO clique em "Emitir guia".',
+    '6. Escreva a linha do resultado dele e siga para o próximo cliente (um erro num cliente não para os outros).',
+    '',
+    'Escreva, sempre numa linha só e com o CNPJ só em números entre colchetes:',
+    '  a cada etapa: PASSO [<cnpj>]: <o que fez>          (ex.: PASSO [27361015000131]: perfil do cliente definido)',
+    '  no fim de cada cliente que EMITIR: RESULTADO [<cnpj>]: {"numero":"<número da guia>","valor":"<total, ex. 917,42>","vencimento":"<dd/mm/aaaa>"}',
+    '  no fim de cada cliente ENSAIO: RESULTADO [<cnpj>]: {"ensaio":true,"valor":"<total>","vencimento":"<dd/mm/aaaa>"}',
+    '  se der errado com um cliente: RESULTADO [<cnpj>]: {"erro":"<o que aconteceu, curto>"}',
+    'Não faça nada além disso no portal.',
   ].join('\n');
 }
 
@@ -116,6 +128,34 @@ async function esperarPdf(numero, desde, ms) {
   return null;
 }
 
+const CHROME = process.env.FGTS_CHROME || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+
+/** O Chrome de quem usa o PC está aberto? Se não, abre (normal, no perfil de sempre) e espera a extensão. true = abriu. */
+async function abrirChromeSeFechado() {
+  let aberto = false;
+  try { aberto = /chrome\.exe/i.test(require('child_process').execFileSync('tasklist', ['/FI', 'IMAGENAME eq chrome.exe', '/NH'], { encoding: 'utf8', windowsHide: true })); } catch (_) { /* sem tasklist: tenta abrir */ }
+  if (aberto || !fs.existsSync(CHROME)) return false;
+  spawn(CHROME, [PORTAL], { detached: true, stdio: 'ignore' }).unref();
+  chromeAbertoPeloRobo = true;
+  await dormir(20000);
+  return true;
+}
+
+// o Chrome que o robô abriu fecha no fim da fila (Vitor, 09/10/2026: "quero que feche o Chrome depois disso"); o que já
+// estava aberto (alguém usando) fica
+let chromeAbertoPeloRobo = false;
+function fecharChromeDoRobo(log) {
+  if (!chromeAbertoPeloRobo) return;
+  chromeAbertoPeloRobo = false;
+  try { require('child_process').execFileSync('taskkill', ['/IM', 'chrome.exe'], { windowsHide: true, stdio: 'ignore' }); log('FGTS: fechei o Chrome que eu tinha aberto'); } catch (_) { /* já fechado */ }
+}
+
+/** O Claude disse que a extensão do Chrome não estava conectada (ou não achou o navegador). */
+function extensaoFora(r) {
+  const t = String((r.resultado && r.resultado.erro) || r.erro || '').toLowerCase();
+  return /extens|n[aã]o (est[aá] )?conectad|not connected|browser/.test(t) && !(r.resultado && (r.resultado.numero || r.resultado.ensaio));
+}
+
 function iniciarFgtsPeloClaude(db, log) {
   const estado = db.collection('robo').doc('fgts');
   const pedidos = db.collection('pedidosFgts');
@@ -142,53 +182,102 @@ function iniciarFgtsPeloClaude(db, log) {
   async function proximo() {
     if (ocupado || !fila.length) return;
     ocupado = true;
-    const doc = fila.shift();
-    try { await atender(doc); } catch (err) { log('FGTS: erro no pedido', doc.id, err.message); }
+    // o lote: todos os pedidos que estão na fila agora, numa sessão só do Claude (até 25 por vez)
+    const lote = fila.splice(0, 25);
+    try { await atenderLote(lote); } catch (err) { log('FGTS: erro no lote', err.message); }
     ocupado = false;
+    // a fila acabou: fecha o Chrome se foi o robô que abriu (espera um pouco, para um pedido que chegue logo em seguida)
+    if (!fila.length) setTimeout(() => { if (!ocupado && !fila.length) fecharChromeDoRobo(log); }, 15000);
     proximo();
   }
   ouvir('pedidos do FGTS', () => pedidos.where('status', '==', 'pendente'), snap => {
     for (const ch of snap.docChanges()) if (ch.type === 'added' && !fila.some(d => d.id === ch.doc.id)) fila.push(ch.doc);
-    proximo();
+    // espera um instante para juntar os pedidos que chegam juntos (o "Emitir as que faltam" pede um por um)
+    setTimeout(proximo, 3000);
   }, log);
 
-  async function atender(doc) {
-    const p = doc.data();
-    const ref = doc.ref;
-    const modo = p.modo === 'emitir' ? 'emitir' : 'ensaio';
-    if (!cnpjValido(p.cnpj)) return ref.update({ status: 'erro', erro: 'CNPJ inválido', fimEm: agora() });
-    if (!competenciaValida(p.competencia)) return ref.update({ status: 'erro', erro: 'competência inválida', fimEm: agora() });
-    const passos = [];
-    const passo = nome => {
-      passos.push({ n: passos.length + 1, nome: String(nome).slice(0, 200), url: '', texto: '', quando: agora() });
-      return ref.update({ passos }).catch(() => {});
-    };
-    await ref.update({ status: 'trabalhando', inicioEm: agora(), passos: [] });
-    log('FGTS (Claude):', modo, p.cnpj, p.competencia, '(' + (p.empresa || '') + ')');
-    await passo('o Claude abriu o FGTS Digital no Chrome do PC');
-    const desde = Date.now();
-
-    const r = await rodarClaude(instrucoes(p, modo), linha => { void passo(linha); });
-    if (!r.resultado) {
-      await ref.update({ status: 'erro', erro: 'o Claude não terminou: ' + (r.erro || 'sem resposta').slice(0, 300), fimEm: agora() });
-      log('FGTS (Claude): sem resultado', p.cnpj, r.erro || '');
-      return;
+  async function atenderLote(docs) {
+    // os pedidos do lote, cada um com os passos dele no pedido (a tela do DP acompanha ao vivo)
+    const itens = [];
+    for (const doc of docs) {
+      const p = doc.data();
+      if (!cnpjValido(p.cnpj)) { await doc.ref.update({ status: 'erro', erro: 'CNPJ inválido', fimEm: agora() }); continue; }
+      if (!competenciaValida(p.competencia)) { await doc.ref.update({ status: 'erro', erro: 'competência inválida', fimEm: agora() }); continue; }
+      const item = { p: Object.assign({}, p, { modo: p.modo === 'emitir' ? 'emitir' : 'ensaio' }), ref: doc.ref, passos: [], fim: false, comecou: false, tarefa: null };
+      item.passo = nome => {
+        item.passos.push({ n: item.passos.length + 1, nome: String(nome).slice(0, 200), url: '', texto: '', quando: agora() });
+        return item.ref.update({ passos: item.passos }).catch(() => {});
+      };
+      itens.push(item);
     }
-    const res = r.resultado;
+    if (!itens.length) return;
+    const porCnpj = new Map(itens.map(it => [it.p.cnpj, it]));
+    log('FGTS (Claude): lote de ' + itens.length + ' guia(s):', itens.map(it => it.p.cnpj).join(', '));
+    for (const it of itens) await it.passo(itens.length > 1 ? 'no lote de ' + itens.length + ' guias; esperando a vez' : 'o Claude está abrindo o FGTS Digital');
+    const desde = Date.now();
+    if (await abrirChromeSeFechado()) for (const it of itens) await it.passo('o Chrome estava fechado: abri e esperei a extensão do Claude');
+
+    const comecar = it => {
+      if (it.comecou) return;
+      it.comecou = true;
+      void it.ref.update({ status: 'trabalhando', inicioEm: agora() }).catch(() => {});
+    };
+    let atual = itens[0];
+    const aoPasso = (cnpj, texto) => {
+      const it = (cnpj && porCnpj.get(cnpj)) || atual;
+      if (!it || it.fim) return;
+      atual = it;
+      comecar(it);
+      void it.passo(texto);
+    };
+    const aoResultado = (cnpj, res) => {
+      if (!cnpj) {
+        // erro geral (login ou captcha): vale para todos que ainda não terminaram
+        for (const it of itens) if (!it.fim) { it.fim = true; it.tarefa = concluir(it, res, desde); }
+        return;
+      }
+      const it = porCnpj.get(cnpj);
+      if (!it || it.fim) return;
+      it.fim = true;
+      comecar(it);
+      it.tarefa = concluir(it, res, desde);
+    };
+    const limite = 4 * 60 * 1000 + itens.length * 3 * 60 * 1000;
+    let r = await rodarClaude(instrucoesDoLote(itens.map(it => it.p)), aoPasso, aoResultado, limite);
+    // a extensão ainda não estava pronta (nenhum cliente começou): espera e tenta o lote de novo, uma vez
+    if (!itens.some(it => it.comecou || it.fim) && extensaoFora(r)) {
+      for (const it of itens) await it.passo('a extensão do Claude não respondeu; tentando de novo');
+      await dormir(20000);
+      r = await rodarClaude(instrucoesDoLote(itens.map(it => it.p)), aoPasso, aoResultado, limite);
+    }
+    for (const it of itens) {
+      if (it.fim) continue;
+      it.fim = true;
+      const motivo = !it.comecou && extensaoFora(r)
+        ? 'a extensão Claude in Chrome não está conectada no PC: abra o Chrome, clique no ícone do Claude e peça de novo'
+        : 'o Claude não terminou este cliente' + (r.erro ? ': ' + r.erro.slice(0, 200) : '');
+      it.tarefa = it.ref.update({ status: 'erro', erro: motivo, fimEm: agora() }).catch(() => {});
+    }
+    await Promise.all(itens.map(it => it.tarefa));
+  }
+
+  /** O fim de um cliente: o erro, o ensaio ou a guia (o PDF do Claudio Secretario arquivado e no pedido). */
+  async function concluir(it, res, desde) {
+    const { p, ref } = it;
     if (res.erro) {
-      const motivo = res.erro === 'login' ? 'o Chrome do PC não está logado no FGTS Digital: entre com o certificado e peça de novo'
+      const motivo = res.erro === 'login' ? 'o login no FGTS Digital não foi no Chrome do PC: entre com o certificado lá e peça de novo'
         : res.erro === 'captcha' ? 'o gov.br pediu a verificação "não sou um robô" no Chrome do PC: faça o login lá e peça de novo'
           : String(res.erro);
       await ref.update({ status: 'erro', erro: motivo, fimEm: agora() });
       log('FGTS (Claude): erro', p.cnpj, motivo);
       return;
     }
-    if (modo === 'ensaio') {
+    if (p.modo === 'ensaio') {
       await ref.update({ status: 'pronto', resultado: 'ensaio: total R$ ' + (res.valor || '?') + ', vence ' + (res.vencimento || '?') + ' (nada emitido)', fimEm: agora() });
       log('FGTS (Claude): ensaio ok', p.cnpj);
       return;
     }
-    await passo('esperando o PDF da guia ' + (res.numero || '') + ' no Claudio Secretario');
+    await it.passo('esperando o PDF da guia ' + (res.numero || '') + ' no Claudio Secretario');
     const baixado = await esperarPdf(res.numero, desde, 90000);
     if (!baixado) {
       await ref.update({ status: 'erro', erro: 'a guia ' + (res.numero || '') + ' foi emitida, mas o PDF não chegou no Claudio Secretario', fimEm: agora() });
@@ -200,7 +289,7 @@ function iniciarFgtsPeloClaude(db, log) {
       return;
     }
     const final = arquivarGuia(baixado, p, res.numero || 'sem-numero');
-    await passo('arquivada em ' + path.relative(DRIVE, final));
+    await it.passo('arquivada em ' + path.relative(DRIVE, final));
     const nome = path.basename(final);
     await ref.collection('arquivo').doc('pdf').set({ base64: pdf.toString('base64'), nome, tamanho: pdf.length, sha256: crypto.createHash('sha256').update(pdf).digest('hex'), quando: agora() });
     await ref.update({
@@ -211,20 +300,26 @@ function iniciarFgtsPeloClaude(db, log) {
     log('FGTS (Claude): guia emitida', p.cnpj, p.competencia, res.numero || '');
   }
 
-  /** Roda o Claude do PC com o Claude in Chrome; cada "PASSO: …" vai para aoPasso; devolve o RESULTADO. */
-  function rodarClaude(texto, aoPasso) {
+  /**
+   * Roda o Claude do PC com o Claude in Chrome. "PASSO [cnpj]: …" vai para aoPasso; "RESULTADO [cnpj]: {…}" para
+   * aoResultado (sem o CNPJ: vale para o lote todo). Devolve o fim da conversa (para o erro de quando nada começou).
+   */
+  function rodarClaude(texto, aoPasso, aoResultado, limiteMs) {
     return new Promise(resolve => {
       const filho = spawn(CLAUDE, ['-p', texto, '--chrome', '--model', MODELO, '--permission-mode', 'bypassPermissions',
         '--output-format', 'stream-json', '--verbose', '--no-session-persistence'], { cwd: __dirname, windowsHide: true, env: ambienteLimpo(), stdio: ['ignore', 'pipe', 'pipe'] });
-      let resto = '', erros = '', resultado = null, final = '';
+      let resto = '', erros = '', final = '', algum = null;
       const vistos = new Set();
       const lerTexto = t => {
         for (const linha of String(t).split('\n')) {
           const l = linha.trim();
-          const m = l.match(/^PASSO:\s*(.+)$/);
-          if (m && !vistos.has(m[1])) { vistos.add(m[1]); aoPasso(m[1]); }
-          const r = l.match(/^RESULTADO:\s*(\{.*\})\s*$/);
-          if (r) { try { resultado = JSON.parse(r[1]); } catch (_) { /* resultado mal escrito */ } }
+          const m = l.match(/^PASSO\s*(?:\[(\d{14})\])?\s*:\s*(.+)$/);
+          if (m && !vistos.has(l)) { vistos.add(l); aoPasso(m[1] || '', m[2]); }
+          const r = l.match(/^RESULTADO\s*(?:\[(\d{14})\])?\s*:\s*(\{.*\})\s*$/);
+          if (r && !vistos.has(l)) {
+            vistos.add(l);
+            try { const res = JSON.parse(r[2]); algum = res; aoResultado(r[1] || '', res); } catch (_) { /* resultado mal escrito */ }
+          }
         }
       };
       filho.stdout.on('data', b => {
@@ -238,9 +333,9 @@ function iniciarFgtsPeloClaude(db, log) {
         }
       });
       filho.stderr.on('data', b => { erros += String(b); if (erros.length > 3000) erros = erros.slice(-3000); });
-      const relogio = setTimeout(() => { try { filho.kill(); } catch (_) {} }, LIMITE_MS);
-      filho.on('error', err => { clearTimeout(relogio); resolve({ resultado: null, erro: err.message }); });
-      filho.on('close', () => { clearTimeout(relogio); resolve({ resultado, erro: resultado ? '' : (final || erros).slice(-300) }); });
+      const relogio = setTimeout(() => { try { filho.kill(); } catch (_) {} }, limiteMs || LIMITE_MS);
+      filho.on('error', err => { clearTimeout(relogio); resolve({ resultado: algum, erro: err.message }); });
+      filho.on('close', () => { clearTimeout(relogio); resolve({ resultado: algum, erro: (final || erros).slice(-300) }); });
     });
   }
 }

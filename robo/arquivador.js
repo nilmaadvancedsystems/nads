@@ -247,7 +247,8 @@ function responderNaSessao(sessao, texto) {
 }
 
 async function atenderMensagens() {
-  if (respondendo || ocupado) return;
+  // com a organização do botão rodando, não sai daqui calado: marca "esperando a rotina terminar" (a tela mostra)
+  if (respondendo) return;
   respondendo = true;
   try {
     for (;;) {
