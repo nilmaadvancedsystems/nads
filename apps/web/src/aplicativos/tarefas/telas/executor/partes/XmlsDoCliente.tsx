@@ -13,6 +13,13 @@ export function XmlsDoCliente({ codigo, competencia }: { codigo: string; compete
   return (
     <div className="xmls-cliente">
       <p className="hint" style={{ margin: 0 }}>Os XMLs que o cliente mandou (soltos ou num .zip): o robô fica com os desta empresa, lança as notas no nads (as tabelas de verificação e a sequência das saídas) e salva no Drive só os que ainda não estão lá.</p>
+      {/* direto da pasta do cliente no Drive (09/10/2026): a pasta do ano (o arquivado) e o Claudio Secretario */}
+      {!a && (
+        <div className="xmls-cliente-lidos">
+          <BotaoAcao className="btn btn-primary" carregando={vm.enviando} textoCarregando="Pedindo…" onClick={() => { void vm.puxarDoDrive(); }}><Icone nome="pasta" />Puxar da pasta do cliente no Drive</BotaoAcao>
+          <span className="hint">ou solte os arquivos abaixo</span>
+        </div>
+      )}
       <input ref={input} type="file" accept=".xml,.zip" multiple hidden onChange={e => { soltar(e.target.files); e.target.value = ''; }} />
       <button type="button" className={'cert-soltar' + (sobre ? ' sobre' : '') + (vm.lidos ? ' compacto' : '')} onClick={() => input.current?.click()}
         onDragOver={e => { e.preventDefault(); setSobre(true); }} onDragLeave={() => setSobre(false)}

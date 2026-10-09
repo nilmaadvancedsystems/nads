@@ -44,6 +44,7 @@ export interface RepoSieg {
    * clientes mandam"): o texto de cada XML vai ao robô, que fica com os do cliente, lança no nads e salva no Drive
    */
   enviarXmlsDoCliente(codigo: string, competencia: string, xmls: string[]): Promise<void>;
+  // (a lista vazia = puxar os XMLs do mês da pasta do cliente no Drive: o robô lê lá; 09/10/2026)
   /** o .zip das notas que estão nos XMLs e faltam no Alterdata (08/10/2026): o robô pega essas chaves no SIEG e entrega */
   pedirZipFaltam(codigo: string, competencia: string, chaves: string[]): Promise<void>;
   /** os bytes do .zip que o robô entregou no pedido */

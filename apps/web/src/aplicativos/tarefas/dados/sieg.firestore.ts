@@ -176,7 +176,8 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
       const q = quem();
       if (!q) throw new Error('Sem login.');
       const ref = doc(collection(db, 'pedidosSieg'));
-      const texto = JSON.stringify(xmls);
+      // sem XMLs: o robô puxa da pasta do cliente no Drive (partes 0; 09/10/2026)
+      const texto = xmls.length ? JSON.stringify(xmls) : '';
       const PEDACO = 350000;
       let n = 0;
       for (let i = 0; i < texto.length; i += PEDACO) {
