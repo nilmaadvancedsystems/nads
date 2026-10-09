@@ -23,6 +23,7 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
   const saidas = new Map<string, { carregadas: boolean; dados: t.sieg.SaidasSieg | null }>();
   const notas = new Map<string, { carregadas: boolean; dados: t.sieg.NotasSieg | null }>();
   const pedidos = new Map<string, PedidoSieg | null>();
+  const doMes = new Map<string, { carregado: boolean; contagens: Map<string, t.sieg.ContagemSieg>; saidas: Map<string, t.sieg.SaidasSieg>; vieram: number }>();
 
   const tipos = (r: unknown) => {
     const x = (r || {}) as Record<string, unknown>;
@@ -50,6 +51,37 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
         }, () => { contagens.set(k, { carregada: true, dados: null }); mudou(); });
       }
       return contagens.get(k)!;
+    },
+    // todos os clientes do mês numa consulta só (siegContagens e siegSaidas têm o campo competencia; 09/10/2026)
+    doMes(competencia) {
+      if (!doMes.has(competencia)) {
+        const m = { carregado: false, contagens: new Map<string, t.sieg.ContagemSieg>(), saidas: new Map<string, t.sieg.SaidasSieg>(), vieram: 0 };
+        doMes.set(competencia, m);
+        const chegou = () => { m.vieram++; if (m.vieram >= 2) m.carregado = true; };
+        let c1 = false, c2 = false;
+        onSnapshot(query(collection(db, 'siegContagens'), where('competencia', '==', competencia)), s => {
+          m.contagens = new Map(s.docs.map(x => { const d = x.data(); const cod = x.id.split('_')[0]; return [cod, { codigo: cod, competencia, em: texto(d.em), emitidas: tipos(d.emitidas), recebidas: tipos(d.recebidas) }]; }));
+          if (!c1) { c1 = true; chegou(); }
+          mudou();
+        }, () => { if (!c1) { c1 = true; chegou(); } mudou(); });
+        onSnapshot(query(collection(db, 'siegSaidas'), where('competencia', '==', competencia)), s => {
+          m.saidas = new Map(s.docs.map(x => {
+            const d = x.data();
+            const cod = x.id.split('_')[0];
+            return [cod, {
+              codigo: cod, competencia, em: texto(d.em),
+              series: Array.isArray(d.series) ? (d.series as Record<string, unknown>[]).map(z => ({
+                modelo: texto(z.modelo), serie: texto(z.serie), valor: Number(z.valor) || 0,
+                numeros: Array.isArray(z.numeros) ? (z.numeros as unknown[]).map(Number) : [],
+                canceladas: Array.isArray(z.canceladas) ? (z.canceladas as unknown[]).map(Number) : [],
+              })) : [],
+            }];
+          }));
+          if (!c2) { c2 = true; chegou(); }
+          mudou();
+        }, () => { if (!c2) { c2 = true; chegou(); } mudou(); });
+      }
+      return doMes.get(competencia)!;
     },
     saidas(codigo, competencia) {
       const k = soDigitos(codigo) + '_' + competencia;

@@ -37,6 +37,7 @@ export const TELAS: Tela[] = [
   { id: 't-exec-folha', app: 'Tarefas', nome: 'Executor › Contabilização da Folha' },
   { id: 't-exec-bancos', app: 'Tarefas', nome: 'Executor › Relatório Bancário' },
   { id: 't-exec-clientes', app: 'Tarefas', nome: 'Executor › Clientes' },
+  { id: 't-fiscal-painel', app: 'Tarefas', nome: 'Fiscal › Painel (todos os clientes do mês)' },
   { id: 't-exec-fiscal-rotina', app: 'Tarefas', nome: 'Executor › Rotina do Fiscal (checklist disfarçada)' },
   { id: 't-cadastro', app: 'Tarefas', nome: 'Cadastro (lista)' },
   { id: 't-cadastro-janela', app: 'Tarefas', nome: 'Cadastro › Janela da empresa' },

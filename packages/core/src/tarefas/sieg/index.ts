@@ -179,3 +179,5 @@ export function faltamNoAlterdata(doXml: NotaDoSieg[], doAlterdata: readonly Not
   }
   return faltam.sort((a, b) => Number(semZeros(a.numero)) - Number(semZeros(b.numero)));
 }
+
+export { errosDeTributacao, conferirValores, type ErroDeTributacao, type NotaQueNaoFecha, type ConferenciaDeValores } from './conferencia';

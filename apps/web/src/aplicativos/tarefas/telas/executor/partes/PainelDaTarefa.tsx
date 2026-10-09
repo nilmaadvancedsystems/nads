@@ -153,6 +153,67 @@ function FaltamNoAlterdata({ faltam, oQue, baixar, baixando }: { faltam: readonl
   );
 }
 
+/** Os itens das notas emitidas com a tributação para revisar (09/10/2026: "erros de tributação apontados sozinhos"). */
+function ErrosDeTributacao({ erros }: { erros: readonly t.sieg.ErroDeTributacao[] }) {
+  if (!erros.length) return <Alerta naLinha tom="ok" titulo="Tributação das notas emitidas sem nada para revisar" texto="CST/CSOSN pelo regime, a substituição tributária e o CEST conferidos item por item nos XMLs." />;
+  const notas = new Set(erros.map(e => e.numero)).size;
+  return (
+    <>
+      <Alerta naLinha titulo={erros.length + (erros.length === 1 ? ' item para revisar' : ' itens para revisar') + ' em ' + notas + (notas === 1 ? ' nota' : ' notas')}
+        texto="Conferido nos XMLs: o CST/CSOSN pelo regime da empresa, o CFOP de substituição tributária e o CEST." />
+      <div className="table-wrap table-compact">
+        <table>
+          <thead><tr><th>Nota</th><th>NCM</th><th>CFOP</th><th>CST</th><th>CEST</th><th>O que revisar</th></tr></thead>
+          <tbody>
+            {erros.slice(0, 80).map((e, i) => (
+              <tr key={e.numero + '|' + e.ncm + '|' + e.problema + '|' + i}>
+                <td className="wrap"><b>{e.nome}</b><span className="hint" style={{ display: 'block', margin: 0 }}>{e.tipo} · nº {e.numero} · {e.data}</span></td>
+                <td>{e.ncm || '—'}</td><td>{e.cfop || '—'}</td><td>{e.cst || '—'}</td><td>{e.cest || '—'}</td>
+                <td className="wrap">{e.problema}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {erros.length > 80 && <p className="hint">E mais {erros.length - 80}.</p>}
+    </>
+  );
+}
+
+/** XML x Alterdata nota a nota (09/10/2026: "valores, não só quantidade"): valor diferente, cancelada lançada, lançada sem XML. */
+function ValoresNotaANota({ c }: { c: t.sieg.ConferenciaDeValores | null }) {
+  if (!c) return null;
+  const grupos: [string, t.sieg.NotaQueNaoFecha[], string][] = [
+    ['com o valor diferente do XML', c.diferentes, 'O valor lançado (a soma das linhas da nota) não bate com o total do XML.'],
+    ['canceladas no SIEG e lançadas', c.canceladasLancadas, 'Tire do Alterdata (ou lance como cancelada).'],
+    ['lançadas que não estão nos XMLs', c.semXml, 'Confira se a nota existe, se é deste mês ou se o número está certo.'],
+  ];
+  if (!grupos.some(([, l]) => l.length)) return <Alerta naLinha tom="ok" titulo="Os valores batem nota a nota com os XMLs" texto="Nenhuma diferença de valor, nenhuma cancelada lançada e nada lançado fora dos XMLs." />;
+  return (
+    <>
+      {grupos.filter(([, l]) => l.length).map(([titulo, lista, texto]) => (
+        <div key={titulo}>
+          <Alerta naLinha titulo={lista.length + (lista.length === 1 ? ' nota ' : ' notas ') + titulo} texto={texto} />
+          <div className="table-wrap table-compact">
+            <table>
+              <thead><tr><th>Nota</th><th>Data</th><th className="num">No XML</th><th className="num">No Alterdata</th><th className="num">Diferença</th></tr></thead>
+              <tbody>
+                {lista.slice(0, 50).map(n => (
+                  <tr key={titulo + n.numero + n.nome}>
+                    <td className="wrap"><b>{n.nome}</b><span className="hint" style={{ display: 'block', margin: 0 }}>nº {n.numero}</span></td>
+                    <td>{n.data}</td><td className="num">{n.noXml ? reais(n.noXml) : '—'}</td><td className="num">{reais(n.noAlterdata)}</td><td className="num">{reais(n.diferenca)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {lista.length > 50 && <p className="hint">E mais {lista.length - 50}.</p>}
+        </div>
+      ))}
+    </>
+  );
+}
+
 /** Os serviços do mês com NBS, descrição, valor e o que cada nota retém (lido da nota). */
 function TabelaDeServicos({ linhas }: { linhas: readonly t.painel.ServicoNaVerificacao[] }) {
   const semColunas = !linhas.some(l => l.nbs || l.descricao);
@@ -388,7 +449,7 @@ function Corpo({ painel, vm, codigo, competencia, importar, valores, informar, a
       const fiscal = painel === 'saidas' ? vm.fiscalSaidas : vm.fiscalEntradas;
       const doXml = painel === 'saidas' ? vm.doXml.saidas : vm.doXml.entradas;
       // sem o relatório do Alterdata: o que os XMLs já mostram, e o importar
-      if (!r.qtd) return doXml ? <>{vazio(painel)}<TabelaFiscal r={fiscal} abrir={abrir} xml quando={vm.xml?.quando} /></> : vazio(painel);
+      if (!r.qtd) return doXml ? <>{vazio(painel)}{painel === 'saidas' && <ErrosDeTributacao erros={vm.errosTributacao} />}<TabelaFiscal r={fiscal} abrir={abrir} xml quando={vm.xml?.quando} /></> : vazio(painel);
       return (
         <>
           <div className="stat-grid">
@@ -403,6 +464,8 @@ function Corpo({ painel, vm, codigo, competencia, importar, valores, informar, a
             </p>
           )}
           <TabelaPorCfop r={r} abrir={abrir} />
+          {vm.xml && <ValoresNotaANota c={painel === 'saidas' ? vm.valoresSaidas : vm.valoresEntradas} />}
+          {vm.xml && painel === 'saidas' && <ErrosDeTributacao erros={vm.errosTributacao} />}
           {vm.xml && <FaltamNoAlterdata faltam={painel === 'saidas' ? vm.faltamSaidas : vm.faltamEntradas} oQue={painel === 'saidas' ? 'notas emitidas' : 'notas recebidas'} baixar={c => { void vm.baixarFaltam(c); }} baixando={vm.baixandoFaltam} />}
           <TabelaFiscal r={fiscal} abrir={abrir} xml={doXml} quando={vm.xml?.quando} />
           <SemConta r={r} />

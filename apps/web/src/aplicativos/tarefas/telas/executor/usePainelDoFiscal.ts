@@ -69,9 +69,14 @@ export function usePainelDoFiscal(empresa: string, codigo: string, competencia: 
       /** as notas do XML que o Alterdata ainda não tem (só com o relatório importado daquele lado) */
       faltamSaidas: xmlDados && saidasAlt.qtd ? t.sieg.faltamNoAlterdata(xmlDados.emitidas, notasDe(saidasAlt), 'emitidas') : [],
       faltamEntradas: xmlDados && entradasAlt.qtd ? t.sieg.faltamNoAlterdata(xmlDados.recebidas, notasDe(entradasAlt), 'recebidas') : [],
+      // valores nota a nota (09/10/2026: "valores, não só quantidade"), só com o relatório daquele lado importado
+      valoresSaidas: xmlDados && saidasAlt.qtd ? t.sieg.conferirValores(xmlDados.emitidas, notasDe(saidasAlt), 'emitidas') : null,
+      valoresEntradas: xmlDados && entradasAlt.qtd ? t.sieg.conferirValores(xmlDados.recebidas, notasDe(entradasAlt), 'recebidas') : null,
+      // os erros de tributação das notas emitidas (09/10/2026), pelo regime da empresa
+      errosTributacao: xmlDados && !xmlDados.itensCortados ? t.sieg.errosDeTributacao(xmlDados, t.regimeDaEmpresa(Number(codigo) || null)) : [],
       interestaduais: t.painel.interestaduais(entradas, p),
     };
-  }, [entradas, saidas, tomados, prestados, chave, doXml, xmlDados]);
+  }, [entradas, saidas, tomados, prestados, chave, doXml, xmlDados, codigo]);
   const c = cont?.dados || null;
   // a folha do DP (Vitor, 07/10/2026: "trazer quanto é gasto em folha do DP"): o total que o DP informou na etapa Folha
   // de pagamento do mesmo mês (pelo código da empresa)

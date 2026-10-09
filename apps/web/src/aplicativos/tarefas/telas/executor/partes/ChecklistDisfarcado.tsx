@@ -28,6 +28,24 @@ export function ChecklistDisfarcado({ titulo, itens, definicao, alternar, empres
   relatorio?: DadosDoRelatorio;
 }) {
   const vm = usePainelDoFiscal(empresa, codigo, competencia, meses);
+  // os números da conferência ficam na execução do mês (o Painel do Fiscal lê sem abrir cada cliente; 09/10/2026): só
+  // quando há XML e o número mudou (cada gravação é um evento)
+  const contas = vm.xml ? {
+    fiscalXmls: vm.xml.arquivos,
+    fiscalFaltam: vm.faltamSaidas.length + vm.faltamEntradas.length,
+    fiscalValores: [vm.valoresSaidas, vm.valoresEntradas].reduce((t, c) => t + (c ? c.diferentes.length + c.canceladasLancadas.length + c.semXml.length : 0), 0),
+    fiscalTributacao: vm.errosTributacao.length,
+  } : null;
+  const gravadas = useRef<Record<string, number>>({});
+  useEffect(() => {
+    if (!contas || !informar || !vm.carregado) return;
+    for (const [chave, n] of Object.entries(contas)) {
+      if ((valores?.[chave] ?? -1) === n || gravadas.current[chave] === n) continue;
+      gravadas.current[chave] = n;
+      informar(chave, n);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contas && Object.values(contas).join(','), vm.carregado]);
   const feitos = itens.filter(i => i.marcado).length;
   const daVez = itens.findIndex(i => !i.marcado);
   const raiz = useRef<HTMLDivElement>(null);

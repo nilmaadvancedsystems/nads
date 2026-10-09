@@ -35,6 +35,8 @@ export const APLICACOES: readonly Aplicacao[] = [
   // o Fiscal no mesmo modelo do Contábil (Vitor, 05/10/2026): as empresas com a rotina do Fiscal, a visão e as paradas
   { id: 'fiscal', nome: 'Fiscal', icone: 'fileText', pronta: true, paginas: [
     { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Fiscal — empresas' },
+    // o Painel (Vitor, 09/10/2026): todos os clientes do mês numa tela, com o que a rotina e o SIEG apontam
+    { id: 'painel', rotulo: 'Painel', icone: 'painel', titulo: 'Fiscal — painel' },
     { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Fiscal — visão geral' },
     // a REINF (o fluxo do Notion do Heverton), logo abaixo da Visão geral
     { id: 'reinf', rotulo: 'REINF', icone: 'fileUp', titulo: 'Fiscal — REINF' },
