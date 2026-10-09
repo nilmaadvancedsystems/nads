@@ -331,9 +331,12 @@ async function xmlsJaNoDrive(codigo, nomeDaPasta, competencia, db) {
     const ch = /<(?:\w+:)?ch(?:NFe|CTe)>(\d{44})</.exec(x);
     return !ch || ch[1].slice(2, 6) === ano.slice(2) + mes;
   };
+  // para reaproveitar, só os do mês; para "já está salvo", todos os que estão lá (o evento de setembro de uma nota de
+  // agosto não é gravado de novo a cada pedido)
   const unicos = new Map();
-  for (const x of xmls) if (doMes(x)) unicos.set(sx.nomeDoArquivo(x), x);
-  return { xmls: [...unicos.values()], nomes: new Set(unicos.keys()) };
+  const nomes = new Set();
+  for (const x of xmls) { const n = sx.nomeDoArquivo(x); nomes.add(n); if (doMes(x)) unicos.set(n, x); }
+  return { xmls: [...unicos.values()], nomes };
 }
 
 /** O resumo para o banco, cabendo num documento (até ~900 KB): se passar, sai o detalhe dos itens (fica o resto da nota). */
