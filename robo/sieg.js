@@ -242,13 +242,46 @@ async function xmlsDoMes(c, doc, competencia, aoAndar) {
  * ("09-2026_NF-e_347197.xml"). Então cada XML vale pelo conteúdo (o nome que o robô daria a ele), não pelo nome do
  * arquivo. Devolve os XMLs (para não baixar de novo) e os nomes do robô (para não salvar de novo).
  */
-async function xmlsJaNoDrive(codigo, nomeDaPasta, competencia) {
+async function xmlsJaNoDrive(codigo, nomeDaPasta, competencia, db) {
   const [ano, mes] = competencia.split('-');
   const raiz = path.dirname(PASTA_DO_DRIVE);
   const xmls = [];
-  const lerArquivo = async f => { try { const t = await fs.promises.readFile(f, 'utf8'); if (sx.tipoDoXml(t)) xmls.push(t); } catch (_) { /* sem acesso: fica de fora */ } };
-  // 1) a pasta do ano do cliente (o arquivado)
+  // primeiro a lista dos arquivos; depois a leitura, 32 de uma vez (09/10/2026: um por um, 1229 XMLs levavam 38 s). O
+  // arquivo do mapa (com o id e a data do Drive) tem a cópia no C: (o G: leva de 10 a 25 s para o mesmo): só o novo ou o
+  // que mudou é lido do Drive
+  const aLer = [];
+  const lerArquivo = (f, chave) => { aLer.push({ f, chave }); };
+  // 1a) a pasta do ano do cliente pelo mapa do Drive (driveIndice, que o robô da nuvem mantém; ~1,5 s em vez de ~15 s
+  // de listar o G:)
+  let peloMapa = false;
   try {
+    const mapa = db ? (await db.collection('driveIndice').doc('raiz').get()).data() : null;
+    const cli = mapa && String(mapa.pastaNome) === ano ? (mapa.clientes || []).find(c => Number(c.codigo) === Number(codigo)) : null;
+    if (cli) {
+      const itens = (await db.collection('driveIndice').doc(cli.id).collection('partes').get()).docs.flatMap(d => d.data().itens || []);
+      const filhos = new Map();
+      for (const it of itens) { if (!filhos.has(it.p)) filhos.set(it.p, []); filhos.get(it.p).push(it); }
+      const fiscal = (filhos.get(cli.id) || []).find(it => it.t === 'd' && it.n === 'FISCAL');
+      if (fiscal) {
+        peloMapa = true;
+        for (const regime of (filhos.get(fiscal.i) || []).filter(it => it.t === 'd')) {
+          const pastaXml = (filhos.get(regime.i) || []).find(it => it.t === 'd' && /^\d+\.\s*XML$/i.test(it.n));
+          if (!pastaXml) continue;
+          const base = path.join(raiz, ano, cli.nomePasta, 'FISCAL', regime.n, pastaXml.n);
+          const andar = (pasta, caminho, eventos) => {
+            for (const it of filhos.get(pasta.i) || []) {
+              if (it.t === 'd') { andar(it, [...caminho, it.n], eventos || /eventos/i.test(it.n)); continue; }
+              if (!/\.xml$/i.test(it.n)) continue;
+              if (eventos || it.n.startsWith(mes + '-' + ano)) lerArquivo(path.join(base, ...caminho, it.n), it.i + '_' + String(it.m || '').replace(/\D/g, ''));
+            }
+          };
+          andar(pastaXml, [], false);
+        }
+      }
+    }
+  } catch (_) { peloMapa = false; aLer.length = 0; }
+  // 1b) sem o mapa: a pasta do ano do cliente pelo G: (o arquivado)
+  if (!peloMapa) try {
     const doAno = path.join(raiz, ano);
     const cliente = (await fs.promises.readdir(doAno)).find(n => new RegExp('^0*' + Number(codigo) + '\\s*-').test(n));
     if (cliente) {
@@ -264,7 +297,7 @@ async function xmlsJaNoDrive(codigo, nomeDaPasta, competencia) {
             if (it.isDirectory()) { await andar(f, eventos || /eventos/i.test(it.name)); continue; }
             if (!/\.xml$/i.test(it.name)) continue;
             // as notas do mês pelo nome ("09-2026_…"); os eventos, todos (o do mês fica pela chave, abaixo)
-            if (eventos || it.name.startsWith(mes + '-' + ano)) await lerArquivo(f);
+            if (eventos || it.name.startsWith(mes + '-' + ano)) lerArquivo(f);
           }
         };
         await andar(xml, false);
@@ -274,9 +307,24 @@ async function xmlsJaNoDrive(codigo, nomeDaPasta, competencia) {
   // 2) o Claudio Secretario (o que ainda não foi arquivado: os XMLs soltos e o .zip)
   const pasta = path.join(PASTA_DO_DRIVE, competencia, nomeDaPasta);
   for (const n of await fs.promises.readdir(pasta).catch(() => [])) {
-    if (/\.xml$/i.test(n)) await lerArquivo(path.join(pasta, n));
+    if (/\.xml$/i.test(n)) lerArquivo(path.join(pasta, n));
     else if (/^SIEG .*\.zip$/i.test(n)) { try { xmls.push(...lerZip(await fs.promises.readFile(path.join(pasta, n)))); } catch (_) { /* .zip quebrado */ } }
   }
+  const CACHE = path.join(process.env.LOCALAPPDATA || __dirname, 'nads-robo', 'xmls-do-drive');
+  await fs.promises.mkdir(CACHE, { recursive: true }).catch(() => {});
+  await Promise.all(Array.from({ length: 32 }, async () => {
+    for (let x = aLer.shift(); x; x = aLer.shift()) {
+      try {
+        const local = x.chave ? path.join(CACHE, x.chave + '.xml') : null;
+        let t = local ? await fs.promises.readFile(local, 'utf8').catch(() => null) : null;
+        if (t == null) {
+          t = await fs.promises.readFile(x.f, 'utf8');
+          if (local) await fs.promises.writeFile(local, t).catch(() => {});
+        }
+        if (sx.tipoDoXml(t)) xmls.push(t);
+      } catch (_) { /* sem acesso: fica de fora */ }
+    }
+  }));
   // os eventos de outro mês (a pasta EVENTOS junta todos) ficam de fora: o AAMM da chave
   const doMes = x => {
     if (sx.tipoDoXml(x) !== 'evento') return true;
@@ -446,7 +494,7 @@ function iniciarSieg({ db, log }) {
             // a conferência roda JUNTO com os downloads (08/10/2026: "tá demorando em média 3 minutos, queria que demorasse
             // 1"): quando ela diz que um tipo não mudou, o download dele é cancelado e ele sai do .zip do Drive
             // o que já está no Drive (a pasta 2026 do cliente, depois o Claudio Secretario; 09/10/2026), lido uma vez só
-            const noDrive = xmlsJaNoDrive(soDigitos(p.codigo), nomeDaPasta, p.competencia).catch(() => ({ xmls: [], nomes: new Set() }));
+            const noDrive = xmlsJaNoDrive(soDigitos(p.codigo), nomeDaPasta, p.competencia, db).catch(() => ({ xmls: [], nomes: new Set() }));
             const reaproveitar = !doCliente ? (async () => {
               const [agora, ja] = await Promise.all([contagemDoMes(c, cnpj, p.competencia), noDrive]);
               if (!ja.xmls.length) return null;
@@ -564,7 +612,7 @@ function iniciarSieg({ db, log }) {
               // o que faltou, do .zip do Drive (se a pasta do mês ainda está lá)
               const nota = (await db.collection('siegNotas').doc(id).get()).data();
               const nomeDaPasta = nota && nota.pasta ? nota.pasta.split('/').pop() : '';
-              if (nomeDaPasta) xmls.push(...(await xmlsJaNoDrive(soDigitos(p.codigo), nomeDaPasta, p.competencia)).xmls);
+              if (nomeDaPasta) xmls.push(...(await xmlsJaNoDrive(soDigitos(p.codigo), nomeDaPasta, p.competencia, db)).xmls);
             }
             const arquivos = [...new Map(xmls.filter(x => quero.has(daChave(x))).map(x => [sx.nomeDoArquivo(x), x]))].map(([nome, xml]) => ({ nome, xml }));
             if (!arquivos.length) throw new Error('o SIEG não devolveu nenhuma dessas notas');
