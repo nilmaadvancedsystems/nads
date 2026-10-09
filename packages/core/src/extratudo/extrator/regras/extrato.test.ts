@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { anoDoTexto, lancamentosDoPdf, saldoAnteriorDoPdf, type ItemDeTexto } from './extrato';
+import { anoDoTexto, lancamentosDoPdf, paginasPorMes, saldoAnteriorDoPdf, type ItemDeTexto } from './extrato';
 
 /** Monta uma página: cada linha é [texto, x] com a mesma altura; as linhas descem de 14 em 14. */
 function pagina(linhas: [string, number][][]): ItemDeTexto[] {
@@ -94,6 +94,17 @@ describe('data curta no fim de um histórico quebrado não abre dia novo (Vitor,
       [['24/03/2026', 40], ['TARIFA', 100], ['-10,00', 400], ['13.335,00', 480]],
     ]);
     expect(lancamentosDoPdf([p], 'banco', 2000).map(l => l.data + ' ' + l.valor)).toEqual(['2026-03-23 200000', '2026-03-23 246500', '2026-03-23 88000', '2026-03-24 -1000']);
+  });
+});
+
+describe('as páginas de cada mês (o PDF de vários meses quebrado para o Drive, Vitor, 09/10/2026)', () => {
+  const cab: [string, number][] = [['Data', 40], ['Lançamento', 100], ['Valor (R$)', 400], ['Saldo (R$)', 480]];
+  it('a página que vira o mês entra nos dois; a do resumo, sem lançamento, fica com a de antes', () => {
+    const p1 = pagina([cab, [['30/01/2026', 40], ['PIX RECEBIDO', 100], ['10,00', 400], ['10,00', 480]]]);
+    const p2 = pagina([cab, [['31/01/2026', 40], ['TARIFA', 100], ['-1,00', 400], ['9,00', 480]], [['02/02/2026', 40], ['PIX RECEBIDO', 100], ['5,00', 400], ['14,00', 480]]]);
+    const p3 = pagina([cab, [['03/02/2026', 40], ['TARIFA', 100], ['-1,00', 400], ['13,00', 480]]]);
+    const p4 = pagina([[['Resumo do período', 40]]]);
+    expect(paginasPorMes([p1, p2, p3, p4], 2000)).toEqual({ '2026-01': [0, 1], '2026-02': [1, 2, 3] });
   });
 });
 

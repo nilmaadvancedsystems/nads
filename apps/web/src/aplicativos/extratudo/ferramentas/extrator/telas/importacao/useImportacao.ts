@@ -92,14 +92,16 @@ export function useImportacao() {
   }
 
   /** Importar direto (na linha do banco): escolheu os arquivos, já importa para aquele banco. */
-  async function importarArquivos(banco: string, lado: x.Lado, fs: File[]) {
-    if (!fs.length) return;
+  /** Devolve se importou (o extrato que entrou pode ir para o Drive: useDriveDaLinha.subirAoDrive). */
+  async function importarArquivos(banco: string, lado: x.Lado, fs: File[]): Promise<boolean> {
+    if (!fs.length) return false;
     setMensagemBruta(null);
     setLendoLinha(banco + '|' + lado);
     const lidos: x.ArquivoLido[] = [];
     for (const f of fs) lidos.push(await x.lerArquivo(f.name, new Uint8Array(await f.arrayBuffer()), lado));
-    await gravarLidos(lado, lidos, banco);
+    const ok = await gravarLidos(lado, lidos, banco);
     setLendoLinha(null);
+    return ok;
   }
 
   /** O extrato que veio do Drive (já baixado): lê e importa para aquele banco, lembrando do arquivo de lá. */

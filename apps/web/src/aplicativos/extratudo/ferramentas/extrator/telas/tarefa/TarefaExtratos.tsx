@@ -550,6 +550,8 @@ export function TarefaExtratos() {
     }
   });
   const d = useDriveDaLinha(vm, s.codigo);
+  // o extrato do computador: importa e, o que não está no Drive, manda para lá (Vitor, 09/10/2026)
+  const importarExtrato = (b: (typeof vm.bancos)[number], fs: File[]) => { void vm.importarArquivos(b.id, 'banco', fs).then(ok => { if (ok) d.subirAoDrive(b, fs, s.nome); }); };
   // os extratos que chegaram por e-mail (08/10/2026): entram sozinhos na linha certa; os outros ficam no aviso
   const rec = useRecebidosPorEmail(vm, s.codigo);
   const pe = usePedirExtratos(vm, s.codigo, s.nome, ponte.semMovimento, d.pedirLogin, { logo: urlDoLogoNilma(), logoDoBanco: urlDoLogoBanco });
@@ -805,7 +807,7 @@ export function TarefaExtratos() {
                           </button>
                         ) : (
                           <ImportarExtratoTodos restantes={lote.comExtrato.length > 0} aceitar={cxExtrato.aceitar} travado={ocupadoGeral}
-                            onArquivos={fs => { void vm.importarArquivos(b.id, 'banco', fs); }} onDrive={() => d.buscarNoPeriodo(b, lote.faltamExtrato)}
+                            onArquivos={fs => importarExtrato(b, fs)} onDrive={() => d.buscarNoPeriodo(b, lote.faltamExtrato)}
                             onRemover={() => { void vm.excluirDoPeriodo(b.id, 'banco', lote.comExtrato); }} />
                         )
                       )}
@@ -834,7 +836,7 @@ export function TarefaExtratos() {
                       ) : (
                         <>
                           <BotaoLado lado={b.extrato} titulo="Extrato" aceitar={cxExtrato.aceitar} travado={travado}
-                            onArquivos={fs => { void vm.importarArquivos(b.id, 'banco', fs); }} onExcluir={() => undefined} />
+                            onArquivos={fs => importarExtrato(b, fs)} onExcluir={() => undefined} />
                           <button type="button" className="icon-btn icon-btn-sm imp-btn imp-drive" disabled={travado} title="Buscar no Drive" aria-label="Buscar no Drive"
                             onClick={() => d.buscar(b)}><LogoDrive /></button>
                           {/* o ⚡ só no modo desenvolvedor e na empresa de teste (Vitor, 06/10/2026) */}
@@ -870,7 +872,7 @@ export function TarefaExtratos() {
               </div>
               {emLote && gradeAberta && <MesesDoBanco meses={meses} competencia={vm.competencia} naTarefa={ponte.naTarefa}
                 travado={ocupadoGeral} aceitarExtrato={cxExtrato.aceitar} aceitarRazao={cxRazao.aceitar}
-                onMes={vm.setCompetencia} onArquivos={(lado, fs) => { void vm.importarArquivos(b.id, lado, fs); }}
+                onMes={vm.setCompetencia} onArquivos={(lado, fs) => { if (lado === 'banco') importarExtrato(b, fs); else void vm.importarArquivos(b.id, lado, fs); }}
                 onExcluir={(lado, mes) => { void vm.excluirDoBanco(b.id, lado, mes); }}
                 onDrive={mes => d.buscarNoPeriodo(b, [mes])}
                 onVer={visualizarDoDrive}

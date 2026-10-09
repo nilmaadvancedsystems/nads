@@ -115,7 +115,31 @@ export function anoDoTexto(texto: string, padrao: number): number {
  * No sistema (razão em PDF), débito é entrada no banco: o sinal pela coluna se inverte.
  */
 export function lancamentosDoPdf(paginas: ItemDeTexto[][], lado: Lado, anoPadrao = new Date().getFullYear()): Lancamento[] {
+  return lancamentosComPagina(paginas, lado, anoPadrao).lancamentos;
+}
+
+/**
+ * As páginas de cada mês (Vitor, 09/10/2026: o PDF de vários meses vai para o Drive quebrado, um por mês): a página entra
+ * no mês de cada lançamento dela (a que vira o mês entra nos dois); página sem lançamento (o resumo do fim) fica com a de
+ * antes. Os índices começam em 0, em ordem.
+ */
+export function paginasPorMes(paginas: ItemDeTexto[][], anoPadrao = new Date().getFullYear()): Record<string, number[]> {
+  const { lancamentos, pagina } = lancamentosComPagina(paginas, 'banco', anoPadrao);
+  const porPagina: Set<string>[] = paginas.map(() => new Set());
+  lancamentos.forEach((l, i) => porPagina[pagina[i]].add(l.data.slice(0, 7)));
+  const out: Record<string, number[]> = {};
+  let antes: Set<string> = new Set();
+  porPagina.forEach((meses, i) => {
+    const deste = meses.size ? meses : antes;
+    for (const m of deste) (out[m] = out[m] || []).push(i);
+    if (meses.size) antes = new Set([[...meses].sort().pop() as string]);
+  });
+  return out;
+}
+
+function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: number): { lancamentos: Lancamento[]; pagina: number[] } {
   const todas = paginas.map(montarLinhas);
+  const paginaDe: number[] = [];
   const ano = anoDoTexto(todas.map(p => p.map(l => l.texto).join('\n')).join('\n'), anoPadrao);
   const saida: Lancamento[] = [];
   let col: Colunas | null = null;
@@ -125,7 +149,7 @@ export function lancamentosDoPdf(paginas: ItemDeTexto[][], lado: Lado, anoPadrao
   const xDasDatas = todas.flat().map(l => l.tokens[0]).filter(t => t && RE_DATA.test(t.s) && /\d{4}$/.test(t.s)).map(t => t.x);
   const naColunaDaData = (x: number) => !xDasDatas.length || xDasDatas.some(d => Math.abs(d - x) <= 20);
 
-  for (const linhas of todas) {
+  for (const [nPagina, linhas] of todas.entries()) {
     col = colunas(linhas) || col;
     let solta: string | null = null;
     let ultimo: Lancamento | null = null;
@@ -195,7 +219,8 @@ export function lancamentosDoPdf(paginas: ItemDeTexto[][], lado: Lado, anoPadrao
       ultimo = { data: dataAtual, valor: c, historico: h || '(sem histórico)' };
       ultimaY = l.y;
       saida.push(ultimo);
+      paginaDe.push(nPagina);
     }
   }
-  return saida;
+  return { lancamentos: saida, pagina: paginaDe };
 }

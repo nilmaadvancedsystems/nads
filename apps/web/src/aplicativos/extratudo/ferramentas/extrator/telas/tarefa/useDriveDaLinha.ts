@@ -145,6 +145,34 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     }
   }
 
+  /**
+   * O extrato importado do computador vai para o Drive quando o mês não está lá (Vitor, 09/10/2026: "upe no drive o que ele
+   * upou do pc"; o PDF de vários meses vai quebrado, um por mês). Vai para o Claudio Secretario e o arquivamento põe em
+   * EXTRATOS/AAAA/MM/BANCÁRIOS/<BANCO>. Só com o login do Entregas; mês que já tem extrato (ou candidato) no Drive não vai.
+   */
+  async function subirAoDrive(linha: Linha, fs: File[], cliente: string) {
+    if (!drive.enviarAoDrive || !acesso.entrou || !fs.length) return;
+    const mandados: string[] = [];
+    try {
+      const pasta = await drive.pastaDoCliente(codigo);
+      const conta = { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta };
+      for (const f of fs) {
+        const bytes = new Uint8Array(await f.arrayBuffer());
+        const lido = await x.lerArquivo(f.name, bytes.slice(), 'banco');
+        if (lido.erro) continue;
+        for (const p of await x.extratoPorMes(f.name, bytes, lido, linha.nome)) {
+          const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, p.mes, conta);
+          if (r.situacao === 'achou' || r.situacao === 'varios' || r.candidatos.length) continue;
+          await drive.enviarAoDrive({ nome: p.nome, bytes: p.bytes }, { competencia: p.mes, codigo, cliente });
+          mandados.push(p.mes.slice(5) + '/' + p.mes.slice(0, 4));
+        }
+      }
+      if (mandados.length) vm.avisar('Mandado para o Drive: ' + mandados.join(', ') + ' (entra na pasta do banco no próximo arquivamento)');
+    } catch (e) {
+      vm.avisarErro('Não mandei para o Drive' + (mandados.length ? ' (foram ' + mandados.join(', ') + ')' : ''), mensagemDeErro(e));
+    }
+  }
+
   const andamento: AndamentoDeExtratos | null = lote ? (() => {
     const feitos = lote.feitos.length;
     const total = lote.meses.length;
@@ -180,6 +208,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     cancelando,
     cancelar: () => { cancelado.current = true; setCancelando(true); },
     buscar: (linha: Linha) => { void buscar(linha); },
+    subirAoDrive: (linha: Linha, fs: File[], cliente: string) => { void subirAoDrive(linha, fs, cliente); },
     buscarNoPeriodo: (linha: Linha, meses: string[]) => { void buscarNoPeriodo(linha, meses); },
     login: { ...login, set: (m: Partial<typeof login>) => setLogin(l => ({ ...l, ...m })), entrar: () => { void entrar(); }, fechar: () => { setPendente(null); depois.current = null; setLogin(l => ({ ...l, aberto: false })); } },
     /** pede o login do Entregas e, ao entrar, faz `f` */
