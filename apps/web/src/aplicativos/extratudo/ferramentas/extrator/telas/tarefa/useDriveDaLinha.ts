@@ -24,6 +24,8 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   const cancelado = useRef(false);
   const [cancelando, setCancelando] = useState(false);
   // a janela do andamento do "Todos pelo Drive" (08/10/2026: "janela de andamento"): mês por mês do banco
+  // o mês que o "Todos pelo Drive" está buscando agora: a célula dele na grade gira (Vitor, 09/10/2026: no lugar da janela)
+  const [mesAtual, setMesAtual] = useState<string | null>(null);
   const [lote, setLote] = useState<{ banco: string; meses: string[]; feitos: { mes: string; ok: boolean }[]; atual: string; inicio: number; pronto: boolean } | null>(null);
   const [agora, setAgora] = useState(() => Date.now());
   useEffect(() => {
@@ -110,6 +112,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
           vm.avisarErro(linha.nome + ': cancelado', achados.length ? 'Ficaram os que já vieram: ' + achados.join(', ') + '.' : 'Nenhum mês foi trazido.');
           return;
         }
+        setMesAtual(mes);
         const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, mes, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta });
         const rotulo = mes.slice(5) + '/' + mes.slice(0, 4);
         if (r.situacao !== 'achou' || !r.arquivo) { faltam.push(rotulo); passou(rotulo, false, seguinte); continue; }
@@ -125,7 +128,9 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     } finally {
       setBuscando(null);
       setCancelando(false);
-      setLote(l => (l ? { ...l, pronto: true, atual: '' } : l));
+      setMesAtual(null);
+      // sem a janela do andamento (Vitor, 09/10/2026: "não gostei dessa popup"): o resumo fica no aviso
+      setLote(null);
     }
   }
 
@@ -142,6 +147,34 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       f?.();
     } catch (e) {
       setLogin(l => ({ ...l, entrando: false, erro: mensagemDeErro(e) }));
+    }
+  }
+
+  /**
+   * O extrato importado do computador vai para o Drive quando o mês não está lá (Vitor, 09/10/2026: "upe no drive o que ele
+   * upou do pc"; o PDF de vários meses vai quebrado, um por mês). Vai para o Claudio Secretario e o arquivamento põe em
+   * EXTRATOS/AAAA/MM/BANCÁRIOS/<BANCO>. Só com o login do Entregas; mês que já tem extrato (ou candidato) no Drive não vai.
+   */
+  async function subirAoDrive(linha: Linha, fs: File[], cliente: string) {
+    if (!drive.enviarAoDrive || !acesso.entrou || !fs.length) return;
+    const mandados: string[] = [];
+    try {
+      const pasta = await drive.pastaDoCliente(codigo);
+      const conta = { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta };
+      for (const f of fs) {
+        const bytes = new Uint8Array(await f.arrayBuffer());
+        const lido = await x.lerArquivo(f.name, bytes.slice(), 'banco');
+        if (lido.erro) continue;
+        for (const p of await x.extratoPorMes(f.name, bytes, lido, linha.nome)) {
+          const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, p.mes, conta);
+          if (r.situacao === 'achou' || r.situacao === 'varios' || r.candidatos.length) continue;
+          await drive.enviarAoDrive({ nome: p.nome, bytes: p.bytes }, { competencia: p.mes, codigo, cliente });
+          mandados.push(p.mes.slice(5) + '/' + p.mes.slice(0, 4));
+        }
+      }
+      if (mandados.length) vm.avisar('Mandado para o Drive: ' + mandados.join(', ') + ' (entra na pasta do banco no próximo arquivamento)');
+    } catch (e) {
+      vm.avisarErro('Não mandei para o Drive' + (mandados.length ? ' (foram ' + mandados.join(', ') + ')' : ''), mensagemDeErro(e));
     }
   }
 
@@ -171,8 +204,10 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
 
   return {
     exemplos: drive.exemplos,
-    /** a janela do andamento do "Todos pelo Drive" */
+    /** a janela do andamento do "Todos pelo Drive" (não aparece mais: o andamento fica na grade e o resumo no aviso) */
     andamento,
+    /** o mês que está sendo buscado no Drive agora ('aaaa-mm'), na linha `buscando` */
+    mesAtual,
     fecharAndamento: () => setLote(null),
     entrou: acesso.entrou,
     buscando,
@@ -180,6 +215,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     cancelando,
     cancelar: () => { cancelado.current = true; setCancelando(true); },
     buscar: (linha: Linha) => { void buscar(linha); },
+    subirAoDrive: (linha: Linha, fs: File[], cliente: string) => { void subirAoDrive(linha, fs, cliente); },
     buscarNoPeriodo: (linha: Linha, meses: string[]) => { void buscarNoPeriodo(linha, meses); },
     login: { ...login, set: (m: Partial<typeof login>) => setLogin(l => ({ ...l, ...m })), entrar: () => { void entrar(); }, fechar: () => { setPendente(null); depois.current = null; setLogin(l => ({ ...l, aberto: false })); } },
     /** pede o login do Entregas e, ao entrar, faz `f` */

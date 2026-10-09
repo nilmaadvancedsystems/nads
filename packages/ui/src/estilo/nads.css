@@ -3598,3 +3598,5 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
    pega o espaço que sobra e encolhe com reticências */
 .fgts-tabela td.dp-cliente{max-width:0;width:100%;}
 .fgts-tabela .dp-cliente-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* O Painel do Fiscal (09/10/2026): o nome do cliente não espreme em tela estreita */
+.fiscal-painel-tabela .dp-cliente{min-width:220px;}

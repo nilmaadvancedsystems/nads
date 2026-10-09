@@ -24,7 +24,6 @@ import { caminhoNaFerramenta } from '../../../../casca/caminho';
 import { useBancosOk } from './useBancosOk';
 import { useDriveDaLinha } from './useDriveDaLinha';
 import { useRecebidosPorEmail } from './useRecebidosPorEmail';
-import { AndamentoDosExtratos } from './AndamentoDosExtratos';
 import { usePedirExtratos } from './usePedirExtratos';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../../../comum/desenvolvimento';
 import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
@@ -261,8 +260,10 @@ function resumo(b: Vm['bancos'][number]): string[] {
  * colorido quando veio de lá, "s/ mov." quando o mês não teve movimento. Faltando o extrato, só o ícone de importar,
  * que abre as opções (do computador, do Drive, sem movimento); faltando o razão, o ícone abre a escolha do arquivo.
  */
-function MesesDoBanco({ meses, competencia, travado, aceitarExtrato, aceitarRazao, onMes, onArquivos, onExcluir, onDrive, onVer, onSemMovimento, naTarefa }: {
+function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato, aceitarRazao, onMes, onArquivos, onExcluir, onDrive, onVer, onSemMovimento, naTarefa }: {
   meses: ReturnType<Vm['mesesDoBanco']>;
+  /** o mês que o "Todos pelo Drive" está buscando agora: a célula do extrato gira */
+  buscandoMes?: string | null;
   competencia: string; travado: boolean; aceitarExtrato: string; aceitarRazao: string; naTarefa: boolean;
   onMes: (m: string) => void; onArquivos: (lado: 'banco' | 'sistema', fs: File[]) => void; onExcluir: (lado: 'banco' | 'sistema', mes: string) => void;
   onDrive: (mes: string) => void; onVer: (arquivo: { id: string; nome: string }) => void; onSemMovimento: (mes: string, marcado: boolean) => void;
@@ -272,7 +273,7 @@ function MesesDoBanco({ meses, competencia, travado, aceitarExtrato, aceitarRaza
     const info = lado === 'banco' ? m.ladoExtrato : m.ladoRazao;
     const trava = travado || m.semMovimento;
     if (m.semMovimento) return <button type="button" className="imp-mes-sem" disabled={travado || !naTarefa} onClick={() => onSemMovimento(m.mes, false)} title="Não teve movimento — clique para desfazer">s/ mov.</button>;
-    if (info.lendo) return <span className="icon-btn icon-btn-sm imp-btn"><span className="btn-spinner" /></span>;
+    if (info.lendo || (lado === 'banco' && buscandoMes === m.mes)) return <span className="icon-btn icon-btn-sm imp-btn" title={'Buscando o extrato de ' + m.rotulo + ' no Drive'}><span className="btn-spinner" /></span>;
     if (lado === 'banco' && info.doDrive.length) return <BotaoDoDrive arquivos={info.doDrive} travado={trava} rotulo={'de ' + m.rotulo} onExcluir={() => onExcluir(lado, m.mes)} onVer={onVer} />;
     if (lado === 'banco' && !info.qtdArquivos) {
       return <FaltaExtratoDoMes rotulo={m.rotulo} aceitar={aceitarExtrato} travado={trava} naTarefa={naTarefa} direita={n >= meses.length / 2}
@@ -550,6 +551,8 @@ export function TarefaExtratos() {
     }
   });
   const d = useDriveDaLinha(vm, s.codigo);
+  // o extrato do computador: importa e, o que não está no Drive, manda para lá (Vitor, 09/10/2026)
+  const importarExtrato = (b: (typeof vm.bancos)[number], fs: File[]) => { void vm.importarArquivos(b.id, 'banco', fs).then(ok => { if (ok) d.subirAoDrive(b, fs, s.nome); }); };
   // os extratos que chegaram por e-mail (08/10/2026): entram sozinhos na linha certa; os outros ficam no aviso
   const rec = useRecebidosPorEmail(vm, s.codigo);
   const pe = usePedirExtratos(vm, s.codigo, s.nome, ponte.semMovimento, d.pedirLogin, { logo: urlDoLogoNilma(), logoDoBanco: urlDoLogoBanco });
@@ -713,8 +716,6 @@ export function TarefaExtratos() {
         </Alerta>
       )}
       {/* as janelas do andamento: os extratos que entram sozinhos e o "Todos pelo Drive" (08/10/2026) */}
-      {rec.andamento && <AndamentoDosExtratos a={rec.andamento} fechar={rec.fecharAndamento} />}
-      {!rec.andamento && d.andamento && <AndamentoDosExtratos a={d.andamento} fechar={d.fecharAndamento} />}
       <div className="imp-lista">
         {!vm.semBancosCadastrados && vm.bancos.map(b => {
           const semMov = ponte.semMovimento.includes(b.id);
@@ -805,7 +806,7 @@ export function TarefaExtratos() {
                           </button>
                         ) : (
                           <ImportarExtratoTodos restantes={lote.comExtrato.length > 0} aceitar={cxExtrato.aceitar} travado={ocupadoGeral}
-                            onArquivos={fs => { void vm.importarArquivos(b.id, 'banco', fs); }} onDrive={() => d.buscarNoPeriodo(b, lote.faltamExtrato)}
+                            onArquivos={fs => importarExtrato(b, fs)} onDrive={() => d.buscarNoPeriodo(b, lote.faltamExtrato)}
                             onRemover={() => { void vm.excluirDoPeriodo(b.id, 'banco', lote.comExtrato); }} />
                         )
                       )}
@@ -834,7 +835,7 @@ export function TarefaExtratos() {
                       ) : (
                         <>
                           <BotaoLado lado={b.extrato} titulo="Extrato" aceitar={cxExtrato.aceitar} travado={travado}
-                            onArquivos={fs => { void vm.importarArquivos(b.id, 'banco', fs); }} onExcluir={() => undefined} />
+                            onArquivos={fs => importarExtrato(b, fs)} onExcluir={() => undefined} />
                           <button type="button" className="icon-btn icon-btn-sm imp-btn imp-drive" disabled={travado} title="Buscar no Drive" aria-label="Buscar no Drive"
                             onClick={() => d.buscar(b)}><LogoDrive /></button>
                           {/* o ⚡ só no modo desenvolvedor e na empresa de teste (Vitor, 06/10/2026) */}
@@ -868,9 +869,9 @@ export function TarefaExtratos() {
                   </div>
                 )}
               </div>
-              {emLote && gradeAberta && <MesesDoBanco meses={meses} competencia={vm.competencia} naTarefa={ponte.naTarefa}
+              {emLote && gradeAberta && <MesesDoBanco meses={meses} competencia={vm.competencia} naTarefa={ponte.naTarefa} buscandoMes={d.buscando === b.id ? d.mesAtual : null}
                 travado={ocupadoGeral} aceitarExtrato={cxExtrato.aceitar} aceitarRazao={cxRazao.aceitar}
-                onMes={vm.setCompetencia} onArquivos={(lado, fs) => { void vm.importarArquivos(b.id, lado, fs); }}
+                onMes={vm.setCompetencia} onArquivos={(lado, fs) => { if (lado === 'banco') importarExtrato(b, fs); else void vm.importarArquivos(b.id, lado, fs); }}
                 onExcluir={(lado, mes) => { void vm.excluirDoBanco(b.id, lado, mes); }}
                 onDrive={mes => d.buscarNoPeriodo(b, [mes])}
                 onVer={visualizarDoDrive}
