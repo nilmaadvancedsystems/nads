@@ -83,6 +83,20 @@ describe('palavra de saldo solta no histórico não esconde o lançamento (Vitor
   });
 });
 
+describe('data curta no fim de um histórico quebrado não abre dia novo (Vitor, 09/10/2026)', () => {
+  it('"REM: FULANO" / "21/03" no meio do dia 23/03 continua no 23/03', () => {
+    const p = pagina([
+      [['Data', 40], ['Lançamento', 100], ['Valor (R$)', 400], ['Saldo (R$)', 480]],
+      [['23/03/2026', 40], ['PIX RECEBIDO REM: ROGERIO 23/03', 100], ['2.000,00', 400], ['10.000,00', 480]],
+      [['TRANSFERENCIA PIX REM: LEONARDO MENDES', 100], ['2.465,00', 400], ['12.465,00', 480]],
+      [['21/03', 100]],
+      [['TRANSFERENCIA PIX REM: ANDERSON 21/03', 100], ['880,00', 400], ['13.345,00', 480]],
+      [['24/03/2026', 40], ['TARIFA', 100], ['-10,00', 400], ['13.335,00', 480]],
+    ]);
+    expect(lancamentosDoPdf([p], 'banco', 2000).map(l => l.data + ' ' + l.valor)).toEqual(['2026-03-23 200000', '2026-03-23 246500', '2026-03-23 88000', '2026-03-24 -1000']);
+  });
+});
+
 describe('saldo anterior do extrato (abre a conta quando não há mês antes)', () => {
   it('a linha SALDO ANTERIOR: o valor da direita, com o sinal', () => {
     const p = pagina([
