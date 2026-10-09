@@ -118,7 +118,7 @@ async function esperarPdf(numero, desde, ms) {
   return null;
 }
 
-const CHROME = process.env.FGTS_CHROME || 'C:\Program Files\Google\Chrome\Application\chrome.exe';
+const CHROME = process.env.FGTS_CHROME || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 
 /** O Chrome de quem usa o PC está aberto? Se não, abre (normal, no perfil de sempre) e espera a extensão. true = abriu. */
 async function abrirChromeSeFechado() {
