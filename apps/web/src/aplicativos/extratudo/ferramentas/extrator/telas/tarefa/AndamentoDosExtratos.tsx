@@ -1,6 +1,7 @@
 // A janela do andamento dos extratos (Vitor, 08/10/2026: "janela de andamento" no Contábil): a mesma peça do "Baixar XMLs
 // do SIEG" (sieg-andamento, no catálogo) — o título com o tempo, a porcentagem, a barra, a linha do que está fazendo, os
-// números e os passos que vão ficando verdes. Flutua no canto (no body: a página tem faixas com transform).
+// números e os passos que vão ficando verdes. No centro da tela, com o fundo embaçado (Vitor, 09/10/2026; o fundo das janelas,
+// modal-overlay); no body: a página tem faixas com transform. Clicar fora não fecha (o trabalho está andando): só o ×.
 import { Icone, type NomeIcone } from '@nads/ui';
 import { createPortal } from 'react-dom';
 
@@ -17,7 +18,8 @@ export interface AndamentoDeExtratos {
 
 export function AndamentoDosExtratos({ a, fechar }: { a: AndamentoDeExtratos; fechar: () => void }) {
   return createPortal(
-    <div className="card gmail-andamento sieg-flutuante sieg-andamento" role="status" aria-live="polite">
+    <div className="modal-overlay" role="presentation">
+    <div className="card gmail-andamento sieg-andamento andamento-centro" role="status" aria-live="polite">
       <div className="fgts-resumo-topo">
         <div className="fgts-resumo-titulo">
           <h3>{a.titulo}</h3>
@@ -46,6 +48,7 @@ export function AndamentoDosExtratos({ a, fechar }: { a: AndamentoDeExtratos; fe
           </li>
         ))}
       </ol>
+    </div>
     </div>,
     document.body,
   );

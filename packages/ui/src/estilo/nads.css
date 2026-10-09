@@ -1540,7 +1540,7 @@ html.na-etapa .modal-overlay,html.na-etapa .cad-janela-fundo{
   padding-top:max(16px, calc(16px + 2 * clamp(-40px, var(--vista-dy,0px), 40px)));padding-bottom:max(16px, calc(16px - 2 * clamp(-40px, var(--vista-dy,0px), 40px)));
   overflow:auto;}
 /* dentro da etapa, a janela cabe no pedaço visível (o 100vh do iframe é a ferramenta inteira, não a tela) */
-html.na-etapa .modal-overlay > .modal,html.na-etapa .cad-janela-fundo > .cad-janela{max-height:calc(var(--vista-altura,100vh) - 112px);overflow:auto;}
+html.na-etapa .modal-overlay > .modal,html.na-etapa .modal-overlay > .andamento-centro,html.na-etapa .cad-janela-fundo > .cad-janela{max-height:calc(var(--vista-altura,100vh) - 112px);overflow:auto;}
 /* as janelas com corpo que rola (Pedir documentos, histórico, envio): o título e os botões ficam; só o meio rola */
 html.na-etapa .modal-overlay > .modal.pedir-modal,html.na-etapa .modal-overlay > .modal.pedir-historico,html.na-etapa .modal-overlay > .modal.envio-janela{display:flex;flex-direction:column;overflow:hidden;}
 html.na-etapa .pedir-modal > .pedir-corpo,html.na-etapa .pedir-modal > .pedir-grade-2,html.na-etapa .pedir-hist-lista,html.na-etapa .envio-corpo{max-height:none;flex:1 1 auto;min-height:0;overflow:auto;}
@@ -3453,6 +3453,8 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 /* o andamento do "Contar agora" do SIEG (07/10/2026): o cartão de andamento do robô, fixo no canto da tela */
 .sieg-flutuante{position:fixed;right:16px;bottom:16px;z-index:70;width:min(380px,calc(100vw - 32px));margin:0;box-shadow:var(--shadow-lg);}
 .sieg-flutuante .tarefas-barra-espaco{flex:1;}
+/* a janela do andamento no centro, com o fundo embaçado (Vitor, 09/10/2026) */
+.modal-overlay > .andamento-centro{width:min(420px,calc(100vw - 32px));margin:0;box-shadow:var(--shadow-lg);max-height:calc(100vh - 32px);overflow:auto;}
 .sieg-acoes{gap:8px;flex-wrap:wrap;align-items:center;}
 
 /* DP › FGTS Digital (07/10/2026: a guia pelo robô da nuvem) */
