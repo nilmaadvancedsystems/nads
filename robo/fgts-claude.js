@@ -31,6 +31,8 @@ const BAIXADOS = path.join(DRIVE, 'Claudio Secretario');
 const MODELO = process.env.FGTS_MODELO || 'sonnet';
 const LIMITE_MS = 8 * 60 * 1000;
 const PORTAL = 'https://fgtsdigital.sistema.gov.br/portal/servicos';
+// o atalho da Emissão de Guia Rápida (o endereço da tela, visto em 09/10/2026): pula os dois cliques do menu
+const GUIA_RAPIDA = 'https://fgtsdigital.sistema.gov.br/cobranca/#/gestao-guias/emissao-guia-rapida';
 
 const agora = () => new Date().toISOString();
 const dormir = ms => new Promise(r => setTimeout(r, ms));
@@ -62,7 +64,7 @@ function instrucoes(p, modo) {
     '3. Escolha o perfil do cliente: na janela "Definir Perfil" (ou pelo botão "Trocar Perfil" no alto), abra a lista Perfil, escolha',
     '   "Procurador", digite o CNPJ ' + cnpj + ' em "Empregador a ser representado" e clique em Definir/Selecionar. Confira que o alto',
     '   da página mostra "Empregador: ' + cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') + '". Se o portal disser que não há procuração, responda RESULTADO: {"erro":"sem procuração"}.',
-    '4. Clique no cartão GESTÃO DE GUIAS e depois em EMISSÃO DE GUIA RÁPIDA (sempre a Guia Rápida).',
+    '4. Vá direto para a Emissão de Guia Rápida (sempre a Guia Rápida): abra ' + GUIA_RAPIDA + ' na mesma aba (se não abrir, use o cartão GESTÃO DE GUIAS e depois EMISSÃO DE GUIA RÁPIDA).',
     '5. Em "Competência de Apuração", abra a lista e escolha ' + mes + '/' + ano + '. Se essa competência não estiver na lista, responda',
     '   RESULTADO: {"erro":"sem débito em aberto na competência"}. Deixe os tipos de débito como estão e clique em Pesquisar.',
     '6. Leia o Resumo da Pesquisa: o Total Devedor e o vencimento da guia.',
