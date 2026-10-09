@@ -17,15 +17,19 @@
 // E os extratos que chegam por e-mail (liberado pelo Vitor em 08/10/2026, "ele já jogue o extrato para o nads"):
 // extratosRecebidos (o robô do Gmail grava; aqui só ler a lista do cliente e mês, ler os pedaços do arquivo e marcar
 // importado/ignorado). Nenhuma outra coleção nova.
+// E o extrato importado do computador que não está no Drive (Vitor, 09/10/2026: "upe no drive o que ele upou do pc"):
+// enviosSecretario (+ partes), a mesma fila da Tarefas › Drive — o robô grava em Claudio Secretario/<mês>/<cliente> e o
+// arquivamento leva para EXTRATOS/AAAA/MM/BANCÁRIOS/<BANCO>. O nads nunca escreve direto no Drive.
 import { creditor as cr, entregas, extrator as ex } from '@nads/core';
 import { getApps, initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
-import { addDoc as addDocBruto, collection, doc, getDoc, getDocs, getFirestore, limit, onSnapshot, query, serverTimestamp, updateDoc as updateDocBruto, where } from 'firebase/firestore';
+import { addDoc as addDocBruto, Bytes, collection, doc, getDoc, getDocs, getFirestore, limit, onSnapshot, query, serverTimestamp, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
 import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 
 // a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
 const addDoc = guardarPedido(addDocBruto) as typeof addDocBruto;
 const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
+const setDoc = guardar(setDocBruto) as typeof setDocBruto;
 
 /** Configuração web pública do projeto do Entregas (a mesma do app Pendências). */
 const CONFIG_ENTREGAS = {
@@ -275,6 +279,23 @@ export function criarDriveFirestore(): cr.RepoDrive {
         if (semPermissao(e)) throw new Error('Seu usuário do Entregas não pode ver o cadastro de clientes.', { cause: e });
         throw e;
       }
+    },
+
+    /** O arquivo para o Claudio Secretario (enviosSecretario, em pedaços), como a Tarefas › Drive faz. */
+    async enviarAoDrive(arquivo, destino) {
+      const u = auth.currentUser;
+      if (!u) throw new Error('Entre com a conta do Entregas para mandar ao Drive.');
+      const problema = entregas.problemaDoArquivo({ nome: arquivo.nome, tamanho: arquivo.bytes.length });
+      if (problema) throw new Error(arquivo.nome + ': ' + problema);
+      const partes = entregas.partesDoArquivo(arquivo.bytes);
+      const ref = doc(collection(db, 'enviosSecretario'));
+      await setDoc(ref, {
+        status: 'enviando', nome: entregas.nomeParaEnviar(arquivo.nome), tamanho: arquivo.bytes.length, partes: partes.length,
+        competencia: destino.competencia, cliente: destino.cliente.trim(), codigo: destino.codigo == null ? '' : String(destino.codigo),
+        criadoEm: new Date().toISOString(), criadoPor: acesso.quem || 'nads', criadoPorUid: u.uid,
+      });
+      for (let i = 0; i < partes.length; i++) await setDoc(doc(ref, 'partes', String(i)), { dados: Bytes.fromUint8Array(partes[i]) });
+      await updateDoc(ref, { status: 'pendente' });
     },
 
     /** Põe o e-mail na fila do robô (solicitacoesEmail, tipo 'um') e acompanha até ele enviar. */

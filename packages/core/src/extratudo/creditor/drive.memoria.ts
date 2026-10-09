@@ -71,6 +71,10 @@ export function criarDriveMemoria(): RepoDrive {
     async remetente() {
       return { setor: 'contabil', caixa: 'robo', email: 'nilmacontabilidade@gmail.com', respostas: 'setorcontabilnilma@gmail.com' };
     },
+    async enviarAoDrive() {
+      // nos exemplos nada sai daqui: só finge a fila do robô
+      await new Promise(ok => setTimeout(ok, 300));
+    },
     async pedirEmail(_p, passo) {
       // nos exemplos nada sai daqui: só finge a fila do robô
       passo?.('na fila do robô (exemplo)');

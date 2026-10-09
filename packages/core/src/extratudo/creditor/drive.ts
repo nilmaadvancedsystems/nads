@@ -76,6 +76,13 @@ export interface RepoDrive {
    * importados, do cliente e do mês. Não existe acoplado no Entregas nem nos exemplos.
    */
   extratosRecebidos?(codigo: number, competencia: string): Promise<ExtratoRecebido[]>;
+  /**
+   * Manda um arquivo para a pasta Claudio Secretario/<competência>/<cliente> (a fila enviosSecretario, a mesma da Tarefas
+   * › Drive), de onde o arquivamento leva para a pasta certa (o extrato vai para EXTRATOS/AAAA/MM/BANCÁRIOS/<BANCO>).
+   * Resolve quando o arquivo inteiro já subiu e o envio ficou 'pendente' para o robô. Não existe acoplado no Entregas.
+   * (Vitor, 09/10/2026: o extrato importado do computador que não está no Drive vai para lá.)
+   */
+  enviarAoDrive?(arquivo: { nome: string; bytes: Uint8Array }, destino: { competencia: string; codigo: number | null; cliente: string }): Promise<void>;
   /** o arquivo do extrato recebido */
   baixarRecebido?(id: string): Promise<ArrayBuffer>;
   /** importado (em que linha) ou ignorado: sai da lista */
