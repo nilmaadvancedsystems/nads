@@ -59,8 +59,10 @@ function instrucoes(p, modo) {
     '',
     'Faça exatamente assim, numa aba do seu grupo:',
     '1. Abra ' + PORTAL + '.',
-    '2. Se aparecer a tela de login do gov.br ou "Entrar com gov.br", NÃO faça login: pare e responda RESULTADO: {"erro":"login"}.',
-    '   Se aparecer qualquer verificação "não sou um robô"/captcha, NÃO resolva: pare e responda RESULTADO: {"erro":"captcha"}.',
+    '2. Se o portal pedir login: clique em "Entrar com gov.br" e depois em "Seu certificado digital" (o Chrome escolhe sozinho o',
+    '   certificado da NILMA; nunca digite CPF, senha ou código). Espere voltar ao portal. Se aparecer qualquer verificação',
+    '   "não sou um robô"/captcha, NÃO resolva: pare e responda RESULTADO: {"erro":"captcha"}. Se não voltar ao portal em 1 minuto,',
+    '   responda RESULTADO: {"erro":"login"}.',
     '3. Escolha o perfil do cliente: na janela "Definir Perfil" (ou pelo botão "Trocar Perfil" no alto), abra a lista Perfil, escolha',
     '   "Procurador", digite o CNPJ ' + cnpj + ' em "Empregador a ser representado" e clique em Definir/Selecionar. Confira que o alto',
     '   da página mostra "Empregador: ' + cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') + '". Se o portal disser que não há procuração, responda RESULTADO: {"erro":"sem procuração"}.',
@@ -116,6 +118,24 @@ async function esperarPdf(numero, desde, ms) {
   return null;
 }
 
+const CHROME = process.env.FGTS_CHROME || 'C:\Program Files\Google\Chrome\Application\chrome.exe';
+
+/** O Chrome de quem usa o PC está aberto? Se não, abre (normal, no perfil de sempre) e espera a extensão. true = abriu. */
+async function abrirChromeSeFechado() {
+  let aberto = false;
+  try { aberto = /chrome\.exe/i.test(require('child_process').execFileSync('tasklist', ['/FI', 'IMAGENAME eq chrome.exe', '/NH'], { encoding: 'utf8', windowsHide: true })); } catch (_) { /* sem tasklist: tenta abrir */ }
+  if (aberto || !fs.existsSync(CHROME)) return false;
+  spawn(CHROME, [PORTAL], { detached: true, stdio: 'ignore' }).unref();
+  await dormir(20000);
+  return true;
+}
+
+/** O Claude disse que a extensão do Chrome não estava conectada (ou não achou o navegador). */
+function extensaoFora(r) {
+  const t = String((r.resultado && r.resultado.erro) || r.erro || '').toLowerCase();
+  return /extens|n[aã]o (est[aá] )?conectad|not connected|browser/.test(t) && !(r.resultado && (r.resultado.numero || r.resultado.ensaio));
+}
+
 function iniciarFgtsPeloClaude(db, log) {
   const estado = db.collection('robo').doc('fgts');
   const pedidos = db.collection('pedidosFgts');
@@ -168,7 +188,17 @@ function iniciarFgtsPeloClaude(db, log) {
     await passo('o Claude abriu o FGTS Digital no Chrome do PC');
     const desde = Date.now();
 
-    const r = await rodarClaude(instrucoes(p, modo), linha => { void passo(linha); });
+    // o Chrome fechado (Vitor, 09/10/2026: "tem como você abrir ele quando eu fizer o pedido"): abre o Chrome de quem usa o
+    // PC, normal, e dá um tempo para a extensão do Claude se conectar
+    if (await abrirChromeSeFechado()) await passo('o Chrome estava fechado: abri e esperei a extensão do Claude');
+    let r = await rodarClaude(instrucoes(p, modo), linha => { void passo(linha); });
+    // a extensão ainda não estava pronta: espera mais um pouco e tenta de novo uma vez
+    if (extensaoFora(r)) { await passo('a extensão do Claude não respondeu; tentando de novo'); await dormir(20000); r = await rodarClaude(instrucoes(p, modo), linha => { void passo(linha); }); }
+    if (extensaoFora(r)) {
+      await ref.update({ status: 'erro', erro: 'a extensão Claude in Chrome não está conectada no PC: abra o Chrome, clique no ícone do Claude e peça de novo', fimEm: agora() });
+      log('FGTS (Claude): extensão não conectada', p.cnpj);
+      return;
+    }
     if (!r.resultado) {
       await ref.update({ status: 'erro', erro: 'o Claude não terminou: ' + (r.erro || 'sem resposta').slice(0, 300), fimEm: agora() });
       log('FGTS (Claude): sem resultado', p.cnpj, r.erro || '');
@@ -176,7 +206,7 @@ function iniciarFgtsPeloClaude(db, log) {
     }
     const res = r.resultado;
     if (res.erro) {
-      const motivo = res.erro === 'login' ? 'o Chrome do PC não está logado no FGTS Digital: entre com o certificado e peça de novo'
+      const motivo = res.erro === 'login' ? 'o login no FGTS Digital não foi no Chrome do PC: entre com o certificado lá e peça de novo'
         : res.erro === 'captcha' ? 'o gov.br pediu a verificação "não sou um robô" no Chrome do PC: faça o login lá e peça de novo'
           : String(res.erro);
       await ref.update({ status: 'erro', erro: motivo, fimEm: agora() });
