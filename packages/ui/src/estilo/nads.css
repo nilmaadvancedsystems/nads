@@ -1654,6 +1654,8 @@ a.btn.is-locked{opacity:.55;cursor:not-allowed;}
 .cad-conta .fraco{font-size:12px;color:var(--ink-muted);}
 .cad-badge{margin-left:6px;vertical-align:1px;}
 tr.cad-encerrada td{color:var(--ink-muted);}
+/* a lista das contas bancárias: o menu da engrenagem (Editar, Encerrar, Excluir) passa da borda da caixa sem ser cortado (09/10/2026) */
+.table-wrap.cad-tabela-wrap{overflow:visible;max-height:none;}
 td.cad-acoes{width:1%;text-align:right;}
 td.cad-acoes .btn{padding:4px 6px;}
 td.cad-acoes .menu-seta{display:none;}
