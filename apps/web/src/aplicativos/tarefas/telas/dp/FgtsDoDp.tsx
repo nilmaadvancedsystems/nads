@@ -118,7 +118,7 @@ export function FgtsDoDp() {
             ? <span className="fgts-robo-linha"><span className="bolinha-sit concluida" aria-hidden="true" />Ligado{r.certificado ? ' · certificado até ' + data(r.certificado.validade) : ''}</span>
             : <span className="fgts-robo-linha"><span className="bolinha-sit parada" aria-hidden="true" />Desligado</span>)}
           <span className="tarefas-barra-espaco" />
-          <span className="hint"><b className="num">{c.emitidas}</b> de <b className="num">{c.todos}</b> emitidas em {mes}</span>
+          <span className="hint"><b className="num">{c.emitidas}</b> de <b className="num">{c.todos}</b> emitidas em {mes}{vm.totalEmitido ? <> · <b className="num">R$ {vm.totalEmitido}</b></> : null}</span>
         </div>
         <span className="tarefas-barra fgts-barra" role="progressbar" aria-valuemin={0} aria-valuemax={c.todos} aria-valuenow={c.emitidas} aria-label="Guias emitidas">
           <span style={{ width: (c.todos ? (c.emitidas / c.todos) * 100 : 0) + '%' }} />
@@ -155,9 +155,13 @@ export function FgtsDoDp() {
           <span className="badge badge-neutral">{vm.linhas.length}</span>
           {c.faltam > 0 ? <span className="hint">{c.faltam} {c.faltam === 1 ? 'falta' : 'faltam'}</span> : <span className="hint">todas emitidas</span>}
           <span className="tarefas-barra-espaco" />
+          {/* baixar em lote (Vitor, 09/10/2026): as marcadas emitidas, ou todas as emitidas da tela, num .zip */}
+          <BotaoAcao className="btn btn-outline" carregando={vm.baixando} textoCarregando="Juntando…" disabled={!vm.paraBaixar} onClick={() => void vm.baixarLote()}>
+            <Icone nome="download" />{vm.marcadas > 0 ? 'Baixar marcadas' : 'Baixar emitidas'}{vm.paraBaixar ? ' · ' + vm.paraBaixar : ''}
+          </BotaoAcao>
           {vm.marcadas > 0 ? (
-            <BotaoAcao carregando={vm.pedindo} textoCarregando="Pedindo…" disabled={!r.ligado} onClick={() => void vm.emitirMarcadas()}>
-              <Icone nome="fileDown" />Emitir marcadas · {vm.marcadas}
+            <BotaoAcao carregando={vm.pedindo} textoCarregando="Pedindo…" disabled={!r.ligado || !vm.marcadasParaEmitir} onClick={() => void vm.emitirMarcadas()}>
+              <Icone nome="fileDown" />Emitir marcadas{vm.marcadasParaEmitir ? ' · ' + vm.marcadasParaEmitir : ''}
             </BotaoAcao>
           ) : (
             <BotaoAcao carregando={vm.pedindo} textoCarregando="Pedindo…" disabled={!r.ligado || !vm.faltam} onClick={() => void vm.emitirTodas()}>
@@ -171,7 +175,7 @@ export function FgtsDoDp() {
               <thead>
                 <tr>
                   <th className="fgts-marca"><input type="checkbox" checked={vm.todasMarcadas} onChange={e => vm.marcarTodas(e.target.checked)} aria-label="Marcar todas" title="Marcar todas da tela" /></th>
-                  <th>Cód.</th><th>Cliente</th><th>CNPJ</th><th>Responsável</th><th>Guia</th><th />
+                  <th>Cód.</th><th>Cliente</th><th>CNPJ</th><th>Responsável</th><th>Guia</th><th>Nº da guia</th><th className="num">Valor</th><th>Vence</th><th />
                 </tr>
               </thead>
               <tbody>
@@ -200,6 +204,9 @@ export function FgtsDoDp() {
                           </button>
                         ) : <span className={selo.classe}>{selo.rotulo}</span>}
                       </td>
+                      <td className="num fraco fgts-numero">{l.situacao === 'emitida' && p?.numeroGuia ? p.numeroGuia : '—'}</td>
+                      <td className="num">{l.situacao === 'emitida' && p?.valor ? 'R$ ' + p.valor : <span className="fraco">—</span>}</td>
+                      <td className="fraco">{l.situacao === 'emitida' && p?.vencimento ? p.vencimento : '—'}</td>
                       <td className="fgts-acoes">
                         <div className="fgts-acoes-linha">
                         {p && l.situacao === 'emitida'

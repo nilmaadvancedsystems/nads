@@ -68,6 +68,13 @@ export function useFgtsDoDp() {
   const faltam = doResponsavel.filter(l => l.cnpj && ['nada', 'erro', 'ensaio-ok'].includes(l.situacao));
 
   const marcadasValidas = todas.filter(l => l.podeMarcar && marcadas.has(l.codigo));
+  // o lote marcado em duas partes (Vitor, 09/10/2026: "baixar em lote"): as que faltam emitir e as já emitidas (para baixar)
+  const marcadasParaEmitir = marcadasValidas.filter(l => l.situacao !== 'emitida');
+  const marcadasEmitidas = marcadasValidas.filter(l => l.situacao === 'emitida' && l.pedido);
+  const emitidasNaTela = linhas.filter(l => l.situacao === 'emitida' && l.pedido);
+  const [baixando, setBaixando] = useState(false);
+  const reais = (v: string) => Number(String(v || '').replace(/\./g, '').replace(',', '.')) || 0;
+  const totalEmitido = todas.filter(l => l.situacao === 'emitida').reduce((s, l) => s + reais(l.pedido?.valor || ''), 0);
   // o robô agora (Vitor, 08/10/2026: "acompanhar o robô"): a empresa com ele, o último passo e a fila do lote
   const comORobo = todas.find(l => l.situacao === 'trabalhando' || l.situacao === 'verificacao') || null;
   const ultimoPasso = comORobo?.pedido?.passos[comORobo.pedido.passos.length - 1];
@@ -119,17 +126,38 @@ export function useFgtsDoDp() {
     },
     /** o lote marcado */
     marcadas: marcadasValidas.length,
+    marcadasParaEmitir: marcadasParaEmitir.length,
+    /** o lote para baixar: as emitidas marcadas, ou todas as emitidas da tela */
+    paraBaixar: (marcadasValidas.length ? marcadasEmitidas : emitidasNaTela).length,
+    baixando,
+    totalEmitido: totalEmitido ? totalEmitido.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '',
+    /** as guias do lote num .zip (um PDF por cliente) */
+    async baixarLote() {
+      const lista = marcadasValidas.length ? marcadasEmitidas : emitidasNaTela;
+      if (baixando || !lista.length) return;
+      setBaixando(true);
+      try {
+        const arquivos: { nome: string; bytes: Uint8Array }[] = [];
+        for (const l of lista) {
+          const a = await repo.pdf(l.pedido!.id);
+          if (a) arquivos.push({ nome: l.codigo + ' - ' + (a.nome || 'FGTS.pdf'), bytes: Uint8Array.from(atob(a.base64), ch => ch.charCodeAt(0)) });
+        }
+        if (!arquivos.length) { toast('Nenhum PDF encontrado nessas guias.'); return; }
+        baixarBytes(t.zipSemCompressao(arquivos), 'FGTS ' + competencia.slice(5, 7) + '-' + competencia.slice(0, 4) + ' (' + arquivos.length + ' guias).zip', 'application/zip');
+        if (arquivos.length < lista.length) toast((lista.length - arquivos.length) + ' guia(s) sem PDF ficaram de fora.');
+      } catch (e) { toast('Não deu para baixar: ' + (e instanceof Error ? e.message : String(e))); } finally { setBaixando(false); }
+    },
     marcada: (codigo: number) => marcadas.has(codigo),
     alternarMarca: (codigo: number) => setMarcadas(m => { const n = new Set(m); if (n.has(codigo)) n.delete(codigo); else n.add(codigo); return n; }),
     /** todas as que dá para marcar, na tela (com os filtros), ou nenhuma */
     marcarTodas: (sim: boolean) => setMarcadas(sim ? new Set(linhas.filter(l => l.podeMarcar).map(l => l.codigo)) : new Set()),
     todasMarcadas: linhas.some(l => l.podeMarcar) && linhas.filter(l => l.podeMarcar).every(l => marcadas.has(l.codigo)),
     async emitirMarcadas() {
-      if (pedindo || !marcadasValidas.length) return;
+      if (pedindo || !marcadasParaEmitir.length) return;
       setPedindo(true);
       try {
-        for (const l of marcadasValidas) await pedir(l, 'emitir');
-        toast(marcadasValidas.length + (marcadasValidas.length === 1 ? ' guia pedida' : ' guias pedidas') + ' ao robô.');
+        for (const l of marcadasParaEmitir) await pedir(l, 'emitir');
+        toast(marcadasParaEmitir.length + (marcadasParaEmitir.length === 1 ? ' guia pedida' : ' guias pedidas') + ' ao robô.');
         setMarcadas(new Set());
       } catch (e) { toast('Parou no meio: ' + (e instanceof Error ? e.message : String(e))); } finally { setPedindo(false); }
     },

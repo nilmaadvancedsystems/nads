@@ -16,7 +16,7 @@ function pedidoDoBanco(id: string, d: Record<string, unknown>): PedidoFgts {
   return {
     id, cnpj: texto(d.cnpj), codigo: texto(d.codigo), empresa: texto(d.empresa), competencia: texto(d.competencia),
     modo: (d.modo === 'emitir' ? 'emitir' : 'ensaio') as ModoFgts, status: texto(d.status), erro: texto(d.erro),
-    resultado: texto(d.resultado), pdfNome: texto(d.pdfNome), criadoEm: texto(d.criadoEm), criadoPor: texto(d.criadoPor), fimEm: texto(d.fimEm),
+    resultado: texto(d.resultado), pdfNome: texto(d.pdfNome), numeroGuia: texto(d.numeroGuia), valor: texto(d.valor), vencimento: texto(d.vencimento), criadoEm: texto(d.criadoEm), criadoPor: texto(d.criadoPor), fimEm: texto(d.fimEm),
     passos: Array.isArray(d.passos) ? (d.passos as Record<string, unknown>[]).map(p => ({ n: Number(p.n) || 0, nome: texto(p.nome), url: texto(p.url), texto: texto(p.texto), quando: texto(p.quando) })) : [],
   };
 }

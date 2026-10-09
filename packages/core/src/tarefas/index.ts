@@ -12,6 +12,7 @@ export * from './regras/visao';
 export * from './regras/quando';
 export * from './regras/folha';
 export * from './regras/planilha';
+export * from './regras/zip';
 export * from './regras/razao';
 export * from './regras/emprestimos';
 export * from './regras/inss';
