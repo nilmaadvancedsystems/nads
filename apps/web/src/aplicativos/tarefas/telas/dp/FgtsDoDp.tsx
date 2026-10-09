@@ -23,6 +23,7 @@ const SELO: Record<SituacaoFgts, { classe: string; rotulo: string }> = {
   'ensaio-ok': { classe: 'badge badge-neutral', rotulo: 'Ensaio ok' },
   erro: { classe: 'badge badge-parada', rotulo: 'Não deu' },
   captcha: { classe: 'badge badge-parada', rotulo: 'Fazer à mão' },
+  cancelada: { classe: 'badge badge-neutral', rotulo: 'Cancelada' },
 };
 const SITUACOES: { valor: FiltroFgts; rotulo: string }[] = [
   { valor: 'todos', rotulo: 'Todas' }, { valor: 'faltam', rotulo: 'Faltam' }, { valor: 'emitidas', rotulo: 'Emitidas' }, { valor: 'problemas', rotulo: 'Com problema' },
@@ -135,6 +136,7 @@ export function FgtsDoDp() {
               {agora.situacao === 'verificacao'
                 ? <button type="button" className="btn btn-primary" onClick={() => vm.abrir(agora.pedidoId)}>Fazer a verificação</button>
                 : <button type="button" className="btn btn-outline" onClick={() => vm.abrir(agora.pedidoId)}>Ver passos</button>}
+              <button type="button" className="btn btn-ghost" onClick={() => void vm.cancelar(agora.pedidoId)}><Icone nome="x" />Cancelar</button>
             </>
           ) : <span className="fraco">parado</span>}
         </div>
@@ -209,9 +211,11 @@ export function FgtsDoDp() {
                       <td className="fraco">{l.situacao === 'emitida' && p?.vencimento ? p.vencimento : '—'}</td>
                       <td className="fgts-acoes">
                         <div className="fgts-acoes-linha">
-                        {p && l.situacao === 'emitida'
-                          ? <button type="button" className="btn btn-outline" onClick={() => void vm.baixar(p)}><Icone nome="download" />PDF</button>
-                          : l.podeMarcar && <button type="button" className="btn btn-outline" disabled={!r.ligado} onClick={() => void vm.pedir(l.codigo, 'emitir')}>Emitir</button>}
+                        {p && ['fila', 'trabalhando', 'verificacao'].includes(l.situacao)
+                          ? <button type="button" className="btn btn-ghost" onClick={() => void vm.cancelar(p.id)}><Icone nome="x" />Cancelar</button>
+                          : p && l.situacao === 'emitida'
+                            ? <button type="button" className="btn btn-outline" onClick={() => void vm.baixar(p)}><Icone nome="download" />PDF</button>
+                            : l.podeMarcar && <button type="button" className="btn btn-outline" disabled={!r.ligado} onClick={() => void vm.pedir(l.codigo, 'emitir')}>Emitir</button>}
                         {itens.length > 0 && <MenuSuspenso rotulo="" icone="mais" className="btn btn-ghost fgts-mais" dica="Mais" titulo={'Mais de ' + l.nome} direita itens={itens} />}
                         </div>
                       </td>

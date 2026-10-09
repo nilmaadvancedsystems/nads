@@ -3594,5 +3594,9 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .fgts-mais{width:28px;justify-content:center;padding:0;}
 .dp-lista .table-wrap:has(.fgts-tabela){overflow:visible;}
 .fgts-tabela td,.fgts-tabela th{padding-left:8px;padding-right:8px;}
+/* FGTS: a tabela sempre cabe no quadro (09/10/2026: o PDF e o ⋯ saíam pela borda com a guia emitida): o nome do cliente
+   pega o espaço que sobra e encolhe com reticências */
+.fgts-tabela td.dp-cliente{max-width:0;width:100%;}
+.fgts-tabela .dp-cliente-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 /* O Painel do Fiscal (09/10/2026): o nome do cliente não espreme em tela estreita */
 .fiscal-painel-tabela .dp-cliente{min-width:220px;}

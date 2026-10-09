@@ -10,7 +10,7 @@ import { useFgts, useGmailDoEntregas } from '../../dados/repo';
 import type { ModoFgts, PedidoFgts } from '../../dados/fgts';
 import { useClientesDoDp } from './useClientesDoDp';
 
-export type SituacaoFgts = 'sem-cnpj' | 'nada' | 'fila' | 'trabalhando' | 'verificacao' | 'emitida' | 'ensaio-ok' | 'erro' | 'captcha';
+export type SituacaoFgts = 'sem-cnpj' | 'nada' | 'fila' | 'trabalhando' | 'verificacao' | 'emitida' | 'ensaio-ok' | 'erro' | 'captcha' | 'cancelada';
 export type FiltroFgts = 'todos' | 'faltam' | 'emitidas' | 'problemas';
 
 export function situacaoDoPedido(p: PedidoFgts | undefined, temCnpj: boolean): SituacaoFgts {
@@ -21,6 +21,7 @@ export function situacaoDoPedido(p: PedidoFgts | undefined, temCnpj: boolean): S
   if (p.status === 'verificacao') return 'verificacao';
   if (p.status === 'captcha') return 'captcha';
   if (p.status === 'erro') return 'erro';
+  if (p.status === 'cancelado') return 'cancelada';
   if (p.status === 'pronto') return p.modo === 'emitir' ? 'emitida' : 'ensaio-ok';
   return 'nada';
 }
@@ -65,7 +66,7 @@ export function useFgtsDoDp() {
   const doResponsavel = responsavel ? todas.filter(l => l.responsavel === responsavel) : todas;
   const linhas = doResponsavel.filter(l => (!q || l.nome.toLowerCase().includes(q) || String(l.codigo).includes(q) || (!!qDigitos && l.cnpj.includes(qDigitos)))
     && (filtro === 'todos' || (filtro === 'emitidas' ? l.situacao === 'emitida' : filtro === 'problemas' ? ['erro', 'captcha', 'sem-cnpj'].includes(l.situacao) : !['emitida', 'sem-cnpj'].includes(l.situacao))));
-  const faltam = doResponsavel.filter(l => l.cnpj && ['nada', 'erro', 'ensaio-ok'].includes(l.situacao));
+  const faltam = doResponsavel.filter(l => l.cnpj && ['nada', 'erro', 'ensaio-ok', 'cancelada'].includes(l.situacao));
 
   const marcadasValidas = todas.filter(l => l.podeMarcar && marcadas.has(l.codigo));
   // o lote marcado em duas partes (Vitor, 09/10/2026: "baixar em lote"): as que faltam emitir e as já emitidas (para baixar)
@@ -118,6 +119,10 @@ export function useFgtsDoDp() {
         for (const l of faltam) await pedir(l, 'emitir');
         toast(faltam.length + (faltam.length === 1 ? ' guia pedida' : ' guias pedidas') + ' ao robô.');
       } catch (e) { toast('Parou no meio: ' + (e instanceof Error ? e.message : String(e))); } finally { setPedindo(false); }
+    },
+    /** cancela o pedido na fila ou com o robô (Vitor, 09/10/2026: "botão de cancelar requisição") */
+    async cancelar(id: string) {
+      try { await repo.cancelar(id); toast('Pedido cancelado.'); } catch (e) { toast('Não deu para cancelar: ' + (e instanceof Error ? e.message : String(e))); }
     },
     async baixar(p: PedidoFgts) {
       const a = await repo.pdf(p.id);

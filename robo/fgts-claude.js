@@ -57,8 +57,13 @@ function ambienteLimpo() {
 // Competência de Apuração são ng-select (abrem com mousedown no .ng-select-container; opções em .ng-option); o CNPJ tem
 // máscara (00.000.000/0000-00); Definir troca de página; a pesquisa leva ~1 s; o número da guia tem 16 dígitos e o
 // dígito (0126100966359791-5).
+// o CNPJ do próprio escritório (a 284, NILMA CONTABILIDADE; Vitor, 09/10/2026: "ele tem que ir no meu perfil, já que é o do
+// escritório"): entra pelo "Meu Perfil", sem Procurador e sem digitar CNPJ
+const CNPJ_DO_ESCRITORIO = '27872981000113';
+
 function roteiroPerfil(cnpj) {
   const formatado = cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  const proprio = cnpj === CNPJ_DO_ESCRITORIO;
   return `await (async () => {
   const dormir = ms => new Promise(r => setTimeout(r, ms));
   const visivel = e => e && e.offsetParent !== null;
@@ -69,8 +74,15 @@ function roteiroPerfil(cnpj) {
   if (!sel) return 'ERRO: sem a lista Perfil';
   sel.querySelector('.ng-select-container').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
   await dormir(400);
-  const op = [...document.querySelectorAll('.ng-option')].find(o => o.innerText.trim() === 'Procurador');
-  if (!op) return 'ERRO: sem a opção Procurador';
+  ${proprio ? `const meu = [...document.querySelectorAll('.ng-option')].find(o => o.innerText.trim() === 'Meu Perfil');
+  if (!meu) return 'ERRO: sem a opção Meu Perfil';
+  meu.click(); await dormir(500);
+  const definir = botao('Definir') || botao('Selecionar');
+  if (!definir) return 'ERRO: sem o botão Definir';
+  setTimeout(() => definir.click(), 100);
+  return 'OK: Meu Perfil (o escritório)';
+})()` : `const op = [...document.querySelectorAll('.ng-option')].find(o => o.innerText.trim() === 'Procurador');`}
+  ${proprio ? '' : `if (!op) return 'ERRO: sem a opção Procurador';
   op.click(); await dormir(500);
   const campo = [...document.querySelectorAll('input')].find(i => visivel(i) && /CNPJ ou CPF/i.test(i.placeholder || ''));
   if (!campo) return 'ERRO: sem o campo do CNPJ';
@@ -82,7 +94,7 @@ function roteiroPerfil(cnpj) {
   if (!ok) return 'ERRO: sem o botão Definir';
   setTimeout(() => ok.click(), 100);
   return 'OK: definindo ${formatado}';
-})()`;
+})()`}`;
 }
 
 function roteiroGuia(cnpj, competencia, emitir) {
@@ -151,6 +163,8 @@ function instrucoesDoLote(itens) {
     ...itens.map(p => ['--- ' + p.cnpj + ' — ROTEIRO PERFIL:', roteiroPerfil(p.cnpj), '--- ' + p.cnpj + ' — ROTEIRO GUIA:', roteiroGuia(p.cnpj, p.competencia, p.modo === 'emitir')].join('\n')),
     '',
     'O CAMINHO MANUAL (só quando um roteiro falhar), para aquele cliente:',
+    '0. Se o CNPJ é ' + CNPJ_DO_ESCRITORIO + ' (o do próprio escritório, NILMA CONTABILIDADE), o perfil é o "Meu Perfil": abra a lista',
+    '   Perfil, escolha "Meu Perfil" e clique em Definir (sem Procurador e sem digitar CNPJ).',
     '1. Escolha o perfil do cliente: na janela "Definir Perfil" ou pelo botão "Trocar Perfil" no alto, abra a lista Perfil, escolha',
     '   "Procurador", digite o CNPJ em "Empregador a ser representado" e clique em Definir/Selecionar. Confira que o alto da página',
     '   mostra "Empregador:" com o CNPJ dele. Se o portal disser que não há procuração, o resultado dele é {"erro":"sem procuração"}.',
@@ -269,7 +283,11 @@ function iniciarFgtsPeloClaude(db, log) {
     proximo();
   }
   ouvir('pedidos do FGTS', () => pedidos.where('status', '==', 'pendente'), snap => {
-    for (const ch of snap.docChanges()) if (ch.type === 'added' && !fila.some(d => d.id === ch.doc.id)) fila.push(ch.doc);
+    for (const ch of snap.docChanges()) {
+      if (ch.type === 'added' && !fila.some(d => d.id === ch.doc.id)) fila.push(ch.doc);
+      // cancelado (ou pego) enquanto esperava: sai da fila (09/10/2026: o botão Cancelar do DP)
+      if (ch.type === 'removed') { const i = fila.findIndex(d => d.id === ch.doc.id); if (i >= 0) fila.splice(i, 1); }
+    }
     // espera um instante para juntar os pedidos que chegam juntos (o "Emitir as que faltam" pede um por um)
     setTimeout(proximo, 3000);
   }, log);
@@ -295,8 +313,16 @@ function iniciarFgtsPeloClaude(db, log) {
     const desde = Date.now();
     if (await abrirChromeSeFechado()) for (const it of itens) await it.passo('o Chrome estava fechado: abri e esperei a extensão do Claude');
 
+    // o Cancelar do DP no meio do lote: o cliente sai do lote (o resultado dele é ignorado); todos cancelados = para o Claude
+    const vigias = itens.map(it => it.ref.onSnapshot(s => {
+      if ((s.data() || {}).status !== 'cancelado' || it.fim) return;
+      it.fim = true;
+      it.cancelado = true;
+      log('FGTS (Claude): cancelado pelo DP', it.p.cnpj);
+      if (itens.every(x => x.fim) && processoAtual) { try { processoAtual.kill(); } catch (_) {} }
+    }, () => {}));
     const comecar = it => {
-      if (it.comecou) return;
+      if (it.comecou || it.cancelado) return;
       it.comecou = true;
       void it.ref.update({ status: 'trabalhando', inicioEm: agora() }).catch(() => {});
     };
@@ -337,6 +363,7 @@ function iniciarFgtsPeloClaude(db, log) {
       it.tarefa = it.ref.update({ status: 'erro', erro: motivo, fimEm: agora() }).catch(() => {});
     }
     await Promise.all(itens.map(it => it.tarefa));
+    vigias.forEach(parar => parar());
   }
 
   /** O fim de um cliente: o erro, o ensaio ou a guia (o PDF do Claudio Secretario arquivado e no pedido). */
@@ -382,9 +409,10 @@ function iniciarFgtsPeloClaude(db, log) {
    * Roda o Claude do PC com o Claude in Chrome. "PASSO [cnpj]: …" vai para aoPasso; "RESULTADO [cnpj]: {…}" para
    * aoResultado (sem o CNPJ: vale para o lote todo). Devolve o fim da conversa (para o erro de quando nada começou).
    */
+  let processoAtual = null;
   function rodarClaude(texto, aoPasso, aoResultado, limiteMs) {
     return new Promise(resolve => {
-      const filho = spawn(CLAUDE, ['-p', texto, '--chrome', '--model', MODELO, '--permission-mode', 'bypassPermissions',
+      const filho = processoAtual = spawn(CLAUDE, ['-p', texto, '--chrome', '--model', MODELO, '--permission-mode', 'bypassPermissions',
         '--output-format', 'stream-json', '--verbose', '--no-session-persistence'], { cwd: __dirname, windowsHide: true, env: ambienteLimpo(), stdio: ['ignore', 'pipe', 'pipe'] });
       let resto = '', erros = '', final = '', algum = null;
       const vistos = new Set();
@@ -413,7 +441,7 @@ function iniciarFgtsPeloClaude(db, log) {
       filho.stderr.on('data', b => { erros += String(b); if (erros.length > 3000) erros = erros.slice(-3000); });
       const relogio = setTimeout(() => { try { filho.kill(); } catch (_) {} }, limiteMs || LIMITE_MS);
       filho.on('error', err => { clearTimeout(relogio); resolve({ resultado: algum, erro: err.message }); });
-      filho.on('close', () => { clearTimeout(relogio); resolve({ resultado: algum, erro: (final || erros).slice(-300) }); });
+      filho.on('close', () => { clearTimeout(relogio); processoAtual = null; resolve({ resultado: algum, erro: (final || erros).slice(-300) }); });
     });
   }
 }

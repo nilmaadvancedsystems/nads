@@ -320,8 +320,10 @@ export function useImportacao() {
         const arqs = x.arquivosDoBanco(s.empresa, b.id, primeiro, l, competenciaDeTeste);
         return {
           qtdArquivos: arqs.length, qtdLancamentos: arqs.reduce((t, a) => t + a.lancamentos.length, 0), lendo: lendoLinha === b.id + '|' + l,
-          /** os arquivos que vieram do Drive (para o Visualizar pedir o link temporário) */
-          doDrive: arqs.flatMap(a => (a.drive ? [a.drive] : [])),
+          /** os arquivos que vieram do Drive (para o Visualizar pedir o link temporário); o do mês (o com mais lançamentos
+              na competência) por último, que é o que o "ver PDF" abre (Vitor, 09/10/2026: janeiro abria o PDF de fevereiro) */
+          doDrive: arqs.map(a => ({ a, n: a.lancamentos.filter(z => z.data.startsWith(competenciaDeTeste)).length }))
+            .sort((p, q) => p.n - q.n).flatMap(({ a }) => (a.drive ? [a.drive] : [])),
         };
       };
       return { ...b, marca: b.marca || b.id, numeroConta: b.conta, conta: empresas.rotuloDaConta(b), extrato: lado('banco'), razao: lado('sistema') };
