@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ItemDrive } from '../../creditor/regras/drive';
 import type { ArquivoImportado, EmpresaExtrator } from '../tipos';
-import { acharExtratoNoDrive } from './drive';
+import { acharExtratoNoDrive, semNumeroDaCopia } from './drive';
 import { definirSaldoAnterior, extratosSemSaldoAnterior, movimentoDoExtrato, TODOS_OS_MESES } from './movimento';
 
 const arq = (id: string, lancamentos: [string, number][], banco?: string, lado: 'banco' | 'sistema' = 'banco'): ArquivoImportado => ({
@@ -109,5 +109,37 @@ describe('extrato no Drive: comprovantes da mesma competência não atrapalham',
     const r = acharExtratoNoDrive(itens, 'raiz', '2026-03', { nome: 'Sicoob', marca: 'sicoob' });
     expect(r.situacao).toBe('achou');
     expect(r.arquivo?.id).toBe('x');
+  });
+});
+
+describe('extrato no Drive: cópias baixadas de novo (empresa 380, Sicoob)', () => {
+  const d = (i: string, n: string, p: string) => ({ i, n, p, t: 'd' as const });
+  const f = (i: string, n: string, p: string, m: string) => ({ i, n, p, t: 'f' as const, m });
+  // 01 e 07 com um arquivo; 02 a 06 com "MM-2026.pdf" e a cópia "MM-2026 (1).pdf" (o mesmo extrato)
+  const itens = [
+    d('c', 'CONTÁBIL', 'raiz'), d('e', 'EXTRATOS', 'c'), d('a', '2026', 'e'),
+    ...['01', '02', '03', '04', '05', '06', '07'].flatMap(m => [d('m' + m, m, 'a'), d('b' + m, 'BANCÁRIOS', 'm' + m), d('s' + m, 'SICOOB', 'b' + m),
+      f('x' + m, m + '-2026.pdf', 's' + m, '2026-07-28T10:00:00Z'),
+      ...(m === '01' || m === '07' ? [] : [f('y' + m, m + '-2026 (1).pdf', 's' + m, '2026-07-28T11:00:00Z')])]),
+  ];
+  const conta = { nome: 'Sicoob', marca: 'sicoob', conta: '15.062-2' };
+  it('tira o número da cópia do nome', () => {
+    expect(semNumeroDaCopia('06-2026 (1).pdf')).toBe('06-2026.pdf');
+    expect(semNumeroDaCopia('extrato (12).PDF')).toBe('extrato.PDF');
+    expect(semNumeroDaCopia('06-2026.pdf')).toBe('06-2026.pdf');
+  });
+  it('janeiro: o "(1)" das cópias de outros meses não vira o mês 1', () => {
+    const b = acharExtratoNoDrive(itens, 'raiz', '2026-01', conta);
+    expect(b.situacao).toBe('achou');
+    expect(b.arquivo?.id).toBe('x01');
+    expect(b.candidatos.map(c => c.id)).toEqual(['x01']);
+  });
+  it('o mês com a cópia: um extrato só, o mais novo, sem perguntar', () => {
+    for (const m of ['02', '03', '04', '05', '06']) {
+      const b = acharExtratoNoDrive(itens, 'raiz', '2026-' + m, conta);
+      expect(b.situacao).toBe('achou');
+      expect(b.arquivo?.id).toBe('y' + m);
+    }
+    expect(acharExtratoNoDrive(itens, 'raiz', '2026-07', conta).arquivo?.id).toBe('x07');
   });
 });
