@@ -15,6 +15,8 @@ export interface PedidoSieg {
   pct?: number;
   fase?: 'baixando' | 'entregando' | 'nads' | 'drive' | 'pronto';
   numeros?: { xmls: number; novos: number; jaSalvos: number; doDrive: number; doCliente?: number; deOutros?: number };
+  /** o Drive por trás (09/10/2026): o pedido já está pronto para a pessoa e o robô ainda grava os XMLs novos */
+  drive?: { total: number; feitos: number; pronto: boolean; erro?: string };
 }
 
 /** O que se pede ao robô: baixar as saídas (a sequência) ou contar as notas do mês agora (sem esperar a madrugada). */

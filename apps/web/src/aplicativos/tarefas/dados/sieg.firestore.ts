@@ -94,6 +94,7 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
               id: texto(d.id), status: texto(d.status), andamento: texto(d.andamento), erro: texto(d.erro), em: texto(d.criadoEm),
               ...(typeof d.pct === 'number' ? { pct: d.pct } : {}),
               ...(d.fase ? { fase: texto(d.fase) as PedidoSieg['fase'] } : {}),
+              ...(d.drive ? { drive: { total: Number((d.drive as Record<string, unknown>).total) || 0, feitos: Number((d.drive as Record<string, unknown>).feitos) || 0, pronto: !!(d.drive as Record<string, unknown>).pronto, ...((d.drive as Record<string, unknown>).erro ? { erro: texto((d.drive as Record<string, unknown>).erro) } : {}) } } : {}),
               ...(nn ? { numeros: { xmls: Number(nn.xmls) || 0, novos: Number(nn.novos) || 0, jaSalvos: Number(nn.jaSalvos) || 0, doDrive: Number(nn.doDrive) || 0, doCliente: Number(nn.doCliente) || 0, deOutros: Number(nn.deOutros) || 0 } } : {}),
               ...(z && Array.isArray(z.partes) && z.partes.length ? { zip: { nome: texto(z.nome), partes: (z.partes as unknown[]).map(texto), bytes: Number(z.bytes) || 0 } } : {}),
               ...(r ? { resultado: { arquivos: Number(r.arquivos) || 0, novos: Number(r.novos) || 0, jaSalvos: Number(r.jaSalvos) || 0, pasta: texto(r.pasta), zip: texto(r.zip), emitidas: Number(r.emitidas) || 0, recebidas: Number(r.recebidas) || 0 } } : {}),
