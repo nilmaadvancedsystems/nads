@@ -83,12 +83,28 @@ async function token(c) {
 }
 
 // ---------- uma chamada, no ritmo do limite de cada rota ----------
-const ultimaChamada = {};
+// o limite do SIEG é por minuto (contar: 5; baixar: 2): em vez de esperar 13 s entre uma contagem e outra, até 5 dentro
+// de 61 s (09/10/2026: as 2 contagens de um "Baixar XMLs" saem juntas, ~13 s a menos)
+const POR_MINUTO = { 'contar-xmls': 5, 'baixar-xmls': 2 };
+const chamadas = {};
+async function vez(rota) {
+  const limite = POR_MINUTO[rota];
+  if (!limite) {
+    const falta = (chamadas[rota] ? chamadas[rota][chamadas[rota].length - 1] : 0) + (ESPERA_MS[rota] || 15000) - Date.now();
+    if (falta > 0) await dormir(falta);
+  } else {
+    for (;;) {
+      const recentes = (chamadas[rota] || []).filter(t => Date.now() - t < 61000);
+      chamadas[rota] = recentes;
+      if (recentes.length < limite) break;
+      await dormir(recentes[0] + 61000 - Date.now() + 50);
+    }
+  }
+  (chamadas[rota] = chamadas[rota] || []).push(Date.now());
+}
 async function chamar(c, rota, corpo) {
   for (let tentativa = 0; tentativa < 5; tentativa++) {
-    const falta = (ultimaChamada[rota] || 0) + (ESPERA_MS[rota] || 15000) - Date.now();
-    if (falta > 0) await dormir(falta);
-    ultimaChamada[rota] = Date.now();
+    await vez(rota);
     let r;
     try { r = await http('POST', rota, { Authorization: 'Bearer ' + await token(c), 'X-API-Key': c.apiKey }, corpo); }
     // demorou demais: tenta de novo (até 3 vezes); outro erro de rede sobe
