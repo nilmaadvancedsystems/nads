@@ -126,8 +126,18 @@ async function abrirChromeSeFechado() {
   try { aberto = /chrome\.exe/i.test(require('child_process').execFileSync('tasklist', ['/FI', 'IMAGENAME eq chrome.exe', '/NH'], { encoding: 'utf8', windowsHide: true })); } catch (_) { /* sem tasklist: tenta abrir */ }
   if (aberto || !fs.existsSync(CHROME)) return false;
   spawn(CHROME, [PORTAL], { detached: true, stdio: 'ignore' }).unref();
+  chromeAbertoPeloRobo = true;
   await dormir(20000);
   return true;
+}
+
+// o Chrome que o robô abriu fecha no fim da fila (Vitor, 09/10/2026: "quero que feche o Chrome depois disso"); o que já
+// estava aberto (alguém usando) fica
+let chromeAbertoPeloRobo = false;
+function fecharChromeDoRobo(log) {
+  if (!chromeAbertoPeloRobo) return;
+  chromeAbertoPeloRobo = false;
+  try { require('child_process').execFileSync('taskkill', ['/IM', 'chrome.exe'], { windowsHide: true, stdio: 'ignore' }); log('FGTS: fechei o Chrome que eu tinha aberto'); } catch (_) { /* já fechado */ }
 }
 
 /** O Claude disse que a extensão do Chrome não estava conectada (ou não achou o navegador). */
@@ -165,6 +175,8 @@ function iniciarFgtsPeloClaude(db, log) {
     const doc = fila.shift();
     try { await atender(doc); } catch (err) { log('FGTS: erro no pedido', doc.id, err.message); }
     ocupado = false;
+    // a fila acabou: fecha o Chrome se foi o robô que abriu (espera um pouco, para um pedido que chegue logo em seguida)
+    if (!fila.length) setTimeout(() => { if (!ocupado && !fila.length) fecharChromeDoRobo(log); }, 15000);
     proximo();
   }
   ouvir('pedidos do FGTS', () => pedidos.where('status', '==', 'pendente'), snap => {
