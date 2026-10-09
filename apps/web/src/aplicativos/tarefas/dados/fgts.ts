@@ -20,6 +20,10 @@ export interface PedidoFgts {
   erro: string;
   resultado: string;
   pdfNome: string;
+  /** a guia emitida (o robô grava): o número, o total (ex. 917,42) e o vencimento (dd/mm/aaaa) */
+  numeroGuia: string;
+  valor: string;
+  vencimento: string;
   criadoEm: string;
   criadoPor: string;
   fimEm: string;
@@ -68,7 +72,7 @@ export function criarFgtsMemoria(): RepoFgts {
     pedidos: competencia => ({ carregados: true, porCnpj: pedidos.get(competencia) || new Map() }),
     async pedir({ cnpj, codigo, empresa, competencia, modo }) {
       const id = 'ex-' + cnpj + '-' + Date.now();
-      const base: PedidoFgts = { id, cnpj, codigo: String(codigo), empresa, competencia, modo, status: 'pendente', erro: '', resultado: '', pdfNome: '', criadoEm: agora(), criadoPor: 'exemplo', fimEm: '', passos: [] };
+      const base: PedidoFgts = { id, cnpj, codigo: String(codigo), empresa, competencia, modo, status: 'pendente', erro: '', resultado: '', pdfNome: '', numeroGuia: '', valor: '', vencimento: '', criadoEm: agora(), criadoPor: 'exemplo', fimEm: '', passos: [] };
       const doMes = pedidos.get(competencia) || new Map<string, PedidoFgts>();
       pedidos.set(competencia, doMes);
       const por = (m: Partial<PedidoFgts>) => { doMes.set(cnpj, { ...(doMes.get(cnpj) || base), ...m }); mudou(); };
