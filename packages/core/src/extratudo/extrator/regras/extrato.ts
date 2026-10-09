@@ -114,6 +114,13 @@ export function anoDoTexto(texto: string, padrao: number): number {
  *   complementa o anterior.
  * No sistema (razão em PDF), débito é entrada no banco: o sinal pela coluna se inverte.
  */
+/** O mês do extrato quando ele diz ("Período do extrato 02 / 2026", o do BB "Consultas"): 'aaaa-mm', ou null. */
+export function periodoDoExtrato(texto: string): string | null {
+  // (o normalizarTexto tira a barra: "02 / 2026" vira "02 2026")
+  const m = normalizarTexto(texto).match(/periodo do (?:extrato )?(\d{1,2}) (\d{4})\b/);
+  return m && Number(m[1]) >= 1 && Number(m[1]) <= 12 ? m[2] + '-' + m[1].padStart(2, '0') : null;
+}
+
 export function lancamentosDoPdf(paginas: ItemDeTexto[][], lado: Lado, anoPadrao = new Date().getFullYear()): Lancamento[] {
   return lancamentosComPagina(paginas, lado, anoPadrao).lancamentos;
 }
@@ -148,6 +155,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   // histórico quebrado ("REM: FULANO" / "21/03"), não um dia novo (Vitor, 09/10/2026: a 380 jogava o 23/03 no 21/03)
   const xDasDatas = todas.flat().map(l => l.tokens[0]).filter(t => t && RE_DATA.test(t.s) && /\d{4}$/.test(t.s)).map(t => t.x);
   const naColunaDaData = (x: number) => !xDasDatas.length || xDasDatas.some(d => Math.abs(d - x) <= 20);
+  const periodo = periodoDoExtrato(todas.map(p => p.map(l => l.texto).join('\n')).join('\n'));
 
   for (const [nPagina, linhas] of todas.entries()) {
     col = colunas(linhas) || col;
@@ -159,6 +167,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       const t = l.tokens.slice();
       if (!t.length) continue;
       let data: string | null = null;
+      let segunda: string | null = null;
       if (!naColunaDaData(t[0].x)) { /* texto no meio da linha: não abre dia */ }
       else if (RE_DATA.test(t[0].s)) { data = lerData(t[0].s, ano); if (data) t.shift(); }
       else if (t[1] && RE_DATA_MES.test(t[0].s + ' ' + t[1].s)) { data = lerData(t[0].s + ' ' + t[1].s, ano); if (data) t.splice(0, 2); }
@@ -179,7 +188,8 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
           }
           valores.push(v);
         } else if (RE_DATA.test(s) && !resto.length && !valores.length) {
-          // segunda data (data do balancete): ignora
+          // segunda data (no BB "Consultas": Dt. balancete e Dt. movimento): guarda, para o período do extrato
+          segunda = lerData(s, ano);
         } else resto.push(s);
       }
       const hist = resto.join(' ').replace(/\s+/g, ' ').trim();
@@ -216,7 +226,10 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       if (!h && solta) { h = solta; solta = null; }
       else if (solta && ultimo) { ultimo.historico = (ultimo.historico + ' ' + solta).trim(); solta = null; }
       else solta = null;
-      ultimo = { data: dataAtual, valor: c, historico: h || '(sem histórico)' };
+      // o extrato de um mês só ("Período do extrato 02 / 2026", o do BB): a linha com a 1ª data fora do mês e a 2ª dentro
+      // é do mês do extrato (Vitor, 09/10/2026: a 380 punha em 30/01 o que é de 02/2026)
+      const dataDoLanc = periodo && segunda && !dataAtual.startsWith(periodo) && segunda.startsWith(periodo) ? segunda : dataAtual;
+      ultimo = { data: dataDoLanc, valor: c, historico: h || '(sem histórico)' };
       ultimaY = l.y;
       saida.push(ultimo);
       paginaDe.push(nPagina);

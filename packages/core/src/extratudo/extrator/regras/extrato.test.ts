@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { anoDoTexto, lancamentosDoPdf, paginasPorMes, saldoAnteriorDoPdf, type ItemDeTexto } from './extrato';
+import { anoDoTexto, lancamentosDoPdf, paginasPorMes, periodoDoExtrato, saldoAnteriorDoPdf, type ItemDeTexto } from './extrato';
 
 /** Monta uma página: cada linha é [texto, x] com a mesma altura; as linhas descem de 14 em 14. */
 function pagina(linhas: [string, number][][]): ItemDeTexto[] {
@@ -119,5 +119,25 @@ describe('saldo anterior do extrato (abre a conta quando não há mês antes)', 
     const d = pagina([[['SALDO ANTERIOR', 100], ['1.250,30', 470], ['D', 520]]]);
     expect(saldoAnteriorDoPdf([d])).toBe(-125030);
     expect(saldoAnteriorDoPdf([pagina([[['02/01/2026', 40], ['PIX', 100], ['10,00', 400]]])])).toBeNull();
+  });
+});
+
+describe('BB "Consultas - Extrato de conta corrente": o período do extrato manda (empresa 380)', () => {
+  it('lê o "Período do extrato 02 / 2026"', () => {
+    expect(periodoDoExtrato('Agência 2705-7\nPeríodo do 02 / 2026\nextrato')).toBe('2026-02');
+    expect(periodoDoExtrato('Período: 01/08/2026 a 31/08/2026')).toBeNull();
+  });
+  it('a linha com a Dt. balancete do mês anterior e a Dt. movimento no mês do extrato fica no mês do extrato', () => {
+    const p = pagina([
+      [['Período do', 40], ['02 / 2026', 160]],
+      [['Dt. balancete', 40], ['Dt. movimento', 100], ['Histórico', 200], ['Valor R$', 400], ['Saldo', 480]],
+      [['30/01/2026', 40], ['000 Saldo Anterior', 200], ['17,31 D', 480]],
+      [['02/02/2026', 40], ['821 Pix - Recebido', 200], ['20.000,00 C', 400]],
+      [['30/01/2026', 40], ['02/02/2026', 100], ['610 Estorno de Débito', 200], ['608,25 C', 400]],
+      [['30/01/2026', 40], ['02/02/2026', 100], ['177 Débito Serviço Cobrança', 200], ['0,27 D', 400]],
+    ]);
+    expect(lancamentosDoPdf([p], 'banco', 2026).map(l => [l.data, l.valor])).toEqual([
+      ['2026-02-02', 2000000], ['2026-02-02', 60825], ['2026-02-02', -27],
+    ]);
   });
 });
