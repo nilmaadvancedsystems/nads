@@ -1,5 +1,6 @@
 // Rota de uma aplicação da Tarefas: /tarefas/:app/:pagina. Monta a casca e escolhe a tela; as
 // aplicações que ainda não foram feitas mostram "Em desenvolvimento". O Cadastro tem rota própria (CadastroAberto).
+import { PainelDoFiscal } from '../telas/fiscal/painel/PainelDoFiscal';
 import { Navigate, useParams } from 'react-router';
 import { TopoProvider } from '../../../comum/topo';
 import { ConfiguracoesDoNads } from '../telas/cadastro/configuracoes/ConfiguracoesDoNads';
@@ -30,7 +31,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
   switch (app) {
     case 'minhas-empresas': return pagina === 'insights' ? <Insights /> : <MinhasEmpresas />;
     case 'contabil': return pagina === 'configuracoes' ? <ConfiguracoesContabil /> : <VisaoContabil pagina={pagina} />;
-    case 'fiscal': return pagina === 'empresas' ? <MinhasEmpresas /> : pagina === 'reinf' ? <Reinf /> : <VisaoContabil pagina={pagina} dep="fiscal" />;
+    case 'fiscal': return pagina === 'empresas' ? <MinhasEmpresas /> : pagina === 'painel' ? <PainelDoFiscal /> : pagina === 'reinf' ? <Reinf /> : <VisaoContabil pagina={pagina} dep="fiscal" />;
     case 'dp': return ABAS_DO_PAINEL.includes(pagina as AbaDoPainel) ? <PainelDoDp aba={pagina as AbaDoPainel} /> : pagina === 'configuracoes' ? <ConfiguracoesDoDp /> : pagina === 'fgts' ? <FgtsDoDp /> : <VisaoContabil pagina={pagina} dep="dp" />;
     case 'senhas': return pagina === 'acesso' ? <AcessoAoCofre /> : pagina === 'gov' ? <ContasGov /> : pagina === 'certificados' ? <Certificados /> : <SenhasDasEmpresas />;
     case 'cadastro': return pagina === 'configuracoes' ? <ConfiguracoesDoNads /> : <UsuariosDoNads />;

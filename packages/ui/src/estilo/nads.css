@@ -3592,3 +3592,5 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .fgts-mais{width:28px;justify-content:center;padding:0;}
 .dp-lista .table-wrap:has(.fgts-tabela){overflow:visible;}
 .fgts-tabela td,.fgts-tabela th{padding-left:8px;padding-right:8px;}
+/* O Painel do Fiscal (09/10/2026): o nome do cliente não espreme em tela estreita */
+.fiscal-painel-tabela .dp-cliente{min-width:220px;}

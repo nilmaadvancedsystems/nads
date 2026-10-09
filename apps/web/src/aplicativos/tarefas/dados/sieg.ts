@@ -27,6 +27,8 @@ export interface RepoSieg {
   /** o robô do SIEG: ligado (com as credenciais) e quando bateu o ponto */
   robo(): { carregado: boolean; ligado: boolean; motivo: string; em: string };
   contagem(codigo: string, competencia: string): { carregada: boolean; dados: t.sieg.ContagemSieg | null };
+  /** as contagens e as saídas de todos os clientes do mês, numa consulta só (o Painel do Fiscal; 09/10/2026), pelo código */
+  doMes(competencia: string): { carregado: boolean; contagens: Map<string, t.sieg.ContagemSieg>; saidas: Map<string, t.sieg.SaidasSieg> };
   saidas(codigo: string, competencia: string): { carregadas: boolean; dados: t.sieg.SaidasSieg | null };
   /** o último pedido desta empresa e mês, de cada tipo (sem tipo = baixar as saídas) */
   pedido(codigo: string, competencia: string, tipo?: TipoDePedidoSieg): PedidoSieg | null;
@@ -92,6 +94,16 @@ export function criarSiegMemoria(): RepoSieg {
         || { codigo, competencia, em: agora(), emitidas: { NFe: 214, NFCe: 0, NFSe: 3, CTe: 0, CFe: 0 }, recebidas: { NFe: 87, NFCe: 0, NFSe: 5, CTe: 12, CFe: 0 } },
     }),
     saidas: (codigo, competencia) => ({ carregadas: true, dados: saidas.get(codigo + '_' + competencia) || null }),
+    // nos exemplos: uns clientes com notas e um com buraco na sequência
+    doMes: competencia => {
+      const contagens = new Map<string, t.sieg.ContagemSieg>();
+      const saidas = new Map<string, t.sieg.SaidasSieg>();
+      for (const [codigo, n] of [['901', 214], ['902', 37], ['903', 0]] as const) {
+        contagens.set(codigo, { codigo, competencia, em: agora(), emitidas: { NFe: n, NFCe: 0, NFSe: 0, CTe: 0, CFe: 0 }, recebidas: { NFe: Math.round(n / 2), NFCe: 0, NFSe: 1, CTe: 0, CFe: 0 } });
+      }
+      saidas.set('901', { codigo: '901', competencia, em: agora(), series: [{ modelo: '55', serie: '1', numeros: [1, 2, 3, 5, 6, 9], canceladas: [6], valor: 1000 }] });
+      return { carregado: true, contagens, saidas };
+    },
     // como a contagem: os XMLs de exemplo já estão "baixados" (as tabelas de verificação aparecem sem pedir)
     notas(codigo, competencia) {
       const k = codigo + '_' + competencia;
