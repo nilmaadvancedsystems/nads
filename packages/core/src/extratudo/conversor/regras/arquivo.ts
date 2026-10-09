@@ -18,6 +18,8 @@ const SINAIS: { nome: string; re: RegExp }[] = [
   { nome: 'Nubank', re: /nubank|nu pagamentos/ },
   { nome: 'C6 Bank', re: /\bc6\b/ },
   { nome: 'Cora', re: /\bcora\b/ },
+  { nome: 'Unicred', re: /\bunicred\b/ },
+  { nome: 'InfinitePay', re: /\binfinitepay\b|\bcloudwalk\b/ },
   { nome: 'Mercado Pago', re: /mercado ?pago/ },
   { nome: 'PagBank', re: /pagbank|pagseguro/ },
   { nome: 'Stone', re: /\bstone\b/ },
@@ -62,5 +64,7 @@ export function bancoNoNomeDoArquivo(banco: string): string {
 /** "BANCO BRASIL 08.2026.xls" */
 export function nomeDoXls(banco: string, linhas: readonly LinhaConvertida[]): string {
   const mes = mesDoExtrato(linhas);
-  return bancoNoNomeDoArquivo(banco) + (mes ? ' ' + mes.slice(5) + '.' + mes.slice(0, 4) : '') + '.xls';
+  // como o escritório salva: "BANCO UNICRED 09.2026", "BANCO INFINITEPAY 09.2026" (Vitor, 09/10/2026); o BB já é "BANCO BRASIL"
+  const nome = bancoNoNomeDoArquivo(banco);
+  return (/^BANCO\b|^EXTRATO$/.test(nome) ? nome : 'BANCO ' + nome) + (mes ? ' ' + mes.slice(5) + '.' + mes.slice(0, 4) : '') + '.xls';
 }

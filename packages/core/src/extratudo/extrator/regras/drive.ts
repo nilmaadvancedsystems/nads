@@ -21,6 +21,23 @@ const APELIDOS: Record<string, string[]> = {
 };
 const temPalavra = (texto: string, p: string) => (' ' + texto + ' ').includes(' ' + p + ' ');
 
+/**
+ * O nome sem o número da cópia que o navegador põe ao baixar de novo ("06-2026 (1).pdf" → "06-2026.pdf"). Com ele, o
+ * "(1)" virava o mês 1 e todo arquivo copiado parecia de janeiro (Vitor, 09/10/2026: a 380 não puxava o Sicoob de 01 a 05).
+ */
+export function semNumeroDaCopia(nome: string): string {
+  return nome.replace(/\s*\(\d+\)(?=\.[^.]+$)/, '');
+}
+
+/**
+ * O mês pela pasta do arquivamento (… › 2026 › 08 › …): a pasta do ano seguida da do mês manda; sem ela, null (decide o
+ * nome). Assim o arquivo de outro mês que cita outro número no nome não entra.
+ */
+function mesDaPasta(pastas: readonly string[], ano: string): string | null {
+  for (let i = pastas.length - 2; i >= 0; i--) if (pastas[i] === ano && /^\d{2}$/.test(pastas[i + 1])) return pastas[i + 1];
+  return null;
+}
+
 /** A conta que se procura: o nome e a marca do banco, e o número da conta (se tiver). */
 export interface ContaProcurada { nome: string; marca?: string; conta?: string }
 
@@ -36,13 +53,14 @@ export function acharExtratoNoDrive(itens: readonly ItemDrive[], raizDoCliente: 
   const outros = Object.entries(APELIDOS).filter(([id]) => id !== meu).flatMap(([, a]) => a);
   const digitos = (conta.conta || '').replace(/\D/g, '');
 
-  type Nota = ArquivoAchado & { nota: number };
+  type Nota = ArquivoAchado & { nota: number; grupo: string };
   const achados: Nota[] = [];
   const andar = (pasta: string, caminho: string[]) => {
     for (const it of filhos.get(pasta) || []) {
       if (it.t === 'd') { andar(it.i, [...caminho, it.n]); continue; }
       if (it.t !== 'f' || !EXTENSOES.test(it.n)) continue;
-      const texto = nomeNorm([...caminho, it.n].join(' '));
+      const nome = semNumeroDaCopia(it.n);
+      const texto = nomeNorm([...caminho, nome].join(' '));
       if (/cred ?liquid|razao|balancete/.test(texto)) continue; // não é extrato
       // a rotina de arquivamento guarda extrato, comprovante e aplicação em pastas separadas
       // (CONTÁBIL/EXTRATOS/AAAA/MM/{BANCÁRIOS|COMPROVANTES|APLICAÇÕES}): comprovante não é extrato
@@ -50,16 +68,21 @@ export function acharExtratoNoDrive(itens: readonly ItemDrive[], raizDoCliente: 
       if (pastas.some(p => p === 'comprovantes' || p === 'aplicacoes') || /^comprovante/.test(nomeNorm(it.n))) continue;
       // de outro banco (com o banco da conta conhecido): não é este extrato
       if (meu && !meus.some(a => temPalavra(texto, a)) && outros.some(a => temPalavra(texto, a))) continue;
-      const daCompetencia = falaDaCompetencia([...caminho, it.n].join(' '), competencia);
+      const pelaPasta = mesDaPasta(pastas, competencia.slice(0, 4));
+      const daCompetencia = pelaPasta ? pelaPasta === competencia.slice(5, 7) : falaDaCompetencia([...caminho, nome].join(' '), competencia);
       const nota = (daCompetencia ? 4 : 0) + (/extrato/.test(texto) ? 2 : 0) + (pastas.includes('bancarios') ? 3 : 0)
         + (banco.some(b => b && texto.includes(b)) || meus.some(a => temPalavra(texto, a)) ? 2 : 0) + (digitos.length >= 4 && texto.replace(/\D/g, '').includes(digitos) ? 3 : 0);
-      achados.push({ id: it.i, nome: it.n, caminho: [...caminho, it.n].join(' › '), modificado: it.m, credliquidacao: false, daCompetencia, nota });
+      // a cópia baixada de novo ("X (1).pdf" ao lado de "X.pdf") é o mesmo extrato: um grupo só
+      achados.push({ id: it.i, nome: it.n, caminho: [...caminho, it.n].join(' › '), modificado: it.m, credliquidacao: false, daCompetencia, nota, grupo: it.p + '|' + nomeNorm(nome) });
     }
   };
   andar(raizDoCliente, []);
 
   const ordem = (a: Nota, b: Nota) => b.nota - a.nota || (b.modificado || '').localeCompare(a.modificado || '');
-  const bons = achados.filter(a => a.daCompetencia && a.nota >= 6).sort(ordem);
+  // das cópias do mesmo extrato, fica a mais nova
+  const maisNova = (a: Nota, b: Nota) => (b.modificado || '').localeCompare(a.modificado || '');
+  const bons = achados.filter(a => a.daCompetencia && a.nota >= 6).sort((a, b) => b.nota - a.nota || maisNova(a, b))
+    .filter((a, i, todos) => todos.findIndex(x => x.grupo === a.grupo) === i).sort(ordem);
   const semNota = (a: Nota): ArquivoAchado => ({ id: a.id, nome: a.nome, caminho: a.caminho, modificado: a.modificado, credliquidacao: false, daCompetencia: a.daCompetencia });
   // para escolher: só os do mês, quando tem algum do mês (os outros meses não servem)
   const doMes = achados.filter(a => a.daCompetencia);

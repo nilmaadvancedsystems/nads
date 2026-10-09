@@ -1,5 +1,5 @@
-// Lê o extrato escolhido e devolve as linhas do .xls. Primeiro tenta o leitor do layout do banco (o Banco do Brasil
-// e a Cora); se não for um layout conhecido, usa o leitor genérico do Extrator (PDF, OFX, Excel, CSV).
+// Lê o extrato escolhido e devolve as linhas do .xls. Primeiro tenta o leitor do layout do banco (o Banco do Brasil,
+// a Cora, a Unicred e a InfinitePay); se não for um layout conhecido, usa o leitor genérico do Extrator (PDF, OFX, Excel, CSV).
 // O arquivo é lido na memória e descartado: nada é guardado.
 import { lerArquivo } from '../../extrator/arquivos/leitura';
 import { ehPdf, itensDoPdf } from '../../extrator/arquivos/pdf';
@@ -7,6 +7,8 @@ import { montarLinhas } from '../../extrator/regras/extrato';
 import { bancoDoTexto } from '../regras/arquivo';
 import { ehExtratoDoBancoDoBrasil, lancamentosDoBancoDoBrasil } from '../regras/bancoDoBrasil';
 import { ehExtratoDaCora, lancamentosDaCora } from '../regras/cora';
+import { ehExtratoDaInfinitePay, lancamentosDaInfinitePay } from '../regras/infinitepay';
+import { ehExtratoDaUnicred, lancamentosDaUnicred } from '../regras/unicred';
 import type { ExtratoConvertido } from '../tipos';
 
 export const EXTENSOES_CONVERSOR: readonly string[] = ['.pdf', '.ofx', '.xlsx', '.xls', '.csv', '.txt'];
@@ -27,6 +29,14 @@ export async function converterArquivo(nome: string, bytes: Uint8Array, anoPadra
       if (ehExtratoDaCora(paginas)) {
         const linhas = lancamentosDaCora(paginas);
         return { arquivo: nome, banco: 'Cora', leitor: 'cora', linhas, erro: linhas.length ? null : 'Não achei lançamentos neste extrato da Cora.' };
+      }
+      if (ehExtratoDaUnicred(paginas)) {
+        const linhas = lancamentosDaUnicred(paginas);
+        return { arquivo: nome, banco: 'Unicred', leitor: 'unicred', linhas, erro: linhas.length ? null : 'Não achei lançamentos neste extrato da Unicred.' };
+      }
+      if (ehExtratoDaInfinitePay(paginas)) {
+        const linhas = lancamentosDaInfinitePay(paginas);
+        return { arquivo: nome, banco: 'InfinitePay', leitor: 'infinitepay', linhas, erro: linhas.length ? null : 'Não achei lançamentos neste relatório da InfinitePay.' };
       }
       const lido = await lerArquivo(nome, bytes, 'banco', anoPadrao);
       return { arquivo: nome, banco: bancoDoTexto(topoDaPrimeiraPagina(paginas), nome), leitor: 'generico', linhas: lido.lancamentos, erro: lido.erro };

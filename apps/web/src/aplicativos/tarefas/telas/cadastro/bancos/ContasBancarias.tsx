@@ -89,7 +89,8 @@ export function ContasBancarias({ rota }: { rota: string }) {
           <p>Use "Nova conta" para incluir as contas da empresa.</p>
         </div>
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap cad-tabela-wrap">
+          {/* a caixa da tabela não corta o menu da engrenagem (Vitor, 09/10/2026: "não consigo alterar os dados do banco") */}
           <table className="cad-tabela">
             <thead><tr><th>Banco</th><th>Agência</th><th>Conta</th><th>Tipo</th><th>Conta contábil</th><th>Vigência</th><th /></tr></thead>
             <tbody>
