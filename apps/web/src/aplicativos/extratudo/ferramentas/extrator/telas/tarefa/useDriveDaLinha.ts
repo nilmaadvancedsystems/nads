@@ -24,6 +24,8 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   const cancelado = useRef(false);
   const [cancelando, setCancelando] = useState(false);
   // a janela do andamento do "Todos pelo Drive" (08/10/2026: "janela de andamento"): mês por mês do banco
+  // o mês que o "Todos pelo Drive" está buscando agora: a célula dele na grade gira (Vitor, 09/10/2026: no lugar da janela)
+  const [mesAtual, setMesAtual] = useState<string | null>(null);
   const [lote, setLote] = useState<{ banco: string; meses: string[]; feitos: { mes: string; ok: boolean }[]; atual: string; inicio: number; pronto: boolean } | null>(null);
   const [agora, setAgora] = useState(() => Date.now());
   useEffect(() => {
@@ -110,6 +112,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
           vm.avisarErro(linha.nome + ': cancelado', achados.length ? 'Ficaram os que já vieram: ' + achados.join(', ') + '.' : 'Nenhum mês foi trazido.');
           return;
         }
+        setMesAtual(mes);
         const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, mes, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta });
         const rotulo = mes.slice(5) + '/' + mes.slice(0, 4);
         if (r.situacao !== 'achou' || !r.arquivo) { faltam.push(rotulo); passou(rotulo, false, seguinte); continue; }
@@ -125,7 +128,9 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     } finally {
       setBuscando(null);
       setCancelando(false);
-      setLote(l => (l ? { ...l, pronto: true, atual: '' } : l));
+      setMesAtual(null);
+      // sem a janela do andamento (Vitor, 09/10/2026: "não gostei dessa popup"): o resumo fica no aviso
+      setLote(null);
     }
   }
 
@@ -199,8 +204,10 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
 
   return {
     exemplos: drive.exemplos,
-    /** a janela do andamento do "Todos pelo Drive" */
+    /** a janela do andamento do "Todos pelo Drive" (não aparece mais: o andamento fica na grade e o resumo no aviso) */
     andamento,
+    /** o mês que está sendo buscado no Drive agora ('aaaa-mm'), na linha `buscando` */
+    mesAtual,
     fecharAndamento: () => setLote(null),
     entrou: acesso.entrou,
     buscando,

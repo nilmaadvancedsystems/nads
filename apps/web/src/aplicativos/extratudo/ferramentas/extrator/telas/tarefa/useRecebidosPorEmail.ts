@@ -84,9 +84,15 @@ export function useRecebidosPorEmail(vm: Vm, codigo: number | null) {
     void importar(proximo.r, proximo.d.linha!, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proximo?.r.id]);
-  // acabou o lote: a janela mostra o resumo (fica até o ×)
+  // acabou o lote: o resumo vai para o aviso, sem janela (Vitor, 09/10/2026: "não gostei dessa popup"; enquanto importa,
+  // a linha do banco gira)
   useEffect(() => {
-    if (lote && !lote.pronto && !proximo && !importando && lote.feitos.length >= lote.total) setLote({ ...lote, pronto: true, atual: '' });
+    if (!lote || lote.pronto || proximo || importando || lote.feitos.length < lote.total) return;
+    setLote({ ...lote, pronto: true, atual: '', aberto: false });
+    const entraram = lote.feitos.filter(f => f.ok).length;
+    const faltam = lote.feitos.length - entraram;
+    if (entraram) vm.avisar((entraram === 1 ? '1 extrato do e-mail/Drive entrou' : entraram + ' extratos do e-mail/Drive entraram') + (faltam ? ' · ' + faltam + ' não entrou' : ''));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lote, proximo, importando]);
   // o relógio da janela
   useEffect(() => {
