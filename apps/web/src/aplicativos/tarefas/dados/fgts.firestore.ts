@@ -3,7 +3,10 @@
 //   - pedidosFgts: o pedido {status: 'pendente', modo, cnpj, codigo, empresa, competencia, criadoEm, criadoPor,
 //     criadoPorUid} (só essas chaves); o robô escreve o andamento (passos), o resultado ou o erro no próprio pedido,
 //     o PDF em pedidosFgts/{id}/arquivo/pdf e as fotos das telas em pedidosFgts/{id}/telas.
-import { addDoc, collection, doc, getDoc, getDocs, onSnapshot, query, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, getDocs, onSnapshot, query, updateDoc as updateDocBruto, where } from 'firebase/firestore';
+import { guardar } from '../../../comum/modoDesenvolvedor';
+
+const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
 import { bancoDoEntregas } from './entregas.firestore';
 import type { ModoFgts, PedidoFgts, RepoFgts, RoboFgts } from './fgts';
 // a verificação do gov.br (08/10/2026): pedidosFgts/{id}/ao-vivo/tela (o robô escreve) e pedidosFgts/{id}/cliques
@@ -62,6 +65,11 @@ export function criarFgtsFirestore(quem: () => Quem): RepoFgts {
       const q = quem();
       if (!q) throw new Error('Sem login.');
       await addDoc(collection(db, 'pedidosFgts'), { status: 'pendente', modo, cnpj, codigo: String(codigo), empresa, competencia, criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorUid: q.uid });
+    },
+    async cancelar(id) {
+      const q = quem();
+      if (!q) throw new Error('Sem login.');
+      await updateDoc(doc(db, 'pedidosFgts', id), { status: 'cancelado', canceladoEm: new Date().toISOString(), canceladoPor: q.nome });
     },
     async pdf(id) {
       const s = await getDoc(doc(db, 'pedidosFgts', id, 'arquivo', 'pdf'));

@@ -269,7 +269,11 @@ function iniciarFgtsPeloClaude(db, log) {
     proximo();
   }
   ouvir('pedidos do FGTS', () => pedidos.where('status', '==', 'pendente'), snap => {
-    for (const ch of snap.docChanges()) if (ch.type === 'added' && !fila.some(d => d.id === ch.doc.id)) fila.push(ch.doc);
+    for (const ch of snap.docChanges()) {
+      if (ch.type === 'added' && !fila.some(d => d.id === ch.doc.id)) fila.push(ch.doc);
+      // cancelado (ou pego) enquanto esperava: sai da fila (09/10/2026: o botão Cancelar do DP)
+      if (ch.type === 'removed') { const i = fila.findIndex(d => d.id === ch.doc.id); if (i >= 0) fila.splice(i, 1); }
+    }
     // espera um instante para juntar os pedidos que chegam juntos (o "Emitir as que faltam" pede um por um)
     setTimeout(proximo, 3000);
   }, log);
@@ -295,8 +299,16 @@ function iniciarFgtsPeloClaude(db, log) {
     const desde = Date.now();
     if (await abrirChromeSeFechado()) for (const it of itens) await it.passo('o Chrome estava fechado: abri e esperei a extensão do Claude');
 
+    // o Cancelar do DP no meio do lote: o cliente sai do lote (o resultado dele é ignorado); todos cancelados = para o Claude
+    const vigias = itens.map(it => it.ref.onSnapshot(s => {
+      if ((s.data() || {}).status !== 'cancelado' || it.fim) return;
+      it.fim = true;
+      it.cancelado = true;
+      log('FGTS (Claude): cancelado pelo DP', it.p.cnpj);
+      if (itens.every(x => x.fim) && processoAtual) { try { processoAtual.kill(); } catch (_) {} }
+    }, () => {}));
     const comecar = it => {
-      if (it.comecou) return;
+      if (it.comecou || it.cancelado) return;
       it.comecou = true;
       void it.ref.update({ status: 'trabalhando', inicioEm: agora() }).catch(() => {});
     };
@@ -337,6 +349,7 @@ function iniciarFgtsPeloClaude(db, log) {
       it.tarefa = it.ref.update({ status: 'erro', erro: motivo, fimEm: agora() }).catch(() => {});
     }
     await Promise.all(itens.map(it => it.tarefa));
+    vigias.forEach(parar => parar());
   }
 
   /** O fim de um cliente: o erro, o ensaio ou a guia (o PDF do Claudio Secretario arquivado e no pedido). */
@@ -382,9 +395,10 @@ function iniciarFgtsPeloClaude(db, log) {
    * Roda o Claude do PC com o Claude in Chrome. "PASSO [cnpj]: …" vai para aoPasso; "RESULTADO [cnpj]: {…}" para
    * aoResultado (sem o CNPJ: vale para o lote todo). Devolve o fim da conversa (para o erro de quando nada começou).
    */
+  let processoAtual = null;
   function rodarClaude(texto, aoPasso, aoResultado, limiteMs) {
     return new Promise(resolve => {
-      const filho = spawn(CLAUDE, ['-p', texto, '--chrome', '--model', MODELO, '--permission-mode', 'bypassPermissions',
+      const filho = processoAtual = spawn(CLAUDE, ['-p', texto, '--chrome', '--model', MODELO, '--permission-mode', 'bypassPermissions',
         '--output-format', 'stream-json', '--verbose', '--no-session-persistence'], { cwd: __dirname, windowsHide: true, env: ambienteLimpo(), stdio: ['ignore', 'pipe', 'pipe'] });
       let resto = '', erros = '', final = '', algum = null;
       const vistos = new Set();
@@ -413,7 +427,7 @@ function iniciarFgtsPeloClaude(db, log) {
       filho.stderr.on('data', b => { erros += String(b); if (erros.length > 3000) erros = erros.slice(-3000); });
       const relogio = setTimeout(() => { try { filho.kill(); } catch (_) {} }, limiteMs || LIMITE_MS);
       filho.on('error', err => { clearTimeout(relogio); resolve({ resultado: algum, erro: err.message }); });
-      filho.on('close', () => { clearTimeout(relogio); resolve({ resultado: algum, erro: (final || erros).slice(-300) }); });
+      filho.on('close', () => { clearTimeout(relogio); processoAtual = null; resolve({ resultado: algum, erro: (final || erros).slice(-300) }); });
     });
   }
 }

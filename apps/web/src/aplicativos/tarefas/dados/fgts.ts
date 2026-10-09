@@ -47,6 +47,8 @@ export interface RepoFgts {
   /** os pedidos da competência: o mais novo de cada CNPJ */
   pedidos(competencia: string): { carregados: boolean; porCnpj: ReadonlyMap<string, PedidoFgts> };
   pedir(dados: { cnpj: string; codigo: number; empresa: string; competencia: string; modo: ModoFgts }): Promise<void>;
+  /** cancela o pedido que está na fila ou com o robô (09/10/2026) */
+  cancelar(id: string): Promise<void>;
   /** o PDF da guia (pedidosFgts/{id}/arquivo/pdf) */
   pdf(id: string): Promise<{ base64: string; nome: string } | null>;
   /** as fotos das telas por onde o robô passou (pedidosFgts/{id}/telas) */
@@ -81,6 +83,9 @@ export function criarFgtsMemoria(): RepoFgts {
       setTimeout(() => por(modo === 'emitir'
         ? { status: 'pronto', resultado: 'guia emitida', pdfNome: 'FGTS ' + competencia + ' ' + cnpj + '.pdf', fimEm: agora() }
         : { status: 'pronto', resultado: 'entrou no perfil do cliente (ensaio, nada emitido)', fimEm: agora() }), 3000);
+    },
+    async cancelar(id) {
+      for (const doMes of pedidos.values()) for (const [cnpj, p] of doMes) if (p.id === id) { doMes.set(cnpj, { ...p, status: 'cancelado', fimEm: agora() }); mudou(); }
     },
     pdf: async () => null,
     telas: async () => [],
