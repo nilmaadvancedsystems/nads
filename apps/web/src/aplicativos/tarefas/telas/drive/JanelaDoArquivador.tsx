@@ -222,6 +222,11 @@ export function JanelaDoArquivador({ vm, fechar }: { vm: Vm; fechar: () => void 
           {vm.podePedir && <p className="arquivador-nota">{vm.notaAoPedir}{vm.exemplos ? ' (Exemplo: nada sai daqui.)' : ''}</p>}
           <span className="tarefas-barra-espaco" />
           {p?.podeCancelar && <button type="button" className="btn btn-outline" onClick={() => vm.cancelar(p.id)}>Cancelar o pedido</button>}
+          {vm.podeParar && (
+            <button type="button" className="btn btn-danger" disabled={vm.parando} onClick={() => void vm.parar()}>
+              {vm.parando ? <span className="btn-spinner" aria-hidden="true" /> : <Icone nome="x" />}{vm.parando ? 'Parando…' : 'Cancelar a organização'}
+            </button>
+          )}
           {vm.podePedir && (
             <button type="button" className="btn btn-primary" disabled={vm.pedindo} onClick={() => void vm.pedir()}>
               {vm.pedindo ? <span className="btn-spinner" aria-hidden="true" /> : <Icone nome="arquivo" />}Organizar agora

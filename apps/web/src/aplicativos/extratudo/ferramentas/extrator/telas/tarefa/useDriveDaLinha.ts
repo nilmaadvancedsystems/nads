@@ -155,7 +155,8 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       subtitulo: lote.pronto ? 'Concluído' : tempo(foi) + (falta ? ' · falta uns ' + tempo(Math.max(1, falta)) : ''),
       pct: lote.pronto ? 100 : Math.min(99, Math.round(((feitos + 0.5) / Math.max(1, total)) * 100)),
       pronto: lote.pronto,
-      detalhe: lote.pronto ? 'Os meses que estavam no Drive entraram' : 'Procurando o extrato de ' + lote.atual + ' no Drive',
+      // pronto, sem a linha do que está fazendo e sem o "· trazido" (Vitor, 09/10/2026): o check verde já diz
+      detalhe: lote.pronto ? '' : 'Procurando o extrato de ' + lote.atual + ' no Drive',
       numeros: [
         { rotulo: 'Meses', valor: total, tom: 'info', icone: 'calendar' },
         { rotulo: 'Trazidos', valor: lote.feitos.filter(f => f.ok).length, tom: 'ok', icone: 'check' },
@@ -163,7 +164,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       ],
       passos: lote.meses.map(m => {
         const f = lote.feitos.find(x => x.mes === m);
-        return { texto: m + (f ? (f.ok ? ' · trazido' : ' · não está no Drive') : ''), feito: !!f, atual: !f && m === lote.atual && !lote.pronto, falhou: !!f && !f.ok };
+        return { texto: m + (f && !f.ok ? ' · não está no Drive' : ''), feito: !!f, atual: !f && m === lote.atual && !lote.pronto, falhou: !!f && !f.ok };
       }),
     };
   })() : null;

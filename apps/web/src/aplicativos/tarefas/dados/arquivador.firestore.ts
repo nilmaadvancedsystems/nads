@@ -8,6 +8,8 @@
 //     últimas somam as rodadas do dia no painel;
 //   - robo/arquivador.rotina: a rotina rodando por fora do botão (a das 9h), que o arquivador manda no ponto;
 //   - robo/arquivadorConversa (só leitura): a conversa do Claude que roda a rotina e o relatório do dia;
+//   - arquivadorParar (09/10/2026, quem pede o arquivamento): parar a organização que está rodando; o arquivador do PC
+//     encerra o Claude que organiza e marca o pedido como cancelado;
 //   - arquivadorMensagens (07/10/2026, só o admin): o que se escreve para o Claude da rotina; o arquivador do PC retoma a
 //     sessão com a mensagem e escreve o andamento (status, erro) no próprio documento;
 //   - arquivamentos/{execucao}/detalhe/tudo (só leitura, quando pedem): o relatório e a mensagem final da execução.
@@ -145,6 +147,11 @@ export function criarArquivadorFirestore(quem: () => Quem): RepoArquivador {
       const q = quem();
       if (!q) throw new Error('Sem login.');
       await addDoc(collection(db, 'solicitacoesArquivo'), { status: 'pendente', modo: 'PRODUCAO', criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorUid: q.uid });
+    },
+    async pararOrganizacao() {
+      const q = quem();
+      if (!q) throw new Error('Sem login.');
+      await addDoc(collection(db, 'arquivadorParar'), { status: 'pendente', criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorUid: q.uid });
     },
     async cancelar(id) {
       await updateDoc(doc(db, 'solicitacoesArquivo', id), { status: 'cancelado', canceladoEm: new Date().toISOString(), canceladoPor: quem()?.nome || '' });

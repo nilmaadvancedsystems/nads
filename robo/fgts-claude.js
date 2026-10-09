@@ -52,6 +52,73 @@ function ambienteLimpo() {
  * vez e, para cada cliente, só troca o perfil e emite. Escreve PASSO [cnpj]: … a cada etapa e RESULTADO [cnpj]: {json}
  * ao terminar cada cliente.
  */
+// O roteiro dentro da página (Vitor, 09/10/2026: "acelerar mais"): em vez de o Claude clicar passo a passo, ele roda
+// estes dois trechos de JavaScript na aba do portal, um por cliente. Vistos no portal em 09/10/2026: a lista Perfil e a
+// Competência de Apuração são ng-select (abrem com mousedown no .ng-select-container; opções em .ng-option); o CNPJ tem
+// máscara (00.000.000/0000-00); Definir troca de página; a pesquisa leva ~1 s; o número da guia tem 16 dígitos e o
+// dígito (0126100966359791-5).
+function roteiroPerfil(cnpj) {
+  const formatado = cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  return `await (async () => {
+  const dormir = ms => new Promise(r => setTimeout(r, ms));
+  const visivel = e => e && e.offsetParent !== null;
+  const botao = t => [...document.querySelectorAll('button')].find(b => visivel(b) && b.innerText.trim() === t);
+  for (let i = 0; i < 20 && !botao('Trocar Perfil') && !visivel(document.querySelector('input[role=combobox]')); i++) await dormir(300);
+  if (!visivel(document.querySelector('input[role=combobox]'))) { const tp = botao('Trocar Perfil'); if (!tp) return 'ERRO: sem Trocar Perfil'; tp.click(); await dormir(600); }
+  const sel = [...document.querySelectorAll('ng-select')].find(visivel);
+  if (!sel) return 'ERRO: sem a lista Perfil';
+  sel.querySelector('.ng-select-container').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+  await dormir(400);
+  const op = [...document.querySelectorAll('.ng-option')].find(o => o.innerText.trim() === 'Procurador');
+  if (!op) return 'ERRO: sem a opção Procurador';
+  op.click(); await dormir(500);
+  const campo = [...document.querySelectorAll('input')].find(i => visivel(i) && /CNPJ ou CPF/i.test(i.placeholder || ''));
+  if (!campo) return 'ERRO: sem o campo do CNPJ';
+  campo.focus();
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(campo, '${formatado}');
+  campo.dispatchEvent(new Event('input', { bubbles: true })); campo.dispatchEvent(new Event('blur', { bubbles: true }));
+  await dormir(300);
+  const ok = botao('Definir') || botao('Selecionar');
+  if (!ok) return 'ERRO: sem o botão Definir';
+  setTimeout(() => ok.click(), 100);
+  return 'OK: definindo ${formatado}';
+})()`;
+}
+
+function roteiroGuia(cnpj, competencia, emitir) {
+  const [ano, mes] = competencia.split('-');
+  const formatado = cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  return `await (async () => {
+  const dormir = ms => new Promise(r => setTimeout(r, ms));
+  const visivel = e => e && e.offsetParent !== null;
+  for (let i = 0; i < 20 && ![...document.querySelectorAll('ng-select')].some(visivel); i++) await dormir(300);
+  if (!document.body.innerText.includes('${formatado}')) return JSON.stringify({ erro: 'o perfil não é o do cliente' });
+  const sel = [...document.querySelectorAll('ng-select')].find(visivel);
+  if (!sel) return JSON.stringify({ erro: 'roteiro: sem a lista de competência' });
+  sel.querySelector('.ng-select-container').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+  await dormir(400);
+  const op = [...document.querySelectorAll('.ng-option')].find(o => o.innerText.trim() === '${mes}/${ano}');
+  if (!op) return JSON.stringify({ erro: 'sem débito em aberto na competência' });
+  op.click(); await dormir(300);
+  const pesquisar = [...document.querySelectorAll('button')].find(b => visivel(b) && b.innerText.trim() === 'Pesquisar');
+  if (!pesquisar) return JSON.stringify({ erro: 'roteiro: sem o Pesquisar' });
+  pesquisar.click();
+  let txt = '';
+  for (let i = 0; i < 50; i++) { await dormir(300); txt = document.body.innerText; if (/Total Devedor/.test(txt) && /Vencimento da Guia/.test(txt)) break; }
+  const valor = (txt.match(/Total Devedor\\s*R\\$\\s*([\\d.,]+)/) || [])[1] || '';
+  const vencimento = (txt.match(/Vencimento da Guia:\\s*(\\d{2}\\/\\d{2}\\/\\d{4})/) || [])[1] || '';
+  if (!valor) return JSON.stringify({ erro: 'roteiro: a pesquisa não mostrou o total' });
+  if (!${emitir ? 'true' : 'false'}) return JSON.stringify({ ensaio: true, valor, vencimento });
+  const emitirBotao = [...document.querySelectorAll('button')].find(b => visivel(b) && b.innerText.trim() === 'Emitir guia');
+  if (!emitirBotao) return JSON.stringify({ erro: 'roteiro: sem o Emitir guia' });
+  emitirBotao.click();
+  let numero = '';
+  for (let i = 0; i < 60 && !numero; i++) { await dormir(500); numero = (document.body.innerText.match(/(\\d{16}-\\d)/) || [])[1] || ''; }
+  if (!numero) return JSON.stringify({ erro: 'roteiro: a guia não mostrou o número' });
+  return JSON.stringify({ numero, valor, vencimento });
+})()`;
+}
+
 function instrucoesDoLote(itens) {
   const lista = itens.map((p, i) => {
     const [ano, mes] = p.competencia.split('-');
@@ -72,7 +139,18 @@ function instrucoesDoLote(itens) {
     '   "não sou um robô"/captcha, NÃO resolva: pare tudo e responda RESULTADO: {"erro":"captcha"}. Se não voltar ao portal em',
     '   1 minuto, pare tudo e responda RESULTADO: {"erro":"login"}.',
     '',
-    'Para cada cliente da lista:',
+    'Para cada cliente da lista, o CAMINHO RÁPIDO (use a ferramenta de rodar JavaScript na página, com o código exato abaixo):',
+    '  a) abra ' + PORTAL + ' na aba e rode o ROTEIRO PERFIL do cliente; ele responde "OK: …" e a página troca sozinha (se a',
+    '     ferramenta reclamar que a página navegou, é o esperado). Espere 2 segundos.',
+    '  b) abra ' + GUIA_RAPIDA + ' e rode o ROTEIRO GUIA do cliente; ele responde um JSON. Esse JSON é o resultado do cliente:',
+    '     escreva RESULTADO [<cnpj>]: <o JSON> (ex.: RESULTADO [27361015000131]: {"numero":"…","valor":"…","vencimento":"…"}).',
+    '  Se um roteiro responder começando com "ERRO" ou com {"erro":"roteiro: …"}, faça aquele cliente pelo caminho manual abaixo.',
+    '  Se responder {"erro":"sem débito em aberto na competência"} ou {"erro":"o perfil não é o do cliente"}, esse é o resultado dele.',
+    '',
+    'Os roteiros de cada cliente:',
+    ...itens.map(p => ['--- ' + p.cnpj + ' — ROTEIRO PERFIL:', roteiroPerfil(p.cnpj), '--- ' + p.cnpj + ' — ROTEIRO GUIA:', roteiroGuia(p.cnpj, p.competencia, p.modo === 'emitir')].join('\n')),
+    '',
+    'O CAMINHO MANUAL (só quando um roteiro falhar), para aquele cliente:',
     '1. Escolha o perfil do cliente: na janela "Definir Perfil" ou pelo botão "Trocar Perfil" no alto, abra a lista Perfil, escolha',
     '   "Procurador", digite o CNPJ em "Empregador a ser representado" e clique em Definir/Selecionar. Confira que o alto da página',
     '   mostra "Empregador:" com o CNPJ dele. Se o portal disser que não há procuração, o resultado dele é {"erro":"sem procuração"}.',
@@ -186,8 +264,8 @@ function iniciarFgtsPeloClaude(db, log) {
     const lote = fila.splice(0, 25);
     try { await atenderLote(lote); } catch (err) { log('FGTS: erro no lote', err.message); }
     ocupado = false;
-    // a fila acabou: fecha o Chrome se foi o robô que abriu (espera um pouco, para um pedido que chegue logo em seguida)
-    if (!fila.length) setTimeout(() => { if (!ocupado && !fila.length) fecharChromeDoRobo(log); }, 15000);
+    // o Chrome fica aberto e logado depois do lote (Vitor, 09/10/2026: a opção 3, "deixar o Chrome aberto e logado"): a
+    // próxima emissão já pega o login; o fecharChromeDoRobo fica guardado se voltar a ser pedido
     proximo();
   }
   ouvir('pedidos do FGTS', () => pedidos.where('status', '==', 'pendente'), snap => {

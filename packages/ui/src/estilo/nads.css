@@ -1546,6 +1546,8 @@ html.na-etapa .modal-overlay > .modal.pedir-modal,html.na-etapa .modal-overlay >
 html.na-etapa .pedir-modal > .pedir-corpo,html.na-etapa .pedir-modal > .pedir-grade-2,html.na-etapa .pedir-hist-lista,html.na-etapa .envio-corpo{max-height:none;flex:1 1 auto;min-height:0;overflow:auto;}
 /* na Tarefas, com uma janela aberta na ferramenta: o cabeçalho e a lateral embaçam e escurecem como o fundo da janela */
 html.fundo-embacado .gh-header,html.fundo-embacado .subnav,html.fundo-embacado .layout-caixa > .caixa-menu{filter:blur(6px) brightness(.55);pointer-events:none;transition:filter .2s ease;}
+/* a barra da esquerda some enquanto a janela está aberta (Vitor, 09/10/2026: "mesmo que embaçada, tá deixando feia") */
+html.fundo-embacado .layout-caixa > .caixa-menu{display:none;}
 html.na-etapa .toast-region{bottom:auto;top:calc(var(--vista-topo,0px) + var(--vista-altura,100vh) - 16px);transform:translateY(-100%);}
 html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 /* o resumo no meio da linha (entre o nome do banco e o Extrato): uma parte embaixo da outra, alinhadas à esquerda */

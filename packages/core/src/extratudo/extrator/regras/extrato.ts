@@ -120,6 +120,10 @@ export function lancamentosDoPdf(paginas: ItemDeTexto[][], lado: Lado, anoPadrao
   const saida: Lancamento[] = [];
   let col: Colunas | null = null;
   let dataAtual: string | null = null;
+  // a coluna da data: onde ficam as datas com ano que abrem a linha. Data curta ("21/03") longe dela é o fim de um
+  // histórico quebrado ("REM: FULANO" / "21/03"), não um dia novo (Vitor, 09/10/2026: a 380 jogava o 23/03 no 21/03)
+  const xDasDatas = todas.flat().map(l => l.tokens[0]).filter(t => t && RE_DATA.test(t.s) && /\d{4}$/.test(t.s)).map(t => t.x);
+  const naColunaDaData = (x: number) => !xDasDatas.length || xDasDatas.some(d => Math.abs(d - x) <= 20);
 
   for (const linhas of todas) {
     col = colunas(linhas) || col;
@@ -131,7 +135,8 @@ export function lancamentosDoPdf(paginas: ItemDeTexto[][], lado: Lado, anoPadrao
       const t = l.tokens.slice();
       if (!t.length) continue;
       let data: string | null = null;
-      if (RE_DATA.test(t[0].s)) { data = lerData(t[0].s, ano); if (data) t.shift(); }
+      if (!naColunaDaData(t[0].x)) { /* texto no meio da linha: não abre dia */ }
+      else if (RE_DATA.test(t[0].s)) { data = lerData(t[0].s, ano); if (data) t.shift(); }
       else if (t[1] && RE_DATA_MES.test(t[0].s + ' ' + t[1].s)) { data = lerData(t[0].s + ' ' + t[1].s, ano); if (data) t.splice(0, 2); }
       else if (RE_DATA_MES.test(t[0].s)) { data = lerData(t[0].s, ano); if (data) t.shift(); }
       if (data) dataAtual = data;

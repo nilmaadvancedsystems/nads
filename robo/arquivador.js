@@ -217,6 +217,36 @@ async function publicarConversa() {
   } catch (err) { log('não consegui publicar a conversa da rotina:', err.message); }
 }
 
+// ---------- parar a organização pelo nads ----------
+// (09/10/2026: "quero que coloque um botão de cancelar a organização") Quem pode pedir o arquivamento pede para parar
+// (arquivadorParar). Aqui: acha os Claude deste PC que estão rodando o /organizar (o do botão e o das 9h) e encerra
+// cada um com tudo o que ele abriu (taskkill /T). O pedido do botão que estava rodando vira "cancelado", não "erro".
+const pedidosParar = db.collection('arquivadorParar');
+let paradaPedida = null;   // { por } quando o nads mandou parar a organização do botão
+
+function processosDaOrganizacao() {
+  try {
+    const saida = execFileSync('powershell', ['-NoProfile', '-Command',
+      "Get-CimInstance Win32_Process -Filter \"Name='claude.exe'\" | Where-Object { $_.CommandLine -match '/organizar' } | ForEach-Object { $_.ProcessId }"],
+    { encoding: 'utf8', windowsHide: true });
+    return saida.split(/\s+/).map(Number).filter(n => n > 0);
+  } catch (e) { log('parar: não consegui listar os processos:', e.message); return []; }
+}
+
+async function atenderParar(doc) {
+  const p = doc.data();
+  if (ocupado) paradaPedida = { por: p.criadoPor || '' };
+  const pids = processosDaOrganizacao();
+  let parados = 0;
+  for (const pid of pids) {
+    try { execFileSync('taskkill', ['/PID', String(pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' }); parados++; }
+    catch (e) { /* já tinha terminado */ }
+  }
+  log('parar a organização (' + (p.criadoPor || '?') + '):', parados ? parados + ' processo(s) encerrado(s)' : 'nada rodando');
+  if (!parados) paradaPedida = null;
+  await doc.ref.update({ status: parados ? 'feito' : 'nada', parados, fimEm: agora() }).catch(() => {});
+}
+
 // ---------- escrever para o Claude da rotina pelo nads ----------
 // (07/10/2026: "coloque para eu conversar com o claude aqui") O admin escreve na janela do Arquivador (Drive) e a mensagem
 // chega em arquivadorMensagens. Aqui, uma por vez: com a rotina parada, retoma a sessão da conversa (claude --resume
@@ -240,7 +270,8 @@ function responderNaSessao(sessao, texto) {
     filho.on('close', code => {
       clearTimeout(relogio);
       let r = null; try { r = JSON.parse(saida); } catch (e) { /* saída que não é JSON */ }
-      const texto = String((r && r.result) || saida || erros).trim();
+      const limpos = erros.split(/\r?\n/).filter(l => l.trim() && !/^Ignoring \d+ permissions\./.test(l)).join('\n');
+      const texto = String((r && r.result) || saida || limpos || ('o Claude saiu com o código ' + code)).trim();
       resolve({ ok: code === 0 && !(r && r.is_error), texto });
     });
   });
@@ -522,7 +553,12 @@ async function atenderFila() {
           .set({ respostaClaude: resposta, pedidoId: doc.id }, { merge: true })
           .catch(err => log('não consegui guardar a mensagem do Claude na execução:', err.message));
       }
-      if (r.ok) {
+      if (paradaPedida) {
+        // parada pelo nads ("Cancelar a organização"): não é erro da rotina
+        await doc.ref.update({ status: 'cancelado', canceladoEm: agora(), canceladoPor: paradaPedida.por, execucao, resposta });
+        log('pedido', doc.id, 'cancelado pelo nads (' + (paradaPedida.por || '?') + ')');
+        paradaPedida = null;
+      } else if (r.ok) {
         await doc.ref.update({ status: 'concluido', concluidoEm: agora(), execucao, resposta });
         log('pedido', doc.id, 'concluído', execucao ? '(' + execucao + ')' : '(sem relatório novo)');
       } else {
@@ -552,6 +588,10 @@ async function iniciar() {
   // a conversa do Claude da rotina e o relatório do dia (o nads mostra no Arquivar agora)
   void publicarConversa();
   setInterval(() => { void publicarConversa(); }, 60 * 1000);
+  // parar a organização que está rodando (o botão "Cancelar a organização" do nads)
+  pedidosParar.where('status', '==', 'pendente').onSnapshot(snap => {
+    for (const ch of snap.docChanges()) if (ch.type === 'added') void atenderParar(ch.doc).catch(err => log('parar:', err.message));
+  }, err => log('parar a organização:', err.message));
   // as mensagens escritas no nads para o Claude da rotina (só o admin escreve)
   mensagensRef.where('status', '==', 'pendente').onSnapshot(() => { void atenderMensagens(); }, err => log('mensagens para o Claude:', err.message));
   setInterval(() => { void atenderMensagens(); }, 60 * 1000);
