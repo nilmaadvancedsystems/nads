@@ -29,7 +29,7 @@ export function AndamentoDosExtratos({ a, fechar }: { a: AndamentoDeExtratos; fe
         <button type="button" className="btn btn-ghost" onClick={fechar} aria-label="Fechar" title="Fechar"><Icone nome="x" /></button>
       </div>
       <span className={'tarefas-barra fgts-barra' + (a.pronto ? '' : ' andando')}><span style={{ width: a.pct + '%' }} /></span>
-      <span className="fgts-robo-linha"><span className={'bolinha-sit ' + (a.pronto ? 'concluida' : 'em-andamento')} aria-hidden="true" />{a.detalhe}</span>
+      {a.detalhe && <span className="fgts-robo-linha"><span className={'bolinha-sit ' + (a.pronto ? 'concluida' : 'em-andamento')} aria-hidden="true" />{a.detalhe}</span>}
       {a.numeros.length > 0 && (
         <div className="stat-grid sieg-andamento-numeros">
           {a.numeros.map(n => (
@@ -48,6 +48,8 @@ export function AndamentoDosExtratos({ a, fechar }: { a: AndamentoDeExtratos; fe
           </li>
         ))}
       </ol>
+      {/* pronto: o Ok fecha (Vitor, 09/10/2026) */}
+      {a.pronto && <div className="btn-row" style={{ justifyContent: 'flex-end' }}><button type="button" className="btn btn-primary" onClick={fechar}>Ok</button></div>}
     </div>
     </div>,
     document.body,
