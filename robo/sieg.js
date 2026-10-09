@@ -235,6 +235,59 @@ async function xmlsDoMes(c, doc, competencia, aoAndar) {
   return { arquivos: [...arquivos].map(([nome, xml]) => ({ nome, xml })), resumo, contagem };
 }
 
+/**
+ * Os XMLs do mês que já estão no Drive (Vitor, 09/10/2026: "verificar se os arquivos estão na pasta 2026 e, se não
+ * tiver lá, verifica no Claudio Secretario"). A rotina das 9h arquiva o que o robô salva em Claudio Secretario/AAAA-MM/
+ * <cliente> na pasta do cliente: <AAAA>/<código - nome>/FISCAL/<regime>/<nº>. XML/<tipo>[/EVENTOS], com outro nome
+ * ("09-2026_NF-e_347197.xml"). Então cada XML vale pelo conteúdo (o nome que o robô daria a ele), não pelo nome do
+ * arquivo. Devolve os XMLs (para não baixar de novo) e os nomes do robô (para não salvar de novo).
+ */
+async function xmlsJaNoDrive(codigo, nomeDaPasta, competencia) {
+  const [ano, mes] = competencia.split('-');
+  const raiz = path.dirname(PASTA_DO_DRIVE);
+  const xmls = [];
+  const lerArquivo = async f => { try { const t = await fs.promises.readFile(f, 'utf8'); if (sx.tipoDoXml(t)) xmls.push(t); } catch (_) { /* sem acesso: fica de fora */ } };
+  // 1) a pasta do ano do cliente (o arquivado)
+  try {
+    const doAno = path.join(raiz, ano);
+    const cliente = (await fs.promises.readdir(doAno)).find(n => new RegExp('^0*' + Number(codigo) + '\\s*-').test(n));
+    if (cliente) {
+      const fiscal = path.join(doAno, cliente, 'FISCAL');
+      for (const regime of await fs.promises.readdir(fiscal).catch(() => [])) {
+        // "12. XML" no Simples, "14. XML" no Presumido: a pasta "<número>. XML" do regime
+        const nomeXml = (await fs.promises.readdir(path.join(fiscal, regime)).catch(() => [])).find(n => /^\d+\.\s*XML$/i.test(n));
+        if (!nomeXml) continue;
+        const xml = path.join(fiscal, regime, nomeXml);
+        const andar = async (dir, eventos) => {
+          for (const it of await fs.promises.readdir(dir, { withFileTypes: true }).catch(() => [])) {
+            const f = path.join(dir, it.name);
+            if (it.isDirectory()) { await andar(f, eventos || /eventos/i.test(it.name)); continue; }
+            if (!/\.xml$/i.test(it.name)) continue;
+            // as notas do mês pelo nome ("09-2026_…"); os eventos, todos (o do mês fica pela chave, abaixo)
+            if (eventos || it.name.startsWith(mes + '-' + ano)) await lerArquivo(f);
+          }
+        };
+        await andar(xml, false);
+      }
+    }
+  } catch (_) { /* sem a pasta do ano: segue para o Claudio Secretario */ }
+  // 2) o Claudio Secretario (o que ainda não foi arquivado: os XMLs soltos e o .zip)
+  const pasta = path.join(PASTA_DO_DRIVE, competencia, nomeDaPasta);
+  for (const n of await fs.promises.readdir(pasta).catch(() => [])) {
+    if (/\.xml$/i.test(n)) await lerArquivo(path.join(pasta, n));
+    else if (/^SIEG .*\.zip$/i.test(n)) { try { xmls.push(...lerZip(await fs.promises.readFile(path.join(pasta, n)))); } catch (_) { /* .zip quebrado */ } }
+  }
+  // os eventos de outro mês (a pasta EVENTOS junta todos) ficam de fora: o AAMM da chave
+  const doMes = x => {
+    if (sx.tipoDoXml(x) !== 'evento') return true;
+    const ch = /<(?:\w+:)?ch(?:NFe|CTe)>(\d{44})</.exec(x);
+    return !ch || ch[1].slice(2, 6) === ano.slice(2) + mes;
+  };
+  const unicos = new Map();
+  for (const x of xmls) if (doMes(x)) unicos.set(sx.nomeDoArquivo(x), x);
+  return { xmls: [...unicos.values()], nomes: new Set(unicos.keys()) };
+}
+
 /** O resumo para o banco, cabendo num documento (até ~900 KB): se passar, sai o detalhe dos itens (fica o resto da nota). */
 function resumoQueCabe(doc) {
   if (Buffer.byteLength(JSON.stringify(doc)) < 900000) return doc;
@@ -392,16 +445,19 @@ function iniciarSieg({ db, log }) {
             // tipo, com as notas do último download; o tipo que não mudou sai do .zip que está na pasta, sem baixar
             // a conferência roda JUNTO com os downloads (08/10/2026: "tá demorando em média 3 minutos, queria que demorasse
             // 1"): quando ela diz que um tipo não mudou, o download dele é cancelado e ele sai do .zip do Drive
-            const anterior = doCliente ? null : (await db.collection('siegNotas').doc(id).get().catch(() => null))?.data();
-            const zipAntigo = path.join(pasta, nomeDoZip);
-            const reaproveitar = anterior && Array.isArray(anterior.emitidas) && fs.existsSync(zipAntigo) ? (async () => {
-              const agora = await contagemDoMes(c, cnpj, p.competencia);
+            // o que já está no Drive (a pasta 2026 do cliente, depois o Claudio Secretario; 09/10/2026), lido uma vez só
+            const noDrive = xmlsJaNoDrive(soDigitos(p.codigo), nomeDaPasta, p.competencia).catch(() => ({ xmls: [], nomes: new Set() }));
+            const reaproveitar = !doCliente ? (async () => {
+              const [agora, ja] = await Promise.all([contagemDoMes(c, cnpj, p.competencia), noDrive]);
+              if (!ja.xmls.length) return null;
+              // as notas de cada tipo que estão no Drive x as que o SIEG tem agora: o tipo completo sai do Drive
+              const montado = require('./sieg-portal').montarXmls(cnpj, ja.xmls).resumo;
               const antes = {};
-              for (const n of [...anterior.emitidas, ...(anterior.recebidas || [])]) antes[n.tipo] = (antes[n.tipo] || 0) + 1;
+              for (const n of [...montado.emitidas, ...montado.recebidas]) antes[n.tipo] = (antes[n.tipo] || 0) + 1;
               const CHAVE = { 'NF-e': 'NFe', 'NFC-e': 'NFCe', 'CT-e': 'CTe', 'NFS-e': 'NFSe', 'CF-e': 'CFe' };
               const tipos = Object.keys(CHAVE).filter(t => (agora.emitidas[CHAVE[t]] || 0) + (agora.recebidas[CHAVE[t]] || 0) === (antes[t] || 0));
               log('SIEG: XMLs de', p.codigo, '- não mudaram desde o último download:', tipos.join(', ') || 'nenhum');
-              return { tipos, xmls: lerZip(await fs.promises.readFile(zipAntigo)) };
+              return { tipos, xmls: ja.xmls };
             })().catch(err => { log('SIEG: não deu para usar o Drive (' + err.message + '), baixando tudo'); return null; }) : null;
             // pelo portal primeiro (08/10/2026: "tem clientes com 1000 xml de uma vez, quero que ele vá no site e baixe"):
             // os tipos de nota ao mesmo tempo, em segundos; sem a sessão do portal ou com erro, pela API (mais lenta)
@@ -413,7 +469,7 @@ function iniciarSieg({ db, log }) {
               const mandados = JSON.parse(pedacos.docs.sort((a, b) => a.data().n - b.data().n).map(x => x.data().dados).join('') || '[]');
               const deles = sp.soDoCliente(cnpj, mandados);
               // os do Drive (o último .zip da pasta) entram junto: o resumo do mês fica com tudo
-              const velhos = fs.existsSync(zipAntigo) ? lerZip(await fs.promises.readFile(zipAntigo)) : [];
+              const velhos = (await noDrive).xmls;
               baixado = sp.montarXmls(cnpj, [...velhos, ...deles]);
               baixado.doDrive = velhos.length;
               numeros.doCliente = deles.length;
@@ -428,6 +484,18 @@ function iniciarSieg({ db, log }) {
               log('SIEG: portal não deu (' + err.message + '), XMLs de', p.codigo, 'pela API');
               await andar('baixando', 'O portal não deu (' + err.message + '): baixando pela API', null, true);
               baixado = await xmlsDoMes(c, cnpj, p.competencia, t => andar('baixando', t, null));
+            }
+            // o que está no Drive e o SIEG não trouxe (ex.: NFC-e que o SIEG não captura em MG, 09/10/2026) entra junto: o
+            // resumo do mês no nads fica com tudo o que o escritório tem
+            if (!doCliente) {
+              const ja = await noDrive;
+              const tem = new Set(baixado.arquivos.map(a => a.nome));
+              const extras = ja.xmls.filter(x => !tem.has(sx.nomeDoArquivo(x)));
+              if (extras.length) {
+                const junto = require('./sieg-portal').montarXmls(cnpj, [...baixado.arquivos.map(a => a.xml), ...extras]);
+                baixado = Object.assign({}, baixado, { arquivos: junto.arquivos, resumo: junto.resumo, doDrive: (baixado.doDrive || 0) + extras.length });
+                log('SIEG: XMLs de', p.codigo, '-', extras.length, 'que estavam só no Drive entraram no resumo');
+              }
             }
             const { arquivos, resumo, contagem } = baixado;
             numeros.xmls = arquivos.length;
@@ -453,9 +521,9 @@ function iniciarSieg({ db, log }) {
             // 3) a pasta do cliente no Drive: só os XMLs que ainda não estão lá (08/10/2026: "se já foi salvo uma vez, só
             // sobreponha os a mais e não salve no drive o que já foi salvo"). O nome do arquivo é a chave da nota: o mesmo
             // nome é a mesma nota. O .zip só é refeito quando entrou XML novo (ou quando ainda não existe)
-            await fs.promises.mkdir(pasta, { recursive: true });
-            const jaTem = new Set(await fs.promises.readdir(pasta).catch(() => []));
+            const jaTem = new Set([...(await noDrive).nomes, ...(await fs.promises.readdir(pasta).catch(() => []))]);
             const faltam = arquivos.filter(a => !jaTem.has(a.nome));
+            if (faltam.length) await fs.promises.mkdir(pasta, { recursive: true });
             numeros.jaSalvos = arquivos.length - faltam.length;
             await andar('drive', faltam.length ? 'Salvando ' + faltam.length + ' XMLs novos no Drive' : 'Todos os XMLs já estavam no Drive', 0, true);
             // em paralelo (16 por vez): no Drive cada arquivo leva ~120 ms
@@ -470,7 +538,7 @@ function iniciarSieg({ db, log }) {
               }
             }));
             // e o .zip com todos, na mesma pasta (07/10/2026: "quero que ele também salve um arquivo .zip na hora")
-            if (zip && (novos || !jaTem.has(nomeDoZip))) await fs.promises.writeFile(path.join(pasta, nomeDoZip), zip);
+            if (zip && novos) await fs.promises.writeFile(path.join(pasta, nomeDoZip), zip);
             await db.collection('siegNotas').doc(id).update({ novos }).catch(() => {});
             await d.ref.update({
               status: 'concluido', concluidoEm: new Date().toISOString(), andamento: '', pct: 100, fase: 'pronto', numeros,
@@ -495,8 +563,7 @@ function iniciarSieg({ db, log }) {
               // o que faltou, do .zip do Drive (se a pasta do mês ainda está lá)
               const nota = (await db.collection('siegNotas').doc(id).get()).data();
               const nomeDaPasta = nota && nota.pasta ? nota.pasta.split('/').pop() : '';
-              const zipDoDrive = nomeDaPasta ? path.join(PASTA_DO_DRIVE, p.competencia, nomeDaPasta, 'SIEG ' + p.competencia + ' - ' + nomeDaPasta + '.zip') : '';
-              if (zipDoDrive && fs.existsSync(zipDoDrive)) xmls.push(...lerZip(await fs.promises.readFile(zipDoDrive)));
+              if (nomeDaPasta) xmls.push(...(await xmlsJaNoDrive(soDigitos(p.codigo), nomeDaPasta, p.competencia)).xmls);
             }
             const arquivos = [...new Map(xmls.filter(x => quero.has(daChave(x))).map(x => [sx.nomeDoArquivo(x), x]))].map(([nome, xml]) => ({ nome, xml }));
             if (!arquivos.length) throw new Error('o SIEG não devolveu nenhuma dessas notas');
@@ -616,4 +683,4 @@ function iniciarSieg({ db, log }) {
   return () => { clearInterval(relogio); clearInterval(relogioNoite); pararPedidos(); };
 }
 
-module.exports = { seriesDasNotas, saidasDoResumo, iniciarSieg, lerXml, xmlsDaResposta, lerZip, periodo, contagemDoMes, saidasDoMes, xmlsDoMes, resumoQueCabe };
+module.exports = { xmlsJaNoDrive, seriesDasNotas, saidasDoResumo, iniciarSieg, lerXml, xmlsDaResposta, lerZip, periodo, contagemDoMes, saidasDoMes, xmlsDoMes, resumoQueCabe };
