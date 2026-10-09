@@ -126,9 +126,14 @@ function iniciarFgtsPeloClaude(db, log) {
   marcar({ ligado: true, motivo: '', onde: 'pc-claude', certificado: cert });
   log('FGTS: ligado pelo Claude do PC (Claude in Chrome)' + (cert ? ', certificado até ' + cert.validade : ''));
 
-  // pedido que ficou no meio quando o PC caiu: volta como erro (a pessoa pede de novo)
-  pedidos.where('status', 'in', ['trabalhando', 'verificacao', 'login']).get().then(s => Promise.all(s.docs.map(d =>
-    d.ref.update({ status: 'erro', erro: 'o PC reiniciou no meio; peça de novo', fimEm: agora() })))).catch(() => {});
+  // pedido que ficou no meio quando o robô reiniciou (09/10/2026: outra atualização do arquivador derrubou uma
+  // emissão no meio): volta para a fila uma vez sozinho; na segunda, fica como erro para a pessoa pedir de novo
+  pedidos.where('status', 'in', ['trabalhando', 'verificacao', 'login']).get().then(s => Promise.all(s.docs.map(d => {
+    const tentativas = Number(d.data().tentativas || 0);
+    return tentativas < 1
+      ? d.ref.update({ status: 'pendente', tentativas: tentativas + 1, passos: [] })
+      : d.ref.update({ status: 'erro', erro: 'o robô reiniciou no meio duas vezes; peça de novo', fimEm: agora() });
+  }))).catch(() => {});
 
   const fila = [];
   let ocupado = false;
