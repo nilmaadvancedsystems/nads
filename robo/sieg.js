@@ -542,7 +542,8 @@ function iniciarSieg({ db, log }) {
             await db.collection('siegNotas').doc(id).update({ novos }).catch(() => {});
             await d.ref.update({
               status: 'concluido', concluidoEm: new Date().toISOString(), andamento: '', pct: 100, fase: 'pronto', numeros,
-              resultado: { arquivos: arquivos.length, novos, jaSalvos: numeros.jaSalvos, pasta: onde, zip: arquivos.length ? nomeDoZip : '', emitidas: resumo.emitidas.length, recebidas: resumo.recebidas.length },
+              // nada novo: não gravou no Claudio Secretario (já estava tudo arquivado ou lá)
+              resultado: { arquivos: arquivos.length, novos, jaSalvos: numeros.jaSalvos, pasta: novos ? onde : 'o Drive do cliente (já estava tudo lá)', zip: novos ? nomeDoZip : '', emitidas: resumo.emitidas.length, recebidas: resumo.recebidas.length },
             });
             log('SIEG: XMLs de', p.codigo, p.competencia, '-', arquivos.length, 'arquivos (' + novos + ' novos) em', onde);
             continue;
