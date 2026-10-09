@@ -16,8 +16,12 @@ const RE_DATA = /^(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?$/;
 const RE_DATA_MES = /^(\d{1,2})[/.\s-]?(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]*$/i;
 const RE_VALOR = /^\(?-?(?:R\$)?-?\d{1,3}(?:\.\d{3})*,\d{2}\)?-?[CD]?$/i;
 const RE_SINAL = /^(?:[CD]|\(\+\)|\(-\)|[+-]|\*)$/i;
-/** linha de saldo, total ou resumo: não é lançamento */
-const RE_SALDO = /\bs\s?a\s?l\s?d\s?o\b|saldo|total|resumo|limite|bloquead|dispon[ií]vel|a transportar|transporte/i;
+/**
+ * Linha de saldo, total ou resumo: não é lançamento. A palavra tem de abrir a linha ("SALDO ANTERIOR", "Total de
+ * créditos", "Limite disponível"…), ou ser um saldo explícito no meio dela ("… SALDO DO DIA"). Solta no histórico, não
+ * vale (Vitor, 09/10/2026: o "IOF S/ UTILIZACAO LIMITE" da 380 sumia, como "… TRANSPORTES LTDA" ou "TOTAL ATACADO").
+ */
+const RE_SALDO = /^[\s(+\-*]*(?:s\s?a\s?l\s?d\s?o|sdo\b|total|resumo|limite|bloquead|dispon[ií]vel|a transportar|transporte\b)|\bsaldo (?:anterior|inicial|final|atual|do dia|em\b|disponivel|disponível|bloqueado)/i;
 const RE_SAIDA = /\b(pagto|pagamento|pag\b|tarifa|tar\b|saque|debito|deb\b|compra|enviad|envio|iof|juros|encargo|tributo|darf|gps|das\b|pago|aplicacao|cesta|mensalidade|cheque compensado|chq)/;
 const RE_ENTRADA = /\b(recebid|receb\b|credito|cred\b|deposito|dep\b|resgate|estorno|rendimento|liquidacao cobranca|cobranca)/;
 
