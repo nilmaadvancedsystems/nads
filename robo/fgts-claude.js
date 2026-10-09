@@ -57,8 +57,13 @@ function ambienteLimpo() {
 // Competência de Apuração são ng-select (abrem com mousedown no .ng-select-container; opções em .ng-option); o CNPJ tem
 // máscara (00.000.000/0000-00); Definir troca de página; a pesquisa leva ~1 s; o número da guia tem 16 dígitos e o
 // dígito (0126100966359791-5).
+// o CNPJ do próprio escritório (a 284, NILMA CONTABILIDADE; Vitor, 09/10/2026: "ele tem que ir no meu perfil, já que é o do
+// escritório"): entra pelo "Meu Perfil", sem Procurador e sem digitar CNPJ
+const CNPJ_DO_ESCRITORIO = '27872981000113';
+
 function roteiroPerfil(cnpj) {
   const formatado = cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  const proprio = cnpj === CNPJ_DO_ESCRITORIO;
   return `await (async () => {
   const dormir = ms => new Promise(r => setTimeout(r, ms));
   const visivel = e => e && e.offsetParent !== null;
@@ -69,8 +74,15 @@ function roteiroPerfil(cnpj) {
   if (!sel) return 'ERRO: sem a lista Perfil';
   sel.querySelector('.ng-select-container').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
   await dormir(400);
-  const op = [...document.querySelectorAll('.ng-option')].find(o => o.innerText.trim() === 'Procurador');
-  if (!op) return 'ERRO: sem a opção Procurador';
+  ${proprio ? `const meu = [...document.querySelectorAll('.ng-option')].find(o => o.innerText.trim() === 'Meu Perfil');
+  if (!meu) return 'ERRO: sem a opção Meu Perfil';
+  meu.click(); await dormir(500);
+  const definir = botao('Definir') || botao('Selecionar');
+  if (!definir) return 'ERRO: sem o botão Definir';
+  setTimeout(() => definir.click(), 100);
+  return 'OK: Meu Perfil (o escritório)';
+})()` : `const op = [...document.querySelectorAll('.ng-option')].find(o => o.innerText.trim() === 'Procurador');`}
+  ${proprio ? '' : `if (!op) return 'ERRO: sem a opção Procurador';
   op.click(); await dormir(500);
   const campo = [...document.querySelectorAll('input')].find(i => visivel(i) && /CNPJ ou CPF/i.test(i.placeholder || ''));
   if (!campo) return 'ERRO: sem o campo do CNPJ';
@@ -82,7 +94,7 @@ function roteiroPerfil(cnpj) {
   if (!ok) return 'ERRO: sem o botão Definir';
   setTimeout(() => ok.click(), 100);
   return 'OK: definindo ${formatado}';
-})()`;
+})()`}`;
 }
 
 function roteiroGuia(cnpj, competencia, emitir) {
@@ -151,6 +163,8 @@ function instrucoesDoLote(itens) {
     ...itens.map(p => ['--- ' + p.cnpj + ' — ROTEIRO PERFIL:', roteiroPerfil(p.cnpj), '--- ' + p.cnpj + ' — ROTEIRO GUIA:', roteiroGuia(p.cnpj, p.competencia, p.modo === 'emitir')].join('\n')),
     '',
     'O CAMINHO MANUAL (só quando um roteiro falhar), para aquele cliente:',
+    '0. Se o CNPJ é ' + CNPJ_DO_ESCRITORIO + ' (o do próprio escritório, NILMA CONTABILIDADE), o perfil é o "Meu Perfil": abra a lista',
+    '   Perfil, escolha "Meu Perfil" e clique em Definir (sem Procurador e sem digitar CNPJ).',
     '1. Escolha o perfil do cliente: na janela "Definir Perfil" ou pelo botão "Trocar Perfil" no alto, abra a lista Perfil, escolha',
     '   "Procurador", digite o CNPJ em "Empregador a ser representado" e clique em Definir/Selecionar. Confira que o alto da página',
     '   mostra "Empregador:" com o CNPJ dele. Se o portal disser que não há procuração, o resultado dele é {"erro":"sem procuração"}.',
