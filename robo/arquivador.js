@@ -566,7 +566,8 @@ async function iniciar() {
   // O SIEG (as notas do Fiscal do nads) também pega carona aqui: as credenciais ficam neste PC. Sem elas, fica desligado.
   // o FGTS Digital no PC (08/10/2026): o Edge aparece na tela; a verificação do gov.br é feita pela pessoa (aqui ou pela
   // tela ao vivo no nads)
-  try { require('./fgts-digital').iniciarFgtsDigital(db, log, null); }
+  // desde 09/10/2026 pelo Claude do PC no Chrome logado (fgts-claude.js); o robô do navegador (fgts-digital.js) fica para a nuvem
+  try { require('./fgts-claude').iniciarFgtsPeloClaude(db, log); }
   catch (err) { log('FGTS não ligou:', err.message); }
   try { require('./sieg').iniciarSieg({ db, log }); }
   catch (err) { log('SIEG desligado:', err.message); }

@@ -565,4 +565,4 @@ async function esperarArquivo(pasta, ms) {
   return null;
 }
 
-module.exports = { iniciarFgtsDigital, PASSOS_DO_PORTAL, semAcento };
+module.exports = { iniciarFgtsDigital, lerCertificadoDoWindows, PASSOS_DO_PORTAL, semAcento };
