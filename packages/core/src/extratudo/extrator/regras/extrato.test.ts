@@ -68,6 +68,21 @@ describe('extrato em PDF', () => {
   });
 });
 
+describe('palavra de saldo solta no histórico não esconde o lançamento (Vitor, 09/10/2026)', () => {
+  it('"IOF S/ UTILIZACAO LIMITE", "TRANSPORTES" e "TOTAL" no histórico entram; as linhas de saldo e total não', () => {
+    const p = pagina([
+      [['Data', 40], ['Lançamento', 100], ['Valor (R$)', 400], ['Saldo (R$)', 480]],
+      [['31/12/2025', 40], ['SALDO ANTERIOR', 100], ['-537,11', 480]],
+      [['05/01/2026', 40], ['IOF S/ UTILIZACAO LIMITE 8210846', 100], ['-414,60', 400], ['24.017,18', 480]],
+      [['PIX RECEBIDO DELLAS TRANSPORTES LTDA', 100], ['1.000,00', 400], ['25.017,18', 480]],
+      [['PAGTO TOTAL ATACADO LTDA', 100], ['-17,18', 400], ['25.000,00', 480]],
+      [['Total', 100], ['568,22', 400]],
+      [['Limite disponível', 100], ['5.000,00', 480]],
+    ]);
+    expect(lancamentosDoPdf([p], 'banco', 2000).map(l => l.valor)).toEqual([-41460, 100000, -1718]);
+  });
+});
+
 describe('saldo anterior do extrato (abre a conta quando não há mês antes)', () => {
   it('a linha SALDO ANTERIOR: o valor da direita, com o sinal', () => {
     const p = pagina([
