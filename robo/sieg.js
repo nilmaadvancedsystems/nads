@@ -533,7 +533,11 @@ function iniciarSieg({ db, log }) {
               const sp = require('./sieg-portal');
               await andar('baixando', 'Lendo os XMLs que o cliente mandou', 0.1, true);
               const pedacos = await d.ref.collection('xmls').get();
-              const mandados = JSON.parse(pedacos.docs.sort((a, b) => a.data().n - b.data().n).map(x => x.data().dados).join('') || '[]');
+              // sem arquivos (partes 0): "puxar os XMLs do cliente direto da pasta do Drive" (09/10/2026) — os do mês na
+              // pasta do ano do cliente e no Claudio Secretario
+              if (!p.partes) await andar('baixando', 'Lendo os XMLs da pasta do cliente no Drive', 0.2, true);
+              const mandados = !p.partes ? (await noDrive).xmls
+                : JSON.parse(pedacos.docs.sort((a, b) => a.data().n - b.data().n).map(x => x.data().dados).join('') || '[]');
               const deles = sp.soDoCliente(cnpj, mandados);
               // os do Drive (o último .zip da pasta) entram junto: o resumo do mês fica com tudo
               const velhos = (await noDrive).xmls;

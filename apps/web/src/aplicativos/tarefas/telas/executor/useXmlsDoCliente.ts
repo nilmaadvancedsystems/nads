@@ -44,6 +44,15 @@ export function useXmlsDoCliente(codigo: string, competencia: string) {
     },
     limpar: () => { setLidos(null); setEnviado(false); },
     enviando: enviando || rodando(p),
+    /** puxar os XMLs do mês direto da pasta do cliente no Drive (09/10/2026): o robô lê lá, sem soltar arquivo */
+    async puxarDoDrive() {
+      if (enviando || !codigo) return;
+      setEnviando(true);
+      setLidos(null);
+      try { await repo.enviarXmlsDoCliente(codigo, competencia, []); setEnviado(true); }
+      catch (err) { toast('Não consegui pedir ao robô: ' + (err instanceof Error ? err.message : String(err))); }
+      finally { setEnviando(false); }
+    },
     async enviar() {
       if (!lidos?.xmls.length || enviando || !codigo) return;
       setEnviando(true);
