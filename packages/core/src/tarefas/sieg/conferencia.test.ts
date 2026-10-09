@@ -27,6 +27,10 @@ describe('erros de tributação nos XMLs (09/10/2026)', () => {
       '3:Item com ST sem CEST',
     ]);
   });
+  it('o CSOSN sem a origem (como o robô guarda: "102") é CSOSN, não CST', () => {
+    const x = xml([nota('5', [{ ncm: '1', cfop: '5102', cst: '102', cest: '', valor: 10 }, { ncm: '2', cfop: '5405', cst: '500', cest: '0300700', valor: 10 }])]);
+    expect(errosDeTributacao(x, 'Simples')).toEqual([]);
+  });
   it('a cancelada não conta', () => {
     expect(errosDeTributacao(xml([nota('9', [{ ncm: '1', cfop: '5102', cst: '000', cest: '', valor: 1 }], { cancelada: true })]), 'Simples')).toEqual([]);
   });
