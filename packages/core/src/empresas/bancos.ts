@@ -41,6 +41,7 @@ export const BANCOS_CONHECIDOS: readonly BancoDaEmpresa[] = [
   { id: 'caixa', nome: 'Caixa' },
   { id: 'cora', nome: 'Cora' },
   { id: 'cresol', nome: 'Cresol' },
+  { id: 'infinitepay', nome: 'InfinitePay' },
   { id: 'inter', nome: 'Inter' },
   { id: 'itau', nome: 'Itaú' },
   { id: 'mercado-pago', nome: 'Mercado Pago' },
@@ -51,4 +52,5 @@ export const BANCOS_CONHECIDOS: readonly BancoDaEmpresa[] = [
   { id: 'sicoob', nome: 'Sicoob' },
   { id: 'sicredi', nome: 'Sicredi' },
   { id: 'stone', nome: 'Stone' },
+  { id: 'unicred', nome: 'Unicred' },
 ];

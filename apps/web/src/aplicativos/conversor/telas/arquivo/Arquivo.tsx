@@ -44,7 +44,7 @@ export function Arquivo() {
       {vm.erro && <Alerta titulo="Não deu para ler o extrato" texto={vm.erro} />}
       {vm.ok && !vm.banco && <Alerta titulo="Escolha o banco" texto="Não achei o nome do banco no extrato. Escolha no menu acima: ele vira o nome da aba e do arquivo." />}
       {vm.generico && (
-        <Alerta titulo="Leitor genérico" texto="Este layout ainda não tem leitor próprio (por enquanto só o Banco do Brasil e a Cora). Confira os valores, os sinais e os históricos na Conferência." />
+        <Alerta titulo="Leitor genérico" texto="Este layout ainda não tem leitor próprio (por enquanto o Banco do Brasil, a Cora, a Unicred e a InfinitePay). Confira os valores, os sinais e os históricos na Conferência." />
       )}
     </section>
   );
