@@ -7,6 +7,7 @@
 // negativo, o Ajuste (o valor do saldo negativo, no próprio dia) e o Estorno (o mesmo valor, ao contrário, no próximo dia
 // do relatório). No razão novo, esses lançamentos não estão no extrato: a conferência os acha entre as sobras do razão e
 // tira da conta — o saldo final confere ignorando o cheque especial.
+import { normalizarTexto } from '../../../formatos';
 import type { EmpresaExtrator, LancamentoDoArquivo, LinhaConferencia } from '../tipos';
 import { arquivosDoBanco } from './bancos';
 import { conferir } from './conferencia';
@@ -21,24 +22,17 @@ const DIAS_ATE_O_ESTORNO = 7;
 const diaDe = (d: string) => { const [a, m, dd] = d.split('-').map(Number); return Date.UTC(a, m - 1, dd) / 86400000; };
 
 /**
- * Os dias que fecham negativos no extrato da conta, no período. No mês em que os extratos trazem o saldo impresso do dia
- * (saldosDoDia), vale o do banco (Vitor, 13/10/2026: "se guie pelo extrato bancário"); senão, o saldo do último
- * lançamento do dia, recalculado.
+ * Os dias que fecham negativos no extrato da conta, no período: o saldo do último lançamento do dia, pela data com que o
+ * lançamento entra no razão (no BB "Consultas", a Dt. movimento). É o saldo do razão: o saldo que o banco imprime vai
+ * pela Dt. balancete e não serve (Vitor, 13/10/2026: na 380 o razão fecha 02/01 com 0,10 negativo, e o banco imprime
+ * 276,31 positivo).
  */
 export function diasNegativos(e: EmpresaExtrator, banco: string, primeiro: string, meses: readonly string[]): DiaNegativo[] {
   const ms = meses.slice().sort();
   if (!ms.length) return [];
-  const impresso = new Set<string>();
   const fim = new Map<string, number>();
-  for (const mes of ms) {
-    const arqs = arquivosDoBanco(e, banco, primeiro, 'banco', mes);
-    if (!arqs.length || !arqs.every(a => a.saldosDoDia?.some(s => s.data.startsWith(mes)))) continue;
-    impresso.add(mes);
-    for (const a of arqs) for (const s of a.saldosDoDia || []) if (s.data.startsWith(mes)) fim.set(s.data, s.saldo);
-  }
   for (const l of movimentoDoExtrato(e, banco, primeiro, ms[0], ms[ms.length - 1]).linhas) {
-    const mes = l.data.slice(0, 7);
-    if (ms.includes(mes) && !impresso.has(mes)) fim.set(l.data, l.saldo);
+    if (ms.includes(l.data.slice(0, 7))) fim.set(l.data, l.saldo);
   }
   return [...fim].filter(([, s]) => s < 0).map(([data, saldo]) => ({ data, saldo })).sort((a, b) => a.data.localeCompare(b.data));
 }
@@ -98,10 +92,27 @@ export function conferenciaDoBanco(e: EmpresaExtrator, banco: string, primeiro: 
   const sobras = porMes.flatMap(p => p.linhas.filter(l => l.situacao === 'amais' && l.sistema).map(l => l.sistema as LancamentoDoArquivo));
   const ultimoDia = comMovimento.length ? ultimoDiaDoMes(comMovimento[comMovimento.length - 1]) : '';
   const cheque = negativos.length ? chequeEspecialNoRazao(negativos, sobras, ultimoDia) : { linhas: new Set<LancamentoDoArquivo>(), cobertos: new Set<string>() };
+  // o cheque especial do fim do ano anterior, lançado no razão no começo de janeiro (até o dia 5): conta como certo
+  // (Vitor, 13/10/2026: "quando vira de ano, eu jogo no começo de janeiro")
+  for (const l of sobras) if (chequeDaViradaDoAno(l)) cheque.linhas.add(l);
+  // o mesmo padrão em qualquer banco e começo de período (Vitor, 13/10/2026: "em todos os bancos de todas as empresas"):
+  // o extrato abre negativo (o dia anterior ao período fechou negativo) e o razão, que começa em zero, traz nos 5
+  // primeiros dias o estorno do cheque especial daquele dia, com o mesmo valor: conta como certo
+  const inicio = comMovimento[0];
+  const aberturaNegativa = inicio ? movimentoDoExtrato(e, banco, primeiro, inicio, inicio).saldoAnterior : 0;
+  if (inicio && aberturaNegativa < 0) {
+    const estorno = sobras.find(l => !cheque.linhas.has(l) && l.data.startsWith(inicio) && Number(l.data.slice(8, 10)) <= 5 && Math.abs(l.valor) === -aberturaNegativa);
+    if (estorno) cheque.linhas.add(estorno);
+  }
   const pendencias = porMes
     .map(p => ({ mes: p.mes, linhas: p.linhas.filter(l => !(l.situacao === 'amais' && l.sistema && cheque.linhas.has(l.sistema))) }))
     .filter(p => p.linhas.length > 0);
   return { completo, pendencias, negativos, faltamCheque: negativos.filter(n => !cheque.cobertos.has(n.data)), cheque };
+}
+
+/** O lançamento do cheque especial (o histórico diz "cheque especial" ou o código 92029) entre 1º e 5 de janeiro. */
+export function chequeDaViradaDoAno(l: Pick<LancamentoDoArquivo, 'data' | 'historico'>): boolean {
+  return /-01-0[1-5]$/.test(l.data) && (/\bcheque especial\b/.test(normalizarTexto(l.historico)) || /\b92029\b/.test(l.historico));
 }
 
 function ultimoDiaDoMes(mes: string): string {
