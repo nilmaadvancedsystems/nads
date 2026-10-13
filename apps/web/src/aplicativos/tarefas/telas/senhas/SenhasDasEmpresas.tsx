@@ -17,6 +17,8 @@ export function SenhasDasEmpresas() {
   const [importando, setImportando] = useState(false);
   useCarregando(vm.cofre.estado === 'carregando');
   if (vm.cofre.estado === 'carregando') return <Esqueleto linhas={8} />;
+  // sem acesso ao cofre, só a tela de pedir acesso (13/10/2026: "não era pra tela nem abrir, era pra só ter a tela de pedir acesso")
+  if (vm.cofre.estado !== 'aberto') return <section><CofreFechado vm={vm.cofre} /></section>;
   const filtros: { valor: FiltroDeSenhas; rotulo: string }[] = [
     { valor: 'todas', rotulo: 'Todas · ' + vm.contagem.todas },
     { valor: 'vencendo', rotulo: 'Certificado vencendo · ' + vm.contagem.vencendo },
@@ -24,7 +26,6 @@ export function SenhasDasEmpresas() {
   ];
   return (
     <section>
-      {vm.cofre.estado !== 'aberto' && <CofreFechado vm={vm.cofre} />}
       <div className="tarefas-barra-topo">
         <Segmentado valor={vm.filtro} opcoes={filtros} onMudar={vm.setFiltro} />
         <span className="tarefas-barra-espaco" />

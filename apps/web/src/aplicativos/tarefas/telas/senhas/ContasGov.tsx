@@ -12,10 +12,11 @@ export function ContasGov() {
   const { toast } = useRetorno();
   useCarregando(vm.cofre.estado === 'carregando');
   if (vm.cofre.estado === 'carregando') return <Esqueleto linhas={8} />;
+  // sem acesso ao cofre, só a tela de pedir acesso (13/10/2026: "não era pra tela nem abrir, era pra só ter a tela de pedir acesso")
+  if (vm.cofre.estado !== 'aberto') return <section><CofreFechado vm={vm.cofre} /></section>;
   const aberto = vm.cofre.estado === 'aberto';
   return (
     <section>
-      {!aberto && <CofreFechado vm={vm.cofre} />}
       <div className="tarefas-barra-topo">
         <label className="busca-curta">
           <Icone nome="search" />
