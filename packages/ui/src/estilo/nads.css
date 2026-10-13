@@ -2319,7 +2319,13 @@ tr.linha-abre,.imp-linha,.gh-crumb,.drawer-x{
 .steps.com-indicador .step-pill[aria-current="true"]{background:transparent;border-color:transparent;}
 
 /* O interruptor e as setas: a bolinha corre e as setas giram na curva forte, sem a curva fraca padrão */
-.toggle-knob{transition:transform .32s var(--ease-out),background .22s var(--ease-out);}
+/* o Interruptor fluido (Vitor, 13/10/2026: "faça uma animação para o on e off fluida"): a bolinha corre numa mola leve
+   (passa um tiquinho e volta), estica para o lado em que vai enquanto se aperta, e o trilho troca de cor junto */
+.toggle-knob{box-shadow:0 1px 2px rgba(0,0,0,.25);}
+.toggle-switch:hover .toggle-track{box-shadow:0 0 0 3px color-mix(in srgb, var(--ink-muted) 18%, transparent);}
+.toggle-switch[aria-checked="true"]:hover .toggle-track{box-shadow:0 0 0 3px color-mix(in srgb, var(--btn-primary) 28%, transparent);}
+.toggle-switch:active .toggle-knob{width:18px;}
+.toggle-switch[aria-checked="true"]:active .toggle-knob{transform:translateX(12px);}
 .imp-seta svg,.imp-faixa-seta,.pedir-outros-btn .menu-seta,.th-seta{transition:transform .32s var(--ease-out);}
 /* a lateral que se esconde: a grade abre e fecha na curva de movimento */
 .layout{transition:grid-template-columns .36s var(--ease-in-out);}
@@ -2423,6 +2429,11 @@ tr.linha-abre,.imp-linha,.gh-crumb,.drawer-x{
 :where(html:not([data-animacoes=parciais]):not([data-animacoes=todas])) *::after{transition:none !important;animation:none !important;}
 :where(html[data-animacoes=parciais]) *,:where(html[data-animacoes=parciais]) *::before,:where(html[data-animacoes=parciais]) *::after{animation:none !important;}
 .btn-spinner{animation:spin .6s linear infinite !important;}
+/* o Interruptor anda em qualquer nível de animação (Vitor, 13/10/2026: "faça uma animação para o on e off fluida") */
+.toggle-knob{transition:transform .46s cubic-bezier(.34,1.56,.64,1),width .2s var(--ease-out),background .28s var(--ease-out),box-shadow .28s var(--ease-out) !important;}
+.toggle-track{transition:background .32s var(--ease-out),border-color .32s var(--ease-out),box-shadow .32s var(--ease-out) !important;}
+.toggle-txt{transition:color .28s var(--ease-out) !important;}
+@media (prefers-reduced-motion: reduce){.toggle-knob,.toggle-track,.toggle-txt{transition:none !important;}}
 /* os avisos na faixa de ponta a ponta acima do cabeçalho (Vitor, 08/10/2026: "uma barra que ocupe toda a parte superior
    do cabeçalho, numa linha só"): entram descendo e saem subindo, em qualquer nível de animação (pedido dele); somem em 3 s
    ou no × (o Alerta do packages/ui). Sem a Casca (o formulário do Mandei), a faixa fica fixa no alto da página. */
