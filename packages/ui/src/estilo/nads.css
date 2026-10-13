@@ -3654,9 +3654,106 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .agentes-cartao{cursor:pointer;}
 .agentes-cartao:hover{border-color:var(--border-strong);}
 .agentes-cartao:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
-.modal.modal-centro.agentes-janela{max-width:560px;text-align:left;max-height:calc(100vh - 32px);overflow:auto;}
-.modal.modal-centro.agentes-janela h3{padding-right:32px;margin-bottom:10px;}
-.modal.modal-centro.agentes-janela p{margin:0 0 8px;}
-.agentes-janela h4{margin:14px 0 6px;font-size:13px;font-weight:600;}
-.agentes-janela-lista{list-style:none;margin:0;padding:0;display:grid;gap:8px;font-size:13px;line-height:1.45;}
-.agentes-janela-lista .hint{margin:0;}
+/* A janela "Como está funcionando" (13/10/2026: "bem mais trabalhado"): o cabeçalho na cor do estado, o agora em
+   destaque, a régua do porteiro, o fluxo dos agentes (cada um na cor do seu modelo: Haiku verde, Sonnet azul, Opus roxo)
+   e a linha do tempo. Só os tokens do nads. */
+.modal.aj{max-width:720px;width:100%;max-height:calc(100vh - 32px);display:flex;flex-direction:column;position:relative;text-align:left;
+  --aj-tom:var(--ink-muted);--aj-tom-fundo:var(--surface-2);}
+.aj.aj-estado-ok{--aj-tom:var(--success);--aj-tom-fundo:var(--success-soft);}
+.aj.aj-estado-aviso{--aj-tom:var(--warn);--aj-tom-fundo:var(--warn-soft);}
+.aj-sobre{display:block;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-muted);}
+.aj-chip{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:999px;border:1px solid var(--border);
+  background:var(--surface);font-size:12px;color:var(--ink-muted);white-space:nowrap;}
+.aj-chip svg{width:12px;height:12px;}
+/* o cabeçalho */
+.aj-topo{padding:20px 24px 18px;border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--aj-tom) 14%,var(--surface)) 0%,var(--surface) 100%);}
+.aj-topo-linha{display:flex;align-items:center;gap:12px;}
+.aj-topo-icone{flex:none;width:40px;height:40px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;
+  background:var(--aj-tom-fundo);color:var(--aj-tom);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--aj-tom) 30%,transparent);}
+.aj-topo-icone svg{width:20px;height:20px;}
+.aj-topo-titulo{flex:1;min-width:0;}
+.aj-topo-titulo h3{margin:2px 0 0;font-size:20px;font-weight:650;line-height:1.2;border:0;padding:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.aj .modal-x{position:static;flex:none;}
+.aj-topo-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px;}
+.aj-estado{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;
+  color:var(--aj-tom);background:var(--aj-tom-fundo);}
+.aj-estado i{width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 0 3px color-mix(in srgb,currentColor 25%,transparent);}
+.aj-atualizado{display:inline-flex;align-items:center;gap:4px;margin-left:auto;font-size:12px;color:var(--ink-muted);}
+.aj-atualizado svg{width:12px;height:12px;}
+.modal.aj p{padding:0;}
+.aj-resumo{margin:12px 0 0;font-size:14px;line-height:1.5;color:var(--ink);}
+/* o corpo */
+.aj-corpo{padding:18px 24px 20px;overflow:auto;display:grid;gap:14px;}
+.aj-cartao{border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:14px 16px;min-width:0;}
+.aj-cartao h4{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:13px;font-weight:600;color:var(--ink);}
+.aj-cartao h4 svg{width:14px;height:14px;color:var(--ink-muted);}
+.aj code{display:block;margin-top:4px;padding:4px 8px;border-radius:6px;background:var(--surface-2);font:12px/1.45 var(--font-mono);
+  color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}
+/* o agora e o "precisa de você" */
+.aj-agora,.aj-espera{display:flex;align-items:center;gap:14px;border-color:color-mix(in srgb,var(--aj-tom) 35%,var(--border));
+  background:linear-gradient(90deg,color-mix(in srgb,var(--aj-tom) 9%,var(--surface)),var(--surface));}
+.aj-espera{--aj-tom:var(--warn);--aj-tom-fundo:var(--warn-soft);}
+.aj-agora-icone{flex:none;width:44px;height:44px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;
+  background:var(--aj-tom-fundo);color:var(--aj-tom);}
+.aj-agora-icone svg{width:20px;height:20px;}
+.aj-agora-texto{flex:1;min-width:0;}
+.aj-agora-texto b{display:block;margin-top:2px;font-size:15px;font-weight:600;}
+.aj-agora-tempo{flex:none;align-self:flex-start;font-size:12px;font-weight:600;color:var(--aj-tom);padding:3px 8px;border-radius:999px;background:var(--aj-tom-fundo);}
+.aj-resposta p{margin:6px 0 0;font-size:13.5px;line-height:1.55;color:var(--ink);}
+/* o pedido e o porteiro */
+.aj-grade{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.aj-pedido{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink);}
+.aj-regua{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:3px;border-radius:10px;background:var(--surface-2);}
+.aj-regua-passo{display:flex;flex-direction:column;align-items:center;gap:1px;padding:7px 4px;border-radius:8px;color:var(--ink-muted);}
+.aj-regua-passo b{font-size:12.5px;font-weight:600;}
+.aj-regua-passo small{font-size:11px;opacity:.8;}
+.aj-regua-passo.aceso{background:var(--tom-fundo);color:var(--tom);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--tom) 40%,transparent);}
+.aj-nota{margin:10px 0 0;font-size:12.5px;line-height:1.5;color:var(--ink-muted);}
+/* os tons dos modelos (Haiku verde, Sonnet azul, Opus roxo) */
+.aj-tom-ok{--tom:var(--success);--tom-fundo:var(--success-soft);}
+.aj-tom-info{--tom:var(--info);--tom-fundo:var(--info-soft);}
+.aj-tom-roxo{--tom:var(--roxo);--tom-fundo:var(--roxo-soft);}
+.aj-tom-neutro{--tom:var(--ink-muted);--tom-fundo:var(--surface-2);}
+/* o fluxo: um nó por quem participa, ligados por uma linha */
+.aj-fluxo{list-style:none;margin:0;padding:0;position:relative;display:grid;gap:12px;}
+.aj-fluxo::before{content:"";position:absolute;left:17px;top:18px;bottom:18px;width:2px;border-radius:2px;background:var(--border);}
+.aj-no{position:relative;display:flex;gap:12px;align-items:flex-start;}
+.aj-no-marca{position:relative;z-index:1;flex:none;width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  background:var(--tom-fundo);color:var(--tom);font-weight:700;font-size:14px;box-shadow:0 0 0 3px var(--surface),inset 0 0 0 1px color-mix(in srgb,var(--tom) 35%,transparent);}
+.aj-no-marca svg{width:16px;height:16px;}
+.aj-no.aj-vivo .aj-no-marca{box-shadow:0 0 0 3px var(--surface),0 0 0 5px color-mix(in srgb,var(--tom) 35%,transparent);}
+.aj-no-corpo{flex:1;min-width:0;padding-top:1px;}
+.aj-no-topo{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
+.aj-no-topo b{font-size:13.5px;}
+.aj-no-papel{display:block;font-size:12px;color:var(--ink-muted);margin-top:1px;}
+.aj-no-agora{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin-top:6px;font-size:12.5px;color:var(--ink);}
+.aj-no-agora svg{width:13px;height:13px;color:var(--tom);}
+.aj-no-agora code{flex-basis:100%;margin-top:0;}
+.aj-no-resposta{display:block;margin-top:6px;font-size:12.5px;line-height:1.5;color:var(--ink-muted);font-style:italic;}
+.aj-no-vazio .aj-no-marca{background:var(--surface-2);color:var(--ink-faint);}
+/* a linha do tempo */
+.aj-tempo{list-style:none;margin:0;padding:0;position:relative;display:grid;gap:12px;}
+.aj-tempo::before{content:"";position:absolute;left:13px;top:14px;bottom:14px;width:2px;background:var(--border);}
+.aj-tempo li{position:relative;display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:start;}
+.aj-tempo-ponto{position:relative;z-index:1;width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  background:var(--surface-2);color:var(--ink-muted);box-shadow:0 0 0 3px var(--surface);}
+.aj-tempo-ponto svg{width:13px;height:13px;}
+.aj-tempo li:first-child .aj-tempo-ponto{background:var(--info-soft);color:var(--info);}
+.aj-tempo li.falhou .aj-tempo-ponto{background:var(--danger-soft);color:var(--danger);}
+.aj-tempo-texto{min-width:0;padding-top:4px;}
+.aj-tempo-texto b{font-size:13px;font-weight:600;}
+.aj-tempo li.falhou .aj-tempo-texto b{color:var(--danger);}
+.aj-tempo-hora{padding-top:5px;text-align:right;font-size:12px;color:var(--ink-muted);white-space:nowrap;}
+.aj-tempo-hora small{display:block;font-size:11px;color:var(--ink-faint);}
+/* o pé */
+.aj-pe{display:flex;align-items:center;gap:12px;padding:12px 24px;border-top:1px solid var(--border);background:var(--surface-2);}
+.aj-ao-vivo{flex:1;display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-muted);}
+.aj-ao-vivo i{width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 0 3px var(--success-soft);}
+@media (max-width:640px){
+  .aj-topo,.aj-corpo{padding-left:16px;padding-right:16px;}
+  .aj-pe{padding:12px 16px;}
+  .aj-grade{grid-template-columns:1fr;}
+  .aj-atualizado{margin-left:0;}
+  .aj-topo-titulo h3{font-size:18px;}
+}
