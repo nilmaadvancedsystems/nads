@@ -14,10 +14,6 @@ export function ChequeEspecial() {
   return (
     <section>
       <header className="topbar"><div><h2 className="page-title">Cheque especial</h2></div></header>
-      <p className="hint" style={{ marginTop: 0 }}>
-        Os dias em que o banco fecha negativo e o razão ainda não tem o cheque especial: gere o ajuste e o estorno (histórico {vm.historico}),
-        lance no Alterdata e importe o razão do banco de novo.
-      </p>
       {vm.carregado && (
         <div className="imp-lista" style={{ gap: 16 }}>
           {vm.bancos.map(b => <BlocoDoBanco key={b.id} b={b} vm={vm} />)}
@@ -51,8 +47,8 @@ function BlocoDoBanco({ b, vm }: { b: Banco; vm: Vm }) {
           </div>
           {/* as contas com o nome em cima, sem o #, e mais espaço entre as caixas (Vitor, 13/10/2026: "deixa mais bonitinho") */}
           <div style={{ display: 'flex', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, marginTop: 16 }}>
-            <Conta rotulo="Conta do banco (débito no ajuste)" valor={b.contaBanco} desabilitado={!b.noCadastro} onGravar={v => vm.gravarConta(b.id, 'contaContabil', v)} />
-            <Conta rotulo="Conta do cheque especial (crédito no ajuste)" valor={b.contaCheque} desabilitado={!b.noCadastro} onGravar={v => vm.gravarConta(b.id, 'contaChequeEspecial', v)} />
+            <Conta rotulo="Conta do banco" valor={b.contaBanco} desabilitado={!b.noCadastro} onGravar={v => vm.gravarConta(b.id, 'contaContabil', v)} />
+            <Conta rotulo="Conta do cheque especial" valor={b.contaCheque} desabilitado={!b.noCadastro} onGravar={v => vm.gravarConta(b.id, 'contaChequeEspecial', v)} />
             <span style={{ flex: 1 }} />
             <button type="button" className="btn btn-primary" disabled={!b.contaBanco || !b.contaCheque} onClick={() => vm.baixar(b.id)}
               title={b.contaBanco && b.contaCheque ? 'O ajuste e o estorno de cada dia negativo, no .xls do Alterdata' : 'Informe a conta do banco e a do cheque especial'}>
