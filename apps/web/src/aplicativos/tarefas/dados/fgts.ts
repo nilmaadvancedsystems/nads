@@ -24,6 +24,8 @@ export interface PedidoFgts {
   numeroGuia: string;
   valor: string;
   vencimento: string;
+  /** o que o DP precisa saber da guia (13/10/2026): filial na guia da matriz, débito antigo em aberto, emitida depois do vencimento… */
+  aviso: string;
   criadoEm: string;
   criadoPor: string;
   fimEm: string;
@@ -74,14 +76,16 @@ export function criarFgtsMemoria(): RepoFgts {
     pedidos: competencia => ({ carregados: true, porCnpj: pedidos.get(competencia) || new Map() }),
     async pedir({ cnpj, codigo, empresa, competencia, modo }) {
       const id = 'ex-' + cnpj + '-' + Date.now();
-      const base: PedidoFgts = { id, cnpj, codigo: String(codigo), empresa, competencia, modo, status: 'pendente', erro: '', resultado: '', pdfNome: '', numeroGuia: '', valor: '', vencimento: '', criadoEm: agora(), criadoPor: 'exemplo', fimEm: '', passos: [] };
+      const base: PedidoFgts = { id, cnpj, codigo: String(codigo), empresa, competencia, modo, status: 'pendente', erro: '', resultado: '', pdfNome: '', numeroGuia: '', valor: '', vencimento: '', aviso: '', criadoEm: agora(), criadoPor: 'exemplo', fimEm: '', passos: [] };
       const doMes = pedidos.get(competencia) || new Map<string, PedidoFgts>();
       pedidos.set(competencia, doMes);
       const por = (m: Partial<PedidoFgts>) => { doMes.set(cnpj, { ...(doMes.get(cnpj) || base), ...m }); mudou(); };
       por(base);
       setTimeout(() => por({ status: 'trabalhando', passos: [{ n: 1, nome: 'portal', url: 'https://fgtsdigital.sistema.gov.br/portal/', texto: '', quando: agora() }] }), 800);
       setTimeout(() => por(modo === 'emitir'
-        ? { status: 'pronto', resultado: 'guia emitida', pdfNome: 'FGTS ' + competencia + ' ' + cnpj + '.pdf', fimEm: agora() }
+        ? { status: 'pronto', resultado: 'guia emitida', pdfNome: 'FGTS ' + competencia + ' ' + cnpj + '.pdf', fimEm: agora(),
+          numeroGuia: '0126101366' + String(codigo).padStart(6, '0') + '-0', valor: '1.234,56', vencimento: '20/10/2026',
+          aviso: codigo % 3 === 0 ? 'há débito em aberto também em 08/2026' : '' }
         : { status: 'pronto', resultado: 'entrou no perfil do cliente (ensaio, nada emitido)', fimEm: agora() }), 3000);
     },
     async cancelar(id) {

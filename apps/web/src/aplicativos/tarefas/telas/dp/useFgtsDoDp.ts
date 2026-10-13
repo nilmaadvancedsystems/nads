@@ -48,7 +48,7 @@ export function useFgtsDoDp() {
   const robo = repo.robo();
   const { carregados, porCnpj } = repo.pedidos(competencia);
   const clientesDoEntregas = gmail.clientes();
-  const cnpjDoCodigo = new Map(clientesDoEntregas.lista.filter(c => c.documento && c.documento.length === 14).map(c => [Number(c.codigo), c.documento as string]));
+  const cnpjDoCodigo = new Map(clientesDoEntregas.lista.filter(c => c.documento && (c.documento.length === 14 || c.documento.length === 11)).map(c => [Number(c.codigo), c.documento as string]));
 
   const todas = doDp.clientes
     // só quem tem folha no mês (Vitor, 07/10/2026: "só apareça na emissão do FGTS empresas que tem folha"): o movimento do DP
