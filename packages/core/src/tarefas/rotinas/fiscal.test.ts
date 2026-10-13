@@ -34,6 +34,20 @@ describe('rotina do Fiscal (o Notion do Heverton)', () => {
     expect(etapaNoMes(ex(999999, '2026-10'), 'fiscal-icms')).toBe(true);
     expect(etapaNoMes(ex(292, '2026-10'), 'fiscal-envio')).toBe(true);
   });
+  it('o Presumido e o Real separados (13/10/2026): o PIS/COFINS e o IRPJ/CSLL de cada um', () => {
+    const ex = (codigo: number, competencia: string) => execucaoNova('X', codigo, competencia, 'fiscal');
+    const real = EMPRESAS.find(e => e.regime === 'Real')!.codigo!;
+    // 292 é Presumido: o cumulativo e o IRPJ/CSLL do trimestre
+    expect(etapaNoMes(ex(292, '2026-10'), 'fiscal-piscofins')).toBe(true);
+    expect(etapaNoMes(ex(292, '2026-10'), 'fiscal-piscofins-real')).toBe(false);
+    expect(etapaNoMes(ex(292, '2026-10'), 'fiscal-irpj-csll-real')).toBe(false);
+    // o Real: o não cumulativo e a estimativa todo mês; nada do Presumido
+    expect(etapaNoMes(ex(real, '2026-10'), 'fiscal-piscofins')).toBe(false);
+    expect(etapaNoMes(ex(real, '2026-10'), 'fiscal-piscofins-real')).toBe(true);
+    expect(etapaNoMes(ex(real, '2026-10'), 'fiscal-irpj-csll-real')).toBe(true);
+    expect(etapaNoMes(ex(real, '2026-09'), 'fiscal-irpj-csll')).toBe(false);
+    expect(etapaNoMes(ex(real, '2026-10'), 'fiscal-icms')).toBe(true);
+  });
   it('o regime do cadastro vale no lugar do da lista (13/10/2026)', () => {
     const ex = execucaoNova('X', 292, '2026-10', 'fiscal');
     usarRegimesDoCadastro(c => (c === 292 ? 'Simples' : ''));

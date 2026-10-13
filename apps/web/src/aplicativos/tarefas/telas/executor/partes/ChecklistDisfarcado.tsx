@@ -6,7 +6,7 @@
 // "Conferido" só na da vez; o "Desfazer" só no último conferido. A da vez fica aberta; as conferidas, fechadas (um clique
 // abre). Com o animejs (Vitor: "quero mais animações"): as faixas entram em sequência, a caixinha pula ao conferir, a
 // barra anda e a tela desce até a próxima.
-import type { tarefas as t } from '@nads/core';
+import { tarefas as t } from '@nads/core';
 import { Icone } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { ImportacaoNaEtapa } from '../../../../concilia-ai/ImportacaoNaEtapa';
@@ -35,6 +35,8 @@ export function ChecklistDisfarcado({ titulo, itens, definicao, alternar, empres
     fiscalFaltam: vm.faltamSaidas.length + vm.faltamEntradas.length,
     fiscalValores: [vm.valoresSaidas, vm.valoresEntradas].reduce((t, c) => t + (c ? c.diferentes.length + c.canceladasLancadas.length + c.semXml.length : 0), 0),
     fiscalTributacao: vm.errosTributacao.length,
+    // a receita do mês para o IRPJ/CSLL do trimestre (13/10/2026): o mês de fechamento soma os três
+    ...(vm.lucro ? (({ mercadorias, servicos, irrf, csll }) => ({ irMerc: mercadorias, irServ: servicos, irIrrf: irrf, irCsll: csll }))(t.sieg.receitaParaIrpj(competencia, vm.lucro.receitas)) : {}),
   } : null;
   const gravadas = useRef<Record<string, number>>({});
   useEffect(() => {

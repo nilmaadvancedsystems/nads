@@ -64,40 +64,59 @@ export const ROTINA_FISCAL: Rotina = {
       item('base-calculo', 'Conferir composição da base de cálculo', { sub: ['Monofásico', 'ST', 'Retidos'], painel: 'base' }),
       item('pgdas', 'Transmitir PGDAS-D', { sub: ['Anexo e atividade', 'Receita bruta dos últimos 12 meses (RBT12)'], painel: 'pgdas' }),
       item('das', 'Gerar DAS'),
+      // subir a guia (13/10/2026: "coloca a etapa de upar o DAS e DAE"): vai para a pasta do cliente pelo Claudio Secretario
+      item('das-subir', 'Subir o DAS (PDF)', { painel: 'guia-das' }),
       item('recibo', 'Baixar recibo, extrato e declaração'),
     ], { regimes: ['Simples'] }),
-    // ─── Apuração do Presumido e do Real (Vitor, 06/10/2026: "continue fazendo as coisas do fiscal") ──────────
-    // Rascunho para o Heverton ajustar (o Notion dele só tinha o Simples): cada uma só para Presumido e Real (no Simples e
-    // nos outros regimes, "não se aplica"); o IRPJ/CSLL só no mês que fecha o trimestre.
+    // ─── Apuração do Presumido e do Real (Vitor, 06/10/2026: "continue fazendo as coisas do fiscal"; 13/10/2026: "agora
+    // monte a rotina do lucro presumido e real") ──────────────────────────────────────────────────────────────────
+    // O ICMS e o ISS iguais nos dois; o PIS/COFINS cumulativo no Presumido e não cumulativo (com créditos) no Real; o
+    // IRPJ/CSLL do Presumido no fim do trimestre e o do Real por estimativa todo mês. Cada painel faz a prévia pelos XMLs.
+    // Desde 2025 o PIS/COFINS e o IRPJ/CSLL vão na MIT e o DARF sai pela DCTFWeb (etapa EFD-REINF e DCTFWeb).
     etapa('fiscal-icms', 'Apuração', 'ICMS', 'Apure o ICMS próprio do mês, transmita a DAPI e gere a guia (dia 9).', [
       item('icms-apuracao', 'Apurar o ICMS próprio', { sub: ['Débitos das saídas', 'Créditos das entradas', 'Saldo credor anterior'], painel: 'icms', importar: ['saidas', 'entradas'] }),
+      item('icms-st', 'ICMS-ST retido nas saídas (quando a empresa é substituta)', { aviso: 'O ST retido vai em guia própria, separado do ICMS do mês.' }),
+      item('icms-ipi', 'Apurar o IPI (só a indústria)', { aviso: 'Débito do IPI das saídas menos o crédito das compras de insumos; DARF até o dia 25.' }),
       item('icms-dapi', 'Transmitir a DAPI (SEF/MG)'),
       item('icms-guia', 'Gerar a guia do ICMS'),
+      item('icms-subir', 'Subir o DAE do ICMS (PDF)', { painel: 'guia-dae' }),
     ], { regimes: ['Presumido', 'Real'] }),
     etapa('fiscal-iss', 'Apuração', 'ISS', 'Apure o ISS dos serviços prestados e entregue a declaração do município.', [
       item('iss-apuracao', 'Apurar o ISS próprio', { painel: 'prestados', importar: ['prestados'] }),
       item('iss-declaracao', 'Entregar a declaração de serviços do município'),
       item('iss-guia', 'Gerar a guia do ISS'),
     ], { regimes: ['Presumido', 'Real'] }),
-    etapa('fiscal-piscofins', 'Apuração', 'PIS/COFINS', 'Apure o PIS e a COFINS do mês e gere o DARF.', [
-      item('pc-base', 'Conferir a base (receitas, monofásicos e isentos)', { aviso: 'No Presumido é cumulativo (sem créditos); no Real, não cumulativo (com os créditos das entradas).', painel: 'base', importar: ['saidas', 'prestados'] }),
-      item('pc-apuracao', 'Apurar PIS e COFINS'),
-      item('pc-darf', 'Gerar os DARFs'),
-    ], { regimes: ['Presumido', 'Real'] }),
-    etapa('fiscal-irpj-csll', 'Apuração', 'IRPJ/CSLL', 'Apure o IRPJ e a CSLL do trimestre e gere os DARFs.', [
-      item('ir-receita', 'Somar a receita do trimestre', { painel: 'irpj', importar: ['saidas', 'prestados'] }),
-      item('ir-apuracao', 'Apurar IRPJ (com adicional) e CSLL'),
-      item('ir-darf', 'Gerar os DARFs (cota única ou parcelas)'),
-    ], { regimes: ['Presumido', 'Real'], meses: [3, 6, 9, 12] }),
+    etapa('fiscal-piscofins', 'Apuração', 'PIS/COFINS cumulativo', 'Presumido: cumulativo, 0,65% e 3% sobre a receita do mês, sem créditos (vence dia 25).', [
+      item('pc-base', 'Conferir a base: receitas, devoluções, monofásicos e o ICMS destacado', { painel: 'piscofins', importar: ['saidas', 'prestados'] }),
+      item('pc-retidos', 'Abater o PIS/COFINS retido nas notas de serviço'),
+      item('pc-mit', 'Informar na MIT (códigos 8109 e 2172; o DARF sai pela DCTFWeb)'),
+    ], { regimes: ['Presumido'] }),
+    etapa('fiscal-piscofins-real', 'Apuração', 'PIS/COFINS não cumulativo', 'Real: não cumulativo, 1,65% e 7,6% menos os créditos das entradas (vence dia 25).', [
+      item('pcr-debitos', 'Conferir os débitos: receitas, devoluções, monofásicos e o ICMS destacado', { painel: 'piscofins', importar: ['saidas', 'prestados'] }),
+      item('pcr-creditos', 'Conferir os créditos: compras, fretes, energia, aluguéis e depreciação', { painel: 'creditos', importar: ['entradas'], aviso: 'Uso e consumo não dá crédito. Energia, aluguel e depreciação vêm do Contábil.' }),
+      item('pcr-mit', 'Informar na MIT e na EFD-Contribuições (códigos 6912 e 5856)'),
+    ], { regimes: ['Real'] }),
+    etapa('fiscal-irpj-csll', 'Apuração', 'IRPJ/CSLL trimestral', 'Presumido: apure o IRPJ e a CSLL do trimestre (vence no último dia útil do mês seguinte).', [
+      item('ir-receita', 'Somar a receita do trimestre e calcular', { painel: 'irpj', importar: ['saidas', 'prestados'] }),
+      item('ir-outras', 'Somar as receitas financeiras e os ganhos (do Contábil)', { aviso: 'Rendimentos de aplicação, juros recebidos e ganhos de capital entram inteiros na base.' }),
+      item('ir-mit', 'Informar na MIT (códigos 2089 e 2372): cota única ou 3 cotas'),
+    ], { regimes: ['Presumido'], meses: [3, 6, 9, 12] }),
+    etapa('fiscal-irpj-csll-real', 'Apuração', 'IRPJ/CSLL por estimativa', 'Real: a estimativa do mês pela receita, ou o balancete de suspensão/redução (vence no último dia útil do mês seguinte).', [
+      item('irr-forma', 'Escolher a forma do mês: estimativa pela receita ou balancete de suspensão/redução', { aviso: 'O balancete vem do Contábil. Na apuração trimestral, só no fim do trimestre.' }),
+      item('irr-estimativa', 'Calcular a estimativa', { painel: 'irpj', importar: ['saidas', 'prestados'] }),
+      item('irr-mit', 'Informar na MIT (códigos 2362 e 2484)'),
+    ], { regimes: ['Real'] }),
     // ─── ICMS das entradas e DAS-MEI (Processos do Fiscal, 06/10/2026: ROT-09 e ROT-02) ─────────────────────────
     etapa('fiscal-icms-entradas', 'Apuração', 'ICMS das entradas', 'Antecipação, ST e DIFAL das notas interestaduais recebidas (até o último dia do mês seguinte).', [
       item('icms-interestaduais', 'Identificar as entradas interestaduais que pedem Antecipação, ST ou DIFAL', { painel: 'interestaduais', importar: ['entradas'], aviso: 'Nota que já teve ICMS-ST só entra se o responsável não recolheu: consulte o cliente.' }),
       item('icms-calculo', 'Calcular: ST no SIARE (SEFAZ-MG); Antecipação e DIFAL no Alterdata'),
-      item('icms-dae', 'Gerar o DAE e arquivar na pasta do cliente'),
+      item('icms-dae', 'Gerar o DAE'),
+      item('icms-dae-subir', 'Subir o DAE (PDF)', { painel: 'guia-dae' }),
     ], { regimes: ['Simples', 'Presumido', 'Real'] }),
     etapa('fiscal-mei', 'Apuração', 'DAS-MEI', 'Gere o DAS-MEI do mês (vence dia 20).', [
       item('mei-limite', 'Conferir o faturamento (limite de R$ 81 mil no ano)', { aviso: 'Passou do teto: o MEI precisa ser desenquadrado.' }),
       item('mei-das', 'Gerar o DAS-MEI'),
+      item('mei-subir', 'Subir o DAS-MEI (PDF)', { painel: 'guia-das' }),
       item('mei-comprovante', 'Baixar o comprovante'),
     ], { regimes: ['MEI'] }),
     // ─── Obrigações ───────────────────────────────────────────────────────────
