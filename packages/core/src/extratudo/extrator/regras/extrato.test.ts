@@ -124,6 +124,35 @@ describe('o quadro RESUMO do fim não é lançamento (Vitor, 13/10/2026)', () =>
   });
 });
 
+describe('o extrato da Caixa (Vitor, 13/10/2026)', () => {
+  // as colunas de verdade do PDF da Caixa: data 25, documento ~105, texto 147, valor ~410, saldo ~530
+  const linha = (y: number, partes: [string, number][]) => partes.map(([texto, x]) => ({ texto, x, y, largura: texto.length * 5 }));
+  const p = [
+    ...linha(630, [['Saldo anterior a 01/01/2026 R$ 10,40 C', 426]]),
+    ...linha(604, [['2 de janeiro de 2026, sexta-feira', 26]]),
+    ...linha(572, [['Data/Hora', 25], ['Nr. Doc.', 95], ['Descrição/Detalhamento', 147], ['Valor (R$)', 406], ['Saldo(R$)', 527]]),
+    ...linha(551, [['02/01/2026', 25], ['AZCX VS CD', 147]]),
+    ...linha(546, [['6726', 107], ['226,19 C', 417], ['236,59 C', 537]]),
+    ...linha(542, [['07:30:31', 25]]),
+    ...linha(527, [['DEB PIX INS MANUAL DADOS', 147]]),
+    ...linha(517, [['02/01/2026', 25], ['11426314000177 LEONARDO MENDES', 147]]),
+    ...linha(513, [['20925', 105], ['70,00 D', 421], ['166,59 C', 537]]),
+    ...linha(508, [['09:25:41', 25], ['MARQUES', 147]]),
+    ...linha(484, [['03/01/2026', 25], ['DEBITO DE IOF', 147]]),
+    ...linha(479, [['0', 114], ['30,39 D', 421], ['136,20 C', 537]]),
+    ...linha(475, [['03:48:54', 25]]),
+    ...linha(459, [['SALDO DIA', 147]]),
+    ...linha(454, [['0', 114], ['136,20 C', 537]]),
+  ];
+  it('cada bloco é um lançamento com o texto dele; o SALDO DIA não entra', () => {
+    expect(lancamentosDoPdf([p], 'banco', 2000)).toEqual([
+      { data: '2026-01-02', valor: 22619, historico: 'AZCX VS CD 6726' },
+      { data: '2026-01-02', valor: -7000, historico: 'DEB PIX INS MANUAL DADOS 11426314000177 LEONARDO MENDES 20925 MARQUES' },
+      { data: '2026-01-03', valor: -3039, historico: 'DEBITO DE IOF' },
+    ]);
+  });
+});
+
 describe('saldo anterior do extrato (abre a conta quando não há mês antes)', () => {
   it('a linha SALDO ANTERIOR: o valor da direita, com o sinal', () => {
     const p = pagina([

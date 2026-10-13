@@ -154,8 +154,82 @@ export function paginasPorMes(paginas: ItemDeTexto[][], anoPadrao = new Date().g
   return out;
 }
 
+/**
+ * O extrato da Caixa (internet banking, "Data/Hora  Nr. Doc.  Descrição/Detalhamento  Valor (R$)  Saldo(R$)"): cada
+ * lançamento é um bloco de 3 a 5 linhas — o texto pode vir acima da linha do valor, a hora e o detalhe embaixo — e cada dia
+ * fecha com "SALDO DIA" (o valor só na coluna Saldo). Vitor, 13/10/2026: o leitor genérico contava o saldo do dia como
+ * lançamento e punha o texto de um no anterior.
+ */
+export function ehExtratoDaCaixa(texto: string): boolean {
+  const t = normalizarTexto(texto);
+  return /data hora nr doc descricao detalhamento valor r saldo r/.test(t);
+}
+
+function lancamentosDaCaixa(todas: Linha[][], ano: number): { lancamentos: Lancamento[]; pagina: number[] } {
+  const lancamentos: Lancamento[] = [];
+  const pagina: number[] = [];
+  let xValor: number | null = null, xSaldo: number | null = null;
+  for (const [nPagina, linhas] of todas.entries()) {
+    // as colunas pelo cabeçalho da tabela (a borda esquerda de "Valor" e de "Saldo")
+    for (const l of linhas) {
+      const v = l.tokens.find(t => /^valor$/i.test(t.s)), s = l.tokens.find(t => /^saldo\(r\$\)$/i.test(t.s) || /^saldo$/i.test(t.s));
+      if (v && s && /descri/i.test(l.texto)) { xValor = v.x; xSaldo = s.x; }
+    }
+    if (xValor == null || xSaldo == null) continue;
+    const meio = (xValor + xSaldo) / 2 + 20;
+    // a linha do valor: um valor (com C/D) antes do meio entre Valor e Saldo
+    const blocos: { y: number; linha: Linha; valor: Token; sinal: string }[] = [];
+    const soltas: Linha[] = [];
+    for (const l of linhas) {
+      if (/^(data hora|movimentacoes desde|saldo anterior a|extrato|cliente|conta|data \d)/.test(normalizarTexto(l.texto))) continue;
+      if (/^\d{1,2} de [a-z]+ de \d{4}/.test(normalizarTexto(l.texto))) continue;
+      // o fecho do dia: "SALDO DIA" e a linha só com o saldo ("0  136,20 C") não são de lançamento nenhum
+      if (/^saldo dia\b/.test(normalizarTexto(l.texto))) continue;
+      if (l.tokens.every(t => t.s === '0' || /^[CD]$/i.test(t.s) || (RE_VALOR.test(t.s) && t.x >= meio))) continue;
+      const i = l.tokens.findIndex(t => RE_VALOR.test(t.s) && t.x < meio);
+      if (i >= 0) {
+        const prox = l.tokens[i + 1];
+        blocos.push({ y: l.y, linha: l, valor: l.tokens[i], sinal: prox && /^[CD]$/i.test(prox.s) ? prox.s.toUpperCase() : '' });
+      } else soltas.push(l);
+    }
+    // cada linha solta vai para o bloco de valor mais perto (o "SALDO DIA" e a linha só com o saldo não têm valor: ficam de fora)
+    const doBloco = new Map<number, Linha[]>(blocos.map((_, i) => [i, []]));
+    for (const l of soltas) {
+      if (!blocos.length) break;
+      let melhor = 0;
+      for (let i = 1; i < blocos.length; i++) if (Math.abs(blocos[i].y - l.y) < Math.abs(blocos[melhor].y - l.y)) melhor = i;
+      if (Math.abs(blocos[melhor].y - l.y) <= 24) doBloco.get(melhor)!.push(l);
+    }
+    blocos.forEach((b, i) => {
+      const todasDoBloco = [b.linha, ...doBloco.get(i)!].sort((a, c) => c.y - a.y);
+      let data: string | null = null;
+      const partes: string[] = [];
+      for (const l of todasDoBloco) {
+        for (const t of l.tokens) {
+          if (t === b.valor || (t.x > b.valor.x && (RE_VALOR.test(t.s) || /^[CD]$/i.test(t.s)))) continue;
+          if (RE_DATA.test(t.s) && /\d{4}$/.test(t.s) && t.x < 60) { data = data || lerData(t.s, ano); continue; }
+          if (/^\d{2}:\d{2}:\d{2}$/.test(t.s)) continue;
+          partes.push(t.s);
+        }
+      }
+      const c = centavos(b.valor.s);
+      if (!data || c == null || c === 0) return;
+      // o número de documento "0" (o da Caixa nas tarifas e no IOF) não diz nada
+      const historico = partes.filter(p => p !== '0').join(' ').replace(/\s+/g, ' ').trim();
+      lancamentos.push({ data, valor: b.sinal === 'D' ? -Math.abs(c) : Math.abs(c), historico: historico || '(sem histórico)' });
+      pagina.push(nPagina);
+    });
+  }
+  // o bloco que começa numa página e termina na outra fica na ordem das datas
+  return { lancamentos, pagina };
+}
+
 function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: number): { lancamentos: Lancamento[]; pagina: number[] } {
   const todas = paginas.map(montarLinhas);
+  if (lado === 'banco') {
+    const texto = todas.map(p => p.map(l => l.texto).join('\n')).join('\n');
+    if (ehExtratoDaCaixa(texto)) return lancamentosDaCaixa(todas, anoDoTexto(texto, anoPadrao));
+  }
   const paginaDe: number[] = [];
   const ano = anoDoTexto(todas.map(p => p.map(l => l.texto).join('\n')).join('\n'), anoPadrao);
   const saida: Lancamento[] = [];
