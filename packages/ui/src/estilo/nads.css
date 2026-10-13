@@ -3648,3 +3648,15 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
   padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink);box-shadow:var(--shadow-md, 0 4px 12px rgba(0,0,0,.3));
   font-size:12px;font-weight:400;line-height:16px;white-space:normal;text-align:left;opacity:0;visibility:hidden;pointer-events:none;}
 .dica:hover .dica-balao,.dica:focus-visible .dica-balao{opacity:1;visibility:visible;}
+
+/* Cadastro › Agentes (13/10/2026): o cartão da sessão abre a janela que explica como está funcionando (o desenho da
+   janela padrão, mais larga e com o texto à esquerda) */
+.agentes-cartao{cursor:pointer;}
+.agentes-cartao:hover{border-color:var(--border-strong);}
+.agentes-cartao:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.modal.modal-centro.agentes-janela{max-width:560px;text-align:left;max-height:calc(100vh - 32px);overflow:auto;}
+.modal.modal-centro.agentes-janela h3{padding-right:32px;margin-bottom:10px;}
+.modal.modal-centro.agentes-janela p{margin:0 0 8px;}
+.agentes-janela h4{margin:14px 0 6px;font-size:13px;font-weight:600;}
+.agentes-janela-lista{list-style:none;margin:0;padding:0;display:grid;gap:8px;font-size:13px;line-height:1.45;}
+.agentes-janela-lista .hint{margin:0;}

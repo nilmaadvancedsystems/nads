@@ -1,9 +1,10 @@
 // Cadastro › Agentes (Vitor, 13/10/2026: "tem como upar uma página no nads disso?"; depois: "muita informação, muito
 // feio"): o essencial de cada sessão do Claude Code. Um cartão curto por sessão: o projeto, o estado, o nível do porteiro
 // e há quanto tempo; uma linha com o que está fazendo agora; e os subagentes em etiquetas (os que terminaram, só contados).
-import { Alerta, Esqueleto, Icone, Segmentado, useCarregando } from '@nads/ui';
+import { Alerta, Esqueleto, Icone, Segmentado, classeDaJanela, useCarregando } from '@nads/ui';
+import { createPortal } from 'react-dom';
 import type { AgenteNoPainel } from '../../../dados/agentes';
-import { NIVEL, STATUS, nomeDaFerramenta, useAgentesNoPainel, type FiltroDosAgentes } from './useAgentesNoPainel';
+import { NIVEL, STATUS, nomeDaFerramenta, useAgentesNoPainel, type ExplicacaoDaSessao, type FiltroDosAgentes } from './useAgentesNoPainel';
 
 const FILTROS: { valor: FiltroDosAgentes; rotulo: string }[] = [{ valor: 'ativas', rotulo: 'Ativas' }, { valor: 'todas', rotulo: 'Todas (24 h)' }];
 const UMA_LINHA = { margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } as const;
@@ -39,7 +40,9 @@ export function PainelDosAgentes() {
         const terminaram = subs.length - rodando.length;
         const agora = principal && fazendo(principal);
         return (
-          <section key={s.sessao} className="card" style={s.inativa ? { opacity: 0.55 } : undefined}>
+          <section key={s.sessao} className="card agentes-cartao" style={s.inativa ? { opacity: 0.55 } : undefined}
+            role="button" tabIndex={0} aria-label={'Como está funcionando: ' + (s.projeto || 'sessão')} title="Clique para ver como está funcionando"
+            onClick={() => vm.abrir(s.sessao)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); vm.abrir(s.sessao); } }}>
             <div className="dp-lista-topo">
               <h3 className="dp-titulo">{s.projeto || 'Sessão'}</h3>
               <span className={'badge ' + st.badge}>{st.rotulo}</span>
@@ -61,6 +64,39 @@ export function PainelDosAgentes() {
           </section>
         );
       })}
+      {vm.explicacao && createPortal(<JanelaDaExplicacao e={vm.explicacao} fechar={vm.fechar} />, document.body)}
     </section>
+  );
+}
+
+/** A janela flutuante (13/10/2026: "quando eu clique, abra uma janela flutuante explicando como está funcionando"): a
+ * situação, o porteiro, o que faz agora, os ajudantes e os últimos passos, em frases. Ao vivo enquanto aberta. */
+function JanelaDaExplicacao({ e, fechar }: { e: ExplicacaoDaSessao; fechar: () => void }) {
+  return (
+    <div className="modal-overlay" role="presentation" onClick={fechar} onKeyDown={ev => { if (ev.key === 'Escape') fechar(); }}>
+      <div className={classeDaJanela({}) + ' agentes-janela'} role="dialog" aria-modal="true" aria-labelledby="tituloAgentesJanela" onClick={ev => ev.stopPropagation()}>
+        <button type="button" className="modal-x" aria-label="Fechar" title="Fechar" onClick={fechar} autoFocus><Icone nome="x" /></button>
+        <h3 id="tituloAgentesJanela">Como está funcionando · {e.titulo}</h3>
+        {e.paragrafos.map(t => <p key={t}>{t}</p>)}
+        {e.ajudantes.length > 0 && (
+          <>
+            <h4>Os ajudantes</h4>
+            <ul className="agentes-janela-lista">
+              {e.ajudantes.map((a, i) => (
+                <li key={i}><span className={'badge ' + (STATUS[a.status] || STATUS.parado).badge}>{(STATUS[a.status] || STATUS.parado).rotulo}</span> <b>{a.nome}</b><br /><span className="hint">{a.texto}</span></li>
+              ))}
+            </ul>
+          </>
+        )}
+        {e.passos.length > 0 && (
+          <>
+            <h4>Os últimos passos</h4>
+            <ul className="agentes-janela-lista">
+              {e.passos.map((p, i) => <li key={i}><span className="hint">{p.hora}</span> {p.texto}</li>)}
+            </ul>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
