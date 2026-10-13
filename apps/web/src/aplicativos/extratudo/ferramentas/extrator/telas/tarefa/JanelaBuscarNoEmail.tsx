@@ -7,7 +7,7 @@
 import { extrator as x, type creditor } from '@nads/core';
 import { CampoData, classeDaJanela, Icone, LogoGmail, Segmentado } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
-import { useDrive } from '../../dados/repo';
+import { useDriveDaBusca } from './useDriveDaBusca';
 
 const mensagemDeErro = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const ultimoDia = (a: number, m: number) => new Date(Date.UTC(a, m, 0)).getUTCDate();
@@ -43,7 +43,7 @@ interface Estado {
 }
 
 export function useBuscarNoEmail(importar: (linha: Linha, fs: File[]) => void, pedirLogin: (depois: () => void) => void, codigo: number | null) {
-  const { drive, acesso } = useDrive();
+  const { drive, acesso } = useDriveDaBusca();
   const [e, setE] = useState<Estado | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   // o endereço do PDF aberto: some quando troca de anexo ou fecha a janela
