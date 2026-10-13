@@ -100,8 +100,6 @@ const OPCOES_DE_TESTE: OpcaoDeTeste[] = [
   { id: 'apagar', rotulo: 'Apagar os dados de teste' },
 ];
 
-const LIMITE_CORRECOES = 30;
-
 function PendenciasDoBanco({ itens }: { itens: x.CorrecaoDoRazao[] }) {
   if (!itens.length) return null;
   const valor = (n: number | null) => (n == null ? '' : x.reaisBR(Math.abs(n)));
@@ -115,7 +113,7 @@ function PendenciasDoBanco({ itens }: { itens: x.CorrecaoDoRazao[] }) {
                 <th className="num">Banco</th><th className="num">Razão</th><th className="num">Diferença</th>
               </tr></thead>
               <tbody>
-                {itens.slice(0, LIMITE_CORRECOES).map((c, i) => {
+                {itens.map((c, i) => {
                   // o lote quebrado: a linha do lote com os totais, cada lançamento numa linha embaixo e a dica no fim
                   const partes = c.partes || [];
                   // a dica só vira linha própria no lote quebrado; sem partes ela vai dentro da célula (Vitor, 13/10/2026:
@@ -152,7 +150,6 @@ function PendenciasDoBanco({ itens }: { itens: x.CorrecaoDoRazao[] }) {
               </tbody>
             </table>
           </div>
-          {itens.length > LIMITE_CORRECOES && <p className="hint">E mais {itens.length - LIMITE_CORRECOES}: veja tudo em Extrato × sistema.</p>}
         </>
     </FaixaQueAbre>
   );
