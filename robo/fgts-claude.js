@@ -432,12 +432,12 @@ function iniciarFgtsPeloClaude(db, log) {
   let processoAtual = null;
   function rodarClaude(texto, aoPasso, aoResultado, limiteMs) {
     return new Promise(resolve => {
-      // o pedido vai por arquivo e o Claude é mandado lê-lo (o texto na linha de comando estourava o limite do Windows com lotes
-      // grandes: ENAMETOOLONG, 10/10/2026)
-      const arquivoPedido = path.join(os.tmpdir(), 'fgts-pedido-' + Date.now() + '.txt');
-      fs.writeFileSync(arquivoPedido, texto, 'utf8');
-      const filho = processoAtual = spawn(CLAUDE, ['-p', 'Leia o arquivo ' + arquivoPedido + ' (com a ferramenta de leitura de arquivos) e faça exatamente o que ele manda; é o seu pedido completo. Responda no formato que ele descreve.', '--add-dir', os.tmpdir(), '--chrome', '--model', MODELO, '--permission-mode', 'bypassPermissions',
-        '--output-format', 'stream-json', '--verbose', '--no-session-persistence'], { cwd: __dirname, windowsHide: true, env: ambienteLimpo(), stdio: ['ignore', 'pipe', 'pipe'] });
+      // o pedido vai pela entrada padrão: na linha de comando estourava o limite do Windows com lotes grandes (ENAMETOOLONG,
+      // 10/10/2026), e por arquivo ("leia e faça o que ele manda") o classificador do Claude Code negava os roteiros (13/10/2026)
+      const filho = processoAtual = spawn(CLAUDE, ['-p', '--chrome', '--model', MODELO, '--permission-mode', 'bypassPermissions',
+        '--output-format', 'stream-json', '--verbose', '--no-session-persistence'], { cwd: __dirname, windowsHide: true, env: ambienteLimpo(), stdio: ['pipe', 'pipe', 'pipe'] });
+      filho.stdin.on('error', () => { /* o processo saiu antes de ler tudo; o erro aparece no close */ });
+      filho.stdin.end(texto, 'utf8');
       let resto = '', erros = '', final = '', algum = null;
       const vistos = new Set();
       const lerTexto = t => {
@@ -464,8 +464,8 @@ function iniciarFgtsPeloClaude(db, log) {
       });
       filho.stderr.on('data', b => { erros += String(b); if (erros.length > 3000) erros = erros.slice(-3000); });
       const relogio = setTimeout(() => { try { filho.kill(); } catch (_) {} }, limiteMs || LIMITE_MS);
-      filho.on('error', err => { clearTimeout(relogio); processoAtual = null; try { fs.rmSync(arquivoPedido, { force: true }); } catch (_) { /* tmp */ } resolve({ resultado: algum, erro: err.message }); });
-      filho.on('close', () => { clearTimeout(relogio); processoAtual = null; try { fs.rmSync(arquivoPedido, { force: true }); } catch (_) { /* tmp */ } resolve({ resultado: algum, erro: (final || erros).slice(-300) }); });
+      filho.on('error', err => { clearTimeout(relogio); processoAtual = null; resolve({ resultado: algum, erro: err.message }); });
+      filho.on('close', () => { clearTimeout(relogio); processoAtual = null; resolve({ resultado: algum, erro: (final || erros).slice(-300) }); });
     });
   }
 }
