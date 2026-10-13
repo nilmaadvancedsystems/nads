@@ -1,7 +1,7 @@
 // Senhas › Acesso (07/10/2026: a chave por pessoa, "como o WhatsApp"): os pedidos de acesso (Liberar / Recusar), quem tem
 // acesso (Tirar o acesso: o cofre troca de chave) e o código de recuperação (gerar um novo).
 import { Esqueleto, Icone, useCarregando } from '@nads/ui';
-import { CofreFechado } from './CofreFechado';
+import { TelaDeBloqueio } from './TelaDeBloqueio';
 import { useCofre } from './useCofre';
 
 const quando = (iso?: string) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
@@ -10,7 +10,7 @@ export function AcessoAoCofre() {
   const vm = useCofre();
   useCarregando(vm.estado === 'carregando');
   if (vm.estado === 'carregando') return <Esqueleto linhas={6} />;
-  if (vm.estado !== 'aberto') return <CofreFechado vm={vm} />;
+  if (vm.estado !== 'aberto') return <TelaDeBloqueio vm={vm} />;
   return (
     <section className="cofre-acesso">
       {vm.pedidos.length > 0 && (

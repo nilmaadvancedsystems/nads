@@ -4,6 +4,7 @@ import { cofre as c } from '@nads/core';
 import { BotaoAcao, BotaoIcone, CampoArquivo, Esqueleto, Icone, useCarregando, useRetorno } from '@nads/ui';
 import { Cartao, JanelaLateral, Linha } from '../janela/JanelaLateral';
 import { CofreFechado } from './CofreFechado';
+import { TelaDeBloqueio } from './TelaDeBloqueio';
 import { Senha } from './SegredosDaEmpresa';
 import { useContasGov } from './useContasGov';
 
@@ -13,7 +14,7 @@ export function ContasGov() {
   useCarregando(vm.cofre.estado === 'carregando');
   if (vm.cofre.estado === 'carregando') return <Esqueleto linhas={8} />;
   // sem acesso ao cofre, só a tela de pedir acesso (13/10/2026: "não era pra tela nem abrir, era pra só ter a tela de pedir acesso")
-  if (vm.cofre.estado !== 'aberto') return <section><CofreFechado vm={vm.cofre} /></section>;
+  if (vm.cofre.estado !== 'aberto') return <TelaDeBloqueio vm={vm.cofre} />;
   const aberto = vm.cofre.estado === 'aberto';
   return (
     <section>

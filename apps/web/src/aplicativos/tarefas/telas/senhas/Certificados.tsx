@@ -3,7 +3,7 @@
 // filtra), os cartões com a contagem regressiva dos que pedem atenção e a lista; clicar abre o certificado da empresa.
 import { Esqueleto, useCarregando } from '@nads/ui';
 import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
-import { CofreFechado } from './CofreFechado';
+import { TelaDeBloqueio } from './TelaDeBloqueio';
 import { SegredosDaEmpresa } from './SegredosDaEmpresa';
 import { useCertificados, type FiltroDeCertificados } from './useCertificados';
 
@@ -87,7 +87,7 @@ export function Certificados() {
   useCarregando(vm.carregando);
   if (vm.carregando) return <Esqueleto linhas={8} />;
   // sem acesso ao cofre, só a tela de pedir acesso (13/10/2026: "não era pra tela nem abrir, era pra só ter a tela de pedir acesso")
-  if (vm.cofre.estado !== 'aberto') return <section><CofreFechado vm={vm.cofre} /></section>;
+  if (vm.cofre.estado !== 'aberto') return <TelaDeBloqueio vm={vm.cofre} />;
   const doMes = vm.mes ? vm.porMes.find(m => m.chave === vm.mes) : null;
   return (
     <section>
