@@ -5,7 +5,7 @@ import { tarefas as t } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNotasDaConferencia } from '../../../concilia-ai/importadosNaEtapa';
-import { useExecucoes, useSieg } from '../../dados/repo';
+import { useExecucoes, useRegimesDoEntregas, useSieg } from '../../dados/repo';
 
 const VAZIO: t.painel.NotasDoPainel = { entradas: [], saidas: [], tomados: [], prestados: [] };
 
@@ -15,6 +15,7 @@ export type TopicoDeImportar = t.RelatorioImportavel | 'xmls';
 export const ROTULO_DO_RELATORIO: Record<t.RelatorioImportavel, string> = { entradas: 'Entradas', saidas: 'Saídas', tomados: 'Tomados', prestados: 'Prestados' };
 
 export function usePainelDoFiscal(empresa: string, codigo: string, competencia: string, meses: readonly string[]) {
+  useRegimesDoEntregas(); // o regime do Entregas, quando chega
   const lidas = useNotasDaConferencia(empresa);
   const sieg = useSieg();
   const cont = codigo ? sieg.contagem(codigo, competencia) : null;

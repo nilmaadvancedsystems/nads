@@ -1,17 +1,28 @@
 // ViewModel de Cadastro › Empresa: as regras da empresa que os aplicativos seguem. Hoje, "presta serviços?"
 // (Vitor, 30/09/2026: a regra fica no Cadastro): decide a aba Prestados na Importação e os serviços prestados
 // na Conferência. Grava na hora, com o registro no histórico.
-import { empresas } from '@nads/core';
+import { empresas, tarefas } from '@nads/core';
+import { regimeNoEntregas } from '../../../dados/fonte';
+import { useRegimesDoEntregas } from '../../../dados/repo';
 import { useCadastroAberto } from '../useCadastroAberto';
 
 export function useDadosDaEmpresa(rota: string) {
   const c = useCadastroAberto(rota);
+  useRegimesDoEntregas();
+  const codigo = c.empresa?.codigo ?? null;
+  const doEntregas = regimeNoEntregas(codigo);
+  const padraoEntregas = empresas.cadastro.regimeDoEntregas(doEntregas);
+  const regimeQueVale = (c.cadastro.regime as string | undefined) || padraoEntregas || tarefas.regimeDaLista(codigo) || c.empresa?.regime || '';
   return {
     empresa: c.empresa,
     carregando: c.carregando,
     /** o regime (13/10/2026): o escolhido no cadastro (null = vale o da lista do escritório) e o da lista */
     regime: (c.cadastro.regime as empresas.cadastro.Regime | undefined) ?? null,
-    regimeDaLista: c.empresa?.regime || '',
+    /** sem escolher no nads: o do Entregas (o enquadramento; sem ele, a Receita) ou o da lista do escritório */
+    regimePadrao: padraoEntregas || tarefas.regimeDaLista(codigo) || c.empresa?.regime || '',
+    origemDoPadrao: !padraoEntregas ? 'da lista do escritório' : doEntregas?.enquadramento ? 'do Entregas' : 'da Receita (pelo Entregas)',
+    /** o que a Receita diz, quando discorda do regime que vale (ex.: Simples aqui e fora do Simples lá) */
+    receitaDiscorda: empresas.cadastro.receitaDiscorda(regimeQueVale, doEntregas) ? doEntregas!.receita : '',
     regimes: empresas.cadastro.REGIMES,
     definirRegime(regime: empresas.cadastro.Regime) {
       if (c.carregando) return;
