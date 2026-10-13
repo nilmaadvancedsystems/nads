@@ -113,6 +113,12 @@ export interface CadastroDaEmpresa {
    */
   emiteNotaHonorario?: boolean;
   /**
+   * O regime tributário (13/10/2026: "no cadastro da empresa tenha os regimes, aí muda na rotina"): vale no lugar do da
+   * lista do escritório e decide as etapas da rotina (o PGDAS no Simples; ICMS, PIS/COFINS, IRPJ/CSLL e as EFDs no
+   * Presumido e no Real). Sem = o da lista.
+   */
+  regime?: string;
+  /**
    * O contato da empresa (Vitor, 07/10/2026): o e-mail e o WhatsApp para onde o Mandei manda as perguntas (Clientes e
    * Fornecedores › Envio). O WhatsApp só com os números, com o DDD (ex.: 38999998888). Sem = não cadastrado.
    */

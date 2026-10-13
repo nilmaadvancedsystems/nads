@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
-  comContasPadrao, criarRepoCadastro, criarRepoCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirNotaDeHonorario, definirPrestaServico, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
+  comContasPadrao, criarRepoCadastro, criarRepoCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirNotaDeHonorario, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
   bancosDoEntregasDoDocumento, bancosDoEntregasPorCodigo, contatosDoEntregasPorCodigo, contasDoEntregas, juntarComEntregas, sugestoesDoEntregas,
   lerPlanilhaDoPlano, linhasDoTexto, registrarPlano, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
   type PlanoDeContas,
@@ -326,5 +326,19 @@ describe('o contato que o Entregas já tem do cliente (08/10/2026)', () => {
     expect(m.get(292)).toEqual({ email: 'financeiro@fito.com.br', whatsapp: '38999998888' });
     expect(m.get(309)).toEqual({ email: 'contato@x.com', whatsapp: '' });
     expect([...m.keys()]).toEqual([292, 309]);
+  });
+});
+
+describe('o regime (13/10/2026)', () => {
+  it('escolhe, vai e volta do documento, com o histórico; null volta para o da lista', () => {
+    const c = definirRegime(vazio(), 'Presumido', 'Vitor', AGORA);
+    expect(regimeDoCadastro(c)).toBe('Presumido');
+    expect(c.historico[0]).toMatchObject({ acao: 'Regime', detalhe: 'Da lista → Presumido' });
+    expect(cadastroDoDocumento('FITO', 292, documentoDoCadastro(c)).regime).toBe('Presumido');
+    expect(definirRegime(c, 'Presumido', 'Vitor', AGORA)).toBe(c);
+    const nada = definirRegime(c, null, 'Vitor', AGORA);
+    expect('regime' in documentoDoCadastro(nada)).toBe(false);
+    // regime estranho no banco fica de fora
+    expect(cadastroDoDocumento('FITO', 292, { nome: 'FITO', historico: [], regime: 'Lucro Arbitrado' }).regime).toBeUndefined();
   });
 });

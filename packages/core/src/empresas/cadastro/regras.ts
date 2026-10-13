@@ -129,6 +129,7 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...(typeof doc.vendeNoCartao === 'boolean' ? { vendeNoCartao: doc.vendeNoCartao } : {}),
     ...(typeof doc.credLiquidacao === 'boolean' ? { credLiquidacao: doc.credLiquidacao } : {}),
     ...(typeof doc.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: doc.emiteNotaHonorario } : {}),
+    ...(REGIMES.includes(texto(doc.regime) as Regime) ? { regime: texto(doc.regime) } : {}),
     ...contatoDoDocumento(doc.contato),
     ...(Array.isArray(doc.emprestimos) ? { emprestimos: (doc.emprestimos as Record<string, unknown>[]).map(e => ({ numero: texto(e?.numero), banco: texto(e?.banco), desde: texto(e?.desde), ...(texto(e?.ate) ? { ate: texto(e?.ate) } : {}) })).filter(e => e.numero && e.banco) } : {}),
     ...(Array.isArray(doc.socios) ? { socios: (doc.socios as Record<string, unknown>[]).map(s => ({ nome: texto(s?.nome), cpf: texto(s?.cpf) })).filter(s => s.nome || s.cpf) } : {}), atualizadoEm: opcional(doc.atualizadoEm),
@@ -150,6 +151,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(typeof c.vendeNoCartao === 'boolean' ? { vendeNoCartao: c.vendeNoCartao } : {}),
     ...(typeof c.credLiquidacao === 'boolean' ? { credLiquidacao: c.credLiquidacao } : {}),
     ...(typeof c.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: c.emiteNotaHonorario } : {}),
+    ...(c.regime ? { regime: c.regime } : {}),
     ...(c.contato && (c.contato.email || c.contato.whatsapp) ? { contato: c.contato } : {}),
     ...(c.socios?.length ? { socios: c.socios } : {}),
     ...(c.emprestimos?.length ? { emprestimos: c.emprestimos } : {}),
@@ -630,6 +632,24 @@ export function definirNotaDeHonorario(c: CadastroDaEmpresa, sim: boolean | null
   delete resto.emiteNotaHonorario;
   const novo = sim == null ? resto : { ...resto, emiteNotaHonorario: sim };
   return registrar(novo, por, agora, 'Nota de honorário', sim == null ? 'Não informado' : sim ? 'Sim' : 'Não');
+}
+
+/** Os regimes da empresa (os da lista do escritório). */
+export const REGIMES = ['Simples', 'MEI', 'Presumido', 'Real', 'Isentas', 'Física', 'Domésticas'] as const;
+export type Regime = (typeof REGIMES)[number];
+
+/** O regime que vale: o do cadastro, o da empresa cadastrada pelo nads ou nenhum (então vale o da lista). */
+export function regimeDoCadastro(c: Pick<CadastroDaEmpresa, 'regime' | 'nova'>): string {
+  return c.regime || c.nova?.regime || '';
+}
+
+/** Escolhe o regime (null = volta para o da lista do escritório). Registra no histórico. */
+export function definirRegime(c: CadastroDaEmpresa, regime: Regime | null, por: string, agora: Date): CadastroDaEmpresa {
+  if ((c.regime ?? null) === regime) return c;
+  const resto: CadastroDaEmpresa = { ...c };
+  delete resto.regime;
+  const novo = regime == null ? resto : { ...resto, regime };
+  return registrar(novo, por, agora, 'Regime', (c.regime || 'Da lista') + ' → ' + (regime || 'Da lista'));
 }
 
 /**

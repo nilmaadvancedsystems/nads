@@ -58,7 +58,8 @@ export function useListaDoCadastro() {
       rota: empresas.rotaDaEmpresa(x),
       codigo: x.codigo,
       nome: x.nome,
-      regime: x.regime,
+      // o do cadastro, quando escolhido (13/10/2026); senão, o da lista
+      regime: (c && cad.regimeDoCadastro(c)) || x.regime,
       origem,
       bancos: contas.map(b => ({ marca: b.marca, nome: b.nome, rotulo: empresas.rotuloDaConta(b) })),
       plano: c?.plano?.contas ?? null,

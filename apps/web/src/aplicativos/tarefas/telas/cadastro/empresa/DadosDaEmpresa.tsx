@@ -32,6 +32,25 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
   const enter = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') e.currentTarget.blur(); };
   return (
     <section>
+      {/* o regime (13/10/2026: "no cadastro da empresa tenha os regimes, aí muda na rotina") */}
+      <div className="cad-regra">
+        <div className="cad-regra-txt">
+          <span className="cad-campo-rotulo">Regime tributário</span>
+          <span className="hint">
+            Muda as etapas da rotina do Fiscal: o PGDAS no Simples, o DAS-MEI no MEI; ICMS, PIS/COFINS, IRPJ/CSLL e as EFDs no Presumido e no Real.
+            {vm.regime == null && (vm.regimeDaLista ? ' Sem escolher, vale o da lista do escritório: ' + vm.regimeDaLista + '.' : ' Ainda não informado.')}
+          </span>
+        </div>
+        <div className="cad-regra-opcoes cad-regimes" role="group" aria-label="Regime tributário">
+          {vm.regimes.map(r => {
+            const marcado = (vm.regime ?? vm.regimeDaLista) === r;
+            return (
+              <button key={r} type="button" className={'btn ' + (marcado ? 'btn-primary' : 'btn-outline')} aria-pressed={marcado}
+                title={vm.regime == null && marcado ? 'O da lista do escritório' : undefined} onClick={() => vm.definirRegime(r)}>{r}</button>
+            );
+          })}
+        </div>
+      </div>
       <div className="cad-regra">
         <div className="cad-regra-txt">
           <span className="cad-campo-rotulo">Presta serviços</span>

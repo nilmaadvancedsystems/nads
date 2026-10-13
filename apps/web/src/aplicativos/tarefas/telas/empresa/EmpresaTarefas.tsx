@@ -2,6 +2,7 @@
 // competência e o botão para abrir o executor; os números da competência; as etapas com quem fez,
 // quando e por que parou; o histórico dos últimos meses (clicar abre aquele mês); e os arquivos que o
 // Extrator tem da empresa.
+import { tarefas } from '@nads/core';
 import { Esqueleto, Icone, MenuSuspenso, useCarregando } from '@nads/ui';
 import { Navigate } from 'react-router';
 import { TrilhaDoTopo } from '../../../../comum/topo';
@@ -25,7 +26,7 @@ export function EmpresaTarefas({ rota }: { rota: string }) {
           <span className={'bolinha-sit ' + vm.situacao} title={vm.rotuloSituacao} role="img" aria-label={vm.rotuloSituacao} />
           <div>
             <h2>{vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : ''}{vm.empresa.nome}</h2>
-            <p className="hint">{vm.rotuloSituacao}{vm.empresa.regime ? ' · ' + vm.empresa.regime : ''}</p>
+            <p className="hint">{vm.rotuloSituacao}{(tarefas.regimeDaEmpresa(vm.empresa.codigo) || vm.empresa.regime) ? ' · ' + (tarefas.regimeDaEmpresa(vm.empresa.codigo) || vm.empresa.regime) : ''}</p>
           </div>
         </div>
         <div className="empresa-acoes">

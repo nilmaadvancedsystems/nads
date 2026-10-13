@@ -8,7 +8,7 @@ import { useOperador } from '../../../casca/operador';
 import { empresasNovas } from '../../../dados/fonte';
 import { useGravarCadastro } from '../../../dados/repo';
 
-export const REGIMES = ['Simples', 'Presumido', 'Real', 'Isentas', 'Física', 'Domésticas', 'MEI'] as const;
+export const REGIMES = empresas.cadastro.REGIMES;
 
 export function useNovaEmpresa(fechar: () => void) {
   const gravar = useGravarCadastro();

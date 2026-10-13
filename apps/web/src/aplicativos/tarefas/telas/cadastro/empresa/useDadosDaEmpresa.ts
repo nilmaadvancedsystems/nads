@@ -9,6 +9,16 @@ export function useDadosDaEmpresa(rota: string) {
   return {
     empresa: c.empresa,
     carregando: c.carregando,
+    /** o regime (13/10/2026): o escolhido no cadastro (null = vale o da lista do escritório) e o da lista */
+    regime: (c.cadastro.regime as empresas.cadastro.Regime | undefined) ?? null,
+    regimeDaLista: c.empresa?.regime || '',
+    regimes: empresas.cadastro.REGIMES,
+    definirRegime(regime: empresas.cadastro.Regime) {
+      if (c.carregando) return;
+      // clicar no que já está marcado volta para o da lista
+      const novo = empresas.cadastro.definirRegime(c.cadastro, c.cadastro.regime === regime ? null : regime, c.por, new Date());
+      if (novo !== c.cadastro) c.salvar(novo);
+    },
     /** true, false ou null (não informado) */
     prestaServico: c.cadastro.prestaServico ?? null,
     definirPrestaServico(sim: boolean) {

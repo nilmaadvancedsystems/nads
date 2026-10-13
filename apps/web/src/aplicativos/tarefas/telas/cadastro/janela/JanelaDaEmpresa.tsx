@@ -1,5 +1,6 @@
 // A janela flutuante de uma empresa no Cadastro, por cima da lista: no topo, "‹ Empresas" (voltar), a empresa
 // e o ✕; na lateral, as abas dela; no meio, a aba aberta. Esc ou clicar fora fecha.
+import { tarefas } from '@nads/core';
 import { Icone, useEntradaAnimada, useIndicador } from '@nads/ui';
 import { useEffect } from 'react';
 import { ContasBancarias } from '../bancos/ContasBancarias';
@@ -54,7 +55,7 @@ export function JanelaDaEmpresa({ rota, aba }: { rota: string; aba: string }) {
           <span className="cad-janela-empresa">
             <b className="num">{vm.empresa.codigo ?? '—'}</b>
             <span className="cad-janela-nome">{vm.empresa.nome}</span>
-            {vm.empresa.regime && <span className="fraco">{vm.empresa.regime}</span>}
+            {(tarefas.regimeDaEmpresa(vm.empresa.codigo) || vm.empresa.regime) && <span className="fraco">{tarefas.regimeDaEmpresa(vm.empresa.codigo) || vm.empresa.regime}</span>}
           </span>
           <button type="button" className="btn btn-ghost cad-janela-x" onClick={fechar} aria-label="Fechar" title="Fechar (Esc)">
             <Icone nome="x" />

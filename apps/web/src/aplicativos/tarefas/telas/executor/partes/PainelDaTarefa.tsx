@@ -237,7 +237,7 @@ function PgdasPrevia({ vm, valores, informar }: { vm: VmPainelDoFiscal; valores?
   const pct = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 4 }) + '%';
   return (
     <>
-      {vm.regime && vm.regime !== 'Simples' && vm.regime !== 'MEI' && <p className="hint">Esta empresa está como {vm.regime} na lista do escritório: a prévia é do Simples.</p>}
+      {vm.regime && vm.regime !== 'Simples' && vm.regime !== 'MEI' && <p className="hint">Esta empresa está como {vm.regime} no cadastro: a prévia é do Simples.</p>}
       <form className="tarefas-filtros dp-filtros" onSubmit={e => { e.preventDefault(); if (valido && informar) informar('rbt12', lido); }}>
         <label className="field dp-filtro">
           <span className="hint">RBT12 (receita bruta dos últimos 12 meses)</span>

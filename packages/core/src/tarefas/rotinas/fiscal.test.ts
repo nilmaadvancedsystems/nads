@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EMPRESAS } from '../../empresas/lista';
-import { etapaNoMes, execucaoNova, regimeDaEmpresa } from '../regras/execucao';
+import { etapaNoMes, execucaoNova, regimeDaEmpresa, usarRegimesDoCadastro } from '../regras/execucao';
 import { ROTINA_FISCAL } from './fiscal';
 import { rotinaDo } from './rotinaDo';
 
@@ -33,6 +33,16 @@ describe('rotina do Fiscal (o Notion do Heverton)', () => {
     // regime desconhecido: entra (nada some por engano); as de todos, sempre
     expect(etapaNoMes(ex(999999, '2026-10'), 'fiscal-icms')).toBe(true);
     expect(etapaNoMes(ex(292, '2026-10'), 'fiscal-envio')).toBe(true);
+  });
+  it('o regime do cadastro vale no lugar do da lista (13/10/2026)', () => {
+    const ex = execucaoNova('X', 292, '2026-10', 'fiscal');
+    usarRegimesDoCadastro(c => (c === 292 ? 'Simples' : ''));
+    try {
+      expect(regimeDaEmpresa(292)).toBe('Simples');
+      expect(etapaNoMes(ex, 'fiscal-simples')).toBe(true);
+      expect(etapaNoMes(ex, 'fiscal-icms')).toBe(false);
+    } finally { usarRegimesDoCadastro(() => ''); }
+    expect(regimeDaEmpresa(292)).toBe('Presumido');
   });
   it('cada departamento com a sua rotina', () => {
     expect(rotinaDo('fiscal')).toBe(ROTINA_FISCAL);

@@ -61,6 +61,8 @@ export function repoDaTarefas(): tarefas.RepoTarefas {
       return cache.junto;
     };
     definirEmpresasExtras(empresasNovas);
+    // o regime do Cadastro › Empresa vale no lugar do da lista (13/10/2026): muda as etapas da rotina
+    tarefas.usarRegimesDoCadastro(regimeNoCadastro);
     repo = r;
   }
   return repo;
@@ -76,6 +78,22 @@ export function empresasNovas(): readonly empresas.EmpresaDoEscritorio[] {
   const lista = empresas.cadastro.empresasCadastradasNoNads(c.todos().porId.values()).filter(e => !ja.has(e.nome));
   novasCache = { ver, lista };
   return lista;
+}
+
+let regimesCache: { ver: number; mapa: Map<number, string> } | null = null;
+/** O regime escolhido no cadastro da empresa ('' = nenhum: vale o da lista do escritório). */
+function regimeNoCadastro(codigo: number): string {
+  const c = repoDoCadastro();
+  const ver = c.versao();
+  if (!regimesCache || regimesCache.ver !== ver) {
+    const mapa = new Map<number, string>();
+    for (const x of c.todos().porId.values()) {
+      const r = empresas.cadastro.regimeDoCadastro(x);
+      if (r && x.codigo != null) mapa.set(x.codigo, r);
+    }
+    regimesCache = { ver, mapa };
+  }
+  return regimesCache.mapa.get(codigo) || '';
 }
 
 /** Os erros do banco (salvar/ler) vão para o toast da tela. */
