@@ -1,6 +1,6 @@
 // A etapa Cheque especial da Tarefa (Vitor, 13/10/2026), com as peças que já existem: cada banco na linha da Importação
 // (o logo, o nome e a conta; no canto, o Ok ou a cápsula laranja com os dias negativos) e, no banco que falta o cheque
-// especial, os dias negativos na tabela padrão, a conta do banco e a do cheque especial (busca-curta, como no Honorários)
+// especial, os dias negativos na tabela padrão, a conta do banco e a do cheque especial (o campo com o nome em cima)
 // e o Baixar .xls. O histórico é sempre o 92029.
 import { Icone, LogoBanco } from '@nads/ui';
 import { useEffect, useState } from 'react';
@@ -19,7 +19,7 @@ export function ChequeEspecial() {
         lance no Alterdata e importe o razão do banco de novo.
       </p>
       {vm.carregado && (
-        <div className="imp-lista">
+        <div className="imp-lista" style={{ gap: 16 }}>
           {vm.bancos.map(b => <BlocoDoBanco key={b.id} b={b} vm={vm} />)}
         </div>
       )}
@@ -42,17 +42,18 @@ function BlocoDoBanco({ b, vm }: { b: Banco; vm: Vm }) {
         </div>
       </div>
       {falta && (
-        <div className="imp-periodo-linha">
+        <div className="imp-periodo-linha" style={{ padding: 16 }}>
           <div className="table-wrap">
             <table className="table-compact">
               <thead><tr><th>Dia</th><th className="num">Saldo do dia</th></tr></thead>
               <tbody>{b.dias.map(d => <tr key={d.data}><td>{d.data}</td><td className="num ext-neg">{d.saldo}</td></tr>)}</tbody>
             </table>
           </div>
-          <div className="tarefas-barra-topo">
+          {/* as contas com o nome em cima, sem o #, e mais espaço entre as caixas (Vitor, 13/10/2026: "deixa mais bonitinho") */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, marginTop: 16 }}>
             <Conta rotulo="Conta do banco (débito no ajuste)" valor={b.contaBanco} desabilitado={!b.noCadastro} onGravar={v => vm.gravarConta(b.id, 'contaContabil', v)} />
             <Conta rotulo="Conta do cheque especial (crédito no ajuste)" valor={b.contaCheque} desabilitado={!b.noCadastro} onGravar={v => vm.gravarConta(b.id, 'contaChequeEspecial', v)} />
-            <span className="tarefas-barra-espaco" />
+            <span style={{ flex: 1 }} />
             <button type="button" className="btn btn-primary" disabled={!b.contaBanco || !b.contaCheque} onClick={() => vm.baixar(b.id)}
               title={b.contaBanco && b.contaCheque ? 'O ajuste e o estorno de cada dia negativo, no .xls do Alterdata' : 'Informe a conta do banco e a do cheque especial'}>
               <Icone nome="download" />Baixar .xls
@@ -70,9 +71,9 @@ function Conta({ rotulo, valor, desabilitado, onGravar }: { rotulo: string; valo
   const [texto, setTexto] = useState(valor);
   useEffect(() => { setTexto(valor); }, [valor]);
   return (
-    <label className="busca-curta" title={rotulo}>
-      <Icone nome="hash" />
-      <input type="text" inputMode="numeric" placeholder={rotulo} aria-label={rotulo} value={texto} disabled={desabilitado}
+    <label className="field" style={{ margin: 0, width: 260 }}>
+      <span style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{rotulo}</span>
+      <input type="text" inputMode="numeric" placeholder="Código da conta" aria-label={rotulo} value={texto} disabled={desabilitado}
         onChange={e => setTexto(e.target.value)} onBlur={() => { if (texto !== valor) onGravar(texto); }}
         onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
     </label>
