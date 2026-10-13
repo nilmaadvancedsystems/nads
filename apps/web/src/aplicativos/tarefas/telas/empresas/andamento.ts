@@ -2,7 +2,7 @@
 // a competência escolhida (na URL), e para cada empresa as etapas feitas, a situação e a próxima etapa.
 import { empresas, tarefas as t } from '@nads/core';
 import { useSearchParams } from 'react-router';
-import { useExecucoes, useRepo } from '../../dados/repo';
+import { useExecucoes, useRegimesDoEntregas, useRepo } from '../../dados/repo';
 import { useOperador, type Operador } from '../../casca/operador';
 import { competenciasDaTela } from '../../casca/navegacao';
 import { useDepartamentoDaTela } from '../../casca/departamento';
@@ -18,6 +18,7 @@ const ORDEM: Record<t.SituacaoGeral, number> = { parada: 0, 'em-andamento': 1, '
 export const ACAO: Record<t.SituacaoGeral, string> = { parada: 'Retomar', 'em-andamento': 'Continuar', 'nao-iniciada': 'Iniciar', concluida: 'Ver' };
 
 export function useAndamento() {
+  useRegimesDoEntregas(); // o regime do Entregas, quando chega
   const repo = useRepo();
   const op = useOperador().operador as Operador;
   const [params, setParams] = useSearchParams();

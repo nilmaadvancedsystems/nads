@@ -81,8 +81,40 @@ export function empresasNovas(): readonly empresas.EmpresaDoEscritorio[] {
 }
 
 let regimesCache: { ver: number; mapa: Map<number, string> } | null = null;
-/** O regime escolhido no cadastro da empresa ('' = nenhum: vale o da lista do escritório). */
+// o regime que o Entregas tem (o enquadramento e a Receita; 13/10/2026): lido uma vez, dos mesmos clientes dos bancos
+let regimesEntregas: ReadonlyMap<number, empresas.cadastro.RegimeDoEntregas> | null = null;
+let pedidoRegimes: Promise<void> | null = null;
+const ouvintesRegimes = new Set<() => void>();
+function carregarRegimesDoEntregas(): void {
+  if (pedidoRegimes) return;
+  pedidoRegimes = clientesDoEntregas().then(docs => {
+    regimesEntregas = empresas.cadastro.regimesDoEntregasPorCodigo(docs);
+    for (const f of ouvintesRegimes) f();
+  });
+}
+/** Para a tela desenhar de novo quando os regimes do Entregas chegam. */
+export function assinarRegimesDoEntregas(f: () => void): () => void {
+  carregarRegimesDoEntregas();
+  ouvintesRegimes.add(f);
+  return () => { ouvintesRegimes.delete(f); };
+}
+export const versaoDosRegimesDoEntregas = () => regimesEntregas;
+/** O que o Entregas diz do regime da empresa (o enquadramento e a Receita), ou null. */
+export function regimeNoEntregas(codigo: number | null | undefined): empresas.cadastro.RegimeDoEntregas | null {
+  carregarRegimesDoEntregas();
+  return codigo == null ? null : regimesEntregas?.get(codigo) || null;
+}
+
+/**
+ * O regime da empresa fora da lista fixa: o escolhido no cadastro do nads; sem ele, o do Entregas (o enquadramento; sem
+ * ele, a Receita quando diz Simples ou MEI). '' = vale o da lista do escritório.
+ */
 function regimeNoCadastro(codigo: number): string {
+  return regimeEscolhidoNoNads(codigo) || empresas.cadastro.regimeDoEntregas(regimeNoEntregas(codigo));
+}
+
+/** O regime escolhido no cadastro da empresa no nads ('' = nenhum). */
+function regimeEscolhidoNoNads(codigo: number): string {
   const c = repoDoCadastro();
   const ver = c.versao();
   if (!regimesCache || regimesCache.ver !== ver) {
@@ -134,9 +166,9 @@ export async function balanceteDoEntregas(codigo: number | null): Promise<Record
   return noBanco && codigo != null && codigo !== demo.EMPRESA_DEMO.codigo ? balanceteNoEntregas(codigo) : null;
 }
 
-/** Clientes de exemplo do Entregas (os bancos que o robô teria aprendido). */
+/** Clientes de exemplo do Entregas (os bancos que o robô teria aprendido; o 292 com a Receita discordando do regime). */
 const CLIENTES_EXEMPLO: Record<string, unknown>[] = [
-  { codigoOrigem: '292', bancos: ['sicoob', 'bb'], contasBancarias: [{ banco: 'sicoob', agencia: '3144-5', conta: '12.345-6' }] },
+  { codigoOrigem: '292', enquadramento: 'Presumido', receita: { simples: true }, bancos: ['sicoob', 'bb'], contasBancarias: [{ banco: 'sicoob', agencia: '3144-5', conta: '12.345-6' }] },
   { codigoOrigem: '14', bancos: ['itau'], contasBancarias: [{ banco: 'itau', agencia: '0412', conta: '99887-7' }] },
   { codigoOrigem: '58', bancos: ['sicoob', 'nubank'] },
 ];

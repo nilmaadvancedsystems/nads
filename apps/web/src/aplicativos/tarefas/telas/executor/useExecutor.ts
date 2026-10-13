@@ -11,7 +11,7 @@ import { useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { extratorDaEmpresa, repoDoCadastro } from '../../dados/fonte';
-import { useCartaoEmpresarial, useCredLiquidacao, useExecucoesDoPeriodo, usePrestaServico, useRepo } from '../../dados/repo';
+import { useCartaoEmpresarial, useCredLiquidacao, useExecucoesDoPeriodo, usePrestaServico, useRegimesDoEntregas, useRepo } from '../../dados/repo';
 import { caminhoDaEmpresa, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../comum/desenvolvimento';
@@ -39,6 +39,7 @@ const BASES: Record<t.FerramentaDaEtapa['app'], string> = {
 const CONFERIR_NO_PROXIMO = false;
 
 export function useExecutor(rotaEmpresa: string, periodo: string) {
+  useRegimesDoEntregas(); // o regime do Entregas, quando chega
   const repo = useRepo();
   const navegar = useNavigate();
   const { toast, modal, aviso: avisar } = useRetorno();

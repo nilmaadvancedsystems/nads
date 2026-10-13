@@ -3,7 +3,7 @@
 // clientes/{id}.contasBancarias ([{ banco, agencia, conta }], lidas do cabeçalho dos extratos). O cliente é
 // achado pelo código do ERP (codigoOrigem). Aqui: traduzir para as contas do Cadastro e comparar.
 import { idDaConta } from '../bancos';
-import { nomeDoBanco } from './regras';
+import { nomeDoBanco, REGIMES, type Regime } from './regras';
 import type { CadastroDaEmpresa, ContaBancaria } from './tipos';
 
 /** Os ids de banco do Entregas (bancos-nilma.js) que são diferentes no nads. */
@@ -133,4 +133,41 @@ export function contatosDoEntregasPorCodigo(docs: readonly Record<string, unknow
     if (emails[0] || whatsapp) m.set(codigo, { email: emails[0] || '', whatsapp });
   }
   return m;
+}
+
+// ─── o regime que o Entregas já tem do cliente (13/10/2026) ─────────
+
+/**
+ * O regime do cliente no Entregas: o enquadramento (o do cadastro de lá) e o que a Receita diz (a consulta do CNPJ: só
+ * sabe Simples, MEI ou "fora do Simples", sem separar o Presumido do Real).
+ */
+export interface RegimeDoEntregas { enquadramento: Regime | ''; receita: 'Simples' | 'MEI' | 'Fora do Simples' | '' }
+
+/** Por código do ERP (codigoOrigem); sem enquadramento e sem consulta da Receita, fica de fora. */
+export function regimesDoEntregasPorCodigo(docs: readonly Record<string, unknown>[]): Map<number, RegimeDoEntregas> {
+  const m = new Map<number, RegimeDoEntregas>();
+  for (const d of docs) {
+    const codigo = Number(texto(d.codigoOrigem));
+    if (!Number.isInteger(codigo) || codigo <= 0) continue;
+    const e = texto(d.enquadramento);
+    const enquadramento = (REGIMES as readonly string[]).includes(e) ? (e as Regime) : '';
+    const r = d.receita && typeof d.receita === 'object' ? (d.receita as Record<string, unknown>) : null;
+    const receita = !r ? '' : r.mei === true ? 'MEI' : r.simples === true ? 'Simples' : 'Fora do Simples';
+    if (enquadramento || receita) m.set(codigo, { enquadramento, receita });
+  }
+  return m;
+}
+
+/** O regime que vale do Entregas: o enquadramento; sem ele, o da Receita quando ela sabe (Simples ou MEI). */
+export function regimeDoEntregas(r: RegimeDoEntregas | null | undefined): Regime | '' {
+  if (!r) return '';
+  return r.enquadramento || (r.receita === 'Simples' || r.receita === 'MEI' ? r.receita : '');
+}
+
+/** O regime e a Receita discordam? (Simples/MEI de um lado e do outro não; ou Simples × MEI.) */
+export function receitaDiscorda(regime: string, r: RegimeDoEntregas | null | undefined): boolean {
+  if (!regime || !r?.receita) return false;
+  if (regime === 'Simples' || regime === 'MEI') return r.receita !== regime;
+  if (regime === 'Presumido' || regime === 'Real') return r.receita !== 'Fora do Simples';
+  return false;
 }

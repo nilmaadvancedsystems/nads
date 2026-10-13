@@ -5,12 +5,13 @@
 import { tarefas as t } from '@nads/core';
 import { useState } from 'react';
 import { caminhoDoExecutor } from '../../../casca/navegacao';
-import { useExecucoes, useSieg } from '../../../dados/repo';
+import { useExecucoes, useRegimesDoEntregas, useSieg } from '../../../dados/repo';
 import { useAndamento } from '../../empresas/andamento';
 
 export type FiltroDoPainel = 'todos' | 'pendencias';
 
 export function useVisaoDoFiscal() {
+  useRegimesDoEntregas(); // o regime do Entregas, quando chega
   const a = useAndamento();
   const sieg = useSieg();
   const mes = sieg.doMes(a.competencia);

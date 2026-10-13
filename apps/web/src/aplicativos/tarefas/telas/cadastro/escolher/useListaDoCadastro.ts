@@ -8,7 +8,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { caminhoDoCadastro } from '../../../casca/navegacao';
 import { useOperador } from '../../../casca/operador';
-import { useBancosDoEntregas, useLeituraDoRobo, useTodosOsCadastros } from '../../../dados/repo';
+import { useBancosDoEntregas, useLeituraDoRobo, useRegimesDoEntregas, useTodosOsCadastros } from '../../../dados/repo';
 
 const cad = empresas.cadastro;
 
@@ -37,6 +37,7 @@ export interface LinhaEmpresa {
 }
 
 export function useListaDoCadastro() {
+  useRegimesDoEntregas(); // o regime do Entregas, quando chega
   const navegar = useNavigate();
   const todos = useTodosOsCadastros();
   const entregas = useBancosDoEntregas();
