@@ -16,6 +16,8 @@ const RE_DATA = /^(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?$/;
 const RE_DATA_MES = /^(\d{1,2})[/.\s-]?(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]*$/i;
 const RE_VALOR = /^\(?-?(?:R\$)?-?\d{1,3}(?:\.\d{3})*,\d{2}\)?-?[CD]?$/i;
 const RE_SINAL = /^(?:[CD]|\(\+\)|\(-\)|[+-]|\*)$/i;
+/** o valor do depósito bloqueado, com o * colado ("2.300,00*"): ainda não é saldo */
+const RE_BLOQUEADO = /^\(?-?(?:R\$)?\d{1,3}(?:\.\d{3})*,\d{2}\*$/;
 /**
  * Linha de saldo, total ou resumo: não é lançamento. A palavra tem de abrir a linha ("SALDO ANTERIOR", "Total de
  * créditos", "Limite disponível"…), ou ser um saldo explícito no meio dela ("… SALDO DO DIA"). Solta no histórico, não
@@ -270,10 +272,19 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
     let solta: string | null = null;
     let ultimo: Lancamento | null = null;
     let ultimaY: number | null = null;
+    let pulandoBloqueado = false;
 
     for (const l of linhas) {
       const t = l.tokens.slice();
       if (!t.length) continue;
+      // o depósito bloqueado (Sicoob: "DEP.CHEQUE BLOQ.1D 2.300,00*"): o valor com * ainda não entrou no saldo; a linha e o
+      // texto embaixo dela ("ENVELOPE: …") ficam de fora, sem data nem histórico para os outros — o lançamento é a
+      // "LIBERAÇÃO DE DEPÓSITO BLOQUEADO" (Vitor, 13/10/2026: a 58 juntava o texto e a data dele no lançamento de cima)
+      if (t.some(x => RE_BLOQUEADO.test(x.s))) { pulandoBloqueado = true; continue; }
+      if (pulandoBloqueado) {
+        if (!t.some(x => RE_VALOR.test(x.s)) && !RE_DATA.test(t[0].s)) continue;
+        pulandoBloqueado = false;
+      }
       let data: string | null = null;
       let segunda: string | null = null;
       if (!naColunaDaData(t[0].x)) { /* texto no meio da linha: não abre dia */ }
