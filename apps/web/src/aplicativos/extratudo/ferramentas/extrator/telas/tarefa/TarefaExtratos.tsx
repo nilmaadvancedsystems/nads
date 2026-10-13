@@ -610,6 +610,10 @@ export function TarefaExtratos() {
   // Em Lote: os bancos com a grade dos meses recolhida (pela setinha)
   const [recolhidas, setRecolhidas] = useState<string[]>([]);
   const alternarGrade = (id: string) => setRecolhidas(v => (v.includes(id) ? v.filter(a => a !== id) : [...v, id]));
+  // o banco que bate mas falta o cheque especial ("Ok" + Cheque especial) abre recolhido, como o Ok (Vitor, 13/10/2026):
+  // a seta abre só quando a pessoa quer
+  const [abertasBatendo, setAbertasBatendo] = useState<string[]>([]);
+  const alternarBatendo = (id: string) => setAbertasBatendo(v => (v.includes(id) ? v.filter(a => a !== id) : [...v, id]));
 
   /** Visualizar o que veio do Drive: abre a janela já (senão o navegador bloqueia) e põe o link temporário quando o robô responder. */
   function visualizarDoDrive(arquivo: { id: string; nome: string }) {
@@ -746,7 +750,7 @@ export function TarefaExtratos() {
           const aberta = abertas.includes(b.id) && !ok;
           // Em Lote: a setinha abre ou recolhe tudo junto — a grade dos meses e os lançamentos do mês (começa aberta)
           const emLote = vm.periodo.length > 1;
-          const gradeAberta = !recolhidas.includes(b.id) && !ok;
+          const gradeAberta = faltaCheque ? abertasBatendo.includes(b.id) : !recolhidas.includes(b.id) && !ok;
           const verLancamentos = (emLote ? gradeAberta : aberta) && !semMov;
           return (
             <div key={b.id} data-banco={b.id} className={'imp-bloco' + (semMov ? ' sem-movimento' : '') + (ok ? ' imp-ok' : '')}>
@@ -755,7 +759,7 @@ export function TarefaExtratos() {
                   <span className="imp-seta" aria-hidden="true"><Icone nome="caretDown" /></span>
                 ) : emLote ? (
                   <button type="button" className={'imp-seta' + (gradeAberta ? ' aberta' : '')} aria-expanded={gradeAberta}
-                    title={gradeAberta ? 'Recolher os meses e os lançamentos' : 'Abrir os meses e os lançamentos'} aria-label="Os meses e os lançamentos do banco" onClick={() => alternarGrade(b.id)}>
+                    title={gradeAberta ? 'Recolher os meses e os lançamentos' : 'Abrir os meses e os lançamentos'} aria-label="Os meses e os lançamentos do banco" onClick={() => (faltaCheque ? alternarBatendo(b.id) : alternarGrade(b.id))}>
                     <Icone nome="caretDown" />
                   </button>
                 ) : (
