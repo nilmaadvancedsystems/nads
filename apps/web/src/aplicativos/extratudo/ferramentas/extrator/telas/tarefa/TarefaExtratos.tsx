@@ -596,6 +596,8 @@ export function TarefaExtratos() {
   const faltamPedir = vm.bancos.filter(b => b.id !== 'banco' && b.extrato.qtdArquivos === 0 && !semMovimentoNoPeriodo(b.id) && !rec.linhasComRecebido.has(b.id)).length;
   // todo banco Ok (ou sem movimento no período): não tem extrato para pedir
   const bancosTodosOk = vm.bancos.length > 0 && vm.bancos.every(b => !!bancosOk[b.id] || semMovimentoNoPeriodo(b.id));
+  // todos batem com o razão, mesmo os que só faltam o cheque especial: nada mais a pedir (Vitor, 13/10/2026)
+  const bancosTodosBatem = vm.bancos.length > 0 && vm.bancos.every(b => !!bancosOk[b.id] || situacoes[b.id]?.tipo === 'falta-cheque' || semMovimentoNoPeriodo(b.id));
   // os dias que fecham negativos (somando os bancos), para o aviso da etapa Cheque especial
   const diasNegativosNoPeriodo = vm.bancos.reduce((t, b) => { const x = situacoes[b.id]; return t + (x && x.tipo !== 'pendente' ? x.negativos.length : 0); }, 0);
   const [cxExtrato, cxRazao] = vm.caixas;
@@ -661,7 +663,7 @@ export function TarefaExtratos() {
         )}
         {/* Pedir extratos só na Importação (Vitor, 02/10/2026) e só enquanto falta banco (Vitor, 08/10/2026: "se tiver tudo certo, pode
             remover o botão pedir extratos") */}
-        {!vm.etapaCheque && !bancosTodosOk && <MenuSuspenso rotulo={faltamPedir ? 'Pedir os que faltam · ' + faltamPedir : 'Pedir extratos'} setaAntes className="btn btn-outline" direita
+        {!vm.etapaCheque && !bancosTodosBatem && <MenuSuspenso rotulo={faltamPedir ? 'Pedir os que faltam · ' + faltamPedir : 'Pedir extratos'} setaAntes className="btn btn-outline" direita
           conteudo={fechar => (
             <>
               <button type="button" className="popover-item" role="menuitem" onClick={() => { fechar(); pe.abrir(); }}>
