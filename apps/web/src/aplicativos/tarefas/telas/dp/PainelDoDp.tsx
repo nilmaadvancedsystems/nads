@@ -4,8 +4,9 @@
 // com as obrigações do mês (– não tem, vazio a fazer, ✓ feita, ! parada). Tudo roda aqui: clicar na bolinha marca a
 // obrigação como feita, clicar de novo desfaz (sem o checklist).
 import { formatos } from '@nads/core';
-import { baixarBytes, Esqueleto, Icone, Segmentado, useCarregando } from '@nads/ui';
+import { baixarBytes, Esqueleto, Icone, Interruptor, Segmentado, useCarregando } from '@nads/ui';
 import { Fragment, useState } from 'react';
+import { DecimoNaLista } from './DecimoTerceiro';
 import { usePainelDoDp, type AbaDoPainel, type Agrupar, type EstadoDaObrigacao } from './usePainelDoDp';
 
 /**
@@ -58,6 +59,17 @@ function Selecao({ rotulo, valor, mudar, opcoes }: { rotulo: string; valor: stri
 export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
   const vm = usePainelDoDp(aba);
   const f = vm.filtros;
+  // o 13º salário (Vitor, 13/10/2026): o interruptor ao lado do Agrupar por, só em novembro (1ª parcela) e dezembro (2ª)
+  const [decimo, setDecimo] = useState(false);
+  // o mês do 13º: o da competência escolhida, se for novembro ou dezembro; se não, o de hoje (em novembro a lista ainda
+  // abre em outubro, e a 1ª parcela é desse novembro)
+  const compMes = Number(vm.competencia.slice(5, 7));
+  const hoje = new Date();
+  const doDecimo = compMes === 11 || compMes === 12 ? { mes: compMes, ano: Number(vm.competencia.slice(0, 4)) }
+    : hoje.getMonth() + 1 >= 11 ? { mes: hoje.getMonth() + 1, ano: hoje.getFullYear() } : null;
+  const temDecimo = aba === 'obrigacoes' && !!doDecimo;
+  const mostrarDecimo = temDecimo && decimo;
+  const mesDaCompetencia = doDecimo?.mes || 0;
   useCarregando(vm.carregando);
   return (
     <section className="dp-painel">
@@ -143,6 +155,10 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
       ) : (
         <>
 
+          {mostrarDecimo ? (
+            <DecimoNaLista ano={doDecimo?.ano || hoje.getFullYear()} parcela={mesDaCompetencia === 11 ? '1' : '2'}
+              busca={f.busca} responsavel={f.responsavel} status={f.status} desligar={() => setDecimo(false)} />
+          ) : (
           <section className="card dp-lista">
             <div className="dp-lista-topo">
               <h3 className="dp-titulo">{vm.tituloDaParte}</h3>
@@ -155,6 +171,12 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
               </button>
               <span className="hint">Agrupar por</span>
               <Segmentado valor={f.agrupar} opcoes={AGRUPAR} onMudar={f.setAgrupar} />
+              {temDecimo && (
+                <>
+                  <span className="hint">13º salário</span>
+                  <Interruptor ligado={false} onMudar={() => setDecimo(true)} rotulo={'Mostrar o 13º salário (' + (mesDaCompetencia === 11 ? '1ª' : '2ª') + ' parcela)'} />
+                </>
+              )}
             </div>
             {vm.quantas === 0 ? <p className="hint dp-vazio">Nenhum cliente com esses filtros.</p> : (
               <div className="table-wrap">
@@ -212,6 +234,7 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
               </div>
             )}
           </section>
+          )}
         </>
       )}
     </section>
