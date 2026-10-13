@@ -2,7 +2,7 @@
 // (o logo, o nome e a conta; no canto, o Ok ou a cápsula laranja com os dias negativos) e, no banco que falta o cheque
 // especial, os dias negativos na tabela padrão, a conta do banco e a do cheque especial (o campo com o nome em cima)
 // e o Baixar .xls. O histórico é sempre o 92029.
-import { BotaoAcao, Icone, LogoBanco } from '@nads/ui';
+import { Icone, LogoBanco } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useChequeEspecial } from './useChequeEspecial';
 
@@ -13,18 +13,7 @@ export function ChequeEspecial() {
   const vm = useChequeEspecial();
   return (
     <section>
-      <header className="topbar">
-        <div><h2 className="page-title">Cheque especial</h2></div>
-        {/* os extratos do Drive importados antes do saldo impresso: relê só o saldo (Vitor, 13/10/2026: "dá um update aqui") */}
-        {vm.semSaldo > 0 && (
-          <div className="btn-row" style={{ alignItems: 'center' }}>
-            <BotaoAcao className="btn btn-primary" carregando={vm.atualizando} textoCarregando="Atualizando" onClick={vm.atualizarPeloDrive}
-              title="Relê no Drive o saldo que o banco imprime em cada dia (os dias negativos passam a ser os do banco)">
-              <Icone nome="repeat" />Atualizar pelo Drive · {vm.semSaldo}
-            </BotaoAcao>
-          </div>
-        )}
-      </header>
+      <header className="topbar"><div><h2 className="page-title">Cheque especial</h2></div></header>
       {vm.carregado && (
         <div className="imp-lista" style={{ gap: 16 }}>
           {vm.bancos.map(b => <BlocoDoBanco key={b.id} b={b} vm={vm} />)}

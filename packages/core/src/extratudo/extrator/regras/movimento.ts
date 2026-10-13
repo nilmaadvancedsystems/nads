@@ -58,22 +58,6 @@ export function extratosSemSaldoAnterior(e: EmpresaExtrator, primeiro: string): 
   return [...porBanco.values()].filter(a => typeof a.saldoAnterior !== 'number' && !!a.drive);
 }
 
-/**
- * Os extratos do banco que vieram do Drive sem o saldo impresso do dia (importados antes de 13/10/2026), nos meses: o
- * Cheque especial relê só o saldo deles no Drive, sem importar de novo (Vitor, 13/10/2026: "dá um update aqui").
- */
-export function extratosSemSaldoDoDia(e: EmpresaExtrator, meses: readonly string[]): ArquivoImportado[] {
-  return e.arquivos.filter(a => a.lado === 'banco' && !!a.drive && !a.saldosDoDia?.length && a.lancamentos.some(l => meses.includes(l.data.slice(0, 7))));
-}
-
-/** Grava no arquivo o saldo do dia lido de novo do extrato (fica no histórico). */
-export function definirSaldosDoDia(e: EmpresaExtrator, arquivoId: string, saldos: readonly { data: string; saldo: number }[], agora: Date): EmpresaExtrator {
-  const a = e.arquivos.find(x => x.id === arquivoId);
-  if (!a || !saldos.length) return e;
-  const reg: RegistroAuditoria = { ts: agora.toISOString(), acao: 'Leu o saldo do dia', detalhe: a.nome + ' · ' + saldos.length + ' dias', tom: 'ok' };
-  return { ...e, arquivos: e.arquivos.map(x => (x.id === arquivoId ? { ...x, saldosDoDia: saldos.map(s => ({ ...s })) } : x)), auditoria: [reg, ...e.auditoria] };
-}
-
 /** Grava no arquivo o saldo anterior lido do extrato (fica no histórico). */
 export function definirSaldoAnterior(e: EmpresaExtrator, arquivoId: string, saldo: number, agora: Date): EmpresaExtrator {
   const a = e.arquivos.find(x => x.id === arquivoId);

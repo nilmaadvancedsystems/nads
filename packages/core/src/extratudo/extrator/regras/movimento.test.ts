@@ -143,18 +143,3 @@ describe('extrato no Drive: cópias baixadas de novo (empresa 380, Sicoob)', () 
     expect(acharExtratoNoDrive(itens, 'raiz', '2026-07', conta).arquivo?.id).toBe('x07');
   });
 });
-
-describe('o saldo do dia dos extratos do Drive importados antes (o "Atualizar pelo Drive" do Cheque especial)', () => {
-  it('acha os do Drive sem o saldo nos meses e grava o lido, no histórico', async () => {
-    const { extratosSemSaldoDoDia, definirSaldosDoDia } = await import('./movimento');
-    const jan = { ...arq('jan', [['2026-01-02', 4500]]), drive: { id: 'd1', nome: '01-2026.pdf' } };
-    const mao = arq('mao', [['2026-01-03', 10]]);
-    const e = emp([jan, mao]);
-    expect(extratosSemSaldoDoDia(e, ['2026-01']).map(a => a.id)).toEqual(['jan']);
-    expect(extratosSemSaldoDoDia(e, ['2026-02'])).toEqual([]);
-    const e2 = definirSaldosDoDia(e, 'jan', [{ data: '2026-01-02', saldo: -27 }], new Date('2026-10-13T12:00:00Z'));
-    expect(e2.arquivos.find(a => a.id === 'jan')?.saldosDoDia).toEqual([{ data: '2026-01-02', saldo: -27 }]);
-    expect(e2.auditoria[0].acao).toBe('Leu o saldo do dia');
-    expect(extratosSemSaldoDoDia(e2, ['2026-01'])).toEqual([]);
-  });
-});

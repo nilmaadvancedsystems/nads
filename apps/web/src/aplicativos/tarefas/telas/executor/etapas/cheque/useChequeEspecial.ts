@@ -4,11 +4,9 @@
 // bancária) e o .xls com o ajuste e o estorno de cada dia, sempre com o histórico 92029. Sem o relatório de saldo diário
 // e sem o "D = saldo positivo": o saldo vem do extrato, que o sistema já lê.
 import { chequeEspecial as ce, empresas, extrator as x, tarefas } from '@nads/core';
-import { baixarBytes, useCarregando, useRetorno } from '@nads/ui';
-import { useState } from 'react';
+import { baixarBytes, useRetorno } from '@nads/ui';
 import { useCadastro } from '../../../../dados/repo';
-import { useAplicarNoExtrator, useExtratorDaEmpresa } from '../../../../dados/extrator';
-import { useDrive } from '../../../../../extratudo/ferramentas/extrator/dados/repo';
+import { useExtratorDaEmpresa } from '../../../../dados/extrator';
 import { useOperador } from '../../../../casca/operador';
 import { useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 
@@ -19,38 +17,6 @@ export function useChequeEspecial() {
   const empresa = useExtratorDaEmpresa(nome);
   const op = useOperador().operador;
   const { aviso } = useRetorno();
-  const { drive, acesso } = useDrive();
-  const aplicar = useAplicarNoExtrator(nome);
-  const [atualizando, setAtualizando] = useState(false);
-  useCarregando(atualizando);
-  // os extratos do Drive importados antes do saldo impresso do dia: o "Atualizar pelo Drive" relê só o saldo deles
-  const semSaldo = x.extratosSemSaldoDoDia(empresa, meses);
-
-  async function atualizarPeloDrive() {
-    if (atualizando || !semSaldo.length) return;
-    try {
-      if (!acesso.entrou) {
-        if (drive.loginDeFora) { aviso({ tom: 'erro', titulo: 'Entre no Entregas', texto: 'O Drive usa o mesmo login do Entregas.' }); return; }
-        await drive.entrarComGoogle();
-      }
-      setAtualizando(true);
-      let lidos = 0;
-      for (const a of semSaldo) {
-        if (!a.drive) continue;
-        const bytes = new Uint8Array(await drive.baixar(a.drive.id, a.drive.nome));
-        const ano = Number((a.lancamentos[0]?.data || '').slice(0, 4)) || new Date().getFullYear();
-        const lido = await x.lerArquivo(a.drive.nome, bytes, 'banco', ano);
-        if (lido.saldosDoDia?.length) { aplicar(e => x.definirSaldosDoDia(e, a.id, lido.saldosDoDia || [], new Date())); lidos++; }
-      }
-      aviso(lidos
-        ? { tom: 'ok', titulo: 'Saldos atualizados pelo Drive', texto: lidos + (lidos === 1 ? ' extrato' : ' extratos') + ': os dias negativos agora são os do banco.' }
-        : { tom: 'erro', titulo: 'Nada para atualizar', texto: 'Os extratos do Drive não trazem o saldo do dia.' });
-    } catch (e) {
-      aviso({ tom: 'erro', titulo: 'Não consegui ler o Drive', texto: e instanceof Error ? e.message : String(e) });
-    } finally {
-      setAtualizando(false);
-    }
-  }
   const { bancos, primeiro } = x.bancosDaEmpresaNa(empresa, cadastro, codigo, meses[meses.length - 1] || '');
   // só gerar: a Tarefa pode seguir (lançar no Alterdata e importar o razão de novo é com a pessoa; a objeção "ainda não
   // foi lançado" interrompe)
@@ -98,7 +64,5 @@ export function useChequeEspecial() {
     bancos: linhas.map(({ faltam: _f, ...r }) => r),
     historico: ce.HISTORICO_PADRAO,
     gravarConta, baixar,
-    /** quantos extratos do Drive ainda estão sem o saldo impresso do dia (o botão só aparece com algum) */
-    semSaldo: semSaldo.length, atualizando, atualizarPeloDrive: () => { void atualizarPeloDrive(); },
   };
 }
