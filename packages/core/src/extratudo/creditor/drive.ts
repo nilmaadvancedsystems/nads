@@ -38,6 +38,12 @@ export interface PedidoDeEmail {
   competencia: string;
 }
 
+/** Os filtros do "Buscar no e-mail" (Bancos): o remetente (endereço ou nome) e o período recebido ('aaaa-mm-dd'). */
+export interface FiltroDoEmail { remetente: string; de: string; ate: string }
+
+/** Um anexo achado pelo robô no Gmail do escritório. */
+export interface AnexoDoEmail { caixa: string; mensagemId: string; anexoId: string; nome: string; tamanho: number; de: string; assunto: string; em: string }
+
 /** Como está o e-mail na fila do robô do Entregas. */
 export interface SituacaoDoEmail { status: 'pendente' | 'processando' | 'enviado' | 'erro' | 'sumiu'; erro?: string }
 
@@ -83,6 +89,13 @@ export interface RepoDrive {
    * (Vitor, 09/10/2026: o extrato importado do computador que não está no Drive vai para lá.)
    */
   enviarAoDrive?(arquivo: { nome: string; bytes: Uint8Array }, destino: { competencia: string; codigo: number | null; cliente: string }): Promise<void>;
+  /**
+   * "Buscar no e-mail" (Vitor, 13/10/2026): o robô pesquisa no Gmail do escritório os e-mails com anexo do remetente no
+   * período (a fila buscasEmail) e devolve os anexos; `trazerDoEmail` traz o conteúdo de um deles. Não existe acoplado no
+   * Entregas.
+   */
+  buscarNoEmail?(filtro: FiltroDoEmail, passo?: (texto: string) => void): Promise<AnexoDoEmail[]>;
+  trazerDoEmail?(anexo: AnexoDoEmail, passo?: (texto: string) => void): Promise<ArrayBuffer>;
   /** o arquivo do extrato recebido */
   baixarRecebido?(id: string): Promise<ArrayBuffer>;
   /** importado (em que linha) ou ignorado: sai da lista */
