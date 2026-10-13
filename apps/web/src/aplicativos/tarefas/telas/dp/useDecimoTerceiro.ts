@@ -1,9 +1,11 @@
-// ViewModel de DP › 13º salário (Vitor, 13/10/2026: "a aba de 13º salário, que começa em novembro e termina em
+// O 13º salário nas Obrigações do DP (Vitor, 13/10/2026: "a aba de 13º salário, que começa em novembro e termina em
 // dezembro: na primeira parcela (novembro) só controlo o que foi emitido (recibo, folha); na segunda (dezembro), até o
 // DARF"). Os clientes com folha (o movimento Folha do DP), uma linha cada; as colunas das duas parcelas; clicar na
 // bolinha marca a etapa como feita (quem e quando), clicar de novo desfaz — como nas Obrigações do mês.
 // O que se marca fica numa execução própria, a "competência 13" do ano (AAAA-13), com as etapas d13-1-* (1ª parcela)
 // e d13-2-* (2ª parcela): não se mistura com a folha de novembro nem com a de dezembro.
+// Depois (13/10/2026: "pode ser um botão do lado de agrupamento… em novembro ou dezembro… muda a lista como um on/off"):
+// a lista das Obrigações liga o 13º e passa o ano, a parcela (novembro = 1ª, dezembro = 2ª) e os filtros de lá.
 import { empresas, tarefas as t } from '@nads/core';
 import { useState } from 'react';
 import { useOperador, type Operador } from '../../casca/operador';
@@ -31,19 +33,27 @@ const nomeDe = (r: string) => (r ? r.split('.').map(p => p.charAt(0) + p.slice(1
 /** o ano do 13º que abre: o do ano corrente (em janeiro, ainda o do ano que passou) */
 function anoPadrao(hoje = new Date()): number { return hoje.getMonth() === 0 ? hoje.getFullYear() - 1 : hoje.getFullYear(); }
 
-export function useDecimoTerceiro() {
+/** o que vem das Obrigações: o ano e a parcela da competência e os filtros da lista */
+export interface DeFora { ano: number; parcela: '1' | '2'; busca: string; responsavel: string; status: '' | 'pendentes' | 'concluidas' }
+
+export function useDecimoTerceiro(fora?: DeFora) {
   const repo = useRepo();
   const op = useOperador().operador as Operador;
-  const [ano, setAno] = useState(anoPadrao());
+  const [anoAqui, setAno] = useState(anoPadrao());
+  const ano = fora ? fora.ano : anoAqui;
   const competencia = ano + '-13';
   const { execucoes, carregada } = useExecucoes(competencia, 'dp');
   const porNome = new Map(execucoes.map(e => [e.empresa, e]));
   // os clientes como valem em dezembro (o movimento Folha: quem tem empregado tem 13º)
   const doDp = useClientesDoDp(ano + '-12');
-  const [busca, setBusca] = useState('');
-  const [responsavel, setResponsavel] = useState('');
-  const [status, setStatus] = useState<'' | 'pendentes' | 'concluidas'>('');
-  const [parcela, setParcela] = useState<FiltroDeParcela>('todas');
+  const [buscaAqui, setBusca] = useState('');
+  const [responsavelAqui, setResponsavel] = useState('');
+  const [statusAqui, setStatus] = useState<'' | 'pendentes' | 'concluidas'>('');
+  const [parcelaAqui, setParcela] = useState<FiltroDeParcela>('todas');
+  const busca = fora ? fora.busca : buscaAqui;
+  const responsavel = fora ? fora.responsavel : responsavelAqui;
+  const status = fora ? fora.status : statusAqui;
+  const parcela: FiltroDeParcela = fora ? fora.parcela : parcelaAqui;
 
   const todas = doDp.clientes.filter(c => c.movimento === 'Folha').map(c => {
     const ex = porNome.get(c.nomeNaTela) || null;
