@@ -45,7 +45,7 @@ function contaDoDocumento(v: unknown): ContaBancaria | null {
   const c: ContaBancaria = { id, marca, nome: texto(o.nome) || nomeDoBanco(marca) };
   const extras: Partial<ContaBancaria> = {
     agencia: opcional(o.agencia), conta: opcional(o.conta), tipo, apelido: opcional(o.apelido),
-    contaContabil: opcional(o.contaContabil), desde: competencia(o.desde), ate: competencia(o.ate),
+    contaContabil: opcional(o.contaContabil), contaChequeEspecial: opcional(o.contaChequeEspecial), desde: competencia(o.desde), ate: competencia(o.ate),
   };
   for (const [k, val] of Object.entries(extras)) if (val !== undefined) (c as unknown as Record<string, unknown>)[k] = val;
   return c;
@@ -461,9 +461,31 @@ export function salvarConta(c: CadastroDaEmpresa, id: string | null, d: DadosDaC
   if (texto(d.contaContabil)) nova.contaContabil = texto(d.contaContabil);
   if (d.desde) nova.desde = d.desde;
   if (antes?.ate) nova.ate = antes.ate;
+  if (antes?.contaChequeEspecial) nova.contaChequeEspecial = antes.contaChequeEspecial;
   const lista = antes ? bancos.map(b => (b.id === novoId ? nova : b)) : [...bancos, nova];
   if (lista.length > MAX_BANCOS) return { cadastro: c, erro: 'São no máximo ' + MAX_BANCOS + ' contas por empresa.' };
   return { cadastro: registrar({ ...c, bancos: lista }, por, agora, antes ? 'Editou conta' : 'Incluiu conta', descreverConta(nova)), erro: null };
+}
+
+/**
+ * As contas contábeis de uma conta bancária, sem mexer no resto (a etapa Cheque especial, Vitor, 13/10/2026): o código da
+ * conta do banco e o do cheque especial. Vazio = apaga; igual ao que estava = não muda.
+ */
+export function definirContasDoBanco(c: CadastroDaEmpresa, id: string, d: { contaContabil?: string; contaChequeEspecial?: string }, partida: readonly ContaBancaria[], por: string, agora: Date): ResultadoCadastro {
+  const bancos = c.bancos ?? [...partida];
+  const b = bancos.find(x => x.id === id);
+  if (!b) return { cadastro: c, erro: 'Essa conta não está mais no cadastro.' };
+  const nova: ContaBancaria = { ...b };
+  const mudou: string[] = [];
+  for (const k of ['contaContabil', 'contaChequeEspecial'] as const) {
+    if (d[k] === undefined) continue;
+    const v = texto(d[k]);
+    if ((b[k] || '') === v) continue;
+    if (v) nova[k] = v; else delete nova[k];
+    mudou.push((k === 'contaContabil' ? 'conta contábil ' : 'cheque especial ') + (v || '(vazio)'));
+  }
+  if (!mudou.length) return { cadastro: c, erro: null };
+  return { cadastro: registrar({ ...c, bancos: bancos.map(x => (x.id === id ? nova : x)) }, por, agora, 'Editou conta', descreverConta(nova) + ': ' + mudou.join(', ')), erro: null };
 }
 
 /** Encerra a conta depois da competência 'ate' (ela some das competências seguintes; as anteriores ficam). */
