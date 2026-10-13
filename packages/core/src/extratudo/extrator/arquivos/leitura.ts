@@ -28,10 +28,9 @@ export async function lerArquivo(nome: string, bytes: Uint8Array, lado: Lado, an
       const paginas = await itensDoPdf(bytes);
       const letras = paginas.reduce((s, p) => s + p.reduce((t, i) => t + i.texto.length, 0), 0);
       if (letras < 40) return { nome, lancamentos: [], erro: 'O PDF não tem texto (parece digitalizado). Baixe o extrato em PDF pelo site do banco.' };
-      const { lancamentos: l, saldosDoDia } = extratoDoPdf(paginas, lado, anoPadrao);
+      const { lancamentos: l } = extratoDoPdf(paginas, lado, anoPadrao);
       const saldo = lado === 'banco' ? saldoAnteriorDoPdf(paginas) : null;
-      const saldos = lado === 'banco' ? saldosDoDia : [];
-      return { nome, lancamentos: l, erro: l.length ? null : 'Não achei lançamentos com data e valor neste PDF.', ...(saldo != null ? { saldoAnterior: saldo } : {}), ...(saldos.length ? { saldosDoDia: saldos } : {}) };
+      return { nome, lancamentos: l, erro: l.length ? null : 'Não achei lançamentos com data e valor neste PDF.', ...(saldo != null ? { saldoAnterior: saldo } : {}) };
     }
     const inicio = new TextDecoder('windows-1252').decode(bytes.subarray(0, 4000));
     if (ext === '.ofx' || ehOfx(inicio)) {
