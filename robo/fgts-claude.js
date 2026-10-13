@@ -369,10 +369,20 @@ function iniciarFgtsPeloClaude(db, log) {
     const limite = 4 * 60 * 1000 + itens.length * 3 * 60 * 1000;
     let r = await rodarClaude(instrucoesDoLote(itens.map(it => it.p)), aoPasso, aoResultado, limite);
     // a extensão ainda não estava pronta (nenhum cliente começou): espera e tenta o lote de novo, uma vez
+    // (13/10/2026: com a sessão que fica ligada, a sessão que nasceu sem a extensão era reaproveitada e cada lote falhava em
+    // segundos; agora ela é encerrada e a nova tentativa abre outra)
     if (!itens.some(it => it.comecou || it.fim) && extensaoFora(r)) {
+      matarSessao();
       for (const it of itens) await it.passo('a extensão do Claude não respondeu; tentando de novo');
       await dormir(20000);
       r = await rodarClaude(instrucoesDoLote(itens.map(it => it.p)), aoPasso, aoResultado, limite);
+      if (!itens.some(it => it.comecou || it.fim) && extensaoFora(r)) {
+        matarSessao();
+        // a extensão continua fora: o resto da fila também para, com o mesmo aviso (em vez de cada lote falhar sozinho)
+        const resto = fila.splice(0, fila.length);
+        await Promise.all(resto.map(d => d.ref.update({ status: 'erro', erro: 'a extensão Claude in Chrome não está conectada no PC: abra o Chrome, clique no ícone do Claude e peça de novo', fimEm: agora() }).catch(() => {})));
+        if (resto.length) log('FGTS (Claude): extensão fora; parei a fila (' + resto.length + ' pedido(s) voltaram como erro)');
+      }
     }
     for (const it of itens) {
       if (it.fim) continue;
@@ -466,6 +476,12 @@ function iniciarFgtsPeloClaude(db, log) {
     filho.on('error', morreu);
     filho.on('close', () => morreu(null));
     return s;
+  }
+
+  function matarSessao() {
+    const s = sessao;
+    sessao = null;
+    if (s && s.viva) { try { s.filho.kill(); } catch (_) { /* já saiu */ } }
   }
 
   function mandar(s, texto) {
