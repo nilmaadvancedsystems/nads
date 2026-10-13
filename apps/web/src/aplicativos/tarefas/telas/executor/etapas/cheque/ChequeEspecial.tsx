@@ -32,6 +32,12 @@ function BlocoDoBanco({ b, vm }: { b: Banco; vm: Vm }) {
         <div className="imp-txt"><span><b>{b.nome}</b>{b.conta && <span className="imp-conta">{b.conta}</span>}</span></div>
         <span className="imp-topo-meio" />
         <div className="imp-grupos">
+          {/* reimportar o razão do banco: opcional (Vitor, 13/10/2026) */}
+          <label className="btn btn-outline" htmlFor={'cheque-razao-' + b.id} title="Escolha o razão novo do banco (depois de lançar o cheque especial no Alterdata)">
+            <Icone nome="upload" />Reimportar razão
+          </label>
+          <input type="file" id={'cheque-razao-' + b.id} accept={vm.aceitarRazao} multiple className="sr-only"
+            onChange={ev => { const fs = Array.from(ev.target.files || []); ev.target.value = ''; vm.reimportarRazao(b.id, fs); }} />
           {falta
             ? <span className="badge badge-conferido" title={'Total do ajuste: ' + b.total}>{b.dias.length === 1 ? '1 dia negativo' : b.dias.length + ' dias negativos'}</span>
             : <span className="badge badge-ok" title={b.negativos ? 'O razão já tem o cheque especial dos dias negativos' : 'Nenhum dia negativo no período'}>Ok</span>}

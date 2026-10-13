@@ -142,8 +142,14 @@ export function lancamentosDoPdf(paginas: ItemDeTexto[][], lado: Lado, anoPadrao
  * negativo em dias que o banco fechou positivo). Sem a coluna Saldo, vazio.
  */
 export function saldosDoDiaDoPdf(paginas: ItemDeTexto[][], anoPadrao = new Date().getFullYear()): { data: string; saldo: number }[] {
-  const s = lancamentosComPagina(paginas, 'banco', anoPadrao).saldosDoDia;
-  return s ? [...s].map(([data, saldo]) => ({ data, saldo })).sort((a, b) => a.data.localeCompare(b.data)) : [];
+  return extratoDoPdf(paginas, 'banco', anoPadrao).saldosDoDia;
+}
+
+/** Os lançamentos e o saldo do dia numa leitura só (a importação lê o PDF uma vez; Vitor, 13/10/2026: ficou lento). */
+export function extratoDoPdf(paginas: ItemDeTexto[][], lado: Lado, anoPadrao = new Date().getFullYear()): { lancamentos: Lancamento[]; saldosDoDia: { data: string; saldo: number }[] } {
+  const r = lancamentosComPagina(paginas, lado, anoPadrao);
+  const s = r.saldosDoDia;
+  return { lancamentos: r.lancamentos, saldosDoDia: s ? [...s].map(([data, saldo]) => ({ data, saldo })).sort((a, b) => a.data.localeCompare(b.data)) : [] };
 }
 
 /**
