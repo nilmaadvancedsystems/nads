@@ -3648,3 +3648,6 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
   padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink);box-shadow:var(--shadow-md, 0 4px 12px rgba(0,0,0,.3));
   font-size:12px;font-weight:400;line-height:16px;white-space:normal;text-align:left;opacity:0;visibility:hidden;pointer-events:none;}
 .dica:hover .dica-balao,.dica:focus-visible .dica-balao{opacity:1;visibility:visible;}
+
+/* Senhas: sem acesso ao cofre, a empresa não abre (13/10/2026: "deve bloquear ao clicar") */
+.cofre-bloqueado{cursor:not-allowed;}

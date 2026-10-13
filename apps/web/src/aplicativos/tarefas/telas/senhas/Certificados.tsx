@@ -102,7 +102,7 @@ export function Certificados() {
       {vm.urgentes.length > 0 && (
         <div className="cert-urgentes">
           {vm.urgentes.slice(0, 8).map(l => (
-            <button key={l.chave} type="button" className={'card cert-urgente ' + (l.situacao === 'vencido' ? 'vencido' : 'vence')} onClick={() => vm.abrir(l.nome, l.codigo)}>
+            <button key={l.chave} type="button" className={'card cert-urgente ' + (l.situacao === 'vencido' ? 'vencido' : 'vence') + (vm.cofre.bloqueio ? ' cofre-bloqueado' : '')} title={vm.cofre.bloqueio || undefined} onClick={() => vm.abrir(l.nome, l.codigo)}>
               <Contagem dias={l.dias ?? 0} />
               <span className="cert-urgente-texto">
                 <b>{l.nome}</b>
@@ -124,7 +124,7 @@ export function Certificados() {
               <thead><tr><th>Cód.</th><th>Empresa</th><th>Validade</th><th>Situação</th></tr></thead>
               <tbody>
                 {vm.linhas.map(l => (
-                  <tr key={l.chave} className="dp-linha-abre" onClick={() => vm.abrir(l.nome, l.codigo)}>
+                  <tr key={l.chave} className={vm.cofre.bloqueio ? 'cofre-bloqueado' : 'dp-linha-abre'} title={vm.cofre.bloqueio || undefined} onClick={() => vm.abrir(l.nome, l.codigo)}>
                     <td className="num fraco">{l.codigo ?? ''}</td>
                     <td className="cofre-nome">{l.nome}</td>
                     <td className="num">{data(l.validade) || <span className="fraco">—</span>}</td>

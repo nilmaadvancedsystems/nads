@@ -79,6 +79,11 @@ export function useCofre() {
 
   return {
     estado,
+    /** por que não dá para abrir uma empresa (13/10/2026: "quem não tem acesso ao cofre não pode nem abrir, deve bloquear
+     *  ao clicar"); null = pode abrir */
+    bloqueio: estado === 'aberto' ? null : estado === 'carregando' ? 'O cofre ainda está abrindo.' : estado === 'novo' ? 'O cofre ainda não foi criado.'
+      : estado === 'aguardando' ? 'Seu acesso ao cofre está esperando a liberação de quem já tem acesso.'
+        : estado === 'erro' ? 'O cofre não abriu. Tente de novo em instantes.' : 'Você não tem acesso ao cofre. Peça acesso no aviso do topo da página.',
     ocupado,
     /** o modo desenvolvedor está ligado (o cofre não grava) */
     dev: modoDesenvolvedor(),

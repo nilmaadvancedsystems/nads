@@ -58,7 +58,7 @@ export function useContasGov() {
     },
     aberta: daAberta,
     conta, setConta,
-    abrir: (id: string) => setAberta(id),
+    abrir: (id: string) => { if (cofre.bloqueio) { toast(cofre.bloqueio); return; } setAberta(id); },
     fechar: () => setAberta(null),
     async salvarConta() { if (aberta && conta) await cofre.salvarConta(aberta, conta); },
     nova, setNova,

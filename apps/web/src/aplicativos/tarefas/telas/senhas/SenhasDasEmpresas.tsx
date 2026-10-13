@@ -39,7 +39,7 @@ export function SenhasDasEmpresas() {
           <thead><tr><th>Cód.</th><th>Empresa</th><th>gov.br</th><th>Certificado</th></tr></thead>
           <tbody>
             {vm.linhas.map(l => (
-              <tr key={l.chave} className="dp-linha-abre" onClick={() => { vm.abrir(l.nome, l.codigo); setTopico('gov'); }}>
+              <tr key={l.chave} className={vm.cofre.bloqueio ? 'cofre-bloqueado' : 'dp-linha-abre'} title={vm.cofre.bloqueio || undefined} onClick={() => { vm.abrir(l.nome, l.codigo); setTopico('gov'); }}>
                 <td className="num fraco">{l.codigo ?? ''}</td>
                 <td className="cofre-nome">{l.nome}</td>
                 <td>{l.temGov ? <span className="badge badge-ok">Guardada</span> : <span className="fraco">—</span>}</td>
