@@ -1,6 +1,6 @@
 // Cadastro › Empresa: as regras da empresa. "Presta serviços?", "Cartão empresarial" e "Vende no cartão" com Sim / Não
 // (clicar de novo no marcado volta para "não informado") e os sócios (o nome e o CPF de cada um).
-import { Icone, useCarregando } from '@nads/ui';
+import { Icone, MenuSuspenso, useCarregando } from '@nads/ui';
 import { useState } from 'react';
 import { useDadosDaEmpresa } from './useDadosDaEmpresa';
 
@@ -42,14 +42,10 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
             {vm.receitaDiscorda && <> <b>Na Receita: {vm.receitaDiscorda}.</b> Confira.</>}
           </span>
         </div>
-        <div className="cad-regra-opcoes cad-regimes" role="group" aria-label="Regime tributário">
-          {vm.regimes.map(r => {
-            const marcado = (vm.regime ?? vm.regimePadrao) === r;
-            return (
-              <button key={r} type="button" className={'btn ' + (marcado ? 'btn-primary' : 'btn-outline')} aria-pressed={marcado}
-                title={vm.regime == null && marcado ? 'O ' + vm.origemDoPadrao : undefined} onClick={() => vm.definirRegime(r)}>{r}</button>
-            );
-          })}
+        {/* o menu do catálogo (Vitor, 13/10/2026: os sete botões ficaram feios), o mesmo da Nova empresa */}
+        <div className="cad-regra-opcoes">
+          <MenuSuspenso rotulo={vm.regime ?? (vm.regimePadrao || 'Escolher')} className="btn btn-outline" titulo="Regime tributário" direita largura={200}
+            itens={vm.regimes.map(r => ({ rotulo: r, marcado: (vm.regime ?? vm.regimePadrao) === r, onClick: () => { if (vm.regime !== r) vm.definirRegime(r); } }))} />
         </div>
       </div>
       <div className="cad-regra">
