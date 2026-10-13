@@ -778,17 +778,10 @@ export function TarefaExtratos() {
                     <span className="badge badge-ok" title="O extrato e o razão batem em todos os meses do período">Ok</span>
                   </div>
                 ) : faltaCheque ? (
+                  // o banco certo (extrato e razão batem): o Ok no lugar do Razão / Remover todos, e o Cheque especial ao lado (Vitor,
+                  // 13/10/2026); o razão de cada mês continua na grade (a setinha), para importar de novo depois do cheque
                   <div className="imp-grupos">
-                    <div className="imp-grupo" aria-label="Razão da conta">
-                      <span className="imp-rotulo">Razão</span>
-                      {vm.periodo.length > 1
-                        ? (lote.razaoCompleto
-                          ? <RemoverTodos titulo="o razão" travado={ocupadoGeral} onRemover={() => { void vm.excluirDoPeriodo(b.id, 'sistema', lote.comRazao); }} />
-                          : <ImportarTodos titulo="o razão" restantes={lote.comRazao.length > 0} aceitar={cxRazao.aceitar} travado={ocupadoGeral} onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }}
-                            onRemover={() => { void vm.excluirDoPeriodo(b.id, 'sistema', lote.comRazao); }} />)
-                        : <BotaoLado lado={b.razao} titulo="Razão" aceitar={cxRazao.aceitar} travado={travado}
-                          onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }} onExcluir={() => { void vm.excluirDoBanco(b.id, 'sistema'); }} />}
-                    </div>
+                    <span className="badge badge-ok" title="O extrato e o razão batem; falta o cheque especial dos dias negativos">Ok</span>
                     {/* bate, mas falta o cheque especial: o botão principal (Vitor, 02/10/2026: no lugar do "Conferido" clicável) */}
                     <button type="button" className="btn btn-primary" onClick={() => explicarCheque(b, situacao)}
                       title="Bate com o razão, mas fecha negativo em algum dia: falta o cheque especial. Clique para ver.">Cheque especial</button>
