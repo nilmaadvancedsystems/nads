@@ -22,7 +22,11 @@ export interface ContagemSieg {
 export interface SerieDeSaida { modelo: string; serie: string; numeros: number[]; canceladas: number[]; valor: number }
 
 /** Um item de NF-e/NFC-e no XML. */
-export interface ItemDoXml { ncm: string; cfop: string; cst: string; cest: string; valor: number }
+export interface ItemDoXml {
+  ncm: string; cfop: string; cst: string; cest: string; valor: number;
+  /** desde o resumo 2 (13/10/2026), só quando têm: o ICMS destacado, o ICMS-ST, o IPI e o CST do PIS */
+  icms?: number; st?: number; ipi?: number; cstPis?: string;
+}
 
 /** Uma nota lida do XML do SIEG (o resumo; o arquivo fica na pasta do cliente no Drive). */
 export interface NotaDoSieg {
@@ -49,6 +53,8 @@ export interface NotasSieg {
   emitidas: NotaDoSieg[]; recebidas: NotaDoSieg[];
   /** o resumo passou do tamanho de um documento: saíram os itens */
   itensCortados?: boolean;
+  /** a versão do resumo (2 = os itens com o ICMS, o ST, o IPI e o CST do PIS; sem = 1) */
+  resumo?: number;
 }
 
 /** siegSaidas/{codigo}_{AAAA-MM}: as saídas do mês (NF-e e NFC-e), série por série. */
@@ -183,3 +189,4 @@ export function faltamNoAlterdata(doXml: NotaDoSieg[], doAlterdata: readonly Not
 export { errosDeTributacao, conferirValores, type ErroDeTributacao, type NotaQueNaoFecha, type ConferenciaDeValores } from './conferencia';
 
 export { segregacaoDasSaidas, previaDoDas, aliquotaEfetiva, avisoDeLimite, reinfDasNotas, servicosDoMes, grupoMonofasico, temIcmsSt, ANEXOS, MONOFASICOS, SUBLIMITE, TETO, LIMITE_MEI, type Anexo, type Segregacao, type PreviaDoDas, type ParcelaDaReceita, type LinhaDaReinf } from './simples';
+export { receitasDoMes, creditosDoMes, pisCofins, icmsDoMes, irpjCsll, receitaParaIrpj, mesesDoTrimestre, temImpostosNoXml, ehVenda, PRESUNCOES, ALIQUOTAS_PIS_COFINS, type ReceitasDoMes, type CreditosDoMes, type PisCofins, type IcmsDoMes, type IrpjCsll, type ReceitaParaIrpj, type Presuncao, type RegimeDoLucro } from './lucro';

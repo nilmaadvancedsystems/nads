@@ -585,7 +585,7 @@ function iniciarSieg({ db, log }) {
             const onde = 'Claudio Secretario/' + p.competencia + '/' + nomeDaPasta;
             await db.collection('siegNotas').doc(id).set(resumoQueCabe({
               codigo: soDigitos(p.codigo), competencia: p.competencia, em: new Date().toISOString(), pasta: onde, zip: zip ? nomeDoZip : '', arquivos: arquivos.length, novos: arquivos.length,
-              emitidas: resumo.emitidas, recebidas: resumo.recebidas,
+              emitidas: resumo.emitidas, recebidas: resumo.recebidas, resumo: sx.VERSAO_DO_RESUMO,
             }));
             // e a sequência das saídas (a Conferência de Saídas lê daqui, sem outro pedido)
             await db.collection('siegSaidas').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), series: seriesDasNotas(saidasDoResumo(resumo.emitidas)) });

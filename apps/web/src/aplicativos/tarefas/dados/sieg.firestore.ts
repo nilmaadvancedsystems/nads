@@ -152,7 +152,7 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
             carregadas: true,
             dados: d ? {
               codigo: texto(d.codigo), competencia: texto(d.competencia), em: texto(d.em), pasta: texto(d.pasta),
-              arquivos: Number(d.arquivos) || 0, novos: Number(d.novos) || 0, itensCortados: !!d.itensCortados,
+              arquivos: Number(d.arquivos) || 0, novos: Number(d.novos) || 0, itensCortados: !!d.itensCortados, resumo: Number(d.resumo) || 1,
               emitidas: Array.isArray(d.emitidas) ? (d.emitidas as t.sieg.NotaDoSieg[]) : [],
               recebidas: Array.isArray(d.recebidas) ? (d.recebidas as t.sieg.NotaDoSieg[]) : [],
             } : null,

@@ -5,7 +5,7 @@ import { tarefas as t } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNotasDaConferencia } from '../../../concilia-ai/importadosNaEtapa';
-import { useExecucoes, useRegimesDoEntregas, useSieg } from '../../dados/repo';
+import { useExecucoes, useExecucoesDoPeriodo, useRegimesDoEntregas, useSieg } from '../../dados/repo';
 
 const VAZIO: t.painel.NotasDoPainel = { entradas: [], saidas: [], tomados: [], prestados: [] };
 
@@ -88,13 +88,25 @@ export function usePainelDoFiscal(empresa: string, codigo: string, competencia: 
   const dp = useExecucoes(competencia, 'dp');
   const exDp = codigo ? dp.execucoes.find(e => String(e.codigo) === codigo) : null;
   const folhaDoDp = exDp?.valores?.folha ?? null;
+  // o Presumido e o Real pelos XMLs (13/10/2026): a receita do mês, os créditos (Real) e se os XMLs já trazem o ICMS por
+  // item; e os outros meses do trimestre (o que a rotina de cada mês guardou), para o IRPJ/CSLL do Presumido
+  const lucro = useMemo(() => (xmlDados ? {
+    receitas: t.sieg.receitasDoMes(xmlDados), creditos: t.sieg.creditosDoMes(xmlDados), temImpostos: t.sieg.temImpostosNoXml(xmlDados), xmlDados,
+  } : null), [xmlDados]);
+  const outrosDoTrimestre = t.sieg.mesesDoTrimestre(competencia).filter(m => m !== competencia);
+  const trimestre = useExecucoesDoPeriodo(outrosDoTrimestre, 'fiscal');
+  const outrosMeses = trimestre.porMes.map(m => ({ competencia: m.competencia, valores: m.execucoes.find(e => e.empresa === empresa)?.valores || {} }));
   // a janela de importar: os relatórios da tarefa, um por tópico, e o "XMLs do cliente" (08/10/2026)
   const [importando, setImportando] = useState<{ relatorios: t.RelatorioImportavel[]; atual: TopicoDeImportar } | null>(null);
   return {
     carregado: !!lidas,
     folhaDoDp,
-    /** o regime da empresa (a lista do escritório) */
+    /** o regime da empresa (o do cadastro do nads; sem ele, o do Entregas ou o da lista) */
     regime: t.regimeDaEmpresa(Number(codigo) || null),
+    /** o Presumido e o Real pelos XMLs do mês (null = sem XML) */
+    lucro,
+    /** os outros meses do trimestre (Presumido): os valores que a rotina de cada mês guardou */
+    outrosMeses,
     /** o .zip das notas que faltam no Alterdata: pedindo ao robô (até ele entregar e baixar) */
     baixandoFaltam: pediuFaltam,
     async baixarFaltam(chaves: string[]) {

@@ -55,24 +55,25 @@ export interface RepoSieg {
 
 /** Os XMLs de exemplo (TESTE): duas NF-e emitidas com itens, uma recebida, uma NFS-e com ISS e IRRF retidos e uma
  * NFS-e tomada com retenções (para a REINF). */
-function xmlsDeExemplo(competencia: string): Pick<t.sieg.NotasSieg, 'emitidas' | 'recebidas'> {
+function xmlsDeExemplo(competencia: string): Pick<t.sieg.NotasSieg, 'emitidas' | 'recebidas' | 'resumo'> {
   const [a, m] = competencia.split('-');
   const dia = (d: number) => String(d).padStart(2, '0') + '/' + m + '/' + a;
   const eu = { doc: '11222333000181', nome: 'EMPRESA (TESTE)' };
   const cli = { doc: '44555666000172', nome: 'CLIENTE EXEMPLO (TESTE)' };
   const forn = { doc: '77888999000163', nome: 'FORNECEDOR EXEMPLO (TESTE)' };
   return {
+    resumo: 2,
     emitidas: [
       { tipo: 'NF-e', chave: 'T1', numero: 'T901', serie: '1', data: dia(3), emitente: eu, destinatario: cli, valor: 1500,
-        itens: [{ ncm: '21069090', cfop: '5102', cst: '000', cest: '', valor: 1000 }, { ncm: '22021000', cfop: '5405', cst: '060', cest: '0300700', valor: 500 }] },
+        itens: [{ ncm: '21069090', cfop: '5102', cst: '000', cest: '', valor: 1000, icms: 180, cstPis: '01' }, { ncm: '22021000', cfop: '5405', cst: '060', cest: '0300700', valor: 500, cstPis: '04' }] },
       { tipo: 'NF-e', chave: 'T2', numero: 'T902', serie: '1', data: dia(9), emitente: eu, destinatario: cli, valor: 800,
-        itens: [{ ncm: '21069090', cfop: '5102', cst: '000', cest: '', valor: 800 }] },
+        itens: [{ ncm: '21069090', cfop: '5102', cst: '000', cest: '', valor: 800, icms: 144, cstPis: '01' }] },
       { tipo: 'NFS-e', chave: '', numero: 'T77', serie: '', data: dia(12), emitente: eu, destinatario: cli, valor: 3000, nbs: '1.1506.10.00',
         descricao: 'Consultoria em gestão (TESTE)', retencoes: [{ imposto: 'ISS', valor: 150 }, { imposto: 'IRRF', valor: 45 }] },
     ],
     recebidas: [
       { tipo: 'NF-e', chave: 'T3', numero: 'T501', serie: '1', data: dia(5), emitente: forn, destinatario: eu, valor: 2200,
-        itens: [{ ncm: '39232990', cfop: '6102', cst: '090', cest: '', valor: 2200 }] },
+        itens: [{ ncm: '39232990', cfop: '6102', cst: '090', cest: '', valor: 2200, icms: 264 }] },
       // uma NFS-e tomada com INSS e IRRF/PIS/COFINS/CSLL retidos (a REINF: R-2010 e R-4020)
       { tipo: 'NFS-e', chave: '', numero: 'T88', serie: '', data: dia(15), emitente: forn, destinatario: eu, valor: 4000, nbs: '1.0501.10.00',
         descricao: 'Limpeza e conservação (TESTE)', retencoes: [{ imposto: 'INSS', valor: 440 }, { imposto: 'IRRF', valor: 60 }, { imposto: 'PIS', valor: 26 }, { imposto: 'COFINS', valor: 120 }, { imposto: 'CSLL', valor: 40 }] },

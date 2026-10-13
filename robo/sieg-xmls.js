@@ -59,6 +59,22 @@ function cstDoItem(det) {
   return cst ? (tag(icms, 'orig') || '') + cst : '';
 }
 
+/**
+ * Um item da NF-e: o NCM, o CFOP, o CST/CSOSN, o CEST e o valor; e (13/10/2026, a apuração do Presumido e do Real) o ICMS
+ * destacado, o ICMS-ST, o IPI e o CST do PIS, só quando têm (para o resumo não crescer à toa).
+ */
+function itemDoXml(det) {
+  const it = { ncm: tag(det, 'NCM'), cfop: tag(det, 'CFOP'), cst: cstDoItem(det), cest: tag(det, 'CEST'), valor: num(tag(det, 'vProd')) };
+  const icmsBloco = tag(det, 'ICMS');
+  const icms = num(tag(icmsBloco, 'vICMS')), st = num(tag(icmsBloco, 'vICMSST')), ipi = num(tag(tag(det, 'IPI'), 'vIPI'));
+  const cstPis = tag(tag(det, 'PIS'), 'CST');
+  if (icms) it.icms = icms;
+  if (st) it.st = st;
+  if (ipi) it.ipi = ipi;
+  if (cstPis) it.cstPis = cstPis;
+  return it;
+}
+
 /** O resumo de uma nota (o que vai para o banco), { cancela } para o cancelamento, ou null (outro evento, XML desconhecido). */
 function resumoDaNota(xml) {
   const t = tipoDoXml(xml);
@@ -69,7 +85,7 @@ function resumoDaNota(xml) {
       tipo: tag(ide, 'mod') === '65' ? 'NFC-e' : 'NF-e',
       chave: /Id="NFe(\d{44})"/.exec(xml)[1], numero: tag(ide, 'nNF'), serie: tag(ide, 'serie'), data: data(primeira(ide, 'dhEmi', 'dEmi')),
       emitente: pessoa(tag(xml, 'emit')), destinatario: pessoa(tag(xml, 'dest')), valor: num(tag(tag(xml, 'ICMSTot'), 'vNF')),
-      itens: blocos(xml, 'det').map(det => ({ ncm: tag(det, 'NCM'), cfop: tag(det, 'CFOP'), cst: cstDoItem(det), cest: tag(det, 'CEST'), valor: num(tag(det, 'vProd')) })),
+      itens: blocos(xml, 'det').map(itemDoXml),
     };
   }
   if (t === 'cte') {
@@ -131,4 +147,7 @@ function zipDe(arquivos) {
   return Buffer.concat([...locais, dir, fim]);
 }
 
-module.exports = { tipoDoXml, tipoDeNota, nomeDoArquivo, resumoDaNota, zipDe, crc32 };
+/** A versão do resumo (2 = os itens com o ICMS, o ICMS-ST, o IPI e o CST do PIS; 13/10/2026). */
+const VERSAO_DO_RESUMO = 2;
+
+module.exports = { VERSAO_DO_RESUMO, tipoDoXml, tipoDeNota, nomeDoArquivo, resumoDaNota, zipDe, crc32 };
