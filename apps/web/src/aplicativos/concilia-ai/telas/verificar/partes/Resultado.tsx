@@ -37,7 +37,10 @@ export function Resultado({ vm, r }: { vm: Vm; r: Res }) {
         <button className="btn btn-outline" id="vcBtCsv" type="button" onClick={() => { const a = vm.csv(); if (a) baixarArquivo(a.texto, a.nome); }}>Baixar resultado</button>
         {/* Sem pendência, o "Ok" quem dá é o sistema (aviso automático que redireciona sozinho —
             ver conferir() no ViewModel). Não existe botão de Ok manual: o usuário só reconfere. */}
-        <button className="btn btn-primary" id="vcBtReimportar" type="button" onClick={vm.reimportar}>Corrigi, quero reconferir</button>
+        {/* sobrou só bem do ativo e ICMS: a conta já está Ok; o botão só volta (Vitor, 13/10/2026: "Conferir mais adiante...") */}
+        {r.passa
+          ? <button className="btn btn-primary" id="vcBtReimportar" type="button" onClick={vm.voltar}>Conferir mais adiante...</button>
+          : <button className="btn btn-primary" id="vcBtReimportar" type="button" onClick={vm.reimportar}>Corrigi, quero reconferir</button>}
       </div>
     </div>
   );
@@ -105,7 +108,8 @@ function Todas({ vm, r, t }: { vm: Vm; r: Res; t: NonNullable<Res['todas']> }) {
           <div className="vc-pend">
             <div className="vc-pend-head">
               <h3>Pendências</h3>
-              {t.podeConferir && (t.conferido
+              {r.passa && <span className="badge badge-ok" title="Só ficaram notas de bem do ativo e ICMS, que costumam ir para outra conta: a conta fica Ok">Ok · bens e ICMS</span>}
+              {t.podeConferir && !r.passa && (t.conferido
                 ? <button type="button" className="btn vc-conferido-on" title="Marcada como conferida com pendências — clique pra desfazer" onClick={vm.alternarConferido}><Icone nome="check" />Conferido</button>
                 : <button type="button" className="btn btn-outline" title="Seguir com essas pendências e marcar a conta como conferida" onClick={vm.alternarConferido}>Marcar como conferido</button>)}
             </div>

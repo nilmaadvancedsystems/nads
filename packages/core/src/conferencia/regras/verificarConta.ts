@@ -8,6 +8,7 @@ import { brl, compararNumerico, nomeNorm } from '../../formatos';
 import { SV } from '../tabelas/servicos';
 import type { Conta, Empresa, NotaComTipo, NotaServico, TipoServico } from '../tipos';
 import { agruparTotaisPorNatureza, chaveNaturezaNota, chaveNota } from './cfop';
+import { tipoDoCfopDeBem } from '../../tarefas/regras/bens';
 import { nomeComumContas } from './conciliacao';
 import { contasDaNatureza, listaTipo, naturezasDaConta, todasNotasComTipo } from './empresa';
 import { catDoPart, catServ, contasDoPart, notasCfopDeServico } from './servicos';
@@ -328,6 +329,15 @@ export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
 
 export function semPendencias(r: ResultadoVerificacao): boolean {
   return !r.faltando.length && !r.duplicada.length && !r.aMais.length;
+}
+
+/**
+ * Sobrou só o que costuma ir para outra conta (Vitor, 13/10/2026: "quando for CFOP de bens ou ativos, ICMS, deixa passar"):
+ * as notas de bem do ativo imobilizado faltando na conta (1551, 2551, 1406…) — o ICMS no razão já não é pendência. Aponta,
+ * mas a conta fica Ok ("Conferir mais adiante...").
+ */
+export function soPendenciasQuePassam(r: ResultadoVerificacao): boolean {
+  return !semPendencias(r) && !r.duplicada.length && !r.aMais.length && r.faltando.every(n => !!tipoDoCfopDeBem(n.cfop || ''));
 }
 
 /** Linhas "a mais" por repetição (as que sobram de cada número duplicado). */
