@@ -7,6 +7,7 @@
 // negativo, o Ajuste (o valor do saldo negativo, no próprio dia) e o Estorno (o mesmo valor, ao contrário, no próximo dia
 // do relatório). No razão novo, esses lançamentos não estão no extrato: a conferência os acha entre as sobras do razão e
 // tira da conta — o saldo final confere ignorando o cheque especial.
+import { normalizarTexto } from '../../../formatos';
 import type { EmpresaExtrator, LancamentoDoArquivo, LinhaConferencia } from '../tipos';
 import { arquivosDoBanco } from './bancos';
 import { conferir } from './conferencia';
@@ -98,10 +99,18 @@ export function conferenciaDoBanco(e: EmpresaExtrator, banco: string, primeiro: 
   const sobras = porMes.flatMap(p => p.linhas.filter(l => l.situacao === 'amais' && l.sistema).map(l => l.sistema as LancamentoDoArquivo));
   const ultimoDia = comMovimento.length ? ultimoDiaDoMes(comMovimento[comMovimento.length - 1]) : '';
   const cheque = negativos.length ? chequeEspecialNoRazao(negativos, sobras, ultimoDia) : { linhas: new Set<LancamentoDoArquivo>(), cobertos: new Set<string>() };
+  // o cheque especial do fim do ano anterior, lançado no razão no começo de janeiro (até o dia 5): conta como certo
+  // (Vitor, 13/10/2026: "quando vira de ano, eu jogo no começo de janeiro")
+  for (const l of sobras) if (chequeDaViradaDoAno(l)) cheque.linhas.add(l);
   const pendencias = porMes
     .map(p => ({ mes: p.mes, linhas: p.linhas.filter(l => !(l.situacao === 'amais' && l.sistema && cheque.linhas.has(l.sistema))) }))
     .filter(p => p.linhas.length > 0);
   return { completo, pendencias, negativos, faltamCheque: negativos.filter(n => !cheque.cobertos.has(n.data)), cheque };
+}
+
+/** O lançamento do cheque especial (o histórico diz "cheque especial" ou o código 92029) entre 1º e 5 de janeiro. */
+export function chequeDaViradaDoAno(l: Pick<LancamentoDoArquivo, 'data' | 'historico'>): boolean {
+  return /-01-0[1-5]$/.test(l.data) && (/\bcheque especial\b/.test(normalizarTexto(l.historico)) || /\b92029\b/.test(l.historico));
 }
 
 function ultimoDiaDoMes(mes: string): string {
