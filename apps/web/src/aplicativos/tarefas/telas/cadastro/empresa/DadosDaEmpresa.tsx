@@ -1,6 +1,6 @@
 // Cadastro › Empresa: as regras da empresa. "Presta serviços?", "Cartão empresarial" e "Vende no cartão" com Sim / Não
 // (clicar de novo no marcado volta para "não informado") e os sócios (o nome e o CPF de cada um).
-import { Icone, MenuSuspenso, useCarregando } from '@nads/ui';
+import { Dica, Icone, MenuSuspenso, useCarregando } from '@nads/ui';
 import { useState } from 'react';
 import { useDadosDaEmpresa } from './useDadosDaEmpresa';
 
@@ -35,12 +35,8 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
       {/* o regime (13/10/2026: "no cadastro da empresa tenha os regimes, aí muda na rotina") */}
       <div className="cad-regra">
         <div className="cad-regra-txt">
-          <span className="cad-campo-rotulo">Regime tributário</span>
-          <span className="hint">
-            Muda as etapas da rotina do Fiscal: o PGDAS no Simples, o DAS-MEI no MEI; ICMS, PIS/COFINS, IRPJ/CSLL e as EFDs no Presumido e no Real.
-            {vm.regime == null && (vm.regimePadrao ? ' Sem escolher, vale o ' + vm.origemDoPadrao + ': ' + vm.regimePadrao + '.' : ' Ainda não informado.')}
-            {vm.receitaDiscorda && <> <b>Na Receita: {vm.receitaDiscorda}.</b> Confira.</>}
-          </span>
+          <span className="cad-campo-rotulo">Regime tributário<Dica texto={'Muda as etapas da rotina do Fiscal: o PGDAS no Simples, o DAS-MEI no MEI; ICMS, PIS/COFINS, IRPJ/CSLL e as EFDs no Presumido e no Real.' + (vm.regime == null && vm.regimePadrao ? ' Sem escolher, vale o ' + vm.origemDoPadrao + ': ' + vm.regimePadrao + '.' : '')} /></span>
+          {vm.receitaDiscorda && <span className="hint"><b>Na Receita: {vm.receitaDiscorda}.</b> Confira.</span>}
         </div>
         {/* o menu do catálogo (Vitor, 13/10/2026: os sete botões ficaram feios), o mesmo da Nova empresa */}
         <div className="cad-regra-opcoes">
@@ -50,11 +46,7 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
       </div>
       <div className="cad-regra">
         <div className="cad-regra-txt">
-          <span className="cad-campo-rotulo">Presta serviços</span>
-          <span className="hint">
-            Mostra a aba Prestados na Importação e os serviços prestados na Conferência.
-            {vm.prestaServico == null && ' Ainda não informado.'}
-          </span>
+          <span className="cad-campo-rotulo">Presta serviços<Dica texto="Mostra a aba Prestados na Importação e os serviços prestados na Conferência." /></span>
         </div>
         <div className="cad-regra-opcoes" role="group" aria-label="Presta serviços">
           {opcao(true, 'Sim')}
@@ -64,11 +56,7 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
       {/* os cartões (Vitor, 07/10/2026): ligam a etapa Cartões na Tarefas */}
       <div className="cad-regra">
         <div className="cad-regra-txt">
-          <span className="cad-campo-rotulo">Cartão empresarial</span>
-          <span className="hint">
-            Compras no cartão de crédito da empresa: a etapa Cartões quebra a fatura no razão do cartão.
-            {vm.cartaoEmpresarial == null && ' Ainda não informado.'}
-          </span>
+          <span className="cad-campo-rotulo">Cartão empresarial<Dica texto="Compras no cartão de crédito da empresa: a etapa Cartões quebra a fatura no razão do cartão." /></span>
         </div>
         <div className="cad-regra-opcoes" role="group" aria-label="Cartão empresarial">
           {opcaoDoCartao('cartaoEmpresarial', true, 'Sim')}
@@ -77,11 +65,7 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
       </div>
       <div className="cad-regra">
         <div className="cad-regra-txt">
-          <span className="cad-campo-rotulo">Vende no cartão</span>
-          <span className="hint">
-            Vendas pelas maquininhas (Cielo, Rede, Getnet, Stone, PagBank): a etapa Cartões concilia com as notas.
-            {vm.vendeNoCartao == null && ' Ainda não informado.'}
-          </span>
+          <span className="cad-campo-rotulo">Vende no cartão<Dica texto="Vendas pelas maquininhas (Cielo, Rede, Getnet, Stone, PagBank): a etapa Cartões concilia com as notas." /></span>
         </div>
         <div className="cad-regra-opcoes" role="group" aria-label="Vende no cartão">
           {opcaoDoCartao('vendeNoCartao', true, 'Sim')}
@@ -91,12 +75,7 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
       {/* o Creditor (Vitor, 08/10/2026): a empresa recebe liquidação de cobrança do banco (CRÉD.LIQ.COBRANÇA) */}
       <div className="cad-regra">
         <div className="cad-regra-txt">
-          <span className="cad-campo-rotulo">Liquidação de cobrança (Creditor)</span>
-          <span className="hint">
-            O banco credita as cobranças liquidadas no caixa (CRÉD.LIQ.COBRANÇA): a etapa Creditor entra em todos os meses da Tarefa.
-            Sem resposta ou Não, ela entra só nos meses em que o razão do caixa tiver a liquidação.
-            {vm.credLiquidacao == null && ' Ainda não informado.'}
-          </span>
+          <span className="cad-campo-rotulo">Liquidação de cobrança (Creditor)<Dica texto="O banco credita as cobranças liquidadas no caixa (CRÉD.LIQ.COBRANÇA): a etapa Creditor entra em todos os meses da Tarefa. Sem resposta ou Não, ela entra só nos meses em que o razão do caixa tiver a liquidação." /></span>
         </div>
         <div className="cad-regra-opcoes" role="group" aria-label="Liquidação de cobrança (Creditor)">
           {opcaoDoCartao('credLiquidacao', true, 'Sim')}
@@ -106,11 +85,7 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
       {/* a nota de honorário (Vitor, 07/10/2026): sem nota, a etapa Honorários pede o Extrato por cobrança */}
       <div className="cad-regra">
         <div className="cad-regra-txt">
-          <span className="cad-campo-rotulo">Emite nota de honorário</span>
-          <span className="hint">
-            O escritório emite nota de honorário para a empresa. Sem nota, a etapa Honorários lança as cobranças pelo Extrato por cobrança.
-            {vm.emiteNotaHonorario == null && ' Ainda não informado.'}
-          </span>
+          <span className="cad-campo-rotulo">Emite nota de honorário<Dica texto="O escritório emite nota de honorário para a empresa. Sem nota, a etapa Honorários lança as cobranças pelo Extrato por cobrança." /></span>
         </div>
         <div className="cad-regra-opcoes" role="group" aria-label="Emite nota de honorário">
           {[true, false].map(sim => (
@@ -122,11 +97,8 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
       {/* o contato da empresa (Vitor, 07/10/2026): o Mandei manda as perguntas de Clientes e Fornecedores para os dois */}
       <div className="cad-regra">
         <div className="cad-regra-txt">
-          <span className="cad-campo-rotulo">E-mail e WhatsApp</span>
-          <span className="hint">
-            Para onde o Mandei manda as perguntas de Clientes e Fornecedores: um dos dois basta (com os dois, o link chega pelos dois). O WhatsApp com o DDD.
-            {erroDoContato && <> <b>{erroDoContato}</b></>}
-          </span>
+          <span className="cad-campo-rotulo">E-mail e WhatsApp<Dica texto="Para onde o Mandei manda as perguntas de Clientes e Fornecedores: um dos dois basta (com os dois, o link chega pelos dois). O WhatsApp com o DDD." /></span>
+          {erroDoContato && <span className="hint"><b>{erroDoContato}</b></span>}
         </div>
         <div className="cad-regra-opcoes">
           <label className="busca-curta" title="O e-mail da empresa">
@@ -144,8 +116,7 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
       {/* os sócios, com o nome e o CPF (Vitor, 06/10/2026): o relatório da etapa Bancos mostra a transferência para eles */}
       <div className="cad-regra">
         <div className="cad-regra-txt">
-          <span className="cad-campo-rotulo">Sócios</span>
-          <span className="hint">O nome e o CPF de cada sócio. A etapa Bancos mostra a transferência para eles (pelo nome ou pelo CPF do PIX).</span>
+          <span className="cad-campo-rotulo">Sócios<Dica texto="O nome e o CPF de cada sócio. A etapa Bancos mostra a transferência para eles (pelo nome ou pelo CPF do PIX)." /></span>
         </div>
         <div className="cad-regra-opcoes">
           <button type="button" className="btn" disabled={novo} onClick={() => setNovo(true)}><Icone nome="plus" />Adicionar sócio</button>

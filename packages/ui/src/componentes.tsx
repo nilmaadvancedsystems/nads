@@ -209,6 +209,19 @@ export function BotaoAcao({ carregando, textoCarregando, className = 'btn btn-pr
   );
 }
 
+/**
+ * A dica (Vitor, 13/10/2026: "as explicações são desnecessárias ficarem aparecendo; um ícone de interrogação que, quando
+ * passa o mouse, mostra"): o "?" ao lado do rótulo e o balão com o texto ao passar o mouse ou ao focar pelo teclado.
+ */
+export function Dica({ texto }: { texto: ReactNode }) {
+  return (
+    <span className="dica" tabIndex={0} role="note" aria-label={typeof texto === 'string' ? texto : undefined}>
+      <Icone nome="ajuda" />
+      <span className="dica-balao" role="tooltip">{texto}</span>
+    </span>
+  );
+}
+
 /** Ícone clicável (.icon-btn). */
 export function BotaoIcone({ icone, titulo, pequeno, className, ...resto }: { icone: NomeIcone; titulo: string; pequeno?: boolean } & ButtonHTMLAttributes<HTMLButtonElement>) {
   return (

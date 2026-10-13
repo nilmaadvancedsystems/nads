@@ -3626,3 +3626,12 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .dp-tabela.dp-tabela-13 .dp-ob{width:auto;min-width:72px;padding-left:8px;padding-right:8px;font-size:12px;}
 .dp-tabela.dp-tabela-13 .dp-cabeca-grupo .dp-ob-grupo{font-size:12px !important;}
 .dp-tabela.dp-tabela-13 .dp-cliente{min-width:320px;}
+
+/* a Dica (13/10/2026): o "?" de 14 px ao lado do rótulo; o balão aparece ao passar o mouse ou ao focar */
+.dica{position:relative;display:inline-flex;align-items:center;vertical-align:middle;margin-left:6px;color:var(--ink-muted);cursor:help;}
+.dica > svg{width:14px;height:14px;}
+.dica:hover,.dica:focus-visible{color:var(--ink);outline:none;}
+.dica-balao{position:absolute;left:-8px;top:calc(100% + 6px);z-index:50;width:max-content;max-width:320px;
+  padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink);box-shadow:var(--shadow-md, 0 4px 12px rgba(0,0,0,.3));
+  font-size:12px;font-weight:400;line-height:16px;white-space:normal;text-align:left;opacity:0;visibility:hidden;pointer-events:none;}
+.dica:hover .dica-balao,.dica:focus-visible .dica-balao{opacity:1;visibility:visible;}
