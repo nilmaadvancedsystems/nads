@@ -1,4 +1,4 @@
-// Lê o extrato escolhido e devolve as linhas do .xls. Primeiro tenta o leitor do layout do banco (o Banco do Brasil,
+// Lê o extrato escolhido e devolve as linhas do .xls. Primeiro tenta o leitor do layout do banco (o Banco do Brasil, o Nubank,
 // a Cora, a Unicred e a InfinitePay); se não for um layout conhecido, usa o leitor genérico do Extrator (PDF, OFX, Excel, CSV).
 // O arquivo é lido na memória e descartado: nada é guardado.
 import { lerArquivo } from '../../extrator/arquivos/leitura';
@@ -8,6 +8,7 @@ import { bancoDoTexto } from '../regras/arquivo';
 import { ehExtratoDoBancoDoBrasil, lancamentosDoBancoDoBrasil } from '../regras/bancoDoBrasil';
 import { ehExtratoDaCora, lancamentosDaCora } from '../regras/cora';
 import { ehExtratoDaInfinitePay, lancamentosDaInfinitePay } from '../regras/infinitepay';
+import { ehExtratoDoNubank, lancamentosDoNubank } from '../regras/nubank';
 import { ehExtratoDaUnicred, lancamentosDaUnicred } from '../regras/unicred';
 import type { ExtratoConvertido } from '../tipos';
 
@@ -25,6 +26,11 @@ export async function converterArquivo(nome: string, bytes: Uint8Array, anoPadra
       if (ehExtratoDoBancoDoBrasil(paginas)) {
         const linhas = lancamentosDoBancoDoBrasil(paginas);
         return { arquivo: nome, banco: 'Banco do Brasil', leitor: 'banco-do-brasil', linhas, erro: linhas.length ? null : 'Não achei lançamentos neste extrato do Banco do Brasil.' };
+      }
+      // o Nubank antes da Cora: o Pix de uma conta da Cora ("CORA SCFI") no meio do extrato do Nubank enganava o da Cora
+      if (ehExtratoDoNubank(paginas)) {
+        const linhas = lancamentosDoNubank(paginas);
+        return { arquivo: nome, banco: 'Nubank', leitor: 'nubank', linhas, erro: linhas.length ? null : 'Não achei lançamentos neste extrato do Nubank.' };
       }
       if (ehExtratoDaCora(paginas)) {
         const linhas = lancamentosDaCora(paginas);
