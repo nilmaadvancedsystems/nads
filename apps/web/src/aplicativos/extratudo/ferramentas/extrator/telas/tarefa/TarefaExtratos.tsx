@@ -515,13 +515,12 @@ function SeletorDeCompetencia({ vm, naTarefa, trocar, periodoDaTarefa, encerrar 
 
 /**
  * As abas da Importação (Vitor, 30/09/2026: "separe em menu superior"): os bancos (extrato e razão) e, da
- * Conferência, o balancete, as notas e os serviços. Dentro da Tarefas, ficam no cabeçalho dela, por cima do
- * checklist; aberta sozinha, em cima da página.
+ * Conferência, as notas e os serviços. Dentro da Tarefas, ficam no cabeçalho dela, por cima do checklist; aberta
+ * sozinha, em cima da página. O balancete foi para a Conferência fiscal, o primeiro passo dela (Vitor, 13/10/2026).
  */
 type AbaImportacao = 'bancos' | conferencia.PaginaImportacao;
 const ABAS_DA_IMPORTACAO: { id: AbaImportacao; rotulo: string; icone: AbaDaEtapa['icone'] }[] = [
   { id: 'bancos', rotulo: 'Bancos', icone: 'landmark' },
-  { id: 'balancete', rotulo: 'Balancete', icone: 'scale' },
   { id: 'entradas', rotulo: 'Entradas', icone: 'arrowDown' },
   { id: 'saidas', rotulo: 'Saídas', icone: 'arrowUp' },
   { id: 'tomados', rotulo: 'Tomados', icone: 'fileDown' },
@@ -594,8 +593,6 @@ export function TarefaExtratos() {
   const bancosSemCheque = vm.bancos.filter(b => diasSemCheque(b.id) > 0);
   // "Pedir os que faltam" (08/10/2026): os bancos sem extrato no mês, fora os sem movimento e os que já têm extrato na fila
   const faltamPedir = vm.bancos.filter(b => b.id !== 'banco' && b.extrato.qtdArquivos === 0 && !semMovimentoNoPeriodo(b.id) && !rec.linhasComRecebido.has(b.id)).length;
-  // todo banco Ok (ou sem movimento no período): não tem extrato para pedir
-  const bancosTodosOk = vm.bancos.length > 0 && vm.bancos.every(b => !!bancosOk[b.id] || semMovimentoNoPeriodo(b.id));
   // todos batem com o razão, mesmo os que só faltam o cheque especial: nada mais a pedir (Vitor, 13/10/2026)
   const bancosTodosBatem = vm.bancos.length > 0 && vm.bancos.every(b => !!bancosOk[b.id] || situacoes[b.id]?.tipo === 'falta-cheque' || semMovimentoNoPeriodo(b.id));
   // os dias que fecham negativos (somando os bancos), para o aviso da etapa Cheque especial

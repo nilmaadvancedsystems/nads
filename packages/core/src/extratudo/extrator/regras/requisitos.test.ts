@@ -12,6 +12,9 @@ describe('requisitos para seguir da Importação', () => {
       { ...TUDO, saidas: false, prestados: false }, true);
     expect(r).toEqual({ pronto: false, faltam: ['Sicoob: extrato e razão batendo', 'Saídas', 'Prestados'], alvos: [null, 'aba:saidas', 'aba:prestados'] });
   });
+  it('o balancete não é da Importação (é o primeiro passo da Conferência fiscal)', () => {
+    expect(requisitosDaImportacao([], { ...TUDO, balancete: false }, false).pronto).toBe(true);
+  });
   it('Prestados só se a empresa presta serviço; a Conferência sem carregar não está pronta', () => {
     expect(requisitosDaImportacao([], { ...TUDO, prestados: false }, false).pronto).toBe(true);
     expect(requisitosDaImportacao([], { ...TUDO, prestados: false }, null).pronto).toBe(true);
