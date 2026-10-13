@@ -37,7 +37,9 @@ export const ROTINA_CONTABIL: Rotina = {
       secao: 'Preparação',
       nome: 'Cheque especial',
       descricao: 'Os dias em que o banco fecha negativo: gere os lançamentos no Cheque especial, lance no Alterdata e importe o razão de novo.',
-      ferramenta: { app: 'extratudo', nome: 'Extrator', caminho: r => '/extratudo/' + r + '/extrator/tarefa/extratos?etapa=cheque', embutir: true, periodo: true, requisitos: true },
+      // a tela própria da Tarefa, banco por banco (Vitor, 13/10/2026: "não vai ficar em uma aplicação externa")
+      ferramenta: null,
+      tela: { id: 'cheque-especial', periodo: true },
       verificacao: 'manual',
       objecoes: [
         { id: 'cheque-nao-lancado', texto: 'O cheque especial ainda não foi lançado no Alterdata', soMotivo: true, solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Gere os lançamentos no Cheque especial, lance no Alterdata e importe o razão da conta do banco de novo.' } },

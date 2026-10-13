@@ -33,7 +33,7 @@ export function requisitosDaImportacao(
   for (const b of bancos) if (!b.ok && !b.faltaCheque && !b.semMovimento) falta(b.nome + ': extrato e razão batendo', b.id ? 'banco:' + b.id : null);
   if (!importados) falta('a Conferência carregar', null);
   else {
-    if (!importados.balancete) falta('Balancete', 'aba:balancete');
+    // o balancete foi para a Conferência fiscal, o primeiro passo dela (Vitor, 13/10/2026)
     if (!importados.entradas) falta('Entradas', 'aba:entradas');
     if (!importados.saidas) falta('Saídas', 'aba:saidas');
     if (!importados.tomados) falta('Tomados', 'aba:tomados');

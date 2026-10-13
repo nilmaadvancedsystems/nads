@@ -22,6 +22,8 @@ export interface ContaBancaria {
   apelido?: string;
   /** o código da conta contábil do banco no plano (ex.: 10503) */
   contaContabil?: string;
+  /** o código da conta do cheque especial desta conta no plano (Vitor, 13/10/2026: gravado na primeira vez, na etapa Cheque especial) */
+  contaChequeEspecial?: string;
   /** a primeira competência da conta ('aaaa-mm'); sem = desde sempre */
   desde?: string;
   /** a última competência da conta ('aaaa-mm'), quando foi encerrada */

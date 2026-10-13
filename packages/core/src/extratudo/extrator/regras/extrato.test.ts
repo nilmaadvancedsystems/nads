@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { anoDoTexto, lancamentosDoPdf, paginasPorMes, periodoDoExtrato, saldoAnteriorDoPdf, type ItemDeTexto } from './extrato';
+import { anoDoTexto, ehConsultasDoBB, lancamentosDoPdf, paginasPorMes, periodoDoExtrato, saldoAnteriorDoPdf, saldosDoDiaDoPdf, type ItemDeTexto } from './extrato';
 
 /** Monta uma página: cada linha é [texto, x] com a mesma altura; as linhas descem de 14 em 14. */
 function pagina(linhas: [string, number][][]): ItemDeTexto[] {
@@ -108,6 +108,51 @@ describe('as páginas de cada mês (o PDF de vários meses quebrado para o Drive
   });
 });
 
+describe('o quadro RESUMO do fim não é lançamento (Vitor, 13/10/2026)', () => {
+  it('"Cheque especial contratado: 10.000,00C" e os provisionados ficam de fora', () => {
+    const p = pagina([
+      [['Data', 40], ['Lançamento', 100], ['Valor (R$)', 400], ['Saldo (R$)', 480]],
+      [['30/01/2026', 40], ['DÉB.TIT.COMPE EFETIVADO', 100], ['4.364,77D', 400], ['432,15D', 480]],
+      [['RESUMO', 40]],
+      [['Saldo em conta:', 40], ['432,15D', 480]],
+      [['Cheque especial contratado:', 40], ['10.000,00C', 480]],
+      [['Juros vencidos provisionados:', 40], ['12,00D', 480]],
+      [['ENCARGOS VENCIDOS REMANESCENTES', 40]],
+      [['Tarifas vencidas remanescentes:', 40], ['3,00D', 480]],
+    ]);
+    expect(lancamentosDoPdf([p], 'banco', 2000).map(l => l.valor)).toEqual([-436477]);
+  });
+});
+
+describe('o extrato da Caixa (Vitor, 13/10/2026)', () => {
+  // as colunas de verdade do PDF da Caixa: data 25, documento ~105, texto 147, valor ~410, saldo ~530
+  const linha = (y: number, partes: [string, number][]) => partes.map(([texto, x]) => ({ texto, x, y, largura: texto.length * 5 }));
+  const p = [
+    ...linha(630, [['Saldo anterior a 01/01/2026 R$ 10,40 C', 426]]),
+    ...linha(604, [['2 de janeiro de 2026, sexta-feira', 26]]),
+    ...linha(572, [['Data/Hora', 25], ['Nr. Doc.', 95], ['Descrição/Detalhamento', 147], ['Valor (R$)', 406], ['Saldo(R$)', 527]]),
+    ...linha(551, [['02/01/2026', 25], ['AZCX VS CD', 147]]),
+    ...linha(546, [['6726', 107], ['226,19 C', 417], ['236,59 C', 537]]),
+    ...linha(542, [['07:30:31', 25]]),
+    ...linha(527, [['DEB PIX INS MANUAL DADOS', 147]]),
+    ...linha(517, [['02/01/2026', 25], ['11426314000177 LEONARDO MENDES', 147]]),
+    ...linha(513, [['20925', 105], ['70,00 D', 421], ['166,59 C', 537]]),
+    ...linha(508, [['09:25:41', 25], ['MARQUES', 147]]),
+    ...linha(484, [['03/01/2026', 25], ['DEBITO DE IOF', 147]]),
+    ...linha(479, [['0', 114], ['30,39 D', 421], ['136,20 C', 537]]),
+    ...linha(475, [['03:48:54', 25]]),
+    ...linha(459, [['SALDO DIA', 147]]),
+    ...linha(454, [['0', 114], ['136,20 C', 537]]),
+  ];
+  it('cada bloco é um lançamento com o texto dele; o SALDO DIA não entra', () => {
+    expect(lancamentosDoPdf([p], 'banco', 2000)).toEqual([
+      { data: '2026-01-02', valor: 22619, historico: 'AZCX VS CD 6726' },
+      { data: '2026-01-02', valor: -7000, historico: 'DEB PIX INS MANUAL DADOS 11426314000177 LEONARDO MENDES 20925 MARQUES' },
+      { data: '2026-01-03', valor: -3039, historico: 'DEBITO DE IOF' },
+    ]);
+  });
+});
+
 describe('saldo anterior do extrato (abre a conta quando não há mês antes)', () => {
   it('a linha SALDO ANTERIOR: o valor da direita, com o sinal', () => {
     const p = pagina([
@@ -139,5 +184,73 @@ describe('BB "Consultas - Extrato de conta corrente": o período do extrato mand
     expect(lancamentosDoPdf([p], 'banco', 2026).map(l => [l.data, l.valor])).toEqual([
       ['2026-02-02', 2000000], ['2026-02-02', 60825], ['2026-02-02', -27],
     ]);
+  });
+});
+
+describe('BB "Consultas": vale a Dt. movimento (empresa 380)', () => {
+  it('reconhece o layout e usa a 2ª data, também dentro do mês', () => {
+    const p = pagina([
+      [['Consultas - Extrato de conta corrente', 120]],
+      [['Período do', 40], ['01 / 2026', 160]],
+      [['Dt.', 40], ['Dt.', 100], ['Histórico', 200], ['Valor R$', 400], ['Saldo', 480]],
+      [['balancete', 40], ['movimento', 100]],
+      [['31/12/2025', 40], ['000 Saldo Anterior', 200], ['24,28 D', 480]],
+      [['02/01/2026', 40], ['02/01/2026', 100], ['624 Cobrança', 200], ['300,69 C', 400]],
+      [['02/01/2026', 40], ['05/01/2026', 100], ['610 Estorno de Débito', 200], ['276,41 C', 400]],
+      [['05/01/2026', 40], ['06/01/2026', 100], ['610 Estorno de Débito', 200], ['152,48 C', 400]],
+    ]);
+    expect(ehConsultasDoBB(p.map(i => i.texto).join('\n'))).toBe(true);
+    expect(lancamentosDoPdf([p], 'banco', 2026).map(l => [l.data, l.valor])).toEqual([
+      ['2026-01-02', 30069], ['2026-01-05', 27641], ['2026-01-06', 15248],
+    ]);
+  });
+});
+
+describe('BB "Consultas": cada extrato só com o seu mês, sem repetir (empresa 380)', () => {
+  const cab = (mes: string): [string, number][][] => [
+    [['Consultas - Extrato de conta corrente', 120]], [['Período do', 40], [mes + ' / 2026', 160]],
+    [['Dt.', 40], ['Dt.', 100], ['Histórico', 200], ['Valor R$', 400], ['Saldo', 480]], [['balancete', 40], ['movimento', 100]],
+  ];
+  it('janeiro não leva o 30/01 → 02/02 (vem no de fevereiro); o S A L D O do fim não é lançamento', () => {
+    const jan = pagina([...cab('01'),
+      [['31/12/2025', 40], ['000 Saldo Anterior', 200], ['24,28 D', 480]],
+      [['05/01/2026', 40], ['05/01/2026', 100], ['624 Cobrança', 200], ['1.000,00 C', 400]],
+      [['30/01/2026', 40], ['02/02/2026', 100], ['610 Estorno de Débito', 200], ['608,25 C', 400], ['1.583,97 C', 480]],
+      [['31/01/2026', 40], ['0000', 160], ['00000', 180], ['999 S A L D O', 200], ['1.583,97 C', 480]],
+    ]);
+    const fev = pagina([...cab('02'),
+      [['30/01/2026', 40], ['000 Saldo Anterior', 200], ['975,72 C', 480]],
+      [['30/01/2026', 40], ['02/02/2026', 100], ['610 Estorno de Débito', 200], ['608,25 C', 400]],
+      [['03/02/2026', 40], ['03/02/2026', 100], ['624 Cobrança', 200], ['10,00 C', 400]],
+    ]);
+    expect(lancamentosDoPdf([jan], 'banco', 2026).map(x => [x.data, x.valor])).toEqual([['2026-01-05', 100000]]);
+    expect(lancamentosDoPdf([fev], 'banco', 2026).map(x => [x.data, x.valor])).toEqual([['2026-02-02', 60825], ['2026-02-03', 1000]]);
+  });
+});
+
+describe('BB "Consultas": o valor com * (bloqueado) não é lançamento (empresa 380)', () => {
+  it('"911 Depósito bloquead.1d útil 4.837,00 *" fica de fora', () => {
+    const p = pagina([
+      [['Consultas - Extrato de conta corrente', 120]], [['Período do', 40], ['05 / 2026', 160]],
+      [['Dt.', 40], ['Dt.', 100], ['Histórico', 200], ['Valor R$', 400], ['Saldo', 480]], [['balancete', 40], ['movimento', 100]],
+      [['29/05/2026', 40], ['911 Depósito bloquead.1d útil', 200], ['4.837,00', 400], ['*', 440]],
+      [['29/05/2026', 40], ['624 Cobrança', 200], ['4.636,48 C', 400]],
+    ]);
+    expect(lancamentosDoPdf([p], 'banco', 2026).map(x => [x.data, x.valor])).toEqual([['2026-05-29', 463648]]);
+  });
+});
+
+describe('o saldo do dia impresso no extrato (o Cheque especial se guia por ele)', () => {
+  it('BB "Consultas": o Saldo da última linha do dia (pela Dt. balancete) e o S A L D O do fim no último dia', () => {
+    const p = pagina([
+      [['Consultas - Extrato de conta corrente', 120]], [['Período do', 40], ['01 / 2026', 160]],
+      [['Dt.', 40], ['Dt.', 100], ['Histórico', 200], ['Valor R$', 400], ['Saldo', 480]], [['balancete', 40], ['movimento', 100]],
+      [['31/12/2025', 40], ['000 Saldo Anterior', 200], ['24,28 D', 480]],
+      [['02/01/2026', 40], ['02/01/2026', 100], ['624 Cobrança', 200], ['300,69 C', 400]],
+      [['02/01/2026', 40], ['05/01/2026', 100], ['610 Estorno de Débito', 200], ['276,41 C', 400], ['276,31 C', 465]],
+      [['30/01/2026', 40], ['30/01/2026', 100], ['264 Juros Saldo Devedor', 200], ['577,02 D', 400]],
+      [['31/01/2026', 40], ['999 S A L D O', 200], ['0,02 D', 480]],
+    ]);
+    expect(saldosDoDiaDoPdf([p], 2026)).toEqual([{ data: '2026-01-02', saldo: 27631 }, { data: '2026-01-30', saldo: -2 }]);
   });
 });

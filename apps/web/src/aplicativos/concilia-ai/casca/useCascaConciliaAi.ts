@@ -47,6 +47,7 @@ export function useCascaConciliaAi() {
   useRequisitosParaATarefa(repo.pronto() ? { pronto: faltamFiscal.length === 0, faltam: faltamFiscal.map(p => p.texto), alvos: faltamFiscal.map(p => p.alvo) } : null);
   // o "Resolver" da Tarefas: abre o Relatório na aba da pendência e destaca as linhas com diferença (ou o quadro)
   usePonteDaTarefa(undefined, alvo => {
+    if (alvo === 'balancete') { s.irPara('importacao/balancete'); return; }
     if (!alvo.startsWith('relatorio:')) return;
     const aba = alvo.slice(10) as c.AbaRelatorio;
     s.irPara('movimento/relatorio');
@@ -106,6 +107,8 @@ export function useCascaConciliaAi() {
    */
   const semConta = c.naturezasSemConta(e).length;
   const NA_ETAPA: { id: string; rotulo: string; secao: IdSecao }[] = [
+    // o balancete, o primeiro passo da Conferência fiscal (Vitor, 13/10/2026: saiu da Importação)
+    { id: 'importacao/balancete', rotulo: 'Balancete', secao: 'importacao' },
     { id: 'movimento/relatorio', rotulo: 'Relatório', secao: 'movimento' },
     { id: 'movimento/checklist', rotulo: 'Naturezas', secao: 'movimento' },
     { id: 'movimento/consulta', rotulo: 'Consulta', secao: 'movimento' },

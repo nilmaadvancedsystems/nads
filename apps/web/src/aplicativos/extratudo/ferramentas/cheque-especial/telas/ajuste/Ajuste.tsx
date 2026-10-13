@@ -1,6 +1,6 @@
 // Ajuste de saldo negativo (cheque_especial.html, "Passo 1" + resultado ~L279-338).
 import type { empresas } from '@nads/core';
-import { Alerta, baixarBytes, CampoArquivo, Icone, Interruptor } from '@nads/ui';
+import { Alerta, baixarBytes, CampoArquivo, Icone } from '@nads/ui';
 import { AcoesDoTopo } from '../../../../../../comum/topo';
 import { Resultado } from './partes/Resultado';
 import { useAjuste } from './useAjuste';
@@ -45,11 +45,8 @@ export function Ajuste({ empresa }: { empresa: empresas.EmpresaDoEscritorio }) {
           </div>
         </div>
 
-        <div className="btn-row">
-          <span className="toggle-row" title="Ligado (padrão): D = saldo positivo e C = saldo negativo, como no nosso sistema. Desligado: convenção contábil padrão (C = positivo, D = negativo). Vale para saldo em texto e em número.">
-            D = saldo positivo, C = negativo
-            <Interruptor ligado={vm.inverterCD} onMudar={vm.alternarInverterCD} rotulo="Convenção do sistema: D = saldo positivo, C = negativo" />
-          </span>
+        {/* sem o "D = saldo positivo, C = negativo" (Vitor, 13/10/2026: o sistema já sabe ler; vale sempre o do nosso sistema) */}
+        <div className="btn-row" style={{ justifyContent: 'flex-end' }}>
           <button className="btn btn-primary" type="button" disabled={!vm.podeGerar} onClick={vm.gerar}>Gerar lançamentos</button>
         </div>
       </div>

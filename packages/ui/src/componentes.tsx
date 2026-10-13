@@ -7,9 +7,14 @@ import { Icone, type NomeIcone } from './icones';
 /** Quanto o alerta fica no topo (Vitor, 08/10/2026: "suma depois de 3 segundos"); com o mouse em cima, para. */
 export const TEMPO_DO_ALERTA = 3000;
 
-/** O lugar dos alertas: a faixa acima do cabeçalho da Casca; sem ela, uma faixa fixa no alto da página. */
+/**
+ * O lugar dos alertas: a faixa acima do cabeçalho da Casca de fora (a da página toda: dentro da etapa, a ferramenta tem a
+ * dela, no meio da página; Vitor, 13/10/2026: "ponta a ponta da página, no topo"); sem Casca, uma faixa fixa no alto.
+ */
 function faixaDosAlertas(): HTMLElement {
-  const daCasca = document.getElementById('alertas-topo');
+  const profundidade = (el: Element) => { let n = 0; for (let p = el.parentElement; p; p = p.parentElement) n++; return n; };
+  const daCasca = Array.from(document.querySelectorAll<HTMLElement>('.alertas-topo')).filter(el => !el.classList.contains('alertas-soltos'))
+    .sort((a, b) => profundidade(a) - profundidade(b))[0];
   if (daCasca) return daCasca;
   let solta = document.getElementById('alertas-soltos');
   if (!solta) {

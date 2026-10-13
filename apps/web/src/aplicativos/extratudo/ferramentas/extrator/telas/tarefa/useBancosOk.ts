@@ -4,8 +4,8 @@
 // Verificar por conta, que fecha sozinho. Enquanto não bate, "O que corrigir no razão" (core: extrator.correcoesDoRazao).
 // Batendo, mas com dia que fecha negativo e sem o cheque especial no razão: "Conferido" no lugar do Ok; o clique abre a
 // janela que explica (o saldo negativo de cada dia e o que fazer: o Cheque especial, lançar e importar o razão de novo).
-import { extrator as x } from '@nads/core';
-import { useRetorno } from '@nads/ui';
+import { creditor, extrator as x } from '@nads/core';
+import { baixarBytes, useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useRef } from 'react';
 import type { usePonteDaTarefa } from '../../../../../../comum/ponte';
 import { caminhoNaFerramenta } from '../../../../casca/caminho';
@@ -21,6 +21,7 @@ const escapar = (t: string) => t.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': 
 export function useBancosOk(vm: Vm, ponte: Ponte, ocupado: boolean): {
   ok: Record<string, boolean>; correcoes: Record<string, x.CorrecaoDoRazao[]>; situacoes: Record<string, x.SituacaoDoBanco>;
   explicarCheque: (banco: { nome: string; conta?: string }, sit: x.SituacaoDoBanco) => void;
+  exportarFaltas: (banco: { id: string; nome: string }) => void;
 } {
   const s = useSessao();
   const { modal, aviso } = useRetorno();
@@ -74,5 +75,20 @@ export function useBancosOk(vm: Vm, ponte: Ponte, ocupado: boolean): {
     });
   }
 
-  return { ok, correcoes, situacoes, explicarCheque };
+  /**
+   * Os lançamentos do que entrou ou saiu no banco e não está no razão, num .xls para o Alterdata (Vitor, 13/10/2026): a
+   * contrapartida pelo padrão do razão já importado; para a pessoa analisar e importar.
+   */
+  function exportarFaltas(banco: { id: string; nome: string }) {
+    const conta = vm.contaContabilDe(banco.id);
+    if (!conta) { vm.avisarErro(banco.nome + ': falta o código contábil da conta', 'Informe em Cadastro › Contas bancárias (o código da conta do banco no plano, ex.: 10506).'); return; }
+    const sugestoes = x.lancamentosDoQueFaltaNoRazao(s.empresa, banco.id, vm.primeiro, correcoes[banco.id] || [], conta);
+    if (!sugestoes.length) { vm.avisarErro(banco.nome + ': nada para gerar', 'Não há lançamento do banco faltando no razão, ou o razão importado não tem a contrapartida (importe o razão da conciliação do Alterdata).'); return; }
+    const nome = 'lancamentos_' + (s.codigo ?? s.nome) + '_' + banco.nome.replace(/[^\w]+/g, '') + '.xls';
+    baixarBytes(creditor.planilhaDeImportacao(sugestoes.map(g => g.linha)), nome, creditor.TIPO_XLS);
+    const conferir = sugestoes.filter(g => g.origem === 'mais-usada').length;
+    aviso({ tom: 'ok', titulo: sugestoes.length + (sugestoes.length === 1 ? ' lançamento gerado' : ' lançamentos gerados'), texto: nome + (conferir ? ' · ' + conferir + ' sem histórico parecido no razão (foi a conta mais usada): confira' : '') });
+  }
+
+  return { ok, correcoes, situacoes, explicarCheque, exportarFaltas };
 }

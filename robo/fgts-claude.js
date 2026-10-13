@@ -34,6 +34,7 @@ const PORTAL = 'https://fgtsdigital.sistema.gov.br/portal/servicos';
 // o atalho da Emissão de Guia Rápida (o endereço da tela, visto em 09/10/2026): pula os dois cliques do menu
 const GUIA_RAPIDA = 'https://fgtsdigital.sistema.gov.br/cobranca/#/gestao-guias/emissao-guia-rapida';
 
+const cnpjComPontos = c => String(c).replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
 const agora = () => new Date().toISOString();
 const dormir = ms => new Promise(r => setTimeout(r, ms));
 const cnpjValido = c => /^\d{14}$/.test(String(c || ''));
@@ -61,10 +62,11 @@ function ambienteLimpo() {
 // escritório"): entra pelo "Meu Perfil", sem Procurador e sem digitar CNPJ
 const CNPJ_DO_ESCRITORIO = '27872981000113';
 
-function roteiroPerfil(cnpj) {
-  const formatado = cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
-  const proprio = cnpj === CNPJ_DO_ESCRITORIO;
-  return `await (async () => {
+// Os dois roteiros valem para qualquer cliente: o Claude só troca a linha "const DADOS = {…}" no começo (o CNPJ ou a
+// competência). Assim o texto do pedido não cresce com o tamanho do lote (13/10/2026: com 25 clientes o texto estourava o
+// limite do Windows, ENAMETOOLONG, e o lote inteiro ficou pendurado).
+const ROTEIRO_PERFIL = `await (async () => {
+  const DADOS = { cnpj: '00.000.000/0000-00', proprio: false };
   const dormir = ms => new Promise(r => setTimeout(r, ms));
   const visivel = e => e && e.offsetParent !== null;
   const botao = t => [...document.querySelectorAll('button')].find(b => visivel(b) && b.innerText.trim() === t);
@@ -74,42 +76,43 @@ function roteiroPerfil(cnpj) {
   if (!sel) return 'ERRO: sem a lista Perfil';
   sel.querySelector('.ng-select-container').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
   await dormir(400);
-  ${proprio ? `const meu = [...document.querySelectorAll('.ng-option')].find(o => o.innerText.trim() === 'Meu Perfil');
-  if (!meu) return 'ERRO: sem a opção Meu Perfil';
-  meu.click(); await dormir(500);
-  const definir = botao('Definir') || botao('Selecionar');
-  if (!definir) return 'ERRO: sem o botão Definir';
-  setTimeout(() => definir.click(), 100);
-  return 'OK: Meu Perfil (o escritório)';
-})()` : `const op = [...document.querySelectorAll('.ng-option')].find(o => o.innerText.trim() === 'Procurador');`}
-  ${proprio ? '' : `if (!op) return 'ERRO: sem a opção Procurador';
-  op.click(); await dormir(500);
-  const campo = [...document.querySelectorAll('input')].find(i => visivel(i) && /CNPJ ou CPF/i.test(i.placeholder || ''));
-  if (!campo) return 'ERRO: sem o campo do CNPJ';
-  campo.focus();
-  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(campo, '${formatado}');
-  campo.dispatchEvent(new Event('input', { bubbles: true })); campo.dispatchEvent(new Event('blur', { bubbles: true }));
-  await dormir(300);
+  const opcao = nome => [...document.querySelectorAll('.ng-option')].find(o => o.innerText.trim() === nome);
+  if (DADOS.proprio) {
+    const meu = opcao('Meu Perfil');
+    if (!meu) return 'ERRO: sem a opção Meu Perfil';
+    meu.click(); await dormir(500);
+  } else {
+    const proc = opcao('Procurador');
+    if (!proc) return 'ERRO: sem a opção Procurador';
+    proc.click(); await dormir(500);
+    const campo = [...document.querySelectorAll('input')].find(i => visivel(i) && /CNPJ ou CPF/i.test(i.placeholder || ''));
+    if (!campo) return 'ERRO: sem o campo do CNPJ';
+    campo.focus();
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(campo, DADOS.cnpj);
+    campo.dispatchEvent(new Event('input', { bubbles: true })); campo.dispatchEvent(new Event('blur', { bubbles: true }));
+    await dormir(300);
+  }
   const ok = botao('Definir') || botao('Selecionar');
   if (!ok) return 'ERRO: sem o botão Definir';
   setTimeout(() => ok.click(), 100);
-  return 'OK: definindo ${formatado}';
-})()`}`;
-}
+  return 'OK: definindo ' + (DADOS.proprio ? 'Meu Perfil' : DADOS.cnpj);
+})()`;
 
-function roteiroGuia(cnpj, competencia, emitir) {
-  const [ano, mes] = competencia.split('-');
-  const formatado = cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
-  return `await (async () => {
+const ROTEIRO_GUIA = `await (async () => {
+  const DADOS = { cnpj: '00.000.000/0000-00', competencia: '00/0000', emitir: true };
   const dormir = ms => new Promise(r => setTimeout(r, ms));
   const visivel = e => e && e.offsetParent !== null;
   for (let i = 0; i < 20 && ![...document.querySelectorAll('ng-select')].some(visivel); i++) await dormir(300);
-  if (!document.body.innerText.includes('${formatado}')) return JSON.stringify({ erro: 'o perfil não é o do cliente' });
+  const texto = document.body.innerText;
+  // o portal recusa a troca de perfil de alguns estabelecimentos (visto em 10/10/2026): o motivo vira o resultado
+  const recusa = (texto.match(/s[óo] [ée] permitida[^.\\n]*/i) || texto.match(/s[óo] permite[^.\\n]*/i) || [])[0];
+  if (recusa) return JSON.stringify({ erro: 'o portal recusou o perfil: ' + recusa.trim().slice(0, 120) });
+  if (!texto.includes(DADOS.cnpj)) return JSON.stringify({ erro: 'o perfil não é o do cliente' });
   const sel = [...document.querySelectorAll('ng-select')].find(visivel);
   if (!sel) return JSON.stringify({ erro: 'roteiro: sem a lista de competência' });
   sel.querySelector('.ng-select-container').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
   await dormir(400);
-  const op = [...document.querySelectorAll('.ng-option')].find(o => o.innerText.trim() === '${mes}/${ano}');
+  const op = [...document.querySelectorAll('.ng-option')].find(o => o.innerText.trim() === DADOS.competencia);
   if (!op) return JSON.stringify({ erro: 'sem débito em aberto na competência' });
   op.click(); await dormir(300);
   const pesquisar = [...document.querySelectorAll('button')].find(b => visivel(b) && b.innerText.trim() === 'Pesquisar');
@@ -117,19 +120,36 @@ function roteiroGuia(cnpj, competencia, emitir) {
   pesquisar.click();
   let txt = '';
   for (let i = 0; i < 50; i++) { await dormir(300); txt = document.body.innerText; if (/Total Devedor/.test(txt) && /Vencimento da Guia/.test(txt)) break; }
-  const valor = (txt.match(/Total Devedor\\s*R\\$\\s*([\\d.,]+)/) || [])[1] || '';
-  const vencimento = (txt.match(/Vencimento da Guia:\\s*(\\d{2}\\/\\d{2}\\/\\d{4})/) || [])[1] || '';
-  if (!valor) return JSON.stringify({ erro: 'roteiro: a pesquisa não mostrou o total' });
-  if (!${emitir ? 'true' : 'false'}) return JSON.stringify({ ensaio: true, valor, vencimento });
-  const emitirBotao = [...document.querySelectorAll('button')].find(b => visivel(b) && b.innerText.trim() === 'Emitir guia');
+  await dormir(500);
+  txt = document.body.innerText;
+  if (!/Vencimento da Guia/.test(txt)) return JSON.stringify({ erro: 'roteiro: a pesquisa não mostrou o total' });
+  // a competência pode ter mais de um vencimento, cada um com o seu "Emitir guia" (13/10/2026, OURO VERDE: a rescisão vence
+  // dia 16 e já tinha guia aguardando pagamento; a mensal vence dia 20). Emite só o vencimento que ainda não tem guia.
+  const resumo = txt.slice(txt.indexOf('Resumo da Pesquisa'));
+  const partes = resumo.split(/Vencimento da Guia:\\s*/).slice(1).map(t => ({
+    vencimento: (t.match(/^(\\d{2}\\/\\d{2}\\/\\d{4})/) || [])[1] || '',
+    temBotao: /^\\S+\\s*\\n\\s*Emitir guia/.test(t),
+    aguardando: (/aguardando pagamento/i.test(t) && (t.match(/\\d{16}-\\d/g) || [])) || (/^\\S+\\s*\\n\\s*-?\\s*\\d{16}-\\d/.test(t) ? t.match(/\\d{16}-\\d/g) : null),
+    valor: (t.match(/\\nTotal\\n([\\d.]+,\\d{2})\\n/) || [])[1] || '',
+  }));
+  partes.forEach((pt, i) => { pt.botao = partes.slice(0, i + 1).filter(x => x.temBotao).length - 1; });
+  const livres = partes.filter(pt => pt.temBotao && !pt.aguardando);
+  const jaTem = partes.filter(pt => pt.aguardando).map(pt => pt.aguardando[0] + ' (vence ' + pt.vencimento + ')');
+  if (!livres.length) return JSON.stringify(jaTem.length ? { erro: 'já existe guia aguardando pagamento: ' + jaTem.join(', ') + '; nada emitido' } : { erro: 'roteiro: sem o Emitir guia' });
+  if (livres.length > 1) return JSON.stringify({ erro: 'mais de um vencimento sem guia (' + livres.map(pt => pt.vencimento + ' R$ ' + pt.valor).join(', ') + '); confira à mão' });
+  const alvo = livres[0];
+  const valor = alvo.valor, vencimento = alvo.vencimento;
+  if (!DADOS.emitir) return JSON.stringify({ ensaio: true, valor, vencimento });
+  const botoes = [...document.querySelectorAll('button')].filter(b => visivel(b) && b.innerText.trim() === 'Emitir guia');
+  const emitirBotao = botoes[alvo.botao];
   if (!emitirBotao) return JSON.stringify({ erro: 'roteiro: sem o Emitir guia' });
+  const antes = new Set(document.body.innerText.match(/\\d{16}-\\d/g) || []);
   emitirBotao.click();
   let numero = '';
-  for (let i = 0; i < 60 && !numero; i++) { await dormir(500); numero = (document.body.innerText.match(/(\\d{16}-\\d)/) || [])[1] || ''; }
+  for (let i = 0; i < 60 && !numero; i++) { await dormir(500); numero = (document.body.innerText.match(/\\d{16}-\\d/g) || []).find(n => !antes.has(n)) || ''; }
   if (!numero) return JSON.stringify({ erro: 'roteiro: a guia não mostrou o número' });
   return JSON.stringify({ numero, valor, vencimento });
 })()`;
-}
 
 function instrucoesDoLote(itens) {
   const lista = itens.map((p, i) => {
@@ -151,16 +171,27 @@ function instrucoesDoLote(itens) {
     '   "não sou um robô"/captcha, NÃO resolva: pare tudo e responda RESULTADO: {"erro":"captcha"}. Se não voltar ao portal em',
     '   1 minuto, pare tudo e responda RESULTADO: {"erro":"login"}.',
     '',
-    'Para cada cliente da lista, o CAMINHO RÁPIDO (use a ferramenta de rodar JavaScript na página, com o código exato abaixo):',
-    '  a) abra ' + PORTAL + ' na aba e rode o ROTEIRO PERFIL do cliente; ele responde "OK: …" e a página troca sozinha (se a',
-    '     ferramenta reclamar que a página navegou, é o esperado). Espere 2 segundos.',
-    '  b) abra ' + GUIA_RAPIDA + ' e rode o ROTEIRO GUIA do cliente; ele responde um JSON. Esse JSON é o resultado do cliente:',
-    '     escreva RESULTADO [<cnpj>]: <o JSON> (ex.: RESULTADO [27361015000131]: {"numero":"…","valor":"…","vencimento":"…"}).',
+    'Para cada cliente da lista, o CAMINHO RÁPIDO (use a ferramenta de rodar JavaScript na página):',
+    '  a) abra ' + PORTAL + ' na aba e rode o ROTEIRO PERFIL, trocando só a linha "const DADOS = {…}" pela do cliente (abaixo);',
+    '     ele responde "OK: …" e a página troca sozinha (se a ferramenta reclamar que a página navegou, é o esperado). Espere 2 s.',
+    '  b) abra ' + GUIA_RAPIDA + ' e rode o ROTEIRO GUIA, trocando só a linha "const DADOS = {…}" pela do cliente; ele responde um',
+    '     JSON, que é o resultado do cliente: escreva RESULTADO [<cnpj>]: <o JSON> (cnpj só em números).',
     '  Se um roteiro responder começando com "ERRO" ou com {"erro":"roteiro: …"}, faça aquele cliente pelo caminho manual abaixo.',
-    '  Se responder {"erro":"sem débito em aberto na competência"} ou {"erro":"o perfil não é o do cliente"}, esse é o resultado dele.',
+    '  Se responder qualquer outro {"erro":…} (sem débito em aberto, o perfil não é o do cliente, o portal recusou o perfil), esse é',
+    '  o resultado dele: escreva RESULTADO [<cnpj>]: <o JSON> e siga para o próximo.',
     '',
-    'Os roteiros de cada cliente:',
-    ...itens.map(p => ['--- ' + p.cnpj + ' — ROTEIRO PERFIL:', roteiroPerfil(p.cnpj), '--- ' + p.cnpj + ' — ROTEIRO GUIA:', roteiroGuia(p.cnpj, p.competencia, p.modo === 'emitir')].join('\n')),
+    'As linhas DADOS de cada cliente (cole a do cliente no lugar da linha const DADOS do roteiro):',
+    ...itens.map(p => {
+      const [ano, mes] = p.competencia.split('-');
+      return '  ' + p.cnpj + ':  PERFIL -> const DADOS = ' + JSON.stringify({ cnpj: cnpjComPontos(p.cnpj), proprio: p.cnpj === CNPJ_DO_ESCRITORIO })
+        + '   |   GUIA -> const DADOS = ' + JSON.stringify({ cnpj: cnpjComPontos(p.cnpj), competencia: mes + '/' + ano, emitir: p.modo === 'emitir' });
+    }),
+    '',
+    '=== ROTEIRO PERFIL ===',
+    ROTEIRO_PERFIL,
+    '',
+    '=== ROTEIRO GUIA ===',
+    ROTEIRO_GUIA,
     '',
     'O CAMINHO MANUAL (só quando um roteiro falhar), para aquele cliente:',
     '0. Se o CNPJ é ' + CNPJ_DO_ESCRITORIO + ' (o do próprio escritório, NILMA CONTABILIDADE), o perfil é o "Meu Perfil": abra a lista',
@@ -275,8 +306,15 @@ function iniciarFgtsPeloClaude(db, log) {
     if (ocupado || !fila.length) return;
     ocupado = true;
     // o lote: todos os pedidos que estão na fila agora, numa sessão só do Claude (até 25 por vez)
-    const lote = fila.splice(0, 25);
-    try { await atenderLote(lote); } catch (err) { log('FGTS: erro no lote', err.message); }
+    const lote = fila.splice(0, 12);
+    try { await atenderLote(lote); } catch (err) {
+      log('FGTS: erro no lote', err.message);
+      // o lote não abriu (13/10/2026: nenhum pedido pode ficar pendurado "esperando a vez"): quem não terminou vira erro com o motivo
+      await Promise.all(lote.map(d => d.ref.get().then(s => {
+        const st = (s.data() || {}).status;
+        return st === 'pendente' || st === 'trabalhando' ? d.ref.update({ status: 'erro', erro: 'o robô não conseguiu fazer este lote: ' + String(err.message).slice(0, 150) + '; peça de novo', fimEm: agora() }) : null;
+      }).catch(() => {})));
+    }
     ocupado = false;
     // o Chrome fica aberto e logado depois do lote (Vitor, 09/10/2026: a opção 3, "deixar o Chrome aberto e logado"): a
     // próxima emissão já pega o login; o fecharChromeDoRobo fica guardado se voltar a ser pedido
@@ -349,10 +387,20 @@ function iniciarFgtsPeloClaude(db, log) {
     const limite = 4 * 60 * 1000 + itens.length * 3 * 60 * 1000;
     let r = await rodarClaude(instrucoesDoLote(itens.map(it => it.p)), aoPasso, aoResultado, limite);
     // a extensão ainda não estava pronta (nenhum cliente começou): espera e tenta o lote de novo, uma vez
+    // (13/10/2026: com a sessão que fica ligada, a sessão que nasceu sem a extensão era reaproveitada e cada lote falhava em
+    // segundos; agora ela é encerrada e a nova tentativa abre outra)
     if (!itens.some(it => it.comecou || it.fim) && extensaoFora(r)) {
+      matarSessao();
       for (const it of itens) await it.passo('a extensão do Claude não respondeu; tentando de novo');
       await dormir(20000);
       r = await rodarClaude(instrucoesDoLote(itens.map(it => it.p)), aoPasso, aoResultado, limite);
+      if (!itens.some(it => it.comecou || it.fim) && extensaoFora(r)) {
+        matarSessao();
+        // a extensão continua fora: o resto da fila também para, com o mesmo aviso (em vez de cada lote falhar sozinho)
+        const resto = fila.splice(0, fila.length);
+        await Promise.all(resto.map(d => d.ref.update({ status: 'erro', erro: 'a extensão Claude in Chrome não está conectada no PC: abra o Chrome, clique no ícone do Claude e peça de novo', fimEm: agora() }).catch(() => {})));
+        if (resto.length) log('FGTS (Claude): extensão fora; parei a fila (' + resto.length + ' pedido(s) voltaram como erro)');
+      }
     }
     for (const it of itens) {
       if (it.fim) continue;
@@ -406,42 +454,112 @@ function iniciarFgtsPeloClaude(db, log) {
   }
 
   /**
-   * Roda o Claude do PC com o Claude in Chrome. "PASSO [cnpj]: …" vai para aoPasso; "RESULTADO [cnpj]: {…}" para
-   * aoResultado (sem o CNPJ: vale para o lote todo). Devolve o fim da conversa (para o erro de quando nada começou).
+   * Uma sessão do Claude que fica ligada entre os lotes (Vitor, 13/10/2026: "em vez de puxar vários grupos, por que não
+   * baixa tudo na mesma aba?"): cada sessão do Claude in Chrome tem o seu grupo de abas, então um Claude por lote deixava
+   * um grupo novo a cada lote. Agora cada lote é uma mensagem nova para o mesmo Claude, na mesma aba. Ela fecha o próprio
+   * grupo e encerra depois de SESSAO_OCIOSA_MS sem pedido ou de SESSAO_LOTES lotes (para a conversa não crescer demais).
    */
+  const SESSAO_OCIOSA_MS = 15 * 60 * 1000;
+  const SESSAO_LOTES = 4;
+  let sessao = null;
   let processoAtual = null;
+
+  function abrirSessao() {
+    const filho = spawn(CLAUDE, ['-p', '--chrome', '--model', MODELO, '--permission-mode', 'bypassPermissions',
+      '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--no-session-persistence'],
+    { cwd: __dirname, windowsHide: true, env: ambienteLimpo(), stdio: ['pipe', 'pipe', 'pipe'] });
+    const s = { filho, lotes: 0, vez: null, erros: '', viva: true, ociosa: null };
+    filho.stdin.on('error', () => { /* o processo saiu; o close resolve a vez */ });
+    let resto = '';
+    filho.stdout.on('data', b => {
+      resto += String(b);
+      const linhas = resto.split('\n');
+      resto = linhas.pop();
+      for (const l of linhas) {
+        let ev = null; try { ev = JSON.parse(l); } catch (_) { continue; }
+        if (!s.vez) continue;
+        if (ev.type === 'assistant' && ev.message && Array.isArray(ev.message.content)) for (const c of ev.message.content) if (c.type === 'text') s.vez.lerTexto(c.text);
+        if (ev.type === 'result') { s.vez.lerTexto(String(ev.result || '')); s.vez.fim(String(ev.result || '')); }
+      }
+    });
+    filho.stderr.on('data', b => { s.erros += String(b); if (s.erros.length > 3000) s.erros = s.erros.slice(-3000); });
+    const morreu = err => {
+      if (!s.viva) return;
+      s.viva = false;
+      clearTimeout(s.ociosa);
+      if (sessao === s) sessao = null;
+      if (processoAtual === filho) processoAtual = null;
+      if (s.vez) s.vez.fim('', err ? err.message : s.erros);
+    };
+    filho.on('error', morreu);
+    filho.on('close', () => morreu(null));
+    return s;
+  }
+
+  function matarSessao() {
+    const s = sessao;
+    sessao = null;
+    if (s && s.viva) { try { s.filho.kill(); } catch (_) { /* já saiu */ } }
+  }
+
+  function mandar(s, texto) {
+    s.filho.stdin.write(JSON.stringify({ type: 'user', message: { role: 'user', content: texto } }) + '\n', 'utf8');
+  }
+
+  /** Pede ao Claude para fechar o grupo de abas dele e encerra a sessão. */
+  function encerrarSessao(s, motivo) {
+    if (!s || !s.viva) return;
+    if (sessao === s) sessao = null;
+    log('FGTS (Claude): encerrando a sessão do Claude (' + motivo + ')');
+    const fim = setTimeout(() => { try { s.filho.kill(); } catch (_) {} }, 90000);
+    s.vez = { lerTexto: () => {}, fim: () => { clearTimeout(fim); s.vez = null; try { s.filho.stdin.end(); } catch (_) {} } };
+    try { mandar(s, 'Acabaram os lotes. Feche as abas do seu grupo no Chrome (com a ferramenta de fechar abas) e responda só FIM.'); } catch (_) { s.vez.fim(); }
+  }
+
+  /**
+   * Roda um lote na sessão do Claude. "PASSO [cnpj]: …" vai para aoPasso; "RESULTADO [cnpj]: {…}" para aoResultado (sem o
+   * CNPJ: vale para o lote todo). Devolve o fim da resposta (para o erro de quando nada começou).
+   */
   function rodarClaude(texto, aoPasso, aoResultado, limiteMs) {
     return new Promise(resolve => {
-      const filho = processoAtual = spawn(CLAUDE, ['-p', texto, '--chrome', '--model', MODELO, '--permission-mode', 'bypassPermissions',
-        '--output-format', 'stream-json', '--verbose', '--no-session-persistence'], { cwd: __dirname, windowsHide: true, env: ambienteLimpo(), stdio: ['ignore', 'pipe', 'pipe'] });
-      let resto = '', erros = '', final = '', algum = null;
+      // o pedido vai pela entrada padrão: na linha de comando estourava o limite do Windows com lotes grandes (ENAMETOOLONG,
+      // 10/10/2026), e por arquivo ("leia e faça o que ele manda") o classificador do Claude Code negava os roteiros (13/10/2026)
+      if (sessao && !sessao.viva) sessao = null;
+      const continua = !!sessao;
+      if (!sessao) sessao = abrirSessao();
+      const s = sessao;
+      clearTimeout(s.ociosa);
+      processoAtual = s.filho;
+      let algum = null;
       const vistos = new Set();
-      const lerTexto = t => {
-        for (const linha of String(t).split('\n')) {
-          const l = linha.trim();
-          const m = l.match(/^PASSO\s*(?:\[(\d{14})\])?\s*:\s*(.+)$/);
-          if (m && !vistos.has(l)) { vistos.add(l); aoPasso(m[1] || '', m[2]); }
-          const r = l.match(/^RESULTADO\s*(?:\[(\d{14})\])?\s*:\s*(\{.*\})\s*$/);
-          if (r && !vistos.has(l)) {
-            vistos.add(l);
-            try { const res = JSON.parse(r[2]); algum = res; aoResultado(r[1] || '', res); } catch (_) { /* resultado mal escrito */ }
+      const relogio = setTimeout(() => { try { s.filho.kill(); } catch (_) {} }, limiteMs || LIMITE_MS);
+      s.vez = {
+        lerTexto: t => {
+          for (const linha of String(t).split('\n')) {
+            const l = linha.trim();
+            const m = l.match(/^PASSO\s*(?:\[(\d{14})\])?\s*:\s*(.+)$/);
+            if (m && !vistos.has(l)) { vistos.add(l); aoPasso(m[1] || '', m[2]); }
+            const r = l.match(/^RESULTADO\s*(?:\[(\d{14})\])?\s*:\s*(\{.*\})\s*$/);
+            if (r && !vistos.has(l)) {
+              vistos.add(l);
+              try { const res = JSON.parse(r[2]); algum = res; aoResultado(r[1] || '', res); } catch (_) { /* resultado mal escrito */ }
+            }
           }
-        }
+        },
+        fim: (final, erro) => {
+          clearTimeout(relogio);
+          s.vez = null;
+          s.lotes++;
+          resolve({ resultado: algum, erro: String(final || erro || '').slice(-300) });
+          if (!s.viva) return;
+          if (s.lotes >= SESSAO_LOTES) encerrarSessao(s, s.lotes + ' lotes');
+          else s.ociosa = setTimeout(() => encerrarSessao(s, 'sem pedido há 15 min'), SESSAO_OCIOSA_MS);
+        },
       };
-      filho.stdout.on('data', b => {
-        resto += String(b);
-        const linhas = resto.split('\n');
-        resto = linhas.pop();
-        for (const l of linhas) {
-          let ev = null; try { ev = JSON.parse(l); } catch (_) { continue; }
-          if (ev.type === 'assistant' && ev.message && Array.isArray(ev.message.content)) for (const c of ev.message.content) if (c.type === 'text') lerTexto(c.text);
-          if (ev.type === 'result') { final = String(ev.result || ''); lerTexto(final); }
-        }
-      });
-      filho.stderr.on('data', b => { erros += String(b); if (erros.length > 3000) erros = erros.slice(-3000); });
-      const relogio = setTimeout(() => { try { filho.kill(); } catch (_) {} }, limiteMs || LIMITE_MS);
-      filho.on('error', err => { clearTimeout(relogio); resolve({ resultado: algum, erro: err.message }); });
-      filho.on('close', () => { clearTimeout(relogio); processoAtual = null; resolve({ resultado: algum, erro: (final || erros).slice(-300) }); });
+      const aviso = continua
+        ? 'NOVO LOTE. Continue na MESMA aba do portal que você já está usando (não abra outra aba nem outro grupo); o login já está feito.\n\n'
+        : '';
+      try { mandar(s, aviso + texto); } catch (err) { s.vez.fim('', err.message); }
     });
   }
 }

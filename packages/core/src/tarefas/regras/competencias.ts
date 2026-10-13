@@ -2,6 +2,8 @@
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
 export function rotuloCompetencia(c: string): string {
+  // a "competência 13" é o 13º salário do ano (DP › 13º salário, 13/10/2026)
+  if (c.slice(5, 7) === '13') return '13º salário/' + c.slice(0, 4);
   return MESES[Number(c.slice(5, 7)) - 1] + '/' + c.slice(0, 4);
 }
 

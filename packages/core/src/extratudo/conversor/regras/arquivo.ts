@@ -29,8 +29,12 @@ const SINAIS: { nome: string; re: RegExp }[] = [
   { nome: 'Cresol', re: /cresol/ },
 ];
 
-/** Os nomes de banco que a pessoa pode escolher (os conhecidos do nads). */
-export const NOMES_DE_BANCO: readonly string[] = BANCOS_CONHECIDOS.map(b => b.nome);
+/** Os bancos com layout registrado no Conversor (um leitor próprio em regras/), em ordem alfabética. */
+const COM_LAYOUT: readonly string[] = ['Banco do Brasil', 'Cora', 'InfinitePay', 'Nubank', 'Unicred'];
+
+/** Os nomes de banco que a pessoa pode escolher: só os com layout registrado (Vitor, 13/10/2026: "exclua os bancos que
+ *  não tem layout registrado"). */
+export const NOMES_DE_BANCO: readonly string[] = BANCOS_CONHECIDOS.map(b => b.nome).filter(n => COM_LAYOUT.includes(n));
 
 /** A marca do banco (o logo: 'banco-do-brasil', 'itau'…; '' = sem logo). */
 export function marcaDoBanco(nome: string): string {

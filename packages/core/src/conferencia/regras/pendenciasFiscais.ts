@@ -23,7 +23,7 @@ function daSituacao(onde: string, contas: string[], titulo: string, sit: Situaca
 const notas = (n: number) => n + (n === 1 ? ' nota' : ' notas');
 
 /** Uma pendência e onde ela está no Relatório (a aba): o "Resolver" da Tarefas leva até lá (Vitor, 02/10/2026). */
-export interface PendenciaFiscal { texto: string; alvo: 'relatorio:geral' | 'relatorio:entradas' | 'relatorio:saidas' | 'relatorio:tomados' | 'relatorio:prestados' }
+export interface PendenciaFiscal { texto: string; alvo: 'balancete' | 'relatorio:geral' | 'relatorio:entradas' | 'relatorio:saidas' | 'relatorio:tomados' | 'relatorio:prestados' }
 
 export function pendenciasDaConferenciaFiscal(e: Empresa, f: FiltroMovimento): string[] {
   return pendenciasFiscaisComLugar(e, f).map(p => p.texto);
@@ -31,6 +31,8 @@ export function pendenciasDaConferenciaFiscal(e: Empresa, f: FiltroMovimento): s
 
 export function pendenciasFiscaisComLugar(e: Empresa, f: FiltroMovimento): PendenciaFiscal[] {
   const r: PendenciaFiscal[] = [];
+  // o balancete é o primeiro passo da Conferência fiscal (Vitor, 13/10/2026): sem ele, só isso
+  if (!e.contas.length) return [{ texto: 'Importar o balancete', alvo: 'balancete' }];
   for (const l of montarRelatorio(e, f, '').saldo) {
     if (l.emServicos) continue;
     const p = daSituacao('', l.contas, l.titulo, l.situacao);

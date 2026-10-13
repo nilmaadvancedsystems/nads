@@ -100,13 +100,18 @@ const OPCOES_DE_TESTE: OpcaoDeTeste[] = [
   { id: 'apagar', rotulo: 'Apagar os dados de teste' },
 ];
 
-const LIMITE_CORRECOES = 30;
-
-function PendenciasDoBanco({ itens }: { itens: x.CorrecaoDoRazao[] }) {
+function PendenciasDoBanco({ itens, onGerar }: { itens: x.CorrecaoDoRazao[]; onGerar?: () => void }) {
   if (!itens.length) return null;
+  const faltas = itens.filter(c => c.tipo === 'falta').length;
   const valor = (n: number | null) => (n == null ? '' : x.reaisBR(Math.abs(n)));
   return (
-    <FaixaQueAbre titulo="Pendências" qtd={itens.length} aviso>
+    <FaixaQueAbre titulo="Pendências" qtd={itens.length} aviso acoes={onGerar && faltas > 0 ? (
+      // gerar os lançamentos do que falta no razão (Vitor, 13/10/2026): o .xls para o Alterdata, para analisar
+      <button type="button" className="icon-btn icon-btn-sm imp-btn" onClick={onGerar}
+        title={'Gerar os lançamentos do que está no banco e não no razão (' + faltas + '), no .xls do Alterdata'} aria-label="Gerar os lançamentos do que falta no razão">
+        <Icone nome="download" />
+      </button>
+    ) : undefined}>
         <>
           <div className="table-wrap">
             <table className="table-compact imp-planilha">
@@ -115,10 +120,12 @@ function PendenciasDoBanco({ itens }: { itens: x.CorrecaoDoRazao[] }) {
                 <th className="num">Banco</th><th className="num">Razão</th><th className="num">Diferença</th>
               </tr></thead>
               <tbody>
-                {itens.slice(0, LIMITE_CORRECOES).map((c, i) => {
+                {itens.map((c, i) => {
                   // o lote quebrado: a linha do lote com os totais, cada lançamento numa linha embaixo e a dica no fim
                   const partes = c.partes || [];
-                  const linhas = 1 + partes.length + (c.dica ? 1 : 0);
+                  // a dica só vira linha própria no lote quebrado; sem partes ela vai dentro da célula (Vitor, 13/10/2026:
+                  // contar a linha a mais puxava a pendência seguinte para dentro desta)
+                  const linhas = 1 + partes.length + (partes.length && c.dica ? 1 : 0);
                   return (
                     <Fragment key={i}>
                       <tr className={partes.length ? 'imp-planilha-grupo' : undefined}>
@@ -150,7 +157,6 @@ function PendenciasDoBanco({ itens }: { itens: x.CorrecaoDoRazao[] }) {
               </tbody>
             </table>
           </div>
-          {itens.length > LIMITE_CORRECOES && <p className="hint">E mais {itens.length - LIMITE_CORRECOES}: veja tudo em Extrato × sistema.</p>}
         </>
     </FaixaQueAbre>
   );
@@ -509,13 +515,12 @@ function SeletorDeCompetencia({ vm, naTarefa, trocar, periodoDaTarefa, encerrar 
 
 /**
  * As abas da Importação (Vitor, 30/09/2026: "separe em menu superior"): os bancos (extrato e razão) e, da
- * Conferência, o balancete, as notas e os serviços. Dentro da Tarefas, ficam no cabeçalho dela, por cima do
- * checklist; aberta sozinha, em cima da página.
+ * Conferência, as notas e os serviços. Dentro da Tarefas, ficam no cabeçalho dela, por cima do checklist; aberta
+ * sozinha, em cima da página. O balancete foi para a Conferência fiscal, o primeiro passo dela (Vitor, 13/10/2026).
  */
 type AbaImportacao = 'bancos' | conferencia.PaginaImportacao;
 const ABAS_DA_IMPORTACAO: { id: AbaImportacao; rotulo: string; icone: AbaDaEtapa['icone'] }[] = [
   { id: 'bancos', rotulo: 'Bancos', icone: 'landmark' },
-  { id: 'balancete', rotulo: 'Balancete', icone: 'scale' },
   { id: 'entradas', rotulo: 'Entradas', icone: 'arrowDown' },
   { id: 'saidas', rotulo: 'Saídas', icone: 'arrowUp' },
   { id: 'tomados', rotulo: 'Tomados', icone: 'fileDown' },
@@ -563,7 +568,7 @@ export function TarefaExtratos() {
   const ocupadoGeral = vm.ocupado || !!d.buscando || vm.bancos.some(b => b.extrato.lendo || b.razao.lendo);
   useCarregando(ocupadoGeral);
   // extrato e razão batendo no período: a linha vira só o selo Ok (sem botões, a setinha não abre)
-  const { ok: bancosOk, correcoes, situacoes, explicarCheque } = useBancosOk(vm, ponte, ocupadoGeral);
+  const { ok: bancosOk, correcoes, situacoes, explicarCheque, exportarFaltas } = useBancosOk(vm, ponte, ocupadoGeral);
   // os requisitos para seguir (o botão de avançar da Tarefas só aparece com tudo pronto): cada banco Ok e, na
   // Conferência, Balancete, Entradas, Saídas, Tomados e (se presta serviço) Prestados importados
   const importados = useImportadosDaConferencia(s.nome);
@@ -588,8 +593,8 @@ export function TarefaExtratos() {
   const bancosSemCheque = vm.bancos.filter(b => diasSemCheque(b.id) > 0);
   // "Pedir os que faltam" (08/10/2026): os bancos sem extrato no mês, fora os sem movimento e os que já têm extrato na fila
   const faltamPedir = vm.bancos.filter(b => b.id !== 'banco' && b.extrato.qtdArquivos === 0 && !semMovimentoNoPeriodo(b.id) && !rec.linhasComRecebido.has(b.id)).length;
-  // todo banco Ok (ou sem movimento no período): não tem extrato para pedir
-  const bancosTodosOk = vm.bancos.length > 0 && vm.bancos.every(b => !!bancosOk[b.id] || semMovimentoNoPeriodo(b.id));
+  // todos batem com o razão, mesmo os que só faltam o cheque especial: nada mais a pedir (Vitor, 13/10/2026)
+  const bancosTodosBatem = vm.bancos.length > 0 && vm.bancos.every(b => !!bancosOk[b.id] || situacoes[b.id]?.tipo === 'falta-cheque' || semMovimentoNoPeriodo(b.id));
   // os dias que fecham negativos (somando os bancos), para o aviso da etapa Cheque especial
   const diasNegativosNoPeriodo = vm.bancos.reduce((t, b) => { const x = situacoes[b.id]; return t + (x && x.tipo !== 'pendente' ? x.negativos.length : 0); }, 0);
   const [cxExtrato, cxRazao] = vm.caixas;
@@ -604,6 +609,10 @@ export function TarefaExtratos() {
   // Em Lote: os bancos com a grade dos meses recolhida (pela setinha)
   const [recolhidas, setRecolhidas] = useState<string[]>([]);
   const alternarGrade = (id: string) => setRecolhidas(v => (v.includes(id) ? v.filter(a => a !== id) : [...v, id]));
+  // o banco que bate mas falta o cheque especial ("Ok" + Cheque especial) abre recolhido, como o Ok (Vitor, 13/10/2026):
+  // a seta abre só quando a pessoa quer
+  const [abertasBatendo, setAbertasBatendo] = useState<string[]>([]);
+  const alternarBatendo = (id: string) => setAbertasBatendo(v => (v.includes(id) ? v.filter(a => a !== id) : [...v, id]));
 
   /** Visualizar o que veio do Drive: abre a janela já (senão o navegador bloqueia) e põe o link temporário quando o robô responder. */
   function visualizarDoDrive(arquivo: { id: string; nome: string }) {
@@ -651,7 +660,7 @@ export function TarefaExtratos() {
         )}
         {/* Pedir extratos só na Importação (Vitor, 02/10/2026) e só enquanto falta banco (Vitor, 08/10/2026: "se tiver tudo certo, pode
             remover o botão pedir extratos") */}
-        {!vm.etapaCheque && !bancosTodosOk && <MenuSuspenso rotulo={faltamPedir ? 'Pedir os que faltam · ' + faltamPedir : 'Pedir extratos'} setaAntes className="btn btn-outline" direita
+        {!vm.etapaCheque && !bancosTodosBatem && <MenuSuspenso rotulo={faltamPedir ? 'Pedir os que faltam · ' + faltamPedir : 'Pedir extratos'} setaAntes className="btn btn-outline" direita
           conteudo={fechar => (
             <>
               <button type="button" className="popover-item" role="menuitem" onClick={() => { fechar(); pe.abrir(); }}>
@@ -740,7 +749,7 @@ export function TarefaExtratos() {
           const aberta = abertas.includes(b.id) && !ok;
           // Em Lote: a setinha abre ou recolhe tudo junto — a grade dos meses e os lançamentos do mês (começa aberta)
           const emLote = vm.periodo.length > 1;
-          const gradeAberta = !recolhidas.includes(b.id) && !ok;
+          const gradeAberta = faltaCheque ? abertasBatendo.includes(b.id) : !recolhidas.includes(b.id) && !ok;
           const verLancamentos = (emLote ? gradeAberta : aberta) && !semMov;
           return (
             <div key={b.id} data-banco={b.id} className={'imp-bloco' + (semMov ? ' sem-movimento' : '') + (ok ? ' imp-ok' : '')}>
@@ -749,7 +758,7 @@ export function TarefaExtratos() {
                   <span className="imp-seta" aria-hidden="true"><Icone nome="caretDown" /></span>
                 ) : emLote ? (
                   <button type="button" className={'imp-seta' + (gradeAberta ? ' aberta' : '')} aria-expanded={gradeAberta}
-                    title={gradeAberta ? 'Recolher os meses e os lançamentos' : 'Abrir os meses e os lançamentos'} aria-label="Os meses e os lançamentos do banco" onClick={() => alternarGrade(b.id)}>
+                    title={gradeAberta ? 'Recolher os meses e os lançamentos' : 'Abrir os meses e os lançamentos'} aria-label="Os meses e os lançamentos do banco" onClick={() => (faltaCheque ? alternarBatendo(b.id) : alternarGrade(b.id))}>
                     <Icone nome="caretDown" />
                   </button>
                 ) : (
@@ -772,20 +781,13 @@ export function TarefaExtratos() {
                     <span className="badge badge-ok" title="O extrato e o razão batem em todos os meses do período">Ok</span>
                   </div>
                 ) : faltaCheque ? (
+                  // o banco certo (extrato e razão batem): o Ok no lugar do Razão / Remover todos, e o Cheque especial ao lado (Vitor,
+                  // 13/10/2026); o razão de cada mês continua na grade (a setinha), para importar de novo depois do cheque
                   <div className="imp-grupos">
-                    <div className="imp-grupo" aria-label="Razão da conta">
-                      <span className="imp-rotulo">Razão</span>
-                      {vm.periodo.length > 1
-                        ? (lote.razaoCompleto
-                          ? <RemoverTodos titulo="o razão" travado={ocupadoGeral} onRemover={() => { void vm.excluirDoPeriodo(b.id, 'sistema', lote.comRazao); }} />
-                          : <ImportarTodos titulo="o razão" restantes={lote.comRazao.length > 0} aceitar={cxRazao.aceitar} travado={ocupadoGeral} onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }}
-                            onRemover={() => { void vm.excluirDoPeriodo(b.id, 'sistema', lote.comRazao); }} />)
-                        : <BotaoLado lado={b.razao} titulo="Razão" aceitar={cxRazao.aceitar} travado={travado}
-                          onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }} onExcluir={() => { void vm.excluirDoBanco(b.id, 'sistema'); }} />}
-                    </div>
-                    {/* bate, mas falta o cheque especial: o botão principal (Vitor, 02/10/2026: no lugar do "Conferido" clicável) */}
-                    <button type="button" className="btn btn-primary" onClick={() => explicarCheque(b, situacao)}
-                      title="Bate com o razão, mas fecha negativo em algum dia: falta o cheque especial. Clique para ver.">Cheque especial</button>
+                    {/* só a cápsula laranja, no lugar do Ok (Vitor, 13/10/2026: ela só aparece quando o razão bate com o banco, então
+                        já quer dizer "ok", mas falta corrigir; resolve na etapa seguinte). O clique explica os dias negativos */}
+                    <button type="button" className="badge badge-conferido" style={{ cursor: 'pointer' }} onClick={() => explicarCheque(b, situacao)}
+                      title="Bate com o razão, mas fecha negativo em algum dia: falta o cheque especial (na etapa seguinte). Clique para ver.">Cheque especial</button>
                   </div>
                 ) : vm.periodo.length > 1 ? (
                   // vários meses: os botões de um mês ficam embaixo (por mês); aqui, o de todos de uma vez.
@@ -882,7 +884,7 @@ export function TarefaExtratos() {
                 </FaixaQueAbre>
               ) : <Movimento m={vm.movimentoDe(b.id)}
                 pdf={doDrive.length ? doDrive[doDrive.length - 1] : null} onPdf={visualizarDoDrive} competencia={vm.competencia} />)}
-              {!ok && <PendenciasDoBanco itens={correcoes[b.id] || []} />}
+              {!ok && <PendenciasDoBanco itens={correcoes[b.id] || []} onGerar={() => exportarFaltas(b)} />}
             </div>
           );
         })}

@@ -340,6 +340,8 @@ export function useImportacao() {
     gravarSaldoAnterior: (arquivoId: string, saldo: number) => s.aplicar(e => x.definirSaldoAnterior(e, arquivoId, saldo, new Date())),
     /** a regra do Cadastro da empresa: presta serviços? (null = não informado, ou o cadastro ainda não chegou) */
     prestaServico: cad.cadastro?.prestaServico ?? null,
+    /** o código contábil da conta do banco no Cadastro (Contas bancárias); '' = não informado */
+    contaContabilDe: (banco: string) => cad.cadastro?.bancos?.find(c => c.id === banco)?.contaContabil || '',
     /** os pedidos de documentos feitos ao cliente (o histórico do Pedir extratos) */
     pedidos: s.empresa.pedidos || [],
     /** o extrato do banco naquela competência já foi importado? (qualquer competência, não só a da tela) */

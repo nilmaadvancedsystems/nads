@@ -5,6 +5,7 @@ export { ehExtratoDoBancoDoBrasil, lancamentosDoBancoDoBrasil } from './regras/b
 export { ehExtratoDaCora, lancamentosDaCora } from './regras/cora';
 export { ehExtratoDaUnicred, lancamentosDaUnicred } from './regras/unicred';
 export { ehExtratoDaInfinitePay, lancamentosDaInfinitePay } from './regras/infinitepay';
+export { ehExtratoDoNubank, lancamentosDoNubank } from './regras/nubank';
 export { bancoDoTexto, marcaDoBanco, mesDoExtrato, bancoNoNomeDoArquivo, nomeDoXls, NOMES_DE_BANCO } from './regras/arquivo';
 export { CABECALHO, nomeDaAba, fluxoDoLivro, planilhaDoExtrato, TIPO_XLS } from './arquivos/xls';
 export { EXTENSOES_CONVERSOR, converterArquivo } from './arquivos/leitura';
