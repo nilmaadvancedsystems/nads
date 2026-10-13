@@ -34,10 +34,25 @@ const PORTAL = 'https://fgtsdigital.sistema.gov.br/portal/servicos';
 // o atalho da Emissão de Guia Rápida (o endereço da tela, visto em 09/10/2026): pula os dois cliques do menu
 const GUIA_RAPIDA = 'https://fgtsdigital.sistema.gov.br/cobranca/#/gestao-guias/emissao-guia-rapida';
 
-const cnpjComPontos = c => String(c).replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+const cnpjComPontos = c => String(c).length === 11
+  ? String(c).replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4')
+  : String(c).replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+/**
+ * O CNPJ da matriz (a raiz com 0001 e os dígitos). O portal só aceita o perfil de procurador na matriz ("Só é permitida a
+ * troca de perfil para estabelecimento matriz…", 10/10/2026), e o FGTS da filial vai na guia da matriz (13/10/2026).
+ */
+function matrizDe(cnpj) {
+  const c = String(cnpj);
+  if (c.length !== 14 || c.slice(8, 12) === '0001') return c;
+  const base = c.slice(0, 8) + '0001';
+  const dv = b => { let soma = 0, peso = b.length - 7; for (const d of b) { soma += Number(d) * peso; peso = peso === 2 ? 9 : peso - 1; } const r = soma % 11; return r < 2 ? 0 : 11 - r; };
+  const d1 = dv(base);
+  return base + d1 + dv(base + d1);
+}
 const agora = () => new Date().toISOString();
 const dormir = ms => new Promise(r => setTimeout(r, ms));
-const cnpjValido = c => /^\d{14}$/.test(String(c || ''));
+// o empregador pessoa física (CPF/CAEPF, ex. produtor rural) também entra pelo procurador (13/10/2026)
+const cnpjValido = c => /^(\d{11}|\d{14})$/.test(String(c || ''));
 const competenciaValida = c => /^\d{4}-(0[1-9]|1[0-2])$/.test(String(c || ''));
 const semProibidos = t => String(t || '').replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -95,6 +110,16 @@ const ROTEIRO_PERFIL = `await (async () => {
   const ok = botao('Definir') || botao('Selecionar');
   if (!ok) return 'ERRO: sem o botão Definir';
   setTimeout(() => ok.click(), 100);
+  // se a janela continua aberta depois do Definir, o portal recusou: a mensagem dele vira o resultado (13/10/2026: sem
+  // procuração, procuração vencida, CPF/CNPJ inválido); se a página trocou, a ferramenta pode reclamar que navegou (é o esperado)
+  await dormir(2500);
+  const ainda = botao('Definir') || botao('Selecionar');
+  if (ainda) {
+    const janela = ainda.closest('[role=dialog], .modal, .br-modal, ngb-modal-window, form') || document.body;
+    const msg = [...janela.querySelectorAll('[role=alert], .br-message, .alert, .feedback, .mensagem, .invalid-feedback, .text-danger, small, p, span')]
+      .filter(visivel).map(e => e.innerText.trim()).filter(m => m && m.length > 8 && /procura|n[ãa]o |inv[áa]lid|erro|permit|vencid|autoriza/i.test(m));
+    return 'ERRO_PORTAL: ' + (msg[0] || 'o portal não aceitou o perfil').slice(0, 160);
+  }
   return 'OK: definindo ' + (DADOS.proprio ? 'Meu Perfil' : DADOS.cnpj);
 })()`;
 
@@ -102,18 +127,29 @@ const ROTEIRO_GUIA = `await (async () => {
   const DADOS = { cnpj: '00.000.000/0000-00', competencia: '00/0000', emitir: true };
   const dormir = ms => new Promise(r => setTimeout(r, ms));
   const visivel = e => e && e.offsetParent !== null;
+  const num = v => Number(String(v || '0').replace(/\\./g, '').replace(',', '.')) || 0;
+  const reais = n => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   for (let i = 0; i < 20 && ![...document.querySelectorAll('ng-select')].some(visivel); i++) await dormir(300);
   const texto = document.body.innerText;
+  // a janela "Mensagem de Erro" do portal (13/10/2026: a sessão expirou e a tela mostrou "Erro 200 / OK (HTTP200)")
+  if (/Mensagem de Erro/.test(texto)) return JSON.stringify({ erro: 'roteiro: o portal mostrou "' + (texto.split('Mensagem de Erro')[1] || '').trim().split('\\n').slice(0, 2).join(' ') + '" (a sessão pode ter expirado: entre de novo)' });
   // o portal recusa a troca de perfil de alguns estabelecimentos (visto em 10/10/2026): o motivo vira o resultado
   const recusa = (texto.match(/s[óo] [ée] permitida[^.\\n]*/i) || texto.match(/s[óo] permite[^.\\n]*/i) || [])[0];
   if (recusa) return JSON.stringify({ erro: 'o portal recusou o perfil: ' + recusa.trim().slice(0, 120) });
-  if (!texto.includes(DADOS.cnpj)) return JSON.stringify({ erro: 'o perfil não é o do cliente' });
+  const empregador = ((texto.match(/Empregador:\\s*([^\\n]*)/) || [])[1] || '').trim();
+  if (!empregador || empregador === '|') return JSON.stringify({ erro: 'roteiro: o portal está sem perfil (a sessão pode ter expirado: entre de novo e defina o perfil)' });
+  if (!texto.includes(DADOS.cnpj)) return JSON.stringify({ erro: 'o perfil não é o do cliente (o portal ficou em ' + empregador.slice(0, 80) + '): confira a procuração' });
   const sel = [...document.querySelectorAll('ng-select')].find(visivel);
   if (!sel) return JSON.stringify({ erro: 'roteiro: sem a lista de competência' });
   sel.querySelector('.ng-select-container').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
   await dormir(400);
-  const op = [...document.querySelectorAll('.ng-option')].find(o => o.innerText.trim() === DADOS.competencia);
-  if (!op) return JSON.stringify({ erro: 'sem débito em aberto na competência' });
+  const opcoes = [...document.querySelectorAll('.ng-option')];
+  // outras competências em aberto antes da pedida (o débito antigo não pago; 13/10/2026): vira aviso
+  const chave = c => c.split('/').reverse().join('-');
+  const anteriores = opcoes.map(o => o.innerText.trim()).filter(c => /^\\d{2}\\/\\d{4}$/.test(c) && chave(c) < chave(DADOS.competencia));
+  const avisos = anteriores.length ? ['há débito em aberto também em ' + anteriores.join(', ')] : [];
+  const op = opcoes.find(o => o.innerText.trim() === DADOS.competencia);
+  if (!op) return JSON.stringify(Object.assign({ erro: 'sem débito em aberto na competência' }, avisos.length ? { aviso: avisos.join('; ') } : {}));
   op.click(); await dormir(300);
   const pesquisar = [...document.querySelectorAll('button')].find(b => visivel(b) && b.innerText.trim() === 'Pesquisar');
   if (!pesquisar) return JSON.stringify({ erro: 'roteiro: sem o Pesquisar' });
@@ -125,21 +161,41 @@ const ROTEIRO_GUIA = `await (async () => {
   if (!/Vencimento da Guia/.test(txt)) return JSON.stringify({ erro: 'roteiro: a pesquisa não mostrou o total' });
   // a competência pode ter mais de um vencimento, cada um com o seu "Emitir guia" (13/10/2026, OURO VERDE: a rescisão vence
   // dia 16 e já tinha guia aguardando pagamento; a mensal vence dia 20). Emite só o vencimento que ainda não tem guia.
+  // Cada bloco termina na linha Total: Mensal, [Rescisório, Indenização, Processo Trabalhista, Consignado…], Encargos, Total.
   const resumo = txt.slice(txt.indexOf('Resumo da Pesquisa'));
-  const partes = resumo.split(/Vencimento da Guia:\\s*/).slice(1).map(t => ({
-    vencimento: (t.match(/^(\\d{2}\\/\\d{2}\\/\\d{4})/) || [])[1] || '',
-    temBotao: /^\\S+\\s*\\n\\s*Emitir guia/.test(t),
-    aguardando: (/aguardando pagamento/i.test(t) && (t.match(/\\d{16}-\\d/g) || [])) || (/^\\S+\\s*\\n\\s*-?\\s*\\d{16}-\\d/.test(t) ? t.match(/\\d{16}-\\d/g) : null),
-    valor: (t.match(/\\nTotal\\n([\\d.]+,\\d{2})\\n/) || [])[1] || '',
-  }));
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const partes = resumo.split(/Vencimento da Guia:\\s*/).slice(1).map(t => {
+    const vencimento = (t.match(/^(\\d{2}\\/\\d{2}\\/\\d{4})/) || [])[1] || '';
+    const linhaTotal = [];
+    for (const l of t.split(/\\nTotal\\n/).pop().split('\\n').map(x => x.trim()).filter(Boolean)) { if (!/^[\\d.]+,\\d{2}$/.test(l)) break; linhaTotal.push(l); }
+    const valores = linhaTotal.map(num);
+    const mensal = valores[0] || 0, total = valores[valores.length - 1] || 0;
+    const encargos = valores.length >= 3 ? valores[valores.length - 2] : 0;
+    const outros = valores.slice(1, -2).reduce((a, b) => a + b, 0);
+    const [d, m, a] = vencimento.split('/').map(Number);
+    return {
+      vencimento, mensal, outros, encargos, valor: reais(total),
+      vencida: !!vencimento && new Date(a, m - 1, d) < hoje,
+      temBotao: /^\\S+\\s*\\n\\s*Emitir guia/.test(t),
+      aguardando: (/aguardando pagamento/i.test(t) && (t.match(/\\d{16}-\\d/g) || [])) || (/^\\S+\\s*\\n\\s*-?\\s*\\d{16}-\\d/.test(t) ? t.match(/\\d{16}-\\d/g) : null),
+    };
+  });
   partes.forEach((pt, i) => { pt.botao = partes.slice(0, i + 1).filter(x => x.temBotao).length - 1; });
-  const livres = partes.filter(pt => pt.temBotao && !pt.aguardando);
-  const jaTem = partes.filter(pt => pt.aguardando).map(pt => pt.aguardando[0] + ' (vence ' + pt.vencimento + ')');
-  if (!livres.length) return JSON.stringify(jaTem.length ? { erro: 'já existe guia aguardando pagamento: ' + jaTem.join(', ') + '; nada emitido' } : { erro: 'roteiro: sem o Emitir guia' });
-  if (livres.length > 1) return JSON.stringify({ erro: 'mais de um vencimento sem guia (' + livres.map(pt => pt.vencimento + ' R$ ' + pt.valor).join(', ') + '); confira à mão' });
+  const comAviso = o => JSON.stringify(Object.assign(o, avisos.length ? { aviso: avisos.join('; ') } : {}));
+  const abertas = partes.filter(pt => pt.temBotao && !pt.aguardando);
+  // rescisório, indenização, processo trabalhista ou consignado junto do mensal: não emite, o DP decide (13/10/2026)
+  const misturadas = abertas.filter(pt => pt.outros > 0);
+  const livres = abertas.filter(pt => !(pt.outros > 0));
+  const jaTem = partes.filter(pt => pt.aguardando);
+  if (!livres.length && misturadas.length) return comAviso({ erro: 'a guia de ' + misturadas.map(pt => pt.vencimento + ' tem R$ ' + reais(pt.outros) + ' além do mensal (rescisório, indenização, processo trabalhista ou consignado; mensal R$ ' + reais(pt.mensal) + ')').join('; ') + ': confira à mão; nada emitido' });
+  if (!livres.length && jaTem.length === 1) return comAviso({ existente: true, numero: jaTem[0].aguardando[0], valor: jaTem[0].valor, vencimento: jaTem[0].vencimento });
+  if (!livres.length) return comAviso(jaTem.length ? { erro: 'já existem guias aguardando pagamento: ' + jaTem.map(pt => pt.aguardando[0] + ' (vence ' + pt.vencimento + ')').join(', ') + '; nada emitido' } : { erro: 'roteiro: sem o Emitir guia' });
+  if (livres.length > 1) return comAviso({ erro: 'mais de um vencimento sem guia (' + livres.map(pt => pt.vencimento + ' R$ ' + pt.valor).join(', ') + '); confira à mão' });
   const alvo = livres[0];
+  if (misturadas.length) avisos.push('não emiti a de ' + misturadas.map(pt => pt.vencimento).join(', ') + ' (tem valor além do mensal)');
+  if (alvo.encargos > 0 || alvo.vencida) avisos.push('emitida depois do vencimento' + (alvo.encargos > 0 ? ': inclui R$ ' + reais(alvo.encargos) + ' de encargos' : ''));
   const valor = alvo.valor, vencimento = alvo.vencimento;
-  if (!DADOS.emitir) return JSON.stringify({ ensaio: true, valor, vencimento });
+  if (!DADOS.emitir) return comAviso({ ensaio: true, valor, vencimento });
   const botoes = [...document.querySelectorAll('button')].filter(b => visivel(b) && b.innerText.trim() === 'Emitir guia');
   const emitirBotao = botoes[alvo.botao];
   if (!emitirBotao) return JSON.stringify({ erro: 'roteiro: sem o Emitir guia' });
@@ -148,13 +204,13 @@ const ROTEIRO_GUIA = `await (async () => {
   let numero = '';
   for (let i = 0; i < 60 && !numero; i++) { await dormir(500); numero = (document.body.innerText.match(/\\d{16}-\\d/g) || []).find(n => !antes.has(n)) || ''; }
   if (!numero) return JSON.stringify({ erro: 'roteiro: a guia não mostrou o número' });
-  return JSON.stringify({ numero, valor, vencimento });
+  return comAviso({ numero, valor, vencimento });
 })()`;
 
 function instrucoesDoLote(itens) {
   const lista = itens.map((p, i) => {
     const [ano, mes] = p.competencia.split('-');
-    return (i + 1) + '. ' + (p.empresa || '') + ' — CNPJ ' + p.cnpj + ' — competência ' + mes + '/' + ano + ' — ' + (p.modo === 'emitir' ? 'EMITIR' : 'ENSAIO (não emitir)');
+    return (i + 1) + '. ' + (p.empresa || '') + ' — ' + (p.cnpj.length === 11 ? 'CPF ' : 'CNPJ ') + p.cnpj + ' — competência ' + mes + '/' + ano + ' — ' + (p.modo === 'emitir' ? 'EMITIR' : 'ENSAIO (não emitir)');
   });
   return [
     'Você vai emitir guias mensais do FGTS no portal FGTS Digital, usando as ferramentas do Claude in Chrome, para estes clientes,',
@@ -176,15 +232,19 @@ function instrucoesDoLote(itens) {
     '     ele responde "OK: …" e a página troca sozinha (se a ferramenta reclamar que a página navegou, é o esperado). Espere 2 s.',
     '  b) abra ' + GUIA_RAPIDA + ' e rode o ROTEIRO GUIA, trocando só a linha "const DADOS = {…}" pela do cliente; ele responde um',
     '     JSON, que é o resultado do cliente: escreva RESULTADO [<cnpj>]: <o JSON> (cnpj só em números).',
-    '  Se um roteiro responder começando com "ERRO" ou com {"erro":"roteiro: …"}, faça aquele cliente pelo caminho manual abaixo.',
-    '  Se responder qualquer outro {"erro":…} (sem débito em aberto, o perfil não é o do cliente, o portal recusou o perfil), esse é',
-    '  o resultado dele: escreva RESULTADO [<cnpj>]: <o JSON> e siga para o próximo.',
+    '  Se o ROTEIRO PERFIL responder "ERRO_PORTAL: <mensagem>", o portal recusou o perfil: o resultado dele é',
+    '  RESULTADO [<cnpj>]: {"erro":"<a mensagem>"} e siga para o próximo (não tente o caminho manual).',
+    '  Se um roteiro responder começando com "ERRO" ou com {"erro":"roteiro: …"}, faça aquele cliente pelo caminho manual abaixo',
+    '  (se o portal tiver saído do login, entre de novo como no passo B e refaça o cliente).',
+    '  Qualquer outro JSON (com "erro", "existente", "aviso"…) é o resultado dele: escreva RESULTADO [<cnpj>]: <o JSON> exatamente',
+    '  como veio e siga para o próximo.',
     '',
     'As linhas DADOS de cada cliente (cole a do cliente no lugar da linha const DADOS do roteiro):',
     ...itens.map(p => {
       const [ano, mes] = p.competencia.split('-');
-      return '  ' + p.cnpj + ':  PERFIL -> const DADOS = ' + JSON.stringify({ cnpj: cnpjComPontos(p.cnpj), proprio: p.cnpj === CNPJ_DO_ESCRITORIO })
-        + '   |   GUIA -> const DADOS = ' + JSON.stringify({ cnpj: cnpjComPontos(p.cnpj), competencia: mes + '/' + ano, emitir: p.modo === 'emitir' });
+      const doc = p.portal || p.cnpj;
+      return '  ' + p.cnpj + ':  PERFIL -> const DADOS = ' + JSON.stringify({ cnpj: cnpjComPontos(doc), proprio: doc === CNPJ_DO_ESCRITORIO })
+        + '   |   GUIA -> const DADOS = ' + JSON.stringify({ cnpj: cnpjComPontos(doc), competencia: mes + '/' + ano, emitir: p.modo === 'emitir' });
     }),
     '',
     '=== ROTEIRO PERFIL ===',
@@ -337,7 +397,7 @@ function iniciarFgtsPeloClaude(db, log) {
       const p = doc.data();
       if (!cnpjValido(p.cnpj)) { await doc.ref.update({ status: 'erro', erro: 'CNPJ inválido', fimEm: agora() }); continue; }
       if (!competenciaValida(p.competencia)) { await doc.ref.update({ status: 'erro', erro: 'competência inválida', fimEm: agora() }); continue; }
-      const item = { p: Object.assign({}, p, { modo: p.modo === 'emitir' ? 'emitir' : 'ensaio' }), ref: doc.ref, passos: [], fim: false, comecou: false, tarefa: null };
+      const item = { p: Object.assign({}, p, { modo: p.modo === 'emitir' ? 'emitir' : 'ensaio', portal: matrizDe(p.cnpj) }), ref: doc.ref, passos: [], fim: false, comecou: false, tarefa: null, seguidores: [] };
       item.passo = nome => {
         item.passos.push({ n: item.passos.length + 1, nome: String(nome).slice(0, 200), url: '', texto: '', quando: agora() });
         return item.ref.update({ passos: item.passos }).catch(() => {});
@@ -345,7 +405,14 @@ function iniciarFgtsPeloClaude(db, log) {
       itens.push(item);
     }
     if (!itens.length) return;
-    const porCnpj = new Map(itens.map(it => [it.p.cnpj, it]));
+    // a filial vai pela matriz (13/10/2026): o mesmo empregador e a mesma competência no lote viram um cliente só para o
+    // Claude; os outros pedidos ("seguidores") recebem a mesma guia no fim
+    const lideres = [];
+    for (const it of itens) {
+      const lider = lideres.find(l => l.p.portal === it.p.portal && l.p.competencia === it.p.competencia && l.p.modo === it.p.modo);
+      if (lider) lider.seguidores.push(it); else lideres.push(it);
+    }
+    const porCnpj = new Map(lideres.map(it => [it.p.cnpj, it]));
     log('FGTS (Claude): lote de ' + itens.length + ' guia(s):', itens.map(it => it.p.cnpj).join(', '));
     for (const it of itens) await it.passo(itens.length > 1 ? 'no lote de ' + itens.length + ' guias; esperando a vez' : 'o Claude está abrindo o FGTS Digital');
     const desde = Date.now();
@@ -357,12 +424,13 @@ function iniciarFgtsPeloClaude(db, log) {
       it.fim = true;
       it.cancelado = true;
       log('FGTS (Claude): cancelado pelo DP', it.p.cnpj);
-      if (itens.every(x => x.fim) && processoAtual) { try { processoAtual.kill(); } catch (_) {} }
+      if (lideres.every(x => x.fim) && processoAtual) { try { processoAtual.kill(); } catch (_) {} }
     }, () => {}));
     const comecar = it => {
       if (it.comecou || it.cancelado) return;
       it.comecou = true;
       void it.ref.update({ status: 'trabalhando', inicioEm: agora() }).catch(() => {});
+      for (const seg of it.seguidores) if (!seg.cancelado) void seg.passo('vai na guia de ' + cnpjComPontos(it.p.portal) + ' (feita junto com ' + (it.p.empresa || it.p.cnpj) + ')');
     };
     let atual = itens[0];
     const aoPasso = (cnpj, texto) => {
@@ -375,7 +443,7 @@ function iniciarFgtsPeloClaude(db, log) {
     const aoResultado = (cnpj, res) => {
       if (!cnpj) {
         // erro geral (login ou captcha): vale para todos que ainda não terminaram
-        for (const it of itens) if (!it.fim) { it.fim = true; it.tarefa = concluir(it, res, desde); }
+        for (const it of lideres) if (!it.fim) { it.fim = true; it.tarefa = concluir(it, res, desde); }
         return;
       }
       const it = porCnpj.get(cnpj);
@@ -385,16 +453,16 @@ function iniciarFgtsPeloClaude(db, log) {
       it.tarefa = concluir(it, res, desde);
     };
     const limite = 4 * 60 * 1000 + itens.length * 3 * 60 * 1000;
-    let r = await rodarClaude(instrucoesDoLote(itens.map(it => it.p)), aoPasso, aoResultado, limite);
+    let r = await rodarClaude(instrucoesDoLote(lideres.map(it => it.p)), aoPasso, aoResultado, limite);
     // a extensão ainda não estava pronta (nenhum cliente começou): espera e tenta o lote de novo, uma vez
     // (13/10/2026: com a sessão que fica ligada, a sessão que nasceu sem a extensão era reaproveitada e cada lote falhava em
     // segundos; agora ela é encerrada e a nova tentativa abre outra)
-    if (!itens.some(it => it.comecou || it.fim) && extensaoFora(r)) {
+    if (!lideres.some(it => it.comecou || it.fim) && extensaoFora(r)) {
       matarSessao();
       for (const it of itens) await it.passo('a extensão do Claude não respondeu; tentando de novo');
       await dormir(20000);
-      r = await rodarClaude(instrucoesDoLote(itens.map(it => it.p)), aoPasso, aoResultado, limite);
-      if (!itens.some(it => it.comecou || it.fim) && extensaoFora(r)) {
+      r = await rodarClaude(instrucoesDoLote(lideres.map(it => it.p)), aoPasso, aoResultado, limite);
+      if (!lideres.some(it => it.comecou || it.fim) && extensaoFora(r)) {
         matarSessao();
         // a extensão continua fora: o resto da fila também para, com o mesmo aviso (em vez de cada lote falhar sozinho)
         const resto = fila.splice(0, fila.length);
@@ -402,7 +470,7 @@ function iniciarFgtsPeloClaude(db, log) {
         if (resto.length) log('FGTS (Claude): extensão fora; parei a fila (' + resto.length + ' pedido(s) voltaram como erro)');
       }
     }
-    for (const it of itens) {
+    for (const it of lideres) {
       if (it.fim) continue;
       it.fim = true;
       const motivo = !it.comecou && extensaoFora(r)
@@ -410,30 +478,48 @@ function iniciarFgtsPeloClaude(db, log) {
         : 'o Claude não terminou este cliente' + (r.erro ? ': ' + r.erro.slice(0, 200) : '');
       it.tarefa = it.ref.update({ status: 'erro', erro: motivo, fimEm: agora() }).catch(() => {});
     }
-    await Promise.all(itens.map(it => it.tarefa));
+    await Promise.all(lideres.map(it => it.tarefa));
+    // os seguidores (a filial cuja guia é a da matriz, ou o mesmo pedido em dobro): a mesma guia, na pasta de cada um
+    for (const lider of lideres) for (const seg of lider.seguidores) {
+      if (seg.cancelado) continue;
+      await copiarResultado(lider, seg).catch(err => seg.ref.update({ status: 'erro', erro: 'não deu para copiar a guia da matriz: ' + err.message, fimEm: agora() }).catch(() => {}));
+    }
     vigias.forEach(parar => parar());
   }
 
   /** O fim de um cliente: o erro, o ensaio ou a guia (o PDF do Claudio Secretario arquivado e no pedido). */
   async function concluir(it, res, desde) {
     const { p, ref } = it;
+    // os avisos (13/10/2026): a filial pela matriz, débito antigo em aberto, emitida depois do vencimento, a guia que já existia
+    const avisos = [];
+    if (p.portal && p.portal !== p.cnpj) avisos.push('o FGTS da filial vai na guia da matriz ' + cnpjComPontos(p.portal));
+    if (res.aviso) avisos.push(String(res.aviso));
+    if (res.existente) avisos.push('já estava emitida e aguardando pagamento');
+    const aviso = avisos.join('; ');
+    it.resultadoFinal = { res, aviso };
     if (res.erro) {
-      const motivo = res.erro === 'login' ? 'o login no FGTS Digital não foi no Chrome do PC: entre com o certificado lá e peça de novo'
-        : res.erro === 'captcha' ? 'o gov.br pediu a verificação "não sou um robô" no Chrome do PC: faça o login lá e peça de novo'
-          : String(res.erro);
-      await ref.update({ status: 'erro', erro: motivo, fimEm: agora() });
+      const e = String(res.erro);
+      const motivo = e === 'login' ? 'o login no FGTS Digital não foi no Chrome do PC: entre com o certificado lá e peça de novo'
+        : e === 'captcha' ? 'o gov.br pediu a verificação "não sou um robô" no Chrome do PC: faça o login lá e peça de novo'
+          : /procura/i.test(e) && !/^sem procuração/i.test(e) ? 'sem procuração no FGTS Digital para este ' + (p.cnpj.length === 11 ? 'CPF' : 'CNPJ') + ' (o portal disse: ' + e.slice(0, 160) + ')'
+            : e;
+      await ref.update({ status: 'erro', erro: motivo + (aviso ? ' · ' + aviso : ''), aviso, fimEm: agora() });
       log('FGTS (Claude): erro', p.cnpj, motivo);
       return;
     }
     if (p.modo === 'ensaio') {
-      await ref.update({ status: 'pronto', resultado: 'ensaio: total R$ ' + (res.valor || '?') + ', vence ' + (res.vencimento || '?') + ' (nada emitido)', fimEm: agora() });
+      await ref.update({ status: 'pronto', aviso, resultado: 'ensaio: total R$ ' + (res.valor || '?') + ', vence ' + (res.vencimento || '?') + ' (nada emitido)' + (aviso ? ' · ' + aviso : ''), fimEm: agora() });
       log('FGTS (Claude): ensaio ok', p.cnpj);
       return;
     }
     await it.passo('esperando o PDF da guia ' + (res.numero || '') + ' no Claudio Secretario');
-    const baixado = await esperarPdf(res.numero, desde, 90000);
+    // a guia que já existia não baixa sozinha: o Claude baixa pelo caminho de reimpressão (quando houver) ou ela fica como aviso
+    const baixado = await esperarPdf(res.numero, desde, res.existente ? 20000 : 90000);
     if (!baixado) {
-      await ref.update({ status: 'erro', erro: 'a guia ' + (res.numero || '') + ' foi emitida, mas o PDF não chegou no Claudio Secretario', fimEm: agora() });
+      const motivo = res.existente
+        ? 'a guia ' + (res.numero || '') + ' já estava emitida (vence ' + (res.vencimento || '?') + ', R$ ' + (res.valor || '?') + ') e aguarda pagamento; o PDF dela não veio'
+        : 'a guia ' + (res.numero || '') + ' foi emitida, mas o PDF não chegou no Claudio Secretario';
+      await ref.update({ status: 'erro', erro: motivo, aviso, numeroGuia: res.numero || '', valor: res.valor || '', vencimento: res.vencimento || '', fimEm: agora() });
       return;
     }
     const pdf = fs.readFileSync(baixado);
@@ -446,11 +532,41 @@ function iniciarFgtsPeloClaude(db, log) {
     const nome = path.basename(final);
     await ref.collection('arquivo').doc('pdf').set({ base64: pdf.toString('base64'), nome, tamanho: pdf.length, sha256: crypto.createHash('sha256').update(pdf).digest('hex'), quando: agora() });
     await ref.update({
-      status: 'pronto', pdfNome: nome, fimEm: agora(), numeroGuia: res.numero || '', valor: res.valor || '', vencimento: res.vencimento || '',
-      resultado: 'guia ' + (res.numero || '') + ' · R$ ' + (res.valor || '?') + ' · vence ' + (res.vencimento || '?'),
+      status: 'pronto', pdfNome: nome, fimEm: agora(), numeroGuia: res.numero || '', valor: res.valor || '', vencimento: res.vencimento || '', aviso,
+      resultado: 'guia ' + (res.numero || '') + ' · R$ ' + (res.valor || '?') + ' · vence ' + (res.vencimento || '?') + (aviso ? ' · ' + aviso : ''),
       arquivadaEm: path.relative(DRIVE, final),
     });
+    it.pdfFinal = final;
     log('FGTS (Claude): guia emitida', p.cnpj, p.competencia, res.numero || '');
+  }
+
+  /** O seguidor (a filial, ou o mesmo pedido em dobro no lote) recebe a guia do líder, na pasta dele. */
+  async function copiarResultado(lider, seg) {
+    const fim = lider.resultadoFinal;
+    if (!fim) { await seg.ref.update({ status: 'erro', erro: 'o Claude não terminou ' + (lider.p.empresa || lider.p.cnpj) + ', que leva a guia deste', fimEm: agora() }); return; }
+    const { res } = fim;
+    const aviso = [seg.p.portal !== seg.p.cnpj ? 'o FGTS da filial vai na guia da matriz ' + cnpjComPontos(seg.p.portal) : 'pedido repetido no lote', fim.aviso].filter(Boolean).join('; ');
+    if (res.erro || !lider.pdfFinal) {
+      const l = await lider.ref.get();
+      const d = l.data() || {};
+      if (d.status === 'pronto' && seg.p.modo === 'ensaio') { await seg.ref.update({ status: 'pronto', resultado: d.resultado || '', aviso, fimEm: agora() }); return; }
+      await seg.ref.update({ status: 'erro', erro: (d.erro || 'a guia de ' + (lider.p.empresa || lider.p.cnpj) + ' não saiu') + ' · ' + aviso, aviso, fimEm: agora() });
+      return;
+    }
+    const [ano, mes] = seg.p.competencia.split('-');
+    const destino = path.join(pastaDoCliente(ano, String(seg.p.codigo || ''), seg.p.empresa || ''), 'DEPARTAMENTO PESSOAL', mes, 'FGTS');
+    fs.mkdirSync(destino, { recursive: true });
+    const final = path.join(destino, path.basename(lider.pdfFinal));
+    if (path.resolve(final) !== path.resolve(lider.pdfFinal)) fs.copyFileSync(lider.pdfFinal, final);
+    const pdf = fs.readFileSync(final);
+    const nome = path.basename(final);
+    await seg.ref.collection('arquivo').doc('pdf').set({ base64: pdf.toString('base64'), nome, tamanho: pdf.length, sha256: crypto.createHash('sha256').update(pdf).digest('hex'), quando: agora() });
+    await seg.ref.update({
+      status: 'pronto', pdfNome: nome, fimEm: agora(), numeroGuia: res.numero || '', valor: res.valor || '', vencimento: res.vencimento || '', aviso,
+      resultado: 'guia ' + (res.numero || '') + ' · R$ ' + (res.valor || '?') + ' · vence ' + (res.vencimento || '?') + ' · ' + aviso,
+      arquivadaEm: path.relative(DRIVE, final),
+    });
+    log('FGTS (Claude): guia da matriz para', seg.p.cnpj, res.numero || '');
   }
 
   /**
@@ -537,9 +653,9 @@ function iniciarFgtsPeloClaude(db, log) {
         lerTexto: t => {
           for (const linha of String(t).split('\n')) {
             const l = linha.trim();
-            const m = l.match(/^PASSO\s*(?:\[(\d{14})\])?\s*:\s*(.+)$/);
+            const m = l.match(/^PASSO\s*(?:\[(\d{14}|\d{11})\])?\s*:\s*(.+)$/);
             if (m && !vistos.has(l)) { vistos.add(l); aoPasso(m[1] || '', m[2]); }
-            const r = l.match(/^RESULTADO\s*(?:\[(\d{14})\])?\s*:\s*(\{.*\})\s*$/);
+            const r = l.match(/^RESULTADO\s*(?:\[(\d{14}|\d{11})\])?\s*:\s*(\{.*\})\s*$/);
             if (r && !vistos.has(l)) {
               vistos.add(l);
               try { const res = JSON.parse(r[2]); algum = res; aoResultado(r[1] || '', res); } catch (_) { /* resultado mal escrito */ }
