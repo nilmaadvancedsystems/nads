@@ -117,6 +117,26 @@ export function anoDoTexto(texto: string, padrao: number): number {
  *   complementa o anterior.
  * No sistema (razão em PDF), débito é entrada no banco: o sinal pela coluna se inverte.
  */
+/**
+ * O extrato sem movimento (Vitor, 13/10/2026: o BNB "Nenhuma movimentação encontrada"): os meses do período que ele
+ * mostra ("Período: 01/01/2026 até 31/01/2026", "de 01/01/2026 a 31/01/2026"); sem a frase, null. Sem o período, o mês
+ * do "Período do extrato" ou das datas que aparecem; nada disso, [] (quem importa decide o mês).
+ */
+export function mesesSemMovimento(texto: string): string[] | null {
+  const t = normalizarTexto(texto);
+  if (!/nenhuma movimentacao|nenhum lancamento|sem movimentacao|sem movimento|nao (?:ha|houve|existem?|possui) (?:movimentacao|movimentacoes|lancamentos?)/.test(t)) return null;
+  const p = texto.match(/(\d{2})\/(\d{2})\/(\d{4})\s*(?:at[eé]|a)\s*(\d{2})\/(\d{2})\/(\d{4})/i);
+  if (p) {
+    const meses: string[] = [];
+    let a = Number(p[3]), m = Number(p[2]);
+    const fimA = Number(p[6]), fimM = Number(p[5]);
+    while ((a < fimA || (a === fimA && m <= fimM)) && meses.length < 24) { meses.push(a + '-' + String(m).padStart(2, '0')); m++; if (m > 12) { m = 1; a++; } }
+    return meses;
+  }
+  const um = periodoDoExtrato(texto);
+  return um ? [um] : [];
+}
+
 /** O mês do extrato quando ele diz ("Período do extrato 02 / 2026", o do BB "Consultas"): 'aaaa-mm', ou null. */
 export function periodoDoExtrato(texto: string): string | null {
   // (o normalizarTexto tira a barra: "02 / 2026" vira "02 2026")

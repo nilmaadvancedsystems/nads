@@ -1,7 +1,7 @@
 // Lê um arquivo escolhido (ou baixado) e devolve os lançamentos. Aceita PDF, OFX, Excel e CSV.
 // Nada do arquivo é guardado: quem chama recebe só os lançamentos (ou o motivo de não dar).
 import * as XLSX from 'xlsx';
-import { extratoDoPdf, saldoAnteriorDoPdf } from '../regras/extrato';
+import { extratoDoPdf, mesesSemMovimento, saldoAnteriorDoPdf } from '../regras/extrato';
 import { ehOfx, lancamentosDoOfx, saldoAnteriorDoOfx } from '../regras/ofx';
 import { lancamentosDaPlanilha, type Celula } from '../regras/planilha';
 import type { ArquivoLido, Lado } from '../tipos';
@@ -29,6 +29,9 @@ export async function lerArquivo(nome: string, bytes: Uint8Array, lado: Lado, an
       const letras = paginas.reduce((s, p) => s + p.reduce((t, i) => t + i.texto.length, 0), 0);
       if (letras < 40) return { nome, lancamentos: [], erro: 'O PDF não tem texto (parece digitalizado). Baixe o extrato em PDF pelo site do banco.' };
       const { lancamentos: l } = extratoDoPdf(paginas, lado, anoPadrao);
+      // o extrato que diz que não teve movimento: o mês fica marcado como sem movimento (não é erro de leitura)
+      const semMov = !l.length && lado === 'banco' ? mesesSemMovimento(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n')) : null;
+      if (semMov) return { nome, lancamentos: [], erro: 'Extrato sem movimento.', semMovimento: semMov };
       const saldo = lado === 'banco' ? saldoAnteriorDoPdf(paginas) : null;
       return { nome, lancamentos: l, erro: l.length ? null : 'Não achei lançamentos com data e valor neste PDF.', ...(saldo != null ? { saldoAnterior: saldo } : {}) };
     }

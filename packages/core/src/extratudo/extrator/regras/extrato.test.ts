@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { anoDoTexto, ehConsultasDoBB, lancamentosDoPdf, paginasPorMes, periodoDoExtrato, saldoAnteriorDoPdf, saldosDoDiaDoPdf, type ItemDeTexto } from './extrato';
+import { anoDoTexto, ehConsultasDoBB, lancamentosDoPdf, mesesSemMovimento, paginasPorMes, periodoDoExtrato, saldoAnteriorDoPdf, saldosDoDiaDoPdf, type ItemDeTexto } from './extrato';
 
 /** Monta uma página: cada linha é [texto, x] com a mesma altura; as linhas descem de 14 em 14. */
 function pagina(linhas: [string, number][][]): ItemDeTexto[] {
@@ -167,6 +167,14 @@ describe('o depósito bloqueado não é lançamento (Sicoob, Vitor, 13/10/2026)'
       { data: '2026-08-07', valor: 230000, historico: 'LIBERAÇÃO DE DEPÓSITO BLOQUEADO' },
       { data: '2026-08-10', valor: 104700, historico: 'PIX RECEBIDO' },
     ]);
+  });
+});
+
+describe('o extrato sem movimento (Vitor, 13/10/2026)', () => {
+  it('a frase e os meses do período', () => {
+    expect(mesesSemMovimento('Período: 01/01/2026 até 31/01/2026 … Nenhuma movimentação encontrada.')).toEqual(['2026-01']);
+    expect(mesesSemMovimento('de 01/02/2026 a 30/04/2026 — Não há lançamentos no período')).toEqual(['2026-02', '2026-03', '2026-04']);
+    expect(mesesSemMovimento('Período: 01/01/2026 até 31/01/2026 PIX RECEBIDO 10,00')).toBeNull();
   });
 });
 

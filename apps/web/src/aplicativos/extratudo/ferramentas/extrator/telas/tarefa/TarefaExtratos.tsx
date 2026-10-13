@@ -557,6 +557,8 @@ export function TarefaExtratos() {
   });
   const d = useDriveDaLinha(vm, s.codigo);
   // o extrato do computador: importa e, o que não está no Drive, manda para lá (Vitor, 09/10/2026)
+  // o extrato importado sem movimento marca o mês como sem movimento no banco (Vitor, 13/10/2026)
+  useEffect(() => { vm.aoSemMovimento((banco, meses) => { for (const m of meses) ponte.marcarSemMovimento(banco, true, m); }); });
   const importarExtrato = (b: (typeof vm.bancos)[number], fs: File[]) => { void vm.importarArquivos(b.id, 'banco', fs).then(ok => { if (ok) d.subirAoDrive(b, fs, s.nome); }); };
   // os extratos que chegaram por e-mail (08/10/2026): entram sozinhos na linha certa; os outros ficam no aviso
   const rec = useRecebidosPorEmail(vm, s.codigo);
