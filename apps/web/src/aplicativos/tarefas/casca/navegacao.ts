@@ -119,14 +119,14 @@ export function competenciasDaTela(n: number): string[] {
   return [atual, ...base.filter(c => c !== atual)].slice(0, n);
 }
 /**
- * As competências do DP (08/10/2026: "no dp, a partir do dia 20, já tem que poder selecionar a competência do próximo
- * mês"): as da tela e, do dia 20 em diante, também o mês corrente (a folha que está fechando), no topo da lista. A que
- * abre continua a de sempre (padrao).
+ * As competências do DP: as da tela e, à frente, o mês corrente e os dois seguintes (13/10/2026: "libere poder colocar
+ * competências à frente", para lançar o que já se sabe e o 13º de novembro e dezembro; antes era só o mês corrente, do dia
+ * 20 em diante). A que abre continua a de sempre (padrao).
  */
 export function competenciasDoDp(n: number, hoje = new Date()): { lista: string[]; padrao: string } {
   const base = competenciasDaTela(n);
-  const atual = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
-  return { lista: hoje.getDate() >= 20 && !base.includes(atual) ? [atual, ...base] : base, padrao: base[0] };
+  const frente = [2, 1, 0].map(k => { const d = new Date(hoje.getFullYear(), hoje.getMonth() + k, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); });
+  return { lista: [...frente.filter(c => !base.includes(c)), ...base], padrao: base[0] };
 }
 export function inicioEscolhido(): string {
   try { return localStorage.getItem(CHAVE_INICIO) || 'empresas'; } catch { return 'empresas'; }
