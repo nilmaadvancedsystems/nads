@@ -785,10 +785,10 @@ export function TarefaExtratos() {
                   // o banco certo (extrato e razão batem): o Ok no lugar do Razão / Remover todos, e o Cheque especial ao lado (Vitor,
                   // 13/10/2026); o razão de cada mês continua na grade (a setinha), para importar de novo depois do cheque
                   <div className="imp-grupos">
-                    <span className="badge badge-ok" title="O extrato e o razão batem; falta o cheque especial dos dias negativos">Ok</span>
-                    {/* bate, mas falta o cheque especial: o botão principal (Vitor, 02/10/2026: no lugar do "Conferido" clicável) */}
-                    <button type="button" className="btn btn-primary" onClick={() => explicarCheque(b, situacao)}
-                      title="Bate com o razão, mas fecha negativo em algum dia: falta o cheque especial. Clique para ver.">Cheque especial</button>
+                    {/* só a cápsula laranja, no lugar do Ok (Vitor, 13/10/2026: ela só aparece quando o razão bate com o banco, então
+                        já quer dizer "ok", mas falta corrigir; resolve na etapa seguinte). O clique explica os dias negativos */}
+                    <button type="button" className="badge badge-conferido" style={{ cursor: 'pointer' }} onClick={() => explicarCheque(b, situacao)}
+                      title="Bate com o razão, mas fecha negativo em algum dia: falta o cheque especial (na etapa seguinte). Clique para ver.">Cheque especial</button>
                   </div>
                 ) : vm.periodo.length > 1 ? (
                   // vários meses: os botões de um mês ficam embaixo (por mês); aqui, o de todos de uma vez.
