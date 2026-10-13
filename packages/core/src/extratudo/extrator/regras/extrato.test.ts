@@ -153,6 +153,23 @@ describe('o extrato da Caixa (Vitor, 13/10/2026)', () => {
   });
 });
 
+describe('o depósito bloqueado não é lançamento (Sicoob, Vitor, 13/10/2026)', () => {
+  it('"DEP.CHEQUE BLOQ.1D 2.300,00*" e o texto embaixo ficam de fora; a liberação entra limpa', () => {
+    const p = pagina([
+      [['Data', 40], ['Histórico', 100], ['Valor', 480]],
+      [['06/08/2026', 40], ['DEP.CHEQUE BLOQ.1D', 100], ['2.300,00*', 480]],
+      [['07/08/2026', 40], ['LIBERAÇÃO DE DEPÓSITO BLOQUEADO', 100], ['2.300,00C', 480]],
+      [['10/08/2026', 40], ['DEP.CHEQUE BLOQ.1D', 100], ['5.780,00*', 480]],
+      [['ENVELOPE: 0162682306', 100]],
+      [['10/08/2026', 40], ['PIX RECEBIDO', 100], ['1.047,00C', 480]],
+    ]);
+    expect(lancamentosDoPdf([p], 'banco', 2000)).toEqual([
+      { data: '2026-08-07', valor: 230000, historico: 'LIBERAÇÃO DE DEPÓSITO BLOQUEADO' },
+      { data: '2026-08-10', valor: 104700, historico: 'PIX RECEBIDO' },
+    ]);
+  });
+});
+
 describe('saldo anterior do extrato (abre a conta quando não há mês antes)', () => {
   it('a linha SALDO ANTERIOR: o valor da direita, com o sinal', () => {
     const p = pagina([

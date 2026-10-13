@@ -123,5 +123,7 @@ export function correcoesDoRazao(e: EmpresaExtrator, banco: string, primeiro: st
       ? 'Os ' + v(c.diferenca) + ' a mais parecem ser de ' + dataBR(par.data)
       : 'Os ' + v(c.diferenca) + ' que faltam parecem estar lançados em ' + dataBR(par.data);
   }
+  // o cheque especial lançado no razão num dia em que o banco não fechou negativo: é para excluir (Vitor, 13/10/2026)
+  for (const c of todas) if (c.tipo === 'sobra' && /cheque\s*especial/i.test(c.lancamento)) c.situacao = 'Exclua esses valores';
   return todas;
 }
