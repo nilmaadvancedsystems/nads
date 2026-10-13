@@ -568,7 +568,7 @@ export function TarefaExtratos() {
   const ocupadoGeral = vm.ocupado || !!d.buscando || vm.bancos.some(b => b.extrato.lendo || b.razao.lendo);
   useCarregando(ocupadoGeral);
   // extrato e razão batendo no período: a linha vira só o selo Ok (sem botões, a setinha não abre)
-  const { ok: bancosOk, correcoes, situacoes, explicarCheque, exportarFaltas } = useBancosOk(vm, ponte, ocupadoGeral);
+  const { ok: bancosOk, correcoes, situacoes, exportarFaltas } = useBancosOk(vm, ponte, ocupadoGeral);
   // os requisitos para seguir (o botão de avançar da Tarefas só aparece com tudo pronto): cada banco Ok e, na
   // Conferência, Balancete, Entradas, Saídas, Tomados e (se presta serviço) Prestados importados
   const importados = useImportadosDaConferencia(s.nome);
@@ -785,9 +785,8 @@ export function TarefaExtratos() {
                   // 13/10/2026); o razão de cada mês continua na grade (a setinha), para importar de novo depois do cheque
                   <div className="imp-grupos">
                     {/* só a cápsula laranja, no lugar do Ok (Vitor, 13/10/2026: ela só aparece quando o razão bate com o banco, então
-                        já quer dizer "ok", mas falta corrigir; resolve na etapa seguinte). O clique explica os dias negativos */}
-                    <button type="button" className="badge badge-conferido" style={{ cursor: 'pointer' }} onClick={() => explicarCheque(b, situacao)}
-                      title="Bate com o razão, mas fecha negativo em algum dia: falta o cheque especial (na etapa seguinte). Clique para ver.">Cheque especial</button>
+                        já quer dizer "ok", mas falta corrigir; resolve na etapa seguinte). Não é clicável (Vitor, 13/10/2026: sem a janela) */}
+                    <span className="badge badge-conferido" title="Bate com o razão, mas fecha negativo em algum dia: o cheque especial é na etapa seguinte">Cheque especial</span>
                   </div>
                 ) : vm.periodo.length > 1 ? (
                   // vários meses: os botões de um mês ficam embaixo (por mês); aqui, o de todos de uma vez.
