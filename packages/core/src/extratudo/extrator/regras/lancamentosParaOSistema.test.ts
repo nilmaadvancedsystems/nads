@@ -32,4 +32,12 @@ describe('os lançamentos do que falta no razão, pelo padrão do razão (Vitor,
     const [x] = lancamentosParaOSistema([{ data: '2026-02-06', valor: 12345, historico: 'PIX RECEBIDO FULANO' }], razao, '10506');
     expect([x.conta, x.origem]).toEqual(['10101', 'mais-usada']);
   });
+
+  it('o histórico nunca é o "0": sai o 0; sem palavra nenhuma, vai o nome da conta', () => {
+    const s = lancamentosParaOSistema([
+      { data: '2026-02-07', valor: -3039, historico: '0 DEBITO DE IOF' },
+      { data: '2026-02-08', valor: 5000, historico: '0' },
+    ], razao, '10506');
+    expect(s.map(x => x.linha.historico)).toEqual(['DEBITO DE IOF', 'Caixa']);
+  });
 });

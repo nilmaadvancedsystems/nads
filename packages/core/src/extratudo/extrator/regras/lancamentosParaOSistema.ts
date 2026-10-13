@@ -71,7 +71,11 @@ export function lancamentosParaOSistema(pendentes: readonly PendenteDoBanco[], r
     const achou = melhor && melhor.nota >= PARECIDO_MINIMO ? melhor.l : null;
     const contra = achou ? { conta: achou.conta!, nome: achou.historico } : entrada ? padrao.entrada : padrao.saida;
     if (!contra) continue;
-    const historico = p.historico.replace(/\s+/g, ' ').trim().slice(0, 250) || '(sem histórico)';
+    // o histórico escrito primeiro (Vitor, 13/10/2026: "não use o histórico 0, priorize os escritos"): sem o "0" do
+    // documento; sem nenhuma palavra, o texto do lançamento parecido do razão, ou o nome da conta
+    const limpo = p.historico.split(/\s+/).filter(t => t && t !== '0').join(' ').trim();
+    const escrito = (t: string | undefined) => !!t && /[a-zà-ú]{2,}/i.test(t);
+    const historico = (escrito(limpo) ? limpo : escrito(achou?.complemento) ? achou!.complemento! : escrito(contra.nome) ? contra.nome : limpo || '(sem histórico)').slice(0, 250);
     out.push({
       linha: {
         automatico: '', data: dataBR(p.data), debito: entrada ? contaDoBanco : contra.conta, credito: entrada ? contra.conta : contaDoBanco,
