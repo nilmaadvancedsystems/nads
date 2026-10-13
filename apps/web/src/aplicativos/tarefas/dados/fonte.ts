@@ -6,7 +6,7 @@
 // Quem está trabalhando: no banco, o login com as contas do Entregas (entregas.firestore.ts, 30/09/2026);
 // nos exemplos, a pessoa escolhe o nome na lista da equipe (não há login).
 // O repositório e a sessão são criados uma vez, quando alguém abre a Tarefas. O do Cadastro, quando alguém abre o Cadastro.
-import { demo, empresas, entregas, extrator, tarefas } from '@nads/core';
+import { demo, empresas, entregas, extrator, formatos, tarefas } from '@nads/core';
 import { criarAcessoMemoria, type RepoAcesso } from './acesso';
 import { criarAcessoFirestore } from './acesso.firestore';
 import { criarDriveFirestore } from './drive.firestore';
@@ -113,15 +113,20 @@ function regimeNoCadastro(codigo: number): string {
   return regimeEscolhidoNoNads(codigo) || empresas.cadastro.regimeDoEntregas(regimeNoEntregas(codigo));
 }
 
-/** O regime escolhido no cadastro da empresa no nads ('' = nenhum). */
+/**
+ * O regime escolhido no cadastro da empresa no nads ('' = nenhum). Pelo nome (o cadastro é por nome): os dois códigos
+ * de uma empresa com o mesmo nome (ex.: 358 e 359) seguem o mesmo cadastro.
+ */
 function regimeEscolhidoNoNads(codigo: number): string {
   const c = repoDoCadastro();
   const ver = c.versao();
   if (!regimesCache || regimesCache.ver !== ver) {
+    const porSlug = new Map<string, string>();
+    for (const [id, x] of c.todos().porId) { const r = empresas.cadastro.regimeDoCadastro(x); if (r) porSlug.set(id, r); }
     const mapa = new Map<number, string>();
-    for (const x of c.todos().porId.values()) {
-      const r = empresas.cadastro.regimeDoCadastro(x);
-      if (r && x.codigo != null) mapa.set(x.codigo, r);
+    for (const e of [...empresas.EMPRESAS_COM_DP, ...empresasNovas()]) {
+      const r = e.codigo != null ? porSlug.get(formatos.slug(e.nome)) : undefined;
+      if (r && e.codigo != null) mapa.set(e.codigo, r);
     }
     regimesCache = { ver, mapa };
   }
