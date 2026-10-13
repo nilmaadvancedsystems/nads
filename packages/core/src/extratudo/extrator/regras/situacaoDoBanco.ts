@@ -20,13 +20,25 @@ const DIAS_ATE_O_ESTORNO = 7;
 
 const diaDe = (d: string) => { const [a, m, dd] = d.split('-').map(Number); return Date.UTC(a, m - 1, dd) / 86400000; };
 
-/** Os dias que fecham negativos no extrato da conta, no período (o saldo do último lançamento do dia). */
+/**
+ * Os dias que fecham negativos no extrato da conta, no período. No mês em que os extratos trazem o saldo impresso do dia
+ * (saldosDoDia), vale o do banco (Vitor, 13/10/2026: "se guie pelo extrato bancário"); senão, o saldo do último
+ * lançamento do dia, recalculado.
+ */
 export function diasNegativos(e: EmpresaExtrator, banco: string, primeiro: string, meses: readonly string[]): DiaNegativo[] {
   const ms = meses.slice().sort();
   if (!ms.length) return [];
+  const impresso = new Set<string>();
   const fim = new Map<string, number>();
+  for (const mes of ms) {
+    const arqs = arquivosDoBanco(e, banco, primeiro, 'banco', mes);
+    if (!arqs.length || !arqs.every(a => a.saldosDoDia?.some(s => s.data.startsWith(mes)))) continue;
+    impresso.add(mes);
+    for (const a of arqs) for (const s of a.saldosDoDia || []) if (s.data.startsWith(mes)) fim.set(s.data, s.saldo);
+  }
   for (const l of movimentoDoExtrato(e, banco, primeiro, ms[0], ms[ms.length - 1]).linhas) {
-    if (ms.includes(l.data.slice(0, 7))) fim.set(l.data, l.saldo);
+    const mes = l.data.slice(0, 7);
+    if (ms.includes(mes) && !impresso.has(mes)) fim.set(l.data, l.saldo);
   }
   return [...fim].filter(([, s]) => s < 0).map(([data, saldo]) => ({ data, saldo })).sort((a, b) => a.data.localeCompare(b.data));
 }

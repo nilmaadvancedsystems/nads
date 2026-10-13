@@ -46,6 +46,8 @@ export interface ArquivoImportado {
   drive?: { id: string; nome: string };
   /** o saldo antes do primeiro lançamento, como o extrato traz (centavos; + credor/positivo na conta) */
   saldoAnterior?: number;
+  /** o saldo que o extrato imprime no fim de cada dia (centavos), quando ele traz: os dias negativos do Cheque especial */
+  saldosDoDia?: { data: string; saldo: number }[];
 }
 
 /** Um banco que a pessoa adicionou à empresa, valendo da competência "desde" ('aaaa-mm') em diante. */
@@ -93,6 +95,8 @@ export interface ArquivoLido {
   lancamentos: Lancamento[];
   /** o saldo antes do primeiro lançamento, quando o extrato traz (a linha "SALDO ANTERIOR" do PDF; no OFX, o saldo final menos o movimento) */
   saldoAnterior?: number;
+  /** o saldo impresso no fim de cada dia (o PDF com a coluna Saldo ou a linha SALDO DO DIA) */
+  saldosDoDia?: { data: string; saldo: number }[];
   /** preenchido quando não deu para aproveitar o arquivo */
   erro: string | null;
 }

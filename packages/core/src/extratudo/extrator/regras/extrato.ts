@@ -136,6 +136,17 @@ export function lancamentosDoPdf(paginas: ItemDeTexto[][], lado: Lado, anoPadrao
 }
 
 /**
+ * O saldo que o extrato imprime no fim de cada dia (a coluna Saldo da última linha do dia, ou a linha "SALDO DO DIA"):
+ * no Cheque especial, os dias negativos são os do banco, não os recalculados (Vitor, 13/10/2026: "se o razão passou na
+ * primeira etapa, se guie pelo extrato bancário" — no BB "Consultas", pela Dt. movimento, o saldo recalculado ficava
+ * negativo em dias que o banco fechou positivo). Sem a coluna Saldo, vazio.
+ */
+export function saldosDoDiaDoPdf(paginas: ItemDeTexto[][], anoPadrao = new Date().getFullYear()): { data: string; saldo: number }[] {
+  const s = lancamentosComPagina(paginas, 'banco', anoPadrao).saldosDoDia;
+  return s ? [...s].map(([data, saldo]) => ({ data, saldo })).sort((a, b) => a.data.localeCompare(b.data)) : [];
+}
+
+/**
  * As páginas de cada mês (Vitor, 09/10/2026: o PDF de vários meses vai para o Drive quebrado, um por mês): a página entra
  * no mês de cada lançamento dela (a que vira o mês entra nos dois); página sem lançamento (o resumo do fim) fica com a de
  * antes. Os índices começam em 0, em ordem.
@@ -224,7 +235,9 @@ function lancamentosDaCaixa(todas: Linha[][], ano: number): { lancamentos: Lanca
   return { lancamentos, pagina };
 }
 
-function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: number): { lancamentos: Lancamento[]; pagina: number[] } {
+function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: number): { lancamentos: Lancamento[]; pagina: number[]; saldosDoDia?: Map<string, number> } {
+  const saldosDoDia = new Map<string, number>();
+  let ultimaDataDeValor: string | null = null;
   const todas = paginas.map(montarLinhas);
   if (lado === 'banco') {
     const texto = todas.map(p => p.map(l => l.texto).join('\n')).join('\n');
@@ -295,8 +308,22 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
         }
         continue;
       }
-      if (RE_SALDO.test(hist) || (!hist && !solta && RE_SALDO.test(l.texto))) { solta = null; continue; }
+      if (RE_SALDO.test(hist) || (!hist && !solta && RE_SALDO.test(l.texto))) {
+        // a linha "SALDO DO DIA": o saldo que o banco imprime no fim do dia; o "999 S A L D O" do fim do BB: o do último dia
+        const n = normalizarTexto(hist || l.texto);
+        const diaDoSaldo = /\bs a l d o\b/.test(n) ? ultimaDataDeValor : /\bsaldo (?:do )?dia\b/.test(n) ? dataAtual : null;
+        const sv = diaDoSaldo ? centavos(valores[valores.length - 1].s) : null;
+        if (sv != null && diaDoSaldo) saldosDoDia.set(diaDoSaldo, sv);
+        solta = null; continue;
+      }
       if (!dataAtual) continue;
+      ultimaDataDeValor = dataAtual;
+      // o valor na coluna Saldo (no BB "Consultas", na última linha do dia, pela Dt. balancete): o saldo do dia no banco
+      if (col && col.saldo != null && valores.length > 1) {
+        const doSaldo = valores.filter(x => Math.abs(x.x2 - (col as Colunas).saldo!) <= 12);
+        const sv = doSaldo.length ? centavos(doSaldo[doSaldo.length - 1].s) : null;
+        if (sv != null) saldosDoDia.set(dataAtual, sv);
+      }
 
       let candidatos = valores;
       if (col && col.saldo != null && valores.length > 1) {
@@ -336,5 +363,5 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       paginaDe.push(nPagina);
     }
   }
-  return { lancamentos: saida, pagina: paginaDe };
+  return { lancamentos: saida, pagina: paginaDe, saldosDoDia };
 }

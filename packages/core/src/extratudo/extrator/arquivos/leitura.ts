@@ -1,7 +1,7 @@
 // Lê um arquivo escolhido (ou baixado) e devolve os lançamentos. Aceita PDF, OFX, Excel e CSV.
 // Nada do arquivo é guardado: quem chama recebe só os lançamentos (ou o motivo de não dar).
 import * as XLSX from 'xlsx';
-import { lancamentosDoPdf, saldoAnteriorDoPdf } from '../regras/extrato';
+import { lancamentosDoPdf, saldoAnteriorDoPdf, saldosDoDiaDoPdf } from '../regras/extrato';
 import { ehOfx, lancamentosDoOfx, saldoAnteriorDoOfx } from '../regras/ofx';
 import { lancamentosDaPlanilha, type Celula } from '../regras/planilha';
 import type { ArquivoLido, Lado } from '../tipos';
@@ -30,7 +30,8 @@ export async function lerArquivo(nome: string, bytes: Uint8Array, lado: Lado, an
       if (letras < 40) return { nome, lancamentos: [], erro: 'O PDF não tem texto (parece digitalizado). Baixe o extrato em PDF pelo site do banco.' };
       const l = lancamentosDoPdf(paginas, lado, anoPadrao);
       const saldo = lado === 'banco' ? saldoAnteriorDoPdf(paginas) : null;
-      return { nome, lancamentos: l, erro: l.length ? null : 'Não achei lançamentos com data e valor neste PDF.', ...(saldo != null ? { saldoAnterior: saldo } : {}) };
+      const saldos = lado === 'banco' ? saldosDoDiaDoPdf(paginas, anoPadrao) : [];
+      return { nome, lancamentos: l, erro: l.length ? null : 'Não achei lançamentos com data e valor neste PDF.', ...(saldo != null ? { saldoAnterior: saldo } : {}), ...(saldos.length ? { saldosDoDia: saldos } : {}) };
     }
     const inicio = new TextDecoder('windows-1252').decode(bytes.subarray(0, 4000));
     if (ext === '.ofx' || ehOfx(inicio)) {
