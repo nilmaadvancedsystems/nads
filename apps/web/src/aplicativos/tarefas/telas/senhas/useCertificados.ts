@@ -3,6 +3,7 @@
 // o cofre. As fatias por situação (a rosca), os vencimentos mês a mês dos próximos 12 meses (as barras), os cartões dos
 // que pedem atenção e a lista filtrada por situação ou por mês; clicar abre a empresa (precisa do cofre aberto).
 import { cofre as c, empresas, formatos } from '@nads/core';
+import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { useCofre } from './useCofre';
 
@@ -12,6 +13,7 @@ const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'o
 
 export function useCertificados() {
   const vm = useCofre();
+  const { toast } = useRetorno();
   const [filtro, setFiltroBruto] = useState<FiltroDeCertificados>('vence');
   /** o mês das barras escolhido (aaaa-mm); com ele, a lista é a dos que vencem nesse mês */
   const [mes, setMes] = useState<string | null>(null);
@@ -45,6 +47,6 @@ export function useCertificados() {
     urgentes: [...todas.filter(l => l.situacao === 'vence').sort(porDias), ...todas.filter(l => l.situacao === 'vencido').sort((a, b) => porDias(b, a))],
     setFiltro: (f: FiltroDeCertificados) => { setFiltroBruto(f); setMes(null); },
     escolherMes: (m: string) => setMes(x => (x === m ? null : m)),
-    aberta, abrir: (nome: string, codigo: number | null) => setAberta({ nome, codigo }), fechar: () => setAberta(null),
+    aberta, abrir: (nome: string, codigo: number | null) => { if (vm.bloqueio) { toast(vm.bloqueio); return; } setAberta({ nome, codigo }); }, fechar: () => setAberta(null),
   };
 }

@@ -1,6 +1,7 @@
 // ViewModel da lista do módulo Senhas (07/10/2026): as empresas com o que têm no cofre (senha gov.br, certificado e a
 // validade dele) — às claras, sem abrir o cofre —, a busca, o filtro e a empresa aberta na janela.
 import { cofre as c, empresas, formatos } from '@nads/core';
+import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { useCofre } from './useCofre';
 
@@ -8,6 +9,7 @@ export type FiltroDeSenhas = 'todas' | 'vencendo' | 'sem';
 
 export function useSenhasDasEmpresas() {
   const vm = useCofre();
+  const { toast } = useRetorno();
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<FiltroDeSenhas>('todas');
   const [aberta, setAberta] = useState<{ nome: string; codigo: number | null } | null>(null);
@@ -30,6 +32,6 @@ export function useSenhasDasEmpresas() {
       sem: todas.filter(l => !l.temGov || !l.temCertificado).length,
     },
     busca, setBusca, filtro, setFiltro,
-    aberta, abrir: (nome: string, codigo: number | null) => setAberta({ nome, codigo }), fechar: () => setAberta(null),
+    aberta, abrir: (nome: string, codigo: number | null) => { if (vm.bloqueio) { toast(vm.bloqueio); return; } setAberta({ nome, codigo }); }, fechar: () => setAberta(null),
   };
 }

@@ -3649,6 +3649,8 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
   font-size:12px;font-weight:400;line-height:16px;white-space:normal;text-align:left;opacity:0;visibility:hidden;pointer-events:none;}
 .dica:hover .dica-balao,.dica:focus-visible .dica-balao{opacity:1;visibility:visible;}
 
+/* Senhas: sem acesso ao cofre, a empresa não abre (13/10/2026: "deve bloquear ao clicar") */
+.cofre-bloqueado{cursor:not-allowed;}
 /* Cadastro › Agentes (13/10/2026): o cartão da sessão abre a janela que explica como está funcionando (o desenho da
    janela padrão, mais larga e com o texto à esquerda) */
 .agentes-cartao{cursor:pointer;}

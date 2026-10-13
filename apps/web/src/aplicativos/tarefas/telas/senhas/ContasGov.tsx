@@ -59,7 +59,7 @@ export function ContasGov() {
               <thead><tr><th>Nome</th><th>Atualizado</th></tr></thead>
               <tbody>
                 {vm.contas.map(x => (
-                  <tr key={x.id} className="dp-linha-abre" onClick={() => vm.abrir(x.id)}>
+                  <tr key={x.id} className={vm.cofre.bloqueio ? 'cofre-bloqueado' : 'dp-linha-abre'} title={vm.cofre.bloqueio || undefined} onClick={() => vm.abrir(x.id)}>
                     <td className="cofre-nome">{x.nome}</td>
                     <td className="fraco">{x.atualizadoPor}{x.atualizadoEm ? ' · ' + new Date(x.atualizadoEm).toLocaleDateString('pt-BR') : ''}</td>
                   </tr>
