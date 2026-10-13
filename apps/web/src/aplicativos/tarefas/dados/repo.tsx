@@ -4,8 +4,9 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDeCategoriasDp, repoDoArquivador, repoDoFgts, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
+import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDeCategoriasDp, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
 import type { RepoCofre } from './cofre';
+import type { RepoAgentes } from './agentes';
 import type { RepoSieg } from './sieg';
 import type { RepoFgts } from './fgts';
 import type { RepoArquivador } from './arquivador';
@@ -160,6 +161,13 @@ export function useSieg(): RepoSieg {
 /** O FGTS Digital pelo robô, ao vivo: o estado do robô e os pedidos de guia. */
 export function useFgts(): RepoFgts {
   const repo = repoDoFgts();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** O painel dos agentes do Claude Code, ao vivo (as sessões que o robô do PC publica). */
+export function useAgentes(): RepoAgentes {
+  const repo = repoDosAgentes();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
 }

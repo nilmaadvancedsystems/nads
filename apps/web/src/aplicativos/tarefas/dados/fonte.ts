@@ -34,6 +34,8 @@ import { ligadoAoBanco } from '../../../comum/modoDesenvolvedor';
 import { definirEmpresasExtras } from '../../../comum/empresaDaRota';
 import { criarCofreMemoria, type RepoCofre } from './cofre';
 import { criarCofreFirestore } from './cofre.firestore';
+import { criarAgentesMemoria, type RepoAgentes } from './agentes';
+import { criarAgentesFirestore } from './agentes.firestore';
 
 export const noBanco = ligadoAoBanco(); // no modo desenvolvedor, os dados de exemplo (nada vai para o banco)
 
@@ -288,6 +290,14 @@ let fgts: RepoFgts | null = null;
 export function repoDoFgts(): RepoFgts {
   if (!fgts) fgts = noBanco ? criarFgtsFirestore(() => { const q = quemPede(); return q ? { nome: q.nome, uid: q.uid } : null; }) : criarFgtsMemoria();
   return fgts;
+}
+
+let agentes: RepoAgentes | null = null;
+
+/** O painel dos agentes do Claude Code (13/10/2026): o que o robô do PC publica em painelAgentes; só o admin lê. */
+export function repoDosAgentes(): RepoAgentes {
+  if (!agentes) agentes = noBanco ? criarAgentesFirestore() : criarAgentesMemoria();
+  return agentes;
 }
 
 let arquivador: RepoArquivador | null = null;

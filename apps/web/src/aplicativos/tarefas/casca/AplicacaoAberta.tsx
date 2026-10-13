@@ -5,6 +5,7 @@ import { Navigate, useParams } from 'react-router';
 import { TopoProvider } from '../../../comum/topo';
 import { ConfiguracoesDoNads } from '../telas/cadastro/configuracoes/ConfiguracoesDoNads';
 import { UsuariosDoNads } from '../telas/cadastro/usuarios/UsuariosDoNads';
+import { PainelDosAgentes } from '../telas/cadastro/agentes/PainelDosAgentes';
 import { VisaoContabil } from '../telas/contabil/VisaoContabil';
 import { ConfiguracoesContabil } from '../telas/contabil/configuracoes/ConfiguracoesContabil';
 import { ExploradorDoDrive } from '../telas/drive/ExploradorDoDrive';
@@ -34,7 +35,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'fiscal': return pagina === 'empresas' ? <MinhasEmpresas /> : pagina === 'painel' ? <PainelDoFiscal /> : pagina === 'reinf' ? <Reinf /> : <VisaoContabil pagina={pagina} dep="fiscal" />;
     case 'dp': return ABAS_DO_PAINEL.includes(pagina as AbaDoPainel) ? <PainelDoDp aba={pagina as AbaDoPainel} /> : pagina === 'configuracoes' ? <ConfiguracoesDoDp /> : pagina === 'fgts' ? <FgtsDoDp /> : <VisaoContabil pagina={pagina} dep="dp" />;
     case 'senhas': return pagina === 'acesso' ? <AcessoAoCofre /> : pagina === 'gov' ? <ContasGov /> : pagina === 'certificados' ? <Certificados /> : <SenhasDasEmpresas />;
-    case 'cadastro': return pagina === 'configuracoes' ? <ConfiguracoesDoNads /> : <UsuariosDoNads />;
+    case 'cadastro': return pagina === 'configuracoes' ? <ConfiguracoesDoNads /> : pagina === 'agentes' ? <PainelDosAgentes /> : <UsuariosDoNads />;
     case 'mandei': return <Mandei pagina={pagina === 'central' ? 'central' : 'meus'} />;
     case 'drive': return <ExploradorDoDrive />;
     case 'contato': return pagina === 'historico' ? <HistoricoDoRobo /> : <CaixaDoRobo />;

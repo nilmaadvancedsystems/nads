@@ -612,6 +612,9 @@ async function iniciar() {
   catch (err) { log('FGTS não ligou:', err.message); }
   try { require('./sieg').iniciarSieg({ db, log }); }
   catch (err) { log('SIEG desligado:', err.message); }
+  // o painel dos agentes do Claude Code deste PC, no nads (13/10/2026): Cadastro › Agentes
+  try { require('./painel-agentes').iniciarPainelAgentes({ db, log }); }
+  catch (err) { log('painel dos agentes desligado:', err.message); }
 
   try { pararIA = require('./atendente-claude').iniciarAtendenteClaude({ db, log }); }
   catch (err) { log('atendente de IA desligado:', err.message); }

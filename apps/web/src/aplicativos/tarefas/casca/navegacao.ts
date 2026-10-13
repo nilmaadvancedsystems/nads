@@ -29,6 +29,8 @@ export const APLICACOES: readonly Aplicacao[] = [
   { id: 'cadastro', nome: 'Cadastro', icone: 'landmark', pronta: true, paginas: [
     { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Cadastro — empresas' },
     { id: 'usuarios', rotulo: 'Usuários', icone: 'checklist', titulo: 'Cadastro — usuários' },
+    // o painel dos agentes do Claude Code (Vitor, 13/10/2026: "tem como upar uma página no nads disso?"): só o admin vê
+    { id: 'agentes', rotulo: 'Agentes', icone: 'robo', titulo: 'Cadastro — agentes do Claude' },
     // o que a equipe mandou pelo Enviar feedback (o print e o que melhorar; Vitor, 07/10/2026)
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Cadastro — configurações' },
   ] },
