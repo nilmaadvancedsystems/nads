@@ -112,7 +112,9 @@ export type RelatorioImportavel = 'entradas' | 'saidas' | 'tomados' | 'prestados
  */
 export type PainelDaTarefa = 'sieg' | 'recebimento' | 'sequencia' | 'saidas' | 'faturamento' | 'entradas' | 'entradas-sieg'
   | 'iss-retido' | 'inss-retido' | 'irrf-retido' | 'interestaduais' | 'receitas' | 'base' | 'icms' | 'prestados' | 'irpj'
-  | 'servicos' | 'folha-total' | 'relatorio-inicio' | 'relatorio-fim';
+  | 'servicos' | 'folha-total' | 'relatorio-inicio' | 'relatorio-fim'
+  // a segregação (monofásico e ST), a prévia do DAS e o aviso de limite (13/10/2026)
+  | 'pgdas';
 
 export interface Rotina { departamento: Departamento; etapas: Etapa[] }
 

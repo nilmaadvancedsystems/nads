@@ -181,3 +181,5 @@ export function faltamNoAlterdata(doXml: NotaDoSieg[], doAlterdata: readonly Not
 }
 
 export { errosDeTributacao, conferirValores, type ErroDeTributacao, type NotaQueNaoFecha, type ConferenciaDeValores } from './conferencia';
+
+export { segregacaoDasSaidas, previaDoDas, aliquotaEfetiva, avisoDeLimite, reinfDasNotas, servicosDoMes, grupoMonofasico, temIcmsSt, ANEXOS, MONOFASICOS, SUBLIMITE, TETO, LIMITE_MEI, type Anexo, type Segregacao, type PreviaDoDas, type ParcelaDaReceita, type LinhaDaReinf } from './simples';
