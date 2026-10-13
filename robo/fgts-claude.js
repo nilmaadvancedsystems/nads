@@ -120,15 +120,33 @@ const ROTEIRO_GUIA = `await (async () => {
   pesquisar.click();
   let txt = '';
   for (let i = 0; i < 50; i++) { await dormir(300); txt = document.body.innerText; if (/Total Devedor/.test(txt) && /Vencimento da Guia/.test(txt)) break; }
-  const valor = (txt.match(/Total Devedor\\s*R\\$\\s*([\\d.,]+)/) || [])[1] || '';
-  const vencimento = (txt.match(/Vencimento da Guia:\\s*(\\d{2}\\/\\d{2}\\/\\d{4})/) || [])[1] || '';
-  if (!valor) return JSON.stringify({ erro: 'roteiro: a pesquisa não mostrou o total' });
+  await dormir(500);
+  txt = document.body.innerText;
+  if (!/Vencimento da Guia/.test(txt)) return JSON.stringify({ erro: 'roteiro: a pesquisa não mostrou o total' });
+  // a competência pode ter mais de um vencimento, cada um com o seu "Emitir guia" (13/10/2026, OURO VERDE: a rescisão vence
+  // dia 16 e já tinha guia aguardando pagamento; a mensal vence dia 20). Emite só o vencimento que ainda não tem guia.
+  const resumo = txt.slice(txt.indexOf('Resumo da Pesquisa'));
+  const partes = resumo.split(/Vencimento da Guia:\\s*/).slice(1).map(t => ({
+    vencimento: (t.match(/^(\\d{2}\\/\\d{2}\\/\\d{4})/) || [])[1] || '',
+    temBotao: /^\\S+\\s*\\n\\s*Emitir guia/.test(t),
+    aguardando: (/aguardando pagamento/i.test(t) && (t.match(/\\d{16}-\\d/g) || [])) || (/^\\S+\\s*\\n\\s*-?\\s*\\d{16}-\\d/.test(t) ? t.match(/\\d{16}-\\d/g) : null),
+    valor: (t.match(/\\nTotal\\n([\\d.]+,\\d{2})\\n/) || [])[1] || '',
+  }));
+  partes.forEach((pt, i) => { pt.botao = partes.slice(0, i + 1).filter(x => x.temBotao).length - 1; });
+  const livres = partes.filter(pt => pt.temBotao && !pt.aguardando);
+  const jaTem = partes.filter(pt => pt.aguardando).map(pt => pt.aguardando[0] + ' (vence ' + pt.vencimento + ')');
+  if (!livres.length) return JSON.stringify(jaTem.length ? { erro: 'já existe guia aguardando pagamento: ' + jaTem.join(', ') + '; nada emitido' } : { erro: 'roteiro: sem o Emitir guia' });
+  if (livres.length > 1) return JSON.stringify({ erro: 'mais de um vencimento sem guia (' + livres.map(pt => pt.vencimento + ' R$ ' + pt.valor).join(', ') + '); confira à mão' });
+  const alvo = livres[0];
+  const valor = alvo.valor, vencimento = alvo.vencimento;
   if (!DADOS.emitir) return JSON.stringify({ ensaio: true, valor, vencimento });
-  const emitirBotao = [...document.querySelectorAll('button')].find(b => visivel(b) && b.innerText.trim() === 'Emitir guia');
+  const botoes = [...document.querySelectorAll('button')].filter(b => visivel(b) && b.innerText.trim() === 'Emitir guia');
+  const emitirBotao = botoes[alvo.botao];
   if (!emitirBotao) return JSON.stringify({ erro: 'roteiro: sem o Emitir guia' });
+  const antes = new Set(document.body.innerText.match(/\\d{16}-\\d/g) || []);
   emitirBotao.click();
   let numero = '';
-  for (let i = 0; i < 60 && !numero; i++) { await dormir(500); numero = (document.body.innerText.match(/(\\d{16}-\\d)/) || [])[1] || ''; }
+  for (let i = 0; i < 60 && !numero; i++) { await dormir(500); numero = (document.body.innerText.match(/\\d{16}-\\d/g) || []).find(n => !antes.has(n)) || ''; }
   if (!numero) return JSON.stringify({ erro: 'roteiro: a guia não mostrou o número' });
   return JSON.stringify({ numero, valor, vencimento });
 })()`;
