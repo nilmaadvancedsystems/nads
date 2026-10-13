@@ -8,7 +8,9 @@ import { useEffect, useState } from 'react';
 import { JanelaLateral } from '../janela/JanelaLateral';
 import { useFgtsDoDp, type FiltroFgts, type SituacaoFgts } from './useFgtsDoDp';
 
-const cnpjFormatado = (d: string) => d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+const cnpjFormatado = (d: string) => (d.length === 11
+  ? d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4')
+  : d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5'));
 const data = (iso: string) => (iso ? iso.slice(0, 10).split('-').reverse().join('/') : '');
 const hora = (iso: string) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '');
 
@@ -202,6 +204,7 @@ export function FgtsDoDp() {
                         {p ? (
                           <button type="button" className="fgts-situacao" title={p.erro || p.resultado || 'Passos do robô'} onClick={() => vm.abrir(p.id)}>
                             <span className={selo.classe}>{selo.rotulo}</span>
+                            {p.aviso && <span className="badge badge-warn" title={p.aviso}>Aviso</span>}
                             <span className="fraco">{hora(p.fimEm || p.criadoEm)}</span>
                           </button>
                         ) : <span className={selo.classe}>{selo.rotulo}</span>}
