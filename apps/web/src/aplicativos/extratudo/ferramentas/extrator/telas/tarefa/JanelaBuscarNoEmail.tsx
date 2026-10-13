@@ -4,9 +4,9 @@
 // Drive). Só com o login do Entregas. O remetente vem sugerido (os e-mails do cadastro do cliente no Entregas e os que a
 // pessoa já usou aqui) e o período tem os atalhos do mês (Vitor, 13/10/2026: "puxa do e-mail para ajudar a preencher" e
 // as datas no campo do sistema). ViewModel (useBuscarNoEmail) e View (JanelaBuscarNoEmail) juntos: são só desta tela.
-import type { creditor } from '@nads/core';
+import { extrator as x, type creditor } from '@nads/core';
 import { CampoData, classeDaJanela, Icone, LogoGmail, Segmentado } from '@nads/ui';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useDrive } from '../../dados/repo';
 
 const mensagemDeErro = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -31,6 +31,12 @@ const lembrados = (): string[] => { try { const v = JSON.parse(localStorage.getI
 const lembrar = (r: string) => { try { localStorage.setItem(CHAVE, JSON.stringify([r, ...lembrados().filter(x => x !== r)].slice(0, 8))); } catch { /* sem armazenamento: fica sem lembrar */ } };
 
 interface Linha { id: string; nome: string }
+/** O anexo aberto ao lado (Vitor, 13/10/2026: "com um preview"): o PDF na janela e o que o nads leu dele. */
+interface Preview {
+  anexo: creditor.AnexoDoEmail; carregando: boolean; erro: string;
+  conteudo?: ArrayBuffer; url?: string; pdf?: boolean;
+  lancamentos?: number; meses?: string[]; semMovimento?: boolean; primeiros?: { data: string; valor: number; historico: string }[];
+}
 interface Estado {
   linha: Linha; mes: string; remetente: string; de: string; ate: string; atalho: Atalho; sugestoes: string[];
   buscando: boolean; passo: string; erro: string; resultados: creditor.AnexoDoEmail[] | null; trazendo: string | null;
@@ -39,6 +45,11 @@ interface Estado {
 export function useBuscarNoEmail(importar: (linha: Linha, fs: File[]) => void, pedirLogin: (depois: () => void) => void, codigo: number | null) {
   const { drive, acesso } = useDrive();
   const [e, setE] = useState<Estado | null>(null);
+  const [preview, setPreview] = useState<Preview | null>(null);
+  // o endereço do PDF aberto: some quando troca de anexo ou fecha a janela
+  const urls = useRef<string[]>([]);
+  const soltar = () => { for (const u of urls.current) URL.revokeObjectURL(u); urls.current = []; };
+  useEffect(() => soltar, []);
   const muda = (m: Partial<Estado>) => setE(x => (x ? { ...x, ...m } : x));
   const existe = !!drive.buscarNoEmail && !!drive.trazerDoEmail;
 
@@ -73,21 +84,39 @@ export function useBuscarNoEmail(importar: (linha: Linha, fs: File[]) => void, p
     } catch (err) { muda({ buscando: false, erro: mensagemDeErro(err), passo: '' }); }
   }
 
-  async function trazer(a: creditor.AnexoDoEmail) {
-    if (!e || !drive.trazerDoEmail) return;
-    muda({ trazendo: a.anexoId, erro: '' });
+  /** abre o anexo ao lado: traz pelo robô (uma vez), mostra o PDF e o que o leitor tira dele */
+  async function ver(a: creditor.AnexoDoEmail) {
+    if (!drive.trazerDoEmail || (preview && preview.anexo.anexoId === a.anexoId && (preview.carregando || preview.conteudo))) return;
+    soltar();
+    setPreview({ anexo: a, carregando: true, erro: '' });
     try {
-      const conteudo = await drive.trazerDoEmail(a, passo => muda({ passo }));
-      const linha = e.linha;
-      setE(null);
-      importar(linha, [new File([conteudo], a.nome)]);
-    } catch (err) { muda({ trazendo: null, erro: mensagemDeErro(err), passo: '' }); }
+      const conteudo = await drive.trazerDoEmail(a);
+      const bytes = new Uint8Array(conteudo);
+      const pdf = x.ehPdf(bytes) || /\.pdf$/i.test(a.nome);
+      let url: string | undefined;
+      if (pdf) { url = URL.createObjectURL(new Blob([conteudo], { type: 'application/pdf' })); urls.current.push(url); }
+      const lido = await x.lerArquivo(a.nome, bytes.slice(), 'banco');
+      const meses = [...new Set(lido.lancamentos.map(l => l.data.slice(0, 7)))].sort();
+      setPreview(p => (p && p.anexo.anexoId === a.anexoId ? {
+        anexo: a, carregando: false, erro: lido.erro && !lido.semMovimento ? lido.erro : '', conteudo, url, pdf,
+        lancamentos: lido.lancamentos.length, meses: lido.semMovimento || meses, semMovimento: !!lido.semMovimento, primeiros: lido.lancamentos.slice(0, 8),
+      } : p));
+    } catch (err) { setPreview(p => (p && p.anexo.anexoId === a.anexoId ? { anexo: a, carregando: false, erro: mensagemDeErro(err) } : p)); }
   }
 
+  /** importa o anexo aberto (já trazido) na linha do banco */
+  function importarAberto() {
+    if (!e || !preview?.conteudo) return;
+    const linha = e.linha, arquivo = new File([preview.conteudo], preview.anexo.nome);
+    soltar(); setPreview(null); setE(null);
+    importar(linha, [arquivo]);
+  }
+
+
   return {
-    existe, estado: e, abrir, fechar: () => setE(null), muda,
+    existe, estado: e, abrir, fechar: () => { soltar(); setPreview(null); setE(null); }, muda, preview, ver: (a: creditor.AnexoDoEmail) => { void ver(a); }, importarAberto,
     atalho: (a: Atalho) => { if (e && a !== 'outro') muda({ atalho: a, ...periodoDoAtalho(e.mes, a) }); },
-    buscar: () => { void buscar(); }, trazer: (a: creditor.AnexoDoEmail) => { void trazer(a); },
+    buscar: () => { void buscar(); },
   };
 }
 
@@ -103,7 +132,7 @@ export function JanelaBuscarNoEmail({ vm }: { vm: Vm }) {
   const ocupado = e.buscando || !!e.trazendo;
   return (
     <div className="modal-overlay" role="presentation" onClick={() => { if (!ocupado) vm.fechar(); }}>
-      <div className={classeDaJanela({})} role="dialog" aria-modal="true" aria-labelledby="tituloEmail" style={{ width: 'min(760px, 100%)', textAlign: 'left' }} onClick={ev => ev.stopPropagation()}>
+      <div className={classeDaJanela({})} role="dialog" aria-modal="true" aria-labelledby="tituloEmail" style={{ maxWidth: 'min(1180px, 96vw)', width: '100%', textAlign: 'left', padding: 20 }} onClick={ev => ev.stopPropagation()}>
         <button type="button" className="modal-x" aria-label="Fechar" title="Fechar" disabled={ocupado} onClick={vm.fechar}><Icone nome="x" /></button>
         <h3 id="tituloEmail">Buscar no e-mail · {e.linha.nome} · {rotuloDoMes(e.mes)}</h3>
         <form style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 14 }} onSubmit={ev => { ev.preventDefault(); vm.buscar(); }}>
@@ -142,27 +171,63 @@ export function JanelaBuscarNoEmail({ vm }: { vm: Vm }) {
         {e.resultados && (e.resultados.length === 0
           ? <p className="hint" style={{ marginTop: 12 }}>Nenhum e-mail com anexo para esses filtros.</p>
           : (
-            <div className="table-wrap" style={{ marginTop: 12, maxHeight: 360, overflow: 'auto' }}>
-              <table className="table-compact">
-                <thead><tr><th>Recebido</th><th>Remetente</th><th>Anexo</th><th /></tr></thead>
-                <tbody>
-                  {e.resultados.map(a => (
-                    <tr key={a.mensagemId + a.anexoId}>
-                      <td style={{ whiteSpace: 'nowrap' }}>{dataBR(a.em)}</td>
-                      <td className="wrap" title={a.de}>{a.de.replace(/<.*>/, '').replace(/"/g, '').trim() || a.de}<span className="hint" style={{ display: 'block' }}>{a.assunto}</span></td>
-                      <td className="wrap">{a.nome}<span className="hint" style={{ display: 'block' }}>{tamanho(a.tamanho)}</span></td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button type="button" className="btn" disabled={ocupado} onClick={() => vm.trazer(a)} title={'Importar ' + a.nome + ' no ' + e.linha.nome}>
-                          {e.trazendo === a.anexoId ? <><span className="btn-spinner" />Trazendo</> : <><LogoGmail />Importar</>}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 340px) 1fr', gap: 16, marginTop: 14, minHeight: 0 }}>
+              {/* a lista: o arquivo em cima, quem mandou, quando e o assunto embaixo; clicou, abre ao lado */}
+              <div className="table-wrap" style={{ maxHeight: '60vh', overflow: 'auto' }}>
+                {e.resultados.map(a => {
+                  const aberto = vm.preview?.anexo.anexoId === a.anexoId;
+                  return (
+                    <button key={a.mensagemId + a.anexoId} type="button" onClick={() => vm.ver(a)} disabled={ocupado}
+                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px', border: 0, borderBottom: '1px solid var(--border-muted)', cursor: 'pointer',
+                        background: aberto ? 'var(--surface-2)' : 'transparent', color: 'inherit', font: 'inherit', boxShadow: aberto ? 'inset 3px 0 0 var(--accent)' : 'none' }}>
+                      <b style={{ display: 'block', wordBreak: 'break-word' }}>{a.nome}</b>
+                      <span className="hint" style={{ display: 'block' }}>{(a.de.replace(/<.*>/, '').replace(/"/g, '').trim() || a.de)} · {dataBR(a.em)} · {tamanho(a.tamanho)}</span>
+                      {a.assunto && <span className="hint" style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.assunto}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+              <PreviewDoAnexo vm={vm} />
             </div>
           ))}
       </div>
+    </div>
+  );
+}
+
+/** O anexo aberto: o PDF (do jeito que o banco mandou) e, embaixo, o que o nads leu; o Importar este usa o que já veio. */
+function PreviewDoAnexo({ vm }: { vm: Vm }) {
+  const p = vm.preview;
+  if (!p) return <div className="hint" style={{ display: 'grid', placeItems: 'center', border: '1px dashed var(--border)', borderRadius: 6, minHeight: 280 }}>Clique num anexo para ver aqui.</div>;
+  const reais = (c: number) => (c < 0 ? '−' : '') + x.reaisBR(Math.abs(c));
+  const meses = (p.meses || []).map(m => m.slice(5) + '/' + m.slice(0, 4)).join(', ');
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <b style={{ flex: 1, minWidth: 0, wordBreak: 'break-word' }}>{p.anexo.nome}</b>
+        <button type="button" className="btn btn-primary" disabled={!p.conteudo} onClick={vm.importarAberto}>
+          <LogoGmail />Importar este
+        </button>
+      </div>
+      {p.carregando && <p className="hint"><span className="btn-spinner" /> Trazendo o anexo…</p>}
+      {p.erro && <p className="hint ext-neg">{p.erro}</p>}
+      {!p.carregando && p.conteudo && (
+        <p className="hint" style={{ margin: 0 }}>
+          {p.semMovimento ? 'Sem movimento' + (meses ? ' em ' + meses : '')
+            : p.lancamentos ? p.lancamentos + ' lançamentos · ' + meses : 'O nads não achou lançamentos neste arquivo.'}
+        </p>
+      )}
+      {p.url && <iframe title={'Prévia de ' + p.anexo.nome} src={p.url} style={{ width: '100%', height: '46vh', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface-2)' }} />}
+      {!!p.primeiros?.length && (
+        <div className="table-wrap" style={{ maxHeight: p.url ? 160 : '50vh', overflow: 'auto' }}>
+          <table className="table-compact">
+            <thead><tr><th>Data</th><th>Histórico</th><th className="num">Valor</th></tr></thead>
+            <tbody>{p.primeiros.map((l, i) => (
+              <tr key={i}><td style={{ whiteSpace: 'nowrap' }}>{l.data.slice(8, 10) + '/' + l.data.slice(5, 7)}</td><td className="wrap">{l.historico}</td><td className={'num' + (l.valor < 0 ? ' ext-neg' : '')}>{reais(l.valor)}</td></tr>
+            ))}</tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
