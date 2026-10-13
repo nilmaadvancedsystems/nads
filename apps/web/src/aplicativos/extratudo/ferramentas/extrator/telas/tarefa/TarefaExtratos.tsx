@@ -568,7 +568,7 @@ export function TarefaExtratos() {
   useEffect(() => { vm.aoSemMovimento((banco, meses) => { for (const m of meses) ponte.marcarSemMovimento(banco, true, m); }); });
   const importarExtrato = (b: (typeof vm.bancos)[number], fs: File[]) => { void vm.importarArquivos(b.id, 'banco', fs).then(ok => { if (ok) d.subirAoDrive(b, fs, s.nome); }); };
   // "Buscar no e-mail": o anexo escolhido entra como se viesse do computador (Vitor, 13/10/2026)
-  const em = useBuscarNoEmail((linha, fs) => { const b = vm.bancos.find(x => x.id === linha.id); if (b) importarExtrato(b, fs); }, d.pedirLogin);
+  const em = useBuscarNoEmail((linha, fs) => { const b = vm.bancos.find(x => x.id === linha.id); if (b) importarExtrato(b, fs); }, d.pedirLogin, s.codigo);
   // os extratos que chegaram por e-mail (08/10/2026): entram sozinhos na linha certa; os outros ficam no aviso
   const rec = useRecebidosPorEmail(vm, s.codigo);
   const pe = usePedirExtratos(vm, s.codigo, s.nome, ponte.semMovimento, d.pedirLogin, { logo: urlDoLogoNilma(), logoDoBanco: urlDoLogoBanco });
