@@ -15,12 +15,14 @@
   "dependencies": {
     "@nads/core": "*",
     "@nads/ui": "*",
+    "@tesseract.js-data/por": "^1.0.0",
     "animejs": "^4.5.0",
     "firebase": "^12.19.0",
     "pdfjs-dist": "^6.3.289",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "react-router": "^8.4.0"
+    "react-router": "^8.4.0",
+    "tesseract.js": "^6.0.1"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",

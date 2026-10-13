@@ -2,6 +2,7 @@
 // ligado ao banco, o Firestore da Conferência) e o leitor de PDF, e mostra a rota aberta. As três ferramentas ficam debaixo dele.
 import { extrator } from '@nads/core';
 import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
+import { ocrDoArquivo } from '../../comum/ocr';
 import { useRetorno } from '@nads/ui';
 import { useEffect } from 'react';
 import { Outlet } from 'react-router';
@@ -9,6 +10,8 @@ import { avisarErrosDoBanco, repoDoExtrator } from './ferramentas/extrator/dados
 import { RepoProvider } from './ferramentas/extrator/dados/repo';
 
 extrator.definirWorkerDoPdf(workerDoPdf);
+// o extrato escaneado (PDF sem texto ou foto) passa pelo OCR do navegador (Vitor, 13/10/2026)
+extrator.definirOcr(ocrDoArquivo);
 
 export function AppExtratudo() {
   const repo = repoDoExtrator();

@@ -29,7 +29,7 @@ export interface ConfigCaixa {
 export const CAIXAS: ConfigCaixa[] = [
   {
     lado: 'banco', titulo: 'Extratos bancários', icone: 'landmark', idArquivo: 'fExtrato',
-    formato: 'PDF do banco (também aceita OFX)', aceitar: x.EXTENSOES_EXTRATO.join(','),
+    formato: 'PDF do banco (também aceita OFX e o escaneado: PDF ou foto, pelo OCR)', aceitar: x.EXTENSOES_EXTRATO.join(','),
     dica: 'Pode escolher vários PDFs de uma vez. Lê data, histórico e valor de cada lançamento; o PDF não é guardado.',
   },
   {
@@ -186,6 +186,9 @@ export function useImportacao() {
     if (res.jaExistiam) textos.push({ texto: res.jaExistiam + ' já estavam guardados e ficaram como estavam.' });
     if (res.substituidos) textos.push({ texto: res.substituidos + ' lançamento(s) que estavam guardados nessas datas foram substituídos.' });
     for (const f of falhas) textos.push({ texto: f.nome + ' ficou de fora: ' + (f.erro || 'nenhum lançamento') + '.', tom: 'aviso' });
+    // o escaneado lido pelo OCR (Vitor, 13/10/2026): o reconhecimento pode errar um dígito, então pede para conferir
+    const porOcr = bons.filter(l => l.ocr).map(l => l.nome);
+    if (porOcr.length) textos.push({ texto: porOcr.join(', ') + ' era imagem e foi lido pelo OCR: confira os valores com o arquivo.', tom: 'aviso' });
     setMensagem({ tom: 'ok', titulo: res.gravados + ' lançamento(s) importado(s)' + (modo === 'sobrepor' ? ' — movimento sobreposto' : ''), textos });
     return true;
   }

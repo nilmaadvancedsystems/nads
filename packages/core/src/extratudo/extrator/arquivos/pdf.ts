@@ -10,6 +10,20 @@ export function definirWorkerDoPdf(url: string): void {
   worker = url;
 }
 
+/**
+ * O OCR (Vitor, 13/10/2026: "às vezes o cliente manda scanner"): quem roda no navegador passa a função que desenha o PDF
+ * escaneado (ou a imagem) e devolve as palavras com a posição, no mesmo formato do texto do PDF. Sem ela, o PDF
+ * escaneado continua dando o aviso de que não tem texto.
+ */
+export type Ocr = (bytes: Uint8Array, tipo: 'pdf' | 'imagem') => Promise<ItemDeTexto[][]>;
+let ocr: Ocr | null = null;
+export function definirOcr(f: Ocr): void {
+  ocr = f;
+}
+export function ocrDefinido(): Ocr | null {
+  return ocr;
+}
+
 export function ehPdf(bytes: Uint8Array): boolean {
   return bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46; // %PDF
 }

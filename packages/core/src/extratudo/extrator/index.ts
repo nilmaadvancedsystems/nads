@@ -15,8 +15,8 @@ export {
   empresaNova, normalizarEmpresa, lancamentosDe, periodo, rotuloPeriodo, competencias, jaTemNoPeriodo, soNovos,
   importar, excluirArquivo, linhasAuditoria, type ResultadoImportacao,
 } from './regras/importacao';
-export { EXTENSOES_EXTRATO, EXTENSOES_SISTEMA, abasDaPlanilha, lerArquivo } from './arquivos/leitura';
-export { definirWorkerDoPdf, ehPdf, itensDoPdf } from './arquivos/pdf';
+export { EXTENSOES_EXTRATO, EXTENSOES_SISTEMA, EXTENSOES_IMAGEM, abasDaPlanilha, lerArquivo } from './arquivos/leitura';
+export { definirWorkerDoPdf, definirOcr, ehPdf, itensDoPdf, type Ocr } from './arquivos/pdf';
 export type { RepoExtrator } from './repo';
 export { arquivoDeTeste } from './regras/teste';
 export { bancoDoArquivo, bancosNaCompetencia, bancosDaEmpresaNa, arquivosDoBanco, adicionarBanco } from './regras/bancos';

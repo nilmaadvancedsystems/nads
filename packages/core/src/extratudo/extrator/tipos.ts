@@ -102,6 +102,8 @@ export interface ArquivoLido {
    * A importação marca esses meses como sem movimento no banco (Vitor, 13/10/2026).
    */
   semMovimento?: string[];
+  /** lido pelo OCR (o PDF escaneado ou a imagem): a tela avisa para conferir (Vitor, 13/10/2026) */
+  ocr?: boolean;
   /** preenchido quando não deu para aproveitar o arquivo */
   erro: string | null;
 }
