@@ -23,8 +23,7 @@ import { JanelaHistoricoDePedidos, JanelaPedirExtratos } from './JanelaPedirExtr
 import { caminhoNaFerramenta } from '../../../../casca/caminho';
 import { useBancosOk } from './useBancosOk';
 import { useDriveDaLinha } from './useDriveDaLinha';
-import { JanelaBuscarNoEmail } from './JanelaBuscarNoEmail';
-import { useBuscarNoEmail } from './useBuscarNoEmail';
+import { JanelaBuscarNoEmail, useBuscarNoEmail } from './JanelaBuscarNoEmail';
 import { useRecebidosPorEmail } from './useRecebidosPorEmail';
 import { usePedirExtratos } from './usePedirExtratos';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../../../comum/desenvolvimento';
