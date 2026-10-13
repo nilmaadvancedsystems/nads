@@ -11,6 +11,13 @@ export interface Lancamento {
   /** centavos; + entrada, − saída */
   valor: number;
   historico: string;
+  /**
+   * Só no razão do Alterdata (a planilha da conciliação): o código da contrapartida (a coluna Contrapartida) e o texto do
+   * banco (a coluna Descrição histórico); o `historico` é o nome da conta. Servem de modelo para os lançamentos do que
+   * falta no razão (regras/lancamentosParaOSistema.ts, Vitor, 13/10/2026).
+   */
+  conta?: string;
+  complemento?: string;
 }
 
 /** Um lançamento com endereço: qual arquivo e qual posição dentro dele. */

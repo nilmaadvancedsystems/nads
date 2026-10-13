@@ -100,11 +100,18 @@ const OPCOES_DE_TESTE: OpcaoDeTeste[] = [
   { id: 'apagar', rotulo: 'Apagar os dados de teste' },
 ];
 
-function PendenciasDoBanco({ itens }: { itens: x.CorrecaoDoRazao[] }) {
+function PendenciasDoBanco({ itens, onGerar }: { itens: x.CorrecaoDoRazao[]; onGerar?: () => void }) {
   if (!itens.length) return null;
+  const faltas = itens.filter(c => c.tipo === 'falta').length;
   const valor = (n: number | null) => (n == null ? '' : x.reaisBR(Math.abs(n)));
   return (
-    <FaixaQueAbre titulo="Pendências" qtd={itens.length} aviso>
+    <FaixaQueAbre titulo="Pendências" qtd={itens.length} aviso acoes={onGerar && faltas > 0 ? (
+      // gerar os lançamentos do que falta no razão (Vitor, 13/10/2026): o .xls para o Alterdata, para analisar
+      <button type="button" className="icon-btn icon-btn-sm imp-btn" onClick={onGerar}
+        title={'Gerar os lançamentos do que está no banco e não no razão (' + faltas + '), no .xls do Alterdata'} aria-label="Gerar os lançamentos do que falta no razão">
+        <Icone nome="download" />
+      </button>
+    ) : undefined}>
         <>
           <div className="table-wrap">
             <table className="table-compact imp-planilha">
@@ -562,7 +569,7 @@ export function TarefaExtratos() {
   const ocupadoGeral = vm.ocupado || !!d.buscando || vm.bancos.some(b => b.extrato.lendo || b.razao.lendo);
   useCarregando(ocupadoGeral);
   // extrato e razão batendo no período: a linha vira só o selo Ok (sem botões, a setinha não abre)
-  const { ok: bancosOk, correcoes, situacoes, explicarCheque } = useBancosOk(vm, ponte, ocupadoGeral);
+  const { ok: bancosOk, correcoes, situacoes, explicarCheque, exportarFaltas } = useBancosOk(vm, ponte, ocupadoGeral);
   // os requisitos para seguir (o botão de avançar da Tarefas só aparece com tudo pronto): cada banco Ok e, na
   // Conferência, Balancete, Entradas, Saídas, Tomados e (se presta serviço) Prestados importados
   const importados = useImportadosDaConferencia(s.nome);
@@ -881,7 +888,7 @@ export function TarefaExtratos() {
                 </FaixaQueAbre>
               ) : <Movimento m={vm.movimentoDe(b.id)}
                 pdf={doDrive.length ? doDrive[doDrive.length - 1] : null} onPdf={visualizarDoDrive} competencia={vm.competencia} />)}
-              {!ok && <PendenciasDoBanco itens={correcoes[b.id] || []} />}
+              {!ok && <PendenciasDoBanco itens={correcoes[b.id] || []} onGerar={() => exportarFaltas(b)} />}
             </div>
           );
         })}

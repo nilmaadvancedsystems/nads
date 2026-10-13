@@ -3,15 +3,19 @@
 import { Icone } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
 
-export function FaixaQueAbre({ titulo, qtd, aviso, children }: { titulo: string; qtd: number; aviso?: boolean; children: ReactNode }) {
+/** acoes: os botões à direita da barra (Vitor, 13/10/2026: o "gerar os lançamentos" das Pendências), fora do botão que abre. */
+export function FaixaQueAbre({ titulo, qtd, aviso, acoes, children }: { titulo: string; qtd: number; aviso?: boolean; acoes?: ReactNode; children: ReactNode }) {
   const [aberta, setAberta] = useState(false);
+  const barra = (
+    <button type="button" className="imp-faixa-barra" aria-expanded={aberta} onClick={() => setAberta(a => !a)}>
+      <Icone nome="caretDown" className="imp-faixa-seta" />
+      <b>{titulo}</b>
+      <span className="imp-faixa-qtd">{qtd}</span>
+    </button>
+  );
   return (
     <div className={'imp-faixa' + (aviso ? ' aviso' : '') + (aberta ? ' aberta' : '')}>
-      <button type="button" className="imp-faixa-barra" aria-expanded={aberta} onClick={() => setAberta(a => !a)}>
-        <Icone nome="caretDown" className="imp-faixa-seta" />
-        <b>{titulo}</b>
-        <span className="imp-faixa-qtd">{qtd}</span>
-      </button>
+      {acoes ? <div className="imp-faixa-topo">{barra}<div className="imp-faixa-acoes">{acoes}</div></div> : barra}
       {aberta && <div className="imp-faixa-corpo">{children}</div>}
     </div>
   );

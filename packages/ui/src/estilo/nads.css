@@ -1487,6 +1487,10 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-faixa.aberta .imp-faixa-seta{transform:none;}
 .imp-faixa:last-child:not(.aberta) .imp-faixa-barra{border-radius:0 0 6px 6px;}
 .imp-faixa-corpo{padding:12px;display:flex;flex-direction:column;gap:8px;}
+/* a barra com botões à direita (FaixaQueAbre acoes): o fundo passa para a linha toda */
+.imp-faixa-topo{display:flex;align-items:center;background:var(--surface-2);}
+.imp-faixa-topo > .imp-faixa-barra{flex:1;width:auto;}
+.imp-faixa-acoes{display:flex;align-items:center;gap:6px;padding:0 12px;}
 .imp-faixa-corpo .hint{margin:0;}
 .imp-faixa-corpo .imp-mov-caixa{margin:0;}
 /* com cara de planilha: as linhas de grade em todas as células */

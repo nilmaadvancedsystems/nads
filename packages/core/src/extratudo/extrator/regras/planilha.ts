@@ -8,7 +8,7 @@ import { centavos, lerData } from './texto';
 
 export type Celula = unknown;
 
-interface Colunas { data?: number; hist?: number; valor?: number; deb?: number; cred?: number; dc?: number; contaD?: number; contaC?: number }
+interface Colunas { data?: number; hist?: number; valor?: number; deb?: number; cred?: number; dc?: number; contaD?: number; contaC?: number; contra?: number; compl?: number }
 
 function achaCabecalho(linha: Celula[]): Colunas {
   const c: Colunas = {};
@@ -16,6 +16,9 @@ function achaCabecalho(linha: Celula[]): Colunas {
     const n = normalizarTexto(v);
     if (!n) return;
     if (c.data == null && /^(data|dt|data lanc\w*|data do lanc\w*|data mov\w*|dia)$/.test(n)) c.data = i;
+    // o razão da conciliação do Alterdata: Contrapartida (o código) e Descrição histórico (o texto do banco)
+    else if (c.contra == null && n === 'contrapartida') c.contra = i;
+    else if (c.compl == null && c.hist != null && n === 'descricao historico') c.compl = i;
     else if (/conta/.test(n) && /deb/.test(n)) c.contaD = i;
     else if (/conta/.test(n) && /cred/.test(n)) c.contaC = i;
     else if (c.hist == null && /(hist|descri|complement|lancamento$|^observ)/.test(n)) c.hist = i;
@@ -101,7 +104,9 @@ export function lancamentosDaPlanilha(linhas: Celula[][], lado: Lado, anoPadrao 
       }
     }
     if (c == null || c === 0) continue;
-    ultimo = { data, valor: c, historico: hist || '(sem histórico)' };
+    const conta = k.contra != null ? texto(l[k.contra]) : '';
+    const complemento = k.compl != null ? texto(l[k.compl]) : '';
+    ultimo = { data, valor: c, historico: hist || '(sem histórico)', ...(conta ? { conta } : {}), ...(complemento ? { complemento } : {}) };
     saida.push(ultimo);
   }
   return { lancamentos: saida, erro: saida.length ? null : 'Não achei lançamentos com data e valor.' };
