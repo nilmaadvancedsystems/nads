@@ -26,9 +26,24 @@ const FERRAMENTAS_AJUDA = [{
     properties: { assunto: { type: 'string', description: 'Opcional: o tema da dúvida (ex.: "rota", "marcar extrato", "foto de perfil").' } },
   },
 }];
+// A legislação trabalhista e os prazos de guarda de documentos, trazidos do Toriba (13/10/2026).
+FERRAMENTAS_AJUDA.push({
+  name: 'legislacao_e_guarda',
+  description: 'Legislação trabalhista de consulta do DP (luto, casamento, licença paternidade e maternidade, atestados médicos e de acompanhamento, doação de sangue, alistamento, comparecimento em juízo, amamentação, férias em dobro, saque do FGTS por doença, seguro-desemprego, abono PIS/PASEP, vigia, compensação de horas, empregado doméstico) e por quanto tempo guardar cada documento (guarda de documentos). Use quando perguntarem sobre esses assuntos ou sobre prazo de guarda.',
+  parametersJsonSchema: {
+    type: 'object',
+    properties: { assunto: { type: 'string', description: 'Opcional: o tema (ex.: "luto", "atestado", "guarda", "férias em dobro").' } },
+  },
+});
+const LEGISLACAO = path.join(__dirname, 'legislacao-e-guarda.md');
 const NOMES_AJUDA = new Set(FERRAMENTAS_AJUDA.map(f => f.name));
 
 function executarAjuda(nome, args) {
+  if (nome === 'legislacao_e_guarda') {
+    let texto;
+    try { texto = fs.readFileSync(LEGISLACAO, 'utf8'); } catch (e) { return { erro: 'a legislação não está neste PC' }; }
+    return { legislacao: secoesDoGuia(texto, args && args.assunto) };
+  }
   if (nome !== 'como_usar_o_app') return { erro: 'ferramenta desconhecida: ' + nome };
   let texto;
   try { texto = fs.readFileSync(GUIA, 'utf8'); } catch (e) { return { erro: 'o guia do app não está neste PC' }; }
