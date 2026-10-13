@@ -52,3 +52,25 @@ describe('o cheque especial da virada do ano (até 5 de janeiro)', () => {
     expect(situacaoDoBancoNoPeriodo(e, 'banco', 'banco', ['2026-01']).tipo).toBe('ok');
   });
 });
+
+describe('o estorno do cheque especial do dia anterior ao período (qualquer banco, qualquer mês)', () => {
+  it('o extrato abre negativo e o razão traz o estorno nos 5 primeiros dias: certo, mesmo sem dizer "cheque especial"', () => {
+    const e = emp([
+      arq('ext', 'banco', [L('2026-03-03', 5000, 'PIX RECEBIDO')], -2428),
+      arq('raz', 'sistema', [L('2026-03-03', 5000, 'Recebimento'), L('2026-03-02', -2428, 'Pela transferencia de saldo')]),
+    ]);
+    expect(situacaoDoBancoNoPeriodo(e, 'banco', 'banco', ['2026-03']).tipo).toBe('ok');
+  });
+  it('depois do dia 5, ou com outro valor: pendente', () => {
+    const tarde = emp([
+      arq('ext', 'banco', [L('2026-03-03', 5000, 'PIX RECEBIDO')], -2428),
+      arq('raz', 'sistema', [L('2026-03-03', 5000, 'Recebimento'), L('2026-03-09', -2428, 'Pela transferencia de saldo')]),
+    ]);
+    expect(situacaoDoBancoNoPeriodo(tarde, 'banco', 'banco', ['2026-03']).tipo).toBe('pendente');
+    const outro = emp([
+      arq('ext', 'banco', [L('2026-03-03', 5000, 'PIX RECEBIDO')], -2428),
+      arq('raz', 'sistema', [L('2026-03-03', 5000, 'Recebimento'), L('2026-03-02', -1000, 'Pela transferencia de saldo')]),
+    ]);
+    expect(situacaoDoBancoNoPeriodo(outro, 'banco', 'banco', ['2026-03']).tipo).toBe('pendente');
+  });
+});
