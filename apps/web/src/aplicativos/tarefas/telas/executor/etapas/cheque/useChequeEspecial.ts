@@ -6,7 +6,7 @@
 import { chequeEspecial as ce, empresas, extrator as x, tarefas } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useCadastro } from '../../../../dados/repo';
-import { useAplicarNoExtrator, useExtratorDaEmpresa } from '../../../../dados/extrator';
+import { useExtratorDaEmpresa } from '../../../../dados/extrator';
 import { useOperador } from '../../../../casca/operador';
 import { useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 
@@ -17,7 +17,6 @@ export function useChequeEspecial() {
   const empresa = useExtratorDaEmpresa(nome);
   const op = useOperador().operador;
   const { aviso } = useRetorno();
-  const aplicar = useAplicarNoExtrator(nome);
   const { bancos, primeiro } = x.bancosDaEmpresaNa(empresa, cadastro, codigo, meses[meses.length - 1] || '');
   // só gerar: a Tarefa pode seguir (lançar no Alterdata e importar o razão de novo é com a pessoa; a objeção "ainda não
   // foi lançado" interrompe)
@@ -59,33 +58,7 @@ export function useChequeEspecial() {
     aviso({ tom: 'ok', titulo: l.nome + ': ' + lanc.length + ' lançamentos', texto: arquivo + ' · lance no Alterdata e importe o razão do banco de novo' });
   }
 
-  /**
-   * Reimportar o razão do banco (opcional; Vitor, 13/10/2026): depois de lançar o cheque especial no Alterdata, o razão novo
-   * substitui o que está guardado nas datas dele (sobrepor), só daquele banco.
-   */
-  async function reimportarRazao(id: string, arquivos: File[]) {
-    if (!arquivos.length) return;
-    const l = linhas.find(b => b.id === id);
-    const lidos: x.ArquivoLido[] = [];
-    for (const f of arquivos) lidos.push(await x.lerArquivo(f.name, new Uint8Array(await f.arrayBuffer()), 'sistema'));
-    const bons = lidos.filter(r => !r.erro && r.lancamentos.length);
-    if (!bons.length) { aviso({ tom: 'erro', titulo: 'Nada para importar', texto: lidos.map(r => r.nome + ': ' + (r.erro || 'nenhum lançamento')).join(' · ') }); return; }
-    const doBanco = (a: x.ArquivoImportado) => x.bancoDoArquivo(a, primeiro) === id;
-    let gravados = -1;
-    aplicar(e => {
-      const agora = { ...e, arquivos: e.arquivos.filter(doBanco) };
-      const res = x.importar(agora, 'sistema', bons, 'sobrepor', new Date(), () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
-      gravados = res.gravados;
-      const antes = new Set(agora.arquivos.map(a => a.id));
-      return { ...res.empresa, arquivos: [...e.arquivos.filter(a => !doBanco(a)), ...res.empresa.arquivos.map(a => (antes.has(a.id) ? a : { ...a, banco: id }))] };
-    });
-    if (gravados < 0) aviso({ tom: 'erro', titulo: 'A empresa ainda está carregando', texto: 'Espere um instante e tente de novo.' });
-    else aviso({ tom: 'ok', titulo: (l?.nome || 'Razão') + ': razão reimportado', texto: gravados + ' lançamento(s); o que estava guardado nessas datas foi substituído.' });
-  }
-
   return {
-    reimportarRazao: (id: string, fs: File[]) => { void reimportarRazao(id, fs); },
-    aceitarRazao: x.EXTENSOES_SISTEMA.join(','),
     periodo: meses.length > 1 ? tarefas.rotuloNumericoCompetencia(meses[0]) + ' a ' + tarefas.rotuloNumericoCompetencia(meses[meses.length - 1]) : meses[0] ? tarefas.rotuloNumericoCompetencia(meses[0]) : '',
     carregado: !!cadastro,
     bancos: linhas.map(({ faltam: _f, ...r }) => r),

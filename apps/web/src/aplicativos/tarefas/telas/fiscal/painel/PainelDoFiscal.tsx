@@ -59,7 +59,7 @@ export function PainelDoFiscal() {
                     <tr>
                       <th>Cód.</th><th>Cliente</th><th>Etapa</th>
                       <th className="num">Notas no SIEG</th><th className="num">XMLs</th><th className="num">Buracos</th>
-                      <th className="num">Faltam no Alterdata</th><th className="num">Valores</th><th className="num">Tributação</th><th />
+                      <th className="num">Faltam no Alterdata</th><th className="num">Valores</th><th className="num">Tributação</th><th>Limite</th><th />
                     </tr>
                   </thead>
                   <tbody>
@@ -74,6 +74,7 @@ export function PainelDoFiscal() {
                         <td className="num"><Numero n={l.faltam} titulo="Notas dos XMLs que não estão no Alterdata" /></td>
                         <td className="num"><Numero n={l.valores} titulo="Notas com valor diferente, canceladas lançadas ou lançadas sem XML" /></td>
                         <td className="num"><Numero n={l.tributacao} titulo="Itens com a tributação para revisar" /></td>
+                        <td>{l.limite ? <span className={'badge ' + (l.limite.nivel === 'passou' ? 'badge-bad' : 'badge-warn')} title={l.limite.texto}>{l.limite.nivel === 'passou' ? 'Passou' : 'Perto'}</span> : <span className="fraco">—</span>}</td>
                         <td><Link className="btn btn-outline" to={l.rota}>Abrir</Link></td>
                       </tr>
                     ))}

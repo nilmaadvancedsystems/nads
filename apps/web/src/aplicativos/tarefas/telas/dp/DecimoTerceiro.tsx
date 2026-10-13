@@ -25,7 +25,7 @@ export function DecimoNaLista({ desligar, ...fora }: DeFora & { desligar: () => 
       </div>
       {vm.carregando ? <Esqueleto linhas={8} /> : vm.linhas.length === 0 ? <p className="hint dp-vazio">Nenhum cliente com esses filtros.</p> : (
         <div className="table-wrap">
-          <table className="dp-tabela">
+          <table className="dp-tabela dp-tabela-13">
             <thead>
               <tr className="dp-cabeca-grupo">
                 <th colSpan={3} />
