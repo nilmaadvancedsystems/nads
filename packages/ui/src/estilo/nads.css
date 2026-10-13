@@ -3607,3 +3607,11 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .fgts-tabela .dp-cliente-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 /* O Painel do Fiscal (09/10/2026): o nome do cliente não espreme em tela estreita */
 .fiscal-painel-tabela .dp-cliente{min-width:220px;}
+
+/* a tabela do 13º (DP › Obrigações com o 13º ligado; 13/10/2026: "tá estranho o tamanho… tudo no canto"): poucas colunas,
+   então o cliente não toma a largura toda nem corta o nome; as colunas das obrigações dividem o espaço */
+.dp-tabela.dp-tabela-13 .dp-cliente{width:auto;max-width:none;}
+.dp-tabela.dp-tabela-13 .dp-cliente-nome{max-width:none;white-space:normal;overflow:visible;}
+.dp-tabela.dp-tabela-13 .dp-ob{width:auto;min-width:72px;padding-left:8px;padding-right:8px;font-size:12px;}
+.dp-tabela.dp-tabela-13 .dp-cabeca-grupo .dp-ob-grupo{font-size:12px !important;}
+.dp-tabela.dp-tabela-13 .dp-cliente{min-width:320px;}
