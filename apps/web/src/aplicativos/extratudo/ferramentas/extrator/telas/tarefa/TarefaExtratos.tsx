@@ -118,7 +118,9 @@ function PendenciasDoBanco({ itens }: { itens: x.CorrecaoDoRazao[] }) {
                 {itens.slice(0, LIMITE_CORRECOES).map((c, i) => {
                   // o lote quebrado: a linha do lote com os totais, cada lançamento numa linha embaixo e a dica no fim
                   const partes = c.partes || [];
-                  const linhas = 1 + partes.length + (c.dica ? 1 : 0);
+                  // a dica só vira linha própria no lote quebrado; sem partes ela vai dentro da célula (Vitor, 13/10/2026:
+                  // contar a linha a mais puxava a pendência seguinte para dentro desta)
+                  const linhas = 1 + partes.length + (partes.length && c.dica ? 1 : 0);
                   return (
                     <Fragment key={i}>
                       <tr className={partes.length ? 'imp-planilha-grupo' : undefined}>
