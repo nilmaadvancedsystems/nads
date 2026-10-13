@@ -102,6 +102,15 @@ export function conferenciaDoBanco(e: EmpresaExtrator, banco: string, primeiro: 
   // o cheque especial do fim do ano anterior, lançado no razão no começo de janeiro (até o dia 5): conta como certo
   // (Vitor, 13/10/2026: "quando vira de ano, eu jogo no começo de janeiro")
   for (const l of sobras) if (chequeDaViradaDoAno(l)) cheque.linhas.add(l);
+  // o mesmo padrão em qualquer banco e começo de período (Vitor, 13/10/2026: "em todos os bancos de todas as empresas"):
+  // o extrato abre negativo (o dia anterior ao período fechou negativo) e o razão, que começa em zero, traz nos 5
+  // primeiros dias o estorno do cheque especial daquele dia, com o mesmo valor: conta como certo
+  const inicio = comMovimento[0];
+  const aberturaNegativa = inicio ? movimentoDoExtrato(e, banco, primeiro, inicio, inicio).saldoAnterior : 0;
+  if (inicio && aberturaNegativa < 0) {
+    const estorno = sobras.find(l => !cheque.linhas.has(l) && l.data.startsWith(inicio) && Number(l.data.slice(8, 10)) <= 5 && Math.abs(l.valor) === -aberturaNegativa);
+    if (estorno) cheque.linhas.add(estorno);
+  }
   const pendencias = porMes
     .map(p => ({ mes: p.mes, linhas: p.linhas.filter(l => !(l.situacao === 'amais' && l.sistema && cheque.linhas.has(l.sistema))) }))
     .filter(p => p.linhas.length > 0);
