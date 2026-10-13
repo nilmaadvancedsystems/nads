@@ -74,6 +74,10 @@ export function usePainelDoFiscal(empresa: string, codigo: string, competencia: 
       valoresEntradas: xmlDados && entradasAlt.qtd ? t.sieg.conferirValores(xmlDados.recebidas, notasDe(entradasAlt), 'recebidas') : null,
       // os erros de tributação das notas emitidas (09/10/2026), pelo regime da empresa
       errosTributacao: xmlDados && !xmlDados.itensCortados ? t.sieg.errosDeTributacao(xmlDados, t.regimeDaEmpresa(Number(codigo) || null)) : [],
+      // o Simples pelos XMLs (13/10/2026): a receita separada (monofásico e ST), a de serviços e a REINF
+      segregacao: xmlDados && !xmlDados.itensCortados ? t.sieg.segregacaoDasSaidas(xmlDados) : null,
+      servicosDoMes: xmlDados ? t.sieg.servicosDoMes(xmlDados) : null,
+      reinf: xmlDados ? t.sieg.reinfDasNotas(xmlDados) : [],
       interestaduais: t.painel.interestaduais(entradas, p),
     };
   }, [entradas, saidas, tomados, prestados, chave, doXml, xmlDados, codigo]);
@@ -88,6 +92,8 @@ export function usePainelDoFiscal(empresa: string, codigo: string, competencia: 
   return {
     carregado: !!lidas,
     folhaDoDp,
+    /** o regime da empresa (a lista do escritório) */
+    regime: t.regimeDaEmpresa(Number(codigo) || null),
     /** o .zip das notas que faltam no Alterdata: pedindo ao robô (até ele entregar e baixar) */
     baixandoFaltam: pediuFaltam,
     async baixarFaltam(chaves: string[]) {

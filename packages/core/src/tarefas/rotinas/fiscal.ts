@@ -62,7 +62,7 @@ export const ROTINA_FISCAL: Rotina = {
     etapa('fiscal-simples', 'Apuração', 'Simples Nacional', 'Apure o Simples Nacional e gere o DAS (vence dia 20). ISS retido abate o DAS.', [
       item('receitas', 'Coletar receitas do mês', { painel: 'receitas', importar: ['saidas', 'prestados'] }),
       item('base-calculo', 'Conferir composição da base de cálculo', { sub: ['Monofásico', 'ST', 'Retidos'], painel: 'base' }),
-      item('pgdas', 'Transmitir PGDAS-D', { sub: ['Anexo e atividade', 'Receita bruta dos últimos 12 meses (RBT12)'] }),
+      item('pgdas', 'Transmitir PGDAS-D', { sub: ['Anexo e atividade', 'Receita bruta dos últimos 12 meses (RBT12)'], painel: 'pgdas' }),
       item('das', 'Gerar DAS'),
       item('recibo', 'Baixar recibo, extrato e declaração'),
     ], { regimes: ['Simples'] }),

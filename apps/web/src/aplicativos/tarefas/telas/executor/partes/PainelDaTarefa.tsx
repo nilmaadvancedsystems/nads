@@ -214,6 +214,118 @@ function ValoresNotaANota({ c }: { c: t.sieg.ConferenciaDeValores | null }) {
   );
 }
 
+/** O PGDAS-D pelos XMLs (13/10/2026): o RBT12 e os anexos (informados na etapa), o aviso de limite, a receita separada em
+ * monofásico e ST (o que se segrega no PGDAS) e a prévia do DAS. É prévia: o que vale é o PGDAS. */
+function PgdasPrevia({ vm, valores, informar }: { vm: VmPainelDoFiscal; valores?: Record<string, number>; informar?: (chave: string, valor: number) => void }) {
+  const rbt12 = valores?.rbt12 ?? null;
+  const anexoMerc: t.sieg.Anexo = valores?.anexoMercadorias === 2 ? 'II' : 'I';
+  const anexoServ: t.sieg.Anexo = valores?.anexoServicos === 4 ? 'IV' : valores?.anexoServicos === 5 ? 'V' : 'III';
+  const [texto, setTexto] = useState(rbt12 != null ? rbt12.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '');
+  const lido = Number(texto.replace(/\./g, '').replace(',', '.'));
+  const valido = texto.trim() !== '' && Number.isFinite(lido) && lido >= 0;
+  const s = vm.segregacao;
+  const sv = vm.servicosDoMes;
+  const aviso = rbt12 != null ? t.sieg.avisoDeLimite(vm.regime, rbt12) : null;
+  const previa = rbt12 != null && (s?.total || sv?.total) ? t.sieg.previaDoDas(rbt12, [
+    { rotulo: 'Mercadorias (normal)', anexo: anexoMerc, valor: s?.normal || 0 },
+    { rotulo: 'Monofásico (sem PIS/COFINS)', anexo: anexoMerc, valor: s?.monofasico || 0, semPisCofins: true },
+    { rotulo: 'Com ST (sem ICMS)', anexo: anexoMerc, valor: s?.st || 0, semIcms: true },
+    { rotulo: 'Monofásico e ST (sem PIS/COFINS e ICMS)', anexo: anexoMerc, valor: s?.monofasicoESt || 0, semPisCofins: true, semIcms: true },
+    { rotulo: 'Serviços', anexo: anexoServ, valor: sv ? sv.total - sv.issRetido : 0 },
+    { rotulo: 'Serviços com ISS retido (sem ISS)', anexo: anexoServ, valor: sv?.issRetido || 0, semIss: true },
+  ]) : null;
+  const pct = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 4 }) + '%';
+  return (
+    <>
+      {vm.regime && vm.regime !== 'Simples' && vm.regime !== 'MEI' && <p className="hint">Esta empresa está como {vm.regime} na lista do escritório: a prévia é do Simples.</p>}
+      <form className="tarefas-filtros dp-filtros" onSubmit={e => { e.preventDefault(); if (valido && informar) informar('rbt12', lido); }}>
+        <label className="field dp-filtro">
+          <span className="hint">RBT12 (receita bruta dos últimos 12 meses)</span>
+          <input type="text" inputMode="decimal" placeholder="0,00" value={texto} onChange={e => setTexto(e.target.value)} />
+        </label>
+        <button type="submit" className="btn btn-primary" disabled={!valido || !informar}><Icone nome="check" />Salvar o RBT12</button>
+        <label className="field dp-filtro">
+          <span className="hint">Anexo das mercadorias</span>
+          <select className="select-compact" value={anexoMerc} disabled={!informar} onChange={e => informar?.('anexoMercadorias', e.target.value === 'II' ? 2 : 1)}>
+            <option value="I">Anexo I (comércio)</option><option value="II">Anexo II (indústria)</option>
+          </select>
+        </label>
+        <label className="field dp-filtro">
+          <span className="hint">Anexo dos serviços</span>
+          <select className="select-compact" value={anexoServ} disabled={!informar} onChange={e => informar?.('anexoServicos', e.target.value === 'IV' ? 4 : e.target.value === 'V' ? 5 : 3)}>
+            <option value="III">Anexo III</option><option value="IV">Anexo IV</option><option value="V">Anexo V</option>
+          </select>
+        </label>
+      </form>
+      {aviso && <Alerta naLinha titulo={aviso.nivel === 'passou' ? 'Limite passado' : 'Perto do limite'} texto={aviso.texto} />}
+      {!vm.xml ? <p className="hint">Baixe os XMLs do SIEG (na etapa Inicial) para separar a receita e calcular a prévia.</p> : (
+        <>
+          {s && s.total > 0 && (
+            <>
+              <div className="stat-grid">
+                <Stat rotulo="Receita de mercadorias" valor={<Conta valor={s.total} formato="reais" />} />
+                <Stat rotulo="Monofásico (PIS/COFINS)" valor={<Conta valor={s.monofasico + s.monofasicoESt} formato="reais" />} />
+                <Stat rotulo="Com ST (ICMS)" valor={<Conta valor={s.st + s.monofasicoESt} formato="reais" />} />
+              </div>
+              {s.porGrupo.length > 0 && (
+                <div className="table-wrap table-compact">
+                  <table>
+                    <thead><tr><th>Monofásico</th><th>NCMs</th><th className="num">Receita</th></tr></thead>
+                    <tbody>{s.porGrupo.map(g => <tr key={g.grupo}><td><b>{g.grupo}</b></td><td className="wrap">{g.ncms.slice(0, 12).join(', ')}{g.ncms.length > 12 ? ' e mais ' + (g.ncms.length - 12) : ''}</td><td className="num">{reais(g.valor)}</td></tr>)}</tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+          {previa ? (
+            <>
+              <div className="table-wrap table-compact">
+                <table>
+                  <thead><tr><th>Parcela da receita</th><th>Anexo</th><th className="num">Receita</th><th className="num">Alíquota efetiva</th><th className="num">Aplicada</th><th className="num">DAS</th></tr></thead>
+                  <tbody>
+                    {previa.parcelas.map(p => (
+                      <tr key={p.rotulo}><td className="wrap">{p.rotulo}</td><td>{p.anexo} · faixa {p.faixa}</td><td className="num">{reais(p.valor)}</td><td className="num">{pct(p.efetiva)}</td><td className="num">{pct(p.aplicada)}</td><td className="num">{reais(p.das)}</td></tr>
+                    ))}
+                    <tr><td colSpan={5}><b>Prévia do DAS</b></td><td className="num"><b>{reais(previa.total)}</b></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              {previa.economia > 0 && <Alerta naLinha tom="ok" titulo={'A segregação tira ' + reais(previa.economia) + ' do DAS'} texto="Informe no PGDAS-D a receita com monofásico (PIS/COFINS), com ST (ICMS) e com ISS retido, como na tabela." />}
+            </>
+          ) : rbt12 == null ? <p className="hint">Informe o RBT12 para calcular a prévia do DAS.</p> : null}
+          <p className="hint">Prévia para conferir: o que vale é o PGDAS-D. Monofásico pela lista resumida de NCMs (combustíveis, medicamentos, perfumaria, pneus, autopeças, veículos e bebidas frias); confira os casos fora dela.</p>
+        </>
+      )}
+    </>
+  );
+}
+
+/** As retenções das NFS-e do mês como entram na REINF (13/10/2026): R-2010, R-2020 e R-4020. */
+function ReinfDasNotas({ linhas }: { linhas: readonly t.sieg.LinhaDaReinf[] }) {
+  if (!linhas.length) return null;
+  return (
+    <>
+      <p className="hint" style={{ margin: '12px 0 4px' }}><b>Para a REINF</b> (das retenções das NFS-e do mês)</p>
+      <div className="table-wrap table-compact">
+        <table>
+          <thead><tr><th>Evento</th><th>Prestador / tomador</th><th className="num">Notas</th><th className="num">Base</th><th className="num">INSS</th><th className="num">IRRF</th><th className="num">PIS</th><th className="num">COFINS</th><th className="num">CSLL</th></tr></thead>
+          <tbody>
+            {linhas.map(l => (
+              <tr key={l.evento + l.doc}>
+                <td><span className="badge badge-neutral">{l.evento}</span></td>
+                <td className="wrap"><b>{l.nome}</b><span className="hint" style={{ display: 'block', margin: 0 }}>{l.doc}</span></td>
+                <td className="num">{l.notas}</td><td className="num">{reais(l.base)}</td>
+                <td className="num">{l.inss ? reais(l.inss) : '—'}</td><td className="num">{l.irrf ? reais(l.irrf) : '—'}</td>
+                <td className="num">{l.pis ? reais(l.pis) : '—'}</td><td className="num">{l.cofins ? reais(l.cofins) : '—'}</td><td className="num">{l.csll ? reais(l.csll) : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
 /** Os serviços do mês com NBS, descrição, valor e o que cada nota retém (lido da nota). */
 function TabelaDeServicos({ linhas }: { linhas: readonly t.painel.ServicoNaVerificacao[] }) {
   const semColunas = !linhas.some(l => l.nbs || l.descricao);
@@ -513,9 +625,12 @@ function Corpo({ painel, vm, codigo, competencia, importar, valores, informar, a
           </div>
           <Origem xml={vm.doXml.servicos} quando={vm.xml?.quando} />
           <TabelaDeServicos linhas={vm.servicos} />
+          <ReinfDasNotas linhas={vm.reinf} />
         </>
       );
     }
+    case 'pgdas':
+      return <PgdasPrevia vm={vm} valores={valores} informar={informar} />;
     case 'interestaduais':
       if (!vm.entradas.qtd) return vazio('entradas');
       if (!vm.interestaduais.qtd) return <Alerta naLinha tom="ok" titulo={'Nenhuma entrada de fora do estado em ' + comp} texto="Sem Antecipação, ST ou DIFAL das entradas neste mês." />;

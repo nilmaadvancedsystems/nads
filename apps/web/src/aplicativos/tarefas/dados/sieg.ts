@@ -53,7 +53,8 @@ export interface RepoSieg {
   versao(): number;
 }
 
-/** Os XMLs de exemplo (TESTE): duas NF-e emitidas com itens, uma recebida e uma NFS-e com ISS e IRRF retidos. */
+/** Os XMLs de exemplo (TESTE): duas NF-e emitidas com itens, uma recebida, uma NFS-e com ISS e IRRF retidos e uma
+ * NFS-e tomada com retenções (para a REINF). */
 function xmlsDeExemplo(competencia: string): Pick<t.sieg.NotasSieg, 'emitidas' | 'recebidas'> {
   const [a, m] = competencia.split('-');
   const dia = (d: number) => String(d).padStart(2, '0') + '/' + m + '/' + a;
@@ -72,6 +73,9 @@ function xmlsDeExemplo(competencia: string): Pick<t.sieg.NotasSieg, 'emitidas' |
     recebidas: [
       { tipo: 'NF-e', chave: 'T3', numero: 'T501', serie: '1', data: dia(5), emitente: forn, destinatario: eu, valor: 2200,
         itens: [{ ncm: '39232990', cfop: '6102', cst: '090', cest: '', valor: 2200 }] },
+      // uma NFS-e tomada com INSS e IRRF/PIS/COFINS/CSLL retidos (a REINF: R-2010 e R-4020)
+      { tipo: 'NFS-e', chave: '', numero: 'T88', serie: '', data: dia(15), emitente: forn, destinatario: eu, valor: 4000, nbs: '1.0501.10.00',
+        descricao: 'Limpeza e conservação (TESTE)', retencoes: [{ imposto: 'INSS', valor: 440 }, { imposto: 'IRRF', valor: 60 }, { imposto: 'PIS', valor: 26 }, { imposto: 'COFINS', valor: 120 }, { imposto: 'CSLL', valor: 40 }] },
     ],
   };
 }

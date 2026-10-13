@@ -36,8 +36,10 @@ export function useVisaoDoFiscal() {
       faltam: num('fiscalFaltam'),
       valores: num('fiscalValores'),
       tributacao: num('fiscalTributacao'),
+      // o RBT12 que a rotina guardou (na tarefa do PGDAS) e o aviso de limite (13/10/2026)
+      limite: num('rbt12') != null ? t.sieg.avisoDeLimite(t.regimeDaEmpresa(Number(cod) || null), num('rbt12') as number) : null,
     };
-    return { ...linha, pendencias: (linha.buracos || 0) + (linha.faltam || 0) + (linha.valores || 0) + (linha.tributacao || 0) };
+    return { ...linha, pendencias: (linha.buracos || 0) + (linha.faltam || 0) + (linha.valores || 0) + (linha.tributacao || 0) + (linha.limite ? 1 : 0) };
   });
   const q = busca.trim().toLowerCase();
   const linhas = todas
@@ -60,6 +62,7 @@ export function useVisaoDoFiscal() {
       { rotulo: 'Faltando no Alterdata', valor: com(l => l.faltam), tom: 'laranja' as const, icone: 'upload' as const },
       { rotulo: 'Valores que não batem', valor: com(l => l.valores), tom: 'roxo' as const, icone: 'scale' as const },
       { rotulo: 'Tributação a revisar', valor: com(l => l.tributacao), tom: 'marca' as const, icone: 'checklist' as const },
+      { rotulo: 'Perto do limite', valor: todas.filter(l => l.limite).length, tom: 'ciano' as const, icone: 'barChart' as const },
     ],
     linhas,
     quantas: linhas.length,
