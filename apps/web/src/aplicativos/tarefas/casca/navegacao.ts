@@ -49,6 +49,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     // barra lateral"); em Obrigações, uma tabela só, com as colunas agrupadas (Folha, eSocial, Guias, REINF, Entrega)
     { id: 'resumo', rotulo: 'Resumo', icone: 'painel', titulo: 'DP — resumo do mês' },
     { id: 'obrigacoes', rotulo: 'Obrigações', icone: 'checklist', titulo: 'DP — obrigações do mês' },
+    // o 13º salário (Vitor, 13/10/2026): a 1ª parcela em novembro e a 2ª em dezembro, numa tabela só
+    { id: 'decimo', rotulo: '13º salário', icone: 'calendar', titulo: 'DP — 13º salário' },
     { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'DP — visão geral' },
     // a guia do FGTS Digital pelo robô da nuvem, com o certificado do escritório (Vitor, 07/10/2026)
     { id: 'fgts', rotulo: 'FGTS Digital', icone: 'fileDown', titulo: 'DP — guias do FGTS Digital' },
