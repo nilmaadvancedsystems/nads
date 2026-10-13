@@ -2810,6 +2810,8 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .usuario-pe{display:flex;align-items:center;gap:8px;padding:12px 24px;border-top:1px solid var(--border);}
 .usuario-erros{margin:0;padding-left:18px;color:var(--danger);font-size:13px;}
 .usuario-campo{height:32px;width:240px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;padding:0 10px;}
+/* o CNPJ da Nova empresa (13/10/2026): cabe 00.000.000/0000-00 ao lado do Buscar na Receita */
+.usuario-campo.usuario-campo-cnpj{width:170px;flex:none;}
 .usuario-pcs{list-style:none;margin:0 0 12px;padding:0;display:flex;flex-direction:column;gap:6px;}
 .usuario-pcs li{display:flex;align-items:center;gap:10px;font-size:13px;}
 .usuario-pcs li .btn{margin-left:auto;}

@@ -35,6 +35,9 @@
 // Os extratos que chegam por e-mail (2026-10-08, liberado pelo Vitor: "ele já jogue o extrato para o nads"), em
 // extratudo/dados/drive.firestore.ts: extratosRecebidos (o robô do Gmail grava; o app lê a lista, os pedaços do arquivo
 // e marca importado/ignorado). Sem fetch.
+// A consulta do CNPJ no cadastro (2026-10-13, liberada pelo Vitor: "Pode liberar"), só em
+// aplicativos/tarefas/dados/receita.ts: a BrasilAPI e a minhareceita.org (públicas, sem chave; as mesmas do Entregas).
+// Só o CNPJ sai. O arquivo não pode citar nenhum outro endereço.
 // Esta checagem falha se:
 //  1. aparecer dependência de rede fora do permitido (só "firebase", e só no apps/web);
 //  2. código fora de apps/web/src/aplicativos/<app>/dados/*.firestore.ts importar/usar Firebase;
@@ -51,6 +54,9 @@ const TEXTOS_FIREBASE = [/from\s+['"]firebase(\/[a-z-]+)?['"]/, /\b(getFirestore
 const TEXTOS_REDE = [/\bfetch\s*\(/, /\bXMLHttpRequest\b/, /\bnew\s+WebSocket\b/, /\bsendBeacon\b/, /\bEventSource\b/];
 // o download da cópia que o robô do Entregas publica (e só dela: o arquivo confere o endereço antes)
 const ONDE_PODE_FETCH = /[\\/]apps[\\/]web[\\/]src[\\/]aplicativos[\\/]extratudo[\\/]dados[\\/]drive\.firestore\.ts$/;
+// a consulta do CNPJ (só para os dois endereços públicos da Receita: conferido no fim)
+const ONDE_PODE_FETCH_RECEITA = /[\\/]apps[\\/]web[\\/]src[\\/]aplicativos[\\/]tarefas[\\/]dados[\\/]receita\.ts$/;
+const ENDERECOS_DA_RECEITA = ['https://brasilapi.com.br/api/cnpj/v1/', 'https://minhareceita.org/'];
 // e o aviso de versão nova, que lê o /versao.json do próprio site
 const ONDE_PODE_FETCH_VERSAO = /[\\/]packages[\\/]ui[\\/]src[\\/]versaoNova\.tsx$/;
 
@@ -97,6 +103,7 @@ varrer(raiz, p => {
     for (const re of TEXTOS_REDE) {
       if (!re.test(l)) continue;
       if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH.test(p)) continue;
+      if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH_RECEITA.test(p)) continue;
       // o aviso de versão nova lê só o /versao.json do próprio site (mesmo endereço; liberado pelo usuário em 01/10/2026)
       if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH_VERSAO.test(p) && l.includes("fetch('/versao.json?t=' + Date.now()")) continue;
       achados.push(rel + ':' + (i + 1) + ': chamada de rede ("' + re.source + '")');
@@ -121,6 +128,12 @@ if (achados.length) {
   console.error('conexoes: ' + achados.length + ' achado(s):');
   for (const a of achados) console.error('  ' + a);
   process.exit(1);
+}
+// a consulta do CNPJ só fala com os endereços da Receita
+const receita = path.join(raiz, 'apps', 'web', 'src', 'aplicativos', 'tarefas', 'dados', 'receita.ts');
+if (fs.existsSync(receita)) {
+  const outros = (fs.readFileSync(receita, 'utf8').match(/https?:\/\/[^'"`\s]+/g) || []).filter(u => !ENDERECOS_DA_RECEITA.includes(u));
+  if (outros.length) { console.error('conexoes: receita.ts só pode consultar ' + ENDERECOS_DA_RECEITA.join(' e ') + ' (achei: ' + outros.join(', ') + ')'); process.exit(1); }
 }
 // o download do Drive só pode ir para a cópia do robô do Entregas
 const drive = path.join(raiz, 'apps', 'web', 'src', 'aplicativos', 'extratudo', 'dados', 'drive.firestore.ts');

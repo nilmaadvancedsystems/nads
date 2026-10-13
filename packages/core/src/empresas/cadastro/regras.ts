@@ -130,6 +130,7 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...(typeof doc.credLiquidacao === 'boolean' ? { credLiquidacao: doc.credLiquidacao } : {}),
     ...(typeof doc.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: doc.emiteNotaHonorario } : {}),
     ...(REGIMES.includes(texto(doc.regime) as Regime) ? { regime: texto(doc.regime) } : {}),
+    ...(/^\d{14}$/.test(texto(doc.cnpj)) ? { cnpj: texto(doc.cnpj) } : {}),
     ...contatoDoDocumento(doc.contato),
     ...(Array.isArray(doc.emprestimos) ? { emprestimos: (doc.emprestimos as Record<string, unknown>[]).map(e => ({ numero: texto(e?.numero), banco: texto(e?.banco), desde: texto(e?.desde), ...(texto(e?.ate) ? { ate: texto(e?.ate) } : {}) })).filter(e => e.numero && e.banco) } : {}),
     ...(Array.isArray(doc.socios) ? { socios: (doc.socios as Record<string, unknown>[]).map(s => ({ nome: texto(s?.nome), cpf: texto(s?.cpf) })).filter(s => s.nome || s.cpf) } : {}), atualizadoEm: opcional(doc.atualizadoEm),
@@ -152,6 +153,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(typeof c.credLiquidacao === 'boolean' ? { credLiquidacao: c.credLiquidacao } : {}),
     ...(typeof c.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: c.emiteNotaHonorario } : {}),
     ...(c.regime ? { regime: c.regime } : {}),
+    ...(c.cnpj ? { cnpj: c.cnpj } : {}),
     ...(c.contato && (c.contato.email || c.contato.whatsapp) ? { contato: c.contato } : {}),
     ...(c.socios?.length ? { socios: c.socios } : {}),
     ...(c.emprestimos?.length ? { emprestimos: c.emprestimos } : {}),
@@ -359,10 +361,11 @@ export function transferenciasParaResponder(cadastros: Iterable<CadastroDaEmpres
 }
 
 /** A empresa nova, cadastrada pelo nads: o código do ERP (se tiver), o nome e o regime. */
-export function cadastrarEmpresa(nome: string, codigo: number | null, regime: string, por: string, agora: Date): CadastroDaEmpresa {
+export function cadastrarEmpresa(nome: string, codigo: number | null, regime: string, por: string, agora: Date, cnpj = ''): CadastroDaEmpresa {
   const n = texto(nome).toUpperCase();
-  return registrar({ ...cadastroVazio(n, codigo), nova: { regime: texto(regime), criadaEm: agora.toISOString() } }, por, agora,
-    'Cadastrou a empresa', (codigo != null ? codigo + ' · ' : '') + n + ' · ' + texto(regime));
+  const doc = String(cnpj).replace(/\D/g, '');
+  return registrar({ ...cadastroVazio(n, codigo), nova: { regime: texto(regime), criadaEm: agora.toISOString() }, ...(doc.length === 14 ? { cnpj: doc } : {}) }, por, agora,
+    'Cadastrou a empresa', (codigo != null ? codigo + ' · ' : '') + n + ' · ' + texto(regime) + (doc.length === 14 ? ' · CNPJ ' + doc : ''));
 }
 
 /** As empresas cadastradas pelo nads (para juntar à lista do escritório). */

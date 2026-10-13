@@ -5,5 +5,6 @@ export { DEPARTAMENTOS_DO_RESPONSAVEL } from './tipos';
 export * from './regras';
 export * from './plano';
 export * from './entregas';
+export * from './receita';
 export * from './repo';
 export { criarRepoCadastroMemoria, portaCadastroMemoria } from './repo.memoria';
