@@ -426,46 +426,106 @@ function iniciarFgtsPeloClaude(db, log) {
   }
 
   /**
-   * Roda o Claude do PC com o Claude in Chrome. "PASSO [cnpj]: …" vai para aoPasso; "RESULTADO [cnpj]: {…}" para
-   * aoResultado (sem o CNPJ: vale para o lote todo). Devolve o fim da conversa (para o erro de quando nada começou).
+   * Uma sessão do Claude que fica ligada entre os lotes (Vitor, 13/10/2026: "em vez de puxar vários grupos, por que não
+   * baixa tudo na mesma aba?"): cada sessão do Claude in Chrome tem o seu grupo de abas, então um Claude por lote deixava
+   * um grupo novo a cada lote. Agora cada lote é uma mensagem nova para o mesmo Claude, na mesma aba. Ela fecha o próprio
+   * grupo e encerra depois de SESSAO_OCIOSA_MS sem pedido ou de SESSAO_LOTES lotes (para a conversa não crescer demais).
    */
+  const SESSAO_OCIOSA_MS = 15 * 60 * 1000;
+  const SESSAO_LOTES = 4;
+  let sessao = null;
   let processoAtual = null;
+
+  function abrirSessao() {
+    const filho = spawn(CLAUDE, ['-p', '--chrome', '--model', MODELO, '--permission-mode', 'bypassPermissions',
+      '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--no-session-persistence'],
+    { cwd: __dirname, windowsHide: true, env: ambienteLimpo(), stdio: ['pipe', 'pipe', 'pipe'] });
+    const s = { filho, lotes: 0, vez: null, erros: '', viva: true, ociosa: null };
+    filho.stdin.on('error', () => { /* o processo saiu; o close resolve a vez */ });
+    let resto = '';
+    filho.stdout.on('data', b => {
+      resto += String(b);
+      const linhas = resto.split('\n');
+      resto = linhas.pop();
+      for (const l of linhas) {
+        let ev = null; try { ev = JSON.parse(l); } catch (_) { continue; }
+        if (!s.vez) continue;
+        if (ev.type === 'assistant' && ev.message && Array.isArray(ev.message.content)) for (const c of ev.message.content) if (c.type === 'text') s.vez.lerTexto(c.text);
+        if (ev.type === 'result') { s.vez.lerTexto(String(ev.result || '')); s.vez.fim(String(ev.result || '')); }
+      }
+    });
+    filho.stderr.on('data', b => { s.erros += String(b); if (s.erros.length > 3000) s.erros = s.erros.slice(-3000); });
+    const morreu = err => {
+      if (!s.viva) return;
+      s.viva = false;
+      clearTimeout(s.ociosa);
+      if (sessao === s) sessao = null;
+      if (processoAtual === filho) processoAtual = null;
+      if (s.vez) s.vez.fim('', err ? err.message : s.erros);
+    };
+    filho.on('error', morreu);
+    filho.on('close', () => morreu(null));
+    return s;
+  }
+
+  function mandar(s, texto) {
+    s.filho.stdin.write(JSON.stringify({ type: 'user', message: { role: 'user', content: texto } }) + '\n', 'utf8');
+  }
+
+  /** Pede ao Claude para fechar o grupo de abas dele e encerra a sessão. */
+  function encerrarSessao(s, motivo) {
+    if (!s || !s.viva) return;
+    if (sessao === s) sessao = null;
+    log('FGTS (Claude): encerrando a sessão do Claude (' + motivo + ')');
+    const fim = setTimeout(() => { try { s.filho.kill(); } catch (_) {} }, 90000);
+    s.vez = { lerTexto: () => {}, fim: () => { clearTimeout(fim); s.vez = null; try { s.filho.stdin.end(); } catch (_) {} } };
+    try { mandar(s, 'Acabaram os lotes. Feche as abas do seu grupo no Chrome (com a ferramenta de fechar abas) e responda só FIM.'); } catch (_) { s.vez.fim(); }
+  }
+
+  /**
+   * Roda um lote na sessão do Claude. "PASSO [cnpj]: …" vai para aoPasso; "RESULTADO [cnpj]: {…}" para aoResultado (sem o
+   * CNPJ: vale para o lote todo). Devolve o fim da resposta (para o erro de quando nada começou).
+   */
   function rodarClaude(texto, aoPasso, aoResultado, limiteMs) {
     return new Promise(resolve => {
       // o pedido vai pela entrada padrão: na linha de comando estourava o limite do Windows com lotes grandes (ENAMETOOLONG,
       // 10/10/2026), e por arquivo ("leia e faça o que ele manda") o classificador do Claude Code negava os roteiros (13/10/2026)
-      const filho = processoAtual = spawn(CLAUDE, ['-p', '--chrome', '--model', MODELO, '--permission-mode', 'bypassPermissions',
-        '--output-format', 'stream-json', '--verbose', '--no-session-persistence'], { cwd: __dirname, windowsHide: true, env: ambienteLimpo(), stdio: ['pipe', 'pipe', 'pipe'] });
-      filho.stdin.on('error', () => { /* o processo saiu antes de ler tudo; o erro aparece no close */ });
-      filho.stdin.end(texto, 'utf8');
-      let resto = '', erros = '', final = '', algum = null;
+      if (sessao && !sessao.viva) sessao = null;
+      const continua = !!sessao;
+      if (!sessao) sessao = abrirSessao();
+      const s = sessao;
+      clearTimeout(s.ociosa);
+      processoAtual = s.filho;
+      let algum = null;
       const vistos = new Set();
-      const lerTexto = t => {
-        for (const linha of String(t).split('\n')) {
-          const l = linha.trim();
-          const m = l.match(/^PASSO\s*(?:\[(\d{14})\])?\s*:\s*(.+)$/);
-          if (m && !vistos.has(l)) { vistos.add(l); aoPasso(m[1] || '', m[2]); }
-          const r = l.match(/^RESULTADO\s*(?:\[(\d{14})\])?\s*:\s*(\{.*\})\s*$/);
-          if (r && !vistos.has(l)) {
-            vistos.add(l);
-            try { const res = JSON.parse(r[2]); algum = res; aoResultado(r[1] || '', res); } catch (_) { /* resultado mal escrito */ }
+      const relogio = setTimeout(() => { try { s.filho.kill(); } catch (_) {} }, limiteMs || LIMITE_MS);
+      s.vez = {
+        lerTexto: t => {
+          for (const linha of String(t).split('\n')) {
+            const l = linha.trim();
+            const m = l.match(/^PASSO\s*(?:\[(\d{14})\])?\s*:\s*(.+)$/);
+            if (m && !vistos.has(l)) { vistos.add(l); aoPasso(m[1] || '', m[2]); }
+            const r = l.match(/^RESULTADO\s*(?:\[(\d{14})\])?\s*:\s*(\{.*\})\s*$/);
+            if (r && !vistos.has(l)) {
+              vistos.add(l);
+              try { const res = JSON.parse(r[2]); algum = res; aoResultado(r[1] || '', res); } catch (_) { /* resultado mal escrito */ }
+            }
           }
-        }
+        },
+        fim: (final, erro) => {
+          clearTimeout(relogio);
+          s.vez = null;
+          s.lotes++;
+          resolve({ resultado: algum, erro: String(final || erro || '').slice(-300) });
+          if (!s.viva) return;
+          if (s.lotes >= SESSAO_LOTES) encerrarSessao(s, s.lotes + ' lotes');
+          else s.ociosa = setTimeout(() => encerrarSessao(s, 'sem pedido há 15 min'), SESSAO_OCIOSA_MS);
+        },
       };
-      filho.stdout.on('data', b => {
-        resto += String(b);
-        const linhas = resto.split('\n');
-        resto = linhas.pop();
-        for (const l of linhas) {
-          let ev = null; try { ev = JSON.parse(l); } catch (_) { continue; }
-          if (ev.type === 'assistant' && ev.message && Array.isArray(ev.message.content)) for (const c of ev.message.content) if (c.type === 'text') lerTexto(c.text);
-          if (ev.type === 'result') { final = String(ev.result || ''); lerTexto(final); }
-        }
-      });
-      filho.stderr.on('data', b => { erros += String(b); if (erros.length > 3000) erros = erros.slice(-3000); });
-      const relogio = setTimeout(() => { try { filho.kill(); } catch (_) {} }, limiteMs || LIMITE_MS);
-      filho.on('error', err => { clearTimeout(relogio); processoAtual = null; resolve({ resultado: algum, erro: err.message }); });
-      filho.on('close', () => { clearTimeout(relogio); processoAtual = null; resolve({ resultado: algum, erro: (final || erros).slice(-300) }); });
+      const aviso = continua
+        ? 'NOVO LOTE. Continue na MESMA aba do portal que você já está usando (não abra outra aba nem outro grupo); o login já está feito.\n\n'
+        : '';
+      try { mandar(s, aviso + texto); } catch (err) { s.vez.fim('', err.message); }
     });
   }
 }
