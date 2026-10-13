@@ -161,6 +161,9 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   const saida: Lancamento[] = [];
   let col: Colunas | null = null;
   let dataAtual: string | null = null;
+  // o quadro RESUMO do fim (Sicoob: "Cheque especial contratado: 10.000,00C", juros e tarifas provisionados…): não é
+  // lançamento; vale até a próxima linha com data na coluna (Vitor, 13/10/2026: a 380 tinha 10 mil "entrando no banco")
+  let noResumo = false;
   // a coluna da data: onde ficam as datas com ano que abrem a linha. Data curta ("21/03") longe dela é o fim de um
   // histórico quebrado ("REM: FULANO" / "21/03"), não um dia novo (Vitor, 09/10/2026: a 380 jogava o 23/03 no 21/03)
   const xDasDatas = todas.flat().map(l => l.tokens[0]).filter(t => t && RE_DATA.test(t.s) && /\d{4}$/.test(t.s)).map(t => t.x);
@@ -184,7 +187,9 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       else if (RE_DATA.test(t[0].s)) { data = lerData(t[0].s, ano); if (data) t.shift(); }
       else if (t[1] && RE_DATA_MES.test(t[0].s + ' ' + t[1].s)) { data = lerData(t[0].s + ' ' + t[1].s, ano); if (data) t.splice(0, 2); }
       else if (RE_DATA_MES.test(t[0].s)) { data = lerData(t[0].s, ano); if (data) t.shift(); }
-      if (data) dataAtual = data;
+      if (data) { dataAtual = data; noResumo = false; }
+      if (!data && /^(resumo|encargos vencidos)\b/.test(normalizarTexto(l.texto))) { noResumo = true; continue; }
+      if (noResumo) continue;
 
       const valores: Token[] = [];
       const bloqueados = new Set<Token>();

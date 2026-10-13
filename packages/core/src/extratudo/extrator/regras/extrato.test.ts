@@ -108,6 +108,22 @@ describe('as páginas de cada mês (o PDF de vários meses quebrado para o Drive
   });
 });
 
+describe('o quadro RESUMO do fim não é lançamento (Vitor, 13/10/2026)', () => {
+  it('"Cheque especial contratado: 10.000,00C" e os provisionados ficam de fora', () => {
+    const p = pagina([
+      [['Data', 40], ['Lançamento', 100], ['Valor (R$)', 400], ['Saldo (R$)', 480]],
+      [['30/01/2026', 40], ['DÉB.TIT.COMPE EFETIVADO', 100], ['4.364,77D', 400], ['432,15D', 480]],
+      [['RESUMO', 40]],
+      [['Saldo em conta:', 40], ['432,15D', 480]],
+      [['Cheque especial contratado:', 40], ['10.000,00C', 480]],
+      [['Juros vencidos provisionados:', 40], ['12,00D', 480]],
+      [['ENCARGOS VENCIDOS REMANESCENTES', 40]],
+      [['Tarifas vencidas remanescentes:', 40], ['3,00D', 480]],
+    ]);
+    expect(lancamentosDoPdf([p], 'banco', 2000).map(l => l.valor)).toEqual([-436477]);
+  });
+});
+
 describe('saldo anterior do extrato (abre a conta quando não há mês antes)', () => {
   it('a linha SALDO ANTERIOR: o valor da direita, com o sinal', () => {
     const p = pagina([
