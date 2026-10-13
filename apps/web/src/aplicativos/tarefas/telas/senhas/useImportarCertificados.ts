@@ -35,6 +35,10 @@ export function useImportarCertificados(cofre: VmCofre) {
 
   const todas = empresas.EMPRESAS_COM_DP;
   /** a empresa do CNPJ: o cliente do Entregas com esse documento → o código do ERP → a empresa do nads */
+  function empresaDoCodigo(codigo: number | null): EmpresaDoCertificado | null {
+    const e = codigo != null ? todas.find(x => x.codigo === codigo) : undefined;
+    return e ? { nome: e.nome, codigo: e.codigo } : null;
+  }
   function empresaDoCnpj(cnpj: string): EmpresaDoCertificado | null {
     if (cnpj.length !== 14) return null;
     const cli = clientes.find(k => k.documento === cnpj);
@@ -79,13 +83,30 @@ export function useImportarCertificados(cofre: VmCofre) {
     async adicionar(arquivos: readonly File[]) {
       const novos: CertificadoNaFila[] = [];
       for (const f of arquivos) {
+        // o pacote do Toriba (13/10/2026: "exporte o banco de dados do Toriba para o nads, incluindo certificados"): um .json
+        // com cada certificado, a senha, o CNPJ e o código do cliente; cada um entra na fila já com a senha e é lido na hora
+        if (/\.json$/i.test(f.name)) {
+          try {
+            const pacote = JSON.parse(await f.text()) as { certificados?: { nome?: string; codigo?: string | number; cnpj?: string; nomeArquivo?: string; arquivo?: string; senha?: string }[] };
+            for (const k of pacote.certificados || []) {
+              if (!k.arquivo) continue;
+              const cnpj = String(k.cnpj || '').replace(/\D/g, '');
+              const codigo = k.codigo != null && String(k.codigo).trim() !== '' && Number.isFinite(Number(k.codigo)) ? Number(k.codigo) : null;
+              novos.push({ id: 'toriba|' + (k.nomeArquivo || cnpj) + '|' + Math.random().toString(36).slice(2, 8), nomeArquivo: k.nomeArquivo || ((k.nome || 'certificado') + '_' + cnpj + '.pfx'),
+                arquivo: k.arquivo, senha: k.senha || '', cnpj, lendo: false, erro: '', validade: '', titular: '', empresa: empresaDoCnpj(cnpj) || empresaDoCodigo(codigo), escolhida: false });
+            }
+          } catch { toast('Não consegui ler o pacote ' + f.name + '.'); }
+          continue;
+        }
         if (!/\.(pfx|p12)$/i.test(f.name)) continue;
         const cnpj = c.cnpjDoNomeDoArquivo(f.name);
         novos.push({ id: f.name + '|' + f.size + '|' + Math.random().toString(36).slice(2, 8), nomeArquivo: f.name, arquivo: c.paraBase64(await f.arrayBuffer()),
           senha: '', cnpj, lendo: false, erro: '', validade: '', titular: '', empresa: empresaDoCnpj(cnpj), escolhida: false });
       }
-      if (!novos.length) toast('Escolha arquivos .pfx ou .p12.');
+      if (!novos.length) toast('Escolha arquivos .pfx ou .p12, ou o pacote do Toriba (.json).');
       setFila(f => [...f, ...novos]);
+      // os que já vieram com a senha (o pacote do Toriba): lê cada um logo (a validade, o titular e se a senha abre)
+      for (const x of novos) if (x.senha) ler(x, x.senha);
     },
     senha(id: string, senha: string) {
       const item = fila.find(x => x.id === id);
