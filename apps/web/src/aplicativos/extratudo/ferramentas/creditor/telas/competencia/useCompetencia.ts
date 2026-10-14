@@ -14,6 +14,10 @@ import { useSessao } from '../../casca/sessao';
 import { useDrive } from '../../dados/repo';
 import { lerRelatorio, mensagemDeErro } from '../../leitura';
 import { useBuscarNoEmail } from '../../../extrator/telas/tarefa/JanelaBuscarNoEmail';
+import { abrirPuxado, esquecerPuxado, guardarPuxado, usePuxados } from '../../../puxados';
+
+/** O arquivo que veio do Drive ou do e-mail, para o olhinho do mês (puxados.tsx). */
+interface DeOnde { nome: string; conteudo: Blob; origem: 'drive' | 'email' }
 
 type Fase = 'parado' | 'procurando' | 'baixando' | 'lendo' | 'problema';
 interface Busca { mes: string; fase: Fase; texto: string; candidatos: cr.ArquivoAchado[] }
@@ -60,10 +64,16 @@ export function useCompetencia() {
   /** Guarda a competência (é ela que libera a etapa seguinte). */
   const fixar = () => s.definirCompetencia(competencia);
 
+  // o que foi puxado do Drive ou do e-mail, por mês (o olhinho ao lado do ícone; só na memória desta aba)
+  const chavePuxados = 'creditor|' + s.empresa.nome;
+  const puxados = usePuxados(chavePuxados);
+
   /** Leu o relatório do mês: guarda e fica aqui (o resumo na linha); o Continuar segue (Vitor, 05/10/2026: a Competência e o Relatório do banco eram a mesma tela). */
-  function guardar(mes: string, rel: cr.RelatorioBanco, origem: string) {
+  function guardar(mes: string, rel: cr.RelatorioBanco, origem: string, deOnde: readonly DeOnde[] = []) {
     fixar();
     s.relatorioDoMes(mes, rel, origem);
+    esquecerPuxado(chavePuxados, mes);
+    for (const d of deOnde) guardarPuxado(chavePuxados, d.nome, d.conteudo, d.origem, [mes]);
     setBusca(PARADO);
   }
 
@@ -71,7 +81,9 @@ export function useCompetencia() {
     setBusca({ mes, fase: 'baixando', texto: 'Baixando ' + a.nome + '…', candidatos });
     try {
       const buf = await drive.baixar(a.id, a.nome, passo => setBusca(b => ({ ...b, texto: a.nome + ': ' + passo + '…' })));
-      guardar(mes, await lerRelatorio(a.nome, buf), 'Drive · ' + a.caminho);
+      // a cópia antes de ler (o leitor de PDF consome o buffer)
+      const copia = new Blob([buf.slice(0)]);
+      guardar(mes, await lerRelatorio(a.nome, buf), 'Drive · ' + a.caminho, [{ nome: a.nome, conteudo: copia, origem: 'drive' }]);
       return true;
     } catch (e) {
       setBusca({ mes, fase: 'problema', texto: mensagemDeErro(e), candidatos });
@@ -128,7 +140,7 @@ export function useCompetencia() {
   const email = useBuscarNoEmail(
     (linha, arquivos) => {
       const f = arquivos[0];
-      void importarDoComputador(linha.id, f).then(ok => { if (ok && f) void arquivarNoDrive(linha.id, f); });
+      void importarDoComputador(linha.id, f, 'email').then(ok => { if (ok && f) void arquivarNoDrive(linha.id, f); });
     },
     depois => { depoisDoLogin.current = depois; setErroLogin(''); setLoginPara('email'); },
     s.empresa.codigo,
@@ -145,11 +157,11 @@ export function useCompetencia() {
     },
   );
 
-  /** Do computador: lê o arquivo aqui mesmo. Devolve se entrou. */
-  async function importarDoComputador(mes: string, f: File | undefined): Promise<boolean> {
+  /** Do computador (ou o escolhido no e-mail): lê o arquivo aqui mesmo. Devolve se entrou. */
+  async function importarDoComputador(mes: string, f: File | undefined, origem?: 'email'): Promise<boolean> {
     if (!f) return false;
     setBusca({ mes, fase: 'lendo', texto: 'Lendo ' + f.name + '…', candidatos: [] });
-    try { guardar(mes, await lerRelatorio(f.name, await f.arrayBuffer()), f.name); return true; }
+    try { guardar(mes, await lerRelatorio(f.name, await f.arrayBuffer()), f.name, origem ? [{ nome: f.name, conteudo: f, origem }] : []); return true; }
     catch (e) { setBusca({ mes, fase: 'problema', texto: mensagemDeErro(e), candidatos: [] }); return false; }
   }
 
@@ -216,19 +228,20 @@ export function useCompetencia() {
     for (const m of [...lista]) {
       if (parar.current) break;
       const passo = (texto: string) => setBusca({ mes: m, fase: 'procurando', texto, candidatos: [] });
-      const rels: { rel: cr.RelatorioBanco; origem: string }[] = [];
-      const vistos = new Set<string>();
-      const usar = (rel: cr.RelatorioBanco, origem: string) => {
-        if (!cr.relatorioServeNoMes(rel, m, s.empresa.nome)) return false;
-        const a = cr.assinaturaDoRelatorio(rel);
-        if (!vistos.has(a)) { vistos.add(a); rels.push({ rel, origem }); }
-        return true;
+      // os que servem (formato, empresa e mês); no fim, juntos sem repetir título
+      const rels: { rel: cr.RelatorioBanco; origem: string; deOnde: DeOnde; paraODrive?: File }[] = [];
+      const usar = (rel: cr.RelatorioBanco, origem: string, deOnde: DeOnde, paraODrive?: File) => {
+        if (cr.relatorioServeNoMes(rel, m, s.empresa.nome)) rels.push({ rel, origem, deOnde, paraODrive });
       };
       // 1. o Drive: os arquivos do mês na RECEBIMENTO DE CLIENTES
       if (fontes.drive) passo('Procurando no Drive…');
       const b = cr.acharRelatorioNoDrive(pasta?.itens || [], pasta?.raiz || null, m);
       for (const a of fontes.drive ? b.candidatos.filter(c => c.daCompetencia).slice(0, cr.MAX_CANDIDATOS) : []) {
-        try { usar(await lerRelatorio(a.nome, await drive.baixar(a.id, a.nome)), 'Drive · ' + a.caminho); }
+        try {
+          const buf = await drive.baixar(a.id, a.nome);
+          const copia = new Blob([buf.slice(0)]);
+          usar(await lerRelatorio(a.nome, buf), 'Drive · ' + a.caminho, { nome: a.nome, conteudo: copia, origem: 'drive' });
+        }
         catch { /* outro formato: fica de fora */ }
       }
       // 2. o e-mail: os do contato do cliente e os que falam de liquidação no período
@@ -246,11 +259,18 @@ export function useCompetencia() {
           try {
             const buf = await drive.trazerDoEmail(a);
             // uma cópia: o leitor de PDF consome o buffer (a outra vai para o Drive)
-            if (usar(await lerRelatorio(a.nome, buf.slice(0)), 'E-mail · ' + a.nome)) await arquivarNoDrive(m, new File([buf], a.nome, { type: 'application/pdf' }));
+            usar(await lerRelatorio(a.nome, buf.slice(0)), 'E-mail · ' + a.nome, { nome: a.nome, conteudo: new Blob([buf.slice(0)]), origem: 'email' }, new File([buf], a.nome, { type: 'application/pdf' }));
           } catch { /* outro formato ou outra empresa: fica de fora */ }
         }
       }
-      if (rels.length) { guardar(m, cr.juntarRelatorios(rels.map(r => r.rel)), rels.map(r => r.origem).join(' · ')); achados.push(cr.rotuloCompetencia(m)); }
+      if (rels.length) {
+        // dois arquivos com títulos em comum ("SICOOB" e "SICOOB TV"): cada título uma vez só; o que não trouxe nada novo fica de fora
+        const j = cr.juntarSemRepetir(rels.map(r => r.rel));
+        const usados = j.usados.map(i => rels[i]);
+        guardar(m, j.relatorio, usados.map(r => r.origem).join(' · '), usados.map(r => r.deOnde));
+        for (const r of usados) if (r.paraODrive) await arquivarNoDrive(m, r.paraODrive);
+        achados.push(cr.rotuloCompetencia(m));
+      }
       else vazios.push(cr.rotuloCompetencia(m));
     }
     setBusca(PARADO);
@@ -266,6 +286,7 @@ export function useCompetencia() {
     });
     if (!ok) return;
     s.mudar(e => ({ ...e, relatorio: null, porMes: {}, origemBanco: '', decisoes: {}, passosFiscal: [], baixado: false, bancoConferido: false, razaoDaExclusao: undefined, alcancada: 0 }));
+    esquecerPuxado(chavePuxados);
     aviso({ tom: 'ok', titulo: 'Relatórios removidos', texto: 'Relatório de liquidação · todos os meses' });
   }
 
@@ -278,6 +299,7 @@ export function useCompetencia() {
     if (!ok) return;
     if (inteiro) s.mudar(e => ({ ...e, relatorio: null, porMes: {}, origemBanco: '', decisoes: {}, passosFiscal: [], baixado: false, bancoConferido: false, razaoDaExclusao: undefined, alcancada: 0 }));
     else s.relatorioDoMes(mes, null);
+    esquecerPuxado(chavePuxados, inteiro ? undefined : mes);
     aviso({ tom: 'ok', titulo: 'Importação excluída', texto: 'Relatório de liquidação' + (lote ? ' · ' + cr.rotuloCompetencia(mes) : '') });
   }
 
@@ -332,6 +354,8 @@ export function useCompetencia() {
         titulos: ts.map(t => ({ id: t.id, liquidacao: t.liquidacao, sacado: t.sacado, nf: t.nf, valor: t.valor, juros: t.mora + t.outros, desconto: t.desconto, cobrado: t.cobrado })),
         mes: m, rotulo: cr.rotuloCompetencia(m), carregado: !!r, origem: r?.origem || '', doDrive: !!r?.origem.startsWith('Drive'),
         ocupado: ocupado && busca.mes === m, texto: ocupado && busca.mes === m ? busca.texto : '',
+        /** o que foi puxado do Drive ou do e-mail neste mês (o olhinho abre) */
+        puxados: r ? puxados.filter(p => p.meses.includes(m)).map(p => ({ nome: p.nome, origem: p.origem, abrir: () => abrirPuxado(p) })) : [],
       };
     }),
     faltam: faltam.length,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AnexoDoEmail } from '../drive';
-import { candidatosDoEmail, periodoDaBuscaAutomatica, relatorioServeNoMes } from '../regras/automatico';
+import { candidatosDoEmail, juntarSemRepetir, periodoDaBuscaAutomatica, relatorioServeNoMes } from '../regras/automatico';
 import { cedenteDosTitulosPorPeriodo, formatoDoRelatorio, lerCarteiraDeCobranca, relatorioDaEmpresa } from './formatos';
 
 // as linhas como o pdf.js monta (linhasDosItens) do "Extrato de Movimentação da Carteira de Cobrança"
@@ -59,6 +59,20 @@ describe('o importar automático', () => {
       anexo('planilha.xlsx', 'títulos liquidados'),
     ], '2026-02', ['fin@volponi.com.br']);
     expect(r.map(a => a.nome)).toEqual(['TIT LIQUIDADOS SICOOB TV FEV2026.pdf', 'extrato.pdf']);
+  });
+
+  it('Sicoob e Bradesco contam; "títulos pagos" não (é o que a empresa pagou)', () => {
+    const r = candidatosDoEmail([anexo('relatorio sicoob fev.pdf'), anexo('Bradesco 02-2026.pdf'), anexo('TITULOS PAGOS BBDVCM FEV2026.pdf')], '2026-02', []);
+    expect(r.map(a => a.nome).sort()).toEqual(['Bradesco 02-2026.pdf', 'relatorio sicoob fev.pdf']);
+  });
+
+  it('dois relatórios do mês com títulos em comum: cada título uma vez', () => {
+    const a = lerCarteiraDeCobranca([PAGINA]);
+    const outra = PAGINA.map(l => l.replace('60140000002  NF 714', '60140000009  NF 715'));
+    const b = lerCarteiraDeCobranca([PAGINA, outra]);
+    const j = juntarSemRepetir([a, b]);
+    expect(j.usados).toEqual([1]);
+    expect(j.relatorio.grupos.flatMap(g => g.titulos).map(t => t.nf).sort()).toEqual(['NF 714', 'NF 715']);
   });
 
   it('o relatório serve: formato aceito, da empresa e com título no mês', () => {
