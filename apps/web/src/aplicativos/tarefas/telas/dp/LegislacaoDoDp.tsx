@@ -1,12 +1,14 @@
 // DP › Legislação (Vitor, 14/10/2026: "importa as legislações em uma aba no DP"): a lista dos assuntos (os do Toriba e os
 // cadastrados no nads), com a busca; clicar no assunto abre o texto legal (e as observações, quando há) na janela lateral,
 // como nas Configurações. O DP e o admin cadastram ("Nova legislação", no canto) e editam (o tópico Editar da janela).
-import { Icone } from '@nads/ui';
+import { Icone, useEntradaAnimada } from '@nads/ui';
 import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
 import { useLegislacaoDoDp, type TopicoDaLegislacao } from './useLegislacaoDoDp';
 
 export function LegislacaoDoDp() {
   const vm = useLegislacaoDoDp();
+  // o DP animado (14/10/2026): a lista entra em cascata ao abrir e ao buscar
+  const lista = useEntradaAnimada<HTMLDivElement>('tbody > tr', [vm.busca], 'lista');
   const l = vm.item;
   const r = vm.rascunho;
   const nova = !!r && !r.id;
@@ -38,7 +40,7 @@ export function LegislacaoDoDp() {
           <span className="badge badge-neutral">{vm.itens.length === vm.total ? vm.total : vm.itens.length + ' de ' + vm.total}</span>
         </div>
         {vm.itens.length ? (
-          <div className="table-wrap">
+          <div className="table-wrap" ref={lista}>
             <table className="dp-tabela">
               <thead><tr><th>Assunto</th><th>Cadastrada em</th></tr></thead>
               <tbody>

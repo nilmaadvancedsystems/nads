@@ -29,7 +29,7 @@ export function formatoDoRelatorio(linhas: readonly string[]): FormatoDoRelatori
   return null;
 }
 
-/** O cedente do "Títulos por Período": "Cedente: 232904 - TORNEARIA VOLPONI…" → "TORNEARIA VOLPONI…". */
+/** O cedente do "Títulos por Período": "Cedente: 100200 - EMPRESA EXEMPLO…" → "EMPRESA EXEMPLO…". */
 export function cedenteDosTitulosPorPeriodo(linhas: readonly string[]): string {
   for (const l of linhas) {
     const m = /cedente:\s*(?:\d+\s*-\s*)?(.+)$/i.exec(l.trim());
@@ -41,7 +41,7 @@ export function cedenteDosTitulosPorPeriodo(linhas: readonly string[]): string {
 const DATA = /^\d{2}\/\d{2}\/\d{4}$/;
 const VALOR = /^-?[\d.]+,\d{2}$/;
 
-/** Uma linha de título da carteira: "53500000005  NF610-B  AGROPECUARIA FORQUILHA  13/02/2026  09/02/2026  6.250,00  0,00  6.250,00  2". */
+/** Uma linha de título da carteira: "53500000005  NF100-B  CLIENTE DA CARTEIRA  13/02/2026  09/02/2026  6.250,00  0,00  6.250,00  2". */
 export function tituloDaCarteira(linha: string, id: number): Titulo | null {
   const p = linha.trim().split(/\s{2,}/);
   const datas = p.map((x, i) => (DATA.test(x) ? i : -1)).filter(i => i >= 0);
@@ -68,7 +68,7 @@ export function lerCarteiraDeCobranca(paginas: readonly (readonly string[])[]): 
   let cedente = '';
   let id = 1;
   for (const linhas of paginas) {
-    // o cedente: a linha depois da agência ("2557 / TAIOBEIRAS  7 / 5  8939 - 7 …"), no fim da página
+    // o cedente: a linha depois da agência ("1234 / CIDADE  7 / 5  1234 - 5 …"), no fim da página
     const ag = linhas.findIndex(l => /^ag[eê]ncia\s+raz[aã]o/i.test(l.trim()));
     if (!cedente && ag >= 0 && linhas[ag + 2] && /[a-z]/i.test(linhas[ag + 2])) cedente = linhas[ag + 2].trim();
     const ini = linhas.findIndex(l => /nosso n[uú]mero/i.test(l) && /data pagto/i.test(l));
@@ -105,8 +105,8 @@ const RUIDO = new Set(['ltda', 'me', 'epp', 'eireli', 'sa', 'cia', 'e', 'de', 'd
 const palavras = (s: string) => normalizarTexto(s).split(' ').filter(p => p.length >= 2 && !RUIDO.has(p));
 
 /**
- * O relatório é da empresa? Pelo cedente: ao menos 2/3 das palavras dele estão no nome da empresa ("TORNEARIA VOLPONI
- * INDUSTRIA E COMERCIO LTDA" sim; "VOLPONI CONSTRUCOES MECANICAS" não). Sem cedente: não dá para saber (false).
+ * O relatório é da empresa? Pelo cedente: ao menos 2/3 das palavras dele estão no nome da empresa ("EMPRESA EXEMPLO
+ * INDUSTRIA E COMERCIO LTDA" sim; "EXEMPLO CONSTRUCOES MECANICAS" não). Sem cedente: não dá para saber (false).
  */
 export function relatorioDaEmpresa(cedente: string | undefined, empresa: string): boolean {
   const ced = palavras(cedente || '');

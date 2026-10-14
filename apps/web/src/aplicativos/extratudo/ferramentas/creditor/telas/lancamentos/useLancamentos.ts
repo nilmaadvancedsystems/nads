@@ -48,7 +48,13 @@ export function useLancamentos() {
     fora: fora.map(t => ({ id: t.id, nf: t.nf, sacado: t.sacado, liquidacao: t.liquidacao, valor: cr.liquidoDoTitulo(t) })),
     /** o extrato que o Creditor obedece (Vitor, 14/10/2026): o banco, os títulos que ele não creditou e os créditos sem título */
     extrato: s.d.extrato,
-    semCredito: s.d.semCredito.map(t => ({ id: t.id, nf: t.nf, sacado: t.sacado, liquidacao: t.liquidacao, valor: cr.liquidoDoTitulo(t) })),
+    /** os sem crédito que vieram de um TD (o banco adiantou o dinheiro na liberação): a data e o valor da liberação */
+    descontados: s.d.semCredito.filter(t => s.d.descontados.has(t.id)).map(t => {
+      const td = s.d.descontados.get(t.id)!;
+      return { id: t.id, nf: t.nf, sacado: t.sacado, liquidacao: t.liquidacao, valor: cr.liquidoDoTitulo(t), td: td.data + ' · ' + cr.reais(td.valor) };
+    }),
+    /** os sem crédito que nenhum TD explica */
+    semCredito: s.d.semCredito.filter(t => !s.d.descontados.has(t.id)).map(t => ({ id: t.id, nf: t.nf, sacado: t.sacado, liquidacao: t.liquidacao, valor: cr.liquidoDoTitulo(t) })),
     creditosSemTitulo: s.d.creditosSemTitulo.map(c => ({ data: c.data, valor: c.valor, historico: c.historico })),
     divergentes: divergentes.map(f => f.data + ': diferença de ' + cr.reais(f.diferenca)),
     podeBaixar: lancamentos.length > 0 && divergentes.length === 0 && contasOk,

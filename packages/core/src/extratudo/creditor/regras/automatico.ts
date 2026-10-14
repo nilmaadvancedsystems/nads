@@ -84,8 +84,8 @@ export function relatorioServeNoMes(r: RelatorioBanco, mes: string, empresa: str
 const chaveDoTitulo = (t: Titulo) => t.nossoNumero + ':' + t.liquidacao + ':' + t.valor;
 
 /**
- * Junta os relatórios do mês sem repetir título (Vitor, 14/10/2026: janeiro da 58 veio em "TIT LIQUIDADOS SICOOB" e
- * "TIT LIQUIDADOS SICOOB TV"). O maior entra primeiro; dos outros, só os títulos novos (o grupo cortado perde os totais
+ * Junta os relatórios do mês sem repetir título (Vitor, 14/10/2026: um mês veio em dois arquivos do
+ * mesmo banco, com títulos em comum). O maior entra primeiro; dos outros, só os títulos novos (o grupo cortado perde os totais
  * impressos, que não valem mais). usados: os relatórios que trouxeram algum título (os índices, em ordem).
  */
 export function juntarSemRepetir(rels: readonly RelatorioBanco[]): { relatorio: RelatorioBanco; usados: number[] } {

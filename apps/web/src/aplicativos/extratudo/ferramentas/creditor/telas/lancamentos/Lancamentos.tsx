@@ -61,14 +61,33 @@ export function Lancamentos() {
       </div>
 
       {/* o Creditor obedece o extrato (14/10/2026): a relação embaixo, no lugar do aviso (Vitor: "coloca esse feedback em
-          uma relação embaixo nessa tela") — os títulos que o banco não creditou e os créditos sem título */}
+          uma relação embaixo nessa tela") — os descontados (TD), os que o banco não creditou e os créditos sem título */}
+      {vm.descontados.length > 0 && (
+        <div className="card">
+          <div className="card-head">
+            <h3>Títulos descontados (TD)</h3>
+            <span className="badge badge-neutral">{vm.descontados.length} {vm.descontados.length === 1 ? 'título' : 'títulos'} · {cr.reais(cr.somar(vm.descontados.map(t => t.valor)))}</span>
+          </div>
+          <p className="hint" style={{ margin: '0 0 8px' }}>O banco adiantou o dinheiro destes títulos na liberação do TD (CRÉD.LIBERAÇÃO TD) e ficou com o pagamento do cliente: não há crédito na liquidação, então ficam fora do arquivo.</p>
+          <div className="table-wrap" style={{ maxHeight: 'none' }}>
+            <table className="table-compact">
+              <thead><tr><th>Liquidação</th><th>NF</th><th>Cliente</th><th className="num">Valor</th><th>Liberação do TD</th></tr></thead>
+              <tbody>
+                {vm.descontados.map(t => (
+                  <tr key={t.id}><td>{t.liquidacao}</td><td>{t.nf}</td><td className="wrap">{t.sacado}</td><td className="num">{cr.reais(t.valor)}</td><td>{t.td}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
       {vm.semCredito.length > 0 && (
         <div className="card">
           <div className="card-head">
             <h3>Sem crédito no extrato{vm.extrato ? ' do ' + vm.extrato.banco : ''}</h3>
             <span className="badge badge-neutral">{vm.semCredito.length} {vm.semCredito.length === 1 ? 'título' : 'títulos'} · {cr.reais(cr.somar(vm.semCredito.map(t => t.valor)))}</span>
           </div>
-          <p className="hint" style={{ margin: '0 0 8px' }}>O banco não creditou estes títulos na conta (nenhum CRÉD.LIQ.COBRANÇA soma o valor): ficam fora do arquivo.</p>
+          <p className="hint" style={{ margin: '0 0 8px' }}>O banco não creditou estes títulos na conta (nenhum CRÉD.LIQ.COBRANÇA soma o valor, e não vieram de um TD): ficam fora do arquivo. Confira no extrato.</p>
           <div className="table-wrap" style={{ maxHeight: 'none' }}>
             <table className="table-compact">
               <thead><tr><th>Liquidação</th><th>NF</th><th>Cliente</th><th className="num">Valor</th></tr></thead>
