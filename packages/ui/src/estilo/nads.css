@@ -3872,3 +3872,18 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .cad-placar .saude-ponto{background:var(--success);}
 .cad-placar.atencao .saude-ponto{background:var(--warn);}
 .cad-placar b{font-size:14px;font-weight:600;}
+/* Senhas › Acesso por usuário: o cartão clica e mostra os logins ativos */
+.cofre-pessoas>li{display:flex;}
+button.cofre-pessoa{width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;}
+button.cofre-pessoa:hover{background:var(--hover-bg);}
+.cofre-pessoa.ativa{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;}
+.cofre-logins{margin:0 18px 18px;border:1px solid var(--border);border-radius:10px;}
+.cofre-logins-titulo{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;padding:12px 14px;border-bottom:1px solid var(--border);}
+.cofre-logins-titulo .fraco{font-size:12.5px;}
+.cofre-logins ul{list-style:none;margin:0;padding:0 14px;}
+.cofre-logins li{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--border);}
+.cofre-logins li:first-child{border-top:0;}
+.cofre-login-icone{flex:none;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--hover-bg);color:var(--ink-muted);}
+.cofre-login-icone svg{width:16px;height:16px;}
+.cofre-codigo-botoes{flex:none;display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;}
+.cofre-codigo-botoes svg{width:14px;height:14px;}

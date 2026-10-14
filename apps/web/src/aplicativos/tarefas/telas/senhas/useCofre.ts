@@ -133,11 +133,22 @@ export function useCofre() {
       toast(p.nome + ' liberado no cofre.');
     }),
     recusar: (p: c.ChaveDaPessoa) => tentar(() => repo.apagarChave(p.id)),
-    /** tira o acesso: o cofre troca de chave (quem saiu não abre mais nada) e sai um código de recuperação novo */
+    /** tira o acesso: apaga a cópia da chave dessa pessoa; o código de recuperação continua o mesmo (13/10/2026: "toda vez
+     *  que revogo um acesso o código reseta?" — trocar a chave e o código fica no Resetar a chave e o código) */
     tirarAcesso: (p: c.ChaveDaPessoa) => tentar(async () => {
       if (!aberta || !config || !eu) return;
-      const ok = await modal({ icone: 'alert', titulo: 'Tirar o acesso de ' + p.nome + '?', texto: 'O cofre troca de chave e sai um código de recuperação novo.',
+      const ok = await modal({ icone: 'alert', titulo: 'Tirar o acesso de ' + p.nome + '?', texto: 'Esse login deixa de abrir o cofre. O código de recuperação continua o mesmo; se precisar, use Resetar a chave e o código.',
         botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Tirar o acesso', valor: true, variante: 'btn-primary' }] });
+      if (!ok) return;
+      await repo.apagarChave(p.id);
+      toast('Acesso tirado.');
+    }),
+    /** troca a chave do cofre (quem já saiu não abre mais nada, nem com uma cópia antiga) e sai um código de recuperação
+     *  novo; quem tem acesso continua tendo */
+    resetarTudo: () => tentar(async () => {
+      if (!aberta || !config || !eu) return;
+      const ok = await modal({ icone: 'alert', titulo: 'Resetar a chave e o código?', texto: 'O cofre troca de chave e sai um código de recuperação novo. O código impresso deixa de valer; quem tem acesso continua tendo.',
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Resetar', valor: true, variante: 'btn-primary' }] });
       if (!ok) return;
       const nova = await c.novaChaveDoCofre();
       const versao = config.versao + 1;
@@ -146,13 +157,12 @@ export function useCofre() {
         const segredos = await c.decifrar<c.SegredosDaEmpresa>(aberta.chave, d);
         itens.push({ id: k, doc: { ...d, ...(await c.cifrar(nova, segredos)), versao } });
       }
-      const ficam = pessoas.filter(x => x.id !== p.id && x.trancada && x.versao === config.versao);
+      const ficam = pessoas.filter(x => x.trancada && x.versao === config.versao);
       const chaves = await Promise.all(ficam.map(async x => ({ id: x.id, trancada: await c.trancarPara(nova, x.publica) })));
       const codigo = c.novoCodigoDeRecuperacao();
       await repo.trocarChave({ ...config, versao, recuperacao: await c.trancarComCodigo(nova, codigo) }, chaves, itens);
-      await repo.apagarChave(p.id);
       abrirCom({ versao, chave: nova, dono: id });
-      await mostrarCodigo(codigo, 'Acesso tirado: o código de recuperação novo');
+      await mostrarCodigo(codigo, 'Chave trocada: o código de recuperação novo');
     }),
     novoCodigo: () => tentar(async () => {
       if (!aberta || !config) return;
