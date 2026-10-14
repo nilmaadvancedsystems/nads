@@ -223,7 +223,7 @@ function montarResultado(e: c.Empresa, p: c.FiltroMovimento, v: EstadoVerificar,
     const rc = c.resultadoDaConta(r, aba);
     return {
       ...base,
-      porConta: { conta, somaConta: rc.somaConta, pendencias: rc.pendencias, pendZero: c.diferencaZerada(rc.pendencias), dups: rc.dups, somaDups: soma(rc.dups), mais: rc.mais, somaMais: soma(rc.mais) },
+      porConta: { conta, somaConta: rc.somaConta, pendencias: rc.pendencias, pendZero: c.diferencaZerada(rc.pendencias), dups: rc.dups, somaDups: soma(rc.dups), mais: rc.mais, somaMais: soma(rc.mais), incorretas: rc.incorretas, somaIncorretas: soma(rc.incorretas), operacoesDaConta: r.operacoesDaConta || [] },
       todas: null,
     };
   }
@@ -238,6 +238,7 @@ function montarResultado(e: c.Empresa, p: c.FiltroMovimento, v: EstadoVerificar,
       faltando: c.linhasFaltando(r), somaFaltando: t.faltando,
       duplicadas: c.linhasDuplicadas(r), qtdDuplicadas: r.duplicada.length, somaDuplicadas: t.duplicadas,
       aMais: r.aMais.map(c.linhaDaTabela), somaAMais: t.aMais,
+      incorretas: c.operacaoIncorretaDe(r).map(c.linhaDaTabela), somaIncorretas: t.operacaoIncorreta, operacoesDaConta: r.operacoesDaConta || [],
       icms: r.icms.map(c.linhaDaTabela), somaIcms: t.icms,
       conferido: !!d.conta && c.verifEstado(e, p, d.conta.codigo) === 'conferido',
       podeConferir: c.podeConferir(e, d.codigos, [r.fonte || '']),

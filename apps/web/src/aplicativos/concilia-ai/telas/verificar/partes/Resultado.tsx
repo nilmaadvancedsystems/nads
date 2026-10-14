@@ -1,7 +1,7 @@
 // Card do resultado do Verificar por conta: abas por conta, resumo (.vc-resumo), "O que explica a
 // diferença" (.vc-comp), pendências (.vc-pend) e os botões. Origem: conferencia.html ~L1299-1308;
 // vcRenderResultado (~L4122-4205), vcComposicao (~L4110).
-import { formatos } from '@nads/core';
+import { type conferencia as c, formatos } from '@nads/core';
 import { baixarArquivo, Icone, Segmentado } from '@nads/ui';
 import { useEffect, useRef } from 'react';
 import type { useVerificarConta } from '../useVerificarConta';
@@ -50,6 +50,16 @@ export function Resultado({ vm, r }: { vm: Vm; r: Res }) {
   );
 }
 
+/** O a mais que é nota de outra operação (Vitor, 14/10/2026: o serviço prestado lançado na conta de tomados). */
+function SecaoIncorreta({ linhas, valor, daConta }: { linhas: c.LinhaTabela[]; valor: number; daConta: string[] }) {
+  return (
+    <SecaoVc titulo={'Operação incorreta (' + linhas.length + ')'} valor={valor}>
+      {daConta.length > 0 && <p className="hint">Notas de outra operação lançadas numa conta de {daConta.join(' / ')}.</p>}
+      <TabelaVc linhas={linhas} />
+    </SecaoVc>
+  );
+}
+
 /** Uma conta (várias contas): o relatório dela e o que sobrou nela; faltando fica em Todas. */
 function PorConta({ r, p }: { r: Res; p: NonNullable<Res['porConta']> }) {
   return (
@@ -62,10 +72,11 @@ function PorConta({ r, p }: { r: Res; p: NonNullable<Res['porConta']> }) {
         </div>
       </div>
       <div id="vcResultado">
-        {!p.dups.length && !p.mais.length ? <AlertaVerde titulo="Nenhuma pendência nessa conta" margem="16px 0 0" /> : (
+        {!p.dups.length && !p.mais.length && !p.incorretas.length ? <AlertaVerde titulo="Nenhuma pendência nessa conta" margem="16px 0 0" /> : (
           <div className="vc-pend">
             <div className="vc-pend-head"><h3>Pendências</h3></div>
             {p.dups.length > 0 && <SecaoVc titulo={'Duplicadas na conta (' + p.dups.length + ')'} valor={p.somaDups}><TabelaVc linhas={p.dups} /></SecaoVc>}
+            {p.incorretas.length > 0 && <SecaoIncorreta linhas={p.incorretas} valor={p.somaIncorretas} daConta={p.operacoesDaConta} />}
             {p.mais.length > 0 && <SecaoVc titulo={'A mais na conta (' + p.mais.length + ')'} valor={p.somaMais}><TabelaVc linhas={p.mais} /></SecaoVc>}
           </div>
         )}
@@ -119,6 +130,7 @@ function Todas({ vm, r, t }: { vm: Vm; r: Res; t: NonNullable<Res['todas']> }) {
             </div>
             {t.faltando.length > 0 && <SecaoVc titulo={'Faltando na conta (' + t.faltando.length + ')'} valor={t.somaFaltando}><TabelaFaltando linhas={t.faltando} /></SecaoVc>}
             {t.qtdDuplicadas > 0 && <SecaoVc titulo={'Duplicadas na conta (' + t.qtdDuplicadas + ')'} valor={t.somaDuplicadas}><TabelaVc linhas={t.duplicadas} /></SecaoVc>}
+            {t.incorretas.length > 0 && <SecaoIncorreta linhas={t.incorretas} valor={t.somaIncorretas} daConta={t.operacoesDaConta} />}
             {t.aMais.length > 0 && <SecaoVc titulo={'A mais na conta (' + t.aMais.length + ')'} valor={t.somaAMais}><TabelaVc linhas={t.aMais} /></SecaoVc>}
             {secaoIcms}
           </div>

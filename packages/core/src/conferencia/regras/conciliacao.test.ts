@@ -58,6 +58,10 @@ describe('podeConferir', () => {
   it('a descrição da natureza também conta', () => {
     expect(podeConferir(e, ['66015'], ['Locação de sistemas'])).toBe(true);
   });
+  it('telefone também (87529 — Telefone)', () => {
+    expect(podeConferir(empresa({ contas: [conta('87529', 'Telefone')] }), ['87529'])).toBe(true);
+    expect(podeConferir(e, ['66015'], ['Serviços de telecomunicação'])).toBe(true);
+  });
 });
 
 describe('quaisMarcarSozinho', () => {

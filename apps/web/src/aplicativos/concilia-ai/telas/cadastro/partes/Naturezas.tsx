@@ -60,7 +60,9 @@ function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
           à vista e a prazo — cada um com o nome na frente, para não confundir um com o outro (Vitor, 13/10/2026) */}
       <div style={LINHA}>
         <span style={ROTULO}>Conta contábil{it.semConta && <b className="ext-neg" style={{ marginLeft: 6, fontWeight: 600 }}>falta</b>}</span>
-      <div className="ndp-contas-row">
+      {/* ocupa o resto da linha: o campo de busca aberto cresce e a lista das contas cabe (Vitor, 14/10/2026: "Bugado",
+          a lista abria da largura do campo, com o nome espremido e o Vincular cortado) */}
+      <div className="ndp-contas-row" style={{ flex: '1 1 320px', minWidth: 0 }}>
         <ChipsDeContas v={it.vinculo} />
         {it.nao ? (
           <span className="vista-pill">

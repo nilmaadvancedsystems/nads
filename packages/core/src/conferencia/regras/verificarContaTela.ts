@@ -28,11 +28,13 @@ export function resumoServicoVerificar(e: Empresa, t: TipoServico, codigos: stri
 
 export interface ItemComposicao { rotulo: string; valor: number; zero: boolean }
 
-/** "O que explica a diferença": Faltando − Duplicadas − A mais − ICMS (e o que sobrar, à parte). */
+/** "O que explica a diferença": Faltando − Duplicadas − Operação incorreta − A mais − ICMS (e o que sobrar, à parte). */
 export function composicaoDiferenca(r: ResultadoVerificacao): ItemComposicao[] {
   const t = totaisVerificacao(r);
   const it = (rotulo: string, valor: number): ItemComposicao => ({ rotulo, valor, zero: Math.abs(valor) < ZERO_VC });
   const l = [it('Faltando na conta', t.faltando), it('Duplicadas na conta', t.duplicadas), it('A mais na conta', t.aMais), it('ICMS', t.icms)];
+  // de outra operação (Vitor, 14/10/2026): só aparece quando tem
+  if (Math.abs(t.operacaoIncorreta) >= ZERO_VC) l.splice(2, 0, it('Operação incorreta', t.operacaoIncorreta));
   if (Math.abs(t.semExplicacao) >= ZERO_VC) l.push(it('Sem explicação', t.semExplicacao));
   return l;
 }

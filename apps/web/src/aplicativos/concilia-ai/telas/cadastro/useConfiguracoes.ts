@@ -283,7 +283,7 @@ export function useConfiguracoes() {
           info: r.qtd.vista + ' nota' + (r.qtd.vista === 1 ? '' : 's') + ' à vista e ' + r.qtd.prazo + ' nota' + (r.qtd.prazo === 1 ? '' : 's') + ' a prazo',
         };
       }
-      return { k, titulo: c.tituloDoGrupo(gr), nao, vinculo: vinculo(k), podeNaoContabil: !ligadas.length, semConta: !ligadas.length && !nao, vista: linhaVista };
+      return { k, titulo: c.tituloDoGrupo(gr), nao, vinculo: vinculo(k), podeNaoContabil: !ligadas.length, semConta: !ligadas.length && !nao && Math.abs(c.somaValores(gr.itens)) >= 0.005, vista: linhaVista };
     });
     return {
       titulo: t === 'Entrada' ? 'Naturezas de entrada' : 'Naturezas de saída',
