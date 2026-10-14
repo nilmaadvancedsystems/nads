@@ -5,6 +5,7 @@ export * from './regras/numeros';
 export * from './regras/conferencia';
 export * from './regras/cruzamento';
 export * from './regras/lancamentos';
+export * from './regras/extrato';
 export * from './regras/balancete';
 export * from './regras/cadastro';
 export * from './regras/aprendizado';

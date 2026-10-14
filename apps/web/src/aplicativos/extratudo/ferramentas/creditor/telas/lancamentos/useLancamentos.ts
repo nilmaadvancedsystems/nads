@@ -46,6 +46,10 @@ export function useLancamentos() {
       desconto: cr.somar(lancamentos.filter(l => l.tipo === 'desconto').map(l => l.valor)),
     },
     fora: fora.map(t => ({ id: t.id, nf: t.nf, sacado: t.sacado, liquidacao: t.liquidacao, valor: cr.liquidoDoTitulo(t) })),
+    /** o extrato que o Creditor obedece (Vitor, 14/10/2026): o banco, os títulos que ele não creditou e os créditos sem título */
+    extrato: s.d.extrato,
+    semCredito: s.d.semCredito.map(t => ({ id: t.id, nf: t.nf, sacado: t.sacado, liquidacao: t.liquidacao, valor: cr.liquidoDoTitulo(t) })),
+    creditosSemTitulo: s.d.creditosSemTitulo.map(c => c.data + ' · ' + cr.reais(c.valor)),
     divergentes: divergentes.map(f => f.data + ': diferença de ' + cr.reais(f.diferenca)),
     podeBaixar: lancamentos.length > 0 && divergentes.length === 0 && contasOk,
     /** baixar conclui: as contas sugeridas passam a ser salvas e os clientes conciliados são aprendidos */

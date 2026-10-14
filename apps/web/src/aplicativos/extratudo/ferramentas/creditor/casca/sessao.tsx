@@ -3,11 +3,12 @@
 // do que foi salvo nela (dados/repo.tsx), ao vivo. A conta de cada cliente vem da conta aprendida ou do
 // balancete (sem arquivo do sistema nem Conferência dos grupos desde 2026-09-29; o banco manda).
 // Também mora aqui a trava das etapas: uma etapa só abre quando a anterior está resolvida.
-import { creditor as cr } from '@nads/core';
+import { creditor as cr, extrator as x } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useContasDaEmpresa, useDrive } from '../dados/repo';
+import { useCadastroDaEmpresa, useEmpresa } from '../../extrator/dados/repo';
 import { useSaidasDaConferencia } from '../../../../concilia-ai/importadosNaEtapa';
 import { caminhoDaEtapa, ETAPAS, indiceDaEtapa, type Etapa, type IdEtapa } from './navegacao';
 
@@ -61,19 +62,38 @@ export interface Derivado {
   aprendidas: number[];
   /** os títulos de cliente fora do balancete (sem conta ou com a conta aprendida assim): a etapa Contas */
   semConta: cr.Cruzamento[];
+  /** o extrato da conta banco que o Creditor obedece (null = não tem extrato importado no período: vale o relatório) */
+  extrato: { banco: string; meses: string[] } | null;
+  /** os títulos do relatório que o banco não creditou (sem CRÉD.LIQ.COBRANÇA no extrato): fora do arquivo */
+  semCredito: cr.Titulo[];
+  /** os CRÉD.LIQ.COBRANÇA do extrato que nenhum título do relatório explica (o total fica no Alterdata) */
+  creditosSemTitulo: cr.CreditoDeLiquidacao[];
 }
 
-export function derivar(e: Estado, contas: cr.ContasCreditor, aprendidos: cr.ClientesAprendidos, clientes: readonly cr.ContaDoBalancete[], porNf?: ReadonlyMap<string, readonly cr.ContaDaNota[]>): Derivado {
-  const titulos = e.relatorio ? e.relatorio.grupos.flatMap(g => g.titulos) : [];
-  const conferido = titulos.length > 0;
+/** O extrato da conta banco no período: os meses que têm extrato e os créditos de liquidação. */
+export interface ExtratoDoCreditor { banco: string; meses: string[]; creditos: cr.CreditoDeLiquidacao[] }
+
+export function derivar(e: Estado, contas: cr.ContasCreditor, aprendidos: cr.ClientesAprendidos, clientes: readonly cr.ContaDoBalancete[], porNf?: ReadonlyMap<string, readonly cr.ContaDaNota[]>, extrato?: ExtratoDoCreditor | null): Derivado {
+  const todos = e.relatorio ? e.relatorio.grupos.flatMap(g => g.titulos) : [];
+  const conferido = todos.length > 0;
+  // o Creditor obedece o extrato (Vitor, 14/10/2026): só entra o título que o banco creditou, na data do crédito
+  const casamento = extrato && todos.length ? cr.casarComExtrato(todos, extrato.creditos, extrato.meses) : null;
+  const semCredito = casamento?.semCredito || [];
+  const tirados = new Set(semCredito.map(t => t.id));
+  const titulos = todos.filter(t => !tirados.has(t.id));
   const cruzamentos = cr.cruzarPeloBalancete(titulos, clientes, aprendidos, porNf);
   const auto = cr.decisoesAprendidas(titulos, cruzamentos, aprendidos, e.decisoes);
   const decisoes = { ...auto, ...e.decisoes };
   const pendentes = cr.pendentes(cruzamentos, decisoes);
-  const lancamentos = cr.gerarLancamentos(titulos, cruzamentos, decisoes, contas);
+  const lancamentos = cr.gerarLancamentos(titulos, cruzamentos, decisoes, contas, casamento?.dataDoCredito);
   const fora = cr.titulosFora(titulos, cruzamentos, decisoes);
-  const fechamento = e.relatorio ? cr.fecharPorDia(e.relatorio.grupos, lancamentos, fora, contas) : [];
-  return { titulos, conferido, cruzamentos, pendentes, lancamentos, fora, fechamento, decisoes, aprendidas: Object.keys(auto).map(Number), semConta: cruzamentos.filter(c => c.situacao === 'nao-encontrada' || (c.aprendida && c.foraDoBalancete)) };
+  const fechamento = casamento ? cr.fecharPeloExtrato(casamento, lancamentos, fora, contas) : e.relatorio ? cr.fecharPorDia(e.relatorio.grupos, lancamentos, fora, contas) : [];
+  return {
+    titulos, conferido, cruzamentos, pendentes, lancamentos, fora, fechamento, decisoes, aprendidas: Object.keys(auto).map(Number),
+    semConta: cruzamentos.filter(c => c.situacao === 'nao-encontrada' || (c.aprendida && c.foraDoBalancete)),
+    extrato: extrato ? { banco: extrato.banco, meses: extrato.meses } : null, semCredito,
+    creditosSemTitulo: casamento ? casamento.creditos.filter(c => !c.titulos.length).map(c => c.credito) : [],
+  };
 }
 
 /** A etapa já pode abrir? (o que ela precisa das anteriores) */
@@ -171,7 +191,22 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
   // a conta pela NF no relatório de Saídas importado na Tarefa (a Conferência da empresa; só lê)
   const saidas = useSaidasDaConferencia(empresa.nome);
   const porNf = useMemo(() => cr.contasPorNf(saidas || []), [saidas]);
-  const d = useMemo(() => derivar(estado, resolvidas.contas, clientes, contasClientes, porNf), [estado, resolvidas, clientes, contasClientes, porNf]);
+  // o extrato da conta banco (o banco do Cadastro ligado a ela, como na Exclusão), nos meses do período
+  const emp = useEmpresa(empresa.nome);
+  const { cadastro } = useCadastroDaEmpresa(empresa.nome, empresa.codigo);
+  const contaBanco = resolvidas.contas.banco;
+  const extrato = useMemo<ExtratoDoCreditor | null>(() => {
+    const meses = cr.mesesDaCompetencia(estado.competencia);
+    if (!meses.length) return null;
+    const { bancos, primeiro } = x.bancosDaEmpresaNa(emp, cadastro, empresa.codigo, meses[meses.length - 1]);
+    const ligado = cadastro?.bancos?.find(b => b.contaContabil === contaBanco)?.id;
+    const banco = bancos.find(b => b.id === ligado) || (bancos.length === 1 ? bancos[0] : null);
+    if (!banco) return null;
+    const porMes = meses.map(m => ({ m, ls: x.arquivosDoBanco(emp, banco.id, primeiro, 'banco', m).flatMap(a => a.lancamentos.filter(l => l.data.startsWith(m))) }));
+    const comExtrato = porMes.filter(p => p.ls.length).map(p => p.m);
+    return comExtrato.length ? { banco: banco.nome, meses: comExtrato, creditos: cr.creditosDeLiquidacao(porMes.flatMap(p => p.ls)) } : null;
+  }, [emp, cadastro, empresa.codigo, estado.competencia, contaBanco]);
+  const d = useMemo(() => derivar(estado, resolvidas.contas, clientes, contasClientes, porNf, extrato), [estado, resolvidas, clientes, contasClientes, porNf, extrato]);
 
   const podeAbrir = useCallback((id: IdEtapa) => indiceDaEtapa(id) <= estado.alcancada && requisitos(id, estado, d), [estado, d]);
 
