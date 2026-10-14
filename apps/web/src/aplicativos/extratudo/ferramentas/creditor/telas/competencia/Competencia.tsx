@@ -1,6 +1,7 @@
 // Etapa 1 do Creditor, no visual da Importação (Vitor, 05/10/2026: "o mesmo visual de importação de Drive, de
-// competências"): em cima, a competência (um mês, ou vários pelo Em lote) e quantos relatórios; embaixo, uma linha de
-// relatório de liquidação por mês, com o ícone de importar (do computador ou do Drive). Importado, o check (ou o logo
+// competências"): em cima, a competência (um mês, ou vários pelo Em lote) e quantos relatórios; embaixo, a linha do
+// relatório de liquidação com o ícone de importar (do computador ou do Drive) — com vários meses, um bloco só com a grade
+// dos meses, como na Importação (Vitor, 14/10/2026). Importado, o check (ou o logo
 // do Drive) que exclui, o resumo no meio e a seta com os títulos. Com todos os meses, o Próximo (ao lado do Cancelar) segue para o Relatório de Recebimento
 // (Vitor, 05/10/2026: a Competência e o Relatório do banco eram a mesma tela; ficou só esta).
 import { creditor as cr } from '@nads/core';
@@ -9,6 +10,7 @@ import { useRef, useState } from 'react';
 import { BotaoGoogle } from '../../../../../../comum/BotaoGoogle';
 import { useCompetencia } from './useCompetencia';
 import { BotaoDeTeste } from '../../../../../../comum/BotaoDeTeste';
+import { useColunaAjustavel } from '../../../../../../comum/GradeDosMeses';
 
 type VM = ReturnType<typeof useCompetencia>;
 
@@ -31,7 +33,9 @@ export function Competencia() {
       </div>
 
       <div className="imp-lista">
-        {vm.linhas.map(l => <LinhaDoRelatorio key={l.mes} vm={vm} l={l} comDrive={comDrive} />)}
+        {/* com mais de um mês, a grade dos meses (como na Importação); com um, a linha do mês */}
+        {vm.linhas.length > 1 ? <RelatoriosDoPeriodo vm={vm} comDrive={comDrive} />
+          : vm.linhas.map(l => <LinhaDoRelatorio key={l.mes} vm={vm} l={l} comDrive={comDrive} />)}
       </div>
       {vm.avisos.length > 0 && (
         <Alerta titulo="Confira">
@@ -137,9 +141,8 @@ function SeletorDaCompetencia({ vm }: { vm: VM }) {
   return vm.travada ? <span className="seletor-travado" inert aria-disabled="true">{menu}</span> : menu;
 }
 
-/** Uma linha: o relatório de liquidação de um mês (sem o mês quando é um só). */
+/** Uma linha: o relatório de liquidação de um mês (o período com um mês só). */
 function LinhaDoRelatorio({ vm, l, comDrive }: { vm: VM; l: VM['linhas'][number]; comDrive: boolean }) {
-  const arquivo = useRef<HTMLInputElement>(null);
   const [aberta, setAberta] = useState(false);
   const temTitulos = l.titulos.length > 0;
   return (
@@ -151,55 +154,113 @@ function LinhaDoRelatorio({ vm, l, comDrive }: { vm: VM; l: VM['linhas'][number]
         </button>
         <span className="imp-ico imp-logo"><Icone nome="recibo" /></span>
         <div className="imp-txt">
-          <span><b>Relatório de liquidação</b>{vm.lote && <span className="imp-conta">{l.rotulo}</span>}</span>
+          <span><b>Relatório de liquidação</b></span>
         </div>
         <div className="imp-resumo">{l.ocupado ? <div><span>{l.texto}</span></div> : l.resumo.length > 0 && <div>{l.resumo.map(t => <span key={t}>{t}</span>)}</div>}</div>
         <div className="imp-grupos">
-          {l.carregado ? (
-            <>
-              {/* importado: o check (ou o logo do Drive) que, com o mouse em cima, vira o × e exclui — igual à Importação */}
-              <div className="imp-grupo" aria-label="Relatório de liquidação">
-                <span className="imp-rotulo">Relatório</span>
-                <button type="button" className={'icon-btn icon-btn-sm imp-btn imp-feito' + (l.doDrive ? ' imp-feito-drive' : '')} onClick={() => vm.excluir(l.mes)}
-                  disabled={vm.ocupado} title={'Importado: ' + l.origem + '. Clique para excluir.'} aria-label={'Excluir o relatório de liquidação ' + l.rotulo}>
-                  {l.doDrive ? <span className="imp-feito-ok"><LogoDrive cor /></span> : <Icone nome="check" className="imp-feito-ok" />}
-                  <Icone nome="x" className="imp-feito-x" />
-                </button>
-              </div>
-            </>
-          ) : l.ocupado ? (
-            <span className="btn-spinner" aria-label={l.texto} />
-          ) : (
-            <div className="imp-grupo" aria-label="Relatório de liquidação">
-              <span className="imp-rotulo">Relatório</span>
-              {vm.teste && <BotaoDeTeste desabilitado={vm.ocupado} itens={[{ rotulo: 'Relatório de liquidação de exemplo', onClick: () => vm.exemplo(l.mes) }]} />}
-              {/* só o ícone de importar; clicou, as opções (como o extrato na Importação) */}
-              <MenuSuspenso rotulo="" icone="upload" className="gh-topo-btn gh-topo-menu imp-mes-menu" direita dica={'Importar o relatório de liquidação' + (vm.lote ? ' de ' + l.rotulo : '')}
-                conteudo={fechar => (
-                  <>
-                    <button type="button" className="popover-item" role="menuitem" disabled={vm.ocupado} onClick={() => { fechar(); arquivo.current?.click(); }}>
-                      <Icone nome="upload" /><span className="popover-texto">Importar do computador</span>
-                    </button>
-                    {comDrive && (
-                      <button type="button" className="popover-item" role="menuitem" disabled={vm.ocupado} onClick={() => { fechar(); vm.buscarNoDrive(l.mes); }}>
-                        <LogoDrive cor /><span className="popover-texto">Buscar no Drive</span>
-                      </button>
-                    )}
-                    {vm.exemplos && (
-                      <button type="button" className="popover-item" role="menuitem" disabled={vm.ocupado} onClick={() => { fechar(); vm.exemplo(l.mes); }}>
-                        <Icone nome="fileText" /><span className="popover-texto">Testar com o exemplo</span>
-                      </button>
-                    )}
-                  </>
-                )} />
-              <input ref={arquivo} type="file" accept=".pdf,.txt,.xls,.xlsx,.csv" className="sr-only" tabIndex={-1} aria-hidden="true"
-                onChange={ev => { const f = ev.target.files?.[0]; ev.target.value = ''; vm.importarDoComputador(l.mes, f); }} />
-            </div>
-          )}
+          <div className="imp-grupo" aria-label="Relatório de liquidação">
+            <span className="imp-rotulo">Relatório</span>
+            <CelulaDoRelatorio vm={vm} l={l} comDrive={comDrive} direita />
+          </div>
         </div>
       </div>
       {aberta && temTitulos && <Titulos titulos={l.titulos} />}
     </div>
+  );
+}
+
+/**
+ * Vários meses (Vitor, 14/10/2026: "aquele layout de vários meses", o da Importação): um bloco só, com a grade dos meses —
+ * cada mês numa coluna, com o importar (do computador, do Drive) ou o check que exclui; clicar no mês abre os títulos dele.
+ */
+function RelatoriosDoPeriodo({ vm, comDrive }: { vm: VM; comDrive: boolean }) {
+  const [mesAberto, setMesAberto] = useState<string | null>(null);
+  const grade = useColunaAjustavel('creditor-relatorios', '96px', vm.linhas.length);
+  const carregados = vm.linhas.filter(l => l.carregado);
+  const titulos = vm.linhas.flatMap(l => l.titulos);
+  const aberto = vm.linhas.find(l => l.mes === mesAberto && l.titulos.length > 0) || null;
+  const ocupado = vm.linhas.find(l => l.ocupado);
+  return (
+    <div className={'imp-bloco' + (carregados.length === vm.linhas.length ? ' imp-ok' : '')}>
+      <div className="imp-linha">
+        <span className="imp-ico imp-logo"><Icone nome="recibo" /></span>
+        <div className="imp-txt">
+          <span><b>Relatório de liquidação</b><span className="imp-conta">{carregados.length} de {vm.linhas.length} meses</span></span>
+        </div>
+        <div className="imp-resumo">
+          {ocupado ? <div><span>{ocupado.texto}</span></div>
+            : titulos.length > 0 && <div><span>{titulos.length + (titulos.length === 1 ? ' título' : ' títulos')}</span><span>{'Liquidado ' + cr.reais(cr.somar(titulos.map(t => t.valor)))}</span></div>}
+        </div>
+      </div>
+      <div className="imp-periodo-linha">
+        <table className="imp-meses" style={grade.tabela}>
+          <colgroup><col style={{ width: grade.largura }} /></colgroup>
+          <thead>
+            <tr>
+              <th scope="col"><span className="sr-only">Mês</span>{grade.alca}</th>
+              {vm.linhas.map(l => (
+                <th key={l.mes} scope="col" className={l.mes === mesAberto ? 'atual' : undefined}>
+                  <button type="button" className="imp-meses-mes" aria-current={l.mes === mesAberto ? 'true' : undefined} disabled={!l.titulos.length}
+                    onClick={() => setMesAberto(m => (m === l.mes ? null : l.mes))}
+                    title={l.titulos.length ? (l.mes === mesAberto ? 'Fechar os títulos' : 'Ver os títulos de ' + l.rotulo) : l.rotulo}>{l.rotulo}</button>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Relatório</th>
+              {vm.linhas.map((l, n) => (
+                <td key={l.mes} className={l.mes === mesAberto ? 'atual' : undefined} title={l.resumo.join(' · ') || undefined}>
+                  <CelulaDoRelatorio vm={vm} l={l} comDrive={comDrive} direita={n >= vm.linhas.length / 2} />
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      {aberto && <Titulos titulos={aberto.titulos} />}
+    </div>
+  );
+}
+
+/** O relatório de um mês: importado, o check (ou o logo do Drive) que vira o × e exclui; lendo, a rodinha; senão, o importar. */
+function CelulaDoRelatorio({ vm, l, comDrive, direita }: { vm: VM; l: VM['linhas'][number]; comDrive: boolean; direita: boolean }) {
+  const arquivo = useRef<HTMLInputElement>(null);
+  if (l.carregado) {
+    return (
+      <button type="button" className={'icon-btn icon-btn-sm imp-btn imp-feito' + (l.doDrive ? ' imp-feito-drive' : '')} onClick={() => vm.excluir(l.mes)}
+        disabled={vm.ocupado} title={'Importado: ' + l.origem + '. Clique para excluir.'} aria-label={'Excluir o relatório de liquidação ' + l.rotulo}>
+        {l.doDrive ? <span className="imp-feito-ok"><LogoDrive cor /></span> : <Icone nome="check" className="imp-feito-ok" />}
+        <Icone nome="x" className="imp-feito-x" />
+      </button>
+    );
+  }
+  if (l.ocupado) return <span className="icon-btn icon-btn-sm imp-btn" title={l.texto}><span className="btn-spinner" /></span>;
+  return (
+    <>
+      {vm.teste && <BotaoDeTeste desabilitado={vm.ocupado} itens={[{ rotulo: 'Relatório de liquidação de exemplo', onClick: () => vm.exemplo(l.mes) }]} />}
+      {/* só o ícone de importar; clicou, as opções (como o extrato na Importação) */}
+      <MenuSuspenso rotulo="" icone="upload" className="gh-topo-btn gh-topo-menu imp-mes-menu" direita={direita} dica={'Importar o relatório de liquidação' + (vm.lote ? ' de ' + l.rotulo : '')}
+        conteudo={fechar => (
+          <>
+            <button type="button" className="popover-item" role="menuitem" disabled={vm.ocupado} onClick={() => { fechar(); arquivo.current?.click(); }}>
+              <Icone nome="upload" /><span className="popover-texto">Importar do computador</span>
+            </button>
+            {comDrive && (
+              <button type="button" className="popover-item" role="menuitem" disabled={vm.ocupado} onClick={() => { fechar(); vm.buscarNoDrive(l.mes); }}>
+                <LogoDrive cor /><span className="popover-texto">Buscar no Drive</span>
+              </button>
+            )}
+            {vm.exemplos && (
+              <button type="button" className="popover-item" role="menuitem" disabled={vm.ocupado} onClick={() => { fechar(); vm.exemplo(l.mes); }}>
+                <Icone nome="fileText" /><span className="popover-texto">Testar com o exemplo</span>
+              </button>
+            )}
+          </>
+        )} />
+      <input ref={arquivo} type="file" accept=".pdf,.txt,.xls,.xlsx,.csv" className="sr-only" tabIndex={-1} aria-hidden="true"
+        onChange={ev => { const f = ev.target.files?.[0]; ev.target.value = ''; vm.importarDoComputador(l.mes, f); }} />
+    </>
   );
 }
 
