@@ -101,3 +101,10 @@ describe('naturezasSemConta (o pontinho vermelho do Cadastro)', () => {
     expect(naturezasSemConta(empresa({ contas: base.contas }))).toEqual([]);
   });
 });
+
+describe('naturezasSemConta: a zerada não precisa de conta', () => {
+  it('a natureza com valor zero (não teve movimento) fica de fora', () => {
+    const e = empresa({ contas: [conta('10', 'Fornecedores')], saidas: [nota('5102', 'S', 0, '1'), nota('5405', 'S', 300, '2')] });
+    expect(naturezasSemConta(e, 'Saída').length).toBe(1);
+  });
+});
