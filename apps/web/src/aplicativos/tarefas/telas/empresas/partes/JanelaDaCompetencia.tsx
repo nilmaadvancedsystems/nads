@@ -17,9 +17,18 @@ const menosMovimento = () => typeof window.matchMedia === 'function' && window.m
 // 14/10/2026 ("melhora a animação"): molas no lugar das curvas fixas (chegam com um leve balanço e param macio), a cascata
 // dos meses sai do mês escolhido como uma onda pela grade, a pílula estica para o lado em que anda, o mês clicado dá um
 // toque, o ano troca deslizando e o Abrir fecha a janela antes de seguir.
-const MOLA = spring({ bounce: 0.28, duration: 340 });
-const MOLA_FIRME = spring({ bounce: 0.18, duration: 280 });
+// uma mola nova por animação (no animejs a mola guarda a animação dela: repartida, a segunda trava a primeira)
+const MOLA = () => spring({ bounce: 0.28, duration: 340 });
+const MOLA_FIRME = () => spring({ bounce: 0.18, duration: 280 });
 const limpar = { onComplete: (a: JSAnimation) => { cleanInlineStyles(a); } };
+/**
+ * A garantia: aberta com a aba em segundo plano (ou o navegador sem desenhar quadros), a animação pode não andar e a
+ * janela ficaria apagada. Passado o tempo dela com folga, o que não terminou vai direto ao fim e o estilo dela sai.
+ */
+const garantir = (a: JSAnimation, ainda: () => boolean = () => true) => {
+  window.setTimeout(() => { if (!a.completed && ainda()) { a.complete(); cleanInlineStyles(a); } }, 1200);
+  return a;
+};
 const meses = (g: HTMLElement | null) => [...(g?.querySelectorAll<HTMLButtonElement>('.comp-mes') ?? [])];
 
 const CURTOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -55,10 +64,10 @@ export function JanelaDaCompetencia({ competencias, competencia, onSeguir }: {
   useLayoutEffect(() => {
     const el = caixa.current;
     if (!el || menosMovimento()) return;
-    animate(el, { opacity: { to: [0, 1], duration: 160, ease: 'outQuad' }, scale: [0.94, 1], translateY: [12, 0], ease: MOLA, ...limpar });
+    garantir(animate(el, { opacity: { to: [0, 1], duration: 160, ease: 'outQuad' }, scale: [0.94, 1], translateY: [12, 0], ease: MOLA(), ...limpar }));
     const bs = meses(grade.current);
     const daqui = Math.max(0, bs.findIndex(b => b.dataset.mes === c));
-    if (bs.length) animate(bs, { opacity: { from: 0 } /* até a de repouso (a do CSS: o mês que ainda não começou fica apagado) */, scale: [0.82, 1], translateY: [6, 0], delay: stagger(22, { grid: [3, 4], from: daqui, start: 50 }), ease: MOLA, ...limpar });
+    if (bs.length) garantir(animate(bs, { opacity: { from: 0 } /* até a de repouso (a do CSS: o mês que ainda não começou fica apagado) */, scale: [0.82, 1], translateY: [6, 0], delay: stagger(22, { grid: [3, 4], from: daqui, start: 50 }), ease: MOLA(), ...limpar }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -87,13 +96,16 @@ export function JanelaDaCompetencia({ competencias, competencia, onSeguir }: {
       if (!dx && !dy) return;
       const deitada = dx >= dy;
       andando.current = animate(p, {
-        translateX: [m.m41, x], translateY: [m.m42, y], ease: MOLA,
+        translateX: [m.m41, x], translateY: [m.m42, y], ease: MOLA(),
         scaleX: deitada ? [{ to: 1.14, duration: 110, ease: 'outQuad' }, { to: 1, duration: 260, ease: 'outBack(2)' }] : 1,
         scaleY: deitada ? 1 : [{ to: 1.1, duration: 110, ease: 'outQuad' }, { to: 1, duration: 260, ease: 'outBack(2)' }],
       });
+      const esta = andando.current;
+      garantir(esta, () => andando.current === esta);
     } else {
       utils.set(p, { translateX: x, translateY: y, scaleX: 1, scaleY: 1 });
-      andando.current = animate(p, { opacity: { to: [0, 1], duration: 160, ease: 'outQuad' }, scale: [0.6, 1], delay: antes === null && primeiraVez.current ? 90 + 22 * 2 : 40, ease: MOLA });
+      const esta = animate(p, { opacity: { to: [0, 1], duration: 160, ease: 'outQuad' }, scale: [0.6, 1], delay: antes === null && primeiraVez.current ? 90 + 22 * 2 : 40, ease: MOLA() });
+      andando.current = garantir(esta, () => andando.current === esta);
     }
   }, [c, ano]);
 
@@ -102,9 +114,9 @@ export function JanelaDaCompetencia({ competencias, competencia, onSeguir }: {
     const d = sentido.current;
     sentido.current = 0;
     if (!d || menosMovimento()) return;
-    if (numAno.current) animate(numAno.current, { opacity: { to: [0, 1], duration: 140, ease: 'outQuad' }, translateX: [d * 14, 0], ease: MOLA_FIRME, ...limpar });
+    if (numAno.current) animate(numAno.current, { opacity: { to: [0, 1], duration: 140, ease: 'outQuad' }, translateX: [d * 14, 0], ease: MOLA_FIRME(), ...limpar });
     const bs = meses(grade.current);
-    if (bs.length) animate(bs, { opacity: { from: 0 } /* até a de repouso (a do CSS: o mês que ainda não começou fica apagado) */, translateX: [d * 18, 0], delay: stagger(30, { grid: [3, 4], from: d > 0 ? 'first' : 'last', axis: 'x' }), ease: MOLA_FIRME, ...limpar });
+    if (bs.length) garantir(animate(bs, { opacity: { from: 0 } /* até a de repouso (a do CSS: o mês que ainda não começou fica apagado) */, translateX: [d * 18, 0], delay: stagger(30, { grid: [3, 4], from: d > 0 ? 'first' : 'last', axis: 'x' }), ease: MOLA_FIRME(), ...limpar }));
   }, [ano]);
 
   // o texto do rodapé troca sem pulo: o novo chega de 3 px abaixo, acendendo (o Abrir fica parado à direita)
@@ -112,14 +124,14 @@ export function JanelaDaCompetencia({ competencias, competencia, onSeguir }: {
     if (primeiraVez.current) { primeiraVez.current = false; return; }
     const el = rodape.current;
     if (!el || menosMovimento()) return;
-    animate(el, { opacity: { to: [0, 1], duration: 140, ease: 'outQuad' }, translateY: [6, 0], ease: MOLA_FIRME, ...limpar });
+    animate(el, { opacity: { to: [0, 1], duration: 140, ease: 'outQuad' }, translateY: [6, 0], ease: MOLA_FIRME(), ...limpar });
   }, [c]);
 
   const escolher = (v: string) => {
     setC(v);
     // o toque no mês: o texto afunda um pouco e volta na mola
     const b = grade.current?.querySelector<HTMLElement>('[data-mes="' + v + '"]');
-    if (b && !menosMovimento()) animate(b, { scale: [0.9, 1], ease: MOLA, ...limpar });
+    if (b && !menosMovimento()) animate(b, { scale: [0.9, 1], ease: MOLA(), ...limpar });
   };
   // o Abrir: a janela encolhe e some (150 ms) e só então segue; o fundo some junto
   const saindo = useRef(false);
@@ -130,7 +142,10 @@ export function JanelaDaCompetencia({ competencias, competencia, onSeguir }: {
     if (!el || menosMovimento()) { onSeguir(v); return; }
     const fundo = el.parentElement;
     if (fundo) animate(fundo, { opacity: 0, duration: 160, ease: 'inQuad' });
-    animate(el, { opacity: 0, scale: 0.96, translateY: 6, duration: 150, ease: 'inQuad', onComplete: () => onSeguir(v) });
+    let foi = false;
+    const ir = () => { if (!foi) { foi = true; onSeguir(v); } };
+    animate(el, { opacity: 0, scale: 0.96, translateY: 6, duration: 150, ease: 'inQuad', onComplete: ir });
+    window.setTimeout(ir, 600); // a garantia: sem quadros, segue assim mesmo
   };
   // outro ano: os meses mudam no lugar (sem trocar o escolhido até clicar num mês)
   const iAno = anos.indexOf(ano);
