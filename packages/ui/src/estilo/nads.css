@@ -4343,3 +4343,13 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 .dp-barras li:nth-child(5) .dp-barra > span{animation-delay:200ms;}
 .dp-barras li:nth-child(n+6) .dp-barra > span{animation-delay:250ms;}
 .fgts-barra > span,.dp-painel .tarefas-barra > span{transition:width .5s cubic-bezier(.23,1,.32,1);}
+/* Gmail: a lista num painel como o do Gmail (14/10/2026: "era pra resolver as bordas do gmail que ficam sem nada e só
+   acabam"): o fundo do painel, os cantos redondos e as linhas fechando nas bordas dele; overflow:clip para o rótulo do
+   grupo continuar grudando no alto ao rolar a página */
+.gm-caixa{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:clip;}
+.gm-abas{padding:0 8px;}
+.gm-filtros{padding:10px 14px;}
+.gm-grupo-rotulo{background:var(--surface-2);padding:8px 16px;}
+.gm-item{padding-left:16px;padding-right:16px;}
+.gm-grupo:last-child li:last-child .gm-item{border-bottom:0;}
+@media (min-width:901px){.gm-caixa:not(.com-leitura) .gm-item{padding:8px 16px;}}
