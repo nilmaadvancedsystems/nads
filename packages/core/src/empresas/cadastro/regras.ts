@@ -5,7 +5,7 @@
 import { nomeNorm } from '../../formatos';
 import { BANCOS_CONHECIDOS, bancosDaEmpresa, idDaConta, rotuloDaConta, type BancoDaEmpresa } from '../bancos';
 import {
-  type CadastroDaEmpresa, type EmprestimoDaEmpresa, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, type ParametrosDoDpDoMes, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel,
+  type BancoDoRelatorio, BANCOS_DO_RELATORIO, type CadastroDaEmpresa, type EmprestimoDaEmpresa, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, type ParametrosDoDpDoMes, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel,
 } from './tipos';
 
 /** Quantos registros do histórico ficam guardados (os mais novos). */
@@ -138,6 +138,7 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...(typeof doc.cartaoEmpresarial === 'boolean' ? { cartaoEmpresarial: doc.cartaoEmpresarial } : {}),
     ...(typeof doc.vendeNoCartao === 'boolean' ? { vendeNoCartao: doc.vendeNoCartao } : {}),
     ...(typeof doc.credLiquidacao === 'boolean' ? { credLiquidacao: doc.credLiquidacao } : {}),
+    ...relatoriosDoDocumento(doc.relatoriosDeLiquidacao),
     ...(typeof doc.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: doc.emiteNotaHonorario } : {}),
     ...proLaboreDoDocumento(doc.proLabore),
     ...(REGIMES.includes(texto(doc.regime) as Regime) ? { regime: texto(doc.regime) } : {}),
@@ -162,6 +163,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(typeof c.cartaoEmpresarial === 'boolean' ? { cartaoEmpresarial: c.cartaoEmpresarial } : {}),
     ...(typeof c.vendeNoCartao === 'boolean' ? { vendeNoCartao: c.vendeNoCartao } : {}),
     ...(typeof c.credLiquidacao === 'boolean' ? { credLiquidacao: c.credLiquidacao } : {}),
+    ...(c.relatoriosDeLiquidacao ? { relatoriosDeLiquidacao: c.relatoriosDeLiquidacao } : {}),
     ...(typeof c.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: c.emiteNotaHonorario } : {}),
     ...(c.proLabore && (c.proLabore.contaCredito || c.proLabore.diaUtil) ? { proLabore: c.proLabore } : {}),
     ...(c.regime ? { regime: c.regime } : {}),
@@ -641,6 +643,21 @@ export function definirContato(c: CadastroDaEmpresa, campo: 'email' | 'whatsapp'
 }
 
 /** O escritório emite nota de honorário para a empresa: sim, não, ou volta a "não informado" (null). */
+/** Os bancos do relatório de liquidação, do documento (só os conhecidos, sem repetir). */
+function relatoriosDoDocumento(v: unknown): Pick<CadastroDaEmpresa, 'relatoriosDeLiquidacao'> {
+  if (!Array.isArray(v)) return {};
+  return { relatoriosDeLiquidacao: BANCOS_DO_RELATORIO.map(b => b.id).filter(id => v.includes(id)) };
+}
+
+/** Marca ou desmarca um banco do relatório de liquidação (o Creditor). Registra no histórico. */
+export function definirRelatorioDeLiquidacao(c: CadastroDaEmpresa, banco: BancoDoRelatorio, marcado: boolean, por: string, agora: Date): CadastroDaEmpresa {
+  const atual = c.relatoriosDeLiquidacao || [];
+  if (atual.includes(banco) === marcado) return c;
+  const novos = BANCOS_DO_RELATORIO.map(b => b.id).filter(id => (id === banco ? marcado : atual.includes(id)));
+  const nome = BANCOS_DO_RELATORIO.find(b => b.id === banco)?.nome || banco;
+  return registrar({ ...c, relatoriosDeLiquidacao: novos }, por, agora, 'Relatório de liquidação (Creditor)', nome + (marcado ? ': sim' : ': não'));
+}
+
 export function definirNotaDeHonorario(c: CadastroDaEmpresa, sim: boolean | null, por: string, agora: Date): CadastroDaEmpresa {
   if ((c.emiteNotaHonorario ?? null) === sim) return c;
   const resto: CadastroDaEmpresa = { ...c };

@@ -131,6 +131,17 @@ export function ParametrosContabeis({ rota }: { rota: string }) {
         <ConfigLinha titulo="Liquidação de cobrança (Creditor)" descricao="O banco credita as cobranças liquidadas no caixa: a etapa Creditor entra todo mês.">
           {chave('credLiquidacao', 'Liquidação de cobrança')}
         </ConfigLinha>
+        {/* de quais bancos vem o relatório (Vitor, 14/10/2026: "checks, Bradesco e Sicoob"): o importar automático procura esses */}
+        <ConfigLinha titulo="Relatório de liquidação" descricao="De quais bancos vem o relatório: o Importar automático do Creditor procura os marcados e avisa o que faltar.">
+          <span style={{ display: 'inline-flex', gap: 16 }}>
+            {empresas.cadastro.BANCOS_DO_RELATORIO.map(b => (
+              <label key={b.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                <input type="checkbox" checked={vm.relatoriosDeLiquidacao.includes(b.id)} onChange={e => vm.marcarRelatorioDeLiquidacao(b.id, e.target.checked)} />
+                {b.nome}
+              </label>
+            ))}
+          </span>
+        </ConfigLinha>
         {/* a nota de honorário (Vitor, 07/10/2026): sem nota, a etapa Honorários pede o Extrato por cobrança */}
         <ConfigLinha titulo="Emite nota de honorário" descricao="Sem nota, a etapa Honorários lança as cobranças pelo Extrato por cobrança.">
           <Interruptor ligado={vm.emiteNotaHonorario === true} rotulo="Emite nota de honorário" onMudar={() => vm.definirNotaDeHonorario(vm.emiteNotaHonorario !== true)} />

@@ -1,7 +1,7 @@
 // Os formatos do relatório de liquidação que o Creditor aceita (Vitor, 14/10/2026: "esse é o formato do Creditor, não
 // aceite outro formato, não importe no Creditor outro tipo"):
 //   1. "Relatório - Títulos por Período" (Sicoob; lido por posição em banco.ts: relatorioDosItens);
-//   2. "Extrato de Movimentação da Carteira de Cobrança" (uma página por movimento: Nosso Número, Seu Número, Nome do
+//   2. "Extrato de Movimentação da Carteira de Cobrança" (Bradesco; uma página por movimento: Nosso Número, Seu Número, Nome do
 //      Pagador, Vencimento, Data Pagto, Valor do Título, Oscilação/Despesa, Valor Cobrado).
 // Qualquer outro PDF (comprovante de pagamento, extrato de conta…) é recusado com a mensagem FORMATO_NAO_ACEITO.
 // Também aqui: o cedente (a empresa dona da carteira) de cada um, para o importar automático não pegar o relatório de
@@ -19,7 +19,7 @@ export const NOME_DO_FORMATO: Record<FormatoDoRelatorio, string> = {
 };
 
 export const FORMATO_NAO_ACEITO = 'Este arquivo não é um relatório de títulos liquidados aceito pelo Creditor. Aceitos: "'
-  + NOME_DO_FORMATO['titulos-por-periodo'] + '" (Sicoob) e "' + NOME_DO_FORMATO['carteira-de-cobranca'] + '".';
+  + NOME_DO_FORMATO['titulos-por-periodo'] + '" (Sicoob) e "' + NOME_DO_FORMATO['carteira-de-cobranca'] + '" (Bradesco).';
 
 /** O formato pelo texto das páginas (null = não é um dos aceitos). */
 export function formatoDoRelatorio(linhas: readonly string[]): FormatoDoRelatorio | null {
