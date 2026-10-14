@@ -1,7 +1,8 @@
 // Peças pequenas da Conferência, com as mesmas classes do CSS original.
 import { useEffect, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { useIndicador, useNumeroAnimado } from './animacao';
+import { animate, spring, stagger } from 'animejs';
+import { animacoesPedidas, useIndicador, useNumeroAnimado } from './animacao';
 import { Icone, type NomeIcone } from './icones';
 
 /** Quanto o alerta fica no topo (Vitor, 08/10/2026: "suma depois de 3 segundos"); com o mouse em cima, para. */
@@ -376,7 +377,7 @@ export type ItemMenu = { rotulo: ReactNode; icone?: NomeIcone; marcado?: boolean
  * preenchido (padrão do app todo). Fecha ao escolher, ao clicar
  * fora e no Esc. Em vez de `itens`, pode receber `conteudo` (ex.: uma lista com busca), que ganha o `fechar`.
  */
-export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn-outline', classeAberto, itens, conteudo, direita, acima, largura, setaAntes, semSeta }: {
+export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn-outline', classeAberto, itens, conteudo, direita, acima, largura, setaAntes, semSeta, animado }: {
   rotulo: ReactNode;
   icone?: NomeIcone;
   titulo?: string;
@@ -394,9 +395,18 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
   /** classe a mais no botão enquanto o menu está aberto (ex.: apagar o botão de cima) */
   classeAberto?: string;
   largura?: number;
+  /** abre com mola e os itens em cascata (animejs; 14/10/2026: o menu do avatar, "do clique ao perfil") */
+  animado?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const pop = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = pop.current;
+    if (!aberto || !animado || !el || !animacoesPedidas()) return;
+    animate(el, { opacity: [0, 1], scale: [0.9, 1], translateY: [-6, 0], ease: spring({ bounce: 0.3, duration: 380 }) });
+    animate(el.querySelectorAll('.popover-item, .popover-sep'), { opacity: [0, 1], translateX: [direita ? 8 : -8, 0], duration: 300, delay: stagger(35, { start: 60 }), ease: 'outQuint' });
+  }, [aberto, animado, direita]);
   useEffect(() => {
     if (!aberto) return;
     const fora = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false); };
@@ -418,7 +428,7 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
         {!setaAntes && !semSeta && <Icone nome="caretDown" className="menu-seta" />}
       </button>
       {aberto && (
-        <div className={'popover menu-pop' + (direita ? ' direita' : '') + (acima ? ' acima' : '')} role="menu" aria-label={titulo} style={largura ? { width: largura } : undefined}>
+        <div ref={pop} className={'popover menu-pop' + (direita ? ' direita' : '') + (acima ? ' acima' : '') + (animado ? ' animado' : '')} role="menu" aria-label={titulo} style={largura ? { width: largura } : undefined}>
           {/* sem título em cima (Vitor, 02/10/2026): o título fica só para o leitor de tela */}
           {itens?.map((it, i) => it === 'separador' ? <hr key={i} className="popover-sep" /> : (
             <button key={i} type="button" className={'popover-item' + (it.perigo ? ' perigo' : '')} role="menuitem" disabled={it.desabilitado}

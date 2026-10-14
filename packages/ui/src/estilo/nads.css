@@ -4277,3 +4277,12 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 }
 .troca-busca,.troca-barra,.troca-lado-topo{flex:none;}
 .troca-corpo{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);}.troca-lado{min-width:0;}
+.troca-conta-marcadas{display:inline-block;}.troca-fluxo svg,.troca-meio-icone{display:inline-block;}
+/* a Minha página animada (14/10/2026): o fundo da lateral desliza até o tópico (useIndicador); o menu do avatar abre do canto */
+.pessoal-nav.com-indicador > .indicador{border-radius:6px;background:var(--hover-bg);}
+.pessoal-nav.com-indicador .pessoal-topico{position:relative;z-index:1;}
+.pessoal-nav.com-indicador .pessoal-topico.ativo{background:transparent;}
+.menu-pop.animado{transform-origin:top left;}
+.menu-pop.animado.direita{transform-origin:top right;}
+/* Animações › Nenhuma (14/10/2026): nem a mola do botão liga/desliga */
+html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-track,html[data-animacoes=nenhuma] .toggle-txt{transition:none !important;}

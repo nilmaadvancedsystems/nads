@@ -4,13 +4,21 @@
 // vale com o aceite dos dois.
 // Refeita em 14/10/2026 ("melhora a janela de trocar empresas"): cada lado num painel (a pessoa, a contagem, Marcar todas /
 // Limpar, a busca e a lista com as marcadas em destaque); no meio, o que vai e o que volta; embaixo, a troca numa frase.
-import { Icone, MenuSuspenso } from '@nads/ui';
-import { useEffect, useState } from 'react';
+// Animada com o animejs (14/10/2026: "pode trabalhar em animações para essa página, use o animejs"): a entrada (a janela com
+// mola, os painéis chegando dos lados, as empresas em cascata), marcar (a linha dá um pulinho e o contador do meio salta),
+// Marcar todas (uma onda pela lista), escolher a pessoa (a lista dela em cascata), Pedir troca (as marcadas deslizam para
+// o outro lado) e fechar (a janela encolhe). As Animações › Nenhuma (Minha página) tiram, e quem pediu menos movimento no computador não vê.
+import { animacoesPedidas, Icone, MenuSuspenso } from '@nads/ui';
+import { animate, spring, stagger } from 'animejs';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { PessoaComFoto } from './FotoDaPessoa';
 import type { Dep, VmEmpresasPorResponsavel } from './useEmpresasPorResponsavel';
 
 type Empresa = { chave: string; nome: string; codigo: number | null; dep: Dep };
 const n = (q: number, um: string, varios: string) => q + ' ' + (q === 1 ? um : varios);
+const menosMovimento = () => !animacoesPedidas();
+/** as primeiras linhas da lista (as que aparecem): só elas animam */
+const linhasVisiveis = (raiz: Element | null | undefined, quantas = 14) => Array.from(raiz?.querySelectorAll('.troca-lista > li') || []).slice(0, quantas);
 
 function Lado({ vm, rotulo, pessoa, setPessoa, outra, marcadas, setMarcadas, opcional }: {
   vm: VmEmpresasPorResponsavel; rotulo: string; pessoa: string; setPessoa: (p: string) => void; outra: string;
@@ -21,12 +29,32 @@ function Lado({ vm, rotulo, pessoa, setPessoa, outra, marcadas, setMarcadas, opc
   const todas: Empresa[] = pessoa ? vm.empresasDe(pessoa).filter(x => !x.linha.transferencias[x.dep] && vm.igual(x.linha.atual[x.dep], pessoa))
     .map(x => ({ chave: x.linha.chave + '|' + x.dep, nome: x.linha.nome, codigo: x.linha.codigo, dep: x.dep })) : [];
   const lista = todas.filter(e => !q || e.nome.toLowerCase().includes(q) || String(e.codigo ?? '').includes(q));
-  const alternar = (k: string) => { const s = new Set(marcadas); if (s.has(k)) s.delete(k); else s.add(k); setMarcadas(s); };
-  // Marcar todas: as que a busca mostra
+  const painel = useRef<HTMLElement>(null);
+  // marcar: a linha dá um pulinho
+  const alternar = (k: string, linha?: HTMLElement | null) => {
+    const s = new Set(marcadas); if (s.has(k)) s.delete(k); else s.add(k); setMarcadas(s);
+    if (linha && !menosMovimento()) animate(linha, { scale: [0.97, 1], ease: spring({ bounce: 0.5, duration: 340 }) });
+  };
+  // Marcar todas: as que a busca mostra; uma onda passa pela lista
   const todasMarcadas = lista.length > 0 && lista.every(e => marcadas.has(e.chave));
-  const marcarTodas = () => { const s = new Set(marcadas); lista.forEach(e => (todasMarcadas ? s.delete(e.chave) : s.add(e.chave))); setMarcadas(s); };
+  const marcarTodas = () => {
+    const s = new Set(marcadas); lista.forEach(e => (todasMarcadas ? s.delete(e.chave) : s.add(e.chave))); setMarcadas(s);
+    if (!menosMovimento()) animate(linhasVisiveis(painel.current, 18), { scale: [0.97, 1], opacity: [0.6, 1], duration: 320, delay: stagger(22), ease: 'outQuad' });
+  };
+  // outra pessoa: a lista dela chega em cascata (a primeira vez fica com a entrada da janela)
+  const primeira = useRef(true);
+  useLayoutEffect(() => {
+    if (primeira.current) { primeira.current = false; return; }
+    if (!pessoa || menosMovimento()) return;
+    animate(linhasVisiveis(painel.current), { opacity: [0, 1], translateY: [8, 0], duration: 360, delay: stagger(24), ease: 'outQuint' });
+  }, [pessoa]);
+  // a contagem das marcadas dá um salto quando muda
+  const conta = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (marcadas.size && conta.current && !menosMovimento()) animate(conta.current, { scale: [1.15, 1], ease: spring({ bounce: 0.45, duration: 320 }) });
+  }, [marcadas.size]);
   return (
-    <section className={'troca-lado' + (pessoa ? '' : ' vazio')}>
+    <section ref={painel} className={'troca-lado' + (pessoa ? '' : ' vazio')}>
       {/* a pessoa no menu suspenso dos componentes (Vitor, 07/10/2026: "siga as seleções dos componentes") */}
       <header className="troca-lado-topo">
         <span className="troca-rotulo">{rotulo}</span>
@@ -48,7 +76,7 @@ function Lado({ vm, rotulo, pessoa, setPessoa, outra, marcadas, setMarcadas, opc
           <div className="troca-barra">
             <span className="troca-conta">
               {n(todas.length, 'empresa', 'empresas')}
-              {marcadas.size > 0 && <b> · {n(marcadas.size, 'marcada', 'marcadas')}</b>}
+              {marcadas.size > 0 && <> · <b ref={conta} className="troca-conta-marcadas">{n(marcadas.size, 'marcada', 'marcadas')}</b></>}
             </span>
             {lista.length > 0 && <button type="button" className="btn btn-ghost troca-todas" onClick={marcarTodas}>{todasMarcadas ? 'Limpar' : 'Marcar todas'}</button>}
           </div>
@@ -60,7 +88,7 @@ function Lado({ vm, rotulo, pessoa, setPessoa, outra, marcadas, setMarcadas, opc
             {lista.map(e => (
               <li key={e.chave} className={marcadas.has(e.chave) ? 'on' : undefined}>
                 <label>
-                  <input type="checkbox" checked={marcadas.has(e.chave)} onChange={() => alternar(e.chave)} />
+                  <input type="checkbox" checked={marcadas.has(e.chave)} onChange={ev => alternar(e.chave, ev.currentTarget.closest('label'))} />
                   <span className="num fraco">{e.codigo ?? ''}</span>
                   <span className="troca-nome" title={e.nome}>{e.nome}</span>
                   {e.dep === 'contabil' && <span className="badge badge-neutral">Contábil</span>}
@@ -80,44 +108,92 @@ export function JanelaDeTroca({ vm, pessoa, fechar }: { vm: VmEmpresasPorRespons
   const [b, setB] = useState('');
   const [daA, setDaA] = useState<Set<string>>(new Set());
   const [daB, setDaB] = useState<Set<string>>(new Set());
+  const janela = useRef<HTMLDivElement>(null);
+  const [saindo, setSaindo] = useState(false);
+  // fechar: a janela encolhe e some, depois fecha de verdade
+  const sair = (depois: () => void = fechar) => {
+    const el = janela.current;
+    if (!el || menosMovimento()) { depois(); return; }
+    setSaindo(true);
+    animate(el, { opacity: 0, scale: 0.96, translateY: 8, duration: 180, ease: 'inQuad', onComplete: () => depois() });
+    const fundo = el.parentElement;
+    if (fundo) animate(fundo, { opacity: 0, duration: 200, ease: 'linear' });
+  };
+  const sairRef = useRef(sair);
+  sairRef.current = sair;
   useEffect(() => {
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('.troca-janela .popover')) fechar(); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('.troca-janela .popover')) sairRef.current(); };
     document.addEventListener('keydown', esc);
     return () => document.removeEventListener('keydown', esc);
-  }, [fechar]);
+  }, []);
+  // a entrada: a janela cresce com mola, os painéis chegam dos lados, o meio aparece e as empresas descem em cascata
+  useLayoutEffect(() => {
+    const el = janela.current;
+    if (!el || menosMovimento()) return;
+    animate(el, { opacity: [0, 1], scale: [0.94, 1], translateY: [14, 0], ease: spring({ bounce: 0.25, duration: 520 }) });
+    const [esq, dir] = Array.from(el.querySelectorAll('.troca-lado'));
+    if (esq) animate(esq, { opacity: [0, 1], translateX: [-24, 0], duration: 460, delay: 80, ease: 'outQuint' });
+    if (dir) animate(dir, { opacity: [0, 1], translateX: [24, 0], duration: 460, delay: 140, ease: 'outQuint' });
+    animate(el.querySelectorAll('.troca-meio > *'), { opacity: [0, 1], scale: [0.4, 1], delay: stagger(70, { start: 220 }), ease: spring({ bounce: 0.5, duration: 420 }) });
+    animate(linhasVisiveis(esq), { opacity: [0, 1], translateY: [8, 0], duration: 380, delay: stagger(22, { start: 200 }), ease: 'outQuint' });
+  }, []);
+  // o contador do meio salta quando muda, com a seta empurrando para o lado da troca
+  const vai = useRef<HTMLSpanElement>(null);
+  const volta = useRef<HTMLSpanElement>(null);
+  const pular = (el: HTMLElement | null, lado: 1 | -1) => {
+    if (!el || menosMovimento()) return;
+    animate(el, { scale: [1.22, 1], ease: spring({ bounce: 0.5, duration: 380 }) });
+    const seta = el.querySelector('svg');
+    if (seta) animate(seta, { translateX: [lado * 5, 0], duration: 360, ease: 'outBack' });
+  };
+  const primeiraConta = useRef(true);
+  useEffect(() => { if (!primeiraConta.current) pular(vai.current, 1); }, [daA.size]);
+  useEffect(() => { if (primeiraConta.current) { primeiraConta.current = false; return; } pular(volta.current, -1); }, [daB.size]);
   const escolhidas = (pessoaDoLado: string, marcadas: ReadonlySet<string>) => vm.empresasDe(pessoaDoLado)
     .filter(x => marcadas.has(x.linha.chave + '|' + x.dep)).map(x => ({ nome: x.linha.nome, codigo: x.linha.codigo, dep: x.dep }));
-  const pedir = () => { vm.pedirTroca(a, escolhidas(a, daA), b, b ? escolhidas(b, daB) : []); fechar(); };
+  // Pedir troca: as marcadas deslizam para o outro lado (as de A para a direita, as de B para a esquerda), depois fecha
+  const pedir = () => {
+    const daAEsc = escolhidas(a, daA);
+    const daBEsc = b ? escolhidas(b, daB) : [];
+    const el = janela.current;
+    if (!el || menosMovimento()) { vm.pedirTroca(a, daAEsc, b, daBEsc); fechar(); return; }
+    setSaindo(true);
+    const [esq, dir] = Array.from(el.querySelectorAll('.troca-lado'));
+    animate(Array.from(esq?.querySelectorAll('.troca-lista > li.on') || []).slice(0, 14), { translateX: [0, 60], opacity: [1, 0], duration: 360, delay: stagger(30), ease: 'inQuad' });
+    animate(Array.from(dir?.querySelectorAll('.troca-lista > li.on') || []).slice(0, 14), { translateX: [0, -60], opacity: [1, 0], duration: 360, delay: stagger(30), ease: 'inQuad' });
+    animate(el.querySelectorAll('.troca-meio-icone'), { rotate: [0, 180], duration: 420, ease: 'inOutQuad' });
+    setTimeout(() => sair(() => { vm.pedirTroca(a, daAEsc, b, daBEsc); fechar(); }), 380);
+  };
   // a troca numa frase
   const frase = !a ? 'Escolha de quem saem as empresas.'
     : !daA.size ? 'Marque as empresas de ' + a + ' que vão para o outro lado.'
     : !b ? n(daA.size, 'empresa', 'empresas') + ' de ' + a + '. Agora escolha para quem vão.'
     : n(daA.size, 'empresa', 'empresas') + ' de ' + a + (daA.size === 1 ? ' vai' : ' vão') + ' para ' + b + (daB.size ? ', e ' + n(daB.size, 'empresa', 'empresas') + ' de ' + b + (daB.size === 1 ? ' vem' : ' vêm') + ' para ' + a : '') + '.';
   return (
-    <div className="modal-overlay pessoal-fundo" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
-      <div className="pessoal-janela troca-janela" role="dialog" aria-modal="true" aria-label="Trocar empresas">
+    <div className="modal-overlay pessoal-fundo" onMouseDown={e => { if (e.target === e.currentTarget && !saindo) sair(); }}>
+      <div ref={janela} className="pessoal-janela troca-janela" role="dialog" aria-modal="true" aria-label="Trocar empresas">
         <header className="pessoal-topo troca-topo">
           <div>
             <h2>Trocar empresas</h2>
             <p className="fraco">Marque o que vai para o outro lado. Cada empresa só muda com o aceite das duas pessoas.</p>
           </div>
-          <button type="button" className="drawer-x" aria-label="Fechar" onClick={fechar}><Icone nome="x" /></button>
+          <button type="button" className="drawer-x" aria-label="Fechar" onClick={() => sair()}><Icone nome="x" /></button>
         </header>
         <div className="troca-corpo">
           <Lado vm={vm} rotulo="De" pessoa={a} setPessoa={setA} outra={b} marcadas={daA} setMarcadas={setDaA} />
           {/* no meio, o que vai (de A para B) e o que volta (de B para A) */}
           <div className="troca-meio" aria-hidden="true">
-            <span className={'troca-fluxo' + (daA.size ? ' on' : '')}>{daA.size}<Icone nome="chevronRight" /></span>
+            <span ref={vai} className={'troca-fluxo' + (daA.size ? ' on' : '')}>{daA.size}<Icone nome="chevronRight" /></span>
             <span className="troca-meio-icone"><Icone nome="repeat" /></span>
-            <span className={'troca-fluxo' + (daB.size ? ' on' : '')}><Icone nome="chevronLeft" />{daB.size}</span>
+            <span ref={volta} className={'troca-fluxo' + (daB.size ? ' on' : '')}><Icone nome="chevronLeft" />{daB.size}</span>
           </div>
           <Lado vm={vm} rotulo="Para" pessoa={b} setPessoa={setB} outra={a} marcadas={daB} setMarcadas={setDaB} opcional />
         </div>
         <footer className="usuario-pe troca-pe">
           <span className="troca-frase">{frase}</span>
           <span className="tarefas-barra-espaco" />
-          <button type="button" className="btn btn-outline" onClick={fechar}>Cancelar</button>
-          <button type="button" className="btn btn-primary" disabled={!a || !b || !daA.size} onClick={pedir}><Icone nome="repeat" />Pedir troca</button>
+          <button type="button" className="btn btn-outline" disabled={saindo} onClick={() => sair()}>Cancelar</button>
+          <button type="button" className="btn btn-primary" disabled={!a || !b || !daA.size || saindo} onClick={pedir}><Icone nome="repeat" />Pedir troca</button>
         </footer>
       </div>
     </div>

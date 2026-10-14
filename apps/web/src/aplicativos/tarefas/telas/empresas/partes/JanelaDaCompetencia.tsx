@@ -4,7 +4,7 @@
 // no alto com ‹ ›, os 12 meses numa grade de 3 × 4 (o escolhido cheio na cor do app; o mês de hoje com um pontinho; os que
 // ainda não começaram apagados) e o Abrir embaixo. Dois cliques (ou Enter) num mês também abrem; as setas andam pela grade.
 // Só de 2026 para frente e só os meses que já começaram.
-import { Icone, classeDaJanela } from '@nads/ui';
+import { animacoesPedidas, Icone, classeDaJanela } from '@nads/ui';
 import type { JSAnimation } from 'animejs';
 import { animate, cleanInlineStyles, utils } from 'animejs';
 import { useLayoutEffect, useRef, useState } from 'react';
@@ -13,7 +13,8 @@ import { useLayoutEffect, useRef, useState } from 'react';
 // de selecionar também"; 14/10/2026: "use o animejs para animar a entrada e seleção desse calendario"): valem mesmo no
 // nível Normal de animações; quem pediu menos movimento no computador não vê nada, só o estado final. Todas partem do
 // estado visível (o CSS já deixa tudo no lugar) e nenhuma segura o clique.
-const menosMovimento = () => typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+// as Animações › Nenhuma (Minha página, 14/10/2026) também tiram
+const menosMovimento = () => !animacoesPedidas();
 /** a opacidade de repouso de um mês (o que ainda não começou fica apagado, como no CSS) */
 const repouso = (b: HTMLButtonElement) => (b.disabled ? 0.45 : 1);
 

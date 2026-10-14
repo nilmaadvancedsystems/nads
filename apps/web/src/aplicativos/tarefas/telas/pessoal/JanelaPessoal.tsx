@@ -2,14 +2,33 @@
 // que segue o Notion) — à esquerda a pessoa, a busca e os tópicos em grupos; à direita o tópico aberto, em seções
 // com cabeçalho e uma opção por linha (o rótulo e a explicação à esquerda, o controle à direita). Fecha no ×, no Esc e
 // clicando fora.
-import { ConfigLinha, ConfigSecao, Icone, SeletorTema, type NomeIcone } from '@nads/ui';
-import { useEffect, useRef, useState } from 'react';
+import { animacoesPedidas, ConfigLinha, ConfigSecao, definirNivelDeAnimacao, Icone, nivelDeAnimacao, NIVEIS_DE_ANIMACAO, Segmentado, SeletorTema, useIndicador, type NivelDeAnimacao, type NomeIcone } from '@nads/ui';
+import { animate, spring, stagger } from 'animejs';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+
+// As animações (14/10/2026: "faça do clique ao perfil as configurações pessoais", com o animejs): a janela chega com mola e
+// a lateral em cascata; trocar de tópico desliza o conteúdo e as linhas chegam em cascata (os ícones de perfil saltam);
+// o fundo da lateral desliza até o tópico; fechar encolhe a janela. As Animações › Nenhuma (aqui, em Preferências) tiram, e
+// quem pediu menos movimento no computador não vê.
+const menosMovimento = () => !animacoesPedidas();
+
+/** Quanto o nads anima (14/10/2026: "um botão para tirar/reduzir animações para o normal"): vale na hora, neste navegador. */
+function NivelDasAnimacoes() {
+  const [nivel, setNivel] = useState<NivelDeAnimacao>(nivelDeAnimacao());
+  const atual = NIVEIS_DE_ANIMACAO.find(n => n.id === nivel) || NIVEIS_DE_ANIMACAO[1];
+  return (
+    <ConfigLinha titulo="Animações" descricao={atual.dica}>
+      <Segmentado valor={nivel} opcoes={NIVEIS_DE_ANIMACAO.map(n => ({ valor: n.id, rotulo: n.nome }))}
+        onMudar={n => { definirNivelDeAnimacao(n); setNivel(n); }} />
+    </ConfigLinha>
+  );
+}
 import type { TopicoPessoal } from './contexto';
 import { usePaginaPessoal, type VmPessoal } from './usePaginaPessoal';
 import { EmpresasDaPessoa } from '../cadastro/responsaveis/EmpresasDaPessoa';
 
 const TOPICOS: { id: TopicoPessoal; rotulo: string; icone: NomeIcone; grupo: string; busca: string }[] = [
-  { id: 'conta', rotulo: 'Minha conta', icone: 'usuario', grupo: 'Conta', busca: 'foto perfil ícone icone nome e-mail email setor sair senha tema claro escuro aparência' },
+  { id: 'conta', rotulo: 'Minha conta', icone: 'usuario', grupo: 'Conta', busca: 'foto perfil ícone icone nome e-mail email setor sair senha tema claro escuro aparência animações animacoes movimento' },
   // as próprias empresas, com o Transferir (Vitor, 07/10/2026: "dentro do usuário/configurações vai ter as próprias empresas")
   { id: 'empresas', rotulo: 'Minhas empresas', icone: 'briefcase', grupo: 'Conta', busca: 'empresas responsável transferir transferência' },
   { id: 'aplicativo', rotulo: 'Versão do sistema', icone: 'download', grupo: 'Aplicativo', busca: 'versão atualizar nova' },
@@ -114,6 +133,7 @@ function MinhaConta({ vm }: { vm: VmPessoal }) {
       </ConfigSecao>
       <ConfigSecao titulo="Preferências">
         <ConfigLinha titulo="Tema" descricao="Claro, escuro ou o mesmo do computador. Fica guardado neste navegador."><SeletorTema /></ConfigLinha>
+        <NivelDasAnimacoes />
       </ConfigSecao>
       <ConfigSecao titulo="Sessão">
         <ConfigLinha titulo={c.sair} descricao="Sai deste navegador; para entrar de novo, o login do Entregas.">
@@ -139,18 +159,51 @@ function Aplicativo({ vm }: { vm: VmPessoal }) {
 export function JanelaPessoal({ topico, mudar, fechar }: { topico: TopicoPessoal; mudar: (t: TopicoPessoal) => void; fechar: () => void }) {
   const vm = usePaginaPessoal();
   const [busca, setBusca] = useState('');
-  // Esc fecha
+  const janela = useRef<HTMLDivElement>(null);
+  const rola = useRef<HTMLDivElement>(null);
+  const titulo = useRef<HTMLHeadingElement>(null);
+  const saindo = useRef(false);
+  // fechar: a janela encolhe e some, depois fecha de verdade
+  const sair = () => {
+    const el = janela.current;
+    if (saindo.current) return;
+    if (!el || menosMovimento()) { fechar(); return; }
+    saindo.current = true;
+    animate(el, { opacity: 0, scale: 0.96, translateY: 8, duration: 180, ease: 'inQuad', onComplete: () => fechar() });
+    if (el.parentElement) animate(el.parentElement, { opacity: 0, duration: 200, ease: 'linear' });
+  };
+  const sairRef = useRef(sair);
+  sairRef.current = sair;
+  // Esc fecha (menos com a janela de troca aberta por cima)
   useEffect(() => {
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') fechar(); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('.troca-janela')) sairRef.current(); };
     document.addEventListener('keydown', esc);
     return () => document.removeEventListener('keydown', esc);
-  }, [fechar]);
+  }, []);
+  // a entrada: a janela cresce com mola e a lateral chega em cascata
+  useLayoutEffect(() => {
+    const el = janela.current;
+    if (!el || menosMovimento()) return;
+    animate(el, { opacity: [0, 1], scale: [0.95, 1], translateY: [12, 0], ease: spring({ bounce: 0.25, duration: 520 }) });
+    animate(el.querySelectorAll('.pessoal-quem, .pessoal-busca, .pessoal-grupo, .pessoal-topico'), { opacity: [0, 1], translateX: [-10, 0], duration: 360, delay: stagger(40, { start: 100 }), ease: 'outQuint' });
+  }, []);
+  // o tópico: o título e o conteúdo deslizam, as linhas chegam em cascata e os ícones de perfil saltam
+  useLayoutEffect(() => {
+    const r = rola.current;
+    if (!r || menosMovimento()) return;
+    r.scrollTop = 0;
+    if (titulo.current) animate(titulo.current, { opacity: [0, 1], translateY: [6, 0], duration: 300, ease: 'outQuint' });
+    animate(Array.from(r.querySelectorAll('.cfg-secao-topo, .cfg-linha, .emp-pessoa-lista > li')).slice(0, 18), { opacity: [0, 1], translateY: [8, 0], duration: 360, delay: stagger(28, { start: 60 }), ease: 'outQuint' });
+    animate(Array.from(r.querySelectorAll('.pessoal-icone')).slice(0, 56), { opacity: [0, 1], scale: [0.5, 1], delay: stagger(10, { start: 180 }), ease: spring({ bounce: 0.45, duration: 420 }) });
+  }, [topico]);
+  // o fundo da lateral desliza até o tópico aberto
+  const lateral = useIndicador<HTMLElement>('.pessoal-topico.ativo', [topico, busca], 'fundo');
   const q = busca.trim().toLowerCase();
   const visiveis = TOPICOS.filter(t => !q || (t.rotulo + ' ' + t.busca).toLowerCase().includes(q));
   const atual = TOPICOS.find(t => t.id === topico) || TOPICOS[0];
   return (
-    <div className="modal-overlay pessoal-fundo" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
-      <div className="pessoal-janela" role="dialog" aria-modal="true" aria-label="Minha página">
+    <div className="modal-overlay pessoal-fundo" onMouseDown={e => { if (e.target === e.currentTarget) sair(); }}>
+      <div ref={janela} className="pessoal-janela" role="dialog" aria-modal="true" aria-label="Minha página">
         <aside className="pessoal-lado">
           <div className="pessoal-quem">
             <Foto foto={vm.conta.foto} iniciais={vm.conta.iniciais} />
@@ -160,7 +213,7 @@ export function JanelaPessoal({ topico, mudar, fechar }: { topico: TopicoPessoal
             <Icone nome="search" />
             <input type="text" placeholder="Buscar" aria-label="Buscar nas configurações" value={busca} onChange={e => setBusca(e.target.value)} />
           </label>
-          <nav aria-label="Tópicos">
+          <nav ref={lateral} className="pessoal-nav com-indicador" aria-label="Tópicos">
             {visiveis.map((t, i) => (
               <div key={t.id}>
                 {t.grupo && t.grupo !== visiveis[i - 1]?.grupo && <p className="pessoal-grupo">{t.grupo}</p>}
@@ -175,12 +228,12 @@ export function JanelaPessoal({ topico, mudar, fechar }: { topico: TopicoPessoal
         </aside>
         <section className="pessoal-conteudo">
           <header className="pessoal-topo">
-            <h2>{atual.rotulo}</h2>
-            <button type="button" className="drawer-x" aria-label="Fechar" onClick={fechar}><Icone nome="x" /></button>
+            <h2 ref={titulo}>{atual.rotulo}</h2>
+            <button type="button" className="drawer-x" aria-label="Fechar" onClick={sair}><Icone nome="x" /></button>
           </header>
           {/* por enquanto só Minha conta, e Versão do sistema (Vitor, 05/10/2026: saíram a Caixa de entrada, as
               Anotações, Aparência e telas, Perguntar à IA e Perguntas frequentes) */}
-          <div className="pessoal-rola">
+          <div ref={rola} className="pessoal-rola">
             {topico === 'aplicativo' ? <Aplicativo vm={vm} /> : topico === 'empresas' ? <EmpresasDaPessoa pessoa={vm.conta.nome} /> : <MinhaConta vm={vm} />}
           </div>
         </section>
