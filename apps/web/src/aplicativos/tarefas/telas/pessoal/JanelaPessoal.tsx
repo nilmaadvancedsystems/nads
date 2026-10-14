@@ -3,7 +3,7 @@
 // com cabeçalho e uma opção por linha (o rótulo e a explicação à esquerda, o controle à direita). Fecha no ×, no Esc e
 // clicando fora.
 import { ConfigLinha, ConfigSecao, Icone, SeletorTema, type NomeIcone } from '@nads/ui';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { TopicoPessoal } from './contexto';
 import { usePaginaPessoal, type VmPessoal } from './usePaginaPessoal';
 import { EmpresasDaPessoa } from '../cadastro/responsaveis/EmpresasDaPessoa';
