@@ -13,6 +13,12 @@ import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
 import { useSessao } from '../../casca/sessao';
 import { useDrive } from '../../dados/repo';
 import { lerRelatorio, mensagemDeErro } from '../../leitura';
+import { useBuscarNoEmail } from '../../../extrator/telas/tarefa/JanelaBuscarNoEmail';
+import { abrirPuxado, esquecerPuxado, guardarPuxado, usePuxados } from '../../../puxados';
+import { useCadastroDaEmpresa } from '../../../extrator/dados/repo';
+
+/** O arquivo que veio do Drive ou do e-mail, para o olhinho do mês (puxados.tsx). */
+interface DeOnde { nome: string; conteudo: Blob; origem: 'drive' | 'email' }
 
 type Fase = 'parado' | 'procurando' | 'baixando' | 'lendo' | 'problema';
 interface Busca { mes: string; fase: Fase; texto: string; candidatos: cr.ArquivoAchado[] }
@@ -59,10 +65,19 @@ export function useCompetencia() {
   /** Guarda a competência (é ela que libera a etapa seguinte). */
   const fixar = () => s.definirCompetencia(competencia);
 
+  // o que foi puxado do Drive ou do e-mail, por mês (o olhinho ao lado do ícone; só na memória desta aba)
+  const chavePuxados = 'creditor|' + s.empresa.nome;
+  // os bancos do relatório de liquidação marcados no Cadastro da empresa (Vitor, 14/10/2026: "Bradesco e Sicoob")
+  const { cadastro } = useCadastroDaEmpresa(s.empresa.nome, s.empresa.codigo);
+  const bancosDoRelatorio = cadastro?.relatoriosDeLiquidacao || [];
+  const puxados = usePuxados(chavePuxados);
+
   /** Leu o relatório do mês: guarda e fica aqui (o resumo na linha); o Continuar segue (Vitor, 05/10/2026: a Competência e o Relatório do banco eram a mesma tela). */
-  function guardar(mes: string, rel: cr.RelatorioBanco, origem: string) {
+  function guardar(mes: string, rel: cr.RelatorioBanco, origem: string, deOnde: readonly DeOnde[] = []) {
     fixar();
     s.relatorioDoMes(mes, rel, origem);
+    esquecerPuxado(chavePuxados, mes);
+    for (const d of deOnde) guardarPuxado(chavePuxados, d.nome, d.conteudo, d.origem, [mes]);
     setBusca(PARADO);
   }
 
@@ -70,7 +85,9 @@ export function useCompetencia() {
     setBusca({ mes, fase: 'baixando', texto: 'Baixando ' + a.nome + '…', candidatos });
     try {
       const buf = await drive.baixar(a.id, a.nome, passo => setBusca(b => ({ ...b, texto: a.nome + ': ' + passo + '…' })));
-      guardar(mes, await lerRelatorio(a.nome, buf), 'Drive · ' + a.caminho);
+      // a cópia antes de ler (o leitor de PDF consome o buffer)
+      const copia = new Blob([buf.slice(0)]);
+      guardar(mes, await lerRelatorio(a.nome, buf), 'Drive · ' + a.caminho, [{ nome: a.nome, conteudo: copia, origem: 'drive' }]);
       return true;
     } catch (e) {
       setBusca({ mes, fase: 'problema', texto: mensagemDeErro(e), candidatos });
@@ -117,15 +134,166 @@ export function useCompetencia() {
     finally { setEntrando(false); }
     const para = loginPara;
     setLoginPara(null);
+    if (para === 'email') { const f = depoisDoLogin.current; depoisDoLogin.current = null; f?.(); return; }
     if (para === '*') await procurarTodos(); else if (para) await procurar(para);
   }
 
-  /** Do computador: lê o arquivo aqui mesmo. */
-  async function importarDoComputador(mes: string, f: File | undefined) {
-    if (!f) return;
+  // o "Buscar no e-mail" (Vitor, 14/10/2026: "cadê a função buscar no Gmail?"), a mesma janela da Importação: o anexo
+  // escolhido entra como se viesse do computador; a prévia mostra os títulos do relatório
+  const depoisDoLogin = useRef<(() => void) | null>(null);
+  const email = useBuscarNoEmail(
+    (linha, arquivos) => {
+      const f = arquivos[0];
+      void importarDoComputador(linha.id, f, 'email').then(ok => { if (ok && f) void arquivarNoDrive(linha.id, f); });
+    },
+    depois => { depoisDoLogin.current = depois; setErroLogin(''); setLoginPara('email'); },
+    s.empresa.codigo,
+    async (nome, conteudo) => {
+      try {
+        // uma cópia: o leitor de PDF consome o buffer (sem ela, o "Importar este" chegava com 0 bytes)
+        const ts = (await lerRelatorio(nome, conteudo.slice(0))).grupos.flatMap(g => g.titulos);
+        const isoDe = (d: string) => d.slice(6, 10) + '-' + d.slice(3, 5) + '-' + d.slice(0, 2);
+        return {
+          lancamentos: ts.length, meses: [...new Set(ts.map(t => isoDe(t.liquidacao).slice(0, 7)))].sort(), erro: ts.length ? null : 'Não achei títulos neste arquivo.',
+          primeiros: ts.slice(0, 8).map(t => ({ data: isoDe(t.liquidacao), valor: t.valor, historico: (t.nf ? 'NF ' + t.nf + ' · ' : '') + t.sacado })),
+        };
+      } catch (e) { return { lancamentos: 0, meses: [], erro: mensagemDeErro(e), primeiros: [] }; }
+    },
+  );
+
+  /** Do computador (ou o escolhido no e-mail): lê o arquivo aqui mesmo. Devolve se entrou. */
+  async function importarDoComputador(mes: string, f: File | undefined, origem?: 'email'): Promise<boolean> {
+    if (!f) return false;
     setBusca({ mes, fase: 'lendo', texto: 'Lendo ' + f.name + '…', candidatos: [] });
-    try { guardar(mes, await lerRelatorio(f.name, await f.arrayBuffer()), f.name); }
-    catch (e) { setBusca({ mes, fase: 'problema', texto: mensagemDeErro(e), candidatos: [] }); }
+    try { guardar(mes, await lerRelatorio(f.name, await f.arrayBuffer()), f.name, origem ? [{ nome: f.name, conteudo: f, origem }] : []); return true; }
+    catch (e) { setBusca({ mes, fase: 'problema', texto: mensagemDeErro(e), candidatos: [] }); return false; }
+  }
+
+  /**
+   * O relatório trazido do e-mail vai para o Drive (Vitor, 14/10/2026: "esses e-mails e arquivos que seleciono, é para
+   * arquivar no Drive"), como o extrato no Bancos: para o Claudio Secretario, de onde o arquivamento põe em CONTÁBIL ›
+   * RECEBIMENTO DE CLIENTES (decide pelo título do relatório). O mês que já tem relatório na pasta não vai de novo.
+   */
+  async function arquivarNoDrive(mes: string, f: File) {
+    if (!drive.enviarAoDrive || !acesso.entrou) return;
+    try {
+      const pasta = await drive.pastaDoCliente(s.empresa.codigo);
+      const b = cr.acharRelatorioNoDrive(pasta?.itens || [], pasta?.raiz || null, mes);
+      if (b.situacao === 'achou' || b.situacao === 'varios') return;
+      await drive.enviarAoDrive({ nome: f.name, bytes: new Uint8Array(await f.arrayBuffer()) }, { competencia: mes, codigo: s.empresa.codigo, cliente: s.empresa.nome });
+      aviso({ tom: 'ok', titulo: 'Mandado para o Drive', texto: f.name + ' (' + cr.rotuloCompetencia(mes) + ') entra em RECEBIMENTO DE CLIENTES no próximo arquivamento.' });
+    } catch (e) {
+      aviso({ tom: 'erro', titulo: 'Não mandei para o Drive', texto: f.name + ': ' + mensagemDeErro(e) });
+    }
+  }
+
+  /**
+   * Vários arquivos de uma vez (o menu de cima, como na Importação: "Importar os restantes do computador"): cada relatório
+   * cai no mês das liquidações dele (o que mais aparece); fora do período, avisa e não entra.
+   */
+  async function importarVarios(arquivos: File[]) {
+    const fora: string[] = [];
+    for (const f of arquivos) {
+      try {
+        const rel = await lerRelatorio(f.name, await f.arrayBuffer());
+        const conta = new Map<string, number>();
+        for (const t of rel.grupos.flatMap(g => g.titulos)) {
+          const m = /(\d{2})\/(\d{2})\/(\d{4})/.exec(t.liquidacao);
+          if (m) conta.set(m[3] + '-' + m[2], (conta.get(m[3] + '-' + m[2]) || 0) + 1);
+        }
+        const mes = [...conta].sort((a, b) => b[1] - a[1])[0]?.[0];
+        if (!mes || !meses.includes(mes)) { fora.push(f.name); continue; }
+        guardar(mes, rel, f.name);
+      } catch (e) { aviso({ tom: 'erro', titulo: 'Não deu para ler ' + f.name, texto: mensagemDeErro(e) }); }
+    }
+    if (fora.length) aviso({ tom: 'erro', titulo: 'Fora do período', texto: fora.join(', ') + ': as liquidações não são de nenhum mês do período.' });
+  }
+
+  /**
+   * O "Importar automático" (Vitor, 14/10/2026: "se possível já procura no e-mail sem eu precisar selecionar"): para cada mês
+   * que falta, abre os arquivos do mês no Drive e os anexos do e-mail que parecem o relatório (regras/automatico.ts) e fica
+   * com os que estão num dos dois formatos, são da empresa e têm títulos no mês (vários: juntos). O que veio do e-mail vai
+   * para o Drive. Sem nada, o mês fica para importar à mão. O "Buscar no e-mail" do mês é este, só no e-mail e só nele.
+   */
+  async function importarAutomatico(lista: readonly string[] = faltam, fontes = { drive: true, email: true }) {
+    if (!acesso.entrou) { depoisDoLogin.current = () => { void importarAutomatico(lista, fontes); }; setErroLogin(''); setLoginPara('email'); return; }
+    fixar();
+    parar.current = false;
+    const codigo = s.empresa.codigo;
+    const [contato, pasta] = await Promise.all([
+      drive.contatoDoCliente && codigo != null ? drive.contatoDoCliente(codigo).catch(() => null) : Promise.resolve(null),
+      drive.pastaDoCliente(codigo).catch(() => null),
+    ]);
+    const emails = contato?.emails || [];
+    // os e-mails do cliente no "remetente" do robô (from:(a OR b)), até o limite de 120 letras
+    const remetente = emails.reduce((acc, e) => { const n = acc ? acc + ' OR ' + e : e; return n.length <= 120 ? n : acc; }, '');
+    const achados: string[] = [];
+    const vazios: string[] = [];
+    for (const m of [...lista]) {
+      if (parar.current) break;
+      const passo = (texto: string) => setBusca({ mes: m, fase: 'procurando', texto, candidatos: [] });
+      // os que servem (formato, empresa e mês); no fim, juntos sem repetir título
+      const rels: { rel: cr.RelatorioBanco; origem: string; deOnde: DeOnde; paraODrive?: File }[] = [];
+      const usar = (rel: cr.RelatorioBanco, origem: string, deOnde: DeOnde, paraODrive?: File) => {
+        if (cr.relatorioServeNoMes(rel, m, s.empresa.nome, bancosDoRelatorio)) rels.push({ rel, origem, deOnde, paraODrive });
+      };
+      // 1. o Drive: os arquivos do mês na RECEBIMENTO DE CLIENTES
+      if (fontes.drive) passo('Procurando no Drive…');
+      const b = cr.acharRelatorioNoDrive(pasta?.itens || [], pasta?.raiz || null, m);
+      for (const a of fontes.drive ? b.candidatos.filter(c => c.daCompetencia).slice(0, cr.MAX_CANDIDATOS) : []) {
+        try {
+          const buf = await drive.baixar(a.id, a.nome);
+          const copia = new Blob([buf.slice(0)]);
+          usar(await lerRelatorio(a.nome, buf), 'Drive · ' + a.caminho, { nome: a.nome, conteudo: copia, origem: 'drive' });
+        }
+        catch { /* outro formato: fica de fora */ }
+      }
+      // 2. o e-mail: os do contato do cliente e os que falam de liquidação no período
+      if (fontes.email && drive.buscarNoEmail && drive.trazerDoEmail) {
+        passo('Procurando no e-mail…');
+        const per = cr.periodoDaBuscaAutomatica(m, new Date());
+        const buscar = drive.buscarNoEmail.bind(drive);
+        const listas = await Promise.all([
+          remetente ? buscar({ remetente, ...per }).catch(() => []) : Promise.resolve([]),
+          buscar({ remetente: '', ...per }).catch(() => []),
+        ]);
+        for (const a of cr.candidatosDoEmail(listas.flat(), m, emails, bancosDoRelatorio)) {
+          if (parar.current) break;
+          passo('Abrindo ' + a.nome + '…');
+          try {
+            const buf = await drive.trazerDoEmail(a);
+            // uma cópia: o leitor de PDF consome o buffer (a outra vai para o Drive)
+            usar(await lerRelatorio(a.nome, buf.slice(0)), 'E-mail · ' + a.nome, { nome: a.nome, conteudo: new Blob([buf.slice(0)]), origem: 'email' }, new File([buf], a.nome, { type: 'application/pdf' }));
+          } catch { /* outro formato ou outra empresa: fica de fora */ }
+        }
+      }
+      if (rels.length) {
+        // dois arquivos com títulos em comum ("SICOOB" e "SICOOB TV"): cada título uma vez só; o que não trouxe nada novo fica de fora
+        const j = cr.juntarSemRepetir(rels.map(r => r.rel));
+        const usados = j.usados.map(i => rels[i]);
+        guardar(m, j.relatorio, usados.map(r => r.origem).join(' · '), usados.map(r => r.deOnde));
+        for (const r of usados) if (r.paraODrive) await arquivarNoDrive(m, r.paraODrive);
+        // o banco marcado no Cadastro que ficou sem relatório
+        const falta = cr.bancosSemRelatorio(usados.map(r => r.rel), bancosDoRelatorio);
+        achados.push(cr.rotuloCompetencia(m) + (falta.length ? ' (falta o do ' + falta.join(' e do ') + ')' : ''));
+      }
+      else vazios.push(cr.rotuloCompetencia(m));
+    }
+    setBusca(PARADO);
+    if (achados.length) aviso({ tom: 'ok', titulo: 'Importado automaticamente', texto: achados.join(', ') });
+    if (vazios.length) aviso({ tom: 'erro', titulo: 'Não achei o relatório', texto: vazios.join(', ') + ': ' + (fontes.drive ? 'nem no Drive nem no e-mail' : 'nada no e-mail') + ', no formato do Creditor.' + (fontes.drive ? ' Importe à mão.' : ' Escolha em "Selecionar no e-mail".') });
+  }
+
+  /** "Remover todos" (como na Importação): tira os relatórios de todos os meses (pergunta antes). */
+  async function removerTodos() {
+    const ok = await modal<boolean>({
+      icone: 'alert', titulo: 'Remover todos os relatórios?',
+      botoes: [{ rotulo: 'Remover todos', valor: true, variante: 'btn-danger' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
+    });
+    if (!ok) return;
+    s.mudar(e => ({ ...e, relatorio: null, porMes: {}, origemBanco: '', decisoes: {}, passosFiscal: [], baixado: false, bancoConferido: false, razaoDaExclusao: undefined, alcancada: 0 }));
+    esquecerPuxado(chavePuxados);
+    aviso({ tom: 'ok', titulo: 'Relatórios removidos', texto: 'Relatório de liquidação · todos os meses' });
   }
 
   /** O check da linha (como na Importação): exclui o relatório do mês (pergunta antes); as decisões das contas vão junto. */
@@ -137,6 +305,7 @@ export function useCompetencia() {
     if (!ok) return;
     if (inteiro) s.mudar(e => ({ ...e, relatorio: null, porMes: {}, origemBanco: '', decisoes: {}, passosFiscal: [], baixado: false, bancoConferido: false, razaoDaExclusao: undefined, alcancada: 0 }));
     else s.relatorioDoMes(mes, null);
+    esquecerPuxado(chavePuxados, inteiro ? undefined : mes);
     aviso({ tom: 'ok', titulo: 'Importação excluída', texto: 'Relatório de liquidação' + (lote ? ' · ' + cr.rotuloCompetencia(mes) : '') });
   }
 
@@ -191,6 +360,8 @@ export function useCompetencia() {
         titulos: ts.map(t => ({ id: t.id, liquidacao: t.liquidacao, sacado: t.sacado, nf: t.nf, valor: t.valor, juros: t.mora + t.outros, desconto: t.desconto, cobrado: t.cobrado })),
         mes: m, rotulo: cr.rotuloCompetencia(m), carregado: !!r, origem: r?.origem || '', doDrive: !!r?.origem.startsWith('Drive'),
         ocupado: ocupado && busca.mes === m, texto: ocupado && busca.mes === m ? busca.texto : '',
+        /** o que foi puxado do Drive ou do e-mail neste mês (o olhinho abre) */
+        puxados: r ? puxados.filter(p => p.meses.includes(m)).map(p => ({ nome: p.nome, origem: p.origem, abrir: () => abrirPuxado(p) })) : [],
       };
     }),
     faltam: faltam.length,
@@ -203,6 +374,17 @@ export function useCompetencia() {
     /** um mês, ou '*' para todos os que faltam */
     buscarNoDrive,
     importarDoComputador: (mes: string, f: File | undefined) => { void importarDoComputador(mes, f); },
+    /** o "Buscar no e-mail" (a janela da Importação; existe = o robô do Gmail ligado) */
+    email,
+    /** o "Buscar no e-mail" do mês: procura e importa sozinho (Vitor, 14/10/2026) */
+    buscarNoEmail: (mes: string) => { void importarAutomatico([mes], { drive: false, email: true }); },
+    /** o "Selecionar no e-mail": a janela com os anexos e o preview, para escolher */
+    selecionarNoEmail: (mes: string) => email.abrir({ id: mes, nome: 'Relatório de liquidação' }, mes),
+    /** o menu de cima: vários arquivos (cada um no mês dele) e remover todos */
+    importarVarios: (arquivos: File[]) => { void importarVarios(arquivos); },
+    /** o Importar automático: Drive e e-mail, sem escolher (os meses que faltam) */
+    importarAutomatico: () => { void importarAutomatico(); },
+    removerTodos: () => { void removerTodos(); },
     usar: (a: cr.ArquivoAchado) => { void usarDoDrive(busca.mes, a, busca.candidatos); },
     fecharProblema: () => setBusca(PARADO),
     excluir: (mes: string) => { void excluir(mes); },

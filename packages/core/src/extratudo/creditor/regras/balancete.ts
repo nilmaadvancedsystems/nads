@@ -143,9 +143,10 @@ function resolverUma(campo: ContaDoLayout, bal: BalanceteDaEmpresa, cfg: ConfigC
     if (bal.origem === 'nenhum') return { codigo: salva, nome: cfg.nomes[campo] || null, origem: 'salva', bloqueia: false };
     const c = noBalancete(salva);
     if (!c) {
+      // não trava (Vitor, 14/10/2026: "mesmo se a conta não tiver no balancete, deixa passar"): só avisa
       return {
-        codigo: salva, nome: null, origem: 'salva', bloqueia: true,
-        aviso: 'A ' + ROTULO[campo] + ' salva (' + salva + (cfg.nomes[campo] ? ' – ' + cfg.nomes[campo] : '') + ') não está no balancete atual. Escolha outra.',
+        codigo: salva, nome: cfg.nomes[campo] || null, origem: 'salva', bloqueia: false,
+        aviso: 'A ' + ROTULO[campo] + ' salva (' + salva + (cfg.nomes[campo] ? ' – ' + cfg.nomes[campo] : '') + ') não está no balancete atual. Confira; o arquivo sai com ela.',
       };
     }
     const antes = cfg.nomes[campo];

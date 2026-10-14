@@ -3,7 +3,7 @@
 // mais limpas", "marcar várias e emitir", "acompanhar o robô"): os filtros numa linha; o painel do robô (o que ele faz
 // agora, a verificação do gov.br e a fila); a tabela com a caixinha para o lote, a situação como selo e, na linha, só
 // Emitir (ou o PDF) e o ⋯ (Ensaio, Emitir de novo, Passos do robô). Clicar na situação abre os passos do robô.
-import { BotaoAcao, Esqueleto, Icone, MenuSuspenso, SeletorMes, useCarregando } from '@nads/ui';
+import { BotaoAcao, Esqueleto, Icone, MenuSuspenso, NumeroQueConta, SeletorMes, useCarregando, useEntradaAnimada, useLinhasQueSeMovem } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { JanelaLateral } from '../janela/JanelaLateral';
 import { useFgtsDoDp, type FiltroFgts, type SituacaoFgts } from './useFgtsDoDp';
@@ -77,6 +77,9 @@ function Telas({ id, telas }: { id: string; telas: (id: string) => Promise<Tela[
 export function FgtsDoDp() {
   const vm = useFgtsDoDp();
   useCarregando(vm.carregando);
+  // o DP animado (14/10/2026): a tabela entra em cascata; a linha que o robô mudou acende (sem reanimar a lista)
+  const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [vm.carregando, vm.competencia, vm.filtro], 'lista');
+  const linhas = useLinhasQueSeMovem<HTMLTableElement>(vm.linhas.map(l => l.codigo).join(','));
   const r = vm.robo;
   const c = vm.contagem;
   const mes = vm.competencias.find(x => x.valor === vm.competencia)?.rotulo || vm.competencia.split('-').reverse().join('/');
@@ -121,7 +124,7 @@ export function FgtsDoDp() {
             ? <span className="fgts-robo-linha"><span className="bolinha-sit concluida" aria-hidden="true" />Ligado{r.certificado ? ' · certificado até ' + data(r.certificado.validade) : ''}</span>
             : <span className="fgts-robo-linha"><span className="bolinha-sit parada" aria-hidden="true" />Desligado</span>)}
           <span className="tarefas-barra-espaco" />
-          <span className="hint"><b className="num">{c.emitidas}</b> de <b className="num">{c.todos}</b> emitidas em {mes}{vm.totalEmitido ? <> · <b className="num">R$ {vm.totalEmitido}</b></> : null}</span>
+          <span className="hint"><b className="num"><NumeroQueConta texto={String(c.emitidas)} /></b> de <b className="num">{c.todos}</b> emitidas em {mes}{vm.totalEmitido ? <> · <b className="num">R$ {vm.totalEmitido}</b></> : null}</span>
         </div>
         <span className="tarefas-barra fgts-barra" role="progressbar" aria-valuemin={0} aria-valuemax={c.todos} aria-valuenow={c.emitidas} aria-label="Guias emitidas">
           <span style={{ width: (c.todos ? (c.emitidas / c.todos) * 100 : 0) + '%' }} />
@@ -174,8 +177,8 @@ export function FgtsDoDp() {
           )}
         </div>
         {vm.carregando ? <Esqueleto linhas={8} /> : !vm.linhas.length ? <p className="hint dp-vazio">Nenhum cliente com esses filtros.</p> : (
-          <div className="table-wrap">
-            <table className="dp-tabela fgts-tabela">
+          <div className="table-wrap" ref={tabela}>
+            <table className="dp-tabela fgts-tabela" ref={linhas}>
               <thead>
                 <tr>
                   <th className="fgts-marca"><input type="checkbox" checked={vm.todasMarcadas} onChange={e => vm.marcarTodas(e.target.checked)} aria-label="Marcar todas" title="Marcar todas da tela" /></th>
@@ -192,7 +195,7 @@ export function FgtsDoDp() {
                     ...(p ? [{ rotulo: 'Passos do robô', icone: 'list' as const, onClick: () => vm.abrir(p.id) }] : []),
                   ];
                   return (
-                    <tr key={l.codigo} className={'dp-linha' + (l.situacao === 'emitida' ? ' feita' : '')}>
+                    <tr key={l.codigo} data-linha={l.codigo} className={'dp-linha' + (l.situacao === 'emitida' ? ' feita' : '')}>
                       <td className="fgts-marca">
                         <input type="checkbox" checked={vm.marcada(l.codigo)} disabled={!l.podeMarcar} onChange={() => vm.alternarMarca(l.codigo)} aria-label={'Marcar ' + l.nome} />
                       </td>

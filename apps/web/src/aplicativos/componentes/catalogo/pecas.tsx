@@ -9,6 +9,7 @@ import { CONCILIA, EXECUTOR, EXTRATUDO, TAREFAS, TODAS } from './telas';
 import type { Peca } from './tipos';
 import { BotaoGoogle } from '../../../comum/BotaoGoogle';
 import { MenuDaRotina } from '../../tarefas/telas/executor/partes/MenuDaRotina';
+import { AndamentoDoAlterdata } from '../../concilia-ai/telas/importacao/partes/AndamentoDoAlterdata';
 
 const nada = () => undefined;
 
@@ -130,7 +131,7 @@ export const ICONES: NomeIcone[] = [
   'arrowDown', 'arrowUp', 'check', 'checkCircle', 'scale', 'alert', 'lock', 'unlock', 'x', 'sun', 'moon', 'monitor', 'upload', 'ajuda',
   'olho', 'fileText', 'clock', 'chevronsLeft', 'chevronLeft', 'chevronRight', 'settings', 'logOut', 'barChart', 'caretDown', 'play',
   'camera', 'imagem', 'filtro', 'ordenar', 'copiar', 'search', 'repeat', 'calendar', 'plus', 'fileSearch', 'hash', 'list', 'menu', 'pastaAberta', 'mais',
-  'girar', 'maximizar', 'minimizar', 'painel', 'cartao', 'download', 'grade', 'impressora',
+  'girar', 'maximizar', 'minimizar', 'painel', 'cartao', 'download', 'grade', 'impressora', 'dinheiro',
 ];
 const BANCOS = ['banco-do-brasil', 'banrisul', 'bradesco', 'btg', 'c6', 'caixa', 'inter', 'itau', 'mercado-pago', 'nubank', 'pagbank', 'safra', 'santander', 'sicoob', 'stone', 'cora', 'sicredi', 'bnb'];
 const CORES = [
@@ -240,6 +241,8 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <div className="sieg-numero" style={{ maxWidth: 260 }}><span>Notas recebidas</span><b>104</b><span className="sieg-proporcao"><i className="sieg-tipo-0" style={{ flexGrow: 87 }} /><i className="sieg-tipo-1" style={{ flexGrow: 5 }} /><i className="sieg-tipo-2" style={{ flexGrow: 12 }} /></span><small><span className="sieg-legenda"><i className="sieg-tipo-0" />NF-e 87</span><span className="sieg-legenda"><i className="sieg-tipo-1" />NFS-e 5</span><span className="sieg-legenda"><i className="sieg-tipo-2" />CT-e 12</span></small></div> },
   { id: 'gm-tipo', tipo: 'selos', nome: 'Tipo do anexo (e-mail)', descricao: 'A extensão do anexo na cor do tipo (PDF, XML, planilha, extrato) e quantos; vê o que veio sem abrir o e-mail', classes: ['gm-tipos', 'gm-tipo', 'gm-tipo-pdf', 'gm-tipo-xml', 'gm-tipo-xlsx', 'gm-tipo-ofx'], telas: ['t-gmail'],
     demo: () => <span className="gm-tipos"><span className="gm-tipo gm-tipo-pdf">PDF<small>×2</small></span><span className="gm-tipo gm-tipo-xml">XML</span><span className="gm-tipo gm-tipo-xlsx">XLSX</span><span className="gm-tipo gm-tipo-ofx">OFX</span></span> },
+  { id: 'gm-pilula', tipo: 'selos', nome: 'Pílula do anexo (e-mail)', descricao: 'Como no Gmail: o tipo colorido e o nome do arquivo numa pílula, embaixo do assunto; até 3 e "+N"', classes: ['gm-pilulas', 'gm-pilula', 'gm-pilula-nome', 'gm-pilula-mais'], telas: ['t-gmail'],
+    demo: () => <span className="gm-pilulas"><span className="gm-pilula"><span className="gm-tipo gm-tipo-pdf">PDF</span><span className="gm-pilula-nome">extrato-sicoob-08</span></span><span className="gm-pilula"><span className="gm-tipo gm-tipo-xml">XML</span><span className="gm-pilula-nome">NFe31261045</span></span><span className="gm-pilula gm-pilula-mais">+2</span></span> },
   { id: 'gm-grupo', tipo: 'listas', nome: 'Grupo do dia (lista de e-mails)', descricao: 'O rótulo fixo no alto de cada grupo (Hoje, Ontem, Esta semana, Este mês, Mais antigos) com a contagem', classes: ['gm-grupo', 'gm-grupo-rotulo'], telas: ['t-gmail'], largo: true,
     demo: () => <div style={{ width: '100%' }}><p className="gm-grupo-rotulo">Hoje<span>3</span></p><p className="gm-grupo-rotulo">Ontem<span>5</span></p></div> },
   { id: 'badge-warn', tipo: 'selos', nome: 'Atenção', classes: ['badge badge-warn'], telas: ['t-gmail', 't-exec-fiscal-rotina'], demo: () => <span className="badge badge-warn">Pendente</span> },
@@ -559,6 +562,22 @@ export const PECAS_BASE: Peca[] = [
       </div>
     ) },
 
+  { id: 'alterdata-andamento', tipo: 'cartoes', nome: 'Gerar no Alterdata (botão e andamento do robô)', descricao: 'Na Importação do balancete (14/10/2026, só o Contábil e o admin): a competência e o botão "Gerar no Alterdata"; logo abaixo a caixa do robô — "Na fila…", os passos dele ao vivo, o erro dele, e o Cancelar enquanto dá tempo', componente: 'AndamentoDoAlterdata', classes: ['alt-gerar', 'alt-andamento', 'alt-topo', 'alt-passos'], telas: ['c-importacao', 't-exec-importacao'], largo: true,
+    demo: () => {
+      const base = { id: 'x', codigo: 292, empresa: 'Fito Indústria', competencia: '2026-09', erro: '', arquivoNome: '', criadoEm: '', criadoPor: 'Clara', fimEm: '' };
+      return (
+        <div style={{ width: '100%' }}>
+          <div className="alt-gerar" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
+            <span className="alt-gerar-rotulo">ou gerar direto no Alterdata:</span>
+            <SeletorMes valor="2026-09" onMudar={nada} rotulo="Competência do balancete" />
+            <button type="button" className="btn btn-outline"><Icone nome="robo" width={16} height={16} />Gerar no Alterdata</button>
+          </div>
+          <AndamentoDoAlterdata pedido={{ ...base, status: 'pendente', passos: [] }} onCancelar={nada} onFechar={nada} />
+          <AndamentoDoAlterdata pedido={{ ...base, status: 'trabalhando', passos: [{ n: 1, nome: 'abrindo o Alterdata Contábil', quando: '' }, { n: 2, nome: 'escolhendo a empresa 292', quando: '' }, { n: 3, nome: 'gerando o balancete de 09/2026', quando: '' }] }} onCancelar={nada} onFechar={nada} />
+          <AndamentoDoAlterdata pedido={{ ...base, status: 'erro', erro: 'empresa 292 não encontrada no Alterdata', passos: [] }} onCancelar={nada} onFechar={nada} />
+        </div>
+      );
+    } },
   // ─── Listas ─────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'chips', tipo: 'listas', nome: 'Chips de filtro', classes: ['chip-row', 'chip-lbl', 'chip-f', 'on'], telas: ['c-consulta', 'c-naturezas', 't-gmail'],
     demo: () => <div className="chip-row"><span className="chip-lbl">Tipo</span><button className="chip-f on" type="button">Todos</button><button className="chip-f" type="button">Entradas</button><button className="chip-f" type="button">Saídas</button></div> },

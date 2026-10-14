@@ -2,8 +2,8 @@
 // entrada de verdade. No topo, uma barra só (as caixas, como o robô está, a busca e "Verificar agora"); à esquerda a
 // lista (as abas De clientes · Sem cliente · Spam e cada e-mail com a inicial, o cliente, o assunto, o começo do texto,
 // a hora, os anexos e se já está no Drive); à direita o e-mail aberto (as ações numa barra, o texto, os anexos em
-// cartões, as respostas e responder). Sem e-mail aberto, a lista ocupa a largura toda, uma linha por e-mail; ao clicar,
-// ela encolhe e o e-mail abre ao lado. No celular, o e-mail ocupa a tela.
+// cartões, as respostas e responder). A lista ocupa a largura toda, uma linha por e-mail; ao clicar, o e-mail abre numa
+// janela flutuante por cima dela (14/10/2026). No celular, a janela ocupa a tela.
 import type { entregas as e } from '@nads/core';
 import { Esqueleto, Icone, NumeroQueConta, Segmentado, useCarregando } from '@nads/ui';
 import { useEffect, useState } from 'react';
@@ -27,12 +27,6 @@ const PERIODOS: { valor: PeriodoDaCaixa; rotulo: string }[] = [
   { valor: 'tudo', rotulo: 'Tudo' }, { valor: 'hoje', rotulo: 'Hoje' }, { valor: '7d', rotulo: '7 dias' }, { valor: '30d', rotulo: '30 dias' },
 ];
 
-/** Os tipos dos anexos (PDF ×2, XML…), para ver na linha sem abrir (14/10/2026: "mais informação na linha"). */
-function tiposDosAnexos(arquivos: readonly string[]) {
-  const conta = new Map<string, number>();
-  for (const a of arquivos) { const t = extensao(a) || 'ARQ'; conta.set(t, (conta.get(t) || 0) + 1); }
-  return [...conta].sort((a, b) => b[1] - a[1]);
-}
 
 /** Escolher o cliente dentro do e-mail aberto: uma busca com a lista embaixo. */
 function EscolherCliente({ vm, titulo, aoEscolher, candidatos = [] }: { vm: VmCaixa; titulo: string; aoEscolher: (clienteId: string) => void; candidatos?: readonly string[] }) {
@@ -73,7 +67,6 @@ function Item({ vm, x, aberto }: { vm: VmCaixa; x: e.EmailDaCaixa; aberto: boole
   const salvo = vm.salvo(x);
   const parecido = vm.aba === 'sem-cliente' ? vm.parecido(x) : null;
   const q = vm.quem(x);
-  const tipos = tiposDosAnexos(x.arquivos);
   return (
     <li>
       <div role="button" tabIndex={0} className={'gm-item' + (aberto ? ' aberto' : '')} data-linha={x.mensagemId}
@@ -88,19 +81,24 @@ function Item({ vm, x, aberto }: { vm: VmCaixa; x: e.EmailDaCaixa; aberto: boole
           <span className="gm-trecho">{x.trecho}</span>
           {(x.arquivos.length > 0 || salvo || parecido) && (
             <span className="gm-item-pe">
-              {tipos.length > 0 && (
-                <span className="gm-tipos" title={x.arquivos.join(', ')}>
-                  {tipos.slice(0, 3).map(([t, n]) => <span key={t} className={'gm-tipo gm-tipo-' + t.toLowerCase()}>{t}{n > 1 && <small>×{n}</small>}</span>)}
-                  {tipos.length > 3 && <span className="gm-tipo">+{tipos.length - 3}</span>}
-                </span>
-              )}
-              {salvo && <span className="gm-no-drive" title={salvo.pasta}><Icone nome="check" />no Drive</span>}
+              {x.arquivos.length > 0 && <span className="gm-clipe" title={x.arquivos.length + (x.arquivos.length === 1 ? ' anexo' : ' anexos')}><Icone nome="arquivo" /></span>}
+              {salvo && <span className="gm-no-drive" title={'No Drive: ' + salvo.pasta}><Icone nome="check" />no Drive</span>}
               {parecido && (
                 <button type="button" className="gm-sugestao" title={'Ligar ' + x.remetente + ' a ' + parecido.nome}
                   onClick={ev => { ev.stopPropagation(); void vm.ligar(x, parecido.id); }}>
                   É {parecido.nome.split(' ').slice(0, 2).join(' ')}?
                 </button>
               )}
+            </span>
+          )}
+          {/* os anexos em pílulas embaixo, como no Gmail (14/10/2026: "podia fazer tipo o gmail mesmo") */}
+          {x.arquivos.length > 0 && (
+            <span className="gm-pilulas">
+              {x.arquivos.slice(0, 3).map((nome, i) => {
+                const t = extensao(nome) || 'ARQ';
+                return <span key={nome + i} className="gm-pilula" title={nome}><span className={'gm-tipo gm-tipo-' + t.toLowerCase()}>{t}</span><span className="gm-pilula-nome">{nome.replace(/\.[a-z0-9]{2,5}$/i, '')}</span></span>;
+              })}
+              {x.arquivos.length > 3 && <span className="gm-pilula gm-pilula-mais" title={x.arquivos.slice(3).join(', ')}>+{x.arquivos.length - 3}</span>}
             </span>
           )}
         </span>
@@ -135,10 +133,6 @@ function Leitura({ vm, x }: { vm: VmCaixa; x: e.EmailDaCaixa }) {
             : anexos.length > 0 && <button type="button" className="btn btn-primary" onClick={() => void vm.salvarNoDrive(x)}><Icone nome="pasta" />Salvar no Drive</button>)}
           <a className="btn btn-outline" href={vm.linkDoGmail(x.mensagemId)} target="_blank" rel="noopener noreferrer"><Icone nome="envelope" />Abrir no Gmail</a>
           <span className="tarefas-barra-espaco" />
-          {/* marcou a empresa errada (Vitor, 06/10/2026): tira o remetente dela e o e-mail volta para Sem cliente */}
-          {!semDono && <button type="button" className="btn btn-ghost" onClick={() => void vm.desligar(x).then(ok => { if (ok) fechar(); })}
-            title={'Não é de ' + x.clienteNome + ': tirar e escolher de novo'}>Não é deste cliente</button>}
-          {vm.aba !== 'spam' && vm.admin && <button type="button" className="btn btn-ghost gm-spam" onClick={() => void vm.ignorar(x).then(fechar)}>É spam</button>}
           <button type="button" className="btn btn-ghost gm-fechar" onClick={fechar} aria-label="Fechar" title="Fechar (Esc)"><Icone nome="x" /></button>
         </div>
       </header>
@@ -204,6 +198,17 @@ function Leitura({ vm, x }: { vm: VmCaixa; x: e.EmailDaCaixa }) {
           <button type="submit" className="btn btn-primary" disabled={!p.texto.trim() || p.enviando}><Icone nome="mensagem" />{p.enviando ? 'Enviando…' : 'Enviar'}</button>
         </div>
       </form>
+
+      {/* longe do X de fechar (14/10/2026: "remova isso daqui, provavelmente vai ser clicado errado"): no pé do e-mail */}
+      {(!semDono || (vm.aba !== 'spam' && vm.admin)) && (
+        <footer className="gm-pe">
+          <span className="fraco">Algo errado com este e-mail?</span>
+          {/* marcou a empresa errada (Vitor, 06/10/2026): tira o remetente dela e o e-mail volta para Sem cliente */}
+          {!semDono && <button type="button" className="btn btn-outline" onClick={() => void vm.desligar(x).then(ok => { if (ok) fechar(); })}
+            title={'Não é de ' + x.clienteNome + ': tirar e escolher de novo'}>Não é deste cliente</button>}
+          {vm.aba !== 'spam' && vm.admin && <button type="button" className="btn btn-outline gm-spam" onClick={() => void vm.ignorar(x).then(fechar)}>É spam</button>}
+        </footer>
+      )}
     </article>
   );
 }
@@ -248,7 +253,7 @@ export function CaixaDoRobo() {
         </div>
       )}
 
-      <div className={'gm-caixa' + (vm.aberto ? ' com-leitura' : '')}>
+      <div className="gm-caixa">
         {/* a lista */}
         <div className="gm-lista">
           <div className="gm-abas">
@@ -284,13 +289,16 @@ export function CaixaDoRobo() {
               </ul>
             )}
         </div>
-        {/* o e-mail aberto: só existe quando se clica num e-mail (13/10/2026: "só vai abrir essa tela quando eu clicar") */}
-        {vm.aberto && (
-          <div className="gm-leitura">
+      </div>
+      {/* o e-mail aberto numa janela flutuante por cima da lista (14/10/2026: "quero que você coloque uma tela flutuante
+          mesmo, esse layout fica estranho"); clicar fora ou Esc fecha */}
+      {vm.aberto && (
+        <div className="cad-janela-fundo" onMouseDown={ev => { if (ev.target === ev.currentTarget) vm.fechar(); }}>
+          <div className="cad-janela gm-janela" role="dialog" aria-modal="true" aria-label={vm.aberto.assunto || 'E-mail'}>
             <Leitura key={vm.aberto.mensagemId} vm={vm} x={vm.aberto} />
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </section>
   );
 }

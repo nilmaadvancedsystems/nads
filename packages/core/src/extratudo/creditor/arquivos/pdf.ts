@@ -4,6 +4,7 @@
 // Só serve para PDF com texto (exportado pelo banco). PDF escaneado ou foto não têm texto.
 import type { RelatorioBanco } from '../tipos';
 import { lerRelatorioTexto, relatorioDosItens, type ItemPdf } from './banco';
+import { cedenteDosTitulosPorPeriodo, FORMATO_NAO_ACEITO, formatoDoRelatorio, lerCarteiraDeCobranca } from './formatos';
 
 /**
  * Remonta as linhas: pedaços na mesma altura (±2) viram uma linha, da esquerda para a direita;
@@ -62,10 +63,15 @@ export async function itensDoPdf(buf: ArrayBuffer, workerSrc: string): Promise<I
   return paginas;
 }
 
-/** Relatório do banco a partir do PDF. */
+/** Relatório do banco a partir do PDF: só os dois formatos aceitos (arquivos/formatos.ts); outro PDF é recusado. */
 export async function lerRelatorioPdf(buf: ArrayBuffer, workerSrc: string): Promise<RelatorioBanco> {
   const paginas = await itensDoPdf(buf, workerSrc);
+  const linhas = paginas.map(p => linhasDosItens(p));
+  const formato = formatoDoRelatorio(linhas.flat());
+  if (formato === 'carteira-de-cobranca') return lerCarteiraDeCobranca(linhas);
+  if (formato !== 'titulos-por-periodo') throw new Error(FORMATO_NAO_ACEITO);
+  const cedente = cedenteDosTitulosPorPeriodo(linhas.flat());
   const porPosicao = relatorioDosItens(paginas);
-  if (porPosicao && porPosicao.grupos.some(g => g.titulos.length)) return porPosicao;
-  return lerRelatorioTexto(paginas.map(p => linhasDosItens(p).join('\n')).join('\n'));
+  if (porPosicao && porPosicao.grupos.some(g => g.titulos.length)) return { ...porPosicao, cedente, formato };
+  return { ...lerRelatorioTexto(linhas.map(l => l.join('\n')).join('\n')), cedente, formato };
 }

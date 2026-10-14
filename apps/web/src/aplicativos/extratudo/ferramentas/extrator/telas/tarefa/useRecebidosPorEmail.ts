@@ -8,6 +8,7 @@ import { extrator as x } from '@nads/core';
 import { useEffect, useRef, useState } from 'react';
 import { useDrive } from '../../dados/repo';
 import type { useImportacao } from '../importacao/useImportacao';
+import { chaveDoExtrato, esquecerPuxado, guardarPuxado } from '../../../puxados';
 import { tempo, type AndamentoDeExtratos } from './AndamentoDosExtratos';
 
 type Vm = ReturnType<typeof useImportacao>;
@@ -55,8 +56,12 @@ export function useRecebidosPorEmail(vm: Vm, codigo: number | null) {
     let ok = false;
     try {
       const conteudo = await drive.baixarRecebido(r.id);
+      // a cópia para o olhinho do mês (o leitor pode consumir o conteúdo)
+      const copia = new Blob([conteudo.slice(0)]);
       ok = await vm.importarRecebido(linha, r.nome, conteudo, sozinho);
       if (ok) {
+        esquecerPuxado(chaveDoExtrato(codigo, linha), competencia);
+        guardarPuxado(chaveDoExtrato(codigo, linha), r.nome, copia, 'email', [competencia]);
         await drive.marcarRecebido(r.id, 'importado', linha);
         setLista(l => l.filter(a => a.id !== r.id));
       }

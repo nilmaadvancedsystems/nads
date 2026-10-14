@@ -5,7 +5,7 @@
 import { nomeNorm } from '../../formatos';
 import { BANCOS_CONHECIDOS, bancosDaEmpresa, idDaConta, rotuloDaConta, type BancoDaEmpresa } from '../bancos';
 import {
-  type CadastroDaEmpresa, type EmprestimoDaEmpresa, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, type ParametrosDoDpDoMes, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel,
+  type BancoDoRelatorio, BANCOS_DO_RELATORIO, type CadastroDaEmpresa, type EmprestimoDaEmpresa, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, type ParametrosDoDpDoMes, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel,
 } from './tipos';
 
 /** Quantos registros do histórico ficam guardados (os mais novos). */
@@ -113,6 +113,16 @@ function camposDoDp(o: Record<string, unknown>): ParametrosDoDpDoMes {
   return p;
 }
 
+/** O pagamento do pró-labore guardado (a conta do crédito, só dígitos; o dia útil, 1 a 5). */
+function proLaboreDoDocumento(v: unknown): Pick<CadastroDaEmpresa, 'proLabore'> {
+  if (!v || typeof v !== 'object') return {};
+  const o = v as Record<string, unknown>;
+  const conta = texto(o.contaCredito).replace(/\D/g, '');
+  const dia = typeof o.diaUtil === 'number' && o.diaUtil >= 1 && o.diaUtil <= 5 ? Math.round(o.diaUtil) : 0;
+  const p = { ...(conta ? { contaCredito: conta } : {}), ...(dia ? { diaUtil: dia } : {}) };
+  return Object.keys(p).length ? { proLabore: p } : {};
+}
+
 /** O documento `cadastro/{slug}` conferido (campo estranho ou vazio fica de fora). */
 export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Record<string, unknown> | null | undefined): CadastroDaEmpresa {
   if (!doc) return cadastroVazio(nome, codigo);
@@ -128,7 +138,9 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...(typeof doc.cartaoEmpresarial === 'boolean' ? { cartaoEmpresarial: doc.cartaoEmpresarial } : {}),
     ...(typeof doc.vendeNoCartao === 'boolean' ? { vendeNoCartao: doc.vendeNoCartao } : {}),
     ...(typeof doc.credLiquidacao === 'boolean' ? { credLiquidacao: doc.credLiquidacao } : {}),
+    ...relatoriosDoDocumento(doc.relatoriosDeLiquidacao),
     ...(typeof doc.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: doc.emiteNotaHonorario } : {}),
+    ...proLaboreDoDocumento(doc.proLabore),
     ...(REGIMES.includes(texto(doc.regime) as Regime) ? { regime: texto(doc.regime) } : {}),
     ...(/^\d{14}$/.test(texto(doc.cnpj)) ? { cnpj: texto(doc.cnpj) } : {}),
     ...contatoDoDocumento(doc.contato),
@@ -151,7 +163,9 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(typeof c.cartaoEmpresarial === 'boolean' ? { cartaoEmpresarial: c.cartaoEmpresarial } : {}),
     ...(typeof c.vendeNoCartao === 'boolean' ? { vendeNoCartao: c.vendeNoCartao } : {}),
     ...(typeof c.credLiquidacao === 'boolean' ? { credLiquidacao: c.credLiquidacao } : {}),
+    ...(c.relatoriosDeLiquidacao ? { relatoriosDeLiquidacao: c.relatoriosDeLiquidacao } : {}),
     ...(typeof c.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: c.emiteNotaHonorario } : {}),
+    ...(c.proLabore && (c.proLabore.contaCredito || c.proLabore.diaUtil) ? { proLabore: c.proLabore } : {}),
     ...(c.regime ? { regime: c.regime } : {}),
     ...(c.cnpj ? { cnpj: c.cnpj } : {}),
     ...(c.contato && (c.contato.email || c.contato.whatsapp) ? { contato: c.contato } : {}),
@@ -629,12 +643,44 @@ export function definirContato(c: CadastroDaEmpresa, campo: 'email' | 'whatsapp'
 }
 
 /** O escritório emite nota de honorário para a empresa: sim, não, ou volta a "não informado" (null). */
+/** Os bancos do relatório de liquidação, do documento (só os conhecidos, sem repetir). */
+function relatoriosDoDocumento(v: unknown): Pick<CadastroDaEmpresa, 'relatoriosDeLiquidacao'> {
+  if (!Array.isArray(v)) return {};
+  return { relatoriosDeLiquidacao: BANCOS_DO_RELATORIO.map(b => b.id).filter(id => v.includes(id)) };
+}
+
+/** Marca ou desmarca um banco do relatório de liquidação (o Creditor). Registra no histórico. */
+export function definirRelatorioDeLiquidacao(c: CadastroDaEmpresa, banco: BancoDoRelatorio, marcado: boolean, por: string, agora: Date): CadastroDaEmpresa {
+  const atual = c.relatoriosDeLiquidacao || [];
+  if (atual.includes(banco) === marcado) return c;
+  const novos = BANCOS_DO_RELATORIO.map(b => b.id).filter(id => (id === banco ? marcado : atual.includes(id)));
+  const nome = BANCOS_DO_RELATORIO.find(b => b.id === banco)?.nome || banco;
+  return registrar({ ...c, relatoriosDeLiquidacao: novos }, por, agora, 'Relatório de liquidação (Creditor)', nome + (marcado ? ': sim' : ': não'));
+}
+
 export function definirNotaDeHonorario(c: CadastroDaEmpresa, sim: boolean | null, por: string, agora: Date): CadastroDaEmpresa {
   if ((c.emiteNotaHonorario ?? null) === sim) return c;
   const resto: CadastroDaEmpresa = { ...c };
   delete resto.emiteNotaHonorario;
   const novo = sim == null ? resto : { ...resto, emiteNotaHonorario: sim };
   return registrar(novo, por, agora, 'Nota de honorário', sim == null ? 'Não informado' : sim ? 'Sim' : 'Não');
+}
+
+/** Guarda a conta do crédito e/ou o dia útil do pagamento do pró-labore (o vazio tira). Registra no histórico. */
+export function definirPagamentoDoProLabore(c: CadastroDaEmpresa, mudar: { contaCredito?: string; diaUtil?: number }, por: string, agora: Date): CadastroDaEmpresa {
+  const atual = c.proLabore || {};
+  const novo: { contaCredito?: string; diaUtil?: number } = { ...atual };
+  if (mudar.contaCredito !== undefined) {
+    const cod = mudar.contaCredito.replace(/\D/g, '');
+    if (cod) novo.contaCredito = cod; else delete novo.contaCredito;
+  }
+  if (mudar.diaUtil !== undefined) novo.diaUtil = Math.min(5, Math.max(1, Math.round(mudar.diaUtil) || 5));
+  if (novo.contaCredito === atual.contaCredito && novo.diaUtil === atual.diaUtil) return c;
+  const resto: CadastroDaEmpresa = { ...c };
+  delete resto.proLabore;
+  const com = Object.keys(novo).length ? { ...resto, proLabore: novo } : resto;
+  const detalhe = [novo.contaCredito ? 'crédito ' + novo.contaCredito : 'sem a conta do crédito', (novo.diaUtil || 5) + 'º dia útil'].join(' · ');
+  return registrar(com, por, agora, 'Pagamento do pró-labore', detalhe);
 }
 
 /** Os regimes da empresa (os da lista do escritório). */

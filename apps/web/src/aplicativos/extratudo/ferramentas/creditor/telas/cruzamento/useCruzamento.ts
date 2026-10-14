@@ -26,7 +26,8 @@ export function useCruzamento() {
   const linhas = s.d.cruzamentos.map(c => {
     const t = porId.get(c.tituloId) as cr.Titulo;
     const decisao = s.d.decisoes[c.tituloId];
-    const precisa = cr.precisaDecisao(c);
+    // o sem conta se resolve na etapa Contas (Vitor, 14/10/2026); aqui só os que divergem
+    const precisa = cr.precisaDecisao(c) && c.situacao !== 'nao-encontrada';
     return {
       id: c.tituloId, nf: t.nf, liquidacao: t.liquidacao, sacado: t.sacado, nomeDaConta: c.linha?.cliente || '',
       valorBanco: c.valorBanco,

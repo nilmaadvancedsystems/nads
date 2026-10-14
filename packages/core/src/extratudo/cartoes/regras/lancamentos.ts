@@ -1,6 +1,6 @@
 // As compras da fatura viram o razão do cartão (Vitor, 07/10/2026): um lançamento por compra, D Cartão de Crédito / C Banco,
 // todos no dia em que o banco pagou a fatura. O dia vem do extrato já importado (o débito com o valor da fatura); sem
-// achar, vale o vencimento, com aviso. O arquivo é o mesmo de 8 colunas do Creditor.
+// achar, vale o vencimento, com aviso. O arquivo é o do padrão de 10 colunas do Alterdata.
 import type { LinhaDeImportacao } from '../../creditor/arquivos/gerar';
 import type { ComprasDaFatura, FaturaDoCartao } from './fatura';
 

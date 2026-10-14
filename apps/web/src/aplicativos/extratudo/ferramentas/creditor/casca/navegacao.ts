@@ -4,7 +4,7 @@ import type { NomeIcone } from '@nads/ui';
 import { caminho } from './caminho';
 
 // Sem Conferência dos grupos e sem arquivo do sistema (2026-09-29): a conta de cada cliente vem do balancete.
-export type IdEtapa = 'competencia' | 'cruzamento' | 'lancamentos' | 'exclusao';
+export type IdEtapa = 'competencia' | 'contas' | 'cruzamento' | 'lancamentos' | 'exclusao';
 
 export interface Etapa { id: IdEtapa; rotulo: string; titulo: string; icone: NomeIcone }
 
@@ -12,6 +12,9 @@ export const ETAPAS: Etapa[] = [
   // o relatório de liquidação (Vitor, 05/10/2026: a Competência e o Fiscal num só, chamado "Arquivo"; os títulos
   // ficam na seta da linha)
   { id: 'competencia', rotulo: 'Arquivo', titulo: 'Arquivo', icone: 'recibo' },
+  // só quando falta a conta de algum cliente (Vitor, 14/10/2026: "se faltar alguma conta, coloque isso para o usuário
+  // cadastrar em uma tela anterior"): uma linha por cliente; o Relatório de Recebimento só abre com todas informadas
+  { id: 'contas', rotulo: 'Contas', titulo: 'Contas dos clientes', icone: 'list' },
   // a etapa toda se chama assim (Vitor, 05/10/2026)
   { id: 'cruzamento', rotulo: 'Relatório de Recebimento', titulo: 'Relatório de Recebimento', icone: 'repeat' },
   { id: 'lancamentos', rotulo: 'Lançamentos', titulo: 'Lançamentos para importar', icone: 'download' },

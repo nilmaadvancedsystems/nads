@@ -1,5 +1,5 @@
 // ViewModel da etapa Lançamentos: as contas do layout, o fechamento da conta banco por dia (a última
-// checagem) e o arquivo .xls de 8 colunas. Só baixa quando todos os dias batem (ou a diferença é
+// checagem) e o arquivo .xls no padrão de 10 colunas do Alterdata. Só baixa quando todos os dias batem (ou a diferença é
 // exatamente o que a pessoa excluiu).
 // As contas vêm do balancete da empresa (sugeridas pelo nome) ou do que foi salvo nela; trocar uma
 // conta salva na empresa, e baixar o arquivo confirma as sugeridas e ensina a conta de cada cliente.
@@ -46,6 +46,16 @@ export function useLancamentos() {
       desconto: cr.somar(lancamentos.filter(l => l.tipo === 'desconto').map(l => l.valor)),
     },
     fora: fora.map(t => ({ id: t.id, nf: t.nf, sacado: t.sacado, liquidacao: t.liquidacao, valor: cr.liquidoDoTitulo(t) })),
+    /** o extrato que o Creditor obedece (Vitor, 14/10/2026): o banco, os títulos que ele não creditou e os créditos sem título */
+    extrato: s.d.extrato,
+    /** os sem crédito que vieram de um TD (o banco adiantou o dinheiro na liberação): a data e o valor da liberação */
+    descontados: s.d.semCredito.filter(t => s.d.descontados.has(t.id)).map(t => {
+      const td = s.d.descontados.get(t.id)!;
+      return { id: t.id, nf: t.nf, sacado: t.sacado, liquidacao: t.liquidacao, valor: cr.liquidoDoTitulo(t), td: td.data + ' · ' + cr.reais(td.valor) };
+    }),
+    /** os sem crédito que nenhum TD explica */
+    semCredito: s.d.semCredito.filter(t => !s.d.descontados.has(t.id)).map(t => ({ id: t.id, nf: t.nf, sacado: t.sacado, liquidacao: t.liquidacao, valor: cr.liquidoDoTitulo(t) })),
+    creditosSemTitulo: s.d.creditosSemTitulo.map(c => ({ data: c.data, valor: c.valor, historico: c.historico })),
     divergentes: divergentes.map(f => f.data + ': diferença de ' + cr.reais(f.diferenca)),
     podeBaixar: lancamentos.length > 0 && divergentes.length === 0 && contasOk,
     /** baixar conclui: as contas sugeridas passam a ser salvas e os clientes conciliados são aprendidos */

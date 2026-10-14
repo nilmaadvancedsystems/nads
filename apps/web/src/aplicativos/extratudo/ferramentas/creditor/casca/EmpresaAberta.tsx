@@ -6,6 +6,7 @@ import { Navigate, useLocation, useParams } from 'react-router';
 import { useEmpresaDoExtratudo } from '../../../empresas';
 import { TopoProvider } from '../../../../../comum/topo';
 import { Competencia } from '../telas/competencia/Competencia';
+import { Contas } from '../telas/contas/Contas';
 import { Cruzamento } from '../telas/cruzamento/Cruzamento';
 import { Lancamentos } from '../telas/lancamentos/Lancamentos';
 import { Exclusao } from '../telas/exclusao/Exclusao';
@@ -24,6 +25,7 @@ function Tela() {
   }
   switch (s.etapa) {
     case 'competencia': return <Competencia />;
+    case 'contas': return <Contas />;
     case 'cruzamento': return <Cruzamento />;
     case 'lancamentos': return <Lancamentos />;
     case 'exclusao': return <Exclusao />;

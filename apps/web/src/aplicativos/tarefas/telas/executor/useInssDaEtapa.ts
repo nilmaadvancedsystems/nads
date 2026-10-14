@@ -139,7 +139,7 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
     /** quantas sugestões (do período todo) ainda sem a contrapartida */
     faltaContrapartida: faltaContra,
     podeExportar: todas.length > 0 && !faltaContra && /^[0-9]+$/.test(contaInss.trim()),
-    /** o .xls de importação do Alterdata (as 8 colunas, o mesmo do Creditor), com todas as sugestões do período */
+    /** o .xls de importação do Alterdata (o padrão de 10 colunas do Alterdata), com todas as sugestões do período */
     baixarXls: () => {
       const linhas = t.linhasDoAlterdata(todas, contaInss.trim(), contrapartidas);
       const bytes = creditor.planilhaDeImportacao(linhas.map(l => ({ automatico: '', codHistorico: '', documento: '', tipo: 'principal' as const, tituloId: 0, ...l })));

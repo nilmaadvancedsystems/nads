@@ -63,6 +63,13 @@ export function useDadosDaEmpresa(rota: string) {
       const novo = empresas.cadastro.definirCartao(c.cadastro, campo, atual === sim ? null : sim, c.por, new Date());
       if (novo !== c.cadastro) c.salvar(novo);
     },
+    /** de quais bancos vem o relatório de liquidação (Vitor, 14/10/2026): o importar automático do Creditor procura esses */
+    relatoriosDeLiquidacao: c.cadastro.relatoriosDeLiquidacao || [],
+    marcarRelatorioDeLiquidacao(banco: empresas.cadastro.BancoDoRelatorio, marcado: boolean) {
+      if (c.carregando) return;
+      const novo = empresas.cadastro.definirRelatorioDeLiquidacao(c.cadastro, banco, marcado, c.por, new Date());
+      if (novo !== c.cadastro) c.salvar(novo);
+    },
     /** o escritório emite nota de honorário para a empresa (Vitor, 07/10/2026): decide o que a etapa Honorários pede */
     emiteNotaHonorario: c.cadastro.emiteNotaHonorario ?? null,
     definirNotaDeHonorario(sim: boolean) {
