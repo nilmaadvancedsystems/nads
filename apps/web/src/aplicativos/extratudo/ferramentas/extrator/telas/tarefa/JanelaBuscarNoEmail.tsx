@@ -99,7 +99,7 @@ export function useBuscarNoEmail(importar: (linha: Linha, fs: File[]) => void, p
       const pdf = x.ehPdf(bytes) || /\.pdf$/i.test(a.nome);
       let url: string | undefined;
       if (pdf) { url = URL.createObjectURL(new Blob([conteudo], { type: 'application/pdf' })); urls.current.push(url); }
-      const lido: LidoDoAnexo = lerDoAnexo ? await lerDoAnexo(a.nome, conteudo) : await (async () => {
+      const lido: LidoDoAnexo = lerDoAnexo ? await lerDoAnexo(a.nome, conteudo.slice(0)) : await (async () => {
         const l = await x.lerArquivo(a.nome, bytes.slice(), 'banco');
         return { lancamentos: l.lancamentos.length, meses: l.semMovimento || [...new Set(l.lancamentos.map(y => y.data.slice(0, 7)))].sort(), semMovimento: !!l.semMovimento, erro: l.erro, primeiros: l.lancamentos.slice(0, 8) };
       })();

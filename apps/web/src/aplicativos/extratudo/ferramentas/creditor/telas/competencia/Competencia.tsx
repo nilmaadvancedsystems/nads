@@ -47,7 +47,7 @@ export function Competencia() {
         <div className="modal-overlay" role="presentation" onClick={vm.fecharProblema}>
           <div className={classeDaJanela({}) + ' drive-escolha'} role="dialog" aria-modal="true" aria-labelledby="tituloEscolhaCreditor" onClick={e => e.stopPropagation()}>
             <button type="button" className="modal-x" aria-label="Fechar" title="Fechar" onClick={vm.fecharProblema}><Icone nome="x" /></button>
-            <h3 id="tituloEscolhaCreditor">Relatório de liquidação{vm.lote && b.mes ? ' de ' + vm.linhas.find(l => l.mes === b.mes)?.rotulo : ''} no Drive</h3>
+            <h3 id="tituloEscolhaCreditor">Relatório de liquidação{vm.lote && b.mes ? ' de ' + vm.linhas.find(l => l.mes === b.mes)?.rotulo : ''}{b.candidatos.length ? ' no Drive' : ''}</h3>
             <p>{b.texto}</p>
             {b.candidatos.length > 0 && (
               <div className="drive-candidatos">

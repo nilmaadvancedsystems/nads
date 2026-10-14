@@ -131,7 +131,8 @@ export function useCompetencia() {
     s.empresa.codigo,
     async (nome, conteudo) => {
       try {
-        const ts = (await lerRelatorio(nome, conteudo)).grupos.flatMap(g => g.titulos);
+        // uma cópia: o leitor de PDF consome o buffer (sem ela, o "Importar este" chegava com 0 bytes)
+        const ts = (await lerRelatorio(nome, conteudo.slice(0))).grupos.flatMap(g => g.titulos);
         const isoDe = (d: string) => d.slice(6, 10) + '-' + d.slice(3, 5) + '-' + d.slice(0, 2);
         return {
           lancamentos: ts.length, meses: [...new Set(ts.map(t => isoDe(t.liquidacao).slice(0, 7)))].sort(), erro: ts.length ? null : 'Não achei títulos neste arquivo.',
