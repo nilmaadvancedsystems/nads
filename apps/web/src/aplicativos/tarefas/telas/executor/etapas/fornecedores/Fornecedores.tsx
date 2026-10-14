@@ -6,12 +6,15 @@ import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeT
 import { useFornecedores, type FiltroFornecedores, type TelaFornecedores } from './useFornecedores';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../../comum/GradeDosMeses';
 import { DigitarLancamento } from '../clientes/DigitarLancamento';
-import { ConsultaDeNotas } from '../consulta/ConsultaDeNotas';
+import { ConsultaDeNotas, useAbasDaConsulta } from '../consulta/ConsultaDeNotas';
 
 type VM = ReturnType<typeof useFornecedores>;
 
 export function Fornecedores() {
   const vm = useFornecedores();
+  // a aba Consulta no menu de cima (Vitor, 14/10/2026: "igual à Consulta normal")
+  const consulta = useAbasDaConsulta('Fornecedores');
+  if (consulta) return <ConsultaDeNotas tipos={['entradas', 'tomados']} />;
   return (
     <section>
       <header className="topbar"><div><h2 className="page-title">Fornecedores</h2></div></header>
@@ -34,8 +37,6 @@ export function Fornecedores() {
       {vm.tela === 'arquivos' && <Arquivos vm={vm} />}
       {vm.tela === 'fornecedores' && <ListaDeFornecedores vm={vm} />}
       {vm.tela === 'envio' && <Envio vm={vm} />}
-      {/* consultar a nota (Vitor, 14/10/2026) */}
-      <ConsultaDeNotas tipos={['entradas', 'tomados']} />
     </section>
   );
 }
