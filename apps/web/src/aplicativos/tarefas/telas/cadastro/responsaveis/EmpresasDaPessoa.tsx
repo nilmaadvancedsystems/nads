@@ -1,7 +1,7 @@
 // As empresas de uma pessoa (Vitor, 07/10/2026), uma por linha, com o Trocar em cima (a janela da troca). Uma troca em
 // andamento mostra para quem vai e o Aceitar / Recusar / Cancelar de quem pode. Usada na janela Empresas por responsável,
 // no tópico Empresas do usuário e no Minhas empresas da Minha página.
-import { Esqueleto, Icone, MenuSuspenso } from '@nads/ui';
+import { ConfigLinha, Esqueleto, Icone, MenuSuspenso } from '@nads/ui';
 import { useState } from 'react';
 import { JanelaDeTroca } from './JanelaDeTroca';
 import { useEmpresasPorResponsavel, type VmEmpresasPorResponsavel } from './useEmpresasPorResponsavel';
@@ -15,18 +15,25 @@ export function EmpresasDaPessoa({ pessoa, vm: vmDeFora }: { pessoa: string; vm?
   const q = busca.trim().toLowerCase();
   const todas = vm.empresasDe(pessoa);
   const lista = todas.filter(x => !q || x.linha.nome.toLowerCase().includes(q) || String(x.linha.codigo ?? '').includes(q));
+  const porDep = (d: string) => todas.filter(x => x.dep === d).length;
   return (
     <div className="emp-pessoa">
-      <div className="emp-pessoa-topo">
+      {/* no estilo das configurações (14/10/2026: "vamos trabalhar nessas telas"): o título com a contagem, a busca e o Trocar */}
+      <div className="cfg-secao-topo emp-pessoa-topo">
+        <h3>
+          {todas.length} {todas.length === 1 ? 'empresa' : 'empresas'}
+          {porDep('contabil') > 0 && porDep('fiscal') > 0 && <span className="fraco"> · {porDep('fiscal')} no Fiscal, {porDep('contabil')} no Contábil</span>}
+        </h3>
         {todas.length > 8 && (
           <label className="busca-curta">
             <Icone nome="search" />
-            <input type="text" placeholder={'Buscar nas ' + todas.length} aria-label="Buscar empresa" value={busca} onChange={e => setBusca(e.target.value)} />
+            <input type="text" placeholder="Buscar" aria-label="Buscar empresa" value={busca} onChange={e => setBusca(e.target.value)} />
           </label>
         )}
-        <span className="tarefas-barra-espaco" />
         <button type="button" className="btn btn-outline" onClick={() => setTrocando(true)}><Icone nome="repeat" />Trocar empresas</button>
       </div>
+      {!todas.length && <ConfigLinha titulo="Nenhuma empresa" descricao="Quando você for o responsável de uma empresa no Fiscal ou no Contábil, ela aparece aqui." />}
+      {todas.length > 0 && !lista.length && <ConfigLinha titulo={'Nada com "' + busca + '"'} />}
       {lista.length > 0 && (
         <ul className="emp-pessoa-lista">
           {lista.map(({ linha: l, dep }) => {
@@ -51,7 +58,7 @@ export function EmpresasDaPessoa({ pessoa, vm: vmDeFora }: { pessoa: string; vm?
           })}
         </ul>
       )}
-      {trocando && <JanelaDeTroca vm={vm} pessoa={pessoa} fechar={() => setTrocando(false)} />}
+      {trocando && <JanelaDeTroca vm={vm} pessoa={vm.nomeNaLista(pessoa)} fechar={() => setTrocando(false)} />}
     </div>
   );
 }

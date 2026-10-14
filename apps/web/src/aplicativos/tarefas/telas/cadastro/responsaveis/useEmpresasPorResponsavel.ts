@@ -41,12 +41,24 @@ export function useEmpresasPorResponsavel() {
   });
   type Linha = (typeof linhas)[number];
 
+  /**
+   * Os nomes que valem para uma pessoa (14/10/2026: o "Minhas empresas" do Gustavo.S vinha vazio, porque as empresas estão
+   * como "Gustavo"): o nome e, quando ele tem sufixo (Gustavo.S), o nome sem o sufixo, se ninguém mais da equipe começa assim.
+   */
+  function nomesDe(pessoa: string): string[] {
+    const base = pessoa.split('.')[0].trim();
+    if (!base || igual(base, pessoa)) return [pessoa];
+    const outros = ativos.filter(p => !igual(p.nome, pessoa) && (igual(p.nome, base) || p.nome.toLowerCase().startsWith(base.toLowerCase() + '.')));
+    return outros.length ? [pessoa] : [pessoa, base];
+  }
   /** as empresas de uma pessoa (de que ela cuida, ou com transferência que a envolve), por departamento */
   function empresasDe(pessoa: string) {
+    const nomes = nomesDe(pessoa);
+    const ehEla = (n: string) => !!n && nomes.some(x => igual(n, x));
     const lista: { linha: Linha; dep: Dep; rotulo: string }[] = [];
     for (const l of linhas) for (const d of cad.DEPARTAMENTOS_DO_RESPONSAVEL) {
       const t = l.transferencias[d.id];
-      if (igual(l.atual[d.id], pessoa) || (t && (igual(t.de, pessoa) || igual(t.para, pessoa)))) lista.push({ linha: l, dep: d.id, rotulo: d.rotulo });
+      if (ehEla(l.atual[d.id]) || (t && (ehEla(t.de) || ehEla(t.para)))) lista.push({ linha: l, dep: d.id, rotulo: d.rotulo });
     }
     return lista.sort((a, b) => a.linha.nome.localeCompare(b.linha.nome, 'pt-BR'));
   }
@@ -70,6 +82,8 @@ export function useEmpresasPorResponsavel() {
     pessoas: [...contagem.entries()].map(([nome, r]) => ({ nome, ...r, total: r.fiscal + r.contabil }))
       .sort((a, b) => b.total - a.total || a.nome.localeCompare(b.nome, 'pt-BR')),
     empresasDe,
+    /** o nome da pessoa como ele está nas empresas (Gustavo.S → Gustavo, quando é assim que está) */
+    nomeNaLista: (pessoa: string) => nomesDe(pessoa).find(n => [...contagem.keys()].some(k => igual(k, n))) || pessoa,
     /** as empresas sem responsável num departamento (para escolher direto) */
     semResponsavel: (dep: Dep) => linhas.filter(l => !l.atual[dep] && !l.transferencias[dep]),
     faltam: (t: empresas.cadastro.TransferenciaDeResponsavel) => cad.faltamAceitar(t),
