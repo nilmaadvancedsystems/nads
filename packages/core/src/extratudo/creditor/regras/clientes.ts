@@ -99,9 +99,9 @@ export function cruzarPeloBalancete(titulos: Titulo[], clientes: readonly ContaD
     }
     if (aprendida) {
       const doBalancete = clientes.find(c => c.codigo === aprendida.conta);
-      return { ...base, situacao: 'ok', linha: linha(aprendida.conta, doBalancete?.nome || aprendida.nome), nota: 'Conta aprendida do cliente.', aprendida: true };
+      return { ...base, situacao: 'ok', linha: linha(aprendida.conta, doBalancete?.nome || aprendida.nome), nota: 'Conta aprendida do cliente.', aprendida: true, ...(codigos.length === 0 ? { foraDoBalancete: true } : {}) };
     }
     if (codigos.length === 1) return { ...base, situacao: 'ok', linha: linha(parecidas[0].codigo, parecidas[0].nome), nota: topo < 1 ? 'Pelo nome parecido: ' + parecidas[0].nome + '.' : '' };
-    return { ...base, situacao: 'nao-encontrada', linha: null, nota: 'Cliente sem conta com esse nome no balancete. Informe a conta (fica aprendida).' };
+    return { ...base, situacao: 'nao-encontrada', linha: null, nota: 'Cliente sem conta com esse nome no balancete. Informe a conta (fica aprendida).', foraDoBalancete: true };
   });
 }

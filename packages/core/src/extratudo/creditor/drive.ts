@@ -42,7 +42,11 @@ export interface PedidoDeEmail {
 export interface FiltroDoEmail { remetente: string; de: string; ate: string }
 
 /** Um anexo achado pelo robô no Gmail do escritório. */
-export interface AnexoDoEmail { caixa: string; mensagemId: string; anexoId: string; nome: string; tamanho: number; de: string; assunto: string; em: string }
+export interface AnexoDoEmail {
+  caixa: string; mensagemId: string; anexoId: string; nome: string; tamanho: number; de: string; assunto: string; em: string;
+  /** o começo do corpo do e-mail (o snippet do Gmail), para achar o mês (14/10/2026) */
+  trecho?: string;
+}
 
 /** Como está o e-mail na fila do robô do Entregas. */
 export interface SituacaoDoEmail { status: 'pendente' | 'processando' | 'enviado' | 'erro' | 'sumiu'; erro?: string }

@@ -3,6 +3,7 @@
 import type { ContasCreditor, Grupo, Lancamento, Titulo } from '../tipos';
 import { conferirGrupo, datasDoGrupo } from './conferencia';
 import { decisaoValida, type Cruzamento, type Decisao } from './cruzamento';
+import type { CasamentoComExtrato } from './extrato';
 import { chaveNf, igual, liquidoDoTitulo, ordemData, r2, somar } from './numeros';
 
 /** "Recebimento de clientes NF 4521 - X" → "NF 4521 - X" (tira o prefixo, com ou sem separador). */
@@ -36,16 +37,18 @@ export function titulosFora(titulos: Titulo[], cruzamentos: Cruzamento[], deciso
  * B) mora + outros acréscimos (se houver): D banco, C juros;  C) desconto (se houver): D desconto, C banco.
  * Em ordem de data de liquidação, e dentro do dia na ordem do relatório.
  */
-export function gerarLancamentos(titulos: Titulo[], cruzamentos: Cruzamento[], decisoes: Record<number, Decisao>, contas: ContasCreditor): Lancamento[] {
+export function gerarLancamentos(titulos: Titulo[], cruzamentos: Cruzamento[], decisoes: Record<number, Decisao>, contas: ContasCreditor, dataDoCredito?: ReadonlyMap<number, string>): Lancamento[] {
   const porId = new Map(cruzamentos.map(c => [c.tituloId, c]));
-  const ordem = titulos.map((t, i) => ({ t, i })).sort((a, b) => ordemData(a.t.liquidacao) - ordemData(b.t.liquidacao) || a.i - b.i);
+  // com o extrato, a data é a do crédito (o CRÉD.LIQ.COBRANÇA casado; regras/extrato.ts)
+  const data = (t: Titulo) => dataDoCredito?.get(t.id) || t.liquidacao;
+  const ordem = titulos.map((t, i) => ({ t, i })).sort((a, b) => ordemData(data(a.t)) - ordemData(data(b.t)) || a.i - b.i);
   const saida: Lancamento[] = [];
   for (const { t } of ordem) {
     const c = porId.get(t.id);
     const o = c && origemDoTitulo(c, decisoes[t.id]);
     if (!o) continue;
     const doc = chaveNf(t.nf);
-    const comum = { automatico: '', data: t.liquidacao, documento: doc, tituloId: t.id };
+    const comum = { automatico: '', data: data(t), documento: doc, tituloId: t.id };
     saida.push({ ...comum, tipo: 'principal', debito: contas.banco, credito: o.contrapartida, codHistorico: contas.histPrincipal, historico: o.historico || historicoNfCliente(t), valor: r2(t.valor) });
     // "Vlr. Outros Acresc." é acréscimo recebido junto: entra com a mora
     const acrescimos = r2(t.mora + t.outros);
@@ -65,7 +68,7 @@ export interface FechamentoDia {
   liquido: number;
   /** o que o banco creditou no dia: total impresso do grupo (quando o grupo é só daquele dia) ou a soma conferida */
   esperado: number;
-  fonte: 'impresso' | 'extraido';
+  fonte: 'impresso' | 'extraido' | 'extrato';
   /** líquido dos títulos que ficaram fora do arquivo */
   fora: number;
   diferenca: number;
@@ -89,5 +92,27 @@ export function fecharPorDia(grupos: Grupo[], lancamentos: Lancamento[], foraDoA
     const diferenca = r2(liquido - esperado);
     const situacao: SituacaoDia = igual(diferenca, 0) ? 'ok' : fora > 0 && igual(diferenca, -fora) ? 'explicada' : 'diverge';
     return { data, debitos, creditos, liquido, esperado, fonte: soDoDia ? 'impresso' : 'extraido', fora, diferenca, situacao };
+  });
+}
+
+/**
+ * O fechamento pelo extrato (14/10/2026): a conta banco do arquivo, em cada dia com CRÉD.LIQ.COBRANÇA, contra o que o
+ * extrato creditou. O crédito que não casou com nenhum título não entra (a pessoa deixa o total dele no Alterdata).
+ */
+export function fecharPeloExtrato(casamento: CasamentoComExtrato, lancamentos: Lancamento[], foraDoArquivo: Titulo[], contas: ContasCreditor): FechamentoDia[] {
+  const creditos = casamento.creditos.filter(c => c.titulos.length);
+  // só os dias com crédito: o mês sem extrato não tem contra o que conferir
+  const datas = [...new Set(creditos.map(c => c.credito.data))].sort((a, b) => ordemData(a) - ordemData(b));
+  return datas.map(data => {
+    const doDia = lancamentos.filter(l => l.data === data);
+    const debitos = somar(doDia.filter(l => l.debito === contas.banco).map(l => l.valor));
+    const creditosDoDia = somar(doDia.filter(l => l.credito === contas.banco).map(l => l.valor));
+    const liquido = r2(debitos - creditosDoDia);
+    const esperado = somar(creditos.filter(c => c.credito.data === data).map(c => c.credito.valor));
+    // o título do crédito que a pessoa tirou do arquivo explica a diferença (como no fecharPorDia)
+    const fora = somar(foraDoArquivo.filter(t => casamento.dataDoCredito.get(t.id) === data).map(liquidoDoTitulo));
+    const diferenca = r2(liquido - esperado);
+    const situacao: SituacaoDia = igual(diferenca, 0) ? 'ok' : fora > 0 && igual(diferenca, -fora) ? 'explicada' : 'diverge';
+    return { data, debitos, creditos: creditosDoDia, liquido, esperado, fonte: 'extrato', fora, diferenca, situacao };
   });
 }

@@ -5,7 +5,7 @@
 //   { tipo: 'buscar', remetente, de: 'aaaa-mm-dd', ate: 'aaaa-mm-dd', status: 'pendente', criadoPor, criadoPorUid }
 //     → o robô pesquisa nas caixas do robô e do contábil os e-mails com anexo (PDF, OFX, planilha) do remetente no período
 //       e responde no próprio pedido: { status: 'pronto', resultados: [{ caixa, mensagemId, anexoId, nome, tamanho, de,
-//       assunto, em }] } (no máximo MAX_RESULTADOS);
+//       assunto, em, trecho }] } (no máximo MAX_RESULTADOS; trecho = o começo do corpo, para a tela achar o mês);
 //   { tipo: 'trazer', caixa, mensagemId, anexoId, nome, status: 'pendente', ... }
 //     → o robô confere que o anexo é um dos que ele mesmo listou numa busca desta pessoa, baixa e põe o conteúdo em
 //       pedaços em buscasEmail/{id}/partes/{n} ({ dados: base64 }); { status: 'pronto', partes, tamanho }.
@@ -69,7 +69,7 @@ function iniciarBuscasEmail(db, log, getGmail) {
         const em = msg.internalDate ? new Date(Number(msg.internalDate)).toISOString() : '';
         for (const a of anexosDe(msg.payload, [])) {
           if (resultados.length >= MAX_RESULTADOS) break;
-          resultados.push({ caixa, mensagemId: m.id, anexoId: a.anexoId, nome: a.nome, tamanho: a.tamanho, de: cabecalho(headers, 'From'), assunto: consertarAcentos(cabecalho(headers, 'Subject')), em });
+          resultados.push({ caixa, mensagemId: m.id, anexoId: a.anexoId, nome: a.nome, tamanho: a.tamanho, de: cabecalho(headers, 'From'), assunto: consertarAcentos(cabecalho(headers, 'Subject')), em, trecho: consertarAcentos(String(msg.snippet || '')).slice(0, 300) });
         }
       }
     }

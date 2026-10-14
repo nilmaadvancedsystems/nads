@@ -48,6 +48,18 @@ export function Lancamentos() {
         </Alerta>
       )}
 
+      {/* o Creditor obedece o extrato (Vitor, 14/10/2026): o que o banco não creditou não entra */}
+      {vm.semCredito.length > 0 && (
+        <Alerta titulo={vm.semCredito.length + ' título(s) sem crédito no extrato' + (vm.extrato ? ' do ' + vm.extrato.banco : '') + ': fora do arquivo'}>
+          {vm.semCredito.map(t => <p key={t.id} className="alert-text">NF {t.nf} · {t.sacado} · {t.liquidacao} · {cr.reais(t.valor)}</p>)}
+        </Alerta>
+      )}
+      {vm.creditosSemTitulo.length > 0 && (
+        <Alerta titulo="Crédito do extrato sem títulos no relatório: deixe o total dele no Alterdata">
+          {vm.creditosSemTitulo.map(c => <p key={c} className="alert-text">CRÉD.LIQ.COBRANÇA {c}</p>)}
+        </Alerta>
+      )}
+
       {vm.fora.length > 0 && (
         <Alerta titulo={vm.fora.length + ' título(s) fora do arquivo'}>
           {vm.fora.map(t => <p key={t.id} className="alert-text">NF {t.nf} · {t.sacado} · {t.liquidacao} · {cr.reais(t.valor)}</p>)}

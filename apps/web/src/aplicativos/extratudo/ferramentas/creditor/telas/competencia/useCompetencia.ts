@@ -13,6 +13,7 @@ import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
 import { useSessao } from '../../casca/sessao';
 import { useDrive } from '../../dados/repo';
 import { lerRelatorio, mensagemDeErro } from '../../leitura';
+import { useBuscarNoEmail } from '../../../extrator/telas/tarefa/JanelaBuscarNoEmail';
 
 type Fase = 'parado' | 'procurando' | 'baixando' | 'lendo' | 'problema';
 interface Busca { mes: string; fase: Fase; texto: string; candidatos: cr.ArquivoAchado[] }
@@ -117,15 +118,57 @@ export function useCompetencia() {
     finally { setEntrando(false); }
     const para = loginPara;
     setLoginPara(null);
+    if (para === 'email') { const f = depoisDoLogin.current; depoisDoLogin.current = null; f?.(); return; }
     if (para === '*') await procurarTodos(); else if (para) await procurar(para);
   }
 
-  /** Do computador: lê o arquivo aqui mesmo. */
-  async function importarDoComputador(mes: string, f: File | undefined) {
-    if (!f) return;
+  // o "Buscar no e-mail" (Vitor, 14/10/2026: "cadê a função buscar no Gmail?"), a mesma janela da Importação: o anexo
+  // escolhido entra como se viesse do computador; a prévia mostra os títulos do relatório
+  const depoisDoLogin = useRef<(() => void) | null>(null);
+  const email = useBuscarNoEmail(
+    (linha, arquivos) => {
+      const f = arquivos[0];
+      void importarDoComputador(linha.id, f).then(ok => { if (ok && f) void arquivarNoDrive(linha.id, f); });
+    },
+    depois => { depoisDoLogin.current = depois; setErroLogin(''); setLoginPara('email'); },
+    s.empresa.codigo,
+    async (nome, conteudo) => {
+      try {
+        // uma cópia: o leitor de PDF consome o buffer (sem ela, o "Importar este" chegava com 0 bytes)
+        const ts = (await lerRelatorio(nome, conteudo.slice(0))).grupos.flatMap(g => g.titulos);
+        const isoDe = (d: string) => d.slice(6, 10) + '-' + d.slice(3, 5) + '-' + d.slice(0, 2);
+        return {
+          lancamentos: ts.length, meses: [...new Set(ts.map(t => isoDe(t.liquidacao).slice(0, 7)))].sort(), erro: ts.length ? null : 'Não achei títulos neste arquivo.',
+          primeiros: ts.slice(0, 8).map(t => ({ data: isoDe(t.liquidacao), valor: t.valor, historico: (t.nf ? 'NF ' + t.nf + ' · ' : '') + t.sacado })),
+        };
+      } catch (e) { return { lancamentos: 0, meses: [], erro: mensagemDeErro(e), primeiros: [] }; }
+    },
+  );
+
+  /** Do computador: lê o arquivo aqui mesmo. Devolve se entrou. */
+  async function importarDoComputador(mes: string, f: File | undefined): Promise<boolean> {
+    if (!f) return false;
     setBusca({ mes, fase: 'lendo', texto: 'Lendo ' + f.name + '…', candidatos: [] });
-    try { guardar(mes, await lerRelatorio(f.name, await f.arrayBuffer()), f.name); }
-    catch (e) { setBusca({ mes, fase: 'problema', texto: mensagemDeErro(e), candidatos: [] }); }
+    try { guardar(mes, await lerRelatorio(f.name, await f.arrayBuffer()), f.name); return true; }
+    catch (e) { setBusca({ mes, fase: 'problema', texto: mensagemDeErro(e), candidatos: [] }); return false; }
+  }
+
+  /**
+   * O relatório trazido do e-mail vai para o Drive (Vitor, 14/10/2026: "esses e-mails e arquivos que seleciono, é para
+   * arquivar no Drive"), como o extrato no Bancos: para o Claudio Secretario, de onde o arquivamento põe em CONTÁBIL ›
+   * RECEBIMENTO DE CLIENTES (decide pelo título do relatório). O mês que já tem relatório na pasta não vai de novo.
+   */
+  async function arquivarNoDrive(mes: string, f: File) {
+    if (!drive.enviarAoDrive || !acesso.entrou) return;
+    try {
+      const pasta = await drive.pastaDoCliente(s.empresa.codigo);
+      const b = cr.acharRelatorioNoDrive(pasta?.itens || [], pasta?.raiz || null, mes);
+      if (b.situacao === 'achou' || b.situacao === 'varios') return;
+      await drive.enviarAoDrive({ nome: f.name, bytes: new Uint8Array(await f.arrayBuffer()) }, { competencia: mes, codigo: s.empresa.codigo, cliente: s.empresa.nome });
+      aviso({ tom: 'ok', titulo: 'Mandado para o Drive', texto: f.name + ' (' + cr.rotuloCompetencia(mes) + ') entra em RECEBIMENTO DE CLIENTES no próximo arquivamento.' });
+    } catch (e) {
+      aviso({ tom: 'erro', titulo: 'Não mandei para o Drive', texto: f.name + ': ' + mensagemDeErro(e) });
+    }
   }
 
   /**
@@ -236,6 +279,9 @@ export function useCompetencia() {
     /** um mês, ou '*' para todos os que faltam */
     buscarNoDrive,
     importarDoComputador: (mes: string, f: File | undefined) => { void importarDoComputador(mes, f); },
+    /** o "Buscar no e-mail" (a janela da Importação; existe = o robô do Gmail ligado) */
+    email,
+    buscarNoEmail: (mes: string) => email.abrir({ id: mes, nome: 'Relatório de liquidação' }, mes),
     /** o menu de cima: vários arquivos (cada um no mês dele) e remover todos */
     importarVarios: (arquivos: File[]) => { void importarVarios(arquivos); },
     removerTodos: () => { void removerTodos(); },
