@@ -175,7 +175,11 @@ export async function balanceteDoEntregas(codigo: number | null): Promise<Record
 
 /** Clientes de exemplo do Entregas (os bancos que o robô teria aprendido; o 292 com a Receita discordando do regime). */
 const CLIENTES_EXEMPLO: Record<string, unknown>[] = [
-  { codigoOrigem: '292', enquadramento: 'Presumido', receita: { simples: true }, bancos: ['sicoob', 'bb'], contasBancarias: [{ banco: 'sicoob', agencia: '3144-5', conta: '12.345-6' }] },
+  { codigoOrigem: '292', enquadramento: 'Presumido', documento: '11.222.333/0001-81', nomeFantasia: 'Exemplo Comércio', inscricaoEstadual: '001.234.567.0089', cidade: 'Montes Claros/MG',
+    receita: { simples: true, razaoSocial: 'EXEMPLO COMERCIO DE ALIMENTOS LTDA', situacao: 'ATIVA', situacaoDesde: '2015-03-02', cnae: '4721-1/02',
+      cnaeDescricao: 'Padaria e confeitaria com predominância de revenda', naturezaJuridica: '206-2 - Sociedade Empresária Limitada', porte: 'ME',
+      abertura: '2015-03-02', endereco: 'Rua Exemplo, 100, Centro, Montes Claros/MG', socios: ['FULANO DE TAL', 'BELTRANA DA SILVA'], conferidoEm: '2026-10-01T10:00:00Z' },
+    bancos: ['sicoob', 'bb'], contasBancarias: [{ banco: 'sicoob', agencia: '3144-5', conta: '12.345-6' }] },
   { codigoOrigem: '14', bancos: ['itau'], contasBancarias: [{ banco: 'itau', agencia: '0412', conta: '99887-7' }] },
   { codigoOrigem: '58', bancos: ['sicoob', 'nubank'] },
 ];
@@ -183,6 +187,13 @@ const CLIENTES_EXEMPLO: Record<string, unknown>[] = [
 let docsDoEntregas: Promise<Record<string, unknown>[]> | null = null;
 let doEntregas: Promise<Map<number, empresas.cadastro.BancosDoEntregas>> | null = null;
 let contatosEntregas: Promise<Map<number, empresas.cadastro.ContatoDoEntregas>> | null = null;
+let dadosEntregas: Promise<Map<number, empresas.cadastro.DadosDaEmpresaNoEntregas>> | null = null;
+
+/** Os dados da empresa que o Entregas tem (o CNPJ, o cadastro e a Receita), por código (14/10/2026). Os mesmos documentos. */
+export function dadosDaEmpresaNoEntregas(): Promise<Map<number, empresas.cadastro.DadosDaEmpresaNoEntregas>> {
+  if (!dadosEntregas) dadosEntregas = clientesDoEntregas().then(docs => empresas.cadastro.dadosDaEmpresaNoEntregasPorCodigo(docs)).catch(() => new Map());
+  return dadosEntregas;
+}
 
 /** Os clientes do Entregas (só leitura), lidos uma vez por sessão e usados pelos bancos e pelo contato (falha = vazio). */
 function clientesDoEntregas(): Promise<Record<string, unknown>[]> {

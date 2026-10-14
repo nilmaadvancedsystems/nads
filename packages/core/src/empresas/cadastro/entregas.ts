@@ -171,3 +171,36 @@ export function receitaDiscorda(regime: string, r: RegimeDoEntregas | null | und
   if (regime === 'Presumido' || regime === 'Real') return r.receita !== 'Fora do Simples';
   return false;
 }
+
+// ─── os dados da empresa que o Entregas já tem (14/10/2026: "adicionando na parte de empresa os dados dela") ─────────
+
+/** A identificação e a situação na Receita do cliente do Entregas (o cadastro de lá e a consulta do CNPJ). */
+export interface DadosDaEmpresaNoEntregas {
+  documento: string; nomeFantasia: string; inscricaoEstadual: string; endereco: string; cidade: string;
+  receita: {
+    razaoSocial: string; situacao: string; situacaoDesde: string; cnae: string; cnaeDescricao: string;
+    naturezaJuridica: string; porte: string; abertura: string; endereco: string; socios: string[]; conferidoEm: string;
+  } | null;
+}
+
+/** Por código do ERP (codigoOrigem); sem documento e sem Receita, fica de fora. */
+export function dadosDaEmpresaNoEntregasPorCodigo(docs: readonly Record<string, unknown>[]): Map<number, DadosDaEmpresaNoEntregas> {
+  const m = new Map<number, DadosDaEmpresaNoEntregas>();
+  for (const d of docs) {
+    const codigo = Number(texto(d.codigoOrigem));
+    if (!Number.isInteger(codigo) || codigo <= 0) continue;
+    const r = d.receita && typeof d.receita === 'object' ? (d.receita as Record<string, unknown>) : null;
+    const dados: DadosDaEmpresaNoEntregas = {
+      documento: texto(d.documento).replace(/\D/g, ''), nomeFantasia: texto(d.nomeFantasia), inscricaoEstadual: texto(d.inscricaoEstadual),
+      endereco: texto(d.endereco), cidade: texto(d.cidade),
+      receita: r ? {
+        razaoSocial: texto(r.razaoSocial), situacao: texto(r.situacao).toUpperCase(), situacaoDesde: texto(r.situacaoDesde),
+        cnae: texto(r.cnae), cnaeDescricao: texto(r.cnaeDescricao), naturezaJuridica: texto(r.naturezaJuridica), porte: texto(r.porte),
+        abertura: texto(r.abertura), endereco: texto(r.endereco), socios: Array.isArray(r.socios) ? r.socios.map(texto).filter(Boolean) : [],
+        conferidoEm: texto(r.conferidoEm),
+      } : null,
+    };
+    if (dados.documento || dados.receita) m.set(codigo, dados);
+  }
+  return m;
+}

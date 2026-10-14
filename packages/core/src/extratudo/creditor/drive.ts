@@ -64,6 +64,11 @@ export interface RepoDrive {
    * tem. Só existe acoplado no Entregas.
    */
   balanceteDoEntregas?(codigo: number): Promise<BalanceteDaEmpresa | null>;
+  /**
+   * Pede ao robô para reler na hora a pasta da empresa no Drive (o pedidosMapaDrive, o "Atualizar o mapa" da Tarefa) e
+   * espera ele terminar. Não existe acoplado no Entregas nem nos exemplos.
+   */
+  atualizarMapaDoCliente?(pastaId: string): Promise<void>;
   /** baixa o arquivo (pelo robô do Entregas); `passo` conta o andamento para a tela */
   baixar(id: string, nome: string, passo?: (texto: string) => void): Promise<ArrayBuffer>;
   /** um link temporário para VER o arquivo (a cópia do robô vale ~30 min); não guardar o link */

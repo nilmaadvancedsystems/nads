@@ -4,7 +4,7 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDeCategoriasDp, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
+import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDeCategoriasDp, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoAgentes } from './agentes';
 import type { RepoSieg } from './sieg';
@@ -101,6 +101,17 @@ export function useBancosDoEntregas(): { carregado: boolean; porCodigo: Readonly
     void bancosDoEntregas().then(m => { if (vale) setEstado({ carregado: true, porCodigo: m }); });
     return () => { vale = false; };
   }, []);
+  return estado;
+}
+
+/** Os dados da empresa que o Entregas tem (o CNPJ, o cadastro de lá e a Receita); carregado = já leu. */
+export function useDadosDaEmpresaNoEntregas(codigo: number | null): { carregado: boolean; dados: empresas.cadastro.DadosDaEmpresaNoEntregas | null } {
+  const [estado, setEstado] = useState<{ carregado: boolean; dados: empresas.cadastro.DadosDaEmpresaNoEntregas | null }>({ carregado: false, dados: null });
+  useEffect(() => {
+    let vale = true;
+    void dadosDaEmpresaNoEntregas().then(m => { if (vale) setEstado({ carregado: true, dados: codigo != null ? m.get(codigo) || null : null }); });
+    return () => { vale = false; };
+  }, [codigo]);
   return estado;
 }
 

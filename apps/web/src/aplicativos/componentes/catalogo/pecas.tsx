@@ -1,7 +1,7 @@
 // As peças do catálogo, desenhadas com as MESMAS peças do sistema (@nads/ui e as classes do nads.css). A ordem dentro
 // de cada tipo dá o código (BT-01, BT-02…): peça nova entra no FIM do tipo, para os códigos não mudarem.
 import {
-  Alerta, BotaoAcao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail,
+  Alerta, BotaoAcao, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail,
   LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
 } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
@@ -161,6 +161,19 @@ export const PECAS_BASE: Peca[] = [
     uso: '<BotaoAcao carregando={x} textoCarregando="Importando…">Importar</BotaoAcao>', demo: () => <><BotaoAcao>Importar</BotaoAcao><BotaoAcao carregando textoCarregando="Importando…">Importar</BotaoAcao></> },
   { id: 'icon-btn', tipo: 'botoes', nome: 'Botão de ícone', descricao: '32 px; sempre com título', componente: 'BotaoIcone', classes: ['icon-btn'], telas: TODAS,
     uso: '<BotaoIcone icone="x" titulo="Fechar" />', demo: () => <><BotaoIcone icone="copiar" titulo="Copiar" /><BotaoIcone icone="x" titulo="Fechar" /><BotaoIcone icone="olho" titulo="Ver o PDF" /><button className="icon-btn girando" title="Buscando"><Icone nome="girar" /></button></> },
+  { id: 'config', tipo: 'botoes', nome: 'Configuração (estilo Notion)', descricao: 'A seção com o título e a linha fina; cada opção numa linha solta: o nome, a descrição curta e o controle à direita', componente: 'ConfigSecao + ConfigLinha', classes: ['cfg-secao', 'cfg-linha'], telas: ['t-cadastro-janela'],
+    uso: '<ConfigSecao titulo="Contábil"><ConfigLinha titulo="Cartão empresarial" descricao="A etapa Cartões quebra a fatura."><Interruptor … /></ConfigLinha></ConfigSecao>',
+    demo: () => <div style={{ width: '100%' }}><ConfigSecao titulo="Parâmetros"><ConfigLinha titulo="Cartão empresarial" descricao="A etapa Cartões quebra a fatura no razão do cartão."><Interruptor ligado onMudar={() => {}} rotulo="Cartão empresarial" /></ConfigLinha><ConfigLinha titulo="Regime tributário" descricao="Define as etapas da rotina do Fiscal."><span className="hint">Presumido</span></ConfigLinha></ConfigSecao></div> },
+  { id: 'registro-novo', tipo: 'botoes', nome: 'Criar registro (Attio + Notion)', descricao: 'A janela de criar: o campo principal em destaque (o CNPJ), o cartão da Receita, as propriedades em linhas (ícone e nome à esquerda, valor sem caixa) e o rodapé com "Cadastrar outra"', classes: ['registro-novo', 'registro-busca', 'registro-receita', 'registro-prop', 'registro-pe'], telas: ['t-cadastro-janela'],
+    demo: () => (
+      <div className="registro-novo" style={{ width: '100%', maxWidth: 520 }}>
+        <div className="registro-busca"><Icone nome="search" /><input type="text" placeholder="CNPJ da empresa" readOnly /></div>
+        <div className="registro-props">
+          <div className="registro-prop"><span className="registro-prop-nome"><Icone nome="fileText" />Nome</span><div className="registro-prop-valor"><input type="text" placeholder="Razão social" readOnly /></div></div>
+          <div className="registro-prop"><span className="registro-prop-nome"><Icone nome="hash" />Código no ERP</span><div className="registro-prop-valor"><input type="text" placeholder="Vazio" readOnly /></div></div>
+        </div>
+      </div>
+    ) },
   { id: 'dica', tipo: 'botoes', nome: 'Dica (?)', descricao: 'O "?" de 14 px ao lado do rótulo: a explicação aparece ao passar o mouse ou ao focar', componente: 'Dica', classes: ['dica'], telas: ['t-cadastro-janela'],
     uso: '<span>Presta serviços<Dica texto="Mostra a aba Prestados na Importação." /></span>', demo: () => <span>Presta serviços<Dica texto="Mostra a aba Prestados na Importação e os serviços prestados na Conferência." /></span> },
   { id: 'link-btn', removida: { como: 'substituida', por: 'btn', em: '02/10/2026', motivo: 'Navegar é pela barra de cima (Tarefas / Vitor / Minhas empresas / 292 …), sem "← Voltar" no meio da página; as outras ações em texto viraram o botão padrão.' }, tipo: 'botoes', nome: 'Ação em texto', classes: ['link-btn'], telas: ['c-verificar', 't-empresa'], demo: () => <button className="link-btn">← Voltar para Movimento</button> },

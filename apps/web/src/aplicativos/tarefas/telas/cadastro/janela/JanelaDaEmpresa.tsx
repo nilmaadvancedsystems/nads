@@ -4,7 +4,7 @@ import { Icone, useEntradaAnimada, useIndicador } from '@nads/ui';
 import { Fragment, useEffect } from 'react';
 import { ContasBancarias } from '../bancos/ContasBancarias';
 import { ContasPadrao } from '../contas-padrao/ContasPadrao';
-import { DadosDaEmpresa } from '../empresa/DadosDaEmpresa';
+import { DadosDaEmpresa, ParametrosContabeis, ParametrosFiscais } from '../empresa/DadosDaEmpresa';
 import { HistoricoCadastro } from '../historico/HistoricoCadastro';
 import { PlanoDeContas } from '../plano/PlanoDeContas';
 import { useJanelaDaEmpresa } from './useJanelaDaEmpresa';
@@ -13,6 +13,8 @@ import { SenhasNoCadastro } from '../../senhas/SenhasNoCadastro';
 function Aba({ rota, aba }: { rota: string; aba: string }) {
   switch (aba) {
     case 'empresa': return <DadosDaEmpresa rota={rota} />;
+    case 'contabil': return <ParametrosContabeis rota={rota} />;
+    case 'fiscal': return <ParametrosFiscais rota={rota} />;
     case 'plano': return <PlanoDeContas rota={rota} />;
     case 'contas-padrao': return <ContasPadrao rota={rota} />;
     case 'historico': return <HistoricoCadastro rota={rota} />;
@@ -97,6 +99,8 @@ export function JanelaDaEmpresa({ rota, aba }: { rota: string; aba: string }) {
             ))}
           </nav>
           <div ref={conteudoDaAba} className="cad-janela-conteudo">
+            {/* o título da página, como no Notion: "Contábil · Parâmetros" */}
+            {vm.abaAberta && <h2 className="cfg-titulo">{vm.abaAberta.grupo !== 'Empresa' && <span className="fraco">{vm.abaAberta.grupo} · </span>}{vm.abaAberta.rotulo}</h2>}
             {vm.aba === 'empresa' && <ResumoDoCadastro vm={vm} />}
             <Aba rota={rota} aba={vm.aba} />
           </div>

@@ -4060,3 +4060,84 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 }
 .gm-candidatos{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
 .gm-candidatos .fraco{font-size:12px;color:var(--ink-muted);}
+/* ---------- As configurações no estilo do Notion (14/10/2026): a seção (o título com a linha fina) e a linha solta (o
+   nome, a descrição curta em cinza e o controle à direita), sem caixa em volta ---------- */
+.cfg-titulo{margin:0 0 20px;font-size:20px;font-weight:650;}
+.cfg-secao{margin:0 0 28px;}
+.cfg-secao-topo{display:flex;align-items:center;gap:12px;padding-bottom:10px;margin-bottom:6px;border-bottom:1px solid var(--border);}
+.cfg-secao-topo h3{flex:1;margin:0;font-size:14px;font-weight:600;color:var(--ink);}
+.cfg-secao-acao{display:inline-flex;align-items:center;gap:8px;}
+.cfg-linhas{display:flex;flex-direction:column;}
+.cfg-linha{display:flex;align-items:center;gap:24px;padding:12px 0;}
+.cfg-linha-texto{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.cfg-linha-titulo{font-size:14px;color:var(--ink);display:inline-flex;align-items:center;gap:6px;}
+.cfg-linha-desc{font-size:12.5px;line-height:1.45;color:var(--ink-muted);}
+.cfg-linha-aviso{font-size:12.5px;line-height:1.45;color:var(--warn);font-weight:500;}
+.cfg-linha-controle{flex:none;display:inline-flex;align-items:center;gap:8px;max-width:60%;text-align:right;font-size:13.5px;color:var(--ink);}
+.cfg-linha-controle .hint{margin:0;}
+.cfg-valor{font-size:13.5px;color:var(--ink);text-align:right;overflow-wrap:anywhere;}
+.cfg-valor.vazio{color:var(--ink-faint);}
+@media (max-width:640px){.cfg-linha{flex-direction:column;align-items:stretch;gap:8px;}.cfg-linha-controle{max-width:none;justify-content:flex-start;text-align:left;}}
+/* a janela da empresa no estilo das configurações do Notion (14/10/2026): a lateral num fundo levemente cinza, os grupos
+   por setor (Empresa · Contábil · Fiscal…) em rótulo pequeno, sem caixa alta; o conteúdo numa coluna de leitura */
+.cad-janela-abas{background:color-mix(in srgb,var(--ink) 3%,transparent);}
+.cad-janela-grupo{text-transform:none;letter-spacing:0;font-size:12px;font-weight:500;color:var(--ink-muted);padding:14px 10px 4px;}
+.cad-janela-aba{font-size:13.5px;}
+.cad-janela-conteudo{padding:24px 36px 32px;}
+/* a tela inteira (14/10/2026: "pq não aproveita a tela inteira?"): sem a coluna de leitura */
+.cfg-titulo .fraco{font-weight:500;}
+/* um sócio por linha: o nome, o CPF e o ✕ */
+.cfg-socio{display:grid;grid-template-columns:minmax(0,1fr) 160px auto;gap:8px;padding:6px 0;}
+.cfg-socio input{min-width:0;}
+@media (max-width:760px){.cad-janela-conteudo{padding:14px 12px;}.cfg-socio{grid-template-columns:minmax(0,1fr) 120px auto;}}
+/* no celular, a linha que só mostra um valor (o CNPJ, o porte…) fica com o nome e o valor lado a lado */
+@media (max-width:640px){
+  .cfg-linha:has(> .cfg-linha-controle > .cfg-valor:only-child),.cfg-linha:has(> .cfg-linha-controle > .badge:only-child){flex-direction:row;align-items:center;gap:12px;}
+  .cfg-linha:has(> .cfg-linha-controle > .cfg-valor:only-child) > .cfg-linha-controle{max-width:60%;justify-content:flex-end;text-align:right;}
+}
+/* Empresa nova (14/10/2026): o "Create record" do Attio com as propriedades do Notion — o CNPJ em destaque, o cartão da
+   Receita, as propriedades em linhas (ícone e nome à esquerda, o valor sem caixa até passar o mouse) e o rodapé com
+   "Cadastrar outra" */
+.modal.registro-novo{max-width:560px;display:flex;flex-direction:column;}
+.registro-topo{display:flex;align-items:center;gap:8px;padding:12px 14px 0 18px;}
+.registro-caminho{flex:1;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-muted);}
+.registro-caminho svg{width:14px;height:14px;}
+.registro-caminho b{font-weight:600;color:var(--ink);}
+.registro-corpo{padding:14px 18px 6px;display:flex;flex-direction:column;gap:10px;}
+.registro-busca{display:flex;align-items:center;gap:10px;padding:4px 4px 4px 14px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);}
+.registro-busca:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent);}
+.registro-busca.com-erro{border-color:var(--danger);}
+.registro-busca > svg{width:18px;height:18px;flex:none;color:var(--ink-muted);}
+.registro-busca input{flex:1;min-width:0;border:0;background:transparent;outline:none;font-size:18px;font-weight:500;padding:8px 0;color:var(--ink);font-variant-numeric:tabular-nums;}
+.registro-busca input::placeholder{color:var(--ink-faint);font-weight:400;}
+.registro-dica{margin:0;font-size:12.5px;color:var(--ink-muted);display:flex;align-items:center;gap:6px;}
+.registro-dica svg{width:14px;height:14px;flex:none;}
+.registro-dica-erro{color:var(--danger);}
+.registro-receita{display:flex;flex-direction:column;gap:3px;padding:12px 14px;border-radius:10px;background:color-mix(in srgb,var(--ink) 4%,transparent);font-size:12.5px;}
+.registro-receita-topo{display:flex;align-items:center;gap:10px;}
+.registro-receita-topo b{flex:1;min-width:0;font-size:14px;font-weight:600;color:var(--ink);}
+.registro-props{display:flex;flex-direction:column;margin-top:4px;}
+.registro-prop{display:flex;align-items:center;gap:8px;min-height:40px;}
+.registro-prop-nome{width:150px;flex:none;display:inline-flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-muted);}
+.registro-prop-nome svg{width:16px;height:16px;flex:none;}
+.registro-prop-valor{flex:1;min-width:0;display:flex;align-items:center;gap:8px;}
+.registro-prop-valor > input{flex:1;min-width:0;border:1px solid transparent;border-radius:6px;background:transparent;padding:7px 8px;font-size:14px;color:var(--ink);outline:none;}
+.registro-prop-valor > input:hover{background:var(--hover-bg);}
+.registro-prop-valor > input:focus{background:var(--input-bg);border-color:var(--accent);}
+.registro-prop-valor > input::placeholder{color:var(--ink-faint);}
+.registro-escolha{padding:6px 8px;font-weight:500;}
+.registro-escolha.vazio{color:var(--ink-faint);font-weight:400;}
+.registro-origem{font-size:12px;}
+.registro-erros{list-style:none;margin:2px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--danger);}
+.registro-erros li{display:flex;align-items:center;gap:6px;}
+.registro-erros svg{width:14px;height:14px;flex:none;}
+.registro-pe{display:flex;align-items:center;gap:8px;padding:12px 18px;margin-top:8px;border-top:1px solid var(--border);}
+.registro-pe .toggle-txt{display:none;}
+.registro-pe-rotulo{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-muted);}
+.registro-pe-rotulo svg{width:14px;height:14px;color:var(--success);}
+@media (max-width:640px){.registro-prop-nome{width:120px;}.registro-busca input{font-size:16px;}.registro-pe{flex-wrap:wrap;}}
+.registro-novo .registro-busca input,.registro-novo .registro-busca input:focus{box-shadow:none;border:0;}
+.registro-novo .registro-prop-valor > input:focus{box-shadow:none;}
+.modal.registro-novo p.registro-dica{padding:0;font-size:12.5px;color:var(--ink-muted);}
+.modal.registro-novo p.registro-dica-erro{color:var(--danger);}
+.registro-novo .registro-receita > span,.registro-novo .registro-origem{color:var(--ink-muted);font-weight:400;}

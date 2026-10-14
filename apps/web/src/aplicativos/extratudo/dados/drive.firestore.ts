@@ -300,6 +300,19 @@ export function criarDriveFirestore(): cr.RepoDrive {
       }
     },
 
+    async atualizarMapaDoCliente(pastaId) {
+      const u = auth.currentUser;
+      if (!u) return;
+      const ref = await addDoc(collection(db, 'pedidosMapaDrive'), { status: 'pendente', pastaId: pastaId.slice(0, 100), criadoEm: new Date().toISOString(), criadoPor: acesso.quem || 'nads', criadoPorUid: u.uid });
+      // o robô relê a pasta e responde no pedido; no máximo 90 s (depois disso, segue com o mapa que tinha)
+      await new Promise<void>(ok => {
+        const limite = setTimeout(() => { parar(); ok(); }, 90000);
+        const parar = onSnapshot(ref, s => {
+          const st = (s.data() || {}).status;
+          if (st === 'pronto' || st === 'erro') { clearTimeout(limite); parar(); ok(); }
+        }, () => { clearTimeout(limite); ok(); });
+      });
+    },
     async buscarNoEmail(filtro, passo) {
       const r = await pedidoDeEmail({ tipo: 'buscar', remetente: filtro.remetente.trim().slice(0, 120), de: filtro.de, ate: filtro.ate }, passo);
       return Array.isArray(r.resultados) ? (r.resultados as cr.AnexoDoEmail[]) : [];
