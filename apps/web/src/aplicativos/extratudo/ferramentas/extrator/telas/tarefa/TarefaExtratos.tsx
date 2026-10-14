@@ -738,7 +738,9 @@ export function TarefaExtratos() {
       {/* as janelas do andamento: os extratos que entram sozinhos e o "Todos pelo Drive" (08/10/2026) */}
       <div className="imp-lista">
         {!vm.semBancosCadastrados && vm.bancos.map(b => {
-          const semMov = ponte.semMovimento.includes(b.id);
+          // sem movimento (Vitor, 14/10/2026): em lote, só quando todos os meses do período estão sem movimento (um mês com
+          // movimento já deixa a linha normal, colorida); mês a mês, o mês aberto sem movimento apaga a linha
+          const semMov = vm.periodo.length > 1 ? semMovimentoNoPeriodo(b.id) : ponte.semMovimento.includes(b.id);
           const buscando = d.buscando === b.id;
           // sem movimento: a linha toda trava (só o Desfazer fica)
           const travado = semMov || ocupadoGeral;
@@ -778,7 +780,7 @@ export function TarefaExtratos() {
                     <Icone nome="caretDown" />
                   </button>
                 )}
-                <span className="imp-ico imp-logo"><LogoBanco banco={b.marca} cor={temExtrato && !semMov} /></span>
+                <span className="imp-ico imp-logo"><LogoBanco banco={b.marca} cor={(emLote ? lote.comExtrato.length > 0 : temExtrato) && !semMov} /></span>
                 <div className="imp-txt">
                   <span><b>{b.nome}</b>{b.conta && <span className="imp-conta">{b.conta}</span>}</span>
                 </div>
