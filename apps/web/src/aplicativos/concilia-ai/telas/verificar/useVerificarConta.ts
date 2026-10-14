@@ -9,6 +9,7 @@ import { conferencia as c, formatos } from '@nads/core';
 import { useRetorno, type BotaoModal } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useSessao, VERIFICAR_VAZIO, type EstadoVerificar } from '../../casca/sessao';
+import { useMarcarForaDoPadrao } from '../relatorio/useMarcarForaDoPadrao';
 
 export const VC_LIMITE_LINHAS = 300;
 
@@ -32,6 +33,7 @@ function derivar(e: c.Empresa, v: EstadoVerificar) {
 
 export function useVerificarConta() {
   const s = useSessao();
+  const acoes = useMarcarForaDoPadrao();
   const { toast, modal, aviso } = useRetorno();
   const e = s.empresa;
   const v = s.verificar;
@@ -198,10 +200,24 @@ export function useVerificarConta() {
     cfop, escolherCfop,
     relatorios, escolherRelatorio, abrirArquivo,
     comparando, conferir: () => conferir(), limpar, voltar,
+    foraDoPadrao: montarForaDoPadrao(e, s, d.codigos), acoes,
     resultado: montarResultado(e, s.filtro, v, d),
     seqResultado,
     escolherAba, reimportar, alternarConferido, csv,
   };
+}
+
+/** O lançamento fora do padrão das notas dessa(s) conta(s), de cada tipo que tiver (Vitor, 14/10/2026). */
+function montarForaDoPadrao(e: c.Empresa, s: ReturnType<typeof useSessao>, codigos: string[]) {
+  if (!codigos.length) return { fiscais: [], servicos: [] };
+  const fiscais = (['entradas', 'saidas'] as const)
+    .map(tipo => ({ tipo, r: c.foraDoPadraoFiscalDaConta(e, tipo, s.ordemDiv[tipo], codigos) }))
+    .filter(x => x.r.temDivergencias);
+  const servicos = (['tomados', 'prestados'] as const)
+    .filter(tipo => tipo === 'tomados' || !c.semPrest(e))
+    .map(tipo => ({ tipo, r: c.foraDoPadraoServDaConta(e, tipo, s.filtro, s.ordemServ[tipo], codigos) }))
+    .filter(x => x.r.temDivergencias);
+  return { fiscais, servicos };
 }
 
 /** O que o card do resultado desenha (vcRenderResultado). */
