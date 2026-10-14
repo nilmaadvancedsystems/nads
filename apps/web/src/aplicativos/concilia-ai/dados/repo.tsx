@@ -2,6 +2,8 @@
 // Os ViewModels usam estes hooks; nenhuma View importa o repositório.
 import { conferencia } from '@nads/core';
 import { createContext, useCallback, useContext, useSyncExternalStore, type ReactNode } from 'react';
+import { repoDoAlterdata } from './fonte';
+import type { RepoAlterdata } from './alterdata';
 
 type Repo = conferencia.RepoConferencia;
 type Empresa = conferencia.Empresa;
@@ -44,4 +46,11 @@ export function useAplicar(nome: string | null) {
     if (nova !== e || !repo.obter(nome)) repo.salvar(nova);
     return nova;
   }, [repo, nome]);
+}
+
+/** O balancete do Alterdata pelo robô, ao vivo: o estado do robô e os pedidos. */
+export function useAlterdata(): RepoAlterdata {
+  const repo = repoDoAlterdata();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
 }
