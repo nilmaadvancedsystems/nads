@@ -51,6 +51,9 @@ export function useNovaEmpresa(fechar: () => void) {
     receita.municipio ? receita.municipio + '/' + receita.uf : '',
   ].filter(Boolean).join(' · ') : '';
   const [salvando, setSalvando] = useState(false);
+  // "Cadastrar outra" (14/10/2026, no jeito do "Create more" do Attio): grava, limpa e fica para a próxima
+  const [outra, setOutra] = useState(false);
+  const [feita, setFeita] = useState('');
 
   async function cadastrar() {
     const n = nome.trim().toUpperCase();
@@ -67,6 +70,11 @@ export function useNovaEmpresa(fechar: () => void) {
     setSalvando(true);
     try {
       await gravar(n, cod, () => empresas.cadastro.cadastrarEmpresa(n, cod, regime, por, new Date(), receita?.cnpj || ''));
+      if (outra) {
+        setFeita(n);
+        setCodigo(''); setNome(''); setRegime(''); setCnpj(''); setReceita(null); setAvisoReceita('');
+        return;
+      }
       fechar();
       navegar(caminhoDoCadastro(empresas.rotaDaEmpresa({ codigo: cod, nome: n, regime })));
     } finally {
@@ -78,5 +86,8 @@ export function useNovaEmpresa(fechar: () => void) {
     codigo, setCodigo, nome, setNome, regime, setRegime, erros, salvando, cadastrar, regimes: REGIMES,
     cnpj, setCnpj: (v: string) => { setCnpj(v); setReceita(null); setAvisoReceita(''); },
     buscar, consultando, avisoReceita, resumoDaReceita, receitaAtiva: !receita || receita.situacao === 'ATIVA',
+    receita, outra, setOutra, feita,
+    /** o regime veio da Receita (Simples ou MEI) e ninguém trocou */
+    regimeDaReceita: !!receita?.regime && receita.regime === regime,
   };
 }
