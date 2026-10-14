@@ -13,20 +13,24 @@ export const BASE = '/tarefas';
 export type IdAplicacao = 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei';
 
 export interface Pagina { id: string; rotulo: string; icone: NomeIcone; titulo: string }
-export interface Aplicacao { id: IdAplicacao; nome: string; icone: NomeIcone; paginas: Pagina[]; pronta: boolean }
+export interface Aplicacao {
+  id: IdAplicacao; nome: string; icone: NomeIcone; paginas: Pagina[]; pronta: boolean;
+  /** o grupo na gaveta ☰ (14/10/2026: "melhore, atualize ícones") e a logo da marca no lugar do ícone (o Drive, o Gmail) */
+  grupo: 'Rotinas' | 'Comunicação' | 'Escritório'; marca?: 'drive' | 'gmail';
+}
 
 export const APLICACOES: readonly Aplicacao[] = [
-  { id: 'minhas-empresas', nome: 'Minhas empresas', icone: 'briefcase', pronta: true, paginas: [
+  { id: 'minhas-empresas', nome: 'Minhas empresas', icone: 'briefcase', grupo: 'Rotinas', pronta: true, paginas: [
     { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Minhas empresas' },
     { id: 'insights', rotulo: 'Insights', icone: 'barChart', titulo: 'Minhas empresas — insights' },
   ] },
-  { id: 'contabil', nome: 'Contábil', icone: 'checklist', pronta: true, paginas: [
+  { id: 'contabil', nome: 'Contábil', icone: 'scale', grupo: 'Rotinas', pronta: true, paginas: [
     { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Contábil — visão geral' },
     { id: 'paradas', rotulo: 'Paradas', icone: 'alert', titulo: 'Contábil — etapas paradas' },
     // os históricos do Creditor, os mesmos para todas as empresas (Vitor, 05/10/2026)
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Contábil — configurações' },
   ] },
-  { id: 'cadastro', nome: 'Cadastro', icone: 'landmark', pronta: true, paginas: [
+  { id: 'cadastro', nome: 'Cadastro', icone: 'grade', grupo: 'Escritório', pronta: true, paginas: [
     { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Cadastro — empresas' },
     // a organização nova (Vitor, 13/10/2026: "reveja a estrutura inteira do cadastro"): a Equipe (as pessoas e a proteção
     // do login) e os Robôs e agentes (a saúde dos robôs, o que eles fazem e os agentes do Claude, que antes ficavam em
@@ -36,7 +40,7 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'sistema', rotulo: 'Sistema e agentes', icone: 'monitor', titulo: 'Cadastro — sistema e agentes' },
   ] },
   // o Fiscal no mesmo modelo do Contábil (Vitor, 05/10/2026): as empresas com a rotina do Fiscal, a visão e as paradas
-  { id: 'fiscal', nome: 'Fiscal', icone: 'fileText', pronta: true, paginas: [
+  { id: 'fiscal', nome: 'Fiscal', icone: 'recibo', grupo: 'Rotinas', pronta: true, paginas: [
     { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Fiscal — empresas' },
     // o Painel (Vitor, 09/10/2026): todos os clientes do mês numa tela, com o que a rotina e o SIEG apontam
     { id: 'painel', rotulo: 'Painel', icone: 'painel', titulo: 'Fiscal — painel' },
@@ -47,7 +51,7 @@ export const APLICACOES: readonly Aplicacao[] = [
   ] },
   // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
   // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas
-  { id: 'dp', nome: 'Departamento Pessoal', icone: 'usuario', pronta: true, paginas: [
+  { id: 'dp', nome: 'Departamento Pessoal', icone: 'usuario', grupo: 'Rotinas', pronta: true, paginas: [
     // tudo no tabelão (Vitor, 06/10/2026: "sem a parte de checklist"); as páginas na barra lateral ("eu ainda quero uma
     // barra lateral"); em Obrigações, uma tabela só, com as colunas agrupadas (Folha, eSocial, Guias, REINF, Entrega)
     { id: 'resumo', rotulo: 'Resumo', icone: 'painel', titulo: 'DP — resumo do mês' },
@@ -59,7 +63,7 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'DP — configurações' },
   ] },
   // as senhas gov.br e os certificados digitais, no cofre com a chave por pessoa (Vitor, 07/10/2026); todo o escritório
-  { id: 'senhas', nome: 'Senhas', icone: 'lock', pronta: true, paginas: [
+  { id: 'senhas', nome: 'Senhas', icone: 'lock', grupo: 'Escritório', pronta: true, paginas: [
     { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Senhas — gov.br e certificados' },
     // o painel dos certificados: próximos a vencer, vencidos e válidos (07/10/2026)
     { id: 'certificados', rotulo: 'Certificados', icone: 'barChart', titulo: 'Senhas — certificados' },
@@ -68,14 +72,14 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'acesso', rotulo: 'Acesso', icone: 'usuario', titulo: 'Senhas — acesso ao cofre' },
   ] },
   // os tickets mandados aos clientes (Vitor, 07/10/2026): os meus e a central de todos
-  { id: 'mandei', nome: 'Mandei', icone: 'caixaEntrada', pronta: true, paginas: [
+  { id: 'mandei', nome: 'Mandei', icone: 'mensagem', grupo: 'Comunicação', pronta: true, paginas: [
     { id: 'meus', rotulo: 'Meus tickets', icone: 'usuario', titulo: 'Mandei — meus tickets' },
     { id: 'central', rotulo: 'Central', icone: 'list', titulo: 'Mandei — central de tickets' },
   ] },
-  { id: 'drive', nome: 'Drive', icone: 'pasta', pronta: true, paginas: [
+  { id: 'drive', nome: 'Drive', icone: 'pasta', grupo: 'Comunicação', marca: 'drive', pronta: true, paginas: [
     { id: 'pastas', rotulo: 'Pastas', icone: 'pasta', titulo: 'Drive — pasta do ano' },
   ] },
-  { id: 'contato', nome: 'Gmail', icone: 'envelope', pronta: true, paginas: [
+  { id: 'contato', nome: 'Gmail', icone: 'envelope', grupo: 'Comunicação', marca: 'gmail', pronta: true, paginas: [
     { id: 'caixa', rotulo: 'E-mails', icone: 'envelope', titulo: 'Gmail — e-mails do robô' },
     { id: 'historico', rotulo: 'Histórico', icone: 'clock', titulo: 'Gmail — execuções do robô' },
   ] },
@@ -92,8 +96,11 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     (a.id !== 'drive' || op.admin || op.departamento === 'contabil') &&
     (a.id !== 'contato' || op.admin || op.departamento === 'contabil' || op.departamento === 'fiscal') &&
     // o Cadastro (empresas, usuários e configurações): só o admin e o diretor (Vitor, 05/10/2026)
-    (a.id !== 'cadastro' || op.admin || op.nivel === 'diretor'));
+    (a.id !== 'cadastro' || op.admin || op.nivel === 'diretor'))
+    // na gaveta, um grupo depois do outro: Rotinas, Comunicação, Escritório
+    .sort((x, y) => ORDEM_DOS_GRUPOS.indexOf(x.grupo) - ORDEM_DOS_GRUPOS.indexOf(y.grupo));
 }
+const ORDEM_DOS_GRUPOS: readonly Aplicacao['grupo'][] = ['Rotinas', 'Comunicação', 'Escritório'];
 
 export function aplicacao(id: string): Aplicacao | undefined {
   return APLICACOES.find(a => a.id === id);

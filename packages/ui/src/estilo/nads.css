@@ -4123,3 +4123,21 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 .modal.registro-novo p.registro-dica{padding:0;font-size:12.5px;color:var(--ink-muted);}
 .modal.registro-novo p.registro-dica-erro{color:var(--danger);}
 .registro-novo .registro-receita > span,.registro-novo .registro-origem{color:var(--ink-muted);font-weight:400;}
+/* a gaveta ☰ dos módulos (14/10/2026: "melhore, atualize ícones; no Drive, a logo do Drive"): os módulos em grupos
+   (Rotinas · Comunicação · Escritório), cada um com o ícone num quadradinho de cor suave; o Drive e o Gmail com a logo */
+.drawer-item{gap:10px;min-height:36px;padding:4px 8px;}
+.drawer-item.active{background:var(--hover-bg);font-weight:600;}
+.drawer-app-icone{--app:var(--ink-muted);width:26px;height:26px;flex:none;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;
+  background:color-mix(in srgb,var(--app) 16%,transparent);}
+.drawer-item .drawer-app-icone svg{width:15px;height:15px;color:var(--app);}
+.drawer-app-icone.marca{background:#fff;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 10%,transparent);}
+.drawer-item .drawer-app-icone.marca svg,.drawer-app-icone.marca img{width:16px;height:16px;object-fit:contain;filter:none;opacity:1;}
+.drawer-item[data-app="minhas-empresas"] .drawer-app-icone{--app:#4f8df7;}
+.drawer-item[data-app="contabil"] .drawer-app-icone{--app:#3fb37f;}
+.drawer-item[data-app="fiscal"] .drawer-app-icone{--app:#e3a33b;}
+.drawer-item[data-app="dp"] .drawer-app-icone{--app:#d9668a;}
+.drawer-item[data-app="mandei"] .drawer-app-icone{--app:#2fb3c4;}
+.drawer-item[data-app="senhas"] .drawer-app-icone{--app:#9a7ef0;}
+.drawer-item[data-app="cadastro"] .drawer-app-icone{--app:#8b95a5;}
+.drawer-grupo{display:block;padding:12px 8px 4px;font-weight:500;}
+.drawer-sep + .drawer-grupo{padding-top:4px;}
