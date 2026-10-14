@@ -26,11 +26,8 @@ export function Competencia() {
         <SeletorDaCompetencia vm={vm} />
         <span className="imp-topo-num"><Icone nome="recibo" /><b>{vm.meses.length}</b> {vm.meses.length === 1 ? 'relatório' : 'relatórios'}</span>
         <span className="imp-topo-meio" />
-        {/* Em lote: os que faltam, todos de uma vez pelo Drive */}
-        {vm.lote && vm.faltam > 1 && comDrive && !vm.ocupado && (
-          <MenuSuspenso rotulo="" icone="upload" className="gh-topo-btn gh-topo-menu" direita dica="Importar os relatórios que faltam"
-            itens={[{ rotulo: 'Buscar os ' + vm.faltam + ' que faltam no Drive', icone: 'pasta', onClick: () => vm.buscarNoDrive('*') }]} />
-        )}
+        {/* vários meses: o mesmo menu da Importação (Vitor, 14/10/2026: "padroniza") — do computador, pelo Drive e remover todos */}
+        {vm.linhas.length > 1 && <ImportarTodos vm={vm} comDrive={comDrive} />}
       </div>
 
       <div className="imp-lista">
@@ -84,6 +81,44 @@ export function Competencia() {
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * O importar de todos os meses, igual ao da Importação (ImportarExtratoTodos): só o ícone; clicou, do computador (vários
+ * arquivos, cada um no mês dele), pelo Drive (todos, ou os restantes) e, com algum importado, Remover todos.
+ */
+function ImportarTodos({ vm, comDrive }: { vm: VM; comDrive: boolean }) {
+  const arquivo = useRef<HTMLInputElement>(null);
+  const restantes = vm.linhas.some(l => l.carregado);
+  const travado = vm.ocupado;
+  return (
+    <>
+      <MenuSuspenso rotulo="" icone="upload" className="gh-topo-btn gh-topo-menu" direita
+        dica={restantes ? 'Importar o relatório dos meses que faltam' : 'Importar o relatório de todos os meses'}
+        conteudo={fechar => (
+          <>
+            <button type="button" className="popover-item" role="menuitem" disabled={travado || !vm.faltam} onClick={() => { fechar(); arquivo.current?.click(); }}>
+              <Icone nome="upload" /><span className="popover-texto">{restantes ? 'Importar os restantes do computador' : 'Importar do computador'}</span>
+            </button>
+            {comDrive && (
+              <button type="button" className="popover-item" role="menuitem" disabled={travado || !vm.faltam} onClick={() => { fechar(); vm.buscarNoDrive('*'); }}>
+                <LogoDrive cor /><span className="popover-texto">{restantes ? 'Adicionar restantes do Drive' : 'Todos pelo Drive'}</span>
+              </button>
+            )}
+            {restantes && (
+              <>
+                <hr className="popover-sep" />
+                <button type="button" className="popover-item perigo" role="menuitem" disabled={travado} onClick={() => { fechar(); vm.removerTodos(); }}>
+                  <Icone nome="x" /><span className="popover-texto">Remover todos</span>
+                </button>
+              </>
+            )}
+          </>
+        )} />
+      <input ref={arquivo} type="file" multiple accept=".pdf,.txt,.xls,.xlsx,.csv" className="sr-only" disabled={travado} tabIndex={-1} aria-hidden="true"
+        onChange={ev => { const fs = Array.from(ev.target.files || []); ev.target.value = ''; vm.importarVarios(fs); }} />
+    </>
   );
 }
 
@@ -222,7 +257,7 @@ function RelatoriosDoPeriodo({ vm, comDrive }: { vm: VM; comDrive: boolean }) {
       {/* os títulos do período na faixa de baixo, como os lançamentos na Importação (Vitor, 14/10/2026: "cadê os lançamentos?");
           o mês clicado no cabeçalho filtra */}
       {titulos.length > 0 && (
-        <FaixaQueAbre titulo={'Títulos' + (aberto ? ' de ' + aberto.rotulo : '')} qtd={(aberto ? aberto.titulos : titulos).length}>
+        <FaixaQueAbre titulo={'Lançamentos' + (aberto ? ' de ' + aberto.rotulo : '')} qtd={(aberto ? aberto.titulos : titulos).length}>
           <Titulos titulos={aberto ? aberto.titulos : titulos} />
         </FaixaQueAbre>
       )}

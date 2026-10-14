@@ -128,6 +128,39 @@ export function useCompetencia() {
     catch (e) { setBusca({ mes, fase: 'problema', texto: mensagemDeErro(e), candidatos: [] }); }
   }
 
+  /**
+   * Vários arquivos de uma vez (o menu de cima, como na Importação: "Importar os restantes do computador"): cada relatório
+   * cai no mês das liquidações dele (o que mais aparece); fora do período, avisa e não entra.
+   */
+  async function importarVarios(arquivos: File[]) {
+    const fora: string[] = [];
+    for (const f of arquivos) {
+      try {
+        const rel = await lerRelatorio(f.name, await f.arrayBuffer());
+        const conta = new Map<string, number>();
+        for (const t of rel.grupos.flatMap(g => g.titulos)) {
+          const m = /(\d{2})\/(\d{2})\/(\d{4})/.exec(t.liquidacao);
+          if (m) conta.set(m[3] + '-' + m[2], (conta.get(m[3] + '-' + m[2]) || 0) + 1);
+        }
+        const mes = [...conta].sort((a, b) => b[1] - a[1])[0]?.[0];
+        if (!mes || !meses.includes(mes)) { fora.push(f.name); continue; }
+        guardar(mes, rel, f.name);
+      } catch (e) { aviso({ tom: 'erro', titulo: 'Não deu para ler ' + f.name, texto: mensagemDeErro(e) }); }
+    }
+    if (fora.length) aviso({ tom: 'erro', titulo: 'Fora do período', texto: fora.join(', ') + ': as liquidações não são de nenhum mês do período.' });
+  }
+
+  /** "Remover todos" (como na Importação): tira os relatórios de todos os meses (pergunta antes). */
+  async function removerTodos() {
+    const ok = await modal<boolean>({
+      icone: 'alert', titulo: 'Remover todos os relatórios?',
+      botoes: [{ rotulo: 'Remover todos', valor: true, variante: 'btn-danger' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
+    });
+    if (!ok) return;
+    s.mudar(e => ({ ...e, relatorio: null, porMes: {}, origemBanco: '', decisoes: {}, passosFiscal: [], baixado: false, bancoConferido: false, razaoDaExclusao: undefined, alcancada: 0 }));
+    aviso({ tom: 'ok', titulo: 'Relatórios removidos', texto: 'Relatório de liquidação · todos os meses' });
+  }
+
   /** O check da linha (como na Importação): exclui o relatório do mês (pergunta antes); as decisões das contas vão junto. */
   async function excluir(mes: string) {
     const ok = await modal<boolean>({
@@ -203,6 +236,9 @@ export function useCompetencia() {
     /** um mês, ou '*' para todos os que faltam */
     buscarNoDrive,
     importarDoComputador: (mes: string, f: File | undefined) => { void importarDoComputador(mes, f); },
+    /** o menu de cima: vários arquivos (cada um no mês dele) e remover todos */
+    importarVarios: (arquivos: File[]) => { void importarVarios(arquivos); },
+    removerTodos: () => { void removerTodos(); },
     usar: (a: cr.ArquivoAchado) => { void usarDoDrive(busca.mes, a, busca.candidatos); },
     fecharProblema: () => setBusca(PARADO),
     excluir: (mes: string) => { void excluir(mes); },
