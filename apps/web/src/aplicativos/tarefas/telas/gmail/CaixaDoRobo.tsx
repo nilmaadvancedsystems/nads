@@ -2,7 +2,8 @@
 // entrada de verdade. No topo, uma barra só (as caixas, como o robô está, a busca e "Verificar agora"); à esquerda a
 // lista (as abas De clientes · Sem cliente · Spam e cada e-mail com a inicial, o cliente, o assunto, o começo do texto,
 // a hora, os anexos e se já está no Drive); à direita o e-mail aberto (as ações numa barra, o texto, os anexos em
-// cartões, as respostas e responder). Sem e-mail escolhido, o convite. No celular, o e-mail ocupa a tela.
+// cartões, as respostas e responder). Sem e-mail aberto, a lista ocupa a largura toda, uma linha por e-mail; ao clicar,
+// ela encolhe e o e-mail abre ao lado. No celular, o e-mail ocupa a tela.
 import type { entregas as e } from '@nads/core';
 import { Esqueleto, Icone, NumeroQueConta, Segmentado, useCarregando } from '@nads/ui';
 import { useEffect, useState } from 'react';
@@ -244,16 +245,12 @@ export function CaixaDoRobo() {
               </ul>
             )}
         </div>
-        {/* o e-mail aberto */}
-        <div className="gm-leitura">
-          {vm.aberto ? <Leitura key={vm.aberto.mensagemId} vm={vm} x={vm.aberto} /> : (
-            <div className="gm-leitura-vazia">
-              <span className="gm-vazio-icone" aria-hidden="true"><Icone nome="envelope" /></span>
-              <b>Escolha um e-mail</b>
-              <span className="fraco">O texto, os anexos e as ações aparecem aqui.</span>
-            </div>
-          )}
-        </div>
+        {/* o e-mail aberto: só existe quando se clica num e-mail (13/10/2026: "só vai abrir essa tela quando eu clicar") */}
+        {vm.aberto && (
+          <div className="gm-leitura">
+            <Leitura key={vm.aberto.mensagemId} vm={vm} x={vm.aberto} />
+          </div>
+        )}
       </div>
     </section>
   );

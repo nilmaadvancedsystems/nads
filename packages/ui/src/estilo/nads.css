@@ -4016,3 +4016,21 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 /* a tela de bloqueio: o campo e o Abrir na mesma altura */
 .cofre-bloqueio-linha{align-items:stretch;}
 .cofre-bloqueio-linha>.field,.cofre-bloqueio-linha>.btn{height:36px;min-height:0;box-sizing:border-box;}
+/* o Gmail sem e-mail aberto (13/10/2026: "só vai abrir essa tela quando eu clicar; não vai ficar esse espaço aberto"): a
+   lista ocupa a largura toda e cada e-mail vira uma linha (quem · assunto — trecho · anexos · hora); ao abrir um, ela
+   encolhe para a esquerda e o e-mail aparece ao lado */
+.gm-caixa:not(.com-leitura){grid-template-columns:minmax(0,1fr);}
+.gm-caixa:not(.com-leitura) .gm-lista{border-right:0;}
+.gm-caixa:not(.com-leitura) .gm-abas{justify-content:flex-start;}
+.gm-caixa:not(.com-leitura) .gm-aba{flex:none;padding:0 12px;}
+@media (min-width:901px){
+  .gm-caixa:not(.com-leitura) .gm-item{align-items:center;padding:9px 16px;}
+  .gm-caixa:not(.com-leitura) .gm-inicial{width:30px;height:30px;font-size:13px;}
+  .gm-caixa:not(.com-leitura) .gm-item-corpo{display:grid;grid-template-columns:minmax(160px,260px) minmax(0,1fr) auto auto;align-items:center;column-gap:16px;}
+  .gm-caixa:not(.com-leitura) .gm-item-topo{display:contents;}
+  .gm-caixa:not(.com-leitura) .gm-quem{grid-column:1;grid-row:1;}
+  .gm-caixa:not(.com-leitura) .gm-hora{grid-column:4;grid-row:1;min-width:70px;text-align:right;}
+  .gm-caixa:not(.com-leitura) .gm-assunto{grid-column:2;grid-row:1;font-weight:600;}
+  .gm-caixa:not(.com-leitura) .gm-trecho{display:none;}
+  .gm-caixa:not(.com-leitura) .gm-item-pe{grid-column:3;grid-row:1;margin:0;flex-wrap:nowrap;}
+}
