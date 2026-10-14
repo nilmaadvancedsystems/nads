@@ -356,6 +356,9 @@ export function useImportacao() {
     apagarDadosDeTeste: () => demo.apagarDadosDeTeste(),
     /** os extratos que abrem a conta, vindos do Drive sem o saldo anterior (a linha do Drive completa sozinha) */
     extratosSemSaldo: x.extratosSemSaldoAnterior(s.empresa, primeiro),
+    /** os extratos do Drive lidos por um leitor mais velho: o useDriveDaLinha relê sozinho (Vitor, 14/10/2026) */
+    extratosParaReler: x.extratosParaReler(s.empresa),
+    relerExtrato: (arquivoId: string, lido: x.ArquivoLido) => s.aplicar(e => x.relerExtrato(e, arquivoId, lido, new Date())),
     /** quem marca o mês como sem movimento quando o extrato importado não teve movimento */
     aoSemMovimento: (fn: (banco: string, meses: string[]) => void) => { aoSemMovimento.current = fn; },
     gravarSaldoAnterior: (arquivoId: string, saldo: number) => s.aplicar(e => x.definirSaldoAnterior(e, arquivoId, saldo, new Date())),

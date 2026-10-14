@@ -293,6 +293,11 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
     let ultimo: Lancamento | null = null;
     let ultimaY: number | null = null;
     let pulandoBloqueado = false;
+    // as linhas de texto sem valor logo depois de um lançamento: cada uma vai para o lançamento mais perto, o de cima ou o
+    // de baixo (Vitor, 14/10/2026: o BNB põe "PGTO TITULO INTERNET BANK" acima do valor e o fornecedor embaixo; o
+    // Bradesco também) — decidido quando chega a próxima linha com valor
+    let perto: { texto: string; y: number }[] = [];
+    const juntarPerto = () => { if (ultimo) for (const p of perto) ultimo.historico = (ultimo.historico + ' ' + p.texto).trim(); perto = []; };
 
     for (const l of linhas) {
       const t = l.tokens.slice();
@@ -312,7 +317,8 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       else if (t[1] && RE_DATA_MES.test(t[0].s + ' ' + t[1].s)) { data = lerData(t[0].s + ' ' + t[1].s, ano); if (data) t.splice(0, 2); }
       else if (RE_DATA_MES.test(t[0].s)) { data = lerData(t[0].s, ano); if (data) t.shift(); }
       if (data) { dataAtual = data; noResumo = false; }
-      if (!data && /^(resumo|encargos vencidos)\b/.test(normalizarTexto(l.texto))) { noResumo = true; continue; }
+      // (e o "Detalhamento do Saldo" do BNB: saldo disponível, limite, Investimentos "BNB AUTOMATICO FIF"; Vitor, 14/10/2026)
+      if (!data && /^(resumo|encargos vencidos|detalhamento do saldo)\b/.test(normalizarTexto(l.texto))) { juntarPerto(); noResumo = true; continue; }
       if (noResumo) continue;
 
       const valores: Token[] = [];
@@ -339,9 +345,10 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
 
       if (!valores.length) {
         if (hist && !RE_SALDO.test(hist) && !/^(data|dt\.?)\b/i.test(hist) && hist.length <= 90) {
-          if (data) solta = hist;
-          else if (ultimo && ultimaY != null && Math.abs(ultimaY - l.y) < 16 && !solta) { ultimo.historico = (ultimo.historico + ' ' + hist).trim(); ultimaY = l.y; }
-          else solta = (solta ? solta + ' ' : '') + hist;
+          const acima = perto.length ? perto[perto.length - 1].y : ultimaY;
+          if (data) { juntarPerto(); solta = hist; }
+          else if (ultimo && acima != null && Math.abs(acima - l.y) < 16 && !solta) perto.push({ texto: hist, y: l.y });
+          else { juntarPerto(); solta = (solta ? solta + ' ' : '') + hist; }
         }
         continue;
       }
@@ -351,6 +358,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
         const diaDoSaldo = /\bs a l d o\b/.test(n) ? ultimaDataDeValor : /\bsaldo (?:do )?dia\b/.test(n) ? dataAtual : null;
         const sv = diaDoSaldo ? centavos(valores[valores.length - 1].s) : null;
         if (sv != null && diaDoSaldo) saldosDoDia.set(diaDoSaldo, sv);
+        juntarPerto();
         solta = null; continue;
       }
       if (!dataAtual) continue;
@@ -382,7 +390,14 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
         } else if (RE_SAIDA.test(base) && !RE_ENTRADA.test(base)) c = -Math.abs(c);
       }
 
-      let h = hist;
+      // o texto entre o lançamento de cima e este: o que está mais perto de cima fica lá; o resto abre este
+      let antes = '';
+      for (const p of perto) {
+        if (!antes && ultimo && ultimaY != null && Math.abs(ultimaY - p.y) <= Math.abs(p.y - l.y)) { ultimo.historico = (ultimo.historico + ' ' + p.texto).trim(); ultimaY = p.y; }
+        else antes = (antes ? antes + ' ' : '') + p.texto;
+      }
+      perto = [];
+      let h = antes ? (antes + ' ' + hist).trim() : hist;
       if (!h && solta) { h = solta; solta = null; }
       else if (solta && ultimo) { ultimo.historico = (ultimo.historico + ' ' + solta).trim(); solta = null; }
       else solta = null;
@@ -399,6 +414,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       saida.push(ultimo);
       paginaDe.push(nPagina);
     }
+    juntarPerto();
   }
   return { lancamentos: saida, pagina: paginaDe, saldosDoDia };
 }
