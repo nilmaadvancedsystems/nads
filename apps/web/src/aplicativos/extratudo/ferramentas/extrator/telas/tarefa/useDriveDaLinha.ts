@@ -67,6 +67,20 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     }
   }
 
+  /**
+   * A pasta da empresa no mapa do Drive; se algum dos meses não aparece nela, pede ao robô para reler a pasta na hora e
+   * olha de novo (Vitor, 14/10/2026: no dia 13 o mapa da 58 estava velho e o BNB de 01 a 05, que estava no Drive desde
+   * abril, não veio; o robô só refez o mapa de madrugada).
+   */
+  async function pastaComOsMeses(linha: Linha, meses: readonly string[]) {
+    const pasta = await drive.pastaDoCliente(codigo);
+    const conta = { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta };
+    const falta = meses.some(m => x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, m, conta).situacao !== 'achou');
+    if (!falta || !pasta || !drive.atualizarMapaDoCliente) return pasta;
+    try { await drive.atualizarMapaDoCliente(pasta.raiz); } catch { return pasta; }
+    return (await drive.pastaDoCliente(codigo)) || pasta;
+  }
+
   async function buscar(linha: Linha) {
     if (!acesso.entrou) {
       // aberto dentro do Entregas: o login é o de lá (sem pedir senha aqui)
@@ -75,7 +89,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     }
     setBuscando(linha.id);
     try {
-      const pasta = await drive.pastaDoCliente(codigo);
+      const pasta = await pastaComOsMeses(linha, [vm.competencia]);
       const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, vm.competencia, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta });
       if (r.situacao === 'achou' && r.arquivo) await usar(linha, r.arquivo);
       else setEscolha({ linha, texto: x.mensagemDaBuscaDoExtrato(r, vm.competencia.slice(5) + '/' + vm.competencia.slice(0, 4)), candidatos: r.candidatos });
@@ -104,7 +118,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     setLote({ banco: linha.nome, meses: meses.map(rotuloDe), feitos: [], atual: rotuloDe(meses[0]), inicio: Date.now(), pronto: false });
     const passou = (mes: string, ok: boolean, proximo?: string) => setLote(l => (l ? { ...l, feitos: [...l.feitos, { mes, ok }], atual: proximo || '' } : l));
     try {
-      const pasta = await drive.pastaDoCliente(codigo);
+      const pasta = await pastaComOsMeses(linha, meses);
       for (const [i, mes] of meses.entries()) {
         const seguinte = meses[i + 1] ? rotuloDe(meses[i + 1]) : '';
         // "Cancelar": para antes do próximo mês (o que já veio fica)
