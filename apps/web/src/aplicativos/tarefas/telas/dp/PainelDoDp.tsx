@@ -4,7 +4,7 @@
 // com as obrigações do mês (– não tem, vazio a fazer, ✓ feita, ! parada). Tudo roda aqui: clicar na bolinha marca a
 // obrigação como feita, clicar de novo desfaz (sem o checklist).
 import { formatos } from '@nads/core';
-import { baixarBytes, Esqueleto, Icone, Interruptor, Segmentado, useCarregando } from '@nads/ui';
+import { baixarBytes, Esqueleto, Icone, Interruptor, NumeroQueConta, Segmentado, useCarregando, useEntradaAnimada } from '@nads/ui';
 import { Fragment, useState } from 'react';
 import { DecimoNaLista } from './DecimoTerceiro';
 import { usePainelDoDp, type AbaDoPainel, type Agrupar, type EstadoDaObrigacao } from './usePainelDoDp';
@@ -71,6 +71,8 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
   const mostrarDecimo = temDecimo && decimo;
   const mesDaCompetencia = doDecimo?.mes || 0;
   useCarregando(vm.carregando);
+  // o DP animado (Vitor, 14/10/2026: "quero animar o DP inteiro"): a tabela entra em cascata ao abrir e ao trocar a aba
+  const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [aba, vm.carregando], 'lista');
   return (
     <section className="dp-painel">
       <div className="tarefas-filtros dp-filtros">
@@ -112,7 +114,7 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
               <div key={n.rotulo} className={'stat painel-numero painel-' + n.tom}>
                 <span className="painel-numero-icone" aria-hidden="true"><Icone nome={n.icone} /></span>
                 <p className="stat-label">{n.rotulo}</p>
-                <p className="stat-value">{n.valor}</p>
+                <p className="stat-value"><NumeroQueConta texto={String(n.valor)} /></p>
                 {n.dica && <p className="hint dp-numero-dica">{n.dica}</p>}
               </div>
             ))}
@@ -179,7 +181,7 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
               )}
             </div>
             {vm.quantas === 0 ? <p className="hint dp-vazio">Nenhum cliente com esses filtros.</p> : (
-              <div className="table-wrap">
+              <div className="table-wrap" ref={tabela}>
                 <table className="dp-tabela">
                   <thead>
                     <tr className="dp-cabeca-grupo">

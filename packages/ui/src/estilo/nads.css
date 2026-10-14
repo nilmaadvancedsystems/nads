@@ -4323,3 +4323,13 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 .alt-passos li{display:flex;align-items:center;gap:8px;color:var(--ink-muted);}
 .alt-passos li:last-child{color:var(--ink);}
 .alt-passos .alt-passo-n{width:20px;height:20px;border-radius:50%;background:var(--surface-3);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;flex:none;}
+/* o DP animado (14/10/2026: "quero animar o DP inteiro"); o nível de cada um vale (no Normal nada se mexe; nas Parciais só a
+   transição; nas Todas também a cascata): as barras do resumo crescem em sequência e a barra das guias anda ao mudar */
+@keyframes dpBarraCresce{from{width:0;}}
+.dp-barras .dp-barra > span{animation:dpBarraCresce .7s cubic-bezier(.23,1,.32,1) both;}
+.dp-barras li:nth-child(2) .dp-barra > span{animation-delay:50ms;}
+.dp-barras li:nth-child(3) .dp-barra > span{animation-delay:100ms;}
+.dp-barras li:nth-child(4) .dp-barra > span{animation-delay:150ms;}
+.dp-barras li:nth-child(5) .dp-barra > span{animation-delay:200ms;}
+.dp-barras li:nth-child(n+6) .dp-barra > span{animation-delay:250ms;}
+.fgts-barra > span,.dp-painel .tarefas-barra > span{transition:width .5s cubic-bezier(.23,1,.32,1);}

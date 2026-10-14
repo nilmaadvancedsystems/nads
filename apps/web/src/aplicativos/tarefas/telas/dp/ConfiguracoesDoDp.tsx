@@ -3,7 +3,7 @@
 // movimento e as obrigações do mês; a REINF é do Fiscal) e Entrega (como recebe e o agrupamento). Grava ao mudar; o que foi mudado
 // ganha o selo "mudado" e o "Voltar à planilha".
 import { MenuDeAgrupamento } from './MenuDeAgrupamento';
-import { BotaoIcone, Esqueleto, Icone, useCarregando, useRetorno, MenuSuspenso } from '@nads/ui';
+import { BotaoIcone, Esqueleto, Icone, useCarregando, useEntradaAnimada, useRetorno, MenuSuspenso } from '@nads/ui';
 import { Cartao, JanelaLateral, Linha, type TopicoDaJanela } from '../janela/JanelaLateral';
 import { useConfiguracoesDoDp, type TopicoDoClienteDp } from './useConfiguracoesDoDp';
 
@@ -16,6 +16,8 @@ export function ConfiguracoesDoDp() {
   const vm = useConfiguracoesDoDp();
   const { toast } = useRetorno();
   useCarregando(vm.carregando);
+  // o DP animado (14/10/2026): a lista entra em cascata ao abrir e ao filtrar
+  const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [vm.carregando, vm.busca, vm.movimento, vm.soMudados, vm.competencia], 'lista');
   /** copia o CNPJ/CPF só com os dígitos (para colar nos sites do governo) */
   const copiar = (doc: string) => {
     // o jeito antigo quando o navegador recusa a área de transferência (um campo escondido e o "copiar" do navegador)
@@ -68,7 +70,7 @@ export function ConfiguracoesDoDp() {
             <h3 className="dp-titulo">Clientes do DP</h3>
             <span className="badge badge-neutral">{vm.linhas.length}</span>
           </div>
-          <div className="table-wrap">
+          <div className="table-wrap" ref={tabela}>
             <table className="dp-tabela dp-config-lista">
               <thead><tr><th>Cód.</th><th>Cliente</th><th>CNPJ/CPF</th><th>Movimento</th><th>Obrigações do mês</th><th>Entrega</th><th>Agrupamento</th></tr></thead>
               <tbody>

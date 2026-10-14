@@ -2,13 +2,15 @@
 // dezembro… muda a lista como um on/off"): com o interruptor ligado, esta lista entra no lugar da do mês — novembro
 // mostra a 1ª parcela (recibos e folha), dezembro a 2ª (recibos, folha, S-1200, S-1210, S-1299, DCTFWeb e DARF), com
 // os filtros das Obrigações. A bolinha marca a etapa como feita (quem e quando); clicar de novo desfaz.
-import { baixarBytes, Esqueleto, Icone, Interruptor } from '@nads/ui';
+import { baixarBytes, Esqueleto, Icone, Interruptor, useEntradaAnimada } from '@nads/ui';
 import { useDecimoTerceiro, type DeFora, type EstadoDoDecimo } from './useDecimoTerceiro';
 
 const MARCA: Record<EstadoDoDecimo, string> = { 'a-fazer': '', feita: '✓', parada: '!' };
 
 export function DecimoNaLista({ desligar, ...fora }: DeFora & { desligar: () => void }) {
   const vm = useDecimoTerceiro(fora);
+  // o DP animado (14/10/2026): a lista entra em cascata
+  const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [], 'lista');
   const feitas = fora.parcela === '1' ? vm.primeiraFeitas : vm.segundaFeitas;
   return (
     <section className="card dp-lista">
@@ -24,7 +26,7 @@ export function DecimoNaLista({ desligar, ...fora }: DeFora & { desligar: () => 
         <Interruptor ligado onMudar={desligar} rotulo="Voltar para as obrigações do mês" />
       </div>
       {vm.carregando ? <Esqueleto linhas={8} /> : vm.linhas.length === 0 ? <p className="hint dp-vazio">Nenhum cliente com esses filtros.</p> : (
-        <div className="table-wrap">
+        <div className="table-wrap" ref={tabela}>
           <table className="dp-tabela dp-tabela-13">
             <thead>
               <tr className="dp-cabeca-grupo">
