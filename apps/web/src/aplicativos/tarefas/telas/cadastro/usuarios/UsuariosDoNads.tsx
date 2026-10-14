@@ -5,6 +5,7 @@ import { Esqueleto, Icone, useCarregando } from '@nads/ui';
 import { useState } from 'react';
 import { JanelaDoUsuario, JanelaNovoUsuario } from './JanelaDoUsuario';
 import { JanelaDosResponsaveis } from '../responsaveis/JanelaDosResponsaveis';
+import { ProtecaoDoLogin } from '../configuracoes/ConfiguracoesDoNads';
 import { useUsuariosDoNads, type FiltroDeUsuarios } from './useUsuariosDoNads';
 
 const FILTROS: { id: FiltroDeUsuarios; rotulo: string }[] = [
@@ -21,6 +22,8 @@ export function UsuariosDoNads() {
   useCarregando(vm.carregando);
   return (
     <section className="usuarios">
+      {/* a proteção do login (antes em Configurações; 13/10/2026) */}
+      {vm.admin && <ProtecaoDoLogin />}
       <div className="tarefas-barra-topo">
         <div className="chip-row usuarios-filtros">
           {FILTROS.map(f => (

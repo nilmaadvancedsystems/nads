@@ -20,7 +20,7 @@ export function PainelDosAgentes() {
   const n = (rotulo: string) => vm.numeros.find(x => x.rotulo === rotulo)?.valor ?? 0;
   return (
     <section className="dp-painel">
-      <div className="tarefas-filtros dp-filtros">
+      <div className="tarefas-filtros dp-filtros" style={{ alignItems: 'center' }}>
         <Segmentado opcoes={FILTROS} valor={vm.filtro} onMudar={vm.setFiltro} />
         <span className="hint">
           {n('Trabalhando agora')} trabalhando · {n('Esperando você')} esperando você · {n('Subagentes rodando')} {n('Subagentes rodando') === 1 ? 'subagente' : 'subagentes'}
