@@ -76,8 +76,7 @@ function Contagem({ dias }: { dias: number }) {
         <circle cx="21" cy="21" r={R} className="cert-rosca-fundo" />
         <circle cx="21" cy="21" r={R} className="cert-contagem-arco" strokeDasharray={pct + ' ' + (100 - pct)} strokeDashoffset={25} />
       </svg>
-      <span className="cert-contagem-num num">{Math.abs(dias)}</span>
-      <span className="cert-contagem-txt">{vencido ? 'vencido' : dias === 1 ? 'dia' : 'dias'}</span>
+      <span className={'cert-contagem-num num' + (Math.abs(dias) >= 100 ? ' longo' : '')}>{Math.abs(dias)}</span>
     </span>
   );
 }
@@ -109,6 +108,7 @@ export function Certificados() {
               <Contagem dias={l.dias ?? 0} />
               <span className="cert-urgente-texto">
                 <b>{l.nome}</b>
+                <span className={'cert-urgente-prazo ' + (l.situacao === 'vencido' ? 'vencido' : 'vence')}>{(l.dias ?? 0) < 0 ? 'Vencido há ' + -(l.dias ?? 0) + (l.dias === -1 ? ' dia' : ' dias') : l.dias === 0 ? 'Vence hoje' : 'Vence em ' + l.dias + (l.dias === 1 ? ' dia' : ' dias')}</span>
                 <span className="fraco num">{l.codigo != null ? l.codigo + ' · ' : ''}{data(l.validade)}</span>
               </span>
             </button>
