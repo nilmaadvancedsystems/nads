@@ -8,7 +8,7 @@ export function LegislacaoDoDp() {
   const l = vm.item;
   const topicos: TopicoDaJanela<TopicoDaLegislacao>[] = [
     { id: 'texto', rotulo: 'Texto legal', icone: 'scale' },
-    ...(l?.observacoes ? [{ id: 'observacoes' as const, rotulo: 'Observações', icone: 'fileText' }] : []),
+    ...(l?.observacoes ? [{ id: 'observacoes' as const, rotulo: 'Observações', icone: 'fileText' as const }] : []),
   ];
   return (
     <section className="dp-painel">
