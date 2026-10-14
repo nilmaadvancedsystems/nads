@@ -4,7 +4,7 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDeCategoriasDp, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
+import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDeCategoriasDp, repoDeLegislacaoDp, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoAgentes } from './agentes';
 import type { RepoSieg } from './sieg';
@@ -14,6 +14,7 @@ import type { RepoIA } from './ia';
 import type { RepoPessoal } from './pessoal';
 import type { RepoFeedback } from './feedback';
 import type { RepoCategoriasDp } from './categoriasDp';
+import type { RepoLegislacaoDp } from './legislacaoDp';
 
 type Repo = tarefas.RepoTarefas;
 
@@ -193,6 +194,13 @@ export function useArquivador(): RepoArquivador {
 /** As categorias novas de obrigações do DP, ao vivo (a lista; o admin cria e tira). */
 export function useCategoriasDp(): RepoCategoriasDp {
   const repo = repoDeCategoriasDp();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** A legislação do DP cadastrada no nads (as novas e as do Toriba editadas), ao vivo. */
+export function useLegislacaoDp(): RepoLegislacaoDp {
+  const repo = repoDeLegislacaoDp();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
 }
