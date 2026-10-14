@@ -15,7 +15,8 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const { escolher, comLogin } = useOperador();
   const op = useOperador().operador as Operador;
   const a = aplicacao(app);
-  const comAbas = app === 'cadastro';
+  // o Cadastro também com a barra lateral (14/10/2026: "cadê a barra?"), como os outros módulos; as abas no alto não voltam
+  const comAbas = false;
   const pessoal = usePessoal();
   const acesso = useAcesso();
   // o modo desenvolvedor (no avatar): só ver, sem alterar (Vitor, 06/10/2026)
