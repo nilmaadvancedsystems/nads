@@ -23,6 +23,8 @@ import { criarIAFirestore } from './ia.firestore';
 import { criarFeedbackMemoria, type RepoFeedback } from './feedback';
 import { criarCategoriasDpMemoria, type RepoCategoriasDp } from './categoriasDp';
 import { criarCategoriasDpFirestore } from './categoriasDp.firestore';
+import { criarLegislacaoDpMemoria, type RepoLegislacaoDp } from './legislacaoDp';
+import { criarLegislacaoDpFirestore } from './legislacaoDp.firestore';
 import { criarFeedbackFirestore } from './feedback.firestore';
 import { criarPessoalMemoria, type RepoPessoal } from './pessoal';
 import { criarPessoalFirestore } from './pessoal.firestore';
@@ -343,6 +345,14 @@ let categoriasDp: RepoCategoriasDp | null = null;
 export function repoDeCategoriasDp(): RepoCategoriasDp {
   if (!categoriasDp) categoriasDp = noBanco ? criarCategoriasDpFirestore(() => quemPede()?.nome || '') : criarCategoriasDpMemoria();
   return categoriasDp;
+}
+
+let legislacaoDp: RepoLegislacaoDp | null = null;
+
+/** A legislação do DP cadastrada no nads: no banco, legislacaoDp/{id}; nos exemplos, na memória. */
+export function repoDeLegislacaoDp(): RepoLegislacaoDp {
+  if (!legislacaoDp) legislacaoDp = noBanco ? criarLegislacaoDpFirestore(() => quemPede()?.nome || '') : criarLegislacaoDpMemoria();
+  return legislacaoDp;
 }
 
 export function repoDaIA(): RepoIA {
