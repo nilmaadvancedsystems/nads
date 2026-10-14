@@ -21,35 +21,23 @@ function Aba({ rota, aba }: { rota: string; aba: string }) {
   }
 }
 
-/** O resumo no topo da aba Empresa (13/10/2026): o CNPJ, o regime e o que o cadastro já tem; cada item leva à aba dele. */
+/**
+ * O que falta no cadastro, numa linha no topo da aba Empresa (13/10/2026; enxuto depois: "achei com muita informação"):
+ * o placar e os itens que faltam, cada um levando à aba dele. Completo, some.
+ */
 function ResumoDoCadastro({ vm }: { vm: ReturnType<typeof useJanelaDaEmpresa> }) {
   const r = vm.resumo;
-  if (!r.carregado) return null;
-  const tudo = r.completos === r.itens.length;
+  if (!r.carregado || r.completos === r.itens.length) return null;
+  const faltam = r.itens.filter(i => !i.tem);
   return (
-    <div className={'card cad-resumo' + (tudo ? ' completo' : '')}>
-      <div className="cad-resumo-topo">
-        <div>
-          <span className="cad-resumo-sobre">Cadastro</span>
-          <b>{tudo ? 'Completo' : r.completos + ' de ' + r.itens.length + ' itens preenchidos'}</b>
-        </div>
-        <div className="cad-resumo-meta">
-          {r.cnpj && <span className="cad-resumo-dado"><span className="fraco">CNPJ</span>{r.cnpj}</span>}
-          {vm.regime && <span className="cad-resumo-dado"><span className="fraco">Regime</span>{vm.regime}</span>}
-        </div>
-      </div>
+    <div className="cad-resumo-linha">
       <span className="cad-resumo-barra" aria-hidden="true"><span style={{ width: Math.round((r.completos / r.itens.length) * 100) + '%' }} /></span>
-      <ul className="cad-resumo-itens">
-        {r.itens.map(i => (
-          <li key={i.id}>
-            <button type="button" className={'cad-resumo-item' + (i.tem ? ' tem' : '')} onClick={() => { if (i.aba !== vm.aba) vm.irPara(i.aba); }}
-              title={i.aba !== vm.aba ? 'Abrir ' + i.rotulo : undefined}>
-              <span className="cad-resumo-marca" aria-hidden="true"><Icone nome={i.tem ? 'check' : 'alert'} /></span>
-              <span className="cad-resumo-texto"><b>{i.rotulo}</b><span className="fraco">{i.texto}</span></span>
-            </button>
-          </li>
-        ))}
-      </ul>
+      <b>Cadastro {r.completos}/{r.itens.length}</b>
+      <span className="fraco">Falta:</span>
+      {faltam.map(i => (
+        <button key={i.id} type="button" className="cad-resumo-falta" onClick={() => { if (i.aba !== vm.aba) vm.irPara(i.aba); }}
+          title={i.aba !== vm.aba ? 'Abrir ' + i.rotulo : i.texto}>{i.rotulo}</button>
+      ))}
     </div>
   );
 }
@@ -88,6 +76,7 @@ export function JanelaDaEmpresa({ rota, aba }: { rota: string; aba: string }) {
             <b className="num">{vm.empresa.codigo ?? '—'}</b>
             <span className="cad-janela-nome">{vm.empresa.nome}</span>
             {vm.regime && <span className="badge badge-neutral cad-regime">{vm.regime}</span>}
+            {vm.resumo.cnpj && <span className="fraco num">{vm.resumo.cnpj}</span>}
           </span>
           <button type="button" className="btn btn-ghost cad-janela-x" onClick={fechar} aria-label="Fechar" title="Fechar (Esc)">
             <Icone nome="x" />

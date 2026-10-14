@@ -4,6 +4,7 @@
 //     dos extratos, e os agentes do Claude Code (o painel ao vivo). Antes ficavam espalhados em Configurações e Agentes.
 // Só o admin muda as chaves.
 import { Dica, Esqueleto, Icone, Interruptor, useCarregando, useEntradaAnimada } from '@nads/ui';
+import { useState } from 'react';
 import { PainelDosAgentes } from '../agentes/PainelDosAgentes';
 import { useConfiguracoesDoNads } from './useConfiguracoesDoNads';
 
@@ -34,6 +35,10 @@ export function RobosEAgentes() {
   useCarregando(vm.carregando);
   // a saúde do robô: os itens chegam em cascata na primeira leitura (a releitura de 30 em 30 s não anima)
   const saude = useEntradaAnimada<HTMLDivElement>('.saude-lista', [!!vm.saude], 'repetida');
+  // enxuto (13/10/2026: "achei com muita informação"): o placar e só o que precisa de atenção; "Ver todos" abre o resto
+  const [todos, setTodos] = useState(false);
+  const problemas = (vm.saude || []).filter(i => i.tom === 'erro' || i.tom === 'aviso');
+  const mostrar = todos ? vm.saude || [] : problemas;
   return (
     <section className="cad-robos">
       {!vm.admin && <p className="hint">Só um administrador liga ou desliga os robôs; aqui você acompanha.</p>}
@@ -47,15 +52,23 @@ export function RobosEAgentes() {
               </h3>
             </div>
             {!vm.saude ? <Esqueleto linhas={4} /> : (
-              <ul className="saude-lista">
-                {vm.saude.map(i => (
+              <>
+              <div className={'cad-placar' + (problemas.length ? ' atencao' : '')}>
+                <span className="saude-ponto" aria-hidden="true" />
+                <b>{problemas.length ? (problemas.length === 1 ? '1 item precisa de atenção' : problemas.length + ' itens precisam de atenção') : 'Tudo funcionando'}</b>
+                <span className="tarefas-barra-espaco" />
+                <button type="button" className="btn btn-ghost" onClick={() => setTodos(t => !t)}>{todos ? 'Só o que precisa de atenção' : 'Ver todos (' + vm.saude.length + ')'}</button>
+              </div>
+              {mostrar.length > 0 && <ul className="saude-lista">
+                {mostrar.map(i => (
                   <li key={i.id} className={'saude-' + i.tom}>
                     <span className="saude-ponto" aria-hidden="true" />
                     <span className="saude-rotulo">{i.rotulo}</span>
                     <span className="saude-texto">{i.texto}{i.detalhe && <span className="fraco">{i.detalhe}</span>}</span>
                   </li>
                 ))}
-              </ul>
+              </ul>}
+              </>
             )}
           </div>
         )}
