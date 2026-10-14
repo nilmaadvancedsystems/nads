@@ -3,6 +3,7 @@
 // (~L3180-3231).
 import { conferencia as c, formatos } from '@nads/core';
 import type { useRelatorio } from '../useRelatorio';
+import type { AcoesForaDoPadrao } from '../useMarcarForaDoPadrao';
 
 type VM = ReturnType<typeof useRelatorio>;
 const { reais, lancComZeros } = formatos;
@@ -34,19 +35,20 @@ export function ForaDoPadraoFiscal({ vm, tipo }: { vm: VM; tipo: c.TipoNotaFisca
         </label>
       </div>
       {f.pendentes.length
-        ? f.pendentes.map(g => <Grupo key={g.key} vm={vm} tipo={tipo} gr={g} marcado={false} />)
+        ? f.pendentes.map(g => <GrupoFiscal key={g.key} vm={vm} tipo={tipo} gr={g} marcado={false} />)
         : <p className="empty">Nenhuma pendente — tudo corrigido.</p>}
       {f.corrigidos.length > 0 && (
         <>
           <p className="hint" style={{ marginTop: 16, fontWeight: 600, color: 'var(--ink)' }}>Corrigidos ({f.qtdCorrigidos})</p>
-          {f.corrigidos.map(g => <Grupo key={g.key} vm={vm} tipo={tipo} gr={g} marcado />)}
+          {f.corrigidos.map(g => <GrupoFiscal key={g.key} vm={vm} tipo={tipo} gr={g} marcado />)}
         </>
       )}
     </div>
   );
 }
 
-function Grupo({ vm, tipo, gr, marcado }: { vm: VM; tipo: c.TipoNotaFiscal; gr: c.GrupoForaDoPadrao; marcado: boolean }) {
+/** Uma natureza com as notas fora do padrão (também no Verificar por conta). */
+export function GrupoFiscal({ vm, tipo, gr, marcado }: { vm: Pick<AcoesForaDoPadrao, 'marcarGrupoCorrigido' | 'marcarNotaCorrigida'>; tipo: c.TipoNotaFiscal; gr: c.GrupoForaDoPadrao; marcado: boolean }) {
   return (
     <details className="dp-grupo" open={!marcado} style={ESTILO_GRUPO}>
       <summary style={{ cursor: 'pointer', padding: '11px 13px' }}>

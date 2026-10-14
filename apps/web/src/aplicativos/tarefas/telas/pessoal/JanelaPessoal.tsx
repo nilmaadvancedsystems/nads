@@ -1,9 +1,9 @@
 // View da Minha página: uma janela grande por cima da tela, no desenho das Configurações do Notion (e do Entregas,
-// que segue o Notion) — à esquerda a pessoa, a busca e os tópicos em grupos; à direita o tópico aberto, em cartões
+// que segue o Notion) — à esquerda a pessoa, a busca e os tópicos em grupos; à direita o tópico aberto, em seções
 // com cabeçalho e uma opção por linha (o rótulo e a explicação à esquerda, o controle à direita). Fecha no ×, no Esc e
 // clicando fora.
-import { Icone, SeletorTema, type NomeIcone } from '@nads/ui';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { ConfigLinha, ConfigSecao, Icone, SeletorTema, type NomeIcone } from '@nads/ui';
+import { useEffect, useRef, useState } from 'react';
 import type { TopicoPessoal } from './contexto';
 import { usePaginaPessoal, type VmPessoal } from './usePaginaPessoal';
 import { EmpresasDaPessoa } from '../cadastro/responsaveis/EmpresasDaPessoa';
@@ -14,28 +14,6 @@ const TOPICOS: { id: TopicoPessoal; rotulo: string; icone: NomeIcone; grupo: str
   { id: 'empresas', rotulo: 'Minhas empresas', icone: 'briefcase', grupo: 'Conta', busca: 'empresas responsável transferir transferência' },
   { id: 'aplicativo', rotulo: 'Versão do sistema', icone: 'download', grupo: 'Aplicativo', busca: 'versão atualizar nova' },
 ];
-
-/** Uma opção: o rótulo e a explicação à esquerda, o controle (ou o valor) à direita. */
-function Linha({ rotulo, dica, children }: { rotulo: string; dica?: ReactNode; children?: ReactNode }) {
-  return (
-    <div className="pessoal-linha">
-      <div className="pessoal-linha-texto">
-        <b>{rotulo}</b>
-        {dica && <span className="fraco">{dica}</span>}
-      </div>
-      {children != null && <div className="pessoal-linha-controle">{children}</div>}
-    </div>
-  );
-}
-
-function Cartao({ titulo, children }: { titulo: string; children: ReactNode }) {
-  return (
-    <section className="card pessoal-cartao">
-      <div className="card-head"><h3>{titulo}</h3></div>
-      {children}
-    </section>
-  );
-}
 
 function Foto({ foto, iniciais, grande }: { foto: string | null; iniciais: string; grande?: boolean }) {
   const classe = 'pessoal-foto' + (grande ? ' grande' : '');
@@ -68,9 +46,9 @@ function TrocarSenha({ salvar }: { salvar: (atual: string, nova: string, confirm
   const [salvando, setSalvando] = useState(false);
   if (!aberto) {
     return (
-      <Linha rotulo="Senha" dica="A mesma do Entregas.">
+      <ConfigLinha titulo="Senha" descricao="A mesma do Entregas.">
         <button type="button" className="btn btn-outline" onClick={() => setAberto(true)}><Icone nome="lock" />Trocar senha</button>
-      </Linha>
+      </ConfigLinha>
     );
   }
   return (
@@ -98,23 +76,25 @@ function MinhaConta({ vm }: { vm: VmPessoal }) {
   const arquivo = useRef<HTMLInputElement>(null);
   return (
     <>
-      <Cartao titulo="Foto de perfil">
-        <div className="pessoal-linha">
+      {/* no estilo das configurações do Notion (14/10/2026: "vamos trabalhar nessas telas"): seções com a linha fina, uma
+          opção por linha; a foto em cima com os botões, os ícones numa grade menor logo abaixo */}
+      <ConfigSecao titulo="Foto de perfil">
+        <div className="cfg-linha pessoal-foto-linha">
           <Foto foto={c.foto} iniciais={c.iniciais} grande />
-          <div className="pessoal-linha-texto">
-            <b>{c.nome}</b>
-            <span className="fraco">Aparece no seu ícone, no canto do cabeçalho (e no Entregas: é a mesma conta).</span>
+          <div className="cfg-linha-texto">
+            <span className="cfg-linha-titulo">{c.nome}</span>
+            <span className="cfg-linha-desc">Aparece no seu ícone, no canto do cabeçalho, e no Entregas (é a mesma conta).</span>
           </div>
-          <div className="pessoal-linha-controle">
+          <div className="cfg-linha-controle">
             <input ref={arquivo} type="file" accept="image/*" hidden
               onChange={ev => { const f = ev.target.files?.[0]; if (f) c.trocarFoto(f); ev.target.value = ''; }} />
             <button type="button" className="btn btn-outline" disabled={c.salvandoFoto} onClick={() => arquivo.current?.click()}>
               {c.salvandoFoto ? <span className="btn-spinner" /> : <Icone nome="upload" />}{c.foto ? 'Trocar foto' : 'Escolher foto'}
             </button>
-            {c.foto && <button type="button" className="btn btn-outline" disabled={c.salvandoFoto} onClick={c.tirarFoto}>Remover</button>}
+            {c.foto && <button type="button" className="btn btn-ghost" disabled={c.salvandoFoto} onClick={c.tirarFoto}>Remover</button>}
           </div>
         </div>
-        <div className="pessoal-linha-texto"><span className="fraco">Ou um ícone (os mesmos do Entregas):</span></div>
+        <p className="cfg-linha-desc pessoal-icones-rotulo">Ou um ícone (os mesmos do Entregas)</p>
         <div className="pessoal-icones" role="list">
           {c.icones.map(i => (
             <button key={i.nome} type="button" role="listitem" className={'pessoal-icone' + (c.foto === i.url ? ' on' : '')} title={i.nome}
@@ -123,19 +103,23 @@ function MinhaConta({ vm }: { vm: VmPessoal }) {
             </button>
           ))}
         </div>
-      </Cartao>
-      <Cartao titulo="Conta">
-        <Linha rotulo="Nome" dica="Como aparece nas tarefas e nos pedidos ao robô (e no Entregas).">
-          {c.comLogin ? <EditarNome atual={c.nome} salvar={c.trocarNome} /> : c.nome}
-        </Linha>
-        <Linha rotulo="E-mail" dica="O login do Entregas (a mesma conta em todo o nads).">{c.email || '—'}</Linha>
-        <Linha rotulo="Setor" dica="Quem muda é um administrador.">{c.setor}</Linha>
-        <Linha rotulo="Tema" dica="Claro, escuro ou o mesmo do computador. Fica guardado neste navegador."><SeletorTema /></Linha>
+      </ConfigSecao>
+      <ConfigSecao titulo="Conta">
+        <ConfigLinha titulo="Nome" descricao="Como aparece nas tarefas e nos pedidos ao robô (e no Entregas).">
+          {c.comLogin ? <EditarNome atual={c.nome} salvar={c.trocarNome} /> : <span className="cfg-valor">{c.nome}</span>}
+        </ConfigLinha>
+        <ConfigLinha titulo="E-mail" descricao="O login do Entregas, a mesma conta em todo o nads."><span className="cfg-valor">{c.email || '—'}</span></ConfigLinha>
+        <ConfigLinha titulo="Setor" descricao="Quem muda é um administrador."><span className="cfg-valor">{c.setor}</span></ConfigLinha>
         {c.comLogin && <TrocarSenha salvar={c.trocarSenha} />}
-        <Linha rotulo={c.sair} dica="Sai deste navegador; para entrar de novo, o login do Entregas.">
+      </ConfigSecao>
+      <ConfigSecao titulo="Preferências">
+        <ConfigLinha titulo="Tema" descricao="Claro, escuro ou o mesmo do computador. Fica guardado neste navegador."><SeletorTema /></ConfigLinha>
+      </ConfigSecao>
+      <ConfigSecao titulo="Sessão">
+        <ConfigLinha titulo={c.sair} descricao="Sai deste navegador; para entrar de novo, o login do Entregas.">
           <button type="button" className="btn btn-outline btn-danger" onClick={c.fazerSair}><Icone nome="logOut" />{c.sair}</button>
-        </Linha>
-      </Cartao>
+        </ConfigLinha>
+      </ConfigSecao>
     </>
   );
 }
@@ -143,12 +127,12 @@ function MinhaConta({ vm }: { vm: VmPessoal }) {
 function Aplicativo({ vm }: { vm: VmPessoal }) {
   const a = vm.aplicativo;
   return (
-    <Cartao titulo="Atualização">
-      <Linha rotulo="Versão" dica="Uma versão só para o nads inteiro.">{a.versao}</Linha>
-      <Linha rotulo="Versão nova" dica={a.versaoNova ? 'Saiu a ' + a.versaoNova + '. Atualizar não perde o que está na tela.' : 'Você está na mais nova.'}>
+    <ConfigSecao titulo="Atualização">
+      <ConfigLinha titulo="Versão" descricao="Uma versão só para o nads inteiro."><span className="cfg-valor num">{a.versao}</span></ConfigLinha>
+      <ConfigLinha titulo="Versão nova" descricao={a.versaoNova ? 'Saiu a ' + a.versaoNova + '. Atualizar não perde o que está na tela.' : 'Você está na mais nova.'}>
         {a.versaoNova ? <button type="button" className="btn btn-primary" onClick={a.atualizar}><Icone nome="repeat" />Atualizar</button> : <span className="badge badge-ok">Em dia</span>}
-      </Linha>
-    </Cartao>
+      </ConfigLinha>
+    </ConfigSecao>
   );
 }
 

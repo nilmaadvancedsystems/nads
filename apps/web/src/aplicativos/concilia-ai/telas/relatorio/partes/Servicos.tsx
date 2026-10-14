@@ -4,6 +4,7 @@
 import { conferencia as c, formatos } from '@nads/core';
 import { Stat, TituloDaConta } from '@nads/ui';
 import type { useRelatorio } from '../useRelatorio';
+import { dicaSugestao, type AcoesForaDoPadrao } from '../useMarcarForaDoPadrao';
 import { IconePassivo, linhaPassivo, SaldoCelula, Situacao } from './Situacao';
 
 type VM = ReturnType<typeof useRelatorio>;
@@ -43,12 +44,12 @@ export function Servicos({ vm, tipo }: { vm: VM; tipo: c.TipoServico }) {
               </label>
             </div>
             {r.pendentes.length
-              ? r.pendentes.map(g => <Grupo key={g.key} vm={vm} r={r} tipo={tipo} gr={g} marcado={false} />)
+              ? r.pendentes.map(g => <GrupoServ key={g.key} vm={vm} tipo={tipo} gr={g} marcado={false} />)
               : <p className="empty">Nenhuma pendente — tudo corrigido.</p>}
             {r.corrigidos.length > 0 && (
               <>
                 <p className="hint" style={{ marginTop: 16, fontWeight: 600, color: 'var(--ink)' }}>Corrigidos ({r.qtdCorrigidos})</p>
-                {r.corrigidos.map(g => <Grupo key={g.key} vm={vm} r={r} tipo={tipo} gr={g} marcado />)}
+                {r.corrigidos.map(g => <GrupoServ key={g.key} vm={vm} tipo={tipo} gr={g} marcado />)}
               </>
             )}
           </>
@@ -83,7 +84,8 @@ function SaldoServicos({ r, onRevisar }: { r: Serv; onRevisar: (contas: string[]
   );
 }
 
-function Grupo({ vm, r, tipo, gr, marcado }: { vm: VM; r: Serv; tipo: c.TipoServico; gr: c.GrupoForaDoPadraoServ; marcado: boolean }) {
+/** Um fornecedor/cliente com as notas fora do padrão (também no Verificar por conta). */
+export function GrupoServ({ vm, tipo, gr, marcado }: { vm: Pick<AcoesForaDoPadrao, 'marcarServGrupoCorrigido' | 'marcarServCorrigido' | 'colocarNaCategoria'>; tipo: c.TipoServico; gr: c.GrupoForaDoPadraoServ; marcado: boolean }) {
   const cat = gr.cat;
   return (
     <details className="dp-grupo" open={!marcado} style={ESTILO_GRUPO}>
@@ -96,7 +98,7 @@ function Grupo({ vm, r, tipo, gr, marcado }: { vm: VM; r: Serv; tipo: c.TipoServ
       </summary>
       {gr.sugerirCategorias.length > 0 && (
         <div className="serv-div-acoes" style={{ padding: '0 13px 8px 39px' }}>
-          <span className="hint">{r.dicaSugestao(gr)}</span>
+          <span className="hint">{dicaSugestao(gr)}</span>
           {gr.sugerirCategorias.map(x => (
             <button key={x.id} type="button" className="btn" onClick={() => vm.colocarNaCategoria(tipo, x.id, gr.nome)}>Colocar em {x.nome}</button>
           ))}

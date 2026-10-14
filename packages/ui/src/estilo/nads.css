@@ -4190,3 +4190,17 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
   .gm-caixa:not(.com-leitura) .gm-assunto b{font-weight:600;}
   .gm-caixa:not(.com-leitura) .gm-trecho-junto{display:inline;}
 }
+/* a Minha página no estilo das configurações do Notion (14/10/2026): seções com a linha fina; a foto com os botões; os
+   ícones numa grade menor; Minhas empresas com o título e a contagem */
+.pessoal-rola{padding:24px 32px 32px;}
+.pessoal-foto-linha{gap:16px;}
+.pessoal-icones-rotulo{margin:4px 0 0;}
+.pessoal-icones{grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:6px;padding:10px 0 4px;}
+.pessoal-icone{width:38px;height:38px;}
+.pessoal-icone.on{border-color:var(--btn-primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--btn-primary) 30%,transparent);}
+.emp-pessoa-topo.cfg-secao-topo{gap:10px;}
+.emp-pessoa-topo h3 .fraco{font-weight:400;font-size:13px;}
+.emp-pessoa-topo .busca-curta{max-width:200px;}
+.emp-pessoa .emp-pessoa-lista{border:0;border-radius:0;}
+.emp-pessoa .emp-pessoa-lista li{padding:10px 4px;}
+.emp-pessoa .emp-pessoa-lista li:hover{background:var(--hover-bg);border-radius:6px;}

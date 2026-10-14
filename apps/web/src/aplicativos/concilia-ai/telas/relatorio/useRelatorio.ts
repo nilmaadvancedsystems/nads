@@ -6,13 +6,12 @@
 // data-serv-sug → servIrParaForm (~L4539, ~L4590), aplicarBloqueios (~L1843-1861).
 import { conferencia as c, formatos } from '@nads/core';
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router';
 import { useSessao } from '../../casca/sessao';
 import { travaDaAba, useMarcarSozinho, type ReqAba } from './movimento';
-import { caminho } from '../../casca/caminho';
+import { useMarcarForaDoPadrao } from './useMarcarForaDoPadrao';
 import { SO_ENTRADAS } from '../../soEntradas';
 
-const { reais, rot, mesCurto, capital, lancN } = formatos;
+const { reais, rot, mesCurto, capital } = formatos;
 
 export const ABAS: { valor: c.AbaRelatorio; rotulo: string }[] = [
   { valor: 'geral', rotulo: 'Geral' },
@@ -27,7 +26,7 @@ const ALTURA_BARRA = 104;
 
 export function useRelatorio() {
   const s = useSessao();
-  const navegar = useNavigate();
+  const acoes = useMarcarForaDoPadrao();
   const e = s.empresa;
   const tem = c.disponivel(e);
   const semP = c.semPrest(e);
@@ -74,37 +73,9 @@ export function useRelatorio() {
   const tipoNf: c.TipoNotaFiscal | null = aba === 'entradas' || aba === 'saidas' ? aba : null;
   const fiscal = tipoNf ? montarForaDoPadrao(e, tipoNf, s.ordemDiv[tipoNf]) : null;
 
-  function marcarNotaCorrigida(t: c.TipoNotaFiscal, d: c.Divergencia, marcado: boolean) {
-    const key = c.chaveResolvido(t, d.chave);
-    const n = d.nota;
-    s.aplicar(x => c.marcarCorrigido(x, [key], marcado, 'div|' + key, 'Nota ' + n.numero + ' · ' + n.nome + ' · CFOP ' + n.cfop + ' · lanç. ' + n.lanc, new Date()));
-  }
-  function marcarGrupoCorrigido(t: c.TipoNotaFiscal, gr: c.GrupoForaDoPadrao, marcado: boolean) {
-    const q = gr.itens.length;
-    s.aplicar(x => c.marcarCorrigido(x, gr.chavesDaNatureza, marcado, 'divg|' + t + '|' + gr.key, gr.titulo + ' (' + q + ' nota' + (q > 1 ? 's' : '') + ')', new Date()));
-  }
-
   // ---------- Tomados / Prestados ----------
   const tipoServ: c.TipoServico | null = aba === 'tomados' || aba === 'prestados' ? aba : null;
   const serv = tipoServ ? montarServicos(e, tipoServ, s.filtro, s.ordemServ[tipoServ]) : null;
-
-  function marcarServCorrigido(t: c.TipoServico, it: c.NotaForaDoPadraoServ, marcado: boolean) {
-    const n = it.nota;
-    const l = lancN(n.lanc);
-    const texto = c.SV[t].rotulo + ' · nota ' + n.numero + ' · ' + n.nome + ' · lanç. ' + (l || '—') + ' (esperado ' + it.esperado.lanc + ' — ' + it.esperado.nome + ')';
-    s.aplicar(x => c.marcarCorrigido(x, ['serv:' + it.chave], marcado, 'servdiv|' + it.chave, texto, new Date()));
-  }
-  function marcarServGrupoCorrigido(t: c.TipoServico, gr: c.GrupoForaDoPadraoServ, marcado: boolean) {
-    const q = gr.itens.length;
-    const texto = c.SV[t].rotulo + ' · ' + gr.nome + ' (' + q + ' nota' + (q > 1 ? 's' : '') + ')';
-    s.aplicar(x => c.marcarCorrigido(x, gr.itens.map(it => 'serv:' + it.chave), marcado, 'servdivg|' + t + '|' + gr.key, texto, new Date()));
-  }
-  /** "Colocar em X": abre o Cadastro já com o formulário da categoria e o participante. */
-  function colocarNaCategoria(t: c.TipoServico, catId: string, nome: string) {
-    s.setAbaCadastro(t);
-    if (!c.importacoesOk(e)) { s.irPara('cadastro/configuracoes'); return; }
-    navegar(caminho(s.rota + '/cadastro/configuracoes') + '?servAdd=' + encodeURIComponent(t + '|' + catId + '|' + nome));
-  }
 
   return {
     abas, aba, escolherAba, ehServ,
@@ -112,10 +83,9 @@ export function useRelatorio() {
     revisar: s.revisarConta,
     tipoNf, fiscal, ordemDiv: tipoNf ? s.ordemDiv[tipoNf] : 'cfop',
     setOrdemDiv: (o: c.OrdemGrupos) => { if (tipoNf) s.setOrdemDiv(tipoNf, o); },
-    marcarNotaCorrigida, marcarGrupoCorrigido,
+    ...acoes,
     tipoServ, serv, ordemServ: tipoServ ? s.ordemServ[tipoServ] : 'nome',
     setOrdemServ: (o: c.OrdemServ) => { if (tipoServ) s.setOrdemServ(tipoServ, o); },
-    marcarServCorrigido, marcarServGrupoCorrigido, colocarNaCategoria,
   };
 }
 
@@ -182,8 +152,5 @@ function montarServicos(e: c.Empresa, t: c.TipoServico, f: c.FiltroMovimento, or
     /** title da coluna Notas: "3 fornecedores: A, B, C" */
     tituloNotas: (l: c.LinhaSaldoServ) => l.participantes.length + ' ' + (l.participantes.length > 1 ? cfg.parts : cfg.part) + ': ' + l.participantes.join(', '),
     ordens: [['nome', capital(cfg.part) + ' (A-Z)'], ['valor', 'Valor (maior primeiro)'], ['data', 'Data']] as [c.OrdemServ, string][],
-    /** "527 é de Telefone —" (a dica antes dos botões "Colocar em …") */
-    dicaSugestao: (gr: c.GrupoForaDoPadraoServ) =>
-      gr.sugerirCategorias.map(x => x.lanc).filter((v, i, l) => l.indexOf(v) === i).join(', ') + ' é de ' + gr.sugerirCategorias.map(x => x.nome).join(' / ') + ' —',
   };
 }
