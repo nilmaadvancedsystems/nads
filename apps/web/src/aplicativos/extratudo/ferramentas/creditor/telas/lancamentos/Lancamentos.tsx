@@ -48,18 +48,6 @@ export function Lancamentos() {
         </Alerta>
       )}
 
-      {/* o Creditor obedece o extrato (Vitor, 14/10/2026): o que o banco não creditou não entra */}
-      {vm.semCredito.length > 0 && (
-        <Alerta titulo={vm.semCredito.length + ' título(s) sem crédito no extrato' + (vm.extrato ? ' do ' + vm.extrato.banco : '') + ': fora do arquivo'}>
-          {vm.semCredito.map(t => <p key={t.id} className="alert-text">NF {t.nf} · {t.sacado} · {t.liquidacao} · {cr.reais(t.valor)}</p>)}
-        </Alerta>
-      )}
-      {vm.creditosSemTitulo.length > 0 && (
-        <Alerta titulo="Crédito do extrato sem títulos no relatório: deixe o total dele no Alterdata">
-          {vm.creditosSemTitulo.map(c => <p key={c} className="alert-text">CRÉD.LIQ.COBRANÇA {c}</p>)}
-        </Alerta>
-      )}
-
       {vm.fora.length > 0 && (
         <Alerta titulo={vm.fora.length + ' título(s) fora do arquivo'}>
           {vm.fora.map(t => <p key={t.id} className="alert-text">NF {t.nf} · {t.sacado} · {t.liquidacao} · {cr.reais(t.valor)}</p>)}
@@ -71,6 +59,47 @@ export function Lancamentos() {
       <div className="btn-row" style={{ justifyContent: 'flex-end' }}>
         <button className="btn btn-primary" type="button" disabled={!vm.podeBaixar} onClick={baixar}><Icone nome="download" />Baixar .xls</button>
       </div>
+
+      {/* o Creditor obedece o extrato (14/10/2026): a relação embaixo, no lugar do aviso (Vitor: "coloca esse feedback em
+          uma relação embaixo nessa tela") — os títulos que o banco não creditou e os créditos sem título */}
+      {vm.semCredito.length > 0 && (
+        <div className="card">
+          <div className="card-head">
+            <h3>Sem crédito no extrato{vm.extrato ? ' do ' + vm.extrato.banco : ''}</h3>
+            <span className="badge badge-neutral">{vm.semCredito.length} {vm.semCredito.length === 1 ? 'título' : 'títulos'} · {cr.reais(cr.somar(vm.semCredito.map(t => t.valor)))}</span>
+          </div>
+          <p className="hint" style={{ margin: '0 0 8px' }}>O banco não creditou estes títulos na conta (nenhum CRÉD.LIQ.COBRANÇA soma o valor): ficam fora do arquivo.</p>
+          <div className="table-wrap" style={{ maxHeight: 'none' }}>
+            <table className="table-compact">
+              <thead><tr><th>Liquidação</th><th>NF</th><th>Cliente</th><th className="num">Valor</th></tr></thead>
+              <tbody>
+                {vm.semCredito.map(t => (
+                  <tr key={t.id}><td>{t.liquidacao}</td><td>{t.nf}</td><td className="wrap">{t.sacado}</td><td className="num">{cr.reais(t.valor)}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      {vm.creditosSemTitulo.length > 0 && (
+        <div className="card">
+          <div className="card-head">
+            <h3>Crédito do extrato sem títulos no relatório</h3>
+            <span className="badge badge-neutral">{vm.creditosSemTitulo.length} · {cr.reais(cr.somar(vm.creditosSemTitulo.map(c => c.valor)))}</span>
+          </div>
+          <p className="hint" style={{ margin: '0 0 8px' }}>Nenhum título do relatório soma o valor destes créditos: deixe o total deles no Alterdata.</p>
+          <div className="table-wrap" style={{ maxHeight: 'none' }}>
+            <table className="table-compact">
+              <thead><tr><th>Data</th><th>Histórico</th><th className="num">Valor</th></tr></thead>
+              <tbody>
+                {vm.creditosSemTitulo.map((c, i) => (
+                  <tr key={i}><td>{c.data}</td><td className="wrap">{c.historico || 'CRÉD.LIQ.COBRANÇA'}</td><td className="num">{cr.reais(c.valor)}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
