@@ -10,6 +10,7 @@ import { useRef, useState } from 'react';
 import { BotaoGoogle } from '../../../../../../comum/BotaoGoogle';
 import { useCompetencia } from './useCompetencia';
 import { BotaoDeTeste } from '../../../../../../comum/BotaoDeTeste';
+import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
 import { useColunaAjustavel } from '../../../../../../comum/GradeDosMeses';
 
 type VM = ReturnType<typeof useCompetencia>;
@@ -202,7 +203,7 @@ function RelatoriosDoPeriodo({ vm, comDrive }: { vm: VM; comDrive: boolean }) {
                 <th key={l.mes} scope="col" className={l.mes === mesAberto ? 'atual' : undefined}>
                   <button type="button" className="imp-meses-mes" aria-current={l.mes === mesAberto ? 'true' : undefined} disabled={!l.titulos.length}
                     onClick={() => setMesAberto(m => (m === l.mes ? null : l.mes))}
-                    title={l.titulos.length ? (l.mes === mesAberto ? 'Fechar os títulos' : 'Ver os títulos de ' + l.rotulo) : l.rotulo}>{l.rotulo}</button>
+                    title={l.titulos.length ? (l.mes === mesAberto ? 'Ver os títulos do período todo' : 'Ver só os títulos de ' + l.rotulo) : l.rotulo}>{l.rotulo}</button>
                 </th>
               ))}
             </tr>
@@ -218,7 +219,13 @@ function RelatoriosDoPeriodo({ vm, comDrive }: { vm: VM; comDrive: boolean }) {
           </tbody>
         </table>
       </div>
-      {aberto && <Titulos titulos={aberto.titulos} />}
+      {/* os títulos do período na faixa de baixo, como os lançamentos na Importação (Vitor, 14/10/2026: "cadê os lançamentos?");
+          o mês clicado no cabeçalho filtra */}
+      {titulos.length > 0 && (
+        <FaixaQueAbre titulo={'Títulos' + (aberto ? ' de ' + aberto.rotulo : '')} qtd={(aberto ? aberto.titulos : titulos).length}>
+          <Titulos titulos={aberto ? aberto.titulos : titulos} />
+        </FaixaQueAbre>
+      )}
     </div>
   );
 }
