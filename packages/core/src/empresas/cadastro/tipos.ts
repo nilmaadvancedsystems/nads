@@ -113,6 +113,11 @@ export interface CadastroDaEmpresa {
    */
   emiteNotaHonorario?: boolean;
   /**
+   * O pagamento do pró-labore (Vitor, 14/10/2026: "deixa ele salvo na empresa"): a conta do crédito (o código digitado) e
+   * o dia útil do mês seguinte (1 a 5). Sem = ainda não informado (o dia útil fica o 5º).
+   */
+  proLabore?: { contaCredito?: string; diaUtil?: number };
+  /**
    * O regime tributário (13/10/2026: "no cadastro da empresa tenha os regimes, aí muda na rotina"): vale no lugar do da
    * lista do escritório e decide as etapas da rotina (o PGDAS no Simples; ICMS, PIS/COFINS, IRPJ/CSLL e as EFDs no
    * Presumido e no Real). Sem = o da lista.

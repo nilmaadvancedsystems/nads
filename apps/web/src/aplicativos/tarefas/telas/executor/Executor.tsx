@@ -322,7 +322,7 @@ export function Executor() {
                         </label>
                         {i.link && <a className="btn folha-check-link" href={i.link.url} target="_blank" rel="noreferrer"><Icone nome="link" />{i.link.rotulo}</a>}
                         {/* o Pró-labore: os pagamentos que faltam para o razão zerar (Vitor, 14/10/2026) */}
-                        {vm.etapa?.checklistDaFolha && i.id === 'pro-labore' && vm.empresa && <PagamentosDoProLabore empresa={vm.empresa.nome} contaDoItem={i.contas[0] || ''} />}
+                        {vm.etapa?.checklistDaFolha && i.id === 'pro-labore' && vm.empresa && <PagamentosDoProLabore empresa={vm.empresa.nome} codigo={vm.empresa.codigo ?? null} contaDoItem={i.contas[0] || ''} travado={i.marcado} />}
                       </li>
                     ))}
                   </ul>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
-  comContasPadrao, criarRepoCadastro, criarRepoCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirNotaDeHonorario, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
+  comContasPadrao, criarRepoCadastro, criarRepoCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirNotaDeHonorario, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
   bancosDoEntregasDoDocumento, bancosDoEntregasPorCodigo, contatosDoEntregasPorCodigo, contasDoEntregas, juntarComEntregas, sugestoesDoEntregas,
   lerPlanilhaDoPlano, linhasDoTexto, registrarPlano, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
   type PlanoDeContas,
@@ -283,6 +283,19 @@ describe('os cartões da empresa (07/10/2026)', () => {
     expect(c.contasPadrao?.contas.cartao).toBe('21105');
     const doCreditor = comContasPadrao(c, { contas: { banco: '10503' }, nomes: {} }, 'Creditor', AGORA);
     expect(doCreditor.contasPadrao?.contas).toEqual({ banco: '10503', cartao: '21105' });
+  });
+});
+
+describe('o pagamento do pró-labore (14/10/2026)', () => {
+  it('a conta do crédito e o dia útil, salvos e de volta do documento, com o histórico', () => {
+    const c = definirPagamentoDoProLabore(vazio(), { contaCredito: '10.101' }, 'Vitor', AGORA);
+    expect(c.proLabore).toEqual({ contaCredito: '10101' });
+    const c2 = definirPagamentoDoProLabore(c, { diaUtil: 3 }, 'Vitor', AGORA);
+    expect(c2.proLabore).toEqual({ contaCredito: '10101', diaUtil: 3 });
+    expect(c2.historico[0]).toMatchObject({ acao: 'Pagamento do pró-labore', detalhe: 'crédito 10101 · 3º dia útil' });
+    expect(cadastroDoDocumento('FITO', 292, documentoDoCadastro(c2)).proLabore).toEqual({ contaCredito: '10101', diaUtil: 3 });
+    expect(definirPagamentoDoProLabore(c2, { diaUtil: 3 }, 'Vitor', AGORA)).toBe(c2);
+    expect(definirPagamentoDoProLabore(c2, { diaUtil: 9 }, 'Vitor', AGORA).proLabore?.diaUtil).toBe(5);
   });
 });
 
