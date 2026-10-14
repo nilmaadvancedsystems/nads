@@ -49,6 +49,10 @@ export interface RelatorioBanco {
   /** linhas de "Baixa - Pedido Cedente" (não são dinheiro recebido) que ficaram de fora */
   ignorados: number;
   avisos: string[];
+  /** a empresa dona da carteira, como veio no relatório (o importar automático confere com a empresa) */
+  cedente?: string;
+  /** o formato lido (arquivos/formatos.ts); sem = texto, planilha ou exemplo */
+  formato?: 'titulos-por-periodo' | 'carteira-de-cobranca';
 }
 
 /** Uma linha do arquivo do sistema (recebimentos de clientes). */

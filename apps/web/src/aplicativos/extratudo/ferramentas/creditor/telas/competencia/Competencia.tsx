@@ -28,6 +28,13 @@ export function Competencia() {
         <span className="imp-topo-num"><Icone nome="recibo" /><b>{vm.meses.length}</b> {vm.meses.length === 1 ? 'relatório' : 'relatórios'}</span>
         <span className="imp-topo-meio" />
         {/* vários meses: o mesmo menu da Importação (Vitor, 14/10/2026: "padroniza") — do computador, pelo Drive e remover todos */}
+        {/* o Importar automático (Vitor, 14/10/2026): procura no Drive e no e-mail sem a pessoa escolher */}
+        {comDrive && (
+          <button type="button" className="btn btn-outline" disabled={vm.ocupado || vm.todos} onClick={vm.importarAutomatico}
+            title={vm.todos ? 'Todos os meses já têm o relatório' : 'Procura o relatório de liquidação dos meses que faltam no Drive e no e-mail'}>
+            <Icone nome="robo" />Importar automático
+          </button>
+        )}
         {vm.linhas.length > 1 && <ImportarTodos vm={vm} comDrive={comDrive} />}
       </div>
 
@@ -119,7 +126,7 @@ function ImportarTodos({ vm, comDrive }: { vm: VM; comDrive: boolean }) {
             )}
           </>
         )} />
-      <input ref={arquivo} type="file" multiple accept=".pdf,.txt,.xls,.xlsx,.csv" className="sr-only" disabled={travado} tabIndex={-1} aria-hidden="true"
+      <input ref={arquivo} type="file" multiple accept=".pdf" className="sr-only" disabled={travado} tabIndex={-1} aria-hidden="true"
         onChange={ev => { const fs = Array.from(ev.target.files || []); ev.target.value = ''; vm.importarVarios(fs); }} />
     </>
   );
@@ -323,7 +330,7 @@ function CelulaDoRelatorio({ vm, l, comDrive, direita }: { vm: VM; l: VM['linhas
             )}
           </>
         )} />
-      <input ref={arquivo} type="file" accept=".pdf,.txt,.xls,.xlsx,.csv" className="sr-only" tabIndex={-1} aria-hidden="true"
+      <input ref={arquivo} type="file" accept=".pdf" className="sr-only" tabIndex={-1} aria-hidden="true"
         onChange={ev => { const f = ev.target.files?.[0]; ev.target.value = ''; vm.importarDoComputador(l.mes, f); }} />
     </>
   );

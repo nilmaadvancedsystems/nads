@@ -119,6 +119,7 @@ export function useCompetencia() {
     const para = loginPara;
     setLoginPara(null);
     if (para === 'email') { const f = depoisDoLogin.current; depoisDoLogin.current = null; f?.(); return; }
+    if (para === 'auto') { await importarAutomatico(); return; }
     if (para === '*') await procurarTodos(); else if (para) await procurar(para);
   }
 
@@ -191,6 +192,71 @@ export function useCompetencia() {
       } catch (e) { aviso({ tom: 'erro', titulo: 'Não deu para ler ' + f.name, texto: mensagemDeErro(e) }); }
     }
     if (fora.length) aviso({ tom: 'erro', titulo: 'Fora do período', texto: fora.join(', ') + ': as liquidações não são de nenhum mês do período.' });
+  }
+
+  /**
+   * O "Importar automático" (Vitor, 14/10/2026: "se possível já procura no e-mail sem eu precisar selecionar"): para cada mês
+   * que falta, abre os arquivos do mês no Drive e os anexos do e-mail que parecem o relatório (regras/automatico.ts) e fica
+   * com os que estão num dos dois formatos, são da empresa e têm títulos no mês (vários: juntos). O que veio do e-mail vai
+   * para o Drive. Sem nada, o mês fica para importar à mão.
+   */
+  async function importarAutomatico() {
+    if (!acesso.entrou) { setErroLogin(''); setLoginPara('auto'); return; }
+    fixar();
+    parar.current = false;
+    const codigo = s.empresa.codigo;
+    const [contato, pasta] = await Promise.all([
+      drive.contatoDoCliente && codigo != null ? drive.contatoDoCliente(codigo).catch(() => null) : Promise.resolve(null),
+      drive.pastaDoCliente(codigo).catch(() => null),
+    ]);
+    const emails = contato?.emails || [];
+    // os e-mails do cliente no "remetente" do robô (from:(a OR b)), até o limite de 120 letras
+    const remetente = emails.reduce((acc, e) => { const n = acc ? acc + ' OR ' + e : e; return n.length <= 120 ? n : acc; }, '');
+    const achados: string[] = [];
+    const vazios: string[] = [];
+    for (const m of [...faltam]) {
+      if (parar.current) break;
+      const passo = (texto: string) => setBusca({ mes: m, fase: 'procurando', texto, candidatos: [] });
+      const rels: { rel: cr.RelatorioBanco; origem: string }[] = [];
+      const vistos = new Set<string>();
+      const usar = (rel: cr.RelatorioBanco, origem: string) => {
+        if (!cr.relatorioServeNoMes(rel, m, s.empresa.nome)) return false;
+        const a = cr.assinaturaDoRelatorio(rel);
+        if (!vistos.has(a)) { vistos.add(a); rels.push({ rel, origem }); }
+        return true;
+      };
+      // 1. o Drive: os arquivos do mês na RECEBIMENTO DE CLIENTES
+      passo('Procurando no Drive…');
+      const b = cr.acharRelatorioNoDrive(pasta?.itens || [], pasta?.raiz || null, m);
+      for (const a of b.candidatos.filter(c => c.daCompetencia).slice(0, cr.MAX_CANDIDATOS)) {
+        try { usar(await lerRelatorio(a.nome, await drive.baixar(a.id, a.nome)), 'Drive · ' + a.caminho); }
+        catch { /* outro formato: fica de fora */ }
+      }
+      // 2. o e-mail: os do contato do cliente e os que falam de liquidação no período
+      if (drive.buscarNoEmail && drive.trazerDoEmail) {
+        passo('Procurando no e-mail…');
+        const per = cr.periodoDaBuscaAutomatica(m, new Date());
+        const buscar = drive.buscarNoEmail.bind(drive);
+        const listas = await Promise.all([
+          remetente ? buscar({ remetente, ...per }).catch(() => []) : Promise.resolve([]),
+          buscar({ remetente: '', ...per }).catch(() => []),
+        ]);
+        for (const a of cr.candidatosDoEmail(listas.flat(), m, emails)) {
+          if (parar.current) break;
+          passo('Abrindo ' + a.nome + '…');
+          try {
+            const buf = await drive.trazerDoEmail(a);
+            // uma cópia: o leitor de PDF consome o buffer (a outra vai para o Drive)
+            if (usar(await lerRelatorio(a.nome, buf.slice(0)), 'E-mail · ' + a.nome)) await arquivarNoDrive(m, new File([buf], a.nome, { type: 'application/pdf' }));
+          } catch { /* outro formato ou outra empresa: fica de fora */ }
+        }
+      }
+      if (rels.length) { guardar(m, cr.juntarRelatorios(rels.map(r => r.rel)), rels.map(r => r.origem).join(' · ')); achados.push(cr.rotuloCompetencia(m)); }
+      else vazios.push(cr.rotuloCompetencia(m));
+    }
+    setBusca(PARADO);
+    if (achados.length) aviso({ tom: 'ok', titulo: 'Importado automaticamente', texto: achados.join(', ') });
+    if (vazios.length) aviso({ tom: 'erro', titulo: 'Não achei o relatório', texto: vazios.join(', ') + ': nem no Drive nem no e-mail, no formato do Creditor. Importe à mão.' });
   }
 
   /** "Remover todos" (como na Importação): tira os relatórios de todos os meses (pergunta antes). */
@@ -284,6 +350,8 @@ export function useCompetencia() {
     buscarNoEmail: (mes: string) => email.abrir({ id: mes, nome: 'Relatório de liquidação' }, mes),
     /** o menu de cima: vários arquivos (cada um no mês dele) e remover todos */
     importarVarios: (arquivos: File[]) => { void importarVarios(arquivos); },
+    /** o Importar automático: Drive e e-mail, sem escolher (os meses que faltam) */
+    importarAutomatico: () => { void importarAutomatico(); },
     removerTodos: () => { void removerTodos(); },
     usar: (a: cr.ArquivoAchado) => { void usarDoDrive(busca.mes, a, busca.candidatos); },
     fecharProblema: () => setBusca(PARADO),
