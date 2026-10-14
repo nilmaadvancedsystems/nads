@@ -1,7 +1,7 @@
 // Peças pequenas da Conferência, com as mesmas classes do CSS original.
 import { useEffect, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { animate, spring, stagger } from 'animejs';
+import { animate, cleanInlineStyles, spring, stagger } from 'animejs';
 import { animacoesPedidas, useIndicador, useNumeroAnimado } from './animacao';
 import { Icone, type NomeIcone } from './icones';
 
@@ -404,8 +404,9 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
   useLayoutEffect(() => {
     const el = pop.current;
     if (!aberto || !animado || !el || !animacoesPedidas()) return;
-    animate(el, { opacity: [0, 1], scale: [0.9, 1], translateY: [-6, 0], ease: spring({ bounce: 0.3, duration: 380 }) });
-    animate(el.querySelectorAll('.popover-item, .popover-sep'), { opacity: [0, 1], translateX: [direita ? 8 : -8, 0], duration: 300, delay: stagger(35, { start: 60 }), ease: 'outQuint' });
+    // terminou: tira o estilo que ficou (o animador global não mexe neste menu: data-entrada-propria, abaixo)
+    animate(el, { opacity: [0, 1], scale: [0.9, 1], translateY: [-6, 0], ease: spring({ bounce: 0.3, duration: 380 }), onComplete: a => { cleanInlineStyles(a); } });
+    animate(el.querySelectorAll('.popover-item, .popover-sep'), { opacity: [0, 1], translateX: [direita ? 8 : -8, 0], duration: 300, delay: stagger(35, { start: 60 }), ease: 'outQuint', onComplete: a => { cleanInlineStyles(a); } });
   }, [aberto, animado, direita]);
   useEffect(() => {
     if (!aberto) return;
@@ -428,7 +429,7 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
         {!setaAntes && !semSeta && <Icone nome="caretDown" className="menu-seta" />}
       </button>
       {aberto && (
-        <div ref={pop} className={'popover menu-pop' + (direita ? ' direita' : '') + (acima ? ' acima' : '') + (animado ? ' animado' : '')} role="menu" aria-label={titulo} style={largura ? { width: largura } : undefined}>
+        <div ref={pop} className={'popover menu-pop' + (direita ? ' direita' : '') + (acima ? ' acima' : '') + (animado ? ' animado' : '')} data-entrada-propria={animado ? '' : undefined} role="menu" aria-label={titulo} style={largura ? { width: largura } : undefined}>
           {/* sem título em cima (Vitor, 02/10/2026): o título fica só para o leitor de tela */}
           {itens?.map((it, i) => it === 'separador' ? <hr key={i} className="popover-sep" /> : (
             <button key={i} type="button" className={'popover-item' + (it.perigo ? ' perigo' : '')} role="menuitem" disabled={it.desabilitado}
