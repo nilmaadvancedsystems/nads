@@ -133,6 +133,8 @@ export interface ClienteDoEntregas {
   emails: string[];
   /** o CNPJ/CPF do cadastro do Entregas (só os dígitos) */
   documento?: string;
+  /** o nome fantasia (trazido do Toriba, 13/10/2026) */
+  fantasia?: string;
 }
 
 /** Os clientes do Entregas (os ativos), com os e-mails em minúsculas. */
@@ -144,6 +146,7 @@ export function clientesDoEntregas(docs: readonly { id: string; dados: Record<st
       email: texto(d.dados.email).trim().toLowerCase(),
       emails: (Array.isArray(d.dados.emails) ? d.dados.emails : []).map(e => texto(e).trim().toLowerCase()).filter(Boolean),
       documento: texto(d.dados.documento).replace(/\D/g, ''),
+      fantasia: texto(d.dados.nomeFantasia).trim(),
     }))
     .sort((a, b) => (Number(a.codigo) || 1e9) - (Number(b.codigo) || 1e9) || a.nome.localeCompare(b.nome, 'pt-BR'));
 }

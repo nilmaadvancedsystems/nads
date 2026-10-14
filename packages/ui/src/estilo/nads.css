@@ -2746,9 +2746,13 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .comp-ano{display:inline-flex;align-items:center;gap:4px;}
 .comp-ano b{min-width:44px;text-align:center;font-size:14px;}
 .comp-ano .icon-btn svg{width:16px;height:16px;}
-.comp-meses{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:4px 16px 16px;}
+.comp-meses{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:4px 16px 16px;}
 .comp-mes{position:relative;height:40px;border:none;border-radius:999px;background:transparent;color:var(--ink);font:inherit;font-size:14px;
-  font-weight:500;cursor:pointer;}
+  font-weight:500;cursor:pointer;transition:color .2s cubic-bezier(.23,1,.32,1);}
+/* a pílula do mês escolhido (14/10/2026: o animejs desliza ela de um mês ao outro); sem ela posta, o próprio mês fica cheio */
+.comp-pilula{display:none;position:absolute;left:0;top:0;border-radius:999px;background:var(--btn-primary);pointer-events:none;}
+.comp-meses.com-pilula .comp-mes.on{background:transparent;}
+@media (prefers-reduced-motion:reduce){.comp-mes{transition:none;}}
 .comp-mes:hover:not(:disabled):not(.on){background:var(--hover-bg);}
 .comp-mes:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
 .comp-mes.on{background:var(--btn-primary);color:#fff;font-weight:600;}
@@ -4159,6 +4163,63 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 .drawer-item{gap:12px;min-height:34px;padding:6px 10px;}
 .drawer-item.active{font-weight:500;}
 .drawer-grupo{padding:14px 10px 4px;font-size:12px;color:var(--ink-faint);}
+
+/* ── o executor do Fiscal, acabamento (14/10/2026: "vamos só melhorar o design antigo") ── */
+/* a etapa da vez: fundo neutro com o filete vermelho à esquerda, o nome maior; mais respiro entre as etapas */
+.pt-tarefa .pt-tarefa-barra{padding:10px 16px;}
+.pt-tarefa.da-vez > .pt-tarefa-barra{background:var(--surface-2);box-shadow:inset 3px 0 0 var(--accent);}
+.pt-tarefa.da-vez .pt-tarefa-abrir b{font-size:15px;}
+.pt-tarefa .imp-faixa-corpo{padding:16px;}
+/* a etapa fechada: o cadeado e o "Depois da anterior" discretos */
+.pt-tarefa.travada{opacity:.7;}
+.pt-tarefa.travada .pt-tarefa-abrir b{font-weight:500;color:var(--ink-muted);}
+.pt-trava{font-size:12px;color:var(--ink-muted);}
+.pt-contagem{font-size:12px;color:var(--ink-muted);white-space:nowrap;}
+.pt-contagem b{color:var(--ink);font-variant-numeric:tabular-nums;}
+/* os números do SIEG: o rótulo em cima, o número grande, a proporção de cada tipo */
+.sieg-contagem{gap:12px;}
+.sieg-numero{gap:4px;padding:12px 14px;}
+.sieg-numero > span:first-child{font-size:12px;color:var(--ink-muted);order:0;}
+.sieg-numero b{font-size:26px;}
+.sieg-proporcao{display:flex;gap:2px;height:6px;border-radius:999px;overflow:hidden;background:var(--surface-3);margin-top:6px;}
+.sieg-proporcao i{display:block;min-width:4px;}
+.sieg-numero small{display:flex;gap:12px;flex-wrap:wrap;margin-top:2px;}
+.sieg-legenda{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-muted);}
+.sieg-legenda i{width:8px;height:8px;border-radius:2px;}
+.sieg-tipo-0{background:var(--info);} .sieg-tipo-1{background:var(--ciano);} .sieg-tipo-2{background:var(--roxo);} .sieg-tipo-3{background:var(--warn);}
+.sieg-contagem .alerta-linha{margin:0;}
+/* os botões do SIEG alinhados à esquerda, com o conteúdo */
+.sieg-contagem .sieg-acoes{grid-column:1/-1;justify-content:flex-start;}
+/* Gmail: a linha com mais informação, os filtros e os grupos do dia (14/10/2026: "vamos trabalhar na ui do gmail") */
+.gm-quem{display:flex;align-items:center;gap:8px;}
+.gm-quem b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}
+.gm-quem .emp-cod{min-width:34px;margin-top:0;font-size:11px;line-height:15px;padding:0 5px;}
+.gm-assunto{display:block;}
+.gm-assunto b{font-weight:500;}
+.gm-trecho-junto{display:none;color:var(--ink-muted);font-weight:400;}
+.gm-tipos{display:inline-flex;align-items:center;gap:4px;}
+.gm-tipo{display:inline-flex;align-items:baseline;gap:1px;height:18px;padding:0 6px;border-radius:4px;border:1px solid var(--border);background:var(--surface-2);
+  font-family:var(--font-num);font-size:10.5px;font-weight:600;letter-spacing:.02em;line-height:16px;color:var(--ink-muted);}
+.gm-tipo small{font-size:9.5px;font-weight:500;margin-left:1px;}
+.gm-tipo-pdf{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 35%,var(--border));}
+.gm-tipo-xml{color:var(--info);border-color:color-mix(in srgb,var(--info) 35%,var(--border));}
+.gm-tipo-xls,.gm-tipo-xlsx,.gm-tipo-csv{color:var(--success);border-color:color-mix(in srgb,var(--success) 35%,var(--border));}
+.gm-tipo-ofx,.gm-tipo-txt,.gm-tipo-ret{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 35%,var(--border));}
+.gm-filtros{flex:none;margin:0;padding:8px 10px;border-bottom:1px solid var(--border);gap:6px;}
+.gm-filtros .chip-f{height:26px;padding:0 10px;font-size:12.5px;}
+.gm-filtros-sep{width:1px;height:18px;background:var(--border);margin:0 4px;}
+.gm-limpar{height:26px;padding:0 8px;font-size:12.5px;}
+.gm-filtros-conta{margin-left:auto;font-size:12px;color:var(--ink-muted);}
+.gm-grupo>ul{list-style:none;margin:0;padding:0;}
+.gm-grupo-rotulo{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:6px;margin:0;padding:6px 16px;background:var(--surface-2);
+  border-bottom:1px solid var(--border);font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-muted);}
+.gm-grupo-rotulo span{font-family:var(--font-num);font-weight:500;letter-spacing:0;color:var(--ink-faint);}
+@media (min-width:901px){
+  .gm-caixa:not(.com-leitura) .gm-item-corpo{grid-template-columns:minmax(240px,360px) minmax(0,1fr) auto auto;}
+  .gm-caixa:not(.com-leitura) .gm-assunto{font-weight:400;}
+  .gm-caixa:not(.com-leitura) .gm-assunto b{font-weight:600;}
+  .gm-caixa:not(.com-leitura) .gm-trecho-junto{display:inline;}
+}
 /* a Minha página no estilo das configurações do Notion (14/10/2026): seções com a linha fina; a foto com os botões; os
    ícones numa grade menor; Minhas empresas com o título e a contagem */
 .pessoal-rola{padding:24px 32px 32px;}

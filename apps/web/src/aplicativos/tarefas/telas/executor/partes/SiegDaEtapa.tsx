@@ -1,7 +1,7 @@
 // O painel do SIEG dentro do checklist da etapa do Fiscal: na Inicial, as notas do mês (emitidas e recebidas, por tipo);
 // na Conferência de Saídas, a sequência (série por série: da primeira à última, os números que faltam e as canceladas),
 // com o Baixar do SIEG (o robô do PC baixa as saídas do mês) e o Atualizar.
-import { BotaoAcao, Icone } from '@nads/ui';
+import { Alerta, BotaoAcao, Icone } from '@nads/ui';
 import { createPortal } from 'react-dom';
 import { useSiegDaEtapa } from '../useSiegDaEtapa';
 
@@ -60,11 +60,21 @@ export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 
       {vm.tipo === 'contagem' ? (
         <>{!vm.contagemCarregada ? <p className="fraco">Carregando…</p> : vm.contagem ? (
           <div className="sieg-contagem">
-            <div className={'sieg-numero' + (vm.contagem.emitidas === 0 ? ' zero' : '')}><b>{vm.contagem.emitidas}</b><span>emitidas</span>
-              <small>{vm.contagem.linhasEmitidas.map(l => l.rotulo + ' ' + l.n).join(' · ') || 'nenhuma'}</small></div>
-            <div className={'sieg-numero' + (vm.contagem.recebidas === 0 ? ' zero' : '')}><b>{vm.contagem.recebidas}</b><span>recebidas</span>
-              <small>{vm.contagem.linhasRecebidas.map(l => l.rotulo + ' ' + l.n).join(' · ') || 'nenhuma'}</small></div>
-            <p className="fraco sieg-quando">Contadas no SIEG em {vm.contagem.quando}.{vm.contagem.emitidas === 0 ? ' Nenhuma nota emitida: confira o certificado e a captura no SIEG.' : ''}</p>
+            {/* o rótulo em cima, o número grande e a proporção de cada tipo de nota (14/10/2026: "números mais legíveis") */}
+            {[{ rotulo: 'Notas emitidas', n: vm.contagem.emitidas, linhas: vm.contagem.linhasEmitidas }, { rotulo: 'Notas recebidas', n: vm.contagem.recebidas, linhas: vm.contagem.linhasRecebidas }].map(x => (
+              <div key={x.rotulo} className={'sieg-numero' + (x.n === 0 ? ' zero' : '')}>
+                <span>{x.rotulo}</span>
+                <b>{x.n}</b>
+                {x.n > 0 && x.linhas.length > 0 && (
+                  <>
+                    <span className="sieg-proporcao" aria-hidden="true">{x.linhas.map((l, i) => <i key={l.rotulo} className={'sieg-tipo-' + i} style={{ flexGrow: l.n }} />)}</span>
+                    <small>{x.linhas.map((l, i) => <span key={l.rotulo} className="sieg-legenda"><i className={'sieg-tipo-' + i} />{l.rotulo} {l.n}</span>)}</small>
+                  </>
+                )}
+              </div>
+            ))}
+            {vm.contagem.emitidas === 0 && <div className="sieg-quando alerta-linha"><Alerta naLinha titulo="Nenhuma nota emitida" texto="Confira o certificado e a captura no SIEG." /></div>}
+            <p className="fraco sieg-quando">Contadas no SIEG em {vm.contagem.quando}.</p>
             {/* contar de novo, na hora (07/10/2026: "tem como ter um botão para puxar na hora?") */}
             <div className="sieg-acoes">
               <BotaoAcao className="btn btn-outline" carregando={vm.contando} textoCarregando="Contando…" onClick={() => { void vm.contar(); }}><Icone nome="girar" />Contar de novo</BotaoAcao>

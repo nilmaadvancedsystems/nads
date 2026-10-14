@@ -55,7 +55,11 @@ const LINHA: CSSProperties = { display: 'flex', alignItems: 'center', gap: 12, f
 function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
   return (
     <div className={'ndp-item' + (it.nao ? ' ndp-nao-contabil' : '')}>
-      <div className="ndp-natureza">{it.titulo}{it.semConta && <span className="ponto-vermelho" title="Falta a conta contábil: vincule uma conta ou marque Não vai para o Contábil" aria-label="Falta a conta contábil" />}</div>
+      {/* o total do CFOP no canto direito, maior e em negrito (Vitor, 14/10/2026) */}
+      <div className="ndp-natureza ndp-natureza-row">
+        <span>{it.titulo}{it.semConta && <span className="ponto-vermelho" title="Falta a conta contábil: vincule uma conta ou marque Não vai para o Contábil" aria-label="Falta a conta contábil" />}</span>
+        <span className="num" style={{ fontSize: 18, fontWeight: 700, whiteSpace: 'nowrap' }} title="O total das notas deste CFOP">{it.total}</span>
+      </div>
       {/* a conta contábil (a que a conferência compara com o balancete) e, com as vendas separadas, o código do lançamento
           à vista e a prazo — cada um com o nome na frente, para não confundir um com o outro (Vitor, 13/10/2026) */}
       <div style={LINHA}>
