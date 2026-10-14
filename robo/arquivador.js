@@ -612,9 +612,8 @@ async function iniciar() {
   catch (err) { log('FGTS não ligou:', err.message); }
   try { require('./sieg').iniciarSieg({ db, log }); }
   catch (err) { log('SIEG desligado:', err.message); }
-  // o painel dos agentes do Claude Code deste PC, no nads (13/10/2026): Cadastro › Agentes
-  try { require('./painel-agentes').iniciarPainelAgentes({ db, log }); }
-  catch (err) { log('painel dos agentes desligado:', err.message); }
+  // o painel dos agentes do Claude Code (14/10/2026): saiu do robô. Cada computador cadastrado no nads grava as próprias
+  // conversas pelo gancho ~/.claude/painel/registro.js (painelMaquinas/{chave}/sessoes); o painelAgentes ficou sem uso.
 
   try { pararIA = require('./atendente-claude').iniciarAtendenteClaude({ db, log }); }
   catch (err) { log('atendente de IA desligado:', err.message); }

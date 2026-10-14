@@ -507,6 +507,31 @@ export const PECAS_BASE: Peca[] = [
           <div className="imp-faixa-corpo"><div className="stat-grid"><Stat rotulo="Notas de saída" valor="24" /><Stat rotulo="Valor contábil" valor="58.076,76" cor="saida" /><Stat rotulo="CFOPs" valor="5" /></div></div></div>
       </div>
     ) },
+  { id: 'ag-conversa', tipo: 'cartoes', nome: 'Conversas do Claude por computador', descricao: 'Em Sistema e agentes (só admin, 14/10/2026): o cartão do computador (o nome é a faixa do topo) com uma linha por conversa (o nome, a pasta, o estado, o nível do porteiro e há quanto tempo; o pedido e o agora; os subagentes em selos), as inativas na faixa que abre; e o cadastro do computador (o campo e o botão na mesma linha)', classes: ['ag-conversa', 'ag-conversa-topo', 'ag-conversa-linha', 'ag-conversa-agentes', 'ag-novo', 'ag-novo-linha', 'ag-chave-caixa', 'ag-chave', 'ag-acoes'], telas: ['t-cadastro-config'], largo: true,
+    demo: () => (
+      <div style={{ width: '100%' }}>
+        <div className="card">
+          <h3>PC do Fiscal</h3>
+          <div className="ag-conversa" role="button" tabIndex={0}>
+            <div className="ag-conversa-topo"><b className="ag-conversa-titulo">nads · Fiscal › Painel</b><span className="ag-conversa-pasta">nads-dp</span><span className="badge badge-ok">Trabalhando</span><span className="badge badge-neutral">difícil</span><span className="ag-conversa-ha">há 4 s</span></div>
+            <p className="ag-conversa-linha"><b>Pedido:</b> monte a rotina do lucro presumido e real</p>
+            <p className="ag-conversa-linha"><b>Agora:</b> Delega · planejador (opus) Plano da rotina</p>
+            <div className="ag-conversa-agentes"><span className="badge badge-ok">planejador · opus</span><span className="badge badge-neutral">1 terminou</span></div>
+          </div>
+          <div className="ag-conversa" role="button" tabIndex={0}>
+            <div className="ag-conversa-topo"><b className="ag-conversa-titulo">Entregas › Nova entrega</b><span className="ag-conversa-pasta">Entregas</span><span className="badge badge-warn">Esperando você</span><span className="badge badge-neutral">fácil</span><span className="ag-conversa-ha">há 5 min</span></div>
+            <p className="ag-conversa-linha"><b>Pedido:</b> tudo pronto?</p>
+            <p className="ag-conversa-linha"><b>Esperando você:</b> Claude precisa da sua permissão para usar Bash</p>
+          </div>
+          <div className="imp-faixa"><button className="imp-faixa-barra" type="button"><Icone nome="caretDown" className="imp-faixa-seta" /><b>Inativas</b><span className="imp-faixa-qtd">3</span></button></div>
+        </div>
+        <form className="ag-novo" onSubmit={e => e.preventDefault()}>
+          <div className="field"><label htmlFor="cat-ag-novo">Cadastrar computador</label>
+            <div className="ag-novo-linha"><input id="cat-ag-novo" type="text" placeholder="Ex.: PC do Fiscal" /><button type="submit" className="btn btn-primary"><Icone nome="plus" />Cadastrar</button></div>
+          </div>
+        </form>
+      </div>
+    ) },
 
   // ─── Listas ─────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'chips', tipo: 'listas', nome: 'Chips de filtro', classes: ['chip-row', 'chip-lbl', 'chip-f', 'on'], telas: ['c-consulta', 'c-naturezas'],

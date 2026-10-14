@@ -3657,11 +3657,29 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 
 /* Senhas: sem acesso ao cofre, a empresa não abre (13/10/2026: "deve bloquear ao clicar") */
 .cofre-bloqueado{cursor:not-allowed;}
-/* Cadastro › Agentes (13/10/2026): o cartão da sessão abre a janela que explica como está funcionando (o desenho da
-   janela padrão, mais larga e com o texto à esquerda) */
-.agentes-cartao{cursor:pointer;}
-.agentes-cartao:hover{border-color:var(--border-strong);}
-.agentes-cartao:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+/* Cadastro › Sistema e agentes (14/10/2026: por computador): a conversa do Claude, uma por linha dentro do cartão do
+   computador (o nome, a pasta, o estado, o nível e há quanto tempo; o pedido e o agora numa linha cada; os subagentes em
+   selos); clicar abre a janela "Como está funcionando". E o cadastro do computador (o campo e o botão na mesma linha). */
+.ag-conversa{padding:10px 12px;margin:0 -12px;border-radius:6px;cursor:pointer;min-width:0;}
+.ag-conversa + .ag-conversa{border-top:1px solid var(--border);border-radius:0;}
+.ag-conversa:hover{background:var(--hover-bg);}
+.ag-conversa:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+.ag-conversa-topo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;}
+.ag-conversa-titulo{font-size:14px;font-weight:600;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ag-conversa-pasta{font-size:12px;color:var(--ink-muted);}
+.ag-conversa-ha{margin-left:auto;font-size:12px;color:var(--ink-muted);}
+.ag-conversa-linha{margin:4px 0 0;font-size:13px;color:var(--ink-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ag-conversa-linha b{color:var(--ink);font-weight:600;}
+.ag-conversa-agentes{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.imp-faixa-corpo .ag-conversa{margin:0;}
+.ag-acoes{display:flex;align-items:center;justify-content:flex-end;gap:6px;}
+.ag-chave-caixa{margin-bottom:12px;}
+.ag-chave{margin:8px 0;word-break:break-all;}
+.ag-novo{margin-top:16px;}
+.ag-novo .field{margin:0;}
+.ag-novo-linha{display:flex;gap:8px;max-width:420px;}
+.ag-novo-linha input{flex:1;min-width:0;}
+.ag-novo-linha .btn{flex:none;}
 /* A janela "Como está funcionando" (13/10/2026: "bem mais trabalhado"): o cabeçalho na cor do estado, o agora em
    destaque, a régua do porteiro, o fluxo dos agentes (cada um na cor do seu modelo: Haiku verde, Sonnet azul, Opus roxo)
    e a linha do tempo. Só os tokens do nads. */

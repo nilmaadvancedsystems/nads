@@ -42,7 +42,7 @@ export const TELAS: Tela[] = [
   { id: 't-exec-fiscal-rotina', app: 'Tarefas', nome: 'Executor › Rotina do Fiscal (checklist disfarçada)' },
   { id: 't-cadastro', app: 'Tarefas', nome: 'Cadastro (lista)' },
   { id: 't-cadastro-janela', app: 'Tarefas', nome: 'Cadastro › Janela da empresa' },
-  { id: 't-cadastro-config', app: 'Tarefas', nome: 'Cadastro › Configurações' },
+  { id: 't-cadastro-config', app: 'Tarefas', nome: 'Cadastro › Sistema e agentes' },
   { id: 't-drive', app: 'Tarefas', nome: 'Drive' },
   { id: 't-gmail', app: 'Tarefas', nome: 'Gmail' },
   { id: 't-mandei', app: 'Tarefas', nome: 'Mandei (tickets)' },
