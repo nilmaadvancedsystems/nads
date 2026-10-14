@@ -145,11 +145,14 @@ export function caminhoDoInicio(op: { departamento: string; admin: boolean }): s
 export const caminhoDaEmpresa = (rotaEmpresa: string, competencia: string) => BASE + '/minhas-empresas/empresa/' + rotaEmpresa + '?competencia=' + competencia;
 /** As abas da janela de uma empresa no Cadastro. */
 // em grupos (13/10/2026: "reveja a estrutura inteira do cadastro"): a janela abre na Empresa (o resumo do que falta)
+// por setor, no estilo das configurações do Notion (14/10/2026: "contas padrão e bancárias irão ficar em contábil")
 export const ABAS_DO_CADASTRO: readonly { id: string; rotulo: string; icone: NomeIcone; grupo: string }[] = [
-  { id: 'empresa', rotulo: 'Empresa', icone: 'briefcase', grupo: 'Dados' },
-  { id: 'bancos', rotulo: 'Contas bancárias', icone: 'landmark', grupo: 'Bancos' },
-  { id: 'plano', rotulo: 'Plano de contas', icone: 'list', grupo: 'Contabilidade' },
-  { id: 'contas-padrao', rotulo: 'Contas padrão', icone: 'settings', grupo: 'Contabilidade' },
+  { id: 'empresa', rotulo: 'Dados da empresa', icone: 'briefcase', grupo: 'Empresa' },
+  { id: 'contabil', rotulo: 'Parâmetros', icone: 'settings', grupo: 'Contábil' },
+  { id: 'bancos', rotulo: 'Contas bancárias', icone: 'landmark', grupo: 'Contábil' },
+  { id: 'plano', rotulo: 'Plano de contas', icone: 'list', grupo: 'Contábil' },
+  { id: 'contas-padrao', rotulo: 'Contas padrão', icone: 'hash', grupo: 'Contábil' },
+  { id: 'fiscal', rotulo: 'Parâmetros', icone: 'scale', grupo: 'Fiscal' },
   { id: 'senhas', rotulo: 'Senhas', icone: 'lock', grupo: 'Acessos' },
   { id: 'historico', rotulo: 'Histórico', icone: 'clock', grupo: 'Registro' },
 ];

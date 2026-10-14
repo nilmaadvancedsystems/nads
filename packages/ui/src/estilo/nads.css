@@ -4042,3 +4042,38 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 }
 .gm-candidatos{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
 .gm-candidatos .fraco{font-size:12px;color:var(--ink-muted);}
+/* ---------- As configurações no estilo do Notion (14/10/2026): a seção (o título com a linha fina) e a linha solta (o
+   nome, a descrição curta em cinza e o controle à direita), sem caixa em volta ---------- */
+.cfg-titulo{margin:0 0 20px;font-size:20px;font-weight:650;}
+.cfg-secao{margin:0 0 28px;}
+.cfg-secao-topo{display:flex;align-items:center;gap:12px;padding-bottom:10px;margin-bottom:6px;border-bottom:1px solid var(--border);}
+.cfg-secao-topo h3{flex:1;margin:0;font-size:14px;font-weight:600;color:var(--ink);}
+.cfg-secao-acao{display:inline-flex;align-items:center;gap:8px;}
+.cfg-linhas{display:flex;flex-direction:column;}
+.cfg-linha{display:flex;align-items:center;gap:24px;padding:12px 0;}
+.cfg-linha-texto{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.cfg-linha-titulo{font-size:14px;color:var(--ink);display:inline-flex;align-items:center;gap:6px;}
+.cfg-linha-desc{font-size:12.5px;line-height:1.45;color:var(--ink-muted);}
+.cfg-linha-aviso{font-size:12.5px;line-height:1.45;color:var(--warn);font-weight:500;}
+.cfg-linha-controle{flex:none;display:inline-flex;align-items:center;gap:8px;max-width:60%;text-align:right;font-size:13.5px;color:var(--ink);}
+.cfg-linha-controle .hint{margin:0;}
+.cfg-valor{font-size:13.5px;color:var(--ink);text-align:right;overflow-wrap:anywhere;}
+.cfg-valor.vazio{color:var(--ink-faint);}
+@media (max-width:640px){.cfg-linha{flex-direction:column;align-items:stretch;gap:8px;}.cfg-linha-controle{max-width:none;justify-content:flex-start;text-align:left;}}
+/* a janela da empresa no estilo das configurações do Notion (14/10/2026): a lateral num fundo levemente cinza, os grupos
+   por setor (Empresa · Contábil · Fiscal…) em rótulo pequeno, sem caixa alta; o conteúdo numa coluna de leitura */
+.cad-janela-abas{background:color-mix(in srgb,var(--ink) 3%,transparent);}
+.cad-janela-grupo{text-transform:none;letter-spacing:0;font-size:12px;font-weight:500;color:var(--ink-muted);padding:14px 10px 4px;}
+.cad-janela-aba{font-size:13.5px;}
+.cad-janela-conteudo{padding:24px 36px 32px;}
+.cad-janela-conteudo > *{max-width:760px;}
+.cfg-titulo .fraco{font-weight:500;}
+/* um sócio por linha: o nome, o CPF e o ✕ */
+.cfg-socio{display:grid;grid-template-columns:minmax(0,1fr) 160px auto;gap:8px;padding:6px 0;}
+.cfg-socio input{min-width:0;}
+@media (max-width:760px){.cad-janela-conteudo{padding:14px 12px;}.cfg-socio{grid-template-columns:minmax(0,1fr) 120px auto;}}
+/* no celular, a linha que só mostra um valor (o CNPJ, o porte…) fica com o nome e o valor lado a lado */
+@media (max-width:640px){
+  .cfg-linha:has(> .cfg-linha-controle > .cfg-valor:only-child),.cfg-linha:has(> .cfg-linha-controle > .badge:only-child){flex-direction:row;align-items:center;gap:12px;}
+  .cfg-linha:has(> .cfg-linha-controle > .cfg-valor:only-child) > .cfg-linha-controle{max-width:60%;justify-content:flex-end;text-align:right;}
+}

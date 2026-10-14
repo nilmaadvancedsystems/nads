@@ -363,3 +363,18 @@ describe('o regime do Entregas (13/10/2026)', () => {
     expect(receitaDiscorda('Presumido', { enquadramento: '', receita: 'Simples' })).toBe(true);
   });
 });
+
+describe('os dados da empresa no Entregas (14/10/2026)', () => {
+  it('a identificação e a Receita por código', async () => {
+    const { dadosDaEmpresaNoEntregasPorCodigo } = await import('./entregas');
+    const m = dadosDaEmpresaNoEntregasPorCodigo([
+      { codigoOrigem: '462', documento: '11.222.333/0001-81', nomeFantasia: '3M', inscricaoEstadual: '001', endereco: 'Rua A, 1', cidade: 'Taiobeiras',
+        receita: { razaoSocial: '3M EMPREENDIMENTOS', situacao: 'ativa', cnae: '0210-1/01', cnaeDescricao: 'Cultivo de eucalipto', socios: ['FULANO', ''], abertura: '2010-01-02' } },
+      { codigoOrigem: '', documento: '1' },
+      { codigoOrigem: '7' },
+    ]);
+    expect(m.get(462)?.documento).toBe('11222333000181');
+    expect(m.get(462)?.receita).toMatchObject({ razaoSocial: '3M EMPREENDIMENTOS', situacao: 'ATIVA', socios: ['FULANO'] });
+    expect(m.has(7)).toBe(false);
+  });
+});
