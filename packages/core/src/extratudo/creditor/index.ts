@@ -1,5 +1,5 @@
 // @nads/core/creditor — Model do Creditor: relatório de liquidação do banco × arquivo do sistema →
-// arquivo de importação de 8 colunas. TypeScript puro: sem React, sem tela, sem banco.
+// arquivo de importação do Alterdata (10 colunas). TypeScript puro: sem React, sem tela, sem banco.
 export * from './tipos';
 export * from './regras/numeros';
 export * from './regras/conferencia';

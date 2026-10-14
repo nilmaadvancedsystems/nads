@@ -111,7 +111,7 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so }: {
               <FaixaQueAbre titulo="Lançamentos sugeridos" qtd={inss.sugestoes.length} aviso={inss.sugestoes.length > 0}>
                 <div className="imp-mov-caixa">
                   {/* numa linha só (Vitor, 08/10/2026): o período, a conta do INSS a recolher (o mesmo menu de conta da tabela;
-                      travada quando vem do balancete) e o Importar no meu Sistema (o .xls do Alterdata, as 8 colunas do Creditor) */}
+                      travada quando vem do balancete) e o Importar no meu Sistema (o .xls do Alterdata, o padrão de 10 colunas do Alterdata) */}
                   <div className="tarefas-barra-topo">
                     <span className="seletor-travado" aria-disabled="true" title="O período da tarefa (escolhido na Importação)"><span className="imp-mov-periodo">{inss.mostrando}</span></span>
                     {inss.sugestoes.length > 0 && (

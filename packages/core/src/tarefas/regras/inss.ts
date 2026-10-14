@@ -327,7 +327,7 @@ export function codigoDaConta(texto: string): string {
 /** A chave de uma sugestão (para guardar a contrapartida escolhida, sem depender da ordem). */
 export const chaveDaSugestao = (s: SugestaoDoInss) => s.mes + '|' + s.tipo + '|' + s.historico + '|' + s.valor;
 
-/** Uma linha do arquivo de importação do Alterdata (as 8 colunas): a data DD/MM/AAAA e as contas em código. */
+/** Uma linha do arquivo de importação do Alterdata (o padrão de 10 colunas): a data DD/MM/AAAA e as contas em código. */
 export interface LinhaDoAlterdata { data: string; debito: string; credito: string; historico: string; valor: number }
 
 /** As sugestões → as linhas do Alterdata, com a conta do INSS a recolher e a contrapartida escolhida de cada uma. */

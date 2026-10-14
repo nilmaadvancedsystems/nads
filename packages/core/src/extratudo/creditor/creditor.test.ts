@@ -241,13 +241,16 @@ describe('lançamentos e fechamento', () => {
     expect(f[2]).toMatchObject({ fora: 322.15, diferenca: -322.15, situacao: 'explicada' });
   });
 
-  it('arquivo .xls: cabeçalho de 8 colunas, valor e documento numéricos', () => {
+  it('arquivo .xls no padrão do Alterdata do escritório: 4 linhas vazias, sem cabeçalho, 10 colunas', () => {
     const l = gerarLancamentos(titulos, cr, { [id('4555')]: { tipo: 'confirmar' }, [id('4560')]: { tipo: 'excluir' } }, CONTAS_PADRAO);
     const wb = XLSX.read(XLSX.write(livroDeImportacao(l), { bookType: 'biff8', type: 'array' }), { type: 'array' });
-    const linhas = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true });
-    expect(linhas[0]).toEqual(['LANC AUTOMÁTICO', 'DATA', 'DÉBITO', 'CRÉDITO', 'COD HISTÓRICO', 'HISTÓRICO', 'VALOR', 'DOCUMENTO']);
-    expect(linhas[1].slice(2)).toEqual([10503, 11201, 246, 'NF 4521 - MERCADO BOM PRECO LTDA', 1250, 4521]);
-    expect(typeof linhas[1][1]).toBe('number'); // data de verdade (serial do Excel)
+    const linhas = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: '', blankrows: true });
+    expect(linhas.slice(0, 4).every(r => r.every(c => c === ''))).toBe(true);
+    // (vazia) · débito · crédito · data · valor · cód. histórico · complemento · (vazia) · (vazia) · nota
+    const [a, deb, cre, data, ...resto] = linhas[4];
+    expect([a, deb, cre]).toEqual(['', 10503, 11201]);
+    expect(typeof data).toBe('number'); // data de verdade (serial do Excel)
+    expect(resto).toEqual([1250, 246, 'NF 4521 - MERCADO BOM PRECO LTDA', '', '', 4521]);
   });
 });
 

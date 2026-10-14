@@ -1,7 +1,7 @@
 // ViewModel dos pagamentos do pró-labore no checklist da Contabilização da Folha (Vitor, 14/10/2026): a pessoa importa o
 // razão do Pró-labore a pagar (XLS da conciliação do Alterdata) e o nads monta os pagamentos que faltam para ele zerar —
 // D Pró-labore a pagar, C a conta escolhida, H "Pagamento de pro-labore mm/aaaa SÓCIO" — e baixa o .xls de importação do
-// Alterdata (as 8 colunas, as do Creditor). Fica só na tela.
+// Alterdata (o padrão de 10 colunas do Alterdata). Fica só na tela.
 import { creditor, formatos, tarefas as t } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';

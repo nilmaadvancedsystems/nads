@@ -1,4 +1,4 @@
-// Lançamentos do layout de 8 colunas (seção 2 do fluxo) e o fechamento da conta banco por dia
+// Lançamentos do arquivo de importação (seção 2 do fluxo) e o fechamento da conta banco por dia
 // (passo 6: Débitos − Créditos da conta banco contra o que o banco creditou no dia).
 import type { ContasCreditor, Grupo, Lancamento, Titulo } from '../tipos';
 import { conferirGrupo, datasDoGrupo } from './conferencia';

@@ -1,5 +1,5 @@
 // ViewModel da etapa Lançamentos: as contas do layout, o fechamento da conta banco por dia (a última
-// checagem) e o arquivo .xls de 8 colunas. Só baixa quando todos os dias batem (ou a diferença é
+// checagem) e o arquivo .xls no padrão de 10 colunas do Alterdata. Só baixa quando todos os dias batem (ou a diferença é
 // exatamente o que a pessoa excluiu).
 // As contas vêm do balancete da empresa (sugeridas pelo nome) ou do que foi salvo nela; trocar uma
 // conta salva na empresa, e baixar o arquivo confirma as sugeridas e ensina a conta de cada cliente.

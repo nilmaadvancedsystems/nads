@@ -2,7 +2,7 @@
 // se está zerando. Quando o escritório não emite nota de honorário para a empresa (no Cadastro), a provisão não chega pelo
 // Fiscal: a pessoa importa o "Extrato por cobrança" do Alterdata (o PDF das cobranças da Nilma para o cliente) e o sistema
 // monta os lançamentos na data de emissão de cada cobrança (D despesa de honorários / C honorários a pagar), no arquivo de
-// importação do Alterdata (as 8 colunas, o mesmo do Creditor).
+// importação do Alterdata (o padrão de 10 colunas do Alterdata).
 import type { RazaoDaConta } from './razao';
 
 /** Uma cobrança do "Extrato por cobrança" (Alterdata, módulo de cobrança do escritório). */
@@ -59,7 +59,7 @@ export function cobrancasDoPeriodo(cobrancas: readonly CobrancaDeHonorario[], me
   return cobrancas.filter(c => meses.includes(c.emissao.slice(0, 7))).sort((a, b) => a.emissao.localeCompare(b.emissao) || a.numero.localeCompare(b.numero));
 }
 
-/** Uma linha do arquivo de importação do Alterdata (as 8 colunas do Creditor; data DD/MM/AAAA). */
+/** Uma linha do arquivo de importação do Alterdata (o padrão de 10 colunas do Alterdata; data DD/MM/AAAA). */
 export interface LancamentoDeHonorario { data: string; debito: string; credito: string; historico: string; valor: number; documento: string }
 
 /** O número da cobrança sem os zeros da frente ("000013074" → "13074"). */

@@ -1,7 +1,7 @@
 // ViewModel da etapa Honorários (Vitor, 07/10/2026: "a pessoa vai importar o razão e ver se está zerando… se a empresa emite
 // nota de honorário, fica no Cadastro; caso não, o usuário tem que lançar um relatoriozinho — lançamos na data de emissão e
 // exporta no formato Alterdata"). O razão do Honorários a pagar (obrigatório, tem que zerar, como o Pró-labore). Sem nota
-// de honorário, o Extrato por cobrança (PDF do Alterdata) vira os lançamentos das cobranças do período, no .xls de 8 colunas.
+// de honorário, o Extrato por cobrança (PDF do Alterdata) vira os lançamentos das cobranças do período, no .xls do padrão de 10 colunas do Alterdata.
 // O extrato fica só na tela (em memória), como os razões.
 import { creditor, empresas, extrator, formatos, tarefas as t } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
@@ -109,7 +109,7 @@ export function useHonorarios() {
     contaDespesa, contaAPagar, nomeDespesa: nomeNoPlano(contaDespesa.trim()), nomeAPagar: nomeNoPlano(contaAPagar.trim()),
     mudarConta: (campo: 'despesa' | 'aPagar', v: string) => setContas(x => ({ ...x, [campo]: v })),
     podeBaixar: !!e && doPeriodo.length > 0 && contasOk,
-    /** o .xls de importação do Alterdata (as 8 colunas, o mesmo do Creditor): uma provisão por cobrança, na data de emissão */
+    /** o .xls de importação do Alterdata (o padrão de 10 colunas do Alterdata): uma provisão por cobrança, na data de emissão */
     baixar: () => {
       const linhas = t.lancamentosDosHonorarios(doPeriodo, contaDespesa, contaAPagar).map(l => ({ automatico: '', codHistorico: '', ...l }));
       const nome = 'honorarios' + (s.codigo != null ? '_' + s.codigo : '') + '_' + s.meses[0] + (s.meses.length > 1 ? '-a-' + s.meses[s.meses.length - 1] : '') + '.xls';

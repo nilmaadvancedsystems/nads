@@ -1,5 +1,5 @@
 // Tipos do Creditor: conciliação do relatório de liquidação do banco (cobrança) com o arquivo
-// do sistema, gerando o arquivo de importação contábil de 8 colunas.
+// do sistema, gerando o arquivo de importação do Alterdata (10 colunas).
 // Origem: o prompt "Conciliação Bancária (Relatório de Liquidação x Sistema Contábil)" do Vitor (2026-09-28).
 
 /** Um título liquidado, como veio do relatório do banco (a pessoa pode corrigir na conferência). */
@@ -78,7 +78,7 @@ export const CONTAS_PADRAO: ContasCreditor = {
 
 export type TipoLancamento = 'principal' | 'mora' | 'desconto';
 
-/** Uma linha do arquivo de importação (layout de 8 colunas). */
+/** Uma linha do arquivo de importação (o padrão de 10 colunas do Alterdata). */
 export interface Lancamento {
   automatico: string;
   /** DD/MM/AAAA */
