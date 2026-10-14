@@ -15,6 +15,7 @@ import { useDrive } from '../../dados/repo';
 import { lerRelatorio, mensagemDeErro } from '../../leitura';
 import { useBuscarNoEmail } from '../../../extrator/telas/tarefa/JanelaBuscarNoEmail';
 import { abrirPuxado, esquecerPuxado, guardarPuxado, usePuxados } from '../../../puxados';
+import { useCadastroDaEmpresa } from '../../../extrator/dados/repo';
 
 /** O arquivo que veio do Drive ou do e-mail, para o olhinho do mês (puxados.tsx). */
 interface DeOnde { nome: string; conteudo: Blob; origem: 'drive' | 'email' }
@@ -66,6 +67,9 @@ export function useCompetencia() {
 
   // o que foi puxado do Drive ou do e-mail, por mês (o olhinho ao lado do ícone; só na memória desta aba)
   const chavePuxados = 'creditor|' + s.empresa.nome;
+  // os bancos do relatório de liquidação marcados no Cadastro da empresa (Vitor, 14/10/2026: "Bradesco e Sicoob")
+  const { cadastro } = useCadastroDaEmpresa(s.empresa.nome, s.empresa.codigo);
+  const bancosDoRelatorio = cadastro?.relatoriosDeLiquidacao || [];
   const puxados = usePuxados(chavePuxados);
 
   /** Leu o relatório do mês: guarda e fica aqui (o resumo na linha); o Continuar segue (Vitor, 05/10/2026: a Competência e o Relatório do banco eram a mesma tela). */
@@ -231,7 +235,7 @@ export function useCompetencia() {
       // os que servem (formato, empresa e mês); no fim, juntos sem repetir título
       const rels: { rel: cr.RelatorioBanco; origem: string; deOnde: DeOnde; paraODrive?: File }[] = [];
       const usar = (rel: cr.RelatorioBanco, origem: string, deOnde: DeOnde, paraODrive?: File) => {
-        if (cr.relatorioServeNoMes(rel, m, s.empresa.nome)) rels.push({ rel, origem, deOnde, paraODrive });
+        if (cr.relatorioServeNoMes(rel, m, s.empresa.nome, bancosDoRelatorio)) rels.push({ rel, origem, deOnde, paraODrive });
       };
       // 1. o Drive: os arquivos do mês na RECEBIMENTO DE CLIENTES
       if (fontes.drive) passo('Procurando no Drive…');
@@ -253,7 +257,7 @@ export function useCompetencia() {
           remetente ? buscar({ remetente, ...per }).catch(() => []) : Promise.resolve([]),
           buscar({ remetente: '', ...per }).catch(() => []),
         ]);
-        for (const a of cr.candidatosDoEmail(listas.flat(), m, emails)) {
+        for (const a of cr.candidatosDoEmail(listas.flat(), m, emails, bancosDoRelatorio)) {
           if (parar.current) break;
           passo('Abrindo ' + a.nome + '…');
           try {
@@ -269,7 +273,9 @@ export function useCompetencia() {
         const usados = j.usados.map(i => rels[i]);
         guardar(m, j.relatorio, usados.map(r => r.origem).join(' · '), usados.map(r => r.deOnde));
         for (const r of usados) if (r.paraODrive) await arquivarNoDrive(m, r.paraODrive);
-        achados.push(cr.rotuloCompetencia(m));
+        // o banco marcado no Cadastro que ficou sem relatório
+        const falta = cr.bancosSemRelatorio(usados.map(r => r.rel), bancosDoRelatorio);
+        achados.push(cr.rotuloCompetencia(m) + (falta.length ? ' (falta o do ' + falta.join(' e do ') + ')' : ''));
       }
       else vazios.push(cr.rotuloCompetencia(m));
     }

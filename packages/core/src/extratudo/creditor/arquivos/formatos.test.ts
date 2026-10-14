@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AnexoDoEmail } from '../drive';
-import { candidatosDoEmail, juntarSemRepetir, periodoDaBuscaAutomatica, relatorioServeNoMes } from '../regras/automatico';
+import { bancosSemRelatorio, candidatosDoEmail, juntarSemRepetir, periodoDaBuscaAutomatica, relatorioServeNoMes } from '../regras/automatico';
 import { cedenteDosTitulosPorPeriodo, formatoDoRelatorio, lerCarteiraDeCobranca, relatorioDaEmpresa } from './formatos';
 
 // as linhas como o pdf.js monta (linhasDosItens) do "Extrato de Movimentação da Carteira de Cobrança"
@@ -73,6 +73,14 @@ describe('o importar automático', () => {
     const j = juntarSemRepetir([a, b]);
     expect(j.usados).toEqual([1]);
     expect(j.relatorio.grupos.flatMap(g => g.titulos).map(t => t.nf).sort()).toEqual(['NF 714', 'NF 715']);
+  });
+
+  it('os bancos do Cadastro: só o formato deles e o que falta', () => {
+    const r = lerCarteiraDeCobranca([PAGINA]);
+    expect(relatorioServeNoMes(r, '2026-02', 'VOLPONI CONSTRUCOES MECANICAS', ['sicoob'])).toBe(false);
+    expect(relatorioServeNoMes(r, '2026-02', 'VOLPONI CONSTRUCOES MECANICAS', ['sicoob', 'bradesco'])).toBe(true);
+    expect(bancosSemRelatorio([r], ['sicoob', 'bradesco'])).toEqual(['Sicoob']);
+    expect(candidatosDoEmail([anexo('liquidados jan.pdf'), anexo('relatorio bradesco.pdf')], '2026-02', [], ['bradesco'])[0].nome).toBe('relatorio bradesco.pdf');
   });
 
   it('o relatório serve: formato aceito, da empresa e com título no mês', () => {

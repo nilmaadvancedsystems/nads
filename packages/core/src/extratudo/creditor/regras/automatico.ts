@@ -9,7 +9,7 @@ import type { AnexoDoEmail } from '../drive';
 import type { RelatorioBanco, Titulo } from '../tipos';
 import { TOTAIS_VAZIOS } from '../arquivos/banco';
 import { juntarRelatorios } from './competencia';
-import { relatorioDaEmpresa } from '../arquivos/formatos';
+import { relatorioDaEmpresa, type FormatoDoRelatorio } from '../arquivos/formatos';
 import { mesDoAnexo } from './mesDoEmail';
 
 /** Até quantos dias depois do fim do mês o relatório pode chegar por e-mail. */
@@ -34,11 +34,22 @@ const PALAVRAS = /liquid|\btit(ulos?)?\b|\btit\.|cobranca|carteira|credliq|sicoo
 const PAGOS = /\bpagos?\b|pagamento|comprovante/;
 const norm = (s: string) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
+/** Os bancos do relatório (os checks do Cadastro da empresa) e o formato de cada um. */
+export const FORMATO_DO_BANCO: Record<'sicoob' | 'bradesco', FormatoDoRelatorio> = { sicoob: 'titulos-por-periodo', bradesco: 'carteira-de-cobranca' };
+const NOME_DO_BANCO: Record<'sicoob' | 'bradesco', string> = { sicoob: 'Sicoob', bradesco: 'Bradesco' };
+
+/** Os bancos marcados no Cadastro que ficaram sem relatório (pelo formato de cada um). */
+export function bancosSemRelatorio(rels: readonly RelatorioBanco[], bancos: readonly ('sicoob' | 'bradesco')[]): string[] {
+  const tem = new Set(rels.map(r => r.formato));
+  return bancos.filter(b => !tem.has(FORMATO_DO_BANCO[b])).map(b => NOME_DO_BANCO[b]);
+}
+
 /**
  * Os anexos que vale abrir para o mês, o mais provável primeiro: PDF, sem citar outro mês, e do contato do cliente ou
  * falando de liquidação/títulos (no nome, no assunto ou no começo do corpo). O mesmo arquivo em dois e-mails vale um.
+ * bancos: os do Cadastro da empresa (vazio = não informado); o anexo que fala do banco marcado vai na frente.
  */
-export function candidatosDoEmail(anexos: readonly AnexoDoEmail[], mes: string, emailsDoCliente: readonly string[]): AnexoDoEmail[] {
+export function candidatosDoEmail(anexos: readonly AnexoDoEmail[], mes: string, emailsDoCliente: readonly string[], bancos: readonly ('sicoob' | 'bradesco')[] = []): AnexoDoEmail[] {
   const doCliente = new Set(emailsDoCliente.map(e => e.trim().toLowerCase()).filter(Boolean));
   const vistos = new Set<string>();
   const pontuados: { a: AnexoDoEmail; pontos: number }[] = [];
@@ -54,14 +65,17 @@ export function candidatosDoEmail(anexos: readonly AnexoDoEmail[], mes: string, 
     const chave = a.nome.toLowerCase() + '|' + a.tamanho;
     if (vistos.has(chave)) continue;
     vistos.add(chave);
-    pontuados.push({ a, pontos: (m === 'do-mes' ? 2 : 0) + (fala ? 2 : 0) + (cliente ? 1 : 0) });
+    const doBanco = bancos.some(b => norm(a.nome + ' ' + a.assunto).includes(b));
+    pontuados.push({ a, pontos: (m === 'do-mes' ? 2 : 0) + (fala ? 2 : 0) + (cliente ? 1 : 0) + (doBanco ? 3 : 0) });
   }
   return pontuados.sort((x, y) => y.pontos - x.pontos || String(y.a.em).localeCompare(String(x.a.em))).slice(0, MAX_CANDIDATOS).map(x => x.a);
 }
 
 /** O relatório lido serve para o mês da empresa? Formato aceito, o cedente é ela e tem título liquidado no mês. */
-export function relatorioServeNoMes(r: RelatorioBanco, mes: string, empresa: string): boolean {
+export function relatorioServeNoMes(r: RelatorioBanco, mes: string, empresa: string, bancos: readonly ('sicoob' | 'bradesco')[] = []): boolean {
   if (!r.formato || !relatorioDaEmpresa(r.cedente, empresa)) return false;
+  // com os bancos marcados no Cadastro, só o formato deles
+  if (bancos.length && !bancos.some(b => FORMATO_DO_BANCO[b] === r.formato)) return false;
   const mm = mes.slice(5, 7) + '/' + mes.slice(0, 4);
   return r.grupos.some(g => g.titulos.some(t => t.liquidacao.slice(3) === mm));
 }
