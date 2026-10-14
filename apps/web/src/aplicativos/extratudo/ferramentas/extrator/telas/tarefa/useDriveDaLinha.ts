@@ -164,8 +164,11 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       for (const f of fs) {
         const bytes = new Uint8Array(await f.arrayBuffer());
         const lido = await x.lerArquivo(f.name, bytes.slice(), 'banco');
-        if (lido.erro) continue;
-        for (const p of await x.extratoPorMes(f.name, bytes, lido, linha.nome)) {
+        // o extrato sem movimento vai inteiro, no mês dele (Vitor, 13/10/2026)
+        const ext = (/\.[a-z0-9]+$/i.exec(f.name)?.[0] || '.pdf').toLowerCase();
+        const pedacos = lido.semMovimento?.length === 1 ? [{ mes: lido.semMovimento[0], nome: x.nomeDoExtratoDoMes(linha.nome, lido.semMovimento[0], ext), bytes }]
+          : lido.erro ? [] : await x.extratoPorMes(f.name, bytes, lido, linha.nome);
+        for (const p of pedacos) {
           const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, p.mes, conta);
           if (r.situacao === 'achou' || r.situacao === 'varios' || r.candidatos.length) continue;
           await drive.enviarAoDrive({ nome: p.nome, bytes: p.bytes }, { competencia: p.mes, codigo, cliente });

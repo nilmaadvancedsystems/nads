@@ -16,8 +16,17 @@ const SO_QUANDO_ADICIONADAS = new Set([...ROTINA_CONTABIL.etapas, ...ROTINA_FISC
 const RESTRITAS = new Map([...ROTINA_CONTABIL.etapas, ...ROTINA_FISCAL.etapas, ...ROTINA_DP.etapas].filter(e => e.regimes || e.meses || e.obrigacaoDp).map(e => [e.id, e]));
 const REGIME_POR_CODIGO = new Map(EMPRESAS.filter(e => e.codigo != null).map(e => [e.codigo, e.regime]));
 
-/** O regime da empresa (o da lista de empresas), ou '' quando não se sabe. */
+let doCadastro: (codigo: number) => string = () => '';
+/** O regime que está no cadastro da empresa (13/10/2026): o aplicativo liga aqui a leitura do Cadastro. */
+export function usarRegimesDoCadastro(f: (codigo: number) => string): void { doCadastro = f; }
+
+/** O regime da empresa: o do cadastro; sem ele, o da lista de empresas; '' quando não se sabe. */
 export function regimeDaEmpresa(codigo: number | null | undefined): string {
+  return codigo == null ? '' : doCadastro(codigo) || REGIME_POR_CODIGO.get(codigo) || '';
+}
+
+/** O regime da lista do escritório (sem o do cadastro): o que vale quando o cadastro não escolhe. */
+export function regimeDaLista(codigo: number | null | undefined): string {
   return codigo == null ? '' : REGIME_POR_CODIGO.get(codigo) || '';
 }
 

@@ -71,6 +71,12 @@ export function criarDriveMemoria(): RepoDrive {
     async remetente() {
       return { setor: 'contabil', caixa: 'robo', email: 'nilmacontabilidade@gmail.com', respostas: 'setorcontabilnilma@gmail.com' };
     },
+    async buscarNoEmail(f) {
+      // nos exemplos: um OFX "recebido" do remetente pedido
+      await new Promise(ok => setTimeout(ok, 500));
+      return [{ caixa: 'robo', mensagemId: 'exemplo', anexoId: 'exemplo', nome: 'extrato-exemplo.ofx', tamanho: EXEMPLO_EXTRATO_OFX.length, de: f.remetente || 'banco@exemplo.com.br', assunto: 'Extrato (exemplo)', em: (f.ate || '2026-09-30') + 'T12:00:00.000Z' }];
+    },
+    async trazerDoEmail() { return new TextEncoder().encode(EXEMPLO_EXTRATO_OFX).buffer as ArrayBuffer; },
     async enviarAoDrive() {
       // nos exemplos nada sai daqui: só finge a fila do robô
       await new Promise(ok => setTimeout(ok, 300));

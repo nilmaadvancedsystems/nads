@@ -4,7 +4,7 @@
 // resultado na mensagem flutuante. Embaixo, os arquivos importados, com Excluir.
 import { demo, empresas, extrator as x, tarefas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useSessao } from '../../casca/sessao';
 import { useCadastroDaEmpresa } from '../../dados/repo';
@@ -29,7 +29,7 @@ export interface ConfigCaixa {
 export const CAIXAS: ConfigCaixa[] = [
   {
     lado: 'banco', titulo: 'Extratos bancários', icone: 'landmark', idArquivo: 'fExtrato',
-    formato: 'PDF do banco (também aceita OFX)', aceitar: x.EXTENSOES_EXTRATO.join(','),
+    formato: 'PDF do banco (também aceita OFX e o escaneado: PDF ou foto, pelo OCR)', aceitar: x.EXTENSOES_EXTRATO.join(','),
     dica: 'Pode escolher vários PDFs de uma vez. Lê data, histórico e valor de cada lançamento; o PDF não é guardado.',
   },
   {
@@ -61,6 +61,8 @@ export function useImportacao() {
   const [lendo, setLendo] = useState<x.Lado | null>(null);
   /** a linha de banco que está importando: 'banco|lado' */
   const [lendoLinha, setLendoLinha] = useState<string | null>(null);
+  // o extrato sem movimento: quem marca o mês como sem movimento no banco (a Tarefa, pela ponte)
+  const aoSemMovimento = useRef<((banco: string, meses: string[]) => void) | null>(null);
   // os bancos da empresa na competência (uma linha cada), do Cadastro da empresa quando ela tem (Tarefas ›
   // Cadastro); arquivo sem banco = do primeiro banco
   const cad = useCadastroDaEmpresa(s.nome, s.codigo);
@@ -126,6 +128,20 @@ export function useImportacao() {
 
   /** O que vem depois de ler: pergunta o modo (se já houver movimento nas datas), importa e avisa. */
   async function gravarLidos(lado: x.Lado, lidos: x.ArquivoLido[], banco?: string, doDrive?: { id: string; nome: string }, modoFixo?: x.ModoImportacao): Promise<boolean> {
+    // o extrato que diz que não teve movimento ("Nenhuma movimentação encontrada"): marca o mês como sem movimento e avisa
+    // (Vitor, 13/10/2026), em vez de "Nada para importar"
+    const semMov = lado === 'banco' && banco ? lidos.filter(l => l.semMovimento) : [];
+    const meses = [...new Set(semMov.flatMap(l => l.semMovimento || []))].sort();
+    if (semMov.length) {
+      if (meses.length && aoSemMovimento.current) aoSemMovimento.current(banco as string, meses);
+      lidos = lidos.filter(l => !l.semMovimento);
+      const rotulo = meses.map(m => m.slice(5) + '/' + m.slice(0, 4)).join(', ');
+      if (!lidos.length) {
+        setLendo(null);
+        setMensagem({ tom: 'info', titulo: 'Extrato sem movimento' + (rotulo ? ': ' + rotulo : ''), textos: [{ texto: meses.length ? (meses.length === 1 ? 'O mês ficou marcado' : 'Os meses ficaram marcados') + ' como sem movimento neste banco.' : 'O extrato não diz o mês: marque o mês como sem movimento na grade.' }] });
+        return meses.length > 0;
+      }
+    }
     const falhas = lidos.filter(l => l.erro || !l.lancamentos.length);
     const bons = lidos.filter(l => !l.erro && l.lancamentos.length);
     if (!bons.length) {
@@ -170,6 +186,9 @@ export function useImportacao() {
     if (res.jaExistiam) textos.push({ texto: res.jaExistiam + ' já estavam guardados e ficaram como estavam.' });
     if (res.substituidos) textos.push({ texto: res.substituidos + ' lançamento(s) que estavam guardados nessas datas foram substituídos.' });
     for (const f of falhas) textos.push({ texto: f.nome + ' ficou de fora: ' + (f.erro || 'nenhum lançamento') + '.', tom: 'aviso' });
+    // o escaneado lido pelo OCR (Vitor, 13/10/2026): o reconhecimento pode errar um dígito, então pede para conferir
+    const porOcr = bons.filter(l => l.ocr).map(l => l.nome);
+    if (porOcr.length) textos.push({ texto: porOcr.join(', ') + ' era imagem e foi lido pelo OCR: confira os valores com o arquivo.', tom: 'aviso' });
     setMensagem({ tom: 'ok', titulo: res.gravados + ' lançamento(s) importado(s)' + (modo === 'sobrepor' ? ' — movimento sobreposto' : ''), textos });
     return true;
   }
@@ -337,6 +356,8 @@ export function useImportacao() {
     apagarDadosDeTeste: () => demo.apagarDadosDeTeste(),
     /** os extratos que abrem a conta, vindos do Drive sem o saldo anterior (a linha do Drive completa sozinha) */
     extratosSemSaldo: x.extratosSemSaldoAnterior(s.empresa, primeiro),
+    /** quem marca o mês como sem movimento quando o extrato importado não teve movimento */
+    aoSemMovimento: (fn: (banco: string, meses: string[]) => void) => { aoSemMovimento.current = fn; },
     gravarSaldoAnterior: (arquivoId: string, saldo: number) => s.aplicar(e => x.definirSaldoAnterior(e, arquivoId, saldo, new Date())),
     /** a regra do Cadastro da empresa: presta serviços? (null = não informado, ou o cadastro ainda não chegou) */
     prestaServico: cad.cadastro?.prestaServico ?? null,

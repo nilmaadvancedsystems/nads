@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
-  comContasPadrao, criarRepoCadastro, criarRepoCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirNotaDeHonorario, definirPrestaServico, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
+  comContasPadrao, criarRepoCadastro, criarRepoCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirNotaDeHonorario, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
   bancosDoEntregasDoDocumento, bancosDoEntregasPorCodigo, contatosDoEntregasPorCodigo, contasDoEntregas, juntarComEntregas, sugestoesDoEntregas,
   lerPlanilhaDoPlano, linhasDoTexto, registrarPlano, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
   type PlanoDeContas,
@@ -326,5 +326,40 @@ describe('o contato que o Entregas já tem do cliente (08/10/2026)', () => {
     expect(m.get(292)).toEqual({ email: 'financeiro@fito.com.br', whatsapp: '38999998888' });
     expect(m.get(309)).toEqual({ email: 'contato@x.com', whatsapp: '' });
     expect([...m.keys()]).toEqual([292, 309]);
+  });
+});
+
+describe('o regime (13/10/2026)', () => {
+  it('escolhe, vai e volta do documento, com o histórico; null volta para o da lista', () => {
+    const c = definirRegime(vazio(), 'Presumido', 'Vitor', AGORA);
+    expect(regimeDoCadastro(c)).toBe('Presumido');
+    expect(c.historico[0]).toMatchObject({ acao: 'Regime', detalhe: 'Da lista → Presumido' });
+    expect(cadastroDoDocumento('FITO', 292, documentoDoCadastro(c)).regime).toBe('Presumido');
+    expect(definirRegime(c, 'Presumido', 'Vitor', AGORA)).toBe(c);
+    const nada = definirRegime(c, null, 'Vitor', AGORA);
+    expect('regime' in documentoDoCadastro(nada)).toBe(false);
+    // regime estranho no banco fica de fora
+    expect(cadastroDoDocumento('FITO', 292, { nome: 'FITO', historico: [], regime: 'Lucro Arbitrado' }).regime).toBeUndefined();
+  });
+});
+
+describe('o regime do Entregas (13/10/2026)', () => {
+  it('o enquadramento; sem ele, a Receita (Simples ou MEI); e quando a Receita discorda', async () => {
+    const { regimesDoEntregasPorCodigo, regimeDoEntregas, receitaDiscorda } = await import('./entregas');
+    const m = regimesDoEntregasPorCodigo([
+      { codigoOrigem: '292', enquadramento: 'Presumido', receita: { simples: false } },
+      { codigoOrigem: '14', enquadramento: '', receita: { mei: true } },
+      { codigoOrigem: '58', receita: { simples: false } },
+      { codigoOrigem: '483', enquadramento: 'Simples', receita: { simples: false } },
+      { codigoOrigem: '', enquadramento: 'Real' },
+      { codigoOrigem: '7', enquadramento: 'Lucro Arbitrado' },
+    ]);
+    expect(regimeDoEntregas(m.get(292))).toBe('Presumido');
+    expect(regimeDoEntregas(m.get(14))).toBe('MEI');
+    expect(regimeDoEntregas(m.get(58))).toBe('');
+    expect(m.has(7)).toBe(false);
+    expect(receitaDiscorda('Simples', m.get(483))).toBe(true);
+    expect(receitaDiscorda('Presumido', m.get(292))).toBe(false);
+    expect(receitaDiscorda('Presumido', { enquadramento: '', receita: 'Simples' })).toBe(true);
   });
 });

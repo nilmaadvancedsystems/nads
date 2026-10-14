@@ -3,7 +3,7 @@
 import { PainelDoFiscal } from '../telas/fiscal/painel/PainelDoFiscal';
 import { Navigate, useParams } from 'react-router';
 import { TopoProvider } from '../../../comum/topo';
-import { ConfiguracoesDoNads } from '../telas/cadastro/configuracoes/ConfiguracoesDoNads';
+import { RobosEAgentes } from '../telas/cadastro/configuracoes/ConfiguracoesDoNads';
 import { UsuariosDoNads } from '../telas/cadastro/usuarios/UsuariosDoNads';
 import { VisaoContabil } from '../telas/contabil/VisaoContabil';
 import { ConfiguracoesContabil } from '../telas/contabil/configuracoes/ConfiguracoesContabil';
@@ -34,7 +34,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'fiscal': return pagina === 'empresas' ? <MinhasEmpresas /> : pagina === 'painel' ? <PainelDoFiscal /> : pagina === 'reinf' ? <Reinf /> : <VisaoContabil pagina={pagina} dep="fiscal" />;
     case 'dp': return ABAS_DO_PAINEL.includes(pagina as AbaDoPainel) ? <PainelDoDp aba={pagina as AbaDoPainel} /> : pagina === 'configuracoes' ? <ConfiguracoesDoDp /> : pagina === 'fgts' ? <FgtsDoDp /> : <VisaoContabil pagina={pagina} dep="dp" />;
     case 'senhas': return pagina === 'acesso' ? <AcessoAoCofre /> : pagina === 'gov' ? <ContasGov /> : pagina === 'certificados' ? <Certificados /> : <SenhasDasEmpresas />;
-    case 'cadastro': return pagina === 'configuracoes' ? <ConfiguracoesDoNads /> : <UsuariosDoNads />;
+    case 'cadastro': return pagina === 'sistema' ? <RobosEAgentes /> : <UsuariosDoNads />;
     case 'mandei': return <Mandei pagina={pagina === 'central' ? 'central' : 'meus'} />;
     case 'drive': return <ExploradorDoDrive />;
     case 'contato': return pagina === 'historico' ? <HistoricoDoRobo /> : <CaixaDoRobo />;
@@ -47,6 +47,8 @@ export function AplicacaoAberta() {
   const op = useOperador().operador as Operador;
   const a = aplicacoesDe(op).find(x => x.id === app);
   if (!a) return <Navigate to={caminhoDaPagina('minhas-empresas', 'empresas')} replace />;
+  // os links antigos do Cadastro (Configurações e Agentes viraram Robôs e agentes; 13/10/2026)
+  if (a.id === 'cadastro' && (pagina === 'configuracoes' || pagina === 'agentes' || pagina === 'robos')) return <Navigate to={caminhoDaPagina('cadastro', 'sistema')} replace />;
   if (!a.paginas.some(p => p.id === pagina)) return <Navigate to={caminhoDaPagina(a.id, a.paginas[0].id)} replace />;
   return (
     <TopoProvider>

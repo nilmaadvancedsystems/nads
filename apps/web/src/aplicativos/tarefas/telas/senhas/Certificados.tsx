@@ -3,6 +3,7 @@
 // filtra), os cartões com a contagem regressiva dos que pedem atenção e a lista; clicar abre o certificado da empresa.
 import { Esqueleto, useCarregando } from '@nads/ui';
 import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
+import { TelaDeBloqueio } from './TelaDeBloqueio';
 import { SegredosDaEmpresa } from './SegredosDaEmpresa';
 import { useCertificados, type FiltroDeCertificados } from './useCertificados';
 
@@ -75,8 +76,7 @@ function Contagem({ dias }: { dias: number }) {
         <circle cx="21" cy="21" r={R} className="cert-rosca-fundo" />
         <circle cx="21" cy="21" r={R} className="cert-contagem-arco" strokeDasharray={pct + ' ' + (100 - pct)} strokeDashoffset={25} />
       </svg>
-      <span className="cert-contagem-num num">{Math.abs(dias)}</span>
-      <span className="cert-contagem-txt">{vencido ? 'vencido' : dias === 1 ? 'dia' : 'dias'}</span>
+      <span className={'cert-contagem-num num' + (Math.abs(dias) >= 100 ? ' longo' : '')}>{Math.abs(dias)}</span>
     </span>
   );
 }
@@ -85,6 +85,8 @@ export function Certificados() {
   const vm = useCertificados();
   useCarregando(vm.carregando);
   if (vm.carregando) return <Esqueleto linhas={8} />;
+  // sem acesso ao cofre, só a tela de pedir acesso (13/10/2026: "não era pra tela nem abrir, era pra só ter a tela de pedir acesso")
+  if (vm.cofre.estado !== 'aberto') return <TelaDeBloqueio vm={vm.cofre} />;
   const doMes = vm.mes ? vm.porMes.find(m => m.chave === vm.mes) : null;
   return (
     <section>
@@ -102,10 +104,11 @@ export function Certificados() {
       {vm.urgentes.length > 0 && (
         <div className="cert-urgentes">
           {vm.urgentes.slice(0, 8).map(l => (
-            <button key={l.chave} type="button" className={'card cert-urgente ' + (l.situacao === 'vencido' ? 'vencido' : 'vence')} onClick={() => vm.abrir(l.nome, l.codigo)}>
+            <button key={l.chave} type="button" className={'card cert-urgente ' + (l.situacao === 'vencido' ? 'vencido' : 'vence') + (vm.cofre.bloqueio ? ' cofre-bloqueado' : '')} title={vm.cofre.bloqueio || undefined} onClick={() => vm.abrir(l.nome, l.codigo)}>
               <Contagem dias={l.dias ?? 0} />
               <span className="cert-urgente-texto">
                 <b>{l.nome}</b>
+                <span className={'cert-urgente-prazo ' + (l.situacao === 'vencido' ? 'vencido' : 'vence')}>{(l.dias ?? 0) < 0 ? 'Vencido há ' + -(l.dias ?? 0) + (l.dias === -1 ? ' dia' : ' dias') : l.dias === 0 ? 'Vence hoje' : 'Vence em ' + l.dias + (l.dias === 1 ? ' dia' : ' dias')}</span>
                 <span className="fraco num">{l.codigo != null ? l.codigo + ' · ' : ''}{data(l.validade)}</span>
               </span>
             </button>
@@ -124,7 +127,7 @@ export function Certificados() {
               <thead><tr><th>Cód.</th><th>Empresa</th><th>Validade</th><th>Situação</th></tr></thead>
               <tbody>
                 {vm.linhas.map(l => (
-                  <tr key={l.chave} className="dp-linha-abre" onClick={() => vm.abrir(l.nome, l.codigo)}>
+                  <tr key={l.chave} className={vm.cofre.bloqueio ? 'cofre-bloqueado' : 'dp-linha-abre'} title={vm.cofre.bloqueio || undefined} onClick={() => vm.abrir(l.nome, l.codigo)}>
                     <td className="num fraco">{l.codigo ?? ''}</td>
                     <td className="cofre-nome">{l.nome}</td>
                     <td className="num">{data(l.validade) || <span className="fraco">—</span>}</td>

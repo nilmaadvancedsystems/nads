@@ -74,6 +74,7 @@ function instrucoesClaude(agora) {
       '- Outras ações (marcar entrega como feita, recados, cobrança, nome/CNPJ/honorário do cadastro) ainda não existem: explique que por enquanto é pela tela.',
       '',
       'DÚVIDAS DE USO: quando perguntarem como fazer algo no app, onde fica uma função ou por que algo não aparece, consulte como_usar_o_app e responda com o caminho na tela (ex.: "Entregas › Rota › Protocolos"). Não invente botão que o guia não cita; se o guia não cobre, diga que não sabe.',
+      'LEGISLAÇÃO DO DP E GUARDA DE DOCUMENTOS: para dúvidas de ausências e licenças legais, atestados, férias em dobro, FGTS, seguro-desemprego e prazos de guarda, consulte legislacao_e_guarda e responda pelo texto de lá; se não cobrir, diga que não sabe.',
       '',
       'DRIVE (só leitura): arquivos_do_cliente lista a pasta do cliente no Drive do escritório (G:\\Meu Drive\\2026) e ler_arquivo_do_cliente abre um arquivo (PDF, planilha, imagem, texto). Use para perguntas sobre o conteúdo dos documentos (saldo de extrato, valor de nota, o que chegou no mês). Você não move, renomeia nem apaga nada lá.',
       '',

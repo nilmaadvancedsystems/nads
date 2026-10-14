@@ -46,13 +46,13 @@ export function ImportarCertificados({ cofre, fechar }: { cofre: VmCofre; fechar
           <button type="button" className="drawer-x" aria-label="Fechar" onClick={fechar}><Icone nome="x" /></button>
         </header>
         <div className="imp-cert-corpo">
-          <input ref={input} type="file" accept=".pfx,.p12" multiple hidden onChange={e => { soltar(e.target.files); e.target.value = ''; }} />
+          <input ref={input} type="file" accept=".pfx,.p12,.json" multiple hidden onChange={e => { soltar(e.target.files); e.target.value = ''; }} />
           <button type="button" className={'cert-soltar' + (sobre ? ' sobre' : '') + (vm.fila.length ? ' compacto' : '')} onClick={() => input.current?.click()}
             onDragOver={e => { e.preventDefault(); setSobre(true); }} onDragLeave={() => setSobre(false)}
             onDrop={e => { e.preventDefault(); setSobre(false); soltar(e.dataTransfer.files); }}>
             <span className="cert-soltar-icone"><Icone nome="upload" /></span>
             <b>{vm.fila.length ? 'Soltar mais certificados' : 'Solte os certificados aqui'}</b>
-            <span className="fraco">um ou vários .pfx — a empresa vem pelo CNPJ</span>
+            <span className="fraco">um ou vários .pfx, ou o pacote do Toriba (.json) — a empresa vem pelo CNPJ</span>
           </button>
           <ul className="imp-cert-lista">
             {vm.fila.map(x => (

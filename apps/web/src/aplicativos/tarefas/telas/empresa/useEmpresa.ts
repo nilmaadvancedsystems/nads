@@ -5,7 +5,7 @@ import { empresas, extrator, tarefas as t } from '@nads/core';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { extratorDaEmpresa } from '../../dados/fonte';
-import { useRepo, useVersaoDoRepo } from '../../dados/repo';
+import { useRegimesDoEntregas, useRepo, useVersaoDoRepo } from '../../dados/repo';
 import { caminhoDaEmpresa, caminhoDoExecutor, competenciasDaTela } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 import { ACAO } from '../empresas/andamento';
@@ -27,6 +27,7 @@ function ultimoToque(ex: t.Execucao | null): { por: string; em: string } | null 
 }
 
 export function useEmpresa(rota: string) {
+  useRegimesDoEntregas(); // o regime do Entregas, quando chega
   const repo = useRepo();
   useVersaoDoRepo();
   const navegar = useNavigate();

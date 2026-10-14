@@ -4,8 +4,9 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { bancosDoEntregas, contatosDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDeCategoriasDp, repoDoArquivador, repoDoFgts, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
+import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDeCategoriasDp, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
 import type { RepoCofre } from './cofre';
+import type { RepoAgentes } from './agentes';
 import type { RepoSieg } from './sieg';
 import type { RepoFgts } from './fgts';
 import type { RepoArquivador } from './arquivador';
@@ -164,6 +165,13 @@ export function useFgts(): RepoFgts {
   return repo;
 }
 
+/** O painel dos agentes do Claude Code, ao vivo (as sessões que o robô do PC publica). */
+export function useAgentes(): RepoAgentes {
+  const repo = repoDosAgentes();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
 /** O arquivador (o "Arquivar agora"), ao vivo: o ponto do PC e os últimos pedidos. */
 export function useArquivador(): RepoArquivador {
   const repo = repoDoArquivador();
@@ -228,4 +236,12 @@ export function usePrestaServico(nome: string | null, codigo: number | null): bo
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   if (!nome || !repo.carregada(nome)) return null;
   return repo.cadastro(nome, codigo).prestaServico ?? null;
+}
+
+/**
+ * Desenha de novo quando os regimes do Entregas chegam (o enquadramento e a Receita; 13/10/2026): quem mostra o regime ou
+ * monta a rotina chama este gancho (t.regimeDaEmpresa já lê o que chegou).
+ */
+export function useRegimesDoEntregas(): void {
+  useSyncExternalStore(assinarRegimesDoEntregas, versaoDosRegimesDoEntregas, () => null);
 }

@@ -13,6 +13,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 
 import { createPortal } from 'react-dom';
 import { ROTULO_DO_RELATORIO, type VmPainelDoFiscal } from '../usePainelDoFiscal';
 import { animarPainel } from './animarPainel';
+import { GuiaParaSubir } from './GuiaParaSubir';
 import { SiegDaEtapa } from './SiegDaEtapa';
 
 const { reais } = formatos;
@@ -214,6 +215,213 @@ function ValoresNotaANota({ c }: { c: t.sieg.ConferenciaDeValores | null }) {
   );
 }
 
+// ---------- o Presumido e o Real pelos XMLs (13/10/2026: "agora monte a rotina do lucro presumido e real") ----------
+
+type Informar = (chave: string, valor: number) => void;
+const lerReais = (s: string) => Number(s.replace(/\./g, '').replace(',', '.'));
+const emReais = (v: number | null | undefined) => (v != null ? v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '');
+const pctBr = (v: number) => v.toLocaleString('pt-BR') + '%';
+
+/** Um valor em reais que a pessoa informa: grava ao sair do campo (ou no Enter). */
+function CampoEmReais({ rotulo, valor, salvar, semRotulo }: { rotulo: string; valor: number | null; salvar?: (v: number) => void; semRotulo?: boolean }) {
+  const campo = (
+    <input key={rotulo + '|' + valor} type="text" inputMode="decimal" placeholder="0,00" defaultValue={emReais(valor)} disabled={!salvar} aria-label={rotulo}
+      onBlur={e => { const v = lerReais(e.target.value); if (e.target.value.trim() && Number.isFinite(v) && v >= 0 && v !== valor) salvar?.(v); }}
+      onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
+  );
+  if (semRotulo) return campo;
+  return <label className="field dp-filtro"><span className="hint">{rotulo}</span>{campo}</label>;
+}
+
+/** Os XMLs do mês foram lidos antes de o robô guardar o ICMS de cada item (o resumo 1): baixar de novo. */
+function SemImpostosNoXml({ vm }: { vm: VmPainelDoFiscal }) {
+  if (!vm.lucro || vm.lucro.temImpostos) return null;
+  return <Alerta naLinha titulo="Baixe os XMLs de novo" texto="Os XMLs deste mês foram lidos antes de o robô guardar o ICMS de cada item: baixe de novo do SIEG (na etapa Inicial) para tirar o ICMS da base e calcular o ICMS e os créditos." />;
+}
+const semXml = (o: string) => <p className="hint">Baixe os XMLs do SIEG (na etapa Inicial) para calcular {o}.</p>;
+
+/** O PIS/COFINS do mês: cumulativo no Presumido, não cumulativo no Real (com os créditos). */
+function PisCofinsPrevia({ vm }: { vm: VmPainelDoFiscal }) {
+  if (!vm.lucro) return semXml('a prévia do PIS/COFINS');
+  const regime: t.sieg.RegimeDoLucro = vm.regime === 'Real' ? 'Real' : 'Presumido';
+  const r = vm.lucro.receitas;
+  const p = t.sieg.pisCofins(regime, r, regime === 'Real' ? vm.lucro.creditos : null);
+  const linha = (rotulo: string, pis: number, cofins: number, forte = false) => (
+    <tr><td>{forte ? <b>{rotulo}</b> : rotulo}</td><td className="num">{forte ? <b>{reais(pis)}</b> : reais(pis)}</td><td className="num">{forte ? <b>{reais(cofins)}</b> : reais(cofins)}</td></tr>
+  );
+  return (
+    <>
+      <SemImpostosNoXml vm={vm} />
+      <div className="stat-grid">
+        <Stat rotulo="Base do mês" valor={<Conta valor={p.base} formato="reais" />} />
+        <Stat rotulo={'PIS a pagar (' + pctBr(p.aliquotas.pis) + ')'} valor={<Conta valor={p.aPagar.pis} formato="reais" />} />
+        <Stat rotulo={'COFINS a pagar (' + pctBr(p.aliquotas.cofins) + ')'} valor={<Conta valor={p.aPagar.cofins} formato="reais" />} />
+      </div>
+      <div className="table-wrap table-compact">
+        <table>
+          <thead><tr><th>A base</th><th className="num">Valor</th></tr></thead>
+          <tbody>
+            <tr><td>Receita de mercadorias</td><td className="num">{reais(r.mercadorias)}</td></tr>
+            {r.devolucoes > 0 && <tr><td>(−) Devoluções de venda</td><td className="num">{reais(r.devolucoes)}</td></tr>}
+            {r.semPisCofins > 0 && <tr><td>(−) Sem PIS/COFINS (monofásico, ST, alíquota zero, isenta)</td><td className="num">{reais(r.semPisCofins)}</td></tr>}
+            {r.icmsDestacado > 0 && <tr><td>(−) ICMS destacado nas notas</td><td className="num">{reais(r.icmsDestacado)}</td></tr>}
+            {r.servicos > 0 && <tr><td>(+) Serviços prestados (NFS-e)</td><td className="num">{reais(r.servicos)}</td></tr>}
+            <tr><td><b>Base</b></td><td className="num"><b>{reais(p.base)}</b></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="table-wrap table-compact">
+        <table>
+          <thead><tr><th>Apuração</th><th className="num">PIS</th><th className="num">COFINS</th></tr></thead>
+          <tbody>
+            {linha('Débito', p.debito.pis, p.debito.cofins)}
+            {regime === 'Real' && linha('(−) Créditos das entradas', p.credito.pis, p.credito.cofins)}
+            {p.retido.pis + p.retido.cofins > 0 && linha('(−) Retido nas notas de serviço', p.retido.pis, p.retido.cofins)}
+            {linha('A pagar', p.aPagar.pis, p.aPagar.cofins, true)}
+            {p.saldoCredor.pis + p.saldoCredor.cofins > 0 && linha('Saldo credor para o mês seguinte', p.saldoCredor.pis, p.saldoCredor.cofins)}
+          </tbody>
+        </table>
+      </div>
+      <p className="hint">
+        Prévia para conferir: o que vale é a apuração no Alterdata{regime === 'Real' ? ' e a EFD-Contribuições' : ''}.{' '}
+        {regime === 'Presumido' ? 'Cumulativo: sem créditos.' : 'Os créditos de energia, aluguel e depreciação vêm do Contábil e não estão aqui.'}
+        {' '}Sem o CST do PIS na nota, o monofásico sai pela lista resumida de NCMs.
+      </p>
+    </>
+  );
+}
+
+/** Os créditos de PIS/COFINS do Real pelas notas recebidas: as compras sem o ICMS, sem os monofásicos, e os fretes. */
+function CreditosReal({ vm }: { vm: VmPainelDoFiscal }) {
+  if (!vm.lucro) return semXml('os créditos');
+  const c = vm.lucro.creditos;
+  const a = t.sieg.ALIQUOTAS_PIS_COFINS.Real;
+  const cred = (pct: number) => Math.round(c.base * pct) / 100;
+  return (
+    <>
+      <SemImpostosNoXml vm={vm} />
+      <div className="stat-grid">
+        <Stat rotulo="Base dos créditos" valor={<Conta valor={c.base} formato="reais" />} />
+        <Stat rotulo={'Crédito de PIS (' + pctBr(a.pis) + ')'} valor={<Conta valor={cred(a.pis)} formato="reais" />} />
+        <Stat rotulo={'Crédito de COFINS (' + pctBr(a.cofins) + ')'} valor={<Conta valor={cred(a.cofins)} formato="reais" />} />
+      </div>
+      <div className="table-wrap table-compact">
+        <table>
+          <thead><tr><th>Das notas recebidas</th><th className="num">Valor</th></tr></thead>
+          <tbody>
+            <tr><td>Compras de mercadorias e insumos (sem o ICMS)</td><td className="num">{reais(c.compras)}</td></tr>
+            <tr><td>Fretes (CT-e)</td><td className="num">{reais(c.fretes)}</td></tr>
+            <tr><td><b>Base dos créditos</b></td><td className="num"><b>{reais(c.base)}</b></td></tr>
+            {c.monofasicos > 0 && <tr><td className="hint">Compras de monofásicos (sem crédito na revenda)</td><td className="num hint">{reais(c.monofasicos)}</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      <p className="hint">As compras saem do CFOP de venda do fornecedor: confira as de uso e consumo e as de ativo, que não dão crédito direto. O frete só dá crédito quando é da compra ou da venda.</p>
+    </>
+  );
+}
+
+/** O ICMS do mês pelos XMLs: os débitos das saídas, os créditos das compras e das devoluções, o saldo anterior. */
+function IcmsApuracao({ vm, valores, informar }: { vm: VmPainelDoFiscal; valores?: Record<string, number>; informar?: Informar }) {
+  const i = t.sieg.icmsDoMes(vm.lucro?.xmlDados || null, valores?.icmsSaldoAnterior ?? 0);
+  return (
+    <>
+      <div className="tarefas-filtros dp-filtros">
+        <CampoEmReais rotulo="Saldo credor do mês anterior" valor={valores?.icmsSaldoAnterior ?? null} salvar={informar ? v => informar('icmsSaldoAnterior', v) : undefined} />
+      </div>
+      <div className="stat-grid">
+        <Stat rotulo="Débitos (saídas)" valor={<Conta valor={i.debitos} formato="reais" />} cor="saida" />
+        <Stat rotulo={'Créditos (' + i.notasDeCompra + (i.notasDeCompra === 1 ? ' nota de compra' : ' notas de compra') + ')'} valor={<Conta valor={i.creditos} formato="reais" />} cor="entrada" />
+        <Stat rotulo={i.aPagar > 0 ? 'ICMS a recolher' : 'Saldo credor para o mês seguinte'} valor={<Conta valor={i.aPagar > 0 ? i.aPagar : i.saldoCredor} formato="reais" />} />
+      </div>
+      {(i.stRetido > 0 || i.ipiSaidas > 0 || i.ipiEntradas > 0) && (
+        <div className="stat-grid">
+          {i.stRetido > 0 && <Stat rotulo="ICMS-ST retido nas saídas (guia própria)" valor={<Conta valor={i.stRetido} formato="reais" />} />}
+          {i.ipiSaidas > 0 && <Stat rotulo="IPI das saídas" valor={<Conta valor={i.ipiSaidas} formato="reais" />} />}
+          {i.ipiEntradas > 0 && <Stat rotulo="IPI das compras" valor={<Conta valor={i.ipiEntradas} formato="reais" />} />}
+        </div>
+      )}
+      <p className="hint">Prévia para conferir: o que vale é a apuração no Alterdata e a DAPI. Os créditos contam todas as compras pelo CFOP do fornecedor: tire as de uso e consumo; o ativo entra pelo CIAP (1/48 por mês).</p>
+    </>
+  );
+}
+
+/** O IRPJ e a CSLL: o trimestre no Presumido (os três meses), a estimativa do mês no Real. */
+function IrpjPrevia({ vm, competencia, valores, informar }: { vm: VmPainelDoFiscal; competencia: string; valores?: Record<string, number>; informar?: Informar }) {
+  if (!vm.lucro) return semXml('o IRPJ e a CSLL');
+  const real = vm.regime === 'Real';
+  const P = t.sieg.PRESUNCOES;
+  const pm = P[valores?.presuncaoMerc ?? 0]?.id ?? 'comercio';
+  const ps = P[valores?.presuncaoServ ?? 2]?.id ?? 'servicos';
+  const doMes = { ...t.sieg.receitaParaIrpj(competencia, vm.lucro.receitas), origem: 'Os XMLs deste mês', falta: false, digitavel: false };
+  const manual = (c: string, k: 'Merc' | 'Serv') => 'ir' + c.replace('-', '') + k;
+  const outros = real ? [] : vm.outrosMeses.map(m => {
+    const v = m.valores;
+    if (typeof v.irMerc === 'number') return { competencia: m.competencia, mercadorias: v.irMerc, servicos: v.irServ || 0, irrf: v.irIrrf || 0, csll: v.irCsll || 0, origem: 'A rotina do mês', falta: false, digitavel: false };
+    const merc = valores?.[manual(m.competencia, 'Merc')], serv = valores?.[manual(m.competencia, 'Serv')];
+    return { competencia: m.competencia, mercadorias: merc ?? 0, servicos: serv ?? 0, irrf: 0, csll: 0, origem: 'Digitado', falta: merc == null && serv == null, digitavel: true };
+  });
+  const linhas = [...outros, doMes];
+  const r = t.sieg.irpjCsll(linhas, { mercadorias: pm, servicos: ps }, valores?.irOutras ?? 0);
+  const faltam = outros.filter(o => o.falta);
+  const opcoes = P.map((p, k) => <option key={p.id} value={k}>{p.rotulo} (IRPJ {pctBr(p.irpj)}, CSLL {pctBr(p.csll)})</option>);
+  const lin = (rotulo: string, ir: number, cs: number, forte = false) => (
+    <tr><td>{forte ? <b>{rotulo}</b> : rotulo}</td><td className="num">{forte ? <b>{reais(ir)}</b> : reais(ir)}</td><td className="num">{forte ? <b>{reais(cs)}</b> : reais(cs)}</td></tr>
+  );
+  return (
+    <>
+      <SemImpostosNoXml vm={vm} />
+      <div className="tarefas-filtros dp-filtros">
+        <label className="field dp-filtro">
+          <span className="hint">Presunção das mercadorias</span>
+          <select className="select-compact" value={P.findIndex(p => p.id === pm)} disabled={!informar} onChange={e => informar?.('presuncaoMerc', Number(e.target.value))}>{opcoes}</select>
+        </label>
+        <label className="field dp-filtro">
+          <span className="hint">Presunção dos serviços</span>
+          <select className="select-compact" value={P.findIndex(p => p.id === ps)} disabled={!informar} onChange={e => informar?.('presuncaoServ', Number(e.target.value))}>{opcoes}</select>
+        </label>
+        <CampoEmReais rotulo={real ? 'Receitas financeiras e ganhos do mês' : 'Receitas financeiras e ganhos do trimestre'} valor={valores?.irOutras ?? null} salvar={informar ? v => informar('irOutras', v) : undefined} />
+      </div>
+      {faltam.length > 0 && <Alerta naLinha titulo={'Falta a receita de ' + faltam.map(f => t.rotuloNumericoCompetencia(f.competencia)).join(' e ')} texto="Abra a rotina desse mês (com os XMLs baixados) para trazer sozinho, ou digite a receita na tabela." />}
+      {r.acimaDaLc224 && <Alerta naLinha titulo="Receita acima de R$ 5 milhões no ano" texto="A LC 224/2025 aumenta a presunção da parte da receita acima desse limite: confira o cálculo no Alterdata." />}
+      <div className="table-wrap table-compact">
+        <table>
+          <thead><tr><th>Mês</th><th className="num">Mercadorias</th><th className="num">Serviços</th><th className="num">IRRF retido</th><th className="num">CSLL retida</th><th>De onde</th></tr></thead>
+          <tbody>
+            {linhas.map(l => (
+              <tr key={l.competencia}>
+                <td><b>{t.rotuloNumericoCompetencia(l.competencia)}</b></td>
+                <td className="num">{l.digitavel ? <CampoEmReais semRotulo rotulo={'Mercadorias de ' + l.competencia} valor={l.falta ? null : l.mercadorias} salvar={informar ? v => informar(manual(l.competencia, 'Merc'), v) : undefined} /> : reais(l.mercadorias)}</td>
+                <td className="num">{l.digitavel ? <CampoEmReais semRotulo rotulo={'Serviços de ' + l.competencia} valor={l.falta ? null : l.servicos} salvar={informar ? v => informar(manual(l.competencia, 'Serv'), v) : undefined} /> : reais(l.servicos)}</td>
+                <td className="num">{reais(l.irrf)}</td><td className="num">{reais(l.csll)}</td>
+                <td>{l.falta ? <span className="badge badge-warn">Falta</span> : <span className="hint">{l.origem}</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="table-wrap table-compact">
+        <table>
+          <thead><tr><th>{real ? 'Estimativa do mês' : 'O trimestre'}</th><th className="num">IRPJ</th><th className="num">CSLL</th></tr></thead>
+          <tbody>
+            {lin('Base (presunção' + (r.receita.outras ? ' e outras receitas' : '') + ')', r.base.irpj, r.base.csll)}
+            {lin('Imposto (15% e 9%)', r.irpj, r.csll)}
+            {r.adicional > 0 && lin('Adicional do IRPJ (10% acima de R$ ' + (20000 * r.meses).toLocaleString('pt-BR') + ')', r.adicional, 0)}
+            {r.retido.irpj + r.retido.csll > 0 && lin('(−) Retido nas notas de serviço', r.retido.irpj, r.retido.csll)}
+            {lin('A pagar', r.aPagar.irpj, r.aPagar.csll, true)}
+          </tbody>
+        </table>
+      </div>
+      <p className="hint">
+        Prévia para conferir: o que vale é a apuração no Alterdata.{' '}
+        {real
+          ? 'Estimativa pela receita: se o balancete do Contábil der menos, use a suspensão ou a redução.'
+          : 'Em cota única ou em até 3 cotas (cada uma de pelo menos R$ 1.000; abaixo de R$ 2.000, cota única): IRPJ em ' + r.cotas.irpj + ', CSLL em ' + r.cotas.csll + '.'}
+      </p>
+    </>
+  );
+}
+
 /** O PGDAS-D pelos XMLs (13/10/2026): o RBT12 e os anexos (informados na etapa), o aviso de limite, a receita separada em
  * monofásico e ST (o que se segrega no PGDAS) e a prévia do DAS. É prévia: o que vale é o PGDAS. */
 function PgdasPrevia({ vm, valores, informar }: { vm: VmPainelDoFiscal; valores?: Record<string, number>; informar?: (chave: string, valor: number) => void }) {
@@ -237,7 +445,7 @@ function PgdasPrevia({ vm, valores, informar }: { vm: VmPainelDoFiscal; valores?
   const pct = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 4 }) + '%';
   return (
     <>
-      {vm.regime && vm.regime !== 'Simples' && vm.regime !== 'MEI' && <p className="hint">Esta empresa está como {vm.regime} na lista do escritório: a prévia é do Simples.</p>}
+      {vm.regime && vm.regime !== 'Simples' && vm.regime !== 'MEI' && <p className="hint">Esta empresa está como {vm.regime} no cadastro: a prévia é do Simples.</p>}
       <form className="tarefas-filtros dp-filtros" onSubmit={e => { e.preventDefault(); if (valido && informar) informar('rbt12', lido); }}>
         <label className="field dp-filtro">
           <span className="hint">RBT12 (receita bruta dos últimos 12 meses)</span>
@@ -676,14 +884,24 @@ function Corpo({ painel, vm, codigo, competencia, importar, valores, informar, a
         </>
       );
     }
-    case 'receitas':
-    case 'irpj': {
+    case 'guia-das':
+    case 'guia-dae': {
+      const chave = painel === 'guia-das' ? 'guiaDas' : 'guiaDae';
+      return codigo ? <GuiaParaSubir guia={painel === 'guia-das' ? 'DAS' : 'DAE'} codigo={codigo} competencia={competencia} enviadas={valores?.[chave] ?? 0} marcar={informar ? n => informar(chave, n) : undefined} /> : null;
+    }
+    case 'piscofins':
+      return <PisCofinsPrevia vm={vm} />;
+    case 'creditos':
+      return <CreditosReal vm={vm} />;
+    case 'irpj':
+      return <IrpjPrevia vm={vm} competencia={competencia} valores={valores} informar={informar} />;
+    case 'receitas': {
       if (!vm.receita.length) return vazio('saidas');
       const receita = vm.receita.filter(f => f.classe === 'venda' || f.classe === 'st' || f.classe === 'servico').reduce((s, f) => s + f.valor, 0);
       return (
         <>
           <div className="stat-grid">
-            <Stat rotulo={painel === 'irpj' ? 'Receita do mês (o trimestre soma os 3)' : 'Receita do mês'} valor={<Conta valor={receita} formato="reais" />} cor="saida" />
+            <Stat rotulo="Receita do mês" valor={<Conta valor={receita} formato="reais" />} cor="saida" />
             <Stat rotulo="Serviços prestados" valor={<Conta valor={vm.prestados.total} formato="reais" />} />
           </div>
           <Rank linhas={composicao(vm.receita)} />
@@ -699,9 +917,12 @@ function Corpo({ painel, vm, codigo, competencia, importar, valores, informar, a
         </>
       );
     case 'icms':
+      // pelos XMLs quando já trazem o ICMS de cada item (13/10/2026); senão, os totais do Alterdata
+      if (vm.lucro?.temImpostos) return <IcmsApuracao vm={vm} valores={valores} informar={informar} />;
       if (!vm.saidas.qtd && !vm.entradas.qtd) return vazio('saidas');
       return (
         <>
+          <SemImpostosNoXml vm={vm} />
           <div className="stat-grid">
             <Stat rotulo="Saídas (débitos)" valor={<Conta valor={vm.saidas.total} formato="reais" />} cor="saida" />
             <Stat rotulo="Entradas (créditos)" valor={<Conta valor={vm.entradas.total} formato="reais" />} cor="entrada" />

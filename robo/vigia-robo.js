@@ -977,6 +977,9 @@ async function iniciar() {
   // Texto completo de um e-mail, aberto no painel da tela do Robô.
   try { require('./leituras-gmail').iniciarLeiturasGmail(db, log, getGmail); }
   catch (err) { log('texto completo do e-mail desligado:', err.message); }
+  // "Buscar no e-mail" do nads (Bancos): o remetente e o período, e o anexo escolhido em pedaços (Vitor, 13/10/2026).
+  try { require('./buscas-email').iniciarBuscasEmail(db, log, getGmail); }
+  catch (err) { log('buscar no e-mail desligado:', err.message); }
   // Mapa da pasta do ano no Drive (explorador do Pendências, status pela
   // pasta) e "abrir arquivo" pelo app. Só onde o robô fala com o Drive pela
   // API — na nuvem. Ver drive-indice.js e abrir-do-drive.js.

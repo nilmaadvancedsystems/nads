@@ -3,7 +3,7 @@
 import { Esqueleto, Icone, Segmentado, useCarregando } from '@nads/ui';
 import { useState } from 'react';
 import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
-import { CofreFechado } from './CofreFechado';
+import { TelaDeBloqueio } from './TelaDeBloqueio';
 import { ImportarCertificados } from './ImportarCertificados';
 import { SegredosDaEmpresa } from './SegredosDaEmpresa';
 import { useSenhasDasEmpresas, type FiltroDeSenhas } from './useSenhasDasEmpresas';
@@ -17,6 +17,8 @@ export function SenhasDasEmpresas() {
   const [importando, setImportando] = useState(false);
   useCarregando(vm.cofre.estado === 'carregando');
   if (vm.cofre.estado === 'carregando') return <Esqueleto linhas={8} />;
+  // sem acesso ao cofre, só a tela de pedir acesso (13/10/2026: "não era pra tela nem abrir, era pra só ter a tela de pedir acesso")
+  if (vm.cofre.estado !== 'aberto') return <TelaDeBloqueio vm={vm.cofre} />;
   const filtros: { valor: FiltroDeSenhas; rotulo: string }[] = [
     { valor: 'todas', rotulo: 'Todas · ' + vm.contagem.todas },
     { valor: 'vencendo', rotulo: 'Certificado vencendo · ' + vm.contagem.vencendo },
@@ -24,7 +26,6 @@ export function SenhasDasEmpresas() {
   ];
   return (
     <section>
-      {vm.cofre.estado !== 'aberto' && <CofreFechado vm={vm.cofre} />}
       <div className="tarefas-barra-topo">
         <Segmentado valor={vm.filtro} opcoes={filtros} onMudar={vm.setFiltro} />
         <span className="tarefas-barra-espaco" />
@@ -36,19 +37,20 @@ export function SenhasDasEmpresas() {
       </div>
       <div className="table-wrap cofre-tabela">
         <table>
-          <thead><tr><th>Cód.</th><th>Empresa</th><th>gov.br</th><th>Certificado</th></tr></thead>
+          <thead><tr><th>Cód.</th><th>Empresa</th><th>gov.br</th><th>Certificado</th><th>Atualizado</th></tr></thead>
           <tbody>
             {vm.linhas.map(l => (
-              <tr key={l.chave} className="dp-linha-abre" onClick={() => { vm.abrir(l.nome, l.codigo); setTopico('gov'); }}>
-                <td className="num fraco">{l.codigo ?? ''}</td>
+              <tr key={l.chave} className={vm.cofre.bloqueio ? 'cofre-bloqueado' : 'dp-linha-abre'} title={vm.cofre.bloqueio || undefined} onClick={() => { vm.abrir(l.nome, l.codigo); setTopico('gov'); }}>
+                <td>{l.codigo != null && <span className="emp-cod">{l.codigo}</span>}</td>
                 <td className="cofre-nome">{l.nome}</td>
-                <td>{l.temGov ? <span className="badge badge-ok">Guardada</span> : <span className="fraco">—</span>}</td>
+                <td>{l.temGov ? <span className="badge badge-ok">Guardada</span> : <span className="pill-vazio">sem senha</span>}</td>
                 <td>
-                  {l.situacao === 'sem' ? <span className="fraco">—</span>
+                  {l.situacao === 'sem' ? <span className="pill-vazio">sem certificado</span>
                     : <span className={'badge ' + (l.situacao === 'vencido' ? 'badge-danger' : l.situacao === 'vence' ? 'badge-warn' : 'badge-ok')}>
                       {l.situacao === 'vencido' ? 'Vencido' : l.situacao === 'vence' ? 'Vence em ' + l.dias + ' dias' : 'Até ' + l.validade.split('-').reverse().join('/')}
                     </span>}
                 </td>
+                <td className="fraco cofre-atualizado">{l.atualizadoEm ? new Date(l.atualizadoEm).toLocaleDateString('pt-BR') + (l.atualizadoPor ? ' · ' + l.atualizadoPor.split(' ')[0] : '') : ''}</td>
               </tr>
             ))}
           </tbody>

@@ -3,7 +3,7 @@
 // Origem: conferencia.html #cadCardNfe (~L1165-1169), renderNaturezaDePara (~L2082-2132),
 // vendaVistaCard (~L2164), vistaRowCfop (~L2181-2203), "Não vai para o Contábil" (~L2117-2121).
 import { Icone, Interruptor } from '@nads/ui';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type CSSProperties } from 'react';
 import type { ItemNatureza, SlotVista, useConfiguracoes } from '../useConfiguracoes';
 import { CampoVincular, ChipsDeContas } from './VincularConta';
 
@@ -20,8 +20,16 @@ export function Naturezas({ n, entradas, vm }: { n: Naturezas; entradas: boolean
             {n.cartaoVista && (
               <div className="vista-card">
                 <div className="vista-head" style={{ alignItems: 'center' }}>
-                  <p className="vista-tit">{n.cartaoVista.titulo}</p>
-                  <Interruptor ligado={n.cartaoVista.ativo} onMudar={vm.alternarVista} rotulo="Vendas à vista e à prazo" />
+                  <div>
+                    <p className="vista-tit">Separar vendas à vista e a prazo</p>
+                    {/* o que o liga/desliga faz (Vitor, 13/10/2026: "pouco intuitivo") */}
+                    <p className="hint" style={{ margin: '4px 0 0' }}>
+                      {n.cartaoVista.ativo
+                        ? 'Ligado: cada venda tem dois códigos de lançamento, à vista (consumidor, CPF) e a prazo (empresa, CNPJ).'
+                        : 'Desligado: todas as vendas usam um só lançamento. Ligue para separar à vista (CPF) e a prazo (CNPJ).'}
+                    </p>
+                  </div>
+                  <Interruptor ligado={n.cartaoVista.ativo} onMudar={vm.alternarVista} rotulo="Separar vendas à vista e a prazo" />
                 </div>
                 {n.cartaoVista.semDoc && (
                   <p className="hint" style={{ margin: '8px 0 0', color: 'var(--danger)' }}>As saídas guardadas não têm a coluna CPF/CNPJ. Reimporte as saídas (Importar apenas novas) pro sistema reconhecer as vendas no CPF.</p>
@@ -40,16 +48,18 @@ export function Naturezas({ n, entradas, vm }: { n: Naturezas; entradas: boolean
   );
 }
 
+/** O nome de cada linha da natureza (Conta contábil, Lançamento): a coluna da esquerda. */
+const ROTULO: CSSProperties = { width: 150, flex: 'none', fontSize: 13, color: 'var(--ink-muted)' };
+const LINHA: CSSProperties = { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 8 };
+
 function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
   return (
     <div className={'ndp-item' + (it.nao ? ' ndp-nao-contabil' : '')}>
-      <div className="ndp-natureza">{it.titulo}{it.semConta && <span className="ponto-vermelho" title="Sem conta: vincule uma conta ou marque Não vai para o Contábil" aria-label="Sem conta" />}</div>
-      {it.vista && (
-        <div className="vista-row">
-          {it.vista.slots.map(sl => <Slot key={sl.t} k={it.k} sl={sl} vm={vm} />)}
-          <span className="vista-info">{it.vista.info}</span>
-        </div>
-      )}
+      <div className="ndp-natureza">{it.titulo}{it.semConta && <span className="ponto-vermelho" title="Falta a conta contábil: vincule uma conta ou marque Não vai para o Contábil" aria-label="Falta a conta contábil" />}</div>
+      {/* a conta contábil (a que a conferência compara com o balancete) e, com as vendas separadas, o código do lançamento
+          à vista e a prazo — cada um com o nome na frente, para não confundir um com o outro (Vitor, 13/10/2026) */}
+      <div style={LINHA}>
+        <span style={ROTULO}>Conta contábil{it.semConta && <b className="ext-neg" style={{ marginLeft: 6, fontWeight: 600 }}>falta</b>}</span>
       <div className="ndp-contas-row">
         <ChipsDeContas v={it.vinculo} />
         {it.nao ? (
@@ -58,12 +68,22 @@ function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
             <button type="button" className="vista-pill-x" title="Desfazer" aria-label="Desfazer" onClick={() => vm.naoContabil(it.k, false)}>&times;</button>
           </span>
         ) : (
-          <CampoVincular v={it.vinculo} rotulo="Adicionar" titulo="Vincular uma conta a esta natureza"
+          <CampoVincular v={it.vinculo} rotulo="Vincular conta" titulo="Vincular a conta contábil desta natureza (a que a conferência compara com o balancete)"
             extra={escondido => it.podeNaoContabil
               ? <button type="button" className="btn ndp-nao-btn" hidden={escondido} onClick={() => vm.naoContabil(it.k, true)}>Não vai para o Contábil</button>
               : null} />
         )}
       </div>
+      </div>
+      {it.vista && (
+        <div style={LINHA}>
+          <span style={ROTULO}>Código do lançamento</span>
+          <div className="vista-row" style={{ margin: 0 }}>
+            {it.vista.slots.map(sl => <Slot key={sl.t} k={it.k} sl={sl} vm={vm} />)}
+            <span className="vista-info">{it.vista.info}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

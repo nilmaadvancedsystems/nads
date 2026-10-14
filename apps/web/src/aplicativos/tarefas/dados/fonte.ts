@@ -6,7 +6,7 @@
 // Quem está trabalhando: no banco, o login com as contas do Entregas (entregas.firestore.ts, 30/09/2026);
 // nos exemplos, a pessoa escolhe o nome na lista da equipe (não há login).
 // O repositório e a sessão são criados uma vez, quando alguém abre a Tarefas. O do Cadastro, quando alguém abre o Cadastro.
-import { demo, empresas, entregas, extrator, tarefas } from '@nads/core';
+import { demo, empresas, entregas, extrator, formatos, tarefas } from '@nads/core';
 import { criarAcessoMemoria, type RepoAcesso } from './acesso';
 import { criarAcessoFirestore } from './acesso.firestore';
 import { criarDriveFirestore } from './drive.firestore';
@@ -34,6 +34,8 @@ import { ligadoAoBanco } from '../../../comum/modoDesenvolvedor';
 import { definirEmpresasExtras } from '../../../comum/empresaDaRota';
 import { criarCofreMemoria, type RepoCofre } from './cofre';
 import { criarCofreFirestore } from './cofre.firestore';
+import { criarAgentesMemoria, type RepoAgentes } from './agentes';
+import { criarAgentesFirestore } from './agentes.firestore';
 
 export const noBanco = ligadoAoBanco(); // no modo desenvolvedor, os dados de exemplo (nada vai para o banco)
 
@@ -61,6 +63,8 @@ export function repoDaTarefas(): tarefas.RepoTarefas {
       return cache.junto;
     };
     definirEmpresasExtras(empresasNovas);
+    // o regime do Cadastro › Empresa vale no lugar do da lista (13/10/2026): muda as etapas da rotina
+    tarefas.usarRegimesDoCadastro(regimeNoCadastro);
     repo = r;
   }
   return repo;
@@ -76,6 +80,59 @@ export function empresasNovas(): readonly empresas.EmpresaDoEscritorio[] {
   const lista = empresas.cadastro.empresasCadastradasNoNads(c.todos().porId.values()).filter(e => !ja.has(e.nome));
   novasCache = { ver, lista };
   return lista;
+}
+
+let regimesCache: { ver: number; mapa: Map<number, string> } | null = null;
+// o regime que o Entregas tem (o enquadramento e a Receita; 13/10/2026): lido uma vez, dos mesmos clientes dos bancos
+let regimesEntregas: ReadonlyMap<number, empresas.cadastro.RegimeDoEntregas> | null = null;
+let pedidoRegimes: Promise<void> | null = null;
+const ouvintesRegimes = new Set<() => void>();
+function carregarRegimesDoEntregas(): void {
+  if (pedidoRegimes) return;
+  pedidoRegimes = clientesDoEntregas().then(docs => {
+    regimesEntregas = empresas.cadastro.regimesDoEntregasPorCodigo(docs);
+    for (const f of ouvintesRegimes) f();
+  });
+}
+/** Para a tela desenhar de novo quando os regimes do Entregas chegam. */
+export function assinarRegimesDoEntregas(f: () => void): () => void {
+  carregarRegimesDoEntregas();
+  ouvintesRegimes.add(f);
+  return () => { ouvintesRegimes.delete(f); };
+}
+export const versaoDosRegimesDoEntregas = () => regimesEntregas;
+/** O que o Entregas diz do regime da empresa (o enquadramento e a Receita), ou null. */
+export function regimeNoEntregas(codigo: number | null | undefined): empresas.cadastro.RegimeDoEntregas | null {
+  carregarRegimesDoEntregas();
+  return codigo == null ? null : regimesEntregas?.get(codigo) || null;
+}
+
+/**
+ * O regime da empresa fora da lista fixa: o escolhido no cadastro do nads; sem ele, o do Entregas (o enquadramento; sem
+ * ele, a Receita quando diz Simples ou MEI). '' = vale o da lista do escritório.
+ */
+function regimeNoCadastro(codigo: number): string {
+  return regimeEscolhidoNoNads(codigo) || empresas.cadastro.regimeDoEntregas(regimeNoEntregas(codigo));
+}
+
+/**
+ * O regime escolhido no cadastro da empresa no nads ('' = nenhum). Pelo nome (o cadastro é por nome): os dois códigos
+ * de uma empresa com o mesmo nome (ex.: 358 e 359) seguem o mesmo cadastro.
+ */
+function regimeEscolhidoNoNads(codigo: number): string {
+  const c = repoDoCadastro();
+  const ver = c.versao();
+  if (!regimesCache || regimesCache.ver !== ver) {
+    const porSlug = new Map<string, string>();
+    for (const [id, x] of c.todos().porId) { const r = empresas.cadastro.regimeDoCadastro(x); if (r) porSlug.set(id, r); }
+    const mapa = new Map<number, string>();
+    for (const e of [...empresas.EMPRESAS_COM_DP, ...empresasNovas()]) {
+      const r = e.codigo != null ? porSlug.get(formatos.slug(e.nome)) : undefined;
+      if (r && e.codigo != null) mapa.set(e.codigo, r);
+    }
+    regimesCache = { ver, mapa };
+  }
+  return regimesCache.mapa.get(codigo) || '';
 }
 
 /** Os erros do banco (salvar/ler) vão para o toast da tela. */
@@ -116,9 +173,9 @@ export async function balanceteDoEntregas(codigo: number | null): Promise<Record
   return noBanco && codigo != null && codigo !== demo.EMPRESA_DEMO.codigo ? balanceteNoEntregas(codigo) : null;
 }
 
-/** Clientes de exemplo do Entregas (os bancos que o robô teria aprendido). */
+/** Clientes de exemplo do Entregas (os bancos que o robô teria aprendido; o 292 com a Receita discordando do regime). */
 const CLIENTES_EXEMPLO: Record<string, unknown>[] = [
-  { codigoOrigem: '292', bancos: ['sicoob', 'bb'], contasBancarias: [{ banco: 'sicoob', agencia: '3144-5', conta: '12.345-6' }] },
+  { codigoOrigem: '292', enquadramento: 'Presumido', receita: { simples: true }, bancos: ['sicoob', 'bb'], contasBancarias: [{ banco: 'sicoob', agencia: '3144-5', conta: '12.345-6' }] },
   { codigoOrigem: '14', bancos: ['itau'], contasBancarias: [{ banco: 'itau', agencia: '0412', conta: '99887-7' }] },
   { codigoOrigem: '58', bancos: ['sicoob', 'nubank'] },
 ];
@@ -233,6 +290,14 @@ let fgts: RepoFgts | null = null;
 export function repoDoFgts(): RepoFgts {
   if (!fgts) fgts = noBanco ? criarFgtsFirestore(() => { const q = quemPede(); return q ? { nome: q.nome, uid: q.uid } : null; }) : criarFgtsMemoria();
   return fgts;
+}
+
+let agentes: RepoAgentes | null = null;
+
+/** O painel dos agentes do Claude Code (13/10/2026): o que o robô do PC publica em painelAgentes; só o admin lê. */
+export function repoDosAgentes(): RepoAgentes {
+  if (!agentes) agentes = noBanco ? criarAgentesFirestore() : criarAgentesMemoria();
+  return agentes;
 }
 
 let arquivador: RepoArquivador | null = null;

@@ -3,11 +3,11 @@
 // criar (gera o código de recuperação), pedir acesso, recuperar pelo código, liberar e recusar pedidos, tirar o acesso
 // (troca a chave do cofre e gera um código novo), um código de recuperação novo, ler e gravar os segredos de uma empresa.
 // A chave do cofre aberta fica só na memória desta aba (todas as telas usam a mesma).
-import { cofre as c, formatos } from '@nads/core';
+import { cofre as c, formatos, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { guardarChavePrivada, idDaChave, lerChavePrivada } from '../../dados/chaveLocal';
-import { useCofreRepo } from '../../dados/repo';
+import { useAcesso, useCofreRepo } from '../../dados/repo';
 import { imprimirCodigoDoCofre } from './imprimirCodigo';
 import { modoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 
@@ -25,6 +25,7 @@ export type EstadoDoCofre = 'carregando' | 'erro' | 'novo' | 'sem-chave' | 'agua
 
 export function useCofre() {
   const repo = useCofreRepo();
+  const equipe = useAcesso().equipe();
   useSyncExternalStore(assinarAberta, () => verAberta, () => verAberta);
   const { toast, modal } = useRetorno();
   const eu = repo.eu();
@@ -79,6 +80,11 @@ export function useCofre() {
 
   return {
     estado,
+    /** por que não dá para abrir uma empresa (13/10/2026: "quem não tem acesso ao cofre não pode nem abrir, deve bloquear
+     *  ao clicar"); null = pode abrir */
+    bloqueio: estado === 'aberto' ? null : estado === 'carregando' ? 'O cofre ainda está abrindo.' : estado === 'novo' ? 'O cofre ainda não foi criado.'
+      : estado === 'aguardando' ? 'Seu acesso ao cofre está esperando a liberação de quem já tem acesso.'
+        : estado === 'erro' ? 'O cofre não abriu. Tente de novo em instantes.' : 'Você não tem acesso ao cofre. Peça acesso no aviso do topo da página.',
     ocupado,
     /** o modo desenvolvedor está ligado (o cofre não grava) */
     dev: modoDesenvolvedor(),
@@ -87,6 +93,10 @@ export function useCofre() {
     erro: repo.erro(),
     eu: eu?.nome || '',
     meuId: id,
+    /** a foto de perfil (ou as iniciais) de quem é da equipe, para pôr antes do nome */
+    fotoDe: (nome: string) => ({ foto: equipe.lista.find(p => p.nome.trim().toLowerCase() === nome.trim().toLowerCase())?.fotoPerfil || null, iniciais: usuarios.iniciais(nome) }),
+    /** quando o código de recuperação foi gerado e por quem criou o cofre */
+    criadoEm: config?.criadoEm || '', criadoPor: config?.criadoPor || '',
     /** quem tem acesso (a cópia na versão atual) e os pedidos (sem cópia, ou de uma chave antiga) */
     comAcesso: pessoas.filter(p => p.trancada && p.versao === config?.versao),
     pedidos: pessoas.filter(p => !p.trancada || p.versao !== config?.versao),
@@ -123,11 +133,22 @@ export function useCofre() {
       toast(p.nome + ' liberado no cofre.');
     }),
     recusar: (p: c.ChaveDaPessoa) => tentar(() => repo.apagarChave(p.id)),
-    /** tira o acesso: o cofre troca de chave (quem saiu não abre mais nada) e sai um código de recuperação novo */
+    /** tira o acesso: apaga a cópia da chave dessa pessoa; o código de recuperação continua o mesmo (13/10/2026: "toda vez
+     *  que revogo um acesso o código reseta?" — trocar a chave e o código fica no Resetar a chave e o código) */
     tirarAcesso: (p: c.ChaveDaPessoa) => tentar(async () => {
       if (!aberta || !config || !eu) return;
-      const ok = await modal({ icone: 'alert', titulo: 'Tirar o acesso de ' + p.nome + '?', texto: 'O cofre troca de chave e sai um código de recuperação novo.',
+      const ok = await modal({ icone: 'alert', titulo: 'Tirar o acesso de ' + p.nome + '?', texto: 'Esse login deixa de abrir o cofre. O código de recuperação continua o mesmo; se precisar, use Resetar a chave e o código.',
         botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Tirar o acesso', valor: true, variante: 'btn-primary' }] });
+      if (!ok) return;
+      await repo.apagarChave(p.id);
+      toast('Acesso tirado.');
+    }),
+    /** troca a chave do cofre (quem já saiu não abre mais nada, nem com uma cópia antiga) e sai um código de recuperação
+     *  novo; quem tem acesso continua tendo */
+    resetarTudo: () => tentar(async () => {
+      if (!aberta || !config || !eu) return;
+      const ok = await modal({ icone: 'alert', titulo: 'Resetar a chave e o código?', texto: 'O cofre troca de chave e sai um código de recuperação novo. O código impresso deixa de valer; quem tem acesso continua tendo.',
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Resetar', valor: true, variante: 'btn-primary' }] });
       if (!ok) return;
       const nova = await c.novaChaveDoCofre();
       const versao = config.versao + 1;
@@ -136,13 +157,12 @@ export function useCofre() {
         const segredos = await c.decifrar<c.SegredosDaEmpresa>(aberta.chave, d);
         itens.push({ id: k, doc: { ...d, ...(await c.cifrar(nova, segredos)), versao } });
       }
-      const ficam = pessoas.filter(x => x.id !== p.id && x.trancada && x.versao === config.versao);
+      const ficam = pessoas.filter(x => x.trancada && x.versao === config.versao);
       const chaves = await Promise.all(ficam.map(async x => ({ id: x.id, trancada: await c.trancarPara(nova, x.publica) })));
       const codigo = c.novoCodigoDeRecuperacao();
       await repo.trocarChave({ ...config, versao, recuperacao: await c.trancarComCodigo(nova, codigo) }, chaves, itens);
-      await repo.apagarChave(p.id);
       abrirCom({ versao, chave: nova, dono: id });
-      await mostrarCodigo(codigo, 'Acesso tirado: o código de recuperação novo');
+      await mostrarCodigo(codigo, 'Chave trocada: o código de recuperação novo');
     }),
     novoCodigo: () => tentar(async () => {
       if (!aberta || !config) return;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { conta, empresa, linha, nota } from '../__legado__/fixtures';
-import { conferirConta, ehLinhaIcms, naturezasDaConferencia, numerosDoHistorico, opcoesCfop, partesDoHistorico, semPendencias, totaisVerificacao, type LinhaRazao } from './verificarConta';
+import { conferirConta, ehLinhaIcms, naturezasDaConferencia, numerosDoHistorico, opcoesCfop, partesDoHistorico, semPendencias, soPendenciasQuePassam, totaisVerificacao, type LinhaRazao, type ResultadoVerificacao } from './verificarConta';
 
 describe('numerosDoHistorico', () => {
   it('padrão fiscal: o número antes do CNPJ, ignorando o resto', () => {
@@ -169,5 +169,19 @@ describe('conta ligada a várias naturezas (ex.: 96501 = 5102 + 5405)', () => {
   });
   it('CFOP escolhido à mão, que não é ligado à conta: só ele', () => {
     expect(naturezasDaConferencia(e, ['99999'], V5405)).toEqual([V5405]);
+  });
+});
+
+describe('soPendenciasQuePassam (bens do ativo e ICMS: "Conferir mais adiante...")', () => {
+  const base = { faltando: [], duplicada: [], aMais: [], peloValor: [], icms: [] } as unknown as ResultadoVerificacao;
+  const falta = (cfop: string) => ({ cfop, numero: '1', nome: 'X', valor: 100, data: '15/01/2026' }) as unknown as ResultadoVerificacao['faltando'][number];
+  it('só nota de bem faltando (o ICMS não conta): passa', () => {
+    expect(soPendenciasQuePassam({ ...base, faltando: [falta('1551')] })).toBe(true);
+    expect(soPendenciasQuePassam({ ...base, faltando: [falta('2551'), falta('1406')], icms: [{} as never] })).toBe(true);
+  });
+  it('sem pendência, nota que não é de bem ou algo a mais: não', () => {
+    expect(soPendenciasQuePassam(base)).toBe(false);
+    expect(soPendenciasQuePassam({ ...base, faltando: [falta('1551'), falta('1102')] })).toBe(false);
+    expect(soPendenciasQuePassam({ ...base, faltando: [falta('1551')], aMais: [{} as never] })).toBe(false);
   });
 });

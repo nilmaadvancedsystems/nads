@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { anoDoTexto, ehConsultasDoBB, lancamentosDoPdf, paginasPorMes, periodoDoExtrato, saldoAnteriorDoPdf, saldosDoDiaDoPdf, type ItemDeTexto } from './extrato';
+import { anoDoTexto, ehConsultasDoBB, lancamentosDoPdf, mesesSemMovimento, paginasPorMes, periodoDoExtrato, saldoAnteriorDoPdf, saldosDoDiaDoPdf, type ItemDeTexto } from './extrato';
 
 /** Monta uma página: cada linha é [texto, x] com a mesma altura; as linhas descem de 14 em 14. */
 function pagina(linhas: [string, number][][]): ItemDeTexto[] {
@@ -150,6 +150,31 @@ describe('o extrato da Caixa (Vitor, 13/10/2026)', () => {
       { data: '2026-01-02', valor: -7000, historico: 'DEB PIX INS MANUAL DADOS 11426314000177 LEONARDO MENDES 20925 MARQUES' },
       { data: '2026-01-03', valor: -3039, historico: 'DEBITO DE IOF' },
     ]);
+  });
+});
+
+describe('o depósito bloqueado não é lançamento (Sicoob, Vitor, 13/10/2026)', () => {
+  it('"DEP.CHEQUE BLOQ.1D 2.300,00*" e o texto embaixo ficam de fora; a liberação entra limpa', () => {
+    const p = pagina([
+      [['Data', 40], ['Histórico', 100], ['Valor', 480]],
+      [['06/08/2026', 40], ['DEP.CHEQUE BLOQ.1D', 100], ['2.300,00*', 480]],
+      [['07/08/2026', 40], ['LIBERAÇÃO DE DEPÓSITO BLOQUEADO', 100], ['2.300,00C', 480]],
+      [['10/08/2026', 40], ['DEP.CHEQUE BLOQ.1D', 100], ['5.780,00*', 480]],
+      [['ENVELOPE: 0162682306', 100]],
+      [['10/08/2026', 40], ['PIX RECEBIDO', 100], ['1.047,00C', 480]],
+    ]);
+    expect(lancamentosDoPdf([p], 'banco', 2000)).toEqual([
+      { data: '2026-08-07', valor: 230000, historico: 'LIBERAÇÃO DE DEPÓSITO BLOQUEADO' },
+      { data: '2026-08-10', valor: 104700, historico: 'PIX RECEBIDO' },
+    ]);
+  });
+});
+
+describe('o extrato sem movimento (Vitor, 13/10/2026)', () => {
+  it('a frase e os meses do período', () => {
+    expect(mesesSemMovimento('Período: 01/01/2026 até 31/01/2026 … Nenhuma movimentação encontrada.')).toEqual(['2026-01']);
+    expect(mesesSemMovimento('de 01/02/2026 a 30/04/2026 — Não há lançamentos no período')).toEqual(['2026-02', '2026-03', '2026-04']);
+    expect(mesesSemMovimento('Período: 01/01/2026 até 31/01/2026 PIX RECEBIDO 10,00')).toBeNull();
   });
 });
 

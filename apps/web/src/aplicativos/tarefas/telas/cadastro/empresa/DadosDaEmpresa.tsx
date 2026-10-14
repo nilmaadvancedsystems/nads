@@ -1,6 +1,6 @@
-// Cadastro › Empresa: as regras da empresa. "Presta serviços?", "Cartão empresarial" e "Vende no cartão" com Sim / Não
-// (clicar de novo no marcado volta para "não informado") e os sócios (o nome e o CPF de cada um).
-import { Icone, useCarregando } from '@nads/ui';
+// Cadastro › Empresa: as regras da empresa. "Presta serviços?", "Cartão empresarial" e "Vende no cartão" no Interruptor
+// (13/10/2026: ligado = Sim) e os sócios (o nome e o CPF de cada um).
+import { Dica, Icone, Interruptor, MenuSuspenso, useCarregando } from '@nads/ui';
 import { useState } from 'react';
 import { useDadosDaEmpresa } from './useDadosDaEmpresa';
 
@@ -12,13 +12,9 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
   const [erroDoContato, setErroDoContato] = useState<string | null>(null);
   useCarregando(vm.carregando);
   if (vm.carregando) return null;
-  const opcao = (sim: boolean, rotulo: string) => (
-    <button type="button" className={'btn ' + (vm.prestaServico === sim ? 'btn-primary' : 'btn-outline')} aria-pressed={vm.prestaServico === sim}
-      onClick={() => vm.definirPrestaServico(sim)}>{rotulo}</button>
-  );
-  const opcaoDoCartao = (campo: 'cartaoEmpresarial' | 'vendeNoCartao' | 'credLiquidacao', sim: boolean, rotulo: string) => (
-    <button type="button" className={'btn ' + (vm[campo] === sim ? 'btn-primary' : 'btn-outline')} aria-pressed={vm[campo] === sim}
-      onClick={() => vm.definirCartao(campo, sim)}>{rotulo}</button>
+  // o Interruptor do catálogo (Vitor, 13/10/2026: "troque para toggle"): ligado = Sim; desligado = Não (ou ainda não informado)
+  const doCartao = (campo: 'cartaoEmpresarial' | 'vendeNoCartao' | 'credLiquidacao', rotulo: string) => (
+    <Interruptor ligado={vm[campo] === true} rotulo={rotulo} onMudar={() => vm.definirCartao(campo, vm[campo] !== true)} />
   );
   const linhas = [...vm.socios, ...(novo ? [{ nome: '', cpf: '' }] : [])];
   /** grava ao sair do campo: a lista inteira, com esta linha trocada */
@@ -32,85 +28,66 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
   const enter = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') e.currentTarget.blur(); };
   return (
     <section>
+      {/* o regime (13/10/2026: "no cadastro da empresa tenha os regimes, aí muda na rotina") */}
       <div className="cad-regra">
         <div className="cad-regra-txt">
-          <span className="cad-campo-rotulo">Presta serviços</span>
-          <span className="hint">
-            Mostra a aba Prestados na Importação e os serviços prestados na Conferência.
-            {vm.prestaServico == null && ' Ainda não informado.'}
-          </span>
+          <span className="cad-campo-rotulo">Regime tributário<Dica texto={'Muda as etapas da rotina do Fiscal: o PGDAS no Simples, o DAS-MEI no MEI; ICMS, PIS/COFINS, IRPJ/CSLL e as EFDs no Presumido e no Real.' + (vm.regime == null && vm.regimePadrao ? ' Sem escolher, vale o ' + vm.origemDoPadrao + ': ' + vm.regimePadrao + '.' : '')} /></span>
+          {vm.receitaDiscorda && <span className="hint"><b>Na Receita: {vm.receitaDiscorda}.</b> Confira.</span>}
+        </div>
+        {/* o menu do catálogo (Vitor, 13/10/2026: os sete botões ficaram feios), o mesmo da Nova empresa */}
+        <div className="cad-regra-opcoes">
+          <MenuSuspenso rotulo={vm.regime ?? (vm.regimePadrao || 'Escolher')} className="btn btn-outline" titulo="Regime tributário" direita largura={200}
+            itens={vm.regimes.map(r => ({ rotulo: r, marcado: (vm.regime ?? vm.regimePadrao) === r, onClick: () => { if (vm.regime !== r) vm.definirRegime(r); } }))} />
+        </div>
+      </div>
+      <div className="cad-regra">
+        <div className="cad-regra-txt">
+          <span className="cad-campo-rotulo">Presta serviços<Dica texto="Mostra a aba Prestados na Importação e os serviços prestados na Conferência." /></span>
         </div>
         <div className="cad-regra-opcoes" role="group" aria-label="Presta serviços">
-          {opcao(true, 'Sim')}
-          {opcao(false, 'Não')}
+          <Interruptor ligado={vm.prestaServico === true} rotulo="Presta serviços" onMudar={() => vm.definirPrestaServico(vm.prestaServico !== true)} />
         </div>
       </div>
       {/* os cartões (Vitor, 07/10/2026): ligam a etapa Cartões na Tarefas */}
       <div className="cad-regra">
         <div className="cad-regra-txt">
-          <span className="cad-campo-rotulo">Cartão empresarial</span>
-          <span className="hint">
-            Compras no cartão de crédito da empresa: a etapa Cartões quebra a fatura no razão do cartão.
-            {vm.cartaoEmpresarial == null && ' Ainda não informado.'}
-          </span>
+          <span className="cad-campo-rotulo">Cartão empresarial<Dica texto="Compras no cartão de crédito da empresa: a etapa Cartões quebra a fatura no razão do cartão." /></span>
         </div>
         <div className="cad-regra-opcoes" role="group" aria-label="Cartão empresarial">
-          {opcaoDoCartao('cartaoEmpresarial', true, 'Sim')}
-          {opcaoDoCartao('cartaoEmpresarial', false, 'Não')}
+          {doCartao('cartaoEmpresarial', 'Cartão empresarial')}
         </div>
       </div>
       <div className="cad-regra">
         <div className="cad-regra-txt">
-          <span className="cad-campo-rotulo">Vende no cartão</span>
-          <span className="hint">
-            Vendas pelas maquininhas (Cielo, Rede, Getnet, Stone, PagBank): a etapa Cartões concilia com as notas.
-            {vm.vendeNoCartao == null && ' Ainda não informado.'}
-          </span>
+          <span className="cad-campo-rotulo">Vende no cartão<Dica texto="Vendas pelas maquininhas (Cielo, Rede, Getnet, Stone, PagBank): a etapa Cartões concilia com as notas." /></span>
         </div>
         <div className="cad-regra-opcoes" role="group" aria-label="Vende no cartão">
-          {opcaoDoCartao('vendeNoCartao', true, 'Sim')}
-          {opcaoDoCartao('vendeNoCartao', false, 'Não')}
+          {doCartao('vendeNoCartao', 'Vende no cartão')}
         </div>
       </div>
       {/* o Creditor (Vitor, 08/10/2026): a empresa recebe liquidação de cobrança do banco (CRÉD.LIQ.COBRANÇA) */}
       <div className="cad-regra">
         <div className="cad-regra-txt">
-          <span className="cad-campo-rotulo">Liquidação de cobrança (Creditor)</span>
-          <span className="hint">
-            O banco credita as cobranças liquidadas no caixa (CRÉD.LIQ.COBRANÇA): a etapa Creditor entra em todos os meses da Tarefa.
-            Sem resposta ou Não, ela entra só nos meses em que o razão do caixa tiver a liquidação.
-            {vm.credLiquidacao == null && ' Ainda não informado.'}
-          </span>
+          <span className="cad-campo-rotulo">Liquidação de cobrança (Creditor)<Dica texto="O banco credita as cobranças liquidadas no caixa (CRÉD.LIQ.COBRANÇA): a etapa Creditor entra em todos os meses da Tarefa. Sem resposta ou Não, ela entra só nos meses em que o razão do caixa tiver a liquidação." /></span>
         </div>
         <div className="cad-regra-opcoes" role="group" aria-label="Liquidação de cobrança (Creditor)">
-          {opcaoDoCartao('credLiquidacao', true, 'Sim')}
-          {opcaoDoCartao('credLiquidacao', false, 'Não')}
+          {doCartao('credLiquidacao', 'Liquidação de cobrança')}
         </div>
       </div>
       {/* a nota de honorário (Vitor, 07/10/2026): sem nota, a etapa Honorários pede o Extrato por cobrança */}
       <div className="cad-regra">
         <div className="cad-regra-txt">
-          <span className="cad-campo-rotulo">Emite nota de honorário</span>
-          <span className="hint">
-            O escritório emite nota de honorário para a empresa. Sem nota, a etapa Honorários lança as cobranças pelo Extrato por cobrança.
-            {vm.emiteNotaHonorario == null && ' Ainda não informado.'}
-          </span>
+          <span className="cad-campo-rotulo">Emite nota de honorário<Dica texto="O escritório emite nota de honorário para a empresa. Sem nota, a etapa Honorários lança as cobranças pelo Extrato por cobrança." /></span>
         </div>
         <div className="cad-regra-opcoes" role="group" aria-label="Emite nota de honorário">
-          {[true, false].map(sim => (
-            <button key={String(sim)} type="button" className={'btn ' + (vm.emiteNotaHonorario === sim ? 'btn-primary' : 'btn-outline')} aria-pressed={vm.emiteNotaHonorario === sim}
-              onClick={() => vm.definirNotaDeHonorario(sim)}>{sim ? 'Sim' : 'Não'}</button>
-          ))}
+          <Interruptor ligado={vm.emiteNotaHonorario === true} rotulo="Emite nota de honorário" onMudar={() => vm.definirNotaDeHonorario(vm.emiteNotaHonorario !== true)} />
         </div>
       </div>
       {/* o contato da empresa (Vitor, 07/10/2026): o Mandei manda as perguntas de Clientes e Fornecedores para os dois */}
       <div className="cad-regra">
         <div className="cad-regra-txt">
-          <span className="cad-campo-rotulo">E-mail e WhatsApp</span>
-          <span className="hint">
-            Para onde o Mandei manda as perguntas de Clientes e Fornecedores: um dos dois basta (com os dois, o link chega pelos dois). O WhatsApp com o DDD.
-            {erroDoContato && <> <b>{erroDoContato}</b></>}
-          </span>
+          <span className="cad-campo-rotulo">E-mail e WhatsApp<Dica texto="Para onde o Mandei manda as perguntas de Clientes e Fornecedores: um dos dois basta (com os dois, o link chega pelos dois). O WhatsApp com o DDD." /></span>
+          {erroDoContato && <span className="hint"><b>{erroDoContato}</b></span>}
         </div>
         <div className="cad-regra-opcoes">
           <label className="busca-curta" title="O e-mail da empresa">
@@ -128,8 +105,7 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
       {/* os sócios, com o nome e o CPF (Vitor, 06/10/2026): o relatório da etapa Bancos mostra a transferência para eles */}
       <div className="cad-regra">
         <div className="cad-regra-txt">
-          <span className="cad-campo-rotulo">Sócios</span>
-          <span className="hint">O nome e o CPF de cada sócio. A etapa Bancos mostra a transferência para eles (pelo nome ou pelo CPF do PIX).</span>
+          <span className="cad-campo-rotulo">Sócios<Dica texto="O nome e o CPF de cada sócio. A etapa Bancos mostra a transferência para eles (pelo nome ou pelo CPF do PIX)." /></span>
         </div>
         <div className="cad-regra-opcoes">
           <button type="button" className="btn" disabled={novo} onClick={() => setNovo(true)}><Icone nome="plus" />Adicionar sócio</button>

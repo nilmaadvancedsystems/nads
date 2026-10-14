@@ -20,6 +20,8 @@
 // E o extrato importado do computador que não está no Drive (Vitor, 09/10/2026: "upe no drive o que ele upou do pc"):
 // enviosSecretario (+ partes), a mesma fila da Tarefas › Drive — o robô grava em Claudio Secretario/<mês>/<cliente> e o
 // arquivamento leva para EXTRATOS/AAAA/MM/BANCÁRIOS/<BANCO>. O nads nunca escreve direto no Drive.
+// E o "Buscar no e-mail" (Vitor, 13/10/2026): buscasEmail (o pedido de busca com o remetente e o período, e o de trazer um
+// anexo que a busca listou; o robô responde no pedido e põe o anexo em partes). Nada é enviado nem mexido no Gmail.
 import { creditor as cr, entregas, extrator as ex } from '@nads/core';
 import { getApps, initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
@@ -164,6 +166,23 @@ export function criarDriveFirestore(): cr.RepoDrive {
     for (const f of ouvintes) f();
   });
 
+  /** grava o pedido em buscasEmail e espera o robô responder (pronto ou erro), até 2 minutos */
+  async function pedidoDeEmail(dados: Record<string, string>, passo?: (t: string) => void): Promise<Record<string, unknown> & { id: string }> {
+    const u = auth.currentUser;
+    if (!u) throw new Error('Entre com a conta do Entregas para buscar no e-mail.');
+    passo?.('pedindo ao robô');
+    const ref = await addDoc(collection(db, 'buscasEmail'), { ...dados, status: 'pendente', criadoEm: new Date().toISOString(), criadoPor: acesso.quem || 'nads', criadoPorUid: u.uid });
+    return new Promise((ok, falha) => {
+      const limite = setTimeout(() => { parar(); falha(new Error('O robô não respondeu em 2 minutos. Ele pode estar desligado; tente de novo depois.')); }, 120000);
+      const parar = onSnapshot(ref, s => {
+        const d = s.data() || {};
+        if (d.status === 'buscando') passo?.('o robô está procurando');
+        if (d.status === 'pronto') { clearTimeout(limite); parar(); ok({ ...d, id: ref.id }); }
+        if (d.status === 'erro') { clearTimeout(limite); parar(); falha(new Error(String(d.erro || 'o robô não conseguiu'))); }
+      }, err => { clearTimeout(limite); falha(err); });
+    });
+  }
+
   return {
     exemplos: false,
     acesso: () => acesso,
@@ -279,6 +298,21 @@ export function criarDriveFirestore(): cr.RepoDrive {
         if (semPermissao(e)) throw new Error('Seu usuário do Entregas não pode ver o cadastro de clientes.', { cause: e });
         throw e;
       }
+    },
+
+    async buscarNoEmail(filtro, passo) {
+      const r = await pedidoDeEmail({ tipo: 'buscar', remetente: filtro.remetente.trim().slice(0, 120), de: filtro.de, ate: filtro.ate }, passo);
+      return Array.isArray(r.resultados) ? (r.resultados as cr.AnexoDoEmail[]) : [];
+    },
+    async trazerDoEmail(a, passo) {
+      const r = await pedidoDeEmail({ tipo: 'trazer', caixa: a.caixa, mensagemId: a.mensagemId, anexoId: a.anexoId, nome: a.nome.slice(0, 200) }, passo);
+      passo?.('baixando o anexo');
+      const s = await getDocs(collection(db, 'buscasEmail', String(r.id), 'partes'));
+      const b64 = s.docs.sort((x, y) => Number(x.data().n) - Number(y.data().n)).map(d => String(d.data().dados || '')).join('');
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return bytes.buffer;
     },
 
     /** O arquivo para o Claudio Secretario (enviosSecretario, em pedaços), como a Tarefas › Drive faz. */

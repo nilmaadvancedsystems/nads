@@ -104,10 +104,13 @@ export function useVerificarConta() {
           return;
         }
         const limpo = c.semPendencias(r);
+        // só bem do ativo e ICMS: aponta, mas a conta fica Ok (Vitor, 13/10/2026: "dá o ok e tchau")
+        const passa = c.soPendenciasQuePassam(r);
         const rotConta = (dd.multi ? 'Contas ' : 'Conta ') + dd.rotulo;
         const agora = new Date();
         s.aplicar(x => dd.codigos.reduce((y, cod) => {
           if (limpo) return c.gravarVerificacao(y, s.filtro, cod, 'ok', rotConta + ' · relatório sem pendências', agora);
+          if (passa) return c.gravarVerificacao(y, s.filtro, cod, 'ok', rotConta + ' · só bens do ativo e ICMS (conferir mais adiante)', agora);
           if (c.verifEstado(y, s.filtro, cod) === 'ok') return c.gravarVerificacao(y, s.filtro, cod, null, rotConta + ' · voltou a ter pendências', agora);
           return y;
         }, x));
@@ -210,8 +213,9 @@ function montarResultado(e: c.Empresa, p: c.FiltroMovimento, v: EstadoVerificar,
   const contas = r.contas || [];
   const aba = multi && contas.some(x => x.codigo === v.abaRes) ? v.abaRes : 'todas';
   const limpo = c.semPendencias(r);
+  const passa = c.soPendenciasQuePassam(r);
   const abas = multi ? [{ valor: 'todas', rotulo: 'Todas' }].concat(contas.map(x => ({ valor: x.codigo, rotulo: x.codigo }))) : null;
-  const base = { aba, abas, limpo, fonte: r.fonte };
+  const base = { aba, abas, limpo, passa, fonte: r.fonte };
 
   if (aba !== 'todas') {
     // uma conta: o relatório dela e o que sobrou nela; faltando fica em Todas

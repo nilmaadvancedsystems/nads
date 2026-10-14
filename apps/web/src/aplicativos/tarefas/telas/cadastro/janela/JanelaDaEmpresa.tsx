@@ -1,7 +1,7 @@
 // A janela flutuante de uma empresa no Cadastro, por cima da lista: no topo, "‹ Empresas" (voltar), a empresa
 // e o ✕; na lateral, as abas dela; no meio, a aba aberta. Esc ou clicar fora fecha.
 import { Icone, useEntradaAnimada, useIndicador } from '@nads/ui';
-import { useEffect } from 'react';
+import { Fragment, useEffect } from 'react';
 import { ContasBancarias } from '../bancos/ContasBancarias';
 import { ContasPadrao } from '../contas-padrao/ContasPadrao';
 import { DadosDaEmpresa } from '../empresa/DadosDaEmpresa';
@@ -19,6 +19,27 @@ function Aba({ rota, aba }: { rota: string; aba: string }) {
     case 'senhas': return <SenhasNoCadastro rota={rota} />;
     default: return <ContasBancarias rota={rota} />;
   }
+}
+
+/**
+ * O que falta no cadastro, numa linha no topo da aba Empresa (13/10/2026; enxuto depois: "achei com muita informação"):
+ * o placar e os itens que faltam, cada um levando à aba dele. Completo, some.
+ */
+function ResumoDoCadastro({ vm }: { vm: ReturnType<typeof useJanelaDaEmpresa> }) {
+  const r = vm.resumo;
+  if (!r.carregado || r.completos === r.itens.length) return null;
+  const faltam = r.itens.filter(i => !i.tem);
+  return (
+    <div className="cad-resumo-linha">
+      <span className="cad-resumo-barra" aria-hidden="true"><span style={{ width: Math.round((r.completos / r.itens.length) * 100) + '%' }} /></span>
+      <b>Cadastro {r.completos}/{r.itens.length}</b>
+      <span className="fraco">Falta:</span>
+      {faltam.map(i => (
+        <button key={i.id} type="button" className="cad-resumo-falta" onClick={() => { if (i.aba !== vm.aba) vm.irPara(i.aba); }}
+          title={i.aba !== vm.aba ? 'Abrir ' + i.rotulo : i.texto}>{i.rotulo}</button>
+      ))}
+    </div>
+  );
 }
 
 export function JanelaDaEmpresa({ rota, aba }: { rota: string; aba: string }) {
@@ -54,7 +75,8 @@ export function JanelaDaEmpresa({ rota, aba }: { rota: string; aba: string }) {
           <span className="cad-janela-empresa">
             <b className="num">{vm.empresa.codigo ?? '—'}</b>
             <span className="cad-janela-nome">{vm.empresa.nome}</span>
-            {vm.empresa.regime && <span className="fraco">{vm.empresa.regime}</span>}
+            {vm.regime && <span className="badge badge-neutral cad-regime">{vm.regime}</span>}
+            {vm.resumo.cnpj && <span className="fraco num">{vm.resumo.cnpj}</span>}
           </span>
           <button type="button" className="btn btn-ghost cad-janela-x" onClick={fechar} aria-label="Fechar" title="Fechar (Esc)">
             <Icone nome="x" />
@@ -62,14 +84,20 @@ export function JanelaDaEmpresa({ rota, aba }: { rota: string; aba: string }) {
         </header>
         <div className="cad-janela-corpo">
           <nav ref={abasInd} className="cad-janela-abas com-indicador" aria-label="Abas da empresa">
-            {vm.abas.map(a => (
-              <button key={a.id} type="button" className={'cad-janela-aba' + (a.ativa ? ' ativa' : '')} aria-current={a.ativa ? 'page' : undefined}
-                onClick={() => vm.irPara(a.id)}>
-                <Icone nome={a.icone} />{a.rotulo}
-              </button>
+            {vm.abas.map((a, i) => (
+              <Fragment key={a.id}>
+                {/* o nome do grupo, quando muda (Dados · Bancos · Contabilidade · Acessos · Registro) */}
+                {(i === 0 || vm.abas[i - 1].grupo !== a.grupo) && <span className="cad-janela-grupo">{a.grupo}</span>}
+                <button type="button" className={'cad-janela-aba' + (a.ativa ? ' ativa' : '')} aria-current={a.ativa ? 'page' : undefined}
+                  onClick={() => vm.irPara(a.id)} title={a.pendente ? (a.pendente === 1 ? 'Falta 1 item' : 'Faltam ' + a.pendente + ' itens') : undefined}>
+                  <Icone nome={a.icone} />{a.rotulo}
+                  {a.pendente > 0 && <span className="cad-janela-pendente" aria-label={'faltam ' + a.pendente}>{a.pendente}</span>}
+                </button>
+              </Fragment>
             ))}
           </nav>
           <div ref={conteudoDaAba} className="cad-janela-conteudo">
+            {vm.aba === 'empresa' && <ResumoDoCadastro vm={vm} />}
             <Aba rota={rota} aba={vm.aba} />
           </div>
         </div>

@@ -97,6 +97,13 @@ export interface ArquivoLido {
   saldoAnterior?: number;
   /** o saldo impresso no fim de cada dia (o PDF com a coluna Saldo ou a linha SALDO DO DIA) */
   saldosDoDia?: { data: string; saldo: number }[];
+  /**
+   * O extrato diz que não teve movimento ("Nenhuma movimentação encontrada"): os meses do período dele ('aaaa-mm').
+   * A importação marca esses meses como sem movimento no banco (Vitor, 13/10/2026).
+   */
+  semMovimento?: string[];
+  /** lido pelo OCR (o PDF escaneado ou a imagem): a tela avisa para conferir (Vitor, 13/10/2026) */
+  ocr?: boolean;
   /** preenchido quando não deu para aproveitar o arquivo */
   erro: string | null;
 }

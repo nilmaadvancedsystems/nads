@@ -1,32 +1,47 @@
-// Gmail › Histórico: as últimas leituras do robô do Gmail.
-import { Icone, useCarregando, useEntradaAnimada } from '@nads/ui';
+// Gmail › Histórico (13/10/2026: "refaça toda a UI do Gmail"): as últimas leituras do robô do Gmail em frases ("Leu 12
+// e-mails · 4 anexos salvos · 2 sem cliente"), com o total das leituras no topo; os erros em destaque.
+import { Icone, useCarregando } from '@nads/ui';
 import { useHistoricoDoRobo } from './useHistoricoDoRobo';
+
+const n = (v: number, um: string, varios: string) => v + ' ' + (v === 1 ? um : varios);
 
 export function HistoricoDoRobo() {
   const vm = useHistoricoDoRobo();
   useCarregando(vm.carregando);
-  const tabela = useEntradaAnimada<HTMLDivElement>(null, [vm.carregando], 'repetida');
   if (vm.erro) return <div className="alert"><Icone nome="alert" /><div><p className="alert-text">Não consegui ler o robô ({vm.erro}).</p></div></div>;
-  return !vm.carregando && !vm.linhas.length ? <p className="empty">O robô ainda não leu nada.</p> : (
-    <div ref={tabela} className="table-wrap">
-      <table className="tabela-empresas">
-        <thead><tr><th>Quando</th><th>Dias lidos</th><th>E-mails</th><th>Marcados</th><th>Anexos</th><th>Sem cliente</th><th>Conversas</th><th>Erros</th><th>Duração</th></tr></thead>
-        <tbody>
-          {vm.linhas.map(x => (
-            <tr key={x.em}>
-              <td className="num">{x.quando}</td>
-              <td className="num fraco">{x.dias}</td>
-              <td className="num">{x.emails}</td>
-              <td className="num">{x.marcados}</td>
-              <td className="num">{x.baixados}</td>
-              <td className="num">{x.naoReconhecidos}</td>
-              <td className="num fraco">{x.conversas}</td>
-              <td className={'num' + (x.erros ? ' gmail-erro' : ' fraco')}>{x.erros}</td>
-              <td className="num fraco">{x.duracao}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+  if (!vm.carregando && !vm.linhas.length) return (
+    <div className="gm-lista-vazia gm-historico-vazio">
+      <span className="gm-vazio-icone" aria-hidden="true"><Icone nome="clock" /></span>
+      <b>O robô ainda não leu nada</b>
     </div>
+  );
+  const soma = (k: 'emails' | 'baixados' | 'naoReconhecidos' | 'erros') => vm.linhas.reduce((s, x) => s + (Number(x[k]) || 0), 0);
+  return (
+    <section className="gm-historico">
+      <div className="gm-historico-numeros">
+        <span><b>{vm.linhas.length}</b> leituras</span>
+        <span><b>{soma('emails')}</b> e-mails lidos</span>
+        <span><b>{soma('baixados')}</b> anexos salvos</span>
+        <span><b>{soma('naoReconhecidos')}</b> sem cliente</span>
+        {soma('erros') > 0 && <span className="gm-historico-erro"><b>{soma('erros')}</b> com erro</span>}
+      </div>
+      <ol className="gm-historico-lista">
+        {vm.linhas.map(x => (
+          <li key={x.em} className={x.erros ? 'com-erro' : undefined}>
+            <span className="gm-historico-ponto" aria-hidden="true"><Icone nome={x.erros ? 'alert' : 'check'} /></span>
+            <div className="gm-historico-txt">
+              <b>{x.emails ? 'Leu ' + n(x.emails, 'e-mail', 'e-mails') : 'Nenhum e-mail novo'}</b>
+              <span className="fraco">
+                {[x.marcados ? n(x.marcados, 'marcado', 'marcados') : '', x.baixados ? n(x.baixados, 'anexo salvo', 'anexos salvos') : '',
+                  x.naoReconhecidos ? n(x.naoReconhecidos, 'sem cliente', 'sem cliente') : '', x.conversas ? n(x.conversas, 'conversa', 'conversas') : '',
+                  x.dias ? 'olhou ' + n(Number(x.dias), 'dia', 'dias') : ''].filter(Boolean).join(' · ')}
+              </span>
+            </div>
+            {x.erros > 0 && <span className="badge badge-bad">{n(x.erros, 'erro', 'erros')}</span>}
+            <span className="gm-historico-hora">{x.quando}{x.duracao && <small>{x.duracao}</small>}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }

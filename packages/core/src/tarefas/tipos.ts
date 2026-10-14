@@ -114,7 +114,11 @@ export type PainelDaTarefa = 'sieg' | 'recebimento' | 'sequencia' | 'saidas' | '
   | 'iss-retido' | 'inss-retido' | 'irrf-retido' | 'interestaduais' | 'receitas' | 'base' | 'icms' | 'prestados' | 'irpj'
   | 'servicos' | 'folha-total' | 'relatorio-inicio' | 'relatorio-fim'
   // a segregação (monofásico e ST), a prévia do DAS e o aviso de limite (13/10/2026)
-  | 'pgdas';
+  | 'pgdas'
+  // o Presumido e o Real (13/10/2026): o PIS/COFINS e os créditos do Real
+  | 'piscofins' | 'creditos'
+  // subir a guia do mês (o PDF do DAS ou do DAE)
+  | 'guia-das' | 'guia-dae';
 
 export interface Rotina { departamento: Departamento; etapas: Etapa[] }
 
