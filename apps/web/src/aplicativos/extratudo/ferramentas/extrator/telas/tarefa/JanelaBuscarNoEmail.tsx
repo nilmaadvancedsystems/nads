@@ -30,19 +30,23 @@ const CHAVE = 'nads-remetentes-email';
 const lembrados = (): string[] => { try { const v = JSON.parse(localStorage.getItem(CHAVE) || '[]'); return Array.isArray(v) ? v.filter(x => typeof x === 'string') : []; } catch { return []; } };
 const lembrar = (r: string) => { try { localStorage.setItem(CHAVE, JSON.stringify([r, ...lembrados().filter(x => x !== r)].slice(0, 8))); } catch { /* sem armazenamento: fica sem lembrar */ } };
 
-interface Linha { id: string; nome: string }
+export interface Linha { id: string; nome: string }
 /** O anexo aberto ao lado (Vitor, 13/10/2026: "com um preview"): o PDF na janela e o que o nads leu dele. */
-interface Preview {
+export interface Preview {
   anexo: creditor.AnexoDoEmail; carregando: boolean; erro: string;
   conteudo?: ArrayBuffer; url?: string; pdf?: boolean;
   lancamentos?: number; meses?: string[]; semMovimento?: boolean; primeiros?: { data: string; valor: number; historico: string }[];
 }
-interface Estado {
+export interface Estado {
   linha: Linha; mes: string; remetente: string; de: string; ate: string; atalho: Atalho; sugestoes: string[];
   buscando: boolean; passo: string; erro: string; resultados: creditor.AnexoDoEmail[] | null; trazendo: string | null;
 }
 
-export function useBuscarNoEmail(importar: (linha: Linha, fs: File[]) => void, pedirLogin: (depois: () => void) => void, codigo: number | null) {
+/** O que a prévia mostra do anexo (o extrato, por padrão; o Creditor passa o leitor do relatório de liquidação). */
+export interface LidoDoAnexo { lancamentos: number; meses: string[]; semMovimento?: boolean; erro?: string | null; primeiros: { data: string; valor: number; historico: string }[] }
+
+export function useBuscarNoEmail(importar: (linha: Linha, fs: File[]) => void, pedirLogin: (depois: () => void) => void, codigo: number | null,
+  lerDoAnexo?: (nome: string, conteudo: ArrayBuffer) => Promise<LidoDoAnexo>) {
   const { drive, acesso } = useDriveDaBusca();
   const [e, setE] = useState<Estado | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -95,11 +99,13 @@ export function useBuscarNoEmail(importar: (linha: Linha, fs: File[]) => void, p
       const pdf = x.ehPdf(bytes) || /\.pdf$/i.test(a.nome);
       let url: string | undefined;
       if (pdf) { url = URL.createObjectURL(new Blob([conteudo], { type: 'application/pdf' })); urls.current.push(url); }
-      const lido = await x.lerArquivo(a.nome, bytes.slice(), 'banco');
-      const meses = [...new Set(lido.lancamentos.map(l => l.data.slice(0, 7)))].sort();
+      const lido: LidoDoAnexo = lerDoAnexo ? await lerDoAnexo(a.nome, conteudo) : await (async () => {
+        const l = await x.lerArquivo(a.nome, bytes.slice(), 'banco');
+        return { lancamentos: l.lancamentos.length, meses: l.semMovimento || [...new Set(l.lancamentos.map(y => y.data.slice(0, 7)))].sort(), semMovimento: !!l.semMovimento, erro: l.erro, primeiros: l.lancamentos.slice(0, 8) };
+      })();
       setPreview(p => (p && p.anexo.anexoId === a.anexoId ? {
         anexo: a, carregando: false, erro: lido.erro && !lido.semMovimento ? lido.erro : '', conteudo, url, pdf,
-        lancamentos: lido.lancamentos.length, meses: lido.semMovimento || meses, semMovimento: !!lido.semMovimento, primeiros: lido.lancamentos.slice(0, 8),
+        lancamentos: lido.lancamentos, meses: lido.meses, semMovimento: !!lido.semMovimento, primeiros: lido.primeiros,
       } : p));
     } catch (err) { setPreview(p => (p && p.anexo.anexoId === a.anexoId ? { anexo: a, carregando: false, erro: mensagemDeErro(err) } : p)); }
   }

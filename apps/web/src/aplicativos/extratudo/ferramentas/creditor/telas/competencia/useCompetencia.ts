@@ -13,6 +13,7 @@ import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
 import { useSessao } from '../../casca/sessao';
 import { useDrive } from '../../dados/repo';
 import { lerRelatorio, mensagemDeErro } from '../../leitura';
+import { useBuscarNoEmail } from '../../../extrator/telas/tarefa/JanelaBuscarNoEmail';
 
 type Fase = 'parado' | 'procurando' | 'baixando' | 'lendo' | 'problema';
 interface Busca { mes: string; fase: Fase; texto: string; candidatos: cr.ArquivoAchado[] }
@@ -117,8 +118,28 @@ export function useCompetencia() {
     finally { setEntrando(false); }
     const para = loginPara;
     setLoginPara(null);
+    if (para === 'email') { const f = depoisDoLogin.current; depoisDoLogin.current = null; f?.(); return; }
     if (para === '*') await procurarTodos(); else if (para) await procurar(para);
   }
+
+  // o "Buscar no e-mail" (Vitor, 14/10/2026: "cadê a função buscar no Gmail?"), a mesma janela da Importação: o anexo
+  // escolhido entra como se viesse do computador; a prévia mostra os títulos do relatório
+  const depoisDoLogin = useRef<(() => void) | null>(null);
+  const email = useBuscarNoEmail(
+    (linha, arquivos) => { void importarDoComputador(linha.id, arquivos[0]); },
+    depois => { depoisDoLogin.current = depois; setErroLogin(''); setLoginPara('email'); },
+    s.empresa.codigo,
+    async (nome, conteudo) => {
+      try {
+        const ts = (await lerRelatorio(nome, conteudo)).grupos.flatMap(g => g.titulos);
+        const isoDe = (d: string) => d.slice(6, 10) + '-' + d.slice(3, 5) + '-' + d.slice(0, 2);
+        return {
+          lancamentos: ts.length, meses: [...new Set(ts.map(t => isoDe(t.liquidacao).slice(0, 7)))].sort(), erro: ts.length ? null : 'Não achei títulos neste arquivo.',
+          primeiros: ts.slice(0, 8).map(t => ({ data: isoDe(t.liquidacao), valor: t.valor, historico: (t.nf ? 'NF ' + t.nf + ' · ' : '') + t.sacado })),
+        };
+      } catch (e) { return { lancamentos: 0, meses: [], erro: mensagemDeErro(e), primeiros: [] }; }
+    },
+  );
 
   /** Do computador: lê o arquivo aqui mesmo. */
   async function importarDoComputador(mes: string, f: File | undefined) {
@@ -236,6 +257,9 @@ export function useCompetencia() {
     /** um mês, ou '*' para todos os que faltam */
     buscarNoDrive,
     importarDoComputador: (mes: string, f: File | undefined) => { void importarDoComputador(mes, f); },
+    /** o "Buscar no e-mail" (a janela da Importação; existe = o robô do Gmail ligado) */
+    email,
+    buscarNoEmail: (mes: string) => email.abrir({ id: mes, nome: 'Relatório de liquidação' }, mes),
     /** o menu de cima: vários arquivos (cada um no mês dele) e remover todos */
     importarVarios: (arquivos: File[]) => { void importarVarios(arquivos); },
     removerTodos: () => { void removerTodos(); },

@@ -5,10 +5,11 @@
 // do Drive) que exclui, o resumo no meio e a seta com os títulos. Com todos os meses, o Próximo (ao lado do Cancelar) segue para o Relatório de Recebimento
 // (Vitor, 05/10/2026: a Competência e o Relatório do banco eram a mesma tela; ficou só esta).
 import { creditor as cr } from '@nads/core';
-import { Alerta, classeDaJanela, Icone, LogoDrive, MenuSuspenso } from '@nads/ui';
+import { Alerta, classeDaJanela, Icone, LogoDrive, LogoGmail, MenuSuspenso } from '@nads/ui';
 import { useRef, useState } from 'react';
 import { BotaoGoogle } from '../../../../../../comum/BotaoGoogle';
 import { useCompetencia } from './useCompetencia';
+import { JanelaBuscarNoEmail } from '../../../extrator/telas/tarefa/JanelaBuscarNoEmail';
 import { BotaoDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
 import { useColunaAjustavel } from '../../../../../../comum/GradeDosMeses';
@@ -65,6 +66,8 @@ export function Competencia() {
           </div>
         </div>
       )}
+
+      <JanelaBuscarNoEmail vm={vm.email} />
 
       {/* sem o login do Drive: a mesma janela de entrar da Importação */}
       {vm.login.aberto && (
@@ -291,6 +294,12 @@ function CelulaDoRelatorio({ vm, l, comDrive, direita }: { vm: VM; l: VM['linhas
             {comDrive && (
               <button type="button" className="popover-item" role="menuitem" disabled={vm.ocupado} onClick={() => { fechar(); vm.buscarNoDrive(l.mes); }}>
                 <LogoDrive cor /><span className="popover-texto">Buscar no Drive</span>
+              </button>
+            )}
+            {/* o relatório que chegou por e-mail (como na Importação) */}
+            {vm.email.existe && (
+              <button type="button" className="popover-item" role="menuitem" disabled={vm.ocupado} onClick={() => { fechar(); vm.buscarNoEmail(l.mes); }}>
+                <LogoGmail /><span className="popover-texto">Buscar no e-mail</span>
               </button>
             )}
             {vm.exemplos && (
