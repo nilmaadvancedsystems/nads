@@ -24,6 +24,7 @@ export * from './regras/lancamentosAuto';
 export * from './regras/servicosConferencia';
 export * from './regras/verificarConta';
 export * from './regras/foraDoPadraoFiscal';
+export * from './regras/foraDoPadraoDaConta';
 export * from './regras/consultaCsv';
 export * from './regras/verificarContaTela';
 export * from './regras/pendenciasFiscais';

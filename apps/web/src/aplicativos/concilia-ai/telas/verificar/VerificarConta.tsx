@@ -2,6 +2,7 @@
 // Origem: conferencia.html ~L1264-1310 (#view-conferencia); com resultado na tela o formulário
 // sai e fica só o resultado (vcMostrarResultado ~L3822).
 import { TrilhaDoTopo } from '../../../../comum/topo';
+import { ForaDoPadraoDaConta } from './partes/ForaDoPadraoDaConta';
 import { Formulario } from './partes/Formulario';
 import { Resultado } from './partes/Resultado';
 import { useVerificarConta } from './useVerificarConta';
@@ -14,6 +15,8 @@ export function VerificarConta() {
       <TrilhaDoTopo itens={[{ rotulo: 'Movimento', titulo: 'Voltar para Movimento', onClick: vm.voltar }, { rotulo: 'Verificar por conta' }]} />
       {/* o formulário só se esconde (os campos de arquivo continuam lá pro "Corrigi, quero reconferir") */}
       <Formulario vm={vm} oculto={!!vm.resultado} />
+      {/* o lançamento fora do padrão da conta, na tela de subir o relatório (Vitor, 14/10/2026) */}
+      {!vm.resultado && <ForaDoPadraoDaConta vm={vm} />}
       {vm.resultado && <Resultado vm={vm} r={vm.resultado} />}
     </section>
   );
