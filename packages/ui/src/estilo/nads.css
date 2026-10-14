@@ -4013,6 +4013,9 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 .gm-historico-hora small{font-size:11.5px;color:var(--ink-faint);}
 .gm-historico-vazio{min-height:300px;}
 .gm-escolher .gm-rotulo{text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink);}
+/* a tela de bloqueio: o campo e o Abrir na mesma altura */
+.cofre-bloqueio-linha{align-items:stretch;}
+.cofre-bloqueio-linha>.field,.cofre-bloqueio-linha>.btn{height:36px;min-height:0;box-sizing:border-box;}
 /* o Gmail sem e-mail aberto (13/10/2026: "só vai abrir essa tela quando eu clicar; não vai ficar esse espaço aberto"): a
    lista ocupa a largura toda e cada e-mail vira uma linha (quem · assunto — trecho · anexos · hora); ao abrir um, ela
    encolhe para a esquerda e o e-mail aparece ao lado */
