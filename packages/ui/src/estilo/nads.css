@@ -2738,27 +2738,25 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .faq-resposta{padding:0 14px 12px 30px;font-size:14px;line-height:1.5;display:flex;flex-direction:column;align-items:flex-start;gap:6px;}
 .faq-pe{font-size:13px;}
 /* "Qual competência?" ao entrar em Minhas empresas */
-/* as réguas de Ano e Mês (Vitor, 05/10/2026: "só com ano e mês, o usuário usa o scroll"): cada uma anda de um em um e leva
-   o item no meio; o do meio em vermelho e maior, os do lado apagados; embaixo, os tracinhos da régua (rolam junto) e a
-   marca vermelha fixa no meio */
-.modal.modal-centro.competencia-janela{max-width:360px;padding:26px 0 18px;}
-.comp-rolos{display:flex;flex-direction:column;gap:18px;}
-.comp-rolo-rotulo{display:block;text-align:center;font-size:13px;font-weight:600;color:var(--ink-muted);margin-bottom:4px;}
-/* a régua travada (não rola solta): a janela corta, o trilho anda pelo transform e desliza (a única transição fora do
-   carregamento, pedido do Vitor em 05/10/2026: "parecer algo suave"); os tracinhos andam junto com o trilho */
-.comp-rolo{position:relative;overflow:hidden;outline:none;padding-bottom:12px;
-  -webkit-mask-image:linear-gradient(to right,transparent,#000 22%,#000 78%,transparent);mask-image:linear-gradient(to right,transparent,#000 22%,#000 78%,transparent);}
-.comp-rolo-trilho{position:relative;display:flex;width:max-content;}
-.comp-rolo-trilho::after{content:'';position:absolute;left:-480px;right:-480px;bottom:-12px;height:7px;pointer-events:none;
-  background:repeating-linear-gradient(to right,var(--border) 0 1px,transparent 1px 14px);}
-.comp-rolo-trilho.desliza{transition:transform .32s cubic-bezier(.22,.61,.36,1) !important;}
-.comp-rolo-item{flex:0 0 112px;height:42px;border:none;background:none;color:var(--ink-muted);font:inherit;font-size:15px;font-weight:500;cursor:pointer;white-space:nowrap;}
-.comp-rolo-item.desliza,.comp-rolo-trilho.desliza .comp-rolo-item{transition:color .32s ease,font-size .32s ease !important;}
-.comp-rolo-item:hover{color:var(--ink);}
-.comp-rolo-item.on{color:var(--accent-ink);font-size:21px;font-weight:700;}
-.comp-rolo-marca{position:absolute;left:50%;bottom:0;width:2px;height:13px;margin-left:-1px;border-radius:1px;background:var(--btn-primary);pointer-events:none;}
-.comp-rolo:focus-visible .comp-rolo-marca{height:17px;}
-.modal.modal-centro p.comp-dica{margin:30px 0 0;text-align:center;font-size:12px;}
+/* o calendário de meses (14/10/2026: "algo nesse estilo, só que com meses"): o ano com ‹ › no alto, os 12 meses em 3 × 4
+   (o escolhido cheio na cor do app, o de hoje com um pontinho, os que não começaram apagados) e o Abrir embaixo */
+.modal.modal-centro.competencia-janela{max-width:320px;padding:0;text-align:left;}
+.comp-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:16px 16px 10px;}
+.comp-titulo{font-size:14px;font-weight:600;color:var(--ink);}
+.comp-ano{display:inline-flex;align-items:center;gap:4px;}
+.comp-ano b{min-width:44px;text-align:center;font-size:14px;}
+.comp-ano .icon-btn svg{width:16px;height:16px;}
+.comp-meses{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:4px 16px 16px;}
+.comp-mes{position:relative;height:40px;border:none;border-radius:999px;background:transparent;color:var(--ink);font:inherit;font-size:14px;
+  font-weight:500;cursor:pointer;}
+.comp-mes:hover:not(:disabled):not(.on){background:var(--hover-bg);}
+.comp-mes:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+.comp-mes.on{background:var(--btn-primary);color:#fff;font-weight:600;}
+.comp-mes:disabled{color:var(--ink-faint);opacity:.45;cursor:default;}
+.comp-mes.hoje::after{content:'';position:absolute;left:50%;bottom:5px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--btn-primary);}
+.comp-mes.hoje.on::after{background:#fff;}
+.comp-pe{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-top:1px solid var(--border);}
+.comp-pe .hint{margin:0;}
 .imp-sem-bancos{margin-top:4px;}
 /* o checklist das tarefas da etapa (o Fiscal): o link (ex.: SIEG) à direita e o cuidado embaixo, em laranja */
 .folha-check-lista li{display:flex;align-items:center;gap:12px;}
@@ -2966,14 +2964,6 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .arquivador-exec-aberta{display:flex;flex-direction:column;gap:10px;padding:2px 12px 12px;}
 .arquivador-janela .usuario-pe .arquivador-nota{margin:0;flex:1;min-width:0;}
 .arquivador-janela .pessoal-rola .arquivador-numeros{margin-bottom:12px;}
-/* a marca da régua cresce de baixo (a entrada e a troca animadas pelo animejs, JanelaDaCompetencia) */
-.comp-rolo-marca{transform-origin:50% 100%;}
-/* Selecione a competência, a roda (05/10/2026): o tamanho e a transparência vêm da distância ao meio (JanelaDaCompetencia,
-   a cada quadro); o escolhido só muda de cor e peso, sem pular de tamanho; arrastar a régua (sem selecionar o texto) */
-.comp-rolo{cursor:grab;user-select:none;touch-action:pan-y;}
-.comp-rolo:active{cursor:grabbing;}
-.comp-rolo-item,.comp-rolo-item.on{font-size:16px;transform-origin:50% 60%;transition:color .2s ease !important;}
-.comp-rolo-item.on{font-weight:700;}
 /* Arquivar agora › Agora sem nada rodando (Vitor, 05/10/2026: "melhore isso"): o dia e a última rodada em blocos, os
    clientes com uma barra do tamanho de cada um; o selo verde quando já houve organização hoje */
 .arquivador-bloco{display:flex;flex-direction:column;gap:12px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);}

@@ -174,6 +174,13 @@ export const PECAS_BASE: Peca[] = [
         </div>
       </div>
     ) },
+  { id: 'comp-meses', tipo: 'botoes', nome: 'Calendário de meses (competência)', descricao: 'O ano com ‹ › no alto, os 12 meses em 3 × 4: o escolhido cheio, o de hoje com um pontinho, os que não começaram apagados; Abrir embaixo', classes: ['comp-meses', 'comp-mes'], telas: ['t-empresas'],
+    demo: () => (
+      <div className="modal modal-centro competencia-janela" style={{ position: 'static', boxShadow: 'none' }}>
+        <div className="comp-topo"><span className="comp-titulo">Competência</span><div className="comp-ano"><button type="button" className="icon-btn icon-btn-sm"><Icone nome="chevronLeft" /></button><b className="num">2026</b><button type="button" className="icon-btn icon-btn-sm" disabled><Icone nome="chevronRight" /></button></div></div>
+        <div className="comp-meses">{['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map((m, k) => <button key={m} type="button" className={'comp-mes' + (k === 8 ? ' on' : '') + (k === 9 ? ' hoje' : '')} disabled={k > 9}>{m}</button>)}</div>
+      </div>
+    ) },
   { id: 'dica', tipo: 'botoes', nome: 'Dica (?)', descricao: 'O "?" de 14 px ao lado do rótulo: a explicação aparece ao passar o mouse ou ao focar', componente: 'Dica', classes: ['dica'], telas: ['t-cadastro-janela'],
     uso: '<span>Presta serviços<Dica texto="Mostra a aba Prestados na Importação." /></span>', demo: () => <span>Presta serviços<Dica texto="Mostra a aba Prestados na Importação e os serviços prestados na Conferência." /></span> },
   { id: 'link-btn', removida: { como: 'substituida', por: 'btn', em: '02/10/2026', motivo: 'Navegar é pela barra de cima (Tarefas / Vitor / Minhas empresas / 292 …), sem "← Voltar" no meio da página; as outras ações em texto viraram o botão padrão.' }, tipo: 'botoes', nome: 'Ação em texto', classes: ['link-btn'], telas: ['c-verificar', 't-empresa'], demo: () => <button className="link-btn">← Voltar para Movimento</button> },
