@@ -6,7 +6,7 @@
 // Só de 2026 para frente e só os meses que já começaram.
 import { Icone, classeDaJanela } from '@nads/ui';
 import type { JSAnimation } from 'animejs';
-import { animate, cleanInlineStyles, utils } from 'animejs';
+import { animate, cleanInlineStyles, spring, stagger, utils } from 'animejs';
 import { useLayoutEffect, useRef, useState } from 'react';
 
 // As animações desta janela são pedido do Vitor (05/10/2026: "use o animejs para animar a entrada dessa seleção e a parte
@@ -14,8 +14,13 @@ import { useLayoutEffect, useRef, useState } from 'react';
 // nível Normal de animações; quem pediu menos movimento no computador não vê nada, só o estado final. Todas partem do
 // estado visível (o CSS já deixa tudo no lugar) e nenhuma segura o clique.
 const menosMovimento = () => typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-/** a opacidade de repouso de um mês (o que ainda não começou fica apagado, como no CSS) */
-const repouso = (b: HTMLButtonElement) => (b.disabled ? 0.45 : 1);
+// 14/10/2026 ("melhora a animação"): molas no lugar das curvas fixas (chegam com um leve balanço e param macio), a cascata
+// dos meses sai do mês escolhido como uma onda pela grade, a pílula estica para o lado em que anda, o mês clicado dá um
+// toque, o ano troca deslizando e o Abrir fecha a janela antes de seguir.
+const MOLA = spring({ bounce: 0.28, duration: 340 });
+const MOLA_FIRME = spring({ bounce: 0.18, duration: 280 });
+const limpar = { onComplete: (a: JSAnimation) => { cleanInlineStyles(a); } };
+const meses = (g: HTMLElement | null) => [...(g?.querySelectorAll<HTMLButtonElement>('.comp-mes') ?? [])];
 
 const CURTOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const NOMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -39,20 +44,22 @@ export function JanelaDaCompetencia({ competencias, competencia, onSeguir }: {
   const grade = useRef<HTMLDivElement>(null);
   const pilula = useRef<HTMLSpanElement>(null);
   const rodape = useRef<HTMLSpanElement>(null);
+  const numAno = useRef<HTMLElement>(null);
   // onde a pílula está (para deslizar só dentro do mesmo ano), a animação dela e para que lado o ano andou
   const ondePilula = useRef<string | null>(null);
   const andando = useRef<JSAnimation | null>(null);
   const sentido = useRef(0);
   const primeiraVez = useRef(true);
 
-  // a entrada (200 ms): a janela sobe de leve e acende; os meses chegam em cascata curta (14 ms entre um e outro)
+  // a entrada: a janela cresce de leve numa mola; os meses chegam numa onda que sai do mês escolhido (22 ms por passo)
   useLayoutEffect(() => {
     const el = caixa.current;
     if (!el || menosMovimento()) return;
-    animate(el, { opacity: [0, 1], scale: [0.96, 1], translateY: [8, 0], duration: 200, ease: 'outQuint', onComplete: a => { cleanInlineStyles(a); } });
-    grade.current?.querySelectorAll<HTMLButtonElement>('.comp-mes').forEach((b, k) => {
-      animate(b, { opacity: [0, repouso(b)], translateY: [6, 0], duration: 150, delay: 30 + k * 14, ease: 'outQuint', onComplete: a => { cleanInlineStyles(a); } });
-    });
+    animate(el, { opacity: { to: [0, 1], duration: 160, ease: 'outQuad' }, scale: [0.94, 1], translateY: [12, 0], ease: MOLA, ...limpar });
+    const bs = meses(grade.current);
+    const daqui = Math.max(0, bs.findIndex(b => b.dataset.mes === c));
+    if (bs.length) animate(bs, { opacity: { from: 0 } /* até a de repouso (a do CSS: o mês que ainda não começou fica apagado) */, scale: [0.82, 1], translateY: [6, 0], delay: stagger(22, { grid: [3, 4], from: daqui, start: 50 }), ease: MOLA, ...limpar });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // a pílula azul: vai do mês de antes ao de agora (200 ms). Mudou de ano ou acabou de abrir: aparece no lugar, acendendo.
@@ -74,23 +81,30 @@ export function JanelaDaCompetencia({ competencias, competencia, onSeguir }: {
     ondePilula.current = ano;
     if (menosMovimento()) { utils.set(p, { translateX: x, translateY: y, opacity: 1 }); return; }
     if (antes === ano) {
-      // de onde ela está agora (pode ter sido apertado de novo no meio do caminho)
+      // de onde ela está agora (pode ter sido apertado de novo no meio do caminho); estica para o lado em que anda e volta
       const m = new DOMMatrixReadOnly(getComputedStyle(p).transform);
-      andando.current = animate(p, { translateX: [m.m41, x], translateY: [m.m42, y], duration: 200, ease: 'outQuint' });
+      const dx = Math.abs(x - m.m41), dy = Math.abs(y - m.m42);
+      if (!dx && !dy) return;
+      const deitada = dx >= dy;
+      andando.current = animate(p, {
+        translateX: [m.m41, x], translateY: [m.m42, y], ease: MOLA,
+        scaleX: deitada ? [{ to: 1.14, duration: 110, ease: 'outQuad' }, { to: 1, duration: 260, ease: 'outBack(2)' }] : 1,
+        scaleY: deitada ? 1 : [{ to: 1.1, duration: 110, ease: 'outQuad' }, { to: 1, duration: 260, ease: 'outBack(2)' }],
+      });
     } else {
-      utils.set(p, { translateX: x, translateY: y });
-      andando.current = animate(p, { opacity: [0, 1], duration: 200, delay: antes === null && primeiraVez.current ? 120 : 60, ease: 'outQuint' });
+      utils.set(p, { translateX: x, translateY: y, scaleX: 1, scaleY: 1 });
+      andando.current = animate(p, { opacity: { to: [0, 1], duration: 160, ease: 'outQuad' }, scale: [0.6, 1], delay: antes === null && primeiraVez.current ? 90 + 22 * 2 : 40, ease: MOLA });
     }
   }, [c, ano]);
 
-  // outro ano: a grade desliza para o lado da seta (os meses novos chegam com 12 px de deslocamento, 200 ms)
+  // outro ano: o número do ano desliza para o lado da seta e os meses chegam em onda, coluna por coluna, do mesmo lado
   useLayoutEffect(() => {
     const d = sentido.current;
     sentido.current = 0;
     if (!d || menosMovimento()) return;
-    grade.current?.querySelectorAll<HTMLButtonElement>('.comp-mes').forEach((b, k) => {
-      animate(b, { opacity: [0, repouso(b)], translateX: [d * 12, 0], duration: 200, delay: k * 8, ease: 'outQuint', onComplete: a => { cleanInlineStyles(a); } });
-    });
+    if (numAno.current) animate(numAno.current, { opacity: { to: [0, 1], duration: 140, ease: 'outQuad' }, translateX: [d * 14, 0], ease: MOLA_FIRME, ...limpar });
+    const bs = meses(grade.current);
+    if (bs.length) animate(bs, { opacity: { from: 0 } /* até a de repouso (a do CSS: o mês que ainda não começou fica apagado) */, translateX: [d * 18, 0], delay: stagger(30, { grid: [3, 4], from: d > 0 ? 'first' : 'last', axis: 'x' }), ease: MOLA_FIRME, ...limpar });
   }, [ano]);
 
   // o texto do rodapé troca sem pulo: o novo chega de 3 px abaixo, acendendo (o Abrir fica parado à direita)
@@ -98,10 +112,26 @@ export function JanelaDaCompetencia({ competencias, competencia, onSeguir }: {
     if (primeiraVez.current) { primeiraVez.current = false; return; }
     const el = rodape.current;
     if (!el || menosMovimento()) return;
-    animate(el, { opacity: [0, 1], translateY: [3, 0], duration: 160, ease: 'outQuint', onComplete: a => { cleanInlineStyles(a); } });
+    animate(el, { opacity: { to: [0, 1], duration: 140, ease: 'outQuad' }, translateY: [6, 0], ease: MOLA_FIRME, ...limpar });
   }, [c]);
 
-  const escolher = (v: string) => { setC(v); };
+  const escolher = (v: string) => {
+    setC(v);
+    // o toque no mês: o texto afunda um pouco e volta na mola
+    const b = grade.current?.querySelector<HTMLElement>('[data-mes="' + v + '"]');
+    if (b && !menosMovimento()) animate(b, { scale: [0.9, 1], ease: MOLA, ...limpar });
+  };
+  // o Abrir: a janela encolhe e some (150 ms) e só então segue; o fundo some junto
+  const saindo = useRef(false);
+  const seguir = (v: string) => {
+    if (saindo.current) return;
+    saindo.current = true;
+    const el = caixa.current;
+    if (!el || menosMovimento()) { onSeguir(v); return; }
+    const fundo = el.parentElement;
+    if (fundo) animate(fundo, { opacity: 0, duration: 160, ease: 'inQuad' });
+    animate(el, { opacity: 0, scale: 0.96, translateY: 6, duration: 150, ease: 'inQuad', onComplete: () => onSeguir(v) });
+  };
   // outro ano: os meses mudam no lugar (sem trocar o escolhido até clicar num mês)
   const iAno = anos.indexOf(ano);
   const irAoAno = (d: number) => {
@@ -113,7 +143,7 @@ export function JanelaDaCompetencia({ competencias, competencia, onSeguir }: {
   // as setas andam pela grade (3 colunas), só pelos meses que dá
   const teclas = (e: React.KeyboardEvent) => {
     const passos: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 3, ArrowUp: -3 };
-    if (e.key === 'Enter') { e.preventDefault(); onSeguir(c); return; }
+    if (e.key === 'Enter') { e.preventDefault(); seguir(c); return; }
     const p = passos[e.key];
     if (!p) return;
     e.preventDefault();
@@ -139,7 +169,7 @@ export function JanelaDaCompetencia({ competencias, competencia, onSeguir }: {
           <span className="comp-titulo">Competência</span>
           <div className="comp-ano">
             <button type="button" className="icon-btn icon-btn-sm" disabled={iAno <= 0} onClick={() => irAoAno(-1)} aria-label="Ano anterior" title="Ano anterior"><Icone nome="chevronLeft" /></button>
-            <b className="num">{ano}</b>
+            <b ref={numAno} className="num">{ano}</b>
             <button type="button" className="icon-btn icon-btn-sm" disabled={iAno >= anos.length - 1} onClick={() => irAoAno(1)} aria-label="Próximo ano" title="Próximo ano"><Icone nome="chevronRight" /></button>
           </div>
         </div>
@@ -152,7 +182,7 @@ export function JanelaDaCompetencia({ competencias, competencia, onSeguir }: {
               <button key={v} type="button" data-mes={v} role="option" aria-selected={v === c} disabled={!da}
                 autoFocus={v === c} title={da ? NOMES[k] + ' de ' + ano : NOMES[k] + ' ainda não começou'}
                 className={'comp-mes' + (v === c ? ' on' : '') + (v === hoje ? ' hoje' : '')}
-                onClick={() => escolher(v)} onDoubleClick={() => onSeguir(v)}>
+                onClick={() => escolher(v)} onDoubleClick={() => seguir(v)}>
                 {curto}
               </button>
             );
@@ -160,7 +190,7 @@ export function JanelaDaCompetencia({ competencias, competencia, onSeguir }: {
         </div>
         <div className="comp-pe">
           <span ref={rodape} className="hint">{NOMES[Number(c.slice(5, 7)) - 1]} de {c.slice(0, 4)}</span>
-          <button type="button" className="btn btn-primary" onClick={() => onSeguir(c)}>Abrir</button>
+          <button type="button" className="btn btn-primary" onClick={() => seguir(c)}>Abrir</button>
         </div>
       </div>
     </div>
