@@ -56,6 +56,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     // a guia do FGTS Digital pelo robô da nuvem, com o certificado do escritório (Vitor, 07/10/2026)
     { id: 'fgts', rotulo: 'FGTS Digital', icone: 'fileDown', titulo: 'DP — guias do FGTS Digital' },
     // os parâmetros de cada cliente (Vitor, 06/10/2026: "quero que o dp tenha a própria aba de configurações")
+    // os textos de consulta que vieram do Toriba (Vitor, 14/10/2026: "importa as legislações em uma aba no DP")
+    { id: 'legislacao', rotulo: 'Legislação', icone: 'scale', titulo: 'DP — legislação' },
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'DP — configurações' },
   ] },
   // as senhas gov.br e os certificados digitais, no cofre com a chave por pessoa (Vitor, 07/10/2026); todo o escritório
