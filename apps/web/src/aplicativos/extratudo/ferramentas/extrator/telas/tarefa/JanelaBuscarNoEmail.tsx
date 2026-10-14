@@ -45,7 +45,8 @@ export interface Estado {
 /** O que a prévia mostra do anexo (o extrato, por padrão; o Creditor passa o leitor do relatório de liquidação). */
 export interface LidoDoAnexo { lancamentos: number; meses: string[]; semMovimento?: boolean; erro?: string | null; primeiros: { data: string; valor: number; historico: string }[] }
 
-export function useBuscarNoEmail(importar: (linha: Linha, fs: File[]) => void, pedirLogin: (depois: () => void) => void, codigo: number | null,
+/** importar: a linha, o arquivo e os meses que ele cobre (os lidos na prévia; senão, o mês da busca) */
+export function useBuscarNoEmail(importar: (linha: Linha, fs: File[], meses: string[]) => void, pedirLogin: (depois: () => void) => void, codigo: number | null,
   lerDoAnexo?: (nome: string, conteudo: ArrayBuffer) => Promise<LidoDoAnexo>) {
   const { drive, acesso } = useDriveDaBusca();
   const [e, setE] = useState<Estado | null>(null);
@@ -114,8 +115,9 @@ export function useBuscarNoEmail(importar: (linha: Linha, fs: File[]) => void, p
   function importarAberto() {
     if (!e || !preview?.conteudo) return;
     const linha = e.linha, arquivo = new File([preview.conteudo], preview.anexo.nome);
+    const meses = preview.meses?.length ? preview.meses : [e.mes];
     soltar(); setPreview(null); setE(null);
-    importar(linha, [arquivo]);
+    importar(linha, [arquivo], meses);
   }
 
 

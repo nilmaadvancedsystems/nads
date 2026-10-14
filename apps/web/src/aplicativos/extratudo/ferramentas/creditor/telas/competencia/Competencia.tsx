@@ -8,6 +8,7 @@ import { creditor as cr } from '@nads/core';
 import { Alerta, classeDaJanela, Icone, LogoDrive, LogoGmail, MenuSuspenso } from '@nads/ui';
 import { useRef, useState } from 'react';
 import { BotaoGoogle } from '../../../../../../comum/BotaoGoogle';
+import { BotaoVer } from '../../../puxados';
 import { useCompetencia } from './useCompetencia';
 import { JanelaBuscarNoEmail } from '../../../extrator/telas/tarefa/JanelaBuscarNoEmail';
 import { BotaoDeTeste } from '../../../../../../comum/BotaoDeTeste';
@@ -293,13 +294,19 @@ function RelatoriosDoPeriodo({ vm, comDrive }: { vm: VM; comDrive: boolean }) {
 function CelulaDoRelatorio({ vm, l, comDrive, direita }: { vm: VM; l: VM['linhas'][number]; comDrive: boolean; direita: boolean }) {
   const arquivo = useRef<HTMLInputElement>(null);
   if (l.carregado) {
-    return (
+    const feito = (
       <button type="button" className={'icon-btn icon-btn-sm imp-btn imp-feito' + (l.doDrive ? ' imp-feito-drive' : '')} onClick={() => vm.excluir(l.mes)}
         disabled={vm.ocupado} title={'Importado: ' + l.origem + '. Clique para excluir.'} aria-label={'Excluir o relatório de liquidação ' + l.rotulo}>
         {l.doDrive ? <span className="imp-feito-ok"><LogoDrive cor /></span> : <Icone nome="check" className="imp-feito-ok" />}
         <Icone nome="x" className="imp-feito-x" />
       </button>
     );
+    // veio do Drive ou do e-mail: o olhinho ao lado abre o que foi puxado (Vitor, 14/10/2026)
+    const ver = l.puxados.length > 0 && (
+      <BotaoVer titulo={'Ver o que foi puxado ' + (l.puxados[0].origem === 'drive' ? 'do Drive' : 'do e-mail') + ': ' + l.puxados.map(p => p.nome).join(', ')}
+        onVer={() => l.puxados.forEach(p => p.abrir())} />
+    );
+    return <>{feito}{ver}</>;
   }
   if (l.ocupado) return <span className="icon-btn icon-btn-sm imp-btn" title={l.texto}><span className="btn-spinner" /></span>;
   return (

@@ -107,6 +107,12 @@ export interface CadastroDaEmpresa {
    */
   credLiquidacao?: boolean;
   /**
+   * De quais bancos vem o relatório de liquidação (Vitor, 14/10/2026: "coloca no cadastro da empresa checks, Bradesco e
+   * Sicoob"): o importar automático do Creditor procura os desses bancos, só no formato de cada um, e avisa o que falta.
+   * Sem = não informado (procura os dois).
+   */
+  relatoriosDeLiquidacao?: BancoDoRelatorio[];
+  /**
    * O escritório emite nota de honorário para a empresa? (Vitor, 07/10/2026.) Sim: a provisão chega pela nota (Fiscal) e a
    * etapa Honorários só confere o razão. Não: a pessoa importa o Extrato por cobrança e baixa os lançamentos para o
    * Alterdata. Sem = ainda não informado.
@@ -197,3 +203,7 @@ export interface TransferenciaDeResponsavel {
   /** a troca de que faz parte (Vitor, 07/10/2026: "realmente uma troca"): as empresas de uma troca vão e voltam juntas */
   troca?: string;
 }
+
+/** Os bancos do relatório de liquidação do Creditor (o Sicoob: Títulos por Período; o Bradesco: Carteira de Cobrança). */
+export type BancoDoRelatorio = 'sicoob' | 'bradesco';
+export const BANCOS_DO_RELATORIO: readonly { id: BancoDoRelatorio; nome: string }[] = [{ id: 'sicoob', nome: 'Sicoob' }, { id: 'bradesco', nome: 'Bradesco' }];
