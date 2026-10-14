@@ -17,7 +17,7 @@ export function useSenhasDasEmpresas() {
   const todas = empresas.EMPRESAS_COM_DP.map(e => {
     const d = vm.itens.get(formatos.slug(e.nome));
     const cert = c.situacaoDoCertificado(d?.temCertificado ? d.validade : undefined, hoje);
-    return { chave: (e.codigo ?? '') + e.nome, codigo: e.codigo, nome: e.nome, temGov: !!d?.temGov, temCertificado: !!d?.temCertificado, validade: d?.validade || '', ...cert };
+    return { chave: (e.codigo ?? '') + e.nome, codigo: e.codigo, nome: e.nome, temGov: !!d?.temGov, temCertificado: !!d?.temCertificado, validade: d?.validade || '', atualizadoEm: d?.atualizadoEm || '', atualizadoPor: d?.atualizadoPor || '', ...cert };
   });
   // a busca na ordem dela (o código igual primeiro); a chave tem o código (dois clientes com o mesmo nome)
   const achadas = busca.trim() ? empresas.buscarEmpresas(todas.map(l => ({ ...l, regime: '' })), busca).map(e => e.chave) : null;
