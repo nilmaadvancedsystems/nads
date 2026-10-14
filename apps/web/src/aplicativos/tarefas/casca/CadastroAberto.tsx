@@ -29,5 +29,5 @@ export function CadastroAberto() {
 /** Link antigo (/tarefas/cadastro/292/bancos): leva para a janela da empresa no endereço novo. */
 export function CadastroAntigo() {
   const { empresa = '', aba = '' } = useParams();
-  return <Navigate to={caminhoDoCadastro(empresa, ABAS_DO_CADASTRO.some(a => a.id === aba) ? aba : 'bancos')} replace />;
+  return <Navigate to={caminhoDoCadastro(empresa, ABAS_DO_CADASTRO.some(a => a.id === aba) ? aba : 'empresa')} replace />;
 }

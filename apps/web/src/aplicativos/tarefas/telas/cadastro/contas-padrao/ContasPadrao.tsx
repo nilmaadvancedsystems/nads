@@ -1,6 +1,6 @@
 // Cadastro › Contas padrão: um campo por conta (com as contas do plano para escolher e o nome embaixo) e
 // os códigos de histórico. Grava ao sair do campo (ou Enter).
-import { Icone, useCarregando } from '@nads/ui';
+import { Dica, Icone, useCarregando } from '@nads/ui';
 import { useId, useState } from 'react';
 import { useContasPadrao, type CampoPadrao } from './useContasPadrao';
 
@@ -14,8 +14,8 @@ function Campo({ vm, c, lista }: { vm: Vm; c: CampoPadrao; lista: string }) {
   const gravar = () => { if (texto.trim() !== c.valor) vm.definir(c.id, texto); };
   return (
     <label className="field cad-campo">
-      <span className="cad-campo-rotulo">{c.rotulo}</span>
-      <span className="hint">{vm.paraQue[c.id]}</span>
+      {/* a explicação no "?" (13/10/2026) */}
+      <span className="cad-campo-rotulo">{c.rotulo}{vm.paraQue[c.id] && <Dica texto={vm.paraQue[c.id]} />}</span>
       <input type="text" inputMode="numeric" list={c.doPlano ? lista : undefined} value={texto} placeholder="automático"
         onChange={e => setTexto(e.target.value)} onBlur={gravar}
         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); gravar(); } if (e.key === 'Escape') setTexto(c.valor); }} />

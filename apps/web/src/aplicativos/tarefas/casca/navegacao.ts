@@ -28,11 +28,11 @@ export const APLICACOES: readonly Aplicacao[] = [
   ] },
   { id: 'cadastro', nome: 'Cadastro', icone: 'landmark', pronta: true, paginas: [
     { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Cadastro — empresas' },
-    { id: 'usuarios', rotulo: 'Usuários', icone: 'checklist', titulo: 'Cadastro — usuários' },
-    // o painel dos agentes do Claude Code (Vitor, 13/10/2026: "tem como upar uma página no nads disso?"): só o admin vê
-    { id: 'agentes', rotulo: 'Agentes', icone: 'robo', titulo: 'Cadastro — agentes do Claude' },
-    // o que a equipe mandou pelo Enviar feedback (o print e o que melhorar; Vitor, 07/10/2026)
-    { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Cadastro — configurações' },
+    // a organização nova (Vitor, 13/10/2026: "reveja a estrutura inteira do cadastro"): a Equipe (as pessoas e a proteção
+    // do login) e os Robôs e agentes (a saúde dos robôs, o que eles fazem e os agentes do Claude, que antes ficavam em
+    // Configurações e em Agentes; os links antigos levam para cá)
+    { id: 'usuarios', rotulo: 'Equipe', icone: 'usuario', titulo: 'Cadastro — equipe' },
+    { id: 'robos', rotulo: 'Robôs e agentes', icone: 'robo', titulo: 'Cadastro — robôs e agentes' },
   ] },
   // o Fiscal no mesmo modelo do Contábil (Vitor, 05/10/2026): as empresas com a rotina do Fiscal, a visão e as paradas
   { id: 'fiscal', nome: 'Fiscal', icone: 'fileText', pronta: true, paginas: [
@@ -143,16 +143,17 @@ export function caminhoDoInicio(op: { departamento: string; admin: boolean }): s
 /** A página de uma empresa (insights dela): /tarefas/minhas-empresas/empresa/<código>?competencia=aaaa-mm */
 export const caminhoDaEmpresa = (rotaEmpresa: string, competencia: string) => BASE + '/minhas-empresas/empresa/' + rotaEmpresa + '?competencia=' + competencia;
 /** As abas da janela de uma empresa no Cadastro. */
-export const ABAS_DO_CADASTRO: readonly { id: string; rotulo: string; icone: NomeIcone }[] = [
-  { id: 'empresa', rotulo: 'Empresa', icone: 'briefcase' },
-  { id: 'bancos', rotulo: 'Contas bancárias', icone: 'landmark' },
-  { id: 'plano', rotulo: 'Plano de contas', icone: 'list' },
-  { id: 'contas-padrao', rotulo: 'Contas padrão', icone: 'settings' },
-  { id: 'senhas', rotulo: 'Senhas', icone: 'lock' },
-  { id: 'historico', rotulo: 'Histórico', icone: 'clock' },
+// em grupos (13/10/2026: "reveja a estrutura inteira do cadastro"): a janela abre na Empresa (o resumo do que falta)
+export const ABAS_DO_CADASTRO: readonly { id: string; rotulo: string; icone: NomeIcone; grupo: string }[] = [
+  { id: 'empresa', rotulo: 'Empresa', icone: 'briefcase', grupo: 'Dados' },
+  { id: 'bancos', rotulo: 'Contas bancárias', icone: 'landmark', grupo: 'Bancos' },
+  { id: 'plano', rotulo: 'Plano de contas', icone: 'list', grupo: 'Contabilidade' },
+  { id: 'contas-padrao', rotulo: 'Contas padrão', icone: 'settings', grupo: 'Contabilidade' },
+  { id: 'senhas', rotulo: 'Senhas', icone: 'lock', grupo: 'Acessos' },
+  { id: 'historico', rotulo: 'Histórico', icone: 'clock', grupo: 'Registro' },
 ];
 
 /** A lista do Cadastro (sem empresa) ou a janela de uma empresa, numa aba. */
-export const caminhoDoCadastro = (rotaEmpresa: string | null, aba = 'bancos') =>
+export const caminhoDoCadastro = (rotaEmpresa: string | null, aba = 'empresa') =>
   BASE + '/cadastro/empresas' + (rotaEmpresa ? '/' + rotaEmpresa + '/' + aba : '');
 export const caminhoDoExecutor = (rotaEmpresa: string, competencia: string) => BASE + '/executar/' + rotaEmpresa + '/' + competencia;
