@@ -7,7 +7,7 @@
 import type { entregas as e } from '@nads/core';
 import { Esqueleto, Icone, NumeroQueConta, Segmentado, useCarregando } from '@nads/ui';
 import { useEffect, useState } from 'react';
-import { useCaixaDoRobo, usePainelDoEmail, type AbaDaCaixa, type VmCaixa } from './useCaixaDoRobo';
+import { useCaixaDoRobo, usePainelDoEmail, type AbaDaCaixa, type PeriodoDaCaixa, type VmCaixa } from './useCaixaDoRobo';
 
 const ABAS: { valor: AbaDaCaixa; rotulo: string }[] = [
   { valor: 'clientes', rotulo: 'De clientes' },
@@ -22,6 +22,17 @@ const inicialDe = (x: e.EmailDaCaixa) => (x.clienteNome || x.nome || x.remetente
 
 /** O ícone do anexo pela extensão. */
 const extensao = (nome: string) => (/\.([a-z0-9]{2,5})$/i.exec(nome)?.[1] || '').toUpperCase();
+
+const PERIODOS: { valor: PeriodoDaCaixa; rotulo: string }[] = [
+  { valor: 'tudo', rotulo: 'Tudo' }, { valor: 'hoje', rotulo: 'Hoje' }, { valor: '7d', rotulo: '7 dias' }, { valor: '30d', rotulo: '30 dias' },
+];
+
+/** Os tipos dos anexos (PDF ×2, XML…), para ver na linha sem abrir (14/10/2026: "mais informação na linha"). */
+function tiposDosAnexos(arquivos: readonly string[]) {
+  const conta = new Map<string, number>();
+  for (const a of arquivos) { const t = extensao(a) || 'ARQ'; conta.set(t, (conta.get(t) || 0) + 1); }
+  return [...conta].sort((a, b) => b[1] - a[1]);
+}
 
 /** Escolher o cliente dentro do e-mail aberto: uma busca com a lista embaixo. */
 function EscolherCliente({ vm, titulo, aoEscolher, candidatos = [] }: { vm: VmCaixa; titulo: string; aoEscolher: (clienteId: string) => void; candidatos?: readonly string[] }) {
@@ -61,22 +72,28 @@ function EscolherCliente({ vm, titulo, aoEscolher, candidatos = [] }: { vm: VmCa
 function Item({ vm, x, aberto }: { vm: VmCaixa; x: e.EmailDaCaixa; aberto: boolean }) {
   const salvo = vm.salvo(x);
   const parecido = vm.aba === 'sem-cliente' ? vm.parecido(x) : null;
-  const quem = x.clienteNome || x.nome || x.remetente;
+  const q = vm.quem(x);
+  const tipos = tiposDosAnexos(x.arquivos);
   return (
     <li>
       <div role="button" tabIndex={0} className={'gm-item' + (aberto ? ' aberto' : '')} data-linha={x.mensagemId}
         onClick={() => vm.abrir(x.mensagemId)} onKeyDown={ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); vm.abrir(x.mensagemId); } }}>
-        <span className={'gm-inicial gm-tom-' + tomDe(x.remetente || quem)} aria-hidden="true">{inicialDe(x)}</span>
+        <span className={'gm-inicial gm-tom-' + tomDe(x.remetente || q.completo)} aria-hidden="true">{inicialDe(x)}</span>
         <span className="gm-item-corpo">
           <span className="gm-item-topo">
-            <b className="gm-quem">{quem}</b>
+            <span className="gm-quem" title={q.completo}>{q.codigo && <span className="emp-cod">{q.codigo}</span>}<b>{q.nome}</b></span>
             <span className="gm-hora">{vm.quandoFoi(x.em)}</span>
           </span>
-          <span className="gm-assunto">{x.assunto || '(sem assunto)'}</span>
+          <span className="gm-assunto"><b>{x.assunto || '(sem assunto)'}</b>{x.trecho && <span className="gm-trecho-junto"> — {x.trecho}</span>}</span>
           <span className="gm-trecho">{x.trecho}</span>
           {(x.arquivos.length > 0 || salvo || parecido) && (
             <span className="gm-item-pe">
-              {x.arquivos.length > 0 && <span className="gm-anexos-num" title={x.arquivos.join(', ')}><Icone nome="arquivo" />{x.arquivos.length}</span>}
+              {tipos.length > 0 && (
+                <span className="gm-tipos" title={x.arquivos.join(', ')}>
+                  {tipos.slice(0, 3).map(([t, n]) => <span key={t} className={'gm-tipo gm-tipo-' + t.toLowerCase()}>{t}{n > 1 && <small>×{n}</small>}</span>)}
+                  {tipos.length > 3 && <span className="gm-tipo">+{tipos.length - 3}</span>}
+                </span>
+              )}
               {salvo && <span className="gm-no-drive" title={salvo.pasta}><Icone nome="check" />no Drive</span>}
               {parecido && (
                 <button type="button" className="gm-sugestao" title={'Ligar ' + x.remetente + ' a ' + parecido.nome}
@@ -241,16 +258,29 @@ export function CaixaDoRobo() {
               </button>
             ))}
           </div>
+          <div className="chip-row gm-filtros">
+            {PERIODOS.map(p => <button key={p.valor} type="button" className={'chip-f' + (vm.periodo === p.valor ? ' on' : '')} aria-pressed={vm.periodo === p.valor} onClick={() => vm.setPeriodo(p.valor)}>{p.rotulo}</button>)}
+            <span className="gm-filtros-sep" aria-hidden="true" />
+            <button type="button" className={'chip-f' + (vm.comAnexo ? ' on' : '')} aria-pressed={vm.comAnexo} onClick={() => vm.setComAnexo(!vm.comAnexo)}>Com anexo</button>
+            <button type="button" className={'chip-f' + (vm.foraDoDrive ? ' on' : '')} aria-pressed={vm.foraDoDrive} onClick={() => vm.setForaDoDrive(!vm.foraDoDrive)}>Fora do Drive</button>
+            {vm.filtrando && <button type="button" className="btn btn-ghost gm-limpar" onClick={vm.limparFiltros}>Limpar</button>}
+            <span className="gm-filtros-conta fraco">{vm.linhas.length} {vm.linhas.length === 1 ? 'e-mail' : 'e-mails'}</span>
+          </div>
           {vm.carregando ? <div className="gm-lista-vazia"><Esqueleto linhas={6} /></div>
             : !vm.linhas.length ? (
               <div className="gm-lista-vazia">
                 <span className="gm-vazio-icone" aria-hidden="true"><Icone nome="caixaEntrada" /></span>
                 <b>Nada aqui</b>
-                <span className="fraco">{vm.busca ? 'Nenhum e-mail com essa busca.' : vm.aba === 'sem-cliente' ? 'Todo e-mail já tem cliente.' : vm.aba === 'spam' ? 'Nenhum spam.' : 'Nenhum e-mail de cliente.'}</span>
+                <span className="fraco">{vm.busca || vm.filtrando ? 'Nenhum e-mail com essa busca ou filtro.' : vm.aba === 'sem-cliente' ? 'Todo e-mail já tem cliente.' : vm.aba === 'spam' ? 'Nenhum spam.' : 'Nenhum e-mail de cliente.'}</span>
               </div>
             ) : (
               <ul className="gm-itens">
-                {vm.linhas.map(x => <Item key={x.mensagemId} vm={vm} x={x} aberto={vm.aberto?.mensagemId === x.mensagemId} />)}
+                {vm.grupos.map(g => (
+                  <li key={g.rotulo} className="gm-grupo">
+                    <p className="gm-grupo-rotulo">{g.rotulo}<span>{g.itens.length}</span></p>
+                    <ul>{g.itens.map(x => <Item key={x.mensagemId} vm={vm} x={x} aberto={vm.aberto?.mensagemId === x.mensagemId} />)}</ul>
+                  </li>
+                ))}
               </ul>
             )}
         </div>

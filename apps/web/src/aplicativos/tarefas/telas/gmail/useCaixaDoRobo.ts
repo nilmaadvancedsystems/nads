@@ -11,6 +11,24 @@ import { useOperador } from '../../casca/operador';
 import { useGmailDoEntregas } from '../../dados/repo';
 
 export type AbaDaCaixa = 'clientes' | 'sem-cliente' | 'spam';
+/** o período da lista (14/10/2026: "filtros e agrupamento") */
+export type PeriodoDaCaixa = 'tudo' | 'hoje' | '7d' | '30d';
+
+/** O nome da empresa sem o tipo societário no fim (LTDA, ME, EPP, EIRELI, S/A), para caber na linha. */
+export function nomeCurto(n: string): string {
+  let r = n.trim();
+  for (let i = 0; i < 3; i++) r = r.replace(/[\s\-–]+(LTDA\.?|ME|EPP|EIRELI|S\/?A|MEI)\s*$/i, '').trim();
+  return r || n;
+}
+
+/** O grupo do dia: Hoje, Ontem, Esta semana, Este mês ou Mais antigos. */
+export function grupoDoDia(iso: string, agora = Date.now()): string {
+  const t = Date.parse(iso);
+  if (!t) return 'Mais antigos';
+  const dia = (x: number) => { const d = new Date(x); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const dias = Math.round((dia(agora) - dia(t)) / 86400000);
+  return dias <= 0 ? 'Hoje' : dias === 1 ? 'Ontem' : dias < 7 ? 'Esta semana' : dias < 31 ? 'Este mês' : 'Mais antigos';
+}
 
 const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -37,6 +55,9 @@ export function useCaixaDoRobo() {
   useEffect(() => { if (caixas.length && !caixas.includes(caixa)) repo.usarCaixa(caixas[0]); }, [caixas, caixa, repo]);
   const [aba, setAba] = useState<AbaDaCaixa>('clientes');
   const [busca, setBusca] = useState('');
+  const [periodo, setPeriodo] = useState<PeriodoDaCaixa>('tudo');
+  const [comAnexo, setComAnexo] = useState(false);
+  const [foraDoDrive, setForaDoDrive] = useState(false);
   const [aberto, setAberto] = useState<string | null>(null);
   const estado = repo.estado();
   const clientes = repo.clientes().lista;
@@ -45,7 +66,19 @@ export function useCaixaDoRobo() {
 
   const listas: Record<AbaDaCaixa, e.EmailDaCaixa[]> = { clientes: estado.caixa, 'sem-cliente': semDono, spam: estado.spam };
   const q = semAcento(busca.trim());
-  const linhas = listas[aba].filter(x => !q || semAcento([x.nome, x.remetente, x.assunto, x.trecho, x.clienteNome || ''].join(' ')).includes(q));
+  const desde = periodo === 'tudo' ? 0 : periodo === 'hoje' ? new Date().setHours(0, 0, 0, 0) : Date.now() - (periodo === '7d' ? 7 : 30) * 86400000;
+  const linhas = listas[aba].filter(x => (!q || semAcento([x.nome, x.remetente, x.assunto, x.trecho, x.clienteNome || ''].join(' ')).includes(q))
+    && (!desde || Date.parse(x.em) >= desde)
+    && (!comAnexo || x.arquivos.length > 0)
+    && (!foraDoDrive || (x.arquivos.length > 0 && !estado.salvos[x.mensagemId])));
+  // os grupos do dia, na ordem da lista (a lista já vem do mais novo para o mais antigo)
+  const grupos: { rotulo: string; itens: e.EmailDaCaixa[] }[] = [];
+  for (const x of linhas) {
+    const g = grupoDoDia(x.em);
+    const ultimo = grupos[grupos.length - 1];
+    if (ultimo && ultimo.rotulo === g) ultimo.itens.push(x); else grupos.push({ rotulo: g, itens: [x] });
+  }
+  const porId = new Map(clientes.map(c => [c.id, c]));
   const todos = [...estado.caixa, ...estado.naoReconhecidos, ...estado.spam];
 
   async function tentar(oque: string, f: () => Promise<void>, ok: string) {
@@ -72,7 +105,16 @@ export function useCaixaDoRobo() {
     aba, setAba,
     contagem: { clientes: estado.caixa.length, 'sem-cliente': semDono.length, spam: estado.spam.length } as Record<AbaDaCaixa, number>,
     busca, setBusca,
-    linhas,
+    linhas, grupos,
+    periodo, setPeriodo, comAnexo, setComAnexo, foraDoDrive, setForaDoDrive,
+    filtrando: periodo !== 'tudo' || comAnexo || foraDoDrive,
+    limparFiltros: () => { setPeriodo('tudo'); setComAnexo(false); setForaDoDrive(false); },
+    /** quem mandou, para a linha: o código do cliente e o nome curto (o fantasia, ou o nome sem LTDA/ME/EPP) */
+    quem(x: e.EmailDaCaixa): { codigo: string; nome: string; completo: string } {
+      const c = x.clienteId ? porId.get(x.clienteId) : undefined;
+      const completo = c?.nome || x.clienteNome || x.nome || x.remetente;
+      return { codigo: c?.codigo || '', nome: c?.fantasia || (c || x.clienteNome ? nomeCurto(completo) : completo), completo };
+    },
     clientes,
     admin,
     salvo: (x: e.EmailDaCaixa) => estado.salvos[x.mensagemId] || null,

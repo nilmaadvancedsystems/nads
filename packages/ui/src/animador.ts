@@ -56,7 +56,8 @@ function alertaChegou(el: HTMLElement) {
 function janela(el: HTMLElement, caixa: HTMLElement | null) {
   encerrarPaginas();
   entrar('fundo', el);
-  if (!caixa) return;
+  // a janela que anima a própria entrada (o seletor de competência, 14/10/2026) só ganha o fundo daqui
+  if (!caixa || el.hasAttribute('data-entrada-propria')) return;
   if (!crescerDaOrigem(caixa, pegarOrigem(el) || origemDe(el))) entrar('janela', caixa);
 }
 
