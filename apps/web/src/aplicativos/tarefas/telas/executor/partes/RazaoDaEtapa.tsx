@@ -1,6 +1,6 @@
 // O Caixa na etapa, no desenho da Importação do banco (Vitor, 05/10/2026): a linha da conta com o Razão à direita (o
 // ícone importa; importado, o ✓ que exclui), a grade dos meses (clicar abre o mês; de novo, volta para o período todo) e
-// as faixas Lançamentos e Pontos de atenção. Em cima, o aviso do Creditor quando o caixa tem liquidação de cobrança.
+// a faixa Pontos de atenção (a Lançamentos saiu em 14/10/2026). Em cima, o aviso do Creditor quando o caixa tem liquidação de cobrança.
 import { Icone } from '@nads/ui';
 import { useId, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
@@ -75,7 +75,7 @@ export function RazaoDaEtapa({ conta, razao, conferir, teste = [] }: { conta: st
               title={aberta ? 'Recolher os meses e os lançamentos' : 'Abrir os meses e os lançamentos'} aria-label="Os meses e os lançamentos do caixa" onClick={() => setAberta(a => !a)}>
               <Icone nome="caretDown" />
             </button>
-            <span className="imp-ico"><Icone nome="briefcase" /></span>
+            <span className="imp-ico"><Icone nome="dinheiro" /></span>
             <div className="imp-txt">
               <span><b>{nome}</b>{razao.arquivo && <span className="imp-conta">{razao.arquivo}</span>}</span>
             </div>
@@ -127,20 +127,15 @@ export function RazaoDaEtapa({ conta, razao, conferir, teste = [] }: { conta: st
                   </tbody>
                 </table>
               </div>
-              <FaixaQueAbre titulo="Lançamentos" qtd={razao.lancamentos.length}>
-                <div className="imp-mov-caixa">
-                  <span className="imp-mov-periodo">Mostrando {razao.mostrando}</span>
-                  <TabelaDeLancamentos linhas={razao.lancamentos} saldoAnterior={razao.saldoAnterior} />
-                </div>
-              </FaixaQueAbre>
+              {/* sem a faixa Lançamentos (Vitor, 14/10/2026: "remove lançamentos"): só os pontos de atenção */}
               <FaixaQueAbre titulo="Pontos de atenção" qtd={razao.qtdAtencoes} aviso={razao.qtdAtencoes > 0}>
                 <div className="imp-mov-caixa">
                   <span className="imp-mov-periodo">Mostrando {razao.mostrando}</span>
                   {!razao.atencoes.length && <p className="hint">Nenhum ponto de atenção.</p>}
                   {razao.atencoes.map(p => (
                     <div key={p.tipo}>
-                      <p><b>{p.titulo}</b> <span className="badge badge-neutral">{p.obrigatorio ? 'Obrigatório' : 'Atenção'}</span> <span className="hint">{p.resumo}</span></p>
-                      <p className="hint">{p.dica}</p>
+                      {/* só o título (Vitor, 14/10/2026: sem o "Atenção", a contagem e a explicação); o "Obrigatório" fica */}
+                      <p><b>{p.titulo}</b>{p.obrigatorio && <> <span className="badge badge-neutral">Obrigatório</span></>}</p>
                       <TabelaDeLancamentos linhas={p.linhas} />
                     </div>
                   ))}

@@ -130,7 +130,7 @@ export const ICONES: NomeIcone[] = [
   'arrowDown', 'arrowUp', 'check', 'checkCircle', 'scale', 'alert', 'lock', 'unlock', 'x', 'sun', 'moon', 'monitor', 'upload', 'ajuda',
   'olho', 'fileText', 'clock', 'chevronsLeft', 'chevronLeft', 'chevronRight', 'settings', 'logOut', 'barChart', 'caretDown', 'play',
   'camera', 'imagem', 'filtro', 'ordenar', 'copiar', 'search', 'repeat', 'calendar', 'plus', 'fileSearch', 'hash', 'list', 'menu', 'pastaAberta', 'mais',
-  'girar', 'maximizar', 'minimizar', 'painel', 'cartao', 'download', 'grade', 'impressora',
+  'girar', 'maximizar', 'minimizar', 'painel', 'cartao', 'download', 'grade', 'impressora', 'dinheiro',
 ];
 const BANCOS = ['banco-do-brasil', 'banrisul', 'bradesco', 'btg', 'c6', 'caixa', 'inter', 'itau', 'mercado-pago', 'nubank', 'pagbank', 'safra', 'santander', 'sicoob', 'stone', 'cora', 'sicredi', 'bnb'];
 const CORES = [
