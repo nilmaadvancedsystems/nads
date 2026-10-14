@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { conta, empresa, linha, nota } from '../__legado__/fixtures';
-import { conferirConta, ehLinhaIcms, naturezasDaConferencia, numerosDoHistorico, opcoesCfop, partesDoHistorico, semPendencias, soPendenciasQuePassam, totaisVerificacao, type LinhaRazao, type ResultadoVerificacao } from './verificarConta';
+import { conta, empresa, linha, nota, servico } from '../__legado__/fixtures';
+import { conferirConta, ehLinhaIcms, naturezasDaConferencia, numerosDoHistorico, opcoesCfop, partesDoHistorico, linhasFaltando, semPendencias, soPendenciasQuePassam, totaisVerificacao, type LinhaRazao, type ResultadoVerificacao } from './verificarConta';
 
 describe('numerosDoHistorico', () => {
   it('padrão fiscal: o número antes do CNPJ, ignorando o resto', () => {
@@ -183,5 +183,40 @@ describe('soPendenciasQuePassam (bens do ativo e ICMS: "Conferir mais adiante...
     expect(soPendenciasQuePassam(base)).toBe(false);
     expect(soPendenciasQuePassam({ ...base, faltando: [falta('1551'), falta('1102')] })).toBe(false);
     expect(soPendenciasQuePassam({ ...base, faltando: [falta('1551')], aMais: [{} as never] })).toBe(false);
+  });
+});
+
+describe('Operação incorreta (Vitor, 14/10/2026: serviço prestado na conta de tomados)', () => {
+  const COMPRA = 'Compra para comercialização';
+  const e = empresa({
+    contas: [conta('66005', 'Compras de Mercadorias')],
+    entradas: [nota('1102', '6', 500, '100')],
+    servPrestados: [servico('646', 'PEREIRA CAMPOS ENGENHARIA LTDA', 7000, '160'), servico('777', 'OUTRO CLIENTE LTDA', 90, '160')],
+    naturezaConta: { [COMPRA]: ['66005'] },
+  });
+  const conferir = (linhas: LinhaRazao[]) => conferirConta({ empresa: e, contas: [e.contas[0]], razaoPorConta: { 66005: linhas }, cfopGrupo: COMPRA, servTipo: null });
+  const prestada: LinhaRazao = { txt: 'conf NF 646 - 11.222.333/0001-00 - PEREIRA CAMPOS ENGENHARIA LTDA', data: '04/08/2026', valor: 7000, sinal: 1, contra: '' };
+
+  it('a nota de serviço prestado lançada na conta de entradas sai do "A mais" e vira "Operação incorreta"', () => {
+    const r = conferir([linha('100', 500), prestada]);
+    expect(r.aMais).toEqual([]);
+    expect(r.operacaoIncorreta.map(l => l.txt)).toEqual([prestada.txt]);
+    expect(r.operacoesDaConta).toEqual(['Entrada']);
+    expect(semPendencias(r)).toBe(false);
+    expect(soPendenciasQuePassam(r)).toBe(false);
+    const t = totaisVerificacao(r);
+    expect(t.operacaoIncorreta).toBe(7000);
+    expect(t.semExplicacao).toBeCloseTo(0);
+  });
+  it('a coluna Operação: a linha da própria conta é Entrada; a nota faltando também', () => {
+    const r = conferir([prestada]);
+    expect(r.linhas.map(l => l.operacao)).toEqual(['Prestado']);
+    expect(linhasFaltando(r).map(l => l.operacao)).toEqual(['Entrada']);
+    expect(conferir([linha('100', 500)]).linhas[0].operacao).toBe('Entrada');
+  });
+  it('o mesmo número de outro participante, com outro valor: não é a nota, continua "A mais"', () => {
+    const r = conferir([linha('100', 500), { txt: 'conf NF 777 - 99.888.777/0001-66 - FULANO DE TAL', data: '05/07/2026', valor: 12, sinal: 1, contra: '' }]);
+    expect(r.operacaoIncorreta).toEqual([]);
+    expect(r.aMais.length).toBe(1);
   });
 });

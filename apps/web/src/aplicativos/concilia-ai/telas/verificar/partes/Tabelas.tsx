@@ -22,12 +22,12 @@ export function TabelaFaltando({ linhas }: { linhas: c.LinhaTabela[] }) {
     <>
       <div className="table-wrap">
         <table className="vc-tabela">
-          <thead><tr><th>Data</th><th>Nota</th><th>Participante</th><th>CFOP</th><th>Exportado</th><th className="num">Valor</th></tr></thead>
+          <thead><tr><th>Data</th><th>Nota</th><th>Participante</th><th>Operação</th><th>CFOP</th><th>Exportado</th><th className="num">Valor</th></tr></thead>
           <tbody>
             {linhas.slice(0, VC_LIMITE_LINHAS).map((l, i) => (
               <tr key={i} className="bad">
                 <td className="vc-nw">{l.data}</td><td className="vc-nw">{l.nota || '—'}</td>
-                <td className="vc-nome">{l.part || '—'}</td><td className="vc-nw">{l.cfop || '—'}</td>
+                <td className="vc-nome">{l.part || '—'}</td><td className="vc-nw">{l.operacao || '—'}</td><td className="vc-nw">{l.cfop || '—'}</td>
                 <td className="vc-nw"><Exportado v={l.exportado} /></td><td className="num">{reais(l.valor)}</td>
               </tr>
             ))}
@@ -45,12 +45,12 @@ export function TabelaVc({ linhas, cls = 'bad' }: { linhas: c.LinhaTabela[]; cls
     <>
       <div className="table-wrap">
         <table className="vc-tabela">
-          <thead><tr><th>Data</th><th>Nota</th><th>Participante</th><th>Contrapartida</th><th className="num">Valor</th></tr></thead>
+          <thead><tr><th>Data</th><th>Nota</th><th>Participante</th><th>Operação</th><th>Contrapartida</th><th className="num">Valor</th></tr></thead>
           <tbody>
             {linhas.slice(0, VC_LIMITE_LINHAS).map((l, i) => (
               <tr key={i} className={cls} title={l.txt || undefined}>
                 <td className="vc-nw">{l.data}</td><td className="vc-nw">{l.nota || '—'}</td>
-                <td className="vc-nome">{l.part || '—'}</td><td className="vc-nw">{l.contra || '—'}</td><td className="num">{reais(l.valor)}</td>
+                <td className="vc-nome">{l.part || '—'}</td><td className="vc-nw">{l.operacao || '—'}</td><td className="vc-nw">{l.contra || '—'}</td><td className="num">{reais(l.valor)}</td>
               </tr>
             ))}
           </tbody>

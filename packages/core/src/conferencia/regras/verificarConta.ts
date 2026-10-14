@@ -25,6 +25,8 @@ export interface LinhaRazao {
   conta?: string;
   /** "é do CFOP 1201 (conta 60502)" */
   dica?: string;
+  /** a operação da nota do histórico (Entrada, Saída, Tomado, Prestado), achada nas notas fiscais */
+  operacao?: string;
 }
 
 /** Nota alvo da conferência: fiscal (com CFOP) ou de serviço. */
@@ -84,11 +86,50 @@ export function ehLinhaIcms(l: Pick<LinhaRazao, 'txt'>): boolean {
 }
 
 /** Linha do relatório no formato da tabela. */
-export interface LinhaTabela { data: string; nota: string; part: string; contra: string; valor: number; txt?: string; conta?: string; cfop?: string; exportado?: string }
+export interface LinhaTabela { data: string; nota: string; part: string; contra: string; valor: number; txt?: string; conta?: string; cfop?: string; exportado?: string; operacao?: string }
 
 export function linhaDaTabela(l: LinhaRazao): LinhaTabela {
   const p = partesDoHistorico(l.txt);
-  return { data: l.data, nota: p.nota, part: (p.nome || l.txt) + (l.dica ? ' · ' + l.dica : ''), contra: l.contra || p.lanc, valor: l.valor, txt: l.txt, conta: l.conta };
+  return { data: l.data, nota: p.nota, part: (p.nome || l.txt) + (l.dica ? ' · ' + l.dica : ''), contra: l.contra || p.lanc, valor: l.valor, txt: l.txt, conta: l.conta, operacao: l.operacao || '' };
+}
+
+// ---------- a operação da nota (Vitor, 14/10/2026: serviço prestado lançado na conta de tomados aparecia só como "A mais
+// na conta"; a coluna Operação mostra de onde a nota é, e a linha de outra operação vira "Operação incorreta") ----------
+export type Operacao = 'Entrada' | 'Saída' | 'Tomado' | 'Prestado';
+const OPERACAO_DO_SERVICO: Record<TipoServico, Operacao> = { tomados: 'Tomado', prestados: 'Prestado' };
+interface NotaDaOperacao { op: Operacao; nome: string; doc: string; valor: number }
+
+/** As notas da empresa (entradas, saídas, tomados, prestados) pelo número, com a operação de cada uma. */
+function notasPorNumero(e: Empresa): Record<string, NotaDaOperacao[]> {
+  const m: Record<string, NotaDaOperacao[]> = {};
+  const add = (numero: string, n: NotaDaOperacao) => { const k = semZeros(String(numero || '').trim()); if (k) (m[k] = m[k] || []).push(n); };
+  for (const n of todasNotasComTipo(e)) add(n.numero, { op: n.tipo, nome: n.nome, doc: String(n.doc || '').replace(/\D/g, ''), valor: n.valor });
+  for (const t of ['tomados', 'prestados'] as const) {
+    for (const n of listaTipo(e, t)) add(n.numero, { op: OPERACAO_DO_SERVICO[t], nome: n.nome, doc: String(n.cnpj || '').replace(/\D/g, ''), valor: n.valor });
+  }
+  return m;
+}
+
+const mesmoNome = (a: string, b: string) => {
+  const x = nomeNorm(a), y = nomeNorm(b);
+  return x.length >= 5 && y.length >= 5 && (x.startsWith(y) || y.startsWith(x));
+};
+
+/**
+ * As operações da nota que a linha do razão cita: o número do histórico e, para não pegar a nota de mesmo número de
+ * outro participante, o valor, o CPF/CNPJ ou o nome batendo.
+ */
+function operacoesDaLinha(l: LinhaRazao, porNumero: Record<string, NotaDaOperacao[]>): Operacao[] {
+  const p = partesDoHistorico(l.txt);
+  const numeros = new Set([...numerosDoHistorico(l.txt, true), ...numerosDoHistorico(l.txt, false), p.nota].filter(Boolean).map(semZeros));
+  const ops: Operacao[] = [];
+  for (const k of numeros) {
+    for (const n of porNumero[k] || []) {
+      const bate = Math.abs(Math.abs(n.valor) - l.valor) < IGUAL || (!!p.doc && !!n.doc && p.doc.replace(/^0+/, '') === n.doc.replace(/^0+/, '')) || (!!p.nome && mesmoNome(p.nome, n.nome));
+      if (bate && ops.indexOf(n.op) < 0) ops.push(n.op);
+    }
+  }
+  return ops;
 }
 
 // ---------- o que conferir ----------
@@ -175,6 +216,10 @@ export interface ResultadoVerificacao {
   faltando: NotaAlvo[];
   duplicada: Duplicada[];
   aMais: LinhaRazao[];
+  /** a mais que é nota de outra operação (o serviço prestado na conta de tomados, a saída na de entradas…) */
+  operacaoIncorreta: LinhaRazao[];
+  /** as operações das notas da conta (Entrada, Saída, Tomado, Prestado) */
+  operacoesDaConta: Operacao[];
   /**
    * Conferidas pelo valor: a nota sem o número no histórico, lançada com o mesmo valor até DIAS_PELO_VALOR dias de
    * distância (ex.: a comissão lançada pelo pagamento no banco, "comissao Raimundo DOC.: 16283133").
@@ -298,7 +343,18 @@ export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
     peloValor.push({ nota: n, linha: melhor });
     return false;
   });
-  const aMais = semNumero.filter(l => !usadas.has(l)).concat(deOutroCfop);
+  const sobra = semNumero.filter(l => !usadas.has(l)).concat(deOutroCfop);
+  // a operação de cada linha (a coluna Operação) e a da conta: a linha que só é nota de outra operação sai do "A mais"
+  const porNumero = notasPorNumero(e);
+  const operacoesDaConta: Operacao[] = [];
+  const addOp = (o: Operacao) => { if (operacoesDaConta.indexOf(o) < 0) operacoesDaConta.push(o); };
+  if (x.servTipo) { addOp(OPERACAO_DO_SERVICO[x.servTipo]); for (const n of alvo) if (n.tipo) addOp(n.tipo); }
+  else for (const n of alvo) if (n.tipo) addOp(n.tipo);
+  const opsDe = new Map<LinhaRazao, Operacao[]>();
+  for (const l of razao) { const ops = operacoesDaLinha(l, porNumero); opsDe.set(l, ops); if (ops.length) l.operacao = ops.join(' / '); }
+  const deOutraOperacao = (l: LinhaRazao) => { const ops = opsDe.get(l) || []; return ops.length > 0 && operacoesDaConta.length > 0 && ops.every(o => operacoesDaConta.indexOf(o) < 0); };
+  const operacaoIncorreta = sobra.filter(deOutraOperacao);
+  const aMais = sobra.filter(l => !deOutraOperacao(l));
   const somaSemIcms = linhasConf.concat(deOutroCfop).reduce((s, l) => s + l.valor, 0);
   const neg = linhasConf.filter(l => l.sinal < 0).length;
   const sinalConta = neg > linhasConf.length / 2 ? -1 : 1;
@@ -320,15 +376,18 @@ export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
     : { codigo: comRel.map(a => a.codigo).join(' + '), nome: nomeComumContas(comRel.map(a => a.nome)) || rot.slice(rot.indexOf(' — ') + 3) };
 
   return {
-    faltando, duplicada, aMais, peloValor, icms: icmsLinhas, somaRazao, somaSemIcms, icmsSub, somaFiscal,
+    faltando, duplicada, aMais, operacaoIncorreta, operacoesDaConta, peloValor, icms: icmsLinhas, somaRazao, somaSemIcms, icmsSub, somaFiscal,
     serv: x.servTipo, conta,
     contas: comRel.length > 1 ? comRel.map(a => ({ codigo: a.codigo, nome: a.nome })) : null,
     fonte, linhas: razao,
   };
 }
 
+/** As linhas de outra operação (o resultado de antes da coluna Operação não tem a lista). */
+export const operacaoIncorretaDe = (r: ResultadoVerificacao): LinhaRazao[] => r.operacaoIncorreta || [];
+
 export function semPendencias(r: ResultadoVerificacao): boolean {
-  return !r.faltando.length && !r.duplicada.length && !r.aMais.length;
+  return !r.faltando.length && !r.duplicada.length && !r.aMais.length && !operacaoIncorretaDe(r).length;
 }
 
 /**
@@ -337,7 +396,7 @@ export function semPendencias(r: ResultadoVerificacao): boolean {
  * mas a conta fica Ok ("Conferir mais adiante...").
  */
 export function soPendenciasQuePassam(r: ResultadoVerificacao): boolean {
-  return !semPendencias(r) && !r.duplicada.length && !r.aMais.length && r.faltando.every(n => !!tipoDoCfopDeBem(n.cfop || ''));
+  return !semPendencias(r) && !r.duplicada.length && !r.aMais.length && !operacaoIncorretaDe(r).length && r.faltando.every(n => !!tipoDoCfopDeBem(n.cfop || ''));
 }
 
 /** Linhas "a mais" por repetição (as que sobram de cada número duplicado). */
@@ -348,47 +407,53 @@ export function linhasDuplicadas(r: ResultadoVerificacao): LinhaTabela[] {
 }
 
 export function linhasFaltando(r: ResultadoVerificacao): LinhaTabela[] {
-  return r.faltando.map(n => ({ data: n.data, nota: n.numero, part: n.nome, contra: '', valor: n.valor, cfop: n.cfop || '', exportado: n.exportado || '' }));
+  // a nota faltando é da própria conta: a operação é a dela (Entrada/Saída) ou a do serviço da conta
+  const daConta = r.serv ? OPERACAO_DO_SERVICO[r.serv] : '';
+  return r.faltando.map(n => ({ data: n.data, nota: n.numero, part: n.nome, contra: '', valor: n.valor, cfop: n.cfop || '', exportado: n.exportado || '', operacao: n.tipo || daConta }));
 }
 
-export interface Totais { faltando: number; duplicadas: number; aMais: number; icms: number; diferenca: number; semExplicacao: number }
+export interface Totais { faltando: number; duplicadas: number; aMais: number; operacaoIncorreta: number; icms: number; diferenca: number; semExplicacao: number }
 
-/** Diferença = Faltando − Duplicadas − A mais − ICMS; o que sobrar é "Sem explicação". */
+/** Diferença = Faltando − Duplicadas − A mais − Operação incorreta − ICMS; o que sobrar é "Sem explicação". */
 export function totaisVerificacao(r: ResultadoVerificacao): Totais {
   const faltando = r.faltando.reduce((s, n) => s + n.valor, 0);
   const duplicadas = r.duplicada.reduce((s, d) => s + d.valor, 0);
   const aMais = r.aMais.reduce((s, l) => s + l.valor, 0);
+  const operacaoIncorreta = operacaoIncorretaDe(r).reduce((s, l) => s + l.valor, 0);
   const icms = r.icms.reduce((s, l) => s + l.valor, 0);
   const diferenca = r.somaFiscal - r.somaRazao;
-  return { faltando, duplicadas, aMais, icms, diferenca, semExplicacao: diferenca - (faltando - duplicadas - aMais - icms) };
+  return { faltando, duplicadas, aMais, operacaoIncorreta, icms, diferenca, semExplicacao: diferenca - (faltando - duplicadas - aMais - operacaoIncorreta - icms) };
 }
 
 /** Aba de uma conta (várias contas): o relatório dela e o que sobrou nela. */
 export function resultadoDaConta(r: ResultadoVerificacao, codigo: string) {
   const dups = linhasDuplicadas(r).filter(l => l.conta === codigo);
   const mais = r.aMais.filter(l => l.conta === codigo).map(linhaDaTabela);
+  const incorretas = operacaoIncorretaDe(r).filter(l => l.conta === codigo).map(linhaDaTabela);
   const soma = (ls: { valor: number }[]) => ls.reduce((s, l) => s + l.valor, 0);
   const somaConta = soma(r.linhas.filter(l => l.conta === codigo && !ehLinhaIcms(l)));
-  return { dups, mais, somaConta, pendencias: soma(dups) + soma(mais) };
+  return { dups, mais, incorretas, somaConta, pendencias: soma(dups) + soma(mais) + soma(incorretas) };
 }
 
 /** CSV do resultado (mesmas colunas da tela + totalizador). */
 export function csvVerificacao(r: ResultadoVerificacao): string[] {
   const t = totaisVerificacao(r);
   const multi = !!(r.contas && r.contas.length > 1);
-  const L = [(multi ? 'Tipo;Conta;' : 'Tipo;') + 'Data;Nota;Participante;Contrapartida;Valor'];
-  const add = (tipo: string, l: LinhaTabela) => L.push([tipo].concat(multi ? [l.conta || ''] : []).concat([l.data, l.nota || '', String(l.part || '').replace(/;/g, ','), l.contra || '', brl(l.valor)]).join(';'));
+  const L = [(multi ? 'Tipo;Conta;' : 'Tipo;') + 'Data;Nota;Participante;Operação;Contrapartida;Valor'];
+  const add = (tipo: string, l: LinhaTabela) => L.push([tipo].concat(multi ? [l.conta || ''] : []).concat([l.data, l.nota || '', String(l.part || '').replace(/;/g, ','), l.operacao || '', l.contra || '', brl(l.valor)]).join(';'));
   linhasFaltando(r).forEach(l => add('Faltando', l));
   linhasDuplicadas(r).forEach(l => add('Duplicada', l));
+  operacaoIncorretaDe(r).map(linhaDaTabela).forEach(l => add('Operação incorreta', l));
   r.aMais.map(linhaDaTabela).forEach(l => add('A mais', l));
   r.icms.map(linhaDaTabela).forEach(l => add('ICMS', l));
   L.push('');
-  const vz = multi ? ['', '', '', ''] : ['', '', ''];
+  const vz = multi ? ['', '', '', '', ''] : ['', '', '', ''];
   L.push(['Totalizador', ...vz, 'Faltando', brl(t.faltando)].join(';'));
   L.push(['Totalizador', ...vz, 'Duplicadas', brl(-t.duplicadas)].join(';'));
+  if (t.operacaoIncorreta) L.push(['Totalizador', ...vz, 'Operação incorreta', brl(-t.operacaoIncorreta)].join(';'));
   L.push(['Totalizador', ...vz, 'A mais', brl(-t.aMais)].join(';'));
   if (t.icms) L.push(['Totalizador', ...vz, 'ICMS', brl(-t.icms)].join(';'));
-  L.push(['Totalizador', ...vz, 'Diferença', brl(t.faltando - t.duplicadas - t.aMais - t.icms)].join(';'));
+  L.push(['Totalizador', ...vz, 'Diferença', brl(t.faltando - t.duplicadas - t.aMais - t.operacaoIncorreta - t.icms)].join(';'));
   return L;
 }
 
