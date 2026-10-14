@@ -317,10 +317,16 @@ function CelulaDoRelatorio({ vm, l, comDrive, direita }: { vm: VM; l: VM['linhas
                 <LogoDrive cor /><span className="popover-texto">Buscar no Drive</span>
               </button>
             )}
-            {/* o relatório que chegou por e-mail (como na Importação) */}
+            {/* o relatório que chegou por e-mail: procura e importa sozinho (o formato, a empresa e o mês) */}
             {vm.email.existe && (
               <button type="button" className="popover-item" role="menuitem" disabled={vm.ocupado} onClick={() => { fechar(); vm.buscarNoEmail(l.mes); }}>
                 <LogoGmail /><span className="popover-texto">Buscar no e-mail</span>
+              </button>
+            )}
+            {/* escolher à mão, com o preview do anexo (Vitor, 14/10/2026) */}
+            {vm.email.existe && (
+              <button type="button" className="popover-item" role="menuitem" disabled={vm.ocupado} onClick={() => { fechar(); vm.selecionarNoEmail(l.mes); }}>
+                <LogoGmail /><span className="popover-texto">Selecionar no e-mail</span>
               </button>
             )}
             {vm.exemplos && (

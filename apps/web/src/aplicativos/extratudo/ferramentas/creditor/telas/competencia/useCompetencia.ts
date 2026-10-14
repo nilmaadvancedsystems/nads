@@ -119,7 +119,6 @@ export function useCompetencia() {
     const para = loginPara;
     setLoginPara(null);
     if (para === 'email') { const f = depoisDoLogin.current; depoisDoLogin.current = null; f?.(); return; }
-    if (para === 'auto') { await importarAutomatico(); return; }
     if (para === '*') await procurarTodos(); else if (para) await procurar(para);
   }
 
@@ -198,10 +197,10 @@ export function useCompetencia() {
    * O "Importar automático" (Vitor, 14/10/2026: "se possível já procura no e-mail sem eu precisar selecionar"): para cada mês
    * que falta, abre os arquivos do mês no Drive e os anexos do e-mail que parecem o relatório (regras/automatico.ts) e fica
    * com os que estão num dos dois formatos, são da empresa e têm títulos no mês (vários: juntos). O que veio do e-mail vai
-   * para o Drive. Sem nada, o mês fica para importar à mão.
+   * para o Drive. Sem nada, o mês fica para importar à mão. O "Buscar no e-mail" do mês é este, só no e-mail e só nele.
    */
-  async function importarAutomatico() {
-    if (!acesso.entrou) { setErroLogin(''); setLoginPara('auto'); return; }
+  async function importarAutomatico(lista: readonly string[] = faltam, fontes = { drive: true, email: true }) {
+    if (!acesso.entrou) { depoisDoLogin.current = () => { void importarAutomatico(lista, fontes); }; setErroLogin(''); setLoginPara('email'); return; }
     fixar();
     parar.current = false;
     const codigo = s.empresa.codigo;
@@ -214,7 +213,7 @@ export function useCompetencia() {
     const remetente = emails.reduce((acc, e) => { const n = acc ? acc + ' OR ' + e : e; return n.length <= 120 ? n : acc; }, '');
     const achados: string[] = [];
     const vazios: string[] = [];
-    for (const m of [...faltam]) {
+    for (const m of [...lista]) {
       if (parar.current) break;
       const passo = (texto: string) => setBusca({ mes: m, fase: 'procurando', texto, candidatos: [] });
       const rels: { rel: cr.RelatorioBanco; origem: string }[] = [];
@@ -226,14 +225,14 @@ export function useCompetencia() {
         return true;
       };
       // 1. o Drive: os arquivos do mês na RECEBIMENTO DE CLIENTES
-      passo('Procurando no Drive…');
+      if (fontes.drive) passo('Procurando no Drive…');
       const b = cr.acharRelatorioNoDrive(pasta?.itens || [], pasta?.raiz || null, m);
-      for (const a of b.candidatos.filter(c => c.daCompetencia).slice(0, cr.MAX_CANDIDATOS)) {
+      for (const a of fontes.drive ? b.candidatos.filter(c => c.daCompetencia).slice(0, cr.MAX_CANDIDATOS) : []) {
         try { usar(await lerRelatorio(a.nome, await drive.baixar(a.id, a.nome)), 'Drive · ' + a.caminho); }
         catch { /* outro formato: fica de fora */ }
       }
       // 2. o e-mail: os do contato do cliente e os que falam de liquidação no período
-      if (drive.buscarNoEmail && drive.trazerDoEmail) {
+      if (fontes.email && drive.buscarNoEmail && drive.trazerDoEmail) {
         passo('Procurando no e-mail…');
         const per = cr.periodoDaBuscaAutomatica(m, new Date());
         const buscar = drive.buscarNoEmail.bind(drive);
@@ -256,7 +255,7 @@ export function useCompetencia() {
     }
     setBusca(PARADO);
     if (achados.length) aviso({ tom: 'ok', titulo: 'Importado automaticamente', texto: achados.join(', ') });
-    if (vazios.length) aviso({ tom: 'erro', titulo: 'Não achei o relatório', texto: vazios.join(', ') + ': nem no Drive nem no e-mail, no formato do Creditor. Importe à mão.' });
+    if (vazios.length) aviso({ tom: 'erro', titulo: 'Não achei o relatório', texto: vazios.join(', ') + ': ' + (fontes.drive ? 'nem no Drive nem no e-mail' : 'nada no e-mail') + ', no formato do Creditor.' + (fontes.drive ? ' Importe à mão.' : ' Escolha em "Selecionar no e-mail".') });
   }
 
   /** "Remover todos" (como na Importação): tira os relatórios de todos os meses (pergunta antes). */
@@ -347,7 +346,10 @@ export function useCompetencia() {
     importarDoComputador: (mes: string, f: File | undefined) => { void importarDoComputador(mes, f); },
     /** o "Buscar no e-mail" (a janela da Importação; existe = o robô do Gmail ligado) */
     email,
-    buscarNoEmail: (mes: string) => email.abrir({ id: mes, nome: 'Relatório de liquidação' }, mes),
+    /** o "Buscar no e-mail" do mês: procura e importa sozinho (Vitor, 14/10/2026) */
+    buscarNoEmail: (mes: string) => { void importarAutomatico([mes], { drive: false, email: true }); },
+    /** o "Selecionar no e-mail": a janela com os anexos e o preview, para escolher */
+    selecionarNoEmail: (mes: string) => email.abrir({ id: mes, nome: 'Relatório de liquidação' }, mes),
     /** o menu de cima: vários arquivos (cada um no mês dele) e remover todos */
     importarVarios: (arquivos: File[]) => { void importarVarios(arquivos); },
     /** o Importar automático: Drive e e-mail, sem escolher (os meses que faltam) */
