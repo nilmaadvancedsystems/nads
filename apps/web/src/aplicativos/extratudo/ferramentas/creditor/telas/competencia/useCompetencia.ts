@@ -126,7 +126,10 @@ export function useCompetencia() {
   // escolhido entra como se viesse do computador; a prévia mostra os títulos do relatório
   const depoisDoLogin = useRef<(() => void) | null>(null);
   const email = useBuscarNoEmail(
-    (linha, arquivos) => { void importarDoComputador(linha.id, arquivos[0]); },
+    (linha, arquivos) => {
+      const f = arquivos[0];
+      void importarDoComputador(linha.id, f).then(ok => { if (ok && f) void arquivarNoDrive(linha.id, f); });
+    },
     depois => { depoisDoLogin.current = depois; setErroLogin(''); setLoginPara('email'); },
     s.empresa.codigo,
     async (nome, conteudo) => {
@@ -142,12 +145,30 @@ export function useCompetencia() {
     },
   );
 
-  /** Do computador: lê o arquivo aqui mesmo. */
-  async function importarDoComputador(mes: string, f: File | undefined) {
-    if (!f) return;
+  /** Do computador: lê o arquivo aqui mesmo. Devolve se entrou. */
+  async function importarDoComputador(mes: string, f: File | undefined): Promise<boolean> {
+    if (!f) return false;
     setBusca({ mes, fase: 'lendo', texto: 'Lendo ' + f.name + '…', candidatos: [] });
-    try { guardar(mes, await lerRelatorio(f.name, await f.arrayBuffer()), f.name); }
-    catch (e) { setBusca({ mes, fase: 'problema', texto: mensagemDeErro(e), candidatos: [] }); }
+    try { guardar(mes, await lerRelatorio(f.name, await f.arrayBuffer()), f.name); return true; }
+    catch (e) { setBusca({ mes, fase: 'problema', texto: mensagemDeErro(e), candidatos: [] }); return false; }
+  }
+
+  /**
+   * O relatório trazido do e-mail vai para o Drive (Vitor, 14/10/2026: "esses e-mails e arquivos que seleciono, é para
+   * arquivar no Drive"), como o extrato no Bancos: para o Claudio Secretario, de onde o arquivamento põe em CONTÁBIL ›
+   * RECEBIMENTO DE CLIENTES (decide pelo título do relatório). O mês que já tem relatório na pasta não vai de novo.
+   */
+  async function arquivarNoDrive(mes: string, f: File) {
+    if (!drive.enviarAoDrive || !acesso.entrou) return;
+    try {
+      const pasta = await drive.pastaDoCliente(s.empresa.codigo);
+      const b = cr.acharRelatorioNoDrive(pasta?.itens || [], pasta?.raiz || null, mes);
+      if (b.situacao === 'achou' || b.situacao === 'varios') return;
+      await drive.enviarAoDrive({ nome: f.name, bytes: new Uint8Array(await f.arrayBuffer()) }, { competencia: mes, codigo: s.empresa.codigo, cliente: s.empresa.nome });
+      aviso({ tom: 'ok', titulo: 'Mandado para o Drive', texto: f.name + ' (' + cr.rotuloCompetencia(mes) + ') entra em RECEBIMENTO DE CLIENTES no próximo arquivamento.' });
+    } catch (e) {
+      aviso({ tom: 'erro', titulo: 'Não mandei para o Drive', texto: f.name + ': ' + mensagemDeErro(e) });
+    }
   }
 
   /**
