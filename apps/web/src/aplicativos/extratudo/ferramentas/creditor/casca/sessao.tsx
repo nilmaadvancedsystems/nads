@@ -59,6 +59,8 @@ export interface Derivado {
   decisoes: Record<number, cr.Decisao>;
   /** títulos resolvidos pela conta aprendida do cliente */
   aprendidas: number[];
+  /** os títulos sem conta (o cliente não está no balancete): vão para a etapa Contas */
+  semConta: cr.Cruzamento[];
 }
 
 export function derivar(e: Estado, contas: cr.ContasCreditor, aprendidos: cr.ClientesAprendidos, clientes: readonly cr.ContaDoBalancete[], porNf?: ReadonlyMap<string, readonly cr.ContaDaNota[]>): Derivado {
@@ -71,7 +73,7 @@ export function derivar(e: Estado, contas: cr.ContasCreditor, aprendidos: cr.Cli
   const lancamentos = cr.gerarLancamentos(titulos, cruzamentos, decisoes, contas);
   const fora = cr.titulosFora(titulos, cruzamentos, decisoes);
   const fechamento = e.relatorio ? cr.fecharPorDia(e.relatorio.grupos, lancamentos, fora, contas) : [];
-  return { titulos, conferido, cruzamentos, pendentes, lancamentos, fora, fechamento, decisoes, aprendidas: Object.keys(auto).map(Number) };
+  return { titulos, conferido, cruzamentos, pendentes, lancamentos, fora, fechamento, decisoes, aprendidas: Object.keys(auto).map(Number), semConta: cruzamentos.filter(c => c.situacao === 'nao-encontrada') };
 }
 
 /** A etapa já pode abrir? (o que ela precisa das anteriores) */
@@ -80,7 +82,10 @@ function requisitos(id: IdEtapa, e: Estado, d: Derivado): boolean {
     case 'competencia': return true;
     // sem o passo a passo do Fiscal (05/10/2026): as Contas abrem com o relatório lido
     // e o relatório de todos os meses da competência (por período, um por mês; ou o anexado inteiro)
-    case 'cruzamento': return d.conferido && (!Object.keys(e.porMes).length || cr.mesesDaCompetencia(e.competencia).every(m => e.porMes[m]));
+    case 'contas': return d.semConta.length > 0 && d.conferido && (!Object.keys(e.porMes).length || cr.mesesDaCompetencia(e.competencia).every(m => e.porMes[m]));
+    // com cliente sem conta, só depois de informar todas na etapa Contas
+    case 'cruzamento': return d.conferido && (!Object.keys(e.porMes).length || cr.mesesDaCompetencia(e.competencia).every(m => e.porMes[m]))
+      && d.semConta.every(c => cr.decisaoValida(c, d.decisoes[c.tituloId]));
     case 'lancamentos': return d.conferido && d.pendentes.length === 0;
     case 'exclusao': return d.conferido && d.pendentes.length === 0 && e.baixado;
   }
@@ -181,7 +186,8 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
     abrir(id);
   }, [etapa, podeAbrir, abrir, toast]);
 
-  const etapas = ETAPAS;
+  // a etapa Contas só aparece quando falta a conta de algum cliente
+  const etapas = ETAPAS.filter(x => x.id !== 'contas' || d.semConta.length > 0);
   const i = etapas.findIndex(x => x.id === etapa);
   const s: Sessao = {
     empresa, rota, etapa, etapas, estado, d,
