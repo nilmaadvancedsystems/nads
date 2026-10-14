@@ -4277,7 +4277,6 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 }
 .troca-busca,.troca-barra,.troca-lado-topo{flex:none;}
 .troca-corpo{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);}.troca-lado{min-width:0;}
-<<<<<<< HEAD
 .troca-conta-marcadas{display:inline-block;}.troca-fluxo svg,.troca-meio-icone{display:inline-block;}
 /* a Minha página animada (14/10/2026): o fundo da lateral desliza até o tópico (useIndicador); o menu do avatar abre do canto */
 .pessoal-nav.com-indicador > .indicador{border-radius:6px;background:var(--hover-bg);}
@@ -4287,7 +4286,6 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 .menu-pop.animado.direita{transform-origin:top right;}
 /* Animações › Nenhuma (14/10/2026): nem a mola do botão liga/desliga */
 html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-track,html[data-animacoes=nenhuma] .toggle-txt{transition:none !important;}
-=======
 /* Gmail: o e-mail numa janela flutuante (14/10/2026) e as ações de "errado" no pé, longe do fechar */
 .gm-janela{width:min(940px,100%);height:min(860px,100%);}
 .gm-janela .gm-leitura-corpo{background:var(--bg);}
@@ -4344,4 +4342,3 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 .dp-barras li:nth-child(5) .dp-barra > span{animation-delay:200ms;}
 .dp-barras li:nth-child(n+6) .dp-barra > span{animation-delay:250ms;}
 .fgts-barra > span,.dp-painel .tarefas-barra > span{transition:width .5s cubic-bezier(.23,1,.32,1);}
->>>>>>> origin/desenvolvimento
