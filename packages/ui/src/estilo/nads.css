@@ -4284,3 +4284,27 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 .gm-pe .fraco{font-size:12.5px;color:var(--ink-muted);margin-right:auto;}
 @media (max-width:900px){.gm-janela{width:100%;height:100%;border-radius:0;}.cad-janela-fundo:has(.gm-janela){padding:0;}}
 .gm-topo .steps{margin:0;}
+/* Gmail como o Gmail (14/10/2026: "podia fazer tipo o gmail mesmo, com a página de gmails mais integrada na página"):
+   a lista sem a caixa em volta, as abas sublinhadas, a linha com o clipe e as pílulas dos anexos embaixo */
+.gm-caixa{display:block;height:auto;min-height:0;border:0;border-radius:0;background:transparent;overflow:visible;}
+.gm-lista{border-right:0;background:transparent;}
+.gm-itens{overflow:visible;}
+.gm-abas{gap:0;padding:0;border-bottom:1px solid var(--border);}
+.gm-caixa:not(.com-leitura) .gm-aba,.gm-aba{flex:none;height:42px;padding:0 18px;border-radius:0;border-bottom:2px solid transparent;margin-bottom:-1px;font-size:13px;}
+.gm-aba.ativa{background:none;box-shadow:none;color:var(--accent-ink);border-bottom-color:var(--accent);}
+.gm-filtros{padding:10px 0;background:transparent;}
+.gm-grupo-rotulo{background:var(--bg);padding:10px 12px 6px;border-bottom:1px solid var(--border);}
+.gm-item{padding:9px 12px;}
+.gm-clipe{display:inline-flex;color:var(--ink-muted);}
+.gm-clipe svg{width:14px;height:14px;}
+.gm-pilulas{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.gm-pilula{display:inline-flex;align-items:center;gap:6px;max-width:220px;height:26px;padding:0 10px 0 4px;border:1px solid var(--border);border-radius:999px;background:var(--surface);font-size:12px;color:var(--ink);}
+.gm-pilula .gm-tipo{height:18px;border-radius:999px;padding:0 6px;}
+.gm-pilula-nome{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.gm-pilula-mais{padding:0 10px;color:var(--ink-muted);font-family:var(--font-num);}
+@media (min-width:901px){
+  .gm-caixa:not(.com-leitura) .gm-item{padding:8px 12px;}
+  .gm-caixa:not(.com-leitura) .gm-item-corpo{row-gap:0;}
+  .gm-caixa:not(.com-leitura) .gm-pilulas{grid-column:2 / -1;grid-row:2;}
+}
+@media (min-width:901px){.gm-caixa:not(.com-leitura) .gm-item{align-items:flex-start;}}

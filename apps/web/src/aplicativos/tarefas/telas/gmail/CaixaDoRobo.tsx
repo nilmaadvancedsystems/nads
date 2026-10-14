@@ -27,12 +27,6 @@ const PERIODOS: { valor: PeriodoDaCaixa; rotulo: string }[] = [
   { valor: 'tudo', rotulo: 'Tudo' }, { valor: 'hoje', rotulo: 'Hoje' }, { valor: '7d', rotulo: '7 dias' }, { valor: '30d', rotulo: '30 dias' },
 ];
 
-/** Os tipos dos anexos (PDF ×2, XML…), para ver na linha sem abrir (14/10/2026: "mais informação na linha"). */
-function tiposDosAnexos(arquivos: readonly string[]) {
-  const conta = new Map<string, number>();
-  for (const a of arquivos) { const t = extensao(a) || 'ARQ'; conta.set(t, (conta.get(t) || 0) + 1); }
-  return [...conta].sort((a, b) => b[1] - a[1]);
-}
 
 /** Escolher o cliente dentro do e-mail aberto: uma busca com a lista embaixo. */
 function EscolherCliente({ vm, titulo, aoEscolher, candidatos = [] }: { vm: VmCaixa; titulo: string; aoEscolher: (clienteId: string) => void; candidatos?: readonly string[] }) {
@@ -73,7 +67,6 @@ function Item({ vm, x, aberto }: { vm: VmCaixa; x: e.EmailDaCaixa; aberto: boole
   const salvo = vm.salvo(x);
   const parecido = vm.aba === 'sem-cliente' ? vm.parecido(x) : null;
   const q = vm.quem(x);
-  const tipos = tiposDosAnexos(x.arquivos);
   return (
     <li>
       <div role="button" tabIndex={0} className={'gm-item' + (aberto ? ' aberto' : '')} data-linha={x.mensagemId}
@@ -88,19 +81,24 @@ function Item({ vm, x, aberto }: { vm: VmCaixa; x: e.EmailDaCaixa; aberto: boole
           <span className="gm-trecho">{x.trecho}</span>
           {(x.arquivos.length > 0 || salvo || parecido) && (
             <span className="gm-item-pe">
-              {tipos.length > 0 && (
-                <span className="gm-tipos" title={x.arquivos.join(', ')}>
-                  {tipos.slice(0, 3).map(([t, n]) => <span key={t} className={'gm-tipo gm-tipo-' + t.toLowerCase()}>{t}{n > 1 && <small>×{n}</small>}</span>)}
-                  {tipos.length > 3 && <span className="gm-tipo">+{tipos.length - 3}</span>}
-                </span>
-              )}
-              {salvo && <span className="gm-no-drive" title={salvo.pasta}><Icone nome="check" />no Drive</span>}
+              {x.arquivos.length > 0 && <span className="gm-clipe" title={x.arquivos.length + (x.arquivos.length === 1 ? ' anexo' : ' anexos')}><Icone nome="arquivo" /></span>}
+              {salvo && <span className="gm-no-drive" title={'No Drive: ' + salvo.pasta}><Icone nome="check" />no Drive</span>}
               {parecido && (
                 <button type="button" className="gm-sugestao" title={'Ligar ' + x.remetente + ' a ' + parecido.nome}
                   onClick={ev => { ev.stopPropagation(); void vm.ligar(x, parecido.id); }}>
                   É {parecido.nome.split(' ').slice(0, 2).join(' ')}?
                 </button>
               )}
+            </span>
+          )}
+          {/* os anexos em pílulas embaixo, como no Gmail (14/10/2026: "podia fazer tipo o gmail mesmo") */}
+          {x.arquivos.length > 0 && (
+            <span className="gm-pilulas">
+              {x.arquivos.slice(0, 3).map((nome, i) => {
+                const t = extensao(nome) || 'ARQ';
+                return <span key={nome + i} className="gm-pilula" title={nome}><span className={'gm-tipo gm-tipo-' + t.toLowerCase()}>{t}</span><span className="gm-pilula-nome">{nome.replace(/\.[a-z0-9]{2,5}$/i, '')}</span></span>;
+              })}
+              {x.arquivos.length > 3 && <span className="gm-pilula gm-pilula-mais" title={x.arquivos.slice(3).join(', ')}>+{x.arquivos.length - 3}</span>}
             </span>
           )}
         </span>
