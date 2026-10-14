@@ -61,3 +61,13 @@ describe('cadastroServicos', () => {
     expect(c.find(x => x.cat.id === 'sistemas')?.sugestoes).toEqual(['SISTEMAS NU SOFTWARE LTDA']);
   });
 });
+
+describe('tomados sem conta: zerado não precisa de conta', () => {
+  it('zerado vira 0,00 (soma-zero); com valor, continua "Configure em Cadastro" (sem-conta)', async () => {
+    const { conta, empresa, servico } = await import('../__legado__/fixtures');
+    const zerado = empresa({ contas: [conta('10', 'Fornecedores')], servTomados: [servico('1', 'FULANO SERVICOS LTDA', 0, '52')] });
+    expect(conferirServicos(zerado, 'tomados', FILTRO_MOVIMENTO_VAZIO, 'nome').saldo.map(l => l.situacao.tipo)).toEqual(['soma-zero']);
+    const comValor = empresa({ contas: [conta('10', 'Fornecedores')], servTomados: [servico('1', 'FULANO SERVICOS LTDA', 150, '52')] });
+    expect(conferirServicos(comValor, 'tomados', FILTRO_MOVIMENTO_VAZIO, 'nome').saldo.map(l => l.situacao.tipo)).toEqual(['sem-conta']);
+  });
+});

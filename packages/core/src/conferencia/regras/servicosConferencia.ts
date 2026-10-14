@@ -98,7 +98,8 @@ export function conferirServicos(e: Empresa, tipo: TipoServico, f: FiltroMovimen
       .concat(g.cfops ? ['CFOP ' + Object.keys(g.cfops).sort().join(', ')] : []).join(', ');
     const titulo = g.contas.length ? g.contas.map(c => { const nm = nomeConta(e, c); return c + (nm ? ' — ' + nm : ''); }).join(' + ') : 'Sem conta vinculada';
     const sal = g.contas.length ? saldoDasContas(e, g.contas) : null;
-    const situacao: Situacao = !g.contas.length ? { tipo: 'sem-conta' } : situacaoDaConta({
+    // sem conta e zerado (não teve movimento): não precisa de conta, fica o 0,00 (Vitor, 14/10/2026)
+    const situacao: Situacao = !g.contas.length ? (Math.abs(g.total) < 0.005 ? { tipo: 'soma-zero' } : { tipo: 'sem-conta' }) : situacaoDaConta({
       somaNotas: g.total, saldo: sal,
       revisao: verifEstado(e, f, g.contas[0]),
       conferidoManual: false,
