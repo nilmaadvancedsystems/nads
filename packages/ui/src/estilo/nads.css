@@ -3771,3 +3771,34 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .cofre-bloqueio-codigo{width:100%;display:flex;flex-direction:column;gap:8px;margin-top:14px;padding-top:16px;border-top:1px solid var(--border);}
 .cofre-bloqueio-linha{display:flex;gap:8px;}
 .cofre-bloqueio-linha input{flex:1;min-width:0;font-family:var(--font-num);letter-spacing:.04em;}
+
+/* Senhas: a interface do cofre (13/10/2026: "consegue melhorar a ui do cofre") */
+.cofre-bloqueio-quem{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:6px;}
+.cofre-bloqueio-quem ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;justify-content:center;gap:6px;}
+.cofre-bloqueio-quem li{display:inline-flex;align-items:center;gap:6px;padding:3px 10px 3px 4px;border:1px solid var(--border);border-radius:2em;font-size:12.5px;background:var(--hover-bg);}
+.cofre-acesso{display:flex;flex-direction:column;gap:14px;}
+.cofre-acesso-topo,.cofre-codigo{display:flex;align-items:center;gap:14px;padding:16px 18px;}
+.cofre-acesso-selo,.cofre-codigo-icone{flex:none;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--success-soft);color:var(--success);}
+.cofre-codigo-icone{background:var(--accent-soft);color:var(--accent);}
+.cofre-acesso-selo svg,.cofre-codigo-icone svg{width:20px;height:20px;}
+.cofre-acesso-estado,.cofre-pessoa-texto{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.cofre-acesso-estado b{font-size:15px;}
+.cofre-pessoa-texto b{display:flex;align-items:center;gap:6px;}
+.cofre-pessoa-texto .fraco{font-size:12.5px;}
+.cofre-pedidos{border-color:var(--warn);}
+.cofre-pedidos-lista{list-style:none;margin:0;padding:0 18px 8px;}
+.cofre-pedidos-lista li{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--border);}
+.cofre-pedidos-lista li:first-child{border-top:0;}
+.cofre-pedidos-acoes{display:flex;gap:8px;}
+.cofre-pedidos-lista .usuarios-foto.foto-mini,.cofre-pessoa .usuarios-foto.foto-mini{width:36px;height:36px;font-size:13px;}
+.cofre-pessoas{list-style:none;margin:0;padding:4px 18px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;}
+.cofre-pessoa{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);}
+.cofre-pessoa.eu{border-color:var(--success);}
+.cofre-pessoa-tirar{flex:none;font-size:12px;padding:4px 8px;}
+.cofre-pessoa:not(:hover) .cofre-pessoa-tirar{opacity:.55;}
+.cofre-codigo .btn{flex:none;}
+.cofre-atualizado{white-space:nowrap;font-size:12.5px;}
+.cofre-acoes{display:flex;justify-content:flex-start;padding:4px 0 2px;}
+.cofre-acoes .btn{text-decoration:none;}
+.cofre-acoes svg{width:14px;height:14px;}
+@media (max-width:640px){.cofre-pedidos-lista li{flex-wrap:wrap;}.cofre-codigo{flex-wrap:wrap;}}

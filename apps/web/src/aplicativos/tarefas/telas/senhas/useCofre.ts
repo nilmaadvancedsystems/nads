@@ -3,11 +3,11 @@
 // criar (gera o código de recuperação), pedir acesso, recuperar pelo código, liberar e recusar pedidos, tirar o acesso
 // (troca a chave do cofre e gera um código novo), um código de recuperação novo, ler e gravar os segredos de uma empresa.
 // A chave do cofre aberta fica só na memória desta aba (todas as telas usam a mesma).
-import { cofre as c, formatos } from '@nads/core';
+import { cofre as c, formatos, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { guardarChavePrivada, idDaChave, lerChavePrivada } from '../../dados/chaveLocal';
-import { useCofreRepo } from '../../dados/repo';
+import { useAcesso, useCofreRepo } from '../../dados/repo';
 import { imprimirCodigoDoCofre } from './imprimirCodigo';
 import { modoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 
@@ -25,6 +25,7 @@ export type EstadoDoCofre = 'carregando' | 'erro' | 'novo' | 'sem-chave' | 'agua
 
 export function useCofre() {
   const repo = useCofreRepo();
+  const equipe = useAcesso().equipe();
   useSyncExternalStore(assinarAberta, () => verAberta, () => verAberta);
   const { toast, modal } = useRetorno();
   const eu = repo.eu();
@@ -92,6 +93,10 @@ export function useCofre() {
     erro: repo.erro(),
     eu: eu?.nome || '',
     meuId: id,
+    /** a foto de perfil (ou as iniciais) de quem é da equipe, para pôr antes do nome */
+    fotoDe: (nome: string) => ({ foto: equipe.lista.find(p => p.nome.trim().toLowerCase() === nome.trim().toLowerCase())?.fotoPerfil || null, iniciais: usuarios.iniciais(nome) }),
+    /** quando o código de recuperação foi gerado e por quem criou o cofre */
+    criadoEm: config?.criadoEm || '', criadoPor: config?.criadoPor || '',
     /** quem tem acesso (a cópia na versão atual) e os pedidos (sem cópia, ou de uma chave antiga) */
     comAcesso: pessoas.filter(p => p.trancada && p.versao === config?.versao),
     pedidos: pessoas.filter(p => !p.trancada || p.versao !== config?.versao),

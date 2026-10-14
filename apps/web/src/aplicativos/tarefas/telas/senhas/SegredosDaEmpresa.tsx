@@ -1,6 +1,6 @@
 // Os segredos de uma empresa (07/10/2026): a senha gov.br e o certificado digital A1, em cartões com uma opção por linha.
 // Mostrar/esconder e copiar a senha; escolher e baixar o .pfx. Usado na janela do módulo Senhas e na aba Senhas do Cadastro.
-import { BotaoIcone, Esqueleto, useRetorno } from '@nads/ui';
+import { BotaoIcone, Esqueleto, Icone, useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { Cartao, Linha } from '../janela/JanelaLateral';
 import { CertificadoA1 } from './CertificadoA1';
@@ -48,6 +48,7 @@ export function SegredosDaEmpresa({ vm: cofre, empresa, codigo, parte }: { vm: V
             <input type="text" className="pessoal-select cofre-obs" value={vm.gov.obs} onChange={e => vm.setGov({ ...vm.gov, obs: e.target.value })} aria-label="Observação gov.br" />
           </Linha>
           {vm.mudouGov && <div className="cofre-salvar"><button type="button" className="btn btn-primary" disabled={cofre.ocupado} onClick={() => void vm.salvarGov()}>Salvar</button></div>}
+          <div className="cofre-acoes"><a className="btn btn-outline" href="https://sso.acesso.gov.br/login" target="_blank" rel="noreferrer"><Icone nome="link" />Abrir o gov.br</a></div>
         </Cartao>
       )}
       {(parte === 'certificado' || parte === 'tudo') && <CertificadoA1 vm={vm} ocupado={cofre.ocupado} baixar={baixar} />}

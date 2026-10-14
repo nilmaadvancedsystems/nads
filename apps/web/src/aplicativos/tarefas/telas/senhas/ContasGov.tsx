@@ -1,8 +1,9 @@
 // Senhas › Contas gov.br (07/10/2026): as contas gov.br de pessoas, a busca, o Adicionar (uma conta digitada à mão) e o
 // Importar planilha (a prévia antes de gravar). Clicar abre a conta: o CPF, a senha (mostrar e copiar) e a observação.
-import { cofre as c } from '@nads/core';
+import { cofre as c, usuarios } from '@nads/core';
 import { BotaoAcao, BotaoIcone, CampoArquivo, Esqueleto, Icone, useCarregando, useRetorno } from '@nads/ui';
 import { Cartao, JanelaLateral, Linha } from '../janela/JanelaLateral';
+import { FotoDaPessoa } from '../cadastro/responsaveis/FotoDaPessoa';
 import { CofreFechado } from './CofreFechado';
 import { TelaDeBloqueio } from './TelaDeBloqueio';
 import { Senha } from './SegredosDaEmpresa';
@@ -62,7 +63,7 @@ export function ContasGov() {
               <tbody>
                 {vm.contas.map(x => (
                   <tr key={x.id} className={vm.cofre.bloqueio ? 'cofre-bloqueado' : 'dp-linha-abre'} title={vm.cofre.bloqueio || undefined} onClick={() => vm.abrir(x.id)}>
-                    <td className="cofre-nome">{x.nome}</td>
+                    <td className="cofre-nome"><span className="pessoa-com-foto"><FotoDaPessoa foto={null} iniciais={usuarios.iniciais(x.nome)} />{x.nome}</span></td>
                     <td className="fraco">{x.atualizadoPor}{x.atualizadoEm ? ' · ' + new Date(x.atualizadoEm).toLocaleDateString('pt-BR') : ''}</td>
                   </tr>
                 ))}
@@ -112,6 +113,7 @@ export function ContasGov() {
                 <input type="text" className="pessoal-select cofre-obs" value={vm.conta.obs || ''} onChange={e => vm.setConta({ ...vm.conta!, obs: e.target.value })} aria-label="Observação" />
               </Linha>
               <div className="cofre-salvar"><button type="button" className="btn btn-primary" disabled={vm.cofre.ocupado} onClick={() => void vm.salvarConta()}>Salvar</button></div>
+              <div className="cofre-acoes"><a className="btn btn-outline" href="https://sso.acesso.gov.br/login" target="_blank" rel="noreferrer"><Icone nome="link" />Abrir o gov.br</a></div>
             </Cartao>
           )}
         </JanelaLateral>
