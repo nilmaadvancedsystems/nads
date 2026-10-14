@@ -29,18 +29,22 @@ export function Resultado({ vm, r }: { vm: Vm; r: Res }) {
   // conferiu: rola até o resultado (scrollIntoView do original)
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => { if (vm.seqResultado) ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, [vm.seqResultado]);
+  // tudo certo: a conta já está Ok e a tela volta sozinha pro Relatório; até lá os botões e as abas ficam apagados
+  // (Vitor, 14/10/2026: "deixe ele apagado e as ações da interface desabilitadas")
+  const fechado = r.limpo;
+  const abas = r.abas && (fechado ? r.abas.map(o => ({ ...o, travada: 'A conta está Ok: voltando para o Relatório' })) : r.abas);
   return (
     <div className="card" id="vcResultadoCard" ref={ref}>
-      {r.abas && <Segmentado id="vcAbas" valor={r.aba} opcoes={r.abas} onMudar={vm.escolherAba} />}
+      {abas && <Segmentado id="vcAbas" valor={r.aba} opcoes={abas} onMudar={a => { if (!fechado) vm.escolherAba(a); }} />}
       {r.porConta ? <PorConta r={r} p={r.porConta} /> : r.todas && <Todas vm={vm} r={r} t={r.todas} />}
       <div className="btn-row" style={{ justifyContent: 'flex-end' }}>
-        <button className="btn btn-outline" id="vcBtCsv" type="button" onClick={() => { const a = vm.csv(); if (a) baixarArquivo(a.texto, a.nome); }}>Baixar resultado</button>
+        <button className="btn btn-outline" id="vcBtCsv" type="button" disabled={fechado} onClick={() => { const a = vm.csv(); if (a) baixarArquivo(a.texto, a.nome); }}>Baixar resultado</button>
         {/* Sem pendência, o "Ok" quem dá é o sistema (aviso automático que redireciona sozinho —
             ver conferir() no ViewModel). Não existe botão de Ok manual: o usuário só reconfere. */}
         {/* sobrou só bem do ativo e ICMS: a conta já está Ok; o botão só volta (Vitor, 13/10/2026: "Conferir mais adiante...") */}
         {r.passa
           ? <button className="btn btn-primary" id="vcBtReimportar" type="button" onClick={vm.voltar}>Conferir mais adiante...</button>
-          : <button className="btn btn-primary" id="vcBtReimportar" type="button" onClick={vm.reimportar}>Corrigi, quero reconferir</button>}
+          : <button className="btn btn-primary" id="vcBtReimportar" type="button" disabled={fechado} onClick={vm.reimportar}>Corrigi, quero reconferir</button>}
       </div>
     </div>
   );

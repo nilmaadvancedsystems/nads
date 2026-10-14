@@ -1,11 +1,12 @@
 // A casca de todos os aplicativos (nasceu na Conferência): cabeçalho (☰, logo, trilha "Sistema / Empresa", abas das páginas),
 // barra lateral das seções (com "Ocultar barra lateral") — ou, com lateral="caixa", a caixa de seções ao lado da página —,
 // gaveta ☰ com tema e a área da página (título + ações no canto direito). Marcação e classes iguais às do conferencia.html (~L973-1033).
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { cleanInlineStyles } from 'animejs';
 import { animar, ENTRAR, entrar, revelarTitulo, sairComo, useIndicador } from './animacao';
 import { useAbasParaAEtapa, useAlturaNaEtapa } from './etapa';
 import { Icone, MarcaN, type NomeIcone } from './icones';
+import { LogoDrive, LogoGmail } from './logos';
 import { SeletorTema } from './tema';
 import { atualizarVersao, useVersaoNova } from './versaoNova';
 
@@ -80,7 +81,13 @@ export function Casca(p: {
   onAplicativos?: () => void;
   onEmpresa: () => void;
   /** os aplicativos do nads, na gaveta ☰ (o atual marcado) */
-  aplicativos?: { id: string; nome: string; icone: NomeIcone; ativo?: boolean; contador?: string }[];
+  aplicativos?: {
+    id: string; nome: string; icone: NomeIcone; ativo?: boolean; contador?: string;
+    /** a logo da marca no lugar do ícone (14/10/2026: "no Drive, coloca a logo do Drive") */
+    marca?: 'drive' | 'gmail';
+    /** o nome do grupo na gaveta (Rotinas, Comunicação, Escritório), quando muda */
+    grupo?: string;
+  }[];
   onAplicativo?: (id: string) => void;
   /**
    * Como as seções aparecem à esquerda: "barra" (padrão; a barra lateral que oculta) ou "caixa"
@@ -265,15 +272,23 @@ export function Casca(p: {
             <span className="brand-mark" aria-hidden="true"><MarcaN /></span>
             <button className="drawer-x" type="button" aria-label="Fechar menu" onClick={fecharGaveta}><Icone nome="x" /></button>
           </div>
-          <button className="drawer-item" type="button" onClick={() => { fecharGaveta(); (p.onAplicativos || p.onInicio)(); }}><Icone nome="home" />Início</button>
+          <button className="drawer-item" type="button" onClick={() => { fecharGaveta(); (p.onAplicativos || p.onInicio)(); }}>
+            <span className="drawer-app-icone" aria-hidden="true"><Icone nome="home" /></span>Início
+          </button>
           {p.aplicativos && p.aplicativos.length > 0 && (
             <>
               <hr className="drawer-sep" />
-              {p.aplicativos.map(a => (
-                <button key={a.id} className={'drawer-item' + (a.ativo ? ' active' : '')} type="button" aria-current={a.ativo ? 'page' : undefined}
-                  onClick={() => { fecharGaveta(); p.onAplicativo?.(a.id); }}>
-                  <Icone nome={a.icone} />{a.nome}{a.contador && <span className="menu-contador drawer-contador">{a.contador}</span>}
-                </button>
+              {p.aplicativos.map((a, i) => (
+                <Fragment key={a.id}>
+                  {a.grupo && a.grupo !== p.aplicativos![i - 1]?.grupo && <span className="drawer-label drawer-grupo">{a.grupo}</span>}
+                  <button className={'drawer-item' + (a.ativo ? ' active' : '')} type="button" aria-current={a.ativo ? 'page' : undefined} data-app={a.id}
+                    onClick={() => { fecharGaveta(); p.onAplicativo?.(a.id); }}>
+                    <span className={'drawer-app-icone' + (a.marca ? ' marca' : '')} aria-hidden="true">
+                      {a.marca === 'drive' ? <LogoDrive cor /> : a.marca === 'gmail' ? <LogoGmail /> : <Icone nome={a.icone} />}
+                    </span>
+                    {a.nome}{a.contador && <span className="menu-contador drawer-contador">{a.contador}</span>}
+                  </button>
+                </Fragment>
               ))}
             </>
           )}
