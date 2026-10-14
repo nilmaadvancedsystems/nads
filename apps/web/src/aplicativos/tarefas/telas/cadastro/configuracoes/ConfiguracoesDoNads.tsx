@@ -1,6 +1,6 @@
 // As chaves do nads, na organização nova do Cadastro (Vitor, 13/10/2026: "reveja a estrutura inteira do cadastro"):
 //   - ProtecaoDoLogin: a faixa no topo de Cadastro › Equipe (liberar cada computador com o código de um admin);
-//   - RobosEAgentes: Cadastro › Robôs e agentes — a saúde dos robôs (a nuvem e o PC), a leitura da agência e da conta
+//   - RobosEAgentes: Cadastro › Sistema e agentes ("troca de robô para sistema") — a saúde do sistema (a nuvem e o PC), a leitura da agência e da conta
 //     dos extratos, e os agentes do Claude Code (o painel ao vivo). Antes ficavam espalhados em Configurações e Agentes.
 // Só o admin muda as chaves.
 import { Dica, Esqueleto, Icone, Interruptor, useCarregando, useEntradaAnimada } from '@nads/ui';
@@ -41,14 +41,14 @@ export function RobosEAgentes() {
   const mostrar = todos ? vm.saude || [] : problemas;
   return (
     <section className="cad-robos">
-      {!vm.admin && <p className="hint">Só um administrador liga ou desliga os robôs; aqui você acompanha.</p>}
+      {!vm.admin && <p className="hint">Só um administrador liga ou desliga; aqui você acompanha.</p>}
       <div className="cad-robos-grade">
         {vm.veSaude && (
           <div ref={saude} className="card cad-secao">
             <div className="cad-secao-topo">
               <span className="cad-faixa-icone" aria-hidden="true"><Icone nome="monitor" /></span>
-              <h3>Saúde dos robôs
-                <Dica texto="O robô da nuvem (Gmail, Drive, cobrança) e o do PC do escritório (arquivador, SIEG, painel dos agentes). Atualiza sozinho a cada 30 segundos." />
+              <h3>Saúde do sistema
+                <Dica texto="O sistema na nuvem (Gmail, Drive, cobrança) e no PC do escritório (arquivador, SIEG, painel dos agentes). Atualiza sozinho a cada 30 segundos." />
               </h3>
             </div>
             {!vm.saude ? <Esqueleto linhas={4} /> : (
@@ -75,12 +75,12 @@ export function RobosEAgentes() {
         <div className="card cad-secao">
           <div className="cad-secao-topo">
             <span className="cad-faixa-icone" aria-hidden="true"><Icone nome="settings" /></span>
-            <h3>O que os robôs fazem</h3>
+            <h3>O que o sistema faz</h3>
           </div>
           <div className="cad-chave">
             <div className="cad-chave-texto">
               <b>Ler a agência e a conta dos extratos
-                <Dica texto='O robô lê a agência e a conta do cabeçalho dos extratos que chegam pelo Gmail e pelo Drive; o Cadastro mostra em "O robô já sabe" e a lista de empresas usa quando a empresa ainda não tem os bancos cadastrados.' />
+                <Dica texto='O sistema lê a agência e a conta do cabeçalho dos extratos que chegam pelo Gmail e pelo Drive; a lista de empresas usa quando a empresa ainda não tem os bancos cadastrados.' />
               </b>
               <span className="hint">Gmail e Drive</span>
             </div>
