@@ -279,6 +279,10 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   // o quadro RESUMO do fim (Sicoob: "Cheque especial contratado: 10.000,00C", juros e tarifas provisionados…): não é
   // lançamento; vale até a próxima linha com data na coluna (Vitor, 13/10/2026: a 380 tinha 10 mil "entrando no banco")
   let noResumo = false;
+  // o saldo corrido (a coluna Saldo, o último valor da linha que tem dois; ou o saldo anterior / do dia): o sinal do
+  // lançamento vem da diferença dos saldos quando ela bate com o valor (Vitor, 14/10/2026: o OCR leu o "-" do "- 632,50"
+  // do BNB como "7" e o débito virou crédito)
+  let saldoCorrido: number | null = null;
   // a coluna da data: onde ficam as datas com ano que abrem a linha. Data curta ("21/03") longe dela é o fim de um
   // histórico quebrado ("REM: FULANO" / "21/03"), não um dia novo (Vitor, 09/10/2026: a 380 jogava o 23/03 no 21/03)
   const xDasDatas = todas.flat().map(l => l.tokens[0]).filter(t => t && RE_DATA.test(t.s) && /\d{4}$/.test(t.s)).map(t => t.x);
@@ -318,7 +322,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       else if (RE_DATA_MES.test(t[0].s)) { data = lerData(t[0].s, ano); if (data) t.shift(); }
       if (data) { dataAtual = data; noResumo = false; }
       // (e o "Detalhamento do Saldo" do BNB: saldo disponível, limite, Investimentos "BNB AUTOMATICO FIF"; Vitor, 14/10/2026)
-      if (!data && /^(resumo|encargos vencidos|detalhamento do saldo)\b/.test(normalizarTexto(l.texto))) { juntarPerto(); noResumo = true; continue; }
+      if (!data && /^(resumo|encargos vencidos|detalhamento do s)/.test(normalizarTexto(l.texto))) { juntarPerto(); noResumo = true; continue; }
       if (noResumo) continue;
 
       const valores: Token[] = [];
@@ -355,6 +359,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       if (RE_SALDO.test(hist) || (!hist && !solta && RE_SALDO.test(l.texto))) {
         // a linha "SALDO DO DIA": o saldo que o banco imprime no fim do dia; o "999 S A L D O" do fim do BB: o do último dia
         const n = normalizarTexto(hist || l.texto);
+        if (/saldo (?:anterior|inicial)|saldo (?:do )?dia|\bs a l d o\b/.test(n) && valores.length) saldoCorrido = centavos(valores[valores.length - 1].s);
         const diaDoSaldo = /\bs a l d o\b/.test(n) ? ultimaDataDeValor : /\bsaldo (?:do )?dia\b/.test(n) ? dataAtual : null;
         const sv = diaDoSaldo ? centavos(valores[valores.length - 1].s) : null;
         if (sv != null && diaDoSaldo) saldosDoDia.set(diaDoSaldo, sv);
@@ -382,7 +387,12 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       if (pelaDtMovimento && bloqueados.has(v)) { solta = null; continue; }
       let c = centavos(v.s);
       if (c == null || c === 0) continue;
-      if (!temSinal(v.s)) {
+      const saldoDaLinha = lado === 'banco' && valores.length > 1 && valores[valores.length - 1] !== v ? centavos(valores[valores.length - 1].s) : null;
+      const saldoAntes = saldoCorrido;
+      if (saldoDaLinha != null) saldoCorrido = saldoDaLinha;
+      const diferenca = saldoAntes != null && saldoDaLinha != null ? saldoDaLinha - saldoAntes : null;
+      if (diferenca != null && diferenca !== 0 && Math.abs(Math.abs(diferenca) - Math.abs(c)) <= 1) c = Math.sign(diferenca) * Math.abs(c);
+      else if (!temSinal(v.s)) {
         const base = normalizarTexto(hist || solta || '');
         if (col && col.deb != null && col.cred != null) {
           const ehDebito = Math.abs(v.x2 - col.deb) < Math.abs(v.x2 - col.cred);
