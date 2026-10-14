@@ -79,11 +79,9 @@ export function ConfiguracoesDoDp() {
                       <span className="dp-cliente-nome">{l.nomeNaTela}{l.mudadoNoMes ? <span className="badge badge-warn dp-selo-mudado">muda em {vm.competencia.slice(5, 7)}/{vm.competencia.slice(0, 4)}</span> : l.mudado && <span className="badge badge-neutral dp-selo-mudado">mudado</span>}</span>
                     </td>
                     <td className="dp-documento" onClick={e => e.stopPropagation()}>
+                      {/* clicar no número copia (Vitor, 14/10/2026: "remova esse botão de copiar e faça com que o número ao clicar seja copiado") */}
                       {l.documento ? (
-                        <span className="dp-documento-celula">
-                          <span className="num">{l.documento}</span>
-                          <BotaoIcone icone="copiar" titulo={'Copiar ' + l.documento} pequeno onClick={() => copiar(l.documento)} />
-                        </span>
+                        <button type="button" className="texto-copiavel num" title="Clique para copiar" onClick={() => copiar(l.documento)}>{l.documento}</button>
                       ) : <span className="pill-vazio">sem cadastro</span>}
                     </td>
                     <td>{l.movimento}</td>

@@ -28,6 +28,7 @@ export const TELAS: Tela[] = [
   { id: 't-senhas', app: 'Tarefas', nome: 'Senhas (gov.br e certificados)' },
   { id: 't-dp-fgts', app: 'Tarefas', nome: 'DP › FGTS Digital' },
   { id: 't-dp-resumo', app: 'Tarefas', nome: 'DP › Resumo' },
+  { id: 't-dp-config', app: 'Tarefas', nome: 'DP › Configurações' },
   { id: 't-insights', app: 'Tarefas', nome: 'Insights' },
   { id: 't-contabil', app: 'Tarefas', nome: 'Contábil' },
   { id: 't-empresa', app: 'Tarefas', nome: 'Página da empresa' },

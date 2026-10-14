@@ -154,6 +154,8 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <><button className="btn btn-sm">Pequeno</button><button className="btn btn-primary btn-sm">Principal</button><button className="btn btn-outline btn-sm"><Icone nome="x" />Remover todos</button></> },
   { id: 'btn-danger', tipo: 'botoes', nome: 'Botão de perigo', descricao: 'Texto vermelho; no passar do mouse, fundo vermelho', classes: ['btn btn-danger'], telas: ['t-cadastro-janela', 'e-importacao'],
     demo: () => <button className="btn btn-danger"><Icone nome="x" />Excluir</button> },
+  { id: 'texto-copiavel', tipo: 'botoes', nome: 'Texto que copia ao clicar', descricao: 'O próprio número é o botão (CNPJ/CPF, código): sem ícone de copiar ao lado; o mouse vira "copiar" e o texto sublinha', classes: ['texto-copiavel'], telas: ['t-dp-config'],
+    uso: '<button type="button" className="texto-copiavel num" title="Clique para copiar" onClick={…}>27872981000113</button>', demo: () => <button type="button" className="texto-copiavel num" title="Clique para copiar">27872981000113</button> },
   { id: 'btn-ghost', tipo: 'botoes', nome: 'Botão fantasma', classes: ['btn btn-ghost'], telas: ['c-relatorio'], demo: () => <button className="btn btn-ghost">Ver mais</button> },
   { id: 'btn-acao', tipo: 'botoes', nome: 'Botão que trabalha', descricao: 'Mostra a rodinha e o texto no gerúndio enquanto faz', componente: 'BotaoAcao', telas: ['c-importacao', 'e-importacao'],
     uso: '<BotaoAcao carregando={x} textoCarregando="Importando…">Importar</BotaoAcao>', demo: () => <><BotaoAcao>Importar</BotaoAcao><BotaoAcao carregando textoCarregando="Importando…">Importar</BotaoAcao></> },

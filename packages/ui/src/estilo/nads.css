@@ -3525,7 +3525,10 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .painel-neutro{--tom:var(--ink);--tom-fundo:var(--surface);--tom-icone:var(--surface-3);--tom-borda:var(--border);}
 /* a coluna CNPJ/CPF das Configurações do DP: só os dígitos e o copiar */
 .dp-documento{white-space:nowrap;cursor:default;}
-.dp-documento-celula{display:inline-flex;align-items:center;gap:4px;}
+/* texto que copia ao clicar (14/10/2026): sem botão ao lado; o mouse mostra que dá para clicar */
+.texto-copiavel{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;cursor:copy;border-radius:4px;}
+.texto-copiavel:hover{color:var(--accent);text-decoration:underline;text-underline-offset:3px;}
+.texto-copiavel:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
 .stat-grid.dp-numeros{border:0;background:none;overflow:visible;}
 
 /* Escrever para o Claude da rotina (Drive › Arquivador, 07/10/2026; só o admin) */
