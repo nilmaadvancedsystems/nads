@@ -6,6 +6,7 @@ import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeT
 import { useFornecedores, type FiltroFornecedores, type TelaFornecedores } from './useFornecedores';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../../comum/GradeDosMeses';
 import { DigitarLancamento } from '../clientes/DigitarLancamento';
+import { ConsultaDeNotas } from '../consulta/ConsultaDeNotas';
 
 type VM = ReturnType<typeof useFornecedores>;
 
@@ -33,6 +34,8 @@ export function Fornecedores() {
       {vm.tela === 'arquivos' && <Arquivos vm={vm} />}
       {vm.tela === 'fornecedores' && <ListaDeFornecedores vm={vm} />}
       {vm.tela === 'envio' && <Envio vm={vm} />}
+      {/* consultar a nota (Vitor, 14/10/2026) */}
+      <ConsultaDeNotas tipos={['entradas', 'tomados']} />
     </section>
   );
 }

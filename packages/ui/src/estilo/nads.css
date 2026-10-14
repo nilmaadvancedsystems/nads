@@ -4332,6 +4332,7 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 .alt-passos li{display:flex;align-items:center;gap:8px;color:var(--ink-muted);}
 .alt-passos li:last-child{color:var(--ink);}
 .alt-passos .alt-passo-n{width:20px;height:20px;border-radius:50%;background:var(--surface-3);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;flex:none;}
+.gm-pilula{max-width:min(380px,100%);}
 /* o DP animado (14/10/2026: "quero animar o DP inteiro"); o nível de cada um vale (no Normal nada se mexe; nas Parciais só a
    transição; nas Todas também a cascata): as barras do resumo crescem em sequência e a barra das guias anda ao mudar */
 @keyframes dpBarraCresce{from{width:0;}}

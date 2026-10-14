@@ -8,6 +8,7 @@ import { BotaoDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../../comum/GradeDosMeses';
 import { useAdiantamento } from './useAdiantamento';
+import { ConsultaDeNotas } from '../consulta/ConsultaDeNotas';
 
 export function Adiantamento({ lado = 'fornecedores' }: { lado?: 'fornecedores' | 'clientes' }) {
   const vm = useAdiantamento(lado);
@@ -102,6 +103,8 @@ export function Adiantamento({ lado = 'fornecedores' }: { lado?: 'fornecedores' 
           )}
         </div>
       </div>
+      {/* consultar a nota (Vitor, 14/10/2026) */}
+      <ConsultaDeNotas tipos={lado === 'clientes' ? ['saidas', 'prestados'] : ['entradas', 'tomados']} />
     </section>
   );
 }

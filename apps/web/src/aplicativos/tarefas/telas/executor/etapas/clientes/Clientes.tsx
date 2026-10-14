@@ -8,6 +8,7 @@ import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeT
 import { useClientes, type FiltroClientes, type TelaClientes } from './useClientes';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../../comum/GradeDosMeses';
 import { DigitarLancamento } from './DigitarLancamento';
+import { ConsultaDeNotas } from '../consulta/ConsultaDeNotas';
 
 type VM = ReturnType<typeof useClientes>;
 
@@ -35,6 +36,8 @@ export function Clientes() {
       {vm.tela === 'arquivos' && <Arquivos vm={vm} />}
       {vm.tela === 'clientes' && <ListaDeClientes vm={vm} />}
       {vm.tela === 'envio' && <Envio vm={vm} />}
+      {/* consultar a nota (Vitor, 14/10/2026) */}
+      <ConsultaDeNotas tipos={['saidas', 'prestados']} />
     </section>
   );
 }
