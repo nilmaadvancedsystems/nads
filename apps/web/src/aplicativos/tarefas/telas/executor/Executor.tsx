@@ -22,6 +22,7 @@ import { useExecutor } from './useExecutor';
 import { ListaDoQueFalta, type ItemQueFalta } from './partes/OQueFalta';
 import { MenuDaRotina, type GrupoDoMenu } from './partes/MenuDaRotina';
 import { InssDaEtapa } from './partes/InssDaEtapa';
+import { PagamentosDoProLabore } from './partes/PagamentosDoProLabore';
 import { RazaoDaEtapa } from './partes/RazaoDaEtapa';
 import { ChecklistDisfarcado } from './partes/ChecklistDisfarcado';
 import { animarPronto } from './partes/animarPainel';
@@ -320,6 +321,8 @@ export function Executor() {
                           </span>
                         </label>
                         {i.link && <a className="btn folha-check-link" href={i.link.url} target="_blank" rel="noreferrer"><Icone nome="link" />{i.link.rotulo}</a>}
+                        {/* o Pró-labore: os pagamentos que faltam para o razão zerar (Vitor, 14/10/2026) */}
+                        {vm.etapa?.checklistDaFolha && i.id === 'pro-labore' && vm.empresa && <PagamentosDoProLabore empresa={vm.empresa.nome} contaDoItem={i.contas[0] || ''} />}
                       </li>
                     ))}
                   </ul>
