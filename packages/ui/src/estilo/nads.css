@@ -4353,3 +4353,6 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 .gm-item{padding-left:16px;padding-right:16px;}
 .gm-grupo:last-child li:last-child .gm-item{border-bottom:0;}
 @media (min-width:901px){.gm-caixa:not(.com-leitura) .gm-item{padding:8px 16px;}}
+/* a linha com o menu suspenso aberto fica acima das de baixo (14/10/2026: o menu das Animações ficava por baixo do Sair da conta) */
+.cfg-linha:has(.popover){position:relative;z-index:5;}
+.cfg-secao:has(.popover){position:relative;z-index:5;}
