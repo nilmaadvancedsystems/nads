@@ -11,6 +11,7 @@ export * from './regras/aprendizado';
 export * from './regras/clientes';
 export * from './regras/competencia';
 export * from './regras/drive';
+export * from './regras/mesDoEmail';
 export * from './regras/saidas';
 export * from './regras/historicos';
 export * from './arquivos/planilha';

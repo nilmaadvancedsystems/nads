@@ -4,7 +4,7 @@
 // Drive). Só com o login do Entregas. O remetente vem sugerido (os e-mails do cadastro do cliente no Entregas e os que a
 // pessoa já usou aqui) e o período tem os atalhos do mês (Vitor, 13/10/2026: "puxa do e-mail para ajudar a preencher" e
 // as datas no campo do sistema). ViewModel (useBuscarNoEmail) e View (JanelaBuscarNoEmail) juntos: são só desta tela.
-import { extrator as x, type creditor } from '@nads/core';
+import { creditor as cr, extrator as x, type creditor } from '@nads/core';
 import { CampoData, classeDaJanela, Icone, LogoGmail, Segmentado } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useDriveDaBusca } from './useDriveDaBusca';
@@ -177,27 +177,47 @@ export function JanelaBuscarNoEmail({ vm }: { vm: Vm }) {
         {e.resultados && (e.resultados.length === 0
           ? <p className="hint" style={{ marginTop: 12 }}>Nenhum e-mail com anexo para esses filtros.</p>
           : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 340px) 1fr', gap: 16, marginTop: 14, minHeight: 0 }}>
-              {/* a lista: o arquivo em cima, quem mandou, quando e o assunto embaixo; clicou, abre ao lado */}
-              <div className="table-wrap" style={{ maxHeight: '60vh', overflow: 'auto' }}>
-                {e.resultados.map(a => {
-                  const aberto = vm.preview?.anexo.anexoId === a.anexoId;
-                  return (
-                    <button key={a.mensagemId + a.anexoId} type="button" onClick={() => vm.ver(a)} disabled={ocupado}
-                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px', border: 0, borderBottom: '1px solid var(--border-muted)', cursor: 'pointer',
-                        background: aberto ? 'var(--surface-2)' : 'transparent', color: 'inherit', font: 'inherit', boxShadow: aberto ? 'inset 3px 0 0 var(--accent)' : 'none' }}>
-                      <b style={{ display: 'block', wordBreak: 'break-word' }}>{a.nome}</b>
-                      <span className="hint" style={{ display: 'block' }}>{(a.de.replace(/<.*>/, '').replace(/"/g, '').trim() || a.de)} · {dataBR(a.em)} · {tamanho(a.tamanho)}</span>
-                      {a.assunto && <span className="hint" style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.assunto}</span>}
-                    </button>
-                  );
-                })}
-              </div>
-              <PreviewDoAnexo vm={vm} />
-            </div>
+            <ListaDeAnexos vm={vm} e={e} ocupado={ocupado} />
           ))}
       </div>
     </div>
+  );
+}
+
+/**
+ * A lista dos anexos já filtrada pelo mês (Vitor, 14/10/2026: "não tem por que eu ver coisa de dezembro ou de fevereiro sendo
+ * que estou em janeiro"): os que citam o mês (no nome, no assunto ou no corpo) em cima, os que não citam mês nenhum depois; os
+ * de outros meses escondidos, com o "Mostrar" no fim. Clicou, abre ao lado.
+ */
+function ListaDeAnexos({ vm, e, ocupado }: { vm: Vm; e: NonNullable<Vm['estado']>; ocupado: boolean }) {
+  const [verOutros, setVerOutros] = useState(false);
+  const r = cr.separarPeloMes(e.resultados || [], e.mes);
+  const linha = (a: creditor.AnexoDoEmail, doMes: boolean) => {
+    const aberto = vm.preview?.anexo.anexoId === a.anexoId;
+    return (
+      <button key={a.mensagemId + a.anexoId} type="button" onClick={() => vm.ver(a)} disabled={ocupado}
+        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px', border: 0, borderBottom: '1px solid var(--border-muted)', cursor: 'pointer',
+          background: aberto ? 'var(--surface-2)' : 'transparent', color: 'inherit', font: 'inherit', boxShadow: aberto ? 'inset 3px 0 0 var(--accent)' : 'none' }}>
+        <b style={{ display: 'block', wordBreak: 'break-word' }}>{a.nome}{doMes && <span className="badge badge-ok" style={{ marginLeft: 6 }}>{rotuloDoMes(e.mes)}</span>}</b>
+        <span className="hint" style={{ display: 'block' }}>{(a.de.replace(/<.*>/, '').replace(/"/g, '').trim() || a.de)} · {dataBR(a.em)} · {tamanho(a.tamanho)}</span>
+        {a.assunto && <span className="hint" style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.assunto}</span>}
+      </button>
+    );
+  };
+  return (
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 340px) 1fr', gap: 16, marginTop: 14, minHeight: 0 }}>
+              <div className="table-wrap" style={{ maxHeight: '60vh', overflow: 'auto' }}>
+                {r.doMes.map(a => linha(a, true))}
+                {r.semMes.map(a => linha(a, false))}
+                {!r.doMes.length && !r.semMes.length && <p className="hint" style={{ padding: 12, margin: 0 }}>Nenhum anexo de {rotuloDoMes(e.mes)}: os {r.outros.length} achados citam outros meses.</p>}
+                {r.outros.length > 0 && (verOutros ? r.outros.map(a => linha(a, false)) : (
+                  <button type="button" className="btn btn-outline" style={{ margin: 12 }} onClick={() => setVerOutros(true)}>
+                    Mostrar os de outros meses ({r.outros.length})
+                  </button>
+                ))}
+              </div>
+              <PreviewDoAnexo vm={vm} />
+            </div>
   );
 }
 
