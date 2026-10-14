@@ -3819,3 +3819,15 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .cad-resumo-texto{min-width:0;display:flex;flex-direction:column;}
 .cad-resumo-texto b{font-size:13px;font-weight:600;}
 .cad-resumo-texto .fraco{font-size:12px;color:var(--ink-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* A tela de bloqueio do Senhas (13/10/2026): sem acesso ao cofre, a página inteira é o cadeado e o que falta */
+.cofre-bloqueio{min-height:calc(100dvh - 180px);display:flex;align-items:center;justify-content:center;padding:24px 16px;}
+.cofre-bloqueio-cartao{width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:36px 32px;border:1px solid var(--border);border-radius:14px;background:var(--surface);}
+.cofre-bloqueio-icone{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--accent);margin-bottom:4px;}
+.cofre-bloqueio-icone svg{width:32px;height:32px;}
+.cofre-bloqueio-icone.esperando{background:var(--warn-soft);color:var(--warn);}
+.cofre-bloqueio-cartao h2{margin:0;font-size:20px;}
+.cofre-bloqueio-texto{margin:0 0 6px;color:var(--ink-muted);font-size:13.5px;line-height:1.5;max-width:340px;}
+.cofre-bloqueio-codigo{width:100%;display:flex;flex-direction:column;gap:8px;margin-top:14px;padding-top:16px;border-top:1px solid var(--border);}
+.cofre-bloqueio-linha{display:flex;gap:8px;}
+.cofre-bloqueio-linha input{flex:1;min-width:0;font-family:var(--font-num);letter-spacing:.04em;}

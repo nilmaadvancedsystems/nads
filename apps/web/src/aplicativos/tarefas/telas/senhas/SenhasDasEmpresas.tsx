@@ -3,7 +3,7 @@
 import { Esqueleto, Icone, Segmentado, useCarregando } from '@nads/ui';
 import { useState } from 'react';
 import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
-import { CofreFechado } from './CofreFechado';
+import { TelaDeBloqueio } from './TelaDeBloqueio';
 import { ImportarCertificados } from './ImportarCertificados';
 import { SegredosDaEmpresa } from './SegredosDaEmpresa';
 import { useSenhasDasEmpresas, type FiltroDeSenhas } from './useSenhasDasEmpresas';
@@ -18,7 +18,7 @@ export function SenhasDasEmpresas() {
   useCarregando(vm.cofre.estado === 'carregando');
   if (vm.cofre.estado === 'carregando') return <Esqueleto linhas={8} />;
   // sem acesso ao cofre, só a tela de pedir acesso (13/10/2026: "não era pra tela nem abrir, era pra só ter a tela de pedir acesso")
-  if (vm.cofre.estado !== 'aberto') return <section><CofreFechado vm={vm.cofre} /></section>;
+  if (vm.cofre.estado !== 'aberto') return <TelaDeBloqueio vm={vm.cofre} />;
   const filtros: { valor: FiltroDeSenhas; rotulo: string }[] = [
     { valor: 'todas', rotulo: 'Todas · ' + vm.contagem.todas },
     { valor: 'vencendo', rotulo: 'Certificado vencendo · ' + vm.contagem.vencendo },
