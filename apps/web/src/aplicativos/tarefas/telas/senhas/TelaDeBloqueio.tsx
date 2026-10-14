@@ -29,7 +29,7 @@ export function TelaDeBloqueio({ vm }: { vm: VmCofre }) {
           <div className="cofre-bloqueio-quem">
             <span className="hint">{vm.estado === 'aguardando' ? 'Quem pode liberar' : 'Quem tem acesso'}</span>
             <ul>
-              {vm.comAcesso.map(p => { const f = vm.fotoDe(p.nome); return <li key={p.id}><FotoDaPessoa foto={f.foto} iniciais={f.iniciais} />{p.nome.split(' ')[0]}</li>; })}
+              {vm.comAcesso.filter((p, i, t) => t.findIndex(x => x.nome.trim().toLowerCase() === p.nome.trim().toLowerCase()) === i).map(p => { const f = vm.fotoDe(p.nome); return <li key={p.id}><FotoDaPessoa foto={f.foto} iniciais={f.iniciais} />{p.nome.split(' ')[0]}</li>; })}
             </ul>
           </div>
         )}
