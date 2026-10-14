@@ -32,13 +32,15 @@ const mesBR = (m: string) => m.slice(5, 7) + '/' + m.slice(0, 4);
 
 /** O histórico do pagamento: "Pagamento de pro-labore 01/2026 CARLOS HUMBERTO VOLPONI RODRIGUES". */
 /**
- * A data do pagamento do pró-labore: o 5º dia útil do mês seguinte à competência ('aaaa-mm' → 'dd/mm/aaaa'), sem sábado,
- * domingo e feriado nacional (Vitor, 14/10/2026: "pró-labore paga até o 5º dia útil do mês posterior, leve isso como regra").
+ * A data do pagamento do pró-labore: o n-ésimo dia útil (1º a 5º; padrão o 5º) do mês seguinte à competência
+ * ('aaaa-mm' → 'dd/mm/aaaa'), sem sábado, domingo e feriado nacional (Vitor, 14/10/2026: "pró-labore paga até o 5º dia
+ * útil do mês posterior"; "se vai ser no 1, 2, 3, 4 ou 5 dia útil de cada mês").
  */
-export function dataDoPagamentoDoProLabore(competencia: string): string {
+export function dataDoPagamentoDoProLabore(competencia: string, diaUtilDoMes = 5): string {
+  const n = Math.min(5, Math.max(1, Math.round(diaUtilDoMes) || 5));
   const [a, m] = competencia.split('-').map(Number);
   let d = new Date(a, m, 1); // o dia 1 do mês seguinte (o mês do Date começa em 0)
-  for (let uteis = diaUtil(d) ? 1 : 0; uteis < 5; ) {
+  for (let uteis = diaUtil(d) ? 1 : 0; uteis < n; ) {
     d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
     if (diaUtil(d)) uteis++;
   }
