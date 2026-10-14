@@ -19,7 +19,7 @@ describe('o mês de que o e-mail fala', () => {
   });
   it('o anexo de janeiro em cima; dezembro e fevereiro à parte; o que não cita mês no meio', () => {
     const lista = [
-      a('BOLETOS PAGOS DEZ2025.pdf', 'COMPROVANTES PAGTOS TÍTULOS DA VOLPONI REF DEZ'),
+      a('BOLETOS PAGOS DEZ2025.pdf', 'COMPROVANTES PAGTOS TÍTULOS REF DEZ'),
       a('Relatorio.pdf', 'Liquidação janeiro/2026'),
       a('extrato FEV2026.pdf'),
       a('arquivo.pdf', 'segue', 'conforme combinado'),

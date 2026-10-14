@@ -68,10 +68,12 @@ export interface Derivado {
   semCredito: cr.Titulo[];
   /** os CRÉD.LIQ.COBRANÇA do extrato que nenhum título do relatório explica (o total fica no Alterdata) */
   creditosSemTitulo: cr.CreditoDeLiquidacao[];
+  /** dos sem crédito, os descontados (Vitor, 14/10/2026): o título → a liberação do TD de onde ele veio */
+  descontados: Map<number, cr.CreditoDeLiquidacao>;
 }
 
 /** O extrato da conta banco no período: os meses que têm extrato e os créditos de liquidação. */
-export interface ExtratoDoCreditor { banco: string; meses: string[]; creditos: cr.CreditoDeLiquidacao[] }
+export interface ExtratoDoCreditor { banco: string; meses: string[]; creditos: cr.CreditoDeLiquidacao[]; tds: cr.CreditoDeLiquidacao[] }
 
 export function derivar(e: Estado, contas: cr.ContasCreditor, aprendidos: cr.ClientesAprendidos, clientes: readonly cr.ContaDoBalancete[], porNf?: ReadonlyMap<string, readonly cr.ContaDaNota[]>, extrato?: ExtratoDoCreditor | null): Derivado {
   const todos = e.relatorio ? e.relatorio.grupos.flatMap(g => g.titulos) : [];
@@ -93,6 +95,7 @@ export function derivar(e: Estado, contas: cr.ContasCreditor, aprendidos: cr.Cli
     semConta: cruzamentos.filter(c => c.situacao === 'nao-encontrada' || (c.aprendida && c.foraDoBalancete)),
     extrato: extrato ? { banco: extrato.banco, meses: extrato.meses } : null, semCredito,
     creditosSemTitulo: casamento ? casamento.creditos.filter(c => !c.titulos.length).map(c => c.credito) : [],
+    descontados: extrato ? cr.titulosDescontados(semCredito, extrato.tds) : new Map(),
   };
 }
 
@@ -204,7 +207,7 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
     if (!banco) return null;
     const porMes = meses.map(m => ({ m, ls: x.arquivosDoBanco(emp, banco.id, primeiro, 'banco', m).flatMap(a => a.lancamentos.filter(l => l.data.startsWith(m))) }));
     const comExtrato = porMes.filter(p => p.ls.length).map(p => p.m);
-    return comExtrato.length ? { banco: banco.nome, meses: comExtrato, creditos: cr.creditosDeLiquidacao(porMes.flatMap(p => p.ls)) } : null;
+    return comExtrato.length ? { banco: banco.nome, meses: comExtrato, creditos: cr.creditosDeLiquidacao(porMes.flatMap(p => p.ls)), tds: cr.liberacoesDeTD(porMes.flatMap(p => p.ls)) } : null;
   }, [emp, cadastro, empresa.codigo, estado.competencia, contaBanco]);
   const d = useMemo(() => derivar(estado, resolvidas.contas, clientes, contasClientes, porNf, extrato), [estado, resolvidas, clientes, contasClientes, porNf, extrato]);
 
