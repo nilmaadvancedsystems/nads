@@ -36,7 +36,7 @@ export function useConsultaDeNotas(tipos: readonly [TipoConsultado, TipoConsulta
     carregando: !notas,
     tipo, tipos: tipos.map(t => ({ valor: t, rotulo: ROTULO[t] })), escolherTipo: (t: TipoConsultado) => setTipo(t),
     titulo: 'Consultar notas · ' + tipos.map(t => ROTULO[t]).join(' e '),
-    servico,
+    servico, rotulo: ROTULO[tipo],
     busca, buscar: setBusca,
     ordem, ordenar: (campo: c.CampoOrdem) => setOrdem(o => c.alternarOrdem({ ...c.FILTRO_CONSULTA_VAZIO, ...o }, campo)),
     total: lista.length, qtd: achadas.length,

@@ -21,10 +21,14 @@ export const prefereMenosMovimento = () => typeof window === 'undefined' || type
 //   parciais  também o que abre e fecha (janelas, menus, avisos, gaveta) e as transições do CSS (passar o mouse);
 //             listas e páginas em cascata, título que se revela, festa, linhas que deslizam e o Drive ficam parados
 //   todas     tudo, no jeito escolhido na Prévia das animações
-// O CSS lê html[data-animacoes] (nads.css, fim).
-export type NivelDeAnimacao = 'normal' | 'parciais' | 'todas';
+// 14/10/2026 ("quero que tenha um botão para tirar/reduzir animações para o normal"): a Nenhuma tira também as feitas a
+// pedido (o menu do perfil, a Minha página, a troca de empresas, a competência), que no Normal continuam
+// (animacoesPedidas). A escolha fica em Minha página › Minha conta › Preferências.
+// O CSS lê html[data-animacoes] (nads.css, fim); a Nenhuma vale como o Normal lá.
+export type NivelDeAnimacao = 'nenhuma' | 'normal' | 'parciais' | 'todas';
 export const NIVEIS_DE_ANIMACAO: { id: NivelDeAnimacao; nome: string; dica: string }[] = [
-  { id: 'normal', nome: 'Normal', dica: 'Só as de carregamento: as telas aparecem prontas, sem movimento.' },
+  { id: 'nenhuma', nome: 'Nenhuma', dica: 'Nada se mexe, nem o menu do perfil, a troca de empresas e a escolha da competência.' },
+  { id: 'normal', nome: 'Normal', dica: 'O padrão: o carregamento e as animações feitas a pedido (o menu do perfil, esta janela, a troca, a competência).' },
   { id: 'parciais', nome: 'Parciais', dica: 'Também janelas, menus e avisos abrindo e fechando; as listas e páginas aparecem paradas.' },
   { id: 'todas', nome: 'Todas', dica: 'Todas as animações (listas em cascata, títulos, a festa ao concluir).' },
 ];
@@ -32,7 +36,7 @@ const CHAVE_NIVEL = 'nads-animacoes';
 function lerNivel(): NivelDeAnimacao {
   try {
     const v = localStorage.getItem(CHAVE_NIVEL);
-    if (v === 'parciais' || v === 'todas') return v;
+    if (v === 'nenhuma' || v === 'parciais' || v === 'todas') return v;
   } catch { /* sem storage: o normal */ }
   return 'normal';
 }
@@ -49,8 +53,10 @@ export function definirNivelDeAnimacao(n: NivelDeAnimacao): void {
   marcarNivelNoHtml();
 }
 
-/** Nada se mexe (o Normal): tudo vai direto para o estado final. Só o carregamento anima (usa prefereMenosMovimento). */
-export const semMovimento = () => nivel === 'normal';
+/** Nada se mexe (o Normal e a Nenhuma): tudo vai direto para o estado final. Só o carregamento anima (usa prefereMenosMovimento). */
+export const semMovimento = () => nivel === 'normal' || nivel === 'nenhuma';
+/** As animações feitas a pedido (o menu do perfil, a Minha página, a troca, a competência): só a Nenhuma (ou o computador com menos movimento) tira. */
+export const animacoesPedidas = () => nivel !== 'nenhuma' && !prefereMenosMovimento();
 /** Só nas Todas: o que é mais que abrir e fechar (cascatas, título, festa, linhas deslizando, o Drive). */
 export const semMovimentoForte = () => nivel !== 'todas';
 

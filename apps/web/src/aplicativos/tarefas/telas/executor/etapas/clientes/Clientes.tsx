@@ -8,12 +8,15 @@ import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeT
 import { useClientes, type FiltroClientes, type TelaClientes } from './useClientes';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../../comum/GradeDosMeses';
 import { DigitarLancamento } from './DigitarLancamento';
-import { ConsultaDeNotas } from '../consulta/ConsultaDeNotas';
+import { ConsultaDeNotas, useAbasDaConsulta } from '../consulta/ConsultaDeNotas';
 
 type VM = ReturnType<typeof useClientes>;
 
 export function Clientes() {
   const vm = useClientes();
+  // a aba Consulta no menu de cima (Vitor, 14/10/2026: "igual à Consulta normal")
+  const consulta = useAbasDaConsulta('Clientes');
+  if (consulta) return <ConsultaDeNotas tipos={['saidas', 'prestados']} />;
   return (
     <section>
       <header className="topbar"><div><h2 className="page-title">Clientes</h2></div></header>
@@ -36,8 +39,6 @@ export function Clientes() {
       {vm.tela === 'arquivos' && <Arquivos vm={vm} />}
       {vm.tela === 'clientes' && <ListaDeClientes vm={vm} />}
       {vm.tela === 'envio' && <Envio vm={vm} />}
-      {/* consultar a nota (Vitor, 14/10/2026) */}
-      <ConsultaDeNotas tipos={['saidas', 'prestados']} />
     </section>
   );
 }
