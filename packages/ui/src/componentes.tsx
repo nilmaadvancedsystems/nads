@@ -222,6 +222,33 @@ export function Dica({ texto }: { texto: ReactNode }) {
   );
 }
 
+/**
+ * As configurações no estilo do Notion (Vitor, 14/10/2026: "melhorando a parametrização no estilo do Notion"): a seção é
+ * um título com uma linha fina embaixo; cada opção é uma linha solta (sem caixa) com o nome, a descrição curta em cinza e
+ * o controle encostado à direita.
+ */
+export function ConfigSecao({ titulo, acao, children }: { titulo: ReactNode; acao?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="cfg-secao">
+      <div className="cfg-secao-topo"><h3>{titulo}</h3>{acao && <span className="cfg-secao-acao">{acao}</span>}</div>
+      <div className="cfg-linhas">{children}</div>
+    </section>
+  );
+}
+
+export function ConfigLinha({ titulo, descricao, children, aviso }: { titulo: ReactNode; descricao?: ReactNode; children?: ReactNode; aviso?: ReactNode }) {
+  return (
+    <div className="cfg-linha">
+      <div className="cfg-linha-texto">
+        <span className="cfg-linha-titulo">{titulo}</span>
+        {descricao && <span className="cfg-linha-desc">{descricao}</span>}
+        {aviso && <span className="cfg-linha-aviso">{aviso}</span>}
+      </div>
+      {children != null && <div className="cfg-linha-controle">{children}</div>}
+    </div>
+  );
+}
+
 /** Ícone clicável (.icon-btn). */
 export function BotaoIcone({ icone, titulo, pequeno, className, ...resto }: { icone: NomeIcone; titulo: string; pequeno?: boolean } & ButtonHTMLAttributes<HTMLButtonElement>) {
   return (

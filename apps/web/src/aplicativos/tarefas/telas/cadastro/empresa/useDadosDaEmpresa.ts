@@ -3,7 +3,7 @@
 // na Conferência. Grava na hora, com o registro no histórico.
 import { empresas, tarefas } from '@nads/core';
 import { regimeNoEntregas } from '../../../dados/fonte';
-import { useRegimesDoEntregas } from '../../../dados/repo';
+import { useDadosDaEmpresaNoEntregas, useRegimesDoEntregas } from '../../../dados/repo';
 import { useCadastroAberto } from '../useCadastroAberto';
 
 export function useDadosDaEmpresa(rota: string) {
@@ -12,9 +12,21 @@ export function useDadosDaEmpresa(rota: string) {
   const codigo = c.empresa?.codigo ?? null;
   const doEntregas = regimeNoEntregas(codigo);
   const padraoEntregas = empresas.cadastro.regimeDoEntregas(doEntregas);
+  // os dados da empresa que o Entregas tem (o CNPJ, o cadastro de lá e a Receita; 14/10/2026)
+  const identificacao = useDadosDaEmpresaNoEntregas(codigo);
   const regimeQueVale = (c.cadastro.regime as string | undefined) || padraoEntregas || tarefas.regimeDaLista(codigo) || c.empresa?.regime || '';
   return {
     empresa: c.empresa,
+    /** a identificação (Entregas) e o CNPJ do cadastro do nads (as empresas novas, pela Receita) */
+    entregas: identificacao,
+    cnpj: c.cadastro.cnpj || identificacao.dados?.documento || '',
+    /** os sócios que a Receita lista e o cadastro ainda não tem (pelo nome) */
+    sociosDaReceita: (identificacao.dados?.receita?.socios || []).filter((n: string) => !(c.cadastro.socios || []).some(so => so.nome.trim().toUpperCase() === n.trim().toUpperCase())),
+    importarSociosDaReceita(nomes: string[]) {
+      if (c.carregando || !nomes.length) return;
+      const novo = empresas.cadastro.definirSocios(c.cadastro, [...(c.cadastro.socios || []), ...nomes.map(nome => ({ nome, cpf: '' }))], c.por, new Date());
+      if (novo !== c.cadastro) c.salvar(novo);
+    },
     carregando: c.carregando,
     /** o regime (13/10/2026): o escolhido no cadastro (null = vale o da lista do escritório) e o da lista */
     regime: (c.cadastro.regime as empresas.cadastro.Regime | undefined) ?? null,
