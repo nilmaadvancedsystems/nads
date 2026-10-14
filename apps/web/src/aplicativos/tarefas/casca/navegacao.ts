@@ -32,7 +32,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     // do login) e os Robôs e agentes (a saúde dos robôs, o que eles fazem e os agentes do Claude, que antes ficavam em
     // Configurações e em Agentes; os links antigos levam para cá)
     { id: 'usuarios', rotulo: 'Equipe', icone: 'usuario', titulo: 'Cadastro — equipe' },
-    { id: 'robos', rotulo: 'Robôs e agentes', icone: 'robo', titulo: 'Cadastro — robôs e agentes' },
+    // "troca de robô para sistema" (13/10/2026)
+    { id: 'sistema', rotulo: 'Sistema e agentes', icone: 'monitor', titulo: 'Cadastro — sistema e agentes' },
   ] },
   // o Fiscal no mesmo modelo do Contábil (Vitor, 05/10/2026): as empresas com a rotina do Fiscal, a visão e as paradas
   { id: 'fiscal', nome: 'Fiscal', icone: 'fileText', pronta: true, paginas: [
