@@ -217,7 +217,7 @@ function RelatoriosDoPeriodo({ vm, comDrive }: { vm: VM; comDrive: boolean }) {
   const grade = useColunaAjustavel('creditor-relatorios', '96px', vm.linhas.length);
   const carregados = vm.linhas.filter(l => l.carregado);
   const titulos = vm.linhas.flatMap(l => l.titulos);
-  const aberto = vm.linhas.find(l => l.mes === mesAberto && l.titulos.length > 0) || null;
+  const aberto = vm.linhas.find(l => l.mes === mesAberto && l.carregado) || null;
   const ocupado = vm.linhas.find(l => l.ocupado);
   return (
     <div className={'imp-bloco' + (carregados.length === vm.linhas.length ? ' imp-ok' : '')}>
@@ -239,7 +239,7 @@ function RelatoriosDoPeriodo({ vm, comDrive }: { vm: VM; comDrive: boolean }) {
               <th scope="col"><span className="sr-only">Mês</span>{grade.alca}</th>
               {vm.linhas.map(l => (
                 <th key={l.mes} scope="col" className={l.mes === mesAberto ? 'atual' : undefined}>
-                  <button type="button" className="imp-meses-mes" aria-current={l.mes === mesAberto ? 'true' : undefined} disabled={!l.titulos.length}
+                  <button type="button" className="imp-meses-mes" aria-current={l.mes === mesAberto ? 'true' : undefined} disabled={!l.carregado}
                     onClick={() => setMesAberto(m => (m === l.mes ? null : l.mes))}
                     title={l.titulos.length ? (l.mes === mesAberto ? 'Ver os títulos do período todo' : 'Ver só os títulos de ' + l.rotulo) : l.rotulo}>{l.rotulo}</button>
                 </th>
@@ -259,9 +259,23 @@ function RelatoriosDoPeriodo({ vm, comDrive }: { vm: VM; comDrive: boolean }) {
       </div>
       {/* os títulos do período na faixa de baixo, como os lançamentos na Importação (Vitor, 14/10/2026: "cadê os lançamentos?");
           o mês clicado no cabeçalho filtra */}
-      {titulos.length > 0 && (
-        <FaixaQueAbre titulo={'Lançamentos' + (aberto ? ' de ' + aberto.rotulo : '')} qtd={(aberto ? aberto.titulos : titulos).length}>
-          <Titulos titulos={aberto ? aberto.titulos : titulos} />
+      {/* sempre que algum mês foi importado (Vitor, 14/10/2026: "não estou conseguindo ver o que ele puxou do Drive"): de onde
+          veio cada arquivo e, o que não trouxe título, avisado */}
+      {carregados.length > 0 && (
+        <FaixaQueAbre titulo={'Lançamentos' + (aberto ? ' de ' + aberto.rotulo : '')} qtd={(aberto ? aberto.titulos : titulos).length}
+          aviso={carregados.some(l => !l.titulos.length)}>
+          <div className="imp-mov-caixa">
+            <ul className="hint" style={{ margin: 0, paddingLeft: 18 }}>
+              {carregados.filter(l => !aberto || l.mes === aberto.mes).map(l => (
+                <li key={l.mes}>
+                  <b>{l.rotulo}</b> · {l.origem}{' · '}
+                  {l.titulos.length ? l.titulos.length + (l.titulos.length === 1 ? ' título' : ' títulos')
+                    : <span className="ext-neg">nenhum título lido neste arquivo: confira se é o relatório de liquidação do mês</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+          {(aberto ? aberto.titulos : titulos).length > 0 && <Titulos titulos={aberto ? aberto.titulos : titulos} />}
         </FaixaQueAbre>
       )}
     </div>
