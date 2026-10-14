@@ -11,17 +11,14 @@ import { useContasDoBalancete } from '../../../concilia-ai/importadosNaEtapa';
 export function usePagamentosDoProLabore(empresa: string, contaDoItem: string) {
   const { aviso } = useRetorno();
   const [razao, setRazao] = useState<{ arquivo: string; razao: t.RazaoDaConta } | null>(null);
-  // a conta do crédito de todos e a de cada pagamento que a pessoa trocou
-  const [contaGeral, setContaGeral] = useState('');
-  const [porLinha, setPorLinha] = useState<Record<string, string>>({});
-  // a data do pagamento: a regra, o 5º dia útil do mês seguinte à competência (Vitor, 14/10/2026)
-  const dataDo = t.dataDoPagamentoDoProLabore;
+  // só a conta do crédito e o dia útil do pagamento (Vitor, 14/10/2026: "não precisa apresentar, só pedir a conta e se vai
+  // ser no 1, 2, 3, 4 ou 5 dia útil de cada mês"); a lista do razão não aparece
+  const [conta, setConta] = useState('');
+  const [diaUtil, setDiaUtil] = useState(5);
   const contas = useContasDoBalancete(empresa);
   const plano = useMemo(() => (contas || []).filter(c => !c.sintetica).map(c => ({ codigo: c.codigo, nome: c.nome })), [contas]);
   const debito = contaDoItem.split(' — ')[0].trim();
   const pagamentos = useMemo(() => (razao ? t.pagamentosDoProLabore(razao.razao) : []), [razao]);
-  const contaDe = (p: t.PagamentoDoProLabore) => porLinha[p.historico] || contaGeral;
-  const nomeDa = (codigo: string) => plano.find(c => c.codigo === codigo)?.nome || '';
 
   async function importar(f: File | null) {
     if (!f) return;
@@ -32,26 +29,18 @@ export function usePagamentosDoProLabore(empresa: string, contaDoItem: string) {
     }
   }
 
-  const faltaConta = pagamentos.filter(p => !contaDe(p)).length;
   return {
-    debito, nomeDoDebito: nomeDa(debito),
     temRazao: !!razao, arquivo: razao?.arquivo || '',
-    importar, remover: () => { setRazao(null); setPorLinha({}); },
-    contas: plano,
-    contaGeral, nomeDaContaGeral: nomeDa(contaGeral), escolherContaGeral: setContaGeral,
-    escolherConta: (historico: string, codigo: string) => setPorLinha(x => ({ ...x, [historico]: codigo })),
-    total: formatos.reais(pagamentos.reduce((s, p) => s + p.valor, 0)),
-    saldoFinal: razao ? formatos.reais(razao.razao.saldoFinal) : '',
-    pagamentos: pagamentos.map(p => ({
-      chave: p.historico, data: dataDo(p.competencia), competencia: p.competencia.slice(5) + '/' + p.competencia.slice(0, 4), socio: p.socio,
-      valor: formatos.reais(p.valor), historico: p.historico, conta: contaDe(p), nomeDaConta: nomeDa(contaDe(p)), doSaldoAnterior: !!p.doSaldoAnterior,
-    })),
-    faltaConta,
-    podeExportar: pagamentos.length > 0 && !faltaConta && !!debito,
-    /** o .xls de importação do Alterdata: D Pró-labore a pagar, C a conta escolhida */
+    importar, remover: () => setRazao(null),
+    contas: plano, conta, escolherConta: setConta,
+    diaUtil, escolherDiaUtil: setDiaUtil,
+    /** quantos pagamentos faltam para o razão zerar e o total (só no título do botão) */
+    qtd: pagamentos.length, total: formatos.reais(pagamentos.reduce((s, p) => s + p.valor, 0)),
+    podeExportar: pagamentos.length > 0 && !!conta && !!debito,
+    /** o .xls de importação do Alterdata: D Pró-labore a pagar, C a conta escolhida, no dia útil escolhido do mês seguinte */
     baixarXls: () => {
       const bytes = creditor.planilhaDeImportacao(pagamentos.map(p => ({
-        automatico: '', data: dataDo(p.competencia), debito, credito: contaDe(p), codHistorico: '', historico: p.historico, valor: p.valor,
+        automatico: '', data: t.dataDoPagamentoDoProLabore(p.competencia, diaUtil), debito, credito: conta, codHistorico: '', historico: p.historico, valor: p.valor,
         documento: '', tipo: 'principal' as const, tituloId: 0,
       })));
       baixarBytes(bytes, 'pagamentos-pro-labore-' + empresa.split(' ')[0] + '.xls', creditor.TIPO_XLS);

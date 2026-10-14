@@ -44,4 +44,9 @@ describe('dataDoPagamentoDoProLabore (o 5º dia útil do mês seguinte)', () => 
     expect(dataDoPagamentoDoProLabore('2026-07')).toBe('07/08/2026'); // ago/26: 3, 4, 5, 6, 7
     expect(dataDoPagamentoDoProLabore('2026-12')).toBe('08/01/2027'); // jan/27: (1 feriado), 4, 5, 6, 7, 8
   });
+  it('o 1º ao 5º dia útil, à escolha', () => {
+    expect(dataDoPagamentoDoProLabore('2026-01', 1)).toBe('02/02/2026');
+    expect(dataDoPagamentoDoProLabore('2026-03', 3)).toBe('06/04/2026'); // 1, 2, (3 feriado), 6
+    expect(dataDoPagamentoDoProLabore('2026-12', 1)).toBe('04/01/2027');
+  });
 });
