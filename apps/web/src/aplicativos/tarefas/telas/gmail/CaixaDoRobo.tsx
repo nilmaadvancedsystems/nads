@@ -2,8 +2,8 @@
 // entrada de verdade. No topo, uma barra só (as caixas, como o robô está, a busca e "Verificar agora"); à esquerda a
 // lista (as abas De clientes · Sem cliente · Spam e cada e-mail com a inicial, o cliente, o assunto, o começo do texto,
 // a hora, os anexos e se já está no Drive); à direita o e-mail aberto (as ações numa barra, o texto, os anexos em
-// cartões, as respostas e responder). Sem e-mail aberto, a lista ocupa a largura toda, uma linha por e-mail; ao clicar,
-// ela encolhe e o e-mail abre ao lado. No celular, o e-mail ocupa a tela.
+// cartões, as respostas e responder). A lista ocupa a largura toda, uma linha por e-mail; ao clicar, o e-mail abre numa
+// janela flutuante por cima dela (14/10/2026). No celular, a janela ocupa a tela.
 import type { entregas as e } from '@nads/core';
 import { Esqueleto, Icone, NumeroQueConta, Segmentado, useCarregando } from '@nads/ui';
 import { useEffect, useState } from 'react';
@@ -135,10 +135,6 @@ function Leitura({ vm, x }: { vm: VmCaixa; x: e.EmailDaCaixa }) {
             : anexos.length > 0 && <button type="button" className="btn btn-primary" onClick={() => void vm.salvarNoDrive(x)}><Icone nome="pasta" />Salvar no Drive</button>)}
           <a className="btn btn-outline" href={vm.linkDoGmail(x.mensagemId)} target="_blank" rel="noopener noreferrer"><Icone nome="envelope" />Abrir no Gmail</a>
           <span className="tarefas-barra-espaco" />
-          {/* marcou a empresa errada (Vitor, 06/10/2026): tira o remetente dela e o e-mail volta para Sem cliente */}
-          {!semDono && <button type="button" className="btn btn-ghost" onClick={() => void vm.desligar(x).then(ok => { if (ok) fechar(); })}
-            title={'Não é de ' + x.clienteNome + ': tirar e escolher de novo'}>Não é deste cliente</button>}
-          {vm.aba !== 'spam' && vm.admin && <button type="button" className="btn btn-ghost gm-spam" onClick={() => void vm.ignorar(x).then(fechar)}>É spam</button>}
           <button type="button" className="btn btn-ghost gm-fechar" onClick={fechar} aria-label="Fechar" title="Fechar (Esc)"><Icone nome="x" /></button>
         </div>
       </header>
@@ -204,6 +200,17 @@ function Leitura({ vm, x }: { vm: VmCaixa; x: e.EmailDaCaixa }) {
           <button type="submit" className="btn btn-primary" disabled={!p.texto.trim() || p.enviando}><Icone nome="mensagem" />{p.enviando ? 'Enviando…' : 'Enviar'}</button>
         </div>
       </form>
+
+      {/* longe do X de fechar (14/10/2026: "remova isso daqui, provavelmente vai ser clicado errado"): no pé do e-mail */}
+      {(!semDono || (vm.aba !== 'spam' && vm.admin)) && (
+        <footer className="gm-pe">
+          <span className="fraco">Algo errado com este e-mail?</span>
+          {/* marcou a empresa errada (Vitor, 06/10/2026): tira o remetente dela e o e-mail volta para Sem cliente */}
+          {!semDono && <button type="button" className="btn btn-outline" onClick={() => void vm.desligar(x).then(ok => { if (ok) fechar(); })}
+            title={'Não é de ' + x.clienteNome + ': tirar e escolher de novo'}>Não é deste cliente</button>}
+          {vm.aba !== 'spam' && vm.admin && <button type="button" className="btn btn-outline gm-spam" onClick={() => void vm.ignorar(x).then(fechar)}>É spam</button>}
+        </footer>
+      )}
     </article>
   );
 }
@@ -248,7 +255,7 @@ export function CaixaDoRobo() {
         </div>
       )}
 
-      <div className={'gm-caixa' + (vm.aberto ? ' com-leitura' : '')}>
+      <div className="gm-caixa">
         {/* a lista */}
         <div className="gm-lista">
           <div className="gm-abas">
@@ -284,13 +291,16 @@ export function CaixaDoRobo() {
               </ul>
             )}
         </div>
-        {/* o e-mail aberto: só existe quando se clica num e-mail (13/10/2026: "só vai abrir essa tela quando eu clicar") */}
-        {vm.aberto && (
-          <div className="gm-leitura">
+      </div>
+      {/* o e-mail aberto numa janela flutuante por cima da lista (14/10/2026: "quero que você coloque uma tela flutuante
+          mesmo, esse layout fica estranho"); clicar fora ou Esc fecha */}
+      {vm.aberto && (
+        <div className="cad-janela-fundo" onMouseDown={ev => { if (ev.target === ev.currentTarget) vm.fechar(); }}>
+          <div className="cad-janela gm-janela" role="dialog" aria-modal="true" aria-label={vm.aberto.assunto || 'E-mail'}>
             <Leitura key={vm.aberto.mensagemId} vm={vm} x={vm.aberto} />
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </section>
   );
 }

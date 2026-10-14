@@ -4277,3 +4277,10 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 }
 .troca-busca,.troca-barra,.troca-lado-topo{flex:none;}
 .troca-corpo{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);}.troca-lado{min-width:0;}
+/* Gmail: o e-mail numa janela flutuante (14/10/2026) e as ações de "errado" no pé, longe do fechar */
+.gm-janela{width:min(940px,100%);height:min(860px,100%);}
+.gm-janela .gm-leitura-corpo{background:var(--bg);}
+.gm-pe{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding-top:14px;border-top:1px solid var(--border);}
+.gm-pe .fraco{font-size:12.5px;color:var(--ink-muted);margin-right:auto;}
+@media (max-width:900px){.gm-janela{width:100%;height:100%;border-radius:0;}.cad-janela-fundo:has(.gm-janela){padding:0;}}
+.gm-topo .steps{margin:0;}
