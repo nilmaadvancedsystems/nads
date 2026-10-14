@@ -174,7 +174,7 @@ export const PECAS_BASE: Peca[] = [
         </div>
       </div>
     ) },
-  { id: 'comp-meses', tipo: 'botoes', nome: 'Calendário de meses (competência)', descricao: 'O ano com ‹ › no alto, os 12 meses em 3 × 4: o escolhido cheio, o de hoje com um pontinho, os que não começaram apagados; Abrir embaixo', classes: ['comp-meses', 'comp-mes'], telas: ['t-empresas'],
+  { id: 'comp-meses', tipo: 'botoes', nome: 'Calendário de meses (competência)', descricao: 'O ano com ‹ › no alto, os 12 meses em 3 × 4: o escolhido cheio, o de hoje com um pontinho, os que não começaram apagados; Abrir embaixo. Anima (animejs): a janela entra em 200 ms com os meses em cascata, a pílula do escolhido desliza até o mês clicado, a grade escorrega para o lado da seta ao trocar de ano e o texto do rodapé acende ao mudar; sem movimento se o computador pedir', classes: ['comp-meses', 'comp-mes'], telas: ['t-empresas'],
     demo: () => (
       <div className="modal modal-centro competencia-janela" style={{ position: 'static', boxShadow: 'none' }}>
         <div className="comp-topo"><span className="comp-titulo">Competência</span><div className="comp-ano"><button type="button" className="icon-btn icon-btn-sm"><Icone nome="chevronLeft" /></button><b className="num">2026</b><button type="button" className="icon-btn icon-btn-sm" disabled><Icone nome="chevronRight" /></button></div></div>

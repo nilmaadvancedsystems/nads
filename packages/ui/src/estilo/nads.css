@@ -2746,9 +2746,13 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .comp-ano{display:inline-flex;align-items:center;gap:4px;}
 .comp-ano b{min-width:44px;text-align:center;font-size:14px;}
 .comp-ano .icon-btn svg{width:16px;height:16px;}
-.comp-meses{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:4px 16px 16px;}
+.comp-meses{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:4px 16px 16px;}
 .comp-mes{position:relative;height:40px;border:none;border-radius:999px;background:transparent;color:var(--ink);font:inherit;font-size:14px;
-  font-weight:500;cursor:pointer;}
+  font-weight:500;cursor:pointer;transition:color .2s cubic-bezier(.23,1,.32,1);}
+/* a pílula do mês escolhido (14/10/2026: o animejs desliza ela de um mês ao outro); sem ela posta, o próprio mês fica cheio */
+.comp-pilula{display:none;position:absolute;left:0;top:0;border-radius:999px;background:var(--btn-primary);pointer-events:none;}
+.comp-meses.com-pilula .comp-mes.on{background:transparent;}
+@media (prefers-reduced-motion:reduce){.comp-mes{transition:none;}}
 .comp-mes:hover:not(:disabled):not(.on){background:var(--hover-bg);}
 .comp-mes:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
 .comp-mes.on{background:var(--btn-primary);color:#fff;font-weight:600;}
