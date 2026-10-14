@@ -4151,3 +4151,11 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 .drawer-sep + .drawer-grupo{padding-top:4px;}
 /* o texto longo dentro do cartão da janela lateral (DP › Legislação, 14/10/2026): o respiro embaixo */
 .pessoal-cartao > .gm-texto-corpo{padding-bottom:16px;}
+/* a gaveta, segunda versão (14/10/2026: "gostei, mas estou estranhando, pode fazer novamente?"): sem os quadradinhos de
+   fundo e sem a caixa branca das logos; o ícone solto na cor do módulo, as linhas mais leves */
+.drawer-app-icone,.drawer-app-icone.marca{width:20px;height:20px;border-radius:0;background:none;box-shadow:none;}
+.drawer-item .drawer-app-icone svg{width:17px;height:17px;}
+.drawer-item .drawer-app-icone.marca svg,.drawer-app-icone.marca img{width:17px;height:17px;}
+.drawer-item{gap:12px;min-height:34px;padding:6px 10px;}
+.drawer-item.active{font-weight:500;}
+.drawer-grupo{padding:14px 10px 4px;font-size:12px;color:var(--ink-faint);}
