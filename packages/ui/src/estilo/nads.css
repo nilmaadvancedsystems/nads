@@ -4173,3 +4173,46 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 .emp-pessoa .emp-pessoa-lista{border:0;border-radius:0;}
 .emp-pessoa .emp-pessoa-lista li{padding:10px 4px;}
 .emp-pessoa .emp-pessoa-lista li:hover{background:var(--hover-bg);border-radius:6px;}
+/* Trocar empresas, refeita (14/10/2026: "melhora a janela de trocar empresas"): cada lado num painel; no meio, o que vai e
+   o que volta; as marcadas em destaque; embaixo, a troca numa frase */
+.troca-topo{align-items:flex-start;}
+.troca-topo h2{margin:0;}
+.troca-topo p{margin:4px 0 0;font-size:13px;}
+.troca-corpo{gap:12px;padding:16px 20px;}
+.troca-lado{padding:14px;border:1px solid var(--border);border-radius:12px;background:color-mix(in srgb,var(--ink) 2.5%,transparent);gap:10px;}
+.troca-lado-topo{display:flex;align-items:center;gap:10px;}
+.troca-rotulo{font-size:12px;font-weight:600;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.04em;min-width:36px;}
+.troca-escolher{flex:1;max-width:260px;}
+.troca-barra{display:flex;align-items:center;gap:8px;min-height:28px;}
+.troca-conta{flex:1;font-size:13px;color:var(--ink-muted);}
+.troca-conta b{color:var(--ink);font-weight:600;}
+.troca-todas{padding:4px 8px;font-size:12.5px;}
+.troca-busca{width:100%;max-width:none;}
+.troca-lista{border:0;border-radius:0;background:transparent;}
+.troca-lista li{border-top:0;border-radius:8px;}
+.troca-lista label{padding:8px 10px;border-radius:8px;}
+.troca-lista li.on label{background:color-mix(in srgb,var(--btn-primary) 14%,transparent);}
+.troca-lista li.on .troca-nome{font-weight:500;}
+.troca-nada{padding:16px 10px;text-align:center;font-size:13px;}
+.troca-vazio{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;padding:24px;}
+.troca-vazio .fraco{font-size:13px;max-width:260px;}
+.troca-vazio-icone{width:44px;height:44px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--hover-bg);margin-bottom:4px;}
+.troca-vazio-icone svg{width:20px;height:20px;color:var(--ink-muted);}
+.troca-meio{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--ink-muted);}
+.troca-meio-icone svg{width:18px;height:18px;}
+.troca-fluxo{display:inline-flex;align-items:center;gap:2px;min-width:44px;justify-content:center;padding:4px 8px;border-radius:999px;
+  border:1px solid var(--border);font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--ink-faint);}
+.troca-fluxo svg{width:14px;height:14px;}
+.troca-fluxo.on{border-color:transparent;background:var(--btn-primary);color:#fff;font-weight:600;}
+.troca-frase{font-size:13px;color:var(--ink-muted);}
+@media (max-width:760px){.troca-meio{display:none;}}
+/* na tela estreita, os dois lados um embaixo do outro, cada um com altura para a lista; a janela rola */
+@media (max-width:760px){
+  .troca-corpo{display:flex;flex-direction:column;overflow:auto;}
+  .troca-lado{flex:none;min-height:360px;}
+  .troca-lado.vazio{min-height:200px;}
+  .troca-pe{flex-wrap:wrap;}
+  .troca-frase{flex-basis:100%;}
+}
+.troca-busca,.troca-barra,.troca-lado-topo{flex:none;}
+.troca-corpo{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);}.troca-lado{min-width:0;}
