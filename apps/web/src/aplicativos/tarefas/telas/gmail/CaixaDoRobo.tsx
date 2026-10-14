@@ -24,9 +24,11 @@ const inicialDe = (x: e.EmailDaCaixa) => (x.clienteNome || x.nome || x.remetente
 const extensao = (nome: string) => (/\.([a-z0-9]{2,5})$/i.exec(nome)?.[1] || '').toUpperCase();
 
 /** Escolher o cliente dentro do e-mail aberto: uma busca com a lista embaixo. */
-function EscolherCliente({ vm, titulo, aoEscolher }: { vm: VmCaixa; titulo: string; aoEscolher: (clienteId: string) => void }) {
+function EscolherCliente({ vm, titulo, aoEscolher, candidatos = [] }: { vm: VmCaixa; titulo: string; aoEscolher: (clienteId: string) => void; candidatos?: readonly string[] }) {
   const [busca, setBusca] = useState('');
   const achados = vm.clientesQueBatem(busca);
+  // os candidatos do robô (podem ser dezenas): só os 5 primeiros, em etiquetas que escolhem num clique; o resto pela busca
+  const sugeridos = busca ? [] : candidatos.slice(0, 5).map(nome => ({ nome, cliente: vm.clientesQueBatem(nome)[0] || null }));
   return (
     <div className="gm-escolher">
       <p className="gm-rotulo"><Icone nome="briefcase" />{titulo}</p>
@@ -34,6 +36,13 @@ function EscolherCliente({ vm, titulo, aoEscolher }: { vm: VmCaixa; titulo: stri
         <Icone nome="search" />
         <input type="text" placeholder="Código ou nome do cliente" value={busca} onChange={ev => setBusca(ev.target.value)} aria-label={titulo} autoFocus />
       </label>
+      {sugeridos.length > 0 && (
+        <div className="gm-candidatos">
+          {/* achou o cliente: escolhe num clique; não achou: o nome vai para a busca */}
+          {sugeridos.map(c => <button key={c.nome} type="button" className="gm-sugestao" onClick={() => (c.cliente ? aoEscolher(c.cliente.id) : setBusca(c.nome))}>{c.nome}</button>)}
+          {candidatos.length > sugeridos.length && <span className="fraco">e mais {candidatos.length - sugeridos.length}: use a busca</span>}
+        </div>
+      )}
       {achados.length > 0 && (
         <div className="emp-list gm-escolher-lista">
           {achados.map(c => (
@@ -132,8 +141,8 @@ function Leitura({ vm, x }: { vm: VmCaixa; x: e.EmailDaCaixa }) {
       {naCaixaSemCliente ? (
         <EscolherCliente vm={vm} titulo={'De qual cliente é ' + x.remetente + '?'} aoEscolher={id => void vm.ligar(x, id).then(fechar)} />
       ) : semDono ? (
-        <EscolherCliente vm={vm} titulo={x.candidatos?.length ? 'De qual cliente? (o robô ficou entre ' + x.candidatos.join(' e ') + ')' : 'De qual cliente?'}
-          aoEscolher={id => void vm.salvarNoDrive(x, id)} />
+        <EscolherCliente vm={vm} titulo={x.candidatos?.length ? 'De qual cliente? O robô ficou em dúvida entre ' + x.candidatos.length + (x.candidatos.length === 1 ? ' cliente.' : ' clientes.') : 'De qual cliente?'}
+          candidatos={x.candidatos || []} aoEscolher={id => void vm.salvarNoDrive(x, id)} />
       ) : null}
 
       <div className="gm-texto">

@@ -4031,3 +4031,5 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
   .gm-caixa:not(.com-leitura) .gm-trecho{display:none;}
   .gm-caixa:not(.com-leitura) .gm-item-pe{grid-column:3;grid-row:1;margin:0;flex-wrap:nowrap;}
 }
+.gm-candidatos{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
+.gm-candidatos .fraco{font-size:12px;color:var(--ink-muted);}
