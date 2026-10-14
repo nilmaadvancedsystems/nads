@@ -2,7 +2,7 @@
 // que segue o Notion) — à esquerda a pessoa, a busca e os tópicos em grupos; à direita o tópico aberto, em seções
 // com cabeçalho e uma opção por linha (o rótulo e a explicação à esquerda, o controle à direita). Fecha no ×, no Esc e
 // clicando fora.
-import { animacoesPedidas, ConfigLinha, ConfigSecao, definirNivelDeAnimacao, Icone, nivelDeAnimacao, NIVEIS_DE_ANIMACAO, Segmentado, SeletorTema, useIndicador, type NivelDeAnimacao, type NomeIcone } from '@nads/ui';
+import { animacoesPedidas, ConfigLinha, ConfigSecao, definirNivelDeAnimacao, Icone, nivelDeAnimacao, MenuSuspenso, NIVEIS_DE_ANIMACAO, SeletorTema, useIndicador, type NivelDeAnimacao, type NomeIcone } from '@nads/ui';
 import { animate, spring, stagger } from 'animejs';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
@@ -18,8 +18,9 @@ function NivelDasAnimacoes() {
   const atual = NIVEIS_DE_ANIMACAO.find(n => n.id === nivel) || NIVEIS_DE_ANIMACAO[1];
   return (
     <ConfigLinha titulo="Animações" descricao={atual.dica}>
-      <Segmentado valor={nivel} opcoes={NIVEIS_DE_ANIMACAO.map(n => ({ valor: n.id, rotulo: n.nome }))}
-        onMudar={n => { definirNivelDeAnimacao(n); setNivel(n); }} />
+      {/* num menu suspenso (14/10/2026: "coloque um dropdown"): o nome mais longo não cabia nos botões lado a lado */}
+      <MenuSuspenso rotulo={atual.nome} className="btn btn-ghost" titulo="Animações" direita largura={300}
+        itens={NIVEIS_DE_ANIMACAO.map(n => ({ rotulo: n.nome, marcado: n.id === nivel, onClick: () => { definirNivelDeAnimacao(n.id); setNivel(n.id); } }))} />
     </ConfigLinha>
   );
 }
