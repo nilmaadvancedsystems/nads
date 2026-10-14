@@ -305,7 +305,7 @@ export function repoDoFgts(): RepoFgts {
 
 let agentes: RepoAgentes | null = null;
 
-/** O painel dos agentes do Claude Code (13/10/2026): o que o robô do PC publica em painelAgentes; só o admin lê. */
+/** O painel dos agentes do Claude Code (14/10/2026): os computadores cadastrados (painelMaquinas) e as conversas que cada um grava; só o admin. */
 export function repoDosAgentes(): RepoAgentes {
   if (!agentes) agentes = noBanco ? criarAgentesFirestore() : criarAgentesMemoria();
   return agentes;

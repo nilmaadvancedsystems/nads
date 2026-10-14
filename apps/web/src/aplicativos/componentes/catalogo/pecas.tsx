@@ -164,6 +164,16 @@ export const PECAS_BASE: Peca[] = [
   { id: 'config', tipo: 'botoes', nome: 'Configuração (estilo Notion)', descricao: 'A seção com o título e a linha fina; cada opção numa linha solta: o nome, a descrição curta e o controle à direita', componente: 'ConfigSecao + ConfigLinha', classes: ['cfg-secao', 'cfg-linha'], telas: ['t-cadastro-janela'],
     uso: '<ConfigSecao titulo="Contábil"><ConfigLinha titulo="Cartão empresarial" descricao="A etapa Cartões quebra a fatura."><Interruptor … /></ConfigLinha></ConfigSecao>',
     demo: () => <div style={{ width: '100%' }}><ConfigSecao titulo="Parâmetros"><ConfigLinha titulo="Cartão empresarial" descricao="A etapa Cartões quebra a fatura no razão do cartão."><Interruptor ligado onMudar={() => {}} rotulo="Cartão empresarial" /></ConfigLinha><ConfigLinha titulo="Regime tributário" descricao="Define as etapas da rotina do Fiscal."><span className="hint">Presumido</span></ConfigLinha></ConfigSecao></div> },
+  { id: 'registro-novo', tipo: 'botoes', nome: 'Criar registro (Attio + Notion)', descricao: 'A janela de criar: o campo principal em destaque (o CNPJ), o cartão da Receita, as propriedades em linhas (ícone e nome à esquerda, valor sem caixa) e o rodapé com "Cadastrar outra"', classes: ['registro-novo', 'registro-busca', 'registro-receita', 'registro-prop', 'registro-pe'], telas: ['t-cadastro-janela'],
+    demo: () => (
+      <div className="registro-novo" style={{ width: '100%', maxWidth: 520 }}>
+        <div className="registro-busca"><Icone nome="search" /><input type="text" placeholder="CNPJ da empresa" readOnly /></div>
+        <div className="registro-props">
+          <div className="registro-prop"><span className="registro-prop-nome"><Icone nome="fileText" />Nome</span><div className="registro-prop-valor"><input type="text" placeholder="Razão social" readOnly /></div></div>
+          <div className="registro-prop"><span className="registro-prop-nome"><Icone nome="hash" />Código no ERP</span><div className="registro-prop-valor"><input type="text" placeholder="Vazio" readOnly /></div></div>
+        </div>
+      </div>
+    ) },
   { id: 'dica', tipo: 'botoes', nome: 'Dica (?)', descricao: 'O "?" de 14 px ao lado do rótulo: a explicação aparece ao passar o mouse ou ao focar', componente: 'Dica', classes: ['dica'], telas: ['t-cadastro-janela'],
     uso: '<span>Presta serviços<Dica texto="Mostra a aba Prestados na Importação." /></span>', demo: () => <span>Presta serviços<Dica texto="Mostra a aba Prestados na Importação e os serviços prestados na Conferência." /></span> },
   { id: 'link-btn', removida: { como: 'substituida', por: 'btn', em: '02/10/2026', motivo: 'Navegar é pela barra de cima (Tarefas / Vitor / Minhas empresas / 292 …), sem "← Voltar" no meio da página; as outras ações em texto viraram o botão padrão.' }, tipo: 'botoes', nome: 'Ação em texto', classes: ['link-btn'], telas: ['c-verificar', 't-empresa'], demo: () => <button className="link-btn">← Voltar para Movimento</button> },
@@ -508,6 +518,31 @@ export const PECAS_BASE: Peca[] = [
         <div className="imp-faixa pt-tarefa"><div className="imp-faixa-barra pt-tarefa-barra"><span className="pt-tarefa-abrir"><span className="subnav-caixa marcada"><Icone nome="check" /></span><Icone nome="caretDown" className="imp-faixa-seta" /><b>Sequência de Saídas</b></span><span className="pt-tarefa-acoes"><span className="badge badge-conferido">Conferido</span></span></div></div>
         <div className="imp-faixa pt-tarefa aberta da-vez"><div className="imp-faixa-barra pt-tarefa-barra"><span className="pt-tarefa-abrir"><span className="subnav-caixa vazia" /><Icone nome="caretDown" className="imp-faixa-seta" /><b>Conferência das Notas Fiscais</b><span className="imp-faixa-qtd">24</span></span><span className="pt-tarefa-acoes"><button className="btn btn-outline" type="button"><Icone nome="upload" />Importar Saídas</button><button className="btn btn-primary" type="button"><Icone nome="check" />Conferido</button></span></div>
           <div className="imp-faixa-corpo"><div className="stat-grid"><Stat rotulo="Notas de saída" valor="24" /><Stat rotulo="Valor contábil" valor="58.076,76" cor="saida" /><Stat rotulo="CFOPs" valor="5" /></div></div></div>
+      </div>
+    ) },
+  { id: 'ag-conversa', tipo: 'cartoes', nome: 'Conversas do Claude por computador', descricao: 'Em Sistema e agentes (só admin, 14/10/2026): o cartão do computador (o nome é a faixa do topo) com uma linha por conversa (o nome, a pasta, o estado, o nível do porteiro e há quanto tempo; o pedido e o agora; os subagentes em selos), as inativas na faixa que abre; e o cadastro do computador (o campo e o botão na mesma linha)', classes: ['ag-conversa', 'ag-conversa-topo', 'ag-conversa-linha', 'ag-conversa-agentes', 'ag-novo', 'ag-novo-linha', 'ag-chave-caixa', 'ag-chave', 'ag-acoes'], telas: ['t-cadastro-config'], largo: true,
+    demo: () => (
+      <div style={{ width: '100%' }}>
+        <div className="card">
+          <h3>PC do Fiscal</h3>
+          <div className="ag-conversa" role="button" tabIndex={0}>
+            <div className="ag-conversa-topo"><b className="ag-conversa-titulo">nads · Fiscal › Painel</b><span className="ag-conversa-pasta">nads-dp</span><span className="badge badge-ok">Trabalhando</span><span className="badge badge-neutral">difícil</span><span className="ag-conversa-ha">há 4 s</span></div>
+            <p className="ag-conversa-linha"><b>Pedido:</b> monte a rotina do lucro presumido e real</p>
+            <p className="ag-conversa-linha"><b>Agora:</b> Delega · planejador (opus) Plano da rotina</p>
+            <div className="ag-conversa-agentes"><span className="badge badge-ok">planejador · opus</span><span className="badge badge-neutral">1 terminou</span></div>
+          </div>
+          <div className="ag-conversa" role="button" tabIndex={0}>
+            <div className="ag-conversa-topo"><b className="ag-conversa-titulo">Entregas › Nova entrega</b><span className="ag-conversa-pasta">Entregas</span><span className="badge badge-warn">Esperando você</span><span className="badge badge-neutral">fácil</span><span className="ag-conversa-ha">há 5 min</span></div>
+            <p className="ag-conversa-linha"><b>Pedido:</b> tudo pronto?</p>
+            <p className="ag-conversa-linha"><b>Esperando você:</b> Claude precisa da sua permissão para usar Bash</p>
+          </div>
+          <div className="imp-faixa"><button className="imp-faixa-barra" type="button"><Icone nome="caretDown" className="imp-faixa-seta" /><b>Inativas</b><span className="imp-faixa-qtd">3</span></button></div>
+        </div>
+        <form className="ag-novo" onSubmit={e => e.preventDefault()}>
+          <div className="field"><label htmlFor="cat-ag-novo">Cadastrar computador</label>
+            <div className="ag-novo-linha"><input id="cat-ag-novo" type="text" placeholder="Ex.: PC do Fiscal" /><button type="submit" className="btn btn-primary"><Icone nome="plus" />Cadastrar</button></div>
+          </div>
+        </form>
       </div>
     ) },
 
