@@ -8,6 +8,7 @@
 // O que sobra de cada competência e sócio (o líquido) é o pagamento que falta: D Pró-labore a pagar, C a conta que a
 // pessoa escolhe (o banco, o caixa), H "Pagamento de pro-labore mm/aaaa SÓCIO". Pagamento sem a competência no
 // histórico abate as mais antigas; o saldo de antes do razão entra como a competência anterior à primeira.
+import { diaUtil } from '../../mandei';
 import type { RazaoDaConta } from './razao';
 
 export interface PagamentoDoProLabore {
@@ -30,6 +31,20 @@ const mesAntes = (m: string) => { const [a, mm] = m.split('-').map(Number); retu
 const mesBR = (m: string) => m.slice(5, 7) + '/' + m.slice(0, 4);
 
 /** O histórico do pagamento: "Pagamento de pro-labore 01/2026 CARLOS HUMBERTO VOLPONI RODRIGUES". */
+/**
+ * A data do pagamento do pró-labore: o 5º dia útil do mês seguinte à competência ('aaaa-mm' → 'dd/mm/aaaa'), sem sábado,
+ * domingo e feriado nacional (Vitor, 14/10/2026: "pró-labore paga até o 5º dia útil do mês posterior, leve isso como regra").
+ */
+export function dataDoPagamentoDoProLabore(competencia: string): string {
+  const [a, m] = competencia.split('-').map(Number);
+  let d = new Date(a, m, 1); // o dia 1 do mês seguinte (o mês do Date começa em 0)
+  for (let uteis = diaUtil(d) ? 1 : 0; uteis < 5; ) {
+    d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+    if (diaUtil(d)) uteis++;
+  }
+  return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+}
+
 export const historicoDoPagamento = (competencia: string, socio: string) => ('Pagamento de pro-labore ' + mesBR(competencia) + ' ' + socio).trim();
 
 /** O que falta pagar de cada competência e sócio, da mais antiga para a mais nova (só o que sobra). */

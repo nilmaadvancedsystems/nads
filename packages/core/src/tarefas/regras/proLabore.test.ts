@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { lerRazao } from './razao';
-import { pagamentosDoProLabore } from './proLabore';
+import { dataDoPagamentoDoProLabore, pagamentosDoProLabore } from './proLabore';
 
 // o razão do Pró-labore a pagar no formato da conciliação do Alterdata (crédito positivo), nomes inventados
 const CAB = ['', 'Status conciliação', 'Data', 'Lançamento automático', 'Contrapartida', 'Descrição', 'Valor', 'Histórico', 'Descrição histórico', 'Saldo', 'Observação'];
@@ -34,5 +34,14 @@ describe('os pagamentos do pró-labore', () => {
       ['05/03/2026', '10503', -1000, 'Pix enviado'],
     ]));
     expect(pagamentosDoProLabore(r).map(p => [p.competencia, p.socio, p.valor])).toEqual([['2026-02', 'A', 1000]]);
+  });
+});
+
+describe('dataDoPagamentoDoProLabore (o 5º dia útil do mês seguinte)', () => {
+  it('sem sábado, domingo e feriado', () => {
+    expect(dataDoPagamentoDoProLabore('2026-01')).toBe('06/02/2026'); // fev/26: 2, 3, 4, 5, 6
+    expect(dataDoPagamentoDoProLabore('2026-03')).toBe('08/04/2026'); // abr/26: 1, 2, (3 Sexta-feira Santa), 6, 7, 8
+    expect(dataDoPagamentoDoProLabore('2026-07')).toBe('07/08/2026'); // ago/26: 3, 4, 5, 6, 7
+    expect(dataDoPagamentoDoProLabore('2026-12')).toBe('08/01/2027'); // jan/27: (1 feriado), 4, 5, 6, 7, 8
   });
 });

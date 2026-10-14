@@ -14,12 +14,8 @@ export function usePagamentosDoProLabore(empresa: string, contaDoItem: string) {
   // a conta do crédito de todos e a de cada pagamento que a pessoa trocou
   const [contaGeral, setContaGeral] = useState('');
   const [porLinha, setPorLinha] = useState<Record<string, string>>({});
-  // o dia do pagamento no mês da competência (Vitor, 14/10/2026); 0 = o último dia (no mês mais curto, cai no último)
-  const [dia, setDia] = useState(0);
-  const dataDo = (competencia: string) => {
-    const ultimo = new Date(+competencia.slice(0, 4), +competencia.slice(5, 7), 0).getDate();
-    return String(dia ? Math.min(dia, ultimo) : ultimo).padStart(2, '0') + '/' + competencia.slice(5, 7) + '/' + competencia.slice(0, 4);
-  };
+  // a data do pagamento: a regra, o 5º dia útil do mês seguinte à competência (Vitor, 14/10/2026)
+  const dataDo = t.dataDoPagamentoDoProLabore;
   const contas = useContasDoBalancete(empresa);
   const plano = useMemo(() => (contas || []).filter(c => !c.sintetica).map(c => ({ codigo: c.codigo, nome: c.nome })), [contas]);
   const debito = contaDoItem.split(' — ')[0].trim();
@@ -42,7 +38,6 @@ export function usePagamentosDoProLabore(empresa: string, contaDoItem: string) {
     temRazao: !!razao, arquivo: razao?.arquivo || '',
     importar, remover: () => { setRazao(null); setPorLinha({}); },
     contas: plano,
-    dia, escolherDia: setDia,
     contaGeral, nomeDaContaGeral: nomeDa(contaGeral), escolherContaGeral: setContaGeral,
     escolherConta: (historico: string, codigo: string) => setPorLinha(x => ({ ...x, [historico]: codigo })),
     total: formatos.reais(pagamentos.reduce((s, p) => s + p.valor, 0)),
