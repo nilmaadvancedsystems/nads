@@ -5,7 +5,7 @@
 import { compararNumerico } from '../../formatos';
 import { ehServ, SV } from '../tabelas/servicos';
 import type { Conta, Empresa, Grupo, Nota, NotaServico, TipoMovimento, TipoServico } from '../tipos';
-import { agruparTotaisPorNatureza, comTipo } from './cfop';
+import { agruparTotaisPorNatureza, comTipo, somaValores } from './cfop';
 
 export const GRUPOS_ORDEM: readonly Grupo[] = ['Ativo', 'Passivo', 'Despesa', 'Receita', 'Outros'];
 
@@ -162,7 +162,9 @@ export function todosGruposNatureza(e: Empresa) {
 export function naturezasSemConta(e: Empresa, tipo?: 'Entrada' | 'Saída'): string[] {
   if (!e.contas.length || (!e.entradas.length && !e.saidas.length)) return [];
   const grupos = todosGruposNatureza(e);
-  return Object.keys(grupos).filter(k => (!tipo || grupos[k].tipo === tipo) && !contasDaNatureza(e, k).length && !naoContabil(e, k));
+  // a natureza zerada não teve movimento: não precisa de conta (Vitor, 14/10/2026)
+  return Object.keys(grupos).filter(k => (!tipo || grupos[k].tipo === tipo) && !contasDaNatureza(e, k).length && !naoContabil(e, k)
+    && Math.abs(somaValores(grupos[k].itens)) >= 0.005);
 }
 
 export function importacoesOk(e: Empresa): boolean {

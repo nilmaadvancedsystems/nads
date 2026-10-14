@@ -66,7 +66,9 @@ export function useChecklist() {
     linhas: lista.linhas.map(l => ({
       ...l,
       anima: l.marcado && l.marca === natAnimar,
-      contaTexto: l.contas.length ? 'Conta: ' + l.contas.join(' · ') : l.naoContabil ? 'Não vai para o Contábil' : 'Sem conta vinculada — Cadastro',
+      // zerada: não teve movimento, não precisa de conta (Vitor, 14/10/2026)
+      contaTexto: l.contas.length ? 'Conta: ' + l.contas.join(' · ') : l.naoContabil ? 'Não vai para o Contábil'
+        : Math.abs(l.total) < 0.005 ? 'Sem movimento — não precisa de conta' : 'Sem conta vinculada — Cadastro',
     })),
     vazio: lista.linhas.length ? '' : lista.temNaturezas ? 'Nenhum grupo bate com os filtros.' : 'Nenhuma nota guardada nesse período.',
     marcar,

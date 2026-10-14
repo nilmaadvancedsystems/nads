@@ -17,7 +17,8 @@ export const ZERO = 0.005;
 export const TOLERANCIA = 0.01;
 
 /** Só estas contas podem ficar "Conferido" com diferença: Água, Internet, Energia Elétrica, Locação de Sistemas. */
-export const CONFERIVEIS = /\bagua\b|internet|energia eletrica|sistema/;
+// o telefone também (Vitor, 14/10/2026: "telefone eu tenho direito para marcar como conferido")
+export const CONFERIVEIS = /\bagua\b|internet|energia eletrica|sistema|telefon|telecomunica/;
 
 export function podeConferir(e: Empresa, codigos: string[], extras: string[] = []): boolean {
   const t = (codigos || []).map(c => nomeConta(e, c) || '').concat(extras).map(nomeNorm).join(' | ');
