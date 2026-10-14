@@ -39,7 +39,9 @@
 // aplicativos/tarefas/dados/receita.ts: a BrasilAPI e a minhareceita.org (públicas, sem chave; as mesmas do Entregas).
 // Só o CNPJ sai. O arquivo não pode citar nenhum outro endereço.
 // O painel dos agentes do Claude Code (2026-10-13, liberado pelo Vitor: "Pode criar e publicar"), em
-// aplicativos/tarefas/dados/agentes.firestore.ts: painelAgentes (só leitura; o robô do PC grava; só o admin lê). Sem fetch.
+// aplicativos/tarefas/dados/agentes.firestore.ts. Por computador desde 14/10/2026 (decisão do Vitor: só admin; o texto do
+// pedido vai junto; só computadores cadastrados): painelMaquinas (o admin cadastra, renomeia e desativa; o id é a chave do
+// computador) e painelMaquinas/{chave}/sessoes (só leitura; quem grava é o gancho registro.js de cada computador). Sem fetch.
 // Esta checagem falha se:
 //  1. aparecer dependência de rede fora do permitido (só "firebase", e só no apps/web);
 //  2. código fora de apps/web/src/aplicativos/<app>/dados/*.firestore.ts importar/usar Firebase;

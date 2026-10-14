@@ -26,7 +26,7 @@ export function RobosEAgentes() {
             <div className="cad-secao-topo">
               <span className="cad-faixa-icone" aria-hidden="true"><Icone nome="monitor" /></span>
               <h3>Saúde do sistema
-                <Dica texto="O sistema na nuvem (Gmail, Drive, cobrança) e no PC do escritório (arquivador, SIEG, painel dos agentes). Atualiza sozinho a cada 30 segundos." />
+                <Dica texto="O sistema na nuvem (Gmail, Drive, cobrança) e no PC do escritório (arquivador, SIEG). Atualiza sozinho a cada 30 segundos." />
               </h3>
             </div>
             {!vm.saude ? <Esqueleto linhas={4} /> : (
@@ -79,10 +79,15 @@ export function RobosEAgentes() {
           </div>
         </div>
       </div>
-      <h2 className="cad-titulo-secao"><Icone nome="robo" />Agentes do Claude
-        <Dica texto="As sessões do Claude Code do PC do escritório, ao vivo: o que cada agente está fazendo. Clique numa sessão para ver como está funcionando. Só o admin vê." />
-      </h2>
-      <PainelDosAgentes />
+      {/* só o admin (14/10/2026, decisão do Vitor): as conversas do Claude Code de cada computador cadastrado */}
+      {vm.admin && (
+        <>
+          <h2 className="cad-titulo-secao"><Icone nome="robo" />Agentes do Claude
+            <Dica texto="As conversas do Claude Code de cada computador cadastrado, ao vivo: o pedido, o que cada agente está fazendo e o nível do porteiro. Clique numa conversa para ver como está funcionando. Só o admin vê." />
+          </h2>
+          <PainelDosAgentes />
+        </>
+      )}
     </section>
   );
 }

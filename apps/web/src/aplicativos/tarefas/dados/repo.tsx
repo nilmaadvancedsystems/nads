@@ -176,7 +176,7 @@ export function useFgts(): RepoFgts {
   return repo;
 }
 
-/** O painel dos agentes do Claude Code, ao vivo (as sessões que o robô do PC publica). */
+/** O painel dos agentes do Claude Code, ao vivo: os computadores cadastrados e as conversas de cada um. */
 export function useAgentes(): RepoAgentes {
   const repo = repoDosAgentes();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
