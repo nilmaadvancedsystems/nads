@@ -48,6 +48,8 @@ export interface ArquivoImportado {
   saldoAnterior?: number;
   /** o saldo que o extrato imprime no fim de cada dia (centavos), quando ele traz: os dias negativos do Cheque especial */
   saldosDoDia?: { data: string; saldo: number }[];
+  /** a versão do leitor que leu o arquivo (VERSAO_DO_LEITOR); sem = antes de 14/10/2026. O que veio do Drive é relido sozinho quando o leitor muda */
+  leitor?: number;
 }
 
 /** Um banco que a pessoa adicionou à empresa, valendo da competência "desde" ('aaaa-mm') em diante. */

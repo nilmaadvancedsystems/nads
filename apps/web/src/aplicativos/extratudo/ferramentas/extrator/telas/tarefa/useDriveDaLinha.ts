@@ -55,6 +55,37 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [acesso.entrou, semSaldo]);
 
+  // os extratos que vieram do Drive e foram lidos por um leitor mais velho: com o login, baixa cada um de novo e relê com o
+  // leitor de agora, um de cada vez (Vitor, 14/10/2026: "corrija essas pendências em todas as empresas de todos os meses";
+  // o importado do computador não tem como: o arquivo não fica guardado)
+  const relidos = useRef(new Set<string>());
+  // um laço de cada vez: cada releitura muda a lista, e o laço que já está rodando segue até o fim
+  const relendo = useRef(false);
+  const paraReler = vm.extratosParaReler.map(a => a.id).join(',');
+  const { relerExtrato, avisar } = vm;
+  useEffect(() => {
+    if (!acesso.entrou || drive.exemplos || relendo.current) return;
+    const fila = vm.extratosParaReler.filter(a => a.drive && !relidos.current.has(a.id));
+    if (!fila.length) return;
+    relendo.current = true;
+    void (async () => {
+      let n = 0;
+      for (const a of fila) {
+        if (!a.drive) continue;
+        relidos.current.add(a.id);
+        try {
+          const conteudo = await drive.baixar(a.drive.id, a.drive.nome);
+          const lido = await x.lerArquivo(a.drive.nome, new Uint8Array(conteudo), 'banco');
+          relerExtrato(a.id, lido);
+          n++;
+        } catch { /* sem o robô agora: fica como estava (na próxima vez que abrir, tenta de novo) */ }
+      }
+      relendo.current = false;
+      if (n) avisar(n === 1 ? '1 extrato do Drive relido com o leitor novo' : n + ' extratos do Drive relidos com o leitor novo');
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acesso.entrou, paraReler]);
+
   async function usar(linha: Linha, a: creditor.ArquivoAchado) {
     setEscolha(null);
     vm.marcarLendo(linha.id);

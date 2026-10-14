@@ -4,6 +4,13 @@ import { normalizarTexto } from '../../../formatos';
 import type { ArquivoImportado, ArquivoLido, EmpresaExtrator, Lado, LancamentoDoArquivo, Lancamento, ModoImportacao, RegistroAuditoria } from '../tipos';
 import { dataBR } from './texto';
 
+/**
+ * A versão do leitor de extrato (Vitor, 14/10/2026: "corrija essas pendências em todas as empresas de todos os meses"): sobe
+ * quando a leitura dos PDFs muda; o extrato que veio do Drive e foi lido por uma versão mais velha é relido sozinho
+ * (useDriveDaLinha), com relerExtrato. 2 = o Detalhamento do Saldo do BNB fora e o histórico no lançamento mais perto.
+ */
+export const VERSAO_DO_LEITOR = 2;
+
 export function empresaNova(nome: string): EmpresaExtrator {
   return { nome, arquivos: [], auditoria: [] };
 }
@@ -118,7 +125,7 @@ export function importar(e: EmpresaExtrator, lado: Lado, lidos: ArquivoLido[], m
       lanc = nv;
     }
     if (!lanc.length) continue;
-    const a: ArquivoImportado = { id: ids(), lado, nome: l.nome, importadoEm: agora.toISOString(), modo, lancamentos: lanc, ...(l.saldoAnterior != null ? { saldoAnterior: l.saldoAnterior } : {}), ...(l.saldosDoDia?.length ? { saldosDoDia: l.saldosDoDia } : {}) };
+    const a: ArquivoImportado = { id: ids(), lado, nome: l.nome, importadoEm: agora.toISOString(), modo, lancamentos: lanc, leitor: VERSAO_DO_LEITOR, ...(l.saldoAnterior != null ? { saldoAnterior: l.saldoAnterior } : {}), ...(l.saldosDoDia?.length ? { saldosDoDia: l.saldosDoDia } : {}) };
     arquivos.push(a);
     gravados += lanc.length;
     novosArquivos++;
@@ -128,6 +135,30 @@ export function importar(e: EmpresaExtrator, lado: Lado, lidos: ArquivoLido[], m
     (modo === 'novas' ? ' · apenas novas' : modo === 'sobrepor' ? ' · sobreposto' : '');
   const reg: RegistroAuditoria = { ts: agora.toISOString(), acao: lado === 'banco' ? 'Importou extrato' : 'Importou lançamentos do sistema', detalhe, tom: 'ok' };
   return { empresa: { ...e, arquivos, auditoria: [reg, ...e.auditoria] }, gravados, jaExistiam, substituidos, arquivos: novosArquivos };
+}
+
+/** Os extratos do Drive lidos por um leitor mais velho (o PDF ou a imagem; o OFX e a planilha não mudam): para reler. */
+export function extratosParaReler(e: EmpresaExtrator): ArquivoImportado[] {
+  return e.arquivos.filter(a => a.lado === 'banco' && !!a.drive && (a.leitor ?? 1) < VERSAO_DO_LEITOR && /\.(pdf|jpe?g|png)$/i.test(a.drive.nome || a.nome));
+}
+
+/**
+ * Troca os lançamentos do arquivo pelos da leitura nova (o mesmo arquivo, os mesmos meses dele; o que outro arquivo do
+ * lado já tem não entra de novo) e marca a versão do leitor. Fica no histórico. Sem lançamentos na leitura nova, só marca.
+ */
+export function relerExtrato(e: EmpresaExtrator, arquivoId: string, lido: ArquivoLido, agora: Date): EmpresaExtrator {
+  const a = e.arquivos.find(x => x.id === arquivoId);
+  if (!a) return e;
+  const meses = new Set(a.lancamentos.map(l => l.data.slice(0, 7)));
+  const outros = e.arquivos.filter(x => x.id !== arquivoId && x.lado === a.lado && (x.banco || '') === (a.banco || '')).flatMap(x => x.lancamentos);
+  const novos = lido.erro ? [] : soNovos(outros, lido.lancamentos.filter(l => !meses.size || meses.has(l.data.slice(0, 7))));
+  if (!novos.length) return { ...e, arquivos: e.arquivos.map(x => (x.id === arquivoId ? { ...x, leitor: VERSAO_DO_LEITOR } : x)) };
+  const novo: ArquivoImportado = {
+    ...a, lancamentos: novos, leitor: VERSAO_DO_LEITOR,
+    ...(lido.saldoAnterior != null ? { saldoAnterior: lido.saldoAnterior } : {}), ...(lido.saldosDoDia?.length ? { saldosDoDia: lido.saldosDoDia } : {}),
+  };
+  const reg: RegistroAuditoria = { ts: agora.toISOString(), acao: 'Releu o extrato', detalhe: a.nome + ' · ' + a.lancamentos.length + ' → ' + novos.length + ' lançamento(s), com o leitor novo', tom: 'ok' };
+  return { ...e, arquivos: e.arquivos.map(x => (x.id === arquivoId ? novo : x)), auditoria: [reg, ...e.auditoria] };
 }
 
 export function excluirArquivo(e: EmpresaExtrator, id: string, agora: Date): EmpresaExtrator {
