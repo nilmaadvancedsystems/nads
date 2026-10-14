@@ -59,7 +59,7 @@ export interface Derivado {
   decisoes: Record<number, cr.Decisao>;
   /** títulos resolvidos pela conta aprendida do cliente */
   aprendidas: number[];
-  /** os títulos sem conta (o cliente não está no balancete): vão para a etapa Contas */
+  /** os títulos de cliente fora do balancete (sem conta ou com a conta aprendida assim): a etapa Contas */
   semConta: cr.Cruzamento[];
 }
 
@@ -73,7 +73,7 @@ export function derivar(e: Estado, contas: cr.ContasCreditor, aprendidos: cr.Cli
   const lancamentos = cr.gerarLancamentos(titulos, cruzamentos, decisoes, contas);
   const fora = cr.titulosFora(titulos, cruzamentos, decisoes);
   const fechamento = e.relatorio ? cr.fecharPorDia(e.relatorio.grupos, lancamentos, fora, contas) : [];
-  return { titulos, conferido, cruzamentos, pendentes, lancamentos, fora, fechamento, decisoes, aprendidas: Object.keys(auto).map(Number), semConta: cruzamentos.filter(c => c.situacao === 'nao-encontrada') };
+  return { titulos, conferido, cruzamentos, pendentes, lancamentos, fora, fechamento, decisoes, aprendidas: Object.keys(auto).map(Number), semConta: cruzamentos.filter(c => c.situacao === 'nao-encontrada' || (c.aprendida && c.foraDoBalancete)) };
 }
 
 /** A etapa já pode abrir? (o que ela precisa das anteriores) */
@@ -85,7 +85,7 @@ function requisitos(id: IdEtapa, e: Estado, d: Derivado): boolean {
     case 'contas': return d.semConta.length > 0 && d.conferido && (!Object.keys(e.porMes).length || cr.mesesDaCompetencia(e.competencia).every(m => e.porMes[m]));
     // com cliente sem conta, só depois de informar todas na etapa Contas
     case 'cruzamento': return d.conferido && (!Object.keys(e.porMes).length || cr.mesesDaCompetencia(e.competencia).every(m => e.porMes[m]))
-      && d.semConta.every(c => cr.decisaoValida(c, d.decisoes[c.tituloId]));
+      && d.semConta.every(c => c.situacao !== 'nao-encontrada' || cr.decisaoValida(c, d.decisoes[c.tituloId]));
     case 'lancamentos': return d.conferido && d.pendentes.length === 0;
     case 'exclusao': return d.conferido && d.pendentes.length === 0 && e.baixado;
   }
@@ -118,6 +118,8 @@ interface Sessao {
   definirCompetencia: (c: string) => void;
   /** abre a etapa sem conferir os requisitos agora (quem chama acabou de mudar o estado que a libera) */
   avancarPara: (id: IdEtapa) => void;
+  /** guarda já as contas dos títulos (a etapa Contas: Vitor, 14/10/2026, "deixa o que jogou nessa tela armazenado") */
+  aprenderJa: (ids: number[], decisoes: Record<number, cr.Decisao>) => void;
   /** a conciliação terminou (o arquivo foi baixado): salva as contas e aprende os clientes */
   concluir: () => void;
   podeAbrir: (id: IdEtapa) => boolean;
@@ -214,6 +216,10 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
       return Object.keys(e.porMes).length || !e.relatorio ? comOsMeses({ ...e, competencia: c }, porMes) : { ...INICIAL, competencia: c };
     }),
     avancarPara: abrir,
+    aprenderJa: (ids, decisoes) => {
+      const so = new Set(ids);
+      salvarClientes(cr.aprender(clientes, d.titulos.filter(t => so.has(t.id)), d.cruzamentos.filter(c => so.has(c.tituloId)), decisoes, new Date()));
+    },
     concluir: () => {
       setEstado(e => ({ ...e, baixado: true }));
       salvar(cr.confirmarContas(config, resolvidas));

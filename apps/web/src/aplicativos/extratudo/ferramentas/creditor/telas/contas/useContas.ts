@@ -17,20 +17,24 @@ export function useContas() {
     g.cruzamentos.push(c);
     grupos.set(k, g);
   }
-  const decidir = (ids: number[], f: (atual: cr.Decisao | undefined) => cr.Decisao | null) => s.mudar(e => {
-    const decisoes = { ...e.decisoes };
+  const decidir = (ids: number[], f: (atual: cr.Decisao | undefined) => cr.Decisao | null, guardar = false) => {
+    const decisoes = { ...s.estado.decisoes };
     for (const id of ids) {
       const d = f(decisoes[id]);
       if (d) decisoes[id] = d; else delete decisoes[id];
     }
-    return { ...e, decisoes };
-  });
+    s.mudar(e => ({ ...e, decisoes }));
+    // a conta informada fica guardada na hora (aprendida para os próximos meses)
+    if (guardar) s.aprenderJa(ids, decisoes);
+  };
 
   const linhas = [...grupos.entries()].map(([k, g]) => {
     const ids = g.titulos.map(t => t.id);
     const ds = ids.map(id => s.d.decisoes[id]);
     const excluido = ds.every(d => d?.tipo === 'excluir');
-    const contas = [...new Set(ds.map(d => (d?.tipo === 'manual' ? d.contrapartida : '')))];
+    // a conta: a escolhida aqui ou a aprendida antes (guardada)
+    const contas = [...new Set(ds.map((d, n) => (d?.tipo === 'manual' ? d.contrapartida : g.cruzamentos[n].linha?.contrapartida || '')))];
+    const aprendida = !ds.some(d => d) && g.cruzamentos.every(c => c.aprendida);
     return {
       chave: k, nome: g.nome,
       nfs: g.titulos.map(t => t.nf).join(', '),
@@ -38,11 +42,11 @@ export function useContas() {
       valor: cr.reais(cr.somar(g.cruzamentos.map(c => c.valorBanco))),
       /** a conta escolhida (a mesma em todos os títulos dele) */
       conta: contas.length === 1 ? contas[0] : '',
-      excluido,
-      resolvido: g.cruzamentos.every(c => cr.decisaoValida(c, s.d.decisoes[c.tituloId])),
+      excluido, aprendida,
+      resolvido: g.cruzamentos.every(c => c.situacao !== 'nao-encontrada' || cr.decisaoValida(c, s.d.decisoes[c.tituloId])),
       /** filiais de nome igual no balancete: as contas para escolher com um clique */
       opcoes: [...new Map(g.cruzamentos.flatMap(c => c.opcoes || []).map(o => [o.codigo, o])).values()],
-      escolher: (codigo: string) => decidir(ids, atual => ({ tipo: 'manual', contrapartida: codigo.trim(), historico: atual?.tipo === 'manual' ? atual.historico : '' })),
+      escolher: (codigo: string) => decidir(ids, atual => ({ tipo: 'manual', contrapartida: codigo.trim(), historico: atual?.tipo === 'manual' ? atual.historico : '' }), true),
       excluir: () => decidir(ids, () => ({ tipo: 'excluir' })),
       desfazer: () => decidir(ids, () => null),
     };
@@ -51,6 +55,7 @@ export function useContas() {
   return {
     linhas,
     faltam: linhas.filter(l => !l.resolvido).length,
+    guardadas: linhas.filter(l => l.aprendida).length,
     /** as contas de clientes do balancete, para o menu de conta */
     contasClientes: s.contas.clientes,
     semBalancete: s.contas.carregada && s.contas.balancete.origem === 'nenhum',

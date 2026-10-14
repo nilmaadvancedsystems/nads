@@ -15,6 +15,9 @@ export function Contas() {
         <Alerta titulo={vm.faltam === 1 ? '1 cliente sem conta no balancete' : vm.faltam + ' clientes sem conta no balancete'}
           texto="Informe a conta de cada um (fica aprendida para os próximos meses) ou exclua os títulos dele do arquivo." />
       )}
+      {vm.faltam === 0 && vm.guardadas > 0 && (
+        <p className="hint" style={{ marginTop: 0 }}>As contas ficam guardadas: na próxima vez, estes clientes já vêm com a conta (dá para trocar aqui).</p>
+      )}
       <div className="card">
         <div className="table-wrap" style={{ maxHeight: 'none' }}>
           <table className="table-compact">
@@ -34,6 +37,8 @@ export function Contas() {
                           </button>
                         ))}
                         <MenuDeConta valor={l.conta} contas={vm.contasClientes} onEscolher={l.escolher} />
+                        {/* a guardada antes (aprendida): dá para trocar */}
+                        {l.aprendida && <span className="badge badge-neutral" title="A conta guardada da última vez (dá para trocar)">Aprendida</span>}
                       </span>
                     )}
                   </td>

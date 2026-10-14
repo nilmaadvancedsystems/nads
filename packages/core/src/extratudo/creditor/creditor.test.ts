@@ -386,10 +386,12 @@ describe('contas pelo balancete', () => {
     expect(resolverContas(comercio, hist).contas.histJuros).toBe('123');
   });
 
-  it('balancete atualizado: a conta salva que sumiu bloqueia, a que mudou de nome avisa', () => {
+  it('balancete atualizado: a conta salva que sumiu só avisa (deixa passar), a que mudou de nome avisa', () => {
     const cfg = escolherConta(CONFIG_VAZIA, 'banco', '10503', comercio);
     const sumiu = { ...comercio, contas: comercio.contas.filter(c => c.codigo !== '10503') };
-    expect(resolverContas(sumiu, cfg).detalhe.banco).toMatchObject({ origem: 'salva', bloqueia: true });
+    const d = resolverContas(sumiu, cfg).detalhe.banco;
+    expect(d).toMatchObject({ origem: 'salva', codigo: '10503', bloqueia: false });
+    expect(d.aviso).toMatch(/não está no balancete/);
     const renomeada = { ...comercio, contas: comercio.contas.map(c => (c.codigo === '10503' ? { ...c, nome: 'SICOOB CREDICOOP' } : c)) };
     const r = resolverContas(renomeada, cfg);
     expect(r.detalhe.banco).toMatchObject({ nome: 'SICOOB CREDICOOP', bloqueia: false });

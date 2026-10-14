@@ -21,6 +21,8 @@ export interface Cruzamento {
   nota: string;
   /** a conta veio do que foi aprendido do cliente (cruzarPeloBalancete) */
   aprendida?: boolean;
+  /** o cliente não tem conta com esse nome no balancete (a etapa Contas: informada à mão ou aprendida assim) */
+  foraDoBalancete?: boolean;
   /** a conta veio do relatório de Saídas importado na Tarefa (a NF da nota) */
   pelaSaida?: boolean;
   /** sem conta decidida, as contas do balancete entre as quais a pessoa escolhe (filiais de nome igual) */
