@@ -6,6 +6,7 @@ import { conferencia as c, formatos } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useCallback, useState } from 'react';
 import { useSessao } from '../../casca/sessao';
+import { useGerarNoAlterdata } from './useGerarNoAlterdata';
 
 type TipoImp = c.PaginaImportacao;
 
@@ -36,7 +37,8 @@ export interface Mensagem {
 
 const NOME_TIPO: Record<c.TipoNotaFiscal, string> = { entradas: 'entradas', saidas: 'saídas' };
 
-export function useImportacao(tipo: TipoImp) {
+/** competenciaDaEtapa: a da etapa da Tarefas (aaaa-mm), quando a Importação abre dentro dela (para o "Gerar no Alterdata"). */
+export function useImportacao(tipo: TipoImp, competenciaDaEtapa?: string) {
   const s = useSessao();
   const { toast, modal } = useRetorno();
   const e = s.empresa;
@@ -78,6 +80,22 @@ export function useImportacao(tipo: TipoImp) {
       erro('Não deu para ler o arquivo', err instanceof Error ? err.message : '');
     }
   }
+
+  // o balancete que o robô gera no Alterdata (Vitor, 14/10/2026): chega em linhas e segue o mesmo caminho do arquivo escolhido
+  async function importarDoAlterdata(rows: c.Linhas) {
+    setMensagemBruta(null);
+    setCarregando(true);
+    try {
+      await importarBalancete(rows);
+    } catch (err) {
+      terminar();
+      erro('Não deu para ler o balancete do Alterdata', err instanceof Error ? err.message : '');
+    }
+  }
+  const alterdata = useGerarNoAlterdata({
+    ativo: tipo === 'balancete', competenciaDaEtapa, aoChegar: importarDoAlterdata,
+    aoFalhar: motivo => erro('Não deu para trazer o balancete do Alterdata', motivo),
+  });
 
   async function importarBalancete(rows: c.Linhas) {
     // o normal ou o dinâmico (Vitor, 08/10/2026); do dinâmico, o saldo do último mês com movimento
@@ -236,7 +254,7 @@ export function useImportacao(tipo: TipoImp) {
 
   return {
     cfg, ja, mostrarCaixa, reimportando, alternarReimportar, abrirArquivo,
-    arquivo, setArquivo, carregando, importar, excluir,
+    arquivo, setArquivo, carregando, importar, excluir, alterdata,
     mensagem, seqMensagem, fecharMensagem,
     boasVindas: tipo === 'balancete' && e.avisoBalPendente === true, autoLimpar, definirAutoLimpar, alternarAutoLimpar: () => definirAutoLimpar(!autoLimpar),
     plano, alternarGrupo: (g: c.Grupo) => setFiltroGrupos(f => (f.indexOf(g) > -1 ? f.filter(x => x !== g) : f.concat(g))),

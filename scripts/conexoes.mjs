@@ -42,6 +42,9 @@
 // aplicativos/tarefas/dados/agentes.firestore.ts. Por computador desde 14/10/2026 (decisão do Vitor: só admin; o texto do
 // pedido vai junto; só computadores cadastrados): painelMaquinas (o admin cadastra, renomeia e desativa; o id é a chave do
 // computador) e painelMaquinas/{chave}/sessoes (só leitura; quem grava é o gancho registro.js de cada computador). Sem fetch.
+// O balancete gerado no Alterdata (2026-10-14, pedido do Vitor), em aplicativos/concilia-ai/dados/alterdata.firestore.ts: só o
+// banco do Entregas (robo/alterdata para ler; pedidosAlterdata para pedir, acompanhar e cancelar, com o .xlsx que o robô do
+// PC grava em pedidosAlterdata/{id}/arquivo/xlsx). Quem fala com o Alterdata é o robô (robo/alterdata.js), nunca o app. Sem fetch.
 // Esta checagem falha se:
 //  1. aparecer dependência de rede fora do permitido (só "firebase", e só no apps/web);
 //  2. código fora de apps/web/src/aplicativos/<app>/dados/*.firestore.ts importar/usar Firebase;

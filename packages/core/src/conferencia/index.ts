@@ -28,3 +28,4 @@ export * from './regras/foraDoPadraoDaConta';
 export * from './regras/consultaCsv';
 export * from './regras/verificarContaTela';
 export * from './regras/pendenciasFiscais';
+export * from './regras/alterdata';
