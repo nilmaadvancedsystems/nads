@@ -4159,3 +4159,30 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 .drawer-item{gap:12px;min-height:34px;padding:6px 10px;}
 .drawer-item.active{font-weight:500;}
 .drawer-grupo{padding:14px 10px 4px;font-size:12px;color:var(--ink-faint);}
+
+/* ── o executor do Fiscal, acabamento (14/10/2026: "vamos só melhorar o design antigo") ── */
+/* a etapa da vez: fundo neutro com o filete vermelho à esquerda, o nome maior; mais respiro entre as etapas */
+.pt-tarefa .pt-tarefa-barra{padding:10px 16px;}
+.pt-tarefa.da-vez > .pt-tarefa-barra{background:var(--surface-2);box-shadow:inset 3px 0 0 var(--accent);}
+.pt-tarefa.da-vez .pt-tarefa-abrir b{font-size:15px;}
+.pt-tarefa .imp-faixa-corpo{padding:16px;}
+/* a etapa fechada: o cadeado e o "Depois da anterior" discretos */
+.pt-tarefa.travada{opacity:.7;}
+.pt-tarefa.travada .pt-tarefa-abrir b{font-weight:500;color:var(--ink-muted);}
+.pt-trava{font-size:12px;color:var(--ink-muted);}
+.pt-contagem{font-size:12px;color:var(--ink-muted);white-space:nowrap;}
+.pt-contagem b{color:var(--ink);font-variant-numeric:tabular-nums;}
+/* os números do SIEG: o rótulo em cima, o número grande, a proporção de cada tipo */
+.sieg-contagem{gap:12px;}
+.sieg-numero{gap:4px;padding:12px 14px;}
+.sieg-numero > span:first-child{font-size:12px;color:var(--ink-muted);order:0;}
+.sieg-numero b{font-size:26px;}
+.sieg-proporcao{display:flex;gap:2px;height:6px;border-radius:999px;overflow:hidden;background:var(--surface-3);margin-top:6px;}
+.sieg-proporcao i{display:block;min-width:4px;}
+.sieg-numero small{display:flex;gap:12px;flex-wrap:wrap;margin-top:2px;}
+.sieg-legenda{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-muted);}
+.sieg-legenda i{width:8px;height:8px;border-radius:2px;}
+.sieg-tipo-0{background:var(--info);} .sieg-tipo-1{background:var(--ciano);} .sieg-tipo-2{background:var(--roxo);} .sieg-tipo-3{background:var(--warn);}
+.sieg-contagem .alerta-linha{margin:0;}
+/* os botões do SIEG alinhados à esquerda, com o conteúdo */
+.sieg-contagem .sieg-acoes{grid-column:1/-1;justify-content:flex-start;}

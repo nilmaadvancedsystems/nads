@@ -73,7 +73,7 @@ export function ChecklistDisfarcado({ titulo, itens, definicao, alternar, empres
     <div className="card folha-check pt-check" ref={raiz}>
       <div className="card-head">
         <h3>{titulo}</h3>
-        <span className="card-head-ctl"><span className="tarefas-barra"><span ref={progresso} /></span>{feitos}/{itens.length}</span>
+        <span className="card-head-ctl"><span className="tarefas-barra"><span ref={progresso} /></span><span className="pt-contagem"><b>{feitos}</b> de {itens.length} conferidas</span></span>
       </div>
       {itens.map((i, k) => {
         const def = definicao.find(d => d.id === i.id);
@@ -118,7 +118,7 @@ export function ChecklistDisfarcado({ titulo, itens, definicao, alternar, empres
                 ) : i.liberado ? (
                   <button type="button" className="btn btn-primary" onClick={() => alternar(i.id)}><Icone nome="check" />Conferido</button>
                 ) : (
-                  <span className="hint"><Icone nome="lock" /> Depois da anterior</span>
+                  <span className="hint pt-trava"><Icone nome="lock" width={12} height={12} /> Depois da anterior</span>
                 )}
               </span>
             </div>
