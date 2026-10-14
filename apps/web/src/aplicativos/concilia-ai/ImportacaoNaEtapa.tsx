@@ -13,15 +13,18 @@ import { avisarErrosDoBanco, repoDaConferencia } from './dados/fonte';
 import { RepoProvider, useRepo, useVersaoDoRepo } from './dados/repo';
 import { Importacao } from './telas/importacao/Importacao';
 
-/** prestaServico: a regra do Cadastro da empresa (a Conferência fica igual); null = não informado. */
-export function ImportacaoNaEtapa({ nome, tipo, prestaServico }: { nome: string; tipo: c.PaginaImportacao; prestaServico: boolean | null }) {
+/**
+ * prestaServico: a regra do Cadastro da empresa (a Conferência fica igual); null = não informado.
+ * competencia: a da etapa (aaaa-mm), para o "Gerar no Alterdata" do balancete (Vitor, 14/10/2026).
+ */
+export function ImportacaoNaEtapa({ nome, tipo, prestaServico, competencia }: { nome: string; tipo: c.PaginaImportacao; prestaServico: boolean | null; competencia?: string }) {
   const repo = repoDaConferencia();
   const { toast } = useRetorno();
   useEffect(() => { avisarErrosDoBanco(repo, toast); }, [repo, toast]);
-  return <RepoProvider repo={repo}><DaEmpresa nome={nome} tipo={tipo} prestaServico={prestaServico} /></RepoProvider>;
+  return <RepoProvider repo={repo}><DaEmpresa nome={nome} tipo={tipo} prestaServico={prestaServico} competencia={competencia} /></RepoProvider>;
 }
 
-function DaEmpresa({ nome, tipo, prestaServico }: { nome: string; tipo: c.PaginaImportacao; prestaServico: boolean | null }) {
+function DaEmpresa({ nome, tipo, prestaServico, competencia }: { nome: string; tipo: c.PaginaImportacao; prestaServico: boolean | null; competencia?: string }) {
   const repo = useRepo();
   useVersaoDoRepo();
   useCarregando(!repo.pronto());
@@ -36,7 +39,7 @@ function DaEmpresa({ nome, tipo, prestaServico }: { nome: string; tipo: c.Pagina
           <div><h2 className="page-title">{paginaPorId(pagina)?.titulo || ''}</h2></div>
           <div className="imp-conf-acoes"><LugarDasAcoes /></div>
         </header>
-        <Importacao key={tipo} tipo={tipo} naEtapa />
+        <Importacao key={tipo} tipo={tipo} naEtapa competencia={competencia} />
       </TopoProvider>
     </SessaoProvider>
   );

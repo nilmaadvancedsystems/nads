@@ -610,6 +610,9 @@ async function iniciar() {
   // desde 09/10/2026 pelo Claude do PC no Chrome logado (fgts-claude.js); o robô do navegador (fgts-digital.js) fica para a nuvem
   try { require('./fgts-claude').iniciarFgtsPeloClaude(db, log); }
   catch (err) { log('FGTS não ligou:', err.message); }
+  // o balancete do Alterdata Contábil (14/10/2026): o roteiro no Contábil aberto e logado deste PC, pedido pela Conferência
+  try { require('./alterdata').iniciarAlterdata(db, log); }
+  catch (err) { log('Alterdata não ligou:', err.message); }
   try { require('./sieg').iniciarSieg({ db, log }); }
   catch (err) { log('SIEG desligado:', err.message); }
   // o painel dos agentes do Claude Code (14/10/2026): saiu do robô. Cada computador cadastrado no nads grava as próprias

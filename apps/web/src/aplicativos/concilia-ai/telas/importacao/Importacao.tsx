@@ -1,15 +1,20 @@
 // Importação › Balancete / Entradas / Saídas / Tomados / Prestados (conferencia.html ~L1036-1155).
 import { conferencia as c } from '@nads/core';
-import { Alerta, BotaoAcao, CampoArquivo, Icone, Interruptor, MensagemFlutuante, useCarregando } from '@nads/ui';
+import { Alerta, BotaoAcao, CampoArquivo, Icone, Interruptor, MensagemFlutuante, SeletorMes, useCarregando } from '@nads/ui';
 import { AcoesDoTopo } from '../../../../comum/topo';
+import { AndamentoDoAlterdata } from './partes/AndamentoDoAlterdata';
 import { BoasVindasBalancete } from './partes/BoasVindasBalancete';
 import { NotasImportadas, ServicosImportados } from './partes/Importados';
 import { PlanoDeContas } from './partes/PlanoDeContas';
 import { useImportacao, type Mensagem } from './useImportacao';
 
-/** naEtapa: dentro da primeira etapa da Tarefas, sem o "Apagar ao sair" do balancete (nem a pergunta sobre ele). */
-export function Importacao({ tipo, naEtapa }: { tipo: c.PaginaImportacao; naEtapa?: boolean }) {
-  const vm = useImportacao(tipo);
+/**
+ * naEtapa: dentro da primeira etapa da Tarefas, sem o "Apagar ao sair" do balancete (nem a pergunta sobre ele).
+ * competencia: a da etapa (aaaa-mm), para o "Gerar no Alterdata" do balancete.
+ */
+export function Importacao({ tipo, naEtapa, competencia }: { tipo: c.PaginaImportacao; naEtapa?: boolean; competencia?: string }) {
+  const vm = useImportacao(tipo, competencia);
+  const alt = vm.alterdata;
   useCarregando(vm.carregando);
   return (
     <section>
@@ -32,6 +37,18 @@ export function Importacao({ tipo, naEtapa }: { tipo: c.PaginaImportacao; naEtap
             <BotaoAcao carregando={vm.carregando} textoCarregando="Importando…" disabled={!vm.arquivo} onClick={vm.importar}>Importar</BotaoAcao>
           </div>
           <p className="hint">{vm.cfg.dica}</p>
+          {alt.visivel && (
+            <>
+              <div className="alt-gerar">
+                <span className="alt-gerar-rotulo">ou gerar direto no Alterdata:</span>
+                <SeletorMes valor={alt.competencia} onMudar={alt.trocarCompetencia} rotulo="Competência do balancete" max={mesDeHoje()} />
+                <BotaoAcao className="btn btn-outline" carregando={alt.ocupado} textoCarregando="Gerando…" disabled={vm.carregando || !!alt.motivo} title={alt.motivo || 'Pede ao robô do escritório que gere o balancete no Alterdata e importa o resultado aqui.'} onClick={() => void alt.gerar()}>
+                  <Icone nome="robo" width={16} height={16} />Gerar no Alterdata
+                </BotaoAcao>
+              </div>
+              {alt.pedido && <AndamentoDoAlterdata pedido={alt.pedido} onCancelar={() => void alt.cancelar()} onFechar={alt.fecharPedido} />}
+            </>
+          )}
         </div>
       )}
 
@@ -63,4 +80,10 @@ function MensagemImportacao({ m, onFechar }: { m: Mensagem; onFechar: () => void
       {m.textos.length > 0 && <p className="alert-text">{m.textos.map(t => t.texto).join(' · ')}</p>}
     </Alerta>
   );
+}
+
+/** O mês de hoje ('aaaa-mm'): o balancete não é de mês futuro. */
+function mesDeHoje(): string {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
 }

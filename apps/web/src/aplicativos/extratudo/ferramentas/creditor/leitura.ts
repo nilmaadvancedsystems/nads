@@ -1,13 +1,17 @@
-// Ler o relatório do banco, venha ele anexado (etapa Relatório do banco) ou do Drive (etapa
-// Competência): PDF no navegador (pdf.js), .txt, ou planilha.
+// Ler o relatório do banco, venha ele do computador, do Drive ou do e-mail: só o PDF nos dois formatos aceitos (Vitor,
+// 14/10/2026: "esse é o formato do Creditor, não aceite outro formato"; creditor/arquivos/formatos.ts). O .txt fica só
+// para o relatório de exemplo (os dados de exemplo e o Drive de exemplo).
 import { creditor as cr } from '@nads/core';
 import workerPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 
 export async function lerRelatorio(nome: string, buf: ArrayBuffer): Promise<cr.RelatorioBanco> {
   const n = nome.toLowerCase();
   if (n.endsWith('.pdf')) return cr.lerRelatorioPdf(buf, workerPdf);
-  if (n.endsWith('.txt')) return cr.lerRelatorioTexto(new TextDecoder().decode(buf));
-  return cr.lerRelatorioPlanilha(buf, nome);
+  if (n.endsWith('.txt')) {
+    const texto = new TextDecoder().decode(buf);
+    if (/BANCO EXEMPLO/.test(texto)) return cr.lerRelatorioTexto(texto);
+  }
+  throw new Error(cr.FORMATO_NAO_ACEITO);
 }
 
 /** A mensagem para a tela. Página aberta antes de uma atualização não acha mais o leitor de PDF antigo. */
