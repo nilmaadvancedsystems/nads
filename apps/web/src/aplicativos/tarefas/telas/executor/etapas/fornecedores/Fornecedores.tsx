@@ -1,6 +1,6 @@
 // A etapa Fornecedores da Tarefa (Vitor, 07/10/2026): a mesma tela do Clientes, peça por peça, com o fornecedor devedor no
 // lugar do cliente credor (com ele, o "Corrigi, irei reimportar" no lugar do Próximo, até reimportar o dinâmico corrigido).
-import { Icone, MenuSuspenso, Segmentado, LogoBanco } from '@nads/ui';
+import { Icone, MenuSuspenso, Segmentado, LogoBanco, fundoSuaveDoBanco } from '@nads/ui';
 import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { useFornecedores, type FiltroFornecedores, type TelaFornecedores } from './useFornecedores';
@@ -256,7 +256,7 @@ function ListaDeFornecedores({ vm }: { vm: VM }) {
                                     <table className="table-compact" aria-label="Possível pagamento desta nota no banco">
                                       <tbody>
                                         {[...i.baixas.map(b => ({ ...b, selos: [], aceita: true })), ...i.sugestoes.map(g => ({ ...g, aceita: false }))].map((g, j) => (
-                                          <tr key={j}>
+                                          <tr key={j} style={fundoSuaveDoBanco(g.marca) ? { background: fundoSuaveDoBanco(g.marca) } : undefined}>
                                             {/* o Aceitar à esquerda do logo do banco (Vitor, 15/10/2026) */}
                                             <td style={{ width: 40 }}>
                                               {g.aceita ? (

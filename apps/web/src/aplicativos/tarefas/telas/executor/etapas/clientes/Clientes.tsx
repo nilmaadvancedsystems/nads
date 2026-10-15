@@ -2,7 +2,7 @@
 // direita; os arquivos na linha da Importação (o ícone de importar; importado, o check que vira × e tira); o credor na
 // grade dos Arquivos (com ele, o "Corrigi, irei reimportar" no lugar do Próximo); os clientes em tabela; o selo de cada cliente (o saldo, Conferido ou Ok) é do sistema: Conferido é o razão com nota em
 // aberto ou pagamento solto (Vitor, 07/10/2026), e o conferido abre a observação; o envio, só o Mandar pelo Mandei. Só o balancete dinâmico (Vitor, 06/10/2026).
-import { Icone, MenuSuspenso, Segmentado, LogoBanco } from '@nads/ui';
+import { Icone, MenuSuspenso, Segmentado, LogoBanco, fundoSuaveDoBanco } from '@nads/ui';
 import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { useClientes, type FiltroClientes, type TelaClientes } from './useClientes';
@@ -258,7 +258,7 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                                     <table className="table-compact" aria-label="Possível recebimento desta nota no banco">
                                       <tbody>
                                         {[...i.baixas.map(b => ({ ...b, selos: [], aceita: true })), ...i.sugestoes.map(g => ({ ...g, aceita: false }))].map((g, j) => (
-                                          <tr key={j}>
+                                          <tr key={j} style={fundoSuaveDoBanco(g.marca) ? { background: fundoSuaveDoBanco(g.marca) } : undefined}>
                                             {/* o Aceitar à esquerda do logo do banco (Vitor, 15/10/2026) */}
                                             <td style={{ width: 40 }}>
                                               {g.aceita ? (
