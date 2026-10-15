@@ -2,9 +2,12 @@
 // válidos"; depois "eu queria algo mais gráfico"): a validade fica às claras no cofre, então o painel não precisa abrir
 // o cofre. As fatias por situação (a rosca), os vencimentos mês a mês dos próximos 12 meses (as barras), os cartões dos
 // que pedem atenção e a lista filtrada por situação ou por mês; clicar abre a empresa (precisa do cofre aberto).
+// A busca da lista (Savio, 15/10/2026: "colocar um campo de busca na rotina de armazenamento de certificados"): por
+// empresa, código e CNPJ, sem acento e sem diferenciar maiúsculas.
 import { cofre as c, empresas, formatos } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
+import { useGmailDoEntregas } from '../../dados/repo';
 import { useCofre } from './useCofre';
 
 export type FiltroDeCertificados = 'vence' | 'vencido' | 'ok' | 'sem';
@@ -14,6 +17,8 @@ const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'o
 export function useCertificados() {
   const vm = useCofre();
   const { toast } = useRetorno();
+  const clientes = useGmailDoEntregas().clientes().lista;
+  const [busca, setBusca] = useState('');
   const [filtro, setFiltroBruto] = useState<FiltroDeCertificados>('vence');
   /** o mês das barras escolhido (aaaa-mm); com ele, a lista é a dos que vencem nesse mês */
   const [mes, setMes] = useState<string | null>(null);
@@ -36,13 +41,21 @@ export function useCertificados() {
   });
 
   const porDias = (a: Linha, b: Linha) => (a.dias ?? 0) - (b.dias ?? 0) || a.nome.localeCompare(b.nome, 'pt-BR');
-  const daLista = mes ? todas.filter(l => l.situacao !== 'sem' && l.validade.startsWith(mes)) : todas.filter(l => l.situacao === filtro);
+  // o CNPJ de cada empresa vem do cadastro do Entregas (cliente com o mesmo código do ERP), só números
+  const cnpjDoCodigo = new Map<number, string>();
+  for (const k of clientes) { const cod = Number(k.codigo); if (k.codigo && Number.isFinite(cod) && k.documento) cnpjDoCodigo.set(cod, String(k.documento).replace(/\D/g, '')); }
+  const q = formatos.normalizarTexto(busca);
+  const qNumeros = busca.replace(/\D/g, '');
+  const bate = (l: Linha) => !q || formatos.normalizarTexto(l.nome).includes(q)
+    || (l.codigo != null && String(l.codigo).includes(q))
+    || (qNumeros.length > 0 && (cnpjDoCodigo.get(l.codigo ?? -1) || '').includes(qNumeros));
+  const daLista = (mes ? todas.filter(l => l.situacao !== 'sem' && l.validade.startsWith(mes)) : todas.filter(l => l.situacao === filtro)).filter(bate);
   const linhas = daLista.sort(!mes && filtro === 'vencido' ? (a, b) => porDias(b, a) : porDias);
   return {
     cofre: vm,
     carregando: vm.estado === 'carregando',
     comCertificado: todas.length - contagem.sem,
-    contagem, porMes, linhas, filtro, mes,
+    contagem, porMes, linhas, filtro, mes, busca, setBusca,
     /** os que pedem atenção: os que vencem logo (do mais perto) e os vencidos (do mais recente) */
     urgentes: [...todas.filter(l => l.situacao === 'vence').sort(porDias), ...todas.filter(l => l.situacao === 'vencido').sort((a, b) => porDias(b, a))],
     setFiltro: (f: FiltroDeCertificados) => { setFiltroBruto(f); setMes(null); },

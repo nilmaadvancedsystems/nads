@@ -7,6 +7,8 @@ import { formatos } from '@nads/core';
 import { baixarBytes, Esqueleto, Icone, Interruptor, NumeroQueConta, Segmentado, useCarregando, useEntradaAnimada } from '@nads/ui';
 import { Fragment, useState } from 'react';
 import { DecimoNaLista } from './DecimoTerceiro';
+import { JanelaDasEtiquetas } from './JanelaDasEtiquetas';
+import { useEtiquetasDaFolha } from './useEtiquetasDaFolha';
 import { usePainelDoDp, type AbaDoPainel, type Agrupar, type EstadoDaObrigacao } from './usePainelDoDp';
 
 /**
@@ -59,6 +61,8 @@ function Selecao({ rotulo, valor, mudar, opcoes }: { rotulo: string; valor: stri
 export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
   const vm = usePainelDoDp(aba);
   const f = vm.filtros;
+  // as etiquetas da folha (Savio, 15/10/2026): a janela com a competência e a data de pagamento, e a impressão
+  const etiquetas = useEtiquetasDaFolha(vm.competencia);
   // o 13º salário (Vitor, 13/10/2026): o interruptor ao lado do Agrupar por, só em novembro (1ª parcela) e dezembro (2ª)
   const [decimo, setDecimo] = useState(false);
   // o mês do 13º: o da competência escolhida, se for novembro ou dezembro; se não, o de hoje (em novembro a lista ainda
@@ -171,6 +175,8 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
               <button type="button" className="btn btn-outline" onClick={() => { const x = vm.exportar(); baixarBytes(x.bytes, x.nome, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); }}>
                 <Icone nome="download" />Exportar Excel
               </button>
+              {/* o gerador de etiquetas da folha (Savio, 15/10/2026): pergunta a competência e a data de pagamento e imprime em A4 */}
+              {aba === 'obrigacoes' && <button type="button" className="btn btn-outline" onClick={etiquetas.abrir}><Icone nome="printer" />Etiquetas da folha</button>}
               <span className="hint">Agrupar por</span>
               <Segmentado valor={f.agrupar} opcoes={AGRUPAR} onMudar={f.setAgrupar} />
               {temDecimo && (
@@ -239,6 +245,7 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
           )}
         </>
       )}
+      <JanelaDasEtiquetas vm={etiquetas} />
     </section>
   );
 }

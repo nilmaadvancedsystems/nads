@@ -284,7 +284,7 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoDrive /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoDrive cor /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoGmail /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoWhatsApp /></span></> },
 
   // ─── Campos ─────────────────────────────────────────────────────────────────────────────────────────────────────────
-  { id: 'busca-curta', tipo: 'campos', nome: 'Busca (com lupa)', classes: ['busca-curta', 'busca-curta larga'], telas: ['t-empresas', 't-cadastro', 't-drive', 'e-importacao', 'c-consulta'],
+  { id: 'busca-curta', tipo: 'campos', nome: 'Busca (com lupa)', classes: ['busca-curta', 'busca-curta larga'], telas: ['t-empresas', 't-cadastro', 't-drive', 'e-importacao', 'c-consulta', 't-senhas'],
     uso: '<label className="busca-curta"><Icone nome="search" /><input /></label>', demo: () => <label className="busca-curta"><Icone nome="search" /><input type="text" placeholder="Buscar no extrato" /><kbd>/</kbd></label> },
   { id: 'field', tipo: 'campos', nome: 'Campo de texto', classes: ['field'], telas: ['t-entrar', 't-cadastro-janela', 'c-cadastro'],
     demo: () => <div className="field" style={{ width: 260 }}><label htmlFor="cat-f1">Agência</label><input id="cat-f1" type="text" placeholder="Ex.: 3001" /></div> },
@@ -402,6 +402,20 @@ export const PECAS_BASE: Peca[] = [
         <div className="cad-janela-corpo">
           <nav className="cad-janela-abas">{['Empresa', 'Bancos', 'Plano de contas', 'Contas padrão', 'Histórico'].map((a, i) => <button key={a} type="button" className={'cad-janela-aba' + (i === 1 ? ' ativa' : '')}>{a}</button>)}</nav>
           <div className="cad-janela-conteudo"><p className="hint">O conteúdo da aba (bancos, plano de contas…).</p></div>
+        </div>
+      </div>
+    ) },
+  { id: 'jn-etiquetas', tipo: 'janelas', nome: 'Parâmetros das etiquetas da folha (DP › Obrigações)', descricao: 'Savio, 15/10/2026: a janela do gerador de etiquetas. Os dois textos que saem impressos (a competência, que já vem da tela, e a data de pagamento, sugerida no 5º dia útil do mês seguinte) e a quantidade de etiquetas (uma página cheia por padrão); embaixo, quantas páginas A4 saem. Imprimir abre a impressão', componente: 'JanelaDasEtiquetas', classes: ['modal etq-janela', 'etq-campo', 'etq-dica', 'etq-total'], telas: ['t-dp-obrigacoes'],
+    demo: () => (
+      <div className="modal etq-janela cat-parado" role="dialog" style={{ position: 'static', boxShadow: 'none' }}>
+        <h3><Icone nome="fileText" />Etiquetas da folha</h3>
+        <div className="etq-corpo">
+          <p className="etq-dica">Informe os dois textos que saem em cada etiqueta. A data sugerida é o 5º dia útil do mês seguinte (sábado conta); pode trocar.</p>
+          <label className="etq-campo"><span>Informe a competência</span><input type="text" defaultValue="10/2026" /></label>
+          <label className="etq-campo"><span>Informe data de pagamento</span><input type="text" defaultValue="07/11/2026" /></label>
+          <label className="etq-campo"><span>Quantidade de etiquetas</span><input type="number" defaultValue={8} /></label>
+          <p className="hint etq-total">8 etiquetas em 1 página A4 (cabem 8 por página, nenhuma cortada)</p>
+          <div className="modal-actions"><button type="button" className="btn btn-outline">Cancelar</button><button type="button" className="btn btn-primary"><Icone nome="printer" />Imprimir</button></div>
         </div>
       </div>
     ) },

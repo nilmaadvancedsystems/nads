@@ -1,7 +1,7 @@
 // Senhas › Certificados (07/10/2026: "um dashboard de certificados próximos a vencer, vencidos, válidos"; depois "eu
 // queria algo mais gráfico"): a rosca das situações (a legenda filtra), as barras dos vencimentos mês a mês (a barra
 // filtra), os cartões com a contagem regressiva dos que pedem atenção e a lista; clicar abre o certificado da empresa.
-import { Esqueleto, useCarregando } from '@nads/ui';
+import { Esqueleto, Icone, useCarregando } from '@nads/ui';
 import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
 import { TelaDeBloqueio } from './TelaDeBloqueio';
 import { SegredosDaEmpresa } from './SegredosDaEmpresa';
@@ -120,6 +120,12 @@ export function Certificados() {
         <div className="card-head">
           <h3>{doMes ? 'Vencem em ' + MESES_LONGOS[doMes.rotulo] + ' de ' + doMes.chave.slice(0, 4) : ROTULOS[vm.filtro]}</h3>
           <span className="badge badge-neutral">{vm.linhas.length}</span>
+          <span className="tarefas-barra-espaco" />
+          {/* a busca da lista (Savio, 15/10/2026): empresa, código ou CNPJ */}
+          <label className="busca-curta">
+            <Icone nome="search" />
+            <input type="text" placeholder="Buscar empresa, código ou CNPJ" aria-label="Buscar certificado" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} />
+          </label>
         </div>
         {vm.linhas.length ? (
           <div className="table-wrap cofre-tabela">
@@ -142,7 +148,7 @@ export function Certificados() {
               </tbody>
             </table>
           </div>
-        ) : <p className="fraco cert-painel-vazio">Nenhuma empresa aqui.</p>}
+        ) : <p className="fraco cert-painel-vazio">{vm.busca.trim() ? 'Nenhuma empresa achada nesta lista.' : 'Nenhuma empresa aqui.'}</p>}
       </section>
 
       {vm.aberta && (
