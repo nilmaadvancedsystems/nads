@@ -3,11 +3,12 @@
 // "Corrigi, irei reimportar" no lugar do Próximo), Clientes (todas as contas de cliente com o selo do sistema: Saldo, Conferido pelo razão ou Ok, o Ok do sistema na conta zerada, a observação do conferido e o razão da conta no fim da linha) e
 // Envio (a relação dos conferidos e o Mandar pelo Mandei, para o e-mail e o WhatsApp da empresa no Cadastro).
 // As marcas ficam guardadas por mês; os conferidos do mês anterior aparecem de novo para revisar.
-import { clientes as cl, conferencia as c, demo, formatos, mandei as md, tarefas } from '@nads/core';
+import { clientes as cl, conferencia as c, demo, extrator as x, formatos, mandei as md, tarefas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
 import { useMarcasDoMes } from '../../../../dados/clientes';
 import { useCadastro, useContatoDoEntregas } from '../../../../dados/repo';
+import { useExtratorDaEmpresa } from '../../../../dados/extrator';
 import { criarTicket } from '../../../../dados/mandei';
 import { useOperador } from '../../../../casca/operador';
 import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
@@ -33,6 +34,17 @@ export function useClientes() {
   const op = useOperador().operador;
   // o e-mail e o WhatsApp da empresa ficam no Cadastro (Vitor, 07/10/2026): o Mandei manda pelos dois
   const vivo = useCadastro(s.nome, s.codigo);
+  // os lançamentos dos extratos importados (todos os bancos), para a sugestão de baixa das notas em aberto (Vitor, 15/10/2026)
+  const ext = useExtratorDaEmpresa(s.nome);
+  const cadastroVivo = vivo.carregada ? vivo.cadastro : null;
+  const lancsDoBanco = useMemo(() => {
+    const { bancos, primeiro } = x.bancosDaEmpresaNa(ext, cadastroVivo, s.codigo, s.meses[s.meses.length - 1] || s.competencia);
+    const nomeDe = new Map(bancos.map(b => [b.id, b.nome]));
+    return ext.arquivos.filter(a => a.lado === 'banco').flatMap(a => {
+      const b = x.bancoDoArquivo(a, primeiro);
+      return a.lancamentos.map(l => ({ data: l.data, valor: l.valor, historico: l.historico, banco: nomeDe.get(b) || b }));
+    });
+  }, [ext, cadastroVivo, s.codigo, s.meses, s.competencia]);
   // sem o contato no Cadastro do nads, o que o Entregas já tem do cliente (Vitor, 08/10/2026: "já tenho no mínimo 1 canal")
   const doEntregas = useContatoDoEntregas(s.codigo);
   const contato = { email: vivo.cadastro.contato?.email || doEntregas?.email || '', whatsapp: vivo.cadastro.contato?.whatsapp || doEntregas?.whatsapp || '' };
@@ -179,7 +191,11 @@ export function useClientes() {
           naoBate: Math.abs(l.razao.saldo - l.saldo) >= 0.005 && Math.abs(l.razao.saldo) >= 0.005 ? reais(l.razao.saldo) : '',
           zerado: Math.abs(l.razao.saldo) < 0.005 && !l.razao.notas.length,
           // a mini tabela embaixo do cliente: as notas em aberto e o que ficou solto
-          itens: l.razao.itens.map(i => ({ chave: i.interno ? '' : cl.chaveDoItem(i), marcado: !i.interno && cl.itensEscolhidos(l.razao, l.perguntar).includes(i), data: i.data ? i.data.slice(8, 10) + '/' + i.data.slice(5, 7) + '/' + i.data.slice(0, 4) : '', nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor), abate: i.valor < 0, status: i.status, rotulo: cl.ROTULO_DO_STATUS[i.status], digitado: !!i.digitado })),
+          itens: l.razao.itens.map(i => ({ chave: i.interno ? '' : cl.chaveDoItem(i), marcado: !i.interno && cl.itensEscolhidos(l.razao, l.perguntar).includes(i), data: i.data ? i.data.slice(8, 10) + '/' + i.data.slice(5, 7) + '/' + i.data.slice(0, 4) : '', nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor), abate: i.valor < 0, status: i.status, rotulo: cl.ROTULO_DO_STATUS[i.status], digitado: !!i.digitado,
+            // a nota em aberto: os lançamentos do banco que podem ser a baixa dela (o mesmo valor, ou o nome no histórico)
+            sugestoes: i.status === 'aberto' ? cl.sugestoesDeBaixa(i, l.nome, lancsDoBanco, 1).map(g => ({
+              data: g.data.slice(8, 10) + '/' + g.data.slice(5, 7) + '/' + g.data.slice(0, 4), banco: g.banco, historico: g.historico, valor: reais(Math.abs(g.valor) / 100), mesmoValor: g.mesmoValor,
+            })) : [] })),
         } : null,
         // o que vai para o cliente (o que foi adicionado no "+" de cada linha da relação; nada = não vai)
         perguntar: l.razao ? cl.itensEscolhidos(l.razao, l.perguntar).map(cl.rotuloDoItem).join(' · ') : '',

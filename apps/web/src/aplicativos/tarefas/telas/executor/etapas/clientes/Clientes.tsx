@@ -221,7 +221,16 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                         <thead><tr><th>Data</th><th>Nota fiscal</th><th>Descrição</th><th className="num">Valor</th><th>Status</th>{(l.situacao === 'conferido' || !!l.razao?.itens.some(x => x.digitado)) && <th className="num">Perguntar</th>}</tr></thead>
                         <tbody>
                           {l.razao.itens.map((i, k) => (
-                            <tr key={k}><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td>{i.nf}</td><td className="wrap">{i.descricao}{i.digitado && <span className="hint"> · digitado</span>}</td><td className={'num' + (i.abate ? ' ext-neg' : '')}>{i.valor}</td>
+                            <tr key={k}><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td>{i.nf}</td><td className="wrap">{i.descricao}{i.digitado && <span className="hint"> · digitado</span>}
+                              {/* a sugestão de baixa (Vitor, 15/10/2026): o que pode ser o recebimento desta nota nos extratos */}
+                              {i.sugestoes.length > 0 && (
+                                <span className="hint" style={{ display: 'block', marginTop: 4 }}>
+                                  Possível baixa no banco:
+                                  {i.sugestoes.map((g, j) => (
+                                    <span key={j} style={{ display: 'block' }}>{g.data} · {g.banco} · {g.historico} · <b>{g.valor}</b>{g.mesmoValor ? ' · mesmo valor' : ''}</span>
+                                  ))}
+                                </span>
+                              )}</td><td className={'num' + (i.abate ? ' ext-neg' : '')}>{i.valor}</td>
                               <td className={i.status === 'aberto' ? undefined : 'hint'}>{i.rotulo}</td>
                               {/* o "+" de cada linha (Vitor, 07/10/2026: "colocando esse + em cada linha"): adiciona ao que vai para o cliente;
                                   adicionada, o check que vira × e tira (o mesmo botão da importação) */}

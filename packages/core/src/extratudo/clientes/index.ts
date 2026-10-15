@@ -301,3 +301,4 @@ export function textoDaMensagem(modelo: string, empresa: string, mes: string, li
   const lista = linhas.map(l => '• ' + l.nome + ' — R$ ' + brl(l.saldo) + (l.notas?.length ? ' — em aberto: ' + textoDasNotas(l.notas) : '') + (l.obs ? ' — ' + l.obs : '')).join('\n');
   return (modelo || MENSAGEM_PADRAO).replace(/\{empresa\}/g, empresa).replace(/\{mes\}/g, mes).replace(/\{lista\}/g, lista);
 }
+export { sugestoesDeBaixa, palavrasDoNome, type LancamentoDoBanco, type SugestaoDeBaixa } from './sugestaoDeBaixa';
