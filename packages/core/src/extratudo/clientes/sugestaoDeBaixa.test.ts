@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { palavrasDoNome, sugestoesDeBaixa, type LancamentoDoBanco } from './sugestaoDeBaixa';
+import { baixasGuardadas, comBaixa, mesmoLancamento, palavrasDoNome, selosDaSugestao, sugestoesDeBaixa, type LancamentoDoBanco } from './sugestaoDeBaixa';
 
 // nomes e valores inventados
 const L = (data: string, valor: number, historico: string, banco = 'Sicoob'): LancamentoDoBanco => ({ data, valor, historico, banco });
@@ -13,12 +13,11 @@ const EXTRATO = [
 ];
 
 describe('sugestoesDeBaixa (a nota em aberto × o extrato)', () => {
-  it('cliente: o que entrou com o mesmo valor e o nome primeiro; parcial com o nome depois; fora do prazo e saída não', () => {
+  it('cliente: o total com o nome primeiro, o total sem o nome depois; o valor que não é parcela, antes da nota e saída, não', () => {
     const s = sugestoesDeBaixa({ data: '2026-02-25', valor: 1070 }, 'ALFAMINERA COMERCIO LTDA', EXTRATO, 1);
-    expect(s.map(x => [x.data, x.valor, x.mesmoValor, x.mesmoNome])).toEqual([
-      ['2026-03-12', 107000, true, true],
-      ['2026-03-01', 107000, true, false],
-      ['2026-03-15', 60000, false, true],
+    expect(s.map(x => [x.data, x.valor, x.como, x.mesmoValor, x.mesmoNome])).toEqual([
+      ['2026-03-12', 107000, 'total', true, true],
+      ['2026-03-01', 107000, 'total', true, false],
     ]);
   });
   it('fornecedor: só o que saiu', () => {
@@ -27,7 +26,46 @@ describe('sugestoesDeBaixa (a nota em aberto × o extrato)', () => {
   it('sem nada parecido: nenhuma', () => {
     expect(sugestoesDeBaixa({ data: '2026-02-25', valor: 12.34 }, 'GAMA LTDA', EXTRATO, 1)).toEqual([]);
   });
+
+  // vendida 3.000,00 em 3x; a 1ª paga em 10/01; falta 2.000,00
+  const NOTA = { data: '2025-12-10', valor: 2000, vendido: 3000, pagos: [{ data: '2026-01-10', valor: 1000 }] };
+  const PARCELAS = [
+    L('2026-01-10', 100000, 'PIX RECEBIDO ALFAMINERA'), // a já paga: fora
+    L('2026-02-10', 100000, 'PIX RECEBIDO OUTRA PESSOA'), // igual à paga, sem o nome: vale
+    L('2026-03-12', 105000, 'PIX RECEBIDO ALFAMINERA'), // a parcela com juros, com o nome
+    L('2026-03-20', 66667, 'PIX RECEBIDO OUTRA PESSOA'), // o aberto em 3x, sem o nome: não
+  ];
+  it('as parcelas: igual à já paga, com juros pelo nome, na data esperada; a já paga e a divisão sem o nome, não', () => {
+    const s = sugestoesDeBaixa(NOTA, 'ALFAMINERA LTDA', PARCELAS, 1);
+    expect(s.map(x => [x.data, x.como, x.parcela, x.dataEsperada, x.mesmoNome])).toEqual([
+      ['2026-02-10', 'parcela', 'como a de 10/01', true, false],
+      ['2026-03-12', 'juros', 'como a de 10/01', true, true],
+    ]);
+    expect(selosDaSugestao(s[1], 'cliente').map(x => x.texto)).toEqual(['Igual à de 10/01', 'Com juros/multa', 'Data esperada', 'Mesmo nome']);
+  });
+  it('a divisão em 2 a 10x com o nome', () => {
+    const s = sugestoesDeBaixa(NOTA, 'ALFAMINERA', [L('2026-04-25', 50000, 'PIX ALFAMINERA')], 1);
+    expect(s.map(x => [x.como, x.parcela])).toEqual([['parcela', 'em 4x do aberto']]);
+    expect(selosDaSugestao(s[0], 'cliente').map(x => x.texto)).toEqual(['Aberto em 4x', 'Mesmo nome']);
+  });
+
   it('as palavras do nome que identificam', () => {
     expect(palavrasDoNome('Alfaminera Comércio e Indústria LTDA')).toEqual(['alfaminera']);
+  });
+});
+
+describe('a baixa aceita', () => {
+  const a = L('2026-03-12', 107000, 'PIX RECEBIDO ALFAMINERA');
+  it('aceita, troca e desfaz', () => {
+    const um = comBaixa(undefined, 'k1', a);
+    expect(um).toEqual({ k1: a });
+    expect(comBaixa(um, 'k1', null)).toBeUndefined();
+    expect(Object.keys(comBaixa(um, 'k2', a) || {})).toEqual(['k1', 'k2']);
+    expect(mesmoLancamento(a, { ...a })).toBe(true);
+    expect(mesmoLancamento(a, { ...a, valor: 1 })).toBe(false);
+  });
+  it('o guardado conferido', () => {
+    expect(baixasGuardadas({ k1: a, k2: { data: 1 } })).toEqual({ k1: a });
+    expect(baixasGuardadas(null)).toBeUndefined();
   });
 });

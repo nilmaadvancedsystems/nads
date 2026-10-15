@@ -8,7 +8,11 @@ import type { LancamentoDoRazao, RazaoDaConta } from '../../tarefas/regras/razao
 import { mesmoNomeDeCliente } from '../creditor/regras/clientes';
 
 /** Uma nota de venda do cliente no razão: vendido, recebido e o que ficou em aberto (positivo = o cliente deve). */
-export interface NotaDoCliente { nf: string; data: string; vendido: number; recebido: number; aberto: number }
+export interface NotaDoCliente {
+  nf: string; data: string; vendido: number; recebido: number; aberto: number;
+  /** as parcelas (duplicatas) já recebidas desta nota: a data e o valor (para a sugestão de baixa achar as que faltam) */
+  pagos?: { data: string; valor: number }[];
+}
 
 export interface DevolucaoDoCliente { nf: string; data: string; valor: number; notas: string[] }
 
@@ -170,7 +174,11 @@ export function conferirRazaoDoCliente(razao: RazaoDaConta, mes: string, lado: L
       }
       vistos.set(chave, { conta });
       saldo -= valor;
-      if (nf && notas.has(nf)) nota(nf, l.data).recebido = centavos(nota(nf, l.data).recebido + valor);
+      if (nf && notas.has(nf)) {
+        const n = nota(nf, l.data);
+        n.recebido = centavos(n.recebido + valor);
+        (n.pagos = n.pagos || []).push({ data: l.data, valor: centavos(valor) });
+      }
       // sem a nota no razão: paga o saldo anterior, se cabe nele; senão, é o pagamento solto (com a conta por onde entrou:
       // o cliente precisa dela para achar o pagamento)
       else if (restante > 0.005 && valor > 0 && valor <= restante + 0.005) {
@@ -227,6 +235,9 @@ export interface ItemDoRazao {
   conta?: string;
   /** digitado à mão na etapa (Vitor, 08/10/2026: "a opção de digitar manualmente caso não queira upar o razão") */
   digitado?: boolean;
+  /** a nota em aberto: o valor vendido e as parcelas já recebidas (a sugestão de baixa procura as que faltam; 15/10/2026) */
+  vendido?: number;
+  pagos?: { data: string; valor: number }[];
 }
 export type StatusDoItem = 'aberto' | 'pagamento' | 'devolucao' | 'anterior';
 export const ROTULO_DO_STATUS: Record<StatusDoItem, string> = { aberto: 'Em aberto', pagamento: 'Apenas pagamento', devolucao: 'Devolução', anterior: 'Paga o saldo anterior' };
@@ -243,7 +254,8 @@ function itensDoRazao(r: RazaoConferido, lado: LadoDaConta): ItemDoRazao[] {
     ({ data, nf, descricao, valor, status, ...(interno ? { interno } : {}), ...(conta ? { conta } : {}) });
   const [vendido, recebido, recebida, recebimento, venda] = lado === 'clientes' ? ['vendido', 'recebido', 'Recebida', 'Recebimento', 'Venda a prazo'] : ['comprado', 'pago', 'Paga', 'Pagamento', 'Compra a prazo'];
   return [
-    ...r.emAberto.map(n => item(n.data, n.nf, venda + (n.recebido ? ' (' + vendido + ' ' + brl(n.vendido) + ', ' + recebido + ' ' + brl(n.recebido) + ')' : ''), n.aberto, 'aberto')),
+    ...r.emAberto.map(n => ({ ...item(n.data, n.nf, venda + (n.recebido ? ' (' + vendido + ' ' + brl(n.vendido) + ', ' + recebido + ' ' + brl(n.recebido) + ')' : ''), n.aberto, 'aberto'),
+      vendido: n.vendido, ...(n.pagos?.length ? { pagos: n.pagos } : {}) })),
     ...r.aMais.map(n => item(n.data, n.nf, recebida + ' a mais', n.aberto, 'pagamento')),
     ...r.semNota.map(x => item(x.data, '', x.historico, centavos(-x.valor), 'pagamento', false, x.conta)),
     // o recebimento que zerou o saldo anterior: não é avulso (só para o escritório ver)

@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx';
 import { normalizarTexto } from '../../formatos';
 import type { Conta } from '../../conferencia/tipos';
 import type { LadoDaConta, RazaoDaMarca } from './razao';
+import { baixasGuardadas, type BaixaAceita } from './sugestaoDeBaixa';
 
 export * from './razao';
 
@@ -153,6 +154,8 @@ export interface MarcaDoCliente {
   razao?: RazaoDaMarca;
   /** o que vai para o cliente: as chaves dos itens da relação (chaveDoItem); sem = o cliente todo; [] = nada */
   perguntar?: string[];
+  /** as notas em aberto que já têm a baixa no banco (a sugestão aceita): a chave do item → o lançamento do banco */
+  baixas?: Record<string, BaixaAceita>;
 }
 export interface DocClientes {
   contas: Record<string, MarcaDoCliente>; atualizadoEm?: string;
@@ -202,9 +205,10 @@ export function docDoDocumento(d: unknown): DocClientes {
     if (s !== 'pendente' && s !== 'ok' && s !== 'conferido') continue;
     const r = razaoGuardado(v.razao);
     const perguntar = Array.isArray(v.perguntar) ? (v.perguntar as unknown[]).filter((x): x is string => typeof x === 'string') : [];
+    const baixas = baixasGuardadas(v.baixas);
     certo[k] = {
       nome: String(v.nome ?? ''), saldo: typeof v.saldo === 'number' ? v.saldo : 0, situacao: s, ...(typeof v.obs === 'string' && v.obs ? { obs: v.obs } : {}), ...(r ? { razao: r } : {}),
-      ...(Array.isArray(v.perguntar) ? { perguntar } : {}),
+      ...(Array.isArray(v.perguntar) ? { perguntar } : {}), ...(baixas ? { baixas } : {}),
     };
   }
   return { contas: certo, ...(typeof o.atualizadoEm === 'string' ? { atualizadoEm: o.atualizadoEm } : {}), ...(typeof o.enviado === 'string' && o.enviado ? { enviado: o.enviado } : {}) };
@@ -227,6 +231,8 @@ function razaoGuardado(d: unknown): RazaoDaMarca | null {
         ...(i.interno === true ? { interno: true } : {}),
         ...(i.digitado === true ? { digitado: true } : {}),
         ...(typeof i.conta === 'string' && i.conta ? { conta: i.conta } : {}),
+        ...(typeof i.vendido === 'number' ? { vendido: i.vendido } : {}),
+        ...(Array.isArray(i.pagos) ? { pagos: (i.pagos as Record<string, unknown>[]).filter(p => p && typeof p.data === 'string' && typeof p.valor === 'number').map(p => ({ data: p.data as string, valor: p.valor as number })) } : {}),
         status: i.status === 'aberto' || i.status === 'pagamento' || i.status === 'devolucao' || i.status === 'anterior' ? i.status : (i.valor as number) > 0 ? 'aberto' as const : 'pagamento' as const,
       })) : [],
     ...(o.manual === true ? { manual: true } : {}),
@@ -302,4 +308,4 @@ export function textoDaMensagem(modelo: string, empresa: string, mes: string, li
   const lista = linhas.map(l => '• ' + l.nome + ' — R$ ' + brl(l.saldo) + (l.notas?.length ? ' — em aberto: ' + textoDasNotas(l.notas) : '') + (l.obs ? ' — ' + l.obs : '')).join('\n');
   return (modelo || MENSAGEM_PADRAO).replace(/\{empresa\}/g, empresa).replace(/\{mes\}/g, mes).replace(/\{lista\}/g, lista);
 }
-export { sugestoesDeBaixa, palavrasDoNome, type LancamentoDoBanco, type SugestaoDeBaixa } from './sugestaoDeBaixa';
+export { sugestoesDeBaixa, selosDaSugestao, palavrasDoNome, mesmoLancamento, comBaixa, baixasGuardadas, type LancamentoDoBanco, type SugestaoDeBaixa, type BaixaAceita, type ComoBate, type SeloDaSugestao } from './sugestaoDeBaixa';

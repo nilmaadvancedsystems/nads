@@ -19,6 +19,11 @@ export type FiltroClientes = 'todos' | 'pendente' | 'ok' | 'conferido';
 
 const mesAntes = (m: string) => { const [a, mm] = m.split('-').map(Number); return mm === 1 ? (a - 1) + '-12' : a + '-' + String(mm - 1).padStart(2, '0'); };
 
+/** O lançamento do banco como a mini tabela da sugestão mostra (o bruto volta no aceitar). */
+const noBanco = (g: cl.LancamentoDoBanco) => ({
+  bruto: g, data: g.data.slice(8, 10) + '/' + g.data.slice(5, 7) + '/' + g.data.slice(0, 4), banco: g.banco, marca: g.marca || '', historico: g.historico, valor: formatos.reais(Math.abs(g.valor) / 100),
+});
+
 export function useClientes() {
   const s = useEtapaAberta();
   const { aviso } = useRetorno();
@@ -95,13 +100,17 @@ export function useClientes() {
   const linhas = contas.map(k => {
     const marca = marcas.doc.contas[k.codigo] || passam[k.codigo];
     const situacao = cl.situacaoDe(k, marca);
-    return { codigo: k.codigo, nome: k.nome, saldo: k.saldo, situacao, obs: marca?.obs || '', razao: marca?.razao, perguntar: marca?.perguntar, doMesAnterior: !marcas.doc.contas[k.codigo] && !!passam[k.codigo] };
+    return { codigo: k.codigo, nome: k.nome, saldo: k.saldo, situacao, obs: marca?.obs || '', razao: marca?.razao, perguntar: marca?.perguntar, baixas: marca?.baixas, doMesAnterior: !marcas.doc.contas[k.codigo] && !!passam[k.codigo] };
   });
+
+  // os lançamentos do banco já aceitos como baixa de alguma nota não são sugeridos de novo
+  const aceitas = linhas.flatMap(l => Object.values(l.baixas || {}));
+  const livres = lancsDoBanco.filter(x => !aceitas.some(a => cl.mesmoLancamento(a, x)));
 
   function marcar(codigo: string, mudar: (m: cl.MarcaDoCliente) => cl.MarcaDoCliente) {
     const l = linhas.find(x => x.codigo === codigo);
     if (!l || !marcas.carregado) return;
-    const atual: cl.MarcaDoCliente = { nome: l.nome, saldo: l.saldo, situacao: l.situacao, ...(l.obs ? { obs: l.obs } : {}), ...(l.razao ? { razao: l.razao } : {}), ...(l.perguntar ? { perguntar: l.perguntar } : {}) };
+    const atual: cl.MarcaDoCliente = { nome: l.nome, saldo: l.saldo, situacao: l.situacao, ...(l.obs ? { obs: l.obs } : {}), ...(l.razao ? { razao: l.razao } : {}), ...(l.perguntar ? { perguntar: l.perguntar } : {}), ...(l.baixas ? { baixas: l.baixas } : {}) };
     marcas.salvar({ ...marcas.doc, contas: { ...marcas.doc.contas, [codigo]: mudar(atual) } });
   }
 
@@ -198,15 +207,25 @@ export function useClientes() {
           // a mini tabela embaixo do cliente: as notas em aberto e o que ficou solto
           itens: l.razao.itens.map(i => ({ chave: i.interno ? '' : cl.chaveDoItem(i), marcado: !i.interno && cl.itensEscolhidos(l.razao, l.perguntar).includes(i), data: i.data ? i.data.slice(8, 10) + '/' + i.data.slice(5, 7) + '/' + i.data.slice(0, 4) : '', nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor), abate: i.valor < 0, status: i.status, rotulo: cl.ROTULO_DO_STATUS[i.status], digitado: !!i.digitado,
             // a nota em aberto: os lançamentos do banco que podem ser a baixa dela (o mesmo valor, ou o nome no histórico)
-            sugestoes: i.status === 'aberto' ? cl.sugestoesDeBaixa(i, l.nome, lancsDoBanco, 1).map(g => ({
-              data: g.data.slice(8, 10) + '/' + g.data.slice(5, 7) + '/' + g.data.slice(0, 4), banco: g.banco, marca: g.marca || '', historico: g.historico, valor: reais(Math.abs(g.valor) / 100), mesmoValor: g.mesmoValor, mesmoNome: g.mesmoNome,
-            })) : [] })),
+            // a baixa aceita (Vitor, 15/10/2026: "um botãozinho para, quando o usuário mudar ou aceitar a sugestão, ficar Ok")
+            baixa: !i.interno && l.baixas?.[cl.chaveDoItem(i)] ? noBanco(l.baixas[cl.chaveDoItem(i)]) : null,
+            // sem sugestão na nota que já tem a baixa ou que vai para o cliente (Vitor, 15/10/2026: "oculte a sugestão quando o usuário clicar em perguntar")
+            sugestoes: i.status === 'aberto' && !i.interno && !l.baixas?.[cl.chaveDoItem(i)] && !cl.itensEscolhidos(l.razao, l.perguntar).includes(i)
+              ? cl.sugestoesDeBaixa(i, l.nome, livres, 1).map(g => ({ ...noBanco(g), selos: cl.selosDaSugestao(g, 'cliente') })) : [] })),
         } : null,
         // o que vai para o cliente (o que foi adicionado no "+" de cada linha da relação; nada = não vai)
         perguntar: l.razao ? cl.itensEscolhidos(l.razao, l.perguntar).map(cl.rotuloDoItem).join(' · ') : '',
       })),
     // sem campo vazio (o banco não aceita undefined)
     /** o "+" de uma linha da relação: adiciona ao que vai para o cliente, ou tira (Vitor, 07/10/2026) */
+    /** aceita a sugestão de baixa de uma nota em aberto (fica Ok; sai do que vai para o cliente) ou desfaz (null) */
+    aceitarBaixa: (codigo: string, chave: string, l: cl.LancamentoDoBanco | null) => marcar(codigo, m => {
+      const n = { ...m };
+      const baixas = cl.comBaixa(m.baixas, chave, l);
+      const perguntar = l && m.perguntar ? m.perguntar.filter(c => c !== chave) : m.perguntar;
+      delete n.baixas; delete n.perguntar;
+      return { ...n, ...(baixas ? { baixas } : {}), ...(perguntar && (perguntar.length || !l) ? { perguntar } : {}) };
+    }),
     definirEnvio: (codigo: string, chave: string, sim: boolean) => marcar(codigo, m => {
       const n = { ...m };
       const novo = cl.definirItem(m.razao, m.perguntar, chave, sim);
@@ -233,7 +252,7 @@ export function useClientes() {
       delete n.razao; delete n.perguntar;
       return { ...n, ...(razao ? { razao } : {}), ...(perguntar.length ? { perguntar } : {}) };
     }),
-    tirarRazao: (codigo: string) => marcar(codigo, m => { const n = { ...m, situacao: 'pendente' as const }; delete n.razao; delete n.perguntar; return n; }),
+    tirarRazao: (codigo: string) => marcar(codigo, m => { const n = { ...m, situacao: 'pendente' as const }; delete n.razao; delete n.perguntar; delete n.baixas; return n; }),
     // Envio
     conferidos: paraEnviar.map(l => ({ codigo: l.codigo, nome: l.nome, valor: reais(l.saldo), perguntar: cl.itensEscolhidos(l.razao, l.perguntar).map(cl.rotuloDoItem).join(' · '), notas: cl.textoDasNotas(l.razao?.notas) })),
     // o Mandei: um ticket com os conferidos (cada um, um item com a nossa pergunta), o link vai por e-mail

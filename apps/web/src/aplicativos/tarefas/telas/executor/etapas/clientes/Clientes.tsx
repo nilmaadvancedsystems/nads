@@ -166,7 +166,7 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                   {/* o conferido mostra o que vai para o cliente (o que foi adicionado no "+" de cada linha da relação, em texto: "Questionar: NF 9971 · NF 10111"; Vitor, 07/10/2026) */}
                   {/* sem a dica do + (Vitor, 15/10/2026: "remove isso") */}
                   {l.situacao === 'conferido' && l.perguntar && (
-                    <span style={{ display: 'block', marginTop: 4 }}><span className="hint">Questionar: </span>{l.perguntar}</span>
+                    <span style={{ display: 'block', marginTop: 4 }}><span className="badge badge-neutral" title="O que vai para o cliente responder">Questionar: {l.perguntar}</span></span>
                   )}
                 </td>
                 <td>
@@ -224,10 +224,10 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                         <tbody>
                           {l.razao.itens.map((i, k) => (
                             <Fragment key={k}><tr><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td>{i.nf}</td><td className="wrap">{i.descricao}{i.digitado && <span className="hint"> · digitado</span>}</td><td className={'num' + (i.abate ? ' ext-neg' : '')}>{i.valor}</td>
-                              <td className={i.status === 'aberto' ? undefined : 'hint'}>{i.rotulo}</td>
+                              <td className={i.status === 'aberto' ? undefined : 'hint'}>{i.baixa ? <span className="badge badge-ok" title={'Baixa no banco: ' + i.baixa.data + ', ' + i.baixa.valor}>Ok</span> : i.rotulo}</td>
                               {/* o "+" de cada linha (Vitor, 07/10/2026: "colocando esse + em cada linha"): adiciona ao que vai para o cliente;
                                   adicionada, o check que vira × e tira (o mesmo botão da importação) */}
-                              {(l.situacao === 'conferido' || !!l.razao?.itens.some(x => x.digitado)) && <td className="num">{!i.chave ? <span className="hint" title="Só do escritório">—</span> : i.digitado ? (
+                              {(l.situacao === 'conferido' || !!l.razao?.itens.some(x => x.digitado)) && <td className="num">{!i.chave || i.baixa ? <span className="hint" title={i.baixa ? 'Com a baixa no banco' : 'Só do escritório'}>—</span> : i.digitado ? (
                                 <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" disabled={!vm.carregado} onClick={() => vm.tirarDigitado(l.codigo, i.chave)}
                                   title="Lançamento digitado: vai para o cliente. Clique para tirar." aria-label="Tirar o lançamento digitado">
                                   <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
@@ -245,14 +245,16 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                               )}</td>}</tr>
                             {/* a sugestão de baixa logo abaixo da nota em aberto (Vitor, 15/10/2026): sem título e sem o fio do lado, uma
                                 mini tabela com Banco (só o logo), Data, Descrição (letra menor), Valor e Situação (os selos) */}
-                            {i.sugestoes.length > 0 && (
+                            {/* o botão de aceitar (Vitor, 15/10/2026: "quando o usuário mudar ou aceitar a sugestão, fique Ok"): aceita, a nota
+                                fica Ok e só o lançamento escolhido fica, com o check que vira × para desfazer */}
+                            {(i.baixa || i.sugestoes.length > 0) && (
                               <tr>
                                 <td colSpan={6} style={{ paddingTop: 0 }}>
                                   <div style={{ marginLeft: 16 }}>
                                     <table className="table-compact" aria-label="Possível recebimento desta nota no banco">
-                                      <thead><tr><th style={{ width: 56 }}>Banco</th><th style={{ width: 96 }}>Data</th><th>Descrição</th><th className="num">Valor</th><th style={{ width: 200 }}>Situação</th></tr></thead>
+                                      <thead><tr><th style={{ width: 56 }}>Banco</th><th style={{ width: 96 }}>Data</th><th>Descrição</th><th className="num">Valor</th><th style={{ width: 220 }}>Situação</th><th className="num" style={{ width: 48 }}>Aceitar</th></tr></thead>
                                       <tbody>
-                                        {i.sugestoes.map((g, j) => (
+                                        {(i.baixa ? [{ ...i.baixa, selos: [] }] : i.sugestoes).map((g, j) => (
                                           <tr key={j}>
                                             {/* o banco: só o logo (o nome na dica), para sobrar espaço (Vitor, 15/10/2026) */}
                                             <td title={g.banco}><span className="drive-candidato-logo" style={{ display: 'inline-flex' }} aria-label={g.banco}><LogoBanco banco={g.marca} cor /></span></td>
@@ -261,10 +263,21 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                                             <td className="num" style={{ whiteSpace: 'nowrap' }}>{g.valor}</td>
                                             <td>
                                               <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
-                                                {g.mesmoValor && <span className="badge badge-ok">Mesmo valor</span>}
-                                                {g.mesmoNome && <span className="badge badge-neutral" title="O nome do cliente aparece no histórico">Mesmo nome</span>}
-                                                {!g.mesmoValor && <span className="badge badge-warn" title="O valor não é o da nota: pode ser parcial, com juros ou desconto">Valor diferente</span>}
+                                                {i.baixa ? <span className="badge badge-ok">Aceita</span> : g.selos.map(x => <span key={x.texto} className={'badge badge-' + x.tom} title={x.dica}>{x.texto}</span>)}
                                               </span>
+                                            </td>
+                                            <td className="num">
+                                              {i.baixa ? (
+                                                <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" disabled={!vm.carregado} onClick={() => vm.aceitarBaixa(l.codigo, i.chave, null)}
+                                                  title="Baixa aceita. Clique para desfazer." aria-label={'Desfazer a baixa ' + (i.nf !== '—' ? 'da NF ' + i.nf : 'da nota')}>
+                                                  <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
+                                                </button>
+                                              ) : (
+                                                <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={!vm.carregado} onClick={() => vm.aceitarBaixa(l.codigo, i.chave, g.bruto)}
+                                                  title="Aceitar: é a baixa desta nota" aria-label={'Aceitar o lançamento de ' + g.data + ' como a baixa ' + (i.nf !== '—' ? 'da NF ' + i.nf : 'da nota')}>
+                                                  <Icone nome="check" />
+                                                </button>
+                                              )}
                                             </td>
                                           </tr>
                                         ))}
