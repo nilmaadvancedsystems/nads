@@ -250,18 +250,24 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                                 mini tabela com Banco (só o logo), Data, Descrição (letra menor), Valor e Situação (os selos) */}
                             {/* o botão de aceitar (Vitor, 15/10/2026: "quando o usuário mudar ou aceitar a sugestão, fique Ok"): aceita, a nota
                                 fica Ok e só o lançamento escolhido fica, com o check que vira × para desfazer */}
-                            {(i.baixas.length > 0 || i.sugestoes.length > 0) && (
+                            {(i.baixas.length > 0 || i.sugestoes.length > 0 || i.recusadas.length > 0) && (
                               <tr style={k % 2 ? LISTRA : undefined}>
                                 <td colSpan={6} style={{ padding: 0 }}>
                                   {/* sem caixa, sem borda e sem o cabeçalho; mais de uma, separadas pela linha suave da tabela (Vitor, 15/10/2026) */}
                                   <div>
                                     <table className="table-compact" aria-label="Possível recebimento desta nota no banco">
                                       <tbody>
-                                        {[...i.baixas.map(b => ({ ...b, selos: [], aceita: true })), ...i.sugestoes.map(g => ({ ...g, aceita: false }))].map((g, j) => (
-                                          <tr key={j} style={fundoSuaveDoBanco(g.marca) ? { background: fundoSuaveDoBanco(g.marca) } : undefined}>
+                                        {[...i.baixas.map(b => ({ ...b, selos: [], aceita: true, recusada: false })), ...i.sugestoes.map(g => ({ ...g, aceita: false, recusada: false })),
+                                          ...i.recusadas.map(r => ({ ...r, selos: [], aceita: false, recusada: true }))].map((g, j) => (
+                                          <tr key={j} style={g.recusada ? { opacity: 0.55 } : fundoSuaveDoBanco(g.marca) ? { background: fundoSuaveDoBanco(g.marca) } : undefined}>
                                             {/* o Aceitar e o Recusar à esquerda do logo do banco (Vitor, 15/10/2026) */}
                                             <td style={{ width: 84, whiteSpace: 'nowrap' }}>
-                                              {g.aceita ? (
+                                              {g.recusada ? (
+                                                <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={!vm.carregado} onClick={() => vm.desfazerRecusa(l.codigo, i.chave, g.bruto)}
+                                                  title="Recusada. Clique para desfazer." aria-label={'Desfazer a recusa do lançamento de ' + g.data}>
+                                                  <Icone nome="girar" />
+                                                </button>
+                                              ) : g.aceita ? (
                                                 <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" disabled={!vm.carregado} onClick={() => vm.aceitarBaixa(l.codigo, i.chave, g.bruto, false)}
                                                   title="Baixa aceita. Clique para desfazer." aria-label={'Desfazer a baixa ' + (i.nf !== '—' ? 'da NF ' + i.nf : 'da nota')}>
                                                   <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
@@ -272,7 +278,7 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                                                   <Icone nome="check" />
                                                 </button>
                                               )}
-                                              {!g.aceita && (
+                                              {!g.aceita && !g.recusada && (
                                                 <button type="button" className="icon-btn icon-btn-sm imp-btn" style={{ marginLeft: 6 }} disabled={!vm.carregado} onClick={() => vm.recusarSugestao(l.codigo, i.chave, g.bruto)}
                                                   title="Recusar: não é a baixa desta nota" aria-label={'Recusar o lançamento de ' + g.data + ' para ' + (i.nf !== '—' ? 'a NF ' + i.nf : 'a nota')}>
                                                   <Icone nome="x" />
@@ -282,11 +288,11 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                                             {/* o banco: só o logo (o nome na dica), para sobrar espaço (Vitor, 15/10/2026) */}
                                             <td title={g.banco} style={{ width: 56 }}><span className="drive-candidato-logo" style={{ display: 'inline-flex' }} aria-label={g.banco}><LogoBanco banco={g.marca} cor /></span></td>
                                             <td style={{ whiteSpace: 'nowrap', width: 96 }}>{g.data}</td>
-                                            <td title={g.historico} style={{ fontSize: 12, maxWidth: 0, width: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.historico}</td>
+                                            <td title={g.historico} style={{ fontSize: 12, maxWidth: 0, width: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.curto}</td>
                                             <td className="num" style={{ whiteSpace: 'nowrap' }}>{g.valor}</td>
                                             <td style={{ width: 220 }}>
                                               <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
-                                                {g.aceita ? <span className="badge badge-ok">Aceita</span> : g.selos.map(x => <span key={x.texto} className={'badge badge-' + x.tom} title={x.dica}>{x.texto}</span>)}
+                                                {g.aceita ? <span className="badge badge-ok">Aceita</span> : g.recusada ? <span className="badge badge-neutral">Recusada</span> : g.selos.map(x => <span key={x.texto} className={'badge badge-' + x.tom} title={x.dica}>{x.texto}</span>)}
                                               </span>
                                             </td>
                                           </tr>

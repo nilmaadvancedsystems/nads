@@ -40,7 +40,9 @@ function notaQueFalta(i: cl.ItemDoRazao, baixas: Record<string, cl.BaixaAceita[]
 
 /** O lançamento do banco como a mini tabela da sugestão mostra (o bruto volta no aceitar). */
 const noBanco = (g: cl.LancamentoDoBanco) => ({
-  bruto: g, data: g.data.slice(8, 10) + '/' + g.data.slice(5, 7) + '/' + g.data.slice(0, 4), banco: g.banco, marca: g.marca || '', historico: g.historico, valor: formatos.reais(Math.abs(g.valor) / 100),
+  bruto: g, data: g.data.slice(8, 10) + '/' + g.data.slice(5, 7) + '/' + g.data.slice(0, 4), banco: g.banco, marca: g.marca || '', historico: g.historico,
+  // a descrição curta, até 60 letras (Vitor, 15/10/2026: "limita mais caracteres"); a inteira vai na dica
+  curto: g.historico.length > 60 ? g.historico.slice(0, 60).trimEnd() + '…' : g.historico, valor: formatos.reais(Math.abs(g.valor) / 100),
 });
 
 export function useFornecedores() {
@@ -231,6 +233,8 @@ export function useFornecedores() {
             // com saldo ainda, não fica Ok: só diminui o valor aceito (Vitor, 15/10/2026)
             ...baixasDoItem(i, l.baixas),
             // sem sugestão na nota quitada ou que vai para o fornecedor (Vitor, 15/10/2026: "oculte a sugestão quando o usuário clicar em perguntar")
+            // as recusadas ficam no fim, apagadas, para desfazer (Vitor, 15/10/2026)
+            recusadas: i.status === 'aberto' && !i.interno && !baixasDoItem(i, l.baixas).quitada && !cl.itensEscolhidos(l.razao, l.perguntar).includes(i) ? (l.recusadas?.[cl.chaveDoItem(i)] || []).map(noBanco) : [],
             sugestoes: i.status === 'aberto' && !i.interno && !baixasDoItem(i, l.baixas).quitada && !cl.itensEscolhidos(l.razao, l.perguntar).includes(i)
               ? cl.sugestoesDeBaixa(notaQueFalta(i, l.baixas), l.nome, livres.filter(x => !(l.recusadas?.[cl.chaveDoItem(i)] || []).some(r => cl.mesmoLancamento(r, x))), -1).map(g => ({ ...noBanco(g), selos: cl.selosDaSugestao(g, 'fornecedor') })) : [] })),
         } : null,
@@ -254,6 +258,13 @@ export function useFornecedores() {
     recusarSugestao: (codigo: string, chave: string, l: cl.LancamentoDoBanco) => marcar(codigo, m => {
       const n = { ...m };
       const recusadas = cl.comBaixa(m.recusadas, chave, l, true);
+      delete n.recusadas;
+      return { ...n, ...(recusadas ? { recusadas } : {}) };
+    }),
+    /** desfaz a recusa: a sugestão volta para a lista da nota (Vitor, 15/10/2026) */
+    desfazerRecusa: (codigo: string, chave: string, l: cl.LancamentoDoBanco) => marcar(codigo, m => {
+      const n = { ...m };
+      const recusadas = cl.comBaixa(m.recusadas, chave, l, false);
       delete n.recusadas;
       return { ...n, ...(recusadas ? { recusadas } : {}) };
     }),
