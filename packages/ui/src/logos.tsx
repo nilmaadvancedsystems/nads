@@ -294,5 +294,5 @@ const COR_DA_MARCA: Record<string, string> = {
  */
 export function fundoSuaveDoBanco(marca: string): string | undefined {
   const cor = COR_DA_MARCA[marca];
-  return cor ? 'color-mix(in srgb, ' + cor + ' ' + (marca === 'banco-do-brasil' ? 18 : 9) + '%, var(--surface))' : undefined;
+  return cor ? 'color-mix(in srgb, ' + cor + ' ' + (marca === 'banco-do-brasil' ? 30 : 16) + '%, var(--surface))' : undefined;
 }
