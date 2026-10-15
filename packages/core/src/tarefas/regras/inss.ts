@@ -91,6 +91,9 @@ export function guiasDasLinhas(paginas: readonly (readonly string[])[]): GuiaDoI
   }
   return [...porNumero.values()]
     .filter(g => g.itens.some(i => grupoDoItem(i) !== 'outros'))
+    // o DARF da DCTFWeb junta o IRRF (0561) e a retenção de PIS/COFINS/CSLL (5952) com o INSS: só o previdenciário entra
+    // (Vitor, 15/10/2026: na 58, os R$ 12,37 do 5952 todo mês não deixavam a baixa casar com o pagamento do razão)
+    .map(g => ({ ...g, itens: g.itens.filter(ehPrevidenciario) }))
     .map(g => ({ ...g, principal: centavos(g.itens.reduce((s, i) => s + i.principal, 0)), total: centavos(g.itens.reduce((s, i) => s + i.total, 0)) }))
     .sort((a, b) => a.competencia.localeCompare(b.competencia) || a.vencimento.localeCompare(b.vencimento));
 }
@@ -123,6 +126,11 @@ export function grupoDoItem(i: Pick<ItemDaGuia, 'codigo' | 'variacao'>): GrupoDo
   if (i.codigo === '1213') return i.variacao === '06' ? 'producao-rural' : 'terceiros';
   if (TERCEIROS.has(i.codigo)) return 'terceiros';
   return 'outros';
+}
+
+/** O código da guia é do INSS? Os conhecidos, ou outro com "previdenciária"/"CP" na descrição; IRRF, PIS, COFINS e CSLL não. */
+export function ehPrevidenciario(i: Pick<ItemDaGuia, 'codigo' | 'variacao' | 'descricao'>): boolean {
+  return grupoDoItem(i) !== 'outros' || /previd|^cp /i.test(i.descricao);
 }
 
 /** O histórico do Alterdata → o grupo da provisão ("Pelo valor de INSS empresa a recolher <02/2026>" → patronal). */
@@ -271,14 +279,14 @@ export function conferirInss(razao: RazaoDaConta, guias: readonly GuiaDoInss[], 
   });
 
   // as baixas: cada guia paga dentro do período (e dentro do que o razão alcança) tem que ter o pagamento no razão (o
-  // mais perto da data, sem repetir)
+  // mais perto da data, sem repetir; até 2 centavos de diferença, o arredondamento da guia)
   const primeiro = meses[0] + '-01';
   const desde = primeiro > razao.inicio ? primeiro : razao.inicio;
   const ultimo = meses[meses.length - 1] + '-31';
   const usados = new Set<LancamentoDoRazao>();
   const baixas: BaixaDoInss[] = guias.filter(g => g.pagaEm && g.pagaEm >= desde && g.pagaEm <= ultimo).map(guia => {
     const dias = (l: LancamentoDoRazao) => Math.abs(Date.parse(l.data) - Date.parse(guia.pagaEm));
-    const lancamento = pagamentos.filter(l => !usados.has(l) && (Math.abs(-l.valor - guia.total) < 0.01 || Math.abs(-l.valor - guia.principal) < 0.01))
+    const lancamento = pagamentos.filter(l => !usados.has(l) && (Math.abs(-l.valor - guia.total) <= 0.02 || Math.abs(-l.valor - guia.principal) <= 0.02))
       .sort((a, b) => dias(a) - dias(b))[0] || null;
     if (lancamento) usados.add(lancamento);
     else {
