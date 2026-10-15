@@ -250,23 +250,23 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                             {(i.baixa || i.sugestoes.length > 0) && (
                               <tr>
                                 <td colSpan={6} style={{ paddingTop: 0 }}>
-                                  <div style={{ marginLeft: 16 }}>
+                                  {/* com a borda da caixa e sem o cabeçalho (Vitor, 15/10/2026) */}
+                                  <div className="table-wrap" style={{ marginLeft: 16 }}>
                                     <table className="table-compact" aria-label="Possível recebimento desta nota no banco">
-                                      <thead><tr><th style={{ width: 56 }}>Banco</th><th style={{ width: 96 }}>Data</th><th>Descrição</th><th className="num">Valor</th><th style={{ width: 220 }}>Situação</th><th className="num" style={{ width: 48 }}>Aceitar</th></tr></thead>
                                       <tbody>
                                         {(i.baixa ? [{ ...i.baixa, selos: [] }] : i.sugestoes).map((g, j) => (
                                           <tr key={j}>
                                             {/* o banco: só o logo (o nome na dica), para sobrar espaço (Vitor, 15/10/2026) */}
-                                            <td title={g.banco}><span className="drive-candidato-logo" style={{ display: 'inline-flex' }} aria-label={g.banco}><LogoBanco banco={g.marca} cor /></span></td>
-                                            <td style={{ whiteSpace: 'nowrap' }}>{g.data}</td>
+                                            <td title={g.banco} style={{ width: 56 }}><span className="drive-candidato-logo" style={{ display: 'inline-flex' }} aria-label={g.banco}><LogoBanco banco={g.marca} cor /></span></td>
+                                            <td style={{ whiteSpace: 'nowrap', width: 96 }}>{g.data}</td>
                                             <td className="wrap" style={{ fontSize: 12 }}>{g.historico}</td>
                                             <td className="num" style={{ whiteSpace: 'nowrap' }}>{g.valor}</td>
-                                            <td>
+                                            <td style={{ width: 220 }}>
                                               <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
                                                 {i.baixa ? <span className="badge badge-ok">Aceita</span> : g.selos.map(x => <span key={x.texto} className={'badge badge-' + x.tom} title={x.dica}>{x.texto}</span>)}
                                               </span>
                                             </td>
-                                            <td className="num">
+                                            <td className="num" style={{ width: 48 }}>
                                               {i.baixa ? (
                                                 <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" disabled={!vm.carregado} onClick={() => vm.aceitarBaixa(l.codigo, i.chave, null)}
                                                   title="Baixa aceita. Clique para desfazer." aria-label={'Desfazer a baixa ' + (i.nf !== '—' ? 'da NF ' + i.nf : 'da nota')}>
