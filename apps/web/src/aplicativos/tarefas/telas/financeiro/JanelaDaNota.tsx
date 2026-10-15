@@ -1,0 +1,107 @@
+// A janela da nota (15/10/2026: "vamos criar um emissor de notas fiscais para o financeiro"): a situação, os dados da nota
+// (número, chave de acesso, DPS, tomador, valor, data, descrição, quem pediu), os erros que a prefeitura devolveu e as ações:
+// Corrigir e reenviar (recusada), Baixar XML (autorizada) e Cancelar nota (autorizada, com o motivo e a justificativa).
+import { formatos, nfse } from '@nads/core';
+import { BotaoAcao, Icone, MenuSuspenso } from '@nads/ui';
+import { useEffect, type ReactNode } from 'react';
+import { dataBr, dataHoraBr, documentoFormatado, foneSoDigitos } from './formatosDaNota';
+import { MINIMO_DA_JUSTIFICATIVA, useJanelaDaNota } from './useJanelaDaNota';
+
+function Dado({ rotulo, children }: { rotulo: string; children: ReactNode }) {
+  return <div className="nf-dado"><span className="nf-dado-nome">{rotulo}</span><div className="nf-dado-valor">{children}</div></div>;
+}
+
+export function JanelaDaNota({ id, fechar, corrigir }: { id: string; fechar: () => void; corrigir: (n: nfse.NotaFiscal) => void }) {
+  const vm = useJanelaDaNota(id);
+  const n = vm.nota;
+
+  useEffect(() => {
+    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('.nf-janela .popover')) fechar(); };
+    document.addEventListener('keydown', tecla);
+    return () => document.removeEventListener('keydown', tecla);
+  });
+
+  if (!n || !vm.rotulo) return null;
+  const motivo = vm.motivos.find(m => m.id === vm.cMotivo)?.rotulo || '';
+  const fone = foneSoDigitos(n.tomador.fone || '');
+  return (
+    <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
+      <div className="modal registro-novo nf-janela" role="dialog" aria-modal="true" aria-label="Nota fiscal">
+        <header className="registro-topo">
+          <span className="registro-caminho"><Icone nome="recibo" />Notas fiscais<Icone nome="chevronRight" /><b>{n.numeroNfse ? 'NFS-e ' + n.numeroNfse : 'Nota sem número'}</b></span>
+          <span className={'badge badge-' + vm.rotulo.tom}>{vm.andando && <span className="btn-spinner nf-roda" aria-hidden="true" />}{vm.rotulo.rotulo}</span>
+          <button type="button" className="icon-btn icon-btn-sm" onClick={fechar} aria-label="Fechar" title="Fechar (Esc)"><Icone nome="x" /></button>
+        </header>
+
+        <div className="registro-corpo">
+          {n.ambiente === 'homologacao' && <p className="registro-dica"><Icone nome="alert" />Nota de homologação: sem valor fiscal.</p>}
+
+          <div className="nf-dados">
+            <Dado rotulo="Tomador"><b>{n.tomador.nome}</b><span className="fraco"> · {documentoFormatado(n.tomador.documento)}</span></Dado>
+            <Dado rotulo="Valor">{formatos.reais(n.servico.valor)}</Dado>
+            <Dado rotulo="Data do serviço">{dataBr(n.servico.competencia)}</Dado>
+            <Dado rotulo="Descrição"><span className="nf-descricao">{n.servico.descricao}</span></Dado>
+            {n.tomador.email && <Dado rotulo="E-mail">{n.tomador.email}</Dado>}
+            {fone && <Dado rotulo="Telefone">{fone}</Dado>}
+            <Dado rotulo="Número da NFS-e">{n.numeroNfse || '—'}</Dado>
+            <Dado rotulo="Chave de acesso">
+              {n.chaveAcesso
+                ? <span className="nf-chave"><code>{n.chaveAcesso}</code><button type="button" className="icon-btn icon-btn-sm" onClick={() => void vm.copiarChave()} aria-label="Copiar a chave de acesso" title="Copiar a chave"><Icone nome="copiar" /></button></span>
+                : '—'}
+            </Dado>
+            <Dado rotulo="DPS">{n.dps ? 'Série ' + n.dps.serie + ' · nº ' + n.dps.numero : '—'}</Dado>
+            <Dado rotulo="Pedida por">{n.pedidoPor}<span className="fraco"> · {dataHoraBr(n.pedidoEm)}</span></Dado>
+            {n.cancelamento && (
+              <Dado rotulo="Cancelamento">
+                {n.cancelamento.motivo}<span className="fraco"> · {n.cancelamento.pedidoPor}, {dataHoraBr(n.cancelamento.pedidoEm)}</span>
+              </Dado>
+            )}
+          </div>
+
+          {n.erros.length > 0 && (
+            <div className="nf-erros">
+              <span className="nf-dado-nome">A prefeitura respondeu</span>
+              <ul className="registro-erros">{n.erros.map((e, i) => <li key={e.codigo + i}><Icone nome="alert" /><span><b>{e.codigo}</b> {e.descricao}</span></li>)}</ul>
+            </div>
+          )}
+
+          {vm.cancelando && (
+            <div className="nf-cancelar">
+              <div className="registro-prop">
+                <span className="registro-prop-nome"><Icone nome="alert" />Motivo</span>
+                <div className="registro-prop-valor">
+                  <MenuSuspenso rotulo={motivo} className="btn btn-ghost registro-escolha" titulo="Motivo do cancelamento" largura={220}
+                    itens={vm.motivos.map(m => ({ rotulo: m.rotulo, marcado: m.id === vm.cMotivo, onClick: () => vm.setCMotivo(m.id) }))} />
+                </div>
+              </div>
+              <textarea className="nf-texto" rows={3} value={vm.justificativa} onChange={e => vm.setJustificativa(e.target.value)} autoFocus
+                placeholder="Justificativa do cancelamento (mínimo de 15 letras)" aria-label="Justificativa do cancelamento" />
+              <span className={'registro-dica' + (vm.podePedirCancelamento || !vm.letras ? '' : ' registro-dica-erro')}>{vm.letras}/{MINIMO_DA_JUSTIFICATIVA} letras no mínimo</span>
+            </div>
+          )}
+        </div>
+
+        <footer className="registro-pe">
+          <span className="tarefas-barra-espaco" />
+          {vm.cancelando ? (
+            <>
+              <button type="button" className="btn btn-outline" onClick={vm.fecharCancelamento}>Voltar</button>
+              <BotaoAcao className="btn btn-danger" carregando={vm.enviando} textoCarregando="Pedindo…" disabled={!vm.podePedirCancelamento} onClick={() => void vm.pedirCancelamento()}>
+                Cancelar nota
+              </BotaoAcao>
+            </>
+          ) : (
+            <>
+              {vm.podeCancelar && <button type="button" className="btn btn-outline" onClick={vm.abrirCancelamento}>Cancelar nota</button>}
+              {vm.podeBaixar && (
+                <BotaoAcao className="btn" carregando={vm.baixando} textoCarregando="Baixando…" onClick={() => void vm.baixarXml()}><Icone nome="download" />Baixar XML</BotaoAcao>
+              )}
+              {vm.podeCorrigir && <button type="button" className="btn btn-primary" onClick={() => corrigir(n)}><Icone nome="lapis" />Corrigir e reenviar</button>}
+              <button type="button" className="btn btn-outline" onClick={fechar}>Fechar</button>
+            </>
+          )}
+        </footer>
+      </div>
+    </div>
+  );
+}

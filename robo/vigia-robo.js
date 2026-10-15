@@ -994,6 +994,10 @@ async function iniciar() {
   if (process.env.ROBO_NA_NUVEM) {
     try { require('./fgts-digital').iniciarFgtsDigital(db, log, avisos); }
     catch (err) { log('FGTS Digital desligado:', err.message); }
+    // A NFS-e dos honorários (15/10/2026): o nads pede em nfseEmissoes, o robô emite em Taiobeiras (E&L) com o mesmo
+    // certificado do escritório. Sem certificado, token ou config/nfse, fica desligado e diz por quê em robo/nfse.
+    try { require('./nfse').iniciarNfse(db, log); }
+    catch (err) { log('NFS-e desligada:', err.message); }
   }
   // Os dois abaixo mandam e-mail pra CLIENTE e vêm desligados: quem liga é o
   // admin em Pendências › Configurações › Automático. Passam pelo mesmo freio
