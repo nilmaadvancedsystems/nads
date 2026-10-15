@@ -6,7 +6,7 @@
 // Extrator), o Próximo confere e marca todos os meses que faltam de uma vez; senão, vai mês a mês.
 // O período fica prometido: gravado em cada mês (execucao.periodo); abrir a empresa num desses meses leva de
 // volta ao período, e só dá para encerrar quando todos os meses dele estiverem concluídos.
-import { empresas, extrator, tarefas as t } from '@nads/core';
+import { clientes as cl, empresas, extrator, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -18,6 +18,7 @@ import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../comum/desenvolvimento
 import { useDepartamentoDaTela } from '../../casca/departamento';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { apagarTiques } from './useChecklistDaFolha';
+import { guardadosQueCasam } from '../../../../comum/guardado';
 
 /**
  * Onde cada aplicativo mora. O Extratudo vem junto no site da Tarefas (mesmo endereço: o login do Entregas
@@ -118,6 +119,32 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       if (!exc || exc.adicionadas?.includes('creditor')) continue;
       const a = t.adicionarEtapa(exc, 'creditor', 'Cadastro: liquidação de cobrança', op.nome, new Date());
       repo.gravar(a.execucao, a.evento);
+    }
+  });
+  /**
+   * O balancete diz em quais meses uma etapa entra (Vitor, 15/10/2026: os adiantamentos só com saldo no dinâmico). Só
+   * os meses que ele cobre; a etapa já feita no mês não sai.
+   */
+  function ajustarPeloBalancete(b: { etapa: string; cobertos: readonly string[]; com: readonly string[]; motivo: string }) {
+    if (!carregada || dev) return;
+    for (const c of meses) {
+      const exc = exDe[c];
+      if (!exc || !b.cobertos.includes(c)) continue;
+      const entra = b.com.includes(c) || !!t.estadoDa(exc, b.etapa);
+      const m = t.etapaPeloBalancete(exc, b.etapa, entra, b.motivo, op.nome, new Date());
+      if (m) repo.gravar(m.execucao, m.evento);
+    }
+  }
+  // os adiantamentos pelo balancete dinâmico já importado em Clientes (o guardado neste navegador), sem precisar abrir o
+  // Clientes de novo (Vitor, 15/10/2026: "a 58 não tem adiantamento de clientes e você me pedindo")
+  useEffect(() => {
+    if (dev || !carregada || !empresa) return;
+    const quem = 'clientes|' + String(empresa.codigo ?? empresa.nome) + '|';
+    const din = guardadosQueCasam(k => k.startsWith(quem) && k.endsWith('|dinamico'))[0] as { d?: cl.BalanceteDinamico } | undefined;
+    if (!din?.d) return;
+    for (const [etapa, de, nome] of [['adiantamento-fornecedores', 'fornecedores', 'Adiantamento a fornecedores'], ['adiantamento-clientes', 'clientes', 'Adiantamento de clientes']] as const) {
+      const a = cl.adiantamentoNoDinamico(din.d, meses, de);
+      ajustarPeloBalancete({ etapa, ...a, motivo: (a.com.length ? nome + ' com saldo' : 'Sem ' + nome.toLowerCase()) + ' no balancete dinâmico' });
     }
   });
   const [aviso, setAviso] = useState<string | null>(null);
@@ -461,20 +488,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
      * O razão do caixa importado: o Creditor entra nos meses do período com liquidação de cobrança no caixa
      * (CRÉD.LIQ.COBRANÇA) e sai dos outros, se ainda não foi feito (Vitor, 05/10/2026). Devolve os meses em que entrou.
      */
-    /**
-     * O balancete diz em quais meses uma etapa entra (Vitor, 15/10/2026: o Adiantamento a fornecedores só com saldo no
-     * dinâmico). Só os meses que ele cobre; a etapa já feita no mês não sai.
-     */
-    ajustarPeloBalancete: (b: { etapa: string; cobertos: readonly string[]; com: readonly string[]; motivo: string }) => {
-      if (carregando || dev) return;
-      for (const c of meses) {
-        const exc = exDe[c];
-        if (!exc || !b.cobertos.includes(c)) continue;
-        const entra = b.com.includes(c) || !!t.estadoDa(exc, b.etapa);
-        const m = t.etapaPeloBalancete(exc, b.etapa, entra, b.motivo, op.nome, new Date());
-        if (m) repo.gravar(m.execucao, m.evento);
-      }
-    },
+    ajustarPeloBalancete,
     ajustarCreditor: (comLiquidacao: readonly string[]): string[] => {
       if (carregando) return [];
       const entrou: string[] = [];
