@@ -202,3 +202,4 @@ export function andamentoDaNota(n: NotaFiscal, agora: Date): string {
   if (n.status === 'cancelamento-pedido') return 'Pedindo o cancelamento à prefeitura…';
   return '';
 }
+export * from './danfse';

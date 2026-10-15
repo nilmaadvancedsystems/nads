@@ -4475,3 +4475,7 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .sieg-situacao-chip.ok b{color:var(--success);}
 .sieg-situacao-chip.aviso{border-color:color-mix(in srgb,var(--warn) 45%,var(--border));}
 .sieg-situacao-chip.aviso b{color:var(--warn);}
+.nf-escolhido{flex:1;min-width:0;font-size:18px;font-weight:500;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:8px 0;}
+.nf-escolhido b{font-weight:700;font-variant-numeric:tabular-nums;}
+.nf-achado-codigo{flex:none;min-width:44px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink);}
+.nf-achados .popover-item.nf-ativo{background:var(--hover-bg);}

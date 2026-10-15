@@ -42,36 +42,45 @@ export function JanelaNovaNota({ fechar, nota }: { fechar: () => void; nota?: nf
         </header>
 
         <div className="registro-corpo">
-          {/* o tomador em destaque: o cliente do escritório preenche o resto com o que o nads já tem */}
-          <div className="registro-busca">
-            <Icone nome="search" />
-            <input type="text" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} placeholder="Buscar o cliente por nome ou código" autoFocus aria-label="Buscar o cliente" autoComplete="off"
-              onKeyDown={e => { if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey && vm.achados.length) void vm.escolher(vm.achados[0]); }} />
-          </div>
-          {vm.achados.length > 0 && (
-            <ul className="nf-achados" role="listbox" aria-label="Clientes encontrados">
-              {vm.achados.map(c => (
-                <li key={c.nome + "|" + c.codigo}>
-                  <button type="button" className="popover-item" role="option" aria-selected={false} onClick={() => void vm.escolher(c)}>
-                    <span className="popover-texto">{c.nome}</span>
-                    <span className="popover-dica">{c.codigo ?? '—'}</span>
+          {/* o tomador em destaque: a busca do cliente do escritório (código do ERP ou parte do nome); ao escolher, o nads
+              preenche o nome, o CPF/CNPJ, o e-mail, o telefone e busca o endereço na Receita */}
+          {vm.escolhido ? (
+            <div className="registro-busca">
+              <Icone nome="briefcase" />
+              <span className="nf-escolhido"><b>{vm.escolhido.codigo ?? '—'}</b> · {vm.escolhido.nome}</span>
+              <button type="button" className="icon-btn icon-btn-sm" onClick={vm.tirarCliente} aria-label="Trocar o cliente" title="Trocar o cliente"><Icone nome="x" /></button>
+            </div>
+          ) : (
+            <div className="registro-busca">
+              <Icone nome="search" />
+              <input type="text" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} placeholder="Cliente: código do ERP ou nome" autoFocus aria-label="Buscar o cliente por código ou nome" autoComplete="off"
+                role="combobox" aria-expanded={vm.listaVisivel} aria-controls="nf-clientes"
+                onKeyDown={e => {
+                  if (!vm.listaVisivel) return;
+                  if (e.key === 'ArrowDown') { e.preventDefault(); vm.mover(1); }
+                  else if (e.key === 'ArrowUp') { e.preventDefault(); vm.mover(-1); }
+                  else if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); vm.escolherDestacado(); }
+                  else if (e.key === 'Escape') { e.preventDefault(); vm.fecharLista(); }
+                }} />
+            </div>
+          )}
+          {!vm.escolhido && vm.listaVisivel && (
+            <ul className="nf-achados" id="nf-clientes" role="listbox" aria-label="Clientes encontrados">
+              {vm.achados.map((c, i) => (
+                <li key={c.empresa.nome + '|' + c.empresa.codigo}>
+                  <button type="button" className={'popover-item' + (i === vm.ativo ? ' nf-ativo' : '')} role="option" aria-selected={i === vm.ativo} tabIndex={-1}
+                    onMouseEnter={() => vm.setAtivo(i)} onClick={() => void vm.escolher(c.empresa)}>
+                    <span className="nf-achado-codigo">{c.empresa.codigo ?? '—'}</span>
+                    <span className="popover-texto">{c.empresa.nome}</span>
+                    {c.documento && <span className="popover-dica">{c.documento}</span>}
                   </button>
                 </li>
               ))}
             </ul>
           )}
           {vm.escolhido
-            ? (
-              <div className="registro-receita">
-                <div className="registro-receita-topo">
-                  <b>{vm.escolhido.nome}</b>
-                  <span className="badge badge-neutral">{vm.escolhido.codigo != null ? 'Código ' + vm.escolhido.codigo : 'Sem código'}</span>
-                  <button type="button" className="icon-btn icon-btn-sm" onClick={vm.tirarCliente} aria-label="Tirar o cliente" title="Tirar o cliente (digitar à mão)"><Icone nome="x" /></button>
-                </div>
-                <span className="fraco">{vm.lendoCliente ? 'Lendo o que o nads tem do cliente…' : 'Do cadastro do escritório. Pode ajustar abaixo.'}</span>
-              </div>
-            )
-            : !vm.busca && <p className="registro-dica">Sem cliente na lista, preencha o CPF ou CNPJ e o nome abaixo.</p>}
+            ? vm.lendoCliente && <p className="registro-dica">Lendo o que o nads tem do cliente…</p>
+            : !vm.busca && <p className="registro-dica">Digite o código ou o nome do cliente. Quem não é cliente: preencha o CPF ou CNPJ e o nome abaixo.</p>}
 
           <div className="registro-props">
             <Propriedade icone="hash" rotulo="CPF ou CNPJ">
