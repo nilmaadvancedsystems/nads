@@ -15,6 +15,7 @@ import { ROTULO_DO_RELATORIO, type VmPainelDoFiscal } from '../usePainelDoFiscal
 import { animarPainel } from './animarPainel';
 import { GuiaParaSubir } from './GuiaParaSubir';
 import { SiegDaEtapa } from './SiegDaEtapa';
+import { SintegraDaEtapa } from '../../fiscal/sintegra/SintegraDaEtapa';
 
 const { reais } = formatos;
 type Formato = 'reais' | 'int';
@@ -858,14 +859,17 @@ function Corpo({ painel, vm, codigo, competencia, importar, valores, informar, a
     case 'folha-total':
       return <FolhaTotal valor={valores?.folha ?? null} informar={informar ? v => informar('folha', v) : undefined} />;
     case 'entradas-sieg':
-      if (!vm.entradas.qtd) return vazio('entradas');
+      // o leitor do SINTEGRA (15/10/2026) vem sempre; a contagem SIEG x Alterdata, com as entradas importadas
       return (
         <>
+          {!vm.entradas.qtd ? vazio('entradas') : <>
           <Rank linhas={[
             { chave: 'sieg', nome: 'Recebidas no SIEG (NF-e)', valor: vm.sieg?.recebidasNFe || 0, texto: vm.sieg ? String(vm.sieg.recebidasNFe) : '—', cor: 'var(--ink-faint)' },
             { chave: 'alt', nome: 'Entradas no Alterdata', valor: vm.entradas.qtd, texto: String(vm.entradas.qtd) },
           ]} />
           <Veredito sieg={vm.sieg?.recebidasNFe ?? null} importadas={vm.entradas.qtd} oQue="entradas" />
+          </>}
+          <SintegraDaEtapa codigo={codigo} competencia={competencia} />
         </>
       );
     case 'iss-retido':

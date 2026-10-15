@@ -48,6 +48,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     // a REINF (o fluxo do Notion do Heverton), logo abaixo da Visão geral
     { id: 'reinf', rotulo: 'REINF', icone: 'fileUp', titulo: 'Fiscal — REINF' },
     { id: 'paradas', rotulo: 'Paradas', icone: 'alert', titulo: 'Fiscal — etapas paradas' },
+    // o leitor do SINTEGRA (Vitor, 15/10/2026: "montar um leitor de sintegra")
+    { id: 'sintegra', rotulo: 'SINTEGRA', icone: 'fileText', titulo: 'Fiscal — leitor do SINTEGRA' },
   ] },
   // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
   // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas

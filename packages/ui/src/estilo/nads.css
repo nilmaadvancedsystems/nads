@@ -4343,3 +4343,16 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 .dp-barras li:nth-child(5) .dp-barra > span{animation-delay:200ms;}
 .dp-barras li:nth-child(n+6) .dp-barra > span{animation-delay:250ms;}
 .fgts-barra > span,.dp-painel .tarefas-barra > span{transition:width .5s cubic-bezier(.23,1,.32,1);}
+
+/* o leitor do SINTEGRA (Fiscal › SINTEGRA e o item "Entradas x SINTEGRA" da rotina, 15/10/2026) */
+.sintegra{display:flex;flex-direction:column;gap:12px;}
+.sintegra-topo{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.sintegra-topo .hint{margin:0;}
+.sintegra-vazio{margin:0;}
+.sintegra-numeros{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));}
+.sintegra-numeros .stat .hint{margin:2px 0 0;}
+.sintegra-falta .stat-value{color:var(--danger);}
+.sintegra-tabela caption{caption-side:top;text-align:left;font-weight:600;font-size:13px;padding:0 0 6px;}
+.sintegra-linha-dif td{background:var(--danger-soft);}
+.sintegra-corpo{padding:16px;}
+.sintegra-na-etapa{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
