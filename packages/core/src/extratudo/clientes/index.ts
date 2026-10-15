@@ -227,9 +227,10 @@ function razaoGuardado(d: unknown): RazaoDaMarca | null {
         ...(i.interno === true ? { interno: true } : {}),
         ...(i.digitado === true ? { digitado: true } : {}),
         ...(typeof i.conta === 'string' && i.conta ? { conta: i.conta } : {}),
-        status: i.status === 'aberto' || i.status === 'pagamento' || i.status === 'devolucao' ? i.status : (i.valor as number) > 0 ? 'aberto' as const : 'pagamento' as const,
+        status: i.status === 'aberto' || i.status === 'pagamento' || i.status === 'devolucao' || i.status === 'anterior' ? i.status : (i.valor as number) > 0 ? 'aberto' as const : 'pagamento' as const,
       })) : [],
     ...(o.manual === true ? { manual: true } : {}),
+    ...(Array.isArray(o.participantes) ? { participantes: o.participantes.filter((x): x is string => typeof x === 'string') } : {}),
   };
 }
 

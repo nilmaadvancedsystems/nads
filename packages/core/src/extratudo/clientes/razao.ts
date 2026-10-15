@@ -5,6 +5,7 @@
 // como duplicidade. As devoluções abatem o saldo, mas não dizem de qual nota são. Vale o que foi lançado até o fim do mês.
 import { reais } from '../../formatos';
 import type { LancamentoDoRazao, RazaoDaConta } from '../../tarefas/regras/razao';
+import { mesmoNomeDeCliente } from '../creditor/regras/clientes';
 
 /** Uma nota de venda do cliente no razão: vendido, recebido e o que ficou em aberto (positivo = o cliente deve). */
 export interface NotaDoCliente { nf: string; data: string; vendido: number; recebido: number; aberto: number }
@@ -23,6 +24,14 @@ export interface RazaoConferido {
   duplicados: RecebimentoDuplicado[];
   /** recebimentos que citam uma nota que não está no razão (vendida antes do começo dele) ou nenhuma */
   semNota: { data: string; valor: number; historico: string; conta: string }[];
+  /**
+   * o saldo anterior (antes do primeiro lançamento; positivo = devedor) e os recebimentos sem nota que o pagaram (Vitor,
+   * 15/10/2026: "às vezes é apenas o pagamento zerando o saldo anterior… então não está avulso")
+   */
+  anterior: number;
+  pagaAnterior: { data: string; valor: number; historico: string; conta: string }[];
+  /** os nomes dos participantes nos históricos (a quem as notas e os recebimentos se referem) */
+  participantes: string[];
   /** o saldo no fim do mês pelo que foi achado (positivo = devedor) */
   saldo: number;
   /** o saldo da coluna Saldo do razão no fim do mês (positivo = devedor); null = sem lançamento até lá */
@@ -82,6 +91,42 @@ function tipoDe(l: LancamentoDoRazao, lado: LadoDaConta): Tipo {
   return 'outro';
 }
 
+/**
+ * O nome do participante no histórico (Vitor, 15/10/2026: "não olhe pelo saldo, olhe pelo nome do participante nas
+ * descrições das notas"): depois do CNPJ/CPF da nota ("…nº - 609-13179251/0001-27-NOME"), no recebimento ("Recebimento de
+ * clientes 607 - NOME") e no pagamento ("Pagto. de NOME").
+ */
+export function participanteDoHistorico(h: string): string | null {
+  const limpo = (s: string | undefined) => {
+    const n = (s || '').replace(/\s+/g, ' ').trim();
+    return /[a-z]{3}/i.test(n) && !/^dup\b/i.test(n) ? n : null;
+  };
+  const doc = /(?:^|[\s-])\d{1,15}-(?:\d{11,14}|\d{2}\.?\d{3}\.?\d{3}\/\d{4}-\d{2}|\d{3}\.?\d{3}\.?\d{3}-\d{2})-\s*(.+)$/.exec(h)?.[1];
+  if (limpo(doc)) return limpo(doc);
+  const rec = /receb\w*\s+de\s+clientes?\s+[\w/.]+\s*-\s*(.+)$/i.exec(h)?.[1];
+  if (limpo(rec)) return limpo(rec);
+  return limpo(/\bpagto\.?\s+de\s+(.+)$/i.exec(h)?.[1]);
+}
+
+/** Os participantes do razão (sem repetir o mesmo nome). */
+function participantesDoRazao(ls: readonly LancamentoDoRazao[]): string[] {
+  const nomes: string[] = [];
+  for (const l of ls) {
+    const p = participanteDoHistorico(l.historico);
+    if (p && !nomes.some(n => mesmoNomeDeCliente(n, p))) nomes.push(p);
+  }
+  return nomes.slice(0, 10);
+}
+
+/**
+ * O razão é de outra conta? Pelos participantes: nenhum deles é o da conta (o nome do balancete). Sem participante no
+ * razão, não dá para saber (null). Devolve o nome que apareceu (para o aviso).
+ */
+export function participanteDeOutraConta(participantes: readonly string[] | undefined, nomeDaConta: string): string | null {
+  if (!participantes?.length || !nomeDaConta.trim()) return null;
+  return participantes.some(p => mesmoNomeDeCliente(p, nomeDaConta)) ? null : participantes[0];
+}
+
 /** O fim do mês ('aaaa-mm' → 'aaaa-mm-31', vale para comparar datas 'aaaa-mm-dd'). */
 const fimDoMes = (mes: string) => mes + '-31';
 
@@ -98,7 +143,11 @@ export function conferirRazaoDoCliente(razao: RazaoDaConta, mes: string, lado: L
   const duplicados: RecebimentoDuplicado[] = [];
   const semNota: RazaoConferido['semNota'] = [];
   const vistos = new Map<string, { conta: string; dup?: RecebimentoDuplicado }>();
-  let saldo = 0;
+  // o saldo anterior entra no saldo; o recebimento sem nota do razão paga primeiro o que ficou dele
+  const anterior = centavos(-sinal * (razao.saldoInicial || 0));
+  let restante = Math.max(0, anterior);
+  const pagaAnterior: RazaoConferido['pagaAnterior'] = [];
+  let saldo = anterior;
   const nota = (nf: string, data: string) => {
     let n = notas.get(nf);
     if (!n) { n = { nf, data, vendido: 0, recebido: 0, aberto: 0 }; notas.set(nf, n); }
@@ -122,7 +171,12 @@ export function conferirRazaoDoCliente(razao: RazaoDaConta, mes: string, lado: L
       vistos.set(chave, { conta });
       saldo -= valor;
       if (nf && notas.has(nf)) nota(nf, l.data).recebido = centavos(nota(nf, l.data).recebido + valor);
-      // a conta do lançamento (o banco ou o caixa por onde entrou): o cliente precisa dela para achar o pagamento
+      // sem a nota no razão: paga o saldo anterior, se cabe nele; senão, é o pagamento solto (com a conta por onde entrou:
+      // o cliente precisa dela para achar o pagamento)
+      else if (restante > 0.005 && valor > 0 && valor <= restante + 0.005) {
+        restante = centavos(restante - valor);
+        pagaAnterior.push({ data: l.data, valor, historico: l.historico, conta: (l.nomeContrapartida || l.contrapartida || '').trim() });
+      }
       else semNota.push({ data: l.data, valor, historico: l.historico, conta: (l.nomeContrapartida || l.contrapartida || '').trim() });
       continue;
     }
@@ -136,7 +190,7 @@ export function conferirRazaoDoCliente(razao: RazaoDaConta, mes: string, lado: L
   return {
     emAberto: todas.filter(n => n.aberto > 0 && !zero(n.aberto)),
     aMais: todas.filter(n => n.aberto < 0 && !zero(n.aberto)),
-    devolucoes, duplicados, semNota,
+    devolucoes, duplicados, semNota, anterior, pagaAnterior, participantes: participantesDoRazao(ls),
     saldo: centavos(saldo),
     saldoDoRazao: ultimo ? centavos(-sinal * ultimo.saldo) : null,
   };
@@ -153,6 +207,8 @@ export interface RazaoDaMarca {
   itens: ItemDoRazao[];
   /** sem razão importado: a relação só com os lançamentos digitados à mão (Vitor, 08/10/2026) */
   manual?: boolean;
+  /** os participantes nos históricos do razão: confere se o razão é desta conta (participanteDeOutraConta) */
+  participantes?: string[];
 }
 
 /**
@@ -172,11 +228,14 @@ export interface ItemDoRazao {
   /** digitado à mão na etapa (Vitor, 08/10/2026: "a opção de digitar manualmente caso não queira upar o razão") */
   digitado?: boolean;
 }
-export type StatusDoItem = 'aberto' | 'pagamento' | 'devolucao';
-export const ROTULO_DO_STATUS: Record<StatusDoItem, string> = { aberto: 'Em aberto', pagamento: 'Apenas pagamento', devolucao: 'Devolução' };
+export type StatusDoItem = 'aberto' | 'pagamento' | 'devolucao' | 'anterior';
+export const ROTULO_DO_STATUS: Record<StatusDoItem, string> = { aberto: 'Em aberto', pagamento: 'Apenas pagamento', devolucao: 'Devolução', anterior: 'Paga o saldo anterior' };
 
 const dataBR = (d: string) => d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4);
 const brl = reais;
+
+/** O que ficou do saldo anterior depois dos recebimentos que o pagaram. */
+const saldoAnteriorEmAberto = (r: RazaoConferido) => centavos(Math.max(0, r.anterior) - r.pagaAnterior.reduce((t, x) => t + x.valor, 0));
 
 /** A relação em ordem de data: as notas em aberto, os recebimentos soltos (sem nota), as devoluções e as duplicidades. */
 function itensDoRazao(r: RazaoConferido, lado: LadoDaConta): ItemDoRazao[] {
@@ -187,6 +246,10 @@ function itensDoRazao(r: RazaoConferido, lado: LadoDaConta): ItemDoRazao[] {
     ...r.emAberto.map(n => item(n.data, n.nf, venda + (n.recebido ? ' (' + vendido + ' ' + brl(n.vendido) + ', ' + recebido + ' ' + brl(n.recebido) + ')' : ''), n.aberto, 'aberto')),
     ...r.aMais.map(n => item(n.data, n.nf, recebida + ' a mais', n.aberto, 'pagamento')),
     ...r.semNota.map(x => item(x.data, '', x.historico, centavos(-x.valor), 'pagamento', false, x.conta)),
+    // o recebimento que zerou o saldo anterior: não é avulso (só para o escritório ver)
+    ...r.pagaAnterior.map(x => item(x.data, '', x.historico, centavos(-x.valor), 'anterior', true, x.conta)),
+    // o saldo anterior que nenhum recebimento pagou: em aberto, de antes do razão
+    ...(saldoAnteriorEmAberto(r) > 0.005 ? [item('', '', 'Saldo anterior (antes do primeiro lançamento do razão)', saldoAnteriorEmAberto(r), 'aberto')] : []),
     ...r.devolucoes.map(d => item(d.data, d.nf, 'Devolução' + (d.notas.length ? ' (cita NF ' + d.notas.join(', ') + ')' : ''), centavos(-d.valor), 'devolucao')),
     ...r.duplicados.map(d => item(d.data, d.nf, recebimento + ' em duplicidade: ' + d.contas.join(' e '), centavos(d.valor), 'pagamento', true)),
   ].sort((a, b) => a.data.localeCompare(b.data));
@@ -205,6 +268,7 @@ export function razaoDaMarca(arquivo: string, r: RazaoConferido, lado: LadoDaCon
     devolucoes: centavos(r.devolucoes.reduce((t, d) => t + d.valor, 0)),
     duplicadas: [...new Set(r.duplicados.map(d => d.nf).filter(Boolean))],
     itens: itensDoRazao(r, lado),
+    ...(r.participantes.length ? { participantes: r.participantes } : {}),
   };
 }
 

@@ -161,8 +161,8 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                 </td>
                 <td className="wrap">
                   {l.nome}{l.doMesAnterior && <> <span className="badge badge-neutral" title="Conferido no mês anterior: revise">do mês anterior</span></>}
-                  {/* o razão que não bate com o balancete (as notas ficam na relação embaixo; Vitor, 07/10/2026) */}
-                  {l.razao?.naoBate && <span className="hint ext-neg" style={{ display: 'block', marginTop: 2 }}>O razão fecha em {l.razao.naoBate}: confira se é desta conta</span>}
+                  {/* o razão de outro participante (pelo nome nos históricos, não pelo saldo; Vitor, 15/10/2026) */}
+                  {l.razao?.deOutro && <span className="hint ext-neg" style={{ display: 'block', marginTop: 2 }}>O razão é de {l.razao.deOutro}: confira se é desta conta</span>}
                   {/* o conferido mostra o que vai para o cliente (o que foi adicionado no "+" de cada linha da relação, em texto: "Questionar: NF 9971 · NF 10111"; Vitor, 07/10/2026) */}
                   {/* sem a dica do + (Vitor, 15/10/2026: "remove isso") */}
                   {l.situacao === 'conferido' && l.perguntar && (

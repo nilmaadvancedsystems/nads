@@ -195,7 +195,8 @@ export function useFornecedores() {
           notas: cl.textoDasNotas(l.razao.notas),
           devolucoes: l.razao.devolucoes ? reais(l.razao.devolucoes) : '',
           duplicadas: l.razao.duplicadas.map(nf => 'NF ' + nf).join(', '),
-          naoBate: Math.abs(l.razao.saldo - l.saldo) >= 0.005 && Math.abs(l.razao.saldo) >= 0.005 ? reais(l.razao.saldo) : '',
+          // é desta conta? pelo nome do participante nos históricos, não pelo saldo (Vitor, 15/10/2026)
+          deOutro: cl.participanteDeOutraConta(l.razao.participantes, l.nome) || '',
           zerado: Math.abs(l.razao.saldo) < 0.005 && !l.razao.notas.length,
           // a mini tabela embaixo do fornecedor: as notas em aberto e o que ficou solto
           itens: l.razao.itens.map(i => ({ chave: i.interno ? '' : cl.chaveDoItem(i), marcado: !i.interno && cl.itensEscolhidos(l.razao, l.perguntar).includes(i), data: i.data ? i.data.slice(8, 10) + '/' + i.data.slice(5, 7) + '/' + i.data.slice(0, 4) : '', nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor), abate: i.valor < 0, status: i.status, rotulo: cl.ROTULO_DO_STATUS[i.status], digitado: !!i.digitado,
