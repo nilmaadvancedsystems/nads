@@ -116,8 +116,9 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
       return {
         mes: m.mes, rotulo: t.rotuloNumericoCompetencia(m.mes), foraDoRazao: m.foraDoRazao,
         provisao: m.foraDoRazao ? '' : reais(m.provisao), guia: m.guia ? reais(m.guia.principal) : '',
-        // o total do DARF inteiro (com o IRRF e a retenção que vêm junto, e a multa e os juros)
-        totalDaGuia: m.guia ? reais(m.guia.documento ?? m.guia.total) : '',
+        // o total do DARF inteiro (com o IRRF e a retenção que vêm junto, e a multa e os juros); a guia lida antes de 15/10/2026
+        // não tem: fica vazio (importar o PDF de novo), para não mostrar só o INSS como se fosse o total
+        totalDaGuia: m.guia?.documento != null ? reais(m.guia.documento) : '',
         diferenca: m.foraDoRazao || !m.guia ? '' : reais(m.diferenca), bate: Math.abs(m.diferenca) < 0.01,
         // a guia do mês: baixada, sem a baixa, paga depois do período, ou o PDF não trouxe
         baixa: !m.guia ? 'sem-guia' as const : baixa ? (baixa.lancamento ? 'ok' as const : 'falta' as const) : m.guia.pagaEm > ultimoDia || !m.guia.pagaEm ? 'depois' as const : 'fora' as const,
