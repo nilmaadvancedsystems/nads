@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  adiantamentoAFornecedoresNoDinamico, assinaturaDoEnvio, clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
+  adiantamentoNoDinamico, assinaturaDoEnvio, clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
 } from './index';
 
 // o formato do balancete dinâmico do Alterdata (292, bdinamico.xls)
@@ -97,13 +97,18 @@ describe('o avançar trava até mandar o que vai ser questionado (08/10/2026)', 
   });
 });
 
-describe('adiantamento a fornecedores no dinâmico (15/10/2026)', () => {
+describe('adiantamento a fornecedores e de clientes no dinâmico (15/10/2026)', () => {
   const linha = (descricao: string, saldos: Record<string, number>) => ({ codigo: '1', classificacao: '1.1.4.01', descricao, saldoAnterior: 0, saldos });
   it('com saldo no mês ou no de antes, entra; sem a conta ou zerada, não; só os meses que o dinâmico tem', () => {
     const d = { meses: ['2026-01', '2026-02', '2026-03'], linhas: [linha('ADIANTAMENTO A FORNECEDORES', { '2026-01': 0, '2026-02': 500, '2026-03': 0 })] };
-    expect(adiantamentoAFornecedoresNoDinamico(d, ['2026-01', '2026-02', '2026-03', '2026-04'])).toEqual({ cobertos: ['2026-01', '2026-02', '2026-03'], com: ['2026-02', '2026-03'] });
+    expect(adiantamentoNoDinamico(d, ['2026-01', '2026-02', '2026-03', '2026-04'], 'fornecedores')).toEqual({ cobertos: ['2026-01', '2026-02', '2026-03'], com: ['2026-02', '2026-03'] });
     const sem = { meses: ['2026-01'], linhas: [linha('CLIENTES', { '2026-01': 100 }), linha('Adiantamentos a Fornecedores', { '2026-01': 0 })] };
-    expect(adiantamentoAFornecedoresNoDinamico(sem, ['2026-01']).com).toEqual([]);
-    expect(adiantamentoAFornecedoresNoDinamico({ meses: ['2026-01'], linhas: [linha('ADTO. A FORNECEDORES', { '2026-01': 10 })] }, ['2026-01']).com).toEqual(['2026-01']);
+    expect(adiantamentoNoDinamico(sem, ['2026-01'], 'fornecedores').com).toEqual([]);
+    expect(adiantamentoNoDinamico({ meses: ['2026-01'], linhas: [linha('ADTO. A FORNECEDORES', { '2026-01': 10 })] }, ['2026-01'], 'fornecedores').com).toEqual(['2026-01']);
+    // o de clientes olha a conta dele (a de fornecedores não conta)
+    const ambos = { meses: ['2026-01'], linhas: [linha('ADIANTAMENTO DE CLIENTES', { '2026-01': -300 }), linha('ADIANTAMENTO A FORNECEDORES', { '2026-01': 0 })] };
+    expect(adiantamentoNoDinamico(ambos, ['2026-01'], 'clientes').com).toEqual(['2026-01']);
+    expect(adiantamentoNoDinamico(ambos, ['2026-01'], 'fornecedores').com).toEqual([]);
+    expect(adiantamentoNoDinamico({ meses: ['2026-01'], linhas: [linha('CLIENTES', { '2026-01': 100 })] }, ['2026-01'], 'clientes').com).toEqual([]);
   });
 });
