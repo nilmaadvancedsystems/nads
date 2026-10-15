@@ -187,10 +187,14 @@ export function useFornecedores() {
 
   return {
     mes: rotuloMes,
-    tela: telas.includes(tela) ? tela : 'arquivos',
-    telas: telas.map((t, k) => ({ valor: t, rotulo: t === 'arquivos' ? 'Arquivos' : t === 'fornecedores' ? 'Fornecedores' : 'Envio', oculta: t === 'envio' && !algumRazao, travada: k > alcancada ? 'Chega aqui pelo Próximo' : false as const })),
-    irPara: (t: TelaFornecedores) => { if (telas.indexOf(t) <= alcancada) setTela(t); },
-    temProxima: i < telas.length - 1 && (telas[i] !== 'fornecedores' || algumRazao),
+    // sem questionamento, o Envio fica travado (Vitor, 15/10/2026): quem estava nele volta para a lista
+    tela: telas.includes(tela) ? (tela === 'envio' && !paraEnviar.length ? 'fornecedores' : tela) : 'arquivos',
+    telas: telas.map((t, k) => ({ valor: t, rotulo: t === 'arquivos' ? 'Arquivos' : t === 'fornecedores' ? 'Fornecedores' : 'Envio', oculta: t === 'envio' && !algumRazao, travada: t === 'envio' && !paraEnviar.length ? 'Nada para questionar' : k > alcancada ? 'Chega aqui pelo Próximo' : false as const })),
+    irPara: (t: TelaFornecedores) => { if (telas.indexOf(t) <= alcancada && (t !== 'envio' || paraEnviar.length)) setTela(t); },
+    // sem questionamento, sem o Próximo para o Envio (Vitor, 15/10/2026)
+    temProxima: i < telas.length - 1 && (telas[i] !== 'fornecedores' || (algumRazao && paraEnviar.length > 0)),
+    /** na lista, tudo certo e nada para questionar: segue pela seta da próxima etapa, lá em cima */
+    semQuestionamento: tela === 'fornecedores' && !faltam.length && !paraEnviar.length,
     podeSeguir,
     proximo: () => { if (podeSeguir && i < telas.length - 1) setTela(telas[i + 1]); },
     /** nos Arquivos com fornecedor devedor no mês: o "Corrigi, irei reimportar" no lugar do Próximo (deu tudo ok, volta o Próximo) */

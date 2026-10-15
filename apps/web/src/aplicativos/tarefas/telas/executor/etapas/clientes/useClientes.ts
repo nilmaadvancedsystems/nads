@@ -184,10 +184,14 @@ export function useClientes() {
 
   return {
     mes: rotuloMes,
-    tela: telas.includes(tela) ? tela : 'arquivos',
-    telas: telas.map((t, k) => ({ valor: t, rotulo: t === 'arquivos' ? 'Arquivos' : t === 'clientes' ? 'Clientes' : 'Envio', oculta: t === 'envio' && !algumRazao, travada: k > alcancada ? 'Chega aqui pelo Próximo' : false as const })),
-    irPara: (t: TelaClientes) => { if (telas.indexOf(t) <= alcancada) setTela(t); },
-    temProxima: i < telas.length - 1 && (telas[i] !== 'clientes' || algumRazao),
+    // sem questionamento, o Envio fica travado (Vitor, 15/10/2026): quem estava nele volta para a lista
+    tela: telas.includes(tela) ? (tela === 'envio' && !paraEnviar.length ? 'clientes' : tela) : 'arquivos',
+    telas: telas.map((t, k) => ({ valor: t, rotulo: t === 'arquivos' ? 'Arquivos' : t === 'clientes' ? 'Clientes' : 'Envio', oculta: t === 'envio' && !algumRazao, travada: t === 'envio' && !paraEnviar.length ? 'Nada para questionar' : k > alcancada ? 'Chega aqui pelo Próximo' : false as const })),
+    irPara: (t: TelaClientes) => { if (telas.indexOf(t) <= alcancada && (t !== 'envio' || paraEnviar.length)) setTela(t); },
+    // sem questionamento, sem o Próximo para o Envio (Vitor, 15/10/2026)
+    temProxima: i < telas.length - 1 && (telas[i] !== 'clientes' || (algumRazao && paraEnviar.length > 0)),
+    /** na lista, tudo certo e nada para questionar: segue pela seta da próxima etapa, lá em cima */
+    semQuestionamento: tela === 'clientes' && !faltam.length && !paraEnviar.length,
     podeSeguir,
     proximo: () => { if (podeSeguir && i < telas.length - 1) setTela(telas[i + 1]); },
     /** nos Arquivos com cliente credor no mês: o "Corrigi, irei reimportar" no lugar do Próximo (deu tudo ok, volta o Próximo) */
