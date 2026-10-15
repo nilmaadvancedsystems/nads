@@ -1,6 +1,6 @@
 // A janela da nota (15/10/2026: "vamos criar um emissor de notas fiscais para o financeiro"): a situação, os dados da nota
 // (número, chave de acesso, DPS, tomador, valor, data, descrição, quem pediu), os erros que a prefeitura devolveu e as ações:
-// Corrigir e reenviar (recusada), Baixar XML (autorizada) e Cancelar nota (autorizada, com o motivo e a justificativa).
+// Corrigir e reenviar (recusada), Baixar XML e Baixar DANFSe (autorizada) e Cancelar nota (autorizada, com o motivo e a justificativa).
 import { formatos, nfse } from '@nads/core';
 import { BotaoAcao, Icone, MenuSuspenso } from '@nads/ui';
 import { useEffect, type ReactNode } from 'react';
@@ -106,6 +106,9 @@ export function JanelaDaNota({ id, fechar, corrigir }: { id: string; fechar: () 
               {vm.podeCancelar && <button type="button" className="btn btn-outline" onClick={vm.abrirCancelamento}>Cancelar nota</button>}
               {vm.podeBaixar && (
                 <BotaoAcao className="btn" carregando={vm.baixando} textoCarregando="Baixando…" onClick={() => void vm.baixarXml()}><Icone nome="download" />Baixar XML</BotaoAcao>
+              )}
+              {vm.podeBaixar && (
+                <BotaoAcao className="btn" carregando={vm.baixandoDanfse} textoCarregando="Gerando…" onClick={() => void vm.baixarDanfse()}><Icone nome="download" />Baixar DANFSe</BotaoAcao>
               )}
               {vm.podeCorrigir && <button type="button" className="btn btn-primary" onClick={() => corrigir(n)}><Icone nome="lapis" />Corrigir e reenviar</button>}
               <button type="button" className="btn btn-outline" onClick={fechar}>Fechar</button>

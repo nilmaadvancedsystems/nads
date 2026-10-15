@@ -1,8 +1,9 @@
 // ViewModel da janela da nota (15/10/2026: "vamos criar um emissor de notas fiscais para o financeiro"): a nota ao vivo (o
 // robô muda a situação enquanto a janela está aberta), copiar a chave de acesso, baixar o XML da autorizada e o pedido de
-// cancelamento (o motivo da NFS-e Nacional e a justificativa de pelo menos 15 letras).
+// cancelamento (o motivo da NFS-e Nacional e a justificativa de pelo menos 15 letras). Baixar a DANFSe (15/10/2026: "faz o danf
+// poder ser baixado"): o PDF do documento auxiliar, desenhado aqui no navegador a partir do XML da nota autorizada.
 import { nfse } from '@nads/core';
-import { baixarArquivo, useRetorno } from '@nads/ui';
+import { baixarArquivo, baixarBytes, useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { useOperador } from '../../casca/operador';
 import { useNfse } from '../../dados/repo';
@@ -15,6 +16,7 @@ export function useJanelaDaNota(id: string) {
   const por = useOperador().operador?.nome || '';
   const nota = repo.notas().lista.find(n => n.id === id) || null;
   const [baixando, setBaixando] = useState(false);
+  const [baixandoDanfse, setBaixandoDanfse] = useState(false);
   const [cancelando, setCancelando] = useState(false);
   const [cMotivo, setCMotivo] = useState<'1' | '2' | '9'>('1');
   const [justificativa, setJustificativa] = useState('');
@@ -45,6 +47,21 @@ export function useJanelaDaNota(id: string) {
     }
   }
 
+  /** o PDF da DANFSe v2.0: lê o XML da nota, monta os dados (core) e desenha a página (o pdf-lib e o QR só carregam aqui) */
+  async function baixarDanfse() {
+    if (!nota || baixandoDanfse) return;
+    setBaixandoDanfse(true);
+    try {
+      const dados = nfse.dadosDaDanfse(await repo.xml(nota.id));
+      const { desenharDanfse } = await import('./danfsePdf');
+      baixarBytes(await desenharDanfse(dados), 'DANFSe-' + (nota.numeroNfse || dados.numeroNfse) + '.pdf', 'application/pdf');
+    } catch (err) {
+      toast('Não consegui gerar a DANFSe: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setBaixandoDanfse(false);
+    }
+  }
+
   async function pedirCancelamento() {
     if (!nota || enviando || letras < MINIMO_DA_JUSTIFICATIVA) return;
     setEnviando(true);
@@ -69,7 +86,7 @@ export function useJanelaDaNota(id: string) {
     podeBaixar: nota?.status === 'autorizada',
     podeCancelar: nota?.status === 'autorizada' || nota?.status === 'erro-cancelamento',
     motivos: nfse.MOTIVOS_DE_CANCELAMENTO,
-    copiarChave, baixarXml, baixando,
+    copiarChave, baixarXml, baixando, baixarDanfse, baixandoDanfse,
     cancelando, abrirCancelamento: () => setCancelando(true), fecharCancelamento: () => setCancelando(false),
     cMotivo, setCMotivo, justificativa, setJustificativa, letras, enviando, pedirCancelamento,
     podePedirCancelamento: letras >= MINIMO_DA_JUSTIFICATIVA,
