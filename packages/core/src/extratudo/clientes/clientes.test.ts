@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  adiantamentoNoDinamico, assinaturaDoEnvio, clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
+  adiantamentoNoDinamico, emprestimosNoDinamico, assinaturaDoEnvio, clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
 } from './index';
 
 // o formato do balancete dinâmico do Alterdata (292, bdinamico.xls)
@@ -110,5 +110,23 @@ describe('adiantamento a fornecedores e de clientes no dinâmico (15/10/2026)', 
     expect(adiantamentoNoDinamico(ambos, ['2026-01'], 'clientes').com).toEqual(['2026-01']);
     expect(adiantamentoNoDinamico(ambos, ['2026-01'], 'fornecedores').com).toEqual([]);
     expect(adiantamentoNoDinamico({ meses: ['2026-01'], linhas: [linha('CLIENTES', { '2026-01': 100 })] }, ['2026-01'], 'clientes').com).toEqual([]);
+  });
+});
+
+describe('empréstimos no dinâmico (15/10/2026)', () => {
+  const linha = (classificacao: string, descricao: string, saldos: Record<string, number>) => ({ codigo: '1', classificacao, descricao, saldoAnterior: 0, saldos });
+  it('só o do Passivo com saldo; o empréstimo a sócios do Ativo e os juros não contam', () => {
+    const d = { meses: ['2026-01', '2026-02'], linhas: [
+      linha('1.1.5.01', 'EMPRESTIMOS A SOCIOS', { '2026-01': 900, '2026-02': 900 }),
+      linha('2.1.3', 'EMPRÉSTIMOS E FINANCIAMENTOS', { '2026-01': 0, '2026-02': -5000 }),
+      linha('4.2.1.01', 'JUROS SOBRE EMPRESTIMOS', { '2026-01': 50, '2026-02': 50 }),
+    ] };
+    expect(emprestimosNoDinamico(d, ['2026-01', '2026-02'])).toEqual({ cobertos: ['2026-01', '2026-02'], com: ['2026-02'] });
+    expect(emprestimosNoDinamico({ meses: ['2026-01'], linhas: [d.linhas[0], d.linhas[2]] }, ['2026-01']).com).toEqual([]);
+    // o cheque especial não é empréstimo, mesmo debaixo do grupo (a sintética soma ele)
+    const cheque = { meses: ['2026-08'], linhas: [linha('2.1.1.04', 'EMPRESTIMOS BANCARIOS', { '2026-08': -6000 }), linha('2.1.1.04.001', 'Banco Teste - Cheque Especial', { '2026-08': -6000 })] };
+    expect(emprestimosNoDinamico(cheque, ['2026-08']).com).toEqual([]);
+    const contrato = { meses: ['2026-08'], linhas: [...cheque.linhas, linha('2.1.1.04.002', 'Banco Teste - Capital de giro', { '2026-08': -1000 })] };
+    expect(emprestimosNoDinamico(contrato, ['2026-08']).com).toEqual(['2026-08']);
   });
 });

@@ -53,6 +53,11 @@ function gravar(chave: string, v: unknown) {
   } catch { /* sem localStorage (janela anônima, bloqueado): fica só na tela */ }
 }
 
+/** Os valores guardados cujas chaves passam no teste, do mais novo para o mais velho (ler o de outra etapa). */
+export function guardadosQueCasam(teste: (chave: string) => boolean): unknown[] {
+  return guardadas().reverse().map(g => g.chave.slice(PREFIXO.length)).filter(teste).map(k => ler<unknown>(k)).filter(v => v !== undefined);
+}
+
 /** Esquece o que está guardado na chave (e nas que começam com ela + '|'). */
 export function esquecerGuardado(chave: string) {
   try {
