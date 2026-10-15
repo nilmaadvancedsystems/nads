@@ -148,13 +148,13 @@ describe('o lançamento digitado à mão (08/10/2026)', () => {
 });
 
 describe('a nota de serviço (o número com os zeros na frente, sem "venda" no histórico)', () => {
-  it('"Pelos Serviços Prestados conf. Nota Fiscal nº - 000000000000639-…" fica em aberto como a NF 639', () => {
+  it('"Pelos Serviços Prestados conf. Nota Fiscal nº - 000000000000123-…" fica em aberto como a NF 123', () => {
     const linhas = [CAB,
-      ['VERDADEIRO', '', '10/06/2026', '00160', '75001', 'Venda de Serviços', -790, '00014', 'Pelos Serviços Prestados conf. Nota Fiscal nº - 000000000000639-' + CNPJ, -790, ''],
-      ['VERDADEIRO', '', '10/06/2026', '00160', '75001', 'Venda de Serviços', -280, '00014', 'Pelos Serviços Prestados conf. Nota Fiscal nº - 000000000000642-' + CNPJ, -1070, ''],
+      ['VERDADEIRO', '', '10/06/2026', '00160', '75001', 'Venda de Serviços', -500, '00014', 'Pelos Serviços Prestados conf. Nota Fiscal nº - 000000000000123-' + CNPJ, -500, ''],
+      ['VERDADEIRO', '', '10/06/2026', '00160', '75001', 'Venda de Serviços', -300, '00014', 'Pelos Serviços Prestados conf. Nota Fiscal nº - 000000000000124-' + CNPJ, -800, ''],
     ];
     const r = conferirRazaoDoCliente(lerRazao(linhas), '2026-08');
-    expect(r.emAberto.map(n => [n.nf, n.aberto])).toEqual([['639', 790], ['642', 280]]);
-    expect(r.saldo).toBe(1070);
+    expect(r.emAberto.map(n => [n.nf, n.aberto])).toEqual([['123', 500], ['124', 300]]);
+    expect(r.saldo).toBe(800);
   });
 });

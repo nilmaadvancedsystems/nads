@@ -34,8 +34,8 @@ const zero = (n: number) => Math.abs(n) < 0.005;
 
 /**
  * O número da nota no histórico do Alterdata: "… - 9078-05455270000100-NOME" (venda e devolução). A nota de serviço vem
- * com os zeros na frente ("Nota Fiscal nº - 000000000000639-05284593000774-…"): fica "639" (Vitor, 15/10/2026: a 11512 da
- * 58 dava "nenhuma nota em aberto").
+ * com os zeros na frente ("Nota Fiscal nº - 000000000000123-11222333000144-…"): fica "123" (Vitor, 15/10/2026: o razão do
+ * cliente com nota de serviço dava "nenhuma nota em aberto").
  */
 function nfDoHistorico(h: string): string | null {
   const n = /-\s*(\d{1,15})-\d{11,14}\b/.exec(h)?.[1];
