@@ -191,6 +191,13 @@ describe('o saldo anterior e o participante (15/10/2026)', () => {
     expect(m.itens.filter(i => i.status === 'aberto').map(i => [i.nf, i.valor])).toEqual([['', 600], ['200', 300]]);
   });
 
+  it('o recebimento de uma nota de antes do razão é conciliado, mesmo passando do saldo anterior (15/10/2026)', () => {
+    const r = conferirRazaoDoCliente(lerRazao(linhas(1200)), '2026-01');
+    expect(r.pagaAnterior.map(x => x.valor)).toEqual([1200]);
+    expect(r.semNota).toEqual([]);
+    expect(razaoDaMarca('r.xls', r).itens.map(i => i.status)).toEqual(['anterior', 'aberto']);
+  });
+
   it('é desta conta pelo nome do participante, não pelo saldo', () => {
     const m = razaoDaMarca('r.xls', conferirRazaoDoCliente(lerRazao(linhas(1000)), '2026-01'));
     expect(m.participantes).toEqual(['CLIENTE TESTE LTDA']);

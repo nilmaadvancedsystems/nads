@@ -152,6 +152,8 @@ export function conferirRazaoDoCliente(razao: RazaoDaConta, mes: string, lado: L
   let restante = Math.max(0, anterior);
   const pagaAnterior: RazaoConferido['pagaAnterior'] = [];
   let saldo = anterior;
+  // as notas vendidas (compradas) no razão: o recebimento de uma nota que não está nele é de antes (do saldo anterior)
+  const doRazao = new Set(ls.filter(l => tipoDe(l, lado) === 'venda').map(l => nfDoHistorico(l.historico)).filter((n): n is string => !!n));
   const nota = (nf: string, data: string) => {
     let n = notas.get(nf);
     if (!n) { n = { nf, data, vendido: 0, recebido: 0, aberto: 0 }; notas.set(nf, n); }
@@ -180,9 +182,10 @@ export function conferirRazaoDoCliente(razao: RazaoDaConta, mes: string, lado: L
         (n.pagos = n.pagos || []).push({ data: l.data, valor: centavos(valor) });
       }
       // sem a nota no razão: paga o saldo anterior, se cabe nele; senão, é o pagamento solto (com a conta por onde entrou:
-      // o cliente precisa dela para achar o pagamento)
-      else if (restante > 0.005 && valor > 0 && valor <= restante + 0.005) {
-        restante = centavos(restante - valor);
+      // o cliente precisa dela para achar o pagamento). O recebimento de uma nota de antes do razão é para zerar o saldo
+      // anterior: conciliado, não mexe (Vitor, 15/10/2026), mesmo passando do que sobrou dele
+      else if (anterior > 0.005 && valor > 0 && (valor <= restante + 0.005 || (!!nf && !doRazao.has(nf)))) {
+        restante = centavos(Math.max(0, restante - valor));
         pagaAnterior.push({ data: l.data, valor, historico: l.historico, conta: (l.nomeContrapartida || l.contrapartida || '').trim() });
       }
       else semNota.push({ data: l.data, valor, historico: l.historico, conta: (l.nomeContrapartida || l.contrapartida || '').trim() });
@@ -240,7 +243,7 @@ export interface ItemDoRazao {
   pagos?: { data: string; valor: number }[];
 }
 export type StatusDoItem = 'aberto' | 'pagamento' | 'devolucao' | 'anterior';
-export const ROTULO_DO_STATUS: Record<StatusDoItem, string> = { aberto: 'Em aberto', pagamento: 'Apenas pagamento', devolucao: 'Devolução', anterior: 'Paga o saldo anterior' };
+export const ROTULO_DO_STATUS: Record<StatusDoItem, string> = { aberto: 'Em aberto', pagamento: 'Apenas pagamento', devolucao: 'Devolução', anterior: 'Conciliada (saldo anterior)' };
 
 const dataBR = (d: string) => d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4);
 const brl = reais;

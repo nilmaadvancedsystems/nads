@@ -254,17 +254,8 @@ function ListaDeFornecedores({ vm }: { vm: VM }) {
                                       <tbody>
                                         {(i.baixa ? [{ ...i.baixa, selos: [] }] : i.sugestoes).map((g, j) => (
                                           <tr key={j}>
-                                            {/* o banco: só o logo (o nome na dica), para sobrar espaço (Vitor, 15/10/2026) */}
-                                            <td title={g.banco} style={{ width: 56 }}><span className="drive-candidato-logo" style={{ display: 'inline-flex' }} aria-label={g.banco}><LogoBanco banco={g.marca} cor /></span></td>
-                                            <td style={{ whiteSpace: 'nowrap', width: 96 }}>{g.data}</td>
-                                            <td className="wrap" style={{ fontSize: 12 }}>{g.historico}</td>
-                                            <td className="num" style={{ whiteSpace: 'nowrap' }}>{g.valor}</td>
-                                            <td style={{ width: 220 }}>
-                                              <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
-                                                {i.baixa ? <span className="badge badge-ok">Aceita</span> : g.selos.map(x => <span key={x.texto} className={'badge badge-' + x.tom} title={x.dica}>{x.texto}</span>)}
-                                              </span>
-                                            </td>
-                                            <td className="num" style={{ width: 48 }}>
+                                            {/* o Aceitar à esquerda do logo do banco (Vitor, 15/10/2026) */}
+                                            <td style={{ width: 40 }}>
                                               {i.baixa ? (
                                                 <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" disabled={!vm.carregado} onClick={() => vm.aceitarBaixa(l.codigo, i.chave, null)}
                                                   title="Baixa aceita. Clique para desfazer." aria-label={'Desfazer a baixa ' + (i.nf !== '—' ? 'da NF ' + i.nf : 'da nota')}>
@@ -276,6 +267,16 @@ function ListaDeFornecedores({ vm }: { vm: VM }) {
                                                   <Icone nome="check" />
                                                 </button>
                                               )}
+                                            </td>
+                                            {/* o banco: só o logo (o nome na dica), para sobrar espaço (Vitor, 15/10/2026) */}
+                                            <td title={g.banco} style={{ width: 56 }}><span className="drive-candidato-logo" style={{ display: 'inline-flex' }} aria-label={g.banco}><LogoBanco banco={g.marca} cor /></span></td>
+                                            <td style={{ whiteSpace: 'nowrap', width: 96 }}>{g.data}</td>
+                                            <td className="wrap" style={{ fontSize: 12 }}>{g.historico}</td>
+                                            <td className="num" style={{ whiteSpace: 'nowrap' }}>{g.valor}</td>
+                                            <td style={{ width: 220 }}>
+                                              <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
+                                                {i.baixa ? <span className="badge badge-ok">Aceita</span> : g.selos.map(x => <span key={x.texto} className={'badge badge-' + x.tom} title={x.dica}>{x.texto}</span>)}
+                                              </span>
                                             </td>
                                           </tr>
                                         ))}
