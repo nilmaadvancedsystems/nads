@@ -4448,3 +4448,15 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .sieg-cupons{margin:10px 0 12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));}
 .sieg-cupons-faixa{display:flex;flex-direction:column;gap:2px;font-size:15px;}
 .sieg-cupons-faixa small{font-size:11px;color:var(--ink-muted);font-weight:500;}
+/* a situação das notas na SEFAZ, pela VM (15/10/2026) */
+.sieg-situacao{display:flex;flex-direction:column;gap:10px;margin:12px 0;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface);}
+.sieg-situacao-topo{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;}
+.sieg-situacao-topo .fraco{font-size:12.5px;}
+.sieg-situacao-topo svg,.sieg-situacao p svg{width:14px;height:14px;}
+.sieg-situacao-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.sieg-situacao-chip{display:inline-flex;align-items:baseline;gap:5px;height:26px;padding:0 10px;border-radius:999px;border:1px solid var(--border);font-size:12.5px;color:var(--ink-muted);line-height:24px;}
+.sieg-situacao-chip b{color:var(--ink);}
+.sieg-situacao-chip.ok{border-color:color-mix(in srgb,var(--success) 40%,var(--border));}
+.sieg-situacao-chip.ok b{color:var(--success);}
+.sieg-situacao-chip.aviso{border-color:color-mix(in srgb,var(--warn) 45%,var(--border));}
+.sieg-situacao-chip.aviso b{color:var(--warn);}

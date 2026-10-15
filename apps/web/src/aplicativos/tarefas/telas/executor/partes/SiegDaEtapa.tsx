@@ -119,6 +119,45 @@ export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 
                   </li>
                 ))}
               </ul>
+              {/* a situação na SEFAZ, pela VM (15/10/2026) */}
+              <div className="sieg-situacao">
+                <div className="sieg-situacao-topo">
+                  <b>Situação na SEFAZ</b>
+                  <span className="fraco">{vm.situacao?.trabalhando ? 'A VM está consultando: ' + vm.situacao.feitas + ' de ' + vm.situacao.total
+                    : vm.situacao?.resultado ? 'Consultada em ' + vm.situacao.quando : 'Confere nota a nota se está autorizada, cancelada ou denegada.'}</span>
+                  <span className="tarefas-barra-espaco" />
+                  <button type="button" className="btn btn-outline" disabled={!!vm.situacao?.trabalhando} onClick={() => void vm.consultarSituacao()}>
+                    {vm.situacao?.trabalhando ? <span className="btn-spinner" aria-hidden="true" /> : <Icone nome="checkCircle" />}{vm.situacao?.resultado ? 'Consultar de novo' : 'Consultar na SEFAZ'}
+                  </button>
+                </div>
+                {vm.situacao?.trabalhando && <span className="tarefas-barra fgts-barra andando"><span style={{ width: Math.max(4, vm.situacao.pct) + '%' }} /></span>}
+                {vm.situacao?.status === 'erro' && <p className="sieg-aviso"><Icone nome="alert" />{vm.situacao.erro}</p>}
+                {vm.situacao?.resultado && (
+                  <>
+                    <div className="sieg-situacao-chips">
+                      {vm.situacao.resumo.map(z => <span key={z.id} className={'sieg-situacao-chip ' + z.tom}><b className="num">{z.n.toLocaleString('pt-BR')}</b> {z.rotulo}</span>)}
+                    </div>
+                    {vm.situacao.resultado.divergentes.length > 0 ? (
+                      <div className="table-wrap">
+                        <table className="dp-tabela">
+                          <thead><tr><th>Nota</th><th>No SIEG</th><th>Na SEFAZ</th><th>Valor</th><th>Motivo</th></tr></thead>
+                          <tbody>
+                            {vm.situacao.resultado.divergentes.map(d => (
+                              <tr key={d.chave} title={d.chave}>
+                                <td className="num">{d.tipo} {d.numero}{d.serie ? <span className="fraco"> · série {d.serie}</span> : null}</td>
+                                <td>{d.sieg === 'cancelada' ? 'Cancelada' : 'Autorizada'}</td>
+                                <td><span className={'badge ' + (d.sefaz === 'cancelada' ? 'badge-neutral' : 'badge-warn')}>{d.sefaz === 'nao-encontrada' ? 'Não consta' : d.sefaz === 'erro' ? 'Sem resposta' : d.sefaz.charAt(0).toUpperCase() + d.sefaz.slice(1)}</span></td>
+                                <td className="num">{d.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                                <td className="fraco">{d.motivo}{d.cStat ? ' (' + d.cStat + ')' : ''}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : <p className="fraco" style={{ margin: 0 }}><Icone nome="check" /> Tudo bate com o SIEG.</p>}
+                  </>
+                )}
+              </div>
               <p className="fraco sieg-quando">Baixadas do SIEG em {vm.saidas.quando}. O número que falta pode ser nota não enviada ao SIEG, inutilizada ou emitida fora.</p>
             </div>
           ) : vm.saidasCarregadas ? <p className="fraco">As saídas deste mês ainda não foram baixadas do SIEG.</p> : <p className="fraco">Carregando…</p>}
