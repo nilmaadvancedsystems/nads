@@ -182,7 +182,8 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                 <td className="num">
                   <span style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end' }}>
                   {/* digitar o lançamento à mão, sem upar o razão (Vitor, 08/10/2026) */}
-                  {!(l.situacao === 'ok' && !l.razao) && (
+                  {/* com o razão importado do arquivo, não tem o que digitar (Vitor, 15/10/2026) */}
+                  {!(l.situacao === 'ok' && !l.razao) && !(l.razao && l.razao.arquivo !== 'Digitado à mão') && (
                     <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={!vm.carregado} aria-expanded={digitando === l.codigo}
                       onClick={() => setDigitando(x => (x === l.codigo ? null : l.codigo))}
                       title="Digitar um lançamento (sem upar o razão)" aria-label={'Digitar um lançamento de ' + l.nome}>
