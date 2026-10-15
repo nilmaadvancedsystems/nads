@@ -66,6 +66,10 @@ const ONDE_PODE_FETCH_RECEITA = /[\\/]apps[\\/]web[\\/]src[\\/]aplicativos[\\/]t
 const ENDERECOS_DA_RECEITA = ['https://brasilapi.com.br/api/cnpj/v1/', 'https://minhareceita.org/'];
 // e o aviso de versão nova, que lê o /versao.json do próprio site
 const ONDE_PODE_FETCH_VERSAO = /[\\/]packages[\\/]ui[\\/]src[\\/]versaoNova\.tsx$/;
+// o link de nova senha (2026-10-15, liberado pelo usuário: "Liberar"): a página do convite chama o serviço de contas do
+// Entregas (Apps Script em script.google.com/macros/s/…), o mesmo que o Entregas usa para trocar a senha; só nesse
+// arquivo, só nessa linha, e o arquivo confere o endereço (SERVICO_DE_CONTAS) antes de chamar
+const ONDE_PODE_FETCH_CONTAS = /[\\/]tarefas[\\/]dados[\\/]convite\.firestore\.ts$/;
 
 const achados = [];
 // robo/: o robô do escritório (Gmail, Drive, avisos, arquivador, SIEG, FGTS), movido do Entregas para cá a pedido do
@@ -113,6 +117,7 @@ varrer(raiz, p => {
       if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH_RECEITA.test(p)) continue;
       // o aviso de versão nova lê só o /versao.json do próprio site (mesmo endereço; liberado pelo usuário em 01/10/2026)
       if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH_VERSAO.test(p) && l.includes("fetch('/versao.json?t=' + Date.now()")) continue;
+      if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH_CONTAS.test(p) && l.includes('fetch(c.contasUrl,') && fs.readFileSync(p, 'utf8').includes('c.contasUrl.startsWith(SERVICO_DE_CONTAS)')) continue;
       achados.push(rel + ':' + (i + 1) + ': chamada de rede ("' + re.source + '")');
     }
   });

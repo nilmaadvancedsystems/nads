@@ -6,6 +6,8 @@ import * as XLSX from 'xlsx';
 import { normalizarTexto } from '../../formatos';
 import type { Conta } from '../../conferencia/tipos';
 import type { LadoDaConta, RazaoDaMarca } from './razao';
+import { baixasGuardadas, faltaDaNota, type BaixaAceita } from './sugestaoDeBaixa';
+import { chaveDoItem } from './razao';
 
 export * from './razao';
 
@@ -105,6 +107,44 @@ export function clientesDoDinamico(d: BalanceteDinamico, mes: string, lado: Lado
     .map(l => ({ codigo: l.codigo, nome: l.descricao.replace(/\s+/g, ' '), saldo: noLado(lado, l.saldos[mes] ?? 0), noBalancete: null }));
 }
 
+/** O nome da conta de adiantamento no dinâmico: "Adiantamento(s) a fornecedor(es)", "Adto. de clientes"… */
+const ADIANTAMENTO: Record<LadoDaConta, RegExp> = {
+  fornecedores: /^(adiant\w*|adto) (a |de |p |para |ao |aos )?fornecedor/,
+  clientes: /^(adiant\w*|adto) (a |de |p |para |do |dos )?client/,
+};
+
+/**
+ * Os meses do período em que o dinâmico tem adiantamento a fornecedores (ou de clientes) (Vitor, 15/10/2026: "observe o
+ * balancete se há adiantamento a fornecedores; a 58 não tem, então não coloque como etapa"; "faz no adiantamento de
+ * clientes também"): alguma conta de adiantamento com saldo no mês ou no mês de antes (o adiantamento baixado no mês).
+ * Só os meses que o dinâmico tem.
+ */
+export function adiantamentoNoDinamico(d: BalanceteDinamico, meses: readonly string[], de: LadoDaConta): { cobertos: string[]; com: string[] } {
+  return mesesComSaldo(d, meses, d.linhas.filter(l => ADIANTAMENTO[de].test(normalizarTexto(l.descricao))));
+}
+
+/**
+ * Os meses do período em que o dinâmico tem empréstimo ou financiamento (Vitor, 15/10/2026: "da mesma forma de
+ * empréstimo, tire ele daqui"): no Passivo (classificação 2…), alguma conta "Empréstimos" ou "Financiamentos" com saldo
+ * no mês ou no de antes. O "Empréstimo a sócios" do Ativo e os juros (despesa) não contam. Olha as analíticas debaixo
+ * dela: o cheque especial não é empréstimo (Vitor, 15/10/2026), e a sintética o somaria.
+ */
+export function emprestimosNoDinamico(d: BalanceteDinamico, meses: readonly string[]): { cobertos: string[]; com: string[] } {
+  const grupos = d.linhas.filter(l => l.classificacao.startsWith('2') && /^(emprestimos?|financiamentos?)\b/.test(normalizarTexto(l.descricao)));
+  const debaixo = (l: LinhaDinamico, g: LinhaDinamico) => l === g || l.classificacao.startsWith(g.classificacao + '.');
+  const folha = (l: LinhaDinamico) => !d.linhas.some(o => o !== l && o.classificacao.startsWith(l.classificacao + '.'));
+  const contas = d.linhas.filter(l => folha(l) && grupos.some(g => debaixo(l, g)) && !/cheque especial/.test(normalizarTexto(l.descricao)));
+  return mesesComSaldo(d, meses, contas);
+}
+
+/** Os meses que o dinâmico cobre e, deles, os em que alguma das contas tem saldo no mês ou no de antes. */
+function mesesComSaldo(d: BalanceteDinamico, meses: readonly string[], contas: readonly LinhaDinamico[]): { cobertos: string[]; com: string[] } {
+  const antes = (m: string) => { const [a, x] = m.split('-').map(Number); return x === 1 ? (a - 1) + '-12' : a + '-' + String(x - 1).padStart(2, '0'); };
+  const saldo = (l: LinhaDinamico, m: string) => (m in l.saldos ? l.saldos[m] : m < (d.meses[0] || '') ? l.saldoAnterior : 0);
+  const cobertos = meses.filter(m => d.meses.includes(m));
+  return { cobertos, com: cobertos.filter(m => contas.some(l => !zero(saldo(l, m)) || !zero(saldo(l, antes(m))))) };
+}
+
 /** Um cliente que ficou credor em algum mês: o saldo de cada mês (positivo = devedor, negativo = credor). */
 export interface CredorNoPeriodo { codigo: string; nome: string; saldos: { mes: string; saldo: number }[] }
 
@@ -153,6 +193,10 @@ export interface MarcaDoCliente {
   razao?: RazaoDaMarca;
   /** o que vai para o cliente: as chaves dos itens da relação (chaveDoItem); sem = o cliente todo; [] = nada */
   perguntar?: string[];
+  /** as notas em aberto com a baixa no banco (as sugestões aceitas): a chave do item → os lançamentos do banco */
+  baixas?: Record<string, BaixaAceita[]>;
+  /** as sugestões recusadas de cada nota (Vitor, 15/10/2026: "a opção de recusa também"): não aparecem mais nela */
+  recusadas?: Record<string, BaixaAceita[]>;
 }
 export interface DocClientes {
   contas: Record<string, MarcaDoCliente>; atualizadoEm?: string;
@@ -174,16 +218,26 @@ export function assinaturaDoEnvio(linhas: readonly { codigo: string; perguntar?:
  * (Vitor, 07/10/2026: "remova o conferido manual"), senão Pendente. A situação guardada na marca não decide mais nada.
  */
 export function situacaoDe(c: ContaDeCliente, marca?: MarcaDoCliente): SituacaoCliente {
-  if (zero(c.saldo) || zeradoNoRazao(marca)) return 'ok';
+  if (zero(c.saldo) || zeradoNoRazao(marca) || quitadoPelasBaixas(marca)) return 'ok';
   return razaoComPendencia(marca?.razao) ? 'conferido' : 'pendente';
+}
+
+/**
+ * As baixas aceitas zeraram o que o razão achou (Vitor, 15/10/2026: "se o cara aceitar e zerar o valor do cliente, ao
+ * invés de Conferido, coloca um Ok"): tinha nota em aberto, e todas ficaram quitadas, sem pagamento solto.
+ */
+export function quitadoPelasBaixas(marca?: MarcaDoCliente): boolean {
+  return !!marca?.razao && !!marca.baixas && razaoComPendencia(marca.razao) && !razaoComPendencia(marca.razao, marca.baixas);
 }
 
 /**
  * O razão importado achou o que perguntar: nota em aberto ou pagamento solto (sem a nota, ou a mais). A duplicidade, que
  * é só do escritório, e a devolução sozinha não contam.
  */
-export function razaoComPendencia(razao?: RazaoDaMarca): boolean {
-  return !!razao?.itens.some(i => !i.interno && (i.status === 'aberto' || i.status === 'pagamento'));
+export function razaoComPendencia(razao?: RazaoDaMarca, baixas?: Readonly<Record<string, readonly BaixaAceita[]>>): boolean {
+  // a nota quitada pelas baixas aceitas não conta
+  const quitada = (i: RazaoDaMarca['itens'][number]) => !!baixas?.[chaveDoItem(i)]?.length && faltaDaNota(i.valor, baixas[chaveDoItem(i)]) === 0;
+  return !!razao?.itens.some(i => !i.interno && ((i.status === 'aberto' && !quitada(i)) || i.status === 'pagamento'));
 }
 
 /** O razão importado fecha em zero, sem nota em aberto. */
@@ -202,9 +256,11 @@ export function docDoDocumento(d: unknown): DocClientes {
     if (s !== 'pendente' && s !== 'ok' && s !== 'conferido') continue;
     const r = razaoGuardado(v.razao);
     const perguntar = Array.isArray(v.perguntar) ? (v.perguntar as unknown[]).filter((x): x is string => typeof x === 'string') : [];
+    const baixas = baixasGuardadas(v.baixas);
+    const recusadas = baixasGuardadas(v.recusadas);
     certo[k] = {
       nome: String(v.nome ?? ''), saldo: typeof v.saldo === 'number' ? v.saldo : 0, situacao: s, ...(typeof v.obs === 'string' && v.obs ? { obs: v.obs } : {}), ...(r ? { razao: r } : {}),
-      ...(Array.isArray(v.perguntar) ? { perguntar } : {}),
+      ...(Array.isArray(v.perguntar) ? { perguntar } : {}), ...(baixas ? { baixas } : {}), ...(recusadas ? { recusadas } : {}),
     };
   }
   return { contas: certo, ...(typeof o.atualizadoEm === 'string' ? { atualizadoEm: o.atualizadoEm } : {}), ...(typeof o.enviado === 'string' && o.enviado ? { enviado: o.enviado } : {}) };
@@ -221,15 +277,19 @@ function razaoGuardado(d: unknown): RazaoDaMarca | null {
     arquivo: o.arquivo, notas, saldo: typeof o.saldo === 'number' ? o.saldo : 0,
     devolucoes: typeof o.devolucoes === 'number' ? o.devolucoes : 0,
     duplicadas: Array.isArray(o.duplicadas) ? o.duplicadas.filter((x): x is string => typeof x === 'string') : [],
-    itens: Array.isArray(o.itens) ? (o.itens as Record<string, unknown>[]).filter(i => i && typeof i.descricao === 'string' && typeof i.valor === 'number')
+    // o recebimento que zerou o saldo anterior, guardado antes: conciliado, nem aparece (Vitor, 15/10/2026)
+    itens: Array.isArray(o.itens) ? (o.itens as Record<string, unknown>[]).filter(i => i && typeof i.descricao === 'string' && typeof i.valor === 'number' && i.status !== 'anterior')
       .map(i => ({
         data: typeof i.data === 'string' ? i.data : '', nf: typeof i.nf === 'string' ? i.nf : '', descricao: i.descricao as string, valor: i.valor as number,
         ...(i.interno === true ? { interno: true } : {}),
         ...(i.digitado === true ? { digitado: true } : {}),
         ...(typeof i.conta === 'string' && i.conta ? { conta: i.conta } : {}),
-        status: i.status === 'aberto' || i.status === 'pagamento' || i.status === 'devolucao' ? i.status : (i.valor as number) > 0 ? 'aberto' as const : 'pagamento' as const,
+        ...(typeof i.vendido === 'number' ? { vendido: i.vendido } : {}),
+        ...(Array.isArray(i.pagos) ? { pagos: (i.pagos as Record<string, unknown>[]).filter(p => p && typeof p.data === 'string' && typeof p.valor === 'number').map(p => ({ data: p.data as string, valor: p.valor as number })) } : {}),
+        status: i.status === 'aberto' || i.status === 'pagamento' || i.status === 'devolucao' || i.status === 'anterior' ? i.status : (i.valor as number) > 0 ? 'aberto' as const : 'pagamento' as const,
       })) : [],
     ...(o.manual === true ? { manual: true } : {}),
+    ...(Array.isArray(o.participantes) ? { participantes: o.participantes.filter((x): x is string => typeof x === 'string') } : {}),
   };
 }
 
@@ -239,7 +299,7 @@ function razaoGuardado(d: unknown): RazaoDaMarca | null {
  */
 export function conferidosQuePassam(anterior: DocClientes | null, atual: DocClientes): Record<string, MarcaDoCliente> {
   if (!anterior) return {};
-  return Object.fromEntries(Object.entries(anterior.contas).filter(([k, m]) => razaoComPendencia(m.razao) && !atual.contas[k]));
+  return Object.fromEntries(Object.entries(anterior.contas).filter(([k, m]) => razaoComPendencia(m.razao, m.baixas) && !atual.contas[k]));
 }
 
 // ─── para o cliente ──────────────────────────────────────────────────────────
@@ -301,3 +361,4 @@ export function textoDaMensagem(modelo: string, empresa: string, mes: string, li
   const lista = linhas.map(l => '• ' + l.nome + ' — R$ ' + brl(l.saldo) + (l.notas?.length ? ' — em aberto: ' + textoDasNotas(l.notas) : '') + (l.obs ? ' — ' + l.obs : '')).join('\n');
   return (modelo || MENSAGEM_PADRAO).replace(/\{empresa\}/g, empresa).replace(/\{mes\}/g, mes).replace(/\{lista\}/g, lista);
 }
+export { sugestoesDeBaixa, selosDaSugestao, palavrasDoNome, mesmoLancamento, comBaixa, faltaDaNota, baixasGuardadas, type LancamentoDoBanco, type SugestaoDeBaixa, type BaixaAceita, type ComoBate, type SeloDaSugestao } from './sugestaoDeBaixa';

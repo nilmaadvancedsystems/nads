@@ -3,14 +3,16 @@
 // Fornecedores (o selo do sistema: Saldo, Conferido pelo razão ou Ok, o Ok do sistema na conta zerada, a observação e o razão da conta) e Envio.
 // As regras são as do Clientes (@nads/core clientes) com o lado 'fornecedores': o saldo vem com o sinal trocado (positivo =
 // a empresa deve), então o "credor" das regras é o fornecedor devedor. As marcas ficam por mês, por enquanto só neste navegador.
-import { clientes as cl, conferencia as c, demo, formatos, mandei as md, tarefas } from '@nads/core';
+import { clientes as cl, conferencia as c, demo, extrator as x, formatos, mandei as md, tarefas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
 import { useMarcasDoMes } from '../../../../dados/clientes';
 import { useCadastro, useContatoDoEntregas } from '../../../../dados/repo';
+import { useExtratorDaEmpresa } from '../../../../dados/extrator';
 import { criarTicket } from '../../../../dados/mandei';
 import { useOperador } from '../../../../casca/operador';
-import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
+import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
+import { useGuardado } from '../../../../../../comum/guardado';
 
 export type TelaFornecedores = 'arquivos' | 'fornecedores' | 'envio';
 export type FiltroFornecedores = 'todos' | 'pendente' | 'ok' | 'conferido';
@@ -19,22 +21,60 @@ const mesAntes = (m: string) => { const [a, mm] = m.split('-').map(Number); retu
 
 const LADO: cl.LadoDaConta = 'fornecedores';
 
+/** As baixas aceitas de um item: os lançamentos, o que falta (o valor da linha), o aceito e se quitou. */
+function baixasDoItem(i: cl.ItemDoRazao, baixas: Record<string, cl.BaixaAceita[]> | undefined) {
+  const aceitas = (i.status === 'aberto' && !i.interno && baixas?.[cl.chaveDoItem(i)]) || [];
+  const falta = aceitas.length ? cl.faltaDaNota(i.valor, aceitas) : null;
+  return {
+    baixas: aceitas.map(noBanco), quitada: falta === 0,
+    ...(falta !== null ? { valor: formatos.reais(falta / 100), aceito: formatos.reais(aceitas.reduce((t, b) => t + Math.abs(b.valor), 0) / 100) } : { aceito: '' }),
+  };
+}
+
+/** A nota para a sugestão: só o que falta, e as aceitas contam como parcelas pagas (o ritmo e o valor delas). */
+function notaQueFalta(i: cl.ItemDoRazao, baixas: Record<string, cl.BaixaAceita[]> | undefined) {
+  const aceitas = baixas?.[cl.chaveDoItem(i)] || [];
+  if (!aceitas.length) return i;
+  return { ...i, valor: cl.faltaDaNota(i.valor, aceitas) / 100, pagos: [...(i.pagos || []), ...aceitas.map(b => ({ data: b.data, valor: Math.abs(b.valor) / 100 }))] };
+}
+
+/** O lançamento do banco como a mini tabela da sugestão mostra (o bruto volta no aceitar). */
+const noBanco = (g: cl.LancamentoDoBanco) => ({
+  bruto: g, data: g.data.slice(8, 10) + '/' + g.data.slice(5, 7) + '/' + g.data.slice(0, 4), banco: g.banco, marca: g.marca || '', historico: g.historico,
+  // a descrição curta, até 60 letras (Vitor, 15/10/2026: "limita mais caracteres"); a inteira vai na dica
+  curto: g.historico.length > 60 ? g.historico.slice(0, 60).trimEnd() + '…' : g.historico, valor: formatos.reais(Math.abs(g.valor) / 100),
+});
+
 export function useFornecedores() {
   const s = useEtapaAberta();
   const { aviso } = useRetorno();
   const mes = s.meses[s.meses.length - 1] || '';
-  const [tela, setTelaDaVez] = useState<TelaFornecedores>('arquivos');
+  // onde parou (Vitor, 15/10/2026): a tela, até onde chegou e o dinâmico ficam guardados; voltou, está tudo lá
+  const chave = useChaveDaEtapa('fornecedores');
+  const [tela, setTelaDaVez] = useGuardado<TelaFornecedores>(chave + '|tela', 'arquivos');
   // até onde a pessoa já chegou: as abas depois disso ficam apagadas (Vitor, 07/10/2026: "deixar ofuscado as próximas tarefas")
-  const [alcancada, setAlcancada] = useState(0);
+  const [alcancada, setAlcancada] = useGuardado(chave + '|alcancada', 0);
   const ORDEM: TelaFornecedores[] = ['arquivos', 'fornecedores', 'envio'];
   const setTela = (t: TelaFornecedores) => { setTelaDaVez(t); setAlcancada(a => Math.max(a, ORDEM.indexOf(t))); };
-  const [dinamico, setDinamico] = useState<{ nome: string; d: cl.BalanceteDinamico } | null>(null);
+  const [dinamico, setDinamico] = useGuardado<{ nome: string; d: cl.BalanceteDinamico } | null>(chave + '|dinamico', null);
   const [filtro, setFiltro] = useState<FiltroFornecedores>('todos');
   const [busca, setBusca] = useState('');
   // o Mandei (Vitor, 07/10/2026): o ticket com o link para o cliente responder, anexar e a gente acompanhar
   const op = useOperador().operador;
   // o e-mail e o WhatsApp da empresa ficam no Cadastro (Vitor, 07/10/2026): o Mandei manda pelos dois
   const vivo = useCadastro(s.nome, s.codigo);
+  // os lançamentos dos extratos importados (todos os bancos), para a sugestão de baixa das notas em aberto (Vitor, 15/10/2026)
+  const ext = useExtratorDaEmpresa(s.nome);
+  const cadastroVivo = vivo.carregada ? vivo.cadastro : null;
+  const lancsDoBanco = useMemo(() => {
+    const { bancos, primeiro } = x.bancosDaEmpresaNa(ext, cadastroVivo, s.codigo, s.meses[s.meses.length - 1] || s.competencia);
+    const doBanco = new Map(bancos.map(b => [b.id, b]));
+    return ext.arquivos.filter(a => a.lado === 'banco').flatMap(a => {
+      const b = x.bancoDoArquivo(a, primeiro);
+      const banco = doBanco.get(b);
+      return a.lancamentos.map(l => ({ data: l.data, valor: l.valor, historico: l.historico, banco: banco?.nome || b, marca: banco?.marca || b }));
+    });
+  }, [ext, cadastroVivo, s.codigo, s.meses, s.competencia]);
   // sem o contato no Cadastro do nads, o que o Entregas já tem do cliente (Vitor, 08/10/2026: "já tenho no mínimo 1 canal")
   const doEntregas = useContatoDoEntregas(s.codigo);
   const contato = { email: vivo.cadastro.contato?.email || doEntregas?.email || '', whatsapp: vivo.cadastro.contato?.whatsapp || doEntregas?.whatsapp || '' };
@@ -82,13 +122,17 @@ export function useFornecedores() {
   const linhas = contas.map(k => {
     const marca = marcas.doc.contas[k.codigo] || passam[k.codigo];
     const situacao = cl.situacaoDe(k, marca);
-    return { codigo: k.codigo, nome: k.nome, saldo: k.saldo, situacao, obs: marca?.obs || '', razao: marca?.razao, perguntar: marca?.perguntar, doMesAnterior: !marcas.doc.contas[k.codigo] && !!passam[k.codigo] };
+    return { codigo: k.codigo, nome: k.nome, saldo: k.saldo, situacao, obs: marca?.obs || '', razao: marca?.razao, perguntar: marca?.perguntar, baixas: marca?.baixas, recusadas: marca?.recusadas, doMesAnterior: !marcas.doc.contas[k.codigo] && !!passam[k.codigo] };
   });
+
+  // os lançamentos do banco já aceitos como baixa de alguma nota não são sugeridos de novo
+  const aceitas = linhas.flatMap(l => Object.values(l.baixas || {}).flat());
+  const livres = lancsDoBanco.filter(x => !aceitas.some(a => cl.mesmoLancamento(a, x)));
 
   function marcar(codigo: string, mudar: (m: cl.MarcaDoCliente) => cl.MarcaDoCliente) {
     const l = linhas.find(x => x.codigo === codigo);
     if (!l || !marcas.carregado) return;
-    const atual: cl.MarcaDoCliente = { nome: l.nome, saldo: l.saldo, situacao: l.situacao, ...(l.obs ? { obs: l.obs } : {}), ...(l.razao ? { razao: l.razao } : {}), ...(l.perguntar ? { perguntar: l.perguntar } : {}) };
+    const atual: cl.MarcaDoCliente = { nome: l.nome, saldo: l.saldo, situacao: l.situacao, ...(l.obs ? { obs: l.obs } : {}), ...(l.razao ? { razao: l.razao } : {}), ...(l.perguntar ? { perguntar: l.perguntar } : {}), ...(l.baixas ? { baixas: l.baixas } : {}), ...(l.recusadas ? { recusadas: l.recusadas } : {}) };
     marcas.salvar({ ...marcas.doc, contas: { ...marcas.doc.contas, [codigo]: mudar(atual) } });
   }
 
@@ -143,10 +187,14 @@ export function useFornecedores() {
 
   return {
     mes: rotuloMes,
-    tela: telas.includes(tela) ? tela : 'arquivos',
-    telas: telas.map((t, k) => ({ valor: t, rotulo: t === 'arquivos' ? 'Arquivos' : t === 'fornecedores' ? 'Fornecedores' : 'Envio', oculta: t === 'envio' && !algumRazao, travada: k > alcancada ? 'Chega aqui pelo Próximo' : false as const })),
-    irPara: (t: TelaFornecedores) => { if (telas.indexOf(t) <= alcancada) setTela(t); },
-    temProxima: i < telas.length - 1 && (telas[i] !== 'fornecedores' || algumRazao),
+    // sem questionamento, o Envio fica travado (Vitor, 15/10/2026): quem estava nele volta para a lista
+    tela: telas.includes(tela) ? (tela === 'envio' && !paraEnviar.length ? 'fornecedores' : tela) : 'arquivos',
+    telas: telas.map((t, k) => ({ valor: t, rotulo: t === 'arquivos' ? 'Arquivos' : t === 'fornecedores' ? 'Fornecedores' : 'Envio', oculta: t === 'envio' && !algumRazao, travada: t === 'envio' && !paraEnviar.length ? 'Nada para questionar' : k > alcancada ? 'Chega aqui pelo Próximo' : false as const })),
+    irPara: (t: TelaFornecedores) => { if (telas.indexOf(t) <= alcancada && (t !== 'envio' || paraEnviar.length)) setTela(t); },
+    // sem questionamento, sem o Próximo para o Envio (Vitor, 15/10/2026)
+    temProxima: i < telas.length - 1 && (telas[i] !== 'fornecedores' || (algumRazao && paraEnviar.length > 0)),
+    /** na lista, tudo certo e nada para questionar: segue pela seta da próxima etapa, lá em cima */
+    semQuestionamento: tela === 'fornecedores' && !faltam.length && !paraEnviar.length,
     podeSeguir,
     proximo: () => { if (podeSeguir && i < telas.length - 1) setTela(telas[i + 1]); },
     /** nos Arquivos com fornecedor devedor no mês: o "Corrigi, irei reimportar" no lugar do Próximo (deu tudo ok, volta o Próximo) */
@@ -179,16 +227,51 @@ export function useFornecedores() {
           notas: cl.textoDasNotas(l.razao.notas),
           devolucoes: l.razao.devolucoes ? reais(l.razao.devolucoes) : '',
           duplicadas: l.razao.duplicadas.map(nf => 'NF ' + nf).join(', '),
-          naoBate: Math.abs(l.razao.saldo - l.saldo) >= 0.005 && Math.abs(l.razao.saldo) >= 0.005 ? reais(l.razao.saldo) : '',
+          // é desta conta? pelo nome do participante nos históricos, não pelo saldo (Vitor, 15/10/2026)
+          deOutro: cl.participanteDeOutraConta(l.razao.participantes, l.nome) || '',
           zerado: Math.abs(l.razao.saldo) < 0.005 && !l.razao.notas.length,
           // a mini tabela embaixo do fornecedor: as notas em aberto e o que ficou solto
-          itens: l.razao.itens.map(i => ({ chave: i.interno ? '' : cl.chaveDoItem(i), marcado: !i.interno && cl.itensEscolhidos(l.razao, l.perguntar).includes(i), data: i.data ? i.data.slice(8, 10) + '/' + i.data.slice(5, 7) + '/' + i.data.slice(0, 4) : '', nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor), abate: i.valor < 0, status: i.status, rotulo: cl.ROTULO_DO_STATUS[i.status], digitado: !!i.digitado })),
+          itens: l.razao.itens.map(i => ({ chave: i.interno ? '' : cl.chaveDoItem(i), marcado: !i.interno && cl.itensEscolhidos(l.razao, l.perguntar).includes(i), data: i.data ? i.data.slice(8, 10) + '/' + i.data.slice(5, 7) + '/' + i.data.slice(0, 4) : '', nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor), abate: i.valor < 0, status: i.status, rotulo: cl.ROTULO_DO_STATUS[i.status], digitado: !!i.digitado,
+            // a nota em aberto: os lançamentos do banco que podem ser a baixa dela (o mesmo valor, ou o nome no histórico)
+            // a baixa aceita (Vitor, 15/10/2026: "um botãozinho para, quando o usuário mudar ou aceitar a sugestão, ficar Ok")
+            // com saldo ainda, não fica Ok: só diminui o valor aceito (Vitor, 15/10/2026)
+            ...baixasDoItem(i, l.baixas),
+            // sem sugestão na nota quitada ou que vai para o fornecedor (Vitor, 15/10/2026: "oculte a sugestão quando o usuário clicar em perguntar")
+            // as recusadas ficam no fim, apagadas, para desfazer (Vitor, 15/10/2026)
+            recusadas: i.status === 'aberto' && !i.interno && !baixasDoItem(i, l.baixas).quitada && !cl.itensEscolhidos(l.razao, l.perguntar).includes(i) ? (l.recusadas?.[cl.chaveDoItem(i)] || []).map(noBanco) : [],
+            sugestoes: i.status === 'aberto' && !i.interno && !baixasDoItem(i, l.baixas).quitada && !cl.itensEscolhidos(l.razao, l.perguntar).includes(i)
+              ? cl.sugestoesDeBaixa(notaQueFalta(i, l.baixas), l.nome, livres.filter(x => !(l.recusadas?.[cl.chaveDoItem(i)] || []).some(r => cl.mesmoLancamento(r, x))), -1).map(g => ({ ...noBanco(g), selos: cl.selosDaSugestao(g, 'fornecedor') })) : [] })),
         } : null,
         // o que vai para o fornecedor (o que foi adicionado no "+" de cada linha da relação; nada = não vai)
         perguntar: l.razao ? cl.itensEscolhidos(l.razao, l.perguntar).map(cl.rotuloDoItem).join(' · ') : '',
       })),
     // sem campo vazio (o banco não aceita undefined)
     /** o "+" de uma linha da relação: adiciona ao que vai para o fornecedor, ou tira (Vitor, 07/10/2026) */
+    /** aceita a sugestão de baixa de uma nota em aberto (fica Ok; sai do que vai para o fornecedor) ou desfaz (null) */
+    aceitarBaixa: (codigo: string, chave: string, l: cl.LancamentoDoBanco, sim: boolean) => marcar(codigo, m => {
+      const n = { ...m };
+      const baixas = cl.comBaixa(m.baixas, chave, l, sim);
+      // quitada, sai do que vai para o fornecedor
+      const item = m.razao?.itens.find(i => !i.interno && cl.chaveDoItem(i) === chave);
+      const quitada = !!item && !!baixas?.[chave] && cl.faltaDaNota(item.valor, baixas[chave]) === 0;
+      const perguntar = quitada && m.perguntar ? m.perguntar.filter(c => c !== chave) : m.perguntar;
+      delete n.baixas; delete n.perguntar;
+      return { ...n, ...(baixas ? { baixas } : {}), ...(perguntar && (perguntar.length || !quitada) ? { perguntar } : {}) };
+    }),
+    /** recusa a sugestão: não é a baixa desta nota, sai da lista dela (Vitor, 15/10/2026) */
+    recusarSugestao: (codigo: string, chave: string, l: cl.LancamentoDoBanco) => marcar(codigo, m => {
+      const n = { ...m };
+      const recusadas = cl.comBaixa(m.recusadas, chave, l, true);
+      delete n.recusadas;
+      return { ...n, ...(recusadas ? { recusadas } : {}) };
+    }),
+    /** desfaz a recusa: a sugestão volta para a lista da nota (Vitor, 15/10/2026) */
+    desfazerRecusa: (codigo: string, chave: string, l: cl.LancamentoDoBanco) => marcar(codigo, m => {
+      const n = { ...m };
+      const recusadas = cl.comBaixa(m.recusadas, chave, l, false);
+      delete n.recusadas;
+      return { ...n, ...(recusadas ? { recusadas } : {}) };
+    }),
     definirEnvio: (codigo: string, chave: string, sim: boolean) => marcar(codigo, m => {
       const n = { ...m };
       const novo = cl.definirItem(m.razao, m.perguntar, chave, sim);
@@ -215,7 +298,7 @@ export function useFornecedores() {
       delete n.razao; delete n.perguntar;
       return { ...n, ...(razao ? { razao } : {}), ...(perguntar.length ? { perguntar } : {}) };
     }),
-    tirarRazao: (codigo: string) => marcar(codigo, m => { const n = { ...m, situacao: 'pendente' as const }; delete n.razao; delete n.perguntar; return n; }),
+    tirarRazao: (codigo: string) => marcar(codigo, m => { const n = { ...m, situacao: 'pendente' as const }; delete n.razao; delete n.perguntar; delete n.baixas; delete n.recusadas; return n; }),
     // Envio
     conferidos: paraEnviar.map(l => ({ codigo: l.codigo, nome: l.nome, valor: reais(l.saldo), perguntar: cl.itensEscolhidos(l.razao, l.perguntar).map(cl.rotuloDoItem).join(' · '), notas: cl.textoDasNotas(l.razao?.notas) })),
     // o Mandei: um ticket com os conferidos (cada um, um item com a nossa pergunta), o link vai por e-mail
@@ -237,7 +320,7 @@ export function useFornecedores() {
         criadoPor: { nome: op?.nome || '' },
         origem: { titulo: 'Fornecedores · ' + rotuloMes, rota: window.location.pathname, competencia: mes },
         // os lançamentos de cada um (a nota em aberto com a data e o número; o pagamento solto com a data e o banco)
-        itens: paraEnviar.map(l => ({ id: l.codigo, titulo: l.nome, valor: reais(l.saldo), opcoes: md.OPCOES_PADRAO, linhas: cl.linhasParaOTicket(l.razao, l.saldo, mes, l.perguntar, LADO) })),
+        itens: paraEnviar.map(l => ({ id: l.codigo, titulo: l.nome, valor: reais(l.saldo), opcoes: md.OPCOES_PADRAO, linhas: cl.linhasParaOTicket(l.razao, l.saldo, mes, l.perguntar, LADO, l.baixas) })),
       });
       marcas.salvar({ ...marcas.doc, enviado: assinatura });
       aviso({ tom: 'ok', titulo: 'Ticket ' + md.rotuloDoNumero(t.numero) + ' mandado', texto: [email, whatsapp && 'WhatsApp ' + whatsapp].filter(Boolean).join(' e ') + ' · acompanhe em Mandei' });

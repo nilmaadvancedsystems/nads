@@ -179,7 +179,7 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so }: {
           <Icone nome="checklist" />
           <h4>O que conferir</h4>
           {conferir && <ul className="executor-conferir">{conferir.map(x => <li key={x}>{x}</li>)}</ul>}
-          <p>Importe nos ícones acima o razão de Salários a pagar e do FGTS a recolher (fica credor ou zera) e, para conferir o INSS, o razão do INSS a recolher e o PDF das guias pagas. Todos são opcionais.</p>
+          <p>Importe nos ícones acima o razão de Salários a pagar e do FGTS a recolher (fica credor ou zera) e, para conferir o INSS, o razão do INSS a recolher e o PDF das guias pagas. {folha ? 'Só o FGTS é opcional.' : 'Todos são opcionais.'}</p>
         </div>
       )}
     </div>

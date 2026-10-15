@@ -24,19 +24,22 @@ export interface RequisitosDaEtapa { pronto: boolean; faltam: string[] }
 /** As abas da tela no cabeçalho (como as da Importação: Bancos, Balancete…) e o que fazer ao clicar numa. */
 export interface AbasDaEtapa { paginas: PaginaCasca[]; abrir: (id: string) => void }
 
-interface Ligacoes { requisitos: (r: RequisitosDaEtapa) => void; teste: (itens: ItemDeTeste[]) => void; abas: (a: AbasDaEtapa | null) => void }
+/** O balancete diz em quais meses uma etapa entra (os que ele cobre; os outros não mudam). */
+export interface EtapaPeloBalancete { etapa: string; cobertos: string[]; com: string[]; motivo: string }
+
+interface Ligacoes { requisitos: (r: RequisitosDaEtapa) => void; teste: (itens: ItemDeTeste[]) => void; abas: (a: AbasDaEtapa | null) => void; balancete: (b: EtapaPeloBalancete) => void }
 
 const Ctx = createContext<{ etapa: EtapaAberta; ligacoes: Ligacoes; alvoDosAvisos: HTMLElement | null } | null>(null);
 
-export function EtapaProvider({ etapa, onRequisitos, onTeste, onAbas, alvoDosAvisos, children }: {
-  etapa: EtapaAberta; onRequisitos: Ligacoes['requisitos']; onTeste: Ligacoes['teste']; onAbas: Ligacoes['abas'];
+export function EtapaProvider({ etapa, onRequisitos, onTeste, onAbas, onBalancete, alvoDosAvisos, children }: {
+  etapa: EtapaAberta; onRequisitos: Ligacoes['requisitos']; onTeste: Ligacoes['teste']; onAbas: Ligacoes['abas']; onBalancete: Ligacoes['balancete'];
   /** o lugar dos avisos da etapa, na faixa acima do cabeçalho */
   alvoDosAvisos: HTMLElement | null; children: ReactNode;
 }) {
-  const ligacoes = useRef<Ligacoes>({ requisitos: onRequisitos, teste: onTeste, abas: onAbas });
-  ligacoes.current = { requisitos: onRequisitos, teste: onTeste, abas: onAbas };
+  const ligacoes = useRef<Ligacoes>({ requisitos: onRequisitos, teste: onTeste, abas: onAbas, balancete: onBalancete });
+  ligacoes.current = { requisitos: onRequisitos, teste: onTeste, abas: onAbas, balancete: onBalancete };
   // as ligações sempre as mais novas, sem trocar o valor do contexto a cada desenho
-  const estavel = useRef<Ligacoes>({ requisitos: r => ligacoes.current.requisitos(r), teste: i => ligacoes.current.teste(i), abas: a => ligacoes.current.abas(a) });
+  const estavel = useRef<Ligacoes>({ requisitos: r => ligacoes.current.requisitos(r), teste: i => ligacoes.current.teste(i), abas: a => ligacoes.current.abas(a), balancete: b => ligacoes.current.balancete(b) });
   return <Ctx.Provider value={{ etapa, ligacoes: estavel.current, alvoDosAvisos }}>{children}</Ctx.Provider>;
 }
 
@@ -56,8 +59,25 @@ export function AvisoAcimaDoCabecalho({ children }: { children: ReactNode }) {
 }
 
 /** A empresa e os meses da etapa aberta. */
+/**
+ * A chave do "onde parou" desta etapa (Vitor, 15/10/2026): o nome da etapa, a empresa e o período. Vai no useGuardado
+ * (comum/guardado.ts) com o que guardar no fim ("clientes|58|2026-01,…|tela").
+ */
+export function useChaveDaEtapa(etapa: string): string {
+  const s = useEtapaAberta();
+  return etapa + '|' + (s.codigo ?? s.nome) + '|' + s.meses.join(',');
+}
+
 export function useEtapaAberta(): EtapaAberta {
   return useCtx().etapa;
+}
+
+/** Diz à Tarefa em quais meses uma etapa entra pelo balancete (a cada mudança; null = ainda sem balancete). */
+export function useEtapaPeloBalancete(b: EtapaPeloBalancete | null) {
+  const { ligacoes } = useCtx();
+  const chave = JSON.stringify(b);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (b) ligacoes.balancete(b); }, [ligacoes, chave]);
 }
 
 /** Diz à Tarefa o que falta para seguir (a cada mudança). */

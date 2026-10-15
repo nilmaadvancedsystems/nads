@@ -11,8 +11,12 @@
 // As saídas: janela, menu e abertura saem animadas mesmo quando o React tira do DOM de uma vez (o "fantasma", abaixo).
 // O check da janela de sucesso e o das etapas feitas se desenham.
 // Menos movimento (prefers-reduced-motion): só o esmaecer, sem deslocar (animar, em animacao.ts); sem toque nos botões.
+// No "Não tem motivo pra usar tanta animação" (15/10/2026: "anime tudo do app"), cada lote passa também pela camada do
+// animaTudo.ts (o que chega em cascata, as linhas que deslizam, os números, as barras, os selos) e o conteúdo das
+// janelas e dos menus chega em cascata depois da caixa.
 import { cleanInlineStyles, stagger } from 'animejs';
-import { afundar, animar, apagarFundo, celebrar, crescerDaOrigem, desenharCheck, ENTRAR, encerrarPaginas, entrar, marcarOrigem, MOLA_VIVA, origemDe, pegarOrigem, revelarTitulo, sairComo, semMovimento, voltar, voltarParaOrigem } from './animacao';
+import { animarLote, cascataNaJanela, cascataNoMenu, classesMudaram, ligarAnimaTudo } from './animaTudo';
+import { afundar, animar, apagarFundo, celebrar, crescerDaOrigem, desenharCheck, ENTRAR, encerrarPaginas, entrar, marcarOrigem, molaViva, origemDe, pegarOrigem, revelarTitulo, sairComo, semMovimento, voltar, voltarParaOrigem } from './animacao';
 
 type Entrada = (el: HTMLElement) => void;
 
@@ -46,7 +50,7 @@ function alertaChegou(el: HTMLElement) {
   if (!svg) return;
   if (ok && svg.querySelector('circle')) { celebrar(svg, false); return; }
   animar(svg, {
-    opacity: [0, 1], scale: [0.5, 1], ease: MOLA_VIVA, delay: 120,
+    opacity: [0, 1], scale: [0.5, 1], ease: molaViva(), delay: 120,
     rotate: [{ to: 0, duration: 380 }, { to: -16, duration: 90 }, { to: 12, duration: 110 }, { to: -6, duration: 110 }, { to: 0, duration: 160 }],
   });
 }
@@ -59,6 +63,7 @@ function janela(el: HTMLElement, caixa: HTMLElement | null) {
   // a janela que anima a própria entrada (o seletor de competência, 14/10/2026) só ganha o fundo daqui
   if (!caixa || el.hasAttribute('data-entrada-propria')) return;
   if (!crescerDaOrigem(caixa, pegarOrigem(el) || origemDe(el))) entrar('janela', caixa);
+  cascataNaJanela(caixa);
 }
 
 const ENTRADAS: [string, Entrada][] = [
@@ -66,14 +71,14 @@ const ENTRADAS: [string, Entrada][] = [
     janela(el, el.querySelector<HTMLElement>('.modal'));
     const selo = el.querySelector<HTMLElement>('.modal-ok .modal-icon');
     if (selo) {
-      animar(selo, { opacity: [0, 1], scale: [0.5, 1], rotate: [-40, 0], delay: 220, ease: MOLA_VIVA });
+      animar(selo, { opacity: [0, 1], scale: [0.5, 1], rotate: [-40, 0], delay: 220, ease: molaViva() });
       const svg = selo.querySelector('svg');
       if (svg) desenharCheck(svg, 320);
     }
   }],
   // a etapa feita (a caixinha da lateral): a caixinha encaixa e o check se desenha
   ['.subnav-caixa.marcada > svg', el => {
-    if (el.parentElement) animar(el.parentElement, { scale: [0.6, 1], ease: MOLA_VIVA });
+    if (el.parentElement) animar(el.parentElement, { scale: [0.6, 1], ease: molaViva() });
     desenharCheck(el as unknown as SVGSVGElement, 80);
   }],
   ['.cad-janela-fundo', el => { janela(el, el.firstElementChild as HTMLElement | null); }],
@@ -89,6 +94,7 @@ const ENTRADAS: [string, Entrada][] = [
     const r = el.getBoundingClientRect();
     if (pai) el.style.transformOrigin = (r.top >= pai.top ? 'top ' : 'bottom ') + (Math.abs(r.right - pai.right) < Math.abs(r.left - pai.left) ? 'right' : 'left');
     entrar('menu', el);
+    cascataNoMenu(el);
   }],
   // o menu do botão direito nasce no ponteiro (o canto de cima à esquerda)
   // o menu do botão direito é usado o tempo todo: abre rápido, no ponteiro, sem desfoque
@@ -119,7 +125,7 @@ const ENTRADAS: [string, Entrada][] = [
     if (!semMovimento()) el.animate([{ opacity: 0, translate: '0 16px', scale: '0.92' }, { opacity: 1, translate: '0 0', scale: '1' }], { duration: 320, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' });
   }],
   // o Ok do banco (extrato e razão batem): encaixa com mola
-  ['.badge-ok', el => { animar(el, { opacity: [0, 1], scale: [0.6, 1], ease: MOLA_VIVA }); }],
+  ['.badge-ok', el => { animar(el, { opacity: [0, 1], scale: [0.6, 1], ease: molaViva() }); }],
 ];
 
 const vistos = new WeakSet<Element>();
@@ -217,7 +223,7 @@ function recusar(fundo: HTMLElement) {
   setTimeout(() => {
     if (!fundo.isConnected || fundo.hasAttribute('data-fantasma')) return;
     const caixa = (fundo.querySelector<HTMLElement>('.modal') || fundo.firstElementChild) as HTMLElement | null;
-    if (caixa) animar(caixa, { scale: [{ to: 0.97, duration: 90, ease: 'out(2)' }, { to: 1, duration: 260, ease: MOLA_VIVA }] });
+    if (caixa) animar(caixa, { scale: [{ to: 0.97, duration: 90, ease: 'out(2)' }, { to: 1, duration: 260, ease: molaViva() }] });
   }, 90);
 }
 function apertar(ev: PointerEvent) {
@@ -253,7 +259,11 @@ export function iniciarAnimador(): void {
       m.addedNodes.forEach(animarSeEntrou);
       if (m.target instanceof Element && m.target.closest('.btn') && (m.addedNodes.length || m.removedNodes.length)) botaoTrocouDeTexto(m.target);
     }
-  }).observe(document.body, { childList: true, subtree: true, characterData: true });
+    animarLote(lista);
+  }).observe(document.body, { childList: true, subtree: true, characterData: true, characterDataOldValue: true });
+  // as classes que mudam (só o animaTudo.ts usa: o selo que mudou de tom, a aba que ficou ativa)
+  new MutationObserver(classesMudaram).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'], attributeOldValue: true });
+  ligarAnimaTudo();
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape') ultimoEsc = performance.now(); }, true);
   // o clique direito: o menu nasce (e volta) no ponto do clique
   document.addEventListener('contextmenu', ev => { marcarOrigem({ ponto: { x: ev.clientX, y: ev.clientY } }); }, true);

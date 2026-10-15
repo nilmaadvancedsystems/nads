@@ -2,12 +2,15 @@
 // e os CFOPs ligados), as saídas que baixam bem e o uso e consumo com item de bem, das notas importadas na Conferência,
 // no período da tarefa. Só olhar: nada é gravado. O ⚡ do modo desenvolvedor põe notas de teste só nesta tela.
 // A verificação só roda no clique do Verificar (Vitor, 07/10/2026: abrir a etapa travava enquanto olhava os CFOPs), com a
-// barra do topo e o botão girando por 2,7 segundos (Vitor, 08/10/2026).
+// barra do topo e o botão girando por 2,7 segundos (Vitor, 08/10/2026). Verificado, o resultado fica guardado (Vitor,
+// 15/10/2026: "verificou e tem bens no período apurado, já guarda"): voltando à etapa, ele já está lá; "Verificar de
+// novo" refaz.
 import { demo, formatos, tarefas } from '@nads/core';
 import { useCarregando, useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useNotasDaConferencia } from '../../../../../concilia-ai/importadosNaEtapa';
-import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
+import { useGuardado } from '../../../../../../comum/guardado';
+import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 
 type Linha = tarefas.NotaDeBem;
 
@@ -33,11 +36,12 @@ export function useBens() {
   const chave = meses.join(',');
   // o clique do Verificar: a hora em que começou; o resultado, quando a conta e os 3 segundos acabam
   const [desde, setDesde] = useState<number | null>(null);
-  const [b, setB] = useState<ReturnType<typeof tarefas.bensDoPeriodo> | null>(null);
-  // outras notas (as de teste, ou as da empresa de volta) ou outro período: verificar de novo. Não pelas listas: a
-  // Conferência entrega listas novas quando termina de carregar, e isso apagava o resultado do primeiro clique (Vitor,
-  // 08/10/2026: "no primeiro clique carrega e não faz nada, no segundo funciona")
-  useEffect(() => { setB(null); setDesde(null); }, [teste, chave]);
+  // o resultado guardado da empresa e do período (o das notas de teste, não: fica só na tela). Outro período ou as notas
+  // de teste: outra chave, então outro resultado. Não pelas listas: a Conferência entrega listas novas quando termina de
+  // carregar, e isso apagava o resultado do primeiro clique (Vitor, 08/10/2026)
+  const guardar = useChaveDaEtapa('bens') + '|resultado';
+  const [b, setB] = useGuardado<ReturnType<typeof tarefas.bensDoPeriodo> | null>(teste ? null : guardar, null);
+  useEffect(() => { setDesde(null); }, [teste, chave]);
   useEffect(() => {
     if (desde === null || !carregou) return;
     // a conta depois de a barra aparecer, para a tela não travar antes dela

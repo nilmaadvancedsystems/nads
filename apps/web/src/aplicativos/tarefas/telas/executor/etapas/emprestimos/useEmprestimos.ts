@@ -6,10 +6,10 @@
 // empréstimos valem até o mês consultado e de qual banco, e o razão importado lá já vem com o banco.
 import { empresas, formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useState } from 'react';
 import { useCadastro } from '../../../../dados/repo';
 import { useOperador } from '../../../../casca/operador';
-import { useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
+import { useChaveDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
+import { useGuardado } from '../../../../../../comum/guardado';
 
 const dataBr = (iso: string) => iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4);
 
@@ -36,8 +36,10 @@ export function useEmprestimos() {
   // os empréstimos já guardados no Cadastro (número, banco, de quando até quando)
   const cadastrados = cadastro.emprestimos || [];
   const meses = s.meses;
-  const [razoes, setRazoes] = useState<RazaoDoEmprestimo[]>([]);
-  const [seq, setSeq] = useState(1);
+  // os razões ficam guardados (Vitor, 15/10/2026: voltou, está onde parou)
+  const chave = useChaveDaEtapa('emprestimos');
+  const [razoes, setRazoes] = useGuardado<RazaoDoEmprestimo[]>(chave + '|razoes', []);
+  const [seq, setSeq] = useGuardado(chave + '|seq', 1);
   // os bancos da empresa no Cadastro (o nome, a agência e a conta para escolher; a conta contábil para sugerir); sem
   // bancos no Cadastro, a lista de antes (a mesma do Extrator), sem a linha genérica "Banco"
   const doCadastro = (cadastro.bancos || []).map(b => ({

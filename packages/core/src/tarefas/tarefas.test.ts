@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ArquivoImportado } from '../extratudo/extrator/tipos';
 import {
   competenciasRecentes, concluida, criarRepoTarefasMemoria, dispensar, execucaoNova, fazer, idDaExecucao, interromper,
-  etapaNoMes, etapaNoMesDoAno, objecoesMaisComuns, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar, execucoesVariadas, marcarSemMovimento, todosSemMovimento, voltarPara, rotuloCurtoCompetencia, competenciasDoPeriodo, rotaDoPeriodo, rotuloDoPeriodo, definirPeriodo, periodoConcluido,
+  etapaNoMes, etapaNoMesDoAno, etapaPeloBalancete, objecoesMaisComuns, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar, execucoesVariadas, marcarSemMovimento, todosSemMovimento, voltarPara, rotuloCurtoCompetencia, competenciasDoPeriodo, rotaDoPeriodo, rotuloDoPeriodo, definirPeriodo, periodoConcluido,
 } from '.';
 
 const R = ROTINA_CONTABIL;
@@ -223,5 +223,18 @@ describe('Estoque só em dezembro (Vitor, 07/10/2026)', () => {
   });
   it('etapa sem meses existe em todo mês', () => {
     expect(etapaNoMesDoAno(etapa('bens'), '2026-10')).toBe(true);
+  });
+});
+
+describe('a etapa pelo balancete (15/10/2026)', () => {
+  it('sem saldo no balancete, o Adiantamento a fornecedores sai do mês; com, volta; sem mudança, null', () => {
+    const ex = execucaoNova('FITO', 292, '2026-08', 'contabil');
+    expect(etapaNoMes(ex, 'adiantamento-fornecedores')).toBe(true);
+    const fora = etapaPeloBalancete(ex, 'adiantamento-fornecedores', false, 'sem saldo', 'Vitor', agora)!;
+    expect(fora.evento.tipo).toBe('retirada');
+    expect(etapaNoMes(fora.execucao, 'adiantamento-fornecedores')).toBe(false);
+    expect(etapaPeloBalancete(fora.execucao, 'adiantamento-fornecedores', false, 'sem saldo', 'Vitor', agora)).toBeNull();
+    const volta = etapaPeloBalancete(fora.execucao, 'adiantamento-fornecedores', true, 'com saldo', 'Vitor', agora)!;
+    expect(etapaNoMes(volta.execucao, 'adiantamento-fornecedores')).toBe(true);
   });
 });

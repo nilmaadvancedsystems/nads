@@ -36,6 +36,7 @@ export function regimeDaLista(codigo: number | null | undefined): string {
  */
 export function etapaNoMes(ex: Execucao | null, etapa: string): boolean {
   if (SO_QUANDO_ADICIONADAS.has(etapa) && !ex?.adicionadas?.includes(etapa)) return false;
+  if (ex?.retiradas?.includes(etapa)) return false;
   const e = RESTRITAS.get(etapa);
   if (e && ex) {
     const regime = regimeDaEmpresa(ex.codigo);
@@ -187,6 +188,17 @@ export function adicionarEtapa(ex: Execucao, etapa: string, motivo: string, por:
 /** A etapa sai do mês (o razão novo não tem mais o motivo); o que já foi feito nela fica guardado. */
 export function retirarEtapa(ex: Execucao, etapa: string, motivo: string, por: string, agora: Date): { execucao: Execucao; evento: Evento } {
   return { execucao: { ...ex, adicionadas: (ex.adicionadas || []).filter(e => e !== etapa) }, evento: { tipo: 'retirada', etapa, por, em: agora.toISOString(), observacao: motivo } };
+}
+
+/**
+ * O balancete diz se a etapa entra no mês (Vitor, 15/10/2026): sem a conta com saldo, ela sai (retiradas); com, volta.
+ * Devolve null quando não muda nada.
+ */
+export function etapaPeloBalancete(ex: Execucao, etapa: string, entra: boolean, motivo: string, por: string, agora: Date): { execucao: Execucao; evento: Evento } | null {
+  const fora = !!ex.retiradas?.includes(etapa);
+  if (entra === !fora) return null;
+  const retiradas = entra ? (ex.retiradas || []).filter(e => e !== etapa) : [...(ex.retiradas || []), etapa];
+  return { execucao: { ...ex, retiradas }, evento: { tipo: entra ? 'adicionada' : 'retirada', etapa, por, em: agora.toISOString(), observacao: motivo } };
 }
 
 /** O "Próximo" conferiu e ainda não está feita (vira evento: mostra onde as pessoas tropeçam). */

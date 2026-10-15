@@ -280,3 +280,19 @@ export function LogoFgts({ cor }: { cor?: boolean }) {
     </svg>
   );
 }
+
+/** A cor que predomina na marca de cada banco (a mesma chave do logo). */
+const COR_DA_MARCA: Record<string, string> = {
+  sicoob: '#00AE9D', 'banco-do-brasil': '#FCFC30', itau: '#EC7000', bradesco: '#CC092F', santander: '#EC0000', caixa: '#005CA9',
+  nubank: '#820AD1', inter: '#FF7A00', c6: '#242424', btg: '#001E62', stone: '#00A868', cora: '#FE3E6D', sicredi: '#3FA110',
+  safra: '#1C2A55', banrisul: '#004B8D', bnb: '#A6193C', 'mercado-pago': '#00B1EA', pagbank: '#1BB99A',
+};
+
+/**
+ * O fundo pastel do banco, bem suave (Vitor, 15/10/2026: "uma corzinha pastel, da cor predominante do banco"): a cor da
+ * marca misturada com a superfície (certa no tema claro e no escuro). Banco sem cor: undefined.
+ */
+export function fundoSuaveDoBanco(marca: string): string | undefined {
+  const cor = COR_DA_MARCA[marca];
+  return cor ? 'color-mix(in srgb, ' + cor + ' ' + (marca === 'banco-do-brasil' ? 30 : 16) + '%, var(--surface))' : undefined;
+}

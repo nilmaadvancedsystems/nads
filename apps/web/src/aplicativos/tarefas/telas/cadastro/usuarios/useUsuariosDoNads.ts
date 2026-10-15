@@ -5,6 +5,7 @@
 import { usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
+import { BASE } from '../../../casca/navegacao';
 import { useOperador } from '../../../casca/operador';
 import { useAcesso } from '../../../dados/repo';
 
@@ -28,6 +29,9 @@ export function useUsuariosDoNads() {
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<FiltroDeUsuarios>('todos');
   const [janela, setJanela] = useState<Janela>(null);
+  // o link de nova senha gerado agora (15/10/2026), de quem é
+  const [linkDeSenha, setLinkDeSenha] = useState<{ uid: string; link: string } | null>(null);
+  const [gerandoSenha, setGerandoSenha] = useState(false);
   // o relógio do "online" (quem parou de bater o ponto sai sem a lista mudar)
   const [agora, setAgora] = useState(() => new Date());
   useEffect(() => { const r = setInterval(() => setAgora(new Date()), 30 * 1000); return () => clearInterval(r); }, []);
@@ -99,6 +103,20 @@ export function useUsuariosDoNads() {
       }
       await tentar(() => repo.ativar(p.uid, !p.ativo), p.nome + (p.ativo ? ' desativado.' : ' ativado.'));
     },
+    /** o link de nova senha da pessoa (só o admin; vale 24 h e uma vez): a pessoa abre e escolhe a senha */
+    linkDeSenha: (uid: string) => (linkDeSenha?.uid === uid ? linkDeSenha.link : ''),
+    gerandoSenha,
+    async gerarLinkDeSenha(p: usuarios.Usuario) {
+      if (!admin) { toast('Só um administrador gera o link de nova senha.'); return; }
+      if (gerandoSenha) return;
+      setGerandoSenha(true);
+      try {
+        const codigo = await repo.criarConviteDeSenha(p.uid);
+        setLinkDeSenha({ uid: p.uid, link: location.origin + BASE + '/convite/' + codigo });
+        toast('Link de nova senha de ' + p.nome + ' criado: vale 24 horas.');
+      } catch (err) { toast('Não consegui gerar o link: ' + (err as Error).message); } finally { setGerandoSenha(false); }
+    },
+    copiar: (link: string) => { void navigator.clipboard.writeText(link).then(() => toast('Link copiado.'), () => toast('Não consegui copiar; selecione o link e copie.')); },
     revogar: (s: usuarios.SessaoLiberada) => tentar(() => repo.revogar(s), 'Liberação de ' + s.nome + ' (' + s.computador + ') revogada: o código não vale mais.'),
     quando: (iso: string) => (iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : ''),
   };

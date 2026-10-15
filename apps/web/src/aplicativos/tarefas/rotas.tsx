@@ -10,6 +10,7 @@ import { CadastroAberto, CadastroAntigo } from './casca/CadastroAberto';
 import { EmpresaAberta } from './casca/EmpresaAberta';
 import { BASE, caminhoDoInicio } from './casca/navegacao';
 import { useOperador, type Operador } from './casca/operador';
+import { ConviteDoNads } from './telas/convite/ConviteDoNads';
 import { Executor } from './telas/executor/Executor';
 import { PreviaAbertura } from './telas/previa/PreviaAbertura';
 import { PreviaAnimacoes } from './telas/previa/PreviaAnimacoes';
@@ -23,6 +24,8 @@ export const rotasTarefas: RouteObject[] = [
   // a prévia da abertura (a animação da logo), sem login
   { path: BASE + '/previa/abertura', element: <PreviaAbertura /> },
   { path: BASE + '/previa/animacoes', element: <PreviaAnimacoes /> },
+  // o convite (15/10/2026): criar a conta ou trocar a senha pelo link que o admin gerou, sem login
+  { path: BASE + '/convite/:codigo', element: <ConviteDoNads /> },
   {
     path: BASE,
     element: <AppTarefas />,

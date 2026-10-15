@@ -4344,6 +4344,19 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 .dp-barras li:nth-child(5) .dp-barra > span{animation-delay:200ms;}
 .dp-barras li:nth-child(n+6) .dp-barra > span{animation-delay:250ms;}
 .fgts-barra > span,.dp-painel .tarefas-barra > span{transition:width .5s cubic-bezier(.23,1,.32,1);}
+
+/* o leitor do SINTEGRA (Fiscal › SINTEGRA e o item "Entradas x SINTEGRA" da rotina, 15/10/2026) */
+.sintegra{display:flex;flex-direction:column;gap:12px;}
+.sintegra-topo{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.sintegra-topo .hint{margin:0;}
+.sintegra-vazio{margin:0;}
+.sintegra-numeros{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));}
+.sintegra-numeros .stat .hint{margin:2px 0 0;}
+.sintegra-falta .stat-value{color:var(--danger);}
+.sintegra-tabela caption{caption-side:top;text-align:left;font-weight:600;font-size:13px;padding:0 0 6px;}
+.sintegra-linha-dif td{background:var(--danger-soft);}
+.sintegra-corpo{padding:16px;}
+.sintegra-na-etapa{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
 /* Gmail: a lista num painel como o do Gmail (14/10/2026: "era pra resolver as bordas do gmail que ficam sem nada e só
    acabam"): o fundo do painel, os cantos redondos e as linhas fechando nas bordas dele; overflow:clip para o rótulo do
    grupo continuar grudando no alto ao rolar a página */
@@ -4395,3 +4408,35 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 .nf-entrada::placeholder{color:var(--ink-faint);}
 .cfg-linha-desc a{color:var(--accent);}
 @media (max-width:640px){.nf-corta{max-width:160px;}.nf-dado{flex-direction:column;gap:2px;}.nf-entrada,.nf-entrada.largo{width:100%;}}
+/* o link do convite (cadastro ou nova senha) na janela do usuário (15/10/2026) */
+.convite-link{display:flex;align-items:center;gap:8px;min-width:0;width:min(440px,100%);}
+.convite-link input{flex:1;min-width:0;font-family:var(--font-num);font-size:12px;}
+.convite-link svg{width:14px;height:14px;}
+/* O "Não tem motivo pra usar tanta animação" (Vitor, 15/10/2026: "anime tudo do app [...] o mais bonito e fluido
+   possivel"): o que é do CSS (o resto é do animaTudo.ts). Só nesse nível; nos outros, nada daqui vale. Só nos desenhos
+   de dentro (os ícones), com as propriedades soltas (scale, translate, rotate): somam com o transform que já houver
+   (a seta virada da lateral) e não prendem o position:fixed de ninguém. */
+html[data-animacoes=todas] :is(.btn,.icon-btn,.subnav-item,.menu-item,.caixa-item,.drawer-item,.popover-item,.chip-f,.gh-crumb,.explorador-cmd) > svg{
+  transition:scale .38s cubic-bezier(.34,1.56,.64,1),translate .38s cubic-bezier(.34,1.56,.64,1),rotate .38s cubic-bezier(.34,1.56,.64,1),transform .32s var(--ease-out);}
+html[data-animacoes=todas] .icon-btn:hover:not(:disabled) > svg{scale:1.14;}
+html[data-animacoes=todas] :is(.btn,.chip-f,.explorador-cmd):hover:not(:disabled) > svg:first-child:not(.menu-seta){scale:1.1;rotate:-4deg;}
+html[data-animacoes=todas] :is(.subnav-item,.caixa-item,.drawer-item,.popover-item):hover > svg{translate:2px 0;}
+html[data-animacoes=todas] .menu-item:hover > svg{translate:0 -1px;scale:1.08;}
+/* a setinha do menu vira quando ele abre */
+html[data-animacoes=todas] .menu-seta{transition:rotate .32s var(--ease-out),transform .32s var(--ease-out);}
+html[data-animacoes=todas] [aria-expanded="true"]:not(.pedir-outros-btn) > .menu-seta{rotate:180deg;}
+/* a dica sobe de leve ao aparecer */
+html[data-animacoes=todas] .dica-balao{transition:opacity .2s var(--ease-out),translate .28s var(--ease-out),visibility .2s;translate:0 4px;}
+html[data-animacoes=todas] :is(.dica:hover,.dica:focus-visible) .dica-balao{translate:0 0;}
+/* as barras que mudam de tamanho andam até o novo (só o preenchimento, dentro do trilho: o resto não se mexe) */
+html[data-animacoes=todas] [class*="barra"] > span[style*="width"]{transition:width .7s var(--ease-out);}
+html[data-animacoes=todas] :is(.chart-bar,.cert-barra-cheia){transition:height .7s var(--ease-out);}
+/* a linha da tabela acende ao passar o mouse e apaga devagar */
+html[data-animacoes=todas] tbody tr{transition:background-color .3s var(--ease-out);}
+html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
+@media (prefers-reduced-motion: reduce){
+  html[data-animacoes=todas] :is(.btn,.icon-btn,.subnav-item,.menu-item,.caixa-item,.drawer-item,.popover-item,.chip-f,.gh-crumb,.explorador-cmd) > svg{transition:none;scale:none;translate:none;rotate:none;}
+  html[data-animacoes=todas] .menu-seta{transition:none;}
+  html[data-animacoes=todas] .dica-balao,html[data-animacoes=todas] :is(.dica:hover,.dica:focus-visible) .dica-balao{translate:none;transition:opacity .2s linear,visibility .2s;}
+  html[data-animacoes=todas] tbody tr{transition:none;}
+}

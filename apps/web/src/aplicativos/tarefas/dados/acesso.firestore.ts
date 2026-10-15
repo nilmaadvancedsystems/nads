@@ -8,7 +8,7 @@
 // As regras do Entregas (firestore.rules) só deixam ler e gravar os dados do nads (rotinas, cadastro) com o login
 // liberado, quando a proteção está ligada; o admin não precisa de liberação.
 import { usuarios as u } from '@nads/core';
-import { addDoc as addDocBruto, collection, doc, onSnapshot, orderBy, query, setDoc as setDocBruto, Timestamp, updateDoc as updateDocBruto, where, writeBatch as writeBatchBruto, limit } from 'firebase/firestore';
+import { addDoc as addDocBruto, collection, doc, getDoc, onSnapshot, orderBy, query, setDoc as setDocBruto, Timestamp, updateDoc as updateDocBruto, where, writeBatch as writeBatchBruto, limit } from 'firebase/firestore';
 import type { RepoAcesso } from './acesso';
 import { bancoDoEntregas, criarLoginNoEntregas, horaDoLogin } from './entregas.firestore';
 import { guardar, guardarLote, guardarPedido } from '../../../comum/modoDesenvolvedor';
@@ -20,6 +20,10 @@ const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
 const writeBatch = ((...a: Parameters<typeof writeBatchBruto>) => guardarLote(writeBatchBruto(...a))) as typeof writeBatchBruto;
 
 type Quem = { uid: string; nome: string; email: string; admin: boolean } | null;
+
+const DIA = 24 * 60 * 60 * 1000;
+/** O código do convite: 32 letras e números ao acaso (como o do Entregas, um UUID sem os traços). */
+const novoCodigo = () => crypto.randomUUID().replace(/-/g, '');
 
 export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
   const db = bancoDoEntregas();
@@ -161,6 +165,33 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
       const uid = await criarLoginNoEntregas(String(novo.email), c.senha);
       await setDoc(doc(db, 'usuarios', uid), novo);
       return String(novo.email);
+    },
+    // os convites (15/10/2026), no formato do Entregas (convites/{codigo}; as regras de lá conferem): o código é a senha,
+    // vale 24 h e uma vez só; a página pública /tarefas/convite/<código> (convite.firestore.ts) é quem usa
+    async criarConviteDeCadastro(c) {
+      const q = eu();
+      if (!q.admin) throw new Error('Só um administrador gera o link de cadastro.');
+      const codigo = novoCodigo();
+      await setDoc(doc(db, 'convites', codigo), {
+        tipo: 'novo', roles: u.papeisDaContaNova(c.departamento, c.nivel, c.extras), departamento: c.departamento, nivel: c.nivel,
+        usado: false, criadoPor: q.email, criadoPorNome: q.nome, criadoEm: new Date().toISOString(), expiraEm: Timestamp.fromDate(new Date(Date.now() + DIA)), origem: 'nads',
+      });
+      return codigo;
+    },
+    async criarConviteDeSenha(uid) {
+      const q = eu();
+      if (!q.admin) throw new Error('Só um administrador gera o link de nova senha.');
+      const d = equipe.docs[uid];
+      if (!d) throw new Error('Não achei essa pessoa.');
+      // o endereço do serviço de contas vai no convite: quem abre o link está sem login e não lê config/integracoes
+      const contasUrl = String(((await getDoc(doc(db, 'config', 'integracoes'))).data() || {}).contasUrl || '');
+      if (!contasUrl) throw new Error('Falta o endereço do serviço de contas (config/integracoes), que troca a senha.');
+      const codigo = novoCodigo();
+      await setDoc(doc(db, 'convites', codigo), {
+        tipo: 'reset', uidAlvo: uid, nome: String(d.nome || ''), email: String(d.email || ''), contasUrl,
+        usado: false, criadoPor: q.email, criadoPorNome: q.nome, criadoEm: new Date().toISOString(), expiraEm: Timestamp.fromDate(new Date(Date.now() + DIA)), origem: 'nads',
+      });
+      return codigo;
     },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,

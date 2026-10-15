@@ -2,7 +2,7 @@
 // direita; os arquivos na linha da Importação (o ícone de importar; importado, o check que vira × e tira); o credor na
 // grade dos Arquivos (com ele, o "Corrigi, irei reimportar" no lugar do Próximo); os clientes em tabela; o selo de cada cliente (o saldo, Conferido ou Ok) é do sistema: Conferido é o razão com nota em
 // aberto ou pagamento solto (Vitor, 07/10/2026), e o conferido abre a observação; o envio, só o Mandar pelo Mandei. Só o balancete dinâmico (Vitor, 06/10/2026).
-import { Icone, MenuSuspenso, Segmentado } from '@nads/ui';
+import { Icone, MenuSuspenso, Segmentado, LogoBanco, fundoSuaveDoBanco } from '@nads/ui';
 import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { useClientes, type FiltroClientes, type TelaClientes } from './useClientes';
@@ -11,6 +11,15 @@ import { DigitarLancamento } from './DigitarLancamento';
 import { ConsultaDeNotas, useAbasDaConsulta } from '../consulta/ConsultaDeNotas';
 
 type VM = ReturnType<typeof useClientes>;
+
+/** O texto da cápsula da nota: as sugestões no banco; sem elas, as aceitas ou as recusadas. Sem nada, vazio. */
+function capsulaDoBanco(i: { sugestoes: readonly unknown[]; baixas: readonly unknown[]; recusadas: readonly unknown[] }): string {
+  const n = (k: number, um: string, varios: string) => k + ' ' + (k === 1 ? um : varios);
+  return i.sugestoes.length ? n(i.sugestoes.length, 'no banco', 'no banco') : i.baixas.length ? n(i.baixas.length, 'aceita', 'aceitas') : i.recusadas.length ? n(i.recusadas.length, 'recusada', 'recusadas') : '';
+}
+
+/** A cor leve de uma nota sim, outra não, na relação do razão (com a sugestão dela junto). */
+const LISTRA = { background: 'var(--surface-2)' };
 
 export function Clientes() {
   const vm = useClientes();
@@ -26,7 +35,9 @@ export function Clientes() {
         {/* com cliente credor, o "Corrigi, irei reimportar" no lugar do Próximo travado: tira o dinâmico para importar o
             corrigido; deu tudo ok, volta o Próximo (Vitor, 07/10/2026) */}
         {vm.corrigir ? <button type="button" className="btn btn-primary" onClick={vm.tirar}>Corrigi, irei reimportar</button>
-          : vm.temProxima && <button type="button" className="btn btn-primary" disabled={!vm.podeSeguir} onClick={vm.proximo}>Próximo</button>}
+          : vm.temProxima ? <button type="button" className="btn btn-primary" disabled={!vm.podeSeguir} onClick={vm.proximo}>Próximo</button>
+          // nada para questionar: sem o Envio, segue para a próxima etapa pela seta lá de cima (Vitor, 15/10/2026)
+          : vm.semQuestionamento && <span className="hint">Nada para questionar: siga para a próxima etapa pela seta acima</span>}
         {/* no Envio, só o Mandar pelo Mandei (Vitor, 07/10/2026: "remove isso tudo, deixa só o botão"): vai para o e-mail e o
             WhatsApp da empresa, os do Cadastro */}
         {vm.tela === 'envio' && vm.conferidos.length > 0 && (
@@ -124,6 +135,9 @@ function ListaDeClientes({ vm }: { vm: VM }) {
   // alguma linha com a relação do razão: todas guardam o lugar da seta
   const comSeta = vm.linhas.some(l => !!l.razao && l.razao.itens.length > 0);
   const alternar = (codigo: string) => setAbertas(f => { const n = new Set(f); if (n.has(codigo)) n.delete(codigo); else n.add(codigo); return n; });
+  // as sugestões de baixa de cada nota, fechadas até clicar na cápsula (Vitor, 15/10/2026: "tá muito embolado")
+  const [noBanco, setNoBanco] = useState<ReadonlySet<string>>(new Set());
+  const alternarNoBanco = (k: string) => setNoBanco(f => { const n = new Set(f); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   return (
     <>
       <input ref={arquivo} type="file" accept=".xls,.xlsx,.ods" className="sr-only" tabIndex={-1} aria-hidden="true"
@@ -161,12 +175,13 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                 </td>
                 <td className="wrap">
                   {l.nome}{l.doMesAnterior && <> <span className="badge badge-neutral" title="Conferido no mês anterior: revise">do mês anterior</span></>}
-                  {/* o razão que não bate com o balancete (as notas ficam na relação embaixo; Vitor, 07/10/2026) */}
-                  {l.razao?.naoBate && <span className="hint ext-neg" style={{ display: 'block', marginTop: 2 }}>O razão fecha em {l.razao.naoBate}: confira se é desta conta</span>}
+                  {/* o razão de outro participante (pelo nome nos históricos, não pelo saldo; Vitor, 15/10/2026) */}
+                  {l.razao?.deOutro && <span className="hint ext-neg" style={{ display: 'block', marginTop: 2 }}>O razão é de {l.razao.deOutro}: confira se é desta conta</span>}
                   {/* o conferido mostra o que vai para o cliente (o que foi adicionado no "+" de cada linha da relação, em texto: "Questionar: NF 9971 · NF 10111"; Vitor, 07/10/2026) */}
-                  {l.situacao === 'conferido' && (l.perguntar
-                    ? <span style={{ display: 'block', marginTop: 4 }}><span className="hint">Questionar: </span>{l.perguntar}</span>
-                    : <span className="hint" style={{ display: 'block', marginTop: 4 }}>Use o + nas linhas para perguntar ao cliente.</span>)}
+                  {/* sem a dica do + (Vitor, 15/10/2026: "remove isso") */}
+                  {l.situacao === 'conferido' && l.perguntar && (
+                    <span style={{ display: 'block', marginTop: 4 }}><span className="badge badge-neutral" title="O que vai para o cliente responder">Questionar: {l.perguntar}</span></span>
+                  )}
                 </td>
                 <td>
                   {/* os selos do catálogo: o saldo (Diferença, SE-03), Conferido (SE-02) e Ok (SE-01), todos do sistema: o Ok é a conta
@@ -182,7 +197,8 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                 <td className="num">
                   <span style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end' }}>
                   {/* digitar o lançamento à mão, sem upar o razão (Vitor, 08/10/2026) */}
-                  {!(l.situacao === 'ok' && !l.razao) && (
+                  {/* com o razão importado do arquivo, não tem o que digitar (Vitor, 15/10/2026) */}
+                  {!(l.situacao === 'ok' && !l.razao) && !(l.razao && l.razao.arquivo !== 'Digitado à mão') && (
                     <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={!vm.carregado} aria-expanded={digitando === l.codigo}
                       onClick={() => setDigitando(x => (x === l.codigo ? null : l.codigo))}
                       title="Digitar um lançamento (sem upar o razão)" aria-label={'Digitar um lançamento de ' + l.nome}>
@@ -221,11 +237,19 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                         <thead><tr><th>Data</th><th>Nota fiscal</th><th>Descrição</th><th className="num">Valor</th><th>Status</th>{(l.situacao === 'conferido' || !!l.razao?.itens.some(x => x.digitado)) && <th className="num">Perguntar</th>}</tr></thead>
                         <tbody>
                           {l.razao.itens.map((i, k) => (
-                            <tr key={k}><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td>{i.nf}</td><td className="wrap">{i.descricao}{i.digitado && <span className="hint"> · digitado</span>}</td><td className={'num' + (i.abate ? ' ext-neg' : '')}>{i.valor}</td>
-                              <td className={i.status === 'aberto' ? undefined : 'hint'}>{i.rotulo}</td>
+                            <Fragment key={k}><tr style={k % 2 ? LISTRA : undefined}><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td>{i.nf}</td><td className="wrap">{i.descricao}{i.digitado && <span className="hint"> · digitado</span>}</td><td className={'num' + (i.abate ? ' ext-neg' : '')} title={i.aceito ? 'Aceito no banco: ' + i.aceito : undefined}>{i.valor}</td>
+                              <td className={i.status === 'aberto' ? undefined : 'hint'}>{i.quitada ? <span className="badge badge-ok" title={'Aceito no banco: ' + i.aceito}>Ok</span> : i.rotulo}
+                                {capsulaDoBanco(i) && (
+                                  <button type="button" className="badge badge-neutral" aria-expanded={noBanco.has(l.codigo + '|' + i.chave)} onClick={() => alternarNoBanco(l.codigo + '|' + i.chave)}
+                                    title={noBanco.has(l.codigo + '|' + i.chave) ? 'Esconder o que achei no banco' : 'Ver o que achei no banco'}
+                                    style={{ marginLeft: 8, cursor: 'pointer', background: 'transparent', font: 'inherit', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                                    {capsulaDoBanco(i)}<Icone nome="caretDown" />
+                                  </button>
+                                )}
+                                {!i.quitada && i.aceito && <span className="hint" style={{ display: 'block' }}>aceito {i.aceito}</span>}</td>
                               {/* o "+" de cada linha (Vitor, 07/10/2026: "colocando esse + em cada linha"): adiciona ao que vai para o cliente;
                                   adicionada, o check que vira × e tira (o mesmo botão da importação) */}
-                              {(l.situacao === 'conferido' || !!l.razao?.itens.some(x => x.digitado)) && <td className="num">{!i.chave ? <span className="hint" title="Só do escritório">—</span> : i.digitado ? (
+                              {(l.situacao === 'conferido' || !!l.razao?.itens.some(x => x.digitado)) && <td className="num">{!i.chave || i.quitada ? <span className="hint" title={i.quitada ? 'Com a baixa no banco' : 'Só do escritório'}>—</span> : i.digitado ? (
                                 <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" disabled={!vm.carregado} onClick={() => vm.tirarDigitado(l.codigo, i.chave)}
                                   title="Lançamento digitado: vai para o cliente. Clique para tirar." aria-label="Tirar o lançamento digitado">
                                   <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
@@ -241,6 +265,64 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                                   <Icone nome="plus" />
                                 </button>
                               )}</td>}</tr>
+                            {/* a sugestão de baixa logo abaixo da nota em aberto (Vitor, 15/10/2026): sem título e sem o fio do lado, uma
+                                mini tabela com Banco (só o logo), Data, Descrição (letra menor), Valor e Situação (os selos) */}
+                            {/* o botão de aceitar (Vitor, 15/10/2026: "quando o usuário mudar ou aceitar a sugestão, fique Ok"): aceita, a nota
+                                fica Ok e só o lançamento escolhido fica, com o check que vira × para desfazer */}
+                            {noBanco.has(l.codigo + '|' + i.chave) && (i.baixas.length > 0 || i.sugestoes.length > 0 || i.recusadas.length > 0) && (
+                              <tr style={k % 2 ? LISTRA : undefined}>
+                                <td colSpan={6} style={{ padding: 0 }}>
+                                  {/* sem caixa, sem borda e sem o cabeçalho; mais de uma, separadas pela linha suave da tabela (Vitor, 15/10/2026) */}
+                                  <div>
+                                    <table className="table-compact" aria-label="Possível recebimento desta nota no banco">
+                                      <tbody>
+                                        {[...i.baixas.map(b => ({ ...b, selos: [], aceita: true, recusada: false })), ...i.sugestoes.map(g => ({ ...g, aceita: false, recusada: false })),
+                                          ...i.recusadas.map(r => ({ ...r, selos: [], aceita: false, recusada: true }))].map((g, j) => (
+                                          <tr key={j} style={g.recusada ? { opacity: 0.55 } : fundoSuaveDoBanco(g.marca) ? { background: fundoSuaveDoBanco(g.marca) } : undefined}>
+                                            {/* o Aceitar e o Recusar à esquerda do logo do banco (Vitor, 15/10/2026) */}
+                                            <td style={{ width: 84, whiteSpace: 'nowrap' }}>
+                                              {g.recusada ? (
+                                                <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={!vm.carregado} onClick={() => vm.desfazerRecusa(l.codigo, i.chave, g.bruto)}
+                                                  title="Recusada. Clique para desfazer." aria-label={'Desfazer a recusa do lançamento de ' + g.data}>
+                                                  <Icone nome="girar" />
+                                                </button>
+                                              ) : g.aceita ? (
+                                                <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" disabled={!vm.carregado} onClick={() => vm.aceitarBaixa(l.codigo, i.chave, g.bruto, false)}
+                                                  title="Baixa aceita. Clique para desfazer." aria-label={'Desfazer a baixa ' + (i.nf !== '—' ? 'da NF ' + i.nf : 'da nota')}>
+                                                  <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
+                                                </button>
+                                              ) : (
+                                                <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={!vm.carregado} onClick={() => vm.aceitarBaixa(l.codigo, i.chave, g.bruto, true)}
+                                                  title="Aceitar: é a baixa desta nota" aria-label={'Aceitar o lançamento de ' + g.data + ' como a baixa ' + (i.nf !== '—' ? 'da NF ' + i.nf : 'da nota')}>
+                                                  <Icone nome="check" />
+                                                </button>
+                                              )}
+                                              {!g.aceita && !g.recusada && (
+                                                <button type="button" className="icon-btn icon-btn-sm imp-btn" style={{ marginLeft: 6 }} disabled={!vm.carregado} onClick={() => vm.recusarSugestao(l.codigo, i.chave, g.bruto)}
+                                                  title="Recusar: não é a baixa desta nota" aria-label={'Recusar o lançamento de ' + g.data + ' para ' + (i.nf !== '—' ? 'a NF ' + i.nf : 'a nota')}>
+                                                  <Icone nome="x" />
+                                                </button>
+                                              )}
+                                            </td>
+                                            {/* o banco: só o logo (o nome na dica), para sobrar espaço (Vitor, 15/10/2026) */}
+                                            <td title={g.banco} style={{ width: 56 }}><span className="drive-candidato-logo" style={{ display: 'inline-flex' }} aria-label={g.banco}><LogoBanco banco={g.marca} cor /></span></td>
+                                            <td style={{ whiteSpace: 'nowrap', width: 96 }}>{g.data}</td>
+                                            <td title={g.historico} style={{ fontSize: 12, maxWidth: 0, width: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.curto}</td>
+                                            <td className="num" style={{ whiteSpace: 'nowrap' }}>{g.valor}</td>
+                                            <td style={{ whiteSpace: 'nowrap' }}>
+                                              <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'nowrap' }}>
+                                                {g.aceita ? <span className="badge badge-ok">Aceita</span> : g.recusada ? <span className="badge badge-neutral">Recusada</span> : g.selos.map(x => <span key={x.texto} className={'badge badge-' + x.tom} title={x.dica}>{x.texto}</span>)}
+                                              </span>
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                            </Fragment>
                           ))}
                         </tbody>
                       </table>
