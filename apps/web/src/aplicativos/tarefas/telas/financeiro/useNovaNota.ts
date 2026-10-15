@@ -4,9 +4,10 @@
 // recusada: abre preenchida e volta para a fila com o mesmo número de DPS.
 import { empresas, formatos, nfse } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useOperador } from '../../casca/operador';
 import { contatosDoEntregas, dadosDaEmpresaNoEntregas, empresasNovas, repoDoCadastro } from '../../dados/fonte';
+import { consultarCnpj } from '../../dados/receita';
 import { useNfse } from '../../dados/repo';
 import { dataBr, descricaoPadrao, documentoFormatado, foneSoDigitos, hoje, isoDaData, previaDoIss, valorDigitado, valorNoCampo } from './formatosDaNota';
 
@@ -36,6 +37,54 @@ export function useNovaNota(fechar: () => void, nota?: nfse.NotaFiscal) {
   // a escolha mais nova vale: se trocar de cliente antes de a leitura do anterior chegar, a antiga é descartada
   const leitura = useRef(0);
 
+  // o endereço do tomador (16/10/2026: a prefeitura recusou a primeira nota real, E1358: "o endereço nacional do tomador do
+  // serviço deve ser informado na DPS quando o tomador for identificado pelo CNPJ"): com CNPJ, a Receita preenche; com CPF é opcional
+  const e0 = nota?.tomador.endereco;
+  const [cep, setCep] = useState(e0?.cep || '');
+  const [rua, setRua] = useState(e0?.logradouro || '');
+  const [numero, setNumero] = useState(e0?.numero || '');
+  const [bairro, setBairro] = useState(e0?.bairro || '');
+  const [cMun, setCMun] = useState(e0?.cMun || '');
+  /** o nome e a UF do município, quando a Receita deu */
+  const [municipio, setMunicipio] = useState('');
+  const [comEndereco, setComEndereco] = useState(false);
+  const [buscandoEndereco, setBuscandoEndereco] = useState(false);
+  const [erroDoEndereco, setErroDoEndereco] = useState('');
+  // o CNPJ cujo endereço já foi buscado (uma vez por CNPJ); a nota que já tem endereço não precisa buscar
+  const buscado = useRef(e0 && nota ? nfse.soDigitos(nota.tomador.documento) : '');
+  const buscaDoEndereco = useRef(0);
+
+  async function buscarEndereco(cnpj: string) {
+    if (buscado.current === cnpj) return;
+    buscado.current = cnpj;
+    const minha = ++buscaDoEndereco.current;
+    setBuscandoEndereco(true);
+    setErroDoEndereco('');
+    try {
+      const d = await consultarCnpj(cnpj);
+      if (minha !== buscaDoEndereco.current) return;
+      if (!d.endereco) { setErroDoEndereco('A Receita não trouxe o endereço completo: preencha abaixo.'); return; }
+      setCep(d.endereco.cep); setRua(d.endereco.logradouro); setNumero(d.endereco.numero); setBairro(d.endereco.bairro); setCMun(d.endereco.cMun);
+      setMunicipio([d.municipio, d.uf].filter(Boolean).join('/'));
+    } catch (err) {
+      if (minha !== buscaDoEndereco.current) return;
+      buscado.current = '';   // sair do campo de novo busca outra vez
+      setErroDoEndereco((err instanceof Error ? err.message : String(err)) + ' Preencha o endereço abaixo.');
+    } finally {
+      if (minha === buscaDoEndereco.current) setBuscandoEndereco(false);
+    }
+  }
+  /** o CPF/CNPJ mudou: CNPJ de 14 dígitos que confere busca o endereço */
+  function aoMudarDocumento(v: string) {
+    const d = nfse.soDigitos(v);
+    if (d.length === 14 && nfse.documentoValido(d)) void buscarEndereco(d);
+  }
+  // corrigir uma recusada de CNPJ que não tem endereço: busca na Receita, como ao criar
+  useEffect(() => {
+    if (nota && !nota.tomador.endereco) aoMudarDocumento(nota.tomador.documento);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const q = formatos.nomeNorm(busca);
   const achados = q ? lista.filter(e => formatos.nomeNorm(e.nome + ' ' + (e.codigo ?? '')).includes(q)).slice(0, 6) : [];
 
@@ -51,7 +100,9 @@ export function useNovaNota(fechar: () => void, nota?: nfse.NotaFiscal) {
       const d = e.codigo != null ? doEntregas.get(e.codigo) : undefined;
       const c = e.codigo != null ? contatos.get(e.codigo) : undefined;
       setNome(d?.receita?.razaoSocial || e.nome);
-      setDocumento(documentoFormatado(cad.cnpj || d?.documento || ''));
+      const doc = cad.cnpj || d?.documento || '';
+      setDocumento(documentoFormatado(doc));
+      aoMudarDocumento(doc);
       setEmail(cad.contato?.email || c?.email || '');
       setFone(foneSoDigitos(cad.contato?.whatsapp || c?.whatsapp || ''));
     } finally {
@@ -72,8 +123,8 @@ export function useNovaNota(fechar: () => void, nota?: nfse.NotaFiscal) {
     const tomador: nfse.TomadorNfse = { documento: nfse.soDigitos(documento), nome: nome.trim() };
     if (email.trim()) tomador.email = email.trim();
     if (nfse.soDigitos(fone)) tomador.fone = nfse.soDigitos(fone);
-    // o endereço da nota recusada segue como estava (esta janela não edita o endereço)
-    if (nota?.tomador.endereco) tomador.endereco = nota.tomador.endereco;
+    // sem nada preenchido, o endereço não vai (o conferidor pede quando o tomador é CNPJ)
+    if ([cep, rua, numero, bairro, cMun].some(x => x.trim())) tomador.endereco = { cMun: cMun.trim(), cep: nfse.soDigitos(cep), logradouro: rua.trim(), numero: numero.trim(), bairro: bairro.trim() };
     return { tomador, servico: { descricao: descricao.trim(), valor: valorNumero, competencia: isoDaData(data) }, empresaCodigo: escolhido?.codigo ?? null };
   }
 
@@ -96,11 +147,19 @@ export function useNovaNota(fechar: () => void, nota?: nfse.NotaFiscal) {
     }
   }
 
+  const ehCnpj = nfse.soDigitos(documento).length === 14;
+  const temEndereco = [cep, rua, numero, bairro, cMun].some(x => x.trim());
+
   return {
     corrigindo: !!nota, ambiente: config.ambiente,
     faltas, busca, setBusca, achados, escolhido, escolher, tirarCliente, lendoCliente,
     nome, setNome, documento, setDocumento, email, setEmail, fone, setFone,
     valor, setValor, data, setData, descricao, setDescricao,
+    // CNPJ: o endereço é obrigatório e sempre aparece; CPF: opcional, atrás do "Adicionar endereço"
+    endereco: { cep, setCep, rua, setRua, numero, setNumero, bairro, setBairro, cMun, setCMun, municipio, buscando: buscandoEndereco, erro: erroDoEndereco,
+      visivel: ehCnpj || comEndereco || temEndereco, obrigatorio: ehCnpj, adicionar: () => setComEndereco(true) },
+    /** o CNPJ digitado confere: busca o endereço ao sair do campo */
+    aoSairDoDocumento: () => aoMudarDocumento(documento),
     previa, erros, salvando, emitir,
     /** ao sair do campo: o CPF/CNPJ com os pontos, o valor com os centavos */
     formatarDocumento: () => setDocumento(d => documentoFormatado(d)),

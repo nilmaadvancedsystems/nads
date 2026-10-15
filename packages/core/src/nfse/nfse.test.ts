@@ -19,7 +19,7 @@ describe('o emissor de NFS-e', () => {
   });
 
   it('confere o pedido antes de mandar para o robô', () => {
-    const certo = { tomador: { documento: '11222333000181', nome: 'Cliente Exemplo Ltda' }, servico: { descricao: 'Honorários contábeis de outubro', valor: 850, competencia: '2026-10-31' } };
+    const certo = { tomador: { documento: '11222333000181', nome: 'Cliente Exemplo Ltda', endereco: { cMun: '3168002', cep: '39550000', logradouro: 'RUA A', numero: '1', bairro: 'CENTRO' } }, servico: { descricao: 'Honorários contábeis de outubro', valor: 850, competencia: '2026-10-31' } };
     expect(conferirPedido(certo)).toEqual([]);
     expect(conferirPedido({ ...certo, tomador: { ...certo.tomador, documento: '11222333000180' } })).toContain('O CPF ou CNPJ do tomador não confere.');
     expect(conferirPedido({ ...certo, servico: { ...certo.servico, valor: 0 } })).toContain('O valor precisa ser maior que zero.');

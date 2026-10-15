@@ -151,6 +151,8 @@ export function conferirPedido(p: { tomador: TomadorNfse; servico: ServicoNfse }
   if (!(p.servico.valor > 0)) erros.push('O valor precisa ser maior que zero.');
   if (p.tomador.fone && !/^\d{10,11}$/.test(soDigitos(p.tomador.fone))) erros.push('O telefone do tomador precisa do DDD (10 ou 11 dígitos).');
   const e = p.tomador.endereco;
+  // tomador CNPJ: a NFS-e Nacional exige o endereço (15/10/2026: a primeira nota em produção voltou com o E1358)
+  if (soDigitos(p.tomador.documento).length === 14 && !e) erros.push('Falta o endereço do tomador (obrigatório quando é CNPJ).');
   if (e && !(/^\d{7}$/.test(e.cMun) && /^\d{8}$/.test(soDigitos(e.cep)) && e.logradouro.trim() && e.numero.trim() && e.bairro.trim())) erros.push('O endereço do tomador está incompleto (município, CEP, rua, número e bairro).');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(p.servico.competencia)) erros.push('Escolha a competência.');
   return erros;
