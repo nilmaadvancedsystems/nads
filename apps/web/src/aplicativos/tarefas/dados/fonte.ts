@@ -15,6 +15,8 @@ import { criarGmailFirestore } from './gmail.firestore';
 import { criarArquivadorMemoria, type RepoArquivador } from './arquivador';
 import { criarFgtsMemoria, type RepoFgts } from './fgts';
 import { criarFgtsFirestore } from './fgts.firestore';
+import { criarNfseMemoria, type RepoNfse } from './nfse';
+import { criarNfseFirestore } from './nfse.firestore';
 import { criarSiegMemoria, type RepoSieg } from './sieg';
 import { criarSiegFirestore } from './sieg.firestore';
 import { criarArquivadorFirestore } from './arquivador.firestore';
@@ -303,6 +305,14 @@ let fgts: RepoFgts | null = null;
 export function repoDoFgts(): RepoFgts {
   if (!fgts) fgts = noBanco ? criarFgtsFirestore(() => { const q = quemPede(); return q ? { nome: q.nome, uid: q.uid } : null; }) : criarFgtsMemoria();
   return fgts;
+}
+
+let notasFiscais: RepoNfse | null = null;
+
+/** O emissor de NFS-e do financeiro (15/10/2026): as notas de honorários, a configuração e o token, emitidas pelo robô da nuvem. */
+export function repoDeNfse(): RepoNfse {
+  if (!notasFiscais) notasFiscais = noBanco ? criarNfseFirestore(() => { const q = quemPede(); return q ? { nome: q.nome, uid: q.uid } : null; }) : criarNfseMemoria();
+  return notasFiscais;
 }
 
 let agentes: RepoAgentes | null = null;

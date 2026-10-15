@@ -24,6 +24,8 @@ import { LegislacaoDoDp } from '../telas/dp/LegislacaoDoDp';
 import { ABAS_DO_PAINEL, type AbaDoPainel } from '../telas/dp/usePainelDoDp';
 import { ConfiguracoesDoDp } from '../telas/dp/ConfiguracoesDoDp';
 import { Mandei } from '../telas/mandei/Mandei';
+import { ConfiguracoesDoFinanceiro } from '../telas/financeiro/ConfiguracoesDoFinanceiro';
+import { NotasFiscais } from '../telas/financeiro/NotasFiscais';
 import { CascaTarefas } from './CascaTarefas';
 import { aplicacao, aplicacoesDe, caminhoDaPagina, type IdAplicacao } from './navegacao';
 import { useOperador, type Operador } from './operador';
@@ -37,6 +39,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'senhas': return pagina === 'acesso' ? <AcessoAoCofre /> : pagina === 'gov' ? <ContasGov /> : pagina === 'certificados' ? <Certificados /> : <SenhasDasEmpresas />;
     case 'cadastro': return pagina === 'sistema' ? <RobosEAgentes /> : <UsuariosDoNads />;
     case 'mandei': return <Mandei pagina={pagina === 'central' ? 'central' : 'meus'} />;
+    case 'financeiro': return pagina === 'configuracoes' ? <ConfiguracoesDoFinanceiro /> : <NotasFiscais />;
     case 'drive': return <ExploradorDoDrive />;
     case 'contato': return pagina === 'historico' ? <HistoricoDoRobo /> : <CaixaDoRobo />;
     default: return <EmDesenvolvimento nome={aplicacao(app)?.nome || app} />;

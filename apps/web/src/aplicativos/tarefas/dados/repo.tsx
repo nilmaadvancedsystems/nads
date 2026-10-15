@@ -4,11 +4,12 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDeCategoriasDp, repoDeLegislacaoDp, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
+import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDeCategoriasDp, repoDeLegislacaoDp, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDeNfse, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoAgentes } from './agentes';
 import type { RepoSieg } from './sieg';
 import type { RepoFgts } from './fgts';
+import type { RepoNfse } from './nfse';
 import type { RepoArquivador } from './arquivador';
 import type { RepoIA } from './ia';
 import type { RepoPessoal } from './pessoal';
@@ -173,6 +174,13 @@ export function useSieg(): RepoSieg {
 /** O FGTS Digital pelo robô, ao vivo: o estado do robô e os pedidos de guia. */
 export function useFgts(): RepoFgts {
   const repo = repoDoFgts();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** O emissor de NFS-e do financeiro, ao vivo: as notas, a configuração e o robô. */
+export function useNfse(): RepoNfse {
+  const repo = repoDeNfse();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
 }

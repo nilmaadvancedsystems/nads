@@ -4151,6 +4151,7 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 .drawer-item[data-app="mandei"] .drawer-app-icone{--app:#2fb3c4;}
 .drawer-item[data-app="senhas"] .drawer-app-icone{--app:#9a7ef0;}
 .drawer-item[data-app="cadastro"] .drawer-app-icone{--app:#8b95a5;}
+.drawer-item[data-app="financeiro"] .drawer-app-icone{--app:#e5793b;}
 .drawer-grupo{display:block;padding:12px 8px 4px;font-weight:500;}
 .drawer-sep + .drawer-grupo{padding-top:4px;}
 /* o texto longo dentro do cartão da janela lateral (DP › Legislação, 14/10/2026): o respiro embaixo */
@@ -4356,3 +4357,41 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 /* a linha com o menu suspenso aberto fica acima das de baixo (14/10/2026: o menu das Animações ficava por baixo do Sair da conta) */
 .cfg-linha:has(.popover){position:relative;z-index:5;}
 .cfg-secao:has(.popover){position:relative;z-index:5;}
+
+/* ---------- Financeiro (15/10/2026: "vamos criar um emissor de notas fiscais para o financeiro"): a faixa do estado do emissor,
+   a lista das notas, a janela da nota e os campos das configurações. Reaproveita .registro-*, .cfg-* e a lista do Cadastro ---------- */
+.nf-faixa{display:flex;align-items:center;gap:8px 20px;flex-wrap:wrap;margin-bottom:12px;font-size:13.5px;color:var(--ink);}
+.nf-exemplos{margin-bottom:16px;}
+.nf-faixa-item{display:inline-flex;align-items:center;gap:8px;}
+.nf-faixa-item > svg{width:16px;height:16px;flex:none;color:var(--ink-muted);}
+.nf-barra .steps{flex:none;}
+.nf-lista td{vertical-align:middle;}
+.nf-doc{display:block;font-size:12px;font-variant-numeric:tabular-nums;}
+.nf-corta{display:inline-block;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;}
+.nf-direita{text-align:right;white-space:nowrap;}
+.nf-roda{width:10px;height:10px;border-width:1.5px;margin-right:6px;vertical-align:-1px;}
+.nf-texto{width:100%;min-height:56px;resize:vertical;border:1px solid transparent;border-radius:6px;background:transparent;padding:7px 8px;font-size:14px;line-height:20px;font-family:var(--font-body);color:var(--ink);outline:none;}
+.nf-texto:hover{background:var(--hover-bg);}
+.nf-texto:focus{background:var(--input-bg);border-color:var(--accent);}
+.nf-texto::placeholder{color:var(--ink-faint);}
+.nf-achados{list-style:none;margin:-4px 0 0;padding:4px;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:8px;background:var(--surface);}
+.nf-achados .popover-item{width:100%;}
+.modal.nf-janela{max-width:600px;}
+.nf-dados{display:flex;flex-direction:column;}
+.nf-dado{display:flex;gap:12px;padding:7px 0;font-size:13.5px;border-bottom:1px solid color-mix(in srgb,var(--ink) 6%,transparent);}
+.nf-dado:last-child{border-bottom:0;}
+.nf-dado-nome{width:130px;flex:none;font-size:13px;color:var(--ink-muted);}
+.nf-dado-valor{flex:1;min-width:0;overflow-wrap:anywhere;color:var(--ink);}
+.nf-descricao{white-space:pre-wrap;}
+.nf-chave{display:inline-flex;align-items:center;gap:6px;}
+.nf-chave code{font:12px/16px var(--font-mono, monospace);word-break:break-all;}
+.nf-erros{display:flex;flex-direction:column;gap:4px;}
+.nf-erros .registro-erros li{display:flex;gap:6px;align-items:flex-start;}
+.nf-erros .registro-erros svg{width:14px;height:14px;flex:none;margin-top:2px;}
+.nf-cancelar{display:flex;flex-direction:column;gap:6px;padding-top:6px;border-top:1px solid var(--border);}
+.nf-entrada{width:200px;min-height:32px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--ink);padding:5px 12px;font-size:14px;line-height:20px;font-family:var(--font-body);box-shadow:var(--shadow-inset);}
+.nf-entrada.largo{width:340px;max-width:100%;}
+.nf-entrada:focus{outline:none;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
+.nf-entrada::placeholder{color:var(--ink-faint);}
+.cfg-linha-desc a{color:var(--accent);}
+@media (max-width:640px){.nf-corta{max-width:160px;}.nf-dado{flex-direction:column;gap:2px;}.nf-entrada,.nf-entrada.largo{width:100%;}}

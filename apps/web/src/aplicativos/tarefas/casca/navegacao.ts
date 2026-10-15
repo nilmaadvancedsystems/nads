@@ -10,7 +10,7 @@ import type { Operador } from './operador';
 
 export const BASE = '/tarefas';
 
-export type IdAplicacao = 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei';
+export type IdAplicacao = 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro';
 
 export interface Pagina { id: string; rotulo: string; icone: NomeIcone; titulo: string }
 export interface Aplicacao {
@@ -73,6 +73,12 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'gov', rotulo: 'Contas gov.br', icone: 'usuario', titulo: 'Senhas — contas gov.br' },
     { id: 'acesso', rotulo: 'Acesso', icone: 'usuario', titulo: 'Senhas — acesso ao cofre' },
   ] },
+  // o financeiro do escritório (15/10/2026: "vamos criar um emissor de notas fiscais para o financeiro"): as NFS-e de
+  // honorários da Nilma (Taiobeiras, E&L), emitidas pelo robô da nuvem; só o admin e o diretor
+  { id: 'financeiro', nome: 'Financeiro', icone: 'cartao', grupo: 'Escritório', pronta: true, paginas: [
+    { id: 'notas', rotulo: 'Notas fiscais', icone: 'recibo', titulo: 'Financeiro — notas fiscais' },
+    { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Financeiro — configurações do emissor' },
+  ] },
   // os tickets mandados aos clientes (Vitor, 07/10/2026): os meus e a central de todos
   { id: 'mandei', nome: 'Mandei', icone: 'mensagem', grupo: 'Comunicação', pronta: true, paginas: [
     { id: 'meus', rotulo: 'Meus tickets', icone: 'usuario', titulo: 'Mandei — meus tickets' },
@@ -98,7 +104,9 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     (a.id !== 'drive' || op.admin || op.departamento === 'contabil') &&
     (a.id !== 'contato' || op.admin || op.departamento === 'contabil' || op.departamento === 'fiscal') &&
     // o Cadastro (empresas, usuários e configurações): só o admin e o diretor (Vitor, 05/10/2026)
-    (a.id !== 'cadastro' || op.admin || op.nivel === 'diretor'))
+    (a.id !== 'cadastro' || op.admin || op.nivel === 'diretor') &&
+    // o Financeiro (as notas fiscais do escritório): o admin e o diretor (15/10/2026)
+    (a.id !== 'financeiro' || op.admin || op.nivel === 'diretor'))
     // na gaveta, um grupo depois do outro: Rotinas, Comunicação, Escritório
     .sort((x, y) => ORDEM_DOS_GRUPOS.indexOf(x.grupo) - ORDEM_DOS_GRUPOS.indexOf(y.grupo));
 }
