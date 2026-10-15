@@ -243,26 +243,32 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                                   <Icone nome="plus" />
                                 </button>
                               )}</td>}</tr>
-                            {/* a sugestão de baixa (Vitor, 15/10/2026: "de forma mais intuitiva e apresentável"): logo abaixo da nota em
-                                aberto, recuada e com o fio do lado, uma mini tabela com o banco (o logo), a data, o histórico e o valor */}
+                            {/* a sugestão de baixa logo abaixo da nota em aberto (Vitor, 15/10/2026): sem título e sem o fio do lado, uma
+                                mini tabela com Data, Banco (o logo), Descrição (letra menor), Valor e Situação (os selos) */}
                             {i.sugestoes.length > 0 && (
                               <tr>
                                 <td colSpan={6} style={{ paddingTop: 0 }}>
-                                  <div style={{ marginLeft: 16, paddingLeft: 12, borderLeft: '3px solid var(--border-strong)' }}>
-                                    <div className="hint" style={{ fontWeight: 600, margin: '0 0 4px' }}>Possível recebimento desta nota no banco</div>
-                                    <table className="table-compact">
+                                  <div style={{ marginLeft: 16 }}>
+                                    <table className="table-compact" aria-label="Possível recebimento desta nota no banco">
+                                      <thead><tr><th style={{ width: 96 }}>Data</th><th style={{ width: 150 }}>Banco</th><th>Descrição</th><th className="num">Valor</th><th style={{ width: 200 }}>Situação</th></tr></thead>
                                       <tbody>
                                         {i.sugestoes.map((g, j) => (
                                           <tr key={j}>
-                                            <td style={{ width: 160, whiteSpace: 'nowrap' }}>
+                                            <td style={{ whiteSpace: 'nowrap' }}>{g.data}</td>
+                                            <td style={{ whiteSpace: 'nowrap' }}>
                                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                                                 <span className="drive-candidato-logo" style={{ display: 'inline-flex' }}><LogoBanco banco={g.marca} cor /></span>{g.banco}
                                               </span>
                                             </td>
-                                            <td style={{ width: 96, whiteSpace: 'nowrap' }}>{g.data}</td>
-                                            <td className="wrap">{g.historico}</td>
-                                            <td className="num" style={{ whiteSpace: 'nowrap' }}><b>{g.valor}</b></td>
-                                            <td style={{ width: 120 }}>{g.mesmoValor && <span className="badge badge-ok">Mesmo valor</span>}</td>
+                                            <td className="wrap" style={{ fontSize: 12 }}>{g.historico}</td>
+                                            <td className="num" style={{ whiteSpace: 'nowrap' }}>{g.valor}</td>
+                                            <td>
+                                              <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
+                                                {g.mesmoValor && <span className="badge badge-ok">Mesmo valor</span>}
+                                                {g.mesmoNome && <span className="badge badge-neutral" title="O nome do cliente aparece no histórico">Mesmo nome</span>}
+                                                {!g.mesmoValor && <span className="badge badge-warn" title="O valor não é o da nota: pode ser parcial, com juros ou desconto">Valor diferente</span>}
+                                              </span>
+                                            </td>
                                           </tr>
                                         ))}
                                       </tbody>
