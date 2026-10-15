@@ -183,7 +183,8 @@ describe('o saldo anterior e o participante (15/10/2026)', () => {
     expect(r.saldo).toBe(300);
     expect(r.saldoDoRazao).toBe(300);
     const m = razaoDaMarca('r.xls', r);
-    expect(m.itens.map(i => [i.status, i.valor, !!i.interno])).toEqual([['anterior', -1000, true], ['aberto', 300, false]]);
+    // conciliado: nem aparece na relação (15/10/2026)
+    expect(m.itens.map(i => [i.status, i.valor, !!i.interno])).toEqual([['aberto', 300, false]]);
   });
 
   it('o que o recebimento não pagou do saldo anterior fica em aberto', () => {
@@ -199,7 +200,7 @@ describe('o saldo anterior e o participante (15/10/2026)', () => {
     expect(r.anterior).toBe(1000);
     expect(r.pagaAnterior.map(x => x.valor)).toEqual([1200]);
     expect(r.semNota).toEqual([]);
-    expect(razaoDaMarca('r.xls', r).itens.map(i => i.status)).toEqual(['anterior', 'aberto']);
+    expect(razaoDaMarca('r.xls', r).itens.map(i => i.status)).toEqual(['aberto']);
   });
 
   it('é desta conta pelo nome do participante, não pelo saldo', () => {

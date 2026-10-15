@@ -261,8 +261,7 @@ function itensDoRazao(r: RazaoConferido, lado: LadoDaConta): ItemDoRazao[] {
       vendido: n.vendido, ...(n.pagos?.length ? { pagos: n.pagos } : {}) })),
     ...r.aMais.map(n => item(n.data, n.nf, recebida + ' a mais', n.aberto, 'pagamento')),
     ...r.semNota.map(x => item(x.data, '', x.historico, centavos(-x.valor), 'pagamento', false, x.conta)),
-    // o recebimento que zerou o saldo anterior: não é avulso (só para o escritório ver)
-    ...r.pagaAnterior.map(x => item(x.data, '', x.historico, centavos(-x.valor), 'anterior', true, x.conta)),
+    // o recebimento que zerou o saldo anterior: conciliado, nem aparece (Vitor, 15/10/2026)
     // o saldo anterior que nenhum recebimento pagou: em aberto, de antes do razão
     ...(saldoAnteriorEmAberto(r) > 0.005 ? [item('', '', 'Saldo anterior (antes do primeiro lançamento do razão)', saldoAnteriorEmAberto(r), 'aberto')] : []),
     ...r.devolucoes.map(d => item(d.data, d.nf, 'Devolução' + (d.notas.length ? ' (cita NF ' + d.notas.join(', ') + ')' : ''), centavos(-d.valor), 'devolucao')),
