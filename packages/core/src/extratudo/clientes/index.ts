@@ -126,10 +126,15 @@ export function adiantamentoNoDinamico(d: BalanceteDinamico, meses: readonly str
 /**
  * Os meses do período em que o dinâmico tem empréstimo ou financiamento (Vitor, 15/10/2026: "da mesma forma de
  * empréstimo, tire ele daqui"): no Passivo (classificação 2…), alguma conta "Empréstimos" ou "Financiamentos" com saldo
- * no mês ou no de antes. O "Empréstimo a sócios" do Ativo e os juros (despesa) não contam.
+ * no mês ou no de antes. O "Empréstimo a sócios" do Ativo e os juros (despesa) não contam. Olha as analíticas debaixo
+ * dela: o cheque especial não é empréstimo (Vitor, 15/10/2026), e a sintética o somaria.
  */
 export function emprestimosNoDinamico(d: BalanceteDinamico, meses: readonly string[]): { cobertos: string[]; com: string[] } {
-  return mesesComSaldo(d, meses, d.linhas.filter(l => l.classificacao.startsWith('2') && /^(emprestimos?|financiamentos?)\b/.test(normalizarTexto(l.descricao))));
+  const grupos = d.linhas.filter(l => l.classificacao.startsWith('2') && /^(emprestimos?|financiamentos?)\b/.test(normalizarTexto(l.descricao)));
+  const debaixo = (l: LinhaDinamico, g: LinhaDinamico) => l === g || l.classificacao.startsWith(g.classificacao + '.');
+  const folha = (l: LinhaDinamico) => !d.linhas.some(o => o !== l && o.classificacao.startsWith(l.classificacao + '.'));
+  const contas = d.linhas.filter(l => folha(l) && grupos.some(g => debaixo(l, g)) && !/cheque especial/.test(normalizarTexto(l.descricao)));
+  return mesesComSaldo(d, meses, contas);
 }
 
 /** Os meses que o dinâmico cobre e, deles, os em que alguma das contas tem saldo no mês ou no de antes. */

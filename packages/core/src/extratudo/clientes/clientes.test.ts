@@ -123,5 +123,10 @@ describe('empréstimos no dinâmico (15/10/2026)', () => {
     ] };
     expect(emprestimosNoDinamico(d, ['2026-01', '2026-02'])).toEqual({ cobertos: ['2026-01', '2026-02'], com: ['2026-02'] });
     expect(emprestimosNoDinamico({ meses: ['2026-01'], linhas: [d.linhas[0], d.linhas[2]] }, ['2026-01']).com).toEqual([]);
+    // o cheque especial não é empréstimo, mesmo debaixo do grupo (a sintética soma ele)
+    const cheque = { meses: ['2026-08'], linhas: [linha('2.1.1.04', 'EMPRESTIMOS BANCARIOS', { '2026-08': -6000 }), linha('2.1.1.04.001', 'Banco Teste - Cheque Especial', { '2026-08': -6000 })] };
+    expect(emprestimosNoDinamico(cheque, ['2026-08']).com).toEqual([]);
+    const contrato = { meses: ['2026-08'], linhas: [...cheque.linhas, linha('2.1.1.04.002', 'Banco Teste - Capital de giro', { '2026-08': -1000 })] };
+    expect(emprestimosNoDinamico(contrato, ['2026-08']).com).toEqual(['2026-08']);
   });
 });
