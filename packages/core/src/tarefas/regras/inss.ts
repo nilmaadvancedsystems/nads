@@ -33,6 +33,8 @@ export interface GuiaDoInss {
   itens: ItemDaGuia[];
   principal: number;
   total: number;
+  /** o total do documento (o DARF inteiro, com o IRRF e a retenção que vêm junto; Vitor, 15/10/2026: "coloque o total da guia") */
+  documento?: number;
 }
 
 /** Um pedaço de texto do PDF (o leitor de PDF do Extrator devolve assim). */
@@ -100,7 +102,7 @@ export function guiasDasLinhas(paginas: readonly (readonly string[])[]): GuiaDoI
     .filter(g => g.itens.some(i => grupoDoItem(i) !== 'outros'))
     // o DARF da DCTFWeb junta o IRRF (0561) e a retenção de PIS/COFINS/CSLL (5952) com o INSS: só o previdenciário entra
     // (Vitor, 15/10/2026: na 58, os R$ 12,37 do 5952 todo mês não deixavam a baixa casar com o pagamento do razão)
-    .map(g => ({ ...g, itens: g.itens.filter(ehPrevidenciario) }))
+    .map(g => ({ ...g, documento: centavos(g.itens.reduce((s, i) => s + i.total, 0)), itens: g.itens.filter(ehPrevidenciario) }))
     .map(g => ({ ...g, principal: centavos(g.itens.reduce((s, i) => s + i.principal, 0)), total: centavos(g.itens.reduce((s, i) => s + i.total, 0)) }))
     .sort((a, b) => a.competencia.localeCompare(b.competencia) || a.vencimento.localeCompare(b.vencimento));
 }
