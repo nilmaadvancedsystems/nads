@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { lerRazao } from '../../tarefas/regras/razao';
-import { chaveDoItem, comLancamentoDigitado, definirItem, semLancamentoDigitado, conferirRazaoDoCliente, itensEscolhidos, linhasParaOTicket, observacaoDoRazao, razaoDaMarca, rotuloDoItem } from './razao';
+import { chaveDoItem, comLancamentoDigitado, definirItem, semLancamentoDigitado, conferirRazaoDoCliente, participanteDeOutraConta, itensEscolhidos, linhasParaOTicket, observacaoDoRazao, razaoDaMarca, rotuloDoItem } from './razao';
 import { situacaoDe, textoDaMensagem, textoDasNotas } from './index';
 
 // o formato do razão da conciliação do Alterdata (conta de um cliente), com valores inventados
@@ -144,5 +144,70 @@ describe('o lançamento digitado à mão (08/10/2026)', () => {
     expect(r.itens.length).toBe(2);
     expect(semLancamentoDigitado(r, chaveDoItem(imp.itens[0]))).toBe(r);
     expect(semLancamentoDigitado(r, chaveDoItem(r.itens[1]))?.itens.length).toBe(1);
+  });
+});
+
+describe('a nota de serviço (o número com os zeros na frente, sem "venda" no histórico)', () => {
+  it('"Pelos Serviços Prestados conf. Nota Fiscal nº - 000000000000123-…" fica em aberto como a NF 123', () => {
+    const linhas = [CAB,
+      ['VERDADEIRO', '', '10/06/2026', '00160', '75001', 'Venda de Serviços', -500, '00014', 'Pelos Serviços Prestados conf. Nota Fiscal nº - 000000000000123-' + CNPJ, -500, ''],
+      ['VERDADEIRO', '', '10/06/2026', '00160', '75001', 'Venda de Serviços', -300, '00014', 'Pelos Serviços Prestados conf. Nota Fiscal nº - 000000000000124-' + CNPJ, -800, ''],
+    ];
+    const r = conferirRazaoDoCliente(lerRazao(linhas), '2026-08');
+    expect(r.emAberto.map(n => [n.nf, n.aberto])).toEqual([['123', 500], ['124', 300]]);
+    expect(r.saldo).toBe(800);
+  });
+});
+
+describe('o CNPJ com a barra e o traço depois da nota', () => {
+  it('"… n°  - 456-12345678/0001-90-CLIENTE" fica em aberto como a NF 456', () => {
+    const linhas = [CAB,
+      ['VERDADEIRO', '', '03/06/2026', '00227', '75002', 'Venda de Produtos', -1000, '00194', 'Pelas vendas de mercadorias a prazo conforme Nota Fiscal Eletronica n°  - 456-12345678/0001-90-CLIENTE TESTE LTDA ', -1000, ''],
+    ];
+    expect(conferirRazaoDoCliente(lerRazao(linhas), '2026-08').emAberto.map(n => [n.nf, n.aberto])).toEqual([['456', 1000]]);
+  });
+});
+
+describe('o saldo anterior e o participante (15/10/2026)', () => {
+  // o razão começa devendo 1.000,00 de antes (saldo -1000 antes do primeiro lançamento)
+  const linhas = (recebido: number) => [CAB,
+    ['VERDADEIRO', '', '10/01/2026', '', '10501', 'Banco', recebido, '00246', 'Recebimento de clientes  50 - CLIENTE TESTE LTDA', -1000 + recebido, ''],
+    ['VERDADEIRO', '', '15/01/2026', '', '75001', 'Venda de Serviços', -300, '00014', 'Pelos Serviços Prestados conf. Nota Fiscal nº - 000000000000200-' + CNPJ, -1300 + recebido, ''],
+  ];
+
+  it('o recebimento que zera o saldo anterior não é avulso; o saldo bate com o do razão', () => {
+    const r = conferirRazaoDoCliente(lerRazao(linhas(1000)), '2026-01');
+    expect(r.anterior).toBe(1000);
+    expect(r.pagaAnterior.map(x => x.valor)).toEqual([1000]);
+    expect(r.semNota).toEqual([]);
+    expect(r.saldo).toBe(300);
+    expect(r.saldoDoRazao).toBe(300);
+    const m = razaoDaMarca('r.xls', r);
+    // conciliado: nem aparece na relação (15/10/2026)
+    expect(m.itens.map(i => [i.status, i.valor, !!i.interno])).toEqual([['aberto', 300, false]]);
+  });
+
+  it('o que o recebimento não pagou do saldo anterior fica em aberto', () => {
+    const m = razaoDaMarca('r.xls', conferirRazaoDoCliente(lerRazao(linhas(400)), '2026-01'));
+    expect(m.itens.filter(i => i.status === 'aberto').map(i => [i.nf, i.valor])).toEqual([['', 600], ['200', 300]]);
+  });
+
+  it('o recebimento de uma nota de antes do razão é conciliado, mesmo passando do saldo anterior (15/10/2026)', () => {
+    const r = conferirRazaoDoCliente(lerRazao([CAB,
+      ['VERDADEIRO', '', '10/01/2026', '', '10501', 'Banco', 1200, '00246', 'Recebimento de clientes 507 - CLIENTE TESTE LTDA', 200, ''],
+      ['VERDADEIRO', '', '15/01/2026', '', '75001', 'Venda de Serviços', -300, '00014', 'Pelos Serviços Prestados conf. Nota Fiscal nº - 000000000000200-' + CNPJ, -100, ''],
+    ]), '2026-01');
+    expect(r.anterior).toBe(1000);
+    expect(r.pagaAnterior.map(x => x.valor)).toEqual([1200]);
+    expect(r.semNota).toEqual([]);
+    expect(razaoDaMarca('r.xls', r).itens.map(i => i.status)).toEqual(['aberto']);
+  });
+
+  it('é desta conta pelo nome do participante, não pelo saldo', () => {
+    const m = razaoDaMarca('r.xls', conferirRazaoDoCliente(lerRazao(linhas(1000)), '2026-01'));
+    expect(m.participantes).toEqual(['CLIENTE TESTE LTDA']);
+    expect(participanteDeOutraConta(m.participantes, 'CLIENTE TESTE')).toBeNull();
+    expect(participanteDeOutraConta(m.participantes, 'OUTRA EMPRESA SA')).toBe('CLIENTE TESTE LTDA');
+    expect(participanteDeOutraConta(undefined, 'OUTRA EMPRESA SA')).toBeNull();
   });
 });

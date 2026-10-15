@@ -7,7 +7,8 @@
 import { Icone, LogoBanco, MenuSuspenso, useRetorno } from '@nads/ui';
 import { useRef, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
-import { useAbasDaEtapa } from '../contexto';
+import { useAbasDaEtapa, useChaveDaEtapa } from '../contexto';
+import { useGuardado } from '../../../../../../comum/guardado';
 import { useEmprestimos, type VmEmprestimos } from './useEmprestimos';
 
 function Emprestimo({ e, vm }: { e: VmEmprestimos['emprestimos'][number]; vm: VmEmprestimos }) {
@@ -140,7 +141,7 @@ export function Emprestimos() {
   const vm = useEmprestimos();
   const arquivo = useRef<HTMLInputElement>(null);
   // as duas telas no menu de cima (Vitor, 07/10/2026: "a aba lançamentos, deixe em outra tela, no menu superior")
-  const [tela, setTela] = useState<Tela>('emprestimos');
+  const [tela, setTela] = useGuardado<Tela>(useChaveDaEtapa('emprestimos') + '|tela', 'emprestimos');
   const qtdLancamentos = vm.emprestimos.reduce((n, e) => n + e.lancamentos.length, 0);
   const { aviso } = useRetorno();
   const semRazao = !vm.emprestimos.length;

@@ -82,6 +82,8 @@ const ENTRADAS: [string, Entrada][] = [
   ['.drawer', el => { entrar('gaveta', el); }],
   // os menus de botão nascem do canto que encosta no botão (o .popover-wrap): à direita ou à esquerda, em cima ou embaixo
   ['.popover', el => {
+    // o menu que anima a própria entrada (o do avatar, 14/10/2026): duas animações no mesmo menu brigavam e ele sumia
+    if (el.hasAttribute('data-entrada-propria')) return;
     pegarOrigem(el);
     const pai = el.parentElement?.getBoundingClientRect();
     const r = el.getBoundingClientRect();

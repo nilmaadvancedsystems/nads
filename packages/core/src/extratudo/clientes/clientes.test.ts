@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  assinaturaDoEnvio, clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
+  adiantamentoAFornecedoresNoDinamico, assinaturaDoEnvio, clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
 } from './index';
 
 // o formato do balancete dinâmico do Alterdata (292, bdinamico.xls)
@@ -43,6 +43,12 @@ describe('clientes (a etapa Clientes da Tarefa)', () => {
     // só devolução, ou só a duplicidade (que é do escritório): não é o que perguntar ao cliente
     expect(situacaoDe(m, { nome: '', saldo: 0, situacao: 'pendente', razao: razaoCom('devolucao') })).toBe('pendente');
     expect(razaoComPendencia(razaoCom('pagamento', true))).toBe(false);
+    // a nota quitada pelas baixas aceitas: Ok; com saldo ainda, continua Conferido (15/10/2026)
+    const r = razaoCom('aberto');
+    const chave = r.itens[0].data + '|' + r.itens[0].nf + '|' + r.itens[0].valor.toFixed(2) + '|aberto';
+    const baixa = (centavos: number) => ({ [chave]: [{ data: '2026-08-20', valor: centavos, historico: 'PIX', banco: 'Banco' }] });
+    expect(situacaoDe(m, { nome: '', saldo: 0, situacao: 'conferido', razao: r, baixas: baixa(Math.round(r.itens[0].valor * 100)) })).toBe('ok');
+    expect(situacaoDe(m, { nome: '', saldo: 0, situacao: 'conferido', razao: r, baixas: baixa(1) })).toBe('conferido');
     // o Ok é do sistema: a conta zerada é Ok mesmo com razão; um Ok marcado antes não vale para quem tem saldo
     expect([situacaoDe(b, { nome: '', saldo: 0, situacao: 'conferido', razao: razaoCom('aberto') }), situacaoDe(m, { nome: '', saldo: 0, situacao: 'ok' })]).toEqual(['ok', 'pendente']);
   });
@@ -88,5 +94,16 @@ describe('o avançar trava até mandar o que vai ser questionado (08/10/2026)', 
     expect(assinaturaDoEnvio([])).toBe('');
     expect(docDoDocumento({ contas: {}, enviado: a }).enviado).toBe(a);
     expect('enviado' in docDoDocumento({ contas: {} })).toBe(false);
+  });
+});
+
+describe('adiantamento a fornecedores no dinâmico (15/10/2026)', () => {
+  const linha = (descricao: string, saldos: Record<string, number>) => ({ codigo: '1', classificacao: '1.1.4.01', descricao, saldoAnterior: 0, saldos });
+  it('com saldo no mês ou no de antes, entra; sem a conta ou zerada, não; só os meses que o dinâmico tem', () => {
+    const d = { meses: ['2026-01', '2026-02', '2026-03'], linhas: [linha('ADIANTAMENTO A FORNECEDORES', { '2026-01': 0, '2026-02': 500, '2026-03': 0 })] };
+    expect(adiantamentoAFornecedoresNoDinamico(d, ['2026-01', '2026-02', '2026-03', '2026-04'])).toEqual({ cobertos: ['2026-01', '2026-02', '2026-03'], com: ['2026-02', '2026-03'] });
+    const sem = { meses: ['2026-01'], linhas: [linha('CLIENTES', { '2026-01': 100 }), linha('Adiantamentos a Fornecedores', { '2026-01': 0 })] };
+    expect(adiantamentoAFornecedoresNoDinamico(sem, ['2026-01']).com).toEqual([]);
+    expect(adiantamentoAFornecedoresNoDinamico({ meses: ['2026-01'], linhas: [linha('ADTO. A FORNECEDORES', { '2026-01': 10 })] }, ['2026-01']).com).toEqual(['2026-01']);
   });
 });

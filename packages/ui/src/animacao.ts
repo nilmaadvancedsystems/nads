@@ -30,7 +30,8 @@ export const NIVEIS_DE_ANIMACAO: { id: NivelDeAnimacao; nome: string; dica: stri
   { id: 'nenhuma', nome: 'Nenhuma', dica: 'Nada se mexe, nem o menu do perfil, a troca de empresas e a escolha da competência.' },
   { id: 'normal', nome: 'Normal', dica: 'O padrão: o carregamento e as animações feitas a pedido (o menu do perfil, esta janela, a troca, a competência).' },
   { id: 'parciais', nome: 'Parciais', dica: 'Também janelas, menus e avisos abrindo e fechando; as listas e páginas aparecem paradas.' },
-  { id: 'todas', nome: 'Todas', dica: 'Todas as animações (listas em cascata, títulos, a festa ao concluir).' },
+  // o nome (Vitor, 14/10/2026: "muda o nome das animações de 'todas' para 'Não tem motivo pra usar tanta animação'")
+  { id: 'todas', nome: 'Não tem motivo pra usar tanta animação', dica: 'Todas as animações (listas em cascata, títulos, a festa ao concluir).' },
 ];
 const CHAVE_NIVEL = 'nads-animacoes';
 function lerNivel(): NivelDeAnimacao {

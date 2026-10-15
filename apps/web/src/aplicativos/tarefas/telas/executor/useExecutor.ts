@@ -461,6 +461,20 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
      * O razão do caixa importado: o Creditor entra nos meses do período com liquidação de cobrança no caixa
      * (CRÉD.LIQ.COBRANÇA) e sai dos outros, se ainda não foi feito (Vitor, 05/10/2026). Devolve os meses em que entrou.
      */
+    /**
+     * O balancete diz em quais meses uma etapa entra (Vitor, 15/10/2026: o Adiantamento a fornecedores só com saldo no
+     * dinâmico). Só os meses que ele cobre; a etapa já feita no mês não sai.
+     */
+    ajustarPeloBalancete: (b: { etapa: string; cobertos: readonly string[]; com: readonly string[]; motivo: string }) => {
+      if (carregando || dev) return;
+      for (const c of meses) {
+        const exc = exDe[c];
+        if (!exc || !b.cobertos.includes(c)) continue;
+        const entra = b.com.includes(c) || !!t.estadoDa(exc, b.etapa);
+        const m = t.etapaPeloBalancete(exc, b.etapa, entra, b.motivo, op.nome, new Date());
+        if (m) repo.gravar(m.execucao, m.evento);
+      }
+    },
     ajustarCreditor: (comLiquidacao: readonly string[]): string[] => {
       if (carregando) return [];
       const entrou: string[] = [];

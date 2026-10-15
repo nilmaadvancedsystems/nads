@@ -2,8 +2,8 @@
 // que segue o Notion) — à esquerda a pessoa, a busca e os tópicos em grupos; à direita o tópico aberto, em seções
 // com cabeçalho e uma opção por linha (o rótulo e a explicação à esquerda, o controle à direita). Fecha no ×, no Esc e
 // clicando fora.
-import { animacoesPedidas, ConfigLinha, ConfigSecao, definirNivelDeAnimacao, Icone, nivelDeAnimacao, NIVEIS_DE_ANIMACAO, Segmentado, SeletorTema, useIndicador, type NivelDeAnimacao, type NomeIcone } from '@nads/ui';
-import { animate, spring, stagger } from 'animejs';
+import { animacoesPedidas, ConfigLinha, ConfigSecao, definirNivelDeAnimacao, Icone, nivelDeAnimacao, MenuSuspenso, NIVEIS_DE_ANIMACAO, SeletorTema, useIndicador, type NivelDeAnimacao, type NomeIcone } from '@nads/ui';
+import { animate, cleanInlineStyles, spring, stagger, type JSAnimation } from 'animejs';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 // As animações (14/10/2026: "faça do clique ao perfil as configurações pessoais", com o animejs): a janela chega com mola e
@@ -11,6 +11,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 // o fundo da lateral desliza até o tópico; fechar encolhe a janela. As Animações › Nenhuma (aqui, em Preferências) tiram, e
 // quem pediu menos movimento no computador não vê.
 const menosMovimento = () => !animacoesPedidas();
+// terminou: tira o estilo que ficou (um transform parado em cada linha punha as de baixo por cima do menu suspenso)
+const limpar = { onComplete: (a: JSAnimation) => { cleanInlineStyles(a); } };
 
 /** Quanto o nads anima (14/10/2026: "um botão para tirar/reduzir animações para o normal"): vale na hora, neste navegador. */
 function NivelDasAnimacoes() {
@@ -18,8 +20,9 @@ function NivelDasAnimacoes() {
   const atual = NIVEIS_DE_ANIMACAO.find(n => n.id === nivel) || NIVEIS_DE_ANIMACAO[1];
   return (
     <ConfigLinha titulo="Animações" descricao={atual.dica}>
-      <Segmentado valor={nivel} opcoes={NIVEIS_DE_ANIMACAO.map(n => ({ valor: n.id, rotulo: n.nome }))}
-        onMudar={n => { definirNivelDeAnimacao(n); setNivel(n); }} />
+      {/* num menu suspenso (14/10/2026: "coloque um dropdown"): o nome mais longo não cabia nos botões lado a lado */}
+      <MenuSuspenso rotulo={atual.nome} className="btn btn-ghost" titulo="Animações" direita largura={340}
+        itens={NIVEIS_DE_ANIMACAO.map(n => ({ rotulo: n.nome, marcado: n.id === nivel, onClick: () => { definirNivelDeAnimacao(n.id); setNivel(n.id); } }))} />
     </ConfigLinha>
   );
 }
@@ -184,17 +187,17 @@ export function JanelaPessoal({ topico, mudar, fechar }: { topico: TopicoPessoal
   useLayoutEffect(() => {
     const el = janela.current;
     if (!el || menosMovimento()) return;
-    animate(el, { opacity: [0, 1], scale: [0.95, 1], translateY: [12, 0], ease: spring({ bounce: 0.25, duration: 520 }) });
-    animate(el.querySelectorAll('.pessoal-quem, .pessoal-busca, .pessoal-grupo, .pessoal-topico'), { opacity: [0, 1], translateX: [-10, 0], duration: 360, delay: stagger(40, { start: 100 }), ease: 'outQuint' });
+    animate(el, { opacity: [0, 1], scale: [0.95, 1], translateY: [12, 0], ease: spring({ bounce: 0.25, duration: 520 }), ...limpar });
+    animate(el.querySelectorAll('.pessoal-quem, .pessoal-busca, .pessoal-grupo, .pessoal-topico'), { opacity: [0, 1], translateX: [-10, 0], duration: 360, delay: stagger(40, { start: 100 }), ease: 'outQuint', ...limpar });
   }, []);
   // o tópico: o título e o conteúdo deslizam, as linhas chegam em cascata e os ícones de perfil saltam
   useLayoutEffect(() => {
     const r = rola.current;
     if (!r || menosMovimento()) return;
     r.scrollTop = 0;
-    if (titulo.current) animate(titulo.current, { opacity: [0, 1], translateY: [6, 0], duration: 300, ease: 'outQuint' });
-    animate(Array.from(r.querySelectorAll('.cfg-secao-topo, .cfg-linha, .emp-pessoa-lista > li')).slice(0, 18), { opacity: [0, 1], translateY: [8, 0], duration: 360, delay: stagger(28, { start: 60 }), ease: 'outQuint' });
-    animate(Array.from(r.querySelectorAll('.pessoal-icone')).slice(0, 56), { opacity: [0, 1], scale: [0.5, 1], delay: stagger(10, { start: 180 }), ease: spring({ bounce: 0.45, duration: 420 }) });
+    if (titulo.current) animate(titulo.current, { opacity: [0, 1], translateY: [6, 0], duration: 300, ease: 'outQuint', ...limpar });
+    animate(Array.from(r.querySelectorAll('.cfg-secao-topo, .cfg-linha, .emp-pessoa-lista > li')).slice(0, 18), { opacity: [0, 1], translateY: [8, 0], duration: 360, delay: stagger(28, { start: 60 }), ease: 'outQuint', ...limpar });
+    animate(Array.from(r.querySelectorAll('.pessoal-icone')).slice(0, 56), { opacity: [0, 1], scale: [0.5, 1], delay: stagger(10, { start: 180 }), ease: spring({ bounce: 0.45, duration: 420 }), ...limpar });
   }, [topico]);
   // o fundo da lateral desliza até o tópico aberto
   const lateral = useIndicador<HTMLElement>('.pessoal-topico.ativo', [topico, busca], 'fundo');

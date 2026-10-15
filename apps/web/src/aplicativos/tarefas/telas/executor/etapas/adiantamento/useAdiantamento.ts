@@ -5,8 +5,8 @@
 // zera, e o mês devedor é que trava.
 import { demo, formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useState } from 'react';
-import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
+import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
+import { useGuardado } from '../../../../../../comum/guardado';
 
 /** a cor pela natureza (Vitor, 07/10/2026): credor em vermelho, devedor em azul, zerado sem cor */
 const corDoSaldo = (saldo: number) => (saldo > 0.005 ? 'ext-neg' : saldo < -0.005 ? 'ext-azul' : '');
@@ -19,7 +19,8 @@ export function useAdiantamento(lado: t.LadoDoAdiantamento = 'fornecedores') {
   const s = useEtapaAberta();
   const { aviso } = useRetorno();
   const meses = s.meses;
-  const [razao, setRazao] = useState<{ nome: string; r: t.RazaoDaConta } | null>(null);
+  // o razão fica guardado (Vitor, 15/10/2026: voltou, está onde parou)
+  const [razao, setRazao] = useGuardado<{ nome: string; r: t.RazaoDaConta } | null>(useChaveDaEtapa('adiantamento-' + lado) + '|razao', null);
 
   async function importar(f: File | undefined) {
     if (!f) return;

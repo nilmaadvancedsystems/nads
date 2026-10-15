@@ -1,10 +1,11 @@
 // ViewModel do razão da etapa (o Caixa), no desenho da Importação do banco (Vitor, 05/10/2026): a pessoa importa o XLS
 // da conciliação do Alterdata e vê o período todo (o Em lote) ou um mês de cada vez (clica no mês). Para cada mês: os
 // lançamentos, o saldo do fim e os pontos de atenção. O CRÉD.LIQ.COBRANÇA põe o Creditor no mês (onImportado).
-// O razão fica só na tela (em memória): trocou de etapa, empresa ou período, some.
+// O que foi importado fica guardado neste navegador (Vitor, 15/10/2026: voltou, está onde parou; comum/guardado.ts).
 import { formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
+import { useGuardado } from '../../../../comum/guardado';
 
 const dataBR = (d: string) => d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4);
 
@@ -23,7 +24,7 @@ function linha(l: t.LancamentoDoRazao, i: number) {
  */
 export function useRazaoDaEtapa(chave: string, meses: readonly string[], onImportado: (comLiquidacao: string[]) => string[]) {
   const { aviso } = useRetorno();
-  const [lido, setLido] = useState<{ chave: string; arquivo: string; razao: t.RazaoDaConta } | null>(null);
+  const [lido, setLido] = useGuardado<{ chave: string; arquivo: string; razao: t.RazaoDaConta } | null>('razao|' + chave, null);
   // o mês aberto (null = o período todo)
   const [mesAberto, setMesAberto] = useState<string | null>(null);
   const atual = lido && lido.chave === chave ? lido : null;
