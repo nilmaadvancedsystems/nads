@@ -23,6 +23,16 @@ export function useNovaNota(fechar: () => void, nota?: nfse.NotaFiscal) {
 
   const lista: readonly Cliente[] = [...empresas.EMPRESAS_COM_DP, ...empresasNovas()];
   const [busca, setBusca] = useState('');
+  // a lista de sugestões da busca do cliente: a linha destacada (setas) e se está aberta (Esc fecha)
+  const [ativo, setAtivo] = useState(0);
+  const [listaAberta, setListaAberta] = useState(true);
+  // o CNPJ de cada cliente do Entregas, por código (lido uma vez); o do cadastro do nads vale primeiro
+  const [docsDoEntregas, setDocsDoEntregas] = useState<ReadonlyMap<number, string>>(new Map());
+  useEffect(() => {
+    let vale = true;
+    void dadosDaEmpresaNoEntregas().then(m => { if (vale) setDocsDoEntregas(new Map([...m].map(([c, d]) => [c, d.documento]))); });
+    return () => { vale = false; };
+  }, []);
   const [escolhido, setEscolhido] = useState<Cliente | null>(() => (nota?.empresaCodigo != null ? lista.find(e => e.codigo === nota.empresaCodigo) || null : null));
   const [lendoCliente, setLendoCliente] = useState(false);
   const [nome, setNome] = useState(nota?.tomador.nome || '');
@@ -86,12 +96,21 @@ export function useNovaNota(fechar: () => void, nota?: nfse.NotaFiscal) {
   }, []);
 
   const q = formatos.nomeNorm(busca);
-  const achados = q ? lista.filter(e => formatos.nomeNorm(e.nome + ' ' + (e.codigo ?? '')).includes(q)).slice(0, 6) : [];
+  const digitado = busca.trim();
+  // o código exato digitado vem primeiro, depois os que começam com ele, depois os que só contêm (nome ou código)
+  const peso = (e: Cliente) => (e.codigo != null && String(e.codigo) === digitado ? 0 : e.codigo != null && digitado && String(e.codigo).startsWith(digitado) ? 1 : 2);
+  const cadastrosDoNads = repoDoCadastro().todos().porId;
+  const achados = (q
+    ? lista.filter(e => formatos.nomeNorm(e.nome + ' ' + (e.codigo ?? '')).includes(q)).map((e, i) => ({ e, i })).sort((a, b) => peso(a.e) - peso(b.e) || a.i - b.i).slice(0, 8)
+        .map(({ e }) => ({ empresa: e, documento: documentoFormatado(cadastrosDoNads.get(formatos.slug(e.nome))?.cnpj || (e.codigo != null ? docsDoEntregas.get(e.codigo) : '') || '') }))
+    : []);
+  const mudarBusca = (v: string) => { setBusca(v); setAtivo(0); setListaAberta(true); };
 
   async function escolher(e: Cliente) {
     const minha = ++leitura.current;
     setEscolhido(e);
     setBusca('');
+    setAtivo(0);
     setNome(e.nome);
     setLendoCliente(true);
     try {
@@ -152,7 +171,12 @@ export function useNovaNota(fechar: () => void, nota?: nfse.NotaFiscal) {
 
   return {
     corrigindo: !!nota, ambiente: config.ambiente,
-    faltas, busca, setBusca, achados, escolhido, escolher, tirarCliente, lendoCliente,
+    faltas, busca, setBusca: mudarBusca, achados, ativo, setAtivo,
+    /** a lista só aparece com busca, e some com o Esc */
+    listaVisivel: listaAberta && achados.length > 0,
+    fecharLista: () => setListaAberta(false),
+    mover: (passo: 1 | -1) => setAtivo(a => (achados.length ? (a + passo + achados.length) % achados.length : 0)),
+    escolherDestacado: () => { const c = achados[ativo]; if (c) void escolher(c.empresa); }, escolhido, escolher, tirarCliente, lendoCliente,
     nome, setNome, documento, setDocumento, email, setEmail, fone, setFone,
     valor, setValor, data, setData, descricao, setDescricao,
     // CNPJ: o endereço é obrigatório e sempre aparece; CPF: opcional, atrás do "Adicionar endereço"

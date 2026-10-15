@@ -175,6 +175,17 @@ export const PECAS_BASE: Peca[] = [
         </div>
       </div>
     ) },
+  { id: 'busca-cliente', tipo: 'botoes', nome: 'Busca de cliente com lista (Nova nota)', descricao: 'O campo em destaque do registro vira uma busca: digitou o código ou parte do nome, a lista logo abaixo (código em negrito, nome, CNPJ); ↑↓ e Enter escolhem, Esc fecha. Escolhido, o campo mostra "código · nome" com o ✕ para trocar', classes: ['registro-busca', 'nf-achados', 'nf-ativo', 'nf-achado-codigo', 'nf-escolhido'], telas: ['t-cadastro-janela'],
+    uso: 'registro-busca (input) + ul.nf-achados > li > button.popover-item (.nf-achado-codigo, .popover-texto, .popover-dica)',
+    demo: () => (
+      <div className="registro-novo" style={{ width: '100%', maxWidth: 520 }}>
+        <div className="registro-busca"><Icone nome="search" /><input type="text" defaultValue="462" readOnly aria-label="Buscar o cliente" /></div>
+        <ul className="nf-achados" style={{ marginTop: 6 }}>
+          <li><button type="button" className="popover-item nf-ativo"><span className="nf-achado-codigo">462</span><span className="popover-texto">EXEMPLO COMERCIO LTDA</span><span className="popover-dica">11.222.333/0001-81</span></button></li>
+          <li><button type="button" className="popover-item"><span className="nf-achado-codigo">1462</span><span className="popover-texto">OUTRA EMPRESA EXEMPLO</span></button></li>
+        </ul>
+      </div>
+    ) },
   { id: 'comp-meses', tipo: 'botoes', nome: 'Calendário de meses (competência)', descricao: 'O ano com ‹ › no alto, os 12 meses em 3 × 4: o escolhido cheio, o de hoje com um pontinho, os que não começaram apagados; Abrir embaixo. Anima (animejs): a janela entra em 200 ms com os meses em cascata, a pílula do escolhido desliza até o mês clicado, a grade escorrega para o lado da seta ao trocar de ano e o texto do rodapé acende ao mudar; sem movimento se o computador pedir', classes: ['comp-meses', 'comp-mes'], telas: ['t-empresas'],
     demo: () => (
       <div className="modal modal-centro competencia-janela" style={{ position: 'static', boxShadow: 'none' }}>
