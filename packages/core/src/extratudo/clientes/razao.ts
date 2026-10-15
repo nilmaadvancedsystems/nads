@@ -342,13 +342,17 @@ const dataDoRazaoBR = (d: string) => (d ? d.slice(8, 10) + '/' + d.slice(5, 7) +
  * escritório), cada um com a data, a nota (a nota em aberto) ou a conta (o pagamento solto: o banco); sem o razão, o
  * saldo do fim do mês ('aaaa-mm'). A operação (Venda, Compra…) vem do lado da conta.
  */
-export function linhasParaOTicket(razao: RazaoDaMarca | undefined, saldo: number, mes: string, perguntar?: readonly string[], lado: LadoDaConta = 'clientes'): LinhaParaOTicket[] {
+export function linhasParaOTicket(razao: RazaoDaMarca | undefined, saldo: number, mes: string, perguntar?: readonly string[], lado: LadoDaConta = 'clientes',
+  baixas?: Readonly<Record<string, readonly { valor: number }[]>>): LinhaParaOTicket[] {
   // só o que a pessoa escolheu no "+" (sem escolha, o cliente todo)
   const doRazao = itensEscolhidos(razao, perguntar);
   if (doRazao.length) {
     return doRazao.map(i => {
       const tipo = i.status === 'aberto' ? 'nota' as const : i.status === 'devolucao' ? 'devolucao' as const : 'pagamento' as const;
-      return { data: dataDoRazaoBR(i.data), nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor), tipo, operacao: OPERACAO[lado][tipo], ...(i.conta ? { conta: i.conta } : {}) };
+      // a nota com baixa aceita vai só com o que falta
+      const aceitas = i.status === 'aberto' ? baixas?.[chaveDoItem(i)] : undefined;
+      const valor = aceitas?.length ? Math.max(0, Math.round(i.valor * 100) - aceitas.reduce((t, b) => t + Math.abs(b.valor), 0)) / 100 : i.valor;
+      return { data: dataDoRazaoBR(i.data), nf: i.nf || '—', descricao: i.descricao, valor: reais(valor), tipo, operacao: OPERACAO[lado][tipo], ...(i.conta ? { conta: i.conta } : {}) };
     });
   }
   const [a, m] = mes.split('-').map(Number);

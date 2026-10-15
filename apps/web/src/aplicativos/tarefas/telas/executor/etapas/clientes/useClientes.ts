@@ -19,6 +19,23 @@ export type FiltroClientes = 'todos' | 'pendente' | 'ok' | 'conferido';
 
 const mesAntes = (m: string) => { const [a, mm] = m.split('-').map(Number); return mm === 1 ? (a - 1) + '-12' : a + '-' + String(mm - 1).padStart(2, '0'); };
 
+/** As baixas aceitas de um item: os lançamentos, o que falta (o valor da linha), o aceito e se quitou. */
+function baixasDoItem(i: cl.ItemDoRazao, baixas: Record<string, cl.BaixaAceita[]> | undefined) {
+  const aceitas = (i.status === 'aberto' && !i.interno && baixas?.[cl.chaveDoItem(i)]) || [];
+  const falta = aceitas.length ? cl.faltaDaNota(i.valor, aceitas) : null;
+  return {
+    baixas: aceitas.map(noBanco), quitada: falta === 0,
+    ...(falta !== null ? { valor: formatos.reais(falta / 100), aceito: formatos.reais(aceitas.reduce((t, b) => t + Math.abs(b.valor), 0) / 100) } : { aceito: '' }),
+  };
+}
+
+/** A nota para a sugestão: só o que falta, e as aceitas contam como parcelas pagas (o ritmo e o valor delas). */
+function notaQueFalta(i: cl.ItemDoRazao, baixas: Record<string, cl.BaixaAceita[]> | undefined) {
+  const aceitas = baixas?.[cl.chaveDoItem(i)] || [];
+  if (!aceitas.length) return i;
+  return { ...i, valor: cl.faltaDaNota(i.valor, aceitas) / 100, pagos: [...(i.pagos || []), ...aceitas.map(b => ({ data: b.data, valor: Math.abs(b.valor) / 100 }))] };
+}
+
 /** O lançamento do banco como a mini tabela da sugestão mostra (o bruto volta no aceitar). */
 const noBanco = (g: cl.LancamentoDoBanco) => ({
   bruto: g, data: g.data.slice(8, 10) + '/' + g.data.slice(5, 7) + '/' + g.data.slice(0, 4), banco: g.banco, marca: g.marca || '', historico: g.historico, valor: formatos.reais(Math.abs(g.valor) / 100),
@@ -104,7 +121,7 @@ export function useClientes() {
   });
 
   // os lançamentos do banco já aceitos como baixa de alguma nota não são sugeridos de novo
-  const aceitas = linhas.flatMap(l => Object.values(l.baixas || {}));
+  const aceitas = linhas.flatMap(l => Object.values(l.baixas || {}).flat());
   const livres = lancsDoBanco.filter(x => !aceitas.some(a => cl.mesmoLancamento(a, x)));
 
   function marcar(codigo: string, mudar: (m: cl.MarcaDoCliente) => cl.MarcaDoCliente) {
@@ -208,10 +225,11 @@ export function useClientes() {
           itens: l.razao.itens.map(i => ({ chave: i.interno ? '' : cl.chaveDoItem(i), marcado: !i.interno && cl.itensEscolhidos(l.razao, l.perguntar).includes(i), data: i.data ? i.data.slice(8, 10) + '/' + i.data.slice(5, 7) + '/' + i.data.slice(0, 4) : '', nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor), abate: i.valor < 0, status: i.status, rotulo: cl.ROTULO_DO_STATUS[i.status], digitado: !!i.digitado,
             // a nota em aberto: os lançamentos do banco que podem ser a baixa dela (o mesmo valor, ou o nome no histórico)
             // a baixa aceita (Vitor, 15/10/2026: "um botãozinho para, quando o usuário mudar ou aceitar a sugestão, ficar Ok")
-            baixa: !i.interno && l.baixas?.[cl.chaveDoItem(i)] ? noBanco(l.baixas[cl.chaveDoItem(i)]) : null,
-            // sem sugestão na nota que já tem a baixa ou que vai para o cliente (Vitor, 15/10/2026: "oculte a sugestão quando o usuário clicar em perguntar")
-            sugestoes: i.status === 'aberto' && !i.interno && !l.baixas?.[cl.chaveDoItem(i)] && !cl.itensEscolhidos(l.razao, l.perguntar).includes(i)
-              ? cl.sugestoesDeBaixa(i, l.nome, livres, 1).map(g => ({ ...noBanco(g), selos: cl.selosDaSugestao(g, 'cliente') })) : [] })),
+            // com saldo ainda, não fica Ok: só diminui o valor aceito (Vitor, 15/10/2026)
+            ...baixasDoItem(i, l.baixas),
+            // sem sugestão na nota quitada ou que vai para o cliente (Vitor, 15/10/2026: "oculte a sugestão quando o usuário clicar em perguntar")
+            sugestoes: i.status === 'aberto' && !i.interno && !baixasDoItem(i, l.baixas).quitada && !cl.itensEscolhidos(l.razao, l.perguntar).includes(i)
+              ? cl.sugestoesDeBaixa(notaQueFalta(i, l.baixas), l.nome, livres, 1).map(g => ({ ...noBanco(g), selos: cl.selosDaSugestao(g, 'cliente') })) : [] })),
         } : null,
         // o que vai para o cliente (o que foi adicionado no "+" de cada linha da relação; nada = não vai)
         perguntar: l.razao ? cl.itensEscolhidos(l.razao, l.perguntar).map(cl.rotuloDoItem).join(' · ') : '',
@@ -219,12 +237,15 @@ export function useClientes() {
     // sem campo vazio (o banco não aceita undefined)
     /** o "+" de uma linha da relação: adiciona ao que vai para o cliente, ou tira (Vitor, 07/10/2026) */
     /** aceita a sugestão de baixa de uma nota em aberto (fica Ok; sai do que vai para o cliente) ou desfaz (null) */
-    aceitarBaixa: (codigo: string, chave: string, l: cl.LancamentoDoBanco | null) => marcar(codigo, m => {
+    aceitarBaixa: (codigo: string, chave: string, l: cl.LancamentoDoBanco, sim: boolean) => marcar(codigo, m => {
       const n = { ...m };
-      const baixas = cl.comBaixa(m.baixas, chave, l);
-      const perguntar = l && m.perguntar ? m.perguntar.filter(c => c !== chave) : m.perguntar;
+      const baixas = cl.comBaixa(m.baixas, chave, l, sim);
+      // quitada, sai do que vai para o cliente
+      const item = m.razao?.itens.find(i => !i.interno && cl.chaveDoItem(i) === chave);
+      const quitada = !!item && !!baixas?.[chave] && cl.faltaDaNota(item.valor, baixas[chave]) === 0;
+      const perguntar = quitada && m.perguntar ? m.perguntar.filter(c => c !== chave) : m.perguntar;
       delete n.baixas; delete n.perguntar;
-      return { ...n, ...(baixas ? { baixas } : {}), ...(perguntar && (perguntar.length || !l) ? { perguntar } : {}) };
+      return { ...n, ...(baixas ? { baixas } : {}), ...(perguntar && (perguntar.length || !quitada) ? { perguntar } : {}) };
     }),
     definirEnvio: (codigo: string, chave: string, sim: boolean) => marcar(codigo, m => {
       const n = { ...m };
@@ -277,7 +298,7 @@ export function useClientes() {
         // duplicidade, que é só nossa) ou, sem o razão, o saldo do fim do mês
         itens: paraEnviar.map(l => ({
           id: l.codigo, titulo: l.nome, valor: reais(l.saldo), opcoes: md.OPCOES_PADRAO,
-          linhas: cl.linhasParaOTicket(l.razao, l.saldo, mes, l.perguntar),
+          linhas: cl.linhasParaOTicket(l.razao, l.saldo, mes, l.perguntar, 'clientes', l.baixas),
         })),
       });
       marcas.salvar({ ...marcas.doc, enviado: assinatura });

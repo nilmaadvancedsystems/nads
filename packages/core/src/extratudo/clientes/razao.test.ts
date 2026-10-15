@@ -192,7 +192,11 @@ describe('o saldo anterior e o participante (15/10/2026)', () => {
   });
 
   it('o recebimento de uma nota de antes do razão é conciliado, mesmo passando do saldo anterior (15/10/2026)', () => {
-    const r = conferirRazaoDoCliente(lerRazao(linhas(1200)), '2026-01');
+    const r = conferirRazaoDoCliente(lerRazao([CAB,
+      ['VERDADEIRO', '', '10/01/2026', '', '10501', 'Banco', 1200, '00246', 'Recebimento de clientes 507 - CLIENTE TESTE LTDA', 200, ''],
+      ['VERDADEIRO', '', '15/01/2026', '', '75001', 'Venda de Serviços', -300, '00014', 'Pelos Serviços Prestados conf. Nota Fiscal nº - 000000000000200-' + CNPJ, -100, ''],
+    ]), '2026-01');
+    expect(r.anterior).toBe(1000);
     expect(r.pagaAnterior.map(x => x.valor)).toEqual([1200]);
     expect(r.semNota).toEqual([]);
     expect(razaoDaMarca('r.xls', r).itens.map(i => i.status)).toEqual(['anterior', 'aberto']);

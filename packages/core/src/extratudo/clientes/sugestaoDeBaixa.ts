@@ -132,21 +132,36 @@ export function mesmoLancamento(a: LancamentoDoBanco, b: LancamentoDoBanco): boo
   return a.data === b.data && a.valor === b.valor && a.historico === b.historico && a.banco === b.banco;
 }
 
-/** Aceita (l) ou desfaz (null) a baixa de um item. Sem nenhuma, undefined. */
-export function comBaixa(baixas: Readonly<Record<string, BaixaAceita>> | undefined, chave: string, l: LancamentoDoBanco | null): Record<string, BaixaAceita> | undefined {
-  const n = { ...(baixas || {}) };
-  delete n[chave];
-  if (l) n[chave] = { data: l.data, valor: l.valor, historico: l.historico, banco: l.banco, ...(l.marca ? { marca: l.marca } : {}) };
+/**
+ * Aceita (sim) ou desfaz (não) um lançamento do banco como baixa de um item. A nota pode ter mais de uma (Vitor, 15/10/2026:
+ * "se tiver saldo ainda, não mude para Ok, apenas diminua aquele valor aceito"). Sem nenhuma, undefined.
+ */
+export function comBaixa(baixas: Readonly<Record<string, readonly BaixaAceita[]>> | undefined, chave: string, l: LancamentoDoBanco, sim: boolean): Record<string, BaixaAceita[]> | undefined {
+  const n: Record<string, BaixaAceita[]> = Object.fromEntries(Object.entries(baixas || {}).map(([k, v]) => [k, [...v]]));
+  const daNota = (n[chave] || []).filter(b => !mesmoLancamento(b, l));
+  if (sim) daNota.push({ data: l.data, valor: l.valor, historico: l.historico, banco: l.banco, ...(l.marca ? { marca: l.marca } : {}) });
+  if (daNota.length) n[chave] = daNota; else delete n[chave];
   return Object.keys(n).length ? n : undefined;
 }
 
-/** As baixas guardadas, conferidas (o que não tiver o formato, fora). */
-export function baixasGuardadas(d: unknown): Record<string, BaixaAceita> | undefined {
+/** O que falta da nota em aberto (em centavos) depois das baixas aceitas; 0 = quitada (o que passa é juros/multa). */
+export function faltaDaNota(aberto: number, aceitas: readonly LancamentoDoBanco[] | undefined): number {
+  const falta = Math.round(Math.abs(aberto) * 100) - (aceitas || []).reduce((t, b) => t + Math.abs(b.valor), 0);
+  return falta > 1 ? falta : 0;
+}
+
+const baixaGuardada = (v: Record<string, unknown> | null | undefined): BaixaAceita | null =>
+  v && typeof v.data === 'string' && typeof v.valor === 'number' && typeof v.historico === 'string' && typeof v.banco === 'string'
+    ? { data: v.data, valor: v.valor, historico: v.historico, banco: v.banco, ...(typeof v.marca === 'string' && v.marca ? { marca: v.marca } : {}) }
+    : null;
+
+/** As baixas guardadas, conferidas (o que não tiver o formato, fora; a de antes, uma só, vira lista). */
+export function baixasGuardadas(d: unknown): Record<string, BaixaAceita[]> | undefined {
   if (!d || typeof d !== 'object') return undefined;
-  const n: Record<string, BaixaAceita> = {};
-  for (const [k, v] of Object.entries(d as Record<string, Record<string, unknown>>)) {
-    if (!v || typeof v.data !== 'string' || typeof v.valor !== 'number' || typeof v.historico !== 'string' || typeof v.banco !== 'string') continue;
-    n[k] = { data: v.data, valor: v.valor, historico: v.historico, banco: v.banco, ...(typeof v.marca === 'string' && v.marca ? { marca: v.marca } : {}) };
+  const n: Record<string, BaixaAceita[]> = {};
+  for (const [k, v] of Object.entries(d as Record<string, unknown>)) {
+    const lista = (Array.isArray(v) ? v : [v]).map(x => baixaGuardada(x as Record<string, unknown>)).filter((x): x is BaixaAceita => !!x);
+    if (lista.length) n[k] = lista;
   }
   return Object.keys(n).length ? n : undefined;
 }

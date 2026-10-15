@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { baixasGuardadas, comBaixa, mesmoLancamento, palavrasDoNome, selosDaSugestao, sugestoesDeBaixa, type LancamentoDoBanco } from './sugestaoDeBaixa';
+import { baixasGuardadas, comBaixa, faltaDaNota, mesmoLancamento, palavrasDoNome, selosDaSugestao, sugestoesDeBaixa, type LancamentoDoBanco } from './sugestaoDeBaixa';
 
 // nomes e valores inventados
 const L = (data: string, valor: number, historico: string, banco = 'Sicoob'): LancamentoDoBanco => ({ data, valor, historico, banco });
@@ -56,16 +56,27 @@ describe('sugestoesDeBaixa (a nota em aberto × o extrato)', () => {
 
 describe('a baixa aceita', () => {
   const a = L('2026-03-12', 107000, 'PIX RECEBIDO ALFAMINERA');
-  it('aceita, troca e desfaz', () => {
-    const um = comBaixa(undefined, 'k1', a);
-    expect(um).toEqual({ k1: a });
-    expect(comBaixa(um, 'k1', null)).toBeUndefined();
-    expect(Object.keys(comBaixa(um, 'k2', a) || {})).toEqual(['k1', 'k2']);
+  const b = L('2026-04-12', 50000, 'PIX RECEBIDO ALFAMINERA');
+  it('aceita mais de uma na nota, desfaz uma, desfaz todas', () => {
+    const um = comBaixa(undefined, 'k1', a, true);
+    expect(um).toEqual({ k1: [a] });
+    expect(comBaixa(um, 'k1', a, true)).toEqual({ k1: [a] });
+    const dois = comBaixa(um, 'k1', b, true);
+    expect(dois?.k1).toEqual([a, b]);
+    expect(comBaixa(dois, 'k1', a, false)).toEqual({ k1: [b] });
+    expect(comBaixa(um, 'k1', a, false)).toBeUndefined();
+    expect(Object.keys(comBaixa(um, 'k2', a, true) || {})).toEqual(['k1', 'k2']);
     expect(mesmoLancamento(a, { ...a })).toBe(true);
     expect(mesmoLancamento(a, { ...a, valor: 1 })).toBe(false);
   });
-  it('o guardado conferido', () => {
-    expect(baixasGuardadas({ k1: a, k2: { data: 1 } })).toEqual({ k1: a });
+  it('o que falta: com saldo, diminui; quitada (ou com juros), 0', () => {
+    expect(faltaDaNota(2000, [a])).toBe(93000);
+    expect(faltaDaNota(1070, [a])).toBe(0);
+    expect(faltaDaNota(1000, [a])).toBe(0);
+    expect(faltaDaNota(1070, [])).toBe(107000);
+  });
+  it('o guardado conferido (a de antes, uma só, vira lista)', () => {
+    expect(baixasGuardadas({ k1: a, k2: { data: 1 }, k3: [b] })).toEqual({ k1: [a], k3: [b] });
     expect(baixasGuardadas(null)).toBeUndefined();
   });
 });

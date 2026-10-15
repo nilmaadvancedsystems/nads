@@ -154,8 +154,8 @@ export interface MarcaDoCliente {
   razao?: RazaoDaMarca;
   /** o que vai para o cliente: as chaves dos itens da relação (chaveDoItem); sem = o cliente todo; [] = nada */
   perguntar?: string[];
-  /** as notas em aberto que já têm a baixa no banco (a sugestão aceita): a chave do item → o lançamento do banco */
-  baixas?: Record<string, BaixaAceita>;
+  /** as notas em aberto com a baixa no banco (as sugestões aceitas): a chave do item → os lançamentos do banco */
+  baixas?: Record<string, BaixaAceita[]>;
 }
 export interface DocClientes {
   contas: Record<string, MarcaDoCliente>; atualizadoEm?: string;
@@ -308,4 +308,4 @@ export function textoDaMensagem(modelo: string, empresa: string, mes: string, li
   const lista = linhas.map(l => '• ' + l.nome + ' — R$ ' + brl(l.saldo) + (l.notas?.length ? ' — em aberto: ' + textoDasNotas(l.notas) : '') + (l.obs ? ' — ' + l.obs : '')).join('\n');
   return (modelo || MENSAGEM_PADRAO).replace(/\{empresa\}/g, empresa).replace(/\{mes\}/g, mes).replace(/\{lista\}/g, lista);
 }
-export { sugestoesDeBaixa, selosDaSugestao, palavrasDoNome, mesmoLancamento, comBaixa, baixasGuardadas, type LancamentoDoBanco, type SugestaoDeBaixa, type BaixaAceita, type ComoBate, type SeloDaSugestao } from './sugestaoDeBaixa';
+export { sugestoesDeBaixa, selosDaSugestao, palavrasDoNome, mesmoLancamento, comBaixa, faltaDaNota, baixasGuardadas, type LancamentoDoBanco, type SugestaoDeBaixa, type BaixaAceita, type ComoBate, type SeloDaSugestao } from './sugestaoDeBaixa';

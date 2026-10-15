@@ -10,6 +10,9 @@ import { ConsultaDeNotas, useAbasDaConsulta } from '../consulta/ConsultaDeNotas'
 
 type VM = ReturnType<typeof useFornecedores>;
 
+/** A cor leve de uma nota sim, outra não, na relação do razão (com a sugestão dela junto). */
+const LISTRA = { background: 'var(--surface-2)' };
+
 export function Fornecedores() {
   const vm = useFornecedores();
   // a aba Consulta no menu de cima (Vitor, 14/10/2026: "igual à Consulta normal")
@@ -221,11 +224,11 @@ function ListaDeFornecedores({ vm }: { vm: VM }) {
                         <thead><tr><th>Data</th><th>Nota fiscal</th><th>Descrição</th><th className="num">Valor</th><th>Status</th>{(l.situacao === 'conferido' || !!l.razao?.itens.some(x => x.digitado)) && <th className="num">Perguntar</th>}</tr></thead>
                         <tbody>
                           {l.razao.itens.map((i, k) => (
-                            <Fragment key={k}><tr><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td>{i.nf}</td><td className="wrap">{i.descricao}{i.digitado && <span className="hint"> · digitado</span>}</td><td className={'num' + (i.abate ? ' ext-neg' : '')}>{i.valor}</td>
-                              <td className={i.status === 'aberto' ? undefined : 'hint'}>{i.baixa ? <span className="badge badge-ok" title={'Baixa no banco: ' + i.baixa.data + ', ' + i.baixa.valor}>Ok</span> : i.rotulo}</td>
+                            <Fragment key={k}><tr style={k % 2 ? LISTRA : undefined}><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td>{i.nf}</td><td className="wrap">{i.descricao}{i.digitado && <span className="hint"> · digitado</span>}</td><td className={'num' + (i.abate ? ' ext-neg' : '')} title={i.aceito ? 'Aceito no banco: ' + i.aceito : undefined}>{i.valor}</td>
+                              <td className={i.status === 'aberto' ? undefined : 'hint'}>{i.quitada ? <span className="badge badge-ok" title={'Aceito no banco: ' + i.aceito}>Ok</span> : <>{i.rotulo}{i.aceito && <span className="hint" style={{ display: 'block' }}>aceito {i.aceito}</span>}</>}</td>
                               {/* o "+" de cada linha (Vitor, 07/10/2026: "colocando esse + em cada linha"): adiciona ao que vai para o fornecedor;
                                   adicionada, o check que vira × e tira (o mesmo botão da importação) */}
-                              {(l.situacao === 'conferido' || !!l.razao?.itens.some(x => x.digitado)) && <td className="num">{!i.chave || i.baixa ? <span className="hint" title={i.baixa ? 'Com a baixa no banco' : 'Só do escritório'}>—</span> : i.digitado ? (
+                              {(l.situacao === 'conferido' || !!l.razao?.itens.some(x => x.digitado)) && <td className="num">{!i.chave || i.quitada ? <span className="hint" title={i.quitada ? 'Com a baixa no banco' : 'Só do escritório'}>—</span> : i.digitado ? (
                                 <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" disabled={!vm.carregado} onClick={() => vm.tirarDigitado(l.codigo, i.chave)}
                                   title="Lançamento digitado: vai para o fornecedor. Clique para tirar." aria-label="Tirar o lançamento digitado">
                                   <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
@@ -245,24 +248,24 @@ function ListaDeFornecedores({ vm }: { vm: VM }) {
                                 mini tabela com Banco (só o logo), Data, Descrição (letra menor), Valor e Situação (os selos) */}
                             {/* o botão de aceitar (Vitor, 15/10/2026: "quando o usuário mudar ou aceitar a sugestão, fique Ok"): aceita, a nota
                                 fica Ok e só o lançamento escolhido fica, com o check que vira × para desfazer */}
-                            {(i.baixa || i.sugestoes.length > 0) && (
-                              <tr>
+                            {(i.baixas.length > 0 || i.sugestoes.length > 0) && (
+                              <tr style={k % 2 ? LISTRA : undefined}>
                                 <td colSpan={6} style={{ paddingTop: 0 }}>
                                   {/* com a borda da caixa e sem o cabeçalho (Vitor, 15/10/2026) */}
                                   <div className="table-wrap" style={{ marginLeft: 16 }}>
                                     <table className="table-compact" aria-label="Possível pagamento desta nota no banco">
                                       <tbody>
-                                        {(i.baixa ? [{ ...i.baixa, selos: [] }] : i.sugestoes).map((g, j) => (
+                                        {[...i.baixas.map(b => ({ ...b, selos: [], aceita: true })), ...i.sugestoes.map(g => ({ ...g, aceita: false }))].map((g, j) => (
                                           <tr key={j}>
                                             {/* o Aceitar à esquerda do logo do banco (Vitor, 15/10/2026) */}
                                             <td style={{ width: 40 }}>
-                                              {i.baixa ? (
-                                                <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" disabled={!vm.carregado} onClick={() => vm.aceitarBaixa(l.codigo, i.chave, null)}
+                                              {g.aceita ? (
+                                                <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" disabled={!vm.carregado} onClick={() => vm.aceitarBaixa(l.codigo, i.chave, g.bruto, false)}
                                                   title="Baixa aceita. Clique para desfazer." aria-label={'Desfazer a baixa ' + (i.nf !== '—' ? 'da NF ' + i.nf : 'da nota')}>
                                                   <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
                                                 </button>
                                               ) : (
-                                                <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={!vm.carregado} onClick={() => vm.aceitarBaixa(l.codigo, i.chave, g.bruto)}
+                                                <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={!vm.carregado} onClick={() => vm.aceitarBaixa(l.codigo, i.chave, g.bruto, true)}
                                                   title="Aceitar: é a baixa desta nota" aria-label={'Aceitar o lançamento de ' + g.data + ' como a baixa ' + (i.nf !== '—' ? 'da NF ' + i.nf : 'da nota')}>
                                                   <Icone nome="check" />
                                                 </button>
@@ -275,7 +278,7 @@ function ListaDeFornecedores({ vm }: { vm: VM }) {
                                             <td className="num" style={{ whiteSpace: 'nowrap' }}>{g.valor}</td>
                                             <td style={{ width: 220 }}>
                                               <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
-                                                {i.baixa ? <span className="badge badge-ok">Aceita</span> : g.selos.map(x => <span key={x.texto} className={'badge badge-' + x.tom} title={x.dica}>{x.texto}</span>)}
+                                                {g.aceita ? <span className="badge badge-ok">Aceita</span> : g.selos.map(x => <span key={x.texto} className={'badge badge-' + x.tom} title={x.dica}>{x.texto}</span>)}
                                               </span>
                                             </td>
                                           </tr>
