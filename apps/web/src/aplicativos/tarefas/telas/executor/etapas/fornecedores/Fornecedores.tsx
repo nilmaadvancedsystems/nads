@@ -242,22 +242,19 @@ function ListaDeFornecedores({ vm }: { vm: VM }) {
                                 </button>
                               )}</td>}</tr>
                             {/* a sugestão de baixa logo abaixo da nota em aberto (Vitor, 15/10/2026): sem título e sem o fio do lado, uma
-                                mini tabela com Data, Banco (o logo), Descrição (letra menor), Valor e Situação (os selos) */}
+                                mini tabela com Banco (só o logo), Data, Descrição (letra menor), Valor e Situação (os selos) */}
                             {i.sugestoes.length > 0 && (
                               <tr>
                                 <td colSpan={6} style={{ paddingTop: 0 }}>
                                   <div style={{ marginLeft: 16 }}>
                                     <table className="table-compact" aria-label="Possível pagamento desta nota no banco">
-                                      <thead><tr><th style={{ width: 96 }}>Data</th><th style={{ width: 150 }}>Banco</th><th>Descrição</th><th className="num">Valor</th><th style={{ width: 200 }}>Situação</th></tr></thead>
+                                      <thead><tr><th style={{ width: 56 }}>Banco</th><th style={{ width: 96 }}>Data</th><th>Descrição</th><th className="num">Valor</th><th style={{ width: 200 }}>Situação</th></tr></thead>
                                       <tbody>
                                         {i.sugestoes.map((g, j) => (
                                           <tr key={j}>
+                                            {/* o banco: só o logo (o nome na dica), para sobrar espaço (Vitor, 15/10/2026) */}
+                                            <td title={g.banco}><span className="drive-candidato-logo" style={{ display: 'inline-flex' }} aria-label={g.banco}><LogoBanco banco={g.marca} cor /></span></td>
                                             <td style={{ whiteSpace: 'nowrap' }}>{g.data}</td>
-                                            <td style={{ whiteSpace: 'nowrap' }}>
-                                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                                                <span className="drive-candidato-logo" style={{ display: 'inline-flex' }}><LogoBanco banco={g.marca} cor /></span>{g.banco}
-                                              </span>
-                                            </td>
                                             <td className="wrap" style={{ fontSize: 12 }}>{g.historico}</td>
                                             <td className="num" style={{ whiteSpace: 'nowrap' }}>{g.valor}</td>
                                             <td>
