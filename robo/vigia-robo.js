@@ -998,6 +998,10 @@ async function iniciar() {
     // certificado do escritório. Sem certificado, token ou config/nfse, fica desligado e diz por quê em robo/nfse.
     try { require('./nfse').iniciarNfse(db, log); }
     catch (err) { log('NFS-e desligada:', err.message); }
+    // A situação das notas na SEFAZ (15/10/2026): o nads pede em pedidosSituacao; o robô consulta cada NF-e, NFC-e e CT-e
+    // do mês pela chave, com o mesmo certificado do escritório. Sem certificado, fica desligado e diz por quê em robo/situacao.
+    try { require('./situacao-notas').iniciarSituacaoDasNotas(db, log); }
+    catch (err) { log('situação das notas desligada:', err.message); }
   }
   // Os dois abaixo mandam e-mail pra CLIENTE e vêm desligados: quem liga é o
   // admin em Pendências › Configurações › Automático. Passam pelo mesmo freio

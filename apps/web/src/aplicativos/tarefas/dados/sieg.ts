@@ -19,6 +19,18 @@ export interface PedidoSieg {
   drive?: { total: number; feitos: number; pronto: boolean; erro?: string };
 }
 
+/** A situação das notas na SEFAZ (15/10/2026): o pedido e o que o robô da VM achou, nota a nota, pela chave. */
+export type SituacaoNaSefaz = 'autorizada' | 'cancelada' | 'denegada' | 'nao-encontrada' | 'erro' | 'outro-estado';
+export interface PedidoSituacao {
+  status: string; erro: string; em: string; feitas: number; total: number;
+  resultado: null | {
+    contagem: Record<SituacaoNaSefaz, number>;
+    /** as que não batem com o SIEG (até 300) */
+    divergentes: { chave: string; tipo: string; numero: string; serie: string; valor: number; sieg: string; sefaz: SituacaoNaSefaz; cStat: string; motivo: string }[];
+    maisDivergentes: number;
+  };
+}
+
 /** O que se pede ao robô: baixar as saídas (a sequência) ou contar as notas do mês agora (sem esperar a madrugada). */
 export type TipoDePedidoSieg = 'saidas' | 'contagem' | 'xmls' | 'xmlsCliente' | 'zipFaltam';
 
@@ -47,6 +59,9 @@ export interface RepoSieg {
   // (a lista vazia = puxar os XMLs do mês da pasta do cliente no Drive: o robô lê lá; 09/10/2026)
   /** o .zip das notas que estão nos XMLs e faltam no Alterdata (08/10/2026): o robô pega essas chaves no SIEG e entrega */
   pedirZipFaltam(codigo: string, competencia: string, chaves: string[]): Promise<void>;
+  /** a situação das notas emitidas do mês na SEFAZ (15/10/2026): o último pedido desta empresa e mês, e pedir de novo */
+  situacao(codigo: string, competencia: string): PedidoSituacao | null;
+  pedirSituacao(codigo: string, competencia: string): Promise<void>;
   /** os bytes do .zip que o robô entregou no pedido */
   baixarZip(zip: NonNullable<PedidoSieg['zip']>): Promise<Uint8Array>;
   assinar(aoMudar: () => void): () => void;
@@ -88,6 +103,7 @@ export function criarSiegMemoria(): RepoSieg {
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   const saidas = new Map<string, t.sieg.SaidasSieg>();
   const pedidos = new Map<string, PedidoSieg>();
+  const situacoes = new Map<string, PedidoSituacao>();
   const contadasAgora = new Map<string, t.sieg.ContagemSieg>();
   const notasBaixadas = new Map<string, t.sieg.NotasSieg>();
   const agora = () => new Date().toISOString();
@@ -190,6 +206,21 @@ export function criarSiegMemoria(): RepoSieg {
         pedidos.set('contagem|' + k, { status: 'concluido', andamento: '', erro: '', em });
         mudou();
       }, 2600);
+    },
+    situacao: (codigo, competencia) => situacoes.get(codigo + '_' + competencia) || null,
+    async pedirSituacao(codigo, competencia) {
+      // nos exemplos: finge a consulta (3 cupons; um cancelado na SEFAZ que no SIEG estava autorizado)
+      const k = codigo + '_' + competencia;
+      situacoes.set(k, { status: 'processando', erro: '', em: agora(), feitas: 0, total: 3, resultado: null });
+      mudou();
+      setTimeout(() => {
+        situacoes.set(k, { status: 'concluido', erro: '', em: agora(), feitas: 3, total: 3, resultado: {
+          contagem: { autorizada: 2, cancelada: 1, denegada: 0, 'nao-encontrada': 0, erro: 0, 'outro-estado': 0 },
+          divergentes: [{ chave: '31251011222333000181650010000040121000040125', tipo: 'NFC-e', numero: '4012', serie: '1', valor: 38.9, sieg: 'autorizada', sefaz: 'cancelada', cStat: '101', motivo: 'Cancelamento de NF-e homologado (TESTE)' }],
+          maisDivergentes: 0,
+        } });
+        mudou();
+      }, 2200);
     },
     async pedirSaidas(codigo, competencia) {
       const k = codigo + '_' + competencia;
