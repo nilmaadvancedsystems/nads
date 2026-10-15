@@ -43,6 +43,12 @@ export function JanelaDaNota({ id, fechar, corrigir }: { id: string; fechar: () 
 
           <div className="nf-dados">
             <Dado rotulo="Tomador"><b>{n.tomador.nome}</b><span className="fraco"> · {documentoFormatado(n.tomador.documento)}</span></Dado>
+            {n.tomador.endereco && (
+              <Dado rotulo="Endereço">
+                {n.tomador.endereco.logradouro}, {n.tomador.endereco.numero} · {n.tomador.endereco.bairro}
+                <span className="fraco"> · CEP {n.tomador.endereco.cep} · IBGE {n.tomador.endereco.cMun}</span>
+              </Dado>
+            )}
             <Dado rotulo="Valor">{formatos.reais(n.servico.valor)}</Dado>
             <Dado rotulo="Data do serviço">{dataBr(n.servico.competencia)}</Dado>
             <Dado rotulo="Descrição"><span className="nf-descricao">{n.servico.descricao}</span></Dado>

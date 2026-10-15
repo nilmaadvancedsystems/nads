@@ -75,11 +75,35 @@ export function JanelaNovaNota({ fechar, nota }: { fechar: () => void; nota?: nf
 
           <div className="registro-props">
             <Propriedade icone="hash" rotulo="CPF ou CNPJ">
-              <input type="text" inputMode="numeric" value={vm.documento} onChange={e => vm.setDocumento(e.target.value)} onBlur={vm.formatarDocumento} placeholder="Do tomador" aria-label="CPF ou CNPJ do tomador" />
+              <input type="text" inputMode="numeric" value={vm.documento} onChange={e => vm.setDocumento(e.target.value)} onBlur={() => { vm.formatarDocumento(); vm.aoSairDoDocumento(); }} placeholder="Do tomador" aria-label="CPF ou CNPJ do tomador" />
             </Propriedade>
             <Propriedade icone="usuario" rotulo="Nome">
               <input type="text" value={vm.nome} onChange={e => vm.setNome(e.target.value)} placeholder="Nome ou razão social" autoComplete="off" aria-label="Nome do tomador" />
             </Propriedade>
+            {vm.endereco.visivel ? (
+              <>
+                <Propriedade icone="landmark" rotulo="CEP">
+                  <input type="text" inputMode="numeric" value={vm.endereco.cep} onChange={e => vm.endereco.setCep(e.target.value)} placeholder={vm.endereco.obrigatorio ? 'Obrigatório para CNPJ' : 'Opcional'} aria-label="CEP do tomador" />
+                  {vm.endereco.buscando && <span className="fraco registro-origem">Buscando o endereço na Receita…</span>}
+                </Propriedade>
+                <Propriedade icone="landmark" rotulo="Rua">
+                  <input type="text" value={vm.endereco.rua} onChange={e => vm.endereco.setRua(e.target.value)} placeholder="Logradouro" aria-label="Rua do tomador" />
+                </Propriedade>
+                <Propriedade icone="hash" rotulo="Número">
+                  <input type="text" value={vm.endereco.numero} onChange={e => vm.endereco.setNumero(e.target.value)} placeholder="S/N se não tiver" aria-label="Número do endereço do tomador" />
+                </Propriedade>
+                <Propriedade icone="landmark" rotulo="Bairro">
+                  <input type="text" value={vm.endereco.bairro} onChange={e => vm.endereco.setBairro(e.target.value)} placeholder="Bairro" aria-label="Bairro do tomador" />
+                </Propriedade>
+                <Propriedade icone="landmark" rotulo="Município">
+                  <input type="text" inputMode="numeric" value={vm.endereco.cMun} onChange={e => vm.endereco.setCMun(e.target.value)} placeholder="Código do IBGE (7 dígitos)" aria-label="Código IBGE do município do tomador" />
+                  {vm.endereco.municipio && <span className="fraco registro-origem">{vm.endereco.municipio}</span>}
+                </Propriedade>
+                {vm.endereco.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.endereco.erro}</p>}
+              </>
+            ) : (
+              <div className="registro-prop"><button type="button" className="btn btn-ghost" onClick={vm.endereco.adicionar}><Icone nome="plus" />Adicionar endereço</button></div>
+            )}
             <Propriedade icone="dinheiro" rotulo="Valor">
               <input type="text" inputMode="decimal" value={vm.valor} onChange={e => vm.setValor(e.target.value)} onBlur={vm.formatarValor} placeholder="420,00" aria-label="Valor em reais" />
             </Propriedade>

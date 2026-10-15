@@ -14,8 +14,13 @@ describe('o cadastro pelo CNPJ (13/10/2026)', () => {
       cnae_fiscal: 4711302, cnae_fiscal_descricao: 'Comércio varejista', municipio: 'MONTES CLAROS', uf: 'mg', data_inicio_atividade: '2020-01-02' };
     expect(dadosDaReceita({ ...base, opcao_pelo_simples: true, opcao_pelo_mei: false })).toEqual({
       cnpj: '11222333000181', razaoSocial: 'EMPRESA TESTE LTDA', fantasia: 'TESTE', situacao: 'ATIVA', regime: 'Simples',
-      cnae: '4711-3/02', cnaeDescricao: 'Comércio varejista', municipio: 'MONTES CLAROS', uf: 'MG', abertura: '2020-01-02',
+      cnae: '4711-3/02', cnaeDescricao: 'Comércio varejista', municipio: 'MONTES CLAROS', uf: 'MG', abertura: '2020-01-02', endereco: null,
     });
+    // o endereço para a nota fiscal (15/10/2026: tomador CNPJ exige o endereço nacional, E1358)
+    expect(dadosDaReceita({ ...base, codigo_municipio_ibge: 3143302, cep: '39400-001', descricao_tipo_de_logradouro: 'RUA', logradouro: 'Dom Pedro II', numero: '120', bairro: 'Centro' })?.endereco)
+      .toEqual({ cMun: '3143302', cep: '39400001', logradouro: 'RUA DOM PEDRO II', numero: '120', bairro: 'CENTRO' });
+    expect(dadosDaReceita({ ...base, codigo_municipio_ibge: 3143302, cep: '39400001', logradouro: 'RUA DOM PEDRO II', numero: '' })?.endereco)
+      .toEqual({ cMun: '3143302', cep: '39400001', logradouro: 'RUA DOM PEDRO II', numero: 'S/N', bairro: 'CENTRO' });
     expect(dadosDaReceita({ ...base, opcao_pelo_simples: true, opcao_pelo_mei: true })?.regime).toBe('MEI');
     expect(dadosDaReceita({ ...base, opcao_pelo_simples: false })?.regime).toBe('');
     expect(dadosDaReceita({ message: 'CNPJ não encontrado' })).toBeNull();

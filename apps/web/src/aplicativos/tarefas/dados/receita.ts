@@ -12,7 +12,8 @@ export async function consultarCnpj(cnpj: string): Promise<empresas.cadastro.Dad
   if (!empresas.cadastro.cnpjValido(digitos)) throw new Error('CNPJ inválido: confira os 14 números.');
   if (!noBanco) {
     return { cnpj: digitos, razaoSocial: 'EMPRESA EXEMPLO (TESTE) LTDA', fantasia: 'EXEMPLO', situacao: 'ATIVA', regime: 'Simples',
-      cnae: '4711-3/02', cnaeDescricao: 'Comércio varejista de mercadorias em geral', municipio: 'MONTES CLAROS', uf: 'MG', abertura: '2020-01-02' };
+      cnae: '4711-3/02', cnaeDescricao: 'Comércio varejista de mercadorias em geral', municipio: 'MONTES CLAROS', uf: 'MG', abertura: '2020-01-02',
+      endereco: { cMun: '3143302', cep: '39400001', logradouro: 'RUA EXEMPLO', numero: '100', bairro: 'CENTRO' } };
   }
   let naoAchou = false;
   for (const fonte of FONTES) {

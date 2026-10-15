@@ -34,6 +34,22 @@ export interface DadosDaReceita {
   municipio: string;
   uf: string;
   abertura: string;
+  /**
+   * O endereço, para a nota fiscal (15/10/2026: a NFS-e com tomador CNPJ exige o endereço nacional, erro E1358): o
+   * município pelo código do IBGE; null se a resposta não trouxer o essencial.
+   */
+  endereco: { cMun: string; cep: string; logradouro: string; numero: string; bairro: string } | null;
+}
+
+/** O endereço da resposta (BrasilAPI e minhareceita: o tipo do logradouro vem à parte, o IBGE em codigo_municipio_ibge). */
+function enderecoDaReceita(d: Record<string, unknown>): DadosDaReceita['endereco'] {
+  const cMun = so(d.codigo_municipio_ibge);
+  const cep = so(d.cep);
+  const tipo = texto(d.descricao_tipo_de_logradouro);
+  const rua = texto(d.logradouro);
+  const logradouro = (tipo && rua && !rua.toUpperCase().startsWith(tipo.toUpperCase()) ? tipo + ' ' + rua : rua).toUpperCase();
+  if (cMun.length !== 7 || cep.length !== 8 || !logradouro) return null;
+  return { cMun, cep, logradouro, numero: texto(d.numero) || 'S/N', bairro: texto(d.bairro).toUpperCase() || 'CENTRO' };
 }
 
 /** A resposta da consulta (BrasilAPI ou minhareceita.org) no que o cadastro usa; null se não for uma empresa. */
@@ -52,5 +68,6 @@ export function dadosDaReceita(j: unknown): DadosDaReceita | null {
     cnaeDescricao: texto(d.cnae_fiscal_descricao),
     municipio: texto(d.municipio), uf: texto(d.uf).toUpperCase(),
     abertura: texto(d.data_inicio_atividade),
+    endereco: enderecoDaReceita(d),
   };
 }
