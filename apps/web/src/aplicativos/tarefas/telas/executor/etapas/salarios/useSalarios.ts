@@ -1,5 +1,5 @@
 // ViewModel da etapa Salários, INSS e FGTS como tela própria (Vitor, 07/10/2026: "faz o devedor travar o Próximo
-// também"): a conferência do INSS (razão × guias, opcional) e as linhas de Salários a pagar e FGTS a recolher, cada uma
+// também"): a conferência do INSS (razão × guias, obrigatória desde 15/10/2026) e as linhas de Salários a pagar e FGTS a recolher, cada uma
 // com o razão. O passivo fica credor ou zera: mês devedor em Salários ou no FGTS trava o Próximo da Tarefa.
 import { useMemo } from 'react';
 import { useContasDoBalancete } from '../../../../../concilia-ai/importadosNaEtapa';
@@ -21,6 +21,9 @@ export function useSalarios() {
   const faltam = [
     // Salários é obrigatório e tem que zerar (Vitor, 07/10/2026)
     ...(!salarios.temRazao ? ['Importar o razão de Salários a pagar'] : []),
+    // o INSS também (Vitor, 15/10/2026: "já liberou sem eu ter alimentado o INSS"): o razão e as guias pagas
+    ...(!inss.temRazao ? ['Importar o razão do INSS a recolher'] : []),
+    ...(!inss.temGuias ? ['Importar o PDF das guias do INSS pagas'] : []),
     ...salarios.sobras.map(x => 'A folha de antes não zerou em Salários a pagar em ' + x.mes + ' (sobrou ' + x.valor + ')'),
     ...[salarios, fgts].filter(v => v.devedores.length).map(v => 'Corrigir o saldo devedor de ' + v.nome + ' em ' + v.devedores.join(', ')),
   ];
