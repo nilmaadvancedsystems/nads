@@ -253,8 +253,8 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                             {(i.baixas.length > 0 || i.sugestoes.length > 0) && (
                               <tr style={k % 2 ? LISTRA : undefined}>
                                 <td colSpan={6} style={{ paddingTop: 0 }}>
-                                  {/* com a borda da caixa e sem o cabeçalho (Vitor, 15/10/2026) */}
-                                  <div className="table-wrap" style={{ marginLeft: 16 }}>
+                                  {/* sem caixa, sem borda e sem o cabeçalho; mais de uma, separadas pela linha suave da tabela (Vitor, 15/10/2026) */}
+                                  <div style={{ marginLeft: 16 }}>
                                     <table className="table-compact" aria-label="Possível recebimento desta nota no banco">
                                       <tbody>
                                         {[...i.baixas.map(b => ({ ...b, selos: [], aceita: true })), ...i.sugestoes.map(g => ({ ...g, aceita: false }))].map((g, j) => (
