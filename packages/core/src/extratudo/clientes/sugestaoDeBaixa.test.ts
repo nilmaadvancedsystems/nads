@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { baixasGuardadas, comBaixa, faltaDaNota, mesmoLancamento, palavrasDoNome, selosDaSugestao, sugestoesDeBaixa, type LancamentoDoBanco } from './sugestaoDeBaixa';
+import { baixasGuardadas, comBaixa, ehDepositoDeCheque, faltaDaNota, mesmoLancamento, palavrasDoNome, selosDaSugestao, sugestoesDeBaixa, type LancamentoDoBanco } from './sugestaoDeBaixa';
 
 // nomes e valores inventados
 const L = (data: string, valor: number, historico: string, banco = 'Sicoob'): LancamentoDoBanco => ({ data, valor, historico, banco });
@@ -47,6 +47,13 @@ describe('sugestoesDeBaixa (a nota em aberto × o extrato)', () => {
     const s = sugestoesDeBaixa(NOTA, 'ALFAMINERA', [L('2026-04-25', 50000, 'PIX ALFAMINERA')], 1);
     expect(s.map(x => [x.como, x.parcela])).toEqual([['parcela', 'em 4x do aberto']]);
     expect(selosDaSugestao(s[0], 'cliente').map(x => x.texto)).toEqual(['Aberto em 4x', 'Mesmo nome']);
+  });
+
+  it('o depósito de cheque nunca entra (15/10/2026)', () => {
+    expect(sugestoesDeBaixa({ data: '2026-02-25', valor: 1070 }, 'ALFAMINERA', [L('2026-03-01', 107000, '3 DEPOSITO CHEQUE AG'), L('2026-03-02', 107000, 'DEP CHQ ALFAMINERA')], 1)).toEqual([]);
+    expect(ehDepositoDeCheque('Depósito de cheque')).toBe(true);
+    expect(ehDepositoDeCheque('CHEQUE COMPENSADO 000123')).toBe(false);
+    expect(ehDepositoDeCheque('DEPOSITO EM DINHEIRO')).toBe(false);
   });
 
   it('as palavras do nome que identificam', () => {

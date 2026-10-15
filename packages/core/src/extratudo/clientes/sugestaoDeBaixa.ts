@@ -38,6 +38,12 @@ const GENERICAS = new Set(['ltda', 'eireli', 'epp', 'me', 'sa', 'cia', 'comercio
 
 const dia = (d: string) => { const [a, m, x] = d.split('-').map(Number); return Date.UTC(a, m - 1, x) / 86400000; };
 
+/** O depósito de cheque nunca é a baixa de uma nota (Vitor, 15/10/2026: "não entra, não coloque em hipótese alguma"). */
+export function ehDepositoDeCheque(historico: string): boolean {
+  const h = ' ' + normalizarTexto(historico) + ' ';
+  return /\s(dep\w*)\s/.test(h) && /\s(cheques?|chq|ch)\s/.test(h);
+}
+
 /** As palavras do nome que identificam (4 letras ou mais, sem as genéricas). */
 export function palavrasDoNome(nome: string): string[] {
   return normalizarTexto(nome).split(' ').filter(p => p.length >= 4 && !GENERICAS.has(p));
@@ -89,7 +95,7 @@ export function sugestoesDeBaixa(nota: NotaEmAberto, nome: string, lancamentos: 
   const jaPagos = (nota.pagos || []).map(p => ({ d: dia(p.data), c: Math.round(Math.abs(p.valor) * 100) }));
   const achados: (SugestaoDeBaixa & { nota: number; dist: number })[] = [];
   for (const l of lancamentos) {
-    if (Math.sign(l.valor) !== sentido) continue;
+    if (Math.sign(l.valor) !== sentido || ehDepositoDeCheque(l.historico)) continue;
     const dl = dia(l.data);
     if (dl - d0 < -DIAS_ANTES || dl - d0 > DIAS_DEPOIS) continue;
     const v = Math.abs(l.valor);
