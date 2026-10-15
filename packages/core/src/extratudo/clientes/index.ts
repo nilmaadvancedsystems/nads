@@ -107,13 +107,20 @@ export function clientesDoDinamico(d: BalanceteDinamico, mes: string, lado: Lado
     .map(l => ({ codigo: l.codigo, nome: l.descricao.replace(/\s+/g, ' '), saldo: noLado(lado, l.saldos[mes] ?? 0), noBalancete: null }));
 }
 
+/** O nome da conta de adiantamento no dinâmico: "Adiantamento(s) a fornecedor(es)", "Adto. de clientes"… */
+const ADIANTAMENTO: Record<LadoDaConta, RegExp> = {
+  fornecedores: /^(adiant\w*|adto) (a |de |p |para |ao |aos )?fornecedor/,
+  clientes: /^(adiant\w*|adto) (a |de |p |para |do |dos )?client/,
+};
+
 /**
- * Os meses do período em que o dinâmico tem adiantamento a fornecedores (Vitor, 15/10/2026: "observe o balancete se há
- * adiantamento a fornecedores; a 58 não tem, então não coloque como etapa"): alguma conta "Adiantamento(s) a
- * fornecedor(es)" com saldo no mês ou no mês de antes (o adiantamento baixado no mês). Só os meses que o dinâmico tem.
+ * Os meses do período em que o dinâmico tem adiantamento a fornecedores (ou de clientes) (Vitor, 15/10/2026: "observe o
+ * balancete se há adiantamento a fornecedores; a 58 não tem, então não coloque como etapa"; "faz no adiantamento de
+ * clientes também"): alguma conta de adiantamento com saldo no mês ou no mês de antes (o adiantamento baixado no mês).
+ * Só os meses que o dinâmico tem.
  */
-export function adiantamentoAFornecedoresNoDinamico(d: BalanceteDinamico, meses: readonly string[]): { cobertos: string[]; com: string[] } {
-  const contas = d.linhas.filter(l => /^(adiant\w*|adto) (a |de |p |para |ao )?fornecedor/.test(normalizarTexto(l.descricao)));
+export function adiantamentoNoDinamico(d: BalanceteDinamico, meses: readonly string[], de: LadoDaConta): { cobertos: string[]; com: string[] } {
+  const contas = d.linhas.filter(l => ADIANTAMENTO[de].test(normalizarTexto(l.descricao)));
   const antes = (m: string) => { const [a, x] = m.split('-').map(Number); return x === 1 ? (a - 1) + '-12' : a + '-' + String(x - 1).padStart(2, '0'); };
   const saldo = (l: LinhaDinamico, m: string) => (m in l.saldos ? l.saldos[m] : m < (d.meses[0] || '') ? l.saldoAnterior : 0);
   const cobertos = meses.filter(m => d.meses.includes(m));

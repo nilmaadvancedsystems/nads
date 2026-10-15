@@ -178,9 +178,12 @@ export function useClientes() {
   const faltaMandar = !!assinatura && marcas.doc.enviado !== assinatura;
   const faltam = [...faltamDosArquivos, ...(faltaMandar ? ['Mandar pelo Mandei o que vai ser questionado (' + paraEnviar.length + (paraEnviar.length === 1 ? ' cliente)' : ' clientes)')] : [])];
   useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
-  // o dinâmico diz se o Adiantamento a fornecedores entra (Vitor, 15/10/2026: "a 58 não tem, então não coloque como etapa")
-  const adiantamento = useMemo(() => (dinamico ? cl.adiantamentoAFornecedoresNoDinamico(dinamico.d, s.meses) : null), [dinamico, s.meses]);
-  useEtapaPeloBalancete(adiantamento && { etapa: 'adiantamento-fornecedores', ...adiantamento, motivo: adiantamento.com.length ? 'Adiantamento a fornecedores com saldo no balancete dinâmico' : 'Sem adiantamento a fornecedores no balancete dinâmico' });
+  // o dinâmico diz se o Adiantamento a fornecedores e o de clientes entram (Vitor, 15/10/2026: "a 58 não tem, então não
+  // coloque como etapa"; "faz no adiantamento de clientes também")
+  const adtoFornecedores = useMemo(() => (dinamico ? cl.adiantamentoNoDinamico(dinamico.d, s.meses, 'fornecedores') : null), [dinamico, s.meses]);
+  const adtoClientes = useMemo(() => (dinamico ? cl.adiantamentoNoDinamico(dinamico.d, s.meses, 'clientes') : null), [dinamico, s.meses]);
+  useEtapaPeloBalancete(adtoFornecedores && { etapa: 'adiantamento-fornecedores', ...adtoFornecedores, motivo: adtoFornecedores.com.length ? 'Adiantamento a fornecedores com saldo no balancete dinâmico' : 'Sem adiantamento a fornecedores no balancete dinâmico' });
+  useEtapaPeloBalancete(adtoClientes && { etapa: 'adiantamento-clientes', ...adtoClientes, motivo: adtoClientes.com.length ? 'Adiantamento de clientes com saldo no balancete dinâmico' : 'Sem adiantamento de clientes no balancete dinâmico' });
   const rotuloMes = mes ? tarefas.rotuloNumericoCompetencia(mes) : '';
   const q = busca.trim().toLowerCase();
   const reais = formatos.reais;
