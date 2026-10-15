@@ -20,7 +20,8 @@ export const prefereMenosMovimento = () => typeof window === 'undefined' || type
 //   normal    só o carregamento se mexe (a barra do topo, a abertura com o N, as rodinhas e o esqueleto); o padrão
 //   parciais  também o que abre e fecha (janelas, menus, avisos, gaveta) e as transições do CSS (passar o mouse);
 //             listas e páginas em cascata, título que se revela, festa, linhas que deslizam e o Drive ficam parados
-//   todas     tudo, no jeito escolhido na Prévia das animações
+//   todas     tudo, no jeito escolhido na Prévia das animações; desde 15/10/2026 o app inteiro (animaTudo.ts): o que chega
+//             em cascata, as linhas que deslizam, os números contando, as barras e roscas, os selos, as caixinhas
 // 14/10/2026 ("quero que tenha um botão para tirar/reduzir animações para o normal"): a Nenhuma tira também as feitas a
 // pedido (o menu do perfil, a Minha página, a troca de empresas, a competência), que no Normal continuam
 // (animacoesPedidas). A escolha fica em Minha página › Minha conta › Preferências.
@@ -31,7 +32,8 @@ export const NIVEIS_DE_ANIMACAO: { id: NivelDeAnimacao; nome: string; dica: stri
   { id: 'normal', nome: 'Normal', dica: 'O padrão: o carregamento e as animações feitas a pedido (o menu do perfil, esta janela, a troca, a competência).' },
   { id: 'parciais', nome: 'Parciais', dica: 'Também janelas, menus e avisos abrindo e fechando; as listas e páginas aparecem paradas.' },
   // o nome (Vitor, 14/10/2026: "muda o nome das animações de 'todas' para 'Não tem motivo pra usar tanta animação'")
-  { id: 'todas', nome: 'Não tem motivo pra usar tanta animação', dica: 'Todas as animações (listas em cascata, títulos, a festa ao concluir).' },
+  // 15/10/2026 ("anime tudo do app [...] para realmente fazer jus ao nome"): o app inteiro se mexe (animaTudo.ts)
+  { id: 'todas', nome: 'Não tem motivo pra usar tanta animação', dica: 'Tudo se mexe: páginas e listas em cascata, linhas que deslizam ao ordenar, números contando, gráficos crescendo, selos pulando, títulos e a festa ao concluir.' },
 ];
 const CHAVE_NIVEL = 'nads-animacoes';
 function lerNivel(): NivelDeAnimacao {
@@ -60,6 +62,12 @@ export const semMovimento = () => nivel === 'normal' || nivel === 'nenhuma';
 export const animacoesPedidas = () => nivel !== 'nenhuma' && !prefereMenosMovimento();
 /** Só nas Todas: o que é mais que abrir e fechar (cascatas, título, festa, linhas deslizando, o Drive). */
 export const semMovimentoForte = () => nivel !== 'todas';
+/**
+ * O "Não tem motivo pra usar tanta animação" ligado (Vitor, 15/10/2026: "quero que voce anime tudo do app, ele inteiro
+ * caso a opção [...] estiver ativada, para realmente fazer jus ao nome"): a camada de animaTudo.ts e os extras daqui
+ * (os números contando, a cascata dentro das janelas e dos menus) só rodam com ele.
+ */
+export const tudoAnima = () => nivel === 'todas';
 
 /** A curva de entrar/sair da tela: rápida no começo, assenta devagar. */
 export const ENTRAR = cubicBezier(0.23, 1, 0.32, 1);
@@ -70,12 +78,31 @@ export const GAVETA = cubicBezier(0.32, 0.72, 0, 1);
 /** O "ease" do CSS, para o que entra num ritmo mais calmo. */
 export const SUAVE = cubicBezier(0.25, 0.1, 0.25, 1);
 
+// No animejs 4.5 a mola guarda a animação dela (achado em 14/10/2026): duas animações com a MESMA mola brigam e uma
+// some. Por isso cada animação pede uma mola nova (as funções abaixo); MOLA e MOLA_VIVA ficam só por compatibilidade.
 /** A mola da casa: chega rápido e assenta sem quicar. */
 export const MOLA = spring({ mass: 1, stiffness: 170, damping: 20 });
 /** Uma mola mais viva (o N da abertura, o selo de sucesso). */
 export const MOLA_VIVA = spring({ mass: 1, stiffness: 220, damping: 14 });
+/** A mola viva, nova a cada animação. */
+export const molaViva = () => spring({ mass: 1, stiffness: 220, damping: 14 });
 /** Uma mola nova por animação (a mola guarda a animação dela): quique (0–1) e duração percebida (ms). */
-const mola = (quique: number, duracao: number) => spring({ bounce: quique, duration: duracao });
+export const mola = (quique: number, duracao: number) => spring({ bounce: quique, duration: duracao });
+
+/**
+ * A garantia do que parte de opacidade 0: com a aba em segundo plano o motor do animejs para, e a peça ficaria
+ * invisível. Passado o tempo dela (no mínimo 1,2 s), se não terminou, termina na hora e o estilo sai.
+ */
+export function garantir<A extends JSAnimation | null>(a: A, ms = 0, limpa = true): A {
+  if (!a || typeof window === 'undefined') return a;
+  window.setTimeout(() => {
+    // terminou, foi desfeita ou alguém pausou de propósito (a conta que o React interrompeu): não mexe
+    if (a.completed || a.cancelled || a.paused) return;
+    a.complete();
+    if (limpa) cleanInlineStyles(a);
+  }, Math.max(1200, ms + 500));
+  return a;
+}
 
 // ------------------------------------------------------------------ o jeito
 export type Jeito = 'marca' | 'viva' | 'suave';
@@ -231,11 +258,22 @@ export function moverIndicador(el: HTMLElement, lugar: { x: number; y: number; w
  * Conta do número que está na tela (atual.v) até o novo, escrevendo no elemento no formato que a tela deu (os números
  * do painel). atual.v acompanha a conta: interrompida no meio, a próxima parte de onde parou.
  */
-// Vitor, 02/10/2026: "remova essas animações de números aumentando de toda a aplicação" — o número aparece direto, já final.
+// Vitor, 02/10/2026: "remova essas animações de números aumentando de toda a aplicação" — o número aparece direto, já
+// final. Volta a contar só no "Não tem motivo pra usar tanta animação" (15/10/2026: "anime tudo do app").
 export function contar(el: HTMLElement, atual: { v: number }, para: number, formatar: (n: number) => string): JSAnimation | null {
-  atual.v = para;
-  el.textContent = formatar(para);
-  return null;
+  const de = atual.v;
+  if (!tudoAnima() || prefereMenosMovimento() || de === para) {
+    atual.v = para;
+    el.textContent = formatar(para);
+    return null;
+  }
+  const n = { v: de };
+  el.textContent = formatar(de);
+  return garantir(animate(n, {
+    v: para, duration: jeito === 'suave' ? 1100 : 900, ease: jeito === 'viva' ? 'out(4)' : ENTRAR,
+    onUpdate: () => { atual.v = n.v; el.textContent = formatar(n.v); },
+    onComplete: () => { atual.v = para; el.textContent = formatar(para); },
+  }), 1100, false);
 }
 
 /** "R$ 1.234,56", "58%", "1.200": o número e o que vem antes e depois (pt-BR). Outra coisa (datas, códigos): null. */
@@ -321,7 +359,7 @@ export function desenharCheck(svg: SVGSVGElement, atraso = 0): void {
  */
 export function celebrar(svg: SVGSVGElement, faiscas = true): void {
   if (semMovimentoForte()) return;
-  animate(svg, { opacity: [0, 1], scale: [0.4, 1], rotate: [-30, 0], ease: MOLA_VIVA });
+  garantir(animate(svg, { opacity: [0, 1], scale: [0.4, 1], rotate: [-30, 0], ease: molaViva() }), 900, false);
   desenharCheck(svg, 120);
   if (!faiscas) return;
   const r = svg.getBoundingClientRect();
@@ -361,7 +399,15 @@ export function revelarTitulo(el: HTMLElement): (() => void) | null {
  * animate do animejs, mas o nads não anima (semMovimento): a peça vai na hora para onde a animação terminaria.
  */
 export function animar(alvos: TargetsParam, params: AnimationParams): JSAnimation {
-  if (!semMovimento()) return animate(alvos, params);
+  if (!semMovimento()) {
+    const a = animate(alvos, params);
+    // o que parte da opacidade 0 (as entradas) tem garantia: com a aba em segundo plano o motor para e a peça ficaria
+    // invisível (15/10/2026); termina no lugar final, sem tirar o estilo (quem chamou decide no onComplete)
+    const op = params.opacity;
+    const doZero = Array.isArray(op) ? op[0] === 0 : !!op && typeof op === 'object' && 'from' in op && (op as { from: unknown }).from === 0;
+    if (doZero) garantir(a, (typeof params.duration === 'number' ? params.duration : 900) + (typeof params.delay === 'number' ? params.delay : 700), false);
+    return a;
+  }
   // sem animação: tudo vai direto para o fim, na hora (nem o esmaecer, nem esperar o próximo quadro)
   const fim: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(params)) {
@@ -377,10 +423,18 @@ export function animar(alvos: TargetsParam, params: AnimationParams): JSAnimatio
 
 const limpar = (a: JSAnimation) => { cleanInlineStyles(a); };
 
+/** As peças que alguém já animou a entrada (entrar, useEntradaAnimada): a camada do animaTudo.ts não anima de novo. */
+export const entradasFeitas = new WeakSet<Element>();
+
 // As entradas de página que estão rodando: enquanto a página sobe, um transform fica nela, e um transform prende o
 // position:fixed de quem está dentro (uma janela abriria fora do lugar). Abriu uma janela, um menu ou uma faixa fixa:
 // a entrada da página termina na hora (encerrarPaginas, chamado pelo animador).
 const paginas = new Set<JSAnimation>();
+/** Uma entrada que deixa transform na peça enquanto roda (a cascata do animaTudo.ts): abriu uma janela, termina na hora. */
+export function acompanharEntrada(a: JSAnimation): void {
+  paginas.add(a);
+}
+export const largarEntrada = (a: JSAnimation) => { paginas.delete(a); };
 export function encerrarPaginas(): void {
   for (const a of paginas) { a.complete(); cleanInlineStyles(a); }
   paginas.clear();
@@ -397,6 +451,7 @@ export function entrar(peca: Peca, alvos: Element | Element[] | NodeListOf<Eleme
   if ((peca === 'lista' || peca === 'pagina' || peca === 'gavetaItens' || peca === 'repetida' || peca === 'alerta') && semMovimentoForte()) return null;
   const r = RECEITAS[jeito][peca];
   const animados = lista.slice(0, o.maximo ?? 24);
+  for (const el of lista) entradasFeitas.add(el);
   const atraso = (r.atraso ?? 0) + (o.atraso ?? 0);
   // a cascata inteira cabe em ~600 ms: lista grande encurta o intervalo em vez de fazer o último esperar
   const intervalo = r.intervalo && animados.length > 1 ? Math.min(r.intervalo, 600 / (animados.length - 1)) : 0;
@@ -470,6 +525,8 @@ export function useLinhasQueSeMovem<T extends HTMLElement>(ordem: string, quieto
   useLayoutEffect(() => {
     const raiz = ref.current;
     if (!raiz) return;
+    // estas linhas deslizam por aqui: o FLIP geral (animaTudo.ts) não mexe nelas
+    raiz.setAttribute('data-linhas-proprias', '');
     const linhas = Array.from(raiz.querySelectorAll<HTMLElement>('tbody > tr[data-linha]'));
     const agora = new Map(linhas.map(tr => [tr.dataset.linha || '', tr.offsetTop] as [string, number]));
     const eram = antes.current;
