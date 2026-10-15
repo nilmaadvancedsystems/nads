@@ -252,15 +252,15 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                                 fica Ok e só o lançamento escolhido fica, com o check que vira × para desfazer */}
                             {(i.baixas.length > 0 || i.sugestoes.length > 0) && (
                               <tr style={k % 2 ? LISTRA : undefined}>
-                                <td colSpan={6} style={{ paddingTop: 0 }}>
+                                <td colSpan={6} style={{ padding: 0 }}>
                                   {/* sem caixa, sem borda e sem o cabeçalho; mais de uma, separadas pela linha suave da tabela (Vitor, 15/10/2026) */}
-                                  <div style={{ marginLeft: 16 }}>
+                                  <div>
                                     <table className="table-compact" aria-label="Possível recebimento desta nota no banco">
                                       <tbody>
                                         {[...i.baixas.map(b => ({ ...b, selos: [], aceita: true })), ...i.sugestoes.map(g => ({ ...g, aceita: false }))].map((g, j) => (
                                           <tr key={j} style={fundoSuaveDoBanco(g.marca) ? { background: fundoSuaveDoBanco(g.marca) } : undefined}>
-                                            {/* o Aceitar à esquerda do logo do banco (Vitor, 15/10/2026) */}
-                                            <td style={{ width: 40 }}>
+                                            {/* o Aceitar e o Recusar à esquerda do logo do banco (Vitor, 15/10/2026) */}
+                                            <td style={{ width: 84, whiteSpace: 'nowrap' }}>
                                               {g.aceita ? (
                                                 <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" disabled={!vm.carregado} onClick={() => vm.aceitarBaixa(l.codigo, i.chave, g.bruto, false)}
                                                   title="Baixa aceita. Clique para desfazer." aria-label={'Desfazer a baixa ' + (i.nf !== '—' ? 'da NF ' + i.nf : 'da nota')}>
@@ -270,6 +270,12 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                                                 <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={!vm.carregado} onClick={() => vm.aceitarBaixa(l.codigo, i.chave, g.bruto, true)}
                                                   title="Aceitar: é a baixa desta nota" aria-label={'Aceitar o lançamento de ' + g.data + ' como a baixa ' + (i.nf !== '—' ? 'da NF ' + i.nf : 'da nota')}>
                                                   <Icone nome="check" />
+                                                </button>
+                                              )}
+                                              {!g.aceita && (
+                                                <button type="button" className="icon-btn icon-btn-sm imp-btn" style={{ marginLeft: 6 }} disabled={!vm.carregado} onClick={() => vm.recusarSugestao(l.codigo, i.chave, g.bruto)}
+                                                  title="Recusar: não é a baixa desta nota" aria-label={'Recusar o lançamento de ' + g.data + ' para ' + (i.nf !== '—' ? 'a NF ' + i.nf : 'a nota')}>
+                                                  <Icone nome="x" />
                                                 </button>
                                               )}
                                             </td>

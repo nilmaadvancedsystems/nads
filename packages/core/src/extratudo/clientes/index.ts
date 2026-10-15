@@ -157,6 +157,8 @@ export interface MarcaDoCliente {
   perguntar?: string[];
   /** as notas em aberto com a baixa no banco (as sugestões aceitas): a chave do item → os lançamentos do banco */
   baixas?: Record<string, BaixaAceita[]>;
+  /** as sugestões recusadas de cada nota (Vitor, 15/10/2026: "a opção de recusa também"): não aparecem mais nela */
+  recusadas?: Record<string, BaixaAceita[]>;
 }
 export interface DocClientes {
   contas: Record<string, MarcaDoCliente>; atualizadoEm?: string;
@@ -217,9 +219,10 @@ export function docDoDocumento(d: unknown): DocClientes {
     const r = razaoGuardado(v.razao);
     const perguntar = Array.isArray(v.perguntar) ? (v.perguntar as unknown[]).filter((x): x is string => typeof x === 'string') : [];
     const baixas = baixasGuardadas(v.baixas);
+    const recusadas = baixasGuardadas(v.recusadas);
     certo[k] = {
       nome: String(v.nome ?? ''), saldo: typeof v.saldo === 'number' ? v.saldo : 0, situacao: s, ...(typeof v.obs === 'string' && v.obs ? { obs: v.obs } : {}), ...(r ? { razao: r } : {}),
-      ...(Array.isArray(v.perguntar) ? { perguntar } : {}), ...(baixas ? { baixas } : {}),
+      ...(Array.isArray(v.perguntar) ? { perguntar } : {}), ...(baixas ? { baixas } : {}), ...(recusadas ? { recusadas } : {}),
     };
   }
   return { contas: certo, ...(typeof o.atualizadoEm === 'string' ? { atualizadoEm: o.atualizadoEm } : {}), ...(typeof o.enviado === 'string' && o.enviado ? { enviado: o.enviado } : {}) };

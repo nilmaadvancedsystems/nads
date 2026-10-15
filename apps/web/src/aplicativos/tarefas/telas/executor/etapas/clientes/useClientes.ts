@@ -117,7 +117,7 @@ export function useClientes() {
   const linhas = contas.map(k => {
     const marca = marcas.doc.contas[k.codigo] || passam[k.codigo];
     const situacao = cl.situacaoDe(k, marca);
-    return { codigo: k.codigo, nome: k.nome, saldo: k.saldo, situacao, obs: marca?.obs || '', razao: marca?.razao, perguntar: marca?.perguntar, baixas: marca?.baixas, doMesAnterior: !marcas.doc.contas[k.codigo] && !!passam[k.codigo] };
+    return { codigo: k.codigo, nome: k.nome, saldo: k.saldo, situacao, obs: marca?.obs || '', razao: marca?.razao, perguntar: marca?.perguntar, baixas: marca?.baixas, recusadas: marca?.recusadas, doMesAnterior: !marcas.doc.contas[k.codigo] && !!passam[k.codigo] };
   });
 
   // os lançamentos do banco já aceitos como baixa de alguma nota não são sugeridos de novo
@@ -127,7 +127,7 @@ export function useClientes() {
   function marcar(codigo: string, mudar: (m: cl.MarcaDoCliente) => cl.MarcaDoCliente) {
     const l = linhas.find(x => x.codigo === codigo);
     if (!l || !marcas.carregado) return;
-    const atual: cl.MarcaDoCliente = { nome: l.nome, saldo: l.saldo, situacao: l.situacao, ...(l.obs ? { obs: l.obs } : {}), ...(l.razao ? { razao: l.razao } : {}), ...(l.perguntar ? { perguntar: l.perguntar } : {}), ...(l.baixas ? { baixas: l.baixas } : {}) };
+    const atual: cl.MarcaDoCliente = { nome: l.nome, saldo: l.saldo, situacao: l.situacao, ...(l.obs ? { obs: l.obs } : {}), ...(l.razao ? { razao: l.razao } : {}), ...(l.perguntar ? { perguntar: l.perguntar } : {}), ...(l.baixas ? { baixas: l.baixas } : {}), ...(l.recusadas ? { recusadas: l.recusadas } : {}) };
     marcas.salvar({ ...marcas.doc, contas: { ...marcas.doc.contas, [codigo]: mudar(atual) } });
   }
 
@@ -229,7 +229,7 @@ export function useClientes() {
             ...baixasDoItem(i, l.baixas),
             // sem sugestão na nota quitada ou que vai para o cliente (Vitor, 15/10/2026: "oculte a sugestão quando o usuário clicar em perguntar")
             sugestoes: i.status === 'aberto' && !i.interno && !baixasDoItem(i, l.baixas).quitada && !cl.itensEscolhidos(l.razao, l.perguntar).includes(i)
-              ? cl.sugestoesDeBaixa(notaQueFalta(i, l.baixas), l.nome, livres, 1).map(g => ({ ...noBanco(g), selos: cl.selosDaSugestao(g, 'cliente') })) : [] })),
+              ? cl.sugestoesDeBaixa(notaQueFalta(i, l.baixas), l.nome, livres.filter(x => !(l.recusadas?.[cl.chaveDoItem(i)] || []).some(r => cl.mesmoLancamento(r, x))), 1).map(g => ({ ...noBanco(g), selos: cl.selosDaSugestao(g, 'cliente') })) : [] })),
         } : null,
         // o que vai para o cliente (o que foi adicionado no "+" de cada linha da relação; nada = não vai)
         perguntar: l.razao ? cl.itensEscolhidos(l.razao, l.perguntar).map(cl.rotuloDoItem).join(' · ') : '',
@@ -246,6 +246,13 @@ export function useClientes() {
       const perguntar = quitada && m.perguntar ? m.perguntar.filter(c => c !== chave) : m.perguntar;
       delete n.baixas; delete n.perguntar;
       return { ...n, ...(baixas ? { baixas } : {}), ...(perguntar && (perguntar.length || !quitada) ? { perguntar } : {}) };
+    }),
+    /** recusa a sugestão: não é a baixa desta nota, sai da lista dela (Vitor, 15/10/2026) */
+    recusarSugestao: (codigo: string, chave: string, l: cl.LancamentoDoBanco) => marcar(codigo, m => {
+      const n = { ...m };
+      const recusadas = cl.comBaixa(m.recusadas, chave, l, true);
+      delete n.recusadas;
+      return { ...n, ...(recusadas ? { recusadas } : {}) };
     }),
     definirEnvio: (codigo: string, chave: string, sim: boolean) => marcar(codigo, m => {
       const n = { ...m };
@@ -273,7 +280,7 @@ export function useClientes() {
       delete n.razao; delete n.perguntar;
       return { ...n, ...(razao ? { razao } : {}), ...(perguntar.length ? { perguntar } : {}) };
     }),
-    tirarRazao: (codigo: string) => marcar(codigo, m => { const n = { ...m, situacao: 'pendente' as const }; delete n.razao; delete n.perguntar; delete n.baixas; return n; }),
+    tirarRazao: (codigo: string) => marcar(codigo, m => { const n = { ...m, situacao: 'pendente' as const }; delete n.razao; delete n.perguntar; delete n.baixas; delete n.recusadas; return n; }),
     // Envio
     conferidos: paraEnviar.map(l => ({ codigo: l.codigo, nome: l.nome, valor: reais(l.saldo), perguntar: cl.itensEscolhidos(l.razao, l.perguntar).map(cl.rotuloDoItem).join(' · '), notas: cl.textoDasNotas(l.razao?.notas) })),
     // o Mandei: um ticket com os conferidos (cada um, um item com a nossa pergunta), o link vai por e-mail
