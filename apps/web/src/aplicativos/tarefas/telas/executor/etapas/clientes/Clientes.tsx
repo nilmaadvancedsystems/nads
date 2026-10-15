@@ -12,6 +12,12 @@ import { ConsultaDeNotas, useAbasDaConsulta } from '../consulta/ConsultaDeNotas'
 
 type VM = ReturnType<typeof useClientes>;
 
+/** O texto da cápsula da nota: as sugestões no banco; sem elas, as aceitas ou as recusadas. Sem nada, vazio. */
+function capsulaDoBanco(i: { sugestoes: readonly unknown[]; baixas: readonly unknown[]; recusadas: readonly unknown[] }): string {
+  const n = (k: number, um: string, varios: string) => k + ' ' + (k === 1 ? um : varios);
+  return i.sugestoes.length ? n(i.sugestoes.length, 'no banco', 'no banco') : i.baixas.length ? n(i.baixas.length, 'aceita', 'aceitas') : i.recusadas.length ? n(i.recusadas.length, 'recusada', 'recusadas') : '';
+}
+
 /** A cor leve de uma nota sim, outra não, na relação do razão (com a sugestão dela junto). */
 const LISTRA = { background: 'var(--surface-2)' };
 
@@ -127,6 +133,9 @@ function ListaDeClientes({ vm }: { vm: VM }) {
   // alguma linha com a relação do razão: todas guardam o lugar da seta
   const comSeta = vm.linhas.some(l => !!l.razao && l.razao.itens.length > 0);
   const alternar = (codigo: string) => setAbertas(f => { const n = new Set(f); if (n.has(codigo)) n.delete(codigo); else n.add(codigo); return n; });
+  // as sugestões de baixa de cada nota, fechadas até clicar na cápsula (Vitor, 15/10/2026: "tá muito embolado")
+  const [noBanco, setNoBanco] = useState<ReadonlySet<string>>(new Set());
+  const alternarNoBanco = (k: string) => setNoBanco(f => { const n = new Set(f); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   return (
     <>
       <input ref={arquivo} type="file" accept=".xls,.xlsx,.ods" className="sr-only" tabIndex={-1} aria-hidden="true"
@@ -227,7 +236,15 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                         <tbody>
                           {l.razao.itens.map((i, k) => (
                             <Fragment key={k}><tr style={k % 2 ? LISTRA : undefined}><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td>{i.nf}</td><td className="wrap">{i.descricao}{i.digitado && <span className="hint"> · digitado</span>}</td><td className={'num' + (i.abate ? ' ext-neg' : '')} title={i.aceito ? 'Aceito no banco: ' + i.aceito : undefined}>{i.valor}</td>
-                              <td className={i.status === 'aberto' ? undefined : 'hint'}>{i.quitada ? <span className="badge badge-ok" title={'Aceito no banco: ' + i.aceito}>Ok</span> : <>{i.rotulo}{i.aceito && <span className="hint" style={{ display: 'block' }}>aceito {i.aceito}</span>}</>}</td>
+                              <td className={i.status === 'aberto' ? undefined : 'hint'}>{i.quitada ? <span className="badge badge-ok" title={'Aceito no banco: ' + i.aceito}>Ok</span> : i.rotulo}
+                                {capsulaDoBanco(i) && (
+                                  <button type="button" className="badge badge-neutral" aria-expanded={noBanco.has(l.codigo + '|' + i.chave)} onClick={() => alternarNoBanco(l.codigo + '|' + i.chave)}
+                                    title={noBanco.has(l.codigo + '|' + i.chave) ? 'Esconder o que achei no banco' : 'Ver o que achei no banco'}
+                                    style={{ marginLeft: 8, cursor: 'pointer', background: 'transparent', font: 'inherit', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                                    {capsulaDoBanco(i)}<Icone nome="caretDown" />
+                                  </button>
+                                )}
+                                {!i.quitada && i.aceito && <span className="hint" style={{ display: 'block' }}>aceito {i.aceito}</span>}</td>
                               {/* o "+" de cada linha (Vitor, 07/10/2026: "colocando esse + em cada linha"): adiciona ao que vai para o cliente;
                                   adicionada, o check que vira × e tira (o mesmo botão da importação) */}
                               {(l.situacao === 'conferido' || !!l.razao?.itens.some(x => x.digitado)) && <td className="num">{!i.chave || i.quitada ? <span className="hint" title={i.quitada ? 'Com a baixa no banco' : 'Só do escritório'}>—</span> : i.digitado ? (
@@ -250,7 +267,7 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                                 mini tabela com Banco (só o logo), Data, Descrição (letra menor), Valor e Situação (os selos) */}
                             {/* o botão de aceitar (Vitor, 15/10/2026: "quando o usuário mudar ou aceitar a sugestão, fique Ok"): aceita, a nota
                                 fica Ok e só o lançamento escolhido fica, com o check que vira × para desfazer */}
-                            {(i.baixas.length > 0 || i.sugestoes.length > 0 || i.recusadas.length > 0) && (
+                            {noBanco.has(l.codigo + '|' + i.chave) && (i.baixas.length > 0 || i.sugestoes.length > 0 || i.recusadas.length > 0) && (
                               <tr style={k % 2 ? LISTRA : undefined}>
                                 <td colSpan={6} style={{ padding: 0 }}>
                                   {/* sem caixa, sem borda e sem o cabeçalho; mais de uma, separadas pela linha suave da tabela (Vitor, 15/10/2026) */}
