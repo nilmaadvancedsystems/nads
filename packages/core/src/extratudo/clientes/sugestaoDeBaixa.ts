@@ -5,8 +5,8 @@
 // saiu), da data da nota até 6 meses depois, com o mesmo valor ou com o nome do participante no histórico. Só sugere.
 import { normalizarTexto } from '../../formatos';
 
-/** Um lançamento do extrato: data 'aaaa-mm-dd', valor em centavos (+ entrou, − saiu), o histórico e o banco. */
-export interface LancamentoDoBanco { data: string; valor: number; historico: string; banco: string }
+/** Um lançamento do extrato: data 'aaaa-mm-dd', valor em centavos (+ entrou, − saiu), o histórico e o banco (o nome e a marca, para o logo). */
+export interface LancamentoDoBanco { data: string; valor: number; historico: string; banco: string; marca?: string }
 
 export interface SugestaoDeBaixa extends LancamentoDoBanco {
   /** o mesmo valor da nota */

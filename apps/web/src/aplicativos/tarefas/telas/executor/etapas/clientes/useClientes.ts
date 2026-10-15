@@ -42,10 +42,11 @@ export function useClientes() {
   const cadastroVivo = vivo.carregada ? vivo.cadastro : null;
   const lancsDoBanco = useMemo(() => {
     const { bancos, primeiro } = x.bancosDaEmpresaNa(ext, cadastroVivo, s.codigo, s.meses[s.meses.length - 1] || s.competencia);
-    const nomeDe = new Map(bancos.map(b => [b.id, b.nome]));
+    const doBanco = new Map(bancos.map(b => [b.id, b]));
     return ext.arquivos.filter(a => a.lado === 'banco').flatMap(a => {
       const b = x.bancoDoArquivo(a, primeiro);
-      return a.lancamentos.map(l => ({ data: l.data, valor: l.valor, historico: l.historico, banco: nomeDe.get(b) || b }));
+      const banco = doBanco.get(b);
+      return a.lancamentos.map(l => ({ data: l.data, valor: l.valor, historico: l.historico, banco: banco?.nome || b, marca: banco?.marca || b }));
     });
   }, [ext, cadastroVivo, s.codigo, s.meses, s.competencia]);
   // sem o contato no Cadastro do nads, o que o Entregas já tem do cliente (Vitor, 08/10/2026: "já tenho no mínimo 1 canal")
@@ -197,7 +198,7 @@ export function useClientes() {
           itens: l.razao.itens.map(i => ({ chave: i.interno ? '' : cl.chaveDoItem(i), marcado: !i.interno && cl.itensEscolhidos(l.razao, l.perguntar).includes(i), data: i.data ? i.data.slice(8, 10) + '/' + i.data.slice(5, 7) + '/' + i.data.slice(0, 4) : '', nf: i.nf || '—', descricao: i.descricao, valor: reais(i.valor), abate: i.valor < 0, status: i.status, rotulo: cl.ROTULO_DO_STATUS[i.status], digitado: !!i.digitado,
             // a nota em aberto: os lançamentos do banco que podem ser a baixa dela (o mesmo valor, ou o nome no histórico)
             sugestoes: i.status === 'aberto' ? cl.sugestoesDeBaixa(i, l.nome, lancsDoBanco, 1).map(g => ({
-              data: g.data.slice(8, 10) + '/' + g.data.slice(5, 7) + '/' + g.data.slice(0, 4), banco: g.banco, historico: g.historico, valor: reais(Math.abs(g.valor) / 100), mesmoValor: g.mesmoValor,
+              data: g.data.slice(8, 10) + '/' + g.data.slice(5, 7) + '/' + g.data.slice(0, 4), banco: g.banco, marca: g.marca || '', historico: g.historico, valor: reais(Math.abs(g.valor) / 100), mesmoValor: g.mesmoValor,
             })) : [] })),
         } : null,
         // o que vai para o cliente (o que foi adicionado no "+" de cada linha da relação; nada = não vai)

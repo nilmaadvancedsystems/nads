@@ -1,6 +1,6 @@
 // A etapa Fornecedores da Tarefa (Vitor, 07/10/2026): a mesma tela do Clientes, peça por peça, com o fornecedor devedor no
 // lugar do cliente credor (com ele, o "Corrigi, irei reimportar" no lugar do Próximo, até reimportar o dinâmico corrigido).
-import { Icone, MenuSuspenso, Segmentado } from '@nads/ui';
+import { Icone, MenuSuspenso, Segmentado, LogoBanco } from '@nads/ui';
 import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { useFornecedores, type FiltroFornecedores, type TelaFornecedores } from './useFornecedores';
@@ -223,11 +223,18 @@ function ListaDeFornecedores({ vm }: { vm: VM }) {
                           {l.razao.itens.map((i, k) => (
                             <tr key={k}><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td>{i.nf}</td><td className="wrap">{i.descricao}{i.digitado && <span className="hint"> · digitado</span>}
                               {/* a sugestão de baixa (Vitor, 15/10/2026): o que pode ser o pagamento desta nota nos extratos */}
+                              {/* cada sugestão numa linha: o logo do banco, a data, o histórico e o valor (Vitor, 15/10/2026: "apresente melhor, mostrando a logo do banco") */}
                               {i.sugestoes.length > 0 && (
-                                <span className="hint" style={{ display: 'block', marginTop: 4 }}>
-                                  Possível baixa no banco:
+                                <span style={{ display: 'block', marginTop: 6 }}>
+                                  <span className="hint">Possível baixa no banco</span>
                                   {i.sugestoes.map((g, j) => (
-                                    <span key={j} style={{ display: 'block' }}>{g.data} · {g.banco} · {g.historico} · <b>{g.valor}</b>{g.mesmoValor ? ' · mesmo valor' : ''}</span>
+                                    <span key={j} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                                      <span className="drive-candidato-logo" title={g.banco} style={{ display: 'inline-flex', flex: 'none' }}><LogoBanco banco={g.marca} cor /></span>
+                                      <span className="hint" style={{ whiteSpace: 'nowrap' }}>{g.data}</span>
+                                      <span className="hint" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={g.historico}>{g.historico}</span>
+                                      <b style={{ whiteSpace: 'nowrap' }}>{g.valor}</b>
+                                      {g.mesmoValor && <span className="badge badge-ok" style={{ flex: 'none' }}>mesmo valor</span>}
+                                    </span>
                                   ))}
                                 </span>
                               )}</td><td className={'num' + (i.abate ? ' ext-neg' : '')}>{i.valor}</td>
