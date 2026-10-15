@@ -4440,3 +4440,7 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
   html[data-animacoes=todas] .dica-balao,html[data-animacoes=todas] :is(.dica:hover,.dica:focus-visible) .dica-balao{translate:none;transition:opacity .2s linear,visibility .2s;}
   html[data-animacoes=todas] tbody tr{transition:none;}
 }
+/* o andamento da nota (15/10/2026: "o feedback do robô de como tá indo"): na janela, uma linha com o relógio; na lista, embaixo da situação */
+.nf-andamento{margin:0;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink);font-variant-numeric:tabular-nums;}
+.nf-andamento svg{width:14px;height:14px;flex:none;color:var(--ink-muted);}
+.nf-andamento-linha{display:block;margin-top:3px;font-size:11.5px;color:var(--ink-muted);white-space:nowrap;font-variant-numeric:tabular-nums;}

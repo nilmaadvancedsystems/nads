@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { competenciaDaNota, conferirPedido, CONFIG_PADRAO, documentoValido, faltasNaConfig, rotuloDoStatus } from './index';
+import { andamentoDaNota, competenciaDaNota, duracao, type NotaFiscal, conferirPedido, CONFIG_PADRAO, documentoValido, faltasNaConfig, rotuloDoStatus } from './index';
 
 describe('o emissor de NFS-e', () => {
   it('confere CPF e CNPJ pelos dígitos verificadores', () => {
@@ -40,5 +40,18 @@ describe('o emissor de NFS-e', () => {
   it('dá nome às situações', () => {
     expect(rotuloDoStatus('processando').rotulo).toBe('Na prefeitura');
     expect(rotuloDoStatus('erro').tom).toBe('bad');
+  });
+
+  it('conta o andamento com o que o robô grava', () => {
+    expect(duracao(12_000)).toBe('12 s');
+    expect(duracao(3 * 60_000)).toBe('3 min');
+    expect(duracao(80 * 60_000)).toBe('1 h 20 min');
+    const agora = new Date('2026-10-15T20:11:00Z');
+    const base: NotaFiscal = { id: 'x', status: 'pedida', ambiente: 'homologacao', tomador: { documento: '11222333000181', nome: 'X' }, servico: { descricao: 'Honorários', valor: 1, competencia: '2026-10-15' },
+      empresaCodigo: null, pedidoPor: 'V', pedidoEm: '2026-10-15T20:07:00Z', dps: null, chaveAcesso: '', numeroNfse: '', erros: [], cancelamento: null,
+      enviadaEm: '2026-10-15T20:08:00Z', consultas: 6, autorizadaEm: '', atualizadoEm: '2026-10-15T20:10:48Z' };
+    expect(andamentoDaNota({ ...base, status: 'processando' }, agora)).toBe('Na prefeitura há 3 min · 6 consultas · última há 12 s');
+    expect(andamentoDaNota({ ...base, status: 'autorizada', autorizadaEm: '2026-10-15T20:10:00Z' }, agora)).toBe('Autorizada em 2 min depois do envio');
+    expect(andamentoDaNota({ ...base, status: 'erro' }, agora)).toBe('');
   });
 });

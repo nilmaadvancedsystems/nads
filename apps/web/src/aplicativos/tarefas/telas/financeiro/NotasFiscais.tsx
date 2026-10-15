@@ -7,9 +7,12 @@ import { dataBr, documentoFormatado } from './formatosDaNota';
 import { JanelaDaNota } from './JanelaDaNota';
 import { JanelaNovaNota } from './JanelaNovaNota';
 import { FILTROS_DE_NOTAS, useNotasFiscais } from './useNotasFiscais';
+import { useRelogio } from './useRelogio';
 
 export function NotasFiscais() {
   const vm = useNotasFiscais();
+  // o andamento das que estão andando conta sozinho (15/10/2026: "não consegue ter o feedback do robô de como tá indo?")
+  const agora = useRelogio(vm.linhas.some(n => nfse.andando(n.status)));
   useCarregando(vm.carregando);
   const r = vm.robo;
   return (
@@ -71,7 +74,10 @@ export function NotasFiscais() {
                     <td><span className="nf-corta" title={n.servico.descricao}>{n.servico.descricao}</span></td>
                     <td className="num nf-direita">{formatos.reais(n.servico.valor)}</td>
                     <td className="num fraco">{dataBr(n.servico.competencia)}</td>
-                    <td><span className={'badge badge-' + s.tom}>{nfse.andando(n.status) && <span className="btn-spinner nf-roda" aria-hidden="true" />}{s.rotulo}</span></td>
+                    <td>
+                      <span className={'badge badge-' + s.tom}>{nfse.andando(n.status) && <span className="btn-spinner nf-roda" aria-hidden="true" />}{s.rotulo}</span>
+                      {nfse.andando(n.status) && <span className="nf-andamento-linha">{nfse.andamentoDaNota(n, agora)}</span>}
+                    </td>
                   </tr>
                 );
               })}

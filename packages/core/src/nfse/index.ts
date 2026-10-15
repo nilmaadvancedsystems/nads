@@ -44,6 +44,10 @@ export interface NotaFiscal {
   numeroNfse: string;
   erros: ErroNfse[];
   atualizadoEm: string;
+  /** quando o robô mandou para a prefeitura, quantas vezes já consultou e quando saiu a nota (o andamento) */
+  enviadaEm: string;
+  consultas: number;
+  autorizadaEm: string;
   cancelamento: { cMotivo: string; motivo: string; pedidoPor: string; pedidoEm: string } | null;
 }
 
@@ -169,3 +173,30 @@ export function faltasNaConfig(c: ConfigNfse | null, temToken: boolean): string[
 
 /** Os dados de uma nota numa linha (para a busca da lista). */
 export const textoDaNota = (n: NotaFiscal) => [n.tomador.nome, n.tomador.documento, n.servico.descricao, n.numeroNfse, n.empresaCodigo ?? ''].join(' ').toLowerCase();
+
+/** Um tempo curto por extenso: "12 s", "3 min", "1 h 20 min". */
+export function duracao(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000));
+  if (s < 60) return s + ' s';
+  const m = Math.round(s / 60);
+  if (m < 60) return m + ' min';
+  return Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : '');
+}
+
+/**
+ * O andamento da nota numa frase (15/10/2026: "não consegue ter o feedback do robô de como tá indo?"), com o que o robô
+ * grava: quando enviou, quantas consultas fez e a última. Vazio quando não há o que contar.
+ */
+export function andamentoDaNota(n: NotaFiscal, agora: Date): string {
+  const desde = (iso: string) => (iso ? duracao(agora.getTime() - new Date(iso).getTime()) : '');
+  if (n.status === 'pedida') return 'Na fila do robô há ' + desde(n.atualizadoEm || n.pedidoEm);
+  if (n.status === 'enviando') return 'Enviando para a prefeitura…';
+  if (n.status === 'processando') {
+    const partes = ['Na prefeitura há ' + desde(n.enviadaEm || n.atualizadoEm)];
+    if (n.consultas > 0) partes.push(n.consultas + (n.consultas === 1 ? ' consulta' : ' consultas'), 'última há ' + desde(n.atualizadoEm));
+    return partes.join(' · ');
+  }
+  if (n.status === 'autorizada' && n.enviadaEm && n.autorizadaEm) return 'Autorizada em ' + duracao(new Date(n.autorizadaEm).getTime() - new Date(n.enviadaEm).getTime()) + ' depois do envio';
+  if (n.status === 'cancelamento-pedido') return 'Pedindo o cancelamento à prefeitura…';
+  return '';
+}

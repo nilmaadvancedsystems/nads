@@ -6,6 +6,7 @@ import { BotaoAcao, Icone, MenuSuspenso } from '@nads/ui';
 import { useEffect, type ReactNode } from 'react';
 import { dataBr, dataHoraBr, documentoFormatado, foneSoDigitos } from './formatosDaNota';
 import { MINIMO_DA_JUSTIFICATIVA, useJanelaDaNota } from './useJanelaDaNota';
+import { useRelogio } from './useRelogio';
 
 function Dado({ rotulo, children }: { rotulo: string; children: ReactNode }) {
   return <div className="nf-dado"><span className="nf-dado-nome">{rotulo}</span><div className="nf-dado-valor">{children}</div></div>;
@@ -21,7 +22,10 @@ export function JanelaDaNota({ id, fechar, corrigir }: { id: string; fechar: () 
     return () => document.removeEventListener('keydown', tecla);
   });
 
+  // o andamento ao vivo (o que o robô grava: enviada, consultas, a última)
+  const agora = useRelogio(!!n && nfse.andando(n.status));
   if (!n || !vm.rotulo) return null;
+  const andamento = nfse.andamentoDaNota(n, agora);
   const motivo = vm.motivos.find(m => m.id === vm.cMotivo)?.rotulo || '';
   const fone = foneSoDigitos(n.tomador.fone || '');
   return (
@@ -34,6 +38,7 @@ export function JanelaDaNota({ id, fechar, corrigir }: { id: string; fechar: () 
         </header>
 
         <div className="registro-corpo">
+          {andamento && <p className="nf-andamento"><Icone nome="clock" />{andamento}</p>}
           {n.ambiente === 'homologacao' && <p className="registro-dica"><Icone nome="alert" />Nota de homologação: sem valor fiscal.</p>}
 
           <div className="nf-dados">

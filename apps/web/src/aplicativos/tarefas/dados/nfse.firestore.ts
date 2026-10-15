@@ -31,7 +31,7 @@ function notaDoBanco(id: string, d: Record<string, unknown>): nfse.NotaFiscal {
     dps: dps ? { serie: texto(dps.serie), numero: Number(dps.numero) || 0, id: texto(dps.id) } : null,
     chaveAcesso: texto(d.chaveAcesso), numeroNfse: texto(d.numeroNfse),
     erros: Array.isArray(d.erros) ? (d.erros as Record<string, unknown>[]).map(e => ({ codigo: texto(e.codigo), descricao: texto(e.descricao) })) : [],
-    atualizadoEm: texto(d.atualizadoEm),
+    atualizadoEm: texto(d.atualizadoEm), enviadaEm: texto(d.enviadaEm), consultas: Number(d.consultas) || 0, autorizadaEm: texto(d.autorizadaEm),
     cancelamento: c ? { cMotivo: texto(c.cMotivo), motivo: texto(c.motivo), pedidoPor: texto(c.pedidoPor), pedidoEm: texto(c.pedidoEm) } : null,
   };
 }
