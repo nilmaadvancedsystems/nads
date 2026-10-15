@@ -32,9 +32,14 @@ export interface RazaoConferido {
 const centavos = (n: number) => Math.round(n * 100) / 100;
 const zero = (n: number) => Math.abs(n) < 0.005;
 
-/** O número da nota no histórico do Alterdata: "… - 9078-05455270000100-NOME" (venda e devolução). */
+/**
+ * O número da nota no histórico do Alterdata: "… - 9078-05455270000100-NOME" (venda e devolução). A nota de serviço vem
+ * com os zeros na frente ("Nota Fiscal nº - 000000000000639-05284593000774-…"): fica "639" (Vitor, 15/10/2026: a 11512 da
+ * 58 dava "nenhuma nota em aberto").
+ */
 function nfDoHistorico(h: string): string | null {
-  return /-\s*(\d{1,9})-\d{11,14}\b/.exec(h)?.[1] ?? null;
+  const n = /-\s*(\d{1,15})-\d{11,14}\b/.exec(h)?.[1];
+  return n ? n.replace(/^0+(?=\d)/, '') : null;
 }
 
 /** O número da nota no recebimento: "Recebimento de clientes 9078 -DUP.001", "… 9242/002 - NOME". */
@@ -70,7 +75,9 @@ function tipoDe(l: LancamentoDoRazao, lado: LadoDaConta): Tipo {
   // todo crédito na conta do cliente que não é devolução é pagamento (o "Recebimento de clientes" e também a
   // transferência ou o Pix solto, sem a nota: aparecem como "Apenas pagamento"; Vitor, 07/10/2026)
   if (l.valor > 0) return 'recebimento';
-  if (/venda/i.test(l.historico) && l.valor < 0) return 'venda';
+  // o débito com a nota: a venda — a de mercadoria ("venda" no histórico) e a de serviço ("Pelos Serviços Prestados conf.
+  // Nota Fiscal nº…", com a contrapartida "Venda de Serviços"; Vitor, 15/10/2026)
+  if (l.valor < 0 && (/venda/i.test(l.historico) || /venda/i.test(l.nomeContrapartida || '') || !!nfDoHistorico(l.historico))) return 'venda';
   return 'outro';
 }
 

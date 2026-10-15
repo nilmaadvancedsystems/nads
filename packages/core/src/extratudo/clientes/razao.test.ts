@@ -146,3 +146,15 @@ describe('o lançamento digitado à mão (08/10/2026)', () => {
     expect(semLancamentoDigitado(r, chaveDoItem(r.itens[1]))?.itens.length).toBe(1);
   });
 });
+
+describe('a nota de serviço (o número com os zeros na frente, sem "venda" no histórico)', () => {
+  it('"Pelos Serviços Prestados conf. Nota Fiscal nº - 000000000000639-…" fica em aberto como a NF 639', () => {
+    const linhas = [CAB,
+      ['VERDADEIRO', '', '10/06/2026', '00160', '75001', 'Venda de Serviços', -790, '00014', 'Pelos Serviços Prestados conf. Nota Fiscal nº - 000000000000639-' + CNPJ, -790, ''],
+      ['VERDADEIRO', '', '10/06/2026', '00160', '75001', 'Venda de Serviços', -280, '00014', 'Pelos Serviços Prestados conf. Nota Fiscal nº - 000000000000642-' + CNPJ, -1070, ''],
+    ];
+    const r = conferirRazaoDoCliente(lerRazao(linhas), '2026-08');
+    expect(r.emAberto.map(n => [n.nf, n.aberto])).toEqual([['639', 790], ['642', 280]]);
+    expect(r.saldo).toBe(1070);
+  });
+});
