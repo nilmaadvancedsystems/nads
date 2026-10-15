@@ -1,11 +1,13 @@
-// Sessão do Creditor: a competência, o relatório do banco e as decisões das contas. Vive só enquanto a
-// empresa está aberta nesta seção (nada disso é gravado). As contas não: vêm do balancete da empresa e
+// Sessão do Creditor: a competência, o relatório do banco e as decisões das contas. Fica guardada neste navegador pela
+// empresa e pelos meses da Tarefa (Vitor, 15/10/2026: "quando ele voltar, vai estar exatamente onde parou e não vai ser
+// necessário re-upar arquivos"; comum/guardado.ts), com a última etapa aberta: voltou, abre nela. As contas não: vêm do balancete da empresa e
 // do que foi salvo nela (dados/repo.tsx), ao vivo. A conta de cada cliente vem da conta aprendida ou do
 // balancete (sem arquivo do sistema nem Conferência dos grupos desde 2026-09-29; o banco manda).
 // Também mora aqui a trava das etapas: uma etapa só abre quando a anterior está resolvida.
 import { creditor as cr, extrator as x } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useGuardado } from '../../../../../comum/guardado';
 import { useLocation, useNavigate } from 'react-router';
 import { useContasDaEmpresa, useDrive } from '../dados/repo';
 import { useCadastroDaEmpresa, useEmpresa } from '../../extrator/dados/repo';
@@ -170,7 +172,11 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
   // o ?competencia=&meses= da Tarefa fica no endereço de todas as etapas
   const { search } = useLocation();
   const { toast } = useRetorno();
-  const [estado, setEstado] = useState<Estado>(INICIAL);
+  // onde parou: a sessão e a última etapa, pela empresa e pelos meses que a Tarefa mandou
+  const daUrl = new URLSearchParams(search);
+  const chaveGuardada = 'creditor|' + rota + '|' + (daUrl.get('meses') || daUrl.get('competencia') || 'avulso');
+  const [estado, setEstado] = useGuardado<Estado>(chaveGuardada, INICIAL);
+  const [ultimaEtapa, setUltimaEtapa] = useGuardado<IdEtapa | null>(chaveGuardada + '|etapa', null);
   const daEmpresa = useContasDaEmpresa(empresa.nome);
   const { config, clientes, salvar, salvarClientes } = daEmpresa;
   // Acoplado no Entregas: o balancete subido lá (Clientes e ajustes → Balancetes) vale por cima do da
@@ -213,12 +219,27 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
 
   const podeAbrir = useCallback((id: IdEtapa) => indiceDaEtapa(id) <= estado.alcancada && requisitos(id, estado, d), [estado, d]);
 
+  // voltou para o Creditor: abre na última etapa em que a pessoa estava (uma vez, quando as contas já chegaram); depois,
+  // cada etapa aberta fica guardada
+  const voltou = useRef(false);
+  useEffect(() => {
+    if (!daEmpresa.carregada) return;
+    if (!voltou.current) {
+      voltou.current = true;
+      if (etapa === 'competencia' && ultimaEtapa && ultimaEtapa !== etapa && indiceDaEtapa(ultimaEtapa) >= 0 && podeAbrir(ultimaEtapa)) {
+        navegar(caminhoDaEtapa(rota, ultimaEtapa) + search, { replace: true });
+        return;
+      }
+    }
+    if (ultimaEtapa !== etapa) setUltimaEtapa(etapa);
+  }, [daEmpresa.carregada, etapa, ultimaEtapa, podeAbrir, navegar, rota, search, setUltimaEtapa]);
+
   const abrir = useCallback((id: IdEtapa) => {
     const i = indiceDaEtapa(id);
     setEstado(e => ({ ...e, alcancada: Math.max(e.alcancada, i) }));
     navegar(caminhoDaEtapa(rota, id) + search);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [navegar, rota, search]);
+  }, [navegar, rota, search, setEstado]);
 
   const irPara = useCallback((id: IdEtapa) => {
     if (id === etapa) return;

@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { useCadastro } from '../../../../dados/repo';
 import { useOperador } from '../../../../casca/operador';
 import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
+import { useGuardado } from '../../../../../../comum/guardado';
 import { useRazaoDaFolha } from '../../useRazaoDaFolha';
 
 extrator.definirWorkerDoPdf(workerDoPdf);
@@ -23,11 +24,12 @@ export function useHonorarios() {
   const vivo = useCadastro(s.nome, s.codigo);
   const razao = useRazaoDaFolha('honorarios', s.nome + '|honorarios|' + s.meses.join(','), s.meses);
   const chave = s.nome + '|' + s.meses.join(',');
-  const [extrato, setExtrato] = useState<{ chave: string; arquivo: string; cobrancas: t.CobrancaDeHonorario[] } | null>(null);
+  // o extrato por cobrança e as contas ficam guardados (Vitor, 15/10/2026: voltou, está onde parou)
+  const [extrato, setExtrato] = useGuardado<{ chave: string; arquivo: string; cobrancas: t.CobrancaDeHonorario[] } | null>('honorarios-extrato|' + chave, null);
   const e = extrato && extrato.chave === chave ? extrato : null;
   const [lendo, setLendo] = useState(false);
   // as contas do arquivo (o que a pessoa digitou; vazio = a sugestão)
-  const [contas, setContas] = useState<{ despesa?: string; aPagar?: string }>({});
+  const [contas, setContas] = useGuardado<{ despesa?: string; aPagar?: string }>('honorarios-contas|' + chave, {});
 
   /** true, false ou null (não informado); só depois de o cadastro chegar */
   const emiteNota = vivo.carregada ? vivo.cadastro.emiteNotaHonorario ?? null : undefined;

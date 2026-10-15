@@ -11,7 +11,8 @@ import { useCadastro, useContatoDoEntregas } from '../../../../dados/repo';
 import { useExtratorDaEmpresa } from '../../../../dados/extrator';
 import { criarTicket } from '../../../../dados/mandei';
 import { useOperador } from '../../../../casca/operador';
-import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
+import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
+import { useGuardado } from '../../../../../../comum/guardado';
 
 export type TelaClientes = 'arquivos' | 'clientes' | 'envio';
 export type FiltroClientes = 'todos' | 'pendente' | 'ok' | 'conferido';
@@ -22,12 +23,14 @@ export function useClientes() {
   const s = useEtapaAberta();
   const { aviso } = useRetorno();
   const mes = s.meses[s.meses.length - 1] || '';
-  const [tela, setTelaDaVez] = useState<TelaClientes>('arquivos');
+  // onde parou (Vitor, 15/10/2026): a tela, até onde chegou e o dinâmico ficam guardados; voltou, está tudo lá
+  const chave = useChaveDaEtapa('clientes');
+  const [tela, setTelaDaVez] = useGuardado<TelaClientes>(chave + '|tela', 'arquivos');
   // até onde a pessoa já chegou: as abas depois disso ficam apagadas (Vitor, 07/10/2026: "deixar ofuscado as próximas tarefas")
-  const [alcancada, setAlcancada] = useState(0);
+  const [alcancada, setAlcancada] = useGuardado(chave + '|alcancada', 0);
   const ORDEM: TelaClientes[] = ['arquivos', 'clientes', 'envio'];
   const setTela = (t: TelaClientes) => { setTelaDaVez(t); setAlcancada(a => Math.max(a, ORDEM.indexOf(t))); };
-  const [dinamico, setDinamico] = useState<{ nome: string; d: cl.BalanceteDinamico } | null>(null);
+  const [dinamico, setDinamico] = useGuardado<{ nome: string; d: cl.BalanceteDinamico } | null>(chave + '|dinamico', null);
   const [filtro, setFiltro] = useState<FiltroClientes>('todos');
   const [busca, setBusca] = useState('');
   // o Mandei (Vitor, 07/10/2026): o ticket com o link para o cliente responder, anexar e a gente acompanhar

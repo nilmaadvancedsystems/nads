@@ -1,16 +1,16 @@
 // ViewModel das linhas Salários a pagar e FGTS a recolher na etapa da folha (Vitor, 07/10/2026: "em FGTS e Salários deixe só
 // um razão para upar; se tiver tudo zerado e saldos credores, show"). A pessoa importa o razão da conta (XLS da conciliação
 // do Alterdata) e vê o saldo do fim de cada mês: a conta é do passivo, fica credor ou zera; o mês devedor é o errado.
-// Fica só na tela (em memória): trocou de etapa, empresa ou período, some.
+// O que foi importado fica guardado neste navegador (Vitor, 15/10/2026: voltou, está onde parou; comum/guardado.ts).
 import { formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useState } from 'react';
+import { useGuardado } from '../../../../comum/guardado';
 
 const NOME: Record<t.ContaDaFolha, string> = { salarios: 'Salários a pagar', fgts: 'FGTS a recolher', prolabore: 'Pró-labore a pagar', honorarios: 'Honorários a pagar' };
 
 export function useRazaoDaFolha(conta: t.ContaDaFolha, chave: string, meses: readonly string[]) {
   const { aviso } = useRetorno();
-  const [razao, setRazao] = useState<{ chave: string; arquivo: string; razao: t.RazaoDaConta } | null>(null);
+  const [razao, setRazao] = useGuardado<{ chave: string; arquivo: string; razao: t.RazaoDaConta } | null>('folha|' + conta + '|' + chave, null);
   const r = razao && razao.chave === chave ? razao : null;
 
   async function importar(f: File | null) {

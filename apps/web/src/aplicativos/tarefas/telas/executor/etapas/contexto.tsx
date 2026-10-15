@@ -56,6 +56,15 @@ export function AvisoAcimaDoCabecalho({ children }: { children: ReactNode }) {
 }
 
 /** A empresa e os meses da etapa aberta. */
+/**
+ * A chave do "onde parou" desta etapa (Vitor, 15/10/2026): o nome da etapa, a empresa e o período. Vai no useGuardado
+ * (comum/guardado.ts) com o que guardar no fim ("clientes|58|2026-01,…|tela").
+ */
+export function useChaveDaEtapa(etapa: string): string {
+  const s = useEtapaAberta();
+  return etapa + '|' + (s.codigo ?? s.nome) + '|' + s.meses.join(',');
+}
+
 export function useEtapaAberta(): EtapaAberta {
   return useCtx().etapa;
 }

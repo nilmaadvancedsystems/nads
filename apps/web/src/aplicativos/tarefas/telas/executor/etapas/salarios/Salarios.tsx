@@ -2,7 +2,8 @@
 // (o Segmentado, como em Clientes); cada aba mostra a parte dela. O mês devedor (ou a folha que não zerou) trava o Próximo.
 import { tarefas } from '@nads/core';
 import { Segmentado } from '@nads/ui';
-import { useState } from 'react';
+import { useChaveDaEtapa } from '../contexto';
+import { useGuardado } from '../../../../../../comum/guardado';
 import { InssDaEtapa } from '../../partes/InssDaEtapa';
 import { useSalarios } from './useSalarios';
 
@@ -13,7 +14,8 @@ const ABAS: { valor: Aba; rotulo: string }[] = [{ valor: 'salarios', rotulo: 'Sa
 
 export function Salarios() {
   const vm = useSalarios();
-  const [aba, setAba] = useState<Aba>('salarios');
+  // a aba fica guardada (Vitor, 15/10/2026: voltou, está onde parou)
+  const [aba, setAba] = useGuardado<Aba>(useChaveDaEtapa('salarios') + '|aba', 'salarios');
   return (
     <section>
       <header className="topbar"><div><h2 className="page-title">Salários, INSS e FGTS</h2></div></header>

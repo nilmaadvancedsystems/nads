@@ -6,6 +6,7 @@ import { creditor, extrator, formatos, tarefas as t } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useState } from 'react';
+import { useGuardado } from '../../../../comum/guardado';
 
 extrator.definirWorkerDoPdf(workerDoPdf);
 
@@ -21,8 +22,9 @@ export interface ContaDoPlano { codigo: string; nome: string }
  */
 export function useInssDaEtapa(chave: string, meses: readonly string[], balancete: readonly ContaDoPlano[] = []) {
   const { aviso } = useRetorno();
-  const [razao, setRazao] = useState<{ chave: string; arquivo: string; razao: t.RazaoDaConta } | null>(null);
-  const [guias, setGuias] = useState<{ chave: string; arquivos: string[]; guias: t.GuiaDoInss[] } | null>(null);
+  // o razão, as guias e as contrapartidas ficam guardados (Vitor, 15/10/2026: voltou, está onde parou)
+  const [razao, setRazao] = useGuardado<{ chave: string; arquivo: string; razao: t.RazaoDaConta } | null>('inss-razao|' + chave, null);
+  const [guias, setGuias] = useGuardado<{ chave: string; arquivos: string[]; guias: t.GuiaDoInss[] } | null>('inss-guias|' + chave, null);
   const [lendo, setLendo] = useState(false);
   // o mês aberto (null = o período todo)
   const [mesAberto, setMesAberto] = useState<string | null>(null);
@@ -32,7 +34,7 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
   const doBalancete = balancete.find(x => /inss\s+a\s+recolher/i.test(x.nome)) || null;
   // a do balancete manda (travada); sem ela no balancete, a digitada
   const contaInss = doBalancete?.codigo || contaDigitada;
-  const [contrapartidas, setContrapartidas] = useState<Record<string, string>>({});
+  const [contrapartidas, setContrapartidas] = useGuardado<Record<string, string>>('inss-contrapartidas|' + chave, {});
   const r = razao && razao.chave === chave ? razao : null;
   const g = guias && guias.chave === chave ? guias : null;
   const c = r && g ? t.conferirInss(r.razao, g.guias, meses) : null;
