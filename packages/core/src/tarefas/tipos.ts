@@ -155,6 +155,11 @@ export interface Execucao {
   periodo?: string;
   /** as etapas "só quando adicionada" que entraram neste mês (o Creditor, pelo razão do caixa) */
   adicionadas?: string[];
+  /**
+   * as etapas que o balancete tirou do mês (Vitor, 15/10/2026: "observe o balancete se há adiantamento a fornecedores
+   * antes de criar a tarefa"): o Adiantamento a fornecedores sem saldo no dinâmico importado em Clientes
+   */
+  retiradas?: string[];
   /** os valores que as etapas informam (07/10/2026: o DP informa o total da folha; o Fiscal lê ao lado do faturamento) */
   valores?: Record<string, number>;
 }

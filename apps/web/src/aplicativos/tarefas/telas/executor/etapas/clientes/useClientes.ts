@@ -11,7 +11,7 @@ import { useCadastro, useContatoDoEntregas } from '../../../../dados/repo';
 import { useExtratorDaEmpresa } from '../../../../dados/extrator';
 import { criarTicket } from '../../../../dados/mandei';
 import { useOperador } from '../../../../casca/operador';
-import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
+import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useEtapaPeloBalancete, useRequisitosDaEtapa } from '../contexto';
 import { useGuardado } from '../../../../../../comum/guardado';
 
 export type TelaClientes = 'arquivos' | 'clientes' | 'envio';
@@ -178,6 +178,9 @@ export function useClientes() {
   const faltaMandar = !!assinatura && marcas.doc.enviado !== assinatura;
   const faltam = [...faltamDosArquivos, ...(faltaMandar ? ['Mandar pelo Mandei o que vai ser questionado (' + paraEnviar.length + (paraEnviar.length === 1 ? ' cliente)' : ' clientes)')] : [])];
   useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
+  // o dinâmico diz se o Adiantamento a fornecedores entra (Vitor, 15/10/2026: "a 58 não tem, então não coloque como etapa")
+  const adiantamento = useMemo(() => (dinamico ? cl.adiantamentoAFornecedoresNoDinamico(dinamico.d, s.meses) : null), [dinamico, s.meses]);
+  useEtapaPeloBalancete(adiantamento && { etapa: 'adiantamento-fornecedores', ...adiantamento, motivo: adiantamento.com.length ? 'Adiantamento a fornecedores com saldo no balancete dinâmico' : 'Sem adiantamento a fornecedores no balancete dinâmico' });
   const rotuloMes = mes ? tarefas.rotuloNumericoCompetencia(mes) : '';
   const q = busca.trim().toLowerCase();
   const reais = formatos.reais;

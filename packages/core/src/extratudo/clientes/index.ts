@@ -107,6 +107,19 @@ export function clientesDoDinamico(d: BalanceteDinamico, mes: string, lado: Lado
     .map(l => ({ codigo: l.codigo, nome: l.descricao.replace(/\s+/g, ' '), saldo: noLado(lado, l.saldos[mes] ?? 0), noBalancete: null }));
 }
 
+/**
+ * Os meses do período em que o dinâmico tem adiantamento a fornecedores (Vitor, 15/10/2026: "observe o balancete se há
+ * adiantamento a fornecedores; a 58 não tem, então não coloque como etapa"): alguma conta "Adiantamento(s) a
+ * fornecedor(es)" com saldo no mês ou no mês de antes (o adiantamento baixado no mês). Só os meses que o dinâmico tem.
+ */
+export function adiantamentoAFornecedoresNoDinamico(d: BalanceteDinamico, meses: readonly string[]): { cobertos: string[]; com: string[] } {
+  const contas = d.linhas.filter(l => /^(adiant\w*|adto) (a |de |p |para |ao )?fornecedor/.test(normalizarTexto(l.descricao)));
+  const antes = (m: string) => { const [a, x] = m.split('-').map(Number); return x === 1 ? (a - 1) + '-12' : a + '-' + String(x - 1).padStart(2, '0'); };
+  const saldo = (l: LinhaDinamico, m: string) => (m in l.saldos ? l.saldos[m] : m < (d.meses[0] || '') ? l.saldoAnterior : 0);
+  const cobertos = meses.filter(m => d.meses.includes(m));
+  return { cobertos, com: cobertos.filter(m => contas.some(l => !zero(saldo(l, m)) || !zero(saldo(l, antes(m))))) };
+}
+
 /** Um cliente que ficou credor em algum mês: o saldo de cada mês (positivo = devedor, negativo = credor). */
 export interface CredorNoPeriodo { codigo: string; nome: string; saldos: { mes: string; saldo: number }[] }
 

@@ -279,7 +279,7 @@ export function Executor() {
             {/* revendo uma etapa concluída: sem a abertura com o N (é só para olhar; Vitor, 05/10/2026: "o loading tá bugando") */}
             {vm.ferramenta?.embutir && ferramentaAbrindo && !vm.revendo && <AberturaN vidro />}
             {vm.tela ? (
-              <EtapaProvider etapa={vm.tela.etapa} onRequisitos={r => setRequisitosDaTela({ chave: chaveDaTela, ...r })} onTeste={setTesteDaTela} onAbas={setAbasDaTela} alvoDosAvisos={alvoDosAvisos}>
+              <EtapaProvider etapa={vm.tela.etapa} onRequisitos={r => setRequisitosDaTela({ chave: chaveDaTela, ...r })} onTeste={setTesteDaTela} onAbas={setAbasDaTela} onBalancete={vm.ajustarPeloBalancete} alvoDosAvisos={alvoDosAvisos}>
                 <TelaDaEtapa id={vm.tela.id} />
               </EtapaProvider>
             ) : vm.ferramenta?.embutir ? (
