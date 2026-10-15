@@ -359,7 +359,10 @@ function errosDaResposta(corpo) {
     for (const e of lista) {
       if (!e) continue;
       if (typeof e === 'string') { saida.push({ codigo: '', descricao: e }); continue; }
-      saida.push({ codigo: String(e.Codigo || e.codigo || e.code || ''), descricao: String(e.Descricao || e.descricao || e.Mensagem || e.mensagem || e.message || '').trim() });
+      // o complemento da E&L explica o erro (ex.: EL99 "Chave informada para a DPS não existe no repositório municipal")
+      const comp = String(e.Complemento || e.complemento || '').trim();
+      const desc = [e.Descricao, e.descricao, e.Mensagem, e.mensagem, e.message].find(x => typeof x === 'string' && x.trim()) || '';
+      saida.push({ codigo: String(e.Codigo || e.codigo || e.code || ''), descricao: (String(desc).trim() + (comp ? ' — ' + comp : '')).trim() });
     }
   } else if (lista && typeof lista === 'object') {
     // formato de validação do ASP.NET: { errors: { campo: [mensagens] } }
@@ -538,7 +541,7 @@ function iniciarNfse(db, log, opcoes = {}) {
 
     // reenvio: confere antes se a nota já saiu (a resposta do envio anterior pode ter se perdido)
     if (reenvio) {
-      const r = await chamar('GET', ENDERECOS.consultaDps(dps.ambiente, dps.id), token).catch(() => null);
+      const r = await chamar('GET', ENDERECOS.consultaDps(dps.ambiente, dps.idEl || dps.id), token).catch(() => null);
       if (r && r.status === 200 && r.json && desgzipB64(r.json.nfseXmlGZipB64)) {
         await autorizar(ref, r.json, dps);
         return;
@@ -576,8 +579,12 @@ function iniciarNfse(db, log, opcoes = {}) {
       return;
     }
     if (r.json && desgzipB64(r.json.nfseXmlGZipB64)) { await autorizar(ref, r.json, dps, { xmlDps: xml, enviadaEm: agora() }); return; }
-    await ref.update({ status: 'processando', enviadaEm: agora(), consultas: 0, xmlDps: xml, atualizadoEm: agora() });
-    log('NFS-e:', dps.id, 'recebida pela prefeitura; consultando a cada', CONSULTA_MS / 1000, 's');
+    // a E&L devolve o idDPS dela no envio: é por ele que a consulta acha a DPS (15/10/2026: com o nosso Id, a consulta
+    // respondeu EL99 "Chave informada para a DPS não existe no repositório municipal" 40 vezes)
+    const idEl = r.json && r.json.idDPS ? String(r.json.idDPS) : '';
+    const respostaEnvio = { http: r.status, idDPS: idEl, dataHora: r.json ? String(r.json.dataHoraProcessamento || '') : '', texto: String(r.texto || '').slice(0, 500) };
+    await ref.update({ status: 'processando', enviadaEm: agora(), consultas: 0, xmlDps: xml, respostaEnvio, 'dps.idEl': idEl, atualizadoEm: agora() });
+    log('NFS-e:', dps.id, 'recebida pela prefeitura (HTTP ' + r.status + ', idDPS da E&L: ' + (idEl || 'nenhum') + '); consultando a cada', CONSULTA_MS / 1000, 's');
   }
 
   async function autorizar(ref, resposta, dps, extra) {
@@ -599,8 +606,18 @@ function iniciarNfse(db, log, opcoes = {}) {
     const n = Number(p.consultas || 0) + 1;
     let r = null;
     let falha = '';
-    try { r = await chamar('GET', ENDERECOS.consultaDps(dps.ambiente, dps.id), tokenPara(dps.ambiente)); } catch (err) { falha = err.message; }
+    try { r = await chamar('GET', ENDERECOS.consultaDps(dps.ambiente, dps.idEl || dps.id), tokenPara(dps.ambiente)); } catch (err) { falha = err.message; }
     if (r && (r.status === 401 || r.status === 403)) { processando.delete(id); await falhar(ref, erroRobo(mensagemHttp(r))); return; }
+    // a prefeitura recusa a consulta (ex.: EL99): três seguidas e para, com o erro dela (não insiste 40 vezes)
+    if (r && r.status === 400) {
+      const erros = errosDaResposta(r.json);
+      if (erros.length && n >= 3) {
+        processando.delete(id);
+        await falhar(ref, erros, { consultas: n });
+        log('NFS-e:', dps.id, 'consulta recusada:', erros.map(e => e.codigo + ' ' + e.descricao).join(' | ').slice(0, 300));
+        return;
+      }
+    }
     if (r && r.status === 200 && r.json) {
       if (desgzipB64(r.json.nfseXmlGZipB64)) { processando.delete(id); await autorizar(ref, r.json, dps); return; }
       const erros = errosDaResposta(r.json);
