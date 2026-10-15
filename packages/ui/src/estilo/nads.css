@@ -4401,3 +4401,7 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
   html[data-animacoes=todas] .dica-balao,html[data-animacoes=todas] :is(.dica:hover,.dica:focus-visible) .dica-balao{translate:none;transition:opacity .2s linear,visibility .2s;}
   html[data-animacoes=todas] tbody tr{transition:none;}
 }
+/* os cupons (NFC-e) na Sequência de saídas (15/10/2026: "numeração dos cupons, valor total, quantidade de cupons") */
+.sieg-cupons{margin:10px 0 12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));}
+.sieg-cupons-faixa{display:flex;flex-direction:column;gap:2px;font-size:15px;}
+.sieg-cupons-faixa small{font-size:11px;color:var(--ink-muted);font-weight:500;}

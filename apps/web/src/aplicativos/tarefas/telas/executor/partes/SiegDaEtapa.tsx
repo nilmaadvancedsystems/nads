@@ -100,11 +100,20 @@ export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 
                 <b>{vm.saidas.ok ? 'Sequência completa' : vm.saidas.faltando + (vm.saidas.faltando === 1 ? ' número faltando' : ' números faltando')}</b>
                 <span className="fraco">{vm.saidas.autorizadas} {vm.saidas.autorizadas === 1 ? 'autorizada' : 'autorizadas'} · {vm.saidas.canceladas} {vm.saidas.canceladas === 1 ? 'cancelada' : 'canceladas'} · {vm.saidas.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
               </div>
+              {vm.saidas.cupons && (
+                <div className="stat-grid sieg-cupons" aria-label="Cupons (NFC-e) do mês">
+                  <div className="stat painel-numero painel-info"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="recibo" /></span><p className="stat-label">Cupons (NFC-e)</p><p className="stat-value num">{vm.saidas.cupons.quantidade.toLocaleString('pt-BR')}</p></div>
+                  <div className="stat painel-numero painel-ok"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="dinheiro" /></span><p className="stat-label">Valor dos cupons</p><p className="stat-value num">{vm.saidas.cupons.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p></div>
+                  <div className="stat painel-numero painel-neutro"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="hash" /></span><p className="stat-label">Numeração</p>
+                    <p className="stat-value num sieg-cupons-faixa">{vm.saidas.cupons.numeracao.map(n => <span key={n.serie}>{n.primeira.toLocaleString('pt-BR')} a {n.ultima.toLocaleString('pt-BR')}{vm.saidas!.cupons!.numeracao.length > 1 && <small> {n.serie}</small>}</span>)}</p></div>
+                  <div className={'stat painel-numero ' + (vm.saidas.cupons.faltando ? 'painel-aviso' : 'painel-ok')}><span className="painel-numero-icone" aria-hidden="true"><Icone nome={vm.saidas.cupons.faltando ? 'alert' : 'check'} /></span><p className="stat-label">Faltando · canceladas</p><p className="stat-value num">{vm.saidas.cupons.faltando} · {vm.saidas.cupons.canceladas}</p></div>
+                </div>
+              )}
               <ul className="sieg-series">
                 {vm.saidas.series.map(s => (
                   <li key={s.rotulo}>
                     <span className="sieg-serie-nome">{s.rotulo}</span>
-                    <span className="fraco">{s.primeira} a {s.ultima}</span>
+                    <span className="fraco">{s.primeira} a {s.ultima} · {s.autorizadas} {s.autorizadas === 1 ? 'nota' : 'notas'} · {s.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     {s.faltando.length > 0 && <span className="sieg-falta">Faltam: {s.faltandoTexto}</span>}
                     {s.canceladas.length > 0 && <span className="fraco">Canceladas: {s.canceladasTexto}</span>}
                   </li>

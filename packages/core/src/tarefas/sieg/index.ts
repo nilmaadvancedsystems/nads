@@ -64,6 +64,8 @@ export const totalDe = (r: Record<TipoDeNota, number>): number => TIPOS_DE_NOTA.
 
 export interface ConferenciaDaSerie {
   rotulo: string;
+  /** '65' = NFC-e (o cupom), '55' = NF-e */
+  modelo: string;
   primeira: number;
   ultima: number;
   /** quantas notas autorizadas (sem as canceladas) */
@@ -101,6 +103,7 @@ export function conferirSaidas(s: SaidasSieg, maximo = 200): ConferenciaDeSaidas
       const canceladas = [...new Set(x.canceladas)].sort((a, b) => a - b);
       return {
         rotulo: rotuloDoModelo(x.modelo) + ' · série ' + (x.serie || '0'),
+        modelo: x.modelo,
         primeira: nums[0], ultima: nums[nums.length - 1],
         autorizadas: nums.length - canceladas.length, canceladas, faltando, valor: x.valor,
       };
@@ -114,6 +117,19 @@ export function conferirSaidas(s: SaidasSieg, maximo = 200): ConferenciaDeSaidas
     faltando,
     valor: Math.round(series.reduce((t, x) => t + x.valor, 0) * 100) / 100,
     ok: faltando === 0,
+  };
+}
+
+/** Os cupons do mês (NFC-e, modelo 65; 15/10/2026: "numeração dos cupons, valor total, quantidade de cupons"). null = sem NFC-e. */
+export function resumoDosCupons(c: ConferenciaDeSaidas): { quantidade: number; canceladas: number; faltando: number; valor: number; numeracao: { serie: string; primeira: number; ultima: number }[] } | null {
+  const series = c.series.filter(x => x.modelo === '65');
+  if (!series.length) return null;
+  return {
+    quantidade: series.reduce((t, x) => t + x.autorizadas, 0),
+    canceladas: series.reduce((t, x) => t + x.canceladas.length, 0),
+    faltando: series.reduce((t, x) => t + x.faltando.length, 0),
+    valor: Math.round(series.reduce((t, x) => t + x.valor, 0) * 100) / 100,
+    numeracao: series.map(x => ({ serie: x.rotulo.replace(/^NFC-e · /, ''), primeira: x.primeira, ultima: x.ultima })),
   };
 }
 
