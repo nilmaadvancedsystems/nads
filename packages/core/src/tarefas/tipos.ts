@@ -118,7 +118,9 @@ export type PainelDaTarefa = 'sieg' | 'recebimento' | 'sequencia' | 'saidas' | '
   // o Presumido e o Real (13/10/2026): o PIS/COFINS e os créditos do Real
   | 'piscofins' | 'creditos'
   // subir a guia do mês (o PDF do DAS ou do DAE)
-  | 'guia-das' | 'guia-dae';
+  | 'guia-das' | 'guia-dae'
+  // os XMLs de saída soltos direto na Conferência de saídas (15/10/2026)
+  | 'xml-saidas';
 
 export interface Rotina { departamento: Departamento; etapas: Etapa[] }
 

@@ -15,6 +15,7 @@ import { ROTULO_DO_RELATORIO, type VmPainelDoFiscal } from '../usePainelDoFiscal
 import { animarPainel } from './animarPainel';
 import { GuiaParaSubir } from './GuiaParaSubir';
 import { SiegDaEtapa } from './SiegDaEtapa';
+import { XmlsDoCliente } from './XmlsDoCliente';
 import { SintegraDaEtapa } from '../../fiscal/sintegra/SintegraDaEtapa';
 
 const { reais } = formatos;
@@ -754,6 +755,8 @@ function Corpo({ painel, vm, codigo, competencia, importar, valores, informar, a
       return codigo ? <SiegDaEtapa tipo="contagem" codigo={codigo} competencia={competencia} /> : null;
     case 'sequencia':
       return codigo ? <SiegDaEtapa tipo="saidas" codigo={codigo} competencia={competencia} /> : null;
+    case 'xml-saidas':
+      return codigo ? <XmlsDoCliente codigo={codigo} competencia={competencia} saidas /> : null;
     case 'recebimento':
       return (
         <>
