@@ -10,6 +10,9 @@ import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword, si
 import { doc, getDoc, initializeFirestore, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
 import { bancoDoEntregas, comAppAParte } from './entregas.firestore';
 
+/** O começo do endereço do serviço de contas (Apps Script publicado como aplicativo web). */
+const SERVICO_DE_CONTAS = 'https://script.google.com/macros/s/';
+
 export interface ConviteDoNads {
   codigo: string;
   tipo: 'novo' | 'reset';
@@ -76,7 +79,8 @@ export async function aceitarCadastro(c: ConviteDoNads, nome: string, senha: str
 
 /** O convite 'reset': o serviço de contas troca a senha; depois entra uma vez com ela e queima o convite. */
 export async function trocarSenhaPeloConvite(c: ConviteDoNads, senha: string): Promise<void> {
-  if (!c.contasUrl) throw new Error('O convite veio sem o endereço do serviço de contas. Peça um link novo.');
+  // só o serviço de contas do Entregas (Apps Script): a trava de rede (scripts/conexoes.mjs) confere esta linha
+  if (!c.contasUrl.startsWith(SERVICO_DE_CONTAS)) throw new Error('O convite veio sem o endereço do serviço de contas. Peça um link novo.');
   let resp: { ok?: boolean; erro?: string } | null;
   try {
     // text/plain evita o preflight de CORS, que o Apps Script não responde (como no Entregas)
