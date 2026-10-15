@@ -2,7 +2,7 @@
 // (XLS da conciliação do Alterdata) e o PDF dos comprovantes de arrecadação; a tela mostra, mês a mês, provisão × guia,
 // as verbas que o sistema não provisionou, as guias pagas sem baixa e o lançamento sugerido de cada diferença.
 // Fica só na tela (em memória): trocou de etapa, empresa ou período, some.
-import { creditor, extrator, formatos, tarefas as t } from '@nads/core';
+import { conversor, creditor, extrator, formatos, tarefas as t } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useState } from 'react';
@@ -20,6 +20,12 @@ export interface ContaDoPlano { codigo: string; nome: string }
  * balancete: as contas analíticas do balancete importado na Conferência (Vitor, 07/10/2026: "essa conta do INSS a recolher,
  * você puxa diretamente do balancete, tem o nome certinho lá"); sem ele, a pessoa digita.
  */
+/** O banco do comprovante ("756 - BANCO COOPERATIVO SICOOB S/A") → o nome curto (Sicoob) e a marca do logo. */
+function bancoDaGuia(texto: string): { nome: string; curto: string; marca: string } {
+  const curto = conversor.bancoDoTexto(texto);
+  return { nome: texto, curto: curto || texto.replace(/^\d+\s*-\s*/, ''), marca: curto ? conversor.marcaDoBanco(curto) : '' };
+}
+
 export function useInssDaEtapa(chave: string, meses: readonly string[], balancete: readonly ContaDoPlano[] = []) {
   const { aviso } = useRetorno();
   // o razão, as guias e as contrapartidas ficam guardados (Vitor, 15/10/2026: voltou, está onde parou)
@@ -114,6 +120,8 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
         // a guia do mês: baixada, sem a baixa, paga depois do período, ou o PDF não trouxe
         baixa: !m.guia ? 'sem-guia' as const : baixa ? (baixa.lancamento ? 'ok' as const : 'falta' as const) : m.guia.pagaEm > ultimoDia || !m.guia.pagaEm ? 'depois' as const : 'fora' as const,
         pagaEm: m.guia ? dataBR(m.guia.pagaEm) : '',
+        // o banco em que a guia foi paga, pelo comprovante (Vitor, 15/10/2026): o nome curto e o logo
+        banco: m.guia?.banco ? bancoDaGuia(m.guia.banco) : null,
       };
     }),
     mesAberto,

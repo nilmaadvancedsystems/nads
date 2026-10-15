@@ -1,7 +1,7 @@
 // A conferência do INSS na etapa da folha, no desenho da Importação do banco (Vitor, 05/10/2026): a linha "INSS a recolher"
 // com o Razão (XLS) e as Guias (PDF dos comprovantes) à direita, a grade dos meses (provisão, guia, diferença, baixa; clicar
 // abre o mês) e a faixa Lançamentos sugeridos (o Grupo a grupo saiu: Vitor, 07/10/2026); embaixo, o fechamento do saldo.
-import { Icone, LogoInss } from '@nads/ui';
+import { Icone, LogoBanco, LogoInss } from '@nads/ui';
 import { useId, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import type { InssDaEtapa as Inss } from '../useInssDaEtapa';
@@ -105,6 +105,18 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so }: {
                         {BAIXA[m.baixa]}
                       </td>
                     ))}</tr>
+                    {/* o banco em que a guia foi paga, pelo comprovante do PDF (Vitor, 15/10/2026) */}
+                    {inss.meses.some(m => m.banco) && (
+                      <tr><th scope="row">Banco</th>{inss.meses.map(m => (
+                        <td key={m.mes} className={m.mes === inss.mesAberto ? 'atual' : undefined} title={m.banco?.nome}>
+                          {m.banco ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              {m.banco.marca && <span className="drive-candidato-logo" style={{ display: 'inline-flex' }}><LogoBanco banco={m.banco.marca} cor /></span>}{m.banco.curto}
+                            </span>
+                          ) : '—'}
+                        </td>
+                      ))}</tr>
+                    )}
                   </tbody>
                 </table>
               </div>

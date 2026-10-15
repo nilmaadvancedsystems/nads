@@ -28,6 +28,8 @@ export interface GuiaDoInss {
   vencimento: string;
   /** AAAA-MM-DD da arrecadação ('' = o comprovante não trouxe) */
   pagaEm: string;
+  /** o banco em que foi paga, como o comprovante traz ("756 - BANCO COOPERATIVO SICOOB S/A"; '' = não trouxe) */
+  banco: string;
   itens: ItemDaGuia[];
   principal: number;
   total: number;
@@ -71,7 +73,7 @@ export function guiasDasLinhas(paginas: readonly (readonly string[])[]): GuiaDoI
     for (const l of linhas) {
       const cab = l.match(RE_CABECALHO);
       if (cab) {
-        guia = porNumero.get(cab[3]) || { competencia: iso(cab[1]).slice(0, 7), vencimento: iso(cab[2]), numero: cab[3], pagaEm: '', itens: [], principal: 0, total: 0 };
+        guia = porNumero.get(cab[3]) || { competencia: iso(cab[1]).slice(0, 7), vencimento: iso(cab[2]), numero: cab[3], pagaEm: '', banco: '', itens: [], principal: 0, total: 0 };
         porNumero.set(cab[3], guia);
         continue;
       }
@@ -86,7 +88,12 @@ export function guiasDasLinhas(paginas: readonly (readonly string[])[]): GuiaDoI
       if (v && ultimo && !ultimo.variacao) { ultimo.variacao = v[1]; ultimo.descricao = v[2]; continue; }
       if (/Data de Arrecada/i.test(l)) { esperandoData = true; continue; }
       const data = l.match(/(\d{2}\/\d{2}\/\d{4})$/);
-      if (esperandoData && data) { guia.pagaEm = iso(data[1]); esperandoData = false; }
+      if (esperandoData && data) {
+        guia.pagaEm = iso(data[1]);
+        // o banco vem na mesma linha, antes da data (Vitor, 15/10/2026: "em qual banco foi paga aquela guia")
+        guia.banco = guia.banco || l.slice(0, l.length - data[1].length).trim();
+        esperandoData = false;
+      }
     }
   }
   return [...porNumero.values()]
