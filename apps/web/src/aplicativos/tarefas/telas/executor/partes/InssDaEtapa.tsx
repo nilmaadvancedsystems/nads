@@ -1,7 +1,7 @@
 // A conferência do INSS na etapa da folha, no desenho da Importação do banco (Vitor, 05/10/2026): a linha "INSS a recolher"
 // com o Razão (XLS) e as Guias (PDF dos comprovantes) à direita, a grade dos meses (provisão, guia, diferença, baixa; clicar
 // abre o mês) e a faixa Lançamentos sugeridos (o Grupo a grupo saiu: Vitor, 07/10/2026); embaixo, o fechamento do saldo.
-import { Icone, LogoInss } from '@nads/ui';
+import { Icone, LogoBanco, LogoInss } from '@nads/ui';
 import { useId, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import type { InssDaEtapa as Inss } from '../useInssDaEtapa';
@@ -98,6 +98,8 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so }: {
                   <tbody>
                     <tr><th scope="row">Provisão</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '')} title={m.foraDoRazao ? 'O razão começa depois deste mês' : undefined}>{m.foraDoRazao ? 'fora do razão' : <ValorNaGrade texto={m.provisao} />}</td>)}</tr>
                     <tr><th scope="row">Guia</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '')}>{m.guia ? <ValorNaGrade texto={m.guia} /> : '—'}</td>)}</tr>
+                    {/* o total do DARF (Vitor, 15/10/2026: "coloque o total da guia"): o INSS e o que vem junto */}
+                    <tr><th scope="row">Total da guia</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '')} title={m.totalDaGuia && m.totalDaGuia !== m.guia ? 'O DARF inteiro: o INSS e o IRRF/retenções que vêm junto' : undefined}>{m.totalDaGuia ? <ValorNaGrade texto={m.totalDaGuia} /> : m.guia ? <span className="hint" title="Tire e importe de novo o PDF das guias para ler o total">reimportar</span> : '—'}</td>)}</tr>
                     <tr><th scope="row">Diferença</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '') + (m.diferenca && !m.bate ? ' ext-neg' : '')}>{m.diferenca ? <ValorNaGrade texto={m.diferenca} /> : '—'}</td>)}</tr>
                     <tr><th scope="row">Baixa</th>{inss.meses.map(m => (
                       <td key={m.mes} className={(m.mes === inss.mesAberto ? 'atual' : '') + (m.baixa === 'falta' ? ' ext-neg' : '')}
@@ -105,6 +107,18 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so }: {
                         {BAIXA[m.baixa]}
                       </td>
                     ))}</tr>
+                    {/* o banco em que a guia foi paga, pelo comprovante do PDF (Vitor, 15/10/2026) */}
+                    {inss.meses.some(m => m.banco) && (
+                      <tr><th scope="row">Banco</th>{inss.meses.map(m => (
+                        <td key={m.mes} className={m.mes === inss.mesAberto ? 'atual' : undefined} title={m.banco?.nome}>
+                          {m.banco ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              {m.banco.marca && <span className="drive-candidato-logo" style={{ display: 'inline-flex' }}><LogoBanco banco={m.banco.marca} cor /></span>}{m.banco.curto}
+                            </span>
+                          ) : '—'}
+                        </td>
+                      ))}</tr>
+                    )}
                   </tbody>
                 </table>
               </div>

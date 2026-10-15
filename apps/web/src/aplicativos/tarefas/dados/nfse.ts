@@ -45,11 +45,11 @@ export function criarNfseMemoria(): RepoNfse {
   let tokenGravadoEm = iso(86400);
   const base = (id: string, status: nfse.StatusNfse, nome: string, doc: string, valor: number, s: number): nfse.NotaFiscal => ({
     id, status, ambiente: 'homologacao', tomador: { documento: doc, nome }, servico: { descricao: 'Honorários contábeis de setembro/2026 (EXEMPLO)', valor, competencia: '2026-09-30' },
-    empresaCodigo: null, pedidoPor: 'Vitor', pedidoEm: iso(s), dps: null, chaveAcesso: '', numeroNfse: '', erros: [], atualizadoEm: iso(s - 30), cancelamento: null,
+    empresaCodigo: null, pedidoPor: 'Vitor', pedidoEm: iso(s), dps: null, chaveAcesso: '', numeroNfse: '', erros: [], atualizadoEm: iso(s - 30), cancelamento: null, enviadaEm: iso(s - 5), consultas: 0, autorizadaEm: '',
   });
   let notas: nfse.NotaFiscal[] = [
     { ...base('ex-1', 'autorizada', 'EXEMPLO COMERCIO DE ALIMENTOS LTDA', '11222333000181', 850, 7200), dps: { serie: '1', numero: 1, id: 'DPS316800221122233300018100001000000000000001' }, chaveAcesso: '31680022112223330001810000000000000126100000000001', numeroNfse: '1', empresaCodigo: 292 },
-    { ...base('ex-2', 'processando', 'MARIA EXEMPLO DA SILVA', '52998224725', 320, 120), dps: { serie: '1', numero: 2, id: 'DPS316800221122233300018100001000000000000002' } },
+    { ...base('ex-2', 'processando', 'MARIA EXEMPLO DA SILVA', '52998224725', 320, 120), consultas: 3, atualizadoEm: iso(10), dps: { serie: '1', numero: 2, id: 'DPS316800221122233300018100001000000000000002' } },
     { ...base('ex-3', 'erro', 'CLIENTE EXEMPLO LTDA', '11444777000161', 1200, 3600), dps: { serie: '1', numero: 3, id: 'DPS316800221122233300018100001000000000000003' }, erros: [{ codigo: 'E0312', descricao: 'O código de serviço informado não está habilitado para o prestador (EXEMPLO).' }] },
   ];
   return {
