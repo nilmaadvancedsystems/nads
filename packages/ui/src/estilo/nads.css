@@ -4397,4 +4397,7 @@ html[data-animacoes=todas] tbody tr{transition:background-color .3s var(--ease-o
 html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 @media (prefers-reduced-motion: reduce){
   html[data-animacoes=todas] :is(.btn,.icon-btn,.subnav-item,.menu-item,.caixa-item,.drawer-item,.popover-item,.chip-f,.gh-crumb,.explorador-cmd) > svg{transition:none;scale:none;translate:none;rotate:none;}
+  html[data-animacoes=todas] .menu-seta{transition:none;}
+  html[data-animacoes=todas] .dica-balao,html[data-animacoes=todas] :is(.dica:hover,.dica:focus-visible) .dica-balao{translate:none;transition:opacity .2s linear,visibility .2s;}
+  html[data-animacoes=todas] tbody tr{transition:none;}
 }
