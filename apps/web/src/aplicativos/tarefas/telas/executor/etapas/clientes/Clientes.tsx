@@ -223,23 +223,7 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                         <thead><tr><th>Data</th><th>Nota fiscal</th><th>Descrição</th><th className="num">Valor</th><th>Status</th>{(l.situacao === 'conferido' || !!l.razao?.itens.some(x => x.digitado)) && <th className="num">Perguntar</th>}</tr></thead>
                         <tbody>
                           {l.razao.itens.map((i, k) => (
-                            <tr key={k}><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td>{i.nf}</td><td className="wrap">{i.descricao}{i.digitado && <span className="hint"> · digitado</span>}
-                              {/* a sugestão de baixa (Vitor, 15/10/2026): o que pode ser o recebimento desta nota nos extratos */}
-                              {/* cada sugestão numa linha: o logo do banco, a data, o histórico e o valor (Vitor, 15/10/2026: "apresente melhor, mostrando a logo do banco") */}
-                              {i.sugestoes.length > 0 && (
-                                <span style={{ display: 'block', marginTop: 6 }}>
-                                  <span className="hint">Possível baixa no banco</span>
-                                  {i.sugestoes.map((g, j) => (
-                                    <span key={j} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                                      <span className="drive-candidato-logo" title={g.banco} style={{ display: 'inline-flex', flex: 'none' }}><LogoBanco banco={g.marca} cor /></span>
-                                      <span className="hint" style={{ whiteSpace: 'nowrap' }}>{g.data}</span>
-                                      <span className="hint" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={g.historico}>{g.historico}</span>
-                                      <b style={{ whiteSpace: 'nowrap' }}>{g.valor}</b>
-                                      {g.mesmoValor && <span className="badge badge-ok" style={{ flex: 'none' }}>mesmo valor</span>}
-                                    </span>
-                                  ))}
-                                </span>
-                              )}</td><td className={'num' + (i.abate ? ' ext-neg' : '')}>{i.valor}</td>
+                            <Fragment key={k}><tr><td style={{ whiteSpace: 'nowrap' }}>{i.data}</td><td>{i.nf}</td><td className="wrap">{i.descricao}{i.digitado && <span className="hint"> · digitado</span>}</td><td className={'num' + (i.abate ? ' ext-neg' : '')}>{i.valor}</td>
                               <td className={i.status === 'aberto' ? undefined : 'hint'}>{i.rotulo}</td>
                               {/* o "+" de cada linha (Vitor, 07/10/2026: "colocando esse + em cada linha"): adiciona ao que vai para o cliente;
                                   adicionada, o check que vira × e tira (o mesmo botão da importação) */}
@@ -259,6 +243,35 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                                   <Icone nome="plus" />
                                 </button>
                               )}</td>}</tr>
+                            {/* a sugestão de baixa (Vitor, 15/10/2026: "de forma mais intuitiva e apresentável"): logo abaixo da nota em
+                                aberto, recuada e com o fio do lado, uma mini tabela com o banco (o logo), a data, o histórico e o valor */}
+                            {i.sugestoes.length > 0 && (
+                              <tr>
+                                <td colSpan={6} style={{ paddingTop: 0 }}>
+                                  <div style={{ marginLeft: 16, paddingLeft: 12, borderLeft: '3px solid var(--border-strong)' }}>
+                                    <div className="hint" style={{ fontWeight: 600, margin: '0 0 4px' }}>Possível recebimento desta nota no banco</div>
+                                    <table className="table-compact">
+                                      <tbody>
+                                        {i.sugestoes.map((g, j) => (
+                                          <tr key={j}>
+                                            <td style={{ width: 160, whiteSpace: 'nowrap' }}>
+                                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                                                <span className="drive-candidato-logo" style={{ display: 'inline-flex' }}><LogoBanco banco={g.marca} cor /></span>{g.banco}
+                                              </span>
+                                            </td>
+                                            <td style={{ width: 96, whiteSpace: 'nowrap' }}>{g.data}</td>
+                                            <td className="wrap">{g.historico}</td>
+                                            <td className="num" style={{ whiteSpace: 'nowrap' }}><b>{g.valor}</b></td>
+                                            <td style={{ width: 120 }}>{g.mesmoValor && <span className="badge badge-ok">Mesmo valor</span>}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                            </Fragment>
                           ))}
                         </tbody>
                       </table>
