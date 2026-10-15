@@ -76,6 +76,15 @@ export async function criarLoginNoEntregas(email: string, senha: string): Promis
   }
 }
 
+/**
+ * Roda `f` numa instância à parte do Firebase do Entregas, descartada no fim (o convite: a pessoa nova cria a própria
+ * conta, ou entra para carimbar o convite, sem mexer na sessão de quem estiver logado nesta página).
+ */
+export async function comAppAParte<T>(f: (app: ReturnType<typeof initializeApp>) => Promise<T>): Promise<T> {
+  const app = initializeApp(CONFIG_ENTREGAS, 'convite-' + Date.now());
+  try { return await f(app); } finally { await deleteApp(app).catch(() => undefined); }
+}
+
 export function bancoDoEntregas(): Firestore {
   const app = appDoEntregas();
   try {

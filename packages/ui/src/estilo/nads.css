@@ -4356,3 +4356,7 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 /* a linha com o menu suspenso aberto fica acima das de baixo (14/10/2026: o menu das Animações ficava por baixo do Sair da conta) */
 .cfg-linha:has(.popover){position:relative;z-index:5;}
 .cfg-secao:has(.popover){position:relative;z-index:5;}
+/* o link do convite (cadastro ou nova senha) na janela do usuário (15/10/2026) */
+.convite-link{display:flex;align-items:center;gap:8px;min-width:0;width:min(440px,100%);}
+.convite-link input{flex:1;min-width:0;font-family:var(--font-num);font-size:12px;}
+.convite-link svg{width:14px;height:14px;}

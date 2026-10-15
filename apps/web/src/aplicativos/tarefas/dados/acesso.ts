@@ -37,6 +37,10 @@ export interface RepoAcesso {
   ativar(uid: string, ativo: boolean): Promise<void>;
   /** só o admin: cria a conta (o login no Entregas e o cadastro em usuarios/{uid}); devolve o e-mail do login */
   criarConta(c: usuarios.NovaConta): Promise<string>;
+  /** só o admin: o convite para a pessoa se cadastrar sozinha (convites/{codigo}, 24 h), com o cargo e os papéis; devolve o código */
+  criarConviteDeCadastro(c: { departamento: usuarios.Departamento; nivel: usuarios.Nivel; extras: usuarios.Papel[] }): Promise<string>;
+  /** só o admin: o convite para a pessoa trocar a própria senha (convites/{codigo} tipo reset, 24 h); devolve o código */
+  criarConviteDeSenha(uid: string): Promise<string>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -108,6 +112,9 @@ export function criarAcessoMemoria(quem: () => { nome: string } | null): RepoAce
       mudou();
       return novo.email || '';
     },
+    // nos exemplos o convite não vai para lugar nenhum: só o código, para ver o link
+    async criarConviteDeCadastro() { return 'exemplo' + Date.now().toString(36) + 'cadastro00'; },
+    async criarConviteDeSenha() { return 'exemplo' + Date.now().toString(36) + 'senha00000'; },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };

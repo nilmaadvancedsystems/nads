@@ -3,6 +3,7 @@
 import { usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
+import { BASE } from '../../../casca/navegacao';
 import { useOperador } from '../../../casca/operador';
 import { useAcesso } from '../../../dados/repo';
 
@@ -20,6 +21,8 @@ export function useNovoUsuario(aoCriar: () => void = () => {}) {
   const [extras, setExtras] = useState<usuarios.Papel[]>([]);
   const [tentou, setTentou] = useState(false);
   const [criando, setCriando] = useState(false);
+  const [link, setLink] = useState('');
+  const [gerandoLink, setGerandoLink] = useState(false);
 
   const conta: usuarios.NovaConta = { nome, senha, departamento, nivel, extras };
   const emails = repo.equipe().lista.map(p => p.email);
@@ -42,6 +45,21 @@ export function useNovoUsuario(aoCriar: () => void = () => {}) {
     erros: tentou ? erros : [],
     iniciais: limpo ? usuarios.iniciais(limpo) : '?',
     criando,
+    /** o link de cadastro (15/10/2026): a pessoa abre, escolhe o nome e a senha e entra com o cargo e os papéis daqui */
+    link, gerandoLink,
+    podeGerarLink: usuarios.ehDepartamento(departamento) && usuarios.ehNivel(nivel),
+    async gerarLink() {
+      if (!admin) { toast('Só um administrador gera o link de cadastro.'); return; }
+      if (!usuarios.ehDepartamento(departamento) || !usuarios.ehNivel(nivel)) { toast('Escolha o departamento e o nível: a pessoa entra com eles.'); return; }
+      if (gerandoLink) return;
+      setGerandoLink(true);
+      try {
+        const codigo = await repo.criarConviteDeCadastro({ departamento, nivel, extras });
+        setLink(location.origin + BASE + '/convite/' + codigo);
+        toast('Link de cadastro criado: vale 24 horas e uma vez só.');
+      } catch (err) { toast('Não consegui gerar o link: ' + (err as Error).message); } finally { setGerandoLink(false); }
+    },
+    copiar: () => { void navigator.clipboard.writeText(link).then(() => toast('Link copiado.'), () => toast('Não consegui copiar; selecione o link e copie.')); },
     async criar() {
       setTentou(true);
       if (!admin) { toast('Só um administrador cadastra pessoas.'); return; }

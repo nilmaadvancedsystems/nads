@@ -11,6 +11,16 @@ import { useNovoUsuario } from './useNovoUsuario';
 import { EmpresasDaPessoa } from '../responsaveis/EmpresasDaPessoa';
 import type { VmUsuarios } from './useUsuariosDoNads';
 
+/** O link do convite (cadastro ou nova senha), para copiar e mandar à pessoa (15/10/2026). */
+function LinkDoConvite({ link, copiar }: { link: string; copiar: () => void }) {
+  return (
+    <span className="convite-link">
+      <input className="usuario-campo" type="text" readOnly value={link} aria-label="Link" onFocus={ev => ev.currentTarget.select()} />
+      <button type="button" className="btn btn-outline" onClick={copiar}><Icone nome="copiar" />Copiar</button>
+    </span>
+  );
+}
+
 function Foto({ foto, iniciais }: { foto?: string | null; iniciais: string }) {
   return foto ? <img className="pessoal-foto grande" src={foto} alt="" /> : <span className="pessoal-foto grande pessoal-iniciais" aria-hidden="true">{iniciais}</span>;
 }
@@ -78,6 +88,17 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
               <Interruptor ligado={p.ativo} onMudar={() => void vm.ativar(p)} rotulo={(p.ativo ? 'Desativar ' : 'Ativar ') + p.nome} />
             </Linha>
           </Cartao>
+          {vm.admin && (
+            <Cartao titulo="Senha">
+              <Linha rotulo="Nova senha" dica="Gera um link que vale 24 horas e uma vez: a pessoa abre e escolhe a senha nova. Mande pelo WhatsApp ou e-mail.">
+                {vm.linkDeSenha(p.uid)
+                  ? <LinkDoConvite link={vm.linkDeSenha(p.uid)} copiar={() => vm.copiar(vm.linkDeSenha(p.uid))} />
+                  : <button type="button" className="btn btn-outline" disabled={vm.gerandoSenha} onClick={() => void vm.gerarLinkDeSenha(p)}>
+                    {vm.gerandoSenha ? <span className="btn-spinner" aria-hidden="true" /> : <Icone nome="link" />}Gerar link de nova senha
+                  </button>}
+              </Linha>
+            </Cartao>
+          )}
           <Cartao titulo="Computadores liberados">
             {!p.computadores.length ? (
               <Linha rotulo="Nenhum" dica="A proteção do login só pede liberação quando está ligada (Configurações)." />
@@ -122,11 +143,22 @@ export function JanelaNovoUsuario({ fechar }: { fechar: () => void }) {
           <span className="tarefas-barra-espaco" />
           <button type="button" className="btn btn-outline" onClick={fechar}>Cancelar</button>
           {topico !== 'papeis' && <button type="button" className="btn btn-outline" onClick={() => setTopico(topico === 'dados' ? 'cargo' : 'papeis')}>Próximo<Icone nome="chevronRight" /></button>}
+          <button type="button" className="btn btn-outline" disabled={vm.gerandoLink || !vm.podeGerarLink} onClick={() => void vm.gerarLink()}
+            title={vm.podeGerarLink ? 'A pessoa abre o link e escolhe o nome e a senha' : 'Escolha o departamento e o nível primeiro'}>
+            {vm.gerandoLink ? <span className="btn-spinner" aria-hidden="true" /> : <Icone nome="link" />}Link de cadastro
+          </button>
           <button type="button" className="btn btn-primary" disabled={vm.criando} onClick={() => void vm.criar()}>
             {vm.criando ? <span className="btn-spinner" aria-hidden="true" /> : <Icone nome="plus" />}Criar acesso
           </button>
         </>
       )}>
+      {vm.link && (
+        <Cartao titulo="Link de cadastro">
+          <Linha rotulo="Mande para a pessoa" dica="Vale 24 horas e uma vez só. Ela escolhe o nome e a senha e já entra com o cargo e os papéis escolhidos aqui.">
+            <LinkDoConvite link={vm.link} copiar={vm.copiar} />
+          </Linha>
+        </Cartao>
+      )}
       {topico === 'dados' && (
         <Cartao titulo="Dados">
           <Linha rotulo="Nome" dica="Como a pessoa entra no nads e no Entregas.">
