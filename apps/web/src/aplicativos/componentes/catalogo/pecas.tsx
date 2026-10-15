@@ -1,7 +1,7 @@
 // As peças do catálogo, desenhadas com as MESMAS peças do sistema (@nads/ui e as classes do nads.css). A ordem dentro
 // de cada tipo dá o código (BT-01, BT-02…): peça nova entra no FIM do tipo, para os códigos não mudarem.
 import {
-  Alerta, BotaoAcao, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail,
+  Alerta, AnelDeContagem, BarrasEmColuna, BotaoAcao, CartaoComAnel, RoscaComLegenda, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail,
   LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
 } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
@@ -626,6 +626,22 @@ export const PECAS_BASE: Peca[] = [
     demo: () => null },
   { id: 'faixa-100', removida: { como: 'excluida', em: '06/10/2026', motivo: 'Vitor: "não curti nenhum dos gráficos novos"; a composição voltou para o Ranking e o resto para os Números (Stat).', sumir: true }, tipo: 'graficos', nome: 'Faixa 100% (composição)', descricao: 'A composição numa barra só, com a legenda embaixo', componente: 'Faixa', classes: ['graf-faixa', 'graf-legenda em-linha'], telas: ['t-exec-fiscal-rotina'], largo: true,
     demo: () => null },
+
+  // as três peças do painel com gráfico (Savio, 15/10/2026: o Painel do DP "semelhante ao do Certificados"): Senhas › Certificados e DP › Resumo usam estas
+  { id: 'rosca-legenda', tipo: 'graficos', nome: 'Rosca com legenda (filtra)', descricao: 'A rosca das situações com o total no meio e a legenda ao lado; clicar na fatia ou na legenda escolhe (o painel filtra a lista)', componente: 'RoscaComLegenda', classes: ['cert-rosca', 'cert-legenda', 'cert-cor-ok', 'cert-cor-vence', 'cert-cor-vencido', 'cert-cor-sem'], telas: ['t-senhas', 't-dp-resumo'],
+    uso: "<RoscaComLegenda fatias={[{ id, rotulo, valor, tom: 'ok'|'aviso'|'perigo'|'neutro' }]} total={n} subtitulo=\"clientes\" ativa={id|null} onEscolher={...} />",
+    demo: () => <div className="card" style={{ width: '100%', maxWidth: 520, margin: 0 }}><RoscaComLegenda total={40} subtitulo="clientes" ativa="pendente" onEscolher={nada}
+      fatias={[{ id: 'atrasada', rotulo: 'Atrasados', valor: 6, tom: 'perigo' }, { id: 'pendente', rotulo: 'Pendentes', valor: 14, tom: 'aviso' }, { id: 'feita', rotulo: 'Concluídos', valor: 17, tom: 'ok' }, { id: 'sem', rotulo: 'Sem movimento', valor: 3, tom: 'neutro' }]} /></div> },
+  { id: 'barras-coluna', tipo: 'graficos', nome: 'Barras em coluna (a barra filtra)', descricao: 'Uma coluna por mês ou por etapa, com o número em cima; a altura é proporcional à maior; clicar na barra escolhe (de novo, desfaz). Verde ou âmbar (aviso)', componente: 'BarrasEmColuna', classes: ['cert-barras', 'cert-barra', 'cert-barra-cheia'], telas: ['t-senhas', 't-dp-resumo'],
+    uso: '<BarrasEmColuna colunas={[{ chave, rotulo, total, sub?, aviso?, leitura }]} ativa={chave|null} onEscolher={...} />',
+    demo: () => <div className="card" style={{ width: '100%', margin: 0 }}><BarrasEmColuna ativa="esocial" onEscolher={nada}
+      colunas={[['folha', 'Folha', 9], ['esocial', 'eSocial', 14], ['guias', 'Guias', 7], ['reinf', 'REINF', 0], ['entrega', 'Entrega', 11]].map(([chave, rotulo, total]) => ({ chave: String(chave), rotulo: String(rotulo), total: Number(total), aviso: true, leitura: rotulo + ': ' + total }))} /></div> },
+  { id: 'cartao-anel', tipo: 'graficos', nome: 'Cartão com anel de contagem', descricao: 'Quem pede atenção: o anel com os dias (cheio = 30; atrasado = anel inteiro vermelho), o nome, o prazo colorido e uma linha de apoio; clicar abre', componente: 'CartaoComAnel', classes: ['cert-urgente', 'cert-contagem', 'cert-urgente-prazo'], telas: ['t-senhas', 't-dp-resumo'],
+    uso: '<CartaoComAnel dias={n} titulo="…" prazo="Vence em 12 dias" apoio="292 · 19/10/2026" atrasado={dias < 0} onClick={...} />',
+    demo: () => <div style={{ width: '100%', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+      <div style={{ width: 300 }}><CartaoComAnel dias={12} titulo="EMPRESA EXEMPLO LTDA" prazo="Vence em 12 dias" apoio="292 · 19/10/2026" atrasado={false} onClick={nada} /></div>
+      <div style={{ width: 300 }}><CartaoComAnel dias={-5} titulo="OUTRA EMPRESA LTDA" prazo="Parado há 5 dias" apoio="10 · faltam 3 de 8 · Fabiana" atrasado onClick={nada} /></div>
+      <AnelDeContagem dias={20} /></div> },
 
   // ─── Cores ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'cores', tipo: 'cores', nome: 'As cores do sistema', descricao: 'Mude o tema no ☰ para ver o escuro', telas: TODAS, largo: true,

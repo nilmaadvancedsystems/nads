@@ -15,6 +15,12 @@ import { useClientesDoDp } from './useClientesDoDp';
 
 /** Como cada obrigação está no mês: não tem, a fazer, feita, parada. */
 export type EstadoDaObrigacao = 'nao-tem' | 'a-fazer' | 'feita' | 'parada';
+/**
+ * A situação do cliente no mês para o dashboard do Resumo (Savio, 15/10/2026: "o dashboard do DP semelhante ao do
+ * Certificados"): feita (tudo que ele tem está feito), atrasada (falta algo e a competência já fechou), pendente (falta algo
+ * e o mês ainda não fechou) e sem movimento (a planilha diz Sem Movimento, ou nada no mês).
+ */
+export type SituacaoDoDash = 'feita' | 'pendente' | 'atrasada' | 'sem';
 export type Agrupar = 'nenhum' | 'responsavel' | 'agrupamento';
 
 /**
@@ -52,6 +58,9 @@ function partesCom(categorias: readonly empresas.CategoriaDoDp[]) {
   return lista;
 }
 
+/** o nome de cada situação do dashboard (a legenda da rosca e o título da lista) */
+export const ROTULO_DASH: Record<SituacaoDoDash, string> = { feita: 'Concluídos', pendente: 'Pendentes', atrasada: 'Atrasados', sem: 'Sem movimento' };
+
 const SEM_RESPONSAVEL = 'Sem responsável';
 const contar = (xs: readonly string[]) => {
   const m = new Map<string, number>();
@@ -87,6 +96,9 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   const [pendenteEm, setPendenteEm] = useState<'' | ParteDoDp>('');
   // o filtro de Entrega (Vitor, 07/10/2026: como chega ao cliente)
   const [entrega, setEntrega] = useState('');
+  // o que o dashboard do Resumo escolheu para a lista: uma situação (a rosca) ou uma parte da rotina (a barra), nunca as duas
+  const [situacaoEscolhida, setSituacaoEscolhida] = useState<SituacaoDoDash | null>(null);
+  const [parteEscolhida, setParteEscolhida] = useState<ParteDoDp | null>(null);
 
   // os clientes como valem hoje (a planilha com o que mudou no Cadastro e nas Configurações do DP)
   const todas = doDp.clientes.map(c => {
@@ -155,6 +167,39 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
     setParams(novo);
   };
 
+  // o dashboard (Savio, 15/10/2026): a competência fecha no último dia do mês; sem prazo legal cadastrado no DP, é o que há de
+  // data real. Os dias contam até ele (negativo = o mês já fechou e o cliente ainda não terminou)
+  const hoje0 = new Date(); hoje0.setHours(0, 0, 0, 0);
+  const fimDoMes = new Date(Number(competencia.slice(0, 4)), Number(competencia.slice(5, 7)), 0);
+  const diasAteFechar = Math.round((fimDoMes.getTime() - hoje0.getTime()) / 86400000);
+  const situacaoDash = (c: (typeof todas)[number]): SituacaoDoDash => c.movimento === 'Sem Movimento' || !c.temAlguma ? 'sem'
+    : c.concluida ? 'feita' : diasAteFechar < 0 ? 'atrasada' : 'pendente';
+  const daSituacao = new Map(filtradas.map(c => [c.chave, situacaoDash(c)]));
+  const contagemDash: Record<SituacaoDoDash, number> = { feita: 0, pendente: 0, atrasada: 0, sem: 0 };
+  for (const s of daSituacao.values()) contagemDash[s]++;
+  const parteDe = (id: string) => partes.find(p => p.id === id) || null;
+  const escolhida = parteEscolhida ? parteDe(parteEscolhida) : null;
+  // sem escolha, a lista é a de quem ainda tem o que fazer (atrasados e pendentes)
+  const daLista = filtradas.filter(c => {
+    const s = daSituacao.get(c.chave);
+    if (escolhida) return faltaNa(c, escolhida);
+    return situacaoEscolhida ? s === situacaoEscolhida : s === 'atrasada' || s === 'pendente';
+  });
+  const diasDesde = (iso: string) => Math.max(0, Math.floor((hoje0.getTime() - new Date(iso).setHours(0, 0, 0, 0)) / 86400000));
+  // os que pedem atenção: primeiro os parados (há quantos dias), depois os que o mês já fechou ou está fechando
+  const atencao = filtradas.filter(c => ['atrasada', 'pendente'].includes(daSituacao.get(c.chave) || '')).map(c => {
+    const tem = c.obrigacoes.filter(o => o.estado !== 'nao-tem');
+    const paradas = tem.filter(o => o.estado === 'parada');
+    const desde = paradas.map(o => t.estadoDa(c.ex, o.etapa)?.em).filter((x): x is string => !!x).map(diasDesde);
+    const parado = paradas.length > 0 && desde.length > 0;
+    return {
+      chave: c.chave, codigo: c.codigo, nome: c.nomeNaTela, responsavel: c.responsavelNome, parado,
+      /** negativo = atrasado (parado há N dias, ou o mês já fechou há N dias) */
+      dias: parado ? -Math.max(...desde) : diasAteFechar,
+      faltam: tem.length - tem.filter(o => o.estado === 'feita').length, total: tem.length, paradas: paradas.length,
+    };
+  }).sort((a, b) => Number(b.parado) - Number(a.parado) || a.dias - b.dias || a.nome.localeCompare(b.nome, 'pt-BR'));
+
   const concluidas = filtradas.filter(c => c.concluida).length;
   const responsaveis = contar(todas.map(c => c.responsavelNome)).map(r => r.rotulo);
 
@@ -190,6 +235,22 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
       { rotulo: 'Sem movimento', valor: filtradas.filter(c => c.movimento === 'Sem Movimento').length, dica: '', tom: 'roxo', icone: 'list' },
       { rotulo: 'REINF autorizada', valor: filtradas.filter(c => c.reinfAutorizada).length, dica: '', tom: 'ciano', icone: 'fileUp' },
     ] as { rotulo: string; valor: number; dica: string; tom: TomDoNumero; icone: NomeIcone }[],
+    /** o dashboard do Resumo no padrão do Certificados (Savio, 15/10/2026) */
+    dash: {
+      contagem: contagemDash,
+      situacao: situacaoEscolhida, parte: parteEscolhida,
+      escolherSituacao: (s: SituacaoDoDash) => { setParteEscolhida(null); setSituacaoEscolhida(x => (x === s ? null : s)); },
+      escolherParte: (p: string) => { setSituacaoEscolhida(null); setParteEscolhida(x => (x === p ? null : p as ParteDoDp)); },
+      /** as barras: quantos clientes ainda faltam em cada parte da rotina */
+      porParte: partes.map(p => ({ id: p.id, rotulo: p.rotulo, faltam: filtradas.filter(c => faltaNa(c, p)).length })),
+      atencao,
+      diasAteFechar,
+      tituloDaLista: escolhida ? 'Faltam em ' + escolhida.rotulo : situacaoEscolhida ? ROTULO_DASH[situacaoEscolhida] : 'Ainda faltam',
+      lista: daLista.map(c => {
+        const tem = c.obrigacoes.filter(o => o.estado !== 'nao-tem');
+        return { chave: c.chave, codigo: c.codigo, nome: c.nomeNaTela, responsavel: c.responsavelNome, feitas: tem.filter(o => o.estado === 'feita').length, total: tem.length, situacao: daSituacao.get(c.chave) as SituacaoDoDash, rotuloDaSituacao: c.situacao };
+      }),
+    },
     barras: [
       { titulo: 'Por responsável', linhas: contar(filtradas.map(c => c.responsavelNome)) },
       { titulo: 'Enquadramento', linhas: contar(filtradas.map(c => c.enquadramento)) },
