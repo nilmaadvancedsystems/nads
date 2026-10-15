@@ -6,7 +6,8 @@ import * as XLSX from 'xlsx';
 import { normalizarTexto } from '../../formatos';
 import type { Conta } from '../../conferencia/tipos';
 import type { LadoDaConta, RazaoDaMarca } from './razao';
-import { baixasGuardadas, type BaixaAceita } from './sugestaoDeBaixa';
+import { baixasGuardadas, faltaDaNota, type BaixaAceita } from './sugestaoDeBaixa';
+import { chaveDoItem } from './razao';
 
 export * from './razao';
 
@@ -177,16 +178,26 @@ export function assinaturaDoEnvio(linhas: readonly { codigo: string; perguntar?:
  * (Vitor, 07/10/2026: "remova o conferido manual"), senão Pendente. A situação guardada na marca não decide mais nada.
  */
 export function situacaoDe(c: ContaDeCliente, marca?: MarcaDoCliente): SituacaoCliente {
-  if (zero(c.saldo) || zeradoNoRazao(marca)) return 'ok';
+  if (zero(c.saldo) || zeradoNoRazao(marca) || quitadoPelasBaixas(marca)) return 'ok';
   return razaoComPendencia(marca?.razao) ? 'conferido' : 'pendente';
+}
+
+/**
+ * As baixas aceitas zeraram o que o razão achou (Vitor, 15/10/2026: "se o cara aceitar e zerar o valor do cliente, ao
+ * invés de Conferido, coloca um Ok"): tinha nota em aberto, e todas ficaram quitadas, sem pagamento solto.
+ */
+export function quitadoPelasBaixas(marca?: MarcaDoCliente): boolean {
+  return !!marca?.razao && !!marca.baixas && razaoComPendencia(marca.razao) && !razaoComPendencia(marca.razao, marca.baixas);
 }
 
 /**
  * O razão importado achou o que perguntar: nota em aberto ou pagamento solto (sem a nota, ou a mais). A duplicidade, que
  * é só do escritório, e a devolução sozinha não contam.
  */
-export function razaoComPendencia(razao?: RazaoDaMarca): boolean {
-  return !!razao?.itens.some(i => !i.interno && (i.status === 'aberto' || i.status === 'pagamento'));
+export function razaoComPendencia(razao?: RazaoDaMarca, baixas?: Readonly<Record<string, readonly BaixaAceita[]>>): boolean {
+  // a nota quitada pelas baixas aceitas não conta
+  const quitada = (i: RazaoDaMarca['itens'][number]) => !!baixas?.[chaveDoItem(i)]?.length && faltaDaNota(i.valor, baixas[chaveDoItem(i)]) === 0;
+  return !!razao?.itens.some(i => !i.interno && ((i.status === 'aberto' && !quitada(i)) || i.status === 'pagamento'));
 }
 
 /** O razão importado fecha em zero, sem nota em aberto. */
@@ -247,7 +258,7 @@ function razaoGuardado(d: unknown): RazaoDaMarca | null {
  */
 export function conferidosQuePassam(anterior: DocClientes | null, atual: DocClientes): Record<string, MarcaDoCliente> {
   if (!anterior) return {};
-  return Object.fromEntries(Object.entries(anterior.contas).filter(([k, m]) => razaoComPendencia(m.razao) && !atual.contas[k]));
+  return Object.fromEntries(Object.entries(anterior.contas).filter(([k, m]) => razaoComPendencia(m.razao, m.baixas) && !atual.contas[k]));
 }
 
 // ─── para o cliente ──────────────────────────────────────────────────────────

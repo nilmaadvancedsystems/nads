@@ -43,6 +43,12 @@ describe('clientes (a etapa Clientes da Tarefa)', () => {
     // só devolução, ou só a duplicidade (que é do escritório): não é o que perguntar ao cliente
     expect(situacaoDe(m, { nome: '', saldo: 0, situacao: 'pendente', razao: razaoCom('devolucao') })).toBe('pendente');
     expect(razaoComPendencia(razaoCom('pagamento', true))).toBe(false);
+    // a nota quitada pelas baixas aceitas: Ok; com saldo ainda, continua Conferido (15/10/2026)
+    const r = razaoCom('aberto');
+    const chave = r.itens[0].data + '|' + r.itens[0].nf + '|' + r.itens[0].valor.toFixed(2) + '|aberto';
+    const baixa = (centavos: number) => ({ [chave]: [{ data: '2026-08-20', valor: centavos, historico: 'PIX', banco: 'Banco' }] });
+    expect(situacaoDe(m, { nome: '', saldo: 0, situacao: 'conferido', razao: r, baixas: baixa(Math.round(r.itens[0].valor * 100)) })).toBe('ok');
+    expect(situacaoDe(m, { nome: '', saldo: 0, situacao: 'conferido', razao: r, baixas: baixa(1) })).toBe('conferido');
     // o Ok é do sistema: a conta zerada é Ok mesmo com razão; um Ok marcado antes não vale para quem tem saldo
     expect([situacaoDe(b, { nome: '', saldo: 0, situacao: 'conferido', razao: razaoCom('aberto') }), situacaoDe(m, { nome: '', saldo: 0, situacao: 'ok' })]).toEqual(['ok', 'pendente']);
   });

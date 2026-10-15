@@ -276,7 +276,7 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                                             {/* o banco: só o logo (o nome na dica), para sobrar espaço (Vitor, 15/10/2026) */}
                                             <td title={g.banco} style={{ width: 56 }}><span className="drive-candidato-logo" style={{ display: 'inline-flex' }} aria-label={g.banco}><LogoBanco banco={g.marca} cor /></span></td>
                                             <td style={{ whiteSpace: 'nowrap', width: 96 }}>{g.data}</td>
-                                            <td className="wrap" style={{ fontSize: 12 }}>{g.historico}</td>
+                                            <td title={g.historico} style={{ fontSize: 12, maxWidth: 0, width: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.historico}</td>
                                             <td className="num" style={{ whiteSpace: 'nowrap' }}>{g.valor}</td>
                                             <td style={{ width: 220 }}>
                                               <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
