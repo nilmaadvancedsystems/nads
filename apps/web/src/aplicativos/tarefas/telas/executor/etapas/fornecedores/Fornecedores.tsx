@@ -305,8 +305,8 @@ function ListaDeFornecedores({ vm }: { vm: VM }) {
                                             <td style={{ whiteSpace: 'nowrap', width: 96 }}>{g.data}</td>
                                             <td title={g.historico} style={{ fontSize: 12, maxWidth: 0, width: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.curto}</td>
                                             <td className="num" style={{ whiteSpace: 'nowrap' }}>{g.valor}</td>
-                                            <td style={{ width: 220 }}>
-                                              <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
+                                            <td style={{ whiteSpace: 'nowrap' }}>
+                                              <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'nowrap' }}>
                                                 {g.aceita ? <span className="badge badge-ok">Aceita</span> : g.recusada ? <span className="badge badge-neutral">Recusada</span> : g.selos.map(x => <span key={x.texto} className={'badge badge-' + x.tom} title={x.dica}>{x.texto}</span>)}
                                               </span>
                                             </td>
