@@ -81,7 +81,7 @@ export function inssDeTeste(meses: readonly string[]): { razao: RazaoDaConta; gu
       { codigo: '1170', variacao: '01', descricao: 'Contribuição Terceiros - Salário Educação', principal: VALORES.terceiros },
     ].map(it => ({ ...it, total: it.principal }));
     const total = centavos(itens.reduce((s, it) => s + it.principal, 0));
-    guias.push({ competencia: mes, numero: '0716260' + mes.replace('-', ''), vencimento: venc, pagaEm: venc, itens, principal: total, total });
+    guias.push({ competencia: mes, numero: '0716260' + mes.replace('-', ''), vencimento: venc, pagaEm: venc, banco: '756 - BANCO COOPERATIVO SICOOB S/A', itens, principal: total, total });
   });
   return { razao: montar(porMes, 0), guias };
 }

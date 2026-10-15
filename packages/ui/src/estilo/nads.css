@@ -4444,3 +4444,7 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .nf-andamento{margin:0;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink);font-variant-numeric:tabular-nums;}
 .nf-andamento svg{width:14px;height:14px;flex:none;color:var(--ink-muted);}
 .nf-andamento-linha{display:block;margin-top:3px;font-size:11.5px;color:var(--ink-muted);white-space:nowrap;font-variant-numeric:tabular-nums;}
+/* os cupons (NFC-e) na Sequência de saídas (15/10/2026: "numeração dos cupons, valor total, quantidade de cupons") */
+.sieg-cupons{margin:10px 0 12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));}
+.sieg-cupons-faixa{display:flex;flex-direction:column;gap:2px;font-size:15px;}
+.sieg-cupons-faixa small{font-size:11px;color:var(--ink-muted);font-weight:500;}

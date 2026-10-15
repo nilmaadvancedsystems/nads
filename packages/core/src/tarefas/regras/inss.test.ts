@@ -68,7 +68,7 @@ describe('as guias do INSS no PDF', () => {
       '0561 IRRF - Rendimento do Trabalho Assalariado 250,00 - - 250,00', '07 - IRRF - TRABALHO ASSALARIADO',
       '5952 Retenção Contrib Pagt de PJ a PJ Dir Priv 12,00 - - 12,00', '07 - CSRF',
       'Banco Data de Arrecadação', '756 - BANCO COOPERATIVO SICOOB S/A 19/06/2026']]);
-    expect(g.map(x => [x.itens.map(i => i.codigo), x.principal])).toEqual([[['1082'], 900]]);
+    expect(g.map(x => [x.itens.map(i => i.codigo), x.principal, x.documento, x.banco])).toEqual([[['1082'], 900, 1162, '756 - BANCO COOPERATIVO SICOOB S/A']]);
   });
   it('os pedaços do pdf.js viram linhas (de cima para baixo, da esquerda para a direita)', () => {
     expect(linhasDasPaginas([[{ texto: '452,70', x: 400, y: 700.2 }, { texto: '1082', x: 40, y: 700 }, { texto: 'Código', x: 40, y: 720 }]])).toEqual([['Código', '1082 452,70']]);

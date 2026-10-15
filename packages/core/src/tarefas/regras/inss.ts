@@ -28,9 +28,13 @@ export interface GuiaDoInss {
   vencimento: string;
   /** AAAA-MM-DD da arrecadação ('' = o comprovante não trouxe) */
   pagaEm: string;
+  /** o banco em que foi paga, como o comprovante traz ("756 - BANCO COOPERATIVO SICOOB S/A"; '' = não trouxe) */
+  banco: string;
   itens: ItemDaGuia[];
   principal: number;
   total: number;
+  /** o total do documento (o DARF inteiro, com o IRRF e a retenção que vêm junto; Vitor, 15/10/2026: "coloque o total da guia") */
+  documento?: number;
 }
 
 /** Um pedaço de texto do PDF (o leitor de PDF do Extrator devolve assim). */
@@ -71,7 +75,7 @@ export function guiasDasLinhas(paginas: readonly (readonly string[])[]): GuiaDoI
     for (const l of linhas) {
       const cab = l.match(RE_CABECALHO);
       if (cab) {
-        guia = porNumero.get(cab[3]) || { competencia: iso(cab[1]).slice(0, 7), vencimento: iso(cab[2]), numero: cab[3], pagaEm: '', itens: [], principal: 0, total: 0 };
+        guia = porNumero.get(cab[3]) || { competencia: iso(cab[1]).slice(0, 7), vencimento: iso(cab[2]), numero: cab[3], pagaEm: '', banco: '', itens: [], principal: 0, total: 0 };
         porNumero.set(cab[3], guia);
         continue;
       }
@@ -86,14 +90,19 @@ export function guiasDasLinhas(paginas: readonly (readonly string[])[]): GuiaDoI
       if (v && ultimo && !ultimo.variacao) { ultimo.variacao = v[1]; ultimo.descricao = v[2]; continue; }
       if (/Data de Arrecada/i.test(l)) { esperandoData = true; continue; }
       const data = l.match(/(\d{2}\/\d{2}\/\d{4})$/);
-      if (esperandoData && data) { guia.pagaEm = iso(data[1]); esperandoData = false; }
+      if (esperandoData && data) {
+        guia.pagaEm = iso(data[1]);
+        // o banco vem na mesma linha, antes da data (Vitor, 15/10/2026: "em qual banco foi paga aquela guia")
+        guia.banco = guia.banco || l.slice(0, l.length - data[1].length).trim();
+        esperandoData = false;
+      }
     }
   }
   return [...porNumero.values()]
     .filter(g => g.itens.some(i => grupoDoItem(i) !== 'outros'))
     // o DARF da DCTFWeb junta o IRRF (0561) e a retenção de PIS/COFINS/CSLL (5952) com o INSS: só o previdenciário entra
     // (Vitor, 15/10/2026: na 58, os R$ 12,37 do 5952 todo mês não deixavam a baixa casar com o pagamento do razão)
-    .map(g => ({ ...g, itens: g.itens.filter(ehPrevidenciario) }))
+    .map(g => ({ ...g, documento: centavos(g.itens.reduce((s, i) => s + i.total, 0)), itens: g.itens.filter(ehPrevidenciario) }))
     .map(g => ({ ...g, principal: centavos(g.itens.reduce((s, i) => s + i.principal, 0)), total: centavos(g.itens.reduce((s, i) => s + i.total, 0)) }))
     .sort((a, b) => a.competencia.localeCompare(b.competencia) || a.vencimento.localeCompare(b.vencimento));
 }

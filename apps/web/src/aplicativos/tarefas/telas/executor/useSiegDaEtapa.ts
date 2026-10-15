@@ -148,6 +148,8 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
       ...conf,
       quando: quando(sai.dados!.em),
       series: conf.series.map(x => ({ ...x, faltandoTexto: t.sieg.emFaixas(x.faltando), canceladasTexto: t.sieg.emFaixas(x.canceladas) })),
+      /** os cupons (NFC-e) do mês: quantidade, valor, numeração (15/10/2026) */
+      cupons: t.sieg.resumoDosCupons(conf),
     } : null,
     saidasCarregadas: sai.carregadas,
     pedido: pedido ? { ...pedido, pedindo } : null,
