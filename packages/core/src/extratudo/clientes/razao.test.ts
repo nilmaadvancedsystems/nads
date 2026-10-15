@@ -158,3 +158,12 @@ describe('a nota de serviço (o número com os zeros na frente, sem "venda" no h
     expect(r.saldo).toBe(800);
   });
 });
+
+describe('o CNPJ com a barra e o traço depois da nota', () => {
+  it('"… n°  - 456-12345678/0001-90-CLIENTE" fica em aberto como a NF 456', () => {
+    const linhas = [CAB,
+      ['VERDADEIRO', '', '03/06/2026', '00227', '75002', 'Venda de Produtos', -1000, '00194', 'Pelas vendas de mercadorias a prazo conforme Nota Fiscal Eletronica n°  - 456-12345678/0001-90-CLIENTE TESTE LTDA ', -1000, ''],
+    ];
+    expect(conferirRazaoDoCliente(lerRazao(linhas), '2026-08').emAberto.map(n => [n.nf, n.aberto])).toEqual([['456', 1000]]);
+  });
+});

@@ -38,7 +38,8 @@ const zero = (n: number) => Math.abs(n) < 0.005;
  * cliente com nota de serviço dava "nenhuma nota em aberto").
  */
 function nfDoHistorico(h: string): string | null {
-  const n = /-\s*(\d{1,15})-\d{11,14}\b/.exec(h)?.[1];
+  // o CNPJ depois da nota vem só com os números ("…-11222333000144") ou com a barra e o traço ("…-11222333/0001-44")
+  const n = /-\s*(\d{1,15})-(?:\d{11,14}\b|\d{2}\.?\d{3}\.?\d{3}\/\d{4}-\d{2}\b)/.exec(h)?.[1];
   return n ? n.replace(/^0+(?=\d)/, '') : null;
 }
 
