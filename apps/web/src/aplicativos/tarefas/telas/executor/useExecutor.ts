@@ -146,6 +146,9 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       const a = cl.adiantamentoNoDinamico(din.d, meses, de);
       ajustarPeloBalancete({ etapa, ...a, motivo: (a.com.length ? nome + ' com saldo' : 'Sem ' + nome.toLowerCase()) + ' no balancete dinâmico' });
     }
+    // o Empréstimos também (Vitor, 15/10/2026: "da mesma forma de empréstimo, tire ele daqui")
+    const e = cl.emprestimosNoDinamico(din.d, meses);
+    ajustarPeloBalancete({ etapa: 'emprestimos', ...e, motivo: (e.com.length ? 'Empréstimo ou financiamento com saldo' : 'Sem empréstimo nem financiamento') + ' no balancete dinâmico' });
   });
   const [aviso, setAviso] = useState<string | null>(null);
   const [conferindo, setConferindo] = useState(false);

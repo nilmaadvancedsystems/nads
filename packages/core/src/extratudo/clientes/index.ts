@@ -120,7 +120,20 @@ const ADIANTAMENTO: Record<LadoDaConta, RegExp> = {
  * Só os meses que o dinâmico tem.
  */
 export function adiantamentoNoDinamico(d: BalanceteDinamico, meses: readonly string[], de: LadoDaConta): { cobertos: string[]; com: string[] } {
-  const contas = d.linhas.filter(l => ADIANTAMENTO[de].test(normalizarTexto(l.descricao)));
+  return mesesComSaldo(d, meses, d.linhas.filter(l => ADIANTAMENTO[de].test(normalizarTexto(l.descricao))));
+}
+
+/**
+ * Os meses do período em que o dinâmico tem empréstimo ou financiamento (Vitor, 15/10/2026: "da mesma forma de
+ * empréstimo, tire ele daqui"): no Passivo (classificação 2…), alguma conta "Empréstimos" ou "Financiamentos" com saldo
+ * no mês ou no de antes. O "Empréstimo a sócios" do Ativo e os juros (despesa) não contam.
+ */
+export function emprestimosNoDinamico(d: BalanceteDinamico, meses: readonly string[]): { cobertos: string[]; com: string[] } {
+  return mesesComSaldo(d, meses, d.linhas.filter(l => l.classificacao.startsWith('2') && /^(emprestimos?|financiamentos?)\b/.test(normalizarTexto(l.descricao))));
+}
+
+/** Os meses que o dinâmico cobre e, deles, os em que alguma das contas tem saldo no mês ou no de antes. */
+function mesesComSaldo(d: BalanceteDinamico, meses: readonly string[], contas: readonly LinhaDinamico[]): { cobertos: string[]; com: string[] } {
   const antes = (m: string) => { const [a, x] = m.split('-').map(Number); return x === 1 ? (a - 1) + '-12' : a + '-' + String(x - 1).padStart(2, '0'); };
   const saldo = (l: LinhaDinamico, m: string) => (m in l.saldos ? l.saldos[m] : m < (d.meses[0] || '') ? l.saldoAnterior : 0);
   const cobertos = meses.filter(m => d.meses.includes(m));
