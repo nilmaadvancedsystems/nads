@@ -288,7 +288,8 @@ export function dadosDaDanfse(xml: string, municipios: Record<string, string> = 
     },
     ibsCbs: {
       cst: ou(texto(ibs, 'valores', 'trib', 'gIBSCBS', 'CST')) + ' / ' + ou(texto(ibs, 'valores', 'trib', 'gIBSCBS', 'cClassTrib')),
-      operacao: ou(texto(ibs, 'cIndOp')) + ' / ' + ou(texto(ibs, 'cLocalidadeIncid')) + ' / ' + ou(ufDoIbge(texto(ibs, 'cLocalidadeIncid'))),
+      // Indicador de Operação / Código IBGE Incidência / Município Incidência / Sigla UF (os quatro, como no modelo da NT 008)
+      operacao: ou(texto(ibs, 'cIndOp')) + ' / ' + ou(texto(ibs, 'cLocalidadeIncid')) + ' / ' + ou(texto(ibs, 'xLocalidadeIncid')) + ' / ' + ou(ufDoIbge(texto(ibs, 'cLocalidadeIncid'))),
       exclusoes: moeda('0'),
       baseAposExclusoes: moeda(texto(ibs, 'valores', 'trib', 'gIBSCBS', 'vBC') || '0'),
       reducao: '- / -',

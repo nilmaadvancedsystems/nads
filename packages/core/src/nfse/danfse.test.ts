@@ -41,6 +41,10 @@ describe('os dados da DANFSe (15/10/2026: "faz o danf poder ser baixado")', () =
     expect(d.informacoes).toBe('Inf. Cont.: Percentual aproximado de tributos: 16,42% Fonte: IBPT | Totais Aproximados dos Tributos cfe. Lei nº 12.741/2012: Federais: -; Estaduais: -; Municipais: -;');
   });
 
+  it('o indicador de operação traz os quatro campos do modelo da NT 008 (sem IBS/CBS na nota, todos "-")', () => {
+    expect(d.ibsCbs.operacao).toBe('- / - / - / -');
+  });
+
   it('recusa o que não é uma NFS-e autorizada', () => {
     expect(() => dadosDaDanfse('<html></html>')).toThrow(/infNFSe/);
   });

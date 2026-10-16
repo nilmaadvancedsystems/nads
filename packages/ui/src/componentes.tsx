@@ -480,3 +480,105 @@ export function MedalhaGov({ nivel }: { nivel: string }) {
   if (!m) return <span className="fraco">{nivel.trim() || '—'}</span>;
   return <span className={'medalha medalha-' + m.classe} title={'Nível ' + m.rotulo + ' (gov.br)'}><span className="medalha-moeda" aria-hidden="true">{m.rotulo.charAt(0)}</span>{m.rotulo}</span>;
 }
+
+/** O quadro da assinatura pronto para desenhar (no tamanho da tela e com o traço do Entregas). */
+function quadroDaAssinatura(c: HTMLCanvasElement | null, altura: number) {
+  const ctx = c?.getContext('2d');
+  if (!c || !ctx) return null;
+  const escala = window.devicePixelRatio || 1;
+  // o tamanho de verdade na tela (dentro da borda): o desenho não estica
+  const largura = c.clientWidth || 320;
+  const alto = c.clientHeight || altura;
+  if (c.width !== Math.round(largura * escala) || c.height !== Math.round(alto * escala)) {
+    c.width = Math.round(largura * escala);
+    c.height = Math.round(alto * escala);
+  }
+  ctx.setTransform(escala, 0, 0, escala, 0, 0);
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#16211E';
+  return { ctx, largura, alto };
+}
+function limparAssinatura(c: HTMLCanvasElement | null, altura: number) {
+  const q = quadroDaAssinatura(c, altura);
+  if (!q) return;
+  q.ctx.fillStyle = '#FFFFFF';
+  q.ctx.fillRect(0, 0, q.largura, q.alto);
+}
+
+/**
+ * A assinatura com o dedo, a caneta ou o mouse (16/10/2026, a entrega de documentos no nads: "quero integrar no app … o
+ * entregas"): o quadro branco (é papel: fica branco também no tema escuro), "Assine aqui" apagado no meio enquanto vazio, e
+ * o Limpar. A cada traço devolve a imagem (PNG em data URL, fundo branco e traço escuro, como o Entregas grava); ao
+ * limpar, null. Com `valor` vindo de fora (a assinatura já colhida), desenha ela.
+ */
+export function CampoAssinatura({ valor, onMudar, rotulo = 'Assinatura', altura = 160 }: {
+  valor: string | null; onMudar: (dataUrl: string | null) => void; rotulo?: string; altura?: number;
+}) {
+  const quadro = useRef<HTMLCanvasElement>(null);
+  const desenhando = useRef(false);
+  /** o que este quadro devolveu por último (para não redesenhar a própria assinatura) */
+  const devolvido = useRef<string | null | undefined>(undefined);
+  const [vazio, setVazio] = useState(!valor);
+
+  // a assinatura de fora (ou o "limpar" de fora): redesenha só quando o valor não é o que este quadro acabou de devolver
+  useEffect(() => {
+    if (valor === devolvido.current) return;
+    devolvido.current = valor;
+    limparAssinatura(quadro.current, altura);
+    setVazio(!valor);
+    if (!valor) return;
+    const img = new Image();
+    img.onload = () => { const q = quadroDaAssinatura(quadro.current, altura); if (q) q.ctx.drawImage(img, 0, 0, q.largura, q.alto); };
+    img.src = valor;
+  }, [valor, altura]);
+
+  const ponto = (ev: { clientX: number; clientY: number; currentTarget: HTMLCanvasElement }) => {
+    const r = ev.currentTarget.getBoundingClientRect();
+    return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+  };
+  return (
+    <div className="assinatura">
+      <div className="assinatura-quadro" style={{ height: altura }}>
+        <canvas ref={quadro} aria-label={rotulo} role="img"
+          onPointerDown={ev => {
+            const q = quadroDaAssinatura(quadro.current, altura);
+            if (!q) return;
+            ev.currentTarget.setPointerCapture(ev.pointerId);
+            desenhando.current = true;
+            const { x, y } = ponto(ev);
+            q.ctx.beginPath();
+            q.ctx.moveTo(x, y);
+            q.ctx.lineTo(x + 0.1, y + 0.1);
+            q.ctx.stroke();
+            setVazio(false);
+          }}
+          onPointerMove={ev => {
+            if (!desenhando.current) return;
+            const ctx = quadro.current?.getContext('2d');
+            if (!ctx) return;
+            const { x, y } = ponto(ev);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+          }}
+          onPointerUp={() => {
+            if (!desenhando.current) return;
+            desenhando.current = false;
+            const url = quadro.current?.toDataURL('image/png') || null;
+            devolvido.current = url;
+            onMudar(url);
+          }}
+          onPointerCancel={() => { desenhando.current = false; }} />
+        {vazio && <span className="assinatura-vazia" aria-hidden="true"><Icone nome="lapis" />Assine aqui</span>}
+      </div>
+      <div className="assinatura-pe">
+        <span className={'assinatura-status' + (vazio ? '' : ' ok')}>{vazio ? 'Sem assinatura ainda.' : <><Icone nome="checkCircle" />Assinatura colhida.</>}</span>
+        <button type="button" className="btn btn-ghost" disabled={vazio}
+          onClick={() => { devolvido.current = null; limparAssinatura(quadro.current, altura); setVazio(true); onMudar(null); }}>
+          <Icone nome="x" />Limpar
+        </button>
+      </div>
+    </div>
+  );
+}

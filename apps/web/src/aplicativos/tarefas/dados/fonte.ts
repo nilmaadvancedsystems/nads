@@ -17,6 +17,8 @@ import { criarFgtsMemoria, type RepoFgts } from './fgts';
 import { criarFgtsFirestore } from './fgts.firestore';
 import { criarNfseMemoria, type RepoNfse } from './nfse';
 import { criarNfseFirestore } from './nfse.firestore';
+import { criarEntregasDeDocumentosMemoria, type RepoEntregasDeDocumentos } from './entregasDeDocumentos';
+import { criarEntregasDeDocumentosFirestore } from './entregasDeDocumentos.firestore';
 import { criarSiegMemoria, type RepoSieg } from './sieg';
 import { criarSiegFirestore } from './sieg.firestore';
 import { criarArquivadorFirestore } from './arquivador.firestore';
@@ -27,6 +29,8 @@ import { criarCategoriasDpMemoria, type RepoCategoriasDp } from './categoriasDp'
 import { criarCategoriasDpFirestore } from './categoriasDp.firestore';
 import { criarLegislacaoDpMemoria, type RepoLegislacaoDp } from './legislacaoDp';
 import { criarLegislacaoDpFirestore } from './legislacaoDp.firestore';
+import { criarLcdprMemoria, type RepoLcdpr } from './lcdpr';
+import { criarLcdprFirestore } from './lcdpr.firestore';
 import { criarFeedbackFirestore } from './feedback.firestore';
 import { criarPessoalMemoria, type RepoPessoal } from './pessoal';
 import { criarPessoalFirestore } from './pessoal.firestore';
@@ -319,6 +323,14 @@ export function repoDeNfse(): RepoNfse {
   return notasFiscais;
 }
 
+let entregasDeDocumentos: RepoEntregasDeDocumentos | null = null;
+
+/** A entrega de documentos aos clientes (16/10/2026): a rota e o painel do Entregas, nos mesmos documentos de lá. */
+export function repoDeEntregasDeDocumentos(): RepoEntregasDeDocumentos {
+  if (!entregasDeDocumentos) entregasDeDocumentos = noBanco ? criarEntregasDeDocumentosFirestore(() => quemPede()?.nome || '') : criarEntregasDeDocumentosMemoria();
+  return entregasDeDocumentos;
+}
+
 let agentes: RepoAgentes | null = null;
 
 /** O painel dos agentes do Claude Code (14/10/2026): os computadores cadastrados (painelMaquinas) e as conversas que cada um grava; só o admin. */
@@ -367,6 +379,14 @@ let legislacaoDp: RepoLegislacaoDp | null = null;
 export function repoDeLegislacaoDp(): RepoLegislacaoDp {
   if (!legislacaoDp) legislacaoDp = noBanco ? criarLegislacaoDpFirestore(() => quemPede()?.nome || '') : criarLegislacaoDpMemoria();
   return legislacaoDp;
+}
+
+let lcdprRepo: RepoLcdpr | null = null;
+
+/** O Importador LCDPR (16/10/2026): as regras e os cadastros no lcdpr/config do Entregas (o mesmo da página antiga); nos exemplos, na memória. */
+export function repoDoLcdpr(): RepoLcdpr {
+  if (!lcdprRepo) lcdprRepo = noBanco ? criarLcdprFirestore() : criarLcdprMemoria();
+  return lcdprRepo;
 }
 
 export function repoDaIA(): RepoIA {

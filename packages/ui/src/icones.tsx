@@ -77,6 +77,8 @@ const ICONS = {
   impressora: '<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/>',
   // a cédula: o Caixa da tarefa (Vitor, 14/10/2026: "troca o ícone do caixa", era a maleta das empresas)
   dinheiro: '<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01"/><path d="M18 12h.01"/>',
+  // o caminhão: as Entregas (16/10/2026, a entrega de documentos aos clientes, trazida do Entregas)
+  caminhao: '<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>',
 } as const;
 
 export type NomeIcone = keyof typeof ICONS;

@@ -35,6 +35,7 @@ export const TELAS: Tela[] = [
   { id: 't-insights', app: 'Tarefas', nome: 'Insights' },
   { id: 't-contabil', app: 'Tarefas', nome: 'Contábil' },
   { id: 't-empresa', app: 'Tarefas', nome: 'Página da empresa' },
+  { id: 't-empresa-lcdpr', app: 'Tarefas', nome: 'Página da empresa › LCDPR' },
   { id: 't-exec-importacao', app: 'Tarefas', nome: 'Executor › Importação' },
   { id: 't-exec-cheque', app: 'Tarefas', nome: 'Executor › Cheque especial' },
   { id: 't-exec-fiscal', app: 'Tarefas', nome: 'Executor › Conferência fiscal' },
@@ -49,6 +50,7 @@ export const TELAS: Tela[] = [
   { id: 't-drive', app: 'Tarefas', nome: 'Drive' },
   { id: 't-gmail', app: 'Tarefas', nome: 'Gmail' },
   { id: 't-mandei', app: 'Tarefas', nome: 'Mandei (tickets)' },
+  { id: 't-entregas', app: 'Tarefas', nome: 'Entregas (Rota e Painel)' },
   // Mandei: o formulário que o cliente abre pelo link
   { id: 'm-formulario', app: 'Mandei', nome: 'Formulário do cliente' },
   // Extratudo
