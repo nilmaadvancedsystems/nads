@@ -146,7 +146,7 @@ export function RazaoDaEtapa({ conta, razao, conferir, teste = [] }: { conta: st
                   caixa e também saiu do banco, com o mesmo valor, até 5 dias; só sugere */}
               {/* o conciliador (Vitor, 16/10/2026: "era essa função que eu queria"): as notas em aberto pagas ou recebidas pelo caixa */}
               {conta === 'caixa' && (
-                <FaixaQueAbre titulo="Notas em aberto no caixa" qtd={razao.noBanco.notas.length} aviso={razao.noBanco.notas.length > 0}>
+                <FaixaQueAbre titulo="Notas e pagamentos do banco no caixa" qtd={razao.noBanco.notas.length} aviso={razao.noBanco.notas.length > 0}>
                   <div className="imp-mov-caixa"><TabelaNotasNoCaixa vm={razao.noBanco} /></div>
                 </FaixaQueAbre>
               )}
