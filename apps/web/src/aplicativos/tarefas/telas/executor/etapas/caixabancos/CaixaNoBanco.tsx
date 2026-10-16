@@ -46,3 +46,47 @@ export function TabelaCaixaNoBanco({ vm }: { vm: CaixaNoBancoDoRazao }) {
     </div>
   );
 }
+
+/** O conciliador das notas em aberto no caixa: a nota (o fornecedor ou o cliente, a NF, quanto falta e como bateu) e, embaixo, os lançamentos do caixa. */
+export function TabelaNotasNoCaixa({ vm }: { vm: CaixaNoBancoDoRazao }) {
+  if (!vm.qtdNotas) return <p className="hint">Nenhuma nota em aberto para procurar: importe os razões de Fornecedores e de Clientes (na Importação ou nas etapas).</p>;
+  if (!vm.notas.length) return <p className="hint">Nenhuma das {vm.qtdNotas} notas em aberto está no caixa.</p>;
+  return (
+    <div className="table-wrap" style={{ maxHeight: 'none' }}>
+      <table className="table-compact">
+        <thead><tr><th>Lado</th><th>Conta</th><th>Nome</th><th>NF</th><th className="num">Em aberto</th><th>Como bateu</th></tr></thead>
+        <tbody>
+          {vm.notas.map(n => (
+            <Fragment key={n.id}>
+              <tr>
+                <td>{n.lado}</td>
+                <td>{n.conta}</td>
+                <td className="wrap">{n.nome}</td>
+                <td>{n.nf}</td>
+                <td className="num" style={{ whiteSpace: 'nowrap' }}>{n.aberto}</td>
+                <td style={{ whiteSpace: 'nowrap' }}><span className={'badge ' + (n.pelaNf ? 'badge-ok' : 'badge-neutral')}>{n.como}</span></td>
+              </tr>
+              <tr>
+                <td colSpan={6} style={{ padding: 0 }}>
+                  <table className="table-compact" aria-label={'No caixa: NF ' + n.nf}>
+                    <tbody>
+                      {n.lancamentos.map(l => (
+                        <tr key={l.id} style={{ background: 'var(--surface-2)' }}>
+                          <td style={{ whiteSpace: 'nowrap', width: 96 }}>{l.data}</td>
+                          <td className="hint" style={{ whiteSpace: 'nowrap' }}>{l.contrapartida || '—'}</td>
+                          <td title={l.historico} style={{ fontSize: 12, maxWidth: 0, width: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.historico}</td>
+                          <td className="num" style={{ whiteSpace: 'nowrap' }}>{l.valor}</td>
+                          <td style={{ whiteSpace: 'nowrap' }}><span className="badge badge-neutral">{l.sentido}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </td>
+              </tr>
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}

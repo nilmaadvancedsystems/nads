@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { caixaNoBanco, type LancamentoDoExtrato } from './caixaNoBanco';
+import { caixaNoBanco, notasNoCaixa, type LancamentoDoExtrato } from './caixaNoBanco';
 import type { LancamentoDoRazao } from './razao';
 
 // valores e nomes inventados
@@ -26,6 +26,27 @@ describe('o caixa × os bancos (16/10/2026)', () => {
     const r = caixaNoBanco(caixa, extrato, ['2026-03']);
     expect(r.map(x => [x.caixa.historico, x.noBanco.map(b => [b.data, b.dias])])).toEqual([
       ['Pagamento de energia', [['2026-03-08', -2], ['2026-03-12', 2]]],
+    ]);
+  });
+  it('a nota em aberto paga pelo caixa: pelo número da NF, ou pelo valor em parcelas iguais (16/10/2026)', () => {
+    const cx = [
+      // o boleto do fornecedor pago pelo banco e lançado como entrada no caixa (três parcelas da NF 240100)
+      C('2026-07-02', -3143.31, 'DÉB. PAGAMENTO DE BOLETO FORNECEDOR EXEMPLO NF 240100 1a3', 'Banco Sicoob'),
+      C('2026-07-17', -3143.31, 'DÉB. PAGAMENTO DE BOLETO FORNECEDOR EXEMPLO NF 240100 2a3', 'Banco Sicoob'),
+      C('2026-08-03', -3143.31, 'DÉB. PAGAMENTO DE BOLETO FORNECEDOR EXEMPLO NF 240100 3a3', 'Banco Sicoob'),
+      // a nota de outro fornecedor paga em dinheiro, em duas vezes, sem a NF no histórico
+      C('2026-07-10', 500, 'Pagamento fornecedor', 'Fornecedores'),
+      C('2026-07-25', 500, 'Pagamento fornecedor', 'Fornecedores'),
+      // o saque: não é pagamento
+      C('2026-07-05', -1000, 'SAQUE EM DINHEIRO', 'Banco Sicoob'),
+    ];
+    const notas = [
+      { lado: 'fornecedor' as const, conta: '98000', nome: 'FORNECEDOR EXEMPLO LTDA', nf: '240100', aberto: 9429.93 },
+      { lado: 'fornecedor' as const, conta: '98001', nome: 'FORNECEDOR MODELO ME', nf: '555', aberto: 1000 },
+      { lado: 'fornecedor' as const, conta: '98002', nome: 'FORNECEDOR SEM NADA', nf: '777', aberto: 1000 },
+    ];
+    expect(notasNoCaixa(cx, ['2026-07', '2026-08'], notas).map(x => [x.nota.conta, x.como, x.vezes, x.lancamentos.length])).toEqual([
+      ['98000', 'nf', 3, 3], ['98001', 'valor', 2, 2],
     ]);
   });
   it('sem extrato, nada', () => {

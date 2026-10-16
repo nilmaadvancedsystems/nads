@@ -7,7 +7,7 @@ import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import type { RazaoDaEtapa as Razao } from '../useRazaoDaEtapa';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../comum/BotaoDeTeste';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosMeses';
-import { TabelaCaixaNoBanco } from '../etapas/caixabancos/CaixaNoBanco';
+import { TabelaCaixaNoBanco, TabelaNotasNoCaixa } from '../etapas/caixabancos/CaixaNoBanco';
 
 type Linha = Razao['lancamentos'][number];
 
@@ -144,6 +144,12 @@ export function RazaoDaEtapa({ conta, razao, conferir, teste = [] }: { conta: st
               </FaixaQueAbre>
               {/* o Caixa × bancos, agora aqui (Vitor, 16/10/2026: a mesma pergunta e o mesmo razão do Caixa): o que saiu do
                   caixa e também saiu do banco, com o mesmo valor, até 5 dias; só sugere */}
+              {/* o conciliador (Vitor, 16/10/2026: "era essa função que eu queria"): as notas em aberto pagas ou recebidas pelo caixa */}
+              {conta === 'caixa' && (
+                <FaixaQueAbre titulo="Notas em aberto no caixa" qtd={razao.noBanco.notas.length} aviso={razao.noBanco.notas.length > 0}>
+                  <div className="imp-mov-caixa"><TabelaNotasNoCaixa vm={razao.noBanco} /></div>
+                </FaixaQueAbre>
+              )}
               {conta === 'caixa' && (
                 <FaixaQueAbre titulo="Pago pelo banco e lançado no caixa" qtd={razao.noBanco.itens.length} aviso={razao.noBanco.itens.length > 0}>
                   <div className="imp-mov-caixa"><TabelaCaixaNoBanco vm={razao.noBanco} /></div>
