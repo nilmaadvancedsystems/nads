@@ -615,6 +615,10 @@ async function iniciar() {
   catch (err) { log('Alterdata não ligou:', err.message); }
   try { require('./sieg').iniciarSieg({ db, log }); }
   catch (err) { log('SIEG desligado:', err.message); }
+  // a Área do Cliente (16/10/2026): o espelho de cada link secreto e as caixas de chamados e de arquivos do cliente; aqui
+  // porque o arquivo do cliente vai para a pasta dele no G: deste PC
+  try { require('./area-cliente').iniciarAreaDoCliente(db, log); }
+  catch (err) { log('Área do Cliente não ligou:', err.message); }
   // o painel dos agentes do Claude Code (14/10/2026): saiu do robô. Cada computador cadastrado no nads grava as próprias
   // conversas pelo gancho ~/.claude/painel/registro.js (painelMaquinas/{chave}/sessoes); o painelAgentes ficou sem uso.
 
