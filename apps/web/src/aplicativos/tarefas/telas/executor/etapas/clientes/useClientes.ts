@@ -193,8 +193,6 @@ export function useClientes() {
   // sem a etapa Saldo credor (Vitor, 07/10/2026: "remove esse saldo credor e deixe só arquivos"): o credor fica na grade dos
   // Arquivos e, no lugar do Próximo travado, o "Corrigi, irei reimportar" (tira o dinâmico para importar o corrigido)
   const telas: TelaClientes[] = ['arquivos', 'clientes', 'envio'];
-  // algum razão importado (ou lançamento digitado): sem nenhum, o Envio some e o Próximo da lista também (Vitor, 08/10/2026)
-  const algumRazao = linhas.some(l => !!l.razao);
   const i = telas.indexOf(tela);
   const podeSeguir = tela === 'arquivos' ? arquivosProntos && contas.length > 0 && !credores.length : tela === 'clientes';
   // na Tarefa: os arquivos e nenhum credor (a pessoa pode dar o check normal depois; os conferidos passam para o mês seguinte)
@@ -207,7 +205,9 @@ export function useClientes() {
   // que a pessoa upa e quer questionar, bloqueie o avançar"); mudou depois de mandar, trava de novo
   const assinatura = cl.assinaturaDoEnvio(paraEnviar.map(l => ({ codigo: l.codigo, perguntar: cl.itensEscolhidos(l.razao, l.perguntar).map(cl.chaveDoItem) })));
   const faltaMandar = !!assinatura && marcas.doc.enviado !== assinatura;
-  const faltam = [...faltamDosArquivos, ...(faltaMandar ? ['Mandar pelo Mandei o que vai ser questionado (' + paraEnviar.length + (paraEnviar.length === 1 ? ' cliente)' : ' clientes)')] : [])];
+  // o que vai para o cliente é mandado no Fechamento, num envio só com o de Fornecedores (Vitor, 16/10/2026)
+  void faltaMandar;
+  const faltam = [...faltamDosArquivos];
   useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
   // o dinâmico diz se o Adiantamento a fornecedores e o de clientes entram (Vitor, 15/10/2026: "a 58 não tem, então não
   // coloque como etapa"; "faz no adiantamento de clientes também")
@@ -223,12 +223,14 @@ export function useClientes() {
     mes: rotuloMes,
     // sem questionamento, o Envio fica travado (Vitor, 15/10/2026): quem estava nele volta para a lista
     tela: telas.includes(tela) ? (tela === 'envio' && !paraEnviar.length ? 'clientes' : tela) : 'arquivos',
-    telas: telas.map((t, k) => ({ valor: t, rotulo: t === 'arquivos' ? 'Arquivos' : t === 'clientes' ? 'Clientes' : 'Envio', oculta: t === 'envio' && !algumRazao, travada: t === 'envio' && !paraEnviar.length ? 'Nada para questionar' : k > alcancada ? 'Chega aqui pelo Próximo' : false as const })),
+    telas: telas.map((t, k) => ({ valor: t, rotulo: t === 'arquivos' ? 'Arquivos' : t === 'clientes' ? 'Clientes' : 'Envio', oculta: t === 'envio', travada: t === 'envio' && !paraEnviar.length ? 'Nada para questionar' : k > alcancada ? 'Chega aqui pelo Próximo' : false as const })),
     irPara: (t: TelaClientes) => { if (telas.indexOf(t) <= alcancada && (t !== 'envio' || paraEnviar.length)) setTela(t); },
     // sem questionamento, sem o Próximo para o Envio (Vitor, 15/10/2026)
-    temProxima: i < telas.length - 1 && (telas[i] !== 'clientes' || (algumRazao && paraEnviar.length > 0)),
+    temProxima: i < telas.length - 1 && telas[i] !== 'clientes',
     /** na lista, tudo certo e nada para questionar: segue pela seta da próxima etapa, lá em cima */
-    semQuestionamento: tela === 'clientes' && !faltam.length && !paraEnviar.length,
+    semQuestionamento: tela === 'clientes' && !faltam.length,
+    /** a dica no lugar do Próximo: o que vai ser questionado segue para o Fechamento */
+    dicaDoFim: paraEnviar.length ? 'O que vai ser questionado vai junto no Fechamento (um envio só): siga pela seta acima' : 'Nada para questionar: siga para a próxima etapa pela seta acima',
     podeSeguir,
     proximo: () => { if (podeSeguir && i < telas.length - 1) setTela(telas[i + 1]); },
     /** nos Arquivos com cliente credor no mês: o "Corrigi, irei reimportar" no lugar do Próximo (deu tudo ok, volta o Próximo) */

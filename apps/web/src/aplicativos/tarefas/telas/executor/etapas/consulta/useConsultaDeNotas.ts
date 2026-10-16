@@ -2,17 +2,19 @@
 // clientes, adicione a consulta de saídas e prestados; em fornecedores, entradas e tomados — para o usuário conseguir
 // consultar a nota"). As notas importadas na Conferência, nos meses da etapa: um tipo de cada vez, a busca (nome, número,
 // CFOP, lançamento) e a ordem da Consulta do Concilia aí (conferencia/regras/consulta.ts). Só olhar.
-import { conferencia as c, formatos } from '@nads/core';
+import { conferencia as c, demo, formatos } from '@nads/core';
 import { useMemo, useState } from 'react';
-import { useNotasDaConferencia } from '../../../../../concilia-ai/importadosNaEtapa';
-import { useEtapaAberta } from '../contexto';
+import { implantarNotasFiscaisDeTeste, useNotasDaConferencia } from '../../../../../concilia-ai/importadosNaEtapa';
+import { useDadosDeTesteDaEtapa, useEtapaAberta } from '../contexto';
 
 export type TipoConsultado = 'entradas' | 'saidas' | 'tomados' | 'prestados';
 
 const ROTULO: Record<TipoConsultado, string> = { entradas: 'Entradas', saidas: 'Saídas', tomados: 'Tomados', prestados: 'Prestados' };
 
 export function useConsultaDeNotas(tipos: readonly [TipoConsultado, TipoConsultado]) {
-  const { nome, meses } = useEtapaAberta();
+  const { nome, meses, dev } = useEtapaAberta();
+  // o ⚡ do modo desenvolvedor: as notas de teste do Fiscal (16/10/2026)
+  useDadosDeTesteDaEtapa(dev ? [...demo.OPCOES_FISCAIS_DE_TESTE] : [], id => { implantarNotasFiscaisDeTeste(nome, meses, id); });
   const notas = useNotasDaConferencia(nome);
   const [tipo, setTipo] = useState<TipoConsultado>(tipos[0]);
   const [busca, setBusca] = useState('');

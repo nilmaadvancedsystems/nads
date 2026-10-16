@@ -41,7 +41,7 @@ export function VisaoContabil({ pagina, dep }: { pagina: string; dep?: 'contabil
             <div className="card-head"><h3>Etapas em {vm.totalEmpresas} empresas</h3></div>
             <div className="table-wrap">
               <table>
-                <thead><tr><th>Etapa</th><th /><th className="num">Feitas</th><th className="num">Não se aplica</th><th className="num">Paradas</th><th className="num">Pendentes</th></tr></thead>
+                <thead><tr><th>Etapa</th><th /><th className="num">Feitas</th><th className="num">Não se aplica</th><th className="num">Paradas</th><th className="num">Pendentes</th><th className="num" title="A mediana do tempo da etapa (na mesma sentada)">Tempo</th></tr></thead>
                 <tbody>
                   {vm.etapas.map(e => (
                     <tr key={e.etapa}>
@@ -56,6 +56,9 @@ export function VisaoContabil({ pagina, dep }: { pagina: string; dep?: 'contabil
                       <td className="num">{e.dispensadas}</td>
                       <td className="num">{e.interrompidas}</td>
                       <td className="num">{e.pendentes}</td>
+                      <td className="num" title={vm.tempos[e.etapa] ? 'Mediana de ' + vm.tempos[e.etapa].n + (vm.tempos[e.etapa].n === 1 ? ' vez' : ' vezes') : undefined}>
+                        {vm.tempos[e.etapa] ? (vm.tempos[e.etapa].minutos >= 60 ? Math.floor(vm.tempos[e.etapa].minutos / 60) + 'h' + String(vm.tempos[e.etapa].minutos % 60).padStart(2, '0') : vm.tempos[e.etapa].minutos + ' min') : '—'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

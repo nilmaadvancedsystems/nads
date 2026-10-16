@@ -9,7 +9,7 @@
 //   à direita: "Não teve movimento" (trava a linha e vira "Desfazer"); com o extrato vindo do Drive, um
 //     botãozinho de PDF (abre pelo link temporário). O movimento se vê pela setinha.
 // Ao importar, só uma barrinha por cima da tela, que some em 2,7 s.
-import { demo, extrator as x, type conferencia, tarefas } from '@nads/core';
+import { clientes as cl, demo, extrator as x, type conferencia, tarefas } from '@nads/core';
 import { Alerta, classeDaJanela, destacarNaTela, Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
 import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { useDadosDeTesteNaTarefa, usePonteDaTarefa, useRequisitosParaATarefa, type OpcaoDeTeste } from '../../../../../../comum/ponte';
@@ -101,6 +101,9 @@ const OPCOES_DE_TESTE: OpcaoDeTeste[] = [
   { id: 'bate', rotulo: 'Razão batendo' },
   { id: 'cheque', rotulo: 'Razão com o cheque especial' },
   { id: 'erros', rotulo: 'Razão com erros (para ver as pendências)' },
+  // o balancete dinâmico de teste da empresa toda (a aba Balancete e razões; 16/10/2026)
+  { id: 'dinamico-certo', rotulo: 'Balancete dinâmico de teste (tudo certo)' },
+  { id: 'dinamico-erros', rotulo: 'Balancete dinâmico de teste (com pendências)' },
   { id: 'apagar', rotulo: 'Apagar os dados de teste' },
 ];
 
@@ -560,6 +563,7 @@ export function TarefaExtratos() {
   useDadosDeTesteNaTarefa(!ehTeste ? [] : vm.etapaFiscal ? [...demo.OPCOES_FISCAIS_DE_TESTE] : primeiroBanco ? OPCOES_DE_TESTE : [], tipo => {
     if (vm.etapaFiscal) { implantarNotasFiscaisDeTeste(s.nome, vm.periodo.length > 1 ? vm.periodo : [vm.competencia], tipo); return; }
     if (tipo === 'apagar') { vm.apagarDadosDeTeste(); return; }
+    if (tipo === 'dinamico-certo' || tipo === 'dinamico-erros') { contabil.usarDinamico('TESTE balancete dinâmico.xls', cl.dinamicoCompletoDeTeste(mesesDaEtapa, tipo === 'dinamico-erros')); return; }
     if (primeiroBanco && (tipo === 'extratos' || tipo === 'bate' || tipo === 'cheque' || tipo === 'erros')) void vm.implantarDadosDeTeste(primeiroBanco, tipo);
   });
   const s = useSessao();

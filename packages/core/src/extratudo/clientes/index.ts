@@ -108,7 +108,7 @@ export function clientesDoDinamico(d: BalanceteDinamico, mes: string, lado: Lado
 }
 
 /** O nome da conta de adiantamento no dinâmico: "Adiantamento(s) a fornecedor(es)", "Adto. de clientes"… */
-const ADIANTAMENTO: Record<LadoDaConta, RegExp> = {
+export const ADIANTAMENTO: Record<LadoDaConta, RegExp> = {
   fornecedores: /^(adiant\w*|adto) (a |de |p |para |ao |aos )?fornecedor/,
   clientes: /^(adiant\w*|adto) (a |de |p |para |do |dos )?client/,
 };
@@ -138,7 +138,7 @@ export function emprestimosNoDinamico(d: BalanceteDinamico, meses: readonly stri
 }
 
 /** A conta do adiantamento salarial no dinâmico ("Adiantamento Salarial", "Adto. de salários", "Adiantamento a empregados"). */
-const ADIANTAMENTO_SALARIAL = /^(adiant\w*|adto) (salarial|de salarios?|salarios?|a empregados|a funcionarios|de funcionarios)\b/;
+export const ADIANTAMENTO_SALARIAL = /^(adiant\w*|adto) (salarial|de salarios?|salarios?|a empregados|a funcionarios|de funcionarios)\b/;
 
 /** As contas de adiantamento salarial do dinâmico (a analítica: o código vai no lançamento sugerido). */
 export function contasDeAdiantamentoSalarial(d: BalanceteDinamico): LinhaDinamico[] {
@@ -452,3 +452,5 @@ export function textoDaMensagem(modelo: string, empresa: string, mes: string, li
   return (modelo || MENSAGEM_PADRAO).replace(/\{empresa\}/g, empresa).replace(/\{mes\}/g, mes).replace(/\{lista\}/g, lista);
 }
 export { sugestoesDeBaixa, selosDaSugestao, palavrasDoNome, mesmoLancamento, comBaixa, faltaDaNota, baixasGuardadas, type LancamentoDoBanco, type SugestaoDeBaixa, type BaixaAceita, type ComoBate, type SeloDaSugestao } from './sugestaoDeBaixa';
+export { conferirFechamento, type PendenciaDoFechamento, type ContaNoFechamento } from './fechamento';
+export { dinamicoCompletoDeTeste } from './deTeste';

@@ -196,8 +196,6 @@ export function useFornecedores() {
   // sem a etapa Saldo devedor (Vitor, 07/10/2026: "remove esse saldo devedor e deixe só arquivos"): o devedor fica na grade dos
   // Arquivos e, no lugar do Próximo travado, o "Corrigi, irei reimportar" (tira o dinâmico para importar o corrigido)
   const telas: TelaFornecedores[] = ['arquivos', 'fornecedores', 'envio'];
-  // algum razão importado (ou lançamento digitado): sem nenhum, o Envio some e o Próximo da lista também (Vitor, 08/10/2026)
-  const algumRazao = linhas.some(l => !!l.razao);
   const i = telas.indexOf(tela);
   const podeSeguir = tela === 'arquivos' ? arquivosProntos && contas.length > 0 && !credores.length : tela === 'fornecedores';
   // na Tarefa: os arquivos e nenhum credor (a pessoa pode dar o check normal depois; os conferidos passam para o mês seguinte)
@@ -210,7 +208,9 @@ export function useFornecedores() {
   // que a pessoa upa e quer questionar, bloqueie o avançar"); mudou depois de mandar, trava de novo
   const assinatura = cl.assinaturaDoEnvio(paraEnviar.map(l => ({ codigo: l.codigo, perguntar: cl.itensEscolhidos(l.razao, l.perguntar).map(cl.chaveDoItem) })));
   const faltaMandar = !!assinatura && marcas.doc.enviado !== assinatura;
-  const faltam = [...faltamDosArquivos, ...(faltaMandar ? ['Mandar pelo Mandei o que vai ser questionado (' + paraEnviar.length + (paraEnviar.length === 1 ? ' fornecedor)' : ' fornecedores)')] : [])];
+  // o que vai para o fornecedor é mandado no Fechamento, num envio só com o de Clientes (Vitor, 16/10/2026)
+  void faltaMandar;
+  const faltam = [...faltamDosArquivos];
   useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
   const rotuloMes = mes ? tarefas.rotuloNumericoCompetencia(mes) : '';
   const q = busca.trim().toLowerCase();
@@ -220,12 +220,14 @@ export function useFornecedores() {
     mes: rotuloMes,
     // sem questionamento, o Envio fica travado (Vitor, 15/10/2026): quem estava nele volta para a lista
     tela: telas.includes(tela) ? (tela === 'envio' && !paraEnviar.length ? 'fornecedores' : tela) : 'arquivos',
-    telas: telas.map((t, k) => ({ valor: t, rotulo: t === 'arquivos' ? 'Arquivos' : t === 'fornecedores' ? 'Fornecedores' : 'Envio', oculta: t === 'envio' && !algumRazao, travada: t === 'envio' && !paraEnviar.length ? 'Nada para questionar' : k > alcancada ? 'Chega aqui pelo Próximo' : false as const })),
+    telas: telas.map((t, k) => ({ valor: t, rotulo: t === 'arquivos' ? 'Arquivos' : t === 'fornecedores' ? 'Fornecedores' : 'Envio', oculta: t === 'envio', travada: t === 'envio' && !paraEnviar.length ? 'Nada para questionar' : k > alcancada ? 'Chega aqui pelo Próximo' : false as const })),
     irPara: (t: TelaFornecedores) => { if (telas.indexOf(t) <= alcancada && (t !== 'envio' || paraEnviar.length)) setTela(t); },
     // sem questionamento, sem o Próximo para o Envio (Vitor, 15/10/2026)
-    temProxima: i < telas.length - 1 && (telas[i] !== 'fornecedores' || (algumRazao && paraEnviar.length > 0)),
+    temProxima: i < telas.length - 1 && telas[i] !== 'fornecedores',
     /** na lista, tudo certo e nada para questionar: segue pela seta da próxima etapa, lá em cima */
-    semQuestionamento: tela === 'fornecedores' && !faltam.length && !paraEnviar.length,
+    semQuestionamento: tela === 'fornecedores' && !faltam.length,
+    /** a dica no lugar do Próximo: o que vai ser questionado segue para o Fechamento */
+    dicaDoFim: paraEnviar.length ? 'O que vai ser questionado vai junto no Fechamento (um envio só): siga pela seta acima' : 'Nada para questionar: siga para a próxima etapa pela seta acima',
     podeSeguir,
     proximo: () => { if (podeSeguir && i < telas.length - 1) setTela(telas[i + 1]); },
     /** nos Arquivos com fornecedor devedor no mês: o "Corrigi, irei reimportar" no lugar do Próximo (deu tudo ok, volta o Próximo) */

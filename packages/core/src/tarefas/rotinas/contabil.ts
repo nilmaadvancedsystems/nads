@@ -3,6 +3,10 @@
 // 289, 363, 380, 393, 408, 409, 429, 450, 452, 476, 509): o que aparece em quase todas — e o fechamento. As
 // conferências de cada empresa (as que só algumas têm) vêm depois, pelo balancete, no Cadastro.
 // É o único lugar a mexer: a ordem, os nomes, as ferramentas, o que conferir e as objeções saem daqui.
+// A regra de travar (Vitor, 16/10/2026: "aplique todas as suas sugestões"): só erro objetivo trava o Próximo — o saldo do
+// lado errado, o mês que não zerou, o arquivo obrigatório que falta, o balancete que não fecha. Sugestão (a baixa no banco,
+// o pago pelo banco e lançado no caixa) nunca trava. O balancete dinâmico é o primeiro passo (a Importação): ele monta a
+// Tarefa (os adiantamentos, os empréstimos, o adiantamento salarial entram ou saem por ele).
 import type { Etapa, Rotina } from '../tipos';
 
 // sem a saída "A folha ainda não saiu" (Vitor, 01/10/2026): a etapa do DP só é feita com a folha pronta
@@ -376,6 +380,22 @@ export const ROTINA_CONTABIL: Rotina = {
       ],
     },
 
+    {
+      // as vendas no cartão conciliadas com as notas, no Conciliadorzinho (Vitor, 16/10/2026: "o Conciliadorzinho é só para
+      // empresas que vendem no cartão"): só entra na empresa com "Vende no cartão: Sim" no Cadastro (useExecutor)
+      id: 'vendas-cartao',
+      secao: 'Resultado',
+      nome: 'Vendas no cartão',
+      descricao: 'As vendas das bandeiras conciliadas com as notas.',
+      ferramenta: { app: 'conciliadorzinho', nome: 'Conciliadorzinho', caminho: r => '/conciliadorzinho/' + r + '/conciliacao/bandeiras', embutir: true },
+      verificacao: 'manual',
+      soQuandoAdicionada: true,
+      conferir: ['As vendas das bandeiras conciliadas com as notas de venda.'],
+      objecoes: [
+        { id: 'sem-extrato-cartao', texto: 'O extrato da operadora não chegou', soMotivo: true, solucao: { tipo: 'contato', rotulo: 'Pedir o extrato da operadora' } },
+      ],
+    },
+
     // ─── Fechamento ───────────────────────────────────────────────────────────
     {
       id: 'fechamento',
@@ -383,6 +403,8 @@ export const ROTINA_CONTABIL: Rotina = {
       nome: 'Fechar a competência',
       descricao: 'Revise os saldos e feche a competência no sistema.',
       ferramenta: null,
+      // confere sozinho pelo dinâmico final e manda ao cliente o que vai ser questionado num envio só (Vitor, 16/10/2026)
+      tela: { id: 'fechamento', periodo: true },
       verificacao: 'manual',
       conferir: [
         'O balancete fecha: ativo = passivo + patrimônio líquido + resultado.',

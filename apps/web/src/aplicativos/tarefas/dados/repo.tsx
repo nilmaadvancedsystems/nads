@@ -267,6 +267,14 @@ export function useCartaoEmpresarial(nome: string | null, codigo: number | null)
   return repo.cadastro(nome, codigo).cartaoEmpresarial ?? null;
 }
 
+/** O Cadastro diz que a empresa vende no cartão (a etapa Vendas no cartão, o Conciliadorzinho)? (true, false ou null) */
+export function useVendeNoCartao(nome: string | null, codigo: number | null): boolean | null {
+  const repo = repoDoCadastro();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  if (!nome || !repo.carregada(nome)) return null;
+  return repo.cadastro(nome, codigo).vendeNoCartao ?? null;
+}
+
 /** O Cadastro diz que a empresa recebe liquidação de cobrança no caixa (o Creditor)? (true, false ou null) */
 export function useCredLiquidacao(nome: string | null, codigo: number | null): boolean | null {
   const repo = repoDoCadastro();
