@@ -34,10 +34,11 @@ export function useEmpresa(rota: string) {
   const [params, setParams] = useSearchParams();
   const op = useOperador().operador as Operador;
   const { dep: depDaTela, comDep, lista } = useDepartamentoDaTela();
-  const rotina = t.rotinaDo(depDaTela);
   const competencias = competenciasDaTela(12);
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
   const empresa = empresas.empresaPelaRota(repo.listarEmpresas(), rota);
+  // a rotina da empresa (16/10/2026): no Contábil, a 62 (com o LCDPR) tem só a etapa LCDPR
+  const rotina = t.rotinaDaEmpresa(depDaTela, empresa?.codigo);
   const dep = rotina?.departamento || op.departamento;
   const agora = new Date();
 

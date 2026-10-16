@@ -1,9 +1,10 @@
 // Visão de cima (Contábil/Fiscal): como está cada etapa em todas as empresas da competência e quais
 // objeções mais param o trabalho. Só leitura.
 import type { Execucao, Rotina } from '../tipos';
-import { etapaNoMes, situacaoDa } from './execucao';
+import { etapaNoMes, etapaNoMesDoAno, situacaoDa } from './execucao';
 
-export interface ResumoDaEtapa { etapa: string; nome: string; feitas: number; dispensadas: number; interrompidas: number; pendentes: number }
+/** total: as empresas que têm a etapa (a "só quando adicionada" e o LCDPR contam só nas delas; 16/10/2026) */
+export interface ResumoDaEtapa { etapa: string; nome: string; feitas: number; dispensadas: number; interrompidas: number; pendentes: number; total: number }
 
 export function resumoPorEtapa(execucoes: readonly Execucao[], rotina: Rotina, totalEmpresas: number): ResumoDaEtapa[] {
   return rotina.etapas.map(e => {
@@ -17,8 +18,30 @@ export function resumoPorEtapa(execucoes: readonly Execucao[], rotina: Rotina, t
       else if (s === 'dispensada') dispensadas++;
       else if (s === 'interrompida') interrompidas++;
     }
-    return { etapa: e.id, nome: e.nome, feitas, dispensadas, interrompidas, pendentes: Math.max(0, total - feitas - dispensadas - interrompidas) };
+    return { etapa: e.id, nome: e.nome, feitas, dispensadas, interrompidas, pendentes: Math.max(0, total - feitas - dispensadas - interrompidas), total };
   });
+}
+
+/**
+ * A visão de cima com a rotina de cada empresa (16/10/2026: a 62 só tem o LCDPR): as empresas agrupadas pela rotina
+ * delas (rotinaDe, pelo código), cada grupo contado só na própria rotina — a 62 não fica pendente nas etapas do Contábil,
+ * e o LCDPR entra como uma etapa a mais, contada só nela. As rotinas da que tem mais empresas para a que tem menos (a do
+ * departamento primeiro); com a competência, só as etapas do mês do ano dela (o Estoque só em dezembro).
+ */
+export function resumoPorEtapaDasEmpresas(execucoes: readonly Execucao[], codigos: readonly (number | null)[], rotinaDe: (codigo: number | null) => Rotina, competencia?: string): ResumoDaEtapa[] {
+  const grupos = new Map<Rotina, { codigos: Set<number | null>; total: number }>();
+  for (const c of codigos) {
+    const r = rotinaDe(c);
+    const g = grupos.get(r) || { codigos: new Set<number | null>(), total: 0 };
+    g.codigos.add(c);
+    g.total++;
+    grupos.set(r, g);
+  }
+  return [...grupos].sort((a, b) => b[1].total - a[1].total).flatMap(([r, g]) => resumoPorEtapa(
+    execucoes.filter(ex => g.codigos.has(ex.codigo)),
+    competencia ? { ...r, etapas: r.etapas.filter(e => etapaNoMesDoAno(e, competencia)) } : r,
+    g.total,
+  ));
 }
 
 export interface ObjecaoContada { etapa: string; nomeEtapa: string; objecao: string; texto: string; qtd: number }

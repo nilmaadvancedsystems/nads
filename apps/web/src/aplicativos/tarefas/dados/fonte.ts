@@ -327,7 +327,7 @@ let entregasDeDocumentos: RepoEntregasDeDocumentos | null = null;
 
 /** A entrega de documentos aos clientes (16/10/2026): a rota e o painel do Entregas, nos mesmos documentos de lá. */
 export function repoDeEntregasDeDocumentos(): RepoEntregasDeDocumentos {
-  if (!entregasDeDocumentos) entregasDeDocumentos = noBanco ? criarEntregasDeDocumentosFirestore(() => quemPede()?.nome || '') : criarEntregasDeDocumentosMemoria();
+  if (!entregasDeDocumentos) entregasDeDocumentos = noBanco ? criarEntregasDeDocumentosFirestore(() => { const u = sessaoDaTarefas()?.estado().usuario; return u ? { nome: u.nome, papeis: [...u.papeis] } : null; }) : criarEntregasDeDocumentosMemoria();
   return entregasDeDocumentos;
 }
 

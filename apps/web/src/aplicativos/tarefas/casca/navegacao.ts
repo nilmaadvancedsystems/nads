@@ -69,7 +69,9 @@ export const APLICACOES: readonly Aplicacao[] = [
   // a entrega de documentos aos clientes, trazida do Entregas (16/10/2026: "quero integrar no app … o entregas"; "quero só a
   // parte de entregas"): a Rota (as paradas, Nova entrega, confirmar com a assinatura ou a foto) e o Painel do mês; todo o
   // escritório, como no Entregas (lá qualquer pessoa da equipe vê a Nova entrega, a Rota e o Painel)
+  // 16/10/2026 ("só copia o entregas e joga aqui no design n1"): as três abas de lá, na mesma ordem (a Nova entrega primeiro)
   { id: 'entregas', nome: 'Entregas', icone: 'caminhao', grupo: 'Rotinas', pronta: true, paginas: [
+    { id: 'nova', rotulo: 'Nova entrega', icone: 'lapis', titulo: 'Entregas — nova entrega' },
     { id: 'rota', rotulo: 'Rota', icone: 'caminhao', titulo: 'Entregas — rota' },
     { id: 'painel', rotulo: 'Painel', icone: 'painel', titulo: 'Entregas — painel do mês' },
   ] },
@@ -189,12 +191,12 @@ export const caminhoDoCadastro = (rotaEmpresa: string | null, aba = 'empresa') =
 export const caminhoDoExecutor = (rotaEmpresa: string, competencia: string) => BASE + '/executar/' + rotaEmpresa + '/' + competencia;
 
 /**
- * O Importador LCDPR (o que era o lcdpr.html do Entregas) como parte da página da empresa (16/10/2026: "coloque o lcdpr
- * como parte da empresa 62 de carlos lucas apenas"): só nas empresas desta lista; as telas dele entram na barra lateral,
- * embaixo das páginas da aplicação. /tarefas/minhas-empresas/empresa/<código>/lcdpr/<página>
+ * O Importador LCDPR (o que era o lcdpr.html do Entregas), só nas empresas com ele (16/10/2026: "coloque o lcdpr como
+ * parte da empresa 62 de carlos lucas apenas"; a lista é lcdpr.EMPRESAS_COM_LCDPR, no core). Depois, no mesmo dia ("ele só
+ * precisa do lcdpr"), ele virou a rotina do Contábil dessas empresas: a etapa LCDPR do executor, com estas telas nas abas
+ * de cima (executor/etapas/lcdpr). O endereço antigo da página da empresa (…/empresa/<código>/lcdpr/<página>) volta
+ * para a página da empresa, que abre o executor.
  */
-export const EMPRESAS_COM_LCDPR: readonly number[] = [62];
-export const temLcdpr = (codigo: number | null | undefined) => codigo != null && EMPRESAS_COM_LCDPR.includes(codigo);
 export const PAGINAS_DO_LCDPR: readonly Pagina[] = [
   { id: 'lancamentos', rotulo: 'Lançamentos', icone: 'dinheiro', titulo: 'LCDPR — importar e conferir' },
   { id: 'categorias', rotulo: 'Categorias', icone: 'grade', titulo: 'LCDPR — categorias' },
@@ -203,4 +205,3 @@ export const PAGINAS_DO_LCDPR: readonly Pagina[] = [
   { id: 'tabelas', rotulo: 'Tabelas de apoio', icone: 'fileText', titulo: 'LCDPR — tabelas de apoio' },
   { id: 'configuracao', rotulo: 'Configuração', icone: 'settings', titulo: 'LCDPR — configuração geral' },
 ];
-export const caminhoDoLcdpr = (rotaEmpresa: string, pagina: string) => BASE + '/minhas-empresas/empresa/' + rotaEmpresa + '/lcdpr/' + pagina;

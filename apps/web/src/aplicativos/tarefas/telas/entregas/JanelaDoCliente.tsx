@@ -1,110 +1,245 @@
-// A janela do cliente no Painel (16/10/2026, a entrega de documentos trazida do Entregas, "no visual igual para não
-// destoar do app"): em cima, as entregas do cliente (a mais nova primeiro, de todos os meses) na lista do Cadastro; embaixo,
-// a escolhida — a situação, os documentos com o valor, quem recebeu, quem entregou, quando, o motivo e o comprovante (a
-// assinatura e a foto). No rodapé: Excluir, Enviar pelo WhatsApp (a confirmada), Confirmar (a que está na rota) e Nova entrega.
-import type { entregas } from '@nads/core';
-import { Esqueleto, Icone, LogoWhatsApp, type NomeIcone } from '@nads/ui';
+// A página do cliente (16/10/2026, a cópia fiel da página do cliente do Entregas, no visual do nads): a janela grande com
+// abas do catálogo (a da empresa no Cadastro) — no topo quem é (as iniciais, o nome, o código, o CNPJ, a cidade e os
+// selos); à esquerda Resumo, Entregas, Cadastro, Receita, Contatos, Documentos e Ações; o conteúdo em cartões do nads.
+import { ConfigLinha, ConfigSecao, Esqueleto, Icone, LogoWhatsApp, Stat, type NomeIcone } from '@nads/ui';
 import { useEffect, type ReactNode } from 'react';
-import { JanelaDaParada } from './JanelaDaParada';
-import { JanelaNovaEntrega } from './JanelaNovaEntrega';
 import { useJanelaDoCliente } from './useJanelaDoCliente';
 
-function Propriedade({ icone, rotulo, children }: { icone: NomeIcone; rotulo: string; children: ReactNode }) {
+export function JanelaDoCliente({ clienteId, consulta, aba }: { clienteId: string; consulta: boolean; aba?: string }) {
+  const vm = useJanelaDoCliente(clienteId, consulta, aba);
+  const fechar = vm.fechar;
+  useEffect(() => {
+    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented) fechar(); };
+    document.addEventListener('keydown', tecla);
+    return () => document.removeEventListener('keydown', tecla);
+  }, [fechar]);
+  if (!vm.cliente) {
+    return (
+      <div className="cad-janela-fundo" onMouseDown={e => { if (e.target === e.currentTarget) vm.fechar(); }}>
+        <div className="cad-janela ent-cliente-janela"><div className="cad-janela-topo"><span className="cad-janela-empresa">Cliente</span><button type="button" className="icon-btn cad-janela-x" onClick={vm.fechar} aria-label="Fechar"><Icone nome="x" /></button></div>
+          <div className="cad-janela-conteudo">{vm.carregando ? <Esqueleto linhas={5} /> : <p className="empty">Cliente não encontrado no cadastro do Entregas.</p>}</div></div>
+      </div>
+    );
+  }
   return (
-    <div className="registro-prop">
-      <span className="registro-prop-nome"><Icone nome={icone} />{rotulo}</span>
-      <div className="registro-prop-valor">{children}</div>
+    <div className="cad-janela-fundo" onMouseDown={e => { if (e.target === e.currentTarget) vm.fechar(); }}>
+      <div className="cad-janela ent-cliente-janela" role="dialog" aria-modal="true" aria-label={vm.rotulo}>
+        <div className="cad-janela-topo ent-cliente-topo">
+          <span className="ent-avatar" aria-hidden="true">{vm.iniciais}</span>
+          <div className="ent-cliente-quem">
+            <b className="cad-janela-nome">{vm.rotulo}</b>
+            {vm.subtitulo && <span className="fraco">{vm.subtitulo}</span>}
+            {vm.selos.length > 0 && <span className="ent-selos">{vm.selos.map(s => <span key={s.texto} className={'badge badge-' + s.tom} title={s.dica}>{s.pin && <Icone nome="mapaPin" width={12} height={12} />}{s.texto}</span>)}</span>}
+          </div>
+          <button type="button" className="icon-btn cad-janela-x" onClick={vm.fechar} aria-label="Fechar" title="Fechar"><Icone nome="x" /></button>
+        </div>
+        <div className="cad-janela-corpo">
+          <nav className="cad-janela-abas" role="tablist" aria-label="Seções do cliente">
+            {vm.abas.map(a => (
+              <button key={a.id} type="button" role="tab" aria-selected={vm.aba === a.id} className={'cad-janela-aba' + (vm.aba === a.id ? ' ativa' : '')} onClick={() => vm.setAba(a.id)}>
+                <Icone nome={a.icone} />{a.rotulo}{a.n ? <span className="menu-contador">{a.n}</span> : null}
+              </button>
+            ))}
+          </nav>
+          <div className="cad-janela-conteudo">
+            {vm.aba === 'resumo' && <Resumo vm={vm} />}
+            {vm.aba === 'entregas' && <Entregas vm={vm} />}
+            {vm.aba === 'cadastro' && <Cadastro vm={vm} />}
+            {vm.aba === 'receita' && <Receita vm={vm} />}
+            {vm.aba === 'contatos' && <Contatos vm={vm} />}
+            {vm.aba === 'documentos' && <Documentos vm={vm} />}
+            {vm.aba === 'acoes' && <Acoes vm={vm} />}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-export function JanelaDoCliente({ linha, competencia, fechar }: { linha: entregas.LinhaDoPainel; competencia: string; fechar: () => void }) {
-  const vm = useJanelaDoCliente(linha, competencia, fechar);
+type Vm = Extract<ReturnType<typeof useJanelaDoCliente>, { grupos: unknown }>;
 
-  useEffect(() => {
-    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented && !vm.confirmando && !vm.nova) fechar(); };
-    document.addEventListener('keydown', tecla);
-    return () => document.removeEventListener('keydown', tecla);
-  });
+function Cartao({ titulo, icone, acao, children }: { titulo: string; icone: NomeIcone; acao?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="card ent-cartao">
+      <div className="card-head"><h3><Icone nome={icone} width={16} height={16} /> {titulo}</h3>{acao && <span className="card-head-ctl">{acao}</span>}</div>
+      {children}
+    </section>
+  );
+}
+function Dados({ linhas }: { linhas: [string, string][] }) {
+  if (!linhas.length) return null;
+  return <dl className="ent-dados">{linhas.map(([r, v]) => <div key={r}><dt>{r}</dt><dd>{v}</dd></div>)}</dl>;
+}
+function Situacao({ s }: { s: { rotulo: string; tom: 'ok' | 'bad' | 'warn' } }) {
+  return <span className={'badge ' + (s.tom === 'ok' ? 'badge-ok' : s.tom === 'bad' ? 'badge-danger' : 'badge-warn')}>{s.rotulo}</span>;
+}
 
-  const a = vm.atual;
+function Resumo({ vm }: { vm: Vm }) {
   return (
     <>
-      {vm.confirmando && <JanelaDaParada id={vm.confirmando} fechar={vm.fecharConfirmacao} />}
-      {vm.nova && <JanelaNovaEntrega cliente={vm.cliente} fechar={() => vm.setNova(false)} />}
-      {!vm.confirmando && !vm.nova && <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
-        <div className="modal registro-novo ent-cliente" role="dialog" aria-modal="true" aria-label={'Entregas de ' + vm.titulo}>
-          <header className="registro-topo">
-            <span className="registro-caminho"><Icone nome="painel" />Painel<Icone nome="chevronRight" /><b>{vm.titulo}</b></span>
-            <button type="button" className="icon-btn icon-btn-sm" onClick={fechar} aria-label="Fechar" title="Fechar (Esc)"><Icone nome="x" /></button>
-          </header>
-
-          <div className="registro-corpo">
-            {!vm.todas.length ? (
-              vm.carregandoHistorico ? <Esqueleto linhas={3} /> : <p className="empty">Nenhuma entrega registrada para este cliente.</p>
-            ) : (
-              <div className="table-wrap ent-historico">
-                <table className="tabela-empresas cad-lista ent-lista">
-                  <thead><tr><th>Competência</th><th>Quando</th><th>Documentos</th><th>Situação</th></tr></thead>
-                  <tbody>
-                    {vm.todas.map(x => (
-                      <tr key={x.e.id} className={'linha-abre' + (x.e.id === a?.id ? ' ent-escolhida' : '')} tabIndex={0} aria-selected={x.e.id === a?.id}
-                        onClick={() => vm.escolher(x.e.id)} onKeyDown={e => { if (e.key === 'Enter') vm.escolher(x.e.id); }}>
-                        <td>{x.competencia}</td>
-                        <td className="fraco">{x.quando}</td>
-                        <td><span className="ent-corta" title={x.documentos}>{x.documentos || '—'}</span></td>
-                        <td><span className={'badge badge-' + x.situacao.tom}>{x.situacao.rotulo}</span></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {vm.carregandoHistorico && <p className="registro-dica">Lendo os outros meses…</p>}
-              </div>
-            )}
-
-            {a && vm.situacaoDaAtual && (
-              <div className="registro-props ent-detalhe">
-                <Propriedade icone="checkCircle" rotulo="Situação">
-                  <span className={'badge badge-' + vm.situacaoDaAtual.tom}>{vm.situacaoDaAtual.rotulo}</span>
-                  <span className="fraco">{vm.competenciaDaAtual}{a.tentativa > 1 && ' · ' + a.tentativa + 'ª tentativa'}</span>
-                </Propriedade>
-                <Propriedade icone="fileText" rotulo="Documentos">
-                  <span>
-                    {a.itens.map((i, k) => <span key={i.tipo + k} className="ent-item">{i.tipo}{i.funcionario ? ' · ' + i.funcionario : ''}{i.valor != null && <b className="num"> {vm.reais(i.valor)}</b>}</span>)}
-                    {vm.total > 0 && <span className="ent-item">Total <b className="num">{vm.reais(vm.total)}</b></span>}
-                  </span>
-                </Propriedade>
-                {a.status === 'falha' && <Propriedade icone="alert" rotulo="O que aconteceu">{a.motivoFalha || 'não informado'}</Propriedade>}
-                {a.semAssinatura && <Propriedade icone="alert" rotulo="Sem assinatura">{a.motivoSemAssinatura || 'motivo não informado'}</Propriedade>}
-                {a.status === 'confirmada' && <Propriedade icone="usuario" rotulo="Recebido por">{a.recebedor || <span className="fraco">não informado</span>}</Propriedade>}
-                <Propriedade icone="caminhao" rotulo={a.status === 'pendente' || a.status === 'link' ? 'Pôs na rota' : 'Entregue por'}>{a.entregadoPorNome || a.entregadoPor || '—'}</Propriedade>
-                <Propriedade icone="clock" rotulo="Data e hora">{vm.quando}</Propriedade>
-                {vm.temComprovante && (
-                  <Propriedade icone="lapis" rotulo="Comprovante">
-                    {!vm.comprovante ? <span className="fraco"><span className="btn-spinner" aria-hidden="true" /> Lendo…</span>
-                      : !vm.comprovante.assinatura && !vm.comprovante.foto ? <span className="fraco">Sem comprovante anexado.</span>
-                      : (
-                        <span className="ent-comprovante">
-                          {vm.comprovante.assinatura && <a href={vm.comprovante.assinatura} download={'assinatura-' + a.id + '.png'} title="Baixar a assinatura"><img src={vm.comprovante.assinatura} alt="A assinatura de recebimento" /></a>}
-                          {vm.comprovante.foto && <a href={vm.comprovante.foto} download={'foto-' + a.id + '.jpg'} title="Baixar a foto"><img src={vm.comprovante.foto} alt="A foto anexada" /></a>}
-                        </span>
-                      )}
-                  </Propriedade>
-                )}
-              </div>
-            )}
+      <div className="stat-grid ent-kpis">{vm.kpis.map(k => <Stat key={k.rotulo} rotulo={k.rotulo} valor={<>{k.valor}{k.sub && <span className="ent-kpi-sub">{k.sub}</span>}</>} grande={false} cor={k.pendente ? 'entrada' : undefined} />)}</div>
+      {vm.avisos.length > 0 && (
+        <div className="ent-avisos">{vm.avisos.map((a, i) => (
+          <p key={i} className={'registro-dica' + (a.grave ? ' registro-dica-erro' : '')}>
+            <Icone nome={a.tipo === 'mapa' ? 'mapaPin' : a.tipo === 'recado' ? 'fileText' : a.grave ? 'alert' : 'ajuda'} />{a.texto}
+            {a.tipo === 'mapa' && <button type="button" className="btn btn-ghost" onClick={vm.corrigirLocal}>Corrigir localização</button>}
+          </p>
+        ))}</div>
+      )}
+      <Cartao titulo="Lembretes pra entrega" icone="sino">
+        {vm.lembretes.length ? (
+          <ul className="ent-lembretes">{vm.lembretes.map(l => (
+            <li key={l.id} className="ent-lembrete-item"><Icone nome="sino" width={16} height={16} />
+              <div className="ent-lembrete-corpo"><div>{l.texto}</div><div className="hint">{l.meta}</div></div>
+              {!vm.consulta && <button type="button" className="btn btn-outline" onClick={() => void vm.resolverLembrete(l.id)}><Icone nome="check" />Resolvido</button>}
+            </li>
+          ))}</ul>
+        ) : <p className="hint">Nenhum lembrete. O que você deixar aqui aparece pra quem for entregar, na hora de concluir a entrega.</p>}
+        {!vm.consulta && (
+          <div className="ent-lembrete-novo">
+            <textarea rows={2} maxLength={500} value={vm.lembreteNovo} onChange={e => vm.setLembreteNovo(e.target.value)} placeholder="Ex.: falar do honorário atrasado" aria-label="Novo lembrete" />
+            <button type="button" className="btn btn-outline" disabled={vm.gravando} onClick={() => void vm.criarLembrete()}><Icone nome="plus" />Lembrete</button>
           </div>
-
-          <footer className="registro-pe">
-            {vm.podeExcluir && <button type="button" className="btn btn-danger" disabled={vm.excluindo} onClick={() => void vm.excluir()}><Icone nome="x" />{vm.naRota ? 'Tirar da rota' : 'Excluir'}</button>}
-            <span className="tarefas-barra-espaco" />
-            {vm.linkDoWhatsApp && <a className="btn btn-outline" href={vm.linkDoWhatsApp} target="_blank" rel="noopener noreferrer"><LogoWhatsApp />Enviar comprovante</a>}
-            {vm.naRota && <button type="button" className="btn" onClick={vm.abrirConfirmacao}><Icone nome="lapis" />Confirmar</button>}
-            {vm.cliente && <button type="button" className="btn" onClick={() => vm.setNova(true)}><Icone nome="plus" />Nova entrega</button>}
-            <button type="button" className="btn btn-outline" onClick={fechar}>Fechar</button>
-          </footer>
-        </div>
-      </div>}
+        )}
+      </Cartao>
+      <div className="ent-grade">
+        <Cartao titulo="Contato" icone="usuario">
+          {vm.telefone && (
+            <div className="ent-telefone"><span>{vm.telefone}</span>{!vm.consulta && <>
+              {vm.comWhats && <button type="button" className="btn btn-outline" onClick={() => vm.whatsapp()}><span className="ent-logo"><LogoWhatsApp /></span>WhatsApp</button>}
+              <a className="btn btn-outline" href={vm.telefoneLink}><Icone nome="telefone" />Ligar</a></>}</div>
+          )}
+          {vm.contato.length || vm.telefone ? <Dados linhas={vm.contato} /> : <p className="hint">Sem telefone, e-mail ou endereço no cadastro.</p>}
+        </Cartao>
+        <Cartao titulo="Empresa" icone="landmark">
+          {vm.empresa.length ? <Dados linhas={vm.empresa} /> : <p className="hint">Sem dados da Receita ainda.</p>}
+          {vm.temReceita && <button type="button" className="btn btn-ghost" onClick={() => vm.setAba('receita')}>Ver tudo da Receita</button>}
+        </Cartao>
+      </div>
+      <Cartao titulo="Últimas entregas" icone="caminhao">
+        {vm.carregando ? <Esqueleto linhas={3} /> : vm.ultimas.length ? (
+          <>
+            <ul className="ent-linhas">{vm.ultimas.map(u => (
+              <li key={u.e.id}><div><b>{u.docs}</b><span className="fraco">{u.quando}</span></div><Situacao s={u.situacao} /></li>
+            ))}</ul>
+            {vm.total > 5 && <button type="button" className="btn btn-ghost" onClick={() => vm.setAba('entregas')}>Ver as {vm.total} entregas</button>}
+          </>
+        ) : <p className="empty">{vm.erro || 'Nenhuma entrega registrada para este cliente ainda.'}</p>}
+      </Cartao>
     </>
+  );
+}
+
+function Entregas({ vm }: { vm: Vm }) {
+  if (vm.carregando) return <Esqueleto linhas={6} />;
+  if (!vm.grupos.length) return <p className="empty">{vm.erro || 'Nenhuma entrega registrada para este cliente ainda.'}</p>;
+  return (
+    <div className="ent-historico">
+      {vm.grupos.map(g => (
+        <section key={g.competencia} className="ent-mes">
+          <div className="gm-grupo-rotulo ent-mes-topo">
+            <b>{g.rotulo}</b>
+            {g.competencia !== 'sem competência' && <>
+              <button type="button" className="btn btn-ghost" title="Documento do mês pra imprimir ou salvar em PDF" onClick={() => void vm.protocolo(g.competencia)}><Icone nome="printer" />Protocolo</button>
+              <button type="button" className="btn btn-ghost" title="O que entregamos e o que o cliente mandou no mês" onClick={() => void vm.extrato(g.competencia)}><Icone nome="checklist" />Extrato</button>
+            </>}
+            <span className="tarefas-barra-espaco" /><span className="fraco num">{g.resumo}</span>
+          </div>
+          <ul className="ent-linhas">{g.linhas.map(l => (
+            <li key={l.e.id}><button type="button" className="ent-linha-abre" onClick={() => vm.abrirEntrega(l.e)}><div><b>{l.docs}</b><span className="fraco">{l.quando}</span></div><Situacao s={l.situacao} /></button></li>
+          ))}</ul>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function Cadastro({ vm }: { vm: Vm }) {
+  return (
+    <>
+      {vm.cadastro.length > 0 && <Cartao titulo="Dados do cadastro" icone="fileText"><Dados linhas={vm.cadastro} /></Cartao>}
+      {vm.rota.length > 0 && <Cartao titulo="Rota" icone="caminhao"><Dados linhas={vm.rota} /></Cartao>}
+      {vm.honorario.length > 0 && <Cartao titulo="Honorário" icone="dinheiro"><Dados linhas={vm.honorario} /></Cartao>}
+      {vm.mostrarLink && (
+        <Cartao titulo="Link do cliente" icone="link">
+          <p className="hint">{vm.temLink ? 'O cliente tem link próprio: vê as guias, confirma o recebimento e manda documentos.' : 'Este cliente ainda não tem link.'}</p>
+          <button type="button" className="btn btn-outline" onClick={vm.abrirLink}><Icone nome="link" />{vm.temLink ? 'Abrir link do cliente' : 'Criar link do cliente'}</button>
+        </Cartao>
+      )}
+    </>
+  );
+}
+
+function Receita({ vm }: { vm: Vm }) {
+  if (!vm.temReceita) return <p className="empty">Ainda sem dados da Receita para este cliente. O robô confere os CNPJs uma vez por semana.</p>;
+  return (
+    <>
+      {vm.mudancas.length > 0 && (
+        <div className="ent-avisos">
+          {vm.mudancas.map((m, i) => <p key={i} className={'registro-dica' + (m.grave ? ' registro-dica-erro' : '')}><Icone nome={m.grave ? 'alert' : 'ajuda'} />{m.texto} · notado em {m.quando}</p>)}
+          {vm.podeMarcarVisto && <button type="button" className="btn btn-outline" onClick={() => void vm.marcarVisto()}><Icone nome="check" />Já vi</button>}
+        </div>
+      )}
+      <Cartao titulo="Dados na Receita Federal" icone="landmark">
+        <Dados linhas={vm.receita} />
+        <p className="hint">Dados abertos da Receita, conferidos toda semana (último: {vm.conferidaEm}). Podem ter semanas de atraso em relação ao e-CAC.</p>
+      </Cartao>
+    </>
+  );
+}
+
+function Contatos({ vm }: { vm: Vm }) {
+  return (
+    <>
+      <Cartao titulo="Contato principal" icone="usuario">
+        {vm.telefone && <div className="ent-telefone"><span>{vm.telefone}</span></div>}
+        <Dados linhas={vm.contato} />
+      </Cartao>
+      <Cartao titulo="Outros contatos" icone="usuario">
+        <ul className="ent-linhas">{vm.contatos.map((c, i) => (
+          <li key={i}><div><b>{c.nome || c.telefone}</b><span className="fraco">{c.sub}</span></div>
+            {c.telefone && !vm.consulta && <span className="ent-acoes-linha">
+              {c.whats && <button type="button" className="btn btn-outline" onClick={() => vm.whatsapp(c.telefone)}><span className="ent-logo"><LogoWhatsApp /></span>WhatsApp</button>}
+              <a className="btn btn-outline" href={c.tel}><Icone nome="telefone" />Ligar</a></span>}
+          </li>
+        ))}</ul>
+      </Cartao>
+    </>
+  );
+}
+
+function Documentos({ vm }: { vm: Vm }) {
+  return (
+    <>
+      {vm.papeis.length > 0 && (
+        <Cartao titulo="Documentos com validade" icone="arquivo">
+          <ul className="ent-linhas">{vm.papeis.map((p, i) => (
+            <li key={i}><div><b>{p.nome}</b><span className="fraco">{p.sub}</span></div>
+              {p.prazo && <span className={'badge ' + (p.classe === 'vencido' ? 'badge-danger' : p.classe === 'perto' ? 'badge-warn' : 'badge-neutral')}>{p.prazo}</span>}</li>
+          ))}</ul>
+        </Cartao>
+      )}
+      {vm.ocorrencias.length > 0 && (
+        <Cartao titulo="Anotações" icone="fileText">
+          <ul className="ent-linhas">{vm.ocorrencias.map((o, i) => <li key={i}><div><b>{o.texto}</b><span className="fraco">{o.sub}</span></div></li>)}</ul>
+        </Cartao>
+      )}
+    </>
+  );
+}
+
+function Acoes({ vm }: { vm: Vm }) {
+  const acao = (rotulo: string, onClick: () => void, perigo?: boolean) =>
+    <button type="button" className={'btn ' + (perigo ? 'btn-danger' : 'btn-outline')} onClick={onClick}>{rotulo}<Icone nome="chevronRight" /></button>;
+  return (
+    <ConfigSecao titulo="Ações">
+      <ConfigLinha titulo="Corrigir localização" descricao="Acerta o ponto do cliente no mapa, que é o que ordena a rota.">{acao('Corrigir', vm.corrigirLocal)}</ConfigLinha>
+      <ConfigLinha titulo="Aglutinar com outra empresa" descricao="Mesma porta de outra empresa: as duas viram uma parada só e uma assinatura.">{acao('Aglutinar', vm.aglutinar)}</ConfigLinha>
+      <ConfigLinha titulo="Copiar dados" descricao="Nome, CNPJ, endereço e contato, prontos pra colar.">{acao('Copiar', () => void vm.copiarDados())}</ConfigLinha>
+      {vm.total > 0 && <ConfigLinha titulo="Exportar histórico" descricao="Planilha com todas as entregas deste cliente.">{acao('Exportar', vm.exportarHistorico)}</ConfigLinha>}
+      {vm.admin && <ConfigLinha titulo={vm.cliente.ativo ? 'Desativar cliente' : 'Reativar cliente'} descricao={vm.cliente.ativo ? 'Sai das listas e da rota. O histórico fica guardado.' : 'Volta pra carteira ativa e pras listas.'}>{acao(vm.cliente.ativo ? 'Desativar' : 'Reativar', () => void vm.ativar())}</ConfigLinha>}
+      {vm.admin && <ConfigLinha titulo="Levar os dados (LGPD)" descricao="Arquivo com tudo que o sistema tem deste cliente.">{acao('Baixar', () => void vm.levarDados())}</ConfigLinha>}
+      {vm.admin && <ConfigLinha titulo="Apagar dados pessoais" descricao="Tira telefone, e-mail, endereço e contatos, e desliga o link do cliente.">{acao('Apagar', () => void vm.apagarDados(), true)}</ConfigLinha>}
+    </ConfigSecao>
   );
 }

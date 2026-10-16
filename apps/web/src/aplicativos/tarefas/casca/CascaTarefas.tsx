@@ -1,5 +1,5 @@
 // View da casca da Tarefas (a Casca comum do nads). telaInteira: sem a barra lateral e sem o título (o Drive).
-import { Casca, MenuSuspenso, type SecaoCasca } from '@nads/ui';
+import { Casca, MenuSuspenso } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
 import { LugarDasAcoes, useTrilhaDoTopo } from '../../../comum/topo';
 import { useAvisoDeBloqueio } from '../../../comum/modoDesenvolvedor';
@@ -24,19 +24,8 @@ function AvatarDaPessoa({ vm, abrirFeedback }: { vm: ReturnType<typeof useCascaT
   );
 }
 
-/**
- * As páginas de uma empresa na barra lateral, embaixo das da aplicação (o LCDPR da empresa 62, 16/10/2026: "coloque o
- * lcdpr como parte da empresa 62 de carlos lucas apenas"): com elas, a ativa é a da empresa; o título é o da página dela.
- */
-export interface LateralDaEmpresa { secoes: SecaoCasca[]; onSecao: (id: string) => void; titulo?: string }
-
-export function CascaTarefas({ app, pagina, telaInteira, larga, daEmpresa, children }: { app: IdAplicacao; pagina: string; telaInteira?: boolean; larga?: boolean; daEmpresa?: LateralDaEmpresa | null; children: ReactNode }) {
-  const vm0 = useCascaTarefas(app, pagina);
-  const vm = !daEmpresa ? vm0 : {
-    ...vm0, titulo: daEmpresa.titulo ?? vm0.titulo,
-    secoes: [...vm0.secoes.map(s => ({ ...s, ativa: false })), ...daEmpresa.secoes],
-    onSecao: (id: string) => (daEmpresa.secoes.some(s => s.id === id) ? daEmpresa.onSecao(id) : vm0.onSecao(id)),
-  };
+export function CascaTarefas({ app, pagina, telaInteira, larga, children }: { app: IdAplicacao; pagina: string; telaInteira?: boolean; larga?: boolean; children: ReactNode }) {
+  const vm = useCascaTarefas(app, pagina);
   const trilha = useTrilhaDoTopo();
   const [feedback, setFeedback] = useState(false);
   const [feedbacks, setFeedbacks] = useState(false);
@@ -46,7 +35,7 @@ export function CascaTarefas({ app, pagina, telaInteira, larga, daEmpresa, child
       lateral={telaInteira || vm.comAbas ? 'nenhuma' : undefined} larga={telaInteira || larga}
       acoes={telaInteira ? undefined : <LugarDasAcoes />} onSecao={vm.onSecao} onPagina={vm.onPagina} onInicio={vm.inicio} onAplicativos={vm.inicio}
       onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}
-      topoDireita={<AvatarDaPessoa vm={vm0} abrirFeedback={() => setFeedback(true)} />}
+      topoDireita={<AvatarDaPessoa vm={vm} abrirFeedback={() => setFeedback(true)} />}
       peDaGaveta={vm.admin ? fechar => <ItemDosFeedbacks abrir={() => { fechar(); setFeedbacks(true); }} /> : undefined}>
       {feedback && <JanelaDeFeedback fechar={() => setFeedback(false)} />}
       {feedbacks && <JanelaDosFeedbacks fechar={() => setFeedbacks(false)} />}

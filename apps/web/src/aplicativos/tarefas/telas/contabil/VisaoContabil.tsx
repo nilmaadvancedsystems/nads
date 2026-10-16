@@ -47,9 +47,10 @@ export function VisaoContabil({ pagina, dep }: { pagina: string; dep?: 'contabil
                     <tr key={e.etapa}>
                       <td>{e.nome}</td>
                       <td style={{ width: '30%' }}>
+                        {/* a barra sobre as empresas que têm a etapa (o LCDPR só na 62; 16/10/2026) */}
                         <span className="tarefas-barra larga">
-                          <span style={{ width: (100 * (e.feitas + e.dispensadas) / Math.max(1, vm.totalEmpresas)) + '%' }} />
-                          <span className="parada" style={{ width: (100 * e.interrompidas / Math.max(1, vm.totalEmpresas)) + '%' }} />
+                          <span style={{ width: (100 * (e.feitas + e.dispensadas) / Math.max(1, e.total)) + '%' }} />
+                          <span className="parada" style={{ width: (100 * e.interrompidas / Math.max(1, e.total)) + '%' }} />
                         </span>
                       </td>
                       <td className="num">{e.feitas}</td>

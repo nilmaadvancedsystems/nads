@@ -124,7 +124,7 @@ function MesVivo() {
 }
 function AssinaturaViva() {
   const [v, setV] = useState<string | null>(null);
-  return <div style={{ width: '100%', maxWidth: 420 }}><CampoAssinatura valor={v} onMudar={setV} rotulo="Assinatura de quem recebeu" /></div>;
+  return <div style={{ width: '100%', maxWidth: 420 }}><CampoAssinatura valor={v} onMudar={setV} telaCheia rotulo="Assinatura de quem recebeu" /></div>;
 }
 function DataVivo() {
   const [v, setV] = useState('31/08/2026');
@@ -137,6 +137,7 @@ export const ICONES: NomeIcone[] = [
   'olho', 'fileText', 'clock', 'chevronsLeft', 'chevronLeft', 'chevronRight', 'settings', 'logOut', 'barChart', 'caretDown', 'play',
   'camera', 'imagem', 'filtro', 'ordenar', 'copiar', 'search', 'repeat', 'calendar', 'plus', 'fileSearch', 'hash', 'list', 'menu', 'pastaAberta', 'mais',
   'girar', 'maximizar', 'minimizar', 'painel', 'cartao', 'download', 'grade', 'impressora', 'dinheiro', 'caminhao',
+  'arrastar', 'lixeira', 'mapaPin', 'qrCode', 'codigoBarras', 'telefone', 'celular', 'trofeu', 'alvo', 'lampada',
 ];
 const BANCOS = ['banco-do-brasil', 'banrisul', 'bradesco', 'btg', 'c6', 'caixa', 'inter', 'itau', 'mercado-pago', 'nubank', 'pagbank', 'safra', 'santander', 'sicoob', 'stone', 'cora', 'sicredi', 'bnb'];
 const CORES = [
@@ -303,8 +304,8 @@ export const PECAS_BASE: Peca[] = [
   { id: 'arquivos', tipo: 'campos', nome: 'Escolher arquivos', componente: 'CampoArquivos', classes: ['file-picker'], telas: ['t-empresa-lcdpr', 'c-importacao', 'e-cheque', 'e-creditor'],
     demo: () => <><CampoArquivos id="cat-arq" onEscolher={nada} aceitar=".xls,.xlsx" /><CampoArquivos id="cat-arq2" onEscolher={nada} aceitar=".xls" compacto rotulo="Importar todos os meses" /></> },
   // a assinatura e os documentos com valor da entrega de documentos (16/10/2026, trazida do Entregas)
-  { id: 'assinatura', tipo: 'campos', nome: 'Assinatura (dedo, caneta ou mouse)', descricao: 'O quadro branco (é papel: branco também no tema escuro) com "Assine aqui" apagado enquanto vazio, o estado embaixo e o Limpar; devolve o PNG em data URL a cada traço (fundo branco e traço escuro, como o Entregas grava)', componente: 'CampoAssinatura', classes: ['assinatura', 'assinatura-quadro', 'assinatura-pe'], telas: ['t-entregas'],
-    uso: '<CampoAssinatura valor={assinatura} onMudar={setAssinatura} rotulo="Assinatura de quem recebeu" />', demo: () => <AssinaturaViva /> },
+  { id: 'assinatura', tipo: 'campos', nome: 'Assinatura (dedo, caneta ou mouse)', descricao: 'O quadro branco (é papel: branco também no tema escuro) com "Assine aqui" apagado enquanto vazio, o estado embaixo, "Tela cheia" (o quadro ocupa a tela, em pé; 16/10/2026, como o Entregas) e o Limpar; devolve o PNG em data URL a cada traço (fundo branco e traço escuro, como o Entregas grava)', componente: 'CampoAssinatura', classes: ['assinatura', 'assinatura-quadro', 'assinatura-pe', 'assinatura-cheia'], telas: ['t-entregas'],
+    uso: '<CampoAssinatura valor={assinatura} onMudar={setAssinatura} altura={200} telaCheia rotulo="Assinatura de quem recebeu" />', demo: () => <AssinaturaViva /> },
   { id: 'ent-docs', tipo: 'campos', nome: 'Documentos com valor (Nova entrega)', descricao: 'Uma linha por documento: o nome, o funcionário (quando pede), o valor em R$ à direita (ou "sem valor") e o ✕; para ler, a mesma lista sem as caixas e com o Total tracejado', classes: ['ent-docs', 'ent-doc', 'ent-doc-tipo', 'ent-doc-valor', 'ent-doc-total'], telas: ['t-entregas'],
     demo: () => (
       <div style={{ width: '100%', maxWidth: 520 }}>
@@ -316,6 +317,19 @@ export const PECAS_BASE: Peca[] = [
           <li className="ent-doc"><span className="ent-doc-tipo">FGTS</span><span className="ent-doc-valor num">R$ 210,00</span></li>
           <li className="ent-doc ent-doc-total"><span className="ent-doc-tipo">Total</span><span className="ent-doc-valor num">R$ 690,90</span></li>
         </ul>
+      </div>
+    ) },
+  // a planilha de "Adicionar documento" da Nova entrega (16/10/2026, a cópia fiel do Entregas)
+  { id: 'ent-planilha', tipo: 'campos', nome: 'Planilha de documentos (Adicionar documento)', descricao: 'Flutua embaixo de "Adicionar documento": uma linha por documento com o valor ao lado (repetir e tirar); a última é a escolha do próximo — escolheu, o cursor vai para o valor; Enter volta para a escolha; Esc ou Pronto fecham', classes: ['popover ent-planilha', 'ent-planilha-nova', 'ent-planilha-x', 'ent-planilha-pe'], telas: ['t-entregas'],
+    demo: () => (
+      <div className="popover ent-planilha" style={{ position: 'static', width: '100%' }}>
+        <h4>Documentos da entrega</h4>
+        <div className="table-wrap ent-planilha-rolagem"><table className="table-compact"><thead><tr><th>Documento</th><th>Valor</th><th /></tr></thead><tbody>
+          <tr><td>DAS</td><td><input type="text" className="num" defaultValue="480,90" aria-label="Valor" /></td><td className="ent-planilha-x"><BotaoIcone icone="copiar" titulo="Repetir" pequeno /><BotaoIcone icone="x" titulo="Tirar" pequeno /></td></tr>
+          <tr><td>Honorário</td><td><span className="fraco">sem valor</span></td><td className="ent-planilha-x"><BotaoIcone icone="x" titulo="Tirar" pequeno /></td></tr>
+          <tr className="ent-planilha-nova"><td colSpan={3}><select defaultValue="" aria-label="Próximo documento"><option value="">+ clique pra escolher o documento</option></select></td></tr>
+        </tbody></table></div>
+        <div className="ent-planilha-pe"><button type="button" className="btn btn-primary">Pronto</button></div>
       </div>
     ) },
 
@@ -645,6 +659,27 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <><button className="tarefas-contador" type="button"><Icone nome="briefcase" /><b>235</b> empresas</button><span className="menu-contador">12</span><span className="imp-faixa-qtd">4</span></> },
   { id: 'emp-list', tipo: 'listas', nome: 'Lista de empresas (entrar)', classes: ['emp-list', 'emp-item'], telas: ['c-entrada', 'e-entrada', 'z-entrada'],
     demo: () => <div className="emp-list" style={{ width: 320 }}>{[[292, 'FITO INDUSTRIA E COMERCIO'], [9999, 'PERSONALY COMPANY']].map(([c, n]) => <button key={c} className="emp-item" type="button"><span className="emp-cod">{c}</span><span className="emp-txt"><span className="emp-nome">{n}</span></span></button>)}</div> },
+  // a rota, as linhas e os dados da entrega de documentos (16/10/2026, a cópia fiel do Entregas)
+  { id: 'ent-rota', tipo: 'listas', nome: 'Rota de entregas (as paradas na ordem)', descricao: 'A tabela da rota: o puxador (arrastar, ou Alt com as setas), a posição, o cliente com o sino do lembrete, a linha de apoio (competência · documentos · total · região) e o aviso que faz desviar; à direita "2ª vez", Assinar e "Assinar as N" (a parada com várias entregas)', classes: ['ent-rota', 'ent-puxador', 'ent-pos', 'ent-rota-sub', 'ent-sino', 'ent-aviso', 'ent-acoes'], telas: ['t-entregas'], largo: true,
+    demo: () => (
+      <div className="table-wrap ent-rota-wrap" style={{ width: '100%' }}><table className="cad-lista ent-rota"><tbody>
+        <tr className="linha-abre"><td className="ent-puxa-td"><button type="button" className="icon-btn icon-btn-sm ent-puxador" aria-label="Mover"><Icone nome="arrastar" /></button></td><td className="num fraco ent-pos">1</td>
+          <td><span className="cad-empresa-nome">102 - BETA SERVICOS EXEMPLO ME</span><span className="ent-sino"><Icone nome="sino" width={14} height={14} /></span><span className="fraco ent-rota-sub">outubro/2026 · DARF · R$ 132,50 · Parte superior</span><span className="ent-aviso"><Icone nome="alert" width={12} height={12} />atende 08:00–11:30</span></td>
+          <td className="ent-acoes"><button type="button" className="btn btn-outline"><Icone nome="lapis" />Assinar</button><button type="button" className="btn btn-outline"><Icone nome="checklist" />Assinar as 3</button></td></tr>
+        <tr className="linha-abre"><td className="ent-puxa-td"><button type="button" className="icon-btn icon-btn-sm ent-puxador" aria-label="Mover"><Icone nome="arrastar" /></button></td><td className="num fraco ent-pos">2</td>
+          <td><span className="cad-empresa-nome">104 - DELTA EXEMPLO PADARIA</span><span className="fraco ent-rota-sub">outubro/2026 · DAS · R$ 95,30 · Parte inferior</span></td>
+          <td className="ent-acoes"><span className="badge badge-danger">2ª vez</span><button type="button" className="btn btn-outline"><Icone nome="lapis" />Assinar</button></td></tr>
+      </tbody></table></div>
+    ) },
+  { id: 'ent-linhas', tipo: 'listas', nome: 'Linhas com selo (cartões da entrega)', descricao: 'Nos cartões da Rota (Vencendo, Atestados, Obrigações, Protocolos, Qualidade) e na página do cliente: o nome em negrito e o apoio ao lado, o selo e a ação à direita; a linha inteira pode abrir', classes: ['ent-linhas', 'ent-linha-abre'], telas: ['t-entregas'], largo: true,
+    demo: () => (
+      <ul className="ent-linhas" style={{ width: '100%' }}>
+        <li><button type="button" className="ent-linha-abre"><div><b>102 - BETA SERVICOS EXEMPLO ME</b><span className="fraco">DARF · outubro/2026</span></div><span className="badge badge-warn">vence em 2 dias</span></button></li>
+        <li><div><b>DAS do Simples</b><span className="fraco">20/10 · 3 guias na rota</span></div><span className="badge badge-neutral">vence em 4 dias</span></li>
+      </ul>
+    ) },
+  { id: 'ent-dados', tipo: 'listas', nome: 'Dados em linhas (rótulo e valor)', descricao: 'O cadastro, a Receita e a entrega feita: o rótulo apagado à esquerda e o valor à direita; linha sem valor não aparece', classes: ['ent-dados'], telas: ['t-entregas'],
+    demo: () => <dl className="ent-dados" style={{ width: '100%', maxWidth: 420 }}><div><dt>Recebido por</dt><dd>João (exemplo)</dd></div><div><dt>Entregue por</dt><dd>Maria (exemplo)</dd></div><div><dt>Data/hora</dt><dd>15/10/2026, 12:48</dd></div></dl> },
 
   // ─── Carregamento ───────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'spinner', tipo: 'carregamento', nome: 'Rodinha', classes: ['btn-spinner'], telas: TODAS, demo: () => <><span className="btn-spinner" /><button className="btn btn-primary" disabled type="button"><span className="btn-spinner" />Salvando…</button></> },
