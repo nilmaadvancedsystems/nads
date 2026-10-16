@@ -137,6 +137,22 @@ export function emprestimosNoDinamico(d: BalanceteDinamico, meses: readonly stri
   return mesesComSaldo(d, meses, contas);
 }
 
+/** A conta do adiantamento salarial no dinâmico ("Adiantamento Salarial", "Adto. de salários", "Adiantamento a empregados"). */
+const ADIANTAMENTO_SALARIAL = /^(adiant\w*|adto) (salarial|de salarios?|salarios?|a empregados|a funcionarios|de funcionarios)\b/;
+
+/** As contas de adiantamento salarial do dinâmico (a analítica: o código vai no lançamento sugerido). */
+export function contasDeAdiantamentoSalarial(d: BalanceteDinamico): LinhaDinamico[] {
+  return d.linhas.filter(l => ADIANTAMENTO_SALARIAL.test(normalizarTexto(l.descricao)));
+}
+
+/**
+ * Os meses do período em que o dinâmico tem o adiantamento salarial com saldo (Vitor, 16/10/2026: "contas que eu queria que
+ * você colocasse no check de acordo com o balancete"): no mês ou no de antes. O certo é zerar no mês; com saldo, a etapa entra.
+ */
+export function adiantamentoSalarialNoDinamico(d: BalanceteDinamico, meses: readonly string[]): { cobertos: string[]; com: string[] } {
+  return mesesComSaldo(d, meses, contasDeAdiantamentoSalarial(d));
+}
+
 /** Uma conta do resultado do lado errado: a despesa credora ou a receita devedora, e os meses (o saldo, sem o sinal). */
 export interface ContaDoResultadoErrada {
   codigo: string; classificacao: string; nome: string; tipo: 'despesa' | 'receita';

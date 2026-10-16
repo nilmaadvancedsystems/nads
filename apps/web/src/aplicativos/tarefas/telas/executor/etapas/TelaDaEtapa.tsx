@@ -14,6 +14,7 @@ import { Honorarios } from './honorarios/Honorarios';
 import { CaixaNoBanco } from './caixabancos/CaixaNoBanco';
 import { Simples } from './simples/Simples';
 import { Resultado } from './resultado/Resultado';
+import { AdiantamentoSalarial } from './adiantamentosalarial/AdiantamentoSalarial';
 
 export function TelaDaEtapa({ id }: { id: tarefas.TelaDaEtapa }) {
   switch (id) {
@@ -31,5 +32,6 @@ export function TelaDaEtapa({ id }: { id: tarefas.TelaDaEtapa }) {
     case 'caixa-bancos': return <CaixaNoBanco />;
     case 'simples': return <Simples />;
     case 'resultado': return <Resultado />;
+    case 'adiantamento-salarial': return <AdiantamentoSalarial />;
   }
 }

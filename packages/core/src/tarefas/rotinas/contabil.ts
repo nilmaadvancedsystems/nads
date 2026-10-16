@@ -158,6 +158,26 @@ export const ROTINA_CONTABIL: Rotina = {
       objecoes: [nao('sem-adiantamento', 'A empresa não teve adiantamento a fornecedor')],
     },
     {
+      // o Adiantamento salarial (Vitor, 16/10/2026): a folha desconta a crédito e o pagamento entra a débito no dia 15 (ou no
+      // dia útil antes); o mês zera. Só no mês com saldo no dinâmico (useExecutor: ajustarPeloBalancete, pelas adicionadas)
+      id: 'adiantamento-salarial',
+      secao: 'Ativo',
+      nome: 'Adiantamento salarial',
+      descricao: 'O adiantamento pago no dia 15 e descontado na folha do mês: zera no mês.',
+      ferramenta: null,
+      tela: { id: 'adiantamento-salarial', periodo: true },
+      // só entra pelo balancete (o mês com saldo): sem o dinâmico, nem aparece
+      soQuandoAdicionada: true,
+      verificacao: 'manual',
+      conferir: [
+        'O pagamento do adiantamento no dia 15 (ou no dia útil antes), a débito.',
+        'O desconto na folha do mês, a crédito: o mês zera.',
+      ],
+      objecoes: [
+        { id: 'sem-pagamento', texto: 'O adiantamento não foi pago no mês', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Confira o extrato do dia 15: sem o pagamento, o desconto na folha está errado ou o adiantamento foi pago por outra conta.' } },
+      ],
+    },
+    {
       // só na competência 12 (Vitor, 07/10/2026): fora dela a etapa nem aparece; nela, dois checks em ordem — o cliente
       // enviou o estoque e o estoque foi lançado
       id: 'estoque',

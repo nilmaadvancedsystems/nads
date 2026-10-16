@@ -131,6 +131,14 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       const exc = exDe[c];
       if (!exc || !b.cobertos.includes(c)) continue;
       const entra = b.com.includes(c) || !!t.estadoDa(exc, b.etapa);
+      // a etapa que só existe quando o balancete pede (o Adiantamento salarial): entra e sai pelas adicionadas
+      if (rotina.etapas.find(e => e.id === b.etapa)?.soQuandoAdicionada) {
+        const esta = !!exc.adicionadas?.includes(b.etapa);
+        const m = entra && !esta ? t.adicionarEtapa(exc, b.etapa, b.motivo, op.nome, new Date())
+          : !entra && esta ? t.retirarEtapa(exc, b.etapa, b.motivo, op.nome, new Date()) : null;
+        if (m) repo.gravar(m.execucao, m.evento);
+        continue;
+      }
       const m = t.etapaPeloBalancete(exc, b.etapa, entra, b.motivo, op.nome, new Date());
       if (m) repo.gravar(m.execucao, m.evento);
     }
@@ -149,6 +157,9 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     // o Empréstimos também (Vitor, 15/10/2026: "da mesma forma de empréstimo, tire ele daqui")
     const e = cl.emprestimosNoDinamico(din.d, meses);
     ajustarPeloBalancete({ etapa: 'emprestimos', ...e, motivo: (e.com.length ? 'Empréstimo ou financiamento com saldo' : 'Sem empréstimo nem financiamento') + ' no balancete dinâmico' });
+    // e o Adiantamento salarial: só no mês com saldo (o certo é zerar; Vitor, 16/10/2026)
+    const s = cl.adiantamentoSalarialNoDinamico(din.d, meses);
+    ajustarPeloBalancete({ etapa: 'adiantamento-salarial', ...s, motivo: (s.com.length ? 'Adiantamento salarial com saldo' : 'Adiantamento salarial zerado') + ' no balancete dinâmico' });
   });
   const [aviso, setAviso] = useState<string | null>(null);
   const [conferindo, setConferindo] = useState(false);

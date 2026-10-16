@@ -26,6 +26,7 @@ export { criarRepoTarefasMemoria, execucoesDeExemplo, execucoesVariadas, type Gu
 export * from './reinf/reinf';
 export * from './regras/deTeste';
 export * from './regras/caixaNoBanco';
+export * from './regras/adiantamentoSalarial';
 export * as sieg from './sieg';
 export * as sintegra from './sintegra';
 export * as painel from './painel';
