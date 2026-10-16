@@ -3,7 +3,7 @@
 // 289, 363, 380, 393, 408, 409, 429, 450, 452, 476, 509): o que aparece em quase todas — e o fechamento. As
 // conferências de cada empresa (as que só algumas têm) vêm depois, pelo balancete, no Cadastro.
 // É o único lugar a mexer: a ordem, os nomes, as ferramentas, o que conferir e as objeções saem daqui.
-import type { Rotina } from '../tipos';
+import type { Etapa, Rotina } from '../tipos';
 
 // sem a saída "A folha ainda não saiu" (Vitor, 01/10/2026): a etapa do DP só é feita com a folha pronta
 const SEM_FUNCIONARIOS = { id: 'sem-funcionarios', texto: 'A empresa não tem funcionários', solucao: { tipo: 'nao-se-aplica' as const, rotulo: 'Não tem funcionários' } };
@@ -312,22 +312,8 @@ export const ROTINA_CONTABIL: Rotina = {
         { id: 'honorario-diferente', texto: 'A despesa e o a pagar não batem', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Lance a provisão do honorário do mês (despesa × honorários a pagar) e baixe o pagamento contra o a pagar, não contra a despesa.' } },
       ],
     },
-    {
-      id: 'impostos',
-      secao: 'Passivo',
-      nome: 'Impostos a recolher',
-      descricao: 'O imposto do mês (Simples ou ICMS) igual à guia; a guia paga zera o saldo.',
-      ferramenta: null,
-      verificacao: 'manual',
-      conferir: [
-        'Simples Nacional a recolher: o crédito do mês é igual à despesa (ou à dedução da receita) e à guia do DAS.',
-        'ICMS a recolher: o crédito do mês é igual à dedução "(-) ICMS" da receita.',
-        'A guia paga zera o saldo; nenhum imposto a recolher devedor.',
-      ],
-      objecoes: [
-        { id: 'sem-guia', texto: 'Não tenho a guia do mês', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'A guia sai do Fiscal. Interrompa e retome quando o Fiscal liberar a competência.' } },
-      ],
-    },
+    // Impostos a recolher: fora por enquanto (Vitor, 16/10/2026: "remove ele por enquanto, depois voltamos"); a etapa
+    // (o Simples e o ICMS × a guia, a guia paga zerando) está guardada em IMPOSTOS_A_RECOLHER, no fim deste arquivo.
 
     // ─── Resultado ────────────────────────────────────────────────────────────
     {
@@ -382,3 +368,21 @@ export const ROTINA_CONTABIL: Rotina = {
     },
   ],
 };
+
+/** A etapa Impostos a recolher, fora da rotina por enquanto (16/10/2026): para voltar, é só pôr de novo na lista do Passivo. */
+export const IMPOSTOS_A_RECOLHER = {
+  id: 'impostos',
+  secao: 'Passivo',
+  nome: 'Impostos a recolher',
+  descricao: 'O imposto do mês (Simples ou ICMS) igual à guia; a guia paga zera o saldo.',
+  ferramenta: null,
+  verificacao: 'manual',
+  conferir: [
+    'Simples Nacional a recolher: o crédito do mês é igual à despesa (ou à dedução da receita) e à guia do DAS.',
+    'ICMS a recolher: o crédito do mês é igual à dedução "(-) ICMS" da receita.',
+    'A guia paga zera o saldo; nenhum imposto a recolher devedor.',
+  ],
+  objecoes: [
+    { id: 'sem-guia', texto: 'Não tenho a guia do mês', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'A guia sai do Fiscal. Interrompa e retome quando o Fiscal liberar a competência.' } },
+  ],
+} satisfies Etapa;
