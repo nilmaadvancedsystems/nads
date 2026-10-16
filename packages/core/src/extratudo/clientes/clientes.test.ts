@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  adiantamentoNoDinamico, emprestimosNoDinamico, resultadoErradoNoDinamico, tipoDoRazao, assinaturaDoEnvio, clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
+  adiantamentoNoDinamico, emprestimosNoDinamico, resultadoErradoNoDinamico, tipoDoRazao, conferirFechamento, dinamicoCompletoDeTeste, assinaturaDoEnvio, clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
 } from './index';
 
 // o formato do balancete dinâmico do Alterdata (292, bdinamico.xls)
@@ -166,5 +166,30 @@ describe('de que é o razão, pelo dinâmico (16/10/2026)', () => {
   it('cada código na sua etapa; o cheque especial e a despesa, em nenhuma', () => {
     expect(['10101', '11512', '12401', '20001', '52001', '52003', '52004', '60005', '54010', '21041', '21042', '99999', '777'].map(c => tipoDoRazao(d, c)))
       .toEqual(['caixa', 'cliente', 'adiantamento-salarial', 'fornecedor', 'salarios', 'inss', 'fgts', 'prolabore', 'simples', 'emprestimo', null, null, null]);
+  });
+});
+
+describe('o fechamento pelo dinâmico (16/10/2026)', () => {
+  const linha = (codigo: string, classificacao: string, descricao: string, saldos: Record<string, number>) => ({ codigo, classificacao, descricao, saldoAnterior: 0, saldos });
+  const certo = { meses: ['2026-01'], linhas: [
+    linha('1', '1', 'ATIVO', { '2026-01': 1000 }), linha('10101', '1.1.1.01', 'Caixa Geral', { '2026-01': 1000 }),
+    linha('2', '2', 'PASSIVO', { '2026-01': -1000 }), linha('52001', '2.1.1.02.001', 'Salários a Pagar', { '2026-01': -1000 }),
+  ] };
+  it('tudo certo: nenhuma pendência', () => {
+    expect(conferirFechamento(certo, ['2026-01'])).toEqual([]);
+  });
+  it('o balancete que não fecha, o caixa credor e a obrigação devedora', () => {
+    const errado = { meses: ['2026-01'], linhas: [
+      linha('1', '1', 'ATIVO', { '2026-01': -200 }), linha('10101', '1.1.1.01', 'Caixa Geral', { '2026-01': -200 }),
+      linha('2', '2', 'PASSIVO', { '2026-01': 150 }), linha('52001', '2.1.1.02.001', 'Salários a Pagar', { '2026-01': 150 }),
+    ] };
+    expect(conferirFechamento(errado, ['2026-01']).map(p => [p.id, p.contas.map(c => c.nome)])).toEqual([
+      ['balancete', ['Diferença']], ['caixa', ['Caixa Geral']], ['passivo', ['Salários a Pagar']],
+    ]);
+  });
+  it('o dinâmico completo de teste: certo, nada; com pendências, cada uma no seu lugar', () => {
+    expect(conferirFechamento(dinamicoCompletoDeTeste(['2026-01', '2026-02'], false), ['2026-01', '2026-02'])).toEqual([]);
+    expect(conferirFechamento(dinamicoCompletoDeTeste(['2026-01', '2026-02'], true), ['2026-01', '2026-02']).map(p => p.id))
+      .toEqual(['clientes', 'adiantamento-salarial', 'passivo', 'despesas', 'receitas']);
   });
 });

@@ -8,7 +8,7 @@ import { empresas, formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useCadastro } from '../../../../dados/repo';
 import { useOperador } from '../../../../casca/operador';
-import { useChaveDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
+import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 import { useGuardado } from '../../../../../../comum/guardado';
 import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
 import { useEffect, useRef } from 'react';
@@ -81,6 +81,9 @@ export function useEmprestimos() {
     if (novos.length) setRazoes(l => [...l, ...novos]);
   }
 
+  // o ⚡ do modo desenvolvedor: o razão de teste de um contrato (16/10/2026)
+  useDadosDeTesteDaEtapa(s.dev ? [{ id: 'certo', rotulo: 'Razão de teste (credor)' }, { id: 'devedor', rotulo: 'Razão de teste (com mês devedor)' }] : [],
+    id => adicionar([{ arquivo: 'TESTE razão do empréstimo' + (id === 'devedor' ? ' (devedor)' : '') + '.xls', r: t.emprestimoDeTeste(meses, id === 'devedor') }], true));
   // os razões de empréstimo da Importação (o upload único; 16/10/2026): entram sozinhos, uma vez cada
   const contabil = useContabilDaEmpresa(s.nome, s.codigo);
   const daImportacao = contabil.razoesDoTipo('emprestimo');

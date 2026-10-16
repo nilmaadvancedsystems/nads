@@ -9,9 +9,12 @@ import { useCadastro } from '../../../../dados/repo';
 import { useExtratorDaEmpresa } from '../../../../dados/extrator';
 import { useOperador } from '../../../../casca/operador';
 import { useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
+import { useBancosDeTeste } from '../bancos/useBancosDeTeste';
 
 export function useChequeEspecial() {
   const { nome, codigo, meses } = useEtapaAberta();
+  // o ⚡ do modo desenvolvedor: os extratos e razões de teste da Importação (16/10/2026)
+  useBancosDeTeste();
   const vivo = useCadastro(nome, codigo);
   const cadastro = vivo.carregada ? vivo.cadastro : null;
   const empresa = useExtratorDaEmpresa(nome);

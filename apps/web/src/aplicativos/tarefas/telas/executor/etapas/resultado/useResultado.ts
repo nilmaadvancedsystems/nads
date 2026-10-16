@@ -7,7 +7,7 @@ import { useRetorno } from '@nads/ui';
 import { useMemo } from 'react';
 import { useGuardado } from '../../../../../../comum/guardado';
 import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
-import { useChaveDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
+import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 
 type Dinamico = { nome: string; d: cl.BalanceteDinamico };
 
@@ -20,6 +20,9 @@ export function useResultado() {
   // o da Importação (o primeiro passo), ou o que o Clientes importou antes
   const doClientes = useContabilDaEmpresa(s.nome, s.codigo).dinamico;
   const din = proprio || doClientes;
+  // o ⚡ do modo desenvolvedor: o dinâmico de teste da empresa toda (16/10/2026)
+  useDadosDeTesteDaEtapa(s.dev ? [{ id: 'certo', rotulo: 'Dinâmico de teste (tudo certo)' }, { id: 'erros', rotulo: 'Dinâmico de teste (despesa credora e receita devedora)' }] : [],
+    id => setProprio({ nome: 'TESTE balancete dinâmico.xls', d: cl.dinamicoCompletoDeTeste(s.meses, id === 'erros') }));
 
   async function importar(f: File | null) {
     if (!f) return;

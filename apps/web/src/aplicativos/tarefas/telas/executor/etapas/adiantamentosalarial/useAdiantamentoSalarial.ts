@@ -8,7 +8,7 @@ import { baixarBytes, useRetorno } from '@nads/ui';
 import { useMemo } from 'react';
 import { useGuardado } from '../../../../../../comum/guardado';
 import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
-import { useChaveDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
+import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 
 const dataBR = (iso: string) => iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4);
 
@@ -27,6 +27,9 @@ export function useAdiantamentoSalarial() {
   const doDinamico = useMemo(() => (contabil.dinamico ? cl.contasDeAdiantamentoSalarial(contabil.dinamico.d)[0]?.codigo || '' : ''), [contabil.dinamico]);
   const contaAdiantamento = contas.adiantamento ?? doDinamico;
   const contaBanco = contas.banco ?? '';
+  // o ⚡ do modo desenvolvedor: o razão de teste (16/10/2026)
+  useDadosDeTesteDaEtapa(s.dev ? [{ id: 'certo', rotulo: 'Razão de teste (zerando)' }, { id: 'falta', rotulo: 'Razão de teste (sem o pagamento do último mês)' }] : [],
+    id => setRazao({ arquivo: 'TESTE razão do adiantamento salarial.xls', razao: t.adiantamentoSalarialDeTeste(s.meses, id === 'falta') }));
 
   async function importar(f: File | null) {
     if (!f) return;

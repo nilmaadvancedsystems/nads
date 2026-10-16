@@ -35,7 +35,7 @@ export function Fornecedores() {
         {vm.corrigir ? <button type="button" className="btn btn-primary" onClick={vm.tirar}>Corrigi, irei reimportar</button>
           : vm.temProxima ? <button type="button" className="btn btn-primary" disabled={!vm.podeSeguir} onClick={vm.proximo}>Próximo</button>
           // nada para questionar: sem o Envio, segue para a próxima etapa pela seta lá de cima (Vitor, 15/10/2026)
-          : vm.semQuestionamento && <span className="hint">Nada para questionar: siga para a próxima etapa pela seta acima</span>}
+          : vm.semQuestionamento && <span className="hint">{vm.dicaDoFim}</span>}
         {/* no Envio, só o Mandar pelo Mandei (Vitor, 07/10/2026: "remove isso tudo, deixa só o botão"): vai para o e-mail e o
             WhatsApp da empresa, os do Cadastro */}
         {vm.tela === 'envio' && vm.conferidos.length > 0 && (

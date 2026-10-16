@@ -11,7 +11,7 @@ import { useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { extratorDaEmpresa, repoDoCadastro } from '../../dados/fonte';
-import { useCartaoEmpresarial, useCredLiquidacao, useExecucoesDoPeriodo, usePrestaServico, useRegimesDoEntregas, useRepo } from '../../dados/repo';
+import { useCartaoEmpresarial, useCredLiquidacao, useVendeNoCartao, useExecucoesDoPeriodo, usePrestaServico, useRegimesDoEntregas, useRepo } from '../../dados/repo';
 import { caminhoDaEmpresa, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../comum/desenvolvimento';
@@ -63,6 +63,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const cartaoEmpresarial = useCartaoEmpresarial(empresa?.nome ?? null, empresa?.codigo ?? null);
   // e se recebe liquidação de cobrança no caixa: Sim põe o Creditor em todos os meses (Vitor, 08/10/2026)
   const credLiquidacao = useCredLiquidacao(empresa?.nome ?? null, empresa?.codigo ?? null);
+  // e se vende no cartão: a etapa Vendas no cartão (o Conciliadorzinho) entra ou sai (Vitor, 16/10/2026)
+  const vendeNoCartao = useVendeNoCartao(empresa?.nome ?? null, empresa?.codigo ?? null);
   const meses = t.competenciasDoPeriodo(periodo);
   const varios = meses.length > 1;
   const { porMes, carregada } = useExecucoesDoPeriodo(meses, rotina.departamento);
@@ -110,6 +112,22 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
         repo.gravar(a.execucao, a.evento);
       } else if (!cartaoEmpresarial && esta && !t.estadoDa(exc, 'cartoes')) {
         const r = t.retirarEtapa(exc, 'cartoes', 'Cadastro: sem cartão empresarial', op.nome, new Date());
+        repo.gravar(r.execucao, r.evento);
+      }
+    }
+  });
+  // a etapa Vendas no cartão segue o Cadastro, como a Cartões: "Vende no cartão: Sim" põe nos meses; "Não" tira a não feita
+  useEffect(() => {
+    if (dev || !carregada || !empresa || vendeNoCartao == null) return;
+    for (const c of meses) {
+      const exc = exDe[c];
+      if (!exc) continue;
+      const esta = !!exc.adicionadas?.includes('vendas-cartao');
+      if (vendeNoCartao && !esta) {
+        const a = t.adicionarEtapa(exc, 'vendas-cartao', 'Cadastro: vende no cartão', op.nome, new Date());
+        repo.gravar(a.execucao, a.evento);
+      } else if (!vendeNoCartao && esta && !t.estadoDa(exc, 'vendas-cartao')) {
+        const r = t.retirarEtapa(exc, 'vendas-cartao', 'Cadastro: não vende no cartão', op.nome, new Date());
         repo.gravar(r.execucao, r.evento);
       }
     }

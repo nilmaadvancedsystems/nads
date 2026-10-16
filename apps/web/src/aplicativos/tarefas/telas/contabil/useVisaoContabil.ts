@@ -35,6 +35,8 @@ export function useVisaoContabil(dep: 'contabil' | 'fiscal' | 'dp' = 'contabil')
     // só as etapas que existem no mês do ano da competência (o Estoque só em dezembro)
     etapas: t.resumoPorEtapa(execucoes, { ...rotina, etapas: rotina.etapas.filter(e => t.etapaNoMesDoAno(e, competencia)) }, totalEmpresas),
     objecoes: t.objecoesMaisComuns(execucoes, rotina).slice(0, 8),
+    /** quanto cada etapa leva (a mediana, em minutos, na mesma sentada; 16/10/2026): onde as pessoas mais param */
+    tempos: t.tempoPorEtapa(execucoes),
     paradas,
   };
 }
