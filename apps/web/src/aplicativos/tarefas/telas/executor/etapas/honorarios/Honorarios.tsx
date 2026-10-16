@@ -6,6 +6,7 @@ import { Alerta, Icone } from '@nads/ui';
 import { useId, useState } from 'react';
 import { BotaoDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { RazaoDaFolha } from '../../partes/RazaoDaFolha';
+import { MenuDeConta } from '../../../../../extratudo/ferramentas/creditor/partes/MenuDeConta';
 import { AvisoAcimaDoCabecalho } from '../contexto';
 import { useHonorarios } from './useHonorarios';
 
@@ -16,8 +17,8 @@ export function Honorarios() {
   return (
     <section>
       <header className="topbar"><div><h2 className="page-title">Honorários</h2></div></header>
-      {/* a regra do Cadastro: sem resposta, a pergunta vai para o aviso acima do cabeçalho (Vitor, 07/10/2026); respondida,
-          fica aqui para trocar (ou no Cadastro › Empresa) */}
+      {/* a regra do Cadastro: sem resposta, a pergunta vai para o aviso acima do cabeçalho (Vitor, 07/10/2026); respondida, some
+          da etapa (Vitor, 16/10/2026: "mesmo eu respondendo, essa box fica permanente") — troca no Cadastro › Parâmetros contábeis */}
       {vm.emiteNota === null && (
         <AvisoAcimaDoCabecalho>
           <div className="alerta-linha">
@@ -30,35 +31,11 @@ export function Honorarios() {
           </div>
         </AvisoAcimaDoCabecalho>
       )}
-      {vm.emiteNota != null && <NotaDeHonorario vm={vm} />}
       <div className="imp-lista">
         <RazaoDaFolha vm={vm.razao} dev={vm.dev} />
         {vm.emiteNota === false && <ExtratoPorCobranca vm={vm} />}
       </div>
     </section>
-  );
-}
-
-function NotaDeHonorario({ vm }: { vm: Vm }) {
-  const opcao = (sim: boolean, rotulo: string) => (
-    <button type="button" className={'btn ' + (vm.emiteNota === sim ? 'btn-primary' : 'btn-outline')} aria-pressed={vm.emiteNota === sim}
-      onClick={() => vm.definirEmiteNota(sim)}>{rotulo}</button>
-  );
-  return (
-    <div className="cad-regra">
-      <div className="cad-regra-txt">
-        <span className="cad-campo-rotulo">Emite nota de honorário</span>
-        <span className="hint">
-          {vm.emiteNota === true ? 'A provisão chega pela nota: aqui só o razão.'
-            : vm.emiteNota === false ? 'Sem nota: importe o Extrato por cobrança e lance as provisões no Alterdata.'
-              : 'O escritório emite nota de honorário para esta empresa? Fica guardado no Cadastro.'}
-        </span>
-      </div>
-      <div className="cad-regra-opcoes" role="group" aria-label="Emite nota de honorário">
-        {opcao(true, 'Sim')}
-        {opcao(false, 'Não')}
-      </div>
-    </div>
   );
 }
 
@@ -103,12 +80,14 @@ function ExtratoPorCobranca({ vm }: { vm: Vm }) {
           {e.cobrancas.length > 0 ? (
             <div className="table-wrap">
               <table className="table-compact">
-                <thead><tr><th>Emissão</th><th>Cobrança</th><th>Vencimento</th><th>Pagamento</th><th className="num">Valor</th></tr></thead>
+                <thead><tr><th>Emissão</th><th>Cobrança</th><th>Vencimento</th><th>Pagamento</th><th>Histórico</th><th className="num">Valor</th></tr></thead>
                 <tbody>
                   {e.cobrancas.map(c => (
                     <tr key={c.numero}>
                       <td>{c.emissao}</td><td>{c.numero}</td><td>{c.vencimento}</td>
                       <td>{c.paga ? c.pagamento : <span className="badge badge-neutral">{c.pagamento}</span>}</td>
+                      {/* o histórico da provisão, já pronto (Vitor, 16/10/2026: "já faz o histórico também") */}
+                      <td className="wrap hint">{c.historico}</td>
                       <td className="num">{c.valor}</td>
                     </tr>
                   ))}
@@ -116,21 +95,42 @@ function ExtratoPorCobranca({ vm }: { vm: Vm }) {
               </table>
             </div>
           ) : <p className="hint">Nenhuma cobrança emitida nos meses do período.</p>}
+          {/* as pagas no período (Vitor, 16/10/2026: "se tiver pago, faça o pagamento e peça o usuário para escolher a conta"):
+              D honorários a pagar / C a conta do banco de cada uma, sugerida pelo débito achado no extrato */}
+          {e.pagamentos.length > 0 && (
+            <div className="table-wrap" style={{ marginTop: 12 }}>
+              <table className="table-compact">
+                <thead><tr><th>Pagamento</th><th>Cobrança</th><th>Conta do banco (crédito)</th><th>Histórico</th><th className="num">Valor</th></tr></thead>
+                <tbody>
+                  {e.pagamentos.map(p => (
+                    <tr key={p.numero}>
+                      <td>{p.data}</td><td>{p.numero}</td>
+                      <td>
+                        <MenuDeConta valor={p.conta} contas={vm.opcoes} onEscolher={c => vm.escolherBanco(p.numero, c)} />
+                        <span className="hint" style={{ display: 'block', marginTop: 2 }}>{p.nomeDaConta || 'Escolha a conta do banco'}{p.noExtrato ? ' · no extrato do ' + p.noExtrato : ''}</span>
+                      </td>
+                      <td className="wrap hint">{p.historico}</td>
+                      <td className="num">{p.valor}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           {/* o arquivo do Alterdata: D despesa de honorários / C honorários a pagar, na data de emissão de cada cobrança */}
           <div className="tarefas-barra-topo">
-            <label className="busca-curta" title={'Débito: a despesa de honorários contábeis' + (vm.nomeDespesa ? ' (' + vm.nomeDespesa + ')' : '')}>
-              <Icone nome="hash" />
-              <input type="text" inputMode="numeric" placeholder="Despesa (débito)" aria-label="Código da conta de despesa de honorários (débito)"
-                value={vm.contaDespesa} onChange={ev => vm.mudarConta('despesa', ev.target.value)} />
-            </label>
-            <label className="busca-curta" title={'Crédito: honorários a pagar' + (vm.nomeAPagar ? ' (' + vm.nomeAPagar + ')' : '')}>
-              <Icone nome="hash" />
-              <input type="text" inputMode="numeric" placeholder="Honorários a pagar (crédito)" aria-label="Código da conta de honorários a pagar (crédito)"
-                value={vm.contaAPagar} onChange={ev => vm.mudarConta('aPagar', ev.target.value)} />
-            </label>
+            {/* as contas já vêm escolhidas (Vitor, 16/10/2026: "coloque as contas automaticamente"); dá para trocar */}
+            <span className="hint">Despesa</span>
+            <MenuDeConta valor={vm.contaDespesa} contas={vm.opcoes} onEscolher={c => vm.mudarConta('despesa', c)} />
+            {vm.nomeDespesa && <span className="hint">{vm.nomeDespesa}</span>}
+            <span className="hint">Honorários a pagar</span>
+            <MenuDeConta valor={vm.contaAPagar} contas={vm.opcoes} onEscolher={c => vm.mudarConta('aPagar', c)} />
+            {vm.nomeAPagar && <span className="hint">{vm.nomeAPagar}</span>}
             <span className="tarefas-barra-espaco" />
+            {vm.faltaBanco > 0 && <span className="hint">Falta a conta do banco de {vm.faltaBanco} {vm.faltaBanco === 1 ? 'pagamento' : 'pagamentos'}</span>}
+            {vm.baixado && <span className="badge badge-ok" title="A planilha foi baixada: o Próximo libera">Baixado</span>}
             <button type="button" className="btn btn-primary" disabled={!vm.podeBaixar} onClick={vm.baixar}
-              title={vm.podeBaixar ? 'Baixar o .xls de importação do Alterdata: a provisão de cada cobrança na data de emissão' : 'Informe a conta de despesa e a de honorários a pagar'}>
+              title={vm.podeBaixar ? 'Baixar o .xls de importação do Alterdata: a provisão de cada cobrança na emissão e o pagamento das pagas' : 'Escolha a conta de despesa, a de honorários a pagar e a do banco de cada pagamento'}>
               <Icone nome="download" />Baixar .xls
             </button>
           </div>

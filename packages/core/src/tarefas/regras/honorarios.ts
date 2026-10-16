@@ -4,6 +4,7 @@
 // monta os lançamentos na data de emissão de cada cobrança (D despesa de honorários / C honorários a pagar), no arquivo de
 // importação do Alterdata (o padrão de 10 colunas do Alterdata).
 import type { RazaoDaConta } from './razao';
+import type { LancamentoDoBanco } from './fgts';
 
 /** Uma cobrança do "Extrato por cobrança" (Alterdata, módulo de cobrança do escritório). */
 export interface CobrancaDeHonorario {
@@ -65,14 +66,56 @@ export interface LancamentoDeHonorario { data: string; debito: string; credito: 
 /** O número da cobrança sem os zeros da frente ("000013074" → "13074"). */
 const semZeros = (n: string) => n.replace(/^0+(?=\d)/, '');
 
+const br = (iso: string) => iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4);
+/** "ref. MM/AAAA": o mês da emissão (a competência do honorário). */
+const ref = (c: CobrancaDeHonorario) => 'ref. ' + c.emissao.slice(5, 7) + '/' + c.emissao.slice(0, 4);
+
+/** O histórico da provisão (Vitor, 16/10/2026: "já faz o histórico também"). */
+export const historicoDaProvisaoDeHonorario = (c: CobrancaDeHonorario) => 'Honorários contábeis ' + ref(c) + ' conf. cobrança nº ' + semZeros(c.numero);
+/** O histórico do pagamento. */
+export const historicoDoPagamentoDeHonorario = (c: CobrancaDeHonorario) => 'Pagamento de honorários contábeis ' + ref(c) + ' conf. cobrança nº ' + semZeros(c.numero);
+
 /** A provisão de cada cobrança, na data de emissão: D despesa de honorários / C honorários a pagar. */
 export function lancamentosDosHonorarios(cobrancas: readonly CobrancaDeHonorario[], contaDespesa: string, contaAPagar: string): LancamentoDeHonorario[] {
   return cobrancas.map(c => ({
-    data: c.emissao.slice(8, 10) + '/' + c.emissao.slice(5, 7) + '/' + c.emissao.slice(0, 4),
-    debito: contaDespesa.trim(), credito: contaAPagar.trim(),
-    historico: 'Honorários contábeis conf. cobrança nº ' + semZeros(c.numero),
-    valor: c.valor, documento: semZeros(c.numero),
+    data: br(c.emissao), debito: contaDespesa.trim(), credito: contaAPagar.trim(),
+    historico: historicoDaProvisaoDeHonorario(c), valor: c.valor, documento: semZeros(c.numero),
   }));
+}
+
+/**
+ * As cobranças pagas nos meses do período (a de antes, emitida fora dele, também: o pagamento é do mês em que saiu do
+ * banco). Vitor, 16/10/2026: "se tiver pago, faça o pagamento e peça o usuário para escolher a conta".
+ */
+export function cobrancasPagasNoPeriodo(cobrancas: readonly CobrancaDeHonorario[], meses: readonly string[]): CobrancaDeHonorario[] {
+  return cobrancas.filter(c => c.pagamento && meses.includes(c.pagamento.slice(0, 7))).sort((a, b) => a.pagamento.localeCompare(b.pagamento) || a.numero.localeCompare(b.numero));
+}
+
+/**
+ * O pagamento de cada cobrança paga, na data do pagamento: D honorários a pagar / C banco (a conta que a pessoa escolheu
+ * para ela). O que foi pago a mais que o valor (juros, multa) vai a débito da despesa, no mesmo dia.
+ */
+export function pagamentosDosHonorarios(pagas: readonly CobrancaDeHonorario[], contaAPagar: string, contaDespesa: string, bancoDe: (c: CobrancaDeHonorario) => string): LancamentoDeHonorario[] {
+  return pagas.flatMap(c => {
+    const banco = bancoDe(c).trim();
+    const doc = semZeros(c.numero);
+    const pago = c.recebido > 0 ? c.recebido : c.valor;
+    const linhas: LancamentoDeHonorario[] = [{ data: br(c.pagamento), debito: contaAPagar.trim(), credito: banco, historico: historicoDoPagamentoDeHonorario(c), valor: c.valor, documento: doc }];
+    const amais = Math.round((pago - c.valor) * 100) / 100;
+    if (amais > 0) linhas.push({ data: br(c.pagamento), debito: contaDespesa.trim(), credito: banco, historico: 'Juros e multa s/ ' + historicoDoPagamentoDeHonorario(c).charAt(0).toLowerCase() + historicoDoPagamentoDeHonorario(c).slice(1), valor: amais, documento: doc });
+    return linhas;
+  });
+}
+
+/**
+ * O débito do pagamento no extrato dos bancos: o mesmo valor (o pago) até 3 dias da data do pagamento. Serve para sugerir
+ * a conta do banco (o banco do lançamento achado).
+ */
+export function pagamentoNoExtrato(c: CobrancaDeHonorario, extrato: readonly LancamentoDoBanco[]): LancamentoDoBanco | null {
+  if (!c.pagamento) return null;
+  const alvo = Math.round((c.recebido > 0 ? c.recebido : c.valor) * 100);
+  const dias = (d: string) => Math.abs(Date.parse(d) - Date.parse(c.pagamento)) / 864e5;
+  return extrato.filter(l => l.valor === -alvo && dias(l.data) <= 3).sort((a, b) => dias(a.data) - dias(b.data))[0] || null;
 }
 
 /**
