@@ -76,6 +76,12 @@ const ICONS = {
   impressora: '<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/>',
   // a cédula: o Caixa da tarefa (Vitor, 14/10/2026: "troca o ícone do caixa", era a maleta das empresas)
   dinheiro: '<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01"/><path d="M18 12h.01"/>',
+  // da Área do Cliente (Vitor, 16/10/2026): a empresa, o escudo, a seta de "ver todas", o telefone e o aviãozinho de enviar
+  predio: '<rect x="4.5" y="3" width="15" height="18" rx="1.5"/><path d="M9 7.5h.01"/><path d="M15 7.5h.01"/><path d="M9 11.5h.01"/><path d="M15 11.5h.01"/><path d="M10 21v-4h4v4"/>',
+  escudo: '<path d="M12 3 4.5 6v5.5c0 4.4 3 8 7.5 9.5 4.5-1.5 7.5-5.1 7.5-9.5V6Z"/><path d="m9 12 2.2 2.2L15.5 10"/>',
+  seta: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
+  telefone: '<path d="M21 16.4v2.9a2 2 0 0 1-2.2 2 19.5 19.5 0 0 1-8.5-3 19.2 19.2 0 0 1-5.9-5.9 19.5 19.5 0 0 1-3-8.6A2 2 0 0 1 3.4 2.5h2.9a2 2 0 0 1 2 1.7c.1.9.4 1.9.7 2.7a2 2 0 0 1-.5 2.1L7.3 10.2a15.6 15.6 0 0 0 5.9 5.9l1.2-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.8 2Z"/>',
+  aviao: '<path d="M21.5 2.5 14.8 21l-3.6-8.2L3 9.2Z"/><path d="m21.5 2.5-10.3 10.3"/>',
 } as const;
 
 export type NomeIcone = keyof typeof ICONS;

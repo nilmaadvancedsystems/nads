@@ -14,7 +14,7 @@ export function AreaDeSoltar({ aceitar, dica, desabilitada, onArquivos }: { acei
   return (
     <label htmlFor={id} className={'cli-soltar' + (sobre ? ' sobre' : '') + (desabilitada ? ' is-locked' : '')}
       onDragOver={ev => { ev.preventDefault(); if (!desabilitada) setSobre(true); }} onDragLeave={() => setSobre(false)} onDrop={soltou}>
-      <Icone nome="upload" width={28} height={28} />
+      <span className="cli-soltar-ico" aria-hidden="true"><Icone nome="upload" width={24} height={24} /></span>
       <b>Arraste os arquivos para cá</b>
       <span>ou clique para escolher no seu aparelho</span>
       <small className="hint">{dica}</small>

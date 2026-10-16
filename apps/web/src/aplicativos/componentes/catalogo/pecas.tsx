@@ -14,6 +14,8 @@ import { AreaDeSoltar } from '../../cliente/partes/AreaDeSoltar';
 import { CartaoDeGuia } from '../../cliente/partes/CartaoDeGuia';
 import { ConversaDoChamado } from '../../cliente/partes/ConversaDoChamado';
 import { LinhaDaAgenda } from '../../cliente/partes/LinhaDaAgenda';
+import { LinhaDeGuia } from '../../cliente/partes/LinhaDeGuia';
+import '../../cliente/cliente.css';
 
 const nada = () => undefined;
 
@@ -135,7 +137,7 @@ export const ICONES: NomeIcone[] = [
   'arrowDown', 'arrowUp', 'check', 'checkCircle', 'scale', 'alert', 'lock', 'unlock', 'x', 'sun', 'moon', 'monitor', 'upload', 'ajuda',
   'olho', 'fileText', 'clock', 'chevronsLeft', 'chevronLeft', 'chevronRight', 'settings', 'logOut', 'barChart', 'caretDown', 'play',
   'camera', 'imagem', 'filtro', 'ordenar', 'copiar', 'search', 'repeat', 'calendar', 'plus', 'fileSearch', 'hash', 'list', 'menu', 'pastaAberta', 'mais',
-  'girar', 'maximizar', 'minimizar', 'painel', 'cartao', 'download', 'grade', 'impressora', 'dinheiro',
+  'girar', 'maximizar', 'minimizar', 'painel', 'cartao', 'download', 'grade', 'impressora', 'dinheiro', 'predio', 'escudo', 'seta', 'telefone', 'aviao',
 ];
 const BANCOS = ['banco-do-brasil', 'banrisul', 'bradesco', 'btg', 'c6', 'caixa', 'inter', 'itau', 'mercado-pago', 'nubank', 'pagbank', 'safra', 'santander', 'sicoob', 'stone', 'cora', 'sicredi', 'bnb'];
 const CORES = [
@@ -290,8 +292,8 @@ export const PECAS_BASE: Peca[] = [
   { id: 'mes', tipo: 'campos', nome: 'Seletor de mês', componente: 'SeletorMes', classes: ['seletor-mes'], telas: ['t-empresas', 't-contabil', 'c-cliente-agenda'], demo: () => <MesVivo /> },
   { id: 'arquivos', tipo: 'campos', nome: 'Escolher arquivos', componente: 'CampoArquivos', classes: ['file-picker'], telas: ['c-importacao', 'e-cheque', 'e-creditor'],
     demo: () => <><CampoArquivos id="cat-arq" onEscolher={nada} aceitar=".xls,.xlsx" /><CampoArquivos id="cat-arq2" onEscolher={nada} aceitar=".xls" compacto rotulo="Importar todos os meses" /></> },
-  { id: 'area-soltar', tipo: 'campos', nome: 'Área de soltar arquivos', descricao: 'Da Área do Cliente (Vitor, 16/10/2026): arrastar os arquivos para cima dela ou clicar para escolher; fica avermelhada quando o arquivo está por cima. A dica diz o que aceita', componente: 'AreaDeSoltar', classes: ['cli-soltar', 'sobre'], telas: ['c-cliente-enviar'], largo: true,
-    demo: () => <AreaDeSoltar aceitar=".pdf,.jpg,.png,.xml,.zip" dica="PDF, JPG, PNG, XML ou ZIP · até 15 MB cada" onArquivos={nada} /> },
+  { id: 'area-soltar', tipo: 'campos', nome: 'Área de soltar arquivos', descricao: 'Da Área do Cliente (Vitor, 16/10/2026): arrastar os arquivos para cima dela ou clicar para escolher; borda tracejada e cantos bem redondos, o ícone num círculo com sombra; fica avermelhada quando o arquivo está por cima. A dica diz o que aceita. Visual do protótipo do Vitor, nas cores do nads (claro e escuro)', componente: 'AreaDeSoltar', classes: ['cli-soltar', 'cli-soltar-ico', 'sobre'], telas: ['c-cliente-enviar'], largo: true,
+    demo: () => <div className="cli-app cli-demo" style={{ width: '100%' }}><AreaDeSoltar aceitar=".pdf,.jpg,.png,.xml,.zip" dica="PDF, JPG, PNG, XML ou ZIP · até 15 MB cada" onArquivos={nada} /></div> },
 
   // ─── Tabelas ────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'tabela', tipo: 'tabelas', nome: 'Tabela padrão', descricao: 'Cabeçalho grudado; números à direita (.num); a conta com o código em negrito e o nome normal', componente: 'TituloDaConta', classes: ['table-wrap', 'table-compact', 'th-sort', 'num'], telas: ['c-relatorio', 'c-consulta', 'e-conferencia', 't-empresas'], largo: true,
@@ -584,12 +586,42 @@ export const PECAS_BASE: Peca[] = [
         </div>
       );
     } },
-  { id: 'cartao-guia', tipo: 'cartoes', nome: 'Cartão de guia (Área do Cliente)', descricao: 'Da Área do Cliente (Vitor, 16/10/2026): o tipo da guia e a situação (a vencer, vence hoje, vencida — a borda e o selo mudam), o valor em destaque, a competência, o vencimento e o Baixar guia', componente: 'CartaoDeGuia', classes: ['cli-guia', 'cli-guia-vencida', 'cli-guia-vence-hoje', 'cli-guia-valor'], telas: ['c-cliente', 'c-cliente-guias'], largo: true,
+  { id: 'cartao-guia', tipo: 'cartoes', nome: 'Cartão de guia (Área do Cliente)', descricao: 'Da Área do Cliente (Vitor, 16/10/2026, visual do protótipo): cartão de cantos bem redondos e sombra suave — a etiqueta do tipo (DAS, FGTS, DAE) e o selo da situação (a vencer azul, vence hoje amarelo, vencida vermelho; a borda acompanha), o valor em destaque, o nome, o vencimento com o relógio, a competência e, embaixo do fio, o Baixar guia de degradê vermelho. Fica na aba Guias, em grade', componente: 'CartaoDeGuia', classes: ['cli-grade', 'cli-guia', 'cli-guia-vencida', 'cli-guia-vence-hoje', 'cli-guia-valor', 'cli-etiqueta'], telas: ['c-cliente', 'c-cliente-guias'], largo: true,
     demo: () => (
-      <div className="cli-grade" style={{ width: '100%' }}>
+      <div className="cli-app cli-demo" style={{ width: '100%' }}><div className="cli-grade">
         <CartaoDeGuia guia={{ id: 'x1', tipo: 'DAS', competencia: '2026-09', vencimento: '20/10/2026', valor: 1284.37, numero: '07.18.26277.1234567-8', situacao: 'vencida', temPdf: true }} onBaixar={nada} />
         <CartaoDeGuia guia={{ id: 'x2', tipo: 'FGTS', competencia: '2026-09', vencimento: '20/10/2026', valor: 917.42, situacao: 'vence hoje', temPdf: true }} onBaixar={nada} />
         <CartaoDeGuia guia={{ id: 'x3', tipo: 'DAE', competencia: '2026-09', vencimento: '29/10/2026', valor: 432.1, situacao: 'a vencer', temPdf: false }} onBaixar={nada} />
+      </div></div>
+    ) },
+  { id: 'cartao-kpi', tipo: 'cartoes', nome: 'Número do resumo (Área do Cliente)', descricao: 'Da Área do Cliente (Vitor, 16/10/2026, visual do protótipo): cartão com o rótulo em caixa alta, o ícone num quadradinho colorido, o número grande com a situação ao lado (Atenção ao prazo em amarelo, Nada vencido em verde, Pague logo em vermelho) e uma notinha embaixo. Quatro lado a lado no PC, dois no celular', classes: ['cli-kpis', 'cli-kpi', 'cli-kpi-ico', 'cli-kpi-valor', 'cli-kpi-status'], telas: ['c-cliente'], largo: true,
+    demo: () => (
+      <div className="cli-app cli-demo" style={{ width: '100%' }}><div className="cli-kpis">
+        <div className="cli-kpi"><div className="cli-kpi-topo"><span className="cli-kpi-rotulo">Guias para pagar</span><span className="cli-kpi-ico"><Icone nome="recibo" width={18} height={18} /></span></div>
+          <div className="cli-kpi-linha"><span className="cli-kpi-valor">3</span><span className="cli-kpi-status warn"><Icone nome="alert" width={13} height={13} />Atenção ao prazo</span></div><p className="cli-kpi-nota">DAS (20/10), FGTS (20/10), DAE (29/10)</p></div>
+        <div className="cli-kpi"><div className="cli-kpi-topo"><span className="cli-kpi-rotulo">Valor total</span><span className="cli-kpi-ico cinza"><Icone nome="dinheiro" width={18} height={18} /></span></div>
+          <div className="cli-kpi-linha"><span className="cli-kpi-valor">R$ 2.633,89</span></div><p className="cli-kpi-nota">Soma das guias para pagar</p></div>
+        <div className="cli-kpi"><div className="cli-kpi-topo"><span className="cli-kpi-rotulo">Em atraso</span><span className="cli-kpi-ico"><Icone nome="alert" width={18} height={18} /></span></div>
+          <div className="cli-kpi-linha"><span className="cli-kpi-valor ruim">1</span><span className="cli-kpi-status bad"><Icone nome="alert" width={13} height={13} />Pague logo</span></div><p className="cli-kpi-nota">Guias com o vencimento já passado</p></div>
+        <div className="cli-kpi"><div className="cli-kpi-topo"><span className="cli-kpi-rotulo">O escritório está fazendo</span><span className="cli-kpi-ico roxo"><Icone nome="checklist" width={18} height={18} /></span></div>
+          <div className="cli-kpi-linha"><span className="cli-kpi-valor">3</span><span className="cli-kpi-status info"><Icone nome="clock" width={13} height={13} />Neste mês</span></div><p className="cli-kpi-nota">DAS do Simples Nacional, FGTS…</p></div>
+      </div></div>
+    ) },
+  { id: 'banner-cliente', tipo: 'cartoes', nome: 'Banner de boas-vindas (Área do Cliente)', descricao: 'Da Área do Cliente (Vitor, 16/10/2026, visual do protótipo): o cartão de destaque em degradê do vermelho da marca, com o N do nads apagadinho ao fundo, o selo de vidro do escritório, o Bem-vindo(a) com o nome da empresa, o texto e dois botões (branco e de vidro)', classes: ['cli-banner', 'cli-banner-selo', 'cli-banner-deco', 'cli-btn-claro', 'cli-btn-vidro'], telas: ['c-cliente'], largo: true,
+    demo: () => (
+      <div className="cli-app cli-demo" style={{ width: '100%' }}>
+        <section className="cli-banner">
+          <div className="cli-banner-conteudo">
+            <span className="cli-banner-selo"><Icone nome="escudo" width={14} height={14} />Escritório: Nilma Contabilidade</span>
+            <h1>Bem-vindo(a), Empresa de Exemplo Ltda</h1>
+            <p>Veja as guias para pagar, acompanhe o que o escritório está fazendo neste mês e converse com a gente.</p>
+            <div className="cli-acoes">
+              <button type="button" className="cli-btn cli-btn-claro"><Icone nome="recibo" width={16} height={16} />Ver as guias</button>
+              <button type="button" className="cli-btn cli-btn-vidro"><Icone nome="upload" width={16} height={16} />Enviar documentos</button>
+            </div>
+          </div>
+          <span className="cli-banner-deco" aria-hidden="true"><MarcaN /></span>
+        </section>
       </div>
     ) },
   // ─── Listas ─────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -599,22 +631,30 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <><button className="tarefas-contador" type="button"><Icone nome="briefcase" /><b>235</b> empresas</button><span className="menu-contador">12</span><span className="imp-faixa-qtd">4</span></> },
   { id: 'emp-list', tipo: 'listas', nome: 'Lista de empresas (entrar)', classes: ['emp-list', 'emp-item'], telas: ['c-entrada', 'e-entrada', 'z-entrada'],
     demo: () => <div className="emp-list" style={{ width: 320 }}>{[[292, 'FITO INDUSTRIA E COMERCIO'], [9999, 'PERSONALY COMPANY']].map(([c, n]) => <button key={c} className="emp-item" type="button"><span className="emp-cod">{c}</span><span className="emp-txt"><span className="emp-nome">{n}</span></span></button>)}</div> },
-  { id: 'linha-agenda', tipo: 'listas', nome: 'Linha da agenda (Área do Cliente)', descricao: 'Da Área do Cliente (Vitor, 16/10/2026): o dia do vencimento num quadradinho, o nome da obrigação em português simples e o selo — Feito (verde), A fazer (amarelo) ou Não se aplica (cinza, apagada)', componente: 'LinhaDaAgenda', classes: ['cli-lista', 'cli-agenda', 'cli-agenda-dia', 'cli-agenda-nome'], telas: ['c-cliente', 'c-cliente-agenda'], largo: true,
+  { id: 'linha-agenda', tipo: 'listas', nome: 'Linha da agenda (Área do Cliente)', descricao: 'Da Área do Cliente (Vitor, 16/10/2026): cartãozinho arredondado com o dia do vencimento num quadradinho colorido (amarelo a fazer, verde feito, cinza não se aplica), o nome da obrigação em português simples e o selo. Na aba Agenda vai em três colunas (Ainda por fazer, Já feito, Não precisa neste mês), cada uma com o cabeçalho de bolinha, contador e fio colorido, e aí o selo some', componente: 'LinhaDaAgenda', classes: ['cli-lista', 'cli-agenda', 'cli-agenda-dia', 'cli-agenda-nome', 'cli-colunas', 'cli-grupo', 'cli-grupo-topo'], telas: ['c-cliente', 'c-cliente-agenda'], largo: true,
     demo: () => (
-      <ul className="cli-lista" style={{ width: '100%' }}>
+      <div className="cli-app cli-demo" style={{ width: '100%' }}><ul className="cli-lista">
         <LinhaDaAgenda item={{ id: 'fgts', nome: 'FGTS', vence: '2026-10-20', situacao: 'feito', feitoEm: '2026-10-14T15:30:00.000Z' }} />
         <LinhaDaAgenda item={{ id: 'das', nome: 'DAS do Simples Nacional', vence: '2026-10-20', situacao: 'a fazer' }} />
         <LinhaDaAgenda item={{ id: 'icms', nome: 'ICMS (imposto estadual)', vence: '2026-10-09', situacao: 'nao se aplica' }} />
-      </ul>
+      </ul></div>
     ) },
-  { id: 'conversa-chamado', tipo: 'listas', nome: 'Conversa do chamado (Área do Cliente)', descricao: 'Da Área do Cliente (Vitor, 16/10/2026): os balões do chamado em ordem — o do cliente à direita (avermelhado), o do escritório à esquerda; o escritório sempre aparece como "Escritório"', componente: 'ConversaDoChamado', classes: ['cli-conversa', 'cli-balao', 'cli-balao-cliente', 'cli-balao-escritorio'], telas: ['c-cliente-chamados'], largo: true,
+  { id: 'conversa-chamado', tipo: 'listas', nome: 'Conversa do chamado (Área do Cliente)', descricao: 'Da Área do Cliente (Vitor, 16/10/2026): os balões do chamado em ordem — o do cliente à direita (degradê vermelho, texto branco), o do escritório à esquerda (cinza claro); o escritório sempre aparece como "Escritório". No PC a conversa fica à direita da lista de chamados (cada um com a prévia da última mensagem, o assunto e a hora)', componente: 'ConversaDoChamado', classes: ['cli-conversa', 'cli-balao', 'cli-balao-cliente', 'cli-balao-escritorio'], telas: ['c-cliente-chamados'], largo: true,
     demo: () => (
-      <div style={{ width: '100%' }}>
+      <div className="cli-app cli-demo" style={{ width: '100%' }}>
         <ConversaDoChamado mensagens={[
           { de: 'cliente', autor: 'Você', texto: 'O João pode tirar 10 dias de férias e vender os outros 20?', em: '2026-10-08T09:40:00.000Z' },
           { de: 'escritorio', autor: 'Escritório', texto: 'Pode tirar 20 dias e vender até 10. Avise com 30 dias de antecedência.', em: '2026-10-08T12:55:00.000Z' },
         ]} />
       </div>
+    ) },
+  { id: 'linha-guia', tipo: 'listas', nome: 'Linha de guia (Área do Cliente)', descricao: 'Do Início da Área do Cliente (Vitor, 16/10/2026, as "Obrigações e Guias Próximas" do protótipo): a sigla num quadradinho, o nome e a competência, o vencimento e o valor, o selo da situação e o botão de baixar só com o ícone. Amarelada quando vence hoje, avermelhada quando venceu. No celular o selo e o botão descem para baixo do nome', componente: 'LinhaDeGuia', classes: ['cli-lista', 'cli-lguia', 'cli-sigla', 'cli-meta', 'cli-icone-btn'], telas: ['c-cliente'], largo: true,
+    demo: () => (
+      <div className="cli-app cli-demo" style={{ width: '100%' }}><ul className="cli-lista">
+        <LinhaDeGuia guia={{ id: 'l1', tipo: 'DAS', competencia: '2026-09', vencimento: '11/10/2026', valor: 1284.37, situacao: 'vencida', temPdf: true }} onBaixar={nada} />
+        <LinhaDeGuia guia={{ id: 'l2', tipo: 'FGTS', competencia: '2026-09', vencimento: '16/10/2026', valor: 917.42, situacao: 'vence hoje', temPdf: true }} onBaixar={nada} />
+        <LinhaDeGuia guia={{ id: 'l3', tipo: 'DAE', competencia: '2026-09', vencimento: '24/10/2026', valor: 432.1, situacao: 'a vencer', temPdf: true }} onBaixar={nada} />
+      </ul></div>
     ) },
 
   // ─── Carregamento ───────────────────────────────────────────────────────────────────────────────────────────────────

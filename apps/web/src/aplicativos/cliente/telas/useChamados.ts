@@ -46,6 +46,9 @@ export function useChamados({ token, area }: DaCasca) {
     tipos: ac.TIPOS_DE_CHAMADO, tipo, mudarTipo: (v: string) => setTipo(v as ac.TipoDeChamado | ''), texto, mudarTexto: setTexto, criar, erro,
     resposta, mudarResposta: setResposta, responder, enviando,
     aceitaResposta: !!aberto && ac.chamadoAceitaResposta(aberto),
+    // a prévia de cada chamado na lista: a última mensagem e quando
+    ultimaMensagem: (c: ac.ChamadoDoCliente) => c.mensagens[c.mensagens.length - 1] ?? null,
+    quando: (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
     rotuloDaSituacao: ac.ROTULO_DA_SITUACAO_DO_CHAMADO, rotuloDoTipo: (t: string) => ac.TIPOS_DE_CHAMADO.find(x => x.valor === t)?.rotulo ?? 'Outro assunto',
   };
 }

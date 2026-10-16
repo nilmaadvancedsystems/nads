@@ -22,13 +22,19 @@ export function useInicio({ token, area, hoje, irPara }: DaCasca) {
     } finally { setBaixando(''); }
   }
 
+  const pendencias = ac.pendenciasDaAgenda(agendaDoMes);
   return {
     guias: guias.slice(0, 4),
     totalDeGuias: guias.length,
     valorEmAberto: guias.reduce((s, g) => s + g.valor, 0),
     vencidas: guias.filter(g => g.situacao === 'vencida').length,
-    pendencias: ac.pendenciasDaAgenda(agendaDoMes),
+    // a notinha do número das guias: "DAS (11/10), FGTS (19/10)…" (as três primeiras)
+    guiasEmPoucas: guias.slice(0, 3).map(g => (g.tipo === 'outra' ? 'Guia' : g.tipo) + ' (' + g.vencimento.slice(0, 5) + ')').join(', ') + (guias.length > 3 ? '…' : ''),
+    precisaAtencao: guias.some(g => g.situacao !== 'a vencer'),
+    pendencias,
+    pendenciasEmPoucas: pendencias.slice(0, 2).map(i => i.nome).join(', ') + (pendencias.length > 2 ? '…' : ''),
     ultimosChamados: area.chamados.slice(0, 3),
+    ultimaMensagem: (c: ac.ChamadoDoCliente) => c.mensagens[c.mensagens.length - 1] ?? null,
     rotuloDaSituacao: ac.ROTULO_DA_SITUACAO_DO_CHAMADO,
     contato: area.resumo?.escritorio ?? {},
     atualizadoEm: area.resumo?.atualizadoEm ?? '',

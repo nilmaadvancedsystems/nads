@@ -1,5 +1,6 @@
 // ViewModel da casca da Área do Cliente (Vitor, 16/10/2026): o token do link, o que o espelho mostra e a aba aberta.
 // Acompanha o link inteiro (guias, agenda, recibos e chamados); cada aba tira o que precisa daqui.
+import { areaCliente as ac } from '@nads/core';
 import type { NomeIcone } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
@@ -25,11 +26,29 @@ export function useAreaCliente() {
   useEffect(() => repoAreaCliente.assinar(token, setArea), [token]);
 
   const atual: IdAba = ABAS.find(a => a.id === aba)?.id ?? 'inicio';
-  const irPara = (id: IdAba) => navegar('/cliente/' + encodeURIComponent(token) + '/' + id);
+  // no celular o menu é uma gaveta (como no protótipo): abre pelo ☰ e fecha ao escolher uma aba
+  const [menuAberto, setMenuAberto] = useState(false);
+  // a gaveta fecha com o Esc
+  useEffect(() => {
+    if (!menuAberto) return;
+    const tecla = (ev: KeyboardEvent) => { if (ev.key === 'Escape') setMenuAberto(false); };
+    window.addEventListener('keydown', tecla);
+    return () => window.removeEventListener('keydown', tecla);
+  }, [menuAberto]);
+  const irPara = (id: IdAba) => { setMenuAberto(false); navegar('/cliente/' + encodeURIComponent(token) + '/' + id); };
   const empresas = area.resumo?.empresas ?? [];
   const empresa = empresas.length > 1 ? empresas[0].nome + ' e mais ' + (empresas.length - 1) : empresas[0]?.nome ?? '';
+  const cnpj = empresas.length === 1 ? empresas[0].cnpj : '';
 
-  return { token, area, hoje, aba: atual, abas: ABAS, irPara, empresa, exemplos: repoAreaCliente.exemplos };
+  // o número ao lado de cada item do menu: guias para pagar, o que o escritório ainda faz no mês e chamados sem conclusão
+  const mes = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
+  const contadores: Partial<Record<IdAba, number>> = {
+    guias: ac.guiasDeHoje(area.guias, hoje).length,
+    agenda: ac.pendenciasDaAgenda(area.agenda.find(a => a.mes === mes)?.itens ?? []).length,
+    chamados: area.chamados.filter(c => c.situacao !== 'concluido').length,
+  };
+
+  return { token, area, hoje, aba: atual, abas: ABAS, contadores, menuAberto, setMenuAberto, irPara, empresa, cnpj, exemplos: repoAreaCliente.exemplos };
 }
 
 export type AreaCliente = ReturnType<typeof useAreaCliente>;

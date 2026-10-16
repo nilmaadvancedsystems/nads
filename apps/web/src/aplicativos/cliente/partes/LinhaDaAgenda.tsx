@@ -3,7 +3,7 @@
 import { areaCliente as ac, formatos } from '@nads/core';
 
 const ROTULO: Record<ac.SituacaoDoItem, string> = { feito: 'Feito', 'a fazer': 'A fazer', 'nao se aplica': 'Não se aplica' };
-const CLASSE: Record<ac.SituacaoDoItem, string> = { feito: 'badge-ok', 'a fazer': 'badge-warn', 'nao se aplica': 'badge-neutral' };
+const CLASSE: Record<ac.SituacaoDoItem, string> = { feito: 'cli-selo-ok', 'a fazer': 'cli-selo-warn', 'nao se aplica': '' };
 
 export function LinhaDaAgenda({ item }: { item: ac.ItemDaAgenda }) {
   const dia = item.vence.slice(8, 10);
@@ -19,7 +19,7 @@ export function LinhaDaAgenda({ item }: { item: ac.ItemDaAgenda }) {
           {item.situacao === 'feito' && feitoEm ? ' · feito em ' + feitoEm : ''}
         </span>
       </span>
-      <span className={'badge ' + CLASSE[item.situacao]}>{ROTULO[item.situacao]}</span>
+      <span className={'cli-selo ' + CLASSE[item.situacao]}>{ROTULO[item.situacao]}</span>
     </li>
   );
 }
