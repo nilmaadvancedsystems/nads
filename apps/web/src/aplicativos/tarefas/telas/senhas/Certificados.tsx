@@ -72,7 +72,7 @@ export function Certificados() {
                     <td className="num">{data(l.validade) || <span className="fraco">—</span>}</td>
                     <td>
                       {l.situacao === 'sem' ? <span className="fraco">—</span>
-                        : <span className={'badge ' + (l.situacao === 'vencido' ? 'badge-danger' : l.situacao === 'vence' ? 'badge-warn' : 'badge-ok')}>
+                        : <span className={'badge ' + (l.situacao === 'vencido' ? 'badge-bad' : l.situacao === 'vence' ? 'badge-warn' : 'badge-ok')}>
                           {l.situacao === 'vencido' ? 'Vencido há ' + -(l.dias ?? 0) + ' dias' : l.dias === 0 ? 'Vence hoje' : (l.situacao === 'vence' ? 'Vence em ' : 'Válido · ') + l.dias + (l.dias === 1 ? ' dia' : ' dias')}
                         </span>}
                     </td>

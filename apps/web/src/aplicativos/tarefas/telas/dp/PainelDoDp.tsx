@@ -47,7 +47,7 @@ const MARCA: Record<EstadoDaObrigacao, { simbolo: string; dica: string }> = {
 // a rosca do Resumo (Savio, 15/10/2026): a ordem e a cor de cada situação, e o selo dela na lista
 const ORDEM_DASH: SituacaoDoDash[] = ['atrasada', 'pendente', 'feita', 'sem'];
 const TOM_DASH: Record<SituacaoDoDash, TomDoPainel> = { atrasada: 'perigo', pendente: 'aviso', feita: 'ok', sem: 'neutro' };
-const BADGE_DASH: Record<SituacaoDoDash, string> = { atrasada: 'badge-danger', pendente: 'badge-warn', feita: 'badge-ok', sem: 'badge-neutral' };
+const BADGE_DASH: Record<SituacaoDoDash, string> = { atrasada: 'badge-bad', pendente: 'badge-warn', feita: 'badge-ok', sem: 'badge-neutral' };
 /** o prazo do cartão: parado há N dias; ou o mês fechou há N dias / fecha em N dias */
 function prazoDoCartao(dias: number, parado: boolean): string {
   const n = Math.abs(dias);

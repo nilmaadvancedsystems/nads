@@ -182,8 +182,14 @@ a{color:var(--accent);}
 /* tamanhos do cabeçalho do GitHub (AppHeader): 16px em volta, 64px de altura, o local em 14px, as abas com 48px */
 .gh-header-top{display:flex;align-items:center;gap:12px;padding:16px 16px 8px;min-height:56px;}
 .gh-header:has(nav.menu:empty) .gh-header-top{padding-bottom:16px;min-height:64px;}
-.gh-crumbs{display:flex;align-items:center;gap:4px;min-width:0;font-size:14px;}
+.gh-crumbs{display:flex;align-items:center;gap:4px;min-width:0;font-size:14px;overflow:hidden;}
 .gh-crumb{color:var(--ink);padding:4px 6px;line-height:24px;border-radius:6px;white-space:nowrap;}
+/* sem espaço (celular), a trilha corta com reticências em vez de passar por baixo do avatar (revisão da UI, 16/10/2026) */
+.gh-crumbs .gh-crumb:not(:first-child){min-width:2.5em;overflow:hidden;text-overflow:ellipsis;}
+.gh-crumbs button.gh-crumb:not(:first-child){flex-shrink:4;}
+.gh-sep{flex:none;}
+/* no celular, com mais coisa na trilha, o nome do sistema sai (o ☰ e a barra das páginas levam ao resto) para sobrar lugar */
+@media (max-width:640px){.gh-crumbs > .gh-crumb:first-child:has(~ *),.gh-crumbs > .gh-crumb:first-child + .gh-sep,.gh-crumbs > .gh-crumb:first-child + span > .gh-sep:first-child{display:none;}}
 .gh-sep{color:var(--ink-muted);font-weight:300;padding:0 2px;}
 #brandTagEmpresa{
   display:inline-flex;align-items:center;gap:6px;max-width:min(560px,60vw);
@@ -246,6 +252,8 @@ main.main{min-width:0;padding:0 24px;}
 @media (max-width:768px){
   .gh-header-top{padding:12px 16px 4px;min-height:56px;}
   #brandTagEmpresa::after{display:none;}
+  /* no celular a empresa corta com reticências (revisão da UI, 16/10/2026: saía só "4" e o resto passava por baixo dos botões) */
+  #brandTagEmpresa{display:block;min-width:0;text-overflow:ellipsis;}
   nav.menu{padding:0 16px;gap:0;}
   main.main{padding:0 16px;}
   .topbar{margin-top:16px;}
@@ -265,12 +273,16 @@ main.main{min-width:0;padding:0 24px;}
 /* ---------------------------------- formulários ---------------------------------- */
 .field{margin-bottom:16px;}
 .field label{display:block;font-size:14px;font-weight:600;margin-bottom:6px;}
-input[type="text"],input[type="file"],select{
+/* senha, e-mail, telefone, número, busca e o campo sem type com o mesmo visual, sem peso (:where) para as classes próprias
+   (.nf-entrada, .usuario-campo, .pessoal-form…) continuarem valendo (revisão da UI, 16/10/2026: a Senha do login saía com o
+   desenho do navegador) */
+input[type="text"],input[type="file"],select,
+:where(input:not([type]),input[type="password"],input[type="email"],input[type="tel"],input[type="number"],input[type="search"]){
   width:100%;border:1px solid var(--border);background:var(--input-bg);color:var(--ink);
   border-radius:6px;padding:5px 12px;min-height:32px;font-size:14px;line-height:20px;font-family:var(--font-body);
   box-shadow:var(--shadow-inset);transition:border-color 80ms cubic-bezier(.65,0,.35,1),box-shadow 80ms cubic-bezier(.65,0,.35,1);
 }
-.auth-box input[type="text"]{min-height:40px;padding:8px 12px;}
+.auth-box input[type="text"],.auth-box input[type="password"]{min-height:40px;padding:8px 12px;}
 /* o campo de texto grande do formulário: igual ao input (Mandei, Vitor 07/10/2026: "estilize esse campo") */
 .field textarea{display:block;width:100%;min-height:80px;resize:vertical;border:1px solid var(--border);background:var(--input-bg);color:var(--ink);
   border-radius:6px;padding:8px 12px;font-size:14px;line-height:20px;font-family:var(--font-body);box-shadow:var(--shadow-inset);}
@@ -290,6 +302,8 @@ input[type="checkbox"]{
   display:inline-flex;align-items:center;justify-content:center;position:relative;
 }
 input[type="checkbox"]:checked{background:var(--accent);border-color:var(--accent);}
+/* o foco do teclado na caixa marcada (o input:focus tira o contorno e o fundo já é da cor do destaque; revisão, 16/10/2026) */
+input[type="checkbox"]:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
 input[type="checkbox"]:checked::after{
   content:'';position:absolute;left:4.5px;top:1.5px;width:4px;height:8px;
   border:solid var(--on-accent);border-width:0 2px 2px 0;transform:rotate(45deg);
@@ -543,6 +557,9 @@ html:has(.modal-overlay){overflow:hidden;}
   cursor:pointer;align-items:center;justify-content:center;font-size:15px;line-height:1;padding:0;}
 .file-clear:hover{background:var(--destructive-soft);color:var(--destructive);}
 .file-picker.has-file:hover .file-clear{display:flex;}
+/* o × também pelo teclado, e na lista de arquivos ele fica sempre à vista (revisão da UI, 16/10/2026: no Conciliadorzinho
+   ele nunca aparecia e o arquivo não saía da lista) */
+.file-picker.has-file:focus-within .file-clear,.arquivo-item .file-clear{display:flex;}
 .btn-import-done{background:var(--btn-bg);color:var(--success);border-color:var(--btn-border);}
 .btn-import-done .btn-import-idle::before{content:'✓ ';}
 .btn-import-done .btn-import-hover{display:none;align-items:center;gap:6px;}
@@ -3663,6 +3680,8 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
   padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink);box-shadow:var(--shadow-md, 0 4px 12px rgba(0,0,0,.3));
   font-size:12px;font-weight:400;line-height:16px;white-space:normal;text-align:left;opacity:0;visibility:hidden;pointer-events:none;}
 .dica:hover .dica-balao,.dica:focus-visible .dica-balao{opacity:1;visibility:visible;}
+/* perto da borda direita o balão abre para a esquerda (a Dica mede; revisão da UI, 16/10/2026) */
+.dica.a-esquerda .dica-balao{left:auto;right:-8px;}
 
 /* Senhas: sem acesso ao cofre, a empresa não abre (13/10/2026: "deve bloquear ao clicar") */
 .cofre-bloqueado{cursor:not-allowed;}
