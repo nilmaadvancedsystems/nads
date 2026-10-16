@@ -25,6 +25,7 @@ export { idDaExecucao, type RepoTarefas } from './repo';
 export { criarRepoTarefasMemoria, execucoesDeExemplo, execucoesVariadas, type GuardaTarefas } from './repo.memoria';
 export * from './reinf/reinf';
 export * from './regras/deTeste';
+export * from './regras/caixaNoBanco';
 export * as sieg from './sieg';
 export * as sintegra from './sintegra';
 export * as painel from './painel';

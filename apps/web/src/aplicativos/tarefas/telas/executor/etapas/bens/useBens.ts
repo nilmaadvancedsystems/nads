@@ -51,7 +51,7 @@ export function useBens() {
       fim = setTimeout(() => { setB(r); setDesde(null); }, Math.max(0, TEMPO_DA_VERIFICACAO - (Date.now() - desde)));
     }, 50);
     return () => { clearTimeout(conta); clearTimeout(fim); };
-  }, [desde, carregou, ent, sai, chave]);
+  }, [desde, carregou, ent, sai, chave, setB]);
   const verificando = desde !== null;
   useCarregando(verificando);
   const verificar = () => { if (!verificando) setDesde(Date.now()); };
