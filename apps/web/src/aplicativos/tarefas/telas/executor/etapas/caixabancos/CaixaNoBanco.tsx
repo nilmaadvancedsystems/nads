@@ -49,12 +49,12 @@ export function TabelaCaixaNoBanco({ vm }: { vm: CaixaNoBancoDoRazao }) {
 
 /** O conciliador das notas em aberto no caixa: a nota (o fornecedor ou o cliente, a NF, quanto falta e como bateu) e, embaixo, os lançamentos do caixa. */
 export function TabelaNotasNoCaixa({ vm }: { vm: CaixaNoBancoDoRazao }) {
-  if (!vm.qtdNotas) return <p className="hint">Nenhuma nota em aberto para procurar: importe os razões de Fornecedores e de Clientes (na Importação ou nas etapas).</p>;
-  if (!vm.notas.length) return <p className="hint">Nenhuma das {vm.qtdNotas} notas em aberto está no caixa.</p>;
+  if (!vm.qtdNotas) return <p className="hint">Nenhum pagamento do banco passou pelo caixa, e nenhuma nota em aberto para procurar (importe os razões de Fornecedores e de Clientes).</p>;
+  if (!vm.notas.length) return <p className="hint">Nenhuma das {vm.qtdNotas} notas em aberto está no caixa, e nenhum pagamento do banco passou pelo caixa.</p>;
   return (
     <div className="table-wrap" style={{ maxHeight: 'none' }}>
       <table className="table-compact">
-        <thead><tr><th>Lado</th><th>Conta</th><th>Nome</th><th>NF</th><th className="num">Em aberto</th><th>Como bateu</th></tr></thead>
+        <thead><tr><th>Lado</th><th>Conta</th><th>Nome</th><th>NF</th><th className="num">Valor</th><th>Como bateu</th></tr></thead>
         <tbody>
           {vm.notas.map(n => (
             <Fragment key={n.id}>
@@ -63,8 +63,8 @@ export function TabelaNotasNoCaixa({ vm }: { vm: CaixaNoBancoDoRazao }) {
                 <td>{n.conta}</td>
                 <td className="wrap">{n.nome}</td>
                 <td>{n.nf}</td>
-                <td className="num" style={{ whiteSpace: 'nowrap' }}>{n.aberto}</td>
-                <td style={{ whiteSpace: 'nowrap' }}><span className={'badge ' + (n.pelaNf ? 'badge-ok' : 'badge-neutral')}>{n.como}</span></td>
+                <td className="num" style={{ whiteSpace: 'nowrap' }}>{n.valor}</td>
+                <td style={{ whiteSpace: 'nowrap' }}><span className={'badge badge-' + n.tom}>{n.como}</span></td>
               </tr>
               <tr>
                 <td colSpan={6} style={{ padding: 0 }}>

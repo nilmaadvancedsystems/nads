@@ -4,27 +4,32 @@
 import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 import { useRazaoDaFolha } from '../../useRazaoDaFolha';
 import { RazaoDaFolha } from '../../partes/RazaoDaFolha';
+import { PagamentosDoSimples } from './PagamentosDoSimples';
+import { usePagamentosDoSimples } from './usePagamentosDoSimples';
 
 function useSimples() {
   const s = useEtapaAberta();
   const vm = useRazaoDaFolha('simples', s.nome + '|simples|' + s.meses.join(','), s.meses, s.nome);
   // o ⚡ de cima: os mesmos razões de teste da linha
   useDadosDeTesteDaEtapa(s.dev ? vm.teste.map((x, i) => ({ id: String(i), rotulo: x.rotulo })) : [], id => vm.teste[+id]?.onClick());
+  // o pagamento pelo banco (Vitor, 16/10/2026): baixou a planilha das baixas, o saldo se corrige com ela e o Próximo libera
+  const pagamentos = usePagamentosDoSimples(s, vm.razao);
+  const corrigido = pagamentos.baixado;
   const faltam = [
     ...(!vm.temRazao ? ['Importar o razão do Simples Nacional a recolher'] : []),
-    ...vm.sobras.map(x => 'O DAS de antes não foi pago todo em ' + x.mes + ' (sobrou ' + x.valor + ')'),
-    ...(vm.devedores.length ? ['Corrigir o saldo devedor do Simples a recolher em ' + vm.devedores.join(', ')] : []),
+    ...(corrigido ? [] : vm.sobras).map(x => 'O DAS de antes não foi pago todo em ' + x.mes + ' (sobrou ' + x.valor + ')'),
+    ...(!corrigido && vm.devedores.length ? ['Corrigir o saldo devedor do Simples a recolher em ' + vm.devedores.join(', ')] : []),
   ];
   useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
-  return { vm, dev: s.dev };
+  return { vm, dev: s.dev, pagamentos };
 }
 
 export function Simples() {
-  const { vm, dev } = useSimples();
+  const { vm, dev, pagamentos } = useSimples();
   return (
     <section>
       <header className="topbar"><div><h2 className="page-title">Simples Nacional a recolher</h2></div></header>
-      <div className="imp-lista"><RazaoDaFolha vm={vm} dev={dev} /></div>
+      <div className="imp-lista"><RazaoDaFolha vm={vm} dev={dev} /><PagamentosDoSimples vm={pagamentos} /></div>
     </section>
   );
 }

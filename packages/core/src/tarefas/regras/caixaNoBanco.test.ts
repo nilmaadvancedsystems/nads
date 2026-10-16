@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { caixaNoBanco, notasNoCaixa, type LancamentoDoExtrato } from './caixaNoBanco';
+import { caixaNoBanco, notasNoCaixa, passouPeloCaixa, type LancamentoDoExtrato } from './caixaNoBanco';
 import type { LancamentoDoRazao } from './razao';
 
 // valores e nomes inventados
@@ -47,6 +47,19 @@ describe('o caixa × os bancos (16/10/2026)', () => {
     ];
     expect(notasNoCaixa(cx, ['2026-07', '2026-08'], notas).map(x => [x.nota.conta, x.como, x.vezes, x.lancamentos.length])).toEqual([
       ['98000', 'nf', 3, 3], ['98001', 'valor', 2, 2],
+    ]);
+  });
+  it('o pagamento do banco que passou pelo caixa: a entrada do banco e a saída para o fornecedor, o mesmo valor (16/10/2026)', () => {
+    const cx = [
+      C('2026-03-30', -700, 'Pagto. NFe 62000/001 de FORNECEDOR EXEMPLO LTDA', 'Banco Sicoob'),
+      C('2026-03-30', 700, 'Pagamento de título nº 62000 -DUP.001 - FORNECEDOR EXEMPLO', 'FORNECEDOR EXEMPLO LTDA'),
+      // o depósito de dinheiro no banco (a saída para o banco) e o saque: não são pares
+      C('2026-06-23', 700, 'DEP.DINHEIRO', 'Banco Sicoob'),
+      C('2026-06-24', -300, 'SAQUE', 'Banco Sicoob'),
+      C('2026-06-24', 300, 'Compra à vista', 'Material de consumo'),
+    ];
+    expect(passouPeloCaixa(cx, ['2026-03', '2026-06']).map(x => [x.entrada.data, x.saida.nomeContrapartida, x.nfs])).toEqual([
+      ['2026-03-30', 'FORNECEDOR EXEMPLO LTDA', ['62000']],
     ]);
   });
   it('sem extrato, nada', () => {
