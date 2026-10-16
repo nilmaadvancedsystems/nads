@@ -4,12 +4,12 @@
 // com as obrigações do mês (– não tem, vazio a fazer, ✓ feita, ! parada). Tudo roda aqui: clicar na bolinha marca a
 // obrigação como feita, clicar de novo desfaz (sem o checklist).
 import { formatos } from '@nads/core';
-import { baixarBytes, Esqueleto, Icone, Interruptor, NumeroQueConta, Segmentado, useCarregando, useEntradaAnimada } from '@nads/ui';
+import { baixarBytes, BarrasEmColuna, CartaoComAnel, Esqueleto, Icone, Interruptor, NumeroQueConta, RoscaComLegenda, Segmentado, useCarregando, useEntradaAnimada, type TomDoPainel } from '@nads/ui';
 import { Fragment, useState } from 'react';
 import { DecimoNaLista } from './DecimoTerceiro';
 import { JanelaDasEtiquetas } from './JanelaDasEtiquetas';
 import { useEtiquetasDaFolha } from './useEtiquetasDaFolha';
-import { usePainelDoDp, type AbaDoPainel, type Agrupar, type EstadoDaObrigacao } from './usePainelDoDp';
+import { ROTULO_DASH, usePainelDoDp, type AbaDoPainel, type Agrupar, type EstadoDaObrigacao, type SituacaoDoDash } from './usePainelDoDp';
 
 /**
  * O total da folha do mês na linha do cliente (Vitor, 07/10/2026: "trazer quanto é gasto em folha do DP"): mostra o valor
@@ -43,6 +43,18 @@ const MARCA: Record<EstadoDaObrigacao, { simbolo: string; dica: string }> = {
   feita: { simbolo: '✓', dica: 'feita' },
   parada: { simbolo: '!', dica: 'parada' },
 };
+
+// a rosca do Resumo (Savio, 15/10/2026): a ordem e a cor de cada situação, e o selo dela na lista
+const ORDEM_DASH: SituacaoDoDash[] = ['atrasada', 'pendente', 'feita', 'sem'];
+const TOM_DASH: Record<SituacaoDoDash, TomDoPainel> = { atrasada: 'perigo', pendente: 'aviso', feita: 'ok', sem: 'neutro' };
+const BADGE_DASH: Record<SituacaoDoDash, string> = { atrasada: 'badge-danger', pendente: 'badge-warn', feita: 'badge-ok', sem: 'badge-neutral' };
+/** o prazo do cartão: parado há N dias; ou o mês fechou há N dias / fecha em N dias */
+function prazoDoCartao(dias: number, parado: boolean): string {
+  const n = Math.abs(dias);
+  const d = n === 1 ? ' dia' : ' dias';
+  if (parado) return n === 0 ? 'Parado hoje' : 'Parado há ' + n + d;
+  return dias < 0 ? 'Mês fechado há ' + n + d : dias === 0 ? 'O mês fecha hoje' : 'O mês fecha em ' + n + d;
+}
 
 const AGRUPAR: { valor: Agrupar; rotulo: string }[] = [{ valor: 'nenhum', rotulo: 'Nenhum' }, { valor: 'responsavel', rotulo: 'Responsável' }, { valor: 'agrupamento', rotulo: 'Agrupamento' }];
 
@@ -124,25 +136,30 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
             ))}
           </div>
 
-          <div className="dp-graficos">
-            {vm.barras.map(g => {
-              const max = Math.max(...g.linhas.map(l => l.qtd), 0);
-              return (
-                <section key={g.titulo} className="card dp-grafico">
-                  <h3 className="dp-titulo">{g.titulo}</h3>
-                  <ul className="dp-barras">
-                    {g.linhas.map(l => (
-                      <li key={l.rotulo} title={l.rotulo + ': ' + l.qtd + (l.qtd === 1 ? ' cliente' : ' clientes')}>
-                        <span className="dp-barra-rotulo">{l.rotulo}</span>
-                        <span className="dp-barra"><span style={{ width: max ? (l.qtd / max) * 100 + '%' : 0 }} /></span>
-                        <b className="num">{l.qtd}</b>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              );
-            })}
+          {/* o dashboard no padrão de Senhas › Certificados (Savio, 15/10/2026): a rosca da situação (a legenda filtra), as barras
+              do que falta em cada parte da rotina (a barra filtra) e os cartões de quem pede atenção */}
+          <div className="cert-dash">
+            <section className="card cert-dash-bloco">
+              <div className="card-head"><h3>Situação do mês</h3></div>
+              <RoscaComLegenda fatias={ORDEM_DASH.map(s => ({ id: s, rotulo: ROTULO_DASH[s], valor: vm.dash.contagem[s], tom: TOM_DASH[s] }))}
+                total={vm.numeros[0].valor} subtitulo="clientes" ativa={vm.dash.parte ? null : vm.dash.situacao} onEscolher={s => vm.dash.escolherSituacao(s as SituacaoDoDash)} />
+            </section>
+            <section className="card cert-dash-bloco">
+              <div className="card-head"><h3>O que falta em cada parte da rotina</h3></div>
+              <BarrasEmColuna ativa={vm.dash.parte} onEscolher={vm.dash.escolherParte}
+                colunas={vm.dash.porParte.map(p => ({ chave: p.id, rotulo: p.rotulo, total: p.faltam, aviso: true, leitura: p.faltam + (p.faltam === 1 ? ' cliente falta' : ' clientes faltam') + ' em ' + p.rotulo }))} />
+            </section>
           </div>
+
+          {vm.dash.atencao.length > 0 && (
+            <div className="cert-urgentes">
+              {vm.dash.atencao.slice(0, 8).map(a => (
+                <CartaoComAnel key={a.chave} dias={a.dias} titulo={a.nome} atrasado={a.dias < 0} prazo={prazoDoCartao(a.dias, a.parado)}
+                  apoio={a.codigo + ' · faltam ' + a.faltam + ' de ' + a.total + (a.paradas ? ' · ' + a.paradas + (a.paradas === 1 ? ' parada' : ' paradas') : '') + ' · ' + a.responsavel}
+                  dica={'Mostrar só ' + a.nome + ' na tabela das obrigações'} onClick={() => f.setBusca(String(a.codigo))} />
+              ))}
+            </div>
+          )}
 
           <section className="card dp-progresso">
             <h3 className="dp-titulo">Progresso por responsável</h3>
@@ -156,6 +173,31 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
                 </button>
               ))}
             </div>
+          </section>
+
+          <section className="card cert-lista">
+            <div className="card-head">
+              <h3>{vm.dash.tituloDaLista}</h3>
+              <span className="badge badge-neutral">{vm.dash.lista.length}</span>
+            </div>
+            {vm.dash.lista.length ? (
+              <div className="table-wrap">
+                <table>
+                  <thead><tr><th>Cód.</th><th>Cliente</th><th>Responsável</th><th>Feitas</th><th>Situação</th></tr></thead>
+                  <tbody>
+                    {vm.dash.lista.map(l => (
+                      <tr key={l.chave}>
+                        <td className="num fraco">{l.codigo}</td>
+                        <td className="cofre-nome">{l.nome}</td>
+                        <td>{l.responsavel}</td>
+                        <td className="num">{l.feitas}/{l.total}</td>
+                        <td><span className={'badge ' + BADGE_DASH[l.situacao]}>{l.situacao === 'sem' ? ROTULO_DASH.sem : l.rotuloDaSituacao}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : <p className="fraco cert-painel-vazio">Nenhum cliente aqui.</p>}
           </section>
         </>
       ) : (

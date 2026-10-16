@@ -137,6 +137,96 @@ export function emprestimosNoDinamico(d: BalanceteDinamico, meses: readonly stri
   return mesesComSaldo(d, meses, contas);
 }
 
+/** A conta do adiantamento salarial no dinâmico ("Adiantamento Salarial", "Adto. de salários", "Adiantamento a empregados"). */
+const ADIANTAMENTO_SALARIAL = /^(adiant\w*|adto) (salarial|de salarios?|salarios?|a empregados|a funcionarios|de funcionarios)\b/;
+
+/** As contas de adiantamento salarial do dinâmico (a analítica: o código vai no lançamento sugerido). */
+export function contasDeAdiantamentoSalarial(d: BalanceteDinamico): LinhaDinamico[] {
+  return d.linhas.filter(l => ADIANTAMENTO_SALARIAL.test(normalizarTexto(l.descricao)));
+}
+
+/**
+ * Os meses do período em que o dinâmico tem o adiantamento salarial com saldo (Vitor, 16/10/2026: "contas que eu queria que
+ * você colocasse no check de acordo com o balancete"): no mês ou no de antes. O certo é zerar no mês; com saldo, a etapa entra.
+ */
+export function adiantamentoSalarialNoDinamico(d: BalanceteDinamico, meses: readonly string[]): { cobertos: string[]; com: string[] } {
+  return mesesComSaldo(d, meses, contasDeAdiantamentoSalarial(d));
+}
+
+/**
+ * De que é a conta do razão importado (Vitor, 16/10/2026: o upload único dos razões, na Importação): pelo nome dela no
+ * dinâmico, a etapa que usa o razão. O código vem do nome da aba do XLS do Alterdata.
+ */
+export type TipoDoRazao = 'caixa' | 'salarios' | 'fgts' | 'inss' | 'prolabore' | 'honorarios' | 'simples' | 'adiantamento-salarial'
+  | 'adiantamento-fornecedores' | 'adiantamento-clientes' | 'emprestimo' | 'cliente' | 'fornecedor';
+
+export const NOME_DO_TIPO_DO_RAZAO: Record<TipoDoRazao, string> = {
+  caixa: 'Caixa', salarios: 'Salários a pagar', fgts: 'FGTS a recolher', inss: 'INSS a recolher', prolabore: 'Pró-labore a pagar',
+  honorarios: 'Honorários a pagar', simples: 'Simples Nacional a recolher', 'adiantamento-salarial': 'Adiantamento salarial',
+  'adiantamento-fornecedores': 'Adiantamento a fornecedores', 'adiantamento-clientes': 'Adiantamento de clientes',
+  emprestimo: 'Empréstimos e financiamentos', cliente: 'Clientes', fornecedor: 'Fornecedores',
+};
+
+const PELO_NOME: [TipoDoRazao, RegExp][] = [
+  ['caixa', /^caixa\b/],
+  ['salarios', /^salarios?\b.*\ba pagar\b/],
+  ['fgts', /^fgts\b.*\b(a recolher|a pagar)\b/],
+  ['inss', /^inss\b.*\b(a recolher|a pagar)\b/],
+  ['prolabore', /^(pro labore|prolabore|retiradas?)\b.*\ba pagar\b/],
+  ['honorarios', /^honorarios?\b.*\ba pagar\b/],
+  ['simples', /^(simples nacional|das)\b.*\ba recolher\b/],
+];
+
+/** O tipo da conta (o código do razão) pelo dinâmico; null = conta que nenhuma etapa usa (ou fora do dinâmico). */
+export function tipoDoRazao(d: BalanceteDinamico, codigo: string): TipoDoRazao | null {
+  const l = d.linhas.find(x => x.codigo === codigo);
+  if (!l) return null;
+  const n = normalizarTexto(l.descricao);
+  if (ADIANTAMENTO_SALARIAL.test(n)) return 'adiantamento-salarial';
+  if (ADIANTAMENTO.fornecedores.test(n)) return 'adiantamento-fornecedores';
+  if (ADIANTAMENTO.clientes.test(n)) return 'adiantamento-clientes';
+  for (const [tipo, re] of PELO_NOME) if (re.test(n)) return tipo === 'caixa' && !l.classificacao.startsWith('1') ? null : tipo;
+  const mes = d.meses[d.meses.length - 1] || '';
+  if (clientesDoDinamico(d, mes, 'clientes').some(c => c.codigo === codigo)) return 'cliente';
+  if (clientesDoDinamico(d, mes, 'fornecedores').some(c => c.codigo === codigo)) return 'fornecedor';
+  const grupos = d.linhas.filter(g => g.classificacao.startsWith('2') && /^(emprestimos?|financiamentos?)\b/.test(normalizarTexto(g.descricao)));
+  if (grupos.some(g => l.classificacao === g.classificacao || l.classificacao.startsWith(g.classificacao + '.')) && !/cheque especial/.test(n)) return 'emprestimo';
+  return null;
+}
+
+/** Uma conta do resultado do lado errado: a despesa credora ou a receita devedora, e os meses (o saldo, sem o sinal). */
+export interface ContaDoResultadoErrada {
+  codigo: string; classificacao: string; nome: string; tipo: 'despesa' | 'receita';
+  meses: { mes: string; saldo: number }[];
+}
+
+/**
+ * Despesas credoras e receitas devedoras no dinâmico (Vitor, 16/10/2026: "despesas/receitas na mesma tela, o sistema só vai
+ * conferir no balancete dinâmico se tem despesas credoras e receitas devedoras"). As analíticas debaixo do grupo das
+ * receitas e do de custos e despesas (pelo nome do grupo de cima; sem ele, o 3 e o 4 do plano do Alterdata); as redutoras
+ * "(-)" (deduções, devoluções), na conta ou no grupo dela, ficam de fora: o lado delas é o contrário.
+ */
+export function resultadoErradoNoDinamico(d: BalanceteDinamico, meses: readonly string[]): ContaDoResultadoErrada[] {
+  const topo = (re: RegExp, padrao: string) => d.linhas.find(l => l.classificacao && !l.classificacao.includes('.') && re.test(normalizarTexto(l.descricao)))?.classificacao || padrao;
+  const grupos = { receita: topo(/^receitas?\b/, '3'), despesa: topo(/^(custos?|despesas?)\b/, '4') };
+  const debaixo = (l: LinhaDinamico, g: string) => l.classificacao.startsWith(g + '.');
+  const folha = (l: LinhaDinamico) => !d.linhas.some(o => o !== l && o.classificacao.startsWith(l.classificacao + '.'));
+  // a redutora: "(-)" ou dedução/devolução no nome dela ou de um grupo de cima
+  const redutora = (l: LinhaDinamico) => d.linhas.some(o => (o === l || l.classificacao.startsWith(o.classificacao + '.'))
+    && (/^\s*\(\s*-\s*\)/.test(o.descricao) || /\b(deduc\w*|devoluc\w*|recuperac\w*)\b/.test(normalizarTexto(o.descricao))));
+  const cobertos = meses.filter(m => d.meses.includes(m));
+  const out: ContaDoResultadoErrada[] = [];
+  for (const l of d.linhas) {
+    const tipo = debaixo(l, grupos.receita) ? 'receita' as const : debaixo(l, grupos.despesa) ? 'despesa' as const : null;
+    if (!tipo || !folha(l) || redutora(l)) continue;
+    // no dinâmico: devedor positivo, credor negativo
+    const errados = cobertos.map(m => ({ mes: m, saldo: l.saldos[m] ?? 0 }))
+      .filter(x => (tipo === 'receita' ? x.saldo > 0.005 : x.saldo < -0.005));
+    if (errados.length) out.push({ codigo: l.codigo, classificacao: l.classificacao, nome: l.descricao.replace(/\s+/g, ' '), tipo, meses: errados.map(x => ({ mes: x.mes, saldo: Math.abs(x.saldo) })) });
+  }
+  return out;
+}
+
 /** Os meses que o dinâmico cobre e, deles, os em que alguma das contas tem saldo no mês ou no de antes. */
 function mesesComSaldo(d: BalanceteDinamico, meses: readonly string[], contas: readonly LinhaDinamico[]): { cobertos: string[]; com: string[] } {
   const antes = (m: string) => { const [a, x] = m.split('-').map(Number); return x === 1 ? (a - 1) + '-12' : a + '-' + String(x - 1).padStart(2, '0'); };

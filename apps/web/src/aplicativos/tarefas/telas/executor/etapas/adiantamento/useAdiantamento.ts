@@ -7,6 +7,7 @@ import { demo, formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 import { useGuardado } from '../../../../../../comum/guardado';
+import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
 
 /** a cor pela natureza (Vitor, 07/10/2026): credor em vermelho, devedor em azul, zerado sem cor */
 const corDoSaldo = (saldo: number) => (saldo > 0.005 ? 'ext-neg' : saldo < -0.005 ? 'ext-azul' : '');
@@ -20,7 +21,11 @@ export function useAdiantamento(lado: t.LadoDoAdiantamento = 'fornecedores') {
   const { aviso } = useRetorno();
   const meses = s.meses;
   // o razão fica guardado (Vitor, 15/10/2026: voltou, está onde parou)
-  const [razao, setRazao] = useGuardado<{ nome: string; r: t.RazaoDaConta } | null>(useChaveDaEtapa('adiantamento-' + lado) + '|razao', null);
+  const [proprio, setRazao] = useGuardado<{ nome: string; r: t.RazaoDaConta } | null>(useChaveDaEtapa('adiantamento-' + lado) + '|razao', null);
+  // o da Importação (o upload único dos razões; 16/10/2026), quando a etapa não tem o próprio
+  const contabil = useContabilDaEmpresa(s.nome, s.codigo);
+  const daImportacao = contabil.razaoDoTipo(lado === 'fornecedores' ? 'adiantamento-fornecedores' : 'adiantamento-clientes');
+  const razao = proprio || (daImportacao ? { nome: daImportacao.arquivo + ' (da Importação)', r: daImportacao.razao } : null);
 
   async function importar(f: File | undefined) {
     if (!f) return;
@@ -57,7 +62,7 @@ export function useAdiantamento(lado: t.LadoDoAdiantamento = 'fornecedores') {
     periodo: t.rotuloDoPeriodo([...meses]),
     razao: razao ? { nome: razao.nome, resumo: doPeriodo.reduce((n, m) => n + m.lancamentos.length, 0) + ' lançamentos · ' + t.rotuloDoPeriodo([...meses]) } : null,
     importar: (f: File | undefined) => { void importar(f); },
-    tirar: () => setRazao(null),
+    tirar: () => { setRazao(null); if (!proprio && daImportacao) contabil.tirarRazao(daImportacao.conta); },
     teste,
     /** a grade: um mês por coluna — saldo do fim (credor em vermelho) e quantos lançamentos */
     meses: doPeriodo.map(m => ({

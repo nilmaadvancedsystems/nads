@@ -16,4 +16,5 @@ export { iniciarContinuidade, atualizarSemPerder } from './continuidade';
 export { origemConfiavel, origemDoPai, useAbasParaAEtapa, useAlturaNaEtapa, useFerramentaNaEtapa, type AbaDaEtapa } from './etapa';
 export { fundoSuaveDoBanco, LogoBanco, LogoDrive, LogoFgts, LogoGmail, LogoInss, LogoWhatsApp, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma } from './logos';
 export { AberturaN } from './abertura';
+export { RoscaComLegenda, BarrasEmColuna, AnelDeContagem, CartaoComAnel, type FatiaDaRosca, type ColunaDasBarras, type TomDoPainel } from './paineis';
 export { destacarNaTela } from './destaque';

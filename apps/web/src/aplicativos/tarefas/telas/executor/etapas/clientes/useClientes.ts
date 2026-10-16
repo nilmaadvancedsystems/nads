@@ -5,7 +5,7 @@
 // As marcas ficam guardadas por mês; os conferidos do mês anterior aparecem de novo para revisar.
 import { clientes as cl, conferencia as c, demo, extrator as x, formatos, mandei as md, tarefas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMarcasDoMes } from '../../../../dados/clientes';
 import { useCadastro, useContatoDoEntregas } from '../../../../dados/repo';
 import { useExtratorDaEmpresa } from '../../../../dados/extrator';
@@ -13,6 +13,7 @@ import { criarTicket } from '../../../../dados/mandei';
 import { useOperador } from '../../../../casca/operador';
 import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useEtapaPeloBalancete, useRequisitosDaEtapa } from '../contexto';
 import { useGuardado } from '../../../../../../comum/guardado';
+import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
 
 export type TelaClientes = 'arquivos' | 'clientes' | 'envio';
 export type FiltroClientes = 'todos' | 'pendente' | 'ok' | 'conferido';
@@ -54,7 +55,10 @@ export function useClientes() {
   const [alcancada, setAlcancada] = useGuardado(chave + '|alcancada', 0);
   const ORDEM: TelaClientes[] = ['arquivos', 'clientes', 'envio'];
   const setTela = (t: TelaClientes) => { setTelaDaVez(t); setAlcancada(a => Math.max(a, ORDEM.indexOf(t))); };
-  const [dinamico, setDinamico] = useGuardado<{ nome: string; d: cl.BalanceteDinamico } | null>(chave + '|dinamico', null);
+  const [dinamicoProprio, setDinamico] = useGuardado<{ nome: string; d: cl.BalanceteDinamico } | null>(chave + '|dinamico', null);
+  // o dinâmico da Importação (o primeiro passo; 16/10/2026) vale aqui também; o importado aqui vai para lá
+  const contabil = useContabilDaEmpresa(s.nome, s.codigo);
+  const dinamico = dinamicoProprio || contabil.dinamico;
   const [filtro, setFiltro] = useState<FiltroClientes>('todos');
   const [busca, setBusca] = useState('');
   // o Mandei (Vitor, 07/10/2026): o ticket com o link para o cliente responder, anexar e a gente acompanhar
@@ -84,8 +88,10 @@ export function useClientes() {
    * Põe o dinâmico na tela. Tudo certo (com contas e nenhum credor no mês), já segue para a lista, sem o Próximo (Vitor,
    * 07/10/2026: "quando importar o dinâmico e estiver tudo certo, já pode prosseguir"); com credor, fica nos Arquivos.
    */
-  function entrarComDinamico(nome: string, d: cl.BalanceteDinamico) {
-    setDinamico({ nome, d });
+  function entrarComDinamico(nome: string, d: cl.BalanceteDinamico, deTeste = false) {
+    // o de verdade vai para a Importação (vale para as outras etapas); o de teste fica só aqui
+    if (deTeste) setDinamico({ nome, d });
+    else { setDinamico(null); contabil.usarDinamico(nome, d); }
     const doMes = cl.clientesDoDinamico(d, mes);
     if (doMes.length && !cl.credores(doMes).length) setTela('clientes');
   }
@@ -107,7 +113,7 @@ export function useClientes() {
     { id: 'dinamico-credores', rotulo: 'Balancete dinâmico (com saldo credor)' },
   ] : [], id => {
     const d = cl.dinamicoDeTeste(mes, id === 'dinamico-credores');
-    entrarComDinamico('balancete-dinamico-de-teste.xls', d);
+    entrarComDinamico('balancete-dinamico-de-teste.xls', d, true);
     aviso({ tom: 'ok', titulo: 'Balancete dinâmico de teste', texto: 'Só nesta tela: nada vai para o banco.' });
   });
 
@@ -126,12 +132,37 @@ export function useClientes() {
   const aceitas = linhas.flatMap(l => Object.values(l.baixas || {}).flat());
   const livres = lancsDoBanco.filter(x => !aceitas.some(a => cl.mesmoLancamento(a, x)));
 
+  const atualDe = (l: (typeof linhas)[number]): cl.MarcaDoCliente => ({ nome: l.nome, saldo: l.saldo, situacao: l.situacao, ...(l.obs ? { obs: l.obs } : {}), ...(l.razao ? { razao: l.razao } : {}), ...(l.perguntar ? { perguntar: l.perguntar } : {}), ...(l.baixas ? { baixas: l.baixas } : {}), ...(l.recusadas ? { recusadas: l.recusadas } : {}) });
   function marcar(codigo: string, mudar: (m: cl.MarcaDoCliente) => cl.MarcaDoCliente) {
     const l = linhas.find(x => x.codigo === codigo);
     if (!l || !marcas.carregado) return;
-    const atual: cl.MarcaDoCliente = { nome: l.nome, saldo: l.saldo, situacao: l.situacao, ...(l.obs ? { obs: l.obs } : {}), ...(l.razao ? { razao: l.razao } : {}), ...(l.perguntar ? { perguntar: l.perguntar } : {}), ...(l.baixas ? { baixas: l.baixas } : {}), ...(l.recusadas ? { recusadas: l.recusadas } : {}) };
-    marcas.salvar({ ...marcas.doc, contas: { ...marcas.doc.contas, [codigo]: mudar(atual) } });
+    marcas.salvar({ ...marcas.doc, contas: { ...marcas.doc.contas, [codigo]: mudar(atualDe(l)) } });
   }
+
+  // os razões da Importação (o upload único; 16/10/2026): cada conta sem razão recebe o dela, uma vez, todas de uma vez
+  const aplicados = useRef(new Set<string>());
+  useEffect(() => {
+    if (!marcas.carregado || !mes) return;
+    const novas: [string, cl.RazaoDaMarca][] = [];
+    for (const l of linhas) {
+      const g = contabil.razaoDaConta(l.codigo);
+      if (!g || l.razao) continue;
+      const k = l.codigo + '|' + g.arquivo;
+      if (aplicados.current.has(k)) continue;
+      aplicados.current.add(k);
+      novas.push([l.codigo, cl.razaoDaMarca(g.arquivo, cl.conferirRazaoDoCliente(g.razao, mes))]);
+    }
+    if (!novas.length) return;
+    const contas = { ...marcas.doc.contas };
+    for (const [codigo, razao] of novas) {
+      const l = linhas.find(x => x.codigo === codigo);
+      if (!l) continue;
+      const n: cl.MarcaDoCliente = { ...atualDe(l), situacao: cl.razaoComPendencia(razao) ? 'conferido' : 'pendente', razao };
+      delete n.perguntar;
+      contas[codigo] = n;
+    }
+    marcas.salvar({ ...marcas.doc, contas });
+  });
 
   /**
    * O razão da conta do cliente (Vitor, 06/10/2026): acha as notas que o pagamento não fechou; com nota em aberto, o
@@ -205,7 +236,7 @@ export function useClientes() {
     // Arquivos
     dinamico: dinamico ? { nome: dinamico.nome, resumo: contas.length + ' clientes · ' + rotuloMes } : null,
     importar: (f: File | undefined) => { void importar(f); },
-    tirar: () => setDinamico(null),
+    tirar: () => { setDinamico(null); if (!dinamicoProprio) contabil.tirarDinamico(); },
     /** o ⚡ do modo desenvolvedor na linha */
     teste,
     // Arquivos: os credores em algum mês, mês a mês

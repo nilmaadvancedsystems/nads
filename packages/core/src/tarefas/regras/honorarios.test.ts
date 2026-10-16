@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cobrancasDasLinhas, cobrancasDeTeste, cobrancasDoPeriodo, despesaDoRazao, lancamentosDosHonorarios } from './honorarios';
+import { cobrancasDasLinhas, cobrancasDeTeste, cobrancasDoPeriodo, cobrancasPagasNoPeriodo, despesaDoRazao, lancamentosDosHonorarios, pagamentoNoExtrato, pagamentosDosHonorarios } from './honorarios';
 import type { RazaoDaConta } from './razao';
 
 // as linhas do "Extrato por cobrança" da 292 (hccc.pdf, 07/10/2026), como o linhasDasPaginas monta
@@ -30,7 +30,21 @@ describe('Honorários: o Extrato por cobrança', () => {
   });
   it('os lançamentos na data de emissão: D despesa / C honorários a pagar, com o número da cobrança', () => {
     const [l] = lancamentosDosHonorarios(cobrancasDasLinhas([PAGINA]).slice(1, 2), ' 42105 ', '21405');
-    expect(l).toEqual({ data: '30/01/2026', debito: '42105', credito: '21405', historico: 'Honorários contábeis conf. cobrança nº 13074', valor: 1650, documento: '13074' });
+    expect(l).toEqual({ data: '30/01/2026', debito: '42105', credito: '21405', historico: 'Honorários contábeis ref. 01/2026 conf. cobrança nº 13074', valor: 1650, documento: '13074' });
+  });
+
+  it('o pagamento da cobrança paga no período: D honorários a pagar / C o banco escolhido, com o histórico (16/10/2026)', () => {
+    const t = cobrancasDeTeste(['2026-07', '2026-08', '2026-09'], 292);
+    const pagas = cobrancasPagasNoPeriodo(t, ['2026-08', '2026-09']);
+    expect(pagas.map(c => c.pagamento)).toEqual(['2026-08-10', '2026-09-10']);
+    const ls = pagamentosDosHonorarios(pagas, '21405', '42105', () => '10501');
+    expect(ls[0]).toEqual({ data: '10/08/2026', debito: '21405', credito: '10501', historico: 'Pagamento de honorários contábeis ref. 07/2026 conf. cobrança nº 13074', valor: 1650, documento: '13074' });
+    // pago a mais (juros): a diferença vai para a despesa
+    const comJuros = pagamentosDosHonorarios([{ ...pagas[0], recebido: 1660 }], '21405', '42105', () => '10501');
+    expect(comJuros.map(l => [l.debito, l.credito, l.valor])).toEqual([['21405', '10501', 1650], ['42105', '10501', 10]]);
+    // o débito no extrato: o mesmo valor, até 3 dias
+    const ext = [{ data: '2026-08-11', valor: -165000, historico: 'PIX', banco: 'sicoob' }, { data: '2026-08-20', valor: -165000, historico: 'PIX', banco: 'bb' }];
+    expect(pagamentoNoExtrato(pagas[0], ext)?.banco).toBe('sicoob');
   });
   it('a despesa sugerida: a contrapartida mais comum dos créditos do razão', () => {
     const l = (valor: number, contrapartida: string) => ({ data: '2026-01-30', contrapartida, nomeContrapartida: '', valor, codigoHistorico: '', historico: '', saldo: 0 });

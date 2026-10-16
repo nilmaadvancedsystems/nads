@@ -9,6 +9,8 @@ import { BotaoDeTeste, type ItemDeTeste } from '../../../../../comum/BotaoDeTest
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosMeses';
 import type { RazaoDaFolha as VmFolha } from '../useRazaoDaFolha';
 import { RazaoDaFolha } from './RazaoDaFolha';
+import { FgtsDaEtapa } from './FgtsDaEtapa';
+import type { FgtsDaEtapa as VmFgts } from '../useFgtsDaEtapa';
 import { MenuDeConta } from '../../../../extratudo/ferramentas/creditor/partes/MenuDeConta';
 
 const BAIXA: Record<Inss['meses'][number]['baixa'], string> = { ok: '✓', falta: 'Falta', depois: 'Depois', fora: '—', 'sem-guia': '—' };
@@ -32,12 +34,14 @@ function Importado({ titulo, onExcluir }: { titulo: string; onExcluir: () => voi
   );
 }
 
-export function InssDaEtapa({ inss, conferir, teste = [], folha, so }: {
+export function InssDaEtapa({ inss, conferir, teste = [], folha, so, conferenciaFgts }: {
   /** só uma parte (as abas Salários / INSS / FGTS da tela; Vitor, 07/10/2026); sem isso, tudo junto */
   so?: 'salarios' | 'inss' | 'fgts';
   inss: Inss; conferir?: string[]; teste?: ItemDeTeste[];
   /** as linhas de Salários a pagar e FGTS a recolher (a tela da etapa; Vitor, 07/10/2026) */
   folha?: { salarios: VmFolha; fgts: VmFolha };
+  /** a conferência do FGTS (razão × guias do FGTS Digital; Vitor, 16/10/2026), embaixo da linha do FGTS */
+  conferenciaFgts?: VmFgts;
 }) {
   const idRazao = useId();
   const idGuias = useId();
@@ -187,6 +191,7 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so }: {
           )}
         </div>}
         {fgts && (!so || so === 'fgts') && <RazaoDaFolha vm={fgts} dev={dev} />}
+        {conferenciaFgts && (!so || so === 'fgts') && <FgtsDaEtapa vm={conferenciaFgts} />}
       </div>
       {(so === 'inss' ? !inss.temRazao && !inss.temGuias : !so && !inss.pronto && !inss.temRazao && !inss.temGuias && !salarios?.temRazao && !fgts?.temRazao) && (
         <div className="gh-blank">

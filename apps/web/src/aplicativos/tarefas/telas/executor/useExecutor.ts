@@ -6,7 +6,7 @@
 // Extrator), o Próximo confere e marca todos os meses que faltam de uma vez; senão, vai mês a mês.
 // O período fica prometido: gravado em cada mês (execucao.periodo); abrir a empresa num desses meses leva de
 // volta ao período, e só dá para encerrar quando todos os meses dele estiverem concluídos.
-import { clientes as cl, empresas, extrator, tarefas as t } from '@nads/core';
+import { clientes as cl, empresas, extrator, formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -18,7 +18,8 @@ import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../comum/desenvolvimento
 import { useDepartamentoDaTela } from '../../casca/departamento';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { apagarTiques } from './useChecklistDaFolha';
-import { guardadosQueCasam } from '../../../../comum/guardado';
+import { useEscopoDoGuardado, useVersaoDoGuardado } from '../../../../comum/guardado';
+import { dinamicoDaEmpresa } from '../../../../comum/contabilDaEmpresa';
 
 /**
  * Onde cada aplicativo mora. O Extratudo vem junto no site da Tarefas (mesmo endereço: o login do Entregas
@@ -53,6 +54,9 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   // as seções da rotina, na ordem (Preparação, Ativo, Passivo, Resultado, Fechamento)
   const secoes = [...new Set(rotina.etapas.map(e => e.secao || ''))];
   const empresa = empresas.empresaPelaRota(repo.listarEmpresas(), rotaEmpresa);
+  // o "onde parou" desta empresa também no banco (16/10/2026): o que for dela vai e, ao abrir, o mais novo volta
+  useEscopoDoGuardado(empresa ? formatos.slug(empresa.nome) : null, [empresa?.codigo, empresa?.nome]);
+  const versaoDoGuardado = useVersaoDoGuardado();
   // a regra do Cadastro da empresa (presta serviços?): vai para a Conferência fiscal (?servicos=)
   const prestaServico = usePrestaServico(empresa?.nome ?? null, empresa?.codigo ?? null);
   // o Cadastro diz se a empresa tem cartão empresarial: a etapa Cartões entra (ou sai) nos meses do período
@@ -131,6 +135,14 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       const exc = exDe[c];
       if (!exc || !b.cobertos.includes(c)) continue;
       const entra = b.com.includes(c) || !!t.estadoDa(exc, b.etapa);
+      // a etapa que só existe quando o balancete pede (o Adiantamento salarial): entra e sai pelas adicionadas
+      if (rotina.etapas.find(e => e.id === b.etapa)?.soQuandoAdicionada) {
+        const esta = !!exc.adicionadas?.includes(b.etapa);
+        const m = entra && !esta ? t.adicionarEtapa(exc, b.etapa, b.motivo, op.nome, new Date())
+          : !entra && esta ? t.retirarEtapa(exc, b.etapa, b.motivo, op.nome, new Date()) : null;
+        if (m) repo.gravar(m.execucao, m.evento);
+        continue;
+      }
       const m = t.etapaPeloBalancete(exc, b.etapa, entra, b.motivo, op.nome, new Date());
       if (m) repo.gravar(m.execucao, m.evento);
     }
@@ -139,8 +151,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   // Clientes de novo (Vitor, 15/10/2026: "a 58 não tem adiantamento de clientes e você me pedindo")
   useEffect(() => {
     if (dev || !carregada || !empresa) return;
-    const quem = 'clientes|' + String(empresa.codigo ?? empresa.nome) + '|';
-    const din = guardadosQueCasam(k => k.startsWith(quem) && k.endsWith('|dinamico'))[0] as { d?: cl.BalanceteDinamico } | undefined;
+    // o da Importação (o primeiro passo; 16/10/2026) ou, antes dele, o que o Clientes importou
+    const din = dinamicoDaEmpresa(empresa.nome, empresa.codigo);
     if (!din?.d) return;
     for (const [etapa, de, nome] of [['adiantamento-fornecedores', 'fornecedores', 'Adiantamento a fornecedores'], ['adiantamento-clientes', 'clientes', 'Adiantamento de clientes']] as const) {
       const a = cl.adiantamentoNoDinamico(din.d, meses, de);
@@ -149,7 +161,12 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     // o Empréstimos também (Vitor, 15/10/2026: "da mesma forma de empréstimo, tire ele daqui")
     const e = cl.emprestimosNoDinamico(din.d, meses);
     ajustarPeloBalancete({ etapa: 'emprestimos', ...e, motivo: (e.com.length ? 'Empréstimo ou financiamento com saldo' : 'Sem empréstimo nem financiamento') + ' no balancete dinâmico' });
-  });
+    // e o Adiantamento salarial: só no mês com saldo (o certo é zerar; Vitor, 16/10/2026)
+    const s = cl.adiantamentoSalarialNoDinamico(din.d, meses);
+    ajustarPeloBalancete({ etapa: 'adiantamento-salarial', ...s, motivo: (s.com.length ? 'Adiantamento salarial com saldo' : 'Adiantamento salarial zerado') + ' no balancete dinâmico' });
+  // só quando muda o que importa: o dinâmico é grande para ler a cada desenho (o guardado avisa quando muda)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dev, carregada, empresa?.nome, periodo, versaoDoGuardado, porMes]);
   const [aviso, setAviso] = useState<string | null>(null);
   const [conferindo, setConferindo] = useState(false);
   const [interrompendo, setInterrompendo] = useState(false);
