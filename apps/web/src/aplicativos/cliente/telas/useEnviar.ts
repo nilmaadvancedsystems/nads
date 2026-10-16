@@ -1,0 +1,32 @@
+// ViewModel da aba Enviar (Vitor, 16/10/2026): o tipo do que está sendo mandado, a conferência de cada arquivo (PDF, JPG,
+// PNG, XML ou ZIP) e o recibo de tudo o que o escritório já recebeu.
+import { areaCliente as ac } from '@nads/core';
+import { useRetorno } from '@nads/ui';
+import { useState } from 'react';
+import { repoAreaCliente } from '../dados/repo';
+import type { DaCasca } from './useAreaCliente';
+
+export function useEnviar({ token, area }: DaCasca) {
+  const { toast } = useRetorno();
+  const [tipo, setTipo] = useState<ac.TipoDeEnvio>('extrato');
+  const [enviando, setEnviando] = useState(false);
+  const [erros, setErros] = useState<string[]>([]);
+
+  async function enviar(arquivos: File[]) {
+    const problemas = arquivos.map(a => ac.erroDoEnvio({ nome: a.name, tamanho: a.size }));
+    setErros(problemas.filter(Boolean));
+    const bons = arquivos.filter((_, i) => !problemas[i]);
+    if (!bons.length) return;
+    setEnviando(true);
+    try {
+      await repoAreaCliente.enviar(token, tipo, bons);
+      toast(bons.length === 1 ? 'Recebemos o arquivo.' : 'Recebemos os ' + bons.length + ' arquivos.');
+    } finally { setEnviando(false); }
+  }
+
+  return {
+    tipo, mudarTipo: setTipo, tipos: ac.TIPOS_DE_ENVIO, aceitar: ac.ACEITAR_NO_CAMPO, enviar, enviando, erros,
+    recibos: area.envios, legivel: ac.tamanhoLegivel,
+    rotuloDoTipo: (t: string) => ac.TIPOS_DE_ENVIO.find(x => x.valor === t)?.rotulo ?? 'Outro documento',
+  };
+}

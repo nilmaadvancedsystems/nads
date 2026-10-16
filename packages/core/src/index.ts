@@ -16,3 +16,4 @@ export * as tarefas from './tarefas';
 export * as demo from './demo';
 export * as cofre from './cofre';
 export * as mandei from './mandei';
+export * as areaCliente from './areaCliente';

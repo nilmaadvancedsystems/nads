@@ -4,6 +4,7 @@
 //   Extratudo .................... /extratudo/<código>/<ferramenta>/…  (Extrator, Cheque especial, Creditor)
 //   Conversor .................... /conversor/<etapa>  (extrato → .xls)
 //   Tarefas ...................... /tarefas/<aplicação>/<página>  e  /tarefas/executar/<código>/<competência>
+//   Área do Cliente .............. /cliente/<token>/<aba>  (o link secreto da empresa, Vitor, 16/10/2026)
 // São caminhos de verdade na URL; a hospedagem (firebase.json) reescreve qualquer caminho para index.html.
 //
 // VITE_APLICATIVO=<id> gera um site com UM aplicativo só (o link de cada um): as rotas dos outros
@@ -12,6 +13,7 @@ import { createBrowserRouter, Navigate, type RouteObject } from 'react-router';
 import { rotasConciliaAi, rotasConciliaAiNaTarefa } from './aplicativos/concilia-ai/rotas';
 import { rotasComponentes } from './aplicativos/componentes/rotas';
 import { rotasConciliadorzinho } from './aplicativos/conciliadorzinho/rotas';
+import { rotasCliente } from './aplicativos/cliente/rotas';
 import { rotasConversor } from './aplicativos/conversor/rotas';
 import { rotasExtratudo } from './aplicativos/extratudo/rotas';
 import { rotasTarefas } from './aplicativos/tarefas/rotas';
@@ -27,6 +29,8 @@ const APLICATIVOS: Record<string, { nome: string; rotas: RouteObject[]; raiz: st
   conversor: { nome: 'Conversor', rotas: rotasConversor, raiz: '/conversor' },
   // o formulário do cliente (o link do ticket do Mandei, Vitor, 07/10/2026), num site próprio
   mandei: { nome: 'Mandei', rotas: rotasMandei, raiz: '/mandei' },
+  // a Área do Cliente (Vitor, 16/10/2026): o link secreto de cada empresa, sem senha, num site próprio (fora da Tarefas)
+  cliente: { nome: 'Área do Cliente', rotas: rotasCliente, raiz: '/cliente' },
   // a Tarefas leva junto o Extratudo e a Conferência (a etapa Conferência fiscal): as ferramentas da etapa abrem
   // no mesmo endereço (o login do Entregas fica guardado no navegador; em outro endereço, dentro do iframe, o Brave apaga)
   tarefas: { nome: 'Tarefas', rotas: [...rotasTarefas, ...rotasExtratudo, ...rotasConciliaAiNaTarefa, ...rotasMandei], raiz: '/tarefas' },
@@ -41,6 +45,7 @@ export const roteador = createBrowserRouter(so
     ...rotasConciliadorzinho,
     ...rotasConversor,
     ...rotasMandei,
+    ...rotasCliente,
     ...rotasComponentes,
     ...rotasExtratudo,
     ...rotasTarefas,

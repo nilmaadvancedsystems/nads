@@ -4398,3 +4398,61 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 @media (prefers-reduced-motion: reduce){
   html[data-animacoes=todas] :is(.btn,.icon-btn,.subnav-item,.menu-item,.caixa-item,.drawer-item,.popover-item,.chip-f,.gh-crumb,.explorador-cmd) > svg{transition:none;scale:none;translate:none;rotate:none;}
 }
+
+/* ---------------------------------- Área do Cliente (Vitor, 16/10/2026) ---------------------------------- */
+/* o site do cliente: cabeçalho com a marca e a empresa, as abas (rolam dentro delas no celular) e o conteúdo no meio */
+.cli-pagina{min-height:100vh;background:var(--bg);}
+.cli-main{max-width:960px;margin:0 auto;padding:16px 16px 64px;min-width:0;}
+.cli-main .card:last-child{margin-bottom:0;}
+.cli-empresa{min-width:0;max-width:50vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;color:var(--ink-muted);}
+.cli-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;}
+.cli-barra{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px;}
+.cli-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
+.cli-erros{list-style:none;margin:12px 0 0;padding:0;}
+/* o cartão de uma guia */
+.cli-guia{display:flex;flex-direction:column;gap:4px;min-width:0;padding:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);}
+.cli-guia-vencida{border-color:var(--danger);box-shadow:inset 3px 0 0 var(--danger);}
+.cli-guia-vence-hoje{border-color:var(--warn);box-shadow:inset 3px 0 0 var(--warn);}
+.cli-guia-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.cli-guia-topo h4{font-size:14px;font-weight:600;min-width:0;}
+.cli-guia-valor{font-size:24px;font-weight:600;line-height:1.25;}
+.cli-guia-pe{margin-top:8px;}
+/* uma linha da agenda: o dia, o nome e a situação */
+.cli-agenda{display:flex;align-items:center;gap:12px;min-width:0;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);}
+.cli-agenda-dia{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;width:44px;height:44px;border-radius:6px;background:var(--surface-2);border:1px solid var(--border);line-height:1.1;}
+.cli-agenda-dia b{font-size:16px;}
+.cli-agenda-dia small{font-size:11px;color:var(--ink-muted);text-transform:uppercase;}
+.cli-agenda-nome{display:flex;flex-direction:column;flex:1;min-width:0;}
+.cli-agenda-nao-se-aplica{opacity:.7;}
+/* a lista de chamados (e os últimos no Início) */
+.cli-item-chamado{display:flex;align-items:center;gap:10px;width:100%;min-width:0;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink);text-align:left;font:inherit;}
+.cli-item-chamado > span:nth-child(2){display:flex;flex-direction:column;flex:1;min-width:0;}
+.cli-item-chamado svg{flex:none;color:var(--ink-muted);}
+button.cli-item-chamado{cursor:pointer;}
+button.cli-item-chamado:hover{background:var(--surface-2);}
+button.cli-item-chamado.on{border-color:var(--accent);background:var(--accent-soft);}
+.cli-chamados{display:flex;flex-direction:column;gap:0;}
+/* a conversa: o balão do cliente à direita, o do escritório à esquerda */
+.cli-conversa{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;}
+.cli-balao{display:flex;flex-direction:column;gap:4px;max-width:min(560px,92%);padding:8px 12px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2);}
+.cli-balao p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.45;}
+.cli-balao-quem{font-size:12px;color:var(--ink-muted);}
+.cli-balao-escritorio{align-self:flex-start;border-radius:12px 12px 12px 4px;}
+.cli-balao-cliente{align-self:flex-end;border-radius:12px 12px 4px 12px;background:var(--accent-soft);border-color:var(--accent-border);}
+/* a área de soltar arquivos */
+.cli-soltar{display:flex;flex-direction:column;align-items:center;gap:4px;padding:28px 16px;text-align:center;border:2px dashed var(--border-strong);border-radius:8px;background:var(--surface-2);cursor:pointer;color:var(--ink);}
+.cli-soltar svg{color:var(--ink-muted);margin-bottom:4px;}
+.cli-soltar:hover,.cli-soltar.sobre{border-color:var(--accent);background:var(--accent-soft);}
+.cli-soltar.sobre svg,.cli-soltar:hover svg{color:var(--accent);}
+.cli-soltar.is-locked{opacity:.5;cursor:not-allowed;}
+.cli-soltar:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px;}
+/* o contato do escritório */
+.cli-contato{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column;gap:6px;}
+.cli-contato li{display:flex;align-items:center;gap:8px;min-width:0;overflow-wrap:anywhere;}
+.cli-contato svg{flex:none;color:var(--ink-muted);}
+@media (max-width:640px){
+  .cli-main{padding:12px 12px 48px;}
+  .cli-grade{grid-template-columns:minmax(0,1fr);}
+  .cli-guia-valor{font-size:22px;}
+  .cli-balao{max-width:96%;}
+}
