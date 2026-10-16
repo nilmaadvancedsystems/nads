@@ -6,6 +6,7 @@
 import { BotaoAcao, Esqueleto, Icone, MenuSuspenso, NumeroQueConta, SeletorMes, useCarregando, useEntradaAnimada, useLinhasQueSeMovem } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { JanelaLateral } from '../janela/JanelaLateral';
+import { MenuDeFiltro } from './MenuDeFiltro';
 import { useFgtsDoDp, type FiltroFgts, type SituacaoFgts } from './useFgtsDoDp';
 
 const cnpjFormatado = (d: string) => (d.length === 11
@@ -92,28 +93,18 @@ export function FgtsDoDp() {
       {r.carregado && !r.ligado && (
         <div className="alert fgts-robo"><Icone nome="alert" /><div><p className="alert-title">Robô do FGTS desligado</p><p className="alert-text">{r.motivo || 'Sem o certificado do escritório na máquina do robô.'}</p></div></div>
       )}
-      <div className="tarefas-filtros dp-filtros">
-        <div className="field dp-filtro">
-          <span className="hint">Competência</span>
-          <SeletorMes valor={vm.competencia} onMudar={vm.setCompetencia} rotulo="Competência" />
-        </div>
-        <label className="field dp-filtro dp-busca">
-          <span className="hint">Buscar cliente</span>
-          <input type="text" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} placeholder="Nome, código ou CNPJ" aria-label="Buscar cliente" />
+      <div className="tarefas-barra-topo dp-filtros-linha">
+        {/* a barra no padrão do resto do app (revisão da UI, 16/10/2026): a busca de lupa e os filtros em menus numa linha */}
+        <SeletorMes valor={vm.competencia} onMudar={vm.setCompetencia} rotulo="Competência" />
+        <label className="busca-curta">
+          <Icone nome="search" />
+          <input type="text" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente (nome, código ou CNPJ)"
+            onKeyDown={e => { if (e.key === 'Escape') vm.setBusca(''); }} />
         </label>
-        <label className="field dp-filtro">
-          <span className="hint">Responsável</span>
-          <select className="select-compact" value={vm.responsavel} onChange={e => vm.setResponsavel(e.target.value)}>
-            <option value="">Todos</option>
-            {vm.responsaveis.map(o => <option key={o} value={o}>{o}</option>)}
-          </select>
-        </label>
-        <label className="field dp-filtro">
-          <span className="hint">Situação</span>
-          <select className="select-compact" value={vm.filtro} onChange={e => vm.setFiltro(e.target.value as FiltroFgts)}>
-            {SITUACOES.map(o => <option key={o.valor} value={o.valor}>{o.rotulo} ({qtdSituacao[o.valor]})</option>)}
-          </select>
-        </label>
+        <MenuDeFiltro rotulo="Responsável" valor={vm.responsavel} mudar={vm.setResponsavel} opcoes={vm.responsaveis} />
+        <MenuSuspenso rotulo={'Situação: ' + (SITUACOES.find(o => o.valor === vm.filtro)?.rotulo ?? '') + ' (' + qtdSituacao[vm.filtro] + ')'} titulo="Situação" dica="Situação"
+          className={'btn btn-outline' + (vm.filtro !== 'todos' ? ' ativo' : '')}
+          itens={SITUACOES.map(o => ({ rotulo: o.rotulo + ' (' + qtdSituacao[o.valor] + ')', marcado: o.valor === vm.filtro, onClick: () => vm.setFiltro(o.valor) }))} />
       </div>
 
       {/* o robô agora: ligado, com quem está, o último passo, a verificação e a fila */}

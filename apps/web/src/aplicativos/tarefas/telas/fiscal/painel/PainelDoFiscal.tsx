@@ -19,21 +19,16 @@ export function PainelDoFiscal() {
   useCarregando(vm.carregando);
   return (
     <section className="dp-painel">
-      <div className="tarefas-filtros dp-filtros">
-        {/* a competência no mesmo menu com o calendário da Minhas empresas (revisão da UI, 16/10/2026: eram três peças diferentes) */}
-        <div className="field dp-filtro">
-          <span className="hint">Competência</span>
-          <MenuSuspenso icone="calendar" rotulo={vm.competencias.find(c => c.valor === vm.competencia)?.rotulo ?? vm.competencia} titulo="Competência" dica="Trocar a competência"
-            itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
-        </div>
-        <label className="field dp-filtro dp-busca">
-          <span className="hint">Buscar cliente</span>
-          <input type="text" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} placeholder="Nome ou código" aria-label="Buscar cliente (nome ou código)" />
+      <div className="tarefas-barra-topo dp-filtros-linha">
+        {/* a barra no padrão do resto do app (revisão da UI, 16/10/2026): a busca de lupa e os filtros em menus numa linha */}
+        <MenuSuspenso icone="calendar" rotulo={vm.competencias.find(c => c.valor === vm.competencia)?.rotulo ?? vm.competencia} titulo="Competência" dica="Trocar a competência"
+          itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
+        <label className="busca-curta">
+          <Icone nome="search" />
+          <input type="text" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente (nome ou código)"
+            onKeyDown={e => { if (e.key === 'Escape') vm.setBusca(''); }} />
         </label>
-        <label className="field dp-filtro">
-          <span className="hint">Mostrar</span>
-          <Segmentado opcoes={FILTROS} valor={vm.filtro} onMudar={vm.setFiltro} />
-        </label>
+        <Segmentado opcoes={FILTROS} valor={vm.filtro} onMudar={vm.setFiltro} />
       </div>
       {vm.carregando ? <Esqueleto linhas={6} numeros={6} /> : (
         <>

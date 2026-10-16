@@ -9,6 +9,7 @@ import { Fragment, useState } from 'react';
 import { DecimoNaLista } from './DecimoTerceiro';
 import { JanelaDasEtiquetas } from './JanelaDasEtiquetas';
 import { useEtiquetasDaFolha } from './useEtiquetasDaFolha';
+import { MenuDeFiltro } from './MenuDeFiltro';
 import { ROTULO_DASH, usePainelDoDp, type AbaDoPainel, type Agrupar, type EstadoDaObrigacao, type SituacaoDoDash } from './usePainelDoDp';
 
 /**
@@ -58,18 +59,6 @@ function prazoDoCartao(dias: number, parado: boolean): string {
 
 const AGRUPAR: { valor: Agrupar; rotulo: string }[] = [{ valor: 'nenhum', rotulo: 'Nenhum' }, { valor: 'responsavel', rotulo: 'Responsável' }, { valor: 'agrupamento', rotulo: 'Agrupamento' }];
 
-function Selecao({ rotulo, valor, mudar, opcoes }: { rotulo: string; valor: string; mudar: (v: string) => void; opcoes: readonly string[] }) {
-  return (
-    <label className="field dp-filtro">
-      <span className="hint">{rotulo}</span>
-      <select className="select-compact" value={valor} onChange={e => mudar(e.target.value)}>
-        <option value="">Todos</option>
-        {opcoes.map(o => <option key={o} value={o}>{o}</option>)}
-      </select>
-    </label>
-  );
-}
-
 export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
   const vm = usePainelDoDp(aba);
   const f = vm.filtros;
@@ -91,35 +80,23 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
   const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [aba, vm.carregando], 'lista');
   return (
     <section className="dp-painel">
-      <div className="tarefas-filtros dp-filtros">
-        {/* a competência no mesmo menu com o calendário da Minhas empresas (revisão da UI, 16/10/2026: eram três peças diferentes) */}
-        <div className="field dp-filtro">
-          <span className="hint">Competência</span>
-          <MenuSuspenso icone="calendar" rotulo={vm.competencias.find(c => c.valor === vm.competencia)?.rotulo ?? vm.competencia} titulo="Competência" dica="Trocar a competência"
-            itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
-        </div>
-        <label className="field dp-filtro dp-busca">
-          <span className="hint">Buscar cliente</span>
-          <input type="text" value={f.busca} onChange={e => f.setBusca(e.target.value)} placeholder="Nome ou código" aria-label="Buscar cliente (nome ou código)" />
+      <div className="tarefas-barra-topo dp-filtros-linha">
+        {/* a barra no padrão do resto do app (revisão da UI, 16/10/2026): a competência, a busca de lupa e os filtros em menus numa linha */}
+        <MenuSuspenso icone="calendar" rotulo={vm.competencias.find(c => c.valor === vm.competencia)?.rotulo ?? vm.competencia} titulo="Competência" dica="Trocar a competência"
+          itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
+        <label className="busca-curta">
+          <Icone nome="search" />
+          <input type="text" value={f.busca} onChange={e => f.setBusca(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente (nome ou código)"
+            onKeyDown={e => { if (e.key === 'Escape') f.setBusca(''); }} />
         </label>
-        <Selecao rotulo="Responsável" valor={f.responsavel} mudar={f.setResponsavel} opcoes={f.responsaveis} />
-        <Selecao rotulo="Movimento" valor={f.movimento} mudar={f.setMovimento} opcoes={f.movimentos} />
-        <Selecao rotulo="Enquadramento" valor={f.enquadramento} mudar={f.setEnquadramento} opcoes={f.enquadramentos} />
-        <label className="field dp-filtro">
-          <span className="hint">Status</span>
-          <select className="select-compact" value={f.status} onChange={e => f.setStatus(e.target.value as typeof f.status)}>
-            <option value="">Todos</option><option value="concluidas">Concluídos</option><option value="pendentes">Pendentes</option>
-          </select>
-        </label>
-        <label className="field dp-filtro">
-          <span className="hint">Pendente em</span>
-          <select className="select-compact" value={f.pendenteEm} onChange={e => f.setPendenteEm(e.target.value as typeof f.pendenteEm)}>
-            <option value="">Todas as partes</option>
-            {f.partes.map(p => <option key={p.valor} value={p.valor}>{p.rotulo}</option>)}
-          </select>
-        </label>
-        <Selecao rotulo="Entrega" valor={f.entrega} mudar={f.setEntrega} opcoes={f.entregas} />
-        <Selecao rotulo="Agrupamento" valor={f.agrupamento} mudar={f.setAgrupamento} opcoes={f.agrupamentos} />
+        <MenuDeFiltro rotulo="Responsável" valor={f.responsavel} mudar={f.setResponsavel} opcoes={f.responsaveis} />
+        <MenuDeFiltro rotulo="Movimento" valor={f.movimento} mudar={f.setMovimento} opcoes={f.movimentos} />
+        <MenuDeFiltro rotulo="Enquadramento" valor={f.enquadramento} mudar={f.setEnquadramento} opcoes={f.enquadramentos} />
+        <MenuDeFiltro rotulo="Status" valor={f.status} mudar={v => f.setStatus(v as typeof f.status)}
+          opcoes={[{ valor: 'concluidas', rotulo: 'Concluídos' }, { valor: 'pendentes', rotulo: 'Pendentes' }]} />
+        <MenuDeFiltro rotulo="Pendente em" valor={f.pendenteEm} mudar={v => f.setPendenteEm(v as typeof f.pendenteEm)} opcoes={f.partes} todos="Todas as partes" />
+        <MenuDeFiltro rotulo="Entrega" valor={f.entrega} mudar={f.setEntrega} opcoes={f.entregas} />
+        <MenuDeFiltro rotulo="Agrupamento" valor={f.agrupamento} mudar={f.setAgrupamento} opcoes={f.agrupamentos} direita />
         {f.algum && <button type="button" className="btn btn-ghost dp-limpar" onClick={f.limpar}><Icone nome="x" />Limpar filtros</button>}
       </div>
 

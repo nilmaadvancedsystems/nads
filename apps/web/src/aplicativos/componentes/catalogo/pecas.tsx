@@ -414,6 +414,10 @@ export const PECAS_BASE: Peca[] = [
         </div>
       </div>
     ) },
+  // os filtros da barra em menus (revisão da UI, 16/10/2026: o DP tinha 8 <select> com rótulo em cima)
+  { id: 'menu-filtro', tipo: 'menus', nome: 'Filtro da barra (menu)', descricao: 'O MenuSuspenso com o nome do filtro; escolhido, mostra "Nome: valor" e fica marcado (.ativo). "Todos" volta ao vazio. Na barra, ao lado da competência e da busca de lupa', componente: 'MenuDeFiltro (Tarefa › DP)', classes: ['tarefas-barra-topo', 'btn btn-outline ativo'], telas: ['t-dp-resumo', 't-dp-obrigacoes', 't-dp-fgts', 't-dp-config'],
+    uso: '<MenuDeFiltro rotulo="Responsável" valor={f.responsavel} mudar={f.setResponsavel} opcoes={f.responsaveis} />',
+    demo: () => <div className="tarefas-barra-topo" style={{ margin: 0 }}><MenuSuspenso rotulo="Responsável" itens={[{ rotulo: 'Todos', marcado: true, onClick: nada }, { rotulo: 'Fabiana', marcado: false, onClick: nada }]} /><MenuSuspenso rotulo="Movimento: Folha" className="btn btn-outline ativo" itens={[{ rotulo: 'Todos', marcado: false, onClick: nada }, { rotulo: 'Folha', marcado: true, onClick: nada }]} /></div> },
   { id: 'jn-falta', removida: { como: 'substituida', por: 'menu-falta', em: '02/10/2026', motivo: 'Não é mais janela: fica suspensa no sino do cabeçalho (com o número de pendências), como o Code ▾ do GitHub.' }, tipo: 'janelas', nome: 'Para seguir, falta (o ? do executor)', descricao: 'Uma tabelinha: cada item com o Resolver, que leva até o problema e o destaca', componente: 'JanelaOQueFalta', classes: ['modal modal-centro falta-janela', 'falta-tabela', 'nads-destaque'], telas: EXECUTOR,
     demo: () => (
       <div className={classeDaJanela({ icone: 'ajuda' }) + ' falta-janela cat-parado'} role="dialog">

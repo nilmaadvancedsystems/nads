@@ -3136,6 +3136,9 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .dp-busca{min-width:220px;flex:1 1 220px;max-width:320px;}
 .dp-busca input{width:100%;}
 .dp-limpar{align-self:flex-end;}
+/* a barra do DP no padrão do resto do app (revisão da UI, 16/10/2026): a busca da Legislação um pouco mais larga */
+.busca-curta.dp-busca-larga{width:320px;}
+.dp-filtros-linha .dp-limpar{align-self:center;}
 .dp-numero-dica{margin:2px 0 0;font-size:12px;}
 .dp-titulo{margin:0 0 12px;font-size:14px;font-weight:600;}
 .dp-graficos{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:14px;}
