@@ -28,6 +28,8 @@ export function useNotasFiscais() {
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<FiltroDeNotas>('todas');
   const [nova, setNova] = useState(false);
+  /** o Importar planilha (15/10/2026: "quero que ele leia uma planilha com clientes que já pagaram") */
+  const [importando, setImportando] = useState(false);
   const [aberta, setAberta] = useState<string | null>(null);
   /** a recusada que está sendo corrigida (a Nova nota abre preenchida) */
   const [corrigindo, setCorrigindo] = useState<nfse.NotaFiscal | null>(null);
@@ -48,7 +50,7 @@ export function useNotasFiscais() {
     total: lista.lista.length,
     linhas,
     busca, setBusca, filtro, setFiltro,
-    nova, setNova, aberta, setAberta, corrigindo,
+    nova, setNova, importando, setImportando, aberta, setAberta, corrigindo,
     corrigir(n: nfse.NotaFiscal) { setAberta(null); setCorrigindo(n); },
     fecharCorrecao: () => setCorrigindo(null),
   };

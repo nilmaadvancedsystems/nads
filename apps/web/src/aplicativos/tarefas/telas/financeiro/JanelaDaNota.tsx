@@ -1,6 +1,7 @@
 // A janela da nota (15/10/2026: "vamos criar um emissor de notas fiscais para o financeiro"): a situação, os dados da nota
 // (número, chave de acesso, DPS, tomador, valor, data, descrição, quem pediu), os erros que a prefeitura devolveu e as ações:
 // Corrigir e reenviar (recusada), Baixar XML e Baixar DANFSe (autorizada) e Cancelar nota (autorizada, com o motivo e a justificativa).
+// Enviar por e-mail (autorizada, 15/10/2026): na linha "E-mail", o botão (abre o campo com o e-mail do tomador) e como foi o último envio.
 import { formatos, nfse } from '@nads/core';
 import { BotaoAcao, Icone, MenuSuspenso } from '@nads/ui';
 import { useEffect, type ReactNode } from 'react';
@@ -52,7 +53,19 @@ export function JanelaDaNota({ id, fechar, corrigir }: { id: string; fechar: () 
             <Dado rotulo="Valor">{formatos.reais(n.servico.valor)}</Dado>
             <Dado rotulo="Data do serviço">{dataBr(n.servico.competencia)}</Dado>
             <Dado rotulo="Descrição"><span className="nf-descricao">{n.servico.descricao}</span></Dado>
-            {n.tomador.email && <Dado rotulo="E-mail">{n.tomador.email}</Dado>}
+            {(n.tomador.email || vm.envioDoEmail || vm.podeEnviarEmail) && (
+              <Dado rotulo="E-mail">
+                <span className="nf-chave">
+                  {n.tomador.email || <span className="fraco">Sem e-mail na nota</span>}
+                  {vm.podeEnviarEmail && !vm.mandandoEmail && <button type="button" className="btn btn-ghost" onClick={vm.abrirEmail}><Icone nome="envelope" />Enviar por e-mail</button>}
+                </span>
+                {vm.envioDoEmail && (
+                  <div className={vm.envioDoEmail.erro ? 'registro-dica-erro' : 'fraco'}>
+                    {vm.envioDoEmail.andando && <span className="btn-spinner nf-roda" aria-hidden="true" />}{vm.envioDoEmail.texto}
+                  </div>
+                )}
+              </Dado>
+            )}
             {fone && <Dado rotulo="Telefone">{fone}</Dado>}
             <Dado rotulo="Número da NFS-e">{n.numeroNfse || '—'}</Dado>
             <Dado rotulo="Chave de acesso">
@@ -76,6 +89,21 @@ export function JanelaDaNota({ id, fechar, corrigir }: { id: string; fechar: () 
             </div>
           )}
 
+          {vm.mandandoEmail && (
+            <div className="nf-cancelar">
+              <div className="registro-prop">
+                <span className="registro-prop-nome"><Icone nome="envelope" />Para</span>
+                <div className="registro-prop-valor">
+                  <input type="email" className="nf-entrada largo" value={vm.paraEmail} onChange={e => vm.setParaEmail(e.target.value)} autoFocus
+                    onKeyDown={e => { if (e.key === 'Enter') void vm.enviarPorEmail(); }} placeholder="email@cliente.com.br" aria-label="E-mail para mandar a nota" />
+                </div>
+              </div>
+              <span className={'registro-dica' + (vm.avisoEmail ? ' registro-dica-erro' : '')}>
+                {vm.avisoEmail || 'O robô manda a DANFSe (PDF) e o XML' + (n.ambiente === 'homologacao' ? ', avisando que a nota é sem valor fiscal.' : '.')}
+              </span>
+            </div>
+          )}
+
           {vm.cancelando && (
             <div className="nf-cancelar">
               <div className="registro-prop">
@@ -94,7 +122,14 @@ export function JanelaDaNota({ id, fechar, corrigir }: { id: string; fechar: () 
 
         <footer className="registro-pe">
           <span className="tarefas-barra-espaco" />
-          {vm.cancelando ? (
+          {vm.mandandoEmail ? (
+            <>
+              <button type="button" className="btn btn-outline" onClick={vm.fecharEmail}>Voltar</button>
+              <BotaoAcao className="btn btn-primary" carregando={vm.pedindoEmail} textoCarregando="Pedindo…" disabled={!vm.paraEmail.trim()} onClick={() => void vm.enviarPorEmail()}>
+                <Icone nome="envelope" />Enviar
+              </BotaoAcao>
+            </>
+          ) : vm.cancelando ? (
             <>
               <button type="button" className="btn btn-outline" onClick={vm.fecharCancelamento}>Voltar</button>
               <BotaoAcao className="btn btn-danger" carregando={vm.enviando} textoCarregando="Pedindo…" disabled={!vm.podePedirCancelamento} onClick={() => void vm.pedirCancelamento()}>

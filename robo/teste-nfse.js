@@ -173,7 +173,13 @@ function bancoDeMentira() {
     return r;
   }
   function consulta(col, filtros) {
-    const casa = d => filtros.every(([c, op, v]) => (op === 'in' ? v.includes(d[c]) : d[c] === v));
+    const campo = (d, c) => c.split('.').reduce((o, k) => (o && typeof o === 'object' ? o[k] : undefined), d);
+    const casa = d => filtros.every(([c, op, v]) => {
+      const x = campo(d, c);
+      if (op === 'in') return v.includes(x);
+      if (op === '>=') return typeof x === typeof v && x >= v;
+      return x === v;
+    });
     const atuais = () => [...docs.entries()].filter(([k, d]) => k.startsWith(col + '/') && !k.slice(col.length + 1).includes('/') && casa(d))
       .map(([k]) => ref(col, k.slice(col.length + 1)));
     return {
@@ -300,6 +306,86 @@ async function testarFluxo({ pfx, arqSenha, cert }) {
 
   confere('o token não aparece em nenhum log nem documento', !linhas.join('\n').includes('SECRETO') &&
     !['a', 'b', 'c', 'd'].some(id => JSON.stringify(em(id)).includes('SECRETO')) && !JSON.stringify(est()).includes('SECRETO'));
+  if (process.env.NFSE_VER_LOG) console.log(linhas.join('\n'));
+}
+
+// ---------- o e-mail ao tomador (nfse-email.js), com um Gmail de mentira ----------
+function gmailDeMentira() {
+  const g = { enviados: [], contados: 0 };
+  g.correio = {
+    enviar: async dados => { g.enviados.push(dados); return 'id-' + g.enviados.length; },
+    podeEnviar: () => true,
+    contar: () => { g.contados++; },
+    endereco: async () => 'robo@exemplo.com.br',
+  };
+  return g;
+}
+
+async function testarEmail({ pfx, arqSenha, cert }) {
+  const nfseEmail = require('./nfse-email');
+  const db = bancoDeMentira();
+  const linhas = [];
+  const log = (...m) => linhas.push(m.join(' '));
+  prefeituraDeMentira(cert.certPem);
+  const gmail = gmailDeMentira();
+  const cfg = Object.assign(JSON.parse(JSON.stringify(config)), { email: { automatico: true, assunto: 'NFS-e {numero} — teste', texto: 'Olá, {cliente}! Nota {numero} de {valor} ({competencia}).' } });
+  await db.collection('config').doc('nfse').set(cfg);
+  await db.collection('segredos').doc('nfse').set({ token: 'TOKEN-PROD-SECRETO', tokenHomologacao: 'TOKEN-HOMOLOG-SECRETO' });
+  const modulo = nfse.iniciarNfse(db, log, { pfx, senha: arqSenha, consultaMs: 150, correio: gmail.correio });
+  const em = id => db.ler('nfseEmissoes/' + id) || {};
+  const producao = Object.assign(JSON.parse(JSON.stringify(pedido)), { ambiente: 'producao' });
+
+  // automático, em produção, com o e-mail do tomador
+  await db.collection('nfseEmissoes').doc('p1').set(producao);
+  confere('autorizada com o automático ligado → e-mail.enviadoEm gravado', await esperar(() => !!(em('p1').email && em('p1').email.enviadoEm)), JSON.stringify(em('p1').email || em('p1').status));
+  confere('um e-mail só, para o e-mail do tomador', gmail.enviados.length === 1 && gmail.enviados[0].para === 'tomador@exemplo.com.br' && gmail.contados === 1, gmail.enviados.map(e => e.para).join(','));
+  const m1 = gmail.enviados[0] || { anexos: [] };
+  const nomes = (m1.anexos || []).map(a => a.nome);
+  confere('2 anexos: DANFSe-<numero>.pdf e NFSe-<chave>.xml', nomes.length === 2 && nomes[0] === 'DANFSe-' + em('p1').numeroNfse + '.pdf' && nomes[1] === 'NFSe-' + em('p1').chaveAcesso + '.xml', nomes.join(', '));
+  confere('o PDF é um PDF e o XML é o da nota', m1.anexos[0] && m1.anexos[0].buffer.slice(0, 5).toString() === '%PDF-' && m1.anexos[0].mime === 'application/pdf'
+    && m1.anexos[1] && m1.anexos[1].buffer.toString('utf8') === em('p1').xmlNfse);
+  confere('assunto e texto do modelo da config, preenchidos', m1.assunto === 'NFS-e ' + em('p1').numeroNfse + ' — teste' && /Olá, TOMADOR DE TESTE .* Nota \d+ de R\$ 950,00 \(10\/2026\)\./.test(m1.corpo), m1.assunto + ' | ' + m1.corpo);
+  confere('vai a versão em HTML, com o número da nota', /<html/.test(m1.html || '') && (m1.html || '').includes(em('p1').numeroNfse));
+  confere('a nota guarda { para, enviadoEm } sem erro e sem a trava', em('p1').email.para === 'tomador@exemplo.com.br' && !em('p1').email.erro && !em('p1').email.enviandoEm);
+
+  // não manda de novo: o robô "religa" (retoma as autorizadas sem e-mail) e a nota muda de novo
+  await modulo.retomarEmails();
+  await db.collection('nfseEmissoes').doc('p1').update({ atualizadoEm: 'outra vez' });
+  await new Promise(r => setTimeout(r, 400));
+  confere('não manda o automático duas vezes', gmail.enviados.length === 1, String(gmail.enviados.length));
+
+  // homologação não vai no automático
+  await db.collection('nfseEmissoes').doc('h1').set(JSON.parse(JSON.stringify(pedido)));
+  confere('homologação autorizada → sem e-mail automático', await esperar(() => em('h1').status === 'autorizada') && (await new Promise(r => setTimeout(r, 400)), gmail.enviados.length === 1 && !em('h1').email));
+
+  // cancelada não vai: nem a que o robô acha ao religar, nem pela regra
+  await db.collection('nfseEmissoes').doc('c1').set(Object.assign({}, producao, { status: 'cancelada', autorizadaEm: new Date().toISOString(), numeroNfse: '9', chaveAcesso: '1'.repeat(50), xmlNfse: em('p1').xmlNfse }));
+  await modulo.retomarEmails();
+  await new Promise(r => setTimeout(r, 400));
+  confere('cancelada → sem e-mail automático', gmail.enviados.length === 1 && !em('c1').email);
+  confere('a regra: cancelada, homologação, já tratada e desligado não mandam', nfseEmail.motivoParaNaoMandar({ status: 'cancelada', ambiente: 'producao', xmlNfse: 'x' }, { automatico: true }) !== ''
+    && nfseEmail.motivoParaNaoMandar({ status: 'autorizada', ambiente: 'homologacao', xmlNfse: 'x' }, { automatico: true }) !== ''
+    && nfseEmail.motivoParaNaoMandar({ status: 'autorizada', ambiente: 'producao', xmlNfse: 'x', email: { para: 'a@b.c', enviadoEm: '' } }, { automatico: true }) !== ''
+    && nfseEmail.motivoParaNaoMandar({ status: 'autorizada', ambiente: 'producao', xmlNfse: 'x' }, { automatico: false }) !== ''
+    && nfseEmail.motivoParaNaoMandar({ status: 'autorizada', ambiente: 'producao', xmlNfse: 'x' }, { automatico: true }) === '');
+
+  // tomador sem e-mail: não manda e diz por quê
+  const semEmail = JSON.parse(JSON.stringify(producao));
+  delete semEmail.tomador.email;
+  await db.collection('nfseEmissoes').doc('p2').set(semEmail);
+  confere('tomador sem e-mail → não manda, grava o erro', await esperar(() => !!(em('p2').email && em('p2').email.erro)) && gmail.enviados.length === 1 && !em('p2').email.enviadoEm, JSON.stringify(em('p2').email));
+
+  // o pedido manual (a nota de homologação pode, com o aviso)
+  await db.collection('nfseEmissoes').doc('h1').update({ envioEmail: { para: 'outro@cliente.com.br', pedidoPor: 'Vitor', pedidoEm: new Date().toISOString() } });
+  confere('envioEmail → manda para o endereço pedido', await esperar(() => gmail.enviados.length === 2) && gmail.enviados[1].para === 'outro@cliente.com.br' && gmail.enviados[1].anexos.length === 2);
+  confere('manual de homologação avisa "sem valor fiscal"', /SEM VALOR FISCAL/.test(gmail.enviados[1] ? gmail.enviados[1].corpo + gmail.enviados[1].assunto : ''));
+  confere('manual grava email { para, enviadoEm, pedidoPor } e apaga envioEmail', await esperar(() => !em('h1').envioEmail) && em('h1').email && em('h1').email.para === 'outro@cliente.com.br' && !!em('h1').email.enviadoEm && em('h1').email.pedidoPor === 'Vitor', JSON.stringify(em('h1').email));
+  await db.collection('nfseEmissoes').doc('p1').update({ envioEmail: { para: 'sem-arroba', pedidoPor: 'Vitor', pedidoEm: new Date().toISOString() } });
+  confere('manual com endereço inválido → erro, sem mandar', await esperar(() => !em('p1').envioEmail) && gmail.enviados.length === 2 && /e-mail/.test(em('p1').email.erro || ''), JSON.stringify(em('p1').email));
+  await db.collection('nfseEmissoes').doc('p1').update({ envioEmail: { para: 'tomador@exemplo.com.br', pedidoPor: 'Vitor', pedidoEm: new Date().toISOString() } });
+  confere('manual manda de novo uma nota que já foi (o reenvio é pedido)', await esperar(() => gmail.enviados.length === 3 && !em('p1').envioEmail) && !!em('p1').email.enviadoEm && !em('p1').email.erro);
+
+  confere('o log não traz o e-mail do tomador nem o token', !/@/.test(linhas.join('\n')) && !linhas.join('\n').includes('SECRETO'), linhas.filter(l => /@/.test(l)).join(' | '));
   if (process.env.NFSE_VER_LOG) console.log(linhas.join('\n'));
 }
 
@@ -453,6 +539,10 @@ async function testarFluxo({ pfx, arqSenha, cert }) {
   // 9. o módulo inteiro, com um banco e uma prefeitura de mentira (sem rede)
   console.log('\nFluxo do módulo (banco e prefeitura de mentira)');
   await testarFluxo({ pfx, arqSenha, cert });
+
+  // 10. a nota autorizada por e-mail ao tomador (Gmail de mentira)
+  console.log('\nE-mail ao tomador (banco, prefeitura e Gmail de mentira)');
+  await testarEmail({ pfx, arqSenha, cert });
 
   fs.rmSync(pasta, { recursive: true, force: true });
   console.log('\n' + (total - falhas) + ' de ' + total + ' conferências ok' + (falhas ? ' — ' + falhas + ' FALHA(S)' : ''));

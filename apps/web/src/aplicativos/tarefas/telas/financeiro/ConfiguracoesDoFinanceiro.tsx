@@ -1,7 +1,7 @@
 // Financeiro › Configurações (15/10/2026: "vamos criar um emissor de notas fiscais para o financeiro"), no estilo das
 // configurações do Notion (como o Cadastro › Empresa): a emissão (ambiente, série, numeração), o prestador (a Nilma), o
-// serviço, o token da prefeitura e o robô. Cada campo grava ao sair dele; o inválido não grava e mostra o aviso ao lado.
-import { ConfigLinha, ConfigSecao, Icone, MenuSuspenso, useCarregando, BotaoAcao } from '@nads/ui';
+// serviço, o e-mail ao cliente, o token da prefeitura e o robô. Cada campo grava ao sair dele; o inválido não grava e mostra o aviso ao lado.
+import { ConfigLinha, ConfigSecao, Icone, Interruptor, MenuSuspenso, useCarregando, BotaoAcao } from '@nads/ui';
 import { dataBr, dataHoraBr } from './formatosDaNota';
 import { AMBIENTES, OPCOES_DA_APURACAO, OPCOES_DO_SIMPLES, useConfiguracoesDoFinanceiro } from './useConfiguracoesDoFinanceiro';
 
@@ -76,6 +76,19 @@ export function ConfiguracoesDoFinanceiro() {
         <ConfigLinha titulo="Observação na nota" descricao="A frase das informações complementares (a do IBPT).">
           <textarea key={'obs|' + c.servico.infoCompl} className="nf-entrada nf-texto largo" rows={2} aria-label="Observação na nota" defaultValue={c.servico.infoCompl}
             onBlur={e => { if (e.target.value.trim() !== c.servico.infoCompl) vm.definirObservacao(e.target.value); }} />
+        </ConfigLinha>
+      </ConfigSecao>
+
+      <ConfigSecao titulo="E-mail ao cliente">
+        <ConfigLinha titulo="Mandar a nota ao cliente" descricao="Quando a nota sai em produção, o robô manda a DANFSe (PDF) e o XML para o e-mail do tomador, uma vez. Nota de homologação não vai.">
+          <Interruptor ligado={c.email.automatico} onMudar={vm.alternarEmailAutomatico} rotulo="Mandar a nota ao cliente por e-mail" />
+        </ConfigLinha>
+        <ConfigLinha titulo="Assunto" descricao="Pode usar {numero}, {cliente}, {valor} e {competencia}. Vazio volta ao padrão." aviso={vm.avisos['email-assunto']}>
+          {campo('email-assunto', c.email.assunto, 'Assunto do e-mail', vm.definirAssuntoDoEmail, { largo: true })}
+        </ConfigLinha>
+        <ConfigLinha titulo="Texto" descricao="O mesmo vale aqui: {cliente}, {numero}, {valor} e {competencia}. Vazio volta ao padrão." aviso={vm.avisos['email-texto']}>
+          <textarea key={'email-texto|' + c.email.texto} className="nf-entrada nf-texto largo" rows={7} aria-label="Texto do e-mail" defaultValue={c.email.texto}
+            onBlur={e => { if (e.target.value.trim() !== c.email.texto) vm.definirTextoDoEmail(e.target.value); }} />
         </ConfigLinha>
       </ConfigSecao>
 

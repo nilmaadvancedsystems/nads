@@ -4479,3 +4479,12 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .nf-escolhido b{font-weight:700;font-variant-numeric:tabular-nums;}
 .nf-achado-codigo{flex:none;min-width:44px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink);}
 .nf-achados .popover-item.nf-ativo{background:var(--hover-bg);}
+.modal.nf-importar{max-width:1040px;}
+.nf-importar-arquivo{display:flex;align-items:center;gap:10px;}
+.nf-resumo{display:flex;align-items:center;gap:6px 18px;flex-wrap:wrap;font-size:13.5px;color:var(--ink);}
+.nf-resumo b{font-variant-numeric:tabular-nums;}
+.nf-resumo-end{display:inline-flex;align-items:center;gap:6px;}
+.nf-importar-lista{max-height:min(48vh,420px);}
+.nf-importar-lista th:first-child,.nf-importar-lista td:first-child{width:1%;padding-right:4px;}
+.nf-sem-marca td:not(:last-child){color:var(--ink-muted);}
+.nf-importar .nf-corta{max-width:170px;}

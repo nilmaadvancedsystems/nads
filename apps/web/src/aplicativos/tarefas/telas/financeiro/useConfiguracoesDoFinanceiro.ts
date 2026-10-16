@@ -2,6 +2,7 @@
 // configuração do emissor (config/nfse): o ambiente, a série e a numeração, o prestador (a Nilma), o serviço e o token da
 // prefeitura. Grava ao sair de cada campo, como o Cadastro › Empresa; campo inválido não grava e devolve o aviso. Sem
 // configuração no banco, começa da CONFIG_PADRAO (os dados da nota real do escritório). O token só entra: não se lê de volta.
+// E-mail ao cliente (15/10/2026): ligar o envio automático da nota autorizada ao tomador e o assunto e o texto do e-mail.
 import { nfse } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
@@ -116,6 +117,18 @@ export function useConfiguracoesDoFinanceiro() {
       servico('aliquota', { pAliq: n });
     },
     definirObservacao: (v: string) => servico('observacao', { infoCompl: v.trim() }),
+
+    /** o envio automático da nota autorizada (produção) ao e-mail do tomador */
+    alternarEmailAutomatico: () => gravar('email-automatico', { ...config, email: { ...config.email, automatico: !config.email.automatico } }),
+    /** vazio volta ao padrão */
+    definirAssuntoDoEmail(v: string) {
+      const a = v.trim() || nfse.EMAIL_PADRAO.assunto;
+      gravar('email-assunto', a.length <= 200 ? { ...config, email: { ...config.email, assunto: a } } : 'O assunto passa de 200 letras.');
+    },
+    definirTextoDoEmail(v: string) {
+      const t = v.trim() || nfse.EMAIL_PADRAO.texto;
+      gravar('email-texto', t.length <= 5000 ? { ...config, email: { ...config.email, texto: t } } : 'O texto passa de 5.000 letras.');
+    },
 
     tokenGravadoEm: cfg.tokenGravadoEm,
     token, setToken, gravandoToken,

@@ -3,6 +3,7 @@
 // DPS da NFS-e Nacional. O nads grava o pedido (nfseEmissoes, banco do Entregas); o robô da nuvem monta a DPS, assina com
 // o certificado do escritório, envia com o token da prefeitura, consulta até sair a nota e cancela quando pedem.
 // Aqui: os tipos, os nomes das situações e o que confere o pedido e a configuração (puro, sem banco).
+import { EMAIL_PADRAO, type ConfigEmailNfse, type EmailDaNota, type PedidoDeEmail } from './email';
 
 export type AmbienteNfse = 'homologacao' | 'producao';
 
@@ -49,6 +50,10 @@ export interface NotaFiscal {
   consultas: number;
   autorizadaEm: string;
   cancelamento: { cMotivo: string; motivo: string; pedidoPor: string; pedidoEm: string } | null;
+  /** o último envio da nota por e-mail ao tomador (o robô grava) */
+  email?: EmailDaNota | null;
+  /** o pedido de envio por e-mail feito no nads, até o robô atender */
+  envioEmail?: PedidoDeEmail | null;
 }
 
 /** A configuração do emissor (config/nfse): o prestador (a Nilma), o serviço e a numeração. */
@@ -82,6 +87,8 @@ export interface ConfigNfse {
   };
   serie: string;
   proximoNumero: Record<AmbienteNfse, number>;
+  /** a nota autorizada por e-mail ao tomador (o robô manda a DANFSe e o XML) */
+  email: ConfigEmailNfse;
 }
 
 export const CONFIG_PADRAO: ConfigNfse = {
@@ -91,6 +98,7 @@ export const CONFIG_PADRAO: ConfigNfse = {
   servico: { cTribNac: '171901', cIntContrib: '1719', cNBS: '113022100', pAliq: 3.74, infoCompl: 'Percentual aproximado de tributos: 16,42% Fonte: IBPT' },
   serie: '1',
   proximoNumero: { homologacao: 1, producao: 1 },
+  email: EMAIL_PADRAO,
 };
 
 export const soDigitos = (v: string) => String(v || '').replace(/\D/g, '');
@@ -203,3 +211,6 @@ export function andamentoDaNota(n: NotaFiscal, agora: Date): string {
   return '';
 }
 export * from './danfse';
+export * from './email';
+export * from './recebimentos';
+export * from './planilha';

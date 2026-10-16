@@ -14,6 +14,8 @@
 //                     duplicar uma nota que já saiu). Cancelamento: status 'cancelamento-pedido' + cancelamento { cMotivo,
 //                     motivo } → 'cancelada' | 'erro-cancelamento'.
 //   robo/nfse       — o estado do módulo para a tela: { ligado, motivo, certificado: { titular, validade } | null, atualizadoEm }.
+//   E-mail ao cliente (nfse-email.js): config/nfse.email { automatico, assunto, texto }; na nota, o nads pede o envio
+//                     manual em envioEmail { para, pedidoPor, pedidoEm } e o robô grava email { para, enviadoEm, erro }.
 //
 // A estrutura da DPS segue a nota REAL que a prefeitura autorizou pelo portal em 14/10/2026 (a DPS dentro de NFSe/infNFSe):
 // prest só com CNPJ e regTrib (sem IM, que tem barra, e sem fone), cServ com cTribNac/xDescServ/cNBS/cIntContrib, infoCompl
@@ -410,7 +412,11 @@ function mensagemHttp(r) {
 
 // ---------- o módulo ----------
 
-/** Liga o módulo. opcoes (só para o teste): { pfx, senha } outro certificado, consultaMs outro intervalo de consulta. */
+/**
+ * Liga o módulo. opcoes.correio: o Gmail do robô (vigia-robo), para mandar a nota autorizada ao tomador (sem ele, o e-mail
+ * fica desligado). Só para o teste: { pfx, senha } outro certificado, consultaMs outro intervalo de consulta.
+ * Devolve { retomarEmails } (o teste simula o robô religando).
+ */
 function iniciarNfse(db, log, opcoes = {}) {
   const CONSULTA_MS = opcoes.consultaMs || CONSULTA_A_CADA_MS;
   const estadoRef = db.collection('robo').doc('nfse');
@@ -466,6 +472,19 @@ function iniciarNfse(db, log, opcoes = {}) {
   ouvir('NFS-e (token)', () => segredoRef, snap => { segredo = snap.exists ? snap.data() : null; segredoChegou = true; talvezPublicar(); }, log);
   setInterval(() => { if (configChegou && segredoChegou) publicarEstado(true); }, 6 * 60 * 60 * 1000);
 
+  // ----- o e-mail ao tomador (nfse-email.js) -----
+  const correio = opcoes.correio || null;
+  if (!correio) log('NFS-e: sem o Gmail do robô, a nota não vai por e-mail ao cliente');
+  const { configDoEmail } = require('./gerado/danfse');
+  const email = require('./nfse-email').criarEnvioDeEmail({
+    db, log, correio, emissoes, FieldValue,
+    configEmail: async () => {
+      if (!config) config = (await configRef.get()).data() || null;
+      return configDoEmail(config && config.email);
+    },
+    deNovo: (tipo, id) => enfileirar(tipo, id),
+  });
+
   // ----- fila: um pedido por vez -----
   const fila = [];
   const naFila = new Set();
@@ -487,8 +506,12 @@ function iniciarNfse(db, log, opcoes = {}) {
           if (t.tipo === 'enviar') await enviar(t.id, t.retomar);
           else if (t.tipo === 'consultar') await consultar(t.id);
           else if (t.tipo === 'cancelar') await cancelar(t.id);
+          else if (t.tipo === 'email') await email.automatico(t.id);
+          else if (t.tipo === 'email-manual') await email.manual(t.id);
         } catch (err) {
           log('NFS-e: erro inesperado em', t.tipo, t.id + ':', err.message);
+          // o e-mail não mexe na situação da nota (o erro dele fica no próprio envio)
+          if (t.tipo === 'email' || t.tipo === 'email-manual') continue;
           const campo = t.tipo === 'cancelar'
             ? { status: 'erro-cancelamento', erros: [{ codigo: 'ROBO', descricao: 'o robô parou no meio: ' + String(err.message).slice(0, 300) }], 'cancelamento.enviandoEm': FieldValue.delete() }
             : { status: 'erro', erros: [{ codigo: 'ROBO', descricao: 'o robô parou no meio: ' + String(err.message).slice(0, 300) }] };
@@ -593,6 +616,8 @@ function iniciarNfse(db, log, opcoes = {}) {
     const numeroNfse = numeroDaNota(xmlNfse);
     await ref.update(Object.assign({ status: 'autorizada', chaveAcesso, numeroNfse, xmlNfse, erros: [], autorizadaEm: agora(), atualizadoEm: agora() }, extra || {}));
     log('NFS-e:', dps.id, 'AUTORIZADA, nota', numeroNfse, 'chave', chaveAcesso);
+    // o e-mail ao tomador (se o automático estiver ligado): numa tarefa à parte da fila, depois desta
+    if (correio) enfileirar('email', ref.id);
   }
 
   // ----- consulta do processamento -----
@@ -710,7 +735,22 @@ function iniciarNfse(db, log, opcoes = {}) {
       else if (st === 'processando' && !processando.has(id)) processando.set(id, Date.now() + (Number(ch.doc.data().consultas || 0) ? Math.min(5000, CONSULTA_MS) : CONSULTA_MS));
     });
   }, log);
-  log('NFS-e: atendendo nfseEmissoes (Taiobeiras, E&L)');
+  // o envio por e-mail pedido no nads (envioEmail); o robô apaga o pedido quando atende
+  if (correio) {
+    ouvir('NFS-e (e-mail)', () => emissoes.where('envioEmail.pedidoEm', '>=', ''), snap => {
+      snap.docChanges().forEach(ch => { if (ch.type !== 'removed') enfileirar('email-manual', ch.doc.id); });
+    }, log);
+  }
+  // o automático que ficou para trás (o robô caiu entre a autorização e o e-mail): as autorizadas das últimas 6 h sem e-mail
+  function retomarEmails() {
+    if (!correio) return Promise.resolve();
+    return emissoes.where('autorizadaEm', '>=', new Date(Date.now() - 6 * 36e5).toISOString()).get()
+      .then(s => s.docs.forEach(d => { const p = d.data() || {}; if (p.status === 'autorizada' && !p.email) enfileirar('email', d.id); }))
+      .catch(err => log('NFS-e: não li as notas sem e-mail:', err.message));
+  }
+  retomarEmails();
+  log('NFS-e: atendendo nfseEmissoes (Taiobeiras, E&L)' + (correio ? ', com o e-mail ao cliente' : ''));
+  return { retomarEmails };
 }
 
 module.exports = {

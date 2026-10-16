@@ -20,6 +20,8 @@ export interface RepoNfse {
   /** a recusada volta para a fila (com as correções), com o mesmo número de DPS */
   reenviar(id: string, p: PedidoDeNota): Promise<void>;
   cancelar(id: string, cMotivo: string, motivo: string, quem: string): Promise<void>;
+  /** pede ao robô para mandar a nota autorizada (DANFSe + XML) para este e-mail (envioEmail; o robô manda e apaga) */
+  enviarPorEmail(id: string, para: string, quem: string): Promise<void>;
   salvarConfig(c: nfse.ConfigNfse): Promise<void>;
   /** grava o token da prefeitura (não dá para ler de volta) */
   salvarToken(token: string, quem: string): Promise<void>;
@@ -48,7 +50,7 @@ export function criarNfseMemoria(): RepoNfse {
     empresaCodigo: null, pedidoPor: 'Vitor', pedidoEm: iso(s), dps: null, chaveAcesso: '', numeroNfse: '', erros: [], atualizadoEm: iso(s - 30), cancelamento: null, enviadaEm: iso(s - 5), consultas: 0, autorizadaEm: '',
   });
   let notas: nfse.NotaFiscal[] = [
-    { ...base('ex-1', 'autorizada', 'EXEMPLO COMERCIO DE ALIMENTOS LTDA', '11222333000181', 850, 7200), dps: { serie: '1', numero: 1, id: 'DPS316800221122233300018100001000000000000001' }, chaveAcesso: '31680022112223330001810000000000000126100000000001', numeroNfse: '1', empresaCodigo: 292 },
+    { ...base('ex-1', 'autorizada', 'EXEMPLO COMERCIO DE ALIMENTOS LTDA', '11222333000181', 850, 7200), tomador: { documento: '11222333000181', nome: 'EXEMPLO COMERCIO DE ALIMENTOS LTDA', email: 'financeiro@exemplo.com.br' }, email: { para: 'financeiro@exemplo.com.br', enviadoEm: iso(7100), erro: '' }, dps: { serie: '1', numero: 1, id: 'DPS316800221122233300018100001000000000000001' }, chaveAcesso: '31680022112223330001810000000000000126100000000001', numeroNfse: '1', empresaCodigo: 292 },
     { ...base('ex-2', 'processando', 'MARIA EXEMPLO DA SILVA', '52998224725', 320, 120), consultas: 3, atualizadoEm: iso(10), dps: { serie: '1', numero: 2, id: 'DPS316800221122233300018100001000000000000002' } },
     { ...base('ex-3', 'erro', 'CLIENTE EXEMPLO LTDA', '11444777000161', 1200, 3600), dps: { serie: '1', numero: 3, id: 'DPS316800221122233300018100001000000000000003' }, erros: [{ codigo: 'E0312', descricao: 'O código de serviço informado não está habilitado para o prestador (EXEMPLO).' }] },
   ];
@@ -65,6 +67,13 @@ export function criarNfseMemoria(): RepoNfse {
     },
     async reenviar(id, p) { notas = notas.map(n => (n.id === id ? { ...n, ...p, status: 'pedida', erros: [] } : n)); mudou(); },
     async cancelar(id, cMotivo, motivo, quem) { notas = notas.map(n => (n.id === id ? { ...n, status: 'cancelamento-pedido', cancelamento: { cMotivo, motivo, pedidoPor: quem, pedidoEm: new Date().toISOString() } } : n)); mudou(); },
+    async enviarPorEmail(id, para, quem) {
+      const pedidoEm = new Date().toISOString();
+      notas = notas.map(n => (n.id === id ? { ...n, envioEmail: { para: para.trim(), pedidoPor: quem, pedidoEm } } : n));
+      mudou();
+      // nos exemplos, o "robô" responde logo
+      setTimeout(() => { notas = notas.map(n => (n.id === id ? { ...n, envioEmail: null, email: { para: para.trim(), enviadoEm: new Date().toISOString(), erro: '' } } : n)); mudou(); }, 1500);
+    },
     async salvarConfig(c) { config = c; mudou(); },
     async salvarToken() { tokenGravadoEm = new Date().toISOString(); mudou(); },
     async xml(id) { return '<NFSe><!-- exemplo da nota ' + id + ' --></NFSe>'; },

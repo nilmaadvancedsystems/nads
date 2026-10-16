@@ -3,6 +3,8 @@
 //     o robô escreve o andamento (dps, chaveAcesso, numeroNfse, xmlNfse, erros); o nads só volta uma recusada para a
 //     fila (com as correções) e pede o cancelamento;
 //   - config/nfse: o prestador, o serviço e a numeração (o admin grava; o robô só aumenta o número);
+//   - nfseEmissoes/{id}.envioEmail {para, pedidoPor, pedidoEm}: o pedido de mandar a autorizada por e-mail (o robô manda,
+//     grava email {para, enviadoEm, erro} e apaga o pedido); config/nfse.email {automatico, assunto, texto}: o envio automático;
 //   - segredos/nfse: o token da prefeitura (o admin grava e não lê; só o robô lê);
 //   - robo/nfse (só leitura): o robô ligado (com o certificado do escritório) ou o motivo.
 import { nfse } from '@nads/core';
@@ -33,7 +35,13 @@ function notaDoBanco(id: string, d: Record<string, unknown>): nfse.NotaFiscal {
     erros: Array.isArray(d.erros) ? (d.erros as Record<string, unknown>[]).map(e => ({ codigo: texto(e.codigo), descricao: texto(e.descricao) })) : [],
     atualizadoEm: texto(d.atualizadoEm), enviadaEm: texto(d.enviadaEm), consultas: Number(d.consultas) || 0, autorizadaEm: texto(d.autorizadaEm),
     cancelamento: c ? { cMotivo: texto(c.cMotivo), motivo: texto(c.motivo), pedidoPor: texto(c.pedidoPor), pedidoEm: texto(c.pedidoEm) } : null,
+    email: d.email ? emailDoBanco(obj(d.email)) : null,
+    envioEmail: d.envioEmail ? { para: texto(obj(d.envioEmail).para), pedidoPor: texto(obj(d.envioEmail).pedidoPor), pedidoEm: texto(obj(d.envioEmail).pedidoEm) } : null,
   };
+}
+
+function emailDoBanco(e: Record<string, unknown>): nfse.EmailDaNota {
+  return { para: texto(e.para), enviadoEm: texto(e.enviadoEm), erro: texto(e.erro) };
 }
 
 function enderecoDoBanco(e: Record<string, unknown>) {
@@ -66,6 +74,7 @@ function configDoBanco(d: Record<string, unknown>): nfse.ConfigNfse {
     servico: { cTribNac: texto(s.cTribNac) || P.servico.cTribNac, cIntContrib: texto(s.cIntContrib), cNBS: texto(s.cNBS), pAliq: s.pAliq == null || s.pAliq === '' ? null : Number(s.pAliq), infoCompl: s.infoCompl == null ? P.servico.infoCompl : texto(s.infoCompl) },
     serie: texto(d.serie) || P.serie,
     proximoNumero: { homologacao: Number(n.homologacao) || 1, producao: Number(n.producao) || 1 },
+    email: nfse.configDoEmail(d.email),
   };
 }
 
@@ -138,8 +147,11 @@ export function criarNfseFirestore(quem: () => Quem): RepoNfse {
     async cancelar(id, cMotivo, motivo, nome) {
       await updateDoc(doc(db, 'nfseEmissoes', id), { status: 'cancelamento-pedido', cancelamento: { cMotivo, motivo: motivo.trim(), pedidoPor: nome, pedidoEm: new Date().toISOString() } });
     },
+    async enviarPorEmail(id, para, nome) {
+      await updateDoc(doc(db, 'nfseEmissoes', id), { envioEmail: { para: para.trim(), pedidoPor: nome, pedidoEm: new Date().toISOString() } });
+    },
     async salvarConfig(c) {
-      await setDoc(doc(db, 'config', 'nfse'), { ambiente: c.ambiente, prestador: { ...c.prestador, cnpj: nfse.soDigitos(c.prestador.cnpj), fone: nfse.soDigitos(c.prestador.fone) }, servico: { ...c.servico, cNBS: nfse.soDigitos(c.servico.cNBS) }, serie: c.serie, proximoNumero: c.proximoNumero }, { merge: true });
+      await setDoc(doc(db, 'config', 'nfse'), { ambiente: c.ambiente, prestador: { ...c.prestador, cnpj: nfse.soDigitos(c.prestador.cnpj), fone: nfse.soDigitos(c.prestador.fone) }, servico: { ...c.servico, cNBS: nfse.soDigitos(c.servico.cNBS) }, serie: c.serie, proximoNumero: c.proximoNumero, email: { automatico: c.email.automatico, assunto: c.email.assunto.trim(), texto: c.email.texto.trim() } }, { merge: true });
     },
     async salvarToken(token, nome) {
       const agora = new Date().toISOString();

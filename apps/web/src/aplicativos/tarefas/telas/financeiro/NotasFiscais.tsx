@@ -5,6 +5,7 @@ import { formatos, nfse } from '@nads/core';
 import { Alerta, Icone, Segmentado, useCarregando } from '@nads/ui';
 import { dataBr, documentoFormatado } from './formatosDaNota';
 import { JanelaDaNota } from './JanelaDaNota';
+import { JanelaImportarPlanilha } from './JanelaImportarPlanilha';
 import { JanelaNovaNota } from './JanelaNovaNota';
 import { FILTROS_DE_NOTAS, useNotasFiscais } from './useNotasFiscais';
 import { useRelogio } from './useRelogio';
@@ -18,6 +19,7 @@ export function NotasFiscais() {
   return (
     <section>
       {vm.nova && <JanelaNovaNota fechar={() => vm.setNova(false)} />}
+      {vm.importando && <JanelaImportarPlanilha fechar={() => vm.setImportando(false)} />}
       {vm.corrigindo && <JanelaNovaNota nota={vm.corrigindo} fechar={vm.fecharCorrecao} />}
       {vm.aberta && <JanelaDaNota id={vm.aberta} fechar={() => vm.setAberta(null)} corrigir={vm.corrigir} />}
 
@@ -55,6 +57,7 @@ export function NotasFiscais() {
         </label>
         <Segmentado valor={vm.filtro} opcoes={FILTROS_DE_NOTAS} onMudar={vm.setFiltro} />
         <span className="tarefas-barra-espaco" />
+        <button type="button" className="btn btn-outline" onClick={() => vm.setImportando(true)}><Icone nome="upload" />Importar planilha</button>
         <button type="button" className="btn btn-primary" onClick={() => vm.setNova(true)}><Icone nome="plus" />Nova nota</button>
       </div>
 
