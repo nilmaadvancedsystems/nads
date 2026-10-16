@@ -33,7 +33,9 @@ export interface FerramentaDaEtapa {
  * A tela própria da etapa, dentro da Tarefa (Vitor, 06/10/2026: as ferramentas que abriam em iframe viram telas do nads).
  * A tela diz o que falta para seguir; periodo: trabalha todos os meses do período de uma vez.
  */
-export type TelaDaEtapa = 'bancos' | 'cheque-especial' | 'clientes' | 'adiantamento-fornecedores' | 'bens' | 'fornecedores' | 'adiantamento-clientes' | 'emprestimos' | 'salarios' | 'pro-labore' | 'honorarios' | 'simples' | 'resultado' | 'adiantamento-salarial' | 'fechamento';
+export type TelaDaEtapa = 'bancos' | 'cheque-especial' | 'clientes' | 'adiantamento-fornecedores' | 'bens' | 'fornecedores' | 'adiantamento-clientes' | 'emprestimos' | 'salarios' | 'pro-labore' | 'honorarios' | 'simples' | 'resultado' | 'adiantamento-salarial' | 'fechamento'
+  // o LCDPR, a rotina inteira das empresas com ele (16/10/2026: a 62 "só precisa do lcdpr")
+  | 'lcdpr';
 export interface TelaPropria { id: TelaDaEtapa; periodo?: boolean }
 
 /** O que a tela oferece para resolver uma objeção. */

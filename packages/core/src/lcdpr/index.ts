@@ -2,6 +2,7 @@
 // visual igual para não destoar do app"): o que era do lcdpr.html do Entregas, puro (sem tela e sem banco). Lê os
 // relatórios do SIEG, classifica pelas regras de NCM, guarda as regras no lcdpr/config e monta a planilha .xls.
 export * from './tipos';
+export { EMPRESAS_COM_LCDPR, temLcdpr } from './empresas';
 export { MODELOS, configPadrao, itemEmBranco } from './padrao';
 export {
   HISTORICO_SEM_REGRA, aplicarCategoria, aplicarModelo, aplicarRegraNosPendentes, categoriaDaConta, classificarCte, classificarNota, cpfCnpjFormatado,

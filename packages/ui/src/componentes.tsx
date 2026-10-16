@@ -396,7 +396,7 @@ export function useEstadoPorChave<T>(chave: string, inicial: T): [T, (v: T | ((a
 }
 
 /** Campo "Escolher arquivos" (.file-picker) que aceita vários de uma vez; cada escolha soma à lista de quem chama. */
-export function CampoArquivos({ id, onEscolher, aceitar, rotulo = 'Escolher arquivos', compacto, desabilitado }: {
+export function CampoArquivos({ id, onEscolher, aceitar, rotulo = 'Escolher arquivos', compacto, desabilitado, camera }: {
   id: string;
   onEscolher: (fs: File[]) => void;
   aceitar: string;
@@ -404,6 +404,8 @@ export function CampoArquivos({ id, onEscolher, aceitar, rotulo = 'Escolher arqu
   /** só o ícone de importar no lugar da caixa tracejada (listas); o rótulo vira a dica (Vitor, 02/10/2026) */
   compacto?: boolean;
   desabilitado?: boolean;
+  /** a foto da entrega (16/10/2026, como o Entregas): um arquivo só, e no celular abre a câmera de trás */
+  camera?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
   return (
@@ -414,11 +416,11 @@ export function CampoArquivos({ id, onEscolher, aceitar, rotulo = 'Escolher arqu
         </label>
       ) : (
         <label className="file-picker" htmlFor={id} aria-disabled={desabilitado || undefined}>
-          <span><Icone nome="upload" /></span>
+          <span><Icone nome={camera ? 'camera' : 'upload'} /></span>
           <span className="file-picker-name">{rotulo}</span>
         </label>
       )}
-      <input ref={input} type="file" id={id} accept={aceitar} multiple className="sr-only" disabled={desabilitado}
+      <input ref={input} type="file" id={id} accept={aceitar} multiple={!camera} capture={camera ? 'environment' : undefined} className="sr-only" disabled={desabilitado}
         onChange={ev => { const fs = Array.from(ev.target.files || []); if (input.current) input.current.value = ''; if (fs.length) onEscolher(fs); }} />
     </>
   );
@@ -556,14 +558,30 @@ function limparAssinatura(c: HTMLCanvasElement | null, altura: number) {
  * o Limpar. A cada traço devolve a imagem (PNG em data URL, fundo branco e traço escuro, como o Entregas grava); ao
  * limpar, null. Com `valor` vindo de fora (a assinatura já colhida), desenha ela.
  */
-export function CampoAssinatura({ valor, onMudar, rotulo = 'Assinatura', altura = 160 }: {
+export function CampoAssinatura({ valor, onMudar, rotulo = 'Assinatura', altura: alturaNormal = 160, telaCheia, textoPronta = 'Assinatura colhida.' }: {
   valor: string | null; onMudar: (dataUrl: string | null) => void; rotulo?: string; altura?: number;
+  /** o botão "Tela cheia" (16/10/2026, como o Entregas: o quadro ocupa a tela, em pé, sem girar o aparelho) */
+  telaCheia?: boolean;
+  /** o texto do estado com a assinatura (ex.: "Assinado no celular do cliente.") */
+  textoPronta?: string;
 }) {
   const quadro = useRef<HTMLCanvasElement>(null);
   const desenhando = useRef(false);
   /** o que este quadro devolveu por último (para não redesenhar a própria assinatura) */
   const devolvido = useRef<string | null | undefined>(undefined);
   const [vazio, setVazio] = useState(!valor);
+  const [cheia, setCheia] = useState(false);
+  // na tela cheia, o quadro vai até embaixo (sobra o espaço do estado e dos botões)
+  const altura = cheia ? Math.max(320, Math.round((window.visualViewport?.height || window.innerHeight) - 130)) : alturaNormal;
+  // trocou de tamanho: a assinatura que já estava é redesenhada no quadro novo (esticada, como o Entregas)
+  useLayoutEffect(() => {
+    const atual = devolvido.current;
+    limparAssinatura(quadro.current, altura);
+    if (!atual) return;
+    const img = new Image();
+    img.onload = () => { const q = quadroDaAssinatura(quadro.current, altura); if (q) q.ctx.drawImage(img, 0, 0, q.largura, q.alto); };
+    img.src = atual;
+  }, [altura]);
 
   // a assinatura de fora (ou o "limpar" de fora): redesenha só quando o valor não é o que este quadro acabou de devolver
   useEffect(() => {
@@ -582,7 +600,7 @@ export function CampoAssinatura({ valor, onMudar, rotulo = 'Assinatura', altura 
     return { x: ev.clientX - r.left, y: ev.clientY - r.top };
   };
   return (
-    <div className="assinatura">
+    <div className={'assinatura' + (cheia ? ' assinatura-cheia' : '')}>
       <div className="assinatura-quadro" style={{ height: altura }}>
         <canvas ref={quadro} aria-label={rotulo} role="img"
           onPointerDown={ev => {
@@ -616,7 +634,12 @@ export function CampoAssinatura({ valor, onMudar, rotulo = 'Assinatura', altura 
         {vazio && <span className="assinatura-vazia" aria-hidden="true"><Icone nome="lapis" />Assine aqui</span>}
       </div>
       <div className="assinatura-pe">
-        <span className={'assinatura-status' + (vazio ? '' : ' ok')}>{vazio ? 'Sem assinatura ainda.' : <><Icone nome="checkCircle" />Assinatura colhida.</>}</span>
+        <span className={'assinatura-status' + (vazio ? '' : ' ok')}>{vazio ? 'Sem assinatura ainda.' : <><Icone nome="checkCircle" />{textoPronta}</>}</span>
+        {telaCheia && (
+          <button type="button" className="btn btn-ghost" onClick={() => setCheia(c => !c)}>
+            <Icone nome={cheia ? 'minimizar' : 'maximizar'} />{cheia ? 'Sair da tela cheia' : 'Tela cheia'}
+          </button>
+        )}
         <button type="button" className="btn btn-ghost" disabled={vazio}
           onClick={() => { devolvido.current = null; limparAssinatura(quadro.current, altura); setVazio(true); onMudar(null); }}>
           <Icone nome="x" />Limpar

@@ -4543,21 +4543,152 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .assinatura-status{flex:1;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-muted);}
 .assinatura-status.ok{color:var(--success);}
 .assinatura-status svg{width:14px;height:14px;flex:none;}
+.assinatura-pe .btn svg{width:14px;height:14px;}
+/* a tela cheia da assinatura (como o Entregas: o quadro ocupa a tela em pé, sem girar o aparelho) */
+.assinatura.assinatura-cheia{position:fixed;inset:0;z-index:120;background:var(--surface);padding:16px;gap:10px;}
+/* ---------- Entregas: a cópia fiel do entregas.html no visual do nads (16/10/2026: "só copia o entregas e joga aqui no design n1") ---------- */
+.ent-tela{display:flex;flex-direction:column;}
+.ent-tela svg{flex:none;}
+.ent-categorias{margin-bottom:16px;}
+.ent-cartao .card-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.ent-cartao .card-head h3{flex:1;display:inline-flex;align-items:center;gap:6px;min-width:0;}
+.ent-cartao .card-head-ctl{flex-wrap:wrap;}
+.ent-tela .btn svg,.ent-janela .btn svg,.ent-cliente-janela .btn svg{width:16px;height:16px;}
+.ent-previsao{font-weight:400;font-size:13px;}
+.ent-filtros{margin-bottom:12px;}
+.ent-filtros .select-compact{width:auto;}
+.ent-filtro{display:inline-flex;align-items:center;gap:6px;}
+.ent-filtro input{width:auto;}
+.ent-logo{display:inline-flex;width:16px;height:16px;flex:none;}
+.ent-logo svg,.ent-logo img{width:16px;height:16px;}
+/* a Nova entrega: a grade de três colunas do Entregas no PC (o cliente ocupa duas; os blocos grandes a linha toda) */
+.ent-nova-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 24px;align-items:start;}
+.ent-nova-form > .card-head{display:flex;align-items:center;gap:8px;}
+.ent-nova-form > .card-head h3{flex:1;display:inline-flex;align-items:center;gap:6px;}
+.ent-inteiro{grid-column:1 / -1;}
+.ent-cliente{grid-column:span 2;}
+.ent-modo{margin-bottom:16px;}
+.ent-marcas{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;}
+.ent-marca{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);cursor:pointer;margin-bottom:8px;}
+.ent-marca svg{width:16px;height:16px;color:var(--ink-muted);}
+.ent-marca-falha svg{color:var(--warn);}
+.ent-combo{position:relative;}
+.ent-achados{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow-lg);padding:4px;max-height:320px;overflow:auto;list-style:none;margin:0;}
+.ent-achados .hint{padding:6px 10px;}
+.ent-docs-acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.ent-planilha{position:relative;margin-top:8px;padding:12px;max-width:560px;}
+.ent-planilha h4{margin:0 0 10px;font-size:14px;font-weight:600;}
+.ent-planilha-rolagem{max-height:320px;}
+.ent-planilha td{vertical-align:middle;}
+.ent-planilha td input[type="text"]{min-height:28px;padding:3px 8px;}
+.ent-planilha td input.num{text-align:right;width:132px;}
+.ent-planilha-x{width:72px;text-align:right;white-space:nowrap;}
+.ent-planilha-nova select{width:100%;}
+.ent-planilha-pe{display:flex;justify-content:flex-end;margin-top:10px;}
+.ent-divergente{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--warn);padding:0 4px;}
+.ent-divergente svg{width:14px;height:14px;}
+.ent-repetir{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:14px;}
+.ent-pix{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;}
+.ent-pix .field{min-width:200px;}
+.ent-pix-qr{display:flex;gap:16px;align-items:center;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);}
+.ent-pix-qr img{width:132px;height:132px;background:#FFFFFF;border-radius:4px;}
+.ent-pix-lado{display:flex;flex-direction:column;gap:6px;align-items:flex-start;}
+.ent-doc-grupo{list-style:none;display:flex;flex-direction:column;gap:4px;}
+.ent-doc-grupo + .ent-doc-grupo{margin-top:4px;}
+/* as janelas */
+.modal.registro-novo.ent-janela{max-width:600px;max-height:calc(100vh - 32px);}
+.ent-janela .registro-corpo{overflow:auto;max-height:min(72vh,720px);}
+.ent-janela .registro-corpo > *{flex-shrink:0;}
+.ent-janela .registro-corpo .field{margin-bottom:4px;}
+.ent-fichas{display:flex;flex-wrap:wrap;gap:6px;}
+.ent-editar{align-self:flex-start;margin-top:4px;}
+.alert.ent-lembrete{display:flex;gap:10px;align-items:flex-start;}
+.alert.ent-lembrete svg{color:var(--warn);margin-top:2px;}
+.ent-motivos{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;}
+.ent-foto{display:block;max-width:220px;max-height:160px;border-radius:8px;border:1px solid var(--border);background:#FFFFFF;}
+.ent-geo{display:flex;align-items:center;gap:6px;}
+.ent-geo svg{width:14px;height:14px;}
+.ent-dobra summary{cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+.ent-qr{display:block;margin:12px auto;background:#FFFFFF;border-radius:6px;padding:4px;}
+.ent-centro{text-align:center;}
+.ent-edicao{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;}
+.ent-edicao .chip-row{flex-wrap:wrap;}
+.ent-lote{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;}
+.field .ent-lote-linha,.ent-lote-linha{display:flex;font-weight:400;margin:0;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;}
+.ent-lote-linha > span{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.ent-lote-linha input{margin-top:2px;}
+.ent-lembretes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
+.ent-lembrete-item{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--border);border-radius:8px;}
+.ent-lembrete-item > svg{color:var(--warn);margin-top:2px;}
+.ent-lembrete-item.feito,.ent-lembrete-item.adiado{opacity:.7;}
+.ent-lembrete-corpo{flex:1;min-width:0;font-size:14px;}
+.ent-lembrete-acoes{display:flex;gap:6px;flex-wrap:wrap;}
+.ent-lembrete-novo{display:flex;gap:8px;align-items:flex-start;margin-top:10px;}
+.ent-lembrete-novo textarea{flex:1;min-height:52px;resize:vertical;border:1px solid var(--border);background:var(--input-bg);color:var(--ink);border-radius:6px;padding:8px 12px;font:14px/20px var(--font-body);}
+.ent-acoes-linha{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.ent-leitor{display:block;width:100%;max-height:50vh;background:#000;border-radius:8px;object-fit:cover;}
+.ent-lista-janela{list-style:none;margin:0;padding:0;max-height:60vh;overflow:auto;}
+.ent-lista-janela .popover-item svg{width:14px;height:14px;}
+.ent-largo{width:100%;justify-content:center;margin-bottom:8px;}
+.ent-comprovante figure{margin:0;display:flex;flex-direction:column;align-items:flex-start;gap:4px;}
+/* os dados em linhas (rótulo e valor) */
+.ent-dados{margin:0;display:flex;flex-direction:column;gap:6px;font-size:13.5px;}
+.ent-dados > div{display:grid;grid-template-columns:150px 1fr;gap:12px;}
+.ent-dados dt{color:var(--ink-muted);}
+.ent-dados dd{margin:0;overflow-wrap:anywhere;white-space:pre-line;}
+/* a página do cliente */
+.cad-janela.ent-cliente-janela{width:min(1080px,100%);}
+.ent-cliente-topo{align-items:flex-start;}
+.ent-avatar{width:40px;height:40px;flex:none;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);display:inline-flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;}
+.ent-cliente-quem{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;font-size:14px;}
+.ent-cliente-quem .fraco{font-size:12.5px;}
+.ent-selos{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;}
+.ent-selos .badge{display:inline-flex;align-items:center;gap:4px;}
+.ent-kpis{margin-bottom:12px;}
+.ent-kpi-sub{display:block;font-size:12px;font-weight:400;color:var(--ink-muted);margin-top:2px;}
+.ent-avisos{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+.ent-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:0 16px;}
+.ent-telefone{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;font-size:14px;}
+.ent-linhas{list-style:none;margin:0;padding:0;}
+.ent-linhas > li{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border-muted);font-size:14px;}
+.ent-linhas > li:first-child{border-top:0;}
+.ent-linhas > li > div,.ent-linha-abre > div{flex:1;min-width:0;display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 12px;}
+.ent-linhas b{font-weight:600;}
+.ent-linhas .fraco{font-size:12.5px;}
+.ent-linha-abre{flex:1;display:flex;align-items:center;gap:10px;border:0;background:none;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer;}
+.ent-linha-abre:hover b{text-decoration:underline;}
+.ent-mes + .ent-mes{margin-top:12px;}
+.ent-mes-topo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+/* a Rota */
+.table-wrap.ent-rota-wrap,.table-wrap.ent-painel-wrap{max-height:none;overflow:visible;}
+.ent-rota td,.ent-painel td{vertical-align:middle;}
+.ent-puxa-td{width:1%;padding-right:0;}
+.ent-puxador{cursor:grab;touch-action:none;}
+.ent-puxador:active{cursor:grabbing;}
+.ent-pos{width:1%;}
+.ent-rota-sub{display:block;font-size:12.5px;margin-top:2px;}
+.ent-sino{display:inline-flex;align-items:center;gap:2px;margin-left:6px;color:var(--warn);font-size:12px;vertical-align:middle;}
+.ent-fixa-zona + .ent-fixa-zona{margin-top:16px;}
+.ent-fixa-lista{margin-bottom:6px;}
+.ent-fixa-lista > li{user-select:none;}
+/* o Painel */
+.ent-barras{overflow-x:auto;}
+.ent-meta{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+.ent-meta .tarefas-barra{width:100%;}
+.ent-resumo-mes{display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:14px;}
+.ent-resumo-mes > p{margin:0;}
+.ent-mapa{margin-top:12px;}
+.ent-ponto{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--success);flex:none;vertical-align:middle;}
+.ent-ponto.falha{background:var(--danger);}
+.ent-legenda{display:flex;align-items:center;gap:6px;}
 /* as listas da Rota, do Painel e do cliente */
-.ent-lista td{vertical-align:middle;}
-.ent-corta{display:inline-block;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;}
-.ent-total{margin-left:8px;}
 .ent-aviso{display:flex;align-items:center;gap:4px;margin-top:2px;font-size:12px;color:var(--warn);}
 .ent-aviso svg{width:12px;height:12px;flex:none;}
 .ent-acoes{white-space:nowrap;text-align:right;}
 .ent-acoes > *{vertical-align:middle;}
 .ent-acoes .badge{margin-right:4px;}
 .ent-acoes .btn svg{width:14px;height:14px;}
-.ent-numeros{margin-bottom:16px;}
 /* as janelas (Nova entrega, a parada, o cliente) */
-.modal.registro-novo.ent-nova,.modal.registro-novo.ent-parada{max-width:600px;}
-.modal.registro-novo.ent-cliente{max-width:780px;}
-.ent-nova .registro-corpo,.ent-parada .registro-corpo,.ent-cliente .registro-corpo{max-height:min(68vh,640px);overflow:auto;}
 .ent-docs{list-style:none;margin:0 0 4px;padding:0;display:flex;flex-direction:column;gap:4px;}
 .ent-doc{display:flex;align-items:center;gap:8px;min-height:36px;padding:2px 4px 2px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);}
 .ent-doc-tipo{flex:1;min-width:0;font-size:13.5px;font-weight:500;color:var(--ink);}
@@ -4572,18 +4703,23 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .ent-doc-total .ent-doc-tipo,.ent-doc-total .ent-doc-valor{font-weight:700;}
 .ent-anexo{display:inline-flex;align-items:center;gap:8px;min-width:0;}
 .ent-miniatura{width:56px;height:56px;flex:none;object-fit:cover;border-radius:6px;border:1px solid var(--border);background:#FFFFFF;}
-.ent-texto{flex:1;width:100%;min-height:52px;resize:vertical;border:1px solid transparent;border-radius:6px;background:transparent;padding:7px 8px;font-size:14px;line-height:20px;font-family:var(--font-body);color:var(--ink);outline:none;}
-.ent-texto:hover{background:var(--hover-bg);}
-.ent-texto:focus{background:var(--input-bg);border-color:var(--accent);}
-.ent-texto::placeholder{color:var(--ink-faint);}
-.ent-motivos{display:flex;flex-wrap:wrap;gap:6px;}
-.ent-historico{max-height:220px;overflow:auto;}
-.ent-escolhida td{background:var(--hover-bg);}
-.ent-detalhe{padding-top:6px;border-top:1px solid var(--border);}
-.ent-item{display:inline-block;margin:0 12px 2px 0;font-size:13.5px;color:var(--ink);}
 .ent-comprovante{display:flex;flex-wrap:wrap;gap:8px;padding:4px 0;}
 .ent-comprovante img{display:block;max-width:260px;max-height:140px;border:1px solid var(--border);border-radius:8px;background:#FFFFFF;}
-.ent-cliente .registro-pe .logo-img{width:16px;height:16px;}
-.ent-juntas .toggle-txt{display:none;}
-/* a janela rola por dentro: nada encolhe (a lista com rolagem própria sumia, com 2 px) */
-:is(.ent-nova,.ent-parada,.ent-cliente) .registro-corpo > *{flex-shrink:0;}
+@media (max-width:900px){
+  .ent-nova-form{grid-template-columns:1fr;}
+  .ent-cliente{grid-column:1 / -1;}
+}
+@media (max-width:640px){
+  .ent-acoes{white-space:normal;}
+  .ent-acoes .btn{margin-top:4px;}
+  .ent-dados > div{grid-template-columns:110px 1fr;}
+  .ent-filtros .busca-curta{width:100%;}
+  .ent-rota tr{display:grid;grid-template-columns:auto auto minmax(0,1fr);align-items:center;}
+  .ent-painel tr{display:grid;grid-template-columns:minmax(0,1fr);}
+  .ent-rota td,.ent-painel td{border-bottom:0;}
+  .ent-rota tr,.ent-painel tr{border-bottom:1px solid var(--border-muted);}
+  .ent-rota td.ent-acoes{grid-column:1 / -1;text-align:left;padding-top:0;}
+  .ent-painel td.ent-acoes{text-align:left;padding-top:0;}
+  .ent-categorias{overflow-x:auto;}
+  .ent-rota .cad-empresa-nome,.ent-painel .cad-empresa-nome{white-space:normal;overflow-wrap:anywhere;}
+}

@@ -50,10 +50,13 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const [dev] = useModoDesenvolvedor();
   // a rotina do departamento de quem está trabalhando (Contábil ou Fiscal)
   const { dep, comDep, lista } = useDepartamentoDaTela();
-  const rotina = t.rotinaDo(dep) || t.ROTINA_CONTABIL;
+  const empresa = empresas.empresaPelaRota(repo.listarEmpresas(), rotaEmpresa);
+  // a da empresa (16/10/2026): no Contábil, a 62 (com o LCDPR) tem só a etapa LCDPR
+  const rotina = t.rotinaDaEmpresa(dep, empresa?.codigo) || t.ROTINA_CONTABIL;
   // as seções da rotina, na ordem (Preparação, Ativo, Passivo, Resultado, Fechamento)
   const secoes = [...new Set(rotina.etapas.map(e => e.secao || ''))];
-  const empresa = empresas.empresaPelaRota(repo.listarEmpresas(), rotaEmpresa);
+  // só mexe nas etapas que a rotina tem (a do LCDPR não tem Cartões, Creditor nem os adiantamentos)
+  const temEtapa = (id: string) => rotina.etapas.some(e => e.id === id);
   // o "onde parou" desta empresa também no banco (16/10/2026): o que for dela vai e, ao abrir, o mais novo volta
   useEscopoDoGuardado(empresa ? formatos.slug(empresa.nome) : null, [empresa?.codigo, empresa?.nome]);
   const versaoDoGuardado = useVersaoDoGuardado();
@@ -102,7 +105,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   // a etapa Cartões segue o Cadastro (Vitor, 07/10/2026): "Cartão empresarial: Sim" põe ela nos meses do período; "Não"
   // tira a que ainda não foi feita; não informado, não mexe. Só grava o que mudou (a próxima volta já vê igual).
   useEffect(() => {
-    if (dev || !carregada || !empresa || cartaoEmpresarial == null) return;
+    if (dev || !carregada || !empresa || cartaoEmpresarial == null || !temEtapa('cartoes')) return;
     for (const c of meses) {
       const exc = exDe[c];
       if (!exc) continue;
@@ -118,7 +121,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   });
   // a etapa Vendas no cartão segue o Cadastro, como a Cartões: "Vende no cartão: Sim" põe nos meses; "Não" tira a não feita
   useEffect(() => {
-    if (dev || !carregada || !empresa || vendeNoCartao == null) return;
+    if (dev || !carregada || !empresa || vendeNoCartao == null || !temEtapa('vendas-cartao')) return;
     for (const c of meses) {
       const exc = exDe[c];
       if (!exc) continue;
@@ -135,7 +138,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   // o Creditor segue o Cadastro (Vitor, 08/10/2026): "Liquidação de cobrança: Sim" põe ele em todos os meses do período.
   // Não ou sem resposta, não mexe aqui: ele entra pelo razão do caixa (ajustarCreditor).
   useEffect(() => {
-    if (dev || !carregada || !empresa || credLiquidacao !== true) return;
+    if (dev || !carregada || !empresa || credLiquidacao !== true || !temEtapa('creditor')) return;
     for (const c of meses) {
       const exc = exDe[c];
       if (!exc || exc.adicionadas?.includes('creditor')) continue;
@@ -148,7 +151,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
    * os meses que ele cobre; a etapa já feita no mês não sai.
    */
   function ajustarPeloBalancete(b: { etapa: string; cobertos: readonly string[]; com: readonly string[]; motivo: string }) {
-    if (!carregada || dev) return;
+    if (!carregada || dev || !temEtapa(b.etapa)) return;
     for (const c of meses) {
       const exc = exDe[c];
       if (!exc || !b.cobertos.includes(c)) continue;

@@ -6,5 +6,10 @@ export * from './saude';
 export * from './gmail';
 // a entrega de documentos aos clientes (a rota e o painel do Entregas, no nads desde 16/10/2026)
 export * from './documentos';
+export * from './guiasDoPdf';
+export * from './rotaDeEntregas';
+export * from './confirmacaoDaEntrega';
+export * from './clienteDaEntrega';
+export * from './numerosDasEntregas';
 export type * from './repo';
 export { criarDriveDoEntregasMemoria, criarGmailDoEntregasMemoria } from './repo.memoria';

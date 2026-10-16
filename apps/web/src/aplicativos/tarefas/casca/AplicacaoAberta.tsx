@@ -27,6 +27,7 @@ import { ConfiguracoesDoDp } from '../telas/dp/ConfiguracoesDoDp';
 import { Mandei } from '../telas/mandei/Mandei';
 import { ConfiguracoesDoFinanceiro } from '../telas/financeiro/ConfiguracoesDoFinanceiro';
 import { NotasFiscais } from '../telas/financeiro/NotasFiscais';
+import { NovaEntrega } from '../telas/entregas/NovaEntrega';
 import { PainelDeEntregas } from '../telas/entregas/PainelDeEntregas';
 import { RotaDeEntregas } from '../telas/entregas/RotaDeEntregas';
 import { CascaTarefas } from './CascaTarefas';
@@ -44,7 +45,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'mandei': return <Mandei pagina={pagina === 'central' ? 'central' : 'meus'} />;
     case 'financeiro': return pagina === 'configuracoes' ? <ConfiguracoesDoFinanceiro /> : <NotasFiscais />;
     // a entrega de documentos aos clientes, trazida do Entregas (16/10/2026)
-    case 'entregas': return pagina === 'painel' ? <PainelDeEntregas /> : <RotaDeEntregas />;
+    case 'entregas': return pagina === 'painel' ? <PainelDeEntregas /> : pagina === 'nova' ? <NovaEntrega /> : <RotaDeEntregas />;
     case 'drive': return <ExploradorDoDrive />;
     case 'contato': return pagina === 'historico' ? <HistoricoDoRobo /> : <CaixaDoRobo />;
     default: return <EmDesenvolvimento nome={aplicacao(app)?.nome || app} />;

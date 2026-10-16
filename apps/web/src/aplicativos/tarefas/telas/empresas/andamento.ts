@@ -26,13 +26,15 @@ export function useAndamento() {
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
   // a rotina da tela: a do Fiscal no módulo Fiscal; senão, a do departamento da pessoa
   const { dep } = useDepartamentoDaTela();
-  const rotina = t.rotinaDo(dep);
+  const rotinaDoDep = t.rotinaDo(dep);
   const { execucoes, carregada } = useExecucoes(competencia, dep);
   const porNome = new Map(execucoes.map(e => [e.empresa, e]));
 
   // as empresas da rotina: o DP, os clientes da planilha do DP; o Contábil e o Fiscal, a lista do escritório
-  const linhas = rotina ? t.empresasDaRotina(dep, repo.listarEmpresas()).map(emp => {
+  const linhas = rotinaDoDep ? t.empresasDaRotina(dep, repo.listarEmpresas()).map(emp => {
     const ex = porNome.get(emp.nome) || null;
+    // a rotina da empresa (16/10/2026): no Contábil, a 62 (com o LCDPR) conta 1 etapa só
+    const rotina = t.rotinaDaEmpresa(dep, emp.codigo) || rotinaDoDep;
     const p = t.progresso(ex, rotina);
     const situacao = t.situacaoGeral(ex, rotina);
     const proxima = t.proximaEtapa(ex, rotina);
@@ -58,7 +60,7 @@ export function useAndamento() {
   }
 
   return {
-    temRotina: !!rotina,
+    temRotina: !!rotinaDoDep,
     departamento: op.departamento,
     competencia,
     competencias: competencias.map(c => ({ valor: c, rotulo: t.rotuloCompetencia(c) })),

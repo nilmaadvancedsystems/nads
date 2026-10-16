@@ -181,7 +181,8 @@ export function Executor() {
         {vm.departamento === 'contabil' && vm.empresa && vm.etapa && !COM_A_LINHA_DO_PERIODO.has(vm.etapa.id) && (
           <PeriodoDaTarefa nome={vm.empresa.nome} codigo={vm.empresa.codigo} meses={vm.meses.length ? vm.meses : [vm.competencia]} />
         )}
-        {vm.grupos.length > 0 && (
+        {/* um grupo só (a rotina do LCDPR, 16/10/2026): sem o menu dos grupos */}
+        {vm.grupos.length > 1 && (
           <MenuSuspenso rotulo="" icone={grupoDaVez ? ICONE_DO_GRUPO[grupoDaVez.nome] || 'list' : 'checkCircle'} className="gh-topo-btn gh-topo-menu"
             dica={grupoDaVez ? grupoDaVez.nome + ' · ' + grupoDaVez.feitas + '/' + grupoDaVez.total : 'Grupos da rotina'} direita largura={300} conteudo={fechar => <MenuDaRotina grupos={itensDosGrupos} emLote={emLote} fechar={fechar} />} />
         )}
