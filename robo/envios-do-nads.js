@@ -26,6 +26,8 @@ const ABANDONADO_MS = 2 * 36e5;
 // a resposta (sem os pedaços, que já foram apagados) fica 30 dias: a tela mostra onde o arquivo foi parar
 const RESPOSTA_DURA_MS = 30 * 24 * 36e5;
 const ESPERA_MS = 15 * 60 * 1000;
+// o PDF da guia no espelho da Área do Cliente: pedaços de até 700 KB (em base64), cabem folgados num documento
+const PEDACO_PDF_CLIENTE = 700 * 1024;
 
 // Confere o envio e junta os pedaços. Devolve { erro } ou { buffer, nome, competencia }.
 function montarEnvio(envio, pedacos) {
@@ -57,6 +59,76 @@ async function clientesPorCodigo(db) {
     });
   } catch (e) { /* sem o cadastro: fica o nome que veio da tela */ }
   return m;
+}
+
+// ---------- a guia (DAS/DAE) na Área do Cliente (16/10/2026) ----------
+// Quando o envio traz guia/vencimento/valor (lidos do PDF pela tela), além de gravar no Drive o robô põe a guia no espelho
+// de cada link da empresa: areasCliente/{token}/guias/{das|dae}-{AAAA-MM}-{codigo} (a GuiaDoCliente do core) e o PDF em
+// pedaços em guias/{id}/pdf/{n} ({ base64, n, total }, n de 0). Sem link (areasClientePorEmpresa/{codigo}), não faz nada.
+
+/** O que a tela leu da guia, conferido (ou null: o envio é um arquivo comum). */
+function guiaDoEnvio(envio) {
+  if (!envio || envio.criadoPorUid === 'mandei') return null;   // o cliente do link nunca põe guia na Área do Cliente
+  const tipo = envio.guia === 'DAS' || envio.guia === 'DAE' ? envio.guia : null;
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(envio.vencimento || ''));
+  const data = m ? new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])) : null;
+  if (!tipo || !data || data.getDate() !== Number(m[1]) || data.getMonth() !== Number(m[2]) - 1) return null;
+  const texto = String(envio.valor || '').trim();
+  const valor = /^(\d{1,3}(\.\d{3})*|\d+),\d{2}$/.test(texto) ? Number(texto.replace(/\./g, '').replace(',', '.')) : NaN;
+  const codigo = String(envio.codigo == null ? '' : envio.codigo).trim();
+  if (!Number.isFinite(valor) || !codigo || !/^20\d{2}-(0[1-9]|1[0-2])$/.test(envio.competencia || '')) return null;
+  return { tipo, vencimento: String(envio.vencimento), valor, valorTexto: texto, codigo, competencia: envio.competencia };
+}
+
+/** "dae-2026-09-58": o mesmo mês e empresa sobrescreve a guia (a nova substitui a velha). */
+function idDaGuiaDoCliente(g) { return g.tipo.toLowerCase() + '-' + g.competencia + '-' + g.codigo; }
+
+/** 'a vencer' | 'vence hoje' | 'vencida' pela data de hoje (quem mostra recalcula). */
+function situacaoDaGuia(vencimento, hoje) {
+  const [d, m, a] = vencimento.split('/').map(Number);
+  const v = new Date(a, m - 1, d).getTime();
+  const h = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).getTime();
+  return v > h ? 'a vencer' : v === h ? 'vence hoje' : 'vencida';
+}
+
+/** O documento guias/{id}: só os campos da GuiaDoCliente (lista branca). */
+function docDaGuiaDoCliente(g, hoje) {
+  return { id: idDaGuiaDoCliente(g), tipo: g.tipo, competencia: g.competencia, vencimento: g.vencimento, valor: g.valor,
+    situacao: situacaoDaGuia(g.vencimento, hoje || new Date()), temPdf: true };
+}
+
+/** O PDF em pedaços de base64: [{ base64, n, total }]. */
+function pedacosDoPdfCliente(buffer, tamanho) {
+  const b64 = Buffer.from(buffer).toString('base64');
+  const t = Math.max(4, Math.floor((tamanho || PEDACO_PDF_CLIENTE) / 4) * 4);   // múltiplo de 4: cada pedaço é base64 inteiro
+  const total = Math.max(1, Math.ceil(b64.length / t));
+  return Array.from({ length: total }, (_, n) => ({ base64: b64.slice(n * t, (n + 1) * t), n, total }));
+}
+
+/** Os links da empresa (areasClientePorEmpresa/{codigo}: { token }, ou { tokens: [] }); vazio = sem Área do Cliente. */
+async function tokensDaEmpresa(db, codigo) {
+  const d = await db.collection('areasClientePorEmpresa').doc(String(codigo)).get();
+  if (!d.exists) return [];
+  const x = d.data() || {};
+  return [...new Set([].concat(x.token || [], x.tokens || []).filter(t => typeof t === 'string' && t))];
+}
+
+async function guiaNaAreaDoCliente(db, envio, buffer, log) {
+  const g = guiaDoEnvio(envio);
+  if (!g) return 0;
+  const tokens = await tokensDaEmpresa(db, g.codigo);
+  const doc = docDaGuiaDoCliente(g);
+  const pedacos = pedacosDoPdfCliente(buffer);
+  for (const token of tokens) {
+    const ref = db.collection('areasCliente').doc(token).collection('guias').doc(doc.id);
+    // o PDF antes da guia (a guia diz temPdf); pedaços velhos de uma guia anterior saem
+    const velhos = await ref.collection('pdf').get();
+    for (const p of pedacos) await ref.collection('pdf').doc(String(p.n)).set(p);
+    await Promise.all(velhos.docs.filter(d => Number(d.id) >= pedacos.length).map(d => d.ref.delete()));
+    await ref.set(doc);
+    log('guia ' + g.tipo + ' na Área do Cliente:', doc.id, '(' + pedacos.length + ' pedaço' + (pedacos.length > 1 ? 's' : '') + ')');
+  }
+  return tokens.length;
 }
 
 function iniciarEnviosDoNads(db, log) {
@@ -99,6 +171,8 @@ function iniciarEnviosDoNads(db, log) {
       await doc.ref.update({
         status: 'pronto', pasta, nomeFinal: nomeFinal || c.nome, jaEstava: !nomeFinal, prontoEm: new Date().toISOString(),
       });
+      // a guia lida pela tela (DAS/DAE) também vai para a Área do Cliente; se falhar, o Drive já está feito
+      try { await guiaNaAreaDoCliente(db, envio, c.buffer, log); } catch (err) { log('guia na Área do Cliente falhou:', err.message); }
       log('enviado pelo nads (' + (envio.criadoPor || '?') + '):', c.nome, '->', 'Claudio Secretario/' + pasta + (nomeFinal ? '' : ' (já estava lá)'));
     } catch (err) {
       // Drive fora do ar: fica 'gravando' e a limpeza devolve para a fila (sem ficar tentando sem parar)
@@ -189,4 +263,4 @@ function iniciarDestinoDosEnvios(db, log) {
   }, log);
 }
 
-module.exports = { montarEnvio, nomeDaPastaDoCliente, PASTA_SEM_CLIENTE, iniciarEnviosDoNads, destinoNoArquivamento, iniciarDestinoDosEnvios };
+module.exports = { montarEnvio, nomeDaPastaDoCliente, PASTA_SEM_CLIENTE, iniciarEnviosDoNads, guiaDoEnvio, idDaGuiaDoCliente, docDaGuiaDoCliente, pedacosDoPdfCliente, guiaNaAreaDoCliente, destinoNoArquivamento, iniciarDestinoDosEnvios };

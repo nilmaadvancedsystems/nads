@@ -672,6 +672,26 @@ igual('pasta: nome do cadastro pelo código', en.nomeDaPastaDoCliente({ codigo: 
 igual('pasta: o nome que veio', en.nomeDaPastaDoCliente({ codigo: '9', cliente: 'X LTDA' }, porCod), 'X LTDA');
 igual('pasta: sem cliente', en.nomeDaPastaDoCliente({ codigo: '', cliente: '' }, porCod), 'Enviados pelo nads');
 
+// --- a guia DAS/DAE na Área do Cliente (envios-do-nads.js) ---
+const envioGuia = { guia: 'DAS', vencimento: '20/10/2026', valor: '1.234,56', codigo: 58, competencia: '2026-09', criadoPorUid: 'u1' };
+igual('guia do envio: conferida', en.guiaDoEnvio(envioGuia), { tipo: 'DAS', vencimento: '20/10/2026', valor: 1234.56, valorTexto: '1.234,56', codigo: '58', competencia: '2026-09' });
+igual('guia do envio: sem os dados é arquivo comum', en.guiaDoEnvio({ codigo: 58, competencia: '2026-09' }), null);
+igual('guia do envio: tipo estranho', en.guiaDoEnvio(Object.assign({}, envioGuia, { guia: 'GPS' })), null);
+igual('guia do envio: data impossível', en.guiaDoEnvio(Object.assign({}, envioGuia, { vencimento: '31/02/2026' })), null);
+igual('guia do envio: valor que não é dinheiro', en.guiaDoEnvio(Object.assign({}, envioGuia, { valor: 'abc' })), null);
+igual('guia do envio: sem código da empresa', en.guiaDoEnvio(Object.assign({}, envioGuia, { codigo: '' })), null);
+igual('guia do envio: o cliente do link não põe guia', en.guiaDoEnvio(Object.assign({}, envioGuia, { criadoPorUid: 'mandei' })), null);
+igual('id da guia: tipo, mês e código', en.idDaGuiaDoCliente(en.guiaDoEnvio(Object.assign({}, envioGuia, { guia: 'DAE' }))), 'dae-2026-09-58');
+igual('doc da guia: lista branca e situação',
+  en.docDaGuiaDoCliente(en.guiaDoEnvio(envioGuia), new Date(2026, 9, 16)),
+  { id: 'das-2026-09-58', tipo: 'DAS', competencia: '2026-09', vencimento: '20/10/2026', valor: 1234.56, situacao: 'a vencer', temPdf: true });
+igual('doc da guia: vencida', en.docDaGuiaDoCliente(en.guiaDoEnvio(envioGuia), new Date(2026, 9, 21)).situacao, 'vencida');
+const pdfGrande = Buffer.alloc(1000, 7);
+const peds = en.pedacosDoPdfCliente(pdfGrande, 400);
+igual('pedaços do PDF: de 0, com o total', peds.map(p => [p.n, p.total]), [[0, 4], [1, 4], [2, 4], [3, 4]]);
+igual('pedaços do PDF: juntos voltam o arquivo', Buffer.from(peds.map(p => p.base64).join(''), 'base64').equals(pdfGrande), true);
+igual('pedaços do PDF: pequeno é um só', en.pedacosDoPdfCliente(Buffer.from('abc')).length, 1);
+
 // --- onde o envio foi parar depois do arquivamento (envios-do-nads.js) ---
 const run1 = { id: 'EXEC-20261001-120000', em: '2026-10-01T12:00:00Z' };
 const det1 = {

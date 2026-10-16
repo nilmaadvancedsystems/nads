@@ -1,6 +1,7 @@
 // @nads/core/areaCliente — Model da Área do Cliente (Vitor, 16/10/2026): o que o cliente vê (guias, agenda, recibos de envio,
 // chamados) e as projeções com LISTA BRANCA de campos que o robô grava no espelho areasCliente/{token}. TypeScript puro.
 export * from './guias';
+export * from './leitorDeGuia';
 export * from './agenda';
 export * from './chamados';
 export * from './envios';

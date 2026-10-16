@@ -10,7 +10,7 @@ export function GuiaParaSubir({ guia, codigo, competencia, enviadas, marcar }: {
   enviadas: number;
   marcar?: (n: number) => void;
 }) {
-  const { lista, soltar } = useGuiaParaSubir(codigo, competencia, enviadas, marcar);
+  const { lista, soltar } = useGuiaParaSubir(guia, codigo, competencia, enviadas, marcar);
   const input = useRef<HTMLInputElement>(null);
   const [sobre, setSobre] = useState(false);
   return (
@@ -32,7 +32,11 @@ export function GuiaParaSubir({ guia, codigo, competencia, enviadas, marcar }: {
           {lista.map(s => (
             <li key={s.id} className={s.pronto ? 'feito' : s.erro ? undefined : 'atual'}>
               <span className="fgts-passo-marca" aria-hidden="true"><Icone nome={s.pronto ? 'check' : s.erro ? 'alert' : 'upload'} /></span>
-              <div><b>{s.nome}</b> <span className="hint">{s.texto}</span></div>
+              <div>
+                <b>{s.nome}</b> <span className="hint">{s.texto}</span>
+                {s.lido && <div className="hint">Li: {s.lido}</div>}
+                {s.semLeitura && <div className="hint">Não li os dados da guia ({s.semLeitura}); ela sobe do mesmo jeito.</div>}
+              </div>
             </li>
           ))}
         </ol>

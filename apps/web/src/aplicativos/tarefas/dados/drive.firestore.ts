@@ -91,6 +91,8 @@ export function criarDriveFirestore(quem: () => e.Quem | null): e.RepoDriveDoEnt
           status: 'enviando', nome: e.nomeParaEnviar(arquivo.nome), tamanho: arquivo.bytes.length, partes: partes.length,
           competencia: destino.competencia, cliente: destino.cliente.trim(), codigo: destino.codigo,
           criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorUid: q.uid,
+          // a guia lida do PDF (DAS/DAE): o robô a leva também para a Área do Cliente
+          ...(destino.guia ? { guia: destino.guia.guia, vencimento: destino.guia.vencimento, valor: destino.guia.valor } : {}),
         });
         for (let i = 0; i < partes.length; i++) {
           await setDoc(doc(ref, 'partes', String(i)), { dados: Bytes.fromUint8Array(partes[i]) });

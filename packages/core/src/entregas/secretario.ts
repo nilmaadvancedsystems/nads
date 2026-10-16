@@ -22,6 +22,8 @@ export interface DestinoDoEnvio {
   cliente: string;
   /** o código do cliente (o robô usa o nome do cadastro do Entregas) */
   codigo: string;
+  /** DAS/DAE lido do PDF (16/10/2026): o robô também põe a guia na Área do Cliente quando vêm os três */
+  guia?: { guia: 'DAS' | 'DAE'; vencimento: string; valor: string };
 }
 
 export interface ArquivoParaEnviar { nome: string; bytes: Uint8Array }
