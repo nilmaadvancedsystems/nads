@@ -35,7 +35,7 @@ export function AdiantamentoSalarial() {
               <div className="imp-grupo" aria-label="Razão do Adiantamento salarial">
                 <span className="imp-rotulo">Razão</span>
                 {vm.temRazao ? (
-                  <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" onClick={vm.remover} title="O razão do Adiantamento salarial: importado. Clique para excluir." aria-label="Excluir o razão do Adiantamento salarial">
+                  <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" onClick={vm.remover} title="O razão do Adiantamento salarial: importado. Clique para tirar." aria-label="Tirar o razão do Adiantamento salarial">
                     <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
                   </button>
                 ) : (

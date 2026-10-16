@@ -31,7 +31,7 @@ export function FgtsDaEtapa({ vm }: { vm: Fgts }) {
             <span className="imp-rotulo">Guias</span>
             {vm.lendo ? <span className="icon-btn icon-btn-sm imp-btn" title="Lendo…"><span className="btn-spinner" /></span>
               : vm.temGuias ? (
-                <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" onClick={vm.removerGuias} title="As guias do FGTS: importadas. Clique para excluir." aria-label="Excluir as guias do FGTS">
+                <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" onClick={vm.removerGuias} title="As guias do FGTS: importadas. Clique para tirar." aria-label="Tirar as guias do FGTS">
                   <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
                 </button>
               ) : (

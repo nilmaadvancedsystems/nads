@@ -13,7 +13,7 @@ export function LancamentosAutomaticos() {
       <div className="card">
         <h3>Lançamentos encontrados nas notas</h3>
         <div className="btn-row" style={{ justifyContent: 'flex-start', marginTop: 0, marginBottom: 18 }}>
-          <button className={vm.classeBotao} id="btAutoLanc" type="button" onClick={vm.preencherAutomatico}>Lançamentos Automáticos</button>
+          <button className={vm.classeBotao} id="btAutoLanc" type="button" onClick={vm.preencherAutomatico}>Lançamentos automáticos</button>
         </div>
         <div id="dpPendentes">
           {vm.semLinhas ? <p className="empty">Nenhum lançamento encontrado ainda. Importe as notas de entradas e saídas primeiro.</p>

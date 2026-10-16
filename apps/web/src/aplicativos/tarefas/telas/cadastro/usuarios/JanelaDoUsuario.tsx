@@ -162,10 +162,10 @@ export function JanelaNovoUsuario({ fechar }: { fechar: () => void }) {
       {topico === 'dados' && (
         <Cartao titulo="Dados">
           <Linha rotulo="Nome" dica="Como a pessoa entra no nads e no Entregas.">
-            <input className="usuario-campo" type="text" value={vm.nome} onChange={ev => vm.setNome(ev.target.value)} placeholder="Ex.: Maria Souza" autoComplete="off" autoFocus />
+            <input className="usuario-campo" type="text" aria-label="Nome" value={vm.nome} onChange={ev => vm.setNome(ev.target.value)} placeholder="Ex.: Maria Souza" autoComplete="off" autoFocus />
           </Linha>
           <Linha rotulo="Senha" dica="Pelo menos 6 caracteres; a pessoa troca depois em Minha conta.">
-            <input className="usuario-campo" type="password" value={vm.senha} onChange={ev => vm.setSenha(ev.target.value)} autoComplete="new-password"
+            <input className="usuario-campo" type="password" aria-label="Senha" value={vm.senha} onChange={ev => vm.setSenha(ev.target.value)} autoComplete="new-password"
               onKeyDown={ev => { if (ev.key === 'Enter') setTopico('cargo'); }} />
           </Linha>
         </Cartao>

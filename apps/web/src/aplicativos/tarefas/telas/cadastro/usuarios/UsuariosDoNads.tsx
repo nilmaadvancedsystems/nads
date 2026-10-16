@@ -24,7 +24,7 @@ export function UsuariosDoNads() {
       <div className="tarefas-barra-topo">
         <div className="chip-row usuarios-filtros">
           {FILTROS.map(f => (
-            <button key={f.id} type="button" className={'chip-f' + (vm.filtro === f.id ? ' on' : '')} onClick={() => vm.setFiltro(f.id)}>
+            <button key={f.id} type="button" className={'chip-f' + (vm.filtro === f.id ? ' on' : '')} aria-pressed={vm.filtro === f.id} onClick={() => vm.setFiltro(f.id)}>
               {f.rotulo} <span className="gh-counter">{vm.contagem[f.id]}</span>
             </button>
           ))}

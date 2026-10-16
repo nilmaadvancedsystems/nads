@@ -28,7 +28,7 @@ function Importar({ id, titulo, aceitar, varios, lendo, onArquivos }: { id: stri
 
 function Importado({ titulo, onExcluir }: { titulo: string; onExcluir: () => void }) {
   return (
-    <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" onClick={onExcluir} title={titulo + ': importado. Clique para excluir.'} aria-label={'Excluir ' + titulo}>
+    <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" onClick={onExcluir} title={titulo + ': importado. Clique para tirar.'} aria-label={'Tirar ' + titulo}>
       <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
     </button>
   );

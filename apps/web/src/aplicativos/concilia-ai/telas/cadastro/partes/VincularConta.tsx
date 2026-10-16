@@ -12,7 +12,7 @@ export function ChipsDeContas({ v }: { v: Vinculo }) {
       {v.chips.map(ch => (
         <span key={ch.codigo} className="ndp-chip">
           {ch.texto}
-          <button type="button" title="Desvincular" onClick={() => v.desvincular(ch.codigo)}>&times;</button>
+          <button type="button" title="Desvincular" aria-label={'Desvincular ' + ch.texto} onClick={() => v.desvincular(ch.codigo)}>&times;</button>
         </span>
       ))}
     </div>

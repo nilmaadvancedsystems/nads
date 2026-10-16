@@ -109,7 +109,7 @@ export function JanelaDaParada({ id, fechar }: { id: string; fechar: () => void 
           {vm.podeTirar && <button type="button" className="btn btn-danger" disabled={vm.salvando} onClick={() => void vm.tirarDaRota()}><Icone nome="x" />Tirar da rota</button>}
           <span className="tarefas-barra-espaco" />
           <button type="button" className="btn btn-outline" onClick={fechar}>Cancelar</button>
-          <BotaoAcao className={'btn ' + (vm.como === 'falha' ? 'btn-danger' : 'btn-primary')} carregando={vm.salvando} textoCarregando="Gravando…" disabled={vm.lendoFoto} onClick={() => void vm.confirmar()}>
+          <BotaoAcao className={'btn ' + (vm.como === 'falha' ? 'btn-danger' : 'btn-primary')} carregando={vm.salvando} textoCarregando="Salvando…" disabled={vm.lendoFoto} onClick={() => void vm.confirmar()}>
             <Icone nome={vm.como === 'falha' ? 'alert' : 'check'} />{vm.rotuloDoBotao}
           </BotaoAcao>
         </footer>
