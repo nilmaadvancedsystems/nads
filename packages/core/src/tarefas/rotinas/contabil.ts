@@ -83,6 +83,7 @@ export const ROTINA_CONTABIL: Rotina = {
         'O saldo do caixa é devedor (ou zero) no fim do mês e em nenhum dia fica credor.',
         'Caixa credor: procure pagamentos lançados no caixa que saíram pelo banco e vendas à vista que faltam.',
         'O saldo está de acordo com o tamanho da empresa (caixa alto demais também é sinal de lançamento errado).',
+        'Nenhum pagamento lançado no caixa que saiu do banco (a faixa "Pago pelo banco e lançado no caixa").',
       ],
       objecoes: [
         { id: 'caixa-credor', texto: 'O caixa ficou credor e não achei o motivo', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Interrompa com esta objeção: a competência aparece para os sêniores revisarem.' } },
@@ -376,24 +377,6 @@ export const ROTINA_CONTABIL: Rotina = {
     },
 
     // ─── Fechamento ───────────────────────────────────────────────────────────
-    {
-      id: 'caixa-bancos',
-      secao: 'Fechamento',
-      nome: 'Caixa × bancos',
-      descricao: 'O que foi lançado no caixa e está no extrato do banco.',
-      ferramenta: null,
-      // o razão do caixa contra os extratos importados (Vitor, 16/10/2026: "às vezes pagou com caixa, mas tinha no banco");
-      // a tela só sugere, o razão é opcional
-      tela: { id: 'caixa-bancos', periodo: true },
-      verificacao: 'manual',
-      conferir: [
-        'Nenhum pagamento lançado no caixa que saiu do banco.',
-        'Nenhum recebimento lançado no caixa que entrou no banco.',
-      ],
-      objecoes: [
-        { id: 'sem-extrato', texto: 'Os extratos dos bancos não foram importados', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Importe os extratos na Importação: é neles que o caixa é procurado.' } },
-      ],
-    },
     {
       id: 'fechamento',
       secao: 'Fechamento',

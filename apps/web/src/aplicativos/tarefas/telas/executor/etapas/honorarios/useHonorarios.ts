@@ -24,7 +24,7 @@ export function useHonorarios() {
   const { aviso } = useRetorno();
   const op = useOperador().operador;
   const vivo = useCadastro(s.nome, s.codigo);
-  const razao = useRazaoDaFolha('honorarios', s.nome + '|honorarios|' + s.meses.join(','), s.meses);
+  const razao = useRazaoDaFolha('honorarios', s.nome + '|honorarios|' + s.meses.join(','), s.meses, s.nome);
   const chave = s.nome + '|' + s.meses.join(',');
   // o extrato por cobrança e as contas ficam guardados (Vitor, 15/10/2026: voltou, está onde parou)
   const [extrato, setExtrato] = useGuardado<{ chave: string; arquivo: string; cobrancas: t.CobrancaDeHonorario[] } | null>('honorarios-extrato|' + chave, null);

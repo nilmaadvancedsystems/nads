@@ -4,8 +4,10 @@
 // O que foi importado fica guardado neste navegador (Vitor, 15/10/2026: voltou, está onde parou; comum/guardado.ts).
 import { formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useGuardado } from '../../../../comum/guardado';
+import { useContabilDaEmpresa } from '../../../../comum/contabilDaEmpresa';
+import { useCaixaNoBancoDoRazao } from './etapas/caixabancos/useCaixaNoBanco';
 
 const dataBR = (d: string) => d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4);
 
@@ -22,12 +24,31 @@ function linha(l: t.LancamentoDoRazao, i: number) {
  * chave: empresa, etapa e período (mudou, o razão some). meses: os do período ('aaaa-mm').
  * onImportado: recebe os meses com liquidação de cobrança e devolve aqueles em que o Creditor entrou.
  */
-export function useRazaoDaEtapa(chave: string, meses: readonly string[], onImportado: (comLiquidacao: string[]) => string[]) {
+export function useRazaoDaEtapa(chave: string, meses: readonly string[], onImportado: (comLiquidacao: string[]) => string[],
+  /** a empresa (o razão do caixa importado na Importação e os extratos dos bancos; 16/10/2026) */
+  empresa: { nome: string; codigo: number | null; caixa: boolean } | null = null) {
   const { aviso } = useRetorno();
   const [lido, setLido] = useGuardado<{ chave: string; arquivo: string; razao: t.RazaoDaConta } | null>('razao|' + chave, null);
   // o mês aberto (null = o período todo)
   const [mesAberto, setMesAberto] = useState<string | null>(null);
-  const atual = lido && lido.chave === chave ? lido : null;
+  // o da Importação (o upload único dos razões), quando a etapa não tem o próprio
+  const contabil = useContabilDaEmpresa(empresa?.nome || '', empresa?.codigo ?? null);
+  const daImportacao = empresa?.caixa ? contabil.razaoDoTipo('caixa') : null;
+  const proprio = lido && lido.chave === chave ? lido : null;
+  const atual = proprio || (daImportacao ? { chave, arquivo: daImportacao.arquivo + ' (da Importação)', razao: daImportacao.razao } : null);
+  // o da Importação também põe o Creditor nos meses com liquidação de cobrança (uma vez por razão)
+  const avisado = useRef('');
+  useEffect(() => {
+    if (proprio || !daImportacao) return;
+    const marca = chave + '|' + daImportacao.arquivo;
+    if (avisado.current === marca) return;
+    avisado.current = marca;
+    onImportado(t.mesesDoRazao(daImportacao.razao, meses).filter(t.precisaDoCreditor).map(m => m.mes));
+  // o razão e a chave dizem tudo
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chave, daImportacao?.arquivo, !!proprio]);
+  // o que saiu do caixa e também saiu do banco (o Caixa × bancos, agora dentro do Caixa)
+  const noBanco = useCaixaNoBancoDoRazao(empresa?.nome || '', empresa?.codigo ?? null, meses, atual?.razao ?? null);
   const doPeriodo = atual ? t.mesesDoRazao(atual.razao, meses) : [];
   const comCreditor = doPeriodo.filter(t.precisaDoCreditor).map(m => m.mes);
 
@@ -72,7 +93,8 @@ export function useRazaoDaEtapa(chave: string, meses: readonly string[], onImpor
     importar,
     carregado: !!atual,
     arquivo: atual?.arquivo || '',
-    remover: () => setLido(null),
+    remover: () => { setLido(null); if (!proprio && daImportacao) contabil.tirarRazao(daImportacao.conta); },
+    noBanco,
     /** o ⚡ do modo desenvolvedor: o caixa de teste do período (com ou sem o CRÉD.LIQ.COBRANÇA) */
     implantarTeste: (comCreditor: boolean) => usar('TESTE razão do caixa.xls', t.caixaDeTeste(meses, comCreditor)),
     resumo: atual ? 'Razão: ' + doPeriodo.reduce((n, m) => n + m.lancamentos.length, 0).toLocaleString('pt-BR') + ' lançamentos' : '',

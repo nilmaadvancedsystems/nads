@@ -7,7 +7,7 @@ import { RazaoDaFolha } from '../../partes/RazaoDaFolha';
 
 function useSimples() {
   const s = useEtapaAberta();
-  const vm = useRazaoDaFolha('simples', s.nome + '|simples|' + s.meses.join(','), s.meses);
+  const vm = useRazaoDaFolha('simples', s.nome + '|simples|' + s.meses.join(','), s.meses, s.nome);
   // o ⚡ de cima: os mesmos razões de teste da linha
   useDadosDeTesteDaEtapa(s.dev ? vm.teste.map((x, i) => ({ id: String(i), rotulo: x.rotulo })) : [], id => vm.teste[+id]?.onClick());
   const faltam = [

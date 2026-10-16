@@ -25,11 +25,14 @@ export function requisitosDaImportacao(
   bancos: readonly { id?: string; nome: string; ok: boolean; semMovimento: boolean; faltaCheque?: boolean }[],
   importados: ImportadosDaConferencia | null,
   prestaServico: boolean | null,
+  /** o balancete dinâmico importado (o primeiro passo; 16/10/2026); sem informar, não cobra */
+  temDinamico = true,
 ): RequisitosDaImportacao {
   const faltam: string[] = [];
   const alvos: (string | null)[] = [];
   const falta = (t: string, alvo: string | null) => { faltam.push(t); alvos.push(alvo); };
   // batendo, mas com dia negativo sem o cheque especial: na Importação passa (o cheque é a etapa seguinte)
+  if (!temDinamico) falta('Balancete dinâmico', 'aba:contabil');
   for (const b of bancos) if (!b.ok && !b.faltaCheque && !b.semMovimento) falta(b.nome + ': extrato e razão batendo', b.id ? 'banco:' + b.id : null);
   if (!importados) falta('a Conferência carregar', null);
   else {

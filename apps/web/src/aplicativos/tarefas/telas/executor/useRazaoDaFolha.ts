@@ -5,13 +5,19 @@
 import { formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useGuardado } from '../../../../comum/guardado';
+import { useContabilDaEmpresa } from '../../../../comum/contabilDaEmpresa';
 
 const NOME: Record<t.ContaDaFolha, string> = { salarios: 'Salários a pagar', fgts: 'FGTS a recolher', prolabore: 'Pró-labore a pagar', honorarios: 'Honorários a pagar', simples: 'Simples Nacional a recolher' };
 
-export function useRazaoDaFolha(conta: t.ContaDaFolha, chave: string, meses: readonly string[]) {
+/** empresa: o nome (o razão importado na Importação, quando a etapa não tem o próprio; 16/10/2026) */
+export function useRazaoDaFolha(conta: t.ContaDaFolha, chave: string, meses: readonly string[], empresa = '') {
   const { aviso } = useRetorno();
   const [razao, setRazao] = useGuardado<{ chave: string; arquivo: string; razao: t.RazaoDaConta } | null>('folha|' + conta + '|' + chave, null);
-  const r = razao && razao.chave === chave ? razao : null;
+  // o da Importação (o upload único dos razões), pela conta reconhecida no dinâmico
+  const contabil = useContabilDaEmpresa(empresa);
+  const daImportacao = empresa ? contabil.razaoDoTipo(conta) : null;
+  const proprio = razao && razao.chave === chave ? razao : null;
+  const r = proprio || (daImportacao ? { chave, arquivo: daImportacao.arquivo + ' (da Importação)', razao: daImportacao.razao } : null);
 
   async function importar(f: File | null) {
     if (!f) return;
@@ -32,7 +38,7 @@ export function useRazaoDaFolha(conta: t.ContaDaFolha, chave: string, meses: rea
     temRazao: !!r, arquivo: r?.arquivo || '',
     /** o razão importado (o Honorários tira dele a conta de despesa das provisões de antes) */
     razao: r?.razao ?? null,
-    importar, remover: () => setRazao(null),
+    importar, remover: () => { setRazao(null); if (!proprio && daImportacao) contabil.tirarRazao(daImportacao.conta); },
     /** o ⚡: um razão de teste do período, certo ou com um mês devedor */
     teste: [
       { rotulo: NOME[conta] + ' de teste (credor e zerando)', onClick: () => setRazao({ chave, arquivo: 'TESTE razão de ' + NOME[conta] + '.xls', razao: t.razaoDaFolhaDeTeste(meses, conta, false) }) },

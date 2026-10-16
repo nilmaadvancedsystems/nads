@@ -40,6 +40,8 @@ import { criarCofreMemoria, type RepoCofre } from './cofre';
 import { criarCofreFirestore } from './cofre.firestore';
 import { criarAgentesMemoria, type RepoAgentes } from './agentes';
 import { criarAgentesFirestore } from './agentes.firestore';
+import { criarGuardadoFirestore } from './guardado.firestore';
+import { ligarGuardadoRemoto } from '../../../comum/guardado';
 
 export const noBanco = ligadoAoBanco(); // no modo desenvolvedor, os dados de exemplo (nada vai para o banco)
 
@@ -69,6 +71,8 @@ export function repoDaTarefas(): tarefas.RepoTarefas {
     definirEmpresasExtras(empresasNovas);
     // o regime do Cadastro › Empresa vale no lugar do da lista (13/10/2026): muda as etapas da rotina
     tarefas.usarRegimesDoCadastro(regimeNoCadastro);
+    // o "onde parou" da Tarefa também no banco (16/10/2026): no banco, sim; nos exemplos e no modo desenvolvedor, não
+    if (noBanco) ligarGuardadoRemoto(criarGuardadoFirestore(() => quemPede()?.nome || ''));
     repo = r;
   }
   return repo;

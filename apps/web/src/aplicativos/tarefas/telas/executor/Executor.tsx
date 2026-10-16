@@ -55,7 +55,8 @@ export function Executor() {
   const guia = useGuiaUnica(vm.empresa && operador ? operador.nome + '|' + dep + '|' + rota : null);
   // o razão da etapa (o Caixa): importado do computador, vale para a empresa, a etapa e o período abertos; a liquidação
   // de cobrança no caixa põe o Creditor nos meses dela
-  const razao = useRazaoDaEtapa(rota + '|' + (vm.etapa?.id || '') + '|' + periodo, vm.meses.length ? vm.meses : [vm.competencia], vm.ajustarCreditor);
+  const razao = useRazaoDaEtapa(rota + '|' + (vm.etapa?.id || '') + '|' + periodo, vm.meses.length ? vm.meses : [vm.competencia], vm.ajustarCreditor,
+    vm.empresa ? { nome: vm.empresa.nome, codigo: vm.empresa.codigo, caixa: vm.etapa?.razao?.conta === 'caixa' } : null);
   // a conferência do INSS (a etapa da folha): o razão do INSS a recolher × o PDF das guias pagas
   const inss = useInssDaEtapa(rota + '|' + (vm.etapa?.id || '') + '|' + periodo, vm.meses.length ? vm.meses : [vm.competencia]);
   // a ferramenta da etapa (iframe): recebe os bancos sem movimento e avisa quando a pessoa marca um

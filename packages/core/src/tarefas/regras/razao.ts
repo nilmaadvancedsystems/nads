@@ -25,6 +25,8 @@ export interface RazaoDaConta {
   /** AAAA-MM-DD do primeiro e do último lançamento */
   inicio: string;
   fim: string;
+  /** o código da conta (o nome da aba do XLS do Alterdata: "10101"), quando veio (16/10/2026: o upload único dos razões) */
+  conta?: string;
 }
 
 type Campo = 'data' | 'contrapartida' | 'nomeContrapartida' | 'valor' | 'codigoHistorico' | 'historico' | 'saldo';
@@ -83,7 +85,10 @@ export function lerRazaoDoArquivo(buf: ArrayBuffer): RazaoDaConta {
   catch { throw new Error('Não consegui abrir o arquivo. Exporte o razão da conciliação do Alterdata em XLS.'); }
   const aba = wb.Sheets[wb.SheetNames[0]];
   if (!aba) throw new Error('A planilha não tem nenhuma aba.');
-  return lerRazao(XLSX.utils.sheet_to_json<unknown[]>(aba, { header: 1, raw: true, defval: null, blankrows: false }));
+  const r = lerRazao(XLSX.utils.sheet_to_json<unknown[]>(aba, { header: 1, raw: true, defval: null, blankrows: false }));
+  // a aba do XLS da conciliação do Alterdata tem o código da conta como nome
+  const conta = /^\d{1,10}$/.test(wb.SheetNames[0].trim()) ? wb.SheetNames[0].trim() : '';
+  return conta ? { ...r, conta } : r;
 }
 
 /** -15,5 → "15,50 D"; 1.200 → "1.200,00 C"; 0 → "0,00" (débito/devedor é negativo no Alterdata). */

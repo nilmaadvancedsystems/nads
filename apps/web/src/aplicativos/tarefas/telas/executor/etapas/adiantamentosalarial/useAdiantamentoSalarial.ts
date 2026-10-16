@@ -6,7 +6,8 @@
 import { clientes as cl, creditor, formatos, tarefas as t } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useMemo } from 'react';
-import { guardadosQueCasam, useGuardado } from '../../../../../../comum/guardado';
+import { useGuardado } from '../../../../../../comum/guardado';
+import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
 import { useChaveDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 
 const dataBR = (iso: string) => iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4);
@@ -15,14 +16,15 @@ export function useAdiantamentoSalarial() {
   const s = useEtapaAberta();
   const { aviso } = useRetorno();
   const chave = useChaveDaEtapa('adiantamento-salarial');
-  const [razao, setRazao] = useGuardado<{ arquivo: string; razao: t.RazaoDaConta } | null>(chave + '|razao', null);
+  const [proprio, setRazao] = useGuardado<{ arquivo: string; razao: t.RazaoDaConta } | null>(chave + '|razao', null);
+  // o da Importação (o upload único dos razões; 16/10/2026), quando a etapa não tem o próprio
+  const contabil = useContabilDaEmpresa(s.nome, s.codigo);
+  const daImportacao = contabil.razaoDoTipo('adiantamento-salarial');
+  const razao = useMemo(() => proprio || (daImportacao ? { arquivo: daImportacao.arquivo + ' (da Importação)', razao: daImportacao.razao } : null), [proprio, daImportacao]);
   // as contas do lançamento, da empresa (a do adiantamento vem do dinâmico do Clientes, se tiver)
   const empresa = String(s.codigo ?? s.nome);
   const [contas, setContas] = useGuardado<{ adiantamento?: string; banco?: string }>('adiantamento-salarial-contas|' + empresa, {});
-  const doDinamico = useMemo(() => {
-    const din = guardadosQueCasam(k => k.startsWith('clientes|' + empresa + '|') && k.endsWith('|dinamico'))[0] as { d?: cl.BalanceteDinamico } | undefined;
-    return din?.d ? cl.contasDeAdiantamentoSalarial(din.d)[0]?.codigo || '' : '';
-  }, [empresa]);
+  const doDinamico = useMemo(() => (contabil.dinamico ? cl.contasDeAdiantamentoSalarial(contabil.dinamico.d)[0]?.codigo || '' : ''), [contabil.dinamico]);
   const contaAdiantamento = contas.adiantamento ?? doDinamico;
   const contaBanco = contas.banco ?? '';
 
@@ -47,7 +49,7 @@ export function useAdiantamentoSalarial() {
   const reais = formatos.reais;
   return {
     temRazao: !!razao, arquivo: razao?.arquivo || '',
-    importar, remover: () => setRazao(null),
+    importar, remover: () => { setRazao(null); if (!proprio && daImportacao) contabil.tirarRazao(daImportacao.conta); },
     resumo: razao ? [naoZerou.length ? 'Não zerou em ' + naoZerou.map(m => t.rotuloNumericoCompetencia(m.mes)).join(', ') : 'Ok'] : [],
     ok: !!razao && !naoZerou.length,
     meses: meses.map(m => ({

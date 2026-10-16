@@ -17,9 +17,9 @@ export function useSalarios() {
   // o balancete importado na Conferência: a conta do INSS a recolher e as contas para a contrapartida (só as analíticas)
   const contas = useContasDoBalancete(s.nome);
   const plano = useMemo(() => (contas || []).filter(x => !x.sintetica).map(x => ({ codigo: x.codigo, nome: x.nome })), [contas]);
-  const inss = useInssDaEtapa(chave, s.meses, plano);
-  const salarios = useRazaoDaFolha('salarios', chave, s.meses);
-  const fgts = useRazaoDaFolha('fgts', chave, s.meses);
+  const inss = useInssDaEtapa(chave, s.meses, plano, s.nome);
+  const salarios = useRazaoDaFolha('salarios', chave, s.meses, s.nome);
+  const fgts = useRazaoDaFolha('fgts', chave, s.meses, s.nome);
   // a conferência do FGTS (Vitor, 16/10/2026): o razão da linha do FGTS × as guias do FGTS Digital; o pagamento que não está
   // no razão vem do extrato dos bancos importados (o débito com o valor da guia perto do vencimento)
   const ext = useExtratorDaEmpresa(s.nome);

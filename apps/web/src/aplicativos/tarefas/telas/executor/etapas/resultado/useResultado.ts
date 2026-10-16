@@ -5,7 +5,8 @@
 import { clientes as cl, conferencia as c, formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useMemo } from 'react';
-import { guardadosQueCasam, useGuardado } from '../../../../../../comum/guardado';
+import { useGuardado } from '../../../../../../comum/guardado';
+import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
 import { useChaveDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 
 type Dinamico = { nome: string; d: cl.BalanceteDinamico };
@@ -16,11 +17,9 @@ export function useResultado() {
   const chave = useChaveDaEtapa('resultado');
   // o importado aqui (o corrigido) vale mais que o do Clientes
   const [proprio, setProprio] = useGuardado<Dinamico | null>(chave + '|dinamico', null);
-  const doClientes = useMemo(() => {
-    const quem = 'clientes|' + String(s.codigo ?? s.nome) + '|';
-    return (guardadosQueCasam(k => k.startsWith(quem) && k.endsWith('|dinamico'))[0] as Dinamico | undefined) || null;
-  }, [s.codigo, s.nome]);
-  const din = proprio || (doClientes?.d ? doClientes : null);
+  // o da Importação (o primeiro passo), ou o que o Clientes importou antes
+  const doClientes = useContabilDaEmpresa(s.nome, s.codigo).dinamico;
+  const din = proprio || doClientes;
 
   async function importar(f: File | null) {
     if (!f) return;
