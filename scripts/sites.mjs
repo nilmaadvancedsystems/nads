@@ -40,6 +40,9 @@ const SITES = {
   conciliadorzinho: { site: 'conciliadorzinho-nilma', nome: 'Conciliadorzinho', tipo: 'app' },
   // o catálogo de componentes de todo o nads (Vitor, 02/10/2026): as mesmas peças do sistema, com dados de exemplo
   componentes: { site: 'componentes-nilma', nome: 'Componentes', tipo: 'app' },
+  // a Área do Cliente (Vitor, 16/10/2026): enquanto não tem o site próprio (cliente.nilmacontabilidade.com), só como prévia
+  // com dados de exemplo, no site do catálogo (link à parte, expira sozinho)
+  'cliente-previa': { site: 'componentes-nilma', nome: 'Área do Cliente (prévia)', tipo: 'app', aplicativo: 'cliente', soCanal: true, pasta: 'componentes' },
   extratudo: { site: 'extratudo-nilma', nome: 'Extratudo', tipo: 'app', banco: true },
   tarefas: { site: 'tarefas-nilma', nome: 'Tarefas', tipo: 'app', banco: true },
   // extrato do banco → .xls, sem banco de dados (Vitor, 06/10/2026)
