@@ -5,8 +5,8 @@
 // (Ctrl+Enter). A parada vai para a Rota esperando a assinatura.
 import type { entregas } from '@nads/core';
 import { formatos } from '@nads/core';
-import { BotaoIcone, CampoArquivos, CampoData, Icone, Interruptor, MenuSuspenso, Segmentado, SeletorMes, type NomeIcone } from '@nads/ui';
-import { useEffect, type ReactNode } from 'react';
+import { BotaoFechar, BotaoIcone, CampoArquivos, CampoData, Icone, Interruptor, MenuSuspenso, Segmentado, SeletorMes, useJanela, type NomeIcone } from '@nads/ui';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { DESTINOS, useNovaEntrega } from './useNovaEntrega';
 
 /** uma propriedade, como no Notion: o ícone e o nome à esquerda, o valor ocupando o resto */
@@ -22,10 +22,12 @@ function Propriedade({ icone, rotulo, children }: { icone: NomeIcone; rotulo: st
 export function JanelaNovaEntrega({ fechar, cliente }: { fechar: () => void; cliente?: entregas.ClienteDaRota | null }) {
   const vm = useNovaEntrega(fechar, cliente);
 
-  // Esc fecha; Ctrl+Enter põe na rota
+  // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, fechar);
+  // Ctrl+Enter põe na rota
   useEffect(() => {
     const tecla = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('.ent-nova .popover')) fechar();
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void vm.adicionarNaRota(); }
     };
     document.addEventListener('keydown', tecla);
@@ -34,11 +36,11 @@ export function JanelaNovaEntrega({ fechar, cliente }: { fechar: () => void; cli
 
   return (
     <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
-      <div className="modal registro-novo ent-nova" role="dialog" aria-modal="true" aria-label="Nova entrega">
+      <div ref={janela} className="modal registro-novo ent-nova" role="dialog" aria-modal="true" aria-label="Nova entrega">
         <header className="registro-topo">
           <span className="registro-caminho"><Icone nome="caminhao" />Entregas<Icone nome="chevronRight" /><b>Nova entrega</b></span>
           {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
-          <button type="button" className="icon-btn icon-btn-sm" onClick={fechar} aria-label="Fechar" title="Fechar (Esc)"><Icone nome="x" /></button>
+          <BotaoFechar onClick={fechar} />
         </header>
 
         <div className="registro-corpo">
@@ -56,7 +58,7 @@ export function JanelaNovaEntrega({ fechar, cliente }: { fechar: () => void; cli
             <div className="registro-busca">
               <Icone nome="briefcase" />
               <span className="nf-escolhido"><b>{vm.escolhido.codigoOrigem || '—'}</b> · {vm.escolhido.nome}</span>
-              <button type="button" className="icon-btn icon-btn-sm" onClick={vm.tirarCliente} aria-label="Trocar o cliente" title="Trocar o cliente"><Icone nome="x" /></button>
+              <BotaoIcone icone="x" pequeno titulo="Trocar o cliente" onClick={vm.tirarCliente} />
             </div>
           ) : (
             <div className="registro-busca">

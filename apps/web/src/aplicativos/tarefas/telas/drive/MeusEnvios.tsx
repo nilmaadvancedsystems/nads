@@ -1,20 +1,17 @@
 // "Meus envios" (Drive › Enviar ▾): o que a pessoa mandou para o Claudio Secretário nos últimos 30 dias e onde cada
 // arquivo foi parar depois do arquivamento. Arquivado: "Abrir a pasta" leva o Explorador até a pasta do cliente.
-import { Esqueleto, Icone } from '@nads/ui';
-import { useEffect } from 'react';
+import { Esqueleto, Icone, useJanela } from '@nads/ui';
+import { useRef } from 'react';
 import type { VmEnvio } from './useEnvioAoSecretario';
 
 export function MeusEnvios({ vm, abrirDestino }: { vm: VmEnvio; abrirDestino: (codigo: string, subpasta: string) => boolean }) {
-  useEffect(() => {
-    if (!vm.vendoMeus) return;
-    const esc = (ev: KeyboardEvent) => { if (ev.key === 'Escape' && !ev.defaultPrevented) { ev.preventDefault(); vm.fecharMeus(); } };
-    window.addEventListener('keydown', esc, true);
-    return () => window.removeEventListener('keydown', esc, true);
-  }, [vm.vendoMeus, vm]);
+  // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, vm.fecharMeus, vm.vendoMeus);
   if (!vm.vendoMeus) return null;
   return (
     <div className="modal-overlay" onMouseDown={ev => { if (ev.target === ev.currentTarget) vm.fecharMeus(); }}>
-      <div className="modal envio-janela meus-envios" role="dialog" aria-modal="true" aria-labelledby="meusTitulo">
+      <div ref={janela} className="modal envio-janela meus-envios" role="dialog" aria-modal="true" aria-labelledby="meusTitulo">
         <h3 id="meusTitulo"><Icone nome="upload" />Meus envios ao Claudio Secretário</h3>
         <div className="envio-corpo">
           <p className="envio-dica">Os últimos 30 dias. Depois de cada rodada do arquivamento, aparece aqui para onde cada arquivo foi.</p>

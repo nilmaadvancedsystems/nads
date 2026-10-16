@@ -2,8 +2,8 @@
 // do Cadastro: uma lista só tem a barra de cima (quantas, a busca, o "+ Novo") e a tabela; várias (as Tabelas de apoio)
 // viram cartões lado a lado. Clicar na linha abre a janela do item; remover está na janela, com o Desfazer no aviso.
 import type { lcdpr } from '@nads/core';
-import { Alerta, Icone, MenuSuspenso, type NomeIcone } from '@nads/ui';
-import { useEffect, type ReactNode } from 'react';
+import { Alerta, BotaoFechar, Icone, MenuSuspenso, useJanela, type NomeIcone } from '@nads/ui';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useCadastrosLcdpr } from './useCadastrosLcdpr';
 
 type Vm = ReturnType<typeof useCadastrosLcdpr>;
@@ -52,9 +52,12 @@ function Propriedade({ icone, rotulo, children }: { icone: NomeIcone; rotulo: st
 
 function JanelaDoItem({ vm }: { vm: Vm }) {
   const j = vm.janela;
+  // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, vm.fecharJanela, !!j);
+  // Ctrl+Enter salva
   useEffect(() => {
     const tecla = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('.registro-novo .popover')) vm.fecharJanela();
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void vm.salvarJanela(); }
     };
     document.addEventListener('keydown', tecla);
@@ -63,10 +66,10 @@ function JanelaDoItem({ vm }: { vm: Vm }) {
   if (!j) return null;
   return (
     <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) vm.fecharJanela(); }}>
-      <div className="modal registro-novo" role="dialog" aria-modal="true" aria-label={j.titulo}>
+      <div ref={janela} className="modal registro-novo" role="dialog" aria-modal="true" aria-label={j.titulo}>
         <header className="registro-topo">
           <span className="registro-caminho"><Icone nome="dinheiro" />LCDPR<Icone nome="chevronRight" /><b>{j.titulo}</b></span>
-          <button type="button" className="icon-btn icon-btn-sm" onClick={vm.fecharJanela} aria-label="Fechar" title="Fechar (Esc)"><Icone nome="x" /></button>
+          <BotaoFechar onClick={vm.fecharJanela} />
         </header>
         <div className="registro-corpo">
           <div className="registro-props">

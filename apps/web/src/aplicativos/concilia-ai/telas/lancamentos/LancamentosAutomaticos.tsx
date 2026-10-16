@@ -1,5 +1,5 @@
 // Lançamentos automáticos — página fora do menu (conferencia.html #view-depara ~L1176-1190, renderDP ~L2711).
-import { Icone } from '@nads/ui';
+import { BotaoIcone } from '@nads/ui';
 import { useLancamentosAutomaticos, type GrupoDeContas } from './useLancamentosAutomaticos';
 
 type VM = ReturnType<typeof useLancamentosAutomaticos>;
@@ -26,7 +26,7 @@ export function LancamentosAutomaticos() {
                       <div className="locked" title="Descoberto nas notas">{l.lanc}</div>
                       <div className="wrap" style={{ fontSize: 12.5, color: 'var(--ink-faint)' }}>{l.cfops}{l.natureza ? ' · ' + l.natureza : ''}</div>
                       <SeletorConta l={l} grupos={vm.grupos} onMudar={v => vm.escolherConta(l.lanc, v)} />
-                      <button className="icon-btn danger" type="button" title="Ignorar este lançamento" onClick={() => vm.remover(l.lanc)}><Icone nome="x" /></button>
+                      <BotaoIcone icone="x" className="danger" titulo="Ignorar este lançamento" onClick={() => vm.remover(l.lanc)} />
                     </div>
                   ))}
                 </>
@@ -44,7 +44,7 @@ export function LancamentosAutomaticos() {
                   <div className="locked">{l.lanc}</div>
                   <div className="wrap" style={{ fontSize: 12.5, color: 'var(--ink-faint)' }}>{l.cfops}</div>
                   <SeletorConta l={l} grupos={vm.grupos} onMudar={v => vm.escolherConta(l.lanc, v)} />
-                  <button className="icon-btn danger" type="button" title="Desvincular" onClick={() => vm.remover(l.lanc)}><Icone nome="x" /></button>
+                  <BotaoIcone icone="x" className="danger" titulo="Desvincular" onClick={() => vm.remover(l.lanc)} />
                 </div>
               ))}
             </>

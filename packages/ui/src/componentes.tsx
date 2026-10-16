@@ -1,5 +1,5 @@
 // Peças pequenas da Conferência, com as mesmas classes do CSS original.
-import { useEffect, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode, type Ref } from 'react';
 import { createPortal } from 'react-dom';
 import { animate, cleanInlineStyles, spring, stagger } from 'animejs';
 import { animacoesPedidas, useIndicador, useNumeroAnimado } from './animacao';
@@ -259,6 +259,22 @@ export function ConfigLinha({ titulo, descricao, children, aviso }: { titulo: Re
       </div>
       {children != null && <div className="cfg-linha-controle">{children}</div>}
     </div>
+  );
+}
+
+/**
+ * O × de fechar janela, gaveta ou painel: uma peça só (revisão da UI, 16/10/2026: eram cinco desenhos, drawer-x, modal-x,
+ * icon-btn-sm, btn-ghost cad-janela-x e gm-fechar). 32 px sem borda, o fundo aparece ao passar o mouse; sempre com nome.
+ * canto: preso no canto de cima da janela (o .modal-x das janelas do meio).
+ */
+export function BotaoFechar({ onClick, rotulo = 'Fechar', canto, className, disabled, autoFocus, ref }: {
+  onClick: () => void; rotulo?: string; canto?: boolean; className?: string; disabled?: boolean; autoFocus?: boolean; ref?: Ref<HTMLButtonElement>;
+}) {
+  return (
+    <button ref={ref} type="button" className={'janela-x' + (canto ? ' modal-x' : '') + (className ? ' ' + className : '')} aria-label={rotulo} title={rotulo + ' (Esc)'}
+      disabled={disabled} autoFocus={autoFocus} onClick={onClick}>
+      <Icone nome="x" />
+    </button>
   );
 }
 

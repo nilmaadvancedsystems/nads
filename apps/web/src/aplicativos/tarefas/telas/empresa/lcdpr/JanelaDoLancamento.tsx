@@ -1,8 +1,8 @@
 // A janela de um lançamento do LCDPR (o "Ver/editar detalhes" da linha no lcdpr.html), no desenho das janelas de criar
 // do nads (registro-novo): o fornecedor e o resumo da nota no cartão, cada campo numa linha (o ícone e o nome à esquerda)
 // e, no rodapé, Cancelar e Salvar (Enter ou Ctrl+Enter). Esc fecha.
-import { Icone, type NomeIcone } from '@nads/ui';
-import { useEffect, type ReactNode } from 'react';
+import { BotaoFechar, Icone, useJanela, type NomeIcone } from '@nads/ui';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useJanelaDoLancamento } from './useJanelaDoLancamento';
 
 function Propriedade({ icone, rotulo, children }: { icone: NomeIcone; rotulo: string; children: ReactNode }) {
@@ -16,9 +16,11 @@ function Propriedade({ icone, rotulo, children }: { icone: NomeIcone; rotulo: st
 
 export function JanelaDoLancamento({ id, fechar }: { id: number; fechar: () => void }) {
   const vm = useJanelaDoLancamento(id, fechar);
+  // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, fechar);
   useEffect(() => {
     const tecla = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !e.defaultPrevented) fechar();
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); vm.salvar(); }
     };
     document.addEventListener('keydown', tecla);
@@ -28,10 +30,10 @@ export function JanelaDoLancamento({ id, fechar }: { id: number; fechar: () => v
   if (!l) return null;
   return (
     <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
-      <div className="modal registro-novo" role="dialog" aria-modal="true" aria-label={'Lançamento de ' + l.fornecedor}>
+      <div ref={janela} className="modal registro-novo" role="dialog" aria-modal="true" aria-label={'Lançamento de ' + l.fornecedor}>
         <header className="registro-topo">
           <span className="registro-caminho"><Icone nome="dinheiro" />LCDPR<Icone nome="chevronRight" /><b>Lançamento</b></span>
-          <button type="button" className="icon-btn icon-btn-sm" onClick={fechar} aria-label="Fechar" title="Fechar (Esc)"><Icone nome="x" /></button>
+          <BotaoFechar onClick={fechar} />
         </header>
         <div className="registro-corpo">
           <div className="registro-receita">

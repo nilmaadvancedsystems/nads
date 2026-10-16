@@ -1,8 +1,8 @@
 // Os feedbacks da equipe (Vitor, 07/10/2026: "abra uma janela flutuante", aberta no pé da gaveta ☰, junto da versão):
 // à esquerda Novos / Vistos / Feitos / Todos; à direita cada feedback com o print (clicar amplia), o texto, quem,
 // quando, a tela e a versão; Visto e Feito.
-import { Esqueleto, Icone } from '@nads/ui';
-import { useEffect } from 'react';
+import { BotaoFechar, Esqueleto, Icone, useJanela } from '@nads/ui';
+import { useRef } from 'react';
 import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
 import type { SituacaoDoFeedback } from '../../dados/feedback';
 import { useFeedbacks } from './useFeedbacks';
@@ -52,20 +52,18 @@ export function JanelaDosFeedbacks({ fechar }: { fechar: () => void }) {
 function JanelaDoFeedback({ f, fechar, ampliar, marcar }: {
   f: NonNullable<ReturnType<typeof useFeedbacks>['aberto']>; fechar: () => void; ampliar: (img: string) => void; marcar: (id: string, s: SituacaoDoFeedback) => void;
 }) {
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); fechar(); } };
-    window.addEventListener('keydown', esc, true);
-    return () => window.removeEventListener('keydown', esc, true);
-  }, [fechar]);
+  // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, fechar);
   return (
     <div className="modal-overlay pessoal-fundo" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
-      <div className="pessoal-janela feedback-janela" role="dialog" aria-modal="true" aria-label={'Feedback de ' + (f.nome || f.email)}>
+      <div ref={janela} className="pessoal-janela feedback-janela" role="dialog" aria-modal="true" aria-label={'Feedback de ' + (f.nome || f.email)}>
         <header className="pessoal-topo">
           <h2>{f.nome || f.email || '—'}</h2>
           <span className="fraco">{f.quando}</span>
           <span className={'badge ' + SELO[f.status]}>{NOME[f.status]}</span>
           <span className="tarefas-barra-espaco" />
-          <button type="button" className="drawer-x" aria-label="Fechar" onClick={fechar}><Icone nome="x" /></button>
+          <BotaoFechar onClick={fechar} />
         </header>
         <div className="feedback-corpo">
           {f.imagem && (

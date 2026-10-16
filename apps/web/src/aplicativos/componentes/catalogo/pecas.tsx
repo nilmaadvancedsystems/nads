@@ -1,7 +1,7 @@
 // As peças do catálogo, desenhadas com as MESMAS peças do sistema (@nads/ui e as classes do nads.css). A ordem dentro
 // de cada tipo dá o código (BT-01, BT-02…): peça nova entra no FIM do tipo, para os códigos não mudarem.
 import {
-  Alerta, AnelDeContagem, BarrasEmColuna, BotaoAcao, CartaoComAnel, RoscaComLegenda, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail,
+  Alerta, AnelDeContagem, BarrasEmColuna, BotaoAcao, BotaoFechar, CartaoComAnel, RoscaComLegenda, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail,
   LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
 } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
@@ -225,6 +225,9 @@ export const PECAS_BASE: Peca[] = [
     </> },
   { id: 'botao-google', tipo: 'botoes', nome: 'Entrar com o Google', componente: 'BotaoGoogle', classes: ['btn btn-outline botao-google'], telas: ['e-importacao', 't-drive'],
     uso: '<BotaoGoogle entrando={x} onClick={entrar} />', demo: () => <><BotaoGoogle onClick={() => undefined} /><BotaoGoogle entrando onClick={() => undefined} /></> },
+  // o × de fechar (revisão da UI, 16/10/2026: eram cinco desenhos; agora todas as janelas, gavetas e painéis usam este)
+  { id: 'janela-x', tipo: 'botoes', nome: 'Fechar janela (×)', descricao: '32 px sem borda, o fundo aparece ao passar o mouse; o nome "Fechar" e a dica com o Esc. canto: preso no canto de cima da janela do meio', componente: 'BotaoFechar', classes: ['janela-x', 'modal-x'], telas: TODAS,
+    uso: '<BotaoFechar onClick={fechar} />  ·  <BotaoFechar canto onClick={fechar} />  ·  <BotaoFechar rotulo="Fechar menu" onClick={fechar} />', demo: () => <><BotaoFechar onClick={nada} /><BotaoFechar rotulo="Fechar menu" onClick={nada} /><BotaoFechar disabled onClick={nada} /></> },
 
   // ─── Selos ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'badge-ok', tipo: 'selos', nome: 'Ok', descricao: 'Verde preenchido: bateu (regra do app todo, 05/10/2026)', classes: ['badge badge-ok'], telas: ['c-relatorio', 'e-importacao', 't-exec-importacao', 't-exec-cheque', 't-exec-fiscal', 't-exec-clientes'],

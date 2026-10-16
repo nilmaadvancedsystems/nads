@@ -8,7 +8,7 @@
 // CFOP ou por NCM/CST/CEST) abre as notas dela na janela do catálogo (Vitor, 07/10/2026: "quando eu clique, abra os
 // detalhes da nota").
 import { conferencia as c, formatos, tarefas as t } from '@nads/core';
-import { Alerta, BotaoAcao, Icone, Stat } from '@nads/ui';
+import { Alerta, BotaoAcao, BotaoFechar, Icone, Stat, useJanela } from '@nads/ui';
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { ROTULO_DO_RELATORIO, type VmPainelDoFiscal } from '../usePainelDoFiscal';
@@ -585,21 +585,19 @@ function FolhaTotal({ valor, informar }: { valor: number | null; informar?: (v: 
 
 /** A janela com as notas de uma linha (a janela do catálogo: a da empresa no Cadastro e a do e-mail). Fecha no ×, no Esc e fora. */
 function JanelaDasNotas({ aberta, fechar }: { aberta: NotasAbertas; fechar: () => void }) {
-  useEffect(() => {
-    const esc = (e: globalThis.KeyboardEvent) => { if (e.key === 'Escape') fechar(); };
-    document.addEventListener('keydown', esc);
-    return () => document.removeEventListener('keydown', esc);
-  }, [fechar]);
+  // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, fechar);
   const notas = aberta.notas;
   const qtd = new Set(notas.map(n => n.numero + '|' + n.nome + '|' + n.data)).size;
   const total = notas.reduce((s, n) => s + (Number(n.valor) || 0), 0);
   const tem = (k: 'conta' | 'ncm' | 'cst' | 'cest' | 'lanc') => notas.some(n => n[k]);
   return (
     <div className="cad-janela-fundo" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
-      <div className="cad-janela" role="dialog" aria-modal="true" aria-label={aberta.titulo}>
+      <div ref={janela} className="cad-janela" role="dialog" aria-modal="true" aria-label={aberta.titulo}>
         <header className="cad-janela-topo">
           <span className="cad-janela-empresa"><span className="cad-janela-nome">{aberta.titulo}</span></span>
-          <button type="button" className="btn btn-ghost cad-janela-x" onClick={fechar} aria-label="Fechar" title="Fechar (Esc)"><Icone nome="x" /></button>
+          <BotaoFechar onClick={fechar} />
         </header>
         <div className="cad-janela-conteudo">
           <div className="stat-grid">

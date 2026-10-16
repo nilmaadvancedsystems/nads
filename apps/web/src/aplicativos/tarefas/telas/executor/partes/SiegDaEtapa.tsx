@@ -1,7 +1,7 @@
 // O painel do SIEG dentro do checklist da etapa do Fiscal: na Inicial, as notas do mês (emitidas e recebidas, por tipo);
 // na Conferência de Saídas, a sequência (série por série: da primeira à última, os números que faltam e as canceladas),
 // com o Baixar do SIEG (o robô do PC baixa as saídas do mês) e o Atualizar.
-import { Alerta, BotaoAcao, Esqueleto, Icone } from '@nads/ui';
+import { Alerta, BotaoAcao, BotaoFechar, Esqueleto, Icone } from '@nads/ui';
 import { createPortal } from 'react-dom';
 import { useSiegDaEtapa } from '../useSiegDaEtapa';
 
@@ -25,7 +25,7 @@ export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 
               {!vm.andamento.erro && <span className="hint">{vm.andamento.pronto ? 'Concluído' : vm.andamento.tempo || 'Começando…'}</span>}
             </div>
             {!vm.andamento.erro && <b className="sieg-andamento-pct num">{vm.andamento.pct}%</b>}
-            <button type="button" className="btn btn-ghost" onClick={vm.fecharAndamento} aria-label="Fechar" title="Fechar"><Icone nome="x" /></button>
+            <BotaoFechar onClick={vm.fecharAndamento} />
           </div>
           {!vm.andamento.erro && <span className={'tarefas-barra fgts-barra' + (vm.andamento.pronto ? '' : ' andando')}><span style={{ width: vm.andamento.pct + '%' }} /></span>}
           {vm.andamento.erro ? <p className="sieg-aviso"><Icone nome="alert" />{vm.andamento.erro}</p> : (

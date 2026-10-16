@@ -2,8 +2,8 @@
 // no topo, o cliente e o que vai (os documentos com o valor, a guia anexada); embaixo, como foi — Entregue (quem recebeu e a
 // assinatura, ou a foto), Sem assinatura (a foto vale) ou Não entregue (o motivo num toque e a foto) — e, com mais paradas
 // no mesmo lugar, "confirmar todas juntas". No rodapé: Tirar da rota (quem pôs, ou o admin), Cancelar e Confirmar.
-import { BotaoAcao, BotaoIcone, CampoArquivos, CampoAssinatura, Icone, Interruptor, Segmentado, type NomeIcone } from '@nads/ui';
-import { useEffect, type ReactNode } from 'react';
+import { BotaoAcao, BotaoFechar, BotaoIcone, CampoArquivos, CampoAssinatura, Icone, Interruptor, Segmentado, useJanela, type NomeIcone } from '@nads/ui';
+import { useRef, type ReactNode } from 'react';
 import { useJanelaDaParada } from './useJanelaDaParada';
 
 function Propriedade({ icone, rotulo, children }: { icone: NomeIcone; rotulo: string; children: ReactNode }) {
@@ -18,21 +18,19 @@ function Propriedade({ icone, rotulo, children }: { icone: NomeIcone; rotulo: st
 export function JanelaDaParada({ id, fechar }: { id: string; fechar: () => void }) {
   const vm = useJanelaDaParada(id, fechar);
 
-  useEffect(() => {
-    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented) fechar(); };
-    document.addEventListener('keydown', tecla);
-    return () => document.removeEventListener('keydown', tecla);
-  });
+  // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, fechar);
 
   const p = vm.parada;
   if (!p) return null;
   return (
     <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
-      <div className="modal registro-novo ent-parada" role="dialog" aria-modal="true" aria-label={'Parada de ' + p.clienteNome}>
+      <div ref={janela} className="modal registro-novo ent-parada" role="dialog" aria-modal="true" aria-label={'Parada de ' + p.clienteNome}>
         <header className="registro-topo">
           <span className="registro-caminho"><Icone nome="caminhao" />Rota<Icone nome="chevronRight" /><b>{p.clienteNome}</b></span>
           <span className="badge badge-warn">Na rota</span>
-          <button type="button" className="icon-btn icon-btn-sm" onClick={fechar} aria-label="Fechar" title="Fechar (Esc)"><Icone nome="x" /></button>
+          <BotaoFechar onClick={fechar} />
         </header>
 
         <div className="registro-corpo">

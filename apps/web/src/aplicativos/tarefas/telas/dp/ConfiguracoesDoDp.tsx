@@ -83,7 +83,7 @@ export function ConfiguracoesDoDp() {
                     <td className="dp-documento" onClick={e => e.stopPropagation()}>
                       {/* clicar no número copia (Vitor, 14/10/2026: "remova esse botão de copiar e faça com que o número ao clicar seja copiado") */}
                       {l.documento ? (
-                        <button type="button" className="texto-copiavel num" title="Clique para copiar" onClick={() => copiar(l.documento)}>{l.documento}</button>
+                        <button type="button" className="texto-copiavel num" title="Clique para copiar" onClick={() => copiar(l.documento)}>{l.documentoNaTela}</button>
                       ) : <span className="pill-vazio">sem cadastro</span>}
                     </td>
                     <td>{l.movimento}</td>

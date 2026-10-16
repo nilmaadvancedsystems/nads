@@ -5,7 +5,7 @@
 // cartões, as respostas e responder). A lista ocupa a largura toda, uma linha por e-mail; ao clicar, o e-mail abre numa
 // janela flutuante por cima dela (14/10/2026). No celular, a janela ocupa a tela.
 import type { entregas as e } from '@nads/core';
-import { Esqueleto, Icone, NumeroQueConta, Segmentado, useCarregando } from '@nads/ui';
+import { BotaoFechar, Esqueleto, Icone, NumeroQueConta, Segmentado, useCarregando } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useCaixaDoRobo, usePainelDoEmail, type AbaDaCaixa, type PeriodoDaCaixa, type VmCaixa } from './useCaixaDoRobo';
 
@@ -133,7 +133,7 @@ function Leitura({ vm, x }: { vm: VmCaixa; x: e.EmailDaCaixa }) {
             : anexos.length > 0 && <button type="button" className="btn btn-primary" onClick={() => void vm.salvarNoDrive(x)}><Icone nome="pasta" />Salvar no Drive</button>)}
           <a className="btn btn-outline" href={vm.linkDoGmail(x.mensagemId)} target="_blank" rel="noopener noreferrer"><Icone nome="envelope" />Abrir no Gmail</a>
           <span className="tarefas-barra-espaco" />
-          <button type="button" className="btn btn-ghost gm-fechar" onClick={fechar} aria-label="Fechar" title="Fechar (Esc)"><Icone nome="x" /></button>
+          <BotaoFechar className="gm-fechar" onClick={fechar} />
         </div>
       </header>
 

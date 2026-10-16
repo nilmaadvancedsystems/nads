@@ -3,7 +3,7 @@
 // entram ou saem por ele), e os razões das contas de uma vez só — cada um reconhecido pelo código da aba do XLS e pelo
 // nome da conta no dinâmico, e entregue à etapa que usa. No desenho das linhas da Importação (imp-bloco).
 import { clientes as cl } from '@nads/core';
-import { Icone, useRetorno } from '@nads/ui';
+import { BotaoIcone, Icone, useRetorno } from '@nads/ui';
 import { useId } from 'react';
 import { useContabilDaEmpresa } from './contabilDaEmpresa';
 
@@ -90,7 +90,7 @@ export function ContabilNaImportacao({ nome, codigo }: { nome: string; codigo: n
                       <td className="hint">{r.arquivo}</td>
                       <td className="num">{r.razao.lancamentos.length}</td>
                       <td className="num">
-                        <button type="button" className="icon-btn icon-btn-sm" onClick={() => vm.tirarRazao(conta)} title="Tirar este razão" aria-label={'Tirar o razão da conta ' + conta}><Icone nome="x" /></button>
+                        <BotaoIcone icone="x" pequeno titulo={'Tirar o razão da conta ' + conta} onClick={() => vm.tirarRazao(conta)} />
                       </td>
                     </tr>
                   );

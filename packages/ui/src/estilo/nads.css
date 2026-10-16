@@ -588,6 +588,11 @@ button.gh-crumb:hover{background:var(--hover-bg);}
 }
 /* como a gaveta do GitHub: logo de 32px e × no topo, a lista começa mais abaixo, grupos só com a linha entre eles */
 .drawer-head{display:flex;align-items:center;justify-content:space-between;min-height:32px;margin-bottom:38px;}
+/* o × de fechar janela, gaveta ou painel (BotaoFechar; revisão da UI, 16/10/2026): o mesmo desenho do .drawer-x e do .modal-x */
+.janela-x{flex:none;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:none;background:none;border-radius:6px;color:var(--ink-muted);cursor:pointer;}
+.janela-x:hover:not(:disabled){background:var(--hover-bg);color:var(--ink);}
+.janela-x:disabled{opacity:.5;cursor:default;}
+.janela-x svg{width:16px;height:16px;}
 .drawer-x{width:32px;height:32px;border:none;background:none;border-radius:6px;color:var(--ink-muted);cursor:pointer;
   display:inline-flex;align-items:center;justify-content:center;padding:0;}
 .drawer-x:hover{background:var(--hover-bg);color:var(--ink);}

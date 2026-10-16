@@ -3,8 +3,8 @@
 // Corrigir e reenviar (recusada), Baixar XML e Baixar DANFSe (autorizada) e Cancelar nota (autorizada, com o motivo e a justificativa).
 // Enviar por e-mail (autorizada, 15/10/2026): na linha "E-mail", o botão (abre o campo com o e-mail do tomador) e como foi o último envio.
 import { formatos, nfse } from '@nads/core';
-import { BotaoAcao, Icone, MenuSuspenso } from '@nads/ui';
-import { useEffect, type ReactNode } from 'react';
+import { BotaoAcao, BotaoFechar, Icone, MenuSuspenso, useJanela } from '@nads/ui';
+import { useRef, type ReactNode } from 'react';
 import { dataBr, dataHoraBr, documentoFormatado, foneSoDigitos } from './formatosDaNota';
 import { MINIMO_DA_JUSTIFICATIVA, useJanelaDaNota } from './useJanelaDaNota';
 import { useRelogio } from './useRelogio';
@@ -17,11 +17,9 @@ export function JanelaDaNota({ id, fechar, corrigir }: { id: string; fechar: () 
   const vm = useJanelaDaNota(id);
   const n = vm.nota;
 
-  useEffect(() => {
-    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('.nf-janela .popover')) fechar(); };
-    document.addEventListener('keydown', tecla);
-    return () => document.removeEventListener('keydown', tecla);
-  });
+  // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, fechar);
 
   // o andamento ao vivo (o que o robô grava: enviada, consultas, a última)
   const agora = useRelogio(!!n && nfse.andando(n.status));
@@ -31,11 +29,11 @@ export function JanelaDaNota({ id, fechar, corrigir }: { id: string; fechar: () 
   const fone = foneSoDigitos(n.tomador.fone || '');
   return (
     <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
-      <div className="modal registro-novo nf-janela" role="dialog" aria-modal="true" aria-label="Nota fiscal">
+      <div ref={janela} className="modal registro-novo nf-janela" role="dialog" aria-modal="true" aria-label="Nota fiscal">
         <header className="registro-topo">
           <span className="registro-caminho"><Icone nome="recibo" />Notas fiscais<Icone nome="chevronRight" /><b>{n.numeroNfse ? 'NFS-e ' + n.numeroNfse : 'Nota sem número'}</b></span>
           <span className={'badge badge-' + vm.rotulo.tom}>{vm.andando && <span className="btn-spinner nf-roda" aria-hidden="true" />}{vm.rotulo.rotulo}</span>
-          <button type="button" className="icon-btn icon-btn-sm" onClick={fechar} aria-label="Fechar" title="Fechar (Esc)"><Icone nome="x" /></button>
+          <BotaoFechar onClick={fechar} />
         </header>
 
         <div className="registro-corpo">

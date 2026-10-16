@@ -10,7 +10,7 @@
 //     botãozinho de PDF (abre pelo link temporário). O movimento se vê pela setinha.
 // Ao importar, só uma barrinha por cima da tela, que some em 2,7 s.
 import { clientes as cl, demo, extrator as x, type conferencia, tarefas } from '@nads/core';
-import { Alerta, classeDaJanela, destacarNaTela, Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
+import { Alerta, BotaoFechar, classeDaJanela, destacarNaTela, Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
 import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { useDadosDeTesteNaTarefa, usePonteDaTarefa, useRequisitosParaATarefa, type OpcaoDeTeste } from '../../../../../../comum/ponte';
 import { useSessao } from '../../casca/sessao';
@@ -968,7 +968,7 @@ export function TarefaExtratos() {
       {d.escolha && (
         <div className="modal-overlay" role="presentation" onClick={d.fecharEscolha}>
           <div className={classeDaJanela({}) + ' drive-escolha'} role="dialog" aria-modal="true" aria-labelledby="tituloEscolha" onClick={e => e.stopPropagation()}>
-            <button type="button" className="modal-x" aria-label="Fechar" title="Fechar" onClick={d.fecharEscolha}><Icone nome="x" /></button>
+            <BotaoFechar canto onClick={d.fecharEscolha} />
             <h3 id="tituloEscolha">Extrato do {d.escolha.linha.nome} no Drive</h3>
             <p>{d.escolha.texto}</p>
             {d.escolha.candidatos.length > 0 && (

@@ -2,8 +2,8 @@
 // escolhe o arquivo do banco (xlsx, xls ou csv) → a prévia de uma nota por linha, com a situação de cada uma (pronta, ou o
 // que falta) → "Emitir N notas". Só as prontas vêm marcadas; a linha com problema não se marca.
 import { formatos } from '@nads/core';
-import { CampoArquivos, Icone } from '@nads/ui';
-import { useEffect } from 'react';
+import { BotaoFechar, CampoArquivos, Icone, useJanela } from '@nads/ui';
+import { useRef } from 'react';
 import { dataBr, documentoFormatado } from './formatosDaNota';
 import { useImportarPlanilha } from './useImportarPlanilha';
 
@@ -12,19 +12,17 @@ export function JanelaImportarPlanilha({ fechar }: { fechar: () => void }) {
   const r = vm.resumo;
   const emitindo = !!vm.progresso;
 
-  useEffect(() => {
-    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented && !emitindo) fechar(); };
-    document.addEventListener('keydown', tecla);
-    return () => document.removeEventListener('keydown', tecla);
-  });
+  // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela) (emitindo, não fecha)
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, emitindo ? null : fechar);
 
   return (
     <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget && !emitindo) fechar(); }}>
-      <div className="modal registro-novo nf-importar" role="dialog" aria-modal="true" aria-label="Importar planilha">
+      <div ref={janela} className="modal registro-novo nf-importar" role="dialog" aria-modal="true" aria-label="Importar planilha">
         <header className="registro-topo">
           <span className="registro-caminho"><Icone nome="recibo" />Notas fiscais<Icone nome="chevronRight" /><b>Importar planilha</b></span>
           {vm.ambiente === 'homologacao' && <span className="badge badge-warn">Homologação — sem valor fiscal</span>}
-          <button type="button" className="icon-btn icon-btn-sm" onClick={fechar} disabled={emitindo} aria-label="Fechar" title="Fechar (Esc)"><Icone nome="x" /></button>
+          <BotaoFechar onClick={fechar} disabled={emitindo} />
         </header>
 
         <div className="registro-corpo">

@@ -4,8 +4,8 @@
 // serviço, descrição, e-mail, telefone) e, no rodapé, Cancelar e Emitir nota (Ctrl+Enter). Com `nota`, é a recusada sendo
 // corrigida: abre preenchida e "Corrigir e reenviar" volta para a fila.
 import type { nfse } from '@nads/core';
-import { CampoData, Icone, type NomeIcone } from '@nads/ui';
-import { useEffect, type ReactNode } from 'react';
+import { BotaoFechar, BotaoIcone, CampoData, Icone, useJanela, type NomeIcone } from '@nads/ui';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useNovaNota } from './useNovaNota';
 
 /** uma propriedade, como no Notion: o ícone e o nome à esquerda, o valor ocupando o resto */
@@ -22,10 +22,12 @@ export function JanelaNovaNota({ fechar, nota }: { fechar: () => void; nota?: nf
   const vm = useNovaNota(fechar, nota);
   const titulo = vm.corrigindo ? 'Corrigir nota' : 'Nova nota';
 
-  // Esc fecha; Ctrl+Enter emite
+  // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, fechar);
+  // Ctrl+Enter emite
   useEffect(() => {
     const tecla = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !e.defaultPrevented) fechar();
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void vm.emitir(); }
     };
     document.addEventListener('keydown', tecla);
@@ -34,11 +36,11 @@ export function JanelaNovaNota({ fechar, nota }: { fechar: () => void; nota?: nf
 
   return (
     <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
-      <div className="modal registro-novo" role="dialog" aria-modal="true" aria-label={titulo}>
+      <div ref={janela} className="modal registro-novo" role="dialog" aria-modal="true" aria-label={titulo}>
         <header className="registro-topo">
           <span className="registro-caminho"><Icone nome="recibo" />Notas fiscais<Icone nome="chevronRight" /><b>{titulo}</b></span>
           {vm.ambiente === 'homologacao' && <span className="badge badge-warn">Homologação — sem valor fiscal</span>}
-          <button type="button" className="icon-btn icon-btn-sm" onClick={fechar} aria-label="Fechar" title="Fechar (Esc)"><Icone nome="x" /></button>
+          <BotaoFechar onClick={fechar} />
         </header>
 
         <div className="registro-corpo">
@@ -48,7 +50,7 @@ export function JanelaNovaNota({ fechar, nota }: { fechar: () => void; nota?: nf
             <div className="registro-busca">
               <Icone nome="briefcase" />
               <span className="nf-escolhido"><b>{vm.escolhido.codigo ?? '—'}</b> · {vm.escolhido.nome}</span>
-              <button type="button" className="icon-btn icon-btn-sm" onClick={vm.tirarCliente} aria-label="Trocar o cliente" title="Trocar o cliente"><Icone nome="x" /></button>
+              <BotaoIcone icone="x" pequeno titulo="Trocar o cliente" onClick={vm.tirarCliente} />
             </div>
           ) : (
             <div className="registro-busca">

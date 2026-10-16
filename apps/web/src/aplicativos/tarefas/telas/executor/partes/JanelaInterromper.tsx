@@ -2,8 +2,8 @@
 // O motivo é o que alimenta a análise do que trava o trabalho. Desenho (Vitor, 02/10/2026: "melhore, tá muito feio"):
 // o das outras janelas (centro, × no canto), cada motivo um cartão que se escolhe inteiro e a observação embaixo.
 import type { tarefas } from '@nads/core';
-import { classeDaJanela, Icone } from '@nads/ui';
-import { useState } from 'react';
+import { BotaoFechar, classeDaJanela, useJanela } from '@nads/ui';
+import { useRef, useState } from 'react';
 
 export function JanelaInterromper({ etapa, onInterromper, onCancelar }: {
   etapa: tarefas.Etapa;
@@ -13,11 +13,14 @@ export function JanelaInterromper({ etapa, onInterromper, onCancelar }: {
   const [objecao, setObjecao] = useState('');
   const [obs, setObs] = useState('');
   const podeInterromper = !!objecao && (objecao !== 'outro' || !!obs.trim());
+  // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, onCancelar);
   const motivos = [...etapa.objecoes.filter(o => o.solucao.tipo !== 'nao-se-aplica'), { id: 'outro', texto: 'Outro motivo' }];
   return (
     <div className="modal-overlay" role="presentation" onClick={onCancelar}>
-      <div className={classeDaJanela({}) + ' interromper-janela'} role="dialog" aria-modal="true" aria-labelledby="tituloInterromper" onClick={e => e.stopPropagation()}>
-        <button type="button" className="modal-x" aria-label="Fechar" title="Fechar" onClick={onCancelar}><Icone nome="x" /></button>
+      <div ref={janela} className={classeDaJanela({}) + ' interromper-janela'} role="dialog" aria-modal="true" aria-labelledby="tituloInterromper" onClick={e => e.stopPropagation()}>
+        <BotaoFechar canto onClick={onCancelar} />
         <h3 id="tituloInterromper">Por que interromper?</h3>
         <p className="interromper-etapa">{etapa.nome}</p>
         <div className="interromper-opcoes" role="radiogroup" aria-label="Motivo">

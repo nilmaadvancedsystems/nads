@@ -2,7 +2,7 @@
 // de verdade — janela, aviso, menu, gaveta, lista, página, alerta e o toque nos botões. Escolher um jeito já vale para
 // o app todo neste navegador (fica guardado); o escolhido de vez vira o padrão no código.
 // Não pede login: só mostra as animações (os dados são de mentira).
-import { AberturaN, Alerta, Icone, JEITOS, jeitoAtual, definirJeito, MenuSuspenso, sairComo, Segmentado, Stat, useEntradaAnimada, useLinhasQueSeMovem, useRetorno, type Jeito } from '@nads/ui';
+import { AberturaN, Alerta, BotaoFechar, definirJeito, Icone, jeitoAtual, JEITOS, MenuSuspenso, sairComo, Segmentado, Stat, useEntradaAnimada, useLinhasQueSeMovem, useRetorno, type Jeito } from '@nads/ui';
 import { useRef, useState } from 'react';
 
 const LINHAS = [
@@ -150,7 +150,7 @@ export function PreviaAnimacoes() {
         <aside ref={gavetaEl} className="drawer" aria-label="Menu">
           <div className="drawer-head">
             <b>Menu</b>
-            <button className="drawer-x" type="button" aria-label="Fechar menu" onClick={fecharGaveta}><Icone nome="x" /></button>
+            <BotaoFechar rotulo="Fechar menu" onClick={fecharGaveta} />
           </div>
           {['Início', 'Tarefas', 'Extratudo', 'Concilia aí', 'Conciliadorzinho'].map(n => (
             <button key={n} className="drawer-item" type="button" onClick={fecharGaveta}><Icone nome="home" />{n}</button>

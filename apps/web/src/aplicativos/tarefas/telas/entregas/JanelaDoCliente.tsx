@@ -3,8 +3,8 @@
 // a escolhida — a situação, os documentos com o valor, quem recebeu, quem entregou, quando, o motivo e o comprovante (a
 // assinatura e a foto). No rodapé: Excluir, Enviar pelo WhatsApp (a confirmada), Confirmar (a que está na rota) e Nova entrega.
 import type { entregas } from '@nads/core';
-import { Esqueleto, Icone, LogoWhatsApp, type NomeIcone } from '@nads/ui';
-import { useEffect, type ReactNode } from 'react';
+import { BotaoFechar, Esqueleto, Icone, LogoWhatsApp, useJanela, type NomeIcone } from '@nads/ui';
+import { useRef, type ReactNode } from 'react';
 import { JanelaDaParada } from './JanelaDaParada';
 import { JanelaNovaEntrega } from './JanelaNovaEntrega';
 import { useJanelaDoCliente } from './useJanelaDoCliente';
@@ -21,11 +21,9 @@ function Propriedade({ icone, rotulo, children }: { icone: NomeIcone; rotulo: st
 export function JanelaDoCliente({ linha, competencia, fechar }: { linha: entregas.LinhaDoPainel; competencia: string; fechar: () => void }) {
   const vm = useJanelaDoCliente(linha, competencia, fechar);
 
-  useEffect(() => {
-    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented && !vm.confirmando && !vm.nova) fechar(); };
-    document.addEventListener('keydown', tecla);
-    return () => document.removeEventListener('keydown', tecla);
-  });
+  // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela) (com a confirmação ou a entrega nova abertas, o Esc é delas)
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, !vm.confirmando && !vm.nova ? fechar : null);
 
   const a = vm.atual;
   return (
@@ -33,10 +31,10 @@ export function JanelaDoCliente({ linha, competencia, fechar }: { linha: entrega
       {vm.confirmando && <JanelaDaParada id={vm.confirmando} fechar={vm.fecharConfirmacao} />}
       {vm.nova && <JanelaNovaEntrega cliente={vm.cliente} fechar={() => vm.setNova(false)} />}
       {!vm.confirmando && !vm.nova && <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
-        <div className="modal registro-novo ent-cliente" role="dialog" aria-modal="true" aria-label={'Entregas de ' + vm.titulo}>
+        <div ref={janela} className="modal registro-novo ent-cliente" role="dialog" aria-modal="true" aria-label={'Entregas de ' + vm.titulo}>
           <header className="registro-topo">
             <span className="registro-caminho"><Icone nome="painel" />Painel<Icone nome="chevronRight" /><b>{vm.titulo}</b></span>
-            <button type="button" className="icon-btn icon-btn-sm" onClick={fechar} aria-label="Fechar" title="Fechar (Esc)"><Icone nome="x" /></button>
+            <BotaoFechar onClick={fechar} />
           </header>
 
           <div className="registro-corpo">
