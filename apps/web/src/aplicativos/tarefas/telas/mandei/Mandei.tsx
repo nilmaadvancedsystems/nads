@@ -43,6 +43,13 @@ export function Mandei({ pagina }: { pagina: 'meus' | 'central' }) {
           <input type="text" placeholder="Buscar ticket, empresa ou e-mail" aria-label="Buscar ticket" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} />
         </label>
       </div>
+      {/* sem ticket, o vazio do catálogo no lugar da tabela (revisão da UI, 16/10/2026: no celular a frase ficava cortada
+          dentro da linha da tabela larga) */}
+      {!vm.linhas.length ? (
+        <div className="table-wrap">
+          <div className="gh-blank"><Icone nome="mensagem" /><h4>Nenhum ticket neste filtro</h4><p>Os tickets saem das etapas (ex.: Clientes › Envio › Mandar pelo Mandei).</p></div>
+        </div>
+      ) : (
       <div className="table-wrap">
         <table className="table-compact">
           <thead>
@@ -69,10 +76,10 @@ export function Mandei({ pagina }: { pagina: 'meus' | 'central' }) {
                 )}
               </Fragment>
             ))}
-            {!vm.linhas.length && <tr><td colSpan={10} className="hint">Nenhum ticket neste filtro. Os tickets saem das etapas (ex.: Clientes › Envio › Mandar pelo Mandei).</td></tr>}
           </tbody>
         </table>
       </div>
+      )}
     </section>
   );
 }

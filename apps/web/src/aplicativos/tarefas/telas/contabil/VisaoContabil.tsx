@@ -1,6 +1,6 @@
 // Contábil: a visão de cima (só leitura). "Visão geral" = cada etapa em todas as empresas e as
 // objeções mais comuns; "Paradas" = as etapas interrompidas, com o motivo.
-import { useCarregando } from '@nads/ui';
+import { MenuSuspenso, useCarregando } from '@nads/ui';
 import { useVisaoContabil } from './useVisaoContabil';
 
 export function VisaoContabil({ pagina, dep }: { pagina: string; dep?: 'contabil' | 'fiscal' | 'dp' }) {
@@ -9,12 +9,9 @@ export function VisaoContabil({ pagina, dep }: { pagina: string; dep?: 'contabil
   return (
     <section>
       <div className="tarefas-filtros">
-        <label className="field" style={{ marginBottom: 0 }}>
-          <span className="hint">Competência</span>
-          <select className="select-compact" value={vm.competencia} onChange={e => vm.setCompetencia(e.target.value)}>
-            {vm.competencias.map(c => <option key={c.valor} value={c.valor}>{c.rotulo}</option>)}
-          </select>
-        </label>
+        {/* a competência no mesmo menu com o calendário da Minhas empresas (revisão da UI, 16/10/2026: eram três peças diferentes) */}
+        <MenuSuspenso icone="calendar" rotulo={vm.competencias.find(c => c.valor === vm.competencia)?.rotulo ?? vm.competencia} titulo="Competência" dica="Trocar a competência"
+          itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
       </div>
       {vm.carregando ? null : pagina === 'paradas' ? (
         vm.paradas.length === 0 ? <p className="empty">Nenhuma etapa parada nesta competência.</p> : (

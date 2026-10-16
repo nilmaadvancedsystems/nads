@@ -39,7 +39,7 @@ export function ConfiguracoesDoDp() {
         {/* a competência (Vitor, 07/10/2026): o que mudar vale dela em diante */}
         <div className="field dp-filtro">
           <span className="hint">A partir de</span>
-          <MenuSuspenso rotulo={vm.rotuloCompetencia} className="btn btn-outline" titulo="Competência" largura={200}
+          <MenuSuspenso icone="calendar" rotulo={vm.rotuloCompetencia} className="btn btn-outline" titulo="Competência" dica="Trocar a competência" largura={200}
             itens={vm.competencias.map(x => ({ rotulo: x.rotulo, marcado: x.valor === vm.competencia, onClick: () => vm.setCompetencia(x.valor) }))} />
         </div>
         <label className="field dp-filtro dp-busca">

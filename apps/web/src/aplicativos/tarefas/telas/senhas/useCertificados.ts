@@ -12,7 +12,8 @@ import { useCofre } from './useCofre';
 
 export type FiltroDeCertificados = 'vence' | 'vencido' | 'ok' | 'sem';
 
-const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+// a maiúscula vem daqui, não do CSS (revisão da UI, 16/10/2026: o capitalize das barras virava "eSocial" em "ESocial" no DP)
+const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
 export function useCertificados() {
   const vm = useCofre();
