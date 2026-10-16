@@ -9,6 +9,7 @@ import { HistoricoCadastro } from '../historico/HistoricoCadastro';
 import { PlanoDeContas } from '../plano/PlanoDeContas';
 import { useJanelaDaEmpresa } from './useJanelaDaEmpresa';
 import { SenhasNoCadastro } from '../../senhas/SenhasNoCadastro';
+import { LinkDoClienteNaEmpresa } from '../../area-cliente/LinkDoClienteNaEmpresa';
 
 function Aba({ rota, aba }: { rota: string; aba: string }) {
   switch (aba) {
@@ -103,6 +104,8 @@ export function JanelaDaEmpresa({ rota, aba }: { rota: string; aba: string }) {
             {vm.abaAberta && <h2 className="cfg-titulo">{vm.abaAberta.grupo !== 'Empresa' && <span className="fraco">{vm.abaAberta.grupo} · </span>}{vm.abaAberta.rotulo}</h2>}
             {vm.aba === 'empresa' && <ResumoDoCadastro vm={vm} />}
             <Aba rota={rota} aba={vm.aba} />
+            {/* o link da Área do Cliente (Vitor, 16/10/2026): gerar, copiar, WhatsApp, trocar e revogar */}
+            {vm.aba === 'empresa' && vm.empresa.codigo != null && <LinkDoClienteNaEmpresa codigo={vm.empresa.codigo} nome={vm.empresa.nome} />}
           </div>
         </div>
       </div>

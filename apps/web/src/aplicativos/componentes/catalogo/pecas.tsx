@@ -15,6 +15,9 @@ import { CartaoDeGuia } from '../../cliente/partes/CartaoDeGuia';
 import { ConversaDoChamado } from '../../cliente/partes/ConversaDoChamado';
 import { LinhaDaAgenda } from '../../cliente/partes/LinhaDaAgenda';
 import { LinhaDeGuia } from '../../cliente/partes/LinhaDeGuia';
+import { BlocoDoLink } from '../../tarefas/telas/area-cliente/partes/BlocoDoLink';
+import { BotoesDoLink } from '../../tarefas/telas/area-cliente/partes/BotoesDoLink';
+import { ConversaDoEscritorio } from '../../tarefas/telas/area-cliente/partes/ConversaDoEscritorio';
 import '../../cliente/cliente.css';
 
 const nada = () => undefined;
@@ -684,4 +687,24 @@ export const PECAS_BASE: Peca[] = [
   { id: 'cores', tipo: 'cores', nome: 'As cores do sistema', descricao: 'Mude o tema no ☰ para ver o escuro', telas: TODAS, largo: true,
     demo: () => <div className="cat-cores">{CORES.map(c => <span key={c} className="cat-cor"><i style={{ background: 'var(' + c + ')' }} />{c}</span>)}</div> },
   { id: 'tema', tipo: 'cores', nome: 'Seletor de tema', componente: 'SeletorTema', classes: ['theme-toggle'], telas: TODAS, demo: () => <SeletorTema /> },
+  // ─── Área do Cliente, o lado do escritório (Vitor, 16/10/2026) ─── (peças novas entram no fim do tipo)
+  { id: 'botoes-link-cliente', tipo: 'botoes', nome: 'Botões do link do cliente', descricao: 'Sem link, "Gerar link" (vermelho); com link, Copiar, WhatsApp (abre com o texto pronto), Trocar e Revogar (estes dois pedem confirmação). Só o admin e os diretores veem (Vitor, 16/10/2026)', classes: ['ac-botoes', 'btn', 'btn-danger'], telas: ['t-area-links', 't-cadastro-janela'], largo: true,
+    demo: () => (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <BotoesDoLink temLink={false} aoGerar={nada} aoCopiar={nada} aoWhatsApp={nada} aoTrocar={nada} aoRevogar={nada} />
+        <BotoesDoLink temLink aoGerar={nada} aoCopiar={nada} aoWhatsApp={nada} aoTrocar={nada} aoRevogar={nada} />
+      </div>
+    ) },
+  { id: 'bloco-link-cliente', tipo: 'cartoes', nome: 'Link do cliente (bloco da janela da empresa)', descricao: 'Na aba Dados da empresa do Cadastro: o endereço do link secreto, de quando é e os botões; sem link, oferece Gerar; para quem não é admin nem diretor, só mostra o estado (Vitor, 16/10/2026)', classes: ['card ac-bloco', 'ac-endereco'], telas: ['t-cadastro-janela'], largo: true,
+    demo: () => (
+      <BlocoDoLink endereco="https://cliente.nilmacontabilidade.com/cliente/9f2c1a7e4b8d0356ac91e2f7d4b6a80c13e5f792" data="04/10/2026" podeMexer
+        aoGerar={nada} aoCopiar={nada} aoWhatsApp={nada} aoTrocar={nada} aoRevogar={nada} />
+    ) },
+  { id: 'conversa-escritorio', tipo: 'listas', nome: 'Conversa do chamado (visão do escritório)', descricao: 'Os balões do chamado em Área do Cliente › Chamados: o do cliente à esquerda e o do escritório, com o nome de quem respondeu, à direita (Vitor, 16/10/2026)', classes: ['ac-conversa', 'ac-balao', 'ac-balao-cliente', 'ac-balao-escritorio'], telas: ['t-area-chamados'], largo: true,
+    demo: () => (
+      <ConversaDoEscritorio mensagens={[
+        { de: 'cliente', autor: 'Você', texto: 'Vamos contratar o Marcos, começa dia 1º. O que preciso mandar?', em: '2026-10-15T10:20:00' },
+        { de: 'escritorio', autor: 'Camila', texto: 'Oi! Precisamos do RG, CPF, comprovante de residência e o exame admissional.', em: '2026-10-15T11:05:00' },
+      ]} />
+    ) },
 ];

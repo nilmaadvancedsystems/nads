@@ -4,7 +4,7 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDeCategoriasDp, repoDeLegislacaoDp, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
+import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDeCategoriasDp, repoDeLegislacaoDp, repoDaAreaCliente, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoAgentes } from './agentes';
 import type { RepoSieg } from './sieg';
@@ -15,6 +15,7 @@ import type { RepoPessoal } from './pessoal';
 import type { RepoFeedback } from './feedback';
 import type { RepoCategoriasDp } from './categoriasDp';
 import type { RepoLegislacaoDp } from './legislacaoDp';
+import type { RepoAreaCliente } from './areaCliente';
 
 type Repo = tarefas.RepoTarefas;
 
@@ -201,6 +202,13 @@ export function useCategoriasDp(): RepoCategoriasDp {
 /** A legislação do DP cadastrada no nads (as novas e as do Toriba editadas), ao vivo. */
 export function useLegislacaoDp(): RepoLegislacaoDp {
   const repo = repoDeLegislacaoDp();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** A Área do Cliente vista pelo escritório (links, chamados e recebidos), ao vivo. */
+export function useAreaCliente(): RepoAreaCliente {
+  const repo = repoDaAreaCliente();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
 }

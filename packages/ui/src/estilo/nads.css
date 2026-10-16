@@ -4398,3 +4398,21 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 @media (prefers-reduced-motion: reduce){
   html[data-animacoes=todas] :is(.btn,.icon-btn,.subnav-item,.menu-item,.caixa-item,.drawer-item,.popover-item,.chip-f,.gh-crumb,.explorador-cmd) > svg{transition:none;scale:none;translate:none;rotate:none;}
 }
+
+/* Área do Cliente, o lado do escritório na Tarefas (Vitor, 16/10/2026): os botões do link, o bloco da janela da empresa e a conversa do chamado */
+.ac-botoes{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;}
+.ac-botoes .pedir-app{width:16px;height:16px;}
+.ac-botoes .pedir-app .logo-img,.ac-botoes .pedir-app svg{width:16px;height:16px;}
+.ac-bloco{margin-top:16px;}
+.ac-bloco-corpo{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:12px 16px 16px;}
+.ac-endereco{display:flex;align-items:center;gap:8px;max-width:100%;margin:0;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-2);font-size:12px;overflow-wrap:anywhere;}
+.ac-endereco svg{flex:none;width:16px;height:16px;}
+.ac-endereco-curto{display:inline-block;margin-left:8px;font-size:11px;color:var(--ink-muted);}
+.ac-chamado{display:flex;flex-direction:column;gap:12px;padding:12px 16px 16px;}
+.ac-conversa{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none;}
+.ac-balao{display:flex;flex-direction:column;gap:4px;max-width:min(620px,88%);padding:8px 12px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2);color:var(--ink);}
+.ac-balao p{margin:0;font-size:13px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;}
+.ac-balao-quem{font-size:11px;color:var(--ink-muted);}
+.ac-balao-cliente{align-self:flex-start;border-radius:12px 12px 12px 3px;}
+.ac-balao-escritorio{align-self:flex-end;border-color:var(--accent);border-radius:12px 12px 3px 12px;background:var(--accent-soft);}
+@media (max-width: 640px){.ac-balao{max-width:94%;}}

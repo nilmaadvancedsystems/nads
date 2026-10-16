@@ -10,7 +10,7 @@ import type { Operador } from './operador';
 
 export const BASE = '/tarefas';
 
-export type IdAplicacao = 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei';
+export type IdAplicacao = 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'area-cliente';
 
 export interface Pagina { id: string; rotulo: string; icone: NomeIcone; titulo: string }
 export interface Aplicacao {
@@ -79,6 +79,12 @@ export const APLICACOES: readonly Aplicacao[] = [
   { id: 'mandei', nome: 'Mandei', icone: 'mensagem', grupo: 'Comunicação', pronta: true, paginas: [
     { id: 'meus', rotulo: 'Meus tickets', icone: 'usuario', titulo: 'Mandei — meus tickets' },
     { id: 'central', rotulo: 'Central', icone: 'list', titulo: 'Mandei — central de tickets' },
+  ] },
+  // a Área do Cliente (Vitor, 16/10/2026): o lado do escritório do site que o cliente abre pelo link secreto
+  { id: 'area-cliente', nome: 'Área do Cliente', icone: 'usuario', grupo: 'Comunicação', pronta: true, paginas: [
+    { id: 'links', rotulo: 'Links', icone: 'link', titulo: 'Área do Cliente — links' },
+    { id: 'chamados', rotulo: 'Chamados', icone: 'mensagem', titulo: 'Área do Cliente — chamados' },
+    { id: 'recebidos', rotulo: 'Recebidos', icone: 'download', titulo: 'Área do Cliente — recebidos' },
   ] },
   { id: 'drive', nome: 'Drive', icone: 'pasta', grupo: 'Comunicação', marca: 'drive', pronta: true, paginas: [
     { id: 'pastas', rotulo: 'Pastas', icone: 'pasta', titulo: 'Drive — pasta do ano' },

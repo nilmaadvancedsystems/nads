@@ -25,6 +25,8 @@ import { criarCategoriasDpMemoria, type RepoCategoriasDp } from './categoriasDp'
 import { criarCategoriasDpFirestore } from './categoriasDp.firestore';
 import { criarLegislacaoDpMemoria, type RepoLegislacaoDp } from './legislacaoDp';
 import { criarLegislacaoDpFirestore } from './legislacaoDp.firestore';
+import { criarAreaClienteMemoria, type RepoAreaCliente } from './areaCliente';
+import { criarAreaClienteFirestore } from './areaCliente.firestore';
 import { criarFeedbackFirestore } from './feedback.firestore';
 import { criarPessoalMemoria, type RepoPessoal } from './pessoal';
 import { criarPessoalFirestore } from './pessoal.firestore';
@@ -353,6 +355,20 @@ let legislacaoDp: RepoLegislacaoDp | null = null;
 export function repoDeLegislacaoDp(): RepoLegislacaoDp {
   if (!legislacaoDp) legislacaoDp = noBanco ? criarLegislacaoDpFirestore(() => quemPede()?.nome || '') : criarLegislacaoDpMemoria();
   return legislacaoDp;
+}
+
+let areaCliente: RepoAreaCliente | null = null;
+
+/** A Área do Cliente vista pelo escritório (links, chamados, recebidos): no banco, areasCliente e vizinhas; nos exemplos, na memória. */
+export function repoDaAreaCliente(): RepoAreaCliente {
+  if (!areaCliente) {
+    const quem = () => {
+      if (noBanco) return quemPede()?.nome || '';
+      try { return localStorage.getItem('nads-tarefas-operador') || ''; } catch { return ''; }
+    };
+    areaCliente = noBanco ? criarAreaClienteFirestore(quem) : criarAreaClienteMemoria(quem);
+  }
+  return areaCliente;
 }
 
 export function repoDaIA(): RepoIA {

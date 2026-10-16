@@ -48,6 +48,9 @@ export const TELAS: Tela[] = [
   { id: 't-drive', app: 'Tarefas', nome: 'Drive' },
   { id: 't-gmail', app: 'Tarefas', nome: 'Gmail' },
   { id: 't-mandei', app: 'Tarefas', nome: 'Mandei (tickets)' },
+  { id: 't-area-links', app: 'Tarefas', nome: 'Área do Cliente › Links' },
+  { id: 't-area-chamados', app: 'Tarefas', nome: 'Área do Cliente › Chamados' },
+  { id: 't-area-recebidos', app: 'Tarefas', nome: 'Área do Cliente › Recebidos' },
   // Mandei: o formulário que o cliente abre pelo link
   { id: 'm-formulario', app: 'Mandei', nome: 'Formulário do cliente' },
   // Área do Cliente: o link secreto de cada empresa (Vitor, 16/10/2026)

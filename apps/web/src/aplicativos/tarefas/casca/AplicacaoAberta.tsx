@@ -25,6 +25,9 @@ import { PaginaSintegra } from '../telas/fiscal/sintegra/PaginaSintegra';
 import { ABAS_DO_PAINEL, type AbaDoPainel } from '../telas/dp/usePainelDoDp';
 import { ConfiguracoesDoDp } from '../telas/dp/ConfiguracoesDoDp';
 import { Mandei } from '../telas/mandei/Mandei';
+import { ChamadosDoCliente } from '../telas/area-cliente/ChamadosDoCliente';
+import { LinksDoCliente } from '../telas/area-cliente/LinksDoCliente';
+import { RecebidosDoCliente } from '../telas/area-cliente/RecebidosDoCliente';
 import { CascaTarefas } from './CascaTarefas';
 import { aplicacao, aplicacoesDe, caminhoDaPagina, type IdAplicacao } from './navegacao';
 import { useOperador, type Operador } from './operador';
@@ -37,6 +40,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'dp': return ABAS_DO_PAINEL.includes(pagina as AbaDoPainel) ? <PainelDoDp aba={pagina as AbaDoPainel} /> : pagina === 'configuracoes' ? <ConfiguracoesDoDp /> : pagina === 'fgts' ? <FgtsDoDp /> : pagina === 'legislacao' ? <LegislacaoDoDp /> : <VisaoContabil pagina={pagina} dep="dp" />;
     case 'senhas': return pagina === 'acesso' ? <AcessoAoCofre /> : pagina === 'gov' ? <ContasGov /> : pagina === 'certificados' ? <Certificados /> : <SenhasDasEmpresas />;
     case 'cadastro': return pagina === 'sistema' ? <RobosEAgentes /> : <UsuariosDoNads />;
+    case 'area-cliente': return pagina === 'chamados' ? <ChamadosDoCliente /> : pagina === 'recebidos' ? <RecebidosDoCliente /> : <LinksDoCliente />;
     case 'mandei': return <Mandei pagina={pagina === 'central' ? 'central' : 'meus'} />;
     case 'drive': return <ExploradorDoDrive />;
     case 'contato': return pagina === 'historico' ? <HistoricoDoRobo /> : <CaixaDoRobo />;
