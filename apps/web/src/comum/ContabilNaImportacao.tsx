@@ -3,7 +3,7 @@
 // entram ou saem por ele), e os razões das contas de uma vez só — cada um reconhecido pelo código da aba do XLS e pelo
 // nome da conta no dinâmico, e entregue à etapa que usa. No desenho das linhas da Importação (imp-bloco).
 import { clientes as cl } from '@nads/core';
-import { BotaoIcone, Icone, useRetorno } from '@nads/ui';
+import { BotaoIcone, CampoArquivo, Icone, useRetorno } from '@nads/ui';
 import { useId } from 'react';
 import { useContabilDaEmpresa } from './contabilDaEmpresa';
 
@@ -51,7 +51,7 @@ export function ContabilNaImportacao({ nome, codigo }: { nome: string; codigo: n
               ) : (
                 <>
                   <label htmlFor={idDin} className="icon-btn icon-btn-sm imp-btn" title={vm.dinamico ? 'Importar o balancete dinâmico de novo (o do Clientes está valendo)' : 'Importar o balancete dinâmico (XLS do Alterdata)'} aria-label="Importar o balancete dinâmico"><Icone nome="upload" /></label>
-                  <input id={idDin} type="file" accept=".xls,.xlsx,.ods" className="sr-only" onChange={e => { const f = e.target.files?.[0] || null; e.target.value = ''; void importarDinamico(f); }} />
+                  <CampoArquivo semCaixa id={idDin} aceitar=".xls,.xlsx,.ods" onEscolher={f => { void importarDinamico(f); }} />
                 </>
               )}
             </div>
@@ -70,7 +70,7 @@ export function ContabilNaImportacao({ nome, codigo }: { nome: string; codigo: n
             <div className="imp-grupo" aria-label="Razões das contas">
               <span className="imp-rotulo">Razões</span>
               <label htmlFor={idRaz} className="icon-btn icon-btn-sm imp-btn" title="Importar os razões (XLS da conciliação do Alterdata; vários de uma vez)" aria-label="Importar os razões"><Icone nome="upload" /></label>
-              <input id={idRaz} type="file" multiple accept=".xls,.xlsx,.ods" className="sr-only" onChange={e => { const fs = Array.from(e.target.files || []); e.target.value = ''; void importarRazoes(fs); }} />
+              <CampoArquivo semCaixa multiplo id={idRaz} aceitar=".xls,.xlsx,.ods" onEscolherVarios={fs => { void importarRazoes(fs); }} />
             </div>
           </div>
         </div>

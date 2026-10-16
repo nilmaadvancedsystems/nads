@@ -1,7 +1,7 @@
 // A conferência do INSS na etapa da folha, no desenho da Importação do banco (Vitor, 05/10/2026): a linha "INSS a recolher"
 // com o Razão (XLS) e as Guias (PDF dos comprovantes) à direita, a grade dos meses (provisão, guia, diferença, baixa; clicar
 // abre o mês) e a faixa Lançamentos sugeridos (o Grupo a grupo saiu: Vitor, 07/10/2026); embaixo, o fechamento do saldo.
-import { Icone, LogoBanco, LogoInss } from '@nads/ui';
+import { CampoArquivo, Icone, LogoBanco, LogoInss } from '@nads/ui';
 import { useId, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import type { InssDaEtapa as Inss } from '../useInssDaEtapa';
@@ -20,8 +20,7 @@ function Importar({ id, titulo, aceitar, varios, lendo, onArquivos }: { id: stri
   return (
     <>
       <label htmlFor={id} className="icon-btn icon-btn-sm imp-btn" title={'Importar ' + titulo} aria-label={'Importar ' + titulo}><Icone nome="upload" /></label>
-      <input id={id} type="file" multiple={varios} accept={aceitar} className="sr-only"
-        onChange={e => { const fs = Array.from(e.target.files || []); e.target.value = ''; onArquivos(fs); }} />
+      <CampoArquivo semCaixa id={id} multiplo={varios} aceitar={aceitar} onEscolherVarios={onArquivos} onEscolher={f => onArquivos(f ? [f] : [])} />
     </>
   );
 }

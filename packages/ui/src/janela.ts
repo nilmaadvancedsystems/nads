@@ -21,7 +21,7 @@ function ouvirOFoco() {
 ouvirOFoco();
 
 function focaveis(el: HTMLElement): HTMLElement[] {
-  return Array.from(el.querySelectorAll<HTMLElement>(FOCAVEIS)).filter(f => !f.closest('[hidden],[inert]') && (f.offsetWidth > 0 || f.offsetHeight > 0 || f === document.activeElement));
+  return Array.from(el.querySelectorAll<HTMLElement>(FOCAVEIS)).filter(f => f.tabIndex >= 0 && !f.closest('[hidden],[inert]') && (f.offsetWidth > 0 || f.offsetHeight > 0 || f === document.activeElement));
 }
 
 /**
@@ -42,7 +42,7 @@ export function useJanela(ref: RefObject<HTMLElement | null>, fechar: (() => voi
       if (!el.isConnected || el.contains(document.activeElement)) return;
       // o primeiro campo de digitar; sem campo, o primeiro botão (o ×)
       const lista = focaveis(el);
-      const primeiro = lista.find(f => f.matches('input:not([type="checkbox"]):not([type="radio"]),select,textarea')) || lista[0];
+      const primeiro = lista.find(f => f.matches('input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),select,textarea')) || lista[0];
       if (primeiro) primeiro.focus({ preventScroll: true });
       else { if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1'); el.focus({ preventScroll: true }); }
     }, 0);

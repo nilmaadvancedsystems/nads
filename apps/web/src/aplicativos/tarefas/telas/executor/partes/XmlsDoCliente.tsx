@@ -1,6 +1,6 @@
 // O tópico "XMLs do cliente" da janela de importar (08/10/2026): a área de soltar (a dos certificados), o que foi lido e,
 // depois de mandar, o andamento do robô com as peças da janela do SIEG (a barra, os números e os passos).
-import { BotaoAcao, Icone } from '@nads/ui';
+import { BotaoAcao, CampoArquivo, Icone } from '@nads/ui';
 import { useRef, useState } from 'react';
 import { useXmlsDoCliente } from '../useXmlsDoCliente';
 
@@ -9,7 +9,7 @@ export function XmlsDoCliente({ codigo, competencia, saidas = false }: { codigo:
   const vm = useXmlsDoCliente(codigo, competencia);
   const input = useRef<HTMLInputElement>(null);
   const [sobre, setSobre] = useState(false);
-  const soltar = (fs: FileList | null | undefined) => { if (fs?.length) void vm.soltar([...fs]); };
+  const soltar = (fs: FileList | File[] | null | undefined) => { if (fs?.length) void vm.soltar([...fs]); };
   const a = vm.andamento;
   return (
     <div className="xmls-cliente">
@@ -23,7 +23,7 @@ export function XmlsDoCliente({ codigo, competencia, saidas = false }: { codigo:
           <span className="hint">ou solte os arquivos abaixo</span>
         </div>
       )}
-      <input ref={input} type="file" accept=".xml,.zip" multiple hidden onChange={e => { soltar(e.target.files); e.target.value = ''; }} />
+      <CampoArquivo semCaixa semFoco multiplo ref={input} aceitar=".xml,.zip" onEscolherVarios={soltar} />
       <button type="button" className={'cert-soltar' + (sobre ? ' sobre' : '') + (vm.lidos ? ' compacto' : '')} onClick={() => input.current?.click()}
         onDragOver={e => { e.preventDefault(); setSobre(true); }} onDragLeave={() => setSobre(false)}
         onDrop={e => { e.preventDefault(); setSobre(false); soltar(e.dataTransfer.files); }}>

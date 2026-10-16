@@ -1,6 +1,6 @@
 // A janela "Enviar feedback": o print (Tirar print da tela, Escolher imagem ou Ctrl+V) e o que melhorar. Ao tirar o
 // print, a janela some por um instante para não sair na foto.
-import { BotaoFechar, BotaoIcone, Icone, useJanela } from '@nads/ui';
+import { BotaoFechar, BotaoIcone, CampoArquivo, Icone, useJanela } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { capturarTela, imagemDoArquivo } from './capturaDeTela';
 import { useEnviarFeedback } from './useEnviarFeedback';
@@ -53,7 +53,7 @@ export function JanelaDeFeedback({ fechar }: { fechar: () => void }) {
                 <button type="button" className="btn btn-outline" onClick={() => arquivo.current?.click()}><Icone nome="upload" />Escolher imagem</button>
                 <span className="hint">ou Ctrl+V</span>
                 {falha && <span className="hint">{falha}</span>}
-                <input ref={arquivo} type="file" accept="image/*" hidden onChange={e => { const f = e.target.files?.[0]; if (f) void imagemDoArquivo(f).then(vm.setImagem); e.target.value = ''; }} />
+                <CampoArquivo semCaixa semFoco ref={arquivo} aceitar="image/*" onEscolher={f => { if (f) void imagemDoArquivo(f).then(vm.setImagem); }} />
               </div>
             )}
           </div>

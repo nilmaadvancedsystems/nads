@@ -1,7 +1,7 @@
 // A janela "Importar certificados" (07/10/2026: "já puxe e salve na empresa correta"): solta vários .pfx; cada um vira
 // um cartão com a empresa achada pelo CNPJ (ou escolher), a senha e, lido, a validade e o titular. Guardar põe todos
 // os lidos nas empresas deles.
-import { BotaoAcao, BotaoFechar, Icone, MenuSuspenso, useJanela } from '@nads/ui';
+import { BotaoAcao, BotaoFechar, CampoArquivo, Icone, MenuSuspenso, useJanela } from '@nads/ui';
 import { useRef, useState } from 'react';
 import { Senha } from './SegredosDaEmpresa';
 import type { VmCofre } from './useCofre';
@@ -35,7 +35,7 @@ export function ImportarCertificados({ cofre, fechar }: { cofre: VmCofre; fechar
   // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
   const janela = useRef<HTMLDivElement>(null);
   useJanela(janela, fechar);
-  const soltar = (fs: FileList | null | undefined) => { if (fs?.length) void vm.adicionar([...fs]); };
+  const soltar = (fs: FileList | File[] | null | undefined) => { if (fs?.length) void vm.adicionar([...fs]); };
   return (
     <div className="modal-overlay pessoal-fundo" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
       <div ref={janela} className="pessoal-janela troca-janela imp-cert" role="dialog" aria-modal="true" aria-label="Importar certificados">
@@ -44,7 +44,7 @@ export function ImportarCertificados({ cofre, fechar }: { cofre: VmCofre; fechar
           <BotaoFechar onClick={fechar} />
         </header>
         <div className="imp-cert-corpo">
-          <input ref={input} type="file" accept=".pfx,.p12,.json" multiple hidden onChange={e => { soltar(e.target.files); e.target.value = ''; }} />
+          <CampoArquivo semCaixa semFoco multiplo ref={input} aceitar=".pfx,.p12,.json" onEscolherVarios={soltar} />
           <button type="button" className={'cert-soltar' + (sobre ? ' sobre' : '') + (vm.fila.length ? ' compacto' : '')} onClick={() => input.current?.click()}
             onDragOver={e => { e.preventDefault(); setSobre(true); }} onDragLeave={() => setSobre(false)}
             onDrop={e => { e.preventDefault(); setSobre(false); soltar(e.dataTransfer.files); }}>

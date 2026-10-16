@@ -1,6 +1,6 @@
 // Cadastro › empresa › Plano de contas: a barra de cima (quantas contas, de onde veio, busca, Grupo ▾,
 // "Importar ▾") e a lista, com o recuo da classificação, as sintéticas em negrito e onde cada conta é usada.
-import { Icone, MenuSuspenso, useCarregando } from '@nads/ui';
+import { CampoArquivo, Icone, MenuSuspenso, useCarregando } from '@nads/ui';
 import { useRef } from 'react';
 import { usePlanoDeContas } from './usePlanoDeContas';
 
@@ -11,8 +11,7 @@ export function PlanoDeContas({ rota }: { rota: string }) {
   const escolherArquivo = () => arquivo.current?.click();
   return (
     <section>
-      <input ref={arquivo} type="file" accept=".xls,.xlsx,.csv,.txt,.ods" hidden
-        onChange={e => { const f = e.target.files?.[0] || null; e.target.value = ''; void vm.importarArquivo(f); }} />
+      <CampoArquivo semCaixa semFoco ref={arquivo} aceitar=".xls,.xlsx,.csv,.txt,.ods" onEscolher={f => { void vm.importarArquivo(f); }} />
       <div className="tarefas-barra-topo">
         {vm.plano && (
           <span className="tarefas-contador" title={vm.resumo.analiticas + ' recebem lançamento'}>

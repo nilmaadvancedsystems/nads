@@ -1,6 +1,6 @@
 // LCDPR › Configuração (a "Configuração geral" do lcdpr.html), no estilo das configurações do Notion (como o Financeiro ›
 // Configurações): o produtor, os padrões do lançamento e o backup e a limpeza. Cada campo grava ao sair dele.
-import { ConfigLinha, ConfigSecao, Icone, MenuSuspenso, useCarregando } from '@nads/ui';
+import { CampoArquivo, ConfigLinha, ConfigSecao, Icone, MenuSuspenso, useCarregando } from '@nads/ui';
 import { useConfiguracaoLcdpr } from './useConfiguracaoLcdpr';
 
 const enter = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') e.currentTarget.blur(); };
@@ -45,8 +45,7 @@ export function ConfiguracaoLcdpr() {
         </ConfigLinha>
         <ConfigLinha titulo="Importar backup" descricao="Troca as regras e os cadastros pelos do arquivo (vale para todos que usam o LCDPR).">
           <label className="btn btn-outline" htmlFor="lcdpr-backup" aria-disabled={!!vm.erro || undefined}><Icone nome="upload" />Importar</label>
-          <input type="file" id="lcdpr-backup" accept=".json,application/json" className="sr-only" disabled={!!vm.erro}
-            onChange={e => { const f = e.target.files?.[0] || null; e.target.value = ''; void vm.importarBackup(f); }} />
+          <CampoArquivo semCaixa id="lcdpr-backup" aceitar=".json,application/json" desabilitado={!!vm.erro} onEscolher={f => { void vm.importarBackup(f); }} />
         </ConfigLinha>
         <ConfigLinha titulo="Limpar lançamentos importados" descricao="Tira todos os lançamentos desta sessão. As regras e os cadastros continuam.">
           <button type="button" className="btn btn-danger" disabled={!vm.lancamentos} onClick={() => void vm.limparLancamentos()}><Icone nome="x" />Limpar</button>

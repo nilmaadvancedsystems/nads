@@ -1,6 +1,6 @@
 // A etapa Despesas e receitas (Vitor, 16/10/2026): a linha do balancete dinâmico (o do Clientes, ou um mais novo importado
 // aqui) e a tabela das contas do lado errado — a despesa credora e a receita devedora, com os meses. Tudo certo, o Ok.
-import { Icone } from '@nads/ui';
+import { CampoArquivo, Icone } from '@nads/ui';
 import { useId } from 'react';
 import { useResultado } from './useResultado';
 
@@ -27,8 +27,7 @@ export function Resultado() {
               ) : (
                 <>
                   <label htmlFor={id} className="icon-btn icon-btn-sm imp-btn" title={vm.temDinamico ? 'Importar um balancete dinâmico mais novo (o corrigido)' : 'Importar o balancete dinâmico'} aria-label="Importar o balancete dinâmico"><Icone nome="upload" /></label>
-                  <input id={id} type="file" accept=".xls,.xlsx,.ods" className="sr-only"
-                    onChange={e => { const f = e.target.files?.[0] || null; e.target.value = ''; void vm.importar(f); }} />
+                  <CampoArquivo semCaixa id={id} aceitar=".xls,.xlsx,.ods" onEscolher={f => { void vm.importar(f); }} />
                 </>
               )}
             </div>

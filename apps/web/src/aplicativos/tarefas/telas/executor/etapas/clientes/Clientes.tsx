@@ -2,7 +2,7 @@
 // direita; os arquivos na linha da Importação (o ícone de importar; importado, o check que vira × e tira); o credor na
 // grade dos Arquivos (com ele, o "Corrigi, irei reimportar" no lugar do Próximo); os clientes em tabela; o selo de cada cliente (o saldo, Conferido ou Ok) é do sistema: Conferido é o razão com nota em
 // aberto ou pagamento solto (Vitor, 07/10/2026), e o conferido abre a observação; o envio, só o Mandar pelo Mandei. Só o balancete dinâmico (Vitor, 06/10/2026).
-import { Icone, MenuSuspenso, Segmentado, LogoBanco, fundoSuaveDoBanco } from '@nads/ui';
+import { CampoArquivo, fundoSuaveDoBanco, Icone, LogoBanco, MenuSuspenso, Segmentado } from '@nads/ui';
 import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { useClientes, type FiltroClientes, type TelaClientes } from './useClientes';
@@ -110,8 +110,7 @@ function LinhaDoArquivo({ titulo, dica = '', feito, onArquivo, onTirar, teste, c
                 <button type="button" className="icon-btn icon-btn-sm imp-btn" title={'Importar o ' + titulo.toLowerCase()} aria-label={'Importar o ' + titulo.toLowerCase()} onClick={() => arquivo.current?.click()}>
                   <Icone nome="upload" />
                 </button>
-                <input ref={arquivo} type="file" accept=".xls,.xlsx,.csv" className="sr-only" tabIndex={-1} aria-hidden="true"
-                  onChange={ev => { const f = ev.target.files?.[0]; ev.target.value = ''; onArquivo(f); }} />
+                <CampoArquivo semCaixa semFoco ref={arquivo} aceitar=".xls,.xlsx,.csv" onEscolher={f => onArquivo(f ?? undefined)} />
               </>
             )}
           </div>
@@ -140,8 +139,7 @@ function ListaDeClientes({ vm }: { vm: VM }) {
   const alternarNoBanco = (k: string) => setNoBanco(f => { const n = new Set(f); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   return (
     <>
-      <input ref={arquivo} type="file" accept=".xls,.xlsx,.ods" className="sr-only" tabIndex={-1} aria-hidden="true"
-        onChange={ev => { const f = ev.target.files?.[0]; ev.target.value = ''; vm.importarRazao(conta.current, f); }} />
+      <CampoArquivo semCaixa semFoco ref={arquivo} aceitar=".xls,.xlsx,.ods" onEscolher={f => vm.importarRazao(conta.current, f ?? undefined)} />
       <div className="tarefas-barra-topo">
         <MenuSuspenso rotulo={ROTULO_FILTRO[vm.filtro]} className="btn btn-outline" dica="Filtrar os clientes"
           itens={(Object.keys(ROTULO_FILTRO) as FiltroClientes[]).map(f => ({

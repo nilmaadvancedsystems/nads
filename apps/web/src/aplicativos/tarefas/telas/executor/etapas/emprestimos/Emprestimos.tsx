@@ -4,7 +4,7 @@
 // Contratos (os achados no histórico; sem a grade de saldo: "já pode ir direto para contratos") e Pendências (o que
 // conferir, no lugar dos avisos do topo: "deixe isso em pendências, em um dropdown igual a esses").
 // Lançamentos: os de cada empréstimo, filtrados por contrato.
-import { Icone, LogoBanco, MenuSuspenso, useRetorno } from '@nads/ui';
+import { CampoArquivo, Icone, LogoBanco, MenuSuspenso, useRetorno } from '@nads/ui';
 import { useRef, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
 import { useAbasDaEtapa, useChaveDaEtapa } from '../contexto';
@@ -162,8 +162,7 @@ export function Emprestimos() {
         <button type="button" className="icon-btn" onClick={() => arquivo.current?.click()} title={'Importar o razão de cada empréstimo (XLS da conciliação do Alterdata), com ' + vm.periodo} aria-label="Importar razão">
           <Icone nome="upload" />
         </button>
-        <input ref={arquivo} type="file" multiple accept=".xls,.xlsx,.ods" className="sr-only" tabIndex={-1} aria-hidden="true"
-          onChange={ev => { const fs = Array.from(ev.target.files || []); ev.target.value = ''; vm.importar(fs); }} />
+        <CampoArquivo semCaixa semFoco multiplo ref={arquivo} aceitar=".xls,.xlsx,.ods" onEscolherVarios={fs => vm.importar(fs)} />
       </div>
 
       {tela === 'lancamentos' ? <Lancamentos vm={vm} /> : (

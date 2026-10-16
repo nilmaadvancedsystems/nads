@@ -104,29 +104,56 @@ export function MensagemFlutuante({ id, children, onFechar, chave, duracao = 370
   return <div id={id} className={className} style={className ? undefined : { marginBottom: 16 }}>{children}</div>;
 }
 
-/** Campo "Escolher arquivo" (.file-picker) com × para tirar. */
-export function CampoArquivo({ id, arquivo, onEscolher, aceitar, oculto, abrirAgora }: {
-  id: string;
-  arquivo: File | null;
-  onEscolher: (f: File | null) => void;
+/**
+ * Campo "Escolher arquivo" (.file-picker) com × para tirar.
+ * semCaixa: só o campo escondido, para a tela que desenha o próprio gatilho (um label com htmlFor={id}, um botão que chama
+ * ref.current.click() ou a área de soltar); ele limpa a cada escolha, para dar para escolher o mesmo arquivo de novo
+ * (revisão da UI, 16/10/2026: eram 25 <input type="file"> feitos à mão, cada um do seu jeito).
+ */
+export function CampoArquivo({ id, arquivo = null, onEscolher, onEscolherVarios, aceitar, oculto, abrirAgora, semCaixa, multiplo, semFoco, desabilitado, ref }: {
+  id?: string;
+  arquivo?: File | null;
+  onEscolher?: (f: File | null) => void;
+  /** com multiplo: todos os escolhidos (lista vazia se a pessoa cancelar) */
+  onEscolherVarios?: (fs: File[]) => void;
   aceitar: string;
   oculto?: boolean;
   /** muda de valor → abre a janela de escolher arquivo (Reimportar) */
   abrirAgora?: number;
+  semCaixa?: boolean;
+  multiplo?: boolean;
+  /** fora do Tab (o gatilho da tela é que recebe o foco) */
+  semFoco?: boolean;
+  desabilitado?: boolean;
+  ref?: Ref<HTMLInputElement>;
 }) {
-  const input = useRef<HTMLInputElement>(null);
+  const input = useRef<HTMLInputElement | null>(null);
   useEffect(() => { if (abrirAgora) input.current?.click(); }, [abrirAgora]);
-  useEffect(() => { if (!arquivo && input.current) input.current.value = ''; }, [arquivo]);
+  useEffect(() => { if (!arquivo && input.current && !semCaixa) input.current.value = ''; }, [arquivo, semCaixa]);
+  const ligar = (el: HTMLInputElement | null) => {
+    input.current = el;
+    if (typeof ref === 'function') ref(el); else if (ref) (ref as { current: HTMLInputElement | null }).current = el;
+  };
+  const campo = (
+    <input ref={ligar} type="file" id={id} accept={aceitar} multiple={multiplo} className="sr-only" disabled={desabilitado}
+      tabIndex={semFoco ? -1 : undefined} aria-hidden={semFoco ? 'true' : undefined}
+      onChange={ev => {
+        const fs = Array.from(ev.target.files || []);
+        if (semCaixa) ev.target.value = '';
+        if (multiplo) onEscolherVarios?.(fs); else onEscolher?.(fs[0] || null);
+      }} />
+  );
+  if (semCaixa) return campo;
   return (
     <>
       <label className={'file-picker' + (arquivo ? ' has-file' : '')} htmlFor={id} hidden={oculto}>
         <span><Icone nome="upload" /></span>
         <span className="file-picker-name">{arquivo ? arquivo.name : 'Escolher arquivo'}</span>
         {arquivo && (
-          <button type="button" className="file-clear" title="Remover arquivo" aria-label={'Remover o arquivo ' + arquivo.name} onClick={ev => { ev.preventDefault(); ev.stopPropagation(); onEscolher(null); }}>×</button>
+          <button type="button" className="file-clear" title="Remover arquivo" aria-label={'Remover o arquivo ' + arquivo.name} onClick={ev => { ev.preventDefault(); ev.stopPropagation(); onEscolher?.(null); }}>×</button>
         )}
       </label>
-      <input ref={input} type="file" id={id} accept={aceitar} className="sr-only" onChange={ev => onEscolher(ev.target.files?.[0] || null)} />
+      {campo}
     </>
   );
 }

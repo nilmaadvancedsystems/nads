@@ -1,7 +1,7 @@
 // Embaixo do item Pró-labore do checklist da Contabilização da Folha (Vitor, 14/10/2026): o ícone de importar o razão do
 // Pró-labore a pagar (importado, o check que vira × e tira) e, com ele, só a conta do crédito, o dia útil do pagamento (1º
 // ao 5º do mês seguinte) e o ícone do "Importar no meu Sistema" (o .xls do Alterdata). A relação do razão não aparece.
-import { Icone, MenuSuspenso } from '@nads/ui';
+import { CampoArquivo, Icone, MenuSuspenso } from '@nads/ui';
 import { useId } from 'react';
 import { usePagamentosDoProLabore } from '../usePagamentosDoProLabore';
 
@@ -18,7 +18,7 @@ export function PagamentosDoProLabore({ empresa, codigo, contaDoItem, travado }:
       ) : (
         <>
           <label htmlFor={id} className={'icon-btn icon-btn-sm imp-btn' + (travado ? ' is-locked' : '')} aria-disabled={travado || undefined} title="Importar o razão do Pró-labore a pagar (XLS da conciliação do Alterdata)" aria-label="Importar o razão do pró-labore"><Icone nome="upload" /></label>
-          <input id={id} type="file" accept=".xls,.xlsx,.ods" className="sr-only" disabled={travado} onChange={e => { const f = e.target.files?.[0] || null; e.target.value = ''; void vm.importar(f); }} />
+          <CampoArquivo semCaixa id={id} aceitar=".xls,.xlsx,.ods" desabilitado={travado} onEscolher={f => { void vm.importar(f); }} />
         </>
       )}
       {vm.temRazao && (vm.qtd ? (

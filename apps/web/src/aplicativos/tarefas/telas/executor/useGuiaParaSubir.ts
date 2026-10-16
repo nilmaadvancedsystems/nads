@@ -44,7 +44,7 @@ export function useGuiaParaSubir(codigo: string, competencia: string, enviadas: 
     });
     paradas.current.add(parar);
   }
-  const soltar = (fs: FileList | null | undefined) => { for (const f of fs ? [...fs] : []) void subir(f); };
+  const soltar = (fs: FileList | File[] | null | undefined) => { for (const f of fs ? [...fs] : []) void subir(f); };
 
   return { lista, soltar };
 }

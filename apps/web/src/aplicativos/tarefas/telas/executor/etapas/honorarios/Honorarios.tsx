@@ -2,7 +2,7 @@
 // que zerar) e a pergunta do Cadastro, "o escritório emite nota de honorário?". Sem nota, a linha do Extrato por cobrança
 // (o PDF do Alterdata): as cobranças do período e o .xls de importação com a provisão de cada uma na data de emissão.
 // Só peças que já existem: a linha da Importação (imp-bloco), a regra do Cadastro (cad-regra), a tabela e a barra.
-import { Alerta, Icone } from '@nads/ui';
+import { Alerta, CampoArquivo, Icone } from '@nads/ui';
 import { useId, useState } from 'react';
 import { BotaoDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { RazaoDaFolha } from '../../partes/RazaoDaFolha';
@@ -68,8 +68,7 @@ function ExtratoPorCobranca({ vm }: { vm: Vm }) {
               <>
                 <BotaoDeTeste itens={vm.testeExtrato} />
                 <label htmlFor={id} className="icon-btn icon-btn-sm imp-btn" title="Importar o Extrato por cobrança (PDF do Alterdata: as cobranças de honorário do escritório para a empresa)" aria-label="Importar o Extrato por cobrança"><Icone nome="upload" /></label>
-                <input id={id} type="file" accept=".pdf,application/pdf" className="sr-only"
-                  onChange={ev => { const f = ev.target.files?.[0] || null; ev.target.value = ''; void vm.importarExtrato(f); }} />
+                <CampoArquivo semCaixa id={id} aceitar=".pdf,application/pdf" onEscolher={f => { void vm.importarExtrato(f); }} />
               </>
             )}
           </div>

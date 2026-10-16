@@ -1,7 +1,7 @@
 // A etapa Fechar a competência (Vitor, 16/10/2026): a linha do balancete dinâmico final (o da Importação; um mais novo,
 // importado aqui, vale para todas as etapas), as pendências que o dinâmico mostra (ou o Ok) e o envio único ao cliente:
 // o que foi marcado no "+" de Clientes e de Fornecedores, num ticket só do Mandei.
-import { Icone } from '@nads/ui';
+import { CampoArquivo, Icone } from '@nads/ui';
 import { useId } from 'react';
 import { useFechamento } from './useFechamento';
 
@@ -21,7 +21,7 @@ export function Fechamento() {
               <div className="imp-grupo" aria-label="Balancete dinâmico final">
                 <span className="imp-rotulo">Dinâmico</span>
                 <label htmlFor={id} className="icon-btn icon-btn-sm imp-btn" title="Importar o dinâmico final (depois das correções): vale para todas as etapas" aria-label="Importar o balancete dinâmico final"><Icone nome="upload" /></label>
-                <input id={id} type="file" accept=".xls,.xlsx,.ods" className="sr-only" onChange={e => { const f = e.target.files?.[0] || null; e.target.value = ''; void vm.importar(f); }} />
+                <CampoArquivo semCaixa id={id} aceitar=".xls,.xlsx,.ods" onEscolher={f => { void vm.importar(f); }} />
               </div>
             </div>
           </div>

@@ -1,7 +1,7 @@
 // A conferência do FGTS na aba FGTS da etapa da folha (Vitor, 16/10/2026), no desenho da do INSS: a linha "Guias do FGTS"
 // com as Guias (PDF do FGTS Digital) à direita, a grade dos meses (provisão, guia, diferença, pagamento; clicar abre o mês
 // com cada trabalhador), a faixa Lançamentos sugeridos e, embaixo, o fechamento do saldo. O razão é o da linha de cima.
-import { Icone, LogoFgts } from '@nads/ui';
+import { CampoArquivo, Icone, LogoFgts } from '@nads/ui';
 import { useId, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosMeses';
@@ -37,7 +37,7 @@ export function FgtsDaEtapa({ vm }: { vm: Fgts }) {
               ) : (
                 <>
                   <label htmlFor={idGuias} className="icon-btn icon-btn-sm imp-btn" title="Importar as guias do FGTS (PDF &quot;Detalhe da Guia Emitida&quot; do FGTS Digital)" aria-label="Importar as guias do FGTS"><Icone nome="upload" /></label>
-                  <input id={idGuias} type="file" multiple accept=".pdf" className="sr-only" onChange={e => { const fs = Array.from(e.target.files || []); e.target.value = ''; void vm.importarGuias(fs); }} />
+                  <CampoArquivo semCaixa multiplo id={idGuias} aceitar=".pdf" onEscolherVarios={fs => { void vm.importarGuias(fs); }} />
                 </>
               )}
           </div>

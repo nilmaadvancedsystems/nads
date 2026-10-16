@@ -1,6 +1,6 @@
 // Subir a guia do mês (Vitor, 13/10/2026: "coloca a etapa de upar o DAS e DAE em alguma das partes"): o PDF do DAS ou do
 // DAE vai para a pasta do cliente pelo Claudio Secretario (useGuiaParaSubir). A área de soltar é a dos XMLs do cliente.
-import { Icone } from '@nads/ui';
+import { CampoArquivo, Icone } from '@nads/ui';
 import { useRef, useState } from 'react';
 import { useGuiaParaSubir } from '../useGuiaParaSubir';
 
@@ -19,7 +19,7 @@ export function GuiaParaSubir({ guia, codigo, competencia, enviadas, marcar }: {
         O PDF do {guia} do mês vai para a pasta do cliente no Drive (pelo Claudio Secretario: o arquivamento leva para o lugar certo).
         {enviadas > 0 && <> <span className="badge badge-ok">{enviadas === 1 ? '1 guia enviada' : enviadas + ' guias enviadas'}</span></>}
       </p>
-      <input ref={input} type="file" accept=".pdf,application/pdf" multiple hidden onChange={ev => { soltar(ev.target.files); ev.target.value = ''; }} />
+      <CampoArquivo semCaixa semFoco multiplo ref={input} aceitar=".pdf,application/pdf" onEscolherVarios={soltar} />
       <button type="button" className={'cert-soltar compacto' + (sobre ? ' sobre' : '')} onClick={() => input.current?.click()}
         onDragOver={ev => { ev.preventDefault(); setSobre(true); }} onDragLeave={() => setSobre(false)}
         onDrop={ev => { ev.preventDefault(); setSobre(false); soltar(ev.dataTransfer.files); }}>

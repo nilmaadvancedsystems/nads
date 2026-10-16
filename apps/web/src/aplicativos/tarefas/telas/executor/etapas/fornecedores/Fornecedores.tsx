@@ -1,6 +1,6 @@
 // A etapa Fornecedores da Tarefa (Vitor, 07/10/2026): a mesma tela do Clientes, peça por peça, com o fornecedor devedor no
 // lugar do cliente credor (com ele, o "Corrigi, irei reimportar" no lugar do Próximo, até reimportar o dinâmico corrigido).
-import { Icone, MenuSuspenso, Segmentado, LogoBanco, fundoSuaveDoBanco } from '@nads/ui';
+import { CampoArquivo, fundoSuaveDoBanco, Icone, LogoBanco, MenuSuspenso, Segmentado } from '@nads/ui';
 import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { useFornecedores, type FiltroFornecedores, type TelaFornecedores } from './useFornecedores';
@@ -108,8 +108,7 @@ function LinhaDoArquivo({ titulo, dica = '', feito, onArquivo, onTirar, teste, c
                 <button type="button" className="icon-btn icon-btn-sm imp-btn" title={'Importar o ' + titulo.toLowerCase()} aria-label={'Importar o ' + titulo.toLowerCase()} onClick={() => arquivo.current?.click()}>
                   <Icone nome="upload" />
                 </button>
-                <input ref={arquivo} type="file" accept=".xls,.xlsx,.csv" className="sr-only" tabIndex={-1} aria-hidden="true"
-                  onChange={ev => { const f = ev.target.files?.[0]; ev.target.value = ''; onArquivo(f); }} />
+                <CampoArquivo semCaixa semFoco ref={arquivo} aceitar=".xls,.xlsx,.csv" onEscolher={f => onArquivo(f ?? undefined)} />
               </>
             )}
           </div>
@@ -138,8 +137,7 @@ function ListaDeFornecedores({ vm }: { vm: VM }) {
   const alternarNoBanco = (k: string) => setNoBanco(f => { const n = new Set(f); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   return (
     <>
-      <input ref={arquivo} type="file" accept=".xls,.xlsx,.ods" className="sr-only" tabIndex={-1} aria-hidden="true"
-        onChange={ev => { const f = ev.target.files?.[0]; ev.target.value = ''; vm.importarRazao(conta.current, f); }} />
+      <CampoArquivo semCaixa semFoco ref={arquivo} aceitar=".xls,.xlsx,.ods" onEscolher={f => vm.importarRazao(conta.current, f ?? undefined)} />
       <div className="tarefas-barra-topo">
         <MenuSuspenso rotulo={ROTULO_FILTRO[vm.filtro]} className="btn btn-outline" dica="Filtrar os fornecedores"
           itens={(Object.keys(ROTULO_FILTRO) as FiltroFornecedores[]).map(f => ({

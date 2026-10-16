@@ -2,7 +2,7 @@
 // que segue o Notion) — à esquerda a pessoa, a busca e os tópicos em grupos; à direita o tópico aberto, em seções
 // com cabeçalho e uma opção por linha (o rótulo e a explicação à esquerda, o controle à direita). Fecha no ×, no Esc e
 // clicando fora.
-import { animacoesPedidas, BotaoFechar, ConfigLinha, ConfigSecao, definirNivelDeAnimacao, Icone, MenuSuspenso, NIVEIS_DE_ANIMACAO, nivelDeAnimacao, SeletorTema, useIndicador, useJanela, type NivelDeAnimacao, type NomeIcone } from '@nads/ui';
+import { animacoesPedidas, BotaoFechar, CampoArquivo, ConfigLinha, ConfigSecao, definirNivelDeAnimacao, Icone, MenuSuspenso, NIVEIS_DE_ANIMACAO, nivelDeAnimacao, SeletorTema, useIndicador, useJanela, type NivelDeAnimacao, type NomeIcone } from '@nads/ui';
 import { animate, cleanInlineStyles, spring, stagger, type JSAnimation } from 'animejs';
 import { useLayoutEffect, useRef, useState } from 'react';
 
@@ -108,8 +108,7 @@ function MinhaConta({ vm }: { vm: VmPessoal }) {
             <span className="cfg-linha-desc">Aparece no seu ícone, no canto do cabeçalho, e no Entregas (é a mesma conta).</span>
           </div>
           <div className="cfg-linha-controle">
-            <input ref={arquivo} type="file" accept="image/*" hidden
-              onChange={ev => { const f = ev.target.files?.[0]; if (f) c.trocarFoto(f); ev.target.value = ''; }} />
+            <CampoArquivo semCaixa semFoco ref={arquivo} aceitar="image/*" onEscolher={f => { if (f) c.trocarFoto(f); }} />
             <button type="button" className="btn btn-outline" disabled={c.salvandoFoto} onClick={() => arquivo.current?.click()}>
               {c.salvandoFoto ? <span className="btn-spinner" /> : <Icone nome="upload" />}{c.foto ? 'Trocar foto' : 'Escolher foto'}
             </button>

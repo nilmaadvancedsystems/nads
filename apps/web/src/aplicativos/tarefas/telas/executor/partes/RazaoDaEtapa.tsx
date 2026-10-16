@@ -1,7 +1,7 @@
 // O Caixa na etapa, no desenho da Importação do banco (Vitor, 05/10/2026): a linha da conta com o Razão à direita (o
 // ícone importa; importado, o ✓ que exclui), a grade dos meses (clicar abre o mês; de novo, volta para o período todo) e
 // a faixa Pontos de atenção (a Lançamentos saiu em 14/10/2026). Em cima, o aviso do Creditor quando o caixa tem liquidação de cobrança.
-import { Icone } from '@nads/ui';
+import { CampoArquivo, Icone } from '@nads/ui';
 import { useId, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import type { RazaoDaEtapa as Razao } from '../useRazaoDaEtapa';
@@ -95,8 +95,7 @@ export function RazaoDaEtapa({ conta, razao, conferir, teste = [] }: { conta: st
                     <label htmlFor={id} className="icon-btn icon-btn-sm imp-btn" title={'Importar o razão do ' + conta + ' (XLS da conciliação do Alterdata)'} aria-label={'Importar o razão do ' + conta}>
                       <Icone nome="upload" />
                     </label>
-                    <input id={id} type="file" accept=".xls,.xlsx,.ods" className="sr-only"
-                      onChange={e => { const f = e.target.files?.[0] || null; e.target.value = ''; void razao.importar(f); }} />
+                    <CampoArquivo semCaixa id={id} aceitar=".xls,.xlsx,.ods" onEscolher={f => { void razao.importar(f); }} />
                   </>
                 )}
               </div>

@@ -2,7 +2,7 @@
 // importar o razão; importado, o check que vira × e tira), a grade dos meses com o saldo do fim de cada mês (o credor em
 // vermelho) e a faixa com os lançamentos. Mês credor: no cabeçalho, só "<adiantamento> está credor" e o "Corrigi, irei
 // reimportar" (tira o razão para importar o corrigido; Vitor, 07/10/2026), e o Próximo da Tarefa fica travado.
-import { Icone } from '@nads/ui';
+import { CampoArquivo, Icone } from '@nads/ui';
 import { useRef } from 'react';
 import { BotaoDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
@@ -15,7 +15,7 @@ export function Adiantamento({ lado = 'fornecedores' }: { lado?: 'fornecedores' 
   const Nome = vm.nome.charAt(0).toUpperCase() + vm.nome.slice(1);
   const arquivo = useRef<HTMLInputElement>(null);
   const grade = useColunaAjustavel('adiantamento-' + lado, Math.max(14, 22 - vm.meses.length) + '%', vm.meses.length);
-  const escolher = (ev: React.ChangeEvent<HTMLInputElement>) => { const f = ev.target.files?.[0]; ev.target.value = ''; vm.importar(f); };
+  const escolher = (f: File | null) => vm.importar(f ?? undefined);
   // a aba Consulta no menu de cima (Vitor, 14/10/2026: "igual à Consulta normal")
   const consulta = useAbasDaConsulta('Adiantamento');
   if (consulta) return <ConsultaDeNotas tipos={lado === 'clientes' ? ['saidas', 'prestados'] : ['entradas', 'tomados']} />;
@@ -54,7 +54,7 @@ export function Adiantamento({ lado = 'fornecedores' }: { lado?: 'fornecedores' 
                     <button type="button" className="icon-btn icon-btn-sm imp-btn" title={'Importar o razão do ' + vm.nome} aria-label="Importar o razão" onClick={() => arquivo.current?.click()}>
                       <Icone nome="upload" />
                     </button>
-                    <input ref={arquivo} type="file" accept=".xls,.xlsx,.ods" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={escolher} />
+                    <CampoArquivo semCaixa semFoco ref={arquivo} aceitar=".xls,.xlsx,.ods" onEscolher={escolher} />
                   </>
                 )}
               </div>
