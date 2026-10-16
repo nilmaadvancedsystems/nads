@@ -2,7 +2,7 @@
 // da conta, Limpar e Conferir. Origem: conferencia.html ~L1268-1297; vcCarregarContas (~L3858),
 // vcRenderMulti (~L3717), vcMontarCfopSelect (~L3944), vcInfoLidos (~L3713), alerta (~L2639).
 import { formatos } from '@nads/core';
-import { Icone } from '@nads/ui';
+import { Icone, Vazio } from '@nads/ui';
 import { useEffect, useRef } from 'react';
 import type { InfoRelatorio, useVerificarConta } from '../useVerificarConta';
 import { AlertaVerde } from './Tabelas';
@@ -17,7 +17,7 @@ export function Formulario({ vm, oculto }: { vm: Vm; oculto: boolean }) {
   return (
     <div className="card" id="vcFormCard" hidden={oculto}>
       <h3>Conferir conta</h3>
-      <div id="vcSemPlano">{vm.semPlano && <p className="empty">Importe o balancete em Importação › Balancete antes de conferir.</p>}</div>
+      <div id="vcSemPlano">{vm.semPlano && <Vazio compacto icone="alert" texto="Importe o balancete em Importação › Balancete antes de conferir." />}</div>
       <div className="field">
         <label htmlFor="vcContaTxt">Conta contábil</label>
         <input type="text" id="vcContaTxt" autoComplete="off" readOnly disabled={vm.semPlano} value={vm.contaTexto} />

@@ -3,7 +3,7 @@
 // quando e por que parou; o histórico dos últimos meses (clicar abre aquele mês); e os arquivos que o
 // Extrator tem da empresa.
 import { tarefas } from '@nads/core';
-import { Esqueleto, Icone, MenuSuspenso, useCarregando } from '@nads/ui';
+import { Esqueleto, Icone, MenuSuspenso, useCarregando, Vazio } from '@nads/ui';
 import { Navigate } from 'react-router';
 import { TrilhaDoTopo } from '../../../../comum/topo';
 import { BASE } from '../../casca/navegacao';
@@ -96,7 +96,7 @@ export function EmpresaTarefas({ rota }: { rota: string }) {
       <div className="card">
         <div className="card-head"><h3>No Extrator</h3></div>
         {vm.carregandoExtratos ? null : vm.extratos.length === 0 ? (
-          <p className="empty">Nenhum arquivo importado no Extrator.</p>
+          <Vazio compacto icone="arquivo" texto="Nenhum arquivo importado no Extrator." />
         ) : (
           <div className="table-wrap">
             <table>

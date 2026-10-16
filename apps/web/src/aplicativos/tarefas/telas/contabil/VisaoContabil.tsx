@@ -1,6 +1,6 @@
 // Contábil: a visão de cima (só leitura). "Visão geral" = cada etapa em todas as empresas e as
 // objeções mais comuns; "Paradas" = as etapas interrompidas, com o motivo.
-import { MenuSuspenso, useCarregando } from '@nads/ui';
+import { MenuSuspenso, useCarregando, Vazio } from '@nads/ui';
 import { useVisaoContabil } from './useVisaoContabil';
 
 export function VisaoContabil({ pagina, dep }: { pagina: string; dep?: 'contabil' | 'fiscal' | 'dp' }) {
@@ -14,7 +14,7 @@ export function VisaoContabil({ pagina, dep }: { pagina: string; dep?: 'contabil
           itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
       </div>
       {vm.carregando ? null : pagina === 'paradas' ? (
-        vm.paradas.length === 0 ? <p className="empty">Nenhuma etapa parada nesta competência.</p> : (
+        vm.paradas.length === 0 ? <Vazio icone="checkCircle" titulo="Nenhuma etapa parada nesta competência" /> : (
           <div className="table-wrap">
             <table>
               <thead><tr><th>Empresa</th><th>Etapa</th><th>Motivo</th><th>Quem</th><th>Quando</th></tr></thead>
@@ -65,7 +65,7 @@ export function VisaoContabil({ pagina, dep }: { pagina: string; dep?: 'contabil
           </div>
           <div className="card">
             <div className="card-head"><h3>O que mais trava</h3></div>
-            {vm.objecoes.length === 0 ? <p className="empty">Nenhuma objeção registrada nesta competência.</p> : (
+            {vm.objecoes.length === 0 ? <Vazio compacto icone="checkCircle" texto="Nenhuma objeção registrada nesta competência." /> : (
               <ul className="tarefas-objecoes">
                 {vm.objecoes.map(o => (
                   <li key={o.etapa + o.objecao}><span className="badge badge-neutral num">{o.qtd}</span> {o.texto} <span className="hint">· {o.nomeEtapa}</span></li>

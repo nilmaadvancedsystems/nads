@@ -1,7 +1,7 @@
 // Os feedbacks da equipe (Vitor, 07/10/2026: "abra uma janela flutuante", aberta no pé da gaveta ☰, junto da versão):
 // à esquerda Novos / Vistos / Feitos / Todos; à direita cada feedback com o print (clicar amplia), o texto, quem,
 // quando, a tela e a versão; Visto e Feito.
-import { BotaoFechar, Esqueleto, Icone, useJanela } from '@nads/ui';
+import { BotaoFechar, Esqueleto, Icone, useJanela, Vazio } from '@nads/ui';
 import { useRef } from 'react';
 import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
 import type { SituacaoDoFeedback } from '../../dados/feedback';
@@ -18,7 +18,7 @@ export function JanelaDosFeedbacks({ fechar }: { fechar: () => void }) {
   return (
     <JanelaLateral rotulo="Feedbacks" topicos={topicos} topico={vm.filtro || TODOS} mudar={id => vm.setFiltro(id === TODOS ? '' : id as SituacaoDoFeedback)} fechar={fechar}
       classe="feedbacks-janela" resumo={<div className="usuario-quem"><b>Feedbacks</b></div>}>
-      {vm.carregando ? <Esqueleto linhas={6} /> : !vm.lista.length ? <p className="empty">Nenhum feedback.</p> : (
+      {vm.carregando ? <Esqueleto linhas={6} /> : !vm.lista.length ? <Vazio icone="mensagem" titulo="Nenhum feedback" /> : (
         <ul className="feedback-lista">
           {vm.lista.map(f => (
             <li key={f.id}>

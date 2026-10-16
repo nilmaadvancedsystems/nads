@@ -9,7 +9,7 @@
 // o nads (Esc sai). "T" vai para a busca, como no GitHub.
 import type { entregas as e } from '@nads/core';
 import { cleanInlineStyles } from 'animejs';
-import { animar, entrar, GAVETA, Icone, MenuSuspenso, semMovimentoForte, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, useRetorno } from '@nads/ui';
+import { animar, entrar, GAVETA, Icone, MenuSuspenso, semMovimentoForte, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, useRetorno, Vazio } from '@nads/ui';
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent, type ReactNode, type RefObject } from 'react';
 import { BotaoDoArquivador } from './BotaoDoArquivador';
 import { EnviarAoSecretario } from './EnviarAoSecretario';
@@ -158,7 +158,7 @@ function Lista({ vm, aoMenu, acima, baixarMarcados, faixaFora }: { vm: VmDrive; 
           </tbody>
         </table>
       </div>
-      {!vm.carregando && !vm.entradas.length && <p className="empty">{vm.buscando ? 'Nada com essa busca.' : 'Esta pasta está vazia.'}</p>}
+      {!vm.carregando && !vm.entradas.length && <Vazio icone="pasta" titulo={vm.buscando ? 'Nada com essa busca' : 'Esta pasta está vazia'} />}
       </>
     );
   }

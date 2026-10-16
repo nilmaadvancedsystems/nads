@@ -1,6 +1,7 @@
 // Auditoria › Histórico (conferencia.html ~L1256-1262; tabela do renderAuditoria ~L3640-3650).
 import { formatos } from '@nads/core';
 import { useAuditoria } from './useAuditoria';
+import { Vazio } from '@nads/ui';
 
 const BADGE = { ok: 'badge-ok', bad: 'badge-bad', neutral: 'badge-neutral' } as const;
 
@@ -11,7 +12,7 @@ export function Auditoria() {
       <div className="card">
         <h3>Histórico</h3>
         <div id="audBox">
-          {!vm.linhas.length ? <p className="empty">Nada registrado ainda.</p> : (
+          {!vm.linhas.length ? <Vazio icone="clock" titulo="Nada registrado ainda" /> : (
             <div className="table-wrap" style={{ maxHeight: 640 }}>
               <table>
                 <thead><tr><th>Data/hora</th><th>Tipo</th><th>Ação</th><th>Detalhe</th><th>Origem</th><th></th></tr></thead>

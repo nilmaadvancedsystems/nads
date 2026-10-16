@@ -2,7 +2,7 @@
 // emissor (o robô, o ambiente e o que falta configurar), a barra (busca, filtro e Nova nota) e a lista das notas, a mais
 // nova primeiro. Clicar na linha abre a nota; "Nova nota" abre a janela de criar.
 import { formatos, nfse } from '@nads/core';
-import { Alerta, Icone, Segmentado, useCarregando } from '@nads/ui';
+import { Alerta, Icone, Segmentado, useCarregando, Vazio } from '@nads/ui';
 import { dataBr, documentoFormatado } from './formatosDaNota';
 import { JanelaDaNota } from './JanelaDaNota';
 import { JanelaImportarPlanilha } from './JanelaImportarPlanilha';
@@ -62,7 +62,7 @@ export function NotasFiscais() {
       </div>
 
       {!vm.carregando && !vm.linhas.length ? (
-        <p className="empty">{vm.total ? 'Nenhuma nota com isso.' : 'Nenhuma nota ainda. Clique em "Nova nota" para emitir a primeira.'}</p>
+        <Vazio icone="recibo" titulo={vm.total ? 'Nenhuma nota com isso' : 'Nenhuma nota ainda'} texto={vm.total ? undefined : 'Clique em "Nova nota" para emitir a primeira.'} />
       ) : (
         <div className="table-wrap">
           <table className="tabela-empresas cad-lista nf-lista">

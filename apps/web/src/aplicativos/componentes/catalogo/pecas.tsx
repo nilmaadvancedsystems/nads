@@ -1,7 +1,7 @@
 // As peças do catálogo, desenhadas com as MESMAS peças do sistema (@nads/ui e as classes do nads.css). A ordem dentro
 // de cada tipo dá o código (BT-01, BT-02…): peça nova entra no FIM do tipo, para os códigos não mudarem.
 import {
-  Alerta, AnelDeContagem, BarrasEmColuna, BotaoAcao, BotaoFechar, CartaoComAnel, RoscaComLegenda, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail,
+  Alerta, AnelDeContagem, BarrasEmColuna, BotaoAcao, BotaoFechar, Vazio, CartaoComAnel, RoscaComLegenda, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail,
   LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
 } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
@@ -606,8 +606,9 @@ export const PECAS_BASE: Peca[] = [
         </ul>
       </div>
     ) },
-  { id: 'vazio', tipo: 'cartoes', nome: 'Vazio (nada aqui)', classes: ['gh-blank'], telas: TODAS,
-    demo: () => <div className="gh-blank"><Icone nome="search" /><h4>Nenhum pedido</h4><p>Nenhum pedido feito para esta empresa ainda.</p></div> },
+  { id: 'vazio', tipo: 'cartoes', nome: 'Vazio (nada aqui)', descricao: 'O ícone, o título e a explicação no meio. Compacto (revisão da UI, 16/10/2026) dentro de cartões estreitos, células e janelas pequenas', componente: 'Vazio', classes: ['gh-blank', 'gh-blank compacto'], telas: TODAS,
+    uso: '<Vazio titulo="Nenhum pedido" texto="…" />  ·  <Vazio compacto texto="Nenhuma objeção nesta competência." />',
+    demo: () => <div style={{ display: 'grid', gap: 12, width: '100%' }}><Vazio titulo="Nenhum pedido" texto="Nenhum pedido feito para esta empresa ainda." /><div className="card" style={{ margin: 0 }}><Vazio compacto icone="checkCircle" texto="Nenhuma objeção registrada nesta competência." /></div></div> },
   { id: 'checklist-fiscal', tipo: 'cartoes', nome: 'Checklist disfarçada (rotina do Fiscal)', descricao: 'O cartão com a barra de progresso; cada tarefa uma faixa que abre (caixinha, contador, Importar, Conferido) com o painel dela (Stat, rank, tabela, gráficos)', componente: 'ChecklistDisfarcado', classes: ['card folha-check pt-check', 'imp-faixa pt-tarefa', 'subnav-caixa', 'tarefas-barra'], telas: ['t-exec-fiscal-rotina'], largo: true,
     demo: () => (
       <div className="card folha-check pt-check" style={{ width: '100%' }}>

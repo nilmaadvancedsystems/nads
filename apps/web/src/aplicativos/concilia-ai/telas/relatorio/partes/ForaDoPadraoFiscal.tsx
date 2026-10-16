@@ -4,6 +4,7 @@
 import { conferencia as c, formatos } from '@nads/core';
 import type { useRelatorio } from '../useRelatorio';
 import type { AcoesForaDoPadrao } from '../useMarcarForaDoPadrao';
+import { Vazio } from '@nads/ui';
 
 type VM = ReturnType<typeof useRelatorio>;
 const { reais, lancComZeros } = formatos;
@@ -18,7 +19,7 @@ export function ForaDoPadraoFiscal({ vm, tipo }: { vm: VM; tipo: c.TipoNotaFisca
     return (
       <div className="card" id={tipo === 'entradas' ? 'confDivEntradas' : 'confDivSaidas'}>
         <div className="card-head"><h3>Lançamento fora do padrão do CFOP</h3></div>
-        <p className="empty">{f.vazio}</p>
+        <Vazio compacto icone="checkCircle" texto={f.vazio} />
       </div>
     );
   }
@@ -36,7 +37,7 @@ export function ForaDoPadraoFiscal({ vm, tipo }: { vm: VM; tipo: c.TipoNotaFisca
       </div>
       {f.pendentes.length
         ? f.pendentes.map(g => <GrupoFiscal key={g.key} vm={vm} tipo={tipo} gr={g} marcado={false} />)
-        : <p className="empty">Nenhuma pendente — tudo corrigido.</p>}
+        : <Vazio compacto icone="checkCircle" texto="Nenhuma pendente — tudo corrigido." />}
       {f.corrigidos.length > 0 && (
         <>
           <p className="hint" style={{ marginTop: 16, fontWeight: 600, color: 'var(--ink)' }}>Corrigidos ({f.qtdCorrigidos})</p>

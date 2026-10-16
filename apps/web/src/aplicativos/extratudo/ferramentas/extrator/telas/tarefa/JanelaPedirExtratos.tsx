@@ -3,7 +3,7 @@
 //      "Outros meses" (travado = já importado ou já no Drive); outro documento; o prazo; o WhatsApp opcional
 //      com a mensagem que a pessoa digita.
 //   2. Conferir — o e-mail como o cliente vai ver (e a mensagem do WhatsApp), com Voltar e Enviar.
-import { BotaoFechar, Icone, LogoBanco, LogoGmail, LogoWhatsApp, useCarregando } from '@nads/ui';
+import { BotaoFechar, Icone, LogoBanco, LogoGmail, LogoWhatsApp, useCarregando, Vazio } from '@nads/ui';
 import { useState } from 'react';
 import type { usePedirExtratos } from './usePedirExtratos';
 
@@ -185,7 +185,7 @@ export function JanelaHistoricoDePedidos({ p }: { p: P }) {
         </h3>
         <div className="pedir-hist-lista">
           {p.historico.erro && <p className="pedir-erro">{p.historico.erro}</p>}
-          {p.pedidos.length === 0 ? <p className="empty">Nenhum pedido feito para esta empresa ainda.</p> : p.pedidos.map(r => (
+          {p.pedidos.length === 0 ? <Vazio compacto icone="envelope" texto="Nenhum pedido feito para esta empresa ainda." /> : p.pedidos.map(r => (
             <div key={r.id} className="pedir-hist-item">
               <div className="pedir-hist-topo">
                 <b>{quando(r.em)}</b><span className="hint">por {r.por}</span>

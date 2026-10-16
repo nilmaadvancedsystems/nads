@@ -1,5 +1,5 @@
 // Lançamentos automáticos — página fora do menu (conferencia.html #view-depara ~L1176-1190, renderDP ~L2711).
-import { BotaoIcone } from '@nads/ui';
+import { BotaoIcone, Vazio } from '@nads/ui';
 import { useLancamentosAutomaticos, type GrupoDeContas } from './useLancamentosAutomaticos';
 
 type VM = ReturnType<typeof useLancamentosAutomaticos>;
@@ -16,8 +16,8 @@ export function LancamentosAutomaticos() {
           <button className={vm.classeBotao} id="btAutoLanc" type="button" onClick={vm.preencherAutomatico}>Lançamentos automáticos</button>
         </div>
         <div id="dpPendentes">
-          {vm.semLinhas ? <p className="empty">Nenhum lançamento encontrado ainda. Importe as notas de entradas e saídas primeiro.</p>
-            : !vm.pendentes.length ? <p className="empty">Todos os lançamentos encontrados já têm conta vinculada.</p>
+          {vm.semLinhas ? <Vazio icone="search" titulo="Nenhum lançamento encontrado ainda" texto="Importe as notas de entradas e saídas primeiro." />
+            : !vm.pendentes.length ? <Vazio icone="checkCircle" titulo="Tudo vinculado" texto="Todos os lançamentos encontrados já têm conta vinculada." />
               : (
                 <>
                   <div className="dp-head" style={COLUNAS}><div>Lançamento</div><div>CFOPs / natureza sugerida</div><div>Conta do balancete</div><div></div></div>

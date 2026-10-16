@@ -305,6 +305,21 @@ export function BotaoFechar({ onClick, rotulo = 'Fechar', canto, className, disa
   );
 }
 
+/**
+ * O vazio do catálogo (.gh-blank): o ícone, o título e a explicação, no meio. compacto: dentro de cartões estreitos,
+ * células e janelas pequenas (menos espaço, letra menor). Revisão da UI, 16/10/2026: eram ~40 <p class="empty"> soltos.
+ */
+export function Vazio({ titulo, texto, icone = 'search', compacto, children }: { titulo?: ReactNode; texto?: ReactNode; icone?: NomeIcone; compacto?: boolean; children?: ReactNode }) {
+  return (
+    <div className={'gh-blank' + (compacto ? ' compacto' : '')} role="status">
+      <Icone nome={icone} />
+      {titulo != null && titulo !== '' && <h4>{titulo}</h4>}
+      {texto != null && texto !== '' && <p>{texto}</p>}
+      {children}
+    </div>
+  );
+}
+
 /** Ícone clicável (.icon-btn). */
 export function BotaoIcone({ icone, titulo, pequeno, className, ...resto }: { icone: NomeIcone; titulo: string; pequeno?: boolean } & ButtonHTMLAttributes<HTMLButtonElement>) {
   return (

@@ -1,6 +1,6 @@
 // Cadastro › empresa › Plano de contas: a barra de cima (quantas contas, de onde veio, busca, Grupo ▾,
 // "Importar ▾") e a lista, com o recuo da classificação, as sintéticas em negrito e onde cada conta é usada.
-import { CampoArquivo, Icone, MenuSuspenso, useCarregando } from '@nads/ui';
+import { CampoArquivo, Icone, MenuSuspenso, useCarregando, Vazio } from '@nads/ui';
 import { useRef } from 'react';
 import { usePlanoDeContas } from './usePlanoDeContas';
 
@@ -55,7 +55,7 @@ export function PlanoDeContas({ rota }: { rota: string }) {
           </div>
         )
       ) : !vm.achadas ? (
-        <p className="empty">Nenhuma conta com isso.</p>
+        <Vazio icone="search" titulo="Nenhuma conta com isso" />
       ) : (
         <div className="table-wrap">
           <table className="cad-tabela cad-plano">

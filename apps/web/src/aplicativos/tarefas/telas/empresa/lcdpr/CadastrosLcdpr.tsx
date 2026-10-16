@@ -2,7 +2,7 @@
 // do Cadastro: uma lista só tem a barra de cima (quantas, a busca, o "+ Novo") e a tabela; várias (as Tabelas de apoio)
 // viram cartões lado a lado. Clicar na linha abre a janela do item; remover está na janela, com o Desfazer no aviso.
 import type { lcdpr } from '@nads/core';
-import { Alerta, BotaoFechar, Icone, MenuSuspenso, useJanela, type NomeIcone } from '@nads/ui';
+import { Alerta, BotaoFechar, Icone, MenuSuspenso, useJanela, Vazio, type NomeIcone } from '@nads/ui';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useCadastrosLcdpr } from './useCadastrosLcdpr';
 
@@ -24,7 +24,7 @@ function Tabela({ l }: { l: Lista }) {
               ))}
             </tr>
           ))}
-          {!l.linhas.length && <tr><td colSpan={l.colunas.length} className="empty">{l.vazio}</td></tr>}
+          {!l.linhas.length && <tr><td colSpan={l.colunas.length}><Vazio compacto texto={l.vazio} /></td></tr>}
         </tbody>
       </table>
     </div>

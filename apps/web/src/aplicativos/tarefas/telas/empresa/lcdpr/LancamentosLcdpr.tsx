@@ -2,7 +2,7 @@
 // os relatórios do SIEG; com eles, o resumo com a barra ("dá pra exportar?") e o Baixar planilha .xls, a barra (Todos /
 // Só REVISAR, a seleção com o Classificar como, a busca e importar mais), os grupos do que falta revisar, a lista (a
 // categoria muda na própria linha; clicar na linha abre o lançamento) e os arquivos lidos nesta sessão, com o Desfazer.
-import { Alerta, CampoArquivos, Icone, MenuSuspenso, Segmentado } from '@nads/ui';
+import { Alerta, CampoArquivos, Icone, MenuSuspenso, Segmentado, Vazio } from '@nads/ui';
 import { JanelaDoLancamento } from './JanelaDoLancamento';
 import { useLancamentosLcdpr } from './useLancamentosLcdpr';
 
@@ -129,7 +129,7 @@ export function LancamentosLcdpr() {
                     <td className="num">{l.valor}</td>
                   </tr>
                 ))}
-                {!vm.linhas.length && <tr><td colSpan={7} className="empty">Nenhum lançamento com isso.</td></tr>}
+                {!vm.linhas.length && <tr><td colSpan={7}><Vazio compacto texto="Nenhum lançamento com isso." /></td></tr>}
               </tbody>
             </table>
           </div>

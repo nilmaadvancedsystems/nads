@@ -669,6 +669,12 @@ main.main{padding:0 24px;}
 .gh-blank{padding:40px 16px;text-align:center;color:var(--ink-muted);}
 .gh-blank svg{width:24px;height:24px;margin-bottom:8px;}
 .gh-blank h4{font-size:20px;font-weight:600;color:var(--ink);margin-bottom:4px;}
+/* o vazio compacto (Vazio compacto; revisão da UI, 16/10/2026): dentro de cartões, células e janelas pequenas */
+.gh-blank.compacto{padding:16px 12px;}
+.gh-blank.compacto svg{width:18px;height:18px;margin-bottom:4px;}
+.gh-blank.compacto h4{font-size:14px;margin-bottom:2px;}
+.gh-blank.compacto p{font-size:13px;margin:0;}
+td > .gh-blank.compacto{white-space:normal;}
 
 /* ---------------------------------- barra lateral: grupos, rodapé (tema + ocultar) e travas ---------------------------------- */
 .subnav-itens{display:flex;flex-direction:column;gap:2px;}

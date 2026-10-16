@@ -2,7 +2,7 @@
 // e lançamento fora do padrão agrupado por fornecedor/cliente.
 // Origem: conferencia.html ~L1225-1231 e renderConfServ (~L4617-4729).
 import { conferencia as c, formatos } from '@nads/core';
-import { Stat, TituloDaConta } from '@nads/ui';
+import { Stat, TituloDaConta, Vazio } from '@nads/ui';
 import type { useRelatorio } from '../useRelatorio';
 import { dicaSugestao, type AcoesForaDoPadrao } from '../useMarcarForaDoPadrao';
 import { IconePassivo, linhaPassivo, SaldoCelula, Situacao } from './Situacao';
@@ -24,14 +24,14 @@ export function Servicos({ vm, tipo }: { vm: VM; tipo: c.TipoServico }) {
       </div>
       <div className="cc-bal">
         <div id="confServBal">
-          {!r.saldo.length ? <p className="empty">Nenhuma nota no período.</p> : <SaldoServicos r={r} onRevisar={vm.revisar} />}
+          {!r.saldo.length ? <Vazio compacto icone="search" texto="Nenhuma nota no período." /> : <SaldoServicos r={r} onRevisar={vm.revisar} />}
         </div>
       </div>
       <div className="card" id="confServDiv">
         {!r.temDivergencias ? (
           <>
             <div className="card-head"><h3>Lançamento fora do padrão</h3></div>
-            <p className="empty">Nenhuma nota fora do padrão.</p>
+            <Vazio compacto icone="checkCircle" texto="Nenhuma nota fora do padrão." />
           </>
         ) : (
           <>
@@ -45,7 +45,7 @@ export function Servicos({ vm, tipo }: { vm: VM; tipo: c.TipoServico }) {
             </div>
             {r.pendentes.length
               ? r.pendentes.map(g => <GrupoServ key={g.key} vm={vm} tipo={tipo} gr={g} marcado={false} />)
-              : <p className="empty">Nenhuma pendente — tudo corrigido.</p>}
+              : <Vazio compacto icone="checkCircle" texto="Nenhuma pendente — tudo corrigido." />}
             {r.corrigidos.length > 0 && (
               <>
                 <p className="hint" style={{ marginTop: 16, fontWeight: 600, color: 'var(--ink)' }}>Corrigidos ({r.qtdCorrigidos})</p>

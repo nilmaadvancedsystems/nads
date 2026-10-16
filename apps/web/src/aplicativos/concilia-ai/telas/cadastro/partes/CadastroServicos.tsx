@@ -2,7 +2,7 @@
 // e os fornecedores colocados nelas.
 // Origem: conferencia.html #cadCardServ (~L1170-1173), renderCadServ (~L4486-4521),
 // servFormHtml (~L4476), servListaForn (~L4546), cliques/teclas (~L4575-4615).
-import { Icone } from '@nads/ui';
+import { Icone, Vazio } from '@nads/ui';
 import { useEffect, useRef, type ReactNode } from 'react';
 import type { CategoriaView, FormServ, useConfiguracoes } from '../useConfiguracoes';
 import { CampoVincular, ChipsDeContas } from './VincularConta';
@@ -14,7 +14,7 @@ export function CadastroServicos({ sv }: { sv: Servicos }) {
     <div className="card" id="cadCardServ">
       <h3 id="cadServTitulo">{sv.titulo}</h3>
       <div id="cadServBox">
-        {sv.vazio ? <p className="empty">{sv.vazio}</p> : (
+        {sv.vazio ? <Vazio compacto icone="search" texto={sv.vazio} /> : (
           <div className="ndp-list">
             {sv.categorias.map(cat => <Categoria key={cat.id} cat={cat} geral={sv.tituloGeral || ''} />)}
           </div>

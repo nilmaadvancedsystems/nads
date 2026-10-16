@@ -1,7 +1,7 @@
 // Resultado do ajuste: números, aviso do estorno projetado e a tabela dos lançamentos
 // (cheque_especial.html renderResults ~L688).
 import { chequeEspecial as ce, formatos } from '@nads/core';
-import { Alerta, Stat } from '@nads/ui';
+import { Alerta, Stat, Vazio } from '@nads/ui';
 import type { ResultadoTela } from '../useAjuste';
 
 function Selo({ l }: { l: ce.Lancamento }) {
@@ -20,7 +20,7 @@ export function Resultado({ r }: { r: ResultadoTela }) {
           <Stat rotulo="Dias analisados" valor={resumo.diasAnalisados} />
           <Stat rotulo="Dias negativos" valor={0} />
         </div>
-        <p className="empty">Nenhum dia com saldo de fechamento negativo foi encontrado — nenhum lançamento de ajuste é necessário.</p>
+        <Vazio icone="checkCircle" titulo="Nenhum ajuste necessário" texto="Nenhum dia com saldo de fechamento negativo foi encontrado." />
       </>
     );
   }
