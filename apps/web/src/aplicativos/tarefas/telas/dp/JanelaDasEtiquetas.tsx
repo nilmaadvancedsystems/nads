@@ -1,23 +1,20 @@
 // A janela "Parâmetros" das etiquetas da folha (Savio, 15/10/2026): a competência e a data de pagamento, que saem
 // impressas, e a quantidade de etiquetas (uma página cheia, por padrão). Imprimir abre a impressão em A4.
-import { CampoData, Icone } from '@nads/ui';
-import { useEffect } from 'react';
+import { CampoData, Icone, useJanela } from '@nads/ui';
+import { useRef } from 'react';
 import type { useEtiquetasDaFolha } from './useEtiquetasDaFolha';
 
 type VM = ReturnType<typeof useEtiquetasDaFolha>;
 
 export function JanelaDasEtiquetas({ vm }: { vm: VM }) {
   const { fechar } = vm;
-  useEffect(() => {
-    if (!vm.aberta) return;
-    const esc = (ev: KeyboardEvent) => { if (ev.key === 'Escape' && !ev.defaultPrevented) { ev.preventDefault(); fechar(); } };
-    window.addEventListener('keydown', esc, true);
-    return () => window.removeEventListener('keydown', esc, true);
-  }, [vm.aberta, fechar]);
+  // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, fechar, vm.aberta);
   if (!vm.aberta) return null;
   return (
     <div className="modal-overlay" onMouseDown={ev => { if (ev.target === ev.currentTarget) fechar(); }}>
-      <div className="modal etq-janela" role="dialog" aria-modal="true" aria-labelledby="etqTitulo">
+      <div ref={janela} className="modal etq-janela" role="dialog" aria-modal="true" aria-labelledby="etqTitulo">
         <h3 id="etqTitulo"><Icone nome="fileText" />Etiquetas da folha</h3>
         <form className="etq-corpo" onSubmit={ev => { ev.preventDefault(); vm.imprimir(); }}>
           <p className="etq-dica">Informe os dois textos que saem em cada etiqueta. A data sugerida é o 5º dia útil do mês seguinte (sábado conta); pode trocar.</p>

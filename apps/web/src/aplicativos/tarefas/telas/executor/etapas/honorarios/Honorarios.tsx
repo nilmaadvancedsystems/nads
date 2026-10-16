@@ -59,7 +59,7 @@ function ExtratoPorCobranca({ vm }: { vm: Vm }) {
           <div className="imp-grupo" aria-label="Extrato por cobrança">
             <span className="imp-rotulo">PDF</span>
             {e ? (
-              <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" onClick={vm.removerExtrato} title={'O Extrato por cobrança: importado. Clique para excluir.'} aria-label="Excluir o Extrato por cobrança">
+              <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" onClick={vm.removerExtrato} title={'O Extrato por cobrança: importado. Clique para tirar.'} aria-label="Tirar o Extrato por cobrança">
                 <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
               </button>
             ) : vm.lendo ? (

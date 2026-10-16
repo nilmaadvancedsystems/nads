@@ -1,7 +1,7 @@
 // O painel do SIEG dentro do checklist da etapa do Fiscal: na Inicial, as notas do mês (emitidas e recebidas, por tipo);
 // na Conferência de Saídas, a sequência (série por série: da primeira à última, os números que faltam e as canceladas),
 // com o Baixar do SIEG (o robô do PC baixa as saídas do mês) e o Atualizar.
-import { Alerta, BotaoAcao, Icone } from '@nads/ui';
+import { Alerta, BotaoAcao, BotaoFechar, Esqueleto, Icone } from '@nads/ui';
 import { createPortal } from 'react-dom';
 import { useSiegDaEtapa } from '../useSiegDaEtapa';
 
@@ -25,7 +25,7 @@ export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 
               {!vm.andamento.erro && <span className="hint">{vm.andamento.pronto ? 'Concluído' : vm.andamento.tempo || 'Começando…'}</span>}
             </div>
             {!vm.andamento.erro && <b className="sieg-andamento-pct num">{vm.andamento.pct}%</b>}
-            <button type="button" className="btn btn-ghost" onClick={vm.fecharAndamento} aria-label="Fechar" title="Fechar"><Icone nome="x" /></button>
+            <BotaoFechar onClick={vm.fecharAndamento} />
           </div>
           {!vm.andamento.erro && <span className={'tarefas-barra fgts-barra' + (vm.andamento.pronto ? '' : ' andando')}><span style={{ width: vm.andamento.pct + '%' }} /></span>}
           {vm.andamento.erro ? <p className="sieg-aviso"><Icone nome="alert" />{vm.andamento.erro}</p> : (
@@ -58,7 +58,7 @@ export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 
         document.body,
       )}
       {vm.tipo === 'contagem' ? (
-        <>{!vm.contagemCarregada ? <p className="fraco">Carregando…</p> : vm.contagem ? (
+        <>{!vm.contagemCarregada ? <Esqueleto linhas={2} /> : vm.contagem ? (
           <div className="sieg-contagem">
             {/* o rótulo em cima, o número grande e a proporção de cada tipo de nota (14/10/2026: "números mais legíveis") */}
             {[{ rotulo: 'Notas emitidas', n: vm.contagem.emitidas, linhas: vm.contagem.linhasEmitidas }, { rotulo: 'Notas recebidas', n: vm.contagem.recebidas, linhas: vm.contagem.linhasRecebidas }].map(x => (
@@ -160,7 +160,7 @@ export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 
               </div>
               <p className="fraco sieg-quando">Baixadas do SIEG em {vm.saidas.quando}. O número que falta pode ser nota não enviada ao SIEG, inutilizada ou emitida fora.</p>
             </div>
-          ) : vm.saidasCarregadas ? <p className="fraco">As saídas deste mês ainda não foram baixadas do SIEG.</p> : <p className="fraco">Carregando…</p>}
+          ) : vm.saidasCarregadas ? <p className="fraco">As saídas deste mês ainda não foram baixadas do SIEG.</p> : <Esqueleto linhas={2} />}
           {vm.pedido?.status === 'erro' && <p className="sieg-aviso"><Icone nome="alert" />O robô não conseguiu: {vm.pedido.erro}</p>}
           <div className="sieg-acoes">
             <button type="button" className="btn btn-outline" disabled={vm.pedindo || !!vm.desligado} onClick={() => void vm.baixar()}>

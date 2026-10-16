@@ -1,5 +1,5 @@
 // Peças pequenas da Conferência, com as mesmas classes do CSS original.
-import { useEffect, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode, type Ref } from 'react';
 import { createPortal } from 'react-dom';
 import { animate, cleanInlineStyles, spring, stagger } from 'animejs';
 import { animacoesPedidas, useIndicador, useNumeroAnimado } from './animacao';
@@ -123,7 +123,7 @@ export function CampoArquivo({ id, arquivo, onEscolher, aceitar, oculto, abrirAg
         <span><Icone nome="upload" /></span>
         <span className="file-picker-name">{arquivo ? arquivo.name : 'Escolher arquivo'}</span>
         {arquivo && (
-          <button type="button" className="file-clear" title="Remover arquivo" onClick={ev => { ev.preventDefault(); ev.stopPropagation(); onEscolher(null); }}>×</button>
+          <button type="button" className="file-clear" title="Remover arquivo" aria-label={'Remover o arquivo ' + arquivo.name} onClick={ev => { ev.preventDefault(); ev.stopPropagation(); onEscolher(null); }}>×</button>
         )}
       </label>
       <input ref={input} type="file" id={id} accept={aceitar} className="sr-only" onChange={ev => onEscolher(ev.target.files?.[0] || null)} />
@@ -144,7 +144,7 @@ export function Segmentado<T extends string>({ valor, opcoes, onMudar, id }: {
   return (
     <div ref={trilho} className="steps com-indicador" id={id}>
       {opcoes.filter(o => !o.oculta).map(o => (
-        <button key={o.valor} type="button" className={'step-pill' + (o.travada ? ' is-locked' : '')} aria-current={o.valor === valor ? 'true' : 'false'}
+        <button key={o.valor} type="button" className={'step-pill' + (o.travada ? ' is-locked' : '')} aria-current={o.valor === valor ? 'true' : 'false'} aria-pressed={o.valor === valor}
           aria-disabled={o.travada ? 'true' : undefined} title={o.travada || o.ponto || undefined} onClick={() => onMudar(o.valor)}>
           {o.rotulo}{o.ponto && <span className="ponto-vermelho" aria-label={o.ponto} />}
         </button>
@@ -199,12 +199,16 @@ export function Interruptor({ ligado, onMudar, rotulo }: { ligado: boolean; onMu
   );
 }
 
-/** Botão de ação que mostra spinner + texto no gerúndio enquanto trabalha. */
-export function BotaoAcao({ carregando, textoCarregando, className = 'btn btn-primary', children, ...resto }: {
+/**
+ * Botão de ação que mostra spinner + texto no gerúndio enquanto trabalha. O `disabled` de quem chama vai por último junto
+ * com o carregando (revisão da UI, 16/10/2026: o {...resto} vinha depois e um disabled={false} destravava o botão no meio
+ * do trabalho, deixando o clique duplo mandar duas vezes).
+ */
+export function BotaoAcao({ carregando, textoCarregando, className = 'btn btn-primary', children, disabled, ...resto }: {
   carregando?: boolean; textoCarregando?: string; className?: string; children: ReactNode;
 } & ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button type="button" className={className} disabled={carregando || resto.disabled} {...resto}>
+    <button type="button" className={className} {...resto} disabled={carregando || disabled} aria-busy={carregando || undefined}>
       {carregando ? <><span className="btn-spinner" />{textoCarregando}</> : children}
     </button>
   );
@@ -213,10 +217,18 @@ export function BotaoAcao({ carregando, textoCarregando, className = 'btn btn-pr
 /**
  * A dica (Vitor, 13/10/2026: "as explicações são desnecessárias ficarem aparecendo; um ícone de interrogação que, quando
  * passa o mouse, mostra"): o "?" ao lado do rótulo e o balão com o texto ao passar o mouse ou ao focar pelo teclado.
+ * Perto da borda direita o balão abre para a esquerda (revisão da UI, 16/10/2026: no Cadastro › Sistema ele saía cortado
+ * e a página ganhava rolagem de lado).
  */
 export function Dica({ texto }: { texto: ReactNode }) {
+  const [aEsquerda, setAEsquerda] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  const medir = (el: HTMLElement | null) => { if (el) setAEsquerda(el.getBoundingClientRect().left + 336 > document.documentElement.clientWidth); };
+  // já ao aparecer: o balão escondido também conta na largura da página
+  useLayoutEffect(() => { medir(ref.current); }, []);
   return (
-    <span className="dica" tabIndex={0} role="note" aria-label={typeof texto === 'string' ? texto : undefined}>
+    <span ref={ref} className={'dica' + (aEsquerda ? ' a-esquerda' : '')} tabIndex={0} role="note" aria-label={typeof texto === 'string' ? texto : undefined}
+      onMouseEnter={e => medir(e.currentTarget)} onFocus={e => medir(e.currentTarget)}>
       <Icone nome="ajuda" />
       <span className="dica-balao" role="tooltip">{texto}</span>
     </span>
@@ -247,6 +259,22 @@ export function ConfigLinha({ titulo, descricao, children, aviso }: { titulo: Re
       </div>
       {children != null && <div className="cfg-linha-controle">{children}</div>}
     </div>
+  );
+}
+
+/**
+ * O × de fechar janela, gaveta ou painel: uma peça só (revisão da UI, 16/10/2026: eram cinco desenhos, drawer-x, modal-x,
+ * icon-btn-sm, btn-ghost cad-janela-x e gm-fechar). 32 px sem borda, o fundo aparece ao passar o mouse; sempre com nome.
+ * canto: preso no canto de cima da janela (o .modal-x das janelas do meio).
+ */
+export function BotaoFechar({ onClick, rotulo = 'Fechar', canto, className, disabled, autoFocus, ref }: {
+  onClick: () => void; rotulo?: string; canto?: boolean; className?: string; disabled?: boolean; autoFocus?: boolean; ref?: Ref<HTMLButtonElement>;
+}) {
+  return (
+    <button ref={ref} type="button" className={'janela-x' + (canto ? ' modal-x' : '') + (className ? ' ' + className : '')} aria-label={rotulo} title={rotulo + ' (Esc)'}
+      disabled={disabled} autoFocus={autoFocus} onClick={onClick}>
+      <Icone nome="x" />
+    </button>
   );
 }
 
@@ -425,7 +453,9 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
   const comMarca = itens?.some(i => i !== 'separador' && i.marcado !== undefined);
   return (
     <div className="popover-wrap" ref={ref}>
-      <button type="button" className={className + (aberto && classeAberto ? ' ' + classeAberto : '')} title={dica} aria-haspopup="menu" aria-expanded={aberto} onClick={() => setAberto(a => !a)}>
+      <button type="button" className={className + (aberto && classeAberto ? ' ' + classeAberto : '')} title={dica} aria-haspopup="menu" aria-expanded={aberto} onClick={() => setAberto(a => !a)}
+        // só o ícone (sem rótulo): o nome vem do título ou da dica (revisão da UI, 16/10/2026: o leitor de tela não tinha o que ler)
+        aria-label={rotulo === '' || rotulo == null ? titulo || dica : undefined}>
         {setaAntes && !semSeta && <Icone nome="caretDown" className="menu-seta antes" />}
         {icone && <Icone nome={icone} />}{rotulo}
         {!setaAntes && !semSeta && <Icone nome="caretDown" className="menu-seta" />}

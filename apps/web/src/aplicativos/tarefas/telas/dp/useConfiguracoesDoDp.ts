@@ -10,6 +10,7 @@ import { useRetorno } from '@nads/ui';
 import { useOperador } from '../../casca/operador';
 import { useCategoriasDp, useGmailDoEntregas } from '../../dados/repo';
 import { useClientesDoDp } from './useClientesDoDp';
+import { documentoFormatado } from '../financeiro/formatosDaNota';
 
 export type TopicoDoClienteDp = 'obrigacoes' | 'entrega';
 
@@ -57,7 +58,9 @@ export function useConfiguracoesDoDp() {
   const linhas = dp.clientes
     .filter(c => (!achadas || achadas.has(c.codigo)) && (!movimento || c.movimento === movimento) && (!soMudados || c.mudado))
     .sort((a, b) => a.nomeNaTela.localeCompare(b.nomeNaTela, 'pt-BR'))
-    .map(c => ({ ...c, documento: documentoDoCodigo.get(c.codigo) || '', obrigacoesTexto: c.obrigacoes.length ? (c.obrigacoes as string[]).map(rotuloDe).join(' · ') : 'Nenhuma' }));
+    .map(c => ({ ...c, documento: documentoDoCodigo.get(c.codigo) || '',
+      // na tela com a máscara (00.000.000/0000-00), como no FGTS; o clique continua copiando só os dígitos (revisão da UI, 16/10/2026)
+      documentoNaTela: documentoFormatado(documentoDoCodigo.get(c.codigo) || ''), obrigacoesTexto: c.obrigacoes.length ? (c.obrigacoes as string[]).map(rotuloDe).join(' · ') : 'Nenhuma' }));
   const cliente = aberto != null ? dp.clientes.find(c => c.codigo === aberto) || null : null;
   return {
     carregando: !dp.carregado,

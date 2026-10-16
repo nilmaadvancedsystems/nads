@@ -86,7 +86,7 @@ export function RazaoDaEtapa({ conta, razao, conferir, teste = [] }: { conta: st
                 <span className="imp-rotulo">Razão</span>
                 {razao.carregado ? (
                   <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" onClick={razao.remover}
-                    title={'Razão do ' + conta + ': importado. Clique para excluir.'} aria-label={'Excluir o razão do ' + conta}>
+                    title={'Razão do ' + conta + ': importado. Clique para tirar.'} aria-label={'Tirar o razão do ' + conta}>
                     <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
                   </button>
                 ) : (

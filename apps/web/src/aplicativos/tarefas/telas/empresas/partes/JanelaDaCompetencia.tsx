@@ -4,7 +4,7 @@
 // no alto com ‹ ›, os 12 meses numa grade de 3 × 4 (o escolhido cheio na cor do app; o mês de hoje com um pontinho; os que
 // ainda não começaram apagados) e o Abrir embaixo. Dois cliques (ou Enter) num mês também abrem; as setas andam pela grade.
 // Só de 2026 para frente e só os meses que já começaram.
-import { animacoesPedidas, Icone, classeDaJanela } from '@nads/ui';
+import { animacoesPedidas, classeDaJanela, Icone, useJanela } from '@nads/ui';
 import type { JSAnimation } from 'animejs';
 import { animate, cleanInlineStyles, spring, stagger, utils } from 'animejs';
 import { useLayoutEffect, useRef, useState } from 'react';
@@ -51,6 +51,8 @@ export function JanelaDaCompetencia({ competencias, competencia, onSeguir }: {
   const hoje = mesDeHoje();
 
   const caixa = useRef<HTMLDivElement>(null);
+  // o foco fica preso na janela, mas o Esc não fecha: a competência precisa ser escolhida (revisão da UI, 16/10/2026)
+  useJanela(caixa, null);
   const grade = useRef<HTMLDivElement>(null);
   const pilula = useRef<HTMLSpanElement>(null);
   const rodape = useRef<HTMLSpanElement>(null);

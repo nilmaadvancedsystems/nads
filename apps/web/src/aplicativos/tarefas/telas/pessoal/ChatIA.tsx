@@ -1,7 +1,7 @@
 // View do chat com a IA do escritório (a Minha página › Perguntar à IA): a mesma conversa do "Perguntar à IA" do
 // Entregas — quem responde é o robô (o Claude no PC do escritório ou o Gemini na nuvem), que conhece o Entregas, a
 // Tarefas (as Perguntas frequentes estão no guia dele) e consulta os dados do escritório.
-import { Icone } from '@nads/ui';
+import { BotaoIcone, Icone } from '@nads/ui';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FAQ } from '../../ajuda/faq';
 import { useChatIA } from './useChatIA';
@@ -95,7 +95,7 @@ export function ChatIA({ rascunho, limparRascunho, irParaFaq }: { rascunho: stri
           </select>
         )}
         {vm.conversa && (
-          <button type="button" className="icon-btn" title="Apagar esta conversa" aria-label="Apagar esta conversa" onClick={() => vm.apagar(vm.conversa!)}><Icone nome="x" /></button>
+          <BotaoIcone icone="x" titulo="Apagar esta conversa" onClick={() => vm.apagar(vm.conversa!)} />
         )}
         <span className={'ia-estado fraco' + (desligada ? ' desligada' : '')}>
           {vm.carregando ? 'Vendo se a IA está de pé…' : vm.ligada ? 'IA ligada' + (vm.motor ? ' (' + vm.motor + ')' : '') : 'IA desligada agora'}

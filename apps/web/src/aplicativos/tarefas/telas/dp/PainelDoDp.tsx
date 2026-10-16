@@ -4,7 +4,7 @@
 // com as obrigações do mês (– não tem, vazio a fazer, ✓ feita, ! parada). Tudo roda aqui: clicar na bolinha marca a
 // obrigação como feita, clicar de novo desfaz (sem o checklist).
 import { formatos } from '@nads/core';
-import { baixarBytes, BarrasEmColuna, CartaoComAnel, Esqueleto, Icone, Interruptor, NumeroQueConta, RoscaComLegenda, Segmentado, useCarregando, useEntradaAnimada, type TomDoPainel } from '@nads/ui';
+import { baixarBytes, BarrasEmColuna, CartaoComAnel, Esqueleto, Icone, Interruptor, MenuSuspenso, NumeroQueConta, RoscaComLegenda, Segmentado, useCarregando, useEntradaAnimada, type TomDoPainel } from '@nads/ui';
 import { Fragment, useState } from 'react';
 import { DecimoNaLista } from './DecimoTerceiro';
 import { JanelaDasEtiquetas } from './JanelaDasEtiquetas';
@@ -47,7 +47,7 @@ const MARCA: Record<EstadoDaObrigacao, { simbolo: string; dica: string }> = {
 // a rosca do Resumo (Savio, 15/10/2026): a ordem e a cor de cada situação, e o selo dela na lista
 const ORDEM_DASH: SituacaoDoDash[] = ['atrasada', 'pendente', 'feita', 'sem'];
 const TOM_DASH: Record<SituacaoDoDash, TomDoPainel> = { atrasada: 'perigo', pendente: 'aviso', feita: 'ok', sem: 'neutro' };
-const BADGE_DASH: Record<SituacaoDoDash, string> = { atrasada: 'badge-danger', pendente: 'badge-warn', feita: 'badge-ok', sem: 'badge-neutral' };
+const BADGE_DASH: Record<SituacaoDoDash, string> = { atrasada: 'badge-bad', pendente: 'badge-warn', feita: 'badge-ok', sem: 'badge-neutral' };
 /** o prazo do cartão: parado há N dias; ou o mês fechou há N dias / fecha em N dias */
 function prazoDoCartao(dias: number, parado: boolean): string {
   const n = Math.abs(dias);
@@ -92,12 +92,12 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
   return (
     <section className="dp-painel">
       <div className="tarefas-filtros dp-filtros">
-        <label className="field dp-filtro">
+        {/* a competência no mesmo menu com o calendário da Minhas empresas (revisão da UI, 16/10/2026: eram três peças diferentes) */}
+        <div className="field dp-filtro">
           <span className="hint">Competência</span>
-          <select className="select-compact" value={vm.competencia} onChange={e => vm.setCompetencia(e.target.value)}>
-            {vm.competencias.map(c => <option key={c.valor} value={c.valor}>{c.rotulo}</option>)}
-          </select>
-        </label>
+          <MenuSuspenso icone="calendar" rotulo={vm.competencias.find(c => c.valor === vm.competencia)?.rotulo ?? vm.competencia} titulo="Competência" dica="Trocar a competência"
+            itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
+        </div>
         <label className="field dp-filtro dp-busca">
           <span className="hint">Buscar cliente</span>
           <input type="text" value={f.busca} onChange={e => f.setBusca(e.target.value)} placeholder="Nome ou código" aria-label="Buscar cliente (nome ou código)" />

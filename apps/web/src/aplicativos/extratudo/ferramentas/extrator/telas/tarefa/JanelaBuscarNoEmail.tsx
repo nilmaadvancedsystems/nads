@@ -5,7 +5,7 @@
 // pessoa já usou aqui) e o período tem os atalhos do mês (Vitor, 13/10/2026: "puxa do e-mail para ajudar a preencher" e
 // as datas no campo do sistema). ViewModel (useBuscarNoEmail) e View (JanelaBuscarNoEmail) juntos: são só desta tela.
 import { creditor as cr, extrator as x, type creditor } from '@nads/core';
-import { CampoData, classeDaJanela, Icone, LogoGmail, Segmentado } from '@nads/ui';
+import { BotaoFechar, CampoData, classeDaJanela, Icone, LogoGmail, Segmentado } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useDriveDaBusca } from './useDriveDaBusca';
 
@@ -141,7 +141,7 @@ export function JanelaBuscarNoEmail({ vm }: { vm: Vm }) {
   return (
     <div className="modal-overlay" role="presentation" onClick={() => { if (!ocupado) vm.fechar(); }}>
       <div className={classeDaJanela({})} role="dialog" aria-modal="true" aria-labelledby="tituloEmail" style={{ maxWidth: 'min(1180px, 96vw)', width: '100%', textAlign: 'left', padding: 20 }} onClick={ev => ev.stopPropagation()}>
-        <button type="button" className="modal-x" aria-label="Fechar" title="Fechar" disabled={ocupado} onClick={vm.fechar}><Icone nome="x" /></button>
+        <BotaoFechar canto disabled={ocupado} onClick={vm.fechar} />
         <h3 id="tituloEmail">Buscar no e-mail · {e.linha.nome} · {rotuloDoMes(e.mes)}</h3>
         <form style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 14 }} onSubmit={ev => { ev.preventDefault(); vm.buscar(); }}>
           <div className="field" style={{ margin: 0 }}>

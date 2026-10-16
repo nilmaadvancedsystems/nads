@@ -24,7 +24,7 @@ export function ConfiguracoesDoFinanceiro() {
     <>
       {vm.exemplos && <p className="registro-dica nf-exemplos"><Icone nome="alert" />Dados de exemplo: nada do que mudar aqui vai para o banco.</p>}
 
-      <ConfigSecao titulo="Emissão" acao={vm.semConfig ? <button type="button" className="btn btn-ghost" onClick={vm.gravarPadrao} title="Ainda não tem configuração gravada: valem os dados do escritório da nota real">Gravar a configuração padrão</button> : undefined}>
+      <ConfigSecao titulo="Emissão" acao={vm.semConfig ? <button type="button" className="btn btn-ghost" onClick={vm.gravarPadrao} title="Ainda não tem configuração salva: valem os dados do escritório da nota real">Salvar a configuração padrão</button> : undefined}>
         <ConfigLinha titulo="Ambiente" descricao="Em homologação a nota não vale nada. Em produção ela vale de verdade na prefeitura.">
           <MenuSuspenso rotulo={AMBIENTES.find(a => a.id === c.ambiente)?.rotulo || ''} className="btn btn-outline" titulo="Ambiente" largura={180}
             itens={AMBIENTES.map(a => ({ rotulo: a.rotulo, marcado: a.id === c.ambiente, onClick: () => { void vm.definirAmbiente(a.id); } }))} />
@@ -93,17 +93,17 @@ export function ConfiguracoesDoFinanceiro() {
       </ConfigSecao>
 
       <ConfigSecao titulo="Token da prefeitura">
-        <ConfigLinha titulo="Gravar o token"
+        <ConfigLinha titulo="Salvar o token"
           descricao={<>No portal da prefeitura (<a href={URL_DA_PREFEITURA} target="_blank" rel="noreferrer">{URL_DA_PREFEITURA.replace('https://', '')}</a>): Configurações › Integração › Gerar Token. Cole aqui; o nads guarda e não mostra de volta.</>}
           aviso={vm.avisos.token}>
           <input type="password" className="nf-entrada" aria-label="Token da prefeitura" autoComplete="off" placeholder={vm.tokenGravadoEm ? 'Colar um token novo' : 'Colar o token'} value={vm.token}
             onChange={e => vm.setToken(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void vm.gravarToken(); }} />
-          <BotaoAcao className="btn" carregando={vm.gravandoToken} textoCarregando="Gravando…" disabled={!vm.token.trim()} onClick={() => void vm.gravarToken()}>Gravar token</BotaoAcao>
+          <BotaoAcao className="btn" carregando={vm.gravandoToken} textoCarregando="Salvando…" disabled={!vm.token.trim()} onClick={() => void vm.gravarToken()}>Salvar token</BotaoAcao>
         </ConfigLinha>
         <ConfigLinha titulo="Situação do token">
           {vm.tokenGravadoEm
-            ? <span className="cfg-valor">Gravado em {dataHoraBr(vm.tokenGravadoEm)}</span>
-            : <span className="badge badge-bad">Nenhum token gravado</span>}
+            ? <span className="cfg-valor">Salvo em {dataHoraBr(vm.tokenGravadoEm)}</span>
+            : <span className="badge badge-bad">Nenhum token salvo</span>}
         </ConfigLinha>
       </ConfigSecao>
 

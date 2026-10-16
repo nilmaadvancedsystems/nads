@@ -9,6 +9,8 @@ import { Icone, MarcaN, type NomeIcone } from './icones';
 import { LogoDrive, LogoGmail } from './logos';
 import { SeletorTema } from './tema';
 import { atualizarVersao, useVersaoNova } from './versaoNova';
+import { BotaoFechar } from './componentes';
+import { useJanela } from './janela';
 
 /** caixa: no lugar do ícone, uma caixinha de checklist (vazia, marcada ou parada) — as etapas de uma tarefa */
 /** titulo: o nome do grupo, em cima da primeira seção dele (Ativo, Passivo…) */
@@ -183,12 +185,8 @@ export function Casca(p: {
     window.addEventListener('resize', ajustar);
     return () => { obs?.disconnect(); window.removeEventListener('resize', ajustar); };
   }, []);
-  useEffect(() => {
-    if (!gaveta) return;
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setGaveta(false); };
-    document.addEventListener('keydown', esc);
-    return () => document.removeEventListener('keydown', esc);
-  }, [gaveta]);
+  // o Esc fecha na hora (atalho de teclado não anima), o foco fica na gaveta e volta ao ☰ (useJanela; revisão da UI, 16/10/2026)
+  useJanela(gavetaEl, () => setGaveta(false), gaveta);
 
   const alternarLateral = () => {
     setOculta(o => {
@@ -267,10 +265,10 @@ export function Casca(p: {
 
       {gaveta && <div ref={fundoEl} className="drawer-overlay" onClick={fecharGaveta} />}
       {gaveta && (
-        <aside ref={gavetaEl} className="drawer" aria-label="Menu">
+        <aside ref={gavetaEl} className="drawer" role="dialog" aria-modal="true" aria-label="Menu">
           <div className="drawer-head">
             <span className="brand-mark" aria-hidden="true"><MarcaN /></span>
-            <button className="drawer-x" type="button" aria-label="Fechar menu" onClick={fecharGaveta}><Icone nome="x" /></button>
+            <BotaoFechar rotulo="Fechar menu" onClick={fecharGaveta} />
           </div>
           <button className="drawer-item" type="button" onClick={() => { fecharGaveta(); (p.onAplicativos || p.onInicio)(); }}>
             <span className="drawer-app-icone" aria-hidden="true"><Icone nome="home" /></span>Início

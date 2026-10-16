@@ -12,9 +12,9 @@ export function Reinf() {
         <MenuSuspenso icone="calendar" rotulo={vm.rotuloCompetencia} titulo="Competência" dica="Trocar a competência"
           itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
         <div className="chip-row reinf-filtros">
-          <button type="button" className={'chip-f' + (vm.filtro === 'todas' ? ' on' : '')} onClick={() => vm.setFiltro('todas')}>Todas <span className="gh-counter">{vm.resumo.total}</span></button>
-          <button type="button" className={'chip-f' + (vm.filtro === 'pendentes' ? ' on' : '')} onClick={() => vm.setFiltro('pendentes')}>Pendentes <span className="gh-counter">{vm.resumo.pendentes}</span></button>
-          <button type="button" className={'chip-f' + (vm.filtro === 'transmitidas' ? ' on' : '')} onClick={() => vm.setFiltro('transmitidas')}>Transmitidas <span className="gh-counter">{vm.resumo.transmitidas}</span></button>
+          <button type="button" className={'chip-f' + (vm.filtro === 'todas' ? ' on' : '')} aria-pressed={vm.filtro === 'todas'} onClick={() => vm.setFiltro('todas')}>Todas <span className="gh-counter">{vm.resumo.total}</span></button>
+          <button type="button" className={'chip-f' + (vm.filtro === 'pendentes' ? ' on' : '')} aria-pressed={vm.filtro === 'pendentes'} onClick={() => vm.setFiltro('pendentes')}>Pendentes <span className="gh-counter">{vm.resumo.pendentes}</span></button>
+          <button type="button" className={'chip-f' + (vm.filtro === 'transmitidas' ? ' on' : '')} aria-pressed={vm.filtro === 'transmitidas'} onClick={() => vm.setFiltro('transmitidas')}>Transmitidas <span className="gh-counter">{vm.resumo.transmitidas}</span></button>
         </div>
         <span className="tarefas-barra-espaco" />
         <label className="busca-curta">

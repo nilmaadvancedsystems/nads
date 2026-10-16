@@ -5,7 +5,7 @@
 //   - ParametrosFiscais (Fiscal › Parâmetros): o regime tributário e se presta serviços.
 // Cada opção numa linha solta (ConfigLinha): o nome, a descrição curta e o controle à direita.
 import { empresas } from '@nads/core';
-import { ConfigLinha, ConfigSecao, Icone, Interruptor, MenuSuspenso, useCarregando } from '@nads/ui';
+import { BotaoIcone, ConfigLinha, ConfigSecao, Icone, Interruptor, MenuSuspenso, useCarregando } from '@nads/ui';
 import { useState } from 'react';
 import { useDadosDaEmpresa } from './useDadosDaEmpresa';
 
@@ -99,7 +99,7 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
               onBlur={e => { if (e.target.value.trim() !== so.nome) mudar(i, 'nome', e.target.value); }} onKeyDown={enter} />
             <input type="text" aria-label="CPF do sócio" inputMode="numeric" defaultValue={so.cpf} placeholder="CPF"
               onBlur={e => { if (e.target.value.replace(/\D/g, '') !== so.cpf) mudar(i, 'cpf', e.target.value); }} onKeyDown={enter} />
-            <button type="button" className="icon-btn icon-btn-sm" title="Tirar o sócio" aria-label="Tirar o sócio" onClick={() => tirar(i)}><Icone nome="x" /></button>
+            <BotaoIcone icone="x" pequeno titulo="Tirar o sócio" onClick={() => tirar(i)} />
           </div>
         ))}
       </ConfigSecao>

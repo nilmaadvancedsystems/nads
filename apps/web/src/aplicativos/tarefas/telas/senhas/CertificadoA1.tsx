@@ -40,7 +40,7 @@ export function CertificadoA1({ vm, ocupado, baixar }: { vm: Vm; ocupado: boolea
             <div className="cert-cartao-validade">
               <span className="fraco">Validade</span>
               <b className="num">{vm.cert.validade || '—'}</b>
-              {sit.situacao === 'vencido' && <span className="badge badge-danger">Vencido</span>}
+              {sit.situacao === 'vencido' && <span className="badge badge-bad">Vencido</span>}
               {sit.situacao === 'vence' && <span className="badge badge-warn">Vence em {sit.dias} dias</span>}
               {sit.situacao === 'ok' && <span className="badge badge-ok">Em dia</span>}
             </div>

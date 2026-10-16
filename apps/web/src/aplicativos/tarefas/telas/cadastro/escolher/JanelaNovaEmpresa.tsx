@@ -2,8 +2,8 @@
 // o Notion como base"), no jeito do "Create record" do Attio com as propriedades do Notion: o CNPJ em destaque no topo (a
 // Receita preenche o resto), o cartão do que a Receita disse, as propriedades em linhas (o nome, o código do ERP, o
 // regime) e, no rodapé, "Cadastrar outra", Cancelar e Cadastrar (Ctrl+Enter). Cadastrar grava e abre a janela da empresa.
-import { BotaoAcao, Icone, Interruptor, MenuSuspenso, type NomeIcone } from '@nads/ui';
-import { useEffect, type ReactNode } from 'react';
+import { BotaoAcao, BotaoFechar, Icone, Interruptor, MenuSuspenso, useJanela, type NomeIcone } from '@nads/ui';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useNovaEmpresa } from './useNovaEmpresa';
 
 const dataBr = (iso: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? m[3] + '/' + m[2] + '/' + m[1] : iso; };
@@ -22,10 +22,12 @@ export function JanelaNovaEmpresa({ fechar }: { fechar: () => void }) {
   const vm = useNovaEmpresa(fechar);
   const r = vm.receita;
 
-  // Esc fecha (menos com o menu do regime aberto); Ctrl+Enter cadastra
+  // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, fechar);
+  // Ctrl+Enter cadastra
   useEffect(() => {
     const tecla = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('.registro-novo .popover')) fechar();
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void vm.cadastrar(); }
     };
     document.addEventListener('keydown', tecla);
@@ -34,10 +36,10 @@ export function JanelaNovaEmpresa({ fechar }: { fechar: () => void }) {
 
   return (
     <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
-      <div className="modal registro-novo" role="dialog" aria-modal="true" aria-label="Empresa nova">
+      <div ref={janela} className="modal registro-novo" role="dialog" aria-modal="true" aria-label="Empresa nova">
         <header className="registro-topo">
           <span className="registro-caminho"><Icone nome="briefcase" />Cadastro<Icone nome="chevronRight" /><b>Empresa nova</b></span>
-          <button type="button" className="icon-btn icon-btn-sm" onClick={fechar} aria-label="Fechar" title="Fechar (Esc)"><Icone nome="x" /></button>
+          <BotaoFechar onClick={fechar} />
         </header>
 
         <div className="registro-corpo">

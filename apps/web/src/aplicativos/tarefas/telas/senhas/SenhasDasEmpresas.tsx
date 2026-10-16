@@ -46,7 +46,7 @@ export function SenhasDasEmpresas() {
                 <td>{l.temGov ? <span className="badge badge-ok">Guardada</span> : <span className="pill-vazio">sem senha</span>}</td>
                 <td>
                   {l.situacao === 'sem' ? <span className="pill-vazio">sem certificado</span>
-                    : <span className={'badge ' + (l.situacao === 'vencido' ? 'badge-danger' : l.situacao === 'vence' ? 'badge-warn' : 'badge-ok')}>
+                    : <span className={'badge ' + (l.situacao === 'vencido' ? 'badge-bad' : l.situacao === 'vence' ? 'badge-warn' : 'badge-ok')}>
                       {l.situacao === 'vencido' ? 'Vencido' : l.situacao === 'vence' ? 'Vence em ' + l.dias + ' dias' : 'Até ' + l.validade.split('-').reverse().join('/')}
                     </span>}
                 </td>
