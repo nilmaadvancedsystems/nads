@@ -1,7 +1,8 @@
 // ViewModel da etapa Caixa × bancos, no Fechamento (Vitor, 16/10/2026: "deixa uma função onde eu irei upar o razão do caixa,
 // e você vai procurar nos bancos valores, datas semelhantes, que às vezes pagou com caixa, mas tinha no banco"). A pessoa
-// importa o razão do caixa (XLS da conciliação do Alterdata); a regra (@nads/core tarefas.caixaNoBanco) acha, nos extratos
-// importados na Importação, o lançamento do mesmo valor e sentido até 5 dias. Só sugere; o razão fica guardado neste
+// importa o razão do caixa (XLS da conciliação do Alterdata); a regra (@nads/core tarefas.caixaNoBanco) acha, para cada
+// pagamento que saiu do caixa, o que saiu do banco com o mesmo valor até 5 dias (Vitor, 16/10/2026: "o que sai do banco e o
+// que está saindo do caixa"); a transferência com o banco fica de fora. Só sugere; o razão fica guardado neste
 // navegador (voltou, está onde parou).
 import { extrator as x, formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
@@ -51,7 +52,7 @@ export function useCaixaNoBanco() {
     temRazao: !!razao, arquivo: razao?.arquivo || '',
     importar, remover: () => setRazao(null),
     temExtrato: extrato.length > 0,
-    resumo: razao ? [doPeriodo + ' lançamentos no período', achados.length ? achados.length + (achados.length === 1 ? ' está no banco' : ' estão no banco') : 'Nenhum no banco'] : [],
+    resumo: razao ? [doPeriodo + ' lançamentos no período', achados.length ? achados.length + (achados.length === 1 ? ' saída também saiu do banco' : ' saídas também saíram do banco') : 'Nenhuma saída no banco'] : [],
     itens: achados.map((a, k) => ({
       id: k + '|' + a.caixa.data + '|' + a.caixa.valor,
       data: dataBR(a.caixa.data), historico: a.caixa.historico, contrapartida: [a.caixa.contrapartida, a.caixa.nomeContrapartida].filter(Boolean).join(' - '),

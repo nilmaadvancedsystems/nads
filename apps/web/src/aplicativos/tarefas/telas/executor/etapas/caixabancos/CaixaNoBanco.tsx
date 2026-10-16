@@ -41,7 +41,7 @@ export function CaixaNoBanco() {
         <div className="gh-blank">
           <Icone nome="dinheiro" />
           <h4>O caixa no banco</h4>
-          <p>Importe o razão do caixa: procuro nos extratos dos bancos o mesmo valor, no mesmo sentido, até 5 dias de diferença (o que foi pago ou recebido pelo banco e lançado no caixa).</p>
+          <p>Importe o razão do caixa: procuro, para cada pagamento que saiu do caixa, o que saiu do banco com o mesmo valor, até 5 dias de diferença (pago pelo banco e lançado no caixa). A transferência entre o caixa e o banco fica de fora.</p>
         </div>
       ) : !vm.temExtrato ? (
         <p className="hint">Nenhum extrato de banco importado na Importação: não tem onde procurar.</p>
@@ -49,12 +49,12 @@ export function CaixaNoBanco() {
         <div className="gh-blank">
           <Icone nome="checkCircle" />
           <h4>Nada do caixa no banco</h4>
-          <p>Nenhum lançamento do caixa com o mesmo valor no extrato dos bancos.</p>
+          <p>Nenhum pagamento do caixa com o mesmo valor saindo do banco.</p>
         </div>
       ) : (
         <div className="table-wrap" style={{ maxHeight: 'none' }}>
           <table className="table-compact">
-            <thead><tr><th>Data</th><th>No caixa</th><th>Contrapartida</th><th className="num">Valor</th><th>Sentido</th></tr></thead>
+            <thead><tr><th>Data</th><th>Saiu do caixa</th><th>Contrapartida</th><th className="num">Valor</th><th>Saiu do banco</th></tr></thead>
             <tbody>
               {vm.itens.map(i => (
                 <Fragment key={i.id}>
@@ -63,7 +63,7 @@ export function CaixaNoBanco() {
                     <td className="wrap">{i.historico}</td>
                     <td className="wrap hint">{i.contrapartida || '—'}</td>
                     <td className="num" style={{ whiteSpace: 'nowrap' }}>{i.valor}</td>
-                    <td><span className={'badge ' + (i.saida ? 'badge-warn' : 'badge-neutral')}>{i.saida ? 'Saiu do caixa' : 'Entrou no caixa'}</span></td>
+                    <td className="hint">{i.noBanco.length === 1 ? '1 lançamento' : i.noBanco.length + ' lançamentos'}</td>
                   </tr>
                   {/* o lançamento do banco logo abaixo, no fundo da cor do banco (o desenho da sugestão de baixa) */}
                   <tr>
