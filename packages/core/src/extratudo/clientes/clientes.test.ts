@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  adiantamentoNoDinamico, emprestimosNoDinamico, assinaturaDoEnvio, clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
+  adiantamentoNoDinamico, emprestimosNoDinamico, resultadoErradoNoDinamico, assinaturaDoEnvio, clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
 } from './index';
 
 // o formato do balancete dinâmico do Alterdata (292, bdinamico.xls)
@@ -128,5 +128,24 @@ describe('empréstimos no dinâmico (15/10/2026)', () => {
     expect(emprestimosNoDinamico(cheque, ['2026-08']).com).toEqual([]);
     const contrato = { meses: ['2026-08'], linhas: [...cheque.linhas, linha('2.1.1.04.002', 'Banco Teste - Capital de giro', { '2026-08': -1000 })] };
     expect(emprestimosNoDinamico(contrato, ['2026-08']).com).toEqual(['2026-08']);
+  });
+});
+
+describe('despesas credoras e receitas devedoras no dinâmico (16/10/2026)', () => {
+  const linha = (classificacao: string, descricao: string, saldos: Record<string, number>) => ({ codigo: classificacao, classificacao, descricao, saldoAnterior: 0, saldos });
+  const d = { meses: ['2026-01', '2026-02'], linhas: [
+    linha('3', 'RECEITAS', {}), linha('3.1.1', 'RECEITA BRUTA', {}),
+    linha('3.1.1.01', 'Venda de Serviços', { '2026-01': -1000, '2026-02': 50 }),
+    linha('3.1.2', '( - ) DEDUÇÕES RECEITA BRUTA', {}), linha('3.1.2.01', 'Simples Nacional', { '2026-01': 60, '2026-02': 120 }),
+    linha('4', 'CUSTOS E DESPESAS', {}), linha('4.2.1', 'DESPESAS ADMINISTRATIVAS', {}),
+    linha('4.2.1.01', 'Telefone', { '2026-01': 100, '2026-02': -20 }),
+    linha('4.2.1.02', '(-) Devolução de Uso e Consumo', { '2026-01': -121, '2026-02': -121 }),
+    linha('4.2.1.03', 'Água', { '2026-01': 30, '2026-02': 60 }),
+  ] };
+  it('a receita devedora e a despesa credora, por mês; as redutoras "(-)" e as deduções ficam de fora', () => {
+    expect(resultadoErradoNoDinamico(d, ['2026-01', '2026-02']).map(x => [x.nome, x.tipo, x.meses])).toEqual([
+      ['Venda de Serviços', 'receita', [{ mes: '2026-02', saldo: 50 }]],
+      ['Telefone', 'despesa', [{ mes: '2026-02', saldo: 20 }]],
+    ]);
   });
 });

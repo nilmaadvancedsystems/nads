@@ -6,7 +6,7 @@ import { formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useGuardado } from '../../../../comum/guardado';
 
-const NOME: Record<t.ContaDaFolha, string> = { salarios: 'Salários a pagar', fgts: 'FGTS a recolher', prolabore: 'Pró-labore a pagar', honorarios: 'Honorários a pagar' };
+const NOME: Record<t.ContaDaFolha, string> = { salarios: 'Salários a pagar', fgts: 'FGTS a recolher', prolabore: 'Pró-labore a pagar', honorarios: 'Honorários a pagar', simples: 'Simples Nacional a recolher' };
 
 export function useRazaoDaFolha(conta: t.ContaDaFolha, chave: string, meses: readonly string[]) {
   const { aviso } = useRetorno();

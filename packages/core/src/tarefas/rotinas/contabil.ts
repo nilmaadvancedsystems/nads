@@ -312,40 +312,46 @@ export const ROTINA_CONTABIL: Rotina = {
         { id: 'honorario-diferente', texto: 'A despesa e o a pagar não batem', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Lance a provisão do honorário do mês (despesa × honorários a pagar) e baixe o pagamento contra o a pagar, não contra a despesa.' } },
       ],
     },
+    {
+      // o Simples Nacional a recolher (Vitor, 16/10/2026: "para empresas enquadradas no regime Simples"): o DAS do mês entra a
+      // crédito e é pago no mês seguinte; o mês fecha só com o DAS dele (o de antes pago), nunca devedor
+      id: 'simples',
+      secao: 'Passivo',
+      nome: 'Simples Nacional a recolher',
+      descricao: 'O DAS do mês entra a crédito e é pago no mês seguinte.',
+      ferramenta: null,
+      tela: { id: 'simples', periodo: true },
+      regimes: ['Simples'],
+      verificacao: 'manual',
+      conferir: [
+        'O DAS de cada mês provisionado (crédito) e pago no mês seguinte (débito).',
+        'O saldo do fim do mês é só o DAS do mês; nenhum saldo devedor.',
+      ],
+      objecoes: [
+        { id: 'das-nao-pago', texto: 'O DAS de antes não foi pago', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Confira no extrato se o DAS foi pago e lance o pagamento contra o Simples a recolher; sem pagamento, é parcelamento ou débito em aberto.' } },
+      ],
+    },
     // Impostos a recolher: fora por enquanto (Vitor, 16/10/2026: "remove ele por enquanto, depois voltamos"); a etapa
     // (o Simples e o ICMS × a guia, a guia paga zerando) está guardada em IMPOSTOS_A_RECOLHER, no fim deste arquivo.
 
     // ─── Resultado ────────────────────────────────────────────────────────────
     {
+      // Despesas e receitas numa tela só (Vitor, 16/10/2026): o dinâmico diz se tem despesa credora ou receita devedora
       id: 'despesas',
       secao: 'Resultado',
-      nome: 'Despesas',
-      descricao: 'Todas as despesas e custos devedores.',
+      nome: 'Despesas e receitas',
+      descricao: 'Nenhuma despesa credora e nenhuma receita devedora no balancete dinâmico.',
       ferramenta: null,
+      tela: { id: 'resultado', periodo: true },
       verificacao: 'manual',
       conferir: [
         'Nenhuma despesa ou custo com saldo credor, menos as redutoras "(-)" (devoluções de compra, por exemplo).',
-        'Despesa credora: lançamento invertido, ou estorno lançado na conta errada.',
-        'Nota de compra de bem lançada como despesa: passe para o imobilizado.',
+        'Nenhuma receita com saldo devedor, menos as deduções "(-)" (impostos sobre a venda, devoluções).',
+        'Despesa credora ou receita devedora: lançamento invertido, ou estorno lançado na conta errada.',
       ],
       objecoes: [
         { id: 'despesa-credora', texto: 'Tem despesa credora e não achei o motivo', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Interrompa com esta objeção: a competência aparece para os sêniores revisarem.' } },
-      ],
-    },
-    {
-      id: 'receitas',
-      secao: 'Resultado',
-      nome: 'Receitas',
-      descricao: 'Todas as receitas credoras; as vendas em cartão conciliadas com as notas.',
-      ferramenta: { app: 'conciliadorzinho', nome: 'Conciliadorzinho', caminho: r => '/conciliadorzinho/' + r + '/conciliacao/bandeiras', embutir: true },
-      verificacao: 'manual',
-      conferir: [
-        'Nenhuma receita com saldo devedor, menos as deduções "(-)" (impostos sobre a venda, devoluções).',
-        'Vende em cartão: as vendas das bandeiras conciliadas com as notas.',
-      ],
-      objecoes: [
         { id: 'receita-devedora', texto: 'Tem receita devedora e não achei o motivo', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Interrompa com esta objeção: a competência aparece para os sêniores revisarem.' } },
-        { id: 'sem-extrato-cartao', texto: 'O extrato da operadora não chegou', soMotivo: true, solucao: { tipo: 'contato', rotulo: 'Pedir o extrato da operadora' } },
       ],
     },
 

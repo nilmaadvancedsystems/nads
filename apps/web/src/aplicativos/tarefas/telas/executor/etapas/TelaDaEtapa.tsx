@@ -12,6 +12,8 @@ import { Salarios } from './salarios/Salarios';
 import { ProLabore } from './prolabore/ProLabore';
 import { Honorarios } from './honorarios/Honorarios';
 import { CaixaNoBanco } from './caixabancos/CaixaNoBanco';
+import { Simples } from './simples/Simples';
+import { Resultado } from './resultado/Resultado';
 
 export function TelaDaEtapa({ id }: { id: tarefas.TelaDaEtapa }) {
   switch (id) {
@@ -27,5 +29,7 @@ export function TelaDaEtapa({ id }: { id: tarefas.TelaDaEtapa }) {
     case 'pro-labore': return <ProLabore />;
     case 'honorarios': return <Honorarios />;
     case 'caixa-bancos': return <CaixaNoBanco />;
+    case 'simples': return <Simples />;
+    case 'resultado': return <Resultado />;
   }
 }

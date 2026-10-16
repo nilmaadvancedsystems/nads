@@ -137,6 +137,39 @@ export function emprestimosNoDinamico(d: BalanceteDinamico, meses: readonly stri
   return mesesComSaldo(d, meses, contas);
 }
 
+/** Uma conta do resultado do lado errado: a despesa credora ou a receita devedora, e os meses (o saldo, sem o sinal). */
+export interface ContaDoResultadoErrada {
+  codigo: string; classificacao: string; nome: string; tipo: 'despesa' | 'receita';
+  meses: { mes: string; saldo: number }[];
+}
+
+/**
+ * Despesas credoras e receitas devedoras no dinâmico (Vitor, 16/10/2026: "despesas/receitas na mesma tela, o sistema só vai
+ * conferir no balancete dinâmico se tem despesas credoras e receitas devedoras"). As analíticas debaixo do grupo das
+ * receitas e do de custos e despesas (pelo nome do grupo de cima; sem ele, o 3 e o 4 do plano do Alterdata); as redutoras
+ * "(-)" (deduções, devoluções), na conta ou no grupo dela, ficam de fora: o lado delas é o contrário.
+ */
+export function resultadoErradoNoDinamico(d: BalanceteDinamico, meses: readonly string[]): ContaDoResultadoErrada[] {
+  const topo = (re: RegExp, padrao: string) => d.linhas.find(l => l.classificacao && !l.classificacao.includes('.') && re.test(normalizarTexto(l.descricao)))?.classificacao || padrao;
+  const grupos = { receita: topo(/^receitas?\b/, '3'), despesa: topo(/^(custos?|despesas?)\b/, '4') };
+  const debaixo = (l: LinhaDinamico, g: string) => l.classificacao.startsWith(g + '.');
+  const folha = (l: LinhaDinamico) => !d.linhas.some(o => o !== l && o.classificacao.startsWith(l.classificacao + '.'));
+  // a redutora: "(-)" ou dedução/devolução no nome dela ou de um grupo de cima
+  const redutora = (l: LinhaDinamico) => d.linhas.some(o => (o === l || l.classificacao.startsWith(o.classificacao + '.'))
+    && (/^\s*\(\s*-\s*\)/.test(o.descricao) || /\b(deduc\w*|devoluc\w*|recuperac\w*)\b/.test(normalizarTexto(o.descricao))));
+  const cobertos = meses.filter(m => d.meses.includes(m));
+  const out: ContaDoResultadoErrada[] = [];
+  for (const l of d.linhas) {
+    const tipo = debaixo(l, grupos.receita) ? 'receita' as const : debaixo(l, grupos.despesa) ? 'despesa' as const : null;
+    if (!tipo || !folha(l) || redutora(l)) continue;
+    // no dinâmico: devedor positivo, credor negativo
+    const errados = cobertos.map(m => ({ mes: m, saldo: l.saldos[m] ?? 0 }))
+      .filter(x => (tipo === 'receita' ? x.saldo > 0.005 : x.saldo < -0.005));
+    if (errados.length) out.push({ codigo: l.codigo, classificacao: l.classificacao, nome: l.descricao.replace(/\s+/g, ' '), tipo, meses: errados.map(x => ({ mes: x.mes, saldo: Math.abs(x.saldo) })) });
+  }
+  return out;
+}
+
 /** Os meses que o dinâmico cobre e, deles, os em que alguma das contas tem saldo no mês ou no de antes. */
 function mesesComSaldo(d: BalanceteDinamico, meses: readonly string[], contas: readonly LinhaDinamico[]): { cobertos: string[]; com: string[] } {
   const antes = (m: string) => { const [a, x] = m.split('-').map(Number); return x === 1 ? (a - 1) + '-12' : a + '-' + String(x - 1).padStart(2, '0'); };
