@@ -17,6 +17,7 @@ export * from './regras/razao';
 export * from './regras/proLabore';
 export * from './regras/emprestimos';
 export * from './regras/inss';
+export * from './regras/fgts';
 export * from './regras/bens';
 export * from './regras/honorarios';
 export * from './regras/etiquetasDaFolha';

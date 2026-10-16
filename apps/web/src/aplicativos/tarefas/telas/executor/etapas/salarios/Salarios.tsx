@@ -22,7 +22,7 @@ export function Salarios() {
       <div className="tarefas-barra-topo">
         <Segmentado<Aba> valor={aba} onMudar={setAba} opcoes={ABAS} />
       </div>
-      <InssDaEtapa inss={vm.inss} conferir={CONFERIR} teste={vm.teste} folha={vm.folha} so={aba} />
+      <InssDaEtapa inss={vm.inss} conferir={CONFERIR} teste={vm.teste} folha={vm.folha} so={aba} conferenciaFgts={vm.conferenciaFgts} />
     </section>
   );
 }
