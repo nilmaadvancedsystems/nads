@@ -18,3 +18,4 @@ export { fundoSuaveDoBanco, LogoBanco, LogoDrive, LogoFgts, LogoGmail, LogoInss,
 export { AberturaN } from './abertura';
 export { RoscaComLegenda, BarrasEmColuna, AnelDeContagem, CartaoComAnel, type FatiaDaRosca, type ColunaDasBarras, type TomDoPainel } from './paineis';
 export { destacarNaTela } from './destaque';
+export { CampoAssinatura } from './componentes';

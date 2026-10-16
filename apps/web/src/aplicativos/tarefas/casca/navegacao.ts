@@ -10,7 +10,7 @@ import type { Operador } from './operador';
 
 export const BASE = '/tarefas';
 
-export type IdAplicacao = 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro';
+export type IdAplicacao = 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas';
 
 export interface Pagina { id: string; rotulo: string; icone: NomeIcone; titulo: string }
 export interface Aplicacao {
@@ -65,6 +65,13 @@ export const APLICACOES: readonly Aplicacao[] = [
     // os textos de consulta que vieram do Toriba (Vitor, 14/10/2026: "importa as legislações em uma aba no DP")
     { id: 'legislacao', rotulo: 'Legislação', icone: 'scale', titulo: 'DP — legislação' },
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'DP — configurações' },
+  ] },
+  // a entrega de documentos aos clientes, trazida do Entregas (16/10/2026: "quero integrar no app … o entregas"; "quero só a
+  // parte de entregas"): a Rota (as paradas, Nova entrega, confirmar com a assinatura ou a foto) e o Painel do mês; todo o
+  // escritório, como no Entregas (lá qualquer pessoa da equipe vê a Nova entrega, a Rota e o Painel)
+  { id: 'entregas', nome: 'Entregas', icone: 'caminhao', grupo: 'Rotinas', pronta: true, paginas: [
+    { id: 'rota', rotulo: 'Rota', icone: 'caminhao', titulo: 'Entregas — rota' },
+    { id: 'painel', rotulo: 'Painel', icone: 'painel', titulo: 'Entregas — painel do mês' },
   ] },
   // as senhas gov.br e os certificados digitais, no cofre com a chave por pessoa (Vitor, 07/10/2026); todo o escritório
   { id: 'senhas', nome: 'Senhas', icone: 'lock', grupo: 'Escritório', pronta: true, paginas: [
@@ -180,3 +187,20 @@ export const ABAS_DO_CADASTRO: readonly { id: string; rotulo: string; icone: Nom
 export const caminhoDoCadastro = (rotaEmpresa: string | null, aba = 'empresa') =>
   BASE + '/cadastro/empresas' + (rotaEmpresa ? '/' + rotaEmpresa + '/' + aba : '');
 export const caminhoDoExecutor = (rotaEmpresa: string, competencia: string) => BASE + '/executar/' + rotaEmpresa + '/' + competencia;
+
+/**
+ * O Importador LCDPR (o que era o lcdpr.html do Entregas) como parte da página da empresa (16/10/2026: "coloque o lcdpr
+ * como parte da empresa 62 de carlos lucas apenas"): só nas empresas desta lista; as telas dele entram na barra lateral,
+ * embaixo das páginas da aplicação. /tarefas/minhas-empresas/empresa/<código>/lcdpr/<página>
+ */
+export const EMPRESAS_COM_LCDPR: readonly number[] = [62];
+export const temLcdpr = (codigo: number | null | undefined) => codigo != null && EMPRESAS_COM_LCDPR.includes(codigo);
+export const PAGINAS_DO_LCDPR: readonly Pagina[] = [
+  { id: 'lancamentos', rotulo: 'Lançamentos', icone: 'dinheiro', titulo: 'LCDPR — importar e conferir' },
+  { id: 'categorias', rotulo: 'Categorias', icone: 'grade', titulo: 'LCDPR — categorias' },
+  { id: 'regras', rotulo: 'Regras de NCM', icone: 'hash', titulo: 'LCDPR — regras de NCM' },
+  { id: 'plano', rotulo: 'Plano de contas', icone: 'list', titulo: 'LCDPR — plano de contas' },
+  { id: 'tabelas', rotulo: 'Tabelas de apoio', icone: 'fileText', titulo: 'LCDPR — tabelas de apoio' },
+  { id: 'configuracao', rotulo: 'Configuração', icone: 'settings', titulo: 'LCDPR — configuração geral' },
+];
+export const caminhoDoLcdpr = (rotaEmpresa: string, pagina: string) => BASE + '/minhas-empresas/empresa/' + rotaEmpresa + '/lcdpr/' + pagina;
