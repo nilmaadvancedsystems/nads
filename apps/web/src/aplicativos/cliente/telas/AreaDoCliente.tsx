@@ -3,7 +3,12 @@
 // documentos, Guias e obrigações, Departamento pessoal, Solicitações e chamados; em Administrativo, Dados cadastrais e Fale
 // com o escritório) no subnav-item do nads, com o rodapé do atendimento; no alto, a empresa com o CNPJ, o sino dos avisos e
 // Nova solicitação. No celular, o menu vira a gaveta do ☰. Link desconhecido ou trocado: só o aviso, sem dado nenhum.
-import { Esqueleto, Icone, MarcaN, MenuSuspenso, useRetorno } from '@nads/ui';
+// Versão D (acabamento premium sóbrio): a marca em duas linhas, o item aberto no fundo carmim suave, o atendimento com o
+// N da Nilma no rodapé, a empresa com a plaquinha do prédio, o esqueleto no formato da página e os estados vazios.
+import { Icone, MarcaN, MenuSuspenso, useRetorno } from '@nads/ui';
+import { EsqueletoDaArea } from '../partes/EsqueletoDaArea';
+import { MarcaDoEscritorio } from '../partes/MarcaDoEscritorio';
+import { Vazio } from '../partes/Vazio';
 import { Chamados } from './Chamados';
 import { DepartamentoPessoal } from './DepartamentoPessoal';
 import { Documentos } from './Documentos';
@@ -20,12 +25,6 @@ export function AreaDoCliente() {
   const valido = area.carregado && area.valido;
   const fechar = [{ rotulo: 'Fechar', valor: null, variante: 'btn-outline' as const }];
   const c = vm.contato;
-
-  // "Nova solicitação" leva à abertura rápida (na própria tela de Solicitações, só põe o cursor no título)
-  const novaSolicitacao = () => {
-    if (vm.aba !== 'chamados') vm.irPara('chamados');
-    setTimeout(() => document.getElementById('cli-titulo-chamado')?.focus(), 50);
-  };
 
   const abrirWhatsapp = () => {
     if (vm.exemplos) { toast('Na versão de exemplo o WhatsApp não abre.'); return; }
@@ -93,7 +92,7 @@ export function AreaDoCliente() {
             <div>
               <div className="cli-marca">
                 <span className="brand-mark" aria-hidden="true"><MarcaN /></span>
-                <b>Nilma Contabilidade</b>
+                <span className="cli-marca-nome"><b>Nilma</b><small>Contabilidade</small></span>
                 <button type="button" className="drawer-x" aria-label="Fechar o menu" onClick={() => vm.setMenuAberto(false)}><Icone nome="x" width={16} height={16} /></button>
               </div>
               <nav className="cli-menu" aria-label="Seções">
@@ -113,9 +112,10 @@ export function AreaDoCliente() {
             </div>
             <div className="cli-lateral-pe">
               <div className="cli-pessoa">
-                <span className="cli-iniciais t0" aria-hidden="true">NC</span>
-                <div><b>Nilma Contabilidade</b>{c.horario && <span className="cli-online"><span className="cli-ponto-ok" aria-hidden="true" />{c.horario}</span>}</div>
+                <MarcaDoEscritorio tamanho={36} />
+                <div><span className="hint">Seu atendimento</span><b>{c.equipe}</b></div>
               </div>
+              {c.horario && <p className="hint">{c.horario}</p>}
               {c.whatsappLink && <button type="button" className="btn" onClick={abrirWhatsapp}><Icone nome="mensagem" width={16} height={16} />WhatsApp do escritório</button>}
             </div>
           </aside>
@@ -123,7 +123,6 @@ export function AreaDoCliente() {
         </>
       )}
       <div className={'cli-corpo' + (valido ? '' : ' sem-lateral')}>
-        {vm.exemplos && valido && <p className="cli-faixa-exemplo">Versão de exemplo: os dados são de mentira e nada do que você fizer aqui chega ao escritório.</p>}
         <header className="cli-topo">
           <div className="cli-topo-esq">
             {valido && (
@@ -131,15 +130,13 @@ export function AreaDoCliente() {
                 <Icone nome="menu" width={16} height={16} />
               </button>
             )}
-            {valido ? (
-              <div className="cli-empresa-caixa">
-                <span className="cli-empresa-ico" aria-hidden="true"><Icone nome="predio" width={16} height={16} /></span>
-                <div className="cli-empresa">
-                  <b>{vm.empresa}</b>
-                  {vm.cnpj && <small>CNPJ {vm.cnpj}</small>}
-                </div>
+            <div className="cli-empresa">
+              <span className="cli-empresa-ico" aria-hidden="true"><Icone nome="predio" width={18} height={18} /></span>
+              <div className="cli-empresa-txt">
+                <b>{valido ? vm.empresa : 'Nilma Contabilidade'}</b>
+                {valido && vm.cnpj && <small>CNPJ {vm.cnpj}</small>}
               </div>
-            ) : <div className="cli-empresa"><b>Nilma Contabilidade</b></div>}
+            </div>
           </div>
           {valido && (
             <div className="cli-topo-dir">
@@ -155,18 +152,18 @@ export function AreaDoCliente() {
                       <button key={n.id} type="button" className={'cli-aviso-item' + (vm.lida(n.id) ? ' lida' : '')} onClick={() => { fecharMenu(); vm.irPara(n.ir); }}>
                         <b>{n.titulo}</b><span>{n.texto}</span>
                       </button>
-                    )) : <p className="empty" style={{ padding: 16 }}>Nada novo.</p>}
+                    )) : <Vazio icone="sino" titulo="Nada novo" texto="Quando o escritório mandar algo, aparece aqui." />}
                   </div>
                 )} />
-              <button type="button" className="btn btn-primary cli-so-largo" onClick={novaSolicitacao}><Icone nome="plus" width={16} height={16} />Nova solicitação</button>
+              {vm.aba !== 'chamados' && <button type="button" className="btn btn-primary cli-so-largo" onClick={() => vm.irPara('chamados')}><Icone nome="plus" width={16} height={16} />Nova solicitação</button>}
             </div>
           )}
         </header>
         <main className="cli-main">
-          {!area.carregado ? <Esqueleto linhas={4} numeros={3} /> : !area.valido ? (
-            <div className="card" style={{ maxWidth: 460, margin: '48px auto 0', textAlign: 'center' }}>
-              <h3>Este link não vale mais</h3>
-              <p className="hint">Ele foi trocado ou não existe. Peça um novo ao escritório.</p>
+          {vm.exemplos && valido && <p className="cli-exemplo">Versão de exemplo: os dados são de mentira e nada chega ao escritório.</p>}
+          {!area.carregado ? <EsqueletoDaArea /> : !area.valido ? (
+            <div className="card cli-link-ruim">
+              <Vazio icone="lock" titulo="Este link não vale mais" texto="Ele foi trocado ou não existe. Peça um novo ao escritório." />
             </div>
           ) : (
             <>

@@ -1,97 +1,100 @@
-// A Visão geral da Área do Cliente (Vitor, 16/10/2026), no layout do protótipo com as peças do nads: a faixa de boas-vindas
-// com os dois atalhos, os quatro números (stat do nads), e embaixo as obrigações e guias próximas (com as pagas) ao lado do
-// atendimento.
+// A Visão geral da Área do Cliente (Vitor, 16/10/2026), no layout do protótipo com as peças do nads: o card de boas-vindas
+// com os dois atalhos, os quatro números, e embaixo as obrigações e guias próximas (com as já pagas) ao lado do
+// atendimento. Versão D (acabamento premium sóbrio): o N da Nilma de marca-d'água no cartão de boas-vindas, sem degradê;
+// os números em cartões soltos, grandes e tabulares, que levam à aba deles; o valor de cada guia alinhado à direita.
 import { formatos } from '@nads/core';
-import { Icone } from '@nads/ui';
+import { Icone, MarcaN, type NomeIcone } from '@nads/ui';
 import { LinhaDeGuia } from '../partes/LinhaDeGuia';
+import { MarcaDoEscritorio } from '../partes/MarcaDoEscritorio';
+import { Vazio } from '../partes/Vazio';
 import { useInicio } from './useInicio';
-import type { AreaCliente, DaCasca } from './useAreaCliente';
+import type { AreaCliente, DaCasca, IdAba } from './useAreaCliente';
+
+function Numero({ rotulo, valor, nota, ruim, ir, irPara }: { rotulo: string; valor: string | number; nota: string; ruim?: boolean; ir: IdAba; irPara: (id: IdAba) => void }) {
+  return (
+    <button type="button" className="cli-numero" onClick={() => irPara(ir)}>
+      <span className="cli-sobre">{rotulo}</span>
+      <span className="cli-numero-valor">{valor}</span>
+      <span className={'hint' + (ruim ? ' ruim' : '')} title={nota}>{nota}</span>
+    </button>
+  );
+}
 
 export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente['contato'] }) {
   const vm = useInicio(props);
   const c = props.contato;
+  const contatos: { icone: NomeIcone; texto?: string }[] = [
+    { icone: 'envelope', texto: c.email }, { icone: 'telefone', texto: c.telefone }, { icone: 'mensagem', texto: c.whatsapp && 'WhatsApp ' + c.whatsapp }, { icone: 'clock', texto: c.horario },
+  ];
   return (
     <>
       <section className="card cli-boas-vindas">
-        <div className="cli-boas-vindas-txt">
-          <h1 className="page-title">Bem-vindo à sua área exclusiva</h1>
-          <p className="page-desc">Guias, documentos, funcionários e pedidos ao escritório.</p>
-        </div>
+        <span className="cli-marca-dagua" aria-hidden="true"><MarcaN /></span>
+        <p className="cli-sobre">{formatos.capital(vm.mesAtual)}</p>
+        <h1 className="page-title">Bem-vindo à sua área exclusiva</h1>
+        <p className="page-desc">As guias para pagar, os documentos do escritório, os seus funcionários e os pedidos ao escritório.</p>
         <div className="cli-acoes">
-          <button type="button" className="btn btn-primary" onClick={() => vm.irPara('guias')}>Guias deste mês</button>
-          <button type="button" className="btn" onClick={() => vm.irPara('chamados')}>Abrir chamado</button>
+          <button type="button" className="btn btn-primary" onClick={() => vm.irPara('guias')}><Icone nome="recibo" width={16} height={16} />Guias deste mês</button>
+          <button type="button" className="btn" onClick={() => vm.irPara('chamados')}><Icone nome="mensagem" width={16} height={16} />Abrir chamado</button>
         </div>
       </section>
 
-      <div className="stat-grid dp-numeros cli-numeros">
-        <div className="stat">
-          <p className="stat-label">Guias a vencer</p>
-          <p className={'stat-value' + (vm.vencidas ? ' cli-ruim' : '')}>{vm.totalDeGuias}</p>
-          <p className="hint">{vm.vencidas ? <span className="cli-ruim">{vm.vencidas === 1 ? '1 vencida' : vm.vencidas + ' vencidas'}</span> : 'Nenhuma vencida'}{vm.proximaGuia ? ' · a próxima em ' + vm.proximaGuia : ''}</p>
-        </div>
-        <div className="stat">
-          <p className="stat-label">Empregados ativos</p>
-          <p className="stat-value">{vm.pessoal.ativos}</p>
-          <p className="hint">{vm.pessoal.emFerias === 1 ? '1 em férias' : vm.pessoal.emFerias ? vm.pessoal.emFerias + ' em férias' : 'Ninguém em férias'}</p>
-        </div>
-        <div className="stat">
-          <p className="stat-label">Chamados em aberto</p>
-          <p className="stat-value">{vm.chamadosEmAberto}</p>
-          <p className="hint">{vm.chamadosEmPoucas || 'Nenhum'}</p>
-        </div>
-        <div className="stat">
-          <p className="stat-label">Documentos do mês</p>
-          <p className="stat-value">{vm.docsDoMes}</p>
-          <p className="hint">{vm.docsNovos === 1 ? '1 novo' : vm.docsNovos ? vm.docsNovos + ' novos' : 'Todos baixados'}</p>
-        </div>
+      <div className="cli-numeros">
+        <Numero rotulo="Guias a vencer" valor={vm.totalDeGuias} ir="guias" irPara={vm.irPara} ruim={vm.vencidas > 0}
+          nota={vm.vencidas ? (vm.vencidas === 1 ? '1 vencida' : vm.vencidas + ' vencidas') : vm.guiasEmPoucas || 'Nenhuma em aberto'} />
+        <Numero rotulo="Empregados ativos" valor={vm.pessoal.ativos} ir="dp" irPara={vm.irPara}
+          nota={vm.pessoal.emFerias === 1 ? '1 em férias' : vm.pessoal.emFerias ? vm.pessoal.emFerias + ' em férias' : 'Ninguém em férias'} />
+        <Numero rotulo="Chamados em aberto" valor={vm.chamadosEmAberto} ir="chamados" irPara={vm.irPara} nota={vm.primeiroEmAberto || 'Nenhum'} />
+        <Numero rotulo="Documentos do mês" valor={vm.docsDoMes} ir="documentos" irPara={vm.irPara}
+          nota={vm.docsNovos === 1 ? '1 ainda não baixado' : vm.docsNovos ? vm.docsNovos + ' ainda não baixados' : 'Todos baixados'} />
       </div>
 
       <div className="cli-duas">
         <section className="card">
           <div className="card-head">
-            <h3>Obrigações e guias próximas</h3>
-            <button type="button" className="btn btn-ghost" onClick={() => vm.irPara('guias')}>Ver todas<Icone nome="seta" width={14} height={14} /></button>
+            <div>
+              <h3>Obrigações e guias próximas</h3>
+              <p className="hint">As guias que o escritório gerou para a sua empresa</p>
+            </div>
+            <button type="button" className="btn btn-ghost" onClick={() => vm.irPara('guias')}>Ver todas<Icone nome="chevronRight" width={16} height={16} /></button>
           </div>
           {vm.guias.length || vm.pagas.length ? (
-            <ul>
+            <ul className="cli-lista">
               {vm.guias.map(g => <LinhaDeGuia key={g.id} guia={g} codigo={vm.codigos[g.id]} ocupado={vm.baixando === g.id} onBaixar={id => void vm.baixar(id)} onCopiar={vm.copiarCodigo} />)}
               {vm.pagas.map(p => (
-                <li key={p.id} className="cli-linha cli-linha-guia">
-                  <span className="cli-sigla bom" aria-hidden="true">{p.sigla}</span>
+                <li key={p.id} className="cli-linha">
+                  <span className="cli-sigla pago" style={{ width: 44, height: 44 }} aria-hidden="true"><Icone nome="check" width={18} height={18} /></span>
                   <div className="cli-linha-txt">
                     <b>{p.nome}</b>
                     <p className="hint">Pago em {p.pagoEm}</p>
                   </div>
-                  <span className="cli-valor">{formatos.reais(p.valor)}</span>
-                  <span className="cli-coluna-selo"><span className="cli-selo bom">Pago</span></span>
-                  <span className="cli-acoes-linha">
-                    {p.temComprovante && (
-                      <button type="button" className="icon-btn" title="Baixar o comprovante" aria-label={'Baixar o comprovante de ' + p.nome} onClick={() => void vm.baixarComprovante(p.id)}>
-                        <Icone nome="fileDown" width={16} height={16} />
-                      </button>
-                    )}
-                  </span>
+                  <div className="cli-linha-dir">
+                    <span className="badge badge-ok">Pago</span>
+                    <span className="cli-valor cli-linha-valor">{formatos.reais(p.valor)}</span>
+                    <span className="cli-linha-acoes">
+                      {p.temComprovante && (
+                        <button type="button" className="icon-btn" title="Baixar o comprovante" aria-label={'Baixar o comprovante de ' + p.nome} onClick={() => void vm.baixarComprovante(p.id)}>
+                          <Icone nome="fileDown" width={16} height={16} />
+                        </button>
+                      )}
+                    </span>
+                  </div>
                 </li>
               ))}
             </ul>
-          ) : <p className="empty">Nenhuma guia por enquanto.</p>}
+          ) : <Vazio icone="recibo" titulo="Nenhuma guia por enquanto" texto="Quando o escritório gerar uma guia, ela aparece aqui." />}
         </section>
 
         <section className="card cli-atendimento">
           <div className="card-head"><h3>Atendimento</h3></div>
-          <div className="cli-atendimento-caixa">
-            <div className="cli-pessoa">
-              <span className="cli-iniciais t0 grande" aria-hidden="true">NC</span>
-              <div><b>{c.equipe}</b><span className="hint">Seu escritório de contabilidade</span></div>
-            </div>
-            <ul className="cli-contatos">
-              {c.email && <li><Icone nome="envelope" width={16} height={16} />{c.email}</li>}
-              {c.telefone && <li><Icone nome="telefone" width={16} height={16} />{c.telefone}</li>}
-              {c.whatsapp && <li><Icone nome="mensagem" width={16} height={16} />{c.whatsapp} (WhatsApp)</li>}
-              {c.horario && <li><Icone nome="clock" width={16} height={16} />{c.horario}</li>}
-            </ul>
+          <div className="cli-pessoa">
+            <MarcaDoEscritorio tamanho={44} />
+            <div><b>{c.equipe}</b><span className="hint">O seu contato no escritório</span></div>
           </div>
-          <button type="button" className="btn cli-largo" onClick={() => vm.irPara('chamados')}><Icone nome="aviao" width={16} height={16} />Solicitar documento ou serviço</button>
+          <ul className="cli-contatos">
+            {contatos.filter(k => k.texto).map(k => <li key={k.icone}><Icone nome={k.icone} width={16} height={16} /><span>{k.texto}</span></li>)}
+          </ul>
+          <button type="button" className="btn cli-largo" onClick={() => vm.irPara('chamados')}>Solicitar documento ou serviço</button>
         </section>
       </div>
     </>

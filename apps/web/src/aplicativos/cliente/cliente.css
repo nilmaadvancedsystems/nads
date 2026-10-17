@@ -1,275 +1,406 @@
-/* Área do Cliente (Vitor, 16/10/2026: "quero assim, só que no design do app", "refina essa ui", "mais bonito"). O layout do
-   protótipo AreaCliente.HTML, tela por tela, montado com as peças do nads (card, card-head, stat, table-wrap, btn, icon-btn,
-   field, chip-f, subnav-item, page-title), com o acabamento do HTML dele sem a cara de IA: o fundo da página levemente
-   cinza, os cards na cor da superfície com borda suave, sombra bem leve e cantos de 10 px, um selo só (o suave: fundo claro
-   e texto na cor do significado), números grandes e firmes, tabelas confortáveis. As cores, as fontes e os botões vêm dos
-   tokens do nads, no claro e no escuro. Tudo sob .cli-app e com prefixo cli-, para não mexer no resto do nads. */
+/* Área do Cliente, versão D — acabamento premium sóbrio (Vitor, 16/10/2026: "visualmente mais bonito", "no design do app").
+   O layout do protótipo AreaCliente.HTML com as peças do nads, com outro acabamento: o fundo levemente cinza e os cartões
+   brancos por cima, com a sombra difusa bem leve, a borda de 1 px suave e os cantos de 12 px; os títulos com peso e o
+   tracking fechado, os números grandes e tabulares; os selos num estilo só (o pontinho e o fundo suave, com a cor só pelo
+   significado); um primário carmim por área e os outros botões secundários. Sem degradê, sem faixas, sem textos de
+   marketing. As cores vêm sempre dos tokens do nads (as --cli-* só escolhem qual token usar no claro e no escuro).
+   Tudo sob .cli-app e com o prefixo cli-, para não mexer no resto do nads. */
 .cli-app{
   --cli-fundo:var(--surface-2);
   --cli-cartao:var(--surface);
-  --cli-raio:10px;
-  --cli-sombra:0 1px 2px #1D1C1F0D,0 1px 3px #1D1C1F0A;
+  --cli-linha:color-mix(in srgb,var(--border) 72%,transparent);
+  --cli-fio:color-mix(in srgb,var(--border) 55%,transparent);
+  --cli-sombra-cor:var(--ink);
+  --cli-sombra:0 1px 2px color-mix(in srgb,var(--cli-sombra-cor) 4%,transparent),0 10px 28px -14px color-mix(in srgb,var(--cli-sombra-cor) 14%,transparent);
+  --cli-sombra-alta:0 2px 4px color-mix(in srgb,var(--cli-sombra-cor) 5%,transparent),0 16px 36px -16px color-mix(in srgb,var(--cli-sombra-cor) 22%,transparent);
+  --cli-passa:color-mix(in srgb,var(--ink) 3.5%,transparent);
+  --cli-raio:12px;
+  --cli-raio-p:8px;
   min-height:100vh;background:var(--cli-fundo);color:var(--ink);font-family:var(--font-body);font-size:14px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;
 }
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]) .cli-app{--cli-fundo:var(--bg);--cli-cartao:var(--surface-2);--cli-sombra:none;}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .cli-app{--cli-fundo:var(--bg);--cli-cartao:var(--surface-2);--cli-linha:color-mix(in srgb,var(--border) 85%,transparent);
+    --cli-fio:color-mix(in srgb,var(--border) 70%,transparent);--cli-sombra-cor:var(--overlay-bg);--cli-passa:color-mix(in srgb,var(--ink) 5%,transparent);}
 }
-:root[data-theme="dark"] .cli-app{--cli-fundo:var(--bg);--cli-cartao:var(--surface-2);--cli-sombra:none;}
+:root[data-theme="dark"] .cli-app{--cli-fundo:var(--bg);--cli-cartao:var(--surface-2);--cli-linha:color-mix(in srgb,var(--border) 85%,transparent);
+  --cli-fio:color-mix(in srgb,var(--border) 70%,transparent);--cli-sombra-cor:var(--overlay-bg);--cli-passa:color-mix(in srgb,var(--ink) 5%,transparent);}
+
 .cli-app *,.cli-app *::before,.cli-app *::after{box-sizing:border-box;}
 .cli-app :is(h1,h2,h3,p,ul,ol,dl,dd){margin:0;}
 .cli-app :is(ul,ol){padding:0;list-style:none;}
 .cli-app svg{flex:none;}
+.cli-app .cli-valor{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:-.01em;}
+.cli-app .hint{margin-top:0;}
 
-/* as peças do nads com o acabamento da área: a superfície, os cantos de 10 px e a sombra leve */
-.cli-app :is(.card,.table-wrap,.stat-grid){margin:0;min-width:0;border-color:var(--border);border-radius:var(--cli-raio);background:var(--cli-cartao);box-shadow:var(--cli-sombra);}
-/* o cabeçalho do card claro, como no HTML: o título firme na superfície, com o fio fino embaixo */
-.cli-app .card-head{border-radius:var(--cli-raio) var(--cli-raio) 0 0;background:transparent;border-bottom-color:var(--border-muted);min-height:52px;}
-.cli-app .card-head h3{font-size:15px;font-weight:700;}
-.cli-app .stat{background:var(--cli-cartao);}
-.cli-app .table-wrap{max-height:none;overflow-x:auto;}
-.cli-app .table-wrap thead th{font-size:12px;color:var(--ink-muted);}
-.cli-app .table-wrap tbody td{padding-top:12px;padding-bottom:12px;}
-.cli-app .table-wrap tbody tr{transition:background-color .12s ease;}
+/* o foco sempre visível, no carmim, fora da peça */
+.cli-app :is(button,a,input,select,textarea,label,[tabindex]):focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.cli-app :is(input[type="text"],select,textarea):focus-visible{outline-offset:0;}
+
+/* ------------------------------ as peças do nads, com o acabamento desta versão ------------------------------ */
+.cli-app .card{margin:0;min-width:0;padding:24px;background:var(--cli-cartao);border:1px solid var(--cli-linha);border-radius:var(--cli-raio);box-shadow:var(--cli-sombra);}
+.cli-app .card-head{margin:0 0 16px;padding:0;min-height:0;background:none;border:0;border-radius:0;align-items:flex-start;}
+.cli-app .card-head h3,.cli-app .card h3{font-size:16px;font-weight:600;letter-spacing:-.01em;line-height:1.35;margin:0;}
+.cli-app .card-head .hint{margin-top:2px;font-size:13px;}
+.cli-app .card-head-ctl{font-weight:500;}
+.cli-app .page-title{font-size:26px;font-weight:700;line-height:1.2;letter-spacing:-.022em;}
+.cli-app .page-desc{margin-top:6px;font-size:14px;color:var(--ink-muted);}
+.cli-app .btn{min-height:36px;padding:7px 14px;border-radius:var(--cli-raio-p);font-weight:600;letter-spacing:-.005em;box-shadow:0 1px 1px color-mix(in srgb,var(--cli-sombra-cor) 5%,transparent);
+  background:var(--cli-cartao);border-color:var(--cli-linha);transition:background-color .15s ease,border-color .15s ease,box-shadow .15s ease;}
+.cli-app .btn:hover:not(:disabled){background:var(--cli-fundo);border-color:var(--border);}
+.cli-app .btn-primary{background:var(--btn-primary);border-color:transparent;color:var(--on-accent);box-shadow:0 1px 2px color-mix(in srgb,var(--btn-primary) 30%,transparent);}
+.cli-app .btn-primary:hover:not(:disabled){background:var(--btn-primary-hover);border-color:transparent;}
+.cli-app .btn-ghost{background:none;border-color:transparent;box-shadow:none;color:var(--accent-ink);}
+.cli-app .btn-ghost:hover:not(:disabled){background:var(--accent-soft);border-color:transparent;}
+.cli-app .icon-btn{width:36px;height:36px;border-radius:var(--cli-raio-p);border-color:var(--cli-linha);background:var(--cli-cartao);transition:background-color .15s ease,color .15s ease;}
+.cli-app .icon-btn:hover:not(:disabled){background:var(--cli-fundo);color:var(--ink);}
+.cli-app .icon-btn:disabled{opacity:.45;cursor:not-allowed;}
+.cli-app input[type="text"],.cli-app select,.cli-app .field textarea{min-height:40px;border-radius:var(--cli-raio-p);border-color:var(--cli-linha);box-shadow:none;background-color:var(--input-bg);}
+.cli-app input[type="text"]:hover,.cli-app select:hover,.cli-app .field textarea:hover{border-color:var(--border);}
+.cli-app input[type="text"]:focus,.cli-app select:focus,.cli-app .field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);outline:none;}
+.cli-app .field{margin-bottom:16px;}
+.cli-app .field label{font-size:13px;font-weight:600;margin-bottom:6px;}
 .cli-app .field :is(input[type="text"],select,textarea){width:100%;}
-.cli-app .field textarea{min-height:0;}
-/* o botão secundário na cor da superfície, com a borda */
-.cli-app .btn:not(.btn-primary):not(.btn-ghost):not(.btn-danger){background:var(--cli-cartao);}
-.cli-app .btn:not(.btn-primary):not(.btn-ghost):not(.btn-danger):hover:not(:disabled),.cli-app .icon-btn:hover:not(:disabled){background:var(--surface-3);}
-.cli-app .icon-btn{background:var(--cli-cartao);}
-.cli-app :is(.btn,.icon-btn,.subnav-item,.chip-f):focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
-.cli-app .cli-valor{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;}
-.cli-app .cli-ruim{color:var(--danger);}
-.cli-app .cli-atencao{color:var(--warn);font-weight:600;}
+.cli-app .field textarea{min-height:0;padding:10px 12px;}
 
-/* o selo suave, o único da área: fundo claro e texto na cor do significado (vermelho vencida, atenção, verde pago/em dia) */
-.cli-app .cli-selo{display:inline-flex;align-items:center;flex:none;padding:0 8px;border-radius:2em;background:var(--surface-3);color:var(--ink-muted);
-  font-size:12px;font-weight:500;line-height:20px;white-space:nowrap;}
-.cli-app .cli-selo.ruim{background:var(--danger-soft);color:var(--danger-ink);}
-.cli-app .cli-selo.atencao{background:var(--warn-soft);color:var(--warn);}
-.cli-app .cli-selo.bom{background:var(--success-soft);color:var(--success-ink);}
+/* os selos: um estilo só, o pontinho e o fundo suave; a cor só pelo significado */
+.cli-app .badge{display:inline-flex;align-items:center;gap:6px;padding:2px 10px 2px 8px;border:0;border-radius:999px;background:var(--surface-3);color:var(--ink-muted);
+  font-size:12px;font-weight:600;line-height:18px;letter-spacing:0;white-space:nowrap;}
+.cli-app .badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.85;}
+.cli-app .badge-ok{background:var(--success-soft);color:var(--success-ink);}
+.cli-app .badge-warn{background:var(--warn-soft);color:var(--warn);}
+.cli-app .badge-bad{background:var(--danger-soft);color:var(--danger-ink);}
+.cli-app .badge-neutral{background:var(--surface-3);color:var(--ink-muted);}
+.cli-app .badge.cli-sem-ponto{padding:2px 10px;}
+.cli-app .badge.cli-sem-ponto::before{display:none;}
+
+/* a sobrelinha: o rótulo pequeno em caixa alta, espaçado */
+.cli-app .cli-sobre{font-size:11.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-muted);}
 
 /* ------------------------------ o menu lateral: fixo no PC, gaveta no celular ------------------------------ */
-.cli-app .cli-lateral{position:fixed;top:0;bottom:0;left:0;z-index:40;display:flex;flex-direction:column;justify-content:space-between;width:256px;max-width:calc(100vw - 48px);
-  overflow-y:auto;background:var(--cli-cartao);border-right:1px solid var(--border);transform:translateX(-100%);transition:transform .2s ease;}
+.cli-app .cli-lateral{position:fixed;top:0;bottom:0;left:0;z-index:40;display:flex;flex-direction:column;justify-content:space-between;width:264px;max-width:calc(100vw - 48px);
+  overflow-y:auto;background:var(--drawer-bg);border-right:1px solid var(--cli-linha);transform:translateX(-100%);transition:transform .2s ease;}
 .cli-app .cli-lateral.aberta{transform:none;box-shadow:var(--shadow-lg);}
-.cli-app .cli-fundo-gaveta{position:fixed;inset:0;z-index:30;background:#01040966;}
-.cli-app .cli-marca{display:flex;align-items:center;gap:10px;min-height:60px;padding:10px 12px 10px 20px;border-bottom:1px solid var(--border);}
-.cli-app .cli-marca .brand-mark svg{height:30px;}
-.cli-app .cli-marca b{flex:1;min-width:0;font-size:15px;font-weight:700;}
-.cli-app .cli-menu{display:flex;flex-direction:column;gap:2px;padding:16px 8px 16px 16px;}
-.cli-app .cli-menu .subnav-title{display:block;padding:16px 8px 6px;}
-.cli-app .cli-menu .subnav-item{width:100%;flex:none;white-space:normal;transition:background-color .12s ease;}
+.cli-app .cli-fundo-gaveta{position:fixed;inset:0;z-index:30;background:color-mix(in srgb,var(--overlay-bg) 10%,var(--ink) 40%);opacity:.6;}
+.cli-app .cli-marca{display:flex;align-items:center;gap:12px;min-height:72px;padding:12px 12px 12px 22px;}
+.cli-app .cli-marca .brand-mark svg{height:34px;}
+.cli-app .cli-marca-nome{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.1;}
+.cli-app .cli-marca-nome b{font-size:17px;font-weight:700;letter-spacing:-.02em;}
+.cli-app .cli-marca-nome small{margin-top:3px;font-size:9.5px;font-weight:600;letter-spacing:.24em;text-transform:uppercase;color:var(--ink-muted);}
+.cli-app .cli-menu{display:flex;flex-direction:column;gap:2px;padding:8px 14px 16px;}
+.cli-app .cli-menu .subnav-title{display:block;padding:20px 12px 8px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;}
+.cli-app .cli-menu .subnav-item{width:100%;flex:none;min-height:40px;padding:8px 12px;gap:12px;border-radius:var(--cli-raio-p);white-space:normal;color:var(--ink-muted);font-weight:500;
+  transition:background-color .15s ease,color .15s ease;}
 .cli-app .cli-menu .subnav-item > span:first-of-type{flex:1;min-width:0;}
-/* na gaveta do celular o nads esconde a marquinha do item aberto; aqui ela fica */
-.cli-app .cli-menu .subnav-item.active::before{display:block;}
-.cli-app .cli-menu .subnav-count.cli-conta-ruim{background:var(--danger);color:#fff;}
-.cli-app .cli-lateral-pe{display:flex;flex-direction:column;gap:2px;margin:12px;padding:14px;border-radius:var(--cli-raio);background:var(--surface-2);font-size:12px;color:var(--ink-muted);}
-.cli-app .cli-lateral-pe b{display:block;font-size:13px;font-weight:600;color:var(--ink);}
-.cli-app .cli-online{display:flex;align-items:flex-start;gap:6px;font-size:11px;line-height:1.4;color:var(--ink-muted);}
-.cli-app .cli-online .cli-ponto-ok{margin-top:4px;}
-.cli-app .cli-lateral-pe .cli-pessoa{align-items:flex-start;}
-.cli-app .cli-ponto-ok{width:7px;height:7px;flex:none;border-radius:50%;background:var(--success);}
-.cli-app .cli-lateral-pe .btn{margin-top:10px;}
+.cli-app .cli-menu .subnav-item:hover{background:var(--cli-passa);color:var(--ink);}
+.cli-app .cli-menu .subnav-item:hover svg{color:var(--ink);}
+.cli-app .cli-menu .subnav-item.active{background:var(--accent-soft);color:var(--accent-ink);font-weight:600;}
+.cli-app .cli-menu .subnav-item.active svg{color:var(--accent-ink);}
+.cli-app .cli-menu .subnav-item.active::before{display:none;}
+.cli-app .cli-menu .subnav-count{min-width:22px;padding:0 7px;background:var(--surface-3);color:var(--ink-muted);font-variant-numeric:tabular-nums;}
+.cli-app .cli-menu .subnav-item.active .subnav-count{background:var(--cli-cartao);color:var(--accent-ink);}
+.cli-app .cli-menu .subnav-count.cli-conta-ruim{background:var(--danger-soft);color:var(--danger-ink);}
+.cli-app .cli-lateral-pe{display:flex;flex-direction:column;gap:12px;margin:14px;padding:16px;border:1px solid var(--cli-linha);border-radius:var(--cli-raio);background:var(--cli-fundo);}
+.cli-app .cli-lateral-pe .btn{width:100%;}
+.cli-app .cli-lateral-pe .cli-pessoa :is(b,.hint){white-space:normal;}
 
-/* ------------------------------ a faixa do exemplo e o topo ------------------------------ */
-.cli-app .cli-faixa-exemplo{padding:4px 16px;background:var(--surface-3);color:var(--ink-muted);font-size:12px;text-align:center;}
+/* a pessoa (o atendimento, o funcionário): as iniciais no círculo, o nome e a linha de baixo */
+.cli-app .cli-pessoa{display:flex;align-items:center;gap:12px;min-width:0;}
+.cli-app .cli-pessoa > div{min-width:0;line-height:1.35;}
+.cli-app .cli-pessoa b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-app .cli-pessoa .hint{display:block;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-app .cli-iniciais{display:flex;align-items:center;justify-content:center;flex:none;width:36px;height:36px;border-radius:50%;
+  background:var(--accent-soft);color:var(--accent-ink);font-size:12.5px;font-weight:700;letter-spacing:.02em;}
+.cli-app .cli-iniciais.grande{width:44px;height:44px;font-size:14px;}
+.cli-app .cli-iniciais.t1{background:var(--info-soft);color:var(--info);}
+.cli-app .cli-iniciais.t2{background:var(--success-soft);color:var(--success-ink);}
+.cli-app .cli-iniciais.t3{background:var(--roxo-soft);color:var(--roxo);}
+.cli-app .cli-iniciais.t4{background:var(--ciano-soft);color:var(--ciano);}
+.cli-app .cli-iniciais.t5{background:var(--warn-soft);color:var(--warn);}
+
+/* a marca do escritório no lugar do "NC": o N oficial num círculo claro */
+.cli-app .cli-marca-escritorio{display:inline-flex;align-items:center;justify-content:center;flex:none;border:1px solid var(--cli-linha);border-radius:50%;background:var(--cli-cartao);
+  box-shadow:0 1px 2px color-mix(in srgb,var(--cli-sombra-cor) 6%,transparent);}
+.cli-app .cli-marca-escritorio svg{display:block;width:auto;height:100%;}
+
+/* o avatar com foto (Avatar): a foto redonda ou as iniciais; com onFoto, a câmera aparece ao passar o mouse */
+.cli-app .cli-avatar{position:relative;display:inline-flex;flex:none;border-radius:50%;}
+.cli-app .cli-avatar .cli-iniciais{width:100%;height:100%;}
+.cli-app .cli-avatar-foto{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover;box-shadow:0 0 0 1px var(--cli-linha);}
+.cli-app .cli-avatar-mexe{cursor:pointer;}
+.cli-app .cli-avatar-camera{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:50%;
+  background:color-mix(in srgb,var(--ink) 58%,transparent);color:var(--cli-cartao);opacity:0;transition:opacity .15s ease;}
+.cli-app .cli-avatar-mexe:hover .cli-avatar-camera,.cli-app .cli-avatar-mexe.ocupado .cli-avatar-camera,.cli-app .cli-avatar-mexe:has(input:focus-visible) .cli-avatar-camera{opacity:1;}
+.cli-app .cli-avatar-mexe:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px;}
+.cli-app .cli-avatar-mexe.ocupado{cursor:progress;}
+@media (hover:none){
+  .cli-app .cli-avatar-camera{inset:auto -3px -3px auto;width:20px;height:20px;opacity:1;background:var(--cli-cartao);color:var(--ink-muted);box-shadow:0 0 0 1px var(--cli-linha);}
+  .cli-app .cli-avatar-camera svg{width:12px;height:12px;}
+}
+.cli-app .cli-ficha-foto{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+.cli-app .cli-campo-foto{display:flex;flex-wrap:wrap;align-items:center;gap:10px;}
+.cli-app .cli-campo-foto label.btn{display:inline-flex;margin:0;font-size:14px;}
+
+/* ------------------------------ o topo: a empresa, o sino e Nova solicitação ------------------------------ */
 .cli-app .cli-corpo{display:flex;flex-direction:column;min-width:0;min-height:100vh;}
-.cli-app .cli-topo{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:60px;padding:8px 16px;
-  background:var(--cli-cartao);border-bottom:1px solid var(--border);}
+.cli-app .cli-topo{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:64px;padding:10px 16px;
+  background:color-mix(in srgb,var(--cli-cartao) 88%,transparent);backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--cli-linha);}
 .cli-app .cli-topo-esq{display:flex;align-items:center;gap:12px;min-width:0;}
-.cli-app .cli-topo-dir{display:flex;align-items:center;gap:8px;flex:none;}
-.cli-app .cli-empresa-caixa{display:flex;align-items:center;gap:10px;min-width:0;padding:5px 12px 5px 6px;border:1px solid var(--border);border-radius:var(--cli-raio);background:var(--surface-2);}
-.cli-app .cli-empresa-ico{display:flex;align-items:center;justify-content:center;flex:none;width:30px;height:30px;border-radius:8px;background:var(--surface-3);color:var(--ink-muted);}
-.cli-app .cli-empresa{min-width:0;line-height:1.3;}
-.cli-app .cli-empresa b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cli-app .cli-empresa small{display:block;font-size:12px;color:var(--ink-muted);white-space:nowrap;}
-.cli-app .cli-sino{position:relative;}
-.cli-app .cli-sino-conta{position:absolute;top:-5px;right:-5px;min-width:16px;padding:0 4px;border-radius:2em;background:var(--accent);color:var(--on-accent);font-size:10px;font-weight:600;line-height:16px;text-align:center;pointer-events:none;}
-.cli-app .cli-avisos{width:min(320px,calc(100vw - 32px));}
-.cli-app .cli-avisos-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;font-weight:600;}
-.cli-app .cli-aviso-item{appearance:none;display:block;width:100%;padding:8px 12px;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
-.cli-app .cli-aviso-item + .cli-aviso-item{border-top:1px solid var(--border);}
-.cli-app .cli-aviso-item:hover{background:var(--hover-bg);}
+.cli-app .cli-topo-dir{display:flex;align-items:center;gap:10px;flex:none;}
+.cli-app .cli-topo .gh-hamb{width:36px;height:36px;border-radius:var(--cli-raio-p);border-color:var(--cli-linha);}
+.cli-app .cli-empresa{display:flex;align-items:center;gap:12px;min-width:0;}
+.cli-app .cli-empresa-ico{display:flex;align-items:center;justify-content:center;flex:none;width:36px;height:36px;border:1px solid var(--cli-linha);border-radius:var(--cli-raio-p);
+  background:var(--cli-fundo);color:var(--ink-muted);}
+.cli-app .cli-empresa-txt{min-width:0;line-height:1.3;}
+.cli-app .cli-empresa-txt b{display:block;font-weight:600;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-app .cli-empresa-txt small{display:block;font-size:12px;color:var(--ink-muted);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.cli-app .cli-sino{position:relative;border:0;background:none;box-shadow:none;}
+.cli-app .cli-sino:hover{background:var(--cli-passa);}
+.cli-app .cli-sino-conta{position:absolute;top:-1px;right:-1px;min-width:10px;padding:0 4px;border:2px solid var(--cli-cartao);border-radius:2em;background:var(--accent);color:var(--on-accent);
+  font-size:10px;font-weight:700;line-height:14px;text-align:center;pointer-events:none;box-sizing:content-box;font-variant-numeric:tabular-nums;}
+.cli-app .cli-avisos{width:min(340px,calc(100vw - 32px));}
+.cli-app .cli-avisos-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid var(--cli-linha);font-size:13px;font-weight:600;}
+.cli-app .cli-aviso-item{appearance:none;display:flex;gap:10px;width:100%;padding:12px 14px;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
+.cli-app .cli-aviso-item::before{content:'';flex:none;width:7px;height:7px;margin-top:7px;border-radius:50%;background:var(--accent);}
+.cli-app .cli-aviso-item.lida::before{background:transparent;}
+.cli-app .cli-aviso-item + .cli-aviso-item{border-top:1px solid var(--cli-fio);}
+.cli-app .cli-aviso-item:hover{background:var(--cli-passa);}
 .cli-app .cli-aviso-item b{display:block;font-size:13px;font-weight:600;}
-.cli-app .cli-aviso-item span{display:block;font-size:12px;color:var(--ink-muted);}
-.cli-app .cli-aviso-item.lida b{font-weight:400;color:var(--ink-muted);}
+.cli-app .cli-aviso-item span{display:block;font-size:12.5px;color:var(--ink-muted);}
+.cli-app .cli-aviso-item.lida b{font-weight:500;color:var(--ink-muted);}
 
-/* ------------------------------ a página: o mesmo ritmo em todas as telas ------------------------------ */
-.cli-app .cli-main{flex:1;display:flex;flex-direction:column;gap:16px;width:100%;max-width:1440px;min-width:0;margin:0 auto;padding:20px 16px 48px;}
-.cli-app .cli-titulo{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 16px;}
-.cli-app .page-title{font-size:23px;font-weight:800;letter-spacing:-.02em;line-height:1.2;}
-.cli-app .page-desc{margin-top:4px;font-size:14px;color:var(--ink-muted);}
-.cli-app .cli-acoes{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
-.cli-app .cli-duas,.cli-app .cli-tres{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start;}
+/* ------------------------------ a página ------------------------------ */
+.cli-app .cli-main{flex:1;display:flex;flex-direction:column;gap:20px;width:100%;max-width:1200px;min-width:0;margin:0 auto;padding:20px 16px 56px;}
+.cli-app .cli-exemplo{display:flex;align-items:center;gap:8px;align-self:flex-start;padding:4px 12px 4px 10px;border:1px solid var(--cli-linha);border-radius:999px;background:var(--cli-cartao);
+  font-size:12px;color:var(--ink-muted);}
+.cli-app .cli-exemplo::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--warn);}
+.cli-app .cli-titulo{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;padding-bottom:4px;}
+.cli-app .cli-acoes{display:flex;flex-wrap:wrap;align-items:center;gap:10px;}
+.cli-app .cli-duas,.cli-app .cli-tres{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-items:start;}
 .cli-app .card-head > div{min-width:0;}
-.cli-app .card-head .btn-ghost{gap:4px;}
+.cli-app .card-head:has(> div + .btn-ghost){flex-wrap:nowrap;}
+.cli-app .card-head > .btn-ghost{flex:none;margin:-4px -8px 0 0;}
 
-/* Visão geral: a faixa de boas-vindas (a barrinha carmim à esquerda), os números e o atendimento */
-.cli-app .cli-boas-vindas{min-height:96px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 24px;padding:18px 24px;box-shadow:inset 3px 0 0 var(--accent),var(--cli-sombra);}
-.cli-app .cli-numeros{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;box-shadow:none;border-radius:0;}
-.cli-app .cli-numeros .stat{margin:0;border:1px solid var(--border);border-radius:var(--cli-raio);background:var(--cli-cartao);box-shadow:var(--cli-sombra);transition:box-shadow .15s ease;}
-.cli-app .cli-numeros .stat:hover{box-shadow:0 2px 4px #1D1C1F0F,0 4px 12px -2px #1D1C1F14;}
-.cli-app .stat-grid .stat{padding:18px 20px;}
-.cli-app .stat-grid .stat-label{font-size:13px;font-weight:500;color:var(--ink-muted);}
-.cli-app .stat-grid .stat-value{margin-top:6px;font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.1;}
-.cli-app .stat-grid .hint{margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cli-app .cli-moeda{margin-right:4px;font-size:15px;font-weight:600;color:var(--ink-muted);}
-.cli-app .cli-atendimento-caixa{padding:14px;border:1px solid var(--border-muted);border-radius:var(--cli-raio);background:var(--surface-2);}
-.cli-app .cli-contatos{display:flex;flex-direction:column;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border-muted);font-size:13px;}
-.cli-app .cli-contatos li{display:flex;align-items:center;gap:8px;min-width:0;overflow-wrap:anywhere;}
+/* a Visão geral: o cartão de boas-vindas com o N da Nilma de marca-d'água, os quatro números e o atendimento */
+.cli-app .cli-boas-vindas{position:relative;overflow:hidden;padding:28px 24px;}
+.cli-app .cli-boas-vindas .cli-sobre{margin-bottom:10px;}
+.cli-app .cli-boas-vindas .page-desc{max-width:52ch;}
+.cli-app .cli-boas-vindas .cli-acoes{position:relative;margin-top:22px;}
+.cli-app .cli-boas-vindas > :not(.cli-marca-dagua){position:relative;}
+.cli-app .cli-marca-dagua{position:absolute;top:50%;right:28px;width:64px;transform:translateY(-50%);pointer-events:none;opacity:.14;}
+.cli-app .cli-marca-dagua svg{display:block;width:100%;height:auto;}
+.cli-app .cli-marca-dagua path:first-child{fill:var(--accent);}
+.cli-app .cli-marca-dagua path:last-child{fill:var(--ink);}
+
+.cli-app .cli-numeros{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.cli-app .cli-numero{appearance:none;display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;padding:18px;border:1px solid var(--cli-linha);border-radius:var(--cli-raio);
+  background:var(--cli-cartao);box-shadow:var(--cli-sombra);color:var(--ink);font:inherit;text-align:left;}
+button.cli-numero{cursor:pointer;transition:box-shadow .2s ease,border-color .2s ease;}
+button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-alta);}
+.cli-app .cli-numero-valor{font-size:32px;font-weight:700;line-height:1.1;letter-spacing:-.03em;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.cli-app .cli-numero-valor.menor{font-size:26px;line-height:1.25;}
+.cli-app .cli-numero .hint{max-width:100%;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-app .cli-numero .hint.ruim{color:var(--danger-ink);font-weight:600;}
+.cli-app .cli-atendimento .cli-pessoa{padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid var(--cli-fio);}
+.cli-app .cli-contatos{display:flex;flex-direction:column;gap:10px;}
+.cli-app .cli-contatos li{display:flex;align-items:center;gap:10px;min-width:0;color:var(--ink);}
 .cli-app .cli-contatos svg{color:var(--ink-muted);}
-.cli-app .cli-atendimento .cli-largo{width:100%;margin-top:16px;}
+.cli-app .cli-contatos span{min-width:0;overflow-wrap:anywhere;}
+.cli-app .cli-largo{width:100%;margin-top:20px;}
 
-/* uma linha das listas dentro do card (guia, chamado, agenda): o fio entre elas e o hover de ponta a ponta */
-.cli-app .cli-linha{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 0;min-width:0;}
-.cli-app .card > ul > li.cli-linha{margin:0 -16px;padding-left:16px;padding-right:16px;transition:background-color .12s ease;}
-.cli-app .card > ul > li.cli-linha:hover{background:var(--surface-2);}
-.cli-app .card:not(.cli-card-tabela) > .card-head + ul{margin-top:-12px;}
-.cli-app .card:not(.cli-card-tabela) > ul:last-child{margin-bottom:-8px;}
-.cli-app li + li > .cli-linha,.cli-app li.cli-linha + li.cli-linha{border-top:1px solid var(--border-muted);}
+/* uma linha das listas dentro do cartão (guia, chamado, agenda): o fio fino entre elas e o fundo suave ao passar */
+.cli-app .cli-lista{margin:0 -12px;}
+.cli-app .cli-linha{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:14px 12px;min-width:0;border-radius:var(--cli-raio-p);transition:background-color .15s ease;}
+.cli-app .cli-lista > li + li{position:relative;}
+.cli-app .cli-lista > li + li::before{content:'';position:absolute;top:0;left:12px;right:12px;border-top:1px solid var(--cli-fio);}
+.cli-app .cli-lista > li.cli-linha:hover,.cli-app .cli-lista > li > .cli-linha:hover{background:var(--cli-passa);}
 .cli-app .cli-linha-txt{flex:1 1 200px;min-width:0;}
 .cli-app .cli-linha-txt b{font-weight:600;overflow-wrap:anywhere;}
-.cli-app .cli-linha-txt .hint{margin-top:2px;}
-.cli-app .cli-linha-dir{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-left:auto;}
-.cli-app .cli-acoes-linha{display:inline-flex;align-items:center;justify-content:flex-end;gap:6px;}
-.cli-app .cli-sigla{display:inline-flex;align-items:center;justify-content:center;flex:none;width:44px;height:36px;border:1px solid var(--border);border-radius:8px;
-  background:var(--surface-2);color:var(--ink-muted);font-size:11px;font-weight:700;letter-spacing:.02em;}
-.cli-app .cli-sigla.ruim{border-color:transparent;background:var(--danger-soft);color:var(--danger-ink);}
-.cli-app .cli-sigla.atencao{border-color:transparent;background:var(--warn-soft);color:var(--warn);}
-.cli-app .cli-sigla.bom{border-color:transparent;background:var(--success-soft);color:var(--success-ink);}
-.cli-app .cli-data{flex:none;width:48px;color:var(--ink-muted);font-variant-numeric:tabular-nums;}
-.cli-app .cli-linha-agenda{flex-wrap:nowrap;}
-.cli-app .cli-linha-agenda .cli-linha-txt{flex:1 1 0;}
+.cli-app .cli-linha-txt .hint{margin-top:2px;font-size:12.5px;}
+.cli-app .cli-linha-dir{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-left:auto;}
+.cli-app .cli-linha-valor{min-width:104px;text-align:right;font-size:15px;}
+.cli-app .cli-linha-acoes{display:flex;justify-content:flex-end;gap:6px;min-width:78px;}
+.cli-app .cli-sigla{display:flex;align-items:center;justify-content:center;flex:none;width:44px;height:44px;border:1px solid var(--cli-linha);border-radius:10px;background:var(--cli-cartao);
+  color:var(--ink);font-size:11px;font-weight:700;letter-spacing:.03em;box-shadow:0 1px 2px color-mix(in srgb,var(--cli-sombra-cor) 5%,transparent);}
+/* a logo do órgão no quadradinho claro (com tamanho dito pela peça) */
+.cli-app .cli-sigla-logo{display:flex;align-items:center;justify-content:center;}
+.cli-app .cli-sigla-logo svg{display:block;width:100%;height:auto;}
+.cli-app .cli-sigla.pago{color:var(--success-ink);}
+.cli-app .cli-sigla svg{color:var(--success-ink);}
 
-/* as janelas (ficha, contato, documento): rótulo à esquerda, valor à direita */
-.cli-app .cli-dados{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr);gap:6px 16px;}
+/* a data em folhinha (agenda) */
+.cli-app .cli-data{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;width:44px;height:44px;border:1px solid var(--cli-linha);border-radius:10px;
+  background:var(--cli-fundo);line-height:1;}
+.cli-app .cli-data b{font-size:16px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
+.cli-app .cli-data small{margin-top:3px;font-size:9.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-muted);}
+.cli-app .cli-agenda-nao-se-aplica{opacity:.55;}
+.cli-app :is(.cli-agenda-feito,.cli-agenda-a-fazer,.cli-agenda-nao-se-aplica){flex-wrap:nowrap;}
+.cli-app :is(.cli-agenda-feito,.cli-agenda-a-fazer,.cli-agenda-nao-se-aplica) .cli-linha-txt{flex-basis:0;}
+.cli-app .cli-agenda-feito .cli-linha-txt{color:var(--ink-muted);}
+.cli-app .cli-feito{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:500;color:var(--ink-muted);}
+.cli-app .cli-feito svg{color:var(--success);}
+
+/* as janelas (ficha, contato, documento): rótulo à esquerda, valor à direita, com o fio fino */
+.cli-app .cli-dados{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr);gap:0 20px;}
+.cli-app .cli-dados :is(dt,dd){padding:9px 0;border-top:1px solid var(--cli-fio);}
+.cli-app .cli-dados :is(dt,dd):nth-child(-n+2){border-top:0;}
 .cli-app .cli-dados dt{color:var(--ink-muted);}
-.cli-app .cli-dados dd{min-width:0;overflow-wrap:anywhere;}
+.cli-app .cli-dados dd{min-width:0;overflow-wrap:anywhere;font-weight:500;}
 
-/* a Central de documentos: os filtros em cima da tabela e o ícone do arquivo no tom da categoria */
-.cli-app .cli-filtros{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;}
-.cli-app .cli-filtros :is(input[type="text"],select){height:32px;}
-.cli-app .cli-filtros input[type="text"]{flex:1 1 240px;max-width:360px;padding-top:0;padding-bottom:0;}
-.cli-app .cli-filtros-dir{display:flex;flex-wrap:wrap;gap:8px;}
-.cli-app .cli-filtros-dir select{width:auto;}
+/* a busca com a lupa dentro */
+.cli-app .cli-busca{position:relative;display:flex;align-items:center;flex:1 1 240px;max-width:380px;min-width:0;}
+.cli-app .cli-busca svg{position:absolute;left:12px;color:var(--ink-muted);pointer-events:none;}
+.cli-app .cli-busca input[type="text"]{width:100%;padding-left:38px;}
+
+/* a Central de documentos: a barra dos filtros e a tabela */
+.cli-app .cli-filtros{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:14px;}
+.cli-app .cli-filtros-dir{display:flex;flex-wrap:wrap;gap:10px;}
+.cli-app .cli-filtros-dir select{width:auto;min-width:170px;}
 .cli-app .cli-doc{display:flex;align-items:center;gap:12px;min-width:0;}
-.cli-app .cli-doc .hint{display:block;margin-top:0;}
-.cli-app .cli-doc-nome{display:block;font-weight:400;}
-.cli-app .cli-doc.novo .cli-doc-nome{font-weight:700;}
-.cli-app .cli-doc-ico{display:inline-flex;align-items:center;justify-content:center;flex:none;width:36px;height:36px;border-radius:8px;background:var(--surface-3);color:var(--ink-muted);}
-.cli-app .cli-doc-ico.fiscal{background:var(--accent-soft);color:var(--accent-ink);}
-.cli-app .cli-doc-ico.dp{background:var(--info-soft);color:var(--info);}
-.cli-app .cli-doc-ico.contabil{background:var(--roxo-soft);color:var(--roxo);}
-.cli-app .cli-doc-ico.societario{background:var(--success-soft);color:var(--success-ink);}
-.cli-app .cli-leitura{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-muted);}
-.cli-app .cli-leitura.novo{color:var(--ink);font-weight:600;}
-.cli-app .cli-ponto{width:7px;height:7px;border-radius:50%;background:var(--accent);}
+.cli-app .cli-doc > div{min-width:0;}
+.cli-app .cli-doc b{display:block;font-weight:600;}
+.cli-app .cli-doc .hint{display:block;font-size:12.5px;}
+/* o ícone do arquivo (IconeDeArquivo): a cor do formato vem em --arq; a folha leva um tom dela, a etiqueta é cheia */
+.cli-app .cli-arquivo{display:block;flex:none;overflow:visible;}
+.cli-app .cli-arquivo-folha{fill:color-mix(in srgb,var(--arq) 9%,var(--cli-cartao,var(--surface)));stroke:var(--arq);stroke-width:1.5;stroke-linejoin:round;}
+.cli-app .cli-arquivo-canto{fill:color-mix(in srgb,var(--arq) 24%,var(--cli-cartao,var(--surface)));stroke:var(--arq);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round;}
+.cli-app .cli-arquivo-dentro{fill:none;stroke:var(--arq);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;opacity:.72;}
+.cli-app .cli-arquivo-etiqueta{fill:var(--arq);}
+.cli-app .cli-arquivo-ext{fill:var(--cli-cartao,var(--surface));font-family:var(--font-body);font-size:6.6px;font-weight:800;letter-spacing:.35px;}
+.cli-app .cli-acoes-linha{display:inline-flex;gap:6px;}
 
-/* Guias e obrigações: as três colunas de cartões compactos, cada uma com o título e o contador */
+/* as tabelas: dentro do cartão, cabeçalho em caixa alta espaçada, linhas altas com o fundo suave ao passar */
+.cli-app .table-wrap{max-height:none;border:1px solid var(--cli-linha);border-radius:var(--cli-raio);background:var(--cli-cartao);box-shadow:var(--cli-sombra);}
+.cli-app .cli-tabela thead th{position:static;padding:12px 20px;background:var(--cli-cartao);border-bottom:1px solid var(--cli-linha);
+  font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-muted);}
+.cli-app .cli-tabela tbody td{padding:14px 20px;border-top:1px solid var(--cli-fio);vertical-align:middle;}
+.cli-app .cli-tabela tbody tr:first-child td{border-top:0;}
+.cli-app .cli-tabela tbody tr{transition:background-color .15s ease;}
+.cli-app .cli-tabela tbody tr:hover{background:var(--cli-passa);}
+.cli-app .cli-tabela tbody tr.cli-sem-passar:hover{background:none;}
+.cli-app .cli-tabela .cli-suave{color:var(--ink-muted);font-variant-numeric:tabular-nums;}
+
+/* Guias e obrigações: as três colunas de cartões, cada uma com o título e o contador */
 .cli-app .cli-tres > section{display:flex;flex-direction:column;gap:12px;min-width:0;}
-.cli-app .cli-coluna-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:8px;border-bottom:1px solid var(--border);}
-.cli-app .cli-coluna-topo h2{font-size:14px;font-weight:600;}
-.cli-app .cli-coluna-topo .subnav-count{margin-left:0;}
-/* a cor do fio e da bolinha diz o que é a coluna: o que vence (atenção) e o que foi pago (verde) */
-.cli-app .cli-coluna-topo h2{display:flex;align-items:center;gap:8px;}
-.cli-app .cli-coluna-topo h2::before{content:'';width:8px;height:8px;flex:none;border-radius:50%;background:var(--border-strong);}
-.cli-app .cli-coluna-topo.atencao{border-bottom:2px solid var(--warn);}
-.cli-app .cli-coluna-topo.atencao h2::before{background:var(--warn);}
-.cli-app .cli-coluna-topo.bom{border-bottom:2px solid var(--success);}
-.cli-app .cli-coluna-topo.bom h2::before{background:var(--success);}
-.cli-app .cli-cartao{display:flex;flex-direction:column;gap:6px;padding:14px 16px;}
-.cli-app .cli-cartao .hint{margin-top:0;}
-.cli-app .cli-cartao-l1{display:flex;align-items:center;gap:10px;min-width:0;}
-.cli-app .cli-cartao-l1 .cli-sigla{width:40px;height:30px;}
-.cli-app .cli-cartao-nome{flex:1;min-width:0;font-weight:600;overflow-wrap:anywhere;}
-.cli-app .cli-cartao-l2{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;}
-.cli-app .cli-cartao-l2 .cli-selo{margin-right:4px;}
-.cli-app .cli-cartao-l2 .cli-acoes-linha,.cli-app .cli-cartao-l2 > .btn{margin-left:auto;}
+.cli-app .cli-coluna-topo{display:flex;align-items:center;gap:8px;padding:0 2px 4px;}
+.cli-app .cli-coluna-topo h2{font-size:11.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-muted);}
+.cli-app .cli-coluna-topo .cli-conta{min-width:22px;padding:0 7px;border-radius:999px;background:var(--surface-3);color:var(--ink-muted);font-size:12px;font-weight:600;line-height:20px;text-align:center;}
+.cli-app .cli-cartao{display:flex;flex-direction:column;gap:4px;padding:20px;}
+.cli-app .cli-cartao-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;}
+.cli-app .cli-cartao-valor{font-size:24px;font-weight:700;line-height:1.15;letter-spacing:-.025em;font-variant-numeric:tabular-nums;}
+.cli-app .cli-cartao-nome{font-weight:600;line-height:1.4;}
+.cli-app .cli-cartao .hint{font-size:12.5px;}
+.cli-app .cli-cartao-pe{display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--cli-fio);}
+.cli-app .cli-cartao-pe .btn{flex:1;}
+.cli-app .cli-etiqueta{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-muted);}
 
-/* o card com tabela (funcionários) ou lista (chamados) de ponta a ponta */
+/* o cartão com tabela (funcionários) ou lista (chamados) de ponta a ponta */
 .cli-app .cli-card-tabela{padding:0;overflow:hidden;}
-.cli-app .cli-card-tabela > .card-head{margin:0;}
-.cli-app .cli-card-tabela > ul > li{padding:0 16px;transition:background-color .12s ease;}
-.cli-app .cli-card-tabela > ul > li:hover{background:var(--surface-2);}
-.cli-app .cli-card-tabela > .empty{padding:24px 16px;}
-.cli-app .cli-card-tabela table tbody td{padding-top:12px;padding-bottom:12px;}
-.cli-app .cli-busca{width:280px;max-width:100%;height:32px;}
-.cli-app .cli-pessoa{display:flex;align-items:center;gap:12px;min-width:0;}
-.cli-app .cli-pessoa .hint{display:block;margin-top:0;}
-.cli-app .cli-iniciais{display:flex;align-items:center;justify-content:center;flex:none;width:34px;height:34px;border-radius:50%;background:var(--surface-3);color:var(--ink-muted);font-size:12px;font-weight:700;}
-.cli-app .cli-iniciais.grande{width:42px;height:42px;font-size:13px;}
-.cli-app .cli-iniciais.t0{background:var(--accent-soft);color:var(--accent-ink);}
-.cli-app .cli-iniciais.t1{background:var(--info-soft);color:var(--info);}
-.cli-app .cli-iniciais.t2{background:var(--roxo-soft);color:var(--roxo);}
-.cli-app .cli-iniciais.t3{background:var(--success-soft);color:var(--success-ink);}
-.cli-app .cli-iniciais.t4{background:var(--ciano-soft);color:var(--ciano);}
+.cli-app .cli-card-tabela > .card-head{margin:0;padding:16px 20px;border-bottom:1px solid var(--cli-linha);align-items:center;}
+.cli-app .cli-card-tabela > .cli-lista{margin:0;padding:6px 8px;}
+.cli-app .cli-card-tabela .cli-tabela{width:100%;}
 
 /* Solicitações: o formulário e o histórico */
 .cli-app .cli-form{display:grid;grid-template-columns:minmax(0,1fr);gap:0 16px;}
-.cli-app .cli-form .cli-largo{grid-column:1 / -1;}
+.cli-app .cli-form .cli-largo{grid-column:1 / -1;width:auto;margin-top:0;}
 .cli-app .cli-form .data-mask{width:100%;}
-.cli-app .cli-barra{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;}
-.cli-app .cli-anexo{display:inline-flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0;}
-.cli-app .cli-anexo label.btn{max-width:100%;overflow:hidden;text-overflow:ellipsis;}
-.cli-app .cli-chamado + .cli-chamado{border-top:1px solid var(--border-muted);}
-.cli-app .cli-previa{margin-top:4px;font-size:13px;}
-.cli-app .cli-conversa-aberta{padding:4px 0 16px;}
-.cli-app .cli-erro{margin:4px 0 8px;font-size:13px;color:var(--danger);}
+.cli-app .cli-barra{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-top:4px;padding-top:16px;border-top:1px solid var(--cli-fio);}
+.cli-app .cli-anexo{display:inline-flex;flex-wrap:wrap;align-items:center;gap:10px;}
+.cli-app .cli-anexo .file-picker{display:inline-flex;margin:0;min-height:36px;padding:7px 14px;border-radius:var(--cli-raio-p);border-color:var(--border);color:var(--ink);font-weight:500;}
+.cli-app .cli-anexo .file-picker svg{color:var(--ink-muted);}
+.cli-app .cli-chamado-topo{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;}
+.cli-app .cli-previa{margin-top:4px;font-size:13px;color:var(--ink);}
+.cli-app .cli-conversa-aberta{margin:0 12px 8px;padding:16px;border-radius:var(--cli-raio-p);background:var(--cli-fundo);}
+.cli-app .cli-erro{margin:4px 0 8px;font-size:13px;color:var(--danger-ink);}
 .cli-app .cli-erros{display:flex;flex-direction:column;gap:2px;margin-top:8px;}
 .cli-app .cli-marcar{display:flex;align-items:center;gap:8px;font-weight:400 !important;}
 
-/* a conversa: o balão do cliente à direita, o do escritório à esquerda (como o .msg-balao do nads) */
-.cli-app .cli-conversa{display:flex;flex-direction:column;gap:8px;}
-.cli-app .cli-balao{display:flex;flex-direction:column;gap:2px;max-width:min(560px,90%);padding:6px 10px;border:1px solid var(--border);border-radius:12px 12px 12px 4px;background:var(--surface-2);}
+/* a conversa: o balão do cliente à direita, o do escritório à esquerda */
+.cli-app .cli-conversa{display:flex;flex-direction:column;gap:10px;}
+.cli-app .cli-balao{display:flex;flex-direction:column;gap:3px;max-width:min(560px,88%);padding:10px 14px;border:1px solid var(--cli-linha);border-radius:14px 14px 14px 4px;
+  background:var(--cli-cartao);box-shadow:0 1px 2px color-mix(in srgb,var(--cli-sombra-cor) 4%,transparent);}
 .cli-app .cli-balao p{white-space:pre-wrap;overflow-wrap:anywhere;}
 .cli-app .cli-balao-quem{font-size:12px;color:var(--ink-muted);}
 .cli-app .cli-balao-escritorio{align-self:flex-start;}
-.cli-app .cli-balao-cliente{align-self:flex-end;border-color:var(--accent-border);border-radius:12px 12px 4px 12px;background:var(--accent-soft);}
+.cli-app .cli-balao-cliente{align-self:flex-end;border-color:transparent;box-shadow:none;border-radius:14px 14px 4px 14px;background:var(--accent-soft);}
 
-/* a área de soltar arquivos (a moldura tracejada do escolher arquivos do nads, maior) */
-.cli-app .cli-soltar{display:flex;flex-direction:column;align-items:center;gap:2px;padding:24px 16px;border:1px dashed var(--border-strong);border-radius:var(--cli-raio);
-  color:var(--ink-muted);text-align:center;cursor:pointer;transition:border-color .12s ease,background-color .12s ease;}
-.cli-app .cli-soltar svg{margin-bottom:6px;color:var(--ink-muted);}
+/* a área de soltar arquivos */
+.cli-app .cli-soltar{display:flex;flex-direction:column;align-items:center;gap:2px;padding:28px 16px;border:1.5px dashed var(--border);border-radius:var(--cli-raio);
+  color:var(--ink-muted);text-align:center;cursor:pointer;transition:border-color .15s ease,background-color .15s ease;}
+.cli-app .cli-soltar svg{margin-bottom:8px;color:var(--ink-muted);}
 .cli-app .cli-soltar b{font-weight:600;color:var(--ink);}
-.cli-app .cli-soltar span{font-size:12px;}
+.cli-app .cli-soltar span{font-size:12.5px;}
 .cli-app .cli-soltar:hover,.cli-app .cli-soltar.sobre{border-color:var(--accent);background:var(--accent-soft);}
 .cli-app .cli-soltar.is-locked{opacity:.5;cursor:not-allowed;}
 .cli-app .cli-soltar:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px;}
 
+/* o estado vazio: o ícone no círculo, a frase e, às vezes, o que fazer */
+.cli-app .cli-vazio{display:flex;flex-direction:column;align-items:center;gap:4px;padding:28px 16px;text-align:center;}
+.cli-app .cli-vazio-ico{display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin-bottom:8px;border-radius:50%;background:var(--surface-3);color:var(--ink-muted);}
+.cli-app .cli-vazio b{font-weight:600;}
+.cli-app .cli-vazio p{max-width:36ch;font-size:13px;color:var(--ink-muted);}
+.cli-app .cli-vazio .btn{margin-top:12px;}
+.cli-app .card.cli-vazio-cartao{padding:8px;}
+
+/* o esqueleto de carregamento no formato da página */
+.cli-app .cli-esqueleto{display:flex;flex-direction:column;gap:20px;}
+.cli-app .cli-esqueleto .esqueleto-linha{background:var(--surface-3);}
+.cli-app .cli-esqueleto .card{display:flex;flex-direction:column;gap:12px;}
+
+/* o link que não vale mais */
+.cli-app .cli-link-ruim{max-width:440px;margin:56px auto 0;}
+
 /* ------------------------------ telas maiores ------------------------------ */
 @media (max-width:767px){
   .cli-app .cli-so-largo{display:none;}
+  .cli-app .cli-titulo .cli-acoes{width:100%;}
+  .cli-app .cli-titulo .cli-acoes .btn{flex:1;}
+  .cli-app .cli-boas-vindas .cli-acoes .btn{flex:1;}
+  .cli-app .cli-marca-dagua{display:none;}
+  .cli-app .page-title{font-size:23px;}
+  .cli-app .card{padding:18px;}
+  .cli-app .cli-card-tabela{padding:0;}
+  .cli-app .cli-card-tabela > .card-head{padding:14px 16px;}
+  .cli-app .cli-tabela thead th,.cli-app .cli-tabela tbody td{padding-left:14px;padding-right:14px;}
+  .cli-app .cli-linha-valor{min-width:0;}
+  .cli-app .cli-linha-acoes{min-width:0;}
+  .cli-app .cli-barra > .btn-primary{width:100%;}
+  .cli-app .cli-filtros-dir{width:100%;}
+  .cli-app .cli-filtros-dir select{flex:1;min-width:0;}
+  .cli-app .cli-busca{max-width:none;flex-basis:100%;}
+  .cli-app .cli-numero{padding:16px;}
+  .cli-app .cli-numero-valor{font-size:24px;}
+  .cli-app .cli-numero-valor.menor{font-size:18px;}
 }
 @media (min-width:640px){
   .cli-app .cli-form{grid-template-columns:repeat(2,minmax(0,1fr));}
-  /* a linha da guia em colunas: a sigla, o texto, o valor alinhado, o selo e as ações */
-  .cli-app .cli-linha.cli-linha-guia{display:grid;grid-template-columns:44px minmax(0,1fr) 112px 96px 76px;gap:12px;}
-  .cli-app .cli-linha-guia .cli-valor{text-align:right;}
-  .cli-app .cli-linha-guia .cli-acoes-linha{justify-self:end;}
-}
-@media (max-width:639px){
-  .cli-app .cli-linha-guia .cli-valor{margin-left:56px;}
-  .cli-app .cli-linha-guia .cli-acoes-linha{margin-left:auto;}
 }
 @media (min-width:768px){
   .cli-app .cli-lateral{transform:none;box-shadow:none;}
   .cli-app .cli-lateral .drawer-x,.cli-app .cli-fundo-gaveta,.cli-app .cli-topo .gh-hamb{display:none;}
-  .cli-app .cli-corpo{padding-left:256px;}
+  .cli-app .cli-corpo{padding-left:264px;}
   .cli-app .cli-corpo.sem-lateral{padding-left:0;}
-  .cli-app .cli-topo{padding:8px 32px;}
-  .cli-app .cli-main{gap:24px;padding:28px 32px 64px;}
-  .cli-app .cli-duas,.cli-app .cli-tres{gap:24px;}
-  .cli-app .page-title{font-size:26px;}
+  .cli-app .cli-topo{padding:12px 40px;}
+  .cli-app .cli-main{gap:24px;padding:32px 40px 72px;}
+  .cli-app .cli-boas-vindas{padding:36px 40px;}
+  .cli-app .cli-marca-dagua{width:92px;right:56px;}
+  .cli-app .cli-numeros{gap:16px;}
+  .cli-app .cli-numero{padding:20px 22px;}
 }
 @media (min-width:1024px){
   .cli-app .cli-numeros{grid-template-columns:repeat(4,minmax(0,1fr));}
-  .cli-app .cli-duas{grid-template-columns:minmax(0,2fr) minmax(0,1fr);}
-  .cli-app .cli-tres{grid-template-columns:repeat(3,minmax(0,1fr));}
+  .cli-app .cli-duas{grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:24px;}
+  .cli-app .cli-tres{grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;}
   .cli-app .cli-form.tres{grid-template-columns:repeat(3,minmax(0,1fr));}
 }
 
 /* dentro do catálogo de componentes e das janelas: sem ocupar a tela inteira */
 .cli-app.cli-demo,.cli-app.cli-janela{min-height:0;background:none;}
 .cli-app.cli-janela{margin-top:12px;text-align:left;}
-.cli-app.cli-janela .cli-soltar{padding:20px 12px;}
-.cli-app.cli-janela p.cli-erro{color:var(--danger);}
+.cli-app.cli-janela .cli-soltar{padding:22px 12px;}
+.cli-app.cli-janela p.cli-erro{color:var(--danger-ink);}
+.cli-app.cli-janela .cli-lista{margin:0 -12px;}
+
+@media (prefers-reduced-motion:reduce){
+  .cli-app *{transition:none !important;}
+}

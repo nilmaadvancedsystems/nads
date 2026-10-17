@@ -83,8 +83,8 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
     // a linha digitável das guias que têm (de mentira)
     codigos: { [guias[0].id]: '07190.00009 26277.123456 78901.234567 8 00000128437', [guias[1].id]: '85800000009-1 17420385001-2 26090012345-6 00000091742-0' },
     pagas: [
-      { id: 'p1', sigla: 'HON', nome: 'Honorários da Nilma Contabilidade', competencia: mesDe(hoje), valor: 1250, pagoEm: br(emDias(hoje, -6)), temComprovante: true },
-      { id: 'p2', sigla: 'INSS', nome: 'INSS da folha (DCTFWeb)', competencia: ac.competenciaDoMesDeVencimento(mesDe(emDias(hoje, -28))), valor: 1980.3, pagoEm: br(emDias(hoje, -28)), temComprovante: true },
+      { id: 'p1', nome: 'Honorários da Nilma Contabilidade', competencia: mesDe(hoje), valor: 1250, pagoEm: br(emDias(hoje, -6)), temComprovante: true },
+      { id: 'p2', nome: 'INSS da folha (DCTFWeb)', competencia: ac.competenciaDoMesDeVencimento(mesDe(emDias(hoje, -28))), valor: 1980.3, pagoEm: br(emDias(hoje, -28)), temComprovante: true },
     ],
     documentos: documentosDeExemplo(hoje),
     certificado: { tipo: 'A1', titular: 'PERSONALY COMPANY LTDA', validoAte: iso(emDias(hoje, 25)) },
@@ -111,16 +111,18 @@ const mesDe = (d: Date) => iso(d).slice(0, 7);
 function documentosDeExemplo(hoje: Date): DocumentoDoCliente[] {
   const passado = ac.competenciaDoMesDeVencimento(mesDe(hoje));
   const retrasado = ac.competenciaDoMesDeVencimento(passado);
-  const doc = (id: string, nome: string, descricao: string, area: DocumentoDoCliente['area'], competencia: string, dias: number, novo: boolean): DocumentoDoCliente =>
-    ({ id, nome, descricao, area, competencia, enviadoEm: comHora(emDias(hoje, dias), 10, 0), novo, formato: 'PDF' });
+  const doc = (id: string, nome: string, descricao: string, area: DocumentoDoCliente['area'], competencia: string, dias: number, novo: boolean, formato: DocumentoDoCliente['formato']): DocumentoDoCliente =>
+    ({ id, nome, descricao, area, competencia, enviadoEm: comHora(emDias(hoje, dias), 10, 0), novo, formato });
   return [
-    doc('d1', 'DAS do Simples Nacional', 'A guia do imposto do mês, com o extrato do cálculo', 'fiscal', passado, -6, true),
-    doc('d2', 'Folha de pagamento e recibos', 'O resumo da folha e um recibo para cada funcionário assinar', 'dp', passado, -13, true),
-    doc('d3', 'Recibo de férias do João Pereira', 'Para o João assinar antes de sair de férias', 'dp', passado, -9, false),
-    doc('d4', 'Balancete do mês', 'As contas da empresa no fim do mês', 'contabil', retrasado, -18, false),
-    doc('d5', 'DRE do mês', 'O resultado: quanto entrou, quanto saiu e o lucro', 'contabil', retrasado, -18, true),
-    doc('d6', 'Certidão negativa de débitos federais', 'Mostra que a empresa não deve impostos federais', 'societario', '', -31, false),
-    doc('d7', 'Contrato social (última alteração)', 'A cópia registrada na Junta Comercial', 'societario', '', -120, false),
+    doc('d1', 'DAS do Simples Nacional', 'A guia do imposto do mês, com o extrato do cálculo', 'fiscal', passado, -6, true, 'PDF'),
+    doc('d8', 'Notas fiscais de saída', 'Os XML das notas que a empresa emitiu no mês', 'fiscal', passado, -5, true, 'XML'),
+    doc('d2', 'Folha de pagamento e recibos', 'O resumo da folha e um recibo para cada funcionário assinar', 'dp', passado, -13, true, 'PDF'),
+    doc('d3', 'Recibo de férias do João Pereira', 'Para o João assinar antes de sair de férias', 'dp', passado, -9, false, 'PDF'),
+    doc('d4', 'Balancete do mês', 'As contas da empresa no fim do mês', 'contabil', retrasado, -18, false, 'XLSX'),
+    doc('d5', 'DRE do mês', 'O resultado: quanto entrou, quanto saiu e o lucro', 'contabil', retrasado, -18, true, 'PDF'),
+    doc('d9', 'Livros contábeis do ano', 'O diário e o razão, compactados', 'contabil', '', -40, false, 'ZIP'),
+    doc('d6', 'Certidão negativa de débitos federais', 'Mostra que a empresa não deve impostos federais', 'societario', '', -31, false, 'PDF'),
+    doc('d7', 'Contrato social (última alteração)', 'A cópia registrada na Junta Comercial', 'societario', '', -120, false, 'DOCX'),
   ];
 }
 
@@ -177,6 +179,7 @@ export function criarRepoAreaClienteMemoria(agora: () => Date = () => new Date()
       mudar(e => ({ ...e, envios: [...arquivos.map(a => ({ id: 'e' + proximo++, nome: a.name, tipo, tamanho: a.size, recebidoEm })), ...e.envios] }));
     },
     async abrirChamado(token, { tipo, texto }) {
+      // a foto da admissão (quando vem) fica só no pedido do banco; aqui o texto do pedido já diz que ela foi junto
       if (token !== TOKEN_DE_EXEMPLO || ac.erroDoNovoChamado(tipo, texto)) return '';
       const id = 'c' + proximo++;
       const chamado: ac.ChamadoDoCliente = {
@@ -193,6 +196,11 @@ export function criarRepoAreaClienteMemoria(agora: () => Date = () => new Date()
         chamados: e.chamados.map(c => c.id !== id || !ac.chamadoAceitaResposta(c) ? c
           : { ...c, situacao: 'aberto', mensagens: [...c.mensagens, { de: 'cliente', autor: 'Você', texto: texto.trim(), em: agora().toISOString() }] }),
       }));
+    },
+    async enviarFotoDoFuncionario(token, funcionarioId, base64Jpeg) {
+      if (token !== TOKEN_DE_EXEMPLO || !base64Jpeg) return;
+      const foto = 'data:image/jpeg;base64,' + base64Jpeg;
+      mudar(e => ({ ...e, empregados: e.empregados.map(f => f.id === funcionarioId ? { ...f, foto } : f) }));
     },
     async baixarDocumento(token, id) {
       const d = token === TOKEN_DE_EXEMPLO ? estado.documentos.find(x => x.id === id) : null;

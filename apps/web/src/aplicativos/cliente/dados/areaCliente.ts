@@ -23,8 +23,11 @@ export interface DocumentoDoCliente {
   enviadoEm: string;
   /** o cliente ainda não baixou */
   novo: boolean;
-  formato: 'PDF' | 'ZIP' | 'XLSX';
+  formato: FormatoDoArquivo;
 }
+
+/** O formato do arquivo (o ícone da Central de documentos sai dele). */
+export type FormatoDoArquivo = 'PDF' | 'XLSX' | 'XML' | 'ZIP' | 'DOCX' | 'JPG' | 'PNG';
 
 /** O certificado digital da empresa (o e-CNPJ). */
 export interface CertificadoDigital { tipo: 'A1' | 'A3'; titular: string; /** 'aaaa-mm-dd' */ validoAte: string }
@@ -45,6 +48,8 @@ export interface Empregado {
   ferias: SituacaoDasFerias;
   /** 'aaaa-mm-dd', quando está de férias */
   retornoEm?: string;
+  /** a foto (Vitor, 16/10/2026: "subir a foto da pessoa que foi contratada"): o JPEG 256×256 como data URL */
+  foto?: string;
 }
 
 /** A ficha cadastral da empresa. */
@@ -73,7 +78,7 @@ export interface Atendimento {
 export interface AvisoDoEscritorio { id: string; titulo: string; texto: string; /** a aba que resolve */ ir?: 'documentos' | 'guias' | 'dp' | 'chamados' }
 
 /** Uma guia já paga no mês, com o comprovante. */
-export interface GuiaPaga { id: string; /** a sigla do tributo ou do serviço (INSS, HON…) */ sigla: string; nome: string; competencia: string; valor: number; /** 'dd/mm/aaaa' */ pagoEm: string; temComprovante: boolean }
+export interface GuiaPaga { id: string; nome: string; competencia: string; valor: number; /** 'dd/mm/aaaa' */ pagoEm: string; temComprovante: boolean }
 
 /** Tudo o que o link mostra, já filtrado pelo robô. */
 export interface EstadoDaArea {
@@ -109,8 +114,12 @@ export interface RepoAreaCliente {
   assinar(token: string, aoMudar: (e: EstadoDaArea) => void): () => void;
   /** manda os arquivos (caixa areaClienteEnvios); o recibo volta pelo assinar */
   enviar(token: string, tipo: ac.TipoDeEnvio, arquivos: File[]): Promise<void>;
-  /** abre um chamado novo (caixa areaClienteChamados); devolve o id */
-  abrirChamado(token: string, dados: { tipo: ac.TipoDeChamado; texto: string }): Promise<string>;
+  /** abre um chamado novo (caixa areaClienteChamados); devolve o id. Na admissão, a foto do funcionário vai junto
+   *  (o JPEG 256×256 em base64, sem o prefixo data:) */
+  abrirChamado(token: string, dados: { tipo: ac.TipoDeChamado; texto: string; foto?: string }): Promise<string>;
+  /** a foto de um funcionário (o JPEG 256×256 em base64, sem o prefixo data:). No banco vai pela caixa areaClienteEnvios
+   *  com o tipo 'foto' e o id do funcionário, e o robô grava no espelho e no Drive (o contrato e as regras ainda faltam) */
+  enviarFotoDoFuncionario(token: string, funcionarioId: string, base64Jpeg: string): Promise<void>;
   /** a resposta do cliente num chamado que já existe */
   responderChamado(token: string, id: string, texto: string): Promise<void>;
   /** o PDF da guia; null quando não tem */

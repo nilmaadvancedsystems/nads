@@ -74,7 +74,11 @@ export function notificacoes(e: Pick<EstadoDaArea, 'guias' | 'documentos' | 'cha
 
 // ---------------------------------- os pedidos do pessoal ----------------------------------
 
-export interface PedidoDeAdmissao { nome: string; cpf: string; cargo: string; salario: string; inicio: string; contrato: string; observacoes: string }
+export interface PedidoDeAdmissao {
+  nome: string; cpf: string; cargo: string; salario: string; inicio: string; contrato: string; observacoes: string;
+  /** a foto do funcionário, opcional (o JPEG 256×256 em base64, sem o prefixo data:) */
+  foto?: string;
+}
 export interface PedidoDeFerias { empregado: string; inicio: string; dias: string; adiantar13: boolean; observacoes: string }
 export interface PedidoDeDemissao { empregado: string; ultimoDia: string; motivo: string; aviso: string; observacoes: string }
 
@@ -91,6 +95,7 @@ export function erroDaAdmissao(p: PedidoDeAdmissao): string {
 export function textoDaAdmissao(p: PedidoDeAdmissao): string {
   return linhas('Admissão: ' + p.nome.trim() + ' (' + p.cargo.trim() + ')', [
     ['Nome completo', p.nome], ['CPF', p.cpf], ['Cargo', p.cargo], ['Salário', p.salario], ['Início', p.inicio], ['Contrato', p.contrato], ['Observações', p.observacoes],
+    ['Foto', p.foto ? 'enviada junto com o pedido' : ''],
   ]);
 }
 
