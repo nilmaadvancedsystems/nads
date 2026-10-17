@@ -3,6 +3,7 @@
 // cujo extrato já foi importado). O Sicoob e o Drive têm o desenho deles; os outros bancos são um selo
 // com a cor e as iniciais da marca (simplificado — trocar pelo logo de verdade quando tiver o arquivo).
 /// <reference types="vite/client" />
+import { useId } from 'react';
 import { Icone } from './icones';
 
 /**
@@ -277,6 +278,51 @@ export function LogoFgts({ cor }: { cor?: boolean }) {
       <path fill="none" stroke="#0A9B3A" strokeWidth="6" d="M62 7 H88 M75 7 V30" />
       {/* S */}
       <path fill="none" stroke="#0A9B3A" strokeWidth="6" d="M117 7 H96 V17 H114 V27 H92" />
+    </svg>
+  );
+}
+
+/*
+ * As logos dos órgãos das guias (Vitor, 17/10/2026: "a logo de cada guia no quadradinho"), redesenhadas em SVG a partir
+ * das oficiais que o escritório baixou: o símbolo do Simples Nacional (o site do Simples na Receita), o triângulo do
+ * Governo de Minas (o site da SEFAZ-MG) e o símbolo da Receita Federal (o SVG do Wikimedia Commons, só o desenho, sem o
+ * nome). Sempre coloridas; quem usa dá o tamanho e um fundo claro.
+ */
+
+/** O símbolo do Simples Nacional: o círculo verde (à esquerda) e amarelo (à direita), cortado pelo S branco. */
+export function LogoSimplesNacional() {
+  const id = useId().replace(/:/g, '');
+  return (
+    <svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true">
+      <defs>
+        <linearGradient id={id + 'v'} x1="0" y1="0" x2=".6" y2="1"><stop offset="0" stopColor="#6DB33F" /><stop offset=".4" stopColor="#8CC63F" /><stop offset="1" stopColor="#0E8D45" /></linearGradient>
+        <radialGradient id={id + 'a'} cx=".55" cy=".5" r=".6"><stop offset="0" stopColor="#FFF200" /><stop offset=".6" stopColor="#FFD400" /><stop offset="1" stopColor="#F7B11E" /></radialGradient>
+      </defs>
+      <circle cx="50" cy="50" r="47" fill="#FFFFFF" />
+      <path fill={'url(#' + id + 'v)'} d="M33 6.2A47 47 0 0 0 22.5 88.2L24.5 73.5C34 79 47 84 56 79C62 74 59 64 49 57C37 48 22 38 23 25C24 15 28 9.5 33 6.2Z" />
+      <path fill={'url(#' + id + 'a)'} d="M71 8A47 47 0 0 1 66.5 94L67.5 82.5C72.5 72 68.5 61 60 54C48.5 46 39.5 39.5 40 29C40.5 22 46 19 53 20C60 21 66 19 71 8Z" />
+    </svg>
+  );
+}
+
+/** O triângulo do Governo de Minas: o losango vinho no alto, os dois vermelhos dos lados e o rosa embaixo. */
+export function LogoGovernoMinas() {
+  return (
+    <svg viewBox="0 6 287 198" width="100%" height="100%" aria-hidden="true">
+      <path fill="#AE0F0A" d="M143 10 189 74 143 137 97 74Z" />
+      <path fill="#E30613" d="M6 201 97 74 143 137 97 201Z" />
+      <path fill="#E30613" d="M280 201 189 74 143 137 189 201Z" />
+      <path fill="#E4ADB5" d="M143 137 189 201H97Z" />
+    </svg>
+  );
+}
+
+/** O símbolo da Receita Federal, no azul dela (#003772). */
+export function LogoReceitaFederal() {
+  return (
+    <svg viewBox="6 30 1062 708" width="100%" height="100%" aria-hidden="true">
+      <path fill="#003772" d="M 530.58 37.59 C 533.62 36.73 536.86 36.07 539.97 37.01 C 613.44 56.24 684.87 82.59 754.71 112.29 C 761.41 115.28 768.34 117.76 774.81 121.25 C 769.46 159.24 763.70 197.18 758.87 235.23 C 765.17 232.28 771.00 228.46 777.10 225.12 C 808.73 207.17 841.08 190.47 874.05 175.10 C 876.93 173.90 880.24 171.46 883.34 173.52 C 938.47 201.08 992.08 231.57 1045.15 262.88 C 1050.82 266.31 1056.61 269.53 1062.14 273.19 C 1044.97 285.67 1027.54 297.81 1010.54 310.54 C 955.57 351.42 902.41 394.74 851.02 440.04 C 847.99 443.19 843.56 440.53 839.98 440.03 C 749.31 419.17 657.92 401.51 566.04 386.90 C 556.84 385.67 547.72 383.73 538.46 383.03 C 541.81 386.28 545.69 388.89 549.49 391.57 C 612.30 437.37 674.14 484.51 734.44 533.57 C 736.28 535.09 738.08 536.66 739.90 538.22 C 732.82 545.71 724.86 552.30 717.61 559.62 C 658.72 615.71 599.76 671.75 540.90 727.89 C 539.58 729.05 538.24 730.19 536.90 731.34 C 531.98 727.55 527.84 722.90 523.38 718.62 C 421.23 620.23 318.12 522.74 211.02 429.71 C 212.81 425.38 214.91 421.19 217.10 417.05 C 245.17 362.01 273.60 307.11 304.68 253.69 C 307.81 248.12 311.56 242.89 314.21 237.06 C 309.00 239.34 304.19 242.40 299.26 245.22 C 241.94 278.25 185.71 313.14 130.40 349.43 C 127.41 351.30 124.66 353.78 121.20 354.75 C 117.90 352.84 115.17 350.11 112.18 347.78 C 82.58 324.08 51.92 301.73 20.67 280.27 C 17.60 278.18 14.56 276.05 11.59 273.81 C 17.89 269.17 24.95 265.72 31.59 261.59 C 120.12 209.41 210.77 160.62 304.56 118.53 C 308.49 116.71 312.50 114.56 316.96 114.59 C 382.69 114.66 448.42 117.20 513.97 122.03 C 520.56 122.40 527.13 123.40 533.74 123.08 C 531.86 121.93 529.94 120.85 527.92 119.98 C 489.08 104.11 449.66 89.67 409.86 76.41 C 415.90 73.60 422.36 71.89 428.62 69.67 C 462.37 58.23 496.17 46.89 530.58 37.59 M 534.23 125.09 C 477.94 149.96 422.77 177.35 368.59 206.52 C 351.01 216.19 333.25 225.58 316.00 235.83 C 320.29 238.66 324.75 241.21 329.17 243.83 C 366.66 266.27 403.36 290.00 439.57 314.43 C 472.47 336.49 504.70 359.53 537.04 382.39 C 542.35 379.00 547.31 375.12 552.46 371.50 C 615.26 326.59 679.11 283.03 745.45 243.47 C 749.70 240.97 754.10 238.68 758.01 235.63 C 688.25 193.33 615.21 156.48 539.97 124.98 C 538.12 124.09 536.04 124.16 534.23 125.09 Z" />
+      <path fill="#003772" d="M 514.47 164.61 C 539.32 162.32 564.63 163.87 588.81 170.21 C 604.32 174.25 619.38 180.39 632.77 189.26 C 642.23 195.59 650.86 203.47 656.70 213.32 C 662.74 223.43 665.44 235.89 662.43 247.44 C 659.14 261.09 649.70 272.35 638.87 280.86 C 622.29 293.67 602.34 301.44 582.02 305.97 C 548.61 313.32 513.36 312.59 480.33 303.63 C 460.27 298.07 440.71 288.98 425.48 274.51 C 415.31 264.38 407.49 250.68 408.14 235.93 C 408.51 220.27 417.88 206.35 429.46 196.46 C 453.19 176.61 484.19 167.81 514.47 164.61 Z" />
     </svg>
   );
 }

@@ -77,8 +77,11 @@ export interface Atendimento {
 /** Um recado do escritório (ex.: mandar os extratos até o dia 5). */
 export interface AvisoDoEscritorio { id: string; titulo: string; texto: string; /** a aba que resolve */ ir?: 'documentos' | 'guias' | 'dp' | 'chamados' }
 
+/** O que vai no quadradinho da guia: os tipos do core, mais os das guias pagas (DARF, INSS, DCTFWeb e os honorários). */
+export type TipoDoQuadradinho = ac.TipoDeGuia | 'DARF' | 'INSS' | 'DCTFWeb' | 'HON';
+
 /** Uma guia já paga no mês, com o comprovante. */
-export interface GuiaPaga { id: string; nome: string; competencia: string; valor: number; /** 'dd/mm/aaaa' */ pagoEm: string; temComprovante: boolean }
+export interface GuiaPaga { id: string; /** de que é (a logo do órgão no quadradinho); sem ele, o ✓ */ tipo?: TipoDoQuadradinho; nome: string; competencia: string; valor: number; /** 'dd/mm/aaaa' */ pagoEm: string; temComprovante: boolean }
 
 /** Tudo o que o link mostra, já filtrado pelo robô. */
 export interface EstadoDaArea {

@@ -6,6 +6,7 @@ import { formatos } from '@nads/core';
 import { Icone, MarcaN, type NomeIcone } from '@nads/ui';
 import { LinhaDeGuia } from '../partes/LinhaDeGuia';
 import { MarcaDoEscritorio } from '../partes/MarcaDoEscritorio';
+import { SiglaDaGuia } from '../partes/SiglaDaGuia';
 import { Vazio } from '../partes/Vazio';
 import { useInicio } from './useInicio';
 import type { AreaCliente, DaCasca, IdAba } from './useAreaCliente';
@@ -63,7 +64,7 @@ export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente[
               {vm.guias.map(g => <LinhaDeGuia key={g.id} guia={g} codigo={vm.codigos[g.id]} ocupado={vm.baixando === g.id} onBaixar={id => void vm.baixar(id)} onCopiar={vm.copiarCodigo} />)}
               {vm.pagas.map(p => (
                 <li key={p.id} className="cli-linha">
-                  <span className="cli-sigla pago" style={{ width: 44, height: 44 }} aria-hidden="true"><Icone nome="check" width={18} height={18} /></span>
+                  {p.tipo ? <SiglaDaGuia tipo={p.tipo} /> : <span className="cli-sigla pago" style={{ width: 44, height: 44 }} aria-hidden="true"><Icone nome="check" width={18} height={18} /></span>}
                   <div className="cli-linha-txt">
                     <b>{p.nome}</b>
                     <p className="hint">Pago em {p.pagoEm}</p>

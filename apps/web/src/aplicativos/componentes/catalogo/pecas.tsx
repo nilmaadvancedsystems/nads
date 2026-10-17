@@ -2,7 +2,7 @@
 // de cada tipo dá o código (BT-01, BT-02…): peça nova entra no FIM do tipo, para os códigos não mudarem.
 import {
   Alerta, BotaoAcao, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail,
-  LogoFgts, LogoInss, LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
+  LogoFgts, LogoGovernoMinas, LogoInss, LogoReceitaFederal, LogoSimplesNacional, LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
 } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
 import { CONCILIA, EXECUTOR, EXTRATUDO, TAREFAS, TODAS } from './telas';
@@ -719,13 +719,11 @@ export const PECAS_BASE: Peca[] = [
         {FORMATOS_DE_ARQUIVO.map(f => <span key={f} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, fontSize: 12 }}><IconeDeArquivo formato={f} tamanho={36} />{f}</span>)}
       </div>
     ) },
-  { id: 'logo-guia', tipo: 'logos', nome: 'Logo da guia (Área do Cliente)', descricao: 'O quadradinho da guia (Vitor, 16/10/2026: "a logo de cada guia no quadradinho"): fundo claro com a borda fina e a logo do órgão; sem logo no nads, a sigla. Hoje: FGTS com a LogoFgts; DAS (Simples Nacional), DAE (SEFAZ-MG) e a outra guia na sigla até chegarem as logos. Ao lado, as logos de órgão que o nads já tem (FGTS e INSS)', componente: 'SiglaDaGuia · LogoFgts · LogoInss', classes: ['cli-sigla', 'com-logo', 'cli-sigla-logo'], telas: ['c-cliente', 'c-cliente-guias'],
-    uso: '<SiglaDaGuia tipo="FGTS" tamanho={44} />',
+  { id: 'logo-guia', tipo: 'logos', nome: 'Logo da guia (Área do Cliente)', descricao: 'O quadradinho da guia (Vitor, 16 e 17/10/2026: "a logo de cada guia no quadradinho"): a logo do órgão num fundo claro (claro também no tema escuro) com a borda fina — DAS o Simples Nacional, DAE o Governo de Minas, FGTS o FGTS, DARF/INSS/DCTFWeb a Receita Federal, os honorários o N da Nilma; a outra guia fica com a sigla', componente: 'SiglaDaGuia', classes: ['cli-sigla', 'com-logo', 'cli-sigla-logo'], telas: ['c-cliente', 'c-cliente-guias'],
+    uso: '<SiglaDaGuia tipo="DAS" tamanho={44} />',
     demo: () => (
       <div className="cli-app cli-demo" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
-        {(['FGTS', 'DAS', 'DAE', 'outra'] as const).map(t => <SiglaDaGuia key={t} tipo={t} tamanho={44} />)}
-        <span style={{ display: 'inline-flex', width: 64, height: 20 }}><LogoFgts cor /></span>
-        <span style={{ display: 'inline-flex', width: 44, height: 30 }}><LogoInss cor /></span>
+        {(['DAS', 'DAE', 'FGTS', 'DCTFWeb', 'HON', 'outra'] as const).map(t => <SiglaDaGuia key={t} tipo={t} tamanho={44} />)}
       </div>
     ) },
   { id: 'marca-escritorio', tipo: 'logos', nome: 'Marca do escritório (Área do Cliente)', descricao: 'O N oficial da Nilma (o mesmo do menu) num círculo claro com a borda fina, no lugar do avatar "NC" (Vitor, 16/10/2026): no card Atendimento da Visão geral (44 px) e no rodapé da lateral (36 px)', componente: 'MarcaDoEscritorio', classes: ['cli-marca-escritorio'], telas: CLI_TELAS,
@@ -751,4 +749,15 @@ export const PECAS_BASE: Peca[] = [
     ) },
   { id: 'esqueleto-cliente', tipo: 'carregamento', nome: 'Esqueleto da Área do Cliente', descricao: 'Enquanto o link carrega (versão D, Vitor, 16/10/2026): o desenho da Visão geral — o cartão de boas-vindas, os quatro números e a lista — com as linhas do Esqueleto do nads, que já têm o brilho passando', componente: 'EsqueletoDaArea', classes: ['cli-esqueleto', 'esqueleto-linha'], telas: ['c-cliente'], largo: true,
     demo: () => <div className="cli-app cli-demo" style={{ width: '100%' }}><EsqueletoDaArea /></div> },
+  { id: 'logos-orgaos', tipo: 'logos', nome: 'Órgãos das guias', descricao: 'As logos dos órgãos (Vitor, 17/10/2026, das fontes oficiais), redesenhadas em SVG para ficarem nítidas em qualquer tamanho: o símbolo do Simples Nacional, o triângulo do Governo de Minas, o símbolo da Receita Federal, e as do FGTS e do INSS que o nads já tinha. Sempre coloridas: no tema escuro vão num fundo claro', componente: 'LogoSimplesNacional · LogoGovernoMinas · LogoReceitaFederal · LogoFgts · LogoInss', telas: ['c-cliente', 'c-cliente-guias', 't-exec-folha'],
+    uso: '<LogoReceitaFederal />',
+    demo: () => (
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 20 }}>
+        <span style={{ display: 'inline-flex', width: 40, height: 40 }}><LogoSimplesNacional /></span>
+        <span style={{ display: 'inline-flex', width: 46, height: 40 }}><LogoGovernoMinas /></span>
+        <span style={{ display: 'inline-flex', width: 56, height: 40 }}><LogoReceitaFederal /></span>
+        <span style={{ display: 'inline-flex', width: 72, height: 22 }}><LogoFgts cor /></span>
+        <span style={{ display: 'inline-flex', width: 52, height: 36 }}><LogoInss cor /></span>
+      </div>
+    ) },
 ];

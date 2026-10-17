@@ -7,6 +7,7 @@ import { formatos } from '@nads/core';
 import { Icone, SeletorMes } from '@nads/ui';
 import { CartaoDeGuia } from '../partes/CartaoDeGuia';
 import { LinhaDaAgenda } from '../partes/LinhaDaAgenda';
+import { SiglaDaGuia } from '../partes/SiglaDaGuia';
 import { Vazio } from '../partes/Vazio';
 import { useGuias } from './useGuias';
 import type { DaCasca } from './useAreaCliente';
@@ -36,7 +37,7 @@ export function Guias(props: DaCasca) {
           <div className="cli-coluna-topo"><h2>Quitados no mês</h2><span className="cli-conta">{vm.pagas.length}</span></div>
           {vm.pagas.length ? vm.pagas.map(p => (
             <article key={p.id} className="card cli-cartao">
-              <div className="cli-cartao-topo"><span className="cli-etiqueta">Quitado</span><span className="badge badge-ok">Pago</span></div>
+              <div className="cli-cartao-topo">{p.tipo ? <SiglaDaGuia tipo={p.tipo} tamanho={40} /> : <span className="cli-etiqueta">Quitado</span>}<span className="badge badge-ok">Pago</span></div>
               <p className="cli-cartao-valor">{formatos.reais(p.valor)}</p>
               <p className="cli-cartao-nome">{p.nome}</p>
               <p className="hint">Pago em {p.pagoEm}</p>
