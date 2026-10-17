@@ -43,6 +43,8 @@ const SITES = {
   // a Área do Cliente (Vitor, 16/10/2026): enquanto não tem o site próprio (cliente.nilmacontabilidade.com), só como prévia
   // com dados de exemplo, no site do catálogo (link à parte, expira sozinho)
   'cliente-previa': { site: 'componentes-nilma', nome: 'Área do Cliente (prévia)', tipo: 'app', aplicativo: 'cliente', soCanal: true, pasta: 'componentes' },
+  // o site próprio da Área do Cliente (cliente.nilmacontabilidade.com): 'Em construção' até o site ler o banco
+  cliente: { site: 'cliente-nilma', nome: 'Área do Cliente', tipo: 'construcao' },
   extratudo: { site: 'extratudo-nilma', nome: 'Extratudo', tipo: 'app', banco: true },
   tarefas: { site: 'tarefas-nilma', nome: 'Tarefas', tipo: 'app', banco: true },
   // extrato do banco → .xls, sem banco de dados (Vitor, 06/10/2026)
