@@ -1,5 +1,6 @@
-// O quadradinho da guia na Área do Cliente (Vitor, 16 e 17/10/2026: "a logo de cada guia no quadradinho"): a logo do
-// órgão num fundo claro (claro também no tema escuro, para a logo aparecer) com a borda fina. DAS → Simples Nacional,
+// O lugar da logo da guia na Área do Cliente (Vitor, 16 e 17/10/2026: "a logo de cada guia no quadradinho", depois "deixe
+// sem fundo"): a logo do órgão solta, sem fundo, sem borda e sem sombra, numa área de ~40 px; no tema escuro a Receita
+// fica em azul claro (--logo-receita), porque o azul oficial some no fundo escuro. DAS → Simples Nacional,
 // DAE → Governo de Minas, FGTS → FGTS, DARF/INSS/DCTFWeb → Receita Federal, honorários → o N da Nilma; sem logo (a
 // "outra" guia), a sigla. Peça do catálogo (Logos).
 import { areaCliente as ac } from '@nads/core';
@@ -9,13 +10,13 @@ import type { TipoDoQuadradinho } from '../dados/areaCliente';
 import { siglaDaGuia } from './guia';
 
 const LOGO: Partial<Record<TipoDoQuadradinho, { logo: ReactNode; /** a fração do quadradinho que a logo ocupa */ escala: number }>> = {
-  DAS: { logo: <LogoSimplesNacional />, escala: 0.66 },
-  DAE: { logo: <LogoGovernoMinas />, escala: 0.62 },
-  FGTS: { logo: <LogoFgts cor />, escala: 0.76 },
-  DARF: { logo: <LogoReceitaFederal />, escala: 0.7 },
-  INSS: { logo: <LogoReceitaFederal />, escala: 0.7 },
-  DCTFWeb: { logo: <LogoReceitaFederal />, escala: 0.7 },
-  HON: { logo: <MarcaN />, escala: 0.56 },
+  DAS: { logo: <LogoSimplesNacional />, escala: 0.86 },
+  DAE: { logo: <LogoGovernoMinas />, escala: 0.86 },
+  FGTS: { logo: <LogoFgts cor />, escala: 0.95 },
+  DARF: { logo: <LogoReceitaFederal />, escala: 0.92 },
+  INSS: { logo: <LogoReceitaFederal />, escala: 0.92 },
+  DCTFWeb: { logo: <LogoReceitaFederal />, escala: 0.92 },
+  HON: { logo: <MarcaN />, escala: 0.8 },
 };
 const NOME: Record<Exclude<TipoDoQuadradinho, ac.TipoDeGuia>, string> = { DARF: 'DARF (Receita Federal)', INSS: 'INSS (Receita Federal)', DCTFWeb: 'DCTFWeb (Receita Federal)', HON: 'Honorários do escritório' };
 

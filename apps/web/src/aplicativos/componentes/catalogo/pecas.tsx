@@ -654,7 +654,7 @@ export const PECAS_BASE: Peca[] = [
         ]} />
       </div>
     ) },
-  { id: 'linha-guia', tipo: 'listas', nome: 'Linha de guia (Área do Cliente)', descricao: 'Das "Obrigações e guias próximas" da Visão geral da Área do Cliente (versão D, Vitor, 16/10/2026): o quadradinho claro com a logo do órgão (ou a sigla), o nome com a competência e o vencimento embaixo, o selo suave da situação, o valor alinhado à direita em número tabular e os botões de ícone de baixar e copiar (numa coluna de largura fixa, para os valores ficarem em fila); o fio fino entre as linhas e o fundo suave ao passar o mouse', componente: 'LinhaDeGuia', classes: ['cli-lista', 'cli-linha', 'cli-sigla', 'cli-linha-valor', 'cli-linha-acoes', 'badge', 'icon-btn'], telas: ['c-cliente', 'c-cliente-guias'], largo: true,
+  { id: 'linha-guia', tipo: 'listas', nome: 'Linha de guia (Área do Cliente)', descricao: 'Das "Obrigações e guias próximas" da Visão geral da Área do Cliente (versão D, Vitor, 16/10/2026): uma grade de colunas fixas, igual em todas as linhas (17/10/2026: "quero que melhore esse layout") — a logo do órgão solta (40 px), o nome com a competência e o vencimento, o selo da situação (largura fixa, à esquerda), o valor (largura fixa, à direita, tabular) e as ações (copiar e baixar, à direita); no celular o selo, o valor e as ações descem para a segunda linha. Na Visão geral, separadas em A pagar e Pagas (as pagas mais discretas)', componente: 'LinhaDeGuia', classes: ['cli-lista', 'cli-linha', 'cli-linha-guia', 'cli-g-logo', 'cli-g-txt', 'cli-g-selo', 'cli-g-valor', 'cli-g-acoes', 'cli-grupo', 'badge', 'icon-btn'], telas: ['c-cliente', 'c-cliente-guias'], largo: true,
     demo: () => (
       <div className="cli-app cli-demo" style={{ width: '100%' }}><ul className="cli-lista">
         <LinhaDeGuia codigo="07190.00009 26277.123456" onCopiar={nada} guia={{ id: 'l1', tipo: 'DAS', competencia: '2026-09', vencimento: '11/10/2026', valor: 1284.37, situacao: 'vencida', temPdf: true }} onBaixar={nada} />
@@ -719,7 +719,7 @@ export const PECAS_BASE: Peca[] = [
         {FORMATOS_DE_ARQUIVO.map(f => <span key={f} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, fontSize: 12 }}><IconeDeArquivo formato={f} tamanho={36} />{f}</span>)}
       </div>
     ) },
-  { id: 'logo-guia', tipo: 'logos', nome: 'Logo da guia (Área do Cliente)', descricao: 'O quadradinho da guia (Vitor, 16 e 17/10/2026: "a logo de cada guia no quadradinho"): a logo do órgão num fundo claro (claro também no tema escuro) com a borda fina — DAS o Simples Nacional, DAE o Governo de Minas, FGTS o FGTS, DARF/INSS/DCTFWeb a Receita Federal, os honorários o N da Nilma; a outra guia fica com a sigla', componente: 'SiglaDaGuia', classes: ['cli-sigla', 'com-logo', 'cli-sigla-logo'], telas: ['c-cliente', 'c-cliente-guias'],
+  { id: 'logo-guia', tipo: 'logos', nome: 'Logo da guia (Área do Cliente)', descricao: 'A logo da guia (Vitor, 16 e 17/10/2026: "a logo de cada guia no quadradinho", depois "deixe sem fundo"): a logo do órgão solta, sem fundo, sem borda e sem sombra, numa área de ~40 px — DAS o Simples Nacional, DAE o Governo de Minas, FGTS o FGTS, DARF/INSS/DCTFWeb a Receita Federal, os honorários o N da Nilma; a outra guia fica só com o texto da sigla, em cinza. No escuro, a Receita fica em azul claro (--logo-receita)', componente: 'SiglaDaGuia', classes: ['cli-sigla', 'com-logo', 'cli-sigla-logo'], telas: ['c-cliente', 'c-cliente-guias'],
     uso: '<SiglaDaGuia tipo="DAS" tamanho={44} />',
     demo: () => (
       <div className="cli-app cli-demo" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
@@ -749,10 +749,10 @@ export const PECAS_BASE: Peca[] = [
     ) },
   { id: 'esqueleto-cliente', tipo: 'carregamento', nome: 'Esqueleto da Área do Cliente', descricao: 'Enquanto o link carrega (versão D, Vitor, 16/10/2026): o desenho da Visão geral — o cartão de boas-vindas, os quatro números e a lista — com as linhas do Esqueleto do nads, que já têm o brilho passando', componente: 'EsqueletoDaArea', classes: ['cli-esqueleto', 'esqueleto-linha'], telas: ['c-cliente'], largo: true,
     demo: () => <div className="cli-app cli-demo" style={{ width: '100%' }}><EsqueletoDaArea /></div> },
-  { id: 'logos-orgaos', tipo: 'logos', nome: 'Órgãos das guias', descricao: 'As logos dos órgãos (Vitor, 17/10/2026, das fontes oficiais), redesenhadas em SVG para ficarem nítidas em qualquer tamanho: o símbolo do Simples Nacional, o triângulo do Governo de Minas, o símbolo da Receita Federal, e as do FGTS e do INSS que o nads já tinha. Sempre coloridas: no tema escuro vão num fundo claro', componente: 'LogoSimplesNacional · LogoGovernoMinas · LogoReceitaFederal · LogoFgts · LogoInss', telas: ['c-cliente', 'c-cliente-guias', 't-exec-folha'],
+  { id: 'logos-orgaos', tipo: 'logos', nome: 'Órgãos das guias', descricao: 'As logos dos órgãos (Vitor, 17/10/2026, das fontes oficiais), redesenhadas em SVG para ficarem nítidas em qualquer tamanho: o símbolo do Simples Nacional, o triângulo do Governo de Minas, o símbolo da Receita Federal, e as do FGTS e do INSS que o nads já tinha. Sempre coloridas; a da Receita aceita --logo-receita para o fundo escuro (o azul oficial some nele)', componente: 'LogoSimplesNacional · LogoGovernoMinas · LogoReceitaFederal · LogoFgts · LogoInss', telas: ['c-cliente', 'c-cliente-guias', 't-exec-folha'],
     uso: '<LogoReceitaFederal />',
     demo: () => (
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 20 }}>
+      <div className="cli-app cli-demo" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 20 }}>
         <span style={{ display: 'inline-flex', width: 40, height: 40 }}><LogoSimplesNacional /></span>
         <span style={{ display: 'inline-flex', width: 46, height: 40 }}><LogoGovernoMinas /></span>
         <span style={{ display: 'inline-flex', width: 56, height: 40 }}><LogoReceitaFederal /></span>

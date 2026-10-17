@@ -14,7 +14,6 @@
   --cli-sombra:0 1px 2px color-mix(in srgb,var(--cli-sombra-cor) 4%,transparent),0 10px 28px -14px color-mix(in srgb,var(--cli-sombra-cor) 14%,transparent);
   --cli-sombra-alta:0 2px 4px color-mix(in srgb,var(--cli-sombra-cor) 5%,transparent),0 16px 36px -16px color-mix(in srgb,var(--cli-sombra-cor) 22%,transparent);
   --cli-passa:color-mix(in srgb,var(--ink) 3.5%,transparent);
-  --cli-logo-fundo:var(--surface);
   --cli-raio:12px;
   --cli-raio-p:8px;
   min-height:100vh;background:var(--cli-fundo);color:var(--ink);font-family:var(--font-body);font-size:14px;line-height:1.5;
@@ -23,11 +22,11 @@
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]) .cli-app{--cli-fundo:var(--bg);--cli-cartao:var(--surface-2);--cli-linha:color-mix(in srgb,var(--border) 85%,transparent);
     --cli-fio:color-mix(in srgb,var(--border) 70%,transparent);--cli-sombra-cor:var(--overlay-bg);--cli-passa:color-mix(in srgb,var(--ink) 5%,transparent);
-    --cli-logo-fundo:color-mix(in srgb,var(--ink) 93%,var(--cli-cartao));}
+    --logo-receita:color-mix(in srgb,var(--info) 60%,var(--ink));}
 }
 :root[data-theme="dark"] .cli-app{--cli-fundo:var(--bg);--cli-cartao:var(--surface-2);--cli-linha:color-mix(in srgb,var(--border) 85%,transparent);
   --cli-fio:color-mix(in srgb,var(--border) 70%,transparent);--cli-sombra-cor:var(--overlay-bg);--cli-passa:color-mix(in srgb,var(--ink) 5%,transparent);
-    --cli-logo-fundo:color-mix(in srgb,var(--ink) 93%,var(--cli-cartao));}
+    --logo-receita:color-mix(in srgb,var(--info) 60%,var(--ink));}
 
 .cli-app *,.cli-app *::before,.cli-app *::after{box-sizing:border-box;}
 .cli-app :is(h1,h2,h3,p,ul,ol,dl,dd){margin:0;}
@@ -181,7 +180,7 @@
 .cli-app .cli-acoes{display:flex;flex-wrap:wrap;align-items:center;gap:10px;}
 .cli-app .cli-duas,.cli-app .cli-tres{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-items:start;}
 .cli-app .card-head > div{min-width:0;}
-.cli-app .card-head:has(> div + .btn-ghost){flex-wrap:nowrap;}
+.cli-app .card-head:has(> .btn-ghost){flex-wrap:nowrap;}
 .cli-app .card-head > .btn-ghost{flex:none;margin:-4px -8px 0 0;}
 
 /* a Visão geral: o cartão de boas-vindas com o N da Nilma de marca-d'água, os quatro números e o atendimento */
@@ -211,6 +210,40 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app .cli-contatos span{min-width:0;overflow-wrap:anywhere;}
 .cli-app .cli-largo{width:100%;margin-top:20px;}
 
+/* a Visão geral refeita (Vitor, 17/10/2026: "quero que melhore esse layout"): as boas-vindas numa faixa só */
+.cli-app .cli-boas-vindas{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px 24px;}
+.cli-app .cli-boas-vindas .cli-acoes{margin-top:0;}
+.cli-app .cli-boas-vindas .page-title{font-size:24px;}
+.cli-app .cli-boas-vindas .page-desc{margin-top:4px;}
+.cli-app .cli-numero .hint b{font-weight:600;}
+.cli-app .cli-numero .hint .ruim{color:var(--danger-ink);}
+
+/* a guia em grade de colunas fixas: logo, nome, situação, valor e ações (os selos e os valores em fila) */
+.cli-app .cli-linha.cli-linha-guia{display:grid;grid-template-columns:40px minmax(0,1fr) 112px 112px 84px;grid-template-areas:"logo txt selo valor acoes";column-gap:14px;}
+.cli-app .cli-g-logo{grid-area:logo;display:flex;}
+.cli-app .cli-g-txt{grid-area:txt;min-width:0;}
+.cli-app .cli-g-txt b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-app .cli-g-txt .hint{display:block;margin-top:2px;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-app .cli-g-selo{grid-area:selo;justify-self:start;}
+.cli-app .cli-g-valor{grid-area:valor;text-align:right;font-size:15px;}
+.cli-app .cli-g-acoes{grid-area:acoes;display:flex;justify-content:flex-end;gap:6px;}
+.cli-app .cli-grupo{margin:18px 0 2px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-muted);}
+.cli-app .card-head + .cli-grupo{margin-top:0;}
+.cli-app .cli-pagas .cli-g-txt b,.cli-app .cli-pagas .cli-g-valor{font-weight:500;}
+.cli-app .cli-pagas .cli-g-valor{color:var(--ink-muted);}
+
+/* a coluna da direita: o atendimento compacto e os avisos, na altura da lista */
+.cli-app .cli-iguais{align-items:stretch;}
+.cli-app .cli-coluna-direita{display:flex;flex-direction:column;gap:20px;min-width:0;}
+.cli-app .cli-avisos-card{flex:1;}
+.cli-app .cli-atendimento{padding:20px 22px;}
+.cli-app .cli-atendimento .cli-contatos{gap:8px;font-size:13.5px;}
+.cli-app .cli-aviso-linha{appearance:none;display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
+.cli-app .cli-aviso-linha:disabled{cursor:default;}
+.cli-app .cli-aviso-linha > svg{color:var(--ink-muted);}
+.cli-app .cli-aviso-ico{display:flex;align-items:center;justify-content:center;flex:none;width:32px;height:32px;border-radius:50%;background:var(--surface-3);color:var(--ink-muted);}
+.cli-app .cli-aviso-linha .cli-g-txt{flex:1;}
+
 /* uma linha das listas dentro do cartão (guia, chamado, agenda): o fio fino entre elas e o fundo suave ao passar */
 .cli-app .cli-lista{margin:0 -12px;}
 .cli-app .cli-linha{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:14px 12px;min-width:0;border-radius:var(--cli-raio-p);transition:background-color .15s ease;}
@@ -223,15 +256,14 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app .cli-linha-dir{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-left:auto;}
 .cli-app .cli-linha-valor{min-width:104px;text-align:right;font-size:15px;}
 .cli-app .cli-linha-acoes{display:flex;justify-content:flex-end;gap:6px;min-width:78px;}
-.cli-app .cli-sigla{display:flex;align-items:center;justify-content:center;flex:none;width:44px;height:44px;border:1px solid var(--cli-linha);border-radius:10px;background:var(--cli-cartao);
-  color:var(--ink);font-size:11px;font-weight:700;letter-spacing:.03em;box-shadow:0 1px 2px color-mix(in srgb,var(--cli-sombra-cor) 5%,transparent);}
-/* a logo do órgão no quadradinho claro (com tamanho dito pela peça) */
+.cli-app .cli-sigla{display:flex;align-items:center;justify-content:center;flex:none;width:44px;height:44px;
+  color:var(--ink-muted);font-size:11.5px;font-weight:700;letter-spacing:.05em;}
+/* a logo do órgão solta, sem fundo, sem borda e sem sombra (Vitor, 17/10/2026: "deixe sem fundo"), com o tamanho dito pela peça */
 .cli-app .cli-sigla-logo{display:flex;align-items:center;justify-content:center;}
 .cli-app .cli-sigla-logo svg{display:block;width:100%;height:100%;}
-/* com a logo, o fundo é sempre claro (no escuro, um quase branco), para as cores do órgão aparecerem */
-.cli-app .cli-sigla.com-logo{background:var(--cli-logo-fundo);}
-.cli-app .cli-sigla.pago{color:var(--success-ink);}
-.cli-app .cli-sigla svg{color:var(--success-ink);}
+.cli-app .cli-sigla.pago{color:var(--success);}
+/* no cartão, a logo encosta na margem do texto */
+.cli-app .cli-cartao-topo .cli-sigla{justify-content:flex-start;}
 
 /* a data em folhinha (agenda) */
 .cli-app .cli-data{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;width:44px;height:44px;border:1px solid var(--cli-linha);border-radius:10px;
@@ -370,6 +402,9 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
   .cli-app .cli-linha-valor{min-width:0;}
   .cli-app .cli-linha-acoes{min-width:0;}
   .cli-app .cli-barra > .btn-primary{width:100%;}
+  .cli-app .cli-linha.cli-linha-guia{grid-template-columns:40px minmax(0,1fr) auto auto;grid-template-areas:"logo txt txt txt" "logo selo valor acoes";row-gap:8px;column-gap:10px;}
+  .cli-app .cli-boas-vindas .cli-acoes{width:100%;}
+  .cli-app .cli-numero .hint{white-space:normal;}
   .cli-app .cli-filtros-dir{width:100%;}
   .cli-app .cli-filtros-dir select{flex:1;min-width:0;}
   .cli-app .cli-busca{max-width:none;flex-basis:100%;}
@@ -387,7 +422,7 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
   .cli-app .cli-corpo.sem-lateral{padding-left:0;}
   .cli-app .cli-topo{padding:12px 40px;}
   .cli-app .cli-main{gap:24px;padding:32px 40px 72px;}
-  .cli-app .cli-boas-vindas{padding:36px 40px;}
+  .cli-app .cli-boas-vindas{padding:26px 32px;}
   .cli-app .cli-marca-dagua{width:92px;right:56px;}
   .cli-app .cli-numeros{gap:16px;}
   .cli-app .cli-numero{padding:20px 22px;}

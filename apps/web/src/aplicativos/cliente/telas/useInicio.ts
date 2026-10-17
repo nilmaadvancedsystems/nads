@@ -5,7 +5,7 @@ import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { baixarArquivo } from '../dados/baixar';
 import { repoAreaCliente } from '../dados/repo';
-import { chaveDoMes, resumoDoPessoal, situacaoDoCertificado } from '../dados/regras';
+import { chaveDoMes, notificacoes, resumoDoPessoal, situacaoDoCertificado } from '../dados/regras';
 import type { DaCasca } from './useAreaCliente';
 
 /** "a, b e c" */
@@ -46,6 +46,17 @@ export function useInicio({ token, area, hoje, irPara, copiar }: DaCasca) {
     pessoal,
     chamadosEmAberto: emAberto.length,
     primeiroEmAberto: emAberto[0]?.titulo ?? '',
+    // o resumo curto dos chamados em aberto, numa linha: "1 em andamento · 1 respondido"
+    chamadosEmPoucas: [
+      [emAberto.filter(c => c.situacao === 'aberto' || c.situacao === 'em andamento').length, 'em andamento', 'em andamento'] as const,
+      [emAberto.filter(c => c.situacao === 'respondido').length, 'respondido', 'respondidos'] as const,
+    ].filter(([n]) => n > 0).map(([n, um, varios]) => n + ' ' + (n === 1 ? um : varios)).join(' · '),
+    // os avisos da coluna da direita: os recados do escritório e o que pede atenção (documentos novos, certificado,
+    // resposta do escritório); as guias já estão na lista ao lado
+    avisosDaVisao: [
+      ...area.avisos.map(a => ({ id: 'a-' + a.id, titulo: a.titulo, texto: a.texto, ir: a.ir })),
+      ...notificacoes({ ...area, guias }, hoje, g => g.tipo).filter(n => !n.id.startsWith('g-')),
+    ].slice(0, 4),
     docsDoMes: docsDoMes.length,
     docsNovos: area.documentos.filter(d => d.novo).length,
     pendencias: ac.pendenciasDaAgenda(agendaDoMes),
