@@ -24,18 +24,18 @@ export function Guias(props: DaCasca) {
 
       <div className="cli-tres">
         <section>
-          <div className="cli-coluna-topo"><h2>Próximos vencimentos</h2><span className="subnav-count">{vm.guias.length}</span></div>
+          <div className="cli-coluna-topo atencao"><h2>Próximos vencimentos</h2><span className="subnav-count">{vm.guias.length}</span></div>
           {vm.guias.length ? vm.guias.map(g => (
             <CartaoDeGuia key={g.id} guia={g} codigo={vm.codigos[g.id]} faltam={vm.faltam(g)} ocupado={vm.baixando === g.id} onBaixar={id => void vm.baixar(id)} onCopiar={vm.copiarCodigo} />
           )) : <p className="empty">Nenhuma guia vence neste mês.</p>}
         </section>
 
         <section>
-          <div className="cli-coluna-topo"><h2>Quitados no mês</h2><span className="subnav-count">{vm.pagas.length}</span></div>
+          <div className="cli-coluna-topo bom"><h2>Quitados no mês</h2><span className="subnav-count">{vm.pagas.length}</span></div>
           {vm.pagas.length ? vm.pagas.map(p => (
             <article key={p.id} className="card cli-cartao">
               <div className="cli-cartao-l1">
-                <span className="cli-sigla" aria-hidden="true">{p.sigla}</span>
+                <span className="cli-sigla bom" aria-hidden="true">{p.sigla}</span>
                 <b className="cli-cartao-nome">{p.nome}</b>
                 <b className="cli-valor">{formatos.reais(p.valor)}</b>
               </div>

@@ -23,7 +23,7 @@ export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente[
         </div>
       </section>
 
-      <div className="stat-grid cli-numeros">
+      <div className="stat-grid dp-numeros cli-numeros">
         <div className="stat">
           <p className="stat-label">Guias a vencer</p>
           <p className={'stat-value' + (vm.vencidas ? ' cli-ruim' : '')}>{vm.totalDeGuias}</p>
@@ -57,7 +57,7 @@ export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente[
               {vm.guias.map(g => <LinhaDeGuia key={g.id} guia={g} codigo={vm.codigos[g.id]} ocupado={vm.baixando === g.id} onBaixar={id => void vm.baixar(id)} onCopiar={vm.copiarCodigo} />)}
               {vm.pagas.map(p => (
                 <li key={p.id} className="cli-linha cli-linha-guia">
-                  <span className="cli-sigla" aria-hidden="true">{p.sigla}</span>
+                  <span className="cli-sigla bom" aria-hidden="true">{p.sigla}</span>
                   <div className="cli-linha-txt">
                     <b>{p.nome}</b>
                     <p className="hint">Pago em {p.pagoEm}</p>
@@ -79,14 +79,19 @@ export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente[
 
         <section className="card cli-atendimento">
           <div className="card-head"><h3>Atendimento</h3></div>
-          <p className="cli-atendimento-quem">{c.equipe}</p>
-          <dl className="cli-dados">
-            {c.email && <><dt>E-mail</dt><dd>{c.email}</dd></>}
-            {c.telefone && <><dt>Telefone</dt><dd>{c.telefone}</dd></>}
-            {c.whatsapp && <><dt>WhatsApp</dt><dd>{c.whatsapp}</dd></>}
-            {c.horario && <><dt>Horário</dt><dd>{c.horario}</dd></>}
-          </dl>
-          <button type="button" className="btn cli-largo" onClick={() => vm.irPara('chamados')}>Solicitar documento ou serviço</button>
+          <div className="cli-atendimento-caixa">
+            <div className="cli-pessoa">
+              <span className="cli-iniciais t0 grande" aria-hidden="true">NC</span>
+              <div><b>{c.equipe}</b><span className="hint">Seu escritório de contabilidade</span></div>
+            </div>
+            <ul className="cli-contatos">
+              {c.email && <li><Icone nome="envelope" width={16} height={16} />{c.email}</li>}
+              {c.telefone && <li><Icone nome="telefone" width={16} height={16} />{c.telefone}</li>}
+              {c.whatsapp && <li><Icone nome="mensagem" width={16} height={16} />{c.whatsapp} (WhatsApp)</li>}
+              {c.horario && <li><Icone nome="clock" width={16} height={16} />{c.horario}</li>}
+            </ul>
+          </div>
+          <button type="button" className="btn cli-largo" onClick={() => vm.irPara('chamados')}><Icone nome="aviao" width={16} height={16} />Solicitar documento ou serviço</button>
         </section>
       </div>
     </>

@@ -526,7 +526,7 @@ export const PECAS_BASE: Peca[] = [
           <button className="subnav-item" type="button"><Icone nome="predio" width={16} height={16} /><span>Dados cadastrais</span></button>
           <button className="subnav-item" type="button"><Icone nome="telefone" width={16} height={16} /><span>Fale com o escritório</span></button>
         </nav>
-        <div className="cli-lateral-pe"><b>Equipe Nilma Contabilidade</b><span>Segunda a sexta, das 8h às 18h</span><button className="btn" type="button"><Icone nome="mensagem" width={16} height={16} />WhatsApp do escritório</button></div>
+        <div className="cli-lateral-pe"><div className="cli-pessoa"><span className="cli-iniciais t0" aria-hidden="true">NC</span><div><b>Nilma Contabilidade</b><span className="cli-online"><span className="cli-ponto-ok" aria-hidden="true" />Segunda a sexta, das 8h às 18h</span></div></div><button className="btn" type="button"><Icone nome="mensagem" width={16} height={16} />WhatsApp do escritório</button></div>
       </div>
     ) },
   // ─── Cartões ────────────────────────────────────────────────────────────────────────────────────────────────────────

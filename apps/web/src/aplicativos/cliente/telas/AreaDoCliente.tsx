@@ -112,8 +112,10 @@ export function AreaDoCliente() {
               </nav>
             </div>
             <div className="cli-lateral-pe">
-              <b>{c.equipe}</b>
-              {c.horario && <span>{c.horario}</span>}
+              <div className="cli-pessoa">
+                <span className="cli-iniciais t0" aria-hidden="true">NC</span>
+                <div><b>Nilma Contabilidade</b>{c.horario && <span className="cli-online"><span className="cli-ponto-ok" aria-hidden="true" />{c.horario}</span>}</div>
+              </div>
               {c.whatsappLink && <button type="button" className="btn" onClick={abrirWhatsapp}><Icone nome="mensagem" width={16} height={16} />WhatsApp do escritório</button>}
             </div>
           </aside>
@@ -130,9 +132,12 @@ export function AreaDoCliente() {
               </button>
             )}
             {valido ? (
-              <div className="cli-empresa">
-                <b>{vm.empresa}</b>
-                {vm.cnpj && <small>CNPJ {vm.cnpj}</small>}
+              <div className="cli-empresa-caixa">
+                <span className="cli-empresa-ico" aria-hidden="true"><Icone nome="predio" width={16} height={16} /></span>
+                <div className="cli-empresa">
+                  <b>{vm.empresa}</b>
+                  {vm.cnpj && <small>CNPJ {vm.cnpj}</small>}
+                </div>
               </div>
             ) : <div className="cli-empresa"><b>Nilma Contabilidade</b></div>}
           </div>

@@ -126,7 +126,7 @@ export function DepartamentoPessoal(props: DaCasca) {
         </div>
       </div>
 
-      <div className="stat-grid cli-numeros">
+      <div className="stat-grid dp-numeros cli-numeros">
         <div className="stat"><p className="stat-label">Total de ativos</p><p className="stat-value">{vm.numeros.ativos}</p></div>
         <div className="stat"><p className="stat-label">Em férias</p><p className="stat-value">{vm.numeros.emFerias}</p></div>
         <div className="stat"><p className="stat-label">Folha bruta total</p><p className="stat-value"><small className="cli-moeda">R$</small>{vm.reais(vm.numeros.folha).replace(/^R\$\s*/, '')}</p></div>

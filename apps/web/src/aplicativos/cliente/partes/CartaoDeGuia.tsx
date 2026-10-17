@@ -4,7 +4,7 @@
 // (Cartões).
 import { areaCliente as ac, formatos } from '@nads/core';
 import { Icone } from '@nads/ui';
-import { siglaDaGuia } from './guia';
+import { siglaDaGuia, TOM_DA_SIGLA } from './guia';
 
 export function CartaoDeGuia({ guia, codigo, faltam, ocupado, onBaixar, onCopiar }: {
   guia: ac.GuiaDoCliente; codigo?: string; /** o texto de quanto falta, ex.: "em 4 dias" */ faltam?: string; ocupado?: boolean; onBaixar: (id: string) => void; onCopiar?: (codigo: string) => void;
@@ -13,7 +13,7 @@ export function CartaoDeGuia({ guia, codigo, faltam, ocupado, onBaixar, onCopiar
   return (
     <article className="card cli-cartao">
       <div className="cli-cartao-l1">
-        <span className="cli-sigla" aria-hidden="true">{siglaDaGuia(guia.tipo)}</span>
+        <span className={TOM_DA_SIGLA[guia.situacao]} aria-hidden="true">{siglaDaGuia(guia.tipo)}</span>
         <b className="cli-cartao-nome">{ac.ROTULO_DA_GUIA[guia.tipo]}</b>
         <b className="cli-valor">{formatos.reais(guia.valor)}</b>
       </div>

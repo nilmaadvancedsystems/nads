@@ -3,4 +3,6 @@
 import type { areaCliente as ac } from '@nads/core';
 
 export const siglaDaGuia = (tipo: ac.TipoDeGuia) => (tipo === 'outra' ? 'GUIA' : tipo);
+/** o tom do quadradinho da sigla, como no protótipo (vencida vermelho, vence hoje atenção, a vencer neutro) */
+export const TOM_DA_SIGLA: Record<ac.SituacaoDaGuia, string> = { 'a vencer': 'cli-sigla', 'vence hoje': 'cli-sigla atencao', vencida: 'cli-sigla ruim' };
 export const SELO_DA_SITUACAO: Record<ac.SituacaoDaGuia, string> = { 'a vencer': 'cli-selo', 'vence hoje': 'cli-selo atencao', vencida: 'cli-selo ruim' };

@@ -3,12 +3,12 @@
 // situação e os botões de ícone de baixar e copiar a linha digitável (quando tem). Peça do catálogo (Listas).
 import { areaCliente as ac, formatos } from '@nads/core';
 import { Icone } from '@nads/ui';
-import { SELO_DA_SITUACAO, siglaDaGuia } from './guia';
+import { SELO_DA_SITUACAO, siglaDaGuia, TOM_DA_SIGLA } from './guia';
 
 export function LinhaDeGuia({ guia, codigo, ocupado, onBaixar, onCopiar }: { guia: ac.GuiaDoCliente; codigo?: string; ocupado?: boolean; onBaixar: (id: string) => void; onCopiar?: (codigo: string) => void }) {
   return (
     <li className="cli-linha cli-linha-guia">
-      <span className="cli-sigla" aria-hidden="true">{siglaDaGuia(guia.tipo)}</span>
+      <span className={TOM_DA_SIGLA[guia.situacao]} aria-hidden="true">{siglaDaGuia(guia.tipo)}</span>
       <div className="cli-linha-txt">
         <b>{ac.ROTULO_DA_GUIA[guia.tipo]}</b>
         <p className="hint">Vence em {guia.vencimento} · competência {guia.competencia.slice(5, 7)}/{guia.competencia.slice(0, 4)}</p>
