@@ -57,7 +57,7 @@ export function useGuias({ token, area, hoje, irPara, copiar }: DaCasca) {
     // a guia que leva o botão carmim (um só na área): a vencida ou, sem ela, a mais urgente
     urgente: (guias.find(g => g.situacao === 'vencida') ?? guias[0])?.id ?? '',
     guias, codigos: area.codigos, baixando, baixar, copiarCodigo: (c: string) => copiar(c, 'Código'),
-    pagas, comprovante,
+    pagas, comprovante, mostraPagas: area.secoes.pagas,
     certificado: area.certificado ? { ...area.certificado, ...situacaoDoCertificado(area.certificado, hoje) } : null,
     avisos: area.avisos, irPara, agenda,
     // "em 4 dias", "há 5 dias"; no dia, nada (o selo já diz "Vence hoje")

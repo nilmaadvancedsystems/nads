@@ -28,6 +28,9 @@ export function useEnviar({ token, area }: DaCasca) {
       await repoAreaCliente.enviar(token, tipo, bons.map(comMime));
       setEnviados(e => [...e, ...bons.map(b => b.name)]);
       toast(bons.length === 1 ? 'Recebemos o arquivo.' : 'Recebemos os ' + bons.length + ' arquivos.');
+    } catch (e) {
+      // o banco recusou ou caiu a internet: a frase vem pronta do repositório
+      setErros(atuais => [...atuais, e instanceof Error ? e.message : 'Não deu para mandar agora. Tente de novo.']);
     } finally { setEnviando(false); }
   }
 

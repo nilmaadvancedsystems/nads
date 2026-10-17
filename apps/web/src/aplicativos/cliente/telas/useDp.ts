@@ -30,8 +30,13 @@ export function useDp({ token, area, hoje }: DaCasca) {
     if (problema) return problema;
     const texto = pedido === 'admissao' ? textoDaAdmissao(dados as PedidoDeAdmissao) : pedido === 'ferias' ? textoDasFerias(dados as PedidoDeFerias) : textoDaDemissao(dados as PedidoDeDemissao);
     const foto = pedido === 'admissao' ? (dados as PedidoDeAdmissao).foto : undefined;
-    const id = await repoAreaCliente.abrirChamado(token, { tipo: pedido, texto, ...(foto ? { foto } : {}) });
-    if (!id) return 'Não deu para mandar o pedido. Tente de novo.';
+    try {
+      const id = await repoAreaCliente.abrirChamado(token, { tipo: pedido, texto, ...(foto ? { foto } : {}) });
+      if (!id) return 'Não deu para mandar o pedido. Tente de novo.';
+    } catch (e) {
+      // o banco recusou (link revogado) ou caiu a internet: a frase vem pronta do repositório
+      return e instanceof Error ? e.message : 'Não deu para mandar o pedido. Tente de novo.';
+    }
     toast('Pedido enviado ao escritório. Acompanhe em Solicitações e chamados.');
     return '';
   }

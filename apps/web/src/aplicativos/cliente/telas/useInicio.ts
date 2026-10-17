@@ -1,5 +1,6 @@
 // ViewModel da Visão geral da Área do Cliente (Vitor, 16/10/2026): os números do mês (guias, funcionários, chamados e
-// documentos), as próximas guias, o atendimento, os avisos (com o certificado digital) e as últimas conversas.
+// documentos), as próximas guias, o atendimento, os avisos (com o certificado digital) e as últimas conversas. Com o banco
+// (17/10/2026), no lugar dos funcionários e dos documentos: as obrigações a fazer no mês e os arquivos enviados no mês.
 import { areaCliente as ac } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
@@ -20,6 +21,11 @@ export function useInicio({ token, area, hoje, irPara, copiar }: DaCasca) {
   const pessoal = resumoDoPessoal(area.empregados, hoje);
   const emAberto = area.chamados.filter(c => c.situacao !== 'concluido');
   const docsDoMes = area.documentos.filter(d => d.enviadoEm.slice(0, 7) === mes);
+  // a agenda do mês sem o "não se aplica" (o mesmo filtro da aba Guias e obrigações)
+  const obrigacoes = agendaDoMes.filter(i => i.situacao !== 'nao se aplica');
+  // os recibos dos arquivos que o cliente mandou neste mês (a hora do robô, no fuso de quem olha)
+  const enviados = area.envios.filter(e => e.recebidoEm && chaveDoMes(new Date(e.recebidoEm)) === mes);
+  const ultimoEnvio = area.envios.reduce((m, e) => (e.recebidoEm > m ? e.recebidoEm : m), '');
 
   async function baixar(id: string) {
     setBaixando(id);
@@ -33,7 +39,7 @@ export function useInicio({ token, area, hoje, irPara, copiar }: DaCasca) {
     mesAtual: hoje.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
     guias: guias.slice(0, 4),
     // as já pagas entram no fim da lista, como no protótipo ("Liquidado")
-    pagas: area.pagas.slice(0, 2),
+    pagas: area.secoes.pagas ? area.pagas.slice(0, 2) : [],
     baixarComprovante: async (id: string) => {
       const pdf = await repoAreaCliente.baixarComprovante(token, id);
       if (pdf) baixarArquivo(pdf.nome, pdf.arquivo); else toast('O comprovante ainda não chegou.');
@@ -58,6 +64,10 @@ export function useInicio({ token, area, hoje, irPara, copiar }: DaCasca) {
       ...notificacoes({ ...area, guias }, hoje, g => g.tipo).filter(n => !n.id.startsWith('g-')),
     ].slice(0, 4),
     docsDoMes: docsDoMes.length,
+    secoes: area.secoes,
+    obrigacoes: { aFazer: obrigacoes.filter(i => i.situacao === 'a fazer').length, feitas: obrigacoes.filter(i => i.situacao === 'feito').length, total: obrigacoes.length },
+    enviadosNoMes: enviados.length,
+    ultimoEnvio: ultimoEnvio ? new Date(ultimoEnvio).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '',
     docsNovos: area.documentos.filter(d => d.novo).length,
     pendencias: ac.pendenciasDaAgenda(agendaDoMes),
     avisos: area.avisos,

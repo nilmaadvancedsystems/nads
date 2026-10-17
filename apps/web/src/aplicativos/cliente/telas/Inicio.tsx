@@ -2,7 +2,9 @@
 // peças do nads. Versão D: as boas-vindas numa faixa só (o mês, o título e uma frase à esquerda; os dois botões à
 // direita), os quatro números com o detalhe numa linha (o total a pagar nas guias, o resumo curto dos chamados), a lista
 // das guias em grade de colunas fixas, separada em "A pagar" e "Pagas", e à direita o atendimento compacto com os avisos
-// embaixo, na mesma altura da lista.
+// embaixo, na mesma altura da lista. Com o banco (17/10/2026), os números sem fonte (empregados e documentos do mês)
+// dão lugar aos que o espelho tem, no mesmo lugar: as obrigações a fazer no mês (a agenda) e os arquivos enviados no mês
+// (que abre o Enviar documento).
 import { formatos } from '@nads/core';
 import { Icone, type NomeIcone } from '@nads/ui';
 import type { ReactNode } from 'react';
@@ -11,11 +13,12 @@ import { LinhaDePaga } from '../partes/LinhaDePaga';
 import { MarcaDoEscritorio } from '../partes/MarcaDoEscritorio';
 import { Vazio } from '../partes/Vazio';
 import { useInicio } from './useInicio';
+import { useJanelaDeEnvio } from './JanelaDeEnvio';
 import type { AreaCliente, DaCasca, IdAba } from './useAreaCliente';
 
-function Numero({ rotulo, valor, nota, ir, irPara }: { rotulo: string; valor: string | number; nota: ReactNode; ir: IdAba; irPara: (id: IdAba) => void }) {
+function Numero({ rotulo, valor, nota, abrir }: { rotulo: string; valor: string | number; nota: ReactNode; abrir: () => void }) {
   return (
-    <button type="button" className="cli-numero" onClick={() => irPara(ir)}>
+    <button type="button" className="cli-numero" onClick={abrir}>
       <span className="cli-sobre">{rotulo}</span>
       <span className="cli-numero-valor">{valor}</span>
       <span className="hint">{nota}</span>
@@ -27,6 +30,8 @@ const ICONE_DO_AVISO: Record<IdAba, NomeIcone> = { inicio: 'sino', documentos: '
 
 export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente['contato'] }) {
   const vm = useInicio(props);
+  const abrirEnvio = useJanelaDeEnvio(props);
+  const ir = (id: IdAba) => () => vm.irPara(id);
   const c = props.contato;
   const contatos: { icone: NomeIcone; texto?: string }[] = [
     { icone: 'mensagem', texto: c.whatsapp && 'WhatsApp ' + c.whatsapp }, { icone: 'envelope', texto: c.email }, { icone: 'telefone', texto: c.telefone },
@@ -46,13 +51,23 @@ export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente[
       </section>
 
       <div className="cli-numeros">
-        <Numero rotulo="Guias a vencer" valor={vm.totalDeGuias} ir="guias" irPara={vm.irPara}
+        <Numero rotulo="Guias a vencer" valor={vm.totalDeGuias} abrir={ir('guias')}
           nota={vm.totalDeGuias ? <>{vm.vencidas > 0 && <><b className="ruim">{vm.vencidas === 1 ? '1 vencida' : vm.vencidas + ' vencidas'}</b> · </>}{formatos.reais(vm.valorEmAberto)}</> : 'Nenhuma em aberto'} />
-        <Numero rotulo="Empregados ativos" valor={vm.pessoal.ativos} ir="dp" irPara={vm.irPara}
-          nota={vm.pessoal.emFerias === 1 ? '1 em férias' : vm.pessoal.emFerias ? vm.pessoal.emFerias + ' em férias' : 'Ninguém em férias'} />
-        <Numero rotulo="Chamados em aberto" valor={vm.chamadosEmAberto} ir="chamados" irPara={vm.irPara} nota={vm.chamadosEmPoucas || 'Nenhum'} />
-        <Numero rotulo="Documentos do mês" valor={vm.docsDoMes} ir="documentos" irPara={vm.irPara}
-          nota={vm.docsNovos === 1 ? '1 ainda não baixado' : vm.docsNovos ? vm.docsNovos + ' não baixados' : 'Todos baixados'} />
+        {vm.secoes.dp ? (
+          <Numero rotulo="Empregados ativos" valor={vm.pessoal.ativos} abrir={ir('dp')}
+            nota={vm.pessoal.emFerias === 1 ? '1 em férias' : vm.pessoal.emFerias ? vm.pessoal.emFerias + ' em férias' : 'Ninguém em férias'} />
+        ) : (
+          <Numero rotulo="Obrigações a fazer" valor={vm.obrigacoes.aFazer} abrir={ir('guias')}
+            nota={vm.obrigacoes.total ? vm.obrigacoes.feitas + ' de ' + vm.obrigacoes.total + ' já feitas' : 'Nada neste mês'} />
+        )}
+        <Numero rotulo="Chamados em aberto" valor={vm.chamadosEmAberto} abrir={ir('chamados')} nota={vm.chamadosEmPoucas || 'Nenhum'} />
+        {vm.secoes.documentos ? (
+          <Numero rotulo="Documentos do mês" valor={vm.docsDoMes} abrir={ir('documentos')}
+            nota={vm.docsNovos === 1 ? '1 ainda não baixado' : vm.docsNovos ? vm.docsNovos + ' não baixados' : 'Todos baixados'} />
+        ) : (
+          <Numero rotulo="Arquivos enviados" valor={vm.enviadosNoMes} abrir={abrirEnvio}
+            nota={vm.ultimoEnvio ? 'Último em ' + vm.ultimoEnvio : 'Mande extratos e notas por aqui'} />
+        )}
       </div>
 
       <div className="cli-duas cli-iguais">

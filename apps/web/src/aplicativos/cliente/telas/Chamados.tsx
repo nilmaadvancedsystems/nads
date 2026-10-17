@@ -2,10 +2,12 @@
 // Novo chamado; o card da abertura rápida (assunto, prioridade, título, o pedido, um anexo e Enviar chamado); e o card do
 // histórico, cada chamado com o selo da situação, o assunto, a última mensagem e "Ver conversa", que abre ali mesmo com o
 // responder. Versão D: só o selo da situação (o assunto vai na linha de baixo), a conversa num fundo suave e o
-// formulário com o fio fino antes do Enviar.
+// formulário com o fio fino antes do Enviar. Com o banco (17/10/2026), sem a Central de documentos, o "Enviar documento"
+// fica aqui, ao lado do Novo chamado.
 import { Icone } from '@nads/ui';
 import { useId, useRef } from 'react';
 import { ConversaDoChamado } from '../partes/ConversaDoChamado';
+import { useJanelaDeEnvio } from './JanelaDeEnvio';
 import { Vazio } from '../partes/Vazio';
 import { useChamados } from './useChamados';
 import type { DaCasca } from './useAreaCliente';
@@ -16,6 +18,12 @@ export function Chamados(props: DaCasca) {
   const vm = useChamados(props);
   const idAnexo = useId();
   const form = useRef<HTMLElement>(null);
+  const abrirEnvio = useJanelaDeEnvio(props);
+  const novo = (
+    <button type="button" className="btn" onClick={() => { form.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); document.getElementById('cli-titulo-chamado')?.focus(); }}>
+      <Icone nome="plus" width={16} height={16} />Novo chamado
+    </button>
+  );
   return (
     <>
       <div className="cli-titulo">
@@ -23,9 +31,12 @@ export function Chamados(props: DaCasca) {
           <h1 className="page-title">Solicitações e chamados</h1>
           <p className="page-desc">Peça certidões, admissões, alterações ou tire dúvidas com a equipe Nilma.</p>
         </div>
-        <button type="button" className="btn" onClick={() => { form.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); document.getElementById('cli-titulo-chamado')?.focus(); }}>
-          <Icone nome="plus" width={16} height={16} />Novo chamado
-        </button>
+        {props.area.secoes.documentos ? novo : (
+          <div className="cli-acoes">
+            <button type="button" className="btn" onClick={abrirEnvio}><Icone nome="upload" width={16} height={16} />Enviar documento</button>
+            {novo}
+          </div>
+        )}
       </div>
 
       <section className="card" ref={form}>

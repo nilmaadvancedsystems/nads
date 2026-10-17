@@ -1,9 +1,10 @@
 // A Área do Cliente (Vitor, 16/10/2026): o site que o cliente abre por um LINK SECRETO, um por empresa, sem senha.
-// Interface do repositório + os tipos do que a tela precisa; a versão de exemplo é areaCliente.memoria.ts. A do banco
-// (areasCliente/{token} que o robô espelha; o cliente só cria nas caixas areaClienteEnvios e areaClienteChamados) ainda
-// não existe.
+// Interface do repositório + os tipos do que a tela precisa; a versão de exemplo é areaCliente.memoria.ts e a do banco é
+// areaCliente.firestore.ts (lê o espelho areasCliente/{token} que o robô grava; o cliente só cria nas caixas
+// areaClienteEnvios e areaClienteChamados).
 // As seções que vieram do protótipo do Vitor (documentos, certificado, empregados, ficha da empresa, atendimento, avisos e
-// guias pagas) ainda não têm tipo no core: por enquanto os tipos simples ficam aqui e só a versão de exemplo os preenche.
+// guias pagas) ainda não têm tipo no core nem fonte no banco: os tipos simples ficam aqui, só a versão de exemplo os
+// preenche, e `secoes` diz à tela o que esconder quando o repositório não tem de onde tirar.
 import type { areaCliente as ac } from '@nads/core';
 
 /** a área do escritório que mandou o documento */
@@ -83,11 +84,34 @@ export type TipoDoQuadradinho = ac.TipoDeGuia | 'DARF' | 'INSS' | 'DCTFWeb' | 'H
 /** Uma guia já paga no mês, com o comprovante. */
 export interface GuiaPaga { id: string; /** de que é (a logo do órgão no quadradinho); sem ele, o ✓ */ tipo?: TipoDoQuadradinho; nome: string; competencia: string; valor: number; /** 'dd/mm/aaaa' */ pagoEm: string; temComprovante: boolean }
 
+/**
+ * As seções que o repositório consegue preencher. false = não tem fonte (o banco, por enquanto): a tela esconde o item do
+ * menu, os cards e os avisos que dependem dela, em vez de mostrar uma lista vazia que parece verdade ("nada pago",
+ * "nenhum funcionário"). O certificado e a ficha da empresa não precisam disto: sem eles (null), a tela já esconde.
+ */
+export interface SecoesDaArea {
+  /** a Central de documentos (os documentos que o escritório deixa para o cliente) */
+  documentos: boolean;
+  /** o Departamento pessoal (os funcionários e os pedidos de admissão, férias e desligamento com a foto) */
+  dp: boolean;
+  /** as guias já pagas, com o comprovante */
+  pagas: boolean;
+}
+export const TODAS_AS_SECOES: SecoesDaArea = { documentos: true, dp: true, pagas: true };
+/** o que o banco tem hoje (17/10/2026): o robô espelha guias, agenda, recibos de envio e chamados, e nada disto */
+export const SECOES_DO_BANCO: SecoesDaArea = { documentos: false, dp: false, pagas: false };
+
 /** Tudo o que o link mostra, já filtrado pelo robô. */
 export interface EstadoDaArea {
   carregado: boolean;
   /** false = o link não existe ou foi trocado: a tela não mostra dado nenhum */
   valido: boolean;
+  /** o banco não respondeu por outro motivo (não é o link): a frase para o cliente; '' = sem problema */
+  erro: string;
+  /** true = dados de exemplo (nada vai para o escritório) */
+  exemplos: boolean;
+  /** o que este link consegue mostrar (o resto some da tela) */
+  secoes: SecoesDaArea;
   resumo: ac.ResumoDoCliente | null;
   guias: ac.GuiaDoCliente[];
   /** a linha digitável de cada guia (id da guia → código), quando tem */
@@ -106,19 +130,18 @@ export interface EstadoDaArea {
 }
 
 export const AREA_VAZIA: EstadoDaArea = {
-  carregado: false, valido: false, resumo: null, guias: [], codigos: {}, pagas: [], agenda: [], envios: [], chamados: [],
+  carregado: false, valido: false, erro: '', exemplos: false, secoes: SECOES_DO_BANCO, resumo: null, guias: [], codigos: {}, pagas: [], agenda: [], envios: [], chamados: [],
   documentos: [], certificado: null, empregados: [], ficha: null, atendimento: null, avisos: [],
 };
 
 export interface RepoAreaCliente {
-  /** true = dados de exemplo (nada vai para o escritório) */
-  exemplos: boolean;
   /** acompanha o link: chama já com o que tem e de novo a cada mudança; devolve a função que para */
   assinar(token: string, aoMudar: (e: EstadoDaArea) => void): () => void;
-  /** manda os arquivos (caixa areaClienteEnvios); o recibo volta pelo assinar */
+  /** manda os arquivos (caixa areaClienteEnvios); o recibo volta pelo assinar. Erro: joga um Error em português */
   enviar(token: string, tipo: ac.TipoDeEnvio, arquivos: File[]): Promise<void>;
   /** abre um chamado novo (caixa areaClienteChamados); devolve o id. Na admissão, a foto do funcionário vai junto
-   *  (o JPEG 256×256 em base64, sem o prefixo data:) */
+   *  (o JPEG 256×256 em base64, sem o prefixo data:; só no exemplo: a caixa do banco ainda não tem campo para ela).
+   *  Erro (link revogado, sem rede): joga um Error com a mensagem em português */
   abrirChamado(token: string, dados: { tipo: ac.TipoDeChamado; texto: string; foto?: string }): Promise<string>;
   /** a foto de um funcionário (o JPEG 256×256 em base64, sem o prefixo data:). No banco vai pela caixa areaClienteEnvios
    *  com o tipo 'foto' e o id do funcionário, e o robô grava no espelho e no Drive (o contrato e as regras ainda faltam) */

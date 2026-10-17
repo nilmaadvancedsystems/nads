@@ -2,7 +2,7 @@
 // acompanham a data de hoje (a vencida, a que vence hoje e as a vencer andam junto com o relógio). Só o token "exemplo"
 // abre; qualquer outro é um link inválido e não mostra dado nenhum. Nada sai do navegador.
 import { areaCliente as ac, formatos } from '@nads/core';
-import { AREA_VAZIA, type DocumentoDoCliente, type Empregado, type EstadoDaArea, type RepoAreaCliente } from './areaCliente';
+import { AREA_VAZIA, TODAS_AS_SECOES, type DocumentoDoCliente, type Empregado, type EstadoDaArea, type RepoAreaCliente } from './areaCliente';
 
 export const TOKEN_DE_EXEMPLO = 'exemplo';
 
@@ -73,7 +73,7 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
   ];
 
   return {
-    carregado: true, valido: true,
+    carregado: true, valido: true, erro: '', exemplos: true, secoes: TODAS_AS_SECOES,
     resumo: {
       empresas: [{ codigo: 9999, nome: 'Personaly Company', cnpj: '00.000.000/0001-91' }],
       escritorio: { telefone: '(31) 3333-0000', email: 'atendimento@nilma.example', whatsapp: '(31) 99999-0000' },
@@ -165,7 +165,6 @@ export function criarRepoAreaClienteMemoria(agora: () => Date = () => new Date()
   let proximo = 100;
 
   return {
-    exemplos: true,
     assinar(token, aoMudar) {
       if (token !== TOKEN_DE_EXEMPLO) { aoMudar({ ...AREA_VAZIA, carregado: true }); return () => undefined; }
       const avisar = () => aoMudar(estado);

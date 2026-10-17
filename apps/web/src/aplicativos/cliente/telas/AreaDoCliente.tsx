@@ -5,6 +5,8 @@
 // Nova solicitação. No celular, o menu vira a gaveta do ☰. Link desconhecido ou trocado: só o aviso, sem dado nenhum.
 // Versão D (acabamento premium sóbrio): a marca em duas linhas, o item aberto no fundo carmim suave, o atendimento com o
 // N da Nilma no rodapé, a empresa com a plaquinha do prédio, o esqueleto no formato da página e os estados vazios.
+// Com o banco (17/10/2026): o que não tem fonte some (Dados cadastrais sem a ficha; a Central de documentos, e então o
+// "Enviar documento" vai para o topo); sem token (a raiz do site), o aviso para usar o link que o escritório mandou.
 import { Icone, MarcaN, MenuSuspenso, useRetorno } from '@nads/ui';
 import { EsqueletoDaArea } from '../partes/EsqueletoDaArea';
 import { MarcaDoEscritorio } from '../partes/MarcaDoEscritorio';
@@ -14,6 +16,7 @@ import { DepartamentoPessoal } from './DepartamentoPessoal';
 import { Documentos } from './Documentos';
 import { Guias } from './Guias';
 import { Inicio } from './Inicio';
+import { useJanelaDeEnvio } from './JanelaDeEnvio';
 import { useAreaCliente } from './useAreaCliente';
 import '../cliente.css';
 
@@ -25,6 +28,7 @@ export function AreaDoCliente() {
   const valido = area.carregado && area.valido;
   const fechar = [{ rotulo: 'Fechar', valor: null, variante: 'btn-outline' as const }];
   const c = vm.contato;
+  const abrirEnvio = useJanelaDeEnvio(daCasca);
 
   const abrirWhatsapp = () => {
     if (vm.exemplos) { toast('Na versão de exemplo o WhatsApp não abre.'); return; }
@@ -106,7 +110,7 @@ export function AreaDoCliente() {
                   );
                 })}
                 <p className="subnav-title">Administrativo</p>
-                <button type="button" className="subnav-item" title="Dados cadastrais" onClick={abrirFicha}><Icone nome="predio" width={16} height={16} /><span>Dados cadastrais</span></button>
+                {vm.temFicha && <button type="button" className="subnav-item" title="Dados cadastrais" onClick={abrirFicha}><Icone nome="predio" width={16} height={16} /><span>Dados cadastrais</span></button>}
                 <button type="button" className="subnav-item" title="Fale com o escritório" onClick={abrirContato}><Icone nome="telefone" width={16} height={16} /><span>Fale com o escritório</span></button>
               </nav>
             </div>
@@ -142,7 +146,7 @@ export function AreaDoCliente() {
               <span className="cli-empresa-ico" aria-hidden="true"><Icone nome="predio" width={18} height={18} /></span>
               <div className="cli-empresa-txt">
                 <b>{valido ? vm.empresa : 'Nilma Contabilidade'}</b>
-                {valido && vm.cnpj && <small>CNPJ {vm.cnpj}</small>}
+                {valido && vm.cnpj && <small>{vm.rotuloDoDocumento} {vm.cnpj}</small>}
               </div>
             </div>
           </div>
@@ -163,6 +167,8 @@ export function AreaDoCliente() {
                     )) : <Vazio icone="sino" titulo="Nada novo" texto="Quando o escritório mandar algo, aparece aqui." />}
                   </div>
                 )} />
+              {/* em Solicitações o Enviar documento já está no título da página */}
+              {!vm.secoes.documentos && vm.aba !== 'chamados' && <button type="button" className="btn cli-so-largo" onClick={abrirEnvio}><Icone nome="upload" width={16} height={16} />Enviar documento</button>}
               {vm.aba !== 'chamados' && <button type="button" className="btn btn-primary cli-so-largo" onClick={() => vm.irPara('chamados')}><Icone nome="plus" width={16} height={16} />Nova solicitação</button>}
             </div>
           )}
@@ -171,7 +177,16 @@ export function AreaDoCliente() {
           {vm.exemplos && valido && <p className="cli-exemplo">Versão de exemplo: os dados são de mentira e nada chega ao escritório.</p>}
           {!area.carregado ? <EsqueletoDaArea /> : !area.valido ? (
             <div className="card cli-link-ruim">
-              <Vazio icone="lock" titulo="Este link não vale mais" texto="Ele foi trocado ou não existe. Peça um novo ao escritório." />
+              {!vm.token ? (
+                // a raiz do site (sem token): o N da Nilma no lugar do ícone do vazio
+                <div className="cli-vazio">
+                  <MarcaDoEscritorio tamanho={48} />
+                  <b>Use o link que o escritório enviou</b>
+                  <p>A sua área abre pelo link exclusivo da sua empresa. Se não achar, peça ao escritório.</p>
+                </div>
+              ) : area.erro
+                ? <Vazio icone="alert" titulo="Não deu para abrir agora" texto={area.erro} />
+                : <Vazio icone="lock" titulo="Este link não vale mais" texto="Ele foi trocado ou não existe. Peça um novo ao escritório." />}
             </div>
           ) : (
             <>

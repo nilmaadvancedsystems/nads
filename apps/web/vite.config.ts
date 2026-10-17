@@ -45,10 +45,29 @@ function arquivosDoOcr(): Plugin {
   };
 }
 
+// O site da Área do Cliente (VITE_APLICATIVO=cliente, 17/10/2026) é aberto por quem não é da equipe: o main.tsx recebe
+// src/rotasDoCliente.tsx no lugar do src/rotas.tsx, que importa todos os aplicativos. Assim nenhuma tela, rota ou dado
+// interno entra no pacote desse site (o rotas.tsx de sempre continua igual para os outros). O OCR também fica de fora.
+// E o @nads/core entra como "sem efeito colateral": o site importa o core pelo índice, e os módulos com conta no topo
+// (a lista de empresas, a planilha do DP, as rotinas, a equipe de exemplo) entrariam inteiros mesmo sem uso. Com isso,
+// só o que a Área do Cliente usa vai junto (o core é TypeScript puro: nenhum módulo dele depende de ser importado à toa).
+const SO_CLIENTE = process.env.VITE_APLICATIVO === 'cliente';
+function soOSiteDoCliente(): Plugin {
+  return {
+    name: 'nads-so-cliente',
+    enforce: 'pre',
+    resolveId(fonte, quem) {
+      if (SO_CLIENTE && fonte === './rotas' && quem && /[\\/]src[\\/]main\.tsx$/.test(quem)) return path.resolve(__dirname, 'src/rotasDoCliente.tsx');
+      return null;
+    },
+  };
+}
+
 // base '/': as rotas são caminhos de verdade (ex.: /901/movimento/relatorio), então os
 // arquivos precisam ser referenciados a partir da raiz do site, não do caminho da página.
 export default defineConfig({
-  plugins: [react(), versaoDoSite(), arquivosDoOcr()],
+  plugins: [react(), versaoDoSite(), ...(SO_CLIENTE ? [soOSiteDoCliente()] : [arquivosDoOcr()])],
+  ...(SO_CLIENTE ? { build: { rolldownOptions: { treeshake: { moduleSideEffects: (id: string) => !/[\\/]packages[\\/]core[\\/]src[\\/].*\.ts$/.test(id) } } } } : {}),
   base: '/',
   server: { port: 5178 },
 });

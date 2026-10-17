@@ -6,7 +6,7 @@ import { Icone, useRetorno } from '@nads/ui';
 import type { DocumentoDoCliente } from '../dados/areaCliente';
 import { IconeDeArquivo } from '../partes/IconeDeArquivo';
 import { Vazio } from '../partes/Vazio';
-import { Enviar } from './Enviar';
+import { useJanelaDeEnvio } from './JanelaDeEnvio';
 import { useDocumentos } from './useDocumentos';
 import type { DaCasca } from './useAreaCliente';
 
@@ -33,11 +33,7 @@ export function Documentos(props: DaCasca) {
     if (baixar) await vm.baixar(d.id);
   };
 
-  const enviar = () => void modal({
-    titulo: 'Enviar documento', texto: 'Extratos, notas, comprovantes ou outro documento para o escritório.',
-    corpo: <div className="cli-app cli-janela"><Enviar {...props} /></div>,
-    botoes: [{ rotulo: 'Fechar', valor: null, variante: 'btn-outline' }],
-  });
+  const enviar = useJanelaDeEnvio(props);
 
   return (
     <>

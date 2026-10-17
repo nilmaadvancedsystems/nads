@@ -36,6 +36,9 @@ export function useChamados({ token, area }: DaCasca) {
         setAbertoId(id); setTipo(''); setTitulo(''); setTexto(''); setPrioridade('Normal'); setAnexo(null);
         toast('Chamado aberto. O escritório vai responder por aqui.');
       }
+    } catch (e) {
+      // o banco recusou (link revogado) ou caiu a internet: a frase vem pronta do repositório
+      setErro(e instanceof Error ? e.message : 'Não deu para abrir o chamado. Tente de novo.');
     } finally { setEnviando(false); }
   }
 
@@ -45,6 +48,8 @@ export function useChamados({ token, area }: DaCasca) {
     try {
       await repoAreaCliente.responderChamado(token, aberto.id, resposta);
       setResposta('');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Não deu para responder. Tente de novo.');
     } finally { setEnviando(false); }
   }
 
