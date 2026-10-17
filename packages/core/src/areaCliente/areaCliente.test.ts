@@ -5,7 +5,7 @@ import { ROTINA_FISCAL } from '../tarefas/rotinas/fiscal';
 import { execucaoNova } from '../tarefas/regras/execucao';
 import type { Execucao } from '../tarefas/tipos';
 import {
-  agendaDaExecucao, agendaDoMes, competenciaDoMesDeVencimento, chamadoDoCliente, erroDoEnvio, erroDoNovoChamado, guiaDoFgts, guiaPrecisaLiberar, guiasPorCompetencia, reciboDoEnvio,
+  agendaDaExecucao, agendaDoMes, competenciaDoMesDeVencimento, chamadoDoCliente, erroDoEnvio, erroDoNovoChamado, guiaDoFgts, guiaPrecisaLiberar, guiasPorCompetencia, mimeDoEnvio, reciboDoEnvio,
   situacaoDaGuia, tituloDoChamado, valorEmReais, vencimentoDaEtapaNoMes, VENCIMENTOS, type PedidoFgtsInterno,
 } from './index';
 
@@ -213,11 +213,21 @@ describe('os envios', () => {
     expect(Object.keys(r).sort()).toEqual(['id', 'nome', 'recebidoEm', 'tamanho', 'tipo']);
     semInternos(r);
   });
-  it('só PDF, JPG, PNG, XML e ZIP, até 15 MB', () => {
+  it('só PDF, JPG, PNG, XML e ZIP, até 700 KB (o limite da regra do banco)', () => {
     expect(erroDoEnvio({ nome: 'extrato.PDF', tamanho: 1000 })).toBe('');
     expect(erroDoEnvio({ nome: 'notas.zip', tamanho: 1000 })).toBe('');
     expect(erroDoEnvio({ nome: 'virus.exe', tamanho: 1000 })).toMatch(/só aceitamos/);
-    expect(erroDoEnvio({ nome: 'grande.pdf', tamanho: 16 * 1024 * 1024 })).toMatch(/15 MB/);
+    expect(erroDoEnvio({ nome: 'no-limite.pdf', tamanho: 716800 })).toBe('');
+    expect(erroDoEnvio({ nome: 'grande.pdf', tamanho: 716801 })).toMatch(/700 KB/);
     expect(erroDoEnvio({ nome: 'vazio.pdf', tamanho: 0 })).toMatch(/vazio/);
+  });
+  it('o mime vem da extensão (o navegador às vezes manda vazio ou octet-stream)', () => {
+    expect(mimeDoEnvio('extrato.PDF')).toBe('application/pdf');
+    expect(mimeDoEnvio('foto.jpeg')).toBe('image/jpeg');
+    expect(mimeDoEnvio('foto.jpg')).toBe('image/jpeg');
+    expect(mimeDoEnvio('print.png')).toBe('image/png');
+    expect(mimeDoEnvio('nota.xml')).toBe('application/xml');
+    expect(mimeDoEnvio('notas.zip')).toBe('application/zip');
+    expect(mimeDoEnvio('virus.exe')).toBe('');
   });
 });
