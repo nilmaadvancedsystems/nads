@@ -18,6 +18,7 @@ import { EsqueletoDaArea } from '../../cliente/partes/EsqueletoDaArea';
 import { FORMATOS_DE_ARQUIVO, IconeDeArquivo } from '../../cliente/partes/IconeDeArquivo';
 import { LinhaDaAgenda } from '../../cliente/partes/LinhaDaAgenda';
 import { LinhaDeGuia } from '../../cliente/partes/LinhaDeGuia';
+import { LinhaDePaga } from '../../cliente/partes/LinhaDePaga';
 import { MarcaDoEscritorio } from '../../cliente/partes/MarcaDoEscritorio';
 import { SiglaDaGuia } from '../../cliente/partes/SiglaDaGuia';
 import { Vazio } from '../../cliente/partes/Vazio';
@@ -658,7 +659,7 @@ export const PECAS_BASE: Peca[] = [
   { id: 'linha-guia', tipo: 'listas', nome: 'Linha de guia (Área do Cliente)', descricao: 'Das "Obrigações e guias próximas" da Visão geral da Área do Cliente (versão D, Vitor, 16/10/2026): uma grade de colunas fixas, igual em todas as linhas (17/10/2026: "quero que melhore esse layout") — a logo do órgão solta (40 px), o nome com a competência e o vencimento, o selo da situação (largura fixa, à esquerda), o valor (largura fixa, à direita, tabular) e as ações (copiar e baixar, à direita); no celular o selo, o valor e as ações descem para a segunda linha. Na Visão geral, separadas em A pagar e Pagas (as pagas mais discretas)', componente: 'LinhaDeGuia', classes: ['cli-lista', 'cli-linha', 'cli-linha-guia', 'cli-g-logo', 'cli-g-txt', 'cli-g-selo', 'cli-g-valor', 'cli-g-acoes', 'cli-grupo', 'badge', 'icon-btn'], telas: ['c-cliente', 'c-cliente-guias'], largo: true,
     demo: () => (
       <div className="cli-app cli-demo" style={{ width: '100%' }}><ul className="cli-lista">
-        <LinhaDeGuia codigo="07190.00009 26277.123456" onCopiar={nada} guia={{ id: 'l1', tipo: 'DAS', competencia: '2026-09', vencimento: '11/10/2026', valor: 1284.37, situacao: 'vencida', temPdf: true }} onBaixar={nada} />
+        <LinhaDeGuia codigo="07190.00009 26277.123456" onCopiar={nada} faltam="há 5 dias" destaque guia={{ id: 'l1', tipo: 'DAS', competencia: '2026-09', vencimento: '11/10/2026', valor: 1284.37, situacao: 'vencida', temPdf: true }} onBaixar={nada} />
         <LinhaDeGuia guia={{ id: 'l2', tipo: 'FGTS', competencia: '2026-09', vencimento: '16/10/2026', valor: 917.42, situacao: 'vence hoje', temPdf: true }} onBaixar={nada} />
         <LinhaDeGuia guia={{ id: 'l3', tipo: 'DAE', competencia: '2026-09', vencimento: '24/10/2026', valor: 432.1, situacao: 'a vencer', temPdf: true }} onBaixar={nada} />
       </ul></div>
@@ -760,5 +761,12 @@ export const PECAS_BASE: Peca[] = [
         <span style={{ display: 'inline-flex', width: 72, height: 22 }}><LogoFgts cor /></span>
         <span style={{ display: 'inline-flex', width: 52, height: 36 }}><LogoInss cor /></span>
       </div>
+    ) },
+  { id: 'linha-paga', tipo: 'listas', nome: 'Linha de guia paga (Área do Cliente)', descricao: 'As guias já pagas (Vitor, 17/10/2026), na mesma grade da linha de guia: a logo do órgão (ou o ✓), o nome e o "Pago em", o selo Pago, o valor mais discreto e o comprovante como ícone. Na Visão geral (em "Pagas") e em Guias e obrigações (em "Pagas no mês")', componente: 'LinhaDePaga', classes: ['cli-lista', 'cli-pagas', 'cli-linha-guia', 'cli-paga'], telas: ['c-cliente', 'c-cliente-guias'], largo: true,
+    demo: () => (
+      <div className="cli-app cli-demo" style={{ width: '100%' }}><ul className="cli-lista cli-pagas">
+        <LinhaDePaga paga={{ id: 'p1', tipo: 'HON', nome: 'Honorários da Nilma Contabilidade', competencia: '2026-10', valor: 1250, pagoEm: '10/10/2026', temComprovante: true }} onComprovante={nada} />
+        <LinhaDePaga paga={{ id: 'p2', tipo: 'DCTFWeb', nome: 'INSS da folha (DCTFWeb)', competencia: '2026-08', valor: 1980.3, pagoEm: '18/09/2026', temComprovante: true }} onComprovante={nada} />
+      </ul></div>
     ) },
 ];

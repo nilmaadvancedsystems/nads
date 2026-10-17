@@ -146,7 +146,7 @@
 /* ------------------------------ o topo: a empresa, o sino e Nova solicitação ------------------------------ */
 .cli-app .cli-corpo{display:flex;flex-direction:column;min-width:0;min-height:100vh;}
 .cli-app .cli-topo{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:64px;padding:10px 16px;
-  background:color-mix(in srgb,var(--cli-cartao) 88%,transparent);backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--cli-linha);}
+  background:var(--cli-cartao);border-bottom:1px solid var(--cli-linha);box-shadow:0 1px 2px color-mix(in srgb,var(--cli-sombra-cor) 4%,transparent);}
 .cli-app .cli-topo-esq{display:flex;align-items:center;gap:12px;min-width:0;}
 .cli-app .cli-topo-dir{display:flex;align-items:center;gap:10px;flex:none;}
 .cli-app .cli-topo .gh-hamb{width:36px;height:36px;border-radius:var(--cli-raio-p);border-color:var(--cli-linha);}
@@ -219,7 +219,7 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app .cli-numero .hint .ruim{color:var(--danger-ink);}
 
 /* a guia em grade de colunas fixas: logo, nome, situação, valor e ações (os selos e os valores em fila) */
-.cli-app .cli-linha.cli-linha-guia{display:grid;grid-template-columns:40px minmax(0,1fr) 112px 112px 84px;grid-template-areas:"logo txt selo valor acoes";column-gap:14px;}
+.cli-app .cli-linha.cli-linha-guia{display:grid;grid-template-columns:40px minmax(0,1fr) 108px 108px 84px;grid-template-areas:"logo txt selo valor acoes";column-gap:14px;}
 .cli-app .cli-g-logo{grid-area:logo;display:flex;}
 .cli-app .cli-g-txt{grid-area:txt;min-width:0;}
 .cli-app .cli-g-txt b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -243,6 +243,25 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app .cli-aviso-linha > svg{color:var(--ink-muted);}
 .cli-app .cli-aviso-ico{display:flex;align-items:center;justify-content:center;flex:none;width:32px;height:32px;border-radius:50%;background:var(--surface-3);color:var(--ink-muted);}
 .cli-app .cli-aviso-linha .cli-g-txt{flex:1;}
+
+/* Guias e obrigações refeita (Vitor, 17/10/2026: "melhora essa aba"): à esquerda as listas, à direita o resumo e os avisos */
+.cli-app .cli-coluna{display:flex;flex-direction:column;gap:20px;min-width:0;}
+.cli-app .cli-conta{min-width:22px;padding:0 7px;border-radius:999px;background:var(--surface-3);color:var(--ink-muted);font-size:12px;font-weight:600;line-height:20px;text-align:center;font-variant-numeric:tabular-nums;}
+.cli-app .card-head:has(> .cli-conta){justify-content:flex-start;align-items:center;gap:8px;}
+.cli-app .icon-btn.cli-icon-primario{background:var(--btn-primary);border-color:transparent;color:var(--on-accent);}
+.cli-app .icon-btn.cli-icon-primario:hover:not(:disabled){background:var(--btn-primary-hover);color:var(--on-accent);}
+.cli-app .cli-resumo dl > div{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:11px 0;border-top:1px solid var(--cli-fio);}
+.cli-app .cli-resumo dl > div:first-child{border-top:0;padding-top:0;}
+.cli-app .cli-resumo dt{color:var(--ink-muted);}
+.cli-app .cli-resumo dd{font-size:16px;text-align:right;}
+.cli-app .cli-resumo dd b{font-weight:700;font-variant-numeric:tabular-nums;}
+.cli-app .cli-linha.cli-aviso-bloco{align-items:flex-start;flex-wrap:nowrap;}
+.cli-app .cli-aviso-bloco .cli-g-txt{flex:1;}
+.cli-app .cli-aviso-titulo{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;}
+.cli-app .cli-aviso-titulo b{white-space:normal;}
+.cli-app .cli-g-txt .hint.cli-quebra{white-space:normal;}
+.cli-app .cli-aviso-bloco .cli-g-txt b{white-space:normal;}
+.cli-app .btn.cli-link{min-height:0;margin:6px 0 0 -8px;padding:4px 8px;font-size:13px;}
 
 /* uma linha das listas dentro do cartão (guia, chamado, agenda): o fio fino entre elas e o fundo suave ao passar */
 .cli-app .cli-lista{margin:0 -12px;}
@@ -427,9 +446,16 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
   .cli-app .cli-numeros{gap:16px;}
   .cli-app .cli-numero{padding:20px 22px;}
 }
+/* entre 1024 e 1279 px a coluna da esquerda ficaria apertada para a grade das guias: a lista ocupa a largura toda e a
+   coluna da direita desce, com os dois cartões lado a lado */
+@media (min-width:1024px) and (max-width:1279px){
+  .cli-app .cli-duas.cli-guias,.cli-app .cli-duas.cli-iguais{grid-template-columns:minmax(0,1fr) !important;}
+  .cli-app .cli-guias > .cli-coluna:last-child,.cli-app .cli-iguais > .cli-coluna-direita{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;}
+}
 @media (min-width:1024px){
   .cli-app .cli-numeros{grid-template-columns:repeat(4,minmax(0,1fr));}
   .cli-app .cli-duas{grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:24px;}
+  .cli-app .cli-coluna{gap:24px;}
   .cli-app .cli-tres{grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;}
   .cli-app .cli-form.tres{grid-template-columns:repeat(3,minmax(0,1fr));}
 }

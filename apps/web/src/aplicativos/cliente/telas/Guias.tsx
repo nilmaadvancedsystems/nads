@@ -1,20 +1,20 @@
-// Guias e obrigações da Área do Cliente (Vitor, 16/10/2026), no layout da "Agenda de tributos e obrigações" do protótipo
-// com as peças do nads: o título com o seletor de mês e as três colunas — Próximos vencimentos (cartões de guia), Quitados
-// no mês (com o comprovante) e Avisos da contabilidade (os recados e o certificado digital) —, cada uma com o contador;
-// embaixo, o que o escritório entrega no mês. Versão D: os títulos das colunas em sobrelinha, o valor grande nos cartões,
-// o botão carmim só na guia mais urgente e a agenda com a data em folhinha.
+// Guias e obrigações da Área do Cliente (Vitor, 16 e 17/10/2026: "melhora essa aba"), no layout da "Agenda de tributos e
+// obrigações" do protótipo com as peças do nads. Versão D: à esquerda (2/3), as guias a pagar e as pagas no mês em listas
+// de grade (as mesmas colunas da Visão geral: logo, nome, situação, valor e ações), com o baixar carmim só na vencida (ou
+// na mais urgente); à direita (1/3), o resumo do mês (o total a pagar, o total pago e o próximo vencimento) e os avisos
+// da contabilidade (os recados e o certificado digital); embaixo, o que o escritório entrega no mês.
 import { formatos } from '@nads/core';
 import { Icone, SeletorMes } from '@nads/ui';
-import { CartaoDeGuia } from '../partes/CartaoDeGuia';
 import { LinhaDaAgenda } from '../partes/LinhaDaAgenda';
-import { SiglaDaGuia } from '../partes/SiglaDaGuia';
+import { LinhaDeGuia } from '../partes/LinhaDeGuia';
+import { LinhaDePaga } from '../partes/LinhaDePaga';
 import { Vazio } from '../partes/Vazio';
 import { useGuias } from './useGuias';
 import type { DaCasca } from './useAreaCliente';
 
 export function Guias(props: DaCasca) {
   const vm = useGuias(props);
-  const avisos = vm.avisos.length + (vm.certificado ? 1 : 0);
+  const temAvisos = vm.avisos.length > 0 || !!vm.certificado;
   return (
     <>
       <div className="cli-titulo">
@@ -25,60 +25,78 @@ export function Guias(props: DaCasca) {
         <SeletorMes valor={vm.mes} onMudar={vm.mudarMes} rotulo="Mês" max={vm.ultimo} />
       </div>
 
-      <div className="cli-tres">
-        <section>
-          <div className="cli-coluna-topo"><h2>Próximos vencimentos</h2><span className="cli-conta">{vm.guias.length}</span></div>
-          {vm.guias.length ? vm.guias.map((g, i) => (
-            <CartaoDeGuia key={g.id} guia={g} codigo={vm.codigos[g.id]} faltam={vm.faltam(g)} ocupado={vm.baixando === g.id} destaque={i === 0} onBaixar={id => void vm.baixar(id)} onCopiar={vm.copiarCodigo} />
-          )) : <div className="card cli-vazio-cartao"><Vazio icone="checkCircle" titulo="Nada vence neste mês" /></div>}
-        </section>
+      <div className="cli-duas cli-guias">
+        <div className="cli-coluna">
+          <section className="card">
+            <div className="card-head"><h3>A pagar</h3><span className="cli-conta">{vm.guias.length}</span></div>
+            {vm.guias.length ? (
+              <ul className="cli-lista">
+                {vm.guias.map(g => (
+                  <LinhaDeGuia key={g.id} guia={g} codigo={vm.codigos[g.id]} faltam={vm.faltam(g)} destaque={g.id === vm.urgente}
+                    ocupado={vm.baixando === g.id} onBaixar={id => void vm.baixar(id)} onCopiar={vm.copiarCodigo} />
+                ))}
+              </ul>
+            ) : <Vazio icone="checkCircle" titulo="Nada vence neste mês" />}
+          </section>
 
-        <section>
-          <div className="cli-coluna-topo"><h2>Quitados no mês</h2><span className="cli-conta">{vm.pagas.length}</span></div>
-          {vm.pagas.length ? vm.pagas.map(p => (
-            <article key={p.id} className="card cli-cartao">
-              <div className="cli-cartao-topo">{p.tipo ? <SiglaDaGuia tipo={p.tipo} tamanho={40} /> : <span className="cli-etiqueta">Quitado</span>}<span className="badge badge-ok">Pago</span></div>
-              <p className="cli-cartao-valor">{formatos.reais(p.valor)}</p>
-              <p className="cli-cartao-nome">{p.nome}</p>
-              <p className="hint">Pago em {p.pagoEm}</p>
-              {p.temComprovante && (
-                <div className="cli-cartao-pe">
-                  <button type="button" className="btn" disabled={vm.baixando === p.id} onClick={() => void vm.comprovante(p.id)}><Icone nome="fileDown" width={16} height={16} />Ver comprovante</button>
-                </div>
-              )}
-            </article>
-          )) : <div className="card cli-vazio-cartao"><Vazio icone="recibo" titulo="Nada quitado neste mês" /></div>}
-        </section>
+          <section className="card">
+            <div className="card-head"><h3>Pagas no mês</h3><span className="cli-conta">{vm.pagas.length}</span></div>
+            {vm.pagas.length ? (
+              <ul className="cli-lista cli-pagas">
+                {vm.pagas.map(p => <LinhaDePaga key={p.id} paga={p} ocupado={vm.baixando === p.id} onComprovante={id => void vm.comprovante(id)} />)}
+              </ul>
+            ) : <Vazio icone="recibo" titulo="Nada pago neste mês" />}
+          </section>
+        </div>
 
-        <section>
-          <div className="cli-coluna-topo"><h2>Avisos da contabilidade</h2><span className="cli-conta">{avisos}</span></div>
-          {vm.avisos.map(a => (
-            <article key={a.id} className="card cli-cartao">
-              <div className="cli-cartao-topo"><span className="cli-etiqueta">Aviso</span></div>
-              <p className="cli-cartao-nome">{a.titulo}</p>
-              <p className="hint">{a.texto}</p>
-              {a.ir && <div className="cli-cartao-pe"><button type="button" className="btn" onClick={() => vm.irPara(a.ir!)}>{a.ir === 'documentos' ? 'Enviar agora' : 'Abrir'}</button></div>}
-            </article>
-          ))}
-          {vm.certificado && (
-            <article className="card cli-cartao">
-              <div className="cli-cartao-topo">
-                <span className="cli-etiqueta">Certificado digital</span>
-                <span className={'badge ' + (vm.certificado.tom === 'bad' ? 'badge-bad' : vm.certificado.tom === 'ok' ? 'badge-ok' : 'badge-warn')}>{vm.certificado.tom === 'bad' ? 'Vencido' : vm.certificado.tom === 'ok' ? 'Em dia' : 'Vence logo'}</span>
+        <div className="cli-coluna">
+          <section className="card cli-resumo">
+            <div className="card-head"><h3>Resumo do mês</h3></div>
+            <dl>
+              <div><dt>Total a pagar</dt><dd className="cli-valor">{formatos.reais(vm.totalAPagar)}</dd></div>
+              <div><dt>Total pago</dt><dd className="cli-valor">{formatos.reais(vm.totalPago)}</dd></div>
+              <div>
+                <dt>Próximo vencimento</dt>
+                <dd>{vm.proxima ? <><b>{vm.proxima.vencimento.slice(0, 5)}</b> <span className="hint">{vm.faltam(vm.proxima) || 'hoje'}</span></> : <span className="hint">Nenhum</span>}</dd>
               </div>
-              <p className="cli-cartao-nome">Certificado {vm.certificado.tipo}</p>
-              <p className="hint">{vm.certificado.texto}</p>
-              {vm.certificado.tom !== 'ok' && <div className="cli-cartao-pe"><button type="button" className="btn" onClick={() => vm.irPara('chamados')}>Pedir a renovação</button></div>}
-            </article>
-          )}
-          {!avisos && <div className="card cli-vazio-cartao"><Vazio icone="sino" titulo="Nenhum aviso" /></div>}
-        </section>
+            </dl>
+          </section>
+
+          <section className="card cli-avisos-card">
+            <div className="card-head"><h3>Avisos da contabilidade</h3></div>
+            {temAvisos ? (
+              <ul className="cli-lista">
+                {vm.avisos.map(a => (
+                  <li key={a.id} className="cli-linha cli-aviso-bloco">
+                    <span className="cli-aviso-ico" aria-hidden="true"><Icone nome="sino" width={16} height={16} /></span>
+                    <div className="cli-g-txt"><b>{a.titulo}</b><p className="hint cli-quebra">{a.texto}</p>
+                      {a.ir && <button type="button" className="btn btn-ghost cli-link" onClick={() => vm.irPara(a.ir!)}>{a.ir === 'documentos' ? 'Enviar agora' : 'Abrir'}<Icone nome="chevronRight" width={16} height={16} /></button>}
+                    </div>
+                  </li>
+                ))}
+                {vm.certificado && (
+                  <li className="cli-linha cli-aviso-bloco">
+                    <span className="cli-aviso-ico" aria-hidden="true"><Icone nome="escudo" width={16} height={16} /></span>
+                    <div className="cli-g-txt">
+                      <div className="cli-aviso-titulo">
+                        <b>Certificado digital {vm.certificado.tipo}</b>
+                        <span className={'badge ' + (vm.certificado.tom === 'bad' ? 'badge-bad' : vm.certificado.tom === 'ok' ? 'badge-ok' : 'badge-warn')}>{vm.certificado.tom === 'bad' ? 'Vencido' : vm.certificado.tom === 'ok' ? 'Em dia' : 'Vence logo'}</span>
+                      </div>
+                      <p className="hint cli-quebra">{vm.certificado.texto}</p>
+                      {vm.certificado.tom !== 'ok' && <button type="button" className="btn btn-ghost cli-link" onClick={() => vm.irPara('chamados')}>Pedir a renovação<Icone nome="chevronRight" width={16} height={16} /></button>}
+                    </div>
+                  </li>
+                )}
+              </ul>
+            ) : <Vazio icone="sino" titulo="Nenhum aviso" />}
+          </section>
+        </div>
       </div>
 
       {vm.agenda.length > 0 && (
         <section className="card">
           <div className="card-head"><h3>O que o escritório entrega no mês</h3></div>
-          <ul className="cli-lista">{vm.agenda.map(i => <LinhaDaAgenda key={i.id} item={i} />)}</ul>
+          <ul className="cli-lista cli-agenda">{vm.agenda.map(i => <LinhaDaAgenda key={i.id} item={i} />)}</ul>
         </section>
       )}
     </>

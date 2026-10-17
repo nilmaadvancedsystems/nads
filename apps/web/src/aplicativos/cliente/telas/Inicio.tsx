@@ -7,8 +7,8 @@ import { formatos } from '@nads/core';
 import { Icone, type NomeIcone } from '@nads/ui';
 import type { ReactNode } from 'react';
 import { LinhaDeGuia } from '../partes/LinhaDeGuia';
+import { LinhaDePaga } from '../partes/LinhaDePaga';
 import { MarcaDoEscritorio } from '../partes/MarcaDoEscritorio';
-import { SiglaDaGuia } from '../partes/SiglaDaGuia';
 import { Vazio } from '../partes/Vazio';
 import { useInicio } from './useInicio';
 import type { AreaCliente, DaCasca, IdAba } from './useAreaCliente';
@@ -75,26 +75,7 @@ export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente[
                 <>
                   <p className="cli-grupo">Pagas</p>
                   <ul className="cli-lista cli-pagas">
-                    {vm.pagas.map(p => (
-                      <li key={p.id} className="cli-linha cli-linha-guia">
-                        <span className="cli-g-logo">
-                          {p.tipo ? <SiglaDaGuia tipo={p.tipo} tamanho={40} /> : <span className="cli-sigla pago" style={{ width: 40, height: 40 }} aria-hidden="true"><Icone nome="check" width={18} height={18} /></span>}
-                        </span>
-                        <div className="cli-g-txt">
-                          <b>{p.nome}</b>
-                          <p className="hint">Pago em {p.pagoEm}</p>
-                        </div>
-                        <span className="cli-g-selo"><span className="badge badge-ok">Pago</span></span>
-                        <span className="cli-g-valor cli-valor">{formatos.reais(p.valor)}</span>
-                        <span className="cli-g-acoes">
-                          {p.temComprovante && (
-                            <button type="button" className="icon-btn" title="Baixar o comprovante" aria-label={'Baixar o comprovante de ' + p.nome} onClick={() => void vm.baixarComprovante(p.id)}>
-                              <Icone nome="fileDown" width={16} height={16} />
-                            </button>
-                          )}
-                        </span>
-                      </li>
-                    ))}
+                    {vm.pagas.map(p => <LinhaDePaga key={p.id} paga={p} onComprovante={id => void vm.baixarComprovante(id)} />)}
                   </ul>
                 </>
               )}

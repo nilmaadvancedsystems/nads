@@ -8,13 +8,18 @@ import { Icone } from '@nads/ui';
 import { SELO_DA_SITUACAO } from './guia';
 import { SiglaDaGuia } from './SiglaDaGuia';
 
-export function LinhaDeGuia({ guia, codigo, ocupado, onBaixar, onCopiar }: { guia: ac.GuiaDoCliente; codigo?: string; ocupado?: boolean; onBaixar: (id: string) => void; onCopiar?: (codigo: string) => void }) {
+export function LinhaDeGuia({ guia, codigo, faltam, destaque, ocupado, onBaixar, onCopiar }: {
+  guia: ac.GuiaDoCliente; codigo?: string; /** "em 3 dias", "há 5 dias" */ faltam?: string;
+  /** o baixar em carmim (um só por área: a vencida ou a mais urgente) */ destaque?: boolean; ocupado?: boolean; onBaixar: (id: string) => void; onCopiar?: (codigo: string) => void;
+}) {
   return (
     <li className="cli-linha cli-linha-guia">
       <span className="cli-g-logo"><SiglaDaGuia tipo={guia.tipo} tamanho={40} /></span>
       <div className="cli-g-txt">
         <b>{ac.ROTULO_DA_GUIA[guia.tipo]}</b>
-        <p className="hint">Competência {guia.competencia.slice(5, 7)}/{guia.competencia.slice(0, 4)} · {guia.situacao === 'vencida' ? 'venceu' : 'vence'} em {guia.vencimento}</p>
+        <p className="hint" title={'Competência ' + guia.competencia.slice(5, 7) + '/' + guia.competencia.slice(0, 4) + ' · vencimento ' + guia.vencimento}>
+          {guia.situacao === 'vencida' ? 'Venceu' : 'Vence'} em {guia.vencimento.slice(0, 5)}{faltam ? ' (' + faltam + ')' : ''} · competência {guia.competencia.slice(5, 7)}/{guia.competencia.slice(0, 4)}
+        </p>
       </div>
       <span className="cli-g-selo"><span className={SELO_DA_SITUACAO[guia.situacao]}>{ac.ROTULO_DA_SITUACAO_DA_GUIA[guia.situacao]}</span></span>
       <span className="cli-g-valor cli-valor">{formatos.reais(guia.valor)}</span>
@@ -24,7 +29,7 @@ export function LinhaDeGuia({ guia, codigo, ocupado, onBaixar, onCopiar }: { gui
             <Icone nome="copiar" width={16} height={16} />
           </button>
         )}
-        <button type="button" className="icon-btn" disabled={!guia.temPdf || ocupado} onClick={() => onBaixar(guia.id)} title="Baixar a guia" aria-label={'Baixar a guia ' + ac.ROTULO_DA_GUIA[guia.tipo]}>
+        <button type="button" className={'icon-btn' + (destaque ? ' cli-icon-primario' : '')} disabled={!guia.temPdf || ocupado} onClick={() => onBaixar(guia.id)} title="Baixar a guia" aria-label={'Baixar a guia ' + ac.ROTULO_DA_GUIA[guia.tipo]}>
           <Icone nome="download" width={16} height={16} />
         </button>
       </span>

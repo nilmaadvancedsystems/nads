@@ -40,17 +40,30 @@ export function useGuias({ token, area, hoje, irPara, copiar }: DaCasca) {
     } finally { setBaixando(''); }
   }
 
+  // em dias até o vencimento (negativo: já venceu)
+  const diasAte = (g: ac.GuiaDoCliente) => {
+    const venc = ac.dataDoVencimento(g.vencimento);
+    if (!venc) return 0;
+    return Math.round((new Date(venc.getFullYear(), venc.getMonth(), venc.getDate()).getTime() - new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).getTime()) / 86_400_000);
+  };
+  const proxima = guias.find(g => g.situacao !== 'vencida') ?? null;
+
   return {
     mes, mudarMes: setMes, ultimo,
+    // o resumo do mês (a coluna da direita): o total a pagar, o total pago e o próximo vencimento
+    totalAPagar: guias.reduce((s, g) => s + g.valor, 0),
+    totalPago: pagas.reduce((s, p) => s + p.valor, 0),
+    proxima,
+    // a guia que leva o botão carmim (um só na área): a vencida ou, sem ela, a mais urgente
+    urgente: (guias.find(g => g.situacao === 'vencida') ?? guias[0])?.id ?? '',
     guias, codigos: area.codigos, baixando, baixar, copiarCodigo: (c: string) => copiar(c, 'Código'),
     pagas, comprovante,
     certificado: area.certificado ? { ...area.certificado, ...situacaoDoCertificado(area.certificado, hoje) } : null,
     avisos: area.avisos, irPara, agenda,
     // "em 4 dias", "há 5 dias"; no dia, nada (o selo já diz "Vence hoje")
     faltam: (g: ac.GuiaDoCliente) => {
-      const venc = ac.dataDoVencimento(g.vencimento);
-      if (!venc) return '';
-      const dias = Math.round((new Date(venc.getFullYear(), venc.getMonth(), venc.getDate()).getTime() - new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).getTime()) / 86_400_000);
+      if (!ac.dataDoVencimento(g.vencimento)) return '';
+      const dias = diasAte(g);
       return dias > 0 ? 'em ' + dias + (dias === 1 ? ' dia' : ' dias') : dias < 0 ? 'há ' + -dias + (dias === -1 ? ' dia' : ' dias') : '';
     },
   };
