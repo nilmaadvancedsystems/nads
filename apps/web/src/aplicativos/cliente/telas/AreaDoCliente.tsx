@@ -85,7 +85,7 @@ export function AreaDoCliente() {
   };
 
   return (
-    <div className="cli-app">
+    <div className={'cli-app' + (valido && vm.recolhida ? ' sidebar-oculta cli-recolhida' : '')}>
       {valido && (
         <>
           <aside className={'cli-lateral' + (vm.menuAberto ? ' aberta' : '')} id="cli-lateral" aria-label="Menu">
@@ -99,24 +99,32 @@ export function AreaDoCliente() {
                 {vm.abas.map(a => {
                   const conta = vm.contadores[a.id];
                   return (
-                    <button key={a.id} type="button" className={'subnav-item' + (vm.aba === a.id ? ' active' : '')} aria-current={vm.aba === a.id ? 'page' : undefined} onClick={() => vm.irPara(a.id)}>
+                    <button key={a.id} type="button" title={a.rotulo} className={'subnav-item' + (vm.aba === a.id ? ' active' : '')} aria-current={vm.aba === a.id ? 'page' : undefined} onClick={() => vm.irPara(a.id)}>
                       <Icone nome={a.icone} width={16} height={16} /><span>{a.rotulo}</span>
                       {!!conta && <span className={'subnav-count' + (a.id === 'guias' ? ' cli-conta-ruim' : '')} title={a.id === 'guias' ? 'Guias vencidas' : 'Documentos novos'}>{conta}</span>}
                     </button>
                   );
                 })}
                 <p className="subnav-title">Administrativo</p>
-                <button type="button" className="subnav-item" onClick={abrirFicha}><Icone nome="predio" width={16} height={16} /><span>Dados cadastrais</span></button>
-                <button type="button" className="subnav-item" onClick={abrirContato}><Icone nome="telefone" width={16} height={16} /><span>Fale com o escritório</span></button>
+                <button type="button" className="subnav-item" title="Dados cadastrais" onClick={abrirFicha}><Icone nome="predio" width={16} height={16} /><span>Dados cadastrais</span></button>
+                <button type="button" className="subnav-item" title="Fale com o escritório" onClick={abrirContato}><Icone nome="telefone" width={16} height={16} /><span>Fale com o escritório</span></button>
               </nav>
             </div>
-            <div className="cli-lateral-pe">
+            <div>
+            <div className="cli-lateral-pe" title={c.equipe + (c.horario ? ' · ' + c.horario : '')}>
               <div className="cli-pessoa">
                 <MarcaDoEscritorio tamanho={36} />
                 <div><span className="hint">Seu atendimento</span><b>{c.equipe}</b></div>
               </div>
               {c.horario && <p className="hint">{c.horario}</p>}
               {c.whatsappLink && <button type="button" className="btn" onClick={abrirWhatsapp}><Icone nome="mensagem" width={16} height={16} />WhatsApp do escritório</button>}
+            </div>
+            {/* recolher a lateral (só no PC), a mesma peça do app: o subnav-colapsar com o ícone do painel */}
+            <div className="cli-menu cli-colapsar">
+              <button type="button" className="subnav-item subnav-colapsar" aria-expanded={!vm.recolhida} title={vm.recolhida ? 'Mostrar barra lateral' : 'Ocultar barra lateral'} onClick={vm.alternarLateral}>
+                <Icone nome="painel" width={16} height={16} /><span>{vm.recolhida ? 'Mostrar barra lateral' : 'Ocultar barra lateral'}</span>
+              </button>
+            </div>
             </div>
           </aside>
           {vm.menuAberto && <div className="cli-fundo-gaveta" onClick={() => vm.setMenuAberto(false)} aria-hidden="true" />}

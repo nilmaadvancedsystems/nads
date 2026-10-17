@@ -3,7 +3,7 @@
 // Documentos (com o Enviar), Guias e obrigações (com a Agenda), Departamento pessoal e Solicitações. Os links antigos
 // (/agenda e /enviar) continuam abrindo a aba nova certa.
 import { areaCliente as ac } from '@nads/core';
-import type { NomeIcone } from '@nads/ui';
+import { definirLateralOculta, lerLateralOculta, type NomeIcone } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { AREA_VAZIA, type EstadoDaArea } from '../dados/areaCliente';
@@ -34,6 +34,10 @@ export function useAreaCliente() {
   const atual: IdAba = ABAS.find(a => a.id === aba)?.id ?? APELIDOS[aba ?? ''] ?? 'inicio';
   // no celular o menu é uma gaveta (como no protótipo): abre pelo ☰ e fecha ao escolher uma aba
   const [menuAberto, setMenuAberto] = useState(false);
+  // no PC a lateral recolhe só para os ícones, como a do app (Vitor, 17/10/2026: "coloca pra esconder a aba lateral assim
+  // como no app"): a mesma preferência do nads, guardada no navegador (lerLateralOculta/definirLateralOculta, com try/catch)
+  const [recolhida, setRecolhida] = useState(lerLateralOculta);
+  const alternarLateral = () => { const nova = !recolhida; setRecolhida(nova); definirLateralOculta(nova); };
   // a gaveta fecha com o Esc
   useEffect(() => {
     if (!menuAberto) return;
@@ -60,7 +64,7 @@ export function useAreaCliente() {
   const naoLidas = avisos.filter(n => !lidas.has(n.id));
 
   return {
-    token, area, hoje, aba: atual, abas: ABAS, contadores, menuAberto, setMenuAberto, irPara, empresa, cnpj, exemplos: repoAreaCliente.exemplos,
+    token, area, hoje, aba: atual, abas: ABAS, contadores, menuAberto, setMenuAberto, recolhida, alternarLateral, irPara, empresa, cnpj, exemplos: repoAreaCliente.exemplos,
     avisos, naoLidas: naoLidas.length, lida: (id: string) => lidas.has(id), marcarLidas: () => setLidas(new Set(avisos.map(n => n.id))),
     copiar,
     contato: { ...escritorio, whatsappLink: linkDoWhatsapp(escritorio.whatsapp), equipe: area.atendimento?.equipe ?? 'Nilma Contabilidade', horario: area.atendimento?.horario ?? '', setores: area.atendimento?.setores ?? [] },

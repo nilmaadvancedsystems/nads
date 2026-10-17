@@ -434,6 +434,29 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
   .cli-app .cli-form.tres{grid-template-columns:repeat(3,minmax(0,1fr));}
 }
 
+/* a lateral recolhida (só no PC), como a do app (Vitor, 17/10/2026): 64 px só com os ícones (o nome no title), os
+   contadores viram um pontinho, a marca e o atendimento ficam só no N; a preferência é a mesma do nads */
+.cli-app .cli-colapsar{padding-top:0;padding-bottom:12px;}
+@media (min-width:768px){
+  .cli-app .cli-lateral,.cli-app .cli-corpo{transition:width .2s ease,padding-left .2s ease;}
+  .cli-app.cli-recolhida .cli-lateral{width:64px;overflow-x:hidden;}
+  .cli-app.cli-recolhida .cli-corpo{padding-left:64px;}
+  .cli-app.cli-recolhida .cli-marca{justify-content:center;padding:12px 0;}
+  .cli-app.cli-recolhida .cli-marca-nome{display:none;}
+  .cli-app.cli-recolhida .cli-menu{padding:8px 10px 12px;}
+  .cli-app.cli-recolhida .cli-menu .subnav-item{justify-content:center;padding:8px 0;}
+  .cli-app.cli-recolhida .cli-menu .subnav-item > span:first-of-type{display:none;}
+  .cli-app.cli-recolhida .cli-menu .subnav-title{display:block;height:1px;margin:12px 6px;padding:0;overflow:hidden;font-size:0;background:var(--cli-linha);}
+  .cli-app.cli-recolhida .cli-menu .subnav-count{display:block;position:absolute;top:7px;right:9px;width:8px;height:8px;min-width:0;padding:0;border-radius:50%;
+    background:var(--accent);font-size:0;box-shadow:0 0 0 2px var(--drawer-bg);}
+  .cli-app.cli-recolhida .cli-menu .subnav-count.cli-conta-ruim{background:var(--danger);}
+  .cli-app.cli-recolhida .cli-lateral-pe{align-items:center;margin:10px;padding:10px 0;}
+  .cli-app.cli-recolhida .cli-lateral-pe .cli-pessoa > div,.cli-app.cli-recolhida .cli-lateral-pe > p,.cli-app.cli-recolhida .cli-lateral-pe .btn{display:none;}
+}
+@media (max-width:767px){
+  .cli-app .cli-colapsar{display:none;}
+}
+
 /* dentro do catálogo de componentes e das janelas: sem ocupar a tela inteira */
 .cli-app.cli-demo,.cli-app.cli-janela{min-height:0;background:none;}
 .cli-app.cli-janela{margin-top:12px;text-align:left;}
