@@ -3,7 +3,7 @@
 // filtros, a lista na ordem da rota com o puxador para arrastar, e os cartões Vencendo, Atestados para buscar e Obrigações
 // do mês), Ordem fixa (o admin), Protocolos e Qualidade (o admin). As peças: cartão, busca, seleção, menu suspenso,
 // tabela, selo, botão.
-import { CampoData, Esqueleto, Icone, MenuSuspenso, useCarregando, useLinhasQueSeMovem } from '@nads/ui';
+import { BotaoIcone, CampoData, Esqueleto, Icone, MenuSuspenso, Vazio, useCarregando, useLinhasQueSeMovem } from '@nads/ui';
 import { useRef, type PointerEvent as EventoDoPonteiro } from 'react';
 import { FaixaDasGravacoes } from './FaixaDasGravacoes';
 import { JanelasDasEntregas } from './JanelasDasEntregas';
@@ -76,7 +76,7 @@ function Paradas({ vm }: { vm: Vm }) {
           <MenuSuspenso icone="mapaPin" rotulo={vm.rotuloDasZonas} titulo="Região" className={'btn btn-outline' + (vm.zonas.length ? ' ativo' : '')}
             itens={vm.zonasDaRota.map(z => ({ rotulo: z.rotulo, marcado: vm.zonas.includes(z.valor), onClick: () => vm.alternarZona(z.valor) }))} />
         </div>
-        {vm.carregando ? <Esqueleto linhas={4} /> : !vm.linhas.length ? <p className="empty">Nenhuma entrega na rota.</p> : (
+        {vm.carregando ? <Esqueleto linhas={4} /> : !vm.linhas.length ? <Vazio icone="caminhao" texto="Nenhuma entrega na rota." /> : (
           <div className="table-wrap ent-rota-wrap" ref={corpo}>
             <table className="cad-lista ent-rota">
               <tbody>
@@ -193,7 +193,7 @@ function OrdemFixa({ vm }: { vm: Vm }) {
                     </button>
                     <span className="num fraco ent-pos">{i + 1}</span>
                     <div><b>{vm.nomeDoCliente(id)}</b></div>
-                    <button type="button" className="icon-btn icon-btn-sm" aria-label={'Tirar ' + vm.nomeDoCliente(id) + ' da rota fixa'} title="Tirar da rota fixa" onClick={() => vm.tirarDaFixa(z.id, id)}><Icone nome="x" /></button>
+                    <BotaoIcone pequeno icone="x" titulo="Tirar da rota fixa" aria-label={'Tirar ' + vm.nomeDoCliente(id) + ' da rota fixa'} onClick={() => vm.tirarDaFixa(z.id, id)} />
                   </li>
                 ))}
               </ul>
@@ -230,8 +230,8 @@ function Protocolos({ vm }: { vm: Vm }) {
         </select>
       </div>
       {vm.contagemProt > 0 && <label className="ent-marca"><input type="checkbox" checked={vm.todasMarcadas} onChange={e => vm.marcarTodas(e.target.checked)} />Marcar todas da lista</label>}
-      {vm.carregandoProt ? <Esqueleto linhas={3} /> : vm.erroProt ? <p className="empty">{vm.erroProt}</p> : !vm.diasProt.length ? (
-        <p className="empty">Nenhuma entrega feita nesse período{vm.filtrandoProt ? ' com esse filtro' : ''}.</p>
+      {vm.carregandoProt ? <Esqueleto linhas={3} /> : vm.erroProt ? <Vazio compacto icone="alert" texto={vm.erroProt} /> : !vm.diasProt.length ? (
+        <Vazio compacto icone="calendar" texto={'Nenhuma entrega feita nesse período' + (vm.filtrandoProt ? ' com esse filtro' : '') + '.'} />
       ) : vm.diasProt.map(d => (
         <div key={d.dia} className="ent-mes">
           <div className="gm-grupo-rotulo ent-mes-topo"><b>{d.rotulo}</b><span className="tarefas-barra-espaco" />
@@ -252,7 +252,7 @@ function Protocolos({ vm }: { vm: Vm }) {
 }
 
 function Qualidade({ vm }: { vm: Vm }) {
-  const lista = (itens: Vm['semZona'], vazio: string) => (!itens.length ? <p className="empty">{vazio}</p> : (
+  const lista = (itens: Vm['semZona'], vazio: string) => (!itens.length ? <Vazio compacto icone="checkCircle" texto={vazio} /> : (
     <ul className="ent-linhas">
       {itens.map(x => (
         <li key={x.c.id}><button type="button" className="ent-linha-abre" onClick={() => vm.corrigir(x.c.id)}>

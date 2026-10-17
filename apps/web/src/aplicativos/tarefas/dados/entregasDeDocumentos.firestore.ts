@@ -171,6 +171,7 @@ export function criarEntregasDeDocumentosFirestore(pessoa: () => { nome: string;
   let mes: { competencia: string; lista: ListaAoVivo<Entrega>; parar: Unsubscribe; noLimite: boolean } | null = null;
   let lembretes: ListaAoVivo<LembreteDoCliente> | null = null;
   let atestados: ListaAoVivo<AtestadoParaBuscar> | null = null;
+  let solicitacoes: ListaAoVivo<ReturnType<T['solicitacaoDoDocumento']>> | null = null;
   let links: ListaAoVivo<ReturnType<T['linkDeRotaDoDocumento']>> | null = null;
   let configsOuvidas = false;
   let meta = 0;
@@ -681,6 +682,34 @@ export function criarEntregasDeDocumentosFirestore(pessoa: () => { nome: string;
       await updateDoc(doc(db, 'lembretesCliente', id), { ativo: false, resolvidoEm: agora(), resolvidoPor: q.email, resolvidoPorNome: q.nome });
     },
     async concluirAtestado(id) {
+      const q = precisaDeQuem();
+      await updateDoc(doc(db, 'solicitacoes', id), { status: 'concluida', concluidoEm: agora(), concluidoPor: q.email, concluidoPorNome: q.nome });
+    },
+    solicitacoesPendentes() {
+      const q = quem();
+      if (!solicitacoes && q) {
+        solicitacoes = vazia();
+        // como a janela de Solicitações do Entregas: o office boy, a fila da equipe; os outros, o que pediram
+        const col = collection(db, 'solicitacoes');
+        const consulta = temPapel('office_boy') ? query(col, where('status', '==', 'pendente'), limit(300))
+          : query(col, where('criadoPor', '==', q.email), where('status', '==', 'pendente'), limit(300));
+        onSnapshot(consulta, s => { solicitacoes = { carregada: true, lista: s.docs.map(d => entregas.solicitacaoDoDocumento(d.id, d.data())), erro: '' }; mudou(); },
+          err => { solicitacoes = { carregada: true, lista: [], erro: /permission/i.test(err.message) ? 'Sem permissão pra isso.' : 'Não foi possível carregar as solicitações.' }; mudou(); });
+      }
+      return solicitacoes || { carregada: true, lista: [], erro: '' };
+    },
+    async solicitacoesConcluidas() {
+      const q = precisaDeQuem();
+      const col = collection(db, 'solicitacoes');
+      // sem índice composto: a fila recente (office boy) ou tudo o que a pessoa pediu; o filtro das concluídas fica aqui
+      const s = await getDocs(temPapel('office_boy') ? query(col, orderBy('criadoEm', 'desc'), limit(120)) : query(col, where('criadoPor', '==', q.email), limit(300)));
+      return entregas.ultimasConcluidas(s.docs.map(d => entregas.solicitacaoDoDocumento(d.id, d.data())));
+    },
+    async enviarSolicitacao(n) {
+      const q = precisaDeQuem();
+      return naoTrava(setDoc(doc(collection(db, 'solicitacoes')), entregas.dadosDaSolicitacao(n, q, agora())), 'uma solicitação');
+    },
+    async concluirSolicitacao(id) {
       const q = precisaDeQuem();
       await updateDoc(doc(db, 'solicitacoes', id), { status: 'concluida', concluidoEm: agora(), concluidoPor: q.email, concluidoPorNome: q.nome });
     },

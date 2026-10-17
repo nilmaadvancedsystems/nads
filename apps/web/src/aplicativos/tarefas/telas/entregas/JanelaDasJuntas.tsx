@@ -12,7 +12,7 @@ export function JanelaDasJuntas({ titulo, lista }: { titulo: string; lista: Entr
   const vm = useJanelaDasJuntas(titulo, lista);
   return (
     <MolduraDaJanela caminho="Rota" titulo={vm.titulo} sub={vm.sub} onFechar={vm.fechar} classe="ent-parada"
-      rodape={<><span className="tarefas-barra-espaco" /><BotaoAcao className="btn btn-primary" carregando={vm.salvando} textoCarregando="Gravando…" onClick={() => void vm.confirmar()}>{vm.rotuloDoBotao}</BotaoAcao></>}>
+      rodape={<><span className="tarefas-barra-espaco" /><BotaoAcao className="btn btn-primary" carregando={vm.salvando} textoCarregando="Salvando…" onClick={() => void vm.confirmar()}>{vm.rotuloDoBotao}</BotaoAcao></>}>
       {vm.dica && <p className="registro-dica"><Icone nome="lampada" />{vm.dica}.</p>}
       <div className="field">
         <label>Entregas incluídas</label>

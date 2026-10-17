@@ -11,5 +11,6 @@ export * from './rotaDeEntregas';
 export * from './confirmacaoDaEntrega';
 export * from './clienteDaEntrega';
 export * from './numerosDasEntregas';
+export * from './solicitacoes';
 export type * from './repo';
 export { criarDriveDoEntregasMemoria, criarGmailDoEntregasMemoria } from './repo.memoria';

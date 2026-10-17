@@ -109,6 +109,12 @@ export interface RepoEntregasDeDocumentos {
   criarLembrete(clienteId: string, clienteNome: string, texto: string): Promise<void>;
   resolverLembrete(id: string): Promise<void>;
   concluirAtestado(id: string): Promise<void>;
+  /** as solicitações pendentes (o office boy: a fila da equipe; os outros: as que pediram), ao vivo */
+  solicitacoesPendentes(): ListaAoVivo<tipos.Solicitacao>;
+  /** as últimas concluídas (uma leitura) */
+  solicitacoesConcluidas(): Promise<tipos.Solicitacao[]>;
+  enviarSolicitacao(n: tipos.SolicitacaoNova): Promise<ResultadoDaGravacao>;
+  concluirSolicitacao(id: string): Promise<void>;
   registrarAuditoria(acao: string, detalhe: string): void;
 
   // ---- o link do cliente, a assinatura no celular dele e o protocolo ----
@@ -179,6 +185,12 @@ export function criarEntregasDeDocumentosMemoria(): RepoEntregasDeDocumentos {
   const comprovantes = new Map<string, ComprovanteDaEntrega>([['e1', { assinatura: ASSINATURA_EXEMPLO, foto: '' }], ['e6', { assinatura: ASSINATURA_EXEMPLO, foto: '' }], ['e7', { assinatura: ASSINATURA_EXEMPLO, foto: '' }]]);
   let lembretes: LembreteDoCliente[] = [{ id: 'l1', clienteId: 'c2', clienteNome: rotulo('c2'), texto: 'Falar do honorário de setembro (exemplo).', criadoPor: quem.email, criadoPorNome: 'Maria (exemplo)', criadoEm: iso(50) }];
   let atestados: AtestadoParaBuscar[] = [{ id: 'a1', funcionario: 'Funcionário exemplo', empresa: rotulo('c1'), clinica: 'Assegi', urgente: true, criadoPor: quem.email, criadoPorNome: 'DP (exemplo)', criadoEm: iso(3) }];
+  let solicitacoes: tipos.Solicitacao[] = [
+    entregas.solicitacaoDoDocumento('s1', { tipo: 'buscar', local: 'Cartório (exemplo)', descricao: 'Buscar a procuração assinada', urgente: true, prazo: entregas.hojeIso(), status: 'pendente', criadoPor: quem.email, criadoPorNome: 'Maria (exemplo)', criadoEm: iso(20) }),
+    entregas.solicitacaoDoDocumento('s2', { tipo: 'entregar', local: rotulo('c5'), descricao: 'Entregar o contrato social', prazo: entregas.prazoPadraoDaSolicitacao(), status: 'pendente', criadoPor: 'outra@nilma.local', criadoPorNome: 'Carlos (exemplo)', criadoEm: iso(6) }),
+    entregas.solicitacaoDoDocumento('s3', { tipo: 'outro', descricao: 'Pagar a taxa na prefeitura', prazo: entregas.hojeIso(new Date(hoje.getTime() - 3 * 864e5)), status: 'pendente', criadoPor: quem.email, criadoPorNome: 'Pessoa de exemplo', criadoEm: iso(90) }),
+    entregas.solicitacaoDoDocumento('s4', { tipo: 'entregar', descricao: 'Levar o alvará', status: 'concluida', criadoPor: quem.email, criadoPorNome: 'Pessoa de exemplo', criadoEm: iso(80), concluidoEm: iso(30), concluidoPor: quem.email, concluidoPorNome: 'Carlos (exemplo)' }),
+  ];
   let fixa: tipos.RotaPadrao = { zonas: { c4: 'inferior', c1: 'central' }, ordem: { c4: 1, c1: 1 } };
   let meta = 0;
   let perdidas: EscritaPerdida[] = [];
@@ -268,6 +280,11 @@ export function criarEntregasDeDocumentosMemoria(): RepoEntregasDeDocumentos {
     async criarLembrete(clienteId, clienteNome, texto) { lembretes = [...lembretes, { id: 'l' + Date.now(), clienteId, clienteNome, texto, criadoPor: quem.email, criadoPorNome: quem.nome, criadoEm: agora() }]; mudou(); },
     async resolverLembrete(id) { lembretes = lembretes.filter(l => l.id !== id); mudou(); },
     async concluirAtestado(id) { atestados = atestados.filter(a => a.id !== id); mudou(); },
+    // como no banco: o office boy vê a fila da equipe; o resto, só o que pediu
+    solicitacoesPendentes: () => viva(solicitacoes.filter(s => s.status === 'pendente' && (entregas.veTodasAsSolicitacoes(quem.papeis) || s.criadoPor === quem.email))),
+    async solicitacoesConcluidas() { return entregas.ultimasConcluidas(solicitacoes.filter(s => entregas.veTodasAsSolicitacoes(quem.papeis) || s.criadoPor === quem.email)); },
+    async enviarSolicitacao(n) { solicitacoes = [...solicitacoes, entregas.solicitacaoDoDocumento('s' + Date.now(), entregas.dadosDaSolicitacao(n, quem, agora()))]; mudou(); return 'servidor'; },
+    async concluirSolicitacao(id) { solicitacoes = solicitacoes.map(s => (s.id === id ? { ...s, status: 'concluida', concluidoEm: agora(), concluidoPor: quem.email, concluidoPorNome: quem.nome } : s)); mudou(); },
     registrarAuditoria: () => undefined,
     async criarLinkDoCliente(c) { const t = 'exemplo-' + Date.now(); mudarCliente(c.id, { portalToken: t }); return t; },
     linkMudou: () => undefined,

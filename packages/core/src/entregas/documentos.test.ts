@@ -24,6 +24,7 @@ import {
 } from './clienteDaEntrega';
 import { clientesSemEntrega, entregasPorDia, idsComEntregaConfirmada, metaDaEquipe, rankingDaEquipe } from './numerosDasEntregas';
 import type { ItemDoDrive } from './drive';
+import { dadosDaSolicitacao, faltaNaSolicitacao, linhaDaSolicitacao, pendentesPeloPrazo, podeConcluirSolicitacao, solicitacaoDoDocumento } from './solicitacoes';
 
 const cliente = (id: string, nome: string, extra: Record<string, unknown> = {}): ClienteDaRota =>
   clienteDaRotaDoDocumento(id, { nome, codigoOrigem: id.replace(/\D/g, ''), documento: '', entrega: true, ...extra });
@@ -390,5 +391,27 @@ describe('o cliente e o link dele', () => {
     expect(numeroDoWhatsApp('(38) 99999-0000')).toBe('5538999990000');
     expect(numeroDoWhatsApp('1234')).toBe('');
     expect(codigoDoProtocolo(n => new Uint8Array(n).fill(33))).toMatch(/^[A-HJ-NP-Z2-9]{12}$/);
+  });
+});
+
+describe('as solicitações', () => {
+  const s = (id: string, d: Record<string, unknown>) => solicitacaoDoDocumento(id, { descricao: 'D' + id, criadoEm: '2026-10-1' + id + 'T10:00:00Z', criadoPor: 'a@x', ...d });
+  it('urgentes à parte, o resto pelo prazo (sem prazo no fim)', () => {
+    const p = pendentesPeloPrazo([s('1', { prazo: '2026-10-20' }), s('2', {}), s('3', { prazo: '2026-10-18', urgente: true }), s('4', { prazo: '2026-10-17' })]);
+    expect(p.urgentes.map(x => x.id)).toEqual(['3']);
+    expect(p.outras.map(x => x.id)).toEqual(['4', '1', '2']);
+  });
+  it('quem conclui e o que falta', () => {
+    expect(podeConcluirSolicitacao({ criadoPor: 'a@x' }, [], 'a@x')).toBe(true);
+    expect(podeConcluirSolicitacao({ criadoPor: 'b@x' }, ['admin'], 'a@x')).toBe(false);
+    expect(podeConcluirSolicitacao({ criadoPor: 'b@x' }, ['office_boy'], 'a@x')).toBe(true);
+    const base = { tipo: 'atestado' as const, local: '', descricao: '', clinica: 'Assegi', funcionario: '', empresa: null, prazo: '2026-10-20', urgente: false };
+    expect(faltaNaSolicitacao(base, new Date(2026, 9, 16)).texto).toBe('Falta o nome do funcionário e a empresa (escolha da lista).');
+    expect(faltaNaSolicitacao({ ...base, tipo: 'buscar', descricao: 'x', prazo: '2026-10-15' }, new Date(2026, 9, 16)).campo).toBe('prazo');
+  });
+  it('o documento do atestado, como o Entregas grava', () => {
+    const d = dadosDaSolicitacao({ tipo: 'atestado', local: '', descricao: '', clinica: 'Assegi', funcionario: ' Ana ', empresa: { id: 'c1', nome: 'ALFA', codigoOrigem: '1' }, prazo: '2026-10-20', urgente: true }, { email: 'm@x', nome: 'M' }, 't');
+    expect(d).toMatchObject({ tipo: 'atestado', local: 'Assegi', descricao: 'Buscar atestado de Ana — 1 - ALFA (clínica Assegi)', atestadoEmpresaId: 'c1', status: 'pendente', criadoPor: 'm@x', urgente: true });
+    expect(linhaDaSolicitacao(s('1', { prazo: '2026-10-15' }), 'a@x', new Date(2026, 9, 16)).atrasada).toBe(true);
   });
 });

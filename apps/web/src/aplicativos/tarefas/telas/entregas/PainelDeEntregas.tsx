@@ -3,7 +3,7 @@
 // e a lista — cliente abre a página dele só para ler —; "Sem entrega há tempo") e Números ("Entregas por dia", o ranking
 // da equipe com a meta e o cartão do mapa com o anel). As peças: abas sublinhadas, cartão, seletor de mês, busca, seleção,
 // selo, barras em coluna, ranking, rosca com legenda.
-import { BarrasEmColuna, Esqueleto, Icone, RoscaComLegenda, SeletorMes, useCarregando, useLinhasQueSeMovem } from '@nads/ui';
+import { BarrasEmColuna, Esqueleto, Icone, RoscaComLegenda, SeletorMes, Vazio, useCarregando, useLinhasQueSeMovem } from '@nads/ui';
 import { FaixaDasGravacoes } from './FaixaDasGravacoes';
 import { JanelasDasEntregas } from './JanelasDasEntregas';
 import { usePainelDeEntregas } from './usePainelDeEntregas';
@@ -56,7 +56,7 @@ function Entregas({ vm }: { vm: Vm }) {
             {vm.filtros.map(f => <option key={f.valor} value={f.valor}>{f.rotulo}</option>)}
           </select>
         </div>
-        {vm.carregando ? <Esqueleto linhas={6} /> : !vm.linhas.length ? <p className="empty">Nenhum cliente encontrado com esse filtro.</p> : (
+        {vm.carregando ? <Esqueleto linhas={6} /> : !vm.linhas.length ? <Vazio texto="Nenhum cliente encontrado com esse filtro." /> : (
           <div className="table-wrap ent-painel-wrap" ref={lista}>
             <table className="cad-lista ent-painel">
               <tbody>
@@ -91,7 +91,7 @@ function Numeros({ vm }: { vm: Vm }) {
       <section className="card ent-cartao">
         <div className="card-head"><h3><Icone nome="barChart" width={16} height={16} /> Entregas por dia</h3></div>
         {vm.porDia.length ? <div className="ent-barras"><BarrasEmColuna colunas={vm.porDia} ativa={vm.diaEscolhido} onEscolher={vm.escolherDia} /></div>
-          : <p className="empty">Nenhuma entrega confirmada nesta competência ainda.</p>}
+          : <Vazio compacto icone="caminhao" texto="Nenhuma entrega confirmada nesta competência ainda." />}
       </section>
       <section className="card ent-cartao">
         <div className="card-head">
@@ -104,7 +104,7 @@ function Numeros({ vm }: { vm: Vm }) {
             <span className="tarefas-barra"><span style={{ width: vm.meta.pct + '%' }} /></span>
           </div>
         )}
-        {!vm.ranking.length ? <p className="empty">Nenhuma entrega confirmada nesta competência ainda.</p> : (
+        {!vm.ranking.length ? <Vazio compacto icone="caminhao" texto="Nenhuma entrega confirmada nesta competência ainda." /> : (
           <div className="rank">
             {vm.ranking.map(r => (
               <div key={r.nome} className="rank-item" title={vm.meta ? r.total + ' de ' + (vm.meta.alvo / Math.max(1, vm.ranking.length)) + ' (' + r.pct + '%)' : undefined}>
@@ -131,7 +131,7 @@ function Numeros({ vm }: { vm: Vm }) {
             {/* o mapa do Entregas usa os mosaicos do OpenStreetMap (Leaflet): é uma conexão nova para o nads, desligada até ser
                 liberada; enquanto isso, a lista das entregas com o lugar, cada uma com o link para o mapa */}
             <p className="registro-dica"><Icone nome="alert" />O mapa precisa de liberação (OpenStreetMap). Enquanto isso, as entregas com o lugar da confirmação:</p>
-            {!vm.pontos.length ? <p className="empty">Nenhuma entrega com localização capturada ainda.</p> : (
+            {!vm.pontos.length ? <Vazio compacto icone="mapaPin" texto="Nenhuma entrega com localização capturada ainda." /> : (
               <ul className="ent-linhas">
                 {vm.pontos.map(p => (
                   <li key={p.id}><span className={'ent-ponto' + (p.falha ? ' falha' : '')} aria-hidden="true" />

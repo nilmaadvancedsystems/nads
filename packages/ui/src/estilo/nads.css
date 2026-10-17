@@ -4714,6 +4714,17 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .ent-miniatura{width:56px;height:56px;flex:none;object-fit:cover;border-radius:6px;border:1px solid var(--border);background:#FFFFFF;}
 .ent-comprovante{display:flex;flex-wrap:wrap;gap:8px;padding:4px 0;}
 .ent-comprovante img{display:block;max-width:260px;max-height:140px;border:1px solid var(--border);border-radius:8px;background:#FFFFFF;}
+/* as Solicitações (16/10/2026): o pedido em linhas empilhadas; o atraso em vermelho; o número das pendentes em destaque quando há urgente */
+.ent-linhas > li > .ent-pedido{flex-direction:column;align-items:flex-start;gap:2px;}
+.ent-atrasada{color:var(--danger);}
+.menu-contador.ent-urgente{background:var(--danger);color:#FFFFFF;}
+.cfg-linha-controle .ent-campo-curto{width:320px;max-width:100%;}
+.ent-tela [aria-invalid="true"]{border-color:var(--danger);}
+.ent-sol-descricao{margin:12px 0 4px;}
+.ent-sol-descricao textarea{width:100%;resize:vertical;}
+.ent-sol-pe{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px;}
+.ent-sol-pe .registro-dica{margin:0;}
+.ent-sol-sub{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
 @media (max-width:900px){
   .ent-nova-form{grid-template-columns:1fr;}
   .ent-cliente{grid-column:1 / -1;}
@@ -4730,5 +4741,6 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
   .ent-rota td.ent-acoes{grid-column:1 / -1;text-align:left;padding-top:0;}
   .ent-painel td.ent-acoes{text-align:left;padding-top:0;}
   .ent-categorias{overflow-x:auto;}
+  .cfg-linha-controle .ent-campo-curto{width:100%;}
   .ent-rota .cad-empresa-nome,.ent-painel .cad-empresa-nome{white-space:normal;overflow-wrap:anywhere;}
 }

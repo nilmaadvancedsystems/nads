@@ -1,29 +1,36 @@
 // A página do cliente (16/10/2026, a cópia fiel da página do cliente do Entregas, no visual do nads): a janela grande com
 // abas do catálogo (a da empresa no Cadastro) — no topo quem é (as iniciais, o nome, o código, o CNPJ, a cidade e os
 // selos); à esquerda Resumo, Entregas, Cadastro, Receita, Contatos, Documentos e Ações; o conteúdo em cartões do nads.
-import { ConfigLinha, ConfigSecao, Esqueleto, Icone, LogoWhatsApp, Stat, type NomeIcone } from '@nads/ui';
-import { useEffect, type ReactNode } from 'react';
+import { BotaoFechar, ConfigLinha, ConfigSecao, Esqueleto, Icone, LogoWhatsApp, Stat, Vazio, useJanela, type NomeIcone } from '@nads/ui';
+import { useRef, type ReactNode } from 'react';
 import { useJanelaDoCliente } from './useJanelaDoCliente';
+
+type VmDaJanela = ReturnType<typeof useJanelaDoCliente>;
 
 export function JanelaDoCliente({ clienteId, consulta, aba }: { clienteId: string; consulta: boolean; aba?: string }) {
   const vm = useJanelaDoCliente(clienteId, consulta, aba);
-  const fechar = vm.fechar;
-  useEffect(() => {
-    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented) fechar(); };
-    document.addEventListener('keydown', tecla);
-    return () => document.removeEventListener('keydown', tecla);
-  }, [fechar]);
-  if (!vm.cliente) {
-    return (
-      <div className="cad-janela-fundo" onMouseDown={e => { if (e.target === e.currentTarget) vm.fechar(); }}>
-        <div className="cad-janela ent-cliente-janela"><div className="cad-janela-topo"><span className="cad-janela-empresa">Cliente</span><button type="button" className="icon-btn cad-janela-x" onClick={vm.fechar} aria-label="Fechar"><Icone nome="x" /></button></div>
-          <div className="cad-janela-conteudo">{vm.carregando ? <Esqueleto linhas={5} /> : <p className="empty">Cliente não encontrado no cadastro do Entregas.</p>}</div></div>
-      </div>
-    );
-  }
+  return vm.cliente ? <ClienteAberto vm={vm} /> : <ClienteAinda vm={vm} />;
+}
+
+// revisão da UI (16/10/2026, como os commits 707009b0 e 3ac496fb): Esc, foco preso e o foco de volta pela peça useJanela
+// (antes, um Esc à mão) e o × do catálogo (BotaoFechar); cada estado é uma janela, para o foco seguir a que está na tela
+function ClienteAinda({ vm }: { vm: Pick<VmDaJanela, 'carregando' | 'fechar'> }) {
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, vm.fechar);
   return (
     <div className="cad-janela-fundo" onMouseDown={e => { if (e.target === e.currentTarget) vm.fechar(); }}>
-      <div className="cad-janela ent-cliente-janela" role="dialog" aria-modal="true" aria-label={vm.rotulo}>
+      <div ref={janela} className="cad-janela ent-cliente-janela" role="dialog" aria-modal="true" aria-label="Cliente"><div className="cad-janela-topo"><span className="cad-janela-empresa">Cliente</span><BotaoFechar onClick={vm.fechar} /></div>
+        <div className="cad-janela-conteudo">{vm.carregando ? <Esqueleto linhas={5} /> : <Vazio icone="usuario" texto="Cliente não encontrado no cadastro do Entregas." />}</div></div>
+    </div>
+  );
+}
+
+function ClienteAberto({ vm }: { vm: Vm }) {
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, vm.fechar);
+  return (
+    <div className="cad-janela-fundo" onMouseDown={e => { if (e.target === e.currentTarget) vm.fechar(); }}>
+      <div ref={janela} className="cad-janela ent-cliente-janela" role="dialog" aria-modal="true" aria-label={vm.rotulo}>
         <div className="cad-janela-topo ent-cliente-topo">
           <span className="ent-avatar" aria-hidden="true">{vm.iniciais}</span>
           <div className="ent-cliente-quem">
@@ -31,7 +38,7 @@ export function JanelaDoCliente({ clienteId, consulta, aba }: { clienteId: strin
             {vm.subtitulo && <span className="fraco">{vm.subtitulo}</span>}
             {vm.selos.length > 0 && <span className="ent-selos">{vm.selos.map(s => <span key={s.texto} className={'badge badge-' + s.tom} title={s.dica}>{s.pin && <Icone nome="mapaPin" width={12} height={12} />}{s.texto}</span>)}</span>}
           </div>
-          <button type="button" className="icon-btn cad-janela-x" onClick={vm.fechar} aria-label="Fechar" title="Fechar"><Icone nome="x" /></button>
+          <BotaoFechar onClick={vm.fechar} />
         </div>
         <div className="cad-janela-corpo">
           <nav className="cad-janela-abas" role="tablist" aria-label="Seções do cliente">
@@ -124,7 +131,7 @@ function Resumo({ vm }: { vm: Vm }) {
             ))}</ul>
             {vm.total > 5 && <button type="button" className="btn btn-ghost" onClick={() => vm.setAba('entregas')}>Ver as {vm.total} entregas</button>}
           </>
-        ) : <p className="empty">{vm.erro || 'Nenhuma entrega registrada para este cliente ainda.'}</p>}
+        ) : <Vazio compacto icone="caminhao" texto={vm.erro || 'Nenhuma entrega registrada para este cliente ainda.'} />}
       </Cartao>
     </>
   );
@@ -132,7 +139,7 @@ function Resumo({ vm }: { vm: Vm }) {
 
 function Entregas({ vm }: { vm: Vm }) {
   if (vm.carregando) return <Esqueleto linhas={6} />;
-  if (!vm.grupos.length) return <p className="empty">{vm.erro || 'Nenhuma entrega registrada para este cliente ainda.'}</p>;
+  if (!vm.grupos.length) return <Vazio icone="caminhao" texto={vm.erro || 'Nenhuma entrega registrada para este cliente ainda.'} />;
   return (
     <div className="ent-historico">
       {vm.grupos.map(g => (
@@ -171,7 +178,7 @@ function Cadastro({ vm }: { vm: Vm }) {
 }
 
 function Receita({ vm }: { vm: Vm }) {
-  if (!vm.temReceita) return <p className="empty">Ainda sem dados da Receita para este cliente. O robô confere os CNPJs uma vez por semana.</p>;
+  if (!vm.temReceita) return <Vazio icone="clock" titulo="Ainda sem dados da Receita" texto="O robô confere os CNPJs uma vez por semana." />;
   return (
     <>
       {vm.mudancas.length > 0 && (

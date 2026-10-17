@@ -21,7 +21,7 @@ export function JanelaDaParada({ entrega, assinatura }: { entrega: Entrega; assi
       rodape={<>
         {vm.podeEditar && <button type="button" className="btn btn-danger" onClick={() => void vm.removerDaRota()}><Icone nome="lixeira" />Remover da rota</button>}
         <span className="tarefas-barra-espaco" />
-        <BotaoAcao className="btn btn-primary" carregando={vm.salvando} textoCarregando="Gravando…" onClick={() => void vm.confirmar()}>{vm.rotuloDoBotao}</BotaoAcao>
+        <BotaoAcao className="btn btn-primary" carregando={vm.salvando} textoCarregando="Salvando…" onClick={() => void vm.confirmar()}>{vm.rotuloDoBotao}</BotaoAcao>
       </>}>
       {vm.dica && <p className="registro-dica"><Icone nome="lampada" />{vm.dica}.</p>}
 

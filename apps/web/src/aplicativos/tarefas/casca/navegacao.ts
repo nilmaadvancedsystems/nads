@@ -74,6 +74,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'nova', rotulo: 'Nova entrega', icone: 'lapis', titulo: 'Entregas — nova entrega' },
     { id: 'rota', rotulo: 'Rota', icone: 'caminhao', titulo: 'Entregas — rota' },
     { id: 'painel', rotulo: 'Painel', icone: 'painel', titulo: 'Entregas — painel do mês' },
+    // as Solicitações (16/10/2026, "cadê as solicitações"): a aba do Entregas, logo depois do Painel como lá
+    { id: 'solicitacoes', rotulo: 'Solicitações', icone: 'envelope', titulo: 'Entregas — solicitações' },
   ] },
   // as senhas gov.br e os certificados digitais, no cofre com a chave por pessoa (Vitor, 07/10/2026); todo o escritório
   { id: 'senhas', nome: 'Senhas', icone: 'lock', grupo: 'Escritório', pronta: true, paginas: [
