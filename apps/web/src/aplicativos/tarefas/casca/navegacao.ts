@@ -99,7 +99,6 @@ export const APLICACOES: readonly Aplicacao[] = [
   ] },
   // a Área do Cliente (Vitor, 16/10/2026): o lado do escritório do site que o cliente abre pelo link secreto
   { id: 'area-cliente', nome: 'Área do Cliente', icone: 'usuario', grupo: 'Comunicação', pronta: true, paginas: [
-    { id: 'links', rotulo: 'Links', icone: 'link', titulo: 'Área do Cliente — links' },
     { id: 'chamados', rotulo: 'Chamados', icone: 'mensagem', titulo: 'Área do Cliente — chamados' },
     { id: 'recebidos', rotulo: 'Recebidos', icone: 'download', titulo: 'Área do Cliente — recebidos' },
   ] },

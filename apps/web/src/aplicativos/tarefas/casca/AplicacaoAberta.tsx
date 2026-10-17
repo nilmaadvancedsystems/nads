@@ -26,7 +26,6 @@ import { ABAS_DO_PAINEL, type AbaDoPainel } from '../telas/dp/usePainelDoDp';
 import { ConfiguracoesDoDp } from '../telas/dp/ConfiguracoesDoDp';
 import { Mandei } from '../telas/mandei/Mandei';
 import { ChamadosDoCliente } from '../telas/area-cliente/ChamadosDoCliente';
-import { LinksDoCliente } from '../telas/area-cliente/LinksDoCliente';
 import { RecebidosDoCliente } from '../telas/area-cliente/RecebidosDoCliente';
 import { ConfiguracoesDoFinanceiro } from '../telas/financeiro/ConfiguracoesDoFinanceiro';
 import { NotasFiscais } from '../telas/financeiro/NotasFiscais';
@@ -46,7 +45,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'dp': return ABAS_DO_PAINEL.includes(pagina as AbaDoPainel) ? <PainelDoDp aba={pagina as AbaDoPainel} /> : pagina === 'configuracoes' ? <ConfiguracoesDoDp /> : pagina === 'fgts' ? <FgtsDoDp /> : pagina === 'legislacao' ? <LegislacaoDoDp /> : <VisaoContabil pagina={pagina} dep="dp" />;
     case 'senhas': return pagina === 'acesso' ? <AcessoAoCofre /> : pagina === 'gov' ? <ContasGov /> : pagina === 'certificados' ? <Certificados /> : <SenhasDasEmpresas />;
     case 'cadastro': return pagina === 'sistema' ? <RobosEAgentes /> : <UsuariosDoNads />;
-    case 'area-cliente': return pagina === 'chamados' ? <ChamadosDoCliente /> : pagina === 'recebidos' ? <RecebidosDoCliente /> : <LinksDoCliente />;
+    case 'area-cliente': return pagina === 'recebidos' ? <RecebidosDoCliente /> : <ChamadosDoCliente />;
     case 'mandei': return <Mandei pagina={pagina === 'central' ? 'central' : 'meus'} />;
     case 'financeiro': return pagina === 'configuracoes' ? <ConfiguracoesDoFinanceiro /> : <NotasFiscais />;
     // a entrega de documentos aos clientes, trazida do Entregas (16/10/2026)
@@ -64,6 +63,7 @@ export function AplicacaoAberta() {
   if (!a) return <Navigate to={caminhoDaPagina('minhas-empresas', 'empresas')} replace />;
   // os links antigos do Cadastro (Configurações e Agentes viraram Robôs e agentes; 13/10/2026)
   if (a.id === 'cadastro' && (pagina === 'configuracoes' || pagina === 'agentes' || pagina === 'robos')) return <Navigate to={caminhoDaPagina('cadastro', 'sistema')} replace />;
+  // a página Links saiu (o link vive no Cadastro, na janela da empresa; 17/10/2026): o link antigo cai em Chamados, pelo redirecionamento abaixo
   if (!a.paginas.some(p => p.id === pagina)) return <Navigate to={caminhoDaPagina(a.id, a.paginas[0].id)} replace />;
   return (
     <TopoProvider>

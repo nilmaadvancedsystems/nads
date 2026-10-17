@@ -814,7 +814,7 @@ export const PECAS_BASE: Peca[] = [
         <LinhaDeGuia guia={{ id: 'l3', tipo: 'DAE', competencia: '2026-09', vencimento: '24/10/2026', valor: 432.1, situacao: 'a vencer', temPdf: true }} onBaixar={nada} />
       </ul></div>
     ) },
-  { id: 'botoes-link-cliente', tipo: 'botoes', nome: 'Botões do link do cliente', descricao: 'Sem link, "Gerar link" (vermelho); com link, Copiar, WhatsApp (abre com o texto pronto), Trocar e Revogar (estes dois pedem confirmação). Só o admin e os diretores veem (Vitor, 16/10/2026)', classes: ['ac-botoes', 'btn', 'btn-danger'], telas: ['t-area-links', 't-cadastro-janela'], largo: true,
+  { id: 'botoes-link-cliente', tipo: 'botoes', nome: 'Botões do link do cliente', descricao: 'Sem link, "Gerar link" (vermelho); com link, Copiar, WhatsApp (abre com o texto pronto), Trocar e Revogar (estes dois pedem confirmação). Só o admin e os diretores veem (Vitor, 16/10/2026)', classes: ['ac-botoes', 'btn', 'btn-danger'], telas: ['t-cadastro-janela'], largo: true,
     demo: () => (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <BotoesDoLink temLink={false} aoGerar={nada} aoCopiar={nada} aoWhatsApp={nada} aoTrocar={nada} aoRevogar={nada} />
