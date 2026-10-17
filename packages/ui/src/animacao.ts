@@ -267,13 +267,43 @@ export function contar(el: HTMLElement, atual: { v: number }, para: number, form
     el.textContent = formatar(para);
     return null;
   }
-  const n = { v: de };
-  el.textContent = formatar(de);
-  return garantir(animate(n, {
-    v: para, duration: jeito === 'suave' ? 1100 : 900, ease: jeito === 'viva' ? 'out(4)' : ENTRAR,
-    onUpdate: () => { atual.v = n.v; el.textContent = formatar(n.v); },
-    onComplete: () => { atual.v = para; el.textContent = formatar(para); },
-  }), 1100, false);
+  // (o span do número é de linha, dentro do bloco do valor: não precisa travar a largura, só os algarismos iguais)
+  return contarNumero(el, de, para, (x, fim) => { atual.v = fim ? para : x; el.textContent = formatar(fim ? para : x); }, { largura: false });
+}
+
+/**
+ * A conta de um número (otimizada em 15/10/2026): escreve a cada ~2 quadros (30 ms), não a cada quadro; trava a largura
+ * enquanto conta (algarismos do mesmo tamanho, tabular-nums, e no mínimo a largura do número final, medida uma vez) para o
+ * vizinho não sentir; o número fora da tela vai direto para o final, sem conta. `seguir`: o dono mudou o número no meio
+ * (o React escreveu outro) — a conta para ali. `caixa`: a medida já feita (o animaTudo mede tudo antes de escrever).
+ */
+export function contarNumero(el: Element, de: number, para: number, escrever: (x: number, fim: boolean) => void,
+  o: { atraso?: number; seguir?: () => boolean; caixa?: DOMRect; largura?: boolean } = {}): JSAnimation | null {
+  const caixa = o.caixa ?? el.getBoundingClientRect();
+  if (typeof window === 'undefined' || caixa.width === 0 || caixa.bottom < 0 || caixa.top > window.innerHeight) { escrever(para, true); return null; }
+  const st = (el as HTMLElement).style as CSSStyleDeclaration | undefined;
+  const antes = st ? { fv: st.fontVariantNumeric, mw: st.minWidth } : null;
+  if (st) {
+    st.fontVariantNumeric = 'tabular-nums';
+    if (o.largura !== false) st.minWidth = caixa.width + 'px';
+  }
+  const soltar = () => { if (st && antes) { st.fontVariantNumeric = antes.fv; st.minWidth = antes.mw; } };
+  const n = { x: de };
+  let ultima = -1e9;
+  escrever(de, false);
+  const atraso = o.atraso ?? 0;
+  const a: JSAnimation = animate(n, {
+    x: para, delay: atraso, duration: jeito === 'suave' ? 1100 : 900, ease: jeito === 'viva' ? 'out(4)' : ENTRAR,
+    onUpdate: () => {
+      if (o.seguir && !o.seguir()) { a.pause(); soltar(); return; }
+      const agora = performance.now();
+      if (agora - ultima < 30) return;
+      ultima = agora;
+      escrever(n.x, false);
+    },
+    onComplete: () => { soltar(); if (!o.seguir || o.seguir()) escrever(para, true); },
+  });
+  return garantir(a, atraso + 1100, false);
 }
 
 /** "R$ 1.234,56", "58%", "1.200": o número e o que vem antes e depois (pt-BR). Outra coisa (datas, códigos): null. */
@@ -430,14 +460,18 @@ export const entradasFeitas = new WeakSet<Element>();
 // position:fixed de quem está dentro (uma janela abriria fora do lugar). Abriu uma janela, um menu ou uma faixa fixa:
 // a entrada da página termina na hora (encerrarPaginas, chamado pelo animador).
 const paginas = new Set<JSAnimation>();
-/** Uma entrada que deixa transform na peça enquanto roda (a cascata do animaTudo.ts): abriu uma janela, termina na hora. */
-export function acompanharEntrada(a: JSAnimation): void {
-  paginas.add(a);
+/** As entradas do animaTudo.ts (pelo WAAPI) que deixam transform na peça enquanto rodam: o terminar de cada uma. */
+const outrasEntradas = new Set<() => void>();
+/** Uma entrada que deixa transform na peça enquanto roda: abriu uma janela, termina na hora. Devolve o largar. */
+export function acompanharEntrada(terminar: () => void): () => void {
+  outrasEntradas.add(terminar);
+  return () => { outrasEntradas.delete(terminar); };
 }
-export const largarEntrada = (a: JSAnimation) => { paginas.delete(a); };
 export function encerrarPaginas(): void {
   for (const a of paginas) { a.complete(); cleanInlineStyles(a); }
   paginas.clear();
+  for (const terminar of Array.from(outrasEntradas)) terminar();
+  outrasEntradas.clear();
 }
 
 /**

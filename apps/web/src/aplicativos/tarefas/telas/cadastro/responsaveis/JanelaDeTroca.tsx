@@ -8,7 +8,7 @@
 // mola, os painéis chegando dos lados, as empresas em cascata), marcar (a linha dá um pulinho e o contador do meio salta),
 // Marcar todas (uma onda pela lista), escolher a pessoa (a lista dela em cascata), Pedir troca (as marcadas deslizam para
 // o outro lado) e fechar (a janela encolhe). As Animações › Nenhuma (Minha página) tiram, e quem pediu menos movimento no computador não vê.
-import { animacoesPedidas, Icone, MenuSuspenso } from '@nads/ui';
+import { animacoesPedidas, BotaoFechar, Icone, MenuSuspenso, useJanela } from '@nads/ui';
 import { animate, spring, stagger } from 'animejs';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { PessoaComFoto } from './FotoDaPessoa';
@@ -121,11 +121,8 @@ export function JanelaDeTroca({ vm, pessoa, fechar }: { vm: VmEmpresasPorRespons
   };
   const sairRef = useRef(sair);
   sairRef.current = sair;
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('.troca-janela .popover')) sairRef.current(); };
-    document.addEventListener('keydown', esc);
-    return () => document.removeEventListener('keydown', esc);
-  }, []);
+  // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
+  useJanela(janela, () => sairRef.current());
   // a entrada: a janela cresce com mola, os painéis chegam dos lados, o meio aparece e as empresas descem em cascata
   useLayoutEffect(() => {
     const el = janela.current;
@@ -177,7 +174,7 @@ export function JanelaDeTroca({ vm, pessoa, fechar }: { vm: VmEmpresasPorRespons
             <h2>Trocar empresas</h2>
             <p className="fraco">Marque o que vai para o outro lado. Cada empresa só muda com o aceite das duas pessoas.</p>
           </div>
-          <button type="button" className="drawer-x" aria-label="Fechar" onClick={() => sair()}><Icone nome="x" /></button>
+          <BotaoFechar onClick={() => sair()} />
         </header>
         <div className="troca-corpo">
           <Lado vm={vm} rotulo="De" pessoa={a} setPessoa={setA} outra={b} marcadas={daA} setMarcadas={setDaA} />

@@ -1,7 +1,8 @@
 // Senhas › Certificados (07/10/2026: "um dashboard de certificados próximos a vencer, vencidos, válidos"; depois "eu
 // queria algo mais gráfico"): a rosca das situações (a legenda filtra), as barras dos vencimentos mês a mês (a barra
 // filtra), os cartões com a contagem regressiva dos que pedem atenção e a lista; clicar abre o certificado da empresa.
-import { Esqueleto, useCarregando } from '@nads/ui';
+// As peças do gráfico (rosca, barras e cartão com anel) vêm do @nads/ui: o Painel do DP usa as mesmas (Savio, 15/10/2026).
+import { BarrasEmColuna, CartaoComAnel, Esqueleto, Icone, RoscaComLegenda, useCarregando, type TomDoPainel } from '@nads/ui';
 import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
 import { TelaDeBloqueio } from './TelaDeBloqueio';
 import { SegredosDaEmpresa } from './SegredosDaEmpresa';
@@ -12,74 +13,8 @@ const data = (iso: string) => (iso ? iso.split('-').reverse().join('/') : '');
 const ROTULOS: Record<FiltroDeCertificados, string> = { vence: 'Próximos a vencer', vencido: 'Vencidos', ok: 'Válidos', sem: 'Sem certificado' };
 const ORDEM: FiltroDeCertificados[] = ['vence', 'vencido', 'ok', 'sem'];
 const MESES_LONGOS: Record<string, string> = { jan: 'janeiro', fev: 'fevereiro', mar: 'março', abr: 'abril', mai: 'maio', jun: 'junho', jul: 'julho', ago: 'agosto', set: 'setembro', out: 'outubro', nov: 'novembro', dez: 'dezembro' };
-/** o raio do círculo com circunferência 100 (as fatias em porcentagem) */
-const R = 15.915;
-
-function Rosca({ contagem, total, filtro, mes, onFiltro }: { contagem: Record<FiltroDeCertificados, number>; total: number; filtro: FiltroDeCertificados; mes: string | null; onFiltro: (f: FiltroDeCertificados) => void }) {
-  const soma = ORDEM.reduce((s, f) => s + contagem[f], 0) || 1;
-  let antes = 0;
-  return (
-    <div className="cert-rosca">
-      <svg viewBox="0 0 42 42" className="cert-rosca-svg" role="img" aria-label={ORDEM.map(f => ROTULOS[f] + ' ' + contagem[f]).join(', ')}>
-        <circle cx="21" cy="21" r={R} className="cert-rosca-fundo" />
-        {ORDEM.map(f => {
-          const pct = (contagem[f] / soma) * 100;
-          const fatia = pct > 0 && (
-            <circle key={f} cx="21" cy="21" r={R} className={'cert-rosca-fatia cert-cor-' + f + (!mes && filtro === f ? ' ativa' : '')}
-              strokeDasharray={pct + ' ' + (100 - pct)} strokeDashoffset={25 - antes} onClick={() => onFiltro(f)} />
-          );
-          antes += pct;
-          return fatia;
-        })}
-        <text x="21" y="20.5" className="cert-rosca-total">{total}</text>
-        <text x="21" y="26" className="cert-rosca-sub">com certificado</text>
-      </svg>
-      <ul className="cert-legenda">
-        {ORDEM.map(f => (
-          <li key={f}>
-            <button type="button" className={'cert-legenda-item' + (!mes && filtro === f ? ' ativo' : '')} onClick={() => onFiltro(f)}>
-              <span className={'cert-legenda-cor cert-cor-' + f} aria-hidden="true" />
-              <span>{ROTULOS[f]}</span>
-              <b className="num">{contagem[f]}</b>
-            </button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function Barras({ meses, mes, onMes }: { meses: { chave: string; rotulo: string; ano: string; total: number; logo: boolean }[]; mes: string | null; onMes: (m: string) => void }) {
-  const max = Math.max(1, ...meses.map(m => m.total));
-  return (
-    <div className="cert-barras">
-      {meses.map(m => (
-        <button key={m.chave} type="button" className={'cert-barra' + (mes === m.chave ? ' ativa' : '') + (m.logo ? ' logo' : '')} disabled={!m.total}
-          onClick={() => onMes(m.chave)} aria-label={m.total + ' vencem em ' + MESES_LONGOS[m.rotulo] + ' de ' + m.chave.slice(0, 4)}>
-          <span className="cert-barra-num num">{m.total || ''}</span>
-          <span className="cert-barra-trilho"><span className="cert-barra-cheia" style={{ height: (m.total / max) * 100 + '%' }} /></span>
-          <span className="cert-barra-mes">{m.rotulo}</span>
-          <span className="cert-barra-ano fraco">{m.ano}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/** o anel da contagem regressiva: cheio = 30 dias; vencido = o anel inteiro vermelho */
-function Contagem({ dias }: { dias: number }) {
-  const vencido = dias < 0;
-  const pct = vencido ? 100 : Math.max(4, Math.min(100, (dias / 30) * 100));
-  return (
-    <span className={'cert-contagem ' + (vencido ? 'cert-cor-vencido' : 'cert-cor-vence')}>
-      <svg viewBox="0 0 42 42" aria-hidden="true">
-        <circle cx="21" cy="21" r={R} className="cert-rosca-fundo" />
-        <circle cx="21" cy="21" r={R} className="cert-contagem-arco" strokeDasharray={pct + ' ' + (100 - pct)} strokeDashoffset={25} />
-      </svg>
-      <span className={'cert-contagem-num num' + (Math.abs(dias) >= 100 ? ' longo' : '')}>{Math.abs(dias)}</span>
-    </span>
-  );
-}
+/** a situação do certificado no tom das peças do painel */
+const TOM: Record<FiltroDeCertificados, TomDoPainel> = { vence: 'aviso', vencido: 'perigo', ok: 'ok', sem: 'neutro' };
 
 export function Certificados() {
   const vm = useCertificados();
@@ -93,25 +28,23 @@ export function Certificados() {
       <div className="cert-dash">
         <section className="card cert-dash-bloco">
           <div className="card-head"><h3>Situação</h3></div>
-          <Rosca contagem={vm.contagem} total={vm.comCertificado} filtro={vm.filtro} mes={vm.mes} onFiltro={vm.setFiltro} />
+          <RoscaComLegenda fatias={ORDEM.map(f => ({ id: f, rotulo: ROTULOS[f], valor: vm.contagem[f], tom: TOM[f] }))} total={vm.comCertificado} subtitulo="com certificado"
+            ativa={vm.mes ? null : vm.filtro} onEscolher={f => vm.setFiltro(f as FiltroDeCertificados)} />
         </section>
         <section className="card cert-dash-bloco">
           <div className="card-head"><h3>Vencimentos nos próximos 12 meses</h3></div>
-          <Barras meses={vm.porMes} mes={vm.mes} onMes={vm.escolherMes} />
+          <BarrasEmColuna ativa={vm.mes} onEscolher={vm.escolherMes}
+            colunas={vm.porMes.map(m => ({ chave: m.chave, rotulo: m.rotulo, sub: m.ano, total: m.total, aviso: m.logo, leitura: m.total + ' vencem em ' + MESES_LONGOS[m.rotulo] + ' de ' + m.chave.slice(0, 4) }))} />
         </section>
       </div>
 
       {vm.urgentes.length > 0 && (
         <div className="cert-urgentes">
           {vm.urgentes.slice(0, 8).map(l => (
-            <button key={l.chave} type="button" className={'card cert-urgente ' + (l.situacao === 'vencido' ? 'vencido' : 'vence') + (vm.cofre.bloqueio ? ' cofre-bloqueado' : '')} title={vm.cofre.bloqueio || undefined} onClick={() => vm.abrir(l.nome, l.codigo)}>
-              <Contagem dias={l.dias ?? 0} />
-              <span className="cert-urgente-texto">
-                <b>{l.nome}</b>
-                <span className={'cert-urgente-prazo ' + (l.situacao === 'vencido' ? 'vencido' : 'vence')}>{(l.dias ?? 0) < 0 ? 'Vencido há ' + -(l.dias ?? 0) + (l.dias === -1 ? ' dia' : ' dias') : l.dias === 0 ? 'Vence hoje' : 'Vence em ' + l.dias + (l.dias === 1 ? ' dia' : ' dias')}</span>
-                <span className="fraco num">{l.codigo != null ? l.codigo + ' · ' : ''}{data(l.validade)}</span>
-              </span>
-            </button>
+            <CartaoComAnel key={l.chave} dias={l.dias ?? 0} titulo={l.nome} atrasado={l.situacao === 'vencido'}
+              prazo={(l.dias ?? 0) < 0 ? 'Vencido há ' + -(l.dias ?? 0) + (l.dias === -1 ? ' dia' : ' dias') : l.dias === 0 ? 'Vence hoje' : 'Vence em ' + l.dias + (l.dias === 1 ? ' dia' : ' dias')}
+              apoio={(l.codigo != null ? l.codigo + ' · ' : '') + data(l.validade)} classe={vm.cofre.bloqueio ? 'cofre-bloqueado' : undefined}
+              dica={vm.cofre.bloqueio || undefined} onClick={() => vm.abrir(l.nome, l.codigo)} />
           ))}
         </div>
       )}
@@ -120,6 +53,12 @@ export function Certificados() {
         <div className="card-head">
           <h3>{doMes ? 'Vencem em ' + MESES_LONGOS[doMes.rotulo] + ' de ' + doMes.chave.slice(0, 4) : ROTULOS[vm.filtro]}</h3>
           <span className="badge badge-neutral">{vm.linhas.length}</span>
+          <span className="tarefas-barra-espaco" />
+          {/* a busca da lista (Savio, 15/10/2026): empresa, código ou CNPJ */}
+          <label className="busca-curta">
+            <Icone nome="search" />
+            <input type="text" placeholder="Buscar empresa, código ou CNPJ" aria-label="Buscar certificado" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} />
+          </label>
         </div>
         {vm.linhas.length ? (
           <div className="table-wrap cofre-tabela">
@@ -133,7 +72,7 @@ export function Certificados() {
                     <td className="num">{data(l.validade) || <span className="fraco">—</span>}</td>
                     <td>
                       {l.situacao === 'sem' ? <span className="fraco">—</span>
-                        : <span className={'badge ' + (l.situacao === 'vencido' ? 'badge-danger' : l.situacao === 'vence' ? 'badge-warn' : 'badge-ok')}>
+                        : <span className={'badge ' + (l.situacao === 'vencido' ? 'badge-bad' : l.situacao === 'vence' ? 'badge-warn' : 'badge-ok')}>
                           {l.situacao === 'vencido' ? 'Vencido há ' + -(l.dias ?? 0) + ' dias' : l.dias === 0 ? 'Vence hoje' : (l.situacao === 'vence' ? 'Vence em ' : 'Válido · ') + l.dias + (l.dias === 1 ? ' dia' : ' dias')}
                         </span>}
                     </td>
@@ -142,7 +81,7 @@ export function Certificados() {
               </tbody>
             </table>
           </div>
-        ) : <p className="fraco cert-painel-vazio">Nenhuma empresa aqui.</p>}
+        ) : <p className="fraco cert-painel-vazio">{vm.busca.trim() ? 'Nenhuma empresa achada nesta lista.' : 'Nenhuma empresa aqui.'}</p>}
       </section>
 
       {vm.aberta && (

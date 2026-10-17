@@ -5,6 +5,7 @@
 import { MenuDeAgrupamento } from './MenuDeAgrupamento';
 import { BotaoIcone, Esqueleto, Icone, useCarregando, useEntradaAnimada, useRetorno, MenuSuspenso } from '@nads/ui';
 import { Cartao, JanelaLateral, Linha, type TopicoDaJanela } from '../janela/JanelaLateral';
+import { MenuDeFiltro } from './MenuDeFiltro';
 import { useConfiguracoesDoDp, type TopicoDoClienteDp } from './useConfiguracoesDoDp';
 
 const TOPICOS: TopicoDaJanela<TopicoDoClienteDp>[] = [
@@ -35,24 +36,17 @@ export function ConfiguracoesDoDp() {
   const c = vm.cliente;
   return (
     <section className="dp-painel">
-      <div className="tarefas-filtros dp-filtros">
+      <div className="tarefas-barra-topo dp-filtros-linha">
+        {/* a barra no padrão do resto do app (revisão da UI, 16/10/2026): a busca de lupa e os filtros em menus numa linha */}
         {/* a competência (Vitor, 07/10/2026): o que mudar vale dela em diante */}
-        <div className="field dp-filtro">
-          <span className="hint">A partir de</span>
-          <MenuSuspenso rotulo={vm.rotuloCompetencia} className="btn btn-outline" titulo="Competência" largura={200}
-            itens={vm.competencias.map(x => ({ rotulo: x.rotulo, marcado: x.valor === vm.competencia, onClick: () => vm.setCompetencia(x.valor) }))} />
-        </div>
-        <label className="field dp-filtro dp-busca">
-          <span className="hint">Buscar cliente</span>
-          <input type="text" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} placeholder="Nome, código ou CNPJ/CPF" aria-label="Buscar cliente (nome, código ou CNPJ/CPF)" />
+        <MenuSuspenso icone="calendar" rotulo={'A partir de ' + vm.rotuloCompetencia} className="btn btn-outline" titulo="A partir de" dica="O que mudar vale desta competência em diante" largura={220}
+          itens={vm.competencias.map(x => ({ rotulo: x.rotulo, marcado: x.valor === vm.competencia, onClick: () => vm.setCompetencia(x.valor) }))} />
+        <label className="busca-curta">
+          <Icone nome="search" />
+          <input type="text" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente (nome, código ou CNPJ/CPF)"
+            onKeyDown={e => { if (e.key === 'Escape') vm.setBusca(''); }} />
         </label>
-        <label className="field dp-filtro">
-          <span className="hint">Movimento</span>
-          <select className="select-compact" value={vm.movimento} onChange={e => vm.setMovimento(e.target.value)}>
-            <option value="">Todos</option>
-            {vm.movimentos.map(m => <option key={m} value={m}>{m}</option>)}
-          </select>
-        </label>
+        <MenuDeFiltro rotulo="Movimento" valor={vm.movimento} mudar={vm.setMovimento} opcoes={vm.movimentos} />
         <label className="dp-check">
           <input type="checkbox" checked={vm.soMudados} onChange={e => vm.setSoMudados(e.target.checked)} />
           Só os mudados ({vm.mudados})
@@ -83,7 +77,7 @@ export function ConfiguracoesDoDp() {
                     <td className="dp-documento" onClick={e => e.stopPropagation()}>
                       {/* clicar no número copia (Vitor, 14/10/2026: "remova esse botão de copiar e faça com que o número ao clicar seja copiado") */}
                       {l.documento ? (
-                        <button type="button" className="texto-copiavel num" title="Clique para copiar" onClick={() => copiar(l.documento)}>{l.documento}</button>
+                        <button type="button" className="texto-copiavel num" title="Clique para copiar" onClick={() => copiar(l.documento)}>{l.documentoNaTela}</button>
                       ) : <span className="pill-vazio">sem cadastro</span>}
                     </td>
                     <td>{l.movimento}</td>

@@ -33,7 +33,9 @@ export interface FerramentaDaEtapa {
  * A tela própria da etapa, dentro da Tarefa (Vitor, 06/10/2026: as ferramentas que abriam em iframe viram telas do nads).
  * A tela diz o que falta para seguir; periodo: trabalha todos os meses do período de uma vez.
  */
-export type TelaDaEtapa = 'bancos' | 'cheque-especial' | 'clientes' | 'adiantamento-fornecedores' | 'bens' | 'fornecedores' | 'adiantamento-clientes' | 'emprestimos' | 'salarios' | 'pro-labore' | 'honorarios';
+export type TelaDaEtapa = 'bancos' | 'cheque-especial' | 'clientes' | 'adiantamento-fornecedores' | 'bens' | 'fornecedores' | 'adiantamento-clientes' | 'emprestimos' | 'salarios' | 'pro-labore' | 'honorarios' | 'simples' | 'resultado' | 'adiantamento-salarial' | 'fechamento'
+  // o LCDPR, a rotina inteira das empresas com ele (16/10/2026: a 62 "só precisa do lcdpr")
+  | 'lcdpr';
 export interface TelaPropria { id: TelaDaEtapa; periodo?: boolean }
 
 /** O que a tela oferece para resolver uma objeção. */
@@ -118,7 +120,9 @@ export type PainelDaTarefa = 'sieg' | 'recebimento' | 'sequencia' | 'saidas' | '
   // o Presumido e o Real (13/10/2026): o PIS/COFINS e os créditos do Real
   | 'piscofins' | 'creditos'
   // subir a guia do mês (o PDF do DAS ou do DAE)
-  | 'guia-das' | 'guia-dae';
+  | 'guia-das' | 'guia-dae'
+  // os XMLs de saída soltos direto na Conferência de saídas (15/10/2026)
+  | 'xml-saidas';
 
 export interface Rotina { departamento: Departamento; etapas: Etapa[] }
 

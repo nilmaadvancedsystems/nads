@@ -28,9 +28,13 @@ export interface GuiaDoInss {
   vencimento: string;
   /** AAAA-MM-DD da arrecadação ('' = o comprovante não trouxe) */
   pagaEm: string;
+  /** o banco em que foi paga, como o comprovante traz ("756 - BANCO COOPERATIVO SICOOB S/A"; '' = não trouxe) */
+  banco: string;
   itens: ItemDaGuia[];
   principal: number;
   total: number;
+  /** o total do documento (o DARF inteiro, com o IRRF e a retenção que vêm junto; Vitor, 15/10/2026: "coloque o total da guia") */
+  documento?: number;
 }
 
 /** Um pedaço de texto do PDF (o leitor de PDF do Extrator devolve assim). */
@@ -71,7 +75,7 @@ export function guiasDasLinhas(paginas: readonly (readonly string[])[]): GuiaDoI
     for (const l of linhas) {
       const cab = l.match(RE_CABECALHO);
       if (cab) {
-        guia = porNumero.get(cab[3]) || { competencia: iso(cab[1]).slice(0, 7), vencimento: iso(cab[2]), numero: cab[3], pagaEm: '', itens: [], principal: 0, total: 0 };
+        guia = porNumero.get(cab[3]) || { competencia: iso(cab[1]).slice(0, 7), vencimento: iso(cab[2]), numero: cab[3], pagaEm: '', banco: '', itens: [], principal: 0, total: 0 };
         porNumero.set(cab[3], guia);
         continue;
       }
@@ -86,11 +90,19 @@ export function guiasDasLinhas(paginas: readonly (readonly string[])[]): GuiaDoI
       if (v && ultimo && !ultimo.variacao) { ultimo.variacao = v[1]; ultimo.descricao = v[2]; continue; }
       if (/Data de Arrecada/i.test(l)) { esperandoData = true; continue; }
       const data = l.match(/(\d{2}\/\d{2}\/\d{4})$/);
-      if (esperandoData && data) { guia.pagaEm = iso(data[1]); esperandoData = false; }
+      if (esperandoData && data) {
+        guia.pagaEm = iso(data[1]);
+        // o banco vem na mesma linha, antes da data (Vitor, 15/10/2026: "em qual banco foi paga aquela guia")
+        guia.banco = guia.banco || l.slice(0, l.length - data[1].length).trim();
+        esperandoData = false;
+      }
     }
   }
   return [...porNumero.values()]
     .filter(g => g.itens.some(i => grupoDoItem(i) !== 'outros'))
+    // o DARF da DCTFWeb junta o IRRF (0561) e a retenção de PIS/COFINS/CSLL (5952) com o INSS: só o previdenciário entra
+    // (Vitor, 15/10/2026: na 58, os R$ 12,37 do 5952 todo mês não deixavam a baixa casar com o pagamento do razão)
+    .map(g => ({ ...g, documento: centavos(g.itens.reduce((s, i) => s + i.total, 0)), itens: g.itens.filter(ehPrevidenciario) }))
     .map(g => ({ ...g, principal: centavos(g.itens.reduce((s, i) => s + i.principal, 0)), total: centavos(g.itens.reduce((s, i) => s + i.total, 0)) }))
     .sort((a, b) => a.competencia.localeCompare(b.competencia) || a.vencimento.localeCompare(b.vencimento));
 }
@@ -123,6 +135,11 @@ export function grupoDoItem(i: Pick<ItemDaGuia, 'codigo' | 'variacao'>): GrupoDo
   if (i.codigo === '1213') return i.variacao === '06' ? 'producao-rural' : 'terceiros';
   if (TERCEIROS.has(i.codigo)) return 'terceiros';
   return 'outros';
+}
+
+/** O código da guia é do INSS? Os conhecidos, ou outro com "previdenciária"/"CP" na descrição; IRRF, PIS, COFINS e CSLL não. */
+export function ehPrevidenciario(i: Pick<ItemDaGuia, 'codigo' | 'variacao' | 'descricao'>): boolean {
+  return grupoDoItem(i) !== 'outros' || /previd|^cp /i.test(i.descricao);
 }
 
 /** O histórico do Alterdata → o grupo da provisão ("Pelo valor de INSS empresa a recolher <02/2026>" → patronal). */
@@ -271,14 +288,14 @@ export function conferirInss(razao: RazaoDaConta, guias: readonly GuiaDoInss[], 
   });
 
   // as baixas: cada guia paga dentro do período (e dentro do que o razão alcança) tem que ter o pagamento no razão (o
-  // mais perto da data, sem repetir)
+  // mais perto da data, sem repetir; até 2 centavos de diferença, o arredondamento da guia)
   const primeiro = meses[0] + '-01';
   const desde = primeiro > razao.inicio ? primeiro : razao.inicio;
   const ultimo = meses[meses.length - 1] + '-31';
   const usados = new Set<LancamentoDoRazao>();
   const baixas: BaixaDoInss[] = guias.filter(g => g.pagaEm && g.pagaEm >= desde && g.pagaEm <= ultimo).map(guia => {
     const dias = (l: LancamentoDoRazao) => Math.abs(Date.parse(l.data) - Date.parse(guia.pagaEm));
-    const lancamento = pagamentos.filter(l => !usados.has(l) && (Math.abs(-l.valor - guia.total) < 0.01 || Math.abs(-l.valor - guia.principal) < 0.01))
+    const lancamento = pagamentos.filter(l => !usados.has(l) && (Math.abs(-l.valor - guia.total) <= 0.02 || Math.abs(-l.valor - guia.principal) <= 0.02))
       .sort((a, b) => dias(a) - dias(b))[0] || null;
     if (lancamento) usados.add(lancamento);
     else {

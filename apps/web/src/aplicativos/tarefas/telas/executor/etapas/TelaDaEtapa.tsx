@@ -11,6 +11,11 @@ import { Fornecedores } from './fornecedores/Fornecedores';
 import { Salarios } from './salarios/Salarios';
 import { ProLabore } from './prolabore/ProLabore';
 import { Honorarios } from './honorarios/Honorarios';
+import { Simples } from './simples/Simples';
+import { Resultado } from './resultado/Resultado';
+import { AdiantamentoSalarial } from './adiantamentosalarial/AdiantamentoSalarial';
+import { Fechamento } from './fechamento/Fechamento';
+import { LcdprDaEtapa } from './lcdpr/LcdprDaEtapa';
 
 export function TelaDaEtapa({ id }: { id: tarefas.TelaDaEtapa }) {
   switch (id) {
@@ -25,5 +30,10 @@ export function TelaDaEtapa({ id }: { id: tarefas.TelaDaEtapa }) {
     case 'salarios': return <Salarios />;
     case 'pro-labore': return <ProLabore />;
     case 'honorarios': return <Honorarios />;
+    case 'simples': return <Simples />;
+    case 'resultado': return <Resultado />;
+    case 'adiantamento-salarial': return <AdiantamentoSalarial />;
+    case 'fechamento': return <Fechamento />;
+    case 'lcdpr': return <LcdprDaEtapa />;
   }
 }

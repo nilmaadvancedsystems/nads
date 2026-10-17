@@ -6,6 +6,8 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { animar, apagarFundo, ENTRAR, origemDe, paramsDaPilha, paramsDoAvisoQueChega, sairComo, semMovimento, voltarParaOrigem } from './animacao';
 import { Icone, type NomeIcone } from './icones';
+import { BotaoFechar } from './componentes';
+import { useJanela } from './janela';
 
 export interface BotaoModal<T> {
   rotulo: string; valor: T; variante?: 'btn-primary' | 'btn-outline' | 'btn-danger';
@@ -211,6 +213,8 @@ function Modal({ aberto, fechar }: { aberto: ModalAberto; fechar: (v: unknown) =
   const foraFecha = !o.obrigatoria && !!desistir;
   const valorDeFora = desistir?.valor;
   // o foco: no × quando a ação é de apagar (Enter sem querer não apaga); senão, na primeira ação
+  // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela); a obrigatória não fecha no Esc
+  useJanela(raiz, comX ? () => fecharAnimado(valorDoX) : null);
   useEffect(() => { (botoes.some(b => b.variante === 'btn-danger') && xRef.current ? xRef.current : primeiro.current)?.focus(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!o.fecharEm) return;
@@ -221,7 +225,7 @@ function Modal({ aberto, fechar }: { aberto: ModalAberto; fechar: (v: unknown) =
     <div ref={raiz} data-saida-propria data-fecha-fora={foraFecha ? '' : undefined} className={'modal-overlay' + (o.obrigatoria ? ' modal-blur' : '')}
       onMouseDown={ev => { if (ev.target === ev.currentTarget && foraFecha) fecharAnimado(valorDeFora); }}>
       <div className={classeDaJanela(o)} role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-        {comX && <button ref={xRef} type="button" className="modal-x" aria-label="Fechar" title="Fechar" onClick={() => fecharAnimado(valorDoX)}><Icone nome="x" /></button>}
+        {comX && <BotaoFechar ref={xRef} canto onClick={() => fecharAnimado(valorDoX)} />}
         <h3 id="modalTitle">{o.titulo}</h3>
         {o.html ? <p dangerouslySetInnerHTML={{ __html: o.html }} /> : o.texto ? <p>{o.texto}</p> : null}
         {o.corpo}

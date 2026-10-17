@@ -2,11 +2,12 @@
 // (XLS da conciliação do Alterdata) e o PDF dos comprovantes de arrecadação; a tela mostra, mês a mês, provisão × guia,
 // as verbas que o sistema não provisionou, as guias pagas sem baixa e o lançamento sugerido de cada diferença.
 // Fica só na tela (em memória): trocou de etapa, empresa ou período, some.
-import { creditor, extrator, formatos, tarefas as t } from '@nads/core';
+import { conversor, creditor, extrator, formatos, tarefas as t } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useState } from 'react';
 import { useGuardado } from '../../../../comum/guardado';
+import { useContabilDaEmpresa } from '../../../../comum/contabilDaEmpresa';
 
 extrator.definirWorkerDoPdf(workerDoPdf);
 
@@ -20,7 +21,14 @@ export interface ContaDoPlano { codigo: string; nome: string }
  * balancete: as contas analíticas do balancete importado na Conferência (Vitor, 07/10/2026: "essa conta do INSS a recolher,
  * você puxa diretamente do balancete, tem o nome certinho lá"); sem ele, a pessoa digita.
  */
-export function useInssDaEtapa(chave: string, meses: readonly string[], balancete: readonly ContaDoPlano[] = []) {
+/** O banco do comprovante ("756 - BANCO COOPERATIVO SICOOB S/A") → o nome curto (Sicoob) e a marca do logo. */
+function bancoDaGuia(texto: string): { nome: string; curto: string; marca: string } {
+  const curto = conversor.bancoDoTexto(texto);
+  return { nome: texto, curto: curto || texto.replace(/^\d+\s*-\s*/, ''), marca: curto ? conversor.marcaDoBanco(curto) : '' };
+}
+
+/** empresa: o nome (o razão do INSS importado na Importação, quando a etapa não tem o próprio; 16/10/2026) */
+export function useInssDaEtapa(chave: string, meses: readonly string[], balancete: readonly ContaDoPlano[] = [], empresa = '') {
   const { aviso } = useRetorno();
   // o razão, as guias e as contrapartidas ficam guardados (Vitor, 15/10/2026: voltou, está onde parou)
   const [razao, setRazao] = useGuardado<{ chave: string; arquivo: string; razao: t.RazaoDaConta } | null>('inss-razao|' + chave, null);
@@ -35,7 +43,10 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
   // a do balancete manda (travada); sem ela no balancete, a digitada
   const contaInss = doBalancete?.codigo || contaDigitada;
   const [contrapartidas, setContrapartidas] = useGuardado<Record<string, string>>('inss-contrapartidas|' + chave, {});
-  const r = razao && razao.chave === chave ? razao : null;
+  const contabil = useContabilDaEmpresa(empresa);
+  const daImportacao = empresa ? contabil.razaoDoTipo('inss') : null;
+  const proprio = razao && razao.chave === chave ? razao : null;
+  const r = proprio || (daImportacao ? { chave, arquivo: daImportacao.arquivo + ' (da Importação)', razao: daImportacao.razao } : null);
   const g = guias && guias.chave === chave ? guias : null;
   const c = r && g ? t.conferirInss(r.razao, g.guias, meses) : null;
 
@@ -89,7 +100,7 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
     importarRazao, importarGuias, lendo,
     temRazao: !!r, temGuias: !!g, pronto: !!c,
     arquivoRazao: r?.arquivo || '',
-    removerRazao: () => setRazao(null), removerGuias: () => setGuias(null),
+    removerRazao: () => { setRazao(null); if (!proprio && daImportacao) contabil.tirarRazao(daImportacao.conta); }, removerGuias: () => setGuias(null),
     /** o ⚡ do modo desenvolvedor: o razão e as guias de teste do período */
     implantarTeste: () => {
       const d = t.inssDeTeste(meses);
@@ -110,10 +121,15 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
       return {
         mes: m.mes, rotulo: t.rotuloNumericoCompetencia(m.mes), foraDoRazao: m.foraDoRazao,
         provisao: m.foraDoRazao ? '' : reais(m.provisao), guia: m.guia ? reais(m.guia.principal) : '',
+        // o total do DARF inteiro (com o IRRF e a retenção que vêm junto, e a multa e os juros); a guia lida antes de 15/10/2026
+        // não tem: fica vazio (importar o PDF de novo), para não mostrar só o INSS como se fosse o total
+        totalDaGuia: m.guia?.documento != null ? reais(m.guia.documento) : '',
         diferenca: m.foraDoRazao || !m.guia ? '' : reais(m.diferenca), bate: Math.abs(m.diferenca) < 0.01,
         // a guia do mês: baixada, sem a baixa, paga depois do período, ou o PDF não trouxe
         baixa: !m.guia ? 'sem-guia' as const : baixa ? (baixa.lancamento ? 'ok' as const : 'falta' as const) : m.guia.pagaEm > ultimoDia || !m.guia.pagaEm ? 'depois' as const : 'fora' as const,
         pagaEm: m.guia ? dataBR(m.guia.pagaEm) : '',
+        // o banco em que a guia foi paga, pelo comprovante (Vitor, 15/10/2026): o nome curto e o logo
+        banco: m.guia?.banco ? bancoDaGuia(m.guia.banco) : null,
       };
     }),
     mesAberto,

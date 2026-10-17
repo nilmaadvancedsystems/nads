@@ -81,7 +81,7 @@ export function usePaginaPessoal() {
   const competencias = t.competenciasRecentes(new Date(), 2);
   const doPeriodo = useExecucoesDoPeriodo(competencias, 'contabil');
   const rotina = t.rotinaDo(op.departamento) || t.ROTINA_CONTABIL;
-  const paradas: ItemDaCaixa[] = op.departamento === 'contabil' || op.admin ? doPeriodo.porMes.flatMap(m => m.execucoes.flatMap(ex => rotina.etapas.flatMap(etapa => {
+  const paradas: ItemDaCaixa[] = op.departamento === 'contabil' || op.admin ? doPeriodo.porMes.flatMap(m => m.execucoes.flatMap(ex => (t.rotinaDaEmpresa(op.departamento, ex.codigo) || rotina).etapas.flatMap(etapa => {
     const est = t.estadoDa(ex, etapa.id);
     if (!est || est.situacao !== 'interrompida' || est.por !== op.nome) return [];
     const motivo = etapa.objecoes.find(o => o.id === est.objecao)?.texto || (est.objecao === 'outro' ? 'Outro motivo' : est.objecao || '');

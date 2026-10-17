@@ -22,10 +22,12 @@ export function LegislacaoDoDp() {
   const mudarTopico = (t: TopicoDaLegislacao) => (t === 'editar' ? vm.editar() : vm.setTopico(t));
   return (
     <section className="dp-painel">
-      <div className="tarefas-filtros dp-filtros">
-        <label className="field dp-filtro dp-busca">
-          <span className="hint">Buscar</span>
-          <input type="text" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} placeholder="Assunto ou palavra do texto" aria-label="Buscar na legislação (assunto ou texto)" />
+      <div className="tarefas-barra-topo dp-filtros-linha">
+        {/* a barra no padrão do resto do app (revisão da UI, 16/10/2026): a busca de lupa e os filtros em menus numa linha */}
+        <label className="busca-curta dp-busca-larga">
+          <Icone nome="search" />
+          <input type="text" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} placeholder="Assunto ou palavra do texto" aria-label="Buscar na legislação (assunto ou texto)"
+            onKeyDown={e => { if (e.key === 'Escape') vm.setBusca(''); }} />
         </label>
         {vm.podeEditar && (
           <>

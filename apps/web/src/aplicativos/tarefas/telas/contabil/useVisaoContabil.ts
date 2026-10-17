@@ -14,9 +14,12 @@ export function useVisaoContabil(dep: 'contabil' | 'fiscal' | 'dp' = 'contabil')
   const competencias = meses.lista;
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : meses.padrao;
   const { execucoes, carregada } = useExecucoes(competencia, dep);
-  const totalEmpresas = t.empresasDaRotina(dep, repo.listarEmpresas()).length;
+  const daRotina = t.empresasDaRotina(dep, repo.listarEmpresas());
+  const totalEmpresas = daRotina.length;
+  // a rotina de cada empresa (16/10/2026): no Contábil, a 62 (com o LCDPR) só tem a etapa LCDPR
+  const rotinaDe = (codigo: number | null) => t.rotinaDaEmpresa(dep, codigo) || rotina;
 
-  const paradas = execucoes.flatMap(ex => rotina.etapas.flatMap(e => {
+  const paradas = execucoes.flatMap(ex => rotinaDe(ex.codigo).etapas.flatMap(e => {
     const est = t.estadoDa(ex, e.id);
     if (!est || est.situacao !== 'interrompida') return [];
     return [{
@@ -32,9 +35,12 @@ export function useVisaoContabil(dep: 'contabil' | 'fiscal' | 'dp' = 'contabil')
     setCompetencia: (c: string) => setParams({ competencia: c }),
     carregando: !carregada,
     totalEmpresas,
-    // só as etapas que existem no mês do ano da competência (o Estoque só em dezembro)
-    etapas: t.resumoPorEtapa(execucoes, { ...rotina, etapas: rotina.etapas.filter(e => t.etapaNoMesDoAno(e, competencia)) }, totalEmpresas),
-    objecoes: t.objecoesMaisComuns(execucoes, rotina).slice(0, 8),
+    // só as etapas que existem no mês do ano da competência (o Estoque só em dezembro); cada empresa na rotina dela
+    etapas: t.resumoPorEtapaDasEmpresas(execucoes, daRotina.map(e => e.codigo), rotinaDe, competencia),
+    // os nomes das objeções nas duas rotinas (a do departamento e a do LCDPR)
+    objecoes: t.objecoesMaisComuns(execucoes, dep === 'contabil' ? { ...rotina, etapas: [...rotina.etapas, ...t.ROTINA_LCDPR.etapas] } : rotina).slice(0, 8),
+    /** quanto cada etapa leva (a mediana, em minutos, na mesma sentada; 16/10/2026): onde as pessoas mais param */
+    tempos: t.tempoPorEtapa(execucoes),
     paradas,
   };
 }

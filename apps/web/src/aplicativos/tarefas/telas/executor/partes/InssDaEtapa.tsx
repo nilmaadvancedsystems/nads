@@ -1,7 +1,7 @@
 // A conferência do INSS na etapa da folha, no desenho da Importação do banco (Vitor, 05/10/2026): a linha "INSS a recolher"
 // com o Razão (XLS) e as Guias (PDF dos comprovantes) à direita, a grade dos meses (provisão, guia, diferença, baixa; clicar
 // abre o mês) e a faixa Lançamentos sugeridos (o Grupo a grupo saiu: Vitor, 07/10/2026); embaixo, o fechamento do saldo.
-import { Icone, LogoInss } from '@nads/ui';
+import { CampoArquivo, Icone, LogoBanco, LogoInss } from '@nads/ui';
 import { useId, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import type { InssDaEtapa as Inss } from '../useInssDaEtapa';
@@ -9,6 +9,8 @@ import { BotaoDeTeste, type ItemDeTeste } from '../../../../../comum/BotaoDeTest
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosMeses';
 import type { RazaoDaFolha as VmFolha } from '../useRazaoDaFolha';
 import { RazaoDaFolha } from './RazaoDaFolha';
+import { FgtsDaEtapa } from './FgtsDaEtapa';
+import type { FgtsDaEtapa as VmFgts } from '../useFgtsDaEtapa';
 import { MenuDeConta } from '../../../../extratudo/ferramentas/creditor/partes/MenuDeConta';
 
 const BAIXA: Record<Inss['meses'][number]['baixa'], string> = { ok: '✓', falta: 'Falta', depois: 'Depois', fora: '—', 'sem-guia': '—' };
@@ -18,26 +20,27 @@ function Importar({ id, titulo, aceitar, varios, lendo, onArquivos }: { id: stri
   return (
     <>
       <label htmlFor={id} className="icon-btn icon-btn-sm imp-btn" title={'Importar ' + titulo} aria-label={'Importar ' + titulo}><Icone nome="upload" /></label>
-      <input id={id} type="file" multiple={varios} accept={aceitar} className="sr-only"
-        onChange={e => { const fs = Array.from(e.target.files || []); e.target.value = ''; onArquivos(fs); }} />
+      <CampoArquivo semCaixa id={id} multiplo={varios} aceitar={aceitar} onEscolherVarios={onArquivos} onEscolher={f => onArquivos(f ? [f] : [])} />
     </>
   );
 }
 
 function Importado({ titulo, onExcluir }: { titulo: string; onExcluir: () => void }) {
   return (
-    <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" onClick={onExcluir} title={titulo + ': importado. Clique para excluir.'} aria-label={'Excluir ' + titulo}>
+    <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" onClick={onExcluir} title={titulo + ': importado. Clique para tirar.'} aria-label={'Tirar ' + titulo}>
       <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
     </button>
   );
 }
 
-export function InssDaEtapa({ inss, conferir, teste = [], folha, so }: {
+export function InssDaEtapa({ inss, conferir, teste = [], folha, so, conferenciaFgts }: {
   /** só uma parte (as abas Salários / INSS / FGTS da tela; Vitor, 07/10/2026); sem isso, tudo junto */
   so?: 'salarios' | 'inss' | 'fgts';
   inss: Inss; conferir?: string[]; teste?: ItemDeTeste[];
   /** as linhas de Salários a pagar e FGTS a recolher (a tela da etapa; Vitor, 07/10/2026) */
   folha?: { salarios: VmFolha; fgts: VmFolha };
+  /** a conferência do FGTS (razão × guias do FGTS Digital; Vitor, 16/10/2026), embaixo da linha do FGTS */
+  conferenciaFgts?: VmFgts;
 }) {
   const idRazao = useId();
   const idGuias = useId();
@@ -98,6 +101,8 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so }: {
                   <tbody>
                     <tr><th scope="row">Provisão</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '')} title={m.foraDoRazao ? 'O razão começa depois deste mês' : undefined}>{m.foraDoRazao ? 'fora do razão' : <ValorNaGrade texto={m.provisao} />}</td>)}</tr>
                     <tr><th scope="row">Guia</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '')}>{m.guia ? <ValorNaGrade texto={m.guia} /> : '—'}</td>)}</tr>
+                    {/* o total do DARF (Vitor, 15/10/2026: "coloque o total da guia"): o INSS e o que vem junto */}
+                    <tr><th scope="row">Total da guia</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '')} title={m.totalDaGuia && m.totalDaGuia !== m.guia ? 'O DARF inteiro: o INSS e o IRRF/retenções que vêm junto' : undefined}>{m.totalDaGuia ? <ValorNaGrade texto={m.totalDaGuia} /> : m.guia ? <span className="hint" title="Tire e importe de novo o PDF das guias para ler o total">reimportar</span> : '—'}</td>)}</tr>
                     <tr><th scope="row">Diferença</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '') + (m.diferenca && !m.bate ? ' ext-neg' : '')}>{m.diferenca ? <ValorNaGrade texto={m.diferenca} /> : '—'}</td>)}</tr>
                     <tr><th scope="row">Baixa</th>{inss.meses.map(m => (
                       <td key={m.mes} className={(m.mes === inss.mesAberto ? 'atual' : '') + (m.baixa === 'falta' ? ' ext-neg' : '')}
@@ -105,6 +110,18 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so }: {
                         {BAIXA[m.baixa]}
                       </td>
                     ))}</tr>
+                    {/* o banco em que a guia foi paga, pelo comprovante do PDF (Vitor, 15/10/2026) */}
+                    {inss.meses.some(m => m.banco) && (
+                      <tr><th scope="row">Banco</th>{inss.meses.map(m => (
+                        <td key={m.mes} className={m.mes === inss.mesAberto ? 'atual' : undefined} title={m.banco?.nome}>
+                          {m.banco ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              {m.banco.marca && <span className="drive-candidato-logo" style={{ display: 'inline-flex' }}><LogoBanco banco={m.banco.marca} cor /></span>}{m.banco.curto}
+                            </span>
+                          ) : '—'}
+                        </td>
+                      ))}</tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -173,13 +190,14 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so }: {
           )}
         </div>}
         {fgts && (!so || so === 'fgts') && <RazaoDaFolha vm={fgts} dev={dev} />}
+        {conferenciaFgts && (!so || so === 'fgts') && <FgtsDaEtapa vm={conferenciaFgts} />}
       </div>
       {(so === 'inss' ? !inss.temRazao && !inss.temGuias : !so && !inss.pronto && !inss.temRazao && !inss.temGuias && !salarios?.temRazao && !fgts?.temRazao) && (
         <div className="gh-blank">
           <Icone nome="checklist" />
           <h4>O que conferir</h4>
           {conferir && <ul className="executor-conferir">{conferir.map(x => <li key={x}>{x}</li>)}</ul>}
-          <p>Importe nos ícones acima o razão de Salários a pagar e do FGTS a recolher (fica credor ou zera) e, para conferir o INSS, o razão do INSS a recolher e o PDF das guias pagas. Todos são opcionais.</p>
+          <p>Importe nos ícones acima o razão de Salários a pagar e do FGTS a recolher (fica credor ou zera) e, para conferir o INSS, o razão do INSS a recolher e o PDF das guias pagas. {folha ? 'Só o FGTS é opcional.' : 'Todos são opcionais.'}</p>
         </div>
       )}
     </div>

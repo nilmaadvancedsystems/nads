@@ -4,11 +4,14 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDeCategoriasDp, repoDeLegislacaoDp, repoDaAreaCliente, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
+import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDeCategoriasDp, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDeNfse, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoAgentes } from './agentes';
 import type { RepoSieg } from './sieg';
 import type { RepoFgts } from './fgts';
+import type { RepoNfse } from './nfse';
+import { repoDeEntregasDeDocumentos } from './fonte';
+import type { RepoEntregasDeDocumentos } from './entregasDeDocumentos';
 import type { RepoArquivador } from './arquivador';
 import type { RepoIA } from './ia';
 import type { RepoPessoal } from './pessoal';
@@ -16,6 +19,7 @@ import type { RepoFeedback } from './feedback';
 import type { RepoCategoriasDp } from './categoriasDp';
 import type { RepoLegislacaoDp } from './legislacaoDp';
 import type { RepoAreaCliente } from './areaCliente';
+import type { RepoLcdpr } from './lcdpr';
 
 type Repo = tarefas.RepoTarefas;
 
@@ -178,6 +182,20 @@ export function useFgts(): RepoFgts {
   return repo;
 }
 
+/** O emissor de NFS-e do financeiro, ao vivo: as notas, a configuração e o robô. */
+export function useNfse(): RepoNfse {
+  const repo = repoDeNfse();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** A entrega de documentos aos clientes, ao vivo: a rota, o painel do mês e os clientes do Entregas (16/10/2026). */
+export function useEntregasDeDocumentos(): RepoEntregasDeDocumentos {
+  const repo = repoDeEntregasDeDocumentos();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
 /** O painel dos agentes do Claude Code, ao vivo: os computadores cadastrados e as conversas de cada um. */
 export function useAgentes(): RepoAgentes {
   const repo = repoDosAgentes();
@@ -209,6 +227,13 @@ export function useLegislacaoDp(): RepoLegislacaoDp {
 /** A Área do Cliente vista pelo escritório (links, chamados e recebidos), ao vivo. */
 export function useAreaCliente(): RepoAreaCliente {
   const repo = repoDaAreaCliente();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** O Importador LCDPR (as regras e os cadastros do lcdpr/config), ao vivo. */
+export function useLcdpr(): RepoLcdpr {
+  const repo = repoDoLcdpr();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
 }
@@ -248,6 +273,14 @@ export function useCartaoEmpresarial(nome: string | null, codigo: number | null)
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   if (!nome || !repo.carregada(nome)) return null;
   return repo.cadastro(nome, codigo).cartaoEmpresarial ?? null;
+}
+
+/** O Cadastro diz que a empresa vende no cartão (a etapa Vendas no cartão, o Conciliadorzinho)? (true, false ou null) */
+export function useVendeNoCartao(nome: string | null, codigo: number | null): boolean | null {
+  const repo = repoDoCadastro();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  if (!nome || !repo.carregada(nome)) return null;
+  return repo.cadastro(nome, codigo).vendeNoCartao ?? null;
 }
 
 /** O Cadastro diz que a empresa recebe liquidação de cobrança no caixa (o Creditor)? (true, false ou null) */

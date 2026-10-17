@@ -8,8 +8,10 @@ import { empresas, formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useCadastro } from '../../../../dados/repo';
 import { useOperador } from '../../../../casca/operador';
-import { useChaveDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
+import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 import { useGuardado } from '../../../../../../comum/guardado';
+import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
+import { useEffect, useRef } from 'react';
 
 const dataBr = (iso: string) => iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4);
 
@@ -52,25 +54,47 @@ export function useEmprestimos() {
   }));
 
   async function importar(fs: File[]) {
+    const lidos: { arquivo: string; r: t.RazaoDaConta }[] = [];
+    for (const f of fs) {
+      try { lidos.push({ arquivo: f.name, r: t.lerRazaoDoArquivo(await f.arrayBuffer()) }); }
+      catch (e) { aviso({ tom: 'erro', titulo: 'Não deu para ler ' + f.name, texto: e instanceof Error ? e.message : String(e) }); }
+    }
+    adicionar(lidos, true);
+  }
+
+  /** Os razões lidos entram na lista (o repetido, não); avisar: o repetido avisa (o que vem da Importação, não). */
+  function adicionar(lidos: readonly { arquivo: string; r: t.RazaoDaConta }[], avisar: boolean) {
     const novos: RazaoDoEmprestimo[] = [];
     let n = seq;
-    for (const f of fs) {
-      try {
-        const r = t.lerRazaoDoArquivo(await f.arrayBuffer());
-        // o mesmo razão de novo (o mesmo arquivo, os mesmos lançamentos e o mesmo saldo): não entra duas vezes
-        if ([...razoes, ...novos].some(x => x.arquivo === f.name && x.r.lancamentos.length === r.lancamentos.length && x.r.saldoFinal === r.saldoFinal)) {
-          aviso({ tom: 'info', titulo: 'Esse razão já está importado', texto: f.name });
-          continue;
-        }
-        // o banco: o dos contratos já guardados no Cadastro; senão, o da contrapartida das parcelas
-        const banco = t.bancoPelosContratos(t.contratosDoRazao(r).contratos, cadastrados) ?? t.bancoDoRazao(r, bancos);
-        novos.push({ id: n++, arquivo: f.name, r, banco });
-        if (banco) guardar(r, banco);
-      } catch (e) { aviso({ tom: 'erro', titulo: 'Não deu para ler ' + f.name, texto: e instanceof Error ? e.message : String(e) }); }
+    for (const { arquivo, r } of lidos) {
+      // o mesmo razão de novo (o mesmo arquivo, os mesmos lançamentos e o mesmo saldo): não entra duas vezes
+      if ([...razoes, ...novos].some(x => x.arquivo === arquivo && x.r.lancamentos.length === r.lancamentos.length && x.r.saldoFinal === r.saldoFinal)) {
+        if (avisar) aviso({ tom: 'info', titulo: 'Esse razão já está importado', texto: arquivo });
+        continue;
+      }
+      // o banco: o dos contratos já guardados no Cadastro; senão, o da contrapartida das parcelas
+      const banco = t.bancoPelosContratos(t.contratosDoRazao(r).contratos, cadastrados) ?? t.bancoDoRazao(r, bancos);
+      novos.push({ id: n++, arquivo, r, banco });
+      if (banco) guardar(r, banco);
     }
     setSeq(n);
     if (novos.length) setRazoes(l => [...l, ...novos]);
   }
+
+  // o ⚡ do modo desenvolvedor: o razão de teste de um contrato (16/10/2026)
+  useDadosDeTesteDaEtapa(s.dev ? [{ id: 'certo', rotulo: 'Razão de teste (credor)' }, { id: 'devedor', rotulo: 'Razão de teste (com mês devedor)' }] : [],
+    id => adicionar([{ arquivo: 'TESTE razão do empréstimo' + (id === 'devedor' ? ' (devedor)' : '') + '.xls', r: t.emprestimoDeTeste(meses, id === 'devedor') }], true));
+  // os razões de empréstimo da Importação (o upload único; 16/10/2026): entram sozinhos, uma vez cada
+  const contabil = useContabilDaEmpresa(s.nome, s.codigo);
+  const daImportacao = contabil.razoesDoTipo('emprestimo');
+  const vistos = useRef(new Set<string>());
+  useEffect(() => {
+    if (!carregada) return;
+    const novos = daImportacao.filter(x => !vistos.current.has(x.conta + '|' + x.arquivo));
+    if (!novos.length) return;
+    for (const x of novos) vistos.current.add(x.conta + '|' + x.arquivo);
+    adicionar(novos.map(x => ({ arquivo: x.arquivo, r: x.razao })), false);
+  });
 
   /** os contratos do razão vão para o Cadastro com o banco (o que mudou; igual, não grava) */
   function guardar(r: t.RazaoDaConta, banco: string) {

@@ -1,12 +1,13 @@
 // O Caixa na etapa, no desenho da Importação do banco (Vitor, 05/10/2026): a linha da conta com o Razão à direita (o
 // ícone importa; importado, o ✓ que exclui), a grade dos meses (clicar abre o mês; de novo, volta para o período todo) e
 // a faixa Pontos de atenção (a Lançamentos saiu em 14/10/2026). Em cima, o aviso do Creditor quando o caixa tem liquidação de cobrança.
-import { Icone } from '@nads/ui';
+import { CampoArquivo, Icone } from '@nads/ui';
 import { useId, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import type { RazaoDaEtapa as Razao } from '../useRazaoDaEtapa';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../comum/BotaoDeTeste';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosMeses';
+import { TabelaCaixaNoBanco, TabelaNotasNoCaixa } from '../etapas/caixabancos/CaixaNoBanco';
 
 type Linha = Razao['lancamentos'][number];
 
@@ -85,7 +86,7 @@ export function RazaoDaEtapa({ conta, razao, conferir, teste = [] }: { conta: st
                 <span className="imp-rotulo">Razão</span>
                 {razao.carregado ? (
                   <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" onClick={razao.remover}
-                    title={'Razão do ' + conta + ': importado. Clique para excluir.'} aria-label={'Excluir o razão do ' + conta}>
+                    title={'Razão do ' + conta + ': importado. Clique para tirar.'} aria-label={'Tirar o razão do ' + conta}>
                     <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
                   </button>
                 ) : (
@@ -94,8 +95,7 @@ export function RazaoDaEtapa({ conta, razao, conferir, teste = [] }: { conta: st
                     <label htmlFor={id} className="icon-btn icon-btn-sm imp-btn" title={'Importar o razão do ' + conta + ' (XLS da conciliação do Alterdata)'} aria-label={'Importar o razão do ' + conta}>
                       <Icone nome="upload" />
                     </label>
-                    <input id={id} type="file" accept=".xls,.xlsx,.ods" className="sr-only"
-                      onChange={e => { const f = e.target.files?.[0] || null; e.target.value = ''; void razao.importar(f); }} />
+                    <CampoArquivo semCaixa id={id} aceitar=".xls,.xlsx,.ods" onEscolher={f => { void razao.importar(f); }} />
                   </>
                 )}
               </div>
@@ -141,6 +141,19 @@ export function RazaoDaEtapa({ conta, razao, conferir, teste = [] }: { conta: st
                   ))}
                 </div>
               </FaixaQueAbre>
+              {/* o Caixa × bancos, agora aqui (Vitor, 16/10/2026: a mesma pergunta e o mesmo razão do Caixa): o que saiu do
+                  caixa e também saiu do banco, com o mesmo valor, até 5 dias; só sugere */}
+              {/* o conciliador (Vitor, 16/10/2026: "era essa função que eu queria"): as notas em aberto pagas ou recebidas pelo caixa */}
+              {conta === 'caixa' && (
+                <FaixaQueAbre titulo="Notas e pagamentos do banco no caixa" qtd={razao.noBanco.notas.length} aviso={razao.noBanco.notas.length > 0}>
+                  <div className="imp-mov-caixa"><TabelaNotasNoCaixa vm={razao.noBanco} /></div>
+                </FaixaQueAbre>
+              )}
+              {conta === 'caixa' && (
+                <FaixaQueAbre titulo="Pago pelo banco e lançado no caixa" qtd={razao.noBanco.itens.length} aviso={razao.noBanco.itens.length > 0}>
+                  <div className="imp-mov-caixa"><TabelaCaixaNoBanco vm={razao.noBanco} /></div>
+                </FaixaQueAbre>
+              )}
             </>
           )}
         </div>

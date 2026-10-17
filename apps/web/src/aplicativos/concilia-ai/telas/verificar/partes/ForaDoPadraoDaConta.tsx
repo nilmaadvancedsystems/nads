@@ -3,6 +3,7 @@
 import { GrupoFiscal } from '../../relatorio/partes/ForaDoPadraoFiscal';
 import { GrupoServ } from '../../relatorio/partes/Servicos';
 import type { useVerificarConta } from '../useVerificarConta';
+import { Vazio } from '@nads/ui';
 
 type Vm = ReturnType<typeof useVerificarConta>;
 
@@ -22,7 +23,7 @@ export function ForaDoPadraoDaConta({ vm }: { vm: Vm }) {
           {titulo && <p className="hint" style={{ fontWeight: 600, color: 'var(--ink)' }}>{ROTULO[tipo]}</p>}
           {r.pendentes.length
             ? r.pendentes.map(g => <GrupoFiscal key={g.key} vm={vm.acoes} tipo={tipo} gr={g} marcado={false} />)
-            : <p className="empty">Nenhuma pendente — tudo corrigido.</p>}
+            : <Vazio compacto icone="checkCircle" texto="Nenhuma pendente — tudo corrigido." />}
           {r.corrigidos.length > 0 && (
             <>
               <p className="hint" style={CORRIGIDOS}>Corrigidos ({r.qtdCorrigidos})</p>
@@ -36,7 +37,7 @@ export function ForaDoPadraoDaConta({ vm }: { vm: Vm }) {
           {titulo && <p className="hint" style={{ fontWeight: 600, color: 'var(--ink)' }}>{ROTULO[tipo]}</p>}
           {r.pendentes.length
             ? r.pendentes.map(g => <GrupoServ key={g.key} vm={vm.acoes} tipo={tipo} gr={g} marcado={false} />)
-            : <p className="empty">Nenhuma pendente — tudo corrigido.</p>}
+            : <Vazio compacto icone="checkCircle" texto="Nenhuma pendente — tudo corrigido." />}
           {r.corrigidos.length > 0 && (
             <>
               <p className="hint" style={CORRIGIDOS}>Corrigidos ({r.qtdCorrigidos})</p>

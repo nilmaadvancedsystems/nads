@@ -28,12 +28,14 @@ export const TELAS: Tela[] = [
   { id: 't-senhas', app: 'Tarefas', nome: 'Senhas (gov.br e certificados)' },
   { id: 't-dp-fgts', app: 'Tarefas', nome: 'DP › FGTS Digital' },
   { id: 't-dp-resumo', app: 'Tarefas', nome: 'DP › Resumo' },
+  { id: 't-dp-obrigacoes', app: 'Tarefas', nome: 'DP › Obrigações' },
   { id: 't-dp-config', app: 'Tarefas', nome: 'DP › Configurações' },
   { id: 't-dp-legislacao', app: 'Tarefas', nome: 'DP › Legislação' },
   { id: 't-fiscal-sintegra', app: 'Tarefas', nome: 'Fiscal › SINTEGRA (leitor)' },
   { id: 't-insights', app: 'Tarefas', nome: 'Insights' },
   { id: 't-contabil', app: 'Tarefas', nome: 'Contábil' },
   { id: 't-empresa', app: 'Tarefas', nome: 'Página da empresa' },
+  { id: 't-empresa-lcdpr', app: 'Tarefas', nome: 'Página da empresa › LCDPR' },
   { id: 't-exec-importacao', app: 'Tarefas', nome: 'Executor › Importação' },
   { id: 't-exec-cheque', app: 'Tarefas', nome: 'Executor › Cheque especial' },
   { id: 't-exec-fiscal', app: 'Tarefas', nome: 'Executor › Conferência fiscal' },
@@ -51,6 +53,7 @@ export const TELAS: Tela[] = [
   { id: 't-area-links', app: 'Tarefas', nome: 'Área do Cliente › Links' },
   { id: 't-area-chamados', app: 'Tarefas', nome: 'Área do Cliente › Chamados' },
   { id: 't-area-recebidos', app: 'Tarefas', nome: 'Área do Cliente › Recebidos' },
+  { id: 't-entregas', app: 'Tarefas', nome: 'Entregas (Nova entrega, Rota e Painel)' },
   // Mandei: o formulário que o cliente abre pelo link
   { id: 'm-formulario', app: 'Mandei', nome: 'Formulário do cliente' },
   // Área do Cliente: o link secreto de cada empresa (Vitor, 16/10/2026)

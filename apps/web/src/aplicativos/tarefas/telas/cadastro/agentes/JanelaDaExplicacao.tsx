@@ -4,8 +4,8 @@
 // o pedido e a régua do porteiro (fácil · normal · difícil, com o modelo de cada um); o caminho do trabalho (você → o
 // porteiro → o Claude principal → os ajudantes, cada um na cor do seu modelo); e a linha do tempo dos últimos passos.
 // Ao vivo enquanto aberta. Fecha no ×, no Fechar, clicando fora ou no Esc.
-import { Icone } from '@nads/ui';
-import { useEffect } from 'react';
+import { BotaoFechar, Icone, useJanela } from '@nads/ui';
+import { useRef } from 'react';
 import type { AgenteExplicado, ExplicacaoDaSessao } from './useAgentesNoPainel';
 
 const NIVEIS = [
@@ -34,18 +34,16 @@ function Agente({ a }: { a: AgenteExplicado }) {
 }
 
 export function JanelaDaExplicacao({ e, fechar }: { e: ExplicacaoDaSessao; fechar: () => void }) {
-  useEffect(() => {
-    const esc = (ev: KeyboardEvent) => { if (ev.key === 'Escape') fechar(); };
-    window.addEventListener('keydown', esc);
-    return () => window.removeEventListener('keydown', esc);
-  }, [fechar]);
+  // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, fechar);
   const tomDoEstado = e.status === 'trabalhando' ? 'ok' : e.status === 'esperando' ? 'aviso' : 'neutro';
   const subs = e.agentes.filter(a => a.chave !== 'principal');
   const principal = e.agentes.find(a => a.chave === 'principal');
   const nivel = NIVEIS.find(n => n.id === e.nivel);
   return (
     <div className="modal-overlay" role="presentation" onClick={fechar}>
-      <div className={'modal aj aj-estado-' + tomDoEstado} role="dialog" aria-modal="true" aria-labelledby="ajTitulo" onClick={ev => ev.stopPropagation()}>
+      <div ref={janela} className={'modal aj aj-estado-' + tomDoEstado} role="dialog" aria-modal="true" aria-labelledby="ajTitulo" onClick={ev => ev.stopPropagation()}>
         {/* o cabeçalho, na cor do estado */}
         <header className="aj-topo">
           <div className="aj-topo-linha">
@@ -54,7 +52,7 @@ export function JanelaDaExplicacao({ e, fechar }: { e: ExplicacaoDaSessao; fecha
               <span className="aj-sobre">Como está funcionando</span>
               <h3 id="ajTitulo">{e.titulo}</h3>
             </div>
-            <button type="button" className="modal-x" aria-label="Fechar" title="Fechar" onClick={fechar} autoFocus><Icone nome="x" /></button>
+            <BotaoFechar canto onClick={fechar} autoFocus />
           </div>
           <div className="aj-topo-meta">
             <span className="aj-estado"><i aria-hidden="true" />{e.rotulo}</span>

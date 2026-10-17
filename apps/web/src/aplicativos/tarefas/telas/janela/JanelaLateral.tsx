@@ -2,8 +2,8 @@
 // direita o tópico escolhido (o título, o ×, o conteúdo que rola e um pé opcional). Fecha no ×, no Esc e clicando fora.
 // Usada em Cadastro › Usuários (a pessoa e o novo usuário) e no Drive (o Arquivar agora). Linha e Cartao: os cartões
 // com uma opção por linha (o rótulo e a explicação à esquerda, o controle à direita).
-import { Icone, type NomeIcone } from '@nads/ui';
-import { useEffect, type ReactNode } from 'react';
+import { BotaoFechar, Icone, useJanela, type NomeIcone } from '@nads/ui';
+import { useRef, type ReactNode } from 'react';
 
 export interface TopicoDaJanela<T extends string> { id: T; rotulo: string; icone: NomeIcone; alerta?: boolean; contador?: number; /** no lugar do ícone (a foto da pessoa) */ foto?: ReactNode }
 
@@ -24,15 +24,13 @@ export function JanelaLateral<T extends string>({ rotulo, resumo, topicos, topic
   rotulo: string; resumo: ReactNode; topicos: TopicoDaJanela<T>[]; topico: T; mudar: (t: T) => void; pe?: ReactNode; fechar: () => void;
   classe?: string; children: ReactNode;
 }) {
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') fechar(); };
-    document.addEventListener('keydown', esc);
-    return () => document.removeEventListener('keydown', esc);
-  }, [fechar]);
+  // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, fechar);
   const atual = topicos.find(t => t.id === topico) || topicos[0];
   return (
     <div className="modal-overlay pessoal-fundo" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
-      <div className={'pessoal-janela usuario-janela' + (classe ? ' ' + classe : '')} role="dialog" aria-modal="true" aria-label={rotulo}>
+      <div ref={janela} className={'pessoal-janela usuario-janela' + (classe ? ' ' + classe : '')} role="dialog" aria-modal="true" aria-label={rotulo}>
         <aside className="pessoal-lado usuario-lado">
           {resumo}
           <nav aria-label="Tópicos">
@@ -48,7 +46,7 @@ export function JanelaLateral<T extends string>({ rotulo, resumo, topicos, topic
         <section className="pessoal-conteudo">
           <header className="pessoal-topo">
             <h2>{atual.rotulo}</h2>
-            <button type="button" className="drawer-x" aria-label="Fechar" onClick={fechar}><Icone nome="x" /></button>
+            <BotaoFechar onClick={fechar} />
           </header>
           <div className="pessoal-rola">{children}</div>
           {pe && <footer className="usuario-pe">{pe}</footer>}

@@ -1,10 +1,11 @@
 // As peças do catálogo, desenhadas com as MESMAS peças do sistema (@nads/ui e as classes do nads.css). A ordem dentro
 // de cada tipo dá o código (BT-01, BT-02…): peça nova entra no FIM do tipo, para os códigos não mudarem.
 import {
-  Alerta, BotaoAcao, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail,
+  Alerta, AnelDeContagem, BarrasEmColuna, BotaoAcao, BotaoFechar, Vazio, CartaoComAnel, RoscaComLegenda, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail,
   LogoFgts, LogoGovernoMinas, LogoInss, LogoReceitaFederal, LogoSimplesNacional, LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
 } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
+import { CampoAssinatura } from '@nads/ui';
 import { CONCILIA, EXECUTOR, EXTRATUDO, TAREFAS, TODAS } from './telas';
 import type { Peca } from './tipos';
 import { BotaoGoogle } from '../../../comum/BotaoGoogle';
@@ -21,7 +22,7 @@ import { LinhaDeGuia } from '../../cliente/partes/LinhaDeGuia';
 import { LinhaDePaga } from '../../cliente/partes/LinhaDePaga';
 import { MarcaDoEscritorio } from '../../cliente/partes/MarcaDoEscritorio';
 import { SiglaDaGuia } from '../../cliente/partes/SiglaDaGuia';
-import { Vazio } from '../../cliente/partes/Vazio';
+import { Vazio as VazioDoCliente } from '../../cliente/partes/Vazio';
 import { BlocoDoLink } from '../../tarefas/telas/area-cliente/partes/BlocoDoLink';
 import { BotoesDoLink } from '../../tarefas/telas/area-cliente/partes/BotoesDoLink';
 import { ConversaDoEscritorio } from '../../tarefas/telas/area-cliente/partes/ConversaDoEscritorio';
@@ -140,6 +141,10 @@ function MesVivo() {
   const [v, setV] = useState('2026-08');
   return <SeletorMes valor={v} onMudar={setV} rotulo="Competência" />;
 }
+function AssinaturaViva() {
+  const [v, setV] = useState<string | null>(null);
+  return <div style={{ width: '100%', maxWidth: 420 }}><CampoAssinatura valor={v} onMudar={setV} telaCheia rotulo="Assinatura de quem recebeu" /></div>;
+}
 function DataVivo() {
   const [v, setV] = useState('31/08/2026');
   return <CampoData valor={v} onMudar={setV} rotulo="Data" />;
@@ -150,7 +155,8 @@ export const ICONES: NomeIcone[] = [
   'arrowDown', 'arrowUp', 'check', 'checkCircle', 'scale', 'alert', 'lock', 'unlock', 'x', 'sun', 'moon', 'monitor', 'upload', 'ajuda',
   'olho', 'fileText', 'clock', 'chevronsLeft', 'chevronLeft', 'chevronRight', 'settings', 'logOut', 'barChart', 'caretDown', 'play',
   'camera', 'imagem', 'filtro', 'ordenar', 'copiar', 'search', 'repeat', 'calendar', 'plus', 'fileSearch', 'hash', 'list', 'menu', 'pastaAberta', 'mais',
-  'girar', 'maximizar', 'minimizar', 'painel', 'cartao', 'download', 'grade', 'impressora', 'dinheiro', 'predio', 'escudo', 'seta', 'telefone', 'aviao', 'clipe',
+  'girar', 'maximizar', 'minimizar', 'painel', 'cartao', 'download', 'grade', 'impressora', 'dinheiro', 'caminhao',
+  'arrastar', 'lixeira', 'mapaPin', 'qrCode', 'codigoBarras', 'telefone', 'celular', 'trofeu', 'alvo', 'lampada', 'predio', 'escudo', 'seta', 'aviao', 'clipe',
 ];
 const BANCOS = ['banco-do-brasil', 'banrisul', 'bradesco', 'btg', 'c6', 'caixa', 'inter', 'itau', 'mercado-pago', 'nubank', 'pagbank', 'safra', 'santander', 'sicoob', 'stone', 'cora', 'sicredi', 'bnb'];
 const CORES = [
@@ -181,10 +187,10 @@ export const PECAS_BASE: Peca[] = [
     uso: '<BotaoAcao carregando={x} textoCarregando="Importando…">Importar</BotaoAcao>', demo: () => <><BotaoAcao>Importar</BotaoAcao><BotaoAcao carregando textoCarregando="Importando…">Importar</BotaoAcao></> },
   { id: 'icon-btn', tipo: 'botoes', nome: 'Botão de ícone', descricao: '32 px; sempre com título', componente: 'BotaoIcone', classes: ['icon-btn'], telas: TODAS,
     uso: '<BotaoIcone icone="x" titulo="Fechar" />', demo: () => <><BotaoIcone icone="copiar" titulo="Copiar" /><BotaoIcone icone="x" titulo="Fechar" /><BotaoIcone icone="olho" titulo="Ver o PDF" /><button className="icon-btn girando" title="Buscando"><Icone nome="girar" /></button></> },
-  { id: 'config', tipo: 'botoes', nome: 'Configuração (estilo Notion)', descricao: 'A seção com o título e a linha fina; cada opção numa linha solta: o nome, a descrição curta e o controle à direita', componente: 'ConfigSecao + ConfigLinha', classes: ['cfg-secao', 'cfg-linha'], telas: ['t-cadastro-janela'],
+  { id: 'config', tipo: 'botoes', nome: 'Configuração (estilo Notion)', descricao: 'A seção com o título e a linha fina; cada opção numa linha solta: o nome, a descrição curta e o controle à direita', componente: 'ConfigSecao + ConfigLinha', classes: ['cfg-secao', 'cfg-linha'], telas: ['t-empresa-lcdpr', 't-cadastro-janela'],
     uso: '<ConfigSecao titulo="Contábil"><ConfigLinha titulo="Cartão empresarial" descricao="A etapa Cartões quebra a fatura."><Interruptor … /></ConfigLinha></ConfigSecao>',
     demo: () => <div style={{ width: '100%' }}><ConfigSecao titulo="Parâmetros"><ConfigLinha titulo="Cartão empresarial" descricao="A etapa Cartões quebra a fatura no razão do cartão."><Interruptor ligado onMudar={() => {}} rotulo="Cartão empresarial" /></ConfigLinha><ConfigLinha titulo="Regime tributário" descricao="Define as etapas da rotina do Fiscal."><span className="hint">Presumido</span></ConfigLinha></ConfigSecao></div> },
-  { id: 'registro-novo', tipo: 'botoes', nome: 'Criar registro (Attio + Notion)', descricao: 'A janela de criar: o campo principal em destaque (o CNPJ), o cartão da Receita, as propriedades em linhas (ícone e nome à esquerda, valor sem caixa) e o rodapé com "Cadastrar outra"', classes: ['registro-novo', 'registro-busca', 'registro-receita', 'registro-prop', 'registro-pe'], telas: ['t-cadastro-janela'],
+  { id: 'registro-novo', tipo: 'botoes', nome: 'Criar registro (Attio + Notion)', descricao: 'A janela de criar: o campo principal em destaque (o CNPJ), o cartão da Receita, as propriedades em linhas (ícone e nome à esquerda, valor sem caixa) e o rodapé com "Cadastrar outra"', classes: ['registro-novo', 'registro-busca', 'registro-receita', 'registro-prop', 'registro-pe'], telas: ['t-empresa-lcdpr', 't-cadastro-janela'],
     demo: () => (
       <div className="registro-novo" style={{ width: '100%', maxWidth: 520 }}>
         <div className="registro-busca"><Icone nome="search" /><input type="text" placeholder="CNPJ da empresa" readOnly /></div>
@@ -192,6 +198,17 @@ export const PECAS_BASE: Peca[] = [
           <div className="registro-prop"><span className="registro-prop-nome"><Icone nome="fileText" />Nome</span><div className="registro-prop-valor"><input type="text" placeholder="Razão social" readOnly /></div></div>
           <div className="registro-prop"><span className="registro-prop-nome"><Icone nome="hash" />Código no ERP</span><div className="registro-prop-valor"><input type="text" placeholder="Vazio" readOnly /></div></div>
         </div>
+      </div>
+    ) },
+  { id: 'busca-cliente', tipo: 'botoes', nome: 'Busca de cliente com lista (Nova nota)', descricao: 'O campo em destaque do registro vira uma busca: digitou o código ou parte do nome, a lista logo abaixo (código em negrito, nome, CNPJ); ↑↓ e Enter escolhem, Esc fecha. Escolhido, o campo mostra "código · nome" com o ✕ para trocar', classes: ['registro-busca', 'nf-achados', 'nf-ativo', 'nf-achado-codigo', 'nf-escolhido'], telas: ['t-cadastro-janela'],
+    uso: 'registro-busca (input) + ul.nf-achados > li > button.popover-item (.nf-achado-codigo, .popover-texto, .popover-dica)',
+    demo: () => (
+      <div className="registro-novo" style={{ width: '100%', maxWidth: 520 }}>
+        <div className="registro-busca"><Icone nome="search" /><input type="text" defaultValue="462" readOnly aria-label="Buscar o cliente" /></div>
+        <ul className="nf-achados" style={{ marginTop: 6 }}>
+          <li><button type="button" className="popover-item nf-ativo"><span className="nf-achado-codigo">462</span><span className="popover-texto">EXEMPLO COMERCIO LTDA</span><span className="popover-dica">11.222.333/0001-81</span></button></li>
+          <li><button type="button" className="popover-item"><span className="nf-achado-codigo">1462</span><span className="popover-texto">OUTRA EMPRESA EXEMPLO</span></button></li>
+        </ul>
       </div>
     ) },
   { id: 'comp-meses', tipo: 'botoes', nome: 'Calendário de meses (competência)', descricao: 'O ano com ‹ › no alto, os 12 meses em 3 × 4: o escolhido cheio, o de hoje com um pontinho, os que não começaram apagados; Abrir embaixo. Anima (animejs): a janela entra em 200 ms com os meses em cascata, a pílula do escolhido desliza até o mês clicado, a grade escorrega para o lado da seta ao trocar de ano e o texto do rodapé acende ao mudar; sem movimento se o computador pedir', classes: ['comp-meses', 'comp-mes'], telas: ['t-empresas'],
@@ -228,6 +245,9 @@ export const PECAS_BASE: Peca[] = [
     </> },
   { id: 'botao-google', tipo: 'botoes', nome: 'Entrar com o Google', componente: 'BotaoGoogle', classes: ['btn btn-outline botao-google'], telas: ['e-importacao', 't-drive'],
     uso: '<BotaoGoogle entrando={x} onClick={entrar} />', demo: () => <><BotaoGoogle onClick={() => undefined} /><BotaoGoogle entrando onClick={() => undefined} /></> },
+  // o × de fechar (revisão da UI, 16/10/2026: eram cinco desenhos; agora todas as janelas, gavetas e painéis usam este)
+  { id: 'janela-x', tipo: 'botoes', nome: 'Fechar janela (×)', descricao: '32 px sem borda, o fundo aparece ao passar o mouse; o nome "Fechar" e a dica com o Esc. canto: preso no canto de cima da janela do meio', componente: 'BotaoFechar', classes: ['janela-x', 'modal-x'], telas: TODAS,
+    uso: '<BotaoFechar onClick={fechar} />  ·  <BotaoFechar canto onClick={fechar} />  ·  <BotaoFechar rotulo="Fechar menu" onClick={fechar} />', demo: () => <><BotaoFechar onClick={nada} /><BotaoFechar rotulo="Fechar menu" onClick={nada} /><BotaoFechar disabled onClick={nada} /></> },
 
   // ─── Selos ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'badge-ok', tipo: 'selos', nome: 'Ok', descricao: 'Verde preenchido: bateu (regra do app todo, 05/10/2026)', classes: ['badge badge-ok'], telas: ['c-relatorio', 'e-importacao', 't-exec-importacao', 't-exec-cheque', 't-exec-fiscal', 't-exec-clientes', 'c-cliente', 'c-cliente-guias', 'c-cliente-dp', 'c-cliente-chamados'],
@@ -239,10 +259,10 @@ export const PECAS_BASE: Peca[] = [
   { id: 'cert-a1', tipo: 'campos', nome: 'Certificado A1 (soltar o .pfx e o cartão)', descricao: 'A área grande para soltar o arquivo (pulsa ao passar por cima) e o cartão do certificado lido: titular, CNPJ, validade e situação', classes: ['cert-soltar', 'cert-cartao', 'cert-campos', 'cert-acoes'], telas: ['t-senhas'],
     demo: () => <div style={{ width: '100%' }}><div className="cert-cartao lido ok"><span className="cert-cartao-chip" aria-hidden="true"><Icone nome="lock" /></span><div className="cert-cartao-corpo"><span className="cert-cartao-tipo">Certificado digital A1</span><b className="cert-cartao-nome">EMPRESA EXEMPLO LTDA</b><span className="cert-cartao-doc num">12.345.678/0001-90</span></div><div className="cert-cartao-validade"><span className="fraco">Validade</span><b className="num">10/04/2027</b><span className="badge badge-ok">Em dia</span></div></div></div> },
   { id: 'cert-painel', tipo: 'graficos', nome: 'Painel dos certificados', descricao: 'A rosca das situações com a legenda (clicar filtra), as barras dos vencimentos por mês e o cartão com o anel da contagem regressiva', classes: ['cert-dash', 'cert-rosca', 'cert-legenda', 'cert-barras', 'cert-urgente', 'cert-contagem', 'cert-cor-vence', 'cert-cor-vencido', 'cert-cor-ok', 'cert-cor-sem'], telas: ['t-senhas'], largo: true,
-    demo: () => <div style={{ width: '100%', display: 'grid', gap: 12 }}><div className="cert-barras" style={{ minHeight: 160 }}>{[2, 5, 1, 0, 3, 4, 2, 6, 1, 0, 2, 3].map((n, i) => <span key={i} className={'cert-barra' + (i === 0 ? ' logo' : '')}><span className="cert-barra-num num">{n || ''}</span><span className="cert-barra-trilho" style={{ minHeight: 90 }}><span className="cert-barra-cheia" style={{ height: (n / 6) * 100 + '%' }} /></span><span className="cert-barra-mes">{['out', 'nov', 'dez', 'jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set'][i]}</span></span>)}</div><span className="card cert-urgente" style={{ maxWidth: 300 }}><span className="cert-contagem cert-cor-vence"><svg viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r={15.915} className="cert-rosca-fundo" /><circle cx="21" cy="21" r={15.915} className="cert-contagem-arco" strokeDasharray="40 60" strokeDashoffset={25} /></svg><span className="cert-contagem-num num">12</span></span><span className="cert-urgente-texto"><b>EMPRESA EXEMPLO LTDA</b><span className="cert-urgente-prazo vence">Vence em 12 dias</span><span className="fraco num">292 · 19/10/2026</span></span></span></div> },
-  { id: 'fgts-resumo', tipo: 'cartoes', nome: 'Resumo do mês com a barra (FGTS Digital)', descricao: 'O título do mês, quantas prontas de quantas, a barra de progresso inteira, o robô numa linha (bolinha) e o botão principal; e os passos do robô numa linha do tempo', classes: ['fgts-resumo', 'fgts-resumo-topo', 'fgts-robo-linha', 'fgts-barra', 'fgts-passos', 'fgts-passo-marca'], telas: ['t-dp-fgts', 't-exec-fiscal-rotina'], largo: true,
+    demo: () => <div style={{ width: '100%', display: 'grid', gap: 12 }}><div className="cert-barras" style={{ minHeight: 160 }}>{[2, 5, 1, 0, 3, 4, 2, 6, 1, 0, 2, 3].map((n, i) => <span key={i} className={'cert-barra' + (i === 0 ? ' logo' : '')}><span className="cert-barra-num num">{n || ''}</span><span className="cert-barra-trilho" style={{ minHeight: 90 }}><span className="cert-barra-cheia" style={{ height: (n / 6) * 100 + '%' }} /></span><span className="cert-barra-mes">{['Out', 'Nov', 'Dez', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set'][i]}</span></span>)}</div><span className="card cert-urgente" style={{ maxWidth: 300 }}><span className="cert-contagem cert-cor-vence"><svg viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r={15.915} className="cert-rosca-fundo" /><circle cx="21" cy="21" r={15.915} className="cert-contagem-arco" strokeDasharray="40 60" strokeDashoffset={25} /></svg><span className="cert-contagem-num num">12</span></span><span className="cert-urgente-texto"><b>EMPRESA EXEMPLO LTDA</b><span className="cert-urgente-prazo vence">Vence em 12 dias</span><span className="fraco num">292 · 19/10/2026</span></span></span></div> },
+  { id: 'fgts-resumo', tipo: 'cartoes', nome: 'Resumo do mês com a barra (FGTS Digital)', descricao: 'O título do mês, quantas prontas de quantas, a barra de progresso inteira, o robô numa linha (bolinha) e o botão principal; e os passos do robô numa linha do tempo', classes: ['fgts-resumo', 'fgts-resumo-topo', 'fgts-robo-linha', 'fgts-barra', 'fgts-passos', 'fgts-passo-marca'], telas: ['t-empresa-lcdpr', 't-dp-fgts', 't-exec-fiscal-rotina'], largo: true,
     demo: () => <div style={{ width: '100%', display: 'grid', gap: 12 }}><section className="card fgts-resumo"><div className="fgts-resumo-topo"><div className="fgts-resumo-titulo"><h3>Guias de Setembro/2026</h3><span className="hint"><b className="num">12</b> de <b className="num">115</b> emitidas · 2 com o robô agora</span></div><span className="fgts-robo-linha"><span className="bolinha-sit concluida" aria-hidden="true" />Robô ligado · certificado até 20/05/2027</span><button type="button" className="btn btn-primary"><Icone nome="fileDown" />Emitir as que faltam · 101</button></div><span className="tarefas-barra fgts-barra"><span style={{ width: '10%' }} /></span></section><ol className="fgts-passos">{['portal', 'gov.br', 'entrou', 'perfil do cliente'].map((n, i) => <li key={n}><span className="fgts-passo-marca" aria-hidden="true">{i + 1}</span><div><b>{n}</b> <span className="fraco">07/10, 14:2{i}</span></div></li>)}</ol></div> },
-  { id: 'imp-recebidos', tipo: 'avisos', nome: 'Extratos que chegaram por e-mail', descricao: 'Na tarefa de extratos (08/10/2026: "ele já jogue o extrato para o nads"): os que não entraram sozinhos, um por linha, com o banco a escolher, Importar e Ignorar (dentro do Alerta na linha)', classes: ['imp-recebidos', 'imp-recebidos-nome'], telas: ['e-importacao', 't-exec-importacao'], largo: true,
+  { id: 'imp-recebidos', tipo: 'avisos', nome: 'Extratos que chegaram por e-mail', descricao: 'Na tarefa de extratos (08/10/2026: "ele já jogue o extrato para o nads"): os que não entraram sozinhos, um por linha, com o banco a escolher, Importar e Ignorar (dentro do Alerta na linha)', classes: ['imp-recebidos', 'imp-recebidos-nome'], telas: ['t-empresa-lcdpr', 'e-importacao', 't-exec-importacao'], largo: true,
     demo: () => <div style={{ width: '100%' }}><Alerta naLinha titulo="2 extratos chegaram por e-mail" texto="Escolha em qual banco entra cada um. Se o banco já tiver extrato no mês, o Extrator pergunta se importa só o que é novo."><ul className="imp-recebidos">{[['extrato setembro.pdf', 'Sicoob · 12345-6'], ['EXTRATO_CC.ofx', '']].map(([n, c]) => <li key={n}><span className="imp-recebidos-nome"><b>{n}</b><span className="hint">08/10/2026 · cliente@empresa.com.br</span></span><select className="select-compact" defaultValue={c}><option value="">Escolha o banco…</option>{c && <option value={c}>{c}</option>}</select><button type="button" className="btn btn-primary" disabled={!c}><Icone nome="upload" />Importar</button><button type="button" className="btn btn-ghost">Ignorar</button></li>)}</ul></Alerta></div> },
   { id: 'sieg-andamento', tipo: 'cartoes', nome: 'Andamento do robô (janela flutuante)', descricao: 'No canto da tela enquanto o robô trabalha (o Baixar XMLs do SIEG; 08/10/2026: "uma porcentagem melhor e uma tela mais bem produzida"): o título com o tempo e o que falta, a porcentagem grande, a barra, a linha do robô, os números em painéis e os passos que vão ficando verdes', classes: ['sieg-andamento', 'sieg-andamento-pct', 'sieg-andamento-numeros', 'sieg-andamento-passos'], telas: ['t-exec-fiscal-rotina'],
     demo: () => <div className="card gmail-andamento sieg-andamento" style={{ position: 'static' }}><div className="fgts-resumo-topo"><div className="fgts-resumo-titulo"><h3>Baixando os XMLs do SIEG</h3><span className="hint">42 s · falta uns 18 s</span></div><b className="sieg-andamento-pct num">68%</b></div><span className="tarefas-barra fgts-barra andando"><span style={{ width: '68%' }} /></span><span className="fgts-robo-linha"><span className="bolinha-sit em-andamento" aria-hidden="true" />Baixando CT-e do portal (519 XMLs até agora)</span><div className="stat-grid sieg-andamento-numeros">{([['XMLs', 519, 'info', 'arquivo'], ['Já no Drive', 60, 'roxo', 'pasta'], ['Novos salvos', 0, 'ok', 'check']] as [string, number, string, NomeIcone][]).map(([r, v, tom, ic]) => <div key={r} className={'stat painel-numero painel-' + tom}><span className="painel-numero-icone" aria-hidden="true"><Icone nome={ic} /></span><p className="stat-label">{r}</p><p className="stat-value num">{v}</p></div>)}</div><ol className="fgts-passos sieg-andamento-passos">{['Pedido enviado ao robô', 'O robô pegou o pedido', 'Baixando os XMLs do SIEG', 'O .zip no seu computador'].map((t, i) => <li key={t} className={i < 2 ? 'feito' : i === 2 ? 'atual' : undefined}><span className="fgts-passo-marca" aria-hidden="true">{i < 2 ? <Icone nome="check" /> : i + 1}</span><div>{i === 2 ? <b>{t}</b> : t}</div></li>)}</ol></div> },
@@ -277,12 +297,6 @@ export const PECAS_BASE: Peca[] = [
   { id: 'grupo-tag', tipo: 'selos', nome: 'Grupo da conta', classes: ['grupo-tag g-a', 'g-p', 'g-d', 'g-r'], telas: ['c-cadastro', 't-cadastro-janela'],
     demo: () => <><span className="grupo-tag g-a">Ativo</span><span className="grupo-tag g-p">Passivo</span><span className="grupo-tag g-d">Despesa</span><span className="grupo-tag g-r">Receita</span></> },
 
-  { id: 'selo-suave', tipo: 'selos', nome: 'Selo suave (Área do Cliente)', descricao: 'O único selo da Área do Cliente (versão D, Vitor, 16/10/2026): o badge do nads dentro de .cli-app vira a pílula sem borda, com o pontinho e o fundo suave; a cor só pelo significado — vermelho vencida e férias vencidas, amarelo vence hoje, a fazer e não baixado, verde pago, em dia e respondido; neutro para o resto. Funciona no claro e no escuro', classes: ['badge', 'badge-bad', 'badge-warn', 'badge-ok', 'badge-neutral', 'cli-sem-ponto'], telas: ['c-cliente', 'c-cliente-documentos', 'c-cliente-guias', 'c-cliente-dp', 'c-cliente-chamados'],
-    demo: () => (
-      <div className="cli-app cli-demo" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        <span className="badge badge-bad">Vencida</span><span className="badge badge-warn">Vence hoje</span><span className="badge badge-ok">Pago</span><span className="badge badge-ok">Em dia</span><span className="badge badge-neutral">A vencer</span><span className="badge badge-neutral cli-sem-ponto">Fiscal</span>
-      </div>
-    ) },
   // ─── Ícones ─────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'icones', tipo: 'icones', nome: 'Todos os ícones', descricao: 'SVG 24×24, traço 1,75, na cor do texto', componente: 'Icone', telas: TODAS, largo: true, uso: '<Icone nome="search" />',
     demo: () => <div className="cat-icones">{ICONES.map(n => <span key={n} className="cat-icone"><Icone nome={n} />{n}</span>)}</div> },
@@ -298,21 +312,48 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoDrive /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoDrive cor /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoGmail /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoWhatsApp /></span></> },
 
   // ─── Campos ─────────────────────────────────────────────────────────────────────────────────────────────────────────
-  { id: 'busca-curta', tipo: 'campos', nome: 'Busca (com lupa)', classes: ['busca-curta', 'busca-curta larga'], telas: ['t-empresas', 't-cadastro', 't-drive', 'e-importacao', 'c-consulta'],
+  { id: 'busca-curta', tipo: 'campos', nome: 'Busca (com lupa)', classes: ['busca-curta', 'busca-curta larga'], telas: ['t-empresa-lcdpr', 't-empresas', 't-cadastro', 't-drive', 'e-importacao', 'c-consulta', 't-senhas'],
     uso: '<label className="busca-curta"><Icone nome="search" /><input /></label>', demo: () => <label className="busca-curta"><Icone nome="search" /><input type="text" placeholder="Buscar no extrato" /><kbd>/</kbd></label> },
   { id: 'field', tipo: 'campos', nome: 'Campo de texto', classes: ['field'], telas: ['t-entrar', 't-cadastro-janela', 'c-cadastro', 'c-cliente-dp', 'c-cliente-chamados'],
     demo: () => <div className="field" style={{ width: 260 }}><label htmlFor="cat-f1">Agência</label><input id="cat-f1" type="text" placeholder="Ex.: 3001" /></div> },
-  { id: 'select', tipo: 'campos', nome: 'Seleção', descricao: 'Com o triângulo do GitHub; a compacta tem o mesmo tamanho (só a largura acompanha o texto)', classes: ['field select', 'select-compact'], telas: ['c-cadastro', 'e-conferencia', 'c-relatorio'],
+  { id: 'select', tipo: 'campos', nome: 'Seleção', descricao: 'Com o triângulo do GitHub; a compacta tem o mesmo tamanho (só a largura acompanha o texto)', classes: ['field select', 'select-compact'], telas: ['t-empresa-lcdpr', 'c-cadastro', 'e-conferencia', 'c-relatorio'],
     demo: () => <><select defaultValue="cfop" style={{ width: 180 }}><option value="cfop">CFOP (A-Z)</option><option>Fornecedor (A-Z)</option></select><select className="select-compact" defaultValue="a"><option value="a">Todas</option></select></> },
   { id: 'checkbox', tipo: 'campos', nome: 'Checkbox', descricao: '18 px; o ✓ é desenhado para 18 px', classes: ['input[type=checkbox]', 'chk-auto'], telas: ['c-naturezas', 'c-relatorio', 't-exec-folha'],
     demo: () => <><input type="checkbox" /><input type="checkbox" defaultChecked /><input type="checkbox" disabled /><input type="checkbox" className="chk-auto" defaultChecked /></> },
   { id: 'interruptor', tipo: 'campos', nome: 'Interruptor', componente: 'Interruptor', classes: ['toggle-switch'], telas: ['c-consulta', 't-cadastro-config'], demo: () => <InterruptorVivo /> },
   { id: 'data', tipo: 'campos', nome: 'Data (dd/mm/aaaa)', componente: 'CampoData', classes: ['data-mask'], telas: ['c-consulta', 'e-cheque', 'c-cliente-dp'], demo: () => <DataVivo /> },
   { id: 'mes', tipo: 'campos', nome: 'Seletor de mês', componente: 'SeletorMes', classes: ['seletor-mes'], telas: ['t-empresas', 't-contabil', 'c-cliente-guias'], demo: () => <MesVivo /> },
-  { id: 'arquivos', tipo: 'campos', nome: 'Escolher arquivos', componente: 'CampoArquivos', classes: ['file-picker'], telas: ['c-importacao', 'e-cheque', 'e-creditor', 'c-cliente-chamados'],
+  { id: 'arquivos', tipo: 'campos', nome: 'Escolher arquivos', componente: 'CampoArquivos', classes: ['file-picker'], telas: ['t-empresa-lcdpr', 'c-importacao', 'e-cheque', 'e-creditor', 'c-cliente-chamados'],
     demo: () => <><CampoArquivos id="cat-arq" onEscolher={nada} aceitar=".xls,.xlsx" /><CampoArquivos id="cat-arq2" onEscolher={nada} aceitar=".xls" compacto rotulo="Importar todos os meses" /></> },
-  { id: 'area-soltar', tipo: 'campos', nome: 'Área de soltar arquivos', descricao: 'Da Área do Cliente (Vitor, 16/10/2026): arrastar os arquivos para cima dela ou clicar para escolher; a moldura tracejada do escolher arquivos do nads, maior, com o ícone e a dica do que aceita (PDF, JPG, PNG, XML ou ZIP, até 700 KB cada, o limite das regras do banco); fica avermelhada quando o arquivo está por cima. Os escolhidos aparecem embaixo e só vão no botão Enviar', componente: 'AreaDeSoltar', classes: ['cli-soltar', 'sobre'], telas: ['c-cliente-documentos'], largo: true,
-    demo: () => <div className="cli-app cli-demo" style={{ width: '100%' }}><AreaDeSoltar aceitar=".pdf,.jpg,.png,.xml,.zip" dica="PDF, JPG, PNG, XML ou ZIP · até 700 KB cada" onArquivos={nada} /></div> },
+  // a assinatura e os documentos com valor da entrega de documentos (16/10/2026, trazida do Entregas)
+  { id: 'assinatura', tipo: 'campos', nome: 'Assinatura (dedo, caneta ou mouse)', descricao: 'O quadro branco (é papel: branco também no tema escuro) com "Assine aqui" apagado enquanto vazio, o estado embaixo, "Tela cheia" (o quadro ocupa a tela, em pé; 16/10/2026, como o Entregas) e o Limpar; devolve o PNG em data URL a cada traço (fundo branco e traço escuro, como o Entregas grava)', componente: 'CampoAssinatura', classes: ['assinatura', 'assinatura-quadro', 'assinatura-pe', 'assinatura-cheia'], telas: ['t-entregas'],
+    uso: '<CampoAssinatura valor={assinatura} onMudar={setAssinatura} altura={200} telaCheia rotulo="Assinatura de quem recebeu" />', demo: () => <AssinaturaViva /> },
+  { id: 'ent-docs', tipo: 'campos', nome: 'Documentos com valor (Nova entrega)', descricao: 'Uma linha por documento: o nome, o funcionário (quando pede), o valor em R$ à direita (ou "sem valor") e o ✕; para ler, a mesma lista sem as caixas e com o Total tracejado', classes: ['ent-docs', 'ent-doc', 'ent-doc-tipo', 'ent-doc-valor', 'ent-doc-total'], telas: ['t-entregas'],
+    demo: () => (
+      <div style={{ width: '100%', maxWidth: 520 }}>
+        <ul className="ent-docs">
+          <li className="ent-doc"><span className="ent-doc-tipo">DAS</span><input type="text" className="ent-doc-valor num" defaultValue="480,90" aria-label="Valor" /><BotaoIcone icone="x" titulo="Tirar o documento" pequeno /></li>
+          <li className="ent-doc"><span className="ent-doc-tipo">Honorário</span><span className="fraco ent-doc-valor">sem valor</span><BotaoIcone icone="x" titulo="Tirar o documento" pequeno /></li>
+        </ul>
+        <ul className="ent-docs ent-docs-ler">
+          <li className="ent-doc"><span className="ent-doc-tipo">FGTS</span><span className="ent-doc-valor num">R$ 210,00</span></li>
+          <li className="ent-doc ent-doc-total"><span className="ent-doc-tipo">Total</span><span className="ent-doc-valor num">R$ 690,90</span></li>
+        </ul>
+      </div>
+    ) },
+  // a planilha de "Adicionar documento" da Nova entrega (16/10/2026, a cópia fiel do Entregas)
+  { id: 'ent-planilha', tipo: 'campos', nome: 'Planilha de documentos (Adicionar documento)', descricao: 'Flutua embaixo de "Adicionar documento": uma linha por documento com o valor ao lado (repetir e tirar); a última é a escolha do próximo — escolheu, o cursor vai para o valor; Enter volta para a escolha; Esc ou Pronto fecham', classes: ['popover ent-planilha', 'ent-planilha-nova', 'ent-planilha-x', 'ent-planilha-pe'], telas: ['t-entregas'],
+    demo: () => (
+      <div className="popover ent-planilha" style={{ position: 'static', width: '100%' }}>
+        <h4>Documentos da entrega</h4>
+        <div className="table-wrap ent-planilha-rolagem"><table className="table-compact"><thead><tr><th>Documento</th><th>Valor</th><th /></tr></thead><tbody>
+          <tr><td>DAS</td><td><input type="text" className="num" defaultValue="480,90" aria-label="Valor" /></td><td className="ent-planilha-x"><BotaoIcone icone="copiar" titulo="Repetir" pequeno /><BotaoIcone icone="x" titulo="Tirar" pequeno /></td></tr>
+          <tr><td>Honorário</td><td><span className="fraco">sem valor</span></td><td className="ent-planilha-x"><BotaoIcone icone="x" titulo="Tirar" pequeno /></td></tr>
+          <tr className="ent-planilha-nova"><td colSpan={3}><select defaultValue="" aria-label="Próximo documento"><option value="">+ clique pra escolher o documento</option></select></td></tr>
+        </tbody></table></div>
+        <div className="ent-planilha-pe"><button type="button" className="btn btn-primary">Pronto</button></div>
+      </div>
+    ) },
 
   // ─── Tabelas ────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'tabela', tipo: 'tabelas', nome: 'Tabela padrão', descricao: 'Cabeçalho grudado; números à direita (.num); a conta com o código em negrito e o nome normal', componente: 'TituloDaConta', classes: ['table-wrap', 'table-compact', 'th-sort', 'num'], telas: ['c-relatorio', 'c-consulta', 'e-conferencia', 't-empresas', 'c-cliente-documentos', 'c-cliente-dp'], largo: true,
@@ -341,6 +382,16 @@ export const PECAS_BASE: Peca[] = [
         <tr className="linha-passivo"><td /><td>21401 — Telefone a Pagar (vínculo no Passivo)</td><td className="num">312,00</td></tr>
         <tr className="linha-excluida"><td /><td>extrato-julho.pdf (excluído)</td><td className="num">—</td></tr>
       </tbody></table></div>
+    ) },
+  // o LCDPR dentro da empresa (16/10/2026: "quero integrar no app o importador lcpr … que fique tudo no visual igual")
+  { id: 'lcdpr-lancamentos', tipo: 'tabelas', nome: 'Lançamentos do LCDPR', descricao: 'A lista do Cadastro com a marcação estreita, os selos numa linha (NF/CT-e, REVISAR ou como foi classificado), a categoria trocada na própria linha (a seleção compacta) e o fornecedor cortado; clicar na linha abre o lançamento', classes: ['lcdpr-tabela', 'lcdpr-marca', 'lcdpr-selos', 'lcdpr-corta'], telas: ['t-empresa-lcdpr'], largo: true,
+    demo: () => (
+      <div className="table-wrap lcdpr-tabela" style={{ marginBottom: 0 }}><table className="cad-lista"><thead><tr><th className="lcdpr-marca"><input type="checkbox" aria-label="Selecionar" /></th><th>Situação</th><th>Categoria</th><th>Data</th><th>Fornecedor</th><th>Documento</th><th className="num">Valor</th></tr></thead>
+        <tbody>
+          <tr className="linha-abre"><td className="lcdpr-marca"><input type="checkbox" aria-label="Selecionar" /></td><td><span className="lcdpr-selos"><span className="badge badge-neutral">NF</span><span className="badge badge-ok">NCM</span></span></td><td><select className="select-compact lanc-sel preenchido" defaultValue="c"><option value="c">Combustíveis e Lubrificantes</option></select></td><td className="num fraco">15/01/2025</td><td><span className="lcdpr-corta">POSTO FICTICIO DE COMBUSTIVEIS LTDA</span></td><td className="num">123</td><td className="num">1.000,00</td></tr>
+          <tr className="linha-abre"><td className="lcdpr-marca"><input type="checkbox" defaultChecked aria-label="Selecionar" /></td><td><span className="lcdpr-selos"><span className="badge badge-neutral">NF</span><span className="badge badge-warn">REVISAR</span></span></td><td><select className="select-compact lanc-sel" defaultValue=""><option value="">— nenhuma —</option></select></td><td className="num fraco">20/01/2025</td><td><span className="lcdpr-corta">LOJA FICTICIA</span></td><td className="num">9/2</td><td className="num">89,90</td></tr>
+          <tr className="linha-abre"><td className="lcdpr-marca"><input type="checkbox" aria-label="Selecionar" /></td><td><span className="lcdpr-selos"><span className="badge badge-neutral">CT-e</span><span className="badge badge-neutral">padrão CT-e</span></span></td><td><select className="select-compact lanc-sel preenchido" defaultValue="f"><option value="f">Fretes e Carretos</option></select></td><td className="num fraco">22/01/2025</td><td><span className="lcdpr-corta">TRANSPORTADORA FICTICIA</span></td><td className="num">77/2</td><td className="num">1.234,56</td></tr>
+        </tbody></table></div>
     ) },
 
   // ─── Menus suspensos ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -382,6 +433,10 @@ export const PECAS_BASE: Peca[] = [
         </div>
       </div>
     ) },
+  // os filtros da barra em menus (revisão da UI, 16/10/2026: o DP tinha 8 <select> com rótulo em cima)
+  { id: 'menu-filtro', tipo: 'menus', nome: 'Filtro da barra (menu)', descricao: 'O MenuSuspenso com o nome do filtro; escolhido, mostra "Nome: valor" e fica marcado (.ativo). "Todos" volta ao vazio. Na barra, ao lado da competência e da busca de lupa', componente: 'MenuDeFiltro (Tarefa › DP)', classes: ['tarefas-barra-topo', 'btn btn-outline ativo'], telas: ['t-dp-resumo', 't-dp-obrigacoes', 't-dp-fgts', 't-dp-config'],
+    uso: '<MenuDeFiltro rotulo="Responsável" valor={f.responsavel} mudar={f.setResponsavel} opcoes={f.responsaveis} />',
+    demo: () => <div className="tarefas-barra-topo" style={{ margin: 0 }}><MenuSuspenso rotulo="Responsável" itens={[{ rotulo: 'Todos', marcado: true, onClick: nada }, { rotulo: 'Fabiana', marcado: false, onClick: nada }]} /><MenuSuspenso rotulo="Movimento: Folha" className="btn btn-outline ativo" itens={[{ rotulo: 'Todos', marcado: false, onClick: nada }, { rotulo: 'Folha', marcado: true, onClick: nada }]} /></div> },
   { id: 'jn-falta', removida: { como: 'substituida', por: 'menu-falta', em: '02/10/2026', motivo: 'Não é mais janela: fica suspensa no sino do cabeçalho (com o número de pendências), como o Code ▾ do GitHub.' }, tipo: 'janelas', nome: 'Para seguir, falta (o ? do executor)', descricao: 'Uma tabelinha: cada item com o Resolver, que leva até o problema e o destaca', componente: 'JanelaOQueFalta', classes: ['modal modal-centro falta-janela', 'falta-tabela', 'nads-destaque'], telas: EXECUTOR,
     demo: () => (
       <div className={classeDaJanela({ icone: 'ajuda' }) + ' falta-janela cat-parado'} role="dialog">
@@ -418,6 +473,20 @@ export const PECAS_BASE: Peca[] = [
         <div className="cad-janela-corpo">
           <nav className="cad-janela-abas">{['Empresa', 'Bancos', 'Plano de contas', 'Contas padrão', 'Histórico'].map((a, i) => <button key={a} type="button" className={'cad-janela-aba' + (i === 1 ? ' ativa' : '')}>{a}</button>)}</nav>
           <div className="cad-janela-conteudo"><p className="hint">O conteúdo da aba (bancos, plano de contas…).</p></div>
+        </div>
+      </div>
+    ) },
+  { id: 'jn-etiquetas', tipo: 'janelas', nome: 'Parâmetros das etiquetas da folha (DP › Obrigações)', descricao: 'Savio, 15/10/2026: a janela do gerador de etiquetas. Os dois textos que saem impressos (a competência, que já vem da tela, e a data de pagamento, sugerida no 5º dia útil do mês seguinte) e a quantidade de etiquetas (uma página cheia por padrão); embaixo, quantas páginas A4 saem. Imprimir abre a impressão', componente: 'JanelaDasEtiquetas', classes: ['modal etq-janela', 'etq-campo', 'etq-dica', 'etq-total'], telas: ['t-dp-obrigacoes'],
+    demo: () => (
+      <div className="modal etq-janela cat-parado" role="dialog" style={{ position: 'static', boxShadow: 'none' }}>
+        <h3><Icone nome="fileText" />Etiquetas da folha</h3>
+        <div className="etq-corpo">
+          <p className="etq-dica">Informe os dois textos que saem em cada etiqueta. A data sugerida é o 5º dia útil do mês seguinte (sábado conta); pode trocar.</p>
+          <label className="etq-campo"><span>Informe a competência</span><input type="text" defaultValue="10/2026" /></label>
+          <label className="etq-campo"><span>Informe data de pagamento</span><input type="text" defaultValue="07/11/2026" /></label>
+          <label className="etq-campo"><span>Quantidade de etiquetas</span><input type="number" defaultValue={8} /></label>
+          <p className="hint etq-total">8 etiquetas em 1 página A4 (cabem 8 por página, nenhuma cortada)</p>
+          <div className="modal-actions"><button type="button" className="btn btn-outline">Cancelar</button><button type="button" className="btn btn-primary"><Icone nome="printer" />Imprimir</button></div>
         </div>
       </div>
     ) },
@@ -522,27 +591,13 @@ export const PECAS_BASE: Peca[] = [
       </div>
     ) },
 
-  { id: 'lt-cliente', tipo: 'laterais', nome: 'Área do Cliente (o menu lateral)', descricao: 'O menu do protótipo da Área do Cliente (Vitor, 16/10/2026: "quero assim, só que no design do app"): o N e "Nilma Contabilidade", as cinco seções (Visão geral, Central de documentos, Guias e obrigações, Departamento pessoal, Solicitações e chamados) no subnav-item do nads com o contador dos documentos novos e das guias vencidas (vermelho), Administrativo (Dados cadastrais e Fale com o escritório, em janela) e o rodapé do atendimento com o WhatsApp. No celular vira a gaveta do ☰. Versão D: a marca em duas linhas (Nilma e CONTABILIDADE espaçado), o item aberto no fundo carmim suave, os contadores em pílula suave (o das guias vencidas em vermelho) e o N da Nilma no rodapé, no lugar do "NC". No PC ela recolhe como a do app (17/10/2026: "coloca pra esconder a aba lateral assim como no app"): o mesmo "Ocultar barra lateral" (subnav-colapsar, o ícone do painel) e a mesma preferência guardada no navegador; recolhida, 64 px só com os ícones (o nome no title), os contadores viram um pontinho e o rodapé fica só no N', classes: ['cli-lateral', 'cli-marca', 'cli-marca-nome', 'cli-menu', 'subnav-item', 'subnav-title', 'subnav-count', 'cli-lateral-pe', 'cli-marca-escritorio', 'subnav-colapsar', 'cli-recolhida'], telas: ['c-cliente', 'c-cliente-documentos', 'c-cliente-guias', 'c-cliente-dp', 'c-cliente-chamados'],
-    demo: () => (
-      <div className="cli-app cli-demo" style={{ width: 256, border: '1px solid var(--border)', borderRadius: 6 }}>
-        <div className="cli-marca"><span className="brand-mark" aria-hidden="true"><MarcaN /></span><span className="cli-marca-nome"><b>Nilma</b><small>Contabilidade</small></span></div>
-        <nav className="cli-menu">
-          <button className="subnav-item active" type="button"><Icone nome="home" width={16} height={16} /><span>Visão geral</span></button>
-          <button className="subnav-item" type="button"><Icone nome="pastaAberta" width={16} height={16} /><span>Central de documentos</span><span className="subnav-count">3</span></button>
-          <button className="subnav-item" type="button"><Icone nome="recibo" width={16} height={16} /><span>Guias e obrigações</span><span className="subnav-count cli-conta-ruim">1</span></button>
-          <button className="subnav-item" type="button"><Icone nome="usuario" width={16} height={16} /><span>Departamento pessoal</span></button>
-          <button className="subnav-item" type="button"><Icone nome="mensagem" width={16} height={16} /><span>Solicitações e chamados</span></button>
-          <p className="subnav-title">Administrativo</p>
-          <button className="subnav-item" type="button"><Icone nome="predio" width={16} height={16} /><span>Dados cadastrais</span></button>
-          <button className="subnav-item" type="button"><Icone nome="telefone" width={16} height={16} /><span>Fale com o escritório</span></button>
-        </nav>
-        <div className="cli-lateral-pe"><div className="cli-pessoa"><MarcaDoEscritorio tamanho={36} /><div><span className="hint">Seu atendimento</span><b>Equipe Nilma Contabilidade</b></div></div><p className="hint">Segunda a sexta, das 8h às 18h</p><button className="btn" type="button"><Icone nome="mensagem" width={16} height={16} />WhatsApp do escritório</button></div>
-        <div className="cli-menu cli-colapsar"><button className="subnav-item subnav-colapsar" type="button"><Icone nome="painel" width={16} height={16} /><span>Ocultar barra lateral</span></button></div>
-      </div>
-    ) },
   // ─── Cartões ────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'card', tipo: 'cartoes', nome: 'Cartão', descricao: 'O h3 vira a faixa cinza do topo', classes: ['card', 'card-head'], telas: TODAS,
     demo: () => <div className="card" style={{ width: '100%' }}><h3>Contabilização da Folha</h3><p style={{ padding: '0 16px' }} className="hint">O conteúdo do cartão.</p></div> },
+  { id: 'sieg-cupons', tipo: 'cartoes', nome: 'Cupons do mês (NFC-e)', descricao: 'Na Sequência de saídas: quantos cupons, o valor, a numeração (primeiro a último, por série) e os faltando/cancelados, nos painéis coloridos', classes: ['sieg-cupons', 'sieg-cupons-faixa'], telas: ['t-exec-fiscal-rotina'], largo: true,
+    demo: () => <div className="stat-grid sieg-cupons" style={{ width: '100%' }}><div className="stat painel-numero painel-info"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="recibo" /></span><p className="stat-label">Cupons (NFC-e)</p><p className="stat-value num">1.284</p></div><div className="stat painel-numero painel-ok"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="dinheiro" /></span><p className="stat-label">Valor dos cupons</p><p className="stat-value num">R$ 86.412,90</p></div><div className="stat painel-numero painel-neutro"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="hash" /></span><p className="stat-label">Numeração</p><p className="stat-value num sieg-cupons-faixa"><span>40.112 a 41.398</span></p></div><div className="stat painel-numero painel-aviso"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="alert" /></span><p className="stat-label">Faltando · canceladas</p><p className="stat-value num">2 · 3</p></div></div> },
+  { id: 'sieg-situacao', tipo: 'cartoes', nome: 'Situação na SEFAZ (pela VM)', descricao: 'Na Sequência de saídas: o botão de consultar, o andamento, as contagens em pílulas (autorizadas em verde, o que pede atenção em amarelo) e a tabela das notas que não batem com o SIEG', classes: ['sieg-situacao', 'sieg-situacao-topo', 'sieg-situacao-chips', 'sieg-situacao-chip'], telas: ['t-exec-fiscal-rotina'], largo: true,
+    demo: () => <div className="sieg-situacao" style={{ width: '100%' }}><div className="sieg-situacao-topo"><b>Situação na SEFAZ</b><span className="fraco">Consultada em 15/10 14:20</span><span className="tarefas-barra-espaco" /><button type="button" className="btn btn-outline"><Icone nome="checkCircle" />Consultar de novo</button></div><div className="sieg-situacao-chips"><span className="sieg-situacao-chip ok"><b className="num">1.281</b> Autorizadas</span><span className="sieg-situacao-chip neutro"><b className="num">3</b> Canceladas</span><span className="sieg-situacao-chip aviso"><b className="num">1</b> Não constam</span></div></div> },
   { id: 'painel-numero', tipo: 'cartoes', nome: 'Números em painéis coloridos', descricao: 'Cada número no tom do que ele é, com o ícone (Sávio, 07/10/2026): azul o total, verde o feito, amarelo o que falta, o vermelho do nads o destaque; laranja, roxo e ciano para os outros (08/10: "quero que colora todos")', classes: ['stat painel-numero', 'painel-info', 'painel-ok', 'painel-aviso', 'painel-marca', 'painel-laranja', 'painel-roxo', 'painel-ciano', 'painel-neutro', 'painel-numero-icone'], telas: ['t-dp-resumo', 't-exec-fiscal-rotina', 't-fiscal-painel'], largo: true,
     demo: () => <div className="stat-grid dp-numeros" style={{ width: '100%' }}>{([['Clientes', 115, 'info', 'briefcase'], ['Concluídos', 48, 'ok', 'check'], ['Pendentes', 67, 'aviso', 'clock'], ['Com folha', 82, 'marca', 'usuario'], ['Pró-labore', 44, 'laranja', 'usuario'], ['Sem movimento', 21, 'roxo', 'list'], ['REINF autorizada', 19, 'ciano', 'fileUp']] as [string, number, string, NomeIcone][]).map(([r, v, tom, ic]) => <div key={r} className={'stat painel-numero painel-' + tom}><span className="painel-numero-icone" aria-hidden="true"><Icone nome={ic} /></span><p className="stat-label">{r}</p><p className="stat-value">{v}</p></div>)}</div> },
   { id: 'stat', tipo: 'cartoes', nome: 'Números (stat)', componente: 'Stat', classes: ['stat-grid', 'stat', 'stat-label', 'stat-value'], telas: ['c-relatorio', 't-insights', 'e-conferencia', 'c-verificar', 't-exec-fiscal-rotina', 'c-cliente', 'c-cliente-dp'], largo: true,
@@ -570,8 +625,9 @@ export const PECAS_BASE: Peca[] = [
         </ul>
       </div>
     ) },
-  { id: 'vazio', tipo: 'cartoes', nome: 'Vazio (nada aqui)', classes: ['gh-blank'], telas: TODAS,
-    demo: () => <div className="gh-blank"><Icone nome="search" /><h4>Nenhum pedido</h4><p>Nenhum pedido feito para esta empresa ainda.</p></div> },
+  { id: 'vazio', tipo: 'cartoes', nome: 'Vazio (nada aqui)', descricao: 'O ícone, o título e a explicação no meio. Compacto (revisão da UI, 16/10/2026) dentro de cartões estreitos, células e janelas pequenas', componente: 'Vazio', classes: ['gh-blank', 'gh-blank compacto'], telas: TODAS,
+    uso: '<Vazio titulo="Nenhum pedido" texto="…" />  ·  <Vazio compacto texto="Nenhuma objeção nesta competência." />',
+    demo: () => <div style={{ display: 'grid', gap: 12, width: '100%' }}><Vazio titulo="Nenhum pedido" texto="Nenhum pedido feito para esta empresa ainda." /><div className="card" style={{ margin: 0 }}><Vazio compacto icone="checkCircle" texto="Nenhuma objeção registrada nesta competência." /></div></div> },
   { id: 'checklist-fiscal', tipo: 'cartoes', nome: 'Checklist disfarçada (rotina do Fiscal)', descricao: 'O cartão com a barra de progresso; cada tarefa uma faixa que abre (caixinha, contador, Importar, Conferido) com o painel dela (Stat, rank, tabela, gráficos)', componente: 'ChecklistDisfarcado', classes: ['card folha-check pt-check', 'imp-faixa pt-tarefa', 'subnav-caixa', 'tarefas-barra'], telas: ['t-exec-fiscal-rotina'], largo: true,
     demo: () => (
       <div className="card folha-check pt-check" style={{ width: '100%' }}>
@@ -623,6 +679,107 @@ export const PECAS_BASE: Peca[] = [
         </div>
       );
     } },
+  // ─── Listas ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+  { id: 'chips', tipo: 'listas', nome: 'Chips de filtro', classes: ['chip-row', 'chip-lbl', 'chip-f', 'on'], telas: ['c-consulta', 'c-naturezas', 't-gmail', 'c-cliente-documentos'],
+    demo: () => <div className="chip-row"><span className="chip-lbl">Tipo</span><button className="chip-f on" type="button">Todos</button><button className="chip-f" type="button">Entradas</button><button className="chip-f" type="button">Saídas</button></div> },
+  { id: 'contadores', tipo: 'listas', nome: 'Contadores', classes: ['tarefas-contador', 'menu-contador', 'imp-faixa-qtd'], telas: ['t-empresas', 'e-importacao', 't-exec-fiscal-rotina'],
+    demo: () => <><button className="tarefas-contador" type="button"><Icone nome="briefcase" /><b>235</b> empresas</button><span className="menu-contador">12</span><span className="imp-faixa-qtd">4</span></> },
+  { id: 'emp-list', tipo: 'listas', nome: 'Lista de empresas (entrar)', classes: ['emp-list', 'emp-item'], telas: ['c-entrada', 'e-entrada', 'z-entrada'],
+    demo: () => <div className="emp-list" style={{ width: 320 }}>{[[292, 'FITO INDUSTRIA E COMERCIO'], [9999, 'PERSONALY COMPANY']].map(([c, n]) => <button key={c} className="emp-item" type="button"><span className="emp-cod">{c}</span><span className="emp-txt"><span className="emp-nome">{n}</span></span></button>)}</div> },
+  // a rota, as linhas e os dados da entrega de documentos (16/10/2026, a cópia fiel do Entregas)
+  { id: 'ent-rota', tipo: 'listas', nome: 'Rota de entregas (as paradas na ordem)', descricao: 'A tabela da rota: o puxador (arrastar, ou Alt com as setas), a posição, o cliente com o sino do lembrete, a linha de apoio (competência · documentos · total · região) e o aviso que faz desviar; à direita "2ª vez", Assinar e "Assinar as N" (a parada com várias entregas)', classes: ['ent-rota', 'ent-puxador', 'ent-pos', 'ent-rota-sub', 'ent-sino', 'ent-aviso', 'ent-acoes'], telas: ['t-entregas'], largo: true,
+    demo: () => (
+      <div className="table-wrap ent-rota-wrap" style={{ width: '100%' }}><table className="cad-lista ent-rota"><tbody>
+        <tr className="linha-abre"><td className="ent-puxa-td"><button type="button" className="icon-btn icon-btn-sm ent-puxador" aria-label="Mover"><Icone nome="arrastar" /></button></td><td className="num fraco ent-pos">1</td>
+          <td><span className="cad-empresa-nome">102 - BETA SERVICOS EXEMPLO ME</span><span className="ent-sino"><Icone nome="sino" width={14} height={14} /></span><span className="fraco ent-rota-sub">outubro/2026 · DARF · R$ 132,50 · Parte superior</span><span className="ent-aviso"><Icone nome="alert" width={12} height={12} />atende 08:00–11:30</span></td>
+          <td className="ent-acoes"><button type="button" className="btn btn-outline"><Icone nome="lapis" />Assinar</button><button type="button" className="btn btn-outline"><Icone nome="checklist" />Assinar as 3</button></td></tr>
+        <tr className="linha-abre"><td className="ent-puxa-td"><button type="button" className="icon-btn icon-btn-sm ent-puxador" aria-label="Mover"><Icone nome="arrastar" /></button></td><td className="num fraco ent-pos">2</td>
+          <td><span className="cad-empresa-nome">104 - DELTA EXEMPLO PADARIA</span><span className="fraco ent-rota-sub">outubro/2026 · DAS · R$ 95,30 · Parte inferior</span></td>
+          <td className="ent-acoes"><span className="badge badge-danger">2ª vez</span><button type="button" className="btn btn-outline"><Icone nome="lapis" />Assinar</button></td></tr>
+      </tbody></table></div>
+    ) },
+  { id: 'ent-linhas', tipo: 'listas', nome: 'Linhas com selo (cartões da entrega)', descricao: 'Nos cartões da Rota (Vencendo, Atestados, Obrigações, Protocolos, Qualidade) e na página do cliente: o nome em negrito e o apoio ao lado, o selo e a ação à direita; a linha inteira pode abrir', classes: ['ent-linhas', 'ent-linha-abre'], telas: ['t-entregas'], largo: true,
+    demo: () => (
+      <ul className="ent-linhas" style={{ width: '100%' }}>
+        <li><button type="button" className="ent-linha-abre"><div><b>102 - BETA SERVICOS EXEMPLO ME</b><span className="fraco">DARF · outubro/2026</span></div><span className="badge badge-warn">vence em 2 dias</span></button></li>
+        <li><div><b>DAS do Simples</b><span className="fraco">20/10 · 3 guias na rota</span></div><span className="badge badge-neutral">vence em 4 dias</span></li>
+      </ul>
+    ) },
+  { id: 'ent-dados', tipo: 'listas', nome: 'Dados em linhas (rótulo e valor)', descricao: 'O cadastro, a Receita e a entrega feita: o rótulo apagado à esquerda e o valor à direita; linha sem valor não aparece', classes: ['ent-dados'], telas: ['t-entregas'],
+    demo: () => <dl className="ent-dados" style={{ width: '100%', maxWidth: 420 }}><div><dt>Recebido por</dt><dd>João (exemplo)</dd></div><div><dt>Entregue por</dt><dd>Maria (exemplo)</dd></div><div><dt>Data/hora</dt><dd>15/10/2026, 12:48</dd></div></dl> },
+
+  // ─── Carregamento ───────────────────────────────────────────────────────────────────────────────────────────────────
+  { id: 'spinner', tipo: 'carregamento', nome: 'Rodinha', classes: ['btn-spinner'], telas: TODAS, demo: () => <><span className="btn-spinner" /><button className="btn btn-primary" disabled type="button"><span className="btn-spinner" />Salvando…</button></> },
+  { id: 'barra-topo', tipo: 'carregamento', nome: 'Barra do topo', descricao: 'Vermelha, 2 px, no alto da página', componente: 'BarraDeCarregamento · useCarregando', classes: ['barra-carregamento'], telas: TODAS,
+    demo: () => <div className="cat-moldura" style={{ height: 24, position: 'relative' }}><div style={{ position: 'absolute', left: 0, top: 0, height: 2, width: '60%', background: 'var(--accent)' }} /></div> },
+  { id: 'esqueleto', tipo: 'carregamento', nome: 'Esqueleto', componente: 'Esqueleto', classes: ['esqueleto'], telas: ['c-relatorio'], largo: true, demo: () => <Esqueleto linhas={3} numeros={3} /> },
+  { id: 'abertura', tipo: 'carregamento', nome: 'Abertura (logo completa)', descricao: 'Ao abrir o app: o N se monta e revela "Nilma CONTABILIDADE"', componente: 'AberturaN', classes: ['abertura', 'abertura-logo'], telas: ['t-entrar'],
+    demo: () => <p className="hint">Use o ▶ para ver na tela inteira.</p>, aoVivo: c => c.abertura('completa') },
+  { id: 'abertura-vidro', tipo: 'carregamento', nome: 'Carregando (o N no vidro, tela inteira)', componente: 'AberturaN vidro', classes: ['abertura vidro'], telas: [...EXECUTOR],
+    demo: () => <p className="hint">Use o ▶ para ver na tela inteira.</p>, aoVivo: c => c.abertura('vidro') },
+
+  // ─── Gráficos ───────────────────────────────────────────────────────────────────────────────────────────────────────
+  { id: 'progresso', tipo: 'graficos', nome: 'Barra de progresso', classes: ['tarefas-barra', 'parada'], telas: ['t-empresas', 't-contabil', 't-exec-fiscal-rotina'],
+    demo: () => <><span className="tarefas-barra"><span style={{ width: '40%' }} /></span><span className="tarefas-barra"><span className="parada" style={{ width: '70%' }} /></span></> },
+  { id: 'rank', tipo: 'graficos', nome: 'Ranking', classes: ['rank', 'rank-item', 'rank-barra'], telas: ['c-relatorio', 't-exec-fiscal-rotina'], largo: true,
+    demo: () => <div className="rank" style={{ width: '100%' }}>{[['5101 — Venda de produção', 72], ['1101 — Compra para industrialização', 41], ['2910 — Bonificação', 9]].map(([n, v]) => <button key={n} className="rank-item" type="button"><span className="rank-nome">{n}</span><span className="rank-val">{v}%</span><span className="rank-barra"><span style={{ width: v + '%', background: 'var(--accent)' }} /></span></button>)}</div> },
+
+  { id: 'barras-dia', removida: { como: 'excluida', em: '06/10/2026', motivo: 'Vitor: "não curti nenhum dos gráficos novos"; a composição voltou para o Ranking e o resto para os Números (Stat).', sumir: true }, tipo: 'graficos', nome: 'Barras por dia do mês', descricao: 'Uma barra por dia; o dia, as notas e o valor ao passar o mouse (as barras sobem ao aparecer)', componente: 'BarrasPorDia', classes: ['graf-dias', 'graf-dia'], telas: ['t-exec-fiscal-rotina'], largo: true,
+    demo: () => null },
+  { id: 'rosca', removida: { como: 'excluida', em: '06/10/2026', motivo: 'Vitor: "não curti nenhum dos gráficos novos"; a composição voltou para o Ranking e o resto para os Números (Stat).', sumir: true }, tipo: 'graficos', nome: 'Rosca (composição)', descricao: 'O total no meio e a legenda com a fatia e o valor; cada classe de CFOP sempre com a mesma cor (--cat-1 a --cat-7)', componente: 'Rosca', classes: ['graf-rosca', 'graf-legenda'], telas: ['t-exec-fiscal-rotina'], largo: true,
+    demo: () => null },
+  { id: 'faixa-100', removida: { como: 'excluida', em: '06/10/2026', motivo: 'Vitor: "não curti nenhum dos gráficos novos"; a composição voltou para o Ranking e o resto para os Números (Stat).', sumir: true }, tipo: 'graficos', nome: 'Faixa 100% (composição)', descricao: 'A composição numa barra só, com a legenda embaixo', componente: 'Faixa', classes: ['graf-faixa', 'graf-legenda em-linha'], telas: ['t-exec-fiscal-rotina'], largo: true,
+    demo: () => null },
+
+  // as três peças do painel com gráfico (Savio, 15/10/2026: o Painel do DP "semelhante ao do Certificados"): Senhas › Certificados e DP › Resumo usam estas
+  { id: 'rosca-legenda', tipo: 'graficos', nome: 'Rosca com legenda (filtra)', descricao: 'A rosca das situações com o total no meio e a legenda ao lado; clicar na fatia ou na legenda escolhe (o painel filtra a lista)', componente: 'RoscaComLegenda', classes: ['cert-rosca', 'cert-legenda', 'cert-cor-ok', 'cert-cor-vence', 'cert-cor-vencido', 'cert-cor-sem'], telas: ['t-senhas', 't-dp-resumo'],
+    uso: "<RoscaComLegenda fatias={[{ id, rotulo, valor, tom: 'ok'|'aviso'|'perigo'|'neutro' }]} total={n} subtitulo=\"clientes\" ativa={id|null} onEscolher={...} />",
+    demo: () => <div className="card" style={{ width: '100%', maxWidth: 520, margin: 0 }}><RoscaComLegenda total={40} subtitulo="clientes" ativa="pendente" onEscolher={nada}
+      fatias={[{ id: 'atrasada', rotulo: 'Atrasados', valor: 6, tom: 'perigo' }, { id: 'pendente', rotulo: 'Pendentes', valor: 14, tom: 'aviso' }, { id: 'feita', rotulo: 'Concluídos', valor: 17, tom: 'ok' }, { id: 'sem', rotulo: 'Sem movimento', valor: 3, tom: 'neutro' }]} /></div> },
+  { id: 'barras-coluna', tipo: 'graficos', nome: 'Barras em coluna (a barra filtra)', descricao: 'Uma coluna por mês ou por etapa, com o número em cima; a altura é proporcional à maior; clicar na barra escolhe (de novo, desfaz). Verde ou âmbar (aviso)', componente: 'BarrasEmColuna', classes: ['cert-barras', 'cert-barra', 'cert-barra-cheia'], telas: ['t-senhas', 't-dp-resumo'],
+    uso: '<BarrasEmColuna colunas={[{ chave, rotulo, total, sub?, aviso?, leitura }]} ativa={chave|null} onEscolher={...} />',
+    demo: () => <div className="card" style={{ width: '100%', margin: 0 }}><BarrasEmColuna ativa="esocial" onEscolher={nada}
+      colunas={[['folha', 'Folha', 9], ['esocial', 'eSocial', 14], ['guias', 'Guias', 7], ['reinf', 'REINF', 0], ['entrega', 'Entrega', 11]].map(([chave, rotulo, total]) => ({ chave: String(chave), rotulo: String(rotulo), total: Number(total), aviso: true, leitura: rotulo + ': ' + total }))} /></div> },
+  { id: 'cartao-anel', tipo: 'graficos', nome: 'Cartão com anel de contagem', descricao: 'Quem pede atenção: o anel com os dias (cheio = 30; atrasado = anel inteiro vermelho), o nome, o prazo colorido e uma linha de apoio; clicar abre', componente: 'CartaoComAnel', classes: ['cert-urgente', 'cert-contagem', 'cert-urgente-prazo'], telas: ['t-senhas', 't-dp-resumo'],
+    uso: '<CartaoComAnel dias={n} titulo="…" prazo="Vence em 12 dias" apoio="292 · 19/10/2026" atrasado={dias < 0} onClick={...} />',
+    demo: () => <div style={{ width: '100%', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+      <div style={{ width: 300 }}><CartaoComAnel dias={12} titulo="EMPRESA EXEMPLO LTDA" prazo="Vence em 12 dias" apoio="292 · 19/10/2026" atrasado={false} onClick={nada} /></div>
+      <div style={{ width: 300 }}><CartaoComAnel dias={-5} titulo="OUTRA EMPRESA LTDA" prazo="Parado há 5 dias" apoio="10 · faltam 3 de 8 · Fabiana" atrasado onClick={nada} /></div>
+      <AnelDeContagem dias={20} /></div> },
+
+  // ─── Cores ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  { id: 'cores', tipo: 'cores', nome: 'As cores do sistema', descricao: 'Mude o tema no ☰ para ver o escuro', telas: TODAS, largo: true,
+    demo: () => <div className="cat-cores">{CORES.map(c => <span key={c} className="cat-cor"><i style={{ background: 'var(' + c + ')' }} />{c}</span>)}</div> },
+  { id: 'tema', tipo: 'cores', nome: 'Seletor de tema', componente: 'SeletorTema', classes: ['theme-toggle'], telas: TODAS, demo: () => <SeletorTema /> },
+  // ─── Área do Cliente, o lado do escritório (Vitor, 16/10/2026) ─── (peças novas entram no fim do tipo)
+
+  // ─── Área do Cliente (Vitor, 16 e 17/10/2026): no fim da lista, para os códigos das outras peças não mudarem ──────
+  { id: 'selo-suave', tipo: 'selos', nome: 'Selo suave (Área do Cliente)', descricao: 'O único selo da Área do Cliente (versão D, Vitor, 16/10/2026): o badge do nads dentro de .cli-app vira a pílula sem borda, com o pontinho e o fundo suave; a cor só pelo significado — vermelho vencida e férias vencidas, amarelo vence hoje, a fazer e não baixado, verde pago, em dia e respondido; neutro para o resto. Funciona no claro e no escuro', classes: ['badge', 'badge-bad', 'badge-warn', 'badge-ok', 'badge-neutral', 'cli-sem-ponto'], telas: ['c-cliente', 'c-cliente-documentos', 'c-cliente-guias', 'c-cliente-dp', 'c-cliente-chamados'],
+    demo: () => (
+      <div className="cli-app cli-demo" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <span className="badge badge-bad">Vencida</span><span className="badge badge-warn">Vence hoje</span><span className="badge badge-ok">Pago</span><span className="badge badge-ok">Em dia</span><span className="badge badge-neutral">A vencer</span><span className="badge badge-neutral cli-sem-ponto">Fiscal</span>
+      </div>
+    ) },
+  { id: 'area-soltar', tipo: 'campos', nome: 'Área de soltar arquivos', descricao: 'Da Área do Cliente (Vitor, 16/10/2026): arrastar os arquivos para cima dela ou clicar para escolher; a moldura tracejada do escolher arquivos do nads, maior, com o ícone e a dica do que aceita (PDF, JPG, PNG, XML ou ZIP, até 700 KB cada, o limite das regras do banco); fica avermelhada quando o arquivo está por cima. Os escolhidos aparecem embaixo e só vão no botão Enviar', componente: 'AreaDeSoltar', classes: ['cli-soltar', 'sobre'], telas: ['c-cliente-documentos'], largo: true,
+    demo: () => <div className="cli-app cli-demo" style={{ width: '100%' }}><AreaDeSoltar aceitar=".pdf,.jpg,.png,.xml,.zip" dica="PDF, JPG, PNG, XML ou ZIP · até 700 KB cada" onArquivos={nada} /></div> },
+  { id: 'lt-cliente', tipo: 'laterais', nome: 'Área do Cliente (o menu lateral)', descricao: 'O menu do protótipo da Área do Cliente (Vitor, 16/10/2026: "quero assim, só que no design do app"): o N e "Nilma Contabilidade", as cinco seções (Visão geral, Central de documentos, Guias e obrigações, Departamento pessoal, Solicitações e chamados) no subnav-item do nads com o contador dos documentos novos e das guias vencidas (vermelho), Administrativo (Dados cadastrais e Fale com o escritório, em janela) e o rodapé do atendimento com o WhatsApp. No celular vira a gaveta do ☰. Versão D: a marca em duas linhas (Nilma e CONTABILIDADE espaçado), o item aberto no fundo carmim suave, os contadores em pílula suave (o das guias vencidas em vermelho) e o N da Nilma no rodapé, no lugar do "NC". No PC ela recolhe como a do app (17/10/2026: "coloca pra esconder a aba lateral assim como no app"): o mesmo "Ocultar barra lateral" (subnav-colapsar, o ícone do painel) e a mesma preferência guardada no navegador; recolhida, 64 px só com os ícones (o nome no title), os contadores viram um pontinho e o rodapé fica só no N', classes: ['cli-lateral', 'cli-marca', 'cli-marca-nome', 'cli-menu', 'subnav-item', 'subnav-title', 'subnav-count', 'cli-lateral-pe', 'cli-marca-escritorio', 'subnav-colapsar', 'cli-recolhida'], telas: ['c-cliente', 'c-cliente-documentos', 'c-cliente-guias', 'c-cliente-dp', 'c-cliente-chamados'],
+    demo: () => (
+      <div className="cli-app cli-demo" style={{ width: 256, border: '1px solid var(--border)', borderRadius: 6 }}>
+        <div className="cli-marca"><span className="brand-mark" aria-hidden="true"><MarcaN /></span><span className="cli-marca-nome"><b>Nilma</b><small>Contabilidade</small></span></div>
+        <nav className="cli-menu">
+          <button className="subnav-item active" type="button"><Icone nome="home" width={16} height={16} /><span>Visão geral</span></button>
+          <button className="subnav-item" type="button"><Icone nome="pastaAberta" width={16} height={16} /><span>Central de documentos</span><span className="subnav-count">3</span></button>
+          <button className="subnav-item" type="button"><Icone nome="recibo" width={16} height={16} /><span>Guias e obrigações</span><span className="subnav-count cli-conta-ruim">1</span></button>
+          <button className="subnav-item" type="button"><Icone nome="usuario" width={16} height={16} /><span>Departamento pessoal</span></button>
+          <button className="subnav-item" type="button"><Icone nome="mensagem" width={16} height={16} /><span>Solicitações e chamados</span></button>
+          <p className="subnav-title">Administrativo</p>
+          <button className="subnav-item" type="button"><Icone nome="predio" width={16} height={16} /><span>Dados cadastrais</span></button>
+          <button className="subnav-item" type="button"><Icone nome="telefone" width={16} height={16} /><span>Fale com o escritório</span></button>
+        </nav>
+        <div className="cli-lateral-pe"><div className="cli-pessoa"><MarcaDoEscritorio tamanho={36} /><div><span className="hint">Seu atendimento</span><b>Equipe Nilma Contabilidade</b></div></div><p className="hint">Segunda a sexta, das 8h às 18h</p><button className="btn" type="button"><Icone nome="mensagem" width={16} height={16} />WhatsApp do escritório</button></div>
+        <div className="cli-menu cli-colapsar"><button className="subnav-item subnav-colapsar" type="button"><Icone nome="painel" width={16} height={16} /><span>Ocultar barra lateral</span></button></div>
+      </div>
+    ) },
   { id: 'cartao-guia', tipo: 'cartoes', nome: 'Cartão de guia (Área do Cliente)', descricao: 'Dos "Próximos vencimentos" de Guias e obrigações da Área do Cliente (versão D, Vitor, 16/10/2026): no alto o quadradinho claro com a logo do órgão (ou a sigla, enquanto a logo não existe) e o selo suave da situação; o valor grande em número tabular, o nome, a competência e o vencimento com quantos dias faltam; embaixo do fio, Baixar PDF e copiar a linha digitável. Só a guia mais urgente leva o Baixar carmim (destaque); as outras, o secundário', componente: 'CartaoDeGuia', classes: ['card', 'cli-cartao', 'cli-cartao-topo', 'cli-cartao-valor', 'cli-cartao-nome', 'cli-cartao-pe', 'cli-sigla', 'badge'], telas: ['c-cliente-guias'], largo: true,
     uso: '<CartaoDeGuia guia={g} faltam="em 3 dias" destaque={i === 0} onBaixar={baixar} />',
     demo: () => (
@@ -632,13 +789,6 @@ export const PECAS_BASE: Peca[] = [
         <CartaoDeGuia guia={{ id: 'x3', tipo: 'DAE', competencia: '2026-09', vencimento: '24/10/2026', valor: 432.1, situacao: 'a vencer', temPdf: true }} faltam="em 8 dias" destaque={false} onBaixar={nada} />
       </div></div>
     ) },
-  // ─── Listas ─────────────────────────────────────────────────────────────────────────────────────────────────────────
-  { id: 'chips', tipo: 'listas', nome: 'Chips de filtro', classes: ['chip-row', 'chip-lbl', 'chip-f', 'on'], telas: ['c-consulta', 'c-naturezas', 't-gmail', 'c-cliente-documentos'],
-    demo: () => <div className="chip-row"><span className="chip-lbl">Tipo</span><button className="chip-f on" type="button">Todos</button><button className="chip-f" type="button">Entradas</button><button className="chip-f" type="button">Saídas</button></div> },
-  { id: 'contadores', tipo: 'listas', nome: 'Contadores', classes: ['tarefas-contador', 'menu-contador', 'imp-faixa-qtd'], telas: ['t-empresas', 'e-importacao', 't-exec-fiscal-rotina'],
-    demo: () => <><button className="tarefas-contador" type="button"><Icone nome="briefcase" /><b>235</b> empresas</button><span className="menu-contador">12</span><span className="imp-faixa-qtd">4</span></> },
-  { id: 'emp-list', tipo: 'listas', nome: 'Lista de empresas (entrar)', classes: ['emp-list', 'emp-item'], telas: ['c-entrada', 'e-entrada', 'z-entrada'],
-    demo: () => <div className="emp-list" style={{ width: 320 }}>{[[292, 'FITO INDUSTRIA E COMERCIO'], [9999, 'PERSONALY COMPANY']].map(([c, n]) => <button key={c} className="emp-item" type="button"><span className="emp-cod">{c}</span><span className="emp-txt"><span className="emp-nome">{n}</span></span></button>)}</div> },
   { id: 'linha-agenda', tipo: 'listas', nome: 'Linha da agenda (Área do Cliente)', descricao: 'Do card "O que o escritório entrega no mês" de Guias e obrigações (versão D, Vitor, 16/10/2026): a data numa folhinha (o dia e o mês), a obrigação em português simples e a situação — só o A fazer leva selo (amarelo); Feito fica discreto, com o ✓ verde; Não se aplica com a linha apagada', componente: 'LinhaDaAgenda', classes: ['cli-lista', 'cli-linha', 'cli-data', 'cli-linha-txt', 'cli-feito', 'badge badge-warn'], telas: ['c-cliente-guias'], largo: true,
     demo: () => (
       <div className="cli-app cli-demo" style={{ width: '100%' }}><ul className="cli-lista">
@@ -664,35 +814,6 @@ export const PECAS_BASE: Peca[] = [
         <LinhaDeGuia guia={{ id: 'l3', tipo: 'DAE', competencia: '2026-09', vencimento: '24/10/2026', valor: 432.1, situacao: 'a vencer', temPdf: true }} onBaixar={nada} />
       </ul></div>
     ) },
-
-  // ─── Carregamento ───────────────────────────────────────────────────────────────────────────────────────────────────
-  { id: 'spinner', tipo: 'carregamento', nome: 'Rodinha', classes: ['btn-spinner'], telas: TODAS, demo: () => <><span className="btn-spinner" /><button className="btn btn-primary" disabled type="button"><span className="btn-spinner" />Salvando…</button></> },
-  { id: 'barra-topo', tipo: 'carregamento', nome: 'Barra do topo', descricao: 'Vermelha, 2 px, no alto da página', componente: 'BarraDeCarregamento · useCarregando', classes: ['barra-carregamento'], telas: TODAS,
-    demo: () => <div className="cat-moldura" style={{ height: 24, position: 'relative' }}><div style={{ position: 'absolute', left: 0, top: 0, height: 2, width: '60%', background: 'var(--accent)' }} /></div> },
-  { id: 'esqueleto', tipo: 'carregamento', nome: 'Esqueleto', componente: 'Esqueleto', classes: ['esqueleto'], telas: ['c-relatorio'], largo: true, demo: () => <Esqueleto linhas={3} numeros={3} /> },
-  { id: 'abertura', tipo: 'carregamento', nome: 'Abertura (logo completa)', descricao: 'Ao abrir o app: o N se monta e revela "Nilma CONTABILIDADE"', componente: 'AberturaN', classes: ['abertura', 'abertura-logo'], telas: ['t-entrar'],
-    demo: () => <p className="hint">Use o ▶ para ver na tela inteira.</p>, aoVivo: c => c.abertura('completa') },
-  { id: 'abertura-vidro', tipo: 'carregamento', nome: 'Carregando (o N no vidro, tela inteira)', componente: 'AberturaN vidro', classes: ['abertura vidro'], telas: [...EXECUTOR],
-    demo: () => <p className="hint">Use o ▶ para ver na tela inteira.</p>, aoVivo: c => c.abertura('vidro') },
-
-  // ─── Gráficos ───────────────────────────────────────────────────────────────────────────────────────────────────────
-  { id: 'progresso', tipo: 'graficos', nome: 'Barra de progresso', classes: ['tarefas-barra', 'parada'], telas: ['t-empresas', 't-contabil', 't-exec-fiscal-rotina'],
-    demo: () => <><span className="tarefas-barra"><span style={{ width: '40%' }} /></span><span className="tarefas-barra"><span className="parada" style={{ width: '70%' }} /></span></> },
-  { id: 'rank', tipo: 'graficos', nome: 'Ranking', classes: ['rank', 'rank-item', 'rank-barra'], telas: ['c-relatorio', 't-exec-fiscal-rotina'], largo: true,
-    demo: () => <div className="rank" style={{ width: '100%' }}>{[['5101 — Venda de produção', 72], ['1101 — Compra para industrialização', 41], ['2910 — Bonificação', 9]].map(([n, v]) => <button key={n} className="rank-item" type="button"><span className="rank-nome">{n}</span><span className="rank-val">{v}%</span><span className="rank-barra"><span style={{ width: v + '%', background: 'var(--accent)' }} /></span></button>)}</div> },
-
-  { id: 'barras-dia', removida: { como: 'excluida', em: '06/10/2026', motivo: 'Vitor: "não curti nenhum dos gráficos novos"; a composição voltou para o Ranking e o resto para os Números (Stat).', sumir: true }, tipo: 'graficos', nome: 'Barras por dia do mês', descricao: 'Uma barra por dia; o dia, as notas e o valor ao passar o mouse (as barras sobem ao aparecer)', componente: 'BarrasPorDia', classes: ['graf-dias', 'graf-dia'], telas: ['t-exec-fiscal-rotina'], largo: true,
-    demo: () => null },
-  { id: 'rosca', removida: { como: 'excluida', em: '06/10/2026', motivo: 'Vitor: "não curti nenhum dos gráficos novos"; a composição voltou para o Ranking e o resto para os Números (Stat).', sumir: true }, tipo: 'graficos', nome: 'Rosca (composição)', descricao: 'O total no meio e a legenda com a fatia e o valor; cada classe de CFOP sempre com a mesma cor (--cat-1 a --cat-7)', componente: 'Rosca', classes: ['graf-rosca', 'graf-legenda'], telas: ['t-exec-fiscal-rotina'], largo: true,
-    demo: () => null },
-  { id: 'faixa-100', removida: { como: 'excluida', em: '06/10/2026', motivo: 'Vitor: "não curti nenhum dos gráficos novos"; a composição voltou para o Ranking e o resto para os Números (Stat).', sumir: true }, tipo: 'graficos', nome: 'Faixa 100% (composição)', descricao: 'A composição numa barra só, com a legenda embaixo', componente: 'Faixa', classes: ['graf-faixa', 'graf-legenda em-linha'], telas: ['t-exec-fiscal-rotina'], largo: true,
-    demo: () => null },
-
-  // ─── Cores ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  { id: 'cores', tipo: 'cores', nome: 'As cores do sistema', descricao: 'Mude o tema no ☰ para ver o escuro', telas: TODAS, largo: true,
-    demo: () => <div className="cat-cores">{CORES.map(c => <span key={c} className="cat-cor"><i style={{ background: 'var(' + c + ')' }} />{c}</span>)}</div> },
-  { id: 'tema', tipo: 'cores', nome: 'Seletor de tema', componente: 'SeletorTema', classes: ['theme-toggle'], telas: TODAS, demo: () => <SeletorTema /> },
-  // ─── Área do Cliente, o lado do escritório (Vitor, 16/10/2026) ─── (peças novas entram no fim do tipo)
   { id: 'botoes-link-cliente', tipo: 'botoes', nome: 'Botões do link do cliente', descricao: 'Sem link, "Gerar link" (vermelho); com link, Copiar, WhatsApp (abre com o texto pronto), Trocar e Revogar (estes dois pedem confirmação). Só o admin e os diretores veem (Vitor, 16/10/2026)', classes: ['ac-botoes', 'btn', 'btn-danger'], telas: ['t-area-links', 't-cadastro-janela'], largo: true,
     demo: () => (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -712,8 +833,6 @@ export const PECAS_BASE: Peca[] = [
         { de: 'escritorio', autor: 'Camila', texto: 'Oi! Precisamos do RG, CPF, comprovante de residência e o exame admissional.', em: '2026-10-15T11:05:00' },
       ]} />
     ) },
-
-  // ─── Área do Cliente, versão D (Vitor, 16/10/2026) ───────────────────────────────────────────────────────────────────
   { id: 'icone-arquivo', tipo: 'icones', nome: 'Ícone do arquivo (Área do Cliente)', descricao: 'Da Central de documentos (Vitor, 16/10/2026: "quero um ícone mais bonito, pode ser dependendo do arquivo"): desenhado à mão — a folha com o canto dobrado, a etiqueta com a extensão e um desenho de dentro por tipo (linhas no PDF e no DOC, grade na planilha, </> no XML, zíper no ZIP, montanha com o sol na imagem), cada um na cor clássica pelos tokens do nads. 36 px na tabela; no escuro a folha pega um tom da cor e não apaga', componente: 'IconeDeArquivo', classes: ['cli-arquivo', 'cli-arquivo-folha', 'cli-arquivo-canto', 'cli-arquivo-dentro', 'cli-arquivo-etiqueta', 'cli-arquivo-ext'], telas: ['c-cliente-documentos'], largo: true,
     uso: '<IconeDeArquivo formato="PDF" tamanho={36} />',
     demo: () => (
@@ -745,8 +864,8 @@ export const PECAS_BASE: Peca[] = [
     uso: '<Vazio icone="search" titulo="Nenhum documento com esse filtro" acao={{ rotulo: "Limpar os filtros", onClick: limpar }} />',
     demo: () => (
       <div className="cli-app cli-demo" style={{ display: 'flex', flexWrap: 'wrap', gap: 16, width: '100%' }}>
-        <div className="card" style={{ flex: '1 1 260px' }}><Vazio icone="search" titulo="Nenhum documento com esse filtro" acao={{ rotulo: 'Limpar os filtros', onClick: nada }} /></div>
-        <div className="card" style={{ flex: '1 1 260px' }}><Vazio icone="mensagem" titulo="Nenhum chamado ainda" texto="Os pedidos que você abrir aparecem aqui." /></div>
+        <div className="card" style={{ flex: '1 1 260px' }}><VazioDoCliente icone="search" titulo="Nenhum documento com esse filtro" acao={{ rotulo: 'Limpar os filtros', onClick: nada }} /></div>
+        <div className="card" style={{ flex: '1 1 260px' }}><VazioDoCliente icone="mensagem" titulo="Nenhum chamado ainda" texto="Os pedidos que você abrir aparecem aqui." /></div>
       </div>
     ) },
   { id: 'esqueleto-cliente', tipo: 'carregamento', nome: 'Esqueleto da Área do Cliente', descricao: 'Enquanto o link carrega (versão D, Vitor, 16/10/2026): o desenho da Visão geral — o cartão de boas-vindas, os quatro números e a lista — com as linhas do Esqueleto do nads, que já têm o brilho passando', componente: 'EsqueletoDaArea', classes: ['cli-esqueleto', 'esqueleto-linha'], telas: ['c-cliente'], largo: true,

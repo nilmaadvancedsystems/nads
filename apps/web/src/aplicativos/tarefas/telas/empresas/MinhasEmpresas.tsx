@@ -1,7 +1,7 @@
 // Minhas empresas: a barra de cima, no jeito da do GitHub (competência no lugar do "main ▾", quantas
 // empresas, Insights; à direita a busca curta com atalho "/", Situação ▾ e "Iniciar ▾", que abre
 // o painel para escolher a empresa, em partes/PainelIniciar) e a lista (clicar no título da coluna ordena; clicar na linha abre a página da empresa). Os números por situação ficam em Insights.
-import { Icone, MenuSuspenso, useCarregando, useEntradaAnimada, useLinhasQueSeMovem } from '@nads/ui';
+import { Icone, MenuSuspenso, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Vazio } from '@nads/ui';
 import { useEffect, useRef } from 'react';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { PainelIniciar } from './partes/PainelIniciar';
@@ -72,7 +72,7 @@ export function MinhasEmpresas() {
       </div>
 
       {/* a tabela aparece na hora; as linhas entram quando o banco responde (a barra do topo termina) */}
-      {!vm.carregando && vm.total === 0 ? <p className="empty">Nenhuma empresa nesta situação.</p> : (
+      {!vm.carregando && vm.total === 0 ? <Vazio icone="briefcase" titulo="Nenhuma empresa nesta situação" /> : (
         <div ref={tabela} className="table-wrap">
           <table ref={linhasQueSeMovem} className="tabela-empresas">
             <thead><tr>

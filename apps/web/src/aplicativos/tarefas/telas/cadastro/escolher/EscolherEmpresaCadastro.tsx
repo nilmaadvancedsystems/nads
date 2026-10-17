@@ -1,7 +1,7 @@
 // Cadastro (/tarefas/cadastro/empresas): a lista de todas as empresas, com os bancos (do
 // cadastro ou, sem cadastro, os que o robô já sabe) e o plano de contas. A busca e a situação filtram;
 // clicar na linha abre a janela da empresa, por cima da lista.
-import { Icone, LogoBanco, MenuSuspenso, useCarregando, useEntradaAnimada, useLinhasQueSeMovem } from '@nads/ui';
+import { Icone, LogoBanco, MenuSuspenso, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Vazio } from '@nads/ui';
 import { useState } from 'react';
 import { JanelaNovaEmpresa } from './JanelaNovaEmpresa';
 import { SITUACOES, useListaDoCadastro } from './useListaDoCadastro';
@@ -38,7 +38,7 @@ export function EscolherEmpresaCadastro() {
         <button type="button" className="btn btn-primary" onClick={() => setNova(true)}><Icone nome="plus" />Nova empresa</button>
       </div>
 
-      {!vm.carregando && !vm.linhas.length ? <p className="empty">Nenhuma empresa com isso.</p> : (
+      {!vm.carregando && !vm.linhas.length ? <Vazio icone="search" titulo="Nenhuma empresa com isso" /> : (
         <div ref={tabela} className="table-wrap">
           <table ref={linhasQueSeMovem} className="tabela-empresas cad-lista">
             <thead><tr><th>Código</th><th>Empresa</th><th>Cadastro</th><th>Bancos</th><th>Atualizado</th></tr></thead>

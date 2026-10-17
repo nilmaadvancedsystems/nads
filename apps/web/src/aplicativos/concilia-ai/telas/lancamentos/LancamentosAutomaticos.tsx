@@ -1,5 +1,5 @@
 // Lançamentos automáticos — página fora do menu (conferencia.html #view-depara ~L1176-1190, renderDP ~L2711).
-import { Icone } from '@nads/ui';
+import { BotaoIcone, Vazio } from '@nads/ui';
 import { useLancamentosAutomaticos, type GrupoDeContas } from './useLancamentosAutomaticos';
 
 type VM = ReturnType<typeof useLancamentosAutomaticos>;
@@ -13,11 +13,11 @@ export function LancamentosAutomaticos() {
       <div className="card">
         <h3>Lançamentos encontrados nas notas</h3>
         <div className="btn-row" style={{ justifyContent: 'flex-start', marginTop: 0, marginBottom: 18 }}>
-          <button className={vm.classeBotao} id="btAutoLanc" type="button" onClick={vm.preencherAutomatico}>Lançamentos Automáticos</button>
+          <button className={vm.classeBotao} id="btAutoLanc" type="button" onClick={vm.preencherAutomatico}>Lançamentos automáticos</button>
         </div>
         <div id="dpPendentes">
-          {vm.semLinhas ? <p className="empty">Nenhum lançamento encontrado ainda. Importe as notas de entradas e saídas primeiro.</p>
-            : !vm.pendentes.length ? <p className="empty">Todos os lançamentos encontrados já têm conta vinculada.</p>
+          {vm.semLinhas ? <Vazio icone="search" titulo="Nenhum lançamento encontrado ainda" texto="Importe as notas de entradas e saídas primeiro." />
+            : !vm.pendentes.length ? <Vazio icone="checkCircle" titulo="Tudo vinculado" texto="Todos os lançamentos encontrados já têm conta vinculada." />
               : (
                 <>
                   <div className="dp-head" style={COLUNAS}><div>Lançamento</div><div>CFOPs / natureza sugerida</div><div>Conta do balancete</div><div></div></div>
@@ -26,7 +26,7 @@ export function LancamentosAutomaticos() {
                       <div className="locked" title="Descoberto nas notas">{l.lanc}</div>
                       <div className="wrap" style={{ fontSize: 12.5, color: 'var(--ink-faint)' }}>{l.cfops}{l.natureza ? ' · ' + l.natureza : ''}</div>
                       <SeletorConta l={l} grupos={vm.grupos} onMudar={v => vm.escolherConta(l.lanc, v)} />
-                      <button className="icon-btn danger" type="button" title="Ignorar este lançamento" onClick={() => vm.remover(l.lanc)}><Icone nome="x" /></button>
+                      <BotaoIcone icone="x" className="danger" titulo="Ignorar este lançamento" onClick={() => vm.remover(l.lanc)} />
                     </div>
                   ))}
                 </>
@@ -44,7 +44,7 @@ export function LancamentosAutomaticos() {
                   <div className="locked">{l.lanc}</div>
                   <div className="wrap" style={{ fontSize: 12.5, color: 'var(--ink-faint)' }}>{l.cfops}</div>
                   <SeletorConta l={l} grupos={vm.grupos} onMudar={v => vm.escolherConta(l.lanc, v)} />
-                  <button className="icon-btn danger" type="button" title="Desvincular" onClick={() => vm.remover(l.lanc)}><Icone nome="x" /></button>
+                  <BotaoIcone icone="x" className="danger" titulo="Desvincular" onClick={() => vm.remover(l.lanc)} />
                 </div>
               ))}
             </>

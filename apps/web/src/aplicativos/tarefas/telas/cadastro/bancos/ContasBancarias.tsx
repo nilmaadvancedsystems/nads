@@ -1,6 +1,6 @@
 // Cadastro › empresa › Contas bancárias: a barra de cima (quantas contas, encerradas, "Nova conta ▾") e a lista.
 // Empresa sem cadastro: o aviso com a lista que o Extrator usa hoje e "Confirmar esta lista".
-import { Icone, LogoBanco, MenuSuspenso, useCarregando } from '@nads/ui';
+import { Esqueleto, Icone, LogoBanco, MenuSuspenso, useCarregando } from '@nads/ui';
 import { useState } from 'react';
 import { FormConta, FormEncerrar } from './partes/FormConta';
 import { useContasBancarias, type LinhaConta, type VmContasBancarias } from './useContasBancarias';
@@ -35,7 +35,7 @@ export function ContasBancarias({ rota }: { rota: string }) {
         )}
         <span className="tarefas-barra-espaco" />
         <MenuSuspenso icone="plus" rotulo="Nova conta" className="btn btn-primary" direita largura={400} titulo="Banco"
-          conteudo={fechar => (vm.carregando ? <p className="empty">Carregando…</p> : <FormConta vm={vm} id={null} fechar={fechar} />)} />
+          conteudo={fechar => (vm.carregando ? <Esqueleto linhas={2} /> : <FormConta vm={vm} id={null} fechar={fechar} />)} />
       </div>
 
       {vm.semCadastro && (

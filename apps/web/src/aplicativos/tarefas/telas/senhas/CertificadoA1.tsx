@@ -1,7 +1,7 @@
 // O certificado A1 da empresa (Vitor, 07/10/2026: "aumente isso, a UI tá feia e muito pequena, quero uma importação
 // bonitinha e animada"): sem certificado, a área grande para soltar o .pfx (pulsa quando o arquivo passa por cima); com o
 // arquivo, a senha — e, lido o certificado, o cartão dele (o titular, o CNPJ, a validade e a situação) entrando animado.
-import { Icone } from '@nads/ui';
+import { CampoArquivo, Icone } from '@nads/ui';
 import { useRef, useState } from 'react';
 import { Senha } from './SegredosDaEmpresa';
 import type { useSegredos } from './useSegredos';
@@ -19,7 +19,7 @@ export function CertificadoA1({ vm, ocupado, baixar }: { vm: Vm; ocupado: boolea
   const lido = !!vm.cert.titular && !vm.leitura.erro;
   return (
     <section className="cert">
-      <input ref={input} type="file" accept=".pfx,.p12" hidden onChange={e => { escolher(e.target.files?.[0]); e.target.value = ''; }} />
+      <CampoArquivo semCaixa semFoco ref={input} aceitar=".pfx,.p12" onEscolher={f => escolher(f ?? undefined)} />
       {!vm.cert.arquivo ? (
         <button type="button" className={'cert-soltar' + (sobre ? ' sobre' : '')} onClick={() => input.current?.click()}
           onDragOver={e => { e.preventDefault(); setSobre(true); }} onDragLeave={() => setSobre(false)}
@@ -40,7 +40,7 @@ export function CertificadoA1({ vm, ocupado, baixar }: { vm: Vm; ocupado: boolea
             <div className="cert-cartao-validade">
               <span className="fraco">Validade</span>
               <b className="num">{vm.cert.validade || '—'}</b>
-              {sit.situacao === 'vencido' && <span className="badge badge-danger">Vencido</span>}
+              {sit.situacao === 'vencido' && <span className="badge badge-bad">Vencido</span>}
               {sit.situacao === 'vence' && <span className="badge badge-warn">Vence em {sit.dias} dias</span>}
               {sit.situacao === 'ok' && <span className="badge badge-ok">Em dia</span>}
             </div>

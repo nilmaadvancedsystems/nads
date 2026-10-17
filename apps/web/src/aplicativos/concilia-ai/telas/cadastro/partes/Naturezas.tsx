@@ -2,7 +2,7 @@
 // linhas de venda à vista/a prazo nas Saídas.
 // Origem: conferencia.html #cadCardNfe (~L1165-1169), renderNaturezaDePara (~L2082-2132),
 // vendaVistaCard (~L2164), vistaRowCfop (~L2181-2203), "Não vai para o Contábil" (~L2117-2121).
-import { Icone, Interruptor } from '@nads/ui';
+import { Icone, Interruptor, Vazio } from '@nads/ui';
 import { useEffect, useRef, type CSSProperties } from 'react';
 import type { ItemNatureza, SlotVista, useConfiguracoes } from '../useConfiguracoes';
 import { CampoVincular, ChipsDeContas } from './VincularConta';
@@ -15,7 +15,7 @@ export function Naturezas({ n, entradas, vm }: { n: Naturezas; entradas: boolean
     <div className="card" id="cadCardNfe">
       <h3 id="cadTitulo">{n.titulo}</h3>
       <div id={entradas ? 'ndpBoxEnt' : 'ndpBoxSai'}>
-        {n.falta ? <p className="empty">{n.falta}</p> : (
+        {n.falta ? <Vazio compacto icone="alert" texto={n.falta} /> : (
           <>
             {n.cartaoVista && (
               <div className="vista-card">
@@ -36,7 +36,7 @@ export function Naturezas({ n, entradas, vm }: { n: Naturezas; entradas: boolean
                 )}
               </div>
             )}
-            {!n.itens.length ? <p className="empty">{n.vazio}</p> : (
+            {!n.itens.length ? <Vazio compacto icone="search" texto={n.vazio} /> : (
               <div className="ndp-list">
                 {n.itens.map(it => <Natureza key={it.k} it={it} vm={vm} />)}
               </div>

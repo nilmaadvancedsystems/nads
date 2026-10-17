@@ -33,6 +33,7 @@ const ICONS = {
   sino: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   ajuda: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><path d="M12 17h.01"/>',
   olho: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+  printer: '<path d="M7 8V3.5h10V8"/><rect x="4" y="8" width="16" height="9" rx="2"/><path d="M7 14h10v6.5H7Z"/>',
   fileText: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
   chevronsLeft: '<path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/>',
@@ -76,14 +77,27 @@ const ICONS = {
   impressora: '<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/>',
   // a cédula: o Caixa da tarefa (Vitor, 14/10/2026: "troca o ícone do caixa", era a maleta das empresas)
   dinheiro: '<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01"/><path d="M18 12h.01"/>',
-  // da Área do Cliente (Vitor, 16/10/2026): a empresa, o escudo, a seta de "ver todas", o telefone e o aviãozinho de enviar
+  // da Área do Cliente (Vitor, 16/10/2026): a empresa, o escudo, a seta de "ver todas" e o aviãozinho de enviar (o telefone é o das Entregas)
   predio: '<rect x="4.5" y="3" width="15" height="18" rx="1.5"/><path d="M9 7.5h.01"/><path d="M15 7.5h.01"/><path d="M9 11.5h.01"/><path d="M15 11.5h.01"/><path d="M10 21v-4h4v4"/>',
   escudo: '<path d="M12 3 4.5 6v5.5c0 4.4 3 8 7.5 9.5 4.5-1.5 7.5-5.1 7.5-9.5V6Z"/><path d="m9 12 2.2 2.2L15.5 10"/>',
   seta: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
   // o clipe de anexar (Área do Cliente, 16/10/2026)
   clipe: '<path d="m20.5 11.5-8.4 8.4a5.3 5.3 0 0 1-7.5-7.5l8.4-8.4a3.5 3.5 0 0 1 5 5l-8.4 8.4a1.8 1.8 0 0 1-2.5-2.5l7.8-7.8"/>',
-  telefone: '<path d="M21 16.4v2.9a2 2 0 0 1-2.2 2 19.5 19.5 0 0 1-8.5-3 19.2 19.2 0 0 1-5.9-5.9 19.5 19.5 0 0 1-3-8.6A2 2 0 0 1 3.4 2.5h2.9a2 2 0 0 1 2 1.7c.1.9.4 1.9.7 2.7a2 2 0 0 1-.5 2.1L7.3 10.2a15.6 15.6 0 0 0 5.9 5.9l1.2-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.8 2Z"/>',
   aviao: '<path d="M21.5 2.5 14.8 21l-3.6-8.2L3 9.2Z"/><path d="m21.5 2.5-10.3 10.3"/>',
+  // o caminhão: as Entregas (16/10/2026, a entrega de documentos aos clientes, trazida do Entregas)
+  caminhao: '<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>',
+  // os ícones da entrega de documentos (16/10/2026, a cópia fiel do Entregas): arrastar a parada, tirar, o lugar, o QR e
+  // o código de barras da guia, o telefone, o celular do cliente, o ranking, a meta e a dica
+  arrastar: '<circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/>',
+  lixeira: '<path d="M3.5 6.5h17"/><path d="M8.5 6.5V4.5a1.5 1.5 0 0 1 1.5-1.5h4a1.5 1.5 0 0 1 1.5 1.5v2"/><path d="M5.5 6.5 6.5 20a1.5 1.5 0 0 0 1.5 1.5h8a1.5 1.5 0 0 0 1.5-1.5l1-13.5"/><path d="M10 11v6"/><path d="M14 11v6"/>',
+  mapaPin: '<path d="M12 21.5s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11Z"/><circle cx="12" cy="10.5" r="2.4"/>',
+  qrCode: '<rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="14" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="3.5" y="14" width="6.5" height="6.5" rx="1"/><path d="M14 14h3v3h-3z"/><path d="M20.5 14v.01"/><path d="M17 20.5h3.5V17"/><path d="M14 20.5v.01"/>',
+  codigoBarras: '<path d="M3.5 5v14"/><path d="M7 5v14"/><path d="M10 5v14"/><path d="M14 5v14"/><path d="M17 5v14"/><path d="M20.5 5v14"/>',
+  telefone: '<path d="M21 16.4v3a1.9 1.9 0 0 1-2.1 1.9A18.8 18.8 0 0 1 2.7 5.1 1.9 1.9 0 0 1 4.6 3h3a1.9 1.9 0 0 1 1.9 1.6c.1.9.4 1.8.7 2.7a1.9 1.9 0 0 1-.4 2L8.5 10.6a15.2 15.2 0 0 0 4.9 4.9l1.3-1.3a1.9 1.9 0 0 1 2-.4c.9.3 1.8.6 2.7.7a1.9 1.9 0 0 1 1.6 1.9Z"/>',
+  celular: '<rect x="6.5" y="2.5" width="11" height="19" rx="2"/><path d="M11 18.5h2"/>',
+  trofeu: '<path d="M7 4h10v5a5 5 0 0 1-10 0Z"/><path d="M7 6H4.5a2.5 2.5 0 0 0 2.5 4"/><path d="M17 6h2.5a2.5 2.5 0 0 1-2.5 4"/><path d="M12 14v4"/><path d="M8.5 21h7"/><path d="M9.5 18h5v3h-5z"/>',
+  alvo: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+  lampada: '<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1.1 1.3 1.1 2.2h5c0-.9.5-1.7 1.1-2.2A6 6 0 0 0 12 3Z"/>',
 } as const;
 
 export type NomeIcone = keyof typeof ICONS;

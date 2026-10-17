@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ArquivoImportado } from '../extratudo/extrator/tipos';
 import {
   competenciasRecentes, concluida, criarRepoTarefasMemoria, dispensar, execucaoNova, fazer, idDaExecucao, interromper,
-  etapaNoMes, etapaNoMesDoAno, etapaPeloBalancete, objecoesMaisComuns, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar, execucoesVariadas, marcarSemMovimento, todosSemMovimento, voltarPara, rotuloCurtoCompetencia, competenciasDoPeriodo, rotaDoPeriodo, rotuloDoPeriodo, definirPeriodo, periodoConcluido,
+  etapaNoMes, etapaNoMesDoAno, etapaPeloBalancete, objecoesMaisComuns, tempoPorEtapa, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar, execucoesVariadas, marcarSemMovimento, todosSemMovimento, voltarPara, rotuloCurtoCompetencia, competenciasDoPeriodo, rotaDoPeriodo, rotuloDoPeriodo, definirPeriodo, periodoConcluido,
 } from '.';
 
 const R = ROTINA_CONTABIL;
@@ -40,7 +40,7 @@ describe('andamento', () => {
     ex = interromper(ex, 'dp', 'outro', '  aguardando  ', 'Clara', agora).execucao;
     expect(ex.etapas.dp).toMatchObject({ situacao: 'interrompida', objecao: 'outro', observacao: 'aguardando' });
     expect(situacaoGeral(ex, R)).toBe('parada');
-    expect(progresso(ex, R)).toMatchObject({ concluidas: 3, total: R.etapas.filter(e => !e.soQuandoAdicionada && etapaNoMesDoAno(e, '2026-08')).length, interrompida: etapa('dp') });
+    expect(progresso(ex, R)).toMatchObject({ concluidas: 3, total: R.etapas.filter(e => !e.soQuandoAdicionada && etapaNoMesDoAno(e, '2026-08') && etapaNoMes(ex, e.id)).length, interrompida: etapa('dp') });
     ex = dispensar(ex, 'dp', 'sem-funcionarios', '', 'Clara', agora).execucao;
     expect(concluida(ex.etapas.dp.situacao)).toBe(true);
     expect(situacaoGeral(ex, R)).toBe('em-andamento');
@@ -236,5 +236,16 @@ describe('a etapa pelo balancete (15/10/2026)', () => {
     expect(etapaPeloBalancete(fora.execucao, 'adiantamento-fornecedores', false, 'sem saldo', 'Vitor', agora)).toBeNull();
     const volta = etapaPeloBalancete(fora.execucao, 'adiantamento-fornecedores', true, 'com saldo', 'Vitor', agora)!;
     expect(etapaNoMes(volta.execucao, 'adiantamento-fornecedores')).toBe(true);
+  });
+});
+
+describe('quanto cada etapa leva (16/10/2026)', () => {
+  it('a diferença para a concluída antes, na mesma sentada; a mediana', () => {
+    const ex = (h: Record<string, string>) => ({ ...execucaoNova('X', 1, '2026-08', 'contabil'), etapas: Object.fromEntries(Object.entries(h).map(([id, em]) => [id, { situacao: 'feita' as const, por: 'a', em }])) });
+    const r = tempoPorEtapa([
+      ex({ extratos: '2026-09-01T10:00:00Z', caixa: '2026-09-01T10:20:00Z', bancos: '2026-09-01T10:30:00Z' }),
+      ex({ extratos: '2026-09-02T10:00:00Z', caixa: '2026-09-02T10:40:00Z', bancos: '2026-09-03T10:30:00Z' }),
+    ]);
+    expect(r).toEqual({ caixa: { minutos: 30, n: 2 }, bancos: { minutos: 10, n: 1 } });
   });
 });

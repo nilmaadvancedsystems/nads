@@ -2,7 +2,7 @@
 // do SIEG" (sieg-andamento, no catálogo) — o título com o tempo, a porcentagem, a barra, a linha do que está fazendo, os
 // números e os passos que vão ficando verdes. No centro da tela, com o fundo embaçado (Vitor, 09/10/2026; o fundo das janelas,
 // modal-overlay); no body: a página tem faixas com transform. Clicar fora não fecha (o trabalho está andando): só o ×.
-import { Icone, type NomeIcone } from '@nads/ui';
+import { BotaoFechar, Icone, type NomeIcone } from '@nads/ui';
 import { createPortal } from 'react-dom';
 
 export interface AndamentoDeExtratos {
@@ -26,7 +26,7 @@ export function AndamentoDosExtratos({ a, fechar }: { a: AndamentoDeExtratos; fe
           <span className="hint">{a.subtitulo}</span>
         </div>
         <b className="sieg-andamento-pct num">{a.pct}%</b>
-        <button type="button" className="btn btn-ghost" onClick={fechar} aria-label="Fechar" title="Fechar"><Icone nome="x" /></button>
+        <BotaoFechar onClick={fechar} />
       </div>
       <span className={'tarefas-barra fgts-barra' + (a.pronto ? '' : ' andando')}><span style={{ width: a.pct + '%' }} /></span>
       {a.detalhe && <span className="fgts-robo-linha"><span className={'bolinha-sit ' + (a.pronto ? 'concluida' : 'em-andamento')} aria-hidden="true" />{a.detalhe}</span>}

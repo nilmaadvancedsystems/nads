@@ -62,6 +62,14 @@ describe('as guias do INSS no PDF', () => {
     ]);
     expect(g[0].itens.find(i => i.codigo === '1213')).toMatchObject({ variacao: '06', descricao: 'CP TERCEIROS - SENAR - AQUIS PROD RUR PF POR PJ', principal: 45 });
   });
+  it('o DARF da DCTFWeb com IRRF e retenção (5952) junto: só o INSS fica na guia (15/10/2026)', () => {
+    const g = guiasDasLinhas([['31/05/2026 19/06/2026 07162699999999999', 'Código Descrição Principal Multa Juros Total',
+      '1082 Contrib Previd Descontada de Segurados 900,00 - - 900,00', '01 - CP SEGURADOS - EMPREGADOS/AVULSO',
+      '0561 IRRF - Rendimento do Trabalho Assalariado 250,00 - - 250,00', '07 - IRRF - TRABALHO ASSALARIADO',
+      '5952 Retenção Contrib Pagt de PJ a PJ Dir Priv 12,00 - - 12,00', '07 - CSRF',
+      'Banco Data de Arrecadação', '756 - BANCO COOPERATIVO SICOOB S/A 19/06/2026']]);
+    expect(g.map(x => [x.itens.map(i => i.codigo), x.principal, x.documento, x.banco])).toEqual([[['1082'], 900, 1162, '756 - BANCO COOPERATIVO SICOOB S/A']]);
+  });
   it('os pedaços do pdf.js viram linhas (de cima para baixo, da esquerda para a direita)', () => {
     expect(linhasDasPaginas([[{ texto: '452,70', x: 400, y: 700.2 }, { texto: '1082', x: 40, y: 700 }, { texto: 'Código', x: 40, y: 720 }]])).toEqual([['Código', '1082 452,70']]);
   });

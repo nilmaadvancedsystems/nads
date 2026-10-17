@@ -28,6 +28,12 @@ import { Mandei } from '../telas/mandei/Mandei';
 import { ChamadosDoCliente } from '../telas/area-cliente/ChamadosDoCliente';
 import { LinksDoCliente } from '../telas/area-cliente/LinksDoCliente';
 import { RecebidosDoCliente } from '../telas/area-cliente/RecebidosDoCliente';
+import { ConfiguracoesDoFinanceiro } from '../telas/financeiro/ConfiguracoesDoFinanceiro';
+import { NotasFiscais } from '../telas/financeiro/NotasFiscais';
+import { NovaEntrega } from '../telas/entregas/NovaEntrega';
+import { PainelDeEntregas } from '../telas/entregas/PainelDeEntregas';
+import { Solicitacoes } from '../telas/entregas/Solicitacoes';
+import { RotaDeEntregas } from '../telas/entregas/RotaDeEntregas';
 import { CascaTarefas } from './CascaTarefas';
 import { aplicacao, aplicacoesDe, caminhoDaPagina, type IdAplicacao } from './navegacao';
 import { useOperador, type Operador } from './operador';
@@ -42,6 +48,9 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'cadastro': return pagina === 'sistema' ? <RobosEAgentes /> : <UsuariosDoNads />;
     case 'area-cliente': return pagina === 'chamados' ? <ChamadosDoCliente /> : pagina === 'recebidos' ? <RecebidosDoCliente /> : <LinksDoCliente />;
     case 'mandei': return <Mandei pagina={pagina === 'central' ? 'central' : 'meus'} />;
+    case 'financeiro': return pagina === 'configuracoes' ? <ConfiguracoesDoFinanceiro /> : <NotasFiscais />;
+    // a entrega de documentos aos clientes, trazida do Entregas (16/10/2026)
+    case 'entregas': return pagina === 'painel' ? <PainelDeEntregas /> : pagina === 'solicitacoes' ? <Solicitacoes /> : pagina === 'nova' ? <NovaEntrega /> : <RotaDeEntregas />;
     case 'drive': return <ExploradorDoDrive />;
     case 'contato': return pagina === 'historico' ? <HistoricoDoRobo /> : <CaixaDoRobo />;
     default: return <EmDesenvolvimento nome={aplicacao(app)?.nome || app} />;

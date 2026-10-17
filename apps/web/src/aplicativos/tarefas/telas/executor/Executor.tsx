@@ -55,7 +55,8 @@ export function Executor() {
   const guia = useGuiaUnica(vm.empresa && operador ? operador.nome + '|' + dep + '|' + rota : null);
   // o razão da etapa (o Caixa): importado do computador, vale para a empresa, a etapa e o período abertos; a liquidação
   // de cobrança no caixa põe o Creditor nos meses dela
-  const razao = useRazaoDaEtapa(rota + '|' + (vm.etapa?.id || '') + '|' + periodo, vm.meses.length ? vm.meses : [vm.competencia], vm.ajustarCreditor);
+  const razao = useRazaoDaEtapa(rota + '|' + (vm.etapa?.id || '') + '|' + periodo, vm.meses.length ? vm.meses : [vm.competencia], vm.ajustarCreditor,
+    vm.empresa ? { nome: vm.empresa.nome, codigo: vm.empresa.codigo, caixa: vm.etapa?.razao?.conta === 'caixa' } : null);
   // a conferência do INSS (a etapa da folha): o razão do INSS a recolher × o PDF das guias pagas
   const inss = useInssDaEtapa(rota + '|' + (vm.etapa?.id || '') + '|' + periodo, vm.meses.length ? vm.meses : [vm.competencia]);
   // a ferramenta da etapa (iframe): recebe os bancos sem movimento e avisa quando a pessoa marca um
@@ -180,7 +181,8 @@ export function Executor() {
         {vm.departamento === 'contabil' && vm.empresa && vm.etapa && !COM_A_LINHA_DO_PERIODO.has(vm.etapa.id) && (
           <PeriodoDaTarefa nome={vm.empresa.nome} codigo={vm.empresa.codigo} meses={vm.meses.length ? vm.meses : [vm.competencia]} />
         )}
-        {vm.grupos.length > 0 && (
+        {/* um grupo só (a rotina do LCDPR, 16/10/2026): sem o menu dos grupos */}
+        {vm.grupos.length > 1 && (
           <MenuSuspenso rotulo="" icone={grupoDaVez ? ICONE_DO_GRUPO[grupoDaVez.nome] || 'list' : 'checkCircle'} className="gh-topo-btn gh-topo-menu"
             dica={grupoDaVez ? grupoDaVez.nome + ' · ' + grupoDaVez.feitas + '/' + grupoDaVez.total : 'Grupos da rotina'} direita largura={300} conteudo={fechar => <MenuDaRotina grupos={itensDosGrupos} emLote={emLote} fechar={fechar} />} />
         )}
@@ -243,7 +245,7 @@ export function Executor() {
     </div>
   ) : vm.revendo ? (
     <div className="alerta-linha">
-      <Alerta naLinha tom="ok" titulo={vm.etapa.nome + ' já foi concluída'} texto="As ações desta etapa estão travadas.">
+      <Alerta naLinha tom="ok" titulo={vm.etapa.nome + ' já foi concluída'} texto="Pode navegar e editar à vontade: ela continua concluída. Para refazer do começo, Editar.">
         <div className="btn-row">
           <button type="button" className="btn btn-primary" onClick={() => { void vm.editar(); }}>Editar</button>
           <button type="button" className="btn" onClick={vm.voltarAEtapaDaVez}>Ir para a etapa da vez</button>
@@ -274,7 +276,9 @@ export function Executor() {
         </div>
       ) : (
         <div className="executor-area">
-          <div className={'executor-ferramenta' + (vm.revendo ? ' revendo' : '')} inert={vm.revendo || undefined} aria-disabled={vm.revendo || undefined}>
+          {/* revendo uma etapa concluída, a tela fica livre: navegar entre as telas dela e editar, como voltando à etapa (Vitor,
+              16/10/2026: "deixe o usuário, quando ver, ter a opção de navegar entre as telas e editar as coisas"); ela continua concluída */}
+          <div className="executor-ferramenta">
             {/* a ferramenta carregando: o N no meio, sobre um vidro embaçado (em vez da área vazia) */}
             {/* revendo uma etapa concluída: sem a abertura com o N (é só para olhar; Vitor, 05/10/2026: "o loading tá bugando") */}
             {vm.ferramenta?.embutir && ferramentaAbrindo && !vm.revendo && <AberturaN vidro />}

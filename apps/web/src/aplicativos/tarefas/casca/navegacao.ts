@@ -10,7 +10,7 @@ import type { Operador } from './operador';
 
 export const BASE = '/tarefas';
 
-export type IdAplicacao = 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'area-cliente';
+export type IdAplicacao = 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente';
 
 export interface Pagina { id: string; rotulo: string; icone: NomeIcone; titulo: string }
 export interface Aplicacao {
@@ -66,6 +66,17 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'legislacao', rotulo: 'Legislação', icone: 'scale', titulo: 'DP — legislação' },
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'DP — configurações' },
   ] },
+  // a entrega de documentos aos clientes, trazida do Entregas (16/10/2026: "quero integrar no app … o entregas"; "quero só a
+  // parte de entregas"): a Rota (as paradas, Nova entrega, confirmar com a assinatura ou a foto) e o Painel do mês; todo o
+  // escritório, como no Entregas (lá qualquer pessoa da equipe vê a Nova entrega, a Rota e o Painel)
+  // 16/10/2026 ("só copia o entregas e joga aqui no design n1"): as três abas de lá, na mesma ordem (a Nova entrega primeiro)
+  { id: 'entregas', nome: 'Entregas', icone: 'caminhao', grupo: 'Rotinas', pronta: true, paginas: [
+    { id: 'nova', rotulo: 'Nova entrega', icone: 'lapis', titulo: 'Entregas — nova entrega' },
+    { id: 'rota', rotulo: 'Rota', icone: 'caminhao', titulo: 'Entregas — rota' },
+    { id: 'painel', rotulo: 'Painel', icone: 'painel', titulo: 'Entregas — painel do mês' },
+    // as Solicitações (16/10/2026, "cadê as solicitações"): a aba do Entregas, logo depois do Painel como lá
+    { id: 'solicitacoes', rotulo: 'Solicitações', icone: 'envelope', titulo: 'Entregas — solicitações' },
+  ] },
   // as senhas gov.br e os certificados digitais, no cofre com a chave por pessoa (Vitor, 07/10/2026); todo o escritório
   { id: 'senhas', nome: 'Senhas', icone: 'lock', grupo: 'Escritório', pronta: true, paginas: [
     { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Senhas — gov.br e certificados' },
@@ -74,6 +85,12 @@ export const APLICACOES: readonly Aplicacao[] = [
     // as contas gov.br de pessoas (CPF), importadas da planilha (Vitor, 07/10/2026)
     { id: 'gov', rotulo: 'Contas gov.br', icone: 'usuario', titulo: 'Senhas — contas gov.br' },
     { id: 'acesso', rotulo: 'Acesso', icone: 'usuario', titulo: 'Senhas — acesso ao cofre' },
+  ] },
+  // o financeiro do escritório (15/10/2026: "vamos criar um emissor de notas fiscais para o financeiro"): as NFS-e de
+  // honorários da Nilma (Taiobeiras, E&L), emitidas pelo robô da nuvem; só o admin e o diretor
+  { id: 'financeiro', nome: 'Financeiro', icone: 'cartao', grupo: 'Escritório', pronta: true, paginas: [
+    { id: 'notas', rotulo: 'Notas fiscais', icone: 'recibo', titulo: 'Financeiro — notas fiscais' },
+    { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Financeiro — configurações do emissor' },
   ] },
   // os tickets mandados aos clientes (Vitor, 07/10/2026): os meus e a central de todos
   { id: 'mandei', nome: 'Mandei', icone: 'mensagem', grupo: 'Comunicação', pronta: true, paginas: [
@@ -106,7 +123,9 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     (a.id !== 'drive' || op.admin || op.departamento === 'contabil') &&
     (a.id !== 'contato' || op.admin || op.departamento === 'contabil' || op.departamento === 'fiscal') &&
     // o Cadastro (empresas, usuários e configurações): só o admin e o diretor (Vitor, 05/10/2026)
-    (a.id !== 'cadastro' || op.admin || op.nivel === 'diretor'))
+    (a.id !== 'cadastro' || op.admin || op.nivel === 'diretor') &&
+    // o Financeiro (as notas fiscais do escritório): o admin e o diretor (15/10/2026)
+    (a.id !== 'financeiro' || op.admin || op.nivel === 'diretor'))
     // na gaveta, um grupo depois do outro: Rotinas, Comunicação, Escritório
     .sort((x, y) => ORDEM_DOS_GRUPOS.indexOf(x.grupo) - ORDEM_DOS_GRUPOS.indexOf(y.grupo));
 }
@@ -178,3 +197,19 @@ export const ABAS_DO_CADASTRO: readonly { id: string; rotulo: string; icone: Nom
 export const caminhoDoCadastro = (rotaEmpresa: string | null, aba = 'empresa') =>
   BASE + '/cadastro/empresas' + (rotaEmpresa ? '/' + rotaEmpresa + '/' + aba : '');
 export const caminhoDoExecutor = (rotaEmpresa: string, competencia: string) => BASE + '/executar/' + rotaEmpresa + '/' + competencia;
+
+/**
+ * O Importador LCDPR (o que era o lcdpr.html do Entregas), só nas empresas com ele (16/10/2026: "coloque o lcdpr como
+ * parte da empresa 62 de carlos lucas apenas"; a lista é lcdpr.EMPRESAS_COM_LCDPR, no core). Depois, no mesmo dia ("ele só
+ * precisa do lcdpr"), ele virou a rotina do Contábil dessas empresas: a etapa LCDPR do executor, com estas telas nas abas
+ * de cima (executor/etapas/lcdpr). O endereço antigo da página da empresa (…/empresa/<código>/lcdpr/<página>) volta
+ * para a página da empresa, que abre o executor.
+ */
+export const PAGINAS_DO_LCDPR: readonly Pagina[] = [
+  { id: 'lancamentos', rotulo: 'Lançamentos', icone: 'dinheiro', titulo: 'LCDPR — importar e conferir' },
+  { id: 'categorias', rotulo: 'Categorias', icone: 'grade', titulo: 'LCDPR — categorias' },
+  { id: 'regras', rotulo: 'Regras de NCM', icone: 'hash', titulo: 'LCDPR — regras de NCM' },
+  { id: 'plano', rotulo: 'Plano de contas', icone: 'list', titulo: 'LCDPR — plano de contas' },
+  { id: 'tabelas', rotulo: 'Tabelas de apoio', icone: 'fileText', titulo: 'LCDPR — tabelas de apoio' },
+  { id: 'configuracao', rotulo: 'Configuração', icone: 'settings', titulo: 'LCDPR — configuração geral' },
+];

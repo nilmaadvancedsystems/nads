@@ -9,8 +9,8 @@
 //   à direita: "Não teve movimento" (trava a linha e vira "Desfazer"); com o extrato vindo do Drive, um
 //     botãozinho de PDF (abre pelo link temporário). O movimento se vê pela setinha.
 // Ao importar, só uma barrinha por cima da tela, que some em 2,7 s.
-import { demo, extrator as x, type conferencia, tarefas } from '@nads/core';
-import { Alerta, classeDaJanela, destacarNaTela, Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
+import { clientes as cl, demo, extrator as x, type conferencia, tarefas } from '@nads/core';
+import { Alerta, BotaoFechar, classeDaJanela, destacarNaTela, Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
 import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { useDadosDeTesteNaTarefa, usePonteDaTarefa, useRequisitosParaATarefa, type OpcaoDeTeste } from '../../../../../../comum/ponte';
 import { useSessao } from '../../casca/sessao';
@@ -30,6 +30,8 @@ import { usePedirExtratos } from './usePedirExtratos';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../../../comum/desenvolvimento';
 import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
 import { useColunaAjustavel } from '../../../../../../comum/GradeDosMeses';
+import { ContabilNaImportacao } from '../../../../../../comum/ContabilNaImportacao';
+import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
 
 type Vm = ReturnType<typeof useImportacao>;
 type Lado = { qtdArquivos: number; qtdLancamentos: number; lendo: boolean };
@@ -99,6 +101,9 @@ const OPCOES_DE_TESTE: OpcaoDeTeste[] = [
   { id: 'bate', rotulo: 'Razão batendo' },
   { id: 'cheque', rotulo: 'Razão com o cheque especial' },
   { id: 'erros', rotulo: 'Razão com erros (para ver as pendências)' },
+  // o balancete dinâmico de teste da empresa toda (a aba Balancete e razões; 16/10/2026)
+  { id: 'dinamico-certo', rotulo: 'Balancete dinâmico de teste (tudo certo)' },
+  { id: 'dinamico-erros', rotulo: 'Balancete dinâmico de teste (com pendências)' },
   { id: 'apagar', rotulo: 'Apagar os dados de teste' },
 ];
 
@@ -535,9 +540,11 @@ function SeletorDeCompetencia({ vm, naTarefa, trocar, periodoDaTarefa, encerrar 
  * Conferência, as notas e os serviços. Dentro da Tarefas, ficam no cabeçalho dela, por cima do checklist; aberta
  * sozinha, em cima da página. O balancete foi para a Conferência fiscal, o primeiro passo dela (Vitor, 13/10/2026).
  */
-type AbaImportacao = 'bancos' | conferencia.PaginaImportacao;
+type AbaImportacao = 'bancos' | 'contabil' | conferencia.PaginaImportacao;
 const ABAS_DA_IMPORTACAO: { id: AbaImportacao; rotulo: string; icone: AbaDaEtapa['icone'] }[] = [
   { id: 'bancos', rotulo: 'Bancos', icone: 'landmark' },
+  // o balancete dinâmico (o primeiro passo: monta a Tarefa) e os razões das contas de uma vez (Vitor, 16/10/2026)
+  { id: 'contabil', rotulo: 'Balancete e razões', icone: 'scale' },
   { id: 'entradas', rotulo: 'Entradas', icone: 'arrowDown' },
   { id: 'saidas', rotulo: 'Saídas', icone: 'arrowUp' },
   { id: 'tomados', rotulo: 'Tomados', icone: 'fileDown' },
@@ -556,6 +563,7 @@ export function TarefaExtratos() {
   useDadosDeTesteNaTarefa(!ehTeste ? [] : vm.etapaFiscal ? [...demo.OPCOES_FISCAIS_DE_TESTE] : primeiroBanco ? OPCOES_DE_TESTE : [], tipo => {
     if (vm.etapaFiscal) { implantarNotasFiscaisDeTeste(s.nome, vm.periodo.length > 1 ? vm.periodo : [vm.competencia], tipo); return; }
     if (tipo === 'apagar') { vm.apagarDadosDeTeste(); return; }
+    if (tipo === 'dinamico-certo' || tipo === 'dinamico-erros') { contabil.usarDinamico('TESTE balancete dinâmico.xls', cl.dinamicoCompletoDeTeste(mesesDaEtapa, tipo === 'dinamico-erros')); return; }
     if (primeiroBanco && (tipo === 'extratos' || tipo === 'bate' || tipo === 'cheque' || tipo === 'erros')) void vm.implantarDadosDeTeste(primeiroBanco, tipo);
   });
   const s = useSessao();
@@ -602,6 +610,8 @@ export function TarefaExtratos() {
   // os requisitos para seguir (o botão de avançar da Tarefas só aparece com tudo pronto): cada banco Ok e, na
   // Conferência, Balancete, Entradas, Saídas, Tomados e (se presta serviço) Prestados importados
   const importados = useImportadosDaConferencia(s.nome);
+  // o balancete dinâmico é obrigatório na Importação (16/10/2026): ele monta a Tarefa
+  const contabil = useContabilDaEmpresa(s.nome, s.codigo);
   const mesesDaEtapa = vm.periodo.length > 1 ? vm.periodo : [vm.competencia];
   const semMovimentoNoPeriodo = (banco: string) => mesesDaEtapa.every(m => (vm.periodo.length > 1 ? ponte.semMovimentoPorMes[m] || [] : ponte.semMovimento).includes(banco));
   const diasSemCheque = (banco: string) => { const t = situacoes[banco]; return t && t.tipo === 'falta-cheque' ? t.faltam.length : 0; };
@@ -619,7 +629,7 @@ export function TarefaExtratos() {
     ? { precisaChequeEspecial, ...x.requisitosDoChequeEspecial(vm.bancos.map(b => ({ id: b.id, nome: b.nome, ok: !!bancosOk[b.id], semMovimento: semMovimentoNoPeriodo(b.id), diasSemCheque: diasSemCheque(b.id) }))) }
     : importados ? { ...x.requisitosDaImportacao(vm.bancos.map(b => ({
       id: b.id, nome: b.nome, ok: !!bancosOk[b.id], faltaCheque: diasSemCheque(b.id) > 0, semMovimento: semMovimentoNoPeriodo(b.id),
-    })), importados, vm.prestaServico), precisaChequeEspecial } : null);
+    })), importados, vm.prestaServico, !!contabil.dinamico), precisaChequeEspecial } : null);
   const bancosSemCheque = vm.bancos.filter(b => diasSemCheque(b.id) > 0);
   // "Pedir os que faltam" (08/10/2026): os bancos sem extrato no mês, fora os sem movimento e os que já têm extrato na fila
   const faltamPedir = vm.bancos.filter(b => b.id !== 'banco' && b.extrato.qtdArquivos === 0 && !semMovimentoNoPeriodo(b.id) && !rec.linhasComRecebido.has(b.id)).length;
@@ -664,7 +674,8 @@ export function TarefaExtratos() {
           ))}
         </nav>
       )}
-      {aba !== 'bancos' ? <div data-destaque="importacao"><ImportacaoNaEtapa nome={s.nome} tipo={aba} prestaServico={vm.prestaServico} competencia={vm.competencia} /></div> : (<>
+      {aba === 'contabil' ? <div data-destaque="contabil"><ContabilNaImportacao nome={s.nome} codigo={s.codigo} /></div>
+        : aba !== 'bancos' ? <div data-destaque="importacao"><ImportacaoNaEtapa nome={s.nome} tipo={aba} prestaServico={vm.prestaServico} competencia={vm.competencia} /></div> : (<>
       <div className={'imp-topo' + (ocupadoGeral ? ' travado' : '')} aria-busy={ocupadoGeral}>
         {/* à esquerda, como o "⎇ main ▾  6 Branches" do GitHub: a competência e o número de bancos */}
         {/* o Em lote (escolher, alterar, cancelar) mora aqui, só na Importação (Vitor, 05/10/2026: "volte para dentro da tela
@@ -957,7 +968,7 @@ export function TarefaExtratos() {
       {d.escolha && (
         <div className="modal-overlay" role="presentation" onClick={d.fecharEscolha}>
           <div className={classeDaJanela({}) + ' drive-escolha'} role="dialog" aria-modal="true" aria-labelledby="tituloEscolha" onClick={e => e.stopPropagation()}>
-            <button type="button" className="modal-x" aria-label="Fechar" title="Fechar" onClick={d.fecharEscolha}><Icone nome="x" /></button>
+            <BotaoFechar canto onClick={d.fecharEscolha} />
             <h3 id="tituloEscolha">Extrato do {d.escolha.linha.nome} no Drive</h3>
             <p>{d.escolha.texto}</p>
             {d.escolha.candidatos.length > 0 && (

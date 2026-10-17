@@ -1,7 +1,7 @@
 // O Painel do Fiscal (Vitor, 09/10/2026): os clientes do mês numa tela, com as peças do Painel do DP (os filtros, os números
 // em painéis coloridos e a lista em card). Em cada linha, o que a rotina e o SIEG apontam; o número em amarelo é o que
 // pede atenção, o "—" é o que ainda não foi conferido (a rotina do cliente ainda não foi aberta, ou o SIEG não contou).
-import { Esqueleto, Icone, Segmentado, useCarregando } from '@nads/ui';
+import { Esqueleto, Icone, MenuSuspenso, Segmentado, useCarregando } from '@nads/ui';
 import { Link } from 'react-router';
 import { useVisaoDoFiscal, type FiltroDoPainel } from './useVisaoDoFiscal';
 
@@ -19,21 +19,16 @@ export function PainelDoFiscal() {
   useCarregando(vm.carregando);
   return (
     <section className="dp-painel">
-      <div className="tarefas-filtros dp-filtros">
-        <label className="field dp-filtro">
-          <span className="hint">Competência</span>
-          <select className="select-compact" value={vm.competencia} onChange={e => vm.setCompetencia(e.target.value)}>
-            {vm.competencias.map(c => <option key={c.valor} value={c.valor}>{c.rotulo}</option>)}
-          </select>
+      <div className="tarefas-barra-topo dp-filtros-linha">
+        {/* a barra no padrão do resto do app (revisão da UI, 16/10/2026): a busca de lupa e os filtros em menus numa linha */}
+        <MenuSuspenso icone="calendar" rotulo={vm.competencias.find(c => c.valor === vm.competencia)?.rotulo ?? vm.competencia} titulo="Competência" dica="Trocar a competência"
+          itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
+        <label className="busca-curta">
+          <Icone nome="search" />
+          <input type="text" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente (nome ou código)"
+            onKeyDown={e => { if (e.key === 'Escape') vm.setBusca(''); }} />
         </label>
-        <label className="field dp-filtro dp-busca">
-          <span className="hint">Buscar cliente</span>
-          <input type="text" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} placeholder="Nome ou código" aria-label="Buscar cliente (nome ou código)" />
-        </label>
-        <label className="field dp-filtro">
-          <span className="hint">Mostrar</span>
-          <Segmentado opcoes={FILTROS} valor={vm.filtro} onMudar={vm.setFiltro} />
-        </label>
+        <Segmentado opcoes={FILTROS} valor={vm.filtro} onMudar={vm.setFiltro} />
       </div>
       {vm.carregando ? <Esqueleto linhas={6} numeros={6} /> : (
         <>

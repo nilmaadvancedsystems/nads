@@ -1,7 +1,7 @@
 // A linha de Salários a pagar ou do FGTS a recolher na etapa da folha (Vitor, 07/10/2026), no desenho da linha do INSS: o
 // nome, o resumo e só o Razão à direita (o ⚡ e o importar; importado, o check que vira × e tira). Embaixo, a grade dos meses
 // com o saldo do fim de cada um, sem D/C: o certo (credor ou zero) em branco, o devedor em azul.
-import { Icone, LogoFgts } from '@nads/ui';
+import { CampoArquivo, Icone, LogoFgts } from '@nads/ui';
 import { useId, useState } from 'react';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../comum/BotaoDeTeste';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosMeses';
@@ -29,15 +29,14 @@ export function RazaoDaFolha({ vm, dev }: { vm: Vm; dev: boolean }) {
           <div className="imp-grupo" aria-label={'Razão de ' + vm.nome}>
             <span className="imp-rotulo">Razão</span>
             {vm.temRazao ? (
-              <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" onClick={vm.remover} title={'O razão de ' + vm.nome + ': importado. Clique para excluir.'} aria-label={'Excluir o razão de ' + vm.nome}>
+              <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" onClick={vm.remover} title={'O razão de ' + vm.nome + ': importado. Clique para tirar.'} aria-label={'Tirar o razão de ' + vm.nome}>
                 <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
               </button>
             ) : (
               <>
                 <BotaoDeTeste itens={teste} />
                 <label htmlFor={id} className="icon-btn icon-btn-sm imp-btn" title={'Importar o razão de ' + vm.nome + ' (XLS da conciliação do Alterdata)'} aria-label={'Importar o razão de ' + vm.nome}><Icone nome="upload" /></label>
-                <input id={id} type="file" accept=".xls,.xlsx,.ods" className="sr-only"
-                  onChange={e => { const f = e.target.files?.[0] || null; e.target.value = ''; void vm.importar(f); }} />
+                <CampoArquivo semCaixa id={id} aceitar=".xls,.xlsx,.ods" onEscolher={f => { void vm.importar(f); }} />
               </>
             )}
           </div>

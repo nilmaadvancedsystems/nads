@@ -6,7 +6,7 @@
 import { tarefas as t } from '@nads/core';
 import { addDoc, collection, doc, getDoc, onSnapshot, query, setDoc, where } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
-import type { PedidoSieg, RepoSieg } from './sieg';
+import type { PedidoSieg, PedidoSituacao, RepoSieg, SituacaoNaSefaz } from './sieg';
 
 type Quem = { nome: string; uid: string } | null;
 const texto = (v: unknown) => (v == null ? '' : String(v));
@@ -23,6 +23,7 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
   const saidas = new Map<string, { carregadas: boolean; dados: t.sieg.SaidasSieg | null }>();
   const notas = new Map<string, { carregadas: boolean; dados: t.sieg.NotasSieg | null }>();
   const pedidos = new Map<string, PedidoSieg | null>();
+  const situacoes = new Map<string, PedidoSituacao | null>();
   const doMes = new Map<string, { carregado: boolean; contagens: Map<string, t.sieg.ContagemSieg>; saidas: Map<string, t.sieg.SaidasSieg>; vieram: number }>();
 
   const tipos = (r: unknown) => {
@@ -136,6 +137,36 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
         }, () => undefined);
       }
       return pedidos.get(tipo + '|' + k) || null;
+    },
+    // a situação das notas na SEFAZ (15/10/2026): pedidosSituacao, o robô da VM grava o andamento e o resultado no pedido
+    situacao(codigo, competencia) {
+      const k = soDigitos(codigo) + '_' + competencia;
+      if (!situacoes.has(k)) {
+        situacoes.set(k, null);
+        onSnapshot(query(collection(db, 'pedidosSituacao'), where('codigo', '==', soDigitos(codigo)), where('competencia', '==', competencia)), s => {
+          const d = s.docs.map(x => x.data()).sort((a, b) => texto(b.criadoEm).localeCompare(texto(a.criadoEm)))[0];
+          const r = d?.resultado as Record<string, unknown> | undefined;
+          const c = (r?.contagem || {}) as Record<string, unknown>;
+          situacoes.set(k, d ? {
+            status: texto(d.status), erro: texto(d.erro), em: texto(d.fimEm || d.criadoEm), feitas: Number(d.feitas) || 0, total: Number(d.total) || 0,
+            resultado: r ? {
+              contagem: Object.fromEntries((['autorizada', 'cancelada', 'denegada', 'nao-encontrada', 'erro', 'outro-estado'] as SituacaoNaSefaz[]).map(x => [x, Number(c[x]) || 0])) as Record<SituacaoNaSefaz, number>,
+              divergentes: (Array.isArray(r.divergentes) ? r.divergentes : []).map((x: Record<string, unknown>) => ({
+                chave: texto(x.chave), tipo: texto(x.tipo), numero: texto(x.numero), serie: texto(x.serie), valor: Number(x.valor) || 0,
+                sieg: texto(x.sieg), sefaz: texto(x.sefaz) as SituacaoNaSefaz, cStat: texto(x.cStat), motivo: texto(x.motivo),
+              })),
+              maisDivergentes: Number(r.maisDivergentes) || 0,
+            } : null,
+          } : null);
+          mudou();
+        }, () => undefined);
+      }
+      return situacoes.get(k) || null;
+    },
+    async pedirSituacao(codigo, competencia) {
+      const q = quem();
+      if (!q) throw new Error('Sem login.');
+      await addDoc(collection(db, 'pedidosSituacao'), { status: 'pendente', codigo: soDigitos(codigo), competencia, criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorUid: q.uid });
     },
     async pedirSaidas(codigo, competencia) {
       const q = quem();

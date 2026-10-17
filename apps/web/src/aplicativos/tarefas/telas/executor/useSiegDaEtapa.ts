@@ -148,6 +148,8 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
       ...conf,
       quando: quando(sai.dados!.em),
       series: conf.series.map(x => ({ ...x, faltandoTexto: t.sieg.emFaixas(x.faltando), canceladasTexto: t.sieg.emFaixas(x.canceladas) })),
+      /** os cupons (NFC-e) do mês: quantidade, valor, numeração (15/10/2026) */
+      cupons: t.sieg.resumoDosCupons(conf),
     } : null,
     saidasCarregadas: sai.carregadas,
     pedido: pedido ? { ...pedido, pedindo } : null,
@@ -164,6 +166,24 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
     baixarZip,
     contar: () => pedir('contagem'),
     baixarXmls: () => pedir('xmls'),
+    /** a situação das notas na SEFAZ pela VM (15/10/2026: "verifique o cupom ou nfce via vm para ter o feedback do status") */
+    situacao: (() => {
+      const x = codigo ? repo.situacao(codigo, competencia) : null;
+      if (!x) return null;
+      const r = x.resultado;
+      return {
+        ...x,
+        trabalhando: x.status === 'pendente' || x.status === 'processando',
+        pct: x.total ? Math.round((x.feitas / x.total) * 100) : 0,
+        quando: quando(x.em),
+        resumo: r ? ([['autorizada', 'Autorizadas', 'ok'], ['cancelada', 'Canceladas', 'neutro'], ['denegada', 'Denegadas', 'aviso'], ['nao-encontrada', 'Não constam', 'aviso'], ['erro', 'Sem resposta', 'aviso'], ['outro-estado', 'Outro estado', 'neutro']] as const)
+          .map(([id, rotulo, tom]) => ({ id, rotulo, tom, n: r.contagem[id] })).filter(z => z.n > 0 || z.id === 'autorizada') : [],
+      };
+    })(),
+    async consultarSituacao() {
+      try { await repo.pedirSituacao(codigo, competencia); toast('Pedido à VM: ela consulta cada nota do mês na SEFAZ (uns segundos por nota).'); }
+      catch (err) { toast('Não consegui pedir: ' + (err instanceof Error ? err.message : String(err))); }
+    },
     async baixar() {
       if (pedindo) return;
       try { await repo.pedirSaidas(codigo, competencia); toast('Pedido ao SIEG: o robô baixa as saídas do mês (alguns minutos).'); }

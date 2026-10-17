@@ -40,6 +40,8 @@ export const ROTINA_FISCAL: Rotina = {
     }),
     // ─── Conferência ──────────────────────────────────────────────────────────
     etapa('fiscal-conf-saidas', 'Conferência', 'Saídas', 'Confira a sequência e as notas de saída.', [
+      // 15/10/2026: "coloque importação do xml de saída" — soltar os XMLs aqui mesmo (vão pelo robô, como o XMLs do cliente)
+      item('xml-saidas', 'Importar os XMLs de saída', { painel: 'xml-saidas' }),
       item('sequencia-saidas', 'Sequência de Saídas', { painel: 'sequencia' }),
       item('conferencia-nfs', 'Conferência das Notas Fiscais', { aviso: 'Se atentar caso os produtos sejam Monofásico, ST, Imune ou Isento. Observar cancelamentos.', painel: 'saidas', importar: ['saidas'] }),
     ], { sieg: 'saidas' }),

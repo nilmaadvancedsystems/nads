@@ -1,18 +1,21 @@
 // O tópico "XMLs do cliente" da janela de importar (08/10/2026): a área de soltar (a dos certificados), o que foi lido e,
 // depois de mandar, o andamento do robô com as peças da janela do SIEG (a barra, os números e os passos).
-import { BotaoAcao, Icone } from '@nads/ui';
+import { BotaoAcao, CampoArquivo, Icone } from '@nads/ui';
 import { useRef, useState } from 'react';
 import { useXmlsDoCliente } from '../useXmlsDoCliente';
 
-export function XmlsDoCliente({ codigo, competencia }: { codigo: string; competencia: string }) {
+/** `saidas`: o mesmo, direto na etapa Conferência de saídas (15/10/2026: "coloque importação do xml de saída"). */
+export function XmlsDoCliente({ codigo, competencia, saidas = false }: { codigo: string; competencia: string; saidas?: boolean }) {
   const vm = useXmlsDoCliente(codigo, competencia);
   const input = useRef<HTMLInputElement>(null);
   const [sobre, setSobre] = useState(false);
-  const soltar = (fs: FileList | null | undefined) => { if (fs?.length) void vm.soltar([...fs]); };
+  const soltar = (fs: FileList | File[] | null | undefined) => { if (fs?.length) void vm.soltar([...fs]); };
   const a = vm.andamento;
   return (
     <div className="xmls-cliente">
-      <p className="hint" style={{ margin: 0 }}>Os XMLs que o cliente mandou (soltos ou num .zip): o robô fica com os desta empresa, lança as notas no nads (as tabelas de verificação e a sequência das saídas) e salva no Drive só os que ainda não estão lá.</p>
+      <p className="hint" style={{ margin: 0 }}>{saidas
+        ? 'Os XMLs das notas que o cliente emitiu (soltos ou num .zip): o robô fica com os desta empresa, lança na conferência e na sequência das saídas e salva no Drive só os que ainda não estão lá.'
+        : 'Os XMLs que o cliente mandou (soltos ou num .zip): o robô fica com os desta empresa, lança as notas no nads (as tabelas de verificação e a sequência das saídas) e salva no Drive só os que ainda não estão lá.'}</p>
       {/* direto da pasta do cliente no Drive (09/10/2026): a pasta do ano (o arquivado) e o Claudio Secretario */}
       {!a && (
         <div className="xmls-cliente-lidos">
@@ -20,12 +23,12 @@ export function XmlsDoCliente({ codigo, competencia }: { codigo: string; compete
           <span className="hint">ou solte os arquivos abaixo</span>
         </div>
       )}
-      <input ref={input} type="file" accept=".xml,.zip" multiple hidden onChange={e => { soltar(e.target.files); e.target.value = ''; }} />
+      <CampoArquivo semCaixa semFoco multiplo ref={input} aceitar=".xml,.zip" onEscolherVarios={soltar} />
       <button type="button" className={'cert-soltar' + (sobre ? ' sobre' : '') + (vm.lidos ? ' compacto' : '')} onClick={() => input.current?.click()}
         onDragOver={e => { e.preventDefault(); setSobre(true); }} onDragLeave={() => setSobre(false)}
         onDrop={e => { e.preventDefault(); setSobre(false); soltar(e.dataTransfer.files); }}>
         <span className="cert-soltar-icone"><Icone nome="upload" /></span>
-        <b>{vm.lendo ? 'Lendo os arquivos…' : vm.lidos ? 'Soltar mais arquivos' : 'Solte aqui os XMLs do cliente'}</b>
+        <b>{vm.lendo ? 'Lendo os arquivos…' : vm.lidos ? 'Soltar mais arquivos' : (saidas ? 'Solte aqui os XMLs de saída' : 'Solte aqui os XMLs do cliente')}</b>
         <span className="fraco">.xml ou .zip, um ou vários</span>
       </button>
       {vm.lidos && !a && (
@@ -40,7 +43,7 @@ export function XmlsDoCliente({ codigo, competencia }: { codigo: string; compete
         <div className="card sieg-andamento" role="status" aria-live="polite">
           <div className="fgts-resumo-topo">
             <div className="fgts-resumo-titulo">
-              <h3>{a.erro ? 'Os XMLs não entraram' : a.pronto ? 'XMLs do cliente lançados' : 'Lançando os XMLs do cliente'}</h3>
+              <h3>{a.erro ? 'Os XMLs não entraram' : a.pronto ? (saidas ? 'XMLs de saída lançados' : 'XMLs do cliente lançados') : (saidas ? 'Lançando os XMLs de saída' : 'Lançando os XMLs do cliente')}</h3>
               {!a.erro && <span className="hint">{a.pronto ? 'Concluído' : a.detalhe || 'O robô está trabalhando'}</span>}
             </div>
             {!a.erro && <b className="sieg-andamento-pct num">{a.pct}%</b>}

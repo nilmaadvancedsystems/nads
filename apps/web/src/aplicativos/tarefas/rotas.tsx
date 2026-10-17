@@ -34,6 +34,9 @@ export const rotasTarefas: RouteObject[] = [
       { index: true, element: <Inicio /> },
       { path: 'executar/:empresa/:competencia', element: <Executor /> },
       { path: 'minhas-empresas/empresa/:empresa', element: <EmpresaAberta /> },
+      // o endereço antigo do LCDPR na página da empresa (16/10/2026): volta para a página da empresa (o LCDPR agora é a
+      // etapa do executor)
+      { path: 'minhas-empresas/empresa/:empresa/lcdpr/:pagina', element: <EmpresaAberta /> },
       // a lista e a janela usam o mesmo componente: a lista (e a busca dela) fica montada atrás da janela
       { path: 'cadastro/empresas', element: <CadastroAberto /> },
       { path: 'cadastro/empresas/:empresa/:aba', element: <CadastroAberto /> },

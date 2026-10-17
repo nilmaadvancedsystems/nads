@@ -2,9 +2,9 @@
 // que segue o Notion) — à esquerda a pessoa, a busca e os tópicos em grupos; à direita o tópico aberto, em seções
 // com cabeçalho e uma opção por linha (o rótulo e a explicação à esquerda, o controle à direita). Fecha no ×, no Esc e
 // clicando fora.
-import { animacoesPedidas, ConfigLinha, ConfigSecao, definirNivelDeAnimacao, Icone, nivelDeAnimacao, MenuSuspenso, NIVEIS_DE_ANIMACAO, SeletorTema, useIndicador, type NivelDeAnimacao, type NomeIcone } from '@nads/ui';
+import { animacoesPedidas, BotaoFechar, CampoArquivo, ConfigLinha, ConfigSecao, definirNivelDeAnimacao, Icone, MenuSuspenso, NIVEIS_DE_ANIMACAO, nivelDeAnimacao, SeletorTema, useIndicador, useJanela, type NivelDeAnimacao, type NomeIcone } from '@nads/ui';
 import { animate, cleanInlineStyles, spring, stagger, type JSAnimation } from 'animejs';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 
 // As animações (14/10/2026: "faça do clique ao perfil as configurações pessoais", com o animejs): a janela chega com mola e
 // a lateral em cascata; trocar de tópico desliza o conteúdo e as linhas chegam em cascata (os ícones de perfil saltam);
@@ -108,8 +108,7 @@ function MinhaConta({ vm }: { vm: VmPessoal }) {
             <span className="cfg-linha-desc">Aparece no seu ícone, no canto do cabeçalho, e no Entregas (é a mesma conta).</span>
           </div>
           <div className="cfg-linha-controle">
-            <input ref={arquivo} type="file" accept="image/*" hidden
-              onChange={ev => { const f = ev.target.files?.[0]; if (f) c.trocarFoto(f); ev.target.value = ''; }} />
+            <CampoArquivo semCaixa semFoco ref={arquivo} aceitar="image/*" onEscolher={f => { if (f) c.trocarFoto(f); }} />
             <button type="button" className="btn btn-outline" disabled={c.salvandoFoto} onClick={() => arquivo.current?.click()}>
               {c.salvandoFoto ? <span className="btn-spinner" /> : <Icone nome="upload" />}{c.foto ? 'Trocar foto' : 'Escolher foto'}
             </button>
@@ -177,12 +176,8 @@ export function JanelaPessoal({ topico, mudar, fechar }: { topico: TopicoPessoal
   };
   const sairRef = useRef(sair);
   sairRef.current = sair;
-  // Esc fecha (menos com a janela de troca aberta por cima)
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('.troca-janela')) sairRef.current(); };
-    document.addEventListener('keydown', esc);
-    return () => document.removeEventListener('keydown', esc);
-  }, []);
+  // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela) (com a janela de troca por cima, o Esc é dela)
+  useJanela(janela, () => sairRef.current());
   // a entrada: a janela cresce com mola e a lateral chega em cascata
   useLayoutEffect(() => {
     const el = janela.current;
@@ -232,7 +227,7 @@ export function JanelaPessoal({ topico, mudar, fechar }: { topico: TopicoPessoal
         <section className="pessoal-conteudo">
           <header className="pessoal-topo">
             <h2 ref={titulo}>{atual.rotulo}</h2>
-            <button type="button" className="drawer-x" aria-label="Fechar" onClick={sair}><Icone nome="x" /></button>
+            <BotaoFechar onClick={sair} />
           </header>
           {/* por enquanto só Minha conta, e Versão do sistema (Vitor, 05/10/2026: saíram a Caixa de entrada, as
               Anotações, Aparência e telas, Perguntar à IA e Perguntas frequentes) */}

@@ -73,13 +73,13 @@ export const MSG_CADASTRO_BLOQ = 'Cadastro fica disponível depois de importar o
 
 /** Os avisos de "falta importar" (AVISO_IMPORTAR do original, ~L1816). */
 export const AVISO_IMPORTAR = {
-  entradas: { titulo: 'Entradas ainda não importadas', html: 'Importe o relatório de <b>entradas</b> pra ver esses dados.', botao: 'Importar entradas', ir: 'importacao/entradas' },
-  saidas: { titulo: 'Saídas ainda não importadas', html: 'Importe o relatório de <b>saídas</b> pra ver esses dados.', botao: 'Importar saídas', ir: 'importacao/saidas' },
+  entradas: { titulo: 'Entradas ainda não importadas', html: 'Importe o relatório de <b>entradas</b> para ver esses dados.', botao: 'Importar entradas', ir: 'importacao/entradas' },
+  saidas: { titulo: 'Saídas ainda não importadas', html: 'Importe o relatório de <b>saídas</b> para ver esses dados.', botao: 'Importar saídas', ir: 'importacao/saidas' },
   notas: { titulo: 'Nenhuma nota importada', html: 'O Movimento precisa das notas de <b>entradas</b> ou <b>saídas</b>. Importe pelo menos um dos relatórios.', botao: 'Importar notas', ir: 'importacao/entradas' },
-  prestados: { titulo: 'Serviços prestados ainda não importados', html: 'Importe o relatório de <b>serviços prestados</b> pra ver esses dados.', botao: 'Importar serviços prestados', ir: 'importacao/prestados' },
-  tomados: { titulo: 'Serviços tomados ainda não importados', html: 'Importe o relatório de <b>serviços tomados</b> pra ver esses dados.', botao: 'Importar serviços tomados', ir: 'importacao/tomados' },
-  fiscais: { titulo: 'Nenhuma nota fiscal importada', html: 'Importe o relatório de <b>entradas</b> ou de <b>saídas</b> pra ver esses dados.', botao: 'Importar notas', ir: 'importacao/entradas' },
-  servicos: { titulo: 'Nenhum serviço importado', html: 'Importe o relatório de <b>serviços tomados</b> ou <b>prestados</b> pra ver esses dados.', botao: 'Importar serviços', ir: 'importacao/tomados' },
+  prestados: { titulo: 'Serviços prestados ainda não importados', html: 'Importe o relatório de <b>serviços prestados</b> para ver esses dados.', botao: 'Importar serviços prestados', ir: 'importacao/prestados' },
+  tomados: { titulo: 'Serviços tomados ainda não importados', html: 'Importe o relatório de <b>serviços tomados</b> para ver esses dados.', botao: 'Importar serviços tomados', ir: 'importacao/tomados' },
+  fiscais: { titulo: 'Nenhuma nota fiscal importada', html: 'Importe o relatório de <b>entradas</b> ou de <b>saídas</b> para ver esses dados.', botao: 'Importar notas', ir: 'importacao/entradas' },
+  servicos: { titulo: 'Nenhum serviço importado', html: 'Importe o relatório de <b>serviços tomados</b> ou <b>prestados</b> para ver esses dados.', botao: 'Importar serviços', ir: 'importacao/tomados' },
   todas: { titulo: 'Cadastro ainda indisponível', html: 'O Cadastro fica disponível depois de importar o <b>balancete</b> e as notas: <b>entradas e saídas</b>, ou os <b>serviços</b>.', botao: 'Ir para a importação', ir: null },
 } as const;
 

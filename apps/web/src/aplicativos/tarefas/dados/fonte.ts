@@ -15,6 +15,10 @@ import { criarGmailFirestore } from './gmail.firestore';
 import { criarArquivadorMemoria, type RepoArquivador } from './arquivador';
 import { criarFgtsMemoria, type RepoFgts } from './fgts';
 import { criarFgtsFirestore } from './fgts.firestore';
+import { criarNfseMemoria, type RepoNfse } from './nfse';
+import { criarNfseFirestore } from './nfse.firestore';
+import { criarEntregasDeDocumentosMemoria, type RepoEntregasDeDocumentos } from './entregasDeDocumentos';
+import { criarEntregasDeDocumentosFirestore } from './entregasDeDocumentos.firestore';
 import { criarSiegMemoria, type RepoSieg } from './sieg';
 import { criarSiegFirestore } from './sieg.firestore';
 import { criarArquivadorFirestore } from './arquivador.firestore';
@@ -27,6 +31,8 @@ import { criarLegislacaoDpMemoria, type RepoLegislacaoDp } from './legislacaoDp'
 import { criarLegislacaoDpFirestore } from './legislacaoDp.firestore';
 import { criarAreaClienteMemoria, type RepoAreaCliente } from './areaCliente';
 import { criarAreaClienteFirestore } from './areaCliente.firestore';
+import { criarLcdprMemoria, type RepoLcdpr } from './lcdpr';
+import { criarLcdprFirestore } from './lcdpr.firestore';
 import { criarFeedbackFirestore } from './feedback.firestore';
 import { criarPessoalMemoria, type RepoPessoal } from './pessoal';
 import { criarPessoalFirestore } from './pessoal.firestore';
@@ -40,6 +46,8 @@ import { criarCofreMemoria, type RepoCofre } from './cofre';
 import { criarCofreFirestore } from './cofre.firestore';
 import { criarAgentesMemoria, type RepoAgentes } from './agentes';
 import { criarAgentesFirestore } from './agentes.firestore';
+import { criarGuardadoFirestore } from './guardado.firestore';
+import { ligarGuardadoRemoto } from '../../../comum/guardado';
 
 export const noBanco = ligadoAoBanco(); // no modo desenvolvedor, os dados de exemplo (nada vai para o banco)
 
@@ -69,6 +77,8 @@ export function repoDaTarefas(): tarefas.RepoTarefas {
     definirEmpresasExtras(empresasNovas);
     // o regime do Cadastro › Empresa vale no lugar do da lista (13/10/2026): muda as etapas da rotina
     tarefas.usarRegimesDoCadastro(regimeNoCadastro);
+    // o "onde parou" da Tarefa também no banco (16/10/2026): no banco, sim; nos exemplos e no modo desenvolvedor, não
+    if (noBanco) ligarGuardadoRemoto(criarGuardadoFirestore(() => quemPede()?.nome || ''));
     repo = r;
   }
   return repo;
@@ -307,6 +317,22 @@ export function repoDoFgts(): RepoFgts {
   return fgts;
 }
 
+let notasFiscais: RepoNfse | null = null;
+
+/** O emissor de NFS-e do financeiro (15/10/2026): as notas de honorários, a configuração e o token, emitidas pelo robô da nuvem. */
+export function repoDeNfse(): RepoNfse {
+  if (!notasFiscais) notasFiscais = noBanco ? criarNfseFirestore(() => { const q = quemPede(); return q ? { nome: q.nome, uid: q.uid } : null; }) : criarNfseMemoria();
+  return notasFiscais;
+}
+
+let entregasDeDocumentos: RepoEntregasDeDocumentos | null = null;
+
+/** A entrega de documentos aos clientes (16/10/2026): a rota e o painel do Entregas, nos mesmos documentos de lá. */
+export function repoDeEntregasDeDocumentos(): RepoEntregasDeDocumentos {
+  if (!entregasDeDocumentos) entregasDeDocumentos = noBanco ? criarEntregasDeDocumentosFirestore(() => { const u = sessaoDaTarefas()?.estado().usuario; return u ? { nome: u.nome, papeis: [...u.papeis] } : null; }) : criarEntregasDeDocumentosMemoria();
+  return entregasDeDocumentos;
+}
+
 let agentes: RepoAgentes | null = null;
 
 /** O painel dos agentes do Claude Code (14/10/2026): os computadores cadastrados (painelMaquinas) e as conversas que cada um grava; só o admin. */
@@ -369,6 +395,14 @@ export function repoDaAreaCliente(): RepoAreaCliente {
     areaCliente = noBanco ? criarAreaClienteFirestore(quem) : criarAreaClienteMemoria(quem);
   }
   return areaCliente;
+}
+
+let lcdprRepo: RepoLcdpr | null = null;
+
+/** O Importador LCDPR (16/10/2026): as regras e os cadastros no lcdpr/config do Entregas (o mesmo da página antiga); nos exemplos, na memória. */
+export function repoDoLcdpr(): RepoLcdpr {
+  if (!lcdprRepo) lcdprRepo = noBanco ? criarLcdprFirestore() : criarLcdprMemoria();
+  return lcdprRepo;
 }
 
 export function repoDaIA(): RepoIA {

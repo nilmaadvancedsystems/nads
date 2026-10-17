@@ -1,7 +1,7 @@
 // Movimento › Checklist — "Naturezas de CFOP" (#view-mov-naturezas, conferencia.html
 // ~L1233-1244; renderChecklistNatureza ~L3080-3150).
 import { conferencia as c, formatos } from '@nads/core';
-import { Segmentado } from '@nads/ui';
+import { Segmentado, Vazio } from '@nads/ui';
 import { OPCOES_STATUS, useChecklist } from './useChecklist';
 
 const { reais } = formatos;
@@ -32,7 +32,7 @@ export function Checklist() {
           )}
         </div>
         <div id="natLista">
-          {vm.vazio ? <p className="empty">{vm.vazio}</p> : (
+          {vm.vazio ? <Vazio icone="checklist" titulo={vm.vazio} /> : (
             <div className="table-wrap" style={{ maxHeight: 'none' }}>
               <table>
                 <thead><tr><th style={{ width: 34 }} /><th>CFOPs — Natureza</th><th className="num">Notas</th><th className="num">Valor</th></tr></thead>

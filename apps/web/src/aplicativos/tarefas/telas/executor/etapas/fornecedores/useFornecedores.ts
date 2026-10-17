@@ -5,7 +5,7 @@
 // a empresa deve), então o "credor" das regras é o fornecedor devedor. As marcas ficam por mês, por enquanto só neste navegador.
 import { clientes as cl, conferencia as c, demo, extrator as x, formatos, mandei as md, tarefas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMarcasDoMes } from '../../../../dados/clientes';
 import { useCadastro, useContatoDoEntregas } from '../../../../dados/repo';
 import { useExtratorDaEmpresa } from '../../../../dados/extrator';
@@ -13,6 +13,7 @@ import { criarTicket } from '../../../../dados/mandei';
 import { useOperador } from '../../../../casca/operador';
 import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 import { useGuardado } from '../../../../../../comum/guardado';
+import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
 
 export type TelaFornecedores = 'arquivos' | 'fornecedores' | 'envio';
 export type FiltroFornecedores = 'todos' | 'pendente' | 'ok' | 'conferido';
@@ -56,7 +57,10 @@ export function useFornecedores() {
   const [alcancada, setAlcancada] = useGuardado(chave + '|alcancada', 0);
   const ORDEM: TelaFornecedores[] = ['arquivos', 'fornecedores', 'envio'];
   const setTela = (t: TelaFornecedores) => { setTelaDaVez(t); setAlcancada(a => Math.max(a, ORDEM.indexOf(t))); };
-  const [dinamico, setDinamico] = useGuardado<{ nome: string; d: cl.BalanceteDinamico } | null>(chave + '|dinamico', null);
+  const [dinamicoProprio, setDinamico] = useGuardado<{ nome: string; d: cl.BalanceteDinamico } | null>(chave + '|dinamico', null);
+  // o dinâmico da Importação (o primeiro passo; 16/10/2026) vale aqui também; o importado aqui vai para lá
+  const contabil = useContabilDaEmpresa(s.nome, s.codigo);
+  const dinamico = dinamicoProprio || contabil.dinamico;
   const [filtro, setFiltro] = useState<FiltroFornecedores>('todos');
   const [busca, setBusca] = useState('');
   // o Mandei (Vitor, 07/10/2026): o ticket com o link para o cliente responder, anexar e a gente acompanhar
@@ -86,8 +90,10 @@ export function useFornecedores() {
    * Põe o dinâmico na tela. Tudo certo (com contas e nenhum devedor no mês), já segue para a lista, sem o Próximo (Vitor,
    * 07/10/2026: "quando importar o dinâmico e estiver tudo certo, já pode prosseguir"); com devedor, fica nos Arquivos.
    */
-  function entrarComDinamico(nome: string, d: cl.BalanceteDinamico) {
-    setDinamico({ nome, d });
+  function entrarComDinamico(nome: string, d: cl.BalanceteDinamico, deTeste = false) {
+    // o de verdade vai para a Importação (vale para as outras etapas); o de teste fica só aqui
+    if (deTeste) setDinamico({ nome, d });
+    else { setDinamico(null); contabil.usarDinamico(nome, d); }
     const doMes = cl.clientesDoDinamico(d, mes, LADO);
     if (doMes.length && !cl.credores(doMes).length) setTela('fornecedores');
   }
@@ -109,7 +115,7 @@ export function useFornecedores() {
     { id: 'dinamico-credores', rotulo: 'Balancete dinâmico (com saldo devedor)' },
   ] : [], id => {
     const d = cl.dinamicoDeTeste(mes, id === 'dinamico-credores', LADO);
-    entrarComDinamico('balancete-dinamico-de-teste.xls', d);
+    entrarComDinamico('balancete-dinamico-de-teste.xls', d, true);
     aviso({ tom: 'ok', titulo: 'Balancete dinâmico de teste', texto: 'Só nesta tela: nada vai para o banco.' });
   });
 
@@ -129,12 +135,37 @@ export function useFornecedores() {
   const aceitas = linhas.flatMap(l => Object.values(l.baixas || {}).flat());
   const livres = lancsDoBanco.filter(x => !aceitas.some(a => cl.mesmoLancamento(a, x)));
 
+  const atualDe = (l: (typeof linhas)[number]): cl.MarcaDoCliente => ({ nome: l.nome, saldo: l.saldo, situacao: l.situacao, ...(l.obs ? { obs: l.obs } : {}), ...(l.razao ? { razao: l.razao } : {}), ...(l.perguntar ? { perguntar: l.perguntar } : {}), ...(l.baixas ? { baixas: l.baixas } : {}), ...(l.recusadas ? { recusadas: l.recusadas } : {}) });
   function marcar(codigo: string, mudar: (m: cl.MarcaDoCliente) => cl.MarcaDoCliente) {
     const l = linhas.find(x => x.codigo === codigo);
     if (!l || !marcas.carregado) return;
-    const atual: cl.MarcaDoCliente = { nome: l.nome, saldo: l.saldo, situacao: l.situacao, ...(l.obs ? { obs: l.obs } : {}), ...(l.razao ? { razao: l.razao } : {}), ...(l.perguntar ? { perguntar: l.perguntar } : {}), ...(l.baixas ? { baixas: l.baixas } : {}), ...(l.recusadas ? { recusadas: l.recusadas } : {}) };
-    marcas.salvar({ ...marcas.doc, contas: { ...marcas.doc.contas, [codigo]: mudar(atual) } });
+    marcas.salvar({ ...marcas.doc, contas: { ...marcas.doc.contas, [codigo]: mudar(atualDe(l)) } });
   }
+
+  // os razões da Importação (o upload único; 16/10/2026): cada conta sem razão recebe o dela, uma vez, todas de uma vez
+  const aplicados = useRef(new Set<string>());
+  useEffect(() => {
+    if (!marcas.carregado || !mes) return;
+    const novas: [string, cl.RazaoDaMarca][] = [];
+    for (const l of linhas) {
+      const g = contabil.razaoDaConta(l.codigo);
+      if (!g || l.razao) continue;
+      const k = l.codigo + '|' + g.arquivo;
+      if (aplicados.current.has(k)) continue;
+      aplicados.current.add(k);
+      novas.push([l.codigo, cl.razaoDaMarca(g.arquivo, cl.conferirRazaoDoCliente(g.razao, mes, LADO), LADO)]);
+    }
+    if (!novas.length) return;
+    const contas = { ...marcas.doc.contas };
+    for (const [codigo, razao] of novas) {
+      const l = linhas.find(x => x.codigo === codigo);
+      if (!l) continue;
+      const n: cl.MarcaDoCliente = { ...atualDe(l), situacao: cl.razaoComPendencia(razao) ? 'conferido' : 'pendente', razao };
+      delete n.perguntar;
+      contas[codigo] = n;
+    }
+    marcas.salvar({ ...marcas.doc, contas });
+  });
 
   /**
    * O razão da conta do fornecedor (como no Clientes, Vitor, 06/10/2026): acha as notas que o pagamento não fechou; com nota em aberto, o
@@ -165,8 +196,6 @@ export function useFornecedores() {
   // sem a etapa Saldo devedor (Vitor, 07/10/2026: "remove esse saldo devedor e deixe só arquivos"): o devedor fica na grade dos
   // Arquivos e, no lugar do Próximo travado, o "Corrigi, irei reimportar" (tira o dinâmico para importar o corrigido)
   const telas: TelaFornecedores[] = ['arquivos', 'fornecedores', 'envio'];
-  // algum razão importado (ou lançamento digitado): sem nenhum, o Envio some e o Próximo da lista também (Vitor, 08/10/2026)
-  const algumRazao = linhas.some(l => !!l.razao);
   const i = telas.indexOf(tela);
   const podeSeguir = tela === 'arquivos' ? arquivosProntos && contas.length > 0 && !credores.length : tela === 'fornecedores';
   // na Tarefa: os arquivos e nenhum credor (a pessoa pode dar o check normal depois; os conferidos passam para o mês seguinte)
@@ -179,7 +208,9 @@ export function useFornecedores() {
   // que a pessoa upa e quer questionar, bloqueie o avançar"); mudou depois de mandar, trava de novo
   const assinatura = cl.assinaturaDoEnvio(paraEnviar.map(l => ({ codigo: l.codigo, perguntar: cl.itensEscolhidos(l.razao, l.perguntar).map(cl.chaveDoItem) })));
   const faltaMandar = !!assinatura && marcas.doc.enviado !== assinatura;
-  const faltam = [...faltamDosArquivos, ...(faltaMandar ? ['Mandar pelo Mandei o que vai ser questionado (' + paraEnviar.length + (paraEnviar.length === 1 ? ' fornecedor)' : ' fornecedores)')] : [])];
+  // o que vai para o fornecedor é mandado no Fechamento, num envio só com o de Clientes (Vitor, 16/10/2026)
+  void faltaMandar;
+  const faltam = [...faltamDosArquivos];
   useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
   const rotuloMes = mes ? tarefas.rotuloNumericoCompetencia(mes) : '';
   const q = busca.trim().toLowerCase();
@@ -189,12 +220,14 @@ export function useFornecedores() {
     mes: rotuloMes,
     // sem questionamento, o Envio fica travado (Vitor, 15/10/2026): quem estava nele volta para a lista
     tela: telas.includes(tela) ? (tela === 'envio' && !paraEnviar.length ? 'fornecedores' : tela) : 'arquivos',
-    telas: telas.map((t, k) => ({ valor: t, rotulo: t === 'arquivos' ? 'Arquivos' : t === 'fornecedores' ? 'Fornecedores' : 'Envio', oculta: t === 'envio' && !algumRazao, travada: t === 'envio' && !paraEnviar.length ? 'Nada para questionar' : k > alcancada ? 'Chega aqui pelo Próximo' : false as const })),
+    telas: telas.map((t, k) => ({ valor: t, rotulo: t === 'arquivos' ? 'Arquivos' : t === 'fornecedores' ? 'Fornecedores' : 'Envio', oculta: t === 'envio', travada: t === 'envio' && !paraEnviar.length ? 'Nada para questionar' : k > alcancada ? 'Chega aqui pelo Próximo' : false as const })),
     irPara: (t: TelaFornecedores) => { if (telas.indexOf(t) <= alcancada && (t !== 'envio' || paraEnviar.length)) setTela(t); },
     // sem questionamento, sem o Próximo para o Envio (Vitor, 15/10/2026)
-    temProxima: i < telas.length - 1 && (telas[i] !== 'fornecedores' || (algumRazao && paraEnviar.length > 0)),
+    temProxima: i < telas.length - 1 && telas[i] !== 'fornecedores',
     /** na lista, tudo certo e nada para questionar: segue pela seta da próxima etapa, lá em cima */
-    semQuestionamento: tela === 'fornecedores' && !faltam.length && !paraEnviar.length,
+    semQuestionamento: tela === 'fornecedores' && !faltam.length,
+    /** a dica no lugar do Próximo: o que vai ser questionado segue para o Fechamento */
+    dicaDoFim: paraEnviar.length ? 'O que vai ser questionado vai junto no Fechamento (um envio só): siga pela seta acima' : 'Nada para questionar: siga para a próxima etapa pela seta acima',
     podeSeguir,
     proximo: () => { if (podeSeguir && i < telas.length - 1) setTela(telas[i + 1]); },
     /** nos Arquivos com fornecedor devedor no mês: o "Corrigi, irei reimportar" no lugar do Próximo (deu tudo ok, volta o Próximo) */
@@ -202,7 +235,7 @@ export function useFornecedores() {
     // Arquivos
     dinamico: dinamico ? { nome: dinamico.nome, resumo: contas.length + ' fornecedores · ' + rotuloMes } : null,
     importar: (f: File | undefined) => { void importar(f); },
-    tirar: () => setDinamico(null),
+    tirar: () => { setDinamico(null); if (!dinamicoProprio) contabil.tirarDinamico(); },
     /** o ⚡ do modo desenvolvedor na linha */
     teste,
     // Arquivos: os devedores em algum mês, mês a mês

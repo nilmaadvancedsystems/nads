@@ -2,6 +2,7 @@
 // do período, no formato que o Alterdata exporta, para ver a tela funcionando sem importar arquivo. Fictícios.
 import type { GuiaDoInss } from './inss';
 import { lerRazao, type RazaoDaConta } from './razao';
+import { dataDoAdiantamentoSalarial } from './adiantamentoSalarial';
 
 const CAB = ['Data', 'Contrapartida', 'Descrição', 'Valor', 'Histórico', 'Descrição histórico', 'Saldo'];
 const centavos = (n: number) => Math.round(n * 100) / 100;
@@ -81,22 +82,23 @@ export function inssDeTeste(meses: readonly string[]): { razao: RazaoDaConta; gu
       { codigo: '1170', variacao: '01', descricao: 'Contribuição Terceiros - Salário Educação', principal: VALORES.terceiros },
     ].map(it => ({ ...it, total: it.principal }));
     const total = centavos(itens.reduce((s, it) => s + it.principal, 0));
-    guias.push({ competencia: mes, numero: '0716260' + mes.replace('-', ''), vencimento: venc, pagaEm: venc, itens, principal: total, total });
+    guias.push({ competencia: mes, numero: '0716260' + mes.replace('-', ''), vencimento: venc, pagaEm: venc, banco: '756 - BANCO COOPERATIVO SICOOB S/A', itens, principal: total, total });
   });
   return { razao: montar(porMes, 0), guias };
 }
 
 /** Uma conta do passivo da folha com o razão próprio na etapa Salários, INSS e FGTS (Vitor, 07/10/2026). */
-export type ContaDaFolha = 'salarios' | 'fgts' | 'prolabore' | 'honorarios';
+export type ContaDaFolha = 'salarios' | 'fgts' | 'prolabore' | 'honorarios' | 'simples';
 
 /** As contas que têm de zerar (a obrigação do mês de antes paga no mês): Salários, Pró-labore e Honorários (Vitor, 07/10/2026). */
-export const CONTAS_QUE_ZERAM: readonly ContaDaFolha[] = ['salarios', 'prolabore', 'honorarios'];
+export const CONTAS_QUE_ZERAM: readonly ContaDaFolha[] = ['salarios', 'prolabore', 'honorarios', 'simples'];
 
 const TEXTO_DA_FOLHA: Record<ContaDaFolha, { base: number; contra: string; nome: string; paga: string; entra: string }> = {
   salarios: { base: 12480.5, contra: '41201', nome: 'Salários e ordenados', paga: 'Pagamento dos salários de ', entra: 'Folha de pagamento de ' },
   fgts: { base: 1004.2, contra: '41205', nome: 'FGTS', paga: 'Pagamento do FGTS de ', entra: 'FGTS sobre a folha de ' },
   prolabore: { base: 3036, contra: '41210', nome: 'Pró-labore', paga: 'Pagamento do pró-labore de ', entra: 'Pró-labore de ' },
   honorarios: { base: 1650, contra: '42105', nome: 'Honorários contábeis', paga: 'Pagamento dos honorários de ', entra: 'Honorários contábeis de ' },
+  simples: { base: 4244.36, contra: '31206', nome: '(-) Simples Nacional', paga: 'Pagamento do DAS de ', entra: 'Simples Nacional de ' },
 };
 
 /**
@@ -120,4 +122,34 @@ export function razaoDaFolhaDeTeste(meses: readonly string[], conta: ContaDaFolh
     return { mes, linhas };
   });
   return montar(porMes, 0);
+}
+
+/**
+ * O razão de teste do Adiantamento salarial (o ⚡; 16/10/2026): o adiantamento pago no dia 15 (ou no útil antes) e descontado
+ * na folha do fim do mês; com falta, o último mês fica sem o pagamento (credor).
+ */
+export function adiantamentoSalarialDeTeste(meses: readonly string[], comFalta: boolean): RazaoDaConta {
+  return montar(meses.map((mes, i) => {
+    const valor = centavos(2400 + i * 75);
+    const dia = Number(dataDoAdiantamentoSalarial(mes).slice(8, 10));
+    const linhas: Linha[] = [];
+    if (!(comFalta && i === meses.length - 1)) linhas.push([dia, '10503', 'Banco Sicoob', -valor, 'Pagamento de adiantamento salarial ' + mesBR(mes)]);
+    linhas.push([28, '52001', 'Salários a Pagar', valor, 'Pelo valor do adiantamento descontado em folha <' + mesBR(mes) + '>']);
+    return { mes, linhas };
+  }), 0);
+}
+
+/**
+ * O razão de teste de um empréstimo (o ⚡; 16/10/2026): o contrato 4471203 liberado no primeiro mês e uma parcela por mês
+ * depois (os juros contra a despesa); com devedor, a última parcela paga a mais (o mês fecha devedor).
+ */
+export function emprestimoDeTeste(meses: readonly string[], comDevedor: boolean): RazaoDaConta {
+  return montar(meses.map((mes, i) => {
+    if (i === 0) return { mes, linhas: [[10, '10503', 'Banco Sicoob', 30000, 'Liberação do contrato 4471203 - capital de giro'] as Linha] };
+    const parcela = comDevedor && i === meses.length - 1 ? 40000 : 2500;
+    return { mes, linhas: [
+      [10, '10503', 'Banco Sicoob', -parcela, 'Pagamento parcela ' + String(i).padStart(2, '0') + '/12 contrato 4471203'] as Linha,
+      [10, '85001', 'Juros sobre empréstimos', 180, 'Juros da parcela contrato 4471203'] as Linha,
+    ] };
+  }), 0);
 }

@@ -3,7 +3,7 @@
 //      "Outros meses" (travado = já importado ou já no Drive); outro documento; o prazo; o WhatsApp opcional
 //      com a mensagem que a pessoa digita.
 //   2. Conferir — o e-mail como o cliente vai ver (e a mensagem do WhatsApp), com Voltar e Enviar.
-import { Icone, LogoBanco, LogoGmail, LogoWhatsApp, useCarregando } from '@nads/ui';
+import { BotaoFechar, Icone, LogoBanco, LogoGmail, LogoWhatsApp, useCarregando, Vazio } from '@nads/ui';
 import { useState } from 'react';
 import type { usePedirExtratos } from './usePedirExtratos';
 
@@ -44,7 +44,7 @@ export function JanelaPedirExtratos({ p }: { p: P }) {
           <span className="pedir-app"><LogoGmail /></span>
           {conferir ? 'Conferir o e-mail' : 'Pedir documentos por e-mail'}
           <span className="pedir-passos" aria-hidden="true"><span className={conferir ? '' : 'on'}>1 Montar</span><span className={conferir ? 'on' : ''}>2 Conferir</span></span>
-          <button type="button" className="drawer-x pedir-x" aria-label="Fechar" onClick={p.fechar}><Icone nome="x" /></button>
+          <BotaoFechar className="pedir-x" onClick={p.fechar} />
         </h3>
 
         {!conferir ? (
@@ -181,11 +181,11 @@ export function JanelaHistoricoDePedidos({ p }: { p: P }) {
       <div className="modal pedir-historico" role="dialog" aria-modal="true" aria-label="Histórico dos pedidos">
         <h3 className="pedir-titulo">
           <Icone nome="clock" />Histórico dos pedidos
-          <button type="button" className="drawer-x pedir-x" aria-label="Fechar" onClick={p.fecharHistorico}><Icone nome="x" /></button>
+          <BotaoFechar className="pedir-x" onClick={p.fecharHistorico} />
         </h3>
         <div className="pedir-hist-lista">
           {p.historico.erro && <p className="pedir-erro">{p.historico.erro}</p>}
-          {p.pedidos.length === 0 ? <p className="empty">Nenhum pedido feito para esta empresa ainda.</p> : p.pedidos.map(r => (
+          {p.pedidos.length === 0 ? <Vazio compacto icone="envelope" texto="Nenhum pedido feito para esta empresa ainda." /> : p.pedidos.map(r => (
             <div key={r.id} className="pedir-hist-item">
               <div className="pedir-hist-topo">
                 <b>{quando(r.em)}</b><span className="hint">por {r.por}</span>

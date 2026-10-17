@@ -3,7 +3,8 @@
 export { Icone, DefsMarca, MarcaN, type NomeIcone } from './icones';
 export { RetornoProvider, useRetorno, classeDaJanela, ordemDosBotoes, type Retorno, type OpcoesAviso, type OpcoesModal, type BotaoModal } from './retorno';
 export { useTema, SeletorTema, type Tema } from './tema';
-export { Alerta, Esqueleto, NumeroQueConta, MensagemFlutuante, CampoArquivo, CampoArquivos, Segmentado, Stat, Interruptor, SeletorMes, BotaoAcao, BotaoIcone, ConfigLinha, ConfigSecao, Dica, CampoData, useEstadoPorChave, MenuSuspenso, TituloDaConta, MedalhaGov, type ItemMenu } from './componentes';
+export { Alerta, Esqueleto, NumeroQueConta, MensagemFlutuante, CampoArquivo, CampoArquivos, Segmentado, Stat, Interruptor, SeletorMes, BotaoAcao, BotaoIcone, BotaoFechar, Vazio, ConfigLinha, ConfigSecao, Dica, CampoData, useEstadoPorChave, MenuSuspenso, TituloDaConta, MedalhaGov, type ItemMenu } from './componentes';
+export { useJanela } from './janela';
 export { Casca, baixarArquivo, baixarBytes, type SecaoCasca, type PaginaCasca } from './casca';
 export { EscolherEmpresa, type EmpresaNaLista, type PropsEscolherEmpresa } from './escolherEmpresa';
 export { LOGOS_BANDEIRAS } from './logosBandeiras';
@@ -16,4 +17,6 @@ export { iniciarContinuidade, atualizarSemPerder } from './continuidade';
 export { origemConfiavel, origemDoPai, useAbasParaAEtapa, useAlturaNaEtapa, useFerramentaNaEtapa, type AbaDaEtapa } from './etapa';
 export { fundoSuaveDoBanco, LogoBanco, LogoDrive, LogoFgts, LogoGmail, LogoGovernoMinas, LogoInss, LogoReceitaFederal, LogoSimplesNacional, LogoWhatsApp, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma } from './logos';
 export { AberturaN } from './abertura';
+export { RoscaComLegenda, BarrasEmColuna, AnelDeContagem, CartaoComAnel, type FatiaDaRosca, type ColunaDasBarras, type TomDoPainel } from './paineis';
 export { destacarNaTela } from './destaque';
+export { CampoAssinatura } from './componentes';

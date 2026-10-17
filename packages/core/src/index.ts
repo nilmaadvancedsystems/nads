@@ -17,3 +17,5 @@ export * as demo from './demo';
 export * as cofre from './cofre';
 export * as mandei from './mandei';
 export * as areaCliente from './areaCliente';
+export * as nfse from './nfse';
+export * as lcdpr from './lcdpr';

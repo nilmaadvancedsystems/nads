@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  adiantamentoNoDinamico, assinaturaDoEnvio, clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
+  adiantamentoNoDinamico, emprestimosNoDinamico, resultadoErradoNoDinamico, tipoDoRazao, conferirFechamento, dinamicoCompletoDeTeste, assinaturaDoEnvio, clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
 } from './index';
 
 // o formato do balancete dinâmico do Alterdata (292, bdinamico.xls)
@@ -110,5 +110,86 @@ describe('adiantamento a fornecedores e de clientes no dinâmico (15/10/2026)', 
     expect(adiantamentoNoDinamico(ambos, ['2026-01'], 'clientes').com).toEqual(['2026-01']);
     expect(adiantamentoNoDinamico(ambos, ['2026-01'], 'fornecedores').com).toEqual([]);
     expect(adiantamentoNoDinamico({ meses: ['2026-01'], linhas: [linha('CLIENTES', { '2026-01': 100 })] }, ['2026-01'], 'clientes').com).toEqual([]);
+  });
+});
+
+describe('empréstimos no dinâmico (15/10/2026)', () => {
+  const linha = (classificacao: string, descricao: string, saldos: Record<string, number>) => ({ codigo: '1', classificacao, descricao, saldoAnterior: 0, saldos });
+  it('só o do Passivo com saldo; o empréstimo a sócios do Ativo e os juros não contam', () => {
+    const d = { meses: ['2026-01', '2026-02'], linhas: [
+      linha('1.1.5.01', 'EMPRESTIMOS A SOCIOS', { '2026-01': 900, '2026-02': 900 }),
+      linha('2.1.3', 'EMPRÉSTIMOS E FINANCIAMENTOS', { '2026-01': 0, '2026-02': -5000 }),
+      linha('4.2.1.01', 'JUROS SOBRE EMPRESTIMOS', { '2026-01': 50, '2026-02': 50 }),
+    ] };
+    expect(emprestimosNoDinamico(d, ['2026-01', '2026-02'])).toEqual({ cobertos: ['2026-01', '2026-02'], com: ['2026-02'] });
+    expect(emprestimosNoDinamico({ meses: ['2026-01'], linhas: [d.linhas[0], d.linhas[2]] }, ['2026-01']).com).toEqual([]);
+    // o cheque especial não é empréstimo, mesmo debaixo do grupo (a sintética soma ele)
+    const cheque = { meses: ['2026-08'], linhas: [linha('2.1.1.04', 'EMPRESTIMOS BANCARIOS', { '2026-08': -6000 }), linha('2.1.1.04.001', 'Banco Teste - Cheque Especial', { '2026-08': -6000 })] };
+    expect(emprestimosNoDinamico(cheque, ['2026-08']).com).toEqual([]);
+    const contrato = { meses: ['2026-08'], linhas: [...cheque.linhas, linha('2.1.1.04.002', 'Banco Teste - Capital de giro', { '2026-08': -1000 })] };
+    expect(emprestimosNoDinamico(contrato, ['2026-08']).com).toEqual(['2026-08']);
+  });
+});
+
+describe('despesas credoras e receitas devedoras no dinâmico (16/10/2026)', () => {
+  const linha = (classificacao: string, descricao: string, saldos: Record<string, number>) => ({ codigo: classificacao, classificacao, descricao, saldoAnterior: 0, saldos });
+  const d = { meses: ['2026-01', '2026-02'], linhas: [
+    linha('3', 'RECEITAS', {}), linha('3.1.1', 'RECEITA BRUTA', {}),
+    linha('3.1.1.01', 'Venda de Serviços', { '2026-01': -1000, '2026-02': 50 }),
+    linha('3.1.2', '( - ) DEDUÇÕES RECEITA BRUTA', {}), linha('3.1.2.01', 'Simples Nacional', { '2026-01': 60, '2026-02': 120 }),
+    linha('4', 'CUSTOS E DESPESAS', {}), linha('4.2.1', 'DESPESAS ADMINISTRATIVAS', {}),
+    linha('4.2.1.01', 'Telefone', { '2026-01': 100, '2026-02': -20 }),
+    linha('4.2.1.02', '(-) Devolução de Uso e Consumo', { '2026-01': -121, '2026-02': -121 }),
+    linha('4.2.1.03', 'Água', { '2026-01': 30, '2026-02': 60 }),
+  ] };
+  it('a receita devedora e a despesa credora, por mês; as redutoras "(-)" e as deduções ficam de fora', () => {
+    expect(resultadoErradoNoDinamico(d, ['2026-01', '2026-02']).map(x => [x.nome, x.tipo, x.meses])).toEqual([
+      ['Venda de Serviços', 'receita', [{ mes: '2026-02', saldo: 50 }]],
+      ['Telefone', 'despesa', [{ mes: '2026-02', saldo: 20 }]],
+    ]);
+  });
+});
+
+describe('de que é o razão, pelo dinâmico (16/10/2026)', () => {
+  const linha = (codigo: string, classificacao: string, descricao: string) => ({ codigo, classificacao, descricao, saldoAnterior: 0, saldos: { '2026-01': 1 } });
+  const d = { meses: ['2026-01'], linhas: [
+    linha('5', '1.1.1', 'CAIXA'), linha('10101', '1.1.1.01', 'Caixa Geral'),
+    linha('120', '1.1.2.01', 'CLIENTES'), linha('11512', '1.1.2.01.001', 'CLIENTE EXEMPLO LTDA'),
+    linha('12401', '1.1.2.06.001', 'Adiantamento Salarial'),
+    linha('300', '2.1.1.01', 'FORNECEDORES'), linha('20001', '2.1.1.01.001', 'FORNECEDOR EXEMPLO'),
+    linha('52001', '2.1.1.02.001', 'Salários a Pagar'), linha('52003', '2.1.1.02.003', 'INSS a Recolher'),
+    linha('52004', '2.1.1.02.004', 'FGTS a Recolher'), linha('60005', '2.1.1.02.005', 'Pro-labore a Pagar'),
+    linha('54010', '2.1.1.03.010', 'Simples Nacional a Recolher'), linha('2104', '2.1.1.04', 'EMPRESTIMOS BANCARIOS'),
+    linha('21041', '2.1.1.04.001', 'Banco Exemplo - Capital de giro'), linha('21042', '2.1.1.04.002', 'Banco Exemplo - Cheque Especial'),
+    linha('99999', '4.2.1.01', 'Telefone'),
+  ] };
+  it('cada código na sua etapa; o cheque especial e a despesa, em nenhuma', () => {
+    expect(['10101', '11512', '12401', '20001', '52001', '52003', '52004', '60005', '54010', '21041', '21042', '99999', '777'].map(c => tipoDoRazao(d, c)))
+      .toEqual(['caixa', 'cliente', 'adiantamento-salarial', 'fornecedor', 'salarios', 'inss', 'fgts', 'prolabore', 'simples', 'emprestimo', null, null, null]);
+  });
+});
+
+describe('o fechamento pelo dinâmico (16/10/2026)', () => {
+  const linha = (codigo: string, classificacao: string, descricao: string, saldos: Record<string, number>) => ({ codigo, classificacao, descricao, saldoAnterior: 0, saldos });
+  const certo = { meses: ['2026-01'], linhas: [
+    linha('1', '1', 'ATIVO', { '2026-01': 1000 }), linha('10101', '1.1.1.01', 'Caixa Geral', { '2026-01': 1000 }),
+    linha('2', '2', 'PASSIVO', { '2026-01': -1000 }), linha('52001', '2.1.1.02.001', 'Salários a Pagar', { '2026-01': -1000 }),
+  ] };
+  it('tudo certo: nenhuma pendência', () => {
+    expect(conferirFechamento(certo, ['2026-01'])).toEqual([]);
+  });
+  it('o balancete que não fecha, o caixa credor e a obrigação devedora', () => {
+    const errado = { meses: ['2026-01'], linhas: [
+      linha('1', '1', 'ATIVO', { '2026-01': -200 }), linha('10101', '1.1.1.01', 'Caixa Geral', { '2026-01': -200 }),
+      linha('2', '2', 'PASSIVO', { '2026-01': 150 }), linha('52001', '2.1.1.02.001', 'Salários a Pagar', { '2026-01': 150 }),
+    ] };
+    expect(conferirFechamento(errado, ['2026-01']).map(p => [p.id, p.contas.map(c => c.nome)])).toEqual([
+      ['balancete', ['Diferença']], ['caixa', ['Caixa Geral']], ['passivo', ['Salários a Pagar']],
+    ]);
+  });
+  it('o dinâmico completo de teste: certo, nada; com pendências, cada uma no seu lugar', () => {
+    expect(conferirFechamento(dinamicoCompletoDeTeste(['2026-01', '2026-02'], false), ['2026-01', '2026-02'])).toEqual([]);
+    expect(conferirFechamento(dinamicoCompletoDeTeste(['2026-01', '2026-02'], true), ['2026-01', '2026-02']).map(p => p.id))
+      .toEqual(['clientes', 'adiantamento-salarial', 'passivo', 'despesas', 'receitas']);
   });
 });

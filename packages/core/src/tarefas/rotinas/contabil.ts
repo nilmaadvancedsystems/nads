@@ -3,7 +3,11 @@
 // 289, 363, 380, 393, 408, 409, 429, 450, 452, 476, 509): o que aparece em quase todas — e o fechamento. As
 // conferências de cada empresa (as que só algumas têm) vêm depois, pelo balancete, no Cadastro.
 // É o único lugar a mexer: a ordem, os nomes, as ferramentas, o que conferir e as objeções saem daqui.
-import type { Rotina } from '../tipos';
+// A regra de travar (Vitor, 16/10/2026: "aplique todas as suas sugestões"): só erro objetivo trava o Próximo — o saldo do
+// lado errado, o mês que não zerou, o arquivo obrigatório que falta, o balancete que não fecha. Sugestão (a baixa no banco,
+// o pago pelo banco e lançado no caixa) nunca trava. O balancete dinâmico é o primeiro passo (a Importação): ele monta a
+// Tarefa (os adiantamentos, os empréstimos, o adiantamento salarial entram ou saem por ele).
+import type { Etapa, Rotina } from '../tipos';
 
 // sem a saída "A folha ainda não saiu" (Vitor, 01/10/2026): a etapa do DP só é feita com a folha pronta
 const SEM_FUNCIONARIOS = { id: 'sem-funcionarios', texto: 'A empresa não tem funcionários', solucao: { tipo: 'nao-se-aplica' as const, rotulo: 'Não tem funcionários' } };
@@ -83,6 +87,7 @@ export const ROTINA_CONTABIL: Rotina = {
         'O saldo do caixa é devedor (ou zero) no fim do mês e em nenhum dia fica credor.',
         'Caixa credor: procure pagamentos lançados no caixa que saíram pelo banco e vendas à vista que faltam.',
         'O saldo está de acordo com o tamanho da empresa (caixa alto demais também é sinal de lançamento errado).',
+        'Nenhum pagamento lançado no caixa que saiu do banco (a faixa "Pago pelo banco e lançado no caixa").',
       ],
       objecoes: [
         { id: 'caixa-credor', texto: 'O caixa ficou credor e não achei o motivo', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Interrompa com esta objeção: a competência aparece para os sêniores revisarem.' } },
@@ -156,6 +161,26 @@ export const ROTINA_CONTABIL: Rotina = {
         'Adiantamento antigo parado: confirme com o cliente se a mercadoria ou o serviço veio.',
       ],
       objecoes: [nao('sem-adiantamento', 'A empresa não teve adiantamento a fornecedor')],
+    },
+    {
+      // o Adiantamento salarial (Vitor, 16/10/2026): a folha desconta a crédito e o pagamento entra a débito no dia 15 (ou no
+      // dia útil antes); o mês zera. Só no mês com saldo no dinâmico (useExecutor: ajustarPeloBalancete, pelas adicionadas)
+      id: 'adiantamento-salarial',
+      secao: 'Ativo',
+      nome: 'Adiantamento salarial',
+      descricao: 'O adiantamento pago no dia 15 e descontado na folha do mês: zera no mês.',
+      ferramenta: null,
+      tela: { id: 'adiantamento-salarial', periodo: true },
+      // só entra pelo balancete (o mês com saldo): sem o dinâmico, nem aparece
+      soQuandoAdicionada: true,
+      verificacao: 'manual',
+      conferir: [
+        'O pagamento do adiantamento no dia 15 (ou no dia útil antes), a débito.',
+        'O desconto na folha do mês, a crédito: o mês zera.',
+      ],
+      objecoes: [
+        { id: 'sem-pagamento', texto: 'O adiantamento não foi pago no mês', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Confira o extrato do dia 15: sem o pagamento, o desconto na folha está errado ou o adiantamento foi pago por outra conta.' } },
+      ],
     },
     {
       // só na competência 12 (Vitor, 07/10/2026): fora dela a etapa nem aparece; nela, dois checks em ordem — o cliente
@@ -313,52 +338,60 @@ export const ROTINA_CONTABIL: Rotina = {
       ],
     },
     {
-      id: 'impostos',
+      // o Simples Nacional a recolher (Vitor, 16/10/2026: "para empresas enquadradas no regime Simples"): o DAS do mês entra a
+      // crédito e é pago no mês seguinte; o mês fecha só com o DAS dele (o de antes pago), nunca devedor
+      id: 'simples',
       secao: 'Passivo',
-      nome: 'Impostos a recolher',
-      descricao: 'O imposto do mês (Simples ou ICMS) igual à guia; a guia paga zera o saldo.',
+      nome: 'Simples Nacional a recolher',
+      descricao: 'O DAS do mês entra a crédito e é pago no mês seguinte.',
       ferramenta: null,
+      tela: { id: 'simples', periodo: true },
+      regimes: ['Simples'],
       verificacao: 'manual',
       conferir: [
-        'Simples Nacional a recolher: o crédito do mês é igual à despesa (ou à dedução da receita) e à guia do DAS.',
-        'ICMS a recolher: o crédito do mês é igual à dedução "(-) ICMS" da receita.',
-        'A guia paga zera o saldo; nenhum imposto a recolher devedor.',
+        'O DAS de cada mês provisionado (crédito) e pago no mês seguinte (débito).',
+        'O saldo do fim do mês é só o DAS do mês; nenhum saldo devedor.',
       ],
       objecoes: [
-        { id: 'sem-guia', texto: 'Não tenho a guia do mês', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'A guia sai do Fiscal. Interrompa e retome quando o Fiscal liberar a competência.' } },
+        { id: 'das-nao-pago', texto: 'O DAS de antes não foi pago', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Confira no extrato se o DAS foi pago e lance o pagamento contra o Simples a recolher; sem pagamento, é parcelamento ou débito em aberto.' } },
       ],
     },
+    // Impostos a recolher: fora por enquanto (Vitor, 16/10/2026: "remove ele por enquanto, depois voltamos"); a etapa
+    // (o Simples e o ICMS × a guia, a guia paga zerando) está guardada em IMPOSTOS_A_RECOLHER, no fim deste arquivo.
 
     // ─── Resultado ────────────────────────────────────────────────────────────
     {
+      // Despesas e receitas numa tela só (Vitor, 16/10/2026): o dinâmico diz se tem despesa credora ou receita devedora
       id: 'despesas',
       secao: 'Resultado',
-      nome: 'Despesas',
-      descricao: 'Todas as despesas e custos devedores.',
+      nome: 'Despesas e receitas',
+      descricao: 'Nenhuma despesa credora e nenhuma receita devedora no balancete dinâmico.',
       ferramenta: null,
+      tela: { id: 'resultado', periodo: true },
       verificacao: 'manual',
       conferir: [
         'Nenhuma despesa ou custo com saldo credor, menos as redutoras "(-)" (devoluções de compra, por exemplo).',
-        'Despesa credora: lançamento invertido, ou estorno lançado na conta errada.',
-        'Nota de compra de bem lançada como despesa: passe para o imobilizado.',
+        'Nenhuma receita com saldo devedor, menos as deduções "(-)" (impostos sobre a venda, devoluções).',
+        'Despesa credora ou receita devedora: lançamento invertido, ou estorno lançado na conta errada.',
       ],
       objecoes: [
         { id: 'despesa-credora', texto: 'Tem despesa credora e não achei o motivo', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Interrompa com esta objeção: a competência aparece para os sêniores revisarem.' } },
+        { id: 'receita-devedora', texto: 'Tem receita devedora e não achei o motivo', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Interrompa com esta objeção: a competência aparece para os sêniores revisarem.' } },
       ],
     },
+
     {
-      id: 'receitas',
+      // as vendas no cartão conciliadas com as notas, no Conciliadorzinho (Vitor, 16/10/2026: "o Conciliadorzinho é só para
+      // empresas que vendem no cartão"): só entra na empresa com "Vende no cartão: Sim" no Cadastro (useExecutor)
+      id: 'vendas-cartao',
       secao: 'Resultado',
-      nome: 'Receitas',
-      descricao: 'Todas as receitas credoras; as vendas em cartão conciliadas com as notas.',
+      nome: 'Vendas no cartão',
+      descricao: 'As vendas das bandeiras conciliadas com as notas.',
       ferramenta: { app: 'conciliadorzinho', nome: 'Conciliadorzinho', caminho: r => '/conciliadorzinho/' + r + '/conciliacao/bandeiras', embutir: true },
       verificacao: 'manual',
-      conferir: [
-        'Nenhuma receita com saldo devedor, menos as deduções "(-)" (impostos sobre a venda, devoluções).',
-        'Vende em cartão: as vendas das bandeiras conciliadas com as notas.',
-      ],
+      soQuandoAdicionada: true,
+      conferir: ['As vendas das bandeiras conciliadas com as notas de venda.'],
       objecoes: [
-        { id: 'receita-devedora', texto: 'Tem receita devedora e não achei o motivo', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Interrompa com esta objeção: a competência aparece para os sêniores revisarem.' } },
         { id: 'sem-extrato-cartao', texto: 'O extrato da operadora não chegou', soMotivo: true, solucao: { tipo: 'contato', rotulo: 'Pedir o extrato da operadora' } },
       ],
     },
@@ -370,6 +403,8 @@ export const ROTINA_CONTABIL: Rotina = {
       nome: 'Fechar a competência',
       descricao: 'Revise os saldos e feche a competência no sistema.',
       ferramenta: null,
+      // confere sozinho pelo dinâmico final e manda ao cliente o que vai ser questionado num envio só (Vitor, 16/10/2026)
+      tela: { id: 'fechamento', periodo: true },
       verificacao: 'manual',
       conferir: [
         'O balancete fecha: ativo = passivo + patrimônio líquido + resultado.',
@@ -382,3 +417,21 @@ export const ROTINA_CONTABIL: Rotina = {
     },
   ],
 };
+
+/** A etapa Impostos a recolher, fora da rotina por enquanto (16/10/2026): para voltar, é só pôr de novo na lista do Passivo. */
+export const IMPOSTOS_A_RECOLHER = {
+  id: 'impostos',
+  secao: 'Passivo',
+  nome: 'Impostos a recolher',
+  descricao: 'O imposto do mês (Simples ou ICMS) igual à guia; a guia paga zera o saldo.',
+  ferramenta: null,
+  verificacao: 'manual',
+  conferir: [
+    'Simples Nacional a recolher: o crédito do mês é igual à despesa (ou à dedução da receita) e à guia do DAS.',
+    'ICMS a recolher: o crédito do mês é igual à dedução "(-) ICMS" da receita.',
+    'A guia paga zera o saldo; nenhum imposto a recolher devedor.',
+  ],
+  objecoes: [
+    { id: 'sem-guia', texto: 'Não tenho a guia do mês', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'A guia sai do Fiscal. Interrompa e retome quando o Fiscal liberar a competência.' } },
+  ],
+} satisfies Etapa;
