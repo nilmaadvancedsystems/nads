@@ -1,25 +1,24 @@
 // Uma linha da agenda do mês na Área do Cliente (Vitor, 16/10/2026): o dia que vence, o nome da obrigação em português
-// simples e a situação (feito, a fazer, não se aplica). Peça do catálogo (Listas).
-import { areaCliente as ac, formatos } from '@nads/core';
+// simples e a situação no selo do nads (Feito verde, A fazer amarelo, Não se aplica cinza e a linha apagada). Peça do
+// catálogo (Listas).
+import { areaCliente as ac } from '@nads/core';
 
 const ROTULO: Record<ac.SituacaoDoItem, string> = { feito: 'Feito', 'a fazer': 'A fazer', 'nao se aplica': 'Não se aplica' };
-const CLASSE: Record<ac.SituacaoDoItem, string> = { feito: 'cli-selo-ok', 'a fazer': 'cli-selo-warn', 'nao se aplica': '' };
+const SELO: Record<ac.SituacaoDoItem, string> = { feito: 'badge badge-ok', 'a fazer': 'badge badge-warn', 'nao se aplica': 'badge badge-neutral' };
 
 export function LinhaDaAgenda({ item }: { item: ac.ItemDaAgenda }) {
-  const dia = item.vence.slice(8, 10);
-  const mes = (formatos.MES[Number(item.vence.slice(5, 7))] || '').slice(0, 3);
   const feitoEm = item.feitoEm ? new Date(item.feitoEm).toLocaleDateString('pt-BR') : '';
   return (
-    <li className={'cli-agenda cli-agenda-' + item.situacao.replace(' ', '-')}>
-      <span className="cli-agenda-dia" aria-hidden="true"><b>{dia}</b><small>{mes}</small></span>
-      <span className="cli-agenda-nome">
+    <li className={'cli-linha' + (item.situacao === 'nao se aplica' ? ' cli-linha-apagada' : '')}>
+      <span className="cli-data">{item.vence.slice(8, 10)}/{item.vence.slice(5, 7)}</span>
+      <div className="cli-linha-txt">
         <b>{item.nome}</b>
-        <span className="hint">
+        <p className="hint">
           {item.situacao === 'nao se aplica' ? 'Não precisa fazer neste mês' : 'Vence em ' + ac.dataBR(item.vence)}
           {item.situacao === 'feito' && feitoEm ? ' · feito em ' + feitoEm : ''}
-        </span>
-      </span>
-      <span className={'cli-selo ' + CLASSE[item.situacao]}>{ROTULO[item.situacao]}</span>
+        </p>
+      </div>
+      <span className={SELO[item.situacao]}>{ROTULO[item.situacao]}</span>
     </li>
   );
 }

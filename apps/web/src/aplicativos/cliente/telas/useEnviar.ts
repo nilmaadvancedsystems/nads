@@ -6,6 +6,9 @@ import { useState } from 'react';
 import { repoAreaCliente } from '../dados/repo';
 import type { DaCasca } from './useAreaCliente';
 
+/** o mesmo arquivo com o tipo certo pela extensão */
+export const comMime = (a: File) => new File([a], a.name, { type: ac.mimeDoEnvio(a.name), lastModified: a.lastModified });
+
 export function useEnviar({ token, area }: DaCasca) {
   const { toast } = useRetorno();
   const [tipo, setTipo] = useState<ac.TipoDeEnvio>('extrato');
@@ -19,12 +22,14 @@ export function useEnviar({ token, area }: DaCasca) {
     if (!bons.length) return;
     setEnviando(true);
     try {
-      await repoAreaCliente.enviar(token, tipo, bons);
+      // o tipo vem da extensão: o navegador às vezes manda vazio ou octet-stream e a regra do banco recusa
+      await repoAreaCliente.enviar(token, tipo, bons.map(comMime));
       toast(bons.length === 1 ? 'Recebemos o arquivo.' : 'Recebemos os ' + bons.length + ' arquivos.');
     } finally { setEnviando(false); }
   }
 
   return {
+    limite: ac.LIMITE_DO_ENVIO,
     tipo, mudarTipo: setTipo, tipos: ac.TIPOS_DE_ENVIO, aceitar: ac.ACEITAR_NO_CAMPO, enviar, enviando, erros,
     recibos: area.envios, legivel: ac.tamanhoLegivel,
     rotuloDoTipo: (t: string) => ac.TIPOS_DE_ENVIO.find(x => x.valor === t)?.rotulo ?? 'Outro documento',

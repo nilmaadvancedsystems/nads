@@ -1,139 +1,126 @@
-// O Início da Área do Cliente (Vitor, 16/10/2026): o resumo do mês, em português simples — o que pagar, o que o escritório
-// ainda está fazendo, as últimas conversas e como falar com a gente. No visual do protótipo: o cartão de boas-vindas em
-// degradê, os quatro números com ícone, as próximas guias em linha ao lado do cartão de atendimento e, embaixo, a agenda e
-// as conversas lado a lado.
+// A Visão geral da Área do Cliente (Vitor, 16/10/2026): o resumo do mês no estilo do nads — os números (guias para pagar,
+// funcionários, chamados em aberto e documentos do mês), as próximas guias ao lado do atendimento, os avisos do escritório
+// (com o certificado digital) e as últimas conversas.
 import { formatos } from '@nads/core';
-import { Icone, MarcaN } from '@nads/ui';
-import { LinhaDaAgenda } from '../partes/LinhaDaAgenda';
+import { Icone } from '@nads/ui';
 import { LinhaDeGuia } from '../partes/LinhaDeGuia';
 import { useInicio } from './useInicio';
 import type { DaCasca } from './useAreaCliente';
 
-export function Inicio(props: DaCasca & { empresa: string }) {
+export function Inicio(props: DaCasca & { empresa: string; onCanais: () => void }) {
   const vm = useInicio(props);
   const c = vm.contato;
+  const at = vm.atendimento;
   return (
     <>
-      <section className="cli-banner">
-        <div className="cli-banner-conteudo">
-          <span className="cli-banner-selo"><Icone nome="escudo" width={14} height={14} />Escritório: Nilma Contabilidade</span>
-          <h1>Bem-vindo(a){props.empresa ? ', ' + props.empresa : ''}</h1>
-          <p>Veja as guias para pagar, acompanhe o que o escritório está fazendo neste mês, envie seus documentos e converse com a gente, tudo num só lugar.</p>
-          <div className="cli-acoes">
-            <button type="button" className="cli-btn cli-btn-claro" onClick={() => vm.irPara('guias')}><Icone nome="recibo" width={16} height={16} />Ver as guias</button>
-            <button type="button" className="cli-btn cli-btn-vidro" onClick={() => vm.irPara('enviar')}><Icone nome="upload" width={16} height={16} />Enviar documentos</button>
-          </div>
+      <div className="cli-titulo">
+        <div>
+          <h1 className="page-title">{props.empresa ? 'Olá, ' + props.empresa : 'Olá'}</h1>
+          <p className="page-desc">Resumo de {vm.mesAtual}.</p>
         </div>
-        <span className="cli-banner-deco" aria-hidden="true"><MarcaN /></span>
-      </section>
+      </div>
 
-      <div className="cli-kpis">
-        <div className="cli-kpi">
-          <div className="cli-kpi-topo"><span className="cli-kpi-rotulo">Guias para pagar</span><span className="cli-kpi-ico"><Icone nome="recibo" width={18} height={18} /></span></div>
-          <div className="cli-kpi-linha">
-            <span className="cli-kpi-valor">{vm.totalDeGuias}</span>
-            {vm.totalDeGuias > 0 && (vm.precisaAtencao
-              ? <span className="cli-kpi-status warn"><Icone nome="alert" width={13} height={13} />Atenção ao prazo</span>
-              : <span className="cli-kpi-status ok"><Icone nome="check" width={13} height={13} />No prazo</span>)}
-          </div>
-          <p className="cli-kpi-nota" title={vm.guiasEmPoucas}>{vm.guiasEmPoucas || 'Nenhuma guia em aberto'}</p>
+      <div className="stat-grid cli-app-stats">
+        <div className="stat">
+          <p className="stat-label">Guias para pagar</p>
+          <p className="stat-value">{vm.totalDeGuias}</p>
+          <p className="hint" title={vm.guiasEmPoucas}>{vm.totalDeGuias ? formatos.reais(vm.valorEmAberto) + (vm.vencidas ? ' · ' + vm.vencidas + ' vencida(s)' : '') : 'Nenhuma em aberto'}</p>
         </div>
-        <div className="cli-kpi">
-          <div className="cli-kpi-topo"><span className="cli-kpi-rotulo">Valor total</span><span className="cli-kpi-ico cinza"><Icone nome="dinheiro" width={18} height={18} /></span></div>
-          <div className="cli-kpi-linha"><span className="cli-kpi-valor">{formatos.reais(vm.valorEmAberto)}</span></div>
-          <p className="cli-kpi-nota">Soma das guias para pagar</p>
+        <div className="stat">
+          <p className="stat-label">Funcionários</p>
+          <p className="stat-value">{vm.pessoal.ativos}</p>
+          <p className="hint">{vm.pessoal.emFerias ? vm.pessoal.emFerias + ' de férias' : 'Ninguém de férias'}</p>
         </div>
-        <div className="cli-kpi">
-          <div className="cli-kpi-topo"><span className="cli-kpi-rotulo">Em atraso</span><span className={'cli-kpi-ico' + (vm.vencidas ? '' : ' cinza')}><Icone nome="alert" width={18} height={18} /></span></div>
-          <div className="cli-kpi-linha">
-            <span className={'cli-kpi-valor' + (vm.vencidas ? ' ruim' : '')}>{vm.vencidas}</span>
-            {vm.vencidas
-              ? <span className="cli-kpi-status bad"><Icone nome="alert" width={13} height={13} />Pague logo</span>
-              : <span className="cli-kpi-status ok"><Icone nome="check" width={13} height={13} />Nada vencido</span>}
-          </div>
-          <p className="cli-kpi-nota">Guias com o vencimento já passado</p>
+        <div className="stat">
+          <p className="stat-label">Chamados em aberto</p>
+          <p className="stat-value">{vm.chamadosEmAberto}</p>
+          <p className="hint" title={vm.primeiroEmAberto}>{vm.primeiroEmAberto || 'Nenhum'}</p>
         </div>
-        <div className="cli-kpi">
-          <div className="cli-kpi-topo"><span className="cli-kpi-rotulo">O escritório está fazendo</span><span className="cli-kpi-ico roxo"><Icone nome="checklist" width={18} height={18} /></span></div>
-          <div className="cli-kpi-linha">
-            <span className="cli-kpi-valor">{vm.pendencias.length}</span>
-            <span className="cli-kpi-status info"><Icone nome="clock" width={13} height={13} />Neste mês</span>
-          </div>
-          <p className="cli-kpi-nota" title={vm.pendenciasEmPoucas}>{vm.pendenciasEmPoucas || 'Tudo em dia por aqui'}</p>
+        <div className="stat">
+          <p className="stat-label">Documentos do mês</p>
+          <p className="stat-value">{vm.docsDoMes}</p>
+          <p className="hint">{vm.docsNovos ? vm.docsNovos + ' ainda não baixado(s)' : 'Todos baixados'}</p>
         </div>
       </div>
 
       <div className="cli-duas">
-        <section className="cli-cartao">
-          <div className="cli-cartao-topo">
-            <div><h2><Icone nome="recibo" width={18} height={18} />Próximas guias</h2><p>As guias de pagamento que a Nilma Contabilidade gerou para você</p></div>
-            <button type="button" className="cli-link" onClick={() => vm.irPara('guias')}>Ver todas<Icone nome="seta" width={12} height={12} /></button>
+        <section className="card">
+          <div className="card-head">
+            <h3>Próximas guias</h3>
+            <button type="button" className="btn btn-ghost" onClick={() => vm.irPara('guias')}>Ver todas</button>
           </div>
           {vm.guias.length ? (
-            <ul className="cli-lista">
-              {vm.guias.map(g => <LinhaDeGuia key={g.id} guia={g} ocupado={vm.baixando === g.id} onBaixar={vm.baixar} />)}
+            <ul>
+              {vm.guias.map(g => <LinhaDeGuia key={g.id} guia={g} codigo={vm.codigos[g.id]} ocupado={vm.baixando === g.id} onBaixar={vm.baixar} onCopiar={cod => vm.copiar(cod, 'Código')} />)}
             </ul>
-          ) : <p className="cli-recado">Nenhuma guia por enquanto. Quando o escritório gerar, ela aparece aqui.</p>}
+          ) : <p className="empty">Nenhuma guia por enquanto.</p>}
         </section>
 
-        <section className="cli-cartao cli-lado">
-          <div>
-            <div className="cli-cartao-topo">
-              <div><h2><Icone nome="usuario" width={18} height={18} />Fale com o escritório</h2><p>Dúvidas ou pedidos: é só chamar.</p></div>
-            </div>
-            <div className="cli-contato-caixa">
-              <div className="cli-contato-quem">
-                <span className="cli-avatar grande" aria-hidden="true">NC</span>
-                <div><b>Equipe Nilma Contabilidade</b><span>Seu escritório de contabilidade</span></div>
-              </div>
-              <ul className="cli-contato">
-                {c.telefone && <li><Icone nome="telefone" width={16} height={16} /><span>Telefone: <b>{c.telefone}</b></span></li>}
-                {c.whatsapp && <li><Icone nome="mensagem" width={16} height={16} /><span>WhatsApp: <b>{c.whatsapp}</b></span></li>}
-                {c.email && <li><Icone nome="envelope" width={16} height={16} /><span>E-mail: <b>{c.email}</b></span></li>}
-              </ul>
-            </div>
-            {vm.atualizadoEm && <p className="hint" style={{ marginTop: 12 }}>Informações atualizadas em {formatos.dataHora(vm.atualizadoEm)}.</p>}
-          </div>
-          <div className="cli-cartao-pe">
-            <button type="button" className="cli-btn cli-btn-marca cli-btn-largo" onClick={() => vm.irPara('chamados')}><Icone nome="aviao" width={16} height={16} />Pedir um documento ou serviço</button>
+        <section className="card">
+          <div className="card-head"><h3>Atendimento</h3></div>
+          <p style={{ fontWeight: 600 }}>{at?.equipe || 'Nilma Contabilidade'}</p>
+          {at?.horario && <p className="hint">{at.horario}</p>}
+          <ul style={{ marginTop: 12 }}>
+            {c.telefone && <li className="cli-linha cli-contato"><Icone nome="telefone" width={16} height={16} /><span>{c.telefone}</span></li>}
+            {c.whatsapp && <li className="cli-linha cli-contato"><Icone nome="mensagem" width={16} height={16} /><span>{c.whatsapp} (WhatsApp)</span></li>}
+            {c.email && <li className="cli-linha cli-contato"><Icone nome="envelope" width={16} height={16} /><span>{c.email}</span></li>}
+          </ul>
+          <div className="cli-acoes" style={{ marginTop: 16 }}>
+            <button type="button" className="btn" onClick={() => vm.irPara('chamados')}>Pedir documento ou serviço</button>
+            <button type="button" className="btn btn-ghost" onClick={props.onCanais}>Todos os contatos</button>
           </div>
         </section>
       </div>
 
       <div className="cli-duas metade">
-        <section className="cli-cartao">
-          <div className="cli-cartao-topo">
-            <div><h2><Icone nome="calendar" width={18} height={18} />O escritório ainda está fazendo</h2><p>O que falta neste mês</p></div>
-            <button type="button" className="cli-link" onClick={() => vm.irPara('agenda')}>Ver a agenda<Icone nome="seta" width={12} height={12} /></button>
-          </div>
-          {vm.pendencias.length ? (
-            <ul className="cli-lista">{vm.pendencias.map(i => <LinhaDaAgenda key={i.id} item={i} />)}</ul>
-          ) : <p className="cli-recado">Tudo em dia por aqui.</p>}
+        <section className="card">
+          <div className="card-head"><h3>Avisos do escritório</h3></div>
+          <ul>
+            {vm.certificado && (
+              <li className="cli-linha">
+                <div className="cli-linha-txt">
+                  <b>Certificado digital {vm.certificado.tipo}</b>{' '}
+                  {vm.certificado.tom !== 'ok' && <span className={'badge ' + (vm.certificado.tom === 'bad' ? 'badge-bad' : 'badge-warn')}>{vm.certificado.tom === 'bad' ? 'Vencido' : 'Vence logo'}</span>}
+                  <p className="hint">{vm.certificado.texto}</p>
+                </div>
+              </li>
+            )}
+            {vm.avisos.map(a => (
+              <li key={a.id} className="cli-linha">
+                <div className="cli-linha-txt"><b>{a.titulo}</b><p className="hint">{a.texto}</p></div>
+                {a.ir && <button type="button" className="btn" onClick={() => vm.irPara(a.ir!)}>{a.ir === 'documentos' ? 'Enviar' : 'Abrir'}</button>}
+              </li>
+            ))}
+            {vm.pendencias.length > 0 && (
+              <li className="cli-linha">
+                <div className="cli-linha-txt"><b>O escritório ainda faz {vm.pendencias.length} obrigação(ões) neste mês</b><p className="hint">{vm.pendencias.map(i => i.nome).join(', ')}</p></div>
+                <button type="button" className="btn" onClick={() => vm.irPara('guias')}>Agenda</button>
+              </li>
+            )}
+          </ul>
         </section>
 
-        <section className="cli-cartao cli-sem-recheio">
-          <div className="cli-cartao-topo">
-            <div><h2><Icone nome="mensagem" width={18} height={18} />Suas últimas conversas</h2><p>Os chamados com o escritório</p></div>
-            <button type="button" className="cli-link" onClick={() => vm.irPara('chamados')}>Ver todas<Icone nome="seta" width={12} height={12} /></button>
+        <section className="card">
+          <div className="card-head">
+            <h3>Últimas conversas</h3>
+            <button type="button" className="btn btn-ghost" onClick={() => vm.irPara('chamados')}>Ver todas</button>
           </div>
           {vm.ultimosChamados.length ? (
-            <ul className="cli-chamado-lista">
+            <ul>
               {vm.ultimosChamados.map(ch => {
                 const ultima = vm.ultimaMensagem(ch);
                 return (
-                  <li key={ch.id}>
-                    <button type="button" className="cli-chamado" onClick={() => vm.irPara('chamados')}>
-                      <span className="cli-chamado-l1">
-                        <b>{ch.titulo}</b>
-                        <span className={'cli-selo ' + (ch.situacao === 'respondido' ? 'cli-selo-ok' : ch.situacao === 'concluido' ? '' : 'cli-selo-info')}>{vm.rotuloDaSituacao[ch.situacao]}</span>
-                      </span>
-                      {ultima && <span className="cli-chamado-previa">{ultima.de === 'escritorio' ? 'Escritório: ' : 'Você: '}{ultima.texto}</span>}
-                    </button>
+                  <li key={ch.id} className="cli-linha">
+                    <div className="cli-linha-txt">
+                      <b>{ch.titulo}</b>{' '}
+                      {ch.situacao === 'respondido' && <span className="badge badge-ok">Respondido</span>}
+                      {ultima && <p className="hint">{ultima.de === 'escritorio' ? 'Escritório: ' : 'Você: '}{ultima.texto.split('\n')[0]}</p>}
+                    </div>
                   </li>
                 );
               })}
             </ul>
-          ) : <p className="cli-recado" style={{ padding: '16px 24px' }}>Você ainda não abriu nenhum chamado.</p>}
+          ) : <p className="empty">Você ainda não abriu nenhum chamado.</p>}
         </section>
       </div>
     </>

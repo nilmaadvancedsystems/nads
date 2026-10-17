@@ -54,11 +54,11 @@ export const TELAS: Tela[] = [
   // Mandei: o formulário que o cliente abre pelo link
   { id: 'm-formulario', app: 'Mandei', nome: 'Formulário do cliente' },
   // Área do Cliente: o link secreto de cada empresa (Vitor, 16/10/2026)
-  { id: 'c-cliente', app: 'Área do Cliente', nome: 'Início' },
-  { id: 'c-cliente-guias', app: 'Área do Cliente', nome: 'Guias' },
-  { id: 'c-cliente-agenda', app: 'Área do Cliente', nome: 'Agenda' },
-  { id: 'c-cliente-enviar', app: 'Área do Cliente', nome: 'Enviar' },
-  { id: 'c-cliente-chamados', app: 'Área do Cliente', nome: 'Chamados' },
+  { id: 'c-cliente', app: 'Área do Cliente', nome: 'Visão geral' },
+  { id: 'c-cliente-documentos', app: 'Área do Cliente', nome: 'Documentos' },
+  { id: 'c-cliente-guias', app: 'Área do Cliente', nome: 'Guias e obrigações' },
+  { id: 'c-cliente-dp', app: 'Área do Cliente', nome: 'Departamento pessoal' },
+  { id: 'c-cliente-chamados', app: 'Área do Cliente', nome: 'Solicitações' },
   // Extratudo
   { id: 'e-entrada', app: 'Extratudo', nome: 'Entrar no Extratudo' },
   { id: 'e-importacao', app: 'Extratudo', nome: 'Extrator › Importação (bancos)' },

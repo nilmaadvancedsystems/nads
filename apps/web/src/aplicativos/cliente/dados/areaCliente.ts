@@ -2,7 +2,78 @@
 // Interface do repositório + os tipos do que a tela precisa; a versão de exemplo é areaCliente.memoria.ts. A do banco
 // (areasCliente/{token} que o robô espelha; o cliente só cria nas caixas areaClienteEnvios e areaClienteChamados) ainda
 // não existe.
+// As seções que vieram do protótipo do Vitor (documentos, certificado, empregados, ficha da empresa, atendimento, avisos e
+// guias pagas) ainda não têm tipo no core: por enquanto os tipos simples ficam aqui e só a versão de exemplo os preenche.
 import type { areaCliente as ac } from '@nads/core';
+
+/** a área do escritório que mandou o documento */
+export type AreaDoDocumento = 'fiscal' | 'dp' | 'contabil' | 'societario';
+export const ROTULO_DA_AREA: Record<AreaDoDocumento, string> = { fiscal: 'Fiscal', dp: 'Pessoal', contabil: 'Contábil', societario: 'Societário' };
+
+/** Um documento que o escritório deixou para o cliente (balancete, folha, certidão…). */
+export interface DocumentoDoCliente {
+  id: string;
+  nome: string;
+  /** a linha de baixo: o que é, em português simples */
+  descricao: string;
+  area: AreaDoDocumento;
+  /** 'aaaa-mm'; '' = não é de um mês (certidão, contrato) */
+  competencia: string;
+  /** ISO */
+  enviadoEm: string;
+  /** o cliente ainda não baixou */
+  novo: boolean;
+  formato: 'PDF' | 'ZIP' | 'XLSX';
+}
+
+/** O certificado digital da empresa (o e-CNPJ). */
+export interface CertificadoDigital { tipo: 'A1' | 'A3'; titular: string; /** 'aaaa-mm-dd' */ validoAte: string }
+
+export type SituacaoDasFerias = 'em dia' | 'em ferias' | 'periodo aquisitivo' | 'vencidas';
+export const ROTULO_DAS_FERIAS: Record<SituacaoDasFerias, string> = { 'em dia': 'Em dia', 'em ferias': 'Em férias', 'periodo aquisitivo': 'Período aquisitivo', vencidas: 'Férias vencidas' };
+
+/** Um empregado ativo (o CPF já vem mascarado). */
+export interface Empregado {
+  id: string;
+  nome: string;
+  /** '***.491.826-**' */
+  cpf: string;
+  cargo: string;
+  /** 'aaaa-mm-dd' */
+  admissao: string;
+  salario: number;
+  ferias: SituacaoDasFerias;
+  /** 'aaaa-mm-dd', quando está de férias */
+  retornoEm?: string;
+}
+
+/** A ficha cadastral da empresa. */
+export interface FichaDaEmpresa {
+  razaoSocial: string;
+  nomeFantasia?: string;
+  cnpj: string;
+  inscricaoEstadual?: string;
+  inscricaoMunicipal?: string;
+  regime: string;
+  cnae: string;
+  /** 'aaaa-mm-dd' */
+  abertura?: string;
+  endereco: string;
+  socios: { nome: string; participacao: string }[];
+}
+
+/** Quem atende o cliente no escritório e por onde. */
+export interface Atendimento {
+  equipe: string;
+  horario: string;
+  setores: { nome: string; email: string }[];
+}
+
+/** Um recado do escritório (ex.: mandar os extratos até o dia 5). */
+export interface AvisoDoEscritorio { id: string; titulo: string; texto: string; /** a aba que resolve */ ir?: 'documentos' | 'guias' | 'dp' | 'chamados' }
+
+/** Uma guia já paga no mês, com o comprovante. */
+export interface GuiaPaga { id: string; nome: string; competencia: string; valor: number; /** 'dd/mm/aaaa' */ pagoEm: string; temComprovante: boolean }
 
 /** Tudo o que o link mostra, já filtrado pelo robô. */
 export interface EstadoDaArea {
@@ -11,13 +82,25 @@ export interface EstadoDaArea {
   valido: boolean;
   resumo: ac.ResumoDoCliente | null;
   guias: ac.GuiaDoCliente[];
+  /** a linha digitável de cada guia (id da guia → código), quando tem */
+  codigos: Record<string, string>;
+  pagas: GuiaPaga[];
   /** um item por mês de vencimento (areasCliente/{token}/agenda/{AAAA-MM}) */
   agenda: ac.AgendaDoMes[];
   envios: ac.ReciboDeEnvio[];
   chamados: ac.ChamadoDoCliente[];
+  documentos: DocumentoDoCliente[];
+  certificado: CertificadoDigital | null;
+  empregados: Empregado[];
+  ficha: FichaDaEmpresa | null;
+  atendimento: Atendimento | null;
+  avisos: AvisoDoEscritorio[];
 }
 
-export const AREA_VAZIA: EstadoDaArea = { carregado: false, valido: false, resumo: null, guias: [], agenda: [], envios: [], chamados: [] };
+export const AREA_VAZIA: EstadoDaArea = {
+  carregado: false, valido: false, resumo: null, guias: [], codigos: {}, pagas: [], agenda: [], envios: [], chamados: [],
+  documentos: [], certificado: null, empregados: [], ficha: null, atendimento: null, avisos: [],
+};
 
 export interface RepoAreaCliente {
   /** true = dados de exemplo (nada vai para o escritório) */
@@ -32,4 +115,8 @@ export interface RepoAreaCliente {
   responderChamado(token: string, id: string, texto: string): Promise<void>;
   /** o PDF da guia; null quando não tem */
   baixarGuia(token: string, id: string): Promise<{ nome: string; arquivo: Blob } | null>;
+  /** o arquivo de um documento do escritório (deixa de ser "novo"); null quando não tem */
+  baixarDocumento(token: string, id: string): Promise<{ nome: string; arquivo: Blob } | null>;
+  /** o comprovante de uma guia paga; null quando não tem */
+  baixarComprovante(token: string, id: string): Promise<{ nome: string; arquivo: Blob } | null>;
 }
