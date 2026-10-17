@@ -140,7 +140,7 @@ export const ICONES: NomeIcone[] = [
   'arrowDown', 'arrowUp', 'check', 'checkCircle', 'scale', 'alert', 'lock', 'unlock', 'x', 'sun', 'moon', 'monitor', 'upload', 'ajuda',
   'olho', 'fileText', 'clock', 'chevronsLeft', 'chevronLeft', 'chevronRight', 'settings', 'logOut', 'barChart', 'caretDown', 'play',
   'camera', 'imagem', 'filtro', 'ordenar', 'copiar', 'search', 'repeat', 'calendar', 'plus', 'fileSearch', 'hash', 'list', 'menu', 'pastaAberta', 'mais',
-  'girar', 'maximizar', 'minimizar', 'painel', 'cartao', 'download', 'grade', 'impressora', 'dinheiro', 'predio', 'escudo', 'seta', 'telefone', 'aviao',
+  'girar', 'maximizar', 'minimizar', 'painel', 'cartao', 'download', 'grade', 'impressora', 'dinheiro', 'predio', 'escudo', 'seta', 'telefone', 'aviao', 'clipe',
 ];
 const BANCOS = ['banco-do-brasil', 'banrisul', 'bradesco', 'btg', 'c6', 'caixa', 'inter', 'itau', 'mercado-pago', 'nubank', 'pagbank', 'safra', 'santander', 'sicoob', 'stone', 'cora', 'sicredi', 'bnb'];
 const CORES = [
@@ -267,6 +267,12 @@ export const PECAS_BASE: Peca[] = [
   { id: 'grupo-tag', tipo: 'selos', nome: 'Grupo da conta', classes: ['grupo-tag g-a', 'g-p', 'g-d', 'g-r'], telas: ['c-cadastro', 't-cadastro-janela'],
     demo: () => <><span className="grupo-tag g-a">Ativo</span><span className="grupo-tag g-p">Passivo</span><span className="grupo-tag g-d">Despesa</span><span className="grupo-tag g-r">Receita</span></> },
 
+  { id: 'selo-suave', tipo: 'selos', nome: 'Selo suave (Área do Cliente)', descricao: 'O único selo da Área do Cliente (Vitor, 16/10/2026: "refina essa ui"): fundo claro e o texto na cor do significado — vermelho vencida, amarelo atenção, verde pago, em dia, respondido e feito; neutro para o resto (categorias, a vencer, a fazer). Funciona no claro e no escuro', classes: ['cli-selo', 'ruim', 'atencao', 'bom'], telas: ['c-cliente', 'c-cliente-documentos', 'c-cliente-guias', 'c-cliente-dp', 'c-cliente-chamados'],
+    demo: () => (
+      <div className="cli-app cli-demo" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <span className="cli-selo ruim">Vencida</span><span className="cli-selo atencao">Vence hoje</span><span className="cli-selo bom">Pago</span><span className="cli-selo bom">Em dia</span><span className="cli-selo">A vencer</span><span className="cli-selo">Fiscal</span>
+      </div>
+    ) },
   // ─── Ícones ─────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'icones', tipo: 'icones', nome: 'Todos os ícones', descricao: 'SVG 24×24, traço 1,75, na cor do texto', componente: 'Icone', telas: TODAS, largo: true, uso: '<Icone nome="search" />',
     demo: () => <div className="cat-icones">{ICONES.map(n => <span key={n} className="cat-icone"><Icone nome={n} />{n}</span>)}</div> },
@@ -520,7 +526,7 @@ export const PECAS_BASE: Peca[] = [
           <button className="subnav-item" type="button"><Icone nome="predio" width={16} height={16} /><span>Dados cadastrais</span></button>
           <button className="subnav-item" type="button"><Icone nome="telefone" width={16} height={16} /><span>Fale com o escritório</span></button>
         </nav>
-        <div className="cli-lateral-pe"><b>Equipe Nilma Contabilidade</b><span>Segunda a sexta, das 8h às 18h</span><button className="btn" type="button">WhatsApp do escritório</button></div>
+        <div className="cli-lateral-pe"><b>Equipe Nilma Contabilidade</b><span>Segunda a sexta, das 8h às 18h</span><button className="btn" type="button"><Icone nome="mensagem" width={16} height={16} />WhatsApp do escritório</button></div>
       </div>
     ) },
   // ─── Cartões ────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -606,7 +612,7 @@ export const PECAS_BASE: Peca[] = [
         </div>
       );
     } },
-  { id: 'cartao-guia', tipo: 'cartoes', nome: 'Cartão de guia (Área do Cliente)', descricao: 'Dos "Próximos vencimentos" de Guias e obrigações da Área do Cliente (Vitor, 16/10/2026: o layout do protótipo com as peças do nads): o card do nads com a sigla no selo da situação e o valor no alto, o nome e a competência, o vencimento com quantos dias faltam e, embaixo do fio, Baixar PDF (botão principal) e copiar a linha digitável', componente: 'CartaoDeGuia', classes: ['card', 'cli-cartao', 'cli-cartao-topo', 'cli-cartao-pe', 'badge'], telas: ['c-cliente-guias'], largo: true,
+  { id: 'cartao-guia', tipo: 'cartoes', nome: 'Cartão de guia (Área do Cliente)', descricao: 'Dos "Próximos vencimentos" de Guias e obrigações da Área do Cliente (Vitor, 16/10/2026), compacto no card do nads: na primeira linha a sigla, o nome e o valor; na segunda o vencimento (o "há N dias" em vermelho quando venceu) e, à direita, copiar a linha digitável e Baixar PDF (secundário, no tamanho do texto)', componente: 'CartaoDeGuia', classes: ['card', 'cli-cartao', 'cli-cartao-l1', 'cli-cartao-l2', 'cli-sigla'], telas: ['c-cliente-guias'], largo: true,
     demo: () => (
       <div className="cli-app cli-demo" style={{ width: '100%' }}><div className="cli-tres">
         <CartaoDeGuia guia={{ id: 'x1', tipo: 'DAS', competencia: '2026-09', vencimento: '11/10/2026', valor: 1284.37, situacao: 'vencida', temPdf: true }} faltam="há 5 dias" codigo="07190.00009" onBaixar={nada} onCopiar={nada} />
@@ -621,7 +627,7 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <><button className="tarefas-contador" type="button"><Icone nome="briefcase" /><b>235</b> empresas</button><span className="menu-contador">12</span><span className="imp-faixa-qtd">4</span></> },
   { id: 'emp-list', tipo: 'listas', nome: 'Lista de empresas (entrar)', classes: ['emp-list', 'emp-item'], telas: ['c-entrada', 'e-entrada', 'z-entrada'],
     demo: () => <div className="emp-list" style={{ width: 320 }}>{[[292, 'FITO INDUSTRIA E COMERCIO'], [9999, 'PERSONALY COMPANY']].map(([c, n]) => <button key={c} className="emp-item" type="button"><span className="emp-cod">{c}</span><span className="emp-txt"><span className="emp-nome">{n}</span></span></button>)}</div> },
-  { id: 'linha-agenda', tipo: 'listas', nome: 'Linha da agenda (Área do Cliente)', descricao: 'Do card "O que o escritório entrega no mês" de Guias e obrigações (Vitor, 16/10/2026): a data, a obrigação em português simples e a situação escrita (A fazer em negrito, Feito em cinza); o que não se aplica à empresa não aparece', componente: 'LinhaDaAgenda', classes: ['cli-linha', 'cli-data', 'cli-linha-txt', 'cli-situacao'], telas: ['c-cliente-guias'], largo: true,
+  { id: 'linha-agenda', tipo: 'listas', nome: 'Linha da agenda (Área do Cliente)', descricao: 'Do card "O que o escritório entrega no mês" de Guias e obrigações (Vitor, 16/10/2026): a data, a obrigação em português simples e o selo suave (Feito verde, A fazer neutro); o que não se aplica à empresa não aparece', componente: 'LinhaDaAgenda', classes: ['cli-linha', 'cli-data', 'cli-linha-txt', 'cli-selo'], telas: ['c-cliente-guias'], largo: true,
     demo: () => (
       <div className="cli-app cli-demo" style={{ width: '100%' }}><ul>
         <LinhaDaAgenda item={{ id: 'fgts', nome: 'FGTS', vence: '2026-10-20', situacao: 'feito', feitoEm: '2026-10-14T15:30:00.000Z' }} />
@@ -638,7 +644,7 @@ export const PECAS_BASE: Peca[] = [
         ]} />
       </div>
     ) },
-  { id: 'linha-guia', tipo: 'listas', nome: 'Linha de guia (Área do Cliente)', descricao: 'Das "Obrigações e guias próximas" da Visão geral da Área do Cliente (Vitor, 16/10/2026: o layout do protótipo com as peças do nads): a sigla num quadradinho, o nome e a competência, o vencimento e o valor, o selo da situação (Vencida, Vence hoje, A vencer) e os botões de ícone de baixar e copiar a linha digitável', componente: 'LinhaDeGuia', classes: ['cli-linha', 'cli-sigla', 'cli-linha-txt', 'cli-linha-dir', 'icon-btn', 'badge'], telas: ['c-cliente', 'c-cliente-guias'], largo: true,
+  { id: 'linha-guia', tipo: 'listas', nome: 'Linha de guia (Área do Cliente)', descricao: 'Das "Obrigações e guias próximas" da Visão geral da Área do Cliente (Vitor, 16/10/2026): em colunas — a sigla num quadradinho, o nome com o vencimento embaixo, o valor alinhado à direita, o selo suave da situação e os botões de ícone de copiar e baixar; a linha acende ao passar o mouse', componente: 'LinhaDeGuia', classes: ['cli-linha', 'cli-linha-guia', 'cli-sigla', 'cli-valor', 'cli-selo', 'icon-btn'], telas: ['c-cliente', 'c-cliente-guias'], largo: true,
     demo: () => (
       <div className="cli-app cli-demo" style={{ width: '100%' }}><ul>
         <LinhaDeGuia codigo="07190.00009 26277.123456" onCopiar={nada} guia={{ id: 'l1', tipo: 'DAS', competencia: '2026-09', vencimento: '11/10/2026', valor: 1284.37, situacao: 'vencida', temPdf: true }} onBaixar={nada} />

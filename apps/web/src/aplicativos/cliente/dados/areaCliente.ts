@@ -73,7 +73,7 @@ export interface Atendimento {
 export interface AvisoDoEscritorio { id: string; titulo: string; texto: string; /** a aba que resolve */ ir?: 'documentos' | 'guias' | 'dp' | 'chamados' }
 
 /** Uma guia já paga no mês, com o comprovante. */
-export interface GuiaPaga { id: string; nome: string; competencia: string; valor: number; /** 'dd/mm/aaaa' */ pagoEm: string; temComprovante: boolean }
+export interface GuiaPaga { id: string; /** a sigla do tributo ou do serviço (INSS, HON…) */ sigla: string; nome: string; competencia: string; valor: number; /** 'dd/mm/aaaa' */ pagoEm: string; temComprovante: boolean }
 
 /** Tudo o que o link mostra, já filtrado pelo robô. */
 export interface EstadoDaArea {

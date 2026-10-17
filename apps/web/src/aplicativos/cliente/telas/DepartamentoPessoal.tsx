@@ -118,7 +118,7 @@ export function DepartamentoPessoal(props: DaCasca) {
       <div className="cli-titulo">
         <div>
           <h1 className="page-title">Departamento pessoal</h1>
-          <p className="page-desc">Seus funcionários, os pedidos de admissão e a programação de férias.</p>
+          <p className="page-desc">Seus funcionários, as admissões e as férias.</p>
         </div>
         <div className="cli-acoes">
           <button type="button" className="btn btn-primary" onClick={() => void abrirPedido('admissao', vm.novaAdmissao())}><Icone nome="plus" width={16} height={16} />Solicitar admissão</button>
@@ -129,7 +129,7 @@ export function DepartamentoPessoal(props: DaCasca) {
       <div className="stat-grid cli-numeros">
         <div className="stat"><p className="stat-label">Total de ativos</p><p className="stat-value">{vm.numeros.ativos}</p></div>
         <div className="stat"><p className="stat-label">Em férias</p><p className="stat-value">{vm.numeros.emFerias}</p></div>
-        <div className="stat"><p className="stat-label">Folha bruta total</p><p className="stat-value">{vm.reais(vm.numeros.folha)}</p></div>
+        <div className="stat"><p className="stat-label">Folha bruta total</p><p className="stat-value"><small className="cli-moeda">R$</small>{vm.reais(vm.numeros.folha).replace(/^R\$\s*/, '')}</p></div>
         <div className="stat"><p className="stat-label">Admissões no ano</p><p className="stat-value">{vm.numeros.admissoesNoAno}</p></div>
       </div>
 
@@ -147,7 +147,7 @@ export function DepartamentoPessoal(props: DaCasca) {
               <tr key={e.id}>
                 <td>
                   <div className="cli-pessoa">
-                    <span className="cli-iniciais" aria-hidden="true">{vm.iniciais(e.nome)}</span>
+                    <span className={'cli-iniciais ' + vm.tomDe(e.nome)} aria-hidden="true">{vm.iniciais(e.nome)}</span>
                     <div><b>{e.nome}</b><span className="hint">CPF {e.cpf}</span></div>
                   </div>
                 </td>
@@ -155,7 +155,7 @@ export function DepartamentoPessoal(props: DaCasca) {
                 <td className="cli-so-largo">{vm.dataBr(e.admissao)}</td>
                 <td className="cli-so-largo num">{vm.reais(e.salario)}</td>
                 <td className="cli-so-largo"><span className={vm.seloDasFerias(e)}>{vm.rotuloDasFerias(e)}</span></td>
-                <td className="num"><button type="button" className="btn" onClick={() => void ficha(e)}>Detalhes</button></td>
+                <td className="num"><button type="button" className="icon-btn" title="Ficha do funcionário" aria-label={'Ficha de ' + e.nome} onClick={() => void ficha(e)}><Icone nome="fileText" width={16} height={16} /></button></td>
               </tr>
             ))}
             {!vm.empregados.length && <tr><td colSpan={6}><p className="empty">{vm.total ? 'Ninguém com esse nome.' : 'Nenhum funcionário ativo.'}</p></td></tr>}

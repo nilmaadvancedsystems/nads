@@ -45,7 +45,13 @@ export function useInicio({ token, area, hoje, irPara, copiar }: DaCasca) {
     guiasEmPoucas: emFrase(guias.slice(0, 3).map(g => (g.tipo === 'outra' ? 'Guia' : g.tipo) + ' (' + g.vencimento.slice(0, 5) + ')')) + (guias.length > 3 ? '…' : ''),
     pessoal,
     chamadosEmAberto: emAberto.length,
-    primeiroEmAberto: emAberto[0]?.titulo ?? '',
+    // a legenda curta: "1 em andamento, 1 respondido"
+    chamadosEmPoucas: emFrase([
+      [emAberto.filter(c => c.situacao === 'aberto' || c.situacao === 'em andamento').length, 'em andamento', 'em andamento'] as const,
+      [emAberto.filter(c => c.situacao === 'respondido').length, 'respondido', 'respondidos'] as const,
+    ].filter(([n]) => n > 0).map(([n, um, varios]) => n + ' ' + (n === 1 ? um : varios))),
+    // "1 vencida · a próxima em 19/10"
+    proximaGuia: guias.find(g => g.situacao !== 'vencida')?.vencimento.slice(0, 5) ?? '',
     docsDoMes: docsDoMes.length,
     docsNovos: area.documentos.filter(d => d.novo).length,
     pendencias: ac.pendenciasDaAgenda(agendaDoMes),

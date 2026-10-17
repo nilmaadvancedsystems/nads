@@ -21,6 +21,12 @@ export function AreaDoCliente() {
   const fechar = [{ rotulo: 'Fechar', valor: null, variante: 'btn-outline' as const }];
   const c = vm.contato;
 
+  // "Nova solicitação" leva à abertura rápida (na própria tela de Solicitações, só põe o cursor no título)
+  const novaSolicitacao = () => {
+    if (vm.aba !== 'chamados') vm.irPara('chamados');
+    setTimeout(() => document.getElementById('cli-titulo-chamado')?.focus(), 50);
+  };
+
   const abrirWhatsapp = () => {
     if (vm.exemplos) { toast('Na versão de exemplo o WhatsApp não abre.'); return; }
     window.open(c.whatsappLink, '_blank', 'noopener');
@@ -108,13 +114,14 @@ export function AreaDoCliente() {
             <div className="cli-lateral-pe">
               <b>{c.equipe}</b>
               {c.horario && <span>{c.horario}</span>}
-              {c.whatsappLink && <button type="button" className="btn" onClick={abrirWhatsapp}>WhatsApp do escritório</button>}
+              {c.whatsappLink && <button type="button" className="btn" onClick={abrirWhatsapp}><Icone nome="mensagem" width={16} height={16} />WhatsApp do escritório</button>}
             </div>
           </aside>
           {vm.menuAberto && <div className="cli-fundo-gaveta" onClick={() => vm.setMenuAberto(false)} aria-hidden="true" />}
         </>
       )}
       <div className={'cli-corpo' + (valido ? '' : ' sem-lateral')}>
+        {vm.exemplos && valido && <p className="cli-faixa-exemplo">Versão de exemplo: os dados são de mentira e nada do que você fizer aqui chega ao escritório.</p>}
         <header className="cli-topo">
           <div className="cli-topo-esq">
             {valido && (
@@ -146,12 +153,11 @@ export function AreaDoCliente() {
                     )) : <p className="empty" style={{ padding: 16 }}>Nada novo.</p>}
                   </div>
                 )} />
-              {vm.aba !== 'chamados' && <button type="button" className="btn btn-primary cli-so-largo" onClick={() => vm.irPara('chamados')}><Icone nome="plus" width={16} height={16} />Nova solicitação</button>}
+              <button type="button" className="btn btn-primary cli-so-largo" onClick={novaSolicitacao}><Icone nome="plus" width={16} height={16} />Nova solicitação</button>
             </div>
           )}
         </header>
         <main className="cli-main">
-          {vm.exemplos && valido && <p className="cli-exemplo">Versão de exemplo: os dados são de mentira e nada do que você fizer aqui chega ao escritório.</p>}
           {!area.carregado ? <Esqueleto linhas={4} numeros={3} /> : !area.valido ? (
             <div className="card" style={{ maxWidth: 460, margin: '48px auto 0', textAlign: 'center' }}>
               <h3>Este link não vale mais</h3>

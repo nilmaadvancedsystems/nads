@@ -7,7 +7,6 @@ import { Enviar } from './Enviar';
 import { useDocumentos } from './useDocumentos';
 import type { DaCasca } from './useAreaCliente';
 
-const SELO_DA_AREA: Record<DocumentoDoCliente['area'], string> = { fiscal: 'badge badge-bad', dp: 'badge badge-warn', contabil: 'badge badge-neutral', societario: 'badge badge-ok' };
 
 export function Documentos(props: DaCasca) {
   const vm = useDocumentos(props);
@@ -42,7 +41,7 @@ export function Documentos(props: DaCasca) {
       <div className="cli-titulo">
         <div>
           <h1 className="page-title">Central de documentos</h1>
-          <p className="page-desc">Relatórios, certidões, declarações e guias que o escritório deixou para você.</p>
+          <p className="page-desc">Relatórios, certidões e guias que o escritório deixou para você.</p>
         </div>
         <div className="cli-acoes">
           <button type="button" className="btn btn-primary" onClick={enviar}><Icone nome="upload" width={16} height={16} />Enviar documento</button>
@@ -53,7 +52,7 @@ export function Documentos(props: DaCasca) {
         </div>
       </div>
 
-      <div className="card cli-filtros">
+      <div className="cli-filtros">
         <input type="text" value={vm.busca} onChange={e => vm.mudarBusca(e.target.value)} placeholder="Buscar documento" aria-label="Buscar documento" />
         <div className="cli-filtros-dir">
           <select value={vm.area} onChange={e => vm.mudarArea(e.target.value)} aria-label="Área">
@@ -79,15 +78,15 @@ export function Documentos(props: DaCasca) {
             {vm.docs.map(d => (
               <tr key={d.id}>
                 <td className="wrap">
-                  <div className="cli-doc">
-                    <Icone nome="fileText" width={18} height={18} />
-                    <div><b>{d.nome}</b><span className="hint">{d.descricao}</span></div>
+                  <div className={'cli-doc' + (d.novo ? ' novo' : '')}>
+                    <span className={'cli-doc-ico ' + d.area} aria-hidden="true"><Icone nome="fileText" width={18} height={18} /></span>
+                    <div><span className="cli-doc-nome">{d.nome}</span><span className="hint">{d.descricao}</span></div>
                   </div>
                 </td>
-                <td className="cli-so-largo"><span className={SELO_DA_AREA[d.area]}>{vm.rotuloDaArea(d)}</span></td>
+                <td className="cli-so-largo"><span className="cli-selo">{vm.rotuloDaArea(d)}</span></td>
                 <td className="cli-so-largo">{vm.competencia(d)}</td>
                 <td className="cli-so-largo">{vm.enviadoEm(d)}</td>
-                <td className="cli-so-largo">{d.novo ? <b className="cli-nao-lido">Não baixado</b> : <span className="hint">Baixado</span>}</td>
+                <td className="cli-so-largo">{d.novo ? <span className="cli-leitura novo"><span className="cli-ponto" aria-hidden="true" />Novo</span> : <span className="cli-leitura">Baixado</span>}</td>
                 <td className="num">
                   <span className="cli-acoes-linha">
                     <button type="button" className="icon-btn" title="Ver" aria-label={'Ver ' + d.nome} onClick={() => void visualizar(d)}><Icone nome="olho" width={16} height={16} /></button>

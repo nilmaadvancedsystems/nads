@@ -1,6 +1,6 @@
-// A Visão geral da Área do Cliente (Vitor, 16/10/2026), no layout do protótipo com as peças do nads: o card de boas-vindas
-// com os dois atalhos, os quatro números (stat do nads), e embaixo as obrigações e guias próximas (com as já pagas) ao lado
-// do atendimento.
+// A Visão geral da Área do Cliente (Vitor, 16/10/2026), no layout do protótipo com as peças do nads: a faixa de boas-vindas
+// com os dois atalhos, os quatro números (stat do nads), e embaixo as obrigações e guias próximas (com as pagas) ao lado do
+// atendimento.
 import { formatos } from '@nads/core';
 import { Icone } from '@nads/ui';
 import { LinhaDeGuia } from '../partes/LinhaDeGuia';
@@ -13,8 +13,10 @@ export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente[
   return (
     <>
       <section className="card cli-boas-vindas">
-        <h1 className="page-title">Bem-vindo à sua área exclusiva</h1>
-        <p className="page-desc">Aqui ficam as guias para pagar, os documentos do escritório, os seus funcionários e os pedidos ao escritório.</p>
+        <div className="cli-boas-vindas-txt">
+          <h1 className="page-title">Bem-vindo à sua área exclusiva</h1>
+          <p className="page-desc">Guias, documentos, funcionários e pedidos ao escritório.</p>
+        </div>
         <div className="cli-acoes">
           <button type="button" className="btn btn-primary" onClick={() => vm.irPara('guias')}>Guias deste mês</button>
           <button type="button" className="btn" onClick={() => vm.irPara('chamados')}>Abrir chamado</button>
@@ -24,8 +26,8 @@ export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente[
       <div className="stat-grid cli-numeros">
         <div className="stat">
           <p className="stat-label">Guias a vencer</p>
-          <p className="stat-value">{vm.totalDeGuias}</p>
-          <p className="hint">{vm.guiasEmPoucas || 'Nenhuma em aberto'}</p>
+          <p className={'stat-value' + (vm.vencidas ? ' cli-ruim' : '')}>{vm.totalDeGuias}</p>
+          <p className="hint">{vm.vencidas ? <span className="cli-ruim">{vm.vencidas === 1 ? '1 vencida' : vm.vencidas + ' vencidas'}</span> : 'Nenhuma vencida'}{vm.proximaGuia ? ' · a próxima em ' + vm.proximaGuia : ''}</p>
         </div>
         <div className="stat">
           <p className="stat-label">Empregados ativos</p>
@@ -35,42 +37,40 @@ export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente[
         <div className="stat">
           <p className="stat-label">Chamados em aberto</p>
           <p className="stat-value">{vm.chamadosEmAberto}</p>
-          <p className="hint" title={vm.primeiroEmAberto}>{vm.primeiroEmAberto || 'Nenhum'}</p>
+          <p className="hint">{vm.chamadosEmPoucas || 'Nenhum'}</p>
         </div>
         <div className="stat">
           <p className="stat-label">Documentos do mês</p>
           <p className="stat-value">{vm.docsDoMes}</p>
-          <p className="hint">{vm.docsNovos === 1 ? '1 ainda não baixado' : vm.docsNovos ? vm.docsNovos + ' ainda não baixados' : 'Todos baixados'}</p>
+          <p className="hint">{vm.docsNovos === 1 ? '1 novo' : vm.docsNovos ? vm.docsNovos + ' novos' : 'Todos baixados'}</p>
         </div>
       </div>
 
       <div className="cli-duas">
         <section className="card">
           <div className="card-head">
-            <div>
-              <h3>Obrigações e guias próximas</h3>
-              <p className="hint" style={{ margin: 0 }}>As guias que a Nilma Contabilidade gerou para a sua empresa</p>
-            </div>
-            <button type="button" className="btn btn-ghost" onClick={() => vm.irPara('guias')}>Ver todas</button>
+            <h3>Obrigações e guias próximas</h3>
+            <button type="button" className="btn btn-ghost" onClick={() => vm.irPara('guias')}>Ver todas<Icone nome="seta" width={14} height={14} /></button>
           </div>
           {vm.guias.length || vm.pagas.length ? (
             <ul>
               {vm.guias.map(g => <LinhaDeGuia key={g.id} guia={g} codigo={vm.codigos[g.id]} ocupado={vm.baixando === g.id} onBaixar={id => void vm.baixar(id)} onCopiar={vm.copiarCodigo} />)}
               {vm.pagas.map(p => (
-                <li key={p.id} className="cli-linha">
-                  <span className="cli-sigla" aria-hidden="true">PAGO</span>
+                <li key={p.id} className="cli-linha cli-linha-guia">
+                  <span className="cli-sigla" aria-hidden="true">{p.sigla}</span>
                   <div className="cli-linha-txt">
                     <b>{p.nome}</b>
-                    <p className="hint">Pago em {p.pagoEm} · <span className="cli-valor">{formatos.reais(p.valor)}</span></p>
+                    <p className="hint">Pago em {p.pagoEm}</p>
                   </div>
-                  <div className="cli-linha-dir">
-                    <span className="badge badge-ok">Pago</span>
+                  <span className="cli-valor">{formatos.reais(p.valor)}</span>
+                  <span className="cli-coluna-selo"><span className="cli-selo bom">Pago</span></span>
+                  <span className="cli-acoes-linha">
                     {p.temComprovante && (
                       <button type="button" className="icon-btn" title="Baixar o comprovante" aria-label={'Baixar o comprovante de ' + p.nome} onClick={() => void vm.baixarComprovante(p.id)}>
                         <Icone nome="fileDown" width={16} height={16} />
                       </button>
                     )}
-                  </div>
+                  </span>
                 </li>
               ))}
             </ul>
@@ -79,14 +79,14 @@ export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente[
 
         <section className="card cli-atendimento">
           <div className="card-head"><h3>Atendimento</h3></div>
-          <p><b>{c.equipe}</b></p>
+          <p className="cli-atendimento-quem">{c.equipe}</p>
           <dl className="cli-dados">
             {c.email && <><dt>E-mail</dt><dd>{c.email}</dd></>}
             {c.telefone && <><dt>Telefone</dt><dd>{c.telefone}</dd></>}
             {c.whatsapp && <><dt>WhatsApp</dt><dd>{c.whatsapp}</dd></>}
             {c.horario && <><dt>Horário</dt><dd>{c.horario}</dd></>}
           </dl>
-          <button type="button" className="btn btn-primary cli-largo" onClick={() => vm.irPara('chamados')}>Solicitar documento ou serviço</button>
+          <button type="button" className="btn cli-largo" onClick={() => vm.irPara('chamados')}>Solicitar documento ou serviço</button>
         </section>
       </div>
     </>

@@ -41,8 +41,11 @@ export function useDp({ token, area, hoje }: DaCasca) {
     novasFerias: (empregado = ''): PedidoDeFerias => ({ empregado, inicio: '', dias: '30 dias', adiantar13: false, observacoes: '' }),
     novaDemissao: (empregado = ''): PedidoDeDemissao => ({ empregado, ultimoDia: '', motivo: '', aviso: 'Trabalhado', observacoes: '' }),
     iniciais: (nome: string) => nome.split(/\s+/).filter(Boolean).map(p => p[0]).filter((_, i, a) => i === 0 || i === a.length - 1).join('').toUpperCase(),
-    rotuloDasFerias: (e: Empregado) => e.ferias === 'em ferias' && e.retornoEm ? 'De férias até ' + dataBr(e.retornoEm) : ROTULO_DAS_FERIAS[e.ferias],
-    seloDasFerias: (e: Empregado) => ({ 'em dia': 'badge badge-ok', 'em ferias': 'badge badge-warn', 'periodo aquisitivo': 'badge badge-neutral', vencidas: 'badge badge-bad' })[e.ferias],
+    rotuloDasFerias: (e: Empregado) => e.ferias === 'em ferias' && e.retornoEm ? 'Férias até ' + dataBr(e.retornoEm).slice(0, 5) : ROTULO_DAS_FERIAS[e.ferias],
+    // o selo suave: vencidas em vermelho, em dia em verde, o resto neutro
+    seloDasFerias: (e: Empregado) => ({ 'em dia': 'cli-selo bom', 'em ferias': 'cli-selo', 'periodo aquisitivo': 'cli-selo', vencidas: 'cli-selo ruim' })[e.ferias],
+    // o tom do círculo das iniciais, sempre o mesmo para a mesma pessoa
+    tomDe: (nome: string) => 't' + ([...nome].reduce((s, ch) => s + ch.charCodeAt(0), 0) % 5),
     dataBr, reais: formatos.reais,
   };
 }

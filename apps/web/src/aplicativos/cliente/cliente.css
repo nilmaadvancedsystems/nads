@@ -1,43 +1,75 @@
-/* Área do Cliente (Vitor, 16/10/2026: "quero assim, só que no design do app"). O layout do protótipo AreaCliente.HTML,
-   tela por tela, montado com as peças do nads (card, card-head, stat, table-wrap, badge, btn, icon-btn, field, chip-f,
-   subnav-item, page-title): aqui só o arranjo da página (o menu lateral, o topo, as colunas) e as poucas coisas que o nads
-   não tem (a sigla da guia, as iniciais do funcionário, o balão da conversa). As cores, as fontes, os cantos e as bordas
-   vêm dos tokens do nads, no claro e no escuro. Tudo sob .cli-app e com prefixo cli-, para não mexer no resto do nads. */
-.cli-app{min-height:100vh;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:14px;line-height:1.5;}
+/* Área do Cliente (Vitor, 16/10/2026: "quero assim, só que no design do app", "refina essa ui", "mais bonito"). O layout do
+   protótipo AreaCliente.HTML, tela por tela, montado com as peças do nads (card, card-head, stat, table-wrap, btn, icon-btn,
+   field, chip-f, subnav-item, page-title), com o acabamento do HTML dele sem a cara de IA: o fundo da página levemente
+   cinza, os cards na cor da superfície com borda suave, sombra bem leve e cantos de 10 px, um selo só (o suave: fundo claro
+   e texto na cor do significado), números grandes e firmes, tabelas confortáveis. As cores, as fontes e os botões vêm dos
+   tokens do nads, no claro e no escuro. Tudo sob .cli-app e com prefixo cli-, para não mexer no resto do nads. */
+.cli-app{
+  --cli-fundo:var(--surface-2);
+  --cli-cartao:var(--surface);
+  --cli-raio:10px;
+  --cli-sombra:0 1px 2px #1D1C1F0D,0 1px 3px #1D1C1F0A;
+  min-height:100vh;background:var(--cli-fundo);color:var(--ink);font-family:var(--font-body);font-size:14px;line-height:1.5;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .cli-app{--cli-fundo:var(--bg);--cli-cartao:var(--surface-2);--cli-sombra:none;}
+}
+:root[data-theme="dark"] .cli-app{--cli-fundo:var(--bg);--cli-cartao:var(--surface-2);--cli-sombra:none;}
 .cli-app *,.cli-app *::before,.cli-app *::after{box-sizing:border-box;}
 .cli-app :is(h1,h2,h3,p,ul,ol,dl,dd){margin:0;}
 .cli-app :is(ul,ol){padding:0;list-style:none;}
 .cli-app svg{flex:none;}
-.cli-app .card{margin:0;min-width:0;}
-.cli-app .stat-grid{margin:0;}
+
+/* as peças do nads com o acabamento da área: a superfície, os cantos de 10 px e a sombra leve */
+.cli-app :is(.card,.table-wrap,.stat-grid){margin:0;min-width:0;border-color:var(--border);border-radius:var(--cli-raio);background:var(--cli-cartao);box-shadow:var(--cli-sombra);}
+.cli-app .card-head{border-radius:var(--cli-raio) var(--cli-raio) 0 0;}
+.cli-app .stat{background:var(--cli-cartao);}
+.cli-app .table-wrap{max-height:none;overflow-x:auto;}
+.cli-app .table-wrap thead th{font-size:12px;color:var(--ink-muted);}
+.cli-app .table-wrap tbody td{padding-top:12px;padding-bottom:12px;}
+.cli-app .table-wrap tbody tr{transition:background-color .12s ease;}
 .cli-app .field :is(input[type="text"],select,textarea){width:100%;}
 .cli-app .field textarea{min-height:0;}
-.cli-app .table-wrap{max-height:none;}
+/* o botão secundário na cor da superfície, com a borda */
+.cli-app .btn:not(.btn-primary):not(.btn-ghost):not(.btn-danger){background:var(--cli-cartao);}
+.cli-app .btn:not(.btn-primary):not(.btn-ghost):not(.btn-danger):hover:not(:disabled),.cli-app .icon-btn:hover:not(:disabled){background:var(--surface-3);}
+.cli-app .icon-btn{background:var(--cli-cartao);}
+.cli-app :is(.btn,.icon-btn,.subnav-item,.chip-f):focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
 .cli-app .cli-valor{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.cli-app .cli-ruim{color:var(--danger);}
+.cli-app .cli-atencao{color:var(--warn);font-weight:600;}
+
+/* o selo suave, o único da área: fundo claro e texto na cor do significado (vermelho vencida, atenção, verde pago/em dia) */
+.cli-app .cli-selo{display:inline-flex;align-items:center;flex:none;padding:0 8px;border-radius:2em;background:var(--surface-3);color:var(--ink-muted);
+  font-size:12px;font-weight:500;line-height:20px;white-space:nowrap;}
+.cli-app .cli-selo.ruim{background:var(--danger-soft);color:var(--danger-ink);}
+.cli-app .cli-selo.atencao{background:var(--warn-soft);color:var(--warn);}
+.cli-app .cli-selo.bom{background:var(--success-soft);color:var(--success-ink);}
 
 /* ------------------------------ o menu lateral: fixo no PC, gaveta no celular ------------------------------ */
 .cli-app .cli-lateral{position:fixed;top:0;bottom:0;left:0;z-index:40;display:flex;flex-direction:column;justify-content:space-between;width:256px;max-width:calc(100vw - 48px);
-  overflow-y:auto;background:var(--drawer-bg);border-right:1px solid var(--border);transform:translateX(-100%);transition:transform .2s ease;}
+  overflow-y:auto;background:var(--cli-cartao);border-right:1px solid var(--border);transform:translateX(-100%);transition:transform .2s ease;}
 .cli-app .cli-lateral.aberta{transform:none;box-shadow:var(--shadow-lg);}
 .cli-app .cli-fundo-gaveta{position:fixed;inset:0;z-index:30;background:#01040966;}
-.cli-app .cli-marca{display:flex;align-items:center;gap:10px;min-height:56px;padding:10px 12px 10px 20px;border-bottom:1px solid var(--border);}
-.cli-app .cli-marca .brand-mark svg{height:28px;}
-.cli-app .cli-marca b{flex:1;min-width:0;font-size:14px;font-weight:600;}
+.cli-app .cli-marca{display:flex;align-items:center;gap:10px;min-height:60px;padding:10px 12px 10px 20px;border-bottom:1px solid var(--border);}
+.cli-app .cli-marca .brand-mark svg{height:30px;}
+.cli-app .cli-marca b{flex:1;min-width:0;font-size:15px;font-weight:700;}
 .cli-app .cli-menu{display:flex;flex-direction:column;gap:2px;padding:16px 8px 16px 16px;}
 .cli-app .cli-menu .subnav-title{display:block;padding:16px 8px 6px;}
-.cli-app .cli-menu .subnav-item{width:100%;flex:none;white-space:normal;}
+.cli-app .cli-menu .subnav-item{width:100%;flex:none;white-space:normal;transition:background-color .12s ease;}
 .cli-app .cli-menu .subnav-item > span:first-of-type{flex:1;min-width:0;}
 /* na gaveta do celular o nads esconde a marquinha do item aberto; aqui ela fica */
 .cli-app .cli-menu .subnav-item.active::before{display:block;}
 .cli-app .cli-menu .subnav-count.cli-conta-ruim{background:var(--danger);color:#fff;}
-.cli-app .cli-lateral-pe{display:flex;flex-direction:column;gap:2px;margin:12px;padding:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface-2);font-size:12px;color:var(--ink-muted);}
+.cli-app .cli-lateral-pe{display:flex;flex-direction:column;gap:2px;margin:12px;padding:14px;border-radius:var(--cli-raio);background:var(--surface-2);font-size:12px;color:var(--ink-muted);}
 .cli-app .cli-lateral-pe b{font-size:13px;font-weight:600;color:var(--ink);}
-.cli-app .cli-lateral-pe .btn{margin-top:8px;}
+.cli-app .cli-lateral-pe .btn{margin-top:10px;}
 
-/* ------------------------------ o topo: a empresa, o sino e Nova solicitação ------------------------------ */
+/* ------------------------------ a faixa do exemplo e o topo ------------------------------ */
+.cli-app .cli-faixa-exemplo{padding:4px 16px;background:var(--surface-3);color:var(--ink-muted);font-size:12px;text-align:center;}
 .cli-app .cli-corpo{display:flex;flex-direction:column;min-width:0;min-height:100vh;}
-.cli-app .cli-topo{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;padding:8px 16px;
-  background:var(--header-bg);border-bottom:1px solid var(--border);}
+.cli-app .cli-topo{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:60px;padding:8px 16px;
+  background:var(--cli-cartao);border-bottom:1px solid var(--border);}
 .cli-app .cli-topo-esq{display:flex;align-items:center;gap:12px;min-width:0;}
 .cli-app .cli-topo-dir{display:flex;align-items:center;gap:8px;flex:none;}
 .cli-app .cli-empresa{min-width:0;line-height:1.3;}
@@ -54,87 +86,109 @@
 .cli-app .cli-aviso-item span{display:block;font-size:12px;color:var(--ink-muted);}
 .cli-app .cli-aviso-item.lida b{font-weight:400;color:var(--ink-muted);}
 
-/* ------------------------------ a página ------------------------------ */
-.cli-app .cli-main{flex:1;display:flex;flex-direction:column;gap:20px;width:100%;max-width:1440px;min-width:0;margin:0 auto;padding:20px 16px 48px;}
-.cli-app .cli-exemplo{margin-bottom:-8px;font-size:12px;color:var(--ink-muted);}
-.cli-app .cli-titulo{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 16px;}
-.cli-app .cli-titulo .page-title{font-size:20px;font-weight:600;line-height:1.3;}
-.cli-app .cli-titulo .page-desc{margin-top:2px;}
+/* ------------------------------ a página: o mesmo ritmo em todas as telas ------------------------------ */
+.cli-app .cli-main{flex:1;display:flex;flex-direction:column;gap:16px;width:100%;max-width:1440px;min-width:0;margin:0 auto;padding:20px 16px 48px;}
+.cli-app .cli-titulo{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 16px;}
+.cli-app .page-title{font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.25;}
+.cli-app .page-desc{margin-top:4px;font-size:14px;color:var(--ink-muted);}
 .cli-app .cli-acoes{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
-.cli-app .cli-duas,.cli-app .cli-tres{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-items:start;}
+.cli-app .cli-duas,.cli-app .cli-tres{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start;}
 .cli-app .card-head > div{min-width:0;}
+.cli-app .card-head .btn-ghost{gap:4px;}
 
-/* a Visão geral: o card de boas-vindas, os quatro números e o atendimento */
-.cli-app .cli-boas-vindas{padding:20px 24px;}
-.cli-app .cli-boas-vindas .page-title{font-size:20px;font-weight:600;}
-.cli-app .cli-boas-vindas .cli-acoes{margin-top:16px;}
+/* Visão geral: a faixa de boas-vindas (a barrinha carmim à esquerda), os números e o atendimento */
+.cli-app .cli-boas-vindas{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 24px;padding:18px 24px;box-shadow:inset 3px 0 0 var(--accent),var(--cli-sombra);}
 .cli-app .cli-numeros{grid-template-columns:repeat(2,minmax(0,1fr));}
-.cli-app .cli-numeros .hint{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-app .stat-grid .stat{padding:16px 20px;}
+.cli-app .stat-grid .stat-label{font-size:12px;color:var(--ink-muted);}
+.cli-app .stat-grid .stat-value{margin-top:2px;font-size:28px;font-weight:700;letter-spacing:-.01em;line-height:1.2;}
+.cli-app .stat-grid .hint{margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-app .cli-moeda{margin-right:4px;font-size:15px;font-weight:600;color:var(--ink-muted);}
+.cli-app .cli-atendimento-quem{font-weight:600;}
 .cli-app .cli-atendimento .cli-dados{margin-top:12px;}
 .cli-app .cli-atendimento .cli-largo{width:100%;margin-top:16px;}
 
-/* uma linha das listas dentro do card (guia, chamado, agenda): o fio entre elas */
+/* uma linha das listas dentro do card (guia, chamado, agenda): o fio entre elas e o hover de ponta a ponta */
 .cli-app .cli-linha{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 0;min-width:0;}
-.cli-app li + li > .cli-linha,.cli-app .cli-linha + .cli-linha,.cli-app li.cli-linha + li.cli-linha{border-top:1px solid var(--border-muted);}
-.cli-app .cli-linha-txt{flex:1 1 220px;min-width:0;}
+.cli-app .card > ul > li.cli-linha{margin:0 -16px;padding-left:16px;padding-right:16px;transition:background-color .12s ease;}
+.cli-app .card > ul > li.cli-linha:hover{background:var(--surface-2);}
+.cli-app .card:not(.cli-card-tabela) > .card-head + ul{margin-top:-12px;}
+.cli-app .card:not(.cli-card-tabela) > ul:last-child{margin-bottom:-8px;}
+.cli-app li + li > .cli-linha,.cli-app li.cli-linha + li.cli-linha{border-top:1px solid var(--border-muted);}
+.cli-app .cli-linha-txt{flex:1 1 200px;min-width:0;}
 .cli-app .cli-linha-txt b{font-weight:600;overflow-wrap:anywhere;}
 .cli-app .cli-linha-txt .hint{margin-top:2px;}
 .cli-app .cli-linha-dir{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-left:auto;}
-.cli-app .cli-sigla{display:flex;align-items:center;justify-content:center;flex:none;width:44px;height:40px;border:1px solid var(--border);border-radius:6px;background:var(--surface-2);
-  color:var(--ink-muted);font-size:11px;font-weight:600;}
+.cli-app .cli-acoes-linha{display:inline-flex;align-items:center;justify-content:flex-end;gap:6px;}
+.cli-app .cli-sigla{display:inline-flex;align-items:center;justify-content:center;flex:none;width:44px;height:36px;border:1px solid var(--border);border-radius:8px;
+  background:var(--surface-2);color:var(--ink-muted);font-size:11px;font-weight:700;letter-spacing:.02em;}
 .cli-app .cli-data{flex:none;width:48px;color:var(--ink-muted);font-variant-numeric:tabular-nums;}
-.cli-app .cli-situacao{flex:none;color:var(--ink-muted);font-size:13px;}
-.cli-app .cli-agenda-a-fazer .cli-situacao{color:var(--ink);font-weight:600;}
-.cli-app .cli-agenda-nao-se-aplica{color:var(--ink-muted);}
+.cli-app .cli-linha-agenda{flex-wrap:nowrap;}
+.cli-app .cli-linha-agenda .cli-linha-txt{flex:1 1 0;}
 
 /* as janelas (ficha, contato, documento): rótulo à esquerda, valor à direita */
 .cli-app .cli-dados{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr);gap:6px 16px;}
 .cli-app .cli-dados dt{color:var(--ink-muted);}
 .cli-app .cli-dados dd{min-width:0;overflow-wrap:anywhere;}
 
-/* a Central de documentos: a barra dos filtros e a tabela */
-.cli-app .cli-filtros{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:12px;}
-.cli-app .cli-filtros input[type="text"]{flex:1 1 240px;max-width:360px;}
+/* a Central de documentos: os filtros em cima da tabela e o ícone do arquivo no tom da categoria */
+.cli-app .cli-filtros{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;}
+.cli-app .cli-filtros :is(input[type="text"],select){height:32px;}
+.cli-app .cli-filtros input[type="text"]{flex:1 1 240px;max-width:360px;padding-top:0;padding-bottom:0;}
 .cli-app .cli-filtros-dir{display:flex;flex-wrap:wrap;gap:8px;}
 .cli-app .cli-filtros-dir select{width:auto;}
-.cli-app .cli-doc{display:flex;align-items:flex-start;gap:10px;min-width:0;}
-.cli-app .cli-doc svg{margin-top:2px;color:var(--ink-muted);}
+.cli-app .cli-doc{display:flex;align-items:center;gap:12px;min-width:0;}
 .cli-app .cli-doc .hint{display:block;margin-top:0;}
-.cli-app .cli-nao-lido{color:var(--warn);font-weight:600;}
-.cli-app .cli-acoes-linha{display:inline-flex;gap:4px;}
+.cli-app .cli-doc-nome{display:block;font-weight:400;}
+.cli-app .cli-doc.novo .cli-doc-nome{font-weight:700;}
+.cli-app .cli-doc-ico{display:inline-flex;align-items:center;justify-content:center;flex:none;width:36px;height:36px;border-radius:8px;background:var(--surface-3);color:var(--ink-muted);}
+.cli-app .cli-doc-ico.fiscal{background:var(--accent-soft);color:var(--accent-ink);}
+.cli-app .cli-doc-ico.dp{background:var(--info-soft);color:var(--info);}
+.cli-app .cli-doc-ico.contabil{background:var(--roxo-soft);color:var(--roxo);}
+.cli-app .cli-doc-ico.societario{background:var(--success-soft);color:var(--success-ink);}
+.cli-app .cli-leitura{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-muted);}
+.cli-app .cli-leitura.novo{color:var(--ink);font-weight:600;}
+.cli-app .cli-ponto{width:7px;height:7px;border-radius:50%;background:var(--accent);}
 
-/* Guias e obrigações: as três colunas de cartões, cada uma com o título e o contador */
+/* Guias e obrigações: as três colunas de cartões compactos, cada uma com o título e o contador */
 .cli-app .cli-tres > section{display:flex;flex-direction:column;gap:12px;min-width:0;}
 .cli-app .cli-coluna-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:8px;border-bottom:1px solid var(--border);}
 .cli-app .cli-coluna-topo h2{font-size:14px;font-weight:600;}
 .cli-app .cli-coluna-topo .subnav-count{margin-left:0;}
-.cli-app .cli-cartao{display:flex;flex-direction:column;gap:6px;}
-.cli-app .cli-cartao-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;}
-.cli-app .cli-cartao-nome{font-weight:600;}
+.cli-app .cli-cartao{display:flex;flex-direction:column;gap:6px;padding:14px 16px;}
 .cli-app .cli-cartao .hint{margin-top:0;}
-.cli-app .cli-cartao-pe{display:flex;gap:8px;margin-top:6px;padding-top:12px;border-top:1px solid var(--border-muted);}
-.cli-app .cli-cartao-pe .btn{flex:1;}
+.cli-app .cli-cartao-l1{display:flex;align-items:center;gap:10px;min-width:0;}
+.cli-app .cli-cartao-l1 .cli-sigla{width:40px;height:30px;}
+.cli-app .cli-cartao-nome{flex:1;min-width:0;font-weight:600;overflow-wrap:anywhere;}
+.cli-app .cli-cartao-l2{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;}
+.cli-app .cli-cartao-l2 .cli-selo{margin-right:4px;}
+.cli-app .cli-cartao-l2 .cli-acoes-linha,.cli-app .cli-cartao-l2 > .btn{margin-left:auto;}
 
 /* o card com tabela (funcionários) ou lista (chamados) de ponta a ponta */
 .cli-app .cli-card-tabela{padding:0;overflow:hidden;}
 .cli-app .cli-card-tabela > .card-head{margin:0;}
-.cli-app .cli-card-tabela > ul > li{padding:0 16px;}
+.cli-app .cli-card-tabela > ul > li{padding:0 16px;transition:background-color .12s ease;}
+.cli-app .cli-card-tabela > ul > li:hover{background:var(--surface-2);}
 .cli-app .cli-card-tabela > .empty{padding:24px 16px;}
-.cli-app .cli-busca{width:260px;max-width:100%;}
-.cli-app .cli-pessoa{display:flex;align-items:center;gap:10px;min-width:0;}
+.cli-app .cli-card-tabela table tbody td{padding-top:12px;padding-bottom:12px;}
+.cli-app .cli-busca{width:280px;max-width:100%;height:32px;}
+.cli-app .cli-pessoa{display:flex;align-items:center;gap:12px;min-width:0;}
 .cli-app .cli-pessoa .hint{display:block;margin-top:0;}
-.cli-app .cli-iniciais{display:flex;align-items:center;justify-content:center;flex:none;width:32px;height:32px;border-radius:50%;background:var(--surface-3);color:var(--ink-muted);font-size:12px;font-weight:600;}
-.cli-app .cli-tabela td{vertical-align:middle;}
+.cli-app .cli-iniciais{display:flex;align-items:center;justify-content:center;flex:none;width:34px;height:34px;border-radius:50%;background:var(--surface-3);color:var(--ink-muted);font-size:12px;font-weight:700;}
+.cli-app .cli-iniciais.t0{background:var(--accent-soft);color:var(--accent-ink);}
+.cli-app .cli-iniciais.t1{background:var(--info-soft);color:var(--info);}
+.cli-app .cli-iniciais.t2{background:var(--roxo-soft);color:var(--roxo);}
+.cli-app .cli-iniciais.t3{background:var(--success-soft);color:var(--success-ink);}
+.cli-app .cli-iniciais.t4{background:var(--ciano-soft);color:var(--ciano);}
 
 /* Solicitações: o formulário e o histórico */
 .cli-app .cli-form{display:grid;grid-template-columns:minmax(0,1fr);gap:0 16px;}
 .cli-app .cli-form .cli-largo{grid-column:1 / -1;}
 .cli-app .cli-form .data-mask{width:100%;}
 .cli-app .cli-barra{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;}
-.cli-app .cli-anexo{display:inline-flex;flex-wrap:wrap;align-items:center;gap:8px;}
-.cli-app .cli-anexo .file-picker{display:inline-flex;margin:0;}
+.cli-app .cli-anexo{display:inline-flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0;}
+.cli-app .cli-anexo label.btn{max-width:100%;overflow:hidden;text-overflow:ellipsis;}
 .cli-app .cli-chamado + .cli-chamado{border-top:1px solid var(--border-muted);}
-.cli-app .cli-chamado .badge{margin-left:4px;vertical-align:1px;}
 .cli-app .cli-previa{margin-top:4px;font-size:13px;}
 .cli-app .cli-conversa-aberta{padding:4px 0 16px;}
 .cli-app .cli-erro{margin:4px 0 8px;font-size:13px;color:var(--danger);}
@@ -150,8 +204,8 @@
 .cli-app .cli-balao-cliente{align-self:flex-end;border-color:var(--accent-border);border-radius:12px 12px 4px 12px;background:var(--accent-soft);}
 
 /* a área de soltar arquivos (a moldura tracejada do escolher arquivos do nads, maior) */
-.cli-app .cli-soltar{display:flex;flex-direction:column;align-items:center;gap:2px;padding:24px 16px;border:1px dashed var(--border-strong);border-radius:6px;
-  color:var(--ink-muted);text-align:center;cursor:pointer;}
+.cli-app .cli-soltar{display:flex;flex-direction:column;align-items:center;gap:2px;padding:24px 16px;border:1px dashed var(--border-strong);border-radius:var(--cli-raio);
+  color:var(--ink-muted);text-align:center;cursor:pointer;transition:border-color .12s ease,background-color .12s ease;}
 .cli-app .cli-soltar svg{margin-bottom:6px;color:var(--ink-muted);}
 .cli-app .cli-soltar b{font-weight:600;color:var(--ink);}
 .cli-app .cli-soltar span{font-size:12px;}
@@ -165,6 +219,14 @@
 }
 @media (min-width:640px){
   .cli-app .cli-form{grid-template-columns:repeat(2,minmax(0,1fr));}
+  /* a linha da guia em colunas: a sigla, o texto, o valor alinhado, o selo e as ações */
+  .cli-app .cli-linha.cli-linha-guia{display:grid;grid-template-columns:44px minmax(0,1fr) 112px 96px 76px;gap:12px;}
+  .cli-app .cli-linha-guia .cli-valor{text-align:right;}
+  .cli-app .cli-linha-guia .cli-acoes-linha{justify-self:end;}
+}
+@media (max-width:639px){
+  .cli-app .cli-linha-guia .cli-valor{margin-left:56px;}
+  .cli-app .cli-linha-guia .cli-acoes-linha{margin-left:auto;}
 }
 @media (min-width:768px){
   .cli-app .cli-lateral{transform:none;box-shadow:none;}
@@ -173,6 +235,8 @@
   .cli-app .cli-corpo.sem-lateral{padding-left:0;}
   .cli-app .cli-topo{padding:8px 32px;}
   .cli-app .cli-main{gap:24px;padding:28px 32px 64px;}
+  .cli-app .cli-duas,.cli-app .cli-tres{gap:24px;}
+  .cli-app .page-title{font-size:24px;}
 }
 @media (min-width:1024px){
   .cli-app .cli-numeros{grid-template-columns:repeat(4,minmax(0,1fr));}
