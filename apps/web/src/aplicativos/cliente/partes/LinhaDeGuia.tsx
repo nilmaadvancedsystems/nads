@@ -1,28 +1,20 @@
-// Uma guia em linha (Visão geral da Área do Cliente, Vitor 16/10/2026; as "Obrigações e guias próximas" do protótipo): o
-// nome e a competência, o vencimento, o valor, o selo quando vencida ou vence hoje, copiar a linha digitável (quando tem) e
-// baixar. Peça do catálogo (Listas).
+// Uma guia em linha na Área do Cliente (Vitor, 16/10/2026: "o mais simples possível", sem "cara de IA"): o nome da guia,
+// o vencimento, o valor e o Baixar; o selo só quando venceu ("vence hoje" vai no texto); o copiar da linha digitável é um
+// link discreto, quando tem. Peça do catálogo (Listas).
 import { areaCliente as ac, formatos } from '@nads/core';
-import { Icone } from '@nads/ui';
-import { SELO_DA_SITUACAO } from './guia';
 
 export function LinhaDeGuia({ guia, codigo, ocupado, onBaixar, onCopiar }: { guia: ac.GuiaDoCliente; codigo?: string; ocupado?: boolean; onBaixar: (id: string) => void; onCopiar?: (codigo: string) => void }) {
-  const selo = SELO_DA_SITUACAO[guia.situacao];
   return (
     <li className="cli-linha">
       <div className="cli-linha-txt">
-        <b>{ac.ROTULO_DA_GUIA[guia.tipo]}</b> {selo && <span className={selo}>{ac.ROTULO_DA_SITUACAO_DA_GUIA[guia.situacao]}</span>}
-        <p className="hint">Vence em {guia.vencimento} · referente a {formatos.rot(guia.competencia)}</p>
+        <b>{ac.ROTULO_DA_GUIA[guia.tipo]}</b>{guia.situacao === 'vencida' && <span className="badge badge-bad">Vencida</span>}
+        <p className={'hint' + (guia.situacao === 'vence hoje' ? ' cli-hoje' : '')}>{guia.situacao === 'vence hoje' ? 'Vence hoje' : 'Vence em ' + guia.vencimento}</p>
       </div>
       <div className="cli-linha-dir">
-        <span className="num">{formatos.reais(guia.valor)}</span>
-        {codigo && onCopiar && (
-          <button type="button" className="icon-btn" title="Copiar a linha digitável" aria-label="Copiar a linha digitável" onClick={() => onCopiar(codigo)}>
-            <Icone nome="copiar" width={16} height={16} />
-          </button>
-        )}
-        <button type="button" className="icon-btn" disabled={!guia.temPdf || ocupado} onClick={() => onBaixar(guia.id)}
-          title={guia.temPdf ? 'Baixar a guia' : 'O arquivo ainda não está aqui'} aria-label={'Baixar a guia ' + ac.ROTULO_DA_GUIA[guia.tipo]}>
-          <Icone nome="download" width={16} height={16} />
+        {codigo && onCopiar && <button type="button" className="btn btn-ghost" onClick={() => onCopiar(codigo)}>Copiar código</button>}
+        <span className="cli-valor">{formatos.reais(guia.valor)}</span>
+        <button type="button" className="btn" disabled={!guia.temPdf || ocupado} onClick={() => onBaixar(guia.id)} title={guia.temPdf ? undefined : 'O arquivo ainda não chegou'}>
+          {ocupado ? 'Baixando…' : 'Baixar'}
         </button>
       </div>
     </li>

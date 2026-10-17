@@ -11,7 +11,6 @@ import { BotaoGoogle } from '../../../comum/BotaoGoogle';
 import { MenuDaRotina } from '../../tarefas/telas/executor/partes/MenuDaRotina';
 import { AndamentoDoAlterdata } from '../../concilia-ai/telas/importacao/partes/AndamentoDoAlterdata';
 import { AreaDeSoltar } from '../../cliente/partes/AreaDeSoltar';
-import { CartaoDeGuia } from '../../cliente/partes/CartaoDeGuia';
 import { ConversaDoChamado } from '../../cliente/partes/ConversaDoChamado';
 import { LinhaDaAgenda } from '../../cliente/partes/LinhaDaAgenda';
 import { LinhaDeGuia } from '../../cliente/partes/LinhaDeGuia';
@@ -162,11 +161,11 @@ export const PECAS_BASE: Peca[] = [
     uso: '<button className="btn btn-outline">Cancelar</button>', demo: () => <><button className="btn btn-outline">Cancelar</button><button className="btn btn-outline"><Icone nome="download" />Baixar CSV</button></> },
   { id: 'btn-sm', removida: { como: 'substituida', por: 'btn', em: '02/10/2026', motivo: 'Um tamanho de botão só no sistema: o pequeno (28 px, texto de 12 px) virou o padrão em todas as telas.' }, tipo: 'botoes', nome: 'Botão pequeno', descricao: '28 px, texto de 12 px', classes: ['btn btn-sm'], telas: ['e-importacao', 't-exec-importacao', 't-cadastro-janela'],
     demo: () => <><button className="btn btn-sm">Pequeno</button><button className="btn btn-primary btn-sm">Principal</button><button className="btn btn-outline btn-sm"><Icone nome="x" />Remover todos</button></> },
-  { id: 'btn-danger', tipo: 'botoes', nome: 'Botão de perigo', descricao: 'Texto vermelho; no passar do mouse, fundo vermelho', classes: ['btn btn-danger'], telas: ['t-cadastro-janela', 'e-importacao'],
+  { id: 'btn-danger', tipo: 'botoes', nome: 'Botão de perigo', descricao: 'Texto vermelho; no passar do mouse, fundo vermelho', classes: ['btn btn-danger'], telas: ['t-cadastro-janela', 'e-importacao', 'c-cliente-dp'],
     demo: () => <button className="btn btn-danger"><Icone nome="x" />Excluir</button> },
   { id: 'texto-copiavel', tipo: 'botoes', nome: 'Texto que copia ao clicar', descricao: 'O próprio número é o botão (CNPJ/CPF, código): sem ícone de copiar ao lado; o mouse vira "copiar" e o texto sublinha', classes: ['texto-copiavel'], telas: ['t-dp-config'],
     uso: '<button type="button" className="texto-copiavel num" title="Clique para copiar" onClick={…}>27872981000113</button>', demo: () => <button type="button" className="texto-copiavel num" title="Clique para copiar">27872981000113</button> },
-  { id: 'btn-ghost', tipo: 'botoes', nome: 'Botão fantasma', classes: ['btn btn-ghost'], telas: ['c-relatorio', 'c-cliente', 'c-cliente-documentos'], demo: () => <button className="btn btn-ghost">Ver mais</button> },
+  { id: 'btn-ghost', tipo: 'botoes', nome: 'Botão fantasma', classes: ['btn btn-ghost'], telas: ['c-relatorio', 'c-cliente', 'c-cliente-documentos', 'c-cliente-guias'], demo: () => <button className="btn btn-ghost">Ver mais</button> },
   { id: 'btn-acao', tipo: 'botoes', nome: 'Botão que trabalha', descricao: 'Mostra a rodinha e o texto no gerúndio enquanto faz', componente: 'BotaoAcao', telas: ['c-importacao', 'e-importacao'],
     uso: '<BotaoAcao carregando={x} textoCarregando="Importando…">Importar</BotaoAcao>', demo: () => <><BotaoAcao>Importar</BotaoAcao><BotaoAcao carregando textoCarregando="Importando…">Importar</BotaoAcao></> },
   { id: 'icon-btn', tipo: 'botoes', nome: 'Botão de ícone', descricao: '32 px; sempre com título', componente: 'BotaoIcone', classes: ['icon-btn'], telas: TODAS,
@@ -220,11 +219,11 @@ export const PECAS_BASE: Peca[] = [
     uso: '<BotaoGoogle entrando={x} onClick={entrar} />', demo: () => <><BotaoGoogle onClick={() => undefined} /><BotaoGoogle entrando onClick={() => undefined} /></> },
 
   // ─── Selos ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  { id: 'badge-ok', tipo: 'selos', nome: 'Ok', descricao: 'Verde preenchido: bateu (regra do app todo, 05/10/2026)', classes: ['badge badge-ok'], telas: ['c-relatorio', 'e-importacao', 't-exec-importacao', 't-exec-cheque', 't-exec-fiscal', 't-exec-clientes', 'c-cliente-guias', 'c-cliente-chamados'],
+  { id: 'badge-ok', tipo: 'selos', nome: 'Ok', descricao: 'Verde preenchido: bateu (regra do app todo, 05/10/2026)', classes: ['badge badge-ok'], telas: ['c-relatorio', 'e-importacao', 't-exec-importacao', 't-exec-cheque', 't-exec-fiscal', 't-exec-clientes'],
     uso: '<span className="badge badge-ok">Ok</span>', demo: () => <span className="badge badge-ok">Ok</span>, aoVivo: undefined },
   { id: 'badge-conferido', tipo: 'selos', nome: 'Conferido', descricao: 'Cheio: conferido à mão (o banco que bate mas falta o cheque especial agora é o botão principal "Cheque especial")', classes: ['badge badge-conferido'], telas: ['c-relatorio', 't-exec-fiscal-rotina', 't-exec-clientes'],
     demo: () => <span className="badge badge-conferido">Conferido</span> },
-  { id: 'badge-bad', tipo: 'selos', nome: 'Diferença', descricao: 'Laranja com borda: o valor da diferença', classes: ['badge badge-bad'], telas: ['c-relatorio', 't-exec-clientes'], demo: () => <><span className="badge badge-bad">89.967,19</span><span className="badge badge-bad">-295,00</span></> },
+  { id: 'badge-bad', tipo: 'selos', nome: 'Diferença', descricao: 'Laranja com borda: o valor da diferença', classes: ['badge badge-bad'], telas: ['c-relatorio', 't-exec-clientes', 'c-cliente', 'c-cliente-guias'], demo: () => <><span className="badge badge-bad">89.967,19</span><span className="badge badge-bad">-295,00</span></> },
   { id: 'badge-neutral', tipo: 'selos', nome: 'Neutro', classes: ['badge badge-neutral'], telas: ['c-relatorio', 't-exec-folha', 't-exec-clientes'], demo: () => <><span className="badge badge-neutral">0,00</span><span className="badge badge-neutral">Configure em Cadastro › Configurações</span><span className="badge badge-neutral">Lote não soma</span></> },
   { id: 'cert-a1', tipo: 'campos', nome: 'Certificado A1 (soltar o .pfx e o cartão)', descricao: 'A área grande para soltar o arquivo (pulsa ao passar por cima) e o cartão do certificado lido: titular, CNPJ, validade e situação', classes: ['cert-soltar', 'cert-cartao', 'cert-campos', 'cert-acoes'], telas: ['t-senhas'],
     demo: () => <div style={{ width: '100%' }}><div className="cert-cartao lido ok"><span className="cert-cartao-chip" aria-hidden="true"><Icone nome="lock" /></span><div className="cert-cartao-corpo"><span className="cert-cartao-tipo">Certificado digital A1</span><b className="cert-cartao-nome">EMPRESA EXEMPLO LTDA</b><span className="cert-cartao-doc num">12.345.678/0001-90</span></div><div className="cert-cartao-validade"><span className="fraco">Validade</span><b className="num">10/04/2027</b><span className="badge badge-ok">Em dia</span></div></div></div> },
@@ -254,7 +253,7 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <span className="gm-pilulas"><span className="gm-pilula"><span className="gm-tipo gm-tipo-pdf">PDF</span><span className="gm-pilula-nome">extrato-sicoob-08</span></span><span className="gm-pilula"><span className="gm-tipo gm-tipo-xml">XML</span><span className="gm-pilula-nome">NFe31261045</span></span><span className="gm-pilula gm-pilula-mais">+2</span></span> },
   { id: 'gm-grupo', tipo: 'listas', nome: 'Grupo do dia (lista de e-mails)', descricao: 'O rótulo fixo no alto de cada grupo (Hoje, Ontem, Esta semana, Este mês, Mais antigos) com a contagem', classes: ['gm-grupo', 'gm-grupo-rotulo'], telas: ['t-gmail'], largo: true,
     demo: () => <div style={{ width: '100%' }}><p className="gm-grupo-rotulo">Hoje<span>3</span></p><p className="gm-grupo-rotulo">Ontem<span>5</span></p></div> },
-  { id: 'badge-warn', tipo: 'selos', nome: 'Atenção', classes: ['badge badge-warn'], telas: ['t-gmail', 't-exec-fiscal-rotina', 'c-cliente-guias', 'c-cliente-documentos', 'c-cliente-dp'], demo: () => <span className="badge badge-warn">Pendente</span> },
+  { id: 'badge-warn', tipo: 'selos', nome: 'Atenção', classes: ['badge badge-warn'], telas: ['t-gmail', 't-exec-fiscal-rotina'], demo: () => <span className="badge badge-warn">Pendente</span> },
   { id: 'badge-falta', tipo: 'selos', nome: 'Falta / duplicado (extrato)', classes: ['badge ext-badge-falta', 'badge ext-badge-dup'], telas: ['e-conferencia'], demo: () => <><span className="badge ext-badge-falta">Faltando</span><span className="badge ext-badge-dup">Duplicado</span></> },
   { id: 'bolinha-sit', tipo: 'selos', nome: 'Bolinha de situação', classes: ['bolinha-sit nao-iniciada', 'em-andamento', 'parada', 'concluida'], telas: ['t-empresas', 't-contabil'],
     demo: () => <>{(['nao-iniciada', 'em-andamento', 'parada', 'concluida'] as const).map(s => <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}><span className={'bolinha-sit ' + s} />{s}</span>)}</> },
@@ -295,7 +294,7 @@ export const PECAS_BASE: Peca[] = [
   { id: 'mes', tipo: 'campos', nome: 'Seletor de mês', componente: 'SeletorMes', classes: ['seletor-mes'], telas: ['t-empresas', 't-contabil', 'c-cliente-guias'], demo: () => <MesVivo /> },
   { id: 'arquivos', tipo: 'campos', nome: 'Escolher arquivos', componente: 'CampoArquivos', classes: ['file-picker'], telas: ['c-importacao', 'e-cheque', 'e-creditor'],
     demo: () => <><CampoArquivos id="cat-arq" onEscolher={nada} aceitar=".xls,.xlsx" /><CampoArquivos id="cat-arq2" onEscolher={nada} aceitar=".xls" compacto rotulo="Importar todos os meses" /></> },
-  { id: 'area-soltar', tipo: 'campos', nome: 'Área de soltar arquivos', descricao: 'Da Área do Cliente (Vitor, 16/10/2026): arrastar os arquivos para cima dela ou clicar para escolher; a moldura tracejada do escolher arquivos do nads, maior, com o ícone e a dica do que aceita (PDF, JPG, PNG, XML ou ZIP, até 700 KB cada, o limite das regras do banco); fica avermelhada quando o arquivo está por cima', componente: 'AreaDeSoltar', classes: ['cli-soltar', 'sobre'], telas: ['c-cliente-documentos'], largo: true,
+  { id: 'area-soltar', tipo: 'campos', nome: 'Área de soltar arquivos', descricao: 'Da Área do Cliente (Vitor, 16/10/2026): arrastar os arquivos para cima dela ou clicar para escolher; a moldura tracejada do escolher arquivos do nads, maior, com o ícone e a dica do que aceita (PDF, JPG, PNG, XML ou ZIP, até 700 KB cada, o limite das regras do banco); fica avermelhada quando o arquivo está por cima. Os escolhidos aparecem embaixo e só vão no botão Enviar', componente: 'AreaDeSoltar', classes: ['cli-soltar', 'sobre'], telas: ['c-cliente-documentos'], largo: true,
     demo: () => <div className="cli-app cli-demo" style={{ width: '100%' }}><AreaDeSoltar aceitar=".pdf,.jpg,.png,.xml,.zip" dica="PDF, JPG, PNG, XML ou ZIP · até 700 KB cada" onArquivos={nada} /></div> },
 
   // ─── Tabelas ────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -409,7 +408,7 @@ export const PECAS_BASE: Peca[] = [
   // ─── Avisos ─────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'alerta', tipo: 'avisos', nome: 'Alerta (amarelo)', componente: 'Alerta', classes: ['alert', 'alert-title', 'alert-text'], telas: ['t-exec-cheque', 'c-verificar', 'e-importacao', 't-exec-fiscal-rotina'], largo: true,
     demo: () => <Alerta naLinha titulo="Saldo negativo: faça o cheque especial" texto="Gere os lançamentos no Cheque especial, lance no Alterdata e importe o razão de novo." /> },
-  { id: 'alerta-ok', tipo: 'avisos', nome: 'Alerta (verde)', componente: 'Alerta', classes: ['alert alert-ok'], telas: ['c-verificar', 't-exec-fiscal-rotina', 'c-cliente-dp'], largo: true, demo: () => <Alerta naLinha tom="ok" titulo="Tudo bate neste período" texto="Nenhuma pendência." /> },
+  { id: 'alerta-ok', tipo: 'avisos', nome: 'Alerta (verde)', componente: 'Alerta', classes: ['alert alert-ok'], telas: ['c-verificar', 't-exec-fiscal-rotina'], largo: true, demo: () => <Alerta naLinha tom="ok" titulo="Tudo bate neste período" texto="Nenhuma pendência." /> },
   { id: 'toast', tipo: 'avisos', nome: 'Aviso rápido (toast)', descricao: 'No canto de baixo, some em 4 s', componente: 'useRetorno().toast', classes: ['toast-region', 'toast'], telas: TODAS,
     demo: () => <div className="toast cat-parado">Etapa interrompida: Importação.</div>, aoVivo: c => c.toast('Etapa interrompida: Importação.') },
   { id: 'imp-aviso', tipo: 'avisos', nome: 'Barrinha no topo (importou / Drive)', descricao: 'Por cima da tela: o que deu certo some em 2,7 s; o erro (ex.: nada no Drive) fica até o ×', classes: ['imp-aviso', 'imp-aviso-barra', 'erro', 'info'], telas: ['e-importacao', 't-exec-importacao'],
@@ -506,12 +505,29 @@ export const PECAS_BASE: Peca[] = [
       </div>
     ) },
 
+  { id: 'lt-cliente', tipo: 'laterais', nome: 'Área do Cliente (o menu lateral)', descricao: 'Do site do cliente (Vitor, 16/10/2026: "gostei dos menus e tudo do html", sem a cara de IA): o N e "Nilma Contabilidade", a empresa embaixo, as cinco seções do protótipo no subnav-item do nads (o aberto de fundo leve e a marquinha) e, depois do fio, Dados cadastrais e Fale com o escritório, que abrem janelas. O único número é o das guias vencidas, em vermelho. No celular vira a gaveta do ☰', classes: ['cli-lateral', 'cli-marca', 'cli-empresa-lateral', 'cli-menu', 'subnav-item', 'cli-sep', 'cli-conta'], telas: ['c-cliente', 'c-cliente-documentos', 'c-cliente-guias', 'c-cliente-dp', 'c-cliente-chamados'],
+    demo: () => (
+      <div className="cli-app cli-demo" style={{ width: 248, padding: '20px 12px 20px 20px', border: '1px solid var(--border)', borderRadius: 6 }}>
+        <div className="cli-marca"><span className="brand-mark" aria-hidden="true"><MarcaN /></span><b>Nilma Contabilidade</b></div>
+        <p className="cli-empresa-lateral">Personaly Company</p>
+        <nav className="cli-menu">
+          <button className="subnav-item active" type="button"><Icone nome="home" width={16} height={16} /><span>Visão geral</span></button>
+          <button className="subnav-item" type="button"><Icone nome="pastaAberta" width={16} height={16} /><span>Documentos</span></button>
+          <button className="subnav-item" type="button"><Icone nome="recibo" width={16} height={16} /><span>Guias e obrigações</span><span className="cli-conta">1</span></button>
+          <button className="subnav-item" type="button"><Icone nome="usuario" width={16} height={16} /><span>Departamento pessoal</span></button>
+          <button className="subnav-item" type="button"><Icone nome="mensagem" width={16} height={16} /><span>Solicitações</span></button>
+          <hr className="cli-sep" />
+          <button className="subnav-item" type="button"><Icone nome="predio" width={16} height={16} /><span>Dados cadastrais</span></button>
+          <button className="subnav-item" type="button"><Icone nome="telefone" width={16} height={16} /><span>Fale com o escritório</span></button>
+        </nav>
+      </div>
+    ) },
   // ─── Cartões ────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'card', tipo: 'cartoes', nome: 'Cartão', descricao: 'O h3 vira a faixa cinza do topo', classes: ['card', 'card-head'], telas: TODAS,
     demo: () => <div className="card" style={{ width: '100%' }}><h3>Contabilização da Folha</h3><p style={{ padding: '0 16px' }} className="hint">O conteúdo do cartão.</p></div> },
   { id: 'painel-numero', tipo: 'cartoes', nome: 'Números em painéis coloridos', descricao: 'Cada número no tom do que ele é, com o ícone (Sávio, 07/10/2026): azul o total, verde o feito, amarelo o que falta, o vermelho do nads o destaque; laranja, roxo e ciano para os outros (08/10: "quero que colora todos")', classes: ['stat painel-numero', 'painel-info', 'painel-ok', 'painel-aviso', 'painel-marca', 'painel-laranja', 'painel-roxo', 'painel-ciano', 'painel-neutro', 'painel-numero-icone'], telas: ['t-dp-resumo', 't-exec-fiscal-rotina', 't-fiscal-painel'], largo: true,
     demo: () => <div className="stat-grid dp-numeros" style={{ width: '100%' }}>{([['Clientes', 115, 'info', 'briefcase'], ['Concluídos', 48, 'ok', 'check'], ['Pendentes', 67, 'aviso', 'clock'], ['Com folha', 82, 'marca', 'usuario'], ['Pró-labore', 44, 'laranja', 'usuario'], ['Sem movimento', 21, 'roxo', 'list'], ['REINF autorizada', 19, 'ciano', 'fileUp']] as [string, number, string, NomeIcone][]).map(([r, v, tom, ic]) => <div key={r} className={'stat painel-numero painel-' + tom}><span className="painel-numero-icone" aria-hidden="true"><Icone nome={ic} /></span><p className="stat-label">{r}</p><p className="stat-value">{v}</p></div>)}</div> },
-  { id: 'stat', tipo: 'cartoes', nome: 'Números (stat)', componente: 'Stat', classes: ['stat-grid', 'stat', 'stat-label', 'stat-value'], telas: ['c-relatorio', 't-insights', 'e-conferencia', 'c-verificar', 't-exec-fiscal-rotina', 'c-cliente', 'c-cliente-dp'], largo: true,
+  { id: 'stat', tipo: 'cartoes', nome: 'Números (stat)', componente: 'Stat', classes: ['stat-grid', 'stat', 'stat-label', 'stat-value'], telas: ['c-relatorio', 't-insights', 'e-conferencia', 'c-verificar', 't-exec-fiscal-rotina'], largo: true,
     demo: () => <div className="stat-grid" style={{ width: '100%' }}><Stat rotulo="Notas" valor="462" /><Stat rotulo="Valor total" valor="1.622.422,77" /><Stat rotulo="Entradas no período" valor="63.390,44" cor="entrada" /><Stat rotulo="Saídas no período" valor="63.734,30" cor="saida" /></div> },
   { id: 'banco', tipo: 'cartoes', nome: 'Linha do banco (Importação)', classes: ['imp-bloco', 'imp-linha'], telas: ['e-importacao', 't-exec-importacao', 't-exec-cheque'], largo: true,
     demo: () => (
@@ -547,7 +563,7 @@ export const PECAS_BASE: Peca[] = [
           <div className="imp-faixa-corpo"><div className="stat-grid"><Stat rotulo="Notas de saída" valor="24" /><Stat rotulo="Valor contábil" valor="58.076,76" cor="saida" /><Stat rotulo="CFOPs" valor="5" /></div></div></div>
       </div>
     ) },
-  { id: 'ag-conversa', tipo: 'cartoes', nome: 'Conversas do Claude por computador', descricao: 'Em Sistema e agentes (só admin, 14/10/2026): o cartão do computador (o nome é a faixa do topo) com uma linha por conversa (o nome, a pasta, o estado, o nível do porteiro e há quanto tempo; o pedido e o agora; os subagentes em selos), as inativas na faixa que abre; e o cadastro do computador (o campo e o botão na mesma linha)', classes: ['ag-conversa', 'ag-conversa-topo', 'ag-conversa-linha', 'ag-conversa-agentes', 'ag-novo', 'ag-novo-linha', 'ag-chave-caixa', 'ag-chave', 'ag-acoes'], telas: ['t-cadastro-config', 'c-cliente-chamados'], largo: true,
+  { id: 'ag-conversa', tipo: 'cartoes', nome: 'Conversas do Claude por computador', descricao: 'Em Sistema e agentes (só admin, 14/10/2026): o cartão do computador (o nome é a faixa do topo) com uma linha por conversa (o nome, a pasta, o estado, o nível do porteiro e há quanto tempo; o pedido e o agora; os subagentes em selos), as inativas na faixa que abre; e o cadastro do computador (o campo e o botão na mesma linha)', classes: ['ag-conversa', 'ag-conversa-topo', 'ag-conversa-linha', 'ag-conversa-agentes', 'ag-novo', 'ag-novo-linha', 'ag-chave-caixa', 'ag-chave', 'ag-acoes'], telas: ['t-cadastro-config'], largo: true,
     demo: () => (
       <div style={{ width: '100%' }}>
         <div className="card">
@@ -589,14 +605,7 @@ export const PECAS_BASE: Peca[] = [
         </div>
       );
     } },
-  { id: 'cartao-guia', tipo: 'cartoes', nome: 'Cartão de guia (Área do Cliente)', descricao: 'Da Área do Cliente (Vitor, 16/10/2026), no estilo do nads: o card com o nome da guia e o selo só quando informa (Vencida, Vence hoje; a borda acompanha), o valor como número do stat, o vencimento, a competência e o número, e embaixo o Baixar guia (botão principal) e o Copiar código (a linha digitável, quando tem). Fica em Guias e obrigações, em grade', componente: 'CartaoDeGuia', classes: ['cli-grade', 'card', 'cli-guia', 'cli-guia-vencida', 'cli-guia-vence-hoje', 'stat-value'], telas: ['c-cliente', 'c-cliente-guias'], largo: true,
-    demo: () => (
-      <div className="cli-app cli-demo" style={{ width: '100%' }}><div className="cli-grade">
-        <CartaoDeGuia guia={{ id: 'x1', tipo: 'DAS', competencia: '2026-09', vencimento: '20/10/2026', valor: 1284.37, numero: '07.18.26277.1234567-8', situacao: 'vencida', temPdf: true }} codigo="07190.00009 26277.123456" onBaixar={nada} onCopiar={nada} />
-        <CartaoDeGuia guia={{ id: 'x2', tipo: 'FGTS', competencia: '2026-09', vencimento: '20/10/2026', valor: 917.42, situacao: 'vence hoje', temPdf: true }} onBaixar={nada} />
-        <CartaoDeGuia guia={{ id: 'x3', tipo: 'DAE', competencia: '2026-09', vencimento: '29/10/2026', valor: 432.1, situacao: 'a vencer', temPdf: false }} onBaixar={nada} />
-      </div></div>
-    ) },
+  { id: 'cartao-guia', removida: { como: 'substituida', por: 'linha-guia', em: '16/10/2026', motivo: 'Vitor: "o portal do cliente tem que ser o mais simples possível"; as guias viraram uma lista simples (Linha de guia).', sumir: true }, tipo: 'cartoes', nome: 'Cartão de guia (Área do Cliente)', telas: [], demo: () => null },
   // ─── Listas ─────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'chips', tipo: 'listas', nome: 'Chips de filtro', classes: ['chip-row', 'chip-lbl', 'chip-f', 'on'], telas: ['c-consulta', 'c-naturezas', 't-gmail', 'c-cliente-documentos'],
     demo: () => <div className="chip-row"><span className="chip-lbl">Tipo</span><button className="chip-f on" type="button">Todos</button><button className="chip-f" type="button">Entradas</button><button className="chip-f" type="button">Saídas</button></div> },
@@ -604,7 +613,7 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <><button className="tarefas-contador" type="button"><Icone nome="briefcase" /><b>235</b> empresas</button><span className="menu-contador">12</span><span className="imp-faixa-qtd">4</span></> },
   { id: 'emp-list', tipo: 'listas', nome: 'Lista de empresas (entrar)', classes: ['emp-list', 'emp-item'], telas: ['c-entrada', 'e-entrada', 'z-entrada'],
     demo: () => <div className="emp-list" style={{ width: 320 }}>{[[292, 'FITO INDUSTRIA E COMERCIO'], [9999, 'PERSONALY COMPANY']].map(([c, n]) => <button key={c} className="emp-item" type="button"><span className="emp-cod">{c}</span><span className="emp-txt"><span className="emp-nome">{n}</span></span></button>)}</div> },
-  { id: 'linha-agenda', tipo: 'listas', nome: 'Linha da agenda (Área do Cliente)', descricao: 'Da Área do Cliente (Vitor, 16/10/2026): uma linha da lista com o fio entre elas — o dia do vencimento, o nome da obrigação em português simples e o selo do nads (Feito verde, A fazer amarelo, Não se aplica cinza e a linha apagada). Fica no card Agenda do mês, com o seletor de mês na faixa do topo', componente: 'LinhaDaAgenda', classes: ['cli-linha', 'cli-data', 'cli-linha-txt', 'cli-linha-apagada'], telas: ['c-cliente', 'c-cliente-guias'], largo: true,
+  { id: 'linha-agenda', tipo: 'listas', nome: 'Linha da agenda (Área do Cliente)', descricao: 'Dos vencimentos do mês na Área do Cliente (Vitor, 16/10/2026): uma linha com o fio fino embaixo — a data, a obrigação em português simples e a situação escrita, sem selo (A fazer em negrito, Feito e Não se aplica em cinza)', componente: 'LinhaDaAgenda', classes: ['cli-linha', 'cli-data', 'cli-linha-txt', 'cli-situacao'], telas: ['c-cliente-guias'], largo: true,
     demo: () => (
       <div className="cli-app cli-demo" style={{ width: '100%' }}><ul>
         <LinhaDaAgenda item={{ id: 'fgts', nome: 'FGTS', vence: '2026-10-20', situacao: 'feito', feitoEm: '2026-10-14T15:30:00.000Z' }} />
@@ -612,7 +621,7 @@ export const PECAS_BASE: Peca[] = [
         <LinhaDaAgenda item={{ id: 'icms', nome: 'ICMS (imposto estadual)', vence: '2026-10-09', situacao: 'nao se aplica' }} />
       </ul></div>
     ) },
-  { id: 'conversa-chamado', tipo: 'listas', nome: 'Conversa do chamado (Área do Cliente)', descricao: 'Da Área do Cliente (Vitor, 16/10/2026): os balões do chamado em ordem, como o balão do nads — o do cliente à direita (fundo vermelho clarinho), o do escritório à esquerda (cinza); o escritório sempre aparece como "Escritório". No PC a conversa fica à direita do histórico (as linhas das conversas do Claude: título, selo, data e a última mensagem)', componente: 'ConversaDoChamado', classes: ['cli-conversa', 'cli-balao', 'cli-balao-cliente', 'cli-balao-escritorio'], telas: ['c-cliente-chamados'], largo: true,
+  { id: 'conversa-chamado', tipo: 'listas', nome: 'Conversa do chamado (Área do Cliente)', descricao: 'Das Solicitações da Área do Cliente (Vitor, 16/10/2026): os balões da conversa em ordem, como o balão do nads — o do cliente à direita (vermelho clarinho), o do escritório à esquerda (cinza); o escritório sempre aparece como "Escritório". A conversa abre embaixo da linha dela, com o campo de responder', componente: 'ConversaDoChamado', classes: ['cli-conversa', 'cli-balao', 'cli-balao-cliente', 'cli-balao-escritorio'], telas: ['c-cliente-chamados'], largo: true,
     demo: () => (
       <div className="cli-app cli-demo" style={{ width: '100%' }}>
         <ConversaDoChamado mensagens={[
@@ -621,7 +630,7 @@ export const PECAS_BASE: Peca[] = [
         ]} />
       </div>
     ) },
-  { id: 'linha-guia', tipo: 'listas', nome: 'Linha de guia (Área do Cliente)', descricao: 'Da Visão geral da Área do Cliente (Vitor, 16/10/2026, as "Obrigações e guias próximas" do protótipo), no estilo do nads: uma linha com o fio entre elas — o nome e o selo só quando informa (Vencida, Vence hoje), o vencimento e a competência, o valor, copiar a linha digitável e baixar (botões de ícone). No celular o valor e os botões descem para baixo do nome', componente: 'LinhaDeGuia', classes: ['cli-linha', 'cli-linha-txt', 'cli-linha-dir', 'icon-btn'], telas: ['c-cliente'], largo: true,
+  { id: 'linha-guia', tipo: 'listas', nome: 'Linha de guia (Área do Cliente)', descricao: 'Da Área do Cliente (Vitor, 16/10/2026: "o mais simples possível", sem a cara de IA): uma linha com o fio fino embaixo — o nome da guia, o selo só quando venceu ("Vence hoje" vai escrito no lugar da data), o Copiar código discreto quando tem a linha digitável, o valor em fonte normal com algarismos alinhados e o Baixar', componente: 'LinhaDeGuia', classes: ['cli-linha', 'cli-linha-txt', 'cli-linha-dir', 'cli-valor', 'cli-hoje', 'badge badge-bad'], telas: ['c-cliente', 'c-cliente-guias'], largo: true,
     demo: () => (
       <div className="cli-app cli-demo" style={{ width: '100%' }}><ul>
         <LinhaDeGuia codigo="07190.00009 26277.123456" onCopiar={nada} guia={{ id: 'l1', tipo: 'DAS', competencia: '2026-09', vencimento: '11/10/2026', valor: 1284.37, situacao: 'vencida', temPdf: true }} onBaixar={nada} />

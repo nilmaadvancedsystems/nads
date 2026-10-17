@@ -28,7 +28,6 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
     guia('g1', 'DAS', -5, 1284.37, '07.18.26277.1234567-8'),
     guia('g2', 'FGTS', 3, 917.42, '202609001234'),
     guia('g3', 'DAE', 8, 432.1),
-    guia('g4', 'outra', 0, 85.9),
   ];
 
   // a agenda: de dois meses atrás até o mês que vem; o que já passou está feito, o que vem está por fazer
@@ -52,7 +51,7 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
 
   const envios: ac.ReciboDeEnvio[] = [
     { id: 'e1', nome: 'extrato-banco-do-brasil-setembro.pdf', tipo: 'extrato', tamanho: 482 * 1024, recebidoEm: comHora(emDias(hoje, -6), 9, 12) },
-    { id: 'e2', nome: 'notas-fiscais-setembro.zip', tipo: 'nota', tamanho: 2_300_000, recebidoEm: comHora(emDias(hoje, -2), 16, 40) },
+    { id: 'e2', nome: 'notas-fiscais-setembro.zip', tipo: 'nota', tamanho: 612_000, recebidoEm: comHora(emDias(hoje, -2), 16, 40) },
   ];
 
   const chamados: ac.ChamadoDoCliente[] = [
@@ -83,10 +82,6 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
     guias, agenda: meses, envios, chamados,
     // a linha digitável das guias que têm (de mentira)
     codigos: { [guias[0].id]: '07190.00009 26277.123456 78901.234567 8 00000128437', [guias[1].id]: '85800000009-1 17420385001-2 26090012345-6 00000091742-0' },
-    pagas: [
-      { id: 'p1', nome: 'Honorários da Nilma Contabilidade', competencia: mesDe(hoje), valor: 1250, pagoEm: br(emDias(hoje, -6)), temComprovante: true },
-      { id: 'p2', nome: 'INSS da folha (DCTFWeb)', competencia: ac.competenciaDoMesDeVencimento(mesDe(emDias(hoje, -28))), valor: 1980.3, pagoEm: br(emDias(hoje, -28)), temComprovante: true },
-    ],
     documentos: documentosDeExemplo(hoje),
     certificado: { tipo: 'A1', titular: 'PERSONALY COMPANY LTDA', validoAte: iso(emDias(hoje, 25)) },
     empregados: empregadosDeExemplo(hoje),
@@ -100,9 +95,6 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
       equipe: 'Equipe Nilma Contabilidade', horario: 'Segunda a sexta, das 8h às 18h',
       setores: [{ nome: 'Fiscal', email: 'fiscal@nilma.example' }, { nome: 'Pessoal', email: 'dp@nilma.example' }, { nome: 'Contábil', email: 'contabil@nilma.example' }],
     },
-    avisos: [
-      { id: 'a1', titulo: 'Extratos de ' + formatos.rot(mesDe(hoje)).toLowerCase(), texto: 'Mande os extratos bancários do mês até o dia 5 de ' + formatos.rot(mesDe(new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1))).toLowerCase() + ' para o escritório fechar a contabilidade.', ir: 'documentos' },
-    ],
   };
 }
 
@@ -202,14 +194,6 @@ export function criarRepoAreaClienteMemoria(agora: () => Date = () => new Date()
       return {
         nome: formatos.slug(d.nome) + (d.competencia ? '-' + d.competencia : '') + '.pdf',
         arquivo: pdfDeExemplo(['DOCUMENTO DE EXEMPLO', d.nome, d.competencia ? 'Referente a ' + formatos.rot(d.competencia) : '', 'Nilma Contabilidade']),
-      };
-    },
-    async baixarComprovante(token, id) {
-      const p = token === TOKEN_DE_EXEMPLO ? estado.pagas.find(x => x.id === id) : null;
-      if (!p || !p.temComprovante) return null;
-      return {
-        nome: 'comprovante-' + formatos.slug(p.nome) + '.pdf',
-        arquivo: pdfDeExemplo(['COMPROVANTE DE EXEMPLO (nao vale como recibo)', p.nome, 'Pago em ' + p.pagoEm, `Valor: R$ ${p.valor.toFixed(2).replace('.', ',')}`]),
       };
     },
     async baixarGuia(token, id) {

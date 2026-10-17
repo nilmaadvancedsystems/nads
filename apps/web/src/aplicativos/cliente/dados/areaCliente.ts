@@ -2,8 +2,8 @@
 // Interface do repositório + os tipos do que a tela precisa; a versão de exemplo é areaCliente.memoria.ts. A do banco
 // (areasCliente/{token} que o robô espelha; o cliente só cria nas caixas areaClienteEnvios e areaClienteChamados) ainda
 // não existe.
-// As seções que vieram do protótipo do Vitor (documentos, certificado, empregados, ficha da empresa, atendimento, avisos e
-// guias pagas) ainda não têm tipo no core: por enquanto os tipos simples ficam aqui e só a versão de exemplo os preenche.
+// As seções que vieram do protótipo do Vitor (documentos, certificado, funcionários, ficha da empresa e atendimento) ainda
+// não têm tipo no core: por enquanto os tipos simples ficam aqui e só a versão de exemplo os preenche.
 import type { areaCliente as ac } from '@nads/core';
 
 /** a área do escritório que mandou o documento */
@@ -69,12 +69,6 @@ export interface Atendimento {
   setores: { nome: string; email: string }[];
 }
 
-/** Um recado do escritório (ex.: mandar os extratos até o dia 5). */
-export interface AvisoDoEscritorio { id: string; titulo: string; texto: string; /** a aba que resolve */ ir?: 'documentos' | 'guias' | 'dp' | 'chamados' }
-
-/** Uma guia já paga no mês, com o comprovante. */
-export interface GuiaPaga { id: string; nome: string; competencia: string; valor: number; /** 'dd/mm/aaaa' */ pagoEm: string; temComprovante: boolean }
-
 /** Tudo o que o link mostra, já filtrado pelo robô. */
 export interface EstadoDaArea {
   carregado: boolean;
@@ -84,7 +78,6 @@ export interface EstadoDaArea {
   guias: ac.GuiaDoCliente[];
   /** a linha digitável de cada guia (id da guia → código), quando tem */
   codigos: Record<string, string>;
-  pagas: GuiaPaga[];
   /** um item por mês de vencimento (areasCliente/{token}/agenda/{AAAA-MM}) */
   agenda: ac.AgendaDoMes[];
   envios: ac.ReciboDeEnvio[];
@@ -94,12 +87,11 @@ export interface EstadoDaArea {
   empregados: Empregado[];
   ficha: FichaDaEmpresa | null;
   atendimento: Atendimento | null;
-  avisos: AvisoDoEscritorio[];
 }
 
 export const AREA_VAZIA: EstadoDaArea = {
-  carregado: false, valido: false, resumo: null, guias: [], codigos: {}, pagas: [], agenda: [], envios: [], chamados: [],
-  documentos: [], certificado: null, empregados: [], ficha: null, atendimento: null, avisos: [],
+  carregado: false, valido: false, resumo: null, guias: [], codigos: {}, agenda: [], envios: [], chamados: [],
+  documentos: [], certificado: null, empregados: [], ficha: null, atendimento: null,
 };
 
 export interface RepoAreaCliente {
@@ -117,6 +109,4 @@ export interface RepoAreaCliente {
   baixarGuia(token: string, id: string): Promise<{ nome: string; arquivo: Blob } | null>;
   /** o arquivo de um documento do escritório (deixa de ser "novo"); null quando não tem */
   baixarDocumento(token: string, id: string): Promise<{ nome: string; arquivo: Blob } | null>;
-  /** o comprovante de uma guia paga; null quando não tem */
-  baixarComprovante(token: string, id: string): Promise<{ nome: string; arquivo: Blob } | null>;
 }

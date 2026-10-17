@@ -1,14 +1,15 @@
-// ViewModel da casca da Área do Cliente (Vitor, 16/10/2026): o token do link, o que o espelho mostra e a aba aberta.
-// Acompanha o link inteiro; cada aba tira o que precisa daqui. As abas seguem o protótipo do Vitor: Visão geral,
-// Documentos (com o Enviar), Guias e obrigações (com a Agenda), Departamento pessoal e Solicitações. Os links antigos
-// (/agenda e /enviar) continuam abrindo a aba nova certa.
+// ViewModel da casca da Área do Cliente (Vitor, 16/10/2026): o token do link, o que o espelho mostra e a aba aberta. O
+// menu é o do protótipo do Vitor ("gostei dos menus e tudo do html"): Visão geral, Documentos, Guias e obrigações,
+// Departamento pessoal e Solicitações; e, no fim, Dados cadastrais e Fale com o escritório (janelas). Dentro de cada um, só
+// o essencial ("o portal do cliente tem que ser o mais simples possível"). Os links antigos (/agenda, /enviar…) abrem o
+// item certo.
 import { areaCliente as ac } from '@nads/core';
 import type { NomeIcone } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { AREA_VAZIA, type EstadoDaArea } from '../dados/areaCliente';
 import { repoAreaCliente } from '../dados/repo';
-import { notificacoes } from '../dados/regras';
+import { linkDoWhatsapp } from '../dados/regras';
 import { useCopiar } from './useCopiar';
 
 export type IdAba = 'inicio' | 'documentos' | 'guias' | 'dp' | 'chamados';
@@ -19,7 +20,7 @@ export const ABAS: { id: IdAba; rotulo: string; icone: NomeIcone }[] = [
   { id: 'dp', rotulo: 'Departamento pessoal', icone: 'usuario' },
   { id: 'chamados', rotulo: 'Solicitações', icone: 'mensagem' },
 ];
-const APELIDOS: Record<string, IdAba> = { agenda: 'guias', enviar: 'documentos' };
+const APELIDOS: Record<string, IdAba> = { agenda: 'guias', vencimentos: 'guias', enviar: 'documentos', falar: 'chamados' };
 
 export function useAreaCliente() {
   const { token = '', aba } = useParams();
@@ -32,9 +33,8 @@ export function useAreaCliente() {
   useEffect(() => repoAreaCliente.assinar(token, setArea), [token]);
 
   const atual: IdAba = ABAS.find(a => a.id === aba)?.id ?? APELIDOS[aba ?? ''] ?? 'inicio';
-  // no celular o menu é uma gaveta (como no protótipo): abre pelo ☰ e fecha ao escolher uma aba
+  // no celular o menu é uma gaveta: abre pelo ☰, fecha ao escolher, no fundo ou no Esc
   const [menuAberto, setMenuAberto] = useState(false);
-  // a gaveta fecha com o Esc
   useEffect(() => {
     if (!menuAberto) return;
     const tecla = (ev: KeyboardEvent) => { if (ev.key === 'Escape') setMenuAberto(false); };
@@ -44,28 +44,18 @@ export function useAreaCliente() {
   const irPara = (id: IdAba) => { setMenuAberto(false); navegar('/cliente/' + encodeURIComponent(token) + '/' + id); window.scrollTo(0, 0); };
   const empresas = area.resumo?.empresas ?? [];
   const empresa = empresas.length > 1 ? empresas[0].nome + ' e mais ' + (empresas.length - 1) : empresas[0]?.nome ?? '';
-  const cnpj = empresas.length === 1 ? empresas[0].cnpj : '';
 
-  const guias = ac.guiasDeHoje(area.guias, hoje);
-  // o número ao lado de cada item do menu: documentos novos, guias para pagar e chamados sem conclusão
-  const contadores: Partial<Record<IdAba, number>> = {
-    documentos: area.documentos.filter(d => d.novo).length,
-    guias: guias.length,
-    chamados: area.chamados.filter(c => c.situacao !== 'concluido').length,
-  };
-
-  // o sino: o que pede atenção; "Marcar como lidas" esconde as que já estavam lá (nesta página)
-  const [lidas, setLidas] = useState<Set<string>>(() => new Set());
-  const avisos = notificacoes({ ...area, guias }, hoje, g => g.tipo === 'outra' ? 'Guia' : g.tipo);
-  const naoLidas = avisos.filter(n => !lidas.has(n.id));
+  // o único número do menu: as guias vencidas, em Guias e obrigações
+  const vencidas = ac.guiasDeHoje(area.guias, hoje).filter(g => g.situacao === 'vencida').length;
+  const escritorio = area.resumo?.escritorio ?? {};
 
   return {
-    token, area, hoje, aba: atual, abas: ABAS, contadores, menuAberto, setMenuAberto, irPara, empresa, cnpj, exemplos: repoAreaCliente.exemplos,
-    avisos, naoLidas: naoLidas.length, lida: (id: string) => lidas.has(id), marcarLidas: () => setLidas(new Set(avisos.map(n => n.id))),
-    copiar,
+    token, area, hoje, aba: atual, abas: ABAS, vencidas, menuAberto, setMenuAberto, irPara, empresa, exemplos: repoAreaCliente.exemplos, copiar,
+    // o atendimento fica num lugar só: a janela "Fale com o escritório"
+    contato: { ...escritorio, whatsappLink: linkDoWhatsapp(escritorio.whatsapp), horario: area.atendimento?.horario ?? '', setores: area.atendimento?.setores ?? [] },
   };
 }
 
 export type AreaCliente = ReturnType<typeof useAreaCliente>;
-/** o que cada aba recebe da casca */
-export type DaCasca = Pick<AreaCliente, 'token' | 'area' | 'hoje' | 'irPara' | 'copiar'>;
+/** o que cada tela recebe da casca */
+export type DaCasca = Pick<AreaCliente, 'token' | 'area' | 'hoje' | 'irPara' | 'copiar' | 'exemplos'>;
