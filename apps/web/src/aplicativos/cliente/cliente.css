@@ -172,7 +172,9 @@
 .cli-app .cli-aviso-item.lida b{font-weight:500;color:var(--ink-muted);}
 
 /* ------------------------------ a página ------------------------------ */
-.cli-app .cli-main{flex:1;display:flex;flex-direction:column;gap:20px;width:100%;max-width:1200px;min-width:0;margin:0 auto;padding:20px 16px 56px;}
+/* a página ocupa a largura disponível, como no app (Vitor, 17/10/2026: "resolva o tamanho das telas"): só o padding do nads,
+   e um teto alto (1600 px) alinhado à esquerda, junto da lateral; com a lateral recolhida, o conteúdo ganha o espaço */
+.cli-app .cli-main{flex:1;display:flex;flex-direction:column;gap:20px;width:100%;max-width:1600px;min-width:0;margin:0;padding:20px 16px 56px;}
 .cli-app .cli-exemplo{display:flex;align-items:center;gap:8px;align-self:flex-start;padding:4px 12px 4px 10px;border:1px solid var(--cli-linha);border-radius:999px;background:var(--cli-cartao);
   font-size:12px;color:var(--ink-muted);}
 .cli-app .cli-exemplo::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--warn);}
@@ -219,11 +221,13 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app .cli-numero .hint .ruim{color:var(--danger-ink);}
 
 /* a guia em grade de colunas fixas: logo, nome, situação, valor e ações (os selos e os valores em fila) */
-.cli-app .cli-linha.cli-linha-guia{display:grid;grid-template-columns:40px minmax(0,1fr) 108px 108px 84px;grid-template-areas:"logo txt selo valor acoes";column-gap:14px;}
+.cli-app .cli-linha.cli-linha-guia{display:grid;grid-template-columns:40px minmax(0,1fr) 100px 104px 80px;grid-template-areas:"logo txt selo valor acoes";column-gap:14px;}
 .cli-app .cli-g-logo{grid-area:logo;display:flex;}
 .cli-app .cli-g-txt{grid-area:txt;min-width:0;}
 .cli-app .cli-g-txt b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cli-app .cli-g-txt .hint{display:block;margin-top:2px;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* na guia, o nome e o detalhe (vencimento e competência) nunca viram "…": se não couber, quebram em duas linhas */
+.cli-app .cli-linha-guia .cli-g-txt b,.cli-app .cli-linha-guia .cli-g-txt .hint{white-space:normal;overflow:visible;}
 .cli-app .cli-g-selo{grid-area:selo;justify-self:start;}
 .cli-app .cli-g-valor{grid-area:valor;text-align:right;font-size:15px;}
 .cli-app .cli-g-acoes{grid-area:acoes;display:flex;justify-content:flex-end;gap:6px;}
@@ -439,8 +443,8 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
   .cli-app .cli-lateral .drawer-x,.cli-app .cli-fundo-gaveta,.cli-app .cli-topo .gh-hamb{display:none;}
   .cli-app .cli-corpo{padding-left:264px;}
   .cli-app .cli-corpo.sem-lateral{padding-left:0;}
-  .cli-app .cli-topo{padding:12px 40px;}
-  .cli-app .cli-main{gap:24px;padding:32px 40px 72px;}
+  .cli-app .cli-topo{padding:12px 32px;}
+  .cli-app .cli-main{gap:24px;padding:28px 32px 64px;}
   .cli-app .cli-boas-vindas{padding:26px 32px;}
   .cli-app .cli-marca-dagua{width:92px;right:56px;}
   .cli-app .cli-numeros{gap:16px;}
