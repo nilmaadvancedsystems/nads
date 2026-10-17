@@ -7,7 +7,10 @@
 // N da Nilma no rodapé, a empresa com a plaquinha do prédio, o esqueleto no formato da página e os estados vazios.
 // Com o banco (17/10/2026): o que não tem fonte some (Dados cadastrais sem a ficha; a Central de documentos, e então o
 // "Enviar documento" vai para o topo); sem token (a raiz do site), o aviso para usar o link que o escritório mandou.
+// Polida de 17/10/2026: a gaveta do celular leva o foco para o ✕ ao abrir e devolve ao ☰ ao fechar; o WhatsApp do cartão
+// de atendimento abre a conversa.
 import { Icone, MarcaN, MenuSuspenso, useRetorno } from '@nads/ui';
+import { useEffect, useRef } from 'react';
 import { EsqueletoDaArea } from '../partes/EsqueletoDaArea';
 import { MarcaDoEscritorio } from '../partes/MarcaDoEscritorio';
 import { Vazio } from '../partes/Vazio';
@@ -29,6 +32,15 @@ export function AreaDoCliente() {
   const fechar = [{ rotulo: 'Fechar', valor: null, variante: 'btn-outline' as const }];
   const c = vm.contato;
   const abrirEnvio = useJanelaDeEnvio(daCasca);
+  // a gaveta (celular): o foco vai para o ✕ quando abre e volta para o ☰ quando fecha
+  const xDaGaveta = useRef<HTMLButtonElement>(null);
+  const botaoDoMenu = useRef<HTMLButtonElement>(null);
+  const gavetaAbriu = useRef(false);
+  useEffect(() => {
+    if (vm.menuAberto) xDaGaveta.current?.focus();
+    else if (gavetaAbriu.current) botaoDoMenu.current?.focus();
+    gavetaAbriu.current = vm.menuAberto;
+  }, [vm.menuAberto]);
 
   const abrirWhatsapp = () => {
     if (vm.exemplos) { toast('Na versão de exemplo o WhatsApp não abre.'); return; }
@@ -97,7 +109,7 @@ export function AreaDoCliente() {
               <div className="cli-marca">
                 <span className="brand-mark" aria-hidden="true"><MarcaN /></span>
                 <span className="cli-marca-nome"><b>Nilma</b><small>Contabilidade</small></span>
-                <button type="button" className="drawer-x" aria-label="Fechar o menu" onClick={() => vm.setMenuAberto(false)}><Icone nome="x" width={16} height={16} /></button>
+                <button type="button" ref={xDaGaveta} className="drawer-x" aria-label="Fechar o menu" onClick={() => vm.setMenuAberto(false)}><Icone nome="x" width={16} height={16} /></button>
               </div>
               <nav className="cli-menu" aria-label="Seções">
                 {vm.abas.map(a => {
@@ -138,7 +150,7 @@ export function AreaDoCliente() {
         <header className="cli-topo">
           <div className="cli-topo-esq">
             {valido && (
-              <button type="button" className="gh-hamb" aria-label="Abrir o menu" aria-expanded={vm.menuAberto} aria-controls="cli-lateral" onClick={() => vm.setMenuAberto(!vm.menuAberto)}>
+              <button type="button" ref={botaoDoMenu} className="gh-hamb" aria-label="Abrir o menu" aria-expanded={vm.menuAberto} aria-controls="cli-lateral" onClick={() => vm.setMenuAberto(!vm.menuAberto)}>
                 <Icone nome="menu" width={16} height={16} />
               </button>
             )}
@@ -190,7 +202,7 @@ export function AreaDoCliente() {
             </div>
           ) : (
             <>
-              {vm.aba === 'inicio' && <Inicio {...daCasca} empresa={vm.empresa} contato={c} />}
+              {vm.aba === 'inicio' && <Inicio {...daCasca} empresa={vm.empresa} contato={c} onWhatsapp={c.whatsappLink ? abrirWhatsapp : undefined} />}
               {vm.aba === 'documentos' && <Documentos {...daCasca} />}
               {vm.aba === 'guias' && <Guias {...daCasca} />}
               {vm.aba === 'dp' && <DepartamentoPessoal {...daCasca} />}

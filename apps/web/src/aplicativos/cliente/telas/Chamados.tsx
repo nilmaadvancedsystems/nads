@@ -3,7 +3,7 @@
 // histórico, cada chamado com o selo da situação, o assunto, a última mensagem e "Ver conversa", que abre ali mesmo com o
 // responder. Versão D: só o selo da situação (o assunto vai na linha de baixo), a conversa num fundo suave e o
 // formulário com o fio fino antes do Enviar. Com o banco (17/10/2026), sem a Central de documentos, o "Enviar documento"
-// fica aqui, ao lado do Novo chamado.
+// fica aqui, ao lado do Novo chamado. Polida de 17/10/2026: as frases mais curtas.
 import { Icone } from '@nads/ui';
 import { useId, useRef } from 'react';
 import { ConversaDoChamado } from '../partes/ConversaDoChamado';
@@ -29,7 +29,7 @@ export function Chamados(props: DaCasca) {
       <div className="cli-titulo">
         <div>
           <h1 className="page-title">Solicitações e chamados</h1>
-          <p className="page-desc">Peça certidões, admissões, alterações ou tire dúvidas com a equipe Nilma.</p>
+          <p className="page-desc">Peça documentos, tire dúvidas e acompanhe as respostas do escritório.</p>
         </div>
         {props.area.secoes.documentos ? novo : (
           <div className="cli-acoes">
@@ -40,7 +40,7 @@ export function Chamados(props: DaCasca) {
       </div>
 
       <section className="card" ref={form}>
-        <div className="card-head"><h3>Abertura rápida de chamado</h3></div>
+        <div className="card-head"><h3>Abrir um chamado</h3></div>
         <div className="cli-form tres">
           <div className="field">
             <label htmlFor="cli-tipo">Assunto</label>
@@ -74,7 +74,7 @@ export function Chamados(props: DaCasca) {
       </section>
 
       <section className="card cli-card-tabela">
-        <div className="card-head"><h3>Histórico de chamados</h3><span className="card-head-ctl">Atualizado sozinho</span></div>
+        <div className="card-head"><h3>Histórico de chamados</h3><span className="card-head-ctl hint">Atualiza sozinho</span></div>
         {vm.chamados.length ? (
           <ul className="cli-lista">
             {vm.chamados.map(c => {
@@ -110,7 +110,7 @@ export function Chamados(props: DaCasca) {
               );
             })}
           </ul>
-        ) : <Vazio icone="mensagem" titulo="Nenhum chamado ainda" texto="Os pedidos que você abrir aparecem aqui, com as respostas do escritório." />}
+        ) : <Vazio icone="mensagem" titulo="Nenhum chamado ainda" texto="Os pedidos que você abrir aparecem aqui." />}
       </section>
     </>
   );

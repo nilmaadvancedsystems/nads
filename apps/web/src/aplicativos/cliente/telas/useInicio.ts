@@ -35,11 +35,19 @@ export function useInicio({ token, area, hoje, irPara, copiar }: DaCasca) {
     } finally { setBaixando(''); }
   }
 
+  const guiasDaLista = guias.slice(0, 4);
+  // as já pagas entram no fim da lista, como no protótipo ("Liquidado")
+  const pagasDaLista = area.secoes.pagas ? area.pagas.slice(0, 2) : [];
+  // o que o escritório ainda vai entregar no mês completa a lista até 4 linhas (polida de 17/10/2026): com poucas guias,
+  // o cartão "Obrigações e guias próximas" mostra as obrigações em vez de um buraco; com muitas, elas ficam só na aba
+  const obrigacoesDaLista = obrigacoes.filter(i => i.situacao === 'a fazer').sort((x, y) => x.vence.localeCompare(y.vence))
+    .slice(0, Math.max(0, 4 - guiasDaLista.length - pagasDaLista.length));
+
   return {
     mesAtual: hoje.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
-    guias: guias.slice(0, 4),
-    // as já pagas entram no fim da lista, como no protótipo ("Liquidado")
-    pagas: area.secoes.pagas ? area.pagas.slice(0, 2) : [],
+    guias: guiasDaLista,
+    pagas: pagasDaLista,
+    obrigacoesDaLista,
     baixarComprovante: async (id: string) => {
       const pdf = await repoAreaCliente.baixarComprovante(token, id);
       if (pdf) baixarArquivo(pdf.nome, pdf.arquivo); else toast('O comprovante ainda não chegou.');

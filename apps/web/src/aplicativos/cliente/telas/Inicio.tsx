@@ -4,13 +4,16 @@
 // das guias em grade de colunas fixas, separada em "A pagar" e "Pagas", e à direita o atendimento compacto com os avisos
 // embaixo, na mesma altura da lista. Com o banco (17/10/2026), os números sem fonte (empregados e documentos do mês)
 // dão lugar aos que o espelho tem, no mesmo lugar: as obrigações a fazer no mês (a agenda) e os arquivos enviados no mês
-// (que abre o Enviar documento).
+// (que abre o Enviar documento). Polida de 17/10/2026 (Vitor: "dê uma polida na tela de clientes"): com poucas guias, a
+// lista completa com o que o escritório ainda entrega no mês; o atendimento no CartaoDeAtendimento (os contatos já fazem
+// a ação); os vazios curtos e no meio do cartão.
 import { formatos } from '@nads/core';
 import { Icone, type NomeIcone } from '@nads/ui';
 import type { ReactNode } from 'react';
+import { CartaoDeAtendimento } from '../partes/CartaoDeAtendimento';
+import { LinhaDaAgenda } from '../partes/LinhaDaAgenda';
 import { LinhaDeGuia } from '../partes/LinhaDeGuia';
 import { LinhaDePaga } from '../partes/LinhaDePaga';
-import { MarcaDoEscritorio } from '../partes/MarcaDoEscritorio';
 import { Vazio } from '../partes/Vazio';
 import { useInicio } from './useInicio';
 import { useJanelaDeEnvio } from './JanelaDeEnvio';
@@ -28,21 +31,18 @@ function Numero({ rotulo, valor, nota, abrir }: { rotulo: string; valor: string 
 
 const ICONE_DO_AVISO: Record<IdAba, NomeIcone> = { inicio: 'sino', documentos: 'pastaAberta', guias: 'escudo', dp: 'usuario', chamados: 'mensagem' };
 
-export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente['contato'] }) {
+export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente['contato']; onWhatsapp?: () => void }) {
   const vm = useInicio(props);
   const abrirEnvio = useJanelaDeEnvio(props);
   const ir = (id: IdAba) => () => vm.irPara(id);
-  const c = props.contato;
-  const contatos: { icone: NomeIcone; texto?: string }[] = [
-    { icone: 'mensagem', texto: c.whatsapp && 'WhatsApp ' + c.whatsapp }, { icone: 'envelope', texto: c.email }, { icone: 'telefone', texto: c.telefone },
-  ];
+  const temLista = vm.guias.length + vm.pagas.length + vm.obrigacoesDaLista.length > 0;
   return (
     <>
       <section className="card cli-boas-vindas">
         <div className="cli-boas-vindas-txt">
           <p className="cli-sobre">{formatos.capital(vm.mesAtual)}</p>
-          <h1 className="page-title">Bem-vindo à sua área exclusiva</h1>
-          <p className="page-desc">Guias, documentos e pedidos num lugar só.</p>
+          <h1 className="page-title">Bem-vindo à sua área</h1>
+          <p className="page-desc">{vm.secoes.documentos ? 'Guias, documentos e pedidos num lugar só.' : 'Guias, obrigações e pedidos num lugar só.'}</p>
         </div>
         <div className="cli-acoes">
           <button type="button" className="btn btn-primary" onClick={() => vm.irPara('guias')}><Icone nome="recibo" width={16} height={16} />Guias deste mês</button>
@@ -51,7 +51,7 @@ export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente[
       </section>
 
       <div className="cli-numeros">
-        <Numero rotulo="Guias a vencer" valor={vm.totalDeGuias} abrir={ir('guias')}
+        <Numero rotulo="Guias a pagar" valor={vm.totalDeGuias} abrir={ir('guias')}
           nota={vm.totalDeGuias ? <>{vm.vencidas > 0 && <><b className="ruim">{vm.vencidas === 1 ? '1 vencida' : vm.vencidas + ' vencidas'}</b> · </>}{formatos.reais(vm.valorEmAberto)}</> : 'Nenhuma em aberto'} />
         {vm.secoes.dp ? (
           <Numero rotulo="Empregados ativos" valor={vm.pessoal.ativos} abrir={ir('dp')}
@@ -76,16 +76,14 @@ export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente[
             <h3>Obrigações e guias próximas</h3>
             <button type="button" className="btn btn-ghost" onClick={() => vm.irPara('guias')}>Ver todas<Icone nome="chevronRight" width={16} height={16} /></button>
           </div>
-          {vm.guias.length || vm.pagas.length ? (
+          {temLista ? (
             <>
-              {vm.guias.length > 0 && (
-                <>
-                  <p className="cli-grupo">A pagar</p>
-                  <ul className="cli-lista">
-                    {vm.guias.map(g => <LinhaDeGuia key={g.id} guia={g} codigo={vm.codigos[g.id]} ocupado={vm.baixando === g.id} onBaixar={id => void vm.baixar(id)} onCopiar={vm.copiarCodigo} />)}
-                  </ul>
-                </>
-              )}
+              <p className="cli-grupo">A pagar</p>
+              {vm.guias.length > 0 ? (
+                <ul className="cli-lista">
+                  {vm.guias.map(g => <LinhaDeGuia key={g.id} guia={g} codigo={vm.codigos[g.id]} ocupado={vm.baixando === g.id} onBaixar={id => void vm.baixar(id)} onCopiar={vm.copiarCodigo} />)}
+                </ul>
+              ) : <p className="cli-grupo-vazio">Nada para pagar agora.</p>}
               {vm.pagas.length > 0 && (
                 <>
                   <p className="cli-grupo">Pagas</p>
@@ -94,20 +92,20 @@ export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente[
                   </ul>
                 </>
               )}
+              {vm.obrigacoesDaLista.length > 0 && (
+                <>
+                  <p className="cli-grupo">Entregas do escritório</p>
+                  <ul className="cli-lista cli-agenda">
+                    {vm.obrigacoesDaLista.map(i => <LinhaDaAgenda key={i.id} item={i} semSituacao />)}
+                  </ul>
+                </>
+              )}
             </>
-          ) : <Vazio icone="recibo" titulo="Nenhuma guia por enquanto" texto="Quando o escritório gerar uma guia, ela aparece aqui." />}
+          ) : <Vazio icone="recibo" titulo="Nada para pagar agora" texto="Quando o escritório gerar uma guia, ela aparece aqui." />}
         </section>
 
         <div className="cli-coluna-direita">
-          <section className="card cli-atendimento">
-            <div className="cli-pessoa">
-              <MarcaDoEscritorio tamanho={40} />
-              <div><b>{c.equipe}</b>{c.horario && <span className="hint">{c.horario}</span>}</div>
-            </div>
-            <ul className="cli-contatos">
-              {contatos.filter(k => k.texto).map(k => <li key={k.icone}><Icone nome={k.icone} width={16} height={16} /><span>{k.texto}</span></li>)}
-            </ul>
-          </section>
+          <CartaoDeAtendimento contato={props.contato} onWhatsapp={props.onWhatsapp} />
 
           <section className="card cli-avisos-card">
             <div className="card-head"><h3>Avisos</h3></div>

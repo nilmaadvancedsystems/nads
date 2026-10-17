@@ -13,6 +13,7 @@ import { MenuDaRotina } from '../../tarefas/telas/executor/partes/MenuDaRotina';
 import { AndamentoDoAlterdata } from '../../concilia-ai/telas/importacao/partes/AndamentoDoAlterdata';
 import { AreaDeSoltar } from '../../cliente/partes/AreaDeSoltar';
 import { Avatar as AvatarDoCliente } from '../../cliente/partes/Avatar';
+import { CartaoDeAtendimento } from '../../cliente/partes/CartaoDeAtendimento';
 import { CartaoDeGuia } from '../../cliente/partes/CartaoDeGuia';
 import { ConversaDoChamado } from '../../cliente/partes/ConversaDoChamado';
 import { EsqueletoDaArea } from '../../cliente/partes/EsqueletoDaArea';
@@ -789,12 +790,13 @@ export const PECAS_BASE: Peca[] = [
         <CartaoDeGuia guia={{ id: 'x3', tipo: 'DAE', competencia: '2026-09', vencimento: '24/10/2026', valor: 432.1, situacao: 'a vencer', temPdf: true }} faltam="em 8 dias" destaque={false} onBaixar={nada} />
       </div></div>
     ) },
-  { id: 'linha-agenda', tipo: 'listas', nome: 'Linha da agenda (Área do Cliente)', descricao: 'Do card "O que o escritório entrega no mês" de Guias e obrigações (versão D, Vitor, 16/10/2026): a data numa folhinha (o dia e o mês), a obrigação em português simples e a situação — só o A fazer leva selo (amarelo); Feito fica discreto, com o ✓ verde; Não se aplica com a linha apagada', componente: 'LinhaDaAgenda', classes: ['cli-lista', 'cli-linha', 'cli-data', 'cli-linha-txt', 'cli-feito', 'badge badge-warn'], telas: ['c-cliente-guias'], largo: true,
+  { id: 'linha-agenda', tipo: 'listas', nome: 'Linha da agenda (Área do Cliente)', descricao: 'Do card "O que o escritório entrega no mês" de Guias e obrigações (versão D, Vitor, 16/10/2026): a data numa folhinha (o dia e o mês), a obrigação em português simples e a situação — só o A fazer leva selo (amarelo); Feito fica discreto, com o ✓ verde; Não se aplica com a linha apagada. Na Visão geral (polida de 17/10/2026), sem o selo (semSituacao): só as que o escritório ainda entrega no mês, com a folhinha na largura da logo da guia (40 px) para os textos ficarem em fila', componente: 'LinhaDaAgenda', classes: ['cli-lista', 'cli-linha', 'cli-data', 'cli-linha-txt', 'cli-feito', 'badge badge-warn'], telas: ['c-cliente-guias'], largo: true,
     demo: () => (
       <div className="cli-app cli-demo" style={{ width: '100%' }}><ul className="cli-lista">
         <LinhaDaAgenda item={{ id: 'fgts', nome: 'FGTS', vence: '2026-10-20', situacao: 'feito', feitoEm: '2026-10-14T15:30:00.000Z' }} />
         <LinhaDaAgenda item={{ id: 'das', nome: 'DAS do Simples Nacional', vence: '2026-10-20', situacao: 'a fazer' }} />
         <LinhaDaAgenda item={{ id: 'icms', nome: 'ICMS (imposto estadual)', vence: '2026-10-09', situacao: 'nao se aplica' }} />
+        <LinhaDaAgenda item={{ id: 'darf-inss', nome: 'DARF do INSS da folha', vence: '2026-10-20', situacao: 'a fazer' }} semSituacao />
       </ul></div>
     ) },
   { id: 'conversa-chamado', tipo: 'listas', nome: 'Conversa do chamado (Área do Cliente)', descricao: 'Das Solicitações da Área do Cliente (Vitor, 16/10/2026): os balões da conversa em ordem, como o balão do nads — o do cliente à direita (carmim clarinho, sem borda), o do escritório à esquerda (no branco do cartão, com a borda fina); o escritório sempre aparece como "Escritório". A conversa abre embaixo da linha dela, com o campo de responder', componente: 'ConversaDoChamado', classes: ['cli-conversa', 'cli-balao', 'cli-balao-cliente', 'cli-balao-escritorio'], telas: ['c-cliente-chamados'], largo: true,
@@ -806,7 +808,7 @@ export const PECAS_BASE: Peca[] = [
         ]} />
       </div>
     ) },
-  { id: 'linha-guia', tipo: 'listas', nome: 'Linha de guia (Área do Cliente)', descricao: 'Das "Obrigações e guias próximas" da Visão geral da Área do Cliente (versão D, Vitor, 16/10/2026): uma grade de colunas fixas, igual em todas as linhas (17/10/2026: "quero que melhore esse layout") — a logo do órgão solta (40 px), o nome com a competência e o vencimento, o selo da situação (largura fixa, à esquerda), o valor (largura fixa, à direita, tabular) e as ações (copiar e baixar, à direita); no celular o selo, o valor e as ações descem para a segunda linha. Na Visão geral, separadas em A pagar e Pagas (as pagas mais discretas)', componente: 'LinhaDeGuia', classes: ['cli-lista', 'cli-linha', 'cli-linha-guia', 'cli-g-logo', 'cli-g-txt', 'cli-g-selo', 'cli-g-valor', 'cli-g-acoes', 'cli-grupo', 'badge', 'icon-btn'], telas: ['c-cliente', 'c-cliente-guias'], largo: true,
+  { id: 'linha-guia', tipo: 'listas', nome: 'Linha de guia (Área do Cliente)', descricao: 'Das "Obrigações e guias próximas" da Visão geral da Área do Cliente (versão D, Vitor, 16/10/2026): uma grade de colunas fixas, igual em todas as linhas (17/10/2026: "quero que melhore esse layout") — a logo do órgão solta (40 px), o nome com a competência e o vencimento, o selo da situação (largura fixa, à esquerda), o valor (largura fixa, à direita, tabular) e as ações (copiar e baixar, à direita); no celular o selo, o valor e as ações descem para a segunda linha. Na Visão geral, separadas em A pagar e Pagas (as pagas mais discretas). Nada vira "…": o nome e o detalhe quebram a linha, e cada pedaço do detalhe (o vencimento, a competência) fica inteiro (cli-junto)', componente: 'LinhaDeGuia', classes: ['cli-lista', 'cli-linha', 'cli-linha-guia', 'cli-g-logo', 'cli-g-txt', 'cli-g-selo', 'cli-g-valor', 'cli-g-acoes', 'cli-grupo', 'badge', 'icon-btn', 'cli-junto'], telas: ['c-cliente', 'c-cliente-guias'], largo: true,
     demo: () => (
       <div className="cli-app cli-demo" style={{ width: '100%' }}><ul className="cli-lista">
         <LinhaDeGuia codigo="07190.00009 26277.123456" onCopiar={nada} faltam="há 5 dias" destaque guia={{ id: 'l1', tipo: 'DAS', competencia: '2026-09', vencimento: '11/10/2026', valor: 1284.37, situacao: 'vencida', temPdf: true }} onBaixar={nada} />
@@ -860,12 +862,13 @@ export const PECAS_BASE: Peca[] = [
         <AvatarDoCliente nome="Mariana Oliveira Silva" foto={FOTO_DE_EXEMPLO} tamanho={72} onFoto={nada} />
       </div>
     ) },
-  { id: 'vazio-cliente', tipo: 'avisos', nome: 'Estado vazio (Área do Cliente)', descricao: 'Quando a lista não tem nada (versão D, Vitor, 16/10/2026): o ícone num círculo suave, a frase curta e, quando faz sentido, o que fazer (botão secundário, ex.: Limpar os filtros)', componente: 'Vazio', classes: ['cli-vazio', 'cli-vazio-ico'], telas: CLI_TELAS, largo: true,
+  { id: 'vazio-cliente', tipo: 'avisos', nome: 'Estado vazio (Área do Cliente)', descricao: 'Quando a lista não tem nada (versão D, Vitor, 16/10/2026): o ícone num círculo suave, a frase curta e, quando faz sentido, o que fazer (botão secundário, ex.: Limpar os filtros). Polida de 17/10/2026: a frase diz o que importa ("Nada para pagar agora"); no cartão esticado pela grade, o vazio fica no meio da altura; dentro de uma lista com outros grupos, só a linha curta cinza (cli-grupo-vazio)', componente: 'Vazio', classes: ['cli-vazio', 'cli-vazio-ico', 'cli-grupo-vazio'], telas: CLI_TELAS, largo: true,
     uso: '<Vazio icone="search" titulo="Nenhum documento com esse filtro" acao={{ rotulo: "Limpar os filtros", onClick: limpar }} />',
     demo: () => (
       <div className="cli-app cli-demo" style={{ display: 'flex', flexWrap: 'wrap', gap: 16, width: '100%' }}>
         <div className="card" style={{ flex: '1 1 260px' }}><VazioDoCliente icone="search" titulo="Nenhum documento com esse filtro" acao={{ rotulo: 'Limpar os filtros', onClick: nada }} /></div>
         <div className="card" style={{ flex: '1 1 260px' }}><VazioDoCliente icone="mensagem" titulo="Nenhum chamado ainda" texto="Os pedidos que você abrir aparecem aqui." /></div>
+        <div className="card" style={{ flex: '1 1 260px' }}><VazioDoCliente icone="recibo" titulo="Nada para pagar agora" texto="Quando o escritório gerar uma guia, ela aparece aqui." /></div>
       </div>
     ) },
   { id: 'esqueleto-cliente', tipo: 'carregamento', nome: 'Esqueleto da Área do Cliente', descricao: 'Enquanto o link carrega (versão D, Vitor, 16/10/2026): o desenho da Visão geral — o cartão de boas-vindas, os quatro números e a lista — com as linhas do Esqueleto do nads, que já têm o brilho passando', componente: 'EsqueletoDaArea', classes: ['cli-esqueleto', 'esqueleto-linha'], telas: ['c-cliente'], largo: true,
@@ -887,5 +890,13 @@ export const PECAS_BASE: Peca[] = [
         <LinhaDePaga paga={{ id: 'p1', tipo: 'HON', nome: 'Honorários da Nilma Contabilidade', competencia: '2026-10', valor: 1250, pagoEm: '10/10/2026', temComprovante: true }} onComprovante={nada} />
         <LinhaDePaga paga={{ id: 'p2', tipo: 'DCTFWeb', nome: 'INSS da folha (DCTFWeb)', competencia: '2026-08', valor: 1980.3, pagoEm: '18/09/2026', temComprovante: true }} onComprovante={nada} />
       </ul></div>
+    ) },
+  { id: 'cartao-atendimento', tipo: 'cartoes', nome: 'Cartão de atendimento (Área do Cliente)', descricao: 'Na Visão geral da Área do Cliente (polida de 17/10/2026, Vitor: "dê uma polida na tela de clientes"): o N da Nilma com "Seu atendimento" e o nome da equipe; o horário só quando o escritório tem; cada contato numa linha que já faz a ação, com o ícone num círculo suave, o rótulo pequeno em cima e a seta — o WhatsApp abre a conversa, o e-mail abre o programa de e-mail, o telefone liga. Com o banco o robô grava só o WhatsApp e o e-mail: o cartão fica com as duas linhas, sem buraco', componente: 'CartaoDeAtendimento', classes: ['card', 'cli-atendimento', 'cli-pessoa', 'cli-horario', 'cli-contatos', 'cli-contato', 'cli-contato-ico', 'cli-contato-txt'], telas: ['c-cliente'], largo: true,
+    uso: '<CartaoDeAtendimento contato={{ equipe, horario?, whatsapp?, email?, telefone? }} onWhatsapp={abrirConversa} />',
+    demo: () => (
+      <div className="cli-app cli-demo" style={{ display: 'flex', flexWrap: 'wrap', gap: 16, width: '100%' }}>
+        <div style={{ flex: '1 1 300px' }}><CartaoDeAtendimento contato={{ equipe: 'Nilma Contabilidade', whatsapp: '(38) 99999-0000', email: 'atendimento@nilma.example' }} onWhatsapp={nada} /></div>
+        <div style={{ flex: '1 1 300px' }}><CartaoDeAtendimento contato={{ equipe: 'Equipe Nilma Contabilidade', horario: 'Segunda a sexta, das 8h às 18h', whatsapp: '(38) 99999-0000', email: 'atendimento@nilma.example', telefone: '(38) 3333-0000' }} onWhatsapp={nada} /></div>
+      </div>
     ) },
 ];

@@ -18,7 +18,9 @@ export function LinhaDeGuia({ guia, codigo, faltam, destaque, ocupado, onBaixar,
       <div className="cli-g-txt">
         <b>{ac.ROTULO_DA_GUIA[guia.tipo]}</b>
         <p className="hint" title={'Competência ' + guia.competencia.slice(5, 7) + '/' + guia.competencia.slice(0, 4) + ' · vencimento ' + guia.vencimento}>
-          {guia.situacao === 'vencida' ? 'Venceu' : 'Vence'} em {guia.vencimento.slice(0, 5)}{faltam ? ' (' + faltam + ')' : ''} · competência {guia.competencia.slice(5, 7)}/{guia.competencia.slice(0, 4)}
+          {/* cada pedaço inteiro numa linha: no celular quebra entre eles, nunca no meio da data */}
+          <span className="cli-junto">{guia.situacao === 'vencida' ? 'Venceu' : 'Vence'} em {guia.vencimento.slice(0, 5)}{faltam ? ' (' + faltam + ')' : ''}</span>
+          {' · '}<span className="cli-junto">competência {guia.competencia.slice(5, 7)}/{guia.competencia.slice(0, 4)}</span>
         </p>
       </div>
       <span className="cli-g-selo"><span className={SELO_DA_SITUACAO[guia.situacao]}>{ac.ROTULO_DA_SITUACAO_DA_GUIA[guia.situacao]}</span></span>

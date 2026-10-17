@@ -3,7 +3,9 @@
 // de grade (as mesmas colunas da Visão geral: logo, nome, situação, valor e ações), com o baixar carmim só na vencida (ou
 // na mais urgente); à direita (1/3), o resumo do mês (o total a pagar, o total pago e o próximo vencimento) e os avisos
 // da contabilidade (os recados e o certificado digital); embaixo, o que o escritório entrega no mês. Com o banco
-// (17/10/2026) as guias pagas ainda não têm fonte: somem o card "Pagas no mês" e o "Total pago" do resumo.
+// (17/10/2026) as guias pagas ainda não têm fonte: somem o card "Pagas no mês" e o "Total pago" do resumo. Polida de
+// 17/10/2026: sem recado nem certificado (sempre, com o banco), o card dos avisos some em vez de dizer "Nenhum aviso"; o
+// contador some no zero; o vazio diz o que importa ("Nada para pagar neste mês").
 import { formatos } from '@nads/core';
 import { Icone, SeletorMes } from '@nads/ui';
 import { LinhaDaAgenda } from '../partes/LinhaDaAgenda';
@@ -29,7 +31,7 @@ export function Guias(props: DaCasca) {
       <div className="cli-duas cli-guias">
         <div className="cli-coluna">
           <section className="card">
-            <div className="card-head"><h3>A pagar</h3><span className="cli-conta">{vm.guias.length}</span></div>
+            <div className="card-head"><h3>A pagar</h3>{vm.guias.length > 0 && <span className="cli-conta">{vm.guias.length}</span>}</div>
             {vm.guias.length ? (
               <ul className="cli-lista">
                 {vm.guias.map(g => (
@@ -37,12 +39,12 @@ export function Guias(props: DaCasca) {
                     ocupado={vm.baixando === g.id} onBaixar={id => void vm.baixar(id)} onCopiar={vm.copiarCodigo} />
                 ))}
               </ul>
-            ) : <Vazio icone="checkCircle" titulo="Nada vence neste mês" />}
+            ) : <Vazio icone="checkCircle" titulo="Nada para pagar neste mês" />}
           </section>
 
           {vm.mostraPagas && (
             <section className="card">
-              <div className="card-head"><h3>Pagas no mês</h3><span className="cli-conta">{vm.pagas.length}</span></div>
+              <div className="card-head"><h3>Pagas no mês</h3>{vm.pagas.length > 0 && <span className="cli-conta">{vm.pagas.length}</span>}</div>
               {vm.pagas.length ? (
                 <ul className="cli-lista cli-pagas">
                   {vm.pagas.map(p => <LinhaDePaga key={p.id} paga={p} ocupado={vm.baixando === p.id} onComprovante={id => void vm.comprovante(id)} />)}
@@ -65,9 +67,9 @@ export function Guias(props: DaCasca) {
             </dl>
           </section>
 
-          <section className="card cli-avisos-card">
-            <div className="card-head"><h3>Avisos da contabilidade</h3></div>
-            {temAvisos ? (
+          {temAvisos && (
+            <section className="card cli-avisos-card">
+              <div className="card-head"><h3>Avisos da contabilidade</h3></div>
               <ul className="cli-lista">
                 {vm.avisos.map(a => (
                   <li key={a.id} className="cli-linha cli-aviso-bloco">
@@ -91,8 +93,8 @@ export function Guias(props: DaCasca) {
                   </li>
                 )}
               </ul>
-            ) : <Vazio icone="sino" titulo="Nenhum aviso" />}
-          </section>
+            </section>
+          )}
         </div>
       </div>
 
