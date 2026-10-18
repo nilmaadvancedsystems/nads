@@ -23,14 +23,11 @@ export type EstadoDaObrigacao = 'nao-tem' | 'a-fazer' | 'feita' | 'parada';
 export type SituacaoDoDash = 'feita' | 'pendente' | 'atrasada' | 'sem';
 export type Agrupar = 'nenhum' | 'responsavel' | 'agrupamento';
 
-/**
- * As abas do DP (Vitor, 06/10/2026: "quebre o tabelão em submenus no estilo GitHub"): o Resumo (números, gráficos e o
- * progresso) e uma por parte da rotina, cada uma só com as colunas dela.
- */
-export type AbaDoPainel = 'resumo' | 'obrigacoes';
+// as abas do DP: em abasDoPainel.ts (a rota lê sem baixar este painel)
+import { ABAS_DO_PAINEL, type AbaDoPainel } from './abasDoPainel';
+export { ABAS_DO_PAINEL, type AbaDoPainel };
 /** a cor do painel do número (DP › Resumo) */
 export type TomDoNumero = 'info' | 'ok' | 'aviso' | 'marca' | 'laranja' | 'roxo' | 'ciano' | 'neutro';
-export const ABAS_DO_PAINEL: readonly AbaDoPainel[] = ['resumo', 'obrigacoes'];
 /** As partes da rotina: o submenu da aba Obrigações (na URL: ?parte=). */
 export type ParteDoDp = 'folha' | 'esocial' | 'guias' | 'outras' | 'reinf' | 'entrega';
 const PARTES_DO_DP: readonly { id: ParteDoDp; rotulo: string; obrigacoes: readonly string[] }[] = [

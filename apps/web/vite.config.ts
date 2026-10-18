@@ -63,11 +63,32 @@ function soOSiteDoCliente(): Plugin {
   };
 }
 
+// Os pedaços do site (revisão da UI, 18/10/2026: o pacote inicial era um arquivo só de 4 MB). As telas grandes já vêm à
+// parte pelo lazy (comum/pedaco.tsx); aqui:
+// - "sem efeito colateral" em todos os sites (antes só no da Área do Cliente, acima): o @nads/core, o xlsx e os logos das
+//   bandeiras de cartão do @nads/ui (só dados; o resto do @nads/ui tem efeito no topo e fica como está). Sem isso, o que
+//   uma tela importa do índice do core arrasta o core inteiro, e um módulo que só importa o xlsx traz os 470 KB dele;
+// - as bibliotecas em arquivos próprios, com nome fixo: mudam pouco, então o navegador guarda de uma publicação para a
+//   outra e só baixa de novo o código do nads. O xlsx, o pdf-lib e o node-forge só baixam com a tela que os usa.
+const SEM_EFEITO = /[\\/]packages[\\/]core[\\/]src[\\/].*\.ts$|[\\/]packages[\\/]ui[\\/]src[\\/]logosBandeiras\.ts$|[\\/]node_modules[\\/]xlsx[\\/]/;
+const SEM_EFEITO_NO_CORE = { moduleSideEffects: (id: string) => !SEM_EFEITO.test(id) };
+const npm = (...pacotes: string[]) => new RegExp('[\\\\/]node_modules[\\\\/](' + pacotes.join('|') + ')[\\\\/]');
+const BIBLIOTECAS = [
+  { name: 'react', test: npm('react', 'react-dom', 'react-router', 'scheduler', 'cookie', 'set-cookie-parser') },
+  // o Firestore à parte do resto do Firebase (login, app): juntos passavam de 500 KB
+  { name: 'firestore', test: npm('@firebase[\\\\/]firestore', '@firebase[\\\\/]webchannel-wrapper', 're2js', '@grpc') },
+  { name: 'firebase', test: npm('firebase', '@firebase', 'idb', 'tslib') },
+  { name: 'xlsx', test: npm('xlsx') },
+  { name: 'animejs', test: npm('animejs') },
+  { name: 'pdf-lib', test: npm('pdf-lib', '@pdf-lib', 'pako') },
+  { name: 'node-forge', test: npm('node-forge') },
+];
+
 // base '/': as rotas são caminhos de verdade (ex.: /901/movimento/relatorio), então os
 // arquivos precisam ser referenciados a partir da raiz do site, não do caminho da página.
 export default defineConfig({
   plugins: [react(), versaoDoSite(), ...(SO_CLIENTE ? [soOSiteDoCliente()] : [arquivosDoOcr()])],
-  ...(SO_CLIENTE ? { build: { rolldownOptions: { treeshake: { moduleSideEffects: (id: string) => !/[\\/]packages[\\/]core[\\/]src[\\/].*\.ts$/.test(id) } } } } : {}),
+  build: { rolldownOptions: { treeshake: SEM_EFEITO_NO_CORE, output: { codeSplitting: { groups: BIBLIOTECAS } } } },
   base: '/',
   server: { port: 5178 },
 });

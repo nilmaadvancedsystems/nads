@@ -2,10 +2,13 @@
 // (ex.: /292/movimento/relatorio). Os links de quando ela morava em /conferencia/… continuam
 // funcionando: /conferencia/292/movimento/relatorio → /292/movimento/relatorio.
 import { Navigate, useLocation, useParams, type RouteObject } from 'react-router';
+import { NaEspera, pedaco } from '../../comum/pedaco';
 import { AppConciliaAi } from './AppConciliaAi';
 import { caminho } from './casca/caminho';
-import { EmpresaAberta } from './casca/EmpresaAberta';
-import { Entrada } from './telas/entrada/Entrada';
+
+// as telas são pedaços à parte (revisão da UI, 18/10/2026): só baixam quando abrem
+const EmpresaAberta = pedaco(() => import('./casca/EmpresaAberta'), 'EmpresaAberta');
+const Entrada = pedaco(() => import('./telas/entrada/Entrada'), 'Entrada');
 
 /** /conferencia/… → o mesmo caminho sem o /conferencia. */
 function LinkConferencia() {
@@ -19,10 +22,10 @@ export const rotasConciliaAi: RouteObject[] = [
     path: '/',
     element: <AppConciliaAi />,
     children: [
-      { index: true, element: <Entrada /> },
-      { path: ':empresa/:secao/:pagina', element: <EmpresaAberta /> },
-      { path: ':empresa/:secao', element: <EmpresaAberta /> },
-      { path: ':empresa', element: <EmpresaAberta /> },
+      { index: true, element: <NaEspera inteira><Entrada /></NaEspera> },
+      { path: ':empresa/:secao/:pagina', element: <NaEspera inteira><EmpresaAberta /></NaEspera> },
+      { path: ':empresa/:secao', element: <NaEspera inteira><EmpresaAberta /></NaEspera> },
+      { path: ':empresa', element: <NaEspera inteira><EmpresaAberta /></NaEspera> },
     ],
   },
   { path: '/conferencia/*', element: <LinkConferencia /> },
@@ -36,8 +39,8 @@ export const rotasConciliaAiNaTarefa: RouteObject[] = [
   {
     element: <AppConciliaAi />,
     children: [
-      { path: ':empresa/:secao/:pagina', element: <EmpresaAberta /> },
-      { path: ':empresa/:secao', element: <EmpresaAberta /> },
+      { path: ':empresa/:secao/:pagina', element: <NaEspera inteira><EmpresaAberta /></NaEspera> },
+      { path: ':empresa/:secao', element: <NaEspera inteira><EmpresaAberta /></NaEspera> },
     ],
   },
 ];
