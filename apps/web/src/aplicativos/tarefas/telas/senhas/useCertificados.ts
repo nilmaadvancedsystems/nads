@@ -55,7 +55,9 @@ export function useCertificados() {
   return {
     cofre: vm,
     carregando: vm.estado === 'carregando',
-    comCertificado: todas.length - contagem.sem,
+    // o centro da rosca é o total do anel, como no DP e no catálogo (revisão da UI, 18/10/2026: o anel tinha as 236 empresas
+    // e o centro dizia só as 6 com certificado)
+    totalDeEmpresas: todas.length,
     contagem, porMes, linhas, filtro, mes, busca, setBusca,
     /** os que pedem atenção: os que vencem logo (do mais perto) e os vencidos (do mais recente) */
     urgentes: [...todas.filter(l => l.situacao === 'vence').sort(porDias), ...todas.filter(l => l.situacao === 'vencido').sort((a, b) => porDias(b, a))],
