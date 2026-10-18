@@ -231,7 +231,7 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app .cli-numero .hint .ruim{color:var(--danger-ink);}
 
 /* a guia em grade de colunas fixas: logo, nome, situação, valor e ações (os selos e os valores em fila) */
-.cli-app .cli-linha.cli-linha-guia{display:grid;grid-template-columns:40px minmax(0,1fr) 100px 104px 80px;grid-template-areas:"logo txt selo valor acoes";column-gap:14px;}
+.cli-app .cli-linha.cli-linha-guia{display:grid;grid-template-columns:40px minmax(0,1fr) 100px 104px 150px;grid-template-areas:"logo txt selo valor acoes";column-gap:14px;}
 .cli-app .cli-g-logo{grid-area:logo;display:flex;}
 .cli-app .cli-g-txt{grid-area:txt;min-width:0;}
 /* o nome e o detalhe nunca viram "…" (Vitor): se não couber, quebram a linha; na guia, cada pedaço do detalhe
@@ -449,7 +449,9 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
   .cli-app .cli-linha-valor{min-width:0;}
   .cli-app .cli-linha-acoes{min-width:0;}
   .cli-app .cli-barra > .btn-primary{width:100%;}
-  .cli-app .cli-linha.cli-linha-guia{grid-template-columns:40px minmax(0,1fr) auto auto;grid-template-areas:"logo txt txt txt" "logo selo valor acoes";row-gap:8px;column-gap:10px;}
+  .cli-app .cli-linha.cli-linha-guia{grid-template-columns:40px minmax(0,1fr) auto;grid-template-areas:"logo txt txt" "logo selo valor" "logo acoes acoes";row-gap:8px;column-gap:10px;}
+  .cli-app .cli-linha-guia .cli-g-acoes{justify-content:flex-start;}
+  .cli-app .cli-linha-guia .cli-g-acoes .btn{flex:1;}
   .cli-app .cli-boas-vindas .cli-acoes{width:100%;}
   .cli-app .cli-numero .hint{white-space:normal;}
   .cli-app .cli-filtros-dir{width:100%;}
@@ -476,8 +478,8 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 /* entre 1024 e 1279 px a coluna da esquerda ficaria apertada para a grade das guias: a lista ocupa a largura toda e a
    coluna da direita desce, com os dois cartões lado a lado */
 @media (min-width:1024px) and (max-width:1279px){
-  .cli-app .cli-duas.cli-guias,.cli-app .cli-duas.cli-iguais{grid-template-columns:minmax(0,1fr) !important;}
-  .cli-app .cli-guias > .cli-coluna:last-child,.cli-app .cli-iguais > .cli-coluna-direita{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;}
+  .cli-app .cli-duas.cli-guias,.cli-app .cli-duas.cli-iguais,.cli-app .cli-duas.cli-visao{grid-template-columns:minmax(0,1fr) !important;}
+  .cli-app .cli-guias > .cli-coluna:last-child,.cli-app .cli-iguais > .cli-coluna-direita,.cli-app .cli-visao > .cli-coluna:last-child{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;}
 }
 @media (min-width:1024px){
   .cli-app .cli-numeros{grid-template-columns:repeat(4,minmax(0,1fr));}
@@ -523,3 +525,83 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 @media (prefers-reduced-motion:reduce){
   .cli-app *{transition:none !important;}
 }
+
+/* ------------------------------ a Visão geral no padrão dos portais de cliente ------------------------------
+   "Melhora mais" de 17/10/2026 (Vitor: "procura na net exemplos de portal de cliente"): o veredito no topo com o que
+   precisamos do cliente, as guias com o resumo do pagamento, a atividade recente em linha do tempo e o envio rápido.
+   As cores só pelo significado (verde em dia, amarelo atenção, vermelho vencida), sempre pelos tokens do nads. */
+.cli-app .cli-veredito-topo{display:flex;flex-wrap:wrap;align-items:center;gap:16px 20px;}
+.cli-app .cli-veredito-ico{display:flex;align-items:center;justify-content:center;flex:none;width:48px;height:48px;border-radius:50%;background:var(--surface-3);color:var(--ink-muted);}
+.cli-app .cli-veredito-txt{flex:1 1 320px;min-width:0;}
+.cli-app .cli-veredito .cli-sobre{margin-bottom:6px;}
+.cli-app .cli-veredito .page-title{font-size:24px;overflow-wrap:anywhere;}
+.cli-app .cli-veredito .page-desc{margin-top:4px;max-width:72ch;}
+.cli-app .cli-veredito-topo > .btn{flex:none;}
+.cli-app .cli-tom-ok :is(.cli-veredito-ico),.cli-app .cli-aviso-ico.cli-tom-ok{background:var(--success-soft);color:var(--success-ink);}
+.cli-app .cli-tom-warn :is(.cli-veredito-ico),.cli-app .cli-aviso-ico.cli-tom-warn{background:var(--warn-soft);color:var(--warn);}
+.cli-app .cli-tom-bad :is(.cli-veredito-ico),.cli-app .cli-aviso-ico.cli-tom-bad{background:var(--danger-soft);color:var(--danger-ink);}
+.cli-app .cli-pendencias{margin-top:20px;padding-top:16px;border-top:1px solid var(--cli-fio);}
+.cli-app .cli-pendencias .cli-grupo{margin-top:0;}
+.cli-app .cli-linha.cli-pendencia{flex-wrap:nowrap;}
+.cli-app .cli-pendencia .cli-g-txt{flex:1;}
+.cli-app .cli-pendencia .cli-g-txt .hint{white-space:normal;}
+.cli-app .cli-pendencia > .btn{flex:none;}
+
+/* o resumo do pagamento (ResumoDoPagamento): quanto, até quando e o já pago, numa faixa de fundo suave */
+.cli-app .cli-pagar{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px 24px;margin:0 0 8px;padding:14px 16px;border-radius:10px;background:var(--cli-fundo);}
+.cli-app .cli-pagar > div{min-width:0;}
+.cli-app .cli-pagar dt{font-size:12.5px;color:var(--ink-muted);}
+.cli-app .cli-pagar-valor{margin-top:2px;font-size:22px;font-weight:700;line-height:1.2;letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.cli-app .cli-pagar dd.hint{margin-top:2px;font-size:12.5px;}
+.cli-app .cli-como-pagar{display:flex;align-items:flex-start;gap:8px;margin-top:10px;padding-top:12px;border-top:1px solid var(--cli-fio);font-size:12.5px;color:var(--ink-muted);}
+.cli-app .cli-como-pagar svg{flex:none;margin-top:1px;}
+.cli-app .cli-v-guias .cli-como-pagar + .cli-grupo{margin-top:16px;}
+
+/* a atividade recente (LinhaDaAtividade): os ícones ligados por um fio fino, a data à direita */
+.cli-app .cli-atividades > li + li::before{display:none;}
+.cli-app .cli-atividade{position:relative;}
+.cli-app .cli-atividade:not(:last-child)::after{content:'';position:absolute;left:26px;top:42px;bottom:-6px;width:1px;background:var(--cli-linha);}
+.cli-app .cli-linha.cli-ativ-linha{flex-wrap:nowrap;align-items:flex-start;gap:12px;width:100%;padding:10px 12px;}
+.cli-app button.cli-ativ-linha{appearance:none;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
+.cli-app button.cli-ativ-linha:hover{background:var(--cli-passa);}
+.cli-app .cli-ativ-linha .cli-g-txt{flex:1;padding-top:3px;}
+.cli-app .cli-ativ-linha .cli-g-txt b{font-weight:500;}
+.cli-app .cli-ativ-linha .cli-g-txt .hint{overflow-wrap:anywhere;}
+.cli-app .cli-ativ-ico{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;flex:none;width:28px;height:28px;border-radius:50%;background:var(--surface-3);color:var(--ink-muted);box-shadow:0 0 0 3px var(--cli-cartao);}
+.cli-app .cli-ativ-ico.cli-ativ-resposta{background:var(--accent-soft);color:var(--accent-ink);}
+.cli-app .cli-ativ-ico.cli-ativ-feito{background:var(--success-soft);color:var(--success-ink);}
+.cli-app .cli-ativ-quando{flex:none;padding-top:4px;font-size:12.5px;color:var(--ink-muted);white-space:nowrap;font-variant-numeric:tabular-nums;}
+
+/* sem atividade (o link novo), o cartão das guias vai até o fim da coluna do lado, com o vazio no meio */
+.cli-app .cli-visao{align-items:stretch;}
+.cli-app .cli-visao .cli-v-guias:only-child{flex:1;}
+
+/* o envio rápido: o cartão com a frase curta embaixo do título */
+.cli-app .cli-v-enviar .card-head .hint{margin-top:2px;font-size:12.5px;}
+
+@media (max-width:767px){
+  .cli-app .cli-veredito .page-title{font-size:21px;}
+  .cli-app .cli-veredito-topo{flex-wrap:wrap;align-items:flex-start;gap:12px 14px;}
+  .cli-app .cli-veredito-txt{flex:1 1 0;}
+  .cli-app .cli-linha-guia .cli-g-logo{align-self:start;}
+  .cli-app .cli-veredito-ico{width:40px;height:40px;}
+  .cli-app .cli-veredito-topo > .btn{width:100%;}
+  .cli-app .cli-linha.cli-pendencia{flex-wrap:wrap;}
+  .cli-app .cli-pendencia > .btn{width:calc(100% - 46px);margin-left:46px;}
+  .cli-app .cli-pagar{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;padding:12px 14px;}
+  /* a paga só tem o ícone do comprovante: ele sobe para a primeira linha, sem uma linha só para ele */
+  .cli-app .cli-linha.cli-linha-guia.cli-paga{grid-template-areas:"logo txt acoes" "logo selo valor";}
+  .cli-app .cli-linha-guia.cli-paga .cli-g-acoes{justify-content:flex-end;}
+  .cli-app .cli-pagar-valor{font-size:20px;}
+  /* no celular, a ordem do que mais se usa: as guias, o envio, a atividade e o atendimento */
+  .cli-app .cli-visao > .cli-coluna{display:contents;}
+  .cli-app .cli-visao .cli-v-guias{order:1;}
+  .cli-app .cli-visao .cli-v-enviar{order:2;}
+  .cli-app .cli-visao .cli-v-atividade{order:3;}
+  .cli-app .cli-visao .cli-v-atendimento{order:4;}
+}
+
+
+/* Solicitações: o chamado que o escritório respondeu (esperando o cliente) no fundo verde bem suave, o mesmo do selo */
+.cli-app .cli-chamado-esperando > .cli-linha{background:color-mix(in srgb,var(--success-soft) 55%,transparent);}
+.cli-app .cli-lista > li.cli-chamado-esperando > .cli-linha:hover{background:var(--success-soft);}

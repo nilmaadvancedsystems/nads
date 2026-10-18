@@ -8,7 +8,7 @@
 // Com o banco (17/10/2026): o que não tem fonte some (Dados cadastrais sem a ficha; a Central de documentos, e então o
 // "Enviar documento" vai para o topo); sem token (a raiz do site), o aviso para usar o link que o escritório mandou.
 // Polida de 17/10/2026: a gaveta do celular leva o foco para o ✕ ao abrir e devolve ao ☰ ao fechar; o WhatsApp do cartão
-// de atendimento abre a conversa.
+// de atendimento abre a conversa. "Melhora mais" de 17/10/2026: na Visão geral o envio fica no cartão dela, sem o botão do topo.
 import { Icone, MarcaN, MenuSuspenso, useRetorno } from '@nads/ui';
 import { useEffect, useRef } from 'react';
 import { EsqueletoDaArea } from '../partes/EsqueletoDaArea';
@@ -179,8 +179,8 @@ export function AreaDoCliente() {
                     )) : <Vazio icone="sino" titulo="Nada novo" texto="Quando o escritório mandar algo, aparece aqui." />}
                   </div>
                 )} />
-              {/* em Solicitações o Enviar documento já está no título da página */}
-              {!vm.secoes.documentos && vm.aba !== 'chamados' && <button type="button" className="btn cli-so-largo" onClick={abrirEnvio}><Icone nome="upload" width={16} height={16} />Enviar documento</button>}
+              {/* em Solicitações o Enviar documento já está no título da página, e na Visão geral no cartão do envio rápido */}
+              {!vm.secoes.documentos && vm.aba !== 'chamados' && vm.aba !== 'inicio' && <button type="button" className="btn cli-so-largo" onClick={abrirEnvio}><Icone nome="upload" width={16} height={16} />Enviar documento</button>}
               {vm.aba !== 'chamados' && <button type="button" className="btn btn-primary cli-so-largo" onClick={() => vm.irPara('chamados')}><Icone nome="plus" width={16} height={16} />Nova solicitação</button>}
             </div>
           )}

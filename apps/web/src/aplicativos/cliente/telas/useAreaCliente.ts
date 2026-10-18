@@ -3,13 +3,14 @@
 // Documentos (com o Enviar), Guias e obrigações (com a Agenda), Departamento pessoal e Solicitações. Os links antigos
 // (/agenda e /enviar) continuam abrindo a aba nova certa. Com o banco (17/10/2026), as abas sem fonte (Central de
 // documentos e Departamento pessoal) somem do menu, e o link antigo delas cai numa aba que existe.
-import { areaCliente as ac } from '@nads/core';
+import type { areaCliente as ac } from '@nads/core';
 import { definirLateralOculta, lerLateralOculta, type NomeIcone } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { AREA_VAZIA, type EstadoDaArea } from '../dados/areaCliente';
 import { repoAreaCliente } from '../dados/repo';
 import { linkDoWhatsapp, notificacoes } from '../dados/regras';
+import { guiasDoMomento } from '../dados/visaoGeral';
 import { useCopiar } from './useCopiar';
 
 export type IdAba = 'inicio' | 'documentos' | 'guias' | 'dp' | 'chamados';
@@ -20,6 +21,8 @@ export const ABAS: { id: IdAba; rotulo: string; icone: NomeIcone }[] = [
   { id: 'dp', rotulo: 'Departamento pessoal', icone: 'usuario' },
   { id: 'chamados', rotulo: 'Solicitações e chamados', icone: 'mensagem' },
 ];
+/** O que a aba aberta pelo irPara já faz ao abrir: abrir a conversa de um chamado, ou o formulário com o assunto e o título. */
+export interface PedidoDaTela { chamado?: string; novoChamado?: { tipo: ac.TipoDeChamado; titulo: string } }
 const APELIDOS: Record<string, IdAba> = { agenda: 'guias', vencimentos: 'guias', enviar: 'documentos', falar: 'chamados' };
 
 export function useAreaCliente() {
@@ -50,14 +53,14 @@ export function useAreaCliente() {
     window.addEventListener('keydown', tecla);
     return () => window.removeEventListener('keydown', tecla);
   }, [menuAberto]);
-  const irPara = (id: IdAba) => { setMenuAberto(false); navegar('/cliente/' + encodeURIComponent(token) + '/' + id); window.scrollTo(0, 0); };
+  const irPara = (id: IdAba, pedido?: PedidoDaTela) => { setMenuAberto(false); navegar('/cliente/' + encodeURIComponent(token) + '/' + id, { state: pedido ?? null }); window.scrollTo(0, 0); };
   const empresas = area.resumo?.empresas ?? [];
   const empresa = empresas.length > 1 ? empresas[0].nome + ' e mais ' + (empresas.length - 1) : empresas[0]?.nome ?? '';
   const cnpj = empresas.length === 1 ? empresas[0].cnpj : '';
   // o link de uma pessoa física (o robô grava o CPF no mesmo campo)
   const rotuloDoDocumento = cnpj.replace(/\D/g, '').length === 11 ? 'CPF' : 'CNPJ';
 
-  const guias = ac.guiasDeHoje(area.guias, hoje);
+  const guias = guiasDoMomento(area.guias, hoje);
   // o número ao lado do item do menu, como no protótipo: os documentos novos e as guias vencidas
   const contadores: Partial<Record<IdAba, number>> = {
     documentos: area.documentos.filter(d => d.novo).length,

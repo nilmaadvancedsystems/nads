@@ -3,9 +3,11 @@
 // histórico, cada chamado com o selo da situação, o assunto, a última mensagem e "Ver conversa", que abre ali mesmo com o
 // responder. Versão D: só o selo da situação (o assunto vai na linha de baixo), a conversa num fundo suave e o
 // formulário com o fio fino antes do Enviar. Com o banco (17/10/2026), sem a Central de documentos, o "Enviar documento"
-// fica aqui, ao lado do Novo chamado. Polida de 17/10/2026: as frases mais curtas.
+// fica aqui, ao lado do Novo chamado. Polida de 17/10/2026: as frases mais curtas. "Melhora mais" de 17/10/2026: o
+// chamado que o escritório respondeu (esperando o cliente) vem primeiro, com o fundo suave e o botão "Ver resposta" (o
+// primeiro em carmim); vindo da Visão geral, a conversa já abre (ou o formulário já vem com o assunto e o título).
 import { Icone } from '@nads/ui';
-import { useId, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { ConversaDoChamado } from '../partes/ConversaDoChamado';
 import { useJanelaDeEnvio } from './JanelaDeEnvio';
 import { Vazio } from '../partes/Vazio';
@@ -19,6 +21,12 @@ export function Chamados(props: DaCasca) {
   const idAnexo = useId();
   const form = useRef<HTMLElement>(null);
   const abrirEnvio = useJanelaDeEnvio(props);
+  // vindo da Visão geral: a conversa pedida aparece na tela; o formulário já preenchido leva o foco ao "O que você precisa"
+  const { pedido } = vm;
+  useEffect(() => {
+    if (pedido.chamado) document.getElementById('cli-chamado-' + pedido.chamado)?.scrollIntoView({ block: 'start' });
+    else if (pedido.novoChamado) document.getElementById('cli-texto')?.focus();
+  }, [pedido]);
   const novo = (
     <button type="button" className="btn" onClick={() => { form.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); document.getElementById('cli-titulo-chamado')?.focus(); }}>
       <Icone nome="plus" width={16} height={16} />Novo chamado
@@ -81,14 +89,16 @@ export function Chamados(props: DaCasca) {
               const ultima = vm.ultimaMensagem(c);
               const aberta = vm.aberto?.id === c.id;
               return (
-                <li key={c.id} className="cli-chamado">
+                <li key={c.id} id={'cli-chamado-' + c.id} className={'cli-chamado' + (c.situacao === 'respondido' ? ' cli-chamado-esperando' : '')}>
                   <div className="cli-linha">
                     <div className="cli-linha-txt">
                       <div className="cli-chamado-topo"><b>{c.titulo}</b><span className={SELO[c.situacao]}>{vm.rotuloDaSituacao[c.situacao]}</span></div>
                       {ultima && <p className="cli-previa">{ultima.de === 'escritorio' ? 'Escritório: ' : 'Você: '}{ultima.texto.split('\n')[0]}</p>}
                       <p className="hint">{vm.rotuloDoTipo(c.tipo)} · aberto em {vm.abertoEm(c)}{ultima ? ' · última mensagem ' + vm.quando(ultima.em) : ''}</p>
                     </div>
-                    <button type="button" className="btn" aria-expanded={aberta} onClick={() => vm.alternar(c.id)}>{aberta ? 'Fechar conversa' : 'Ver conversa (' + c.mensagens.length + ')'}</button>
+                    <button type="button" className={'btn' + (c.id === vm.primeiroRespondido && !aberta ? ' btn-primary' : '')} aria-expanded={aberta} onClick={() => vm.alternar(c.id)}>
+                      {aberta ? 'Fechar conversa' : c.situacao === 'respondido' ? 'Ver resposta' : 'Ver conversa (' + c.mensagens.length + ')'}
+                    </button>
                   </div>
                   {aberta && vm.aberto && (
                     <div className="cli-conversa-aberta">

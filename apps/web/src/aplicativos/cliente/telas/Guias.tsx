@@ -5,7 +5,8 @@
 // da contabilidade (os recados e o certificado digital); embaixo, o que o escritório entrega no mês. Com o banco
 // (17/10/2026) as guias pagas ainda não têm fonte: somem o card "Pagas no mês" e o "Total pago" do resumo. Polida de
 // 17/10/2026: sem recado nem certificado (sempre, com o banco), o card dos avisos some em vez de dizer "Nenhum aviso"; o
-// contador some no zero; o vazio diz o que importa ("Nada para pagar neste mês").
+// contador some no zero; o vazio diz o que importa ("Nada para pagar neste mês"). "Melhora mais" de 17/10/2026: o Baixar
+// com nome (carmim na próxima a pagar) e, na vencida, o "Pedir nova", que abre o chamado já com o assunto e o título.
 import { formatos } from '@nads/core';
 import { Icone, SeletorMes } from '@nads/ui';
 import { LinhaDaAgenda } from '../partes/LinhaDaAgenda';
@@ -36,7 +37,7 @@ export function Guias(props: DaCasca) {
               <ul className="cli-lista">
                 {vm.guias.map(g => (
                   <LinhaDeGuia key={g.id} guia={g} codigo={vm.codigos[g.id]} faltam={vm.faltam(g)} destaque={g.id === vm.urgente}
-                    ocupado={vm.baixando === g.id} onBaixar={id => void vm.baixar(id)} onCopiar={vm.copiarCodigo} />
+                    ocupado={vm.baixando === g.id} onBaixar={id => void vm.baixar(id)} onCopiar={vm.copiarCodigo} onPedirNova={vm.pedirGuiaNova} />
                 ))}
               </ul>
             ) : <Vazio icone="checkCircle" titulo="Nada para pagar neste mês" />}
