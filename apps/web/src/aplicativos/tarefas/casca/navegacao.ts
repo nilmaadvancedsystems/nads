@@ -22,92 +22,92 @@ export interface Aplicacao {
 export const APLICACOES: readonly Aplicacao[] = [
   { id: 'minhas-empresas', nome: 'Minhas empresas', icone: 'briefcase', grupo: 'Rotinas', pronta: true, paginas: [
     { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Minhas empresas' },
-    { id: 'insights', rotulo: 'Insights', icone: 'barChart', titulo: 'Minhas empresas — insights' },
+    { id: 'insights', rotulo: 'Insights', icone: 'barChart', titulo: 'Insights' },
   ] },
   { id: 'contabil', nome: 'Contábil', icone: 'scale', grupo: 'Rotinas', pronta: true, paginas: [
-    { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Contábil — visão geral' },
-    { id: 'paradas', rotulo: 'Paradas', icone: 'alert', titulo: 'Contábil — etapas paradas' },
+    { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Visão geral' },
+    { id: 'paradas', rotulo: 'Paradas', icone: 'alert', titulo: 'Etapas paradas' },
     // os históricos do Creditor, os mesmos para todas as empresas (Vitor, 05/10/2026)
-    { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Contábil — configurações' },
+    { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Configurações' },
   ] },
   { id: 'cadastro', nome: 'Cadastro', icone: 'grade', grupo: 'Escritório', pronta: true, paginas: [
-    { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Cadastro — empresas' },
+    { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Empresas' },
     // a organização nova (Vitor, 13/10/2026: "reveja a estrutura inteira do cadastro"): a Equipe (as pessoas e a proteção
     // do login) e os Robôs e agentes (a saúde dos robôs, o que eles fazem e os agentes do Claude, que antes ficavam em
     // Configurações e em Agentes; os links antigos levam para cá)
-    { id: 'usuarios', rotulo: 'Equipe', icone: 'usuario', titulo: 'Cadastro — equipe' },
+    { id: 'usuarios', rotulo: 'Equipe', icone: 'usuario', titulo: 'Equipe' },
     // "troca de robô para sistema" (13/10/2026)
-    { id: 'sistema', rotulo: 'Sistema e agentes', icone: 'monitor', titulo: 'Cadastro — sistema e agentes' },
+    { id: 'sistema', rotulo: 'Sistema e agentes', icone: 'monitor', titulo: 'Sistema e agentes' },
   ] },
   // o Fiscal no mesmo modelo do Contábil (Vitor, 05/10/2026): as empresas com a rotina do Fiscal, a visão e as paradas
   { id: 'fiscal', nome: 'Fiscal', icone: 'recibo', grupo: 'Rotinas', pronta: true, paginas: [
-    { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Fiscal — empresas' },
+    { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Empresas' },
     // o Painel (Vitor, 09/10/2026): todos os clientes do mês numa tela, com o que a rotina e o SIEG apontam
-    { id: 'painel', rotulo: 'Painel', icone: 'painel', titulo: 'Fiscal — painel' },
-    { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Fiscal — visão geral' },
+    { id: 'painel', rotulo: 'Painel', icone: 'painel', titulo: 'Painel' },
+    { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Visão geral' },
     // a REINF (o fluxo do Notion do Heverton), logo abaixo da Visão geral
-    { id: 'reinf', rotulo: 'REINF', icone: 'fileUp', titulo: 'Fiscal — REINF' },
-    { id: 'paradas', rotulo: 'Paradas', icone: 'alert', titulo: 'Fiscal — etapas paradas' },
+    { id: 'reinf', rotulo: 'REINF', icone: 'fileUp', titulo: 'REINF' },
+    { id: 'paradas', rotulo: 'Paradas', icone: 'alert', titulo: 'Etapas paradas' },
     // o leitor do SINTEGRA (Vitor, 15/10/2026: "montar um leitor de sintegra")
-    { id: 'sintegra', rotulo: 'SINTEGRA', icone: 'fileText', titulo: 'Fiscal — leitor do SINTEGRA' },
+    { id: 'sintegra', rotulo: 'SINTEGRA', icone: 'fileText', titulo: 'Leitor do SINTEGRA' },
   ] },
   // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
   // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas
   { id: 'dp', nome: 'Departamento Pessoal', icone: 'usuario', grupo: 'Rotinas', pronta: true, paginas: [
     // tudo no tabelão (Vitor, 06/10/2026: "sem a parte de checklist"); as páginas na barra lateral ("eu ainda quero uma
     // barra lateral"); em Obrigações, uma tabela só, com as colunas agrupadas (Folha, eSocial, Guias, REINF, Entrega)
-    { id: 'resumo', rotulo: 'Resumo', icone: 'painel', titulo: 'DP — resumo do mês' },
-    { id: 'obrigacoes', rotulo: 'Obrigações', icone: 'checklist', titulo: 'DP — obrigações do mês' },
-    { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'DP — visão geral' },
+    { id: 'resumo', rotulo: 'Resumo', icone: 'painel', titulo: 'Resumo do mês' },
+    { id: 'obrigacoes', rotulo: 'Obrigações', icone: 'checklist', titulo: 'Obrigações do mês' },
+    { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Visão geral' },
     // a guia do FGTS Digital pelo robô da nuvem, com o certificado do escritório (Vitor, 07/10/2026)
-    { id: 'fgts', rotulo: 'FGTS Digital', icone: 'fileDown', titulo: 'DP — guias do FGTS Digital' },
+    { id: 'fgts', rotulo: 'FGTS Digital', icone: 'fileDown', titulo: 'Guias do FGTS Digital' },
     // os parâmetros de cada cliente (Vitor, 06/10/2026: "quero que o dp tenha a própria aba de configurações")
     // os textos de consulta que vieram do Toriba (Vitor, 14/10/2026: "importa as legislações em uma aba no DP")
-    { id: 'legislacao', rotulo: 'Legislação', icone: 'scale', titulo: 'DP — legislação' },
-    { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'DP — configurações' },
+    { id: 'legislacao', rotulo: 'Legislação', icone: 'scale', titulo: 'Legislação' },
+    { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Configurações' },
   ] },
   // a entrega de documentos aos clientes, trazida do Entregas (16/10/2026: "quero integrar no app … o entregas"; "quero só a
   // parte de entregas"): a Rota (as paradas, Nova entrega, confirmar com a assinatura ou a foto) e o Painel do mês; todo o
   // escritório, como no Entregas (lá qualquer pessoa da equipe vê a Nova entrega, a Rota e o Painel)
   // 16/10/2026 ("só copia o entregas e joga aqui no design n1"): as três abas de lá, na mesma ordem (a Nova entrega primeiro)
   { id: 'entregas', nome: 'Entregas', icone: 'caminhao', grupo: 'Rotinas', pronta: true, paginas: [
-    { id: 'nova', rotulo: 'Nova entrega', icone: 'lapis', titulo: 'Entregas — nova entrega' },
-    { id: 'rota', rotulo: 'Rota', icone: 'caminhao', titulo: 'Entregas — rota' },
-    { id: 'painel', rotulo: 'Painel', icone: 'painel', titulo: 'Entregas — painel do mês' },
+    { id: 'nova', rotulo: 'Nova entrega', icone: 'lapis', titulo: 'Nova entrega' },
+    { id: 'rota', rotulo: 'Rota', icone: 'caminhao', titulo: 'Rota' },
+    { id: 'painel', rotulo: 'Painel', icone: 'painel', titulo: 'Painel do mês' },
     // as Solicitações (16/10/2026, "cadê as solicitações"): a aba do Entregas, logo depois do Painel como lá
-    { id: 'solicitacoes', rotulo: 'Solicitações', icone: 'envelope', titulo: 'Entregas — solicitações' },
+    { id: 'solicitacoes', rotulo: 'Solicitações', icone: 'envelope', titulo: 'Solicitações' },
   ] },
   // as senhas gov.br e os certificados digitais, no cofre com a chave por pessoa (Vitor, 07/10/2026); todo o escritório
   { id: 'senhas', nome: 'Senhas', icone: 'lock', grupo: 'Escritório', pronta: true, paginas: [
-    { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Senhas — gov.br e certificados' },
+    { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Gov.br e certificados' },
     // o painel dos certificados: próximos a vencer, vencidos e válidos (07/10/2026)
-    { id: 'certificados', rotulo: 'Certificados', icone: 'barChart', titulo: 'Senhas — certificados' },
+    { id: 'certificados', rotulo: 'Certificados', icone: 'barChart', titulo: 'Certificados' },
     // as contas gov.br de pessoas (CPF), importadas da planilha (Vitor, 07/10/2026)
-    { id: 'gov', rotulo: 'Contas gov.br', icone: 'usuario', titulo: 'Senhas — contas gov.br' },
-    { id: 'acesso', rotulo: 'Acesso', icone: 'usuario', titulo: 'Senhas — acesso ao cofre' },
+    { id: 'gov', rotulo: 'Contas gov.br', icone: 'usuario', titulo: 'Contas gov.br' },
+    { id: 'acesso', rotulo: 'Acesso', icone: 'usuario', titulo: 'Acesso ao cofre' },
   ] },
   // o financeiro do escritório (15/10/2026: "vamos criar um emissor de notas fiscais para o financeiro"): as NFS-e de
   // honorários da Nilma (Taiobeiras, E&L), emitidas pelo robô da nuvem; só o admin e o diretor
   { id: 'financeiro', nome: 'Financeiro', icone: 'cartao', grupo: 'Escritório', pronta: true, paginas: [
-    { id: 'notas', rotulo: 'Notas fiscais', icone: 'recibo', titulo: 'Financeiro — notas fiscais' },
-    { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Financeiro — configurações do emissor' },
+    { id: 'notas', rotulo: 'Notas fiscais', icone: 'recibo', titulo: 'Notas fiscais' },
+    { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Configurações do emissor' },
   ] },
   // os tickets mandados aos clientes (Vitor, 07/10/2026): os meus e a central de todos
   { id: 'mandei', nome: 'Mandei', icone: 'mensagem', grupo: 'Comunicação', pronta: true, paginas: [
-    { id: 'meus', rotulo: 'Meus tickets', icone: 'usuario', titulo: 'Mandei — meus tickets' },
-    { id: 'central', rotulo: 'Central', icone: 'list', titulo: 'Mandei — central de tickets' },
+    { id: 'meus', rotulo: 'Meus tickets', icone: 'usuario', titulo: 'Meus tickets' },
+    { id: 'central', rotulo: 'Central', icone: 'list', titulo: 'Central de tickets' },
   ] },
   // a Área do Cliente (Vitor, 16/10/2026): o lado do escritório do site que o cliente abre pelo link secreto
   { id: 'area-cliente', nome: 'Área do Cliente', icone: 'usuario', grupo: 'Comunicação', pronta: true, paginas: [
-    { id: 'chamados', rotulo: 'Chamados', icone: 'mensagem', titulo: 'Área do Cliente — chamados' },
-    { id: 'recebidos', rotulo: 'Recebidos', icone: 'download', titulo: 'Área do Cliente — recebidos' },
+    { id: 'chamados', rotulo: 'Chamados', icone: 'mensagem', titulo: 'Chamados' },
+    { id: 'recebidos', rotulo: 'Recebidos', icone: 'download', titulo: 'Recebidos' },
   ] },
   { id: 'drive', nome: 'Drive', icone: 'pasta', grupo: 'Comunicação', marca: 'drive', pronta: true, paginas: [
-    { id: 'pastas', rotulo: 'Pastas', icone: 'pasta', titulo: 'Drive — pasta do ano' },
+    { id: 'pastas', rotulo: 'Pastas', icone: 'pasta', titulo: 'Pasta do ano' },
   ] },
   { id: 'contato', nome: 'Gmail', icone: 'envelope', grupo: 'Comunicação', marca: 'gmail', pronta: true, paginas: [
-    { id: 'caixa', rotulo: 'E-mails', icone: 'envelope', titulo: 'Gmail — e-mails do robô' },
-    { id: 'historico', rotulo: 'Histórico', icone: 'clock', titulo: 'Gmail — execuções do robô' },
+    { id: 'caixa', rotulo: 'E-mails', icone: 'envelope', titulo: 'E-mails do robô' },
+    { id: 'historico', rotulo: 'Histórico', icone: 'clock', titulo: 'Execuções do robô' },
   ] },
 ];
 
@@ -205,10 +205,10 @@ export const caminhoDoExecutor = (rotaEmpresa: string, competencia: string) => B
  * para a página da empresa, que abre o executor.
  */
 export const PAGINAS_DO_LCDPR: readonly Pagina[] = [
-  { id: 'lancamentos', rotulo: 'Lançamentos', icone: 'dinheiro', titulo: 'LCDPR — importar e conferir' },
-  { id: 'categorias', rotulo: 'Categorias', icone: 'grade', titulo: 'LCDPR — categorias' },
-  { id: 'regras', rotulo: 'Regras de NCM', icone: 'hash', titulo: 'LCDPR — regras de NCM' },
-  { id: 'plano', rotulo: 'Plano de contas', icone: 'list', titulo: 'LCDPR — plano de contas' },
-  { id: 'tabelas', rotulo: 'Tabelas de apoio', icone: 'fileText', titulo: 'LCDPR — tabelas de apoio' },
-  { id: 'configuracao', rotulo: 'Configuração', icone: 'settings', titulo: 'LCDPR — configuração geral' },
+  { id: 'lancamentos', rotulo: 'Lançamentos', icone: 'dinheiro', titulo: 'Importar e conferir' },
+  { id: 'categorias', rotulo: 'Categorias', icone: 'grade', titulo: 'Categorias' },
+  { id: 'regras', rotulo: 'Regras de NCM', icone: 'hash', titulo: 'Regras de NCM' },
+  { id: 'plano', rotulo: 'Plano de contas', icone: 'list', titulo: 'Plano de contas' },
+  { id: 'tabelas', rotulo: 'Tabelas de apoio', icone: 'fileText', titulo: 'Tabelas de apoio' },
+  { id: 'configuracao', rotulo: 'Configuração', icone: 'settings', titulo: 'Configuração geral' },
 ];
