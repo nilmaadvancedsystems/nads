@@ -4658,3 +4658,9 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .gh-blank-acoes{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:12px;}
 .gh-blank.compacto .gh-blank-acoes{margin-top:8px;}
 .gh-blank.erro > svg{color:var(--danger);}
+/* o Interruptor Sim/Não (revisão da UI, 18/10/2026): as duas palavras no mesmo lugar, só a da vez à vista (a largura é a da maior) */
+.toggle-txt{display:inline-grid;justify-items:end;}
+.toggle-txt > span{grid-area:1 / 1;}
+.toggle-txt-fora{visibility:hidden;}
+/* o menu flutuante (MenuSuspenso flutuante): por cima de tudo, fora da caixa que rola */
+.menu-pop.flutuante{z-index:200;max-height:min(420px,calc(100vh - 16px));}

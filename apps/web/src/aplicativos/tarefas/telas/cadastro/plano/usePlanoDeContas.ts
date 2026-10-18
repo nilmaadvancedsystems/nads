@@ -28,6 +28,8 @@ export function usePlanoDeContas(rota: string) {
   const [busca, setBusca] = useState('');
   const [grupo, setGrupo] = useState('');
   const [lendo, setLendo] = useState(false);
+  // qual dos dois balancetes está sendo lido: o botão dele mostra que trabalha (revisão da UI, 18/10/2026)
+  const [lendoBalancete, setLendoBalancete] = useState<'entregas' | 'conferencia' | null>(null);
   const contas = useMemo(() => c.plano?.contas || [], [c.plano]);
 
   const usos = useMemo(() => {
@@ -81,7 +83,7 @@ export function usePlanoDeContas(rota: string) {
   /** O plano pelo balancete que o Entregas (Clientes › Balancetes) ou a Conferência guardou (só leitura). */
   async function usarBalancete(de: 'entregas' | 'conferencia') {
     if (lendo) return;
-    setLendo(true);
+    setLendo(true); setLendoBalancete(de);
     const nome = de === 'entregas' ? 'do Entregas (Clientes › Balancetes)' : 'da Conferência';
     try {
       const doc = de === 'entregas' ? await balanceteDoEntregas(c.empresa.codigo) : await conferenciaDaEmpresa(c.empresa.nome);
@@ -91,7 +93,7 @@ export function usePlanoDeContas(rota: string) {
     } catch (err) {
       toast('Não consegui ler o balancete na nuvem: ' + (err as Error).message);
     } finally {
-      setLendo(false);
+      setLendo(false); setLendoBalancete(null);
     }
   }
 
@@ -108,6 +110,7 @@ export function usePlanoDeContas(rota: string) {
     limite: LIMITE_PLANO,
     importarArquivo,
     usarBalancete,
+    lendoBalancete,
     /** "de plano.xls em 30/09/2026 por Vitor" */
     origem: c.plano ? (c.plano.origem === 'balancete' ? 'de um balancete' : 'de ' + (c.plano.arquivo || 'um arquivo'))
       + (c.plano.importadoEm ? ' em ' + new Date(c.plano.importadoEm).toLocaleDateString('pt-BR') : '') + (c.plano.por ? ' por ' + c.plano.por : '') : '',

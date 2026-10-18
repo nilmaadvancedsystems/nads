@@ -42,6 +42,13 @@ export function useFgtsDoDp() {
   const [responsavel, setResponsavel] = useState('');
   const [aberto, setAberto] = useState<string | null>(null);
   const [pedindo, setPedindo] = useState(false);
+  // o que cada linha está fazendo ("cancelar:<id>", "baixar:<id>", "pedir:<código>"): o botão dela mostra que trabalha e trava (revisão da UI, 18/10/2026)
+  const [fazendo, setFazendo] = useState<ReadonlySet<string>>(new Set());
+  const comLinha = async (chave: string, f: () => Promise<void>) => {
+    if (fazendo.has(chave)) return;
+    setFazendo(s => new Set(s).add(chave));
+    try { await f(); } finally { setFazendo(s => { const n = new Set(s); n.delete(chave); return n; }); }
+  };
   // as marcadas para o lote (Vitor, 08/10/2026: "marcar várias e emitir")
   const [marcadas, setMarcadas] = useState<ReadonlySet<number>>(new Set());
   const doDp = useClientesDoDp(competencia);
@@ -106,10 +113,12 @@ export function useFgtsDoDp() {
     linhas,
     faltam: faltam.length,
     pedindo,
+    /** a linha está trabalhando (o botão dela mostra a rodinha e trava) */
+    fazendo: (chave: string) => fazendo.has(chave),
     async pedir(codigo: number, modo: ModoFgts) {
       const l = todas.find(x => x.codigo === codigo);
       if (!l) return;
-      try { await pedir(l, modo); } catch (e) { toast('Não consegui pedir: ' + (e instanceof Error ? e.message : String(e))); }
+      await comLinha('pedir:' + codigo, async () => { try { await pedir(l, modo); } catch (e) { toast('Não consegui pedir: ' + (e instanceof Error ? e.message : String(e))); } });
     },
     /** pede a guia de todos os que ainda não têm (nem estão na fila) */
     async emitirTodas() {
@@ -122,12 +131,16 @@ export function useFgtsDoDp() {
     },
     /** cancela o pedido na fila ou com o robô (Vitor, 09/10/2026: "botão de cancelar requisição") */
     async cancelar(id: string) {
-      try { await repo.cancelar(id); toast('Pedido cancelado.'); } catch (e) { toast('Não consegui cancelar: ' + (e instanceof Error ? e.message : String(e))); }
+      await comLinha('cancelar:' + id, async () => { try { await repo.cancelar(id); toast('Pedido cancelado.'); } catch (e) { toast('Não consegui cancelar: ' + (e instanceof Error ? e.message : String(e))); } });
     },
     async baixar(p: PedidoFgts) {
-      const a = await repo.pdf(p.id);
-      if (!a) { toast('O PDF não está no pedido.'); return; }
-      baixarBytes(Uint8Array.from(atob(a.base64), ch => ch.charCodeAt(0)), a.nome, 'application/pdf');
+      await comLinha('baixar:' + p.id, async () => {
+        try {
+          const a = await repo.pdf(p.id);
+          if (!a) { toast('O PDF não está no pedido.'); return; }
+          baixarBytes(Uint8Array.from(atob(a.base64), ch => ch.charCodeAt(0)), a.nome, 'application/pdf');
+        } catch (e) { toast('Não consegui baixar o PDF: ' + (e instanceof Error ? e.message : String(e))); }
+      });
     },
     /** o lote marcado */
     marcadas: marcadasValidas.length,

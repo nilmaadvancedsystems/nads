@@ -132,7 +132,7 @@ export function FgtsDoDp() {
               {agora.situacao === 'verificacao'
                 ? <button type="button" className="btn btn-primary" onClick={() => vm.abrir(agora.pedidoId)}>Fazer a verificação</button>
                 : <button type="button" className="btn btn-outline" onClick={() => vm.abrir(agora.pedidoId)}>Ver passos</button>}
-              <button type="button" className="btn btn-ghost" onClick={() => void vm.cancelar(agora.pedidoId)}><Icone nome="x" />Cancelar</button>
+              <BotaoAcao className="btn btn-ghost" carregando={vm.fazendo('cancelar:' + agora.pedidoId)} textoCarregando="Cancelando…" onClick={() => void vm.cancelar(agora.pedidoId)}><Icone nome="x" />Cancelar</BotaoAcao>
             </>
           ) : <span className="fraco">parado</span>}
         </div>
@@ -209,10 +209,10 @@ export function FgtsDoDp() {
                       <td className="fgts-acoes">
                         <div className="fgts-acoes-linha">
                         {p && ['fila', 'trabalhando', 'verificacao'].includes(l.situacao)
-                          ? <button type="button" className="btn btn-ghost" onClick={() => void vm.cancelar(p.id)}><Icone nome="x" />Cancelar</button>
+                          ? <BotaoAcao className="btn btn-ghost" carregando={vm.fazendo('cancelar:' + p.id)} textoCarregando="Cancelando…" onClick={() => void vm.cancelar(p.id)}><Icone nome="x" />Cancelar</BotaoAcao>
                           : p && l.situacao === 'emitida'
-                            ? <button type="button" className="btn btn-outline" onClick={() => void vm.baixar(p)}><Icone nome="download" />PDF</button>
-                            : l.podeMarcar && <button type="button" className="btn btn-outline" disabled={!r.ligado} onClick={() => void vm.pedir(l.codigo, 'emitir')}>Emitir</button>}
+                            ? <BotaoAcao className="btn btn-outline" carregando={vm.fazendo('baixar:' + p.id)} textoCarregando="Baixando…" onClick={() => void vm.baixar(p)}><Icone nome="download" />PDF</BotaoAcao>
+                            : l.podeMarcar && <BotaoAcao className="btn btn-outline" disabled={!r.ligado} carregando={vm.fazendo('pedir:' + l.codigo)} textoCarregando="Pedindo…" onClick={() => void vm.pedir(l.codigo, 'emitir')}>Emitir</BotaoAcao>}
                         {itens.length > 0 && <MenuSuspenso rotulo="" icone="mais" className="btn btn-ghost fgts-mais" dica="Mais" titulo={'Mais de ' + l.nome} direita itens={itens} />}
                         </div>
                       </td>
@@ -235,7 +235,7 @@ export function FgtsDoDp() {
             <div className="fgts-pedido">
               <span className={SELO[aberto.situacao].classe}>{SELO[aberto.situacao].rotulo}</span>
               <span className="fraco">pedido por {pedidoAberto.criadoPor} · {hora(pedidoAberto.criadoEm)}</span>
-              {aberto.situacao === 'emitida' && <button type="button" className="btn btn-outline fgts-pedido-pdf" onClick={() => void vm.baixar(pedidoAberto)}><Icone nome="download" />PDF da guia</button>}
+              {aberto.situacao === 'emitida' && <BotaoAcao className="btn btn-outline fgts-pedido-pdf" carregando={vm.fazendo('baixar:' + pedidoAberto.id)} textoCarregando="Baixando…" onClick={() => void vm.baixar(pedidoAberto)}><Icone nome="download" />PDF da guia</BotaoAcao>}
               {(pedidoAberto.erro || pedidoAberto.resultado) && <p className={pedidoAberto.erro ? 'fgts-pedido-erro' : ''}>{pedidoAberto.erro || pedidoAberto.resultado}</p>}
             </div>
             <ol className="fgts-passos">

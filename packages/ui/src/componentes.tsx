@@ -216,11 +216,14 @@ export function NumeroQueConta({ texto }: { texto: string }) {
   return <span ref={ref} className="numero-que-conta" />;
 }
 
-/** Chave On/Off (.toggle-switch). */
+/**
+ * Chave Sim/Não (.toggle-switch). O texto em pt-BR ((revisão da UI, 18/10/2026): era "On/Off"); as duas palavras ficam uma em cima da
+ * outra e só a da vez aparece, então a largura é sempre a da maior e a chave não pula ao trocar.
+ */
 export function Interruptor({ ligado, onMudar, rotulo }: { ligado: boolean; onMudar: () => void; rotulo: string }) {
   return (
     <button type="button" className="toggle-switch" role="switch" aria-checked={ligado} aria-label={rotulo} onClick={onMudar}>
-      <span className="toggle-txt">{ligado ? 'On' : 'Off'}</span>
+      <span className="toggle-txt" aria-hidden="true"><span className={ligado ? undefined : 'toggle-txt-fora'}>Sim</span><span className={ligado ? 'toggle-txt-fora' : undefined}>Não</span></span>
       <span className="toggle-track"><span className="toggle-knob" /></span>
     </button>
   );
@@ -451,7 +454,7 @@ export type ItemMenu = { rotulo: ReactNode; icone?: NomeIcone; marcado?: boolean
  * preenchido (padrão do app todo). Fecha ao escolher, ao clicar
  * fora e no Esc. Em vez de `itens`, pode receber `conteudo` (ex.: uma lista com busca), que ganha o `fechar`.
  */
-export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn-outline', classeAberto, itens, conteudo, direita, acima, largura, setaAntes, semSeta, animado }: {
+export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn-outline', classeAberto, itens, conteudo, direita, acima, largura, setaAntes, semSeta, animado, flutuante }: {
   rotulo: ReactNode;
   icone?: NomeIcone;
   titulo?: string;
@@ -471,10 +474,32 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
   largura?: number;
   /** abre com mola e os itens em cascata (animejs; 14/10/2026: o menu do avatar, "do clique ao perfil") */
   animado?: boolean;
+  /**
+   * o menu abre por cima da página, fixo na tela e fora da caixa que rola ((revisão da UI, 18/10/2026): no celular, o do comprovante do
+   * Mandei saía cortado dentro da tabela). Acompanha o botão ao rolar; perto da borda de baixo, abre para cima.
+   */
+  flutuante?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const pop = useRef<HTMLDivElement>(null);
+  const botao = useRef<HTMLButtonElement>(null);
+  const [lugar, setLugar] = useState<{ left: number; top?: number; bottom?: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!aberto || !flutuante) { setLugar(null); return; }
+    const medir = () => {
+      const b = botao.current?.getBoundingClientRect(); if (!b) return;
+      const w = Math.min(largura || pop.current?.offsetWidth || 200, window.innerWidth - 16);
+      const h = pop.current?.offsetHeight || 0;
+      const left = Math.max(8, Math.min(direita ? b.right - w : b.left, window.innerWidth - w - 8));
+      const cabeEmbaixo = b.bottom + 4 + h <= window.innerHeight - 8;
+      setLugar(acima || !cabeEmbaixo ? { left, bottom: window.innerHeight - b.top + 4 } : { left, top: b.bottom + 4 });
+    };
+    medir();
+    window.addEventListener('scroll', medir, true);
+    window.addEventListener('resize', medir);
+    return () => { window.removeEventListener('scroll', medir, true); window.removeEventListener('resize', medir); };
+  }, [aberto, flutuante, direita, acima, largura]);
   useLayoutEffect(() => {
     const el = pop.current;
     if (!aberto || !animado || !el || !animacoesPedidas()) return;
@@ -484,7 +509,7 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
   }, [aberto, animado, direita]);
   useEffect(() => {
     if (!aberto) return;
-    const fora = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false); };
+    const fora = (e: MouseEvent) => { const t = e.target as Node; if (ref.current && !ref.current.contains(t) && !pop.current?.contains(t)) setAberto(false); };
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setAberto(false); };
     // clicou na ferramenta da etapa (outra página, num iframe): o clique não chega aqui, mas esta janela perde o foco
     const saiu = () => setAberto(false);
@@ -497,15 +522,17 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
   const comMarca = itens?.some(i => i !== 'separador' && i.marcado !== undefined);
   return (
     <div className="popover-wrap" ref={ref}>
-      <button type="button" className={className + (aberto && classeAberto ? ' ' + classeAberto : '')} title={dica} aria-haspopup="menu" aria-expanded={aberto} onClick={() => setAberto(a => !a)}
+      <button ref={botao} type="button" className={className + (aberto && classeAberto ? ' ' + classeAberto : '')} title={dica} aria-haspopup="menu" aria-expanded={aberto} onClick={() => setAberto(a => !a)}
         // só o ícone (sem rótulo): o nome vem do título ou da dica (revisão da UI, 16/10/2026: o leitor de tela não tinha o que ler)
         aria-label={rotulo === '' || rotulo == null ? titulo || dica : undefined}>
         {setaAntes && !semSeta && <Icone nome="caretDown" className="menu-seta antes" />}
         {icone && <Icone nome={icone} />}{rotulo}
         {!setaAntes && !semSeta && <Icone nome="caretDown" className="menu-seta" />}
       </button>
-      {aberto && (
-        <div ref={pop} className={'popover menu-pop' + (direita ? ' direita' : '') + (acima ? ' acima' : '') + (animado ? ' animado' : '')} data-entrada-propria={animado ? '' : undefined} role="menu" aria-label={titulo} style={largura ? { width: largura } : undefined}>
+      {aberto && (() => {
+        const menu = (
+        <div ref={pop} className={'popover menu-pop' + (direita ? ' direita' : '') + (acima ? ' acima' : '') + (animado ? ' animado' : '') + (flutuante ? ' flutuante' : '')} data-entrada-propria={animado ? '' : undefined} role="menu" aria-label={titulo}
+          style={{ ...(largura ? { width: largura } : {}), ...(flutuante ? { position: 'fixed', right: 'auto', left: lugar?.left ?? -9999, top: lugar?.top ?? 'auto', bottom: lugar?.bottom ?? 'auto', visibility: lugar ? undefined : 'hidden' } : {}) }}>
           {/* sem título em cima (Vitor, 02/10/2026): o título fica só para o leitor de tela */}
           {itens?.map((it, i) => it === 'separador' ? <hr key={i} className="popover-sep" /> : (
             <button key={i} type="button" className={'popover-item' + (it.perigo ? ' perigo' : '')} role="menuitem" disabled={it.desabilitado}
@@ -518,7 +545,9 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
           ))}
           {conteudo?.(fechar)}
         </div>
-      )}
+        );
+        return flutuante ? createPortal(menu, document.body) : menu;
+      })()}
     </div>
   );
 }

@@ -4,7 +4,7 @@
 // JanelaNovoUsuario: Dados, Cargo e Papéis do acesso novo, com o Criar acesso sempre no pé. Fecham no ×, no Esc e
 // clicando fora.
 import type { usuarios } from '@nads/core';
-import { Icone, Interruptor } from '@nads/ui';
+import { BotaoAcao, Icone, Interruptor } from '@nads/ui';
 import { useState } from 'react';
 import { Cartao, JanelaLateral, Linha, type TopicoDaJanela } from '../../janela/JanelaLateral';
 import { useNovoUsuario } from './useNovoUsuario';
@@ -104,7 +104,7 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
               <Linha rotulo="Nenhum" dica="A proteção do login só pede liberação quando está ligada (Configurações)." />
             ) : p.computadores.map(s => (
               <Linha key={s.id} rotulo={s.computador} dica={'Liberado em ' + vm.quando(s.liberadoEm)}>
-                {vm.admin && <button type="button" className="btn btn-outline" onClick={() => void vm.revogar(s)}>Revogar</button>}
+                {vm.admin && <BotaoAcao className="btn btn-outline" carregando={vm.fazendo('revogar:' + s.id)} textoCarregando="Revogando…" onClick={() => void vm.revogar(s)}>Revogar</BotaoAcao>}
               </Linha>
             ))}
           </Cartao>
