@@ -55,7 +55,10 @@ export function PlanoDeContas({ rota }: { rota: string }) {
           </div>
         )
       ) : !vm.achadas ? (
-        <Vazio icone="search" titulo="Nenhuma conta com isso" />
+        <Vazio icone="search" titulo="Nenhuma conta com isso">
+          {/* a saída do vazio (revisão da UI, 18/10/2026) */}
+          {vm.busca && <button type="button" className="btn btn-outline" onClick={() => vm.setBusca('')}>Limpar a busca</button>}
+        </Vazio>
       ) : (
         <div className="table-wrap">
           <table className="cad-tabela cad-plano">

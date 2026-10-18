@@ -112,7 +112,7 @@ function MinhaConta({ vm }: { vm: VmPessoal }) {
             <button type="button" className="btn btn-outline" disabled={c.salvandoFoto} onClick={() => arquivo.current?.click()}>
               {c.salvandoFoto ? <span className="btn-spinner" /> : <Icone nome="upload" />}{c.foto ? 'Trocar foto' : 'Escolher foto'}
             </button>
-            {c.foto && <button type="button" className="btn btn-ghost" disabled={c.salvandoFoto} onClick={c.tirarFoto}>Remover</button>}
+            {c.foto && <button type="button" className="btn btn-ghost" disabled={c.salvandoFoto} onClick={c.tirarFoto}>Tirar a foto</button>}
           </div>
         </div>
         <p className="cfg-linha-desc pessoal-icones-rotulo">Ou um ícone (os mesmos do Entregas)</p>

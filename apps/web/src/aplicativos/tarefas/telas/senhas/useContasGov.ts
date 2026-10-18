@@ -54,7 +54,7 @@ export function useContasGov() {
       try {
         const n = await cofre.importarContasGov(previa.contas);
         if (n) { toast(n + (n === 1 ? ' conta guardada' : ' contas guardadas') + ' no cofre.'); setPrevia(null); }
-      } catch (e) { toast('Não deu: ' + (e instanceof Error ? e.message : String(e))); } finally { setImportando(false); }
+      } catch (e) { toast('Não consegui importar: ' + (e instanceof Error ? e.message : String(e))); } finally { setImportando(false); }
     },
     aberta: daAberta,
     conta, setConta,
@@ -74,7 +74,7 @@ export function useContasGov() {
         if (cofre.contasGov.some(x => x.id === id)) { toast('Esse CPF já está no cofre.'); setNova(null); setAberta(id); return; }
         const n = await cofre.importarContasGov([{ nome: nova.nome.trim().toUpperCase(), cpf: nova.cpf, senha: nova.senha, obs: nova.obs.trim(), nivel: '' }]);
         if (n) { toast('Guardada no cofre.'); setNova(null); }
-      } catch (e) { toast('Não deu: ' + (e instanceof Error ? e.message : String(e))); } finally { setGuardandoNova(false); }
+      } catch (e) { toast('Não consegui guardar: ' + (e instanceof Error ? e.message : String(e))); } finally { setGuardandoNova(false); }
     },
   };
 }

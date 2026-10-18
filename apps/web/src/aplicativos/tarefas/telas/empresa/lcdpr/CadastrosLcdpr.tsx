@@ -91,7 +91,7 @@ function JanelaDoItem({ vm }: { vm: Vm }) {
           {j.variaveis && <p className="registro-dica">{vm.variaveis}</p>}
         </div>
         <footer className="registro-pe">
-          {!j.novo && <button type="button" className="btn btn-danger" onClick={() => void vm.removerJanela()}><Icone nome="x" />Remover</button>}
+          {!j.novo && <button type="button" className="btn btn-danger" onClick={() => void vm.removerJanela()}><Icone nome="x" />Excluir</button>}
           <span className="tarefas-barra-espaco" />
           <button type="button" className="btn btn-outline" onClick={vm.fecharJanela}>Cancelar</button>
           <button type="button" className="btn btn-primary" onClick={() => void vm.salvarJanela()} title="Salvar (Ctrl+Enter)">

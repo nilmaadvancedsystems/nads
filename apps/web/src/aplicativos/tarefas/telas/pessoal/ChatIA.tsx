@@ -95,7 +95,7 @@ export function ChatIA({ rascunho, limparRascunho, irParaFaq }: { rascunho: stri
           </select>
         )}
         {vm.conversa && (
-          <BotaoIcone icone="x" titulo="Apagar esta conversa" onClick={() => vm.apagar(vm.conversa!)} />
+          <BotaoIcone icone="x" titulo="Apagar esta conversa" onClick={() => void vm.apagar(vm.conversa!)} />
         )}
         <span className={'ia-estado fraco' + (desligada ? ' desligada' : '')}>
           {vm.carregando ? 'Vendo se a IA está de pé…' : vm.ligada ? 'IA ligada' + (vm.motor ? ' (' + vm.motor + ')' : '') : 'IA desligada agora'}

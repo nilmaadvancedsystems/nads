@@ -81,7 +81,7 @@ export function useSegredos(cofre: VmCofre, empresa: string, codigo: number | nu
       if (!segredos.certificado?.arquivo) return;
       const ok = await modal({ icone: 'alert', titulo: 'Excluir o certificado de ' + empresa + '?',
         texto: (segredos.certificado.nomeArquivo || 'O certificado') + ' sai do cofre. Não dá para desfazer.',
-        botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }] });
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }] });
       if (!ok) return;
       const novo: c.SegredosDaEmpresa = { ...segredos, certificado: undefined };
       await cofre.salvar(empresa, codigo, novo);

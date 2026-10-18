@@ -38,7 +38,10 @@ export function EscolherEmpresaCadastro() {
         <button type="button" className="btn btn-primary" onClick={() => setNova(true)}><Icone nome="plus" />Nova empresa</button>
       </div>
 
-      {!vm.carregando && !vm.linhas.length ? <Vazio icone="search" titulo="Nenhuma empresa com isso" /> : (
+      {!vm.carregando && !vm.linhas.length ? <Vazio icone="search" titulo="Nenhuma empresa com isso">
+        {/* a saída do vazio (revisão da UI, 18/10/2026) */}
+        {(vm.busca || vm.situacao) && <button type="button" className="btn btn-outline" onClick={() => { vm.setBusca(''); vm.setSituacao(''); }}>Limpar a busca e a situação</button>}
+      </Vazio> : (
         <div ref={tabela} className="table-wrap">
           <table ref={linhasQueSeMovem} className="tabela-empresas cad-lista">
             <thead><tr><th>Código</th><th>Empresa</th><th>Cadastro</th><th>Bancos</th><th>Atualizado</th></tr></thead>

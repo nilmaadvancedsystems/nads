@@ -109,7 +109,7 @@ export function useFgtsDoDp() {
     async pedir(codigo: number, modo: ModoFgts) {
       const l = todas.find(x => x.codigo === codigo);
       if (!l) return;
-      try { await pedir(l, modo); } catch (e) { toast('Não deu: ' + (e instanceof Error ? e.message : String(e))); }
+      try { await pedir(l, modo); } catch (e) { toast('Não consegui pedir: ' + (e instanceof Error ? e.message : String(e))); }
     },
     /** pede a guia de todos os que ainda não têm (nem estão na fila) */
     async emitirTodas() {
@@ -122,7 +122,7 @@ export function useFgtsDoDp() {
     },
     /** cancela o pedido na fila ou com o robô (Vitor, 09/10/2026: "botão de cancelar requisição") */
     async cancelar(id: string) {
-      try { await repo.cancelar(id); toast('Pedido cancelado.'); } catch (e) { toast('Não deu para cancelar: ' + (e instanceof Error ? e.message : String(e))); }
+      try { await repo.cancelar(id); toast('Pedido cancelado.'); } catch (e) { toast('Não consegui cancelar: ' + (e instanceof Error ? e.message : String(e))); }
     },
     async baixar(p: PedidoFgts) {
       const a = await repo.pdf(p.id);

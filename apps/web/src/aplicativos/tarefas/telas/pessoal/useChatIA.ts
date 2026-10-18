@@ -9,7 +9,7 @@ const PACIENCIA_MS = 120 * 1000;
 
 export function useChatIA() {
   const repo = useIA();
-  const { toast } = useRetorno();
+  const { toast, modal } = useRetorno();
   const [conversa, setConversa] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [agora, setAgora] = useState(() => Date.now());
@@ -48,7 +48,11 @@ export function useChatIA() {
         return false;
       } finally { setEnviando(false); }
     },
-    apagar: (id: string) => {
+    // a confirmação antes de apagar (revisão da UI, 18/10/2026: "confirmação antes de ações destrutivas")
+    apagar: async (id: string) => {
+      const ok = await modal<boolean>({ icone: 'alert', titulo: 'Apagar esta conversa?', texto: 'As mensagens dela somem. Não dá para desfazer.',
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Apagar', valor: true, variante: 'btn-danger' }] });
+      if (!ok) return;
       void repo.apagar(id).then(() => { if (id === conversa) setConversa(null); }, () => toast('Não consegui apagar a conversa.'));
     },
   };

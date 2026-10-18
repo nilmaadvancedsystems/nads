@@ -68,7 +68,7 @@ export function useCofre() {
     if (ocupado) return;
     if (modoDesenvolvedor()) { toast(AVISO_DEV); return; }
     setOcupado(true);
-    try { await f(); } catch (e) { toast('Não deu: ' + (e instanceof Error ? e.message : String(e))); } finally { setOcupado(false); }
+    try { await f(); } catch (e) { toast('Não consegui: ' + (e instanceof Error ? e.message : String(e))); } finally { setOcupado(false); }
   }
   async function minhaChaveNova() {
     const par = await c.novoParDaPessoa();

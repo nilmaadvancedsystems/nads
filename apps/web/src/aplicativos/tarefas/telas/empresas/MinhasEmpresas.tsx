@@ -72,7 +72,10 @@ export function MinhasEmpresas() {
       </div>
 
       {/* a tabela aparece na hora; as linhas entram quando o banco responde (a barra do topo termina) */}
-      {!vm.carregando && vm.total === 0 ? <Vazio icone="briefcase" titulo="Nenhuma empresa nesta situação" /> : (
+      {!vm.carregando && vm.total === 0 ? <Vazio icone="briefcase" titulo="Nenhuma empresa nesta situação">
+        {/* a saída do vazio (revisão da UI, 18/10/2026) */}
+        {(vm.busca || vm.situacao) && <button type="button" className="btn btn-outline" onClick={vm.limparFiltros}>Limpar a busca e a situação</button>}
+      </Vazio> : (
         <div ref={tabela} className="table-wrap">
           <table ref={linhasQueSeMovem} className="tabela-empresas">
             <thead><tr>

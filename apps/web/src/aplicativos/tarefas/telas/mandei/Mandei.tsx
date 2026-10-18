@@ -2,7 +2,7 @@
 // dos tickets (a linha abre o ticket embaixo), os selos da situação e o cartão do ticket com as respostas, os arquivos
 // e os links. Respondido: o Resolver volta para a etapa da Tarefa.
 import { mandei as m } from '@nads/core';
-import { Alerta, Icone, MenuSuspenso } from '@nads/ui';
+import { Alerta, Icone, MenuSuspenso, Vazio } from '@nads/ui';
 import { Fragment } from 'react';
 import { ROTULO_DO_FILTRO, useMandei, type FiltroDoMandei } from './useMandei';
 
@@ -47,7 +47,10 @@ export function Mandei({ pagina }: { pagina: 'meus' | 'central' }) {
           dentro da linha da tabela larga) */}
       {!vm.linhas.length ? (
         <div className="table-wrap">
-          <div className="gh-blank"><Icone nome="mensagem" /><h4>Nenhum ticket neste filtro</h4><p>Os tickets saem das etapas (ex.: Clientes › Envio › Mandar pelo Mandei).</p></div>
+          <Vazio icone="mensagem" titulo="Nenhum ticket neste filtro" texto="Os tickets saem das etapas (ex.: Clientes › Envio › Mandar pelo Mandei).">
+            {/* a saída do vazio (revisão da UI, 18/10/2026) */}
+            {(vm.filtro !== 'todos' || vm.busca) && <button type="button" className="btn btn-outline" onClick={() => { vm.setFiltro('todos'); vm.setBusca(''); }}>Ver todos os tickets</button>}
+          </Vazio>
         </div>
       ) : (
       <div className="table-wrap">
