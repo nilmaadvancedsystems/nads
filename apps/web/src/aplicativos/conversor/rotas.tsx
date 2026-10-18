@@ -4,13 +4,16 @@ import { extrator } from '@nads/core';
 import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { ocrDoArquivo } from '../../comum/ocr';
 import { Navigate, Outlet, useParams, type RouteObject } from 'react-router';
+import { NaEspera, pedaco } from '../../comum/pedaco';
 import { BASE } from './casca/caminho';
 import { CascaConversor } from './casca/Casca';
 import { caminhoDaEtapa, ETAPAS, indiceDaEtapa, type IdEtapa } from './casca/navegacao';
 import { SessaoProvider, useSessao } from './casca/sessao';
-import { Arquivo } from './telas/arquivo/Arquivo';
-import { Baixar } from './telas/baixar/Baixar';
-import { Conferencia } from './telas/conferencia/Conferencia';
+
+// as etapas são pedaços à parte (revisão da UI, 18/10/2026): só baixam quando abrem
+const Arquivo = pedaco(() => import('./telas/arquivo/Arquivo'), 'Arquivo');
+const Baixar = pedaco(() => import('./telas/baixar/Baixar'), 'Baixar');
+const Conferencia = pedaco(() => import('./telas/conferencia/Conferencia'), 'Conferencia');
 
 extrator.definirWorkerDoPdf(workerDoPdf);
 // o extrato escaneado (PDF sem texto ou foto) passa pelo OCR do navegador (Vitor, 13/10/2026)
@@ -21,7 +24,7 @@ function AppConversor() {
   return (
     <SessaoProvider etapa={(indiceDaEtapa(etapa) >= 0 ? etapa : 'arquivo') as IdEtapa}>
       <CascaConversor>
-        <Outlet />
+        <NaEspera><Outlet /></NaEspera>
       </CascaConversor>
     </SessaoProvider>
   );
