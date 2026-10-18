@@ -1,13 +1,14 @@
 // O cofre fechado para quem está usando: criar o cofre (a primeira vez), pedir acesso (este navegador não tem chave),
 // esperar a liberação, e o código de recuperação.
-import { BotaoAcao, Icone } from '@nads/ui';
+import { BotaoAcao, Icone, Vazio } from '@nads/ui';
 import { useState } from 'react';
 import type { VmCofre } from './useCofre';
 
 export function CofreFechado({ vm }: { vm: VmCofre }) {
   const [codigo, setCodigo] = useState('');
   if (vm.estado === 'carregando') return null;
-  if (vm.estado === 'erro') return <div className="card gh-blank cofre-fechado"><Icone nome="alert" /><h4>O cofre não abriu</h4><p>{vm.erro}</p></div>;
+  // o erro com o Tentar de novo (revisão da UI, 18/10/2026)
+  if (vm.estado === 'erro') return <div className="card cofre-fechado"><Vazio icone="alert" titulo="O cofre não abriu" texto={vm.erro} onTentarDeNovo={() => location.reload()} /></div>;
   return (
     <div className="card gh-blank cofre-fechado">
       <Icone nome="lock" />

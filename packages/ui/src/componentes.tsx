@@ -37,17 +37,17 @@ function faixaDosAlertas(): HTMLElement {
  * Aparece de novo quando o título ou o texto mudam, ou quando a tela abre outra vez. naLinha: na própria tela (o catálogo).
  * A pergunta (pergunta, ou o título que acaba em "?") não some nem tem ×: fica até a pessoa responder (Vitor, 08/10/2026).
  */
-export function Alerta(p: { titulo: string; texto?: ReactNode; tom?: 'ok'; children?: ReactNode; onFechar?: () => void; naLinha?: boolean; pergunta?: boolean }) {
+export function Alerta(p: { titulo: string; texto?: ReactNode; tom?: 'ok'; children?: ReactNode; onFechar?: () => void; naLinha?: boolean; pergunta?: boolean; className?: string }) {
   if (p.naLinha) return <CaixaDoAlerta {...p} />;
   return <AlertaNoTopo key={p.titulo + '|' + (typeof p.texto === 'string' || typeof p.texto === 'number' ? p.texto : '')} {...p} />;
 }
 
-function CaixaDoAlerta({ titulo, texto, tom, children, fechar }: { titulo: string; texto?: ReactNode; tom?: 'ok'; children?: ReactNode; fechar?: () => void }) {
+function CaixaDoAlerta({ titulo, texto, tom, children, fechar, className }: { titulo: string; texto?: ReactNode; tom?: 'ok'; children?: ReactNode; fechar?: () => void; className?: string }) {
   return (
-    <div className={'alert' + (tom === 'ok' ? ' alert-ok' : '')} role="status">
+    <div className={'alert' + (tom === 'ok' ? ' alert-ok' : '') + (className ? ' ' + className : '')} role="status">
       <Icone nome={tom === 'ok' ? 'checkCircle' : 'alert'} />
       <div>
-        <p className="alert-title">{titulo}</p>
+        {titulo && <p className="alert-title">{titulo}</p>}
         {texto != null && texto !== '' && <p className="alert-text">{texto}</p>}
         {children}
       </div>
@@ -309,13 +309,15 @@ export function BotaoFechar({ onClick, rotulo = 'Fechar', canto, className, disa
  * O vazio do catálogo (.gh-blank): o ícone, o título e a explicação, no meio. compacto: dentro de cartões estreitos,
  * células e janelas pequenas (menos espaço, letra menor). Revisão da UI, 16/10/2026: eram ~40 <p class="empty"> soltos.
  */
-export function Vazio({ titulo, texto, icone = 'search', compacto, children }: { titulo?: ReactNode; texto?: ReactNode; icone?: NomeIcone; compacto?: boolean; children?: ReactNode }) {
+export function Vazio({ titulo, texto, icone = 'search', compacto, children, onTentarDeNovo }: { titulo?: ReactNode; texto?: ReactNode; icone?: NomeIcone; compacto?: boolean; children?: ReactNode;
+  /** o erro (revisão da UI, 18/10/2026: "erro com uma mensagem clara e um botão de tentar de novo") */
+  onTentarDeNovo?: () => void }) {
   return (
-    <div className={'gh-blank' + (compacto ? ' compacto' : '')} role="status">
+    <div className={'gh-blank' + (compacto ? ' compacto' : '') + (onTentarDeNovo ? ' erro' : '')} role={onTentarDeNovo ? 'alert' : 'status'}>
       <Icone nome={icone} />
       {titulo != null && titulo !== '' && <h4>{titulo}</h4>}
       {texto != null && texto !== '' && <p>{texto}</p>}
-      {children}
+      {(children || onTentarDeNovo) && <div className="gh-blank-acoes">{children}{onTentarDeNovo && <button type="button" className="btn btn-outline" onClick={onTentarDeNovo}><Icone nome="repeat" />Tentar de novo</button>}</div>}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 // Cadastro › Contas padrão: um campo por conta (com as contas do plano para escolher e o nome embaixo) e
 // os códigos de histórico. Grava ao sair do campo (ou Enter).
-import { Dica, Icone, useCarregando } from '@nads/ui';
+import { Alerta, Dica, useCarregando } from '@nads/ui';
 import { useId, useState } from 'react';
 import { useContasPadrao, type CampoPadrao } from './useContasPadrao';
 
@@ -33,13 +33,7 @@ export function ContasPadrao({ rota }: { rota: string }) {
   return (
     <section>
       {!vm.temPlano && !vm.carregando && (
-        <div className="alert cad-aviso">
-          <Icone nome="alert" />
-          <div>
-            <p className="alert-title">Sem plano de contas</p>
-            <p className="alert-text">Dá para preencher os códigos, mas o nome e a conferência das contas aparecem depois de importar o plano (Cadastro › Plano de contas).</p>
-          </div>
-        </div>
+        <Alerta naLinha className="cad-aviso" titulo="Sem plano de contas" texto="Dá para preencher os códigos, mas o nome e a conferência das contas aparecem depois de importar o plano (Cadastro › Plano de contas)." />
       )}
       <datalist id={lista}>{vm.contasDoPlano.map(x => <option key={x.codigo} value={x.codigo}>{x.nome}</option>)}</datalist>
       {!vm.carregando && (

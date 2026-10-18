@@ -1,7 +1,7 @@
 // Etapa Exclusão do Creditor, no visual da Importação: o que fazer no Alterdata numa linha, e a linha do banco com o
 // razão (o ícone de importar; importado, o Ok verde ou o Não bate), o saldo final do extrato e do razão no meio e a
 // seta com os dias que não batem.
-import { Alerta, Icone, LogoBanco } from '@nads/ui';
+import { Alerta, Esqueleto, Icone, LogoBanco } from '@nads/ui';
 import { useRef, useState } from 'react';
 import { useExclusao } from './useExclusao';
 import { BotaoDeTeste } from '../../../../../../comum/BotaoDeTeste';
@@ -29,7 +29,7 @@ export function Exclusao() {
               <span className="imp-ico imp-logo"><LogoBanco banco={vm.banco.marca || ''} cor /></span>
               <div className="imp-txt"><span><b>{vm.banco.nome}</b>{vm.banco.conta && <span className="imp-conta">{vm.banco.conta}</span>}</span></div>
               <div className="imp-resumo">
-                {vm.lendo ? <div><span>Lendo…</span></div> : vm.resumo.length > 0 && <div>{vm.resumo.map(t => <span key={t}>{t}</span>)}</div>}
+                {vm.lendo ? <Esqueleto linhas={1} /> : vm.resumo.length > 0 && <div>{vm.resumo.map(t => <span key={t}>{t}</span>)}</div>}
               </div>
               <div className="imp-grupos">
                 {vm.temRazao && (vm.bate

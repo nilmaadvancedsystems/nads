@@ -2,7 +2,7 @@
 // da conta, Limpar e Conferir. Origem: conferencia.html ~L1268-1297; vcCarregarContas (~L3858),
 // vcRenderMulti (~L3717), vcMontarCfopSelect (~L3944), vcInfoLidos (~L3713), alerta (~L2639).
 import { formatos } from '@nads/core';
-import { Icone, Vazio } from '@nads/ui';
+import { Esqueleto, Icone, Vazio } from '@nads/ui';
 import { useEffect, useRef } from 'react';
 import type { InfoRelatorio, useVerificarConta } from '../useVerificarConta';
 import { AlertaVerde } from './Tabelas';
@@ -87,7 +87,7 @@ function CampoRelatorio({ id, r, nome, vm, idNome, idIcone }: { id: string; r: R
 }
 
 function InfoDoRelatorio({ r }: { r: { linhas: number; info: InfoRelatorio | null } }) {
-  if (r.info?.tom === 'lendo') return <p className="hint">Lendo…</p>;
+  if (r.info?.tom === 'lendo') return <Esqueleto linhas={2} />;
   if (r.info?.tom === 'erro') {
     return (
       <div className="alert">

@@ -3,7 +3,7 @@
 // mais limpas", "marcar várias e emitir", "acompanhar o robô"): os filtros numa linha; o painel do robô (o que ele faz
 // agora, a verificação do gov.br e a fila); a tabela com a caixinha para o lote, a situação como selo e, na linha, só
 // Emitir (ou o PDF) e o ⋯ (Ensaio, Emitir de novo, Passos do robô). Clicar na situação abre os passos do robô.
-import { BotaoAcao, Esqueleto, Icone, MenuSuspenso, NumeroQueConta, SeletorMes, useCarregando, useEntradaAnimada, useLinhasQueSeMovem } from '@nads/ui';
+import { Alerta, BotaoAcao, Esqueleto, Icone, MenuSuspenso, NumeroQueConta, SeletorMes, useCarregando, useEntradaAnimada, useLinhasQueSeMovem } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { JanelaLateral } from '../janela/JanelaLateral';
 import { MenuDeFiltro } from './MenuDeFiltro';
@@ -91,7 +91,7 @@ export function FgtsDoDp() {
   return (
     <section className="dp-painel">
       {r.carregado && !r.ligado && (
-        <div className="alert fgts-robo"><Icone nome="alert" /><div><p className="alert-title">Robô do FGTS desligado</p><p className="alert-text">{r.motivo || 'Sem o certificado do escritório na máquina do robô.'}</p></div></div>
+        <Alerta naLinha className="fgts-robo" titulo="Robô do FGTS desligado" texto={r.motivo || 'Sem o certificado do escritório na máquina do robô.'} />
       )}
       <div className="tarefas-barra-topo dp-filtros-linha">
         {/* a barra no padrão do resto do app (revisão da UI, 16/10/2026): a busca de lupa e os filtros em menus numa linha */}

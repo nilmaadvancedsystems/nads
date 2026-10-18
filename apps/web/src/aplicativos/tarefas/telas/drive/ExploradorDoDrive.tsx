@@ -9,7 +9,7 @@
 // o nads (Esc sai). "T" vai para a busca, como no GitHub.
 import type { entregas as e } from '@nads/core';
 import { cleanInlineStyles } from 'animejs';
-import { animar, entrar, GAVETA, Icone, MenuSuspenso, semMovimentoForte, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, useRetorno, Vazio } from '@nads/ui';
+import { Alerta, animar, entrar, GAVETA, Icone, MenuSuspenso, semMovimentoForte, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, useRetorno, Vazio } from '@nads/ui';
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent, type ReactNode, type RefObject } from 'react';
 import { BotaoDoArquivador } from './BotaoDoArquivador';
 import { EnviarAoSecretario } from './EnviarAoSecretario';
@@ -463,7 +463,7 @@ export function ExploradorDoDrive() {
   return (
     <section className={'drive' + (vm.telaCheia ? ' tela-cheia' : '') + (soltando ? ' soltando' : '')}
       onKeyDown={teclas} onDragOver={arrastando} onDragLeave={ev => { if (!ev.currentTarget.contains(ev.relatedTarget as Node | null)) setSoltando(false); }} onDrop={soltar}>
-      {vm.erro && <div className="alert"><Icone nome="alert" /><div><p className="alert-text">{vm.erro}</p></div></div>}
+      {vm.erro && <Alerta naLinha titulo="" texto={vm.erro} />}
       {corpo}
       {vm.pedidos.length + envio.envios.length > 0 || vm.atualizandoMapa ? (
         <div className="drive-pedidos" role="status" aria-live="polite">

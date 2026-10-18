@@ -1,7 +1,7 @@
 // O Caixa na etapa, no desenho da Importação do banco (Vitor, 05/10/2026): a linha da conta com o Razão à direita (o
 // ícone importa; importado, o ✓ que exclui), a grade dos meses (clicar abre o mês; de novo, volta para o período todo) e
 // a faixa Pontos de atenção (a Lançamentos saiu em 14/10/2026). Em cima, o aviso do Creditor quando o caixa tem liquidação de cobrança.
-import { CampoArquivo, Icone } from '@nads/ui';
+import { Alerta, CampoArquivo, Icone } from '@nads/ui';
 import { useId, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import type { RazaoDaEtapa as Razao } from '../useRazaoDaEtapa';
@@ -42,15 +42,8 @@ export function RazaoDaEtapa({ conta, razao, conferir, teste = [] }: { conta: st
   return (
     <div className="executor-razao">
       {razao.creditor.length > 0 && (
-        <div className="alert">
-          <Icone nome="alert" />
-          <div>
-            <p className="alert-title">Liquidação de cobrança no caixa: faça o Creditor</p>
-            <p className="alert-text">
-              O caixa tem CRÉD.LIQ.COBRANÇA em {razao.creditor.join(', ')}. A etapa Creditor entrou na rotina {razao.creditor.length === 1 ? 'desse mês' : 'desses meses'}, logo depois do Caixa, e é obrigatória.
-            </p>
-          </div>
-        </div>
+        <Alerta naLinha titulo="Liquidação de cobrança no caixa: faça o Creditor"
+          texto={<>O caixa tem CRÉD.LIQ.COBRANÇA em {razao.creditor.join(', ')}. A etapa Creditor entrou na rotina {razao.creditor.length === 1 ? 'desse mês' : 'desses meses'}, logo depois do Caixa, e é obrigatória.</>} />
       )}
       {razao.cobertura && (razao.cobertura.faltam.length > 0 || razao.cobertura.aMais.length > 0) && (
         <div className="alert">

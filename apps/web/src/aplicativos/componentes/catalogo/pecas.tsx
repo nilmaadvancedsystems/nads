@@ -626,8 +626,8 @@ export const PECAS_BASE: Peca[] = [
       </div>
     ) },
   { id: 'vazio', tipo: 'cartoes', nome: 'Vazio (nada aqui)', descricao: 'O ícone, o título e a explicação no meio. Compacto (revisão da UI, 16/10/2026) dentro de cartões estreitos, células e janelas pequenas', componente: 'Vazio', classes: ['gh-blank', 'gh-blank compacto'], telas: TODAS,
-    uso: '<Vazio titulo="Nenhum pedido" texto="…" />  ·  <Vazio compacto texto="Nenhuma objeção nesta competência." />',
-    demo: () => <div style={{ display: 'grid', gap: 12, width: '100%' }}><Vazio titulo="Nenhum pedido" texto="Nenhum pedido feito para esta empresa ainda." /><div className="card" style={{ margin: 0 }}><Vazio compacto icone="checkCircle" texto="Nenhuma objeção registrada nesta competência." /></div></div> },
+    uso: '<Vazio titulo="Nenhum pedido" texto="…" />  ·  <Vazio compacto texto="…" />  ·  com a saída: <Vazio …><button …>Limpar a busca</button></Vazio>  ·  o erro: <Vazio icone="alert" titulo="…" texto={erro} onTentarDeNovo={…} />',
+    demo: () => <div style={{ display: 'grid', gap: 12, width: '100%' }}><Vazio titulo="Nenhum pedido" texto="Nenhum pedido feito para esta empresa ainda." /><div className="card" style={{ margin: 0 }}><Vazio compacto icone="checkCircle" texto="Nenhuma objeção registrada nesta competência." /></div><Vazio titulo="Nenhuma empresa com isso" texto="A busca não achou nada."><button type="button" className="btn btn-outline">Limpar a busca</button></Vazio><Vazio icone="alert" titulo="Esta tela não abriu" texto="O banco não respondeu." onTentarDeNovo={nada} /></div> },
   { id: 'checklist-fiscal', tipo: 'cartoes', nome: 'Checklist disfarçada (rotina do Fiscal)', descricao: 'O cartão com a barra de progresso; cada tarefa uma faixa que abre (caixinha, contador, Importar, Conferido) com o painel dela (Stat, rank, tabela, gráficos)', componente: 'ChecklistDisfarcado', classes: ['card folha-check pt-check', 'imp-faixa pt-tarefa', 'subnav-caixa', 'tarefas-barra'], telas: ['t-exec-fiscal-rotina'], largo: true,
     demo: () => (
       <div className="card folha-check pt-check" style={{ width: '100%' }}>

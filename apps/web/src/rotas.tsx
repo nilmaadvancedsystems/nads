@@ -18,6 +18,7 @@ import { rotasConversor } from './aplicativos/conversor/rotas';
 import { rotasExtratudo } from './aplicativos/extratudo/rotas';
 import { rotasTarefas } from './aplicativos/tarefas/rotas';
 import { rotasMandei } from './aplicativos/mandei/rotas';
+import { ErroDaTela } from './comum/ErroDaTela';
 
 const APLICATIVOS: Record<string, { nome: string; rotas: RouteObject[]; raiz: string }> = {
   'concilia-ai': { nome: 'Concilia aí', rotas: rotasConciliaAi, raiz: '/' },
@@ -37,9 +38,11 @@ const APLICATIVOS: Record<string, { nome: string; rotas: RouteObject[]; raiz: st
 };
 
 const so = APLICATIVOS[import.meta.env.VITE_APLICATIVO || ''];
+// a tela que quebra mostra o ErroDaTela (revisão da UI, 18/10/2026), em todas as rotas de cima
+const comErro = (rs: RouteObject[]): RouteObject[] => rs.map(r => (r.errorElement ? r : { ...r, errorElement: <ErroDaTela /> }));
 if (so) document.title = so.nome + ' — Nilma';
 
-export const roteador = createBrowserRouter(so
+export const roteador = createBrowserRouter(comErro(so
   ? [...so.rotas, ...(so.raiz !== '/' ? [{ path: '/', element: <Navigate to={so.raiz} replace /> }] : []), { path: '*', element: <Navigate to={so.raiz} replace /> }]
   : [
     ...rotasConciliadorzinho,
@@ -51,4 +54,4 @@ export const roteador = createBrowserRouter(so
     ...rotasTarefas,
     ...rotasConciliaAi,
     { path: '*', element: <Navigate to="/" replace /> },
-  ]);
+  ]));

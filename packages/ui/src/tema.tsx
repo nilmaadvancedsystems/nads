@@ -58,7 +58,7 @@ export function SeletorTema() {
   return (
     <div className="theme-toggle" role="group" aria-label="Tema">
       {opcoes.map(o => (
-        <button key={o.t} type="button" className={tema === o.t ? 'active' : undefined} aria-label={o.rotulo} title={o.titulo} onClick={() => mudar(o.t)}>
+        <button key={o.t} type="button" className={tema === o.t ? 'active' : undefined} aria-pressed={tema === o.t} aria-label={o.rotulo} title={o.titulo} onClick={() => mudar(o.t)}>
           <Icone nome={o.icone} />
         </button>
       ))}
