@@ -5,6 +5,7 @@ import { BarraDeCarregamento, DefsMarca, iniciarAnimador, iniciarContinuidade, R
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router';
+import { recarregarUmaVez } from './comum/pedacoQueSumiu';
 import { roteador } from './rotas';
 
 // as entradas animadas (janelas, menus, avisos, gaveta) e o toque nos botões: o animador do @nads/ui (animejs)
@@ -14,15 +15,10 @@ iniciarContinuidade();
 
 // uma aba aberta antes de uma publicação pede um pedaço do app que o site já não tem ("Failed to fetch dynamically
 // imported module", ao ler um PDF): recarrega uma vez, pegando a versão nova, em vez de mostrar o erro. Só uma vez a
-// cada 30 s (se o pedaço faltar de verdade, o erro aparece, sem ficar recarregando sem parar).
+// cada 30 s (se o pedaço faltar de verdade, o erro aparece, sem ficar recarregando sem parar). A regra fica em
+// comum/pedacoQueSumiu.ts, a mesma do ErroDaTela.
 window.addEventListener('vite:preloadError', ev => {
-  try {
-    const ultima = Number(sessionStorage.getItem('nads-recarregou') || 0);
-    if (Date.now() - ultima < 30000) return;
-    sessionStorage.setItem('nads-recarregou', String(Date.now()));
-  } catch { return; }
-  ev.preventDefault();
-  window.location.reload();
+  if (recarregarUmaVez()) ev.preventDefault();
 });
 
 createRoot(document.getElementById('raiz') as HTMLElement).render(

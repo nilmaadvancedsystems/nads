@@ -221,15 +221,20 @@ export const PECAS_BASE: Peca[] = [
   { id: 'dica', tipo: 'botoes', nome: 'Dica (?)', descricao: 'O "?" de 14 px ao lado do rótulo: a explicação aparece ao passar o mouse ou ao focar', componente: 'Dica', classes: ['dica'], telas: ['t-cadastro-janela'],
     uso: '<span>Presta serviços<Dica texto="Mostra a aba Prestados na Importação." /></span>', demo: () => <span>Presta serviços<Dica texto="Mostra a aba Prestados na Importação e os serviços prestados na Conferência." /></span> },
   { id: 'link-btn', removida: { como: 'substituida', por: 'btn', em: '02/10/2026', motivo: 'Navegar é pela barra de cima (Tarefas / Vitor / Minhas empresas / 292 …), sem "← Voltar" no meio da página; as outras ações em texto viraram o botão padrão.' }, tipo: 'botoes', nome: 'Ação em texto', classes: ['link-btn'], telas: ['c-verificar', 't-empresa'], demo: () => <button className="link-btn">← Voltar para Movimento</button> },
-  { id: 'gh-topo', removida: { como: 'substituida', por: 'icon-btn', em: '02/10/2026', motivo: 'Os botões do cabeçalho do executor tinham borda e fundo próprios, com os ícones apagados; agora são iguais ao Botão de ícone.' }, tipo: 'botoes', nome: 'Botões do cabeçalho (executor)', descricao: 'Os grupos (▾), as saídas (⚠ ▾), ✕ Interromper, ? O que falta e → Próximo', classes: ['gh-topo-btn', 'gh-topo-menu', 'gh-topo-forte', 'gh-topo-proximo'], telas: EXECUTOR,
+  // de volta ao catálogo (revisão da UI, 18/10/2026): estava como substituída pelo Botão de ícone desde 02/10, mas o
+  // cabeçalho do executor, o Importar dos meses (Extrator e Creditor) e o ⚡ dos dados de teste seguem com ela. A base é a
+  // do Botão de ícone (32 px, a mesma borda e o mesmo fundo); o que ela tem a mais são as variantes do cabeçalho.
+  { id: 'gh-topo', tipo: 'botoes', nome: 'Botões do cabeçalho (executor)', descricao: 'A base do Botão de ícone com as variantes do cabeçalho: o menu sem nome (ícone e ▾, largura automática), o sino do que falta, o → Próximo (na cor do botão principal; o Avançar do modo desenvolvedor, em azul) e o ✕ Interromper (no tom de perigo, sempre o último)', componente: 'MenuSuspenso (className) · button',
+    classes: ['gh-topo-btn', 'gh-topo-menu', 'gh-topo-proximo', 'gh-topo-fechar', 'gh-topo-acoes', 'gh-topo-sep'], telas: [...EXECUTOR, 'e-importacao'],
+    uso: '<MenuSuspenso rotulo="" icone="upload" className="gh-topo-btn gh-topo-menu" direita itens={...} />  ·  <button className="gh-topo-btn gh-topo-proximo" aria-label="Próximo">  ·  <button className="gh-topo-btn gh-topo-fechar" aria-label="Interromper">',
     demo: () => (
-      <nav className="gh-topo-acoes">
-        <button className="gh-topo-btn gh-topo-menu" type="button"><Icone nome="fileUp" /><Icone nome="caretDown" className="menu-seta" /></button>
-        <button className="gh-topo-btn gh-topo-menu" type="button"><Icone nome="alert" /><Icone nome="caretDown" className="menu-seta" /></button>
-        <button className="gh-topo-btn gh-topo-forte" type="button" title="Interromper"><Icone nome="x" /></button>
-        <button className="gh-topo-btn gh-topo-forte" type="button" title="O que falta"><Icone nome="ajuda" /></button>
-        <button className="gh-topo-btn gh-topo-proximo" type="button" title="Próximo"><Icone nome="arrowDown" style={{ transform: 'rotate(-90deg)' }} /></button>
-        <span className="gh-topo-sep" /><Avatar />
+      <nav className="gh-topo-acoes" aria-label="Etapa">
+        <MenuSuspenso rotulo="" icone="fileUp" className="gh-topo-btn gh-topo-menu" dica="Grupos da rotina" itens={[{ rotulo: 'Preparação', icone: 'fileUp', marcado: true, onClick: nada }]} />
+        <button type="button" className="gh-topo-btn gh-topo-menu falta-btn" title="Para seguir, falta: 3"><Icone nome="sino" /><span className="falta-qtd">3</span><Icone nome="caretDown" className="menu-seta" /></button>
+        <button type="button" className="gh-topo-btn gh-topo-proximo" title="Próximo" aria-label="Próximo"><Icone nome="arrowDown" style={{ transform: 'rotate(-90deg)' }} /></button>
+        <button type="button" className="gh-topo-btn gh-topo-proximo" disabled title="Conferindo…" aria-label="Próximo"><span className="btn-spinner" /></button>
+        <span className="gh-topo-sep" aria-hidden="true" /><Avatar />
+        <button type="button" className="gh-topo-btn gh-topo-fechar" title="Interromper a etapa" aria-label="Interromper"><Icone nome="x" /></button>
       </nav>
     ) },
   { id: 'gh-avatar', tipo: 'botoes', nome: 'Perfil (avatar)', classes: ['gh-avatar'], telas: TAREFAS, demo: () => <Avatar /> },
