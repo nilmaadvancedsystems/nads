@@ -49,12 +49,12 @@ const MARCA: Record<EstadoDaObrigacao, { simbolo: string; dica: string }> = {
 const ORDEM_DASH: SituacaoDoDash[] = ['atrasada', 'pendente', 'feita', 'sem'];
 const TOM_DASH: Record<SituacaoDoDash, TomDoPainel> = { atrasada: 'perigo', pendente: 'aviso', feita: 'ok', sem: 'neutro' };
 const BADGE_DASH: Record<SituacaoDoDash, string> = { atrasada: 'badge-bad', pendente: 'badge-warn', feita: 'badge-ok', sem: 'badge-neutral' };
-/** o prazo do cartão: parado há N dias; ou o mês fechou há N dias / fecha em N dias */
-function prazoDoCartao(dias: number, parado: boolean): string {
+/** o prazo do cartão pelo prazo legal da parte mais urgente (revisão da UI, 18/10/2026): "FGTS · vence em 2 dias" */
+function prazoDoCartao(dias: number, parte: string): string {
   const n = Math.abs(dias);
   const d = n === 1 ? ' dia' : ' dias';
-  if (parado) return n === 0 ? 'Parado hoje' : 'Parado há ' + n + d;
-  return dias < 0 ? 'Mês fechado há ' + n + d : dias === 0 ? 'O mês fecha hoje' : 'O mês fecha em ' + n + d;
+  const quando = dias < 0 ? 'venceu há ' + n + d : dias === 0 ? 'vence hoje' : 'vence em ' + n + d;
+  return parte ? parte + ' · ' + quando : quando.charAt(0).toUpperCase() + quando.slice(1);
 }
 
 const AGRUPAR: { valor: Agrupar; rotulo: string }[] = [{ valor: 'nenhum', rotulo: 'Nenhum' }, { valor: 'responsavel', rotulo: 'Responsável' }, { valor: 'agrupamento', rotulo: 'Agrupamento' }];
@@ -131,8 +131,8 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
           {vm.dash.atencao.length > 0 && (
             <div className="cert-urgentes">
               {vm.dash.atencao.slice(0, 8).map(a => (
-                <CartaoComAnel key={a.chave} dias={a.dias} titulo={a.nome} atrasado={a.dias < 0} prazo={prazoDoCartao(a.dias, a.parado)}
-                  apoio={a.codigo + ' · faltam ' + a.faltam + ' de ' + a.total + (a.paradas ? ' · ' + a.paradas + (a.paradas === 1 ? ' parada' : ' paradas') : '') + ' · ' + a.responsavel}
+                <CartaoComAnel key={a.chave} dias={a.dias} titulo={a.nome} atrasado={a.dias < 0} prazo={prazoDoCartao(a.dias, a.parte)}
+                  apoio={a.codigo + ' · faltam ' + a.faltam + ' de ' + a.total + (a.paradas ? ' · ' + a.paradas + (a.paradas === 1 ? ' parada' : ' paradas') + (a.paradoHa ? ' há ' + a.paradoHa + (a.paradoHa === 1 ? ' dia' : ' dias') : '') : '') + ' · ' + a.responsavel}
                   dica={'Mostrar só ' + a.nome + ' na tabela das obrigações'} onClick={() => f.setBusca(String(a.codigo))} />
               ))}
             </div>

@@ -167,13 +167,21 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
     setParams(novo);
   };
 
-  // o dashboard (Savio, 15/10/2026): a competência fecha no último dia do mês; sem prazo legal cadastrado no DP, é o que há de
-  // data real. Os dias contam até ele (negativo = o mês já fechou e o cliente ainda não terminou)
+  // o dashboard (Savio, 15/10/2026), com os prazos legais (revisão da UI, 18/10/2026: t.prazosDoDp, com as fontes): cada
+  // parte pendente tem o prazo dela (a folha no 5º dia útil, o eSocial e a REINF no dia 15, as guias no dia 20…).
+  // Atrasado = tem uma parte pendente com o prazo vencido; Pendente = falta algo, mas tudo no prazo. Sem nenhum prazo
+  // cadastrado (só as categorias do nads), vale o fim do mês da competência, como antes.
   const hoje0 = new Date(); hoje0.setHours(0, 0, 0, 0);
   const fimDoMes = new Date(Number(competencia.slice(0, 4)), Number(competencia.slice(5, 7)), 0);
   const diasAteFechar = Math.round((fimDoMes.getTime() - hoje0.getTime()) / 86400000);
+  /** a parte pendente de prazo mais cedo do cliente (a mais urgente) */
+  const urgenteDe = (c: (typeof todas)[number]) => {
+    const tem = c.obrigacoes.filter(o => o.estado !== 'nao-tem');
+    return t.prazoMaisUrgenteDoDp(tem.filter(o => o.estado !== 'feita').map(o => o.id), tem.map(o => o.id), competencia, hoje0);
+  };
+  const diasDoPrazo = (c: (typeof todas)[number]) => urgenteDe(c)?.dias ?? diasAteFechar;
   const situacaoDash = (c: (typeof todas)[number]): SituacaoDoDash => c.movimento === 'Sem Movimento' || !c.temAlguma ? 'sem'
-    : c.concluida ? 'feita' : diasAteFechar < 0 ? 'atrasada' : 'pendente';
+    : c.concluida ? 'feita' : diasDoPrazo(c) < 0 ? 'atrasada' : 'pendente';
   const daSituacao = new Map(filtradas.map(c => [c.chave, situacaoDash(c)]));
   const contagemDash: Record<SituacaoDoDash, number> = { feita: 0, pendente: 0, atrasada: 0, sem: 0 };
   for (const s of daSituacao.values()) contagemDash[s]++;
@@ -192,15 +200,24 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
     const paradas = tem.filter(o => o.estado === 'parada');
     const desde = paradas.map(o => t.estadoDa(c.ex, o.etapa)?.em).filter((x): x is string => !!x).map(diasDesde);
     const parado = paradas.length > 0 && desde.length > 0;
+    const urgente = urgenteDe(c);
     return {
       chave: c.chave, codigo: c.codigo, nome: c.nomeNaTela, responsavel: c.responsavelNome, parado,
-      /** negativo = atrasado (parado há N dias, ou o mês já fechou há N dias) */
-      dias: parado ? -Math.max(...desde) : diasAteFechar,
+      /** o prazo real da parte mais urgente: negativo = venceu há N dias (sem prazo cadastrado, o fim do mês) */
+      dias: urgente ? urgente.dias : diasAteFechar,
+      /** a parte mais urgente ("FGTS"), para o cartão */
+      parte: urgente ? COLUNA[urgente.obrigacao]?.rotulo || urgente.obrigacao : '',
+      /** parado há N dias (o que está interrompido) */
+      paradoHa: parado ? Math.max(...desde) : 0,
       faltam: tem.length - tem.filter(o => o.estado === 'feita').length, total: tem.length, paradas: paradas.length,
     };
-  }).sort((a, b) => Number(b.parado) - Number(a.parado) || a.dias - b.dias || a.nome.localeCompare(b.nome, 'pt-BR'));
+  }).sort((a, b) => a.dias - b.dias || Number(b.parado) - Number(a.parado) || a.nome.localeCompare(b.nome, 'pt-BR'));
 
-  const concluidas = filtradas.filter(c => c.concluida).length;
+  // os painéis do topo com o mesmo critério da rosca (revisão da UI, 18/10/2026: antes o "Concluídos" de cima contava o
+  // cliente sem movimento, que a rosca põe em "Sem movimento"): Concluídos = com movimento e tudo feito; Pendentes = os
+  // atrasados e os pendentes da rosca; Sem movimento = a planilha diz Sem Movimento ou o cliente não tem nada no mês
+  const concluidas = contagemDash.feita;
+  const comMovimento = filtradas.length - contagemDash.sem;
   const responsaveis = contar(todas.map(c => c.responsavelNome)).map(r => r.rotulo);
 
   return {
@@ -228,11 +245,11 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
     // o vermelho do nads a folha; laranja o pró-labore, roxo o sem movimento, ciano a REINF)
     numeros: [
       { rotulo: 'Clientes', valor: filtradas.length, dica: '', tom: 'info', icone: 'briefcase' },
-      { rotulo: 'Concluídos', valor: concluidas, dica: filtradas.length ? Math.round((concluidas / filtradas.length) * 100) + '% do mês' : '', tom: 'ok', icone: 'check' },
-      { rotulo: 'Pendentes', valor: filtradas.length - concluidas, dica: '', tom: 'aviso', icone: 'clock' },
+      { rotulo: 'Concluídos', valor: concluidas, dica: comMovimento ? Math.round((concluidas / comMovimento) * 100) + '% dos com movimento' : '', tom: 'ok', icone: 'check' },
+      { rotulo: 'Pendentes', valor: contagemDash.pendente + contagemDash.atrasada, dica: contagemDash.atrasada ? contagemDash.atrasada + ' atrasados' : '', tom: 'aviso', icone: 'clock' },
       { rotulo: 'Com folha', valor: filtradas.filter(c => c.movimento === 'Folha').length, dica: '', tom: 'marca', icone: 'usuario' },
       { rotulo: 'Pró-labore', valor: filtradas.filter(c => c.movimento === 'Pró-Labore').length, dica: '', tom: 'laranja', icone: 'usuario' },
-      { rotulo: 'Sem movimento', valor: filtradas.filter(c => c.movimento === 'Sem Movimento').length, dica: '', tom: 'roxo', icone: 'list' },
+      { rotulo: 'Sem movimento', valor: contagemDash.sem, dica: '', tom: 'roxo', icone: 'list' },
       { rotulo: 'REINF autorizada', valor: filtradas.filter(c => c.reinfAutorizada).length, dica: '', tom: 'ciano', icone: 'fileUp' },
     ] as { rotulo: string; valor: number; dica: string; tom: TomDoNumero; icone: NomeIcone }[],
     /** o dashboard do Resumo no padrão do Certificados (Savio, 15/10/2026) */
