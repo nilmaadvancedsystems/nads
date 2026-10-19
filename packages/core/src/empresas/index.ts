@@ -5,4 +5,5 @@ export * from './dp';
 export * from './busca';
 export * from './bancos';
 export * as cadastro from './cadastro';
+export * as feedbacks from './feedbacks';
 export * from './legislacaoDp';

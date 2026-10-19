@@ -14,7 +14,8 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const { search } = useLocation();
   const { escolher, comLogin } = useOperador();
   const op = useOperador().operador as Operador;
-  const a = aplicacao(app);
+  // as páginas que a pessoa vê (o sênior não vê o Sistema do Cadastro; 19/10/2026)
+  const a = aplicacoesDe(op).find(x => x.id === app) ?? aplicacao(app);
   // o Cadastro também com a barra lateral (14/10/2026: "cadê a barra?"), como os outros módulos; as abas no alto não voltam
   const comAbas = false;
   const pessoal = usePessoal();

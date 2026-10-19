@@ -4655,6 +4655,32 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .ac-balao-escritorio{align-self:flex-end;border-color:var(--accent);border-radius:12px 12px 3px 12px;background:var(--accent-soft);}
 @media (max-width: 640px){.ac-balao{max-width:94%;}}
 
+/* os feedbacks da empresa (Vitor, 19/10/2026): o selo suave do nads (o mesmo da Área do Cliente, fora do .cli-app: a pílula
+   sem borda, o pontinho e o fundo suave; a cor só pelo significado) e o bloco com o formulário curto e a lista */
+.badge.badge-suave{display:inline-flex;align-items:center;gap:6px;padding:0 9px 0 7px;border:0;border-radius:999px;background:var(--surface-3);color:var(--ink-muted);font-weight:500;}
+.badge.badge-suave::before{content:'';flex:none;width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.85;}
+.badge.badge-suave.badge-bad{background:var(--danger-soft);color:var(--danger-ink);}
+.badge.badge-suave.badge-warn{background:var(--warn-soft);color:var(--warn);}
+.badge.badge-suave.badge-ok{background:var(--success-soft);color:var(--success-ink);}
+.badge.badge-suave.badge-neutral{background:var(--surface-3);color:var(--ink-muted);}
+.fb-bloco{margin-top:16px;}
+.fb-corpo{display:flex;flex-direction:column;gap:12px;padding:12px 16px 16px;}
+.fb-novo .field{margin-bottom:8px;}
+.fb-novo .field textarea{min-height:56px;}
+.fb-novo-pe{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+.fb-novo-pe .steps{margin:0;}
+.fb-restam{margin-left:auto;font-size:var(--fs-12);}
+.fb-lista{display:flex;flex-direction:column;margin:0;padding:0;list-style:none;}
+.fb-novo + .fb-lista{border-top:1px solid var(--border);}
+.fb-lista:first-child .fb-item:first-child{padding-top:0;}
+.fb-item{display:flex;flex-direction:column;gap:4px;padding:10px 0;border-bottom:1px solid var(--border);}
+.fb-item:last-child{border-bottom:0;padding-bottom:0;}
+.fb-item-topo{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-height:32px;}
+.fb-acoes{display:inline-flex;align-items:center;gap:4px;margin-left:auto;}
+.fb-texto{margin:0;font-size:var(--fs-14);line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;}
+.fb-item.resolvido .fb-texto{color:var(--ink-muted);}
+.fb-item .hint{margin:0;}
+
 /* a segunda rodada da revisão da UI (18/10/2026) ------------------------------------------------------------------------ */
 /* o selo do departamento na Equipe no tema claro com contraste AA (o azul, o âmbar e o roxo claros ficavam abaixo de 3:1);
    a seta do <select> num cinza que passa de 3:1 nos dois temas (estão nas regras de cima) */

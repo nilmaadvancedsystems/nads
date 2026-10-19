@@ -5,6 +5,7 @@ import { Fragment, useEffect, useRef } from 'react';
 import { ContasBancarias } from '../bancos/ContasBancarias';
 import { ContasPadrao } from '../contas-padrao/ContasPadrao';
 import { DadosDaEmpresa, ParametrosContabeis, ParametrosFiscais } from '../empresa/DadosDaEmpresa';
+import { FeedbacksDaEmpresa } from '../feedbacks/FeedbacksDaEmpresa';
 import { HistoricoCadastro } from '../historico/HistoricoCadastro';
 import { PlanoDeContas } from '../plano/PlanoDeContas';
 import { useJanelaDaEmpresa } from './useJanelaDaEmpresa';
@@ -99,6 +100,8 @@ export function JanelaDaEmpresa({ rota, aba }: { rota: string; aba: string }) {
             {vm.abaAberta && <h2 className="cfg-titulo">{vm.abaAberta.grupo !== 'Empresa' && <span className="fraco">{vm.abaAberta.grupo} · </span>}{vm.abaAberta.rotulo}</h2>}
             {vm.aba === 'empresa' && <ResumoDoCadastro vm={vm} />}
             <Aba rota={rota} aba={vm.aba} />
+            {/* os feedbacks da empresa para a equipe (Vitor, 19/10/2026): o sênior, o diretor e o admin escrevem, com a prioridade */}
+            {vm.aba === 'empresa' && <FeedbacksDaEmpresa nome={vm.empresa.nome} codigo={vm.empresa.codigo} />}
             {/* o link da Área do Cliente (Vitor, 16/10/2026): gerar, copiar, WhatsApp, trocar e revogar */}
             {vm.aba === 'empresa' && vm.empresa.codigo != null && <LinkDoClienteNaEmpresa codigo={vm.empresa.codigo} nome={vm.empresa.nome} />}
           </div>

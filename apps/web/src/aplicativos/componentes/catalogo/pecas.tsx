@@ -32,6 +32,7 @@ import { ContadorDeCedulas } from '../../tarefas/telas/financeiro/partes/Contado
 import { LinhaDoPlano } from '../../tarefas/telas/financeiro/partes/LinhaDoPlano';
 import { ValorDoCaixa } from '../../tarefas/telas/financeiro/partes/ValorDoCaixa';
 import { BotoesDoLink } from '../../tarefas/telas/area-cliente/partes/BotoesDoLink';
+import { BlocoDeFeedbacks, type LinhaDoFeedback } from '../../tarefas/telas/cadastro/feedbacks/partes/BlocoDeFeedbacks';
 import { ConversaDoEscritorio } from '../../tarefas/telas/area-cliente/partes/ConversaDoEscritorio';
 import '../../cliente/cliente.css';
 
@@ -40,6 +41,22 @@ const nada = () => undefined;
 function DemoDeCedulas() {
   const [q, setQ] = useState<Record<string, string>>({ '100': '1', '50': '2', '0.5': '3' });
   return <div style={{ width: '100%', maxWidth: 420 }}><ContadorDeCedulas quantidades={q} onMudar={(v, n) => setQ(x => ({ ...x, [v]: n }))} /></div>;
+}
+/** os feedbacks da empresa (19/10/2026): o bloco com o formulário de quem escreve e a lista */
+const FEEDBACKS_DE_EXEMPLO: LinhaDoFeedback[] = [
+  { id: 'a', prioridade: 'alta', autor: 'Vitor', data: '17/10/2026', resolvido: false, resolucao: '', podeMexer: true, texto: 'O cliente atrasa o extrato do Sicoob todo mês: cobrar até o dia 5.' },
+  { id: 'b', prioridade: 'baixa', autor: 'Fernando', data: '10/10/2026', resolvido: false, resolucao: '', podeMexer: false, texto: 'Prefere falar pelo WhatsApp do financeiro, não pelo e-mail.' },
+  { id: 'c', prioridade: 'media', autor: 'Nilma', data: '19/09/2026', resolvido: true, resolucao: 'Resolvido por Nilma em 07/10/2026.', podeMexer: true, texto: 'As notas de serviço vinham sem retenção; corrigido em setembro.' },
+];
+function DemoDeFeedbacks() {
+  const [texto, setTexto] = useState('');
+  const [prioridade, setPrioridade] = useState<'baixa' | 'media' | 'alta'>('media');
+  return (
+    <div style={{ width: '100%' }}>
+      <BlocoDeFeedbacks linhas={FEEDBACKS_DE_EXEMPLO} abertos={2} podeEscrever texto={texto} prioridade={prioridade} aoMudarTexto={setTexto}
+        aoMudarPrioridade={setPrioridade} aoEnviar={nada} aoResolver={nada} aoApagar={nada} />
+    </div>
+  );
 }
 // as telas da Área do Cliente e a "foto" de exemplo do avatar (um retrato desenhado, sem pessoa de verdade)
 const CLI_TELAS = ['c-cliente', 'c-cliente-documentos', 'c-cliente-guias', 'c-cliente-dp', 'c-cliente-chamados'];
@@ -966,4 +983,14 @@ export const PECAS_BASE: Peca[] = [
         <LinhaDoPlano conta={{ id: 'd', codigo: '4.1.02', descricao: 'Serviços avulsos', tipo: 'RECEITA', nivel: 3, pai: 'b', ativo: false, movimentavel: true }} fundo={2} />
       </ul></div>
     ) },
+  // os feedbacks da empresa (Vitor, 19/10/2026: "os sênior possam ver e mexer no cadastro das empresas e enviar feedbacks")
+  { id: 'selo-suave-nads', tipo: 'selos', nome: 'Selo suave (nads)', descricao: 'O selo suave da Área do Cliente trazido para o nads (badge-suave): a pílula sem borda, com o pontinho e o fundo suave; a cor só pelo significado — vermelho para a prioridade alta, amarelo para a média, neutro para a baixa, verde para resolvido. Na lista do Cadastro, "Feedback: alta" marca a empresa com feedback de prioridade alta em aberto', classes: ['badge badge-suave', 'badge-bad', 'badge-warn', 'badge-neutral', 'badge-ok'], telas: ['t-cadastro', 't-cadastro-janela', 't-empresa'],
+    demo: () => (
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <span className="badge badge-suave badge-bad">Alta</span><span className="badge badge-suave badge-warn">Média</span><span className="badge badge-suave badge-neutral">Baixa</span><span className="badge badge-suave badge-ok">Resolvido</span><span className="badge badge-suave badge-bad">Feedback: alta</span>
+      </div>
+    ) },
+  { id: 'bloco-feedbacks', tipo: 'listas', nome: 'Feedbacks da empresa', descricao: 'O recado para a equipe sobre a empresa (Vitor, 19/10/2026): em cima, para o sênior, o diretor e o admin, o texto (até 1.000 caracteres; Ctrl+Enter envia), a prioridade no Segmentado (Baixa, Média, Alta) e Enviar; embaixo, a lista — os abertos primeiro, da prioridade alta para a baixa —, com a prioridade no selo suave, quem escreveu, a data e, para o autor, o diretor e o admin, Resolver (ou Reabrir) e Apagar. Para os outros, só a lista. Na janela da empresa do Cadastro (todos) e na página da empresa (só os em aberto; sem nenhum, o bloco some)', componente: 'BlocoDeFeedbacks', classes: ['card fb-bloco', 'fb-novo', 'fb-lista', 'fb-item', 'resolvido', 'badge-suave'], telas: ['t-cadastro-janela', 't-empresa'], largo: true,
+    uso: '<BlocoDeFeedbacks linhas={vm.linhas} abertos={vm.abertos} podeEscrever={vm.podeEscrever} texto={vm.texto} prioridade={vm.prioridade} … />',
+    demo: () => <DemoDeFeedbacks /> },
 ];

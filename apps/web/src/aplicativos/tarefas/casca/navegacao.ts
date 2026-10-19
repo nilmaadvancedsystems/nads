@@ -114,9 +114,20 @@ export const APLICACOES: readonly Aplicacao[] = [
   ] },
 ];
 
+/**
+ * Quem vê e mexe no cadastro das empresas: o admin, o diretor (Vitor, 05/10/2026) e o sênior (Vitor, 19/10/2026: "quero
+ * que coloque uma opção onde os sênior possam ver e mexer no cadastro das empresas"). Excluir a empresa (só o admin, pelas
+ * regras do banco) e o Link do cliente (useAcoesDoLink: o admin e o diretor) continuam de fora para o sênior.
+ */
+export const podeMexerNoCadastro = (op: Operador | null) => !!op && (op.admin || op.nivel === 'diretor' || op.nivel === 'senior');
+
+/** As páginas do Cadastro que o sênior não abre: Sistema e agentes (os robôs e os computadores) não é cadastro de empresa. */
+const SO_ADMIN_E_DIRETOR_NO_CADASTRO: readonly string[] = ['sistema'];
+
 /** As aplicações que a pessoa vê: Fiscal só para o Fiscal; Contábil e Drive só para o Contábil; Gmail para os dois (admin vê tudo). */
 export function aplicacoesDe(op: Operador): Aplicacao[] {
-  return APLICACOES.filter(a =>
+  const soOSenior = !op.admin && op.nivel === 'senior';
+  return APLICACOES.map(a => (a.id === 'cadastro' && soOSenior ? { ...a, paginas: a.paginas.filter(p => !SO_ADMIN_E_DIRETOR_NO_CADASTRO.includes(p.id)) } : a)).filter(a =>
     (a.id !== 'fiscal' || op.admin || op.departamento === 'fiscal') &&
     (a.id !== 'dp' || op.admin || op.departamento === 'dp') &&
     (a.id !== 'contabil' || op.admin || op.departamento === 'contabil') &&
@@ -124,8 +135,8 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     // e o fiscal (cada um vê a caixa da Nilma e a do próprio setor)
     (a.id !== 'drive' || op.admin || op.departamento === 'contabil') &&
     (a.id !== 'contato' || op.admin || op.departamento === 'contabil' || op.departamento === 'fiscal') &&
-    // o Cadastro (empresas, usuários e configurações): só o admin e o diretor (Vitor, 05/10/2026)
-    (a.id !== 'cadastro' || op.admin || op.nivel === 'diretor') &&
+    // o Cadastro (empresas, equipe e sistema): o admin e o diretor (Vitor, 05/10/2026); o sênior, menos o Sistema (19/10/2026)
+    (a.id !== 'cadastro' || podeMexerNoCadastro(op)) &&
     // o Financeiro (as notas fiscais do escritório): o admin e o diretor (15/10/2026)
     (a.id !== 'financeiro' || op.admin || op.nivel === 'diretor'))
     // na gaveta, um grupo depois do outro: Rotinas, Comunicação, Escritório
