@@ -225,15 +225,20 @@ export const PECAS_BASE: Peca[] = [
   { id: 'dica', tipo: 'botoes', nome: 'Dica (?)', descricao: 'O "?" de 14 px ao lado do rótulo: a explicação aparece ao passar o mouse ou ao focar', componente: 'Dica', classes: ['dica'], telas: ['t-cadastro-janela'],
     uso: '<span>Presta serviços<Dica texto="Mostra a aba Prestados na Importação." /></span>', demo: () => <span>Presta serviços<Dica texto="Mostra a aba Prestados na Importação e os serviços prestados na Conferência." /></span> },
   { id: 'link-btn', removida: { como: 'substituida', por: 'btn', em: '02/10/2026', motivo: 'Navegar é pela barra de cima (Tarefas / Vitor / Minhas empresas / 292 …), sem "← Voltar" no meio da página; as outras ações em texto viraram o botão padrão.' }, tipo: 'botoes', nome: 'Ação em texto', classes: ['link-btn'], telas: ['c-verificar', 't-empresa'], demo: () => <button className="link-btn">← Voltar para Movimento</button> },
-  { id: 'gh-topo', removida: { como: 'substituida', por: 'icon-btn', em: '02/10/2026', motivo: 'Os botões do cabeçalho do executor tinham borda e fundo próprios, com os ícones apagados; agora são iguais ao Botão de ícone.' }, tipo: 'botoes', nome: 'Botões do cabeçalho (executor)', descricao: 'Os grupos (▾), as saídas (⚠ ▾), ✕ Interromper, ? O que falta e → Próximo', classes: ['gh-topo-btn', 'gh-topo-menu', 'gh-topo-forte', 'gh-topo-proximo'], telas: EXECUTOR,
+  // de volta ao catálogo (revisão da UI, 18/10/2026): estava como substituída pelo Botão de ícone desde 02/10, mas o
+  // cabeçalho do executor, o Importar dos meses (Extrator e Creditor) e o ⚡ dos dados de teste seguem com ela. A base é a
+  // do Botão de ícone (32 px, a mesma borda e o mesmo fundo); o que ela tem a mais são as variantes do cabeçalho.
+  { id: 'gh-topo', tipo: 'botoes', nome: 'Botões do cabeçalho (executor)', descricao: 'A base do Botão de ícone com as variantes do cabeçalho: o menu sem nome (ícone e ▾, largura automática), o sino do que falta, o → Próximo (na cor do botão principal; o Avançar do modo desenvolvedor, em azul) e o ✕ Interromper (no tom de perigo, sempre o último)', componente: 'MenuSuspenso (className) · button',
+    classes: ['gh-topo-btn', 'gh-topo-menu', 'gh-topo-proximo', 'gh-topo-fechar', 'gh-topo-acoes', 'gh-topo-sep'], telas: [...EXECUTOR, 'e-importacao'],
+    uso: '<MenuSuspenso rotulo="" icone="upload" className="gh-topo-btn gh-topo-menu" direita itens={...} />  ·  <button className="gh-topo-btn gh-topo-proximo" aria-label="Próximo">  ·  <button className="gh-topo-btn gh-topo-fechar" aria-label="Interromper">',
     demo: () => (
-      <nav className="gh-topo-acoes">
-        <button className="gh-topo-btn gh-topo-menu" type="button"><Icone nome="fileUp" /><Icone nome="caretDown" className="menu-seta" /></button>
-        <button className="gh-topo-btn gh-topo-menu" type="button"><Icone nome="alert" /><Icone nome="caretDown" className="menu-seta" /></button>
-        <button className="gh-topo-btn gh-topo-forte" type="button" title="Interromper"><Icone nome="x" /></button>
-        <button className="gh-topo-btn gh-topo-forte" type="button" title="O que falta"><Icone nome="ajuda" /></button>
-        <button className="gh-topo-btn gh-topo-proximo" type="button" title="Próximo"><Icone nome="arrowDown" style={{ transform: 'rotate(-90deg)' }} /></button>
-        <span className="gh-topo-sep" /><Avatar />
+      <nav className="gh-topo-acoes" aria-label="Etapa">
+        <MenuSuspenso rotulo="" icone="fileUp" className="gh-topo-btn gh-topo-menu" dica="Grupos da rotina" itens={[{ rotulo: 'Preparação', icone: 'fileUp', marcado: true, onClick: nada }]} />
+        <button type="button" className="gh-topo-btn gh-topo-menu falta-btn" title="Para seguir, falta: 3"><Icone nome="sino" /><span className="falta-qtd">3</span><Icone nome="caretDown" className="menu-seta" /></button>
+        <button type="button" className="gh-topo-btn gh-topo-proximo" title="Próximo" aria-label="Próximo"><Icone nome="arrowDown" style={{ transform: 'rotate(-90deg)' }} /></button>
+        <button type="button" className="gh-topo-btn gh-topo-proximo" disabled title="Conferindo…" aria-label="Próximo"><span className="btn-spinner" /></button>
+        <span className="gh-topo-sep" aria-hidden="true" /><Avatar />
+        <button type="button" className="gh-topo-btn gh-topo-fechar" title="Interromper a etapa" aria-label="Interromper"><Icone nome="x" /></button>
       </nav>
     ) },
   { id: 'gh-avatar', tipo: 'botoes', nome: 'Perfil (avatar)', classes: ['gh-avatar'], telas: TAREFAS, demo: () => <Avatar /> },
@@ -400,7 +405,7 @@ export const PECAS_BASE: Peca[] = [
 
   // ─── Menus suspensos ────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'menu-suspenso', tipo: 'menus', nome: 'Menu suspenso (▾)', componente: 'MenuSuspenso', classes: ['popover menu-pop', 'popover-item', 'popover-sep'], telas: TODAS,
-    uso: "<MenuSuspenso rotulo=\"Ações\" itens={[{ rotulo: 'Copiar', icone: 'copiar', onClick }, 'separador']} />",
+    uso: "<MenuSuspenso rotulo=\"Ações\" itens={[{ rotulo: 'Copiar', icone: 'copiar', onClick }, 'separador']} />  ·  dentro de uma tabela que rola (o celular): flutuante — o menu abre por cima da página (revisão da UI, 18/10/2026)",
     demo: () => <MenuSuspenso rotulo="Pedir extratos" setaAntes itens={[{ rotulo: 'E-mail', icone: 'envelope', onClick: nada }, { rotulo: 'Histórico', icone: 'clock', dica: '3', onClick: nada }, 'separador', { rotulo: 'Desligado', icone: 'lock', desabilitado: true, onClick: nada }]} /> },
   { id: 'menu-grupos', tipo: 'menus', nome: 'Menu suspenso sem nome', descricao: 'Só o ícone e o ▾: os grupos da rotina e as saídas da etapa; o dos grupos tem as abas Tarefas e Em lote (alterar e cancelar), como o Code ▾ do GitHub', componente: 'MenuSuspenso', classes: ['gh-topo-btn gh-topo-menu'], telas: EXECUTOR,
     demo: () => <MenuSuspenso rotulo="" icone="fileUp" className="gh-topo-btn gh-topo-menu" largura={260} conteudo={fechar => <MenuDaRotina fechar={fechar} grupos={[{ rotulo: 'Preparação', icone: 'fileUp', marcado: true, onClick: nada }, 'separador', { rotulo: 'Ativo', icone: 'landmark', desabilitado: true, onClick: nada }, { rotulo: 'Passivo', icone: 'relatorio', desabilitado: true, onClick: nada }, { rotulo: 'Resultado', icone: 'barChart', desabilitado: true, onClick: nada }, 'separador', { rotulo: 'Fechamento', icone: 'checkCircle', desabilitado: true, onClick: nada }]} emLote={{ rotulo: 'Janeiro a Setembro/2026 · 9 meses', onAlterar: nada, onCancelar: nada }} />} /> },
@@ -630,8 +635,8 @@ export const PECAS_BASE: Peca[] = [
       </div>
     ) },
   { id: 'vazio', tipo: 'cartoes', nome: 'Vazio (nada aqui)', descricao: 'O ícone, o título e a explicação no meio. Compacto (revisão da UI, 16/10/2026) dentro de cartões estreitos, células e janelas pequenas', componente: 'Vazio', classes: ['gh-blank', 'gh-blank compacto'], telas: TODAS,
-    uso: '<Vazio titulo="Nenhum pedido" texto="…" />  ·  <Vazio compacto texto="Nenhuma objeção nesta competência." />',
-    demo: () => <div style={{ display: 'grid', gap: 12, width: '100%' }}><Vazio titulo="Nenhum pedido" texto="Nenhum pedido feito para esta empresa ainda." /><div className="card" style={{ margin: 0 }}><Vazio compacto icone="checkCircle" texto="Nenhuma objeção registrada nesta competência." /></div></div> },
+    uso: '<Vazio titulo="Nenhum pedido" texto="…" />  ·  <Vazio compacto texto="…" />  ·  com a saída: <Vazio …><button …>Limpar a busca</button></Vazio>  ·  o erro: <Vazio icone="alert" titulo="…" texto={erro} onTentarDeNovo={…} />',
+    demo: () => <div style={{ display: 'grid', gap: 12, width: '100%' }}><Vazio titulo="Nenhum pedido" texto="Nenhum pedido feito para esta empresa ainda." /><div className="card" style={{ margin: 0 }}><Vazio compacto icone="checkCircle" texto="Nenhuma objeção registrada nesta competência." /></div><Vazio titulo="Nenhuma empresa com isso" texto="A busca não achou nada."><button type="button" className="btn btn-outline">Limpar a busca</button></Vazio><Vazio icone="alert" titulo="Esta tela não abriu" texto="O banco não respondeu." onTentarDeNovo={nada} /></div> },
   { id: 'checklist-fiscal', tipo: 'cartoes', nome: 'Checklist disfarçada (rotina do Fiscal)', descricao: 'O cartão com a barra de progresso; cada tarefa uma faixa que abre (caixinha, contador, Importar, Conferido) com o painel dela (Stat, rank, tabela, gráficos)', componente: 'ChecklistDisfarcado', classes: ['card folha-check pt-check', 'imp-faixa pt-tarefa', 'subnav-caixa', 'tarefas-barra'], telas: ['t-exec-fiscal-rotina'], largo: true,
     demo: () => (
       <div className="card folha-check pt-check" style={{ width: '100%' }}>

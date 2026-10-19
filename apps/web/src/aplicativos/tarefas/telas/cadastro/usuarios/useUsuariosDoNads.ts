@@ -43,6 +43,13 @@ export function useUsuariosDoNads() {
     if (!admin) { toast('Só um administrador muda a equipe.'); return; }
     try { await f(); toast(ok); } catch (err) { toast('Não consegui salvar: ' + (err as Error).message); }
   }
+  // o que cada linha está fazendo ("revogar:<id>"): o botão dela mostra que trabalha e trava (revisão da UI, 18/10/2026)
+  const [fazendo, setFazendo] = useState<ReadonlySet<string>>(new Set());
+  async function comLinha(chave: string, f: () => Promise<void>) {
+    if (fazendo.has(chave)) return;
+    setFazendo(s => new Set(s).add(chave));
+    try { await f(); } finally { setFazendo(s => { const n = new Set(s); n.delete(chave); return n; }); }
+  }
 
   const todas = equipe.lista
     .map(p => ({
@@ -117,7 +124,8 @@ export function useUsuariosDoNads() {
       } catch (err) { toast('Não consegui gerar o link: ' + (err as Error).message); } finally { setGerandoSenha(false); }
     },
     copiar: (link: string) => { void navigator.clipboard.writeText(link).then(() => toast('Link copiado.'), () => toast('Não consegui copiar; selecione o link e copie.')); },
-    revogar: (s: usuarios.SessaoLiberada) => tentar(() => repo.revogar(s), 'Liberação de ' + s.nome + ' (' + s.computador + ') revogada: o código não vale mais.'),
+    fazendo: (chave: string) => fazendo.has(chave),
+    revogar: (s: usuarios.SessaoLiberada) => comLinha('revogar:' + s.id, () => tentar(() => repo.revogar(s), 'Liberação de ' + s.nome + ' (' + s.computador + ') revogada: o código não vale mais.')),
     quando: (iso: string) => (iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : ''),
   };
 }

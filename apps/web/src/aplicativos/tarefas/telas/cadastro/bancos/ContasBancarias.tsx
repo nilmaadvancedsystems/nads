@@ -1,6 +1,6 @@
 // Cadastro › empresa › Contas bancárias: a barra de cima (quantas contas, encerradas, "Nova conta ▾") e a lista.
 // Empresa sem cadastro: o aviso com a lista que o Extrator usa hoje e "Confirmar esta lista".
-import { Esqueleto, Icone, LogoBanco, MenuSuspenso, useCarregando } from '@nads/ui';
+import { Alerta, Esqueleto, Icone, LogoBanco, MenuSuspenso, useCarregando } from '@nads/ui';
 import { useState } from 'react';
 import { FormConta, FormEncerrar } from './partes/FormConta';
 import { useContasBancarias, type LinhaConta, type VmContasBancarias } from './useContasBancarias';
@@ -39,18 +39,12 @@ export function ContasBancarias({ rota }: { rota: string }) {
       </div>
 
       {vm.semCadastro && (
-        <div className="alert cad-aviso">
-          <Icone nome="alert" />
-          <div>
-            <p className="alert-title">Esta empresa ainda não tem os bancos cadastrados</p>
-            <p className="alert-text">
-              {vm.linhas.length
-                ? 'A lista abaixo junta o que o Extrator usa hoje e o que o robô já sabe do cliente (ele aprende pelo Drive e pelos extratos). Confira e confirme; incluir ou editar uma conta também já grava a lista.'
-                : 'O Extrator mostra uma linha "Banco" só. Inclua as contas da empresa.'}
-            </p>
-            {!!vm.linhas.length && <button type="button" className="btn btn-outline" onClick={vm.confirmarLista}>Confirmar esta lista</button>}
-          </div>
-        </div>
+        <Alerta naLinha className="cad-aviso" titulo="Esta empresa ainda não tem os bancos cadastrados"
+          texto={vm.linhas.length
+            ? 'A lista abaixo junta o que o Extrator usa hoje e o que o robô já sabe do cliente (ele aprende pelo Drive e pelos extratos). Confira e confirme; incluir ou editar uma conta também já grava a lista.'
+            : 'O Extrator mostra uma linha "Banco" só. Inclua as contas da empresa.'}>
+          {!!vm.linhas.length && <button type="button" className="btn btn-outline" onClick={vm.confirmarLista}>Confirmar esta lista</button>}
+        </Alerta>
       )}
 
       {!vm.carregando && !vm.semCadastro && vm.sugestoes.length > 0 && (

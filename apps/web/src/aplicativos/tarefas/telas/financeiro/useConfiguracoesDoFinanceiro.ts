@@ -41,7 +41,7 @@ export function useConfiguracoesDoFinanceiro() {
     if (typeof feito === 'string') { setAvisos(a => ({ ...a, [campo]: feito })); return; }
     setAvisos(a => (a[campo] ? { ...a, [campo]: '' } : a));
     if (JSON.stringify(feito) === JSON.stringify(config)) return;
-    void repo.salvarConfig(feito).catch(err => toast('Não consegui gravar: ' + (err instanceof Error ? err.message : String(err))));
+    void repo.salvarConfig(feito).catch(err => toast('Não consegui salvar: ' + (err instanceof Error ? err.message : String(err))));
   }
   const prestador = (campo: string, p: Partial<nfse.ConfigNfse['prestador']>) => gravar(campo, { ...config, prestador: { ...config.prestador, ...p } });
   const servico = (campo: string, s: Partial<nfse.ConfigNfse['servico']>) => gravar(campo, { ...config, servico: { ...config.servico, ...s } });
@@ -52,7 +52,7 @@ export function useConfiguracoesDoFinanceiro() {
     semConfig: cfg.carregada && !cfg.config,
     config, avisos,
     /** sem configuração no banco: grava a padrão como está (os campos só gravam quando mudam) */
-    gravarPadrao: () => { void repo.salvarConfig(config).catch(err => toast('Não consegui gravar: ' + (err instanceof Error ? err.message : String(err)))); },
+    gravarPadrao: () => { void repo.salvarConfig(config).catch(err => toast('Não consegui salvar: ' + (err instanceof Error ? err.message : String(err)))); },
     faltas: cfg.carregada ? nfse.faltasNaConfig(cfg.config, !!cfg.tokenGravadoEm) : [],
     robo: repo.robo(),
     cnpjFormatado: documentoFormatado(config.prestador.cnpj),
@@ -141,9 +141,9 @@ export function useConfiguracoesDoFinanceiro() {
       try {
         await repo.salvarToken(t, por);
         setToken('');
-        toast('Token gravado.');
+        toast('Token salvo.');
       } catch (err) {
-        setAvisos(a => ({ ...a, token: 'Não consegui gravar: ' + (err instanceof Error ? err.message : String(err)) }));
+        setAvisos(a => ({ ...a, token: 'Não consegui salvar: ' + (err instanceof Error ? err.message : String(err)) }));
       } finally {
         setGravandoToken(false);
       }

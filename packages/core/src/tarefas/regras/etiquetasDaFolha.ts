@@ -42,8 +42,8 @@ function pascoa(ano: number): Date {
   return new Date(ano, mes - 1, dia);
 }
 
-/** Feriado nacional (os fixos e a Sexta-feira Santa) */
-function feriadoNacional(d: Date): boolean {
+/** Feriado nacional (os fixos e a Sexta-feira Santa); também usado nos prazos do DP (prazosDoDp.ts) */
+export function feriadoNacional(d: Date): boolean {
   const md = dois(d.getMonth() + 1) + '-' + dois(d.getDate());
   if (['01-01', '04-21', '05-01', '09-07', '10-12', '11-02', '11-15', '11-20', '12-25'].includes(md)) return true;
   const sexta = pascoa(d.getFullYear());

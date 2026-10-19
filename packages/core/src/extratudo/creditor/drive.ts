@@ -97,7 +97,12 @@ export interface RepoDrive {
    * Resolve quando o arquivo inteiro já subiu e o envio ficou 'pendente' para o robô. Não existe acoplado no Entregas.
    * (Vitor, 09/10/2026: o extrato importado do computador que não está no Drive vai para lá.)
    */
-  enviarAoDrive?(arquivo: { nome: string; bytes: Uint8Array }, destino: { competencia: string; codigo: number | null; cliente: string }): Promise<void>;
+  enviarAoDrive?(arquivo: { nome: string; bytes: Uint8Array }, destino: { competencia: string; codigo: number | null; cliente: string }): Promise<string | void>;
+  /**
+   * A situação dos envios ao Drive (pelo id que o enviarAoDrive devolve): enviando/pendente/gravando = o robô ainda não
+   * gravou; pronto = gravou (pasta: onde); erro. O que sumiu da fila não vem (Vitor, 19/10/2026: o Drive "carregando").
+   */
+  situacaoDosEnvios?(ids: readonly string[]): Promise<Record<string, { status: string; pasta?: string; nomeFinal?: string }>>;
   /**
    * "Buscar no e-mail" (Vitor, 13/10/2026): o robô pesquisa no Gmail do escritório os e-mails com anexo do remetente no
    * período (a fila buscasEmail) e devolve os anexos; `trazerDoEmail` traz o conteúdo de um deles. Não existe acoplado no

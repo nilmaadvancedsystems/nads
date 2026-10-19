@@ -28,7 +28,7 @@ export function Certificados() {
       <div className="cert-dash">
         <section className="card cert-dash-bloco">
           <div className="card-head"><h3>Situação</h3></div>
-          <RoscaComLegenda fatias={ORDEM.map(f => ({ id: f, rotulo: ROTULOS[f], valor: vm.contagem[f], tom: TOM[f] }))} total={vm.comCertificado} subtitulo="com certificado"
+          <RoscaComLegenda fatias={ORDEM.map(f => ({ id: f, rotulo: ROTULOS[f], valor: vm.contagem[f], tom: TOM[f] }))} total={vm.totalDeEmpresas} subtitulo="empresas"
             ativa={vm.mes ? null : vm.filtro} onEscolher={f => vm.setFiltro(f as FiltroDeCertificados)} />
         </section>
         <section className="card cert-dash-bloco">
@@ -63,7 +63,7 @@ export function Certificados() {
         {vm.linhas.length ? (
           <div className="table-wrap cofre-tabela">
             <table>
-              <thead><tr><th>Cód.</th><th>Empresa</th><th>Validade</th><th>Situação</th></tr></thead>
+              <thead><tr><th className="num">Cód.</th><th>Empresa</th><th className="num">Validade</th><th>Situação</th></tr></thead>
               <tbody>
                 {vm.linhas.map(l => (
                   <tr key={l.chave} className={vm.cofre.bloqueio ? 'cofre-bloqueado' : 'dp-linha-abre'} title={vm.cofre.bloqueio || undefined} onClick={() => vm.abrir(l.nome, l.codigo)}>

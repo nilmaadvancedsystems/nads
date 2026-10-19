@@ -7,7 +7,7 @@ import type { LinhaConvertida } from '../tipos';
 /** Como cada banco aparece no extrato (texto já sem acento e em minúsculas). */
 const SINAIS: { nome: string; re: RegExp }[] = [
   { nome: 'Banco do Brasil', re: /banco do brasil|\bbb rende facil\b|\bbb giro\b|bancodobrasil/ },
-  { nome: 'Banco do Nordeste', re: /banco do nordeste/ },
+  { nome: 'Banco do Nordeste', re: /banco do nordeste|\bbnb\b/ },
   { nome: 'Sicoob', re: /sicoob|bancoob/ },
   { nome: 'Sicredi', re: /sicredi/ },
   { nome: 'Itaú', re: /\bitau\b|itau unibanco/ },
@@ -39,6 +39,17 @@ export const NOMES_DE_BANCO: readonly string[] = BANCOS_CONHECIDOS.map(b => b.no
 /** A marca do banco (o logo: 'banco-do-brasil', 'itau'…; '' = sem logo). */
 export function marcaDoBanco(nome: string): string {
   return BANCOS_CONHECIDOS.find(b => b.nome === nome)?.id || '';
+}
+
+/**
+ * Os bancos que um texto cita (o nome do anexo, o assunto, o corpo do e-mail), sem repetir. A Caixa só por "Caixa
+ * Econômica" ou "CEF": "caixa" sozinho é palavra de todo dia ("caixa de entrada").
+ */
+export function bancosCitados(texto: string): string[] {
+  const n = normalizarTexto(texto);
+  // as abreviações que o escritório usa (Vitor, 19/10/2026): BB (Banco do Brasil) e BNB (Banco do Nordeste, já nos sinais)
+  const re = (s: (typeof SINAIS)[number]) => (s.nome === 'Caixa' ? /caixa economica|\bcef\b/ : s.nome === 'Banco do Brasil' ? new RegExp(s.re.source + '|\\bbb\\b') : s.re);
+  return SINAIS.filter(s => re(s).test(n)).map(s => s.nome);
 }
 
 /** O banco pelo texto do extrato e, se não achar, pelo nome do arquivo ('' = não sei). */

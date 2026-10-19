@@ -1,6 +1,6 @@
 // Cadastro › empresa › Plano de contas: a barra de cima (quantas contas, de onde veio, busca, Grupo ▾,
 // "Importar ▾") e a lista, com o recuo da classificação, as sintéticas em negrito e onde cada conta é usada.
-import { CampoArquivo, Icone, MenuSuspenso, useCarregando, Vazio } from '@nads/ui';
+import { BotaoAcao, CampoArquivo, Icone, MenuSuspenso, useCarregando, Vazio } from '@nads/ui';
 import { useRef } from 'react';
 import { usePlanoDeContas } from './usePlanoDeContas';
 
@@ -49,13 +49,16 @@ export function PlanoDeContas({ rota }: { rota: string }) {
             <p>Exporte o plano de contas do Alterdata em Excel e importe aqui. O Creditor passa a usar este plano para achar as contas.</p>
             <p className="cad-botoes">
               <button type="button" className="btn btn-primary" onClick={escolherArquivo}><Icone nome="fileUp" />Escolher a planilha</button>
-              <button type="button" className="btn btn-outline" onClick={() => void vm.usarBalancete('entregas')}>Usar o balancete do Entregas</button>
-              <button type="button" className="btn btn-outline" onClick={() => void vm.usarBalancete('conferencia')}>Usar o balancete da Conferência</button>
+              <BotaoAcao className="btn btn-outline" carregando={vm.lendoBalancete === 'entregas'} textoCarregando="Lendo o balancete…" disabled={!!vm.lendoBalancete} onClick={() => void vm.usarBalancete('entregas')}>Usar o balancete do Entregas</BotaoAcao>
+              <BotaoAcao className="btn btn-outline" carregando={vm.lendoBalancete === 'conferencia'} textoCarregando="Lendo o balancete…" disabled={!!vm.lendoBalancete} onClick={() => void vm.usarBalancete('conferencia')}>Usar o balancete da Conferência</BotaoAcao>
             </p>
           </div>
         )
       ) : !vm.achadas ? (
-        <Vazio icone="search" titulo="Nenhuma conta com isso" />
+        <Vazio icone="search" titulo="Nenhuma conta com isso">
+          {/* a saída do vazio (revisão da UI, 18/10/2026) */}
+          {vm.busca && <button type="button" className="btn btn-outline" onClick={() => vm.setBusca('')}>Limpar a busca</button>}
+        </Vazio>
       ) : (
         <div className="table-wrap">
           <table className="cad-tabela cad-plano">

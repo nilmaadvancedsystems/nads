@@ -8,6 +8,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useSessao } from '../../casca/sessao';
 import { useCadastroDaEmpresa } from '../../dados/repo';
+import { useGuardado } from '../../../../../../comum/guardado';
 
 /** 'aaaa-mm' do mês passado (a competência que o escritório trabalha). */
 function mesPassado(): string {
@@ -63,6 +64,9 @@ export function useImportacao() {
   const [lendoLinha, setLendoLinha] = useState<string | null>(null);
   // o extrato sem movimento: quem marca o mês como sem movimento no banco (a Tarefa, pela ponte)
   const aoSemMovimento = useRef<((banco: string, meses: string[]) => void) | null>(null);
+  // o arquivo do Drive de cada mês marcado sem movimento pelo extrato ('banco|mes' → o arquivo), para o olhinho do "s/ mov."
+  // (Vitor, 19/10/2026: "o sem movimento, aparecer também o olhinho, para ver se é isso mesmo"); o extrato não fica guardado
+  const [semMovDoDrive, setSemMovDoDrive] = useGuardado<Record<string, { id: string; nome: string }>>('semmov-drive|' + (s.codigo ?? s.nome), {});
   // os bancos da empresa na competência (uma linha cada), do Cadastro da empresa quando ela tem (Tarefas ›
   // Cadastro); arquivo sem banco = do primeiro banco
   const cad = useCadastroDaEmpresa(s.nome, s.codigo);
@@ -95,23 +99,24 @@ export function useImportacao() {
 
   /** Importar direto (na linha do banco): escolheu os arquivos, já importa para aquele banco. */
   /** Devolve se importou (o extrato que entrou pode ir para o Drive: useDriveDaLinha.subirAoDrive). */
-  async function importarArquivos(banco: string, lado: x.Lado, fs: File[]): Promise<boolean> {
+  /** `mesesDaBusca`: o mês da coluna ou da busca no e-mail, para o extrato sem movimento que não diz o mês. */
+  async function importarArquivos(banco: string, lado: x.Lado, fs: File[], mesesDaBusca?: string[]): Promise<boolean> {
     if (!fs.length) return false;
     setMensagemBruta(null);
     setLendoLinha(banco + '|' + lado);
     const lidos: x.ArquivoLido[] = [];
     for (const f of fs) lidos.push(await x.lerArquivo(f.name, new Uint8Array(await f.arrayBuffer()), lado));
-    const ok = await gravarLidos(lado, lidos, banco);
+    const ok = await gravarLidos(lado, lidos, banco, undefined, undefined, mesesDaBusca);
     setLendoLinha(null);
     return ok;
   }
 
   /** O extrato que veio do Drive (já baixado): lê e importa para aquele banco, lembrando do arquivo de lá. */
-  async function importarDoDrive(banco: string, arquivo: { id: string; nome: string }, conteudo: ArrayBuffer) {
+  async function importarDoDrive(banco: string, arquivo: { id: string; nome: string }, conteudo: ArrayBuffer, mes?: string) {
     setMensagemBruta(null);
     setLendoLinha(banco + '|banco');
     const lido = await x.lerArquivo(arquivo.nome, new Uint8Array(conteudo), 'banco');
-    await gravarLidos('banco', [lido], banco, arquivo);
+    await gravarLidos('banco', [lido], banco, arquivo, undefined, mes ? [mes] : undefined);
     setLendoLinha(null);
   }
 
@@ -127,13 +132,17 @@ export function useImportacao() {
   }
 
   /** O que vem depois de ler: pergunta o modo (se já houver movimento nas datas), importa e avisa. */
-  async function gravarLidos(lado: x.Lado, lidos: x.ArquivoLido[], banco?: string, doDrive?: { id: string; nome: string }, modoFixo?: x.ModoImportacao): Promise<boolean> {
+  async function gravarLidos(lado: x.Lado, lidos: x.ArquivoLido[], banco?: string, doDrive?: { id: string; nome: string }, modoFixo?: x.ModoImportacao, mesesDaBusca?: string[]): Promise<boolean> {
     // o extrato que diz que não teve movimento ("Nenhuma movimentação encontrada"): marca o mês como sem movimento e avisa
     // (Vitor, 13/10/2026), em vez de "Nada para importar"
     const semMov = lado === 'banco' && banco ? lidos.filter(l => l.semMovimento) : [];
-    const meses = [...new Set(semMov.flatMap(l => l.semMovimento || []))].sort();
+    // o extrato não diz o mês: vale o mês de onde ele veio (a coluna, a busca no e-mail, a pasta do Drive; Vitor, 19/10/2026)
+    const doTexto = [...new Set(semMov.flatMap(l => l.semMovimento || []))].sort();
+    const meses = doTexto.length ? doTexto : semMov.length ? [...new Set(mesesDaBusca || [])].sort() : [];
     if (semMov.length) {
       if (meses.length && aoSemMovimento.current) aoSemMovimento.current(banco as string, meses);
+      // veio do Drive: o arquivo de lá fica para o olhinho do mês
+      if (doDrive && meses.length) setSemMovDoDrive(x => ({ ...x, ...Object.fromEntries(meses.map(m => [banco + '|' + m, doDrive])) }));
       lidos = lidos.filter(l => !l.semMovimento);
       const rotulo = meses.map(m => m.slice(5) + '/' + m.slice(0, 4)).join(', ');
       if (!lidos.length) {
@@ -362,6 +371,19 @@ export function useImportacao() {
     /** quem marca o mês como sem movimento quando o extrato importado não teve movimento */
     aoSemMovimento: (fn: (banco: string, meses: string[]) => void) => { aoSemMovimento.current = fn; },
     gravarSaldoAnterior: (arquivoId: string, saldo: number) => s.aplicar(e => x.definirSaldoAnterior(e, arquivoId, saldo, new Date())),
+    /**
+     * O extrato do mês que subiu para o Drive (do computador ou do e-mail) passa a apontar para o arquivo de lá (19/10/2026):
+     * os do banco no mês sem Drive e só daquele mês (o de vários meses fica como está).
+     */
+    ligarMesAoDrive: (banco: string, mes: string, drive: { id: string; nome: string }) => {
+      // o mês sem movimento não tem extrato importado: o arquivo do Drive fica para o olhinho do "s/ mov."
+      if (!x.arquivosDoBanco(s.empresa, banco, primeiro, 'banco', mes).length) { setSemMovDoDrive(m => ({ ...m, [banco + '|' + mes]: drive })); return; }
+      s.aplicar(e => x.arquivosDoBanco(e, banco, primeiro, 'banco', mes)
+        .filter(a => !a.drive && a.lancamentos.every(l => l.data.startsWith(mes)))
+        .reduce((acc, a) => x.definirDriveDoArquivo(acc, a.id, drive, new Date()), e));
+    },
+    /** o arquivo do Drive do mês marcado sem movimento pelo extrato (null = não tem: marcado à mão, ou do computador) */
+    arquivoSemMovimento: (banco: string, mes: string): { id: string; nome: string } | null => semMovDoDrive[banco + '|' + mes] || null,
     /** a regra do Cadastro da empresa: presta serviços? (null = não informado, ou o cadastro ainda não chegou) */
     prestaServico: cad.cadastro?.prestaServico ?? null,
     /** o código contábil da conta do banco no Cadastro (Contas bancárias); '' = não informado */

@@ -62,7 +62,11 @@ export function NotasFiscais() {
       </div>
 
       {!vm.carregando && !vm.linhas.length ? (
-        <Vazio icone="recibo" titulo={vm.total ? 'Nenhuma nota com isso' : 'Nenhuma nota ainda'} texto={vm.total ? undefined : 'Clique em "Nova nota" para emitir a primeira.'} />
+        <Vazio icone="recibo" titulo={vm.total ? 'Nenhuma nota com isso' : 'Nenhuma nota ainda'}>
+          {/* a saída do vazio (revisão da UI, 18/10/2026) */}
+          {vm.total ? <button type="button" className="btn btn-outline" onClick={() => { vm.setBusca(''); vm.setFiltro('todas'); }}>Limpar a busca e o filtro</button>
+            : <button type="button" className="btn btn-primary" onClick={() => vm.setNova(true)}><Icone nome="plus" />Emitir a primeira nota</button>}
+        </Vazio>
       ) : (
         <div className="table-wrap">
           <table className="tabela-empresas cad-lista nf-lista">

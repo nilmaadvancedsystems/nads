@@ -155,7 +155,7 @@ export function useArquivadorDoDrive() {
         if (!t || mandando || !conversa.sessao) return;
         setMandando(true);
         try { await repo.mandarMensagem(t.slice(0, 4000), conversa.sessao); setRascunho(''); }
-        catch (e) { toast('Não deu: ' + (e instanceof Error ? e.message : String(e))); }
+        catch (e) { toast('Não consegui mandar: ' + (e instanceof Error ? e.message : String(e))); }
         finally { setMandando(false); }
       },
     } : null,

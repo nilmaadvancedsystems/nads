@@ -6,6 +6,7 @@
 import { creditor, extrator as x } from '@nads/core';
 import { useEffect, useRef, useState } from 'react';
 import { useDrive } from '../../dados/repo';
+import { useGuardado } from '../../../../../../comum/guardado';
 import type { useImportacao } from '../importacao/useImportacao';
 import { tempo, type AndamentoDeExtratos } from './AndamentoDosExtratos';
 
@@ -28,6 +29,9 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   const [mesAtual, setMesAtual] = useState<string | null>(null);
   const [lote, setLote] = useState<{ banco: string; meses: string[]; feitos: { mes: string; ok: boolean }[]; atual: string; inicio: number; pronto: boolean } | null>(null);
   const [agora, setAgora] = useState(() => Date.now());
+  // os extratos que foram para o Drive e ainda não viraram arquivo de lá ('banco|mes' → o envio), guardados (Vitor,
+  // 19/10/2026: "deixe um ícone do Drive do lado esquerdo desse check, carregando; quando upar, ele fica igual aos outros")
+  const [subindo, setSubindo] = useGuardado<Record<string, { envio: string; em: number }>>('drive-subindo|' + (codigo ?? ''), {});
   useEffect(() => {
     if (!lote || lote.pronto) return;
     const r = setInterval(() => setAgora(Date.now()), 1000);
@@ -162,7 +166,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
         const rotulo = mes.slice(5) + '/' + mes.slice(0, 4);
         if (r.situacao !== 'achou' || !r.arquivo) { faltam.push(rotulo); passou(rotulo, false, seguinte); continue; }
         const conteudo = await drive.baixar(r.arquivo.id, r.arquivo.nome);
-        await vm.importarDoDrive(linha.id, { id: r.arquivo.id, nome: r.arquivo.nome }, conteudo);
+        await vm.importarDoDrive(linha.id, { id: r.arquivo.id, nome: r.arquivo.nome }, conteudo, mes);
         achados.push(rotulo);
         passou(rotulo, true, seguinte);
       }
@@ -216,11 +220,12 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
         for (const p of pedacos) {
           const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, p.mes, conta);
           if (r.situacao === 'achou' || r.situacao === 'varios' || r.candidatos.length) continue;
-          await drive.enviarAoDrive({ nome: p.nome, bytes: p.bytes }, { competencia: p.mes, codigo, cliente });
+          const envio = await drive.enviarAoDrive({ nome: p.nome, bytes: p.bytes }, { competencia: p.mes, codigo, cliente });
+          if (envio) setSubindo(x => ({ ...x, [linha.id + '|' + p.mes]: { envio, em: Date.now() } }));
           mandados.push(p.mes.slice(5) + '/' + p.mes.slice(0, 4));
         }
       }
-      if (mandados.length) vm.avisar('Mandado para o Drive: ' + mandados.join(', ') + ' (entra na pasta do banco no próximo arquivamento)');
+      if (mandados.length) vm.avisar('Mandado para o Drive: ' + mandados.join(', ') + ' (vai direto para a pasta do banco, em até 2 minutos)');
     } catch (e) {
       vm.avisarErro('Não mandei para o Drive' + (mandados.length ? ' (foram ' + mandados.join(', ') + ')' : ''), mensagemDeErro(e));
     }
@@ -250,7 +255,41 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     };
   })() : null;
 
+  // acompanha os envios: o robô gravou (pronto), relê o mapa da pasta da empresa e liga o extrato do mês ao arquivo de lá;
+  // erro, ou mais de 15 minutos sem aparecer no mapa, desiste (fica o check, como antes)
+  const chavesSubindo = Object.keys(subindo).join(',');
+  const { ligarMesAoDrive } = vm;
+  useEffect(() => {
+    if (!chavesSubindo || !drive.situacaoDosEnvios || !acesso.entrou) return;
+    let vivo = true;
+    async function conferir() {
+      const lista = Object.entries(subindo);
+      const sit = await drive.situacaoDosEnvios!(lista.map(([, v]) => v.envio));
+      const prontos = lista.filter(([, v]) => sit[v.envio]?.status === 'pronto');
+      const sair: string[] = lista.filter(([, v]) => sit[v.envio]?.status === 'erro' || Date.now() - v.em > 15 * 60e3).map(([k]) => k);
+      if (prontos.length) {
+        const antes = await drive.pastaDoCliente(codigo);
+        if (antes?.raiz && drive.atualizarMapaDoCliente) await drive.atualizarMapaDoCliente(antes.raiz);
+        const pasta = await drive.pastaDoCliente(codigo);
+        for (const [k] of prontos) {
+          const [banco, mes] = k.split('|');
+          const linha = vm.bancos.find(b => b.id === banco);
+          const conta = { nome: linha?.nome || banco, marca: linha?.marca, conta: linha?.numeroConta };
+          const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, mes, conta);
+          if (r.situacao === 'achou' && r.arquivo) { ligarMesAoDrive(banco, mes, { id: r.arquivo.id, nome: r.arquivo.nome }); sair.push(k); }
+        }
+      }
+      if (vivo && sair.length) setSubindo(x => { const n = { ...x }; for (const k of sair) delete n[k]; return n; });
+    }
+    void conferir().catch(() => { /* sem o robô agora: tenta de novo */ });
+    const t = setInterval(() => { void conferir().catch(() => undefined); }, 10000);
+    return () => { vivo = false; clearInterval(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chavesSubindo, acesso.entrou]);
+
   return {
+    /** o extrato do mês está subindo para o Drive (o ícone do Drive girando ao lado do check) */
+    subindoAoDrive: (banco: string, mes: string) => !!subindo[banco + '|' + mes],
     exemplos: drive.exemplos,
     /** a janela do andamento do "Todos pelo Drive" (não aparece mais: o andamento fica na grade e o resumo no aviso) */
     andamento,

@@ -59,6 +59,17 @@ export function extratosSemSaldoAnterior(e: EmpresaExtrator, primeiro: string): 
 }
 
 /** Grava no arquivo o saldo anterior lido do extrato (fica no histórico). */
+/**
+ * Liga o extrato importado (do computador ou do e-mail) ao arquivo que foi para o Drive (Vitor, 19/10/2026: "quando upar no
+ * Drive… ele fica igual aos outros"): com o drive, a célula mostra o logo do Drive e o olhinho abre o arquivo de lá.
+ */
+export function definirDriveDoArquivo(e: EmpresaExtrator, arquivoId: string, drive: { id: string; nome: string }, agora: Date): EmpresaExtrator {
+  const a = e.arquivos.find(x => x.id === arquivoId);
+  if (!a || a.drive?.id === drive.id) return e;
+  const reg: RegistroAuditoria = { ts: agora.toISOString(), acao: 'Ligou ao Drive', detalhe: a.nome + ' · ' + drive.nome, tom: 'ok' };
+  return { ...e, arquivos: e.arquivos.map(x => (x.id === arquivoId ? { ...x, drive } : x)), auditoria: [reg, ...e.auditoria] };
+}
+
 export function definirSaldoAnterior(e: EmpresaExtrator, arquivoId: string, saldo: number, agora: Date): EmpresaExtrator {
   const a = e.arquivos.find(x => x.id === arquivoId);
   if (!a || a.saldoAnterior === saldo) return e;

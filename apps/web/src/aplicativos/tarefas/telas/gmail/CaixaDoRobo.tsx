@@ -5,7 +5,7 @@
 // cartões, as respostas e responder). A lista ocupa a largura toda, uma linha por e-mail; ao clicar, o e-mail abre numa
 // janela flutuante por cima dela (14/10/2026). No celular, a janela ocupa a tela.
 import type { entregas as e } from '@nads/core';
-import { BotaoFechar, Esqueleto, Icone, NumeroQueConta, Segmentado, useCarregando } from '@nads/ui';
+import { Alerta, BotaoFechar, Esqueleto, Icone, NumeroQueConta, Segmentado, useCarregando } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useCaixaDoRobo, usePainelDoEmail, type AbaDaCaixa, type PeriodoDaCaixa, type VmCaixa } from './useCaixaDoRobo';
 
@@ -237,8 +237,8 @@ export function CaixaDoRobo() {
         <button type="button" className="btn btn-outline" onClick={() => void vm.verificar()}><Icone nome="repeat" />Verificar agora</button>
       </div>
 
-      {vm.erro && <div className="alert"><Icone nome="alert" /><div><p className="alert-text">{vm.erro}</p></div></div>}
-      {vm.robo.erro && <div className="alert"><Icone nome="alert" /><div><p className="alert-title">A última leitura deu erro</p><p className="alert-text">{vm.robo.erro}</p></div></div>}
+      {vm.erro && <Alerta naLinha titulo="" texto={vm.erro} />}
+      {vm.robo.erro && <Alerta naLinha titulo="A última leitura deu erro" texto={vm.robo.erro} />}
       {vm.exemplos && <p className="hint">Dados de exemplo: a caixa é inventada e nada vai para o Gmail.</p>}
 
       {a && (

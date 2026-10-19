@@ -247,7 +247,7 @@ function AnexarComprovante({ id, compacto, onEscolher }: { id: string; compacto?
   return (
     <>
       {/* na linha da tabela, só o ícone (compacto), sem a setinha (Vitor, 08/10/2026) */}
-      <MenuSuspenso rotulo={compacto ? '' : 'Anexar comprovante'} icone="upload" className={compacto ? 'icon-btn icon-btn-sm imp-btn' : 'btn'} semSeta={compacto} largura={200} direita={compacto} dica="Anexar comprovante"
+      <MenuSuspenso rotulo={compacto ? '' : 'Anexar comprovante'} icone="upload" className={compacto ? 'icon-btn icon-btn-sm imp-btn' : 'btn'} semSeta={compacto} largura={200} direita={compacto} flutuante={compacto} dica="Anexar comprovante"
         itens={[opcao('Galeria', 'imagem', galeria), opcao('Câmera', 'camera', camera), opcao('Arquivo', 'arquivo', arquivo)]} />
       <input ref={galeria} type="file" id={'gal-' + id} accept="image/*" multiple className="sr-only" tabIndex={-1} aria-hidden="true" onChange={escolheu} />
       <input ref={camera} type="file" id={'cam-' + id} accept="image/*" capture="environment" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={escolheu} />

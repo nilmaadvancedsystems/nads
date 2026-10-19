@@ -1,5 +1,5 @@
 // Etapa Notas fiscais (conciliadorZINHO.html #step-2 ~L592).
-import { Alerta, CampoArquivo, Icone } from '@nads/ui';
+import { Alerta, CampoArquivo, Esqueleto, Icone } from '@nads/ui';
 import { useNotas } from './useNotas';
 
 export function Notas() {
@@ -11,7 +11,7 @@ export function Notas() {
         <h3><span className="import-card-ico"><Icone nome="fileText" /></span>Planilha de vendas</h3>
         <div className="import-box-row">
           <CampoArquivo id="fVendas" arquivo={escolhido} aceitar={vm.aceitar} onEscolher={f => { void vm.escolher(f); }} />
-          {vm.lendo ? <span className="hint">Lendo arquivo…</span> : vm.info && <span className="hint">{vm.info}</span>}
+          {vm.lendo ? <Esqueleto linhas={1} /> : vm.info && <span className="hint">{vm.info}</span>}
         </div>
         <p className="hint">A planilha de vendas do mesmo período · .xls ou .xlsx · coluna C = Data, G = Valor Bruto, I = Histórico.</p>
       </div>

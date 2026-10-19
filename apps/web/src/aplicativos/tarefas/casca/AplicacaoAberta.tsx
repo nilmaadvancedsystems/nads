@@ -1,34 +1,9 @@
 // Rota de uma aplicação da Tarefas: /tarefas/:app/:pagina. Monta a casca e escolhe a tela; as
 // aplicações que ainda não foram feitas mostram "Em desenvolvimento". O Cadastro tem rota própria (CadastroAberto).
-import { PainelDoFiscal } from '../telas/fiscal/painel/PainelDoFiscal';
 import { Navigate, useParams } from 'react-router';
+import { NaEspera, pedaco } from '../../../comum/pedaco';
 import { TopoProvider } from '../../../comum/topo';
-import { RobosEAgentes } from '../telas/cadastro/configuracoes/ConfiguracoesDoNads';
-import { UsuariosDoNads } from '../telas/cadastro/usuarios/UsuariosDoNads';
-import { VisaoContabil } from '../telas/contabil/VisaoContabil';
-import { ConfiguracoesContabil } from '../telas/contabil/configuracoes/ConfiguracoesContabil';
-import { ExploradorDoDrive } from '../telas/drive/ExploradorDoDrive';
-import { CaixaDoRobo } from '../telas/gmail/CaixaDoRobo';
-import { HistoricoDoRobo } from '../telas/gmail/HistoricoDoRobo';
-import { MinhasEmpresas } from '../telas/empresas/MinhasEmpresas';
-import { Insights } from '../telas/insights/Insights';
-import { EmDesenvolvimento } from '../telas/em-desenvolvimento/EmDesenvolvimento';
-import { Reinf } from '../telas/fiscal/reinf/Reinf';
-import { PainelDoDp } from '../telas/dp/PainelDoDp';
-import { SenhasDasEmpresas } from '../telas/senhas/SenhasDasEmpresas';
-import { AcessoAoCofre } from '../telas/senhas/AcessoAoCofre';
-import { Certificados } from '../telas/senhas/Certificados';
-import { ContasGov } from '../telas/senhas/ContasGov';
-import { FgtsDoDp } from '../telas/dp/FgtsDoDp';
-import { LegislacaoDoDp } from '../telas/dp/LegislacaoDoDp';
-import { PaginaSintegra } from '../telas/fiscal/sintegra/PaginaSintegra';
-import { ABAS_DO_PAINEL, type AbaDoPainel } from '../telas/dp/usePainelDoDp';
-import { ConfiguracoesDoDp } from '../telas/dp/ConfiguracoesDoDp';
-import { Mandei } from '../telas/mandei/Mandei';
-import { ChamadosDoCliente } from '../telas/area-cliente/ChamadosDoCliente';
-import { RecebidosDoCliente } from '../telas/area-cliente/RecebidosDoCliente';
-import { ConfiguracoesDoFinanceiro } from '../telas/financeiro/ConfiguracoesDoFinanceiro';
-import { NotasFiscais } from '../telas/financeiro/NotasFiscais';
+import { ABAS_DO_PAINEL, type AbaDoPainel } from '../telas/dp/abasDoPainel';
 import { NovaEntrega } from '../telas/entregas/NovaEntrega';
 import { PainelDeEntregas } from '../telas/entregas/PainelDeEntregas';
 import { Solicitacoes } from '../telas/entregas/Solicitacoes';
@@ -36,6 +11,35 @@ import { RotaDeEntregas } from '../telas/entregas/RotaDeEntregas';
 import { CascaTarefas } from './CascaTarefas';
 import { aplicacao, aplicacoesDe, caminhoDaPagina, type IdAplicacao } from './navegacao';
 import { useOperador, type Operador } from './operador';
+
+// cada tela é um pedaço à parte (revisão da UI, 18/10/2026: o pacote inicial tinha 4 MB): baixa quando a pessoa abre a
+// página, com o Esqueleto no lugar enquanto chega (comum/pedaco.tsx). As da Entregas ainda vêm no pacote inicial.
+const PainelDoFiscal = pedaco(() => import('../telas/fiscal/painel/PainelDoFiscal'), 'PainelDoFiscal');
+const RobosEAgentes = pedaco(() => import('../telas/cadastro/configuracoes/ConfiguracoesDoNads'), 'RobosEAgentes');
+const UsuariosDoNads = pedaco(() => import('../telas/cadastro/usuarios/UsuariosDoNads'), 'UsuariosDoNads');
+const VisaoContabil = pedaco(() => import('../telas/contabil/VisaoContabil'), 'VisaoContabil');
+const ConfiguracoesContabil = pedaco(() => import('../telas/contabil/configuracoes/ConfiguracoesContabil'), 'ConfiguracoesContabil');
+const ExploradorDoDrive = pedaco(() => import('../telas/drive/ExploradorDoDrive'), 'ExploradorDoDrive');
+const CaixaDoRobo = pedaco(() => import('../telas/gmail/CaixaDoRobo'), 'CaixaDoRobo');
+const HistoricoDoRobo = pedaco(() => import('../telas/gmail/HistoricoDoRobo'), 'HistoricoDoRobo');
+const MinhasEmpresas = pedaco(() => import('../telas/empresas/MinhasEmpresas'), 'MinhasEmpresas');
+const Insights = pedaco(() => import('../telas/insights/Insights'), 'Insights');
+const EmDesenvolvimento = pedaco(() => import('../telas/em-desenvolvimento/EmDesenvolvimento'), 'EmDesenvolvimento');
+const Reinf = pedaco(() => import('../telas/fiscal/reinf/Reinf'), 'Reinf');
+const PainelDoDp = pedaco(() => import('../telas/dp/PainelDoDp'), 'PainelDoDp');
+const SenhasDasEmpresas = pedaco(() => import('../telas/senhas/SenhasDasEmpresas'), 'SenhasDasEmpresas');
+const AcessoAoCofre = pedaco(() => import('../telas/senhas/AcessoAoCofre'), 'AcessoAoCofre');
+const Certificados = pedaco(() => import('../telas/senhas/Certificados'), 'Certificados');
+const ContasGov = pedaco(() => import('../telas/senhas/ContasGov'), 'ContasGov');
+const FgtsDoDp = pedaco(() => import('../telas/dp/FgtsDoDp'), 'FgtsDoDp');
+const LegislacaoDoDp = pedaco(() => import('../telas/dp/LegislacaoDoDp'), 'LegislacaoDoDp');
+const PaginaSintegra = pedaco(() => import('../telas/fiscal/sintegra/PaginaSintegra'), 'PaginaSintegra');
+const ConfiguracoesDoDp = pedaco(() => import('../telas/dp/ConfiguracoesDoDp'), 'ConfiguracoesDoDp');
+const Mandei = pedaco(() => import('../telas/mandei/Mandei'), 'Mandei');
+const ChamadosDoCliente = pedaco(() => import('../telas/area-cliente/ChamadosDoCliente'), 'ChamadosDoCliente');
+const RecebidosDoCliente = pedaco(() => import('../telas/area-cliente/RecebidosDoCliente'), 'RecebidosDoCliente');
+const ConfiguracoesDoFinanceiro = pedaco(() => import('../telas/financeiro/ConfiguracoesDoFinanceiro'), 'ConfiguracoesDoFinanceiro');
+const NotasFiscais = pedaco(() => import('../telas/financeiro/NotasFiscais'), 'NotasFiscais');
 
 function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
   switch (app) {
@@ -68,7 +72,7 @@ export function AplicacaoAberta() {
   return (
     <TopoProvider>
       <CascaTarefas app={a.id} pagina={pagina} telaInteira={a.id === 'drive'} larga>
-        <Tela app={a.id} pagina={pagina} />
+        <NaEspera><Tela app={a.id} pagina={pagina} /></NaEspera>
       </CascaTarefas>
     </TopoProvider>
   );

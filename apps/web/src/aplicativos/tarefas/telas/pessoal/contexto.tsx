@@ -1,8 +1,11 @@
 // A Minha página é uma janela flutuante (Vitor, 02/10/2026: "queria algo no estilo do Notion, com uma tela
 // flutuante"): abre por cima de qualquer tela da Tarefas, pelo avatar do cabeçalho, num tópico. Este contexto guarda
 // qual tópico está aberto (null = fechada) e desenha a janela.
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
-import { JanelaPessoal } from './JanelaPessoal';
+import { createContext, Suspense, useContext, useMemo, useState, type ReactNode } from 'react';
+import { pedaco } from '../../../../comum/pedaco';
+
+// a janela (com os ícones de perfil, 120 KB) é um pedaço à parte (revisão da UI, 18/10/2026): só baixa quando abre
+const JanelaPessoal = pedaco(() => import('./JanelaPessoal'), 'JanelaPessoal');
 
 export type TopicoPessoal = 'caixa' | 'notas' | 'conta' | 'empresas' | 'preferencias' | 'aplicativo' | 'ia' | 'faq';
 
@@ -21,7 +24,7 @@ export function PessoalProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={valor}>
       {children}
-      {topico && <JanelaPessoal topico={topico} mudar={setTopico} fechar={valor.fechar} />}
+      {topico && <Suspense fallback={null}><JanelaPessoal topico={topico} mudar={setTopico} fechar={valor.fechar} /></Suspense>}
     </Ctx.Provider>
   );
 }

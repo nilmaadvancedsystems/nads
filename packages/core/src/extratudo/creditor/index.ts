@@ -28,3 +28,4 @@ export * from './repo.memoria';
 export * from './drive';
 export * from './drive.memoria';
 export { brl, reais } from '../../formatos';
+export * from './regras/bancoDoEmail';

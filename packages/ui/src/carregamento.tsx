@@ -26,6 +26,15 @@ export function useCarregando(ativo: boolean): void {
   }, [ativo]);
 }
 
+/**
+ * Enquanto a promessa não termina, a barra do topo anda: para o que carrega fora de uma tela (o pedaço do site que está
+ * chegando, comum/pedaco.tsx no web; revisão da UI, 18/10/2026). Devolve a mesma promessa.
+ */
+export function carregandoAte<T>(promessa: Promise<T>): Promise<T> {
+  mudar(1);
+  return promessa.finally(() => mudar(-1));
+}
+
 type Fase = 'parada' | 'andando' | 'terminando';
 
 /** A barra em si: vai uma vez só, no alto da página (main.tsx). */

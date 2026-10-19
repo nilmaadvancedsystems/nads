@@ -49,7 +49,7 @@ function Conversa({ s, abrir }: { s: ConversaNaTela; abrir: (id: string) => void
 export function PainelDosAgentes() {
   const vm = useAgentesNoPainel();
   useCarregando(!vm.carregada);
-  if (vm.erro) return <Alerta naLinha titulo="Sem o painel" texto={vm.erro} />;
+  if (vm.erro) return <Alerta naLinha titulo="Sem o painel" texto={vm.erro}><div className="btn-row"><button type="button" className="btn btn-outline" onClick={() => location.reload()}>Tentar de novo</button></div></Alerta>;
   if (!vm.carregada) return <Esqueleto linhas={4} />;
   return (
     <>

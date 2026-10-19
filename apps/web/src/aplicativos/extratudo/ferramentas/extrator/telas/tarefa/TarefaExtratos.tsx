@@ -273,21 +273,45 @@ function resumo(b: Vm['bancos'][number]): string[] {
  * colorido quando veio de lá, "s/ mov." quando o mês não teve movimento. Faltando o extrato, só o ícone de importar,
  * que abre as opções (do computador, do Drive, sem movimento); faltando o razão, o ícone abre a escolha do arquivo.
  */
-function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato, aceitarRazao, onMes, onArquivos, onExcluir, onDrive, onEmail, onVer, onSemMovimento, naTarefa, puxados }: {
+/** O extrato subindo para o Drive (Vitor, 19/10/2026): o logo do Drive com a rodinha, à esquerda do check, até o robô gravar. */
+function SubindoAoDrive() {
+  return (
+    <span className="icon-btn icon-btn-sm imp-btn" title="Subindo para o Drive…" aria-label="Subindo para o Drive" style={{ width: 'auto', gap: 4, padding: '0 6px' }}>
+      <LogoDrive /><span className="btn-spinner" />
+    </span>
+  );
+}
+
+function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato, aceitarRazao, onMes, onArquivos, onExcluir, onDrive, onEmail, onVer, onSemMovimento, naTarefa, puxados, subindo, semMovimentoDoDrive }: {
   meses: ReturnType<Vm['mesesDoBanco']>;
   /** o mês que o "Todos pelo Drive" está buscando agora: a célula do extrato gira */
   buscandoMes?: string | null;
   competencia: string; travado: boolean; aceitarExtrato: string; aceitarRazao: string; naTarefa: boolean;
-  onMes: (m: string) => void; onArquivos: (lado: 'banco' | 'sistema', fs: File[]) => void; onExcluir: (lado: 'banco' | 'sistema', mes: string) => void;
+  onMes: (m: string) => void; onArquivos: (lado: 'banco' | 'sistema', fs: File[], mes: string) => void; onExcluir: (lado: 'banco' | 'sistema', mes: string) => void;
   onDrive: (mes: string) => void; onEmail?: (mes: string) => void; onVer: (arquivo: { id: string; nome: string }) => void; onSemMovimento: (mes: string, marcado: boolean) => void;
   /** o que veio do e-mail no mês (o olhinho; puxados.tsx) */
   puxados: (mes: string) => Puxado[];
+  /** o extrato do mês está subindo para o Drive */
+  subindo: (mes: string) => boolean;
+  /** o arquivo do Drive do mês sem movimento (o olhinho do "s/ mov.") */
+  semMovimentoDoDrive: (mes: string) => { id: string; nome: string } | null;
 }) {
   const grade = useColunaAjustavel('importacao', '96px', meses.length);
   const celula = (m: ReturnType<Vm['mesesDoBanco']>[number], lado: 'banco' | 'sistema', n: number) => {
     const info = lado === 'banco' ? m.ladoExtrato : m.ladoRazao;
     const trava = travado || m.semMovimento;
-    if (m.semMovimento) return <button type="button" className="imp-mes-sem" disabled={travado || !naTarefa} onClick={() => onSemMovimento(m.mes, false)} title="Não teve movimento — clique para desfazer">s/ mov.</button>;
+    if (m.semMovimento) {
+      // o olhinho ao lado (Vitor, 19/10/2026: "para ver se é isso mesmo"): o extrato do Drive, ou o que veio do e-mail
+      const doDrive = lado === 'banco' ? semMovimentoDoDrive(m.mes) : null;
+      const doEmail = lado === 'banco' && !doDrive ? puxados(m.mes) : [];
+      return (
+        <>
+          <button type="button" className="imp-mes-sem" disabled={travado || !naTarefa} onClick={() => onSemMovimento(m.mes, false)} title="Não teve movimento — clique para desfazer">s/ mov.</button>
+          {doDrive && <BotaoVer titulo={'Ver o extrato sem movimento: ' + doDrive.nome} onVer={() => onVer(doDrive)} />}
+          {doEmail.length > 0 && <BotaoVer titulo={'Ver o extrato sem movimento: ' + doEmail.map(p => p.nome).join(', ')} onVer={() => doEmail.forEach(abrirPuxado)} />}
+        </>
+      );
+    }
     if (info.lendo || (lado === 'banco' && buscandoMes === m.mes)) return <span className="icon-btn icon-btn-sm imp-btn" title={'Buscando o extrato de ' + m.rotulo + ' no Drive'}><span className="btn-spinner" /></span>;
     // veio do Drive: o olhinho ao lado abre o PDF de lá (Vitor, 14/10/2026)
     if (lado === 'banco' && info.doDrive.length) {
@@ -296,12 +320,12 @@ function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato
     }
     if (lado === 'banco' && !info.qtdArquivos) {
       return <FaltaExtratoDoMes rotulo={m.rotulo} aceitar={aceitarExtrato} travado={trava} naTarefa={naTarefa} direita={n >= meses.length / 2}
-        onArquivos={fs => onArquivos(lado, fs)} onDrive={() => onDrive(m.mes)} onEmail={onEmail ? () => onEmail(m.mes) : undefined} onSemMovimento={() => onSemMovimento(m.mes, true)} />;
+        onArquivos={fs => onArquivos(lado, fs, m.mes)} onDrive={() => onDrive(m.mes)} onEmail={onEmail ? () => onEmail(m.mes) : undefined} onSemMovimento={() => onSemMovimento(m.mes, true)} />;
     }
     // veio do e-mail: o olhinho abre o anexo (só nesta aba)
     const doEmail = lado === 'banco' ? puxados(m.mes) : [];
-    return <><BotaoLado lado={info} titulo={(lado === 'banco' ? 'Extrato' : 'Razão') + ' de ' + m.rotulo} aceitar={lado === 'banco' ? aceitarExtrato : aceitarRazao} travado={trava}
-      onArquivos={fs => onArquivos(lado, fs)} onExcluir={() => onExcluir(lado, m.mes)} />
+    return <>{lado === 'banco' && subindo(m.mes) && <SubindoAoDrive />}<BotaoLado lado={info} titulo={(lado === 'banco' ? 'Extrato' : 'Razão') + ' de ' + m.rotulo} aceitar={lado === 'banco' ? aceitarExtrato : aceitarRazao} travado={trava}
+      onArquivos={fs => onArquivos(lado, fs, m.mes)} onExcluir={() => onExcluir(lado, m.mes)} />
       {doEmail.length > 0 && <BotaoVer titulo={'Ver o que foi puxado do e-mail: ' + doEmail.map(p => p.nome).join(', ')} onVer={() => doEmail.forEach(abrirPuxado)} />}</>;
   };
   return (
@@ -584,7 +608,8 @@ export function TarefaExtratos() {
   // o extrato do computador: importa e, o que não está no Drive, manda para lá (Vitor, 09/10/2026)
   // o extrato importado sem movimento marca o mês como sem movimento no banco (Vitor, 13/10/2026)
   useEffect(() => { vm.aoSemMovimento((banco, meses) => { for (const m of meses) ponte.marcarSemMovimento(banco, true, m); }); });
-  const importarExtrato = (b: (typeof vm.bancos)[number], fs: File[], depois?: () => void) => { void vm.importarArquivos(b.id, 'banco', fs).then(ok => { if (ok) { d.subirAoDrive(b, fs, s.nome); depois?.(); } }); };
+  // meses: de onde o extrato veio (a coluna do mês, a busca no e-mail), para o sem movimento que não diz o mês
+  const importarExtrato = (b: (typeof vm.bancos)[number], fs: File[], depois?: () => void, meses?: string[]) => { void vm.importarArquivos(b.id, 'banco', fs, meses).then(ok => { if (ok) { d.subirAoDrive(b, fs, s.nome); depois?.(); } }); };
   // "Buscar no e-mail": o anexo escolhido entra como se viesse do computador (Vitor, 13/10/2026); fica para o olhinho dos meses dele
   const em = useBuscarNoEmail((linha, fs, meses) => {
     const b = vm.bancos.find(x => x.id === linha.id);
@@ -592,7 +617,7 @@ export function TarefaExtratos() {
       const ch = chaveDoExtrato(s.codigo, b.id);
       for (const m of meses) esquecerPuxado(ch, m);
       for (const f of fs) guardarPuxado(ch, f.name, f, 'email', meses);
-    });
+    }, meses);
   }, d.pedirLogin, s.codigo);
   // o olhinho do que veio do e-mail (puxados.tsx): redesenha quando muda
   useVersaoDosPuxados();
@@ -876,8 +901,9 @@ export function TarefaExtratos() {
                           <BotaoVer titulo={'Ver o que foi puxado do Drive: ' + doDrive[doDrive.length - 1].nome} onVer={() => visualizarDoDrive(doDrive[doDrive.length - 1])} />
                         </>
                       ) : temExtrato ? (
-                        // importado à mão: fica só o check (do e-mail, com o olhinho)
+                        // importado à mão: fica só o check (do e-mail, com o olhinho; subindo para o Drive, o Drive girando antes)
                         <>
+                          {d.subindoAoDrive(b.id, vm.competencia) && <SubindoAoDrive />}
                           <BotaoLado lado={b.extrato} titulo="Extrato" aceitar={cxExtrato.aceitar} travado={travado}
                             onArquivos={() => undefined} onExcluir={() => { esquecerPuxado(chaveDoExtrato(s.codigo, b.id), vm.competencia); void vm.excluirDoBanco(b.id, 'banco'); }} />
                           {puxadosDe(chaveDoExtrato(s.codigo, b.id), vm.competencia).length > 0 && (
@@ -924,12 +950,14 @@ export function TarefaExtratos() {
               </div>
               {emLote && gradeAberta && <MesesDoBanco meses={meses} competencia={vm.competencia} naTarefa={ponte.naTarefa} buscandoMes={d.buscando === b.id ? d.mesAtual : null}
                 travado={ocupadoGeral} aceitarExtrato={cxExtrato.aceitar} aceitarRazao={cxRazao.aceitar}
-                onMes={vm.setCompetencia} onArquivos={(lado, fs) => { if (lado === 'banco') importarExtrato(b, fs); else void vm.importarArquivos(b.id, lado, fs); }}
+                onMes={vm.setCompetencia} onArquivos={(lado, fs, mes) => { if (lado === 'banco') importarExtrato(b, fs, undefined, [mes]); else void vm.importarArquivos(b.id, lado, fs); }}
                 onExcluir={(lado, mes) => { if (lado === 'banco') esquecerPuxado(chaveDoExtrato(s.codigo, b.id), mes); void vm.excluirDoBanco(b.id, lado, mes); }}
                 onDrive={mes => d.buscarNoPeriodo(b, [mes])}
                 onEmail={em.existe ? mes => em.abrir(b, mes) : undefined}
                 onVer={visualizarDoDrive}
                 puxados={mes => puxadosDe(chaveDoExtrato(s.codigo, b.id), mes)}
+                subindo={mes => d.subindoAoDrive(b.id, mes)}
+                semMovimentoDoDrive={mes => vm.arquivoSemMovimento(b.id, mes)}
                 onSemMovimento={(mes, marcado) => ponte.marcarSemMovimento(b.id, marcado, mes)} />}
               {verLancamentos && (emLote ? (
                 <FaixaQueAbre titulo="Lançamentos" qtd={vm.movimentoDe(b.id).linhas.length}>

@@ -1,6 +1,6 @@
 // Gmail › Histórico (13/10/2026: "refaça toda a UI do Gmail"): as últimas leituras do robô do Gmail em frases ("Leu 12
 // e-mails · 4 anexos salvos · 2 sem cliente"), com o total das leituras no topo; os erros em destaque.
-import { Icone, useCarregando } from '@nads/ui';
+import { Icone, useCarregando, Vazio } from '@nads/ui';
 import { useHistoricoDoRobo } from './useHistoricoDoRobo';
 
 const n = (v: number, um: string, varios: string) => v + ' ' + (v === 1 ? um : varios);
@@ -8,7 +8,7 @@ const n = (v: number, um: string, varios: string) => v + ' ' + (v === 1 ? um : v
 export function HistoricoDoRobo() {
   const vm = useHistoricoDoRobo();
   useCarregando(vm.carregando);
-  if (vm.erro) return <div className="alert"><Icone nome="alert" /><div><p className="alert-text">Não consegui ler o robô ({vm.erro}).</p></div></div>;
+  if (vm.erro) return <Vazio icone="alert" titulo="Não consegui ler o robô" texto={vm.erro} onTentarDeNovo={() => location.reload()} />;
   if (!vm.carregando && !vm.linhas.length) return (
     <div className="gm-lista-vazia gm-historico-vazio">
       <span className="gm-vazio-icone" aria-hidden="true"><Icone nome="clock" /></span>
