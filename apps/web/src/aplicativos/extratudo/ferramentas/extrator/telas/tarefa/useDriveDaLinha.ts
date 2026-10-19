@@ -225,7 +225,15 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
    * EXTRATOS/AAAA/MM/BANCÁRIOS/<BANCO>. Só com o login do Entregas; mês que já tem extrato (ou candidato) no Drive não vai.
    */
   async function subirAoDrive(linha: Linha, fs: File[], cliente: string) {
-    if (!drive.enviarAoDrive || !acesso.entrou || !fs.length) return;
+    if (!drive.enviarAoDrive || !fs.length) return;
+    // sem o Drive conectado, pede o login e manda depois (Vitor, 19/10/2026: na 289, o 06 e o 07 do Sicoob entraram e nunca
+    // foram para o Drive, sem aviso; o olhinho não tinha o PDF para abrir)
+    if (!acesso.entrou) {
+      if (drive.loginDeFora || drive.exemplos) return;
+      depois.current = () => { void subirAoDrive(linha, fs, cliente); };
+      setLogin(l => ({ ...l, aberto: true, erro: '' }));
+      return;
+    }
     const mandados: string[] = [];
     try {
       const pasta = await drive.pastaDoCliente(codigo);

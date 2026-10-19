@@ -326,12 +326,10 @@ function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato
     }
     // o olhinho em todo mês importado (Vitor, 19/10/2026: "deixa eu visualizar o importado, não somente deixe o check"): o
     // arquivo que veio do e-mail ou do computador (só nesta aba); senão, onVerImportado (o do Drive, ou os lançamentos)
-    const doEmail = lado === 'banco' ? puxados(m.mes) : [];
     const nomeLado = lado === 'banco' ? 'extrato' : 'razão';
     return <>{lado === 'banco' && subindo(m.mes) && <SubindoAoDrive />}<BotaoLado lado={info} titulo={(lado === 'banco' ? 'Extrato' : 'Razão') + ' de ' + m.rotulo} aceitar={lado === 'banco' ? aceitarExtrato : aceitarRazao} travado={trava}
       onArquivos={fs => onArquivos(lado, fs, m.mes)} onExcluir={() => onExcluir(lado, m.mes)} />
-      {doEmail.length > 0 ? <BotaoVer titulo={'Ver o ' + nomeLado + ' importado: ' + doEmail.map(p => p.nome).join(', ')} onVer={() => doEmail.forEach(abrirPuxado)} />
-        : info.qtdArquivos > 0 && <BotaoVer titulo={'Ver o ' + nomeLado + ' importado de ' + m.rotulo} onVer={() => onVerImportado(lado, m.mes)} />}</>;
+      {info.qtdArquivos > 0 && <BotaoVer titulo={'Ver o ' + nomeLado + ' importado de ' + m.rotulo} onVer={() => onVerImportado(lado, m.mes)} />}</>;
   };
   return (
     <div className="imp-periodo-linha">
@@ -685,15 +683,18 @@ export function TarefaExtratos() {
   const alternarBatendo = (id: string) => setAbertasBatendo(v => (v.includes(id) ? v.filter(a => a !== id) : [...v, id]));
 
   /** Visualizar o que veio do Drive: abre a janela já (senão o navegador bloqueia) e põe o link temporário quando o robô responder. */
-  // o olhinho do mês importado: o extrato do Drive daquele mês, se tiver; senão (e no razão), os lançamentos importados
-  const [importado, setImportado] = useState<{ titulo: string; linhas: x.Lancamento[] } | null>(null);
+  // o olhinho do mês importado (Vitor, 19/10/2026: "no olhinho do upado, abra o PDF no Drive"): o PDF do Drive daquele mês;
+  // senão o arquivo que veio nesta aba (do computador ou do e-mail, ainda subindo); senão (e no razão), os lançamentos
+  const [importado, setImportado] = useState<{ titulo: string; linhas: x.Lancamento[]; semPdf: boolean } | null>(null);
   async function verImportado(b: (typeof vm.bancos)[number], lado: 'banco' | 'sistema', mes: string) {
     if (lado === 'banco') {
       const arq = await d.arquivoNoDrive(b, mes).catch(() => null);
       if (arq) { visualizarDoDrive(arq); return; }
+      const aqui = puxadosDe(chaveDoExtrato(s.codigo, b.id), mes);
+      if (aqui.length) { aqui.forEach(abrirPuxado); return; }
     }
     const rotulo = mes.slice(5) + '/' + mes.slice(0, 4);
-    setImportado({ titulo: (lado === 'banco' ? 'Extrato' : 'Razão') + ' do ' + b.nome + ' · ' + rotulo, linhas: vm.lancamentosImportados(b.id, lado, mes) });
+    setImportado({ titulo: (lado === 'banco' ? 'Extrato' : 'Razão') + ' do ' + b.nome + ' · ' + rotulo, linhas: vm.lancamentosImportados(b.id, lado, mes), semPdf: lado === 'banco' });
   }
 
   function visualizarDoDrive(arquivo: { id: string; nome: string }) {
@@ -1042,7 +1043,8 @@ export function TarefaExtratos() {
           <div className={classeDaJanela({}) + ' imp-importado'} role="dialog" aria-modal="true" aria-labelledby="tituloImportado" onClick={e => e.stopPropagation()}>
             <BotaoFechar canto onClick={() => setImportado(null)} />
             <h3 id="tituloImportado">{importado.titulo}</h3>
-            <p className="hint">{importado.linhas.length} lançamento{importado.linhas.length === 1 ? '' : 's'} importado{importado.linhas.length === 1 ? '' : 's'} no mês (o arquivo não ficou guardado).</p>
+            <p className="hint">{importado.linhas.length} lançamento{importado.linhas.length === 1 ? '' : 's'} importado{importado.linhas.length === 1 ? '' : 's'} no mês.
+              {importado.semPdf ? ' O PDF não está no Drive (o extrato entrou antes de subir para lá): importe o PDF de novo neste mês e ele vai para o Drive.' : ' O arquivo do razão não fica guardado.'}</p>
             <div className="table-wrap scroll-list">
               <table className="table-compact">
                 <thead><tr><th>Data</th><th>Histórico</th><th className="num">Valor</th></tr></thead>
