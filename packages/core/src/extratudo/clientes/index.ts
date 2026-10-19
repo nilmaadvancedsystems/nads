@@ -130,11 +130,26 @@ export function adiantamentoNoDinamico(d: BalanceteDinamico, meses: readonly str
  * dela: o cheque especial não é empréstimo (Vitor, 15/10/2026), e a sintética o somaria.
  */
 export function emprestimosNoDinamico(d: BalanceteDinamico, meses: readonly string[]): { cobertos: string[]; com: string[] } {
-  const grupos = d.linhas.filter(l => l.classificacao.startsWith('2') && /^(emprestimos?|financiamentos?)\b/.test(normalizarTexto(l.descricao)));
-  const debaixo = (l: LinhaDinamico, g: LinhaDinamico) => l === g || l.classificacao.startsWith(g.classificacao + '.');
   const folha = (l: LinhaDinamico) => !d.linhas.some(o => o !== l && o.classificacao.startsWith(l.classificacao + '.'));
-  const contas = d.linhas.filter(l => folha(l) && grupos.some(g => debaixo(l, g)) && !/cheque especial/.test(normalizarTexto(l.descricao)));
-  return mesesComSaldo(d, meses, contas);
+  return mesesComSaldo(d, meses, d.linhas.filter(l => folha(l) && emprestimoBancario(d, l)));
+}
+
+const BANCO_NO_NOME = /\b(banco|bco|sicoob|sicredi|bradesco|itau|santander|nubank|inter|c6|btg|cora|stone|pagbank|pagseguro|mercado pago|caixa economica|cef|bnb|bb|bndes|unicred|cresol|safra|banrisul)\b/;
+
+/**
+ * A conta é de empréstimo ou financiamento bancário? (Vitor, 19/10/2026: "empréstimos de terceiros e mútuos não entram em
+ * Empréstimos e financiamentos, apenas empréstimos bancários"). No Passivo, debaixo de (ou ela mesma) "Empréstimos" ou
+ * "Financiamentos"; com o banco no nome (ou "bancário" no grupo), ou financiamento, Finame, CDC, capital de giro. Fora: de
+ * terceiros, mútuo, de sócios, coligadas, pessoa física e o cheque especial.
+ */
+export function emprestimoBancario(d: BalanceteDinamico, l: LinhaDinamico): boolean {
+  if (!l.classificacao.startsWith('2')) return false;
+  const n = normalizarTexto(l.descricao);
+  if (/\b(terceiros?|mutuo|mutuos|socios?|coligad\w*|controlad\w*|ligad\w*|pessoa fisica|particular\w*|cheque especial)\b/.test(n)) return false;
+  const acima = d.linhas.filter(g => g === l || l.classificacao.startsWith(g.classificacao + '.'));
+  if (!acima.some(g => /^(emprestimos?|financiamentos?)\b/.test(normalizarTexto(g.descricao)))) return false;
+  return BANCO_NO_NOME.test(n) || acima.some(g => /\bbancari\w*/.test(normalizarTexto(g.descricao)))
+    || /\b(financiament\w*|finame|cdc|capital de giro|consorcio)\b/.test(n);
 }
 
 /** A conta do adiantamento salarial no dinâmico ("Adiantamento Salarial", "Adto. de salários", "Adiantamento a empregados"). */
@@ -189,8 +204,8 @@ export function tipoDoRazao(d: BalanceteDinamico, codigo: string): TipoDoRazao |
   const mes = d.meses[d.meses.length - 1] || '';
   if (clientesDoDinamico(d, mes, 'clientes').some(c => c.codigo === codigo)) return 'cliente';
   if (clientesDoDinamico(d, mes, 'fornecedores').some(c => c.codigo === codigo)) return 'fornecedor';
-  const grupos = d.linhas.filter(g => g.classificacao.startsWith('2') && /^(emprestimos?|financiamentos?)\b/.test(normalizarTexto(g.descricao)));
-  if (grupos.some(g => l.classificacao === g.classificacao || l.classificacao.startsWith(g.classificacao + '.')) && !/cheque especial/.test(n)) return 'emprestimo';
+  // só o bancário (Vitor, 19/10/2026: terceiros e mútuos não entram)
+  if (emprestimoBancario(d, l)) return 'emprestimo';
   return null;
 }
 

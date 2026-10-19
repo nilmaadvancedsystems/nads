@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  adiantamentoNoDinamico, emprestimosNoDinamico, resultadoErradoNoDinamico, tipoDoRazao, razoesPedidos, conferirFechamento, dinamicoCompletoDeTeste, assinaturaDoEnvio, clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
+  adiantamentoNoDinamico, emprestimosNoDinamico, emprestimoBancario, resultadoErradoNoDinamico, tipoDoRazao, razoesPedidos, conferirFechamento, dinamicoCompletoDeTeste, assinaturaDoEnvio, clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
 } from './index';
 
 // o formato do balancete dinâmico do Alterdata (292, bdinamico.xls)
@@ -115,6 +115,16 @@ describe('adiantamento a fornecedores e de clientes no dinâmico (15/10/2026)', 
 
 describe('empréstimos no dinâmico (15/10/2026)', () => {
   const linha = (classificacao: string, descricao: string, saldos: Record<string, number>) => ({ codigo: '1', classificacao, descricao, saldoAnterior: 0, saldos });
+  it('só o bancário: o de terceiros e o mútuo não entram (19/10/2026)', () => {
+    const d = { meses: ['2026-01'], linhas: [
+      linha('2.1.1.04', 'EMPRESTIMOS E FINANCIAMENTOS', { '2026-01': -9000 }),
+      linha('2.1.1.04.001', 'Banco Exemplo - Empréstimos', { '2026-01': 0 }),
+      linha('2.1.1.04.002', 'Empréstimo de Terceiros', { '2026-01': -5000 }),
+      linha('2.1.1.04.003', 'EMPRESA EXEMPLO - Empréstimo Mútuo', { '2026-01': -4000 }),
+    ] };
+    expect(emprestimosNoDinamico(d, ['2026-01']).com).toEqual([]);
+    expect(['2.1.1.04.001', '2.1.1.04.002', '2.1.1.04.003'].map(c => emprestimoBancario(d, d.linhas.find(l => l.classificacao === c)!))).toEqual([true, false, false]);
+  });
   it('só o do Passivo com saldo; o empréstimo a sócios do Ativo e os juros não contam', () => {
     const d = { meses: ['2026-01', '2026-02'], linhas: [
       linha('1.1.5.01', 'EMPRESTIMOS A SOCIOS', { '2026-01': 900, '2026-02': 900 }),
