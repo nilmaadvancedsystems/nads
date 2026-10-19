@@ -6,6 +6,7 @@ import {
 } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
 import { CampoAssinatura } from '@nads/ui';
+import { financeiro } from '@nads/core';
 import { CONCILIA, EXECUTOR, EXTRATUDO, TAREFAS, TODAS } from './telas';
 import type { Peca } from './tipos';
 import { BotaoGoogle } from '../../../comum/BotaoGoogle';
@@ -28,6 +29,7 @@ import { ResumoDoPagamento } from '../../cliente/partes/ResumoDoPagamento';
 import { SiglaDaGuia } from '../../cliente/partes/SiglaDaGuia';
 import { Vazio as VazioDoCliente } from '../../cliente/partes/Vazio';
 import { BlocoDoLink } from '../../tarefas/telas/area-cliente/partes/BlocoDoLink';
+import { Calculadora } from '../../tarefas/telas/financeiro/partes/Calculadora';
 import { ContadorDeCedulas } from '../../tarefas/telas/financeiro/partes/ContadorDeCedulas';
 import { LinhaDoPlano } from '../../tarefas/telas/financeiro/partes/LinhaDoPlano';
 import { ValorDoCaixa } from '../../tarefas/telas/financeiro/partes/ValorDoCaixa';
@@ -36,6 +38,11 @@ import { ConversaDoEscritorio } from '../../tarefas/telas/area-cliente/partes/Co
 import '../../cliente/cliente.css';
 
 const nada = () => undefined;
+/** A calculadora do catálogo, funcionando pelas teclas da tela. */
+function DemoDaCalculadora() {
+  const [e, setE] = useState<financeiro.EstadoDaCalculadora>(financeiro.CALCULADORA_INICIAL);
+  return <div style={{ width: '100%', maxWidth: 300 }}><Calculadora estado={e} aoTecla={t => setE(x => financeiro.calcular(x, t))} /></div>;
+}
 /** A contagem de cédulas do catálogo, com a conta funcionando. */
 function DemoDeCedulas() {
   const [q, setQ] = useState<Record<string, string>>({ '100': '1', '50': '2', '0.5': '3' });
@@ -965,4 +972,10 @@ export const PECAS_BASE: Peca[] = [
         <LinhaDoPlano conta={{ id: 'd', codigo: '4.1.02', descricao: 'Serviços avulsos', tipo: 'RECEITA', nivel: 3, pai: 'b', ativo: false, movimentavel: true }} fundo={2} />
       </ul></div>
     ) },
+  { id: 'calculadora', tipo: 'cartoes', nome: 'Calculadora', descricao: 'Na janela "Calculadora" do Caixa (19/10/2026): a conta aberta em cima, o visor grande no jeito brasileiro (1.234,56) e as teclas em grade; as teclas do computador também valem', componente: 'Calculadora', classes: ['fin-calc', 'fin-calc-visor', 'fin-calc-teclas', 'fin-calc-tecla', 'fin-calc-op'], telas: ['t-fin-caixa'],
+    uso: '<Calculadora estado={estado} aoTecla={tecla => …} />',
+    demo: () => <DemoDaCalculadora /> },
+  { id: 'filtro-de-tipo-do-caixa', tipo: 'abas', nome: 'Filtro Todos / Entradas / Saídas', descricao: 'No Caixa (19/10/2026): o seletor que filtra a lista pelo tipo do lançamento; os quatro números de cima não mudam', componente: 'Segmentado', classes: ['steps', 'step-pill'], telas: ['t-fin-caixa'],
+    uso: "<Segmentado valor={tipo} opcoes={[{ valor: 'todos', rotulo: 'Todos' }, …]} onMudar={setTipo} />",
+    demo: () => <Segmentado valor="E" opcoes={[{ valor: 'todos', rotulo: 'Todos' }, { valor: 'E', rotulo: 'Entradas' }, { valor: 'S', rotulo: 'Saídas' }]} onMudar={nada} /> },
 ];

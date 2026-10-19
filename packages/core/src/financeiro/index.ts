@@ -167,3 +167,6 @@ export function periodoPronto(qual: 'este-mes' | 'mes-passado' | 'este-ano', hoj
   const [ano, mes] = m === 1 ? [a - 1, 12] : [a, m - 1];
   return { de: `${ano}-${p2(mes)}-01`, ate: `${ano}-${p2(mes)}-${p2(ultimo(ano, mes))}` };
 }
+
+export * from './demonstrativo';
+export * from './calculadora';
