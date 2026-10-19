@@ -4701,6 +4701,8 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .fin-conta .badge svg{width:12px;height:12px;}
 @media (max-width:640px){.fin-periodo{flex-wrap:wrap;}.fin-cedula{grid-template-columns:80px 12px 72px 1fr;}.fin-cedula input{width:72px;}}
 
+/* Senhas › Certificados: a linha do interruptor dos avisos de vencimento (19/10/2026) */
+.cert-avisos{padding:0 16px;margin-bottom:16px;}
 /* Financeiro › Caixa: a calculadora (19/10/2026) */
 .fin-calc{display:flex;flex-direction:column;gap:12px;}
 .fin-calc-visor{display:flex;flex-direction:column;align-items:flex-end;gap:2px;border:1px solid var(--border);border-radius:8px;background:var(--surface-3);padding:10px 14px;}
