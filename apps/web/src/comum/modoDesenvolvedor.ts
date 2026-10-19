@@ -16,7 +16,7 @@ export const MENSAGEM_BLOQUEADO = 'Modo desenvolvedor: nada foi enviado.';
 /** O que pode gravar mesmo no modo desenvolvedor (não altera dado de ninguém). */
 // o pedido do balancete ao robô do Alterdata (Vitor, 14/10/2026: "não tem como pedir o balancete no modo dev"): o robô só
 // gera o relatório no Contábil e salva o arquivo; a importação que vem depois continua fingida (só na tela)
-const LIVRES = [/^aberturasDrive(\/|$)/, /^pedidosMapaDrive(\/|$)/, /^nadsSessoes(\/|$)/, /^pedidosAlterdata(\/|$)/];
+const LIVRES = [/^aberturasDrive(\/|$)/, /^pedidosMapaDrive(\/|$)/, /^nadsSessoes(\/|$)/];
 
 export function modoDesenvolvedor(): boolean {
   try { return localStorage.getItem(CHAVE) === '1'; } catch { return false; }
