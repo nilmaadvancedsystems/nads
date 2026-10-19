@@ -29,6 +29,7 @@ import { ResumoDoPagamento } from '../../cliente/partes/ResumoDoPagamento';
 import { SiglaDaGuia } from '../../cliente/partes/SiglaDaGuia';
 import { Vazio as VazioDoCliente } from '../../cliente/partes/Vazio';
 import { BlocoDoLink } from '../../tarefas/telas/area-cliente/partes/BlocoDoLink';
+import { ValorEditavel } from '../../tarefas/telas/financeiro/partes/ValorEditavel';
 import { Calculadora } from '../../tarefas/telas/financeiro/partes/Calculadora';
 import { ContadorDeCedulas } from '../../tarefas/telas/financeiro/partes/ContadorDeCedulas';
 import { LinhaDoPlano } from '../../tarefas/telas/financeiro/partes/LinhaDoPlano';
@@ -978,4 +979,9 @@ export const PECAS_BASE: Peca[] = [
   { id: 'filtro-de-tipo-do-caixa', tipo: 'abas', nome: 'Filtro Todos / Entradas / Saídas', descricao: 'No Caixa (19/10/2026): o seletor que filtra a lista pelo tipo do lançamento; os quatro números de cima não mudam', componente: 'Segmentado', classes: ['steps', 'step-pill'], telas: ['t-fin-caixa'],
     uso: "<Segmentado valor={tipo} opcoes={[{ valor: 'todos', rotulo: 'Todos' }, …]} onMudar={setTipo} />",
     demo: () => <Segmentado valor="E" opcoes={[{ valor: 'todos', rotulo: 'Todos' }, { valor: 'E', rotulo: 'Entradas' }, { valor: 'S', rotulo: 'Saídas' }]} onMudar={nada} /> },
+  { id: 'valor-editavel', tipo: 'campos', nome: 'Valor editável na linha', descricao: 'Nos Honorários (19/10/2026): o valor do honorário se digita na própria linha da tabela; grava ao sair do campo ou no Enter, Esc desfaz; sem valor mostra "definir valor" na cor da marca', componente: 'ValorEditavel', classes: ['fin-valor-edita', 'fin-valor-edita-vazio'], telas: ['t-fin-honorarios'],
+    uso: '<ValorEditavel valor={850} rotulo="Valor do honorário" aoSalvar={texto => …} />',
+    demo: () => <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}><ValorEditavel valor={850} rotulo="Valor com valor" aoSalvar={nada} /><ValorEditavel valor={0} rotulo="Valor sem valor" aoSalvar={nada} /></div> },
+  { id: 'situacao-do-honorario', tipo: 'selos', nome: 'Situação do honorário', descricao: 'Nos Honorários: "Pago em dd/mm · forma" (verde) ou "Em aberto" (amarelo); não há vencimento, então nunca "atrasado"', classes: ['badge', 'badge-ok', 'badge-warn'], telas: ['t-fin-honorarios'],
+    demo: () => <div style={{ display: 'flex', gap: 8 }}><span className="badge badge-ok">Pago em 05/10 · PIX</span><span className="badge badge-warn">Em aberto</span></div> },
 ];

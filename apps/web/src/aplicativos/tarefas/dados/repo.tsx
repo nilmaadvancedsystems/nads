@@ -4,12 +4,13 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDeCategoriasDp, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDeNfse, repoDoCaixa, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
+import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDeCategoriasDp, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoAgentes } from './agentes';
 import type { RepoSieg } from './sieg';
 import type { RepoFgts } from './fgts';
 import type { RepoCaixa } from './caixa';
+import type { RepoHonorarios } from './honorarios';
 import type { RepoNfse } from './nfse';
 import { repoDeEntregasDeDocumentos } from './fonte';
 import type { RepoEntregasDeDocumentos } from './entregasDeDocumentos';
@@ -193,6 +194,13 @@ export function useNfse(): RepoNfse {
 /** O caixa e o plano de contas do financeiro, ao vivo (19/10/2026). */
 export function useCaixa(): RepoCaixa {
   const repo = repoDoCaixa();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** Os honorários dos clientes, ao vivo: os contratos e os recebimentos (19/10/2026). */
+export function useHonorarios(): RepoHonorarios {
+  const repo = repoDeHonorarios();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
 }

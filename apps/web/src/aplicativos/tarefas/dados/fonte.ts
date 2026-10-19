@@ -17,6 +17,8 @@ import { criarFgtsMemoria, type RepoFgts } from './fgts';
 import { criarFgtsFirestore } from './fgts.firestore';
 import { criarCaixaMemoria, type RepoCaixa } from './caixa';
 import { criarCaixaFirestore } from './caixa.firestore';
+import { criarHonorariosMemoria, type RepoHonorarios } from './honorarios';
+import { criarHonorariosFirestore } from './honorarios.firestore';
 import { criarNfseMemoria, type RepoNfse } from './nfse';
 import { criarNfseFirestore } from './nfse.firestore';
 import { criarEntregasDeDocumentosMemoria, type RepoEntregasDeDocumentos } from './entregasDeDocumentos';
@@ -343,6 +345,14 @@ let caixa: RepoCaixa | null = null;
 export function repoDoCaixa(): RepoCaixa {
   if (!caixa) caixa = noBanco ? criarCaixaFirestore() : criarCaixaMemoria();
   return caixa;
+}
+
+let honorarios: RepoHonorarios | null = null;
+
+/** Os honorários dos clientes (19/10/2026, fase 2 do Financeiro): os contratos e os recebimentos por competência. */
+export function repoDeHonorarios(): RepoHonorarios {
+  if (!honorarios) honorarios = noBanco ? criarHonorariosFirestore() : criarHonorariosMemoria();
+  return honorarios;
 }
 
 let entregasDeDocumentos: RepoEntregasDeDocumentos | null = null;

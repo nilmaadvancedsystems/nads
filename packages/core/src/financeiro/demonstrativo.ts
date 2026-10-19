@@ -59,15 +59,19 @@ export function linhasDoDemonstrativo(e: EntradaDoDemonstrativo): LinhasDoDemons
   return { linhas, entradas: reais(ent), saidas: reais(sai), saldoFinal, linhaDoCabecalho: 3 };
 }
 
-/** O .xlsx do demonstrativo (aba "Caixa"), com os valores formatados em R$. */
-export function planilhaDoDemonstrativo(e: EntradaDoDemonstrativo): Uint8Array {
-  const { linhas } = linhasDoDemonstrativo(e);
+/** Um .xlsx de uma aba só a partir das linhas: os números saem formatados em R$ (o mesmo de todas as planilhas do Financeiro). */
+export function xlsxDeLinhas(linhas: CelulaDoDemonstrativo[][], aba: string, larguras: number[]): Uint8Array {
   const ws = XLSX.utils.aoa_to_sheet(linhas);
   for (const [endereco, cel] of Object.entries(ws)) {
     if (endereco[0] !== '!' && (cel as XLSX.CellObject).t === 'n') (cel as XLSX.CellObject).z = '"R$" #,##0.00;[Red]-"R$" #,##0.00';
   }
-  ws['!cols'] = [{ wch: 12 }, { wch: 44 }, { wch: 30 }, { wch: 16 }, { wch: 16 }, { wch: 36 }];
+  ws['!cols'] = larguras.map(wch => ({ wch }));
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Caixa');
+  XLSX.utils.book_append_sheet(wb, ws, aba);
   return new Uint8Array(XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer);
+}
+
+/** O .xlsx do demonstrativo (aba "Caixa"), com os valores formatados em R$. */
+export function planilhaDoDemonstrativo(e: EntradaDoDemonstrativo): Uint8Array {
+  return xlsxDeLinhas(linhasDoDemonstrativo(e).linhas, 'Caixa', [12, 44, 30, 16, 16, 36]);
 }

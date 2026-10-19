@@ -170,3 +170,4 @@ export function periodoPronto(qual: 'este-mes' | 'mes-passado' | 'este-ano', hoj
 
 export * from './demonstrativo';
 export * from './calculadora';
+export * from './honorarios';

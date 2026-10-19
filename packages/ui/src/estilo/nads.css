@@ -4727,3 +4727,19 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .fin-calc-op{color:var(--accent);font-weight:600;}
 .fin-calc-sup{color:var(--ink-muted);}
 .modal.fin-calc-janela{max-width:340px;}
+
+/* Financeiro › Honorários (19/10/2026, fase 2) */
+.fin-valor-edita{width:110px;border:1px solid transparent;border-radius:6px;background:transparent;padding:6px 8px;font-size:var(--fs-14);text-align:right;color:var(--ink);outline:none;}
+.fin-valor-edita:hover{background:var(--hover-bg);}
+.fin-valor-edita:focus{background:var(--input-bg);border-color:var(--accent);}
+.fin-valor-edita-vazio::placeholder{color:var(--accent);}
+.modal.fin-contratos-janela{max-width:760px;}
+.fin-contratos-filtro{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-13);color:var(--ink-muted);margin:12px 0 4px;}
+.fin-contratos{list-style:none;margin:0;padding:0;max-height:48vh;overflow:auto;border:1px solid var(--border);border-radius:6px;}
+.fin-contrato{display:grid;grid-template-columns:auto minmax(120px,1fr) 110px minmax(100px,180px) auto;align-items:center;gap:10px;padding:6px 10px;border-bottom:1px solid var(--border);}
+.fin-contrato:last-child{border-bottom:0;}
+.fin-contrato-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-14);}
+.fin-contrato-obs{min-width:0;border:1px solid transparent;border-radius:6px;background:transparent;padding:6px 8px;font-size:var(--fs-13);color:var(--ink);outline:none;}
+.fin-contrato-obs:hover{background:var(--hover-bg);}
+.fin-contrato-obs:focus{background:var(--input-bg);border-color:var(--accent);}
+@media (max-width:640px){.fin-contrato{grid-template-columns:auto 1fr auto;}.fin-contrato-obs{grid-column:1 / -1;}}

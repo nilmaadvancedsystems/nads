@@ -91,6 +91,8 @@ export const APLICACOES: readonly Aplicacao[] = [
   { id: 'financeiro', nome: 'Financeiro', icone: 'cartao', grupo: 'Escritório', pronta: true, paginas: [
     // o Movimento de Caixa e o Plano de Contas que vieram do Toriba (19/10/2026), no início do Financeiro
     { id: 'caixa', rotulo: 'Caixa', icone: 'dinheiro', titulo: 'Movimento de caixa' },
+    // os honorários dos clientes, por competência (19/10/2026, fase 2 do Financeiro)
+    { id: 'honorarios', rotulo: 'Honorários', icone: 'recibo', titulo: 'Honorários' },
     { id: 'plano', rotulo: 'Plano de contas', icone: 'list', titulo: 'Plano de contas' },
     { id: 'notas', rotulo: 'Notas fiscais', icone: 'recibo', titulo: 'Notas fiscais' },
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Configurações do emissor' },
