@@ -177,7 +177,7 @@ export function useClientes() {
     const l = linhas.find(x => x.codigo === codigo);
     if (!f || !l || !marcas.carregado) return;
     try {
-      const r = cl.conferirRazaoDoCliente(tarefas.lerRazaoDoArquivo(await f.arrayBuffer()), mes);
+      const r = cl.conferirRazaoDoCliente(tarefas.lerRazaoDoArquivo(await f.arrayBuffer(), f.name), mes);
       const razao = cl.razaoDaMarca(f.name, r);
       // com nota em aberto, a observação já vem escrita (Vitor, 07/10/2026): "No meu sistema, está em aberto…"
       marcar(codigo, m => { const n = { ...m, situacao: cl.razaoComPendencia(razao) ? 'conferido' as const : 'pendente' as const, razao }; delete n.perguntar; return n; });
