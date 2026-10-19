@@ -19,3 +19,4 @@ export * as mandei from './mandei';
 export * as areaCliente from './areaCliente';
 export * as nfse from './nfse';
 export * as lcdpr from './lcdpr';
+export * as financeiro from './financeiro';

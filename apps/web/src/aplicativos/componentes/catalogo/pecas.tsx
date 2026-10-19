@@ -28,11 +28,19 @@ import { ResumoDoPagamento } from '../../cliente/partes/ResumoDoPagamento';
 import { SiglaDaGuia } from '../../cliente/partes/SiglaDaGuia';
 import { Vazio as VazioDoCliente } from '../../cliente/partes/Vazio';
 import { BlocoDoLink } from '../../tarefas/telas/area-cliente/partes/BlocoDoLink';
+import { ContadorDeCedulas } from '../../tarefas/telas/financeiro/partes/ContadorDeCedulas';
+import { LinhaDoPlano } from '../../tarefas/telas/financeiro/partes/LinhaDoPlano';
+import { ValorDoCaixa } from '../../tarefas/telas/financeiro/partes/ValorDoCaixa';
 import { BotoesDoLink } from '../../tarefas/telas/area-cliente/partes/BotoesDoLink';
 import { ConversaDoEscritorio } from '../../tarefas/telas/area-cliente/partes/ConversaDoEscritorio';
 import '../../cliente/cliente.css';
 
 const nada = () => undefined;
+/** A contagem de cédulas do catálogo, com a conta funcionando. */
+function DemoDeCedulas() {
+  const [q, setQ] = useState<Record<string, string>>({ '100': '1', '50': '2', '0.5': '3' });
+  return <div style={{ width: '100%', maxWidth: 420 }}><ContadorDeCedulas quantidades={q} onMudar={(v, n) => setQ(x => ({ ...x, [v]: n }))} /></div>;
+}
 // as telas da Área do Cliente e a "foto" de exemplo do avatar (um retrato desenhado, sem pessoa de verdade)
 const CLI_TELAS = ['c-cliente', 'c-cliente-documentos', 'c-cliente-guias', 'c-cliente-dp', 'c-cliente-chamados'];
 const FOTO_DE_EXEMPLO = "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23C9B8A6'/%3E%3Ccircle cx='32' cy='26' r='12' fill='%238A6E58'/%3E%3Cpath d='M10 64a22 22 0 0 1 44 0Z' fill='%238A6E58'/%3E%3C/svg%3E";
@@ -935,5 +943,27 @@ export const PECAS_BASE: Peca[] = [
         <div style={{ flex: '1 1 300px' }}><CartaoDeAtendimento contato={{ equipe: 'Nilma Contabilidade', whatsapp: '(38) 99999-0000', email: 'atendimento@nilma.example' }} onWhatsapp={nada} /></div>
         <div style={{ flex: '1 1 300px' }}><CartaoDeAtendimento contato={{ equipe: 'Equipe Nilma Contabilidade', horario: 'Segunda a sexta, das 8h às 18h', whatsapp: '(38) 99999-0000', email: 'atendimento@nilma.example', telefone: '(38) 3333-0000' }} onWhatsapp={nada} /></div>
       </div>
+    ) },
+  // Financeiro › Caixa e Plano de contas (19/10/2026: o Movimento de Caixa e o Plano de Contas do Toriba)
+  { id: 'valor-do-caixa', tipo: 'tabelas', nome: 'Valor do caixa (entrada e saída)', descricao: 'Na lista do Caixa: a entrada em verde com +, a saída em vermelho com −, em negrito e com os dígitos alinhados', componente: 'ValorDoCaixa', classes: ['fin-valor', 'fin-valor-entrada', 'fin-valor-saida'], telas: ['t-fin-caixa'],
+    uso: '<ValorDoCaixa valor={850} tipo="E" />',
+    demo: () => (
+      <div className="table-wrap" style={{ width: '100%' }}><table className="tabela-empresas cad-lista"><thead><tr><th>Descrição</th><th className="fin-direita">Valor</th></tr></thead><tbody>
+        <tr><td>Honorários de setembro</td><td className="num fin-direita"><ValorDoCaixa valor={850} tipo="E" /></td></tr>
+        <tr><td>Papel e toner</td><td className="num fin-direita"><ValorDoCaixa valor={212.9} tipo="S" /></td></tr>
+      </tbody></table></div>
+    ) },
+  { id: 'contador-de-cedulas', tipo: 'cartoes', nome: 'Contagem de cédulas', descricao: 'Na janela "Contar cédulas" do Caixa: uma linha por nota e moeda (200 a 0,01) com a quantidade e o subtotal, e o total geral embaixo', componente: 'ContadorDeCedulas', classes: ['fin-cedulas', 'fin-cedula', 'fin-cedulas-total'], telas: ['t-fin-caixa'],
+    uso: '<ContadorDeCedulas quantidades={{ "50": "2" }} onMudar={(valor, quantidade) => …} />',
+    demo: () => <DemoDeCedulas /> },
+  { id: 'arvore-do-plano', tipo: 'listas', nome: 'Árvore do plano de contas', descricao: 'No Plano de contas: cada conta recuada pelo nível, com a classificação, a descrição (em negrito se só agrupa), o tipo em selo e "Inativa" quando saiu de uso', componente: 'LinhaDoPlano', classes: ['fin-arvore', 'fin-conta', 'fin-conta-codigo', 'fin-conta-grupo', 'fin-conta-inativa'], telas: ['t-fin-plano'], largo: true,
+    uso: '<LinhaDoPlano conta={conta} fundo={nivel - 1} aoAbrir={abrir} />',
+    demo: () => (
+      <div className="table-wrap" style={{ width: '100%' }}><ul className="fin-arvore">
+        <LinhaDoPlano conta={{ id: 'a', codigo: '4', descricao: 'Receitas', tipo: 'RECEITA', nivel: 1, pai: null, ativo: true, movimentavel: false }} fundo={0} />
+        <LinhaDoPlano conta={{ id: 'b', codigo: '4.1', descricao: 'Receitas operacionais', tipo: 'RECEITA', nivel: 2, pai: 'a', ativo: true, movimentavel: false }} fundo={1} />
+        <LinhaDoPlano conta={{ id: 'c', codigo: '4.1.01', descricao: 'Honorários contábeis', tipo: 'RECEITA', nivel: 3, pai: 'b', ativo: true, movimentavel: true }} fundo={2} />
+        <LinhaDoPlano conta={{ id: 'd', codigo: '4.1.02', descricao: 'Serviços avulsos', tipo: 'RECEITA', nivel: 3, pai: 'b', ativo: false, movimentavel: true }} fundo={2} />
+      </ul></div>
     ) },
 ];
