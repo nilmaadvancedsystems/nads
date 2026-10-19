@@ -947,6 +947,9 @@ async function iniciar() {
   catch (err) { log('resumo da semana desligado:', err.message); }
   try { require('./papeis-vencendo').iniciarPapeisVencendo({ db, log, avisos }); }
   catch (err) { log('aviso de documento vencendo desligado:', err.message); }
+  // o certificado digital do cofre do nads (19/10/2026): o admin no celular e por e-mail
+  try { require('./certificados-do-cofre').iniciarCertificadosDoCofre({ db, log, avisos, enviar, destino: destinoDosAvisos }); }
+  catch (err) { log('aviso de certificado do cofre desligado:', err.message); }
   try { require('./lembretes').iniciarLembretes({ db, log, avisos }); }
   catch (err) { log('lembretes do escritório desligados:', err.message); }
   try { require('./fotos-remetentes').iniciarFotosRemetentes(db, log); }

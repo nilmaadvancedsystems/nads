@@ -225,7 +225,15 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
    * EXTRATOS/AAAA/MM/BANCÁRIOS/<BANCO>. Só com o login do Entregas; mês que já tem extrato (ou candidato) no Drive não vai.
    */
   async function subirAoDrive(linha: Linha, fs: File[], cliente: string) {
-    if (!drive.enviarAoDrive || !acesso.entrou || !fs.length) return;
+    if (!drive.enviarAoDrive || !fs.length) return;
+    // sem o Drive conectado, pede o login e manda depois (Vitor, 19/10/2026: na 289, o 06 e o 07 do Sicoob entraram e nunca
+    // foram para o Drive, sem aviso; o olhinho não tinha o PDF para abrir)
+    if (!acesso.entrou) {
+      if (drive.loginDeFora || drive.exemplos) return;
+      depois.current = () => { void subirAoDrive(linha, fs, cliente); };
+      setLogin(l => ({ ...l, aberto: true, erro: '' }));
+      return;
+    }
     const mandados: string[] = [];
     try {
       const pasta = await drive.pastaDoCliente(codigo);
@@ -307,7 +315,16 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chavesSubindo, acesso.entrou]);
 
+  /** o extrato do mês no mapa do Drive, sem pedir ao robô para reler (o olhinho do mês que veio do computador) */
+  async function arquivoNoDrive(linha: Linha, mes: string): Promise<{ id: string; nome: string } | null> {
+    if (!acesso.entrou) return null;
+    const pasta = await drive.pastaDoCliente(codigo);
+    const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, mes, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta });
+    return r.situacao === 'achou' && r.arquivo ? { id: r.arquivo.id, nome: r.arquivo.nome } : null;
+  }
+
   return {
+    arquivoNoDrive,
     /** o extrato do mês está subindo para o Drive (o ícone do Drive girando ao lado do check) */
     subindoAoDrive: (banco: string, mes: string) => !!subindo[banco + '|' + mes],
     exemplos: drive.exemplos,
