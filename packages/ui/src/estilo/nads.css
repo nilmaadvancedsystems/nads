@@ -2490,6 +2490,12 @@ html:not([data-animacoes=todas]) .modal-ok-barra{display:none;}
 .imp-meses thead th{height:34px;background:var(--surface-2);border-bottom-color:var(--border);font-weight:400;}
 .imp-meses th[scope="row"],.imp-meses thead th:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:12px;position:sticky;left:0;z-index:1;padding-left:12px;text-align:left;font-size:var(--fs-12);font-weight:600;color:var(--ink-muted);background:var(--surface-2);}
 .imp-meses td{height:42px;}
+/* os botões do mês numa linha só (o Drive subindo, o check e o olhinho não quebram) e o Drive subindo do tamanho dos outros,
+   com a rodinha pequena no canto de baixo (19/10/2026) */
+.imp-meses td{white-space:nowrap;}
+.imp-subindo{position:relative;cursor:default;}
+.imp-subindo .logo-img{width:14px;height:14px;}
+.imp-subindo .btn-spinner{position:absolute;right:2px;bottom:2px;width:9px;height:9px;border-width:1.5px;}
 /* a alça da primeira coluna e o valor que perde o "R$" no mês estreito */
 /* o balão da mensagem para o cliente (Clientes: a observação do conferido) */
 .msg-balao{display:inline-flex;align-items:flex-start;gap:6px;max-width:100%;padding:6px 10px;border-radius:12px 12px 12px 4px;background:var(--surface-2);border:1px solid var(--border);font-size:var(--fs-13);line-height:1.4;color:var(--ink);}
@@ -4322,6 +4328,8 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 .nf-faixa-item{display:inline-flex;align-items:center;gap:8px;}
 .nf-faixa-item > svg{width:16px;height:16px;flex:none;color:var(--ink-muted);}
 .nf-barra .steps{flex:none;}
+/* a lista das notas rola só com a página: sem altura máxima, a caixa não ganha a segunda barra (19/10/2026); no celular, ainda rola de lado */
+.table-wrap.nf-tabela-wrap{max-height:none;}
 .nf-lista td{vertical-align:middle;}
 .nf-doc{display:block;font-size:var(--fs-12);font-variant-numeric:tabular-nums;}
 .nf-corta{display:inline-block;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;}
@@ -4674,3 +4682,35 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .toggle-txt-fora{visibility:hidden;}
 /* o menu flutuante (MenuSuspenso flutuante): por cima de tudo, fora da caixa que rola */
 .menu-pop.flutuante{z-index:200;max-height:min(420px,calc(100vh - 16px));}
+
+/* Financeiro › Caixa e Plano de contas (19/10/2026: o Movimento de Caixa e o Plano de Contas do Toriba) */
+.fin-barra{align-items:center;}
+.fin-periodo{display:inline-flex;align-items:center;gap:8px;}
+.fin-periodo .data-mask{width:112px;}
+.fin-numeros{gap:12px;margin-bottom:16px;}
+.fin-lista td{vertical-align:middle;}
+.fin-direita{text-align:right;white-space:nowrap;}
+.fin-corta{display:inline-block;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;}
+.fin-valor{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.fin-valor-entrada{color:var(--success);}
+.fin-valor-saida{color:var(--destructive);}
+/* a contagem de cédulas */
+.fin-cedulas{display:flex;flex-direction:column;gap:12px;}
+.fin-cedulas-linhas{display:flex;flex-direction:column;gap:4px;}
+.fin-cedula{display:grid;grid-template-columns:96px 16px 88px 1fr;align-items:center;gap:8px;}
+.fin-cedula-valor{font-size:var(--fs-14);font-variant-numeric:tabular-nums;}
+.fin-cedula-x{color:var(--ink-faint);text-align:center;}
+.fin-cedula input{width:88px;border:1px solid var(--btn-border);border-radius:6px;background:var(--input-bg);padding:6px 8px;font-size:var(--fs-14);text-align:right;color:var(--ink);outline:none;}
+.fin-cedula input:focus{border-color:var(--accent);}
+.fin-cedula-sub{text-align:right;font-size:var(--fs-14);}
+.fin-cedulas-total{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);padding-top:12px;font-size:var(--fs-16);}
+.fin-cedulas-total b{font-size:var(--fs-20);}
+/* a árvore do plano de contas */
+.fin-arvore{list-style:none;margin:0;padding:0;}
+.fin-conta{display:flex;align-items:center;gap:12px;width:100%;border:0;border-bottom:1px solid var(--border);background:transparent;padding-top:9px;padding-bottom:9px;padding-right:12px;text-align:left;font:inherit;font-size:var(--fs-14);color:var(--ink);cursor:pointer;}
+.fin-conta:hover{background:var(--hover-bg);}
+.fin-conta-codigo{flex:none;min-width:56px;color:var(--ink-muted);}
+.fin-conta-grupo{font-weight:600;}
+.fin-conta-inativa{opacity:.55;}
+.fin-conta .badge svg{width:12px;height:12px;}
+@media (max-width:640px){.fin-periodo{flex-wrap:wrap;}.fin-cedula{grid-template-columns:80px 12px 72px 1fr;}.fin-cedula input{width:72px;}}

@@ -44,6 +44,11 @@ const noBanco = (g: cl.LancamentoDoBanco) => ({
   curto: g.historico.length > 60 ? g.historico.slice(0, 60).trimEnd() + '…' : g.historico, valor: formatos.reais(Math.abs(g.valor) / 100),
 });
 
+/** os lançamentos livres sem os recusados da nota (sem recusa, a mesma lista: nada de copiar milhares por nota; 19/10/2026) */
+function semAsRecusadas<L extends cl.LancamentoDoBanco>(livres: L[], recusadas: readonly cl.LancamentoDoBanco[] | undefined): L[] {
+  return recusadas?.length ? livres.filter(x => !recusadas.some(r => cl.mesmoLancamento(r, x))) : livres;
+}
+
 export function useClientes() {
   const s = useEtapaAberta();
   const { aviso } = useRetorno();
@@ -172,7 +177,7 @@ export function useClientes() {
     const l = linhas.find(x => x.codigo === codigo);
     if (!f || !l || !marcas.carregado) return;
     try {
-      const r = cl.conferirRazaoDoCliente(tarefas.lerRazaoDoArquivo(await f.arrayBuffer()), mes);
+      const r = cl.conferirRazaoDoCliente(tarefas.lerRazaoDoArquivo(await f.arrayBuffer(), f.name), mes);
       const razao = cl.razaoDaMarca(f.name, r);
       // com nota em aberto, a observação já vem escrita (Vitor, 07/10/2026): "No meu sistema, está em aberto…"
       marcar(codigo, m => { const n = { ...m, situacao: cl.razaoComPendencia(razao) ? 'conferido' as const : 'pendente' as const, razao }; delete n.perguntar; return n; });
@@ -276,7 +281,7 @@ export function useClientes() {
             // as recusadas ficam no fim, apagadas, para desfazer (Vitor, 15/10/2026)
             recusadas: i.status === 'aberto' && !i.interno && !baixasDoItem(i, l.baixas).quitada && !cl.itensEscolhidos(l.razao, l.perguntar).includes(i) ? (l.recusadas?.[cl.chaveDoItem(i)] || []).map(noBanco) : [],
             sugestoes: i.status === 'aberto' && !i.interno && !baixasDoItem(i, l.baixas).quitada && !cl.itensEscolhidos(l.razao, l.perguntar).includes(i)
-              ? cl.sugestoesDeBaixa(notaQueFalta(i, l.baixas), l.nome, livres.filter(x => !(l.recusadas?.[cl.chaveDoItem(i)] || []).some(r => cl.mesmoLancamento(r, x))), 1).map(g => ({ ...noBanco(g), selos: cl.selosDaSugestao(g, 'cliente') })) : [] })),
+              ? cl.sugestoesDeBaixa(notaQueFalta(i, l.baixas), l.nome, semAsRecusadas(livres, l.recusadas?.[cl.chaveDoItem(i)]), 1).map(g => ({ ...noBanco(g), selos: cl.selosDaSugestao(g, 'cliente') })) : [] })),
         } : null,
         // o que vai para o cliente (o que foi adicionado no "+" de cada linha da relação; nada = não vai)
         perguntar: l.razao ? cl.itensEscolhidos(l.razao, l.perguntar).map(cl.rotuloDoItem).join(' · ') : '',

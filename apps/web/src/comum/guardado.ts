@@ -14,12 +14,20 @@ const DURA_DIAS = 60;
 
 interface Guardado { em: number; v: unknown }
 
+// o que já foi lido ou gravado nesta aba (Vitor, 19/10/2026: "o nads está lerdo em outras máquinas"): o razão e o dinâmico
+// são grandes, e cada desenho da tela relia e desfazia o JSON do localStorage; outra aba gravou, a chave sai daqui
+const cache = new Map<string, Guardado | null>();
+
 function ler<T>(chave: string): T | undefined {
   try {
-    const bruto = localStorage.getItem(PREFIXO + chave);
-    if (!bruto) return undefined;
-    const g = JSON.parse(bruto) as Guardado;
-    if (!g || Date.now() - g.em > DURA_DIAS * 864e5) { localStorage.removeItem(PREFIXO + chave); return undefined; }
+    let g = cache.get(chave);
+    if (g === undefined) {
+      const bruto = localStorage.getItem(PREFIXO + chave);
+      g = bruto ? (JSON.parse(bruto) as Guardado) : null;
+      cache.set(chave, g);
+    }
+    if (!g) return undefined;
+    if (Date.now() - g.em > DURA_DIAS * 864e5) { localStorage.removeItem(PREFIXO + chave); cache.set(chave, null); return undefined; }
     return g.v as T;
   } catch { return undefined; }
 }
@@ -31,8 +39,10 @@ function guardadas(): { chave: string; em: number }[] {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (!k || !k.startsWith(PREFIXO)) continue;
-      let em = 0;
-      try { em = (JSON.parse(localStorage.getItem(k) || '{}') as Guardado).em || 0; } catch { /* estragado: sai primeiro */ }
+      // só a data, do começo do texto ({"em":123,"v":…}): desfazer o JSON inteiro de cada guardado (o razão, o dinâmico,
+      // vários MB) para achar o mais velho travava a tela quando o navegador enchia
+      const m = /^\{"em":(\d+)/.exec((localStorage.getItem(k) || '').slice(0, 40));
+      const em = m ? Number(m[1]) : 0;
       lista.push({ chave: k, em });
     }
   } catch { /* sem acesso ao localStorage */ }
@@ -43,6 +53,7 @@ function gravar(chave: string, v: unknown, em = Date.now(), doRemoto = false) {
   if (!doRemoto) mandarAoRemoto(chave, v, em);
   // os outros hooks da mesma chave (e quem lê fora deles) releem — depois, fora do desenho de agora
   if (!doRemoto) queueMicrotask(() => mudouDeFora([chave]));
+  cache.set(chave, v === undefined || v === null ? null : { em, v });
   try {
     if (v === undefined || v === null) { localStorage.removeItem(PREFIXO + chave); return; }
     const texto = JSON.stringify({ em, v } satisfies Guardado);
@@ -53,6 +64,7 @@ function gravar(chave: string, v: unknown, em = Date.now(), doRemoto = false) {
         const velho = guardadas().find(g => g.chave !== PREFIXO + chave);
         if (!velho) return;
         localStorage.removeItem(velho.chave);
+        cache.delete(velho.chave.slice(PREFIXO.length));
       }
     }
   } catch { /* sem localStorage (janela anônima, bloqueado): fica só na tela */ }
@@ -85,7 +97,7 @@ export function useVersaoDoGuardado(): number {
 /** Esquece o que está guardado na chave (e nas que começam com ela + '|'). */
 export function esquecerGuardado(chave: string) {
   try {
-    for (const g of guardadas()) if (g.chave === PREFIXO + chave || g.chave.startsWith(PREFIXO + chave + '|')) localStorage.removeItem(g.chave);
+    for (const g of guardadas()) if (g.chave === PREFIXO + chave || g.chave.startsWith(PREFIXO + chave + '|')) { localStorage.removeItem(g.chave); cache.delete(g.chave.slice(PREFIXO.length)); }
   } catch { /* sem localStorage */ }
 }
 
@@ -111,6 +123,7 @@ if (typeof window !== 'undefined') {
   window.addEventListener('storage', ev => {
     if (!ev.key || !ev.key.startsWith(PREFIXO)) return;
     const chave = ev.key.slice(PREFIXO.length);
+    cache.delete(chave);
     if (ev.newValue == null) mandarAoRemoto(chave, null, Date.now());
     else try { const g = JSON.parse(ev.newValue) as Guardado; mandarAoRemoto(chave, g.v, g.em); } catch { /* estragado */ }
     mudouDeFora([chave]);
@@ -138,9 +151,25 @@ let aberta: { id: string; marcas: string[] } | null = null;
 /** A chave é da empresa aberta? (as chaves levam o código ou o nome dela) */
 const daAberta = (chave: string) => !!aberta && chave.split('|').some(p => aberta!.marcas.includes(p));
 
+// o banco recebe o último valor de cada chave depois de 0,8 s parado (antes, cada clique mandava o valor inteiro na hora);
+// ao fechar ou esconder a aba, manda o que falta na hora
+const pendentes = new Map<string, { id: string; e: EntradaGuardada }>();
+let espera: ReturnType<typeof setTimeout> | null = null;
+function descarregar() {
+  if (espera) { clearTimeout(espera); espera = null; }
+  const lista = [...pendentes.values()];
+  pendentes.clear();
+  for (const p of lista) remoto?.gravar(p.id, p.e);
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', descarregar);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') descarregar(); });
+}
+
 function mandarAoRemoto(chave: string, v: unknown, em: number) {
   if (!remoto || !aberta || !daAberta(chave)) return;
-  remoto.gravar(aberta.id, { chave, em, v: v === undefined ? null : v });
+  pendentes.set(aberta.id + '|' + chave, { id: aberta.id, e: { chave, em, v: v === undefined ? null : v } });
+  if (!espera) espera = setTimeout(descarregar, 800);
 }
 
 /**
@@ -168,7 +197,7 @@ export function useEscopoDoGuardado(id: string | null, marcas: readonly (string 
         if (mudou.length) mudouDeFora(mudou);
       }).catch(() => { /* sem o banco: fica o deste navegador */ });
     }
-    return () => { vivo = false; if (aberta?.id === id) aberta = null; };
+    return () => { vivo = false; descarregar(); if (aberta?.id === id) aberta = null; };
   // as marcas entram pela chave
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chave]);

@@ -30,7 +30,7 @@ export function useAdiantamento(lado: t.LadoDoAdiantamento = 'fornecedores') {
   async function importar(f: File | undefined) {
     if (!f) return;
     try {
-      const r = t.lerRazaoDoArquivo(await f.arrayBuffer());
+      const r = t.lerRazaoDoArquivo(await f.arrayBuffer(), f.name);
       setRazao({ nome: f.name, r });
       aviso({ tom: 'ok', titulo: 'Razão importado', texto: f.name });
     } catch (e) { aviso({ tom: 'erro', titulo: 'Não deu para ler ' + f.name, texto: e instanceof Error ? e.message : String(e) }); }

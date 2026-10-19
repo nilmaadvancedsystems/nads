@@ -28,15 +28,12 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   // o mês que o "Todos pelo Drive" está buscando agora: a célula dele na grade gira (Vitor, 09/10/2026: no lugar da janela)
   const [mesAtual, setMesAtual] = useState<string | null>(null);
   const [lote, setLote] = useState<{ banco: string; meses: string[]; feitos: { mes: string; ok: boolean }[]; atual: string; inicio: number; pronto: boolean } | null>(null);
-  const [agora, setAgora] = useState(() => Date.now());
+  const [agora] = useState(() => Date.now());
   // os extratos que foram para o Drive e ainda não viraram arquivo de lá ('banco|mes' → o envio), guardados (Vitor,
   // 19/10/2026: "deixe um ícone do Drive do lado esquerdo desse check, carregando; quando upar, ele fica igual aos outros")
   const [subindo, setSubindo] = useGuardado<Record<string, { envio: string; em: number }>>('drive-subindo|' + (codigo ?? ''), {});
-  useEffect(() => {
-    if (!lote || lote.pronto) return;
-    const r = setInterval(() => setAgora(Date.now()), 1000);
-    return () => clearInterval(r);
-  }, [lote]);
+  // sem o relógio de 1 s (19/10/2026: redesenhava a página dos bancos inteira a cada segundo do lote, para uma janela de
+  // andamento que não aparece mais na tela)
   // o que fazer depois de entrar, quando o login foi pedido por outra coisa (o Pedir extratos)
   const depois = useRef<(() => void) | null>(null);
 
