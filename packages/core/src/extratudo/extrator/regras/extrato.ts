@@ -292,6 +292,10 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   // o quadro RESUMO do fim (Sicoob: "Cheque especial contratado: 10.000,00C", juros e tarifas provisionados…): não é
   // lançamento; vale até a próxima linha com data na coluna (Vitor, 13/10/2026: a 380 tinha 10 mil "entrando no banco")
   let noResumo = false;
+  // os "Últimos Lançamentos" do Bradesco (o Extrato Consolidado / Por Período): depois do Total do período, o banco
+  // imprime o movimento dos dias em que o PDF foi tirado, de outro mês. Dali para baixo, nada é do extrato (Vitor,
+  // 19/10/2026: na 450 o extrato e o razão batiam, mas o março vinha em dobro, com os do PDF de janeiro e de fevereiro)
+  let noFim = false;
   // o saldo corrido (a coluna Saldo, o último valor da linha que tem dois; ou o saldo anterior / do dia): o sinal do
   // lançamento vem da diferença dos saldos quando ela bate com o valor (Vitor, 14/10/2026: o OCR leu o "-" do "- 632,50"
   // do BNB como "7" e o débito virou crédito)
@@ -318,7 +322,8 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
 
     for (const l of linhas) {
       const t = l.tokens.slice();
-      if (!t.length) continue;
+      if (!t.length || noFim) continue;
+      if (/^ultimos lancamentos\b/.test(normalizarTexto(l.texto))) { juntarPerto(); noFim = true; continue; }
       // o depósito bloqueado (Sicoob: "DEP.CHEQUE BLOQ.1D 2.300,00*"): o valor com * ainda não entrou no saldo; a linha e o
       // texto embaixo dela ("ENVELOPE: …") ficam de fora, sem data nem histórico para os outros — o lançamento é a
       // "LIBERAÇÃO DE DEPÓSITO BLOQUEADO" (Vitor, 13/10/2026: a 58 juntava o texto e a data dele no lançamento de cima)
