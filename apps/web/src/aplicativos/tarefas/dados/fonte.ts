@@ -43,7 +43,7 @@ import { criarRepoTarefasFirestore, extratorNoBanco, type RepoTarefasFirestore }
 import { ligadoAoBanco } from '../../../comum/modoDesenvolvedor';
 import { definirEmpresasExtras } from '../../../comum/empresaDaRota';
 import { criarCofreMemoria, type RepoCofre } from './cofre';
-import { criarCofreFirestore } from './cofre.firestore';
+import { criarCofreFirestore, certificadosDoRobo } from './cofre.firestore';
 import { criarAgentesMemoria, type RepoAgentes } from './agentes';
 import { criarAgentesFirestore } from './agentes.firestore';
 import { criarGuardadoFirestore } from './guardado.firestore';
@@ -293,6 +293,16 @@ export function repoPessoal(): RepoPessoal {
 let cofreRepo: RepoCofre | null = null;
 
 /** O cofre de senhas gov.br e certificados (07/10/2026). */
+/**
+ * Os certificados do cofre que pedem atenção (o resumo do robô, robo/certificados), para a faixa do admin (19/10/2026).
+ * Nos exemplos: um vencido e um vencendo.
+ */
+export async function certificadosParaOAviso(): Promise<{ empresa: string; codigo: number | null; validade: string }[]> {
+  if (noBanco) return (await certificadosDoRobo().catch(() => null))?.atencao || [];
+  const dia = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+  return [{ empresa: 'EMPRESA EXEMPLO VENCIDA LTDA', codigo: 901, validade: dia(-4) }, { empresa: 'EMPRESA EXEMPLO VENCENDO LTDA', codigo: 902, validade: dia(12) }];
+}
+
 export function repoDoCofre(): RepoCofre {
   if (!cofreRepo) {
     cofreRepo = noBanco ? criarCofreFirestore(() => { const q = quemPede(); return q ? { uid: q.uid, nome: q.nome } : null; })

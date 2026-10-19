@@ -2,7 +2,7 @@
 // chave pública de cada pessoa e a cópia dela da chave do cofre) e cofre/{empresa} (os segredos embaralhados). As regras
 // deixam todo o escritório ler e gravar; o que é segredo já chega embaralhado (nem o banco consegue ler).
 import type { cofre } from '@nads/core';
-import { collection, deleteDoc as apagarBruto, doc, onSnapshot, setDoc as gravarBruto, writeBatch } from 'firebase/firestore';
+import { collection, deleteDoc as apagarBruto, doc, getDoc, onSnapshot, setDoc as gravarBruto, writeBatch } from 'firebase/firestore';
 import { guardar, guardarLote } from '../../../comum/modoDesenvolvedor';
 import { bancoDoEntregas } from './entregas.firestore';
 import type { RepoCofre } from './cofre';
@@ -68,4 +68,13 @@ export function criarCofreFirestore(eu: () => { uid: string; nome: string } | nu
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };
+}
+
+/** O resumo que o robô grava todo dia (robo/certificados): os certificados do cofre vencidos e os que vencem em até 30 dias. */
+export async function certificadosDoRobo(): Promise<{ dia: string; atencao: { empresa: string; codigo: number | null; validade: string }[] } | null> {
+  const s = await getDoc(doc(bancoDoEntregas(), 'robo', 'certificados'));
+  if (!s.exists()) return null;
+  const d = s.data();
+  const atencao = Array.isArray(d.atencao) ? d.atencao.filter((x: { validade?: unknown }) => typeof x?.validade === 'string') : [];
+  return { dia: String(d.dia || ''), atencao };
 }
