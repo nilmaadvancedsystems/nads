@@ -15,6 +15,8 @@ import { criarGmailFirestore } from './gmail.firestore';
 import { criarArquivadorMemoria, type RepoArquivador } from './arquivador';
 import { criarFgtsMemoria, type RepoFgts } from './fgts';
 import { criarFgtsFirestore } from './fgts.firestore';
+import { criarCaixaMemoria, type RepoCaixa } from './caixa';
+import { criarCaixaFirestore } from './caixa.firestore';
 import { criarNfseMemoria, type RepoNfse } from './nfse';
 import { criarNfseFirestore } from './nfse.firestore';
 import { criarEntregasDeDocumentosMemoria, type RepoEntregasDeDocumentos } from './entregasDeDocumentos';
@@ -333,6 +335,14 @@ let notasFiscais: RepoNfse | null = null;
 export function repoDeNfse(): RepoNfse {
   if (!notasFiscais) notasFiscais = noBanco ? criarNfseFirestore(() => { const q = quemPede(); return q ? { nome: q.nome, uid: q.uid } : null; }) : criarNfseMemoria();
   return notasFiscais;
+}
+
+let caixa: RepoCaixa | null = null;
+
+/** O caixa e o plano de contas do financeiro (19/10/2026): o Movimento de Caixa e o Plano de Contas que vieram do Toriba. */
+export function repoDoCaixa(): RepoCaixa {
+  if (!caixa) caixa = noBanco ? criarCaixaFirestore() : criarCaixaMemoria();
+  return caixa;
 }
 
 let entregasDeDocumentos: RepoEntregasDeDocumentos | null = null;
