@@ -8,6 +8,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useSessao } from '../../casca/sessao';
 import { useCadastroDaEmpresa } from '../../dados/repo';
+import { useGuardado } from '../../../../../../comum/guardado';
 
 /** 'aaaa-mm' do mês passado (a competência que o escritório trabalha). */
 function mesPassado(): string {
@@ -63,6 +64,9 @@ export function useImportacao() {
   const [lendoLinha, setLendoLinha] = useState<string | null>(null);
   // o extrato sem movimento: quem marca o mês como sem movimento no banco (a Tarefa, pela ponte)
   const aoSemMovimento = useRef<((banco: string, meses: string[]) => void) | null>(null);
+  // o arquivo do Drive de cada mês marcado sem movimento pelo extrato ('banco|mes' → o arquivo), para o olhinho do "s/ mov."
+  // (Vitor, 19/10/2026: "o sem movimento, aparecer também o olhinho, para ver se é isso mesmo"); o extrato não fica guardado
+  const [semMovDoDrive, setSemMovDoDrive] = useGuardado<Record<string, { id: string; nome: string }>>('semmov-drive|' + (s.codigo ?? s.nome), {});
   // os bancos da empresa na competência (uma linha cada), do Cadastro da empresa quando ela tem (Tarefas ›
   // Cadastro); arquivo sem banco = do primeiro banco
   const cad = useCadastroDaEmpresa(s.nome, s.codigo);
@@ -137,6 +141,8 @@ export function useImportacao() {
     const meses = doTexto.length ? doTexto : semMov.length ? [...new Set(mesesDaBusca || [])].sort() : [];
     if (semMov.length) {
       if (meses.length && aoSemMovimento.current) aoSemMovimento.current(banco as string, meses);
+      // veio do Drive: o arquivo de lá fica para o olhinho do mês
+      if (doDrive && meses.length) setSemMovDoDrive(x => ({ ...x, ...Object.fromEntries(meses.map(m => [banco + '|' + m, doDrive])) }));
       lidos = lidos.filter(l => !l.semMovimento);
       const rotulo = meses.map(m => m.slice(5) + '/' + m.slice(0, 4)).join(', ');
       if (!lidos.length) {
@@ -369,10 +375,15 @@ export function useImportacao() {
      * O extrato do mês que subiu para o Drive (do computador ou do e-mail) passa a apontar para o arquivo de lá (19/10/2026):
      * os do banco no mês sem Drive e só daquele mês (o de vários meses fica como está).
      */
-    ligarMesAoDrive: (banco: string, mes: string, drive: { id: string; nome: string }) => s.aplicar(e =>
-      x.arquivosDoBanco(e, banco, primeiro, 'banco', mes)
+    ligarMesAoDrive: (banco: string, mes: string, drive: { id: string; nome: string }) => {
+      // o mês sem movimento não tem extrato importado: o arquivo do Drive fica para o olhinho do "s/ mov."
+      if (!x.arquivosDoBanco(s.empresa, banco, primeiro, 'banco', mes).length) { setSemMovDoDrive(m => ({ ...m, [banco + '|' + mes]: drive })); return; }
+      s.aplicar(e => x.arquivosDoBanco(e, banco, primeiro, 'banco', mes)
         .filter(a => !a.drive && a.lancamentos.every(l => l.data.startsWith(mes)))
-        .reduce((acc, a) => x.definirDriveDoArquivo(acc, a.id, drive, new Date()), e)),
+        .reduce((acc, a) => x.definirDriveDoArquivo(acc, a.id, drive, new Date()), e));
+    },
+    /** o arquivo do Drive do mês marcado sem movimento pelo extrato (null = não tem: marcado à mão, ou do computador) */
+    arquivoSemMovimento: (banco: string, mes: string): { id: string; nome: string } | null => semMovDoDrive[banco + '|' + mes] || null,
     /** a regra do Cadastro da empresa: presta serviços? (null = não informado, ou o cadastro ainda não chegou) */
     prestaServico: cad.cadastro?.prestaServico ?? null,
     /** o código contábil da conta do banco no Cadastro (Contas bancárias); '' = não informado */

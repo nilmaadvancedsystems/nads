@@ -282,7 +282,7 @@ function SubindoAoDrive() {
   );
 }
 
-function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato, aceitarRazao, onMes, onArquivos, onExcluir, onDrive, onEmail, onVer, onSemMovimento, naTarefa, puxados, subindo }: {
+function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato, aceitarRazao, onMes, onArquivos, onExcluir, onDrive, onEmail, onVer, onSemMovimento, naTarefa, puxados, subindo, semMovimentoDoDrive }: {
   meses: ReturnType<Vm['mesesDoBanco']>;
   /** o mês que o "Todos pelo Drive" está buscando agora: a célula do extrato gira */
   buscandoMes?: string | null;
@@ -293,12 +293,25 @@ function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato
   puxados: (mes: string) => Puxado[];
   /** o extrato do mês está subindo para o Drive */
   subindo: (mes: string) => boolean;
+  /** o arquivo do Drive do mês sem movimento (o olhinho do "s/ mov.") */
+  semMovimentoDoDrive: (mes: string) => { id: string; nome: string } | null;
 }) {
   const grade = useColunaAjustavel('importacao', '96px', meses.length);
   const celula = (m: ReturnType<Vm['mesesDoBanco']>[number], lado: 'banco' | 'sistema', n: number) => {
     const info = lado === 'banco' ? m.ladoExtrato : m.ladoRazao;
     const trava = travado || m.semMovimento;
-    if (m.semMovimento) return <button type="button" className="imp-mes-sem" disabled={travado || !naTarefa} onClick={() => onSemMovimento(m.mes, false)} title="Não teve movimento — clique para desfazer">s/ mov.</button>;
+    if (m.semMovimento) {
+      // o olhinho ao lado (Vitor, 19/10/2026: "para ver se é isso mesmo"): o extrato do Drive, ou o que veio do e-mail
+      const doDrive = lado === 'banco' ? semMovimentoDoDrive(m.mes) : null;
+      const doEmail = lado === 'banco' && !doDrive ? puxados(m.mes) : [];
+      return (
+        <>
+          <button type="button" className="imp-mes-sem" disabled={travado || !naTarefa} onClick={() => onSemMovimento(m.mes, false)} title="Não teve movimento — clique para desfazer">s/ mov.</button>
+          {doDrive && <BotaoVer titulo={'Ver o extrato sem movimento: ' + doDrive.nome} onVer={() => onVer(doDrive)} />}
+          {doEmail.length > 0 && <BotaoVer titulo={'Ver o extrato sem movimento: ' + doEmail.map(p => p.nome).join(', ')} onVer={() => doEmail.forEach(abrirPuxado)} />}
+        </>
+      );
+    }
     if (info.lendo || (lado === 'banco' && buscandoMes === m.mes)) return <span className="icon-btn icon-btn-sm imp-btn" title={'Buscando o extrato de ' + m.rotulo + ' no Drive'}><span className="btn-spinner" /></span>;
     // veio do Drive: o olhinho ao lado abre o PDF de lá (Vitor, 14/10/2026)
     if (lado === 'banco' && info.doDrive.length) {
@@ -944,6 +957,7 @@ export function TarefaExtratos() {
                 onVer={visualizarDoDrive}
                 puxados={mes => puxadosDe(chaveDoExtrato(s.codigo, b.id), mes)}
                 subindo={mes => d.subindoAoDrive(b.id, mes)}
+                semMovimentoDoDrive={mes => vm.arquivoSemMovimento(b.id, mes)}
                 onSemMovimento={(mes, marcado) => ponte.marcarSemMovimento(b.id, marcado, mes)} />}
               {verLancamentos && (emLote ? (
                 <FaixaQueAbre titulo="Lançamentos" qtd={vm.movimentoDe(b.id).linhas.length}>
