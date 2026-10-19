@@ -68,7 +68,7 @@ export function NotasFiscais() {
             : <button type="button" className="btn btn-primary" onClick={() => vm.setNova(true)}><Icone nome="plus" />Emitir a primeira nota</button>}
         </Vazio>
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap nf-tabela-wrap">
           <table className="tabela-empresas cad-lista nf-lista">
             <thead><tr><th>Nº</th><th>Tomador</th><th>Descrição</th><th className="nf-direita">Valor</th><th>Serviço</th><th>Situação</th></tr></thead>
             <tbody>
