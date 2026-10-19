@@ -4710,3 +4710,6 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .fin-conta-inativa{opacity:.55;}
 .fin-conta .badge svg{width:12px;height:12px;}
 @media (max-width:640px){.fin-periodo{flex-wrap:wrap;}.fin-cedula{grid-template-columns:80px 12px 72px 1fr;}.fin-cedula input{width:72px;}}
+
+/* Senhas › Certificados: a linha do interruptor dos avisos de vencimento (19/10/2026) */
+.cert-avisos{padding:0 16px;margin-bottom:16px;}

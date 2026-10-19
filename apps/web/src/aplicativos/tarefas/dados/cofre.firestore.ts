@@ -78,3 +78,14 @@ export async function certificadosDoRobo(): Promise<{ dia: string; atencao: { em
   const atencao = Array.isArray(d.atencao) ? d.atencao.filter((x: { validade?: unknown }) => typeof x?.validade === 'string') : [];
   return { dia: String(d.dia || ''), atencao };
 }
+
+/**
+ * Ligar ou desligar o aviso de certificado vencendo (Vitor, 19/10/2026: "bota para desativar as notificações de
+ * certificados"): config/avisoCertificados {ligado}. Sem o documento = ligado. O robô e a faixa leem; o admin grava.
+ */
+export function ouvirAvisoDeCertificados(chegou: (ligado: boolean) => void): () => void {
+  return onSnapshot(doc(bancoDoEntregas(), 'config', 'avisoCertificados'), s => chegou(s.data()?.ligado !== false), () => chegou(true));
+}
+export async function gravarAvisoDeCertificados(ligado: boolean, por: string): Promise<void> {
+  await setDoc(doc(bancoDoEntregas(), 'config', 'avisoCertificados'), { ligado, atualizadoEm: new Date().toISOString(), atualizadoPor: por });
+}

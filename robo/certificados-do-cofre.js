@@ -93,6 +93,9 @@ function iniciarCertificadosDoCofre({ db, log, avisos, enviar, destino }) {
       await estadoRef.set({ certificadosCofreEm: hoje }, { merge: true });
       feitoEm = hoje;
       if (!lista.length) return;
+      // o admin desligou os avisos em Senhas › Certificados (config/avisoCertificados; 19/10/2026)
+      const config = (await db.collection('config').doc('avisoCertificados').get()).data() || {};
+      if (config.ligado === false) { log('aviso de certificado do cofre: desligado em Senhas › Certificados'); return; }
       if (avisos) {
         const p = textoDoPush(lista);
         await avisos.enviar('admin', '', p.titulo, p.corpo, 'certificados').catch(err => log('push do certificado não saiu:', err.message));
