@@ -7,6 +7,7 @@ import type { IdAplicacao } from './navegacao';
 import { useCascaTarefas } from './useCascaTarefas';
 import { JanelaDeFeedback } from '../telas/feedback/JanelaDeFeedback';
 import { ItemDosFeedbacks, JanelaDosFeedbacks } from '../telas/feedback/FeedbacksDoNads';
+import { AvisoDeCertificados } from './AvisoDeCertificados';
 
 /** O avatar no canto do cabeçalho (como o do Entregas e o do GitHub): as iniciais; aberto, a Minha página e sair. */
 function AvatarDaPessoa({ vm, abrirFeedback }: { vm: ReturnType<typeof useCascaTarefas>; abrirFeedback: () => void }) {
@@ -39,6 +40,8 @@ export function CascaTarefas({ app, pagina, telaInteira, larga, children }: { ap
       peDaGaveta={vm.admin ? fechar => <ItemDosFeedbacks abrir={() => { fechar(); setFeedbacks(true); }} /> : undefined}>
       {feedback && <JanelaDeFeedback fechar={() => setFeedback(false)} />}
       {feedbacks && <JanelaDosFeedbacks fechar={() => setFeedbacks(false)} />}
+      {/* os certificados vencidos ou vencendo (19/10/2026): só o admin */}
+      <AvisoDeCertificados ligado={vm.admin} />
       {children}
     </Casca>
   );
