@@ -40,6 +40,24 @@ export function arquivosDoBanco(e: EmpresaExtrator, banco: string, primeiro: str
   return e.arquivos.filter(a => a.lado === lado && bancoDoArquivo(a, primeiro) === banco && a.lancamentos.some(l => l.data.startsWith(competencia)));
 }
 
+/**
+ * O mesmo que o arquivosDoBanco, num índice montado uma vez (banco, lado e mês → os arquivos, na ordem da empresa): a tela
+ * dos bancos chamava o arquivosDoBanco para cada banco × mês × lado a cada desenho, e cada chamada varria todos os
+ * lançamentos (19/10/2026: "o nads está lerdo em outras máquinas").
+ */
+export function indiceDosArquivos(e: EmpresaExtrator, primeiro: string): (banco: string, lado: ArquivoImportado['lado'], competencia: string) => ArquivoImportado[] {
+  const m = new Map<string, ArquivoImportado[]>();
+  for (const a of e.arquivos) {
+    const b = bancoDoArquivo(a, primeiro);
+    for (const mes of new Set(a.lancamentos.map(l => l.data.slice(0, 7)))) {
+      const k = b + '|' + a.lado + '|' + mes;
+      const lista = m.get(k);
+      if (lista) lista.push(a); else m.set(k, [a]);
+    }
+  }
+  return (banco, lado, competencia) => m.get(banco + '|' + lado + '|' + competencia) || [];
+}
+
 /** Adiciona um banco à empresa, valendo desta competência em diante (fica na auditoria). */
 export function adicionarBanco(e: EmpresaExtrator, banco: BancoDaEmpresa, desde: string, agora: Date): EmpresaExtrator {
   if ((e.bancos || []).some(b => b.id === banco.id)) return e;

@@ -11,6 +11,21 @@ function pagina(linhas: [string, number][][]): ItemDeTexto[] {
 }
 
 describe('extrato em PDF', () => {
+  it('os "Últimos Lançamentos" do Bradesco, depois do Total do período, não entram (19/10/2026)', () => {
+    const p = pagina([
+      [['Extrato de: Ag: 1 | CC: 2 | Entre 01/01/2026 e 31/01/2026', 40]],
+      [['Data', 40], ['Lançamento', 100], ['Crédito (R$)', 330], ['Débito (R$)', 400], ['Saldo (R$)', 480]],
+      [['30/01/2026', 40], ['PIX QR CODE ESTATIC', 100], ['300,00', 330], ['1.300,00', 480]],
+      [['TARIFA BANCARIA', 100], ['-13,87', 400], ['1.286,13', 480]],
+      [['Total', 40], ['300,00', 330], ['-13,87', 400], ['1.286,13', 480]],
+      [['Últimos Lançamentos', 40]],
+      [['Data', 40], ['Lançamento', 100], ['Crédito (R$)', 330], ['Débito (R$)', 400], ['Saldo (R$)', 480]],
+      [['03/03/2026', 40], ['SALDO ANTERIOR', 100], ['9.759,92', 480]],
+      [['APLIC.INVEST FACIL', 100], ['-9.758,92', 400], ['1,00', 480]],
+      [['04/03/2026', 40], ['LIQUIDACAO DE COBRANCA', 100], ['1.196,78', 330], ['1.197,78', 480]],
+    ]);
+    expect(lancamentosDoPdf([p], 'banco', 2026).map(l => l.data + ' ' + l.valor)).toEqual(['2026-01-30 30000', '2026-01-30 -1387']);
+  });
   it('coluna Valor com sinal e coluna Saldo ignorada; histórico da linha de baixo junta', () => {
     const p = pagina([
       [['BANCO EXEMPLO S.A. Período: 01/08/2026 a 31/08/2026', 40]],

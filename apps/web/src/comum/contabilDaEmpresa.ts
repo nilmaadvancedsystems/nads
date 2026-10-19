@@ -54,7 +54,7 @@ export function useContabilDaEmpresa(nome: string, codigo: number | null = null)
       const erros: string[] = [];
       for (const f of fs) {
         try {
-          const r = t.lerRazaoDoArquivo(await f.arrayBuffer());
+          const r = t.lerRazaoDoArquivo(await f.arrayBuffer(), f.name);
           if (r.conta) lidos[r.conta] = { arquivo: f.name, razao: r };
           else semConta.push(f.name);
         } catch (e) { erros.push(f.name + ': ' + (e instanceof Error ? e.message : String(e))); }

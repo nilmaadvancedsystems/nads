@@ -8,9 +8,10 @@ import { dataBR } from './texto';
  * A versão do leitor de extrato (Vitor, 14/10/2026: "corrija essas pendências em todas as empresas de todos os meses"): sobe
  * quando a leitura dos PDFs muda; o extrato que veio do Drive e foi lido por uma versão mais velha é relido sozinho
  * (useDriveDaLinha), com relerExtrato. 2 = o Detalhamento do Saldo do BNB fora e o histórico no lançamento mais perto;
- * 3 = o OCR melhor (216 dpi, preto e branco, a página como tabela) e o sinal conferido pelo saldo corrido.
+ * 3 = o OCR melhor (216 dpi, preto e branco, a página como tabela) e o sinal conferido pelo saldo corrido; 4 = os "Últimos
+ * Lançamentos" do Bradesco fora (19/10/2026).
  */
-export const VERSAO_DO_LEITOR = 3;
+export const VERSAO_DO_LEITOR = 4;
 
 export function empresaNova(nome: string): EmpresaExtrator {
   return { nome, arquivos: [], auditoria: [] };

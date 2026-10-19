@@ -56,7 +56,7 @@ export function useRazaoDaEtapa(chave: string, meses: readonly string[], onImpor
     if (!f) return;
     let razao: t.RazaoDaConta;
     try {
-      razao = t.lerRazaoDoArquivo(await f.arrayBuffer());
+      razao = t.lerRazaoDoArquivo(await f.arrayBuffer(), f.name);
     } catch (e) {
       aviso({ tom: 'erro', titulo: 'Não consegui ler o razão', texto: e instanceof Error ? e.message : String(e) });
       return;

@@ -40,8 +40,17 @@ const dia = (d: string) => { const [a, m, x] = d.split('-').map(Number); return 
 
 /** O depósito de cheque nunca é a baixa de uma nota (Vitor, 15/10/2026: "não entra, não coloque em hipótese alguma"). */
 export function ehDepositoDeCheque(historico: string): boolean {
-  const h = ' ' + normalizarTexto(historico) + ' ';
-  return /\s(dep\w*)\s/.test(h) && /\s(cheques?|chq|ch)\s/.test(h);
+  return chequeNoTexto(' ' + normalizarTexto(historico) + ' ');
+}
+const chequeNoTexto = (h: string) => /\s(dep\w*)\s/.test(h) && /\s(cheques?|chq|ch)\s/.test(h);
+
+// o histórico normalizado de cada lançamento, uma vez só (19/10/2026, "o nads está lerdo": as sugestões de cada nota em
+// aberto normalizavam o texto de todos os lançamentos do banco de novo)
+const normalizados = new WeakMap<object, string>();
+function textoDo(l: LancamentoDoBanco): string {
+  let h = normalizados.get(l);
+  if (h === undefined) { h = ' ' + normalizarTexto(l.historico) + ' '; normalizados.set(l, h); }
+  return h;
 }
 
 /** As palavras do nome que identificam (4 letras ou mais, sem as genéricas). */
@@ -95,13 +104,14 @@ export function sugestoesDeBaixa(nota: NotaEmAberto, nome: string, lancamentos: 
   const jaPagos = (nota.pagos || []).map(p => ({ d: dia(p.data), c: Math.round(Math.abs(p.valor) * 100) }));
   const achados: (SugestaoDeBaixa & { nota: number; dist: number })[] = [];
   for (const l of lancamentos) {
-    if (Math.sign(l.valor) !== sentido || ehDepositoDeCheque(l.historico)) continue;
+    if (Math.sign(l.valor) !== sentido) continue;
     const dl = dia(l.data);
     if (dl - d0 < -DIAS_ANTES || dl - d0 > DIAS_DEPOIS) continue;
+    const h = textoDo(l);
+    if (chequeNoTexto(h)) continue;
     const v = Math.abs(l.valor);
     // já é a baixa de uma parcela paga
     if (jaPagos.some(p => p.c === v && Math.abs(p.d - dl) <= 3)) continue;
-    const h = ' ' + normalizarTexto(l.historico) + ' ';
     const mesmoNome = palavras.some(p => h.includes(' ' + p + ' '));
     // o melhor alvo para este valor
     let melhor: { a: Alvo; como: ComoBate; exato: boolean } | null = null;

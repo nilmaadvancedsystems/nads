@@ -28,15 +28,12 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   // o mês que o "Todos pelo Drive" está buscando agora: a célula dele na grade gira (Vitor, 09/10/2026: no lugar da janela)
   const [mesAtual, setMesAtual] = useState<string | null>(null);
   const [lote, setLote] = useState<{ banco: string; meses: string[]; feitos: { mes: string; ok: boolean }[]; atual: string; inicio: number; pronto: boolean } | null>(null);
-  const [agora, setAgora] = useState(() => Date.now());
+  const [agora] = useState(() => Date.now());
   // os extratos que foram para o Drive e ainda não viraram arquivo de lá ('banco|mes' → o envio), guardados (Vitor,
   // 19/10/2026: "deixe um ícone do Drive do lado esquerdo desse check, carregando; quando upar, ele fica igual aos outros")
   const [subindo, setSubindo] = useGuardado<Record<string, { envio: string; em: number }>>('drive-subindo|' + (codigo ?? ''), {});
-  useEffect(() => {
-    if (!lote || lote.pronto) return;
-    const r = setInterval(() => setAgora(Date.now()), 1000);
-    return () => clearInterval(r);
-  }, [lote]);
+  // sem o relógio de 1 s (19/10/2026: redesenhava a página dos bancos inteira a cada segundo do lote, para uma janela de
+  // andamento que não aparece mais na tela)
   // o que fazer depois de entrar, quando o login foi pedido por outra coisa (o Pedir extratos)
   const depois = useRef<(() => void) | null>(null);
 
@@ -225,7 +222,15 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
    * EXTRATOS/AAAA/MM/BANCÁRIOS/<BANCO>. Só com o login do Entregas; mês que já tem extrato (ou candidato) no Drive não vai.
    */
   async function subirAoDrive(linha: Linha, fs: File[], cliente: string) {
-    if (!drive.enviarAoDrive || !acesso.entrou || !fs.length) return;
+    if (!drive.enviarAoDrive || !fs.length) return;
+    // sem o Drive conectado, pede o login e manda depois (Vitor, 19/10/2026: na 289, o 06 e o 07 do Sicoob entraram e nunca
+    // foram para o Drive, sem aviso; o olhinho não tinha o PDF para abrir)
+    if (!acesso.entrou) {
+      if (drive.loginDeFora || drive.exemplos) return;
+      depois.current = () => { void subirAoDrive(linha, fs, cliente); };
+      setLogin(l => ({ ...l, aberto: true, erro: '' }));
+      return;
+    }
     const mandados: string[] = [];
     try {
       const pasta = await drive.pastaDoCliente(codigo);
@@ -239,7 +244,10 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
           : lido.erro ? [] : await x.extratoPorMes(f.name, bytes, lido, linha.nome);
         for (const p of pedacos) {
           const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, p.mes, conta);
-          if (r.situacao === 'achou' || r.situacao === 'varios' || r.candidatos.length) continue;
+          // já tem o extrato DESTE mês no Drive: não manda de novo. (Vitor, 19/10/2026: "não está sendo armazenado" — o mês
+          // sem arquivo devolve como candidatos os extratos dos OUTROS meses, e o envio era pulado em toda empresa que já
+          // tinha algum extrato no Drive)
+          if (r.situacao === 'achou' || r.situacao === 'varios' || r.candidatos.some(c => c.daCompetencia)) continue;
           const envio = await drive.enviarAoDrive({ nome: p.nome, bytes: p.bytes }, { competencia: p.mes, codigo, cliente });
           if (envio) setSubindo(x => ({ ...x, [linha.id + '|' + p.mes]: { envio, em: Date.now() } }));
           mandados.push(p.mes.slice(5) + '/' + p.mes.slice(0, 4));
@@ -287,6 +295,10 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       const sit = await drive.situacaoDosEnvios!(lista.map(([, v]) => v.envio));
       const prontos = lista.filter(([, v]) => sit[v.envio]?.status === 'pronto');
       const sair: string[] = lista.filter(([, v]) => sit[v.envio]?.status === 'erro' || Date.now() - v.em > 15 * 60e3).map(([k]) => k);
+      // o fim de cada envio vira aviso (Vitor, 19/10/2026: "bota algo pra eu saber se está arquivado no Drive")
+      const rotuloDe = (k: string) => { const [banco, mes] = k.split('|'); return (vm.bancos.find(b => b.id === banco)?.nome || banco) + ' ' + mes.slice(5) + '/' + mes.slice(0, 4); };
+      const falharam = [...sair];
+      const arquivados: string[] = [];
       if (prontos.length) {
         const antes = await drive.pastaDoCliente(codigo);
         if (antes?.raiz && drive.atualizarMapaDoCliente) await drive.atualizarMapaDoCliente(antes.raiz);
@@ -296,10 +308,12 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
           const linha = vm.bancos.find(b => b.id === banco);
           const conta = { nome: linha?.nome || banco, marca: linha?.marca, conta: linha?.numeroConta };
           const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, mes, conta);
-          if (r.situacao === 'achou' && r.arquivo) { ligarMesAoDrive(banco, mes, { id: r.arquivo.id, nome: r.arquivo.nome }); sair.push(k); }
+          if (r.situacao === 'achou' && r.arquivo) { ligarMesAoDrive(banco, mes, { id: r.arquivo.id, nome: r.arquivo.nome }); sair.push(k); arquivados.push(rotuloDe(k) + (sit[subindo[k].envio]?.pasta ? ' (' + sit[subindo[k].envio].pasta + ')' : '')); }
         }
       }
       if (vivo && sair.length) setSubindo(x => { const n = { ...x }; for (const k of sair) delete n[k]; return n; });
+      if (vivo && arquivados.length) vm.avisar('Arquivado no Drive: ' + arquivados.join(', '));
+      if (vivo && falharam.length) vm.avisarErro('Não foi para o Drive', falharam.map(rotuloDe).join(', ') + ': o robô não gravou (erro ou mais de 15 minutos). Importe o PDF de novo no mês.');
     }
     void conferir().catch(() => { /* sem o robô agora: tenta de novo */ });
     const t = setInterval(() => { void conferir().catch(() => undefined); }, 10000);
@@ -307,7 +321,16 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chavesSubindo, acesso.entrou]);
 
+  /** o extrato do mês no mapa do Drive, sem pedir ao robô para reler (o olhinho do mês que veio do computador) */
+  async function arquivoNoDrive(linha: Linha, mes: string): Promise<{ id: string; nome: string } | null> {
+    if (!acesso.entrou) return null;
+    const pasta = await drive.pastaDoCliente(codigo);
+    const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, mes, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta });
+    return r.situacao === 'achou' && r.arquivo ? { id: r.arquivo.id, nome: r.arquivo.nome } : null;
+  }
+
   return {
+    arquivoNoDrive,
     /** o extrato do mês está subindo para o Drive (o ícone do Drive girando ao lado do check) */
     subindoAoDrive: (banco: string, mes: string) => !!subindo[banco + '|' + mes],
     exemplos: drive.exemplos,

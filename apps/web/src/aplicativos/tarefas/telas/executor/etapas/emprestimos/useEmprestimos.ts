@@ -56,7 +56,7 @@ export function useEmprestimos() {
   async function importar(fs: File[]) {
     const lidos: { arquivo: string; r: t.RazaoDaConta }[] = [];
     for (const f of fs) {
-      try { lidos.push({ arquivo: f.name, r: t.lerRazaoDoArquivo(await f.arrayBuffer()) }); }
+      try { lidos.push({ arquivo: f.name, r: t.lerRazaoDoArquivo(await f.arrayBuffer(), f.name) }); }
       catch (e) { aviso({ tom: 'erro', titulo: 'Não deu para ler ' + f.name, texto: e instanceof Error ? e.message : String(e) }); }
     }
     adicionar(lidos, true);

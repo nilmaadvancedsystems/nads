@@ -1,6 +1,6 @@
 // Leitura de valores, datas e históricos como aparecem nos extratos e razões.
 // Origem: protótipo do Extrator (leitura.js: centavos, lerData, norm, tokens, parecido).
-import { normalizarTexto } from '../../../formatos';
+import { normalizarTexto, DUAS_CASAS } from '../../../formatos';
 
 const MESES: Record<string, number> = { jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6, jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12 };
 
@@ -94,7 +94,7 @@ export function reaisBR(c: number): string {
 
 /** centavos → "1.234,56" com "−" na frente quando negativo */
 export function valorBR(c: number): string {
-  const v = (Math.abs(c) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const v = DUAS_CASAS.format(Math.abs(c) / 100);
   return (c < 0 ? '\u2212' : '') + v;
 }
 

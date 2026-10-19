@@ -34,7 +34,7 @@ export function useAdiantamentoSalarial() {
   async function importar(f: File | null) {
     if (!f) return;
     try {
-      setRazao({ arquivo: f.name, razao: t.lerRazaoDoArquivo(await f.arrayBuffer()) });
+      setRazao({ arquivo: f.name, razao: t.lerRazaoDoArquivo(await f.arrayBuffer(), f.name) });
     } catch (e) {
       aviso({ tom: 'erro', titulo: 'Não consegui ler o razão do Adiantamento salarial', texto: e instanceof Error ? e.message : String(e) });
     }
