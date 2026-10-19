@@ -5,7 +5,7 @@
 // renderConfServ (~L4617) e os change de data-resolve-serv/servOrdem (~L4730-4752),
 // data-serv-sug → servIrParaForm (~L4539, ~L4590), aplicarBloqueios (~L1843-1861).
 import { conferencia as c, formatos } from '@nads/core';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useSessao } from '../../casca/sessao';
 import { travaDaAba, useMarcarSozinho, type ReqAba } from './movimento';
 import { useMarcarForaDoPadrao } from './useMarcarForaDoPadrao';
@@ -52,7 +52,8 @@ export function useRelatorio() {
   const tipoF = c.tipoDaAba(aba);
 
   // ---------- Geral / Entradas / Saídas ----------
-  const rel = ehServ ? null : c.montarRelatorio(e, s.filtro, tipoF);
+  // (19/10/2026: "o nads está lerdo em outras máquinas") as contas da empresa inteira só de novo quando ela, o filtro ou a aba mudam
+  const rel = useMemo(() => (ehServ ? null : c.montarRelatorio(e, s.filtro, tipoF)), [ehServ, e, s.filtro, tipoF]);
   useMarcarSozinho(rel ? rel.marcarSozinho : null);
 
   const stats = rel ? montarStats(rel, tipoF) : [];
@@ -71,11 +72,13 @@ export function useRelatorio() {
 
   // ---------- lançamento fora do padrão do CFOP (Entradas/Saídas) ----------
   const tipoNf: c.TipoNotaFiscal | null = aba === 'entradas' || aba === 'saidas' ? aba : null;
-  const fiscal = tipoNf ? montarForaDoPadrao(e, tipoNf, s.ordemDiv[tipoNf]) : null;
+  const ordemNf = tipoNf ? s.ordemDiv[tipoNf] : null;
+  const fiscal = useMemo(() => (tipoNf && ordemNf ? montarForaDoPadrao(e, tipoNf, ordemNf) : null), [e, tipoNf, ordemNf]);
 
   // ---------- Tomados / Prestados ----------
   const tipoServ: c.TipoServico | null = aba === 'tomados' || aba === 'prestados' ? aba : null;
-  const serv = tipoServ ? montarServicos(e, tipoServ, s.filtro, s.ordemServ[tipoServ]) : null;
+  const ordemServ = tipoServ ? s.ordemServ[tipoServ] : null;
+  const serv = useMemo(() => (tipoServ && ordemServ ? montarServicos(e, tipoServ, s.filtro, ordemServ) : null), [e, tipoServ, s.filtro, ordemServ]);
 
   return {
     abas, aba, escolherAba, ehServ,

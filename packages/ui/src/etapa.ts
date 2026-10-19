@@ -77,7 +77,24 @@ export function useAlturaNaEtapa(ativo: boolean) {
       fundo = agora;
       window.parent.postMessage({ nads: 'fundo', aberto: agora }, pai);
     };
-    const obsJanela = new MutationObserver(() => { olharJanela(); olharFundo(); });
+    // o pedaço da Tarefas que está na tela (--vista-*): só vai para o <html> quando muda e quando tem algo que usa (uma janela,
+    // um aviso, um toast). Antes, cada quadro da rolagem mexia no estilo da página inteira da ferramenta (19/10/2026: "o
+    // nads está lerdo em outras máquinas")
+    let vista: { topo: number; altura: number; dx: number; dy: number } | null = null;
+    let aplicada = '';
+    const aplicarVista = () => {
+      if (!vista || !document.querySelector('.modal-overlay, .cad-janela-fundo, .toast-region > *, .imp-aviso')) return;
+      const k = vista.topo + '|' + vista.altura + '|' + vista.dx + '|' + vista.dy;
+      if (k === aplicada) return;
+      aplicada = k;
+      html.style.setProperty('--vista-topo', vista.topo + 'px');
+      html.style.setProperty('--vista-altura', vista.altura + 'px');
+      // quanto o centro da tela inteira está deslocado do centro do pedaço visível (as janelas centralizam na tela toda)
+      html.style.setProperty('--vista-dx', vista.dx + 'px');
+      html.style.setProperty('--vista-dy', vista.dy + 'px');
+    };
+    // na hora (antes de pintar): a janela que abriu já nasce no lugar certo
+    const obsJanela = new MutationObserver(() => { olharJanela(); olharFundo(); aplicarVista(); });
     obsJanela.observe(document.body, { childList: true, subtree: true });
     olharJanela();
     olharFundo();
@@ -85,11 +102,8 @@ export function useAlturaNaEtapa(ativo: boolean) {
       if (e.source !== window.parent || e.origin !== pai) return;
       const d = e.data as { nads?: string; topo?: unknown; altura?: unknown; dx?: unknown; dy?: unknown } | null;
       if (d?.nads !== 'vista' || typeof d.topo !== 'number' || typeof d.altura !== 'number') return;
-      html.style.setProperty('--vista-topo', d.topo + 'px');
-      html.style.setProperty('--vista-altura', d.altura + 'px');
-      // quanto o centro da tela inteira está deslocado do centro do pedaço visível (as janelas centralizam na tela toda)
-      html.style.setProperty('--vista-dx', (typeof d.dx === 'number' ? d.dx : 0) + 'px');
-      html.style.setProperty('--vista-dy', (typeof d.dy === 'number' ? d.dy : 0) + 'px');
+      vista = { topo: Math.round(d.topo), altura: Math.round(d.altura), dx: typeof d.dx === 'number' ? d.dx : 0, dy: typeof d.dy === 'number' ? d.dy : 0 };
+      aplicarVista();
     };
     window.addEventListener('message', ouvir);
     return () => {

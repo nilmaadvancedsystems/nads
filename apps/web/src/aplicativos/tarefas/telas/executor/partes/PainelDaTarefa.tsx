@@ -591,7 +591,11 @@ function JanelaDasNotas({ aberta, fechar }: { aberta: NotasAbertas; fechar: () =
   const notas = aberta.notas;
   const qtd = new Set(notas.map(n => n.numero + '|' + n.nome + '|' + n.data)).size;
   const total = notas.reduce((s, n) => s + (Number(n.valor) || 0), 0);
-  const tem = (k: 'conta' | 'ncm' | 'cst' | 'cest' | 'lanc') => notas.some(n => n[k]);
+  // as colunas que aparecem, conferidas uma vez (antes, cada célula de cada linha varria todas as notas; 19/10/2026)
+  const colunas = { conta: notas.some(n => n.conta), ncm: notas.some(n => n.ncm), cst: notas.some(n => n.cst), cest: notas.some(n => n.cest), lanc: notas.some(n => n.lanc) };
+  const tem = (k: keyof typeof colunas) => colunas[k];
+  // a data virada (aaaammdd) uma vez por nota, para ordenar
+  const ordenadas = notas.map(n => ({ n, d: n.data.split('/').reverse().join('') })).sort((a, b) => a.d.localeCompare(b.d) || a.n.numero.localeCompare(b.n.numero)).map(x => x.n);
   return (
     <div className="cad-janela-fundo" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
       <div ref={janela} className="cad-janela" role="dialog" aria-modal="true" aria-label={aberta.titulo}>
@@ -616,7 +620,7 @@ function JanelaDasNotas({ aberta, fechar }: { aberta: NotasAbertas; fechar: () =
                 </tr>
               </thead>
               <tbody>
-                {[...notas].sort((a, b) => a.data.split('/').reverse().join('').localeCompare(b.data.split('/').reverse().join('')) || a.numero.localeCompare(b.numero)).map((n, i) => (
+                {ordenadas.map((n, i) => (
                   <tr key={n.numero + '|' + i}>
                     <td className="num">{n.data}</td>
                     <td className="num"><b>{n.numero}</b></td>

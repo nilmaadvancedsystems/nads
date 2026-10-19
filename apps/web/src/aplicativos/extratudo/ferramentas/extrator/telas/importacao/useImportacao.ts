@@ -4,7 +4,7 @@
 // resultado na mensagem flutuante. Embaixo, os arquivos importados, com Excluir.
 import { demo, empresas, extrator as x, tarefas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useSessao } from '../../casca/sessao';
 import { useCadastroDaEmpresa } from '../../dados/repo';
@@ -71,6 +71,15 @@ export function useImportacao() {
   // Cadastro); arquivo sem banco = do primeiro banco
   const cad = useCadastroDaEmpresa(s.nome, s.codigo);
   const { bancos, primeiro } = x.bancosDaEmpresaNa(s.empresa, cad.cadastro, s.codigo, competenciaDeTeste);
+  // (19/10/2026: "o nads está lerdo em outras máquinas") os arquivos de cada banco, lado e mês num índice, montado de novo só
+  // quando a empresa muda; o movimento de cada banco e as listas do Drive, também uma vez por versão da empresa
+  const indice = useMemo(() => x.indiceDosArquivos(s.empresa, primeiro), [s.empresa, primeiro]);
+  const arquivosDe = (banco: string, lado: x.Lado, competencia: string) => indice(banco, lado, competencia);
+  // um cache novo quando a empresa, o banco padrão ou o mês mudam (as dependências são a chave do cache)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const movimentos = useMemo(() => new Map<string, x.MovimentoDoExtrato>(), [s.empresa, primeiro, competenciaDeTeste]);
+  const extratosSemSaldo = useMemo(() => x.extratosSemSaldoAnterior(s.empresa, primeiro), [s.empresa, primeiro]);
+  const extratosParaReler = useMemo(() => x.extratosParaReler(s.empresa), [s.empresa]);
   const [mensagem, setMensagemBruta] = useState<Mensagem | null>(null);
   const [seqMensagem, setSeq] = useState(0);
   const setMensagem = (m: Mensagem | null) => { setMensagemBruta(m); setSeq(v => v + 1); };
@@ -233,7 +242,7 @@ export function useImportacao() {
 
   /** O check verde da linha: exclui o que foi importado daquele banco e lado na competência (pergunta antes). */
   async function excluirDoBanco(banco: string, lado: x.Lado, competencia = competenciaDeTeste) {
-    const arqs = x.arquivosDoBanco(s.empresa, banco, primeiro, lado, competencia);
+    const arqs = arquivosDe(banco, lado, competencia);
     if (!arqs.length) return;
     const nomeBanco = bancos.find(b => b.id === banco)?.nome || 'banco';
     const ok = await modal<boolean>({
@@ -248,7 +257,7 @@ export function useImportacao() {
   /** Em Lote, "Remover todos": exclui o extrato (ou o razão) do banco em todos os meses do período, com uma pergunta só. */
   async function excluirDoPeriodo(banco: string, lado: x.Lado, meses: string[]) {
     const porId = new Map<string, x.ArquivoImportado>();
-    for (const m of meses) for (const a of x.arquivosDoBanco(s.empresa, banco, primeiro, lado, m)) porId.set(a.id, a);
+    for (const m of meses) for (const a of arquivosDe(banco, lado, m)) porId.set(a.id, a);
     const arqs = [...porId.values()];
     if (!arqs.length) return;
     const nomeBanco = bancos.find(b => b.id === banco)?.nome || 'banco';
@@ -299,10 +308,10 @@ export function useImportacao() {
     setSeq(v => v + 1);
   }, [s]);
 
-  const arquivos = s.empresa.arquivos.slice().sort((a, b) => b.importadoEm.localeCompare(a.importadoEm)).map(a => ({
+  const arquivos = useMemo(() => s.empresa.arquivos.slice().sort((a, b) => b.importadoEm.localeCompare(a.importadoEm)).map(a => ({
     id: a.id, lado: a.lado, nome: a.nome, qtd: a.lancamentos.length,
     periodo: x.rotuloPeriodo(x.periodo(a.lancamentos)), quando: a.importadoEm,
-  }));
+  })), [s.empresa]);
 
   return {
     caixas: CAIXAS.map(c => ({ ...c, escolhidos: escolhidos[c.lado], lendo: lendo === c.lado })),
@@ -327,7 +336,7 @@ export function useImportacao() {
     mesesDoBanco: (banco: string, semMovimentoPorMes: Record<string, string[]>) =>
       (params.get('meses') || '').split(',').filter(m => /^\d{4}-\d{2}$/.test(m)).map(mes => {
         const lado = (l: x.Lado) => {
-          const arqs = x.arquivosDoBanco(s.empresa, banco, primeiro, l, mes);
+          const arqs = arquivosDe(banco, l, mes);
           return {
             qtdArquivos: arqs.length, qtdLancamentos: arqs.reduce((t, a) => t + a.lancamentos.filter(z => z.data.startsWith(mes)).length, 0),
             lendo: lendoLinha === banco + '|' + l, doDrive: arqs.flatMap(a => (a.drive ? [a.drive] : [])),
@@ -344,14 +353,14 @@ export function useImportacao() {
     prontoNoMes: (competencia: string, semMovimento: string[]) => {
       const bs = x.bancosDaEmpresaNa(s.empresa, cad.cadastro, s.codigo, competencia).bancos;
       return bs.length > 0 && bs.every(b => semMovimento.includes(b.id) ||
-        (x.arquivosDoBanco(s.empresa, b.id, primeiro, 'banco', competencia).length > 0 && x.arquivosDoBanco(s.empresa, b.id, primeiro, 'sistema', competencia).length > 0));
+        (arquivosDe(b.id, 'banco', competencia).length > 0 && arquivosDe(b.id, 'sistema', competencia).length > 0));
     },
     primeiro,
     /** a empresa não tem conta bancária no Cadastro (só a linha genérica "Banco"): um administrador precisa cadastrar */
     semBancosCadastrados: !!cad.cadastro && bancos.every(b => b.id === 'banco'),
     bancos: bancos.map(b => {
       const lado = (l: x.Lado) => {
-        const arqs = x.arquivosDoBanco(s.empresa, b.id, primeiro, l, competenciaDeTeste);
+        const arqs = arquivosDe(b.id, l, competenciaDeTeste);
         return {
           qtdArquivos: arqs.length, qtdLancamentos: arqs.reduce((t, a) => t + a.lancamentos.length, 0), lendo: lendoLinha === b.id + '|' + l,
           /** os arquivos que vieram do Drive (para o Visualizar pedir o link temporário); o do mês (o com mais lançamentos
@@ -370,9 +379,9 @@ export function useImportacao() {
     implantarDadosDeTeste,
     apagarDadosDeTeste: () => demo.apagarDadosDeTeste(),
     /** os extratos que abrem a conta, vindos do Drive sem o saldo anterior (a linha do Drive completa sozinha) */
-    extratosSemSaldo: x.extratosSemSaldoAnterior(s.empresa, primeiro),
+    extratosSemSaldo,
     /** os extratos do Drive lidos por um leitor mais velho: o useDriveDaLinha relê sozinho (Vitor, 14/10/2026) */
-    extratosParaReler: x.extratosParaReler(s.empresa),
+    extratosParaReler,
     relerExtrato: (arquivoId: string, lido: x.ArquivoLido) => s.aplicar(e => x.relerExtrato(e, arquivoId, lido, new Date())),
     /** quem marca o mês como sem movimento quando o extrato importado não teve movimento */
     aoSemMovimento: (fn: (banco: string, meses: string[]) => void) => { aoSemMovimento.current = fn; },
@@ -383,7 +392,7 @@ export function useImportacao() {
      */
     ligarMesAoDrive: (banco: string, mes: string, drive: { id: string; nome: string }) => {
       // o mês sem movimento não tem extrato importado: o arquivo do Drive fica para o olhinho do "s/ mov."
-      if (!x.arquivosDoBanco(s.empresa, banco, primeiro, 'banco', mes).length) { setSemMovDoDrive(m => ({ ...m, [banco + '|' + mes]: drive })); return; }
+      if (!arquivosDe(banco, 'banco', mes).length) { setSemMovDoDrive(m => ({ ...m, [banco + '|' + mes]: drive })); return; }
       s.aplicar(e => x.arquivosDoBanco(e, banco, primeiro, 'banco', mes)
         .filter(a => !a.drive && a.lancamentos.every(l => l.data.startsWith(mes)))
         .reduce((acc, a) => x.definirDriveDoArquivo(acc, a.id, drive, new Date()), e));
@@ -391,7 +400,7 @@ export function useImportacao() {
     /** o arquivo do Drive do mês marcado sem movimento pelo extrato (null = não tem: marcado à mão, ou do computador) */
     /** os lançamentos importados do lado no mês (o olhinho do mês na grade, quando o arquivo não está à mão), por data */
     lancamentosImportados: (banco: string, lado: x.Lado, mes: string): x.Lancamento[] =>
-      x.arquivosDoBanco(s.empresa, banco, primeiro, lado, mes).flatMap(a => a.lancamentos.filter(l => l.data.startsWith(mes))).sort((a, b) => a.data.localeCompare(b.data)),
+      arquivosDe(banco, lado, mes).flatMap(a => a.lancamentos.filter(l => l.data.startsWith(mes))).sort((a, b) => a.data.localeCompare(b.data)),
     arquivoSemMovimento: (banco: string, mes: string): { id: string; nome: string } | null => semMovDoDrive[banco + '|' + mes] || null,
     /** a regra do Cadastro da empresa: presta serviços? (null = não informado, ou o cadastro ainda não chegou) */
     prestaServico: cad.cadastro?.prestaServico ?? null,
@@ -400,10 +409,14 @@ export function useImportacao() {
     /** os pedidos de documentos feitos ao cliente (o histórico do Pedir extratos) */
     pedidos: s.empresa.pedidos || [],
     /** o extrato do banco naquela competência já foi importado? (qualquer competência, não só a da tela) */
-    extratoImportado: (banco: string, competencia: string) => x.arquivosDoBanco(s.empresa, banco, primeiro, 'banco', competencia).length > 0,
+    extratoImportado: (banco: string, competencia: string) => arquivosDe(banco, 'banco', competencia).length > 0,
     registrarPedido: (reg: x.PedidoRegistrado) => { s.aplicar(e => x.registrarPedido(e, reg)); },
     /** o extrato da conta na competência, com o saldo acumulado (a setinha da linha) */
-    movimentoDe: (banco: string) => x.movimentoDoExtrato(s.empresa, banco, primeiro, competenciaDeTeste),
+    movimentoDe: (banco: string) => {
+      let m = movimentos.get(banco);
+      if (!m) { m = x.movimentoDoExtrato(s.empresa, banco, primeiro, competenciaDeTeste); movimentos.set(banco, m); }
+      return m;
+    },
     marcarLendo: (banco: string | null) => setLendoLinha(banco ? banco + '|banco' : null),
     avisar: (titulo: string) => setMensagem({ tom: 'info', titulo, textos: [] }),
     avisarErro: (titulo: string, texto: string) => setMensagem({ tom: 'erro', titulo, textos: [{ texto }] }),

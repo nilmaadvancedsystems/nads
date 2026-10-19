@@ -5,13 +5,16 @@
 export const MES = ['', 'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
 /** 1234.5 → "R$ 1.234,50" (com o espaço que não quebra; negativo com o − na frente): todo valor em dinheiro na tela (Vitor, 05/10/2026) */
+/** um formatador só para o app todo (19/10/2026: montar um a cada valor pesava nas tabelas de milhares de linhas) */
+export const DUAS_CASAS = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export function reais(n: number): string {
   return (n < 0 ? '\u2212' : '') + 'R$\u00a0' + brl(Math.abs(n));
 }
 
 /** 1234.5 → "1.234,50" */
 export function brl(n: number): string {
-  return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return DUAS_CASAS.format(n);
 }
 
 /** Lê número de planilha em formato brasileiro: "1.234,56", "(1.234,56)", "1.234,56 D". */

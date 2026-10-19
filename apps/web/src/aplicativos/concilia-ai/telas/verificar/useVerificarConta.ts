@@ -7,7 +7,7 @@
 // Baixar resultado (~L4225-4246), Limpar (~L4247-4257), Voltar (~L1883).
 import { conferencia as c, formatos } from '@nads/core';
 import { useRetorno, type BotaoModal } from '@nads/ui';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSessao, VERIFICAR_VAZIO, type EstadoVerificar } from '../../casca/sessao';
 import { useMarcarForaDoPadrao } from '../relatorio/useMarcarForaDoPadrao';
 
@@ -38,6 +38,10 @@ export function useVerificarConta() {
   const e = s.empresa;
   const v = s.verificar;
   const d = derivar(e, v);
+  // o fora do padrão da conta só de novo quando a empresa, as contas, o filtro ou a ordem mudam (19/10/2026)
+  const codigosDaConta = d.codigos.join(',');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const foraDoPadrao = useMemo(() => montarForaDoPadrao(e, s, d.codigos), [e, codigosDaConta, s.filtro, s.ordemDiv, s.ordemServ]);
 
   const [info, setInfo] = useState<Record<string, InfoRelatorio>>({});
   const [comparando, setComparando] = useState(false);
@@ -200,7 +204,7 @@ export function useVerificarConta() {
     cfop, escolherCfop,
     relatorios, escolherRelatorio, abrirArquivo,
     comparando, conferir: () => conferir(), limpar, voltar,
-    foraDoPadrao: montarForaDoPadrao(e, s, d.codigos), acoes,
+    foraDoPadrao, acoes,
     resultado: montarResultado(e, s.filtro, v, d),
     seqResultado,
     escolherAba, reimportar, alternarConferido, csv,

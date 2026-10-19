@@ -168,6 +168,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       if (m) repo.gravar(m.execucao, m.evento);
     }
   }
+  const chaveDasExecucoes = meses.map(c => (exDe[c] ? JSON.stringify(exDe[c]) : '')).join('|');
   // os adiantamentos pelo balancete dinâmico já importado em Clientes (o guardado neste navegador), sem precisar abrir o
   // Clientes de novo (Vitor, 15/10/2026: "a 58 não tem adiantamento de clientes e você me pedindo")
   useEffect(() => {
@@ -186,8 +187,10 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     const s = cl.adiantamentoSalarialNoDinamico(din.d, meses);
     ajustarPeloBalancete({ etapa: 'adiantamento-salarial', ...s, motivo: (s.com.length ? 'Adiantamento salarial com saldo' : 'Adiantamento salarial zerado') + ' no balancete dinâmico' });
   // só quando muda o que importa: o dinâmico é grande para ler a cada desenho (o guardado avisa quando muda)
+  // (Vitor, 19/10/2026: "o nads está lerdo em outras máquinas") o porMes é uma lista nova a cada desenho: com ele aqui, o
+  // dinâmico inteiro (às vezes vários MB) era lido e desfeito a cada desenho do Executor; vale o conteúdo das execuções
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dev, carregada, empresa?.nome, periodo, versaoDoGuardado, porMes]);
+  }, [dev, carregada, empresa?.nome, periodo, versaoDoGuardado, chaveDasExecucoes]);
   const [aviso, setAviso] = useState<string | null>(null);
   const [conferindo, setConferindo] = useState(false);
   const [interrompendo, setInterrompendo] = useState(false);

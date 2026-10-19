@@ -129,9 +129,12 @@ const ENTRADAS: [string, Entrada][] = [
 ];
 
 const vistos = new WeakSet<Element>();
+// todos os seletores numa busca só: o que entrou sem nada animável sai na hora (Vitor, 19/10/2026: "o nads está lerdo em
+// outras máquinas" — eram 22 buscas por pedaço que entra na tela, e uma tabela de milhares de linhas travava)
+const TODAS_AS_ENTRADAS = ENTRADAS.map(e => e[0]).join(', ');
 
 function animarSeEntrou(no: Node) {
-  if (!(no instanceof Element) || no.closest('[data-fantasma]')) return;
+  if (!(no instanceof Element) || (!no.matches(TODAS_AS_ENTRADAS) && !no.querySelector(TODAS_AS_ENTRADAS)) || no.closest('[data-fantasma]')) return;
   for (const [seletor, chegar] of ENTRADAS) {
     const achados: HTMLElement[] = [];
     if (no.matches(seletor)) achados.push(no as HTMLElement);
@@ -187,6 +190,8 @@ function botaoTrocouDeTexto(no: Node) {
 let ultimoEsc = -1e9;
 function animarSeSaiu(no: Node, pai: Node, depois: Node | null) {
   if (!(no instanceof HTMLElement) || no.hasAttribute('data-fantasma') || performance.now() - ultimoEsc < 150) return;
+  // o que saiu sem janela, menu ou gaveta dentro: nada a fazer (uma busca só, em vez de uma por seletor)
+  if (!no.matches(TODAS_AS_SAIDAS) && !no.querySelector(TODAS_AS_SAIDAS)) return;
   for (const [seletor, sair, onde] of SAIDAS) {
     const achados: HTMLElement[] = [];
     if (no.matches(seletor)) achados.push(no);
