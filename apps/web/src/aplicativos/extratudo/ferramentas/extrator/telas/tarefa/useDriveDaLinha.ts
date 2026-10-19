@@ -90,12 +90,27 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [acesso.entrou, paraReler]);
 
-  async function usar(linha: Linha, a: creditor.ArquivoAchado) {
+  /**
+   * Traz do Drive o primeiro dos arquivos do mês que tiver o extrato: o achado e, se ele vier vazio, os outros do mês (o
+   * "(1)" com o mesmo nome pode ser outra coisa). 'vazio': nenhum tinha lançamento; false: não entrou (cancelou a pergunta).
+   */
+  async function trazer(linha: Linha, arquivos: creditor.ArquivoAchado[], mes?: string): Promise<boolean | 'vazio'> {
+    for (const [i, a] of arquivos.entries()) {
+      const conteudo = await drive.baixar(a.id, a.nome);
+      const ok = await vm.importarDoDrive(linha.id, { id: a.id, nome: a.nome }, conteudo, mes, i < arquivos.length - 1);
+      if (ok !== 'vazio') return ok;
+    }
+    return 'vazio';
+  }
+  /** o achado primeiro, depois os outros do mesmo mês */
+  const doMes = (r: { arquivo: creditor.ArquivoAchado | null; candidatos: creditor.ArquivoAchado[] }) =>
+    r.arquivo ? [r.arquivo, ...r.candidatos.filter(c => c.id !== r.arquivo?.id && c.daCompetencia)] : [];
+
+  async function usar(linha: Linha, a: creditor.ArquivoAchado, outros: creditor.ArquivoAchado[] = []) {
     setEscolha(null);
     vm.marcarLendo(linha.id);
     try {
-      const conteudo = await drive.baixar(a.id, a.nome);
-      await vm.importarDoDrive(linha.id, { id: a.id, nome: a.nome }, conteudo);
+      await trazer(linha, [a, ...outros]);
     } catch (e) {
       vm.marcarLendo(null);
       vm.avisarErro('O extrato não veio do Drive', mensagemDeErro(e));
@@ -126,7 +141,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     try {
       const pasta = await pastaComOsMeses(linha, [vm.competencia]);
       const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, vm.competencia, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta });
-      if (r.situacao === 'achou' && r.arquivo) await usar(linha, r.arquivo);
+      if (r.situacao === 'achou' && r.arquivo) await usar(linha, r.arquivo, doMes(r).slice(1));
       else setEscolha({ linha, texto: x.mensagemDaBuscaDoExtrato(r, vm.competencia.slice(5) + '/' + vm.competencia.slice(0, 4)), candidatos: r.candidatos });
     } catch (e) {
       vm.avisarErro('Não consegui olhar o Drive', mensagemDeErro(e));
@@ -149,6 +164,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     setCancelando(false);
     const achados: string[] = [];
     const faltam: string[] = [];
+    const vazios: string[] = [];
     const rotuloDe = (m: string) => m.slice(5) + '/' + m.slice(0, 4);
     setLote({ banco: linha.nome, meses: meses.map(rotuloDe), feitos: [], atual: rotuloDe(meses[0]), inicio: Date.now(), pronto: false });
     const passou = (mes: string, ok: boolean, proximo?: string) => setLote(l => (l ? { ...l, feitos: [...l.feitos, { mes, ok }], atual: proximo || '' } : l));
@@ -165,13 +181,17 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
         const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, mes, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta });
         const rotulo = mes.slice(5) + '/' + mes.slice(0, 4);
         if (r.situacao !== 'achou' || !r.arquivo) { faltam.push(rotulo); passou(rotulo, false, seguinte); continue; }
-        const conteudo = await drive.baixar(r.arquivo.id, r.arquivo.nome);
-        await vm.importarDoDrive(linha.id, { id: r.arquivo.id, nome: r.arquivo.nome }, conteudo, mes);
-        achados.push(rotulo);
-        passou(rotulo, true, seguinte);
+        // só conta como trazido o que entrou (Vitor, 19/10/2026: "fala que traz, mas não traz nada")
+        const ok = await trazer(linha, doMes(r), mes);
+        if (ok === 'vazio') vazios.push(rotulo);
+        else if (ok) achados.push(rotulo);
+        else faltam.push(rotulo);
+        passou(rotulo, ok === true, seguinte);
       }
-      if (faltam.length) vm.avisarErro(linha.nome + ': ' + (achados.length ? 'trouxe ' + achados.join(', ') : 'nada no Drive'), 'Não achei no Drive: ' + faltam.join(', ') + '.');
-      else vm.avisar(linha.nome + ': extratos de ' + achados.join(', ') + ' trazidos do Drive');
+      if (faltam.length || vazios.length) {
+        vm.avisarErro(linha.nome + ': ' + (achados.length ? 'trouxe ' + achados.join(', ') : 'nada veio do Drive'),
+          [faltam.length ? 'Não achei no Drive: ' + faltam.join(', ') + '.' : '', vazios.length ? 'O arquivo do Drive não tem lançamentos (não é o extrato?): ' + vazios.join(', ') + '.' : ''].filter(Boolean).join(' '));
+      } else vm.avisar(linha.nome + ': extratos de ' + achados.join(', ') + ' trazidos do Drive');
     } catch (e) {
       vm.avisarErro('Não consegui olhar o Drive', mensagemDeErro(e));
     } finally {

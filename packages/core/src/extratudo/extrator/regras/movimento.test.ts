@@ -134,11 +134,13 @@ describe('extrato no Drive: cópias baixadas de novo (empresa 380, Sicoob)', () 
     expect(b.arquivo?.id).toBe('x01');
     expect(b.candidatos.map(c => c.id)).toEqual(['x01']);
   });
-  it('o mês com a cópia: um extrato só, o mais novo, sem perguntar', () => {
+  it('o mês com a cópia: um extrato só, o original, sem perguntar; a cópia fica de alternativa', () => {
+    // (19/10/2026: o "(1)" pode ser outro arquivo com o mesmo nome, como os comprovantes; o original vem primeiro)
     for (const m of ['02', '03', '04', '05', '06']) {
       const b = acharExtratoNoDrive(itens, 'raiz', '2026-' + m, conta);
       expect(b.situacao).toBe('achou');
-      expect(b.arquivo?.id).toBe('y' + m);
+      expect(b.arquivo?.id).toBe('x' + m);
+      expect(b.candidatos.map(c => c.id)).toEqual(['x' + m, 'y' + m]);
     }
     expect(acharExtratoNoDrive(itens, 'raiz', '2026-07', conta).arquivo?.id).toBe('x07');
   });

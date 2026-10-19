@@ -53,7 +53,7 @@ export function acharExtratoNoDrive(itens: readonly ItemDrive[], raizDoCliente: 
   const outros = Object.entries(APELIDOS).filter(([id]) => id !== meu).flatMap(([, a]) => a);
   const digitos = (conta.conta || '').replace(/\D/g, '');
 
-  type Nota = ArquivoAchado & { nota: number; grupo: string };
+  type Nota = ArquivoAchado & { nota: number; grupo: string; copia: boolean };
   const achados: Nota[] = [];
   const andar = (pasta: string, caminho: string[]) => {
     for (const it of filhos.get(pasta) || []) {
@@ -73,14 +73,15 @@ export function acharExtratoNoDrive(itens: readonly ItemDrive[], raizDoCliente: 
       const nota = (daCompetencia ? 4 : 0) + (/extrato/.test(texto) ? 2 : 0) + (pastas.includes('bancarios') ? 3 : 0)
         + (banco.some(b => b && texto.includes(b)) || meus.some(a => temPalavra(texto, a)) ? 2 : 0) + (digitos.length >= 4 && texto.replace(/\D/g, '').includes(digitos) ? 3 : 0);
       // a cópia baixada de novo ("X (1).pdf" ao lado de "X.pdf") é o mesmo extrato: um grupo só
-      achados.push({ id: it.i, nome: it.n, caminho: [...caminho, it.n].join(' › '), modificado: it.m, credliquidacao: false, daCompetencia, nota, grupo: it.p + '|' + nomeNorm(nome) });
+      achados.push({ id: it.i, nome: it.n, caminho: [...caminho, it.n].join(' › '), modificado: it.m, credliquidacao: false, daCompetencia, nota, grupo: it.p + '|' + nomeNorm(nome), copia: nome !== it.n });
     }
   };
   andar(raizDoCliente, []);
 
-  const ordem = (a: Nota, b: Nota) => b.nota - a.nota || (b.modificado || '').localeCompare(a.modificado || '');
-  // das cópias do mesmo extrato, fica a mais nova
-  const maisNova = (a: Nota, b: Nota) => (b.modificado || '').localeCompare(a.modificado || '');
+  const ordem = (a: Nota, b: Nota) => b.nota - a.nota || Number(a.copia) - Number(b.copia) || (b.modificado || '').localeCompare(a.modificado || '');
+  // das cópias do mesmo extrato, fica o original ("X.pdf"); depois, o mais novo. (Vitor, 19/10/2026, na 450: o "X (1).pdf"
+  // eram os comprovantes dos boletos com o nome do extrato, e o nads trazia ele, sem nenhum lançamento)
+  const maisNova = (a: Nota, b: Nota) => Number(a.copia) - Number(b.copia) || (b.modificado || '').localeCompare(a.modificado || '');
   const bons = achados.filter(a => a.daCompetencia && a.nota >= 6).sort((a, b) => b.nota - a.nota || maisNova(a, b))
     .filter((a, i, todos) => todos.findIndex(x => x.grupo === a.grupo) === i).sort(ordem);
   const semNota = (a: Nota): ArquivoAchado => ({ id: a.id, nome: a.nome, caminho: a.caminho, modificado: a.modificado, credliquidacao: false, daCompetencia: a.daCompetencia });
