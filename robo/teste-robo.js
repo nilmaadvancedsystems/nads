@@ -672,6 +672,23 @@ igual('pasta: nome do cadastro pelo código', en.nomeDaPastaDoCliente({ codigo: 
 igual('pasta: o nome que veio', en.nomeDaPastaDoCliente({ codigo: '9', cliente: 'X LTDA' }, porCod), 'X LTDA');
 igual('pasta: sem cliente', en.nomeDaPastaDoCliente({ codigo: '', cliente: '' }, porCod), 'Enviados pelo nads');
 
+// --- o extrato da Importação direto na pasta do banco (19/10/2026) ---
+igual('extrato: o nome da Importação', en.extratoDoNome('Extrato SICOOB 06-2026.pdf'), { banco: 'SICOOB', mes: '06', ano: '2026', ext: '.pdf' });
+igual('extrato: outro arquivo não é', en.extratoDoNome('comprovante.pdf'), null);
+// a pasta da empresa no mapa (itens fictícios): a do banco já existe em maio com outro nome; junho ainda não tem pasta
+const itensDoMapa = [
+  { i: 'c', n: 'CONTÁBIL', p: 'cli', t: 'd' }, { i: 'e', n: 'EXTRATOS', p: 'c', t: 'd' }, { i: 'a', n: '2026', p: 'e', t: 'd' },
+  { i: 'm5', n: '05', p: 'a', t: 'd' }, { i: 'b5', n: 'BANCÁRIOS', p: 'm5', t: 'd' }, { i: 's5', n: 'BANCOOB', p: 'b5', t: 'd' },
+];
+igual('extrato: cria só o que falta, com o nome da pasta do banco que a empresa usa',
+  en.caminhoDoExtratoNoIndice(itensDoMapa, 'cli', en.extratoDoNome('Extrato SICOOB 06-2026.pdf')),
+  { existente: 'a', faltam: ['06', 'BANCÁRIOS', 'BANCOOB'], caminho: 'CONTÁBIL/EXTRATOS/2026/06/BANCÁRIOS/BANCOOB', nomeFinal: '06-2026.pdf' });
+igual('extrato: a pasta do mês e do banco já existem',
+  en.caminhoDoExtratoNoIndice(itensDoMapa, 'cli', en.extratoDoNome('Extrato SICOOB 05-2026.pdf')).faltam, []);
+igual('extrato: banco que a empresa ainda não tem vira o nome do arquivo',
+  en.caminhoDoExtratoNoIndice(itensDoMapa, 'cli', en.extratoDoNome('Extrato NUBANK 05-2026.ofx')),
+  { existente: 'b5', faltam: ['NUBANK'], caminho: 'CONTÁBIL/EXTRATOS/2026/05/BANCÁRIOS/NUBANK', nomeFinal: '05-2026.ofx' });
+
 // --- a guia DAS/DAE na Área do Cliente (envios-do-nads.js) ---
 const envioGuia = { guia: 'DAS', vencimento: '20/10/2026', valor: '1.234,56', codigo: 58, competencia: '2026-09', criadoPorUid: 'u1' };
 igual('guia do envio: conferida', en.guiaDoEnvio(envioGuia), { tipo: 'DAS', vencimento: '20/10/2026', valor: 1234.56, valorTexto: '1.234,56', codigo: '58', competencia: '2026-09' });

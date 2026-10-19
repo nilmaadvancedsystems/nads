@@ -220,7 +220,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
           mandados.push(p.mes.slice(5) + '/' + p.mes.slice(0, 4));
         }
       }
-      if (mandados.length) vm.avisar('Mandado para o Drive: ' + mandados.join(', ') + ' (entra na pasta do banco no próximo arquivamento)');
+      if (mandados.length) vm.avisar('Mandado para o Drive: ' + mandados.join(', ') + ' (vai direto para a pasta do banco, em até 2 minutos)');
     } catch (e) {
       vm.avisarErro('Não mandei para o Drive' + (mandados.length ? ' (foram ' + mandados.join(', ') + ')' : ''), mensagemDeErro(e));
     }
