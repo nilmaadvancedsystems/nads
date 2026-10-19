@@ -247,7 +247,10 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
           : lido.erro ? [] : await x.extratoPorMes(f.name, bytes, lido, linha.nome);
         for (const p of pedacos) {
           const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, p.mes, conta);
-          if (r.situacao === 'achou' || r.situacao === 'varios' || r.candidatos.length) continue;
+          // já tem o extrato DESTE mês no Drive: não manda de novo. (Vitor, 19/10/2026: "não está sendo armazenado" — o mês
+          // sem arquivo devolve como candidatos os extratos dos OUTROS meses, e o envio era pulado em toda empresa que já
+          // tinha algum extrato no Drive)
+          if (r.situacao === 'achou' || r.situacao === 'varios' || r.candidatos.some(c => c.daCompetencia)) continue;
           const envio = await drive.enviarAoDrive({ nome: p.nome, bytes: p.bytes }, { competencia: p.mes, codigo, cliente });
           if (envio) setSubindo(x => ({ ...x, [linha.id + '|' + p.mes]: { envio, em: Date.now() } }));
           mandados.push(p.mes.slice(5) + '/' + p.mes.slice(0, 4));
