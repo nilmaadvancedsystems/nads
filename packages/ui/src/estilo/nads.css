@@ -2486,6 +2486,12 @@ html:not([data-animacoes=todas]) .modal-ok-barra{display:none;}
 .imp-meses thead th{height:34px;background:var(--surface-2);border-bottom-color:var(--border);font-weight:400;}
 .imp-meses th[scope="row"],.imp-meses thead th:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:12px;position:sticky;left:0;z-index:1;padding-left:12px;text-align:left;font-size:var(--fs-12);font-weight:600;color:var(--ink-muted);background:var(--surface-2);}
 .imp-meses td{height:42px;}
+/* os botões do mês numa linha só (o Drive subindo, o check e o olhinho não quebram) e o Drive subindo do tamanho dos outros,
+   com a rodinha pequena no canto de baixo (19/10/2026) */
+.imp-meses td{white-space:nowrap;}
+.imp-subindo{position:relative;cursor:default;}
+.imp-subindo .logo-img{width:14px;height:14px;}
+.imp-subindo .btn-spinner{position:absolute;right:2px;bottom:2px;width:9px;height:9px;border-width:1.5px;}
 /* a alça da primeira coluna e o valor que perde o "R$" no mês estreito */
 /* o balão da mensagem para o cliente (Clientes: a observação do conferido) */
 .msg-balao{display:inline-flex;align-items:flex-start;gap:6px;max-width:100%;padding:6px 10px;border-radius:12px 12px 12px 4px;background:var(--surface-2);border:1px solid var(--border);font-size:var(--fs-13);line-height:1.4;color:var(--ink);}
