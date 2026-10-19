@@ -580,8 +580,12 @@ button.gh-crumb:hover{background:var(--hover-bg);}
 .subnav-item:hover{background:var(--hover-bg);}
 .subnav-item svg{width:17px;height:17px;flex:none;color:var(--ink-muted);}
 /* a logo da marca no lugar do ícone (FGTS Digital no DP): do mesmo tamanho dos ícones */
-.subnav-marca{width:17px;height:17px;flex:none;display:inline-flex;align-items:center;justify-content:center;}
-.subnav-marca svg{width:17px;height:17px;color:inherit;}
+.subnav-marca{width:48px;height:14px;flex:none;display:inline-flex;align-items:center;justify-content:center;margin-right:-2px;}
+.subnav-marca svg{width:48px;height:14px;}
+/* recolhida: a logo inteira numa versão menor, centralizada nos 40 px do botão */
+.sidebar-oculta .subnav-marca{width:34px;height:10px;margin:0;}
+.sidebar-oculta .subnav-marca svg{width:34px;height:10px;}
+@media (max-width:768px){.sidebar-oculta .subnav-marca{width:48px;height:14px;margin:0 -2px 0 0;}.sidebar-oculta .subnav-marca svg{width:48px;height:14px;}}
 /* o item aberto igual ao da gaveta ☰ (19/10/2026): o mesmo fundo, o peso 500 e o ícone na cor do texto, sem a barrinha vermelha */
 .subnav-item.active{background:var(--hover-bg);font-weight:500;}
 .subnav-item.active svg{color:var(--ink);}
