@@ -193,7 +193,11 @@ export function JanelaBuscarNoEmail({ vm }: { vm: Vm }) {
  */
 function ListaDeAnexos({ vm, e, ocupado }: { vm: Vm; e: NonNullable<Vm['estado']>; ocupado: boolean }) {
   const [verOutros, setVerOutros] = useState(false);
-  const r = cr.separarPeloMes(e.resultados || [], e.mes);
+  const [verOutrosBancos, setVerOutrosBancos] = useState(false);
+  // o banco da linha (Vitor, 19/10/2026): o anexo de outro banco (pelo nome dele; sem banco no nome, pelo assunto e pelo
+  // corpo) nem aparece; o e-mail que cita o banco procurado, sozinho ou com outros, fica
+  const porBanco = cr.separarPeloBanco(e.resultados || [], cr.bancoDaLinha(e.linha.nome, e.linha.id));
+  const r = cr.separarPeloMes(verOutrosBancos ? e.resultados || [] : porBanco.doBanco, e.mes);
   const linha = (a: creditor.AnexoDoEmail, doMes: boolean) => {
     const aberto = vm.preview?.anexo.anexoId === a.anexoId;
     return (
@@ -217,6 +221,11 @@ function ListaDeAnexos({ vm, e, ocupado }: { vm: Vm; e: NonNullable<Vm['estado']
                     Mostrar os de outros meses ({r.outros.length})
                   </button>
                 ))}
+                {porBanco.outros.length > 0 && !verOutrosBancos && (
+                  <button type="button" className="btn btn-outline" style={{ margin: 12 }} onClick={() => setVerOutrosBancos(true)}>
+                    Mostrar os de outros bancos ({porBanco.outros.length})
+                  </button>
+                )}
               </div>
               <PreviewDoAnexo vm={vm} />
             </div>
