@@ -6,7 +6,7 @@
 import { Icone } from '@nads/ui';
 import { useSyncExternalStore } from 'react';
 
-export interface Puxado { nome: string; url: string; origem: 'drive' | 'email'; meses: string[] }
+export interface Puxado { nome: string; url: string; origem: 'drive' | 'email' | 'computador'; meses: string[] }
 
 const porChave = new Map<string, Puxado[]>();
 const ouvintes = new Set<() => void>();

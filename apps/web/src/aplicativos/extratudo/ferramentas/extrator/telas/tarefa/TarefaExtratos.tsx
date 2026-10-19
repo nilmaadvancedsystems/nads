@@ -282,13 +282,15 @@ function SubindoAoDrive() {
   );
 }
 
-function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato, aceitarRazao, onMes, onArquivos, onExcluir, onDrive, onEmail, onVer, onSemMovimento, naTarefa, puxados, subindo, semMovimentoDoDrive }: {
+function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato, aceitarRazao, onMes, onArquivos, onExcluir, onDrive, onEmail, onVer, onVerImportado, onSemMovimento, naTarefa, puxados, subindo, semMovimentoDoDrive }: {
   meses: ReturnType<Vm['mesesDoBanco']>;
   /** o mês que o "Todos pelo Drive" está buscando agora: a célula do extrato gira */
   buscandoMes?: string | null;
   competencia: string; travado: boolean; aceitarExtrato: string; aceitarRazao: string; naTarefa: boolean;
   onMes: (m: string) => void; onArquivos: (lado: 'banco' | 'sistema', fs: File[], mes: string) => void; onExcluir: (lado: 'banco' | 'sistema', mes: string) => void;
   onDrive: (mes: string) => void; onEmail?: (mes: string) => void; onVer: (arquivo: { id: string; nome: string }) => void; onSemMovimento: (mes: string, marcado: boolean) => void;
+  /** o olhinho do mês importado sem o Drive ligado: o arquivo (do computador nesta aba, ou o do Drive) ou os lançamentos */
+  onVerImportado: (lado: 'banco' | 'sistema', mes: string) => void;
   /** o que veio do e-mail no mês (o olhinho; puxados.tsx) */
   puxados: (mes: string) => Puxado[];
   /** o extrato do mês está subindo para o Drive */
@@ -322,11 +324,14 @@ function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato
       return <FaltaExtratoDoMes rotulo={m.rotulo} aceitar={aceitarExtrato} travado={trava} naTarefa={naTarefa} direita={n >= meses.length / 2}
         onArquivos={fs => onArquivos(lado, fs, m.mes)} onDrive={() => onDrive(m.mes)} onEmail={onEmail ? () => onEmail(m.mes) : undefined} onSemMovimento={() => onSemMovimento(m.mes, true)} />;
     }
-    // veio do e-mail: o olhinho abre o anexo (só nesta aba)
+    // o olhinho em todo mês importado (Vitor, 19/10/2026: "deixa eu visualizar o importado, não somente deixe o check"): o
+    // arquivo que veio do e-mail ou do computador (só nesta aba); senão, onVerImportado (o do Drive, ou os lançamentos)
     const doEmail = lado === 'banco' ? puxados(m.mes) : [];
+    const nomeLado = lado === 'banco' ? 'extrato' : 'razão';
     return <>{lado === 'banco' && subindo(m.mes) && <SubindoAoDrive />}<BotaoLado lado={info} titulo={(lado === 'banco' ? 'Extrato' : 'Razão') + ' de ' + m.rotulo} aceitar={lado === 'banco' ? aceitarExtrato : aceitarRazao} travado={trava}
       onArquivos={fs => onArquivos(lado, fs, m.mes)} onExcluir={() => onExcluir(lado, m.mes)} />
-      {doEmail.length > 0 && <BotaoVer titulo={'Ver o que foi puxado do e-mail: ' + doEmail.map(p => p.nome).join(', ')} onVer={() => doEmail.forEach(abrirPuxado)} />}</>;
+      {doEmail.length > 0 ? <BotaoVer titulo={'Ver o ' + nomeLado + ' importado: ' + doEmail.map(p => p.nome).join(', ')} onVer={() => doEmail.forEach(abrirPuxado)} />
+        : info.qtdArquivos > 0 && <BotaoVer titulo={'Ver o ' + nomeLado + ' importado de ' + m.rotulo} onVer={() => onVerImportado(lado, m.mes)} />}</>;
   };
   return (
     <div className="imp-periodo-linha">
@@ -680,6 +685,17 @@ export function TarefaExtratos() {
   const alternarBatendo = (id: string) => setAbertasBatendo(v => (v.includes(id) ? v.filter(a => a !== id) : [...v, id]));
 
   /** Visualizar o que veio do Drive: abre a janela já (senão o navegador bloqueia) e põe o link temporário quando o robô responder. */
+  // o olhinho do mês importado: o extrato do Drive daquele mês, se tiver; senão (e no razão), os lançamentos importados
+  const [importado, setImportado] = useState<{ titulo: string; linhas: x.Lancamento[] } | null>(null);
+  async function verImportado(b: (typeof vm.bancos)[number], lado: 'banco' | 'sistema', mes: string) {
+    if (lado === 'banco') {
+      const arq = await d.arquivoNoDrive(b, mes).catch(() => null);
+      if (arq) { visualizarDoDrive(arq); return; }
+    }
+    const rotulo = mes.slice(5) + '/' + mes.slice(0, 4);
+    setImportado({ titulo: (lado === 'banco' ? 'Extrato' : 'Razão') + ' do ' + b.nome + ' · ' + rotulo, linhas: vm.lancamentosImportados(b.id, lado, mes) });
+  }
+
   function visualizarDoDrive(arquivo: { id: string; nome: string }) {
     if (!d.entrou) { d.pedirLogin(() => visualizarDoDrive(arquivo)); return; }
     const janela = window.open('', '_blank');
@@ -950,7 +966,11 @@ export function TarefaExtratos() {
               </div>
               {emLote && gradeAberta && <MesesDoBanco meses={meses} competencia={vm.competencia} naTarefa={ponte.naTarefa} buscandoMes={d.buscando === b.id ? d.mesAtual : null}
                 travado={ocupadoGeral} aceitarExtrato={cxExtrato.aceitar} aceitarRazao={cxRazao.aceitar}
-                onMes={vm.setCompetencia} onArquivos={(lado, fs, mes) => { if (lado === 'banco') importarExtrato(b, fs, undefined, [mes]); else void vm.importarArquivos(b.id, lado, fs); }}
+                onMes={vm.setCompetencia} onArquivos={(lado, fs, mes) => {
+                  if (lado === 'banco') importarExtrato(b, fs, () => { for (const f of fs) guardarPuxado(chaveDoExtrato(s.codigo, b.id), f.name, f, 'computador', [mes]); }, [mes]);
+                  else void vm.importarArquivos(b.id, lado, fs);
+                }}
+                onVerImportado={(lado, mes) => { void verImportado(b, lado, mes); }}
                 onExcluir={(lado, mes) => { if (lado === 'banco') esquecerPuxado(chaveDoExtrato(s.codigo, b.id), mes); void vm.excluirDoBanco(b.id, lado, mes); }}
                 onDrive={mes => d.buscarNoPeriodo(b, [mes])}
                 onEmail={em.existe ? mes => em.abrir(b, mes) : undefined}
@@ -1017,6 +1037,29 @@ export function TarefaExtratos() {
         </div>
       )}
       </>)}
+      {importado && (
+        <div className="modal-overlay" role="presentation" onClick={() => setImportado(null)}>
+          <div className={classeDaJanela({}) + ' imp-importado'} role="dialog" aria-modal="true" aria-labelledby="tituloImportado" onClick={e => e.stopPropagation()}>
+            <BotaoFechar canto onClick={() => setImportado(null)} />
+            <h3 id="tituloImportado">{importado.titulo}</h3>
+            <p className="hint">{importado.linhas.length} lançamento{importado.linhas.length === 1 ? '' : 's'} importado{importado.linhas.length === 1 ? '' : 's'} no mês (o arquivo não ficou guardado).</p>
+            <div className="table-wrap scroll-list">
+              <table className="table-compact">
+                <thead><tr><th>Data</th><th>Histórico</th><th className="num">Valor</th></tr></thead>
+                <tbody>
+                  {importado.linhas.map((l, i) => (
+                    <tr key={i}>
+                      <td style={{ whiteSpace: 'nowrap' }}>{x.dataBR(l.data)}</td>
+                      <td className="wrap">{l.complemento ? l.historico + ' · ' + l.complemento : l.historico}</td>
+                      <td className={'num' + (l.valor < 0 ? ' ext-neg' : '')}>{x.valorBR(l.valor)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
       <JanelaBuscarNoEmail vm={em} />
       <JanelaPedirExtratos p={pe} />
       <JanelaHistoricoDePedidos p={pe} />

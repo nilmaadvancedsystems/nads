@@ -389,6 +389,9 @@ export function useImportacao() {
         .reduce((acc, a) => x.definirDriveDoArquivo(acc, a.id, drive, new Date()), e));
     },
     /** o arquivo do Drive do mês marcado sem movimento pelo extrato (null = não tem: marcado à mão, ou do computador) */
+    /** os lançamentos importados do lado no mês (o olhinho do mês na grade, quando o arquivo não está à mão), por data */
+    lancamentosImportados: (banco: string, lado: x.Lado, mes: string): x.Lancamento[] =>
+      x.arquivosDoBanco(s.empresa, banco, primeiro, lado, mes).flatMap(a => a.lancamentos.filter(l => l.data.startsWith(mes))).sort((a, b) => a.data.localeCompare(b.data)),
     arquivoSemMovimento: (banco: string, mes: string): { id: string; nome: string } | null => semMovDoDrive[banco + '|' + mes] || null,
     /** a regra do Cadastro da empresa: presta serviços? (null = não informado, ou o cadastro ainda não chegou) */
     prestaServico: cad.cadastro?.prestaServico ?? null,

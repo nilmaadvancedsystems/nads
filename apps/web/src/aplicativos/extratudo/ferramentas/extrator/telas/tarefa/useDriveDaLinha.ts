@@ -307,7 +307,16 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chavesSubindo, acesso.entrou]);
 
+  /** o extrato do mês no mapa do Drive, sem pedir ao robô para reler (o olhinho do mês que veio do computador) */
+  async function arquivoNoDrive(linha: Linha, mes: string): Promise<{ id: string; nome: string } | null> {
+    if (!acesso.entrou) return null;
+    const pasta = await drive.pastaDoCliente(codigo);
+    const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, mes, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta });
+    return r.situacao === 'achou' && r.arquivo ? { id: r.arquivo.id, nome: r.arquivo.nome } : null;
+  }
+
   return {
+    arquivoNoDrive,
     /** o extrato do mês está subindo para o Drive (o ícone do Drive girando ao lado do check) */
     subindoAoDrive: (banco: string, mes: string) => !!subindo[banco + '|' + mes],
     exemplos: drive.exemplos,
