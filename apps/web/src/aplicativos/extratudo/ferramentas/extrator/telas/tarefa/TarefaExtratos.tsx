@@ -276,7 +276,7 @@ function resumo(b: Vm['bancos'][number]): string[] {
 /** O extrato subindo para o Drive (Vitor, 19/10/2026): o logo do Drive com a rodinha, à esquerda do check, até o robô gravar. */
 function SubindoAoDrive() {
   return (
-    <span className="icon-btn icon-btn-sm imp-btn" title="Subindo para o Drive…" aria-label="Subindo para o Drive" style={{ width: 'auto', gap: 4, padding: '0 6px' }}>
+    <span className="icon-btn icon-btn-sm imp-btn" title="Arquivando no Drive… (quando o robô gravar, vira o ícone do Drive com o olhinho)" aria-label="Arquivando no Drive" style={{ width: 'auto', gap: 4, padding: '0 6px' }}>
       <LogoDrive /><span className="btn-spinner" />
     </span>
   );
