@@ -5,7 +5,7 @@
 // devedor, e nenhuma despesa credora nem receita devedora. O dinâmico traz devedor positivo e credor negativo.
 import { normalizarTexto } from '../../formatos';
 import {
-  ADIANTAMENTO, ADIANTAMENTO_SALARIAL, credoresNoPeriodo, resultadoErradoNoDinamico, tipoDoRazao,
+  ADIANTAMENTO, ADIANTAMENTO_SALARIAL, credoresNoPeriodo, resultadoErradoNoDinamico, temContaDebaixo, tipoDoRazao,
   type BalanceteDinamico, type LinhaDinamico,
 } from './index';
 
@@ -19,7 +19,7 @@ const BANCO = /\b(banco|bco|sicoob|sicredi|bradesco|itau|santander|nubank|inter|
 export function conferirFechamento(d: BalanceteDinamico, meses: readonly string[]): PendenciaDoFechamento[] {
   const cobertos = meses.filter(m => d.meses.includes(m));
   const ultimo = cobertos[cobertos.length - 1] || '';
-  const folha = (l: LinhaDinamico) => !d.linhas.some(o => o !== l && o.classificacao.startsWith(l.classificacao + '.'));
+  const folha = (l: LinhaDinamico) => !temContaDebaixo(d, l);
   const nome = (l: LinhaDinamico) => l.descricao.replace(/\s+/g, ' ').trim();
   /** as analíticas que passam no teste, com os meses em que o saldo está do lado errado */
   const errados = (filtro: (l: LinhaDinamico) => boolean, errado: (saldo: number) => boolean): ContaNoFechamento[] =>

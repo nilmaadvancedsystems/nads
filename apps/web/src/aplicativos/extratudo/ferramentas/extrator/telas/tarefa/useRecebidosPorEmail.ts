@@ -23,7 +23,7 @@ export function useRecebidosPorEmail(vm: Vm, codigo: number | null) {
   const [escolhas, setEscolhas] = useState<Record<string, string>>({});
   const [importando, setImportando] = useState<string | null>(null);
   const [lote, setLote] = useState<Lote | null>(null);
-  const [agora, setAgora] = useState(() => Date.now());
+  const [agora] = useState(() => Date.now());
   const tentados = useRef(new Set<string>());
   const pode = !!drive.extratosRecebidos && acesso.entrou && codigo != null;
   const competencia = vm.competencia;
@@ -99,12 +99,8 @@ export function useRecebidosPorEmail(vm: Vm, codigo: number | null) {
     if (entraram) vm.avisar((entraram === 1 ? '1 extrato do e-mail/Drive entrou' : entraram + ' extratos do e-mail/Drive entraram') + (faltam ? ' · ' + faltam + ' não entrou' : ''));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lote, proximo, importando]);
-  // o relógio da janela
-  useEffect(() => {
-    if (!lote || lote.pronto) return;
-    const r = setInterval(() => setAgora(Date.now()), 1000);
-    return () => clearInterval(r);
-  }, [lote]);
+  // sem o relógio de 1 s (19/10/2026: redesenhava a página dos bancos inteira a cada segundo do lote, para uma janela de
+  // andamento que não aparece mais na tela)
 
   // os que ficam para a pessoa: os que não entram sozinhos (ou que já tentaram e não entraram)
   const pendentes = lista.filter(r => !(r.fileId && doDriveJa.has(r.fileId)) && (!sozinhos.some(s => s.r.id === r.id) || tentados.current.has(r.id)) && importando !== r.id).map(r => {

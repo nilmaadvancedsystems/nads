@@ -53,7 +53,7 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
   async function importarRazao(f: File | null) {
     if (!f) return;
     try {
-      setRazao({ chave, arquivo: f.name, razao: t.lerRazaoDoArquivo(await f.arrayBuffer()) });
+      setRazao({ chave, arquivo: f.name, razao: t.lerRazaoDoArquivo(await f.arrayBuffer(), f.name) });
       setMesAberto(null);
     } catch (e) {
       aviso({ tom: 'erro', titulo: 'Não consegui ler o razão', texto: e instanceof Error ? e.message : String(e) });

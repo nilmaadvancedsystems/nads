@@ -77,15 +77,26 @@ export function criarRepoExtratorFirestore(lista: readonly empresas.EmpresaDoEsc
     cargas.set(nome, c);
     const id = formatos.slug(nome);
     const falhou = (err: Error) => avisar('Não consegui ler "' + nome + '" na nuvem: ' + err.message);
+    // (Vitor, 19/10/2026: "o nads está lerdo em outras máquinas") o eco do que esta aba gravou não remonta a empresa (o
+    // salvar() já pôs a nova na tela), e o arquivo que não mudou continua o mesmo objeto: a próxima gravação compara
+    // pela referência, sem transformar todos os lançamentos em texto
     onSnapshot(doc(db, COLECAO, id), s => {
       c.doc = s.exists() ? (s.data() as x.DocEmpresaExtrator) : null;
+      const eco = s.metadata.hasPendingWrites && c.docChegou;
       c.docChegou = true;
-      remontar(nome, c);
+      if (!eco) remontar(nome, c);
     }, falhou);
     onSnapshot(collection(db, COLECAO, id, 'arquivos'), s => {
-      c.arquivos = s.docs.map(d => d.data() as x.ArquivoImportado);
+      const porId = new Map(c.arquivos.map(a => [a.id, a]));
+      const mudancas = s.docChanges();
+      for (const ch of mudancas) {
+        if (ch.type === 'removed') porId.delete(ch.doc.id);
+        else porId.set(ch.doc.id, ch.doc.data() as x.ArquivoImportado);
+      }
+      c.arquivos = [...porId.values()];
+      const eco = c.arquivosChegaram && mudancas.length > 0 && mudancas.every(ch => ch.doc.metadata.hasPendingWrites);
       c.arquivosChegaram = true;
-      remontar(nome, c);
+      if (!eco) remontar(nome, c);
     }, falhou);
     return c;
   }

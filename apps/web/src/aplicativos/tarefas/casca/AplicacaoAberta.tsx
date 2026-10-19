@@ -51,8 +51,8 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'dp': return ABAS_DO_PAINEL.includes(pagina as AbaDoPainel) ? <PainelDoDp aba={pagina as AbaDoPainel} /> : pagina === 'configuracoes' ? <ConfiguracoesDoDp /> : pagina === 'fgts' ? <FgtsDoDp /> : pagina === 'legislacao' ? <LegislacaoDoDp /> : <VisaoContabil pagina={pagina} dep="dp" />;
     case 'senhas': return pagina === 'acesso' ? <AcessoAoCofre /> : pagina === 'gov' ? <ContasGov /> : pagina === 'certificados' ? <Certificados /> : <SenhasDasEmpresas />;
     case 'cadastro': return pagina === 'sistema' ? <RobosEAgentes /> : <UsuariosDoNads />;
-    case 'area-cliente': return pagina === 'recebidos' ? <RecebidosDoCliente /> : <ChamadosDoCliente />;
-    case 'mandei': return <Mandei pagina={pagina === 'central' ? 'central' : 'meus'} />;
+    // a Área do Cliente com o Mandei junto (19/10/2026): Chamados, Recebidos, Meus tickets e a Central de tickets
+    case 'area-cliente': return pagina === 'recebidos' ? <RecebidosDoCliente /> : pagina === 'meus' || pagina === 'central' ? <Mandei pagina={pagina} /> : <ChamadosDoCliente />;
     case 'financeiro': return pagina === 'configuracoes' ? <ConfiguracoesDoFinanceiro /> : pagina === 'caixa' ? <Caixa /> : pagina === 'plano' ? <PlanoDeContas /> : <NotasFiscais />;
     // a entrega de documentos aos clientes, trazida do Entregas (16/10/2026)
     case 'entregas': return pagina === 'painel' ? <PainelDeEntregas /> : pagina === 'solicitacoes' ? <Solicitacoes /> : pagina === 'nova' ? <NovaEntrega /> : <RotaDeEntregas />;
@@ -65,6 +65,8 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
 export function AplicacaoAberta() {
   const { app = '', pagina = '' } = useParams();
   const op = useOperador().operador as Operador;
+  // o Mandei entrou na Área do Cliente (19/10/2026): os links antigos levam para lá, na mesma página
+  if (app === 'mandei') return <Navigate to={caminhoDaPagina('area-cliente', pagina === 'central' ? 'central' : 'meus')} replace />;
   const a = aplicacoesDe(op).find(x => x.id === app);
   if (!a) return <Navigate to={caminhoDaPagina('minhas-empresas', 'empresas')} replace />;
   // os links antigos do Cadastro (Configurações e Agentes viraram Robôs e agentes; 13/10/2026)

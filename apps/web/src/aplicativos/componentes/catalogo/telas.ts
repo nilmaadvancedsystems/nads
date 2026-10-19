@@ -49,7 +49,7 @@ export const TELAS: Tela[] = [
   { id: 't-cadastro-config', app: 'Tarefas', nome: 'Cadastro › Sistema e agentes' },
   { id: 't-drive', app: 'Tarefas', nome: 'Drive' },
   { id: 't-gmail', app: 'Tarefas', nome: 'Gmail' },
-  { id: 't-mandei', app: 'Tarefas', nome: 'Mandei (tickets)' },
+  { id: 't-mandei', app: 'Tarefas', nome: 'Área do Cliente › Tickets (o Mandei)' },
   { id: 't-area-chamados', app: 'Tarefas', nome: 'Área do Cliente › Chamados' },
   { id: 't-area-recebidos', app: 'Tarefas', nome: 'Área do Cliente › Recebidos' },
   { id: 't-entregas', app: 'Tarefas', nome: 'Entregas (Nova entrega, Rota e Painel)' },

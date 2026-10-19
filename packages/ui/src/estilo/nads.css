@@ -580,8 +580,12 @@ button.gh-crumb:hover{background:var(--hover-bg);}
 .subnav-item:hover{background:var(--hover-bg);}
 .subnav-item svg{width:17px;height:17px;flex:none;color:var(--ink-muted);}
 /* a logo da marca no lugar do ícone (FGTS Digital no DP): do mesmo tamanho dos ícones */
-.subnav-marca{width:17px;height:17px;flex:none;display:inline-flex;align-items:center;justify-content:center;}
-.subnav-marca svg{width:17px;height:17px;color:inherit;}
+.subnav-marca{width:48px;height:14px;flex:none;display:inline-flex;align-items:center;justify-content:center;margin-right:-2px;}
+.subnav-marca svg{width:48px;height:14px;}
+/* recolhida: a logo inteira numa versão menor, centralizada nos 40 px do botão */
+.sidebar-oculta .subnav-marca{width:34px;height:10px;margin:0;}
+.sidebar-oculta .subnav-marca svg{width:34px;height:10px;}
+@media (max-width:768px){.sidebar-oculta .subnav-marca{width:48px;height:14px;margin:0 -2px 0 0;}.sidebar-oculta .subnav-marca svg{width:48px;height:14px;}}
 /* o item aberto igual ao da gaveta ☰ (19/10/2026): o mesmo fundo, o peso 500 e o ícone na cor do texto, sem a barrinha vermelha */
 .subnav-item.active{background:var(--hover-bg);font-weight:500;}
 .subnav-item.active svg{color:var(--ink);}
@@ -2486,6 +2490,12 @@ html:not([data-animacoes=todas]) .modal-ok-barra{display:none;}
 .imp-meses thead th{height:34px;background:var(--surface-2);border-bottom-color:var(--border);font-weight:400;}
 .imp-meses th[scope="row"],.imp-meses thead th:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:12px;position:sticky;left:0;z-index:1;padding-left:12px;text-align:left;font-size:var(--fs-12);font-weight:600;color:var(--ink-muted);background:var(--surface-2);}
 .imp-meses td{height:42px;}
+/* os botões do mês numa linha só (o Drive subindo, o check e o olhinho não quebram) e o Drive subindo do tamanho dos outros,
+   com a rodinha pequena no canto de baixo (19/10/2026) */
+.imp-meses td{white-space:nowrap;}
+.imp-subindo{position:relative;cursor:default;}
+.imp-subindo .logo-img{width:14px;height:14px;}
+.imp-subindo .btn-spinner{position:absolute;right:2px;bottom:2px;width:9px;height:9px;border-width:1.5px;}
 /* a alça da primeira coluna e o valor que perde o "R$" no mês estreito */
 /* o balão da mensagem para o cliente (Clientes: a observação do conferido) */
 .msg-balao{display:inline-flex;align-items:flex-start;gap:6px;max-width:100%;padding:6px 10px;border-radius:12px 12px 12px 4px;background:var(--surface-2);border:1px solid var(--border);font-size:var(--fs-13);line-height:1.4;color:var(--ink);}
@@ -4318,6 +4328,8 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 .nf-faixa-item{display:inline-flex;align-items:center;gap:8px;}
 .nf-faixa-item > svg{width:16px;height:16px;flex:none;color:var(--ink-muted);}
 .nf-barra .steps{flex:none;}
+/* a lista das notas rola só com a página: sem altura máxima, a caixa não ganha a segunda barra (19/10/2026); no celular, ainda rola de lado */
+.table-wrap.nf-tabela-wrap{max-height:none;}
 .nf-lista td{vertical-align:middle;}
 .nf-doc{display:block;font-size:var(--fs-12);font-variant-numeric:tabular-nums;}
 .nf-corta{display:inline-block;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;}

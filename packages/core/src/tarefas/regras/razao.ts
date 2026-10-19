@@ -78,8 +78,11 @@ export function lerRazao(linhas: unknown[][]): RazaoDaConta {
   return { lancamentos, saldoInicial: centavos(primeiro.saldo - primeiro.valor), saldoFinal: ultimo.saldo, inicio: primeiro.data, fim: ultimo.data };
 }
 
-/** O arquivo (.xls, .xlsx, .ods) → o razão. */
-export function lerRazaoDoArquivo(buf: ArrayBuffer): RazaoDaConta {
+/**
+ * O arquivo (.xls, .xlsx, .ods) → o razão. A conta: o código que é o nome da aba (o XLS da conciliação do Alterdata) ou,
+ * quando a aba foi renomeada ("CAIXA 450"), o código que abre o nome do arquivo ("10101.xls"; Vitor, 19/10/2026).
+ */
+export function lerRazaoDoArquivo(buf: ArrayBuffer, nomeDoArquivo = ''): RazaoDaConta {
   let wb: XLSX.WorkBook;
   try { wb = XLSX.read(new Uint8Array(buf), { type: 'array', raw: true }); }
   catch { throw new Error('Não consegui abrir o arquivo. Exporte o razão da conciliação do Alterdata em XLS.'); }
@@ -87,7 +90,7 @@ export function lerRazaoDoArquivo(buf: ArrayBuffer): RazaoDaConta {
   if (!aba) throw new Error('A planilha não tem nenhuma aba.');
   const r = lerRazao(XLSX.utils.sheet_to_json<unknown[]>(aba, { header: 1, raw: true, defval: null, blankrows: false }));
   // a aba do XLS da conciliação do Alterdata tem o código da conta como nome
-  const conta = /^\d{1,10}$/.test(wb.SheetNames[0].trim()) ? wb.SheetNames[0].trim() : '';
+  const conta = /^\d{1,10}$/.test(wb.SheetNames[0].trim()) ? wb.SheetNames[0].trim() : (/^(\d{1,10})(?!\d|[.,]\d)/.exec(nomeDoArquivo.trim()) || [])[1] || '';
   return conta ? { ...r, conta } : r;
 }
 

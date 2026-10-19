@@ -904,7 +904,6 @@ export const PECAS_BASE: Peca[] = [
         <span style={{ display: 'inline-flex', width: 46, height: 40 }}><LogoGovernoMinas /></span>
         <span style={{ display: 'inline-flex', width: 56, height: 40 }}><LogoReceitaFederal /></span>
         <span style={{ display: 'inline-flex', width: 72, height: 22 }}><LogoFgts cor /></span>
-        <span style={{ display: 'inline-flex', width: 17, height: 17 }}><LogoFgts cor soSimbolo /></span>
         <span style={{ display: 'inline-flex', width: 52, height: 36 }}><LogoInss cor /></span>
       </div>
     ) },

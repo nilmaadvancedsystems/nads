@@ -59,12 +59,20 @@ export function criarRepoConferenciaFirestore(): RepoConferenciaFirestore {
   }
 
   onSnapshot(colecao, snap => {
-    const novo: Record<string, c.Empresa> = {};
-    snap.forEach(d => {
-      const bruto = d.data() as Partial<c.Empresa>;
-      const nome = bruto.nome || d.id;
+    // só as empresas que mudaram (Vitor, 19/10/2026: "o nads está lerdo em outras máquinas"): antes, cada evento — até o
+    // eco do próprio clique — recopiava e normalizava TODAS as empresas, com todas as notas; as outras ficam como estavam
+    const novo: Record<string, c.Empresa> = { ...dados };
+    let mexeu = !carregou;
+    for (const ch of snap.docChanges()) {
+      const bruto = ch.doc.data() as Partial<c.Empresa>;
+      const nome = bruto.nome || ch.doc.id;
+      if (ch.type === 'removed') { delete novo[nome]; mexeu = true; continue; }
+      // o eco do que esta aba acabou de salvar: o salvar() já pôs a empresa em `dados`
+      if (ch.doc.metadata.hasPendingWrites && dados[nome]) continue;
       novo[nome] = c.normalizarEmpresa({ ...bruto, nome });
-    });
+      mexeu = true;
+    }
+    if (!mexeu) return;
     dados = novo;
     if (!carregou) {
       carregou = true;

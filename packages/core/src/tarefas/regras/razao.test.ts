@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { atencaoDoHistorico, atencoesDoMes, coberturaDoRazao, mesesCredores, mesesErrados, saldoErrado, sobrasDaFolha, razaoDeTeste, dataDoRazao, lerRazao, mesesDoRazao, precisaDoCreditor, valorComLado } from './razao';
+import * as XLSX from 'xlsx';
+import { atencaoDoHistorico, atencoesDoMes, coberturaDoRazao, mesesCredores, mesesErrados, saldoErrado, sobrasDaFolha, razaoDeTeste, dataDoRazao, lerRazao, lerRazaoDoArquivo, mesesDoRazao, precisaDoCreditor, valorComLado } from './razao';
 import { caixaDeTeste, inssDeTeste, razaoDaFolhaDeTeste } from './deTeste';
 import { chaveDaSugestao, codigoDaConta, conferirInss, contrapartidaDaSugestao, linhasDoAlterdata } from './inss';
 import { ROTINA_CONTABIL } from '../rotinas/contabil';
@@ -193,5 +194,22 @@ describe('os lançamentos sugeridos do INSS para o Alterdata', () => {
     expect(l.data).toMatch(/^\d{2}\/\d{2}\/2026$/);
     expect(codigoDaConta('81002 INSS-Encargos da Empresa')).toBe('81002');
     expect(codigoDaConta('INSS a recolher')).toBe('');
+  });
+});
+
+describe('a conta do razão (19/10/2026)', () => {
+  // a planilha da conciliação, com dados inventados
+  const arquivo = (aba: string) => {
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+      ['', 'Status conciliação', 'Data', 'Lançamento automático', 'Contrapartida', 'Descrição', 'Valor', 'Histórico', 'Descrição histórico', 'Saldo'],
+      ['', 'Não conciliado', '02/01/2026', '', '40101', 'Receita', -100, '15', 'Venda a vista', -100],
+    ]), aba);
+    return XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
+  };
+  it('pela aba; com a aba renomeada, pelo nome do arquivo', () => {
+    expect(lerRazaoDoArquivo(arquivo('10101'), 'qualquer.xls').conta).toBe('10101');
+    expect(lerRazaoDoArquivo(arquivo('CAIXA EMPRESA'), '10101.xls').conta).toBe('10101');
+    expect(lerRazaoDoArquivo(arquivo('CAIXA EMPRESA'), 'razao caixa.xls').conta).toBeUndefined();
   });
 });

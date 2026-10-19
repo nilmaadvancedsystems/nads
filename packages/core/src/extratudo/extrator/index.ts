@@ -19,7 +19,7 @@ export { EXTENSOES_EXTRATO, EXTENSOES_SISTEMA, EXTENSOES_IMAGEM, abasDaPlanilha,
 export { definirWorkerDoPdf, definirOcr, ehPdf, itensDoPdf, type Ocr } from './arquivos/pdf';
 export type { RepoExtrator } from './repo';
 export { arquivoDeTeste } from './regras/teste';
-export { bancoDoArquivo, bancosNaCompetencia, bancosDaEmpresaNa, arquivosDoBanco, adicionarBanco } from './regras/bancos';
+export { bancoDoArquivo, bancosNaCompetencia, bancosDaEmpresaNa, arquivosDoBanco, indiceDosArquivos, adicionarBanco } from './regras/bancos';
 export {
   bancoOkNoPeriodo, situacaoDoBancoNoPeriodo, conferenciaDoBanco, diasNegativos, chequeEspecialNoRazao,
   type SituacaoDoBanco, type DiaNegativo, type ConferenciaDoBanco, type ChequeNoRazao,

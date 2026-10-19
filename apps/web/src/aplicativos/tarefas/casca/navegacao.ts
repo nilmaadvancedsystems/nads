@@ -95,15 +95,14 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'notas', rotulo: 'Notas fiscais', icone: 'recibo', titulo: 'Notas fiscais' },
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Configurações do emissor' },
   ] },
-  // os tickets mandados aos clientes (Vitor, 07/10/2026): os meus e a central de todos
-  { id: 'mandei', nome: 'Mandei', icone: 'mensagem', grupo: 'Comunicação', pronta: true, paginas: [
-    { id: 'meus', rotulo: 'Meus tickets', icone: 'usuario', titulo: 'Meus tickets' },
-    { id: 'central', rotulo: 'Central', icone: 'list', titulo: 'Central de tickets' },
-  ] },
-  // a Área do Cliente (Vitor, 16/10/2026): o lado do escritório do site que o cliente abre pelo link secreto
+  // a Área do Cliente (Vitor, 16/10/2026): o lado do escritório do site que o cliente abre pelo link secreto. Com o
+  // Mandei junto (19/10/2026: "unifique área do cliente e o mandei"): o que o cliente manda (Chamados, Recebidos) e os
+  // tickets que o escritório manda ao cliente (Meus tickets, a Central de todos); /tarefas/mandei/* leva para cá
   { id: 'area-cliente', nome: 'Área do Cliente', icone: 'usuario', grupo: 'Comunicação', pronta: true, paginas: [
     { id: 'chamados', rotulo: 'Chamados', icone: 'mensagem', titulo: 'Chamados' },
     { id: 'recebidos', rotulo: 'Recebidos', icone: 'download', titulo: 'Recebidos' },
+    { id: 'meus', rotulo: 'Meus tickets', icone: 'usuario', titulo: 'Meus tickets' },
+    { id: 'central', rotulo: 'Central de tickets', icone: 'list', titulo: 'Central de tickets' },
   ] },
   { id: 'drive', nome: 'Drive', icone: 'pasta', grupo: 'Comunicação', marca: 'drive', pronta: true, paginas: [
     { id: 'pastas', rotulo: 'Pastas', icone: 'pasta', titulo: 'Pasta do ano' },

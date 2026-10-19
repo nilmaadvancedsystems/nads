@@ -17,6 +17,51 @@ export * from './razao';
 export interface LinhaDinamico { codigo: string; classificacao: string; descricao: string; saldoAnterior: number; saldos: Record<string, number> }
 export interface BalanceteDinamico { meses: string[]; linhas: LinhaDinamico[] }
 
+/**
+ * O índice do dinâmico, montado uma vez por dinâmico (Vitor, 19/10/2026: o da 450, com 12.902 contas — cada cliente e
+ * fornecedor é uma conta —, fazia a página parar de responder ao importar: "quem tem conta debaixo" e "quem está acima"
+ * comparavam cada conta com todas as outras, e o tipoDoRazao ainda refazia a lista dos clientes para cada conta).
+ */
+interface IndiceDoDinamico {
+  porCodigo: Map<string, LinhaDinamico>;
+  porClassificacao: Map<string, LinhaDinamico[]>;
+  /** as classificações que têm outra conta debaixo (as sintéticas) */
+  comFilhas: Set<string>;
+  /** as analíticas de clientes e de fornecedores (as do clientesDoDinamico) */
+  dasSecoes: Partial<Record<LadoDaConta, LinhaDinamico[]>>;
+  /** os códigos delas, para perguntar "é cliente?" sem varrer a lista */
+  codigosDasSecoes: Partial<Record<LadoDaConta, Set<string>>>;
+}
+const indices = new WeakMap<BalanceteDinamico, IndiceDoDinamico>();
+function indiceDo(d: BalanceteDinamico): IndiceDoDinamico {
+  let i = indices.get(d);
+  if (i) return i;
+  i = { porCodigo: new Map(), porClassificacao: new Map(), comFilhas: new Set(), dasSecoes: {}, codigosDasSecoes: {} };
+  for (const l of d.linhas) {
+    if (l.codigo && !i.porCodigo.has(l.codigo)) i.porCodigo.set(l.codigo, l);
+    if (!l.classificacao) continue;
+    const mesma = i.porClassificacao.get(l.classificacao);
+    if (mesma) mesma.push(l); else i.porClassificacao.set(l.classificacao, [l]);
+    const partes = l.classificacao.split('.');
+    for (let k = 1; k < partes.length; k++) i.comFilhas.add(partes.slice(0, k).join('.'));
+  }
+  indices.set(d, i);
+  return i;
+}
+/** A conta tem outra debaixo dela (é sintética)? */
+export function temContaDebaixo(d: BalanceteDinamico, l: LinhaDinamico): boolean {
+  return !!l.classificacao && indiceDo(d).comFilhas.has(l.classificacao);
+}
+/** A conta e os grupos de cima dela (pela classificação). */
+function contaEGruposDeCima(d: BalanceteDinamico, l: LinhaDinamico): LinhaDinamico[] {
+  const i = indiceDo(d);
+  const partes = l.classificacao ? l.classificacao.split('.') : [];
+  const out: LinhaDinamico[] = [];
+  for (let k = 1; k < partes.length; k++) out.push(...(i.porClassificacao.get(partes.slice(0, k).join('.')) || []));
+  out.push(l);
+  return out;
+}
+
 const numero = (v: unknown): number => {
   const s = String(v ?? '').trim();
   if (!s) return 0;
@@ -100,11 +145,20 @@ const noLado = (lado: LadoDaConta, v: number) => (lado === 'clientes' ? v : -v);
  * No fornecedor, o saldo vem com o sinal trocado: positivo = a empresa deve, negativo = o fornecedor devedor.
  */
 export function clientesDoDinamico(d: BalanceteDinamico, mes: string, lado: LadoDaConta = 'clientes'): ContaDeCliente[] {
-  const secoes = d.linhas.filter(l => SECAO[lado].test(normalizarTexto(l.descricao)) && l.classificacao && (lado === 'clientes' || l.classificacao.startsWith('2')));
-  const tem = (l: LinhaDinamico) => d.linhas.some(o => o !== l && o.classificacao.startsWith(l.classificacao + '.'));
-  return d.linhas
-    .filter(l => secoes.some(s => l.classificacao.startsWith(s.classificacao + '.')) && !tem(l))
+  return analiticasDaSecao(d, lado)
     .map(l => ({ codigo: l.codigo, nome: l.descricao.replace(/\s+/g, ' '), saldo: noLado(lado, l.saldos[mes] ?? 0), noBalancete: null }));
+}
+
+/** As analíticas debaixo da seção de clientes (ou de fornecedores), uma vez por dinâmico. */
+function analiticasDaSecao(d: BalanceteDinamico, lado: LadoDaConta): LinhaDinamico[] {
+  const i = indiceDo(d);
+  const pronta = i.dasSecoes[lado];
+  if (pronta) return pronta;
+  const secoes = d.linhas.filter(l => SECAO[lado].test(normalizarTexto(l.descricao)) && l.classificacao && (lado === 'clientes' || l.classificacao.startsWith('2')));
+  const lista = d.linhas.filter(l => secoes.some(s => l.classificacao.startsWith(s.classificacao + '.')) && !temContaDebaixo(d, l));
+  i.dasSecoes[lado] = lista;
+  i.codigosDasSecoes[lado] = new Set(lista.map(l => l.codigo));
+  return lista;
 }
 
 /** O nome da conta de adiantamento no dinâmico: "Adiantamento(s) a fornecedor(es)", "Adto. de clientes"… */
@@ -130,8 +184,7 @@ export function adiantamentoNoDinamico(d: BalanceteDinamico, meses: readonly str
  * dela: o cheque especial não é empréstimo (Vitor, 15/10/2026), e a sintética o somaria.
  */
 export function emprestimosNoDinamico(d: BalanceteDinamico, meses: readonly string[]): { cobertos: string[]; com: string[] } {
-  const folha = (l: LinhaDinamico) => !d.linhas.some(o => o !== l && o.classificacao.startsWith(l.classificacao + '.'));
-  return mesesComSaldo(d, meses, d.linhas.filter(l => folha(l) && emprestimoBancario(d, l)));
+  return mesesComSaldo(d, meses, d.linhas.filter(l => !temContaDebaixo(d, l) && emprestimoBancario(d, l)));
 }
 
 const BANCO_NO_NOME = /\b(banco|bco|sicoob|sicredi|bradesco|itau|santander|nubank|inter|c6|btg|cora|stone|pagbank|pagseguro|mercado pago|caixa economica|cef|bnb|bb|bndes|unicred|cresol|safra|banrisul)\b/;
@@ -146,7 +199,7 @@ export function emprestimoBancario(d: BalanceteDinamico, l: LinhaDinamico): bool
   if (!l.classificacao.startsWith('2')) return false;
   const n = normalizarTexto(l.descricao);
   if (/\b(terceiros?|mutuo|mutuos|socios?|coligad\w*|controlad\w*|ligad\w*|pessoa fisica|particular\w*|cheque especial)\b/.test(n)) return false;
-  const acima = d.linhas.filter(g => g === l || l.classificacao.startsWith(g.classificacao + '.'));
+  const acima = contaEGruposDeCima(d, l);
   if (!acima.some(g => /^(emprestimos?|financiamentos?)\b/.test(normalizarTexto(g.descricao)))) return false;
   return BANCO_NO_NOME.test(n) || acima.some(g => /\bbancari\w*/.test(normalizarTexto(g.descricao)))
     || /\b(financiament\w*|finame|cdc|capital de giro|consorcio)\b/.test(n);
@@ -194,16 +247,16 @@ const PELO_NOME: [TipoDoRazao, RegExp][] = [
 
 /** O tipo da conta (o código do razão) pelo dinâmico; null = conta que nenhuma etapa usa (ou fora do dinâmico). */
 export function tipoDoRazao(d: BalanceteDinamico, codigo: string): TipoDoRazao | null {
-  const l = d.linhas.find(x => x.codigo === codigo);
+  const l = indiceDo(d).porCodigo.get(codigo);
   if (!l) return null;
   const n = normalizarTexto(l.descricao);
   if (ADIANTAMENTO_SALARIAL.test(n)) return 'adiantamento-salarial';
   if (ADIANTAMENTO.fornecedores.test(n)) return 'adiantamento-fornecedores';
   if (ADIANTAMENTO.clientes.test(n)) return 'adiantamento-clientes';
   for (const [tipo, re] of PELO_NOME) if (re.test(n)) return tipo === 'caixa' && !l.classificacao.startsWith('1') ? null : tipo;
-  const mes = d.meses[d.meses.length - 1] || '';
-  if (clientesDoDinamico(d, mes, 'clientes').some(c => c.codigo === codigo)) return 'cliente';
-  if (clientesDoDinamico(d, mes, 'fornecedores').some(c => c.codigo === codigo)) return 'fornecedor';
+  const daSecao = (lado: LadoDaConta) => { analiticasDaSecao(d, lado); return !!indiceDo(d).codigosDasSecoes[lado]?.has(codigo); };
+  if (daSecao('clientes')) return 'cliente';
+  if (daSecao('fornecedores')) return 'fornecedor';
   // só o bancário (Vitor, 19/10/2026: terceiros e mútuos não entram)
   if (emprestimoBancario(d, l)) return 'emprestimo';
   return null;
@@ -221,7 +274,7 @@ export interface RazaoPedido { codigo: string; nome: string; tipo: TipoDoRazao }
  * dinâmico que alguma etapa usa (Caixa, Salários, FGTS, INSS…), com saldo ou movimento no período, na ordem das etapas.
  */
 export function razoesPedidos(d: BalanceteDinamico): RazaoPedido[] {
-  const sintetica = (l: LinhaDinamico) => !!l.classificacao && d.linhas.some(x => x !== l && x.classificacao.startsWith(l.classificacao + '.'));
+  const sintetica = (l: LinhaDinamico) => temContaDebaixo(d, l);
   const mexe = (l: LinhaDinamico) => Math.abs(l.saldoAnterior) >= 0.005 || d.meses.some(m => Math.abs(l.saldos[m] || 0) >= 0.005);
   const out: RazaoPedido[] = [];
   for (const l of d.linhas) {
@@ -262,10 +315,10 @@ export function resultadoErradoNoDinamico(d: BalanceteDinamico, meses: readonly 
   const topo = (re: RegExp, padrao: string) => d.linhas.find(l => l.classificacao && !l.classificacao.includes('.') && re.test(normalizarTexto(l.descricao)))?.classificacao || padrao;
   const grupos = { receita: topo(/^receitas?\b/, '3'), despesa: topo(/^(custos?|despesas?)\b/, '4') };
   const debaixo = (l: LinhaDinamico, g: string) => l.classificacao.startsWith(g + '.');
-  const folha = (l: LinhaDinamico) => !d.linhas.some(o => o !== l && o.classificacao.startsWith(l.classificacao + '.'));
+  const folha = (l: LinhaDinamico) => !temContaDebaixo(d, l);
   // a redutora: "(-)" ou dedução/devolução no nome dela ou de um grupo de cima
-  const redutora = (l: LinhaDinamico) => d.linhas.some(o => (o === l || l.classificacao.startsWith(o.classificacao + '.'))
-    && (/^\s*\(\s*-\s*\)/.test(o.descricao) || /\b(deduc\w*|devoluc\w*|recuperac\w*)\b/.test(normalizarTexto(o.descricao))));
+  const redutora = (l: LinhaDinamico) => contaEGruposDeCima(d, l)
+    .some(o => /^\s*\(\s*-\s*\)/.test(o.descricao) || /\b(deduc\w*|devoluc\w*|recuperac\w*)\b/.test(normalizarTexto(o.descricao)));
   const cobertos = meses.filter(m => d.meses.includes(m));
   const out: ContaDoResultadoErrada[] = [];
   for (const l of d.linhas) {
