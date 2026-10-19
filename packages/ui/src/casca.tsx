@@ -325,7 +325,7 @@ export function Casca(p: {
                   {comeca && s.titulo && <p className={'subnav-titulo' + (sep ? ' depois' : '')}>{s.titulo}</p>}
                   <button type="button" className={'subnav-item' + (s.ativa ? ' active' : '') + (s.travada ? ' is-locked' : '') + (s.apagada ? ' apagada' : '')}
                     aria-current={s.ativa ? 'page' : undefined} aria-disabled={s.travada ? 'true' : undefined} title={s.rotulo} onClick={() => p.onSecao(s.id)}>
-                    {s.caixa ? <span className={'subnav-caixa ' + s.caixa} aria-hidden="true">{s.caixa === 'marcada' && <Icone nome="check" />}</span> : s.marca === 'fgts' ? <span className="subnav-marca" aria-hidden="true"><LogoFgts cor soSimbolo /></span> : <Icone nome={s.icone} />}
+                    {s.caixa ? <span className={'subnav-caixa ' + s.caixa} aria-hidden="true">{s.caixa === 'marcada' && <Icone nome="check" />}</span> : s.marca === 'fgts' ? <span className="subnav-marca" aria-hidden="true"><LogoFgts cor /></span> : <Icone nome={s.icone} />}
                     <span>{s.rotulo}</span>
                   </button>
                 </span>
