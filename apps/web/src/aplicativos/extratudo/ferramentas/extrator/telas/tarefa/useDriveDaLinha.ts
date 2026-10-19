@@ -162,7 +162,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
         const rotulo = mes.slice(5) + '/' + mes.slice(0, 4);
         if (r.situacao !== 'achou' || !r.arquivo) { faltam.push(rotulo); passou(rotulo, false, seguinte); continue; }
         const conteudo = await drive.baixar(r.arquivo.id, r.arquivo.nome);
-        await vm.importarDoDrive(linha.id, { id: r.arquivo.id, nome: r.arquivo.nome }, conteudo);
+        await vm.importarDoDrive(linha.id, { id: r.arquivo.id, nome: r.arquivo.nome }, conteudo, mes);
         achados.push(rotulo);
         passou(rotulo, true, seguinte);
       }

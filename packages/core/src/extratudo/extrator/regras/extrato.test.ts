@@ -175,6 +175,9 @@ describe('o extrato sem movimento (Vitor, 13/10/2026)', () => {
     expect(mesesSemMovimento('Período: 01/01/2026 até 31/01/2026 … Nenhuma movimentação encontrada.')).toEqual(['2026-01']);
     expect(mesesSemMovimento('de 01/02/2026 a 30/04/2026 — Não há lançamentos no período')).toEqual(['2026-02', '2026-03', '2026-04']);
     expect(mesesSemMovimento('Período: 01/01/2026 até 31/01/2026 PIX RECEBIDO 10,00')).toBeNull();
+    // o período por extenso do Nubank (19/10/2026)
+    expect(mesesSemMovimento('01 DE JANEIRO DE 2026 a 31 DE JANEIRO DE 2026 VALORES EM R$ Saldo inicial 1,00 Nenhuma movimentação realizada.')).toEqual(['2026-01']);
+    expect(mesesSemMovimento('01 DE MARÇO DE 2026 a 30 DE ABRIL DE 2026 Nenhuma movimentação realizada.')).toEqual(['2026-03', '2026-04']);
   });
 });
 

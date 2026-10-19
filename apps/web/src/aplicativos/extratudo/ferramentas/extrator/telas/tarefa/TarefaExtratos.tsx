@@ -278,7 +278,7 @@ function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato
   /** o mês que o "Todos pelo Drive" está buscando agora: a célula do extrato gira */
   buscandoMes?: string | null;
   competencia: string; travado: boolean; aceitarExtrato: string; aceitarRazao: string; naTarefa: boolean;
-  onMes: (m: string) => void; onArquivos: (lado: 'banco' | 'sistema', fs: File[]) => void; onExcluir: (lado: 'banco' | 'sistema', mes: string) => void;
+  onMes: (m: string) => void; onArquivos: (lado: 'banco' | 'sistema', fs: File[], mes: string) => void; onExcluir: (lado: 'banco' | 'sistema', mes: string) => void;
   onDrive: (mes: string) => void; onEmail?: (mes: string) => void; onVer: (arquivo: { id: string; nome: string }) => void; onSemMovimento: (mes: string, marcado: boolean) => void;
   /** o que veio do e-mail no mês (o olhinho; puxados.tsx) */
   puxados: (mes: string) => Puxado[];
@@ -296,12 +296,12 @@ function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato
     }
     if (lado === 'banco' && !info.qtdArquivos) {
       return <FaltaExtratoDoMes rotulo={m.rotulo} aceitar={aceitarExtrato} travado={trava} naTarefa={naTarefa} direita={n >= meses.length / 2}
-        onArquivos={fs => onArquivos(lado, fs)} onDrive={() => onDrive(m.mes)} onEmail={onEmail ? () => onEmail(m.mes) : undefined} onSemMovimento={() => onSemMovimento(m.mes, true)} />;
+        onArquivos={fs => onArquivos(lado, fs, m.mes)} onDrive={() => onDrive(m.mes)} onEmail={onEmail ? () => onEmail(m.mes) : undefined} onSemMovimento={() => onSemMovimento(m.mes, true)} />;
     }
     // veio do e-mail: o olhinho abre o anexo (só nesta aba)
     const doEmail = lado === 'banco' ? puxados(m.mes) : [];
     return <><BotaoLado lado={info} titulo={(lado === 'banco' ? 'Extrato' : 'Razão') + ' de ' + m.rotulo} aceitar={lado === 'banco' ? aceitarExtrato : aceitarRazao} travado={trava}
-      onArquivos={fs => onArquivos(lado, fs)} onExcluir={() => onExcluir(lado, m.mes)} />
+      onArquivos={fs => onArquivos(lado, fs, m.mes)} onExcluir={() => onExcluir(lado, m.mes)} />
       {doEmail.length > 0 && <BotaoVer titulo={'Ver o que foi puxado do e-mail: ' + doEmail.map(p => p.nome).join(', ')} onVer={() => doEmail.forEach(abrirPuxado)} />}</>;
   };
   return (
@@ -584,7 +584,8 @@ export function TarefaExtratos() {
   // o extrato do computador: importa e, o que não está no Drive, manda para lá (Vitor, 09/10/2026)
   // o extrato importado sem movimento marca o mês como sem movimento no banco (Vitor, 13/10/2026)
   useEffect(() => { vm.aoSemMovimento((banco, meses) => { for (const m of meses) ponte.marcarSemMovimento(banco, true, m); }); });
-  const importarExtrato = (b: (typeof vm.bancos)[number], fs: File[], depois?: () => void) => { void vm.importarArquivos(b.id, 'banco', fs).then(ok => { if (ok) { d.subirAoDrive(b, fs, s.nome); depois?.(); } }); };
+  // meses: de onde o extrato veio (a coluna do mês, a busca no e-mail), para o sem movimento que não diz o mês
+  const importarExtrato = (b: (typeof vm.bancos)[number], fs: File[], depois?: () => void, meses?: string[]) => { void vm.importarArquivos(b.id, 'banco', fs, meses).then(ok => { if (ok) { d.subirAoDrive(b, fs, s.nome); depois?.(); } }); };
   // "Buscar no e-mail": o anexo escolhido entra como se viesse do computador (Vitor, 13/10/2026); fica para o olhinho dos meses dele
   const em = useBuscarNoEmail((linha, fs, meses) => {
     const b = vm.bancos.find(x => x.id === linha.id);
@@ -592,7 +593,7 @@ export function TarefaExtratos() {
       const ch = chaveDoExtrato(s.codigo, b.id);
       for (const m of meses) esquecerPuxado(ch, m);
       for (const f of fs) guardarPuxado(ch, f.name, f, 'email', meses);
-    });
+    }, meses);
   }, d.pedirLogin, s.codigo);
   // o olhinho do que veio do e-mail (puxados.tsx): redesenha quando muda
   useVersaoDosPuxados();
@@ -924,7 +925,7 @@ export function TarefaExtratos() {
               </div>
               {emLote && gradeAberta && <MesesDoBanco meses={meses} competencia={vm.competencia} naTarefa={ponte.naTarefa} buscandoMes={d.buscando === b.id ? d.mesAtual : null}
                 travado={ocupadoGeral} aceitarExtrato={cxExtrato.aceitar} aceitarRazao={cxRazao.aceitar}
-                onMes={vm.setCompetencia} onArquivos={(lado, fs) => { if (lado === 'banco') importarExtrato(b, fs); else void vm.importarArquivos(b.id, lado, fs); }}
+                onMes={vm.setCompetencia} onArquivos={(lado, fs, mes) => { if (lado === 'banco') importarExtrato(b, fs, undefined, [mes]); else void vm.importarArquivos(b.id, lado, fs); }}
                 onExcluir={(lado, mes) => { if (lado === 'banco') esquecerPuxado(chaveDoExtrato(s.codigo, b.id), mes); void vm.excluirDoBanco(b.id, lado, mes); }}
                 onDrive={mes => d.buscarNoPeriodo(b, [mes])}
                 onEmail={em.existe ? mes => em.abrir(b, mes) : undefined}

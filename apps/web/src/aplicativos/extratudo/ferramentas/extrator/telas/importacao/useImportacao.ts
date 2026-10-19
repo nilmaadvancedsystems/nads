@@ -95,23 +95,24 @@ export function useImportacao() {
 
   /** Importar direto (na linha do banco): escolheu os arquivos, já importa para aquele banco. */
   /** Devolve se importou (o extrato que entrou pode ir para o Drive: useDriveDaLinha.subirAoDrive). */
-  async function importarArquivos(banco: string, lado: x.Lado, fs: File[]): Promise<boolean> {
+  /** `mesesDaBusca`: o mês da coluna ou da busca no e-mail, para o extrato sem movimento que não diz o mês. */
+  async function importarArquivos(banco: string, lado: x.Lado, fs: File[], mesesDaBusca?: string[]): Promise<boolean> {
     if (!fs.length) return false;
     setMensagemBruta(null);
     setLendoLinha(banco + '|' + lado);
     const lidos: x.ArquivoLido[] = [];
     for (const f of fs) lidos.push(await x.lerArquivo(f.name, new Uint8Array(await f.arrayBuffer()), lado));
-    const ok = await gravarLidos(lado, lidos, banco);
+    const ok = await gravarLidos(lado, lidos, banco, undefined, undefined, mesesDaBusca);
     setLendoLinha(null);
     return ok;
   }
 
   /** O extrato que veio do Drive (já baixado): lê e importa para aquele banco, lembrando do arquivo de lá. */
-  async function importarDoDrive(banco: string, arquivo: { id: string; nome: string }, conteudo: ArrayBuffer) {
+  async function importarDoDrive(banco: string, arquivo: { id: string; nome: string }, conteudo: ArrayBuffer, mes?: string) {
     setMensagemBruta(null);
     setLendoLinha(banco + '|banco');
     const lido = await x.lerArquivo(arquivo.nome, new Uint8Array(conteudo), 'banco');
-    await gravarLidos('banco', [lido], banco, arquivo);
+    await gravarLidos('banco', [lido], banco, arquivo, undefined, mes ? [mes] : undefined);
     setLendoLinha(null);
   }
 
@@ -127,11 +128,13 @@ export function useImportacao() {
   }
 
   /** O que vem depois de ler: pergunta o modo (se já houver movimento nas datas), importa e avisa. */
-  async function gravarLidos(lado: x.Lado, lidos: x.ArquivoLido[], banco?: string, doDrive?: { id: string; nome: string }, modoFixo?: x.ModoImportacao): Promise<boolean> {
+  async function gravarLidos(lado: x.Lado, lidos: x.ArquivoLido[], banco?: string, doDrive?: { id: string; nome: string }, modoFixo?: x.ModoImportacao, mesesDaBusca?: string[]): Promise<boolean> {
     // o extrato que diz que não teve movimento ("Nenhuma movimentação encontrada"): marca o mês como sem movimento e avisa
     // (Vitor, 13/10/2026), em vez de "Nada para importar"
     const semMov = lado === 'banco' && banco ? lidos.filter(l => l.semMovimento) : [];
-    const meses = [...new Set(semMov.flatMap(l => l.semMovimento || []))].sort();
+    // o extrato não diz o mês: vale o mês de onde ele veio (a coluna, a busca no e-mail, a pasta do Drive; Vitor, 19/10/2026)
+    const doTexto = [...new Set(semMov.flatMap(l => l.semMovimento || []))].sort();
+    const meses = doTexto.length ? doTexto : semMov.length ? [...new Set(mesesDaBusca || [])].sort() : [];
     if (semMov.length) {
       if (meses.length && aoSemMovimento.current) aoSemMovimento.current(banco as string, meses);
       lidos = lidos.filter(l => !l.semMovimento);

@@ -122,6 +122,9 @@ export function anoDoTexto(texto: string, padrao: number): number {
  * mostra ("Período: 01/01/2026 até 31/01/2026", "de 01/01/2026 a 31/01/2026"); sem a frase, null. Sem o período, o mês
  * do "Período do extrato" ou das datas que aparecem; nada disso, [] (quem importa decide o mês).
  */
+/** os meses como o normalizarTexto deixa (sem acento, minúsculas) */
+const MESES_POR_EXTENSO = ['janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
 export function mesesSemMovimento(texto: string): string[] | null {
   const t = normalizarTexto(texto);
   if (!/nenhuma movimentacao|nenhum lancamento|sem movimentacao|sem movimento|nao (?:ha|houve|existem?|possui) (?:movimentacao|movimentacoes|lancamentos?)/.test(t)) return null;
@@ -130,6 +133,16 @@ export function mesesSemMovimento(texto: string): string[] | null {
     const meses: string[] = [];
     let a = Number(p[3]), m = Number(p[2]);
     const fimA = Number(p[6]), fimM = Number(p[5]);
+    while ((a < fimA || (a === fimA && m <= fimM)) && meses.length < 24) { meses.push(a + '-' + String(m).padStart(2, '0')); m++; if (m > 12) { m = 1; a++; } }
+    return meses;
+  }
+  // o período por extenso, como o do Nubank: "01 DE ABRIL DE 2026 a 30 DE ABRIL DE 2026" (Vitor, 19/10/2026: o mês não
+  // era achado e o sem movimento pedia para marcar na mão)
+  const e = normalizarTexto(texto).match(new RegExp('\\b\\d{1,2} de (' + MESES_POR_EXTENSO.join('|') + ') de (\\d{4}) (?:a|ate) \\d{1,2} de (' + MESES_POR_EXTENSO.join('|') + ') de (\\d{4})\\b'));
+  if (e) {
+    const meses: string[] = [];
+    let a = Number(e[2]), m = MESES_POR_EXTENSO.indexOf(e[1]) + 1;
+    const fimA = Number(e[4]), fimM = MESES_POR_EXTENSO.indexOf(e[3]) + 1;
     while ((a < fimA || (a === fimA && m <= fimM)) && meses.length < 24) { meses.push(a + '-' + String(m).padStart(2, '0')); m++; if (m > 12) { m = 1; a++; } }
     return meses;
   }
