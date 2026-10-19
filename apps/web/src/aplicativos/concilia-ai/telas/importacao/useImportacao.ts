@@ -38,7 +38,15 @@ export interface Mensagem {
 const NOME_TIPO: Record<c.TipoNotaFiscal, string> = { entradas: 'entradas', saidas: 'saídas' };
 
 /** competenciaDaEtapa: a da etapa da Tarefas (aaaa-mm), quando a Importação abre dentro dela (para o "Gerar no Alterdata"). */
-export function useImportacao(tipo: TipoImp, competenciaDaEtapa?: string) {
+/** "01/2026 a 08/2026" (o período da Tarefa) */
+const rotuloDoPeriodo = (ms?: readonly string[]) => {
+  const r = (m: string) => m.slice(5, 7) + '/' + m.slice(0, 4);
+  const o = [...(ms || [])].sort();
+  return !o.length ? '' : o.length === 1 ? r(o[0]) : r(o[0]) + ' a ' + r(o[o.length - 1]);
+};
+
+/** mesesDaEtapa: os meses do período da Tarefa; as notas fora deles ficam de fora (Vitor, 19/10/2026) */
+export function useImportacao(tipo: TipoImp, competenciaDaEtapa?: string, mesesDaEtapa?: readonly string[]) {
   const s = useSessao();
   const { toast, modal } = useRetorno();
   const e = s.empresa;
@@ -129,7 +137,14 @@ export function useImportacao(tipo: TipoImp, competenciaDaEtapa?: string) {
       erro('Esse arquivo não parece ser de ' + NOME_TIPO[t], 'Todos os CFOPs dele são de ' + (t === 'entradas' ? 'saída (5, 6 e 7)' : 'entrada (1, 2 e 3)') + '. Confira se escolheu o arquivo certo.');
       return;
     }
-    const novas = sep.validas;
+    // só as do período da Tarefa (Vitor, 19/10/2026: "se eu colocar o período até 31/08, só importe até aquelas datas")
+    const per = c.soDoPeriodo(sep.validas, mesesDaEtapa);
+    if (!per.dentro.length && per.fora.length) {
+      terminar();
+      erro('Nenhuma nota do período', 'As ' + per.fora.length + ' notas do arquivo são de fora do período da Tarefa (' + rotuloDoPeriodo(mesesDaEtapa) + ').');
+      return;
+    }
+    const novas = per.dentro;
     const qtdAntes = e[t].length;
     let modo: c.ModoImportacao = 'novas';
     if (qtdAntes) {
@@ -154,6 +169,7 @@ export function useImportacao(tipo: TipoImp, competenciaDaEtapa?: string) {
       const cfops = sep.foraDoTipo.map(n => n.cfop).filter((x, i, l) => l.indexOf(x) === i).join(', ');
       textos.push({ texto: sep.foraDoTipo.length + ' nota(s) com CFOP de ' + (t === 'entradas' ? 'saída' : 'entrada') + ' ficaram de fora (' + cfops + ').', tom: 'aviso' });
     }
+    if (per.fora.length) textos.push({ texto: per.fora.length + ' nota(s) de fora do período (' + rotuloDoPeriodo(mesesDaEtapa) + ') ficaram de fora.', tom: 'aviso' });
     if (div) textos.push({ texto: div + ' nota(s) com lançamento fora do padrão do CFOP — veja em Movimento › Relatório › ' + (t === 'entradas' ? 'Entradas' : 'Saídas') + '.', tom: 'aviso', separado: true });
     setMensagem({ tom: 'ok', titulo: modo === 'sobrepor' ? m.adicionadas + ' nota(s) importada(s) — movimento sobreposto' : m.adicionadas + ' nota(s) nova(s) guardada(s)', textos });
     setReimportando(false); limparArquivo(); terminar();
@@ -174,6 +190,10 @@ export function useImportacao(tipo: TipoImp, competenciaDaEtapa?: string) {
       throw err;
     }
     if (!lido.notas.length) { terminar(); erro('Não achei notas nesse arquivo', 'Confira se é o relatório de ISS com data, nome do participante e valor base.'); return; }
+    // só as do período da Tarefa (19/10/2026)
+    const perS = c.soDoPeriodo(lido.notas, mesesDaEtapa);
+    if (!perS.dentro.length) { terminar(); erro('Nenhuma nota do período', 'As ' + perS.fora.length + ' notas do arquivo são de fora do período da Tarefa (' + rotuloDoPeriodo(mesesDaEtapa) + ').'); return; }
+    lido = { ...lido, notas: perS.dentro };
     const existentes = e[cfgS.campo];
     const qtdAntes = existentes.length;
     let modo: c.ModoImportacao = 'novas';
@@ -196,6 +216,7 @@ export function useImportacao(tipo: TipoImp, competenciaDaEtapa?: string) {
         : m.semMudanca + ' já estavam aqui sem mudança' + (m.atualizadas ? ', ' + m.atualizadas + ' tiveram lançamento corrigido' : '')) + '. Total guardado: ' + m.notas.length + '.',
     }];
     if (lido.canceladas) textos.push({ texto: lido.canceladas + ' nota(s) cancelada(s) ficaram de fora.' });
+    if (perS.fora.length) textos.push({ texto: perS.fora.length + ' nota(s) de fora do período (' + rotuloDoPeriodo(mesesDaEtapa) + ') ficaram de fora.', tom: 'aviso' });
     setMensagem({ tom: 'ok', titulo: modo === 'sobrepor' ? m.adicionadas + ' nota(s) importada(s) — movimento sobreposto' : m.adicionadas + ' nota(s) nova(s) guardada(s)', textos });
     setReimportando(false); limparArquivo(); terminar();
   }

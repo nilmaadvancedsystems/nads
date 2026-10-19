@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { conta, empresa, nota, servico } from '../__legado__/fixtures';
-import { assinaturaBalancete, mesclarNotas, mesclarServicos, separarPorTipo, verificarBalancete } from './importacao';
+import { assinaturaBalancete, mesclarNotas, mesclarServicos, separarPorTipo, soDoPeriodo, verificarBalancete } from './importacao';
 
 describe('mesclarNotas', () => {
   const antigas = [nota('1102', '6', 100, '1', { data: '10/07/2026' }), nota('1102', '6', 200, '2', { data: '11/07/2026' })];
@@ -85,5 +85,15 @@ describe('mesclarServicos', () => {
     expect([r.adicionadas, r.atualizadas, r.semMudanca]).toEqual([1, 1, 0]);
     expect(r.notas[0].lanc).toBe('527');
     expect(mesclarServicos(a, [servico('2', 'X', 1, '1'), servico('2', 'X', 1, '2')], 'sobrepor').notas.length).toBe(1);
+  });
+});
+
+describe('soDoPeriodo (o período da Tarefa, 19/10/2026)', () => {
+  it('só os meses do período; sem período, todas; a nota sem data fica', () => {
+    const ns = [nota('1102', '6', 1, '1', { data: '30/08/2026' }), nota('1102', '6', 1, '2', { data: '02/09/2026' }), nota('1102', '6', 1, '3', { comp: '' })];
+    const r = soDoPeriodo(ns, ['2026-07', '2026-08']);
+    expect(r.dentro.map(n => n.numero)).toEqual(['1', '3']);
+    expect(r.fora.map(n => n.numero)).toEqual(['2']);
+    expect(soDoPeriodo(ns).dentro).toHaveLength(3);
   });
 });
