@@ -11,7 +11,6 @@ import { CONCILIA, EXECUTOR, EXTRATUDO, TAREFAS, TODAS } from './telas';
 import type { Peca } from './tipos';
 import { BotaoGoogle } from '../../../comum/BotaoGoogle';
 import { MenuDaRotina } from '../../tarefas/telas/executor/partes/MenuDaRotina';
-import { AndamentoDoAlterdata } from '../../concilia-ai/telas/importacao/partes/AndamentoDoAlterdata';
 import { AreaDeSoltar } from '../../cliente/partes/AreaDeSoltar';
 import { Avatar as AvatarDoCliente } from '../../cliente/partes/Avatar';
 import { CartaoDeAtendimento } from '../../cliente/partes/CartaoDeAtendimento';
@@ -688,22 +687,6 @@ export const PECAS_BASE: Peca[] = [
       </div>
     ) },
 
-  { id: 'alterdata-andamento', tipo: 'cartoes', nome: 'Gerar no Alterdata (botão e andamento do robô)', descricao: 'Na Importação do balancete (14/10/2026, só o Contábil e o admin): a competência e o botão "Gerar no Alterdata"; logo abaixo a caixa do robô — "Na fila…", os passos dele ao vivo, o erro dele, e o Cancelar enquanto dá tempo', componente: 'AndamentoDoAlterdata', classes: ['alt-gerar', 'alt-andamento', 'alt-topo', 'alt-passos'], telas: ['c-importacao', 't-exec-importacao'], largo: true,
-    demo: () => {
-      const base = { id: 'x', codigo: 292, empresa: 'Fito Indústria', competencia: '2026-09', erro: '', arquivoNome: '', criadoEm: '', criadoPor: 'Clara', fimEm: '' };
-      return (
-        <div style={{ width: '100%' }}>
-          <div className="alt-gerar" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
-            <span className="alt-gerar-rotulo">ou gerar direto no Alterdata:</span>
-            <SeletorMes valor="2026-09" onMudar={nada} rotulo="Competência do balancete" />
-            <button type="button" className="btn btn-outline"><Icone nome="robo" width={16} height={16} />Gerar no Alterdata</button>
-          </div>
-          <AndamentoDoAlterdata pedido={{ ...base, status: 'pendente', passos: [] }} onCancelar={nada} onFechar={nada} />
-          <AndamentoDoAlterdata pedido={{ ...base, status: 'trabalhando', passos: [{ n: 1, nome: 'abrindo o Alterdata Contábil', quando: '' }, { n: 2, nome: 'escolhendo a empresa 292', quando: '' }, { n: 3, nome: 'gerando o balancete de 09/2026', quando: '' }] }} onCancelar={nada} onFechar={nada} />
-          <AndamentoDoAlterdata pedido={{ ...base, status: 'erro', erro: 'empresa 292 não encontrada no Alterdata', passos: [] }} onCancelar={nada} onFechar={nada} />
-        </div>
-      );
-    } },
   // ─── Listas ─────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'chips', tipo: 'listas', nome: 'Chips de filtro', classes: ['chip-row', 'chip-lbl', 'chip-f', 'on'], telas: ['c-consulta', 'c-naturezas', 't-gmail', 'c-cliente-documentos'],
     demo: () => <div className="chip-row"><span className="chip-lbl">Tipo</span><button className="chip-f on" type="button">Todos</button><button className="chip-f" type="button">Entradas</button><button className="chip-f" type="button">Saídas</button></div> },

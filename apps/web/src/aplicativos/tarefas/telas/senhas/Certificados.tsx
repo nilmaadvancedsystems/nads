@@ -2,7 +2,7 @@
 // queria algo mais gráfico"): a rosca das situações (a legenda filtra), as barras dos vencimentos mês a mês (a barra
 // filtra), os cartões com a contagem regressiva dos que pedem atenção e a lista; clicar abre o certificado da empresa.
 // As peças do gráfico (rosca, barras e cartão com anel) vêm do @nads/ui: o Painel do DP usa as mesmas (Savio, 15/10/2026).
-import { BarrasEmColuna, CartaoComAnel, Esqueleto, Icone, RoscaComLegenda, useCarregando, type TomDoPainel } from '@nads/ui';
+import { BarrasEmColuna, CartaoComAnel, ConfigLinha, Esqueleto, Icone, Interruptor, RoscaComLegenda, useCarregando, type TomDoPainel } from '@nads/ui';
 import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
 import { TelaDeBloqueio } from './TelaDeBloqueio';
 import { SegredosDaEmpresa } from './SegredosDaEmpresa';
@@ -21,10 +21,19 @@ export function Certificados() {
   useCarregando(vm.carregando);
   if (vm.carregando) return <Esqueleto linhas={8} />;
   // sem acesso ao cofre, só a tela de pedir acesso (13/10/2026: "não era pra tela nem abrir, era pra só ter a tela de pedir acesso")
-  if (vm.cofre.estado !== 'aberto') return <TelaDeBloqueio vm={vm.cofre} />;
+  // o interruptor dos avisos não depende do cofre: o admin o vê mesmo com o cofre trancado
+  const avisos = vm.admin && (
+    <section className="card cert-avisos">
+      <ConfigLinha titulo="Avisar os certificados vencendo" descricao="No celular e por e-mail do admin (30, 15, 7 e 3 dias e no dia; os vencidos às segundas) e a faixa ao abrir a Tarefas">
+        <Interruptor ligado={vm.avisos} onMudar={() => void vm.alternarAvisos()} rotulo="Avisar os certificados vencendo" />
+      </ConfigLinha>
+    </section>
+  );
+  if (vm.cofre.estado !== 'aberto') return <>{avisos}<TelaDeBloqueio vm={vm.cofre} /></>;
   const doMes = vm.mes ? vm.porMes.find(m => m.chave === vm.mes) : null;
   return (
     <section>
+      {avisos}
       <div className="cert-dash">
         <section className="card cert-dash-bloco">
           <div className="card-head"><h3>Situação</h3></div>

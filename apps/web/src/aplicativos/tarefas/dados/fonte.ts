@@ -47,7 +47,7 @@ import { criarRepoTarefasFirestore, extratorNoBanco, type RepoTarefasFirestore }
 import { ligadoAoBanco } from '../../../comum/modoDesenvolvedor';
 import { definirEmpresasExtras } from '../../../comum/empresaDaRota';
 import { criarCofreMemoria, type RepoCofre } from './cofre';
-import { criarCofreFirestore, certificadosDoRobo } from './cofre.firestore';
+import { criarCofreFirestore, certificadosDoRobo, gravarAvisoDeCertificados, ouvirAvisoDeCertificados } from './cofre.firestore';
 import { criarAgentesMemoria, type RepoAgentes } from './agentes';
 import { criarAgentesFirestore } from './agentes.firestore';
 import { criarGuardadoFirestore } from './guardado.firestore';
@@ -301,6 +301,21 @@ let cofreRepo: RepoCofre | null = null;
  * Os certificados do cofre que pedem atenção (o resumo do robô, robo/certificados), para a faixa do admin (19/10/2026).
  * Nos exemplos: um vencido e um vencendo.
  */
+let avisoExemplo = true;
+const ouvintesDoAviso = new Set<(ligado: boolean) => void>();
+/** O aviso de certificado vencendo ligado ou não (config/avisoCertificados; nos exemplos, na memória). */
+export function ouvirAvisoDeCertificadosLigado(chegou: (ligado: boolean) => void): () => void {
+  if (noBanco) return ouvirAvisoDeCertificados(chegou);
+  ouvintesDoAviso.add(chegou);
+  chegou(avisoExemplo);
+  return () => { ouvintesDoAviso.delete(chegou); };
+}
+export async function ligarAvisoDeCertificados(ligado: boolean): Promise<void> {
+  if (noBanco) return gravarAvisoDeCertificados(ligado, quemPede()?.nome || '');
+  avisoExemplo = ligado;
+  for (const f of ouvintesDoAviso) f(ligado);
+}
+
 export async function certificadosParaOAviso(): Promise<{ empresa: string; codigo: number | null; validade: string }[]> {
   if (noBanco) return (await certificadosDoRobo().catch(() => null))?.atencao || [];
   const dia = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
