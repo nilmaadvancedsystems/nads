@@ -194,6 +194,29 @@ export function tipoDoRazao(d: BalanceteDinamico, codigo: string): TipoDoRazao |
   return null;
 }
 
+/** Os tipos que a Importação pede o razão, na ordem das etapas (os clientes e os fornecedores ficam na etapa deles). */
+export const TIPOS_DE_RAZAO_PEDIDOS: readonly TipoDoRazao[] = [
+  'caixa', 'adiantamento-fornecedores', 'adiantamento-salarial', 'adiantamento-clientes', 'emprestimo', 'salarios', 'inss', 'fgts', 'prolabore', 'honorarios', 'simples',
+];
+
+export interface RazaoPedido { codigo: string; nome: string; tipo: TipoDoRazao }
+
+/**
+ * Os razões que a Tarefa precisa (Vitor, 19/10/2026: "especifique quais razões você quer"): as contas analíticas do
+ * dinâmico que alguma etapa usa (Caixa, Salários, FGTS, INSS…), com saldo ou movimento no período, na ordem das etapas.
+ */
+export function razoesPedidos(d: BalanceteDinamico): RazaoPedido[] {
+  const sintetica = (l: LinhaDinamico) => !!l.classificacao && d.linhas.some(x => x !== l && x.classificacao.startsWith(l.classificacao + '.'));
+  const mexe = (l: LinhaDinamico) => Math.abs(l.saldoAnterior) >= 0.005 || d.meses.some(m => Math.abs(l.saldos[m] || 0) >= 0.005);
+  const out: RazaoPedido[] = [];
+  for (const l of d.linhas) {
+    if (!l.codigo || sintetica(l) || !mexe(l)) continue;
+    const tipo = tipoDoRazao(d, l.codigo);
+    if (tipo && TIPOS_DE_RAZAO_PEDIDOS.includes(tipo)) out.push({ codigo: l.codigo, nome: l.descricao, tipo });
+  }
+  return out.sort((a, b) => TIPOS_DE_RAZAO_PEDIDOS.indexOf(a.tipo) - TIPOS_DE_RAZAO_PEDIDOS.indexOf(b.tipo) || a.codigo.localeCompare(b.codigo));
+}
+
 /** Uma conta do resultado do lado errado: a despesa credora ou a receita devedora, e os meses (o saldo, sem o sinal). */
 export interface ContaDoResultadoErrada {
   codigo: string; classificacao: string; nome: string; tipo: 'despesa' | 'receita';

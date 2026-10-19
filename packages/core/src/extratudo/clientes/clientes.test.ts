@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  adiantamentoNoDinamico, emprestimosNoDinamico, resultadoErradoNoDinamico, tipoDoRazao, conferirFechamento, dinamicoCompletoDeTeste, assinaturaDoEnvio, clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
+  adiantamentoNoDinamico, emprestimosNoDinamico, resultadoErradoNoDinamico, tipoDoRazao, razoesPedidos, conferirFechamento, dinamicoCompletoDeTeste, assinaturaDoEnvio, clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
 } from './index';
 
 // o formato do balancete dinâmico do Alterdata (292, bdinamico.xls)
@@ -166,6 +166,14 @@ describe('de que é o razão, pelo dinâmico (16/10/2026)', () => {
   it('cada código na sua etapa; o cheque especial e a despesa, em nenhuma', () => {
     expect(['10101', '11512', '12401', '20001', '52001', '52003', '52004', '60005', '54010', '21041', '21042', '99999', '777'].map(c => tipoDoRazao(d, c)))
       .toEqual(['caixa', 'cliente', 'adiantamento-salarial', 'fornecedor', 'salarios', 'inss', 'fgts', 'prolabore', 'simples', 'emprestimo', null, null, null]);
+  });
+  it('os razões pedidos (19/10/2026): só as analíticas que alguma etapa usa, na ordem das etapas, sem clientes e fornecedores', () => {
+    expect(razoesPedidos(d).map(r => r.codigo + ' ' + r.tipo)).toEqual([
+      '10101 caixa', '12401 adiantamento-salarial', '21041 emprestimo', '52001 salarios', '52003 inss', '52004 fgts', '60005 prolabore', '54010 simples',
+    ]);
+    // a conta parada (sem saldo nem movimento) não é pedida
+    const parada = { ...d, linhas: d.linhas.map(l => (l.codigo === '54010' ? { ...l, saldos: { '2026-01': 0 } } : l)) };
+    expect(razoesPedidos(parada).some(r => r.codigo === '54010')).toBe(false);
   });
 });
 

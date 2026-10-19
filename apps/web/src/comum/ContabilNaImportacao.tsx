@@ -13,6 +13,15 @@ export function ContabilNaImportacao({ nome, codigo }: { nome: string; codigo: n
   const idDin = useId();
   const idRaz = useId();
   const razoes = Object.entries(vm.razoes).sort(([a], [b]) => a.localeCompare(b));
+  // os razões que a Tarefa precisa, pelo dinâmico (Vitor, 19/10/2026: "especifique quais razões você quer"): as contas que as
+  // etapas usam, importadas ou não; depois, os importados que nenhuma etapa pediu
+  const pedidos = vm.dinamico ? cl.razoesPedidos(vm.dinamico.d) : [];
+  const linhas = [
+    ...pedidos.map(p => ({ conta: p.codigo, nome: p.nome, tipo: p.tipo as cl.TipoDoRazao | null, r: vm.razoes[p.codigo] || null })),
+    ...razoes.filter(([conta]) => !pedidos.some(p => p.codigo === conta))
+      .map(([conta, r]) => ({ conta, nome: vm.dinamico?.d.linhas.find(l => l.codigo === conta)?.descricao || '', tipo: vm.tipos[conta] ?? null, r })),
+  ];
+  const faltam = pedidos.filter(p => !vm.razoes[p.codigo]).length;
 
   async function importarDinamico(f: File | null) {
     if (!f) return;
@@ -59,13 +68,14 @@ export function ContabilNaImportacao({ nome, codigo }: { nome: string; codigo: n
         </div>
       </div>
 
-      <div className={'imp-bloco' + (razoes.length ? ' imp-ok' : '')}>
+      <div className={'imp-bloco' + (pedidos.length ? (faltam ? '' : ' imp-ok') : razoes.length ? ' imp-ok' : '')}>
         <div className="imp-linha">
           <span className="imp-ico"><Icone nome="arquivo" /></span>
           <div className="imp-txt">
             <span><b>Razões das contas</b></span>
           </div>
-          <div className="imp-resumo"><div><span>{razoes.length ? razoes.length + (razoes.length === 1 ? ' razão' : ' razões') : 'Todos de uma vez: cada um vai para a etapa da conta'}</span></div></div>
+          <div className="imp-resumo"><div><span>{pedidos.length ? (pedidos.length - faltam) + ' de ' + pedidos.length + ' importados' + (faltam ? ' · falta' + (faltam === 1 ? '' : 'm') + ' ' + faltam : '')
+            : razoes.length ? razoes.length + (razoes.length === 1 ? ' razão' : ' razões') : vm.dinamico ? 'Nenhuma conta das etapas com saldo no dinâmico' : 'Importe o dinâmico para ver quais razões a Tarefa precisa'}</span></div></div>
           <div className="imp-grupos">
             <div className="imp-grupo" aria-label="Razões das contas">
               <span className="imp-rotulo">Razões</span>
@@ -74,27 +84,23 @@ export function ContabilNaImportacao({ nome, codigo }: { nome: string; codigo: n
             </div>
           </div>
         </div>
-        {razoes.length > 0 && (
+        {linhas.length > 0 && (
           <div className="table-wrap" style={{ margin: '0 16px 16px' }}>
             <table className="table-compact">
               <thead><tr><th>Conta</th><th>Nome no dinâmico</th><th>Vai para</th><th>Arquivo</th><th className="num">Lançamentos</th><th /></tr></thead>
               <tbody>
-                {razoes.map(([conta, r]) => {
-                  const tipo = vm.tipos[conta];
-                  const nomeDaConta = vm.dinamico?.d.linhas.find(l => l.codigo === conta)?.descricao || '';
-                  return (
-                    <tr key={conta}>
-                      <td>{conta}</td>
-                      <td className="wrap">{nomeDaConta || <span className="hint">{vm.dinamico ? 'fora do dinâmico' : 'sem o dinâmico'}</span>}</td>
-                      <td>{tipo ? <span className="badge badge-ok">{cl.NOME_DO_TIPO_DO_RAZAO[tipo]}</span> : <span className="badge badge-neutral" title="Nenhuma etapa usa esta conta">Nenhuma etapa</span>}</td>
-                      <td className="hint">{r.arquivo}</td>
-                      <td className="num">{r.razao.lancamentos.length}</td>
-                      <td className="num">
-                        <BotaoIcone icone="x" pequeno titulo={'Tirar o razão da conta ' + conta} onClick={() => vm.tirarRazao(conta)} />
-                      </td>
-                    </tr>
-                  );
-                })}
+                {linhas.map(({ conta, nome, tipo, r }) => (
+                  <tr key={conta}>
+                    <td>{conta}</td>
+                    <td className="wrap">{nome || <span className="hint">{vm.dinamico ? 'fora do dinâmico' : 'sem o dinâmico'}</span>}</td>
+                    <td>{tipo ? <span className="badge badge-ok">{cl.NOME_DO_TIPO_DO_RAZAO[tipo]}</span> : <span className="badge badge-neutral" title="Nenhuma etapa usa esta conta">Nenhuma etapa</span>}</td>
+                    <td className="hint">{r ? r.arquivo : <span className="badge badge-warn" title={'Exporte o razão da conta ' + conta + ' no Alterdata (XLS da conciliação) e importe aqui'}>Falta importar</span>}</td>
+                    <td className="num">{r ? r.razao.lancamentos.length : '—'}</td>
+                    <td className="num">
+                      {r && <BotaoIcone icone="x" pequeno titulo={'Tirar o razão da conta ' + conta} onClick={() => vm.tirarRazao(conta)} />}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
