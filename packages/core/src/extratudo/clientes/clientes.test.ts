@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  adiantamentoNoDinamico, emprestimosNoDinamico, resultadoErradoNoDinamico, tipoDoRazao, conferirFechamento, dinamicoCompletoDeTeste, assinaturaDoEnvio, clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
+  adiantamentoNoDinamico, emprestimosNoDinamico, emprestimoBancario, resultadoErradoNoDinamico, tipoDoRazao, razoesPedidos, mesesFaltandoNoRazao, conferirFechamento, dinamicoCompletoDeTeste, assinaturaDoEnvio, clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
 } from './index';
 
 // o formato do balancete dinâmico do Alterdata (292, bdinamico.xls)
@@ -115,6 +115,16 @@ describe('adiantamento a fornecedores e de clientes no dinâmico (15/10/2026)', 
 
 describe('empréstimos no dinâmico (15/10/2026)', () => {
   const linha = (classificacao: string, descricao: string, saldos: Record<string, number>) => ({ codigo: '1', classificacao, descricao, saldoAnterior: 0, saldos });
+  it('só o bancário: o de terceiros e o mútuo não entram (19/10/2026)', () => {
+    const d = { meses: ['2026-01'], linhas: [
+      linha('2.1.1.04', 'EMPRESTIMOS E FINANCIAMENTOS', { '2026-01': -9000 }),
+      linha('2.1.1.04.001', 'Banco Exemplo - Empréstimos', { '2026-01': 0 }),
+      linha('2.1.1.04.002', 'Empréstimo de Terceiros', { '2026-01': -5000 }),
+      linha('2.1.1.04.003', 'EMPRESA EXEMPLO - Empréstimo Mútuo', { '2026-01': -4000 }),
+    ] };
+    expect(emprestimosNoDinamico(d, ['2026-01']).com).toEqual([]);
+    expect(['2.1.1.04.001', '2.1.1.04.002', '2.1.1.04.003'].map(c => emprestimoBancario(d, d.linhas.find(l => l.classificacao === c)!))).toEqual([true, false, false]);
+  });
   it('só o do Passivo com saldo; o empréstimo a sócios do Ativo e os juros não contam', () => {
     const d = { meses: ['2026-01', '2026-02'], linhas: [
       linha('1.1.5.01', 'EMPRESTIMOS A SOCIOS', { '2026-01': 900, '2026-02': 900 }),
@@ -166,6 +176,23 @@ describe('de que é o razão, pelo dinâmico (16/10/2026)', () => {
   it('cada código na sua etapa; o cheque especial e a despesa, em nenhuma', () => {
     expect(['10101', '11512', '12401', '20001', '52001', '52003', '52004', '60005', '54010', '21041', '21042', '99999', '777'].map(c => tipoDoRazao(d, c)))
       .toEqual(['caixa', 'cliente', 'adiantamento-salarial', 'fornecedor', 'salarios', 'inss', 'fgts', 'prolabore', 'simples', 'emprestimo', null, null, null]);
+  });
+  it('os razões pedidos (19/10/2026): só as analíticas que alguma etapa usa, na ordem das etapas, sem clientes e fornecedores', () => {
+    expect(razoesPedidos(d).map(r => r.codigo + ' ' + r.tipo)).toEqual([
+      '10101 caixa', '12401 adiantamento-salarial', '21041 emprestimo', '52001 salarios', '52003 inss', '52004 fgts', '60005 prolabore', '54010 simples',
+    ]);
+    // a conta parada (sem saldo nem movimento) não é pedida
+    const parada = { ...d, linhas: d.linhas.map(l => (l.codigo === '54010' ? { ...l, saldos: { '2026-01': 0 } } : l)) };
+    expect(razoesPedidos(parada).some(r => r.codigo === '54010')).toBe(false);
+  });
+  it('os meses que faltam no razão: o dinâmico mexeu e o razão não tem lançamento; o mês parado não falta', () => {
+    const din = { meses: ['2026-01', '2026-02', '2026-03', '2026-04'], linhas: [
+      { codigo: '52001', classificacao: '2.1.1.02.001', descricao: 'Salários a Pagar', saldoAnterior: -100, saldos: { '2026-01': -200, '2026-02': -200, '2026-03': -300, '2026-04': -150 } },
+    ] };
+    const razao = { lancamentos: [{ data: '2026-01-31' }, { data: '2026-04-30' }] };
+    // janeiro e abril estão no razão; fevereiro não mexeu; março mexeu e não está
+    expect(mesesFaltandoNoRazao(din, '52001', razao, ['2026-01', '2026-02', '2026-03', '2026-04'])).toEqual(['2026-03']);
+    expect(mesesFaltandoNoRazao(din, '99999', razao, ['2026-03'])).toEqual([]);
   });
 });
 

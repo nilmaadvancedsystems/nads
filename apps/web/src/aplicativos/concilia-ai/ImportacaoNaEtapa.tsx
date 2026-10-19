@@ -17,14 +17,14 @@ import { Importacao } from './telas/importacao/Importacao';
  * prestaServico: a regra do Cadastro da empresa (a Conferência fica igual); null = não informado.
  * competencia: a da etapa (aaaa-mm), para o "Gerar no Alterdata" do balancete (Vitor, 14/10/2026).
  */
-export function ImportacaoNaEtapa({ nome, tipo, prestaServico, competencia }: { nome: string; tipo: c.PaginaImportacao; prestaServico: boolean | null; competencia?: string }) {
+export function ImportacaoNaEtapa({ nome, tipo, prestaServico, competencia, meses }: { nome: string; tipo: c.PaginaImportacao; prestaServico: boolean | null; competencia?: string; meses?: readonly string[] }) {
   const repo = repoDaConferencia();
   const { toast } = useRetorno();
   useEffect(() => { avisarErrosDoBanco(repo, toast); }, [repo, toast]);
-  return <RepoProvider repo={repo}><DaEmpresa nome={nome} tipo={tipo} prestaServico={prestaServico} competencia={competencia} /></RepoProvider>;
+  return <RepoProvider repo={repo}><DaEmpresa nome={nome} tipo={tipo} prestaServico={prestaServico} competencia={competencia} meses={meses} /></RepoProvider>;
 }
 
-function DaEmpresa({ nome, tipo, prestaServico, competencia }: { nome: string; tipo: c.PaginaImportacao; prestaServico: boolean | null; competencia?: string }) {
+function DaEmpresa({ nome, tipo, prestaServico, competencia, meses }: { nome: string; tipo: c.PaginaImportacao; prestaServico: boolean | null; competencia?: string; meses?: readonly string[] }) {
   const repo = useRepo();
   useVersaoDoRepo();
   useCarregando(!repo.pronto());
@@ -39,7 +39,7 @@ function DaEmpresa({ nome, tipo, prestaServico, competencia }: { nome: string; t
           <div><h2 className="page-title">{paginaPorId(pagina)?.titulo || ''}</h2></div>
           <div className="imp-conf-acoes"><LugarDasAcoes /></div>
         </header>
-        <Importacao key={tipo} tipo={tipo} naEtapa competencia={competencia} />
+        <Importacao key={tipo} tipo={tipo} naEtapa competencia={competencia} meses={meses} />
       </TopoProvider>
     </SessaoProvider>
   );

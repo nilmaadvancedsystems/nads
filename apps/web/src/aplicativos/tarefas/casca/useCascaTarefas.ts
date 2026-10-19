@@ -29,7 +29,7 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
     titulo: a?.paginas.find(p => p.id === pagina)?.titulo || a?.nome || '',
     // o Cadastro com as páginas em abas no alto (Empresas, Usuários, Configurações; Vitor, 05/10/2026), sem a barra lateral
     comAbas,
-    secoes: comAbas ? [] : (a?.paginas || []).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, grupo: 1, ativa: p.id === pagina })),
+    secoes: comAbas ? [] : (a?.paginas || []).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, marca: p.marca, grupo: 1, ativa: p.id === pagina })),
     paginas: comAbas ? (a?.paginas || []).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, ativa: p.id === pagina })) : [],
     /** a aba do alto (o Cadastro): a página, mantendo a competência */
     onPagina: (id: string) => navegar(caminhoDaPagina(app, id) + search),

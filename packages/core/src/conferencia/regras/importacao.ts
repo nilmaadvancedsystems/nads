@@ -24,6 +24,17 @@ export function separarPorTipo(novas: Nota[], tipo: TipoNotaFiscal): SeparacaoPo
   };
 }
 
+/**
+ * Só as notas do período da Tarefa (Vitor, 19/10/2026: "se eu colocar o período até 31/08, só importe até aquelas
+ * datas"): pela competência da nota; sem período (a Conferência sozinha), todas. A nota sem data fica.
+ */
+export function soDoPeriodo<N extends { comp: string }>(notas: readonly N[], meses?: readonly string[]): { dentro: N[]; fora: N[] } {
+  if (!meses?.length) return { dentro: [...notas], fora: [] };
+  const r = { dentro: [] as N[], fora: [] as N[] };
+  for (const n of notas) (!n.comp || meses.includes(n.comp) ? r.dentro : r.fora).push(n);
+  return r;
+}
+
 export interface ResultadoMescla<N> { notas: N[]; adicionadas: number; atualizadas: number; semMudanca: number }
 
 /** Mescla notas fiscais. Não muda as listas de entrada. */

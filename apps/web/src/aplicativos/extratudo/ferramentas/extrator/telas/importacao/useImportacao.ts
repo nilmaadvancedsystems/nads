@@ -111,13 +111,19 @@ export function useImportacao() {
     return ok;
   }
 
-  /** O extrato que veio do Drive (já baixado): lê e importa para aquele banco, lembrando do arquivo de lá. */
-  async function importarDoDrive(banco: string, arquivo: { id: string; nome: string }, conteudo: ArrayBuffer, mes?: string) {
+  /**
+   * O extrato que veio do Drive (já baixado): lê e importa para aquele banco, lembrando do arquivo de lá. `tentativa`: o
+   * arquivo sem nada (sem lançamento e sem o "sem movimento") não grava nem avisa e volta 'vazio', para quem chama tentar o
+   * próximo arquivo do mês (Vitor, 19/10/2026, na 450: o "MM-2026 (1).pdf" eram comprovantes e o nads dizia que trouxe).
+   */
+  async function importarDoDrive(banco: string, arquivo: { id: string; nome: string }, conteudo: ArrayBuffer, mes?: string, tentativa = false): Promise<boolean | 'vazio'> {
     setMensagemBruta(null);
     setLendoLinha(banco + '|banco');
     const lido = await x.lerArquivo(arquivo.nome, new Uint8Array(conteudo), 'banco');
-    await gravarLidos('banco', [lido], banco, arquivo, undefined, mes ? [mes] : undefined);
+    if (tentativa && !lido.semMovimento && (lido.erro || !lido.lancamentos.length)) { setLendoLinha(null); return 'vazio'; }
+    const ok = await gravarLidos('banco', [lido], banco, arquivo, undefined, mes ? [mes] : undefined);
     setLendoLinha(null);
+    return ok;
   }
 
   /** O extrato que chegou por e-mail (08/10/2026): lê e importa para aquele banco (o arquivo não fica guardado). */

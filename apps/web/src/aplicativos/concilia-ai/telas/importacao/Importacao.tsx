@@ -12,8 +12,8 @@ import { useImportacao, type Mensagem } from './useImportacao';
  * naEtapa: dentro da primeira etapa da Tarefas, sem o "Apagar ao sair" do balancete (nem a pergunta sobre ele).
  * competencia: a da etapa (aaaa-mm), para o "Gerar no Alterdata" do balancete.
  */
-export function Importacao({ tipo, naEtapa, competencia }: { tipo: c.PaginaImportacao; naEtapa?: boolean; competencia?: string }) {
-  const vm = useImportacao(tipo, competencia);
+export function Importacao({ tipo, naEtapa, competencia, meses }: { tipo: c.PaginaImportacao; naEtapa?: boolean; competencia?: string; meses?: readonly string[] }) {
+  const vm = useImportacao(tipo, competencia, meses);
   const alt = vm.alterdata;
   useCarregando(vm.carregando);
   return (

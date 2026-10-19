@@ -12,7 +12,7 @@ export const BASE = '/tarefas';
 
 export type IdAplicacao = 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente';
 
-export interface Pagina { id: string; rotulo: string; icone: NomeIcone; titulo: string }
+export interface Pagina { id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone, na lateral */ marca?: 'fgts' }
 export interface Aplicacao {
   id: IdAplicacao; nome: string; icone: NomeIcone; paginas: Pagina[]; pronta: boolean;
   /** o grupo na gaveta ☰ (14/10/2026: "melhore, atualize ícones") e a logo da marca no lugar do ícone (o Drive, o Gmail) */
@@ -60,7 +60,7 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'obrigacoes', rotulo: 'Obrigações', icone: 'checklist', titulo: 'Obrigações do mês' },
     { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Visão geral' },
     // a guia do FGTS Digital pelo robô da nuvem, com o certificado do escritório (Vitor, 07/10/2026)
-    { id: 'fgts', rotulo: 'FGTS Digital', icone: 'fileDown', titulo: 'Guias do FGTS Digital' },
+    { id: 'fgts', rotulo: 'FGTS Digital', icone: 'fileDown', titulo: 'FGTS Digital', marca: 'fgts' },
     // os parâmetros de cada cliente (Vitor, 06/10/2026: "quero que o dp tenha a própria aba de configurações")
     // os textos de consulta que vieram do Toriba (Vitor, 14/10/2026: "importa as legislações em uma aba no DP")
     { id: 'legislacao', rotulo: 'Legislação', icone: 'scale', titulo: 'Legislação' },
