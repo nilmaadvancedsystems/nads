@@ -365,6 +365,14 @@ export function useImportacao() {
     /** quem marca o mês como sem movimento quando o extrato importado não teve movimento */
     aoSemMovimento: (fn: (banco: string, meses: string[]) => void) => { aoSemMovimento.current = fn; },
     gravarSaldoAnterior: (arquivoId: string, saldo: number) => s.aplicar(e => x.definirSaldoAnterior(e, arquivoId, saldo, new Date())),
+    /**
+     * O extrato do mês que subiu para o Drive (do computador ou do e-mail) passa a apontar para o arquivo de lá (19/10/2026):
+     * os do banco no mês sem Drive e só daquele mês (o de vários meses fica como está).
+     */
+    ligarMesAoDrive: (banco: string, mes: string, drive: { id: string; nome: string }) => s.aplicar(e =>
+      x.arquivosDoBanco(e, banco, primeiro, 'banco', mes)
+        .filter(a => !a.drive && a.lancamentos.every(l => l.data.startsWith(mes)))
+        .reduce((acc, a) => x.definirDriveDoArquivo(acc, a.id, drive, new Date()), e)),
     /** a regra do Cadastro da empresa: presta serviços? (null = não informado, ou o cadastro ainda não chegou) */
     prestaServico: cad.cadastro?.prestaServico ?? null,
     /** o código contábil da conta do banco no Cadastro (Contas bancárias); '' = não informado */

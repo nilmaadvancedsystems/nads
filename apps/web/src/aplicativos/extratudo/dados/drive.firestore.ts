@@ -343,6 +343,21 @@ export function criarDriveFirestore(): cr.RepoDrive {
       });
       for (let i = 0; i < partes.length; i++) await setDoc(doc(ref, 'partes', String(i)), { dados: Bytes.fromUint8Array(partes[i]) });
       await updateDoc(ref, { status: 'pendente' });
+      return ref.id;
+    },
+
+    /** Como estão os envios (cada um é da pessoa: a regra só deixa ler o próprio). */
+    async situacaoDosEnvios(ids) {
+      const out: Record<string, { status: string; pasta?: string; nomeFinal?: string }> = {};
+      await Promise.all(ids.map(async id => {
+        try {
+          const s = await getDoc(doc(db, 'enviosSecretario', id));
+          if (!s.exists()) return;
+          const d = s.data() || {};
+          out[id] = { status: String(d.status || ''), ...(d.pasta ? { pasta: String(d.pasta) } : {}), ...(d.nomeFinal ? { nomeFinal: String(d.nomeFinal) } : {}) };
+        } catch { /* sem acesso agora: tenta na próxima */ }
+      }));
+      return out;
     },
 
     /** Põe o e-mail na fila do robô (solicitacoesEmail, tipo 'um') e acompanha até ele enviar. */
