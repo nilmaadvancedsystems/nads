@@ -4702,3 +4702,16 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .fin-conta-inativa{opacity:.55;}
 .fin-conta .badge svg{width:12px;height:12px;}
 @media (max-width:640px){.fin-periodo{flex-wrap:wrap;}.fin-cedula{grid-template-columns:80px 12px 72px 1fr;}.fin-cedula input{width:72px;}}
+
+/* Financeiro › Caixa: a calculadora (19/10/2026) */
+.fin-calc{display:flex;flex-direction:column;gap:12px;}
+.fin-calc-visor{display:flex;flex-direction:column;align-items:flex-end;gap:2px;border:1px solid var(--border);border-radius:8px;background:var(--surface-3);padding:10px 14px;}
+.fin-calc-conta{font-size:var(--fs-13);min-height:18px;}
+.fin-calc-numero{font-size:var(--fs-24);font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;max-width:100%;white-space:nowrap;}
+.fin-calc-erro{color:var(--destructive);}
+.fin-calc-teclas{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.fin-calc-tecla{height:44px;justify-content:center;font-size:var(--fs-16);}
+.fin-calc-tecla svg{width:16px;height:16px;}
+.fin-calc-op{color:var(--accent);font-weight:600;}
+.fin-calc-sup{color:var(--ink-muted);}
+.modal.fin-calc-janela{max-width:340px;}

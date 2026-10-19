@@ -4,10 +4,11 @@
 import { formatos } from '@nads/core';
 import { CampoData, Icone, Segmentado, useCarregando, Vazio } from '@nads/ui';
 import { dataBr } from './formatosDaNota';
+import { JanelaCalculadora } from './JanelaCalculadora';
 import { JanelaDeCedulas } from './JanelaDeCedulas';
 import { JanelaDoLancamento } from './JanelaDoLancamento';
 import { ValorDoCaixa } from './partes/ValorDoCaixa';
-import { PERIODOS_RAPIDOS, useCaixaFinanceiro } from './useCaixaFinanceiro';
+import { FILTROS_DE_TIPO, PERIODOS_RAPIDOS, useCaixaFinanceiro } from './useCaixaFinanceiro';
 
 export function Caixa() {
   const vm = useCaixaFinanceiro();
@@ -23,6 +24,7 @@ export function Caixa() {
     <section>
       {vm.aberto && <JanelaDoLancamento id={vm.aberto.id} valor={vm.aberto.valor} fechar={vm.fechar} />}
       {vm.contando && <JanelaDeCedulas fechar={() => vm.setContando(false)} usar={vm.usarCedulas} />}
+      {vm.calculando && <JanelaCalculadora fechar={() => vm.setCalculando(false)} usar={vm.usarCalculadora} />}
 
       <div className="tarefas-barra-topo fin-barra">
         <span className="fin-periodo">
@@ -31,6 +33,7 @@ export function Caixa() {
           <CampoData valor={vm.ate} onMudar={vm.setAte} rotulo="Até o dia" />
         </span>
         <Segmentado valor={vm.periodoRapido} opcoes={PERIODOS_RAPIDOS} onMudar={vm.escolherPeriodo} />
+        <Segmentado valor={vm.tipoFiltro} opcoes={FILTROS_DE_TIPO} onMudar={vm.setTipoFiltro} />
         <label className="busca-curta">
           <Icone nome="search" />
           <input type="text" placeholder="Buscar lançamento" aria-label="Buscar lançamento (descrição, observações, valor, conta)" value={vm.busca}
@@ -38,6 +41,8 @@ export function Caixa() {
         </label>
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
+        <button type="button" className="btn btn-outline" disabled={!vm.periodoValido} onClick={vm.exportar} title="Baixa a planilha do que está na tela (período, busca e tipo)"><Icone nome="download" />Exportar planilha</button>
+        <button type="button" className="btn btn-outline" onClick={() => vm.setCalculando(true)}><Icone nome="hash" />Calculadora</button>
         <button type="button" className="btn btn-outline" onClick={() => vm.setContando(true)}><Icone nome="dinheiro" />Contar cédulas</button>
         <button type="button" className="btn btn-primary" onClick={() => vm.abrir({})}><Icone nome="plus" />Novo lançamento</button>
       </div>
