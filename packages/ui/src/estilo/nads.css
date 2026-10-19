@@ -659,7 +659,10 @@ td > .gh-blank.compacto{white-space:normal;}
 .layout.sidebar-oculta{grid-template-columns:56px minmax(0,1fr);}
 .sidebar-oculta .subnav{padding:16px 8px;}
 .sidebar-oculta .subnav-item{justify-content:center;padding:6px 0;}
-.sidebar-oculta .subnav-item span{display:none;}
+.sidebar-oculta .subnav-item span:not(.subnav-marca){display:none;}
+/* recolhida: o fundo do item aberto é o próprio quadradinho do ícone, dentro da lateral (o indicador que desliza ficava com a largura da barra aberta e vazava sobre a página) */
+.sidebar-oculta .subnav-itens.com-indicador > .indicador{display:none;}
+.sidebar-oculta .subnav-itens.com-indicador .subnav-item.active{background:var(--hover-bg);}
 .sidebar-oculta .subnav-foot .theme-toggle{flex-direction:column;align-self:center;margin-left:0;}
 .sidebar-oculta .subnav-colapsar svg{transform:scaleX(-1);}
 @media (max-width:768px){
@@ -669,7 +672,7 @@ td > .gh-blank.compacto{white-space:normal;}
   .subnav-foot .theme-toggle{margin-left:8px;}
   .subnav-colapsar{display:none !important;}
   .layout.sidebar-oculta{grid-template-columns:minmax(0,1fr);}
-  .sidebar-oculta .subnav-item span{display:inline;}
+  .sidebar-oculta .subnav-item span:not(.subnav-marca){display:inline;}
   .sidebar-oculta .subnav-item{padding:6px 8px;}
 }
 
