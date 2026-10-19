@@ -4324,6 +4324,8 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 .nf-faixa-item{display:inline-flex;align-items:center;gap:8px;}
 .nf-faixa-item > svg{width:16px;height:16px;flex:none;color:var(--ink-muted);}
 .nf-barra .steps{flex:none;}
+/* a lista das notas rola só com a página: sem altura máxima, a caixa não ganha a segunda barra (19/10/2026); no celular, ainda rola de lado */
+.table-wrap.nf-tabela-wrap{max-height:none;}
 .nf-lista td{vertical-align:middle;}
 .nf-doc{display:block;font-size:var(--fs-12);font-variant-numeric:tabular-nums;}
 .nf-corta{display:inline-block;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;}
