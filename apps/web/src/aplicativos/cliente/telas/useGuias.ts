@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { baixarArquivo } from '../dados/baixar';
 import { repoAreaCliente } from '../dados/repo';
 import { chaveDoMes, situacaoDoCertificado } from '../dados/regras';
+import { tituloDaGuiaNova } from '../dados/visaoGeral';
 import type { DaCasca } from './useAreaCliente';
 
 /** 'dd/mm/aaaa' → 'aaaa-mm' */
@@ -54,8 +55,10 @@ export function useGuias({ token, area, hoje, irPara, copiar }: DaCasca) {
     totalAPagar: guias.reduce((s, g) => s + g.valor, 0),
     totalPago: pagas.reduce((s, p) => s + p.valor, 0),
     proxima,
-    // a guia que leva o botão carmim (um só na área): a vencida ou, sem ela, a mais urgente
-    urgente: (guias.find(g => g.situacao === 'vencida') ?? guias[0])?.id ?? '',
+    // a guia que leva o Baixar carmim (um só na área): a próxima a pagar ("melhora mais" de 17/10/2026: a vencida não
+    // passa mais no banco, ela leva o "Pedir nova")
+    urgente: proxima?.id ?? '',
+    pedirGuiaNova: (g: ac.GuiaDoCliente) => irPara('chamados', { novoChamado: { tipo: 'documento', titulo: tituloDaGuiaNova(g) } }),
     guias, codigos: area.codigos, baixando, baixar, copiarCodigo: (c: string) => copiar(c, 'Código'),
     pagas, comprovante, mostraPagas: area.secoes.pagas,
     certificado: area.certificado ? { ...area.certificado, ...situacaoDoCertificado(area.certificado, hoje) } : null,

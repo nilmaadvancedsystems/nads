@@ -81,8 +81,9 @@
 
 /* ------------------------------ o menu lateral: fixo no PC, gaveta no celular ------------------------------ */
 .cli-app .cli-lateral{position:fixed;top:0;bottom:0;left:0;z-index:40;display:flex;flex-direction:column;justify-content:space-between;width:264px;max-width:calc(100vw - 48px);
-  overflow-y:auto;background:var(--drawer-bg);border-right:1px solid var(--cli-linha);transform:translateX(-100%);transition:transform .2s ease;}
-.cli-app .cli-lateral.aberta{transform:none;box-shadow:var(--shadow-lg);}
+  overflow-y:auto;background:var(--drawer-bg);border-right:1px solid var(--cli-linha);transform:translateX(-100%);visibility:hidden;
+  transition:transform .2s ease,visibility 0s linear .2s;}
+.cli-app .cli-lateral.aberta{transform:none;visibility:visible;box-shadow:var(--shadow-lg);transition:transform .2s ease;}
 .cli-app .cli-fundo-gaveta{position:fixed;inset:0;z-index:30;background:color-mix(in srgb,var(--overlay-bg) 10%,var(--ink) 40%);opacity:.6;}
 .cli-app .cli-marca{display:flex;align-items:center;gap:12px;min-height:72px;padding:12px 12px 12px 22px;}
 .cli-app .cli-marca .brand-mark svg{height:34px;}
@@ -109,8 +110,8 @@
 /* a pessoa (o atendimento, o funcionário): as iniciais no círculo, o nome e a linha de baixo */
 .cli-app .cli-pessoa{display:flex;align-items:center;gap:12px;min-width:0;}
 .cli-app .cli-pessoa > div{min-width:0;line-height:1.35;}
-.cli-app .cli-pessoa b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cli-app .cli-pessoa .hint{display:block;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-app .cli-pessoa b{display:block;font-weight:600;overflow-wrap:anywhere;}
+.cli-app .cli-pessoa .hint{display:block;font-size:12.5px;}
 .cli-app .cli-iniciais{display:flex;align-items:center;justify-content:center;flex:none;width:36px;height:36px;border-radius:50%;
   background:var(--accent-soft);color:var(--accent-ink);font-size:12.5px;font-weight:700;letter-spacing:.02em;}
 .cli-app .cli-iniciais.grande{width:44px;height:44px;font-size:14px;}
@@ -154,7 +155,7 @@
 .cli-app .cli-empresa-ico{display:flex;align-items:center;justify-content:center;flex:none;width:36px;height:36px;border:1px solid var(--cli-linha);border-radius:var(--cli-raio-p);
   background:var(--cli-fundo);color:var(--ink-muted);}
 .cli-app .cli-empresa-txt{min-width:0;line-height:1.3;}
-.cli-app .cli-empresa-txt b{display:block;font-weight:600;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-app .cli-empresa-txt b{display:block;font-weight:600;letter-spacing:-.01em;line-height:1.3;overflow-wrap:anywhere;}
 .cli-app .cli-empresa-txt small{display:block;font-size:12px;color:var(--ink-muted);font-variant-numeric:tabular-nums;white-space:nowrap;}
 .cli-app .cli-sino{position:relative;border:0;background:none;box-shadow:none;}
 .cli-app .cli-sino:hover{background:var(--cli-passa);}
@@ -186,7 +187,7 @@
 .cli-app .card-head > .btn-ghost{flex:none;margin:-4px -8px 0 0;}
 
 /* a Visão geral: o cartão de boas-vindas com o N da Nilma de marca-d'água, os quatro números e o atendimento */
-.cli-app .cli-boas-vindas{position:relative;overflow:hidden;padding:28px 24px;}
+.cli-app .cli-boas-vindas{position:relative;overflow:hidden;}
 .cli-app .cli-boas-vindas .cli-sobre{margin-bottom:10px;}
 .cli-app .cli-boas-vindas .page-desc{max-width:52ch;}
 .cli-app .cli-boas-vindas .cli-acoes{position:relative;margin-top:22px;}
@@ -203,13 +204,22 @@ button.cli-numero{cursor:pointer;transition:box-shadow .2s ease,border-color .2s
 button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-alta);}
 .cli-app .cli-numero-valor{font-size:32px;font-weight:700;line-height:1.1;letter-spacing:-.03em;font-variant-numeric:tabular-nums;white-space:nowrap;}
 .cli-app .cli-numero-valor.menor{font-size:26px;line-height:1.25;}
-.cli-app .cli-numero .hint{max-width:100%;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-app .cli-numero .hint{max-width:100%;font-size:12.5px;}
 .cli-app .cli-numero .hint.ruim{color:var(--danger-ink);font-weight:600;}
-.cli-app .cli-atendimento .cli-pessoa{padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid var(--cli-fio);}
-.cli-app .cli-contatos{display:flex;flex-direction:column;gap:10px;}
-.cli-app .cli-contatos li{display:flex;align-items:center;gap:10px;min-width:0;color:var(--ink);}
-.cli-app .cli-contatos svg{color:var(--ink-muted);}
-.cli-app .cli-contatos span{min-width:0;overflow-wrap:anywhere;}
+/* o atendimento (CartaoDeAtendimento): o N com "Seu atendimento", o horário quando tem e cada contato numa linha que
+   já faz a ação, com o fundo suave ao passar (o mesmo da lista) */
+.cli-app .cli-atendimento .cli-pessoa{padding-bottom:16px;margin-bottom:8px;border-bottom:1px solid var(--cli-fio);}
+.cli-app .cli-horario{display:flex;align-items:center;gap:10px;margin:12px 0 4px;font-size:13px;color:var(--ink-muted);}
+.cli-app .cli-contatos{display:flex;flex-direction:column;gap:2px;margin:0 -12px;}
+.cli-app .cli-contato{appearance:none;display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:8px 12px;border:0;border-radius:var(--cli-raio-p);
+  background:none;color:var(--ink);font:inherit;text-align:left;text-decoration:none;cursor:pointer;transition:background-color .15s ease;}
+.cli-app span.cli-contato{cursor:default;}
+.cli-app :is(a,button).cli-contato:hover{background:var(--cli-passa);}
+.cli-app .cli-contato > svg{color:var(--ink-muted);}
+.cli-app .cli-contato-ico{display:flex;align-items:center;justify-content:center;flex:none;width:32px;height:32px;border-radius:50%;background:var(--surface-3);color:var(--ink-muted);}
+.cli-app .cli-contato-txt{display:flex;flex:1;flex-direction:column;min-width:0;line-height:1.35;}
+.cli-app .cli-contato-txt small{font-size:12px;color:var(--ink-muted);}
+.cli-app .cli-contato-txt span{font-weight:500;overflow-wrap:anywhere;}
 .cli-app .cli-largo{width:100%;margin-top:20px;}
 
 /* a Visão geral refeita (Vitor, 17/10/2026: "quero que melhore esse layout"): as boas-vindas numa faixa só */
@@ -221,13 +231,14 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app .cli-numero .hint .ruim{color:var(--danger-ink);}
 
 /* a guia em grade de colunas fixas: logo, nome, situação, valor e ações (os selos e os valores em fila) */
-.cli-app .cli-linha.cli-linha-guia{display:grid;grid-template-columns:40px minmax(0,1fr) 100px 104px 80px;grid-template-areas:"logo txt selo valor acoes";column-gap:14px;}
+.cli-app .cli-linha.cli-linha-guia{display:grid;grid-template-columns:40px minmax(0,1fr) 100px 104px 150px;grid-template-areas:"logo txt selo valor acoes";column-gap:14px;}
 .cli-app .cli-g-logo{grid-area:logo;display:flex;}
 .cli-app .cli-g-txt{grid-area:txt;min-width:0;}
-.cli-app .cli-g-txt b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cli-app .cli-g-txt .hint{display:block;margin-top:2px;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-/* na guia, o nome e o detalhe (vencimento e competência) nunca viram "…": se não couber, quebram em duas linhas */
-.cli-app .cli-linha-guia .cli-g-txt b,.cli-app .cli-linha-guia .cli-g-txt .hint{white-space:normal;overflow:visible;}
+/* o nome e o detalhe nunca viram "…" (Vitor): se não couber, quebram a linha; na guia, cada pedaço do detalhe
+   ("Venceu em 12/10 (há 5 dias)", "competência 09/2026") fica inteiro (.cli-junto) */
+.cli-app .cli-g-txt b{display:block;font-weight:600;overflow-wrap:anywhere;}
+.cli-app .cli-g-txt .hint{display:block;margin-top:2px;font-size:12.5px;}
+.cli-app .cli-junto{white-space:nowrap;}
 .cli-app .cli-g-selo{grid-area:selo;justify-self:start;}
 .cli-app .cli-g-valor{grid-area:valor;text-align:right;font-size:15px;}
 .cli-app .cli-g-acoes{grid-area:acoes;display:flex;justify-content:flex-end;gap:6px;}
@@ -240,8 +251,6 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app .cli-iguais{align-items:stretch;}
 .cli-app .cli-coluna-direita{display:flex;flex-direction:column;gap:20px;min-width:0;}
 .cli-app .cli-avisos-card{flex:1;}
-.cli-app .cli-atendimento{padding:20px 22px;}
-.cli-app .cli-atendimento .cli-contatos{gap:8px;font-size:13.5px;}
 .cli-app .cli-aviso-linha{appearance:none;display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
 .cli-app .cli-aviso-linha:disabled{cursor:default;}
 .cli-app .cli-aviso-linha > svg{color:var(--ink-muted);}
@@ -259,6 +268,7 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app .cli-resumo dt{color:var(--ink-muted);}
 .cli-app .cli-resumo dd{font-size:16px;text-align:right;}
 .cli-app .cli-resumo dd b{font-weight:700;font-variant-numeric:tabular-nums;}
+.cli-app .cli-resumo dd .hint{font-size:14px;}
 .cli-app .cli-linha.cli-aviso-bloco{align-items:flex-start;flex-wrap:nowrap;}
 .cli-app .cli-aviso-bloco .cli-g-txt{flex:1;}
 .cli-app .cli-aviso-titulo{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;}
@@ -294,6 +304,7 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app .cli-data b{font-size:16px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
 .cli-app .cli-data small{margin-top:3px;font-size:9.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-muted);}
 .cli-app .cli-agenda-nao-se-aplica{opacity:.55;}
+.cli-app .cli-iguais .cli-data{width:40px;height:40px;}
 .cli-app :is(.cli-agenda-feito,.cli-agenda-a-fazer,.cli-agenda-nao-se-aplica){flex-wrap:nowrap;}
 .cli-app :is(.cli-agenda-feito,.cli-agenda-a-fazer,.cli-agenda-nao-se-aplica) .cli-linha-txt{flex-basis:0;}
 .cli-app .cli-agenda-feito .cli-linha-txt{color:var(--ink-muted);}
@@ -356,8 +367,8 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 
 /* o cartão com tabela (funcionários) ou lista (chamados) de ponta a ponta */
 .cli-app .cli-card-tabela{padding:0;overflow:hidden;}
-.cli-app .cli-card-tabela > .card-head{margin:0;padding:16px 20px;border-bottom:1px solid var(--cli-linha);align-items:center;}
-.cli-app .cli-card-tabela > .cli-lista{margin:0;padding:6px 8px;}
+.cli-app .cli-card-tabela > .card-head{margin:0;padding:16px 24px;border-bottom:1px solid var(--cli-linha);align-items:center;}
+.cli-app .cli-card-tabela > .cli-lista{margin:0;padding:6px 12px;}
 .cli-app .cli-card-tabela .cli-tabela{width:100%;}
 
 /* Solicitações: o formulário e o histórico */
@@ -401,6 +412,10 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app .cli-vazio p{max-width:36ch;font-size:13px;color:var(--ink-muted);}
 .cli-app .cli-vazio .btn{margin-top:12px;}
 .cli-app .card.cli-vazio-cartao{padding:8px;}
+/* no cartão esticado pela grade (Visão geral), o vazio fica no meio da altura, sem o buraco embaixo */
+.cli-app .card:has(> .cli-vazio){display:flex;flex-direction:column;}
+.cli-app .card > .cli-vazio{flex:1;justify-content:center;}
+.cli-app .cli-grupo-vazio{padding:10px 0 6px;font-size:13px;color:var(--ink-muted);}
 
 /* o esqueleto de carregamento no formato da página */
 .cli-app .cli-esqueleto{display:flex;flex-direction:column;gap:20px;}
@@ -418,14 +433,25 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
   .cli-app .cli-boas-vindas .cli-acoes .btn{flex:1;}
   .cli-app .cli-marca-dagua{display:none;}
   .cli-app .page-title{font-size:23px;}
-  .cli-app .card{padding:18px;}
+  .cli-app .card{padding:16px;}
   .cli-app .cli-card-tabela{padding:0;}
   .cli-app .cli-card-tabela > .card-head{padding:14px 16px;}
+  .cli-app .cli-card-tabela > .cli-lista{padding:4px;}
+  .cli-app .cli-empresa-ico{display:none;}
+  .cli-app .cli-topo{padding:10px 12px 10px 16px;}
+  .cli-app .cli-topo .gh-hamb,.cli-app .cli-sino,.cli-app .cli-lateral .drawer-x{width:44px;height:44px;}
+  .cli-app .btn,.cli-app .cli-anexo .file-picker{min-height:44px;}
+  .cli-app .card-head > .btn-ghost{min-height:40px;margin:-10px -8px -10px 0;}
+  .cli-app .icon-btn{width:40px;height:40px;}
+  .cli-app .cli-menu .subnav-item{min-height:44px;}
+  .cli-app .cli-marca{padding-left:20px;}
   .cli-app .cli-tabela thead th,.cli-app .cli-tabela tbody td{padding-left:14px;padding-right:14px;}
   .cli-app .cli-linha-valor{min-width:0;}
   .cli-app .cli-linha-acoes{min-width:0;}
   .cli-app .cli-barra > .btn-primary{width:100%;}
-  .cli-app .cli-linha.cli-linha-guia{grid-template-columns:40px minmax(0,1fr) auto auto;grid-template-areas:"logo txt txt txt" "logo selo valor acoes";row-gap:8px;column-gap:10px;}
+  .cli-app .cli-linha.cli-linha-guia{grid-template-columns:40px minmax(0,1fr) auto;grid-template-areas:"logo txt txt" "logo selo valor" "logo acoes acoes";row-gap:8px;column-gap:10px;}
+  .cli-app .cli-linha-guia .cli-g-acoes{justify-content:flex-start;}
+  .cli-app .cli-linha-guia .cli-g-acoes .btn{flex:1;}
   .cli-app .cli-boas-vindas .cli-acoes{width:100%;}
   .cli-app .cli-numero .hint{white-space:normal;}
   .cli-app .cli-filtros-dir{width:100%;}
@@ -439,22 +465,21 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
   .cli-app .cli-form{grid-template-columns:repeat(2,minmax(0,1fr));}
 }
 @media (min-width:768px){
-  .cli-app .cli-lateral{transform:none;box-shadow:none;}
+  .cli-app .cli-lateral{transform:none;visibility:visible;box-shadow:none;}
   .cli-app .cli-lateral .drawer-x,.cli-app .cli-fundo-gaveta,.cli-app .cli-topo .gh-hamb{display:none;}
   .cli-app .cli-corpo{padding-left:264px;}
   .cli-app .cli-corpo.sem-lateral{padding-left:0;}
   .cli-app .cli-topo{padding:12px 32px;}
   .cli-app .cli-main{gap:24px;padding:28px 32px 64px;}
-  .cli-app .cli-boas-vindas{padding:26px 32px;}
   .cli-app .cli-marca-dagua{width:92px;right:56px;}
   .cli-app .cli-numeros{gap:16px;}
-  .cli-app .cli-numero{padding:20px 22px;}
+  .cli-app .cli-numero{padding:20px 24px;}
 }
 /* entre 1024 e 1279 px a coluna da esquerda ficaria apertada para a grade das guias: a lista ocupa a largura toda e a
    coluna da direita desce, com os dois cartões lado a lado */
 @media (min-width:1024px) and (max-width:1279px){
-  .cli-app .cli-duas.cli-guias,.cli-app .cli-duas.cli-iguais{grid-template-columns:minmax(0,1fr) !important;}
-  .cli-app .cli-guias > .cli-coluna:last-child,.cli-app .cli-iguais > .cli-coluna-direita{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;}
+  .cli-app .cli-duas.cli-guias,.cli-app .cli-duas.cli-iguais,.cli-app .cli-duas.cli-visao{grid-template-columns:minmax(0,1fr) !important;}
+  .cli-app .cli-guias > .cli-coluna:last-child,.cli-app .cli-iguais > .cli-coluna-direita,.cli-app .cli-visao > .cli-coluna:last-child{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;}
 }
 @media (min-width:1024px){
   .cli-app .cli-numeros{grid-template-columns:repeat(4,minmax(0,1fr));}
@@ -493,7 +518,90 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app.cli-janela .cli-soltar{padding:22px 12px;}
 .cli-app.cli-janela p.cli-erro{color:var(--danger-ink);}
 .cli-app.cli-janela .cli-lista{margin:0 -12px;}
+.cli-app.cli-janela .cli-linha{flex-wrap:nowrap;}
+.cli-app.cli-janela .cli-linha-txt{flex-basis:0;}
+.cli-app.cli-janela .cli-linha .btn{flex:none;}
 
 @media (prefers-reduced-motion:reduce){
   .cli-app *{transition:none !important;}
 }
+
+/* ------------------------------ a Visão geral no padrão dos portais de cliente ------------------------------
+   "Melhora mais" de 17/10/2026 (Vitor: "procura na net exemplos de portal de cliente"): o veredito no topo com o que
+   precisamos do cliente, as guias com o resumo do pagamento, a atividade recente em linha do tempo e o envio rápido.
+   As cores só pelo significado (verde em dia, amarelo atenção, vermelho vencida), sempre pelos tokens do nads. */
+.cli-app .cli-veredito-topo{display:flex;flex-wrap:wrap;align-items:center;gap:16px 20px;}
+.cli-app .cli-veredito-ico{display:flex;align-items:center;justify-content:center;flex:none;width:48px;height:48px;border-radius:50%;background:var(--surface-3);color:var(--ink-muted);}
+.cli-app .cli-veredito-txt{flex:1 1 320px;min-width:0;}
+.cli-app .cli-veredito .cli-sobre{margin-bottom:6px;}
+.cli-app .cli-veredito .page-title{font-size:24px;overflow-wrap:anywhere;}
+.cli-app .cli-veredito .page-desc{margin-top:4px;max-width:72ch;}
+.cli-app .cli-veredito-topo > .btn{flex:none;}
+.cli-app .cli-tom-ok :is(.cli-veredito-ico),.cli-app .cli-aviso-ico.cli-tom-ok{background:var(--success-soft);color:var(--success-ink);}
+.cli-app .cli-tom-warn :is(.cli-veredito-ico),.cli-app .cli-aviso-ico.cli-tom-warn{background:var(--warn-soft);color:var(--warn);}
+.cli-app .cli-tom-bad :is(.cli-veredito-ico),.cli-app .cli-aviso-ico.cli-tom-bad{background:var(--danger-soft);color:var(--danger-ink);}
+.cli-app .cli-pendencias{margin-top:20px;padding-top:16px;border-top:1px solid var(--cli-fio);}
+.cli-app .cli-pendencias .cli-grupo{margin-top:0;}
+.cli-app .cli-linha.cli-pendencia{flex-wrap:nowrap;}
+.cli-app .cli-pendencia .cli-g-txt{flex:1;}
+.cli-app .cli-pendencia .cli-g-txt .hint{white-space:normal;}
+.cli-app .cli-pendencia > .btn{flex:none;}
+
+/* o resumo do pagamento (ResumoDoPagamento): quanto, até quando e o já pago, numa faixa de fundo suave */
+.cli-app .cli-pagar{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px 24px;margin:0 0 8px;padding:14px 16px;border-radius:10px;background:var(--cli-fundo);}
+.cli-app .cli-pagar > div{min-width:0;}
+.cli-app .cli-pagar dt{font-size:12.5px;color:var(--ink-muted);}
+.cli-app .cli-pagar-valor{margin-top:2px;font-size:22px;font-weight:700;line-height:1.2;letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.cli-app .cli-pagar dd.hint{margin-top:2px;font-size:12.5px;}
+.cli-app .cli-como-pagar{display:flex;align-items:flex-start;gap:8px;margin-top:10px;padding-top:12px;border-top:1px solid var(--cli-fio);font-size:12.5px;color:var(--ink-muted);}
+.cli-app .cli-como-pagar svg{flex:none;margin-top:1px;}
+.cli-app .cli-v-guias .cli-como-pagar + .cli-grupo{margin-top:16px;}
+
+/* a atividade recente (LinhaDaAtividade): os ícones ligados por um fio fino, a data à direita */
+.cli-app .cli-atividades > li + li::before{display:none;}
+.cli-app .cli-atividade{position:relative;}
+.cli-app .cli-atividade:not(:last-child)::after{content:'';position:absolute;left:26px;top:42px;bottom:-6px;width:1px;background:var(--cli-linha);}
+.cli-app .cli-linha.cli-ativ-linha{flex-wrap:nowrap;align-items:flex-start;gap:12px;width:100%;padding:10px 12px;}
+.cli-app button.cli-ativ-linha{appearance:none;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
+.cli-app button.cli-ativ-linha:hover{background:var(--cli-passa);}
+.cli-app .cli-ativ-linha .cli-g-txt{flex:1;padding-top:3px;}
+.cli-app .cli-ativ-linha .cli-g-txt b{font-weight:500;}
+.cli-app .cli-ativ-linha .cli-g-txt .hint{overflow-wrap:anywhere;}
+.cli-app .cli-ativ-ico{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;flex:none;width:28px;height:28px;border-radius:50%;background:var(--surface-3);color:var(--ink-muted);box-shadow:0 0 0 3px var(--cli-cartao);}
+.cli-app .cli-ativ-ico.cli-ativ-resposta{background:var(--accent-soft);color:var(--accent-ink);}
+.cli-app .cli-ativ-ico.cli-ativ-feito{background:var(--success-soft);color:var(--success-ink);}
+.cli-app .cli-ativ-quando{flex:none;padding-top:4px;font-size:12.5px;color:var(--ink-muted);white-space:nowrap;font-variant-numeric:tabular-nums;}
+
+/* sem atividade (o link novo), o cartão das guias vai até o fim da coluna do lado, com o vazio no meio */
+.cli-app .cli-visao{align-items:stretch;}
+.cli-app .cli-visao .cli-v-guias:only-child{flex:1;}
+
+/* o envio rápido: o cartão com a frase curta embaixo do título */
+.cli-app .cli-v-enviar .card-head .hint{margin-top:2px;font-size:12.5px;}
+
+@media (max-width:767px){
+  .cli-app .cli-veredito .page-title{font-size:21px;}
+  .cli-app .cli-veredito-topo{flex-wrap:wrap;align-items:flex-start;gap:12px 14px;}
+  .cli-app .cli-veredito-txt{flex:1 1 0;}
+  .cli-app .cli-linha-guia .cli-g-logo{align-self:start;}
+  .cli-app .cli-veredito-ico{width:40px;height:40px;}
+  .cli-app .cli-veredito-topo > .btn{width:100%;}
+  .cli-app .cli-linha.cli-pendencia{flex-wrap:wrap;}
+  .cli-app .cli-pendencia > .btn{width:calc(100% - 46px);margin-left:46px;}
+  .cli-app .cli-pagar{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;padding:12px 14px;}
+  /* a paga só tem o ícone do comprovante: ele sobe para a primeira linha, sem uma linha só para ele */
+  .cli-app .cli-linha.cli-linha-guia.cli-paga{grid-template-areas:"logo txt acoes" "logo selo valor";}
+  .cli-app .cli-linha-guia.cli-paga .cli-g-acoes{justify-content:flex-end;}
+  .cli-app .cli-pagar-valor{font-size:20px;}
+  /* no celular, a ordem do que mais se usa: as guias, o envio, a atividade e o atendimento */
+  .cli-app .cli-visao > .cli-coluna{display:contents;}
+  .cli-app .cli-visao .cli-v-guias{order:1;}
+  .cli-app .cli-visao .cli-v-enviar{order:2;}
+  .cli-app .cli-visao .cli-v-atividade{order:3;}
+  .cli-app .cli-visao .cli-v-atendimento{order:4;}
+}
+
+
+/* Solicitações: o chamado que o escritório respondeu (esperando o cliente) no fundo verde bem suave, o mesmo do selo */
+.cli-app .cli-chamado-esperando > .cli-linha{background:color-mix(in srgb,var(--success-soft) 55%,transparent);}
+.cli-app .cli-lista > li.cli-chamado-esperando > .cli-linha:hover{background:var(--success-soft);}

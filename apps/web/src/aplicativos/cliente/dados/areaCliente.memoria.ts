@@ -1,10 +1,19 @@
 // A versão de exemplo da Área do Cliente (Vitor, 16/10/2026): uma empresa, "Personaly Company", com dados plausíveis que
-// acompanham a data de hoje (a vencida, a que vence hoje e as a vencer andam junto com o relógio). Só o token "exemplo"
-// abre; qualquer outro é um link inválido e não mostra dado nenhum. Nada sai do navegador.
+// acompanham a data de hoje (a vencida, a que vence hoje e as a vencer andam junto com o relógio). Nada sai do navegador.
+// Os tokens que abrem:
+//   "exemplo"            → o exemplo completo, com todas as seções (o protótipo do Vitor);
+//   "exemplo-real"       → o site COMO O CLIENTE REAL VÊ (17/10/2026): o mesmo formato que o banco entrega, montado pelo
+//                          estadoDoEspelho (sem Departamento pessoal, Documentos, guias pagas, ficha, linha digitável nem
+//                          avisos; o escritório sem telefone e sem horário, como o robô grava), com uma guia vencida;
+//   "exemplo-real-vazio" → o mesmo, no começo: nenhuma guia, a agenda vazia, nenhum chamado e nenhum envio.
+// Qualquer outro é um link inválido e não mostra dado nenhum. No modo banco, só o "exemplo" vem daqui (repo.ts).
 import { areaCliente as ac, formatos } from '@nads/core';
 import { AREA_VAZIA, TODAS_AS_SECOES, type DocumentoDoCliente, type Empregado, type EstadoDaArea, type RepoAreaCliente } from './areaCliente';
+import { documentoFormatado, estadoDoEspelho } from './espelho';
 
 export const TOKEN_DE_EXEMPLO = 'exemplo';
+export const TOKEN_COMO_NO_BANCO = 'exemplo-real';
+export const TOKEN_COMO_NO_BANCO_VAZIO = 'exemplo-real-vazio';
 
 const dois = (n: number) => String(n).padStart(2, '0');
 const iso = (d: Date) => d.getFullYear() + '-' + dois(d.getMonth() + 1) + '-' + dois(d.getDate());
@@ -15,22 +24,17 @@ const emDias = (hoje: Date, dias: number) => new Date(hoje.getFullYear(), hoje.g
 const competenciaDe = (venc: Date) => ac.competenciaDoMesDeVencimento(iso(venc).slice(0, 7));
 const comHora = (d: Date, h: number, m: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0).toISOString();
 
-/** O que o robô teria espelhado para a Personaly Company, relativo a hoje. */
-export function areaDeExemplo(hoje: Date): EstadoDaArea {
-  const guia = (id: string, tipo: ac.TipoDeGuia, dias: number, valor: number, numero?: string): ac.GuiaDoCliente => {
-    const venc = emDias(hoje, dias);
-    // DAS e DAE com o id do robô: das-AAAA-MM-codigo (o código da empresa no nads)
-    const competencia = competenciaDe(venc);
-    const doRobo = tipo === 'DAS' || tipo === 'DAE' ? tipo.toLowerCase() + '-' + competencia + '-9999' : id;
-    return { id: doRobo, tipo, competencia, vencimento: br(venc), valor, ...(numero ? { numero } : {}), situacao: ac.situacaoDaGuia(br(venc), hoje), temPdf: true };
-  };
-  const guias = [
-    guia('g1', 'DAS', -5, 1284.37, '07.18.26277.1234567-8'),
-    guia('g2', 'FGTS', 3, 917.42, '202609001234'),
-    guia('g3', 'DAE', 8, 432.1),
-  ];
+/** Uma guia de exemplo que vence daqui a `dias` dias (negativo: já venceu). DAS e DAE com o id do robô:
+ *  das-AAAA-MM-codigo (o código da empresa no nads). */
+function guiaDeExemplo(hoje: Date, id: string, tipo: ac.TipoDeGuia, dias: number, valor: number, numero?: string): ac.GuiaDoCliente {
+  const venc = emDias(hoje, dias);
+  const competencia = competenciaDe(venc);
+  const doRobo = tipo === 'DAS' || tipo === 'DAE' ? tipo.toLowerCase() + '-' + competencia + '-9999' : id;
+  return { id: doRobo, tipo, competencia, vencimento: br(venc), valor, ...(numero ? { numero } : {}), situacao: ac.situacaoDaGuia(br(venc), hoje), temPdf: true };
+}
 
-  // a agenda: de dois meses atrás até o mês que vem; o que já passou está feito, o que vem está por fazer
+/** A agenda de dois meses atrás até o mês que vem: o que já passou está feito, o que vem está por fazer. */
+function agendaDeExemplo(hoje: Date): ac.AgendaDoMes[] {
   const meses: ac.AgendaDoMes[] = [];
   for (let i = -2; i <= 1; i++) {
     const mes = iso(new Date(hoje.getFullYear(), hoje.getMonth() + i, 1)).slice(0, 7);
@@ -48,6 +52,17 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
     }
     meses.push(ac.agendaDoMes(mes, itens));
   }
+  return meses;
+}
+
+/** O que o robô teria espelhado para a Personaly Company, relativo a hoje. */
+export function areaDeExemplo(hoje: Date): EstadoDaArea {
+  const guias = [
+    guiaDeExemplo(hoje, 'g1', 'DAS', -5, 1284.37, '07.18.26277.1234567-8'),
+    guiaDeExemplo(hoje, 'g2', 'FGTS', 3, 917.42, '202609001234'),
+    guiaDeExemplo(hoje, 'g3', 'DAE', 8, 432.1),
+  ];
+  const meses = agendaDeExemplo(hoje);
 
   const envios: ac.ReciboDeEnvio[] = [
     { id: 'e1', nome: 'extrato-banco-do-brasil-setembro.pdf', tipo: 'extrato', tamanho: 482 * 1024, recebidoEm: comHora(emDias(hoje, -6), 9, 12) },
@@ -105,6 +120,36 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
   };
 }
 
+/**
+ * O que um link de verdade mostra hoje (17/10/2026), no formato exato do banco: o espelho que o robô grava
+ * (robo/area-cliente.js: o escritório só com o WhatsApp e o e-mail, sem telefone) passado pelo mesmo estadoDoEspelho do
+ * repositório do Firestore. `vazio`: o link recém-criado, sem guia, sem agenda, sem chamado e sem envio.
+ */
+export function areaComoNoBanco(hoje: Date, vazio = false): EstadoDaArea {
+  const resumo: ac.ResumoDoCliente = {
+    // o nome comprido de propósito: a razão social do cadastro, como o robô grava (o topo quebra a linha, nunca corta)
+    empresas: [{ codigo: 9999, nome: 'Personaly Company Comércio de Roupas e Acessórios Ltda', cnpj: documentoFormatado('00000000000191') }],
+    escritorio: { whatsapp: '(31) 99999-0000', email: 'atendimento@nilma.example' },
+    atualizadoEm: comHora(hoje, 7, 30),
+  };
+  const nomeDoLink = 'Personaly Company';
+  const estado = estadoDoEspelho(vazio ? { resumo, nomeDoLink, guias: [], agenda: [], envios: [], chamados: [] } : {
+    resumo, nomeDoLink,
+    guias: [guiaDeExemplo(hoje, 'g1', 'DAS', -5, 1284.37, '07.18.26277.1234567-8')],
+    agenda: agendaDeExemplo(hoje),
+    envios: [{ id: 'e1', nome: 'extrato-banco-do-brasil-setembro.pdf', tipo: 'extrato', tamanho: 482 * 1024, recebidoEm: comHora(emDias(hoje, -6), 9, 12) }],
+    chamados: [{
+      id: 'c1', tipo: 'documento', titulo: 'Certidão negativa estadual', situacao: 'respondido',
+      mensagens: [
+        { de: 'cliente', autor: 'Você', texto: 'Preciso da certidão negativa estadual para uma licitação.', em: comHora(emDias(hoje, -3), 10, 5) },
+        { de: 'escritorio', autor: 'Escritório', texto: 'Já emitimos. Está no seu e-mail e vale por 30 dias.', em: comHora(emDias(hoje, -2), 9, 40) },
+      ],
+    }],
+  });
+  // os dados são de mentira: o aviso "Versão de exemplo" continua e nada vai para o escritório
+  return { ...estado, exemplos: true };
+}
+
 const mesDe = (d: Date) => iso(d).slice(0, 7);
 
 /** Os documentos que o escritório deixou: do mês passado (alguns ainda não baixados) e de antes. */
@@ -157,61 +202,77 @@ function pdfDeExemplo(linhas: string[]): Blob {
   return new Blob([pdf], { type: 'application/pdf' });
 }
 
-/** O repositório de exemplo: guarda tudo na memória da página (recarregou, volta ao começo). */
+/** O repositório de exemplo: guarda tudo na memória da página (recarregou, volta ao começo), um estado por token. */
 export function criarRepoAreaClienteMemoria(agora: () => Date = () => new Date()): RepoAreaCliente {
-  let estado = areaDeExemplo(agora());
-  const ouvintes = new Set<() => void>();
-  const mudar = (f: (e: EstadoDaArea) => EstadoDaArea) => { estado = f(estado); ouvintes.forEach(o => o()); };
+  const fabricas: Record<string, (hoje: Date) => EstadoDaArea> = {
+    [TOKEN_DE_EXEMPLO]: areaDeExemplo,
+    [TOKEN_COMO_NO_BANCO]: h => areaComoNoBanco(h),
+    [TOKEN_COMO_NO_BANCO_VAZIO]: h => areaComoNoBanco(h, true),
+  };
+  const estados = new Map<string, EstadoDaArea>();
+  const ouvintes = new Map<string, Set<() => void>>();
+  /** o estado do token, criado na primeira vez; null = link inválido */
+  const de = (token: string): EstadoDaArea | null => {
+    if (!Object.hasOwn(fabricas, token)) return null;
+    if (!estados.has(token)) estados.set(token, fabricas[token](agora()));
+    return estados.get(token)!;
+  };
+  const mudar = (token: string, f: (e: EstadoDaArea) => EstadoDaArea) => {
+    const atual = de(token);
+    if (!atual) return;
+    estados.set(token, f(atual));
+    ouvintes.get(token)?.forEach(o => o());
+  };
   let proximo = 100;
 
   return {
     assinar(token, aoMudar) {
-      if (token !== TOKEN_DE_EXEMPLO) { aoMudar({ ...AREA_VAZIA, carregado: true }); return () => undefined; }
-      const avisar = () => aoMudar(estado);
-      ouvintes.add(avisar);
+      if (!de(token)) { aoMudar({ ...AREA_VAZIA, carregado: true }); return () => undefined; }
+      const avisar = () => aoMudar(de(token)!);
+      if (!ouvintes.has(token)) ouvintes.set(token, new Set());
+      ouvintes.get(token)!.add(avisar);
       avisar();
-      return () => { ouvintes.delete(avisar); };
+      return () => { ouvintes.get(token)?.delete(avisar); };
     },
     async enviar(token, tipo, arquivos) {
-      if (token !== TOKEN_DE_EXEMPLO) return;
       const recebidoEm = agora().toISOString();
-      mudar(e => ({ ...e, envios: [...arquivos.map(a => ({ id: 'e' + proximo++, nome: a.name, tipo, tamanho: a.size, recebidoEm })), ...e.envios] }));
+      mudar(token, e => ({ ...e, envios: [...arquivos.map(a => ({ id: 'e' + proximo++, nome: a.name, tipo, tamanho: a.size, recebidoEm })), ...e.envios] }));
     },
     async abrirChamado(token, { tipo, texto }) {
       // a foto da admissão (quando vem) fica só no pedido do banco; aqui o texto do pedido já diz que ela foi junto
-      if (token !== TOKEN_DE_EXEMPLO || ac.erroDoNovoChamado(tipo, texto)) return '';
+      if (!de(token) || ac.erroDoNovoChamado(tipo, texto)) return '';
       const id = 'c' + proximo++;
       const chamado: ac.ChamadoDoCliente = {
         id, tipo, titulo: ac.tituloDoChamado(tipo, texto), situacao: 'aberto',
         mensagens: [{ de: 'cliente', autor: 'Você', texto: texto.trim(), em: agora().toISOString() }],
       };
-      mudar(e => ({ ...e, chamados: [chamado, ...e.chamados] }));
+      mudar(token, e => ({ ...e, chamados: [chamado, ...e.chamados] }));
       return id;
     },
     async responderChamado(token, id, texto) {
-      if (token !== TOKEN_DE_EXEMPLO || !texto.trim()) return;
-      mudar(e => ({
+      if (!texto.trim()) return;
+      mudar(token, e => ({
         ...e,
         chamados: e.chamados.map(c => c.id !== id || !ac.chamadoAceitaResposta(c) ? c
           : { ...c, situacao: 'aberto', mensagens: [...c.mensagens, { de: 'cliente', autor: 'Você', texto: texto.trim(), em: agora().toISOString() }] }),
       }));
     },
     async enviarFotoDoFuncionario(token, funcionarioId, base64Jpeg) {
-      if (token !== TOKEN_DE_EXEMPLO || !base64Jpeg) return;
+      if (!base64Jpeg) return;
       const foto = 'data:image/jpeg;base64,' + base64Jpeg;
-      mudar(e => ({ ...e, empregados: e.empregados.map(f => f.id === funcionarioId ? { ...f, foto } : f) }));
+      mudar(token, e => ({ ...e, empregados: e.empregados.map(f => f.id === funcionarioId ? { ...f, foto } : f) }));
     },
     async baixarDocumento(token, id) {
-      const d = token === TOKEN_DE_EXEMPLO ? estado.documentos.find(x => x.id === id) : null;
+      const d = de(token)?.documentos.find(x => x.id === id);
       if (!d) return null;
-      if (d.novo) mudar(e => ({ ...e, documentos: e.documentos.map(x => x.id === id ? { ...x, novo: false } : x) }));
+      if (d.novo) mudar(token, e => ({ ...e, documentos: e.documentos.map(x => x.id === id ? { ...x, novo: false } : x) }));
       return {
         nome: formatos.slug(d.nome) + (d.competencia ? '-' + d.competencia : '') + '.pdf',
         arquivo: pdfDeExemplo(['DOCUMENTO DE EXEMPLO', d.nome, d.competencia ? 'Referente a ' + formatos.rot(d.competencia) : '', 'Nilma Contabilidade']),
       };
     },
     async baixarComprovante(token, id) {
-      const p = token === TOKEN_DE_EXEMPLO ? estado.pagas.find(x => x.id === id) : null;
+      const p = de(token)?.pagas.find(x => x.id === id);
       if (!p || !p.temComprovante) return null;
       return {
         nome: 'comprovante-' + formatos.slug(p.nome) + '.pdf',
@@ -219,7 +280,7 @@ export function criarRepoAreaClienteMemoria(agora: () => Date = () => new Date()
       };
     },
     async baixarGuia(token, id) {
-      const g = token === TOKEN_DE_EXEMPLO ? estado.guias.find(x => x.id === id) : null;
+      const g = de(token)?.guias.find(x => x.id === id);
       if (!g || !g.temPdf) return null;
       return {
         nome: `guia-${g.tipo.toLowerCase()}-${g.competencia}.pdf`,

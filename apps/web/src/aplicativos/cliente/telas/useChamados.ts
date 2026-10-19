@@ -1,21 +1,27 @@
 // ViewModel de Solicitações e chamados (Vitor, 16/10/2026): a abertura rápida (assunto, prioridade, o texto e um anexo),
 // o histórico, a conversa e a resposta. A prioridade e o nome do anexo vão no fim do texto; o anexo segue pelo Enviar.
+// "Melhora mais" de 17/10/2026: o irPara da Visão geral chega com um pedido (abrir a conversa de um chamado, ou o
+// formulário já com o assunto e o título, como o "Pedir guia nova"); os chamados que o escritório respondeu vêm primeiro.
 import { areaCliente as ac } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
+import { useLocation } from 'react-router';
 import { repoAreaCliente } from '../dados/repo';
 import { textoDoChamado } from '../dados/regras';
-import type { DaCasca } from './useAreaCliente';
+import type { DaCasca, PedidoDaTela } from './useAreaCliente';
 import { comMime } from './useEnviar';
 
 export const PRIORIDADES = ['Normal', 'Alta', 'Urgente'];
 
 export function useChamados({ token, area }: DaCasca) {
   const { toast } = useRetorno();
-  const [abertoId, setAbertoId] = useState('');
-  const [tipo, setTipo] = useState<ac.TipoDeChamado | ''>('');
+  // o pedido que veio com a aba (só na abertura dela)
+  const { state } = useLocation();
+  const [pedido] = useState(() => (state ?? {}) as PedidoDaTela);
+  const [abertoId, setAbertoId] = useState(pedido.chamado ?? '');
+  const [tipo, setTipo] = useState<ac.TipoDeChamado | ''>(pedido.novoChamado?.tipo ?? '');
   const [prioridade, setPrioridade] = useState('Normal');
-  const [titulo, setTitulo] = useState('');
+  const [titulo, setTitulo] = useState(pedido.novoChamado?.titulo ?? '');
   const [texto, setTexto] = useState('');
   const [anexo, setAnexo] = useState<File | null>(null);
   const [resposta, setResposta] = useState('');
@@ -23,6 +29,8 @@ export function useChamados({ token, area }: DaCasca) {
   const [enviando, setEnviando] = useState(false);
 
   const aberto = area.chamados.find(c => c.id === abertoId) ?? null;
+  // os que o escritório respondeu primeiro (esperam o cliente); o resto na ordem do espelho
+  const chamados = [...area.chamados.filter(c => c.situacao === 'respondido'), ...area.chamados.filter(c => c.situacao !== 'respondido')];
 
   async function criar() {
     const problema = ac.erroDoNovoChamado(tipo, (titulo + ' ' + texto).trim()) || (anexo ? ac.erroDoEnvio({ nome: anexo.name, tamanho: anexo.size }) : '');
@@ -54,7 +62,7 @@ export function useChamados({ token, area }: DaCasca) {
   }
 
   return {
-    chamados: area.chamados, aberto, alternar: (id: string) => { setAbertoId(a => (a === id ? '' : id)); setResposta(''); },
+    pedido, chamados, primeiroRespondido: chamados.find(c => c.situacao === 'respondido')?.id ?? '', aberto, alternar: (id: string) => { setAbertoId(a => (a === id ? '' : id)); setResposta(''); },
     tipos: ac.TIPOS_DE_CHAMADO, tipo, mudarTipo: (v: string) => setTipo(v as ac.TipoDeChamado | ''),
     prioridades: PRIORIDADES, prioridade, mudarPrioridade: setPrioridade,
     limite: ac.LIMITE_DO_ENVIO,

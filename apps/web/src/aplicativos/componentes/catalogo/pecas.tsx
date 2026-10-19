@@ -13,14 +13,18 @@ import { MenuDaRotina } from '../../tarefas/telas/executor/partes/MenuDaRotina';
 import { AndamentoDoAlterdata } from '../../concilia-ai/telas/importacao/partes/AndamentoDoAlterdata';
 import { AreaDeSoltar } from '../../cliente/partes/AreaDeSoltar';
 import { Avatar as AvatarDoCliente } from '../../cliente/partes/Avatar';
+import { CartaoDeAtendimento } from '../../cliente/partes/CartaoDeAtendimento';
 import { CartaoDeGuia } from '../../cliente/partes/CartaoDeGuia';
+import { CartaoDoVeredito } from '../../cliente/partes/CartaoDoVeredito';
 import { ConversaDoChamado } from '../../cliente/partes/ConversaDoChamado';
 import { EsqueletoDaArea } from '../../cliente/partes/EsqueletoDaArea';
 import { FORMATOS_DE_ARQUIVO, IconeDeArquivo } from '../../cliente/partes/IconeDeArquivo';
 import { LinhaDaAgenda } from '../../cliente/partes/LinhaDaAgenda';
+import { LinhaDaAtividade } from '../../cliente/partes/LinhaDaAtividade';
 import { LinhaDeGuia } from '../../cliente/partes/LinhaDeGuia';
 import { LinhaDePaga } from '../../cliente/partes/LinhaDePaga';
 import { MarcaDoEscritorio } from '../../cliente/partes/MarcaDoEscritorio';
+import { ResumoDoPagamento } from '../../cliente/partes/ResumoDoPagamento';
 import { SiglaDaGuia } from '../../cliente/partes/SiglaDaGuia';
 import { Vazio as VazioDoCliente } from '../../cliente/partes/Vazio';
 import { BlocoDoLink } from '../../tarefas/telas/area-cliente/partes/BlocoDoLink';
@@ -794,12 +798,13 @@ export const PECAS_BASE: Peca[] = [
         <CartaoDeGuia guia={{ id: 'x3', tipo: 'DAE', competencia: '2026-09', vencimento: '24/10/2026', valor: 432.1, situacao: 'a vencer', temPdf: true }} faltam="em 8 dias" destaque={false} onBaixar={nada} />
       </div></div>
     ) },
-  { id: 'linha-agenda', tipo: 'listas', nome: 'Linha da agenda (Área do Cliente)', descricao: 'Do card "O que o escritório entrega no mês" de Guias e obrigações (versão D, Vitor, 16/10/2026): a data numa folhinha (o dia e o mês), a obrigação em português simples e a situação — só o A fazer leva selo (amarelo); Feito fica discreto, com o ✓ verde; Não se aplica com a linha apagada', componente: 'LinhaDaAgenda', classes: ['cli-lista', 'cli-linha', 'cli-data', 'cli-linha-txt', 'cli-feito', 'badge badge-warn'], telas: ['c-cliente-guias'], largo: true,
+  { id: 'linha-agenda', tipo: 'listas', nome: 'Linha da agenda (Área do Cliente)', descricao: 'Do card "O que o escritório entrega no mês" de Guias e obrigações (versão D, Vitor, 16/10/2026): a data numa folhinha (o dia e o mês), a obrigação em português simples e a situação — só o A fazer leva selo (amarelo); Feito fica discreto, com o ✓ verde; Não se aplica com a linha apagada. Na Visão geral (polida de 17/10/2026), sem o selo (semSituacao): só as que o escritório ainda entrega no mês, com a folhinha na largura da logo da guia (40 px) para os textos ficarem em fila', componente: 'LinhaDaAgenda', classes: ['cli-lista', 'cli-linha', 'cli-data', 'cli-linha-txt', 'cli-feito', 'badge badge-warn'], telas: ['c-cliente-guias'], largo: true,
     demo: () => (
       <div className="cli-app cli-demo" style={{ width: '100%' }}><ul className="cli-lista">
         <LinhaDaAgenda item={{ id: 'fgts', nome: 'FGTS', vence: '2026-10-20', situacao: 'feito', feitoEm: '2026-10-14T15:30:00.000Z' }} />
         <LinhaDaAgenda item={{ id: 'das', nome: 'DAS do Simples Nacional', vence: '2026-10-20', situacao: 'a fazer' }} />
         <LinhaDaAgenda item={{ id: 'icms', nome: 'ICMS (imposto estadual)', vence: '2026-10-09', situacao: 'nao se aplica' }} />
+        <LinhaDaAgenda item={{ id: 'darf-inss', nome: 'DARF do INSS da folha', vence: '2026-10-20', situacao: 'a fazer' }} semSituacao />
       </ul></div>
     ) },
   { id: 'conversa-chamado', tipo: 'listas', nome: 'Conversa do chamado (Área do Cliente)', descricao: 'Das Solicitações da Área do Cliente (Vitor, 16/10/2026): os balões da conversa em ordem, como o balão do nads — o do cliente à direita (carmim clarinho, sem borda), o do escritório à esquerda (no branco do cartão, com a borda fina); o escritório sempre aparece como "Escritório". A conversa abre embaixo da linha dela, com o campo de responder', componente: 'ConversaDoChamado', classes: ['cli-conversa', 'cli-balao', 'cli-balao-cliente', 'cli-balao-escritorio'], telas: ['c-cliente-chamados'], largo: true,
@@ -811,11 +816,11 @@ export const PECAS_BASE: Peca[] = [
         ]} />
       </div>
     ) },
-  { id: 'linha-guia', tipo: 'listas', nome: 'Linha de guia (Área do Cliente)', descricao: 'Das "Obrigações e guias próximas" da Visão geral da Área do Cliente (versão D, Vitor, 16/10/2026): uma grade de colunas fixas, igual em todas as linhas (17/10/2026: "quero que melhore esse layout") — a logo do órgão solta (40 px), o nome com a competência e o vencimento, o selo da situação (largura fixa, à esquerda), o valor (largura fixa, à direita, tabular) e as ações (copiar e baixar, à direita); no celular o selo, o valor e as ações descem para a segunda linha. Na Visão geral, separadas em A pagar e Pagas (as pagas mais discretas)', componente: 'LinhaDeGuia', classes: ['cli-lista', 'cli-linha', 'cli-linha-guia', 'cli-g-logo', 'cli-g-txt', 'cli-g-selo', 'cli-g-valor', 'cli-g-acoes', 'cli-grupo', 'badge', 'icon-btn'], telas: ['c-cliente', 'c-cliente-guias'], largo: true,
+  { id: 'linha-guia', tipo: 'listas', nome: 'Linha de guia (Área do Cliente)', descricao: 'Das "Obrigações e guias próximas" da Visão geral da Área do Cliente (versão D, Vitor, 16/10/2026): uma grade de colunas fixas, igual em todas as linhas (17/10/2026: "quero que melhore esse layout") — a logo do órgão solta (40 px), o nome com a competência e o vencimento, o selo da situação (largura fixa, à esquerda), o valor (largura fixa, à direita, tabular) e as ações (copiar e baixar, à direita); no celular o selo, o valor e as ações descem para a segunda linha. Na Visão geral, separadas em A pagar e Pagas (as pagas mais discretas). Nada vira "…": o nome e o detalhe quebram a linha, e cada pedaço do detalhe (o vencimento, a competência) fica inteiro (cli-junto). "Melhora mais" de 17/10/2026: a ação principal com nome — Baixar (carmim só na próxima a pagar) com o copiar o código ao lado; na vencida, Pedir nova (a guia vencida não passa no banco; abre o chamado já com o título), com o PDF antigo no ícone; no celular as ações descem para uma terceira linha', componente: 'LinhaDeGuia', classes: ['cli-lista', 'cli-linha', 'cli-linha-guia', 'cli-g-logo', 'cli-g-txt', 'cli-g-selo', 'cli-g-valor', 'cli-g-acoes', 'cli-grupo', 'badge', 'icon-btn', 'cli-junto'], telas: ['c-cliente', 'c-cliente-guias'], largo: true,
     demo: () => (
       <div className="cli-app cli-demo" style={{ width: '100%' }}><ul className="cli-lista">
-        <LinhaDeGuia codigo="07190.00009 26277.123456" onCopiar={nada} faltam="há 5 dias" destaque guia={{ id: 'l1', tipo: 'DAS', competencia: '2026-09', vencimento: '11/10/2026', valor: 1284.37, situacao: 'vencida', temPdf: true }} onBaixar={nada} />
-        <LinhaDeGuia guia={{ id: 'l2', tipo: 'FGTS', competencia: '2026-09', vencimento: '16/10/2026', valor: 917.42, situacao: 'vence hoje', temPdf: true }} onBaixar={nada} />
+        <LinhaDeGuia faltam="há 5 dias" guia={{ id: 'l1', tipo: 'DAS', competencia: '2026-09', vencimento: '11/10/2026', valor: 1284.37, situacao: 'vencida', temPdf: true }} onBaixar={nada} onPedirNova={nada} />
+        <LinhaDeGuia codigo="85800000009-1" onCopiar={nada} destaque guia={{ id: 'l2', tipo: 'FGTS', competencia: '2026-09', vencimento: '16/10/2026', valor: 917.42, situacao: 'vence hoje', temPdf: true }} onBaixar={nada} />
         <LinhaDeGuia guia={{ id: 'l3', tipo: 'DAE', competencia: '2026-09', vencimento: '24/10/2026', valor: 432.1, situacao: 'a vencer', temPdf: true }} onBaixar={nada} />
       </ul></div>
     ) },
@@ -865,15 +870,16 @@ export const PECAS_BASE: Peca[] = [
         <AvatarDoCliente nome="Mariana Oliveira Silva" foto={FOTO_DE_EXEMPLO} tamanho={72} onFoto={nada} />
       </div>
     ) },
-  { id: 'vazio-cliente', tipo: 'avisos', nome: 'Estado vazio (Área do Cliente)', descricao: 'Quando a lista não tem nada (versão D, Vitor, 16/10/2026): o ícone num círculo suave, a frase curta e, quando faz sentido, o que fazer (botão secundário, ex.: Limpar os filtros)', componente: 'Vazio', classes: ['cli-vazio', 'cli-vazio-ico'], telas: CLI_TELAS, largo: true,
+  { id: 'vazio-cliente', tipo: 'avisos', nome: 'Estado vazio (Área do Cliente)', descricao: 'Quando a lista não tem nada (versão D, Vitor, 16/10/2026): o ícone num círculo suave, a frase curta e, quando faz sentido, o que fazer (botão secundário, ex.: Limpar os filtros). Polida de 17/10/2026: a frase diz o que importa ("Nada para pagar agora"); no cartão esticado pela grade, o vazio fica no meio da altura; dentro de uma lista com outros grupos, só a linha curta cinza (cli-grupo-vazio)', componente: 'Vazio', classes: ['cli-vazio', 'cli-vazio-ico', 'cli-grupo-vazio'], telas: CLI_TELAS, largo: true,
     uso: '<Vazio icone="search" titulo="Nenhum documento com esse filtro" acao={{ rotulo: "Limpar os filtros", onClick: limpar }} />',
     demo: () => (
       <div className="cli-app cli-demo" style={{ display: 'flex', flexWrap: 'wrap', gap: 16, width: '100%' }}>
         <div className="card" style={{ flex: '1 1 260px' }}><VazioDoCliente icone="search" titulo="Nenhum documento com esse filtro" acao={{ rotulo: 'Limpar os filtros', onClick: nada }} /></div>
         <div className="card" style={{ flex: '1 1 260px' }}><VazioDoCliente icone="mensagem" titulo="Nenhum chamado ainda" texto="Os pedidos que você abrir aparecem aqui." /></div>
+        <div className="card" style={{ flex: '1 1 260px' }}><VazioDoCliente icone="recibo" titulo="Nada para pagar agora" texto="Quando o escritório gerar uma guia, ela aparece aqui." /></div>
       </div>
     ) },
-  { id: 'esqueleto-cliente', tipo: 'carregamento', nome: 'Esqueleto da Área do Cliente', descricao: 'Enquanto o link carrega (versão D, Vitor, 16/10/2026): o desenho da Visão geral — o cartão de boas-vindas, os quatro números e a lista — com as linhas do Esqueleto do nads, que já têm o brilho passando', componente: 'EsqueletoDaArea', classes: ['cli-esqueleto', 'esqueleto-linha'], telas: ['c-cliente'], largo: true,
+  { id: 'esqueleto-cliente', tipo: 'carregamento', nome: 'Esqueleto da Área do Cliente', descricao: 'Enquanto o link carrega (versão D, Vitor, 16/10/2026): o desenho da Visão geral — o veredito no alto (o círculo e a frase) e as duas colunas embaixo ("melhora mais" de 17/10/2026) — com as linhas do Esqueleto do nads, que já têm o brilho passando', componente: 'EsqueletoDaArea', classes: ['cli-esqueleto', 'esqueleto-linha'], telas: ['c-cliente'], largo: true,
     demo: () => <div className="cli-app cli-demo" style={{ width: '100%' }}><EsqueletoDaArea /></div> },
   { id: 'logos-orgaos', tipo: 'logos', nome: 'Órgãos das guias', descricao: 'As logos dos órgãos (Vitor, 17/10/2026, das fontes oficiais), redesenhadas em SVG para ficarem nítidas em qualquer tamanho: o símbolo do Simples Nacional, o triângulo do Governo de Minas, o símbolo da Receita Federal, e as do FGTS e do INSS que o nads já tinha. Sempre coloridas; a da Receita aceita --logo-receita para o fundo escuro (o azul oficial some nele)', componente: 'LogoSimplesNacional · LogoGovernoMinas · LogoReceitaFederal · LogoFgts · LogoInss', telas: ['c-cliente', 'c-cliente-guias', 't-exec-folha'],
     uso: '<LogoReceitaFederal />',
@@ -892,5 +898,41 @@ export const PECAS_BASE: Peca[] = [
         <LinhaDePaga paga={{ id: 'p1', tipo: 'HON', nome: 'Honorários da Nilma Contabilidade', competencia: '2026-10', valor: 1250, pagoEm: '10/10/2026', temComprovante: true }} onComprovante={nada} />
         <LinhaDePaga paga={{ id: 'p2', tipo: 'DCTFWeb', nome: 'INSS da folha (DCTFWeb)', competencia: '2026-08', valor: 1980.3, pagoEm: '18/09/2026', temComprovante: true }} onComprovante={nada} />
       </ul></div>
+    ) },
+  { id: 'veredito-cliente', tipo: 'cartoes', nome: 'Veredito (Área do Cliente)', descricao: 'O topo da Visão geral da Área do Cliente ("melhora mais" de 17/10/2026, Vitor: "procura na net exemplos de portal de cliente"; o padrão dos portais das contabilidades): a frase da situação ("Tudo em dia", "O DAS venceu em 12/10", "Você tem 2 pendências") com o ícone no círculo suave da cor do significado (verde, amarelo, vermelho) e a sobrelinha com o mês e a hora da atualização. Uma pendência só: a ação dela ao lado da frase, em carmim. Duas ou mais: embaixo do fio, "O que precisamos de você", uma linha por pendência com UMA ação (a primeira em carmim). Nenhuma: só a frase, sem botão. No celular os botões ocupam a largura', componente: 'CartaoDoVeredito', classes: ['card', 'cli-veredito', 'cli-veredito-topo', 'cli-veredito-ico', 'cli-veredito-txt', 'cli-pendencias', 'cli-pendencia', 'cli-tom-ok', 'cli-tom-warn', 'cli-tom-bad'], telas: ['c-cliente'], largo: true,
+    uso: '<CartaoDoVeredito sobre="Outubro de 2026 · atualizado hoje, 07:30" tom="bad" titulo="Você tem 2 pendências" texto="1 guia vencida e 1 resposta do escritório." itens={[{ id, tom, icone, titulo, texto, rotulo, onAcao }]} />',
+    demo: () => (
+      <div className="cli-app cli-demo" style={{ display: 'grid', gap: 16, width: '100%' }}>
+        <CartaoDoVeredito sobre="Outubro de 2026 · atualizado hoje, 07:30" tom="ok" titulo="Tudo em dia" texto="Nada pendente com você. A próxima guia, do FGTS, vence em 20/10." itens={[]} />
+        <CartaoDoVeredito sobre="Outubro de 2026 · atualizado hoje, 07:30" tom="bad" titulo="Você tem 2 pendências" texto="1 guia vencida e 1 resposta do escritório." itens={[
+          { id: 'g', tom: 'bad', icone: 'recibo', titulo: 'O DAS venceu em 12/10', texto: 'R$ 1.284,37. Se ainda não pagou, peça uma guia nova: a vencida não passa no banco.', rotulo: 'Pedir guia nova', onAcao: nada },
+          { id: 'c', tom: 'warn', icone: 'mensagem', titulo: 'O escritório respondeu', texto: 'Certidão negativa estadual', rotulo: 'Ver resposta', onAcao: nada },
+        ]} />
+      </div>
+    ) },
+  { id: 'resumo-pagamento', tipo: 'cartoes', nome: 'Resumo do pagamento (Área do Cliente)', descricao: 'No alto do cartão "Guias a pagar" da Visão geral ("melhora mais" de 17/10/2026, como o assistente de pagamentos da "Visão do Cliente" do Omie): quanto falta pagar, o próximo vencimento com quantos dias faltam e, quando o escritório sabe, o já pago no mês; os números grandes e tabulares numa faixa de fundo suave. Some quando não tem guia por vencer. Embaixo da lista, a dica de como pagar (cli-como-pagar)', componente: 'ResumoDoPagamento', classes: ['cli-pagar', 'cli-pagar-valor', 'cli-como-pagar'], telas: ['c-cliente'], largo: true,
+    uso: '<ResumoDoPagamento aPagar={1349.52} quantas={2} proximo="20/10" faltam="em 3 dias" pago={{ valor: 1250, quantas: 1 }} />',
+    demo: () => (
+      <div className="cli-app cli-demo" style={{ width: '100%' }}>
+        <ResumoDoPagamento aPagar={1349.52} quantas={2} proximo="20/10" faltam="em 3 dias" pago={{ valor: 1250, quantas: 1 }} />
+        <p className="cli-como-pagar"><Icone nome="ajuda" width={16} height={16} />Baixe o PDF e pague no app do seu banco até o vencimento.</p>
+      </div>
+    ) },
+  { id: 'linha-atividade', tipo: 'listas', nome: 'Atividade recente (Área do Cliente)', descricao: 'A linha do tempo da Visão geral ("melhora mais" de 17/10/2026): o ícone no círculo suave ligado ao de baixo por um fio fino (a resposta do escritório em carmim suave, o que o escritório concluiu em verde, o resto neutro), o que aconteceu, o detalhe embaixo (o arquivo, o chamado; quebra a linha, nunca corta) e quando à direita ("hoje, 09:12", "ontem", "11/10"). A resposta abre a conversa. Some quando não tem nada', componente: 'LinhaDaAtividade', classes: ['cli-atividades', 'cli-atividade', 'cli-ativ-linha', 'cli-ativ-ico', 'cli-ativ-quando'], telas: ['c-cliente'], largo: true,
+    demo: () => (
+      <div className="cli-app cli-demo" style={{ width: '100%' }}><ul className="cli-lista cli-atividades">
+        <LinhaDaAtividade origem="resposta" titulo="O escritório respondeu" texto="Certidão negativa estadual" quando="hoje, 09:40" onAbrir={nada} />
+        <LinhaDaAtividade origem="chamado" titulo="Você abriu um chamado" texto="Certidão negativa estadual" quando="ontem, 10:05" onAbrir={nada} />
+        <LinhaDaAtividade origem="feito" titulo="DCTFWeb (declaração da folha)" texto="Concluído pelo escritório" quando="12/10" />
+        <LinhaDaAtividade origem="envio" titulo="Recebemos seu arquivo" texto="extrato-banco-do-brasil-setembro.pdf" quando="11/10" />
+      </ul></div>
+    ) },
+  { id: 'cartao-atendimento', tipo: 'cartoes', nome: 'Cartão de atendimento (Área do Cliente)', descricao: 'Na Visão geral da Área do Cliente (polida de 17/10/2026, Vitor: "dê uma polida na tela de clientes"): o N da Nilma com "Seu atendimento" e o nome da equipe; o horário só quando o escritório tem; cada contato numa linha que já faz a ação, com o ícone num círculo suave, o rótulo pequeno em cima e a seta — o WhatsApp abre a conversa, o e-mail abre o programa de e-mail, o telefone liga. Com o banco o robô grava só o WhatsApp e o e-mail: o cartão fica com as duas linhas, sem buraco', componente: 'CartaoDeAtendimento', classes: ['card', 'cli-atendimento', 'cli-pessoa', 'cli-horario', 'cli-contatos', 'cli-contato', 'cli-contato-ico', 'cli-contato-txt'], telas: ['c-cliente'], largo: true,
+    uso: '<CartaoDeAtendimento contato={{ equipe, horario?, whatsapp?, email?, telefone? }} onWhatsapp={abrirConversa} />',
+    demo: () => (
+      <div className="cli-app cli-demo" style={{ display: 'flex', flexWrap: 'wrap', gap: 16, width: '100%' }}>
+        <div style={{ flex: '1 1 300px' }}><CartaoDeAtendimento contato={{ equipe: 'Nilma Contabilidade', whatsapp: '(38) 99999-0000', email: 'atendimento@nilma.example' }} onWhatsapp={nada} /></div>
+        <div style={{ flex: '1 1 300px' }}><CartaoDeAtendimento contato={{ equipe: 'Equipe Nilma Contabilidade', horario: 'Segunda a sexta, das 8h às 18h', whatsapp: '(38) 99999-0000', email: 'atendimento@nilma.example', telefone: '(38) 3333-0000' }} onWhatsapp={nada} /></div>
+      </div>
     ) },
 ];

@@ -61,7 +61,7 @@ export function notificacoes(e: Pick<EstadoDaArea, 'guias' | 'documentos' | 'cha
     else if (g.situacao === 'vence hoje') lista.push({ id: 'g-' + g.id, titulo: rotuloDaGuia(g) + ' vence hoje', texto: 'Vencimento ' + g.vencimento, ir: 'guias' });
   }
   const novos = e.documentos.filter(d => d.novo);
-  if (novos.length) lista.push({ id: 'docs-' + novos.map(d => d.id).join('.'), titulo: novos.length === 1 ? 'Documento novo' : novos.length + ' documentos novos', texto: novos.map(d => d.nome).slice(0, 2).join(', ') + (novos.length > 2 ? '…' : ''), ir: 'documentos' });
+  if (novos.length) lista.push({ id: 'docs-' + novos.map(d => d.id).join('.'), titulo: novos.length === 1 ? 'Documento novo' : novos.length + ' documentos novos', texto: novos.map(d => d.nome).slice(0, 2).join(', ') + (novos.length > 2 ? ' e mais ' + (novos.length - 2) : ''), ir: 'documentos' });
   for (const c of e.chamados) {
     if (c.situacao === 'respondido') lista.push({ id: 'c-' + c.id + '-' + c.mensagens.length, titulo: 'O escritório respondeu', texto: c.titulo, ir: 'chamados' });
   }
