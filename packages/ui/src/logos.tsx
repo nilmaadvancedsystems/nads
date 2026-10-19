@@ -263,9 +263,9 @@ export function LogoInss({ cor }: { cor?: boolean }) {
 }
 
 /** O logo do FGTS (Vitor, 07/10/2026): as letras em verde e, no F, a bandeirinha (o triângulo amarelo e o azul). */
-export function LogoFgts({ cor }: { cor?: boolean }) {
+export function LogoFgts({ cor, soSimbolo }: { cor?: boolean; /** só o F com a bandeirinha, quadrado (a lateral das páginas do DP) */ soSimbolo?: boolean }) {
   return (
-    <svg viewBox="0 0 120 34" width="100%" height="100%" aria-hidden="true" style={cinzaSeNao(cor)}>
+    <svg viewBox={soSimbolo ? '0 0 30 34' : '0 0 120 34'} width="100%" height="100%" aria-hidden="true" style={cinzaSeNao(cor)}>
       {/* o F: a barra de cima e o canto com a bandeirinha */}
       <path fill="#0A9B3A" d="M2 4 H28 V10 H10 L2 18 Z" />
       <path fill="#0A9B3A" d="M2 18 L10 10 V30 H2 Z" />

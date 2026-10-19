@@ -573,14 +573,18 @@ button.gh-crumb:hover{background:var(--hover-bg);}
 .menu-item.is-disabled:hover::before{background:none;}
 .layout{display:grid;grid-template-columns:256px minmax(0,1fr);align-items:stretch;}
 .subnav{min-height:calc(100vh - var(--hdr-h,113px));
-  border-right:1px solid var(--border);padding:16px 8px 16px 16px;display:flex;flex-direction:column;gap:2px;}
+  border-right:1px solid var(--border);padding:16px 12px;display:flex;flex-direction:column;gap:2px;}
 .subnav-title{font-size:var(--fs-12);font-weight:600;color:var(--ink-muted);padding:4px 8px 8px;}
-.subnav-item{position:relative;display:flex;align-items:center;gap:8px;width:100%;min-height:32px;padding:6px 8px;border:none;background:none;
+.subnav-item{position:relative;display:flex;align-items:center;gap:12px;width:100%;min-height:34px;padding:6px 10px;border:none;background:none;
   border-radius:6px;color:var(--ink);font-size:var(--fs-14);font-family:inherit;text-align:left;cursor:pointer;}
 .subnav-item:hover{background:var(--hover-bg);}
-.subnav-item svg{width:16px;height:16px;flex:none;color:var(--ink-muted);}
-.subnav-item.active{background:var(--hover-bg);font-weight:600;}
-.subnav-item.active::before{content:'';position:absolute;left:-8px;top:6px;bottom:6px;width:4px;border-radius:6px;background:var(--tab-active);}
+.subnav-item svg{width:17px;height:17px;flex:none;color:var(--ink-muted);}
+/* a logo da marca no lugar do ícone (FGTS Digital no DP): do mesmo tamanho dos ícones */
+.subnav-marca{width:17px;height:17px;flex:none;display:inline-flex;align-items:center;justify-content:center;}
+.subnav-marca svg{width:17px;height:17px;color:inherit;}
+/* o item aberto igual ao da gaveta ☰ (19/10/2026): o mesmo fundo, o peso 500 e o ícone na cor do texto, sem a barrinha vermelha */
+.subnav-item.active{background:var(--hover-bg);font-weight:500;}
+.subnav-item.active svg{color:var(--ink);}
 .subnav-count{margin-left:auto;min-width:20px;padding:0 6px;border-radius:2em;background:var(--hover-bg);font-size:var(--fs-12);font-weight:600;
   line-height:18px;text-align:center;color:var(--ink);}
 .subnav-item.is-disabled{opacity:.45;cursor:not-allowed;}
@@ -641,14 +645,14 @@ td > .gh-blank.compacto{white-space:normal;}
 .subnav-itens{display:flex;flex-direction:column;gap:2px;}
 .subnav-sep{border:0;border-top:1px solid var(--border);margin:8px 0;}
 /* o nome do grupo (Ativo, Passivo…) em cima das seções dele, como os títulos da barra lateral do GitHub */
-.subnav-titulo{margin:0;padding:4px 8px 2px;font-size:var(--fs-12);font-weight:600;color:var(--ink-muted);}
-.subnav-titulo.depois{margin-top:8px;padding-top:10px;border-top:1px solid var(--border);}
+.subnav-titulo{margin:0;padding:4px 10px 2px;font-size:var(--fs-12);font-weight:500;color:var(--ink-faint);}
+.subnav-titulo.depois{margin-top:8px;padding-top:14px;border-top:1px solid var(--border);}
 .sidebar-oculta .subnav-titulo{display:none;}
 @media (max-width:768px){.subnav-titulo{display:none;}}
 /* o "Ocultar barra lateral" sempre à mão: a página rola e ele fica parado no pé da tela */
 .subnav-foot{margin-top:auto;padding-top:8px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px;position:sticky;bottom:0;z-index:1;background:var(--bg);padding-bottom:16px;margin-bottom:-16px;}
 @media (max-width:768px){.subnav-foot{position:static;margin-bottom:0;padding-bottom:0;}}
-.subnav-foot .theme-toggle{align-self:flex-start;margin-left:8px;}
+.subnav-foot .theme-toggle{align-self:flex-start;margin-left:10px;}
 .step-pill.is-locked,.subnav-item.is-locked,.menu-item.is-locked{opacity:.45;cursor:not-allowed;}
 .steps .step-pill.is-locked:hover,.subnav .subnav-item.is-locked:hover{background:transparent;}
 .menu-item.is-locked:hover::before{background:none;}
@@ -2295,9 +2299,8 @@ tr.linha-abre,.imp-linha,.gh-crumb,.drawer-x{
 .com-indicador > .indicador{position:absolute;left:0;top:0;width:0;height:0;opacity:0;pointer-events:none;z-index:0;}
 .indicador-sublinhado{border-radius:6px;background:var(--tab-active);}
 .menu.com-indicador .menu-item.active::after{display:none;}
-/* a lateral: o fundo do ativo desliza, com a barrinha vermelha à esquerda dele */
+/* a lateral: o fundo do ativo desliza (sem a barrinha vermelha: igual ao item aberto da gaveta ☰) */
 .subnav-itens.com-indicador > .indicador{border-radius:6px;background:var(--hover-bg);}
-.subnav-itens.com-indicador > .indicador::before{content:'';position:absolute;left:-8px;top:6px;bottom:6px;width:4px;border-radius:6px;background:var(--tab-active);}
 .subnav-itens.com-indicador .subnav-item{z-index:1;}
 .subnav-itens.com-indicador .subnav-item.active{background:transparent;}
 .subnav-itens.com-indicador .subnav-item.active::before{display:none;}
