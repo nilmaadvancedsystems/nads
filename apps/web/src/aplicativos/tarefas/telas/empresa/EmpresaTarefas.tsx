@@ -8,7 +8,6 @@ import { Navigate } from 'react-router';
 import { TrilhaDoTopo } from '../../../../comum/topo';
 import { BASE } from '../../casca/navegacao';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
-import { FeedbacksDaEmpresa } from '../cadastro/feedbacks/FeedbacksDaEmpresa';
 import { useEmpresa } from './useEmpresa';
 
 export function EmpresaTarefas({ rota }: { rota: string }) {
@@ -38,9 +37,6 @@ export function EmpresaTarefas({ rota }: { rota: string }) {
           </button>
         </div>
       </div>
-
-      {/* os feedbacks em aberto da empresa (Vitor, 19/10/2026): o recado do sênior para a equipe; sem nenhum, o bloco some */}
-      <FeedbacksDaEmpresa nome={vm.empresa.nome} codigo={vm.empresa.codigo} soAbertos />
 
       {vm.carregando ? <Esqueleto numeros={3} linhas={5} /> : (
         <>

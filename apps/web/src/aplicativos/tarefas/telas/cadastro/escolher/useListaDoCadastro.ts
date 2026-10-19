@@ -6,11 +6,11 @@ import { demo, empresas, formatos } from '@nads/core';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { caminhoDoCadastro } from '../../../casca/navegacao';
-import { useBancosDoEntregas, useFeedbacksDaEmpresa, useRegimesDoEntregas, useTodosOsCadastros } from '../../../dados/repo';
+import { useBancosDoEntregas, useRegimesDoEntregas, useTodosOsCadastros } from '../../../dados/repo';
 
 const cad = empresas.cadastro;
 
-export type Situacao = '' | 'incompletos' | 'completos' | 'cadastradas' | 'so-robo' | 'sem-bancos' | 'feedback-alta';
+export type Situacao = '' | 'incompletos' | 'completos' | 'cadastradas' | 'so-robo' | 'sem-bancos';
 export const SITUACOES: readonly { valor: Situacao; rotulo: string }[] = [
   // o que falta no cadastro (13/10/2026: "reveja a estrutura inteira do cadastro")
   { valor: 'incompletos', rotulo: 'Cadastro incompleto' },
@@ -18,8 +18,6 @@ export const SITUACOES: readonly { valor: Situacao; rotulo: string }[] = [
   { valor: 'cadastradas', rotulo: 'Com bancos cadastrados' },
   { valor: 'so-robo', rotulo: 'Só o que o robô sabe' },
   { valor: 'sem-bancos', rotulo: 'Sem banco nenhum' },
-  // os feedbacks da empresa (19/10/2026): as que têm feedback de prioridade alta em aberto
-  { valor: 'feedback-alta', rotulo: 'Com feedback de prioridade alta' },
 ];
 
 export interface BancoNaLista { marca: string; nome: string; rotulo: string }
@@ -43,8 +41,6 @@ export interface LinhaEmpresa {
   /** regime, contato, bancos, plano e sócios: o que já tem */
   itens: ItemDoCadastro[];
   completos: number;
-  /** os feedbacks em aberto de prioridade alta (o selo na linha; 19/10/2026) */
-  feedbacksAltos: number;
 }
 
 const completude = (itens: ItemDoCadastro[]) => ({ itens, completos: itens.filter(i => i.tem).length });
@@ -54,9 +50,6 @@ export function useListaDoCadastro() {
   const navegar = useNavigate();
   const todos = useTodosOsCadastros();
   const entregas = useBancosDoEntregas();
-  // os feedbacks em aberto de todas as empresas, para o selo das de prioridade alta
-  const abertos = useFeedbacksDaEmpresa().abertos().lista;
-  const altos = useMemo(() => empresas.feedbacks.abertosPorEmpresa(abertos), [abertos]);
   const [busca, setBusca] = useState('');
   const [situacao, setSituacao] = useState<Situacao>('');
 
@@ -78,7 +71,6 @@ export function useListaDoCadastro() {
       bancos: contas.map(b => ({ marca: b.marca, nome: b.nome, rotulo: empresas.rotuloDaConta(b) })),
       plano: c?.plano?.contas ?? null,
       atualizado: c?.atualizadoEm ? new Date(c.atualizadoEm).toLocaleDateString('pt-BR') : '',
-      feedbacksAltos: altos.get(formatos.slug(x.nome))?.altas || 0,
       ...completude([
         { id: 'regime', rotulo: 'Regime', tem: !!((c && cad.regimeDoCadastro(c)) || x.regime) },
         { id: 'contato', rotulo: 'E-mail ou WhatsApp', tem: !!(c?.contato?.email || c?.contato?.whatsapp) },
@@ -87,7 +79,7 @@ export function useListaDoCadastro() {
         { id: 'socios', rotulo: 'Sócios', tem: !!c?.socios?.length },
       ]),
     };
-  }), [todos.porId, entregas.porCodigo, altos]);
+  }), [todos.porId, entregas.porCodigo]);
 
   const achadas = useMemo(() => {
     const q = busca.trim();
@@ -97,8 +89,7 @@ export function useListaDoCadastro() {
       || (situacao === 'completos' && l.completos === l.itens.length)
       || (situacao === 'cadastradas' && l.origem === 'cadastro')
       || (situacao === 'so-robo' && l.origem === 'robo')
-      || (situacao === 'sem-bancos' && l.origem === 'nenhum')
-      || (situacao === 'feedback-alta' && l.feedbacksAltos > 0));
+      || (situacao === 'sem-bancos' && l.origem === 'nenhum'));
   }, [linhas, busca, situacao]);
 
   return {

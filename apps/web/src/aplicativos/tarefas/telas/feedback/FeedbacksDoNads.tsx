@@ -1,16 +1,24 @@
 // Os feedbacks da equipe (Vitor, 07/10/2026: "abra uma janela flutuante", aberta no pé da gaveta ☰, junto da versão):
 // à esquerda Novos / Vistos / Feitos / Todos; à direita cada feedback com o print (clicar amplia), o texto, quem,
-// quando, a tela e a versão; Visto e Feito.
-import { BotaoFechar, Esqueleto, Icone, useJanela, Vazio } from '@nads/ui';
+// quando, a tela e a versão; Visto e Feito. A prioridade (Vitor, 19/10/2026) no selo suave, com o filtro (Todas, Alta,
+// Média, Baixa) e a ordem (Mais novos ou Prioridade) em cima da lista.
+import { BotaoFechar, Esqueleto, Icone, Segmentado, useJanela, Vazio } from '@nads/ui';
 import { useRef } from 'react';
 import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
-import type { SituacaoDoFeedback } from '../../dados/feedback';
+import { PRIORIDADES, type PrioridadeDoFeedback, type SituacaoDoFeedback } from '../../dados/feedback';
 import { useFeedbacks } from './useFeedbacks';
 
 const SELO = { novo: 'badge-warn', visto: 'badge-neutral', feito: 'badge-ok' } as const;
 const NOME = { novo: 'Novo', visto: 'Visto', feito: 'Feito' } as const;
 const ICONE = { novo: 'envelope', visto: 'olho', feito: 'check', '': 'relatorio' } as const;
 const TODOS = 'todos';
+const SELO_DA_PRIORIDADE = { alta: 'badge-bad', media: 'badge-warn', baixa: 'badge-neutral' } as const;
+
+/** A prioridade no selo suave (os mandados antes dela não têm selo). */
+function SeloDaPrioridade({ p }: { p: PrioridadeDoFeedback | null }) {
+  if (!p) return null;
+  return <span className={'badge badge-suave ' + SELO_DA_PRIORIDADE[p]} title="Prioridade">{PRIORIDADES.find(x => x.valor === p)?.rotulo}</span>;
+}
 
 export function JanelaDosFeedbacks({ fechar }: { fechar: () => void }) {
   const vm = useFeedbacks();
@@ -18,6 +26,12 @@ export function JanelaDosFeedbacks({ fechar }: { fechar: () => void }) {
   return (
     <JanelaLateral rotulo="Feedbacks" topicos={topicos} topico={vm.filtro || TODOS} mudar={id => vm.setFiltro(id === TODOS ? '' : id as SituacaoDoFeedback)} fechar={fechar}
       classe="feedbacks-janela" resumo={<div className="usuario-quem"><b>Feedbacks</b></div>}>
+      <div className="feedback-filtros">
+        <Segmentado valor={vm.prioridade} onMudar={vm.setPrioridade} opcoes={vm.prioridades} />
+        <span className="tarefas-barra-espaco" />
+        <span className="hint">Ordem</span>
+        <Segmentado valor={vm.ordem} onMudar={vm.setOrdem} opcoes={[{ valor: 'recentes', rotulo: 'Mais novos' }, { valor: 'prioridade', rotulo: 'Prioridade' }]} />
+      </div>
       {vm.carregando ? <Esqueleto linhas={6} /> : !vm.lista.length ? <Vazio icone="mensagem" titulo="Nenhum feedback" /> : (
         <ul className="feedback-lista">
           {vm.lista.map(f => (
@@ -28,6 +42,7 @@ export function JanelaDosFeedbacks({ fechar }: { fechar: () => void }) {
                   <span className="feedback-quem">
                     <b>{f.nome || f.email || '—'}</b>
                     <span className="fraco">{f.quando}</span>
+                    <SeloDaPrioridade p={f.prioridade} />
                     <span className={'badge ' + SELO[f.status]}>{NOME[f.status]}</span>
                   </span>
                   <span className="feedback-txt feedback-txt-curto">{f.texto}</span>
@@ -61,6 +76,7 @@ function JanelaDoFeedback({ f, fechar, ampliar, marcar }: {
         <header className="pessoal-topo">
           <h2>{f.nome || f.email || '—'}</h2>
           <span className="fraco">{f.quando}</span>
+          <SeloDaPrioridade p={f.prioridade} />
           <span className={'badge ' + SELO[f.status]}>{NOME[f.status]}</span>
           <span className="tarefas-barra-espaco" />
           <BotaoFechar onClick={fechar} />

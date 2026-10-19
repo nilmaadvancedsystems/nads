@@ -4,7 +4,7 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDeFeedbacksDaEmpresa, repoDeCategoriasDp, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDeNfse, repoDoCaixa, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
+import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDeCategoriasDp, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDeNfse, repoDoCaixa, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoAgentes } from './agentes';
 import type { RepoSieg } from './sieg';
@@ -20,7 +20,6 @@ import type { RepoFeedback } from './feedback';
 import type { RepoCategoriasDp } from './categoriasDp';
 import type { RepoLegislacaoDp } from './legislacaoDp';
 import type { RepoAreaCliente } from './areaCliente';
-import type { RepoFeedbacksDaEmpresa } from './feedbacksDaEmpresa';
 import type { RepoLcdpr } from './lcdpr';
 
 type Repo = tarefas.RepoTarefas;
@@ -236,13 +235,6 @@ export function useLegislacaoDp(): RepoLegislacaoDp {
 /** A Área do Cliente vista pelo escritório (links, chamados e recebidos), ao vivo. */
 export function useAreaCliente(): RepoAreaCliente {
   const repo = repoDaAreaCliente();
-  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
-  return repo;
-}
-
-/** Os feedbacks sobre a empresa (o recado do sênior para a equipe), ao vivo. */
-export function useFeedbacksDaEmpresa(): RepoFeedbacksDaEmpresa {
-  const repo = repoDeFeedbacksDaEmpresa();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
 }

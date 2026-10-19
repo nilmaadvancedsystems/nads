@@ -33,8 +33,6 @@ import { criarLegislacaoDpMemoria, type RepoLegislacaoDp } from './legislacaoDp'
 import { criarLegislacaoDpFirestore } from './legislacaoDp.firestore';
 import { criarAreaClienteMemoria, type RepoAreaCliente } from './areaCliente';
 import { criarAreaClienteFirestore } from './areaCliente.firestore';
-import { criarFeedbacksDaEmpresaMemoria, type RepoFeedbacksDaEmpresa } from './feedbacksDaEmpresa';
-import { criarFeedbacksDaEmpresaFirestore } from './feedbacksDaEmpresa.firestore';
 import { criarLcdprMemoria, type RepoLcdpr } from './lcdpr';
 import { criarLcdprFirestore } from './lcdpr.firestore';
 import { criarFeedbackFirestore } from './feedback.firestore';
@@ -432,18 +430,6 @@ export function repoDaAreaCliente(): RepoAreaCliente {
     areaCliente = noBanco ? criarAreaClienteFirestore(quem) : criarAreaClienteMemoria(quem);
   }
   return areaCliente;
-}
-
-let feedbacksDaEmpresa: RepoFeedbacksDaEmpresa | null = null;
-
-/** Os feedbacks sobre a empresa (Vitor, 19/10/2026): no banco, feedbacksEmpresa do Entregas; nos exemplos, na memória. */
-export function repoDeFeedbacksDaEmpresa(): RepoFeedbacksDaEmpresa {
-  if (!feedbacksDaEmpresa) {
-    feedbacksDaEmpresa = noBanco
-      ? criarFeedbacksDaEmpresaFirestore(() => { const q = quemPede(); return q ? { uid: q.uid, nome: q.nome } : null; })
-      : criarFeedbacksDaEmpresaMemoria(() => { try { return localStorage.getItem('nads-tarefas-operador') || ''; } catch { return ''; } });
-  }
-  return feedbacksDaEmpresa;
 }
 
 let lcdprRepo: RepoLcdpr | null = null;

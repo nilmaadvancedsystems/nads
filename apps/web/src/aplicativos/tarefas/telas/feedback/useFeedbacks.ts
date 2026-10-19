@@ -1,7 +1,8 @@
-// ViewModel de Cadastro › Feedbacks: os feedbacks da equipe (o print, o texto, quem, quando e de qual tela), com o
-// filtro Novos / Vistos / Feitos / Todos e o Visto / Feito.
+// ViewModel dos Feedbacks (o pé da gaveta ☰, só o admin): os feedbacks da equipe (o print, o texto, quem, quando, de qual
+// tela e a prioridade), com o filtro Novos / Vistos / Feitos / Todos e o Visto / Feito. A prioridade (Vitor, 19/10/2026):
+// filtrar por Alta, Média ou Baixa e ordenar pelos mais novos ou pela prioridade.
 import { useState } from 'react';
-import type { SituacaoDoFeedback } from '../../dados/feedback';
+import { ordenarPorPrioridade, PRIORIDADES, type PrioridadeDoFeedback, type SituacaoDoFeedback } from '../../dados/feedback';
 import { useFeedback } from '../../dados/repo';
 
 export function useFeedbacks() {
@@ -9,6 +10,8 @@ export function useFeedbacks() {
   const todos = repo.todos();
   const [filtro, setFiltro] = useState<SituacaoDoFeedback | ''>('novo');
   const [aberta, setAberta] = useState('');
+  const [prioridade, setPrioridade] = useState<PrioridadeDoFeedback | ''>('');
+  const [ordem, setOrdem] = useState<'recentes' | 'prioridade'>('recentes');
   // o feedback aberto na janela dele (Vitor, 07/10/2026: "quando eu clique no feedback abra outra janela flutuante")
   const [aberto, setAberto] = useState('');
   const comQuando = (f: (typeof todos.lista)[number]) => ({
@@ -16,6 +19,8 @@ export function useFeedbacks() {
   });
   const doAberto = todos.lista.find(f => f.id === aberto);
   const conta = (s: SituacaoDoFeedback) => todos.lista.filter(f => f.status === s).length;
+  const daSituacao = todos.lista.filter(f => !filtro || f.status === filtro);
+  const filtrados = daSituacao.filter(f => !prioridade || f.prioridade === prioridade);
   return {
     carregando: !todos.carregados,
     filtro, setFiltro,
@@ -25,7 +30,14 @@ export function useFeedbacks() {
       { valor: 'feito' as const, rotulo: 'Feitos', qtd: conta('feito') },
       { valor: '' as const, rotulo: 'Todos', qtd: todos.lista.length },
     ],
-    lista: todos.lista.filter(f => !filtro || f.status === filtro).map(comQuando),
+    /** a prioridade (Todas, Alta, Média, Baixa), com quantos de cada na situação escolhida */
+    prioridade, setPrioridade,
+    prioridades: [
+      { valor: '' as const, rotulo: 'Todas' },
+      ...PRIORIDADES.map(p => ({ valor: p.valor, rotulo: p.rotulo + ' (' + daSituacao.filter(f => f.prioridade === p.valor).length + ')' })),
+    ],
+    ordem, setOrdem,
+    lista: (ordem === 'prioridade' ? ordenarPorPrioridade(filtrados) : [...filtrados].sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))).map(comQuando),
     /** o feedback aberto na janela dele (segue o banco: muda o selo ao marcar) */
     aberto: doAberto ? comQuando(doAberto) : null,
     abrir: setAberto,

@@ -50,11 +50,7 @@ export function EscolherEmpresaCadastro() {
                 <tr key={l.chave} data-linha={l.chave} data-empresa={l.codigo ?? undefined} className="linha-abre" tabIndex={0} title={'Abrir o cadastro de ' + l.nome}
                   onClick={() => vm.abrir(l.rota)} onKeyDown={e => { if (e.key === 'Enter') vm.abrir(l.rota); }}>
                   <td className="num">{l.codigo ?? '—'}</td>
-                  <td>
-                    <span className="cad-empresa-nome">{l.nome}</span>{l.regime && <span className="badge badge-neutral cad-regime">{l.regime}</span>}
-                    {/* feedback de prioridade alta em aberto (19/10/2026): o selo suave vermelho, ao lado do regime */}
-                    {l.feedbacksAltos > 0 && <span className="badge badge-suave badge-bad cad-regime" title={l.feedbacksAltos === 1 ? '1 feedback de prioridade alta em aberto' : l.feedbacksAltos + ' feedbacks de prioridade alta em aberto'}>Feedback: alta</span>}
-                  </td>
+                  <td><span className="cad-empresa-nome">{l.nome}</span>{l.regime && <span className="badge badge-neutral cad-regime">{l.regime}</span>}</td>
                   <td>
                     <span className="cad-completo" title={l.completos === l.itens.length ? 'Cadastro completo' : 'Falta: ' + l.itens.filter(i => !i.tem).map(i => i.rotulo).join(', ')}>
                       {l.itens.map(i => <i key={i.id} className={i.tem ? 'tem' : undefined} aria-hidden="true" />)}
