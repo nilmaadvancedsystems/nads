@@ -232,6 +232,20 @@ export function razoesPedidos(d: BalanceteDinamico): RazaoPedido[] {
   return out.sort((a, b) => TIPOS_DE_RAZAO_PEDIDOS.indexOf(a.tipo) - TIPOS_DE_RAZAO_PEDIDOS.indexOf(b.tipo) || a.codigo.localeCompare(b.codigo));
 }
 
+/**
+ * Os meses que faltam no razão importado (Vitor, 19/10/2026: "às vezes pode faltar alguns meses em alguns razões, acuse
+ * também"): os meses do período em que o dinâmico mostra movimento na conta (o saldo mudou do mês de antes) e o razão não tem
+ * lançamento nenhum. O mês parado (sem movimento) não falta.
+ */
+export function mesesFaltandoNoRazao(d: BalanceteDinamico, codigo: string, razao: { lancamentos: readonly { data: string }[] }, meses: readonly string[]): string[] {
+  const l = d.linhas.find(x => x.codigo === codigo);
+  if (!l) return [];
+  const comLancamento = new Set(razao.lancamentos.map(x => x.data.slice(0, 7)));
+  const ordem = [...d.meses].sort();
+  const antes = (m: string) => { const i = ordem.indexOf(m); return i > 0 ? (l.saldos[ordem[i - 1]] ?? 0) : l.saldoAnterior; };
+  return [...meses].sort().filter(m => ordem.includes(m) && Math.abs((l.saldos[m] ?? 0) - antes(m)) >= 0.005 && !comLancamento.has(m));
+}
+
 /** Uma conta do resultado do lado errado: a despesa credora ou a receita devedora, e os meses (o saldo, sem o sinal). */
 export interface ContaDoResultadoErrada {
   codigo: string; classificacao: string; nome: string; tipo: 'despesa' | 'receita';

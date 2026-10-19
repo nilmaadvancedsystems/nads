@@ -699,7 +699,7 @@ export function TarefaExtratos() {
           ))}
         </nav>
       )}
-      {aba === 'contabil' ? <div data-destaque="contabil"><ContabilNaImportacao nome={s.nome} codigo={s.codigo} /></div>
+      {aba === 'contabil' ? <div data-destaque="contabil"><ContabilNaImportacao nome={s.nome} codigo={s.codigo} meses={mesesDaEtapa} /></div>
         : aba !== 'bancos' ? <div data-destaque="importacao"><ImportacaoNaEtapa nome={s.nome} tipo={aba} prestaServico={vm.prestaServico} competencia={vm.competencia} /></div> : (<>
       <div className={'imp-topo' + (ocupadoGeral ? ' travado' : '')} aria-busy={ocupadoGeral}>
         {/* à esquerda, como o "⎇ main ▾  6 Branches" do GitHub: a competência e o número de bancos */}

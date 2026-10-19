@@ -7,7 +7,8 @@ import { BotaoIcone, CampoArquivo, Icone, useRetorno } from '@nads/ui';
 import { useId } from 'react';
 import { useContabilDaEmpresa } from './contabilDaEmpresa';
 
-export function ContabilNaImportacao({ nome, codigo }: { nome: string; codigo: number | null }) {
+/** meses: o período da Tarefa (para acusar o mês que falta no razão) */
+export function ContabilNaImportacao({ nome, codigo, meses = [] }: { nome: string; codigo: number | null; meses?: readonly string[] }) {
   const vm = useContabilDaEmpresa(nome, codigo);
   const { aviso } = useRetorno();
   const idDin = useId();
@@ -22,6 +23,11 @@ export function ContabilNaImportacao({ nome, codigo }: { nome: string; codigo: n
       .map(([conta, r]) => ({ conta, nome: vm.dinamico?.d.linhas.find(l => l.codigo === conta)?.descricao || '', tipo: vm.tipos[conta] ?? null, r })),
   ];
   const faltam = pedidos.filter(p => !vm.razoes[p.codigo]).length;
+  // o razão importado sem algum mês do período em que a conta mexeu (Vitor, 19/10/2026: "às vezes pode faltar alguns meses")
+  const mesesQueFaltam = (conta: string, r: { razao: { lancamentos: { data: string }[] } } | null) =>
+    r && vm.dinamico && meses.length ? cl.mesesFaltandoNoRazao(vm.dinamico.d, conta, r.razao, meses) : [];
+  const incompletos = linhas.filter(x => mesesQueFaltam(x.conta, x.r).length).length;
+  const rotuloDoMes = (m: string) => m.slice(5, 7) + '/' + m.slice(0, 4);
 
   async function importarDinamico(f: File | null) {
     if (!f) return;
@@ -68,13 +74,13 @@ export function ContabilNaImportacao({ nome, codigo }: { nome: string; codigo: n
         </div>
       </div>
 
-      <div className={'imp-bloco' + (pedidos.length ? (faltam ? '' : ' imp-ok') : razoes.length ? ' imp-ok' : '')}>
+      <div className={'imp-bloco' + (pedidos.length ? (faltam || incompletos ? '' : ' imp-ok') : razoes.length && !incompletos ? ' imp-ok' : '')}>
         <div className="imp-linha">
           <span className="imp-ico"><Icone nome="arquivo" /></span>
           <div className="imp-txt">
             <span><b>Razões das contas</b></span>
           </div>
-          <div className="imp-resumo"><div><span>{pedidos.length ? (pedidos.length - faltam) + ' de ' + pedidos.length + ' importados' + (faltam ? ' · falta' + (faltam === 1 ? '' : 'm') + ' ' + faltam : '')
+          <div className="imp-resumo"><div><span>{pedidos.length ? (pedidos.length - faltam) + ' de ' + pedidos.length + ' importados' + (faltam ? ' · falta' + (faltam === 1 ? '' : 'm') + ' ' + faltam : '') + (incompletos ? ' · ' + incompletos + (incompletos === 1 ? ' com mês faltando' : ' com meses faltando') : '')
             : razoes.length ? razoes.length + (razoes.length === 1 ? ' razão' : ' razões') : vm.dinamico ? 'Nenhuma conta das etapas com saldo no dinâmico' : 'Importe o dinâmico para ver quais razões a Tarefa precisa'}</span></div></div>
           <div className="imp-grupos">
             <div className="imp-grupo" aria-label="Razões das contas">
@@ -94,7 +100,15 @@ export function ContabilNaImportacao({ nome, codigo }: { nome: string; codigo: n
                     <td>{conta}</td>
                     <td className="wrap">{nome || <span className="hint">{vm.dinamico ? 'fora do dinâmico' : 'sem o dinâmico'}</span>}</td>
                     <td>{tipo ? <span className="badge badge-ok">{cl.NOME_DO_TIPO_DO_RAZAO[tipo]}</span> : <span className="badge badge-neutral" title="Nenhuma etapa usa esta conta">Nenhuma etapa</span>}</td>
-                    <td className="hint">{r ? r.arquivo : <span className="badge badge-warn" title={'Exporte o razão da conta ' + conta + ' no Alterdata (XLS da conciliação) e importe aqui'}>Falta importar</span>}</td>
+                    <td className="hint">
+                      {r ? r.arquivo : <span className="badge badge-warn" title={'Exporte o razão da conta ' + conta + ' no Alterdata (XLS da conciliação) e importe aqui'}>Falta importar</span>}
+                      {/* o mês do período em que a conta mexeu no dinâmico e o razão não trouxe: exportar o razão com o período todo */}
+                      {mesesQueFaltam(conta, r).length > 0 && (
+                        <span className="badge badge-warn" style={{ marginLeft: 6 }} title="A conta mexeu nestes meses no balancete dinâmico e o razão não trouxe lançamento: exporte o razão com o período todo">
+                          Falta{mesesQueFaltam(conta, r).length > 1 ? 'm' : ''} {mesesQueFaltam(conta, r).map(rotuloDoMes).join(', ')}
+                        </span>
+                      )}
+                    </td>
                     <td className="num">{r ? r.razao.lancamentos.length : '—'}</td>
                     <td className="num">
                       {r && <BotaoIcone icone="x" pequeno titulo={'Tirar o razão da conta ' + conta} onClick={() => vm.tirarRazao(conta)} />}

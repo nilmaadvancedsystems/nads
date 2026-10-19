@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  adiantamentoNoDinamico, emprestimosNoDinamico, emprestimoBancario, resultadoErradoNoDinamico, tipoDoRazao, razoesPedidos, conferirFechamento, dinamicoCompletoDeTeste, assinaturaDoEnvio, clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
+  adiantamentoNoDinamico, emprestimosNoDinamico, emprestimoBancario, resultadoErradoNoDinamico, tipoDoRazao, razoesPedidos, mesesFaltandoNoRazao, conferirFechamento, dinamicoCompletoDeTeste, assinaturaDoEnvio, clientesDoDinamico, comBalancete, conferidosQuePassam, credores, credoresNoPeriodo, dinamicoDeTeste, docDoDocumento, lerBalanceteDinamico, razaoComPendencia, situacaoDe, textoDaMensagem,
 } from './index';
 
 // o formato do balancete dinâmico do Alterdata (292, bdinamico.xls)
@@ -184,6 +184,15 @@ describe('de que é o razão, pelo dinâmico (16/10/2026)', () => {
     // a conta parada (sem saldo nem movimento) não é pedida
     const parada = { ...d, linhas: d.linhas.map(l => (l.codigo === '54010' ? { ...l, saldos: { '2026-01': 0 } } : l)) };
     expect(razoesPedidos(parada).some(r => r.codigo === '54010')).toBe(false);
+  });
+  it('os meses que faltam no razão: o dinâmico mexeu e o razão não tem lançamento; o mês parado não falta', () => {
+    const din = { meses: ['2026-01', '2026-02', '2026-03', '2026-04'], linhas: [
+      { codigo: '52001', classificacao: '2.1.1.02.001', descricao: 'Salários a Pagar', saldoAnterior: -100, saldos: { '2026-01': -200, '2026-02': -200, '2026-03': -300, '2026-04': -150 } },
+    ] };
+    const razao = { lancamentos: [{ data: '2026-01-31' }, { data: '2026-04-30' }] };
+    // janeiro e abril estão no razão; fevereiro não mexeu; março mexeu e não está
+    expect(mesesFaltandoNoRazao(din, '52001', razao, ['2026-01', '2026-02', '2026-03', '2026-04'])).toEqual(['2026-03']);
+    expect(mesesFaltandoNoRazao(din, '99999', razao, ['2026-03'])).toEqual([]);
   });
 });
 
