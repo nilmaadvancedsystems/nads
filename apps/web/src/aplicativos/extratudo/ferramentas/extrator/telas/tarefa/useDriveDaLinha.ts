@@ -298,6 +298,10 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       const sit = await drive.situacaoDosEnvios!(lista.map(([, v]) => v.envio));
       const prontos = lista.filter(([, v]) => sit[v.envio]?.status === 'pronto');
       const sair: string[] = lista.filter(([, v]) => sit[v.envio]?.status === 'erro' || Date.now() - v.em > 15 * 60e3).map(([k]) => k);
+      // o fim de cada envio vira aviso (Vitor, 19/10/2026: "bota algo pra eu saber se está arquivado no Drive")
+      const rotuloDe = (k: string) => { const [banco, mes] = k.split('|'); return (vm.bancos.find(b => b.id === banco)?.nome || banco) + ' ' + mes.slice(5) + '/' + mes.slice(0, 4); };
+      const falharam = [...sair];
+      const arquivados: string[] = [];
       if (prontos.length) {
         const antes = await drive.pastaDoCliente(codigo);
         if (antes?.raiz && drive.atualizarMapaDoCliente) await drive.atualizarMapaDoCliente(antes.raiz);
@@ -307,10 +311,12 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
           const linha = vm.bancos.find(b => b.id === banco);
           const conta = { nome: linha?.nome || banco, marca: linha?.marca, conta: linha?.numeroConta };
           const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, mes, conta);
-          if (r.situacao === 'achou' && r.arquivo) { ligarMesAoDrive(banco, mes, { id: r.arquivo.id, nome: r.arquivo.nome }); sair.push(k); }
+          if (r.situacao === 'achou' && r.arquivo) { ligarMesAoDrive(banco, mes, { id: r.arquivo.id, nome: r.arquivo.nome }); sair.push(k); arquivados.push(rotuloDe(k) + (sit[subindo[k].envio]?.pasta ? ' (' + sit[subindo[k].envio].pasta + ')' : '')); }
         }
       }
       if (vivo && sair.length) setSubindo(x => { const n = { ...x }; for (const k of sair) delete n[k]; return n; });
+      if (vivo && arquivados.length) vm.avisar('Arquivado no Drive: ' + arquivados.join(', '));
+      if (vivo && falharam.length) vm.avisarErro('Não foi para o Drive', falharam.map(rotuloDe).join(', ') + ': o robô não gravou (erro ou mais de 15 minutos). Importe o PDF de novo no mês.');
     }
     void conferir().catch(() => { /* sem o robô agora: tenta de novo */ });
     const t = setInterval(() => { void conferir().catch(() => undefined); }, 10000);
