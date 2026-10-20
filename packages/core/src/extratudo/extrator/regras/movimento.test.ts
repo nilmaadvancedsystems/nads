@@ -145,3 +145,24 @@ describe('extrato no Drive: cópias baixadas de novo (empresa 380, Sicoob)', () 
     expect(acharExtratoNoDrive(itens, 'raiz', '2026-07', conta).arquivo?.id).toBe('x07');
   });
 });
+
+describe('extrato no Drive: só a pasta dos extratos (19/10/2026)', () => {
+  const d = (i: string, n: string, p: string) => ({ i, n, p, t: 'd' as const });
+  const f = (i: string, n: string, p: string) => ({ i, n, p, t: 'f' as const, m: '2026-10-01T00:00:00Z' });
+  // o extrato do empréstimo ("… 08-2028") e a nota de 08-09-2026 não são o extrato da conta de agosto
+  const itens = [
+    d('c', 'CONTÁBIL', 'raiz'), d('e', 'EXTRATOS', 'c'), d('a', '2026', 'e'), d('m07', '07', 'a'), d('b07', 'BANCÁRIOS', 'm07'), d('s07', 'BRADESCO', 'b07'),
+    f('x07', '07-2026.pdf', 's07'),
+    d('o', 'OPERAÇÕES DE CRÉDITO', 'c'), d('oa', '2026', 'o'), d('oe', 'EMPRÉSTIMO', 'oa'), d('ob', 'BRADESCO', 'oe'), f('emp', 'EXTRATO 03-2025 08-2028.pdf', 'ob'),
+    d('fi', 'FISCAL', 'raiz'), f('nf', '08-09-2026 - NF-e 906 - EMPRESA.pdf', 'fi'),
+  ];
+  const conta = { nome: 'Bradesco', marca: 'bradesco', conta: '' };
+  it('agosto não acha o extrato do empréstimo nem a nota', () => {
+    const r = acharExtratoNoDrive(itens, 'raiz', '2026-08', conta);
+    expect(r.situacao).toBe('nada');
+    expect(r.candidatos.some(c => c.daCompetencia)).toBe(false);
+  });
+  it('julho continua achando o da pasta EXTRATOS', () => {
+    expect(acharExtratoNoDrive(itens, 'raiz', '2026-07', conta).arquivo?.id).toBe('x07');
+  });
+});

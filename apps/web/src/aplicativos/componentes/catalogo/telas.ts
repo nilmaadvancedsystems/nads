@@ -49,11 +49,12 @@ export const TELAS: Tela[] = [
   { id: 't-cadastro-config', app: 'Tarefas', nome: 'Cadastro › Sistema e agentes' },
   { id: 't-drive', app: 'Tarefas', nome: 'Drive' },
   { id: 't-gmail', app: 'Tarefas', nome: 'Gmail' },
-  { id: 't-mandei', app: 'Tarefas', nome: 'Mandei (tickets)' },
+  { id: 't-mandei', app: 'Tarefas', nome: 'Área do Cliente › Tickets (o Mandei)' },
   { id: 't-area-chamados', app: 'Tarefas', nome: 'Área do Cliente › Chamados' },
   { id: 't-area-recebidos', app: 'Tarefas', nome: 'Área do Cliente › Recebidos' },
   { id: 't-entregas', app: 'Tarefas', nome: 'Entregas (Nova entrega, Rota e Painel)' },
   { id: 't-fin-caixa', app: 'Tarefas', nome: 'Financeiro › Caixa' },
+  { id: 't-fin-honorarios', app: 'Tarefas', nome: 'Financeiro › Honorários' },
   { id: 't-fin-plano', app: 'Tarefas', nome: 'Financeiro › Plano de contas' },
   // Mandei: o formulário que o cliente abre pelo link
   { id: 'm-formulario', app: 'Mandei', nome: 'Formulário do cliente' },

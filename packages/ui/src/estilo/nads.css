@@ -580,8 +580,12 @@ button.gh-crumb:hover{background:var(--hover-bg);}
 .subnav-item:hover{background:var(--hover-bg);}
 .subnav-item svg{width:17px;height:17px;flex:none;color:var(--ink-muted);}
 /* a logo da marca no lugar do ícone (FGTS Digital no DP): do mesmo tamanho dos ícones */
-.subnav-marca{width:17px;height:17px;flex:none;display:inline-flex;align-items:center;justify-content:center;}
-.subnav-marca svg{width:17px;height:17px;color:inherit;}
+.subnav-marca{width:48px;height:14px;flex:none;display:inline-flex;align-items:center;justify-content:center;margin-right:-2px;}
+.subnav-marca svg{width:48px;height:14px;}
+/* recolhida: a logo inteira numa versão menor, centralizada nos 40 px do botão */
+.sidebar-oculta .subnav-marca{width:34px;height:10px;margin:0;}
+.sidebar-oculta .subnav-marca svg{width:34px;height:10px;}
+@media (max-width:768px){.sidebar-oculta .subnav-marca{width:48px;height:14px;margin:0 -2px 0 0;}.sidebar-oculta .subnav-marca svg{width:48px;height:14px;}}
 /* o item aberto igual ao da gaveta ☰ (19/10/2026): o mesmo fundo, o peso 500 e o ícone na cor do texto, sem a barrinha vermelha */
 .subnav-item.active{background:var(--hover-bg);font-weight:500;}
 .subnav-item.active svg{color:var(--ink);}
@@ -4271,20 +4275,6 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 }
 @media (min-width:901px){.gm-caixa:not(.com-leitura) .gm-item{align-items:flex-start;}}
 
-/* O balancete gerado no Alterdata pelo robô (Vitor, 14/10/2026): o botão ao lado do Importar e a caixa do andamento logo abaixo */
-.alt-gerar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);}
-.alt-gerar-rotulo{font-size:var(--fs-13);color:var(--ink-muted);margin-right:4px;}
-.alt-andamento{margin-top:12px;margin-bottom:0;padding:12px 16px;}
-.alt-topo{display:flex;align-items:center;gap:10px;}
-.alt-topo > svg{flex:none;width:16px;height:16px;}
-.alt-topo .alt-texto{flex:1;min-width:0;font-size:var(--fs-14);}
-.alt-topo .btn{flex:none;}
-.alt-ok .alt-topo > svg{color:var(--success);}
-.alt-erro .alt-topo > svg,.alt-erro .alt-texto b{color:var(--danger);}
-.alt-passos{list-style:none;margin:10px 0 0;padding:0 0 0 2px;display:flex;flex-direction:column;gap:4px;font-size:var(--fs-13);}
-.alt-passos li{display:flex;align-items:center;gap:8px;color:var(--ink-muted);}
-.alt-passos li:last-child{color:var(--ink);}
-.alt-passos .alt-passo-n{width:20px;height:20px;border-radius:50%;background:var(--surface-3);display:inline-flex;align-items:center;justify-content:center;font-size:var(--fs-11);font-weight:700;font-variant-numeric:tabular-nums;flex:none;}
 .gm-pilula{max-width:min(380px,100%);}
 /* o DP animado (14/10/2026: "quero animar o DP inteiro"); o nível de cada um vale (no Normal nada se mexe; nas Parciais só a
    transição; nas Todas também a cascata): as barras do resumo crescem em sequência e a barra das guias anda ao mudar */
@@ -4728,3 +4718,31 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 
 /* Senhas › Certificados: a linha do interruptor dos avisos de vencimento (19/10/2026) */
 .cert-avisos{padding:0 16px;margin-bottom:16px;}
+/* Financeiro › Caixa: a calculadora (19/10/2026) */
+.fin-calc{display:flex;flex-direction:column;gap:12px;}
+.fin-calc-visor{display:flex;flex-direction:column;align-items:flex-end;gap:2px;border:1px solid var(--border);border-radius:8px;background:var(--surface-3);padding:10px 14px;}
+.fin-calc-conta{font-size:var(--fs-13);min-height:18px;}
+.fin-calc-numero{font-size:var(--fs-24);font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;max-width:100%;white-space:nowrap;}
+.fin-calc-erro{color:var(--destructive);}
+.fin-calc-teclas{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.fin-calc-tecla{height:44px;justify-content:center;font-size:var(--fs-16);}
+.fin-calc-tecla svg{width:16px;height:16px;}
+.fin-calc-op{color:var(--accent);font-weight:600;}
+.fin-calc-sup{color:var(--ink-muted);}
+.modal.fin-calc-janela{max-width:340px;}
+
+/* Financeiro › Honorários (19/10/2026, fase 2) */
+.fin-valor-edita{width:110px;border:1px solid transparent;border-radius:6px;background:transparent;padding:6px 8px;font-size:var(--fs-14);text-align:right;color:var(--ink);outline:none;}
+.fin-valor-edita:hover{background:var(--hover-bg);}
+.fin-valor-edita:focus{background:var(--input-bg);border-color:var(--accent);}
+.fin-valor-edita-vazio::placeholder{color:var(--accent);}
+.modal.fin-contratos-janela{max-width:760px;}
+.fin-contratos-filtro{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-13);color:var(--ink-muted);margin:12px 0 4px;}
+.fin-contratos{list-style:none;margin:0;padding:0;max-height:48vh;overflow:auto;border:1px solid var(--border);border-radius:6px;}
+.fin-contrato{display:grid;grid-template-columns:auto minmax(120px,1fr) 110px minmax(100px,180px) auto;align-items:center;gap:10px;padding:6px 10px;border-bottom:1px solid var(--border);}
+.fin-contrato:last-child{border-bottom:0;}
+.fin-contrato-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-14);}
+.fin-contrato-obs{min-width:0;border:1px solid transparent;border-radius:6px;background:transparent;padding:6px 8px;font-size:var(--fs-13);color:var(--ink);outline:none;}
+.fin-contrato-obs:hover{background:var(--hover-bg);}
+.fin-contrato-obs:focus{background:var(--input-bg);border-color:var(--accent);}
+@media (max-width:640px){.fin-contrato{grid-template-columns:auto 1fr auto;}.fin-contrato-obs{grid-column:1 / -1;}}

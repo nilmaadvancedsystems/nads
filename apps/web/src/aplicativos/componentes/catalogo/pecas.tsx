@@ -6,11 +6,11 @@ import {
 } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
 import { CampoAssinatura } from '@nads/ui';
+import { financeiro } from '@nads/core';
 import { CONCILIA, EXECUTOR, EXTRATUDO, TAREFAS, TODAS } from './telas';
 import type { Peca } from './tipos';
 import { BotaoGoogle } from '../../../comum/BotaoGoogle';
 import { MenuDaRotina } from '../../tarefas/telas/executor/partes/MenuDaRotina';
-import { AndamentoDoAlterdata } from '../../concilia-ai/telas/importacao/partes/AndamentoDoAlterdata';
 import { AreaDeSoltar } from '../../cliente/partes/AreaDeSoltar';
 import { Avatar as AvatarDoCliente } from '../../cliente/partes/Avatar';
 import { CartaoDeAtendimento } from '../../cliente/partes/CartaoDeAtendimento';
@@ -28,6 +28,8 @@ import { ResumoDoPagamento } from '../../cliente/partes/ResumoDoPagamento';
 import { SiglaDaGuia } from '../../cliente/partes/SiglaDaGuia';
 import { Vazio as VazioDoCliente } from '../../cliente/partes/Vazio';
 import { BlocoDoLink } from '../../tarefas/telas/area-cliente/partes/BlocoDoLink';
+import { ValorEditavel } from '../../tarefas/telas/financeiro/partes/ValorEditavel';
+import { Calculadora } from '../../tarefas/telas/financeiro/partes/Calculadora';
 import { ContadorDeCedulas } from '../../tarefas/telas/financeiro/partes/ContadorDeCedulas';
 import { LinhaDoPlano } from '../../tarefas/telas/financeiro/partes/LinhaDoPlano';
 import { ValorDoCaixa } from '../../tarefas/telas/financeiro/partes/ValorDoCaixa';
@@ -36,6 +38,11 @@ import { ConversaDoEscritorio } from '../../tarefas/telas/area-cliente/partes/Co
 import '../../cliente/cliente.css';
 
 const nada = () => undefined;
+/** A calculadora do catálogo, funcionando pelas teclas da tela. */
+function DemoDaCalculadora() {
+  const [e, setE] = useState<financeiro.EstadoDaCalculadora>(financeiro.CALCULADORA_INICIAL);
+  return <div style={{ width: '100%', maxWidth: 300 }}><Calculadora estado={e} aoTecla={t => setE(x => financeiro.calcular(x, t))} /></div>;
+}
 /** A contagem de cédulas do catálogo, com a conta funcionando. */
 function DemoDeCedulas() {
   const [q, setQ] = useState<Record<string, string>>({ '100': '1', '50': '2', '0.5': '3' });
@@ -680,22 +687,6 @@ export const PECAS_BASE: Peca[] = [
       </div>
     ) },
 
-  { id: 'alterdata-andamento', tipo: 'cartoes', nome: 'Gerar no Alterdata (botão e andamento do robô)', descricao: 'Na Importação do balancete (14/10/2026, só o Contábil e o admin): a competência e o botão "Gerar no Alterdata"; logo abaixo a caixa do robô — "Na fila…", os passos dele ao vivo, o erro dele, e o Cancelar enquanto dá tempo', componente: 'AndamentoDoAlterdata', classes: ['alt-gerar', 'alt-andamento', 'alt-topo', 'alt-passos'], telas: ['c-importacao', 't-exec-importacao'], largo: true,
-    demo: () => {
-      const base = { id: 'x', codigo: 292, empresa: 'Fito Indústria', competencia: '2026-09', erro: '', arquivoNome: '', criadoEm: '', criadoPor: 'Clara', fimEm: '' };
-      return (
-        <div style={{ width: '100%' }}>
-          <div className="alt-gerar" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
-            <span className="alt-gerar-rotulo">ou gerar direto no Alterdata:</span>
-            <SeletorMes valor="2026-09" onMudar={nada} rotulo="Competência do balancete" />
-            <button type="button" className="btn btn-outline"><Icone nome="robo" width={16} height={16} />Gerar no Alterdata</button>
-          </div>
-          <AndamentoDoAlterdata pedido={{ ...base, status: 'pendente', passos: [] }} onCancelar={nada} onFechar={nada} />
-          <AndamentoDoAlterdata pedido={{ ...base, status: 'trabalhando', passos: [{ n: 1, nome: 'abrindo o Alterdata Contábil', quando: '' }, { n: 2, nome: 'escolhendo a empresa 292', quando: '' }, { n: 3, nome: 'gerando o balancete de 09/2026', quando: '' }] }} onCancelar={nada} onFechar={nada} />
-          <AndamentoDoAlterdata pedido={{ ...base, status: 'erro', erro: 'empresa 292 não encontrada no Alterdata', passos: [] }} onCancelar={nada} onFechar={nada} />
-        </div>
-      );
-    } },
   // ─── Listas ─────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'chips', tipo: 'listas', nome: 'Chips de filtro', classes: ['chip-row', 'chip-lbl', 'chip-f', 'on'], telas: ['c-consulta', 'c-naturezas', 't-gmail', 'c-cliente-documentos'],
     demo: () => <div className="chip-row"><span className="chip-lbl">Tipo</span><button className="chip-f on" type="button">Todos</button><button className="chip-f" type="button">Entradas</button><button className="chip-f" type="button">Saídas</button></div> },
@@ -897,7 +888,6 @@ export const PECAS_BASE: Peca[] = [
         <span style={{ display: 'inline-flex', width: 46, height: 40 }}><LogoGovernoMinas /></span>
         <span style={{ display: 'inline-flex', width: 56, height: 40 }}><LogoReceitaFederal /></span>
         <span style={{ display: 'inline-flex', width: 72, height: 22 }}><LogoFgts cor /></span>
-        <span style={{ display: 'inline-flex', width: 17, height: 17 }}><LogoFgts cor soSimbolo /></span>
         <span style={{ display: 'inline-flex', width: 52, height: 36 }}><LogoInss cor /></span>
       </div>
     ) },
@@ -966,6 +956,17 @@ export const PECAS_BASE: Peca[] = [
         <LinhaDoPlano conta={{ id: 'd', codigo: '4.1.02', descricao: 'Serviços avulsos', tipo: 'RECEITA', nivel: 3, pai: 'b', ativo: false, movimentavel: true }} fundo={2} />
       </ul></div>
     ) },
+  { id: 'calculadora', tipo: 'cartoes', nome: 'Calculadora', descricao: 'Na janela "Calculadora" do Caixa (19/10/2026): a conta aberta em cima, o visor grande no jeito brasileiro (1.234,56) e as teclas em grade; as teclas do computador também valem', componente: 'Calculadora', classes: ['fin-calc', 'fin-calc-visor', 'fin-calc-teclas', 'fin-calc-tecla', 'fin-calc-op'], telas: ['t-fin-caixa'],
+    uso: '<Calculadora estado={estado} aoTecla={tecla => …} />',
+    demo: () => <DemoDaCalculadora /> },
+  { id: 'filtro-de-tipo-do-caixa', tipo: 'abas', nome: 'Filtro Todos / Entradas / Saídas', descricao: 'No Caixa (19/10/2026): o seletor que filtra a lista pelo tipo do lançamento; os quatro números de cima não mudam', componente: 'Segmentado', classes: ['steps', 'step-pill'], telas: ['t-fin-caixa'],
+    uso: "<Segmentado valor={tipo} opcoes={[{ valor: 'todos', rotulo: 'Todos' }, …]} onMudar={setTipo} />",
+    demo: () => <Segmentado valor="E" opcoes={[{ valor: 'todos', rotulo: 'Todos' }, { valor: 'E', rotulo: 'Entradas' }, { valor: 'S', rotulo: 'Saídas' }]} onMudar={nada} /> },
+  { id: 'valor-editavel', tipo: 'campos', nome: 'Valor editável na linha', descricao: 'Nos Honorários (19/10/2026): o valor do honorário se digita na própria linha da tabela; grava ao sair do campo ou no Enter, Esc desfaz; sem valor mostra "definir valor" na cor da marca', componente: 'ValorEditavel', classes: ['fin-valor-edita', 'fin-valor-edita-vazio'], telas: ['t-fin-honorarios'],
+    uso: '<ValorEditavel valor={850} rotulo="Valor do honorário" aoSalvar={texto => …} />',
+    demo: () => <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}><ValorEditavel valor={850} rotulo="Valor com valor" aoSalvar={nada} /><ValorEditavel valor={0} rotulo="Valor sem valor" aoSalvar={nada} /></div> },
+  { id: 'situacao-do-honorario', tipo: 'selos', nome: 'Situação do honorário', descricao: 'Nos Honorários: "Pago em dd/mm · forma" (verde) ou "Em aberto" (amarelo); não há vencimento, então nunca "atrasado"', classes: ['badge', 'badge-ok', 'badge-warn'], telas: ['t-fin-honorarios'],
+    demo: () => <div style={{ display: 'flex', gap: 8 }}><span className="badge badge-ok">Pago em 05/10 · PIX</span><span className="badge badge-warn">Em aberto</span></div> },
   // o selo suave no nads (19/10/2026): a prioridade do feedback do app
   { id: 'selo-suave-nads', tipo: 'selos', nome: 'Selo suave (nads)', descricao: 'O selo suave da Área do Cliente trazido para o nads (badge-suave): a pílula sem borda, com o pontinho e o fundo suave; a cor só pelo significado. Na prioridade do feedback do app (Vitor, 19/10/2026): vermelho Alta, amarelo Média, neutro Baixa', classes: ['badge badge-suave', 'badge-bad', 'badge-warn', 'badge-neutral', 'badge-ok'], telas: TAREFAS,
     demo: () => (
