@@ -92,8 +92,8 @@ function correcoesDoMes(mes: string, linhas: LinhaConferencia[]): CorrecaoDoRaza
           (dif === 0 ? 'Mesmo total, lançamentos diferentes.' : v(dif) + (dif > 0 ? ' a mais' : ' a menos') + ' no razão.'),
       });
     } else {
-      for (const b of bs) r.push({ mes, data: d, tipo: 'falta', diferenca: -b.valor, lancamento: b.historico, situacao: (b.valor > 0 ? 'Entrou dinheiro no banco' : 'Saiu dinheiro do banco') + ' e falta lançar no razão', noBanco: b.valor, noRazao: null, texto: b.historico + ' (' + v(b.valor) + ') ' + (b.valor > 0 ? 'entrou' : 'saiu') + ' no banco e não está no razão.' });
-      for (const c of cs) r.push({ mes, data: d, tipo: 'sobra', diferenca: c.valor, lancamento: c.historico, situacao: 'Lançado no razão, mas não aparece no extrato do banco', noBanco: null, noRazao: c.valor, texto: c.historico + ' (' + v(c.valor) + ') está no razão e não no banco.' });
+      for (const b of bs) r.push({ mes, data: d, tipo: 'falta', diferenca: -b.valor, lancamento: b.historico, situacao: 'Lançamento apenas no banco: ' + (b.valor > 0 ? 'entrada' : 'saída') + ' que falta lançar no razão', noBanco: b.valor, noRazao: null, texto: b.historico + ' (' + v(b.valor) + ') ' + (b.valor > 0 ? 'entrou' : 'saiu') + ' no banco e não está no razão.' });
+      for (const c of cs) r.push({ mes, data: d, tipo: 'sobra', diferenca: c.valor, lancamento: c.historico, situacao: 'Lançamento apenas no razão: não aparece no extrato do banco', noBanco: null, noRazao: c.valor, texto: c.historico + ' (' + v(c.valor) + ') está no razão e não no banco.' });
     }
   }
   return r;
