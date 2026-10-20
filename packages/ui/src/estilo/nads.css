@@ -1836,7 +1836,7 @@ td.cad-acoes .menu-seta{display:none;}
 .drive-ico{width:16px;height:16px;flex:none;color:var(--ink-muted);}
 td.drive-marca{width:1%;}
 .drive-aviso{margin:0 0 12px;}
-.drive-pedidos{position:fixed;right:16px;bottom:16px;z-index:65;display:flex;flex-direction:column;gap:6px;max-width:min(420px,calc(100vw - 32px));}
+.drive-pedidos{position:fixed;right:16px;bottom:72px;z-index:65;display:flex;flex-direction:column;gap:6px;max-width:min(420px,calc(100vw - 32px));}
 .drive-pedido{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);box-shadow:var(--shadow-lg);font-size:var(--fs-13);}
 .drive-girando{width:14px;height:14px;flex:none;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;}
 @keyframes drive-gira{to{transform:rotate(360deg);}}
@@ -4746,3 +4746,20 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .fin-contrato-obs:hover{background:var(--hover-bg);}
 .fin-contrato-obs:focus{background:var(--input-bg);border-color:var(--accent);}
 @media (max-width:640px){.fin-contrato{grid-template-columns:auto 1fr auto;}.fin-contrato-obs{grid-column:1 / -1;}}
+
+/* o balão do suporte (20/10/2026): o botão redondo no canto de baixo, à direita, e a conversa por cima dele (só a
+   disposição; as peças são o botão, a cápsula .badge e o fechar) */
+.suporte-botao{position:fixed;right:16px;bottom:16px;z-index:64;width:44px;height:44px;padding:0;border-radius:50%;justify-content:center;box-shadow:var(--shadow-lg);}
+.suporte-balao{position:fixed;right:16px;bottom:72px;z-index:64;width:min(360px,calc(100vw - 32px));max-height:min(560px,calc(100vh - 120px));display:flex;flex-direction:column;padding:0;margin:0;overflow:hidden;box-shadow:var(--shadow-lg);}
+.suporte-topo{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border-muted);}
+.suporte-titulo{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.suporte-corpo{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px;}
+.suporte-troca{display:flex;flex-direction:column;gap:6px;}
+.suporte-fala{margin:0;}
+.suporte-eu{align-self:flex-end;}
+.suporte-capsulas{display:flex;flex-wrap:wrap;gap:6px;}
+.suporte-capsulas .badge{cursor:pointer;border:0;}
+.suporte-passos{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;}
+.suporte-envio{display:flex;flex-direction:column;gap:8px;align-items:flex-start;}
+.suporte-frase{width:100%;margin:0;}
+.suporte-pe{display:flex;justify-content:flex-end;padding:6px 8px;border-top:1px solid var(--border-muted);}

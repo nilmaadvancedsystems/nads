@@ -32,6 +32,7 @@ import type { ItemDeTeste } from '../../../../comum/BotaoDeTeste';
 import { EtapaProvider, type AbasDaEtapa } from './etapas/contexto';
 import { TelaDaEtapa } from './etapas/TelaDaEtapa';
 import { PeriodoDaTarefa } from './partes/PeriodoDaTarefa';
+import { publicarOndeEsta } from '../suporte/contextoDoSuporte';
 
 // as etapas cuja ferramenta (o Extrator) já tem a linha do período: a Importação, com o seletor que troca, e o Cheque especial
 const COM_A_LINHA_DO_PERIODO = new Set(['extratos', 'cheque-especial']);
@@ -125,6 +126,12 @@ export function Executor() {
   // a etapa da folha esperando o balancete: a mesma barra do topo
   const folhaCarregando = temChecklist && folha.itens === null;
   useCarregando(vm.carregando || vm.conferindo || (ferramentaCarregando && !vm.revendo) || folhaCarregando);
+  // onde a pessoa está, para o balão do suporte (Vitor, 20/10/2026): a empresa, os meses, a etapa, a aba aberta e os bancos
+  const abaAberta = ((vm.tela && abasDaTela ? abasDaTela.paginas : abas) || []).find(p => p.ativa)?.rotulo || '';
+  useEffect(() => {
+    publicarOndeEsta(vm.empresa ? { empresa: vm.empresa.nome, codigo: vm.empresa.codigo ?? null, meses: vm.meses.length ? vm.meses : [vm.competencia], etapa: vm.etapa?.nome || '', aba: abaAberta, bancos: vm.bancosDaEmpresa } : null);
+  });
+  useEffect(() => () => publicarOndeEsta(null), []);
   // os botões da etapa só com a tela pronta (a Tarefas e a ferramenta carregadas); o avançar, se a ferramenta tem
   // requisitos, só depois que ela disser o que falta (antes disso ele apareceria liberado)
   const telaPronta = !vm.carregando && !ferramentaCarregando;

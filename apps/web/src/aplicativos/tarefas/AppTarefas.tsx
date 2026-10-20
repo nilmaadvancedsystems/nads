@@ -11,6 +11,7 @@ import { avisarErrosDoBanco, repoDaTarefas, repoDeAcesso } from './dados/fonte';
 import { RepoProvider } from './dados/repo';
 import { useSessao } from './dados/sessao';
 import { AvisosDeLiberacao } from './telas/acesso/AvisosDeLiberacao';
+import { BalaoDoSuporte } from './telas/suporte/BalaoDoSuporte';
 import { LiberarComputador } from './telas/acesso/LiberarComputador';
 import { useLiberacao } from './telas/acesso/useLiberacao';
 import { AberturaDoLogin } from './telas/entrar/aberturaDoLogin';
@@ -72,6 +73,8 @@ export function AppTarefas() {
           <PessoalProvider>
             <Outlet />
             <AvisosDeLiberacao admin={admin} />
+            {/* o suporte de leitura (20/10/2026): o balão no canto de baixo, à direita, em toda tela */}
+            <BalaoDoSuporte />
           </PessoalProvider>
         </PrecisaDeOperador>
       </OperadorProvider>
