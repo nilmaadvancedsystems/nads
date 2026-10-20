@@ -395,7 +395,7 @@ export const PECAS_BASE: Peca[] = [
         <tbody>
           <tr><td className="imp-planilha-dia" rowSpan={2}>18/05/2026</td><td className="imp-planilha-sit" rowSpan={2}>Os 130,96 que faltam parecem estar lançados em 06/03/2026</td><td className="imp-planilha-lanc"><b>CRÉD.LIQ.COBRANÇA DOC.: 2096255</b></td><td className="num"><b>8.398,18</b></td><td className="num"><b>8.267,22</b></td><td className="num ext-neg">−130,96</td></tr>
           <tr className="imp-planilha-parte"><td>SUPERMERCADO QUEBA LTDA</td><td className="num" /><td className="num">5.109,72</td><td /></tr>
-          <tr><td className="imp-planilha-dia">16/04/2026</td><td className="imp-planilha-sit">Razão: 17/04 · Correto: 16/04</td><td className="imp-planilha-lanc"><b>SUPERMERCADO DONA BEIJA LTDA</b></td><td className="num"><b>947,30</b></td><td className="num"><b>947,30</b></td><td className="num" /></tr>
+          <tr><td className="imp-planilha-dia">16/04/2026</td><td className="imp-planilha-sit">Data errada: no banco foi 16/04, no razão está 17/04</td><td className="imp-planilha-lanc"><b>SUPERMERCADO DONA BEIJA LTDA</b></td><td className="num"><b>947,30</b></td><td className="num"><b>947,30</b></td><td className="num" /></tr>
         </tbody></table></div>
     ) },
   { id: 'linhas', tipo: 'tabelas', nome: 'Linhas especiais', descricao: 'Feita (riscada), a atual, a do Passivo, a excluída', classes: ['tr.feito', 'tr.linha-atual', 'tr.linha-passivo', 'tr.linha-excluida', 'tr.ok', 'tr.bad'], telas: ['c-naturezas', 'c-relatorio', 'e-arquivos'], largo: true,
