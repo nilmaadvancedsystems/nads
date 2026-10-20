@@ -468,6 +468,11 @@ export function salvarConta(c: CadastroDaEmpresa, id: string | null, d: DadosDaC
   const bancos = c.bancos ?? [...partida];
   const antes = id ? bancos.find(b => b.id === id) : undefined;
   if (id && !antes) return { cadastro: c, erro: 'Essa conta não está mais no cadastro.' };
+  // a conta que já está sem número (veio do Extrator ou do ponto de partida) salva sem ele: a conta contábil, o tipo… (Vitor,
+  // 20/10/2026: "não tá deixando eu salvar" a Caixa sem agência e conta). A nova, ou a que tinha número, precisa dos dois.
+  const semNumero = !!antes && !texto(antes.agencia) && !texto(antes.conta) && !agencia && !conta;
+  if (!semNumero && (!agencia || !conta)) return { cadastro: c, erro: 'Preencha a agência e a conta.' };
+  if (d.desde && !competencia(d.desde)) return { cadastro: c, erro: 'A competência de início está inválida.' };
   const chave = idDaConta(marca, agencia, conta);
   const novoId = antes ? antes.id : chave;
   const repetida = !semNumero && bancos.some(b => b.id !== antes?.id && (b.id === chave || idDaConta(b.marca, b.agencia || '', b.conta || '') === chave));
@@ -484,11 +489,6 @@ export function salvarConta(c: CadastroDaEmpresa, id: string | null, d: DadosDaC
   return { cadastro: registrar({ ...c, bancos: lista }, por, agora, antes ? 'Editou conta' : 'Incluiu conta', descreverConta(nova)), erro: null };
 }
 
-  // a conta que já está sem número (veio do Extrator ou do ponto de partida) salva sem ele: a conta contábil, o tipo… (Vitor,
-  // 20/10/2026: "não tá deixando eu salvar" a Caixa sem agência e conta). A nova, ou a que tinha número, precisa dos dois.
-  const semNumero = !!antes && !texto(antes.agencia) && !texto(antes.conta) && !agencia && !conta;
-  if (!semNumero && (!agencia || !conta)) return { cadastro: c, erro: 'Preencha a agência e a conta.' };
-  if (d.desde && !competencia(d.desde)) return { cadastro: c, erro: 'A competência de início está inválida.' };
 /**
  * As contas contábeis de uma conta bancária, sem mexer no resto (a etapa Cheque especial, Vitor, 13/10/2026): o código da
  * conta do banco e o do cheque especial. Vazio = apaga; igual ao que estava = não muda.
