@@ -3,6 +3,7 @@
 // Nada é apagado de onde já estava: enquanto a empresa não tem os bancos cadastrados, vale o que o Extrator
 // usava (a lista provisória de empresas/bancos.ts e os bancos adicionados na tela dele).
 import { nomeNorm } from '../../formatos';
+import { cnpjFormatado, documentoValido } from './receita';
 import { BANCOS_CONHECIDOS, bancosDaEmpresa, idDaConta, rotuloDaConta, type BancoDaEmpresa } from '../bancos';
 import {
   type BancoDoRelatorio, BANCOS_DO_RELATORIO, type CadastroDaEmpresa, type EmprestimoDaEmpresa, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, type ParametrosDoDpDoMes, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel,
@@ -142,7 +143,7 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...(typeof doc.emiteNotaHonorario === 'boolean' ? { emiteNotaHonorario: doc.emiteNotaHonorario } : {}),
     ...proLaboreDoDocumento(doc.proLabore),
     ...(REGIMES.includes(texto(doc.regime) as Regime) ? { regime: texto(doc.regime) } : {}),
-    ...(/^\d{14}$/.test(texto(doc.cnpj)) ? { cnpj: texto(doc.cnpj) } : {}),
+    ...(/^(\d{11}|\d{14})$/.test(texto(doc.cnpj)) ? { cnpj: texto(doc.cnpj) } : {}),
     ...contatoDoDocumento(doc.contato),
     ...(Array.isArray(doc.emprestimos) ? { emprestimos: (doc.emprestimos as Record<string, unknown>[]).map(e => ({ numero: texto(e?.numero), banco: texto(e?.banco), desde: texto(e?.desde), ...(texto(e?.ate) ? { ate: texto(e?.ate) } : {}) })).filter(e => e.numero && e.banco) } : {}),
     ...(Array.isArray(doc.socios) ? { socios: (doc.socios as Record<string, unknown>[]).map(s => ({ nome: texto(s?.nome), cpf: texto(s?.cpf) })).filter(s => s.nome || s.cpf) } : {}), atualizadoEm: opcional(doc.atualizadoEm),
@@ -205,6 +206,21 @@ export function planoDoDocumento(doc: Record<string, unknown> | null | undefined
 function registrar(c: CadastroDaEmpresa, por: string, agora: Date, acao: string, detalhe: string): CadastroDaEmpresa {
   const r: RegistroCadastro = { ts: agora.toISOString(), por: por || '—', acao, detalhe };
   return { ...c, historico: [r, ...c.historico].slice(0, MAX_HISTORICO), atualizadoEm: r.ts };
+}
+
+/**
+ * O CNPJ ou o CPF da empresa (Sávio, 20/10/2026: "alguns clientes estão sem CNPJ/CPF e não tem como cadastrar"): só os
+ * números; vazio tira. Fica no histórico; sem mudança, devolve o mesmo; número que não confere, o erro.
+ */
+export function definirDocumento(c: CadastroDaEmpresa, documento: string, por: string, agora: Date): CadastroDaEmpresa | { erro: string } {
+  const d = String(documento ?? '').replace(/\D/g, '');
+  if ((c.cnpj || '') === d) return c;
+  if (d && !documentoValido(d)) {
+    return { erro: d.length === 14 ? 'CNPJ inválido: confira os números.' : d.length === 11 ? 'CPF inválido: confira os números.' : 'Digite os 14 números do CNPJ ou os 11 do CPF.' };
+  }
+  const resto: CadastroDaEmpresa = { ...c };
+  delete resto.cnpj;
+  return registrar(d ? { ...resto, cnpj: d } : resto, por, agora, 'Identificação', d ? (d.length === 11 ? 'CPF ' : 'CNPJ ') + cnpjFormatado(d) : 'Sem CNPJ/CPF');
 }
 
 /** Presta serviços: sim, não, ou volta a "não informado" (null). Fica no histórico; sem mudança, devolve o mesmo. */
@@ -468,6 +484,11 @@ export function salvarConta(c: CadastroDaEmpresa, id: string | null, d: DadosDaC
   const bancos = c.bancos ?? [...partida];
   const antes = id ? bancos.find(b => b.id === id) : undefined;
   if (id && !antes) return { cadastro: c, erro: 'Essa conta não está mais no cadastro.' };
+  // a conta que já está sem número (veio do Extrator ou do ponto de partida) salva sem ele: a conta contábil, o tipo… (Vitor,
+  // 20/10/2026: "não tá deixando eu salvar" a Caixa sem agência e conta). A nova, ou a que tinha número, precisa dos dois.
+  const semNumero = !!antes && !texto(antes.agencia) && !texto(antes.conta) && !agencia && !conta;
+  if (!semNumero && (!agencia || !conta)) return { cadastro: c, erro: 'Preencha a agência e a conta.' };
+  if (d.desde && !competencia(d.desde)) return { cadastro: c, erro: 'A competência de início está inválida.' };
   const chave = idDaConta(marca, agencia, conta);
   const novoId = antes ? antes.id : chave;
   const repetida = !semNumero && bancos.some(b => b.id !== antes?.id && (b.id === chave || idDaConta(b.marca, b.agencia || '', b.conta || '') === chave));
@@ -484,11 +505,6 @@ export function salvarConta(c: CadastroDaEmpresa, id: string | null, d: DadosDaC
   return { cadastro: registrar({ ...c, bancos: lista }, por, agora, antes ? 'Editou conta' : 'Incluiu conta', descreverConta(nova)), erro: null };
 }
 
-  // a conta que já está sem número (veio do Extrator ou do ponto de partida) salva sem ele: a conta contábil, o tipo… (Vitor,
-  // 20/10/2026: "não tá deixando eu salvar" a Caixa sem agência e conta). A nova, ou a que tinha número, precisa dos dois.
-  const semNumero = !!antes && !texto(antes.agencia) && !texto(antes.conta) && !agencia && !conta;
-  if (!semNumero && (!agencia || !conta)) return { cadastro: c, erro: 'Preencha a agência e a conta.' };
-  if (d.desde && !competencia(d.desde)) return { cadastro: c, erro: 'A competência de início está inválida.' };
 /**
  * As contas contábeis de uma conta bancária, sem mexer no resto (a etapa Cheque especial, Vitor, 13/10/2026): o código da
  * conta do banco e o do cheque especial. Vazio = apaga; igual ao que estava = não muda.

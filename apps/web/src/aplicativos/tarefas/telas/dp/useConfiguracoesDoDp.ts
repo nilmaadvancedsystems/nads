@@ -12,7 +12,7 @@ import { useCategoriasDp, useGmailDoEntregas } from '../../dados/repo';
 import { useClientesDoDp } from './useClientesDoDp';
 import { documentoFormatado } from '../financeiro/formatosDaNota';
 
-export type TopicoDoClienteDp = 'obrigacoes' | 'entrega';
+export type TopicoDoClienteDp = 'identificacao' | 'obrigacoes' | 'entrega';
 
 /** as competências para escolher: as 3 próximas e as recentes (a mais nova primeiro) */
 function competenciasDasConfiguracoes(): string[] {
@@ -39,8 +39,14 @@ export function useConfiguracoesDoDp() {
   // aos sites do governo"): do cadastro do Entregas, pelo código; só os dígitos
   const gmail = useGmailDoEntregas();
   const documentoDoCodigo = new Map(gmail.clientes().lista.filter(c => c.documento).map(c => [Number(c.codigo), c.documento as string]));
+  // sem o do Entregas, o do Cadastro do nads (Sávio, 20/10/2026: "puxar automaticamente do cadastro de empresas"), que
+  // também é onde se cadastra (a janela do cliente › Identificação)
+  const doEntregas = new Set(documentoDoCodigo.keys());
+  for (const c of dp.clientes) if (!documentoDoCodigo.has(c.codigo) && c.cadastro?.cnpj) documentoDoCodigo.set(c.codigo, c.cadastro.cnpj);
   // nos exemplos não há cadastro do Entregas: um CNPJ inventado pelo código, para a coluna aparecer
   if (gmail.exemplos) for (const c of dp.clientes) if (!documentoDoCodigo.has(c.codigo)) documentoDoCodigo.set(c.codigo, String(c.codigo).padStart(8, '0') + '000100');
+  // o número que se digita na Identificação (e o erro, quando não confere)
+  const [documentoNovo, setDocumentoNovo] = useState({ texto: '', erro: '' });
   const [busca, setBusca] = useState('');
   const [movimento, setMovimento] = useState('');
   const [soMudados, setSoMudados] = useState(false);
@@ -80,7 +86,26 @@ export function useConfiguracoesDoDp() {
     /** a janela do cliente (como a da empresa no Cadastro) */
     cliente,
     topico, setTopico,
-    abrir: (codigo: number) => { setAberto(codigo); setTopico('obrigacoes'); },
+    /** sem CNPJ/CPF, a janela abre na Identificação (onde se cadastra) */
+    abrir: (codigo: number, t?: TopicoDoClienteDp) => {
+      setAberto(codigo);
+      setTopico(t || 'obrigacoes');
+      const doCadastro = dp.clientes.find(c => c.codigo === codigo)?.cadastro?.cnpj || '';
+      setDocumentoNovo({ texto: doCadastro ? documentoFormatado(doCadastro) : '', erro: '' });
+    },
+    /** a Identificação do cliente aberto: o CNPJ/CPF e de onde vem (o Entregas não se muda daqui) */
+    identificacao: cliente ? {
+      documento: documentoFormatado(documentoDoCodigo.get(cliente.codigo) || ''),
+      origem: doEntregas.has(cliente.codigo) ? 'entregas' as const : cliente.cadastro?.cnpj ? 'cadastro' as const : documentoDoCodigo.has(cliente.codigo) ? 'exemplo' as const : 'nenhum' as const,
+    } : null,
+    documentoNovo,
+    mudarDocumentoNovo: (texto: string) => setDocumentoNovo({ texto, erro: '' }),
+    gravarDocumento() {
+      if (!cliente) return;
+      const erro = dp.definirDocumento(cliente.codigo, documentoNovo.texto);
+      setDocumentoNovo(d => ({ texto: erro ? d.texto : documentoFormatado(d.texto), erro }));
+      if (!erro) toast(documentoNovo.texto.trim() ? 'CNPJ/CPF gravado no Cadastro.' : 'CNPJ/CPF tirado do Cadastro.');
+    },
     fechar: () => setAberto(null),
     mudarMovimento: (codigo: number, v: string) => dp.mudarDp(codigo, { movimento: v }),
     alternarObrigacao(codigo: number, id: string) {

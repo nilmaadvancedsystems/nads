@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
-  comContasPadrao, criarRepoCadastro, criarRepoCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirNotaDeHonorario, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
+  comContasPadrao, criarRepoCadastro, criarRepoCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirDocumento, definirNotaDeHonorario, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
   bancosDoEntregasDoDocumento, bancosDoEntregasPorCodigo, contatosDoEntregasPorCodigo, contasDoEntregas, juntarComEntregas, sugestoesDoEntregas,
   lerPlanilhaDoPlano, linhasDoTexto, registrarPlano, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
   type PlanoDeContas,
@@ -71,6 +71,22 @@ describe('contas bancárias', () => {
     const c = excluirConta(confirmarPontoDePartida(vazio(), partida, 'V', AGORA), 'sicoob', partida, 'V', AGORA).cadastro;
     expect(c.bancos).toEqual([]);
     expect(bancosDoCadastroNa(c, 292, '2026-08').map(b => b.id)).toEqual(['banco']);
+  });
+});
+
+describe('o CNPJ/CPF da empresa (20/10/2026)', () => {
+  it('grava só os números, confere os dígitos, fica no histórico e volta do banco (CNPJ ou CPF)', () => {
+    const c = definirDocumento(vazio(), '11.222.333/0001-81', 'Savio', AGORA);
+    if ('erro' in c) throw new Error(c.erro);
+    expect([c.cnpj, c.historico[0].acao, c.historico[0].detalhe]).toEqual(['11222333000181', 'Identificação', 'CNPJ 11.222.333/0001-81']);
+    expect(definirDocumento(c, '11222333000181', 'Savio', AGORA)).toBe(c);
+    expect(definirDocumento(vazio(), '11222333000182', 'Savio', AGORA)).toEqual({ erro: 'CNPJ inválido: confira os números.' });
+    expect(definirDocumento(vazio(), '123', 'Savio', AGORA)).toEqual({ erro: 'Digite os 14 números do CNPJ ou os 11 do CPF.' });
+    const cpf = definirDocumento(vazio(), '529.982.247-25', 'Savio', AGORA);
+    if ('erro' in cpf) throw new Error(cpf.erro);
+    expect(cadastroDoDocumento('FITO', 292, documentoDoCadastro(cpf)).cnpj).toBe('52998224725');
+    const sem = definirDocumento(cpf, '', 'Savio', AGORA);
+    expect('erro' in sem ? sem.erro : [sem.cnpj, sem.historico[0].detalhe]).toEqual([undefined, 'Sem CNPJ/CPF']);
   });
 });
 

@@ -1,5 +1,6 @@
 // DP › Configurações, no estilo do Cadastro (Vitor, 06/10/2026): a lista dos clientes do DP com os parâmetros de cada um,
-// só para ler; clicar no cliente abre a janela dele (a mesma janela com painéis laterais do Cadastro) — Obrigações (o
+// só para ler; clicar no cliente abre a janela dele (a mesma janela com painéis laterais do Cadastro) — Identificação (o
+// CNPJ/CPF: o do Entregas ou, sem ele, o do Cadastro, onde se cadastra; 20/10/2026), Obrigações (o
 // movimento e as obrigações do mês; a REINF é do Fiscal) e Entrega (como recebe e o agrupamento). Grava ao mudar; o que foi mudado
 // ganha o selo "mudado" e o "Voltar à planilha".
 import { MenuDeAgrupamento } from './MenuDeAgrupamento';
@@ -9,6 +10,7 @@ import { MenuDeFiltro } from './MenuDeFiltro';
 import { useConfiguracoesDoDp, type TopicoDoClienteDp } from './useConfiguracoesDoDp';
 
 const TOPICOS: TopicoDaJanela<TopicoDoClienteDp>[] = [
+  { id: 'identificacao', rotulo: 'Identificação', icone: 'cartao' },
   { id: 'obrigacoes', rotulo: 'Obrigações', icone: 'checklist' },
   { id: 'entrega', rotulo: 'Entrega', icone: 'envelope' },
 ];
@@ -78,7 +80,12 @@ export function ConfiguracoesDoDp() {
                       {/* clicar no número copia (Vitor, 14/10/2026: "remova esse botão de copiar e faça com que o número ao clicar seja copiado") */}
                       {l.documento ? (
                         <button type="button" className="texto-copiavel num" title="Clique para copiar" onClick={() => copiar(l.documento)}>{l.documentoNaTela}</button>
-                      ) : <span className="pill-vazio">sem cadastro</span>}
+                      ) : (
+                        // sem CNPJ/CPF: o selo abre a janela na Identificação, onde se cadastra (Sávio, 20/10/2026)
+                        <button type="button" className="texto-copiavel" style={{ cursor: 'pointer' }} title="Cadastrar o CNPJ/CPF" onClick={() => vm.abrir(l.codigo, 'identificacao')}>
+                          <span className="pill-vazio">sem cadastro</span>
+                        </button>
+                      )}
                     </td>
                     <td>{l.movimento}</td>
                     <td className="dp-obrig-texto">{l.obrigacoesTexto}</td>
@@ -93,7 +100,7 @@ export function ConfiguracoesDoDp() {
       )}
 
       {c && (
-        <JanelaLateral rotulo={c.nomeNaTela} topicos={TOPICOS} topico={vm.topico} mudar={vm.setTopico} fechar={vm.fechar} resumo={(
+        <JanelaLateral rotulo={c.nomeNaTela} topicos={TOPICOS.map(t => t.id === 'identificacao' ? { ...t, alerta: vm.identificacao?.origem === 'nenhum' } : t)} topico={vm.topico} mudar={vm.setTopico} fechar={vm.fechar} resumo={(
           <div className="usuario-quem">
             <b>{c.nomeNaTela}</b>
             <span className="fraco">Código {c.codigo} · {c.enquadramento}</span>
@@ -104,6 +111,27 @@ export function ConfiguracoesDoDp() {
             {c.mudado && <button type="button" className="btn btn-ghost" onClick={() => vm.voltarAPlanilha(c.codigo)}>Voltar à planilha</button>}
           </div>
         )}>
+          {vm.topico === 'identificacao' && vm.identificacao && (
+            <Cartao titulo="Identificação">
+              {vm.identificacao.origem === 'entregas' ? (
+                // o do Entregas vale e não se muda daqui
+                <Linha rotulo="CNPJ/CPF" dica="Do cadastro do Entregas">
+                  <button type="button" className="texto-copiavel num" title="Clique para copiar" onClick={() => copiar(vm.identificacao!.documento.replace(/\D/g, ''))}>{vm.identificacao.documento}</button>
+                </Linha>
+              ) : (
+                <>
+                  <Linha rotulo="CNPJ/CPF" dica={vm.identificacao.origem === 'cadastro' ? 'Do Cadastro do nads' : vm.identificacao.origem === 'exemplo' ? 'Inventado (dados de exemplo)' : 'O Entregas não tem: cadastre aqui (vai para o Cadastro da empresa)'}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <input type="text" inputMode="numeric" className="pessoal-select num" value={vm.documentoNovo.texto} placeholder="CNPJ ou CPF" aria-label="CNPJ ou CPF"
+                        onChange={e => vm.mudarDocumentoNovo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') vm.gravarDocumento(); }} />
+                      <BotaoIcone icone="check" titulo="Gravar o CNPJ/CPF" onClick={vm.gravarDocumento} />
+                    </span>
+                  </Linha>
+                  {vm.documentoNovo.erro && <span className="feedback-erro">{vm.documentoNovo.erro}</span>}
+                </>
+              )}
+            </Cartao>
+          )}
           {vm.topico === 'obrigacoes' && (
             <>
               <Cartao titulo="Movimento">
