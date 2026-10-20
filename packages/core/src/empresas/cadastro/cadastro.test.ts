@@ -47,6 +47,15 @@ describe('contas bancárias', () => {
     expect(r.cadastro.bancos?.[0]).toMatchObject({ id: 'sicoob', agencia: '3001', conta: '555' });
   });
 
+  it('a conta que já estava sem número salva só a conta contábil; a nova continua pedindo agência e conta (20/10/2026)', () => {
+    const r = salvarConta(vazio(), 'sicoob', { marca: 'sicoob', agencia: '', conta: '', contaContabil: '10502' }, partida, 'V', AGORA);
+    expect(r.erro).toBeNull();
+    expect(r.cadastro.bancos?.[0]).toMatchObject({ id: 'sicoob', contaContabil: '10502' });
+    expect(r.cadastro.bancos?.[0].agencia).toBeUndefined();
+    expect(salvarConta(vazio(), 'sicoob', { marca: 'sicoob', agencia: '3001', conta: '' }, partida, 'V', AGORA).erro).toMatch(/agência/);
+    expect(salvarConta(vazio(), null, { marca: 'caixa', agencia: '', conta: '' }, partida, 'V', AGORA).erro).toMatch(/agência/);
+  });
+
   it('encerrada, some das competências seguintes; reaberta, volta', () => {
     const c = salvarConta(vazio(), null, { marca: 'itau', agencia: '1', conta: '2', desde: '2026-01' }, partida, 'V', AGORA).cadastro;
     const enc = encerrarConta(c, 'itau-1-2', '2026-06', partida, 'V', AGORA).cadastro;
