@@ -56,6 +56,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'paradas', rotulo: 'Paradas', icone: 'alert', titulo: 'Etapas paradas' },
     // o leitor do SINTEGRA (Vitor, 15/10/2026: "montar um leitor de sintegra")
     { id: 'sintegra', rotulo: 'SINTEGRA', icone: 'fileText', titulo: 'Leitor do SINTEGRA' },
+    // a relação de faturamento dos clientes (Heverton, 20/10/2026; o usuário decidiu em 21/10: a receita de cada cliente)
+    { id: 'faturamento', rotulo: 'Faturamento', icone: 'dinheiro', titulo: 'Faturamento dos clientes' },
   ] },
   // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
   // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas
@@ -230,6 +232,11 @@ export const ABAS_DO_CADASTRO: readonly { id: string; rotulo: string; icone: Nom
   { id: 'plano', rotulo: 'Plano de contas', icone: 'list', grupo: 'Contábil' },
   { id: 'contas-padrao', rotulo: 'Contas padrão', icone: 'hash', grupo: 'Contábil' },
   { id: 'fiscal', rotulo: 'Parâmetros', icone: 'scale', grupo: 'Fiscal' },
+  // o Fiscal da empresa (Heverton, 20/10/2026: "Cadastro = Fiscal (inserir)"): os documentos e as planilhas no Drive, os
+  // parcelamentos (os do Entregas) e o código de acesso do Simples (no cofre)
+  { id: 'fiscal-docs', rotulo: 'Documentos e planilhas', icone: 'pasta', grupo: 'Fiscal' },
+  { id: 'parcelamentos', rotulo: 'Parcelamentos', icone: 'dinheiro', grupo: 'Fiscal' },
+  { id: 'simples', rotulo: 'Código do Simples', icone: 'lock', grupo: 'Fiscal' },
   { id: 'senhas', rotulo: 'Senhas', icone: 'lock', grupo: 'Acessos' },
   { id: 'historico', rotulo: 'Histórico', icone: 'clock', grupo: 'Registro' },
 ];

@@ -4,6 +4,7 @@ export * from './drive';
 export * from './secretario';
 export * from './saude';
 export * from './gmail';
+export * from './parcelamentos';
 // a entrega de documentos aos clientes (a rota e o painel do Entregas, no nads desde 16/10/2026)
 export * from './documentos';
 export * from './guiasDoPdf';

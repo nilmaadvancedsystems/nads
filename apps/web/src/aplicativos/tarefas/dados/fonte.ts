@@ -40,6 +40,8 @@ import { criarLcdprFirestore } from './lcdpr.firestore';
 import { criarFeedbackFirestore } from './feedback.firestore';
 import { criarUsoMemoria, type RepoUso } from './uso';
 import { criarUsoFirestore } from './uso.firestore';
+import { criarParcelamentosMemoria, type RepoParcelamentos } from './parcelamentos';
+import { criarParcelamentosFirestore } from './parcelamentos.firestore';
 import { criarPessoalMemoria, type RepoPessoal } from './pessoal';
 import { criarPessoalFirestore } from './pessoal.firestore';
 import { criarSaudeMemoria, type RepoSaude } from './saude';
@@ -412,6 +414,14 @@ export function repoDeFeedback(): RepoFeedback {
       : criarFeedbackMemoria(() => { try { return localStorage.getItem('nads-tarefas-operador') || ''; } catch { return ''; } });
   }
   return feedback;
+}
+
+let parcelamentos: RepoParcelamentos | null = null;
+
+/** Os parcelamentos dos clientes (Heverton, 20/10/2026): no banco, a coleção parcelamentos do Entregas; nos exemplos, na memória. */
+export function repoDeParcelamentos(): RepoParcelamentos {
+  if (!parcelamentos) parcelamentos = noBanco ? criarParcelamentosFirestore(quemPede) : criarParcelamentosMemoria(() => { try { return localStorage.getItem('nads-tarefas-operador') || ''; } catch { return ''; } });
+  return parcelamentos;
 }
 
 let usoDoSistema: RepoUso | null = null;

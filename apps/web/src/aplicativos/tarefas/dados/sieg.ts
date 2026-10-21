@@ -124,6 +124,13 @@ export function criarSiegMemoria(): RepoSieg {
         contagens.set(codigo, { codigo, competencia, em: agora(), emitidas: { NFe: n, NFCe: 0, NFSe: 0, CTe: 0, CFe: 0 }, recebidas: { NFe: Math.round(n / 2), NFCe: 0, NFSe: 1, CTe: 0, CFe: 0 } });
       }
       saidas.set('901', { codigo: '901', competencia, em: agora(), series: [{ modelo: '55', serie: '1', numeros: [1, 2, 3, 5, 6, 9], canceladas: [6], valor: 1000 }] });
+      // o faturamento dos clientes (21/10/2026): umas empresas da lista com as saídas de cada mês (o valor muda com o mês;
+      // a 58 não tem em mês par, para a tela mostrar o vazio)
+      const mes = Number(competencia.slice(5, 7)) || 1;
+      for (const [codigo, base] of [['10', 48250.4], ['15', 12890.1], ['23', 98100], ['51', 5320.75], ['58', 22400]] as const) {
+        if (codigo === '58' && mes % 2 === 0) continue;
+        saidas.set(codigo, { codigo, competencia, em: agora(), series: [{ modelo: '55', serie: '1', numeros: [1, 2, 3, 4], canceladas: [], valor: Math.round(base * (0.8 + ((mes * 7) % 5) / 10) * 100) / 100 }] });
+      }
       return { carregado: true, contagens, saidas };
     },
     // como a contagem: os XMLs de exemplo já estão "baixados" (as tabelas de verificação aparecem sem pedir)

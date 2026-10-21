@@ -1,11 +1,10 @@
 // Financeiro › Honorários (19/10/2026, fase 2): por competência (começa no mês anterior), os números (Previsto, Recebido, Em
 // aberto, Clientes pagos), o filtro e a busca, e a lista dos clientes que controlam honorário: o valor se edita na linha,
 // a situação diz "Pago em dd/mm · forma" ou "Em aberto" (não há vencimento), e Receber / Desfazer marcam à mão. Em 21/10/2026:
-// Emitir NFS-e (a Nova nota já preenchida, com o selo da nota que já existe) e Cobrar (a mensagem pronta, com "Cobrado em").
+// Emitir NFS-e (a Nova nota já preenchida, com o selo da nota que já existe) e Cobrar (tirado em 21/10/2026, a pedido: "remove esse cobrar"; o "Cobrado em" das cobranças já feitas fica).
 import { financeiro, formatos } from '@nads/core';
 import { Icone, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
 import { dataBr } from './formatosDaNota';
-import { JanelaCobranca } from './JanelaCobranca';
 import { JanelaDosContratos } from './JanelaDosContratos';
 import { JanelaNovaNota } from './JanelaNovaNota';
 import { JanelaReceber } from './JanelaReceber';
@@ -26,7 +25,6 @@ export function Honorarios() {
     <section>
       {vm.recebendo && <JanelaReceber contratoId={vm.recebendo} competencia={vm.competencia} fechar={vm.fecharReceber} />}
       {vm.emitindo && <JanelaNovaNota fechar={vm.fecharEmissao} inicial={vm.emitindo} />}
-      {vm.cobrando && <JanelaCobranca contratoId={vm.cobrando} competencia={vm.competencia} fechar={vm.fecharCobranca} />}
       {vm.gerenciando && <JanelaDosContratos fechar={() => vm.setGerenciando(false)} />}
 
       <div className="tarefas-barra-topo fin-barra">
@@ -83,7 +81,6 @@ export function Honorarios() {
                   </td>
                   <td className="fin-direita fin-acoes">
                     <button type="button" className="btn btn-outline" onClick={() => vm.emitirNota(l)} title="Abre a Nova nota já preenchida com o cliente, o valor e a competência"><Icone nome="recibo" />Emitir NFS-e</button>
-                    {!l.recebimento && <button type="button" className="btn btn-outline" onClick={() => vm.cobrar(l.contrato.id)}><Icone nome="mensagem" />Cobrar</button>}
                     {l.recebimento
                       ? <button type="button" className="btn btn-outline" onClick={() => void vm.desfazer(l)}><Icone nome="repeat" />Desfazer</button>
                       : <button type="button" className="btn btn-primary" disabled={l.contrato.valor <= 0} title={l.contrato.valor <= 0 ? 'Defina o valor do honorário primeiro' : 'Marcar como recebido'} onClick={() => vm.receber(l.contrato.id)}><Icone nome="check" />Receber</button>}

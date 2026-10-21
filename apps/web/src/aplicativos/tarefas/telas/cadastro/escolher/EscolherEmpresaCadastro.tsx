@@ -3,13 +3,17 @@
 // clicar na linha abre a janela da empresa, por cima da lista.
 import { Icone, LogoBanco, MenuSuspenso, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Vazio } from '@nads/ui';
 import { useState } from 'react';
+import { JanelaDosPapeis } from './JanelaDosPapeis';
 import { JanelaNovaEmpresa } from './JanelaNovaEmpresa';
+import { usePapeisDoCadastro } from './usePapeisDoCadastro';
 import { SITUACOES, useListaDoCadastro } from './useListaDoCadastro';
 
 export function EscolherEmpresaCadastro() {
   // a Nova empresa (Vitor, 07/10/2026: "um cadastro de empresas sem o botão de cadastrar empresa")
   const [nova, setNova] = useState(false);
   const vm = useListaDoCadastro();
+  // os papéis do mês (Heverton, 20/10/2026): as etiquetas do envelope e o protocolo de tributos, das empresas da lista
+  const papeis = usePapeisDoCadastro(vm.linhas);
   useCarregando(vm.carregando);
   // as linhas chegam em cascata quando o banco responde
   // tela com muitas caixas (Vitor, 01/10/2026: "tudo que tiver muita box pode reduzir"): a lista inteira só acende rápido
@@ -19,6 +23,7 @@ export function EscolherEmpresaCadastro() {
   return (
     <section>
       {nova && <JanelaNovaEmpresa fechar={() => setNova(false)} />}
+      <JanelaDosPapeis vm={papeis} />
       <div className="tarefas-barra-topo">
         <span className="tarefas-contador"><Icone nome="briefcase" /><b>{vm.total}</b> empresas</span>
         {/* o que falta (13/10/2026): clicar filtra as incompletas; o robô que lê agência e conta foi para Robôs e agentes */}
@@ -35,6 +40,9 @@ export function EscolherEmpresaCadastro() {
         <MenuSuspenso rotulo={vm.rotuloSituacao} titulo="Situação" direita className={'btn btn-outline' + (vm.situacao ? ' ativo' : '')}
           itens={[{ rotulo: 'Todas', marcado: !vm.situacao, onClick: () => vm.setSituacao('') },
             ...SITUACOES.map(s => ({ rotulo: s.rotulo, marcado: s.valor === vm.situacao, onClick: () => vm.setSituacao(s.valor) }))]} />
+        {/* os papéis do mês num menu só (a barra não quebra): as etiquetas do envelope e o protocolo de tributos */}
+        <MenuSuspenso rotulo="Papéis do mês" icone="printer" titulo="Imprimir os papéis do mês das empresas da lista" direita largura={240}
+          itens={[{ rotulo: 'Etiquetas do mês', onClick: () => papeis.abrir('etiquetas') }, { rotulo: 'Protocolo de tributos', onClick: () => papeis.abrir('protocolo') }]} />
         <button type="button" className="btn btn-primary" onClick={() => setNova(true)}><Icone nome="plus" />Nova empresa</button>
       </div>
 
