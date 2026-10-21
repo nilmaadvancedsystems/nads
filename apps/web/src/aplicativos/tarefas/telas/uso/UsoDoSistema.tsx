@@ -1,9 +1,11 @@
 // Cadastro › Uso do sistema (só o admin; Gustavo, 20/10/2026: "um mapa quente que trackei o que tá sendo usado no
-// sistema, botões e funcionalidades para sabermos o que está 'inútil'"): o período, os números, as telas mais e menos
-// visitadas, as nunca visitadas, por tela os controles (com e sem clique), quem usa e o mapa quente, e o "possivelmente
-// inútil". Só as peças do catálogo (Segmentado, Interruptor, Stat, Cartão, Ranking, Tabela, MenuSuspenso, Vazio e o
-// Mapa de calor, que entrou no catálogo).
-import { BotaoIcone, Esqueleto, Icone, Interruptor, MapaDeCalor, MenuSuspenso, Segmentado, Stat, Vazio, useCarregando } from '@nads/ui';
+// sistema, botões e funcionalidades para sabermos o que está 'inútil'"; refeita em 21/10/2026: "a tela com botões
+// coloridos e refazer essa tela"): o período e a coleta no topo, os números, e em duas colunas a lista das telas
+// (pintadas pelas visitas) e a tela escolhida, com os botões coloridos do frio ao quente, os sem clique tracejados, o
+// mapa dos cliques e o "Ver na tela" (abre a tela de verdade com os botões pintados). Embaixo, o "possivelmente inútil"
+// e quem mais usa. Só as peças do catálogo (Segmentado, Interruptor, Dica, Stat, Cartão, Pílula de calor, Mapa de
+// calor, Vazio).
+import { BotaoIcone, Dica, Esqueleto, Icone, Interruptor, MapaDeCalor, Segmentado, Stat, Vazio, useCarregando } from '@nads/ui';
 import { useUsoDoSistema } from './useUsoDoSistema';
 
 export function UsoDoSistema() {
@@ -19,13 +21,11 @@ export function UsoDoSistema() {
         <span className="tarefas-barra-espaco" />
         <span className="uso-coleta">
           <span>Coletar o uso</span>
+          <Dica texto={'Cada pessoa grava no máximo uma vez a cada 5 minutos (e ao sair da página), num documento por dia: cerca de '
+            + vm.estimativa.toLocaleString('pt-BR') + ' gravações por dia para 10 pessoas. Só a tela, o rótulo do botão e o ponto do clique: nada do que se digita, nem dado de cliente, nem do cofre.'} />
           <Interruptor ligado={vm.coletando} onMudar={() => void vm.alternarColeta()} rotulo="Coletar o uso do sistema" />
         </span>
       </div>
-      <p className="hint">
-        {vm.coletando ? 'A coleta está ligada' : 'A coleta está desligada'}: cada pessoa grava no máximo uma vez a cada 5 minutos (e ao sair da página), num documento por dia
-        (cerca de {vm.estimativa.toLocaleString('pt-BR')} gravações por dia para 10 pessoas). Só a tela, o rótulo do botão e o ponto do clique: nada do que se digita, nem dado de cliente, nem do cofre.
-      </p>
       {vm.exemplos && <p className="hint drive-aviso">Dados de exemplo: 90 dias inventados, mais o que você clicar nesta sessão.</p>}
       {vm.erro && <p className="feedback-erro">{vm.erro}</p>}
 
@@ -36,103 +36,105 @@ export function UsoDoSistema() {
           <div className="stat-grid">
             <Stat rotulo="Visitas" valor={vm.numeros.visitas.toLocaleString('pt-BR')} />
             <Stat rotulo="Cliques" valor={vm.numeros.cliques.toLocaleString('pt-BR')} />
-            <Stat rotulo="Telas usadas" valor={String(vm.numeros.telasUsadas)} />
-            <Stat rotulo="Telas nunca visitadas" valor={String(vm.numeros.nuncaVisitadas)} />
+            <Stat rotulo="Telas nunca abertas" valor={String(vm.numeros.nuncaVisitadas)} />
+            <Stat rotulo="Botões sem clique" valor={String(vm.numeros.semClique)} />
+          </div>
+
+          <div className="uso-mestre">
+            <div className="card uso-telas">
+              <h3>
+                <span>Telas</span>
+                <Segmentado valor={vm.filtro} onMudar={vm.setFiltro}
+                  opcoes={vm.filtros.map(f => ({ ...f, rotulo: f.rotulo + ' ' + (f.valor === 'todas' ? vm.contagem.todas : f.valor === 'usadas' ? vm.contagem.usadas : vm.contagem.semUso) }))} />
+              </h3>
+              <div className="uso-telas-lista">
+                {vm.lista.map(x => (
+                  <button key={x.tela} type="button" className={'uso-tela-item' + (t?.tela === x.tela ? ' ativo' : '') + (x.visitas ? '' : ' sem-uso')}
+                    onClick={() => vm.escolher(x.tela)} aria-pressed={t?.tela === x.tela}>
+                    <span className={'uso-calor-ponto calor-' + x.nivel} aria-hidden="true" />
+                    <span className="uso-tela-nome">{x.rotulo}</span>
+                    <span className="uso-tela-val num">{x.visitas ? x.visitas : 'nunca'}</span>
+                    <span className="uso-tela-barra" aria-hidden="true"><span className={'calor-' + x.nivel} style={{ width: x.pct + '%' }} /></span>
+                  </button>
+                ))}
+                {!vm.lista.length && <p className="fraco">Nenhuma tela neste filtro.</p>}
+              </div>
+            </div>
+
+            {t && (
+              <div className="card uso-detalhe">
+                <div className="uso-detalhe-topo">
+                  <div>
+                    <h3>{t.rotulo}</h3>
+                    <p className="fraco">
+                      {t.visitas ? t.visitas + (t.visitas === 1 ? ' visita' : ' visitas') + ' · ' + t.cliques + (t.cliques === 1 ? ' clique' : ' cliques') : 'Ninguém abriu esta tela no período.'}
+                      {t.departamentos.length > 0 && ' · ' + t.departamentos.map(d => d.rotulo + ' ' + d.total).join(' · ')}
+                    </p>
+                  </div>
+                  <button type="button" className="btn btn-primary" onClick={() => vm.verNaTela(t.tela)}>
+                    <Icone nome="alvo" width={16} height={16} />Ver na tela
+                  </button>
+                </div>
+
+                <p className="uso-secao">Botões <span className="fraco">do frio ao quente, pelo número de cliques</span></p>
+                {t.botoes.length || t.semClique.length ? (
+                  <div className="uso-botoes">
+                    {t.botoes.map(b => (
+                      <span key={b.controle} className={'uso-pilula calor-' + b.nivel}>{b.controle}<b className="num">{b.cliques}</b></span>
+                    ))}
+                    {t.semClique.map(c => <span key={c} className="uso-pilula calor-0">{c}<b className="num">0</b></span>)}
+                  </div>
+                ) : <p className="fraco">Nenhum botão registrado nesta tela no período.</p>}
+                <div className="uso-legenda" aria-label="Legenda">
+                  <span className="fraco">frio</span>
+                  {[1, 2, 3, 4, 5].map(n => <span key={n} className={'uso-calor-ponto calor-' + n} />)}
+                  <span className="fraco">quente</span>
+                  <span className="uso-calor-ponto calor-0" /><span className="fraco">apareceu e ninguém clicou</span>
+                </div>
+
+                {t.cliques > 0 && (
+                  <>
+                    <p className="uso-secao">Onde clicam <span className="fraco">a tela inteira, com o topo e a lateral</span></p>
+                    <MapaDeCalor grade={t.grade} maior={t.maiorCelula} rotulo={'Os cliques em ' + t.rotulo} />
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="uso-colunas">
+            {/* o destaque (Gustavo: "para sabermos o que está inútil"): as telas nunca abertas e os botões sem clique */}
             <div className="card">
-              <h3>Telas mais visitadas</h3>
-              <div className="rank uso-rank">
-                {vm.maisVisitadas.map(x => (
-                  <button key={x.tela} type="button" className="rank-item" onClick={() => vm.escolher(x.tela)} title={'Ver ' + x.rotulo}>
-                    <span className="rank-nome">{x.rotulo}</span><span className="rank-val num">{x.visitas}</span>
-                    <span className="rank-barra"><span style={{ width: x.pct + '%', background: 'var(--accent)' }} /></span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="card">
-              <h3>Telas menos visitadas</h3>
-              <div className="rank uso-rank">
-                {vm.menosVisitadas.map(x => (
-                  <button key={x.tela} type="button" className="rank-item" onClick={() => vm.escolher(x.tela)} title={'Ver ' + x.rotulo}>
-                    <span className="rank-nome">{x.rotulo}</span><span className="rank-val num">{x.visitas}</span>
-                    <span className="rank-barra"><span style={{ width: x.pct + '%', background: 'var(--warn)' }} /></span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* o destaque (Gustavo: "para sabermos o que está inútil"): as telas sem visita e os botões sem clique no período */}
-          <div className="card uso-inutil">
-            <h3><Icone nome="alert" width={16} height={16} />Possivelmente inútil no período</h3>
-            <div className="uso-inutil-corpo">
-              <p className="uso-inutil-titulo">Telas nunca visitadas <span className="gh-counter">{vm.nuncaVisitadas.length}</span></p>
+              <h3><Icone nome="alert" width={16} height={16} />Possivelmente inútil no período</h3>
+              <p className="uso-secao">Telas nunca abertas <span className="gh-counter">{vm.nuncaVisitadas.length}</span></p>
               {vm.nuncaVisitadas.length ? (
-                <div className="chip-row">{vm.nuncaVisitadas.map(n => <span key={n.tela} className="chip-f">{n.rotulo}</span>)}</div>
+                <div className="uso-botoes">{vm.nuncaVisitadas.map(n => (
+                  <button key={n.tela} type="button" className="uso-pilula calor-0" onClick={() => vm.escolher(n.tela)}>{n.rotulo}</button>
+                ))}</div>
               ) : <p className="fraco">Toda tela da navegação foi aberta no período.</p>}
-              <p className="uso-inutil-titulo">Controles que apareceram e ninguém clicou <span className="gh-counter">{vm.possivelmenteInutil.controles.length}</span></p>
-              {vm.possivelmenteInutil.controles.length ? (
-                <div className="table-wrap uso-tabela-baixa">
-                  <table className="table-compact">
-                    <thead><tr><th>Tela</th><th>Controle</th></tr></thead>
-                    <tbody>{vm.possivelmenteInutil.controles.slice(0, 200).map(c => <tr key={c.tela + '|' + c.controle}><td>{c.rotulo}</td><td>{c.controle}</td></tr>)}</tbody>
-                  </table>
-                </div>
-              ) : <p className="fraco">Todo controle visto teve clique.</p>}
+              <p className="uso-secao">Botões sem clique, por tela <span className="gh-counter">{vm.numeros.semClique}</span></p>
+              {vm.semCliquePorTela.length ? (
+                <div className="uso-inutil-telas">{vm.semCliquePorTela.slice(0, 30).map(s => (
+                  <button key={s.tela} type="button" className="uso-inutil-tela" onClick={() => vm.escolher(s.tela)} title={s.controles.join(' · ')}>
+                    <span className="uso-tela-nome">{s.rotulo}</span><span className="gh-counter">{s.controles.length}</span>
+                  </button>
+                ))}</div>
+              ) : <p className="fraco">Todo botão visto teve clique.</p>}
             </div>
-          </div>
-
-          {t && (
-            <div className="card uso-tela">
-              <h3>
-                <span>Por tela</span>
-                <MenuSuspenso rotulo={t.rotulo} className="btn btn-outline" titulo="Escolher a tela" largura={340}
-                  itens={vm.telas.map(x => ({ rotulo: x.rotulo, marcado: x.valor === t.tela, onClick: () => vm.escolher(x.valor) }))} />
-              </h3>
-              <div className="uso-tela-corpo">
-                <div className="uso-tela-mapa">
-                  <MapaDeCalor grade={t.grade} maior={t.maiorCelula} rotulo={'Os cliques em ' + t.rotulo} />
-                  <p className="hint">{t.visitas} {t.visitas === 1 ? 'visita' : 'visitas'} · {t.cliques} {t.cliques === 1 ? 'clique' : 'cliques'}. A área é a tela inteira (o topo e a lateral desenhados); quanto mais vermelho, mais cliques.</p>
-                  {t.departamentos.length > 0 && (
-                    <p className="uso-quem"><b>Quem usa:</b> {t.departamentos.map(d => d.rotulo + ' (' + d.total + ')').join(' · ')}</p>
-                  )}
-                </div>
-                <div className="uso-tela-lista">
-                  {t.controles.length ? (
-                    <div className="table-wrap">
-                      <table className="table-compact">
-                        <thead><tr><th>Controle</th><th className="num">Cliques</th><th className="num">%</th></tr></thead>
-                        <tbody>{t.controles.map(c => <tr key={c.controle}><td>{c.controle}</td><td className="num">{c.cliques}</td><td className="num">{c.pct}%</td></tr>)}</tbody>
-                      </table>
+            {vm.pessoas.length > 0 && (
+              <div className="card">
+                <h3>Quem mais usa</h3>
+                <div className="rank uso-rank">
+                  {vm.pessoas.map(p => (
+                    <div key={p.nome} className="rank-item">
+                      <span className="rank-nome">{p.nome}</span><span className="rank-val num">{p.total}</span>
+                      <span className="rank-barra"><span style={{ width: p.pct + '%', background: 'var(--accent)' }} /></span>
                     </div>
-                  ) : <p className="fraco">Nenhum clique nesta tela no período.</p>}
-                  {t.semClique.length > 0 && (
-                    <>
-                      <p className="uso-inutil-titulo">Sem clique <span className="gh-counter">{t.semClique.length}</span></p>
-                      <div className="chip-row">{t.semClique.map(c => <span key={c} className="chip-f">{c}</span>)}</div>
-                    </>
-                  )}
+                  ))}
                 </div>
               </div>
-            </div>
-          )}
-
-          {vm.pessoas.length > 0 && (
-            <div className="card">
-              <h3>Quem mais usa (visitas e cliques)</h3>
-              <div className="rank uso-rank">
-                {vm.pessoas.map(p => (
-                  <div key={p.nome} className="rank-item">
-                    <span className="rank-nome">{p.nome}</span><span className="rank-val num">{p.total}</span>
-                    <span className="rank-barra"><span style={{ width: p.pct + '%', background: 'var(--accent)' }} /></span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </>
       )}
     </section>

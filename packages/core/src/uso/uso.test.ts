@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { celula, criarAcumulador, diasDoPeriodo, gravacoesPorDia, nomeComparavel, rotuloLimpo, somarUso, telaDoCaminho, usoDoDocumento } from '.';
+import { celula, criarAcumulador, diasDoPeriodo, gravacoesPorDia, nivelDoCalor, nomeComparavel, rotuloLimpo, somarUso, telaDoCaminho, usoDoDocumento } from '.';
 
 describe('o mapa de uso do sistema (Gustavo, 20/10/2026)', () => {
   it('a tela do caminho: app/página, sem a empresa nem a competência', () => {
@@ -64,5 +64,15 @@ describe('o mapa de uso do sistema (Gustavo, 20/10/2026)', () => {
   it('os dias do período e a estimativa de gravações', () => {
     expect(diasDoPeriodo(3, new Date(2026, 9, 1))).toEqual(['2026-09-29', '2026-09-30', '2026-10-01']);
     expect(gravacoesPorDia(10)).toBe(10 * (96 + 20));
+  });
+});
+
+describe('nivelDoCalor', () => {
+  it('sem clique é 0; o mais clicado é 5; os poucos saem do frio', () => {
+    expect(nivelDoCalor(0, 10)).toBe(0);
+    expect(nivelDoCalor(10, 10)).toBe(5);
+    expect(nivelDoCalor(1, 100)).toBe(1);
+    expect(nivelDoCalor(25, 100)).toBe(3);
+    expect(nivelDoCalor(3, 0)).toBe(1);
   });
 });

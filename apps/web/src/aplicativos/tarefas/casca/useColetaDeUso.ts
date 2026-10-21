@@ -8,6 +8,7 @@ import { uso } from '@nads/core';
 import { useEffect, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router';
 import { useRepo, useUso } from '../dados/repo';
+import { useMapaNaTela } from './estadoDoMapaNaTela';
 import { useOperador } from './operador';
 
 export function useColetaDeUso() {
@@ -23,7 +24,9 @@ export function useColetaDeUso() {
   const tela = uso.telaDoCaminho(pathname);
   const departamento = op?.departamento || '';
   const pessoa = op?.nome || '';
-  const ativo = ligado && !!op;
+  // com o mapa na tela ligado, a coleta para: os cliques de quem olha o mapa não entram na conta
+  const mapa = useMapaNaTela();
+  const ativo = ligado && !!op && !mapa;
 
   // a visita: cada troca de tela
   useEffect(() => {

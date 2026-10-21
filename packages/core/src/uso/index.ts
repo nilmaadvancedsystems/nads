@@ -279,3 +279,15 @@ export function diasDoPeriodo(n: number, hoje: Date): string[] {
 export function gravacoesPorDia(pessoas: number, horasDeUso = 8, saidasPorDia = 20): number {
   return pessoas * (Math.ceil((horasDeUso * 60 * 60 * 1000) / INTERVALO_DE_GRAVAR_MS) + saidasPorDia);
 }
+
+/** os níveis do calor de um controle: 0 = apareceu e ninguém clicou; de 1 (frio) a 5 (o mais clicado da tela) */
+export type NivelDoCalor = 0 | 1 | 2 | 3 | 4 | 5;
+/**
+ * O nível do calor pelos cliques, comparado ao controle mais clicado da tela (os botões pintados no mapa na tela). A raiz
+ * espalha os poucos cliques: com o mais clicado em 100, 4 cliques já saem do frio.
+ */
+export function nivelDoCalor(cliques: number, maior: number): NivelDoCalor {
+  if (!(cliques > 0)) return 0;
+  if (!(maior > 0)) return 1;
+  return Math.max(1, Math.min(5, Math.ceil(Math.sqrt(Math.min(1, cliques / maior)) * 5))) as NivelDoCalor;
+}

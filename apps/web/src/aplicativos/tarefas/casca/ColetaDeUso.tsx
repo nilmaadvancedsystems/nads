@@ -9,41 +9,8 @@
 // e nas Senhas só o rótulo acessível (nunca o texto do botão).
 import { uso } from '@nads/core';
 import { useEffect, useRef } from 'react';
+import { CONTROLE, DA_CASCA, rotuloDoControle } from './rotuloDoControle';
 import { useColetaDeUso } from './useColetaDeUso';
-
-/** o que conta como controle */
-const CONTROLE = '[data-uso], button, a[href], [role="tab"], [role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"], [role="switch"], [role="option"], [role="button"], summary, .chip-f';
-/** a navegação da casca (a gaveta, a lateral, o topo): conta o clique, mas não entra nos "vistos" de cada tela */
-const DA_CASCA = '.drawer-item, .subnav-item, .gh-hamb, .gh-avatar, .gh-topo-btn';
-/** texto maior que isto é de uma linha de lista (o assunto do e-mail, o nome do cliente): vira "item da lista" */
-const TEXTO_CURTO = 40;
-
-function tipoDe(el: Element): string {
-  const papel = el.getAttribute('role');
-  if (papel === 'tab') return 'Aba: ';
-  if (papel === 'switch') return 'Interruptor: ';
-  if (papel && papel.startsWith('menuitem')) return 'Menu: ';
-  if (el.classList.contains('chip-f')) return 'Filtro: ';
-  if (el.tagName === 'A') return 'Link: ';
-  return '';
-}
-
-/** o rótulo do controle (limpo), ou null quando não é controle ou não se deve guardar */
-function rotuloDoControle(alvo: Element | null, tela: string, nomes: readonly string[]): string | null {
-  const el = alvo?.closest(CONTROLE);
-  if (!el || el.closest('[data-uso-ignorar], input, textarea, select, [contenteditable="true"]')) return null;
-  const marcado = el.getAttribute('data-uso');
-  if (marcado) return uso.rotuloLimpo(marcado, nomes);
-  // nas Senhas (e na aba Senhas da empresa) nunca o texto do botão: só o rótulo acessível ou a dica
-  const sensivel = tela.startsWith('senhas/') || tela === 'cadastro/empresas/senhas';
-  const daLista = !!el.closest('tbody, [role="row"], .gm-item');
-  const acessivel = el.getAttribute('aria-label') || el.getAttribute('title') || '';
-  const texto = (el.textContent || '').replace(/\s+/g, ' ').trim();
-  const bruto = acessivel || (sensivel ? '' : texto.length <= TEXTO_CURTO && !daLista ? texto : '');
-  const limpo = uso.rotuloLimpo(bruto, nomes);
-  if (!limpo) return daLista || texto ? 'item da lista' : null;
-  return tipoDe(el) + limpo;
-}
 
 export function ColetaDeUso() {
   const vm = useColetaDeUso();

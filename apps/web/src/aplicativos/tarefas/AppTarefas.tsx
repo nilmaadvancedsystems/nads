@@ -7,6 +7,7 @@ import { aplicarTabelasCompactas, useRetorno } from '@nads/ui';
 import { useEffect, type ReactNode } from 'react';
 import { Outlet } from 'react-router';
 import { ColetaDeUso } from './casca/ColetaDeUso';
+import { MapaNaTela } from './casca/MapaNaTela';
 import { OperadorProvider, operadorDaConta, useOperador } from './casca/operador';
 import { avisarErrosDoBanco, repoDaTarefas, repoDeAcesso } from './dados/fonte';
 import { RepoProvider } from './dados/repo';
@@ -78,6 +79,8 @@ export function AppTarefas() {
             <BalaoDoSuporte />
             {/* o mapa de uso do sistema (Gustavo, 20/10/2026): conta as visitas e os cliques, só com o interruptor ligado */}
             <ColetaDeUso />
+            {/* o mapa na tela (21/10/2026: "a tela com os botões coloridos"): o admin liga no Uso do sistema */}
+            <MapaNaTela />
           </PessoalProvider>
         </PrecisaDeOperador>
       </OperadorProvider>
