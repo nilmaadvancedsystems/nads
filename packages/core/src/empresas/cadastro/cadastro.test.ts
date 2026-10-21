@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
-  comContasPadrao, criarRepoCadastro, criarRepoCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirDocumento, definirNotaDeHonorario, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
+  comContasPadrao, criarRepoCadastro, criarRepoCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirDocumento, confirmarBancos, sugerirContaContabil, definirNotaDeHonorario, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
   bancosDoEntregasDoDocumento, bancosDoEntregasPorCodigo, contatosDoEntregasPorCodigo, contasDoEntregas, juntarComEntregas, sugestoesDoEntregas,
   lerPlanilhaDoPlano, linhasDoTexto, registrarPlano, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
   type PlanoDeContas,
@@ -71,6 +71,33 @@ describe('contas bancárias', () => {
     const c = excluirConta(confirmarPontoDePartida(vazio(), partida, 'V', AGORA), 'sicoob', partida, 'V', AGORA).cadastro;
     expect(c.bancos).toEqual([]);
     expect(bancosDoCadastroNa(c, 292, '2026-08').map(b => b.id)).toEqual(['banco']);
+  });
+});
+
+describe('confirmar os bancos na Importação (21/10/2026)', () => {
+  const partida = [{ id: 'sicoob', marca: 'sicoob', nome: 'Sicoob', agencia: '3144-5' }, { id: 'nubank', marca: 'nubank', nome: 'Nubank' }];
+  const plano = { origem: 'arquivo' as const, importadoEm: '', contas: [
+    { codigo: '10501', nome: 'Banco Sicoob', ordem: 1 }, { codigo: '10504', nome: 'Banco Nubank', ordem: 2 },
+    { codigo: '10505', nome: 'Nubank Aplicação', ordem: 3 }, { codigo: '10101', nome: 'Caixa Geral', ordem: 4 }, { codigo: '105', nome: 'Bancos', ordem: 0, sintetica: true },
+  ] };
+  const L = (id: string | null, marca: string, contaContabil: string, marcado = true, agencia = '', conta = '') => ({ id, marca, agencia, conta, contaContabil, marcado });
+  it('grava só os marcados, cada um com a conta contábil, e guarda o id do ponto de partida', () => {
+    const r = confirmarBancos(vazio(), [L('sicoob', 'sicoob', '10501', true, '3144-5', '24.046-0'), L('nubank', 'nubank', '10504', false)], partida, plano, 'Vitor', AGORA);
+    expect(r.erro).toBeNull();
+    expect(r.cadastro.bancos).toEqual([{ id: 'sicoob', marca: 'sicoob', nome: 'Sicoob', agencia: '3144-5', conta: '24.046-0', contaContabil: '10501' }]);
+    expect(r.cadastro.historico[0].acao).toBe('Confirmou os bancos');
+  });
+  it('sem conta contábil, fora do plano, sintética, banco novo sem agência ou nada marcado: não grava', () => {
+    expect(confirmarBancos(vazio(), [L('nubank', 'nubank', '')], partida, plano, 'Vitor', AGORA).erro).toBe('Nubank: informe a conta contábil.');
+    expect(confirmarBancos(vazio(), [L('nubank', 'nubank', '99999')], partida, plano, 'Vitor', AGORA).erro).toBe('Nubank: A conta 99999 não está no plano de contas.');
+    expect(confirmarBancos(vazio(), [L('nubank', 'nubank', '105')], partida, plano, 'Vitor', AGORA).erro).toBe('Nubank: A conta 105 é sintética (não recebe lançamento).');
+    expect(confirmarBancos(vazio(), [L(null, 'itau', '10501')], partida, plano, 'Vitor', AGORA).erro).toBe('Itaú: preencha a agência e a conta.');
+    expect(confirmarBancos(vazio(), [L('nubank', 'nubank', '10504', false)], partida, plano, 'Vitor', AGORA).erro).toBe('Marque os bancos que a empresa tem.');
+    // o banco novo, com agência e conta, entra com o id da conta
+    expect(confirmarBancos(vazio(), [L(null, 'itau', '10501', true, '0412', '99887-7')], partida, null, 'Vitor', AGORA).cadastro.bancos?.[0].id).toBe('itau-0412-998877');
+  });
+  it('a conta contábil sugerida pelo nome no plano: só quando bate uma', () => {
+    expect([sugerirContaContabil(plano, 'nubank'), sugerirContaContabil(plano, 'sicoob'), sugerirContaContabil(plano, 'caixa'), sugerirContaContabil(null, 'nubank')]).toEqual(['10504', '10501', '', '']);
   });
 });
 

@@ -625,6 +625,68 @@ export function confirmarPontoDePartida(c: CadastroDaEmpresa, partida: readonly 
   return registrar({ ...c, bancos: [...partida] }, por, agora, 'Confirmou os bancos', partida.length ? partida.map(descreverConta).join('; ') : 'nenhum banco');
 }
 
+// ─── confirmar os bancos na Importação (Vitor, 21/10/2026) ──────────────────────
+// "Na importação, quando o banco não está cadastrado, faz um procedimento na própria tela: o usuário confirmar os bancos e
+// também colocar a conta contábil." A lista começa com o ponto de partida (o que o Extrator usava e o que o Entregas sabe).
+
+/** Uma linha do "Confirme os bancos": a conta do ponto de partida (id; os arquivos já importados ficam nela) ou uma nova (null). */
+export interface BancoParaConfirmar {
+  id: string | null;
+  marca: string;
+  agencia: string;
+  conta: string;
+  contaContabil: string;
+  /** a empresa tem este banco (entra no cadastro) */
+  marcado: boolean;
+}
+
+/**
+ * Grava os bancos marcados como o cadastro da empresa, cada um com a conta contábil (obrigatória; com o plano importado,
+ * tem de ser uma conta dele que recebe lançamento). A conta do ponto de partida guarda o id; a nova precisa de agência e conta.
+ */
+export function confirmarBancos(c: CadastroDaEmpresa, linhas: readonly BancoParaConfirmar[], partida: readonly ContaBancaria[], plano: PlanoDeContas | null, por: string, agora: Date): ResultadoCadastro {
+  if (c.bancos) return { cadastro: c, erro: 'Os bancos desta empresa já estão no Cadastro.' };
+  const marcadas = linhas.filter(l => l.marcado);
+  if (!marcadas.length) return { cadastro: c, erro: 'Marque os bancos que a empresa tem.' };
+  const bancos: ContaBancaria[] = [];
+  for (const l of marcadas) {
+    const marca = texto(l.marca), agencia = texto(l.agencia), conta = texto(l.conta), contaContabil = texto(l.contaContabil);
+    const antes = l.id ? partida.find(b => b.id === l.id) : undefined;
+    const nome = antes?.nome || nomeDoBanco(marca);
+    if (!marca) return { cadastro: c, erro: 'Escolha o banco.' };
+    if (!antes && (!agencia || !conta)) return { cadastro: c, erro: nome + ': preencha a agência e a conta.' };
+    if (!contaContabil) return { cadastro: c, erro: nome + ': informe a conta contábil.' };
+    const aviso = avisoDaConta(contaContabil, plano);
+    if (aviso) return { cadastro: c, erro: nome + ': ' + aviso };
+    const id = antes ? antes.id : idDaConta(marca, agencia, conta);
+    if (bancos.some(b => b.id === id)) return { cadastro: c, erro: nome + ': essa conta está duas vezes na lista.' };
+    const nova: ContaBancaria = { ...(antes || { id, marca, nome }), id, contaContabil };
+    if (agencia) nova.agencia = agencia; else delete nova.agencia;
+    if (conta) nova.conta = conta; else delete nova.conta;
+    bancos.push(nova);
+  }
+  if (bancos.length > MAX_BANCOS) return { cadastro: c, erro: 'Mais de ' + MAX_BANCOS + ' contas.' };
+  return { cadastro: registrar({ ...c, bancos }, por, agora, 'Confirmou os bancos', bancos.map(b => descreverConta(b) + ' · conta ' + b.contaContabil).join('; ')), erro: null };
+}
+
+// os nomes que o banco costuma ter no plano de contas (a Caixa é "Caixa Econômica": "Caixa" sozinho é o caixa da empresa)
+const NOMES_NO_PLANO: Record<string, string[]> = {
+  'banco-do-brasil': ['banco do brasil', 'bco do brasil', 'bb'], bnb: ['banco do nordeste', 'bnb'], caixa: ['caixa economica', 'cef'],
+  'mercado-pago': ['mercado pago'], c6: ['c6'], btg: ['btg'], itau: ['itau'],
+};
+
+/**
+ * A conta contábil do banco pelo nome no plano (ex.: "Banco Nubank" para o Nubank): só quando uma conta que recebe
+ * lançamento bate sozinha (a aplicação e a poupança ficam de fora). Sem plano, ou com mais de uma, nada (a pessoa escolhe).
+ */
+export function sugerirContaContabil(plano: PlanoDeContas | null, marca: string): string {
+  if (!plano || !marca || marca === 'outro') return '';
+  const nomes = NOMES_NO_PLANO[marca] || [nomeNorm(nomeDoBanco(marca))];
+  const bate = (n: string) => nomes.some(t => (' ' + n + ' ').includes(' ' + t + ' '));
+  const achadas = plano.contas.filter(k => !k.sintetica && bate(nomeNorm(k.nome)) && !/aplic|poupan|invest|cdb|rdb|fundo|consorc|emprest|financ|cartao|cheque/.test(nomeNorm(k.nome)));
+  return achadas.length === 1 ? achadas[0].codigo : '';
+}
+
 // ─── o que o Extrator lê ────────────────────────────────────────────────────
 
 const comoBancoDaEmpresa = (b: ContaBancaria): BancoDaEmpresa => {
