@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as XLSX from 'xlsx';
-import { competenciaAnterior, conferirRecebimento, descricaoDoRecebimento, idDoRecebimento, linhasDosHonorarios, planilhaDosHonorarios, situacaoDaCompetencia, type ContratoDeHonorario, type RecebimentoDeHonorario } from './index';
+import { competenciaAnterior, linkDoWhatsapp, mensagemDeCobranca, seloDaNfse, telefoneParaWhatsapp, conferirRecebimento, descricaoDoRecebimento, idDoRecebimento, linhasDosHonorarios, planilhaDosHonorarios, situacaoDaCompetencia, type ContratoDeHonorario, type RecebimentoDeHonorario } from './index';
 
 const c = (id: string, codigo: string, nome: string, valor: number, ativo = true): ContratoDeHonorario => ({ id, clienteId: '', codigo, nome, cnpj: '11222333000181', valor, ativo, criadoEm: '', criadoPor: '' });
 const r = (contratoId: string, competencia: string, valor: number, forma: RecebimentoDeHonorario['forma'] = 'pix'): RecebimentoDeHonorario =>
@@ -48,5 +48,41 @@ describe('os honorários', () => {
     expect(l[4]).toEqual(['10', 'Beta Ltda', 300.5, 'Em aberto', '', '']);
     const ws = XLSX.read(planilhaDosHonorarios('2026-09', linhas), { type: 'array' }).Sheets['Honorários'];
     expect(ws['C4'].v).toBe(450);
+  });
+});
+
+const nota = (status: string, documento: string, competencia: string, numeroNfse = '') => ({ status, numeroNfse, tomador: { documento }, servico: { competencia } });
+describe('a NFS-e do honorário', () => {
+  const cnpj = '11222333000181';
+  it('casa pelo CNPJ e pelo mês do serviço', () => {
+    expect(seloDaNfse([nota('autorizada', '11.222.333/0001-81', '2026-09-30', '123')], cnpj, '2026-09')).toEqual({ rotulo: 'NFS-e 123', tom: 'ok' });
+    expect(seloDaNfse([nota('autorizada', cnpj, '2026-08-31', '9')], cnpj, '2026-09')).toBeNull();
+    expect(seloDaNfse([nota('autorizada', '99999999999999', '2026-09-30', '9')], cnpj, '2026-09')).toBeNull();
+    expect(seloDaNfse([], '', '2026-09')).toBeNull();
+  });
+  it('a autorizada vale mais, a andando vem depois e a cancelada não conta', () => {
+    expect(seloDaNfse([nota('processando', cnpj, '2026-09-30'), nota('autorizada', cnpj, '2026-09-30', '5')], cnpj, '2026-09')?.rotulo).toBe('NFS-e 5');
+    expect(seloDaNfse([nota('pedida', cnpj, '2026-09-30')], cnpj, '2026-09')).toEqual({ rotulo: 'NFS-e pedida', tom: 'info' });
+    expect(seloDaNfse([nota('erro', cnpj, '2026-09-30')], cnpj, '2026-09')?.tom).toBe('bad');
+    expect(seloDaNfse([nota('cancelada', cnpj, '2026-09-30', '4')], cnpj, '2026-09')).toBeNull();
+  });
+});
+
+describe('a cobrança', () => {
+  const d = { nome: 'Alfa Ltda', competencia: '2026-09', valor: 1250.5, pix: '11.222.333/0001-81' };
+  it('preenche o modelo', () => {
+    expect(mensagemDeCobranca(d)).toBe('Olá, Alfa Ltda! Passando para lembrar do honorário contábil de 09/2026, no valor de R$ 1.250,50. Chave PIX: 11.222.333/0001-81. Qualquer dúvida, estamos à disposição. — Nilma Contabilidade');
+  });
+  it('sem chave PIX, tira a frase da chave', () => {
+    const m = mensagemDeCobranca({ ...d, pix: ' ' });
+    expect(m).not.toMatch(/PIX/);
+    expect(m).toContain('R$ 1.250,50. Qualquer dúvida');
+  });
+  it('o link do WhatsApp com o 55 e o texto codificado', () => {
+    expect(telefoneParaWhatsapp('(38) 99999-0000')).toBe('5538999990000');
+    expect(telefoneParaWhatsapp('5538999990000')).toBe('5538999990000');
+    expect(telefoneParaWhatsapp('999')).toBe('');
+    expect(linkDoWhatsapp('38999990000', 'Olá & tchau')).toBe('https://wa.me/5538999990000?text=Ol%C3%A1%20%26%20tchau');
+    expect(linkDoWhatsapp('', 'x')).toBe('');
   });
 });
