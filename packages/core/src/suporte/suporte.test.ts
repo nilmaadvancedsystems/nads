@@ -43,13 +43,11 @@ describe('suporte de leitura: a conversa por cápsulas', () => {
     // os botões apareceram depois da resposta: segue para o arquivo, sem perguntar o botão
     expect(passoDoSuporte(ctx, [...escolhas, 'e:valores'])).toMatchObject({ texto: 'Que arquivo você subiu?' });
   });
-  it('o Outro do problema: diz onde a pessoa está e vai direto às perguntas do report', () => {
-    const p = passoDoSuporte(ctx, [OUTRO]);
-    expect(p).toMatchObject({ tipo: 'pergunta', texto: 'Qual dos botões de importação está com problema?' });
-    if (p.tipo === 'pergunta') expect(p.aviso).toBe(ondeEsta(ctx));
-    // depois do botão: o banco e o mês, que ainda não foram respondidos
-    expect(passoDoSuporte(ctx, [OUTRO, 'i:outro'])).toMatchObject({ texto: 'Qual banco?' });
-    expect(passoDoSuporte(ctx, [OUTRO, 'i:outro', 'b:outro'])).toMatchObject({ texto: 'Qual mês?' });
+  it('o Outro de primeira: diz onde a pessoa está e vai direto ao texto livre e ao arquivo', () => {
+    expect(passoDoSuporte(ctx, [OUTRO])).toEqual({
+      tipo: 'encaminhar', aviso: ondeEsta(ctx), livre: true, texto: 'Escreva o que aconteceu e anexe o arquivo, se tiver. Vai para o suporte.',
+    });
+    expect(mensagemDoBug(ctx, [OUTRO], 'O saldo não bate', '')).toContain('Comentário: O saldo não bate');
   });
   it('várias respostas e o Todos: as instruções e a mensagem com todas', () => {
     const p = passoDoSuporte(ctx, ['faltou', 'b:*', 'm:2026-07|2026-08']);

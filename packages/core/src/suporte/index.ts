@@ -34,7 +34,7 @@ export type PassoDoSuporte =
   /** as instruções, com onde a pessoa está antes; depois, a tela pergunta "Resolveu" / "Não resolveu" */
   | { tipo: 'instrucoes'; passos: string[]; aviso?: string }
   /** mandar ao suporte: o arquivo e uma frase */
-  | { tipo: 'encaminhar'; texto: string };
+  | { tipo: 'encaminhar'; texto: string; aviso?: string; livre?: boolean };
 
 /** "Não resolveu" (e o "Outro"): a escolha que leva ao encaminhar. */
 export const NAO_RESOLVEU = 'nao-resolveu';
@@ -53,6 +53,7 @@ export function telaPeloRotulo(rotulo: string): TelaDoSuporte {
 const sem = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 const rotuloDoMes = (m: string) => m.slice(5) + '/' + m.slice(0, 4);
 const ENCAMINHAR = 'Anexe o arquivo que deu problema e envie. Vai para o suporte.';
+const ENCAMINHAR_LIVRE = 'Escreva o que aconteceu e anexe o arquivo, se tiver. Vai para o suporte.';
 
 /** O que aconteceu, por tela (a primeira pergunta). */
 const PROBLEMAS: Record<TelaDoSuporte, OpcaoDoSuporte[]> = {
@@ -126,17 +127,18 @@ export function passoDoSuporte(ctx: ContextoDoSuporte, escolhas: readonly string
     }
     return { tipo: 'instrucoes', aviso: ondeEsta(ctx), passos: instrucoes(ctx, problema, banco || [], mes || []) };
   }
-  // as perguntas do report; a primeira depois do Outro do problema diz onde a pessoa está
-  const aviso = problema === OUTRO && escolhas.length === 1 ? ondeEsta(ctx) : undefined;
+  // o Outro de primeira (Vitor, 21/10/2026: "deixa ele digitar e anexar o arquivo livremente"): sem mais perguntas, só
+  // onde a pessoa está, o texto e o arquivo
+  if (problema === OUTRO) return { tipo: 'encaminhar', aviso: ondeEsta(ctx), texto: ENCAMINHAR_LIVRE, livre: true };
   const botoes = ctx.botoes || [];
-  // o botão só logo depois do "Não resolveu" (ou do Outro do problema): se a lista chegou depois, não volta a perguntar
-  const virada = problema === OUTRO ? 0 : escolhas.indexOf(NAO_RESOLVEU);
+  // o botão só logo depois do "Não resolveu": se a lista chegou depois, não volta a perguntar
+  const virada = escolhas.indexOf(NAO_RESOLVEU);
   if (botoes.length && escolhas.length === virada + 1) {
-    return pergunta('i:', 'Qual dos botões de importação está com problema?', botoes.map(b => ({ id: 'i:' + b, rotulo: b })), aviso);
+    return pergunta('i:', 'Qual dos botões de importação está com problema?', botoes.map(b => ({ id: 'i:' + b, rotulo: b })));
   }
-  if (ctx.tela === 'bancos' && banco === undefined) return perguntaBanco(aviso);
-  if (mes === undefined) return perguntaMes(aviso);
-  if (!escolhas.some(e => e.startsWith('e:'))) return pergunta('e:', 'O que aconteceu ao importar?', EFEITOS, aviso);
+  if (ctx.tela === 'bancos' && banco === undefined) return perguntaBanco();
+  if (mes === undefined) return perguntaMes();
+  if (!escolhas.some(e => e.startsWith('e:'))) return pergunta('e:', 'O que aconteceu ao importar?', EFEITOS);
   if (!escolhas.some(e => e.startsWith('a:'))) return pergunta('a:', 'Que arquivo você subiu?', ARQUIVOS);
   return { tipo: 'encaminhar', texto: ENCAMINHAR };
 }
