@@ -4747,19 +4747,28 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .fin-contrato-obs:focus{background:var(--input-bg);border-color:var(--accent);}
 @media (max-width:640px){.fin-contrato{grid-template-columns:auto 1fr auto;}.fin-contrato-obs{grid-column:1 / -1;}}
 
-/* o balão do suporte (20/10/2026): o botão redondo no canto de baixo, à direita, e a conversa por cima dele (só a
-   disposição; as peças são o botão, a cápsula .badge e o fechar) */
-.suporte-botao{position:fixed;right:16px;bottom:16px;z-index:64;width:44px;height:44px;padding:0;border-radius:50%;justify-content:center;box-shadow:var(--shadow-lg);}
-.suporte-balao{position:fixed;right:16px;bottom:72px;z-index:64;width:min(360px,calc(100vw - 32px));max-height:min(560px,calc(100vh - 120px));display:flex;flex-direction:column;padding:0;margin:0;overflow:hidden;box-shadow:var(--shadow-lg);}
-.suporte-topo{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border-muted);}
-.suporte-titulo{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.suporte-corpo{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px;}
-.suporte-troca{display:flex;flex-direction:column;gap:6px;}
-.suporte-fala{margin:0;}
-.suporte-eu{align-self:flex-end;}
-.suporte-capsulas{display:flex;flex-wrap:wrap;gap:6px;}
-.suporte-capsulas .badge{cursor:pointer;border:0;}
+/* o balão do suporte (20/10/2026; em chat desde 21/10/2026): o botão redondo no canto de baixo, à direita, e o chat por
+   cima dele — as falas do suporte à esquerda, as da pessoa à direita (só a disposição e o balão das falas; as peças são o
+   botão, a cápsula .badge, o fechar e o ícone) */
+.suporte-botao{position:fixed;right:16px;bottom:16px;z-index:64;width:48px;height:48px;padding:0;border-radius:50%;justify-content:center;box-shadow:var(--shadow-floating);}
+.suporte-botao svg{width:22px;height:22px;}
+.suporte-balao{position:fixed;right:16px;bottom:76px;z-index:64;width:min(380px,calc(100vw - 32px));height:min(540px,calc(100vh - 120px));display:flex;flex-direction:column;padding:0;margin:0;overflow:hidden;box-shadow:var(--shadow-floating);}
+.suporte-topo{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border-muted);}
+.suporte-avatar{flex:none;width:32px;height:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--accent);}
+.suporte-avatar svg{width:18px;height:18px;}
+.suporte-titulo{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25;}
+.suporte-sub{font-size:var(--fs-12);color:var(--ink-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.suporte-corpo{flex:1;overflow:auto;padding:14px 12px;display:flex;flex-direction:column;gap:8px;background:var(--surface-2);}
+.suporte-troca{display:flex;flex-direction:column;gap:8px;}
+.suporte-msg{align-self:flex-start;max-width:85%;padding:8px 12px;border-radius:14px 14px 14px 4px;background:var(--surface);border:1px solid var(--border-muted);font-size:var(--fs-13);line-height:1.45;}
+.suporte-msg.suporte-eu{align-self:flex-end;border-radius:14px 14px 4px 14px;background:var(--accent);border-color:var(--accent);color:var(--on-accent);}
 .suporte-passos{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;}
-.suporte-envio{display:flex;flex-direction:column;gap:8px;align-items:flex-start;}
+.suporte-capsulas{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;}
+.suporte-capsulas .badge{cursor:pointer;border:0;padding:5px 10px;font-size:var(--fs-12);}
+.suporte-envio{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-top:1px solid var(--border-muted);}
 .suporte-frase{width:100%;margin:0;}
-.suporte-pe{display:flex;justify-content:flex-end;padding:6px 8px;border-top:1px solid var(--border-muted);}
+.suporte-frase textarea{min-height:0;}
+.suporte-envio-linha{display:flex;gap:8px;justify-content:space-between;}
+.suporte-envio-linha .btn{min-width:0;}
+.suporte-arquivo{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;}
+.suporte-pe{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px 6px 12px;border-top:1px solid var(--border-muted);}
