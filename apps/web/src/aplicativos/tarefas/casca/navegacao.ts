@@ -214,7 +214,20 @@ export function competenciasDaTela(n: number): string[] {
 export function competenciasDoDp(n: number, hoje = new Date()): { lista: string[]; padrao: string } {
   const base = competenciasDaTela(n);
   const frente = [2, 1, 0].map(k => { const d = new Date(hoje.getFullYear(), hoje.getMonth() + k, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); });
-  return { lista: [...frente.filter(c => !base.includes(c)), ...base], padrao: base[0] };
+  const lista = [...frente.filter(c => !base.includes(c)), ...base];
+  // a que abre (21/10/2026: "na competência do DP tinha que setar o mês"): a última escolhida em qualquer página do DP nesta
+  // aba do navegador; sem ela, a em trabalho (a do mês anterior até o 5º dia útil, depois a do mês atual)
+  const escolhida = competenciaDoDpGuardada();
+  const padrao = escolhida && lista.includes(escolhida) ? escolhida : t.competenciaDeTrabalhoDoDp(hoje);
+  return { lista: lista.includes(padrao) ? lista : [padrao, ...lista], padrao };
+}
+const CHAVE_COMPETENCIA_DO_DP = 'nads-dp-competencia';
+/** a competência escolhida no DP nesta aba (a mesma em todas as páginas do DP até trocar de novo) */
+export function competenciaDoDpGuardada(): string {
+  try { return sessionStorage.getItem(CHAVE_COMPETENCIA_DO_DP) || ''; } catch { return ''; }
+}
+export function guardarCompetenciaDoDp(c: string): void {
+  try { if (/^\d{4}-\d{2}$/.test(c)) sessionStorage.setItem(CHAVE_COMPETENCIA_DO_DP, c); } catch { /* sem armazenamento: vale só a da página */ }
 }
 export function inicioEscolhido(): string {
   try { return localStorage.getItem(CHAVE_INICIO) || 'empresas'; } catch { return 'empresas'; }

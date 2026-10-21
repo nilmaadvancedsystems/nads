@@ -3,7 +3,7 @@
 import { tarefas as t } from '@nads/core';
 import { useSearchParams } from 'react-router';
 import { useExecucoes, useRepo } from '../../dados/repo';
-import { competenciasDaTela, competenciasDoDp } from '../../casca/navegacao';
+import { competenciasDaTela, competenciasDoDp, guardarCompetenciaDoDp } from '../../casca/navegacao';
 
 export function useVisaoContabil(dep: 'contabil' | 'fiscal' | 'dp' = 'contabil') {
   const repo = useRepo();
@@ -32,7 +32,7 @@ export function useVisaoContabil(dep: 'contabil' | 'fiscal' | 'dp' = 'contabil')
   return {
     competencia,
     competencias: competencias.map(c => ({ valor: c, rotulo: t.rotuloCompetencia(c) })),
-    setCompetencia: (c: string) => setParams({ competencia: c }),
+    setCompetencia: (c: string) => { if (dep === 'dp') guardarCompetenciaDoDp(c); setParams({ competencia: c }); },
     carregando: !carregada,
     totalEmpresas,
     // só as etapas que existem no mês do ano da competência (o Estoque só em dezembro); cada empresa na rotina dela

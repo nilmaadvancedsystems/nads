@@ -8,7 +8,7 @@ import { empresas, tarefas as t } from '@nads/core';
 import type { NomeIcone } from '@nads/ui';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { competenciasDoDp } from '../../casca/navegacao';
+import { competenciasDoDp, guardarCompetenciaDoDp } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 import { useCategoriasDp, useExecucoes, useRepo } from '../../dados/repo';
 import { useClientesDoDp } from './useClientesDoDp';
@@ -218,6 +218,7 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   // cliente sem movimento, que a rosca põe em "Sem movimento"): Concluídos = com movimento e tudo feito; Pendentes = os
   // atrasados e os pendentes da rosca; Sem movimento = a planilha diz Sem Movimento ou o cliente não tem nada no mês
   const concluidas = contagemDash.feita;
+  const reinf = t.reinfDoMes(filtradas.map(c => ({ temReinf: c.reinfAutorizada, transmitida: c.obrigacoes.some(o => o.id === 'reinf' && o.estado === 'feita') })));
   const comMovimento = filtradas.length - contagemDash.sem;
   const responsaveis = contar(todas.map(c => c.responsavelNome)).map(r => r.rotulo);
 
@@ -225,7 +226,7 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
     carregando: !carregada || !doDp.carregado,
     competencia,
     competencias: competencias.map(c => ({ valor: c, rotulo: t.rotuloCompetencia(c) })),
-    setCompetencia: (c: string) => mudarParam('competencia', c),
+    setCompetencia: (c: string) => { guardarCompetenciaDoDp(c); mudarParam('competencia', c); },
     resumo: aba === 'resumo',
     /** o submenu das Obrigações: cada parte com quantos clientes ainda faltam nela */
     parte: parte ? parte.id : null,
@@ -251,7 +252,9 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
       { rotulo: 'Com folha', valor: filtradas.filter(c => c.movimento === 'Folha').length, dica: '', tom: 'marca', icone: 'usuario' },
       { rotulo: 'Pró-labore', valor: filtradas.filter(c => c.movimento === 'Pró-Labore').length, dica: '', tom: 'laranja', icone: 'usuario' },
       { rotulo: 'Sem movimento', valor: contagemDash.sem, dica: '', tom: 'roxo', icone: 'list' },
-      { rotulo: 'REINF autorizada', valor: filtradas.filter(c => c.reinfAutorizada).length, dica: '', tom: 'ciano', icone: 'fileUp' },
+      // a REINF (21/10/2026: "fica como 19 sendo que não marcou nada"): antes contava quem TEM a REINF e parecia feito;
+      // agora as transmitidas, de quantas há
+      { rotulo: 'REINF transmitidas', valor: reinf.feitas, dica: 'de ' + reinf.total + ' com REINF' + (reinf.faltam ? ' · faltam ' + reinf.faltam : ''), tom: 'ciano', icone: 'fileUp' },
     ] as { rotulo: string; valor: number; dica: string; tom: TomDoNumero; icone: NomeIcone }[],
     /** o dashboard do Resumo no padrão do Certificados (Savio, 15/10/2026) */
     dash: {

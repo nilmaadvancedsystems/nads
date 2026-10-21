@@ -5,7 +5,7 @@
 import { empresas, formatos, tarefas as t } from '@nads/core';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { competenciasDaTela } from '../../casca/navegacao';
+import { competenciasDaTela, competenciasDoDp, guardarCompetenciaDoDp } from '../../casca/navegacao';
 import { useRetorno } from '@nads/ui';
 import { useOperador } from '../../casca/operador';
 import { useCategoriasDp, useGmailDoEntregas } from '../../dados/repo';
@@ -14,10 +14,10 @@ import { documentoFormatado } from '../financeiro/formatosDaNota';
 
 export type TopicoDoClienteDp = 'identificacao' | 'obrigacoes' | 'entrega';
 
-/** as competências para escolher: as 3 próximas e as recentes (a mais nova primeiro) */
+/** as competências para escolher: o mês atual, as 3 próximas e as recentes (a mais nova primeiro) */
 function competenciasDasConfiguracoes(): string[] {
   const d = new Date();
-  const futuras = [3, 2, 1].map(n => { const x = new Date(d.getFullYear(), d.getMonth() + n, 1); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0'); });
+  const futuras = [3, 2, 1, 0].map(n => { const x = new Date(d.getFullYear(), d.getMonth() + n, 1); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0'); });
   return [...new Set([...futuras, ...competenciasDaTela(12)])].sort().reverse();
 }
 
@@ -25,7 +25,8 @@ export function useConfiguracoesDoDp() {
   // a competência (Vitor, 07/10/2026: "configurações por competência"): o que mudar vale dela em diante; a mesma do Painel (na URL)
   const [params, setParams] = useSearchParams();
   const competencias = competenciasDasConfiguracoes();
-  const atual = competenciasDaTela(1)[0];
+  // a mesma competência das outras páginas do DP (21/10/2026: "na competência do DP tinha que setar o mês")
+  const atual = competenciasDoDp(12).padrao;
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : atual;
   const dp = useClientesDoDp(competencia);
   // as categorias novas de obrigações (Vitor, 07/10/2026: "uma opção onde posso criar novas categorias"): só o admin cria
@@ -88,7 +89,7 @@ export function useConfiguracoesDoDp() {
     competencia,
     rotuloCompetencia: t.rotuloCompetencia(competencia),
     competencias: competencias.map(c => ({ valor: c, rotulo: t.rotuloCompetencia(c) })),
-    setCompetencia(c: string) { const n = new URLSearchParams(params); n.set('competencia', c); setParams(n); },
+    setCompetencia(c: string) { guardarCompetenciaDoDp(c); const n = new URLSearchParams(params); n.set('competencia', c); setParams(n); },
     mudadosNoMes: dp.clientes.filter(c => c.mudadoNoMes).length,
     /** a janela do cliente (como a da empresa no Cadastro) */
     cliente,
