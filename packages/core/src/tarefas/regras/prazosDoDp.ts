@@ -18,7 +18,7 @@
 // - A entrega ao cliente não tem prazo legal: vale o da guia mais cedo que o cliente tem (a guia precisa chegar antes de
 //   vencer). Sem guia, o da folha.
 // - As categorias criadas no nads (x-…) não têm prazo cadastrado: ficam fora do "atrasado".
-import { feriadoNacional } from './etiquetasDaFolha';
+import { feriadoNacional, quintoDiaUtilDoMesSeguinte } from './etiquetasDaFolha';
 
 export type AjusteDoPrazo = 'antecipa' | 'posterga';
 
@@ -114,4 +114,28 @@ export function prazoMaisUrgenteDoDp(pendentes: readonly string[], todas: readon
     if (!melhor || prazo < melhor.prazo) melhor = { obrigacao: o, prazo, dias: diasAtePrazo(prazo, hoje) };
   }
   return melhor;
+}
+
+/**
+ * A competência em trabalho no DP (o usuário, 21/10/2026: "na competência do DP tinha que setar o mês"): até o 5º dia
+ * útil do mês (a folha do mês anterior ainda está sendo paga), a do mês anterior; depois, a do mês atual. O 5º dia útil
+ * é o mesmo das etiquetas da folha (sábado conta; domingo e feriado nacional não).
+ */
+export function competenciaDeTrabalhoDoDp(hoje: Date): string {
+  const comp = (d: Date) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  const anterior = comp(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1));
+  const [dia, mes, ano] = quintoDiaUtilDoMesSeguinte(anterior).split('/').map(Number);
+  const limite = new Date(ano, mes - 1, dia);
+  const d = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  return d.getTime() <= limite.getTime() ? anterior : comp(hoje);
+}
+
+/**
+ * A REINF do mês no DP (21/10/2026: "fica como 19 sendo que não marcou nada"): quantos clientes têm a REINF e quantos
+ * já foram transmitidos (o Fiscal marca). O painel mostra "feitas de total", não o total sozinho.
+ */
+export function reinfDoMes(clientes: readonly { temReinf: boolean; transmitida: boolean }[]): { total: number; feitas: number; faltam: number } {
+  const com = clientes.filter(c => c.temReinf);
+  const feitas = com.filter(c => c.transmitida).length;
+  return { total: com.length, feitas, faltam: com.length - feitas };
 }

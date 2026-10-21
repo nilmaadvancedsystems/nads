@@ -5,7 +5,7 @@
 import { tarefas as t } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useState } from 'react';
-import { competenciasDoDp } from '../../casca/navegacao';
+import { competenciasDoDp, guardarCompetenciaDoDp } from '../../casca/navegacao';
 import { useFgts, useGmailDoEntregas } from '../../dados/repo';
 import type { ModoFgts, PedidoFgts } from '../../dados/fgts';
 import { useClientesDoDp } from './useClientesDoDp';
@@ -101,7 +101,8 @@ export function useFgtsDoDp() {
     carregando: !carregados || !clientesDoEntregas.carregados,
     competencia,
     competencias: competencias.map(c => ({ valor: c, rotulo: t.rotuloCompetencia(c) })),
-    setCompetencia,
+    /** a competência do DP é a mesma em todas as páginas (21/10/2026) */
+    setCompetencia: (c: string) => { guardarCompetenciaDoDp(c); setCompetencia(c); },
     filtro, setFiltro, busca, setBusca,
     responsavel, setResponsavel,
     responsaveis: [...new Set(todas.map(l => l.responsavel).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
