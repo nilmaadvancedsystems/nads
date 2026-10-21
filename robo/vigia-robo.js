@@ -29,6 +29,8 @@ const { getGmail, temCaixa, podeLer, CAIXAS } = require('./gmail-client');
 const { getDb } = require('./firestore-client');
 const { iniciarAtendenteIA } = require('./ia-atendente');
 const lideranca = require('./lideranca');
+// o painel do robô (21/10/2026): o que a nuvem está fazendo, as filas e o que ela fez (Cadastro › Painel do robô)
+const painel = require('./painel');
 
 const CAIXA = 'nilmacontabilidade@gmail.com';
 const ROBO = path.join(__dirname, 'download-attachments.js');
@@ -348,7 +350,7 @@ async function atenderResponder(p, ref) {
     if (!dentroDoLimite(1)) throw new Error('limite de ' + MAX_ENVIOS_POR_HORA + ' envios por hora atingido; tente mais tarde');
     const anexo = await lerAnexoDasPartes(p, ref);
     const cx = caixaValida(p.caixa);
-    const r = await require('./responder-gmail').responder({ db, gmail: getGmail(cx), p, caixa: await enderecoDaCaixa(cx), montarMime, anexo });
+    const r = await require('./responder-gmail').responder({ db, gmail: getGmail(cx), p, caixa: await enderecoDaCaixa(cx), caixaId: cx, montarMime, anexo });
     enviosRecentes.push(Date.now());
     auditoria('resposta_gmail', r.assunto + ' · para ' + r.para + (r.cc.length ? ' (cc ' + r.cc.join(', ') + ')' : '') + (anexo ? ' · anexo ' + anexo.nome : ''), p);
     log('resposta enviada para', r.para + (r.cc.length ? ' + ' + r.cc.length + ' em cópia' : ''), '(' + (p.criadoPor || '') + ')');
@@ -515,6 +517,7 @@ function rodarRobo(dias, motivo, caixa = 'robo') {
   const docDaTela = caixa === 'robo' ? roboRef : db.collection('robo').doc('caixa-' + caixa);
   return new Promise(resolve => {
     lendo = true;
+    painel.fazendo('gmail', 'Lendo o Gmail (' + motivo + ')');
     roboRef.set({ status: 'lendo', statusEm: agora(), statusMotivo: motivo }, { merge: true }).catch(() => {});
     log('lendo o Gmail (' + motivo + ')');
     andamentoAtual = null;
@@ -541,11 +544,14 @@ function rodarRobo(dias, motivo, caixa = 'robo') {
     filho.stderr.on('data', guardarDe('err'));
     filho.on('error', err => {
       lendo = false; log('não consegui iniciar a leitura:', err.message);
+      painel.fazendo('gmail', null);
+      painel.erro('gmail', 'Não consegui começar a leitura do Gmail', err.message);
       publicarAndamento({ ativo: false, fim: agora(), fase: 'erro', texto: 'Não consegui começar a leitura: ' + err.message }, true);
       resolve({ ok: false, resumo: '', erro: err.message });
     });
     filho.on('close', async code => {
       lendo = false;
+      painel.fazendo('gmail', null);
       clearInterval(vigiaTrava);
       if (filhoAtual === filho) filhoAtual = null;
       if (filho.parado) {
@@ -553,6 +559,8 @@ function rodarRobo(dias, motivo, caixa = 'robo') {
         const texto = cancelada ? 'Leitura ' + filho.parado + '. O que já tinha sido lido ficou gravado.' : 'A leitura ' + filho.parado + ' e foi interrompida. A próxima leitura continua de onde parou.';
         await roboRef.set({ status: cancelada ? 'ok' : 'erro', statusEm: agora(), statusMsg: texto }, { merge: true }).catch(() => {});
         log(texto);
+        if (cancelada) painel.atividade('gmail', 'Leitura do Gmail cancelada', motivo);
+        else painel.erro('gmail', 'A leitura do Gmail parou', texto);
         publicarAndamento({ ativo: false, fim: agora(), fase: cancelada ? 'concluida' : 'erro', feito: (andamentoAtual && andamentoAtual.feito) || 0, texto }, true);
         if (!cancelada) await alertar('a leitura do Gmail travou', texto + '\nÚltima linha: ' + (saida.slice(-1)[0] || '-'));
         return resolve({ ok: false, resumo: '', erro: texto, cancelada });
@@ -566,6 +574,8 @@ function rodarRobo(dias, motivo, caixa = 'robo') {
         statusMsg: ok ? (robo.ultimaExecucaoResumo || '') : traduzirErro({ message: ultima.replace(/^ERRO:\s*/, '') }),
       }, { merge: true }).catch(() => {});
       log(ok ? 'leitura terminou: ' + (robo.ultimaExecucaoResumo || '') : 'leitura falhou: ' + ultima);
+      if (ok) painel.atividade('gmail', 'Leu o Gmail' + (caixa === 'robo' ? '' : ' (' + NOMES_DAS_CAIXAS[caixa] + ')'), (robo.ultimaExecucaoResumo || 'nada novo') + ' · ' + motivo);
+      else painel.erro('gmail', 'A leitura do Gmail deu erro', traduzirErro({ message: ultima.replace(/^ERRO:\s*/, '') }));
       publicarAndamento({
         ativo: false, fim: agora(), fase: ok ? 'concluida' : 'erro',
         feito: (andamentoAtual && andamentoAtual.total) || 0,
@@ -859,6 +869,7 @@ async function atenderFila() {
       }[p.tipo] || 'Pedido da tela';
       atendeuAlgum = true;
       roboRef.set({ filaAndamento: { ativo: true, atual: oqueAgora, restantes: pendentes.length, desde: agora(), em: agora() } }, { merge: true }).catch(() => {});
+      painel.fazendo('fila', oqueAgora + (pendentes.length > 1 ? ' (+' + (pendentes.length - 1) + ' na fila)' : ''));
       try {
         let resultado;
         if (p.tipo === 'um') resultado = await atenderUm(p);
@@ -885,9 +896,20 @@ async function atenderFila() {
         else if (p.tipo === 'responder') resultado = await atenderResponder(p, doc.ref);
         else throw new Error('tipo de pedido desconhecido: ' + p.tipo);
         await doc.ref.update(resultado);
+        // no painel do robô (a leitura do Gmail já se registra sozinha em rodarRobo)
+        const feito = resultado && resultado.status !== 'cancelado' && {
+          um: ['cobranca', 'Enviou a cobrança de ' + (p.clienteNome || p.para || 'um cliente')],
+          lote: ['cobranca', 'Enviou a cobrança em lote' + (Array.isArray(p.clientes) ? ' (' + p.clientes.length + ' clientes)' : '')],
+          salvar: ['gmail', 'Salvou no Drive um e-mail' + (p.clienteNome ? ' de ' + p.clienteNome : '')],
+          disparo: ['gmail', 'Disparou "' + String(p.assunto || '').slice(0, 80) + '"'],
+          responder: ['gmail', 'Respondeu um e-mail' + (p.para ? ' para ' + p.para : '')],
+          desligar: ['gmail', 'Tirou um e-mail do cliente errado'],
+        }[p.tipo];
+        if (feito) painel.atividade(feito[0], feito[1], [p.criadoPor ? 'pedido de ' + p.criadoPor : '', resultado.resumo || ''].filter(Boolean).join(' · '));
       } catch (err) {
         const erro = traduzirErro(err);
         log('pedido', doc.id, 'falhou:', erro);
+        painel.erro(p.tipo === 'um' || p.tipo === 'lote' ? 'cobranca' : 'gmail', ({ um: 'A cobrança de ' + (p.clienteNome || p.para || 'um cliente'), lote: 'A cobrança em lote', verificar: 'A leitura do Gmail', salvar: 'Salvar o e-mail no Drive', disparo: 'O disparo', responder: 'A resposta de e-mail', desligar: 'Tirar o e-mail do cliente errado' }[p.tipo] || 'Um pedido') + ' deu erro', erro);
         await doc.ref.update({ status: 'erro', erro, erroEm: agora() }).catch(() => {});
         const oque = { um: 'a cobrança de ' + (p.clienteNome || p.para), lote: 'a cobrança em lote', verificar: 'a verificação do Gmail', salvar: 'salvar anexo no Drive', disparo: 'o disparo "' + (p.assunto || '') + '"', responder: 'a resposta de e-mail' + (p.para ? ' para ' + p.para : ''), desligar: 'tirar o e-mail do cliente errado' }[p.tipo] || 'um pedido';
         await alertar(oque + ' deu erro', 'Pedido de ' + (p.criadoPor || 'alguém') + ' em ' + new Date(p.criadoEm).toLocaleString('pt-BR') + ':\n' + erro);
@@ -898,6 +920,7 @@ async function atenderFila() {
     filaFalhou = true;
   } finally {
     ocupado = false;
+    painel.fazendo('fila', null);
     if (atendeuAlgum) roboRef.set({ filaAndamento: { ativo: false, em: agora() } }, { merge: true }).catch(() => {});
   }
 }
@@ -916,6 +939,8 @@ async function iniciar() {
 
   baterPonto();
   setInterval(() => { baterPonto(); talvezMandarResumo(); if (filaFalhou) atenderFila(); }, 60 * 1000);
+  painel.iniciar(db, { robo: 'vm', log, filas: painel.FILAS.vm });
+  painel.modulo('gmail', 'Gmail e cobranças', true);
 
   // Avisos no celular (parada nova, entrega não realizada). Se isto falhar,
   // o resto do vigia segue: aviso é conforto, não pode derrubar o robô.
@@ -969,8 +994,9 @@ async function iniciar() {
   try { require('./envios-do-portal').iniciarEnviosDoPortal(db, log); }
   catch (err) { log('documentos pelo link desligados:', err.message); }
   // Arquivo mandado pelo nads (Tarefas › Drive) para a pasta Claudio Secretario.
+  painel.modulo('envios', 'Envios do nads', true);
   try { require('./envios-do-nads').iniciarEnviosDoNads(db, log); }
-  catch (err) { log('envios do nads desligados:', err.message); }
+  catch (err) { log('envios do nads desligados:', err.message); painel.modulo('envios', 'Envios do nads', false, err.message); }
   // e onde cada um foi parar depois do arquivamento (a tela do nads mostra)
   try { require('./envios-do-nads').iniciarDestinoDosEnvios(db, log); }
   catch (err) { log('destino dos envios do nads desligado:', err.message); }
@@ -987,8 +1013,9 @@ async function iniciar() {
   // pasta) e "abrir arquivo" pelo app. Só onde o robô fala com o Drive pela
   // API — na nuvem. Ver drive-indice.js e abrir-do-drive.js.
   if (process.env.USAR_DRIVE_API === '1') {
+    painel.modulo('drive', 'Mapa do Drive', true);
     try { require('./drive-indice').iniciarIndiceDrive(db, log); }
-    catch (err) { log('mapa do Drive desligado:', err.message); }
+    catch (err) { log('mapa do Drive desligado:', err.message); painel.modulo('drive', 'Mapa do Drive', false, err.message); }
     try { require('./abrir-do-drive').iniciarAberturaDoDrive(db, log); }
     catch (err) { log('abrir arquivo do Drive desligado:', err.message); }
   }
@@ -1001,12 +1028,14 @@ async function iniciar() {
     // certificado do escritório. Sem certificado, token ou config/nfse, fica desligado e diz por quê em robo/nfse.
     // A nota autorizada vai por e-mail ao tomador (nfse-email.js) pela caixa do robô, no mesmo freio por hora do comprovante.
     const correioDaNfse = { enviar, podeEnviar: n => dentroDoLimite(n), contar: () => enviosRecentes.push(Date.now()), endereco: () => enderecoDaCaixa('robo') };
+    painel.modulo('nfse', 'NFS-e dos honorários', true);
     try { require('./nfse').iniciarNfse(db, log, { correio: correioDaNfse }); }
-    catch (err) { log('NFS-e desligada:', err.message); }
+    catch (err) { log('NFS-e desligada:', err.message); painel.modulo('nfse', 'NFS-e dos honorários', false, err.message); }
     // A situação das notas na SEFAZ (15/10/2026): o nads pede em pedidosSituacao; o robô consulta cada NF-e, NFC-e e CT-e
     // do mês pela chave, com o mesmo certificado do escritório. Sem certificado, fica desligado e diz por quê em robo/situacao.
+    painel.modulo('sefaz', 'Situação na SEFAZ', true);
     try { require('./situacao-notas').iniciarSituacaoDasNotas(db, log); }
-    catch (err) { log('situação das notas desligada:', err.message); }
+    catch (err) { log('situação das notas desligada:', err.message); painel.modulo('sefaz', 'Situação na SEFAZ', false, err.message); }
   }
   // Os dois abaixo mandam e-mail pra CLIENTE e vêm desligados: quem liga é o
   // admin em Pendências › Configurações › Automático. Passam pelo mesmo freio
@@ -1076,6 +1105,7 @@ function desligar() {
   Promise.all([
     roboRef.set({ vigia: { em: new Date(0).toISOString(), pc: os.hostname(), desligadoEm: agora() } }, { merge: true }),
     lideranca.devolverAVez(db),
+    painel.desligar(),
   ]).catch(() => {}).finally(() => process.exit(0));
 }
 process.on('SIGINT', desligar);

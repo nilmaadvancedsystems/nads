@@ -1,6 +1,7 @@
-// A janela "Enviar feedback": o print (Tirar print da tela, Escolher imagem ou Ctrl+V) e o que melhorar. Ao tirar o
-// print, a janela some por um instante para não sair na foto.
-import { BotaoFechar, BotaoIcone, CampoArquivo, Icone, useJanela } from '@nads/ui';
+// A janela "Enviar feedback": o print (Tirar print da tela, Escolher imagem ou Ctrl+V), o que melhorar e a prioridade
+// (Baixa, Média, Alta; Vitor, 19/10/2026). Ao tirar o print, a janela some por um instante para não sair na foto.
+import { BotaoFechar, BotaoIcone, CampoArquivo, Icone, Segmentado, useJanela } from '@nads/ui';
+import { PRIORIDADES } from '../../dados/feedback';
 import { useEffect, useRef, useState } from 'react';
 import { capturarTela, imagemDoArquivo } from './capturaDeTela';
 import { useEnviarFeedback } from './useEnviarFeedback';
@@ -61,6 +62,11 @@ export function JanelaDeFeedback({ fechar }: { fechar: () => void }) {
             <span className="hint">O que você quer melhorar?</span>
             <textarea rows={5} value={vm.texto} onChange={e => vm.setTexto(e.target.value)} autoFocus />
           </label>
+          {/* a prioridade (19/10/2026), da mais baixa para a mais alta; começa em Média */}
+          <div className="feedback-prioridade">
+            <span className="hint">Prioridade</span>
+            <Segmentado valor={vm.prioridade} onMudar={vm.setPrioridade} opcoes={[...PRIORIDADES].reverse()} />
+          </div>
         </div>
         <footer className="usuario-pe">
           {vm.erro && <span className="feedback-erro">{vm.erro}</span>}

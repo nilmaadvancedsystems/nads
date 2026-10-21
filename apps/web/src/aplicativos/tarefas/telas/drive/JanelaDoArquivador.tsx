@@ -9,7 +9,7 @@ import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
 import type { useArquivadorDoDrive } from './useArquivadorDoDrive';
 
 type Vm = ReturnType<typeof useArquivadorDoDrive>;
-type Topico = 'agora' | 'conversa' | 'relatorio' | 'execucoes';
+export type Topico = 'agora' | 'conversa' | 'relatorio' | 'execucoes';
 
 const ICONES: Record<string, NomeIcone> = { pendente: 'clock', aguardando: 'clock', processando: 'girar', concluido: 'checkCircle', erro: 'alert', cancelado: 'x' };
 
@@ -199,8 +199,8 @@ function Execucoes({ vm }: { vm: Vm }) {
   );
 }
 
-export function JanelaDoArquivador({ vm, fechar }: { vm: Vm; fechar: () => void }) {
-  const [topico, setTopico] = useState<Topico>('agora');
+export function JanelaDoArquivador({ vm, fechar, inicio }: { vm: Vm; fechar: () => void; inicio?: Topico }) {
+  const [topico, setTopico] = useState<Topico>(inicio || 'agora');
   const topicos: TopicoDaJanela<Topico>[] = [
     { id: 'agora', rotulo: 'Agora', icone: vm.ocupado ? 'girar' : 'arquivo' },
     { id: 'conversa', rotulo: 'Conversa do Claude', icone: 'robo' },

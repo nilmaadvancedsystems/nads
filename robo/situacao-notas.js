@@ -14,6 +14,8 @@
 // ~300 ms; parar no 656 (consumo indevido: a SEFAZ bloqueia por uma hora quem consulta demais). Um pedido por vez.
 const https = require('https');
 const { ouvir } = require('./ouvinte');
+// o painel do robô (21/10/2026): a consulta que está rodando, as prontas e os erros
+const painel = require('./painel');
 const { lerCertificadoComChave } = require('./nfse');
 
 /** Os endereços de produção (as SEFAZ autorizadoras). */
@@ -120,9 +122,11 @@ function iniciarSituacaoDasNotas(db, log) {
     const doc = fila.shift();
     try { await atender(doc); } catch (err) {
       log('situação das notas: erro', err.message);
+      painel.erro('sefaz', 'A consulta na SEFAZ parou', err.message);
       await doc.ref.update({ status: 'erro', erro: String(err.message).slice(0, 300), fimEm: agora() }).catch(() => {});
     }
     ocupado = false;
+    painel.fazendo('sefaz', null);
     proximo();
   }
   ouvir('pedidos da situação das notas', () => db.collection('pedidosSituacao').where('status', '==', 'pendente'), snap => {
@@ -143,6 +147,8 @@ function iniciarSituacaoDasNotas(db, log) {
       return;
     }
     await doc.ref.update({ status: 'processando', inicioEm: agora(), feitas: 0, total: emitidas.length });
+    const mes = p.competencia.slice(5) + '/' + p.competencia.slice(0, 4);
+    painel.fazendo('sefaz', 'Consultando ' + emitidas.length + ' notas de ' + codigo + ' (' + mes + ') na SEFAZ');
     const contagem = { autorizada: 0, cancelada: 0, denegada: 0, 'nao-encontrada': 0, erro: 0, 'outro-estado': 0 };
     const divergentes = [];
     let bloqueado = '';
@@ -169,6 +175,8 @@ function iniciarSituacaoDasNotas(db, log) {
       resultado: { contagem, divergentes: divergentes.slice(0, 300), maisDivergentes: Math.max(0, divergentes.length - 300) },
     });
     log('situação das notas:', codigo, p.competencia, feitas + '/' + emitidas.length, 'consultadas,', divergentes.length, 'divergentes' + (bloqueado ? ' (parou no 656)' : ''));
+    if (bloqueado) painel.erro('sefaz', 'A SEFAZ pediu para esperar na consulta de ' + codigo + ' (' + mes + ')', 'consumo indevido: ' + bloqueado);
+    else painel.atividade('sefaz', 'Consultou na SEFAZ as notas de ' + codigo + ' (' + mes + ')', feitas + ' de ' + emitidas.length + ' consultadas · ' + divergentes.length + ' divergente(s)');
   }
 }
 

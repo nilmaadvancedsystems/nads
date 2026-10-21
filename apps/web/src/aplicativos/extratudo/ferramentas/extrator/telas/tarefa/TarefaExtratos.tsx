@@ -290,8 +290,9 @@ function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato
   competencia: string; travado: boolean; aceitarExtrato: string; aceitarRazao: string; naTarefa: boolean;
   onMes: (m: string) => void; onArquivos: (lado: 'banco' | 'sistema', fs: File[], mes: string) => void; onExcluir: (lado: 'banco' | 'sistema', mes: string) => void;
   onDrive: (mes: string) => void; onEmail?: (mes: string) => void; onVer: (arquivo: { id: string; nome: string }) => void; onSemMovimento: (mes: string, marcado: boolean) => void;
-  /** o olhinho do mês importado sem o Drive ligado: o arquivo (do computador nesta aba, ou o do Drive) ou os lançamentos */
-  onVerImportado: (lado: 'banco' | 'sistema', mes: string) => void;
+  /** o olhinho do mês importado sem o Drive ligado: o arquivo (do computador nesta aba, ou o do Drive) ou os lançamentos;
+   *  semMovimento = o olhinho do "s/ mov." sem o arquivo à mão */
+  onVerImportado: (lado: 'banco' | 'sistema', mes: string, semMovimento?: boolean) => void;
   /** o que veio do e-mail no mês (o olhinho; puxados.tsx) */
   puxados: (mes: string) => Puxado[];
   /** o extrato do mês está subindo para o Drive */
@@ -304,14 +305,18 @@ function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato
     const info = lado === 'banco' ? m.ladoExtrato : m.ladoRazao;
     const trava = travado || m.semMovimento;
     if (m.semMovimento) {
-      // o olhinho ao lado (Vitor, 19/10/2026: "para ver se é isso mesmo"): o extrato do Drive, ou o que veio do e-mail
+      // o olhinho ao lado (Vitor, 19/10/2026: "para ver se é isso mesmo"): o extrato do Drive, ou o que veio do e-mail. Em
+      // todo "s/ mov.", também no razão e no mês marcado à mão (Vitor, 21/10/2026: "todos os s/ mov. tem que ter o olhinho"):
+      // sem o arquivo à mão, o onVerImportado procura o PDF no Drive e, sem ele, mostra o mês sem lançamento
       const doDrive = lado === 'banco' ? semMovimentoDoDrive(m.mes) : null;
       const doEmail = lado === 'banco' && !doDrive ? puxados(m.mes) : [];
+      const nomeDoLado = lado === 'banco' ? 'o extrato' : 'o razão';
       return (
         <>
           <button type="button" className="imp-mes-sem" disabled={travado || !naTarefa} onClick={() => onSemMovimento(m.mes, false)} title="Não teve movimento — clique para desfazer">s/ mov.</button>
-          {doDrive && <BotaoVer titulo={'Ver o extrato sem movimento: ' + doDrive.nome} onVer={() => onVer(doDrive)} />}
-          {doEmail.length > 0 && <BotaoVer titulo={'Ver o extrato sem movimento: ' + doEmail.map(p => p.nome).join(', ')} onVer={() => doEmail.forEach(abrirPuxado)} />}
+          {doDrive ? <BotaoVer titulo={'Ver o extrato sem movimento: ' + doDrive.nome} onVer={() => onVer(doDrive)} />
+            : doEmail.length > 0 ? <BotaoVer titulo={'Ver o extrato sem movimento: ' + doEmail.map(p => p.nome).join(', ')} onVer={() => doEmail.forEach(abrirPuxado)} />
+            : <BotaoVer titulo={'Ver ' + nomeDoLado + ' de ' + m.rotulo + ' (sem movimento)'} onVer={() => onVerImportado(lado, m.mes, true)} />}
         </>
       );
     }
@@ -686,8 +691,8 @@ export function TarefaExtratos() {
   /** Visualizar o que veio do Drive: abre a janela já (senão o navegador bloqueia) e põe o link temporário quando o robô responder. */
   // o olhinho do mês importado (Vitor, 19/10/2026: "no olhinho do upado, abra o PDF no Drive"): o PDF do Drive daquele mês;
   // senão o arquivo que veio nesta aba (do computador ou do e-mail, ainda subindo); senão (e no razão), os lançamentos
-  const [importado, setImportado] = useState<{ titulo: string; linhas: x.Lancamento[]; semPdf: boolean } | null>(null);
-  async function verImportado(b: (typeof vm.bancos)[number], lado: 'banco' | 'sistema', mes: string) {
+  const [importado, setImportado] = useState<{ titulo: string; linhas: x.Lancamento[]; semPdf: boolean; semMovimento: boolean } | null>(null);
+  async function verImportado(b: (typeof vm.bancos)[number], lado: 'banco' | 'sistema', mes: string, semMovimento = false) {
     if (lado === 'banco') {
       const arq = await d.arquivoNoDrive(b, mes).catch(() => null);
       if (arq) { visualizarDoDrive(arq); return; }
@@ -695,7 +700,7 @@ export function TarefaExtratos() {
       if (aqui.length) { aqui.forEach(abrirPuxado); return; }
     }
     const rotulo = mes.slice(5) + '/' + mes.slice(0, 4);
-    setImportado({ titulo: (lado === 'banco' ? 'Extrato' : 'Razão') + ' do ' + b.nome + ' · ' + rotulo, linhas: vm.lancamentosImportados(b.id, lado, mes), semPdf: lado === 'banco' });
+    setImportado({ titulo: (lado === 'banco' ? 'Extrato' : 'Razão') + ' do ' + b.nome + ' · ' + rotulo, linhas: vm.lancamentosImportados(b.id, lado, mes), semPdf: lado === 'banco', semMovimento });
   }
 
   function visualizarDoDrive(arquivo: { id: string; nome: string }) {
@@ -718,7 +723,7 @@ export function TarefaExtratos() {
         </nav>
       )}
       {aba === 'contabil' ? <div data-destaque="contabil"><ContabilNaImportacao nome={s.nome} codigo={s.codigo} meses={mesesDaEtapa} /></div>
-        : aba !== 'bancos' ? <div data-destaque="importacao"><ImportacaoNaEtapa nome={s.nome} tipo={aba} prestaServico={vm.prestaServico} competencia={vm.competencia} meses={mesesDaEtapa} /></div> : (<>
+        : aba !== 'bancos' ? <div data-destaque="importacao"><ImportacaoNaEtapa nome={s.nome} tipo={aba} prestaServico={vm.prestaServico} meses={mesesDaEtapa} /></div> : (<>
       <div className={'imp-topo' + (ocupadoGeral ? ' travado' : '')} aria-busy={ocupadoGeral}>
         {/* à esquerda, como o "⎇ main ▾  6 Branches" do GitHub: a competência e o número de bancos */}
         {/* o Em lote (escolher, alterar, cancelar) mora aqui, só na Importação (Vitor, 05/10/2026: "volte para dentro da tela
@@ -972,7 +977,7 @@ export function TarefaExtratos() {
                   if (lado === 'banco') importarExtrato(b, fs, () => { for (const f of fs) guardarPuxado(chaveDoExtrato(s.codigo, b.id), f.name, f, 'computador', [mes]); }, [mes]);
                   else void vm.importarArquivos(b.id, lado, fs);
                 }}
-                onVerImportado={(lado, mes) => { void verImportado(b, lado, mes); }}
+                onVerImportado={(lado, mes, semMov) => { void verImportado(b, lado, mes, semMov); }}
                 onExcluir={(lado, mes) => { if (lado === 'banco') esquecerPuxado(chaveDoExtrato(s.codigo, b.id), mes); void vm.excluirDoBanco(b.id, lado, mes); }}
                 onDrive={mes => d.buscarNoPeriodo(b, [mes])}
                 onEmail={em.existe ? mes => em.abrir(b, mes) : undefined}
@@ -1044,9 +1049,15 @@ export function TarefaExtratos() {
           <div className={classeDaJanela({}) + ' imp-importado'} role="dialog" aria-modal="true" aria-labelledby="tituloImportado" onClick={e => e.stopPropagation()}>
             <BotaoFechar canto onClick={() => setImportado(null)} />
             <h3 id="tituloImportado">{importado.titulo}</h3>
-            <p className="hint">{importado.linhas.length} lançamento{importado.linhas.length === 1 ? '' : 's'} importado{importado.linhas.length === 1 ? '' : 's'} no mês.
-              {importado.semPdf ? ' O PDF não está no Drive (o extrato entrou antes de subir para lá): importe o PDF de novo neste mês e ele vai para o Drive.' : ' O arquivo do razão não fica guardado.'}</p>
-            <div className="table-wrap scroll-list">
+            {importado.semMovimento ? (
+              // o olhinho do "s/ mov." sem o arquivo à mão (Vitor, 21/10/2026)
+              <p className="hint">Mês marcado sem movimento: nenhum lançamento.
+                {importado.semPdf ? ' O PDF do extrato deste mês não está no Drive.' : ' O arquivo do razão não fica guardado.'}</p>
+            ) : (
+              <p className="hint">{importado.linhas.length} lançamento{importado.linhas.length === 1 ? '' : 's'} importado{importado.linhas.length === 1 ? '' : 's'} no mês.
+                {importado.semPdf ? ' O PDF não está no Drive (o extrato entrou antes de subir para lá): importe o PDF de novo neste mês e ele vai para o Drive.' : ' O arquivo do razão não fica guardado.'}</p>
+            )}
+            {importado.linhas.length > 0 && <div className="table-wrap scroll-list">
               <table className="table-compact">
                 <thead><tr><th>Data</th><th>Histórico</th><th className="num">Valor</th></tr></thead>
                 <tbody>
@@ -1059,7 +1070,7 @@ export function TarefaExtratos() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </div>}
           </div>
         </div>
       )}

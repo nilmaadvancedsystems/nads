@@ -10,7 +10,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useOperador } from '../../casca/operador';
 import { useGmailDoEntregas } from '../../dados/repo';
 
-export type AbaDaCaixa = 'clientes' | 'sem-cliente' | 'spam';
+// a aba Enviados (Heverton, 20/10/2026: "colocar os enviados no gmail"): o que a caixa mandou aos clientes
+export type AbaDaCaixa = 'clientes' | 'sem-cliente' | 'spam' | 'enviados';
 /** o período da lista (14/10/2026: "filtros e agrupamento") */
 export type PeriodoDaCaixa = 'tudo' | 'hoje' | '7d' | '30d';
 
@@ -64,10 +65,10 @@ export function useCaixaDoRobo() {
   const ignorados = repo.ignorados();
   const semDono = useMemo(() => e.semCliente(estado, clientes, ignorados), [estado, clientes, ignorados]);
 
-  const listas: Record<AbaDaCaixa, e.EmailDaCaixa[]> = { clientes: estado.caixa, 'sem-cliente': semDono, spam: estado.spam };
+  const listas: Record<AbaDaCaixa, e.EmailDaCaixa[]> = { clientes: estado.caixa, 'sem-cliente': semDono, spam: estado.spam, enviados: estado.enviados };
   const q = semAcento(busca.trim());
   const desde = periodo === 'tudo' ? 0 : periodo === 'hoje' ? new Date().setHours(0, 0, 0, 0) : Date.now() - (periodo === '7d' ? 7 : 30) * 86400000;
-  const linhas = listas[aba].filter(x => (!q || semAcento([x.nome, x.remetente, x.assunto, x.trecho, x.clienteNome || ''].join(' ')).includes(q))
+  const linhas = listas[aba].filter(x => (!q || semAcento([x.nome, x.remetente, x.assunto, x.trecho, x.clienteNome || '', ...(x.para || [])].join(' ')).includes(q))
     && (!desde || Date.parse(x.em) >= desde)
     && (!comAnexo || x.arquivos.length > 0)
     && (!foraDoDrive || (x.arquivos.length > 0 && !estado.salvos[x.mensagemId])));
@@ -79,7 +80,7 @@ export function useCaixaDoRobo() {
     if (ultimo && ultimo.rotulo === g) ultimo.itens.push(x); else grupos.push({ rotulo: g, itens: [x] });
   }
   const porId = new Map(clientes.map(c => [c.id, c]));
-  const todos = [...estado.caixa, ...estado.naoReconhecidos, ...estado.spam];
+  const todos = [...estado.caixa, ...estado.naoReconhecidos, ...estado.spam, ...estado.enviados];
 
   async function tentar(oque: string, f: () => Promise<void>, ok: string) {
     try { await f(); toast(ok); } catch (err) { toast('Não consegui ' + oque + ': ' + (err as Error).message + '.'); }
@@ -103,7 +104,7 @@ export function useCaixaDoRobo() {
       andamento: estado.andamento,
     },
     aba, setAba,
-    contagem: { clientes: estado.caixa.length, 'sem-cliente': semDono.length, spam: estado.spam.length } as Record<AbaDaCaixa, number>,
+    contagem: { clientes: estado.caixa.length, 'sem-cliente': semDono.length, spam: estado.spam.length, enviados: estado.enviados.length } as Record<AbaDaCaixa, number>,
     busca, setBusca,
     linhas, grupos,
     periodo, setPeriodo, comAnexo, setComAnexo, foraDoDrive, setForaDoDrive,

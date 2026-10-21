@@ -178,7 +178,43 @@ function montarExecucao(id, arquivos, qualidade, relatorioTexto, mtimeRelatorio)
   return { resumo, detalhe };
 }
 
+// O que foi arquivado no mês, para o painel do robô (21/10/2026): as execuções de PRODUÇÃO do mês de `agora`, a mais
+// nova primeiro, e as somas de hoje e do mês. Conta pelo manifesto (a fonte confiável); a hora é a do relatório quando
+// há (a do id às vezes vem em UTC). porExec: agruparManifesto; relatorios: Map(id -> { mtime }); qual: lerQualidade.
+const MAX_EXECUCOES_NO_PAINEL = 40;
+function resumoDoMes(porExec, relatorios, qual, agora) {
+  const d = agora || new Date();
+  const dois = n => String(n).padStart(2, '0');
+  const diaDe = x => x.getFullYear() + '-' + dois(x.getMonth() + 1) + '-' + dois(x.getDate());
+  const hoje = diaDe(d);
+  const mes = hoje.slice(0, 7);
+  const execucoes = [];
+  for (const id of new Set([...(porExec ? porExec.keys() : []), ...(relatorios ? relatorios.keys() : [])])) {
+    if (modoDoId(id) !== 'PRODUCAO') continue;
+    const rel = relatorios && relatorios.get(id);
+    const em = rel && rel.mtime ? new Date(rel.mtime) : (dataDoId(id) ? new Date(dataDoId(id)) : null);
+    if (!em || diaDe(em).slice(0, 7) !== mes) continue;
+    const arquivos = (porExec && porExec.get(id)) || [];
+    const q = qual && qual.get(id);
+    execucoes.push({
+      id, em: em.toISOString(), dia: diaDe(em), arquivados: arquivos.length,
+      clientes: new Set(arquivos.map(a => a.codigo).filter(Boolean)).size,
+      naoIdentificados: q && q.naoIdentificados != null ? q.naoIdentificados : 0,
+    });
+  }
+  execucoes.sort((a, b) => b.em.localeCompare(a.em));
+  const soma = (lista, campo) => lista.reduce((s, e) => s + e[campo], 0);
+  return {
+    mes, em: d.toISOString(),
+    hoje: soma(execucoes.filter(e => e.dia === hoje), 'arquivados'),
+    noMes: soma(execucoes, 'arquivados'),
+    naoIdentificadosNoMes: soma(execucoes, 'naoIdentificados'),
+    execucoesNoMes: execucoes.length,
+    execucoes: execucoes.slice(0, MAX_EXECUCOES_NO_PAINEL),
+  };
+}
+
 module.exports = {
   lerLinhaJson, destinoPorPartes, agruparManifesto, lerQualidade, lerRelatorio,
-  dataDoId, modoDoId, listarExecucoes, montarExecucao,
+  dataDoId, modoDoId, listarExecucoes, montarExecucao, resumoDoMes,
 };

@@ -17,6 +17,8 @@ import { criarFgtsMemoria, type RepoFgts } from './fgts';
 import { criarFgtsFirestore } from './fgts.firestore';
 import { criarCaixaMemoria, type RepoCaixa } from './caixa';
 import { criarCaixaFirestore } from './caixa.firestore';
+import { criarHonorariosMemoria, type RepoHonorarios } from './honorarios';
+import { criarHonorariosFirestore } from './honorarios.firestore';
 import { criarNfseMemoria, type RepoNfse } from './nfse';
 import { criarNfseFirestore } from './nfse.firestore';
 import { criarEntregasDeDocumentosMemoria, type RepoEntregasDeDocumentos } from './entregasDeDocumentos';
@@ -36,16 +38,20 @@ import { criarAreaClienteFirestore } from './areaCliente.firestore';
 import { criarLcdprMemoria, type RepoLcdpr } from './lcdpr';
 import { criarLcdprFirestore } from './lcdpr.firestore';
 import { criarFeedbackFirestore } from './feedback.firestore';
+import { criarUsoMemoria, type RepoUso } from './uso';
+import { criarUsoFirestore } from './uso.firestore';
 import { criarPessoalMemoria, type RepoPessoal } from './pessoal';
 import { criarPessoalFirestore } from './pessoal.firestore';
 import { criarSaudeMemoria, type RepoSaude } from './saude';
 import { criarSaudeFirestore } from './saude.firestore';
+import { criarPainelRoboMemoria, type RepoPainelRobo } from './painelRobo';
+import { criarPainelRoboFirestore } from './painelRobo.firestore';
 import { balanceteNoEntregas, clientesNoEntregas, conferenciaNoBanco, gravarLeituraDeContas, ouvirLeituraDeContas, portaCadastroFirestore } from './cadastro.firestore';
 import { criarRepoTarefasFirestore, extratorNoBanco, type RepoTarefasFirestore } from './tarefas.firestore';
 import { ligadoAoBanco } from '../../../comum/modoDesenvolvedor';
 import { definirEmpresasExtras } from '../../../comum/empresaDaRota';
 import { criarCofreMemoria, type RepoCofre } from './cofre';
-import { criarCofreFirestore, certificadosDoRobo } from './cofre.firestore';
+import { criarCofreFirestore, certificadosDoRobo, gravarAvisoDeCertificados, ouvirAvisoDeCertificados } from './cofre.firestore';
 import { criarAgentesMemoria, type RepoAgentes } from './agentes';
 import { criarAgentesFirestore } from './agentes.firestore';
 import { criarGuardadoFirestore } from './guardado.firestore';
@@ -282,6 +288,14 @@ export function repoDaSaude(): RepoSaude {
   return saude;
 }
 
+let painelRobo: RepoPainelRobo | null = null;
+
+/** O painel do robô (Cadastro › Painel do robô, 21/10/2026): os dois robôs, as filas, a atividade e o que foi arquivado. */
+export function repoDoPainelRobo(): RepoPainelRobo {
+  if (!painelRobo) painelRobo = noBanco ? criarPainelRoboFirestore() : criarPainelRoboMemoria();
+  return painelRobo;
+}
+
 let pessoal: RepoPessoal | null = null;
 
 /** O que é só da pessoa (a Minha página): as cobranças dela, as anotações e o que ela arquivou na caixa de entrada. */
@@ -299,6 +313,21 @@ let cofreRepo: RepoCofre | null = null;
  * Os certificados do cofre que pedem atenção (o resumo do robô, robo/certificados), para a faixa do admin (19/10/2026).
  * Nos exemplos: um vencido e um vencendo.
  */
+let avisoExemplo = true;
+const ouvintesDoAviso = new Set<(ligado: boolean) => void>();
+/** O aviso de certificado vencendo ligado ou não (config/avisoCertificados; nos exemplos, na memória). */
+export function ouvirAvisoDeCertificadosLigado(chegou: (ligado: boolean) => void): () => void {
+  if (noBanco) return ouvirAvisoDeCertificados(chegou);
+  ouvintesDoAviso.add(chegou);
+  chegou(avisoExemplo);
+  return () => { ouvintesDoAviso.delete(chegou); };
+}
+export async function ligarAvisoDeCertificados(ligado: boolean): Promise<void> {
+  if (noBanco) return gravarAvisoDeCertificados(ligado, quemPede()?.nome || '');
+  avisoExemplo = ligado;
+  for (const f of ouvintesDoAviso) f(ligado);
+}
+
 export async function certificadosParaOAviso(): Promise<{ empresa: string; codigo: number | null; validade: string }[]> {
   if (noBanco) return (await certificadosDoRobo().catch(() => null))?.atencao || [];
   const dia = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
@@ -345,6 +374,14 @@ export function repoDoCaixa(): RepoCaixa {
   return caixa;
 }
 
+let honorarios: RepoHonorarios | null = null;
+
+/** Os honorários dos clientes (19/10/2026, fase 2 do Financeiro): os contratos e os recebimentos por competência. */
+export function repoDeHonorarios(): RepoHonorarios {
+  if (!honorarios) honorarios = noBanco ? criarHonorariosFirestore() : criarHonorariosMemoria();
+  return honorarios;
+}
+
 let entregasDeDocumentos: RepoEntregasDeDocumentos | null = null;
 
 /** A entrega de documentos aos clientes (16/10/2026): a rota e o painel do Entregas, nos mesmos documentos de lá. */
@@ -385,6 +422,14 @@ export function repoDeFeedback(): RepoFeedback {
       : criarFeedbackMemoria(() => { try { return localStorage.getItem('nads-tarefas-operador') || ''; } catch { return ''; } });
   }
   return feedback;
+}
+
+let usoDoSistema: RepoUso | null = null;
+
+/** O mapa de uso do sistema (Gustavo, 20/10/2026): no banco, config/uso e uso/{dia}; nos exemplos, na memória (90 dias inventados). */
+export function repoDeUso(): RepoUso {
+  if (!usoDoSistema) usoDoSistema = noBanco ? criarUsoFirestore(() => quemPede()?.nome || '') : criarUsoMemoria();
+  return usoDoSistema;
 }
 
 let categoriasDp: RepoCategoriasDp | null = null;

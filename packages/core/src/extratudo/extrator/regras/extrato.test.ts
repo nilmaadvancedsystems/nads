@@ -11,6 +11,22 @@ function pagina(linhas: [string, number][][]): ItemDeTexto[] {
 }
 
 describe('extrato em PDF', () => {
+  it('o Nubank pelo OCR: o dia lido com letra ("O8FEV2026") e o ano em pedaço separado não viram lançamento (20/10/2026)', () => {
+    const p = pagina([
+      [['01', 57], ['DE', 70], ['FEVEREIRO', 84], ['DE', 137], ['2026', 151], ['VALORES', 469], ['EM', 513], ['R$', 528]],
+      [['O8FEV2026', 59], ['Totaldesaídas', 120], ['-19,47', 508]],
+      [['Transferência', 120], ['enviada', 173], ['pelo', 205], ['Pix', 224], ['LOJA', 263], ['EXEMPLO', 293], ['19,47', 514]],
+      [['Saldo', 120], ['do', 144], ['dia', 156], ['4,84', 515]],
+      [['11', 58], ['FEV', 67], ['2026', 83], ['Total', 120], ['de', 142], ['saídas', 153], ['-3,00', 510]],
+      [['Compra', 120], ['no', 153], ['débito', 164], ['PADARIA', 261], ['EXEMPLO', 303], ['3,00', 515]],
+      [['Saldo', 120], ['do', 144], ['dia', 156], ['1,84', 517]],
+    ]);
+    expect(lancamentosDoPdf([p], 'banco', 2026)).toEqual([
+      { data: '2026-02-08', valor: -1947, historico: 'Transferência enviada pelo Pix LOJA EXEMPLO' },
+      { data: '2026-02-11', valor: -300, historico: 'Compra no débito PADARIA EXEMPLO' },
+    ]);
+  });
+
   it('os "Últimos Lançamentos" do Bradesco, depois do Total do período, não entram (19/10/2026)', () => {
     const p = pagina([
       [['Extrato de: Ag: 1 | CC: 2 | Entre 01/01/2026 e 31/01/2026', 40]],

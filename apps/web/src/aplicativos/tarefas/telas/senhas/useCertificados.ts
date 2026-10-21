@@ -6,7 +6,9 @@
 // empresa, código e CNPJ, sem acento e sem diferenciar maiúsculas.
 import { cofre as c, empresas, formatos } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useOperador } from '../../casca/operador';
+import { ligarAvisoDeCertificados, ouvirAvisoDeCertificadosLigado } from '../../dados/fonte';
 import { useGmailDoEntregas } from '../../dados/repo';
 import { useCofre } from './useCofre';
 
@@ -24,6 +26,10 @@ export function useCertificados() {
   /** o mês das barras escolhido (aaaa-mm); com ele, a lista é a dos que vencem nesse mês */
   const [mes, setMes] = useState<string | null>(null);
   const [aberta, setAberta] = useState<{ nome: string; codigo: number | null } | null>(null);
+  // ligar e desligar o aviso de vencimento (Vitor, 19/10/2026: "bota para desativar as notificações de certificados")
+  const admin = !!useOperador().operador?.admin;
+  const [avisos, setAvisos] = useState(true);
+  useEffect(() => ouvirAvisoDeCertificadosLigado(setAvisos), []);
   const hoje = new Date();
   const todas = empresas.EMPRESAS_COM_DP.map(e => {
     const d = vm.itens.get(formatos.slug(e.nome));
@@ -59,6 +65,13 @@ export function useCertificados() {
     // e o centro dizia só as 6 com certificado)
     totalDeEmpresas: todas.length,
     contagem, porMes, linhas, filtro, mes, busca, setBusca,
+    /** o aviso de vencimento (o celular e o e-mail do robô e a faixa da Tarefas): o admin liga e desliga */
+    admin, avisos,
+    async alternarAvisos() {
+      const novo = !avisos;
+      try { await ligarAvisoDeCertificados(novo); toast(novo ? 'Avisos de certificado ligados.' : 'Avisos de certificado desligados.'); }
+      catch (e) { toast('Não deu para mudar: ' + (e instanceof Error ? e.message : String(e))); }
+    },
     /** os que pedem atenção: os que vencem logo (do mais perto) e os vencidos (do mais recente) */
     urgentes: [...todas.filter(l => l.situacao === 'vence').sort(porDias), ...todas.filter(l => l.situacao === 'vencido').sort((a, b) => porDias(b, a))],
     setFiltro: (f: FiltroDeCertificados) => { setFiltroBruto(f); setMes(null); },

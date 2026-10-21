@@ -37,11 +37,11 @@ describe('o que corrigir no razão', () => {
     ]);
   });
   it('a Situação descreve o problema: a data trocada diz a certa (a do banco)', () => {
-    expect(r[1].situacao).toBe('Razão: 17/03 · Correto: 16/03');
+    expect(r[1].situacao).toBe('Data errada: no banco foi 16/03, no razão está 17/03');
   });
   it('a mesma diferença ao contrário liga os dois dias (na Situação)', () => {
-    expect(r[0].situacao).toBe('Os 130,96 a mais parecem ser de 18/05/2026');
-    expect(r[2].situacao).toBe('Os 130,96 que faltam parecem estar lançados em 06/03/2026');
+    expect(r[0].situacao).toBe('Lançado no dia errado? Os 130,96 a mais no razão faltam no dia 18/05/2026');
+    expect(r[2].situacao).toBe('Lançado no dia errado? Os 130,96 que faltam aqui estão a mais no dia 06/03/2026');
     expect(r[0].dica).toBeUndefined();
   });
   it('mês sem razão, ou sem movimento, fica de fora', () => {

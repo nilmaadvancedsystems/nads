@@ -28,6 +28,8 @@
 const { google } = require('googleapis');
 const { getAuth } = require('./gmail-client');
 const { FieldValue } = require('firebase-admin/firestore');
+// o painel do robô (21/10/2026): o extrato que chegou pelo Drive e foi para a fila do Extratudo
+const painel = require('./painel');
 
 const PASTA_ANO = process.env.DRIVE_PASTA_ANO || '2026';
 const COLECAO = 'driveIndice';
@@ -423,6 +425,7 @@ async function filaDeExtratosDoDrive(db, cliente, achados, log) {
       await ref.set(Object.assign({ status: 'novo', bancos, contas, tamanho: buffer.length, partes: n, remetente: '' }, base));
       feitos++;
       log('extratos: ' + (cliente.nome || codigo) + ' — ' + x.nome + ' (' + competencia + ') na fila do Extratudo');
+      painel.atividade('extratos', 'Extrato de ' + codigo + ' ' + (cliente.nome || '') + ' na fila do Extratudo', x.nome + ' · ' + competencia + ' · pelo Drive');
     }
   }
 }

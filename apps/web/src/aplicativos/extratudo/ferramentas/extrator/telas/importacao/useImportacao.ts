@@ -240,21 +240,35 @@ export function useImportacao() {
     setLendoLinha(null);
   }
 
-  /** O check verde da linha: exclui o que foi importado daquele banco e lado na competência (pergunta antes). */
+  /** Os outros meses que os arquivos têm (o extrato ou o razão que o cliente mandou quebrado, de vários meses). */
+  const outrosMeses = (arqs: x.ArquivoImportado[], meses: readonly string[]) =>
+    [...new Set(arqs.flatMap(a => a.lancamentos.map(l => l.data.slice(0, 7))))].filter(m => !meses.includes(m)).sort();
+  const rotuloMes = (m: string) => m.slice(5) + '/' + m.slice(0, 4);
+
+  /**
+   * O check verde da linha: exclui o que foi importado daquele banco e lado na competência (pergunta antes). Só o mês: o
+   * arquivo de vários meses fica nos outros (Vitor, 21/10/2026: "deixa eu conseguir excluir apenas o mês que selecionei,
+   * ao invés de excluir tudo"; no extrato e no razão).
+   */
   async function excluirDoBanco(banco: string, lado: x.Lado, competencia = competenciaDeTeste) {
     const arqs = arquivosDe(banco, lado, competencia);
     if (!arqs.length) return;
     const nomeBanco = bancos.find(b => b.id === banco)?.nome || 'banco';
+    const ficam = outrosMeses(arqs, [competencia]);
     const ok = await modal<boolean>({
       icone: 'alert', titulo: 'Excluir a importação?',
+      ...(ficam.length ? { html: 'Só <b>' + rotuloMes(competencia) + '</b> sai. ' + (arqs.length === 1 ? 'O arquivo' : 'Os arquivos') + ' também ' + (arqs.length === 1 ? 'tem' : 'têm') + ' ' + ficam.map(rotuloMes).join(', ') + ', que ' + (ficam.length === 1 ? 'fica' : 'ficam') + '.' } : {}),
       botoes: [{ rotulo: 'Excluir', valor: true, variante: 'btn-danger' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
     });
     if (!ok) return;
-    s.aplicar(e => arqs.reduce((acc, a) => x.excluirArquivo(acc, a.id, new Date()), e));
-    setMensagem({ tom: 'ok', titulo: 'Importação excluída', textos: [{ texto: nomeBanco + ' · ' + (lado === 'banco' ? 'extrato' : 'razão') }] });
+    s.aplicar(e => arqs.reduce((acc, a) => x.excluirMesesDoArquivo(acc, a.id, [competencia], new Date()), e));
+    setMensagem({ tom: 'ok', titulo: 'Importação excluída', textos: [{ texto: nomeBanco + ' · ' + (lado === 'banco' ? 'extrato' : 'razão') + ' · ' + rotuloMes(competencia) }] });
   }
 
-  /** Em Lote, "Remover todos": exclui o extrato (ou o razão) do banco em todos os meses do período, com uma pergunta só. */
+  /**
+   * Em Lote, "Remover todos": exclui o extrato (ou o razão) do banco em todos os meses do período, com uma pergunta só. Só
+   * os meses do período: o arquivo que passa dele fica com os meses de fora (21/10/2026).
+   */
   async function excluirDoPeriodo(banco: string, lado: x.Lado, meses: string[]) {
     const porId = new Map<string, x.ArquivoImportado>();
     for (const m of meses) for (const a of arquivosDe(banco, lado, m)) porId.set(a.id, a);
@@ -262,14 +276,16 @@ export function useImportacao() {
     if (!arqs.length) return;
     const nomeBanco = bancos.find(b => b.id === banco)?.nome || 'banco';
     const oQue = lado === 'banco' ? 'extrato' : 'razão';
+    const qtd = arqs.reduce((t, a) => t + a.lancamentos.filter(l => meses.includes(l.data.slice(0, 7))).length, 0);
+    const ficam = outrosMeses(arqs, meses);
     const ok = await modal<boolean>({
       icone: 'alert', titulo: 'Remover todos?',
       html: 'O ' + oQue + ' do <b>' + escapar(nomeBanco) + '</b> nos ' + meses.length + ' meses: ' + arqs.length + (arqs.length === 1 ? ' arquivo' : ' arquivos') +
-        ' (' + arqs.reduce((t, a) => t + a.lancamentos.length, 0) + ' lançamentos). Dá para importar de novo depois.',
+        ' (' + qtd + ' lançamentos). Dá para importar de novo depois.' + (ficam.length ? ' Fora do período, ' + ficam.map(rotuloMes).join(', ') + (ficam.length === 1 ? ' fica.' : ' ficam.') : ''),
       botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Remover todos', valor: true, variante: 'btn-danger' }],
     });
     if (!ok) return;
-    s.aplicar(e => arqs.reduce((acc, a) => x.excluirArquivo(acc, a.id, new Date()), e));
+    s.aplicar(e => arqs.reduce((acc, a) => x.excluirMesesDoArquivo(acc, a.id, meses, new Date()), e));
     setMensagem({ tom: 'ok', titulo: 'Importações removidas', textos: [{ texto: nomeBanco + ' · ' + oQue + ' · ' + meses.length + ' meses' }] });
   }
 

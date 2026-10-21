@@ -9,9 +9,10 @@ import { dataBR } from './texto';
  * quando a leitura dos PDFs muda; o extrato que veio do Drive e foi lido por uma versão mais velha é relido sozinho
  * (useDriveDaLinha), com relerExtrato. 2 = o Detalhamento do Saldo do BNB fora e o histórico no lançamento mais perto;
  * 3 = o OCR melhor (216 dpi, preto e branco, a página como tabela) e o sinal conferido pelo saldo corrido; 4 = os "Últimos
- * Lançamentos" do Bradesco fora (19/10/2026).
+ * Lançamentos" do Bradesco fora (19/10/2026); 5 = a data do Nubank com o ano em pedaço separado e o dia que o OCR leu com
+ * letra ("O8FEV2026"; 20/10/2026).
  */
-export const VERSAO_DO_LEITOR = 4;
+export const VERSAO_DO_LEITOR = 5;
 
 export function empresaNova(nome: string): EmpresaExtrator {
   return { nome, arquivos: [], auditoria: [] };
@@ -155,9 +156,13 @@ export function relerExtrato(e: EmpresaExtrator, arquivoId: string, lido: Arquiv
   const outros = e.arquivos.filter(x => x.id !== arquivoId && x.lado === a.lado && (x.banco || '') === (a.banco || '')).flatMap(x => x.lancamentos);
   const novos = lido.erro ? [] : soNovos(outros, lido.lancamentos.filter(l => !meses.size || meses.has(l.data.slice(0, 7))));
   if (!novos.length) return { ...e, arquivos: e.arquivos.map(x => (x.id === arquivoId ? { ...x, leitor: VERSAO_DO_LEITOR } : x)) };
+  // o pedaço de um arquivo cortado por mês (excluirMesesDoArquivo): o saldo anterior é o do PDF mais os meses de antes dele
+  const primeiro = [...meses].sort()[0];
+  const antes = primeiro ? lido.lancamentos.filter(l => l.data < primeiro).reduce((t, l) => t + l.valor, 0) : 0;
+  const saldosDoDia = lido.saldosDoDia?.filter(s => !meses.size || meses.has(s.data.slice(0, 7)));
   const novo: ArquivoImportado = {
     ...a, lancamentos: novos, leitor: VERSAO_DO_LEITOR,
-    ...(lido.saldoAnterior != null ? { saldoAnterior: lido.saldoAnterior } : {}), ...(lido.saldosDoDia?.length ? { saldosDoDia: lido.saldosDoDia } : {}),
+    ...(lido.saldoAnterior != null ? { saldoAnterior: lido.saldoAnterior + antes } : {}), ...(saldosDoDia?.length ? { saldosDoDia } : {}),
   };
   const reg: RegistroAuditoria = { ts: agora.toISOString(), acao: 'Releu o extrato', detalhe: a.nome + ' · ' + a.lancamentos.length + ' → ' + novos.length + ' lançamento(s), com o leitor novo', tom: 'ok' };
   return { ...e, arquivos: e.arquivos.map(x => (x.id === arquivoId ? novo : x)), auditoria: [reg, ...e.auditoria] };
@@ -171,6 +176,41 @@ export function excluirArquivo(e: EmpresaExtrator, id: string, agora: Date): Emp
     detalhe: (a.lado === 'banco' ? 'Extrato: ' : 'Sistema: ') + a.nome + ' · ' + a.lancamentos.length + ' lançamento(s)',
   };
   return { ...e, arquivos: e.arquivos.filter(x => x.id !== id), auditoria: [reg, ...e.auditoria] };
+}
+
+/**
+ * Tira só os meses escolhidos do arquivo, no extrato e no razão (Vitor, 21/10/2026: "tem vezes que o cliente manda os
+ * extratos quebrados… deixa eu conseguir excluir apenas o mês que selecionei, ao invés de excluir tudo"). O arquivo de
+ * vários meses é cortado em um por mês (como o PDF que sobe para o Drive), cada um com o saldo anterior dele (o do arquivo
+ * mais os lançamentos dos meses de antes) e os saldos do dia dele; os meses escolhidos saem. Sem mês que fique, sai tudo.
+ */
+export function excluirMesesDoArquivo(e: EmpresaExtrator, id: string, meses: readonly string[], agora: Date): EmpresaExtrator {
+  const a = e.arquivos.find(x => x.id === id);
+  if (!a) return e;
+  const tirar = new Set(meses);
+  const doArquivo = [...new Set(a.lancamentos.map(l => l.data.slice(0, 7)))].sort();
+  const ficam = doArquivo.filter(m => !tirar.has(m));
+  if (!ficam.length) return excluirArquivo(e, id, agora);
+  const saem = doArquivo.filter(m => tirar.has(m));
+  if (!saem.length) return e;
+  const pedacos: ArquivoImportado[] = ficam.map(m => {
+    const lancamentos = a.lancamentos.filter(l => l.data.startsWith(m));
+    const antes = a.lancamentos.filter(l => l.data < m).reduce((t, l) => t + l.valor, 0);
+    const saldosDoDia = a.saldosDoDia?.filter(s => s.data.startsWith(m));
+    return {
+      ...a, id: doArquivo.length > 1 ? a.id + '|' + m : a.id, lancamentos,
+      ...(a.saldoAnterior != null ? { saldoAnterior: a.saldoAnterior + antes } : {}),
+      ...(a.saldosDoDia ? { saldosDoDia: saldosDoDia || [] } : {}),
+    };
+  });
+  const rot = (m: string) => m.slice(5) + '/' + m.slice(0, 4);
+  const qtd = a.lancamentos.filter(l => tirar.has(l.data.slice(0, 7))).length;
+  const reg: RegistroAuditoria = {
+    ts: agora.toISOString(), acao: 'Excluiu o mês do arquivo', tom: 'bad',
+    detalhe: (a.lado === 'banco' ? 'Extrato: ' : 'Sistema: ') + a.nome + ' · ' + saem.map(rot).join(', ') + ' · ' + qtd + ' lançamento(s); ficam ' + ficam.map(rot).join(', '),
+  };
+  const i = e.arquivos.findIndex(x => x.id === id);
+  return { ...e, arquivos: [...e.arquivos.slice(0, i), ...pedacos, ...e.arquivos.slice(i + 1)], auditoria: [reg, ...e.auditoria] };
 }
 
 /** Auditoria, mais novo primeiro. */

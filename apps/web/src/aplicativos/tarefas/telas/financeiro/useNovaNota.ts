@@ -13,7 +13,13 @@ import { dataBr, descricaoPadrao, documentoFormatado, foneSoDigitos, hoje, isoDa
 
 type Cliente = empresas.EmpresaDoEscritorio;
 
-export function useNovaNota(fechar: () => void, nota?: nfse.NotaFiscal) {
+/**
+ * Quando a nota nasce de outra tela (21/10/2026: o "Emitir NFS-e" dos Honorários): o cliente (pelo código do ERP, que
+ * preenche o tomador como se tivesse sido escolhido na busca), o valor e a competência (AAAA-MM) do serviço.
+ */
+export interface NotaInicial { codigo: string; nome: string; cnpj: string; valor: number; competencia: string }
+
+export function useNovaNota(fechar: () => void, nota?: nfse.NotaFiscal, inicial?: NotaInicial) {
   const repo = useNfse();
   const { toast } = useRetorno();
   const por = useOperador().operador?.nome || '';
@@ -34,14 +40,16 @@ export function useNovaNota(fechar: () => void, nota?: nfse.NotaFiscal) {
     return () => { vale = false; };
   }, []);
   const [escolhido, setEscolhido] = useState<Cliente | null>(() => (nota?.empresaCodigo != null ? lista.find(e => e.codigo === nota.empresaCodigo) || null : null));
+  // o tomador que veio pronto: se o cliente não está na lista, ao menos o nome e o CNPJ do contrato
   const [lendoCliente, setLendoCliente] = useState(false);
-  const [nome, setNome] = useState(nota?.tomador.nome || '');
-  const [documento, setDocumento] = useState(nota ? documentoFormatado(nota.tomador.documento) : '');
+  const [nome, setNome] = useState(nota?.tomador.nome || inicial?.nome || '');
+  const [documento, setDocumento] = useState(nota ? documentoFormatado(nota.tomador.documento) : inicial ? documentoFormatado(inicial.cnpj) : '');
   const [email, setEmail] = useState(nota?.tomador.email || '');
   const [fone, setFone] = useState(nota?.tomador.fone || '');
-  const [valor, setValor] = useState(nota ? valorNoCampo(nota.servico.valor) : '');
-  const [data, setData] = useState(dataBr(nota?.servico.competencia || hoje()));
-  const [descricao, setDescricao] = useState(nota?.servico.descricao || descricaoPadrao());
+  const [valor, setValor] = useState(nota ? valorNoCampo(nota.servico.valor) : inicial ? valorNoCampo(inicial.valor) : '');
+  // a data do serviço dos Honorários é o último dia da competência; a descrição, a que a nota real do escritório usa
+  const [data, setData] = useState(dataBr(nota?.servico.competencia || (inicial ? nfse.competenciaDaNota(inicial.competencia) : '') || hoje()));
+  const [descricao, setDescricao] = useState(nota?.servico.descricao || (inicial ? 'Serviços Contábeis Ref. ' + inicial.competencia.slice(5) + '/' + inicial.competencia.slice(0, 4) : '') || descricaoPadrao());
   const [erros, setErros] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
   // a escolha mais nova vale: se trocar de cliente antes de a leitura do anterior chegar, a antiga é descartada
@@ -119,7 +127,7 @@ export function useNovaNota(fechar: () => void, nota?: nfse.NotaFiscal) {
       const d = e.codigo != null ? doEntregas.get(e.codigo) : undefined;
       const c = e.codigo != null ? contatos.get(e.codigo) : undefined;
       setNome(d?.receita?.razaoSocial || e.nome);
-      const doc = cad.cnpj || d?.documento || '';
+      const doc = cad.cnpj || d?.documento || (inicial && String(e.codigo) === inicial.codigo ? inicial.cnpj : '');
       setDocumento(documentoFormatado(doc));
       aoMudarDocumento(doc);
       setEmail(cad.contato?.email || c?.email || '');
@@ -128,6 +136,14 @@ export function useNovaNota(fechar: () => void, nota?: nfse.NotaFiscal) {
       if (minha === leitura.current) setLendoCliente(false);
     }
   }
+
+  // o cliente que veio pronto é escolhido como na busca: preenche o CNPJ, o e-mail, o telefone e busca o endereço
+  useEffect(() => {
+    const cliente = inicial ? lista.find(e => String(e.codigo) === inicial.codigo) : undefined;
+    if (cliente) void escolher(cliente);
+    else if (inicial) aoMudarDocumento(inicial.cnpj);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function tirarCliente() {
     leitura.current++;

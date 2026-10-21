@@ -2,7 +2,7 @@
 // monta o título e o texto e guarda o "Fechar até amanhã" neste navegador.
 import { cofre } from '@nads/core';
 import { useEffect, useState } from 'react';
-import { certificadosParaOAviso } from '../dados/fonte';
+import { certificadosParaOAviso, ouvirAvisoDeCertificadosLigado } from '../dados/fonte';
 
 const CHAVE = 'nads-aviso-certificados';
 const hoje = () => new Date().toISOString().slice(0, 10);
@@ -12,6 +12,9 @@ const plural = (n: number, um: string, varios: string) => n + (n === 1 ? um : va
 export function useAvisoDeCertificados(ligado: boolean) {
   const [lista, setLista] = useState<{ empresa: string; codigo: number | null; validade: string }[]>([]);
   const [fechado, setFechado] = useState(fechadoHoje);
+  // o admin desligou os avisos em Senhas › Certificados (19/10/2026)
+  const [avisos, setAvisos] = useState(true);
+  useEffect(() => (ligado ? ouvirAvisoDeCertificadosLigado(setAvisos) : undefined), [ligado]);
   useEffect(() => {
     if (!ligado || fechado) return;
     let vivo = true;
@@ -19,7 +22,7 @@ export function useAvisoDeCertificados(ligado: boolean) {
     return () => { vivo = false; };
   }, [ligado, fechado]);
   const fechar = () => { try { localStorage.setItem(CHAVE, hoje()); } catch { /* só agora */ } setFechado(true); };
-  if (!ligado || fechado || !lista.length) return { mostrar: false as const, fechar };
+  if (!ligado || !avisos || fechado || !lista.length) return { mostrar: false as const, fechar };
   const agora = new Date();
   const comDias = lista.map(c => ({ ...c, dias: cofre.situacaoDoCertificado(c.validade, agora).dias ?? 0 })).sort((a, b) => a.dias - b.dias);
   const vencidos = comDias.filter(c => c.dias < 0).length;

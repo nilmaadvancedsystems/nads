@@ -47,6 +47,18 @@ export function useClientesDoDp(competencia?: string) {
     mudarDp(codigo: number, mudar: Parameters<typeof empresas.cadastro.definirParametrosDp>[1]) {
       aplicar(codigo, cad => empresas.cadastro.definirParametrosDp(cad, mudar, por, new Date(), competencia));
     },
+    /**
+     * o CNPJ/CPF da empresa, no Cadastro (Sávio, 20/10/2026: "sem CNPJ/CPF e não tem como cadastrar"): devolve o erro
+     * quando o número não confere ('' = gravando)
+     */
+    definirDocumento(codigo: number, documento: string): string {
+      const c = clientes.find(x => x.codigo === codigo);
+      if (!c) return '';
+      const teste = empresas.cadastro.definirDocumento(c.cadastro || empresas.cadastro.cadastroVazio(c.nomeNaTela, c.codigo), documento, por, new Date());
+      if ('erro' in teste) return teste.erro;
+      aplicar(codigo, cad => { const novo = empresas.cadastro.definirDocumento(cad, documento, por, new Date()); return 'erro' in novo ? cad : novo; });
+      return '';
+    },
     /** tira o que foi mudado: só o desta competência, ou tudo (volta à planilha) */
     voltar(codigo: number, soEsta: boolean) {
       aplicar(codigo, cad => empresas.cadastro.voltarDpAPlanilha(cad, por, new Date(), soEsta ? competencia : undefined));

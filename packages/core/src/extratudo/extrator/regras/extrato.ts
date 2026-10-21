@@ -13,7 +13,19 @@ interface Linha { y: number; tokens: Token[]; texto: string }
 interface Colunas { deb?: number; cred?: number; saldo?: number; valor?: number }
 
 const RE_DATA = /^(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?$/;
-const RE_DATA_MES = /^(\d{1,2})[/.\s-]?(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]*$/i;
+/** a data com o mês em letras: "11 FEV", "11/fev", "08 FEV 2026" (o Nubank), "08FEV2026" (o OCR juntou) */
+const RE_DATA_MES = /^(\d{1,2})[/.\s-]?(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]*(?:[/.\s-]?\d{4})?$/i;
+/** o ano solto depois do dia e do mês ("11 | FEV | 2026", em pedaços separados) */
+const RE_ANO = /^20\d{2}$/;
+
+/**
+ * O dia que o OCR leu com letra no lugar do número: o "O8FEV2026" do Nubank escaneado é "08FEV2026" (Vitor, 20/10/2026: o
+ * Pix do dia 08 sumia do extrato). Só no começo da data, com o mês logo depois e ao menos um número de verdade.
+ */
+function diaDoOcr(s: string): string {
+  const m = s.match(/^([\dOoIl]{1,2})(?=[/.\s-]?(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez))/i);
+  return m && /\d/.test(m[1]) ? m[1].replace(/[Oo]/g, '0').replace(/[Il]/g, '1') + s.slice(m[1].length) : s;
+}
 const RE_VALOR = /^\(?-?(?:R\$)?-?\d{1,3}(?:\.\d{3})*,\d{2}\)?-?[CD]?$/i;
 const RE_SINAL = /^(?:[CD]|\(\+\)|\(-\)|[+-]|\*)$/i;
 /** o valor do depósito bloqueado, com o * colado ("2.300,00*"): ainda não é saldo */
@@ -336,8 +348,14 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       let segunda: string | null = null;
       if (!naColunaDaData(t[0].x)) { /* texto no meio da linha: não abre dia */ }
       else if (RE_DATA.test(t[0].s)) { data = lerData(t[0].s, ano); if (data) t.shift(); }
-      else if (t[1] && RE_DATA_MES.test(t[0].s + ' ' + t[1].s)) { data = lerData(t[0].s + ' ' + t[1].s, ano); if (data) t.splice(0, 2); }
-      else if (RE_DATA_MES.test(t[0].s)) { data = lerData(t[0].s, ano); if (data) t.shift(); }
+      else if (t[1] && RE_DATA_MES.test(diaDoOcr(t[0].s) + ' ' + t[1].s)) {
+        // o ano no pedaço seguinte ("11 | FEV | 2026") é da data: senão o "2026 Total de saídas" virava lançamento (Vitor,
+        // 20/10/2026: o Nubank tinha o total do dia como uma saída a mais)
+        const comAno = t[2] && RE_ANO.test(t[2].s);
+        data = lerData(diaDoOcr(t[0].s) + ' ' + t[1].s + (comAno ? ' ' + t[2].s : ''), ano);
+        if (data) t.splice(0, comAno ? 3 : 2);
+      }
+      else if (RE_DATA_MES.test(diaDoOcr(t[0].s))) { data = lerData(diaDoOcr(t[0].s), ano); if (data) t.shift(); }
       if (data) { dataAtual = data; noResumo = false; }
       // (e o "Detalhamento do Saldo" do BNB: saldo disponível, limite, Investimentos "BNB AUTOMATICO FIF"; Vitor, 14/10/2026)
       if (!data && /^(resumo|encargos vencidos|detalhamento do s)/.test(normalizarTexto(l.texto))) { juntarPerto(); noResumo = true; continue; }

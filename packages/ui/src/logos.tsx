@@ -262,22 +262,16 @@ export function LogoInss({ cor }: { cor?: boolean }) {
   );
 }
 
-/** O logo do FGTS (Vitor, 07/10/2026): as letras em verde e, no F, a bandeirinha (o triângulo amarelo e o azul). */
+/**
+ * O logo do FGTS Digital (Vitor, 21/10/2026: "muda a logo do FGTS para essa que te mandei"), redesenhado da imagem: o canto
+ * verde em L, o triângulo amarelo e o meio círculo azul, todos cortados pela diagonal (a folha dobrada). Quadrado.
+ */
 export function LogoFgts({ cor }: { cor?: boolean }) {
   return (
-    <svg viewBox="0 0 120 34" width="100%" height="100%" aria-hidden="true" style={cinzaSeNao(cor)}>
-      {/* o F: a barra de cima e o canto com a bandeirinha */}
-      <path fill="#0A9B3A" d="M2 4 H28 V10 H10 L2 18 Z" />
-      <path fill="#0A9B3A" d="M2 18 L10 10 V30 H2 Z" />
-      <path fill="#F6D21C" d="M10 12 V28 L4 28 Z" />
-      <path fill="#1C86E0" d="M10 18 A6 6 0 0 0 6 28 H10 Z" />
-      <path fill="#0A9B3A" d="M10 15 H24 V21 H10 Z" />
-      {/* G */}
-      <path fill="none" stroke="#0A9B3A" strokeWidth="6" d="M58 7 H38 V27 H55 V19 H48" />
-      {/* T */}
-      <path fill="none" stroke="#0A9B3A" strokeWidth="6" d="M62 7 H88 M75 7 V30" />
-      {/* S */}
-      <path fill="none" stroke="#0A9B3A" strokeWidth="6" d="M117 7 H96 V17 H114 V27 H92" />
+    <svg viewBox="24 24 132 132" width="100%" height="100%" aria-hidden="true" style={cinzaSeNao(cor)}>
+      <path fill="#006039" d="M24 24 H148 Q156 24 156 32 V44 L44 156 H32 Q24 156 24 148 Z" />
+      <path fill="#FFF000" d="M50 50 H150 L50 150 Z" />
+      <path fill="#005A9C" d="M126.2 73.8 A37 37 0 0 0 73.8 126.2 Z" />
     </svg>
   );
 }
