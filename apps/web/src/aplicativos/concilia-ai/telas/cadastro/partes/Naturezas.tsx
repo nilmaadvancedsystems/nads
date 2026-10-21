@@ -2,8 +2,9 @@
 // linhas de venda à vista/a prazo nas Saídas.
 // Origem: conferencia.html #cadCardNfe (~L1165-1169), renderNaturezaDePara (~L2082-2132),
 // vendaVistaCard (~L2164), vistaRowCfop (~L2181-2203), "Não vai para o Contábil" (~L2117-2121).
-import { Icone, Interruptor, Vazio } from '@nads/ui';
+import { BotaoFechar, Icone, Interruptor, useJanela, Vazio } from '@nads/ui';
 import { useEffect, useRef, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import type { ItemNatureza, NotaDaNatureza, SlotVista, useConfiguracoes } from '../useConfiguracoes';
 import { CampoVincular, ChipsDeContas } from './VincularConta';
 
@@ -11,6 +12,7 @@ type VM = ReturnType<typeof useConfiguracoes>;
 type Naturezas = NonNullable<VM['naturezas']>;
 
 export function Naturezas({ n, entradas, vm }: { n: Naturezas; entradas: boolean; vm: VM }) {
+  const comNotas = n.itens.find(it => it.notas);
   return (
     <div className="card" id="cadCardNfe">
       <h3 id="cadTitulo">{n.titulo}</h3>
@@ -41,6 +43,7 @@ export function Naturezas({ n, entradas, vm }: { n: Naturezas; entradas: boolean
                 {n.itens.map(it => <Natureza key={it.k} it={it} vm={vm} />)}
               </div>
             )}
+            {comNotas?.notas && <JanelaDasNotas it={comNotas} notas={comNotas.notas} fechar={vm.fecharNotas} />}
           </>
         )}
       </div>
@@ -61,9 +64,7 @@ function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
         {/* embaixo do total, o "Ver notas" (Vitor, 21/10/2026): abre as notas deste CFOP logo abaixo */}
         <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
           <span className="num" style={{ fontSize: 18, fontWeight: 700, whiteSpace: 'nowrap' }} title="O total das notas deste CFOP">{it.total}</span>
-          <button type="button" className="btn btn-ghost" aria-expanded={!!it.notas} onClick={() => vm.alternarNotas(it.k)}>
-            <Icone nome="olho" />{it.notas ? 'Esconder notas' : 'Ver notas (' + it.qtdNotas + ')'}
-          </button>
+          <button type="button" className="btn" onClick={() => vm.verNotas(it.k)}>Ver notas ({it.qtdNotas})</button>
         </span>
       </div>
       {/* a conta contábil (a que a conferência compara com o balancete) e, com as vendas separadas, o código do lançamento
@@ -87,7 +88,6 @@ function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
         )}
       </div>
       </div>
-      {it.notas && <NotasDaNatureza notas={it.notas} />}
       {it.vista && (
         <div style={LINHA}>
           <span style={ROTULO}>Código do lançamento</span>
@@ -101,10 +101,32 @@ function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
   );
 }
 
+/** As notas do CFOP numa janela por cima da tela (Vitor, 21/10/2026: "abra em popup"), na tabela da Consulta; o Esc fecha. */
+function JanelaDasNotas({ it, notas, fechar }: { it: ItemNatureza; notas: NotaDaNatureza[]; fechar: () => void }) {
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, fechar);
+  return createPortal(
+    <div className="modal-overlay pessoal-fundo" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
+      <div ref={janela} className="pessoal-janela" role="dialog" aria-modal="true" aria-label={'Notas de ' + it.titulo}
+        style={{ flexDirection: 'column', width: 'min(960px, 96vw)', height: 'auto', maxHeight: '88vh' }}>
+        <header className="pessoal-topo">
+          <h2>{it.titulo}</h2>
+          <span className="num" style={{ marginLeft: 'auto', fontWeight: 700, whiteSpace: 'nowrap' }}>{notas.length} {notas.length === 1 ? 'nota' : 'notas'} · {it.total}</span>
+          <BotaoFechar onClick={fechar} />
+        </header>
+        <div style={{ overflow: 'auto', padding: 16 }}>
+          <TabelaDasNotas notas={notas} />
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 /** As notas do CFOP, na tabela da Consulta. */
-function NotasDaNatureza({ notas }: { notas: NotaDaNatureza[] }) {
+function TabelaDasNotas({ notas }: { notas: NotaDaNatureza[] }) {
   return (
-    <div className="table-wrap" style={{ marginTop: 12 }}>
+    <div className="table-wrap">
       <table className="cons-tabela">
         <thead>
           <tr><th>Data</th><th>Nota</th><th>Participante</th><th>CFOP</th><th>Lançamento</th><th className="num">Valor (R$)</th></tr>
