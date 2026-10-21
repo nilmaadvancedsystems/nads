@@ -46,7 +46,7 @@ export function useCascaConciliaAi() {
   }, [e, s.filtro, mesesDaTarefa]);
   useRequisitosParaATarefa(repo.pronto() ? { pronto: faltamFiscal.length === 0, faltam: faltamFiscal.map(p => p.texto), alvos: faltamFiscal.map(p => p.alvo) } : null);
   // o "Resolver" da Tarefas: abre o Relatório na aba da pendência e destaca as linhas com diferença (ou o quadro)
-  usePonteDaTarefa(undefined, alvo => {
+  const ponte = usePonteDaTarefa(undefined, alvo => {
     if (alvo === 'balancete') { s.irPara('importacao/balancete'); return; }
     if (!alvo.startsWith('relatorio:')) return;
     const aba = alvo.slice(10) as c.AbaRelatorio;
@@ -55,10 +55,13 @@ export function useCascaConciliaAi() {
     void destacarNaTela(aba === 'entradas' ? '#confDivEntradas' : aba === 'saidas' ? '#confDivSaidas' : 'tr:has(.badge-bad)');
   });
 
-  // "Essa empresa presta serviço?" — uma vez por empresa, obrigatória, fundo embaçado
+  // "Essa empresa presta serviço?" — uma vez por empresa, obrigatória, fundo embaçado. Só fora da Tarefa: dentro dela, quem
+  // pergunta é a Importação, a primeira etapa (Vitor, 21/10/2026: "remova a pergunta de serviços no Conferência fiscal, e
+  // coloque na importação direto, pois fica melhor no fluxo")
   const perguntou = useRef(false);
+  const naTarefa = ponte.naTarefa;
   useEffect(() => {
-    if (perguntou.current || e.prestaServico !== undefined || servicosDoCadastro !== undefined) return;
+    if (naTarefa || perguntou.current || e.prestaServico !== undefined || servicosDoCadastro !== undefined) return;
     perguntou.current = true;
     void modal<boolean>({
       obrigatoria: true, icone: 'briefcase', titulo: 'Seja bem-vindo(a) ao Concilia aí!',
@@ -68,7 +71,7 @@ export function useCascaConciliaAi() {
       s.aplicar(x => c.definirPrestaServico(x, sim));
       if (!sim && s.abaCadastro === 'prestados') s.setAbaCadastro('entradas');
     });
-  }, [e.prestaServico, modal, s, lista, servicosDoCadastro]);
+  }, [e.prestaServico, modal, s, lista, servicosDoCadastro, naTarefa]);
 
   const secoes = SECOES.map(sec => {
     const req = sec.id === 'cadastro' && !ok ? 'todas' : sec.id === 'movimento' && semNotas ? 'notas' : '';

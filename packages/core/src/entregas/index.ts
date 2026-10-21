@@ -6,6 +6,7 @@ export * from './saude';
 // o painel do robô (Cadastro › Painel do robô, 21/10/2026)
 export * from './painelRobo';
 export * from './gmail';
+export * from './parcelamentos';
 // a entrega de documentos aos clientes (a rota e o painel do Entregas, no nads desde 16/10/2026)
 export * from './documentos';
 export * from './guiasDoPdf';

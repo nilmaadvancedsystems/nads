@@ -22,6 +22,7 @@ import { implantarNotasFiscaisDeTeste, useImportadosDaConferencia } from '../../
 import { JanelaHistoricoDePedidos, JanelaPedirExtratos } from './JanelaPedirExtratos';
 import { caminhoNaFerramenta } from '../../../../casca/caminho';
 import { useBancosOk } from './useBancosOk';
+import { ConfirmarBancos } from './ConfirmarBancos';
 import { useDriveDaLinha } from './useDriveDaLinha';
 import { JanelaBuscarNoEmail, useBuscarNoEmail } from './JanelaBuscarNoEmail';
 import { useRecebidosPorEmail } from './useRecebidosPorEmail';
@@ -658,7 +659,7 @@ export function TarefaExtratos() {
   useRequisitosParaATarefa(!ponte.naTarefa ? null : vm.etapaFiscal
     ? importados ? x.requisitosDasNotas(importados, vm.prestaServico) : null
     : vm.semBancosCadastrados
-    ? { pronto: false, faltam: ['Os bancos da empresa no Cadastro (peça a um administrador)'], alvos: [null] }
+    ? { pronto: false, faltam: ['Confirmar os bancos da empresa e a conta contábil de cada um'], alvos: [null] }
     : vm.etapaCheque
     ? { precisaChequeEspecial, ...x.requisitosDoChequeEspecial(vm.bancos.map(b => ({ id: b.id, nome: b.nome, ok: !!bancosOk[b.id], semMovimento: semMovimentoNoPeriodo(b.id), diasSemCheque: diasSemCheque(b.id) }))) }
     : importados ? { ...x.requisitosDaImportacao(vm.bancos.map(b => ({
@@ -675,6 +676,10 @@ export function TarefaExtratos() {
   const [abertas, setAbertas] = useState<string[]>([]);
   const [abaEscolhida, setAba] = useState<AbaImportacao>(vm.etapaFiscal ? 'entradas' : 'bancos');
   // Prestados só para quem presta serviço (a regra do Cadastro; sem informar, aparece); no Fiscal, só as notas
+  // "presta serviços?" quando o Cadastro ainda não diz (Vitor, 21/10/2026: saiu da Conferência fiscal e veio para cá)
+  const perguntarServicos = vm.perguntarServicos;
+  const perguntaServicos = ponte.naTarefa && !vm.etapaCheque && vm.cadastroCarregado && vm.prestaServico === null;
+  useEffect(() => { if (perguntaServicos) void perguntarServicos(); }, [perguntaServicos]); // eslint-disable-line react-hooks/exhaustive-deps
   const visiveis = ABAS_DA_IMPORTACAO.filter(a => (a.id !== 'prestados' || vm.prestaServico !== false) && (!vm.etapaFiscal || ABAS_DAS_NOTAS.includes(a.id)));
   const aba = visiveis.some(a => a.id === abaEscolhida) ? abaEscolhida : visiveis[0].id;
   const abas = visiveis.map(a => ({ ...a, ativa: a.id === aba }));
@@ -786,14 +791,9 @@ export function TarefaExtratos() {
           : 'Cheque especial conferido (' + diasNegativosNoPeriodo + (diasNegativosNoPeriodo === 1 ? ' dia negativo' : ' dias negativos') + '): o saldo final bate sem os lançamentos dele. Pode seguir.'}</p>
       ) : null)}
 
-      {/* sem conta bancária no Cadastro (Vitor, 05/10/2026): pede para o administrador cadastrar, no lugar da linha "Banco" */}
-      {vm.semBancosCadastrados && (
-        <div className="card gh-blank imp-sem-bancos">
-          <Icone nome="landmark" />
-          <h4>Os bancos desta empresa não estão cadastrados</h4>
-          <p>Peça a um administrador para cadastrar as contas bancárias da empresa (Cadastro › Empresas › a empresa › Contas bancárias). Depois disso, o extrato e o razão de cada banco aparecem aqui.</p>
-        </div>
-      )}
+      {/* sem conta bancária no Cadastro: confirmar os bancos e a conta contábil de cada um aqui mesmo (Vitor, 21/10/2026; antes,
+          05/10/2026, pedia ao administrador), no lugar da linha "Banco"; confirmado, as linhas de cada banco aparecem */}
+      {vm.bancosNaoCadastrados && !vm.etapaCheque && <ConfirmarBancos />}
       {/* os extratos que chegaram por e-mail e não entraram sozinhos (08/10/2026): escolher a linha e importar, ou ignorar */}
       {!vm.semBancosCadastrados && rec.pendentes.length > 0 && (
         <Alerta naLinha titulo={rec.pendentes.length === 1 ? '1 extrato esperando o banco' : rec.pendentes.length + ' extratos esperando o banco'}

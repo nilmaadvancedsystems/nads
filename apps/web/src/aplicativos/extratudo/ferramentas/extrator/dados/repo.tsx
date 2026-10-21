@@ -60,6 +60,8 @@ export function useDrive(): { drive: creditor.RepoDrive; acesso: creditor.Acesso
 export function useCadastroDaEmpresa(nome: string, codigo: number | null): {
   cadastro: empresas.cadastro.CadastroDaEmpresa | null;
   salvar: (c: empresas.cadastro.CadastroDaEmpresa) => void;
+  /** o plano de contas da empresa (null = sem plano importado, ou ainda chegando) */
+  plano: empresas.cadastro.PlanoDeContas | null;
 } {
   const cad = repoDoCadastro();
   const { toast } = useRetorno();
@@ -67,5 +69,5 @@ export function useCadastroDaEmpresa(nome: string, codigo: number | null): {
   useSyncExternalStore(cad.assinar, cad.versao, cad.versao);
   const salvar = useCallback((c: empresas.cadastro.CadastroDaEmpresa) => cad.salvar(nome, c), [cad, nome]);
   const cadastro = cad.cadastro(nome, codigo);
-  return { cadastro: cad.carregada(nome) ? cadastro : null, salvar };
+  return { cadastro: cad.carregada(nome) ? cadastro : null, salvar, plano: cad.plano(nome) };
 }

@@ -8,10 +8,13 @@ import type { VmCofre } from './useCofre';
 const dataIso = (br: string) => (/^\d{2}\/\d{2}\/\d{4}$/.test(br) ? br.slice(6) + '-' + br.slice(3, 5) + '-' + br.slice(0, 2) : '');
 
 export function useSegredos(cofre: VmCofre, empresa: string, codigo: number | null) {
+  const codigoDaEmpresa = codigo;
   const { modal } = useRetorno();
   const [carregado, setCarregado] = useState(false);
   const [segredos, setSegredos] = useState<c.SegredosDaEmpresa>({});
   const [gov, setGov] = useState({ login: '', senha: '', obs: '' });
+  // o código de acesso do Simples Nacional (Heverton, 20/10/2026): só no cofre
+  const [simples, setSimples] = useState({ codigo: '', cpf: '', obs: '' });
   const [cert, setCert] = useState({ nomeArquivo: '', arquivo: '', senha: '', validade: '', titular: '', obs: '' });
   // a leitura do .pfx com a senha (07/10/2026): a validade e o titular saem do próprio certificado
   const [leitura, setLeitura] = useState<{ lendo: boolean; erro: string }>({ lendo: false, erro: '' });
@@ -25,6 +28,7 @@ export function useSegredos(cofre: VmCofre, empresa: string, codigo: number | nu
       const v = s || {};
       setSegredos(v);
       setGov({ login: v.gov?.login || '', senha: v.gov?.senha || '', obs: v.gov?.obs || '' });
+      setSimples({ codigo: v.simples?.codigo || '', cpf: v.simples?.cpf || '', obs: v.simples?.obs || '' });
       setCert({ nomeArquivo: v.certificado?.nomeArquivo || '', arquivo: v.certificado?.arquivo || '', senha: v.certificado?.senha || '', validade: c.dataBr(v.certificado?.validade || ''), titular: v.certificado?.titular || '', obs: v.certificado?.obs || '' });
       setCarregado(true);
     }).catch(() => { if (vale) setCarregado(true); });
@@ -52,6 +56,8 @@ export function useSegredos(cofre: VmCofre, empresa: string, codigo: number | nu
     aberto,
     carregado,
     gov, setGov,
+    simples, setSimples,
+    mudouSimples: simples.codigo !== (segredos.simples?.codigo || '') || simples.cpf !== (segredos.simples?.cpf || '') || simples.obs !== (segredos.simples?.obs || ''),
     cert, setCert,
     leitura,
     certSituacao,
@@ -64,6 +70,14 @@ export function useSegredos(cofre: VmCofre, empresa: string, codigo: number | nu
       if (!f) { setCert(x => ({ ...x, nomeArquivo: '', arquivo: '' })); return; }
       const arquivo = c.paraBase64(await f.arrayBuffer());
       setCert(x => ({ ...x, nomeArquivo: f.name, arquivo }));
+    },
+    async salvarSimples() {
+      const codigo = simples.codigo.replace(/\s/g, '');
+      const cpf = simples.cpf.replace(/\D/g, '');
+      const novo: c.SegredosDaEmpresa = { ...segredos, simples: codigo ? { codigo, ...(cpf ? { cpf } : {}), ...(simples.obs.trim() ? { obs: simples.obs.trim() } : {}) } : undefined };
+      await cofre.salvar(empresa, codigoDaEmpresa, novo);
+      setSegredos(novo);
+      setSimples({ codigo, cpf, obs: simples.obs.trim() });
     },
     async salvarGov() {
       const novo: c.SegredosDaEmpresa = { ...segredos, gov: gov.login || gov.senha ? { login: gov.login.trim(), senha: gov.senha, ...(gov.obs.trim() ? { obs: gov.obs.trim() } : {}) } : undefined };

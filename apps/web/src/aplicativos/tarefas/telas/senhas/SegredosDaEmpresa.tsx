@@ -20,7 +20,7 @@ export function Senha({ valor, onMudar, rotulo }: { valor: string; onMudar: (v: 
   );
 }
 
-export function SegredosDaEmpresa({ vm: cofre, empresa, codigo, parte }: { vm: VmCofre; empresa: string; codigo: number | null; parte: 'gov' | 'certificado' | 'tudo' }) {
+export function SegredosDaEmpresa({ vm: cofre, empresa, codigo, parte }: { vm: VmCofre; empresa: string; codigo: number | null; parte: 'gov' | 'certificado' | 'simples' | 'tudo' }) {
   const vm = useSegredos(cofre, empresa, codigo);
   const { toast } = useRetorno();
   if (!vm.aberto) return <CofreFechado vm={cofre} />;
@@ -49,6 +49,23 @@ export function SegredosDaEmpresa({ vm: cofre, empresa, codigo, parte }: { vm: V
           </Linha>
           {vm.mudouGov && <div className="cofre-salvar"><button type="button" className="btn btn-primary" disabled={cofre.ocupado} onClick={() => void vm.salvarGov()}>Salvar</button></div>}
           <div className="cofre-acoes"><a className="btn btn-outline" href="https://sso.acesso.gov.br/login" target="_blank" rel="noreferrer"><Icone nome="link" />Abrir o gov.br</a></div>
+        </Cartao>
+      )}
+      {/* o código de acesso do Simples Nacional (Heverton, 20/10/2026): no cofre, embaralhado como a senha gov.br */}
+      {(parte === 'simples' || parte === 'tudo') && (
+        <Cartao titulo="Simples Nacional">
+          <Linha rotulo="Código de acesso" dica="Os 12 números que o portal do Simples pede"><Senha valor={vm.simples.codigo} onMudar={v => vm.setSimples({ ...vm.simples, codigo: v })} rotulo="Código de acesso do Simples Nacional" /></Linha>
+          <Linha rotulo="CPF do responsável" dica="O portal pede junto com o CNPJ e o código">
+            <span className="cofre-senha">
+              <input type="text" inputMode="numeric" className="pessoal-select" value={vm.simples.cpf} onChange={e => vm.setSimples({ ...vm.simples, cpf: e.target.value })} aria-label="CPF do responsável" placeholder="Só os números" autoComplete="off" />
+              <BotaoIcone icone="copiar" titulo="Copiar" onClick={() => { void navigator.clipboard.writeText(vm.simples.cpf.replace(/\D/g, '')).then(() => toast('Copiado.')); }} />
+            </span>
+          </Linha>
+          <Linha rotulo="Observação">
+            <input type="text" className="pessoal-select cofre-obs" value={vm.simples.obs} onChange={e => vm.setSimples({ ...vm.simples, obs: e.target.value })} aria-label="Observação do Simples Nacional" />
+          </Linha>
+          {vm.mudouSimples && <div className="cofre-salvar"><button type="button" className="btn btn-primary" disabled={cofre.ocupado} onClick={() => void vm.salvarSimples()}>Salvar</button></div>}
+          <div className="cofre-acoes"><a className="btn btn-outline" href="https://www8.receita.fazenda.gov.br/SimplesNacional/controleAcesso/Autentica.aspx?id=6" target="_blank" rel="noreferrer"><Icone nome="link" width={16} height={16} />Abrir o portal do Simples</a></div>
         </Cartao>
       )}
       {(parte === 'certificado' || parte === 'tudo') && <CertificadoA1 vm={vm} ocupado={cofre.ocupado} baixar={baixar} />}

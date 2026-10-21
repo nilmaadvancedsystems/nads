@@ -2076,6 +2076,16 @@ main.main:has(> .content > .explorador){padding:0;}
 .etq-campo > span{color:var(--ink-muted);font-size:var(--fs-12);}
 .etq-campo input{height:32px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;padding:0 8px;min-width:0;width:100%;}
 .etq-campo input:focus{outline:2px solid var(--accent);outline-offset:-1px;}
+/* os papéis do mês do Cadastro (Heverton, 21/10/2026): as etiquetas do envelope e o protocolo de tributos */
+.papeis-janela{max-width:560px;}
+.papeis-janela .steps{align-self:flex-start;}
+.papeis-linha{display:flex;align-items:center;gap:8px;font-size:var(--fs-13);}
+.papeis-empresas{display:flex;flex-direction:column;gap:6px;}
+.papeis-empresas-topo{display:flex;align-items:center;gap:6px;font-size:var(--fs-13);}
+.papeis-lista{list-style:none;margin:0;padding:0;max-height:240px;overflow:auto;border:1px solid var(--border);border-radius:6px;}
+.papeis-lista li + li{border-top:1px solid var(--border-muted,var(--border));}
+.papeis-item{display:grid;grid-template-columns:auto 44px 1fr auto;align-items:center;gap:8px;padding:5px 10px;font-size:var(--fs-13);cursor:pointer;}
+.papeis-nome{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .envio-onde{display:flex;align-items:center;gap:8px;font-size:var(--fs-13) !important;padding:8px 10px !important;border-radius:6px;background:var(--surface-2);}
 
 /* ---------------------------------- Drive com a cara do GitHub (30/09/2026) ----------------------------------
@@ -4843,6 +4853,11 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .suporte-capsulas{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;}
 .suporte-capsulas .badge{cursor:pointer;border:0;padding:5px 10px;font-size:var(--fs-12);display:inline-flex;align-items:center;gap:4px;}
 .suporte-capsulas .badge svg{width:12px;height:12px;}
+/* a resposta ainda não escolhida: o fundo e a borda das bolhas do balão (Vitor, 21/10/2026: "os botões estão com cores
+   estranhas no tema dark" — sem fundo, o botão ficava com o cinza padrão do navegador) */
+.suporte-capsulas .badge-neutral{background:var(--surface);border:1px solid var(--border);color:var(--ink);padding:4px 9px;}
+.suporte-capsulas .badge-neutral:hover{background:var(--surface-3);}
+.suporte-capsulas .badge-ok{border:1px solid var(--success);padding:4px 9px;}
 .suporte-continuar{height:26px;padding:0 12px;font-size:var(--fs-12);}
 .suporte-msg-titulo{display:block;font-weight:600;margin-bottom:4px;}
 .suporte-msg-dica{display:block;margin-top:2px;font-size:var(--fs-12);color:var(--ink-muted);}
@@ -4878,3 +4893,24 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 @media (max-width:900px){.uso-colunas,.uso-tela-corpo{grid-template-columns:1fr;}}
 /* Financeiro › Caixa: os botões da barra num grupo à direita, que desce inteiro quando a barra quebra (21/10/2026) */
 .fin-acoes{display:inline-flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-left:auto;}
+/* Fiscal › Faturamento dos clientes (21/10/2026) */
+.faturamento{display:flex;flex-direction:column;gap:12px;}
+.faturamento-tabela{max-height:calc(100vh - 260px);overflow:auto;}
+.faturamento-tabela td,.faturamento-tabela th{white-space:nowrap;}
+.faturamento-nome{max-width:280px;overflow:hidden;text-overflow:ellipsis;}
+.faturamento-tabela tfoot td{border-top:2px solid var(--border);position:sticky;bottom:0;background:var(--surface);}
+.faturamento-subiu{color:var(--ok,#1E8E3E);}
+.faturamento-caiu{color:var(--danger);}
+/* Cadastro › a empresa › Fiscal (Heverton, 21/10/2026): os documentos e as planilhas, os parcelamentos */
+.fis-docs-acoes{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.fis-docs-acoes .btn svg{width:16px;height:16px;}
+.fis-docs-novo{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+.fis-docs-novo input{width:260px;max-width:100%;}
+.fis-docs-novo input[type=text]{width:180px;}
+.fis-docs-novo .btn svg{width:16px;height:16px;}
+.fis-parc-vazio{padding:8px 16px;}
+.fis-parc-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;padding:12px 16px;}
+.fis-parc-form .etq-campo input{height:32px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;padding:0 8px;}
+.fis-parc-obs{grid-column:1/-1;}
+.fis-parc-dia{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.fis-parc-dia input{width:70px;}
