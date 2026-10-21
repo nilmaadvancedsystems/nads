@@ -4,7 +4,7 @@
 // o executor das etapas é /tarefas/executar/<empresa>/<competência>.
 // O Cadastro é a lista de empresas (/tarefas/cadastro/empresas); a empresa abre numa janela por cima da lista,
 // com as abas dela: /tarefas/cadastro/empresas/<empresa>/<aba>.
-import { tarefas as t } from '@nads/core';
+import { tarefas as t, type uso } from '@nads/core';
 import type { NomeIcone } from '@nads/ui';
 import type { Operador } from './operador';
 
@@ -42,6 +42,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'usuarios', rotulo: 'Equipe', icone: 'usuario', titulo: 'Equipe' },
     // "troca de robô para sistema" (13/10/2026)
     { id: 'sistema', rotulo: 'Sistema e agentes', icone: 'monitor', titulo: 'Sistema e agentes' },
+    // o mapa de uso (Gustavo, 20/10/2026: "um mapa quente que trackei o que tá sendo usado no sistema"): só o admin
+    { id: 'uso', rotulo: 'Uso do sistema', icone: 'barChart', titulo: 'Uso do sistema' },
   ] },
   // o Fiscal no mesmo modelo do Contábil (Vitor, 05/10/2026): as empresas com a rotina do Fiscal, a visão e as paradas
   { id: 'fiscal', nome: 'Fiscal', icone: 'recibo', grupo: 'Rotinas', pronta: true, paginas: [
@@ -128,11 +130,13 @@ export const podeMexerNoCadastro = (op: Operador | null) => !!op && (op.admin ||
 
 /** As páginas do Cadastro que o sênior não abre: Sistema e agentes (os robôs e os computadores) não é cadastro de empresa. */
 const SO_ADMIN_E_DIRETOR_NO_CADASTRO: readonly string[] = ['sistema'];
+/** As páginas do Cadastro só do admin: o Uso do sistema (21/10/2026; as regras do banco só deixam o admin ler uso/). */
+const SO_ADMIN_NO_CADASTRO: readonly string[] = ['uso'];
 
 /** As aplicações que a pessoa vê: Fiscal só para o Fiscal; Contábil e Drive só para o Contábil; Gmail para os dois (admin vê tudo). */
 export function aplicacoesDe(op: Operador): Aplicacao[] {
   const soOSenior = !op.admin && op.nivel === 'senior';
-  return APLICACOES.map(a => (a.id === 'cadastro' && soOSenior ? { ...a, paginas: a.paginas.filter(p => !SO_ADMIN_E_DIRETOR_NO_CADASTRO.includes(p.id)) } : a)).filter(a =>
+  return APLICACOES.map(a => (a.id === 'cadastro' && !op.admin ? { ...a, paginas: a.paginas.filter(p => !SO_ADMIN_NO_CADASTRO.includes(p.id) && !(soOSenior && SO_ADMIN_E_DIRETOR_NO_CADASTRO.includes(p.id))) } : a)).filter(a =>
     (a.id !== 'fiscal' || op.admin || op.departamento === 'fiscal') &&
     (a.id !== 'dp' || op.admin || op.departamento === 'dp') &&
     (a.id !== 'contabil' || op.admin || op.departamento === 'contabil') &&
@@ -148,6 +152,25 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     .sort((x, y) => ORDEM_DOS_GRUPOS.indexOf(x.grupo) - ORDEM_DOS_GRUPOS.indexOf(y.grupo));
 }
 const ORDEM_DOS_GRUPOS: readonly Aplicacao['grupo'][] = ['Rotinas', 'Comunicação', 'Escritório'];
+
+/**
+ * Todas as telas da navegação, para o Uso do sistema (as nunca visitadas): app/página e a aba da janela da empresa no
+ * Cadastro (cadastro/empresas/<aba>), com o rótulo "Fiscal › Painel". A mesma chave de uso.telaDoCaminho.
+ */
+export function telasDaNavegacao(): uso.TelaDaNavegacao[] {
+  const telas: uso.TelaDaNavegacao[] = [];
+  for (const a of APLICACOES) {
+    if (a.id === 'mandei') continue;
+    for (const p of a.paginas) {
+      if (p.emDesenvolvimento) continue;
+      if (a.id === 'cadastro' && p.id === 'empresas') {
+        telas.push({ tela: 'cadastro/empresas', rotulo: 'Cadastro › Empresas', app: a.id });
+        for (const aba of ABAS_DO_CADASTRO) telas.push({ tela: 'cadastro/empresas/' + aba.id, rotulo: 'Cadastro › Empresa › ' + aba.grupo + ' › ' + aba.rotulo, app: a.id });
+      } else telas.push({ tela: a.id + '/' + p.id, rotulo: a.nome + ' › ' + p.rotulo, app: a.id });
+    }
+  }
+  return telas;
+}
 
 export function aplicacao(id: string): Aplicacao | undefined {
   return APLICACOES.find(a => a.id === id);

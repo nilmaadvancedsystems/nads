@@ -17,6 +17,6 @@ export { iniciarContinuidade, atualizarSemPerder } from './continuidade';
 export { origemConfiavel, origemDoPai, useAbasParaAEtapa, useAlturaNaEtapa, useFerramentaNaEtapa, type AbaDaEtapa } from './etapa';
 export { fundoSuaveDoBanco, LogoBanco, LogoDrive, LogoFgts, LogoGmail, LogoGovernoMinas, LogoInss, LogoReceitaFederal, LogoSimplesNacional, LogoWhatsApp, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma } from './logos';
 export { AberturaN } from './abertura';
-export { RoscaComLegenda, BarrasEmColuna, AnelDeContagem, CartaoComAnel, type FatiaDaRosca, type ColunaDasBarras, type TomDoPainel } from './paineis';
+export { RoscaComLegenda, BarrasEmColuna, AnelDeContagem, CartaoComAnel, MapaDeCalor, type FatiaDaRosca, type ColunaDasBarras, type TomDoPainel } from './paineis';
 export { destacarNaTela } from './destaque';
 export { CampoAssinatura } from './componentes';

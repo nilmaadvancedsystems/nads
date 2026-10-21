@@ -47,6 +47,7 @@ export const TELAS: Tela[] = [
   { id: 't-cadastro', app: 'Tarefas', nome: 'Cadastro (lista)' },
   { id: 't-cadastro-janela', app: 'Tarefas', nome: 'Cadastro › Janela da empresa' },
   { id: 't-cadastro-config', app: 'Tarefas', nome: 'Cadastro › Sistema e agentes' },
+  { id: 't-cadastro-uso', app: 'Tarefas', nome: 'Cadastro › Uso do sistema' },
   { id: 't-drive', app: 'Tarefas', nome: 'Drive' },
   { id: 't-gmail', app: 'Tarefas', nome: 'Gmail' },
   { id: 't-mandei', app: 'Tarefas', nome: 'Área do Cliente › Tickets (o Mandei)' },

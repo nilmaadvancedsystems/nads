@@ -1,7 +1,7 @@
 // As peças do catálogo, desenhadas com as MESMAS peças do sistema (@nads/ui e as classes do nads.css). A ordem dentro
 // de cada tipo dá o código (BT-01, BT-02…): peça nova entra no FIM do tipo, para os códigos não mudarem.
 import {
-  Alerta, AnelDeContagem, BarrasEmColuna, BotaoAcao, BotaoFechar, Vazio, CartaoComAnel, RoscaComLegenda, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail,
+  Alerta, AnelDeContagem, BarrasEmColuna, BotaoAcao, BotaoFechar, Vazio, CartaoComAnel, RoscaComLegenda, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail, MapaDeCalor,
   LogoFgts, LogoGovernoMinas, LogoInss, LogoReceitaFederal, LogoSimplesNacional, LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
 } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
@@ -754,6 +754,11 @@ export const PECAS_BASE: Peca[] = [
       <div style={{ width: 300 }}><CartaoComAnel dias={12} titulo="EMPRESA EXEMPLO LTDA" prazo="Vence em 12 dias" apoio="292 · 19/10/2026" atrasado={false} onClick={nada} /></div>
       <div style={{ width: 300 }}><CartaoComAnel dias={-5} titulo="OUTRA EMPRESA LTDA" prazo="Parado há 5 dias" apoio="10 · faltam 3 de 8 · Fabiana" atrasado onClick={nada} /></div>
       <AnelDeContagem dias={20} /></div> },
+
+  // o mapa quente do Uso do sistema (Gustavo, 20/10/2026: "um mapa quente que trackei o que tá sendo usado no sistema")
+  { id: 'mapa-calor', tipo: 'graficos', nome: 'Mapa de calor (os cliques na tela)', descricao: 'A grade de 50×50 sobre o contorno da página (o topo e a lateral); quanto mais cliques na célula, mais forte o vermelho; a dica da célula diz quantos', componente: 'MapaDeCalor', classes: ['mapa-calor', 'mapa-calor-celula'], telas: ['t-cadastro-uso'],
+    uso: '<MapaDeCalor grade={{ "x_y": cliques }} maior={n} rotulo="Os cliques em Fiscal › Painel" />',
+    demo: () => <div style={{ width: '100%', maxWidth: 520 }}><MapaDeCalor rotulo="Exemplo" maior={9} grade={{ '20_10': 9, '21_10': 6, '22_11': 3, '30_24': 5, '31_25': 2, '40_40': 1, '18_30': 4 }} /></div> },
 
   // ─── Cores ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'cores', tipo: 'cores', nome: 'As cores do sistema', descricao: 'Mude o tema no ☰ para ver o escuro', telas: TODAS, largo: true,

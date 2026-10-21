@@ -6,6 +6,7 @@ import { usuarios } from '@nads/core';
 import { aplicarTabelasCompactas, useRetorno } from '@nads/ui';
 import { useEffect, type ReactNode } from 'react';
 import { Outlet } from 'react-router';
+import { ColetaDeUso } from './casca/ColetaDeUso';
 import { OperadorProvider, operadorDaConta, useOperador } from './casca/operador';
 import { avisarErrosDoBanco, repoDaTarefas, repoDeAcesso } from './dados/fonte';
 import { RepoProvider } from './dados/repo';
@@ -75,6 +76,8 @@ export function AppTarefas() {
             <AvisosDeLiberacao admin={admin} />
             {/* o suporte de leitura (20/10/2026): o balão no canto de baixo, à direita, em toda tela */}
             <BalaoDoSuporte />
+            {/* o mapa de uso do sistema (Gustavo, 20/10/2026): conta as visitas e os cliques, só com o interruptor ligado */}
+            <ColetaDeUso />
           </PessoalProvider>
         </PrecisaDeOperador>
       </OperadorProvider>

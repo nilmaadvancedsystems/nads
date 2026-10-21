@@ -38,6 +38,8 @@ import { criarAreaClienteFirestore } from './areaCliente.firestore';
 import { criarLcdprMemoria, type RepoLcdpr } from './lcdpr';
 import { criarLcdprFirestore } from './lcdpr.firestore';
 import { criarFeedbackFirestore } from './feedback.firestore';
+import { criarUsoMemoria, type RepoUso } from './uso';
+import { criarUsoFirestore } from './uso.firestore';
 import { criarPessoalMemoria, type RepoPessoal } from './pessoal';
 import { criarPessoalFirestore } from './pessoal.firestore';
 import { criarSaudeMemoria, type RepoSaude } from './saude';
@@ -410,6 +412,14 @@ export function repoDeFeedback(): RepoFeedback {
       : criarFeedbackMemoria(() => { try { return localStorage.getItem('nads-tarefas-operador') || ''; } catch { return ''; } });
   }
   return feedback;
+}
+
+let usoDoSistema: RepoUso | null = null;
+
+/** O mapa de uso do sistema (Gustavo, 20/10/2026): no banco, config/uso e uso/{dia}; nos exemplos, na memória (90 dias inventados). */
+export function repoDeUso(): RepoUso {
+  if (!usoDoSistema) usoDoSistema = noBanco ? criarUsoFirestore(() => quemPede()?.nome || '') : criarUsoMemoria();
+  return usoDoSistema;
 }
 
 let categoriasDp: RepoCategoriasDp | null = null;

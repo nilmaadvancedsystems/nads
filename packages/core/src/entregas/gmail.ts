@@ -20,6 +20,12 @@ export interface EmailDaCaixa {
   clienteNome?: string;
   /** e-mail ambíguo: os nomes dos clientes possíveis */
   candidatos?: string[];
+  /**
+   * enviado pela própria caixa (a aba Enviados; Heverton, 20/10/2026: "colocar os enviados no gmail"): o remetente é o
+   * endereço do cliente que recebeu, e para, todos os destinatários
+   */
+  enviado?: boolean;
+  para?: string[];
 }
 
 export interface ExecucaoDoRobo {
@@ -60,6 +66,8 @@ export interface EstadoDoRobo {
   caixa: EmailDaCaixa[];
   naoReconhecidos: EmailDaCaixa[];
   spam: EmailDaCaixa[];
+  /** os enviados pela caixa aos clientes (20/10/2026) */
+  enviados: EmailDaCaixa[];
   execucoes: ExecucaoDoRobo[];
   salvos: Record<string, SalvoNoDrive>;
   ultimaExecucao: string;
@@ -68,7 +76,7 @@ export interface EstadoDoRobo {
 
 export const ESTADO_VAZIO: EstadoDoRobo = {
   carregado: false, online: false, vistoEm: '', status: '', statusMsg: '', andamento: null, naFila: 0,
-  caixa: [], naoReconhecidos: [], spam: [], execucoes: [], salvos: {}, ultimaExecucao: '',
+  caixa: [], naoReconhecidos: [], spam: [], enviados: [], execucoes: [], salvos: {}, ultimaExecucao: '',
 };
 
 const texto = (v: unknown) => (v == null ? '' : String(v));
@@ -86,6 +94,8 @@ function emailDaLista(x: Record<string, unknown>): EmailDaCaixa | null {
   };
   if (x.clienteNome) e.clienteNome = texto(x.clienteNome);
   if (Array.isArray(x.candidatos) && x.candidatos.length) e.candidatos = x.candidatos.map(texto);
+  if (x.enviado === true) e.enviado = true;
+  if (Array.isArray(x.para) && x.para.length) e.para = x.para.map(v => texto(v).toLowerCase()).filter(Boolean);
   return e;
 }
 
@@ -114,6 +124,7 @@ export function estadoDoRobo(doc: Record<string, unknown> | null | undefined, ag
     caixa: lista(doc.caixa).map(emailDaLista).filter((e): e is EmailDaCaixa => !!e).sort(maisNovos),
     naoReconhecidos: lista(doc.naoReconhecidos).map(emailDaLista).filter((e): e is EmailDaCaixa => !!e).sort(maisNovos),
     spam: lista(doc.spam).map(emailDaLista).filter((e): e is EmailDaCaixa => !!e).sort(maisNovos),
+    enviados: lista(doc.enviados).map(emailDaLista).filter((e): e is EmailDaCaixa => !!e).map(e => ({ ...e, enviado: true })).sort(maisNovos),
     execucoes: lista(doc.execucoes).map(x => ({
       em: texto(x?.em), dias: numero(x?.dias), emails: numero(x?.emails), marcados: numero(x?.marcados), baixados: numero(x?.baixados),
       naoReconhecidos: numero(x?.naoReconhecidos), conversas: numero(x?.conversas), erros: numero(x?.erros), duracaoMs: numero(x?.duracaoMs),
@@ -250,7 +261,7 @@ export function caixasDaPessoa(p: { admin: boolean; departamento: string | null 
   return [];
 }
 
-const CAMPOS_DA_CAIXA = ['caixa', 'naoReconhecidos', 'spam', 'execucoes', 'salvos', 'ultimaExecucao', 'ultimaExecucaoResumo'];
+const CAMPOS_DA_CAIXA = ['caixa', 'naoReconhecidos', 'spam', 'enviados', 'execucoes', 'salvos', 'ultimaExecucao', 'ultimaExecucaoResumo'];
 
 /** O documento que a tela lê para uma caixa de setor: o do robô (online, fila, andamento) com as listas da caixa. */
 export function docDaCaixa(docDoRobo: Record<string, unknown> | null, docDaCaixaDoSetor: Record<string, unknown> | null): Record<string, unknown> | null {

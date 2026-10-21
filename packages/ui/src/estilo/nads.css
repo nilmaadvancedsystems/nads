@@ -3422,6 +3422,11 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .cert-painel-vazio{padding:24px 16px;}
 @media (max-width:900px){.cert-dash{grid-template-columns:1fr;}}
 @media (max-width:520px){.cert-rosca{flex-direction:column;}.cert-barras{gap:3px;padding:8px 8px 12px;}}
+/* o mapa quente de uma tela (Uso do sistema, 21/10/2026): o contorno da página (topo e lateral) e a grade 50×50 */
+.mapa-calor{position:relative;width:100%;aspect-ratio:16/10;border:1px solid var(--border);border-radius:var(--radius,8px);background:var(--surface);overflow:hidden;}
+.mapa-calor-topo{position:absolute;left:0;right:0;top:0;height:7%;background:var(--surface-2);border-bottom:1px solid var(--border);}
+.mapa-calor-lateral{position:absolute;left:0;top:7%;bottom:0;width:15%;background:var(--surface-2);border-right:1px solid var(--border);}
+.mapa-calor-celula{position:absolute;background:var(--danger);border-radius:1px;}
 /* os Feedbacks numa janela flutuante, abertos no pé da gaveta ☰ (07/10/2026) */
 .feedbacks-janela{width:min(980px,96vw);}
 .drawer-foot .drawer-item{margin:0 0 8px;}
@@ -4790,3 +4795,20 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .suporte-envio-linha{display:flex;gap:8px;justify-content:space-between;}
 .suporte-envio-linha .btn{min-width:0;}
 .suporte-arquivo{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;}
+/* Cadastro › Uso do sistema (21/10/2026) */
+.uso{display:flex;flex-direction:column;gap:16px;}
+.uso .card{margin:0;padding:16px;}
+.uso .card>h3{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.uso .card>h3>svg{width:16px;height:16px;flex:none;}
+.uso-coleta{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-13,13px);}
+.uso-colunas{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.uso-rank{margin-top:8px;}
+.uso-inutil-corpo{display:flex;flex-direction:column;gap:8px;}
+.uso-inutil-titulo{font-weight:600;margin:8px 0 0;display:flex;align-items:center;gap:6px;}
+.uso-tabela-baixa{max-height:280px;overflow:auto;}
+.uso-tela-corpo{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px;margin-top:8px;}
+.uso-tela-mapa{display:flex;flex-direction:column;gap:8px;}
+.uso-tela-lista{display:flex;flex-direction:column;gap:8px;min-width:0;}
+.uso-tela-lista .table-wrap{max-height:360px;overflow:auto;}
+.uso-quem{margin:0;font-size:var(--fs-13,13px);}
+@media (max-width:900px){.uso-colunas,.uso-tela-corpo{grid-template-columns:1fr;}}
