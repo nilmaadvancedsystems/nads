@@ -92,10 +92,8 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
         <MenuDeFiltro rotulo="Responsável" valor={f.responsavel} mudar={f.setResponsavel} opcoes={f.responsaveis} />
         <MenuDeFiltro rotulo="Movimento" valor={f.movimento} mudar={f.setMovimento} opcoes={f.movimentos} />
         <MenuDeFiltro rotulo="Enquadramento" valor={f.enquadramento} mudar={f.setEnquadramento} opcoes={f.enquadramentos} />
-        <MenuDeFiltro rotulo="Status" valor={f.status} mudar={v => f.setStatus(v as typeof f.status)}
-          opcoes={[{ valor: 'concluidas', rotulo: 'Concluídos' }, { valor: 'pendentes', rotulo: 'Pendentes' }]} />
-        {/* a Situação da coluna (Savio, 21/10/2026: "preciso de mais um filtro: por Situação") */}
-        <MenuDeFiltro rotulo="Situação" valor={f.situacao} mudar={f.setSituacao} opcoes={f.situacoes} todos="Todas" />
+        {/* um Status só, com a situação da coluna (21/10/2026: "preciso de um filtro melhor de status") */}
+        <MenuDeFiltro rotulo="Status" valor={f.status} mudar={v => f.setStatus(v as typeof f.status)} opcoes={f.statusOpcoes} />
         <MenuDeFiltro rotulo="Pendente em" valor={f.pendenteEm} mudar={v => f.setPendenteEm(v as typeof f.pendenteEm)} opcoes={f.partes} todos="Todas as partes" />
         <MenuDeFiltro rotulo="Entrega" valor={f.entrega} mudar={f.setEntrega} opcoes={f.entregas} />
         <MenuDeFiltro rotulo="Agrupamento" valor={f.agrupamento} mudar={f.setAgrupamento} opcoes={f.agrupamentos} direita />
@@ -184,7 +182,7 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
 
           {mostrarDecimo ? (
             <DecimoNaLista ano={doDecimo?.ano || hoje.getFullYear()} parcela={mesDaCompetencia === 11 ? '1' : '2'}
-              busca={f.busca} responsavel={f.responsavel} status={f.status} desligar={() => setDecimo(false)} />
+              busca={f.busca} responsavel={f.responsavel} status={f.statusDoDecimo} desligar={() => setDecimo(false)} />
           ) : (
           <section className="card dp-lista">
             <div className="dp-lista-topo">
