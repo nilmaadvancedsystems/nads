@@ -10,7 +10,7 @@ import { useFeedbacks } from './useFeedbacks';
 
 const SELO = { novo: 'badge-warn', visto: 'badge-neutral', feito: 'badge-ok' } as const;
 const NOME = { novo: 'Novo', visto: 'Visto', feito: 'Feito' } as const;
-const ICONE = { novo: 'envelope', visto: 'olho', feito: 'check', '': 'relatorio', bug: 'alert' } as const;
+export const ICONE_DO_FILTRO = { novo: 'envelope', visto: 'olho', feito: 'check', '': 'relatorio', bug: 'alert' } as const;
 const ANALISE = { pendente: 'Na fila do robô', analisando: 'O robô está investigando', pronta: '', erro: 'O robô não conseguiu analisar', '': '' } as const;
 const VEREDITO = { erro: { selo: 'badge-bad', rotulo: 'Erro do sistema' }, analise: { selo: 'badge-warn', rotulo: 'Precisa da sua análise' } } as const;
 
@@ -31,10 +31,22 @@ function SeloDaPrioridade({ p }: { p: PrioridadeDoFeedback | null }) {
 
 export function JanelaDosFeedbacks({ fechar }: { fechar: () => void }) {
   const vm = useFeedbacks();
-  const topicos: TopicoDaJanela<string>[] = vm.filtros.map(f => ({ id: f.valor || TODOS, rotulo: f.rotulo, icone: ICONE[f.valor], contador: f.qtd }));
+  const topicos: TopicoDaJanela<string>[] = vm.filtros.map(f => ({ id: f.valor || TODOS, rotulo: f.rotulo, icone: ICONE_DO_FILTRO[f.valor], contador: f.qtd }));
   return (
     <JanelaLateral rotulo="Feedbacks" topicos={topicos} topico={vm.filtro || TODOS} mudar={id => vm.setFiltro(id === TODOS ? '' : id as SituacaoDoFeedback | 'bug')} fechar={fechar}
       classe="feedbacks-janela" resumo={<div className="usuario-quem"><b>Feedbacks</b></div>}>
+      <ListaDosFeedbacks vm={vm} />
+    </JanelaLateral>
+  );
+}
+
+/**
+ * O miolo dos Feedbacks: a prioridade e a ordem em cima, a lista e, por cima dela, o feedback aberto e o print ampliado.
+ * Na janela ☰ da Tarefas (acima) e na página Feedbacks do site do admin (21/10/2026), com o mesmo ViewModel.
+ */
+export function ListaDosFeedbacks({ vm }: { vm: ReturnType<typeof useFeedbacks> }) {
+  return (
+    <>
       <div className="feedback-filtros">
         <Segmentado valor={vm.prioridade} onMudar={vm.setPrioridade} opcoes={vm.prioridades} />
         <span className="tarefas-barra-espaco" />
@@ -69,7 +81,7 @@ export function JanelaDosFeedbacks({ fechar }: { fechar: () => void }) {
           <img src={vm.aberta} alt="O print do feedback" />
         </div>
       )}
-    </JanelaLateral>
+    </>
   );
 }
 

@@ -44,8 +44,11 @@ const SITES = {
   // com dados de exemplo, no site do catálogo (link à parte, expira sozinho)
   'cliente-previa': { site: 'componentes-nilma', nome: 'Área do Cliente (prévia)', tipo: 'app', aplicativo: 'cliente', soCanal: true, pasta: 'componentes' },
   // o site próprio da Área do Cliente (cliente.nilmacontabilidade.com), ligado ao banco do Entregas (17/10/2026): lê só o
-  // espelho do link (areasCliente/{token}) e o pacote leva só a Área do Cliente (vite.config.ts, nads-so-cliente)
+  // espelho do link (areasCliente/{token}) e o pacote leva só a Área do Cliente (vite.config.ts, nads-rotas-proprias)
   cliente: { site: 'cliente-nilma', nome: 'Área do Cliente', tipo: 'app', aplicativo: 'cliente', banco: true },
+  // o site só para admin (Vitor, 21/10/2026; admin.nilmacontabilidade.com): o robô, o uso do sistema, a saúde do banco, a
+  // cota, os feedbacks e o sistema e agentes. O pacote leva só o site do admin (vite.config.ts, nads-rotas-proprias)
+  admin: { site: 'admin-nilma', nome: 'Admin', tipo: 'app', banco: true },
   extratudo: { site: 'extratudo-nilma', nome: 'Extratudo', tipo: 'app', banco: true },
   tarefas: { site: 'tarefas-nilma', nome: 'Tarefas', tipo: 'app', banco: true },
   // extrato do banco → .xls, sem banco de dados (Vitor, 06/10/2026)

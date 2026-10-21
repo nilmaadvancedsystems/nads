@@ -64,9 +64,7 @@ export interface ItemNatureza {
   vista: { slots: SlotVista[]; info: string } | null;
   /** o total das notas da natureza (Vitor, 14/10/2026: no canto direito, maior e em negrito) */
   total: string;
-  /** quantas notas a natureza tem (o rótulo do "Ver notas") */
-  qtdNotas: number;
-  /** as notas do CFOP, por data — só com o "Ver notas" aberto (Vitor, 21/10/2026); null = fechado */
+  /** as notas do CFOP, por data — só com a janela do "Ver notas" aberta (Vitor, 21/10/2026: "abra em popup"); null = fechada */
   notas: NotaDaNatureza[] | null;
 }
 
@@ -132,8 +130,9 @@ export function useConfiguracoes() {
   const [textoEdit, setTextoEdit] = useState('');
   const [destacar, setDestacar] = useState(false);
   const [focarFalta, setFocarFalta] = useState(0);
-  // as naturezas com o "Ver notas" aberto (Vitor, 21/10/2026: "quando clicar você apresenta as notas daquele CFOP")
-  const [notasAbertas, setNotasAbertas] = useState<string[]>([]);
+  // a natureza com a janela do "Ver notas" aberta (Vitor, 21/10/2026: "quando clicar você apresenta as notas daquele
+  // CFOP"; "abra em popup")
+  const [notasDe, setNotasDe] = useState<string | null>(null);
 
   /** no original cada gravação redesenhava a tela: os campos abertos voltavam a ser só o botão */
   const limparUi = useCallback(() => { setCampos({}); setListaDe(null); setForms({}); }, []);
@@ -298,8 +297,7 @@ export function useConfiguracoes() {
         };
       }
       return { k, titulo: c.tituloDoGrupo(gr), nao, vinculo: vinculo(k), podeNaoContabil: !ligadas.length, semConta: !ligadas.length && !nao && Math.abs(c.somaValores(gr.itens)) >= 0.005, vista: linhaVista, total: formatos.reais(c.somaValores(gr.itens)),
-        qtdNotas: gr.itens.length,
-        notas: notasAbertas.includes(k)
+        notas: notasDe === k
           ? [...gr.itens].sort((a, b) => pelaData(a.data).localeCompare(pelaData(b.data)) || a.numero.localeCompare(b.numero, 'pt-BR', { numeric: true }))
             .map(n => ({ data: n.data, numero: n.numero, nome: n.nome, cfop: n.cfop, lanc: n.lanc, valor: formatos.reais(n.valor) }))
           : null };
@@ -408,8 +406,9 @@ export function useConfiguracoes() {
   return {
     aba, abas, mudarAba, serv,
     naturezas: montarNaturezas(),
-    /** abre ou fecha a tabela das notas do CFOP */
-    alternarNotas: (k: string) => setNotasAbertas(a => (a.includes(k) ? a.filter(x => x !== k) : [...a, k])),
+    /** abre a janela das notas do CFOP */
+    verNotas: (k: string) => setNotasDe(k),
+    fecharNotas: () => setNotasDe(null),
     servicos: montarServicos(),
     alternarVista, naoContabil, vista,
   };

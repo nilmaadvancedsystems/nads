@@ -1003,6 +1003,10 @@ async function iniciar() {
   // Quanto o banco já usou hoje (todo o sistema), pro cartão Saúde do sistema.
   try { require('./uso-banco').iniciarUsoDoBanco(db, log); }
   catch (err) { log('uso do banco desligado:', err.message); }
+  // O resumo diário da saúde do banco (o site do admin, 21/10/2026): o tamanho das coleções, os órfãos, o uso dos
+  // últimos 30 dias, o armazenamento e a hospedagem, em robo/saudeBanco (só o admin lê).
+  try { require('./saude-banco').iniciarSaudeDoBanco(db, log); }
+  catch (err) { log('saúde do banco desligada:', err.message); }
   // Texto completo de um e-mail, aberto no painel da tela do Robô.
   try { require('./leituras-gmail').iniciarLeiturasGmail(db, log, getGmail); }
   catch (err) { log('texto completo do e-mail desligado:', err.message); }

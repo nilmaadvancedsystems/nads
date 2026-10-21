@@ -51,13 +51,16 @@ function arquivosDoOcr(): Plugin {
 // E o @nads/core entra como "sem efeito colateral": o site importa o core pelo índice, e os módulos com conta no topo
 // (a lista de empresas, a planilha do DP, as rotinas, a equipe de exemplo) entrariam inteiros mesmo sem uso. Com isso,
 // só o que a Área do Cliente usa vai junto (o core é TypeScript puro: nenhum módulo dele depende de ser importado à toa).
-const SO_CLIENTE = process.env.VITE_APLICATIVO === 'cliente';
-function soOSiteDoCliente(): Plugin {
+// O site do admin (VITE_APLICATIVO=admin, 21/10/2026) faz o mesmo com src/rotasDoAdmin.tsx: leva só o site do admin e as
+// telas da Tarefas que ele reaproveita (sem o OCR, que nenhuma tela dele usa).
+const ROTAS_PROPRIAS: Record<string, string> = { cliente: 'src/rotasDoCliente.tsx', admin: 'src/rotasDoAdmin.tsx' };
+const ROTAS_DO_SITE = ROTAS_PROPRIAS[process.env.VITE_APLICATIVO || ''] || '';
+function rotasProprias(): Plugin {
   return {
-    name: 'nads-so-cliente',
+    name: 'nads-rotas-proprias',
     enforce: 'pre',
     resolveId(fonte, quem) {
-      if (SO_CLIENTE && fonte === './rotas' && quem && /[\\/]src[\\/]main\.tsx$/.test(quem)) return path.resolve(__dirname, 'src/rotasDoCliente.tsx');
+      if (ROTAS_DO_SITE && fonte === './rotas' && quem && /[\\/]src[\\/]main\.tsx$/.test(quem)) return path.resolve(__dirname, ROTAS_DO_SITE);
       return null;
     },
   };
@@ -87,7 +90,7 @@ const BIBLIOTECAS = [
 // base '/': as rotas são caminhos de verdade (ex.: /901/movimento/relatorio), então os
 // arquivos precisam ser referenciados a partir da raiz do site, não do caminho da página.
 export default defineConfig({
-  plugins: [react(), versaoDoSite(), ...(SO_CLIENTE ? [soOSiteDoCliente()] : [arquivosDoOcr()])],
+  plugins: [react(), versaoDoSite(), ...(ROTAS_DO_SITE ? [rotasProprias()] : [arquivosDoOcr()])],
   build: { rolldownOptions: { treeshake: SEM_EFEITO_NO_CORE, output: { codeSplitting: { groups: BIBLIOTECAS } } } },
   base: '/',
   server: { port: 5178 },

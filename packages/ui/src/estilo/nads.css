@@ -4943,6 +4943,8 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .mapa-tela-cor{width:14px;height:10px;border-radius:3px;background:var(--calor-c);}
 .mapa-tela-cor.calor-0{margin-left:8px;background:none;border:1.5px dashed var(--ink-muted);}
 @media (max-width:1100px){.mapa-tela-legenda{display:none;}}
+/* Financeiro › Caixa: os botões da barra num grupo à direita, que desce inteiro quando a barra quebra (21/10/2026) */
+.fin-acoes{display:inline-flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-left:auto;}
 /* Fiscal › Faturamento dos clientes (21/10/2026) */
 .faturamento{display:flex;flex-direction:column;gap:12px;}
 .faturamento-tabela{max-height:calc(100vh - 260px);overflow:auto;}

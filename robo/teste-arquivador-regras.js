@@ -204,5 +204,57 @@ igual('zip dentro de zip: abre os dois', z2.map(m => m.nome), ['dentro.zip\\c.xm
 igual('tipo do destino: XML NFC-e', R.tipoDoDestino('G:\\Meu Drive\\2026\\279 - X\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFC-e').tipo, 'XML NFC-e');
 igual('tipo do destino: comprovante', R.tipoDoDestino('G:/Meu Drive/2026/58 - X/CONTÁBIL/EXTRATOS/2026/06/COMPROVANTES/SICOOB').tipo, 'COMPROVANTE');
 
-console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
-process.exit(falhas ? 1 : 0);
+// ---------- 10. decisões do Vitor (21/10/2026) ----------
+const nfseNilma = '<CompNfse><Nfse><InfNfse><Numero>4003</Numero><DataEmissao>2026-09-10T00:00:00</DataEmissao><PrestadorServico><Cnpj>27872981000113</Cnpj></PrestadorServico><TomadorServico><Cnpj>06934601000158</Cnpj></TomadorServico></InfNfse></Nfse></CompNfse>';
+d = decidir({ nome: 'nfse-nilma.xml', xml: nfseNilma });
+igual('NFS-e de honorários da Nilma: na 284 E uma cópia no tomador', [d.destinoRelativo, d.copias.map(c => c.destinoRelativo)], ['284 - NILMA CONTABILIDADE LTDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFS-e', ['152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFS-e']]);
+const CAD_ = require('./arquivador-cadastro');
+const j = CAD_.juntar({
+  planilha: [{ codigo: 591, razao: 'ZELO AGROINDUSTRIAS LTDA', doc: '53.636.418/0001-56', regime: 'Simples' }, { codigo: 332, razao: 'DOMINGA ROSA GOMES', doc: '063.718.286-30', regime: 'Física' }],
+  entregas: [{ codigoOrigem: '591', nome: 'AAP INTERMEDIACOES LTDA', documento: '65.116.389/0001-80', enquadramento: 'Simples' }, { codigoOrigem: '602', nome: 'ZELO AGROINDUSTRIAS LTDA - MATRIZ', documento: '53636418000156', enquadramento: 'Simples' },
+    { codigoOrigem: '332', nome: 'DOMINGA ROSA GOMES', documento: '19.412.505/0001-91', enquadramento: 'Física' }],
+  nads: [{ codigo: 591, nome: 'AAP INTERMEDIACOES LTDA', regime: 'Simples' }, { codigo: 332, nome: 'DOMINGA ROSA GOMES', regime: 'Presumido' }],
+});
+const l332 = j.linhas.find(l => l.codigo === 332), l591 = j.linhas.find(l => l.codigo === 591);
+igual('cadastro: o regime do nads vale (sobre o Entregas e a planilha)', l332.regime, 'Presumido');
+igual('cadastro: CPF (planilha) e CNPJ (Entregas) do mesmo cliente valem os dois', [l332.doc, l332.outrosDocs], ['19412505000191', ['06371828630']]);
+igual('cadastro: código que na planilha era de outra empresa (591 ZELO × AAP) não herda o CNPJ nem o nome', [l591.doc, l591.outrosDocs, l591.outrosNomes], ['65116389000180', [], []]);
+igual('cadastro: a divergência vai para a lista de pendências', j.divergencias.map(x => x.tipo), ['CODIGO_DE_OUTRA_EMPRESA']);
+const cadZ = R.montarCadastro(j.linhas, ['591 - AAP INTERMEDIACOES LTDA', '591 - ZELO AGROINDUSTRIAIS LTDA']);
+igual('tabela do 03 (raiz da ZELO → 591) segue a empresa: hoje é a 602', R.clientesDoDoc('53636418000400', cadZ), [602]);
+igual('código com duas pastas no Drive: não escolhe', R.decidir({ nome: 'n.xml', rel: 'n.xml', xml: nfe('65116389000180', '99999999000191', '1', '2026-08-05T10:00:00-03:00') }, { cadastro: cadZ }).motivo, 'PASTA_DO_CLIENTE_DUPLICADA');
+const cadZ2 = R.montarCadastro(j.linhas, ['591 - ZELO AGROINDUSTRIAIS LTDA']);
+igual('pasta nova quando o Drive já tem a mesma empresa com outro código: não cria a segunda', R.decidir({ nome: 'n.xml', rel: 'n.xml', xml: nfe('53636418000156', '99999999000191', '1', '2026-08-05T10:00:00-03:00') }, { cadastro: cadZ2 }).motivo, 'PASTA_EXISTE_COM_OUTRO_CODIGO');
+
+// ---------- 11. PRODUCAO de verdade, numa pasta temporária (nunca no Drive) ----------
+(async () => {
+  const sb = fs.mkdtempSync(path.join(os.tmpdir(), 'teste-arqnovo-prod-'));
+  try {
+    const origem = path.join(sb, 'origem'), clientes = path.join(sb, '2026'), controle = path.join(sb, 'controle');
+    fs.mkdirSync(path.join(origem, '2026-09', 'X'), { recursive: true });
+    fs.mkdirSync(path.join(clientes, '284 - NILMA CONTABILIDADE LTDA'), { recursive: true });
+    fs.writeFileSync(path.join(origem, '2026-09', 'X', 'nfse-nilma.xml'), nfseNilma);
+    fs.writeFileSync(path.join(origem, 'foto.jpg'), 'nao sei o que e');
+    const atividades = [];
+    const painelFalso = { atividade: (t, x, det) => atividades.push(x), erro: (t, x, det) => atividades.push('ERRO ' + x + ' ' + det) };
+    const base = { modo: 'PRODUCAO', confirmo: true, origem, clientes, controle, cadastro: R.montarCadastro(LINHAS, ['284 - NILMA CONTABILIDADE LTDA']), manifestoAntigo: path.join(sb, 'nao-existe.jsonl'), travaAntiga: path.join(sb, 'nao-existe.lock'), painel: painelFalso };
+    // só XML liberado e não identificado fica na origem (a rotina antiga ainda roda)
+    const r = await A.executar(Object.assign({}, base, { tiposProducao: ['XML'] }));
+    const na284 = path.join(clientes, '284 - NILMA CONTABILIDADE LTDA', 'FISCAL', 'SIMPLES NACIONAL', '12. XML', 'NFS-e', '09-2026_NFS-e_4003.xml');
+    const no152 = path.join(clientes, '152 - JANIO JOSE DE ALMEIDA', 'FISCAL', 'SIMPLES NACIONAL', '12. XML', 'NFS-e', '09-2026_NFS-e_4003.xml');
+    igual('produção: gravou na 284 e na pasta nova do tomador', [fs.existsSync(na284), fs.existsSync(no152)], [true, true]);
+    igual('produção: o original saiu da origem (quarentena própria)', fs.existsSync(path.join(origem, '2026-09', 'X', 'nfse-nilma.xml')), false);
+    igual('produção: não identificado fica na origem enquanto a rotina antiga roda', fs.existsSync(path.join(origem, 'foto.jpg')), true);
+    const man = fs.readFileSync(path.join(controle, 'MANIFESTO', 'manifesto.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
+    igual('produção: duas linhas no manifesto, a da pasta nova marcada', man.map(m => [m.cliente, m.pasta_cliente_criada]), [[284, false], [152, true]]);
+    igual('produção: painel com a pasta criada e os dois arquivamentos', atividades.filter(a => /^Criou|^Arquivou/.test(a)).length, 3);
+    igual('produção: nenhum erro', r.itens.filter(i => i.erro).map(i => i.erro), []);
+    // rodar de novo com o mesmo arquivo: nunca sobrescreve, já está lá
+    fs.writeFileSync(path.join(origem, 'nfse-nilma-de-novo.xml'), nfseNilma);
+    const r2 = await A.executar(Object.assign({}, base, { tiposProducao: ['XML'] }));
+    igual('produção: o mesmo conteúdo de novo é JA_ARQUIVADO (sem " (1)")', r2.itens.find(i => i.nome === 'nfse-nilma-de-novo.xml').acao, 'JA_ARQUIVADO');
+    igual('produção: tipo fora da lista liberada fica na origem', (await A.executar(Object.assign({}, base, { tiposProducao: ['NFC-e PDF'], arquivos: ['foto.jpg'] }))).itens[0].naoAplicado, 'tipo ainda em simulação');
+  } finally { fs.rmSync(sb, { recursive: true, force: true }); }
+  console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
+  process.exit(falhas ? 1 : 0);
+})().catch(e => { console.log('FALHOU com erro:', e.stack); process.exit(1); });

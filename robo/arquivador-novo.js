@@ -40,6 +40,7 @@ const NAO_IDENTIFICADOS = 'NÃO IDENTIFICADOS';
 const UNRAR = 'C:\\Program Files\\WinRAR\\UnRAR.exe';
 const TAR = 'C:\\Windows\\System32\\tar.exe';
 const PAGINAS_LIDAS = 3;   // Dicionário §12: leitura mínima (página 1; Santander na 2)
+const OCR_LIGADO = process.env.ARQ_NOVO_OCR !== '0';   // OCR do escaneado (21/10/2026); ARQ_NOVO_OCR=0 desliga
 
 const sha = b => crypto.createHash('sha256').update(b).digest('hex');
 const dois = n => String(n).padStart(2, '0');
@@ -48,18 +49,31 @@ function carimbo(d) { return d.getFullYear() + dois(d.getMonth() + 1) + dois(d.g
 // ---------------------------------------------------------------------------------------------------------------------
 // cadastro: a planilha da rotina (só leitura) + as pastas que já existem em G:\Meu Drive\2026
 // ---------------------------------------------------------------------------------------------------------------------
+// Fonte do cadastro (decisão do Vitor, 21/10/2026: "o regime do nads vale"): o Cadastro do nads + o Entregas, lidos do
+// banco e guardados em cadastro.json no controle; a planilha da rotina antiga só para o código que o banco não tem.
+// opcoes.fonte = 'planilha' usa só a planilha (para medir contra a história nas mesmas condições da rotina antiga).
+const CAD = require('./arquivador-cadastro');
 function carregarCadastro(opcoes) {
-  const XLSX = require('xlsx');
-  const ws = XLSX.readFile(opcoes.planilha || PLANILHA).Sheets;
-  const linhas = XLSX.utils.sheet_to_json(ws[Object.keys(ws)[0]], { header: 1 });
-  const cab = linhas[0].map(c => R.chaveNome(c));
-  const col = n => cab.indexOf(R.chaveNome(n));
-  const regs = linhas.slice(1).filter(l => l && l[col('Código')] != null).map(l => ({
-    codigo: l[col('Código')], razao: l[col('Razão Social')], fantasia: l[col('Nome Fantasia')], doc: l[col('CNPJ')], ie: l[col('Insc.Estadual')], regime: l[col('Enquadramento')],
-  }));
+  opcoes = opcoes || {};
+  let planilha = [];
+  try { planilha = CAD.lerPlanilha(opcoes.planilha || PLANILHA); } catch (e) { /* sem a planilha antiga: só o banco */ }
+  const cache = opcoes.fonte === 'planilha' ? null : CAD.lerCache(path.join(opcoes.controle || CONTROLE, 'cadastro.json'));
+  const { linhas, divergencias } = CAD.juntar({ planilha, entregas: cache ? cache.entregas : [], nads: cache ? cache.nads : [] });
   let pastas = [];
   try { pastas = fs.readdirSync(opcoes.clientes || CLIENTES, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name); } catch (e) { /* sem Drive: só a planilha */ }
-  return R.montarCadastro(regs, pastas);
+  const cad = R.montarCadastro(linhas, pastas);
+  cad.divergencias = divergencias;
+  cad.fonte = cache ? 'Cadastro do nads + Entregas (lido em ' + cache.em + '), planilha antiga só como reserva' : 'planilha da rotina antiga';
+  return cad;
+}
+/** Relê o cadastro do banco (Entregas + nads) e grava o cache; sem banco, fica o cache que houver. */
+async function atualizarCadastro(opcoes) {
+  opcoes = opcoes || {};
+  try {
+    const db = opcoes.db || require('./firestore-client').getDb('entregas-2e5e2');
+    await CAD.atualizar(db, path.join(opcoes.controle || CONTROLE, 'cadastro.json'));
+    return true;
+  } catch (e) { if (opcoes.log) opcoes.log('cadastro: não li o banco (' + e.message + '); fica o cache/planilha'); return false; }
 }
 
 /** Manifesto da rotina antiga: hash → caminho arquivado (para "já arquivado anteriormente"). */
@@ -173,7 +187,18 @@ async function montarEntrada(nome, rel, buffer) {
   const e = { nome, rel, hash: sha(buffer), tamanho: buffer.length };
   const ext = (/\.([a-z0-9]+)$/i.exec(nome) || [])[1];
   switch ((ext || '').toLowerCase()) {
-    case 'pdf': { const t = await textoDoPdf(buffer); e.texto = t.paginas; e.paginas = t.total; if (t.erro) e.erroLeitura = t.erro; break; }
+    case 'pdf': {
+      const t = await textoDoPdf(buffer);
+      e.texto = t.paginas; e.paginas = t.total;
+      if (t.erro) e.erroLeitura = t.erro;
+      // escaneado (sem camada de texto, ou quase nada): OCR das primeiras páginas (arquivador-ocr.js)
+      if (OCR_LIGADO && e.texto.join('').replace(/\s/g, '').length < 40) {
+        const o = await require('./arquivador-ocr').ocrDoPdf(buffer);
+        e.ocr = { confianca: o.confianca, ms: o.ms, erro: o.erro || null };
+        if (o.paginas.length && o.paginas.join('').replace(/\s/g, '').length >= 40) { e.texto = o.paginas; e.paginas = e.paginas || o.total; }
+      }
+      break;
+    }
     case 'xml': e.xml = textoDoXml(buffer); break;
     case 'ofx': e.ofx = buffer.toString('latin1'); break;
     case 'txt': e.txt = buffer.slice(0, 64 * 1024).toString('latin1'); break;
@@ -299,13 +324,13 @@ async function executar(opcoes) {
   const producao = opcoes.modo === 'PRODUCAO';
   if (producao) {
     if (!opcoes.confirmo) throw new Error('PRODUCAO exige --confirmo');
-    try { const st = fs.statSync(TRAVA_ANTIGA); if (Date.now() - st.mtimeMs < 4 * 36e5) throw new Error('a rotina antiga está rodando (_execucao.lock): não arquivo ao mesmo tempo'); } catch (e) { if (e.code !== 'ENOENT') throw e; }
+    try { const st = fs.statSync(opcoes.travaAntiga || TRAVA_ANTIGA); if (Date.now() - st.mtimeMs < 4 * 36e5) throw new Error('a rotina antiga está rodando (_execucao.lock): não arquivo ao mesmo tempo'); } catch (e) { if (e.code !== 'ENOENT') throw e; }
   }
   const agora = new Date();
   const id = (producao ? 'EXEC-' : 'SIM-') + carimbo(agora) + '-NOVO';
-  const cadastro = carregarCadastro(opcoes);
-  const ctx = { cadastro, hoje: agora, contas: lerContas(opcoes.controle), clientes: opcoes.clientes, manifesto: indiceDoManifesto(opcoes.manifestoAntigo || MANIFESTO_ANTIGO), reservados: new Map(), existe: new Map(), hashes: new Map() };
-  const arquivos = varrer(opcoes.origem, opcoes);
+  const cadastro = opcoes.cadastro || carregarCadastro(opcoes);
+  const ctx = { cadastro, hoje: agora, contas: opcoes.contas || lerContas(opcoes.controle), clientes: opcoes.clientes, manifesto: opcoes.manifesto || indiceDoManifesto(opcoes.manifestoAntigo || MANIFESTO_ANTIGO), reservados: new Map(), existe: new Map(), hashes: new Map() };
+  const arquivos = opcoes.arquivos || varrer(opcoes.origem, opcoes);   // o modo contínuo passa o lote pronto
   const itens = [];
   const log = opcoes.log || (() => {});
   log(id + ': ' + arquivos.length + ' arquivo(s) na origem');
@@ -331,8 +356,9 @@ async function executar(opcoes) {
 
   const resultado = { id, modo: opcoes.modo, em: agora.toISOString(), origem: opcoes.origem, itens };
   if (producao) aplicar(resultado, opcoes, ctx);
-  gravarRegistros(resultado, opcoes);
+  if (opcoes.registrar !== false) gravarRegistros(resultado, opcoes);   // o modo contínuo tem o diário dele
   if (opcoes.publicar) await publicar(resultado, opcoes);
+  await encerrarOcr();
   return resultado;
 }
 
@@ -341,15 +367,21 @@ async function decidirUm(nome, rel, buffer, ctx) {
   const d = R.decidir(entrada, ctx);
   const item = { rel, nome, hash: entrada.hash, acao: d.acao, motivo: d.motivo || null, codigo: d.codigo || null, confianca: d.confianca, tipo: d.tipo || null, setor: d.setor || null,
     cliente: d.cliente || null, clienteNome: d.clienteNome || null, destinoRelativo: d.destinoRelativo || null, nomeFinal: d.nomeFinal || null, destinoSugerido: d.destinoSugerido || null,
-    criarPastaCliente: !!d.criarPastaCliente, evidencias: d.evidencias || [], fonte: d.fonte || null };
+    criarPastaCliente: !!d.criarPastaCliente, pastaCliente: d.pastaCliente || null, evidencias: d.evidencias || [], fonte: d.fonte || null, ocr: entrada.ocr || null, copias: [] };
   if (entrada.erroLeitura) item.evidencias.push('leitura do PDF: ' + entrada.erroLeitura);
   if (d.acao === 'ARQUIVAR') {
     const c = conferirDestino(d, entrada.hash, ctx);
     item.situacaoDestino = c.situacao;
     item.nomeFinal = c.nomeFinal;
     item.onde = c.onde;
-    if (c.situacao === 'JA_ARQUIVADO') { item.acao = 'JA_ARQUIVADO'; item.motivo = 'IDENTICO_JA_ARQUIVADO'; item.codigo = 'E401'; }
-    else if (c.nomeFinal !== d.nomeFinal) item.evidencias.push('nome ocupado por outro conteúdo: numerado (Dicionário §2, E402)');
+    if (c.nomeFinal !== d.nomeFinal && c.situacao === 'NOVO') item.evidencias.push('nome ocupado por outro conteúdo: numerado (Dicionário §2, E402)');
+    // a mesma peça em outro cliente (NFS-e de honorários da Nilma: também no tomador)
+    for (const cp of d.copias || []) {
+      const cc = conferirDestino({ destinoRelativo: cp.destinoRelativo, nomeFinal: cp.nomeFinal }, entrada.hash, ctx);
+      item.copias.push(Object.assign({}, cp, { situacao: cc.situacao, nomeFinal: cc.nomeFinal, onde: cc.onde }));
+    }
+    const faltaAlgo = c.situacao === 'NOVO' || item.copias.some(cp => cp.situacao === 'NOVO');
+    if (!faltaAlgo) { item.acao = 'JA_ARQUIVADO'; item.motivo = 'IDENTICO_JA_ARQUIVADO'; item.codigo = 'E401'; }
   }
   return item;
 }
@@ -357,11 +389,19 @@ async function decidirUm(nome, rel, buffer, ctx) {
 // ---------------------------------------------------------------------------------------------------------------------
 // PRODUCAO: copiar, conferir, registrar, tirar da origem (quarentena própria, nunca apaga)
 // ---------------------------------------------------------------------------------------------------------------------
+/**
+ * opcoes.tiposProducao: só os itens desses tipos são aplicados (prefixo do tipo: 'XML' pega todos os XML; 'NFC-e PDF'…);
+ *   os outros ficam na origem, intocados, para a rotina antiga (produção por etapas). Sem a lista: todos.
+ * opcoes.moverNaoIdentificados: false (padrão enquanto a rotina antiga roda) deixa o não identificado na origem.
+ * opcoes.painel: o módulo painel.js (atividade "Arquivou X em Y", pasta de cliente criada).
+ */
 function aplicar(res, opcoes, ctx) {
   const dia = dois(new Date().getDate()) + '-' + dois(new Date().getMonth() + 1) + '-' + new Date().getFullYear();
   const quarentena = path.join(opcoes.controle, 'QUARENTENA', dia);
   const ni = path.join(opcoes.origem, NAO_IDENTIFICADOS, res.id.replace(/^EXEC-/, ''));
   const manifesto = path.join(opcoes.controle, 'MANIFESTO', 'manifesto.jsonl');
+  const painel = opcoes.painel || null;
+  const permitido = it => !opcoes.tiposProducao || opcoes.tiposProducao.some(t => String(it.tipo || '').startsWith(t));
   fs.mkdirSync(path.dirname(manifesto), { recursive: true });
   const linha = (arq, o) => { fs.mkdirSync(path.dirname(arq), { recursive: true }); fs.appendFileSync(arq, JSON.stringify(o) + '\n'); };
   const semSobrescrever = (alvo) => { const ext = path.extname(alvo), base = alvo.slice(0, alvo.length - ext.length); let k = 0, p = alvo; while (fs.existsSync(p)) p = base + ' (' + (++k) + ')' + ext; return p; };
@@ -372,13 +412,20 @@ function aplicar(res, opcoes, ctx) {
     if (buffer) fs.writeFileSync(alvo, buffer, { flag: 'wx' }); else fs.renameSync(path.join(opcoes.origem, it.rel), alvo);
     it.movidoPara = alvo;
   };
-  const copiar = (it, buffer) => {
-    const alvo = it.onde;
+  /** Grava uma cópia num destino (o principal ou uma das cópias), registrando a pasta de cliente que nasceu. */
+  const gravar = (it, buffer, alvo, cliente, pastaCliente, criar) => {
+    const raiz = pastaCliente ? path.join(opcoes.clientes, pastaCliente) : null;
+    const novaPasta = !!(criar && raiz && !fs.existsSync(raiz));
     fs.mkdirSync(path.dirname(alvo), { recursive: true });
     fs.writeFileSync(alvo, buffer, { flag: 'wx' });                         // 'wx': falha se já existir — nunca sobrescreve
     if (sha(fs.readFileSync(alvo)) !== it.hash) throw new Error('hash não confere depois da cópia: ' + alvo);
-    linha(manifesto, { hash_origem: it.hash, hash_original: it.hashPai || it.hash, nome_original: it.nome, destino_final: path.dirname(alvo), nome_final: path.basename(alvo), id_execucao: res.id, timestamp: new Date().toISOString(), pai_completo: !it.hashPai, confianca: it.confianca, tipo: it.tipo });
-    it.gravadoEm = alvo;
+    linha(manifesto, { hash_origem: it.hash, hash_original: it.hashPai || it.hash, nome_original: it.nome, destino_final: path.dirname(alvo), nome_final: path.basename(alvo), id_execucao: res.id, timestamp: new Date().toISOString(), pai_completo: !it.hashPai, confianca: it.confianca, tipo: it.tipo, cliente, pasta_cliente_criada: novaPasta });
+    if (novaPasta && painel) painel.atividade('arquivamento', 'Criou a pasta do cliente ' + pastaCliente, 'CNPJ do documento conferido com o cadastro · ' + it.nome);
+    if (painel) painel.atividade('arquivamento', 'Arquivou ' + it.nome + ' em ' + (pastaCliente || ''), path.dirname(alvo).replace(opcoes.clientes, '').replace(/^\\/, '') + '\\' + path.basename(alvo));
+  };
+  const copiar = (it, buffer) => {
+    if (it.situacaoDestino === 'NOVO') { gravar(it, buffer, it.onde, it.cliente, it.pastaCliente, it.criarPastaCliente); it.gravadoEm = it.onde; }
+    for (const cp of it.copias || []) if (cp.situacao === 'NOVO') { gravar(it, buffer, cp.onde, cp.cliente, cp.pastaCliente, cp.criarPastaCliente); cp.gravadoEm = cp.onde; }
   };
   const paraQuarentena = (it) => {
     const de = path.join(opcoes.origem, it.rel);
@@ -390,10 +437,10 @@ function aplicar(res, opcoes, ctx) {
   };
   for (const it of res.itens) {
     try {
-      if (it.acao === 'ARQUIVAR') { copiar(it, fs.readFileSync(path.join(opcoes.origem, it.rel))); paraQuarentena(it); }
-      else if (it.acao === 'JA_ARQUIVADO') paraQuarentena(it);
-      else if (it.acao === 'NAO_IDENTIFICADO') moverParaNi(it);
-      else if (it.acao === 'CONTEINER') {
+      if (it.acao === 'CONTEINER') {
+        // compactado: só quando todos os de dentro são de tipo liberado (senão fica inteiro para a rotina antiga)
+        if (!it.filhos.every(f => permitido(f) || f.acao === 'JA_ARQUIVADO')) { it.naoAplicado = 'compactado com tipo ainda em simulação'; continue; }
+        if (!opcoes.moverNaoIdentificados && it.filhos.some(f => f.acao === 'NAO_IDENTIFICADO' || f.acao === 'FICA')) { it.naoAplicado = 'compactado com não identificado (fica para a rotina antiga)'; continue; }
         const buf = fs.readFileSync(path.join(opcoes.origem, it.rel));
         const lista = membros(path.basename(it.rel), buf, path.join(opcoes.origem, it.rel));
         const porNome = new Map(lista.map(m => [it.rel + '\\' + m.nome, m.buffer]));
@@ -404,8 +451,13 @@ function aplicar(res, opcoes, ctx) {
           else if (f.acao === 'NAO_IDENTIFICADO' || f.acao === 'FICA') moverParaNi(f, b);   // 01 Fase 4b (09/10/2026)
         }
         paraQuarentena(it);
+        continue;
       }
-    } catch (e) { it.erro = e.message; }
+      if (!permitido(it)) { it.naoAplicado = 'tipo ainda em simulação'; continue; }
+      if (it.acao === 'ARQUIVAR') { copiar(it, fs.readFileSync(path.join(opcoes.origem, it.rel))); paraQuarentena(it); }
+      else if (it.acao === 'JA_ARQUIVADO') paraQuarentena(it);
+      else if (it.acao === 'NAO_IDENTIFICADO' && opcoes.moverNaoIdentificados) moverParaNi(it);
+    } catch (e) { it.erro = e.message; if (painel) painel.erro('arquivamento', 'Não consegui arquivar ' + (it.nome || it.rel), e.message); }
   }
 }
 
@@ -434,7 +486,7 @@ function relatorioTexto(res) {
     if (x.acao === 'CONTEINER') { const r = x.resumoFilhos || {}; const pendentes = (r.NAO_IDENTIFICADO || 0) + (r.FICA || 0);
       L.push('CONTEINER: ' + x.rel + ' -> ' + x.nFilhos + ' arquivo(s) dentro ' + JSON.stringify(r) + (pendentes ? ' — sairia da origem com os ' + pendentes + ' não resolvido(s) copiados para NÃO IDENTIFICADOS (01 Fase 4b)' : ' — todos resolvidos: sairia da origem para a quarentena')); continue; }
     const conf = x.confianca != null ? ' [' + Math.round(x.confianca * 100) + '%]' : '';
-    if (x.acao === 'ARQUIVAR') L.push('ARQUIVAR: ' + x.rel + ' -> ' + x.onde + conf);
+    if (x.acao === 'ARQUIVAR') { L.push('ARQUIVAR: ' + x.rel + ' -> ' + (x.situacaoDestino === 'NOVO' ? x.onde : '(já está em ' + x.onde + ')') + conf + (x.criarPastaCliente ? ' [pasta de cliente nova]' : '')); (x.copias || []).forEach(cp => L.push('   + cópia: ' + (cp.situacao === 'NOVO' ? cp.onde : '(já está em ' + cp.onde + ')') + (cp.criarPastaCliente ? ' [pasta de cliente nova]' : ''))); }
     else if (x.acao === 'JA_ARQUIVADO') L.push('JA_ARQUIVADO_ANTERIORMENTE: ' + x.rel + ' -> ' + x.onde);
     else if (x.acao === 'NAO_IDENTIFICADO') L.push('NAO_IDENTIFICADO: ' + x.rel + ' -> (' + x.motivo + ')' + conf + (x.destinoSugerido ? ' sugestão: ' + x.destinoSugerido : ''));
     else L.push(x.acao + ': ' + x.rel + ' -> (' + x.motivo + ')');
@@ -467,7 +519,10 @@ async function publicar(res, opcoes) {
   await ref.collection('detalhe').doc('tudo').set(detalhe, { merge: true });
 }
 
-module.exports = { executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, relatorioTexto, planos, CONTROLE };
+/** O trabalhador do Tesseract segura o processo vivo: fecha no fim de cada execução (se o OCR foi usado). */
+async function encerrarOcr() { const k = require.resolve('./arquivador-ocr'); if (require.cache[k]) await require('./arquivador-ocr').encerrar(); }
+
+module.exports = { atualizarCadastro, encerrarOcr, executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, relatorioTexto, planos, CONTROLE };
 
 if (require.main === module) {
   const a = process.argv.slice(2);
