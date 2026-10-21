@@ -4,7 +4,7 @@
 // vendaVistaCard (~L2164), vistaRowCfop (~L2181-2203), "Não vai para o Contábil" (~L2117-2121).
 import { Icone, Interruptor, Vazio } from '@nads/ui';
 import { useEffect, useRef, type CSSProperties } from 'react';
-import type { ItemNatureza, SlotVista, useConfiguracoes } from '../useConfiguracoes';
+import type { ItemNatureza, NotaDaNatureza, SlotVista, useConfiguracoes } from '../useConfiguracoes';
 import { CampoVincular, ChipsDeContas } from './VincularConta';
 
 type VM = ReturnType<typeof useConfiguracoes>;
@@ -58,7 +58,13 @@ function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
       {/* o total do CFOP no canto direito, maior e em negrito (Vitor, 14/10/2026) */}
       <div className="ndp-natureza ndp-natureza-row">
         <span>{it.titulo}{it.semConta && <span className="ponto-vermelho" title="Falta a conta contábil: vincule uma conta ou marque Não vai para o Contábil" aria-label="Falta a conta contábil" />}</span>
-        <span className="num" style={{ fontSize: 18, fontWeight: 700, whiteSpace: 'nowrap' }} title="O total das notas deste CFOP">{it.total}</span>
+        {/* embaixo do total, o "Ver notas" (Vitor, 21/10/2026): abre as notas deste CFOP logo abaixo */}
+        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+          <span className="num" style={{ fontSize: 18, fontWeight: 700, whiteSpace: 'nowrap' }} title="O total das notas deste CFOP">{it.total}</span>
+          <button type="button" className="btn btn-ghost" aria-expanded={!!it.notas} onClick={() => vm.alternarNotas(it.k)}>
+            <Icone nome="olho" />{it.notas ? 'Esconder notas' : 'Ver notas (' + it.qtdNotas + ')'}
+          </button>
+        </span>
       </div>
       {/* a conta contábil (a que a conferência compara com o balancete) e, com as vendas separadas, o código do lançamento
           à vista e a prazo — cada um com o nome na frente, para não confundir um com o outro (Vitor, 13/10/2026) */}
@@ -81,6 +87,7 @@ function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
         )}
       </div>
       </div>
+      {it.notas && <NotasDaNatureza notas={it.notas} />}
       {it.vista && (
         <div style={LINHA}>
           <span style={ROTULO}>Código do lançamento</span>
@@ -90,6 +97,31 @@ function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** As notas do CFOP, na tabela da Consulta. */
+function NotasDaNatureza({ notas }: { notas: NotaDaNatureza[] }) {
+  return (
+    <div className="table-wrap" style={{ marginTop: 12 }}>
+      <table className="cons-tabela">
+        <thead>
+          <tr><th>Data</th><th>Nota</th><th>Participante</th><th>CFOP</th><th>Lançamento</th><th className="num">Valor (R$)</th></tr>
+        </thead>
+        <tbody>
+          {notas.map((n, i) => (
+            <tr key={i}>
+              <td className="cons-data">{n.data}</td>
+              <td className="cons-mut">{n.numero}</td>
+              <td className="cons-nome" title={n.nome}>{n.nome}</td>
+              <td className="cons-mut">{n.cfop}</td>
+              <td className="cons-mut">{n.lanc || '—'}</td>
+              <td className="num cons-valor">{n.valor}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

@@ -64,7 +64,17 @@ export interface ItemNatureza {
   vista: { slots: SlotVista[]; info: string } | null;
   /** o total das notas da natureza (Vitor, 14/10/2026: no canto direito, maior e em negrito) */
   total: string;
+  /** quantas notas a natureza tem (o rótulo do "Ver notas") */
+  qtdNotas: number;
+  /** as notas do CFOP, por data — só com o "Ver notas" aberto (Vitor, 21/10/2026); null = fechado */
+  notas: NotaDaNatureza[] | null;
 }
+
+/** Uma linha da tabela do "Ver notas". */
+export interface NotaDaNatureza { data: string; numero: string; nome: string; cfop: string; lanc: string; valor: string }
+
+/** dd/mm/aaaa → aaaammdd, para ordenar pela data */
+const pelaData = (d: string) => d.split('/').reverse().join('');
 
 export interface FormServ {
   aberto: boolean;
@@ -122,6 +132,8 @@ export function useConfiguracoes() {
   const [textoEdit, setTextoEdit] = useState('');
   const [destacar, setDestacar] = useState(false);
   const [focarFalta, setFocarFalta] = useState(0);
+  // as naturezas com o "Ver notas" aberto (Vitor, 21/10/2026: "quando clicar você apresenta as notas daquele CFOP")
+  const [notasAbertas, setNotasAbertas] = useState<string[]>([]);
 
   /** no original cada gravação redesenhava a tela: os campos abertos voltavam a ser só o botão */
   const limparUi = useCallback(() => { setCampos({}); setListaDe(null); setForms({}); }, []);
@@ -285,7 +297,12 @@ export function useConfiguracoes() {
           info: r.qtd.vista + ' nota' + (r.qtd.vista === 1 ? '' : 's') + ' à vista e ' + r.qtd.prazo + ' nota' + (r.qtd.prazo === 1 ? '' : 's') + ' a prazo',
         };
       }
-      return { k, titulo: c.tituloDoGrupo(gr), nao, vinculo: vinculo(k), podeNaoContabil: !ligadas.length, semConta: !ligadas.length && !nao && Math.abs(c.somaValores(gr.itens)) >= 0.005, vista: linhaVista, total: formatos.reais(c.somaValores(gr.itens)) };
+      return { k, titulo: c.tituloDoGrupo(gr), nao, vinculo: vinculo(k), podeNaoContabil: !ligadas.length, semConta: !ligadas.length && !nao && Math.abs(c.somaValores(gr.itens)) >= 0.005, vista: linhaVista, total: formatos.reais(c.somaValores(gr.itens)),
+        qtdNotas: gr.itens.length,
+        notas: notasAbertas.includes(k)
+          ? [...gr.itens].sort((a, b) => pelaData(a.data).localeCompare(pelaData(b.data)) || a.numero.localeCompare(b.numero, 'pt-BR', { numeric: true }))
+            .map(n => ({ data: n.data, numero: n.numero, nome: n.nome, cfop: n.cfop, lanc: n.lanc, valor: formatos.reais(n.valor) }))
+          : null };
     });
     return {
       titulo: t === 'Entrada' ? 'Naturezas de entrada' : 'Naturezas de saída',
@@ -391,6 +408,8 @@ export function useConfiguracoes() {
   return {
     aba, abas, mudarAba, serv,
     naturezas: montarNaturezas(),
+    /** abre ou fecha a tabela das notas do CFOP */
+    alternarNotas: (k: string) => setNotasAbertas(a => (a.includes(k) ? a.filter(x => x !== k) : [...a, k])),
     servicos: montarServicos(),
     alternarVista, naoContabil, vista,
   };
