@@ -631,6 +631,15 @@ async function iniciar() {
   ouvir('pedidos de arquivamento', () => fila.where('status', '==', 'pendente'), snap => { if (!snap.empty) atenderFila(); }, log);
   // Pedido que está esperando a das 9h terminar: confere de 2 em 2 minutos.
   setInterval(() => { if (!ocupado) atenderFila(); }, 2 * 60000);
+
+  // O arquivador NOVO, por evento (Vitor, 21/10/2026: "quando cair na pasta, já arquiva"; arquivador-continuo.js). Começa
+  // em SIMULAÇÃO (só registra "arquivaria", não move nada) e publica no painel o que faria e, depois da rotina das 9h, o
+  // relatório lado a lado. Produção só por tipo, pela chave do config (robo/arquivadorNovo ou config.json no controle).
+  // Nunca roda junto com um pedido do botão (ocupado) nem com a rotina antiga. ARQUIVADOR_NOVO=0 não liga.
+  if (process.env.ARQUIVADOR_NOVO !== '0') {
+    try { continuo = require('./arquivador-continuo').iniciar({ db, painel, log: (...m) => log('[novo]', ...m), ocupado: () => ocupado }); }
+    catch (err) { log('o arquivador novo não ligou:', err.message); painel.modulo('arquivador-novo', 'Arquivador novo (por evento)', false, err.message); }
+  }
   log('arquivador ligado em', os.hostname(), '— rotina em', RAIZ);
 
   // O atendente da Consulta rápida pega carona neste processo: também é o
@@ -667,7 +676,9 @@ async function iniciar() {
 }
 
 let pararIA = null;
+let continuo = null;
 function desligar() {
+  try { if (continuo) continuo.parar(); } catch (e) { /* segue desligando */ }
   Promise.all([
     estadoRef.set({ em: new Date(0).toISOString(), situacao: 'desligado', desligadoEm: agora() }, { merge: true }),
     pararIA ? pararIA() : null,

@@ -55,7 +55,8 @@ function carimbo(d) { return d.getFullYear() + dois(d.getMonth() + 1) + dois(d.g
 const CAD = require('./arquivador-cadastro');
 function carregarCadastro(opcoes) {
   opcoes = opcoes || {};
-  const planilha = CAD.lerPlanilha(opcoes.planilha || PLANILHA);
+  let planilha = [];
+  try { planilha = CAD.lerPlanilha(opcoes.planilha || PLANILHA); } catch (e) { /* sem a planilha antiga: só o banco */ }
   const cache = opcoes.fonte === 'planilha' ? null : CAD.lerCache(path.join(opcoes.controle || CONTROLE, 'cadastro.json'));
   const { linhas, divergencias } = CAD.juntar({ planilha, entregas: cache ? cache.entregas : [], nads: cache ? cache.nads : [] });
   let pastas = [];
@@ -355,7 +356,7 @@ async function executar(opcoes) {
 
   const resultado = { id, modo: opcoes.modo, em: agora.toISOString(), origem: opcoes.origem, itens };
   if (producao) aplicar(resultado, opcoes, ctx);
-  gravarRegistros(resultado, opcoes);
+  if (opcoes.registrar !== false) gravarRegistros(resultado, opcoes);   // o modo contínuo tem o diário dele
   if (opcoes.publicar) await publicar(resultado, opcoes);
   await encerrarOcr();
   return resultado;
