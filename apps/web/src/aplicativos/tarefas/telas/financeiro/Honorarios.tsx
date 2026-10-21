@@ -44,7 +44,7 @@ export function Honorarios() {
       </div>
       {vm.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.erro}</p>}
 
-      <div className="stat-grid fin-numeros">
+      <div className="stat-grid dp-numeros fin-numeros">
         {numeros.map(n => (
           <div key={n.rotulo} className={'stat painel-numero painel-' + n.tom}>
             <span className="painel-numero-icone" aria-hidden="true"><Icone nome={n.icone} /></span>
