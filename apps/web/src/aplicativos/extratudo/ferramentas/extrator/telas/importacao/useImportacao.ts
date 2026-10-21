@@ -394,6 +394,8 @@ export function useImportacao() {
     primeiro,
     /** a empresa não tem conta bancária no Cadastro (só a linha genérica "Banco"): um administrador precisa cadastrar */
     semBancosCadastrados: !!cad.cadastro && bancos.every(b => b.id === 'banco'),
+    /** o Cadastro ainda não tem os bancos (vale a lista provisória, ou nenhuma): o Confirme os bancos aparece (21/10/2026) */
+    bancosNaoCadastrados: !!cad.cadastro && !cad.cadastro.bancos,
     bancos: bancos.map(b => {
       const lado = (l: x.Lado) => {
         const arqs = arquivosDe(b.id, l, competenciaDeTeste);
