@@ -15,14 +15,14 @@ describe('o Cadastro por nível (Vitor, 19/10/2026: o sênior vê e mexe no cada
     expect(podeMexerNoCadastro(null)).toBe(false);
   });
 
-  it('o sênior vê Empresas e Equipe (os responsáveis), sem o Sistema e agentes', () => {
+  it('o sênior vê Empresas e Equipe (os responsáveis), sem o Sistema e agentes e sem o Painel do robô', () => {
     expect(cadastroDe(op('senior'))?.paginas.map(p => p.id)).toEqual(['empresas', 'usuarios']);
   });
 
   it('o diretor e o admin continuam com as páginas todas; o pleno não vê o Cadastro', () => {
-    expect(cadastroDe(op('diretor'))?.paginas.map(p => p.id)).toEqual(['empresas', 'usuarios', 'sistema']);
+    expect(cadastroDe(op('diretor'))?.paginas.map(p => p.id)).toEqual(['empresas', 'usuarios', 'sistema', 'robo']);
     // o Uso do sistema (21/10/2026) é só do admin
-    expect(cadastroDe(op('senior', true))?.paginas.map(p => p.id)).toEqual(['empresas', 'usuarios', 'sistema', 'uso']);
+    expect(cadastroDe(op('senior', true))?.paginas.map(p => p.id)).toEqual(['empresas', 'usuarios', 'sistema', 'robo', 'uso']);
     expect(cadastroDe(op('pleno'))).toBeUndefined();
   });
 

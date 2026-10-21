@@ -20,6 +20,8 @@ const fs = require('fs');
 const path = require('path');
 const { ouvir } = require('./ouvinte');
 const R = require('./area-cliente-regras');
+// o painel do robô (21/10/2026): os chamados abertos e os arquivos recebidos pela Área do Cliente
+const painel = require('./painel');
 
 // O contato do escritório que aparece para o cliente (o WhatsApp é o mesmo do e-mail de pedir extratos do nads).
 // O telefone fixo ainda não foi informado: quando houver, entra aqui.
@@ -450,8 +452,10 @@ function iniciarAreaDoCliente(db, log) {
       await contar('chamados', token);
       await doc.ref.delete();
       log('Área do Cliente: chamado ' + (d.acao === 'criar' ? 'aberto' : 'respondido pelo cliente') + ' -', (link.nome || ''), '·', c.titulo);
+      painel.atividade('area-cliente', (d.acao === 'criar' ? 'Chamado aberto pelo cliente' : 'O cliente respondeu um chamado') + (link.nome ? ' — ' + link.nome : ''), c.titulo || '');
     } catch (err) {
       log('Área do Cliente: pedido de chamado ficou esperando -', err.message);
+      painel.erro('area-cliente', 'Um chamado da Área do Cliente ficou esperando', err.message);
     } finally { tratandoChamados.delete(doc.id); }
   }
   let filaChamados = Promise.resolve();
@@ -494,8 +498,10 @@ function iniciarAreaDoCliente(db, log) {
       await contar('envios', token);
       await doc.ref.delete();
       log('Área do Cliente: arquivo recebido -', empresa.codigo + ' ' + empresa.nome, '->', path.relative(DRIVE, final));
+      painel.atividade('area-cliente', 'Arquivou o que o cliente mandou — ' + empresa.codigo + ' ' + empresa.nome, v.envio.nome + ' → ' + path.relative(DRIVE, final));
     } catch (err) {
       log('Área do Cliente: envio ficou esperando -', err.message);
+      painel.erro('area-cliente', 'Um arquivo da Área do Cliente ficou esperando', err.message);
     } finally { tratandoEnvios.delete(doc.id); }
   }
   let filaEnvios = Promise.resolve();

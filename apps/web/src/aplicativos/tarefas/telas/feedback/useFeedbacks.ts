@@ -18,7 +18,7 @@ export function useFeedbacks() {
   // o feedback aberto na janela dele (Vitor, 07/10/2026: "quando eu clique no feedback abra outra janela flutuante")
   const [aberto, setAberto] = useState('');
   const comQuando = (f: (typeof todos.lista)[number]) => ({
-    ...f, veredito: f.tipo === 'bug' ? suporte.vereditoDoReport(f.relatorio) : null, quando: f.criadoEm ? new Date(f.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
+    ...f, veredito: f.tipo === 'bug' ? suporte.vereditoDoReport(f.relatorio) : null, pedido: f.tipo === 'bug' ? suporte.codigoDoPedido(f.id) : '', quando: f.criadoEm ? new Date(f.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
   });
   const doAberto = todos.lista.find(f => f.id === aberto);
   const conta = (s: SituacaoDoFeedback) => todos.lista.filter(f => f.status === s).length;

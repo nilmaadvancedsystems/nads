@@ -4,7 +4,7 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDaIA, repoDeFeedback, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
+import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoAgentes } from './agentes';
 import type { RepoSieg } from './sieg';
@@ -163,6 +163,14 @@ export function useSaudeDoRobo(): entregas.DocsDaSaude | null {
   useEffect(() => repo.acompanhar(), [repo]);
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo.docs();
+}
+
+/** O painel do robô (Cadastro › Painel do robô), ao vivo enquanto a tela está aberta. */
+export function usePainelRobo(): entregas.DocsDoPainelRobo & { exemplos: boolean } {
+  const repo = repoDoPainelRobo();
+  useEffect(() => repo.acompanhar(), [repo]);
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return { ...repo.docs(), exemplos: repo.exemplos };
 }
 
 /** O cofre de senhas gov.br e certificados, ao vivo. */

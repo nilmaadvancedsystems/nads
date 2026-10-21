@@ -42,6 +42,9 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'usuarios', rotulo: 'Equipe', icone: 'usuario', titulo: 'Equipe' },
     // "troca de robô para sistema" (13/10/2026)
     { id: 'sistema', rotulo: 'Sistema e agentes', icone: 'monitor', titulo: 'Sistema e agentes' },
+    // o painel do robô (Vitor, 21/10/2026: "quero um painel para eu saber o que o robô está fazendo, arquivando e afins"):
+    // os dois robôs (o do PC e o da nuvem), as filas, a atividade, o que foi arquivado e os erros; só o admin e o diretor
+    { id: 'robo', rotulo: 'Painel do robô', icone: 'robo', titulo: 'Painel do robô' },
     // o mapa de uso (Gustavo, 20/10/2026: "um mapa quente que trackei o que tá sendo usado no sistema"): só o admin
     { id: 'uso', rotulo: 'Uso do sistema', icone: 'barChart', titulo: 'Uso do sistema' },
   ] },
@@ -130,8 +133,11 @@ export const APLICACOES: readonly Aplicacao[] = [
  */
 export const podeMexerNoCadastro = (op: Operador | null) => !!op && (op.admin || op.nivel === 'diretor' || op.nivel === 'senior');
 
-/** As páginas do Cadastro que o sênior não abre: Sistema e agentes (os robôs e os computadores) não é cadastro de empresa. */
-const SO_ADMIN_E_DIRETOR_NO_CADASTRO: readonly string[] = ['sistema'];
+/**
+ * As páginas do Cadastro que o sênior não abre: Sistema e agentes (os robôs e os computadores) e o Painel do robô
+ * (21/10/2026; as regras do banco só deixam o admin e o diretor lerem) não são cadastro de empresa.
+ */
+const SO_ADMIN_E_DIRETOR_NO_CADASTRO: readonly string[] = ['sistema', 'robo'];
 /** As páginas do Cadastro só do admin: o Uso do sistema (21/10/2026; as regras do banco só deixam o admin ler uso/). */
 const SO_ADMIN_NO_CADASTRO: readonly string[] = ['uso'];
 

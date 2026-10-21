@@ -129,7 +129,9 @@ export function passoDoSuporte(ctx: ContextoDoSuporte, escolhas: readonly string
   // as perguntas do report; a primeira depois do Outro do problema diz onde a pessoa está
   const aviso = problema === OUTRO && escolhas.length === 1 ? ondeEsta(ctx) : undefined;
   const botoes = ctx.botoes || [];
-  if (botoes.length && !escolhas.some(e => e.startsWith('i:'))) {
+  // o botão só logo depois do "Não resolveu" (ou do Outro do problema): se a lista chegou depois, não volta a perguntar
+  const virada = problema === OUTRO ? 0 : escolhas.indexOf(NAO_RESOLVEU);
+  if (botoes.length && escolhas.length === virada + 1) {
     return pergunta('i:', 'Qual dos botões de importação está com problema?', botoes.map(b => ({ id: 'i:' + b, rotulo: b })), aviso);
   }
   if (ctx.tela === 'bancos' && banco === undefined) return perguntaBanco(aviso);
@@ -233,13 +235,24 @@ export function mensagemDoBug(ctx: ContextoDoSuporte, escolhas: readonly string[
  * "Importar o razão dos meses que faltam (cada lançamento cai no seu mês)" → "Importar o razão").
  */
 export function nomeDoBotao(rotulo: string): string {
-  const t = rotulo.replace(/\s*\([^)]*\)/g, '').replace(/\s+(de|dos?|da)\s+(\d{2}\/\d{4}|todos os meses|meses que faltam).*$/i, '').replace(/\s+/g, ' ').trim();
+  const t = rotulo.replace(/\s*\([^)]*\)/g, '').replace(/\s+(de|dos?|da)\s+(\d{2}\/\d{4}|todos os meses|meses que faltam).*$/i, '')
+    // sem o artigo depois do verbo: "Importar o razão" e "Importar razão" são o mesmo botão
+    .replace(/^(\S+)\s+(o|a|os|as)\s+/i, '$1 ').replace(/\s+/g, ' ').trim();
   return t ? t.charAt(0).toUpperCase() + t.slice(1) : '';
 }
 
 /** Os dois finais do report (o robô escolhe um). */
 export const VEREDITOS = { erro: 'Realmente, isso é erro do sistema', analise: 'Precisa da sua análise' } as const;
 export type Veredito = keyof typeof VEREDITOS;
+
+/**
+ * O número do pedido (Vitor, 21/10/2026: "quando o usuário fizer o pedido, nomeie em #"): o começo do id do documento, em
+ * maiúsculas ("#K3F9QZ"); sai do próprio documento, sem campo novo nem contador no banco.
+ */
+export function codigoDoPedido(id: string): string {
+  const limpo = id.replace(/[^a-z0-9]/gi, '').slice(0, 6).toUpperCase();
+  return limpo ? '#' + limpo : '';
+}
 
 /** O veredito pela última linha do report (null = o report ainda não chegou ou não terminou numa das duas). */
 export function vereditoDoReport(texto: string): Veredito | null {

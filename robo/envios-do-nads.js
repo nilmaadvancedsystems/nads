@@ -18,6 +18,8 @@
 const fs = require('fs');
 const path = require('path');
 const { ouvir } = require('./ouvinte');
+// o painel do robô (21/10/2026): o arquivo mandado pelo nads que foi gravado e o que deu erro
+const painel = require('./painel');
 const baixar = require('./download-attachments');
 const USAR_DRIVE_API = process.env.USAR_DRIVE_API === '1';
 const driveArquivos = USAR_DRIVE_API ? require('./drive-arquivos.js') : null;
@@ -216,6 +218,7 @@ function iniciarEnviosDoNads(db, log) {
         await apagarPartes(doc.ref);
         await doc.ref.update({ status: 'erro', erro: c.erro, prontoEm: new Date().toISOString() });
         log('envio pelo nads recusado (' + c.erro + '):', envio.nome);
+        painel.erro('envios', 'Arquivo mandado pelo nads recusado: ' + (envio.nome || ''), c.erro);
         return;
       }
       // o extrato do mês: direto na pasta do banco (sem esperar o arquivamento); não deu, segue para o Claudio Secretario
@@ -230,6 +233,7 @@ function iniciarEnviosDoNads(db, log) {
               arquivamento: { situacao: 'arquivado', em: agora, execucao: 'direto', codigo: direto.codigo, cliente: direto.cliente, subpasta: direto.subpasta, final: direto.nomeFinal },
             });
             log('extrato pelo nads direto na pasta do banco (' + (envio.criadoPor || '?') + '):', c.nome, '->', direto.pasta + '/' + direto.nomeFinal + (direto.jaEstava ? ' (já estava lá)' : ''));
+            painel.atividade('envios', 'Arquivou o extrato mandado pelo nads: ' + c.nome, direto.pasta + '/' + direto.nomeFinal + (direto.jaEstava ? ' (já estava lá)' : '') + (envio.criadoPor ? ' · de ' + envio.criadoPor : ''));
             return;
           }
         } catch (err) { log('extrato direto na pasta do banco não deu (vai para o Claudio Secretario):', err.message); }
@@ -254,6 +258,7 @@ function iniciarEnviosDoNads(db, log) {
       // a guia lida pela tela (DAS/DAE) também vai para a Área do Cliente; se falhar, o Drive já está feito
       try { await guiaNaAreaDoCliente(db, envio, c.buffer, log); } catch (err) { log('guia na Área do Cliente falhou:', err.message); }
       log('enviado pelo nads (' + (envio.criadoPor || '?') + '):', c.nome, '->', 'Claudio Secretario/' + pasta + (nomeFinal ? '' : ' (já estava lá)'));
+      painel.atividade('envios', 'Gravou no Claudio Secretario: ' + c.nome, pasta + (nomeFinal ? '' : ' (já estava lá)') + (envio.criadoPor ? ' · de ' + envio.criadoPor : ''));
     } catch (err) {
       // Drive fora do ar: fica 'gravando' e a limpeza devolve para a fila (sem ficar tentando sem parar)
       log('envio pelo nads ficou esperando:', err.message);
