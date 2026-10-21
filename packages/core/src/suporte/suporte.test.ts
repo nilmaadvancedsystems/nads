@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { caminhoDaConversa, mensagemDoBug, NAO_RESOLVEU, nomeDoBotao, ondeEsta, OUTRO, passoDoSuporte, telaPeloRotulo, vereditoDoReport, type ContextoDoSuporte } from './index';
+import { caminhoDaConversa, codigoDoPedido, mensagemDoBug, NAO_RESOLVEU, nomeDoBotao, ondeEsta, OUTRO, passoDoSuporte, telaPeloRotulo, vereditoDoReport, type ContextoDoSuporte } from './index';
 
 const ctx: ContextoDoSuporte = {
   tela: 'bancos', rotuloDaTela: 'Bancos', pagina: 'Importação › Bancos', empresa: 'EMPRESA EXEMPLO', codigo: 1,
@@ -85,6 +85,10 @@ describe('suporte de leitura: a conversa por cápsulas', () => {
     expect(telaPeloRotulo('Saídas')).toBe('notas');
     expect(telaPeloRotulo('Caixa')).toBe('razao');
     expect(telaPeloRotulo('Cheque especial')).toBe('outra');
+  });
+  it('o número do pedido, pelo id do documento', () => {
+    expect(codigoDoPedido('k3f9qZ7abcDEF')).toBe('#K3F9QZ');
+    expect(codigoDoPedido('')).toBe('');
   });
   it('o veredito pela última linha do report', () => {
     expect(vereditoDoReport('A causa é…\n\n**Realmente, isso é erro do sistema.**')).toBe('erro');

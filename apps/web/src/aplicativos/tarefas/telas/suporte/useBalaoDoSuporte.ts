@@ -20,7 +20,7 @@ export interface FalaDoSuporte { passo: s.PassoDoSuporte; escolhida: string }
 const CHAVE = 'nads-suporte-chat';
 const DURA_MS = 24 * 3600 * 1000;
 /** A conversa guardada: as respostas, a empresa dela (trocou de empresa, recomeça) e os botões da página, fixos na conversa. */
-interface ChatGuardado { comecou: number; escolhas: string[]; resolvido: boolean; enviado: boolean; empresa?: string; botoes?: string[] }
+interface ChatGuardado { comecou: number; escolhas: string[]; resolvido: boolean; enviado: boolean; empresa?: string; botoes?: string[]; pedido?: string }
 function lerChat(): ChatGuardado | null {
   try {
     const g = JSON.parse(localStorage.getItem(CHAVE) || 'null') as ChatGuardado | null;
@@ -46,6 +46,8 @@ export function useBalaoDoSuporte() {
   const [frase, setFrase] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(() => guardado?.enviado ?? false);
+  // o número do pedido enviado (Vitor, 21/10/2026: "nomeie em #"), o mesmo que aparece nos Feedbacks
+  const [pedido, setPedido] = useState(() => guardado?.pedido ?? '');
   // a empresa da conversa: trocou de empresa, o chat recomeça (Vitor, 21/10/2026)
   const [empresaDoChat, setEmpresaDoChat] = useState(() => guardado?.empresa ?? '');
   // os botões de importação da página: lidos ao abrir o balão e fixos na conversa (21/10/2026: lidos a cada resposta, a
@@ -56,9 +58,9 @@ export function useBalaoDoSuporte() {
   useEffect(() => {
     try {
       if (!escolhas.length && !resolvido && !enviado) localStorage.removeItem(CHAVE);
-      else localStorage.setItem(CHAVE, JSON.stringify({ comecou: comecou || Date.now(), escolhas, resolvido, enviado, empresa: empresaDoChat, botoes } satisfies ChatGuardado));
+      else localStorage.setItem(CHAVE, JSON.stringify({ comecou: comecou || Date.now(), escolhas, resolvido, enviado, empresa: empresaDoChat, botoes, pedido } satisfies ChatGuardado));
     } catch { /* sem localStorage: fica só na tela */ }
-  }, [comecou, escolhas, resolvido, enviado, empresaDoChat, botoes]);
+  }, [comecou, escolhas, resolvido, enviado, empresaDoChat, botoes, pedido]);
   const [erro, setErro] = useState('');
 
   const rotuloDaTela = onde ? onde.aba || onde.etapa : '';
@@ -86,7 +88,7 @@ export function useBalaoDoSuporte() {
     setComecou(0);
     setMarcadas([]);
     setBotoes([]);
-    setEscolhas([]); setResolvido(false); setArquivo(null); setFrase(''); setEnviado(false); setErro('');
+    setEscolhas([]); setResolvido(false); setArquivo(null); setFrase(''); setEnviado(false); setPedido(''); setErro('');
   }
 
   function escolher(id: string) {
@@ -102,7 +104,7 @@ export function useBalaoDoSuporte() {
     try {
       const caminho = s.caminhoDaConversa(ctx, escolhas);
       const bytes = arquivo ? new Uint8Array(await arquivo.arrayBuffer()) : null;
-      await repo.enviarBug({
+      const id = await repo.enviarBug({
         // a mensagem no formato de sempre (Vitor, 21/10/2026: "chegue para mim em um padrão")
         texto: s.mensagemDoBug(ctx, escolhas, frase, arquivo ? arquivo.name : '').slice(0, 4000),
         tela: pathname + (rotuloDaTela ? ' · ' + [onde?.etapa, onde?.aba].filter(Boolean).join(' › ') : ''),
@@ -110,6 +112,7 @@ export function useBalaoDoSuporte() {
         contexto: { empresa: ctx.empresa, codigo: ctx.codigo, tela: ctx.rotuloDaTela, meses: ctx.meses },
         arquivo: arquivo && bytes ? { nome: arquivo.name, bytes } : null,
       });
+      setPedido(s.codigoDoPedido(id));
       setEnviado(true);
     } catch (e) {
       setErro('Não consegui enviar: ' + (e as Error).message);
@@ -123,7 +126,7 @@ export function useBalaoDoSuporte() {
     aberto, abrir: () => { const terminou = resolvido || enviado; if (terminou) recomecar(); lerBotoes(terminou); setAberto(true); }, fechar: () => setAberto(false),
     /** o título: a empresa e a tela de onde a pessoa está */
     titulo: [ctx.empresa, ctx.rotuloDaTela].filter(Boolean).join(' · '),
-    conversa, passo, resolvido, enviado, enviando, erro,
+    conversa, passo, resolvido, enviado, enviando, erro, pedido,
     escolher,
     nomeDaPessoa,
     /** a pergunta de várias: marca ou desmarca a cápsula */
@@ -134,6 +137,10 @@ export function useBalaoDoSuporte() {
     naoResolveu: () => { lerBotoes(); setEscolhas(e => [...e, s.NAO_RESOLVEU]); },
     arquivo, setArquivo, frase, setFrase,
     enviar: () => { void enviar(); },
+    /** começa de novo (Vitor, 21/10/2026: "deixa o botão de nova conversa") */
+    novaConversa: () => { recomecar(); lerBotoes(true); },
+    /** abandona a conversa e fecha o chat ("sair (abandonar)"); o × do canto só fecha */
+    sair: () => { recomecar(); setAberto(false); },
     recomecar,
   };
 }

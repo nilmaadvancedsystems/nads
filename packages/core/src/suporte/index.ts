@@ -245,6 +245,15 @@ export function nomeDoBotao(rotulo: string): string {
 export const VEREDITOS = { erro: 'Realmente, isso é erro do sistema', analise: 'Precisa da sua análise' } as const;
 export type Veredito = keyof typeof VEREDITOS;
 
+/**
+ * O número do pedido (Vitor, 21/10/2026: "quando o usuário fizer o pedido, nomeie em #"): o começo do id do documento, em
+ * maiúsculas ("#K3F9QZ"); sai do próprio documento, sem campo novo nem contador no banco.
+ */
+export function codigoDoPedido(id: string): string {
+  const limpo = id.replace(/[^a-z0-9]/gi, '').slice(0, 6).toUpperCase();
+  return limpo ? '#' + limpo : '';
+}
+
 /** O veredito pela última linha do report (null = o report ainda não chegou ou não terminou numa das duas). */
 export function vereditoDoReport(texto: string): Veredito | null {
   const fim = sem(texto).replace(/[.\s*_]+$/, '');
