@@ -92,7 +92,8 @@ function periodoEscrito(t) {
   const u = norm(t);
   const D = '(\\d{2})[/.-](\\d{2})[/.-](\\d{4})';
   const res = [
-    new RegExp('(?:PERIODO|EXTRATO\\s+(?:DE|DO\\s+PERIODO)|MOVIMENTACAO\\s+DE|REFERENCIA)[^0-9\\n]{0,40}' + D + '[^0-9\\n]{1,25}?' + D),
+    // "Movimentações desde o dia 01/01/2026 até o dia 31/07/2026" (Caixa)
+    new RegExp('(?:PERIODO|EXTRATO\\s+(?:DE|DO\\s+PERIODO)|MOVIMENTACAO\\s+DE|MOVIMENTACOES\\s+DESDE|REFERENCIA)[^0-9\\n]{0,40}' + D + '[^0-9\\n]{1,25}?' + D),
     new RegExp('DATA\\s+INICIAL[^0-9\\n]{0,10}' + D + '[\\s\\S]{0,60}?DATA\\s+FINAL[^0-9\\n]{0,10}' + D),
   ];
   for (const re of res) {
@@ -639,8 +640,11 @@ function camposDeExtrato(u) {
 }
 /** Comprovante: a data do pagamento decide o mês; titular da conta pelo cabeçalho (03). */
 function camposDeComprovante(u) {
-  const d = dataBr(linhaApos(u, /DATA DO PAGAMENTO|PAGAMENTO:|DATA DE DEBITO|DATA DA TRANSFERENCIA|DATA DO PIX|DATA DE EFETIVACAO|DATA\/HORA DA OPERACAO|DATA DA OPERACAO|DATA:|REALIZADO:|DEBITADO EM/, 80)) ||
-    dataBr(linhaApos(u, /(\d{2}\/\d{2}\/\d{4})\s*\n?DATA DE DEBITO/, 40)) || dataBr(u.slice(0, 600));
+  // rótulos em ordem de preferência; nunca "a primeira data do papel" (costuma ser a da impressão do comprovante)
+  const ROTULOS = [/DATA DO PAGAMENTO/, /\bPAGAMENTO:\s*\d/, /DATA DE DEBITO/, /DATA DA TRANSFERENCIA/, /DATA DO PIX/, /DATA DE EFETIVACAO/, /DATA\/HORA DA OPERACAO/, /DATA DA OPERACAO/, /REALIZADO:/, /DEBITADO EM/, /\bDATA:/];
+  let d = null;
+  for (const r of ROTULOS) { d = dataBr(linhaApos(u, r, 60)); if (d) break; }
+  if (!d) { const m = /(\d{2}\/\d{2}\/\d{4})\s*\n?DATA DE DEBITO/.exec(u); if (m) d = dataBr(m[1]); }   // Bradesco: valor antes do rótulo
   const saldos = (u.match(/\bSALDO\b/g) || []).length;
   return { competencia: d ? { mes: +d.slice(3, 5), ano: +d.slice(6) } : null, data: d, pareceExtrato: saldos >= 3 };
 }
