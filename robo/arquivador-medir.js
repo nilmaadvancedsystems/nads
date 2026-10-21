@@ -62,6 +62,7 @@ async function medir(opcoes) {
       evidencias: (d.evidencias || []).slice(0, 4),
     });
   }
+  await A.encerrarOcr();
   return { res, porTipo };
 }
 
@@ -106,9 +107,10 @@ async function medirExemplos(pasta) {
       const conteudo = R.perfilDoDocumento(e, false);
       const comNome = R.perfilDoDocumento(e, true);
       const d = R.decidir(e, { cadastro, hoje: new Date() });
-      out.push({ arquivo: banco + '\\' + f, tipoEsp, bancoEsp, conteudo, comNome, decisao: { acao: d.acao, motivo: d.motivo || null, cliente: d.cliente || null, clienteNome: d.clienteNome || null, destino: d.destinoRelativo ? d.destinoRelativo + '\\' + d.nomeFinal : d.destinoSugerido || null, confianca: d.confianca } });
+      out.push({ arquivo: banco + '\\' + f, tipoEsp, bancoEsp, ocr: e.ocr || null, conteudo, comNome, decisao: { acao: d.acao, motivo: d.motivo || null, cliente: d.cliente || null, clienteNome: d.clienteNome || null, destino: d.destinoRelativo ? d.destinoRelativo + '\\' + d.nomeFinal : d.destinoSugerido || null, confianca: d.confianca } });
     }
   }
+  await A.encerrarOcr();
   return out;
 }
 

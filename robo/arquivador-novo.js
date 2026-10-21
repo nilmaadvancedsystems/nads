@@ -40,6 +40,7 @@ const NAO_IDENTIFICADOS = 'NÃO IDENTIFICADOS';
 const UNRAR = 'C:\\Program Files\\WinRAR\\UnRAR.exe';
 const TAR = 'C:\\Windows\\System32\\tar.exe';
 const PAGINAS_LIDAS = 3;   // Dicionário §12: leitura mínima (página 1; Santander na 2)
+const OCR_LIGADO = process.env.ARQ_NOVO_OCR !== '0';   // OCR do escaneado (21/10/2026); ARQ_NOVO_OCR=0 desliga
 
 const sha = b => crypto.createHash('sha256').update(b).digest('hex');
 const dois = n => String(n).padStart(2, '0');
@@ -173,7 +174,18 @@ async function montarEntrada(nome, rel, buffer) {
   const e = { nome, rel, hash: sha(buffer), tamanho: buffer.length };
   const ext = (/\.([a-z0-9]+)$/i.exec(nome) || [])[1];
   switch ((ext || '').toLowerCase()) {
-    case 'pdf': { const t = await textoDoPdf(buffer); e.texto = t.paginas; e.paginas = t.total; if (t.erro) e.erroLeitura = t.erro; break; }
+    case 'pdf': {
+      const t = await textoDoPdf(buffer);
+      e.texto = t.paginas; e.paginas = t.total;
+      if (t.erro) e.erroLeitura = t.erro;
+      // escaneado (sem camada de texto, ou quase nada): OCR das primeiras páginas (arquivador-ocr.js)
+      if (OCR_LIGADO && e.texto.join('').replace(/\s/g, '').length < 40) {
+        const o = await require('./arquivador-ocr').ocrDoPdf(buffer);
+        e.ocr = { confianca: o.confianca, ms: o.ms, erro: o.erro || null };
+        if (o.paginas.length && o.paginas.join('').replace(/\s/g, '').length >= 40) { e.texto = o.paginas; e.paginas = e.paginas || o.total; }
+      }
+      break;
+    }
     case 'xml': e.xml = textoDoXml(buffer); break;
     case 'ofx': e.ofx = buffer.toString('latin1'); break;
     case 'txt': e.txt = buffer.slice(0, 64 * 1024).toString('latin1'); break;
@@ -333,6 +345,7 @@ async function executar(opcoes) {
   if (producao) aplicar(resultado, opcoes, ctx);
   gravarRegistros(resultado, opcoes);
   if (opcoes.publicar) await publicar(resultado, opcoes);
+  await encerrarOcr();
   return resultado;
 }
 
@@ -467,7 +480,10 @@ async function publicar(res, opcoes) {
   await ref.collection('detalhe').doc('tudo').set(detalhe, { merge: true });
 }
 
-module.exports = { executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, relatorioTexto, planos, CONTROLE };
+/** O trabalhador do Tesseract segura o processo vivo: fecha no fim de cada execução (se o OCR foi usado). */
+async function encerrarOcr() { const k = require.resolve('./arquivador-ocr'); if (require.cache[k]) await require('./arquivador-ocr').encerrar(); }
+
+module.exports = { encerrarOcr, executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, relatorioTexto, planos, CONTROLE };
 
 if (require.main === module) {
   const a = process.argv.slice(2);
