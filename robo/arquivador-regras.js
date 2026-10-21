@@ -465,7 +465,7 @@ function _classificarXml(raiz) {
     const autor = [txt(inf, 'CNPJ'), txt(inf, 'CPF')].filter(Boolean).map(so);
     return { tipo, sub: 'EVENTOS', nome: diaIso(d) + ' - ' + nomeEvento(desc) + ' ' + tipo + ' ' + n + '.xml', emit: emitChave, partes: autor.concat(emitChave, docsDe(achar(inf, 'detEvento'))), evento: true, data: d };
   }
-  if (['procInutNFe', 'inutNFe', 'retInutNFe'].includes(tag)) {
+  if (['procinutnfe', 'inutnfe', 'retinutnfe'].includes(tag.toLowerCase())) {   // há emissor que grava "ProcInutNFe"
     const inf = primeiro(raiz, 'infInut');
     if (!inf) return null;
     const a = txt(inf, 'nNFIni'), z = txt(inf, 'nNFFin');
