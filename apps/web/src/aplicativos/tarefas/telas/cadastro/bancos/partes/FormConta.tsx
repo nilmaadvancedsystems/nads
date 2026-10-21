@@ -30,6 +30,8 @@ export function FormConta({ vm, id, inicial, fechar }: { vm: VmContasBancarias; 
 
   const banco = vm.bancosParaEscolher.find(b => b.id === marca);
   const noPlano = vm.contasDoPlano.find(x => x.codigo === contaContabil.trim());
+  // a conta que já estava sem número salva sem ele (a regra é do core: salvarConta)
+  const semNumero = !!id && !inicial?.agencia && !inicial?.conta && !agencia.trim() && !conta.trim();
   const salvar = () => {
     const ok = vm.salvarConta(id, { marca, agencia, conta, tipo: tipo || undefined, apelido, contaContabil, desde: desde || undefined });
     if (ok) fechar();
@@ -76,7 +78,7 @@ export function FormConta({ vm, id, inicial, fechar }: { vm: VmContasBancarias; 
       </label>
       <div className="add-banco-acoes">
         <button type="button" className="btn btn-outline" onClick={fechar}>Cancelar</button>
-        <button type="submit" className="btn btn-primary" disabled={!agencia.trim() || !conta.trim()}>{id ? 'Salvar' : 'Incluir'}</button>
+        <button type="submit" className="btn btn-primary" disabled={!semNumero && (!agencia.trim() || !conta.trim())}>{id ? 'Salvar' : 'Incluir'}</button>
       </div>
     </form>
   );

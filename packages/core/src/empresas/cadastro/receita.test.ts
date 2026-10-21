@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cnpjFormatado, cnpjValido, dadosDaReceita } from './receita';
+import { cnpjFormatado, cnpjValido, cpfValido, dadosDaReceita, documentoValido } from './receita';
 
 describe('o cadastro pelo CNPJ (13/10/2026)', () => {
   it('confere os dígitos do CNPJ', () => {
@@ -8,6 +8,13 @@ describe('o cadastro pelo CNPJ (13/10/2026)', () => {
     expect(cnpjValido('11111111111111')).toBe(false);
     expect(cnpjValido('123')).toBe(false);
     expect(cnpjFormatado('11222333000181')).toBe('11.222.333/0001-81');
+  });
+  it('o CPF do cliente pessoa física (20/10/2026): os dígitos e a máscara', () => {
+    expect(cpfValido('529.982.247-25')).toBe(true);
+    expect(cpfValido('52998224724')).toBe(false);
+    expect(cpfValido('11111111111')).toBe(false);
+    expect([documentoValido('52998224725'), documentoValido('11222333000181'), documentoValido('123456')]).toEqual([true, true, false]);
+    expect(cnpjFormatado('52998224725')).toBe('529.982.247-25');
   });
   it('lê a resposta da Receita: o nome, a situação e o regime (Simples, MEI ou fora)', () => {
     const base = { cnpj: '11222333000181', razao_social: 'Empresa Teste Ltda', nome_fantasia: 'TESTE', descricao_situacao_cadastral: 'ATIVA',

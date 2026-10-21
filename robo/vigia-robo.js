@@ -350,7 +350,7 @@ async function atenderResponder(p, ref) {
     if (!dentroDoLimite(1)) throw new Error('limite de ' + MAX_ENVIOS_POR_HORA + ' envios por hora atingido; tente mais tarde');
     const anexo = await lerAnexoDasPartes(p, ref);
     const cx = caixaValida(p.caixa);
-    const r = await require('./responder-gmail').responder({ db, gmail: getGmail(cx), p, caixa: await enderecoDaCaixa(cx), montarMime, anexo });
+    const r = await require('./responder-gmail').responder({ db, gmail: getGmail(cx), p, caixa: await enderecoDaCaixa(cx), caixaId: cx, montarMime, anexo });
     enviosRecentes.push(Date.now());
     auditoria('resposta_gmail', r.assunto + ' · para ' + r.para + (r.cc.length ? ' (cc ' + r.cc.join(', ') + ')' : '') + (anexo ? ' · anexo ' + anexo.nome : ''), p);
     log('resposta enviada para', r.para + (r.cc.length ? ' + ' + r.cc.length + ' em cópia' : ''), '(' + (p.criadoPor || '') + ')');

@@ -55,14 +55,16 @@ export function useFgtsDoDp() {
   const robo = repo.robo();
   const { carregados, porCnpj } = repo.pedidos(competencia);
   const clientesDoEntregas = gmail.clientes();
-  const cnpjDoCodigo = new Map(clientesDoEntregas.lista.filter(c => c.documento && (c.documento.length === 14 || c.documento.length === 11)).map(c => [Number(c.codigo), c.documento as string]));
+  // o do Entregas pelo código, também dos clientes inativos lá (21/10/2026)
+  const cnpjDoCodigo = gmail.documentos();
 
   const todas = doDp.clientes
     // só quem tem folha no mês (Vitor, 07/10/2026: "só apareça na emissão do FGTS empresas que tem folha"): o movimento do DP
     .filter(c => c.movimento === 'Folha')
     .map(c => {
       // nos exemplos não há cadastro do Entregas: um CNPJ inventado pelo código, para a tela andar
-      const cnpj = cnpjDoCodigo.get(c.codigo) || (repo.exemplos ? String(c.codigo).padStart(8, '0') + '000100' : '');
+      // primeiro o do Cadastro (o nads vale; cadastrado nas Configurações do DP, 20/10/2026), depois o do Entregas
+      const cnpj = c.cadastro?.cnpj || cnpjDoCodigo.get(c.codigo) || (repo.exemplos ? String(c.codigo).padStart(8, '0') + '000100' : '');
       const pedido = cnpj ? porCnpj.get(cnpj) : undefined;
       const situacao = situacaoDoPedido(pedido, !!cnpj);
       return { codigo: c.codigo, nome: c.nomeNaTela, cnpj, responsavel: nomeDe(c.responsavel), pedido, situacao, podeMarcar: podeMarcar(situacao, cnpj) };

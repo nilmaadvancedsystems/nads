@@ -12,6 +12,8 @@ import { useCaixaDoRobo, usePainelDoEmail, type AbaDaCaixa, type PeriodoDaCaixa,
 const ABAS: { valor: AbaDaCaixa; rotulo: string }[] = [
   { valor: 'clientes', rotulo: 'De clientes' },
   { valor: 'sem-cliente', rotulo: 'Sem cliente' },
+  // o que a caixa mandou aos clientes (Heverton, 20/10/2026: "colocar os enviados no gmail")
+  { valor: 'enviados', rotulo: 'Enviados' },
   { valor: 'spam', rotulo: 'Spam' },
 ];
 
@@ -74,7 +76,7 @@ function Item({ vm, x, aberto }: { vm: VmCaixa; x: e.EmailDaCaixa; aberto: boole
         <span className={'gm-inicial gm-tom-' + tomDe(x.remetente || q.completo)} aria-hidden="true">{inicialDe(x)}</span>
         <span className="gm-item-corpo">
           <span className="gm-item-topo">
-            <span className="gm-quem" title={q.completo}>{q.codigo && <span className="emp-cod">{q.codigo}</span>}<b>{q.nome}</b></span>
+            <span className="gm-quem" title={q.completo}>{x.enviado && <span className="fraco">Para </span>}{q.codigo && <span className="emp-cod">{q.codigo}</span>}<b>{q.nome}</b></span>
             <span className="gm-hora">{vm.quandoFoi(x.em)}</span>
           </span>
           <span className="gm-assunto"><b>{x.assunto || '(sem assunto)'}</b>{x.trecho && <span className="gm-trecho-junto"> — {x.trecho}</span>}</span>
@@ -140,8 +142,18 @@ function Leitura({ vm, x }: { vm: VmCaixa; x: e.EmailDaCaixa }) {
       <div className="gm-de">
         <span className={'gm-inicial grande gm-tom-' + tomDe(x.remetente || quem)} aria-hidden="true">{inicialDe(x)}</span>
         <div className="gm-de-txt">
-          <p><b>{quem}</b> <span className="fraco">&lt;{x.remetente}&gt;</span></p>
-          <p className="fraco">{'Para ' + (m?.para || 'a caixa do escritório')}{m?.cc ? ' · Cc ' + m.cc : ''}</p>
+          {x.enviado ? (
+            // o enviado (20/10/2026): quem recebeu em cima; saiu da caixa do escritório
+            <>
+              <p><b>Para {quem}</b> <span className="fraco">&lt;{x.remetente}&gt;</span></p>
+              <p className="fraco">{'Enviado pela caixa do escritório' + (m?.para && m.para.toLowerCase() !== x.remetente ? ' · Para ' + m.para : '')}{m?.cc ? ' · Cc ' + m.cc : ''}</p>
+            </>
+          ) : (
+            <>
+              <p><b>{quem}</b> <span className="fraco">&lt;{x.remetente}&gt;</span></p>
+              <p className="fraco">{'Para ' + (m?.para || 'a caixa do escritório')}{m?.cc ? ' · Cc ' + m.cc : ''}</p>
+            </>
+          )}
         </div>
         <div className="gm-de-lado">
           <span className="fraco">{x.em ? new Date(x.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : ''}</span>
@@ -200,7 +212,8 @@ function Leitura({ vm, x }: { vm: VmCaixa; x: e.EmailDaCaixa }) {
       </form>
 
       {/* longe do X de fechar (14/10/2026: "remova isso daqui, provavelmente vai ser clicado errado"): no pé do e-mail */}
-      {(!semDono || (vm.aba !== 'spam' && vm.admin)) && (
+      {/* no enviado não há o que desfazer: o cliente veio do destinatário e não é spam */}
+      {!x.enviado && (!semDono || (vm.aba !== 'spam' && vm.admin)) && (
         <footer className="gm-pe">
           <span className="fraco">Algo errado com este e-mail?</span>
           {/* marcou a empresa errada (Vitor, 06/10/2026): tira o remetente dela e o e-mail volta para Sem cliente */}
@@ -276,7 +289,7 @@ export function CaixaDoRobo() {
               <div className="gm-lista-vazia">
                 <span className="gm-vazio-icone" aria-hidden="true"><Icone nome="caixaEntrada" /></span>
                 <b>Nada aqui</b>
-                <span className="fraco">{vm.busca || vm.filtrando ? 'Nenhum e-mail com essa busca ou filtro.' : vm.aba === 'sem-cliente' ? 'Todo e-mail já tem cliente.' : vm.aba === 'spam' ? 'Nenhum spam.' : 'Nenhum e-mail de cliente.'}</span>
+                <span className="fraco">{vm.busca || vm.filtrando ? 'Nenhum e-mail com essa busca ou filtro.' : vm.aba === 'sem-cliente' ? 'Todo e-mail já tem cliente.' : vm.aba === 'spam' ? 'Nenhum spam.' : vm.aba === 'enviados' ? 'Nenhum e-mail enviado a cliente nos últimos dias (o robô lê os enviados a cada leitura).' : 'Nenhum e-mail de cliente.'}</span>
               </div>
             ) : (
               <ul className="gm-itens">

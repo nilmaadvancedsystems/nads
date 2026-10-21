@@ -1,7 +1,7 @@
 // As peças do catálogo, desenhadas com as MESMAS peças do sistema (@nads/ui e as classes do nads.css). A ordem dentro
 // de cada tipo dá o código (BT-01, BT-02…): peça nova entra no FIM do tipo, para os códigos não mudarem.
 import {
-  Alerta, AnelDeContagem, BarrasEmColuna, BotaoAcao, BotaoFechar, Vazio, CartaoComAnel, RoscaComLegenda, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail,
+  Alerta, AnelDeContagem, BarrasEmColuna, BotaoAcao, BotaoFechar, Vazio, CartaoComAnel, RoscaComLegenda, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail, MapaDeCalor,
   LogoFgts, LogoGovernoMinas, LogoInss, LogoReceitaFederal, LogoSimplesNacional, LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
 } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
@@ -398,7 +398,7 @@ export const PECAS_BASE: Peca[] = [
         <tbody>
           <tr><td className="imp-planilha-dia" rowSpan={2}>18/05/2026</td><td className="imp-planilha-sit" rowSpan={2}>Os 130,96 que faltam parecem estar lançados em 06/03/2026</td><td className="imp-planilha-lanc"><b>CRÉD.LIQ.COBRANÇA DOC.: 2096255</b></td><td className="num"><b>8.398,18</b></td><td className="num"><b>8.267,22</b></td><td className="num ext-neg">−130,96</td></tr>
           <tr className="imp-planilha-parte"><td>SUPERMERCADO QUEBA LTDA</td><td className="num" /><td className="num">5.109,72</td><td /></tr>
-          <tr><td className="imp-planilha-dia">16/04/2026</td><td className="imp-planilha-sit">Razão: 17/04 · Correto: 16/04</td><td className="imp-planilha-lanc"><b>SUPERMERCADO DONA BEIJA LTDA</b></td><td className="num"><b>947,30</b></td><td className="num"><b>947,30</b></td><td className="num" /></tr>
+          <tr><td className="imp-planilha-dia">16/04/2026</td><td className="imp-planilha-sit">Data errada: no banco foi 16/04, no razão está 17/04</td><td className="imp-planilha-lanc"><b>SUPERMERCADO DONA BEIJA LTDA</b></td><td className="num"><b>947,30</b></td><td className="num"><b>947,30</b></td><td className="num" /></tr>
         </tbody></table></div>
     ) },
   { id: 'linhas', tipo: 'tabelas', nome: 'Linhas especiais', descricao: 'Feita (riscada), a atual, a do Passivo, a excluída', classes: ['tr.feito', 'tr.linha-atual', 'tr.linha-passivo', 'tr.linha-excluida', 'tr.ok', 'tr.bad'], telas: ['c-naturezas', 'c-relatorio', 'e-arquivos'], largo: true,
@@ -758,6 +758,11 @@ export const PECAS_BASE: Peca[] = [
       <div style={{ width: 300 }}><CartaoComAnel dias={-5} titulo="OUTRA EMPRESA LTDA" prazo="Parado há 5 dias" apoio="10 · faltam 3 de 8 · Fabiana" atrasado onClick={nada} /></div>
       <AnelDeContagem dias={20} /></div> },
 
+  // o mapa quente do Uso do sistema (Gustavo, 20/10/2026: "um mapa quente que trackei o que tá sendo usado no sistema")
+  { id: 'mapa-calor', tipo: 'graficos', nome: 'Mapa de calor (os cliques na tela)', descricao: 'A grade de 50×50 sobre o contorno da página (o topo e a lateral); quanto mais cliques na célula, mais forte o vermelho; a dica da célula diz quantos', componente: 'MapaDeCalor', classes: ['mapa-calor', 'mapa-calor-celula'], telas: ['t-cadastro-uso'],
+    uso: '<MapaDeCalor grade={{ "x_y": cliques }} maior={n} rotulo="Os cliques em Fiscal › Painel" />',
+    demo: () => <div style={{ width: '100%', maxWidth: 520 }}><MapaDeCalor rotulo="Exemplo" maior={9} grade={{ '20_10': 9, '21_10': 6, '22_11': 3, '30_24': 5, '31_25': 2, '40_40': 1, '18_30': 4 }} /></div> },
+
   // ─── Cores ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'cores', tipo: 'cores', nome: 'As cores do sistema', descricao: 'Mude o tema no ☰ para ver o escuro', telas: TODAS, largo: true,
     demo: () => <div className="cat-cores">{CORES.map(c => <span key={c} className="cat-cor"><i style={{ background: 'var(' + c + ')' }} />{c}</span>)}</div> },
@@ -970,6 +975,10 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}><ValorEditavel valor={850} rotulo="Valor com valor" aoSalvar={nada} /><ValorEditavel valor={0} rotulo="Valor sem valor" aoSalvar={nada} /></div> },
   { id: 'situacao-do-honorario', tipo: 'selos', nome: 'Situação do honorário', descricao: 'Nos Honorários: "Pago em dd/mm · forma" (verde) ou "Em aberto" (amarelo); não há vencimento, então nunca "atrasado"', classes: ['badge', 'badge-ok', 'badge-warn'], telas: ['t-fin-honorarios'],
     demo: () => <div style={{ display: 'flex', gap: 8 }}><span className="badge badge-ok">Pago em 05/10 · PIX</span><span className="badge badge-warn">Em aberto</span></div> },
+  { id: 'selo-da-nfse-do-honorario', tipo: 'selos', nome: 'Selo da NFS-e e "Cobrado em" (Honorários)', descricao: 'Na coluna Situação dos Honorários (21/10/2026): a nota que já existe para o cliente no mês — "NFS-e 123" (verde), "NFS-e pedida" (cinza) ou "NFS-e recusada" (vermelho) — e, nos em aberto, o "Cobrado em dd/mm" ao lado', classes: ['badge', 'fin-selo', 'fin-cobrado'], telas: ['t-fin-honorarios'],
+    demo: () => <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><span className="badge badge-ok">Pago em 05/10 · PIX</span><span className="badge badge-ok fin-selo">NFS-e 123</span><span className="badge badge-warn">Em aberto</span><span className="badge badge-neutral fin-selo">NFS-e pedida</span><span className="badge badge-bad fin-selo">NFS-e recusada</span><span className="fraco fin-cobrado">Cobrado em 20/10</span></div> },
+  { id: 'mensagem-de-cobranca', tipo: 'campos', nome: 'Mensagem de cobrança (texto editável)', descricao: 'Na janela Cobrar dos Honorários (21/10/2026): a mensagem pronta do modelo, que se pode mexer antes de abrir o WhatsApp ou copiar', classes: ['fin-cobranca-texto'], telas: ['t-fin-honorarios'],
+    demo: () => <textarea className="fin-cobranca-texto" rows={4} readOnly aria-label="Exemplo" value="Olá, ALFA COMERCIO LTDA! Passando para lembrar do honorário contábil de 09/2026, no valor de R$ 850,00. Chave PIX: 11.222.333/0001-81. Qualquer dúvida, estamos à disposição. — Nilma Contabilidade" /> },
   // o selo suave no nads (19/10/2026): a prioridade do feedback do app
   { id: 'selo-suave-nads', tipo: 'selos', nome: 'Selo suave (nads)', descricao: 'O selo suave da Área do Cliente trazido para o nads (badge-suave): a pílula sem borda, com o pontinho e o fundo suave; a cor só pelo significado. Na prioridade do feedback do app (Vitor, 19/10/2026): vermelho Alta, amarelo Média, neutro Baixa', classes: ['badge badge-suave', 'badge-bad', 'badge-warn', 'badge-neutral', 'badge-ok'], telas: TAREFAS,
     demo: () => (

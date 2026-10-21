@@ -11,7 +11,7 @@ import { useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { extratorDaEmpresa, repoDoCadastro } from '../../dados/fonte';
-import { useCartaoEmpresarial, useCredLiquidacao, useVendeNoCartao, useExecucoesDoPeriodo, usePrestaServico, useRegimesDoEntregas, useRepo } from '../../dados/repo';
+import { useCadastro, useCartaoEmpresarial, useCredLiquidacao, useVendeNoCartao, useExecucoesDoPeriodo, usePrestaServico, useRegimesDoEntregas, useRepo } from '../../dados/repo';
 import { caminhoDaEmpresa, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../comum/desenvolvimento';
@@ -69,6 +69,9 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   // e se vende no cartão: a etapa Vendas no cartão (o Conciliadorzinho) entra ou sai (Vitor, 16/10/2026)
   const vendeNoCartao = useVendeNoCartao(empresa?.nome ?? null, empresa?.codigo ?? null);
   const meses = t.competenciasDoPeriodo(periodo);
+  // os bancos da empresa, do Cadastro (o nome de cada conta): para o balão do suporte perguntar "Qual banco?" (20/10/2026)
+  const cadastroDaEmpresa = useCadastro(empresa?.nome || '', empresa?.codigo ?? null).cadastro;
+  const bancosDaEmpresa = (cadastroDaEmpresa?.bancos || []).map(b => b.nome).filter((n, i, l) => !!n && l.indexOf(n) === i);
   const varios = meses.length > 1;
   const { porMes, carregada } = useExecucoesDoPeriodo(meses, rotina.departamento);
   // a execução de cada mês (a que já existe ou uma nova)
@@ -381,6 +384,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   }
 
   return {
+    bancosDaEmpresa,
     departamento: rotina.departamento,
     grupos, abrirGrupo,
     empresa, competencia, periodo, meses, varios, rotuloCompetencia: t.rotuloDoPeriodo(meses.length ? meses : [competencia]),

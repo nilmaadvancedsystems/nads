@@ -10,7 +10,16 @@ import { useFeedbacks } from './useFeedbacks';
 
 const SELO = { novo: 'badge-warn', visto: 'badge-neutral', feito: 'badge-ok' } as const;
 const NOME = { novo: 'Novo', visto: 'Visto', feito: 'Feito' } as const;
-const ICONE = { novo: 'envelope', visto: 'olho', feito: 'check', '': 'relatorio' } as const;
+const ICONE = { novo: 'envelope', visto: 'olho', feito: 'check', '': 'relatorio', bug: 'alert' } as const;
+const ANALISE = { pendente: 'Na fila do robô', analisando: 'O robô está investigando', pronta: '', erro: 'O robô não conseguiu analisar', '': '' } as const;
+const VEREDITO = { erro: { selo: 'badge-bad', rotulo: 'Erro do sistema' }, analise: { selo: 'badge-warn', rotulo: 'Precisa da sua análise' } } as const;
+
+/** O selo do bug (o veredito do report, ou em que pé está a análise do robô). */
+function SeloDoBug({ f }: { f: { tipo: string; analise: keyof typeof ANALISE; veredito: 'erro' | 'analise' | null } }) {
+  if (f.tipo !== 'bug') return null;
+  if (f.veredito) return <span className={'badge ' + VEREDITO[f.veredito].selo}>{VEREDITO[f.veredito].rotulo}</span>;
+  return <span className="badge badge-neutral">{ANALISE[f.analise] || 'Bug'}</span>;
+}
 const TODOS = 'todos';
 const SELO_DA_PRIORIDADE = { alta: 'badge-bad', media: 'badge-warn', baixa: 'badge-neutral' } as const;
 
@@ -24,7 +33,7 @@ export function JanelaDosFeedbacks({ fechar }: { fechar: () => void }) {
   const vm = useFeedbacks();
   const topicos: TopicoDaJanela<string>[] = vm.filtros.map(f => ({ id: f.valor || TODOS, rotulo: f.rotulo, icone: ICONE[f.valor], contador: f.qtd }));
   return (
-    <JanelaLateral rotulo="Feedbacks" topicos={topicos} topico={vm.filtro || TODOS} mudar={id => vm.setFiltro(id === TODOS ? '' : id as SituacaoDoFeedback)} fechar={fechar}
+    <JanelaLateral rotulo="Feedbacks" topicos={topicos} topico={vm.filtro || TODOS} mudar={id => vm.setFiltro(id === TODOS ? '' : id as SituacaoDoFeedback | 'bug')} fechar={fechar}
       classe="feedbacks-janela" resumo={<div className="usuario-quem"><b>Feedbacks</b></div>}>
       <div className="feedback-filtros">
         <Segmentado valor={vm.prioridade} onMudar={vm.setPrioridade} opcoes={vm.prioridades} />
@@ -43,16 +52,17 @@ export function JanelaDosFeedbacks({ fechar }: { fechar: () => void }) {
                     <b>{f.nome || f.email || '—'}</b>
                     <span className="fraco">{f.quando}</span>
                     <SeloDaPrioridade p={f.prioridade} />
+                    <SeloDoBug f={f} />
                     <span className={'badge ' + SELO[f.status]}>{NOME[f.status]}</span>
                   </span>
-                  <span className="feedback-txt feedback-txt-curto">{f.texto}</span>
+                  <span className="feedback-txt feedback-txt-curto">{f.tipo === 'bug' && f.empresa ? f.empresa + ' · ' : ''}{f.texto}</span>
                 </span>
               </button>
             </li>
           ))}
         </ul>
       )}
-      {vm.aberto && <JanelaDoFeedback f={vm.aberto} fechar={vm.fecharAberto} ampliar={vm.setAberta} marcar={vm.marcar} />}
+      {vm.aberto && <JanelaDoFeedback f={vm.aberto} fechar={vm.fecharAberto} ampliar={vm.setAberta} marcar={vm.marcar} baixar={id => { void vm.baixarArquivoDoBug(id); }} />}
       {vm.aberta && (
         <div className="modal-overlay pessoal-fundo feedback-zoom" onMouseDown={() => vm.setAberta('')}>
           <img src={vm.aberta} alt="O print do feedback" />
@@ -64,8 +74,9 @@ export function JanelaDosFeedbacks({ fechar }: { fechar: () => void }) {
 
 /** A solicitação inteira numa janela flutuante por cima da lista: o print (clicar amplia), o texto, quem, quando, a tela
  * e a versão; embaixo Visto / Feito / Reabrir. O Esc fecha só esta janela. */
-function JanelaDoFeedback({ f, fechar, ampliar, marcar }: {
+function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar }: {
   f: NonNullable<ReturnType<typeof useFeedbacks>['aberto']>; fechar: () => void; ampliar: (img: string) => void; marcar: (id: string, s: SituacaoDoFeedback) => void;
+  baixar: (id: string) => void;
 }) {
   // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
   const janela = useRef<HTMLDivElement>(null);
@@ -77,6 +88,7 @@ function JanelaDoFeedback({ f, fechar, ampliar, marcar }: {
           <h2>{f.nome || f.email || '—'}</h2>
           <span className="fraco">{f.quando}</span>
           <SeloDaPrioridade p={f.prioridade} />
+          <SeloDoBug f={f} />
           <span className={'badge ' + SELO[f.status]}>{NOME[f.status]}</span>
           <span className="tarefas-barra-espaco" />
           <BotaoFechar onClick={fechar} />
@@ -87,7 +99,15 @@ function JanelaDoFeedback({ f, fechar, ampliar, marcar }: {
               <img src={f.imagem} alt="O print do feedback" />
             </button>
           )}
+          {f.tipo === 'bug' && (
+            <p className="feedback-txt"><b>{f.empresa || '—'}</b>{f.caminho ? ' · ' + f.caminho : ''}</p>
+          )}
           <p className="feedback-txt">{f.texto}</p>
+          {f.tipo === 'bug' && f.arquivo && (
+            <button type="button" className="btn btn-outline" onClick={() => baixar(f.id)}><Icone nome="download" />{f.arquivo.nome}</button>
+          )}
+          {/* o report do robô do suporte (termina em "Realmente, isso é erro do sistema" ou "Precisa da sua análise") */}
+          {f.tipo === 'bug' && (f.relatorio ? <p className="feedback-txt feedback-relatorio">{f.relatorio}</p> : <p className="hint">{ANALISE[f.analise] || 'Sem report ainda.'}</p>)}
           <span className="fraco feedback-onde">{f.tela}{f.versao ? ' · ' + f.versao : ''}</span>
         </div>
         <footer className="usuario-pe">

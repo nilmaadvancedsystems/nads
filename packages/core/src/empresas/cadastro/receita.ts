@@ -18,8 +18,22 @@ export function cnpjValido(cnpj: string): boolean {
   return dv(d.slice(0, 12)) === Number(d[12]) && dv(d.slice(0, 13)) === Number(d[13]);
 }
 
-/** 00.000.000/0000-00 */
-export const cnpjFormatado = (cnpj: string) => so(cnpj).replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+/** O CPF tem 11 números e os dígitos verificadores batem? (o cliente pessoa física) */
+export function cpfValido(cpf: string): boolean {
+  const d = so(cpf);
+  if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
+  const dv = (n: number) => { const r = d.slice(0, n).split('').reduce((s, c, i) => s + Number(c) * (n + 1 - i), 0) % 11; return r < 2 ? 0 : 11 - r; };
+  return dv(9) === Number(d[9]) && dv(10) === Number(d[10]);
+}
+
+/** CNPJ ou CPF válido (o cadastro guarda os dois no mesmo campo) */
+export const documentoValido = (d: string): boolean => cnpjValido(d) || cpfValido(d);
+
+/** 00.000.000/0000-00; com 11 números, o CPF: 000.000.000-00 */
+export const cnpjFormatado = (cnpj: string) => {
+  const d = so(cnpj);
+  return d.length === 11 ? d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4') : d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+};
 
 export interface DadosDaReceita {
   cnpj: string;

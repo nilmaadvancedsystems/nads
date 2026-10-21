@@ -12,6 +12,17 @@ const S = (d: number, v: number, h: string) => l('sistema', d, v, h);
 const resumo = (r: ReturnType<typeof conferir>) => r.linhas.map(x => [x.situacao, x.extrato?.historico || '', x.sistema?.historico || '', x.motivo]);
 
 describe('conferência extrato × sistema', () => {
+  it('o razão da conciliação do Alterdata (com a Contrapartida) inverte sempre, mesmo com poucos lançamentos no mês', () => {
+    // 2 saídas no banco; no razão, o crédito positivo (21/10/2026): antes, abaixo de 3, saíam como "lançado ao contrário"
+    const A = (d: number, v: number, h: string) => ({ ...S(d, v, h), conta: '10101' });
+    const r = conferir([B(8, -1947, 'PIX ENVIADO'), B(11, -300, 'COMPRA NO DEBITO')], [A(8, 1947, 'Caixa Geral'), A(11, 300, 'Caixa Geral')], 3);
+    expect([r.sistemaInvertido, r.contagem.ok, r.contagem.diferente]).toEqual([true, 2, 0]);
+    // o lançado ao contrário de verdade (o débito no lugar do crédito) continua aparecendo
+    const e = conferir([B(8, -1947, 'PIX ENVIADO'), B(11, -300, 'COMPRA NO DEBITO')], [A(8, 1947, 'Caixa Geral'), A(11, -300, 'Caixa Geral')], 3);
+    expect([e.sistemaInvertido, e.contagem.ok, e.linhas.find(x => x.situacao === 'diferente')?.tipoDiferenca]).toEqual([true, 1, 'sinal']);
+    // sem a Contrapartida (outra planilha), a contagem de antes: 2 não bastam
+    expect(conferir([B(8, -1947, 'PIX ENVIADO'), B(11, -300, 'COMPRA')], [S(8, 1947, 'x'), S(11, 300, 'y')], 3).sistemaInvertido).toBe(false);
+  });
   it('classifica cada caso', () => {
     const r = conferir([
       B(3, 450000, 'PIX RECEBIDO CLIENTE ALFA'), B(10, -73500, 'DARF SIMPLES'), B(10, -73500, 'DARF SIMPLES'),

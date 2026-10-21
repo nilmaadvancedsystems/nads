@@ -39,6 +39,8 @@ export interface RepoHonorarios {
   definirValor(id: string, valor: number, quem: string): Promise<void>;
   /** grava o recebimento do mês (troca o que já houver) */
   receber(r: RascunhoDeRecebimento, quem: string): Promise<void>;
+  /** registra que a cobrança da competência foi mandada (cobrancas.AAAA-MM = {em, por} no contrato; 21/10/2026) */
+  registrarCobranca(contratoId: string, competencia: string, quem: string): Promise<void>;
   /** apaga o recebimento do mês */
   desfazer(contratoId: string, competencia: string): Promise<void>;
   assinar(aoMudar: () => void): () => void;
@@ -69,13 +71,17 @@ export function criarHonorariosMemoria(): RepoHonorarios {
       const antes = contratos.find(x => x.id === id);
       const novo: financeiro.ContratoDeHonorario = {
         id, clienteId: d.clienteId, codigo: d.codigo, nome: d.nome, cnpj: d.cnpj, valor: d.valor, ativo: d.ativo, observacoes: d.observacoes?.trim() || undefined,
-        criadoEm: antes?.criadoEm ?? agora(), criadoPor: antes?.criadoPor ?? quem, ...(antes ? { atualizadoEm: agora(), atualizadoPor: quem } : {}),
+        cobrancas: antes?.cobrancas, criadoEm: antes?.criadoEm ?? agora(), criadoPor: antes?.criadoPor ?? quem, ...(antes ? { atualizadoEm: agora(), atualizadoPor: quem } : {}),
       };
       contratos = antes ? contratos.map(x => (x.id === id ? novo : x)) : [...contratos, novo];
       mudou();
       return id;
     },
     async definirValor(id, valor, quem) { contratos = contratos.map(x => (x.id === id ? { ...x, valor, atualizadoEm: agora(), atualizadoPor: quem } : x)); mudou(); },
+    async registrarCobranca(id, competencia, quem) {
+      contratos = contratos.map(x => (x.id === id ? { ...x, cobrancas: { ...x.cobrancas, [competencia]: { em: agora(), por: quem } } } : x));
+      mudou();
+    },
     async receber(d, quem) {
       const id = financeiro.idDoRecebimento(d.contratoId, d.competencia);
       recebimentos = [...recebimentos.filter(x => x.id !== id), { ...d, id, por: quem, em: agora() }];

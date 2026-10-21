@@ -28,6 +28,8 @@ export function criarGmailFirestore(quem: () => (e.Quem | null), competencia: ()
   let pararSetor = () => {};
   const recalcular = () => { estado = e.estadoDoRobo(caixa === 'robo' ? docEstado : e.docDaCaixa(docEstado, docSetor)); mudou(); };
   let clientes: { carregados: boolean; lista: e.ClienteDoEntregas[] } = { carregados: false, lista: [] };
+  // o CNPJ/CPF de cada código, também dos inativos (Sávio, 20/10/2026), da mesma leitura dos clientes
+  let documentos: ReadonlyMap<number, string> = new Map();
   let ignorados: string[] = [];
   let ouvindo = false;
   let ver = 0;
@@ -40,7 +42,9 @@ export function criarGmailFirestore(quem: () => (e.Quem | null), competencia: ()
     onSnapshot(doc(db, 'robo', 'estado'), s => { docEstado = s.exists() ? s.data() : null; recalcular(); },
       err => { estado = { ...e.ESTADO_VAZIO, carregado: true, erro: err.message }; mudou(); });
     onSnapshot(collection(db, 'clientes'), s => {
-      clientes = { carregados: true, lista: e.clientesDoEntregas(s.docs.map(d => ({ id: d.id, dados: d.data() }))) };
+      const docs = s.docs.map(d => ({ id: d.id, dados: d.data() }));
+      clientes = { carregados: true, lista: e.clientesDoEntregas(docs) };
+      documentos = e.documentosDoEntregas(docs);
       mudou();
     }, () => { clientes = { carregados: true, lista: [] }; mudou(); });
     onSnapshot(doc(db, 'config', 'roboIgnorados'), s => {
@@ -83,6 +87,7 @@ export function criarGmailFirestore(quem: () => (e.Quem | null), competencia: ()
     },
     estado: () => { ouvir(); return estado; },
     clientes: () => { ouvir(); return clientes; },
+    documentos: () => { ouvir(); return documentos; },
     ignorados: () => { ouvir(); return ignorados; },
     verificar: dias => pedir({ tipo: 'verificar', dias }),
     cancelar: () => pedir({ tipo: 'cancelar' }),

@@ -128,6 +128,18 @@ export function mascaraData(v: string): string {
   return s;
 }
 
+/**
+ * Máscara do CNPJ ou do CPF enquanto digita (Sávio, 20/10/2026: cadastrar o CNPJ/CPF nas Configurações do DP): até 11
+ * números, 000.000.000-00; de 12 a 14, 00.000.000/0000-00.
+ */
+export function mascaraDocumento(v: string): string {
+  const s = v.replace(/\D/g, '').slice(0, 14);
+  if (s.length <= 11) {
+    return s.replace(/^(\d{3})(\d)/, '$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3').replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4');
+  }
+  return s.slice(0, 2) + '.' + s.slice(2, 5) + '.' + s.slice(5, 8) + '/' + s.slice(8, 12) + (s.length > 12 ? '-' + s.slice(12) : '');
+}
+
 /** "28/09/2026 às 10:22" */
 export function dataHora(ts: string): string {
   const d = new Date(ts);

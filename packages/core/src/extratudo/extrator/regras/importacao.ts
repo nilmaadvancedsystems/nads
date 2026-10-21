@@ -9,9 +9,10 @@ import { dataBR } from './texto';
  * quando a leitura dos PDFs muda; o extrato que veio do Drive e foi lido por uma versão mais velha é relido sozinho
  * (useDriveDaLinha), com relerExtrato. 2 = o Detalhamento do Saldo do BNB fora e o histórico no lançamento mais perto;
  * 3 = o OCR melhor (216 dpi, preto e branco, a página como tabela) e o sinal conferido pelo saldo corrido; 4 = os "Últimos
- * Lançamentos" do Bradesco fora (19/10/2026).
+ * Lançamentos" do Bradesco fora (19/10/2026); 5 = a data do Nubank com o ano em pedaço separado e o dia que o OCR leu com
+ * letra ("O8FEV2026"; 20/10/2026).
  */
-export const VERSAO_DO_LEITOR = 4;
+export const VERSAO_DO_LEITOR = 5;
 
 export function empresaNova(nome: string): EmpresaExtrator {
   return { nome, arquivos: [], auditoria: [] };

@@ -72,6 +72,9 @@ const CAIXA_LIDA = ['contabil', 'fiscal'].includes(process.env.GMAIL_CAIXA) ? pr
 const DOC_DA_TELA = CAIXA_LIDA === 'robo' ? 'estado' : 'caixa-' + CAIXA_LIDA;
 const MAX_CAIXA = 150;                       // e-mails com anexo que a tela lista
 const MAX_SPAM = 100;                        // e-mails do spam que a tela lista
+// os ENVIADOS pela caixa aos clientes (Heverton, 20/10/2026: "colocar os enviados no gmail"): a aba Enviados da tela
+const MAX_ENVIADOS = 150;                    // e-mails enviados que a tela lista
+const MAX_ENVIADOS_POR_LEITURA = 60;         // e-mails novos abertos por leitura (a cota do Gmail)
 
 // Cada escritório chama o mesmo documento de um jeito — "comprovante" quase nunca
 // vem escrito assim; na prática é "títulos pagos", "boletos liquidados" etc.
@@ -521,6 +524,56 @@ async function lerSpam(gmail, porEmail, porDominio, ignorados, processados) {
   // Tudo falhou (cota, rede): lista vazia apagaria a da tela; melhor manter a antiga.
   if (ids.length && falhas === ids.length) throw new Error('nenhum e-mail do spam abriu');
   return montarSpam(mensagens, porEmail, porDominio, ignorados);
+}
+
+// ---------- enviados ----------
+// Os e-mails que a própria caixa mandou (label SENT; o gmail.readonly já lê) para um cliente: o destinatário (Para e
+// Cc) ligado ao cliente pela mesma regra do remetente (clientes.email/emails e o domínio próprio). Na lista da tela o
+// "remetente" é o endereço do cliente (é para ele que se responde e é ele que se liga ou desliga do cliente) e
+// "enviado" marca que saiu daqui. Só abre o que ainda não está na lista (antes): a leitura fica barata.
+function montarEnviados(mensagens, porEmail, porDominio) {
+  return (mensagens || []).filter(m => m && m.id && m.payload).map(m => {
+    const headers = m.payload.headers || [];
+    const destinos = [cabecalho(headers, 'To'), cabecalho(headers, 'Cc')].join(',').split(',')
+      .map(x => ({ email: extrairEmail(x), nome: extrairNome(x) })).filter(x => x.email && x.email.includes('@'));
+    const achado = destinos.map(d => ({ d, cliente: (porEmail.get(d.email) || porDominio.get(dominioDe(d.email)) || [])[0] })).find(x => x.cliente);
+    if (!achado) return null;
+    const ms = Number(m.internalDate);
+    return {
+      mensagemId: m.id, em: ms ? new Date(ms).toISOString() : '', remetente: achado.d.email, nome: achado.d.nome,
+      para: destinos.map(d => d.email).slice(0, 10), enviado: true,
+      assunto: consertarAcentos(cabecalho(headers, 'Subject')), trecho: decodificarEntidades(m.snippet).slice(0, 240),
+      arquivos: coletarAnexos(m.payload, []).map(a => a.filename),
+      clienteId: String(achado.cliente.id), clienteNome: achado.cliente.nome || achado.cliente.nomeFantasia || '',
+    };
+  }).filter(Boolean);
+}
+
+async function lerEnviados(gmail, porEmail, porDominio, antes) {
+  const jaNaLista = new Set((antes || []).map(e => e && e.mensagemId));
+  const ids = [];
+  let pageToken;
+  do {
+    const r = await comRetentativa(() => gmail.users.messages.list({ userId: 'me', q: `in:sent newer_than:${DIAS}d`, maxResults: 100, pageToken }));
+    (r.data.messages || []).forEach(m => { if (!jaNaLista.has(m.id)) ids.push(m.id); });
+    pageToken = r.data.nextPageToken;
+  } while (pageToken && ids.length < MAX_ENVIADOS_POR_LEITURA);
+  const mensagens = [];
+  let falhas = 0;
+  for (const id of ids.slice(0, MAX_ENVIADOS_POR_LEITURA)) {
+    try {
+      await dormir(120);
+      mensagens.push((await comRetentativa(() => gmail.users.messages.get({ userId: 'me', id, format: 'full' }))).data);
+    } catch (err) {
+      falhas++;
+      console.error('  enviados: e-mail', id, 'não abriu -', err.message);
+    }
+  }
+  if (ids.length && falhas === Math.min(ids.length, MAX_ENVIADOS_POR_LEITURA)) throw new Error('nenhum e-mail enviado abriu');
+  // os da lista anterior continuam (o mais novo de cada vence), do mais novo para o mais antigo
+  const porId = new Map();
+  (antes || []).concat(montarEnviados(mensagens, porEmail, porDominio)).forEach(e => { if (e && e.mensagemId) porId.set(e.mensagemId, e); });
+  return Array.from(porId.values()).sort((a, b) => String(b.em).localeCompare(String(a.em))).slice(0, MAX_ENVIADOS);
 }
 
 // Duas buscas, não a caixa inteira: abrir todo e-mail estourava a cota do Gmail
@@ -1032,6 +1085,17 @@ async function main() {
     console.error('Spam não foi lido -', err.message, '(fica a lista anterior)');
   }
 
+  // Enviados (20/10/2026): só na leitura normal; se falhar, a tela continua com a lista anterior
+  let enviados = null;
+  andamento({ fase: 'enviados', texto: 'Conferindo os enviados aos clientes' });
+  try {
+    const antes = (await db.collection('robo').doc(DOC_DA_TELA).get()).data() || {};
+    enviados = await lerEnviados(gmail, porEmail, porDominio, RELER || !Array.isArray(antes.enviados) ? [] : antes.enviados);
+    console.log(`Enviados a clientes: ${enviados.length}`);
+  } catch (err) {
+    console.error('Enviados não foram lidos -', err.message, '(fica a lista anterior)');
+  }
+
   // robo/estado: o que a página "Robô do Gmail" mostra.
   const roboRef = db.collection('robo').doc(DOC_DA_TELA);
   const roboAtual = (await roboRef.get()).data() || {};
@@ -1069,7 +1133,7 @@ async function main() {
 
   andamento({ fase: 'gravando', texto: 'Guardando o resumo: ' + resumo });
   if (!SIMULAR) {
-    await roboRef.set(Object.assign({ ultimaExecucao: execucao.em, ultimaExecucaoResumo: resumo, naoReconhecidos, execucoes, caixa }, comSalvos(), spam ? { spam } : {}), { merge: true });
+    await roboRef.set(Object.assign({ ultimaExecucao: execucao.em, ultimaExecucaoResumo: resumo, naoReconhecidos, execucoes, caixa }, comSalvos(), spam ? { spam } : {}, enviados ? { enviados } : {}), { merge: true });
     await estadoRobo.salvar(db, estadoAgora());
   }
 
@@ -1087,7 +1151,7 @@ if (require.main === module) {
 
 module.exports = {
   competenciaDoTexto, competenciaPresumida, mesesDoPortal, faltamNoMes, detectarTipos, coletarAnexos, IMAGEM_DE_ASSINATURA, AUTOMATICO,
-  conferirPeriodoDosExtratos, palavrasDaEscolha, desempatarPeloAprendido, juntarEscolha, desempatarPorDocumento, desempatarPorNome, semAssinatura, empresasIrmas, frequenciaDePalavras, decodificarEntidades, extrairEmail, extrairNome, dominioDe, DOMINIOS_PUBLICOS, montarSpam, MAX_SPAM,
+  conferirPeriodoDosExtratos, palavrasDaEscolha, desempatarPeloAprendido, juntarEscolha, desempatarPorDocumento, desempatarPorNome, semAssinatura, empresasIrmas, frequenciaDePalavras, decodificarEntidades, extrairEmail, extrairNome, dominioDe, DOMINIOS_PUBLICOS, montarSpam, MAX_SPAM, montarEnviados,
   // usados por envios-do-portal.js (documento que o cliente manda pelo link)
   PASTA_DESTINO, sanitizar, salvarArquivo, atualizarPortal, bancosNovos,
   // agência e conta dos extratos (teste)

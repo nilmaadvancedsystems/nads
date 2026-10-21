@@ -579,13 +579,9 @@ button.gh-crumb:hover{background:var(--hover-bg);}
   border-radius:6px;color:var(--ink);font-size:var(--fs-14);font-family:inherit;text-align:left;cursor:pointer;}
 .subnav-item:hover{background:var(--hover-bg);}
 .subnav-item svg{width:17px;height:17px;flex:none;color:var(--ink-muted);}
-/* a logo da marca no lugar do ícone (FGTS Digital no DP): do mesmo tamanho dos ícones */
-.subnav-marca{width:48px;height:14px;flex:none;display:inline-flex;align-items:center;justify-content:center;margin-right:-2px;}
-.subnav-marca svg{width:48px;height:14px;}
-/* recolhida: a logo inteira numa versão menor, centralizada nos 40 px do botão */
-.sidebar-oculta .subnav-marca{width:34px;height:10px;margin:0;}
-.sidebar-oculta .subnav-marca svg{width:34px;height:10px;}
-@media (max-width:768px){.sidebar-oculta .subnav-marca{width:48px;height:14px;margin:0 -2px 0 0;}.sidebar-oculta .subnav-marca svg{width:48px;height:14px;}}
+/* a logo da marca no lugar do ícone (FGTS Digital no DP; o símbolo quadrado do app desde 21/10/2026): do tamanho dos ícones */
+.subnav-marca{width:17px;height:17px;flex:none;display:inline-flex;align-items:center;justify-content:center;}
+.subnav-marca svg{width:17px;height:17px;}
 /* o item aberto igual ao da gaveta ☰ (19/10/2026): o mesmo fundo, o peso 500 e o ícone na cor do texto, sem a barrinha vermelha */
 .subnav-item.active{background:var(--hover-bg);font-weight:500;}
 .subnav-item.active svg{color:var(--ink);}
@@ -1836,7 +1832,7 @@ td.cad-acoes .menu-seta{display:none;}
 .drive-ico{width:16px;height:16px;flex:none;color:var(--ink-muted);}
 td.drive-marca{width:1%;}
 .drive-aviso{margin:0 0 12px;}
-.drive-pedidos{position:fixed;right:16px;bottom:16px;z-index:65;display:flex;flex-direction:column;gap:6px;max-width:min(420px,calc(100vw - 32px));}
+.drive-pedidos{position:fixed;right:16px;bottom:72px;z-index:65;display:flex;flex-direction:column;gap:6px;max-width:min(420px,calc(100vw - 32px));}
 .drive-pedido{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);box-shadow:var(--shadow-lg);font-size:var(--fs-13);}
 .drive-girando{width:14px;height:14px;flex:none;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;}
 @keyframes drive-gira{to{transform:rotate(360deg);}}
@@ -3426,6 +3422,11 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .cert-painel-vazio{padding:24px 16px;}
 @media (max-width:900px){.cert-dash{grid-template-columns:1fr;}}
 @media (max-width:520px){.cert-rosca{flex-direction:column;}.cert-barras{gap:3px;padding:8px 8px 12px;}}
+/* o mapa quente de uma tela (Uso do sistema, 21/10/2026): o contorno da página (topo e lateral) e a grade 50×50 */
+.mapa-calor{position:relative;width:100%;aspect-ratio:16/10;border:1px solid var(--border);border-radius:var(--radius,8px);background:var(--surface);overflow:hidden;}
+.mapa-calor-topo{position:absolute;left:0;right:0;top:0;height:7%;background:var(--surface-2);border-bottom:1px solid var(--border);}
+.mapa-calor-lateral{position:absolute;left:0;top:7%;bottom:0;width:15%;background:var(--surface-2);border-right:1px solid var(--border);}
+.mapa-calor-celula{position:absolute;background:var(--danger);border-radius:1px;}
 /* os Feedbacks numa janela flutuante, abertos no pé da gaveta ☰ (07/10/2026) */
 .feedbacks-janela{width:min(980px,96vw);}
 .drawer-foot .drawer-item{margin:0 0 8px;}
@@ -3500,6 +3501,10 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .painel-neutro{--tom:var(--ink);--tom-fundo:var(--surface);--tom-icone:var(--surface-3);--tom-borda:var(--border);}
 /* a coluna CNPJ/CPF das Configurações do DP: só os dígitos e o copiar */
 .dp-documento{white-space:nowrap;cursor:default;}
+/* o CNPJ/CPF digitado na linha, quando não há em lugar nenhum (Sávio, 20/10/2026) */
+.dp-documento-novo{display:inline-flex;align-items:center;gap:4px;}
+.dp-documento-novo input{width:150px;padding:4px 8px;font-size:12px;}
+.dp-documento-erro{display:block;max-width:190px;margin-top:2px;font-size:11px;white-space:normal;}
 /* texto que copia ao clicar (14/10/2026): sem botão ao lado; o mouse mostra que dá para clicar */
 .texto-copiavel{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;cursor:copy;border-radius:4px;}
 .texto-copiavel:hover{color:var(--accent);text-decoration:underline;text-underline-offset:3px;}
@@ -4782,3 +4787,63 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
   .robo-filtro-erros{margin-left:0;}
   .robo-execucoes th:nth-child(5),.robo-execucoes td:nth-child(5){display:none;}
 }
+/* Financeiro › Honorários: Emitir NFS-e e Cobrar (21/10/2026) */
+.fin-selo{margin-left:6px;}
+.fin-cobrado{margin-left:8px;font-size:var(--fs-12);}
+.fin-acoes{display:flex;gap:6px;justify-content:flex-end;align-items:center;}
+.fin-acoes .btn svg{width:16px;height:16px;}
+.fin-cobranca-texto{width:100%;margin-top:12px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);padding:10px 12px;font:inherit;font-size:var(--fs-14);line-height:20px;color:var(--ink);resize:vertical;outline:none;}
+.fin-cobranca-texto:focus{border-color:var(--accent);}
+.fin-valor-edita{min-width:112px;}
+/* o balão do suporte (20/10/2026; em chat desde 21/10/2026): o botão redondo no canto de baixo, à direita, e o chat por
+   cima dele — as falas do suporte à esquerda, as da pessoa à direita (só a disposição e o balão das falas; as peças são o
+   botão, a cápsula .badge, o fechar e o ícone) */
+.suporte-botao{position:fixed;right:16px;bottom:16px;z-index:64;width:48px;height:48px;padding:0;border-radius:50%;justify-content:center;box-shadow:var(--shadow-floating);}
+.suporte-botao svg{width:22px;height:22px;}
+.suporte-balao{position:fixed;right:16px;bottom:74px;z-index:64;width:min(380px,calc(100vw - 32px));height:min(540px,calc(100vh - 120px));display:flex;flex-direction:column;padding:0;margin:0;overflow:hidden;box-shadow:var(--shadow-floating);}
+.suporte-topo{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border-muted);}
+.suporte-avatar{flex:none;width:32px;height:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--accent);}
+.suporte-avatar svg{width:18px;height:18px;}
+.suporte-titulo{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25;}
+.suporte-sub{font-size:var(--fs-12);color:var(--ink-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.suporte-corpo{flex:1;overflow:auto;padding:14px 12px;display:flex;flex-direction:column;gap:8px;background:var(--surface-2);}
+.suporte-troca{display:flex;flex-direction:column;gap:8px;}
+.suporte-msg{align-self:flex-start;max-width:85%;padding:8px 12px;border-radius:14px 14px 14px 4px;background:var(--surface);border:1px solid var(--border-muted);font-size:var(--fs-13);line-height:1.45;}
+.suporte-msg.suporte-eu{align-self:flex-end;border-radius:14px 14px 4px 14px;background:var(--accent);border-color:var(--accent);color:var(--on-accent);}
+.suporte-passos{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;}
+.suporte-capsulas{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;}
+.suporte-capsulas .badge{cursor:pointer;border:0;padding:5px 10px;font-size:var(--fs-12);display:inline-flex;align-items:center;gap:4px;}
+.suporte-capsulas .badge svg{width:12px;height:12px;}
+.suporte-continuar{height:26px;padding:0 12px;font-size:var(--fs-12);}
+.suporte-msg-titulo{display:block;font-weight:600;margin-bottom:4px;}
+.suporte-msg-dica{display:block;margin-top:2px;font-size:var(--fs-12);color:var(--ink-muted);}
+/* o "digitando" (21/10/2026, pedido do Vitor): os três pontinhos que sobem e descem, como o carregando */
+.suporte-digitando{display:inline-flex;gap:4px;align-items:center;padding:10px 14px;}
+.suporte-digitando span{width:6px;height:6px;border-radius:50%;background:var(--ink-muted);animation:suporte-pontinho 1s infinite ease-in-out;}
+.suporte-digitando span:nth-child(2){animation-delay:.15s;}
+.suporte-digitando span:nth-child(3){animation-delay:.3s;}
+@keyframes suporte-pontinho{0%,60%,100%{transform:translateY(0);opacity:.45;}30%{transform:translateY(-3px);opacity:1;}}
+@media (prefers-reduced-motion:reduce){.suporte-digitando span{animation:none;}}
+.suporte-envio{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-top:1px solid var(--border-muted);}
+.suporte-frase{width:100%;margin:0;}
+.suporte-frase textarea{min-height:0;}
+.suporte-envio-linha{display:flex;gap:8px;justify-content:space-between;}
+.suporte-envio-linha .btn{min-width:0;}
+.suporte-arquivo{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;}
+/* Cadastro › Uso do sistema (21/10/2026) */
+.uso{display:flex;flex-direction:column;gap:16px;}
+.uso .card{margin:0;padding:16px;}
+.uso .card>h3{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.uso .card>h3>svg{width:16px;height:16px;flex:none;}
+.uso-coleta{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-13,13px);}
+.uso-colunas{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.uso-rank{margin-top:8px;}
+.uso-inutil-corpo{display:flex;flex-direction:column;gap:8px;}
+.uso-inutil-titulo{font-weight:600;margin:8px 0 0;display:flex;align-items:center;gap:6px;}
+.uso-tabela-baixa{max-height:280px;overflow:auto;}
+.uso-tela-corpo{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px;margin-top:8px;}
+.uso-tela-mapa{display:flex;flex-direction:column;gap:8px;}
+.uso-tela-lista{display:flex;flex-direction:column;gap:8px;min-width:0;}
+.uso-tela-lista .table-wrap{max-height:360px;overflow:auto;}
+.uso-quem{margin:0;font-size:var(--fs-13,13px);}
+@media (max-width:900px){.uso-colunas,.uso-tela-corpo{grid-template-columns:1fr;}}

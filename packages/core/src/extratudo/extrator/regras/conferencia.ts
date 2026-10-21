@@ -2,7 +2,8 @@
 // Origem: protótipo do Extrator (leitura.js: conferir).
 //
 // Ordem das passadas (cada lançamento entra em uma linha só):
-//  0. se o sistema veio com todos os sinais trocados (o razão exportado ao contrário), inverte;
+//  0. se o sistema veio com todos os sinais trocados (o razão exportado ao contrário), inverte; o razão da conciliação do
+//     Alterdata vem sempre assim (o crédito positivo) e inverte sempre;
 //  1. conferido: mesma data e mesmo valor (entre vários, o de histórico mais parecido);
 //  2. duplicado: o que sobrou e é igual (data, valor e histórico parecido) a um já conferido do
 //     mesmo lado — lançado duas vezes no sistema, ou repetido no extrato;
@@ -36,7 +37,11 @@ export function conferir(extrato: LancamentoDoArquivo[], sistema: LancamentoDoAr
     if (chaves.has(b.data + '|' + b.valor)) iguais++;
     else if (chaves.has(b.data + '|' + -b.valor)) invertidos++;
   }
-  const sistemaInvertido = invertidos >= 3 && invertidos > iguais * 2;
+  // o razão da conciliação do Alterdata (o que tem a Contrapartida) vem sempre do lado da conta: o crédito (a saída do banco)
+  // positivo. Nele, inverte sempre, a não ser que o próprio arquivo mostre o contrário. Pela contagem só (3 ou mais), o mês
+  // com poucos lançamentos saía todo "lançado ao contrário" (Vitor, 21/10/2026: o Nubank com 2 em 02/2026)
+  const doAlterdata = sistema.some(x => !!x.conta);
+  const sistemaInvertido = doAlterdata ? !(iguais >= 3 && iguais > invertidos * 2) : invertidos >= 3 && invertidos > iguais * 2;
 
   const B: Item[] = extrato.map(x => ({ ...x, dia: numeroDoDia(x.data) })).sort((a, b) => a.dia - b.dia);
   const C: Item[] = sistema.map(x => ({ ...x, valor: sistemaInvertido ? -x.valor : x.valor, dia: numeroDoDia(x.data) }));

@@ -2,6 +2,7 @@
 // valor mensal (digitado no nads) e, por competência, está pago ou em aberto. Não há vencimento: não existe "atrasado". O
 // recebimento é marcado à mão (depois virá do extrato do banco). Puro: sem banco e sem tela.
 // O banco é financeiroHonorarios/{id} e financeiroRecebimentos/{contratoId}_{AAAA-MM} (dados/honorarios.firestore.ts).
+import { brl } from '../formatos';
 import { dataValida } from './index';
 import { xlsxDeLinhas, type CelulaDoDemonstrativo } from './demonstrativo';
 
@@ -18,6 +19,8 @@ export interface ContratoDeHonorario {
   valor: number;
   ativo: boolean;
   observacoes?: string;
+  /** as cobranças já mandadas, por competência AAAA-MM (21/10/2026): quando e quem */
+  cobrancas?: Record<string, { em: string; por: string }>;
   criadoEm: string;
   criadoPor: string;
   atualizadoEm?: string;
@@ -136,4 +139,47 @@ export const nomeDaPlanilhaDeHonorarios = (competencia: string) => `Honorários 
 /** O .xlsx do mês (aba "Honorários"), com os valores em R$. */
 export function planilhaDosHonorarios(competencia: string, linhas: LinhaDeHonorario[]): Uint8Array {
   return xlsxDeLinhas(linhasDosHonorarios(competencia, linhas), 'Honorários', [8, 44, 16, 14, 14, 12]);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// a nota fiscal do honorário e a cobrança (21/10/2026)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** O que interessa de uma NFS-e para o selo da linha (a NotaFiscal do nfse serve). */
+export interface NotaResumida { status: string; numeroNfse: string; tomador: { documento: string }; servico: { competencia: string } }
+
+/**
+ * O selo da NFS-e do honorário na linha: a nota do cliente (pelo CNPJ) com o serviço dentro da competência. A autorizada vale
+ * mais ("NFS-e 123"), depois a que está andando ("NFS-e pedida"), depois a recusada; a cancelada não conta. null = sem nota.
+ */
+export function seloDaNfse(notas: readonly NotaResumida[], cnpj: string, competencia: string): { rotulo: string; tom: 'ok' | 'info' | 'bad' } | null {
+  const doc = cnpj.replace(/\D/g, '');
+  if (!doc) return null;
+  const dele = notas.filter(n => n.tomador.documento.replace(/\D/g, '') === doc && n.servico.competencia.startsWith(competencia) && n.status !== 'cancelada');
+  const autorizada = dele.find(n => n.status === 'autorizada' || n.status === 'cancelamento-pedido' || n.status === 'erro-cancelamento');
+  if (autorizada) return { rotulo: autorizada.numeroNfse ? `NFS-e ${autorizada.numeroNfse}` : 'NFS-e emitida', tom: 'ok' };
+  const andando = dele.find(n => n.status !== 'erro');
+  if (andando) return { rotulo: 'NFS-e pedida', tom: 'info' };
+  return dele.length ? { rotulo: 'NFS-e recusada', tom: 'bad' } : null;
+}
+
+/** O modelo da mensagem de cobrança; {pix} e a frase da chave saem quando o escritório não tem chave. */
+export const MODELO_DE_COBRANCA = 'Olá, {nome}! Passando para lembrar do honorário contábil de {competencia}, no valor de R$ {valor}. Chave PIX: {pix}. Qualquer dúvida, estamos à disposição. — Nilma Contabilidade';
+
+export function mensagemDeCobranca(d: { nome: string; competencia: string; valor: number; pix: string }, modelo = MODELO_DE_COBRANCA): string {
+  const semPix = d.pix.trim() ? modelo : modelo.replace(/\s*Chave PIX: \{pix\}\./, '');
+  return semPix.replace('{nome}', d.nome.trim()).replace('{competencia}', competenciaBr(d.competencia)).replace('{valor}', brl(d.valor)).replace('{pix}', d.pix.trim());
+}
+
+/** O telefone para o WhatsApp: só dígitos com o 55 na frente ('' quando não parece um telefone do Brasil). */
+export function telefoneParaWhatsapp(fone: string): string {
+  const d = fone.replace(/\D/g, '');
+  if (d.length === 10 || d.length === 11) return '55' + d;
+  return (d.length === 12 || d.length === 13) && d.startsWith('55') ? d : '';
+}
+
+/** O link do WhatsApp com a mensagem pronta ('' sem telefone válido). */
+export function linkDoWhatsapp(fone: string, texto: string): string {
+  const f = telefoneParaWhatsapp(fone);
+  return f ? `https://wa.me/${f}?text=${encodeURIComponent(texto)}` : '';
 }

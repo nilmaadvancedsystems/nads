@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   remetenteDoPedido, setorDoUsuario,
-  buscarClientes, buscarNaPasta, caminhoAte, clienteParecido, clientesDoEntregas, entradaDoCliente, entradaDoItem, estadoDoRobo,
+  buscarClientes, buscarNaPasta, caminhoAte, clienteParecido, clientesDoEntregas, documentosDoEntregas, entradaDoCliente, entradaDoItem, estadoDoRobo,
   filhosDe, itensDasPartes, linhasDaArvore, mapaDaRaiz, ordenarEntradas, tipoDoItem, mensagemIdValido, pedidoDaPasta, pedidoDeZip, quantosDentro, semCliente, tamanhoLegivel, type ItemDoDrive,
 } from '.';
 
@@ -98,6 +98,19 @@ describe('caixa do robô do Gmail', () => {
     expect(clienteParecido(e.naoReconhecidos.find(x => x.mensagemId === '3') as never, clientes)?.id).toBe('k1');
     expect(mensagemIdValido('18f0a1b2c3d4e5f6')).toBe(true);
     expect(mensagemIdValido('x')).toBe(false);
+  });
+});
+
+describe('o CNPJ/CPF dos clientes do Entregas (Sávio, 20/10/2026)', () => {
+  it('vem também dos inativos; com dois do mesmo código vale o ativo; só números de CPF ou CNPJ', () => {
+    const d = documentosDoEntregas([
+      { id: 'a', dados: { codigoOrigem: '394', documento: '01.939.488/0001-80', ativo: false } },
+      { id: 'b', dados: { codigoOrigem: '7', documento: '111.444.777-35', ativo: false } },
+      { id: 'c', dados: { codigoOrigem: '7', documento: '11.222.333/0001-81' } },
+      { id: 'd', dados: { codigoOrigem: '8', documento: '123' } },
+      { id: 'e', dados: { codigoOrigem: '', documento: '11.222.333/0001-81' } },
+    ]);
+    expect([...d.entries()]).toEqual([[7, '11222333000181'], [394, '01939488000180']]);
   });
 });
 

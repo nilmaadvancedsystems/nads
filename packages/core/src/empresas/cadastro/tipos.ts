@@ -129,7 +129,10 @@ export interface CadastroDaEmpresa {
    * Presumido e no Real). Sem = o da lista.
    */
   regime?: string;
-  /** o CNPJ (só os números), quando a empresa foi cadastrada pela consulta da Receita (13/10/2026) */
+  /**
+   * o CNPJ (só os números), quando a empresa foi cadastrada pela consulta da Receita (13/10/2026), ou digitado nas
+   * Configurações do DP (20/10/2026); do cliente pessoa física, o CPF (11 números)
+   */
   cnpj?: string;
   /**
    * O contato da empresa (Vitor, 07/10/2026): o e-mail e o WhatsApp para onde o Mandei manda as perguntas (Clientes e

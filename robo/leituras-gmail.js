@@ -88,12 +88,12 @@ function anexosDe(part, acc) {
   return acc;
 }
 
-// E-mails que o robô pôs na tela: só esses podem ser lidos por este caminho.
+// E-mails que o robô pôs na tela: só esses podem ser lidos por este caminho (os enviados aos clientes também, 21/10/2026).
 // (cada caixa do Gmail tem a sua lista: robo/estado para a do robô, robo/caixa-<caixa> para as dos setores)
 async function mensagensDaTela(db, caixa) {
   const r = (await db.collection('robo').doc(caixa === 'robo' ? 'estado' : 'caixa-' + caixa).get()).data() || {};
   const ids = new Set();
-  ['caixa', 'spam', 'naoReconhecidos'].forEach(k => (Array.isArray(r[k]) ? r[k] : []).forEach(m => { if (m && m.mensagemId) ids.add(String(m.mensagemId)); }));
+  ['caixa', 'spam', 'naoReconhecidos', 'enviados'].forEach(k => (Array.isArray(r[k]) ? r[k] : []).forEach(m => { if (m && m.mensagemId) ids.add(String(m.mensagemId)); }));
   return ids;
 }
 

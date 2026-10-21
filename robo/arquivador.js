@@ -661,6 +661,9 @@ async function iniciar() {
 
   try { pararIA = require('./atendente-claude').iniciarAtendenteClaude({ db, log }); }
   catch (err) { log('atendente de IA desligado:', err.message); }
+  // o suporte de leitura do nads (20/10/2026): o Claude deste PC investiga o bug que veio do balão e escreve o report
+  try { require('./suporte-claude').iniciarSuporteClaude({ db, log }); }
+  catch (err) { log('suporte desligado:', err.message); }
 }
 
 let pararIA = null;
