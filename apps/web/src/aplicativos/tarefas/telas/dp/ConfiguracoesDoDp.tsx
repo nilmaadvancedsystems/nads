@@ -81,11 +81,16 @@ export function ConfiguracoesDoDp() {
                       {l.documento ? (
                         <button type="button" className="texto-copiavel num" title="Clique para copiar" onClick={() => copiar(l.documento)}>{l.documentoNaTela}</button>
                       ) : (
-                        // sem CNPJ/CPF: o selo abre a janela na Identificação, onde se cadastra (Sávio, 20/10/2026)
-                        <button type="button" className="texto-copiavel" style={{ cursor: 'pointer' }} title="Cadastrar o CNPJ/CPF" onClick={() => vm.abrir(l.codigo, 'identificacao')}>
-                          <span className="pill-vazio">sem cadastro</span>
-                        </button>
+                        // sem CNPJ/CPF em lugar nenhum (nem no Cadastro, nem no Entregas): digita-se aqui mesmo, com a máscara,
+                        // e grava no Cadastro da empresa (Sávio, 20/10/2026: "não tem como cadastrar")
+                        <span className="dp-documento-novo">
+                          <input type="text" inputMode="numeric" className="pessoal-select num" value={vm.naLinha(l.codigo).texto} placeholder="Digite o CNPJ ou CPF"
+                            aria-label={'CNPJ ou CPF de ' + l.nomeNaTela} aria-invalid={!!vm.naLinha(l.codigo).erro || undefined} title={vm.naLinha(l.codigo).erro || 'Sem CNPJ/CPF no Cadastro e no Entregas: digite e tecle Enter'}
+                            onChange={e => vm.mudarNaLinha(l.codigo, e.target.value)} onKeyDown={e => { if (e.key === 'Enter') vm.gravarNaLinha(l.codigo); }} />
+                          {vm.naLinha(l.codigo).texto && <BotaoIcone icone="check" pequeno titulo="Gravar o CNPJ/CPF" onClick={() => vm.gravarNaLinha(l.codigo)} />}
+                        </span>
                       )}
+                      {!l.documento && vm.naLinha(l.codigo).erro && <span className="feedback-erro dp-documento-erro">{vm.naLinha(l.codigo).erro}</span>}
                     </td>
                     <td>{l.movimento}</td>
                     <td className="dp-obrig-texto">{l.obrigacoesTexto}</td>

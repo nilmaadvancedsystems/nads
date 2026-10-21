@@ -138,6 +138,7 @@ export function criarGmailDoEntregasMemoria(): RepoGmailDoEntregas {
     usarCaixa(c) { caixaEscolhida = c; o.mudou(); },
     estado: () => estadoDoRobo(doc),
     clientes: () => ({ carregados: true, lista: clientes }),
+    documentos: () => new Map<number, string>(),
     ignorados: () => ignorados,
     async verificar(dias) {
       mudar({ andamento: { ativo: true, tipo: 'leitura', motivo: 'pedido', fase: 'lendo', feito: 3, total: 10, recentes: [{ em: agora(), texto: 'Lendo os e-mails dos últimos ' + dias + ' dias…' }] } });

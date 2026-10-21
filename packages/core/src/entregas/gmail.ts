@@ -151,6 +151,23 @@ export function clientesDoEntregas(docs: readonly { id: string; dados: Record<st
     .sort((a, b) => (Number(a.codigo) || 1e9) - (Number(b.codigo) || 1e9) || a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 
+/**
+ * O CNPJ/CPF de cada código do ERP no cadastro do Entregas, INCLUSIVE dos clientes inativos (Sávio, 20/10/2026: "alguns
+ * clientes estão sem CNPJ/CPF": no Entregas eles estão como inativos, e a lista dos clientes tira os inativos). Só os
+ * números; com dois do mesmo código, vale o ativo.
+ */
+export function documentosDoEntregas(docs: readonly { id: string; dados: Record<string, unknown> }[]): Map<number, string> {
+  const r = new Map<number, string>();
+  const ordenados = [...docs].sort((a, b) => Number(a.dados.ativo === false) - Number(b.dados.ativo === false));
+  for (const d of ordenados) {
+    const codigo = Number(texto(d.dados.codigoOrigem).trim());
+    const documento = texto(d.dados.documento).replace(/\D/g, '');
+    if (!codigo || (documento.length !== 11 && documento.length !== 14) || r.has(codigo)) continue;
+    r.set(codigo, documento);
+  }
+  return r;
+}
+
 /** Os e-mails que o robô não ligou a cliente, sem os já cadastrados em algum cliente e sem os ignorados. */
 export function semCliente(e: EstadoDoRobo, clientes: readonly ClienteDoEntregas[], ignorados: readonly string[]): EmailDaCaixa[] {
   const conhecidos = new Set(clientes.flatMap(c => [c.email, ...c.emails]).filter(Boolean));

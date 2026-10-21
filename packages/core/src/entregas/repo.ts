@@ -43,6 +43,8 @@ export interface RepoGmailDoEntregas {
   /** o que o robô deixou para a caixa escolhida (robo/estado, ou robo/caixa-<setor>), ao vivo */
   estado(): EstadoDoRobo;
   clientes(): { carregados: boolean; lista: ClienteDoEntregas[] };
+  /** o CNPJ/CPF de cada código do ERP, também dos clientes inativos (só os números; 21/10/2026) */
+  documentos(): ReadonlyMap<number, string>;
   /** remetentes marcados como spam (config/roboIgnorados) */
   ignorados(): string[];
   /** "Verificar o Gmail agora" (lê os últimos dias) */
