@@ -36,7 +36,7 @@ export function JanelaNovaNota({ fechar, nota, inicial }: { fechar: () => void; 
 
   return (
     <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
-      <div ref={janela} className="modal registro-novo" role="dialog" aria-modal="true" aria-label={titulo}>
+      <div ref={janela} className="modal registro-novo nota-nova" role="dialog" aria-modal="true" aria-label={titulo}>
         <header className="registro-topo">
           <span className="registro-caminho"><Icone nome="recibo" />Notas fiscais<Icone nome="chevronRight" /><b>{titulo}</b></span>
           {vm.ambiente === 'homologacao' && <span className="badge badge-warn">Homologação — sem valor fiscal</span>}
@@ -92,7 +92,7 @@ export function JanelaNovaNota({ fechar, nota, inicial }: { fechar: () => void; 
               <input type="text" value={vm.nome} onChange={e => vm.setNome(e.target.value)} placeholder="Nome ou razão social" autoComplete="off" aria-label="Nome do tomador" />
             </Propriedade>
             {vm.endereco.visivel ? (
-              <>
+              <div className="nota-endereco">
                 <Propriedade icone="landmark" rotulo="CEP">
                   <input type="text" inputMode="numeric" value={vm.endereco.cep} onChange={e => vm.endereco.setCep(e.target.value)} placeholder={vm.endereco.obrigatorio ? 'Obrigatório para CNPJ' : 'Opcional'} aria-label="CEP do tomador" />
                   {vm.endereco.buscando && <span className="fraco registro-origem">Buscando o endereço na Receita…</span>}
@@ -111,13 +111,14 @@ export function JanelaNovaNota({ fechar, nota, inicial }: { fechar: () => void; 
                   {vm.endereco.municipio && <span className="fraco registro-origem">{vm.endereco.municipio}</span>}
                 </Propriedade>
                 {vm.endereco.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.endereco.erro}</p>}
-              </>
+              </div>
             ) : (
-              <div className="registro-prop"><button type="button" className="btn btn-ghost" onClick={vm.endereco.adicionar}><Icone nome="plus" />Adicionar endereço</button></div>
+              <div className="registro-prop nota-endereco-novo"><button type="button" className="btn btn-ghost" onClick={vm.endereco.adicionar}><Icone nome="plus" />Adicionar endereço</button></div>
             )}
             <Propriedade icone="dinheiro" rotulo="Valor">
               <input type="text" inputMode="decimal" value={vm.valor} onChange={e => vm.setValor(e.target.value)} onBlur={vm.formatarValor} placeholder="420,00" aria-label="Valor em reais" />
             </Propriedade>
+            {vm.previa && <Propriedade icone="recibo" rotulo="Imposto"><span className="nota-previa">{vm.previa}</span></Propriedade>}
             <Propriedade icone="calendar" rotulo="Data do serviço">
               <CampoData valor={vm.data} onMudar={vm.setData} rotulo="Data do serviço" />
             </Propriedade>
@@ -132,7 +133,6 @@ export function JanelaNovaNota({ fechar, nota, inicial }: { fechar: () => void; 
             </Propriedade>
           </div>
 
-          {vm.previa && <p className="registro-dica"><Icone nome="recibo" />{vm.previa}</p>}
           {vm.faltas.length > 0 && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />Para emitir, falta: {vm.faltas.join(', ')}. Veja Financeiro › Configurações.</p>}
           {vm.erros.length > 0 && <ul className="registro-erros">{vm.erros.map(e => <li key={e}><Icone nome="alert" />{e}</li>)}</ul>}
         </div>

@@ -951,7 +951,7 @@ export const PECAS_BASE: Peca[] = [
         <tr><td>Papel e toner</td><td className="num fin-direita"><ValorDoCaixa valor={212.9} tipo="S" /></td></tr>
       </tbody></table></div>
     ) },
-  { id: 'contador-de-cedulas', tipo: 'cartoes', nome: 'Contagem de cédulas', descricao: 'Na janela "Contar cédulas" do Caixa: uma linha por nota e moeda (200 a 0,01) com a quantidade e o subtotal, e o total geral embaixo', componente: 'ContadorDeCedulas', classes: ['fin-cedulas', 'fin-cedula', 'fin-cedulas-total'], telas: ['t-fin-caixa'],
+  { id: 'contador-de-cedulas', tipo: 'cartoes', nome: 'Contagem de cédulas', descricao: 'Na janela "Contar cédulas" do Caixa: duas colunas, Cédulas (200 a 2) e Moedas (1 a 0,01), cada linha com o valor, a quantidade e o subtotal; o total geral fica no rodapé da janela', componente: 'ContadorDeCedulas', classes: ['fin-cedulas', 'fin-cedula', 'fin-cedulas-grupo', 'cedulas-total'], telas: ['t-fin-caixa'],
     uso: '<ContadorDeCedulas quantidades={{ "50": "2" }} onMudar={(valor, quantidade) => …} />',
     demo: () => <DemoDeCedulas /> },
   { id: 'arvore-do-plano', tipo: 'listas', nome: 'Árvore do plano de contas', descricao: 'No Plano de contas: cada conta recuada pelo nível, com a classificação, a descrição (em negrito se só agrupa), o tipo em selo e "Inativa" quando saiu de uso', componente: 'LinhaDoPlano', classes: ['fin-arvore', 'fin-conta', 'fin-conta-codigo', 'fin-conta-grupo', 'fin-conta-inativa'], telas: ['t-fin-plano'], largo: true,
