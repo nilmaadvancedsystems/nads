@@ -5,6 +5,7 @@
 import { Dica, Esqueleto, Icone, Interruptor, useCarregando, useEntradaAnimada } from '@nads/ui';
 import { useState } from 'react';
 import { PainelDosAgentes } from '../agentes/PainelDosAgentes';
+import { ListaDaSaude } from './ListaDaSaude';
 import { useConfiguracoesDoNads } from './useConfiguracoesDoNads';
 
 /** Cadastro › Robôs e agentes. */
@@ -37,15 +38,7 @@ export function RobosEAgentes() {
                 <span className="tarefas-barra-espaco" />
                 <button type="button" className="btn btn-ghost" onClick={() => setTodos(t => !t)}>{todos ? 'Só o que precisa de atenção' : 'Ver todos (' + vm.saude.length + ')'}</button>
               </div>
-              {mostrar.length > 0 && <ul className="saude-lista">
-                {mostrar.map(i => (
-                  <li key={i.id} className={'saude-' + i.tom}>
-                    <span className="saude-ponto" aria-hidden="true" />
-                    <span className="saude-rotulo">{i.rotulo}</span>
-                    <span className="saude-texto">{i.texto}{i.detalhe && <span className="fraco">{i.detalhe}</span>}</span>
-                  </li>
-                ))}
-              </ul>}
+              {mostrar.length > 0 && <ListaDaSaude itens={mostrar} />}
               </>
             )}
           </div>

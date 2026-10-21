@@ -1,0 +1,39 @@
+/* O site do admin (21/10/2026): só o encaixe das peças do catálogo (o número do painel, o cartão do robô, a linha do tempo,
+   a lista da saúde, o ranking, as barras em coluna, a tabela compacta). Fica aqui, e não no nads.css, porque só este site
+   usa (como o cliente.css da Área do Cliente). */
+.admin-numeros{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));}
+/* o número do painel é um link para a página dele */
+a.admin-numero{display:block;color:inherit;text-decoration:none;}
+a.admin-numero:hover{border-color:var(--tom,var(--border));}
+a.admin-numero:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+/* os cartões lado a lado (um embaixo do outro no celular e no tablet) */
+.admin-colunas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start;margin-bottom:16px;}
+.admin-colunas > .card{margin:0;}
+.admin-banco > .card,.admin-cota > .card,.admin-banco > .alert{margin-bottom:16px;}
+.admin-visao .card-head .btn,.admin-banco .card-head .btn{white-space:nowrap;}
+
+/* o histórico: 30 colunas cabem, com o número menor; no celular, só a barra (o dia escolhido mostra os números) */
+.admin-historico-ctl{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;}
+.admin-historico .cert-barras{gap:4px;}
+.admin-historico .cert-barra{min-width:0;}
+.admin-historico .cert-barra-num{font-size:var(--fs-10);}
+.admin-historico .alert{margin-top:8px;}
+.admin-sites{margin-top:12px;}
+
+/* os chips da situação dos feedbacks */
+.admin-feedbacks-filtro{margin-bottom:12px;}
+.admin-feedbacks-filtro .chip-f{display:inline-flex;align-items:center;gap:6px;}
+
+@media (max-width:900px){.admin-colunas{grid-template-columns:minmax(0,1fr);}}
+@media (max-width:640px){
+  .admin-historico .card-head{flex-wrap:wrap;}
+  .admin-historico-ctl{justify-content:flex-start;}
+  .admin-historico .cert-barras{gap:1px;padding:8px 0 12px;}
+  .admin-historico .cert-barra-num{display:none;}
+  .admin-historico .cert-barra-trilho{width:80%;}
+  .admin-historico .cert-barra-mes{font-size:var(--fs-10);}
+  .admin-historico .cert-barra:nth-child(odd):not(:last-child) .cert-barra-mes,
+  .admin-historico .cert-barra:nth-child(odd):not(:last-child) .cert-barra-ano{visibility:hidden;}
+}
+.admin-visao > .hint,.admin-banco > .hint,.admin-cota > .hint{margin:0 0 10px;}

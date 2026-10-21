@@ -22,6 +22,8 @@ export function criarSaudeFirestore(): RepoSaude {
   };
 
   async function atualizar() {
+    // aba escondida não lê (o site do admin fica aberto o dia todo; 21/10/2026): volta a ler quando a aba aparece
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden' && docs) return;
     const [estado, arquivador, uso, raiz, erros] = await Promise.all([
       ler(['robo', 'estado']), ler(['robo', 'arquivador']), ler(['robo', 'uso']), ler(['driveIndice', 'raiz']),
       getDocs(query(collection(db, 'solicitacoesEmail'), where('status', '==', 'erro'), limit(30)))

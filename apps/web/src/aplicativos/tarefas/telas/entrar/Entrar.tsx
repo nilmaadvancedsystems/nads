@@ -4,7 +4,8 @@ import { VERSAO_SISTEMA } from '../../../../versao';
 import type { Sessao } from '../../dados/sessao';
 import { useEntrar } from './useEntrar';
 
-export function Entrar({ sessao }: { sessao: Sessao }) {
+/** titulo: o site do admin usa a mesma entrada, com "Entrar no Admin" (21/10/2026). */
+export function Entrar({ sessao, titulo = 'Entrar na Tarefas' }: { sessao: Sessao; titulo?: string }) {
   const vm = useEntrar(sessao);
   // abrindo: só a abertura do N, grande e no meio da tela
   if (vm.carregando) return <AberturaN />;
@@ -22,7 +23,7 @@ export function Entrar({ sessao }: { sessao: Sessao }) {
           </>
         ) : (
           <>
-            <h1 className="auth-title">Entrar na Tarefas</h1>
+            <h1 className="auth-title">{titulo}</h1>
             <form className="auth-box" onSubmit={e => { e.preventDefault(); void vm.entrar(); }}>
               <div className="field">
                 <label htmlFor="fLogin">Nome</label>
