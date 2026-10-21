@@ -4752,7 +4752,7 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
    botão, a cápsula .badge, o fechar e o ícone) */
 .suporte-botao{position:fixed;right:16px;bottom:16px;z-index:64;width:48px;height:48px;padding:0;border-radius:50%;justify-content:center;box-shadow:var(--shadow-floating);}
 .suporte-botao svg{width:22px;height:22px;}
-.suporte-balao{position:fixed;right:16px;bottom:76px;z-index:64;width:min(380px,calc(100vw - 32px));height:min(540px,calc(100vh - 120px));display:flex;flex-direction:column;padding:0;margin:0;overflow:hidden;box-shadow:var(--shadow-floating);}
+.suporte-balao{position:fixed;right:16px;bottom:74px;z-index:64;width:min(380px,calc(100vw - 32px));height:min(540px,calc(100vh - 120px));display:flex;flex-direction:column;padding:0;margin:0;overflow:hidden;box-shadow:var(--shadow-floating);}
 .suporte-topo{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border-muted);}
 .suporte-avatar{flex:none;width:32px;height:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--accent);}
 .suporte-avatar svg{width:18px;height:18px;}

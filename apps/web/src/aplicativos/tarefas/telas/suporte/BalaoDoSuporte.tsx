@@ -26,15 +26,20 @@ export function BalaoDoSuporte() {
   const tamanho = vm.conversa.length + (vm.resolvido ? 1 : 0) + (vm.enviado ? 1 : 0);
   useEffect(() => { const c = corpo.current; if (c) c.scrollTop = c.scrollHeight; }, [tamanho, vm.aberto]);
 
-  if (!vm.aberto) {
-    return (
-      <button type="button" className="btn btn-primary suporte-botao" title="Suporte: arquivo lido errado ou que travou" aria-label="Abrir o suporte" onClick={vm.abrir}>
-        <Icone nome="mensagem" />
-      </button>
-    );
-  }
+  // o botão fica sempre no canto (Vitor, 21/10/2026: "deixe o botão de suporte como aberto"): aberto, vira o × e o chat
+  // fica apoiado logo acima dele
+  const botao = (
+    <button type="button" className="btn btn-primary suporte-botao" aria-expanded={vm.aberto}
+      title={vm.aberto ? 'Fechar o suporte' : 'Suporte: arquivo lido errado ou que travou'} aria-label={vm.aberto ? 'Fechar o suporte' : 'Abrir o suporte'}
+      onClick={vm.aberto ? vm.fechar : vm.abrir}>
+      <Icone nome={vm.aberto ? 'x' : 'mensagem'} />
+    </button>
+  );
+  if (!vm.aberto) return botao;
   const p = vm.passo;
   return (
+    <>
+    {botao}
     <section className="card suporte-balao" role="dialog" aria-label="Suporte">
       <header className="suporte-topo">
         <span className="suporte-avatar"><Icone nome="ajuda" /></span>
@@ -94,5 +99,6 @@ export function BalaoDoSuporte() {
       )}
 
     </section>
+    </>
   );
 }
