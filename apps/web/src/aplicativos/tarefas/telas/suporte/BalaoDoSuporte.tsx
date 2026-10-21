@@ -93,10 +93,6 @@ export function BalaoDoSuporte() {
         </div>
       )}
 
-      <footer className="suporte-pe">
-        <span className="hint">A conversa some em 1 dia</span>
-        {(vm.conversa.length > 0 || vm.resolvido || vm.enviado) && <button type="button" className="btn btn-ghost" onClick={vm.recomecar}>Nova conversa</button>}
-      </footer>
     </section>
   );
 }

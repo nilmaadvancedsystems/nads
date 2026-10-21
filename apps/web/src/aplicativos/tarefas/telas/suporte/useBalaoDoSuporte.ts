@@ -89,7 +89,8 @@ export function useBalaoDoSuporte() {
   }
 
   return {
-    aberto, abrir: () => setAberto(true), fechar: () => setAberto(false),
+    // sem o "Nova conversa" (Vitor, 21/10/2026): a conversa que terminou (resolveu ou foi enviada) recomeça ao abrir de novo
+    aberto, abrir: () => { if (resolvido || enviado) recomecar(); setAberto(true); }, fechar: () => setAberto(false),
     /** o título: a empresa e a tela de onde a pessoa está */
     titulo: [ctx.empresa, ctx.rotuloDaTela].filter(Boolean).join(' · '),
     conversa, passo, resolvido, enviado, enviando, erro,

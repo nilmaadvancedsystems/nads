@@ -4771,4 +4771,3 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .suporte-envio-linha{display:flex;gap:8px;justify-content:space-between;}
 .suporte-envio-linha .btn{min-width:0;}
 .suporte-arquivo{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;}
-.suporte-pe{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px 6px 12px;border-top:1px solid var(--border-muted);}
