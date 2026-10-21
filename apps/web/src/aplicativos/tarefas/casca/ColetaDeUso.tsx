@@ -9,7 +9,7 @@
 // e nas Senhas só o rótulo acessível (nunca o texto do botão).
 import { uso } from '@nads/core';
 import { useEffect, useRef } from 'react';
-import { CONTROLE, DA_CASCA, rotuloDoControle } from './rotuloDoControle';
+import { CONTROLE, rotuloDoControle } from './rotuloDoControle';
 import { useColetaDeUso } from './useColetaDeUso';
 
 export function ColetaDeUso() {
@@ -26,7 +26,7 @@ export function ColetaDeUso() {
       const vistos = new Set<string>();
       for (const el of document.querySelectorAll(CONTROLE)) {
         if (vistos.size >= uso.MAX_CONTROLES_POR_TELA) break;
-        if (el.matches(DA_CASCA) || !el.getClientRects().length) continue;
+        if (!el.getClientRects().length) continue;
         const r = rotuloDoControle(el, tela, agora.current.nomes);
         if (r && r !== 'item da lista') vistos.add(r);
       }

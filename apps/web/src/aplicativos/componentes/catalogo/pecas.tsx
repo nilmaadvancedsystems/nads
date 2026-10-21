@@ -764,17 +764,17 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <div style={{ width: '100%', maxWidth: 520 }}><MapaDeCalor rotulo="Exemplo" maior={9} grade={{ '20_10': 9, '21_10': 6, '22_11': 3, '30_24': 5, '31_25': 2, '40_40': 1, '18_30': 4 }} /></div> },
 
   // os botões coloridos do Uso do sistema (21/10/2026: "a tela com botões coloridos"): a cor do calor, do frio ao quente
-  { id: 'pilula-calor', tipo: 'graficos', nome: 'Pílula de calor (o botão pelos cliques)', descricao: 'O nome do botão com o número de cliques, na cor do calor: calor-1 (azul, frio) a calor-5 (vermelho, o mais clicado da tela); calor-0 tracejado = apareceu e ninguém clicou. O nível vem de uso.nivelDoCalor', classes: ['uso-pilula', 'calor-0', 'calor-1', 'calor-5', 'uso-calor-ponto'], telas: ['t-cadastro-uso'],
+  { id: 'pilula-calor', tipo: 'graficos', nome: 'Pílula de calor (o botão pelos cliques)', descricao: 'O nome do botão com o número de cliques, em três tons: azul = pouco (calor-1 e 2), amarelo = médio (calor-3), vermelho = muito usado (calor-4 e 5); calor-0 tracejado = ninguém clicou. A legenda em palavras é a uso-cor. O nível vem de uso.nivelDoCalor', classes: ['uso-pilula', 'calor-0', 'calor-1', 'calor-5', 'uso-cor'], telas: ['t-cadastro-uso'],
     uso: '<span className={"uso-pilula calor-" + uso.nivelDoCalor(cliques, maior)}>Exportar Excel<b className="num">89</b></span>',
     demo: () => <div className="uso-botoes">{([['Exportar Excel', 89, 5], ['Filtros', 41, 4], ['Abrir', 23, 3], ['Salvar', 9, 2], ['Imprimir', 2, 1], ['Fechar', 0, 0]] as const).map(([r, n, c]) => <span key={r} className={'uso-pilula calor-' + c}>{r}<b className="num">{n}</b></span>)}</div> },
   // o mapa na tela (21/10/2026): por cima da tela de verdade, a moldura de cada controle na cor do calor e a barra de baixo
-  { id: 'mapa-na-tela', tipo: 'graficos', nome: 'Mapa na tela (os botões pintados)', descricao: 'Ligado pelo "Ver na tela" do Uso do sistema: cada controle da tela aberta ganha a moldura na cor do calor com o número de cliques (a camada não pega clique); a barra de baixo diz a tela, troca o período e sai. Montado uma vez na casca (casca/MapaNaTela.tsx)', classes: ['mapa-tela-caixa', 'mapa-tela-n', 'mapa-tela-barra'], telas: ['t-cadastro-uso'],
+  { id: 'mapa-na-tela', tipo: 'graficos', nome: 'Mapa na tela (os botões pintados)', descricao: 'Ligado pelo "Ver na tela" do Uso do sistema: cada controle da tela aberta ganha a moldura na cor do calor com o número de cliques (a camada não pega clique); a barra de baixo diz a tela, o que cada cor quer dizer e tem o Sair. Montado uma vez na casca (casca/MapaNaTela.tsx)', classes: ['mapa-tela-caixa', 'mapa-tela-barra'], telas: ['t-cadastro-uso'],
     uso: '<MapaNaTela /> (na casca; liga com ligarMapaNaTela(periodo))',
     demo: () => (
       <div style={{ position: 'relative', display: 'flex', gap: 16, padding: 12, transform: 'translateZ(0)' }}>
         {([['Exportar Excel', 89, 5], ['Filtros', 23, 3], ['Fechar', 0, 0]] as const).map(([r, n, c]) => (
           <span key={r} style={{ position: 'relative' }}><button type="button" className="btn btn-outline">{r}</button>
-            <span className={'mapa-tela-caixa calor-' + c} style={{ position: 'absolute', inset: -3 }}><span className="mapa-tela-n num">{n}</span></span></span>
+            <span className={'mapa-tela-caixa calor-' + c} style={{ position: 'absolute', inset: -3 }} title={n + ' cliques'} /></span>
         ))}
       </div>) },
 
