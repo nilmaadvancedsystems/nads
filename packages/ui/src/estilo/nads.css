@@ -4760,7 +4760,18 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .suporte-msg.suporte-eu{align-self:flex-end;border-radius:14px 14px 4px 14px;background:var(--accent);border-color:var(--accent);color:var(--on-accent);}
 .suporte-passos{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;}
 .suporte-capsulas{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;}
-.suporte-capsulas .badge{cursor:pointer;border:0;padding:5px 10px;font-size:var(--fs-12);}
+.suporte-capsulas .badge{cursor:pointer;border:0;padding:5px 10px;font-size:var(--fs-12);display:inline-flex;align-items:center;gap:4px;}
+.suporte-capsulas .badge svg{width:12px;height:12px;}
+.suporte-continuar{height:26px;padding:0 12px;font-size:var(--fs-12);}
+.suporte-msg-titulo{display:block;font-weight:600;margin-bottom:4px;}
+.suporte-msg-dica{display:block;margin-top:2px;font-size:var(--fs-12);color:var(--ink-muted);}
+/* o "digitando" (21/10/2026, pedido do Vitor): os três pontinhos que sobem e descem, como o carregando */
+.suporte-digitando{display:inline-flex;gap:4px;align-items:center;padding:10px 14px;}
+.suporte-digitando span{width:6px;height:6px;border-radius:50%;background:var(--ink-muted);animation:suporte-pontinho 1s infinite ease-in-out;}
+.suporte-digitando span:nth-child(2){animation-delay:.15s;}
+.suporte-digitando span:nth-child(3){animation-delay:.3s;}
+@keyframes suporte-pontinho{0%,60%,100%{transform:translateY(0);opacity:.45;}30%{transform:translateY(-3px);opacity:1;}}
+@media (prefers-reduced-motion:reduce){.suporte-digitando span{animation:none;}}
 .suporte-envio{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-top:1px solid var(--border-muted);}
 .suporte-frase{width:100%;margin:0;}
 .suporte-frase textarea{min-height:0;}

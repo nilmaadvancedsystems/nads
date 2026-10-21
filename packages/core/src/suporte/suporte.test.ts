@@ -15,7 +15,10 @@ describe('suporte de leitura: a conversa por cápsulas', () => {
   it('nos bancos, pergunta o banco e o mês (com Outro) e termina nas instruções, dizendo onde a pessoa está', () => {
     const banco = passoDoSuporte(ctx, ['faltou']);
     expect(banco).toMatchObject({ tipo: 'pergunta', texto: 'Qual banco?' });
-    if (banco.tipo === 'pergunta') expect(banco.opcoes.at(-1)).toEqual({ id: 'b:outro', rotulo: 'Outro' });
+    if (banco.tipo === 'pergunta') {
+      expect(banco.multipla).toBe(true);
+      expect(banco.opcoes.slice(-2)).toEqual([{ id: 'b:*', rotulo: 'Todos' }, { id: 'b:outro', rotulo: 'Outro' }]);
+    }
     expect(passoDoSuporte(ctx, ['faltou', 'b:Bradesco'])).toMatchObject({ tipo: 'pergunta', texto: 'Qual mês?' });
     const fim = passoDoSuporte(ctx, ['faltou', 'b:Bradesco', 'm:2026-08']);
     expect(fim.tipo).toBe('instrucoes');
@@ -28,7 +31,7 @@ describe('suporte de leitura: a conversa por cápsulas', () => {
     const base = ['faltou', 'b:Bradesco', 'm:2026-08', NAO_RESOLVEU];
     const botao = passoDoSuporte(ctx, base);
     expect(botao).toMatchObject({ tipo: 'pergunta', texto: 'Qual dos botões de importação está com problema?' });
-    if (botao.tipo === 'pergunta') expect(botao.opcoes.map(o => o.rotulo)).toEqual(['Importar extrato', 'Importar razão', 'Outro']);
+    if (botao.tipo === 'pergunta') expect(botao.opcoes.map(o => o.rotulo)).toEqual(['Importar extrato', 'Importar razão', 'Todos', 'Outro']);
     expect(passoDoSuporte(ctx, [...base, 'i:Importar extrato'])).toMatchObject({ texto: 'O que aconteceu ao importar?' });
     expect(passoDoSuporte(ctx, [...base, 'i:Importar extrato', 'e:faltaram'])).toMatchObject({ texto: 'Que arquivo você subiu?' });
     expect(passoDoSuporte(ctx, [...base, 'i:Importar extrato', 'e:faltaram', 'a:pdf']).tipo).toBe('encaminhar');
@@ -40,6 +43,14 @@ describe('suporte de leitura: a conversa por cápsulas', () => {
     // depois do botão: o banco e o mês, que ainda não foram respondidos
     expect(passoDoSuporte(ctx, [OUTRO, 'i:outro'])).toMatchObject({ texto: 'Qual banco?' });
     expect(passoDoSuporte(ctx, [OUTRO, 'i:outro', 'b:outro'])).toMatchObject({ texto: 'Qual mês?' });
+  });
+  it('várias respostas e o Todos: as instruções e a mensagem com todas', () => {
+    const p = passoDoSuporte(ctx, ['faltou', 'b:*', 'm:2026-07|2026-08']);
+    expect(p.tipo).toBe('instrucoes');
+    if (p.tipo === 'instrucoes') expect(p.passos[0]).toBe('Clique no ✓ de 07/2026 e 08/2026 do Bradesco e Sicoob para tirar o importado.');
+    const escolhas = ['faltou', 'b:*', 'm:2026-07|2026-08', NAO_RESOLVEU, 'i:Importar extrato|Importar razão', 'e:faltaram|datas', 'a:pdf'];
+    expect(caminhoDaConversa(ctx, escolhas)).toBe('Faltou lançamento › Todos › 07/2026, 08/2026 › Não resolveu › Importar extrato, Importar razão › Faltaram lançamentos, Datas ou mês errados › PDF do banco');
+    expect(mensagemDoBug(ctx, escolhas, '', '')).toContain('Mês: 07/2026, 08/2026');
   });
   it('um banco só e um mês só: não pergunta', () => {
     const um = { ...ctx, bancos: ['Bradesco'], meses: ['2026-08'] };

@@ -8,6 +8,7 @@ import { useLocation } from 'react-router';
 import { VERSAO_SISTEMA } from '../../../../versao';
 import { useFeedback } from '../../dados/repo';
 import { useOndeEsta } from './contextoDoSuporte';
+import { useOperador } from '../../casca/operador';
 import { botoesDaPagina } from './botoesDaPagina';
 
 /** Uma fala da conversa: a pergunta ou as instruções do suporte, e a cápsula que a pessoa escolheu. */
@@ -31,6 +32,10 @@ export function useBalaoDoSuporte() {
   const repo = useFeedback();
   const { pathname } = useLocation();
   const onde = useOndeEsta();
+  // o nome de quem está usando, para o suporte falar com a pessoa (Vitor, 21/10/2026: "coloca o nome do usuário")
+  const nomeDaPessoa = (useOperador().operador?.nome || '').trim().split(/\s+/)[0] || '';
+  // as cápsulas marcadas na pergunta de várias respostas (21/10/2026: "algumas respostas precisam ser múltiplas ou todas")
+  const [marcadas, setMarcadas] = useState<string[]>([]);
   const [aberto, setAberto] = useState(false);
   const [guardado] = useState(lerChat);
   const [comecou, setComecou] = useState(() => guardado?.comecou ?? 0);
@@ -67,7 +72,15 @@ export function useBalaoDoSuporte() {
 
   function recomecar() {
     setComecou(0);
+    setMarcadas([]);
     setEscolhas([]); setResolvido(false); setArquivo(null); setFrase(''); setEnviado(false); setErro('');
+  }
+
+  function escolher(id: string) {
+    if (!comecou) setComecou(Date.now());
+    lerBotoes();
+    setMarcadas([]);
+    setEscolhas(e => [...e, id]);
   }
 
   async function enviar() {
@@ -98,7 +111,12 @@ export function useBalaoDoSuporte() {
     /** o título: a empresa e a tela de onde a pessoa está */
     titulo: [ctx.empresa, ctx.rotuloDaTela].filter(Boolean).join(' · '),
     conversa, passo, resolvido, enviado, enviando, erro,
-    escolher: (id: string) => { if (!comecou) setComecou(Date.now()); lerBotoes(); setEscolhas(e => [...e, id]); },
+    escolher,
+    nomeDaPessoa,
+    /** a pergunta de várias: marca ou desmarca a cápsula */
+    marcadas, marcar: (id: string) => setMarcadas(m => (m.includes(id) ? m.filter(x => x !== id) : [...m, id])),
+    /** confirma as marcadas: o prefixo e os valores juntos ('m:2026-01|2026-02') */
+    confirmar: () => { if (marcadas.length) escolher(marcadas[0].slice(0, 2) + marcadas.map(id => id.slice(2)).join(s.SEPARADOR)); },
     resolveu: () => setResolvido(true),
     naoResolveu: () => { lerBotoes(); setEscolhas(e => [...e, s.NAO_RESOLVEU]); },
     arquivo, setArquivo, frase, setFrase,
