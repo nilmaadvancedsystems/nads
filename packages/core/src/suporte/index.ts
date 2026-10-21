@@ -26,8 +26,11 @@ export interface ContextoDoSuporte {
 export interface OpcaoDoSuporte { id: string; rotulo: string }
 
 export type PassoDoSuporte =
-  /** aviso: uma fala antes da pergunta ("Você está na página…") */
-  | { tipo: 'pergunta'; texto: string; opcoes: OpcaoDoSuporte[]; aviso?: string }
+  /**
+   * aviso: uma fala antes da pergunta ("Você está na página…"). multipla: dá para marcar mais de uma e confirmar (a
+   * resposta é o prefixo + os valores separados por '|'); a opção "Todos" (prefixo + '*') e o "Outro" respondem na hora.
+   */
+  | { tipo: 'pergunta'; texto: string; opcoes: OpcaoDoSuporte[]; aviso?: string; multipla?: boolean }
   /** as instruções, com onde a pessoa está antes; depois, a tela pergunta "Resolveu" / "Não resolveu" */
   | { tipo: 'instrucoes'; passos: string[]; aviso?: string }
   /** mandar ao suporte: o arquivo e uma frase */
@@ -78,8 +81,19 @@ const EFEITOS: OpcaoDoSuporte[] = [
 const ARQUIVOS: OpcaoDoSuporte[] = [
   { id: 'a:pdf', rotulo: 'PDF do banco' }, { id: 'a:foto', rotulo: 'Foto ou escaneado' }, { id: 'a:ofx', rotulo: 'OFX' }, { id: 'a:planilha', rotulo: 'Planilha (XLS)' },
 ];
-/** Toda pergunta termina no Outro (Vitor, 21/10/2026: "colocando a última opção como outro"). */
-const comOutro = (prefixo: string, opcoes: OpcaoDoSuporte[]): OpcaoDoSuporte[] => [...opcoes, { id: prefixo + OUTRO, rotulo: 'Outro' }];
+/** "Todos" numa pergunta de várias respostas (o prefixo + '*'). */
+export const TODOS = '*';
+/** Entre as respostas de uma pergunta de várias ('m:2026-01|2026-02'). */
+export const SEPARADOR = '|';
+/**
+ * As opções de uma pergunta de várias respostas (Vitor, 21/10/2026: "tem algumas respostas que precisam ser múltiplas ou
+ * todas"): as opções, o "Todos" (com mais de uma) e o "Outro" por último (21/10/2026: "colocando a última opção como outro").
+ */
+const comOutro = (prefixo: string, opcoes: OpcaoDoSuporte[]): OpcaoDoSuporte[] => [
+  ...opcoes, ...(opcoes.length > 1 ? [{ id: prefixo + TODOS, rotulo: 'Todos' }] : []), { id: prefixo + OUTRO, rotulo: 'Outro' },
+];
+/** "a", "a e b", "a, b e c" */
+const juntar = (l: readonly string[]) => (l.length <= 1 ? l.join('') : l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1]);
 
 /** O período por extenso ("01/2026 a 08/2026"). */
 const periodoDe = (meses: readonly string[]) => (meses.length ? rotuloDoMes(meses[0]) + (meses.length > 1 ? ' a ' + rotuloDoMes(meses[meses.length - 1]) : '') : '');
@@ -101,39 +115,49 @@ export function passoDoSuporte(ctx: ContextoDoSuporte, escolhas: readonly string
   if (!problema) return { tipo: 'pergunta', texto: 'O que aconteceu?', opcoes: [...PROBLEMAS[ctx.tela], { id: OUTRO, rotulo: 'Outro' }] };
   const banco = escolhido(escolhas, 'b:', ctx.bancos);
   const mes = escolhido(escolhas, 'm:', ctx.meses);
-  const perguntaBanco = (aviso?: string): PassoDoSuporte => ({ tipo: 'pergunta', aviso, texto: 'Qual banco?', opcoes: comOutro('b:', ctx.bancos.map(b => ({ id: 'b:' + b, rotulo: b }))) });
-  const perguntaMes = (aviso?: string): PassoDoSuporte => ({ tipo: 'pergunta', aviso, texto: 'Qual mês?', opcoes: comOutro('m:', ctx.meses.map(m => ({ id: 'm:' + m, rotulo: rotuloDoMes(m) }))) });
+  const pergunta = (prefixo: string, texto: string, opcoes: OpcaoDoSuporte[], aviso?: string): PassoDoSuporte =>
+    ({ tipo: 'pergunta', aviso, texto, multipla: true, opcoes: comOutro(prefixo, opcoes) });
+  const perguntaBanco = (aviso?: string) => pergunta('b:', 'Qual banco?', ctx.bancos.map(b => ({ id: 'b:' + b, rotulo: b })), aviso);
+  const perguntaMes = (aviso?: string) => pergunta('m:', 'Qual mês?', ctx.meses.map(m => ({ id: 'm:' + m, rotulo: rotuloDoMes(m) })), aviso);
   if (problema !== OUTRO && !escolhas.includes(NAO_RESOLVEU)) {
     if (ctx.tela === 'bancos' && COM_BANCO_E_MES.has(problema)) {
       if (banco === undefined) return perguntaBanco();
       if (mes === undefined) return perguntaMes();
     }
-    return { tipo: 'instrucoes', aviso: ondeEsta(ctx), passos: instrucoes(ctx, problema, banco || 'o banco', mes || undefined) };
+    return { tipo: 'instrucoes', aviso: ondeEsta(ctx), passos: instrucoes(ctx, problema, banco || [], mes || []) };
   }
   // as perguntas do report; a primeira depois do Outro do problema diz onde a pessoa está
   const aviso = problema === OUTRO && escolhas.length === 1 ? ondeEsta(ctx) : undefined;
   const botoes = ctx.botoes || [];
   if (botoes.length && !escolhas.some(e => e.startsWith('i:'))) {
-    return { tipo: 'pergunta', aviso, texto: 'Qual dos botões de importação está com problema?', opcoes: comOutro('i:', botoes.map(b => ({ id: 'i:' + b, rotulo: b }))) };
+    return pergunta('i:', 'Qual dos botões de importação está com problema?', botoes.map(b => ({ id: 'i:' + b, rotulo: b })), aviso);
   }
   if (ctx.tela === 'bancos' && banco === undefined) return perguntaBanco(aviso);
   if (mes === undefined) return perguntaMes(aviso);
-  if (!escolhas.some(e => e.startsWith('e:'))) return { tipo: 'pergunta', aviso, texto: 'O que aconteceu ao importar?', opcoes: comOutro('e:', EFEITOS) };
-  if (!escolhas.some(e => e.startsWith('a:'))) return { tipo: 'pergunta', texto: 'Que arquivo você subiu?', opcoes: comOutro('a:', ARQUIVOS) };
+  if (!escolhas.some(e => e.startsWith('e:'))) return pergunta('e:', 'O que aconteceu ao importar?', EFEITOS, aviso);
+  if (!escolhas.some(e => e.startsWith('a:'))) return pergunta('a:', 'Que arquivo você subiu?', ARQUIVOS);
   return { tipo: 'encaminhar', texto: ENCAMINHAR };
 }
 
-/** A escolha de banco ou de mês; com uma opção só, ela; sem nenhuma, '' (não pergunta). undefined = falta perguntar. */
-function escolhido(escolhas: readonly string[], prefixo: string, opcoes: readonly string[]): string | undefined {
+/**
+ * Os bancos ou os meses escolhidos (vários, separados por '|'; o "Todos" = todas as opções; o "Outro" = nenhum); com uma
+ * opção só, ela (sem nenhuma, nada — não pergunta). undefined = falta perguntar.
+ */
+function escolhido(escolhas: readonly string[], prefixo: string, opcoes: readonly string[]): string[] | undefined {
   const e = escolhas.find(x => x.startsWith(prefixo));
-  if (e) return e === prefixo + OUTRO ? '' : e.slice(prefixo.length);
-  if (opcoes.length <= 1) return opcoes[0] ?? '';
+  if (e) {
+    const v = e.slice(prefixo.length);
+    return v === OUTRO ? [] : v === TODOS ? [...opcoes] : v.split(SEPARADOR).filter(Boolean);
+  }
+  if (opcoes.length <= 1) return [...opcoes];
   return undefined;
 }
 
 /** As instruções: diretas, só os passos (Vitor, 20/10/2026: "seja mais direto, só passa as instruções"). */
-function instrucoes(ctx: ContextoDoSuporte, problema: string, banco: string, mes: string | undefined): string[] {
-  const m = mes ? rotuloDoMes(mes) : 'o mês';
+function instrucoes(ctx: ContextoDoSuporte, problema: string, bancos: readonly string[], meses: readonly string[]): string[] {
+  const banco = bancos.length ? juntar(bancos) : 'o banco';
+  const m = meses.length ? juntar(meses.map(rotuloDoMes)) : 'o mês';
+  const mes = meses.length === 1 ? meses[0] : undefined;
   const periodo = ctx.meses.length ? rotuloDoMes(ctx.meses[0]) + ' a ' + rotuloDoMes(ctx.meses[ctx.meses.length - 1]) : 'o período da tarefa';
   switch (problema) {
     case 'leu-errado':
@@ -144,7 +168,7 @@ function instrucoes(ctx: ContextoDoSuporte, problema: string, banco: string, mes
     case 'mes':
       return [`Clique no ✓ de ${m} do ${banco} para tirar o importado.`, `Suba em ${m} o extrato que começa e termina nesse mês.`];
     case 'drive':
-      return [`Confira se o PDF está no Drive em CONTÁBIL › EXTRATOS › ${mes ? mes.slice(0, 4) : 'ano'} › ${mes ? mes.slice(5) : 'mês'} › BANCÁRIOS › ${banco.toUpperCase()}.`, `Clique no ícone do Drive de ${m} do ${banco}.`];
+      return [`Confira se o PDF está no Drive em CONTÁBIL › EXTRATOS › ${mes ? mes.slice(0, 4) : 'ano'} › ${mes ? mes.slice(5) : 'mês'} › BANCÁRIOS › ${bancos.length === 1 ? banco.toUpperCase() : 'BANCO'}.`, `Clique no ícone do Drive de ${m} do ${banco}.`];
     case 'travou':
     case 'din-travou':
       return ['Recarregue a página com Ctrl+F5.', 'Suba um arquivo por vez.', 'Espere a barra do topo terminar antes de clicar de novo (arquivo grande leva alguns segundos).'];
@@ -167,11 +191,13 @@ function instrucoes(ctx: ContextoDoSuporte, problema: string, banco: string, mes
 export function rotuloDaEscolha(ctx: ContextoDoSuporte, e: string): string {
   if (e === OUTRO || e.endsWith(':' + OUTRO)) return 'Outro';
   if (e === NAO_RESOLVEU) return 'Não resolveu';
-  if (e.startsWith('m:')) return rotuloDoMes(e.slice(2));
-  if (e.startsWith('b:') || e.startsWith('i:')) return e.slice(2);
-  if (e.startsWith('e:')) return EFEITOS.find(x => x.id === e)?.rotulo || e;
-  if (e.startsWith('a:')) return ARQUIVOS.find(x => x.id === e)?.rotulo || e;
-  return PROBLEMAS[ctx.tela].find(p => p.id === e)?.rotulo || e;
+  const prefixo = /^[bmiea]:/.exec(e)?.[0];
+  if (!prefixo) return PROBLEMAS[ctx.tela].find(p => p.id === e)?.rotulo || e;
+  const v = e.slice(2);
+  if (v === TODOS) return 'Todos';
+  const um = (x: string) => (prefixo === 'm:' ? rotuloDoMes(x) : prefixo === 'e:' ? EFEITOS.find(o => o.id === 'e:' + x)?.rotulo || x
+    : prefixo === 'a:' ? ARQUIVOS.find(o => o.id === 'a:' + x)?.rotulo || x : x);
+  return v.split(SEPARADOR).filter(Boolean).map(um).join(', ');
 }
 
 /** O caminho da conversa em texto ("Leu errado › Bradesco › 08/2026 › Não resolveu"), para o report. */
