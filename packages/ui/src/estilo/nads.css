@@ -4746,3 +4746,39 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .fin-contrato-obs:hover{background:var(--hover-bg);}
 .fin-contrato-obs:focus{background:var(--input-bg);border-color:var(--accent);}
 @media (max-width:640px){.fin-contrato{grid-template-columns:auto 1fr auto;}.fin-contrato-obs{grid-column:1 / -1;}}
+
+/* Cadastro › Painel do robô (21/10/2026): só o encaixe das peças do catálogo (card, ent-dados, ent-linhas, selo suave,
+   painel-numero, chip-row, tabela padrão) — os dois robôs lado a lado, o "Agora" quebrando a linha, a hora à direita */
+.robo-grade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start;margin-bottom:16px;}
+.robo-grade > .card{margin:0;}
+.robo-cartao-nome{display:inline-flex;align-items:center;gap:10px;}
+.robo-cartao-nome .cad-faixa-icone{width:28px;height:28px;}
+.robo-cartao-nome .cad-faixa-icone svg{width:16px;height:16px;}
+.robo-cartao-agora{margin-top:12px;padding-top:10px;border-top:1px solid var(--border-muted);}
+.robo-cartao-agora .ag-conversa-linha{white-space:normal;overflow:visible;}
+.robo-cartao-modulos{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.robo-cartao-modulos .badge{white-space:normal;line-height:1.35;padding-top:2px;padding-bottom:2px;}
+.robo-painel > .alert{margin-bottom:16px;}
+.robo-linhas > li{align-items:flex-start;}
+.robo-linhas > li > .robo-linha-texto{flex-direction:column;align-items:flex-start;gap:2px;}
+.robo-linha-texto b{overflow-wrap:anywhere;}
+.robo-linha-texto .fraco{overflow-wrap:anywhere;}
+.robo-linhas .badge{flex:none;margin-top:1px;}
+.robo-quando{flex:none;min-width:84px;text-align:right;white-space:nowrap;margin-top:2px;}
+.robo-filtro{margin:0 0 8px;}
+.robo-filtro-erros{margin-left:8px;}
+.robo-filas,.robo-execucoes{max-height:none;}
+.robo-fila-vazia td{color:var(--ink-muted);}
+.robo-fila-vazia td b{font-weight:500;}
+.robo-numeros{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));}
+.robo-execucoes{margin-top:4px;}
+.robo-mais{display:flex;justify-content:center;margin-top:8px;}
+.robo-execucoes td:first-child,.robo-execucoes th{white-space:nowrap;}
+@media (max-width:900px){.robo-grade{grid-template-columns:minmax(0,1fr);}}
+@media (max-width:640px){
+  .robo-linhas > li{flex-wrap:wrap;}
+  .robo-linhas > li > .robo-linha-texto{flex-basis:100%;}
+  .robo-quando{min-width:0;text-align:left;}
+  .robo-filtro-erros{margin-left:0;}
+  .robo-execucoes th:nth-child(5),.robo-execucoes td:nth-child(5){display:none;}
+}

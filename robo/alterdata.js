@@ -11,6 +11,8 @@ const path = require('path');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 const { ouvir } = require('./ouvinte');
+// o painel do robô (21/10/2026): o balancete que está saindo agora, os prontos e os erros
+const painel = require('./painel');
 
 const DRIVE = process.env.ARQUIVO_DRIVE || 'G:\\Meu Drive';
 const PASTA = path.join(DRIVE, 'Claudio Secretario', 'Balancetes');
@@ -30,7 +32,7 @@ function periodo(competencia) {
 }
 
 function iniciarAlterdata(db, log) {
-  if (!fs.existsSync(ROTEIRO)) { log('Alterdata: desligado (falta ' + ROTEIRO + ')'); return; }
+  if (!fs.existsSync(ROTEIRO)) { log('Alterdata: desligado (falta ' + ROTEIRO + ')'); painel.modulo('alterdata', 'Balancete do Alterdata', false, 'falta o roteiro ' + path.basename(ROTEIRO)); return; }
   const estado = db.collection('robo').doc('alterdata');
   const pedidos = db.collection('pedidosAlterdata');
   estado.set({ ligado: true, onde: 'pc', atualizadoEm: agora() }, { merge: true }).catch(() => {});
@@ -51,9 +53,11 @@ function iniciarAlterdata(db, log) {
     const doc = fila.shift();
     try { await atender(doc); } catch (err) {
       log('Alterdata: erro', err.message);
+      painel.erro('alterdata', 'O robô do Alterdata parou', err.message);
       await doc.ref.update({ status: 'erro', erro: 'o robô parou: ' + String(err.message).slice(0, 200), fimEm: agora() }).catch(() => {});
     }
     ocupado = false;
+    painel.fazendo('alterdata', null);
     proximo();
   }
   ouvir('pedidos do Alterdata', () => pedidos.where('status', '==', 'pendente'), snap => {
@@ -76,11 +80,14 @@ function iniciarAlterdata(db, log) {
     const passos = [];
     const passo = nome => { passos.push({ n: passos.length + 1, nome: String(nome).slice(0, 200), quando: agora() }); return ref.update({ passos }).catch(() => {}); };
     await ref.update({ status: 'trabalhando', inicioEm: agora(), passos: [] });
+    const comp = p.competencia.slice(5) + '/' + p.competencia.slice(0, 4);
+    painel.fazendo('alterdata', 'Balancete ' + codigo + ' ' + comp + ' no Alterdata');
     log('Alterdata: balancete', codigo, p.competencia);
     const r = await rodar([String(codigo), inicio, fim, destino], passo);
     if (!r.ok) {
       await ref.update({ status: 'erro', erro: r.erro || 'o roteiro não terminou', fimEm: agora() });
       log('Alterdata: erro', codigo, p.competencia, r.erro);
+      painel.erro('alterdata', 'O balancete ' + codigo + ' ' + comp + ' não saiu', r.erro || 'o roteiro não terminou');
       return;
     }
     const xlsx = fs.readFileSync(destino);
@@ -88,6 +95,7 @@ function iniciarAlterdata(db, log) {
     await ref.collection('arquivo').doc('xlsx').set({ base64: xlsx.toString('base64'), nome, tamanho: xlsx.length, sha256: crypto.createHash('sha256').update(xlsx).digest('hex'), quando: agora() });
     await ref.update({ status: 'pronto', arquivoNome: nome, arquivadoEm: path.relative(DRIVE, destino), fimEm: agora() });
     log('Alterdata: balancete pronto', codigo, p.competencia, xlsx.length, 'bytes');
+    painel.atividade('alterdata', 'Gerou o balancete ' + codigo + ' ' + comp + ' no Alterdata', path.relative(DRIVE, destino) + (p.criadoPor ? ' · pedido de ' + p.criadoPor : ''));
   }
 
   /** Roda o roteiro; PASSO: … vira passo; RESULTADO: {…} é o fim. */

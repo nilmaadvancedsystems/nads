@@ -16,6 +16,7 @@ import { useOperador, type Operador } from './operador';
 // página, com o Esqueleto no lugar enquanto chega (comum/pedaco.tsx). As da Entregas ainda vêm no pacote inicial.
 const PainelDoFiscal = pedaco(() => import('../telas/fiscal/painel/PainelDoFiscal'), 'PainelDoFiscal');
 const RobosEAgentes = pedaco(() => import('../telas/cadastro/configuracoes/ConfiguracoesDoNads'), 'RobosEAgentes');
+const PainelDoRobo = pedaco(() => import('../telas/cadastro/painel-robo/PainelDoRobo'), 'PainelDoRobo');
 const UsuariosDoNads = pedaco(() => import('../telas/cadastro/usuarios/UsuariosDoNads'), 'UsuariosDoNads');
 const VisaoContabil = pedaco(() => import('../telas/contabil/VisaoContabil'), 'VisaoContabil');
 const ConfiguracoesContabil = pedaco(() => import('../telas/contabil/configuracoes/ConfiguracoesContabil'), 'ConfiguracoesContabil');
@@ -51,7 +52,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'fiscal': return pagina === 'empresas' ? <MinhasEmpresas /> : pagina === 'painel' ? <PainelDoFiscal /> : pagina === 'reinf' ? <Reinf /> : pagina === 'sintegra' ? <PaginaSintegra /> : <VisaoContabil pagina={pagina} dep="fiscal" />;
     case 'dp': return ABAS_DO_PAINEL.includes(pagina as AbaDoPainel) ? <PainelDoDp aba={pagina as AbaDoPainel} /> : pagina === 'configuracoes' ? <ConfiguracoesDoDp /> : pagina === 'fgts' ? <FgtsDoDp /> : pagina === 'legislacao' ? <LegislacaoDoDp /> : <VisaoContabil pagina={pagina} dep="dp" />;
     case 'senhas': return pagina === 'acesso' ? <AcessoAoCofre /> : pagina === 'gov' ? <ContasGov /> : pagina === 'certificados' ? <Certificados /> : <SenhasDasEmpresas />;
-    case 'cadastro': return pagina === 'sistema' ? <RobosEAgentes /> : <UsuariosDoNads />;
+    case 'cadastro': return pagina === 'sistema' ? <RobosEAgentes /> : pagina === 'robo' ? <PainelDoRobo /> : <UsuariosDoNads />;
     // a Área do Cliente com o Mandei junto (19/10/2026): Chamados, Recebidos, Meus tickets e a Central de tickets
     case 'area-cliente': return pagina === 'recebidos' ? <RecebidosDoCliente /> : pagina === 'meus' || pagina === 'central' ? <Mandei pagina={pagina} /> : <ChamadosDoCliente />;
     case 'financeiro': return pagina === 'configuracoes' ? <ConfiguracoesDoFinanceiro /> : pagina === 'caixa' ? <Caixa /> : pagina === 'honorarios' ? <Honorarios /> : pagina === 'plano' ? <PlanoDeContas /> : <NotasFiscais />;
