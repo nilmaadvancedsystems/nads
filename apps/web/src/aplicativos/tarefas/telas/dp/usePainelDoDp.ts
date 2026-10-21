@@ -87,7 +87,9 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   const [responsavel, setResponsavel] = useState('');
   const [movimento, setMovimento] = useState('');
   const [enquadramento, setEnquadramento] = useState('');
-  const [status, setStatus] = useState<'' | 'concluidas' | 'pendentes'>('');
+  // o Status (21/10/2026: "preciso de um filtro melhor de status, onde coloque concluída, não iniciada, em andamento etc."):
+  // um só, com a situação da coluna. Pendentes é o de antes (tudo o que não está concluído); os outros, a Situação da linha
+  const [status, setStatus] = useState<'' | 'pendentes' | t.SituacaoGeral | 'nada'>('');
   const [agrupamento, setAgrupamento] = useState('');
   const [agrupar, setAgrupar] = useState<Agrupar>('nenhum');
   const [pendenteEm, setPendenteEm] = useState<'' | ParteDoDp>('');
@@ -127,6 +129,8 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
       ...c, chave: String(c.codigo), responsavelNome: nomeDe(c.responsavel), ex,
       obrigacoes, concluida, temAlguma,
       situacao: !temAlguma ? 'Nada no mês' : t.ROTULO_SITUACAO_GERAL[situacao], parada, andamento: situacao === 'em-andamento',
+      /** a situação para o filtro Status (Nada no mês = sem obrigação no mês) */
+      situacaoId: !temAlguma ? 'nada' as const : situacao,
     };
   });
 
@@ -136,7 +140,7 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   const filtradas = todas.filter(c => (!pendente || c.obrigacoes.some(o => pendente.obrigacoes.includes(o.id) && o.estado !== 'nao-tem' && o.estado !== 'feita'))
     && (!achadas || achadas.has(c.codigo)) && (!responsavel || c.responsavelNome === responsavel) && (!entrega || c.entrega === entrega)
     && (!movimento || c.movimento === movimento) && (!enquadramento || c.enquadramento === enquadramento)
-    && (!agrupamento || c.agrupamento === agrupamento) && (!status || (status === 'concluidas') === c.concluida))
+    && (!agrupamento || c.agrupamento === agrupamento) && (!status || (status === 'pendentes' ? !c.concluida : c.situacaoId === status)))
     .sort((a, b) => a.nomeNaTela.localeCompare(b.nomeNaTela, 'pt-BR'));
 
   // a tabela em grupos (por responsável ou agrupamento), cada um com quantos já fecharam
@@ -286,6 +290,15 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
     filtros: {
       busca, setBusca, responsavel, setResponsavel, movimento, setMovimento, enquadramento, setEnquadramento,
       status, setStatus, agrupamento, setAgrupamento, agrupar, setAgrupar,
+      /** o Status para o 13º (lá só há pendentes e concluídas) */
+      statusDoDecimo: (status === 'pendentes' ? 'pendentes' : status === 'concluida' ? 'concluidas' : '') as '' | 'pendentes' | 'concluidas',
+      /** as opções do Status, com quantos clientes em cada (Pendentes = tudo o que não está concluído) */
+      statusOpcoes: [
+        { valor: 'pendentes', rotulo: 'Pendentes (' + todas.filter(c => !c.concluida).length + ')' },
+        ...(['nao-iniciada', 'em-andamento', 'parada', 'concluida', 'nada'] as const).map(id => ({
+          valor: id, rotulo: (id === 'nada' ? 'Nada no mês' : t.ROTULO_SITUACAO_GERAL[id]) + ' (' + todas.filter(c => c.situacaoId === id).length + ')',
+        })),
+      ],
       responsaveis,
       movimentos: contar(todas.map(c => c.movimento)).map(x => x.rotulo),
       enquadramentos: contar(todas.map(c => c.enquadramento)).map(x => x.rotulo),

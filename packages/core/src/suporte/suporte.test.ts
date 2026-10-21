@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { caminhoDaConversa, mensagemDoBug, NAO_RESOLVEU, nomeDoBotao, ondeEsta, OUTRO, passoDoSuporte, telaPeloRotulo, vereditoDoReport, type ContextoDoSuporte } from './index';
+import { caminhoDaConversa, codigoDoPedido, mensagemDoBug, NAO_RESOLVEU, nomeDoBotao, ondeEsta, OUTRO, passoDoSuporte, telaPeloRotulo, vereditoDoReport, type ContextoDoSuporte } from './index';
 
 const ctx: ContextoDoSuporte = {
   tela: 'bancos', rotuloDaTela: 'Bancos', pagina: 'Importação › Bancos', empresa: 'EMPRESA EXEMPLO', codigo: 1,
@@ -36,13 +36,18 @@ describe('suporte de leitura: a conversa por cápsulas', () => {
     expect(passoDoSuporte(ctx, [...base, 'i:Importar extrato', 'e:faltaram'])).toMatchObject({ texto: 'Que arquivo você subiu?' });
     expect(passoDoSuporte(ctx, [...base, 'i:Importar extrato', 'e:faltaram', 'a:pdf']).tipo).toBe('encaminhar');
   });
-  it('o Outro do problema: diz onde a pessoa está e vai direto às perguntas do report', () => {
-    const p = passoDoSuporte(ctx, [OUTRO]);
-    expect(p).toMatchObject({ tipo: 'pergunta', texto: 'Qual dos botões de importação está com problema?' });
-    if (p.tipo === 'pergunta') expect(p.aviso).toBe(ondeEsta(ctx));
-    // depois do botão: o banco e o mês, que ainda não foram respondidos
-    expect(passoDoSuporte(ctx, [OUTRO, 'i:outro'])).toMatchObject({ texto: 'Qual banco?' });
-    expect(passoDoSuporte(ctx, [OUTRO, 'i:outro', 'b:outro'])).toMatchObject({ texto: 'Qual mês?' });
+  it('a lista de botões que chega depois não faz a pergunta voltar no meio do report', () => {
+    const semBotoes = { ...ctx, botoes: [] };
+    const escolhas = ['faltou', 'b:Bradesco', 'm:2026-08', NAO_RESOLVEU];
+    expect(passoDoSuporte(semBotoes, escolhas)).toMatchObject({ texto: 'O que aconteceu ao importar?' });
+    // os botões apareceram depois da resposta: segue para o arquivo, sem perguntar o botão
+    expect(passoDoSuporte(ctx, [...escolhas, 'e:valores'])).toMatchObject({ texto: 'Que arquivo você subiu?' });
+  });
+  it('o Outro de primeira: diz onde a pessoa está e vai direto ao texto livre e ao arquivo', () => {
+    expect(passoDoSuporte(ctx, [OUTRO])).toEqual({
+      tipo: 'encaminhar', aviso: ondeEsta(ctx), livre: true, texto: 'Escreva o que aconteceu e anexe o arquivo, se tiver. Vai para o suporte.',
+    });
+    expect(mensagemDoBug(ctx, [OUTRO], 'O saldo não bate', '')).toContain('Comentário: O saldo não bate');
   });
   it('várias respostas e o Todos: as instruções e a mensagem com todas', () => {
     const p = passoDoSuporte(ctx, ['faltou', 'b:*', 'm:2026-07|2026-08']);
@@ -69,8 +74,8 @@ describe('suporte de leitura: a conversa por cápsulas', () => {
   });
   it('o nome do botão sem o mês e o detalhe', () => {
     expect(nomeDoBotao('Importar extrato de 08/2026')).toBe('Importar extrato');
-    expect(nomeDoBotao('Importar o razão dos meses que faltam')).toBe('Importar o razão');
-    expect(nomeDoBotao('importar o balancete dinâmico (XLS do Alterdata)')).toBe('Importar o balancete dinâmico');
+    expect(nomeDoBotao('Importar o razão dos meses que faltam')).toBe('Importar razão');
+    expect(nomeDoBotao('importar o balancete dinâmico (XLS do Alterdata)')).toBe('Importar balancete dinâmico');
   });
   it('a tela pelo nome da aba', () => {
     expect(telaPeloRotulo('Bancos')).toBe('bancos');
@@ -78,6 +83,10 @@ describe('suporte de leitura: a conversa por cápsulas', () => {
     expect(telaPeloRotulo('Saídas')).toBe('notas');
     expect(telaPeloRotulo('Caixa')).toBe('razao');
     expect(telaPeloRotulo('Cheque especial')).toBe('outra');
+  });
+  it('o número do pedido, pelo id do documento', () => {
+    expect(codigoDoPedido('k3f9qZ7abcDEF')).toBe('#K3F9QZ');
+    expect(codigoDoPedido('')).toBe('');
   });
   it('o veredito pela última linha do report', () => {
     expect(vereditoDoReport('A causa é…\n\n**Realmente, isso é erro do sistema.**')).toBe('erro');

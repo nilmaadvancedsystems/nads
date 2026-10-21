@@ -23,6 +23,8 @@ export * from './regras/simples';
 export * from './regras/bens';
 export * from './regras/honorarios';
 export * from './regras/etiquetasDaFolha';
+export * from './regras/etiquetasDoEnvelope';
+export * from './regras/protocoloDeTributos';
 export * from './regras/prazosDoDp';
 export { idDaExecucao, type RepoTarefas } from './repo';
 export { criarRepoTarefasMemoria, execucoesDeExemplo, execucoesVariadas, type GuardaTarefas } from './repo.memoria';

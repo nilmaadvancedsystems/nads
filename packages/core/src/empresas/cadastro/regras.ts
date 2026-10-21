@@ -6,7 +6,7 @@ import { nomeNorm } from '../../formatos';
 import { cnpjFormatado, documentoValido } from './receita';
 import { BANCOS_CONHECIDOS, bancosDaEmpresa, idDaConta, rotuloDaConta, type BancoDaEmpresa } from '../bancos';
 import {
-  type BancoDoRelatorio, BANCOS_DO_RELATORIO, type CadastroDaEmpresa, type EmprestimoDaEmpresa, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, type ParametrosDoDpDoMes, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel,
+  type BancoDoRelatorio, BANCOS_DO_RELATORIO, type CadastroDaEmpresa, type EmprestimoDaEmpresa, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, type ParametrosDoDpDoMes, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel, type ArquivoDoFiscal, type DocumentosDoFiscal, type PlanilhaDoFiscal,
 } from './tipos';
 
 /** Quantos registros do histórico ficam guardados (os mais novos). */
@@ -124,6 +124,70 @@ function proLaboreDoDocumento(v: unknown): Pick<CadastroDaEmpresa, 'proLabore'> 
   return Object.keys(p).length ? { proLabore: p } : {};
 }
 
+// ─── os documentos do Fiscal (Heverton, 20/10/2026: "Cadastro = Fiscal (inserir)") ──────────────────────────────────
+
+export const PLANILHAS_DO_FISCAL: readonly { id: PlanilhaDoFiscal; rotulo: string }[] = [
+  { id: 'defis', rotulo: 'Planilha DEFIS' }, { id: 'fatorR', rotulo: 'Planilha Projeção Fator R' }, { id: 'rateio', rotulo: 'Planilha de Rateio' },
+];
+/** no máximo tantos documentos a mais por empresa (o documento do cadastro é lido inteiro pela lista) */
+export const MAX_DOCUMENTOS_DO_FISCAL = 30;
+
+function arquivoDoFiscalDoDocumento(v: unknown): ArquivoDoFiscal | null {
+  if (!v || typeof v !== 'object') return null;
+  const o = v as Record<string, unknown>;
+  const link = texto(o.link).trim();
+  return /^https:\/\//.test(link) ? { nome: texto(o.nome).trim().slice(0, 120), link: link.slice(0, 500), atualizadoEm: texto(o.atualizadoEm), por: texto(o.por) } : null;
+}
+
+function documentosFiscaisDoDocumento(v: unknown): { documentosFiscais?: DocumentosDoFiscal } {
+  if (!v || typeof v !== 'object') return {};
+  const o = v as Record<string, unknown>;
+  const planilhas: Partial<Record<PlanilhaDoFiscal, ArquivoDoFiscal>> = {};
+  const p = (o.planilhas && typeof o.planilhas === 'object' ? o.planilhas : {}) as Record<string, unknown>;
+  for (const { id } of PLANILHAS_DO_FISCAL) { const a = arquivoDoFiscalDoDocumento(p[id]); if (a) planilhas[id] = a; }
+  const outros = Array.isArray(o.outros) ? o.outros.map(arquivoDoFiscalDoDocumento).filter((a): a is ArquivoDoFiscal => !!a).slice(0, MAX_DOCUMENTOS_DO_FISCAL) : [];
+  return Object.keys(planilhas).length || outros.length ? { documentosFiscais: { ...(Object.keys(planilhas).length ? { planilhas } : {}), ...(outros.length ? { outros } : {}) } } : {};
+}
+
+/** o link do Drive (ou de outro lugar seguro) que vale: https://; senão, o erro */
+export function linkValido(link: string): string {
+  const l = String(link || '').trim();
+  if (!l) return 'Cole o link do arquivo.';
+  if (!/^https:\/\/\S+$/.test(l)) return 'O link precisa começar com https:// (abra o arquivo no Drive e copie o link).';
+  return '';
+}
+
+/** Põe, troca ou tira (link vazio) a planilha do Fiscal. Fica no histórico; link que não vale, o erro. */
+export function definirPlanilhaDoFiscal(c: CadastroDaEmpresa, id: PlanilhaDoFiscal, link: string, por: string, agora: Date): CadastroDaEmpresa | { erro: string } {
+  const rotulo = PLANILHAS_DO_FISCAL.find(x => x.id === id)?.rotulo || id;
+  const l = String(link || '').trim();
+  const atuais = { ...(c.documentosFiscais?.planilhas || {}) };
+  if ((atuais[id]?.link || '') === l) return c;
+  if (l) { const erro = linkValido(l); if (erro) return { erro }; atuais[id] = { nome: rotulo, link: l, atualizadoEm: agora.toISOString(), por: por || '—' }; } else delete atuais[id];
+  const docs: DocumentosDoFiscal = { ...(c.documentosFiscais || {}), planilhas: atuais };
+  return registrar({ ...c, documentosFiscais: docs }, por, agora, rotulo, l ? 'Link posto ou trocado' : 'Link tirado');
+}
+
+/** Acrescenta um documento da empresa (o nome e o link). Fica no histórico; sem nome ou link que não vale, o erro. */
+export function acrescentarDocumentoDoFiscal(c: CadastroDaEmpresa, nome: string, link: string, por: string, agora: Date): CadastroDaEmpresa | { erro: string } {
+  const n = String(nome || '').trim().replace(/\s+/g, ' ').slice(0, 120);
+  if (!n) return { erro: 'Dê um nome ao documento (ex.: Contrato social).' };
+  const erro = linkValido(link);
+  if (erro) return { erro };
+  const outros = [...(c.documentosFiscais?.outros || [])];
+  if (outros.length >= MAX_DOCUMENTOS_DO_FISCAL) return { erro: 'Já são ' + MAX_DOCUMENTOS_DO_FISCAL + ' documentos: tire um antes.' };
+  outros.push({ nome: n, link: String(link).trim(), atualizadoEm: agora.toISOString(), por: por || '—' });
+  return registrar({ ...c, documentosFiscais: { ...(c.documentosFiscais || {}), outros } }, por, agora, 'Documento da empresa', n);
+}
+
+/** Tira um documento da empresa (pela posição). Fica no histórico. */
+export function tirarDocumentoDoFiscal(c: CadastroDaEmpresa, indice: number, por: string, agora: Date): CadastroDaEmpresa {
+  const outros = [...(c.documentosFiscais?.outros || [])];
+  const [saiu] = outros.splice(indice, 1);
+  if (!saiu) return c;
+  return registrar({ ...c, documentosFiscais: { ...(c.documentosFiscais || {}), outros } }, por, agora, 'Documento da empresa', 'Tirado: ' + saiu.nome);
+}
+
 /** O documento `cadastro/{slug}` conferido (campo estranho ou vazio fica de fora). */
 export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Record<string, unknown> | null | undefined): CadastroDaEmpresa {
   if (!doc) return cadastroVazio(nome, codigo);
@@ -148,6 +212,7 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...(Array.isArray(doc.emprestimos) ? { emprestimos: (doc.emprestimos as Record<string, unknown>[]).map(e => ({ numero: texto(e?.numero), banco: texto(e?.banco), desde: texto(e?.desde), ...(texto(e?.ate) ? { ate: texto(e?.ate) } : {}) })).filter(e => e.numero && e.banco) } : {}),
     ...(Array.isArray(doc.socios) ? { socios: (doc.socios as Record<string, unknown>[]).map(s => ({ nome: texto(s?.nome), cpf: texto(s?.cpf) })).filter(s => s.nome || s.cpf) } : {}), atualizadoEm: opcional(doc.atualizadoEm),
     ...responsaveisDoDocumento(doc.responsaveis), ...dpDoDocumento(doc.dp), ...transferenciasDoDocumento(doc.transferencias),
+    ...documentosFiscaisDoDocumento(doc.documentosFiscais),
     ...(doc.nova && typeof doc.nova === 'object' && texto((doc.nova as Record<string, unknown>).regime)
       ? { nova: { regime: texto((doc.nova as Record<string, unknown>).regime), criadaEm: texto((doc.nova as Record<string, unknown>).criadaEm) } } : {}),
   };
@@ -176,6 +241,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(c.dp && Object.keys(c.dp).length ? { dp: c.dp } : {}),
     ...(c.transferencias && Object.keys(c.transferencias).length ? { transferencias: c.transferencias } : {}),
     ...(c.nova ? { nova: c.nova } : {}),
+    ...(c.documentosFiscais && (Object.keys(c.documentosFiscais.planilhas || {}).length || c.documentosFiscais.outros?.length) ? { documentosFiscais: c.documentosFiscais } : {}),
     historico: c.historico.slice(0, MAX_HISTORICO),
     atualizadoEm: c.atualizadoEm || new Date().toISOString(),
   };
@@ -557,6 +623,68 @@ export function excluirConta(c: CadastroDaEmpresa, id: string, partida: readonly
 export function confirmarPontoDePartida(c: CadastroDaEmpresa, partida: readonly ContaBancaria[], por: string, agora: Date): CadastroDaEmpresa {
   if (c.bancos) return c;
   return registrar({ ...c, bancos: [...partida] }, por, agora, 'Confirmou os bancos', partida.length ? partida.map(descreverConta).join('; ') : 'nenhum banco');
+}
+
+// ─── confirmar os bancos na Importação (Vitor, 21/10/2026) ──────────────────────
+// "Na importação, quando o banco não está cadastrado, faz um procedimento na própria tela: o usuário confirmar os bancos e
+// também colocar a conta contábil." A lista começa com o ponto de partida (o que o Extrator usava e o que o Entregas sabe).
+
+/** Uma linha do "Confirme os bancos": a conta do ponto de partida (id; os arquivos já importados ficam nela) ou uma nova (null). */
+export interface BancoParaConfirmar {
+  id: string | null;
+  marca: string;
+  agencia: string;
+  conta: string;
+  contaContabil: string;
+  /** a empresa tem este banco (entra no cadastro) */
+  marcado: boolean;
+}
+
+/**
+ * Grava os bancos marcados como o cadastro da empresa, cada um com a conta contábil (obrigatória; com o plano importado,
+ * tem de ser uma conta dele que recebe lançamento). A conta do ponto de partida guarda o id; a nova precisa de agência e conta.
+ */
+export function confirmarBancos(c: CadastroDaEmpresa, linhas: readonly BancoParaConfirmar[], partida: readonly ContaBancaria[], plano: PlanoDeContas | null, por: string, agora: Date): ResultadoCadastro {
+  if (c.bancos) return { cadastro: c, erro: 'Os bancos desta empresa já estão no Cadastro.' };
+  const marcadas = linhas.filter(l => l.marcado);
+  if (!marcadas.length) return { cadastro: c, erro: 'Marque os bancos que a empresa tem.' };
+  const bancos: ContaBancaria[] = [];
+  for (const l of marcadas) {
+    const marca = texto(l.marca), agencia = texto(l.agencia), conta = texto(l.conta), contaContabil = texto(l.contaContabil);
+    const antes = l.id ? partida.find(b => b.id === l.id) : undefined;
+    const nome = antes?.nome || nomeDoBanco(marca);
+    if (!marca) return { cadastro: c, erro: 'Escolha o banco.' };
+    if (!antes && (!agencia || !conta)) return { cadastro: c, erro: nome + ': preencha a agência e a conta.' };
+    if (!contaContabil) return { cadastro: c, erro: nome + ': informe a conta contábil.' };
+    const aviso = avisoDaConta(contaContabil, plano);
+    if (aviso) return { cadastro: c, erro: nome + ': ' + aviso };
+    const id = antes ? antes.id : idDaConta(marca, agencia, conta);
+    if (bancos.some(b => b.id === id)) return { cadastro: c, erro: nome + ': essa conta está duas vezes na lista.' };
+    const nova: ContaBancaria = { ...(antes || { id, marca, nome }), id, contaContabil };
+    if (agencia) nova.agencia = agencia; else delete nova.agencia;
+    if (conta) nova.conta = conta; else delete nova.conta;
+    bancos.push(nova);
+  }
+  if (bancos.length > MAX_BANCOS) return { cadastro: c, erro: 'Mais de ' + MAX_BANCOS + ' contas.' };
+  return { cadastro: registrar({ ...c, bancos }, por, agora, 'Confirmou os bancos', bancos.map(b => descreverConta(b) + ' · conta ' + b.contaContabil).join('; ')), erro: null };
+}
+
+// os nomes que o banco costuma ter no plano de contas (a Caixa é "Caixa Econômica": "Caixa" sozinho é o caixa da empresa)
+const NOMES_NO_PLANO: Record<string, string[]> = {
+  'banco-do-brasil': ['banco do brasil', 'bco do brasil', 'bb'], bnb: ['banco do nordeste', 'bnb'], caixa: ['caixa economica', 'cef'],
+  'mercado-pago': ['mercado pago'], c6: ['c6'], btg: ['btg'], itau: ['itau'],
+};
+
+/**
+ * A conta contábil do banco pelo nome no plano (ex.: "Banco Nubank" para o Nubank): só quando uma conta que recebe
+ * lançamento bate sozinha (a aplicação e a poupança ficam de fora). Sem plano, ou com mais de uma, nada (a pessoa escolhe).
+ */
+export function sugerirContaContabil(plano: PlanoDeContas | null, marca: string): string {
+  if (!plano || !marca || marca === 'outro') return '';
+  const nomes = NOMES_NO_PLANO[marca] || [nomeNorm(nomeDoBanco(marca))];
+  const bate = (n: string) => nomes.some(t => (' ' + n + ' ').includes(' ' + t + ' '));
+  const achadas = plano.contas.filter(k => !k.sintetica && bate(nomeNorm(k.nome)) && !/aplic|poupan|invest|cdb|rdb|fundo|consorc|emprest|financ|cartao|cheque/.test(nomeNorm(k.nome)));
+  return achadas.length === 1 ? achadas[0].codigo : '';
 }
 
 // ─── o que o Extrator lê ────────────────────────────────────────────────────

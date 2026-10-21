@@ -70,6 +70,26 @@ export function useImportacao() {
   // os bancos da empresa na competência (uma linha cada), do Cadastro da empresa quando ela tem (Tarefas ›
   // Cadastro); arquivo sem banco = do primeiro banco
   const cad = useCadastroDaEmpresa(s.nome, s.codigo);
+  const cadAtual = useRef(cad);
+  cadAtual.current = cad;
+  const perguntouServicos = useRef(false);
+  /**
+   * "Esta empresa presta serviços?" na Importação da Tarefa (Vitor, 21/10/2026: saiu da Conferência fiscal, "fica melhor no
+   * fluxo"): uma vez, quando o Cadastro da empresa ainda não diz; a resposta vai para o Cadastro (a aba Prestados e a
+   * Conferência seguem ela).
+   */
+  async function perguntarServicos() {
+    if (perguntouServicos.current || !cad.cadastro || cad.cadastro.prestaServico != null) return;
+    perguntouServicos.current = true;
+    const sim = await modal<boolean>({
+      obrigatoria: true, icone: 'briefcase', titulo: 'Esta empresa presta serviços?',
+      html: 'A empresa <b>' + escapar((s.codigo != null ? s.codigo + ' — ' : '') + s.nome) + '</b> presta serviços? A resposta fica no Cadastro da empresa e decide a aba Prestados.',
+      botoes: [{ rotulo: 'Não', valor: false, variante: 'btn-outline' }, { rotulo: 'Sim', valor: true, variante: 'btn-primary' }],
+    });
+    const atual = cadAtual.current;
+    if (!atual.cadastro || atual.cadastro.prestaServico != null) return;
+    atual.salvar(empresas.cadastro.definirPrestaServico(atual.cadastro, sim, 'Importação', new Date()));
+  }
   const { bancos, primeiro } = x.bancosDaEmpresaNa(s.empresa, cad.cadastro, s.codigo, competenciaDeTeste);
   // (19/10/2026: "o nads está lerdo em outras máquinas") os arquivos de cada banco, lado e mês num índice, montado de novo só
   // quando a empresa muda; o movimento de cada banco e as listas do Drive, também uma vez por versão da empresa
@@ -240,21 +260,35 @@ export function useImportacao() {
     setLendoLinha(null);
   }
 
-  /** O check verde da linha: exclui o que foi importado daquele banco e lado na competência (pergunta antes). */
+  /** Os outros meses que os arquivos têm (o extrato ou o razão que o cliente mandou quebrado, de vários meses). */
+  const outrosMeses = (arqs: x.ArquivoImportado[], meses: readonly string[]) =>
+    [...new Set(arqs.flatMap(a => a.lancamentos.map(l => l.data.slice(0, 7))))].filter(m => !meses.includes(m)).sort();
+  const rotuloMes = (m: string) => m.slice(5) + '/' + m.slice(0, 4);
+
+  /**
+   * O check verde da linha: exclui o que foi importado daquele banco e lado na competência (pergunta antes). Só o mês: o
+   * arquivo de vários meses fica nos outros (Vitor, 21/10/2026: "deixa eu conseguir excluir apenas o mês que selecionei,
+   * ao invés de excluir tudo"; no extrato e no razão).
+   */
   async function excluirDoBanco(banco: string, lado: x.Lado, competencia = competenciaDeTeste) {
     const arqs = arquivosDe(banco, lado, competencia);
     if (!arqs.length) return;
     const nomeBanco = bancos.find(b => b.id === banco)?.nome || 'banco';
+    const ficam = outrosMeses(arqs, [competencia]);
     const ok = await modal<boolean>({
       icone: 'alert', titulo: 'Excluir a importação?',
+      ...(ficam.length ? { html: 'Só <b>' + rotuloMes(competencia) + '</b> sai. ' + (arqs.length === 1 ? 'O arquivo' : 'Os arquivos') + ' também ' + (arqs.length === 1 ? 'tem' : 'têm') + ' ' + ficam.map(rotuloMes).join(', ') + ', que ' + (ficam.length === 1 ? 'fica' : 'ficam') + '.' } : {}),
       botoes: [{ rotulo: 'Excluir', valor: true, variante: 'btn-danger' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
     });
     if (!ok) return;
-    s.aplicar(e => arqs.reduce((acc, a) => x.excluirArquivo(acc, a.id, new Date()), e));
-    setMensagem({ tom: 'ok', titulo: 'Importação excluída', textos: [{ texto: nomeBanco + ' · ' + (lado === 'banco' ? 'extrato' : 'razão') }] });
+    s.aplicar(e => arqs.reduce((acc, a) => x.excluirMesesDoArquivo(acc, a.id, [competencia], new Date()), e));
+    setMensagem({ tom: 'ok', titulo: 'Importação excluída', textos: [{ texto: nomeBanco + ' · ' + (lado === 'banco' ? 'extrato' : 'razão') + ' · ' + rotuloMes(competencia) }] });
   }
 
-  /** Em Lote, "Remover todos": exclui o extrato (ou o razão) do banco em todos os meses do período, com uma pergunta só. */
+  /**
+   * Em Lote, "Remover todos": exclui o extrato (ou o razão) do banco em todos os meses do período, com uma pergunta só. Só
+   * os meses do período: o arquivo que passa dele fica com os meses de fora (21/10/2026).
+   */
   async function excluirDoPeriodo(banco: string, lado: x.Lado, meses: string[]) {
     const porId = new Map<string, x.ArquivoImportado>();
     for (const m of meses) for (const a of arquivosDe(banco, lado, m)) porId.set(a.id, a);
@@ -262,14 +296,16 @@ export function useImportacao() {
     if (!arqs.length) return;
     const nomeBanco = bancos.find(b => b.id === banco)?.nome || 'banco';
     const oQue = lado === 'banco' ? 'extrato' : 'razão';
+    const qtd = arqs.reduce((t, a) => t + a.lancamentos.filter(l => meses.includes(l.data.slice(0, 7))).length, 0);
+    const ficam = outrosMeses(arqs, meses);
     const ok = await modal<boolean>({
       icone: 'alert', titulo: 'Remover todos?',
       html: 'O ' + oQue + ' do <b>' + escapar(nomeBanco) + '</b> nos ' + meses.length + ' meses: ' + arqs.length + (arqs.length === 1 ? ' arquivo' : ' arquivos') +
-        ' (' + arqs.reduce((t, a) => t + a.lancamentos.length, 0) + ' lançamentos). Dá para importar de novo depois.',
+        ' (' + qtd + ' lançamentos). Dá para importar de novo depois.' + (ficam.length ? ' Fora do período, ' + ficam.map(rotuloMes).join(', ') + (ficam.length === 1 ? ' fica.' : ' ficam.') : ''),
       botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Remover todos', valor: true, variante: 'btn-danger' }],
     });
     if (!ok) return;
-    s.aplicar(e => arqs.reduce((acc, a) => x.excluirArquivo(acc, a.id, new Date()), e));
+    s.aplicar(e => arqs.reduce((acc, a) => x.excluirMesesDoArquivo(acc, a.id, meses, new Date()), e));
     setMensagem({ tom: 'ok', titulo: 'Importações removidas', textos: [{ texto: nomeBanco + ' · ' + oQue + ' · ' + meses.length + ' meses' }] });
   }
 
@@ -358,6 +394,8 @@ export function useImportacao() {
     primeiro,
     /** a empresa não tem conta bancária no Cadastro (só a linha genérica "Banco"): um administrador precisa cadastrar */
     semBancosCadastrados: !!cad.cadastro && bancos.every(b => b.id === 'banco'),
+    /** o Cadastro ainda não tem os bancos (vale a lista provisória, ou nenhuma): o Confirme os bancos aparece (21/10/2026) */
+    bancosNaoCadastrados: !!cad.cadastro && !cad.cadastro.bancos,
     bancos: bancos.map(b => {
       const lado = (l: x.Lado) => {
         const arqs = arquivosDe(b.id, l, competenciaDeTeste);
@@ -404,6 +442,9 @@ export function useImportacao() {
     arquivoSemMovimento: (banco: string, mes: string): { id: string; nome: string } | null => semMovDoDrive[banco + '|' + mes] || null,
     /** a regra do Cadastro da empresa: presta serviços? (null = não informado, ou o cadastro ainda não chegou) */
     prestaServico: cad.cadastro?.prestaServico ?? null,
+    perguntarServicos,
+    /** o Cadastro da empresa já chegou (antes dele, prestaServico é null sem querer dizer "não informado") */
+    cadastroCarregado: !!cad.cadastro,
     /** o código contábil da conta do banco no Cadastro (Contas bancárias); '' = não informado */
     contaContabilDe: (banco: string) => cad.cadastro?.bancos?.find(c => c.id === banco)?.contaContabil || '',
     /** os pedidos de documentos feitos ao cliente (o histórico do Pedir extratos) */

@@ -51,6 +51,8 @@ export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
         ...(b.arquivo ? { arquivo: { nome: b.arquivo.nome, tamanho: b.arquivo.bytes.length, partes: partes.length } } : {}),
       });
       for (let i = 0; i < partes.length; i++) await setDoc(doc(ref, 'partes', String(i)), { dados: Bytes.fromUint8Array(partes[i]) });
+      // o id volta para o balão mostrar o número do pedido (#)
+      return ref.id;
     },
     async arquivoDoBug(id) {
       const d = todos?.lista.find(x => x.id === id);

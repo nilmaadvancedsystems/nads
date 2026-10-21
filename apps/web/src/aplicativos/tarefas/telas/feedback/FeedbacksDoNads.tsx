@@ -61,6 +61,7 @@ export function ListaDosFeedbacks({ vm }: { vm: ReturnType<typeof useFeedbacks> 
                 {f.imagem && <span className="feedback-mini"><img src={f.imagem} alt="" /></span>}
                 <span className="feedback-conteudo">
                   <span className="feedback-quem">
+                    {f.pedido && <b>{f.pedido}</b>}
                     <b>{f.nome || f.email || '—'}</b>
                     <span className="fraco">{f.quando}</span>
                     <SeloDaPrioridade p={f.prioridade} />
@@ -97,7 +98,7 @@ function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar }: {
     <div className="modal-overlay pessoal-fundo" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
       <div ref={janela} className="pessoal-janela feedback-janela" role="dialog" aria-modal="true" aria-label={'Feedback de ' + (f.nome || f.email)}>
         <header className="pessoal-topo">
-          <h2>{f.nome || f.email || '—'}</h2>
+          <h2>{f.pedido ? f.pedido + ' · ' : ''}{f.nome || f.email || '—'}</h2>
           <span className="fraco">{f.quando}</span>
           <SeloDaPrioridade p={f.prioridade} />
           <SeloDoBug f={f} />

@@ -80,6 +80,16 @@ export interface RegistroCadastro {
 /** Um sócio da empresa: o nome e o CPF (só os dígitos). */
 export interface Socio { nome: string; cpf: string }
 
+/**
+ * Um arquivo do Fiscal da empresa no Drive (Heverton, 20/10/2026: "Cadastro = Fiscal (inserir)": a planilha da DEFIS, a
+ * da projeção do Fator R, a de rateio e os documentos da empresa): o nome, o link e quando foi posto ou trocado (e por
+ * quem). Só o link: o arquivo continua no Drive.
+ */
+export interface ArquivoDoFiscal { nome: string; link: string; atualizadoEm: string; por: string }
+/** As planilhas fixas do Fiscal (uma de cada) e os outros documentos */
+export type PlanilhaDoFiscal = 'defis' | 'fatorR' | 'rateio';
+export interface DocumentosDoFiscal { planilhas?: Partial<Record<PlanilhaDoFiscal, ArquivoDoFiscal>>; outros?: ArquivoDoFiscal[] }
+
 /** Um empréstimo no Cadastro: o contrato, o banco (id da conta bancária) e de quando até quando ele vale ('aaaa-mm'). */
 export interface EmprestimoDaEmpresa { numero: string; banco: string; desde: string; ate?: string }
 
@@ -157,6 +167,8 @@ export interface CadastroDaEmpresa {
   dp?: ParametrosDoDp;
   /** a empresa foi cadastrada pelo nads (Vitor, 07/10/2026: "um cadastro de empresas sem o botão de cadastrar empresa"): o regime */
   nova?: { regime: string; criadaEm: string };
+  /** as planilhas e os documentos do Fiscal no Drive (os links; Heverton, 20/10/2026) */
+  documentosFiscais?: DocumentosDoFiscal;
   historico: RegistroCadastro[];
   /** o resumo do plano de contas (o plano mora em outro documento): para a lista de empresas */
   plano?: { contas: number; importadoEm: string };

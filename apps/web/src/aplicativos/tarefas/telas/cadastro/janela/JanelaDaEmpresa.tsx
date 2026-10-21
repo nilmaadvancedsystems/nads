@@ -5,6 +5,8 @@ import { Fragment, useEffect, useRef } from 'react';
 import { ContasBancarias } from '../bancos/ContasBancarias';
 import { ContasPadrao } from '../contas-padrao/ContasPadrao';
 import { DadosDaEmpresa, ParametrosContabeis, ParametrosFiscais } from '../empresa/DadosDaEmpresa';
+import { DocumentosDoFiscal } from '../fiscal/DocumentosDoFiscal';
+import { ParcelamentosDaEmpresa } from '../fiscal/ParcelamentosDaEmpresa';
 import { HistoricoCadastro } from '../historico/HistoricoCadastro';
 import { PlanoDeContas } from '../plano/PlanoDeContas';
 import { useJanelaDaEmpresa } from './useJanelaDaEmpresa';
@@ -16,6 +18,9 @@ function Aba({ rota, aba }: { rota: string; aba: string }) {
     case 'empresa': return <DadosDaEmpresa rota={rota} />;
     case 'contabil': return <ParametrosContabeis rota={rota} />;
     case 'fiscal': return <ParametrosFiscais rota={rota} />;
+    case 'fiscal-docs': return <DocumentosDoFiscal rota={rota} />;
+    case 'parcelamentos': return <ParcelamentosDaEmpresa rota={rota} />;
+    case 'simples': return <SenhasNoCadastro rota={rota} parte="simples" />;
     case 'plano': return <PlanoDeContas rota={rota} />;
     case 'contas-padrao': return <ContasPadrao rota={rota} />;
     case 'historico': return <HistoricoCadastro rota={rota} />;

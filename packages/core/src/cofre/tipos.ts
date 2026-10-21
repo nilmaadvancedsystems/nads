@@ -25,10 +25,18 @@ export interface Certificado {
   obs?: string;
 }
 
+/**
+ * O código de acesso do Simples Nacional (Heverton, 20/10/2026: "Cadastro = Fiscal (inserir)": "Código de acesso
+ * Simples Nacional"): o código (12 números), o CPF do responsável que o portal pede junto e uma observação. É segredo:
+ * fica só no cofre, embaralhado como a senha gov.br.
+ */
+export interface CodigoDoSimples { codigo: string; cpf?: string; obs?: string }
+
 /** O que é segredo de uma empresa (vai embaralhado). */
 export interface SegredosDaEmpresa {
   gov?: SenhaGov;
   certificado?: Certificado;
+  simples?: CodigoDoSimples;
 }
 
 /** O que fica embaralhado: o vetor e os dados, em base64. */

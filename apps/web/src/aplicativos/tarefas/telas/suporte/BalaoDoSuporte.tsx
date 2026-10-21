@@ -4,7 +4,7 @@
 // nome, "digita" antes de cada fala, as respostas da pessoa ficam à direita, as cápsulas são respostas rápidas (nas
 // perguntas de várias respostas, marca e toca em Continuar) e o envio do arquivo fica no pé. As peças são as do app: o
 // botão, a cápsula (badge), o fechar e o ícone.
-import { BotaoFechar, Icone } from '@nads/ui';
+import { Icone } from '@nads/ui';
 import { useEffect, useId, useRef, useState } from 'react';
 import { suporte } from '@nads/core';
 import { useBalaoDoSuporte } from './useBalaoDoSuporte';
@@ -14,7 +14,7 @@ const DIGITANDO_MS = 650;
 
 /** Uma fala do suporte (onde a pessoa está, a pergunta, as instruções numeradas ou o pedido do arquivo). */
 function FalaDoSuporte({ passo }: { passo: suporte.PassoDoSuporte }) {
-  const aviso = passo.tipo !== 'encaminhar' ? passo.aviso : undefined;
+  const aviso = passo.aviso;
   return (
     <>
       {aviso && <div className="suporte-msg">{aviso}</div>}
@@ -69,7 +69,8 @@ export function BalaoDoSuporte() {
             <b>Suporte de leitura</b>
             <span className="suporte-sub">{digitando ? 'digitando…' : vm.titulo || 'online'}</span>
           </span>
-          <BotaoFechar onClick={vm.fechar} />
+          <button type="button" className="btn btn-ghost suporte-acao" title="Começar uma conversa nova" onClick={vm.novaConversa}>Nova conversa</button>
+          <button type="button" className="btn btn-ghost suporte-acao" title="Abandonar a conversa e fechar" onClick={vm.sair}>Sair</button>
         </header>
 
         <div className="suporte-corpo" ref={corpo}>
@@ -83,7 +84,7 @@ export function BalaoDoSuporte() {
             </div>
           ))}
           {vm.enviado ? (
-            digitando ? <Digitando /> : <div className="suporte-msg">Pronto{vm.nomeDaPessoa ? ', ' + vm.nomeDaPessoa : ''}! Encaminhei para o Vitor e o Gustavo, com tudo o que você respondeu.</div>
+            digitando ? <Digitando /> : <div className="suporte-msg">Pronto{vm.nomeDaPessoa ? ', ' + vm.nomeDaPessoa : ''}! Abri o pedido {vm.pedido && <b>{vm.pedido}</b>} e encaminhei para o Vitor e o Gustavo, com tudo o que você respondeu.</div>
           ) : vm.resolvido ? (
             <>
               <div className="suporte-msg suporte-eu">Resolveu</div>
@@ -124,7 +125,7 @@ export function BalaoDoSuporte() {
           <div className="suporte-envio">
             {vm.erro && <p className="hint ext-neg">{vm.erro}</p>}
             <div className="field suporte-frase">
-              <textarea rows={2} placeholder="Comentário (opcional)" aria-label="Comentário" value={vm.frase} onChange={e => vm.setFrase(e.target.value)} />
+              <textarea rows={p.livre ? 4 : 2} placeholder={p.livre ? 'Escreva o que aconteceu' : 'Comentário (opcional)'} aria-label={p.livre ? 'O que aconteceu' : 'Comentário'} value={vm.frase} onChange={e => vm.setFrase(e.target.value)} />
             </div>
             <div className="suporte-envio-linha">
               <label htmlFor={idArquivo} className="btn btn-outline" title={vm.arquivo ? vm.arquivo.name : 'Anexar o arquivo'}>

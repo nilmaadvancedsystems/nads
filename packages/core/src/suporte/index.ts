@@ -34,7 +34,7 @@ export type PassoDoSuporte =
   /** as instruções, com onde a pessoa está antes; depois, a tela pergunta "Resolveu" / "Não resolveu" */
   | { tipo: 'instrucoes'; passos: string[]; aviso?: string }
   /** mandar ao suporte: o arquivo e uma frase */
-  | { tipo: 'encaminhar'; texto: string };
+  | { tipo: 'encaminhar'; texto: string; aviso?: string; livre?: boolean };
 
 /** "Não resolveu" (e o "Outro"): a escolha que leva ao encaminhar. */
 export const NAO_RESOLVEU = 'nao-resolveu';
@@ -53,6 +53,7 @@ export function telaPeloRotulo(rotulo: string): TelaDoSuporte {
 const sem = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 const rotuloDoMes = (m: string) => m.slice(5) + '/' + m.slice(0, 4);
 const ENCAMINHAR = 'Anexe o arquivo que deu problema e envie. Vai para o suporte.';
+const ENCAMINHAR_LIVRE = 'Escreva o que aconteceu e anexe o arquivo, se tiver. Vai para o suporte.';
 
 /** O que aconteceu, por tela (a primeira pergunta). */
 const PROBLEMAS: Record<TelaDoSuporte, OpcaoDoSuporte[]> = {
@@ -126,15 +127,18 @@ export function passoDoSuporte(ctx: ContextoDoSuporte, escolhas: readonly string
     }
     return { tipo: 'instrucoes', aviso: ondeEsta(ctx), passos: instrucoes(ctx, problema, banco || [], mes || []) };
   }
-  // as perguntas do report; a primeira depois do Outro do problema diz onde a pessoa está
-  const aviso = problema === OUTRO && escolhas.length === 1 ? ondeEsta(ctx) : undefined;
+  // o Outro de primeira (Vitor, 21/10/2026: "deixa ele digitar e anexar o arquivo livremente"): sem mais perguntas, só
+  // onde a pessoa está, o texto e o arquivo
+  if (problema === OUTRO) return { tipo: 'encaminhar', aviso: ondeEsta(ctx), texto: ENCAMINHAR_LIVRE, livre: true };
   const botoes = ctx.botoes || [];
-  if (botoes.length && !escolhas.some(e => e.startsWith('i:'))) {
-    return pergunta('i:', 'Qual dos botões de importação está com problema?', botoes.map(b => ({ id: 'i:' + b, rotulo: b })), aviso);
+  // o botão só logo depois do "Não resolveu": se a lista chegou depois, não volta a perguntar
+  const virada = escolhas.indexOf(NAO_RESOLVEU);
+  if (botoes.length && escolhas.length === virada + 1) {
+    return pergunta('i:', 'Qual dos botões de importação está com problema?', botoes.map(b => ({ id: 'i:' + b, rotulo: b })));
   }
-  if (ctx.tela === 'bancos' && banco === undefined) return perguntaBanco(aviso);
-  if (mes === undefined) return perguntaMes(aviso);
-  if (!escolhas.some(e => e.startsWith('e:'))) return pergunta('e:', 'O que aconteceu ao importar?', EFEITOS, aviso);
+  if (ctx.tela === 'bancos' && banco === undefined) return perguntaBanco();
+  if (mes === undefined) return perguntaMes();
+  if (!escolhas.some(e => e.startsWith('e:'))) return pergunta('e:', 'O que aconteceu ao importar?', EFEITOS);
   if (!escolhas.some(e => e.startsWith('a:'))) return pergunta('a:', 'Que arquivo você subiu?', ARQUIVOS);
   return { tipo: 'encaminhar', texto: ENCAMINHAR };
 }
@@ -233,13 +237,24 @@ export function mensagemDoBug(ctx: ContextoDoSuporte, escolhas: readonly string[
  * "Importar o razão dos meses que faltam (cada lançamento cai no seu mês)" → "Importar o razão").
  */
 export function nomeDoBotao(rotulo: string): string {
-  const t = rotulo.replace(/\s*\([^)]*\)/g, '').replace(/\s+(de|dos?|da)\s+(\d{2}\/\d{4}|todos os meses|meses que faltam).*$/i, '').replace(/\s+/g, ' ').trim();
+  const t = rotulo.replace(/\s*\([^)]*\)/g, '').replace(/\s+(de|dos?|da)\s+(\d{2}\/\d{4}|todos os meses|meses que faltam).*$/i, '')
+    // sem o artigo depois do verbo: "Importar o razão" e "Importar razão" são o mesmo botão
+    .replace(/^(\S+)\s+(o|a|os|as)\s+/i, '$1 ').replace(/\s+/g, ' ').trim();
   return t ? t.charAt(0).toUpperCase() + t.slice(1) : '';
 }
 
 /** Os dois finais do report (o robô escolhe um). */
 export const VEREDITOS = { erro: 'Realmente, isso é erro do sistema', analise: 'Precisa da sua análise' } as const;
 export type Veredito = keyof typeof VEREDITOS;
+
+/**
+ * O número do pedido (Vitor, 21/10/2026: "quando o usuário fizer o pedido, nomeie em #"): o começo do id do documento, em
+ * maiúsculas ("#K3F9QZ"); sai do próprio documento, sem campo novo nem contador no banco.
+ */
+export function codigoDoPedido(id: string): string {
+  const limpo = id.replace(/[^a-z0-9]/gi, '').slice(0, 6).toUpperCase();
+  return limpo ? '#' + limpo : '';
+}
 
 /** O veredito pela última linha do report (null = o report ainda não chegou ou não terminou numa das duas). */
 export function vereditoDoReport(texto: string): Veredito | null {
