@@ -329,7 +329,7 @@ async function executar(opcoes) {
   const agora = new Date();
   const id = (producao ? 'EXEC-' : 'SIM-') + carimbo(agora) + '-NOVO';
   const cadastro = opcoes.cadastro || carregarCadastro(opcoes);
-  const ctx = { cadastro, hoje: agora, contas: lerContas(opcoes.controle), clientes: opcoes.clientes, manifesto: indiceDoManifesto(opcoes.manifestoAntigo || MANIFESTO_ANTIGO), reservados: new Map(), existe: new Map(), hashes: new Map() };
+  const ctx = { cadastro, hoje: agora, contas: opcoes.contas || lerContas(opcoes.controle), clientes: opcoes.clientes, manifesto: opcoes.manifesto || indiceDoManifesto(opcoes.manifestoAntigo || MANIFESTO_ANTIGO), reservados: new Map(), existe: new Map(), hashes: new Map() };
   const arquivos = opcoes.arquivos || varrer(opcoes.origem, opcoes);   // o modo contínuo passa o lote pronto
   const itens = [];
   const log = opcoes.log || (() => {});

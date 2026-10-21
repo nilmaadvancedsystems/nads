@@ -208,7 +208,7 @@ function iniciar(opcoes) {
         // contexto caro (cadastro, manifesto antigo, contas) refeito a cada 30 min
         if (Date.now() - cache.em > 30 * 60000) {
           if (o.db) await A.atualizarCadastro({ db: o.db, controle: o.controle, log: o.log });
-          cache = { em: Date.now(), cadastro: o.cadastro || A.carregarCadastro({ controle: o.controle }) };
+          cache = { em: Date.now(), cadastro: o.cadastro || A.carregarCadastro({ controle: o.controle }), contas: A.lerContas(o.controle), manifesto: A.indiceDoManifesto(path.join(o.controleAntigo, 'MANIFESTO', 'manifesto.jsonl')) };
         }
         const inicio = Date.now();
         let feitos = 0;
@@ -218,7 +218,7 @@ function iniciar(opcoes) {
           if (o.painel) o.painel.fazendo('arquivador-novo', (cfg.modo === 'producao' ? 'Arquivando ' : 'Simulando ') + lote.length + ' arquivo(s) da Claudio Secretario');
           const res = await A.executar({
             modo: cfg.modo === 'producao' && cfg.tiposProducao.length ? 'PRODUCAO' : 'SIMULACAO', confirmo: true, origem: o.origem, controle: o.controle,
-            arquivos: lote, cadastro: cache.cadastro, tiposProducao: cfg.tiposProducao, moverNaoIdentificados: !!cfg.moverNaoIdentificados,
+            arquivos: lote, cadastro: cache.cadastro, contas: cache.contas, manifesto: cache.manifesto, tiposProducao: cfg.tiposProducao, moverNaoIdentificados: !!cfg.moverNaoIdentificados,
             painel: cfg.modo === 'producao' ? { atividade: (t, x, d) => atividade(x, d), erro: (t, x, d) => atividade(x, d, true) } : null,
             registrar: false, log: () => {},
           });
