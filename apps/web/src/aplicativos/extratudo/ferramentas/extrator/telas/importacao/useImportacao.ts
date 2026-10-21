@@ -70,6 +70,26 @@ export function useImportacao() {
   // os bancos da empresa na competência (uma linha cada), do Cadastro da empresa quando ela tem (Tarefas ›
   // Cadastro); arquivo sem banco = do primeiro banco
   const cad = useCadastroDaEmpresa(s.nome, s.codigo);
+  const cadAtual = useRef(cad);
+  cadAtual.current = cad;
+  const perguntouServicos = useRef(false);
+  /**
+   * "Esta empresa presta serviços?" na Importação da Tarefa (Vitor, 21/10/2026: saiu da Conferência fiscal, "fica melhor no
+   * fluxo"): uma vez, quando o Cadastro da empresa ainda não diz; a resposta vai para o Cadastro (a aba Prestados e a
+   * Conferência seguem ela).
+   */
+  async function perguntarServicos() {
+    if (perguntouServicos.current || !cad.cadastro || cad.cadastro.prestaServico != null) return;
+    perguntouServicos.current = true;
+    const sim = await modal<boolean>({
+      obrigatoria: true, icone: 'briefcase', titulo: 'Esta empresa presta serviços?',
+      html: 'A empresa <b>' + escapar((s.codigo != null ? s.codigo + ' — ' : '') + s.nome) + '</b> presta serviços? A resposta fica no Cadastro da empresa e decide a aba Prestados.',
+      botoes: [{ rotulo: 'Não', valor: false, variante: 'btn-outline' }, { rotulo: 'Sim', valor: true, variante: 'btn-primary' }],
+    });
+    const atual = cadAtual.current;
+    if (!atual.cadastro || atual.cadastro.prestaServico != null) return;
+    atual.salvar(empresas.cadastro.definirPrestaServico(atual.cadastro, sim, 'Importação', new Date()));
+  }
   const { bancos, primeiro } = x.bancosDaEmpresaNa(s.empresa, cad.cadastro, s.codigo, competenciaDeTeste);
   // (19/10/2026: "o nads está lerdo em outras máquinas") os arquivos de cada banco, lado e mês num índice, montado de novo só
   // quando a empresa muda; o movimento de cada banco e as listas do Drive, também uma vez por versão da empresa
@@ -420,6 +440,9 @@ export function useImportacao() {
     arquivoSemMovimento: (banco: string, mes: string): { id: string; nome: string } | null => semMovDoDrive[banco + '|' + mes] || null,
     /** a regra do Cadastro da empresa: presta serviços? (null = não informado, ou o cadastro ainda não chegou) */
     prestaServico: cad.cadastro?.prestaServico ?? null,
+    perguntarServicos,
+    /** o Cadastro da empresa já chegou (antes dele, prestaServico é null sem querer dizer "não informado") */
+    cadastroCarregado: !!cad.cadastro,
     /** o código contábil da conta do banco no Cadastro (Contas bancárias); '' = não informado */
     contaContabilDe: (banco: string) => cad.cadastro?.bancos?.find(c => c.id === banco)?.contaContabil || '',
     /** os pedidos de documentos feitos ao cliente (o histórico do Pedir extratos) */
