@@ -10,7 +10,7 @@ export function ConfirmarBancos() {
   const lista = useId();
   return (
     <div className="card" data-destaque="confirmar-bancos">
-      <div className="card-head"><h3><Icone nome="landmark" /> Confirme os bancos da empresa</h3></div>
+      <div className="card-head"><h3>Confirme os bancos da empresa</h3></div>
       <p className="hint" style={{ padding: '0 16px' }}>
         Os bancos desta empresa ainda não estão no Cadastro. Confira a lista (veio do que o Extrator já usava e do que o Entregas sabe),
         desmarque o que a empresa não tem, informe a conta contábil de cada um e confirme. Vai para o Cadastro da empresa.

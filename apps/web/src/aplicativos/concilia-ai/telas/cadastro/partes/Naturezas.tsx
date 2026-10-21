@@ -62,9 +62,9 @@ function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
       <div className="ndp-natureza ndp-natureza-row">
         <span>{it.titulo}{it.semConta && <span className="ponto-vermelho" title="Falta a conta contábil: vincule uma conta ou marque Não vai para o Contábil" aria-label="Falta a conta contábil" />}</span>
         {/* embaixo do total, o "Ver notas" (Vitor, 21/10/2026): abre as notas deste CFOP logo abaixo */}
-        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
           <span className="num" style={{ fontSize: 18, fontWeight: 700, whiteSpace: 'nowrap' }} title="O total das notas deste CFOP">{it.total}</span>
-          <button type="button" className="btn" onClick={() => vm.verNotas(it.k)}>Ver notas ({it.qtdNotas})</button>
+          <button type="button" className="btn" onClick={() => vm.verNotas(it.k)}>Ver notas</button>
         </span>
       </div>
       {/* a conta contábil (a que a conferência compara com o balancete) e, com as vendas separadas, o código do lançamento
