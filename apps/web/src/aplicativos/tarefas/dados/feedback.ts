@@ -71,7 +71,7 @@ export interface RepoFeedback {
   exemplos: boolean;
   enviar(f: { texto: string; imagem: string; tela: string; versao: string; prioridade: PrioridadeDoFeedback }): Promise<void>;
   /** o bug do suporte de leitura: o documento e o arquivo em pedaços; o robô do PC do escritório escreve o report */
-  enviarBug(b: BugDoSuporte): Promise<void>;
+  enviarBug(b: BugDoSuporte): Promise<string>;
   /** o arquivo do bug, de volta (só o admin), para baixar */
   arquivoDoBug(id: string): Promise<{ nome: string; bytes: Uint8Array } | null>;
   /** todos os feedbacks (só o admin lê); pedir já começa a ouvir */
@@ -105,12 +105,14 @@ export function criarFeedbackMemoria(quem: () => string): RepoFeedback {
       mudou();
     },
     async enviarBug(b) {
+      const id = 'b' + Date.now().toString(36);
       lista = [{
-        id: 'b' + Date.now(), texto: b.texto, imagem: '', tela: b.tela, versao: b.versao, nome: quem(), email: '', criadoEm: new Date().toISOString(),
+        id, texto: b.texto, imagem: '', tela: b.tela, versao: b.versao, nome: quem(), email: '', criadoEm: new Date().toISOString(),
         status: 'novo', prioridade: 'alta', tipo: 'bug', caminho: b.caminho, empresa: b.contexto.empresa,
         arquivo: b.arquivo ? { nome: b.arquivo.nome, tamanho: b.arquivo.bytes.length, partes: 1 } : null, analise: 'pendente', relatorio: '',
       }, ...lista];
       mudou();
+      return id;
     },
     async arquivoDoBug() { return null; },
     todos: () => ({ carregados: true, lista }),
