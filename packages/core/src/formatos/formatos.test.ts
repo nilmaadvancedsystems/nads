@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { brl, comp, dataOrdem, lancComZeros, lancN, num } from './index';
+import { brl, comp, dataOrdem, lancComZeros, lancN, mascaraDocumento, num } from './index';
 
 describe('formatos', () => {
   it('lê número brasileiro de planilha', () => {
@@ -18,5 +18,15 @@ describe('formatos', () => {
   });
   it('valor pt-BR', () => {
     expect(brl(1234.5)).toBe('1.234,50');
+  });
+});
+
+describe('máscara do CNPJ/CPF enquanto digita (20/10/2026)', () => {
+  it('CPF até 11 números, CNPJ de 12 a 14', () => {
+    expect(mascaraDocumento('')).toBe('');
+    expect(mascaraDocumento('1234')).toBe('123.4');
+    expect(mascaraDocumento('11144477735')).toBe('111.444.777-35');
+    expect(mascaraDocumento('119394880001')).toBe('11.939.488/0001');
+    expect(mascaraDocumento('01.939.488/0001-80x9')).toBe('01.939.488/0001-80');
   });
 });

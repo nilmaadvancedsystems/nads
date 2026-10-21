@@ -38,10 +38,14 @@ import { criarAreaClienteFirestore } from './areaCliente.firestore';
 import { criarLcdprMemoria, type RepoLcdpr } from './lcdpr';
 import { criarLcdprFirestore } from './lcdpr.firestore';
 import { criarFeedbackFirestore } from './feedback.firestore';
+import { criarUsoMemoria, type RepoUso } from './uso';
+import { criarUsoFirestore } from './uso.firestore';
 import { criarPessoalMemoria, type RepoPessoal } from './pessoal';
 import { criarPessoalFirestore } from './pessoal.firestore';
 import { criarSaudeMemoria, type RepoSaude } from './saude';
 import { criarSaudeFirestore } from './saude.firestore';
+import { criarPainelRoboMemoria, type RepoPainelRobo } from './painelRobo';
+import { criarPainelRoboFirestore } from './painelRobo.firestore';
 import { balanceteNoEntregas, clientesNoEntregas, conferenciaNoBanco, gravarLeituraDeContas, ouvirLeituraDeContas, portaCadastroFirestore } from './cadastro.firestore';
 import { criarRepoTarefasFirestore, extratorNoBanco, type RepoTarefasFirestore } from './tarefas.firestore';
 import { ligadoAoBanco } from '../../../comum/modoDesenvolvedor';
@@ -284,6 +288,14 @@ export function repoDaSaude(): RepoSaude {
   return saude;
 }
 
+let painelRobo: RepoPainelRobo | null = null;
+
+/** O painel do robô (Cadastro › Painel do robô, 21/10/2026): os dois robôs, as filas, a atividade e o que foi arquivado. */
+export function repoDoPainelRobo(): RepoPainelRobo {
+  if (!painelRobo) painelRobo = noBanco ? criarPainelRoboFirestore() : criarPainelRoboMemoria();
+  return painelRobo;
+}
+
 let pessoal: RepoPessoal | null = null;
 
 /** O que é só da pessoa (a Minha página): as cobranças dela, as anotações e o que ela arquivou na caixa de entrada. */
@@ -410,6 +422,14 @@ export function repoDeFeedback(): RepoFeedback {
       : criarFeedbackMemoria(() => { try { return localStorage.getItem('nads-tarefas-operador') || ''; } catch { return ''; } });
   }
   return feedback;
+}
+
+let usoDoSistema: RepoUso | null = null;
+
+/** O mapa de uso do sistema (Gustavo, 20/10/2026): no banco, config/uso e uso/{dia}; nos exemplos, na memória (90 dias inventados). */
+export function repoDeUso(): RepoUso {
+  if (!usoDoSistema) usoDoSistema = noBanco ? criarUsoFirestore(() => quemPede()?.nome || '') : criarUsoMemoria();
+  return usoDoSistema;
 }
 
 let categoriasDp: RepoCategoriasDp | null = null;

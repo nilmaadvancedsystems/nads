@@ -61,7 +61,9 @@ function montarResposta({ headers, textoOriginal, corpo, todos, caixa, dataOrigi
 }
 
 // -> { gmailId, para, cc, assunto }
-async function responder({ db, gmail, p, caixa, montarMime, anexo }) {
+// caixaId: a caixa do Gmail (robo, contabil, fiscal): a lista da tela é a dela (21/10/2026: sem ela, a conferência olhava
+// robo/caixa-undefined e nenhuma resposta passava)
+async function responder({ db, gmail, p, caixa, caixaId, montarMime, anexo }) {
   const id = String(p.mensagemId || '');
   if (!ID_VALIDO.test(id)) throw new Error('e-mail inválido');
   const corpo = String(p.corpo || '').trim().slice(0, 20000);
@@ -69,7 +71,7 @@ async function responder({ db, gmail, p, caixa, montarMime, anexo }) {
   const quem = p.criadoPorUid ? ((await db.collection('usuarios').doc(String(p.criadoPorUid)).get()).data() || {}) : {};
   const papeis = Array.isArray(quem.roles) ? quem.roles : (quem.role ? [quem.role] : []);
   if (!papeis.includes('admin') && !papeis.includes('contabil')) throw new Error('só admin ou contábil responde e-mail pelo app');
-  if (!(await mensagensDaTela(db)).has(id)) throw new Error('este e-mail não está mais na lista do robô; responda pelo Gmail');
+  if (!(await mensagensDaTela(db, caixaId || 'robo')).has(id)) throw new Error('este e-mail não está mais na lista do robô; responda pelo Gmail');
   const msg = await gmail.users.messages.get({ userId: 'me', id, format: 'full' });
   const payload = msg.data.payload || {};
   const r = montarResposta({

@@ -2,7 +2,7 @@
 // estilo do cadastro"): a lista dos clientes do DP com os parâmetros de cada um (o movimento, as obrigações do mês, a
 // entrega e o agrupamento; a REINF é do Fiscal); clicar abre a janela do cliente, onde se muda. Começa com o da planilha; o que mudar
 // grava no cadastro da empresa e vale nas abas do DP na hora. "Voltar à planilha" tira o que foi mudado.
-import { empresas, tarefas as t } from '@nads/core';
+import { empresas, formatos, tarefas as t } from '@nads/core';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { competenciasDaTela } from '../../casca/navegacao';
@@ -36,17 +36,24 @@ export function useConfiguracoesDoDp() {
   const [categoriasAbertas, setCategoriasAbertas] = useState(false);
   const [nova, setNova] = useState<{ nome: string; rotulo: string; parte: empresas.ParteDaCategoriaDp; erro: string }>({ nome: '', rotulo: '', parte: 'guias', erro: '' });
   // o CNPJ/CPF de cada cliente (Sávio, 07/10/2026: "copiar o CNPJ ou CPF de cada cliente sem pontos ou traços para acesso
-  // aos sites do governo"): do cadastro do Entregas, pelo código; só os dígitos
+  // aos sites do governo"), só os dígitos. Primeiro o do Cadastro do nads (Sávio, 20/10/2026: "puxar automaticamente do
+  // cadastro de empresas"; o nads vale), que também é onde se cadastra; sem ele, o do Entregas pelo código, também dos
+  // clientes inativos lá (era por isso que 342, 394, 395 e 432 ficavam "sem cadastro")
   const gmail = useGmailDoEntregas();
-  const documentoDoCodigo = new Map(gmail.clientes().lista.filter(c => c.documento).map(c => [Number(c.codigo), c.documento as string]));
-  // sem o do Entregas, o do Cadastro do nads (Sávio, 20/10/2026: "puxar automaticamente do cadastro de empresas"), que
-  // também é onde se cadastra (a janela do cliente › Identificação)
-  const doEntregas = new Set(documentoDoCodigo.keys());
-  for (const c of dp.clientes) if (!documentoDoCodigo.has(c.codigo) && c.cadastro?.cnpj) documentoDoCodigo.set(c.codigo, c.cadastro.cnpj);
-  // nos exemplos não há cadastro do Entregas: um CNPJ inventado pelo código, para a coluna aparecer
-  if (gmail.exemplos) for (const c of dp.clientes) if (!documentoDoCodigo.has(c.codigo)) documentoDoCodigo.set(c.codigo, String(c.codigo).padStart(8, '0') + '000100');
+  const doEntregasPorCodigo = gmail.documentos();
+  const documentoDoCodigo = new Map<number, string>();
+  for (const c of dp.clientes) {
+    const d = c.cadastro?.cnpj || doEntregasPorCodigo.get(c.codigo);
+    if (d) documentoDoCodigo.set(c.codigo, d);
+  }
+  const doEntregas = new Set(dp.clientes.filter(c => !c.cadastro?.cnpj && doEntregasPorCodigo.has(c.codigo)).map(c => c.codigo));
+  // nos exemplos não há cadastro do Entregas: um CNPJ inventado pelo código, para a coluna aparecer (os de código
+  // terminado em 4 ficam sem, para a tela mostrar o cadastro na linha)
+  if (gmail.exemplos) for (const c of dp.clientes) if (!documentoDoCodigo.has(c.codigo) && c.codigo % 10 !== 4) documentoDoCodigo.set(c.codigo, String(c.codigo).padStart(8, '0') + '000100');
   // o número que se digita na Identificação (e o erro, quando não confere)
   const [documentoNovo, setDocumentoNovo] = useState({ texto: '', erro: '' });
+  // sem CNPJ/CPF em lugar nenhum, digita-se na própria linha (Sávio, 20/10/2026: "não tem como cadastrar"), com a máscara
+  const [naLinha, setNaLinha] = useState<ReadonlyMap<number, { texto: string; erro: string }>>(new Map());
   const [busca, setBusca] = useState('');
   const [movimento, setMovimento] = useState('');
   const [soMudados, setSoMudados] = useState(false);
@@ -96,10 +103,21 @@ export function useConfiguracoesDoDp() {
     /** a Identificação do cliente aberto: o CNPJ/CPF e de onde vem (o Entregas não se muda daqui) */
     identificacao: cliente ? {
       documento: documentoFormatado(documentoDoCodigo.get(cliente.codigo) || ''),
-      origem: doEntregas.has(cliente.codigo) ? 'entregas' as const : cliente.cadastro?.cnpj ? 'cadastro' as const : documentoDoCodigo.has(cliente.codigo) ? 'exemplo' as const : 'nenhum' as const,
+      origem: cliente.cadastro?.cnpj ? 'cadastro' as const : doEntregas.has(cliente.codigo) ? 'entregas' as const : documentoDoCodigo.has(cliente.codigo) ? 'exemplo' as const : 'nenhum' as const,
     } : null,
     documentoNovo,
-    mudarDocumentoNovo: (texto: string) => setDocumentoNovo({ texto, erro: '' }),
+    mudarDocumentoNovo: (texto: string) => setDocumentoNovo({ texto: formatos.mascaraDocumento(texto), erro: '' }),
+    /** o CNPJ/CPF digitado na linha de quem não tem em lugar nenhum */
+    naLinha: (codigo: number) => naLinha.get(codigo) || { texto: '', erro: '' },
+    mudarNaLinha: (codigo: number, texto: string) => setNaLinha(m => new Map(m).set(codigo, { texto: formatos.mascaraDocumento(texto), erro: '' })),
+    gravarNaLinha(codigo: number) {
+      const texto = naLinha.get(codigo)?.texto || '';
+      if (!texto.trim()) return;
+      const erro = dp.definirDocumento(codigo, texto);
+      if (erro) { setNaLinha(m => new Map(m).set(codigo, { texto, erro })); return; }
+      setNaLinha(m => { const n = new Map(m); n.delete(codigo); return n; });
+      toast('CNPJ/CPF gravado no Cadastro da empresa.');
+    },
     gravarDocumento() {
       if (!cliente) return;
       const erro = dp.definirDocumento(cliente.codigo, documentoNovo.texto);

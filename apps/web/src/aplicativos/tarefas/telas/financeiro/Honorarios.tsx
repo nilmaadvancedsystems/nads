@@ -1,10 +1,13 @@
 // Financeiro › Honorários (19/10/2026, fase 2): por competência (começa no mês anterior), os números (Previsto, Recebido, Em
 // aberto, Clientes pagos), o filtro e a busca, e a lista dos clientes que controlam honorário: o valor se edita na linha,
-// a situação diz "Pago em dd/mm · forma" ou "Em aberto" (não há vencimento), e Receber / Desfazer marcam à mão.
+// a situação diz "Pago em dd/mm · forma" ou "Em aberto" (não há vencimento), e Receber / Desfazer marcam à mão. Em 21/10/2026:
+// Emitir NFS-e (a Nova nota já preenchida, com o selo da nota que já existe) e Cobrar (a mensagem pronta, com "Cobrado em").
 import { financeiro, formatos } from '@nads/core';
 import { Icone, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
 import { dataBr } from './formatosDaNota';
+import { JanelaCobranca } from './JanelaCobranca';
 import { JanelaDosContratos } from './JanelaDosContratos';
+import { JanelaNovaNota } from './JanelaNovaNota';
 import { JanelaReceber } from './JanelaReceber';
 import { ValorEditavel } from './partes/ValorEditavel';
 import { FILTROS_DE_HONORARIOS, useHonorariosDaCompetencia } from './useHonorariosDaCompetencia';
@@ -22,6 +25,8 @@ export function Honorarios() {
   return (
     <section>
       {vm.recebendo && <JanelaReceber contratoId={vm.recebendo} competencia={vm.competencia} fechar={vm.fecharReceber} />}
+      {vm.emitindo && <JanelaNovaNota fechar={vm.fecharEmissao} inicial={vm.emitindo} />}
+      {vm.cobrando && <JanelaCobranca contratoId={vm.cobrando} competencia={vm.competencia} fechar={vm.fecharCobranca} />}
       {vm.gerenciando && <JanelaDosContratos fechar={() => vm.setGerenciando(false)} />}
 
       <div className="tarefas-barra-topo fin-barra">
@@ -73,8 +78,12 @@ export function Honorarios() {
                     {l.recebimento
                       ? <span className="badge badge-ok">Pago em {dataBr(l.recebimento.recebidoEm).slice(0, 5)} · {financeiro.rotuloDaForma(l.recebimento.forma)}</span>
                       : <span className="badge badge-warn">Em aberto</span>}
+                    {(() => { const selo = vm.seloDaNota(l); return selo && <span className={'badge badge-' + (selo.tom === 'info' ? 'neutral' : selo.tom) + ' fin-selo'}>{selo.rotulo}</span>; })()}
+                    {!l.recebimento && vm.cobradoEm(l) && <span className="fraco fin-cobrado">Cobrado em {dataBr(vm.cobradoEm(l)).slice(0, 5)}</span>}
                   </td>
-                  <td className="fin-direita">
+                  <td className="fin-direita fin-acoes">
+                    <button type="button" className="btn btn-outline" onClick={() => vm.emitirNota(l)} title="Abre a Nova nota já preenchida com o cliente, o valor e a competência"><Icone nome="recibo" />Emitir NFS-e</button>
+                    {!l.recebimento && <button type="button" className="btn btn-outline" onClick={() => vm.cobrar(l.contrato.id)}><Icone nome="mensagem" />Cobrar</button>}
                     {l.recebimento
                       ? <button type="button" className="btn btn-outline" onClick={() => void vm.desfazer(l)}><Icone nome="repeat" />Desfazer</button>
                       : <button type="button" className="btn btn-primary" disabled={l.contrato.valor <= 0} title={l.contrato.valor <= 0 ? 'Defina o valor do honorário primeiro' : 'Marcar como recebido'} onClick={() => vm.receber(l.contrato.id)}><Icone nome="check" />Receber</button>}

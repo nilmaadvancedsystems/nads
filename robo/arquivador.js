@@ -31,6 +31,8 @@ const { spawn, execFileSync } = require('child_process');
 const { getDb } = require('./firestore-client');
 const { ouvir } = require('./ouvinte');
 const man = require('./arquivo-manifesto');
+// o painel do robô (21/10/2026): o que este PC está fazendo, as filas e o que arquivou (Cadastro › Painel do robô)
+const painel = require('./painel');
 
 const RAIZ = process.env.ARQUIVO_RAIZ || 'C:\\Users\\DPTO FISCAL 004\\GUSTAVO\\claudio';
 const CONTROLE = path.join(RAIZ, '_CONTROLE');
@@ -71,10 +73,18 @@ function baterPonto() {
   // "Arquivar agora" do Drive (05/10/2026). Vai no mesmo ponto de cada minuto — nenhuma gravação a mais.
   let rotina = null;
   try { rotina = rotinaPorFora(); } catch (e) { /* só o aviso; o ponto segue */ }
+  // a organização rodando por fora do botão (a das 9h), no painel do robô
+  painel.fazendo('rotina', rotina && rotina.ativa && !rotina.deUmPedido
+    ? 'Organizando o Drive (rotina das 9h' + (rotina.fase ? ', fase ' + rotina.fase : '') + ')' : null);
   estadoRef.set(Object.assign({ em: agora(), pc: os.hostname(), rotina }, estado), { merge: true })
     .catch(err => log('não consegui bater o ponto:', err.message));
 }
-function mudarEstado(novo) { estado = Object.assign({ desde: agora(), pedidoId: null, mensagem: null }, novo); baterPonto(); }
+function mudarEstado(novo) {
+  estado = Object.assign({ desde: agora(), pedidoId: null, mensagem: null }, novo);
+  painel.fazendo('arquivo', estado.situacao === 'rodando' ? 'Arquivando (pedido do nads)'
+    : estado.situacao === 'aguardando' ? 'Arquivamento esperando: ' + (estado.mensagem || '') : null);
+  baterPonto();
+}
 
 // ---------- a rotina está rodando por fora? ----------
 function maisRecenteEm(pasta, profundidade) {
@@ -352,10 +362,14 @@ async function publicar(ligarPedido) {
     const relatorios = new Map(man.listarExecucoes(CONTROLE).map(e => [e.id, e]));
     const ids = new Set([...porExec.keys(), ...relatorios.keys()]);
     const publicados = lerPublicados();
+    // o que foi arquivado hoje e no mês, no painel do robô (sai no próximo batimento)
+    try { painel.estado({ arquivados: man.resumoDoMes(porExec, relatorios, qual) }); } catch (e) { /* só o painel */ }
     for (const id of ids) {
       const rel = relatorios.get(id);
       const assinatura = (porExec.get(id) || []).length + ':' + (rel ? Math.round(rel.mtime) : 0) + ':' + JSON.stringify(qual.get(id) || null);
       if (publicados[id] === assinatura) continue;
+      // a execução acabou agora (o relatório é gravado no fim): vira uma linha da atividade do painel
+      const terminouAgora = !!rel && (!publicados[id] || publicados[id].split(':')[1] === '0') && Date.now() - rel.mtime < 24 * 36e5;
       let texto = '';
       if (rel) { try { texto = fs.readFileSync(rel.txt, 'utf8'); } catch (e) {} }
       const { resumo, detalhe } = man.montarExecucao(id, porExec.get(id), qual.get(id), texto, rel ? rel.mtime : null);
@@ -369,10 +383,20 @@ async function publicar(ligarPedido) {
       publicados[id] = assinatura;
       gravarPublicados(publicados);
       novos.push(id);
+      if (terminouAgora && resumo.modo !== 'AUDITORIA') {
+        const simulacao = resumo.modo === 'SIMULACAO';
+        const n = resumo.arquivados;
+        const nc = resumo.codigos.length;
+        const clientes = (resumo.clientes || []).slice(0, 3).map(c => c.codigo + ' ' + c.nome + ' (' + c.n + ')').join(', ');
+        painel.atividade('arquivamento',
+          (simulacao ? 'Simulação: ' : '') + (n ? (simulacao ? 'arquivaria ' : 'Arquivou ') + n + (n === 1 ? ' arquivo' : ' arquivos') + ' de ' + nc + (nc === 1 ? ' cliente' : ' clientes') : 'Organização sem arquivo novo'),
+          [clientes, resumo.naoIdentificados ? resumo.naoIdentificados + ' não identificado(s)' : '', resumo.alerta ? 'alerta: ' + resumo.alerta : '', id].filter(Boolean).join(' · '));
+      }
     }
     if (novos.length) log('publicado no banco:', novos.length, 'execução(ões):', novos.slice(-5).join(', ') + (novos.length > 5 ? '…' : ''));
   } catch (err) {
     log('não consegui publicar o arquivamento:', err.message);
+    painel.erro('arquivamento', 'Não consegui publicar o que foi arquivado', err.message);
   } finally { publicando = false; }
   return novos;
 }
@@ -507,6 +531,7 @@ async function atenderFila() {
       } catch (err) {
         await doc.ref.update({ status: 'erro', erro: err.message, erroEm: agora() });
         log('pedido', doc.id, 'recusado:', err.message);
+        painel.erro('arquivamento', 'Pedido de arquivamento recusado', err.message);
         continue;
       }
 
@@ -528,7 +553,10 @@ async function atenderFila() {
       const timerAndamento = setInterval(() => gravarAndamento(false), 4000);
       const r = await rodarRotina(modo, linha => {
         passos++;
-        if (linha.etapas) { progresso = Object.assign({ em: agora() }, linha.etapas); delete linha.etapas; }
+        if (linha.etapas) {
+          progresso = Object.assign({ em: agora() }, linha.etapas); delete linha.etapas;
+          painel.fazendo('arquivo', 'Arquivando: etapa ' + Math.min(progresso.feitas + 1, progresso.total) + '/' + progresso.total + (progresso.atual ? ' — ' + progresso.atual : ''));
+        }
         andamento.push(Object.assign({ em: agora() }, linha));
         if (andamento.length > 200) andamento.shift();
         sujo = true;
@@ -557,6 +585,7 @@ async function atenderFila() {
         // parada pelo nads ("Cancelar a organização"): não é erro da rotina
         await doc.ref.update({ status: 'cancelado', canceladoEm: agora(), canceladoPor: paradaPedida.por, execucao, resposta });
         log('pedido', doc.id, 'cancelado pelo nads (' + (paradaPedida.por || '?') + ')');
+        painel.atividade('arquivamento', 'Organização cancelada' + (paradaPedida.por ? ' por ' + paradaPedida.por : ''), execucao || '');
         paradaPedida = null;
       } else if (r.ok) {
         await doc.ref.update({ status: 'concluido', concluidoEm: agora(), execucao, resposta });
@@ -564,16 +593,19 @@ async function atenderFila() {
       } else {
         await doc.ref.update({ status: 'erro', erro: 'a rotina terminou com erro' + (r.code != null ? ' (código ' + r.code + ')' : ''), erroEm: agora(), execucao, resposta });
         log('pedido', doc.id, 'falhou, código', r.code);
+        painel.erro('arquivamento', 'O arquivamento deu erro', 'a rotina terminou com erro' + (r.code != null ? ' (código ' + r.code + ')' : '') + (p.criadoPor ? ' · pedido de ' + p.criadoPor : ''));
       }
       mudarEstado({ situacao: 'livre' });
     }
   } catch (err) {
     log('erro atendendo a fila:', err.message);
+    painel.erro('arquivamento', 'Erro atendendo a fila de arquivamento', err.message);
   } finally { ocupado = false; }
 }
 
 // ---------- início ----------
 async function iniciar() {
+  painel.iniciar(db, { robo: 'pc', log, filas: painel.FILAS.pc });
   // Pedido que ficou "processando" quando o PC desligou: não roda de novo às
   // cegas — metade dos arquivos pode já ter sido movida.
   const presos = await fila.where('status', '==', 'processando').get();
@@ -608,17 +640,22 @@ async function iniciar() {
   // o FGTS Digital no PC (08/10/2026): o Edge aparece na tela; a verificação do gov.br é feita pela pessoa (aqui ou pela
   // tela ao vivo no nads)
   // desde 09/10/2026 pelo Claude do PC no Chrome logado (fgts-claude.js); o robô do navegador (fgts-digital.js) fica para a nuvem
+  painel.modulo('arquivamento', 'Arquivamento', true);
+  painel.modulo('fgts', 'FGTS Digital', true);
   try { require('./fgts-claude').iniciarFgtsPeloClaude(db, log); }
-  catch (err) { log('FGTS não ligou:', err.message); }
+  catch (err) { log('FGTS não ligou:', err.message); painel.modulo('fgts', 'FGTS Digital', false, err.message); }
   // o balancete do Alterdata Contábil (14/10/2026): o roteiro no Contábil aberto e logado deste PC, pedido pela Conferência
+  painel.modulo('alterdata', 'Balancete do Alterdata', true);
   try { require('./alterdata').iniciarAlterdata(db, log); }
-  catch (err) { log('Alterdata não ligou:', err.message); }
+  catch (err) { log('Alterdata não ligou:', err.message); painel.modulo('alterdata', 'Balancete do Alterdata', false, err.message); }
+  painel.modulo('sieg', 'SIEG', true);
   try { require('./sieg').iniciarSieg({ db, log }); }
-  catch (err) { log('SIEG desligado:', err.message); }
+  catch (err) { log('SIEG desligado:', err.message); painel.modulo('sieg', 'SIEG', false, err.message); }
   // a Área do Cliente (16/10/2026): o espelho de cada link secreto e as caixas de chamados e de arquivos do cliente; aqui
   // porque o arquivo do cliente vai para a pasta dele no G: deste PC
+  painel.modulo('area-cliente', 'Área do Cliente', true);
   try { require('./area-cliente').iniciarAreaDoCliente(db, log); }
-  catch (err) { log('Área do Cliente não ligou:', err.message); }
+  catch (err) { log('Área do Cliente não ligou:', err.message); painel.modulo('area-cliente', 'Área do Cliente', false, err.message); }
   // o painel dos agentes do Claude Code (14/10/2026): saiu do robô. Cada computador cadastrado no nads grava as próprias
   // conversas pelo gancho ~/.claude/painel/registro.js (painelMaquinas/{chave}/sessoes); o painelAgentes ficou sem uso.
 
@@ -634,6 +671,7 @@ function desligar() {
   Promise.all([
     estadoRef.set({ em: new Date(0).toISOString(), situacao: 'desligado', desligadoEm: agora() }, { merge: true }),
     pararIA ? pararIA() : null,
+    painel.desligar(),
   ]).catch(() => {}).finally(() => process.exit(0));
   setTimeout(() => process.exit(0), 3000);
 }

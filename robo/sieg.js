@@ -20,6 +20,8 @@ const CREDENCIAIS = path.join(__dirname, 'sieg_credenciais.json');
 // a mesma do "Salvar no Drive" do Gmail, de onde a rotina das 9h arquiva e o Alterdata importa (07/10/2026)
 const PASTA_DO_DRIVE = process.env.PASTA_DESTINO || 'G:\\Meu Drive\\Claudio Secretario';
 const sx = require('./sieg-xmls');
+// o painel do robô (21/10/2026): o que o SIEG está fazendo agora, os XMLs baixados, as contagens e os erros
+const painel = require('./painel');
 const BASE = 'https://api.sieg.com/api/v1/';
 const ESPERA_MS = { 'contar-xmls': 13000, 'baixar-xmls': 31000, 'create-jwt': 2000 };
 const TIPO = { NFe: 1, CTe: 2, NFSe: 3, NFCe: 4, CFe: 5 };
@@ -412,10 +414,12 @@ function iniciarSieg({ db, log }) {
   const { c, faltam } = lerCredenciais();
   if (faltam.length) {
     log('SIEG desligado: falta ' + faltam.join(', ') + ' em scripts/sieg_credenciais.json');
+    painel.modulo('sieg', 'SIEG', false, 'falta ' + faltam.join(', ') + ' nas credenciais');
     estadoRef.set({ em: new Date().toISOString(), ligado: false, motivo: 'falta ' + faltam.join(', ') }, { merge: true }).catch(() => {});
     return () => {};
   }
   let situacao = 'livre';
+  painel.fazendoPor('sieg', () => (situacao === 'livre' ? null : 'SIEG: ' + situacao));
   const ponto = () => estadoRef.set({ em: new Date().toISOString(), ligado: true, motivo: null, situacao }, { merge: true }).catch(() => {});
   ponto();
   const relogio = setInterval(ponto, 60 * 1000);
@@ -633,6 +637,8 @@ function iniciarSieg({ db, log }) {
             }
             await db.collection('siegNotas').doc(id).update({ novos }).catch(() => {});
             log('SIEG: XMLs de', p.codigo, p.competencia, '-', arquivos.length, 'arquivos (' + novos + ' novos) em', onde);
+            painel.atividade('sieg', (doCliente ? 'Juntou os XMLs que o cliente mandou de ' : 'Baixou os XMLs do SIEG de ') + p.codigo + ' (' + p.competencia.slice(5) + '/' + p.competencia.slice(0, 4) + ')',
+              arquivos.length + ' arquivo(s), ' + novos + ' novo(s) no Drive' + (p.madrugada ? ' · madrugada' : p.criadoPor ? ' · pedido de ' + p.criadoPor : ''));
             continue;
           }
           // o .zip das notas que faltam no Alterdata (08/10/2026: "3"): só essas chaves, pelo portal (ou do .zip do Drive), e
@@ -665,6 +671,7 @@ function iniciarSieg({ db, log }) {
               resultado: { arquivos: arquivos.length, novos: 0, pasta: '', emitidas: 0, recebidas: 0, zip: nomeDoZip, faltaram: chaves.length - arquivos.length },
             });
             log('SIEG: .zip das que faltam no Alterdata de', p.codigo, '-', arquivos.length, 'de', chaves.length, 'notas');
+            painel.atividade('sieg', 'Montou o .zip das notas que faltam no Alterdata de ' + p.codigo, arquivos.length + ' de ' + chaves.length + ' notas');
             continue;
           }
           // o "Contar agora" do nads (07/10/2026): só a contagem desta empresa e mês, sem esperar a madrugada
@@ -675,6 +682,7 @@ function iniciarSieg({ db, log }) {
             await db.collection('siegContagens').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), ...r });
             await d.ref.update({ status: 'concluido', concluidoEm: new Date().toISOString() });
             log('SIEG: contagem de', p.codigo, p.competencia, 'pedida pelo nads');
+            painel.atividade('sieg', 'Contou as notas de ' + p.codigo + ' no SIEG (' + p.competencia.slice(5) + '/' + p.competencia.slice(0, 4) + ')', p.criadoPor ? 'pedido de ' + p.criadoPor : '');
             continue;
           }
           // pelo portal primeiro (só NF-e e NFC-e: segundos), sem a sessão ou com erro pela API (50 por chamada)
@@ -690,9 +698,11 @@ function iniciarSieg({ db, log }) {
           await db.collection('siegSaidas').doc(id).set({ codigo: String(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), series });
           await d.ref.update({ status: 'concluido', concluidoEm: new Date().toISOString() });
           log('SIEG: saídas de', p.codigo, p.competencia, '-', series.reduce((s, x) => s + x.numeros.length, 0), 'notas');
+          painel.atividade('sieg', 'Baixou as saídas de ' + p.codigo + ' (' + p.competencia.slice(5) + '/' + p.competencia.slice(0, 4) + ')', series.reduce((s, x) => s + x.numeros.length, 0) + ' notas');
         } catch (err) {
           await d.ref.update({ status: 'erro', erro: err.message, erroEm: new Date().toISOString() });
           log('SIEG: erro', p.tipo === 'contagem' ? 'na contagem de' : p.tipo === 'xmls' ? 'nos XMLs de' : 'nas saídas de', p.codigo, '-', err.message);
+          painel.erro('sieg', 'O SIEG deu erro ' + (p.tipo === 'contagem' ? 'na contagem de ' : p.tipo === 'xmls' ? 'nos XMLs de ' : 'nas saídas de ') + p.codigo, err.message);
         }
       }
     } catch (err) { log('SIEG: não consegui ler os pedidos -', err.message); }
@@ -727,7 +737,8 @@ function iniciarSieg({ db, log }) {
         }
       }
       log('SIEG: contagem da noite pronta');
-    } catch (err) { log('SIEG: contagem da noite falhou -', err.message); }
+      painel.atividade('sieg', 'Contagem da madrugada pronta', comCnpj.length + ' clientes em ' + comps.join(' e '));
+    } catch (err) { log('SIEG: contagem da noite falhou -', err.message); painel.erro('sieg', 'A contagem da madrugada falhou', err.message); }
     finally { situacao = 'livre'; ocupado = false; }
     await xmlsDaMadrugada().catch(err => log('SIEG: XMLs da madrugada falharam -', err.message));
   }
@@ -765,6 +776,7 @@ function iniciarSieg({ db, log }) {
       feitos++;
     }
     log('SIEG: XMLs da madrugada prontos -', feitos, 'clientes em', comp);
+    if (feitos) painel.atividade('sieg', 'XMLs da madrugada prontos', feitos + ' cliente(s) em ' + comp);
   }
   const relogioNoite = setInterval(() => { contarTodos(); if (!ocupado) atenderPedidos(); }, 10 * 60 * 1000);
   log('SIEG ligado: contagem da madrugada e os pedidos do nads');

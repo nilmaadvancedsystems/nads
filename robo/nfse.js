@@ -27,6 +27,9 @@ const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 const { ouvir } = require('./ouvinte');
+// o painel do robô (21/10/2026): as notas autorizadas, as canceladas e as que deram erro
+const painel = require('./painel');
+const errosNoPainel = erros => (Array.isArray(erros) ? erros : []).map(e => (e.codigo && e.codigo !== 'ROBO' ? e.codigo + ' ' : '') + (e.descricao || '')).join(' | ');
 
 // As URLs da E&L para Taiobeiras (passadas pela prefeitura). Produção não tem o segmento do ambiente, como no envio.
 const BASE_EL = 'https://mg-taiobeiras-pm-nfs-backend.cloud.el.com.br/producao17/api/nacional';
@@ -521,7 +524,10 @@ function iniciarNfse(db, log, opcoes = {}) {
     } finally { ocupado = false; }
   }
 
-  const falhar = (ref, erros, extra) => ref.update(Object.assign({ status: 'erro', erros, atualizadoEm: agora() }, extra || {}));
+  const falhar = (ref, erros, extra) => {
+    painel.erro('nfse', 'Uma NFS-e dos honorários não saiu', errosNoPainel(erros));
+    return ref.update(Object.assign({ status: 'erro', erros, atualizadoEm: agora() }, extra || {}));
+  };
   const erroRobo = descricao => [{ codigo: 'ROBO', descricao }];
 
   // ----- envio -----
@@ -616,6 +622,7 @@ function iniciarNfse(db, log, opcoes = {}) {
     const numeroNfse = numeroDaNota(xmlNfse);
     await ref.update(Object.assign({ status: 'autorizada', chaveAcesso, numeroNfse, xmlNfse, erros: [], autorizadaEm: agora(), atualizadoEm: agora() }, extra || {}));
     log('NFS-e:', dps.id, 'AUTORIZADA, nota', numeroNfse, 'chave', chaveAcesso);
+    painel.atividade('nfse', 'Emitiu a NFS-e nº ' + (numeroNfse || '?') + ' dos honorários', 'chave ' + chaveAcesso);
     // o e-mail ao tomador (se o automático estiver ligado): numa tarefa à parte da fila, depois desta
     if (correio) enfileirar('email', ref.id);
   }
@@ -686,7 +693,10 @@ function iniciarNfse(db, log, opcoes = {}) {
     if (!ok) return;
     const p = ok;
     const c = p.cancelamento || {};
-    const falharCanc = (erros, extra) => ref.update(Object.assign({ status: 'erro-cancelamento', erros, 'cancelamento.enviandoEm': FieldValue.delete(), atualizadoEm: agora() }, extra || {}));
+    const falharCanc = (erros, extra) => {
+      painel.erro('nfse', 'O cancelamento da NFS-e nº ' + (p.numeroNfse || '?') + ' não saiu', errosNoPainel(erros));
+      return ref.update(Object.assign({ status: 'erro-cancelamento', erros, 'cancelamento.enviandoEm': FieldValue.delete(), atualizadoEm: agora() }, extra || {}));
+    };
     const probl = [];
     if (!/^\d{50}$/.test(String(p.chaveAcesso || ''))) probl.push('a nota não tem chave de acesso (só dá para cancelar nota autorizada)');
     if (!['1', '2', '9'].includes(String(c.cMotivo))) probl.push('o código do motivo precisa ser 1 (erro na emissão), 2 (serviço não prestado) ou 9 (outros)');
@@ -718,6 +728,7 @@ function iniciarNfse(db, log, opcoes = {}) {
     if (r.status !== 200 && r.status !== 201) { await falharCanc(erroRobo(mensagemHttp(r)), { xmlCancelamento: xml }); return; }
     await ref.update(Object.assign({ status: 'cancelada', canceladaEm: agora(), erros: [], 'cancelamento.enviandoEm': FieldValue.delete(), atualizadoEm: agora() }, xmlEvento ? { xmlEvento } : {}));
     log('NFS-e: nota', p.numeroNfse || p.chaveAcesso, 'CANCELADA');
+    painel.atividade('nfse', 'Cancelou a NFS-e nº ' + (p.numeroNfse || '?'), 'chave ' + p.chaveAcesso);
   }
 
   // ----- o que o nads pede -----

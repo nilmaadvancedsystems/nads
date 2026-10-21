@@ -1,12 +1,12 @@
 // As peças do catálogo, desenhadas com as MESMAS peças do sistema (@nads/ui e as classes do nads.css). A ordem dentro
 // de cada tipo dá o código (BT-01, BT-02…): peça nova entra no FIM do tipo, para os códigos não mudarem.
 import {
-  Alerta, AnelDeContagem, BarrasEmColuna, BotaoAcao, BotaoFechar, Vazio, CartaoComAnel, RoscaComLegenda, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail,
+  Alerta, AnelDeContagem, BarrasEmColuna, BotaoAcao, BotaoFechar, Vazio, CartaoComAnel, RoscaComLegenda, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail, MapaDeCalor,
   LogoFgts, LogoGovernoMinas, LogoInss, LogoReceitaFederal, LogoSimplesNacional, LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
 } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
 import { CampoAssinatura } from '@nads/ui';
-import { financeiro } from '@nads/core';
+import { entregas, financeiro } from '@nads/core';
 import { CONCILIA, EXECUTOR, EXTRATUDO, TAREFAS, TODAS } from './telas';
 import type { Peca } from './tipos';
 import { BotaoGoogle } from '../../../comum/BotaoGoogle';
@@ -35,6 +35,9 @@ import { LinhaDoPlano } from '../../tarefas/telas/financeiro/partes/LinhaDoPlano
 import { ValorDoCaixa } from '../../tarefas/telas/financeiro/partes/ValorDoCaixa';
 import { BotoesDoLink } from '../../tarefas/telas/area-cliente/partes/BotoesDoLink';
 import { ConversaDoEscritorio } from '../../tarefas/telas/area-cliente/partes/ConversaDoEscritorio';
+import { CartaoDoRobo } from '../../tarefas/telas/cadastro/painel-robo/partes/CartaoDoRobo';
+import { LinhaDoTempoDoRobo } from '../../tarefas/telas/cadastro/painel-robo/partes/LinhaDoTempoDoRobo';
+import { docsDeExemplo } from '../../tarefas/dados/painelRobo';
 import '../../cliente/cliente.css';
 
 const nada = () => undefined;
@@ -380,7 +383,7 @@ export const PECAS_BASE: Peca[] = [
     ) },
 
   // ─── Tabelas ────────────────────────────────────────────────────────────────────────────────────────────────────────
-  { id: 'tabela', tipo: 'tabelas', nome: 'Tabela padrão', descricao: 'Cabeçalho grudado; números à direita (.num); a conta com o código em negrito e o nome normal', componente: 'TituloDaConta', classes: ['table-wrap', 'table-compact', 'th-sort', 'num'], telas: ['c-relatorio', 'c-consulta', 'e-conferencia', 't-empresas', 'c-cliente-documentos', 'c-cliente-dp'], largo: true,
+  { id: 'tabela', tipo: 'tabelas', nome: 'Tabela padrão', descricao: 'Cabeçalho grudado; números à direita (.num); a conta com o código em negrito e o nome normal', componente: 'TituloDaConta', classes: ['table-wrap', 'table-compact', 'th-sort', 'num'], telas: ['c-relatorio', 'c-consulta', 'e-conferencia', 't-empresas', 'c-cliente-documentos', 'c-cliente-dp', 't-cadastro-robo'], largo: true,
     demo: () => (
       <div className="table-wrap"><table className="table-compact"><thead><tr><th className="th-sort">Conta</th><th>Descrição</th><th className="num">Notas</th><th className="num">Soma das notas</th><th className="num">Saldo do balancete</th><th>Situação</th></tr></thead>
         <tbody>
@@ -518,7 +521,7 @@ export const PECAS_BASE: Peca[] = [
   // ─── Avisos ─────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'alerta', tipo: 'avisos', nome: 'Alerta (amarelo)', componente: 'Alerta', classes: ['alert', 'alert-title', 'alert-text'], telas: ['t-exec-cheque', 'c-verificar', 'e-importacao', 't-exec-fiscal-rotina'], largo: true,
     demo: () => <Alerta naLinha titulo="Saldo negativo: faça o cheque especial" texto="Gere os lançamentos no Cheque especial, lance no Alterdata e importe o razão de novo." /> },
-  { id: 'alerta-ok', tipo: 'avisos', nome: 'Alerta (verde)', componente: 'Alerta', classes: ['alert alert-ok'], telas: ['c-verificar', 't-exec-fiscal-rotina'], largo: true, demo: () => <Alerta naLinha tom="ok" titulo="Tudo bate neste período" texto="Nenhuma pendência." /> },
+  { id: 'alerta-ok', tipo: 'avisos', nome: 'Alerta (verde)', componente: 'Alerta', classes: ['alert alert-ok'], telas: ['c-verificar', 't-exec-fiscal-rotina', 't-cadastro-robo'], largo: true, demo: () => <Alerta naLinha tom="ok" titulo="Tudo bate neste período" texto="Nenhuma pendência." /> },
   { id: 'toast', tipo: 'avisos', nome: 'Aviso rápido (toast)', descricao: 'No canto de baixo, some em 4 s', componente: 'useRetorno().toast', classes: ['toast-region', 'toast'], telas: TODAS,
     demo: () => <div className="toast cat-parado">Etapa interrompida: Importação.</div>, aoVivo: c => c.toast('Etapa interrompida: Importação.') },
   { id: 'imp-aviso', tipo: 'avisos', nome: 'Barrinha no topo (importou / Drive)', descricao: 'Por cima da tela: o que deu certo some em 2,7 s; o erro (ex.: nada no Drive) fica até o ×', classes: ['imp-aviso', 'imp-aviso-barra', 'erro', 'info'], telas: ['e-importacao', 't-exec-importacao'],
@@ -622,7 +625,7 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <div className="stat-grid sieg-cupons" style={{ width: '100%' }}><div className="stat painel-numero painel-info"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="recibo" /></span><p className="stat-label">Cupons (NFC-e)</p><p className="stat-value num">1.284</p></div><div className="stat painel-numero painel-ok"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="dinheiro" /></span><p className="stat-label">Valor dos cupons</p><p className="stat-value num">R$ 86.412,90</p></div><div className="stat painel-numero painel-neutro"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="hash" /></span><p className="stat-label">Numeração</p><p className="stat-value num sieg-cupons-faixa"><span>40.112 a 41.398</span></p></div><div className="stat painel-numero painel-aviso"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="alert" /></span><p className="stat-label">Faltando · canceladas</p><p className="stat-value num">2 · 3</p></div></div> },
   { id: 'sieg-situacao', tipo: 'cartoes', nome: 'Situação na SEFAZ (pela VM)', descricao: 'Na Sequência de saídas: o botão de consultar, o andamento, as contagens em pílulas (autorizadas em verde, o que pede atenção em amarelo) e a tabela das notas que não batem com o SIEG', classes: ['sieg-situacao', 'sieg-situacao-topo', 'sieg-situacao-chips', 'sieg-situacao-chip'], telas: ['t-exec-fiscal-rotina'], largo: true,
     demo: () => <div className="sieg-situacao" style={{ width: '100%' }}><div className="sieg-situacao-topo"><b>Situação na SEFAZ</b><span className="fraco">Consultada em 15/10 14:20</span><span className="tarefas-barra-espaco" /><button type="button" className="btn btn-outline"><Icone nome="checkCircle" />Consultar de novo</button></div><div className="sieg-situacao-chips"><span className="sieg-situacao-chip ok"><b className="num">1.281</b> Autorizadas</span><span className="sieg-situacao-chip neutro"><b className="num">3</b> Canceladas</span><span className="sieg-situacao-chip aviso"><b className="num">1</b> Não constam</span></div></div> },
-  { id: 'painel-numero', tipo: 'cartoes', nome: 'Números em painéis coloridos', descricao: 'Cada número no tom do que ele é, com o ícone (Sávio, 07/10/2026): azul o total, verde o feito, amarelo o que falta, o vermelho do nads o destaque; laranja, roxo e ciano para os outros (08/10: "quero que colora todos")', classes: ['stat painel-numero', 'painel-info', 'painel-ok', 'painel-aviso', 'painel-marca', 'painel-laranja', 'painel-roxo', 'painel-ciano', 'painel-neutro', 'painel-numero-icone'], telas: ['t-dp-resumo', 't-exec-fiscal-rotina', 't-fiscal-painel'], largo: true,
+  { id: 'painel-numero', tipo: 'cartoes', nome: 'Números em painéis coloridos', descricao: 'Cada número no tom do que ele é, com o ícone (Sávio, 07/10/2026): azul o total, verde o feito, amarelo o que falta, o vermelho do nads o destaque; laranja, roxo e ciano para os outros (08/10: "quero que colora todos")', classes: ['stat painel-numero', 'painel-info', 'painel-ok', 'painel-aviso', 'painel-marca', 'painel-laranja', 'painel-roxo', 'painel-ciano', 'painel-neutro', 'painel-numero-icone'], telas: ['t-dp-resumo', 't-exec-fiscal-rotina', 't-fiscal-painel', 't-cadastro-robo'], largo: true,
     demo: () => <div className="stat-grid dp-numeros" style={{ width: '100%' }}>{([['Clientes', 115, 'info', 'briefcase'], ['Concluídos', 48, 'ok', 'check'], ['Pendentes', 67, 'aviso', 'clock'], ['Com folha', 82, 'marca', 'usuario'], ['Pró-labore', 44, 'laranja', 'usuario'], ['Sem movimento', 21, 'roxo', 'list'], ['REINF autorizada', 19, 'ciano', 'fileUp']] as [string, number, string, NomeIcone][]).map(([r, v, tom, ic]) => <div key={r} className={'stat painel-numero painel-' + tom}><span className="painel-numero-icone" aria-hidden="true"><Icone nome={ic} /></span><p className="stat-label">{r}</p><p className="stat-value">{v}</p></div>)}</div> },
   { id: 'stat', tipo: 'cartoes', nome: 'Números (stat)', componente: 'Stat', classes: ['stat-grid', 'stat', 'stat-label', 'stat-value'], telas: ['c-relatorio', 't-insights', 'e-conferencia', 'c-verificar', 't-exec-fiscal-rotina', 'c-cliente', 'c-cliente-dp'], largo: true,
     demo: () => <div className="stat-grid" style={{ width: '100%' }}><Stat rotulo="Notas" valor="462" /><Stat rotulo="Valor total" valor="1.622.422,77" /><Stat rotulo="Entradas no período" valor="63.390,44" cor="entrada" /><Stat rotulo="Saídas no período" valor="63.734,30" cor="saida" /></div> },
@@ -688,7 +691,7 @@ export const PECAS_BASE: Peca[] = [
     ) },
 
   // ─── Listas ─────────────────────────────────────────────────────────────────────────────────────────────────────────
-  { id: 'chips', tipo: 'listas', nome: 'Chips de filtro', classes: ['chip-row', 'chip-lbl', 'chip-f', 'on'], telas: ['c-consulta', 'c-naturezas', 't-gmail', 'c-cliente-documentos'],
+  { id: 'chips', tipo: 'listas', nome: 'Chips de filtro', classes: ['chip-row', 'chip-lbl', 'chip-f', 'on'], telas: ['c-consulta', 'c-naturezas', 't-gmail', 'c-cliente-documentos', 't-cadastro-robo'],
     demo: () => <div className="chip-row"><span className="chip-lbl">Tipo</span><button className="chip-f on" type="button">Todos</button><button className="chip-f" type="button">Entradas</button><button className="chip-f" type="button">Saídas</button></div> },
   { id: 'contadores', tipo: 'listas', nome: 'Contadores', classes: ['tarefas-contador', 'menu-contador', 'imp-faixa-qtd'], telas: ['t-empresas', 'e-importacao', 't-exec-fiscal-rotina'],
     demo: () => <><button className="tarefas-contador" type="button"><Icone nome="briefcase" /><b>235</b> empresas</button><span className="menu-contador">12</span><span className="imp-faixa-qtd">4</span></> },
@@ -706,14 +709,14 @@ export const PECAS_BASE: Peca[] = [
           <td className="ent-acoes"><span className="badge badge-danger">2ª vez</span><button type="button" className="btn btn-outline"><Icone nome="lapis" />Assinar</button></td></tr>
       </tbody></table></div>
     ) },
-  { id: 'ent-linhas', tipo: 'listas', nome: 'Linhas com selo (cartões da entrega)', descricao: 'Nos cartões da Rota (Vencendo, Atestados, Obrigações, Protocolos, Qualidade) e na página do cliente: o nome em negrito e o apoio ao lado, o selo e a ação à direita; a linha inteira pode abrir', classes: ['ent-linhas', 'ent-linha-abre'], telas: ['t-entregas'], largo: true,
+  { id: 'ent-linhas', tipo: 'listas', nome: 'Linhas com selo (cartões da entrega)', descricao: 'Nos cartões da Rota (Vencendo, Atestados, Obrigações, Protocolos, Qualidade) e na página do cliente: o nome em negrito e o apoio ao lado, o selo e a ação à direita; a linha inteira pode abrir', classes: ['ent-linhas', 'ent-linha-abre'], telas: ['t-entregas', 't-cadastro-robo'], largo: true,
     demo: () => (
       <ul className="ent-linhas" style={{ width: '100%' }}>
         <li><button type="button" className="ent-linha-abre"><div><b>102 - BETA SERVICOS EXEMPLO ME</b><span className="fraco">DARF · outubro/2026</span></div><span className="badge badge-warn">vence em 2 dias</span></button></li>
         <li><div><b>DAS do Simples</b><span className="fraco">20/10 · 3 guias na rota</span></div><span className="badge badge-neutral">vence em 4 dias</span></li>
       </ul>
     ) },
-  { id: 'ent-dados', tipo: 'listas', nome: 'Dados em linhas (rótulo e valor)', descricao: 'O cadastro, a Receita e a entrega feita: o rótulo apagado à esquerda e o valor à direita; linha sem valor não aparece', classes: ['ent-dados'], telas: ['t-entregas'],
+  { id: 'ent-dados', tipo: 'listas', nome: 'Dados em linhas (rótulo e valor)', descricao: 'O cadastro, a Receita e a entrega feita: o rótulo apagado à esquerda e o valor à direita; linha sem valor não aparece', classes: ['ent-dados'], telas: ['t-entregas', 't-cadastro-robo'],
     demo: () => <dl className="ent-dados" style={{ width: '100%', maxWidth: 420 }}><div><dt>Recebido por</dt><dd>João (exemplo)</dd></div><div><dt>Entregue por</dt><dd>Maria (exemplo)</dd></div><div><dt>Data/hora</dt><dd>15/10/2026, 12:48</dd></div></dl> },
 
   // ─── Carregamento ───────────────────────────────────────────────────────────────────────────────────────────────────
@@ -754,6 +757,11 @@ export const PECAS_BASE: Peca[] = [
       <div style={{ width: 300 }}><CartaoComAnel dias={12} titulo="EMPRESA EXEMPLO LTDA" prazo="Vence em 12 dias" apoio="292 · 19/10/2026" atrasado={false} onClick={nada} /></div>
       <div style={{ width: 300 }}><CartaoComAnel dias={-5} titulo="OUTRA EMPRESA LTDA" prazo="Parado há 5 dias" apoio="10 · faltam 3 de 8 · Fabiana" atrasado onClick={nada} /></div>
       <AnelDeContagem dias={20} /></div> },
+
+  // o mapa quente do Uso do sistema (Gustavo, 20/10/2026: "um mapa quente que trackei o que tá sendo usado no sistema")
+  { id: 'mapa-calor', tipo: 'graficos', nome: 'Mapa de calor (os cliques na tela)', descricao: 'A grade de 50×50 sobre o contorno da página (o topo e a lateral); quanto mais cliques na célula, mais forte o vermelho; a dica da célula diz quantos', componente: 'MapaDeCalor', classes: ['mapa-calor', 'mapa-calor-celula'], telas: ['t-cadastro-uso'],
+    uso: '<MapaDeCalor grade={{ "x_y": cliques }} maior={n} rotulo="Os cliques em Fiscal › Painel" />',
+    demo: () => <div style={{ width: '100%', maxWidth: 520 }}><MapaDeCalor rotulo="Exemplo" maior={9} grade={{ '20_10': 9, '21_10': 6, '22_11': 3, '30_24': 5, '31_25': 2, '40_40': 1, '18_30': 4 }} /></div> },
 
   // ─── Cores ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'cores', tipo: 'cores', nome: 'As cores do sistema', descricao: 'Mude o tema no ☰ para ver o escuro', telas: TODAS, largo: true,
@@ -967,6 +975,10 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}><ValorEditavel valor={850} rotulo="Valor com valor" aoSalvar={nada} /><ValorEditavel valor={0} rotulo="Valor sem valor" aoSalvar={nada} /></div> },
   { id: 'situacao-do-honorario', tipo: 'selos', nome: 'Situação do honorário', descricao: 'Nos Honorários: "Pago em dd/mm · forma" (verde) ou "Em aberto" (amarelo); não há vencimento, então nunca "atrasado"', classes: ['badge', 'badge-ok', 'badge-warn'], telas: ['t-fin-honorarios'],
     demo: () => <div style={{ display: 'flex', gap: 8 }}><span className="badge badge-ok">Pago em 05/10 · PIX</span><span className="badge badge-warn">Em aberto</span></div> },
+  { id: 'selo-da-nfse-do-honorario', tipo: 'selos', nome: 'Selo da NFS-e e "Cobrado em" (Honorários)', descricao: 'Na coluna Situação dos Honorários (21/10/2026): a nota que já existe para o cliente no mês — "NFS-e 123" (verde), "NFS-e pedida" (cinza) ou "NFS-e recusada" (vermelho) — e, nos em aberto, o "Cobrado em dd/mm" ao lado', classes: ['badge', 'fin-selo', 'fin-cobrado'], telas: ['t-fin-honorarios'],
+    demo: () => <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><span className="badge badge-ok">Pago em 05/10 · PIX</span><span className="badge badge-ok fin-selo">NFS-e 123</span><span className="badge badge-warn">Em aberto</span><span className="badge badge-neutral fin-selo">NFS-e pedida</span><span className="badge badge-bad fin-selo">NFS-e recusada</span><span className="fraco fin-cobrado">Cobrado em 20/10</span></div> },
+  { id: 'mensagem-de-cobranca', tipo: 'campos', nome: 'Mensagem de cobrança (texto editável)', descricao: 'Na janela Cobrar dos Honorários (21/10/2026): a mensagem pronta do modelo, que se pode mexer antes de abrir o WhatsApp ou copiar', classes: ['fin-cobranca-texto'], telas: ['t-fin-honorarios'],
+    demo: () => <textarea className="fin-cobranca-texto" rows={4} readOnly aria-label="Exemplo" value="Olá, ALFA COMERCIO LTDA! Passando para lembrar do honorário contábil de 09/2026, no valor de R$ 850,00. Chave PIX: 11.222.333/0001-81. Qualquer dúvida, estamos à disposição. — Nilma Contabilidade" /> },
   // o selo suave no nads (19/10/2026): a prioridade do feedback do app
   { id: 'selo-suave-nads', tipo: 'selos', nome: 'Selo suave (nads)', descricao: 'O selo suave da Área do Cliente trazido para o nads (badge-suave): a pílula sem borda, com o pontinho e o fundo suave; a cor só pelo significado. Na prioridade do feedback do app (Vitor, 19/10/2026): vermelho Alta, amarelo Média, neutro Baixa', classes: ['badge badge-suave', 'badge-bad', 'badge-warn', 'badge-neutral', 'badge-ok'], telas: TAREFAS,
     demo: () => (
@@ -974,4 +986,20 @@ export const PECAS_BASE: Peca[] = [
         <span className="badge badge-suave badge-bad">Alta</span><span className="badge badge-suave badge-warn">Média</span><span className="badge badge-suave badge-neutral">Baixa</span>
       </div>
     ) },
+  // o painel do robô (Vitor, 21/10/2026: "quero um painel para eu saber o que o robô está fazendo, arquivando e afins")
+  { id: 'robo-cartao', tipo: 'cartoes', nome: 'Cartão do robô (Painel do robô)', descricao: 'Um por robô (o do PC e o da nuvem): o nome na faixa do topo com o selo suave da situação (Ligado verde, Atrasado amarelo, Desligado/Sem sinal vermelho), os dados em linhas (onde roda e a máquina, o último sinal, ligado desde, a versão do código, os módulos), o que está fazendo agora ("ocioso, esperando pedido" quando nada) e os módulos que não ligaram, com o motivo. Sem o painel publicado, o aviso para atualizar o robô', componente: 'CartaoDoRobo', classes: ['card robo-cartao', 'card-head', 'badge badge-suave', 'ent-dados', 'robo-cartao-agora', 'ag-conversa-linha', 'robo-cartao-modulos'], telas: ['t-cadastro-robo'], largo: true,
+    uso: "<CartaoDoRobo s={entregas.situacaoDoRobo('pc', batimento, sinalAntigo)} />",
+    demo: () => {
+      const d = docsDeExemplo();
+      const agora = Date.now();
+      return (
+        <div className="robo-grade" style={{ width: '100%' }}>
+          <CartaoDoRobo s={entregas.situacaoDoRobo('pc', d.pc, null, agora)} />
+          <CartaoDoRobo s={entregas.situacaoDoRobo('vm', null, { em: new Date(agora - 40 * 60000).toISOString(), maquina: 'robo-nilma', desligadoEm: '' }, agora)} />
+        </div>
+      );
+    } },
+  { id: 'robo-linha-do-tempo', tipo: 'listas', nome: 'Linha do tempo do robô (Painel do robô)', descricao: 'Uma linha por coisa que o robô fez, a mais nova em cima: o que aconteceu em negrito, o detalhe e o robô embaixo (quebra a linha, nunca corta), o tipo num selo suave (o erro em vermelho, "Erro · FGTS") e quando à direita ("hoje, 09:12", "ontem, 18:02", "12/10, 07:00"). No celular, o selo e a hora descem para baixo do texto. Com os chips de filtro em cima (o tipo e "Só os erros")', componente: 'LinhaDoTempoDoRobo', classes: ['ent-linhas robo-linhas', 'robo-linha-texto', 'badge badge-suave', 'robo-quando'], telas: ['t-cadastro-robo'], largo: true,
+    uso: '<LinhaDoTempoDoRobo itens={atividades} agora={Date.now()} />',
+    demo: () => <div className="card" style={{ width: '100%', margin: 0 }}><LinhaDoTempoDoRobo itens={docsDeExemplo().atividades.slice(0, 5)} agora={Date.now()} /></div> },
 ];

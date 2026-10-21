@@ -109,3 +109,26 @@ export function CartaoComAnel({ dias, ciclo, titulo, prazo, apoio, atrasado, cla
     </button>
   );
 }
+
+/**
+ * O mapa quente de uma tela (Gustavo, 20/10/2026: "um mapa quente que trackei o que tá sendo usado no sistema"): a grade
+ * (de lado × lado células, os cliques por "x_y") sobre o contorno da página (a barra do topo e a lateral); quanto mais
+ * cliques, mais forte o vermelho. Sem animação.
+ */
+export function MapaDeCalor({ grade, maior, lado = 50, rotulo }: { grade: Readonly<Record<string, number>>; maior: number; lado?: number; rotulo: string }) {
+  const celulas = Object.entries(grade).filter(([, n]) => n > 0);
+  const tamanho = 100 / lado;
+  return (
+    <div className="mapa-calor" role="img" aria-label={rotulo + ': ' + celulas.length + (celulas.length === 1 ? ' ponto com clique' : ' pontos com clique')}>
+      <span className="mapa-calor-topo" aria-hidden="true" />
+      <span className="mapa-calor-lateral" aria-hidden="true" />
+      {celulas.map(([k, n]) => {
+        const [x, y] = k.split('_').map(Number);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+        const forca = maior > 0 ? Math.max(0.15, n / maior) : 0;
+        return <span key={k} className="mapa-calor-celula" title={n + (n === 1 ? ' clique' : ' cliques')}
+          style={{ left: x * tamanho + '%', top: y * tamanho + '%', width: tamanho + '%', height: tamanho + '%', opacity: forca }} />;
+      })}
+    </div>
+  );
+}

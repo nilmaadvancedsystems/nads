@@ -6,7 +6,7 @@
 import type { nfse } from '@nads/core';
 import { BotaoFechar, BotaoIcone, CampoData, Icone, useJanela, type NomeIcone } from '@nads/ui';
 import { useEffect, useRef, type ReactNode } from 'react';
-import { useNovaNota } from './useNovaNota';
+import { useNovaNota, type NotaInicial } from './useNovaNota';
 
 /** uma propriedade, como no Notion: o ícone e o nome à esquerda, o valor ocupando o resto */
 function Propriedade({ icone, rotulo, children }: { icone: NomeIcone; rotulo: string; children: ReactNode }) {
@@ -18,8 +18,8 @@ function Propriedade({ icone, rotulo, children }: { icone: NomeIcone; rotulo: st
   );
 }
 
-export function JanelaNovaNota({ fechar, nota }: { fechar: () => void; nota?: nfse.NotaFiscal }) {
-  const vm = useNovaNota(fechar, nota);
+export function JanelaNovaNota({ fechar, nota, inicial }: { fechar: () => void; nota?: nfse.NotaFiscal; inicial?: NotaInicial }) {
+  const vm = useNovaNota(fechar, nota, inicial);
   const titulo = vm.corrigindo ? 'Corrigir nota' : 'Nova nota';
 
   // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)

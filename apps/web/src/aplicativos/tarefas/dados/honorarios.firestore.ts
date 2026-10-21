@@ -1,6 +1,6 @@
 // Os honorários no banco do Entregas (19/10/2026, fase 2 do Financeiro), nas regras de lá (o admin e o diretor):
 //   - financeiroHonorarios/{id}: {clienteId, codigo, nome, cnpj, valor, ativo, observacoes?, criadoEm, criadoPor, atualizadoEm?,
-//     atualizadoPor?}; ao vivo;
+//     atualizadoPor?, cobrancas?: {AAAA-MM: {em, por}}}; ao vivo;
 //   - financeiroRecebimentos/{contratoId}_{AAAA-MM}: {contratoId, competencia, valor, recebidoEm, forma, lancamentoId?,
 //     observacoes?, por, em}; ao vivo.
 import { financeiro } from '@nads/core';
@@ -17,10 +17,21 @@ const addDocGuardado = guardar(addDoc) as typeof addDoc;
 const texto = (v: unknown) => (v == null ? '' : String(v));
 const FORMAS = financeiro.FORMAS_DE_RECEBIMENTO.map(f => f.valor);
 
+/** as cobranças mandadas: { '2026-09': { em, por } } */
+function cobrancasDoBanco(v: unknown): Record<string, { em: string; por: string }> | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const saida: Record<string, { em: string; por: string }> = {};
+  for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+    const o = x && typeof x === 'object' ? (x as Record<string, unknown>) : {};
+    saida[k] = { em: texto(o.em), por: texto(o.por) };
+  }
+  return Object.keys(saida).length ? saida : undefined;
+}
+
 function contratoDoBanco(id: string, d: Record<string, unknown>): financeiro.ContratoDeHonorario {
   return {
     id, clienteId: texto(d.clienteId), codigo: texto(d.codigo), nome: texto(d.nome), cnpj: texto(d.cnpj).replace(/\D/g, ''),
-    valor: Number(d.valor) || 0, ativo: d.ativo !== false, observacoes: texto(d.observacoes) || undefined,
+    valor: Number(d.valor) || 0, ativo: d.ativo !== false, observacoes: texto(d.observacoes) || undefined, cobrancas: cobrancasDoBanco(d.cobrancas),
     criadoEm: texto(d.criadoEm), criadoPor: texto(d.criadoPor), atualizadoEm: texto(d.atualizadoEm) || undefined, atualizadoPor: texto(d.atualizadoPor) || undefined,
   };
 }
@@ -73,13 +84,17 @@ export function criarHonorariosFirestore(): RepoHonorarios {
       };
       const antes = d.id ? contratos?.lista.find(x => x.id === d.id) : undefined;
       if (d.id && antes) {
-        await setDoc(doc(db, 'financeiroHonorarios', d.id), { ...base, criadoEm: antes.criadoEm, criadoPor: antes.criadoPor, atualizadoEm: agora, atualizadoPor: quem });
+        await setDoc(doc(db, 'financeiroHonorarios', d.id), { ...base, ...(antes.cobrancas ? { cobrancas: antes.cobrancas } : {}), criadoEm: antes.criadoEm, criadoPor: antes.criadoPor, atualizadoEm: agora, atualizadoPor: quem });
         return d.id;
       }
       return (await addDocGuardado(collection(db, 'financeiroHonorarios'), { ...base, criadoEm: agora, criadoPor: quem })).id;
     },
     async definirValor(id, valor, quem) {
       await updateDoc(doc(db, 'financeiroHonorarios', id), { valor: Math.round(valor * 100) / 100, atualizadoEm: new Date().toISOString(), atualizadoPor: quem });
+    },
+    async registrarCobranca(id, competencia, quem) {
+      // o campo com caminho (cobrancas.2026-09) muda só essa competência, sem apagar as outras
+      await updateDoc(doc(db, 'financeiroHonorarios', id), { ['cobrancas.' + competencia]: { em: new Date().toISOString(), por: quem } });
     },
     async receber(d, quem) {
       await setDoc(doc(db, 'financeiroRecebimentos', financeiro.idDoRecebimento(d.contratoId, d.competencia)), {

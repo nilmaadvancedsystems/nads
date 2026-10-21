@@ -116,6 +116,11 @@ export function criarGmailDoEntregasMemoria(): RepoGmailDoEntregas {
       { mensagemId: '18f0a1b2c3d4e5f9', em: h(0), remetente: 'padaria.paodourado@gmail.com', nome: 'Pão Dourado', assunto: 'extrato', trecho: 'Oi, mandando o extrato do mês.', arquivos: ['extrato.pdf'] },
       { mensagemId: '18f0a1b2c3d4e5fa', em: h(3), remetente: 'naoresponda@banco.com.br', nome: 'Banco', assunto: 'Seu extrato está disponível', trecho: 'Acesse o app.', arquivos: [] },
     ],
+    // os enviados pela caixa aos clientes (Heverton, 20/10/2026): o remetente é o cliente que recebeu
+    enviados: [
+      { mensagemId: '18f0a1b2c3d4e600', em: h(0, 40), remetente: 'financeiro@fito.com.br', nome: 'Financeiro Fito', para: ['financeiro@fito.com.br'], enviado: true, assunto: 'Guias de setembro', trecho: 'Bom dia, seguem o DAS e o DAE de setembro.', arquivos: ['das-09.pdf', 'dae-09.pdf'], clienteId: 'k292', clienteNome: 'FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA' },
+      { mensagemId: '18f0a1b2c3d4e601', em: h(2), remetente: 'volponi@gmail.com', nome: 'Volponi', para: ['volponi@gmail.com'], enviado: true, assunto: 'Re: Comprovantes', trecho: 'Recebido, obrigado. Falta o extrato do Sicoob.', arquivos: [], clienteId: 'k58', clienteNome: 'TORNEARIA VOLPONI INDUSTRIA E COMERCIO LTDA' },
+    ],
     spam: [
       { mensagemId: '18f0a1b2c3d4e5fb', em: h(1), remetente: 'promo@loja.com', nome: 'Loja', assunto: 'Ofertas da semana', trecho: 'Só hoje!', arquivos: [] },
     ],
@@ -138,6 +143,7 @@ export function criarGmailDoEntregasMemoria(): RepoGmailDoEntregas {
     usarCaixa(c) { caixaEscolhida = c; o.mudou(); },
     estado: () => estadoDoRobo(doc),
     clientes: () => ({ carregados: true, lista: clientes }),
+    documentos: () => new Map<number, string>(),
     ignorados: () => ignorados,
     async verificar(dias) {
       mudar({ andamento: { ativo: true, tipo: 'leitura', motivo: 'pedido', fase: 'lendo', feito: 3, total: 10, recentes: [{ em: agora(), texto: 'Lendo os e-mails dos últimos ' + dias + ' dias…' }] } });
