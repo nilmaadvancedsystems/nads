@@ -39,17 +39,20 @@ export function Caixa() {
           <input type="text" placeholder="Buscar lançamento" aria-label="Buscar lançamento (descrição, observações, valor, conta)" value={vm.busca}
             onChange={e => vm.setBusca(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') vm.setBusca(''); }} />
         </label>
-        <span className="tarefas-barra-espaco" />
-        {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
-        <button type="button" className="btn btn-outline" disabled={!vm.periodoValido} onClick={vm.exportar} title="Baixa a planilha do que está na tela (período, busca e tipo)"><Icone nome="download" />Exportar planilha</button>
-        <button type="button" className="btn btn-outline" onClick={() => vm.setCalculando(true)}><Icone nome="hash" />Calculadora</button>
-        <button type="button" className="btn btn-outline" onClick={() => vm.setContando(true)}><Icone nome="dinheiro" />Contar cédulas</button>
-        <button type="button" className="btn btn-primary" onClick={() => vm.abrir({})}><Icone nome="plus" />Novo lançamento</button>
+        {/* os botões juntos, à direita: quando a barra não cabe numa linha, descem juntos e continuam à direita
+            (21/10/2026: "o layout está diferente do padrão do app") */}
+        <span className="fin-acoes">
+          {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
+          <button type="button" className="btn btn-outline" onClick={() => vm.setCalculando(true)}><Icone nome="hash" />Calculadora</button>
+          <button type="button" className="btn btn-outline" onClick={() => vm.setContando(true)}><Icone nome="dinheiro" />Contar cédulas</button>
+          <button type="button" className="btn btn-outline" disabled={!vm.periodoValido} onClick={vm.exportar} title="Baixa a planilha do que está na tela (período, busca e tipo)"><Icone nome="download" />Exportar planilha</button>
+          <button type="button" className="btn btn-primary" onClick={() => vm.abrir({})}><Icone nome="plus" />Novo lançamento</button>
+        </span>
       </div>
       {vm.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.erro}</p>}
       {!vm.periodoValido && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />Confira o período: as duas datas precisam existir e a primeira não pode vir depois da segunda.</p>}
 
-      <div className="stat-grid fin-numeros">
+      <div className="stat-grid dp-numeros fin-numeros">
         {numeros.map(n => (
           <div key={n.rotulo} className={'stat painel-numero painel-' + n.tom}>
             <span className="painel-numero-icone" aria-hidden="true"><Icone nome={n.icone} /></span>

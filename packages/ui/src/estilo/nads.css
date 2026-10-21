@@ -4891,6 +4891,8 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .uso-tela-lista .table-wrap{max-height:360px;overflow:auto;}
 .uso-quem{margin:0;font-size:var(--fs-13,13px);}
 @media (max-width:900px){.uso-colunas,.uso-tela-corpo{grid-template-columns:1fr;}}
+/* Financeiro › Caixa: os botões da barra num grupo à direita, que desce inteiro quando a barra quebra (21/10/2026) */
+.fin-acoes{display:inline-flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-left:auto;}
 /* Fiscal › Faturamento dos clientes (21/10/2026) */
 .faturamento{display:flex;flex-direction:column;gap:12px;}
 .faturamento-tabela{max-height:calc(100vh - 260px);overflow:auto;}
