@@ -675,6 +675,10 @@ export function TarefaExtratos() {
   const [abertas, setAbertas] = useState<string[]>([]);
   const [abaEscolhida, setAba] = useState<AbaImportacao>(vm.etapaFiscal ? 'entradas' : 'bancos');
   // Prestados só para quem presta serviço (a regra do Cadastro; sem informar, aparece); no Fiscal, só as notas
+  // "presta serviços?" quando o Cadastro ainda não diz (Vitor, 21/10/2026: saiu da Conferência fiscal e veio para cá)
+  const perguntarServicos = vm.perguntarServicos;
+  const perguntaServicos = ponte.naTarefa && !vm.etapaCheque && vm.cadastroCarregado && vm.prestaServico === null;
+  useEffect(() => { if (perguntaServicos) void perguntarServicos(); }, [perguntaServicos]); // eslint-disable-line react-hooks/exhaustive-deps
   const visiveis = ABAS_DA_IMPORTACAO.filter(a => (a.id !== 'prestados' || vm.prestaServico !== false) && (!vm.etapaFiscal || ABAS_DAS_NOTAS.includes(a.id)));
   const aba = visiveis.some(a => a.id === abaEscolhida) ? abaEscolhida : visiveis[0].id;
   const abas = visiveis.map(a => ({ ...a, ativa: a.id === aba }));
