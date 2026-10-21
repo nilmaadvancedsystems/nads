@@ -39,6 +39,8 @@ igual('fornecedor: sufixo e pontuação saem, acento fica (Dicionário §5.2)', 
 igual('fornecedor: pontuação interna vira espaço', R.nomeNormalizado('FITO IND. E COM. DE ALIMENTOS LTDA'), 'FITO IND E COM DE ALIMENTOS');
 igual('data: pula "07.16.26283" e acha a data de verdade', R.dataBr('07.16.26283.1412893-9 PAGAR ATE 20/10/2026'), '20-10-2026');
 igual('data: datas coladas pelo PDF', R.dataBr('30/04/202523/05/2025'), '30-04-2025');
+igual('data ISO do comprovante PIX ("Data do pagamento2026-01-30 09:11")', R.dataBr('DATA DO PAGAMENTO2026-01-30 09:11:07'), '30-01-2026');
+igual('banco pela conta da Caixa (agência/operação/conta)', R.bancoDoTexto('Extrato\nCliente: X\nConta: 3411/1292/000578855317-9'), 'CAIXA');
 igual('valor: sem separador de milhar (Dicionário §2)', R.valorBr('VALOR TOTAL 15.869,95'), 'R$15869,95');
 igual('competência colada ("setembro/202620/10/2026")', R.competenciaSolta('setembro/202620/10/2026'), { mes: 9, ano: 2026 });
 igual('competência: "20/10/2026" não vira 10/2026', R.competenciaSolta('vence 20/10/2026'), null);

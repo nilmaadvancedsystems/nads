@@ -60,10 +60,11 @@ function mesDoNome(t) {
 const mesAno = c => (c ? dois(c.mes) + '-' + c.ano : null);
 /** "dd/mm/aaaa" → "DD-MM-AAAA" ([DATA]); null se não for data. */
 function dataBr(t) {
-  const re = /(?<!\d)(\d{2})[/.-](\d{2})[/.-](\d{4})(?!\d)|(\d{2})\/(\d{2})\/(\d{4})/g;   // "07.16.26283" não é data: segue procurando
+  // "07.16.26283" não é data: segue procurando; "2026-01-30" (ISO, comprovante PIX do Sicoob) também vale
+  const re = /(?<!\d)(\d{2})[/.-](\d{2})[/.-](\d{4})(?!\d)|(\d{2})\/(\d{2})\/(\d{4})|(?<!\d)(20\d{2})-(\d{2})-(\d{2})(?!\d)/g;
   let m;
   while ((m = re.exec(String(t || '')))) {
-    const d = +(m[1] || m[4]), me = +(m[2] || m[5]), a = +(m[3] || m[6]);
+    const d = +(m[1] || m[4] || m[9]), me = +(m[2] || m[5] || m[8]), a = +(m[3] || m[6] || m[7]);
     if (d >= 1 && d <= 31 && me >= 1 && me <= 12 && anoOk(a)) return dois(d) + '-' + dois(me) + '-' + a;
   }
   return null;
@@ -315,6 +316,7 @@ const LAYOUTS = [   // cabeçalho/título próprio do layout: vale no texto todo
   ['BRADESCO', /^EXTRATO DE: AG: \| CC:/m], ['BRADESCO', /ALO BRADESCO|BRADESCO NET EMPRESA|TITULOS PAGOS POR CONTA CREDITO/],
   ['MERCADO PAGO', /LIBERACAO DE DINHEIRO|DETALHE DOS MOVIMENTOS/], ['GETNET', /EXTRATO DE VENDAS POR CARTOES/],
   ['INFINITEPAY', /^INFINITE ID\b/m], ['REDE', /EXTRATO PARA SIMPLES CONFERENCIA/],
+  ['CAIXA', /CONTA:\s*\d{4}\s*[/|]\s*\d{3,4}\s*[/|]\s*\d{12}-\d/],   // agência/operação/conta da Caixa ("3411/1292/000578855317-9")
   ['BANCO DO BRASIL', /^CONSULTAS - (EXTRATO|EMISSAO DE COMPROVANTES)|^G\d{16}$|DT\. BALANCETE/m], ['BNB', /\bFNE\b|INTERNET BANKING BNB|BNB\.GOV\.BR/],
 ];
 const ASSINATURAS = [   // razão social da instituição: só fora das linhas de lançamento (um PIX "de" alguém do Nubank não é extrato do Nubank)
