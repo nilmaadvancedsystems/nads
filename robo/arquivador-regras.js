@@ -29,7 +29,8 @@ const dois = n => String(n).padStart(2, '0');
 /** Maiúsculas, sem acento, espaços colapsados: é nisso que as regras procuram. */
 const norm = s => semAcento(s).toUpperCase().replace(/[ \t\u00a0]+/g, ' ').replace(/(\d) ?\/ ?(?=\d)/g, '$1/');   // "01 / 01 / 2026" (BB) = "01/01/2026"
 /** Só letras e números (para comparar nomes de empresa: "A7 COMÉRCIO DE VEÍCULOS LTDA." = "A7COMERCIODEVEICULOSLTDA"). */
-const chaveNome = s => semAcento(String(s == null ? '' : s).replace(/0026/g, '&')).toUpperCase().replace(/[^A-Z0-9]/g, '');
+// o robô do Gmail grava "&" e "'" no nome da pasta como 0026 e 0027 ("MORONI 0026 XAVIER", "ANTONIA0027S LTDA")
+const chaveNome = s => semAcento(String(s == null ? '' : s).replace(/0026/g, '&').replace(/0027/g, "'")).toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 const SUFIXOS = /(\s*[-–]?\s*\b(LTDA\.?|ME|EPP|EIRELI|S\.?\s?\/?\s?A\.?|CIA\.?|& CIA\.?)\s*)+$/;
 /** Dicionário §5.2: nome de fornecedor/emissor para pasta e nome de arquivo. */
@@ -720,7 +721,12 @@ function decidirXml(entrada, ctx, ev) {
   else if (info.emit.length && ESCRITORIO.has(info.emit[0]) && cad.porDoc.has(info.emit[0])) { cliente = [...cad.porDoc.get(info.emit[0])][0]; conf = 0.97; como = 'doc'; ev.push('emitida pelo escritório: vai para a pasta dele (xml_lote)'); }
   else if (cand.length === 1) { cliente = cand[0]; conf = 0.98; como = 'doc'; ev.push('CNPJ/CPF do XML'); }
   else if (!cand.length && info.evento && sub) { cliente = sub.codigo; conf = 0.88; como = 'pasta'; ev.push('evento órfão: cliente da subpasta (03), ' + sub.como); }
-  else if (!cand.length) return { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, tipo: 'XML ' + info.tipo, setor: 'FISCAL' };
+  else if (!cand.length) {
+    // 03: raiz do CNPJ igual à de cliente(s), sufixo diferente (matriz/filial não cadastrada) → CLIENTE_AMBIGUO, não "não localizado"
+    const raiz = [...new Set(info.partes.filter(d => d.length === 14 && cad.porRaiz.has(d.slice(0, 8))).flatMap(d => [...cad.porRaiz.get(d.slice(0, 8))]))];
+    if (raiz.length) return { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_AMBIGUO', confianca: 0.4, tipo: 'XML ' + info.tipo, setor: 'FISCAL', evidencias: ev.concat('raiz do CNPJ de ' + raiz.join(', ') + ' com outro estabelecimento (matriz/filial sem cadastro próprio)') };
+    return { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, tipo: 'XML ' + info.tipo, setor: 'FISCAL', evidencias: ev.concat('nenhum CNPJ/CPF do XML é de cliente') };
+  }
   else return { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_AMBIGUO', confianca: 0.5, tipo: 'XML ' + info.tipo, setor: 'FISCAL', evidencias: ev.concat('candidatos ' + cand.join(', ')) };
   const caminho = ['XML', info.tipo].concat(info.sub ? [info.sub] : []);
   return { acao: 'ARQUIVAR', cliente, comoCliente: como, confianca: conf, tipo: 'XML ' + info.tipo + (info.sub ? ' ' + info.sub : ''), setor: 'FISCAL', fiscal: caminho, nomeFinal: info.nome, fonte: '05d §1b; xml_lote.py', competencia: info.data ? { mes: +info.data.slice(5, 7), ano: +info.data.slice(0, 4) } : null };

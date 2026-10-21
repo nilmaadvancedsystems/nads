@@ -77,6 +77,9 @@ igual('evento de NF-e: EVENTOS, nº da chave (05d §1b)', [d.destinoRelativo, d.
 const nfse = '<CompNfse><Nfse><InfNfse><Numero>752217</Numero><DataEmissao>2026-09-10T00:00:00</DataEmissao><PrestadorServico><IdentificacaoPrestador><CpfCnpj><Cnpj>06934601000158</Cnpj></CpfCnpj></IdentificacaoPrestador></PrestadorServico></InfNfse></Nfse></CompNfse>';
 d = decidir({ nome: 'nfse.xml', xml: nfse });
 igual('NFS-e ABRASF do Simples: 12. XML\\NFS-e', d.destinoRelativo + '\\' + d.nomeFinal, '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFS-e\\09-2026_NFS-e_752217.xml');
+igual('nome de pasta com 0026/0027 (& e apóstrofo gravados pelo robô do Gmail)', R.chaveNome('ANTONIA0027S 0026 CIA'), R.chaveNome("ANTONIA'S & CIA"));
+d = decidir({ nome: 'm.xml', xml: nfe('11426314000258', '99999999000191', '1', '2026-08-05T10:00:00-03:00') });
+igual('XML de outro estabelecimento da mesma raiz: CLIENTE_AMBIGUO (03)', d.motivo, 'CLIENTE_AMBIGUO');
 igual('XML quebrado: NAO_IDENTIFICADO/CONTEUDO_ILEGIVEL', decidir({ nome: 'q.xml', xml: '<a><b></a>' }).motivo, 'CONTEUDO_ILEGIVEL');
 d = decidir({ nome: 'mei.xml', xml: nfe('11222333000181', '99999999000191', '5', '2026-08-05T10:00:00-03:00') });
 igual('cliente MEI no fiscal: FICA na origem (05: sem especialista)', [d.acao, d.motivo], ['FICA', 'REGIME_SEM_ESPECIALISTA']);
