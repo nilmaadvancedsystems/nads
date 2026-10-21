@@ -36,6 +36,13 @@ describe('suporte de leitura: a conversa por cápsulas', () => {
     expect(passoDoSuporte(ctx, [...base, 'i:Importar extrato', 'e:faltaram'])).toMatchObject({ texto: 'Que arquivo você subiu?' });
     expect(passoDoSuporte(ctx, [...base, 'i:Importar extrato', 'e:faltaram', 'a:pdf']).tipo).toBe('encaminhar');
   });
+  it('a lista de botões que chega depois não faz a pergunta voltar no meio do report', () => {
+    const semBotoes = { ...ctx, botoes: [] };
+    const escolhas = ['faltou', 'b:Bradesco', 'm:2026-08', NAO_RESOLVEU];
+    expect(passoDoSuporte(semBotoes, escolhas)).toMatchObject({ texto: 'O que aconteceu ao importar?' });
+    // os botões apareceram depois da resposta: segue para o arquivo, sem perguntar o botão
+    expect(passoDoSuporte(ctx, [...escolhas, 'e:valores'])).toMatchObject({ texto: 'Que arquivo você subiu?' });
+  });
   it('o Outro do problema: diz onde a pessoa está e vai direto às perguntas do report', () => {
     const p = passoDoSuporte(ctx, [OUTRO]);
     expect(p).toMatchObject({ tipo: 'pergunta', texto: 'Qual dos botões de importação está com problema?' });
@@ -69,8 +76,8 @@ describe('suporte de leitura: a conversa por cápsulas', () => {
   });
   it('o nome do botão sem o mês e o detalhe', () => {
     expect(nomeDoBotao('Importar extrato de 08/2026')).toBe('Importar extrato');
-    expect(nomeDoBotao('Importar o razão dos meses que faltam')).toBe('Importar o razão');
-    expect(nomeDoBotao('importar o balancete dinâmico (XLS do Alterdata)')).toBe('Importar o balancete dinâmico');
+    expect(nomeDoBotao('Importar o razão dos meses que faltam')).toBe('Importar razão');
+    expect(nomeDoBotao('importar o balancete dinâmico (XLS do Alterdata)')).toBe('Importar balancete dinâmico');
   });
   it('a tela pelo nome da aba', () => {
     expect(telaPeloRotulo('Bancos')).toBe('bancos');

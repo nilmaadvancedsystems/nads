@@ -19,7 +19,8 @@ export interface FalaDoSuporte { passo: s.PassoDoSuporte; escolhida: string }
 // só neste navegador e some 1 dia depois de começar (o bug enviado continua nos Feedbacks)
 const CHAVE = 'nads-suporte-chat';
 const DURA_MS = 24 * 3600 * 1000;
-interface ChatGuardado { comecou: number; escolhas: string[]; resolvido: boolean; enviado: boolean }
+/** A conversa guardada: as respostas, a empresa dela (trocou de empresa, recomeça) e os botões da página, fixos na conversa. */
+interface ChatGuardado { comecou: number; escolhas: string[]; resolvido: boolean; enviado: boolean; empresa?: string; botoes?: string[] }
 function lerChat(): ChatGuardado | null {
   try {
     const g = JSON.parse(localStorage.getItem(CHAVE) || 'null') as ChatGuardado | null;
@@ -45,19 +46,30 @@ export function useBalaoDoSuporte() {
   const [frase, setFrase] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(() => guardado?.enviado ?? false);
+  // a empresa da conversa: trocou de empresa, o chat recomeça (Vitor, 21/10/2026)
+  const [empresaDoChat, setEmpresaDoChat] = useState(() => guardado?.empresa ?? '');
+  // os botões de importação da página: lidos ao abrir o balão e fixos na conversa (21/10/2026: lidos a cada resposta, a
+  // lista que chegava depois embaralhava o histórico); vazia, tenta de novo na próxima resposta
+  const [botoes, setBotoes] = useState<string[]>(() => guardado?.botoes ?? []);
+  const lerBotoes = (forcar = false) => { if (botoes.length && !forcar) return; try { setBotoes(botoesDaPagina()); } catch { /* sem a página: fica sem */ } };
   // guarda a conversa (com a hora em que começou); vazia, apaga
   useEffect(() => {
     try {
       if (!escolhas.length && !resolvido && !enviado) localStorage.removeItem(CHAVE);
-      else localStorage.setItem(CHAVE, JSON.stringify({ comecou: comecou || Date.now(), escolhas, resolvido, enviado } satisfies ChatGuardado));
+      else localStorage.setItem(CHAVE, JSON.stringify({ comecou: comecou || Date.now(), escolhas, resolvido, enviado, empresa: empresaDoChat, botoes } satisfies ChatGuardado));
     } catch { /* sem localStorage: fica só na tela */ }
-  }, [comecou, escolhas, resolvido, enviado]);
+  }, [comecou, escolhas, resolvido, enviado, empresaDoChat, botoes]);
   const [erro, setErro] = useState('');
 
   const rotuloDaTela = onde ? onde.aba || onde.etapa : '';
-  // os botões de importação da página, lidos na hora de abrir o balão e a cada resposta (a página pode ter mudado)
-  const [botoes, setBotoes] = useState<string[]>([]);
-  const lerBotoes = () => { try { setBotoes(botoesDaPagina()); } catch { setBotoes([]); } };
+  const empresaAgora = onde?.empresa || '';
+  // trocou de empresa no meio da conversa: recomeça (a conversa era de outra empresa)
+  useEffect(() => {
+    if (!empresaAgora || empresaAgora === empresaDoChat) return;
+    if (empresaDoChat) recomecar();
+    setEmpresaDoChat(empresaAgora);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [empresaAgora]);
   const ctx: s.ContextoDoSuporte = {
     tela: s.telaPeloRotulo(rotuloDaTela), rotuloDaTela: rotuloDaTela || 'Tarefas',
     empresa: onde?.empresa || '', codigo: onde?.codigo ?? null, meses: onde?.meses || [], bancos: onde?.bancos || [],
@@ -73,6 +85,7 @@ export function useBalaoDoSuporte() {
   function recomecar() {
     setComecou(0);
     setMarcadas([]);
+    setBotoes([]);
     setEscolhas([]); setResolvido(false); setArquivo(null); setFrase(''); setEnviado(false); setErro('');
   }
 
@@ -107,7 +120,7 @@ export function useBalaoDoSuporte() {
 
   return {
     // sem o "Nova conversa" (Vitor, 21/10/2026): a conversa que terminou (resolveu ou foi enviada) recomeça ao abrir de novo
-    aberto, abrir: () => { if (resolvido || enviado) recomecar(); lerBotoes(); setAberto(true); }, fechar: () => setAberto(false),
+    aberto, abrir: () => { const terminou = resolvido || enviado; if (terminou) recomecar(); lerBotoes(terminou); setAberto(true); }, fechar: () => setAberto(false),
     /** o título: a empresa e a tela de onde a pessoa está */
     titulo: [ctx.empresa, ctx.rotuloDaTela].filter(Boolean).join(' · '),
     conversa, passo, resolvido, enviado, enviando, erro,
