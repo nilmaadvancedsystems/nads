@@ -94,6 +94,8 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
         <MenuDeFiltro rotulo="Enquadramento" valor={f.enquadramento} mudar={f.setEnquadramento} opcoes={f.enquadramentos} />
         <MenuDeFiltro rotulo="Status" valor={f.status} mudar={v => f.setStatus(v as typeof f.status)}
           opcoes={[{ valor: 'concluidas', rotulo: 'Concluídos' }, { valor: 'pendentes', rotulo: 'Pendentes' }]} />
+        {/* a Situação da coluna (Savio, 21/10/2026: "preciso de mais um filtro: por Situação") */}
+        <MenuDeFiltro rotulo="Situação" valor={f.situacao} mudar={f.setSituacao} opcoes={f.situacoes} todos="Todas" />
         <MenuDeFiltro rotulo="Pendente em" valor={f.pendenteEm} mudar={v => f.setPendenteEm(v as typeof f.pendenteEm)} opcoes={f.partes} todos="Todas as partes" />
         <MenuDeFiltro rotulo="Entrega" valor={f.entrega} mudar={f.setEntrega} opcoes={f.entregas} />
         <MenuDeFiltro rotulo="Agrupamento" valor={f.agrupamento} mudar={f.setAgrupamento} opcoes={f.agrupamentos} direita />

@@ -88,6 +88,9 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   const [movimento, setMovimento] = useState('');
   const [enquadramento, setEnquadramento] = useState('');
   const [status, setStatus] = useState<'' | 'concluidas' | 'pendentes'>('');
+  // a Situação da coluna (Savio, 21/10/2026: "preciso de mais um filtro: por Situação"): o Status só separa concluídos de
+  // pendentes; este escolhe Não iniciada, Em andamento, Parada, Concluída ou Nada no mês
+  const [situacao, setSituacao] = useState('');
   const [agrupamento, setAgrupamento] = useState('');
   const [agrupar, setAgrupar] = useState<Agrupar>('nenhum');
   const [pendenteEm, setPendenteEm] = useState<'' | ParteDoDp>('');
@@ -136,7 +139,7 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   const filtradas = todas.filter(c => (!pendente || c.obrigacoes.some(o => pendente.obrigacoes.includes(o.id) && o.estado !== 'nao-tem' && o.estado !== 'feita'))
     && (!achadas || achadas.has(c.codigo)) && (!responsavel || c.responsavelNome === responsavel) && (!entrega || c.entrega === entrega)
     && (!movimento || c.movimento === movimento) && (!enquadramento || c.enquadramento === enquadramento)
-    && (!agrupamento || c.agrupamento === agrupamento) && (!status || (status === 'concluidas') === c.concluida))
+    && (!agrupamento || c.agrupamento === agrupamento) && (!status || (status === 'concluidas') === c.concluida) && (!situacao || c.situacao === situacao))
     .sort((a, b) => a.nomeNaTela.localeCompare(b.nomeNaTela, 'pt-BR'));
 
   // a tabela em grupos (por responsável ou agrupamento), cada um com quantos já fecharam
@@ -285,7 +288,9 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
     quantas: linhasDaParte.length,
     filtros: {
       busca, setBusca, responsavel, setResponsavel, movimento, setMovimento, enquadramento, setEnquadramento,
-      status, setStatus, agrupamento, setAgrupamento, agrupar, setAgrupar,
+      status, setStatus, situacao, setSituacao, agrupamento, setAgrupamento, agrupar, setAgrupar,
+      /** as situações que a coluna mostra, com quantos clientes em cada */
+      situacoes: contar(todas.map(c => c.situacao)).map(x => ({ valor: x.rotulo, rotulo: x.rotulo + ' (' + x.qtd + ')' })),
       responsaveis,
       movimentos: contar(todas.map(c => c.movimento)).map(x => x.rotulo),
       enquadramentos: contar(todas.map(c => c.enquadramento)).map(x => x.rotulo),
@@ -293,8 +298,8 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
       pendenteEm, setPendenteEm, entrega, setEntrega,
       entregas: contar(todas.map(c => c.entrega).filter(Boolean)).map(x => x.rotulo),
       partes: partes.map(p => ({ valor: p.id, rotulo: p.rotulo })),
-      algum: !!(busca || responsavel || movimento || enquadramento || status || agrupamento || pendenteEm || entrega),
-      limpar: () => { setBusca(''); setResponsavel(''); setMovimento(''); setEnquadramento(''); setStatus(''); setAgrupamento(''); setPendenteEm(''); setEntrega(''); },
+      algum: !!(busca || responsavel || movimento || enquadramento || status || situacao || agrupamento || pendenteEm || entrega),
+      limpar: () => { setBusca(''); setResponsavel(''); setMovimento(''); setEnquadramento(''); setStatus(''); setSituacao(''); setAgrupamento(''); setPendenteEm(''); setEntrega(''); },
     },
     /** a tabela que está na tela (com os filtros e a ordem dela), em Excel (Vitor, 07/10/2026) */
     exportar() {
