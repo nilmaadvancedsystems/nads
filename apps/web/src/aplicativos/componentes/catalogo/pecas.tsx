@@ -395,7 +395,7 @@ export const PECAS_BASE: Peca[] = [
         <tbody>
           <tr><td className="imp-planilha-dia" rowSpan={2}>18/05/2026</td><td className="imp-planilha-sit" rowSpan={2}>Os 130,96 que faltam parecem estar lançados em 06/03/2026</td><td className="imp-planilha-lanc"><b>CRÉD.LIQ.COBRANÇA DOC.: 2096255</b></td><td className="num"><b>8.398,18</b></td><td className="num"><b>8.267,22</b></td><td className="num ext-neg">−130,96</td></tr>
           <tr className="imp-planilha-parte"><td>SUPERMERCADO QUEBA LTDA</td><td className="num" /><td className="num">5.109,72</td><td /></tr>
-          <tr><td className="imp-planilha-dia">16/04/2026</td><td className="imp-planilha-sit">Razão: 17/04 · Correto: 16/04</td><td className="imp-planilha-lanc"><b>SUPERMERCADO DONA BEIJA LTDA</b></td><td className="num"><b>947,30</b></td><td className="num"><b>947,30</b></td><td className="num" /></tr>
+          <tr><td className="imp-planilha-dia">16/04/2026</td><td className="imp-planilha-sit">Data errada: no banco foi 16/04, no razão está 17/04</td><td className="imp-planilha-lanc"><b>SUPERMERCADO DONA BEIJA LTDA</b></td><td className="num"><b>947,30</b></td><td className="num"><b>947,30</b></td><td className="num" /></tr>
         </tbody></table></div>
     ) },
   { id: 'linhas', tipo: 'tabelas', nome: 'Linhas especiais', descricao: 'Feita (riscada), a atual, a do Passivo, a excluída', classes: ['tr.feito', 'tr.linha-atual', 'tr.linha-passivo', 'tr.linha-excluida', 'tr.ok', 'tr.bad'], telas: ['c-naturezas', 'c-relatorio', 'e-arquivos'], largo: true,
@@ -971,4 +971,11 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><span className="badge badge-ok">Pago em 05/10 · PIX</span><span className="badge badge-ok fin-selo">NFS-e 123</span><span className="badge badge-warn">Em aberto</span><span className="badge badge-neutral fin-selo">NFS-e pedida</span><span className="badge badge-bad fin-selo">NFS-e recusada</span><span className="fraco fin-cobrado">Cobrado em 20/10</span></div> },
   { id: 'mensagem-de-cobranca', tipo: 'campos', nome: 'Mensagem de cobrança (texto editável)', descricao: 'Na janela Cobrar dos Honorários (21/10/2026): a mensagem pronta do modelo, que se pode mexer antes de abrir o WhatsApp ou copiar', classes: ['fin-cobranca-texto'], telas: ['t-fin-honorarios'],
     demo: () => <textarea className="fin-cobranca-texto" rows={4} readOnly aria-label="Exemplo" value="Olá, ALFA COMERCIO LTDA! Passando para lembrar do honorário contábil de 09/2026, no valor de R$ 850,00. Chave PIX: 11.222.333/0001-81. Qualquer dúvida, estamos à disposição. — Nilma Contabilidade" /> },
+  // o selo suave no nads (19/10/2026): a prioridade do feedback do app
+  { id: 'selo-suave-nads', tipo: 'selos', nome: 'Selo suave (nads)', descricao: 'O selo suave da Área do Cliente trazido para o nads (badge-suave): a pílula sem borda, com o pontinho e o fundo suave; a cor só pelo significado. Na prioridade do feedback do app (Vitor, 19/10/2026): vermelho Alta, amarelo Média, neutro Baixa', classes: ['badge badge-suave', 'badge-bad', 'badge-warn', 'badge-neutral', 'badge-ok'], telas: TAREFAS,
+    demo: () => (
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <span className="badge badge-suave badge-bad">Alta</span><span className="badge badge-suave badge-warn">Média</span><span className="badge badge-suave badge-neutral">Baixa</span>
+      </div>
+    ) },
 ];

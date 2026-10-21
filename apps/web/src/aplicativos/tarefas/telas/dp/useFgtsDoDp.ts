@@ -62,7 +62,8 @@ export function useFgtsDoDp() {
     .filter(c => c.movimento === 'Folha')
     .map(c => {
       // nos exemplos não há cadastro do Entregas: um CNPJ inventado pelo código, para a tela andar
-      const cnpj = cnpjDoCodigo.get(c.codigo) || (repo.exemplos ? String(c.codigo).padStart(8, '0') + '000100' : '');
+      // sem o do Entregas, o do Cadastro (cadastrado nas Configurações do DP, 20/10/2026)
+      const cnpj = cnpjDoCodigo.get(c.codigo) || c.cadastro?.cnpj || (repo.exemplos ? String(c.codigo).padStart(8, '0') + '000100' : '');
       const pedido = cnpj ? porCnpj.get(cnpj) : undefined;
       const situacao = situacaoDoPedido(pedido, !!cnpj);
       return { codigo: c.codigo, nome: c.nomeNaTela, cnpj, responsavel: nomeDe(c.responsavel), pedido, situacao, podeMarcar: podeMarcar(situacao, cnpj) };

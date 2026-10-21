@@ -579,13 +579,9 @@ button.gh-crumb:hover{background:var(--hover-bg);}
   border-radius:6px;color:var(--ink);font-size:var(--fs-14);font-family:inherit;text-align:left;cursor:pointer;}
 .subnav-item:hover{background:var(--hover-bg);}
 .subnav-item svg{width:17px;height:17px;flex:none;color:var(--ink-muted);}
-/* a logo da marca no lugar do ícone (FGTS Digital no DP): do mesmo tamanho dos ícones */
-.subnav-marca{width:48px;height:14px;flex:none;display:inline-flex;align-items:center;justify-content:center;margin-right:-2px;}
-.subnav-marca svg{width:48px;height:14px;}
-/* recolhida: a logo inteira numa versão menor, centralizada nos 40 px do botão */
-.sidebar-oculta .subnav-marca{width:34px;height:10px;margin:0;}
-.sidebar-oculta .subnav-marca svg{width:34px;height:10px;}
-@media (max-width:768px){.sidebar-oculta .subnav-marca{width:48px;height:14px;margin:0 -2px 0 0;}.sidebar-oculta .subnav-marca svg{width:48px;height:14px;}}
+/* a logo da marca no lugar do ícone (FGTS Digital no DP; o símbolo quadrado do app desde 21/10/2026): do tamanho dos ícones */
+.subnav-marca{width:17px;height:17px;flex:none;display:inline-flex;align-items:center;justify-content:center;}
+.subnav-marca svg{width:17px;height:17px;}
 /* o item aberto igual ao da gaveta ☰ (19/10/2026): o mesmo fundo, o peso 500 e o ícone na cor do texto, sem a barrinha vermelha */
 .subnav-item.active{background:var(--hover-bg);font-weight:500;}
 .subnav-item.active svg{color:var(--ink);}
@@ -1836,7 +1832,7 @@ td.cad-acoes .menu-seta{display:none;}
 .drive-ico{width:16px;height:16px;flex:none;color:var(--ink-muted);}
 td.drive-marca{width:1%;}
 .drive-aviso{margin:0 0 12px;}
-.drive-pedidos{position:fixed;right:16px;bottom:16px;z-index:65;display:flex;flex-direction:column;gap:6px;max-width:min(420px,calc(100vw - 32px));}
+.drive-pedidos{position:fixed;right:16px;bottom:72px;z-index:65;display:flex;flex-direction:column;gap:6px;max-width:min(420px,calc(100vw - 32px));}
 .drive-pedido{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);box-shadow:var(--shadow-lg);font-size:var(--fs-13);}
 .drive-girando{width:14px;height:14px;flex:none;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;}
 @keyframes drive-gira{to{transform:rotate(360deg);}}
@@ -3436,6 +3432,12 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .feedback-txt-curto{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 .feedback-janela .pessoal-topo{gap:10px;}
 .feedback-amplia{padding:0;cursor:zoom-in;}
+/* a prioridade do feedback (19/10/2026): na janela de enviar, embaixo do texto; nos Feedbacks, o filtro e a ordem em cima */
+.feedback-prioridade{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.feedback-prioridade .hint{margin:0;}
+.feedback-prioridade .steps,.feedback-filtros .steps{margin:0;}
+.feedback-filtros{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.feedback-filtros .hint{margin:0;}
 /* o andamento do "Contar agora" do SIEG (07/10/2026): o cartão de andamento do robô, fixo no canto da tela */
 .sieg-flutuante{position:fixed;right:16px;bottom:16px;z-index:70;width:min(380px,calc(100vw - 32px));margin:0;box-shadow:var(--shadow-lg);}
 .sieg-flutuante .tarefas-barra-espaco{flex:1;}
@@ -4645,6 +4647,15 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .ac-balao-escritorio{align-self:flex-end;border-color:var(--accent);border-radius:12px 12px 3px 12px;background:var(--accent-soft);}
 @media (max-width: 640px){.ac-balao{max-width:94%;}}
 
+/* o selo suave no nads (19/10/2026): o mesmo da Área do Cliente, fora do .cli-app (a pílula sem borda, o pontinho e o fundo
+   suave; a cor só pelo significado); a prioridade do feedback do app */
+.badge.badge-suave{display:inline-flex;align-items:center;gap:6px;padding:0 9px 0 7px;border:0;border-radius:999px;background:var(--surface-3);color:var(--ink-muted);font-weight:500;}
+.badge.badge-suave::before{content:'';flex:none;width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.85;}
+.badge.badge-suave.badge-bad{background:var(--danger-soft);color:var(--danger-ink);}
+.badge.badge-suave.badge-warn{background:var(--warn-soft);color:var(--warn);}
+.badge.badge-suave.badge-ok{background:var(--success-soft);color:var(--success-ink);}
+.badge.badge-suave.badge-neutral{background:var(--surface-3);color:var(--ink-muted);}
+
 /* a segunda rodada da revisão da UI (18/10/2026) ------------------------------------------------------------------------ */
 /* o selo do departamento na Equipe no tema claro com contraste AA (o azul, o âmbar e o roxo claros ficavam abaixo de 3:1);
    a seta do <select> num cinza que passa de 3:1 nos dois temas (estão nas regras de cima) */
@@ -4740,3 +4751,38 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .fin-cobranca-texto{width:100%;margin-top:12px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);padding:10px 12px;font:inherit;font-size:var(--fs-14);line-height:20px;color:var(--ink);resize:vertical;outline:none;}
 .fin-cobranca-texto:focus{border-color:var(--accent);}
 .fin-valor-edita{min-width:112px;}
+/* o balão do suporte (20/10/2026; em chat desde 21/10/2026): o botão redondo no canto de baixo, à direita, e o chat por
+   cima dele — as falas do suporte à esquerda, as da pessoa à direita (só a disposição e o balão das falas; as peças são o
+   botão, a cápsula .badge, o fechar e o ícone) */
+.suporte-botao{position:fixed;right:16px;bottom:16px;z-index:64;width:48px;height:48px;padding:0;border-radius:50%;justify-content:center;box-shadow:var(--shadow-floating);}
+.suporte-botao svg{width:22px;height:22px;}
+.suporte-balao{position:fixed;right:16px;bottom:74px;z-index:64;width:min(380px,calc(100vw - 32px));height:min(540px,calc(100vh - 120px));display:flex;flex-direction:column;padding:0;margin:0;overflow:hidden;box-shadow:var(--shadow-floating);}
+.suporte-topo{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border-muted);}
+.suporte-avatar{flex:none;width:32px;height:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--accent);}
+.suporte-avatar svg{width:18px;height:18px;}
+.suporte-titulo{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25;}
+.suporte-sub{font-size:var(--fs-12);color:var(--ink-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.suporte-corpo{flex:1;overflow:auto;padding:14px 12px;display:flex;flex-direction:column;gap:8px;background:var(--surface-2);}
+.suporte-troca{display:flex;flex-direction:column;gap:8px;}
+.suporte-msg{align-self:flex-start;max-width:85%;padding:8px 12px;border-radius:14px 14px 14px 4px;background:var(--surface);border:1px solid var(--border-muted);font-size:var(--fs-13);line-height:1.45;}
+.suporte-msg.suporte-eu{align-self:flex-end;border-radius:14px 14px 4px 14px;background:var(--accent);border-color:var(--accent);color:var(--on-accent);}
+.suporte-passos{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;}
+.suporte-capsulas{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;}
+.suporte-capsulas .badge{cursor:pointer;border:0;padding:5px 10px;font-size:var(--fs-12);display:inline-flex;align-items:center;gap:4px;}
+.suporte-capsulas .badge svg{width:12px;height:12px;}
+.suporte-continuar{height:26px;padding:0 12px;font-size:var(--fs-12);}
+.suporte-msg-titulo{display:block;font-weight:600;margin-bottom:4px;}
+.suporte-msg-dica{display:block;margin-top:2px;font-size:var(--fs-12);color:var(--ink-muted);}
+/* o "digitando" (21/10/2026, pedido do Vitor): os três pontinhos que sobem e descem, como o carregando */
+.suporte-digitando{display:inline-flex;gap:4px;align-items:center;padding:10px 14px;}
+.suporte-digitando span{width:6px;height:6px;border-radius:50%;background:var(--ink-muted);animation:suporte-pontinho 1s infinite ease-in-out;}
+.suporte-digitando span:nth-child(2){animation-delay:.15s;}
+.suporte-digitando span:nth-child(3){animation-delay:.3s;}
+@keyframes suporte-pontinho{0%,60%,100%{transform:translateY(0);opacity:.45;}30%{transform:translateY(-3px);opacity:1;}}
+@media (prefers-reduced-motion:reduce){.suporte-digitando span{animation:none;}}
+.suporte-envio{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-top:1px solid var(--border-muted);}
+.suporte-frase{width:100%;margin:0;}
+.suporte-frase textarea{min-height:0;}
+.suporte-envio-linha{display:flex;gap:8px;justify-content:space-between;}
+.suporte-envio-linha .btn{min-width:0;}
+.suporte-arquivo{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;}

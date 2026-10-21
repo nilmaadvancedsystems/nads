@@ -1,6 +1,7 @@
 // ViewModel da casca da Tarefas: as aplicações na gaveta ☰ (Minhas empresas, Contábil, Fiscal, Drive,
 // Contato), as páginas da aplicação aberta na barra lateral, o título e quem está trabalhando.
 import { usuarios } from '@nads/core';
+import { useRetorno } from '@nads/ui';
 import { useLocation, useNavigate } from 'react-router';
 import { VERSAO_SISTEMA } from '../../../versao';
 import { aplicacao, aplicacoesDe, BASE, caminhoDaPagina, type IdAplicacao } from './navegacao';
@@ -14,13 +15,15 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const { search } = useLocation();
   const { escolher, comLogin } = useOperador();
   const op = useOperador().operador as Operador;
-  const a = aplicacao(app);
+  // as páginas que a pessoa vê (o sênior não vê o Sistema do Cadastro; 19/10/2026)
+  const a = aplicacoesDe(op).find(x => x.id === app) ?? aplicacao(app);
   // o Cadastro também com a barra lateral (14/10/2026: "cadê a barra?"), como os outros módulos; as abas no alto não voltam
   const comAbas = false;
   const pessoal = usePessoal();
   const acesso = useAcesso();
   // o modo desenvolvedor (no avatar): só ver, sem alterar (Vitor, 06/10/2026)
   const [dev, setDev] = useModoDesenvolvedor();
+  const { aviso } = useRetorno();
   return {
     // a Tarefas não tem uma empresa aberta: a trilha fica só com o caminho (Vitor, 05/10/2026: sem o "Vitor · Sair da
     // conta" — sair fica no avatar)
@@ -29,13 +32,18 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
     titulo: a?.paginas.find(p => p.id === pagina)?.titulo || a?.nome || '',
     // o Cadastro com as páginas em abas no alto (Empresas, Usuários, Configurações; Vitor, 05/10/2026), sem a barra lateral
     comAbas,
-    secoes: comAbas ? [] : (a?.paginas || []).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, marca: p.marca, grupo: 1, ativa: p.id === pagina })),
+    secoes: comAbas ? [] : (a?.paginas || []).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, marca: p.marca, grupo: 1, ativa: p.id === pagina, travada: !!p.emDesenvolvimento })),
     paginas: comAbas ? (a?.paginas || []).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, ativa: p.id === pagina })) : [],
     /** a aba do alto (o Cadastro): a página, mantendo a competência */
     onPagina: (id: string) => navegar(caminhoDaPagina(app, id) + search),
     aplicacoes: aplicacoesDe(op).map(x => ({ id: x.id, nome: x.nome, icone: x.icone, grupo: x.grupo, marca: x.marca, ativo: x.id === app })),
     // páginas da mesma aplicação mantêm a competência escolhida (fica na URL)
-    onSecao: (id: string) => navegar(caminhoDaPagina(app, id) + search),
+    // a página em desenvolvimento não abre: só o aviso (21/10/2026)
+    onSecao: (id: string) => {
+      const p = a?.paginas.find(x => x.id === id);
+      if (p?.emDesenvolvimento) { aviso({ tom: 'info', titulo: p.rotulo + ': em desenvolvimento', texto: 'Esta tela ainda não está liberada.' }); return; }
+      navegar(caminhoDaPagina(app, id) + search);
+    },
     onAplicacao: (id: string) => { const x = aplicacao(id); if (x) navegar(caminhoDaPagina(x.id, x.paginas[0].id)); },
     inicio: () => navegar(BASE),
     trocarPessoa: () => escolher(null),
