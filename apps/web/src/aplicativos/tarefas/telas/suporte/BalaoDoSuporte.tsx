@@ -9,12 +9,17 @@ import { useBalaoDoSuporte } from './useBalaoDoSuporte';
 
 /** Uma fala do suporte (a pergunta, as instruções numeradas ou o pedido do arquivo). */
 function FalaDoSuporte({ passo }: { passo: suporte.PassoDoSuporte }) {
+  const aviso = passo.tipo !== 'encaminhar' ? passo.aviso : undefined;
   return (
+    <>
+    {/* onde a pessoa está (Vitor, 21/10/2026: "Você está na página de tal tal tal…") */}
+    {aviso && <div className="suporte-msg">{aviso}</div>}
     <div className="suporte-msg">
       {passo.tipo === 'instrucoes'
         ? <ol className="suporte-passos">{passo.passos.map(p => <li key={p}>{p}</li>)}</ol>
         : passo.texto}
     </div>
+    </>
   );
 }
 
@@ -86,7 +91,7 @@ export function BalaoDoSuporte() {
         <div className="suporte-envio">
           {vm.erro && <p className="hint ext-neg">{vm.erro}</p>}
           <div className="field suporte-frase">
-            <textarea rows={2} placeholder="O que está errado (uma frase)" aria-label="O que está errado" value={vm.frase} onChange={e => vm.setFrase(e.target.value)} />
+            <textarea rows={2} placeholder="Comentário (opcional)" aria-label="Comentário" value={vm.frase} onChange={e => vm.setFrase(e.target.value)} />
           </div>
           <div className="suporte-envio-linha">
             <label htmlFor={idArquivo} className="btn btn-outline" title={vm.arquivo ? vm.arquivo.name : 'Anexar o arquivo'}>

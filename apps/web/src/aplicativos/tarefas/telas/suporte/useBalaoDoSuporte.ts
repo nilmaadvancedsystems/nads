@@ -8,11 +8,11 @@ import { useLocation } from 'react-router';
 import { VERSAO_SISTEMA } from '../../../../versao';
 import { useFeedback } from '../../dados/repo';
 import { useOndeEsta } from './contextoDoSuporte';
+import { botoesDaPagina } from './botoesDaPagina';
 
 /** Uma fala da conversa: a pergunta ou as instruções do suporte, e a cápsula que a pessoa escolheu. */
 export interface FalaDoSuporte { passo: s.PassoDoSuporte; escolhida: string }
 
-const ROTULO_DA_ESCOLHA: Record<string, string> = { [s.NAO_RESOLVEU]: 'Não resolveu', [s.OUTRO]: 'Outro' };
 
 // o chat é temporário (Vitor, 21/10/2026: "sistema de chat temporário, que depois de 1 dia é excluído"): a conversa fica
 // só neste navegador e some 1 dia depois de começar (o bug enviado continua nos Feedbacks)
@@ -50,16 +50,19 @@ export function useBalaoDoSuporte() {
   const [erro, setErro] = useState('');
 
   const rotuloDaTela = onde ? onde.aba || onde.etapa : '';
+  // os botões de importação da página, lidos na hora de abrir o balão e a cada resposta (a página pode ter mudado)
+  const [botoes, setBotoes] = useState<string[]>([]);
+  const lerBotoes = () => { try { setBotoes(botoesDaPagina()); } catch { setBotoes([]); } };
   const ctx: s.ContextoDoSuporte = {
     tela: s.telaPeloRotulo(rotuloDaTela), rotuloDaTela: rotuloDaTela || 'Tarefas',
     empresa: onde?.empresa || '', codigo: onde?.codigo ?? null, meses: onde?.meses || [], bancos: onde?.bancos || [],
+    pagina: [onde?.etapa, onde?.aba].filter(Boolean).join(' › ') || 'Tarefas', botoes,
   };
   const passo = s.passoDoSuporte(ctx, escolhas);
   // o que já foi conversado: cada passo de antes e a cápsula escolhida nele
   const conversa: FalaDoSuporte[] = escolhas.map((e, i) => {
     const antes = s.passoDoSuporte(ctx, escolhas.slice(0, i));
-    const rotulo = ROTULO_DA_ESCOLHA[e] || (antes.tipo === 'pergunta' ? antes.opcoes.find(o => o.id === e)?.rotulo : '') || e;
-    return { passo: antes, escolhida: rotulo };
+    return { passo: antes, escolhida: s.rotuloDaEscolha(ctx, e) };
   });
 
   function recomecar() {
@@ -68,13 +71,14 @@ export function useBalaoDoSuporte() {
   }
 
   async function enviar() {
-    if (!arquivo && !frase.trim()) { setErro('Anexe o arquivo ou escreva o que está errado.'); return; }
+    if (!arquivo && !frase.trim()) { setErro('Anexe o arquivo (ou escreva um comentário).'); return; }
     setEnviando(true); setErro('');
     try {
       const caminho = s.caminhoDaConversa(ctx, escolhas);
       const bytes = arquivo ? new Uint8Array(await arquivo.arrayBuffer()) : null;
       await repo.enviarBug({
-        texto: (frase.trim() || caminho).slice(0, 4000),
+        // a mensagem no formato de sempre (Vitor, 21/10/2026: "chegue para mim em um padrão")
+        texto: s.mensagemDoBug(ctx, escolhas, frase, arquivo ? arquivo.name : '').slice(0, 4000),
         tela: pathname + (rotuloDaTela ? ' · ' + [onde?.etapa, onde?.aba].filter(Boolean).join(' › ') : ''),
         versao: VERSAO_SISTEMA, caminho,
         contexto: { empresa: ctx.empresa, codigo: ctx.codigo, tela: ctx.rotuloDaTela, meses: ctx.meses },
@@ -90,13 +94,13 @@ export function useBalaoDoSuporte() {
 
   return {
     // sem o "Nova conversa" (Vitor, 21/10/2026): a conversa que terminou (resolveu ou foi enviada) recomeça ao abrir de novo
-    aberto, abrir: () => { if (resolvido || enviado) recomecar(); setAberto(true); }, fechar: () => setAberto(false),
+    aberto, abrir: () => { if (resolvido || enviado) recomecar(); lerBotoes(); setAberto(true); }, fechar: () => setAberto(false),
     /** o título: a empresa e a tela de onde a pessoa está */
     titulo: [ctx.empresa, ctx.rotuloDaTela].filter(Boolean).join(' · '),
     conversa, passo, resolvido, enviado, enviando, erro,
-    escolher: (id: string) => { if (!comecou) setComecou(Date.now()); setEscolhas(e => [...e, id]); },
+    escolher: (id: string) => { if (!comecou) setComecou(Date.now()); lerBotoes(); setEscolhas(e => [...e, id]); },
     resolveu: () => setResolvido(true),
-    naoResolveu: () => setEscolhas(e => [...e, s.NAO_RESOLVEU]),
+    naoResolveu: () => { lerBotoes(); setEscolhas(e => [...e, s.NAO_RESOLVEU]); },
     arquivo, setArquivo, frase, setFrase,
     enviar: () => { void enviar(); },
     recomecar,

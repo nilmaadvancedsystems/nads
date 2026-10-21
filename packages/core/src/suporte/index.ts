@@ -17,14 +17,19 @@ export interface ContextoDoSuporte {
   meses: string[];
   /** os bancos da empresa (o nome de cada conta, como aparece na tela) */
   bancos: string[];
+  /** onde a pessoa está, por extenso ("Importação › Bancos") */
+  pagina?: string;
+  /** os botões de importação que estão na página (lidos da tela, já sem o mês: "Importar extrato", "Importar razão") */
+  botoes?: string[];
 }
 
 export interface OpcaoDoSuporte { id: string; rotulo: string }
 
 export type PassoDoSuporte =
-  | { tipo: 'pergunta'; texto: string; opcoes: OpcaoDoSuporte[] }
-  /** as instruções; depois, a tela pergunta "Resolveu" / "Não resolveu" */
-  | { tipo: 'instrucoes'; passos: string[] }
+  /** aviso: uma fala antes da pergunta ("Você está na página…") */
+  | { tipo: 'pergunta'; texto: string; opcoes: OpcaoDoSuporte[]; aviso?: string }
+  /** as instruções, com onde a pessoa está antes; depois, a tela pergunta "Resolveu" / "Não resolveu" */
+  | { tipo: 'instrucoes'; passos: string[]; aviso?: string }
   /** mandar ao suporte: o arquivo e uma frase */
   | { tipo: 'encaminhar'; texto: string };
 
@@ -44,7 +49,7 @@ export function telaPeloRotulo(rotulo: string): TelaDoSuporte {
 
 const sem = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 const rotuloDoMes = (m: string) => m.slice(5) + '/' + m.slice(0, 4);
-const ENCAMINHAR = 'Anexe o arquivo e conte em uma frase o que está errado. Vai para o suporte.';
+const ENCAMINHAR = 'Anexe o arquivo que deu problema e envie. Vai para o suporte.';
 
 /** O que aconteceu, por tela (a primeira pergunta). */
 const PROBLEMAS: Record<TelaDoSuporte, OpcaoDoSuporte[]> = {
@@ -61,30 +66,67 @@ const PROBLEMAS: Record<TelaDoSuporte, OpcaoDoSuporte[]> = {
   outra: [{ id: 'leu-errado', rotulo: 'Arquivo lido errado' }, { id: 'travou', rotulo: 'Travou ao importar' }],
 };
 
-/** Os problemas que precisam do banco e do mês (as cápsulas seguintes). */
+/** Os problemas que precisam do banco e do mês antes das instruções (as cápsulas seguintes). */
 const COM_BANCO_E_MES = new Set(['leu-errado', 'faltou', 'mes', 'drive']);
 
+/** O que a importação fez (a pergunta depois do "Não resolveu"). */
+const EFEITOS: OpcaoDoSuporte[] = [
+  { id: 'e:nada', rotulo: 'Não leu nada' }, { id: 'e:valores', rotulo: 'Leu valores errados' }, { id: 'e:faltaram', rotulo: 'Faltaram lançamentos' },
+  { id: 'e:datas', rotulo: 'Datas ou mês errados' }, { id: 'e:travou', rotulo: 'Travou ou demorou' },
+];
+/** O arquivo que a pessoa subiu. */
+const ARQUIVOS: OpcaoDoSuporte[] = [
+  { id: 'a:pdf', rotulo: 'PDF do banco' }, { id: 'a:foto', rotulo: 'Foto ou escaneado' }, { id: 'a:ofx', rotulo: 'OFX' }, { id: 'a:planilha', rotulo: 'Planilha (XLS)' },
+];
+/** Toda pergunta termina no Outro (Vitor, 21/10/2026: "colocando a última opção como outro"). */
+const comOutro = (prefixo: string, opcoes: OpcaoDoSuporte[]): OpcaoDoSuporte[] => [...opcoes, { id: prefixo + OUTRO, rotulo: 'Outro' }];
+
+/** O período por extenso ("01/2026 a 08/2026"). */
+const periodoDe = (meses: readonly string[]) => (meses.length ? rotuloDoMes(meses[0]) + (meses.length > 1 ? ' a ' + rotuloDoMes(meses[meses.length - 1]) : '') : '');
+const empresaDe = (ctx: ContextoDoSuporte) => (ctx.empresa ? (ctx.codigo != null ? ctx.codigo + ' · ' : '') + ctx.empresa : '');
+
+/** Onde a pessoa está, em uma frase (Vitor, 21/10/2026: "Você está na página de tal tal tal…"). */
+export function ondeEsta(ctx: ContextoDoSuporte): string {
+  const empresa = empresaDe(ctx), periodo = periodoDe(ctx.meses);
+  return 'Você está na página ' + (ctx.pagina || ctx.rotuloDaTela) + (empresa ? ', na empresa ' + empresa : '') + (periodo ? ', em ' + periodo : '') + '.';
+}
+
 /**
- * O próximo passo da conversa, pelas escolhas até aqui (os ids das cápsulas, na ordem). Banco: 'b:<nome>'; mês:
- * 'm:<aaaa-mm>'. Com um banco só (ou um mês só), não pergunta: já vale.
+ * O próximo passo da conversa, pelas escolhas até aqui (os ids das cápsulas, na ordem). Prefixos: banco 'b:', mês 'm:',
+ * botão 'i:', o que aconteceu 'e:', o arquivo 'a:'; o "Outro" de cada um é o prefixo + 'outro'. Com um banco só (ou um mês
+ * só), não pergunta: já vale. Depois do "Não resolveu" (ou do Outro do problema), as perguntas do report, uma por vez.
  */
 export function passoDoSuporte(ctx: ContextoDoSuporte, escolhas: readonly string[]): PassoDoSuporte {
   const [problema] = escolhas;
   if (!problema) return { tipo: 'pergunta', texto: 'O que aconteceu?', opcoes: [...PROBLEMAS[ctx.tela], { id: OUTRO, rotulo: 'Outro' }] };
-  if (problema === OUTRO || escolhas.includes(NAO_RESOLVEU)) return { tipo: 'encaminhar', texto: ENCAMINHAR };
-  const banco = escolhido(ctx, escolhas, 'b:', ctx.bancos);
-  const mes = escolhido(ctx, escolhas, 'm:', ctx.meses);
-  if (ctx.tela === 'bancos' && COM_BANCO_E_MES.has(problema)) {
-    if (banco === undefined) return { tipo: 'pergunta', texto: 'Qual banco?', opcoes: ctx.bancos.map(b => ({ id: 'b:' + b, rotulo: b })) };
-    if (mes === undefined) return { tipo: 'pergunta', texto: 'Qual mês?', opcoes: ctx.meses.map(m => ({ id: 'm:' + m, rotulo: rotuloDoMes(m) })) };
+  const banco = escolhido(escolhas, 'b:', ctx.bancos);
+  const mes = escolhido(escolhas, 'm:', ctx.meses);
+  const perguntaBanco = (aviso?: string): PassoDoSuporte => ({ tipo: 'pergunta', aviso, texto: 'Qual banco?', opcoes: comOutro('b:', ctx.bancos.map(b => ({ id: 'b:' + b, rotulo: b }))) });
+  const perguntaMes = (aviso?: string): PassoDoSuporte => ({ tipo: 'pergunta', aviso, texto: 'Qual mês?', opcoes: comOutro('m:', ctx.meses.map(m => ({ id: 'm:' + m, rotulo: rotuloDoMes(m) }))) });
+  if (problema !== OUTRO && !escolhas.includes(NAO_RESOLVEU)) {
+    if (ctx.tela === 'bancos' && COM_BANCO_E_MES.has(problema)) {
+      if (banco === undefined) return perguntaBanco();
+      if (mes === undefined) return perguntaMes();
+    }
+    return { tipo: 'instrucoes', aviso: ondeEsta(ctx), passos: instrucoes(ctx, problema, banco || 'o banco', mes || undefined) };
   }
-  return { tipo: 'instrucoes', passos: instrucoes(ctx, problema, banco || 'o banco', mes) };
+  // as perguntas do report; a primeira depois do Outro do problema diz onde a pessoa está
+  const aviso = problema === OUTRO && escolhas.length === 1 ? ondeEsta(ctx) : undefined;
+  const botoes = ctx.botoes || [];
+  if (botoes.length && !escolhas.some(e => e.startsWith('i:'))) {
+    return { tipo: 'pergunta', aviso, texto: 'Qual dos botões de importação está com problema?', opcoes: comOutro('i:', botoes.map(b => ({ id: 'i:' + b, rotulo: b }))) };
+  }
+  if (ctx.tela === 'bancos' && banco === undefined) return perguntaBanco(aviso);
+  if (mes === undefined) return perguntaMes(aviso);
+  if (!escolhas.some(e => e.startsWith('e:'))) return { tipo: 'pergunta', aviso, texto: 'O que aconteceu ao importar?', opcoes: comOutro('e:', EFEITOS) };
+  if (!escolhas.some(e => e.startsWith('a:'))) return { tipo: 'pergunta', texto: 'Que arquivo você subiu?', opcoes: comOutro('a:', ARQUIVOS) };
+  return { tipo: 'encaminhar', texto: ENCAMINHAR };
 }
 
 /** A escolha de banco ou de mês; com uma opção só, ela; sem nenhuma, '' (não pergunta). undefined = falta perguntar. */
-function escolhido(_ctx: ContextoDoSuporte, escolhas: readonly string[], prefixo: string, opcoes: readonly string[]): string | undefined {
+function escolhido(escolhas: readonly string[], prefixo: string, opcoes: readonly string[]): string | undefined {
   const e = escolhas.find(x => x.startsWith(prefixo));
-  if (e) return e.slice(prefixo.length);
+  if (e) return e === prefixo + OUTRO ? '' : e.slice(prefixo.length);
   if (opcoes.length <= 1) return opcoes[0] ?? '';
   return undefined;
 }
@@ -121,10 +163,52 @@ function instrucoes(ctx: ContextoDoSuporte, problema: string, banco: string, mes
   }
 }
 
+/** O rótulo de uma escolha (a cápsula como aparece). */
+export function rotuloDaEscolha(ctx: ContextoDoSuporte, e: string): string {
+  if (e === OUTRO || e.endsWith(':' + OUTRO)) return 'Outro';
+  if (e === NAO_RESOLVEU) return 'Não resolveu';
+  if (e.startsWith('m:')) return rotuloDoMes(e.slice(2));
+  if (e.startsWith('b:') || e.startsWith('i:')) return e.slice(2);
+  if (e.startsWith('e:')) return EFEITOS.find(x => x.id === e)?.rotulo || e;
+  if (e.startsWith('a:')) return ARQUIVOS.find(x => x.id === e)?.rotulo || e;
+  return PROBLEMAS[ctx.tela].find(p => p.id === e)?.rotulo || e;
+}
+
 /** O caminho da conversa em texto ("Leu errado › Bradesco › 08/2026 › Não resolveu"), para o report. */
 export function caminhoDaConversa(ctx: ContextoDoSuporte, escolhas: readonly string[]): string {
-  const todas = PROBLEMAS[ctx.tela];
-  return escolhas.map(e => (e === OUTRO ? 'Outro' : e === NAO_RESOLVEU ? 'Não resolveu' : e.startsWith('b:') ? e.slice(2) : e.startsWith('m:') ? rotuloDoMes(e.slice(2)) : todas.find(p => p.id === e)?.rotulo || e)).join(' › ');
+  return escolhas.map(e => rotuloDaEscolha(ctx, e)).join(' › ');
+}
+
+/**
+ * A mensagem do bug, sempre no mesmo formato (Vitor, 21/10/2026: "o sistema monta a mensagem corretamente para que chegue
+ * para mim em um padrão"): onde, o problema, os procedimentos, o botão, o banco, o mês, o que aconteceu, o arquivo e o
+ * comentário (as linhas sem resposta ficam de fora).
+ */
+export function mensagemDoBug(ctx: ContextoDoSuporte, escolhas: readonly string[], comentario: string, nomeDoArquivo: string): string {
+  const de = (prefixo: string) => { const e = escolhas.find(x => x.startsWith(prefixo)); return e ? rotuloDaEscolha(ctx, e) : ''; };
+  const linhas: [string, string][] = [
+    ['Página', ctx.pagina || ctx.rotuloDaTela],
+    ['Empresa', empresaDe(ctx)],
+    ['Período', periodoDe(ctx.meses)],
+    ['Problema', escolhas[0] ? rotuloDaEscolha(ctx, escolhas[0]) : ''],
+    ['Procedimentos', escolhas.includes(NAO_RESOLVEU) ? 'feitos, não resolveu' : 'não passou por eles'],
+    ['Botão', de('i:')],
+    ['Banco', de('b:') || (ctx.bancos.length === 1 ? ctx.bancos[0] : '')],
+    ['Mês', de('m:') || (ctx.meses.length === 1 ? rotuloDoMes(ctx.meses[0]) : '')],
+    ['O que aconteceu', de('e:')],
+    ['Arquivo', [de('a:'), nomeDoArquivo].filter(Boolean).join(' · ')],
+    ['Comentário', comentario.trim()],
+  ];
+  return linhas.filter(([, v]) => v).map(([k, v]) => k + ': ' + v).join('\n');
+}
+
+/**
+ * O nome de um botão de importação da página, sem o mês e o detalhe ("Importar extrato de 08/2026" → "Importar extrato";
+ * "Importar o razão dos meses que faltam (cada lançamento cai no seu mês)" → "Importar o razão").
+ */
+export function nomeDoBotao(rotulo: string): string {
+  const t = rotulo.replace(/\s*\([^)]*\)/g, '').replace(/\s+(de|dos?|da)\s+(\d{2}\/\d{4}|todos os meses|meses que faltam).*$/i, '').replace(/\s+/g, ' ').trim();
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : '';
 }
 
 /** Os dois finais do report (o robô escolhe um). */
