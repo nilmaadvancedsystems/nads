@@ -73,7 +73,8 @@ export function AplicacaoAberta() {
   // os links antigos do Cadastro (Configurações e Agentes viraram Robôs e agentes; 13/10/2026)
   if (a.id === 'cadastro' && (pagina === 'configuracoes' || pagina === 'agentes' || pagina === 'robos')) return <Navigate to={caminhoDaPagina('cadastro', 'sistema')} replace />;
   // a página Links saiu (o link vive no Cadastro, na janela da empresa; 17/10/2026): o link antigo cai em Chamados, pelo redirecionamento abaixo
-  if (!a.paginas.some(p => p.id === pagina)) return <Navigate to={caminhoDaPagina(a.id, a.paginas[0].id)} replace />;
+  // a página que não existe, ou que está em desenvolvimento (o link direto; 21/10/2026), cai na primeira liberada
+  if (!a.paginas.some(p => p.id === pagina && !p.emDesenvolvimento)) return <Navigate to={caminhoDaPagina(a.id, (a.paginas.find(p => !p.emDesenvolvimento) || a.paginas[0]).id)} replace />;
   return (
     <TopoProvider>
       <CascaTarefas app={a.id} pagina={pagina} telaInteira={a.id === 'drive'} larga>

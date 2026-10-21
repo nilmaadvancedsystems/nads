@@ -12,7 +12,11 @@ export const BASE = '/tarefas';
 
 export type IdAplicacao = 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente';
 
-export interface Pagina { id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone, na lateral */ marca?: 'fgts' }
+export interface Pagina {
+  id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone, na lateral */ marca?: 'fgts';
+  /** apagada na lateral; o clique avisa que está em desenvolvimento e não abre (Vitor, 21/10/2026) */
+  emDesenvolvimento?: boolean;
+}
 export interface Aplicacao {
   id: IdAplicacao; nome: string; icone: NomeIcone; paginas: Pagina[]; pronta: boolean;
   /** o grupo na gaveta ☰ (14/10/2026: "melhore, atualize ícones") e a logo da marca no lugar do ícone (o Drive, o Gmail) */
@@ -22,7 +26,7 @@ export interface Aplicacao {
 export const APLICACOES: readonly Aplicacao[] = [
   { id: 'minhas-empresas', nome: 'Minhas empresas', icone: 'briefcase', grupo: 'Rotinas', pronta: true, paginas: [
     { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Minhas empresas' },
-    { id: 'insights', rotulo: 'Insights', icone: 'barChart', titulo: 'Insights' },
+    { id: 'insights', rotulo: 'Insights', icone: 'barChart', titulo: 'Insights', emDesenvolvimento: true },
   ] },
   { id: 'contabil', nome: 'Contábil', icone: 'scale', grupo: 'Rotinas', pronta: true, paginas: [
     { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Visão geral' },
