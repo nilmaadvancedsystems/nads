@@ -4731,3 +4731,12 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .fin-contrato-obs:hover{background:var(--hover-bg);}
 .fin-contrato-obs:focus{background:var(--input-bg);border-color:var(--accent);}
 @media (max-width:640px){.fin-contrato{grid-template-columns:auto 1fr auto;}.fin-contrato-obs{grid-column:1 / -1;}}
+
+/* Financeiro › Honorários: Emitir NFS-e e Cobrar (21/10/2026) */
+.fin-selo{margin-left:6px;}
+.fin-cobrado{margin-left:8px;font-size:var(--fs-12);}
+.fin-acoes{display:flex;gap:6px;justify-content:flex-end;align-items:center;}
+.fin-acoes .btn svg{width:16px;height:16px;}
+.fin-cobranca-texto{width:100%;margin-top:12px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);padding:10px 12px;font:inherit;font-size:var(--fs-14);line-height:20px;color:var(--ink);resize:vertical;outline:none;}
+.fin-cobranca-texto:focus{border-color:var(--accent);}
+.fin-valor-edita{min-width:112px;}
