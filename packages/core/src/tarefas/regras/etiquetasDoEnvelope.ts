@@ -1,7 +1,8 @@
 // As etiquetas do envelope do mês (Heverton, 20/10/2026: "Gerador de etiqueta mensal"; o modelo é a planilha
 // "ETIQUETA ENVELOPE 2026"): a faixa preta com a logo da Nilma e "MOVIMENTO MM/AAAA", o código do cliente em destaque,
-// o nome, a caixa com o regime (ou o texto escolhido) e o departamento embaixo. A folha é A4 em pé; 1, 2 ou 4 etiquetas
-// por página, de altura fixa (nenhuma é cortada entre duas páginas). A logo vem pronta (o SVG) de quem chama, desenhada
+// o nome, a caixa com o regime (ou o texto escolhido) e o departamento embaixo. Uma por página: a folha A4 deitada,
+// a etiqueta ocupando a folha inteira (22/10/2026: "isso tinha que ficar de lado, pegando a folha inteira"); 2 ou 4 por
+// página: a folha em pé, em metades ou quartos. Altura fixa (nenhuma é cortada entre duas páginas). A logo vem pronta (o SVG) de quem chama, desenhada
 // uma vez só no documento.
 import { competenciaParaEtiqueta } from './etiquetasDaFolha';
 
@@ -56,13 +57,14 @@ export function htmlDosEnvelopes(p: PedidoDeEnvelopes): string {
   for (let i = 0; i < p.etiquetas.length; i += porPagina) {
     paginas.push(`<section class="pagina p${porPagina}">${p.etiquetas.slice(i, i + porPagina).map(e => etiqueta(e, movimento, p.departamento, p.logo.uso)).join('')}</section>`);
   }
-  // a altura útil (297 − 2 × 8 de margem = 281 mm) dividida pelas linhas, com 6 mm entre elas
-  const linhas = porPagina === 1 ? 1 : 2;
-  const altura = porPagina === 1 ? 140 : Math.floor((281 - 6 * (linhas - 1)) / linhas);
-  const escala = porPagina === 4 ? 0.62 : 1;
+  // uma por página: a folha deitada, a etiqueta na altura útil inteira (210 − 2 × 8 de margem = 194 mm), maior;
+  // 2 ou 4: a folha em pé, a altura útil (297 − 2 × 8 = 281 mm) em duas linhas, com 6 mm entre elas
+  const deitada = porPagina === 1;
+  const altura = deitada ? 194 : Math.floor((281 - 6) / 2);
+  const escala = deitada ? 1.3 : porPagina === 4 ? 0.62 : 1;
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Etiquetas ${esc(movimento)} — ${esc(p.departamento)}</title>
 <style>
-  @page{size:A4;margin:8mm}
+  @page{size:A4${deitada ? ' landscape' : ''};margin:8mm}
   *{box-sizing:border-box}
   :root{color-scheme:light}
   html,body{margin:0;padding:0;background:#fff}
