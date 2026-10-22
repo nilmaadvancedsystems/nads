@@ -60,6 +60,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'faturamento', rotulo: 'Faturamento', icone: 'dinheiro', titulo: 'Faturamento dos clientes' },
     // o rateio do frete e do desconto de uma nota pelas tributações (Heverton, 22/10/2026: a planilha "RATEIO - FRETE")
     { id: 'rateio-frete', rotulo: 'Rateio de frete', icone: 'caminhao', titulo: 'Rateio de frete' },
+    // a calculadora do Simples Nacional, a planilha do Fiscal preenchida com o SIEG e a folha do DP (Heverton, 22/10/2026)
+    { id: 'simples', rotulo: 'Simples Nacional', icone: 'recibo', titulo: 'Calculadora do Simples Nacional' },
   ] },
   // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
   // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas
