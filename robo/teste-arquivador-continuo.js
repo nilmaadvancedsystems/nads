@@ -86,6 +86,11 @@ igual('lado a lado: o texto cita o destino diferente', /2 - Y/.test(C.textoDoLad
     const linhas = fs.readFileSync(path.join(controle, 'continuo', diario[0]), 'utf8').trim().split('\n').map(JSON.parse);
     igual('ciclo: decidiu só a nota (o temporário do Office ficou de fora)', linhas.map(l => [l.rel, l.modo]), [['nota.xml', 'SIMULACAO']]);
     igual('ciclo: simulação não moveu nada', fs.existsSync(arq), true);
+    // o acompanhamento do site do admin (arquivador-acompanhamento.js) viu a varredura e a decisão
+    const acomp = JSON.parse(fs.readFileSync(path.join(controle, 'continuo', 'acompanhamento.json'), 'utf8'));
+    const nota = acomp.ultimos.concat(acomp.pendentes).find(x => x.nome === 'nota.xml');
+    igual('acompanhamento: o config, a nota decidida e a passada', [acomp.config.modo, !!nota, acomp.passada && acomp.passada.feitos], ['simulacao', true, 1]);
+    igual('acompanhamento: o histórico do dia no PC', fs.readdirSync(path.join(controle, 'continuo')).some(f => /^arquivados-\d{4}-\d{2}-\d{2}\.jsonl$/.test(f)), true);
     igual('ciclo: já decidido não volta no próximo ciclo', await (async () => { const v2 = C.iniciar(base); await v2.ciclo(); await v2.ciclo(); v2.parar(); return fs.readFileSync(path.join(controle, 'continuo', diario[0]), 'utf8').trim().split('\n').length; })(), 1);
   } finally { fs.rmSync(sb, { recursive: true, force: true }); }
   console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');

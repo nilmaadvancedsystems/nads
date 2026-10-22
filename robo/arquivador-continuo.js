@@ -143,6 +143,9 @@ function iniciar(opcoes) {
     if (o.painel) return o.painel.estado({ arquivadorNovo: parcial });
     if (o.db) o.db.collection('robo').doc('arquivadorNovo').set({ estado: parcial }, { merge: true }).catch(() => {});
   };
+  // o acompanhamento do site do admin (Admin › Arquivador, 22/10/2026): a pasta, a passada, o porquê de cada arquivo, os
+  // não identificados e os erros, em robo/arquivadorNovo.painel (com freio; nunca derruba o ciclo)
+  const acomp = require('./arquivador-acompanhamento').criar({ db: o.db, controle: pasta, origem: o.origem, log: o.log });
   // o config no banco (robo/arquivadorNovo): ouvinte, só cobra quando muda
   if (o.db) {
     try { require('./ouvinte').ouvir('arquivador novo: config', () => o.db.collection('robo').doc('arquivadorNovo'), snap => { configBanco = snap.exists ? (snap.data().config || null) : null; }, o.log); } catch (e) { o.log('config do banco não ligou:', e.message); }
@@ -192,17 +195,20 @@ function iniciar(opcoes) {
     const resumo = { decididos: 0, arquivou: 0, arquivaria: 0, jaArquivado: 0, naoIdentificado: 0, fica: 0, erros: 0, restantes: 0, esperando: null };
     if (rodando || parado) { resumo.esperando = rodando ? 'um ciclo já está rodando' : 'parado'; return resumo; }
     const cfg = lerConfig(CONFIG, configBanco);
+    acomp.config(cfg);
     if (cfg.modo === 'desligado') { resumo.esperando = 'o arquivador novo está desligado no config'; return resumo; }
     // o G: some quando o Google Drive desconecta: espera voltar (sem concluir que os arquivos "sumiram")
     if (!fs.existsSync(o.origem)) {
       if (!avisouSemDrive) { o.log('a pasta de origem não está acessível (' + o.origem + '): espero o Google Drive voltar'); avisouSemDrive = true; }
       if (o.painel) o.painel.fazendo('arquivador-novo', 'Esperando o Google Drive (G:) voltar');
+      acomp.situacao('sem-drive');
       resumo.esperando = 'o Google Drive (G:) não está acessível';
       return resumo;
     }
     if (avisouSemDrive) { o.log('a pasta de origem voltou'); avisouSemDrive = false; if (o.painel) o.painel.fazendo('arquivador-novo', null); }
     if (!observador) vigiar();
     const motivo = outraExecucao(op.porPedido);
+    acomp.situacao(motivo ? 'esperando' : 'ok', motivo);
     if (motivo) { if (o.painel) o.painel.fazendo('arquivador-novo', 'Esperando: ' + motivo); resumo.esperando = motivo; return resumo; }
     if (o.painel) o.painel.fazendo('arquivador-novo', null);
     rodando = true;
@@ -219,6 +225,7 @@ function iniciar(opcoes) {
       // o zip só é aberto (para ver se chegou inteiro) quando vai entrar no lote, não a cada varredura
       const prontos = pendentes.slice(0, limite * 3).filter(zipInteiro);
       resumo.restantes = Math.max(0, pendentes.length - prontos.length);
+      acomp.varredura({ vistos, mapa, pendentes, estavelMs });
       if (o.depurar) o.log('varredura: ' + vistos.length + ' arquivo(s), ' + estaveisAgora.length + ' estável(is), ' + prontos.length + ' para decidir');
       if (!prontos.length) return resumo;
       if (!pegarTrava()) { o.log('outro processo do arquivador novo está trabalhando'); resumo.esperando = 'outro processo do arquivador novo está trabalhando'; return resumo; }
@@ -234,6 +241,7 @@ function iniciar(opcoes) {
         while (prontos.length && feitos < limite && Date.now() - inicio < tempo) {
           const lote = prontos.splice(0, Math.min(10, limite - feitos));
           feitos += lote.length;
+          acomp.lendo(lote);
           if (o.painel) o.painel.fazendo('arquivador-novo', (cfg.modo === 'producao' ? 'Arquivando ' : 'Simulando ') + lote.length + ' arquivo(s) da Claudio Secretario');
           const res = await A.executar({
             modo: cfg.emProducao ? 'PRODUCAO' : 'SIMULACAO', confirmo: true, origem: o.origem, controle: o.controle, clientes: o.clientes,
@@ -246,7 +254,7 @@ function iniciar(opcoes) {
         }
         resumo.restantes += prontos.length;
       } finally { soltarTrava(); if (o.painel) o.painel.fazendo('arquivador-novo', null); }
-    } catch (err) { o.log('erro no ciclo:', err.message); atividade('O arquivador novo deu erro', err.message, true); resumo.esperando = 'erro: ' + err.message; }
+    } catch (err) { o.log('erro no ciclo:', err.message); atividade('O arquivador novo deu erro', err.message, true); acomp.erro(err.message); resumo.esperando = 'erro: ' + err.message; }
     finally { rodando = false; await compararSeForHora(); }
     return resumo;
   }
@@ -258,6 +266,7 @@ function iniciar(opcoes) {
     const m = estado.mes[mes] || (estado.mes[mes] = { arquivou: 0, arquivaria: 0, jaArquivado: 0, naoIdentificado: 0, pastasNovas: 0 });
     const linhas = [];
     const planos = A.planos(res).filter(x => x.acao !== 'CONTEINER');
+    acomp.decisoes(planos, res.modo);
     const simulados = [];
     for (const x of planos) {
       const aplicado = res.modo === 'PRODUCAO' && !x.naoAplicado && !x.erro && (x.acao === 'ARQUIVAR' || x.acao === 'JA_ARQUIVADO');
@@ -300,6 +309,7 @@ function iniciar(opcoes) {
     atividade('Lado a lado de ' + dia.split('-').reverse().slice(0, 2).join('/') + ': ' + r.iguais + ' iguais, ' + r.diferentes + ' em outro destino, ' + r.novoNaoIdentificou + ' não identificaria (de ' + r.rotinaArquivou + ')',
       'mesma pasta com outro nome: ' + r.pastaIgualNomeDiferente + ' · não viu: ' + r.novoNaoViu + ' · relatório: ' + arq, r.diferentes > 0);
     publicarEstado({ ladoALado: Object.assign({}, r, { exemplos: r.exemplos.slice(0, 20) }) });
+    acomp.ladoALado(r);
     return r;
   }
 
@@ -319,7 +329,7 @@ function iniciar(opcoes) {
   o.log('vigiando ' + o.origem + ' (modo ' + lerConfig(CONFIG, configBanco).modo + ')');
   return {
     ciclo, comparar, config: () => lerConfig(CONFIG, configBanco),
-    parar: () => { parado = true; if (timer) clearInterval(timer); clearTimeout(acordar); if (observador) observador.close(); soltarTrava(); },
+    parar: () => { parado = true; if (timer) clearInterval(timer); clearTimeout(acordar); if (observador) observador.close(); soltarTrava(); void acomp.parar(); },
   };
 }
 
