@@ -32,6 +32,7 @@ export const TELAS: Tela[] = [
   { id: 't-dp-config', app: 'Tarefas', nome: 'DP › Configurações' },
   { id: 't-dp-legislacao', app: 'Tarefas', nome: 'DP › Legislação' },
   { id: 't-fiscal-sintegra', app: 'Tarefas', nome: 'Fiscal › SINTEGRA (leitor)' },
+  { id: 't-fiscal-rateio', app: 'Tarefas', nome: 'Fiscal › Rateio de frete' },
   { id: 't-insights', app: 'Tarefas', nome: 'Insights' },
   { id: 't-contabil', app: 'Tarefas', nome: 'Contábil' },
   { id: 't-empresa', app: 'Tarefas', nome: 'Página da empresa' },

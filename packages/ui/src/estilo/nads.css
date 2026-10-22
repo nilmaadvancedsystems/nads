@@ -4319,6 +4319,19 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 .sintegra-linha-dif td{background:var(--danger-soft);}
 .sintegra-corpo{padding:16px;}
 .sintegra-na-etapa{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+/* Fiscal › Rateio de frete (22/10/2026) */
+.rateio-frete{display:flex;flex-direction:column;gap:12px;}
+.rateio-frete > .card{margin:0;}
+.rateio-frete .tarefas-barra-topo select{width:auto;max-width:360px;}
+.rateio-frete-cabeca{padding:12px 16px 16px;display:flex;flex-direction:column;gap:14px;}
+.rateio-frete-nota{max-width:640px;margin:0;}
+.rateio-frete-campos{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;}
+.rateio-frete-campos .field{width:180px;margin:0;}
+.rateio-frete input.num{text-align:right;}
+.rateio-frete td input{width:100%;min-width:90px;}
+.rateio-frete tfoot td{border-top:2px solid var(--border);}
+.rateio-frete-dica{margin:0;padding:8px 16px 12px;}
+.rateio-frete-acoes{padding:8px 16px 12px;}
 /* Gmail: a lista num painel como o do Gmail (14/10/2026: "era pra resolver as bordas do gmail que ficam sem nada e só
    acabam"): o fundo do painel, os cantos redondos e as linhas fechando nas bordas dele; overflow:clip para o rótulo do
    grupo continuar grudando no alto ao rolar a página */
