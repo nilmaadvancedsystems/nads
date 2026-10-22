@@ -129,6 +129,20 @@ try {
     const antes = gravados.length;
     await ac._gravar();
     igual('a parte que não mudou não é regravada', gravados.length - antes, 1);
+    // a varredura igual à anterior não grava de novo (só o batimento de 10 min)
+    const g4 = [];
+    const db4 = { collection: () => ({ doc: () => ({ set: async (d) => { g4.push(d); }, collection: () => ({ doc: () => ({ set: async () => {} }) }) }) }) };
+    let agora4 = T;
+    const ac4 = A.criar({ db: db4, controle: fs.mkdtempSync(path.join(os.tmpdir(), 'teste-acomp-')), origem: 'G:\\x', agora: () => agora4, freioMs: 0 });
+    const v4 = () => ({ vistos: [{ rel: 'a.pdf', tam: 1, mtime: T - 600000 }], pendentes: ['a.pdf'], mapa: new Map(), estavelMs: 45000 });
+    const espera = () => new Promise(r => setTimeout(r, 15));
+    ac4.varredura(v4()); await espera();
+    agora4 += 60000; ac4.varredura(v4()); await espera();
+    igual('varredura igual: uma gravação só', g4.length, 1);
+    agora4 += 11 * 60000; ac4.varredura(v4()); await espera();
+    igual('varredura igual depois de 10 min: o batimento grava', g4.length, 2);
+    ac4.varredura({ vistos: [], pendentes: [], mapa: new Map() }); await espera();
+    igual('a pasta mudou: grava', g4.length, 3);
     igual('o PC guarda o estado e o histórico', [fs.existsSync(path.join(tmp, 'acompanhamento.json')), fs.readdirSync(tmp).some(f => /^arquivados-.*\.jsonl$/.test(f))], [true, true]);
     // religar: as listas e o histórico voltam do PC
     const ac2 = A.criar({ db: null, controle: tmp, origem: 'G:\\x', agora: () => agora });

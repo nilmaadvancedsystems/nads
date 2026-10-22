@@ -23,6 +23,7 @@ const os = require('os');
 const path = require('path');
 
 const FREIO_MS = 45 * 1000;
+const BATIMENTO_MS = 10 * 60 * 1000;
 const MAX_ULTIMOS = 50;
 const MAX_PENDENTES = 80;
 const MAX_ERROS = 30;
@@ -278,6 +279,7 @@ function criar(opcoes) {
   carregarDia(st.hoje.chave);
 
   let ultimaGravacao = 0, timer = null, avisouErro = false, parado = false;
+  const assinatura = () => JSON.stringify([st.pasta && [st.pasta.naPasta, st.pasta.chegando, st.pasta.naFila, st.pasta.sendoLidos, st.pasta.lista.map(x => x.rel + x.situacao)], st.passada]);
   const seguro = (nome, f) => (...a) => { try { if (!parado) f(...a); } catch (e) { o.log('acompanhamento (' + nome + '):', e.message); } };
 
   function virarDia(t) {
@@ -347,9 +349,11 @@ function criar(opcoes) {
     varredura: seguro('varredura', (v) => {
       const t = o.agora();
       virarDia(t);
+      const antes = assinatura();
       st.pasta = situacaoDaPasta(Object.assign({ lendo: st.lendoAgora || [] }, v), t);
       st.passada = avancarPassada(st.passada, (v.pendentes || []).length, t);
-      publicar();
+      // a varredura roda a cada minuto: só grava quando a pasta mudou, ou a cada BATIMENTO_MS (o sinal de vida da página)
+      if (assinatura() !== antes || t - ultimaGravacao >= BATIMENTO_MS) publicar();
     }),
     /** o lote que começou agora (os arquivos "sendo lidos") */
     lendo: seguro('lendo', (lote) => {
