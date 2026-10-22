@@ -15,10 +15,7 @@ import { useOperador, type Operador } from './operador';
 // cada tela é um pedaço à parte (revisão da UI, 18/10/2026: o pacote inicial tinha 4 MB): baixa quando a pessoa abre a
 // página, com o Esqueleto no lugar enquanto chega (comum/pedaco.tsx). As da Entregas ainda vêm no pacote inicial.
 const PainelDoFiscal = pedaco(() => import('../telas/fiscal/painel/PainelDoFiscal'), 'PainelDoFiscal');
-const RobosEAgentes = pedaco(() => import('../telas/cadastro/configuracoes/ConfiguracoesDoNads'), 'RobosEAgentes');
-const PainelDoRobo = pedaco(() => import('../telas/cadastro/painel-robo/PainelDoRobo'), 'PainelDoRobo');
 const UsuariosDoNads = pedaco(() => import('../telas/cadastro/usuarios/UsuariosDoNads'), 'UsuariosDoNads');
-const UsoDoSistema = pedaco(() => import('../telas/uso/UsoDoSistema'), 'UsoDoSistema');
 const VisaoContabil = pedaco(() => import('../telas/contabil/VisaoContabil'), 'VisaoContabil');
 const ConfiguracoesContabil = pedaco(() => import('../telas/contabil/configuracoes/ConfiguracoesContabil'), 'ConfiguracoesContabil');
 const ExploradorDoDrive = pedaco(() => import('../telas/drive/ExploradorDoDrive'), 'ExploradorDoDrive');
@@ -54,7 +51,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'fiscal': return pagina === 'empresas' ? <MinhasEmpresas /> : pagina === 'painel' ? <PainelDoFiscal /> : pagina === 'reinf' ? <Reinf /> : pagina === 'sintegra' ? <PaginaSintegra /> : pagina === 'faturamento' ? <FaturamentoDosClientes /> : <VisaoContabil pagina={pagina} dep="fiscal" />;
     case 'dp': return ABAS_DO_PAINEL.includes(pagina as AbaDoPainel) ? <PainelDoDp aba={pagina as AbaDoPainel} /> : pagina === 'configuracoes' ? <ConfiguracoesDoDp /> : pagina === 'fgts' ? <FgtsDoDp /> : pagina === 'legislacao' ? <LegislacaoDoDp /> : <VisaoContabil pagina={pagina} dep="dp" />;
     case 'senhas': return pagina === 'acesso' ? <AcessoAoCofre /> : pagina === 'gov' ? <ContasGov /> : pagina === 'certificados' ? <Certificados /> : <SenhasDasEmpresas />;
-    case 'cadastro': return pagina === 'sistema' ? <RobosEAgentes /> : pagina === 'robo' ? <PainelDoRobo /> : pagina === 'uso' ? <UsoDoSistema /> : <UsuariosDoNads />;
+    case 'cadastro': return <UsuariosDoNads />;
     // a Área do Cliente com o Mandei junto (19/10/2026): Chamados, Recebidos, Meus tickets e a Central de tickets
     case 'area-cliente': return pagina === 'recebidos' ? <RecebidosDoCliente /> : pagina === 'meus' || pagina === 'central' ? <Mandei pagina={pagina} /> : <ChamadosDoCliente />;
     case 'financeiro': return pagina === 'configuracoes' ? <ConfiguracoesDoFinanceiro /> : pagina === 'caixa' ? <Caixa /> : pagina === 'honorarios' ? <Honorarios /> : pagina === 'plano' ? <PlanoDeContas /> : <NotasFiscais />;
@@ -73,8 +70,8 @@ export function AplicacaoAberta() {
   if (app === 'mandei') return <Navigate to={caminhoDaPagina('area-cliente', pagina === 'central' ? 'central' : 'meus')} replace />;
   const a = aplicacoesDe(op).find(x => x.id === app);
   if (!a) return <Navigate to={caminhoDaPagina('minhas-empresas', 'empresas')} replace />;
-  // os links antigos do Cadastro (Configurações e Agentes viraram Robôs e agentes; 13/10/2026)
-  if (a.id === 'cadastro' && (pagina === 'configuracoes' || pagina === 'agentes' || pagina === 'robos')) return <Navigate to={caminhoDaPagina('cadastro', 'sistema')} replace />;
+  // os links antigos do Cadastro (Sistema e agentes, Painel do robô e Uso do sistema foram para o site do admin; 22/10/2026) e
+  // qualquer página que não existe caem, sem erro, na primeira página liberada, pelo redirecionamento abaixo (Empresas)
   // a página Links saiu (o link vive no Cadastro, na janela da empresa; 17/10/2026): o link antigo cai em Chamados, pelo redirecionamento abaixo
   // a página que não existe, ou que está em desenvolvimento (o link direto; 21/10/2026), cai na primeira liberada
   if (!a.paginas.some(p => p.id === pagina && !p.emDesenvolvimento)) return <Navigate to={caminhoDaPagina(a.id, (a.paginas.find(p => !p.emDesenvolvimento) || a.paginas[0]).id)} replace />;

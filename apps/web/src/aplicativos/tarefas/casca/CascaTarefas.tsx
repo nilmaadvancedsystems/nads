@@ -1,13 +1,21 @@
 // View da casca da Tarefas (a Casca comum do nads). telaInteira: sem a barra lateral e sem o título (o Drive).
-import { Casca, MenuSuspenso } from '@nads/ui';
+import { Casca, Icone, MenuSuspenso } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
 import { LugarDasAcoes, useTrilhaDoTopo } from '../../../comum/topo';
 import { useAvisoDeBloqueio } from '../../../comum/modoDesenvolvedor';
-import type { IdAplicacao } from './navegacao';
+import { URL_DO_ADMIN, type IdAplicacao } from './navegacao';
 import { useCascaTarefas } from './useCascaTarefas';
 import { JanelaDeFeedback } from '../telas/feedback/JanelaDeFeedback';
-import { ItemDosFeedbacks, JanelaDosFeedbacks } from '../telas/feedback/FeedbacksDoNads';
 import { AvisoDeCertificados } from './AvisoDeCertificados';
+
+/** O link discreto "Admin" no pé da gaveta ☰ (só o admin): abre o site do admin numa aba nova (os Feedbacks, o Painel do robô, o Uso e o Sistema moraram aqui; 22/10/2026). */
+function ItemDoAdmin({ fechar }: { fechar: () => void }) {
+  return (
+    <button type="button" className="drawer-item" onClick={() => { fechar(); window.open(URL_DO_ADMIN, '_blank', 'noopener'); }}>
+      <Icone nome="escudo" />Admin
+    </button>
+  );
+}
 
 /** O avatar no canto do cabeçalho (como o do Entregas e o do GitHub): as iniciais; aberto, a Minha página e sair. */
 function AvatarDaPessoa({ vm, abrirFeedback }: { vm: ReturnType<typeof useCascaTarefas>; abrirFeedback: () => void }) {
@@ -29,7 +37,6 @@ export function CascaTarefas({ app, pagina, telaInteira, larga, children }: { ap
   const vm = useCascaTarefas(app, pagina);
   const trilha = useTrilhaDoTopo();
   const [feedback, setFeedback] = useState(false);
-  const [feedbacks, setFeedbacks] = useState(false);
   useAvisoDeBloqueio();
   return (
     <Casca sistema="Tarefas" temaNaGaveta={false} empresa={vm.empresa} versao={vm.versao} trilha={trilha} secoes={vm.secoes} paginas={vm.paginas} titulo={telaInteira ? '' : vm.titulo}
@@ -37,9 +44,8 @@ export function CascaTarefas({ app, pagina, telaInteira, larga, children }: { ap
       acoes={telaInteira ? undefined : <LugarDasAcoes />} onSecao={vm.onSecao} onPagina={vm.onPagina} onInicio={vm.inicio} onAplicativos={vm.inicio}
       onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}
       topoDireita={<AvatarDaPessoa vm={vm} abrirFeedback={() => setFeedback(true)} />}
-      peDaGaveta={vm.admin ? fechar => <ItemDosFeedbacks abrir={() => { fechar(); setFeedbacks(true); }} /> : undefined}>
+      peDaGaveta={vm.admin ? fechar => <ItemDoAdmin fechar={fechar} /> : undefined}>
       {feedback && <JanelaDeFeedback fechar={() => setFeedback(false)} />}
-      {feedbacks && <JanelaDosFeedbacks fechar={() => setFeedbacks(false)} />}
       {/* os certificados vencidos ou vencendo (19/10/2026): só o admin */}
       <AvisoDeCertificados ligado={vm.admin} />
       {children}
