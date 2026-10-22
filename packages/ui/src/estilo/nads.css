@@ -4742,7 +4742,17 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .fin-meses{display:flex;flex-wrap:wrap;gap:4px;}
 .fin-meses .chip-f{font-size:var(--fs-12,12px);}
 .fin-resultado-grupo td{font-weight:600;background:var(--surface-2);}
-.fin-resultado-conta{padding-left:20px !important;}
+.fin-resultado-conta{display:inline-flex;align-items:center;gap:4px;min-width:0;}
+.fin-resultado-abre,.fin-resultado-abre-vazio{width:20px;height:20px;flex:none;display:inline-flex;align-items:center;justify-content:center;}
+.fin-resultado-abre{border:none;background:none;color:var(--ink-muted);border-radius:4px;cursor:pointer;padding:0;}
+.fin-resultado-abre:hover{background:var(--hover-bg);color:var(--ink);}
+.fin-resultado-abre svg{width:14px;height:14px;}
+.fin-resultado-nome{border:none;background:none;color:var(--ink);font:inherit;padding:0;cursor:pointer;text-align:left;}
+.fin-resultado-nome:hover{text-decoration:underline;}
+.fin-resultado-pai .fin-resultado-nome{font-weight:600;}
+.fin-resultado th:first-child,.fin-resultado td:first-child{min-width:240px;}
+.fin-resultado-ano td.num,.fin-resultado-ano th.num{white-space:nowrap;}
+.fin-resultado-total-col{font-weight:600;border-left:1px solid var(--border);}
 .fin-resultado-total td{font-weight:600;border-top:1px solid var(--border-strong);}
 .fin-resultado-final td{font-weight:700;font-size:var(--fs-14,14px);border-top:2px solid var(--border-strong);}
 .fin-painel .card>h3{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}

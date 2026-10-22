@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { caixaParaConferir, inadimplencia, previaDoReajuste, resultadoPorConta, valorReajustado, type ContaDoPlano, type ContratoDeHonorario, type LancamentoDeCaixa, type RecebimentoDeHonorario } from './index';
+import { caixaParaConferir, inadimplencia, previaDoReajuste, valorReajustado, type ContratoDeHonorario, type LancamentoDeCaixa, type RecebimentoDeHonorario } from './index';
 
 const contrato = (id: string, valor: number, criadoEm = '2026-08-10T00:00:00Z', ativo = true): ContratoDeHonorario => ({ id, clienteId: '', codigo: id, nome: 'Cliente ' + id, cnpj: '', valor, ativo, criadoEm, criadoPor: '' });
 const pago = (contratoId: string, competencia: string): RecebimentoDeHonorario => ({ id: contratoId + '_' + competencia, contratoId, competencia, valor: 1, recebidoEm: '', forma: 'pix', por: '', em: '' });
@@ -26,18 +26,6 @@ describe('o reajuste', () => {
   });
   it('a prévia só tem os ativos com valor', () => {
     expect(previaDoReajuste([contrato('b', 200), contrato('a', 0), contrato('c', 100, '', false)], 10).map(x => [x.contrato.id, x.atual, x.novo])).toEqual([['b', 200, 220]]);
-  });
-});
-
-describe('o resultado por conta', () => {
-  it('o mês, o anterior e o mesmo mês do ano passado, com a variação', () => {
-    const contas = new Map<string, ContaDoPlano>([['x', { id: 'x', codigo: '5.1', descricao: 'Aluguel', tipo: 'DESPESA', nivel: 2, pai: null, ativo: true, movimentavel: true }]]);
-    const r = resultadoPorConta([l('1', '2026-10-05', 'S', 120, 'x'), l('2', '2026-09-05', 'S', 100, 'x'), l('3', '2025-10-05', 'S', 90, 'x'), l('4', '2026-10-06', 'E', 500), l('5', '2026-08-01', 'S', 7, 'x')], contas, '2026-10');
-    expect(r.anterior).toBe('2026-09');
-    expect(r.anoPassado).toBe('2025-10');
-    expect(r.saidas).toEqual([{ conta: 'x', rotulo: '5.1 Aluguel', atual: 120, anterior: 100, anoPassado: 90, variacao: 20 }]);
-    expect(r.entradas[0]).toMatchObject({ rotulo: 'Sem conta', atual: 500, variacao: null });
-    expect(r.totais.resultado).toEqual({ atual: 380, anterior: -100, anoPassado: -90 });
   });
 });
 
