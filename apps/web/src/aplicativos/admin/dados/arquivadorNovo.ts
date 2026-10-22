@@ -127,7 +127,7 @@ export function painelDeExemplo(agora = Date.now()): entregas.PainelDoArquivador
     em: ha(0.4), maquina: 'DPTO-FISCAL-004',
     config: { modo: 'producao', emProducao: true, tiposProducao: ['todos'], moverNaoIdentificados: true, botaoRotinaAntiga: false, intervaloMs: 60000, estavelMs: 45000, lote: 40 },
     situacao: 'ok', esperando: '',
-    pasta: { naPasta: 15918 + 2 + 3, chegando: 2, naFila: 15915, sendoLidos: 3, parados: 9, lista },
+    pasta: { naPasta: 15918 + 2 + 3, chegando: 2, naFila: 15915, sendoLidos: 3, parados: 9, esperandoOriginal: 0, lista },
     passada: { inicio: t(13, 5), feitos: 1240, total: 1240 + 15918, fim: '' },
     ritmo: 38.4,
     hoje: contagem(hojeLocal(agora), 1, { pastasNovas: ['593 - OFICINA BETA EXEMPLO ME', '591 - CLÍNICA EXEMPLO S/S'] }),
