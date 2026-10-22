@@ -169,6 +169,8 @@ try {
   igual('o mesmo conteúdo já gravado: JA_ARQUIVADO (não grava de novo)', A.conferirDestino(dd, sha('conteudo antigo'), c).situacao, 'JA_ARQUIVADO');
   igual('dois do lote com o mesmo nome: o segundo vira " (2)"', A.conferirDestino(dd, sha('outro'), c).nomeFinal, '01-2026 (2).pdf');
   igual('o mesmo conteúdo duas vezes no lote: o segundo é JA_ARQUIVADO', A.conferirDestino(dd, sha('novo'), c).situacao, 'JA_ARQUIVADO');
+  fs.mkdirSync(path.join(pasta, 'CONTRATO.pdf'));   // a rotina antiga deixou PASTAS com nome de arquivo
+  igual('uma PASTA com o nome do arquivo também ocupa o nome: " (1)"', A.conferirDestino({ destinoRelativo: '380 - X\\A', nomeFinal: 'CONTRATO.pdf' }, sha('contrato'), c).nomeFinal, 'CONTRATO (1).pdf');
   c.manifesto.set(sha('x'), path.join(pasta, '01-2026.pdf'));
   igual('hash no manifesto da rotina antiga com o arquivo lá: JA_ARQUIVADO', A.conferirDestino(dd, sha('x'), c).situacao, 'JA_ARQUIVADO');
   // varredura: NÃO IDENTIFICADOS, "_" e CLAUDE FAVOR NÃO MEXER ficam de fora (Dicionário §1)

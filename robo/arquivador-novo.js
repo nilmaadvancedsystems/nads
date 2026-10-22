@@ -314,8 +314,21 @@ function conferirDestino(d, hash, ctx, soNaPasta) {
   }
   throw new Error('nomes esgotados em ' + pasta);
 }
-function existe(p, ctx) { if (!ctx.existe.has(p)) { let ok = false; try { ok = fs.statSync(p).isFile(); } catch (e) {} ctx.existe.set(p, ok); } return ctx.existe.get(p); }
-function hashDe(p, ctx) { if (!ctx.hashes.has(p)) ctx.hashes.set(p, sha(fs.readFileSync(p))); return ctx.hashes.get(p); }
+// "existe" é qualquer coisa com o nome (a rotina antiga deixou PASTAS chamadas "CONTRATO.pdf"): ocupado, vai para " (N)"
+function existe(p, ctx) { if (!ctx.existe.has(p)) { let ok = false; try { fs.statSync(p); ok = true; } catch (e) {} ctx.existe.set(p, ok); } return ctx.existe.get(p); }
+function hashDe(p, ctx) { if (!ctx.hashes.has(p)) { let h = ''; try { if (fs.statSync(p).isFile()) h = sha(fs.readFileSync(p)); } catch (e) {} ctx.hashes.set(p, h); } return ctx.hashes.get(p); }
+
+/**
+ * Move um arquivo. Entre discos (o G: do Drive para a quarentena no C:) o rename do Windows não vale (EXDEV): copia,
+ * confere o hash da cópia e só então tira o original. Nunca sobrescreve o destino.
+ */
+function mover(de, para) {
+  try { fs.renameSync(de, para); return; } catch (e) { if (e.code !== 'EXDEV') throw e; }
+  const buf = fs.readFileSync(de);
+  fs.writeFileSync(para, buf, { flag: 'wx' });
+  if (sha(fs.readFileSync(para)) !== sha(buf)) { try { fs.unlinkSync(para); } catch (x) { /* fica a cópia ruim */ } throw new Error('a cópia para ' + para + ' não conferiu; o original ficou'); }
+  fs.unlinkSync(de);
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 // a execução
@@ -412,7 +425,7 @@ function aplicar(res, opcoes, ctx) {
     const alvo = semSobrescrever(path.join(ni, it.rel));
     linha(path.join(ni, '_nao_identificados.jsonl'), { arquivo: path.basename(alvo), caminho_relativo: path.dirname(it.rel), status: 'NAO_IDENTIFICADO', motivo: it.motivo, cliente_tentativa: it.cliente, confianca: it.confianca, id_execucao: res.id, timestamp: new Date().toISOString() });
     fs.mkdirSync(path.dirname(alvo), { recursive: true });
-    if (buffer) fs.writeFileSync(alvo, buffer, { flag: 'wx' }); else fs.renameSync(path.join(opcoes.origem, it.rel), alvo);
+    if (buffer) fs.writeFileSync(alvo, buffer, { flag: 'wx' }); else mover(path.join(opcoes.origem, it.rel), alvo);
     it.movidoPara = alvo;
   };
   /** Grava uma cópia num destino (o principal ou uma das cópias), registrando a pasta de cliente que nasceu. */
@@ -436,7 +449,7 @@ function aplicar(res, opcoes, ctx) {
     const alvo = semSobrescrever(path.join(quarentena, it.rel));
     linha(path.join(quarentena, '_quarentena.jsonl'), { hash_original: it.hash, arquivo_original_caminho: it.rel, destino_final: it.gravadoEm || it.onde || null, id_execucao: res.id, timestamp: new Date().toISOString() });
     fs.mkdirSync(path.dirname(alvo), { recursive: true });
-    fs.renameSync(de, alvo);
+    mover(de, alvo);
   };
   for (const it of res.itens) {
     try {
