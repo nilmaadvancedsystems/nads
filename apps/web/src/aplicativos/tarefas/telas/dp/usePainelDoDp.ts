@@ -254,7 +254,7 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
       { rotulo: 'Sem movimento', valor: contagemDash.sem, dica: '', tom: 'roxo', icone: 'list' },
       // a REINF (21/10/2026: "fica como 19 sendo que não marcou nada"): antes contava quem TEM a REINF e parecia feito;
       // agora as transmitidas, de quantas há
-      { rotulo: 'REINF transmitidas', valor: reinf.feitas, dica: 'de ' + reinf.total + ' com REINF' + (reinf.faltam ? ' · faltam ' + reinf.faltam : ''), tom: 'ciano', icone: 'fileUp' },
+      { rotulo: 'REINF transmitidas', valor: reinf.feitas, dica: 'de ' + reinf.total + ' com REINF', tom: 'ciano', icone: 'fileUp' },
     ] as { rotulo: string; valor: number; dica: string; tom: TomDoNumero; icone: NomeIcone }[],
     /** o dashboard do Resumo no padrão do Certificados (Savio, 15/10/2026) */
     dash: {
