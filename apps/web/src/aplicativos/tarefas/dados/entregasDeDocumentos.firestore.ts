@@ -481,6 +481,12 @@ export function criarEntregasDeDocumentosFirestore(pessoa: () => { nome: string;
       const s = await getDoc(doc(db, 'documentosMensal', clienteId + '_' + competencia)).catch(() => null);
       return s?.data() || {};
     },
+    async documentosDasCompetencias(comps) {
+      // a mesma consulta da Pendências (o 'in' aceita até 30 competências)
+      if (!comps.length) return [];
+      const s = await getDocs(query(collection(db, 'documentosMensal'), where('competencia', 'in', comps.slice(0, 30))));
+      return s.docs.map(d => d.data()).filter(d => d.clienteId).map(d => ({ clienteId: String(d.clienteId), competencia: String(d.competencia), extrato: d.extrato === true, semMovimento: d.semMovimento === true }));
+    },
 
     // ---- gravações ----
     async registrar(n, guias) {
