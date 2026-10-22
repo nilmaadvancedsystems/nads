@@ -6,6 +6,7 @@
 // guias pagas) ainda não têm tipo no core nem fonte no banco: os tipos simples ficam aqui, só a versão de exemplo os
 // preenche, e `secoes` diz à tela o que esconder quando o repositório não tem de onde tirar.
 import type { areaCliente as ac } from '@nads/core';
+import type { FormatoDoArquivo } from '@nads/ui';
 
 /** a área do escritório que mandou o documento */
 export type AreaDoDocumento = 'fiscal' | 'dp' | 'contabil' | 'societario';
@@ -27,8 +28,8 @@ export interface DocumentoDoCliente {
   formato: FormatoDoArquivo;
 }
 
-/** O formato do arquivo (o ícone da Central de documentos sai dele). */
-export type FormatoDoArquivo = 'PDF' | 'XLSX' | 'XML' | 'ZIP' | 'DOCX' | 'JPG' | 'PNG';
+/** O formato do arquivo (o ícone da Central de documentos sai dele; o IconeDeArquivo do @nads/ui). */
+export type { FormatoDoArquivo };
 
 /** O certificado digital da empresa (o e-CNPJ). */
 export interface CertificadoDigital { tipo: 'A1' | 'A3'; titular: string; /** 'aaaa-mm-dd' */ validoAte: string }

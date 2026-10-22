@@ -2,9 +2,8 @@
 // "Enviar documento" (abre a janela de envio) e "Baixar o mês"; a barra com a busca, a área e o mês; e a tabela do nads com
 // o documento, a categoria, a competência, a data de envio, se já foi baixado e as ações (ver e baixar).
 // Versão D: o ícone desenhado de cada tipo de arquivo (PDF, planilha, XML, ZIP, DOC, imagem), o selo só no que falta baixar, a busca com a lupa.
-import { Icone, useRetorno } from '@nads/ui';
+import { Icone, IconeDeArquivo, useRetorno } from '@nads/ui';
 import type { DocumentoDoCliente } from '../dados/areaCliente';
-import { IconeDeArquivo } from '../partes/IconeDeArquivo';
 import { Vazio } from '../partes/Vazio';
 import { useJanelaDeEnvio } from './JanelaDeEnvio';
 import { useDocumentos } from './useDocumentos';
