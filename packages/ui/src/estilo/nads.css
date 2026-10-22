@@ -4340,6 +4340,8 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 .nf-faixa-item{display:inline-flex;align-items:center;gap:8px;}
 .nf-faixa-item > svg{width:16px;height:16px;flex:none;color:var(--ink-muted);}
 .nf-barra .steps{flex:none;}
+/* o Segmentado numa barra do topo fica na mesma linha da busca e dos botões (a margem de baixo do .steps o subia; 22/10/2026) */
+.tarefas-barra-topo .steps{margin:0;}
 /* a lista das notas rola só com a página: sem altura máxima, a caixa não ganha a segunda barra (19/10/2026); no celular, ainda rola de lado */
 .table-wrap.nf-tabela-wrap{max-height:none;}
 .nf-lista td{vertical-align:middle;}
@@ -4710,6 +4712,19 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .fin-periodo{display:inline-flex;align-items:center;gap:8px;}
 .fin-periodo .data-mask{width:112px;}
 .fin-numeros{gap:12px;margin-bottom:16px;}
+/* no caixa, entrada é dinheiro chegando (verde) e saída é dinheiro saindo (vermelho): o contrário das notas de entrada e
+   de saída do Stat geral (22/10/2026: no Caixa e no Painel as entradas apareciam em laranja e as saídas em verde) */
+.fin-numeros .stat-value.cor-entrada{color:var(--success);}
+.fin-numeros .stat-value.cor-saida{color:var(--destructive);}
+/* Financeiro › Painel (22/10/2026): duas colunas de cartões; o número grande das notas */
+.fin-painel{display:flex;flex-direction:column;gap:16px;}
+.fin-painel .card{margin:0;min-width:0;}
+.fin-painel .stat-grid{margin:0;}
+.fin-painel-colunas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start;}
+.fin-painel-linha{margin:8px 0 12px;font-size:var(--fs-14,14px);}
+.fin-painel-grande{font-size:var(--fs-24,24px);margin-right:4px;}
+.fin-painel .rank-val .fraco{font-weight:400;margin-left:4px;}
+@media (max-width:900px){.fin-painel-colunas{grid-template-columns:1fr;}}
 .fin-lista td{vertical-align:middle;}
 .fin-direita{text-align:right;white-space:nowrap;}
 .fin-corta{display:inline-block;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;}
