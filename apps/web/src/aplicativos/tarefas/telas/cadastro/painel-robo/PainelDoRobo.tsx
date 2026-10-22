@@ -1,7 +1,7 @@
 // Cadastro › Painel do robô (Vitor, 21/10/2026: "quero um painel para eu saber o que o robô está fazendo, arquivando e
 // afins"). Só o admin e o diretor. De cima para baixo: os dois robôs (ligado ou não, onde roda, a versão e o que está
 // fazendo agora), os erros das últimas 24 h em destaque, as filas de pedidos, o que foi arquivado hoje e no mês (com o
-// caminho para o histórico do Arquivador) e a atividade dos últimos 7 dias, com o filtro por tipo e por erro.
+// caminho para Admin › Arquivador) e a atividade dos últimos 7 dias, com o filtro por tipo e por erro.
 import { Alerta, Dica, Esqueleto, Icone, Vazio, useCarregando } from '@nads/ui';
 import { Link } from 'react-router';
 import { CartaoDoRobo } from './partes/CartaoDoRobo';
@@ -74,7 +74,7 @@ export function PainelDoRobo() {
         <div className="card-head">
           <h3>Arquivados{vm.mesDosArquivados ? ' em ' + vm.mesDosArquivados : ''}</h3>
           {vm.podeAbrirArquivo && (
-            <Link className="btn btn-outline" to={vm.caminhoDoArquivo}><Icone nome="arquivo" width={16} height={16} />Abrir o histórico do Arquivador</Link>
+            <Link className="btn btn-outline" to={vm.caminhoDoArquivo}><Icone nome="arquivo" width={16} height={16} />Abrir o Arquivador</Link>
           )}
         </div>
         {vm.carregando ? <Esqueleto linhas={2} numeros={4} /> : !a ? (

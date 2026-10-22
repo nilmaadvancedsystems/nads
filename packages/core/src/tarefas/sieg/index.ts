@@ -37,6 +37,8 @@ export interface NotaDoSieg {
   emitente: { doc: string; nome: string };
   destinatario: { doc: string; nome: string };
   valor: number;
+  /** NF-e/NFC-e, desde o resumo 3 (22/10/2026), só quando têm: o frete e o desconto da nota (vFrete e vDesc do total) */
+  frete?: number; desconto?: number;
   cancelada?: boolean;
   itens?: ItemDoXml[];
   cfop?: string;
@@ -53,7 +55,7 @@ export interface NotasSieg {
   emitidas: NotaDoSieg[]; recebidas: NotaDoSieg[];
   /** o resumo passou do tamanho de um documento: saíram os itens */
   itensCortados?: boolean;
-  /** a versão do resumo (2 = os itens com o ICMS, o ST, o IPI e o CST do PIS; sem = 1) */
+  /** a versão do resumo (2 = os itens com o ICMS, o ST, o IPI e o CST do PIS; 3 = o frete e o desconto da nota; sem = 1) */
   resumo?: number;
 }
 
@@ -208,3 +210,4 @@ export { segregacaoDasSaidas, previaDoDas, aliquotaEfetiva, avisoDeLimite, reinf
 export { receitasDoMes, creditosDoMes, pisCofins, icmsDoMes, irpjCsll, receitaParaIrpj, mesesDoTrimestre, temImpostosNoXml, ehVenda, PRESUNCOES, ALIQUOTAS_PIS_COFINS, type ReceitasDoMes, type CreditosDoMes, type PisCofins, type IcmsDoMes, type IrpjCsll, type ReceitaParaIrpj, type Presuncao, type RegimeDoLucro } from './lucro';
 export { percentuaisEfetivos, calculoDoSimples, fatorR, PARCELAS_DA_RECEITA, TRIBUTOS_DO_SIMPLES, ROTULO_DO_TRIBUTO, TETO_DO_ISS, FATOR_R_MINIMO, type TributoDoSimples, type PercentuaisEfetivos, type ParcelaDoCalculo, type CalculoDoSimples, type FolhaDoMes } from './calculadora';
 export { competenciasDoPeriodo, faturamentoDasSaidas, linhasDoFaturamento, planilhaDoFaturamento, htmlDoFaturamento, mesCurto, PERIODOS_DO_FATURAMENTO, FONTE_SIEG, FONTE_SIEG_CURTA, type PeriodoDoFaturamento, type LinhaDoFaturamento, type EmpresaDoFaturamento, type ValorDoFaturamento } from './faturamento';
+export { ratear, repartir, tributacaoDoItem, valoresDaNota, gruposDaNota, rateioDosNcms, TRIBUTACOES, type Rateio, type LinhaRateada, type LinhaParaRatear, type Tributacao, type ValoresDaNota, type GrupoDaNota, type AgruparPor } from './rateio';

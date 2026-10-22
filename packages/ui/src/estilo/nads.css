@@ -4319,6 +4319,19 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 .sintegra-linha-dif td{background:var(--danger-soft);}
 .sintegra-corpo{padding:16px;}
 .sintegra-na-etapa{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+/* Fiscal › Rateio de frete (22/10/2026) */
+.rateio-frete{display:flex;flex-direction:column;gap:12px;}
+.rateio-frete > .card{margin:0;}
+.rateio-frete .tarefas-barra-topo select{width:auto;max-width:360px;}
+.rateio-frete-cabeca{padding:12px 16px 16px;display:flex;flex-direction:column;gap:14px;}
+.rateio-frete-nota{max-width:640px;margin:0;}
+.rateio-frete-campos{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;}
+.rateio-frete-campos .field{width:180px;margin:0;}
+.rateio-frete input.num{text-align:right;}
+.rateio-frete td input{width:100%;min-width:90px;}
+.rateio-frete tfoot td{border-top:2px solid var(--border);}
+.rateio-frete-dica{margin:0;padding:8px 16px 12px;}
+.rateio-frete-acoes{padding:8px 16px 12px;}
 /* Gmail: a lista num painel como o do Gmail (14/10/2026: "era pra resolver as bordas do gmail que ficam sem nada e só
    acabam"): o fundo do painel, os cantos redondos e as linhas fechando nas bordas dele; overflow:clip para o rótulo do
    grupo continuar grudando no alto ao rolar a página */
@@ -4989,3 +5002,12 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .fis-parc-obs{grid-column:1/-1;}
 .fis-parc-dia{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .fis-parc-dia input{width:70px;}
+
+/* o ícone do arquivo (IconeDeArquivo, da Área do Cliente; no @nads/ui desde 22/10/2026 para o Arquivador do admin): a cor do
+   formato vem em --arq; a folha leva um tom dela, a etiqueta é cheia */
+.cli-arquivo{display:block;flex:none;overflow:visible;}
+.cli-arquivo-folha{fill:color-mix(in srgb,var(--arq) 9%,var(--cli-cartao,var(--surface)));stroke:var(--arq);stroke-width:1.5;stroke-linejoin:round;}
+.cli-arquivo-canto{fill:color-mix(in srgb,var(--arq) 24%,var(--cli-cartao,var(--surface)));stroke:var(--arq);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round;}
+.cli-arquivo-dentro{fill:none;stroke:var(--arq);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;opacity:.72;}
+.cli-arquivo-etiqueta{fill:var(--arq);}
+.cli-arquivo-ext{fill:var(--cli-cartao,var(--surface));font-family:var(--font-body);font-size:6.6px;font-weight:800;letter-spacing:.35px;}
