@@ -40,9 +40,10 @@ export interface ContagemDoArquivador {
   clientes: ClienteDaContagem[];
   totalDeClientes: number;
 }
-export type SituacaoNaPasta = 'chegando' | 'fila' | 'lendo';
+/** original = evento esperando o documento original (índice de chaves do arquivador, 23/10/2026) */
+export type SituacaoNaPasta = 'chegando' | 'fila' | 'lendo' | 'original';
 export interface ArquivoNaPasta { nome: string; rel: string; tam: number; desde: string; situacao: SituacaoNaPasta }
-export interface PastaDoArquivador { naPasta: number; chegando: number; naFila: number; sendoLidos: number; parados: number; lista: ArquivoNaPasta[] }
+export interface PastaDoArquivador { naPasta: number; chegando: number; naFila: number; sendoLidos: number; parados: number; esperandoOriginal: number; lista: ArquivoNaPasta[] }
 export interface PassadaDoArquivador { inicio: string; feitos: number; total: number; fim: string }
 export interface ConfigDoArquivador {
   modo: 'producao' | 'simulacao' | 'desligado' | ''; emProducao: boolean; tiposProducao: string[]; moverNaoIdentificados: boolean; botaoRotinaAntiga: boolean;
@@ -122,8 +123,8 @@ export function lerPainelDoArquivador(doc: Obj | null | undefined): PainelDoArqu
     } : null,
     situacao: txt(d.situacao) || 'ok', esperando: txt(d.esperando),
     pasta: p ? {
-      naPasta: num(p.naPasta), chegando: num(p.chegando), naFila: num(p.naFila), sendoLidos: num(p.sendoLidos), parados: num(p.parados),
-      lista: lista(p.lista).map(x => ({ nome: txt(x.nome), rel: txt(x.rel), tam: num(x.tam), desde: txt(x.desde), situacao: (['chegando', 'fila', 'lendo'].includes(txt(x.situacao)) ? txt(x.situacao) : 'fila') as SituacaoNaPasta })),
+      naPasta: num(p.naPasta), chegando: num(p.chegando), naFila: num(p.naFila), sendoLidos: num(p.sendoLidos), parados: num(p.parados), esperandoOriginal: num(p.esperandoOriginal),
+      lista: lista(p.lista).map(x => ({ nome: txt(x.nome), rel: txt(x.rel), tam: num(x.tam), desde: txt(x.desde), situacao: (['chegando', 'fila', 'lendo', 'original'].includes(txt(x.situacao)) ? txt(x.situacao) : 'fila') as SituacaoNaPasta })),
     } : null,
     passada: ps ? { inicio: txt(ps.inicio), feitos: num(ps.feitos), total: num(ps.total), fim: txt(ps.fim) } : null,
     ritmo: num(d.ritmo),
