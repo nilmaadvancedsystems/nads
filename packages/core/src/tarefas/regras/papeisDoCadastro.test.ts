@@ -10,6 +10,13 @@ describe('as etiquetas do envelope (Heverton, 20/10/2026)', () => {
     expect(paginasDosEnvelopes(5, 2)).toBe(3);
     expect(paginasDosEnvelopes(4, 4)).toBe(1);
   });
+  it('uma por página: a folha deitada, a etiqueta na folha inteira; duas: em pé', () => {
+    const um = htmlDosEnvelopes({ competencia: '2026-09', departamento: 'Fiscal', porPagina: 1, logo, etiquetas: [{ codigo: 462, nome: 'X', caixa: 'LP' }] });
+    expect(um).toContain('size:A4 landscape');
+    expect(um).toContain('height:194mm');
+    const dois = htmlDosEnvelopes({ competencia: '2026-09', departamento: 'Fiscal', porPagina: 2, logo, etiquetas: [{ codigo: 462, nome: 'X', caixa: 'LP' }] });
+    expect(dois).not.toContain('landscape');
+  });
   it('o HTML: a logo uma vez só, o movimento, o código, o nome, a caixa e o departamento', () => {
     const h = htmlDosEnvelopes({ competencia: '2026-09', departamento: 'Fiscal', porPagina: 2, logo,
       etiquetas: [{ codigo: 302, nome: 'TEOBALDO MENDES DE OLIVEIRA', caixa: 'PF' }, { codigo: 1, nome: 'A & B', caixa: '' }, { codigo: 2, nome: 'C', caixa: 'SN' }] });
