@@ -988,7 +988,7 @@ export const PECAS_BASE: Peca[] = [
     uso: "<Segmentado valor={tipo} opcoes={[{ valor: 'todos', rotulo: 'Todos' }, …]} onMudar={setTipo} />",
     demo: () => <Segmentado valor="E" opcoes={[{ valor: 'todos', rotulo: 'Todos' }, { valor: 'E', rotulo: 'Entradas' }, { valor: 'S', rotulo: 'Saídas' }]} onMudar={nada} /> },
   { id: 'valor-editavel', tipo: 'campos', nome: 'Valor editável na linha', descricao: 'Nos Honorários (19/10/2026): o valor do honorário se digita na própria linha da tabela; grava ao sair do campo ou no Enter, Esc desfaz; sem valor mostra "definir valor" na cor da marca', componente: 'ValorEditavel', classes: ['fin-valor-edita', 'fin-valor-edita-vazio'], telas: ['t-fin-honorarios'],
-    uso: '<ValorEditavel valor={850} rotulo="Valor do honorário" aoSalvar={texto => …} />',
+    uso: '<ValorEditavel valor={850} rotulo="Valor do honorário" aoSalvar={texto => …} />  ·  zeroVale: o zero é um valor e mostra 0,00 (a calculadora do Simples)',
     demo: () => <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}><ValorEditavel valor={850} rotulo="Valor com valor" aoSalvar={nada} /><ValorEditavel valor={0} rotulo="Valor sem valor" aoSalvar={nada} /></div> },
   { id: 'situacao-do-honorario', tipo: 'selos', nome: 'Situação do honorário', descricao: 'Nos Honorários: "Pago em dd/mm · forma" (verde) ou "Em aberto" (amarelo); não há vencimento, então nunca "atrasado"', classes: ['badge', 'badge-ok', 'badge-warn'], telas: ['t-fin-honorarios'],
     demo: () => <div style={{ display: 'flex', gap: 8 }}><span className="badge badge-ok">Pago em 05/10 · PIX</span><span className="badge badge-warn">Em aberto</span></div> },

@@ -4353,6 +4353,8 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 .nf-faixa-item{display:inline-flex;align-items:center;gap:8px;}
 .nf-faixa-item > svg{width:16px;height:16px;flex:none;color:var(--ink-muted);}
 .nf-barra .steps{flex:none;}
+/* o Segmentado numa barra do topo fica na mesma linha da busca e dos botões (a margem de baixo do .steps o subia; 22/10/2026) */
+.tarefas-barra-topo .steps{margin:0;}
 /* a lista das notas rola só com a página: sem altura máxima, a caixa não ganha a segunda barra (19/10/2026); no celular, ainda rola de lado */
 .table-wrap.nf-tabela-wrap{max-height:none;}
 .nf-lista td{vertical-align:middle;}
@@ -4723,6 +4725,30 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .fin-periodo{display:inline-flex;align-items:center;gap:8px;}
 .fin-periodo .data-mask{width:112px;}
 .fin-numeros{gap:12px;margin-bottom:16px;}
+/* no caixa, entrada é dinheiro chegando (verde) e saída é dinheiro saindo (vermelho): o contrário das notas de entrada e
+   de saída do Stat geral (22/10/2026: no Caixa e no Painel as entradas apareciam em laranja e as saídas em verde) */
+.fin-numeros .stat-value.cor-entrada{color:var(--success);}
+.fin-numeros .stat-value.cor-saida{color:var(--destructive);}
+/* Financeiro › Painel (22/10/2026): duas colunas de cartões; o número grande das notas */
+.fin-painel{display:flex;flex-direction:column;gap:16px;}
+.fin-painel .card{margin:0;min-width:0;}
+.fin-painel .stat-grid{margin:0;}
+.fin-painel-colunas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start;}
+.fin-painel-linha{margin:8px 0 12px;font-size:var(--fs-14,14px);}
+.fin-painel-grande{font-size:var(--fs-24,24px);margin-right:4px;}
+.fin-painel .rank-val .fraco{font-weight:400;margin-left:4px;}
+@media (max-width:900px){.fin-painel-colunas{grid-template-columns:1fr;}}
+/* Devedores, Resultado, Conciliação e o Reajuste (22/10/2026) */
+.fin-meses{display:flex;flex-wrap:wrap;gap:4px;}
+.fin-meses .chip-f{font-size:var(--fs-12,12px);}
+.fin-resultado-grupo td{font-weight:600;background:var(--surface-2);}
+.fin-resultado-conta{padding-left:20px !important;}
+.fin-resultado-total td{font-weight:600;border-top:1px solid var(--border-strong);}
+.fin-resultado-final td{font-weight:700;font-size:var(--fs-14,14px);border-top:2px solid var(--border-strong);}
+.fin-painel .card>h3{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.fin-painel .card>h3 .steps{margin:0;}
+.fin-conc-arquivo{min-width:260px;}
+.fin-reajuste-lista{max-height:300px;overflow:auto;margin-top:8px;}
 .fin-lista td{vertical-align:middle;}
 .fin-direita{text-align:right;white-space:nowrap;}
 .fin-corta{display:inline-block;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;}
@@ -4976,6 +5002,19 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .faturamento-tabela tfoot td{border-top:2px solid var(--border);position:sticky;bottom:0;background:var(--surface);}
 .faturamento-subiu{color:var(--ok,#1E8E3E);}
 .faturamento-caiu{color:var(--danger);}
+/* Fiscal › Simples: a calculadora do Simples Nacional (22/10/2026) */
+.simples-calc{display:flex;flex-direction:column;gap:12px;}
+.simples-calc-empresa{min-width:320px;max-width:480px;flex:1 1 320px;}
+.simples-calc-busca{position:relative;}
+.simples-calc-busca .nf-achados{position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:30;box-shadow:var(--shadow-lg);background:var(--surface);}
+.simples-calc-anexo{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;}
+.simples-calc-colunas{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start;}
+.simples-calc-colunas .table-wrap{overflow:auto;max-height:none;}
+.simples-calc-resultado{display:flex;flex-direction:column;gap:12px;min-width:0;}
+.simples-calc-colunas tbody th{text-align:left;font-weight:600;background:var(--surface-2,transparent);}
+.simples-calc-colunas tfoot td{border-top:2px solid var(--border);}
+.simples-calc-detalhe{font-size:12px;}
+@media (max-width:1100px){.simples-calc-colunas{grid-template-columns:minmax(0,1fr);}}
 /* Cadastro › a empresa › Fiscal (Heverton, 21/10/2026): os documentos e as planilhas, os parcelamentos */
 .fis-docs-acoes{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .fis-docs-acoes .btn svg{width:16px;height:16px;}
