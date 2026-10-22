@@ -5,7 +5,7 @@
 // na hora da escolha (~L3918-3943), vcMontarCfopSelect (~L3944-3977), Conferir (~L3980-4108),
 // vcRenderResultado (~L4122-4205), Reimportar (~L4210-4216), Ok (~L4217), Conferido (~L4218-4224),
 // Baixar resultado (~L4225-4246), Limpar (~L4247-4257), Voltar (~L1883).
-import { conferencia as c, formatos } from '@nads/core';
+import { conferencia as c } from '@nads/core';
 import { useRetorno, type BotaoModal } from '@nads/ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSessao, VERIFICAR_VAZIO, type EstadoVerificar } from '../../casca/sessao';
@@ -174,9 +174,12 @@ export function useVerificarConta() {
     toast(on ? 'Desfeito — a conta volta a mostrar a diferença.' : 'Conta marcada como conferida.');
   }
 
-  function csv(): { texto: string; nome: string } | null {
+  /** A planilha completa do resultado (Vitor, 22/10/2026): o resumo e uma aba para cada pendência. */
+  function planilha(): { bytes: Uint8Array; nome: string } | null {
     if (!v.resultado) return null;
-    return { texto: formatos.montarCsv(c.csvVerificacao(v.resultado)), nome: c.nomeCsvVerificacao(s.nome) };
+    const p = s.filtro;
+    const periodo = p.dataDe && p.dataAte ? p.dataDe + ' a ' + p.dataAte : p.dataDe ? 'desde ' + p.dataDe : p.dataAte ? 'até ' + p.dataAte : '';
+    return { bytes: c.planilhaVerificacao(v.resultado, { empresa: s.nome, periodo }), nome: c.nomePlanilhaVerificacao(s.nome, v.resultado.conta.codigo) };
   }
 
   async function limpar() {
@@ -220,7 +223,7 @@ export function useVerificarConta() {
     foraDoPadrao, acoes,
     resultado: montarResultado(e, s.filtro, v, d),
     seqResultado,
-    escolherAba, reimportar, alternarConferido, csv, naoVaiParaOContabil,
+    escolherAba, reimportar, alternarConferido, planilha, naoVaiParaOContabil,
   };
 }
 

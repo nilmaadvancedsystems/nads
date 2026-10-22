@@ -2,7 +2,7 @@
 // diferença" (.vc-comp), pendências (.vc-pend) e os botões. Origem: conferencia.html ~L1299-1308;
 // vcRenderResultado (~L4122-4205), vcComposicao (~L4110).
 import { conferencia as c, formatos } from '@nads/core';
-import { baixarArquivo, Icone, Segmentado } from '@nads/ui';
+import { baixarBytes, Icone, Segmentado } from '@nads/ui';
 import { useEffect, useRef } from 'react';
 import type { useVerificarConta } from '../useVerificarConta';
 import { AlertaVerde, SecaoVc, TabelaFaltando, TabelaVc } from './Tabelas';
@@ -10,6 +10,7 @@ import { AlertaVerde, SecaoVc, TabelaFaltando, TabelaVc } from './Tabelas';
 type Vm = ReturnType<typeof useVerificarConta>;
 type Res = NonNullable<Vm['resultado']>;
 const { reais } = formatos;
+const TIPO_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 function Numero({ rotulo, valor, cls }: { rotulo: string; valor: string; cls?: 'ok' | 'bad' }) {
   return <div className={'vc-num' + (cls ? ' ' + cls : '')}><p className="vc-num-rot">{rotulo}</p><p className="vc-num-val">{valor}</p></div>;
@@ -38,7 +39,8 @@ export function Resultado({ vm, r }: { vm: Vm; r: Res }) {
       {abas && <Segmentado id="vcAbas" valor={r.aba} opcoes={abas} onMudar={a => { if (!fechado) vm.escolherAba(a); }} />}
       {r.porConta ? <PorConta r={r} p={r.porConta} /> : r.todas && <Todas vm={vm} r={r} t={r.todas} />}
       <div className="btn-row" style={{ justifyContent: 'flex-end' }}>
-        <button className="btn btn-outline" id="vcBtCsv" type="button" disabled={fechado} onClick={() => { const a = vm.csv(); if (a) baixarArquivo(a.texto, a.nome); }}>Baixar resultado</button>
+        {/* a planilha completa (Vitor, 22/10/2026): o resumo e uma aba para cada pendência, no lugar do CSV */}
+        <button className="btn btn-outline" id="vcBtCsv" type="button" disabled={fechado} onClick={() => { const a = vm.planilha(); if (a) baixarBytes(a.bytes, a.nome, TIPO_XLSX); }}><Icone nome="download" />Baixar resultado</button>
         {/* Sem pendência, o "Ok" quem dá é o sistema (aviso automático que redireciona sozinho —
             ver conferir() no ViewModel). Não existe botão de Ok manual: o usuário só reconfere. */}
         {/* sobrou só bem do ativo e ICMS: a conta já está Ok; o botão só volta (Vitor, 13/10/2026: "Conferir mais adiante...") */}
