@@ -515,6 +515,30 @@ async function atenderFila() {
       const modo = MODOS.includes(p.modo) ? p.modo : null;
       if (!modo) { await doc.ref.update({ status: 'erro', erro: 'modo desconhecido: ' + p.modo, erroEm: agora() }); continue; }
 
+      // O botão no arquivador NOVO (Vitor, 22/10/2026: "pode ligar pra tudo"): um ciclo dele, não mais o /organizar do
+      // Claude. A rotina antiga fica de reserva: "botaoRotinaAntiga": true no config do arquivador novo
+      // (%LOCALAPPDATA%\nads\arquivador-novo\config.json ou robo/arquivadorNovo.config) volta o botão para ela.
+      const cfgNovo = continuo ? continuo.config() : null;
+      if (cfgNovo && cfgNovo.emProducao && !cfgNovo.botaoRotinaAntiga) {
+        await doc.ref.update({ status: 'processando', processandoEm: agora(), pc: os.hostname(), aguardandoMotivo: null });
+        mudarEstado({ situacao: 'rodando', pedidoId: doc.id, mensagem: 'arquivando (arquivador novo)' });
+        log('pedido', doc.id, 'de', p.criadoPor || 'alguém', '- arquivador novo');
+        const r = await continuo.ciclo({ porPedido: true });
+        if (r.esperando && !r.decididos) {
+          await doc.ref.update({ status: 'aguardando', aguardandoMotivo: r.esperando, aguardandoEm: agora() });
+          mudarEstado({ situacao: 'aguardando', pedidoId: doc.id, mensagem: r.esperando });
+          break;   // tenta de novo na próxima volta do relógio
+        }
+        const texto = 'Arquivador novo: ' + r.arquivou + ' arquivado(s), ' + r.jaArquivado + ' já estavam arquivados, ' + r.naoIdentificado + ' em NÃO IDENTIFICADOS'
+          + (r.fica ? ', ' + r.fica + ' ficaram na origem' : '') + (r.erros ? ', ' + r.erros + ' com erro' : '')
+          + (r.restantes ? '; ' + r.restantes + ' continuam no automático' : '') + (!r.decididos ? ' (nada novo na pasta)' : '') + '.';
+        await doc.ref.update(Object.assign({ status: r.erros ? 'erro' : 'concluido', concluidoEm: agora(), resposta: texto }, r.erros ? { erro: r.erros + ' arquivo(s) com erro', erroEm: agora() } : {}));
+        painel.atividade('arquivamento', 'Arquivar agora (arquivador novo)' + (p.criadoPor ? ' — pedido de ' + p.criadoPor : ''), texto);
+        log('pedido', doc.id, texto);
+        mudarEstado({ situacao: 'livre' });
+        continue;
+      }
+
       const espera = motivoPraEsperar();
       if (espera) {
         if (p.status !== 'aguardando' || p.aguardandoMotivo !== espera) {
