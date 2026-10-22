@@ -22,8 +22,16 @@ export interface PedidoDeEnvelopes {
 }
 
 /**
- * O regime abreviado, para a caixa da etiqueta (o "PJ-F" da planilha não tem regra conhecida: até o Heverton dizer o
- * que é, vai a sigla do regime do Cadastro): Simples → SN, MEI → MEI, Presumido → LP, Real → LR, Isentas → ISENTA,
+ * O tipo da empresa na caixa da etiqueta, como na planilha (22/10/2026: "PJ-F é pessoa jurídica fiscal"): PJ (pessoa
+ * jurídica) ou PF (os regimes Física e Domésticas), um traço e a inicial do departamento do envelope (F, C ou P).
+ */
+export function tipoNaEtiqueta(regime: string | null | undefined, departamento: DepartamentoDoEnvelope): string {
+  const r = String(regime || '').trim();
+  return (r === 'Física' || r === 'Domésticas' ? 'PF' : 'PJ') + '-' + (departamento === 'Contábil' ? 'C' : departamento === 'Pessoal' ? 'P' : 'F');
+}
+
+/**
+ * O regime abreviado, para a caixa da etiqueta (a opção "Sigla"): Simples → SN, MEI → MEI, Presumido → LP, Real → LR, Isentas → ISENTA,
  * Física → PF, Domésticas → DOM.
  */
 export function regimeAbreviado(regime: string | null | undefined): string {
@@ -82,6 +90,8 @@ export function htmlDosEnvelopes(p: PedidoDeEnvelopes): string {
   .env-nome{font-size:${24 * escala}pt;font-weight:700;text-align:center;padding:${4 * escala}mm ${6 * escala}mm 0;line-height:1.15;border-top:.6mm solid #bbb;margin-top:${5 * escala}mm;width:100%}
   .env-caixa-linha{flex:1;display:flex;align-items:center;justify-content:center;width:100%}
   .env-caixa{display:inline-block;min-width:${70 * escala}mm;border:.4mm solid #000;padding:${3 * escala}mm ${8 * escala}mm;font-size:${26 * escala}pt;text-align:center}
-  .env-dep{font-size:${22 * escala}pt;font-weight:700;padding-bottom:${5 * escala}mm}
+  .env-dep{font-size:${22 * escala}pt;font-weight:700;padding-bottom:${5 * escala}mm}${deitada ? `
+  /* uma por folha: os tamanhos da planilha (MOVIMENTO 45, código 72, nome 45, caixa 48, departamento 36) */
+  .env-mov{font-size:45pt}.env-cod{font-size:72pt}.env-nome{font-size:40pt}.env-caixa{font-size:48pt}.env-dep{font-size:36pt}` : ''}
 </style></head><body>${p.logo.definicao}${paginas.join('')}</body></html>`;
 }
