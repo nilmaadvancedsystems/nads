@@ -4706,6 +4706,7 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 
 /* Financeiro › Caixa e Plano de contas (19/10/2026: o Movimento de Caixa e o Plano de Contas do Toriba) */
 .fin-barra{align-items:center;}
+.fin-barra .steps{margin:0;}
 .fin-periodo{display:inline-flex;align-items:center;gap:8px;}
 .fin-periodo .data-mask{width:112px;}
 .fin-numeros{gap:12px;margin-bottom:16px;}
