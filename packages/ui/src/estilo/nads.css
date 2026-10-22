@@ -4989,3 +4989,12 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .fis-parc-obs{grid-column:1/-1;}
 .fis-parc-dia{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .fis-parc-dia input{width:70px;}
+
+/* o ícone do arquivo (IconeDeArquivo, da Área do Cliente; no @nads/ui desde 22/10/2026 para o Arquivador do admin): a cor do
+   formato vem em --arq; a folha leva um tom dela, a etiqueta é cheia */
+.cli-arquivo{display:block;flex:none;overflow:visible;}
+.cli-arquivo-folha{fill:color-mix(in srgb,var(--arq) 9%,var(--cli-cartao,var(--surface)));stroke:var(--arq);stroke-width:1.5;stroke-linejoin:round;}
+.cli-arquivo-canto{fill:color-mix(in srgb,var(--arq) 24%,var(--cli-cartao,var(--surface)));stroke:var(--arq);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round;}
+.cli-arquivo-dentro{fill:none;stroke:var(--arq);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;opacity:.72;}
+.cli-arquivo-etiqueta{fill:var(--arq);}
+.cli-arquivo-ext{fill:var(--cli-cartao,var(--surface));font-family:var(--font-body);font-size:6.6px;font-weight:800;letter-spacing:.35px;}

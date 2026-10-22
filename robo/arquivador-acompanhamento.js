@@ -10,7 +10,8 @@
 //     últimos arquivos com o porquê (as evidências em português), os não identificados com o motivo e a sugestão, os
 //     erros com o que fazer, os alertas de agora e o último lado a lado.
 //   robo/arquivadorNovo/dias/{AAAA-MM-DD}-{n}   o histórico do dia em partes de até ~700 KB (a busca da aba Arquivados);
-//                                          só a parte que mudou é regravada, junto com o documento principal.
+//                                          só a parte que mudou é regravada, junto com o documento principal; as de mais
+//                                          de DIAS_GUARDADOS dias o próprio robô apaga (no banco e no PC), na virada do dia.
 //
 // No PC fica uma cópia do que foi publicado (continuo\acompanhamento.json) e o histórico do dia (continuo\arquivados-
 // AAAA-MM-DD.jsonl), para o robô reiniciar sem perder as listas nem a contagem.
@@ -33,6 +34,7 @@ const MAX_EVIDENCIAS_HISTORICO = 4;
 const MAX_CLIENTES = 15;
 const BYTES_POR_PARTE = 700 * 1024;
 const JANELA_RITMO_MS = 10 * 60 * 1000;
+const DIAS_GUARDADOS = 31;
 
 // ---------------------------------------------------------------------------------------------------------------------
 // puras (teste-arquivador-acompanhamento.js)
@@ -278,13 +280,13 @@ function criar(opcoes) {
   }
   carregarDia(st.hoje.chave);
 
-  let ultimaGravacao = 0, timer = null, avisouErro = false, parado = false;
+  let ultimaGravacao = 0, timer = null, avisouErro = false, parado = false, limpar = true;
   const assinatura = () => JSON.stringify([st.pasta && [st.pasta.naPasta, st.pasta.chegando, st.pasta.naFila, st.pasta.sendoLidos, st.pasta.lista.map(x => x.rel + x.situacao)], st.passada]);
   const seguro = (nome, f) => (...a) => { try { if (!parado) f(...a); } catch (e) { o.log('acompanhamento (' + nome + '):', e.message); } };
 
   function virarDia(t) {
     const h = hojeLocal(t);
-    if (st.hoje.chave !== h) { st.hoje = contagemVazia(h); carregarDia(h); }
+    if (st.hoje.chave !== h) { st.hoje = contagemVazia(h); carregarDia(h); limpar = true; }
     if (st.mes.chave !== h.slice(0, 7)) st.mes = contagemVazia(h.slice(0, 7));
   }
 
@@ -324,6 +326,18 @@ function criar(opcoes) {
       }
       avisouErro = false;
     } catch (e) { if (!avisouErro) { o.log('acompanhamento: não publiquei:', e.message); avisouErro = true; } }
+    if (limpar) { limpar = false; await limparAntigos(); }
+  }
+  /** O histórico de mais de DIAS_GUARDADOS dias: as partes no banco (até 50 por vez) e os arquivos do PC. */
+  async function limparAntigos() {
+    const limite = hojeLocal(o.agora() - DIAS_GUARDADOS * 864e5);
+    try { for (const f of fs.readdirSync(o.controle)) { const m = /^arquivados-(\d{4}-\d{2}-\d{2})\.jsonl$/.exec(f); if (m && m[1] < limite) fs.unlinkSync(path.join(o.controle, f)); } } catch (e) { /* segue */ }
+    try {
+      const col = o.db && o.db.collection('robo').doc('arquivadorNovo').collection('dias');
+      if (!col || typeof col.where !== 'function') return;
+      const snap = await col.where('dia', '<', limite).limit(50).get();
+      for (const d of snap.docs) await d.ref.delete();
+    } catch (e) { o.log('acompanhamento: não limpei o histórico antigo:', e.message); }
   }
   /** O freio: no máximo uma gravação a cada freioMs (a mudança no meio espera a próxima). */
   function publicar(jaJa) {
