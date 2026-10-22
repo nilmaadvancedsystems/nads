@@ -16,7 +16,7 @@ import type { LinhaEmpresa } from './useListaDoCadastro';
 export type PapelDoCadastro = 'etiquetas' | 'protocolo';
 export type TextoDaCaixa = 'sigla' | 'regime' | 'branco';
 export const TEXTOS_DA_CAIXA: { valor: TextoDaCaixa; rotulo: string }[] = [
-  { valor: 'sigla', rotulo: 'Sigla do regime' }, { valor: 'regime', rotulo: 'Regime' }, { valor: 'branco', rotulo: 'Em branco' },
+  { valor: 'sigla', rotulo: 'Sigla' }, { valor: 'regime', rotulo: 'Regime' }, { valor: 'branco', rotulo: 'Nada' },
 ];
 
 export function usePapeisDoCadastro(linhas: readonly LinhaEmpresa[]) {
@@ -55,7 +55,7 @@ export function usePapeisDoCadastro(linhas: readonly LinhaEmpresa[]) {
     competencia, setCompetencia,
     departamento, setDepartamento, departamentos: t.DEPARTAMENTOS_DO_ENVELOPE.map(d => ({ valor: d, rotulo: d })),
     porPagina, setPorPagina: (v: string) => setPorPagina(Number(v) as t.EnvelopesPorPagina),
-    porPaginaOpcoes: t.ENVELOPES_POR_PAGINA.map(n => ({ valor: String(n), rotulo: n + (n === 1 ? ' por página' : ' por página') })),
+    porPaginaOpcoes: t.ENVELOPES_POR_PAGINA.map(n => ({ valor: String(n), rotulo: String(n) })),
     caixa, setCaixa, textosDaCaixa: TEXTOS_DA_CAIXA,
     grupo, setGrupo: (id: string) => { setGrupoId(id); setDesmarcadas(new Set()); },
     grupos: t.GRUPOS_DO_PROTOCOLO.map(g => ({ valor: g.id, rotulo: g.rotulo })),
