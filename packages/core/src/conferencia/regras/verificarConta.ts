@@ -6,8 +6,9 @@
 // vcNotasServ (~L3735), vcBtCsv (~L4225). O relatório nunca é salvo: só memória.
 import { brl, compararNumerico, nomeNorm } from '../../formatos';
 import { SV } from '../tabelas/servicos';
-import type { Conta, Empresa, NotaComTipo, NotaServico, TipoServico } from '../tipos';
+import type { Conta, Empresa, FiltroMovimento, NotaComTipo, NotaServico, TipoServico } from '../tipos';
 import { agruparTotaisPorNatureza, chaveNaturezaNota, chaveNota } from './cfop';
+import { noPeriodo } from './periodo';
 import { tipoDoCfopDeBem } from '../../tarefas/regras/bens';
 import { nomeComumContas } from './conciliacao';
 import { contasDaNatureza, listaTipo, naturezasDaConta, todasNotasComTipo } from './empresa';
@@ -255,6 +256,11 @@ export interface EntradaVerificacao {
   cfopGrupo: string | null;
   /** modo serviços */
   servTipo: TipoServico | null;
+  /**
+   * o período do Movimento (o da Tarefa, dentro dela): só as notas dele entram (Vitor, 22/10/2026: "se eu tô fazendo até o
+   * mês 8, por que falta o mês 09 na conta?"). Sem = todas.
+   */
+  periodo?: Pick<FiltroMovimento, 'dataDe' | 'dataAte' | 'meses'>;
 }
 
 export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
@@ -273,6 +279,9 @@ export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
     if (!gs.length) throw new Error('Escolha o CFOP antes de conferir.');
     alvo = gs.flatMap(g => g.itens);
   }
+  // só as notas do período (o relatório da conta é o do período; a nota do mês seguinte não falta nele)
+  const periodo = x.periodo;
+  if (periodo) alvo = alvo.filter(n => noPeriodo({ data: n.data, comp: n.comp || '' }, periodo));
   // as notas que não vão para o Contábil (marcadas uma a uma) saem da conferência
   const marcadas = e.naoContabilNotas || {};
   const foraDoContabil = x.servTipo ? [] : alvo.filter(n => n.cfop && marcadas[chaveNota(n as NotaComTipo)]);

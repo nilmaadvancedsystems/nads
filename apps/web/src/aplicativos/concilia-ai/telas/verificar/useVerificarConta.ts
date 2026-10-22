@@ -103,7 +103,7 @@ export function useVerificarConta() {
       try {
         let r: c.ResultadoVerificacao;
         try {
-          r = c.conferirConta({ empresa: emp, contas: dd.multi ? dd.grupo : [dd.conta as c.Conta], razaoPorConta: vv.razaoPorConta, cfopGrupo: dd.cfopGrupo, servTipo: dd.servTipo });
+          r = c.conferirConta({ empresa: emp, contas: dd.multi ? dd.grupo : [dd.conta as c.Conta], razaoPorConta: vv.razaoPorConta, cfopGrupo: dd.cfopGrupo, servTipo: dd.servTipo, periodo: s.filtro });
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           toast(msg === 'Escolha o CFOP antes de conferir.' ? msg : 'Não deu para comparar: ' + msg);

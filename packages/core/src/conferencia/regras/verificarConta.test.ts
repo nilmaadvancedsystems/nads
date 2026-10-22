@@ -66,6 +66,14 @@ describe('conferirConta', () => {
   });
   const conferir = (linhas: LinhaRazao[]) => conferirConta({ empresa: e, contas: [e.contas[0]], razaoPorConta: { 66005: linhas }, cfopGrupo: COMPRA, servTipo: null });
 
+  it('só as notas do período (22/10/2026): a do mês seguinte não falta na conta', () => {
+    const e9 = empresa({ ...e, entradas: [...e.entradas, nota('1102', '6', 230, '300', { data: '04/09/2026' })] });
+    const r = (periodo?: { dataDe: string; dataAte: string; meses: string[] }) =>
+      conferirConta({ empresa: e9, contas: [e9.contas[0]], razaoPorConta: { 66005: [linha('100', 500), linha('101', 300), linha('200', 400)] }, cfopGrupo: COMPRA, servTipo: null, periodo });
+    expect(r().faltando.map(n => n.numero)).toEqual(['300']);
+    const ate8 = r({ dataDe: '01/01/2026', dataAte: '31/08/2026', meses: [] });
+    expect([ate8.faltando.length, ate8.somaFiscal]).toEqual([0, 1200]);
+  });
   it('tudo lançado: sem pendências', () => {
     const r = conferir([linha('100', 500), linha('101', 300), linha('200', 400)]);
     expect(semPendencias(r)).toBe(true);
