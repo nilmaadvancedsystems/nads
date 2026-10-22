@@ -160,10 +160,13 @@ export function criarAcumulador() {
       }
       return u;
     },
-    /** a gravação falhou: o que foi tirado volta (somado ao que chegou depois) */
+    /**
+     * a gravação falhou: o que foi tirado volta (somado ao que chegou depois). Vale o dia do que foi tirado, não o
+     * relógio; só se perde quando já se juntou um dia mais novo
+     */
     devolver(u: UsoDoDia) {
-      const atual = doDia(new Date());
-      if (atual.dia !== u.dia) return;
+      if (pendente && pendente.dia !== u.dia) return;
+      const atual = pendente || (pendente = { dia: u.dia, telas: {}, pessoas: {} });
       for (const [tela, t] of Object.entries(u.telas)) {
         const a = daTela(atual, tela);
         a.v += t.v;
