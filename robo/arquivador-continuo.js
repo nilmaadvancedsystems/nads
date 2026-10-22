@@ -38,7 +38,10 @@ const ESTAVEL_MS = 45 * 1000;
 const LOTE = 40;
 const LOTE_MS = 50 * 1000;
 const COMPARAR_DEPOIS_DAS = [11, 30];   // a das 9h terminou (JANELA_DAS_9H do arquivador.js vai até 11h)
-const PADRAO = { modo: 'simulacao', tiposProducao: [], moverNaoIdentificados: false, intervaloMs: INTERVALO_MS, estavelMs: ESTAVEL_MS, lote: LOTE };
+// o evento sem o original no índice de chaves espera o original (23/10/2026, "24–48 h"): 48 h; depois, o SIEG pela chave
+// (até siegPorDia chamadas por dia) e só então NÃO IDENTIFICADOS
+const PADRAO = { modo: 'simulacao', tiposProducao: [], moverNaoIdentificados: false, intervaloMs: INTERVALO_MS, estavelMs: ESTAVEL_MS, lote: LOTE, esperaOriginalHoras: 48, siegPorDia: 200 };
+const K = require('./arquivador-chaves');
 
 // ---------------------------------------------------------------------------------------------------------------------
 // puras (teste-arquivador-continuo.js)
@@ -126,6 +129,9 @@ function iniciar(opcoes) {
   const mapa = new Map();
   let configBanco = null, parado = false, rodando = false, acordar = null, observador = null, avisouSemDrive = false, tentouVigiarEm = 0;
   let cache = { em: 0 };
+  // o SIEG pela chave: o módulo do robô (o.sieg; null desliga, nos testes); criado no primeiro uso
+  let buscaSieg = null;
+  const siegDoRobo = () => { if (o.sieg !== undefined) return o.sieg; try { return require('./sieg'); } catch (e) { o.log('SIEG por chave: não carreguei o robo/sieg.js (' + e.message + ')'); return null; } };
   const estadoArq = path.join(pasta, 'estado.json');
   let estado = (() => { try { return JSON.parse(fs.readFileSync(estadoArq, 'utf8')); } catch (e) { return { decididos: {}, mes: {}, comparado: null }; } })();
   const salvar = () => { try { fs.writeFileSync(estadoArq + '.tmp', JSON.stringify(estado)); fs.renameSync(estadoArq + '.tmp', estadoArq); } catch (e) { o.log('não gravei o estado:', e.message); } };
@@ -220,12 +226,20 @@ function iniciar(opcoes) {
       let estaveisAgora = estaveis(mapa, vistos, Date.now(), estavelMs);
       if (op.porPedido && !estaveisAgora.length) estaveisAgora = vistos.filter(v => !C_ehTemporario(v.rel) && v.tam && Date.now() - v.mtime >= 10000).map(v => v.rel);
       const modoChave = cfg.emProducao ? 'P' : 'S';   // o que a simulação decidiu volta a ser avaliado em produção
-      const pendentes = estaveisAgora.filter(rel => !estado.decididos[chave(rel, porRel.get(rel)) + '|' + modoChave]);
+      estado.aguardando = estado.aguardando || {};
+      const esperaMs = Math.max(0, +cfg.esperaOriginalHoras || 0) * 36e5;
+      const versaoIdx = cache.chaves ? cache.chaves.versao + ':' + cache.em : '';
+      const esperaDe = rel => estado.aguardando[chave(rel, porRel.get(rel))];
+      const pendentes = estaveisAgora.filter(rel => !estado.decididos[chave(rel, porRel.get(rel)) + '|' + modoChave])
+        // volta quando o índice mudou, a cada 10 min, ou logo que a espera vence (a primeira vez depois de vencer: o SIEG)
+        .filter(rel => { const e = esperaDe(rel); return !e || e.versao !== versaoIdx || Date.now() - e.tentativa >= 10 * 60000 || (Date.now() - e.desde >= esperaMs && e.tentativa - e.desde < esperaMs); })
+        .sort((a, b) => (esperaDe(a) ? 1 : 0) - (esperaDe(b) ? 1 : 0));
+      const aguardandoAgora = estaveisAgora.filter(rel => esperaDe(rel));
       const limite = op.porPedido ? 400 : cfg.lote;
       // o zip só é aberto (para ver se chegou inteiro) quando vai entrar no lote, não a cada varredura
       const prontos = pendentes.slice(0, limite * 3).filter(zipInteiro);
       resumo.restantes = Math.max(0, pendentes.length - prontos.length);
-      acomp.varredura({ vistos, mapa, pendentes, estavelMs });
+      acomp.varredura({ vistos, mapa, pendentes, estavelMs, aguardando: aguardandoAgora });
       if (o.depurar) o.log('varredura: ' + vistos.length + ' arquivo(s), ' + estaveisAgora.length + ' estável(is), ' + prontos.length + ' para decidir');
       if (!prontos.length) return resumo;
       if (!pegarTrava()) { o.log('outro processo do arquivador novo está trabalhando'); resumo.esperando = 'outro processo do arquivador novo está trabalhando'; return resumo; }
@@ -233,8 +247,12 @@ function iniciar(opcoes) {
         // contexto caro (cadastro, manifesto antigo, contas) refeito a cada 30 min
         if (Date.now() - cache.em > 30 * 60000) {
           if (o.db) await A.atualizarCadastro({ db: o.db, controle: o.controle, log: o.log });
-          cache = { em: Date.now(), cadastro: o.cadastro || A.carregarCadastro({ controle: o.controle }), contas: A.lerContas(o.controle), manifesto: A.indiceDoManifesto(path.join(o.controleAntigo, 'MANIFESTO', 'manifesto.jsonl')) };
+          cache = { em: Date.now(), cadastro: o.cadastro || A.carregarCadastro({ controle: o.controle }), contas: A.lerContas(o.controle), manifesto: A.indiceDoManifesto(path.join(o.controleAntigo, 'MANIFESTO', 'manifesto.jsonl')),
+            chaves: K.carregar({ controle: o.controle, manifestoAntigo: path.join(o.controleAntigo, 'MANIFESTO', 'manifesto.jsonl'), raiz: o.clientes }) };
+          if (o.depurar) o.log('índice de chaves: ' + JSON.stringify(cache.chaves.estatistica));
         }
+        if (!buscaSieg) buscaSieg = K.criarBuscaSieg({ controle: o.controle, sieg: siegDoRobo(), limiteDia: cfg.siegPorDia, log: m => o.log(m) });
+        const esperaVencida = rel => { const v = porRel.get(rel); const e = v && estado.aguardando[chave(rel, v)]; return !!e && Date.now() - e.desde >= esperaMs; };
         const inicio = Date.now();
         const tempo = op.porPedido ? 10 * 60000 : LOTE_MS;
         let feitos = 0;
@@ -247,10 +265,11 @@ function iniciar(opcoes) {
             modo: cfg.emProducao ? 'PRODUCAO' : 'SIMULACAO', confirmo: true, origem: o.origem, controle: o.controle, clientes: o.clientes,
             pastaNaoIdentificados: new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-NOVO', travaAntiga: path.join(o.controleAntigo, '_execucao.lock'),
             arquivos: lote, cadastro: cache.cadastro, contas: cache.contas, manifesto: cache.manifesto, tiposProducao: cfg.tiposProducao, moverNaoIdentificados: !!cfg.moverNaoIdentificados,
+            chaves: cache.chaves, buscaSieg, esperaVencida, manifestoAntigo: path.join(o.controleAntigo, 'MANIFESTO', 'manifesto.jsonl'),
             painel: cfg.modo === 'producao' ? { atividade: (t, x, d) => atividade(x, d), erro: (t, x, d) => atividade(x, d, true) } : null,
             registrar: false, log: () => {},
           });
-          registrar(res, lote, porRel, cfg, resumo, modoChave);
+          registrar(res, lote, porRel, cfg, resumo, modoChave, versaoIdx);
         }
         resumo.restantes += prontos.length;
       } finally { soltarTrava(); if (o.painel) o.painel.fazendo('arquivador-novo', null); }
@@ -260,7 +279,7 @@ function iniciar(opcoes) {
   }
 
   /** Diário, contagem do mês e painel. */
-  function registrar(res, lote, porRel, cfg, resumo, modoChave) {
+  function registrar(res, lote, porRel, cfg, resumo, modoChave, versaoIdx) {
     const mes = new Date().toISOString().slice(0, 7);
     const diario = path.join(pasta, 'decisoes-' + mes + '.jsonl');
     const m = estado.mes[mes] || (estado.mes[mes] = { arquivou: 0, arquivaria: 0, jaArquivado: 0, naoIdentificado: 0, pastasNovas: 0 });
@@ -270,7 +289,8 @@ function iniciar(opcoes) {
     const simulados = [];
     for (const x of planos) {
       const aplicado = res.modo === 'PRODUCAO' && !x.naoAplicado && !x.erro && (x.acao === 'ARQUIVAR' || x.acao === 'JA_ARQUIVADO');
-      linhas.push(JSON.stringify({ em: new Date().toISOString(), modo: aplicado ? 'PRODUCAO' : 'SIMULACAO', rel: x.rel, hash: x.hash, acao: x.acao, motivo: x.motivo, tipo: x.tipo, confianca: x.confianca, onde: x.onde || null, destinoSugerido: x.destinoSugerido || null, copias: (x.copias || []).map(c => c.onde), pastaNova: !!x.criarPastaCliente, erro: x.erro || null }));
+      if (x.acao === 'AGUARDANDO_ORIGINAL') { resumo.aguardando = (resumo.aguardando || 0) + 1; continue; }   // volta no próximo ciclo; não conta nem vai ao diário
+      linhas.push(JSON.stringify({ em: new Date().toISOString(), modo: aplicado ? 'PRODUCAO' : 'SIMULACAO', rel: x.rel, hash: x.hash, acao: x.acao, motivo: x.motivo, tipo: x.tipo, confianca: x.confianca, onde: x.onde || null, destinoSugerido: x.destinoSugerido || null, copias: (x.copias || []).map(c => c.onde), pastaNova: !!x.criarPastaCliente, erro: x.erro || null, chave: x.chave || null, viaSieg: x.viaSieg || undefined }));
       resumo.decididos++;
       if (x.erro) resumo.erros++;
       if (x.acao === 'ARQUIVAR') { if (aplicado) { m.arquivou++; resumo.arquivou++; } else { m.arquivaria++; resumo.arquivaria++; simulados.push(x); } if (x.criarPastaCliente) m.pastasNovas++; }
@@ -283,8 +303,15 @@ function iniciar(opcoes) {
     // o destino nunca é sobrescrito, então tentar de novo é seguro (o que já foi gravado vira "já arquivado")
     const comErro = new Set(res.modo === 'PRODUCAO' ? A.planos(res).filter(x => x.erro).map(x => x.dentroDe || x.rel) : []);
     estado.tentativas = estado.tentativas || {};
+    // o evento que espera o documento original: não fica decidido; anota desde quando espera (a espera vence em
+    // esperaOriginalHoras) e com que versão do índice tentou (volta quando o índice muda, ou em 10 min)
+    const esperam = new Set(A.planos(res).filter(x => x.acao === 'AGUARDANDO_ORIGINAL').map(x => x.dentroDe || x.rel));
+    estado.aguardando = estado.aguardando || {};
     for (const rel of lote) {
       const v = porRel.get(rel); if (!v) continue;
+      const ka = chave(rel, v);
+      if (esperam.has(rel)) { estado.aguardando[ka] = { desde: (estado.aguardando[ka] && estado.aguardando[ka].desde) || Date.now(), tentativa: Date.now(), versao: versaoIdx }; continue; }
+      delete estado.aguardando[ka];
       const k = chave(rel, v) + '|' + modoChave;
       if (comErro.has(rel) && (estado.tentativas[k] = (estado.tentativas[k] || 0) + 1) < 3) continue;
       delete estado.tentativas[k];
@@ -297,6 +324,7 @@ function iniciar(opcoes) {
     // limpa o "já decidido" de mais de 40 dias (o arquivo some da pasta quando é arquivado)
     const limite = Date.now() - 40 * 864e5;
     for (const [k, t] of Object.entries(estado.decididos)) if (t < limite) delete estado.decididos[k];
+    for (const [k, e] of Object.entries(estado.aguardando || {})) if (e.tentativa < limite) delete estado.aguardando[k];
     salvar();
   }
 

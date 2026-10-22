@@ -15,7 +15,7 @@ const path = require('path');
 const https = require('https');
 const zlib = require('zlib');
 
-const CREDENCIAIS = path.join(__dirname, 'sieg_credenciais.json');
+const CREDENCIAIS = process.env.SIEG_CREDENCIAIS || path.join(__dirname, 'sieg_credenciais.json');
 // a pasta do Drive deste PC (o Google Drive para computador): os XMLs do mês vão para Claudio Secretario/AAAA-MM/<cliente>,
 // a mesma do "Salvar no Drive" do Gmail, de onde a rotina das 9h arquiva e o Alterdata importa (07/10/2026)
 const PASTA_DO_DRIVE = process.env.PASTA_DESTINO || 'G:\\Meu Drive\\Claudio Secretario';
@@ -783,4 +783,4 @@ function iniciarSieg({ db, log }) {
   return () => { clearInterval(relogio); clearInterval(relogioNoite); pararPedidos(); };
 }
 
-module.exports = { xmlsJaNoDrive, seriesDasNotas, saidasDoResumo, iniciarSieg, lerXml, xmlsDaResposta, lerZip, periodo, contagemDoMes, saidasDoMes, xmlsDoMes, resumoQueCabe };
+module.exports = { xmlsJaNoDrive, seriesDasNotas, saidasDoResumo, iniciarSieg, lerXml, xmlsDaResposta, lerZip, periodo, contagemDoMes, saidasDoMes, xmlsDoMes, resumoQueCabe, chamar, lerCredenciais };

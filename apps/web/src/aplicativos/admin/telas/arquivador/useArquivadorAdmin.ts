@@ -186,7 +186,7 @@ export function useArquivadorAdmin() {
   });
 
   // a pasta (aba Chegando)
-  const SITUACAO = { lendo: { rotulo: 'Sendo lido', tom: 'ok' as Tom }, chegando: { rotulo: 'Chegando', tom: 'neutro' as Tom }, fila: { rotulo: 'Na fila', tom: 'neutro' as Tom } };
+  const SITUACAO = { lendo: { rotulo: 'Sendo lido', tom: 'ok' as Tom }, chegando: { rotulo: 'Chegando', tom: 'neutro' as Tom }, fila: { rotulo: 'Na fila', tom: 'neutro' as Tom }, original: { rotulo: 'Esperando o documento original', tom: 'aviso' as Tom } };
   const chegando = (p?.pasta?.lista ?? []).map(x => ({
     id: x.rel, nome: x.nome, formato: formatoPeloNome(x.nome), apoio: 'Claudio Secretario\\' + x.rel + ' · ' + tamanho(x.tam), selo: SITUACAO[x.situacao], confianca: '', tomConfianca: 'neutro' as Tom,
     hora: x.situacao === 'chegando' ? 'desde ' + hora(x.desde) : quando(x.desde, agora),
@@ -272,7 +272,7 @@ export function useArquivadorAdmin() {
     chegandoAberto: chegandoAberto ? {
       nome: chegandoAberto.nome, formato: formatoPeloNome(chegandoAberto.nome), selo: SITUACAO[chegandoAberto.situacao],
       dados: [
-        { rotulo: 'Situação', valor: chegandoAberto.situacao === 'lendo' ? 'O robô está lendo agora' : chegandoAberto.situacao === 'chegando' ? 'Ainda chegando: o robô espera o arquivo ficar ' + Math.round((cfg?.estavelMs ?? 45000) / 1000) + ' s sem mudar' : 'Pronto, esperando a vez na fila' },
+        { rotulo: 'Situação', valor: chegandoAberto.situacao === 'lendo' ? 'O robô está lendo agora' : chegandoAberto.situacao === 'chegando' ? 'Ainda chegando: o robô espera o arquivo ficar ' + Math.round((cfg?.estavelMs ?? 45000) / 1000) + ' s sem mudar' : chegandoAberto.situacao === 'original' ? 'É um evento (cancelamento, CC-e, MDF-e…) de uma nota que ainda não foi arquivada: o robô espera a nota chegar (até 48 h), depois procura no SIEG pela chave e, sem ela, manda para Não identificados' : 'Pronto, esperando a vez na fila' },
         { rotulo: 'Na pasta desde', valor: quando(chegandoAberto.desde, agora) },
         { rotulo: 'Tamanho', valor: tamanho(chegandoAberto.tam) },
         { rotulo: 'Caminho', valor: 'Claudio Secretario\\' + chegandoAberto.rel },

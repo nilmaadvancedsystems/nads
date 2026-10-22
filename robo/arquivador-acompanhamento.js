@@ -43,6 +43,7 @@ const DIAS_GUARDADOS = 31;
 const MOTIVOS = {
   CLIENTE_NAO_LOCALIZADO: ['CNPJ não cadastrado', 'Nenhum CNPJ ou CPF do documento é de cliente. Se for de um cliente novo, cadastre o CNPJ no Cadastro do nads; se não for de cliente, tire o arquivo da pasta.'],
   CLIENTE_AMBIGUO: ['Duas empresas possíveis', 'O documento serve para mais de um cliente. Escolha o cliente certo e mova o arquivo para a pasta dele.'],
+  EVENTO_SEM_ORIGINAL: ['Evento sem o documento original', 'É um evento (cancelamento, carta de correção, MDF-e, ciência…) de uma nota que não foi arquivada e que o SIEG também não tem. Procure a nota pela chave de acesso; se for de um cliente, arquive a nota e o evento na pasta dele.'],
   CONTEUDO_SEM_TEXTO: ['Escaneado sem leitura', 'É uma imagem sem texto e a leitura (OCR) não bastou. Peça o PDF original ao cliente ou arquive à mão.'],
   CONTEUDO_ILEGIVEL: ['Escaneado ilegível', 'A leitura (OCR) saiu ruim. Peça uma cópia melhor ou arquive à mão.'],
   CONFIANCA_ABAIXO_DO_LIMIAR: ['Pouca certeza', 'O robô achou um destino, mas sem certeza suficiente. Confira a sugestão e mova o arquivo, se estiver certa.'],
@@ -121,6 +122,7 @@ function classificarErro(texto) {
 /** A ação do item como o painel conta: arquivou (produção), arquivaria (simulação), jaArquivado, naoIdentificado, fica, erro. */
 function acaoDoItem(x, modoRes) {
   if (x.erro) return 'erro';
+  if (x.acao === 'AGUARDANDO_ORIGINAL') return 'aguardando';
   const aplicado = modoRes === 'PRODUCAO' && !x.naoAplicado;
   if (x.acao === 'ARQUIVAR') return aplicado ? 'arquivou' : 'arquivaria';
   if (x.acao === 'JA_ARQUIVADO') return 'jaArquivado';
@@ -188,13 +190,15 @@ function situacaoDaPasta(v, agora) {
   const vistos = v.vistos || [];
   const lendo = new Set(v.lendo || []);
   const pendentes = new Set(v.pendentes || []);
+  const aguardando = new Set(v.aguardando || []);   // eventos esperando o documento original (índice de chaves)
   const mapa = v.mapa || new Map();
   const estavelMs = v.estavelMs || 45000;
   const lista = [];
-  let chegando = 0, naFila = 0, sendoLidos = 0, parados = 0;
+  let chegando = 0, naFila = 0, sendoLidos = 0, parados = 0, esperandoOriginal = 0;
   for (const f of vistos) {
     let s;
     if (lendo.has(f.rel)) { s = 'lendo'; sendoLidos++; }
+    else if (aguardando.has(f.rel)) { s = 'original'; esperandoOriginal++; }
     else if (pendentes.has(f.rel)) { s = 'fila'; naFila++; }
     else {
       const m = mapa.get(f.rel);
@@ -203,10 +207,10 @@ function situacaoDaPasta(v, agora) {
     }
     lista.push({ rel: f.rel, tam: f.tam, desde: new Date(Math.min(f.mtime || agora, agora)).toISOString(), situacao: s });
   }
-  const ordem = { lendo: 0, chegando: 1, fila: 2 };
+  const ordem = { lendo: 0, chegando: 1, fila: 2, original: 3 };
   lista.sort((a, b) => ordem[a.situacao] - ordem[b.situacao] || a.desde.localeCompare(b.desde));
   return {
-    naPasta: vistos.length, chegando, naFila, sendoLidos, parados,
+    naPasta: vistos.length, chegando, naFila, sendoLidos, parados, esperandoOriginal,
     lista: lista.slice(0, MAX_CHEGANDO).map(x => ({ nome: corta(path.win32.basename(x.rel), 140), rel: corta(x.rel, 260), tam: x.tam, desde: x.desde, situacao: x.situacao })),
   };
 }
@@ -387,7 +391,7 @@ function criar(opcoes) {
       st.lendoAgora = [];
       const linhas = [];
       for (const x of itens || []) {
-        if (!x || x.acao === 'CONTEINER') continue;
+        if (!x || x.acao === 'CONTEINER' || x.acao === 'AGUARDANDO_ORIGINAL') continue;   // o que espera o original aparece na pasta (Chegando), não no resultado
         const it = itemCompacto(x, modoRes, em, false);
         somar(st.hoje, it); somar(st.mes, it);
         st.marcas.push(t);
