@@ -331,13 +331,6 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app .cli-doc > div{min-width:0;}
 .cli-app .cli-doc b{display:block;font-weight:600;}
 .cli-app .cli-doc .hint{display:block;font-size:12.5px;}
-/* o ícone do arquivo (IconeDeArquivo): a cor do formato vem em --arq; a folha leva um tom dela, a etiqueta é cheia */
-.cli-app .cli-arquivo{display:block;flex:none;overflow:visible;}
-.cli-app .cli-arquivo-folha{fill:color-mix(in srgb,var(--arq) 9%,var(--cli-cartao,var(--surface)));stroke:var(--arq);stroke-width:1.5;stroke-linejoin:round;}
-.cli-app .cli-arquivo-canto{fill:color-mix(in srgb,var(--arq) 24%,var(--cli-cartao,var(--surface)));stroke:var(--arq);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round;}
-.cli-app .cli-arquivo-dentro{fill:none;stroke:var(--arq);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;opacity:.72;}
-.cli-app .cli-arquivo-etiqueta{fill:var(--arq);}
-.cli-app .cli-arquivo-ext{fill:var(--cli-cartao,var(--surface));font-family:var(--font-body);font-size:6.6px;font-weight:800;letter-spacing:.35px;}
 .cli-app .cli-acoes-linha{display:inline-flex;gap:6px;}
 
 /* as tabelas: dentro do cartão, cabeçalho em caixa alta espaçada, linhas altas com o fundo suave ao passar */

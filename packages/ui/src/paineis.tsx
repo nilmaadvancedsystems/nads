@@ -32,7 +32,7 @@ export function RoscaComLegenda({ fatias, total, subtitulo, ativa, onEscolher }:
           antes += pct;
           return fatia;
         })}
-        <text x="21" y="20.5" className="cert-rosca-total">{total}</text>
+        <text x="21" y="20.5" className="cert-rosca-total">{total.toLocaleString('pt-BR')}</text>
         <text x="21" y="26" className="cert-rosca-sub">{subtitulo}</text>
       </svg>
       <ul className="cert-legenda">
@@ -41,7 +41,7 @@ export function RoscaComLegenda({ fatias, total, subtitulo, ativa, onEscolher }:
             <button type="button" className={'cert-legenda-item' + (ativa === f.id ? ' ativo' : '')} onClick={() => onEscolher(f.id)}>
               <span className={'cert-legenda-cor cert-cor-' + COR[f.tom]} aria-hidden="true" />
               <span>{f.rotulo}</span>
-              <b className="num">{f.valor}</b>
+              <b className="num">{f.valor.toLocaleString('pt-BR')}</b>
             </button>
           </li>
         ))}
