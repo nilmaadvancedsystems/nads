@@ -172,3 +172,4 @@ export * from './demonstrativo';
 export * from './calculadora';
 export * from './honorarios';
 export * from './painel';
+export * from './gestao';

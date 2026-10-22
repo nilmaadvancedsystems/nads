@@ -46,6 +46,9 @@ const Caixa = pedaco(() => import('../telas/financeiro/Caixa'), 'Caixa');
 const Honorarios = pedaco(() => import('../telas/financeiro/Honorarios'), 'Honorarios');
 const PlanoDeContas = pedaco(() => import('../telas/financeiro/PlanoDeContas'), 'PlanoDeContas');
 const PainelFinanceiro = pedaco(() => import('../telas/financeiro/PainelFinanceiro'), 'PainelFinanceiro');
+const Devedores = pedaco(() => import('../telas/financeiro/Devedores'), 'Devedores');
+const ResultadoPorConta = pedaco(() => import('../telas/financeiro/ResultadoPorConta'), 'ResultadoPorConta');
+const Conciliacao = pedaco(() => import('../telas/financeiro/Conciliacao'), 'Conciliacao');
 
 function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
   switch (app) {
@@ -57,7 +60,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'cadastro': return <UsuariosDoNads />;
     // a Área do Cliente com o Mandei junto (19/10/2026): Chamados, Recebidos, Meus tickets e a Central de tickets
     case 'area-cliente': return pagina === 'recebidos' ? <RecebidosDoCliente /> : pagina === 'meus' || pagina === 'central' ? <Mandei pagina={pagina} /> : <ChamadosDoCliente />;
-    case 'financeiro': return pagina === 'painel' ? <PainelFinanceiro /> : pagina === 'configuracoes' ? <ConfiguracoesDoFinanceiro /> : pagina === 'caixa' ? <Caixa /> : pagina === 'honorarios' ? <Honorarios /> : pagina === 'plano' ? <PlanoDeContas /> : <NotasFiscais />;
+    case 'financeiro': return pagina === 'painel' ? <PainelFinanceiro /> : pagina === 'devedores' ? <Devedores /> : pagina === 'resultado' ? <ResultadoPorConta /> : pagina === 'conciliacao' ? <Conciliacao /> : pagina === 'configuracoes' ? <ConfiguracoesDoFinanceiro /> : pagina === 'caixa' ? <Caixa /> : pagina === 'honorarios' ? <Honorarios /> : pagina === 'plano' ? <PlanoDeContas /> : <NotasFiscais />;
     // a entrega de documentos aos clientes, trazida do Entregas (16/10/2026)
     case 'entregas': return pagina === 'painel' ? <PainelDeEntregas /> : pagina === 'solicitacoes' ? <Solicitacoes /> : pagina === 'nova' ? <NovaEntrega /> : <RotaDeEntregas />;
     case 'drive': return <ExploradorDoDrive />;

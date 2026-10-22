@@ -4738,6 +4738,17 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .fin-painel-grande{font-size:var(--fs-24,24px);margin-right:4px;}
 .fin-painel .rank-val .fraco{font-weight:400;margin-left:4px;}
 @media (max-width:900px){.fin-painel-colunas{grid-template-columns:1fr;}}
+/* Devedores, Resultado, Conciliação e o Reajuste (22/10/2026) */
+.fin-meses{display:flex;flex-wrap:wrap;gap:4px;}
+.fin-meses .chip-f{font-size:var(--fs-12,12px);}
+.fin-resultado-grupo td{font-weight:600;background:var(--surface-2);}
+.fin-resultado-conta{padding-left:20px !important;}
+.fin-resultado-total td{font-weight:600;border-top:1px solid var(--border-strong);}
+.fin-resultado-final td{font-weight:700;font-size:var(--fs-14,14px);border-top:2px solid var(--border-strong);}
+.fin-painel .card>h3{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.fin-painel .card>h3 .steps{margin:0;}
+.fin-conc-arquivo{min-width:260px;}
+.fin-reajuste-lista{max-height:300px;overflow:auto;margin-top:8px;}
 .fin-lista td{vertical-align:middle;}
 .fin-direita{text-align:right;white-space:nowrap;}
 .fin-corta{display:inline-block;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;}
