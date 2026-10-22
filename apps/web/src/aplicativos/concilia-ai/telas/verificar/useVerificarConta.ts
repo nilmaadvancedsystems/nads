@@ -182,6 +182,24 @@ export function useVerificarConta() {
     return { bytes: c.planilhaVerificacao(v.resultado, { empresa: s.nome, periodo }), nome: c.nomePlanilhaVerificacao(s.nome, v.resultado.conta.codigo) };
   }
 
+  /**
+   * Os lançamentos das notas faltando, no padrão de importação do Alterdata, copiados do razão da conta (Vitor, 22/10/2026).
+   * A nota de participante sem lançamento na conta não vai: o aviso lista as que ficaram para lançar à mão.
+   */
+  function lancamentosFaltando(): { bytes: Uint8Array; nome: string } | null {
+    if (!v.resultado) return null;
+    const l = c.lancamentosFaltando(v.resultado);
+    if (l.semConta.length) {
+      aviso({
+        tom: l.lancamentos.length ? 'info' : 'erro',
+        titulo: (l.semConta.length === 1 ? '1 nota ficou' : l.semConta.length + ' notas ficaram') + ' fora do arquivo',
+        texto: 'O participante ainda não tem lançamento nessa conta, então não sei a conta dele: ' + l.semConta.map(n => 'NF ' + n.numero + ' · ' + n.nome).join(', ') + '.',
+      });
+    }
+    if (!l.lancamentos.length) return null;
+    return { bytes: c.planilhaLancamentosFaltando(l), nome: c.nomeLancamentosFaltando(s.nome, v.resultado.conta.codigo) };
+  }
+
   async function limpar() {
     const ok = await modal<boolean>({
       icone: 'alert', titulo: 'Limpar a conferência?', texto: 'O relatório lido e o resultado dessa conferência serão descartados. A conta continua a mesma.',
@@ -223,7 +241,7 @@ export function useVerificarConta() {
     foraDoPadrao, acoes,
     resultado: montarResultado(e, s.filtro, v, d),
     seqResultado,
-    escolherAba, reimportar, alternarConferido, planilha, naoVaiParaOContabil,
+    escolherAba, reimportar, alternarConferido, planilha, lancamentosFaltando, naoVaiParaOContabil,
   };
 }
 

@@ -119,7 +119,7 @@ function notasPorNumero(e: Empresa): Record<string, NotaDaOperacao[]> {
   return m;
 }
 
-const mesmoNome = (a: string, b: string) => {
+export const mesmoNome = (a: string, b: string) => {
   const x = nomeNorm(a), y = nomeNorm(b);
   return x.length >= 5 && y.length >= 5 && (x.startsWith(y) || y.startsWith(x));
 };
