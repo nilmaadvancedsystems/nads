@@ -152,6 +152,11 @@ export interface Empresa {
   vendaVista: VendaVista;
   /** naturezas marcadas "Não vai para o Contábil" */
   naoContabil: Record<string, boolean>;
+  /**
+   * as notas marcadas "Não vai para o Contábil" uma a uma, pela chave da nota (cfop|número|data|valor), no Verificar por
+   * conta (Vitor, 22/10/2026: nos CFOPs 1949 e 2949, quase sempre é a água, "mas tem nota que realmente não vai")
+   */
+  naoContabilNotas?: Record<string, boolean>;
   /** "periodoKey||conta" → ok/conferido (Verificar por conta) */
   verifConta: Record<string, EstadoVerificacao>;
   /** resposta de "Esta empresa presta serviços?" (undefined = ainda não perguntado) */

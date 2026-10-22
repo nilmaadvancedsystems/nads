@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { conta, empresa, linha, nota, servico } from '../__legado__/fixtures';
-import { conferirConta, ehLinhaIcms, naturezasDaConferencia, numerosDoHistorico, opcoesCfop, partesDoHistorico, linhasFaltando, semPendencias, soPendenciasQuePassam, totaisVerificacao, type LinhaRazao, type ResultadoVerificacao } from './verificarConta';
+import { marcarNotaNaoContabil } from '../acoes';
+import { chaveNota } from './cfop';
+import { conferirConta, linhasForaDoContabil, podeNaoIrParaOContabil, ehLinhaIcms, naturezasDaConferencia, numerosDoHistorico, opcoesCfop, partesDoHistorico, linhasFaltando, semPendencias, soPendenciasQuePassam, totaisVerificacao, type LinhaRazao, type ResultadoVerificacao } from './verificarConta';
 
 describe('numerosDoHistorico', () => {
   it('padrão fiscal: o número antes do CNPJ, ignorando o resto', () => {
@@ -169,6 +171,26 @@ describe('conta ligada a várias naturezas (ex.: 96501 = 5102 + 5405)', () => {
   });
   it('CFOP escolhido à mão, que não é ligado à conta: só ele', () => {
     expect(naturezasDaConferencia(e, ['99999'], V5405)).toEqual([V5405]);
+  });
+});
+
+describe('a nota que não vai para o Contábil (CFOP 1949/2949; Vitor, 22/10/2026)', () => {
+  const OUTRA = 'Outra entrada de mercadoria ou prestação de serviço não especificada';
+  const agua = nota('1949', '6', 120, '5001'), locacao = nota('1949', '6', 9000, '77');
+  const e = empresa({ contas: [conta('87501', 'Água e Esgoto')], entradas: [agua, locacao], naturezaConta: { [OUTRA]: ['87501'] } });
+  const conferir = (x: typeof e) => conferirConta({ empresa: x, contas: [x.contas[0]], razaoPorConta: { 87501: [linha('5001', 120)] }, cfopGrupo: OUTRA, servTipo: null });
+  it('só os CFOPs 1949 e 2949 têm a opção', () => {
+    expect(['1949', '2949', '1102', '5949'].map(podeNaoIrParaOContabil)).toEqual([true, true, false, false]);
+  });
+  it('marcada, sai da conferência e da soma das notas; a lista dela mostra para desfazer', () => {
+    expect(conferir(e).faltando.map(n => n.numero)).toEqual(['77']);
+    const marcada = marcarNotaNaoContabil(e, chaveNota(locacao), true, 'NF 77 · não vai para o Contábil', new Date());
+    const r = conferir(marcada);
+    expect([r.faltando.length, r.somaFiscal, semPendencias(r)]).toEqual([0, 120, true]);
+    expect(linhasForaDoContabil(r).map(l => [l.nota, l.chave])).toEqual([['77', chaveNota(locacao)]]);
+    expect(marcada.confHistorico[marcada.confHistorico.length - 1].texto).toBe('NF 77 · não vai para o Contábil');
+    // desfazer: volta a faltar
+    expect(conferir(marcarNotaNaoContabil(marcada, chaveNota(locacao), false, 'NF 77 · volta', new Date())).faltando.map(n => n.numero)).toEqual(['77']);
   });
 });
 

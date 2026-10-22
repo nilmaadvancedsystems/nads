@@ -17,18 +17,20 @@ function Exportado({ v }: { v?: string }) {
   return s === 'sim' ? <span className="vc-exp-sim">Sim</span> : s === 'nao' ? <span className="vc-exp-nao">Não</span> : <span className="vc-exp-sem">—</span>;
 }
 
-export function TabelaFaltando({ linhas }: { linhas: c.LinhaTabela[] }) {
+/** acao: o botão no fim da linha (o "Não vai para o Contábil" das notas 1949/2949; o "Desfazer" das marcadas) */
+export function TabelaFaltando({ linhas, acao, cls = 'bad' }: { linhas: c.LinhaTabela[]; acao?: (l: c.LinhaTabela) => ReactNode; cls?: string }) {
   return (
     <>
       <div className="table-wrap">
         <table className="vc-tabela">
-          <thead><tr><th>Data</th><th>Nota</th><th>Participante</th><th>Operação</th><th>CFOP</th><th>Exportado</th><th className="num">Valor</th></tr></thead>
+          <thead><tr><th>Data</th><th>Nota</th><th>Participante</th><th>Operação</th><th>CFOP</th><th>Exportado</th><th className="num">Valor</th>{acao && <th><span className="sr-only">Ação</span></th>}</tr></thead>
           <tbody>
             {linhas.slice(0, VC_LIMITE_LINHAS).map((l, i) => (
-              <tr key={i} className="bad">
+              <tr key={i} className={cls}>
                 <td className="vc-nw">{l.data}</td><td className="vc-nw">{l.nota || '—'}</td>
                 <td className="vc-nome">{l.part || '—'}</td><td className="vc-nw">{l.operacao || '—'}</td><td className="vc-nw">{l.cfop || '—'}</td>
                 <td className="vc-nw"><Exportado v={l.exportado} /></td><td className="num">{reais(l.valor)}</td>
+                {acao && <td className="vc-nw" style={{ textAlign: 'right' }}>{acao(l)}</td>}
               </tr>
             ))}
           </tbody>

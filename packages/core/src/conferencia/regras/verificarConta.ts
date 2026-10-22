@@ -86,7 +86,11 @@ export function ehLinhaIcms(l: Pick<LinhaRazao, 'txt'>): boolean {
 }
 
 /** Linha do relatório no formato da tabela. */
-export interface LinhaTabela { data: string; nota: string; part: string; contra: string; valor: number; txt?: string; conta?: string; cfop?: string; exportado?: string; operacao?: string }
+export interface LinhaTabela { data: string; nota: string; part: string; contra: string; valor: number; txt?: string; conta?: string; cfop?: string; exportado?: string; operacao?: string; /** a chave da nota (as faltando), para o "Não vai para o Contábil" */ chave?: string }
+
+/** Os CFOPs em que a nota pode não ir para o Contábil, marcada uma a uma (Vitor, 22/10/2026: quase sempre é a água). */
+export const CFOPS_QUE_PODEM_NAO_IR = ['1949', '2949'];
+export const podeNaoIrParaOContabil = (cfop?: string): boolean => CFOPS_QUE_PODEM_NAO_IR.includes(String(cfop || '').replace(/\D/g, ''));
 
 export function linhaDaTabela(l: LinhaRazao): LinhaTabela {
   const p = partesDoHistorico(l.txt);
@@ -225,6 +229,8 @@ export interface ResultadoVerificacao {
    * distância (ex.: a comissão lançada pelo pagamento no banco, "comissao Raimundo DOC.: 16283133").
    */
   peloValor: { nota: NotaAlvo; linha: LinhaRazao }[];
+  /** as notas marcadas "Não vai para o Contábil" (fora da conferência e da soma das notas; dá para desfazer) */
+  foraDoContabil?: NotaAlvo[];
   icms: LinhaRazao[];
   somaRazao: number;
   somaSemIcms: number;
@@ -267,6 +273,10 @@ export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
     if (!gs.length) throw new Error('Escolha o CFOP antes de conferir.');
     alvo = gs.flatMap(g => g.itens);
   }
+  // as notas que não vão para o Contábil (marcadas uma a uma) saem da conferência
+  const marcadas = e.naoContabilNotas || {};
+  const foraDoContabil = x.servTipo ? [] : alvo.filter(n => n.cfop && marcadas[chaveNota(n as NotaComTipo)]);
+  if (foraDoContabil.length) alvo = alvo.filter(n => foraDoContabil.indexOf(n) < 0);
   const razao: LinhaRazao[] = multi
     ? x.contas.flatMap(a => (x.razaoPorConta[a.codigo] || []).map(l => ({ ...l, conta: a.codigo, dica: undefined })))
     : (x.razaoPorConta[codigos[0]] || []).map(l => ({ ...l, dica: undefined }));
@@ -376,7 +386,7 @@ export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
     : { codigo: comRel.map(a => a.codigo).join(' + '), nome: nomeComumContas(comRel.map(a => a.nome)) || rot.slice(rot.indexOf(' — ') + 3) };
 
   return {
-    faltando, duplicada, aMais, operacaoIncorreta, operacoesDaConta, peloValor, icms: icmsLinhas, somaRazao, somaSemIcms, icmsSub, somaFiscal,
+    faltando, duplicada, aMais, operacaoIncorreta, operacoesDaConta, peloValor, foraDoContabil, icms: icmsLinhas, somaRazao, somaSemIcms, icmsSub, somaFiscal,
     serv: x.servTipo, conta,
     contas: comRel.length > 1 ? comRel.map(a => ({ codigo: a.codigo, nome: a.nome })) : null,
     fonte, linhas: razao,
@@ -409,7 +419,15 @@ export function linhasDuplicadas(r: ResultadoVerificacao): LinhaTabela[] {
 export function linhasFaltando(r: ResultadoVerificacao): LinhaTabela[] {
   // a nota faltando é da própria conta: a operação é a dela (Entrada/Saída) ou a do serviço da conta
   const daConta = r.serv ? OPERACAO_DO_SERVICO[r.serv] : '';
-  return r.faltando.map(n => ({ data: n.data, nota: n.numero, part: n.nome, contra: '', valor: n.valor, cfop: n.cfop || '', exportado: n.exportado || '', operacao: n.tipo || daConta }));
+  return r.faltando.map(n => linhaDaNota(n, daConta));
+}
+
+const linhaDaNota = (n: NotaAlvo, daConta: string): LinhaTabela =>
+  ({ data: n.data, nota: n.numero, part: n.nome, contra: '', valor: n.valor, cfop: n.cfop || '', exportado: n.exportado || '', operacao: n.tipo || daConta, ...(n.cfop ? { chave: chaveNota(n as NotaComTipo) } : {}) });
+
+/** As notas marcadas "Não vai para o Contábil", na tabela (com a chave, para desfazer). */
+export function linhasForaDoContabil(r: ResultadoVerificacao): LinhaTabela[] {
+  return (r.foraDoContabil || []).map(n => linhaDaNota(n, ''));
 }
 
 export interface Totais { faltando: number; duplicadas: number; aMais: number; operacaoIncorreta: number; icms: number; diferenca: number; semExplicacao: number }

@@ -125,6 +125,17 @@ export function marcarNaoContabil(e: Empresa, k: string, marcar: boolean): Empre
   return produzir(e, x => { if (marcar) x.naoContabil[k] = true; else delete x.naoContabil[k]; });
 }
 
+/** Uma nota que não vai para o Contábil (o Verificar por conta tira ela da conferência), ou volta; fica no histórico. */
+export function marcarNotaNaoContabil(e: Empresa, chave: string, marcar: boolean, texto: string, agora: Date): Empresa {
+  if (!!(e.naoContabilNotas || {})[chave] === marcar) return e;
+  return produzir(e, x => {
+    const m = { ...(x.naoContabilNotas || {}) };
+    if (marcar) m[chave] = true; else delete m[chave];
+    x.naoContabilNotas = m;
+    x.confHistorico = registrarHist(x.confHistorico, 'naocontabil|' + chave, texto, marcar, agora, 'verificacao');
+  });
+}
+
 export function alternarVendaVista(e: Empresa): Empresa {
   return produzir(e, x => { x.vendaVista.ativo = !x.vendaVista.ativo; });
 }

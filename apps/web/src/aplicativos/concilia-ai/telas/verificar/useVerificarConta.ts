@@ -83,14 +83,14 @@ export function useVerificarConta() {
   }
 
   // ---------- comparar ----------
-  function conferir(vv: EstadoVerificar = v) {
+  function conferir(vv: EstadoVerificar = v, emp: c.Empresa = e) {
     if (comparando) return;
-    const dd = derivar(e, vv);
+    const dd = derivar(emp, vv);
     const falta = c.faltaParaConferir({
       temPlano: dd.contasPlano.length > 0, conta: dd.conta, multi: dd.multi,
       algumRelatorio: dd.grupo.some(a => vv.razaoPorConta[a.codigo]),
       relatorioUnico: !!dd.conta && (vv.razaoPorConta[dd.conta.codigo] || []).length > 0,
-      servTipo: dd.servTipo, qtdNotasServ: dd.servTipo ? c.notasServicoDaConta(e, dd.servTipo, dd.codigos).length : 0,
+      servTipo: dd.servTipo, qtdNotasServ: dd.servTipo ? c.notasServicoDaConta(emp, dd.servTipo, dd.codigos).length : 0,
       cfopGrupo: dd.cfopGrupo,
     });
     if (falta.length) {
@@ -103,7 +103,7 @@ export function useVerificarConta() {
       try {
         let r: c.ResultadoVerificacao;
         try {
-          r = c.conferirConta({ empresa: e, contas: dd.multi ? dd.grupo : [dd.conta as c.Conta], razaoPorConta: vv.razaoPorConta, cfopGrupo: dd.cfopGrupo, servTipo: dd.servTipo });
+          r = c.conferirConta({ empresa: emp, contas: dd.multi ? dd.grupo : [dd.conta as c.Conta], razaoPorConta: vv.razaoPorConta, cfopGrupo: dd.cfopGrupo, servTipo: dd.servTipo });
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           toast(msg === 'Escolha o CFOP antes de conferir.' ? msg : 'Não deu para comparar: ' + msg);
@@ -150,6 +150,19 @@ export function useVerificarConta() {
     for (const a of d.grupo) botoes.push({ rotulo: 'Conta ' + a.codigo, valor: a.codigo, variante: 'btn-primary' });
     const cod = await modal<string | null>({ icone: 'upload', titulo: 'Qual relatório você corrigiu?', botoes });
     if (cod) abrir(cod);
+  }
+
+  /**
+   * A nota que não vai para o Contábil (Vitor, 22/10/2026: nos CFOPs 1949 e 2949, "a maioria das vezes é água, mas tem nota
+   * que realmente não vai"): marca (ou desfaz) e confere de novo na hora.
+   */
+  function naoVaiParaOContabil(chave: string, nota: string, marcar: boolean) {
+    const agora = new Date();
+    const texto = 'NF ' + nota + (marcar ? ' · não vai para o Contábil' : ' · volta para a conferência');
+    const nova = c.marcarNotaNaoContabil(e, chave, marcar, texto, agora);
+    s.aplicar(x => c.marcarNotaNaoContabil(x, chave, marcar, texto, agora));
+    toast(marcar ? 'NF ' + nota + ': não vai para o Contábil.' : 'NF ' + nota + ' voltou para a conferência.');
+    conferir(vRef.current, nova);
   }
 
   function alternarConferido() {
@@ -207,7 +220,7 @@ export function useVerificarConta() {
     foraDoPadrao, acoes,
     resultado: montarResultado(e, s.filtro, v, d),
     seqResultado,
-    escolherAba, reimportar, alternarConferido, csv,
+    escolherAba, reimportar, alternarConferido, csv, naoVaiParaOContabil,
   };
 }
 
@@ -260,6 +273,8 @@ function montarResultado(e: c.Empresa, p: c.FiltroMovimento, v: EstadoVerificar,
       aMais: r.aMais.map(c.linhaDaTabela), somaAMais: t.aMais,
       incorretas: c.operacaoIncorretaDe(r).map(c.linhaDaTabela), somaIncorretas: t.operacaoIncorreta, operacoesDaConta: r.operacoesDaConta || [],
       icms: r.icms.map(c.linhaDaTabela), somaIcms: t.icms,
+      /** as notas marcadas "Não vai para o Contábil" (fora da soma das notas; Desfazer) */
+      foraDoContabil: c.linhasForaDoContabil(r), somaForaDoContabil: (r.foraDoContabil || []).reduce((t2, n) => t2 + n.valor, 0),
       conferido: !!d.conta && c.verifEstado(e, p, d.conta.codigo) === 'conferido',
       podeConferir: c.podeConferir(e, d.codigos, [r.fonte || '']),
     },

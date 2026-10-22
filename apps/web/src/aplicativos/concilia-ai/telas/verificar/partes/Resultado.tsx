@@ -1,7 +1,7 @@
 // Card do resultado do Verificar por conta: abas por conta, resumo (.vc-resumo), "O que explica a
 // diferença" (.vc-comp), pendências (.vc-pend) e os botões. Origem: conferencia.html ~L1299-1308;
 // vcRenderResultado (~L4122-4205), vcComposicao (~L4110).
-import { type conferencia as c, formatos } from '@nads/core';
+import { conferencia as c, formatos } from '@nads/core';
 import { baixarArquivo, Icone, Segmentado } from '@nads/ui';
 import { useEffect, useRef } from 'react';
 import type { useVerificarConta } from '../useVerificarConta';
@@ -85,6 +85,17 @@ function PorConta({ r, p }: { r: Res; p: NonNullable<Res['porConta']> }) {
   );
 }
 
+/**
+ * As notas que não vão para o Contábil (Vitor, 22/10/2026): no "Faltando na conta", o botão nas notas dos CFOPs 1949 e 2949;
+ * as marcadas ficam na seção delas, fora da soma das notas, com o Desfazer.
+ */
+function NaoVai({ vm, l, desfazer = false, travado }: { vm: Vm; l: c.LinhaTabela; desfazer?: boolean; travado: boolean }) {
+  if (!l.chave || (!desfazer && !c.podeNaoIrParaOContabil(l.cfop))) return null;
+  return desfazer
+    ? <button type="button" className="btn btn-ghost" disabled={travado} title="Volta para a conferência" onClick={() => vm.naoVaiParaOContabil(l.chave as string, l.nota, false)}>Desfazer</button>
+    : <button type="button" className="btn btn-outline" disabled={travado} title="A nota não é lançada no Contábil: sai da conferência (dá para desfazer)" onClick={() => vm.naoVaiParaOContabil(l.chave as string, l.nota, true)}>Não vai para o Contábil</button>;
+}
+
 function Todas({ vm, r, t }: { vm: Vm; r: Res; t: NonNullable<Res['todas']> }) {
   const secaoIcms = t.icms.length > 0 && (
     <SecaoVc className="vc-secao vc-secao-icms" titulo={'ICMS (' + t.icms.length + ')'} valor={t.somaIcms}><TabelaVc linhas={t.icms} cls="" /></SecaoVc>
@@ -128,11 +139,21 @@ function Todas({ vm, r, t }: { vm: Vm; r: Res; t: NonNullable<Res['todas']> }) {
                 ? <button type="button" className="btn vc-conferido-on" title="Marcada como conferida com pendências — clique pra desfazer" onClick={vm.alternarConferido}><Icone nome="check" />Conferido</button>
                 : <button type="button" className="btn btn-outline" title="Seguir com essas pendências e marcar a conta como conferida" onClick={vm.alternarConferido}>Marcar como conferido</button>)}
             </div>
-            {t.faltando.length > 0 && <SecaoVc titulo={'Faltando na conta (' + t.faltando.length + ')'} valor={t.somaFaltando}><TabelaFaltando linhas={t.faltando} /></SecaoVc>}
+            {t.faltando.length > 0 && <SecaoVc titulo={'Faltando na conta (' + t.faltando.length + ')'} valor={t.somaFaltando}>
+              <TabelaFaltando linhas={t.faltando} acao={t.faltando.some(l => c.podeNaoIrParaOContabil(l.cfop)) ? l => <NaoVai vm={vm} l={l} travado={r.limpo} /> : undefined} />
+            </SecaoVc>}
             {t.qtdDuplicadas > 0 && <SecaoVc titulo={'Duplicadas na conta (' + t.qtdDuplicadas + ')'} valor={t.somaDuplicadas}><TabelaVc linhas={t.duplicadas} /></SecaoVc>}
             {t.incorretas.length > 0 && <SecaoIncorreta linhas={t.incorretas} valor={t.somaIncorretas} daConta={t.operacoesDaConta} />}
             {t.aMais.length > 0 && <SecaoVc titulo={'A mais na conta (' + t.aMais.length + ')'} valor={t.somaAMais}><TabelaVc linhas={t.aMais} /></SecaoVc>}
             {secaoIcms}
+          </div>
+        )}
+        {t.foraDoContabil.length > 0 && (
+          <div className="vc-pend">
+            <SecaoVc titulo={'Não vão para o Contábil (' + t.foraDoContabil.length + ')'} valor={t.somaForaDoContabil}>
+              <p className="hint">Fora da conferência e da soma das notas fiscais.</p>
+              <TabelaFaltando linhas={t.foraDoContabil} cls="" acao={l => <NaoVai vm={vm} l={l} desfazer travado={false} />} />
+            </SecaoVc>
           </div>
         )}
       </div>
