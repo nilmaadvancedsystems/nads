@@ -1,7 +1,8 @@
 // A janela flutuante do Arquivar agora (Vitor, 05/10/2026: "quero uma tela flutuante assim como as outras" e "um
 // relatório com as mensagens de resposta do Claude"), no desenho das outras (a JanelaLateral): à esquerda o estado e os
 // tópicos; desde 22/10/2026 só o Agora (a organização em andamento com as 10 fases, ou o pedido): a Conversa do Claude,
-// o Relatório e o Histórico saíram ("deixe apenas o agora"); no pé, Organizar agora.
+// o Relatório e o Histórico saíram ("deixe apenas o agora"); no pé, Organizar agora. Para o admin, o link para a área
+// do arquivador no site do admin (22/10/2026: o porquê de cada arquivo, o que ficou para resolver, os erros).
 import { Icone, type NomeIcone } from '@nads/ui';
 import { useState } from 'react';
 import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
@@ -80,6 +81,7 @@ export function JanelaDoArquivador({ vm, fechar, inicio }: { vm: Vm; fechar: () 
       )}
       pe={(
         <>
+          {vm.linkDoAdmin && <a className="btn btn-ghost" href={vm.linkDoAdmin} target="_blank" rel="noopener">Tudo no Admin<Icone nome="chevronRight" width={16} height={16} /></a>}
           {vm.podePedir && <p className="arquivador-nota">{vm.notaAoPedir}{vm.exemplos ? ' (Exemplo: nada sai daqui.)' : ''}</p>}
           <span className="tarefas-barra-espaco" />
           {p?.podeCancelar && <button type="button" className="btn btn-outline" onClick={() => vm.cancelar(p.id)}>Cancelar o pedido</button>}

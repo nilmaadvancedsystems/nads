@@ -3,13 +3,18 @@
 // as linhas de texto no PDF e no DOC, a grade na planilha, o </> no XML, o zíper no ZIP e a montanha com o sol na
 // imagem. Cada um na cor clássica, pelos tokens do nads (PDF vermelho, planilha verde, XML âmbar, ZIP cinza, DOC azul,
 // imagem roxo); a folha leva um tom da mesma cor, para não apagar no escuro. Peça do catálogo (Ícones).
+// Desde 22/10/2026 no @nads/ui (Vitor: o Arquivador do site do admin usa o mesmo ícone na lista dos arquivos), com o TXT
+// (SPED, Sintegra) e o OFX (extrato do banco) a mais; o CSS foi junto para o nads.css.
 import type { CSSProperties, ReactNode } from 'react';
-import type { FormatoDoArquivo } from '../dados/areaCliente';
+
+/** O formato do arquivo (o ícone sai dele). */
+export type FormatoDoArquivo = 'PDF' | 'XLSX' | 'XML' | 'ZIP' | 'DOCX' | 'JPG' | 'PNG' | 'TXT' | 'OFX';
 
 const COR: Record<FormatoDoArquivo, string> = {
   PDF: 'var(--destructive)', XLSX: 'var(--success)', XML: 'var(--warn)', ZIP: 'var(--ink-muted)', DOCX: 'var(--info)', JPG: 'var(--roxo)', PNG: 'var(--roxo)',
+  TXT: 'var(--ciano)', OFX: 'var(--info)',
 };
-const ROTULO: Record<FormatoDoArquivo, string> = { PDF: 'PDF', XLSX: 'XLS', XML: 'XML', ZIP: 'ZIP', DOCX: 'DOC', JPG: 'JPG', PNG: 'PNG' };
+const ROTULO: Record<FormatoDoArquivo, string> = { PDF: 'PDF', XLSX: 'XLS', XML: 'XML', ZIP: 'ZIP', DOCX: 'DOC', JPG: 'JPG', PNG: 'PNG', TXT: 'TXT', OFX: 'OFX' };
 
 const TEXTO = <><path d="M10.5 7.5h5" /><path d="M10.5 10.5h11" /><path d="M10.5 13.5h11" /></>;
 const DENTRO: Record<FormatoDoArquivo, ReactNode> = {
@@ -20,6 +25,9 @@ const DENTRO: Record<FormatoDoArquivo, ReactNode> = {
   ZIP: <><path d="M14 3h2" /><path d="M16 5.25h2" /><path d="M14 7.5h2" /><path d="M16 9.75h2" /><rect x="14" y="12" width="4" height="3.5" rx="1" /></>,
   JPG: <><circle cx="12.5" cy="8.25" r="1.6" /><path d="m10 15 3.5-3.5 2.25 2.25 2.25-2.5L22 15" /></>,
   PNG: <><circle cx="12.5" cy="8.25" r="1.6" /><path d="m10 15 3.5-3.5 2.25 2.25 2.25-2.5L22 15" /></>,
+  TXT: TEXTO,
+  // o extrato: as colunas do banco
+  OFX: <><path d="M11 15V9.5" /><path d="M14.5 15V7" /><path d="M18 15v-4" /><path d="M21.5 15V8.5" /></>,
 };
 
 export function IconeDeArquivo({ formato, tamanho = 36 }: { formato: FormatoDoArquivo; /** em px */ tamanho?: number }) {
@@ -39,3 +47,17 @@ export function IconeDeArquivo({ formato, tamanho = 36 }: { formato: FormatoDoAr
 }
 
 export const FORMATOS_DE_ARQUIVO = Object.keys(ROTULO) as FormatoDoArquivo[];
+
+/** O formato pelo nome do arquivo (a extensão); o que não tem ícone próprio vira PDF. */
+export function formatoPeloNome(nome: string): FormatoDoArquivo {
+  const e = (/\.([a-z0-9]+)$/i.exec(nome || '')?.[1] || '').toLowerCase();
+  if (e === 'xml') return 'XML';
+  if (['xls', 'xlsx', 'csv', 'ods'].includes(e)) return 'XLSX';
+  if (['zip', 'rar', '7z'].includes(e)) return 'ZIP';
+  if (['doc', 'docx', 'odt', 'rtf'].includes(e)) return 'DOCX';
+  if (['jpg', 'jpeg', 'heic', 'webp'].includes(e)) return 'JPG';
+  if (['png', 'gif', 'bmp', 'tif', 'tiff'].includes(e)) return 'PNG';
+  if (e === 'ofx') return 'OFX';
+  if (['txt', 'ret', 'rem'].includes(e)) return 'TXT';
+  return 'PDF';
+}

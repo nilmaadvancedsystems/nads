@@ -21,3 +21,4 @@ export { AberturaN } from './abertura';
 export { RoscaComLegenda, BarrasEmColuna, AnelDeContagem, CartaoComAnel, MapaDeCalor, type FatiaDaRosca, type ColunaDasBarras, type TomDoPainel } from './paineis';
 export { destacarNaTela } from './destaque';
 export { CampoAssinatura } from './componentes';
+export { IconeDeArquivo, FORMATOS_DE_ARQUIVO, formatoPeloNome, type FormatoDoArquivo } from './iconeDeArquivo';

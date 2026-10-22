@@ -143,6 +143,17 @@ try {
     igual('varredura igual depois de 10 min: o batimento grava', g4.length, 2);
     ac4.varredura({ vistos: [], pendentes: [], mapa: new Map() }); await espera();
     igual('a pasta mudou: grava', g4.length, 3);
+    // a limpeza do histórico de mais de 31 dias (no PC e no banco), na primeira gravação e a cada virada do dia
+    const dir5 = fs.mkdtempSync(path.join(os.tmpdir(), 'teste-acomp-'));
+    fs.writeFileSync(path.join(dir5, 'arquivados-2026-08-01.jsonl'), '{}\n');
+    fs.writeFileSync(path.join(dir5, 'arquivados-2026-10-20.jsonl'), '{}\n');
+    const apagados = [], filtros = [];
+    const col5 = { doc: () => ({ set: async () => {} }), where: (c, op, v) => { filtros.push([c, op, v]); return { limit: () => ({ get: async () => ({ docs: [{ ref: { delete: async () => { apagados.push('2026-08-01-0'); } } }] }) }) }; } };
+    const db5 = { collection: () => ({ doc: () => ({ set: async () => {}, collection: () => col5 }) }) };
+    const ac5 = A.criar({ db: db5, controle: dir5, origem: 'G:\\x', agora: () => T });
+    await ac5._gravar();
+    igual('limpeza: o arquivo velho do PC sai, o recente fica', fs.readdirSync(dir5).filter(f => /^arquivados-/.test(f)), ['arquivados-2026-10-20.jsonl']);
+    igual('limpeza: no banco, as partes de antes de 31 dias', [filtros[0] && filtros[0][0], filtros[0] && filtros[0][1], apagados.length], ['dia', '<', 1]);
     igual('o PC guarda o estado e o histórico', [fs.existsSync(path.join(tmp, 'acompanhamento.json')), fs.readdirSync(tmp).some(f => /^arquivados-.*\.jsonl$/.test(f))], [true, true]);
     // religar: as listas e o histórico voltam do PC
     const ac2 = A.criar({ db: null, controle: tmp, origem: 'G:\\x', agora: () => agora });
