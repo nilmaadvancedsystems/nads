@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { grupoDoProtocolo, htmlDoProtocolo, linhasDoProtocolo } from './protocoloDeTributos';
-import { htmlDosEnvelopes, paginasDosEnvelopes, regimeAbreviado } from './etiquetasDoEnvelope';
+import { htmlDosEnvelopes, paginasDosEnvelopes, regimeAbreviado, tipoNaEtiqueta } from './etiquetasDoEnvelope';
 
 const logo = { definicao: '<svg id="def"></svg>', uso: '<svg><use href="#x"/></svg>' };
 
@@ -9,6 +9,13 @@ describe('as etiquetas do envelope (Heverton, 20/10/2026)', () => {
     expect(['Simples', 'MEI', 'Presumido', 'Real', 'Física', 'Isentas', 'Domésticas', '', 'Outro'].map(regimeAbreviado)).toEqual(['SN', 'MEI', 'LP', 'LR', 'PF', 'ISENTA', 'DOM', '', 'OUTRO']);
     expect(paginasDosEnvelopes(5, 2)).toBe(3);
     expect(paginasDosEnvelopes(4, 4)).toBe(1);
+  });
+  it('o tipo na caixa: PJ-F (pessoa jurídica, Fiscal), PF para Física e Domésticas, a letra do departamento', () => {
+    expect(tipoNaEtiqueta('Presumido', 'Fiscal')).toBe('PJ-F');
+    expect(tipoNaEtiqueta('Simples', 'Contábil')).toBe('PJ-C');
+    expect(tipoNaEtiqueta('Física', 'Pessoal')).toBe('PF-P');
+    expect(tipoNaEtiqueta('Domésticas', 'Fiscal')).toBe('PF-F');
+    expect(tipoNaEtiqueta(null, 'Fiscal')).toBe('PJ-F');
   });
   it('uma por página: a folha deitada, a etiqueta na folha inteira; duas: em pé', () => {
     const um = htmlDosEnvelopes({ competencia: '2026-09', departamento: 'Fiscal', porPagina: 1, logo, etiquetas: [{ codigo: 462, nome: 'X', caixa: 'LP' }] });

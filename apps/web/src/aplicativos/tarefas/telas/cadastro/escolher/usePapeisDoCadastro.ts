@@ -1,6 +1,6 @@
 // ViewModel dos papéis do mês do Cadastro › Empresas (Heverton, 20/10/2026), no padrão das Etiquetas da folha do DP:
 //   - "Etiquetas do mês" ("Gerador de etiqueta mensal"; a planilha ETIQUETA ENVELOPE 2026): a competência, o
-//     departamento (Fiscal por padrão), quantas por página e o texto da caixa (a sigla do regime, por padrão);
+//     departamento (Fiscal por padrão), quantas por página e o texto da caixa (o tipo, PJ-F, por padrão);
 //   - "Protocolo de tributos" ("Relatório de empresa (Movimentação mensal)"; a planilha RELATORIO EMPRESA 2026): a
 //     competência, o grupo (o regime) e, ligado, o que o Entregas já entregou na competência preenchido.
 // As empresas são as da lista (com a busca e a situação da tela; no protocolo, só as do grupo), todas marcadas; dá para
@@ -14,9 +14,9 @@ import { imprimirHtml } from '../../dp/imprimirHtml';
 import type { LinhaEmpresa } from './useListaDoCadastro';
 
 export type PapelDoCadastro = 'etiquetas' | 'protocolo';
-export type TextoDaCaixa = 'sigla' | 'regime' | 'branco';
+export type TextoDaCaixa = 'tipo' | 'sigla' | 'regime' | 'branco';
 export const TEXTOS_DA_CAIXA: { valor: TextoDaCaixa; rotulo: string }[] = [
-  { valor: 'sigla', rotulo: 'Sigla' }, { valor: 'regime', rotulo: 'Regime' }, { valor: 'branco', rotulo: 'Nada' },
+  { valor: 'tipo', rotulo: 'PJ-F' }, { valor: 'sigla', rotulo: 'Sigla' }, { valor: 'regime', rotulo: 'Regime' }, { valor: 'branco', rotulo: 'Nada' },
 ];
 
 export function usePapeisDoCadastro(linhas: readonly LinhaEmpresa[]) {
@@ -28,7 +28,7 @@ export function usePapeisDoCadastro(linhas: readonly LinhaEmpresa[]) {
   const [competencia, setCompetencia] = useState(() => competenciasDaTela(1)[0]);
   const [departamento, setDepartamento] = useState<t.DepartamentoDoEnvelope>('Fiscal');
   const [porPagina, setPorPagina] = useState<t.EnvelopesPorPagina>(2);
-  const [caixa, setCaixa] = useState<TextoDaCaixa>('sigla');
+  const [caixa, setCaixa] = useState<TextoDaCaixa>('tipo');
   const [grupoId, setGrupoId] = useState(t.GRUPOS_DO_PROTOCOLO[0].id);
   const [preencher, setPreencher] = useState(true);
   const [desmarcadas, setDesmarcadas] = useState<ReadonlySet<string>>(new Set());
@@ -46,7 +46,7 @@ export function usePapeisDoCadastro(linhas: readonly LinhaEmpresa[]) {
     return codigo && e.status === 'confirmada' ? [{ codigo, itens: e.itens, em: e.confirmadoEm, porEmail: e.comprovantePorEmail || e.canal === 'email' }] : [];
   });
 
-  const textoDaCaixa = (regime: string) => (caixa === 'branco' ? '' : caixa === 'regime' ? regime : t.regimeAbreviado(regime));
+  const textoDaCaixa = (regime: string) => (caixa === 'branco' ? '' : caixa === 'tipo' ? t.tipoNaEtiqueta(regime, departamento) : caixa === 'regime' ? regime : t.regimeAbreviado(regime));
   const paginas = aberto === 'etiquetas' ? t.paginasDosEnvelopes(escolhidas.length, porPagina) : 0;
   return {
     aberto,

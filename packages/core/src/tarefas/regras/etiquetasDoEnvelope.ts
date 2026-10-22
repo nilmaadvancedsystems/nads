@@ -22,8 +22,16 @@ export interface PedidoDeEnvelopes {
 }
 
 /**
- * O regime abreviado, para a caixa da etiqueta (o "PJ-F" da planilha não tem regra conhecida: até o Heverton dizer o
- * que é, vai a sigla do regime do Cadastro): Simples → SN, MEI → MEI, Presumido → LP, Real → LR, Isentas → ISENTA,
+ * O tipo da empresa na caixa da etiqueta, como na planilha (22/10/2026: "PJ-F é pessoa jurídica fiscal"): PJ (pessoa
+ * jurídica) ou PF (os regimes Física e Domésticas), um traço e a inicial do departamento do envelope (F, C ou P).
+ */
+export function tipoNaEtiqueta(regime: string | null | undefined, departamento: DepartamentoDoEnvelope): string {
+  const r = String(regime || '').trim();
+  return (r === 'Física' || r === 'Domésticas' ? 'PF' : 'PJ') + '-' + (departamento === 'Contábil' ? 'C' : departamento === 'Pessoal' ? 'P' : 'F');
+}
+
+/**
+ * O regime abreviado, para a caixa da etiqueta (a opção "Sigla"): Simples → SN, MEI → MEI, Presumido → LP, Real → LR, Isentas → ISENTA,
  * Física → PF, Domésticas → DOM.
  */
 export function regimeAbreviado(regime: string | null | undefined): string {
