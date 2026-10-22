@@ -21,6 +21,12 @@ describe('numerosDoHistorico', () => {
     expect(numerosDoHistorico('Pelo valor de Serviços Tomados conf. NF nº - 002600000003194 - 71400253/0001-09-ALEXSANDRO DE OLIVEIRA - CPF 96164395615', true)).toEqual(['002600000003194']);
     expect(numerosDoHistorico('conf NF 4521 - 08.760.011/0001-81 - DIGITEC', false)).toEqual(['4521']);
   });
+  it('o código do histórico padrão ("00014" antes do texto) não é nota (289, 22/10/2026)', () => {
+    const t = 'CLIENTE A LTDA 00014 Pelos Serviços Prestados conf. Nota Fiscal nº 000000000000186/000000000000186 -11222333000100 -CLIENTE A LTDA';
+    expect(numerosDoHistorico(t, true)).toEqual(['000000000000186']);
+    expect(numerosDoHistorico(t, false)).toEqual(['000000000000186']);
+    expect(numerosDoHistorico('CLIENTE A LTDA 00014 Pelos Serviços Prestados conf. Nota Fiscal nº - 000000000000014-11222333000100-CLIENTE A LTDA', true).map(n => n.replace(/^0+/, ''))).toEqual(['14']);
+  });
   it('serviço: aceita até 15 dígitos, mas não 11 (CPF) nem 14 (CNPJ)', () => {
     expect(numerosDoHistorico('NFS 202600000012345 CNPJ 11222333000100 CPF 12345678901 nr 777', true)).toEqual(['202600000012345', '777']);
   });
@@ -95,6 +101,13 @@ describe('conferirConta', () => {
   it('nota que não está no razão: faltando', () => {
     const r = conferir([linha('100', 500), linha('200', 400)]);
     expect(r.faltando.map(n => n.numero)).toEqual(['101']);
+  });
+  it('o código do histórico com o número de outra nota não junta as linhas como duplicada (289, 22/10/2026)', () => {
+    const comCodigo = (numero: string, valor: number): LinhaRazao => ({ txt: 'FORNECEDOR X LTDA 00100 Pelo valor conf. NF nº ' + numero + '/' + numero + ' -11222333000100 -FORNECEDOR X LTDA', data: '05/07/2026', valor, sinal: 1, contra: '' });
+    const r = conferir([linha('100', 500), comCodigo('101', 300), comCodigo('200', 400)]);
+    expect(r.duplicada).toEqual([]);
+    expect(r.faltando).toEqual([]);
+    expect(semPendencias(r)).toBe(true);
   });
   it('mesmo número duas vezes somando o valor da nota (itens): não é duplicada', () => {
     const r = conferir([linha('100', 200), linha('100', 300), linha('101', 300), linha('200', 400)]);

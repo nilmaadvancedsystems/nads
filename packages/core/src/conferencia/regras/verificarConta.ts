@@ -42,6 +42,10 @@ const semZeros = (t: string) => t.replace(/^0+/, '') || t;
  * sem confundir com CPF/CNPJ). O grupo é limitado ({1,9}) pra regex não travar em texto comprido.
  */
 export function numerosDoHistorico(txt: string, serv: boolean): string[] {
+  // o código do histórico padrão (a coluna Histórico do relatório, "00014" antes do texto) não é nota (Vitor, 22/10/2026:
+  // na 75001 da 289, todo "… 00014 Pelos Serviços Prestados conf. Nota Fiscal nº 186/186 -CNPJ -NOME" virava a NF 14, e
+  // 60 lançamentos de clientes diferentes apareciam em "Duplicadas na conta", sem nada duplicado no razão)
+  txt = txt.replace(/(^|\s)0\d{4}(?=\s+\p{L})/gu, '$1');
   const m = txt.match(/(\d{1,9})-(\d{14})-/);
   if (m) return [m[1]];
   // "nota - documento - nome" (o CNPJ com ou sem pontuação, o CPF): a nota é o número de antes do documento; os números do
