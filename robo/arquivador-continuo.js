@@ -279,7 +279,17 @@ function iniciar(opcoes) {
       else resumo.fica++;
     }
     fs.appendFileSync(diario, linhas.join('\n') + (linhas.length ? '\n' : ''));
-    for (const rel of lote) { const v = porRel.get(rel); if (v) estado.decididos[chave(rel, v) + '|' + modoChave] = Date.now(); }
+    // em produção, o que deu erro (o Google Drive às vezes falha um rename/leitura no G:) volta no próximo ciclo, até 3 vezes;
+    // o destino nunca é sobrescrito, então tentar de novo é seguro (o que já foi gravado vira "já arquivado")
+    const comErro = new Set(res.modo === 'PRODUCAO' ? A.planos(res).filter(x => x.erro).map(x => x.dentroDe || x.rel) : []);
+    estado.tentativas = estado.tentativas || {};
+    for (const rel of lote) {
+      const v = porRel.get(rel); if (!v) continue;
+      const k = chave(rel, v) + '|' + modoChave;
+      if (comErro.has(rel) && (estado.tentativas[k] = (estado.tentativas[k] || 0) + 1) < 3) continue;
+      delete estado.tentativas[k];
+      estado.decididos[k] = Date.now();
+    }
     // "arquivaria" no painel: um a um quando é pouco; resumo quando é a pilha antiga
     if (simulados.length && simulados.length <= 5) simulados.forEach(x => atividade('Arquivaria ' + x.nome + ' em ' + (x.onde || '').replace(/^G:\\Meu Drive\\2026\\/, '').split('\\')[0], 'simulação · ' + (x.onde || '') + ' · ' + Math.round((x.confianca || 0) * 100) + '%'));
     else if (simulados.length) atividade('Arquivaria ' + simulados.length + ' arquivo(s) da Claudio Secretario (simulação)', simulados.slice(0, 5).map(x => x.nome).join(', ') + (simulados.length > 5 ? '…' : ''));
