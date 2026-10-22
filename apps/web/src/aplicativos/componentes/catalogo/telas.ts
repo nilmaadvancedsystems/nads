@@ -58,6 +58,7 @@ export const TELAS: Tela[] = [
   // o site do admin (Vitor, 21/10/2026): só para quem é admin
   { id: 'a-visao-geral', app: 'Admin', nome: 'Visão geral' },
   { id: 'a-robo', app: 'Admin', nome: 'Robô' },
+  { id: 'a-arquivador', app: 'Admin', nome: 'Arquivador' },
   { id: 'a-uso', app: 'Admin', nome: 'Uso do sistema' },
   { id: 'a-banco', app: 'Admin', nome: 'Saúde do banco' },
   { id: 'a-cota', app: 'Admin', nome: 'Cota e custos' },
