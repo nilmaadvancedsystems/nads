@@ -46,9 +46,6 @@ export const TELAS: Tela[] = [
   { id: 't-exec-fiscal-rotina', app: 'Tarefas', nome: 'Executor › Rotina do Fiscal (checklist disfarçada)' },
   { id: 't-cadastro', app: 'Tarefas', nome: 'Cadastro (lista)' },
   { id: 't-cadastro-janela', app: 'Tarefas', nome: 'Cadastro › Janela da empresa' },
-  { id: 't-cadastro-config', app: 'Tarefas', nome: 'Cadastro › Sistema e agentes' },
-  { id: 't-cadastro-robo', app: 'Tarefas', nome: 'Cadastro › Painel do robô' },
-  { id: 't-cadastro-uso', app: 'Tarefas', nome: 'Cadastro › Uso do sistema' },
   { id: 't-drive', app: 'Tarefas', nome: 'Drive' },
   { id: 't-gmail', app: 'Tarefas', nome: 'Gmail' },
   { id: 't-mandei', app: 'Tarefas', nome: 'Área do Cliente › Tickets (o Mandei)' },
@@ -58,6 +55,14 @@ export const TELAS: Tela[] = [
   { id: 't-fin-caixa', app: 'Tarefas', nome: 'Financeiro › Caixa' },
   { id: 't-fin-honorarios', app: 'Tarefas', nome: 'Financeiro › Honorários' },
   { id: 't-fin-plano', app: 'Tarefas', nome: 'Financeiro › Plano de contas' },
+  // o site do admin (Vitor, 21/10/2026): só para quem é admin
+  { id: 'a-visao-geral', app: 'Admin', nome: 'Visão geral' },
+  { id: 'a-robo', app: 'Admin', nome: 'Robô' },
+  { id: 'a-uso', app: 'Admin', nome: 'Uso do sistema' },
+  { id: 'a-banco', app: 'Admin', nome: 'Saúde do banco' },
+  { id: 'a-cota', app: 'Admin', nome: 'Cota e custos' },
+  { id: 'a-feedbacks', app: 'Admin', nome: 'Feedbacks' },
+  { id: 'a-sistema', app: 'Admin', nome: 'Sistema e agentes' },
   // Mandei: o formulário que o cliente abre pelo link
   { id: 'm-formulario', app: 'Mandei', nome: 'Formulário do cliente' },
   // Área do Cliente: o link secreto de cada empresa (Vitor, 16/10/2026)

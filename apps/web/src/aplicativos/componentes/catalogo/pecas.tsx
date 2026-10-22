@@ -38,6 +38,9 @@ import { ConversaDoEscritorio } from '../../tarefas/telas/area-cliente/partes/Co
 import { CartaoDoRobo } from '../../tarefas/telas/cadastro/painel-robo/partes/CartaoDoRobo';
 import { LinhaDoTempoDoRobo } from '../../tarefas/telas/cadastro/painel-robo/partes/LinhaDoTempoDoRobo';
 import { docsDeExemplo } from '../../tarefas/dados/painelRobo';
+import { ListaDaSaude } from '../../tarefas/telas/cadastro/configuracoes/ListaDaSaude';
+import { resumoDeExemplo } from '../../admin/dados/saudeBanco';
+import '../../admin/admin.css';
 import '../../cliente/cliente.css';
 
 const nada = () => undefined;
@@ -347,7 +350,7 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <><select defaultValue="cfop" style={{ width: 180 }}><option value="cfop">CFOP (A-Z)</option><option>Fornecedor (A-Z)</option></select><select className="select-compact" defaultValue="a"><option value="a">Todas</option></select></> },
   { id: 'checkbox', tipo: 'campos', nome: 'Checkbox', descricao: '18 px; o ✓ é desenhado para 18 px', classes: ['input[type=checkbox]', 'chk-auto'], telas: ['c-naturezas', 'c-relatorio', 't-exec-folha'],
     demo: () => <><input type="checkbox" /><input type="checkbox" defaultChecked /><input type="checkbox" disabled /><input type="checkbox" className="chk-auto" defaultChecked /></> },
-  { id: 'interruptor', tipo: 'campos', nome: 'Interruptor', componente: 'Interruptor', classes: ['toggle-switch'], telas: ['c-consulta', 't-cadastro-config'], demo: () => <InterruptorVivo /> },
+  { id: 'interruptor', tipo: 'campos', nome: 'Interruptor', componente: 'Interruptor', classes: ['toggle-switch'], telas: ['c-consulta', 'a-sistema'], demo: () => <InterruptorVivo /> },
   { id: 'data', tipo: 'campos', nome: 'Data (dd/mm/aaaa)', componente: 'CampoData', classes: ['data-mask'], telas: ['c-consulta', 'e-cheque', 'c-cliente-dp'], demo: () => <DataVivo /> },
   { id: 'mes', tipo: 'campos', nome: 'Seletor de mês', componente: 'SeletorMes', classes: ['seletor-mes'], telas: ['t-empresas', 't-contabil', 'c-cliente-guias'], demo: () => <MesVivo /> },
   { id: 'arquivos', tipo: 'campos', nome: 'Escolher arquivos', componente: 'CampoArquivos', classes: ['file-picker'], telas: ['t-empresa-lcdpr', 'c-importacao', 'e-cheque', 'e-creditor', 'c-cliente-chamados'],
@@ -383,7 +386,7 @@ export const PECAS_BASE: Peca[] = [
     ) },
 
   // ─── Tabelas ────────────────────────────────────────────────────────────────────────────────────────────────────────
-  { id: 'tabela', tipo: 'tabelas', nome: 'Tabela padrão', descricao: 'Cabeçalho grudado; números à direita (.num); a conta com o código em negrito e o nome normal', componente: 'TituloDaConta', classes: ['table-wrap', 'table-compact', 'th-sort', 'num'], telas: ['c-relatorio', 'c-consulta', 'e-conferencia', 't-empresas', 'c-cliente-documentos', 'c-cliente-dp', 't-cadastro-robo'], largo: true,
+  { id: 'tabela', tipo: 'tabelas', nome: 'Tabela padrão', descricao: 'Cabeçalho grudado; números à direita (.num); a conta com o código em negrito e o nome normal', componente: 'TituloDaConta', classes: ['table-wrap', 'table-compact', 'th-sort', 'num'], telas: ['c-relatorio', 'c-consulta', 'e-conferencia', 't-empresas', 'c-cliente-documentos', 'c-cliente-dp', 'a-robo'], largo: true,
     demo: () => (
       <div className="table-wrap"><table className="table-compact"><thead><tr><th className="th-sort">Conta</th><th>Descrição</th><th className="num">Notas</th><th className="num">Soma das notas</th><th className="num">Saldo do balancete</th><th>Situação</th></tr></thead>
         <tbody>
@@ -521,7 +524,7 @@ export const PECAS_BASE: Peca[] = [
   // ─── Avisos ─────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'alerta', tipo: 'avisos', nome: 'Alerta (amarelo)', componente: 'Alerta', classes: ['alert', 'alert-title', 'alert-text'], telas: ['t-exec-cheque', 'c-verificar', 'e-importacao', 't-exec-fiscal-rotina'], largo: true,
     demo: () => <Alerta naLinha titulo="Saldo negativo: faça o cheque especial" texto="Gere os lançamentos no Cheque especial, lance no Alterdata e importe o razão de novo." /> },
-  { id: 'alerta-ok', tipo: 'avisos', nome: 'Alerta (verde)', componente: 'Alerta', classes: ['alert alert-ok'], telas: ['c-verificar', 't-exec-fiscal-rotina', 't-cadastro-robo'], largo: true, demo: () => <Alerta naLinha tom="ok" titulo="Tudo bate neste período" texto="Nenhuma pendência." /> },
+  { id: 'alerta-ok', tipo: 'avisos', nome: 'Alerta (verde)', componente: 'Alerta', classes: ['alert alert-ok'], telas: ['c-verificar', 't-exec-fiscal-rotina', 'a-robo'], largo: true, demo: () => <Alerta naLinha tom="ok" titulo="Tudo bate neste período" texto="Nenhuma pendência." /> },
   { id: 'toast', tipo: 'avisos', nome: 'Aviso rápido (toast)', descricao: 'No canto de baixo, some em 4 s', componente: 'useRetorno().toast', classes: ['toast-region', 'toast'], telas: TODAS,
     demo: () => <div className="toast cat-parado">Etapa interrompida: Importação.</div>, aoVivo: c => c.toast('Etapa interrompida: Importação.') },
   { id: 'imp-aviso', tipo: 'avisos', nome: 'Barrinha no topo (importou / Drive)', descricao: 'Por cima da tela: o que deu certo some em 2,7 s; o erro (ex.: nada no Drive) fica até o ×', classes: ['imp-aviso', 'imp-aviso-barra', 'erro', 'info'], telas: ['e-importacao', 't-exec-importacao'],
@@ -613,7 +616,7 @@ export const PECAS_BASE: Peca[] = [
           <button className="drawer-item" type="button"><Icone nome="home" />Início</button>
           <hr className="drawer-sep" />
           {([['Minhas empresas', 'briefcase'], ['Contábil', 'checklist'], ['Cadastro', 'landmark'], ['Fiscal', 'fileText'], ['Drive', 'pasta'], ['Gmail', 'envelope']] as [string, NomeIcone][]).map(([n, i]) => <button key={n} className="drawer-item" type="button"><Icone nome={i} />{n}</button>)}
-          <div className="drawer-foot"><SeletorTema /><button className="drawer-item" type="button"><Icone nome="envelope" />Feedbacks<span className="menu-contador drawer-contador">2</span></button><p>Versão do sistema: 0.0.44 · <button type="button" className="drawer-atualizar">Atualizar para 0.0.45</button></p></div>
+          <div className="drawer-foot"><SeletorTema /><button className="drawer-item" type="button"><Icone nome="escudo" />Admin</button><p>Versão do sistema: 0.0.44 · <button type="button" className="drawer-atualizar">Atualizar para 0.0.45</button></p></div>
         </aside>
       </div>
     ) },
@@ -625,7 +628,7 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <div className="stat-grid sieg-cupons" style={{ width: '100%' }}><div className="stat painel-numero painel-info"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="recibo" /></span><p className="stat-label">Cupons (NFC-e)</p><p className="stat-value num">1.284</p></div><div className="stat painel-numero painel-ok"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="dinheiro" /></span><p className="stat-label">Valor dos cupons</p><p className="stat-value num">R$ 86.412,90</p></div><div className="stat painel-numero painel-neutro"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="hash" /></span><p className="stat-label">Numeração</p><p className="stat-value num sieg-cupons-faixa"><span>40.112 a 41.398</span></p></div><div className="stat painel-numero painel-aviso"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="alert" /></span><p className="stat-label">Faltando · canceladas</p><p className="stat-value num">2 · 3</p></div></div> },
   { id: 'sieg-situacao', tipo: 'cartoes', nome: 'Situação na SEFAZ (pela VM)', descricao: 'Na Sequência de saídas: o botão de consultar, o andamento, as contagens em pílulas (autorizadas em verde, o que pede atenção em amarelo) e a tabela das notas que não batem com o SIEG', classes: ['sieg-situacao', 'sieg-situacao-topo', 'sieg-situacao-chips', 'sieg-situacao-chip'], telas: ['t-exec-fiscal-rotina'], largo: true,
     demo: () => <div className="sieg-situacao" style={{ width: '100%' }}><div className="sieg-situacao-topo"><b>Situação na SEFAZ</b><span className="fraco">Consultada em 15/10 14:20</span><span className="tarefas-barra-espaco" /><button type="button" className="btn btn-outline"><Icone nome="checkCircle" />Consultar de novo</button></div><div className="sieg-situacao-chips"><span className="sieg-situacao-chip ok"><b className="num">1.281</b> Autorizadas</span><span className="sieg-situacao-chip neutro"><b className="num">3</b> Canceladas</span><span className="sieg-situacao-chip aviso"><b className="num">1</b> Não constam</span></div></div> },
-  { id: 'painel-numero', tipo: 'cartoes', nome: 'Números em painéis coloridos', descricao: 'Cada número no tom do que ele é, com o ícone (Sávio, 07/10/2026): azul o total, verde o feito, amarelo o que falta, o vermelho do nads o destaque; laranja, roxo e ciano para os outros (08/10: "quero que colora todos")', classes: ['stat painel-numero', 'painel-info', 'painel-ok', 'painel-aviso', 'painel-marca', 'painel-laranja', 'painel-roxo', 'painel-ciano', 'painel-neutro', 'painel-numero-icone'], telas: ['t-dp-resumo', 't-exec-fiscal-rotina', 't-fiscal-painel', 't-cadastro-robo'], largo: true,
+  { id: 'painel-numero', tipo: 'cartoes', nome: 'Números em painéis coloridos', descricao: 'Cada número no tom do que ele é, com o ícone (Sávio, 07/10/2026): azul o total, verde o feito, amarelo o que falta, o vermelho do nads o destaque; laranja, roxo e ciano para os outros (08/10: "quero que colora todos")', classes: ['stat painel-numero', 'painel-info', 'painel-ok', 'painel-aviso', 'painel-marca', 'painel-laranja', 'painel-roxo', 'painel-ciano', 'painel-neutro', 'painel-numero-icone'], telas: ['t-dp-resumo', 't-exec-fiscal-rotina', 't-fiscal-painel', 'a-robo', 'a-visao-geral'], largo: true,
     demo: () => <div className="stat-grid dp-numeros" style={{ width: '100%' }}>{([['Clientes', 115, 'info', 'briefcase'], ['Concluídos', 48, 'ok', 'check'], ['Pendentes', 67, 'aviso', 'clock'], ['Com folha', 82, 'marca', 'usuario'], ['Pró-labore', 44, 'laranja', 'usuario'], ['Sem movimento', 21, 'roxo', 'list'], ['REINF autorizada', 19, 'ciano', 'fileUp']] as [string, number, string, NomeIcone][]).map(([r, v, tom, ic]) => <div key={r} className={'stat painel-numero painel-' + tom}><span className="painel-numero-icone" aria-hidden="true"><Icone nome={ic} /></span><p className="stat-label">{r}</p><p className="stat-value">{v}</p></div>)}</div> },
   { id: 'stat', tipo: 'cartoes', nome: 'Números (stat)', componente: 'Stat', classes: ['stat-grid', 'stat', 'stat-label', 'stat-value'], telas: ['c-relatorio', 't-insights', 'e-conferencia', 'c-verificar', 't-exec-fiscal-rotina', 'c-cliente', 'c-cliente-dp'], largo: true,
     demo: () => <div className="stat-grid" style={{ width: '100%' }}><Stat rotulo="Notas" valor="462" /><Stat rotulo="Valor total" valor="1.622.422,77" /><Stat rotulo="Entradas no período" valor="63.390,44" cor="entrada" /><Stat rotulo="Saídas no período" valor="63.734,30" cor="saida" /></div> },
@@ -664,7 +667,7 @@ export const PECAS_BASE: Peca[] = [
           <div className="imp-faixa-corpo"><div className="stat-grid"><Stat rotulo="Notas de saída" valor="24" /><Stat rotulo="Valor contábil" valor="58.076,76" cor="saida" /><Stat rotulo="CFOPs" valor="5" /></div></div></div>
       </div>
     ) },
-  { id: 'ag-conversa', tipo: 'cartoes', nome: 'Conversas do Claude por computador', descricao: 'Em Sistema e agentes (só admin, 14/10/2026): o cartão do computador (o nome é a faixa do topo) com uma linha por conversa (o nome, a pasta, o estado, o nível do porteiro e há quanto tempo; o pedido e o agora; os subagentes em selos), as inativas na faixa que abre; e o cadastro do computador (o campo e o botão na mesma linha)', classes: ['ag-conversa', 'ag-conversa-topo', 'ag-conversa-linha', 'ag-conversa-agentes', 'ag-novo', 'ag-novo-linha', 'ag-chave-caixa', 'ag-chave', 'ag-acoes'], telas: ['t-cadastro-config'], largo: true,
+  { id: 'ag-conversa', tipo: 'cartoes', nome: 'Conversas do Claude por computador', descricao: 'Em Sistema e agentes (só admin, 14/10/2026): o cartão do computador (o nome é a faixa do topo) com uma linha por conversa (o nome, a pasta, o estado, o nível do porteiro e há quanto tempo; o pedido e o agora; os subagentes em selos), as inativas na faixa que abre; e o cadastro do computador (o campo e o botão na mesma linha)', classes: ['ag-conversa', 'ag-conversa-topo', 'ag-conversa-linha', 'ag-conversa-agentes', 'ag-novo', 'ag-novo-linha', 'ag-chave-caixa', 'ag-chave', 'ag-acoes'], telas: ['a-sistema'], largo: true,
     demo: () => (
       <div style={{ width: '100%' }}>
         <div className="card">
@@ -691,7 +694,7 @@ export const PECAS_BASE: Peca[] = [
     ) },
 
   // ─── Listas ─────────────────────────────────────────────────────────────────────────────────────────────────────────
-  { id: 'chips', tipo: 'listas', nome: 'Chips de filtro', classes: ['chip-row', 'chip-lbl', 'chip-f', 'on'], telas: ['c-consulta', 'c-naturezas', 't-gmail', 'c-cliente-documentos', 't-cadastro-robo'],
+  { id: 'chips', tipo: 'listas', nome: 'Chips de filtro', classes: ['chip-row', 'chip-lbl', 'chip-f', 'on'], telas: ['c-consulta', 'c-naturezas', 't-gmail', 'c-cliente-documentos', 'a-robo'],
     demo: () => <div className="chip-row"><span className="chip-lbl">Tipo</span><button className="chip-f on" type="button">Todos</button><button className="chip-f" type="button">Entradas</button><button className="chip-f" type="button">Saídas</button></div> },
   { id: 'contadores', tipo: 'listas', nome: 'Contadores', classes: ['tarefas-contador', 'menu-contador', 'imp-faixa-qtd'], telas: ['t-empresas', 'e-importacao', 't-exec-fiscal-rotina'],
     demo: () => <><button className="tarefas-contador" type="button"><Icone nome="briefcase" /><b>235</b> empresas</button><span className="menu-contador">12</span><span className="imp-faixa-qtd">4</span></> },
@@ -709,14 +712,14 @@ export const PECAS_BASE: Peca[] = [
           <td className="ent-acoes"><span className="badge badge-danger">2ª vez</span><button type="button" className="btn btn-outline"><Icone nome="lapis" />Assinar</button></td></tr>
       </tbody></table></div>
     ) },
-  { id: 'ent-linhas', tipo: 'listas', nome: 'Linhas com selo (cartões da entrega)', descricao: 'Nos cartões da Rota (Vencendo, Atestados, Obrigações, Protocolos, Qualidade) e na página do cliente: o nome em negrito e o apoio ao lado, o selo e a ação à direita; a linha inteira pode abrir', classes: ['ent-linhas', 'ent-linha-abre'], telas: ['t-entregas', 't-cadastro-robo'], largo: true,
+  { id: 'ent-linhas', tipo: 'listas', nome: 'Linhas com selo (cartões da entrega)', descricao: 'Nos cartões da Rota (Vencendo, Atestados, Obrigações, Protocolos, Qualidade) e na página do cliente: o nome em negrito e o apoio ao lado, o selo e a ação à direita; a linha inteira pode abrir', classes: ['ent-linhas', 'ent-linha-abre'], telas: ['t-entregas', 'a-robo'], largo: true,
     demo: () => (
       <ul className="ent-linhas" style={{ width: '100%' }}>
         <li><button type="button" className="ent-linha-abre"><div><b>102 - BETA SERVICOS EXEMPLO ME</b><span className="fraco">DARF · outubro/2026</span></div><span className="badge badge-warn">vence em 2 dias</span></button></li>
         <li><div><b>DAS do Simples</b><span className="fraco">20/10 · 3 guias na rota</span></div><span className="badge badge-neutral">vence em 4 dias</span></li>
       </ul>
     ) },
-  { id: 'ent-dados', tipo: 'listas', nome: 'Dados em linhas (rótulo e valor)', descricao: 'O cadastro, a Receita e a entrega feita: o rótulo apagado à esquerda e o valor à direita; linha sem valor não aparece', classes: ['ent-dados'], telas: ['t-entregas', 't-cadastro-robo'],
+  { id: 'ent-dados', tipo: 'listas', nome: 'Dados em linhas (rótulo e valor)', descricao: 'O cadastro, a Receita e a entrega feita: o rótulo apagado à esquerda e o valor à direita; linha sem valor não aparece', classes: ['ent-dados'], telas: ['t-entregas', 'a-robo'],
     demo: () => <dl className="ent-dados" style={{ width: '100%', maxWidth: 420 }}><div><dt>Recebido por</dt><dd>João (exemplo)</dd></div><div><dt>Entregue por</dt><dd>Maria (exemplo)</dd></div><div><dt>Data/hora</dt><dd>15/10/2026, 12:48</dd></div></dl> },
 
   // ─── Carregamento ───────────────────────────────────────────────────────────────────────────────────────────────────
@@ -732,7 +735,7 @@ export const PECAS_BASE: Peca[] = [
   // ─── Gráficos ───────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'progresso', tipo: 'graficos', nome: 'Barra de progresso', classes: ['tarefas-barra', 'parada'], telas: ['t-empresas', 't-contabil', 't-exec-fiscal-rotina'],
     demo: () => <><span className="tarefas-barra"><span style={{ width: '40%' }} /></span><span className="tarefas-barra"><span className="parada" style={{ width: '70%' }} /></span></> },
-  { id: 'rank', tipo: 'graficos', nome: 'Ranking', classes: ['rank', 'rank-item', 'rank-barra'], telas: ['c-relatorio', 't-exec-fiscal-rotina'], largo: true,
+  { id: 'rank', tipo: 'graficos', nome: 'Ranking', classes: ['rank', 'rank-item', 'rank-barra'], telas: ['c-relatorio', 't-exec-fiscal-rotina', 'a-uso', 'a-cota'], largo: true,
     demo: () => <div className="rank" style={{ width: '100%' }}>{[['5101 — Venda de produção', 72], ['1101 — Compra para industrialização', 41], ['2910 — Bonificação', 9]].map(([n, v]) => <button key={n} className="rank-item" type="button"><span className="rank-nome">{n}</span><span className="rank-val">{v}%</span><span className="rank-barra"><span style={{ width: v + '%', background: 'var(--accent)' }} /></span></button>)}</div> },
 
   { id: 'barras-dia', removida: { como: 'excluida', em: '06/10/2026', motivo: 'Vitor: "não curti nenhum dos gráficos novos"; a composição voltou para o Ranking e o resto para os Números (Stat).', sumir: true }, tipo: 'graficos', nome: 'Barras por dia do mês', descricao: 'Uma barra por dia; o dia, as notas e o valor ao passar o mouse (as barras sobem ao aparecer)', componente: 'BarrasPorDia', classes: ['graf-dias', 'graf-dia'], telas: ['t-exec-fiscal-rotina'], largo: true,
@@ -747,7 +750,7 @@ export const PECAS_BASE: Peca[] = [
     uso: "<RoscaComLegenda fatias={[{ id, rotulo, valor, tom: 'ok'|'aviso'|'perigo'|'neutro' }]} total={n} subtitulo=\"clientes\" ativa={id|null} onEscolher={...} />",
     demo: () => <div className="card" style={{ width: '100%', maxWidth: 520, margin: 0 }}><RoscaComLegenda total={40} subtitulo="clientes" ativa="pendente" onEscolher={nada}
       fatias={[{ id: 'atrasada', rotulo: 'Atrasados', valor: 6, tom: 'perigo' }, { id: 'pendente', rotulo: 'Pendentes', valor: 14, tom: 'aviso' }, { id: 'feita', rotulo: 'Concluídos', valor: 17, tom: 'ok' }, { id: 'sem', rotulo: 'Sem movimento', valor: 3, tom: 'neutro' }]} /></div> },
-  { id: 'barras-coluna', tipo: 'graficos', nome: 'Barras em coluna (a barra filtra)', descricao: 'Uma coluna por mês ou por etapa, com o número em cima; a altura é proporcional à maior; clicar na barra escolhe (de novo, desfaz). Verde ou âmbar (aviso)', componente: 'BarrasEmColuna', classes: ['cert-barras', 'cert-barra', 'cert-barra-cheia'], telas: ['t-senhas', 't-dp-resumo'],
+  { id: 'barras-coluna', tipo: 'graficos', nome: 'Barras em coluna (a barra filtra)', descricao: 'Uma coluna por mês ou por etapa, com o número em cima; a altura é proporcional à maior; clicar na barra escolhe (de novo, desfaz). Verde ou âmbar (aviso)', componente: 'BarrasEmColuna', classes: ['cert-barras', 'cert-barra', 'cert-barra-cheia'], telas: ['t-senhas', 't-dp-resumo', 'a-cota'],
     uso: '<BarrasEmColuna colunas={[{ chave, rotulo, total, sub?, aviso?, leitura }]} ativa={chave|null} onEscolher={...} />',
     demo: () => <div className="card" style={{ width: '100%', margin: 0 }}><BarrasEmColuna ativa="esocial" onEscolher={nada}
       colunas={[['folha', 'Folha', 9], ['esocial', 'eSocial', 14], ['guias', 'Guias', 7], ['reinf', 'REINF', 0], ['entrega', 'Entrega', 11]].map(([chave, rotulo, total]) => ({ chave: String(chave), rotulo: String(rotulo), total: Number(total), aviso: true, leitura: rotulo + ': ' + total }))} /></div> },
@@ -759,16 +762,16 @@ export const PECAS_BASE: Peca[] = [
       <AnelDeContagem dias={20} /></div> },
 
   // o mapa quente do Uso do sistema (Gustavo, 20/10/2026: "um mapa quente que trackei o que tá sendo usado no sistema")
-  { id: 'mapa-calor', tipo: 'graficos', nome: 'Mapa de calor (os cliques na tela)', descricao: 'A grade de 50×50 sobre o contorno da página (o topo e a lateral); quanto mais cliques na célula, mais forte o vermelho; a dica da célula diz quantos', componente: 'MapaDeCalor', classes: ['mapa-calor', 'mapa-calor-celula'], telas: ['t-cadastro-uso'],
+  { id: 'mapa-calor', tipo: 'graficos', nome: 'Mapa de calor (os cliques na tela)', descricao: 'A grade de 50×50 sobre o contorno da página (o topo e a lateral); quanto mais cliques na célula, mais forte o vermelho; a dica da célula diz quantos', componente: 'MapaDeCalor', classes: ['mapa-calor', 'mapa-calor-celula'], telas: ['a-uso'],
     uso: '<MapaDeCalor grade={{ "x_y": cliques }} maior={n} rotulo="Os cliques em Fiscal › Painel" />',
     demo: () => <div style={{ width: '100%', maxWidth: 520 }}><MapaDeCalor rotulo="Exemplo" maior={9} grade={{ '20_10': 9, '21_10': 6, '22_11': 3, '30_24': 5, '31_25': 2, '40_40': 1, '18_30': 4 }} /></div> },
 
   // os botões coloridos do Uso do sistema (21/10/2026: "a tela com botões coloridos"): a cor do calor, do frio ao quente
-  { id: 'pilula-calor', tipo: 'graficos', nome: 'Pílula de calor (o botão pelos cliques)', descricao: 'O nome do botão com o número de cliques, em três tons: azul = pouco (calor-1 e 2), amarelo = médio (calor-3), vermelho = muito usado (calor-4 e 5); calor-0 tracejado = ninguém clicou. A legenda em palavras é a uso-cor. O nível vem de uso.nivelDoCalor', classes: ['uso-pilula', 'calor-0', 'calor-1', 'calor-5', 'uso-cor'], telas: ['t-cadastro-uso'],
+  { id: 'pilula-calor', tipo: 'graficos', nome: 'Pílula de calor (o botão pelos cliques)', descricao: 'O nome do botão com o número de cliques, em três tons: azul = pouco (calor-1 e 2), amarelo = médio (calor-3), vermelho = muito usado (calor-4 e 5); calor-0 tracejado = ninguém clicou. A legenda em palavras é a uso-cor. O nível vem de uso.nivelDoCalor', classes: ['uso-pilula', 'calor-0', 'calor-1', 'calor-5', 'uso-cor'], telas: ['a-uso'],
     uso: '<span className={"uso-pilula calor-" + uso.nivelDoCalor(cliques, maior)}>Exportar Excel<b className="num">89</b></span>',
     demo: () => <div className="uso-botoes">{([['Exportar Excel', 89, 5], ['Filtros', 41, 4], ['Abrir', 23, 3], ['Salvar', 9, 2], ['Imprimir', 2, 1], ['Fechar', 0, 0]] as const).map(([r, n, c]) => <span key={r} className={'uso-pilula calor-' + c}>{r}<b className="num">{n}</b></span>)}</div> },
   // o mapa na tela (21/10/2026): por cima da tela de verdade, a moldura de cada controle na cor do calor e a barra de baixo
-  { id: 'mapa-na-tela', tipo: 'graficos', nome: 'Mapa na tela (os botões pintados)', descricao: 'Ligado pelo "Ver na tela" do Uso do sistema: cada controle da tela aberta ganha a moldura na cor do calor com o número de cliques (a camada não pega clique); a barra de baixo diz a tela, o que cada cor quer dizer e tem o Sair. Montado uma vez na casca (casca/MapaNaTela.tsx)', classes: ['mapa-tela-caixa', 'mapa-tela-barra'], telas: ['t-cadastro-uso'],
+  { id: 'mapa-na-tela', tipo: 'graficos', nome: 'Mapa na tela (os botões pintados)', descricao: 'Ligado pelo "Ver na tela" do Uso do sistema: cada controle da tela aberta ganha a moldura na cor do calor com o número de cliques (a camada não pega clique); a barra de baixo diz a tela, o que cada cor quer dizer e tem o Sair. Montado uma vez na casca (casca/MapaNaTela.tsx)', classes: ['mapa-tela-caixa', 'mapa-tela-barra'], telas: ['a-uso'],
     uso: '<MapaNaTela /> (na casca; liga com ligarMapaNaTela(periodo))',
     demo: () => (
       <div style={{ position: 'relative', display: 'flex', gap: 16, padding: 12, transform: 'translateZ(0)' }}>
@@ -1002,7 +1005,7 @@ export const PECAS_BASE: Peca[] = [
       </div>
     ) },
   // o painel do robô (Vitor, 21/10/2026: "quero um painel para eu saber o que o robô está fazendo, arquivando e afins")
-  { id: 'robo-cartao', tipo: 'cartoes', nome: 'Cartão do robô (Painel do robô)', descricao: 'Um por robô (o do PC e o da nuvem): o nome na faixa do topo com o selo suave da situação (Ligado verde, Atrasado amarelo, Desligado/Sem sinal vermelho), os dados em linhas (onde roda e a máquina, o último sinal, ligado desde, a versão do código, os módulos), o que está fazendo agora ("ocioso, esperando pedido" quando nada) e os módulos que não ligaram, com o motivo. Sem o painel publicado, o aviso para atualizar o robô', componente: 'CartaoDoRobo', classes: ['card robo-cartao', 'card-head', 'badge badge-suave', 'ent-dados', 'robo-cartao-agora', 'ag-conversa-linha', 'robo-cartao-modulos'], telas: ['t-cadastro-robo'], largo: true,
+  { id: 'robo-cartao', tipo: 'cartoes', nome: 'Cartão do robô (Painel do robô)', descricao: 'Um por robô (o do PC e o da nuvem): o nome na faixa do topo com o selo suave da situação (Ligado verde, Atrasado amarelo, Desligado/Sem sinal vermelho), os dados em linhas (onde roda e a máquina, o último sinal, ligado desde, a versão do código, os módulos), o que está fazendo agora ("ocioso, esperando pedido" quando nada) e os módulos que não ligaram, com o motivo. Sem o painel publicado, o aviso para atualizar o robô', componente: 'CartaoDoRobo', classes: ['card robo-cartao', 'card-head', 'badge badge-suave', 'ent-dados', 'robo-cartao-agora', 'ag-conversa-linha', 'robo-cartao-modulos'], telas: ['a-robo', 'a-visao-geral'], largo: true,
     uso: "<CartaoDoRobo s={entregas.situacaoDoRobo('pc', batimento, sinalAntigo)} />",
     demo: () => {
       const d = docsDeExemplo();
@@ -1014,7 +1017,18 @@ export const PECAS_BASE: Peca[] = [
         </div>
       );
     } },
-  { id: 'robo-linha-do-tempo', tipo: 'listas', nome: 'Linha do tempo do robô (Painel do robô)', descricao: 'Uma linha por coisa que o robô fez, a mais nova em cima: o que aconteceu em negrito, o detalhe e o robô embaixo (quebra a linha, nunca corta), o tipo num selo suave (o erro em vermelho, "Erro · FGTS") e quando à direita ("hoje, 09:12", "ontem, 18:02", "12/10, 07:00"). No celular, o selo e a hora descem para baixo do texto. Com os chips de filtro em cima (o tipo e "Só os erros")', componente: 'LinhaDoTempoDoRobo', classes: ['ent-linhas robo-linhas', 'robo-linha-texto', 'badge badge-suave', 'robo-quando'], telas: ['t-cadastro-robo'], largo: true,
+  { id: 'robo-linha-do-tempo', tipo: 'listas', nome: 'Linha do tempo do robô (Painel do robô)', descricao: 'Uma linha por coisa que o robô fez, a mais nova em cima: o que aconteceu em negrito, o detalhe e o robô embaixo (quebra a linha, nunca corta), o tipo num selo suave (o erro em vermelho, "Erro · FGTS") e quando à direita ("hoje, 09:12", "ontem, 18:02", "12/10, 07:00"). No celular, o selo e a hora descem para baixo do texto. Com os chips de filtro em cima (o tipo e "Só os erros")', componente: 'LinhaDoTempoDoRobo', classes: ['ent-linhas robo-linhas', 'robo-linha-texto', 'badge badge-suave', 'robo-quando'], telas: ['a-robo', 'a-visao-geral', 'a-banco'], largo: true,
     uso: '<LinhaDoTempoDoRobo itens={atividades} agora={Date.now()} />',
     demo: () => <div className="card" style={{ width: '100%', margin: 0 }}><LinhaDoTempoDoRobo itens={docsDeExemplo().atividades.slice(0, 5)} agora={Date.now()} /></div> },
+  // o site do admin (21/10/2026)
+  { id: 'saude-lista', tipo: 'listas', nome: 'Lista da saúde (ok / atenção / parado)', descricao: 'Uma linha por item: o ponto colorido (verde ok, âmbar atenção, vermelho parado, cinza sem informação), o rótulo, o texto e o detalhe embaixo (quebra a linha, nunca corta). Com o placar em cima ("Tudo funcionando" ou "N itens precisam de atenção"). Em Sistema e agentes (a saúde do sistema) e no site do admin (a saúde do banco)', componente: 'ListaDaSaude', classes: ['saude-lista', 'saude-ponto', 'saude-rotulo', 'saude-texto', 'cad-placar'], telas: ['a-sistema', 'a-visao-geral', 'a-banco'], largo: true,
+    uso: '<ListaDaSaude itens={entregas.saudeDoBanco({ resumo, uso, sinais, filas, errosDaFila })} />',
+    demo: () => {
+      const agora = Date.now();
+      const resumo = resumoDeExemplo(agora);
+      const itens = entregas.saudeDoBanco({ resumo, uso: entregas.lerUsoDeHoje({ em: new Date(agora - 6e5).toISOString(), leituras: 38200, gravacoes: 1320, exclusoes: 240 }), sinais: [], filas: [], errosDaFila: [] }, agora);
+      return <div className="card" style={{ width: '100%', margin: 0 }}><div className="cad-placar atencao"><span className="saude-ponto" aria-hidden="true" /><b>{itens.filter(i => i.tom === 'aviso' || i.tom === 'erro').length} itens precisam de atenção</b></div><ListaDaSaude itens={itens} /></div>;
+    } },
+  { id: 'admin-numero', tipo: 'cartoes', nome: 'Número do painel que abre a página (site do admin)', descricao: 'O número em painel colorido (painel-numero) como link: clicar abre a página dele (Robôs ligados → Robô, Feedbacks altos novos → Feedbacks). O tom segue a situação: verde tudo certo, âmbar atenção, laranja erro', classes: ['stat painel-numero admin-numero', 'admin-numeros', 'painel-ok', 'painel-aviso', 'painel-laranja'], telas: ['a-visao-geral'], largo: true,
+    demo: () => <div className="stat-grid dp-numeros admin-numeros" style={{ width: '100%' }}>{([['Robôs ligados', '2 de 2', 'ok', 'robo'], ['Erros em 24 h', '3', 'laranja', 'alert'], ['Filas atrasadas', '1', 'aviso', 'clock'], ['Feedbacks altos novos', '0', 'ok', 'mensagem']] as [string, string, string, NomeIcone][]).map(([r, v, tom, ic]) => <a key={r} href="#" onClick={e => e.preventDefault()} className={'stat painel-numero admin-numero painel-' + tom}><span className="painel-numero-icone" aria-hidden="true"><Icone nome={ic} width={16} height={16} /></span><p className="stat-label">{r}</p><p className="stat-value num">{v}</p></a>)}</div> },
 ];

@@ -15,7 +15,7 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const { search } = useLocation();
   const { escolher, comLogin } = useOperador();
   const op = useOperador().operador as Operador;
-  // as páginas que a pessoa vê (o sênior não vê o Sistema do Cadastro; 19/10/2026)
+  // as páginas que a pessoa vê
   const a = aplicacoesDe(op).find(x => x.id === app) ?? aplicacao(app);
   // o Cadastro também com a barra lateral (14/10/2026: "cadê a barra?"), como os outros módulos; as abas no alto não voltam
   const comAbas = false;
@@ -53,7 +53,7 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
     abrirPessoal: (topico: string) => pessoal.abrir(topico),
     naPessoal: pessoal.topico !== null,
     dev, setDev,
-    /** os Feedbacks no pé da gaveta (só o admin) */
+    /** o link Admin no pé da gaveta (só o admin) */
     admin: op.admin,
   };
 }

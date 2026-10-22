@@ -1,7 +1,8 @@
 // As etiquetas do envelope do mês (Heverton, 20/10/2026: "Gerador de etiqueta mensal"; o modelo é a planilha
 // "ETIQUETA ENVELOPE 2026"): a faixa preta com a logo da Nilma e "MOVIMENTO MM/AAAA", o código do cliente em destaque,
-// o nome, a caixa com o regime (ou o texto escolhido) e o departamento embaixo. A folha é A4 em pé; 1, 2 ou 4 etiquetas
-// por página, de altura fixa (nenhuma é cortada entre duas páginas). A logo vem pronta (o SVG) de quem chama, desenhada
+// o nome, a caixa com o regime (ou o texto escolhido) e o departamento embaixo. Uma por página: a folha A4 deitada,
+// a etiqueta ocupando a folha inteira (22/10/2026: "isso tinha que ficar de lado, pegando a folha inteira"); 2 ou 4 por
+// página: a folha em pé, em metades ou quartos. Altura fixa (nenhuma é cortada entre duas páginas). A logo vem pronta (o SVG) de quem chama, desenhada
 // uma vez só no documento.
 import { competenciaParaEtiqueta } from './etiquetasDaFolha';
 
@@ -21,8 +22,16 @@ export interface PedidoDeEnvelopes {
 }
 
 /**
- * O regime abreviado, para a caixa da etiqueta (o "PJ-F" da planilha não tem regra conhecida: até o Heverton dizer o
- * que é, vai a sigla do regime do Cadastro): Simples → SN, MEI → MEI, Presumido → LP, Real → LR, Isentas → ISENTA,
+ * O tipo da empresa na caixa da etiqueta, como na planilha (22/10/2026: "PJ-F é pessoa jurídica fiscal"): PJ (pessoa
+ * jurídica) ou PF (os regimes Física e Domésticas), um traço e a inicial do departamento do envelope (F, C ou P).
+ */
+export function tipoNaEtiqueta(regime: string | null | undefined, departamento: DepartamentoDoEnvelope): string {
+  const r = String(regime || '').trim();
+  return (r === 'Física' || r === 'Domésticas' ? 'PF' : 'PJ') + '-' + (departamento === 'Contábil' ? 'C' : departamento === 'Pessoal' ? 'P' : 'F');
+}
+
+/**
+ * O regime abreviado, para a caixa da etiqueta (a opção "Sigla"): Simples → SN, MEI → MEI, Presumido → LP, Real → LR, Isentas → ISENTA,
  * Física → PF, Domésticas → DOM.
  */
 export function regimeAbreviado(regime: string | null | undefined): string {
@@ -56,13 +65,14 @@ export function htmlDosEnvelopes(p: PedidoDeEnvelopes): string {
   for (let i = 0; i < p.etiquetas.length; i += porPagina) {
     paginas.push(`<section class="pagina p${porPagina}">${p.etiquetas.slice(i, i + porPagina).map(e => etiqueta(e, movimento, p.departamento, p.logo.uso)).join('')}</section>`);
   }
-  // a altura útil (297 − 2 × 8 de margem = 281 mm) dividida pelas linhas, com 6 mm entre elas
-  const linhas = porPagina === 1 ? 1 : 2;
-  const altura = porPagina === 1 ? 140 : Math.floor((281 - 6 * (linhas - 1)) / linhas);
-  const escala = porPagina === 4 ? 0.62 : 1;
+  // uma por página: a folha deitada, a etiqueta na altura útil inteira (210 − 2 × 8 de margem = 194 mm), maior;
+  // 2 ou 4: a folha em pé, a altura útil (297 − 2 × 8 = 281 mm) em duas linhas, com 6 mm entre elas
+  const deitada = porPagina === 1;
+  const altura = deitada ? 194 : Math.floor((281 - 6) / 2);
+  const escala = deitada ? 1.3 : porPagina === 4 ? 0.62 : 1;
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Etiquetas ${esc(movimento)} — ${esc(p.departamento)}</title>
 <style>
-  @page{size:A4;margin:8mm}
+  @page{size:A4${deitada ? ' landscape' : ''};margin:8mm}
   *{box-sizing:border-box}
   :root{color-scheme:light}
   html,body{margin:0;padding:0;background:#fff}
@@ -80,6 +90,8 @@ export function htmlDosEnvelopes(p: PedidoDeEnvelopes): string {
   .env-nome{font-size:${24 * escala}pt;font-weight:700;text-align:center;padding:${4 * escala}mm ${6 * escala}mm 0;line-height:1.15;border-top:.6mm solid #bbb;margin-top:${5 * escala}mm;width:100%}
   .env-caixa-linha{flex:1;display:flex;align-items:center;justify-content:center;width:100%}
   .env-caixa{display:inline-block;min-width:${70 * escala}mm;border:.4mm solid #000;padding:${3 * escala}mm ${8 * escala}mm;font-size:${26 * escala}pt;text-align:center}
-  .env-dep{font-size:${22 * escala}pt;font-weight:700;padding-bottom:${5 * escala}mm}
+  .env-dep{font-size:${22 * escala}pt;font-weight:700;padding-bottom:${5 * escala}mm}${deitada ? `
+  /* uma por folha: os tamanhos da planilha (MOVIMENTO 45, código 72, nome 45, caixa 48, departamento 36) */
+  .env-mov{font-size:45pt}.env-cod{font-size:72pt}.env-nome{font-size:40pt}.env-caixa{font-size:48pt}.env-dep{font-size:36pt}` : ''}
 </style></head><body>${p.logo.definicao}${paginas.join('')}</body></html>`;
 }

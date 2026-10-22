@@ -217,7 +217,7 @@ const LINHAS: readonly Linha[] = [
   [542,"FELIPE ANDRADE ACADEMIA ESPECIALIZADA LTDA","Simples","FABIANA","Pró-Labore",0,"11111110","WhatsApp",""],
   [543,"FELIPE ANDRADE ACADEMIA ESPECIALIZADA LTDA","Simples","FABIANA","Sem Movimento",0,"00001100","WhatsApp",""],
   [544,"HELLO NUTRITION COMERCIO DE ALIMENTOS E BEBIDAS LTDA","Simples","HEVERTON","Pró-Labore",0,"11111110","WhatsApp",""],
-  [545,"HELLO NUTRITION COMERCIO DE ALIMENTOS E BEBIDAS LTDA","Simples","HEVERTON","Sem Movimento",0,"00001100","WhatsApp",""],
+  [545,"HELLO NUTRITION COMERCIO DE ALIMENTOS E BEBIDAS LTDA - FILIAL 02","Simples","HEVERTON","Sem Movimento",0,"00001100","WhatsApp",""],
   [546,"DERACI JOSE DE OLIVEIRA","Física","","Folha",0,"11111111","Malote",""],
   [547,"DERACI JOSE DE OLIVEIRA","Física","","Folha",0,"11111111","Malote",""],
   [548,"JOSIEL GOMES ARRUDA SPOSITO E OUTRO","Física","","Sem Movimento",0,"00001100","eContador",""],

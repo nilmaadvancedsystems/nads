@@ -642,7 +642,7 @@ const REGRAS_PDF = [
       const fonte = (/FONTE PAGADORA[\s\S]{0,160}?NOME(?: EMPRESARIAL)?\s*:?\s*[—-]?\s*\|?\s*\[?([A-Z0-9&. /-]{4,})/.exec(u) || [])[1];
       return { ano, fonte: fonte ? fonte.trim() : null };
     } },
-  { tipo: 'OPERACAO DE CREDITO', setor: 'CONTABIL', re: /EXTRATO DE (EMPRESTIMOS?|OPERACAO DE CREDITO)|EVOLUCAO CONTRATUAL|CONTRATO DE (EMPRESTIMO|FINANCIAMENTO)|CEDULA DE CREDITO BANCARIO/, fonte: '04 (Op. Crédito)', campos: () => ({}) },
+  { tipo: 'OPERACAO DE CREDITO', setor: 'CONTABIL', re: /EXTRATO DE (EMPRESTIMOS?|OPERACAO DE CREDITO)|EVOLUCAO CONTRATUAL|CONTRATO DE (EMPRESTIMO|FINANCIAMENTO)|CEDULA DE CREDITO BANCARIO|DADOS DA CONTRATACAO|GIRO PRONAMPE/, fonte: '04 (Op. Crédito)', campos: () => ({}) },
   { tipo: 'RECEBIMENTO DE CLIENTES', setor: 'CONTABIL', re: /RELATORIO DE RECEBIMENTOS|TITULOS LIQUIDADOS|TITULOS BAIXADOS|TITULOS PAGOS POR CONTA CREDITO|RELATORIO DE COBRANCA|CREDITOS? DE LIQUIDACAO|CRED\.? LIQUIDACAO/, fonte: 'Dicionário §6.1', campos: u => camposDeExtrato(u) },
   { tipo: 'MAQUININHAS', setor: 'CONTABIL', re: /RELATORIO DE VENDAS|LISTA DE VENDAS|EXTRATO DE VENDAS|EXTRATO DE LIQUIDACAO|EXTRATO DE RECEBIVEIS|RESUMO DE VENDAS|VENDAS POR BANDEIRA|CONCILIACAO DE (VENDAS|RECEBIVEIS)|RELATORIO DE CONCILIACAO/, fonte: 'Dicionário §6.1', campos: u => camposDeExtrato(u) },
   { tipo: 'APLICACOES', setor: 'CONTABIL', re: /EXTRATO DE APLICAC|EXTRATO DE INVESTIMENTO|EXTRATO DE FUNDOS|POSICAO DE INVESTIMENTO|RENDIMENTOS DE APLICAC|INVESTIMENTOS BRADESCO|TOTAL APLICADO|^[\s\S]{0,150}RENDE FACIL|OUROCAP|BRASILCAP|TITULO DE CAPITALIZACAO/, fonte: 'Dicionário §6.1; 04 (capitalização)', campos: u => camposDeExtrato(u) },
@@ -1118,9 +1118,16 @@ function montarContabil(regra, campos, u, bruto, entrada, ctx, ev, porHash) {
   if (!c.cliente) return { acao: 'NAO_IDENTIFICADO', motivo: c.motivo, confianca: 0.3, tipo: regra.tipo, setor: 'CONTABIL', evidencias: ev.concat(c.candidatos ? 'candidatos ' + c.candidatos.join(', ') : []) };
   const base = { cliente: c.cliente, comoCliente: c.como, setor: 'CONTABIL', tipo: regra.tipo, fonte: regra.fonte };
   if (regra.tipo === 'OPERACAO DE CREDITO') {
-    // 04: OPERAÇÕES DE CRÉDITO\[ANO]\[TIPO]\[BANCO]\[Nº CONTRATO]\ — tipo e nº do contrato têm layout diferente em cada
-    // banco; até haver regra por banco, vai para conferência com a sugestão
-    return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CONTRATO_SEM_NUMERO', confianca: 0.6, evidencias: ev.concat('operação de crédito reconhecida; nº do contrato/tipo sem regra determinística por banco') });
+    // 04: OPERAÇÕES DE CRÉDITO\[ANO]\[TIPO]\[BANCO]\[Nº CONTRATO]\CONTRATO.pdf. Só o CONTRATO/comprovante da contratação, com
+    // o nº do contrato escrito (ex. "Comprovante de Transação Bancária · Giro Pronampe · Número contrato: 17896320"); o
+    // extrato/evolução da operação (nome com o período) ainda vai para conferência
+    const num = (/N(?:UMERO|º|O\.?)?\s*(?:DO\s+)?CONTRATO\s*:?\s*([0-9][0-9./-]{4,})/.exec(u) || [])[1];
+    const tipoOp = /CONSORCIO/.test(u) ? 'CONSÓRCIO' : /FINANCIAMENTO|FINAME|\bFNE\b/.test(u) ? 'FINANCIAMENTO' : /EMPRESTIMO|GIRO|PRONAMPE/.test(u) ? 'EMPRÉSTIMO' : null;
+    const ehContrato = /DADOS DA CONTRATACAO|DATA DE CONTRATACAO|CONTRATO DE (EMPRESTIMO|FINANCIAMENTO)|CEDULA DE CREDITO BANCARIO/.test(u) && !/EXTRATO|EVOLUCAO CONTRATUAL/.test(u.slice(0, 400));
+    const bancoOp = bancoDoTexto(bruto, true);
+    const dataOp = dataBr(linhaApos(u, /DATA DE CONTRATACAO|DATA DA CONTRATACAO|DATA DA OPERACAO/, 120));
+    if (!ehContrato || !num || !tipoOp || !bancoOp || !dataOp) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: !num ? 'CONTRATO_SEM_NUMERO' : !tipoOp ? 'TIPO_AUSENTE' : !bancoOp ? 'BANCO_AUSENTE' : 'CONTRATO_SEM_NUMERO', confianca: 0.6, evidencias: ev.concat('operação de crédito: só o contrato com nº, tipo, banco e data escritos é arquivado sozinho (extrato da operação vai para conferência)') });
+    return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: { ano: +dataOp.slice(6) }, caminho: ['CONTÁBIL', 'OPERAÇÕES DE CRÉDITO', dataOp.slice(6), tipoOp, bancoOp, num.replace(/[./]/g, '-')], nomeFinal: 'CONTRATO.pdf', fonte: '04 (Op. Crédito)' });
   }
   if (regra.tipo === 'INFORME DE RENDIMENTOS') {
     if (!campos.ano) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5 });

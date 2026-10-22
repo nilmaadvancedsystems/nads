@@ -86,7 +86,30 @@ igual('lado a lado: o texto cita o destino diferente', /2 - Y/.test(C.textoDoLad
     const linhas = fs.readFileSync(path.join(controle, 'continuo', diario[0]), 'utf8').trim().split('\n').map(JSON.parse);
     igual('ciclo: decidiu só a nota (o temporário do Office ficou de fora)', linhas.map(l => [l.rel, l.modo]), [['nota.xml', 'SIMULACAO']]);
     igual('ciclo: simulação não moveu nada', fs.existsSync(arq), true);
+    // o acompanhamento do site do admin (arquivador-acompanhamento.js) viu a varredura e a decisão
+    const acomp = JSON.parse(fs.readFileSync(path.join(controle, 'continuo', 'acompanhamento.json'), 'utf8'));
+    const nota = acomp.ultimos.concat(acomp.pendentes).find(x => x.nome === 'nota.xml');
+    igual('acompanhamento: o config, a nota decidida e a passada', [acomp.config.modo, !!nota, acomp.passada && acomp.passada.feitos], ['simulacao', true, 1]);
+    igual('acompanhamento: o histórico do dia no PC', fs.readdirSync(path.join(controle, 'continuo')).some(f => /^arquivados-\d{4}-\d{2}-\d{2}\.jsonl$/.test(f)), true);
     igual('ciclo: já decidido não volta no próximo ciclo', await (async () => { const v2 = C.iniciar(base); await v2.ciclo(); await v2.ciclo(); v2.parar(); return fs.readFileSync(path.join(controle, 'continuo', diario[0]), 'utf8').trim().split('\n').length; })(), 1);
+
+    // produção com erro (o Google Drive falhou o rename): o arquivo volta no próximo ciclo, até 3 vezes, e fica na origem
+    const origemP = path.join(sb, 'origem-p'), controleP = path.join(sb, 'controle-p');
+    fs.mkdirSync(controleP, { recursive: true });
+    fs.writeFileSync(path.join(controleP, 'config.json'), JSON.stringify({ modo: 'producao', tiposProducao: 'todos', moverNaoIdentificados: true, estavelMs: 0 }));
+    const dia = new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-NOVO';
+    fs.mkdirSync(path.join(origemP, 'NÃO IDENTIFICADOS'), { recursive: true });
+    fs.writeFileSync(path.join(origemP, 'NÃO IDENTIFICADOS', dia), 'um arquivo no lugar da pasta do dia: o mkdir falha');
+    const arqP = path.join(origemP, 'nota.xml');
+    fs.writeFileSync(arqP, xml); fs.utimesSync(arqP, passado, passado);
+    const vp = C.iniciar(Object.assign({}, base, { origem: origemP, controle: controleP }));
+    const resumos = [];
+    for (let i = 0; i < 6; i++) resumos.push(await vp.ciclo());
+    vp.parar();
+    const diarioP = fs.readdirSync(path.join(controleP, 'continuo')).filter(f => /^decisoes-/.test(f));
+    const linhasP = fs.readFileSync(path.join(controleP, 'continuo', diarioP[0]), 'utf8').trim().split('\n').map(JSON.parse);
+    igual('produção com erro: tentou 3 vezes e parou', [linhasP.length, linhasP.every(l => l.acao === 'NAO_IDENTIFICADO' && l.erro && l.modo === 'SIMULACAO')], [3, true]);
+    igual('produção com erro: o original ficou na origem', fs.existsSync(arqP), true);
   } finally { fs.rmSync(sb, { recursive: true, force: true }); }
   console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
   process.exit(falhas ? 1 : 0);

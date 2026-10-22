@@ -298,10 +298,11 @@ function varrer(origem, opcoes) {
  * Mesmo conteúdo já gravado (no mesmo nome, num " (N)" da mesma pasta, ou registrado no manifesto da rotina antiga com
  * o arquivo ainda lá) = JA_ARQUIVADO. Nome ocupado por outro conteúdo = próximo " (N)" livre (Dicionário §2).
  */
-function conferirDestino(d, hash, ctx) {
+function conferirDestino(d, hash, ctx, soNaPasta) {
   const pasta = path.join(ctx.clientes, d.destinoRelativo);
   const anterior = ctx.manifesto.get(hash);
-  if (anterior && existe(anterior, ctx)) return { situacao: 'JA_ARQUIVADO', nomeFinal: path.basename(anterior), onde: anterior };
+  // soNaPasta (as cópias, ex. a NFS-e da Nilma no tomador): o manifesto antigo só vale se o arquivo dele está NESTA pasta
+  if (anterior && existe(anterior, ctx) && (!soNaPasta || path.dirname(anterior).toLowerCase() === pasta.toLowerCase())) return { situacao: 'JA_ARQUIVADO', nomeFinal: path.basename(anterior), onde: anterior };
   const ext = path.extname(d.nomeFinal), base = d.nomeFinal.slice(0, d.nomeFinal.length - ext.length);
   for (let k = 0; k < 500; k++) {
     const nome = k === 0 ? d.nomeFinal : base + ' (' + k + ')' + ext;
@@ -313,14 +314,28 @@ function conferirDestino(d, hash, ctx) {
   }
   throw new Error('nomes esgotados em ' + pasta);
 }
-function existe(p, ctx) { if (!ctx.existe.has(p)) { let ok = false; try { ok = fs.statSync(p).isFile(); } catch (e) {} ctx.existe.set(p, ok); } return ctx.existe.get(p); }
-function hashDe(p, ctx) { if (!ctx.hashes.has(p)) ctx.hashes.set(p, sha(fs.readFileSync(p))); return ctx.hashes.get(p); }
+// "existe" é qualquer coisa com o nome (a rotina antiga deixou PASTAS chamadas "CONTRATO.pdf"): ocupado, vai para " (N)"
+function existe(p, ctx) { if (!ctx.existe.has(p)) { let ok = false; try { fs.statSync(p); ok = true; } catch (e) {} ctx.existe.set(p, ok); } return ctx.existe.get(p); }
+function hashDe(p, ctx) { if (!ctx.hashes.has(p)) { let h = ''; try { if (fs.statSync(p).isFile()) h = sha(fs.readFileSync(p)); } catch (e) {} ctx.hashes.set(p, h); } return ctx.hashes.get(p); }
+
+/**
+ * Move um arquivo. Entre discos (o G: do Drive para a quarentena no C:) o rename do Windows não vale (EXDEV): copia,
+ * confere o hash da cópia e só então tira o original. Nunca sobrescreve o destino.
+ */
+function mover(de, para) {
+  try { fs.renameSync(de, para); return; } catch (e) { if (e.code !== 'EXDEV') throw e; }
+  const buf = fs.readFileSync(de);
+  fs.writeFileSync(para, buf, { flag: 'wx' });
+  if (sha(fs.readFileSync(para)) !== sha(buf)) { try { fs.unlinkSync(para); } catch (x) { /* fica a cópia ruim */ } throw new Error('a cópia para ' + para + ' não conferiu; o original ficou'); }
+  fs.unlinkSync(de);
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 // a execução
 // ---------------------------------------------------------------------------------------------------------------------
 async function executar(opcoes) {
   opcoes = Object.assign({ modo: 'SIMULACAO', origem: ORIGEM, clientes: CLIENTES, controle: CONTROLE }, opcoes);
+  for (const [k, v] of [['origem', ORIGEM], ['clientes', CLIENTES], ['controle', CONTROLE]]) if (!opcoes[k]) opcoes[k] = v;   // undefined passado não apaga o padrão
   const producao = opcoes.modo === 'PRODUCAO';
   if (producao) {
     if (!opcoes.confirmo) throw new Error('PRODUCAO exige --confirmo');
@@ -377,7 +392,7 @@ async function decidirUm(nome, rel, buffer, ctx) {
     if (c.nomeFinal !== d.nomeFinal && c.situacao === 'NOVO') item.evidencias.push('nome ocupado por outro conteúdo: numerado (Dicionário §2, E402)');
     // a mesma peça em outro cliente (NFS-e de honorários da Nilma: também no tomador)
     for (const cp of d.copias || []) {
-      const cc = conferirDestino({ destinoRelativo: cp.destinoRelativo, nomeFinal: cp.nomeFinal }, entrada.hash, ctx);
+      const cc = conferirDestino({ destinoRelativo: cp.destinoRelativo, nomeFinal: cp.nomeFinal }, entrada.hash, ctx, true);
       item.copias.push(Object.assign({}, cp, { situacao: cc.situacao, nomeFinal: cc.nomeFinal, onde: cc.onde }));
     }
     const faltaAlgo = c.situacao === 'NOVO' || item.copias.some(cp => cp.situacao === 'NOVO');
@@ -398,10 +413,11 @@ async function decidirUm(nome, rel, buffer, ctx) {
 function aplicar(res, opcoes, ctx) {
   const dia = dois(new Date().getDate()) + '-' + dois(new Date().getMonth() + 1) + '-' + new Date().getFullYear();
   const quarentena = path.join(opcoes.controle, 'QUARENTENA', dia);
-  const ni = path.join(opcoes.origem, NAO_IDENTIFICADOS, res.id.replace(/^EXEC-/, ''));
+  // a subpasta de NÃO IDENTIFICADOS: a da execução, ou a que o modo contínuo passa (uma por dia, não uma por lote)
+  const ni = path.join(opcoes.origem, NAO_IDENTIFICADOS, opcoes.pastaNaoIdentificados || res.id.replace(/^EXEC-/, ''));
   const manifesto = path.join(opcoes.controle, 'MANIFESTO', 'manifesto.jsonl');
   const painel = opcoes.painel || null;
-  const permitido = it => !opcoes.tiposProducao || opcoes.tiposProducao.some(t => String(it.tipo || '').startsWith(t));
+  const permitido = it => !opcoes.tiposProducao || opcoes.tiposProducao.includes('todos') || opcoes.tiposProducao.some(t => String(it.tipo || '').startsWith(t));
   fs.mkdirSync(path.dirname(manifesto), { recursive: true });
   const linha = (arq, o) => { fs.mkdirSync(path.dirname(arq), { recursive: true }); fs.appendFileSync(arq, JSON.stringify(o) + '\n'); };
   const semSobrescrever = (alvo) => { const ext = path.extname(alvo), base = alvo.slice(0, alvo.length - ext.length); let k = 0, p = alvo; while (fs.existsSync(p)) p = base + ' (' + (++k) + ')' + ext; return p; };
@@ -409,7 +425,7 @@ function aplicar(res, opcoes, ctx) {
     const alvo = semSobrescrever(path.join(ni, it.rel));
     linha(path.join(ni, '_nao_identificados.jsonl'), { arquivo: path.basename(alvo), caminho_relativo: path.dirname(it.rel), status: 'NAO_IDENTIFICADO', motivo: it.motivo, cliente_tentativa: it.cliente, confianca: it.confianca, id_execucao: res.id, timestamp: new Date().toISOString() });
     fs.mkdirSync(path.dirname(alvo), { recursive: true });
-    if (buffer) fs.writeFileSync(alvo, buffer, { flag: 'wx' }); else fs.renameSync(path.join(opcoes.origem, it.rel), alvo);
+    if (buffer) fs.writeFileSync(alvo, buffer, { flag: 'wx' }); else mover(path.join(opcoes.origem, it.rel), alvo);
     it.movidoPara = alvo;
   };
   /** Grava uma cópia num destino (o principal ou uma das cópias), registrando a pasta de cliente que nasceu. */
@@ -433,7 +449,7 @@ function aplicar(res, opcoes, ctx) {
     const alvo = semSobrescrever(path.join(quarentena, it.rel));
     linha(path.join(quarentena, '_quarentena.jsonl'), { hash_original: it.hash, arquivo_original_caminho: it.rel, destino_final: it.gravadoEm || it.onde || null, id_execucao: res.id, timestamp: new Date().toISOString() });
     fs.mkdirSync(path.dirname(alvo), { recursive: true });
-    fs.renameSync(de, alvo);
+    mover(de, alvo);
   };
   for (const it of res.itens) {
     try {

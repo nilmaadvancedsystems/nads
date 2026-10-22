@@ -15,15 +15,15 @@ describe('o Cadastro por nível (Vitor, 19/10/2026: o sênior vê e mexe no cada
     expect(podeMexerNoCadastro(null)).toBe(false);
   });
 
-  it('o sênior vê Empresas e Equipe (os responsáveis), sem o Sistema e agentes e sem o Painel do robô', () => {
-    expect(cadastroDe(op('senior'))?.paginas.map(p => p.id)).toEqual(['empresas', 'usuarios']);
+  it('o Cadastro tem só Empresas e Equipe, para o sênior, o diretor e o admin; o pleno não vê o Cadastro', () => {
+    // o Painel do robô, o Uso do sistema e o Sistema e agentes foram para o site do admin (22/10/2026)
+    for (const o of [op('senior'), op('diretor'), op('senior', true)]) expect(cadastroDe(o)?.paginas.map(p => p.id)).toEqual(['empresas', 'usuarios']);
+    expect(cadastroDe(op('pleno'))).toBeUndefined();
   });
 
-  it('o diretor e o admin continuam com as páginas todas; o pleno não vê o Cadastro', () => {
-    expect(cadastroDe(op('diretor'))?.paginas.map(p => p.id)).toEqual(['empresas', 'usuarios', 'sistema', 'robo']);
-    // o Uso do sistema (21/10/2026) é só do admin
-    expect(cadastroDe(op('senior', true))?.paginas.map(p => p.id)).toEqual(['empresas', 'usuarios', 'sistema', 'robo', 'uso']);
-    expect(cadastroDe(op('pleno'))).toBeUndefined();
+  it('a navegação não tem mais as telas que viraram do site do admin', () => {
+    const ids = aplicacoesDe(op(null, true)).flatMap(a => a.paginas.map(p => a.id + '/' + p.id));
+    for (const id of ['cadastro/sistema', 'cadastro/robo', 'cadastro/uso']) expect(ids).not.toContain(id);
   });
 
   it('o Financeiro continua só com o admin e o diretor', () => {

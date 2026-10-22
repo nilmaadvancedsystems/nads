@@ -121,7 +121,7 @@ export const EMPRESAS: readonly EmpresaDoEscritorio[] = [
   { codigo: 423, nome: "GUGA INDUSTRIA & COMERCIO DE RACAO ANIMAL LTDA", regime: "Simples" },
   { codigo: 576, nome: "GUIMARAES E SILVA INSTITUTO INTEGRADO LTDA", regime: "Simples" },
   { codigo: 544, nome: "HELLO NUTRITION COMERCIO DE ALIMENTOS E BEBIDAS LTDA", regime: "Simples" },
-  { codigo: 545, nome: "HELLO NUTRITION COMERCIO DE ALIMENTOS E BEBIDAS LTDA", regime: "Simples" },
+  { codigo: 545, nome: "HELLO NUTRITION COMERCIO DE ALIMENTOS E BEBIDAS LTDA - FILIAL 02", regime: "Simples" },
   { codigo: 564, nome: "HELLO NUTRITION COMERCIO DE ALIMENTOS E BEBIDAS LTDA - FILIAL", regime: "Simples" },
   { codigo: 592, nome: "HERMES REFLORESTAMENTO E TRANSPORTE LTDA", regime: "Simples" },
   { codigo: 594, nome: "HERMES REFLORESTAMENTO E TRANSPORTE LTDA - FILIAL", regime: "Simples" },

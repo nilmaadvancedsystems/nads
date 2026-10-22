@@ -9,6 +9,8 @@ import type { NomeIcone } from '@nads/ui';
 import type { Operador } from './operador';
 
 export const BASE = '/tarefas';
+/** O site do admin (Painel do robô, Uso do sistema, Sistema e agentes, Feedbacks; 22/10/2026); depois, admin.nilmacontabilidade.com. */
+export const URL_DO_ADMIN = 'https://admin-nilma.web.app';
 
 export type IdAplicacao = 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente';
 
@@ -40,13 +42,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     // do login) e os Robôs e agentes (a saúde dos robôs, o que eles fazem e os agentes do Claude, que antes ficavam em
     // Configurações e em Agentes; os links antigos levam para cá)
     { id: 'usuarios', rotulo: 'Equipe', icone: 'usuario', titulo: 'Equipe' },
-    // "troca de robô para sistema" (13/10/2026)
-    { id: 'sistema', rotulo: 'Sistema e agentes', icone: 'monitor', titulo: 'Sistema e agentes' },
-    // o painel do robô (Vitor, 21/10/2026: "quero um painel para eu saber o que o robô está fazendo, arquivando e afins"):
-    // os dois robôs (o do PC e o da nuvem), as filas, a atividade, o que foi arquivado e os erros; só o admin e o diretor
-    { id: 'robo', rotulo: 'Painel do robô', icone: 'robo', titulo: 'Painel do robô' },
-    // o mapa de uso (Gustavo, 20/10/2026: "um mapa quente que trackei o que tá sendo usado no sistema"): só o admin
-    { id: 'uso', rotulo: 'Uso do sistema', icone: 'barChart', titulo: 'Uso do sistema' },
+    // Sistema e agentes, Painel do robô e Uso do sistema foram para o site do admin (/admin; Vitor, 22/10/2026: "tira tudo
+    // do Tarefas"); os endereços antigos caem em Empresas
   ] },
   // o Fiscal no mesmo modelo do Contábil (Vitor, 05/10/2026): as empresas com a rotina do Fiscal, a visão e as paradas
   { id: 'fiscal', nome: 'Fiscal', icone: 'recibo', grupo: 'Rotinas', pronta: true, paginas: [
@@ -133,18 +130,9 @@ export const APLICACOES: readonly Aplicacao[] = [
  */
 export const podeMexerNoCadastro = (op: Operador | null) => !!op && (op.admin || op.nivel === 'diretor' || op.nivel === 'senior');
 
-/**
- * As páginas do Cadastro que o sênior não abre: Sistema e agentes (os robôs e os computadores) e o Painel do robô
- * (21/10/2026; as regras do banco só deixam o admin e o diretor lerem) não são cadastro de empresa.
- */
-const SO_ADMIN_E_DIRETOR_NO_CADASTRO: readonly string[] = ['sistema', 'robo'];
-/** As páginas do Cadastro só do admin: o Uso do sistema (21/10/2026; as regras do banco só deixam o admin ler uso/). */
-const SO_ADMIN_NO_CADASTRO: readonly string[] = ['uso'];
-
 /** As aplicações que a pessoa vê: Fiscal só para o Fiscal; Contábil e Drive só para o Contábil; Gmail para os dois (admin vê tudo). */
 export function aplicacoesDe(op: Operador): Aplicacao[] {
-  const soOSenior = !op.admin && op.nivel === 'senior';
-  return APLICACOES.map(a => (a.id === 'cadastro' && !op.admin ? { ...a, paginas: a.paginas.filter(p => !SO_ADMIN_NO_CADASTRO.includes(p.id) && !(soOSenior && SO_ADMIN_E_DIRETOR_NO_CADASTRO.includes(p.id))) } : a)).filter(a =>
+  return APLICACOES.filter(a =>
     (a.id !== 'fiscal' || op.admin || op.departamento === 'fiscal') &&
     (a.id !== 'dp' || op.admin || op.departamento === 'dp') &&
     (a.id !== 'contabil' || op.admin || op.departamento === 'contabil') &&
@@ -152,7 +140,7 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     // e o fiscal (cada um vê a caixa da Nilma e a do próprio setor)
     (a.id !== 'drive' || op.admin || op.departamento === 'contabil') &&
     (a.id !== 'contato' || op.admin || op.departamento === 'contabil' || op.departamento === 'fiscal') &&
-    // o Cadastro (empresas, equipe e sistema): o admin e o diretor (Vitor, 05/10/2026); o sênior, menos o Sistema (19/10/2026)
+    // o Cadastro (empresas e equipe): o admin, o diretor (Vitor, 05/10/2026) e o sênior (19/10/2026)
     (a.id !== 'cadastro' || podeMexerNoCadastro(op)) &&
     // o Financeiro (as notas fiscais do escritório): o admin e o diretor (15/10/2026)
     (a.id !== 'financeiro' || op.admin || op.nivel === 'diretor'))

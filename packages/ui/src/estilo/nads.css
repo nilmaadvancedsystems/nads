@@ -2081,7 +2081,12 @@ main.main:has(> .content > .explorador){padding:0;}
 .papeis-janela .steps{align-self:flex-start;}
 .papeis-linha{display:flex;align-items:center;gap:8px;font-size:var(--fs-13);}
 .papeis-empresas{display:flex;flex-direction:column;gap:6px;}
-.papeis-empresas-topo{display:flex;align-items:center;gap:6px;font-size:var(--fs-13);}
+.papeis-empresas-topo{display:flex;align-items:center;gap:8px;padding:0 10px;font-size:var(--fs-13);cursor:pointer;}
+/* as opções numa grade: o rótulo à esquerda, a escolha à direita (22/10/2026) */
+.papeis-opcoes{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:center;gap:10px 16px;font-size:var(--fs-13);}
+.papeis-opcoes > span:nth-child(odd){color:var(--ink-muted);}
+.papeis-opcoes > :nth-child(even){justify-self:start;margin:0;}
+.papeis-total{margin-right:auto;font-size:var(--fs-13);}
 .papeis-lista{list-style:none;margin:0;padding:0;max-height:240px;overflow:auto;border:1px solid var(--border);border-radius:6px;}
 .papeis-lista li + li{border-top:1px solid var(--border-muted,var(--border));}
 .papeis-item{display:grid;grid-template-columns:auto 44px 1fr auto;align-items:center;gap:8px;padding:5px 10px;font-size:var(--fs-13);cursor:pointer;}
@@ -4701,6 +4706,7 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 
 /* Financeiro › Caixa e Plano de contas (19/10/2026: o Movimento de Caixa e o Plano de Contas do Toriba) */
 .fin-barra{align-items:center;}
+.fin-barra .steps{margin:0;}
 .fin-periodo{display:inline-flex;align-items:center;gap:8px;}
 .fin-periodo .data-mask{width:112px;}
 .fin-numeros{gap:12px;margin-bottom:16px;}
