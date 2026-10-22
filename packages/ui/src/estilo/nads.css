@@ -4963,6 +4963,19 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .faturamento-tabela tfoot td{border-top:2px solid var(--border);position:sticky;bottom:0;background:var(--surface);}
 .faturamento-subiu{color:var(--ok,#1E8E3E);}
 .faturamento-caiu{color:var(--danger);}
+/* Fiscal › Simples: a calculadora do Simples Nacional (22/10/2026) */
+.simples-calc{display:flex;flex-direction:column;gap:12px;}
+.simples-calc-empresa{min-width:320px;max-width:480px;flex:1 1 320px;}
+.simples-calc-busca{position:relative;}
+.simples-calc-busca .nf-achados{position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:30;box-shadow:var(--shadow-lg);background:var(--surface);}
+.simples-calc-anexo{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;}
+.simples-calc-colunas{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start;}
+.simples-calc-colunas .table-wrap{overflow:auto;max-height:none;}
+.simples-calc-resultado{display:flex;flex-direction:column;gap:12px;min-width:0;}
+.simples-calc-colunas tbody th{text-align:left;font-weight:600;background:var(--surface-2,transparent);}
+.simples-calc-colunas tfoot td{border-top:2px solid var(--border);}
+.simples-calc-detalhe{font-size:12px;}
+@media (max-width:1100px){.simples-calc-colunas{grid-template-columns:minmax(0,1fr);}}
 /* Cadastro › a empresa › Fiscal (Heverton, 21/10/2026): os documentos e as planilhas, os parcelamentos */
 .fis-docs-acoes{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .fis-docs-acoes .btn svg{width:16px;height:16px;}
