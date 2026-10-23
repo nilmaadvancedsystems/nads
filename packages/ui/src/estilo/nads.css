@@ -429,6 +429,9 @@ hr{border:0;border-top:1px solid var(--border);margin:24px 0;}
 .icon-btn svg{width:16px;height:16px;}
 .icon-btn:hover{background:var(--btn-hover);color:var(--ink);}
 .icon-btn.danger:hover{color:var(--destructive);}
+/* desligado tem cara de desligado: apagado, sem o acender do hover */
+.icon-btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;}
+.icon-btn:disabled:hover{background:var(--btn-bg);color:var(--ink-muted);}
 .icon-btn-sm{width:28px;height:28px;}
 .icon-btn-sm svg{width:14px;height:14px;}
 @media (max-width:820px){.dp-head{display:none;} .dp{grid-template-columns:1fr 1fr;} .dp>*{min-width:0;}}
@@ -4647,6 +4650,7 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .menu-contador.ent-urgente{background:var(--danger);color:#FFFFFF;}
 .cfg-linha-controle .ent-campo-curto{width:320px;max-width:100%;}
 .ent-tela [aria-invalid="true"]{border-color:var(--danger);}
+.folha-check input[aria-invalid="true"]:not(:focus){border-color:var(--danger);}
 .ent-sol-descricao{margin:12px 0 4px;}
 .ent-sol-descricao textarea{width:100%;resize:vertical;}
 .ent-sol-pe{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px;}
