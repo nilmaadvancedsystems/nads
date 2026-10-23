@@ -53,6 +53,10 @@ describe('o protocolo de entrega de tributos (Heverton, 20/10/2026)', () => {
     expect(h).toContain('SIMPLES NACIONAL');
     expect(h).toContain('Ref: 06/2026');
     expect(h).toContain('ICMS DIF. ALIQ ATIVO');
+    // a Retificação no fim de todo protocolo (23/10/2026), com as linhas em branco
+    expect(h).toContain('RETIFICAÇÃO');
+    expect(h.indexOf('RETIFICAÇÃO')).toBeGreaterThan(h.indexOf('preencher à mão'));
+    expect(h.split('VALOR RETIFICADO')).toHaveLength(2);
     expect(h).toContain('>00051<');
     expect(h).toContain('size:A4 landscape');
   });

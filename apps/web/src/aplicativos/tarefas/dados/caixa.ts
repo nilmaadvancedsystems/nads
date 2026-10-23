@@ -78,7 +78,7 @@ export function criarCaixaMemoria(): RepoCaixa {
     { id: 'exb-3', data: DIA(2), historico: 'PAGAMENTO DE BOLETO (EXEMPLO)', valor: 310, tipo: 'S', banco: 'Sicoob', importacao: 'exi-1' },
   ];
   let importacoes: financeiro.ImportacaoDeExtrato[] = [
-    { id: 'exi-1', banco: 'Sicoob', arquivo: 'extrato-exemplo.pdf', de: DIA(5), ate: DIA(2), quantos: 3, entradas: 1200, saidas: 349.9, saldoFinal: 4850.1, importadoEm: AGORA(), importadoPor: 'Exemplo' },
+    { id: 'exi-1', banco: 'Sicoob', marca: 'sicoob', rotuloDaConta: 'Ag. 3144 · C/C 12.345-6', arquivo: 'extrato-exemplo.pdf', de: DIA(5), ate: DIA(2), quantos: 3, entradas: 1200, saidas: 349.9, saldoFinal: 4850.1, importadoEm: AGORA(), importadoPor: 'Exemplo' },
   ];
   return {
     exemplos: true,
