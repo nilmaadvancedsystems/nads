@@ -1,7 +1,7 @@
 // O faturamento detalhado de um cliente (Fiscal › Faturamento; 22/10/2026: "quando eu clique no cliente abra um
 // faturamento detalhado"): de cima para baixo, os números do período, o mês a mês (clicar num mês escolhe o mês) e, no
 // mês escolhido, para quem vendeu e por CFOP. Só as peças do catálogo (modal, BotaoFechar, Stat, Tabela padrão, Ranking).
-import { BotaoFechar, Stat, useJanela, Variacao } from '@nads/ui';
+import { BarrasEmColuna, BotaoFechar, Icone, Stat, useJanela, Variacao } from '@nads/ui';
 import { useRef } from 'react';
 import { useDetalheDoFaturamento } from './useDetalheDoFaturamento';
 
@@ -15,22 +15,39 @@ export function JanelaDoFaturamento({ cliente, competencias, rotuloDoPeriodo, an
   useJanela(janela, fechar);
   return (
     <div className="modal-overlay" onMouseDown={ev => { if (ev.target === ev.currentTarget) fechar(); }}>
-      <div ref={janela} className="modal fat-detalhe" role="dialog" aria-modal="true" aria-labelledby="fatDetalheTitulo">
-        <header className="fat-detalhe-topo">
-          <div>
-            <h3 id="fatDetalheTitulo">{cliente.codigo} · {cliente.nome}</h3>
-            <p className="fraco">{cliente.regime || 'Sem regime'} · {rotuloDoPeriodo} · NF-e e NFC-e emitidas no SIEG, sem as canceladas</p>
-          </div>
+      {/* no desenho da janela do Financeiro (o Resultado por conta; 23/10/2026: "agora tá muito grande… faça no estilo do
+          financeiro"): o caminho no topo, o corpo rolando por dentro e o Fechar no pé; até 1240 px, só a altura que precisa */}
+      <div ref={janela} className="modal registro-novo fat-detalhe" role="dialog" aria-modal="true" aria-labelledby="fatDetalheTitulo">
+        <header className="registro-topo">
+          <span className="registro-caminho" id="fatDetalheTitulo"><Icone nome="dinheiro" />Faturamento<Icone nome="chevronRight" /><b>{cliente.codigo} · {cliente.nome}</b></span>
           <BotaoFechar onClick={fechar} />
         </header>
+        <div className="registro-corpo fat-detalhe-corpo-geral">
+        <p className="fraco fat-detalhe-sobre">{cliente.regime || 'Sem regime'} · {rotuloDoPeriodo} · NF-e e NFC-e emitidas no SIEG, sem as canceladas</p>
 
-        <div className="stat-grid">
+        <div className="stat-grid fin-numeros">
           {/* o número em cima e o detalhe embaixo, pequeno (23/10/2026: os rótulos longos quebravam no celular) */}
           <Stat rotulo="Total no período" valor={'R$ ' + brl(vm.numeros.total)} sub={vm.numeros.mesesComDado + (vm.numeros.mesesComDado === 1 ? ' mês com dado' : ' meses com dado')} />
+          {vm.numeros.ultimo && (
+            <Stat rotulo={vm.numeros.ultimo.rotulo} valor={'R$ ' + brl(vm.numeros.ultimo.valor)}
+              sub={vm.numeros.ultimo.anterior ? <><Variacao pct={vm.numeros.ultimo.variacao} /> sobre {vm.numeros.ultimo.anterior}</> : 'o último mês com dado'} />
+          )}
           <Stat rotulo="Média por mês" valor={'R$ ' + brl(vm.numeros.media)} sub="nos meses com dado" />
+          <Stat rotulo="Ticket médio" valor={'R$ ' + brl(vm.numeros.ticket)} sub="o valor médio de cada nota" />
           <Stat rotulo="Maior mês" valor={vm.numeros.maior ? 'R$ ' + brl(vm.numeros.maior.valor) : '—'} sub={vm.numeros.maior?.rotulo} />
-          <Stat rotulo="Notas emitidas" valor={vm.numeros.notas.toLocaleString('pt-BR')} sub="NF-e e NFC-e, sem as canceladas" />
+          <Stat rotulo="Notas emitidas" valor={vm.numeros.notas.toLocaleString('pt-BR')} sub={vm.numeros.canceladas ? vm.numeros.canceladas + ' canceladas fora da conta' : 'nenhuma cancelada'} />
         </div>
+
+        {/* a evolução (o gráfico de barras dos painéis de faturamento): clicar no mês escolhe as notas dele; embaixo, o mix */}
+        <section className="card fat-detalhe-evolucao">
+          <h3>Evolução <span className="fraco">· em mil reais; clique no mês para ver as notas dele</span></h3>
+          <BarrasEmColuna colunas={vm.barras} ativa={vm.mes?.competencia ?? null} onEscolher={vm.escolher} />
+          <div className="fat-mix" aria-label="NF-e e NFC-e no período">
+            <span className="fat-mix-barra" aria-hidden="true"><span style={{ width: vm.numeros.mix.pctNfe + '%' }} /></span>
+            <span><b>NF-e</b> {vm.numeros.mix.pctNfe}% · R$ {brl(vm.numeros.mix.nfe)}</span>
+            <span><b>NFC-e</b> {vm.numeros.mix.pctNfce}% · R$ {brl(vm.numeros.mix.nfce)}</span>
+          </div>
+        </section>
 
         <div className="fat-detalhe-corpo">
           <section className="card fat-detalhe-meses">
@@ -64,13 +81,22 @@ export function JanelaDoFaturamento({ cliente, competencias, rotuloDoPeriodo, an
               : (
                 <>
                   <p className="fraco">{vm.resumo.quantidade} {vm.resumo.quantidade === 1 ? 'nota' : 'notas'}{vm.resumo.canceladas ? ' · ' + vm.resumo.canceladas + ' canceladas fora da conta' : ''}</p>
+                  {/* a curva ABC (quem faz 80% do valor é A, os 15% seguintes B, o resto C) e a concentração */}
+                  {vm.abc && (
+                    <div className="stat-grid fin-numeros fat-abc">
+                      <Stat grande={false} rotulo="Compradores no mês" valor={String(vm.abc.compradores)} sub={vm.abc.consumidor ? vm.abc.consumidor + '% para consumidor sem identificação' : 'todos identificados'} />
+                      <Stat grande={false} rotulo="O maior comprador" valor={vm.abc.maior.toLocaleString('pt-BR') + '%'} sub="do valor do mês" />
+                      <Stat grande={false} rotulo="Os 5 maiores" valor={vm.abc.cinco.toLocaleString('pt-BR') + '%'} sub="do valor do mês" />
+                      <Stat grande={false} rotulo="Curva ABC" valor={<span className="fat-abc-classes">{(['A', 'B', 'C'] as const).map(k => <span key={k}><span className={'badge badge-suave fat-classe-' + k}>{k}</span> {vm.abc!.porClasse[k].clientes}</span>)}</span>} sub={'A faz ' + vm.abc.porClasse.A.pct.toLocaleString('pt-BR') + '% do valor'} />
+                    </div>
+                  )}
                   <p className="fat-detalhe-sub">Para quem vendeu</p>
                   <div className="rank">
                     {vm.resumo.clientes.map(c => (
                       <div key={c.doc + c.nome} className="rank-item">
-                        <span className="rank-nome" title={c.nome}>{c.nome} <span className="fraco">· {c.notas} {c.notas === 1 ? 'nota' : 'notas'}</span></span>
+                        <span className="rank-nome" title={c.nome}><span className={'badge badge-suave fat-classe-' + c.classe}>{c.classe}</span> {c.nome} <span className="fraco">· {c.notas} {c.notas === 1 ? 'nota' : 'notas'} · {c.pct.toLocaleString('pt-BR')}%</span></span>
                         <span className="rank-val num">{brl(c.valor)}</span>
-                        <span className="rank-barra"><span style={{ width: c.pct + '%', background: 'var(--info, #3b82f6)' }} /></span>
+                        <span className="rank-barra"><span style={{ width: c.barra + '%', background: 'var(--info, #3b82f6)' }} /></span>
                       </div>
                     ))}
                   </div>
@@ -120,6 +146,11 @@ export function JanelaDoFaturamento({ cliente, competencias, rotuloDoPeriodo, an
               )}
           </section>
         )}
+        </div>
+        <footer className="registro-pe">
+          <span className="tarefas-barra-espaco" />
+          <button type="button" className="btn btn-outline" onClick={fechar}>Fechar</button>
+        </footer>
       </div>
     </div>
   );

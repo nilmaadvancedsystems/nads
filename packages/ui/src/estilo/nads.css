@@ -5063,7 +5063,10 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .fat-linha:hover .fat-nome-btn{text-decoration:underline;}
 /* a janela do faturamento detalhado na tela inteira, com os blocos um embaixo do outro (23/10/2026: "não tá usando o
    layout da tela inteira, e não gostei desse layout side by side") */
-.modal.fat-detalhe{width:calc(100vw - 32px);max-width:none;height:calc(100vh - 32px);max-height:none;overflow:auto;display:flex;flex-direction:column;gap:14px;padding:18px 24px;}
+.modal.fat-detalhe{width:calc(100vw - 48px);max-width:1240px;max-height:calc(100vh - 48px);display:flex;flex-direction:column;padding:0;}
+.fat-detalhe-corpo-geral{overflow:auto;display:flex;flex-direction:column;gap:14px;}
+.fat-detalhe-corpo-geral>*{flex-shrink:0;}
+.fat-detalhe-sobre{margin:0;font-size:var(--fs-13,13px);}
 .fat-detalhe-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
 .fat-detalhe p{padding:0;}
 .fat-detalhe-topo h3{margin:0;padding:0;border:none;font-size:var(--fs-16,16px);}
@@ -5135,7 +5138,20 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 /* a barra do Faturamento numa linha só em 1366 px (23/10/2026) */
 .faturamento .tarefas-barra-topo .busca-curta{width:170px;}
 /* na janela do faturamento detalhado, os blocos não encolhem (a grade dos números sumia com 2 px; 23/10/2026) */
-.modal.fat-detalhe>*{flex-shrink:0;}
+.modal.fat-detalhe>header,.modal.fat-detalhe>footer{flex-shrink:0;}
 /* no celular (23/10/2026): os números do Faturamento, do detalhe e do Simples dois por linha, a busca na largura toda */
-@media (max-width:600px){.faturamento .stat-grid,.fat-detalhe .stat-grid,.simples-calc .stat-grid{grid-template-columns:1fr 1fr;}.faturamento .stat-value,.fat-detalhe .stat-value,.simples-calc .stat-value{font-size:var(--fs-16,16px);}.faturamento .stat,.fat-detalhe .stat,.simples-calc .stat{padding:12px;}.faturamento .tarefas-barra-topo .busca-curta{width:100%;}.modal.fat-detalhe{padding:14px 12px;width:calc(100vw - 16px);}}
+@media (max-width:600px){.faturamento .stat-grid,.fat-detalhe .stat-grid,.simples-calc .stat-grid{grid-template-columns:1fr 1fr;}.faturamento .stat-value,.fat-detalhe .stat-value,.simples-calc .stat-value{font-size:var(--fs-16,16px);}.faturamento .stat,.fat-detalhe .stat,.simples-calc .stat{padding:12px;}.faturamento .tarefas-barra-topo .busca-curta{width:100%;}.modal.fat-detalhe{width:calc(100vw - 16px);}}
 .faturamento .stat,.fat-detalhe .stat,.simples-calc .stat{min-width:0;overflow:hidden;}
+/* o painel do faturamento detalhado (23/10/2026: as referências dos painéis de faturamento por cliente): a evolução em
+   barras, o mix NF-e × NFC-e numa barra só e as classes da curva ABC (A verde, B âmbar, C cinza) */
+.fat-detalhe-evolucao{display:flex;flex-direction:column;gap:10px;}
+.fat-detalhe-evolucao .cert-barras{height:160px;}
+.fat-mix{display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:var(--fs-13,13px);}
+.fat-mix-barra{flex:1 1 200px;height:8px;border-radius:4px;overflow:hidden;background:var(--ink-muted);max-width:420px;}
+.fat-mix-barra>span{display:block;height:100%;background:var(--info,#3b82f6);}
+.fat-abc{margin:4px 0;}
+.fat-abc-classes{display:inline-flex;gap:10px;align-items:center;font-size:var(--fs-14,14px);}
+.badge.fat-classe-A{background:color-mix(in srgb,var(--success) 18%,transparent);color:var(--success);}
+.badge.fat-classe-B{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn);}
+.badge.fat-classe-C{background:var(--surface-3);color:var(--ink-muted);}
+.rank-nome .badge{margin-right:4px;font-size:10px;padding:0 5px;}

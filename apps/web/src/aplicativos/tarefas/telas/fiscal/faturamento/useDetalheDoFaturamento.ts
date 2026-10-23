@@ -28,14 +28,39 @@ export function useDetalheDoFaturamento(codigo: number, nome: string, competenci
   // a guia do FGTS do mês, se o robô emitiu (o valor vem como texto, "917,42")
   const guiaFgts = mes ? [...fgts.pedidos(mes.competencia).porCnpj.values()].find(p => p.codigo === String(codigo) && p.valor) : undefined;
   const pct = (v: number, de: number) => (de > 0 ? (v / de) * 100 : 0);
+  // o painel do cliente (23/10/2026: "abre o dashboard de maneira muito simplista… procura referências"), como nos painéis
+  // de faturamento por cliente: o ticket médio, o último mês com a variação, o mix NF-e × NFC-e, a evolução em barras e,
+  // no mês, a curva ABC dos compradores (quem faz 80% do valor) e a concentração no maior e nos 5 maiores
+  const notasNoPeriodo = comDado.reduce((s, m) => s + m.notas, 0);
+  const nfe = comDado.reduce((s, m) => s + (m.nfe || 0), 0), nfce = comDado.reduce((s, m) => s + (m.nfce || 0), 0);
+  const ultimo = comDado[comDado.length - 1] || null;
+  const curva = resumo ? f.curvaAbc(resumo.porCliente) : null;
   return {
     numeros: {
       total,
       media: comDado.length ? total / comDado.length : 0,
       mesesComDado: comDado.length,
       maior: maior ? { rotulo: t.rotuloCompetencia(maior.competencia), valor: maior.total || 0 } : null,
-      notas: comDado.reduce((s, m) => s + m.notas, 0),
+      notas: notasNoPeriodo,
+      canceladas: comDado.reduce((s, m) => s + m.canceladas, 0),
+      ticket: notasNoPeriodo ? total / notasNoPeriodo : 0,
+      ultimo: ultimo ? { rotulo: t.rotuloCompetencia(ultimo.competencia), valor: ultimo.total || 0, variacao: ultimo.variacao, anterior: comDado.length > 1 ? f.mesCurto(comDado[comDado.length - 2].competencia) : '' } : null,
+      mix: { nfe, nfce, pctNfe: Math.round(pct(nfe, nfe + nfce)), pctNfce: Math.round(pct(nfce, nfe + nfce)) },
     },
+    /** a evolução: uma barra por mês do período, em mil reais (clicar escolhe o mês) */
+    barras: meses.map((m, i) => ({
+      chave: m.competencia, rotulo: f.mesCurto(m.competencia).slice(0, 3), sub: m.competencia.slice(5) === '01' || i === 0 ? m.competencia.slice(0, 4) : '',
+      total: m.total ? Math.max(1, Math.round(m.total / 1000)) : 0,
+      leitura: f.mesCurto(m.competencia) + ': ' + (m.total == null ? 'sem dado' : 'R$ ' + m.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })),
+    })),
+    /** a curva ABC dos compradores do mês escolhido */
+    abc: curva ? {
+      compradores: curva.linhas.length,
+      porClasse: curva.porClasse,
+      maior: curva.maior,
+      cinco: curva.cinco,
+      consumidor: Math.round(pct(resumo?.porCliente.find(c => !c.doc)?.valor || 0, totalDoResumo)),
+    } : null,
     /** o mês a mês, do mais novo para o mais velho */
     meses: [...meses].reverse().filter(m => mostrarVazios || m.total != null).map(m => ({ ...m, rotulo: f.mesCurto(m.competencia), escolhido: m.competencia === mes?.competencia })),
     /** quantos meses do período ficaram de fora por não ter dado */
@@ -46,7 +71,7 @@ export function useDetalheDoFaturamento(codigo: number, nome: string, competenci
     /** as notas do mês escolhido (null = o "Baixar XMLs" ainda não foi feito para o mês) */
     resumo: resumo ? {
       quantidade: resumo.quantidade, canceladas: resumo.canceladas,
-      clientes: resumo.porCliente.slice(0, 8).map(c => ({ ...c, pct: pct(c.valor, resumo.porCliente[0]?.valor || 0) })),
+      clientes: (curva?.linhas || []).slice(0, 8).map(c => ({ ...c, barra: pct(c.valor, curva?.linhas[0]?.valor || 0) })),
       outrosClientes: Math.max(0, resumo.porCliente.length - 8),
       cfops: resumo.porCfop.slice(0, 8).map(c => ({ ...c, pct: pct(c.valor, totalDoResumo) })),
     } : null,
