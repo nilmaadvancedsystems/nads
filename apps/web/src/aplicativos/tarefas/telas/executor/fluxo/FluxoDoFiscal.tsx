@@ -35,7 +35,18 @@ export function FluxoDoFiscal() {
     ativa: f.ativa, caixa: (f.concluida ? 'marcada' : 'vazia') as 'marcada' | 'vazia',
   }));
   return (
-    <Casca sistema="Tarefas" temaNaGaveta={false} larga rotuloLateral="Fases do fluxo"
+    <Casca sistema="Tarefas" temaNaGaveta={false} larga rotuloLateral="Fases do fluxo" topoDireita={
+      // o perfil no canto, com o mesmo menu do executor (23/10/2026: "cadê o perfil?")
+      <MenuSuspenso rotulo={casca.perfil.foto ? <img className="gh-avatar-foto" src={casca.perfil.foto} alt="" /> : casca.perfil.iniciais} className="gh-avatar" dica={casca.perfil.nome} titulo={casca.perfil.nome} direita
+        itens={[
+          { rotulo: 'Voltar às empresas', icone: 'home', onClick: vm.sair },
+          'separador',
+          { rotulo: 'Minha conta', icone: 'usuario', onClick: () => casca.abrirPessoal('conta') },
+          { rotulo: 'Modo desenvolvedor', icone: 'settings', marcado: casca.dev, onClick: () => casca.setDev(!casca.dev) },
+          'separador',
+          { rotulo: casca.perfil.sair, icone: 'logOut', onClick: casca.trocarPessoa },
+        ]} />
+    }
       empresa={vm.empresa ? { codigo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome, nome: '' } : null}
       versao={casca.versao} secoes={secoes} paginas={[]} titulo=""
       onSecao={id => vm.escolherFase(Number(id))} onPagina={() => undefined} onInicio={vm.sair} onAplicativos={casca.inicio}
@@ -55,7 +66,8 @@ function Fase({ vm }: { vm: VmFluxoDoFiscal }) {
     <section className="fluxo">
       <header className="fluxo-topo">
         <div>
-          <p className="fraco fluxo-caminho">{vm.fluxo!.nome} · {vm.rotuloCompetencia} · {vm.resumo.encerrados} de {vm.resumo.total} no mês</p>
+          <p className="fraco fluxo-caminho">{vm.fluxo!.nome} · {vm.rotuloCompetencia} · {vm.resumo.encerrados} de {vm.resumo.total} no mês
+            {vm.dev && <span className="badge badge-warn fluxo-dev">Modo desenvolvedor: nada é gravado</span>}</p>
           <h2>{f.nome}</h2>
           <p className="fluxo-resp-etapa">
             <Icone nome="usuario" width={14} height={14} />Responsável: <b>{vm.responsavelDaEtapaAtual}</b>

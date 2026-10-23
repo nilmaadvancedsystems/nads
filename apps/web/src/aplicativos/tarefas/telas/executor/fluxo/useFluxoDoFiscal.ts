@@ -5,7 +5,7 @@
 // cada subprocesso é o mesmo do executor antigo (usePainelDoFiscal).
 import { demo, empresas, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { caminhoDaEmpresa } from '../../../casca/navegacao';
 import { useDepartamentoDaTela } from '../../../casca/departamento';
@@ -27,8 +27,13 @@ export function useFluxoDoFiscal(rotaEmpresa: string, competencia: string) {
   const regime = empresa ? t.regimeDaEmpresa(empresa.codigo) : '';
   const fluxo = t.fluxoDoRegime(regime);
   const { porMes, carregada } = useExecucoesDoPeriodo([competencia], 'fiscal');
-  const ex = empresa ? (porMes[0]?.execucoes.find(e => e.empresa === empresa.nome) || t.execucaoNova(empresa.nome, empresa.codigo, competencia, 'fiscal')) : null;
-  const etapas = fluxo ? t.fluxoDoMes(fluxo, ex, competencia) : [];
+  const exGravada = empresa ? (porMes[0]?.execucoes.find(e => e.empresa === empresa.nome) || t.execucaoNova(empresa.nome, empresa.codigo, competencia, 'fiscal')) : null;
+  // o modo desenvolvedor (23/10/2026: "o modo dev não funciona direito"): marca e desmarca só nesta tela, sem gravar, e
+  // todas as etapas ficam abertas para testar; ao desligar, volta o que está gravado
+  const [exDoDev, setExDoDev] = useState<t.Execucao | null>(null);
+  useEffect(() => { if (!dev) setExDoDev(null); }, [dev]);
+  const ex = dev && exDoDev ? exDoDev : exGravada;
+  const etapas = (fluxo ? t.fluxoDoMes(fluxo, ex, competencia) : []).map(e => (dev ? { ...e, liberada: true, esperando: '' } : e));
   const resumo = t.resumoDoFluxo(etapas);
   // as fases da lateral (poucas: 23/10/2026, "todos os menus têm muita informação"); dentro da fase, uma etapa aberta por vez
   const fases = fluxo ? t.fasesDoMes(fluxo, etapas) : [];
@@ -58,7 +63,7 @@ export function useFluxoDoFiscal(rotaEmpresa: string, competencia: string) {
   const daMaioria = [...contagem.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || responsavelPadrao;
 
   const gravar = (r: { execucao: t.Execucao; evento: t.Evento }) => {
-    if (dev) { toast('Modo desenvolvedor: nada é gravado.'); return; }
+    if (dev) { setExDoDev(r.execucao); return; }
     repo.gravar(r.execucao, r.evento);
   };
   return {
@@ -88,6 +93,7 @@ export function useFluxoDoFiscal(rotaEmpresa: string, competencia: string) {
     outroResponsavel: (s: { responsavel: string }) => (responsavelDe(s) !== daMaioria ? responsavelDe(s) : ''),
     painel,
     valores: ex?.valores || {},
+    dev,
     informar(chave: string, valor: number) {
       if (!ex || dev) return;
       const r = t.informarValor(ex, 'fluxo', chave, valor, quem, new Date());
