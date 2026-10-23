@@ -38,8 +38,19 @@ function chaveValida(ch) {
   const dv = resto < 2 ? 0 : 11 - resto;
   return dv === +ch[43];
 }
-/** As chaves válidas num texto (nome de arquivo). */
-function chavesDoTexto(t) { return [...new Set([...String(t || '').matchAll(RE_CHAVE)].map(m => m[1]).filter(chaveValida))]; }
+/**
+ * As chaves válidas num texto (nome de arquivo). Também a da NFS-e (23/10/2026): o SIEG grava "nfse-<prestador>-<número>.xml",
+ * e no índice a NFS-e é "NFSE:<prestador>:<número>" (a NFS-e nacional tem chave de 50 dígitos, a municipal nem tem).
+ */
+function chavesDoTexto(t) {
+  const s = String(t || '');
+  const out = [...String(s).matchAll(RE_CHAVE)].map(m => m[1]).filter(chaveValida);
+  for (const m of s.matchAll(/(?:^|\s|\\)nfse-(\d{11,14})-(\d+)\.xml/gi)) out.push('NFSE:' + m[1] + ':' + String(+m[2]));
+  return [...new Set(out)];
+}
+/** A chave de 50 dígitos da NFS-e nacional → "NFSE:<prestador>:<número>" (inscrição nas posições 10–23, número 24–36). */
+const chaveDoIndice = ch => { ch = String(ch || ''); return /^\d{50}$/.test(ch) ? 'NFSE:' + ch.slice(9, 23) + ':' + String(+ch.slice(23, 36)) : ch; };
+const valeNoIndice = k => chaveValida(k) || /^NFSE:\d{11,14}:\d+$/.test(String(k || ''));
 
 /**
  * Onde o arquivo está → { cliente, sub, de }: sub são as pastas entre a do cliente e o arquivo, sem o "EVENTOS" do fim;
@@ -69,7 +80,8 @@ class Indice {
   get tamanho() { return this.mapa.size; }
   /** Junta uma ocorrência (sem gravar). */
   juntar(ch, cliente, sub, de, fonte) {
-    if (!chaveValida(ch) || cliente == null || !Number.isFinite(+cliente)) return false;
+    ch = chaveDoIndice(ch);
+    if (!valeNoIndice(ch) || cliente == null || !Number.isFinite(+cliente)) return false;
     let lista = this.mapa.get(ch);
     if (!lista) this.mapa.set(ch, lista = []);
     const atual = lista.find(x => x.cliente === +cliente);
@@ -88,8 +100,9 @@ class Indice {
     const de = d ? d.de : (o.de || 'outro');
     const mudou = this.juntar(ch, cliente, sub, de, o.fonte || 'decisão');
     // grava o que ainda não está em nenhum arquivo (manifestos, diário, chaves.jsonl): a decisão em memória vira registro
+    ch = chaveDoIndice(ch);
     const k = ch + '|' + (+cliente);
-    if (persistir && this.arquivo && chaveValida(ch) && cliente != null && (mudou || !this.salvas.has(k))) {
+    if (persistir && this.arquivo && valeNoIndice(ch) && cliente != null && (mudou || !this.salvas.has(k))) {
       this.salvas.add(k);
       try { fs.mkdirSync(path.dirname(this.arquivo), { recursive: true }); fs.appendFileSync(this.arquivo, JSON.stringify({ ch, cliente: +cliente, sub, de, fonte: o.fonte || 'decisão', em: new Date().toISOString() }) + '\n'); } catch (e) { /* o índice em memória continua valendo */ }
     }
@@ -97,7 +110,7 @@ class Indice {
   }
   /** Os clientes do original: [{ cliente, sub, de }], o mais confiável primeiro (o XML do documento > evento > outro). */
   achar(ch) {
-    const l = this.mapa.get(String(ch || ''));
+    const l = this.mapa.get(chaveDoIndice(ch));
     return l ? l.slice().sort((a, b) => (PESO[b.de] || 0) - (PESO[a.de] || 0)) : [];
   }
 }
@@ -129,7 +142,7 @@ function carregar(opcoes) {
     const d = lerDestino(onde, opcoes.raiz);
     if (!d) return;
     const chs = r.chave ? [r.chave] : chavesDoTexto(r.nome_original + ' ' + r.nome_final);
-    for (const ch of chs) { if (idx.juntar(ch, d.cliente, d.sub, d.de, fonte)) conta(fonte); idx.salvas.add(ch + '|' + d.cliente); }
+    for (const ch of chs) { if (idx.juntar(ch, d.cliente, d.sub, d.de, fonte)) conta(fonte); idx.salvas.add(chaveDoIndice(ch) + '|' + d.cliente); }
   };
   let linhas = 0;
   if (opcoes.manifestoAntigo) linhas += linhasJson(opcoes.manifestoAntigo, doManifesto('manifesto da rotina antiga'));
@@ -225,7 +238,7 @@ function criarBuscaSieg(opcoes) {
   return { buscar, jaSabido, ligado, motivo: ligado ? '' : 'sem as credenciais do SIEG (' + cred.faltam.join(', ') + ')', chamadasHoje: () => (virar(), st.chamadas), restantesHoje: () => (virar(), Math.max(0, o.limiteDia - st.chamadas)), grupoDe: ch => ch.slice(6, 20) + '|' + ch.slice(2, 6) + '|' + (TIPO_SIEG[ch.slice(20, 22)] || '-') };
 }
 
-module.exports = { chaveValida, chavesDoTexto, lerDestino, Indice, carregar, criarBuscaSieg, TIPO_SIEG };
+module.exports = { chaveValida, chavesDoTexto, chaveDoIndice, valeNoIndice, lerDestino, Indice, carregar, criarBuscaSieg, TIPO_SIEG };
 
 if (require.main === module) {
   const A = require('./arquivador-novo');

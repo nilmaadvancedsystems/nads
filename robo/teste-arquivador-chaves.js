@@ -225,7 +225,50 @@ try {
   fs.writeFileSync(path.join(oB, 'f.xml'), evF);
   const bF = K.criarBuscaSieg({ controle: path.join(sbB, 'sieg'), sieg: siegFalso([nfeEntre(chF).replace('<emit>', '<x>' + TRANSP + '</x><emit>')]), limiteDia: 5 });
   const rF = await A.executar({ modo: 'SIMULACAO', origem: oB, clientes: cB, controle: path.join(sbB, 'ctl'), cadastro: R.montarCadastro(LINHAS, PASTAS), chaves: new K.Indice(), manifestoAntigo: path.join(sbB, 'x.jsonl'), arquivos: ['f.xml'], buscaSieg: bF, log: () => {} });
-  igual('SIEG achou o original, mas ele é entre dois clientes: fica como ambíguo', [rF.itens[0].acao, rF.itens[0].motivo], ['NAO_IDENTIFICADO', 'CLIENTE_AMBIGUO']);
+  igual('SIEG achou o original entre dois clientes: o evento vai para os dois (regra das duas clientes)', [rF.itens[0].acao, rF.itens[0].cliente, rF.itens[0].copias.map(c => c.cliente), !!rF.itens[0].viaSieg], ['ARQUIVAR', 152, [380], true]);
+
+  // ---------- 10. a regra das duas clientes (23/10/2026) ----------
+  const LINHAS2 = LINHAS.concat({ codigo: 700, razao: 'DUPLICADA UM LTDA', doc: '45.997.418/0001-53', regime: 'Simples' }, { codigo: 701, razao: 'DUPLICADA DOIS LTDA', doc: '45.997.418/0001-53', regime: 'Simples' },
+    { codigo: 702, razao: 'INATIVA SEM PASTA LTDA', doc: '36.462.778/0001-60', regime: 'Simples', ativo: false });
+  const cad2 = R.montarCadastro(LINHAS2, PASTAS);
+  const ctx2 = { cadastro: cad2, hoje: new Date(2026, 9, 20), chaves: new K.Indice() };
+  const nf = (emit, dest) => '<nfeProc><NFe><infNFe Id="NFe' + chave('31', '2610', emit, '55', 70) + '"><ide><mod>55</mod><nNF>70</nNF><dhEmi>2026-10-02T10:00:00-03:00</dhEmi></ide><emit><CNPJ>' + emit + '</CNPJ></emit><dest><CNPJ>' + dest + '</CNPJ></dest></infNFe></NFe></nfeProc>';
+  const dd = R.decidir({ nome: 'n.xml', rel: 'n.xml', xml: nf('11426314000177', '06934601000158') }, ctx2);
+  igual('duas clientes: saída no emitente (380, Presumido) e entrada no destinatário (152, Simples)', [dd.acao, dd.destinoRelativo, dd.copias.map(c => c.destinoRelativo)], ['ARQUIVAR', '380 - LEONARDO MENDES MARQUES\\FISCAL\\LUCRO PRESUMIDO\\14. XML\\NF-e', ['152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NF-e']]);
+  igual('duas clientes: um CNPJ em dois códigos continua ambíguo', R.decidir({ nome: 'n.xml', rel: 'n.xml', xml: nf('45997418000153', '06934601000158') }, ctx2).motivo, 'CLIENTE_AMBIGUO');
+  const di = R.decidir({ nome: 'n.xml', rel: 'n.xml', xml: nf('36462778000160', '06934601000158') }, ctx2);
+  igual('duas clientes: a inativa sem pasta fica de fora (só o destinatário)', [di.acao, di.cliente, di.copias.length], ['ARQUIVAR', 152, 0]);
+  const cteEntre = '<cteProc><CTe><infCte Id="CTe' + chave('35', '2609', TRANSP, '57', 11) + '"><ide><nCT>11</nCT><dhEmi>2026-09-05T10:00:00-03:00</dhEmi><toma3><toma>3</toma></toma3></ide><emit><CNPJ>' + TRANSP + '</CNPJ></emit><rem><CNPJ>06934601000158</CNPJ></rem><dest><CNPJ>11426314000177</CNPJ></dest></infCte></CTe></cteProc>';
+  const dc = R.decidir({ nome: 'c.xml', rel: 'c.xml', xml: cteEntre }, ctx2);
+  igual('CT-e entre duas clientes (transportadora de fora): o tomador primeiro, o remetente com cópia', [dc.acao, dc.cliente, dc.copias.map(c => c.cliente)], ['ARQUIVAR', 380, [152]]);
+  // o evento da nota que foi para as duas segue as duas cópias
+  const idxD = new K.Indice();
+  idxD.juntar(chave('31', '2610', '11426314000177', '55', 70), 380, ['FISCAL', 'LUCRO PRESUMIDO', '14. XML', 'NF-e'], 'doc');
+  idxD.juntar(chave('31', '2610', '11426314000177', '55', 70), 152, ['FISCAL', 'SIMPLES NACIONAL', '12. XML', 'NF-e'], 'doc');
+  const evD = '<procEventoNFe><evento><infEvento><CNPJ>06934601000158</CNPJ><chNFe>' + chave('31', '2610', '11426314000177', '55', 70) + '</chNFe><dhEvento>2026-10-03T10:00:00-03:00</dhEvento><detEvento><descEvento>Ciencia da Operacao</descEvento></detEvento></infEvento></evento></procEventoNFe>';
+  const de = R.decidir({ nome: 'e.xml', rel: 'e.xml', xml: evD }, Object.assign({}, ctx2, { chaves: idxD }));
+  igual('o evento da nota das duas clientes vai para as duas', [de.acao, [de.cliente].concat(de.copias.map(c => c.cliente)).sort()], ['ARQUIVAR', [152, 380]]);
+
+  // ---------- 11. NFS-e nacional: o original pelo prestador e o número (nome do SIEG no manifesto) ----------
+  igual('chave da NFS-e pelo nome do SIEG', K.chavesDoTexto('nfse-11414965000147-2600000001992.xml'), ['NFSE:11414965000147:2600000001992']);
+  const idxN = new K.Indice(); idxN.juntar('NFSE:11414965000147:2600000001992', 152, ['FISCAL', 'SIMPLES NACIONAL', '12. XML', 'NFS-e'], 'doc');
+  const chN = '3168002' + '1' + '2' + '11414965000147' + '2600000001992' + '2609' + '000270796' + '2';
+  const evN = '<evento><infEvento Id="E"><pedRegEvento><infPedReg Id="P"><dhEvento>2026-09-08T10:31:37-03:00</dhEvento><CNPJAutor>11414965000147</CNPJAutor><chNFSe>' + chN + '</chNFSe><e101101><xDesc>Cancelamento de NFS-e</xDesc></e101101></infPedReg></pedRegEvento></infEvento></evento>';
+  const dn = R.decidir({ nome: 'x.xml', rel: 'x.xml', xml: evN }, Object.assign({}, ctx2, { chaves: idxN }));
+  igual('evento da NFS-e nacional acha a NFS-e arquivada pelo prestador e número', [dn.acao, dn.destinoRelativo], ['ARQUIVAR', '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFS-e\\EVENTOS']);
+
+  // ---------- 12. os outros que sobravam ----------
+  const ofxL = '<OFX><BANKACCTFROM><BANKID>001<ACCTID>173266</BANKACCTFROM><BANKTRANLIST><DTSTART>20260901<DTEND>20260930</BANKTRANLIST></OFX>';
+  const ctxC = Object.assign({}, ctx2, { contas: new Map([['BANCO DO BRASIL:173266', new Map([[380, new Set(['outro-hash'])]])]]) });
+  igual('OFX pela conta já arquivada (contas.json)', R.decidir({ nome: 'e.ofx', rel: 'e.ofx', ofx: ofxL, hash: 'h' }, ctxC).cliente, 380);
+  const raicms = ' LIVRO REGISTRO DE APURACAO DO ICMS - RAICMS - MODELO P9\n| EMPRESA..: JANIO JOSE DE ALMEIDA |\n| INSC.EST.: 0029504300073 CGC: 06.934.601/0001-58 |\n| FOLHA....: 00001 MES OU PERIODO/ANO: 01/09/2026 A 30/09/2026 |';
+  const dt = R.decidir({ nome: 'RELATORIO 04 SET.txt', rel: 'r.txt', txt: raicms }, ctx2);
+  igual('TXT do livro de apuração do ICMS: LIVROS FISCAIS do ano, .txt', [dt.acao, dt.destinoRelativo, dt.nomeFinal], ['ARQUIVAR', '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\13. LIVROS FISCAIS\\2026', '09-2026 - APURACAO ICMS.txt']);
+  const rel = ['Notas Fiscais Saída 09/10/2026 14:22 Data: Hora Período : 01/09/2026 a 30/09/2026 CFOP JANIO JOSE DE ALMEIDA CNPJ 06.934.601/0001-58 XML SAIDA MG01/09/2026 2328 5.102'];
+  const dr = R.decidir({ nome: 'RELATORIO 01 SET.PDF', rel: 'r.pdf', texto: rel }, ctx2);
+  igual('relatório de notas de saída: EMITIDOS\\RELATÓRIO MENSAL do ano', [dr.acao, dr.destinoRelativo, dr.nomeFinal], ['ARQUIVAR', '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\EMITIDOS\\RELATÓRIO MENSAL\\2026', '09-2026 - RELATORIO NOTAS EMITIDAS - JANIO JOSE DE ALMEIDA.pdf']);
+  const drE = R.decidir({ nome: 'RELATORIO 02 SET.PDF', rel: 'r.pdf', texto: [rel[0].replace('Notas Fiscais Saída', 'Notas Fiscais Entrada')] }, ctx2);
+  igual('relatório de notas de entrada: RECEBIDOS', [drE.acao, drE.nomeFinal], ['ARQUIVAR', '09-2026 - RELATORIO NOTAS RECEBIDAS - JANIO JOSE DE ALMEIDA.pdf']);
 } catch (e) { falhas++; console.log('FALHOU com erro:', e.stack); }
 finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');

@@ -303,7 +303,17 @@ function varrer(origem, opcoes) {
  * O XML igual com bytes diferentes (23/10/2026: o mesmo evento solto e de dentro do .zip do SIEG, um com BOM e o outro
  * sem): o conteúdo sem BOM, sem espaço nas pontas e com quebra de linha única. Só para XML; os outros, o hash de sempre.
  */
-const conteudoXml = buf => sha(Buffer.from(buf.toString('utf8').replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').trim(), 'utf8'));
+// A nota autorizada é a mesma quando a chave E o protocolo de autorização são os mesmos (23/10/2026: a mesma NF-e com e
+// sem "<?xml …?>", vinda do emissor e do SIEG); o evento, pela chave, tipo, sequência e protocolo.
+function conteudoXml(buf) {
+  const t = buf.toString('utf8').replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').trim();
+  const g = re => (re.exec(t) || [])[1] || '';
+  const prot = g(/<nProt>(\d{10,20})</);
+  const ev = g(/<tpEvento>(\d{6})</);
+  const ch = ev ? g(/<ch(?:NFe|CTe|MDFe)>(\d{44})</) : g(/Id="(?:NFe|CTe|MDFe)(\d{44})"/);
+  if (ch && prot) return 'XML:' + ch + ':' + (ev ? ev + ':' + g(/<nSeqEvento>(\d+)</) + ':' : '') + prot;
+  return sha(Buffer.from(t, 'utf8'));
+}
 function conteudoDe(p, ctx) {
   const k = 'xml:' + p;
   if (!ctx.hashes.has(k)) { let h = ''; try { if (/\.xml$/i.test(p) && fs.statSync(p).isFile()) h = conteudoXml(fs.readFileSync(p)); } catch (e) {} ctx.hashes.set(k, h); }
@@ -415,7 +425,8 @@ async function decidirUm(nome, rel, buffer, ctx) {
     if (!faltaAlgo) { item.acao = 'JA_ARQUIVADO'; item.motivo = 'IDENTICO_JA_ARQUIVADO'; item.codigo = 'E401'; }
     // o índice de chaves cresce na hora (em memória; em PRODUCAO o aplicar grava em chaves.jsonl): um evento do mesmo
     // lote, decidido depois, já acha o original
-    if (item.chave && ctx.chaves && item.onde) ctx.chaves.anotar(item.chave, { onde: item.onde, raiz: ctx.clientes, fonte: 'decisão' }, false);
+    // (as cópias também: a nota das duas clientes leva os eventos para as duas)
+    if (item.chave && ctx.chaves) for (const o of [item.onde].concat(item.copias.map(cp => cp.onde))) if (o) ctx.chaves.anotar(item.chave, { onde: String(o).replace(/ \(neste lote\)$/, ''), raiz: ctx.clientes, fonte: 'decisão' }, false);
   }
   return item;
 }
@@ -462,7 +473,8 @@ async function resolverEsperas(itens, opcoes, ctx) {
       // o original veio do SIEG: decide o original (com a mesma subpasta de origem do evento) para achar o cliente
       const orig = R.decidir({ nome: it.chave + '.xml', rel: it.rel, xml, hash: '' }, ctx);
       if (orig.acao === 'ARQUIVAR' && orig.cliente != null) {
-        ctx.chaves.anotar(it.chave, { cliente: orig.cliente, de: 'outro', fonte: 'SIEG' }, false);
+        // o original pode ir para mais de um cliente (regra das duas clientes): o evento segue todos
+        for (const c of [orig.cliente].concat((orig.copias || []).map(x => x.cliente))) ctx.chaves.anotar(it.chave, { cliente: c, de: 'outro', fonte: 'SIEG' }, false);
         const novo = await redecidir(e, 'documento original baixado do SIEG pela chave ' + it.chave + ' (cliente ' + orig.cliente + ')');
         novo.viaSieg = true;
         continue;

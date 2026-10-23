@@ -68,9 +68,9 @@ const nfe = (emit, dest, n, data, mod) => '<?xml version="1.0" encoding="UTF-8"?
 let d = decidir({ nome: '3126.xml', xml: nfe('11426314000177', '99999999000191', '000007261', '2026-08-05T10:00:00-03:00') });
 igual('NF-e emitida pelo 380: XML\\NF-e do Presumido (05b 14. XML)', [d.acao, d.destinoRelativo, d.nomeFinal], ['ARQUIVAR', '380 - LEONARDO MENDES MARQUES\\FISCAL\\LUCRO PRESUMIDO\\14. XML\\NF-e', '08-2026_NF-e_7261.xml']);
 d = decidir({ nome: 'a.xml', xml: nfe('11426314000177', '06934601000158', '9', '2026-08-05T10:00:00-03:00') });
-igual('NF-e entre dois clientes sem pasta que desempate: CLIENTE_AMBIGUO', [d.acao, d.motivo], ['NAO_IDENTIFICADO', 'CLIENTE_AMBIGUO']);
+igual('NF-e entre dois clientes: nas duas (saída no emitente, entrada no destinatário; 23/10/2026)', [d.acao, d.cliente, d.copias.map(c => c.cliente)], ['ARQUIVAR', 380, [152]]);
 d = R.decidir({ nome: 'a.xml', rel: '2026-08\\JANIO JOSE DE ALMEIDA\\a.xml', xml: nfe('11426314000177', '06934601000158', '9', '2026-08-05T10:00:00-03:00') }, ctx);
-igual('... a pasta de origem desempata (xml_lote: subpasta+documento)', [d.acao, d.cliente], ['ARQUIVAR', 152]);
+igual('... vinda da pasta de um deles: também nas duas', [d.acao, d.cliente, d.copias.map(c => c.cliente)], ['ARQUIVAR', 380, [152]]);
 d = decidir({ nome: 'c.xml', xml: nfe('11426314000177', '99999999000191', '30644', '2026-08-01T10:00:00-03:00', 65) });
 igual('NFC-e: pasta XML\\NFC-e', d.destinoRelativo + '\\' + d.nomeFinal, '380 - LEONARDO MENDES MARQUES\\FISCAL\\LUCRO PRESUMIDO\\14. XML\\NFC-e\\08-2026_NFC-e_30644.xml');
 const evento = '<procEventoNFe><evento><infEvento><CNPJ>11426314000177</CNPJ><chNFe>31260811426314000177550010000101431439862028</chNFe><dhEvento>2026-09-01T10:00:00-03:00</dhEvento><detEvento><descEvento>Cancelamento</descEvento></detEvento></infEvento></evento></procEventoNFe>';
