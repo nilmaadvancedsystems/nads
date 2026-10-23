@@ -247,6 +247,7 @@ function atividade(tipo, texto, detalhe, opcoes) {
   try {
     const t = TIPOS.includes(tipo) ? tipo : 'robo';
     const linha = { em: isoAgora(), tipo: t, texto: cortar(texto, MAX_TEXTO), detalhe: cortar(detalhe || '', MAX_DETALHE), erro: !!(opcoes && opcoes.erro) };
+    if (opcoes && opcoes.aviso) linha.aviso = true;   // aviso: algo que a pessoa corrige no cadastro, não é falha do robô
     if (!linha.texto) return;
     if (!freio.pode(t + '|' + linha.texto + '|' + linha.detalhe, Date.now())) return;
     if (!st) { if (antesDeIniciar.length < MAX_ANTES_DE_INICIAR) antesDeIniciar.push(linha); return; }

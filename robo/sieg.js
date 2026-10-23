@@ -29,7 +29,42 @@ const TIPO = { NFe: 1, CTe: 2, NFSe: 3, NFCe: 4, CFe: 5 };
 const dormir = ms => new Promise(r => setTimeout(r, ms));
 const soDigitos = v => String(v || '').replace(/\D/g, '');
 // o documento do cliente: CNPJ (14) ou CPF (11, o produtor rural; o SIEG conta pelos dois, 07/10/2026)
-const documentoValido = d => d.length === 14 || d.length === 11;
+// (23/10/2026: a contagem da madrugada mandava ao SIEG qualquer número de 11 ou 14 dígitos e ele devolvia HTTP 400 "CNPJ/CPF
+// do Emitente inválido" para os de dígito verificador errado, uma vez por madrugada; agora o dígito é conferido aqui antes)
+function cpfOk(d) {
+  if (!/^\d{11}$/.test(d) || /^(\d)\1+$/.test(d)) return false;
+  for (const t of [9, 10]) {
+    let soma = 0;
+    for (let i = 0; i < t; i++) soma += Number(d[i]) * (t + 1 - i);
+    if ((soma * 10 % 11) % 10 !== Number(d[t])) return false;
+  }
+  return true;
+}
+function cnpjOk(d) {
+  if (!/^\d{14}$/.test(d) || /^(\d)\1+$/.test(d)) return false;
+  for (const t of [12, 13]) {
+    const pesos = t === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    let soma = 0;
+    for (let i = 0; i < t; i++) soma += Number(d[i]) * pesos[i];
+    if ((soma % 11 < 2 ? 0 : 11 - soma % 11) !== Number(d[t])) return false;
+  }
+  return true;
+}
+/**
+ * O documento do cadastro pronto para o SIEG: só os dígitos, com os zeros à esquerda que um número no lugar de texto perde
+ * (CPF de 10 dígitos vira 11, CNPJ de 13 vira 14), e só se o dígito verificador bate. Devolve '' quando não serve.
+ * CPF vai com 11 dígitos no CnpjEmit/CnpjDest (a própria mensagem do SIEG diz que aceita).
+ */
+function normalizarDocumento(valor) {
+  const d = soDigitos(typeof valor === 'number' ? Math.trunc(valor) : valor);
+  if (!d) return '';
+  if (d.length === 14 && cnpjOk(d)) return d;
+  if (d.length === 11 && cpfOk(d)) return d;
+  if (d.length < 11 && cpfOk(d.padStart(11, '0'))) return d.padStart(11, '0');
+  if (d.length > 11 && d.length < 14 && cnpjOk(d.padStart(14, '0'))) return d.padStart(14, '0');
+  return '';
+}
+const SEM_DOC = cod => 'Cliente ' + cod + ' sem CNPJ/CPF válido no cadastro — corrija em Cadastro';
 // o código do cliente no Alterdata: nos clientes do Entregas ele está em codigoOrigem (07/10/2026: com `codigo` só, a
 // contagem não achava ninguém)
 const codigoDe = x => soDigitos(x && (x.codigo != null && x.codigo !== '' ? x.codigo : x.codigoOrigem));
@@ -471,13 +506,13 @@ function iniciarSieg({ db, log }) {
         await d.ref.update({ status: 'processando', processandoEm: new Date().toISOString() });
         try {
           // o nads conhece a empresa pelo código: o CNPJ vem do cadastro de clientes
-          let cnpj = soDigitos(p.cnpj);
-          if (!documentoValido(cnpj)) {
+          let cnpj = normalizarDocumento(p.cnpj);
+          if (!cnpj) {
             const lista = [];
             (await require('./clientes-cache').clientesAtivos(db)).forEach(x => lista.push(x.data()));
             const cli = lista.find(x => codigoDe(x) === soDigitos(p.codigo));
-            cnpj = soDigitos(cli && cli.documento);
-            if (!documentoValido(cnpj)) throw new Error('o cliente ' + p.codigo + ' não tem CNPJ nem CPF no cadastro');
+            cnpj = normalizarDocumento(cli && cli.documento);
+            if (!cnpj) throw new Error(SEM_DOC(soDigitos(p.codigo)));
           }
           // "Baixar XMLs do SIEG" (07/10/2026): todos os XMLs do mês na pasta do cliente (Drive deste PC) e o resumo no banco
           // e os XMLs que o cliente mandou (xmlsCliente, 08/10/2026): o nads manda os arquivos em pedaços
@@ -710,6 +745,24 @@ function iniciarSieg({ db, log }) {
   }
   const pararPedidos = db.collection('pedidosSieg').where('status', '==', 'pendente').onSnapshot(s => { if (!s.empty) atenderPedidos(); }, err => log('SIEG: pedidos -', err.message));
 
+  // quem não tem documento válido não vai ao SIEG: um aviso por cliente por dia no painel (o documento do dia é criado com
+  // create(), que falha se já existe: vale também se o robô reiniciar no meio da madrugada)
+  async function soComDocumento(ativos) {
+    const bons = [];
+    const dia = new Date().toISOString().slice(0, 10);
+    for (const x of ativos) {
+      const cod = codigoDe(x);
+      if (!cod) continue;
+      if (normalizarDocumento(x.documento)) { bons.push(x); continue; }
+      try {
+        await db.collection('siegAvisos').doc(cod + '_' + dia).create({ codigo: cod, dia, em: new Date().toISOString() });
+        painel.atividade('sieg', SEM_DOC(cod), 'documento no cadastro: ' + (x.documento == null || x.documento === '' ? '(vazio)' : String(x.documento)), { aviso: true });
+        log('SIEG:', SEM_DOC(cod));
+      } catch (err) { /* já avisou hoje (ou o banco falhou: o aviso não é motivo para parar a contagem) */ }
+    }
+    return bons;
+  }
+
   // a contagem da madrugada (entre 1h e 5h, uma vez por dia): o mês atual e, até o dia 10, o anterior também
   let contouEm = '';
   async function contarTodos() {
@@ -723,7 +776,7 @@ function iniciarSieg({ db, log }) {
       if (hoje.getDate() <= 10) comps.push(competenciaDe(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1)));
       const ativos = [];
       (await require('./clientes-cache').clientesAtivos(db)).forEach(d => ativos.push(d.data()));
-      const comCnpj = ativos.filter(x => documentoValido(soDigitos(x.documento)) && codigoDe(x));
+      const comCnpj = await soComDocumento(ativos);
       log('SIEG: contando as notas de', comCnpj.length, 'clientes em', comps.join(' e '));
       for (const comp of comps) {
         for (const cli of comCnpj) {
@@ -731,8 +784,8 @@ function iniciarSieg({ db, log }) {
           if (chegouOutro) { ocupado = false; await atenderPedidos(); ocupado = true; }
           situacao = 'contando ' + codigoDe(cli) + ' (' + comp + ')';
           try {
-            const r = await contagemDoMes(c, soDigitos(cli.documento), comp);
-            await db.collection('siegContagens').doc(codigoDe(cli) + '_' + comp).set({ codigo: codigoDe(cli), cnpj: soDigitos(cli.documento), competencia: comp, em: new Date().toISOString(), ...r });
+            const r = await contagemDoMes(c, normalizarDocumento(cli.documento), comp);
+            await db.collection('siegContagens').doc(codigoDe(cli) + '_' + comp).set({ codigo: codigoDe(cli), cnpj: normalizarDocumento(cli.documento), competencia: comp, em: new Date().toISOString(), ...r });
           } catch (err) { log('SIEG: contagem de', codigoDe(cli), '-', err.message); }
         }
       }
@@ -753,7 +806,7 @@ function iniciarSieg({ db, log }) {
     const comp = competenciaDe(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1));
     const ativos = [];
     (await require('./clientes-cache').clientesAtivos(db)).forEach(d => ativos.push(d.data()));
-    const comCnpj = ativos.filter(x => documentoValido(soDigitos(x.documento)) && codigoDe(x));
+    const comCnpj = await soComDocumento(ativos);
     const CHAVE = { 'NF-e': 'NFe', 'NFC-e': 'NFCe', 'CT-e': 'CTe', 'NFS-e': 'NFSe', 'CF-e': 'CFe' };
     let feitos = 0;
     for (const cli of comCnpj) {
@@ -783,4 +836,4 @@ function iniciarSieg({ db, log }) {
   return () => { clearInterval(relogio); clearInterval(relogioNoite); pararPedidos(); };
 }
 
-module.exports = { xmlsJaNoDrive, seriesDasNotas, saidasDoResumo, iniciarSieg, lerXml, xmlsDaResposta, lerZip, periodo, contagemDoMes, saidasDoMes, xmlsDoMes, resumoQueCabe, chamar, lerCredenciais };
+module.exports = { normalizarDocumento, xmlsJaNoDrive, seriesDasNotas, saidasDoResumo, iniciarSieg, lerXml, xmlsDaResposta, lerZip, periodo, contagemDoMes, saidasDoMes, xmlsDoMes, resumoQueCabe, chamar, lerCredenciais };
