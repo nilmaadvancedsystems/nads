@@ -55,15 +55,31 @@ function cnpjOk(d) {
  * (CPF de 10 dígitos vira 11, CNPJ de 13 vira 14), e só se o dígito verificador bate. Devolve '' quando não serve.
  * CPF vai com 11 dígitos no CnpjEmit/CnpjDest (a própria mensagem do SIEG diz que aceita).
  */
-function normalizarDocumento(valor) {
+function normalizarDocumento(valor, enquadramento) {
   const d = soDigitos(typeof valor === 'number' ? Math.trunc(valor) : valor);
   if (!d) return '';
   if (d.length === 14 && cnpjOk(d)) return d;
   if (d.length === 11 && cpfOk(d)) return d;
   if (d.length < 11 && cpfOk(d.padStart(11, '0'))) return d.padStart(11, '0');
   if (d.length > 11 && d.length < 14 && cnpjOk(d.padStart(14, '0'))) return d.padStart(14, '0');
+  // produtor rural (enquadramento Física): o cadastro veio do Toriba com o número de 14 dígitos do produtor (CAEPF: 9 da base do
+  // CPF + 3 de sequência + 2 dígitos) e o SIEG só aceita CPF ou CNPJ. Sem ser CNPJ válido, o CPF sai da base (23/10/2026, o Vitor
+  // aprovou). Não consegui validar o dígito do CAEPF (as fórmulas de CNPJ e de CPF não fecham nos 6 casos do cadastro), então
+  // a regra é só o enquadramento. O robô avisa no painel (soComDocumento) para gravar o CPF no Cadastro.
+  if (d.length === 14 && /^f[ií]sica$/i.test(String(enquadramento || '').trim())) return cpfDaBase(d.slice(0, 9));
   return '';
 }
+/** O CPF de 11 dígitos a partir dos 9 primeiros (a base), com os dois dígitos verificadores calculados. */
+function cpfDaBase(base) {
+  let cpf = base;
+  for (const t of [9, 10]) {
+    let soma = 0;
+    for (let i = 0; i < t; i++) soma += Number(cpf[i]) * (t + 1 - i);
+    cpf += (soma * 10 % 11) % 10;
+  }
+  return cpfOk(cpf) ? cpf : '';
+}
+const comMascaraCpf = c => c.slice(0, 3) + '.' + c.slice(3, 6) + '.' + c.slice(6, 9) + '-' + c.slice(9);
 const SEM_DOC = cod => 'Cliente ' + cod + ' sem CNPJ/CPF válido no cadastro — corrija em Cadastro';
 // o código do cliente no Alterdata: nos clientes do Entregas ele está em codigoOrigem (07/10/2026: com `codigo` só, a
 // contagem não achava ninguém)
@@ -511,7 +527,7 @@ function iniciarSieg({ db, log }) {
             const lista = [];
             (await require('./clientes-cache').clientesAtivos(db)).forEach(x => lista.push(x.data()));
             const cli = lista.find(x => codigoDe(x) === soDigitos(p.codigo));
-            cnpj = normalizarDocumento(cli && cli.documento);
+            cnpj = normalizarDocumento(cli && cli.documento, cli && cli.enquadramento);
             if (!cnpj) throw new Error(SEM_DOC(soDigitos(p.codigo)));
           }
           // "Baixar XMLs do SIEG" (07/10/2026): todos os XMLs do mês na pasta do cliente (Drive deste PC) e o resumo no banco
@@ -753,7 +769,19 @@ function iniciarSieg({ db, log }) {
     for (const x of ativos) {
       const cod = codigoDe(x);
       if (!cod) continue;
-      if (normalizarDocumento(x.documento)) { bons.push(x); continue; }
+      const doc = normalizarDocumento(x.documento, x.enquadramento);
+      if (doc) {
+        bons.push(x);
+        // CPF calculado do número de produtor rural: pede para gravar o certo no Cadastro (um aviso por dia)
+        if (doc !== normalizarDocumento(x.documento)) {
+          try {
+            await db.collection('siegAvisos').doc(cod + '_' + dia).create({ codigo: cod, dia, em: new Date().toISOString(), cpfCalculado: true });
+            painel.atividade('sieg', 'Cliente ' + cod + ': usei o CPF ' + comMascaraCpf(doc) + ' calculado do número de produtor rural — confira e grave o CPF no Cadastro', 'documento no cadastro: ' + String(x.documento), { aviso: true });
+            log('SIEG: cliente', cod, '- CPF', doc, 'calculado do número de produtor rural', soDigitos(x.documento));
+          } catch (err) { /* já avisou hoje */ }
+        }
+        continue;
+      }
       try {
         await db.collection('siegAvisos').doc(cod + '_' + dia).create({ codigo: cod, dia, em: new Date().toISOString() });
         painel.atividade('sieg', SEM_DOC(cod), 'documento no cadastro: ' + (x.documento == null || x.documento === '' ? '(vazio)' : String(x.documento)), { aviso: true });
@@ -784,8 +812,8 @@ function iniciarSieg({ db, log }) {
           if (chegouOutro) { ocupado = false; await atenderPedidos(); ocupado = true; }
           situacao = 'contando ' + codigoDe(cli) + ' (' + comp + ')';
           try {
-            const r = await contagemDoMes(c, normalizarDocumento(cli.documento), comp);
-            await db.collection('siegContagens').doc(codigoDe(cli) + '_' + comp).set({ codigo: codigoDe(cli), cnpj: normalizarDocumento(cli.documento), competencia: comp, em: new Date().toISOString(), ...r });
+            const r = await contagemDoMes(c, normalizarDocumento(cli.documento, cli.enquadramento), comp);
+            await db.collection('siegContagens').doc(codigoDe(cli) + '_' + comp).set({ codigo: codigoDe(cli), cnpj: normalizarDocumento(cli.documento, cli.enquadramento), competencia: comp, em: new Date().toISOString(), ...r });
           } catch (err) { log('SIEG: contagem de', codigoDe(cli), '-', err.message); }
         }
       }
