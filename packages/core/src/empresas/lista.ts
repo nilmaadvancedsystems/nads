@@ -6,7 +6,7 @@ export const EMPRESAS: readonly EmpresaDoEscritorio[] = [
   { codigo: 462, nome: "3M EMPREENDIMENTOS FLORESTAIS LTDA", regime: "Presumido" },
   { codigo: 356, nome: "A7 COMERCIO DE VEICULOS LTDA", regime: "Presumido" },
   { codigo: 515, nome: "A7 MOBILE LTDA", regime: "Simples" },
-  { codigo: 591, nome: "AAP INTERMEDIACOES LTDA", regime: "Simples" },
+  { codigo: 602, nome: "AAP INTERMEDIACOES LTDA", regime: "Simples" },
   { codigo: 450, nome: "ACO FORTE METAIS LTDA", regime: "Simples" },
   { codigo: 371, nome: "ACSSP ADM PROMOCAO DE VENDAS LTDA", regime: "Simples" },
   { codigo: 205, nome: "ADEMILSON OLIVEIRA CRUZ", regime: "Simples" },
@@ -237,5 +237,5 @@ export const EMPRESAS: readonly EmpresaDoEscritorio[] = [
   { codigo: 608, nome: "ZELO AGROINDUSTRIAS LTDA - FILIAL C. SALES", regime: "Simples" },
   { codigo: 609, nome: "ZELO AGROINDUSTRIAS LTDA - FILIAL SJP", regime: "Simples" },
   { codigo: 607, nome: "ZELO AGROINDUSTRIAS LTDA - FILIAL TAIOBEIRAS", regime: "Simples" },
-  { codigo: 602, nome: "ZELO AGROINDUSTRIAS LTDA - MATRIZ", regime: "Simples" },
+  { codigo: 591, nome: "ZELO AGROINDUSTRIAS LTDA - MATRIZ", regime: "Simples" },
 ];
