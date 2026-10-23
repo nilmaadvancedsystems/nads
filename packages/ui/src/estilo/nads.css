@@ -5028,6 +5028,28 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .faturamento-tabela tfoot td{border-top:2px solid var(--border);position:sticky;bottom:0;background:var(--surface);}
 .faturamento-subiu{color:var(--ok,#1E8E3E);}
 .faturamento-caiu{color:var(--danger);}
+/* o faturamento detalhado de um cliente (22/10/2026): a linha clicável e a janela */
+.fat-linha{cursor:pointer;}
+.fat-linha:hover td{background:var(--hover-bg);}
+.fat-nome-btn{border:none;background:none;padding:0;font:inherit;color:var(--ink);cursor:pointer;text-align:left;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
+.fat-linha:hover .fat-nome-btn{text-decoration:underline;}
+.modal.fat-detalhe{width:min(1100px,calc(100vw - 32px));max-width:none;max-height:calc(100vh - 48px);overflow:auto;display:flex;flex-direction:column;gap:14px;padding:18px 20px;}
+.fat-detalhe-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.fat-detalhe p{padding:0;}
+.fat-detalhe-topo h3{margin:0;padding:0;border:none;font-size:var(--fs-16,16px);}
+.fat-detalhe-topo p{margin:4px 0 0;font-size:var(--fs-13,13px);}
+.fat-detalhe .stat-grid{margin:0;}
+.fat-detalhe-corpo{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:14px;align-items:start;}
+.fat-detalhe .card{margin:0;}
+.fat-detalhe-meses .table-wrap{max-height:420px;overflow:auto;}
+.fat-mes{cursor:pointer;}
+.fat-mes:hover td{background:var(--hover-bg);}
+.fat-mes-escolhido td{background:var(--surface-2);}
+.fat-mes-escolhido td:first-child{box-shadow:inset 3px 0 0 var(--accent);font-weight:600;}
+.fat-detalhe-mes{display:flex;flex-direction:column;gap:8px;}
+.fat-detalhe-mes>p{margin:0;font-size:var(--fs-13,13px);}
+.fat-detalhe-sub{font-weight:600;font-size:var(--fs-13,13px);margin:6px 0 0;}
+@media (max-width:900px){.fat-detalhe-corpo{grid-template-columns:1fr;}}
 /* Fiscal › Simples: a calculadora do Simples Nacional (22/10/2026) */
 .simples-calc{display:flex;flex-direction:column;gap:12px;}
 .simples-calc-empresa{min-width:320px;max-width:480px;flex:1 1 320px;}
@@ -5063,3 +5085,14 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .cli-arquivo-dentro{fill:none;stroke:var(--arq);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;opacity:.72;}
 .cli-arquivo-etiqueta{fill:var(--arq);}
 .cli-arquivo-ext{fill:var(--cli-cartao,var(--surface));font-family:var(--font-body);font-size:6.6px;font-weight:800;letter-spacing:.35px;}
+/* o painel de progresso do arquivador (22/10/2026: "apenas um painel de progresso da tarefa"): a janela centrada, o PC
+   ligado no título, o andamento com as 10 fases ou, parado, a próxima e a última rodada */
+.arquivador-progresso{max-width:520px;}
+.arquivador-progresso > h3{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.arquivador-progresso > h3 > svg{width:16px;height:16px;flex:none;}
+.arquivador-progresso > h3 .arquivador-pc{margin-left:auto;font-weight:400;}
+.arquivador-progresso .arquivador-hero{padding:24px 20px 8px;}
+.arquivador-progresso-fases{align-self:stretch;max-width:340px;margin:12px auto 0;text-align:left;}
+.arquivador-ultima{display:flex;flex-direction:column;gap:8px;align-self:stretch;margin-top:12px;}
+.arquivador-ultima > p{margin:0;font-size:var(--fs-12);}
+.arquivador-progresso .arquivador-hero h3{margin:0;padding:0;border:none;background:none;}
