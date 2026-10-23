@@ -52,6 +52,12 @@ function Progresso({ vm }: { vm: Vm }) {
       <span className={'arquivador-hero-icone' + (vm.hoje ? ' em-dia' : '')}><Icone nome={vm.hoje ? 'checkCircle' : 'arquivo'} /></span>
       <h3>Nada rodando agora</h3>
       <p className="arquivador-hero-texto">Próxima organização {vm.proximaRodada}</p>
+      {vm.paraResolver && (
+        <p className={'arquivador-hero-nota' + (vm.paraResolver.aviso ? ' aviso' : '')}>
+          <Icone nome={vm.paraResolver.aviso ? 'alert' : 'checkCircle'} width={16} height={16} />{vm.paraResolver.texto}
+          {vm.paraResolver.aviso && vm.linkDoAdmin && <> · <a href={vm.linkDoAdmin}>abrir no Arquivador</a></>}
+        </p>
+      )}
       {u && (
         <div className="arquivador-ultima">
           <p className="fraco">Última rodada {u.quando}</p>

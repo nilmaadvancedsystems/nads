@@ -125,7 +125,7 @@ export function useArquivadorAdmin() {
       : p.config.emProducao ? { rotulo: 'Produção', tom: 'ok' as Tom, texto: p.config.tiposProducao.includes('todos') ? 'Arquiva de verdade todos os tipos.' : 'Arquiva de verdade: ' + p.config.tiposProducao.join(', ') + '. O resto é simulado.' }
         : { rotulo: 'Simulação', tom: 'aviso' as Tom, texto: 'Só registra o que faria: nada é movido.' };
 
-  const pendentesAgora = p?.pendentesTotal ?? (p?.pendentes ?? []).length;
+  const pendentesAgora = entregas.paraResolverAgora(p);
   // os números grandes (o dia ou o mês)
   const numeros = c ? [
     { id: 'arquivados', rotulo: p?.config?.emProducao ? 'Arquivados' : 'Arquivaria (simulação)', valor: mil(c.porAcao.arquivou + c.porAcao.arquivaria), icone: 'checkCircle' as NomeIcone, tom: 'ok' as Tom, aba: 'arquivados' as AbaDoArquivador },
@@ -196,7 +196,7 @@ export function useArquivadorAdmin() {
   }));
   const chegandoAberto = aba === 'chegando' && itemAberto ? (p?.pasta?.lista ?? []).find(x => x.rel === itemAberto) : undefined;
 
-  const resolver = p?.pendentesTotal ?? pendentes.length;
+  const resolver = entregas.paraResolverAgora(p);
   const naFila = p?.pasta ? p.pasta.chegando + p.pasta.naFila + p.pasta.sendoLidos : 0;
   const abas: { id: AbaDoArquivador; rotulo: string; icone: NomeIcone; contador: string; aviso: boolean; direita?: boolean }[] = [
     { id: 'geral', rotulo: 'Visão geral', icone: 'painel', contador: '', aviso: false },

@@ -68,6 +68,8 @@ const fila = db.collection('solicitacoesArquivo');
 const estadoRef = db.collection('robo').doc('arquivador');
 
 let estado = { situacao: 'livre', pedidoId: null, desde: agora(), mensagem: null };
+// o que está HOJE em NÃO IDENTIFICADOS (o arquivador novo conta; 23/10/2026): vai no ponto de cada minuto
+let paraResolver = null;
 function baterPonto() {
   // junto com o ponto, se a rotina está rodando por fora (a tarefa das 9h ou alguém rodando à mão): o nads mostra no
   // "Arquivar agora" do Drive (05/10/2026). Vai no mesmo ponto de cada minuto — nenhuma gravação a mais.
@@ -76,7 +78,7 @@ function baterPonto() {
   // a organização rodando por fora do botão (a das 9h), no painel do robô
   painel.fazendo('rotina', rotina && rotina.ativa && !rotina.deUmPedido
     ? 'Organizando o Drive (rotina das 9h' + (rotina.fase ? ', fase ' + rotina.fase : '') + ')' : null);
-  estadoRef.set(Object.assign({ em: agora(), pc: os.hostname(), rotina }, estado), { merge: true })
+  estadoRef.set(Object.assign({ em: agora(), pc: os.hostname(), rotina }, paraResolver ? { paraResolver } : {}, estado), { merge: true })
     .catch(err => log('não consegui bater o ponto:', err.message));
 }
 function mudarEstado(novo) {
@@ -661,7 +663,7 @@ async function iniciar() {
   // relatório lado a lado. Produção só por tipo, pela chave do config (robo/arquivadorNovo ou config.json no controle).
   // Nunca roda junto com um pedido do botão (ocupado) nem com a rotina antiga. ARQUIVADOR_NOVO=0 não liga.
   if (process.env.ARQUIVADOR_NOVO !== '0') {
-    try { continuo = require('./arquivador-continuo').iniciar({ db, painel, log: (...m) => log('[novo]', ...m), ocupado: () => ocupado }); }
+    try { continuo = require('./arquivador-continuo').iniciar({ db, painel, log: (...m) => log('[novo]', ...m), ocupado: () => ocupado, aoContarPendentes: p => { paraResolver = p; } }); }
     catch (err) { log('o arquivador novo não ligou:', err.message); painel.modulo('arquivador-novo', 'Arquivador novo (por evento)', false, err.message); }
   }
   log('arquivador ligado em', os.hostname(), '— rotina em', RAIZ);

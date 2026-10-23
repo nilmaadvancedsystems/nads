@@ -58,20 +58,25 @@ describe('o arquivador novo (Admin › Arquivador)', () => {
   });
 
   it('o resumo do dia em linguagem simples (produção)', () => {
+    const pend = (m: string, n: number) => Array.from({ length: n }, (_, i) => ({ id: m + i, acao: 'naoIdentificado', motivo: m }));
     const p = painel({ hoje: contagem({
-      porAcao: { arquivou: 312, naoIdentificado: 8, fica: 1, jaArquivado: 4 }, totalDeClientes: 41,
-      porMotivo: { CLIENTE_NAO_LOCALIZADO: 5, CLIENTE_AMBIGUO: 3, CONTEUDO_SEM_TEXTO: 1 }, pastasNovas: ['592 - ALFA LTDA', '593 - BETA ME'],
-    }) });
-    expect(resumoDoDia(p)).toBe('Hoje arquivei 312 arquivos de 41 clientes. 9 ficaram para você resolver (5 sem CNPJ cadastrado, 3 com duas empresas possíveis e 1 escaneado sem leitura). '
+      porAcao: { arquivou: 312, naoIdentificado: 80, fica: 1, jaArquivado: 4 }, totalDeClientes: 41,
+      porMotivo: { CLIENTE_NAO_LOCALIZADO: 50 }, pastasNovas: ['592 - ALFA LTDA', '593 - BETA ME'],
+    }), pendentes: [...pend('CLIENTE_NAO_LOCALIZADO', 5), ...pend('CLIENTE_AMBIGUO', 3), ...pend('CONTEUDO_SEM_TEXTO', 1)], pendentesTotal: 9 });
+    // o que está para resolver AGORA (a pasta NÃO IDENTIFICADOS), não as decisões do dia
+    expect(resumoDoDia(p)).toBe('Hoje arquivei 312 arquivos de 41 clientes. 9 estão para você resolver agora (5 sem CNPJ cadastrado, 3 com duas empresas possíveis e 1 escaneado sem leitura). '
       + '4 já estavam arquivados (o mesmo conteúdo na pasta do cliente). Criei 2 pastas novas: 592 - ALFA LTDA e 593 - BETA ME.');
   });
 
   it('o resumo em simulação fala no condicional; dia vazio também tem frase', () => {
     const sim = painel({ config: { modo: 'simulacao' }, hoje: contagem({ porAcao: { arquivaria: 1 }, totalDeClientes: 1 }) });
-    expect(resumoDoDia(sim)).toBe('Hoje eu arquivaria (simulação) 1 arquivo de 1 cliente. Nada ficou para você resolver.');
-    expect(resumoDoDia(painel())).toBe('Hoje ainda não chegou nada para arquivar.');
-    const comResto = painel({ hoje: contagem({ porAcao: { arquivou: 1, naoIdentificado: 6 }, porMotivo: { A: 2, B: 1, C: 1, D: 1, E: 1 } }) });
-    expect(resumoDoDia(comResto)).toContain('6 ficaram para você resolver (2 a, 1 b, 1 c e 2 por outros motivos).');
+    expect(resumoDoDia(sim)).toBe('Hoje eu arquivaria (simulação) 1 arquivo de 1 cliente. Nada para resolver.');
+    expect(resumoDoDia(painel())).toBe('Hoje ainda não chegou nada para arquivar. Nada para resolver.');
+    const um = (m: string) => ({ id: m + Math.random(), acao: 'naoIdentificado', motivo: m });
+    const comResto = painel({ hoje: contagem({ porAcao: { arquivou: 1, naoIdentificado: 6 } }), pendentes: [um('A'), um('A'), um('B'), um('C'), um('D'), um('E')], pendentesTotal: 6 });
+    expect(resumoDoDia(comResto)).toContain('6 estão para você resolver agora (2 a, 1 b, 1 c e 2 por outros motivos).');
+    // o dia teve não identificados, mas a pasta está vazia: nada para resolver
+    expect(resumoDoDia(painel({ hoje: contagem({ porAcao: { arquivou: 5, naoIdentificado: 80 } }), pendentes: [], pendentesTotal: 0 }))).toBe('Hoje arquivei 5 arquivos. Nada para resolver.');
   });
 
   it('o progresso da passada: "1.240 de 17.158" e a previsão pelo ritmo', () => {

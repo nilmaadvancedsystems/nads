@@ -431,7 +431,7 @@ function criar(opcoes) {
      * reprocessamentos tiravam a maioria da pasta). itens = [{ rel, nome, motivo, confianca, cliente, chave, em, hash }]
      * do que está hoje em NÃO IDENTIFICADOS; o "fica" (na origem) continua enquanto o arquivo estiver lá (existe(rel)).
      */
-    naoIdentificados: seguro('naoIdentificados', (itens, existe) => {
+    naoIdentificados: seguro('naoIdentificados', (itens, existe, aoContar) => {
       const daPasta = (itens || []).map(x => Object.assign(itemCompacto(Object.assign({ acao: 'NAO_IDENTIFICADO' }, x), 'PRODUCAO', x.em || new Date(o.agora()).toISOString(), false), { naPasta: x.naPasta || null }));
       const ficam = st.pendentes.filter(p => p.acao === 'fica' && (!existe || existe(p.rel)));
       const todos = daPasta.concat(ficam).sort((a, b) => String(b.em).localeCompare(String(a.em)));
@@ -439,6 +439,7 @@ function criar(opcoes) {
       st.pendentes = todos.slice(0, MAX_PENDENTES);
       st.pendentesTotal = todos.length;
       if (antes !== JSON.stringify([st.pendentesTotal, st.pendentes.map(p => p.id)])) publicar();
+      if (aoContar) aoContar(st.pendentesTotal);
     }),
     ladoALado: seguro('ladoALado', (r) => { st.ladoALado = Object.assign({}, r, { exemplos: (r.exemplos || []).slice(0, 20) }); publicar(); }),
     /** grava o que falta agora (ao desligar) */

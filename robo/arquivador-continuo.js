@@ -389,7 +389,13 @@ function iniciar(opcoes) {
       if (!fs.existsSync(path.join(pastaNi, k))) continue;
       itens.push({ rel: (j.dir ? j.dir + '\\' : '') + j.arquivo, nome: j.arquivo, motivo: j.motivo, confianca: j.confianca, cliente: j.cliente_tentativa, chave: j.chave || null, em: j.timestamp, hash: require('crypto').createHash('sha1').update(k).digest('hex'), naPasta: 'NÃO IDENTIFICADOS\\' + k });
     }
-    acomp.naoIdentificados(itens, rel => fs.existsSync(path.join(o.origem, rel)));
+    // a MESMA contagem em todo lugar que diz "para resolver" (23/10/2026): o painel do robô (robo/painelPC.paraResolver),
+    // o ponto do arquivador (robo/arquivador.paraResolver, que a janela do Drive lê) e o acompanhamento (pendentesTotal)
+    acomp.naoIdentificados(itens, rel => fs.existsSync(path.join(o.origem, rel)), total => {
+      const p = { agora: total, em: new Date().toISOString() };
+      if (o.painel) o.painel.estado({ paraResolver: p });
+      if (o.aoContarPendentes) { try { o.aoContarPendentes(p); } catch (e) { /* só o aviso */ } }
+    });
   }
 
   async function compararSeForHora() {

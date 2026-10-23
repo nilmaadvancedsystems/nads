@@ -24,6 +24,8 @@ export function usePainelDoRobo() {
   const filas = entregas.filasDoPainel(d.pc, d.vm, agora);
   const filtradas = entregas.filtrarAtividades(d.atividades, { tipo, soErros });
   const arquivados = d.pc?.arquivados || null;
+  // o que está HOJE em NÃO IDENTIFICADOS (a mesma conta da aba Para resolver; null: o robô ainda não conta)
+  const paraResolver = d.pc?.paraResolver ?? null;
   // o Arquivador (22/10/2026: a área única dele, no site do admin, onde este painel também mora): só o admin
   const podeAbrirArquivo = !!op?.admin;
 
@@ -39,6 +41,8 @@ export function usePainelDoRobo() {
     erros: entregas.errosRecentes(d.atividades, agora).slice(0, 5),
     errosNas24h: entregas.errosRecentes(d.atividades, agora).length,
     arquivados,
+    /** para resolver agora: o número e o texto ("Nada para resolver" no zero) */
+    paraResolver: paraResolver ? { n: paraResolver.agora, texto: paraResolver.agora ? paraResolver.agora.toLocaleString('pt-BR') : 'Nada para resolver' } : null,
     /** o mês dos arquivados por extenso ("outubro de 2026") */
     mesDosArquivados: arquivados?.mes ? new Date(Number(arquivados.mes.slice(0, 4)), Number(arquivados.mes.slice(5, 7)) - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : '',
     podeAbrirArquivo,

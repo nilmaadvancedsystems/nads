@@ -20,9 +20,13 @@ export interface ExecucaoArquivada { id: string; em: string; arquivados: number;
 export interface ArquivadosDoMes {
   mes: string; em: string; hoje: number; noMes: number; naoIdentificadosNoMes: number; execucoesNoMes: number; execucoes: ExecucaoArquivada[];
 }
+/** O que está HOJE em NÃO IDENTIFICADOS (o arquivador novo conta; 23/10/2026): a mesma conta da aba Para resolver. */
+export interface ParaResolverAgora { agora: number; em: string }
 export interface BatimentoDoRobo {
   robo: IdRobo; nome: string; maquina: string; versao: string; ligadoEm: string; em: string; desligadoEm: string;
   agora: FazendoAgora[]; modulos: ModuloDoRobo[]; filas: FilaDoRobo[]; arquivados: ArquivadosDoMes | null;
+  /** null: o robô ainda não conta (antes de ser atualizado) */
+  paraResolver: ParaResolverAgora | null;
 }
 export interface AtividadeDoRobo { id: string; em: string; robo: IdRobo; maquina: string; tipo: string; texto: string; detalhe: string; erro: boolean }
 /** O sinal de vida de antes do painel (para quando o robô ainda não publica o painel). */
@@ -51,6 +55,7 @@ const idade = (iso: string, agora: number) => { const t = Date.parse(iso); retur
 export function lerBatimento(robo: IdRobo, d: Obj | null | undefined): BatimentoDoRobo | null {
   if (!d) return null;
   const a = d.arquivados ? obj(d.arquivados) : null;
+  const pr = d.paraResolver ? obj(d.paraResolver) : null;
   return {
     robo, nome: txt(d.nome) || NOMES_DOS_ROBOS[robo], maquina: txt(d.maquina), versao: txt(d.versao), ligadoEm: txt(d.ligadoEm),
     em: txt(d.em), desligadoEm: txt(d.desligadoEm),
@@ -62,6 +67,7 @@ export function lerBatimento(robo: IdRobo, d: Obj | null | undefined): Batimento
       execucoesNoMes: num(a.execucoesNoMes),
       execucoes: lista(a.execucoes).map(x => ({ id: txt(x.id), em: txt(x.em), arquivados: num(x.arquivados), clientes: num(x.clientes), naoIdentificados: num(x.naoIdentificados) })),
     } : null,
+    paraResolver: pr ? { agora: num(pr.agora), em: txt(pr.em) } : null,
   };
 }
 

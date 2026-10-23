@@ -93,6 +93,8 @@ export interface EstadoDoArquivador {
   situacao: string;
   desligadoEm: string;
   rotina: RotinaRodando | null;
+  /** o que está HOJE em NÃO IDENTIFICADOS (o arquivador novo conta; null: o robô ainda não conta) */
+  paraResolver: { agora: number; em: string } | null;
 }
 
 export interface RepoArquivador {
@@ -133,7 +135,7 @@ export function criarArquivadorMemoria(quem: () => { nome: string } | null): Rep
   const ETAPAS = ['Ler a pasta Claudio Secretario', 'Identificar o cliente de cada arquivo', 'Mover para as pastas dos clientes', 'Conferir e registrar'];
   return {
     exemplos: true,
-    estado: () => ({ carregado: true, semPermissao: false, em: agora(), situacao: pedidos.some(p => p.status === 'processando') ? 'rodando' : 'livre', desligadoEm: '', rotina }),
+    estado: () => ({ carregado: true, semPermissao: false, em: agora(), situacao: pedidos.some(p => p.status === 'processando') ? 'rodando' : 'livre', desligadoEm: '', rotina, paraResolver: { agora: 0, em: agora() } }),
     conversa: () => ({
       carregada: true, atualizadaEm: rotina ? agora() : '', sessao: 'exemplo',
       mensagens: rotina ? [

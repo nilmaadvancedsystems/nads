@@ -237,18 +237,28 @@ export function resumoDoDia(p: PainelDoArquivador): string {
       : 'arquivei ' + plural(feitos, 'arquivo', 'arquivos');
     frases.push('Hoje ' + verbo + (h.totalDeClientes ? ' de ' + plural(h.totalDeClientes, 'cliente', 'clientes') : '') + '.');
   }
-  const resolver = h.porAcao.naoIdentificado + h.porAcao.fica;
+  // o que está para resolver AGORA (o que está hoje em NÃO IDENTIFICADOS), não as decisões do dia (23/10/2026: o
+  // reprocessamento resolve depois, e o resumo continuava dizendo "80 ficaram para você resolver")
+  const resolver = paraResolverAgora(p);
   if (resolver) {
-    const motivos = Object.entries(h.porMotivo).sort((a, b) => b[1] - a[1]);
+    const porMotivo: Record<string, number> = {};
+    for (const x of p.pendentes) if (x.motivo) porMotivo[x.motivo] = (porMotivo[x.motivo] || 0) + 1;
+    const motivos = Object.entries(porMotivo).sort((a, b) => b[1] - a[1]);
     const partes = motivos.slice(0, 3).map(([m, n]) => mil(n) + ' ' + noResumo(m, n));
     const resto = resolver - motivos.slice(0, 3).reduce((s, [, n]) => s + n, 0);
     if (resto > 0 && partes.length) partes.push(mil(resto) + (resto === 1 ? ' por outro motivo' : ' por outros motivos'));
-    frases.push(plural(resolver, 'ficou', 'ficaram') + ' para você resolver' + (partes.length ? ' (' + listaEmPalavras(partes) + ')' : '') + '.');
-  } else if (feitos) frases.push('Nada ficou para você resolver.');
+    frases.push(plural(resolver, 'está', 'estão') + ' para você resolver agora' + (partes.length ? ' (' + listaEmPalavras(partes) + ')' : '') + '.');
+  } else frases.push('Nada para resolver.');
   if (h.porAcao.jaArquivado) frases.push(plural(h.porAcao.jaArquivado, 'já estava arquivado', 'já estavam arquivados') + ' (o mesmo conteúdo na pasta do cliente).');
   if (h.pastasNovas.length) frases.push((simulando ? 'Criaria ' : 'Criei ') + plural(h.pastasNovas.length, 'pasta nova', 'pastas novas') + ': ' + listaEmPalavras(h.pastasNovas.slice(0, 4)) + (h.pastasNovas.length > 4 ? ' e outras' : '') + '.');
   if (h.porAcao.erro) frases.push(plural(h.porAcao.erro, 'arquivo deu erro', 'arquivos deram erro') + ': veja a aba Erros.');
   return frases.join(' ');
+}
+
+/** Quantos estão para resolver agora: o que está hoje em NÃO IDENTIFICADOS (a mesma conta em todo lugar). */
+export function paraResolverAgora(p: PainelDoArquivador | null | undefined): number {
+  if (!p) return 0;
+  return typeof p.pendentesTotal === 'number' ? p.pendentesTotal : p.pendentes.length;
 }
 
 export interface ProgressoDaPassada { feitos: number; total: number; pct: number; faltam: number; terminou: boolean; previsao: string }
