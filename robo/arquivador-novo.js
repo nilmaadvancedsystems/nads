@@ -366,7 +366,9 @@ async function executar(opcoes) {
   const id = (producao ? 'EXEC-' : 'SIM-') + carimbo(agora) + '-NOVO';
   const cadastro = opcoes.cadastro || carregarCadastro(opcoes);
   const ctx = { cadastro, hoje: agora, contas: opcoes.contas || lerContas(opcoes.controle), clientes: opcoes.clientes, manifesto: opcoes.manifesto || indiceDoManifesto(opcoes.manifestoAntigo || MANIFESTO_ANTIGO), reservados: new Map(), existe: new Map(), hashes: new Map(),
-    chaves: opcoes.chaves || K.carregar({ controle: opcoes.controle, manifestoAntigo: opcoes.manifestoAntigo || MANIFESTO_ANTIGO, raiz: opcoes.clientes }) };
+    chaves: opcoes.chaves || K.carregar({ controle: opcoes.controle, manifestoAntigo: opcoes.manifestoAntigo || MANIFESTO_ANTIGO, raiz: opcoes.clientes }),
+    // a decisão do admin no nads (23/10/2026, arquivador-manual.js): { [rel]: { codigo, tipoDoc, competencia, por } ou { descartar, por } }
+    manual: opcoes.manual || null };
   const arquivos = opcoes.arquivos || varrer(opcoes.origem, opcoes);   // o modo contínuo passa o lote pronto
   const itens = [];
   const log = opcoes.log || (() => {});
@@ -403,8 +405,8 @@ async function executar(opcoes) {
 
 async function decidirUm(nome, rel, buffer, ctx) {
   const entrada = await montarEntrada(nome, rel, buffer);
-  const d = R.decidir(entrada, ctx);
-  const item = { rel, nome, hash: entrada.hash, acao: d.acao, motivo: d.motivo || null, codigo: d.codigo || null, confianca: d.confianca, tipo: d.tipo || null, setor: d.setor || null,
+  const d = ctx.manual && ctx.manual[rel] ? require('./arquivador-manual').decidirManual(entrada, ctx, ctx.manual[rel]) : R.decidir(entrada, ctx);
+  const item = { rel, nome, hash: entrada.hash, decididoPor: d.decididoPor || null, acao: d.acao, motivo: d.motivo || null, codigo: d.codigo || null, confianca: d.confianca, tipo: d.tipo || null, setor: d.setor || null,
     cliente: d.cliente || null, clienteNome: d.clienteNome || null, destinoRelativo: d.destinoRelativo || null, nomeFinal: d.nomeFinal || null, destinoSugerido: d.destinoSugerido || null,
     criarPastaCliente: !!d.criarPastaCliente, pastaCliente: d.pastaCliente || null, evidencias: d.evidencias || [], fonte: d.fonte || null, ocr: entrada.ocr || null, copias: [], chave: d.chave || null };
   if (d.acao === 'AGUARDANDO_ORIGINAL') item._buffer = buffer;   // para decidir de novo quando o original aparecer
@@ -527,7 +529,7 @@ function aplicar(res, opcoes, ctx) {
     fs.mkdirSync(path.dirname(alvo), { recursive: true });
     fs.writeFileSync(alvo, buffer, { flag: 'wx' });                         // 'wx': falha se já existir — nunca sobrescreve
     if (sha(fs.readFileSync(alvo)) !== it.hash) throw new Error('hash não confere depois da cópia: ' + alvo);
-    linha(manifesto, Object.assign({ hash_origem: it.hash, hash_original: it.hashPai || it.hash, nome_original: it.nome, destino_final: path.dirname(alvo), nome_final: path.basename(alvo), id_execucao: res.id, timestamp: new Date().toISOString(), pai_completo: !it.hashPai, confianca: it.confianca, tipo: it.tipo, cliente, pasta_cliente_criada: novaPasta }, it.chave ? { chave: it.chave } : {}));
+    linha(manifesto, Object.assign({ hash_origem: it.hash, hash_original: it.hashPai || it.hash, nome_original: it.nome, destino_final: path.dirname(alvo), nome_final: path.basename(alvo), id_execucao: res.id, timestamp: new Date().toISOString(), pai_completo: !it.hashPai, confianca: it.confianca, tipo: it.tipo, cliente, pasta_cliente_criada: novaPasta }, it.chave ? { chave: it.chave } : {}, it.decididoPor ? { decidido_por: it.decididoPor } : {}));
     if (it.chave && ctx.chaves) ctx.chaves.anotar(it.chave, { onde: alvo, raiz: opcoes.clientes, fonte: 'arquivou' }, true);
     if (novaPasta && painel) painel.atividade('arquivamento', 'Criou a pasta do cliente ' + pastaCliente, 'CNPJ do documento conferido com o cadastro · ' + it.nome);
     if (painel) painel.atividade('arquivamento', 'Arquivou ' + it.nome + ' em ' + (pastaCliente || ''), path.dirname(alvo).replace(opcoes.clientes, '').replace(/^\\/, '') + '\\' + path.basename(alvo));
@@ -568,7 +570,7 @@ function aplicar(res, opcoes, ctx) {
       else if (it.acao === 'DESCARTAR') {
         // descarte confirmado (23/10/2026): para a quarentena, nunca apagado; a linha no manifesto diz para onde foi
         paraQuarentena(it);
-        linha(manifesto, { hash_origem: it.hash, hash_original: it.hashPai || it.hash, nome_original: it.nome, destino_final: path.join(quarentena, path.dirname(it.rel)), nome_final: path.basename(it.rel), id_execucao: res.id, timestamp: new Date().toISOString(), pai_completo: !it.hashPai, confianca: 1, tipo: 'DESCARTE', cliente: null, descarte: true, motivo: (it.evidencias || [])[0] || null });
+        linha(manifesto, { hash_origem: it.hash, hash_original: it.hashPai || it.hash, nome_original: it.nome, destino_final: path.join(quarentena, path.dirname(it.rel)), nome_final: path.basename(it.rel), id_execucao: res.id, timestamp: new Date().toISOString(), pai_completo: !it.hashPai, confianca: 1, tipo: 'DESCARTE', cliente: null, descarte: true, motivo: (it.evidencias || [])[0] || null, decidido_por: it.decididoPor || undefined });
         if (painel) painel.atividade('arquivamento', 'Descartou ' + it.nome + ' (quarentena)', (it.evidencias || [])[0] || '');
       }
       else if (it.acao === 'JA_ARQUIVADO') { paraQuarentena(it); if (it.chave && ctx.chaves && it.onde) ctx.chaves.anotar(it.chave, { onde: it.onde, raiz: opcoes.clientes, fonte: 'já arquivado' }, true); }

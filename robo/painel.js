@@ -62,6 +62,7 @@ const FILAS = {
     { id: 'area-chamados', nome: 'Chamados da Área do Cliente', colecao: 'areaClienteChamados', consultar: true },
     { id: 'area-envios', nome: 'Arquivos da Área do Cliente', colecao: 'areaClienteEnvios', consultar: true },
     { id: 'mensagens', nome: 'Mensagens ao Claude da rotina', colecao: 'arquivadorMensagens', esperando: ['pendente', 'aguardando'], andamento: ['respondendo'] },
+    { id: 'pedidos-arquivador', nome: 'Pedidos do Arquivador (abrir, arquivar em…)', colecao: 'pedidosArquivador', esperando: ['pendente'], andamento: ['trabalhando'] },
   ],
   vm: [
     { id: 'gmail', nome: 'Gmail e cobranças', colecao: 'solicitacoesEmail', esperando: ['pendente'], andamento: ['processando'] },

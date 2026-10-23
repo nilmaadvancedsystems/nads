@@ -158,6 +158,8 @@ function itemCompacto(x, modoRes, em, historico) {
   };
   if (acao === 'naoIdentificado' || acao === 'fica') {
     it.motivo = x.motivo || null;
+    // o hash e o caminho na pasta: o site manda de volta nos pedidos (abrir, arquivar em…, descartar; arquivador-pedidos.js)
+    it.hash = x.hash || null;
     it.motivoTexto = motivoLegivel(x.motivo);
     it.sugestao = corta(sugestao(x), 260);
     if (x.destinoSugerido) it.destinoSugerido = corta(destinoCurto(x.destinoSugerido), 300);

@@ -813,7 +813,9 @@ function decidir(entrada, ctx) {
   const cad = ctx.cadastro;
 
   // 03: arquivo confirmado pelo responsável (vale pelo hash exato)
-  const porHash = entrada.hash && HASH_CONFIRMADO[entrada.hash] ? confirmado(HASH_CONFIRMADO[entrada.hash], NOME_DO_HASH[HASH_CONFIRMADO[entrada.hash]], ctx.cadastro) : null;
+  // (23/10/2026) e o arquivo que o admin decidiu no nads (arquivador-manual.js: ctx.confirmados, hash → código)
+  const porHash = entrada.hash && HASH_CONFIRMADO[entrada.hash] ? confirmado(HASH_CONFIRMADO[entrada.hash], NOME_DO_HASH[HASH_CONFIRMADO[entrada.hash]], ctx.cadastro)
+    : (entrada.hash && ctx.confirmados && ctx.confirmados.get(entrada.hash)) || null;
 
   if (e === 'xml') return fim(decidirXml(entrada, ctx, ev));
   if (e === 'ofx') return fim(decidirOfx(entrada, ctx, ev));
@@ -1549,4 +1551,6 @@ module.exports = {
   regimeCanonico, montarCadastro, clientesDoDoc, clienteDaPasta, clientesPeloNomeNoTexto,
   confirmado, pastaParecida, bancoDoTexto, bancoDoNome, lerXml, classificarXml, camposDaGuia,
   contasDoTexto, clientePelaConta, decidir, perfilDoDocumento, tipoDoDestino,
+  // a decisão do admin no nads (arquivador-manual.js) passa pelo mesmo último passo: a árvore do regime e a pasta do cliente
+  finalizar,
 };

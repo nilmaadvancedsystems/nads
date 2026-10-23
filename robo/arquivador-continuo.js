@@ -165,6 +165,45 @@ function iniciar(opcoes) {
     if (recente(path.join(o.controleAntigo, 'MANIFESTO')) || recente(path.join(o.controleAntigo, '_tmp_exec')) || recente(path.join(o.controleAntigo, 'STAGING'))) return 'a rotina antiga mexeu no _CONTROLE há menos de 10 min';
     return null;
   }
+  /** O contexto caro (cadastro, manifesto antigo, contas, índice de chaves), refeito a cada 30 min. */
+  async function garantirContexto() {
+    if (Date.now() - cache.em <= 30 * 60000) return cache;
+    if (o.db) await A.atualizarCadastro({ db: o.db, controle: o.controle, log: o.log });
+    cache = { em: Date.now(), cadastro: o.cadastro || A.carregarCadastro({ controle: o.controle }), contas: A.lerContas(o.controle), manifesto: A.indiceDoManifesto(path.join(o.controleAntigo, 'MANIFESTO', 'manifesto.jsonl')),
+      chaves: K.carregar({ controle: o.controle, manifestoAntigo: path.join(o.controleAntigo, 'MANIFESTO', 'manifesto.jsonl'), raiz: o.clientes }) };
+    if (o.depurar) o.log('índice de chaves: ' + JSON.stringify(cache.chaves.estatistica));
+    if (pedidos) void pedidos.publicarCadastro(cache.cadastro);
+    return cache;
+  }
+  /**
+   * Os pedidos do site do admin que mexem na pasta (arquivar, descartar: arquivador-pedidos.js) rodam com a mesma trava
+   * da volta: esperam a volta terminar (até 10 min) e nunca junto com a rotina antiga.
+   */
+  async function exclusivo(fn) {
+    const ate = Date.now() + 10 * 60000;
+    while (rodando) { if (Date.now() > ate) throw new Error('o arquivador está ocupado há 10 min: tente de novo'); await new Promise(r => setTimeout(r, 1500)); }
+    const motivo = outraExecucao(true);
+    if (motivo) throw new Error('espere: ' + motivo);
+    rodando = true;
+    try {
+      if (!pegarTrava()) throw new Error('outro processo do arquivador novo está trabalhando');
+      try { return await fn(); } finally { soltarTrava(); }
+    } finally { rodando = false; }
+  }
+  /** Um arquivo com a decisão do admin, pelo executor de sempre (PRODUCAO arquiva; SIMULACAO é a prévia). */
+  async function executarDecisao(rel, escolha, modo) {
+    await garantirContexto();
+    const res = await A.executar({
+      modo, confirmo: true, origem: o.origem, controle: o.controle, clientes: o.clientes, arquivos: [rel], manual: { [rel]: escolha },
+      pastaNaoIdentificados: new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-NOVO', travaAntiga: path.join(o.controleAntigo, '_execucao.lock'),
+      cadastro: cache.cadastro, contas: cache.contas, manifesto: cache.manifesto, tiposProducao: ['todos'], moverNaoIdentificados: false,
+      chaves: cache.chaves, manifestoAntigo: path.join(o.controleAntigo, 'MANIFESTO', 'manifesto.jsonl'),
+      painel: modo === 'PRODUCAO' ? { atividade: (t, x, d) => atividade(x, d), erro: (t, x, d) => atividade(x, d, true) } : null,
+      registrar: false, log: () => {},
+    });
+    return A.planos(res).find(x => x.acao !== 'CONTEINER' && x.rel === rel) || res.itens[0] || null;
+  }
+
   /** A trava deste arquivador (dois processos nunca juntos). */
   function pegarTrava() {
     try {
@@ -244,13 +283,7 @@ function iniciar(opcoes) {
       if (!prontos.length) return resumo;
       if (!pegarTrava()) { o.log('outro processo do arquivador novo está trabalhando'); resumo.esperando = 'outro processo do arquivador novo está trabalhando'; return resumo; }
       try {
-        // contexto caro (cadastro, manifesto antigo, contas) refeito a cada 30 min
-        if (Date.now() - cache.em > 30 * 60000) {
-          if (o.db) await A.atualizarCadastro({ db: o.db, controle: o.controle, log: o.log });
-          cache = { em: Date.now(), cadastro: o.cadastro || A.carregarCadastro({ controle: o.controle }), contas: A.lerContas(o.controle), manifesto: A.indiceDoManifesto(path.join(o.controleAntigo, 'MANIFESTO', 'manifesto.jsonl')),
-            chaves: K.carregar({ controle: o.controle, manifestoAntigo: path.join(o.controleAntigo, 'MANIFESTO', 'manifesto.jsonl'), raiz: o.clientes }) };
-          if (o.depurar) o.log('índice de chaves: ' + JSON.stringify(cache.chaves.estatistica));
-        }
+        await garantirContexto();
         if (!buscaSieg) buscaSieg = K.criarBuscaSieg({ controle: o.controle, sieg: siegDoRobo(), limiteDia: cfg.siegPorDia, log: m => o.log(m) });
         const esperaVencida = rel => { const v = porRel.get(rel); const e = v && estado.aguardando[chave(rel, v)]; return !!e && Date.now() - e.desde >= esperaMs; };
         const inicio = Date.now();
@@ -392,12 +425,19 @@ function iniciar(opcoes) {
     } catch (e) { observador = null; o.log('fs.watch não ligou (segue a varredura de minuto):', e.message); }
   }
   vigiar();
+  // os pedidos do site do admin (Para resolver: abrir o arquivo, a prévia, arquivar em…, descartar; 23/10/2026)
+  let pedidos = null;
+  if (o.db && !o.umaVez) {
+    try { pedidos = require('./arquivador-pedidos').criar({ db: o.db, origem: o.origem, clientes: o.clientes, log: o.log, exclusivo, executar: executarDecisao, aposMudar: () => conferirNaoIdentificados(true) }); }
+    catch (e) { o.log('pedidos do site não ligaram:', e.message); }
+    void garantirContexto().catch(e => o.log('contexto:', e.message));
+  }
   const timer = o.umaVez ? null : setInterval(() => { void ciclo(); }, (lerConfig(CONFIG, configBanco).intervaloMs) || INTERVALO_MS);
   if (o.painel) o.painel.modulo('arquivador-novo', 'Arquivador novo (por evento)', true, lerConfig(CONFIG, configBanco).modo);
   o.log('vigiando ' + o.origem + ' (modo ' + lerConfig(CONFIG, configBanco).modo + ')');
   return {
     ciclo, comparar, config: () => lerConfig(CONFIG, configBanco),
-    parar: () => { parado = true; if (timer) clearInterval(timer); clearTimeout(acordar); if (observador) observador.close(); soltarTrava(); void acomp.parar(); },
+    parar: () => { parado = true; if (pedidos) pedidos.parar(); if (timer) clearInterval(timer); clearTimeout(acordar); if (observador) observador.close(); soltarTrava(); void acomp.parar(); },
   };
 }
 
