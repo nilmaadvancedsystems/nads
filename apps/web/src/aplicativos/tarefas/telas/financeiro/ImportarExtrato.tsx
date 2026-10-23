@@ -1,9 +1,10 @@
 // Financeiro › Importar extrato (23/10/2026: "a parte de conciliação não vai existir, ela vai se tornar um importador de
 // extrato que vai trazer os dados e informações para o dashboard inicial"): o banco (Sicoob ou Efí) e o arquivo na barra; a prévia do
-// extrato lido (os números, as linhas, as que já estavam) e Importar; embaixo, as importações feitas, com Desfazer. O que
+// extrato lido (os números, as linhas, as que já estavam) e Importar; embaixo, as importações feitas, cada uma numa faixa que abre com os lançamentos dela e o Desfazer. O que
 // se importa vai para o Painel (as entradas, as saídas e o saldo do banco), à parte do Caixa. Só as peças do catálogo
 // (Segmentado, CampoArquivo, Stat, Cartão, Tabela, badge, Vazio).
 import { CampoArquivo, Icone, Segmentado, Stat, useCarregando, Vazio } from '@nads/ui';
+import { FaixaQueAbre } from '../../../../comum/FaixaQueAbre';
 import { useImportarExtrato } from './useImportarExtrato';
 
 export function ImportarExtrato() {
@@ -68,27 +69,35 @@ export function ImportarExtrato() {
       <div className="card">
         <h3>Extratos importados</h3>
         {vm.importacoes.length ? (
-          <div className="table-wrap">
-            <table className="table-compact">
-              <thead><tr><th>Banco</th><th>Período</th><th className="num">Lançamentos</th><th className="num">Entradas</th><th className="num">Saídas</th><th>Importado</th><th /></tr></thead>
-              <tbody>
-                {vm.importacoes.map(i => (
-                  <tr key={i.id}>
-                    <td><b>{i.banco}</b> <span className="fraco fin-corta" title={i.arquivo}>{i.arquivo}</span></td>
-                    <td className="num">{i.periodo}</td>
-                    <td className="num">{i.quantos}</td>
-                    <td className="num fin-valor-entrada">{i.entradas}</td>
-                    <td className="num fin-valor-saida">{i.saidas}</td>
-                    <td className="fraco">{i.quando}{i.quem ? ' · ' + i.quem : ''}</td>
-                    <td className="fin-direita">
-                      <button type="button" className={'btn btn-sm ' + (vm.desfazendo === i.id ? 'btn-primary' : 'btn-ghost')} onClick={() => void vm.desfazer(i.id)}>
-                        {vm.desfazendo === i.id ? 'Confirmar' : 'Desfazer'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          // cada extrato numa faixa que abre com os lançamentos dele (23/10/2026: "queria ter os detalhes")
+          <div className="fin-importacoes">
+            {vm.importacoes.map(i => (
+              <FaixaQueAbre key={i.id} titulo={i.banco + ' · ' + i.periodo} qtd={i.quantos}
+                acoes={<>
+                  <span className="fin-importacao-resumo num"><span className="fin-valor-entrada">+{i.entradas}</span> <span className="fin-valor-saida">−{i.saidas}</span></span>
+                  <button type="button" className={'btn btn-sm ' + (vm.desfazendo === i.id ? 'btn-primary' : 'btn-ghost')} onClick={() => void vm.desfazer(i.id)}>
+                    {vm.desfazendo === i.id ? 'Confirmar' : 'Desfazer'}
+                  </button>
+                </>}>
+                <p className="hint">{i.arquivo} · importado em {i.quando}{i.quem ? ' por ' + i.quem : ''}{i.saldoFinal ? ' · saldo no fim ' + i.saldoFinal : ''}</p>
+                {i.linhas.length ? (
+                  <div className="table-wrap fin-extrato-linhas">
+                    <table className="table-compact">
+                      <thead><tr><th>Data</th><th>Histórico</th><th className="num">Valor</th></tr></thead>
+                      <tbody>
+                        {i.linhas.map(l => (
+                          <tr key={l.id}>
+                            <td className="num">{l.data}</td>
+                            <td><span className="fin-corta" title={l.historico}>{l.historico}</span></td>
+                            <td className={'num ' + (l.entrada ? 'fin-valor-entrada' : 'fin-valor-saida')}>{l.entrada ? '+' : '−'}{l.valor}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : <p className="fraco">Nenhum lançamento novo nesta importação (todos já estavam importados antes).</p>}
+              </FaixaQueAbre>
+            ))}
           </div>
         ) : <p className="fraco">Nenhum extrato importado ainda.</p>}
       </div>

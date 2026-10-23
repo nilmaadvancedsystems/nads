@@ -55,6 +55,11 @@ export function useImportarExtrato() {
   const nomeDoBanco = banco;
   const linhas = useMemo(() => (lido ? financeiro.linhasDoExtrato(lido.lancamentos, nomeDoBanco, lido.id) : []), [lido, nomeDoBanco]);
   const ja = useMemo(() => new Set(extrato.lista.map(x => x.id)), [extrato.lista]);
+  const porImportacao = useMemo(() => {
+    const m = new Map<string, financeiro.LancamentoDoBanco[]>();
+    for (const l of extrato.lista) m.set(l.importacao, [...(m.get(l.importacao) ?? []), l]);
+    return m;
+  }, [extrato.lista]);
   const repetidas = linhas.filter(l => ja.has(l.id)).length;
   const resumo = financeiro.resumoDoExtrato(linhas);
   const saldoFinal = lido ? financeiro.saldoFinalDoExtrato(lido.lancamentos, lido.saldoAnterior, lido.saldosDoDia) : undefined;
@@ -90,8 +95,10 @@ export function useImportarExtrato() {
       finally { setGravando(false); }
     },
     cancelar() { setArquivo(null); setLido(null); },
-    /** as importações feitas, da mais nova para a mais velha */
+    /** as importações feitas, da mais nova para a mais velha, cada uma com as suas linhas (23/10/2026: "queria ter os detalhes") */
     importacoes: importacoes.lista.map(i => ({
+      linhas: (porImportacao.get(i.id) ?? []).map(l => ({ id: l.id, data: extrator.dataBR(l.data), historico: l.historico, valor: formatos.reais(l.valor), entrada: l.tipo === 'E' })),
+      saldoFinal: i.saldoFinal == null ? null : formatos.reais(i.saldoFinal),
       id: i.id, banco: i.banco, arquivo: i.arquivo,
       periodo: i.de ? extrator.dataBR(i.de) + ' a ' + extrator.dataBR(i.ate) : '—',
       quantos: i.quantos, entradas: formatos.reais(i.entradas), saidas: formatos.reais(i.saidas),
