@@ -1,7 +1,5 @@
 // ViewModel da calculadora do Simples Nacional (Fiscal › Simples; Heverton, 22/10/2026: a "PLANILHA SIMPLES NACIONAL
-// 2018.xlsx" do Fiscal no nads, "preenchido com os dados do próprio nads"). Refeita mais simples no mesmo dia ("mais
-// intuitivas e não bagunçadas"): a empresa e o mês; o resultado (o DAS e a alíquota); como chegou nele em três passos
-// (RBT12 → faixa e alíquota → receita do mês × alíquota); por tributo e o Fator R recolhidos. Os números do nads:
+// 2018.xlsx" do Fiscal no nads, "preenchido com os dados do próprio nads"). Os números do nads:
 //   - o RBT12: o que o Fiscal informou na rotina do mês (etapa do PGDAS); sem ele, as saídas do SIEG (NF-e e NFC-e) dos 12
 //     meses antes da competência, dizendo quantos meses tinham dado;
 //   - a receita do mês: os XMLs do mês no SIEG (normal, ICMS-ST, monofásico; as NFS-e, com o ISS retido à parte);
@@ -35,7 +33,6 @@ const lerValor = (texto: string): number | null => {
 /** o mês antes de "AAAA-MM" */
 const mesAnterior = (c: string) => { const [a, m] = c.split('-').map(Number); const d = new Date(a, m - 2, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
 const brl = (v: number) => 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const pct = (v: number | null) => (v == null ? '—' : v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%');
 const anexoDoNumero = (n: unknown, opcoes: Record<number, t.sieg.Anexo>) => (typeof n === 'number' ? opcoes[n] || null : null);
 
 const ROTULOS: Record<CampoDoSimples, string> = {
@@ -55,7 +52,6 @@ export function useCalculadoraDoSimples() {
   const [competencia, setCompetenciaBruta] = useState(() => competenciasDaTela(1)[0]);
   const [mercadoriaEscolhida, setMercadoriaEscolhida] = useState<t.sieg.Anexo | null>(null);
   const [servicoEscolhido, setServicoEscolhido] = useState<t.sieg.Anexo | null>(null);
-  const [trocandoAnexo, setTrocandoAnexo] = useState(false);
   const [digitados, setDigitados] = useState<Partial<Record<CampoDoSimples, number>>>({});
 
   const empresas = repo.listarEmpresas().filter(e => e.codigo != null);
@@ -120,8 +116,6 @@ export function useCalculadoraDoSimples() {
   const servicoDaRotina = anexoDoNumero(daRotina.anexoServicos, { 3: 'III', 4: 'IV', 5: 'V' });
   const anexoDaMercadoria = mercadoriaEscolhida || mercadoriaDaRotina || 'I';
   const anexoDoServico = servicoEscolhido || servicoDaRotina || (temFolha && fator.anexo ? fator.anexo : 'III');
-  const porqueMercadoria = mercadoriaEscolhida ? 'trocado aqui' : mercadoriaDaRotina ? 'o da rotina do Fiscal' : 'o padrão para a venda';
-  const porqueServico = servicoEscolhido ? 'trocado aqui' : servicoDaRotina ? 'o da rotina do Fiscal' : temFolha ? 'pelo Fator R de ' + pct(fator.fator) : 'sem a folha para o Fator R';
 
   const mercadorias = [n.normal, n.st, n.monofasico, n.monofasicoESt];
   const servicos = [n.servicos, n.issRetido];
@@ -130,14 +124,13 @@ export function useCalculadoraDoSimples() {
   const calculo = s.calculoDoSimples(n.rbt12.valor, s.PARCELAS_DA_RECEITA.map(p => ({ ...p, anexo: p.tipo === 'mercadoria' ? anexoDaMercadoria : anexoDoServico, valor: n[p.id as CampoDoSimples].valor })));
   const percentuais = (a: t.sieg.Anexo) => s.percentuaisEfetivos(a, n.rbt12.valor);
   // os anexos que contam (os das receitas que o mês tem; sem receita, o da mercadoria)
-  const anexosUsados = [...(temMercadoria || !temServico ? [{ tipo: 'Mercadorias', anexo: anexoDaMercadoria, porque: porqueMercadoria }] : []),
-    ...(temServico ? [{ tipo: 'Serviços', anexo: anexoDoServico, porque: porqueServico }] : [])].map(x => ({ ...x, nome: t.sieg.ANEXOS[x.anexo].nome, p: percentuais(x.anexo) }));
+  const anexosUsados = [...(temMercadoria || !temServico ? [{ tipo: 'Mercadorias', anexo: anexoDaMercadoria }] : []),
+    ...(temServico ? [{ tipo: 'Serviços', anexo: anexoDoServico }] : [])].map(x => ({ ...x, p: percentuais(x.anexo) }));
 
-  const limpar = () => { setDigitados({}); setMercadoriaEscolhida(null); setServicoEscolhido(null); setTrocandoAnexo(false); };
+  const limpar = () => { setDigitados({}); setMercadoriaEscolhida(null); setServicoEscolhido(null); };
   const rbt12Meses = n.rbt12.fonte === 'SIEG' ? comSaidas.length : null;
 
   return {
-    exemplos: sieg.exemplos,
     carregando: !!empresa && (saidas.some(x => !x.mes.carregado) || !!(xml && !xml.carregadas) || !dp.carregada || !fiscal.carregada),
     // a empresa
     empresa, busca, achadas, ativo, setAtivo, regime,
@@ -152,7 +145,6 @@ export function useCalculadoraDoSimples() {
     rotuloDosMeses: s.mesCurto(meses[0]) + ' a ' + s.mesCurto(meses[11]),
     // o anexo
     anexosUsados,
-    trocandoAnexo, abrirTrocaDeAnexo: () => setTrocandoAnexo(v => !v),
     anexosDaMercadoria: ANEXOS_DA_MERCADORIA.map(a => ({ valor: a, rotulo: 'Anexo ' + a })),
     anexosDoServico: ANEXOS_DO_SERVICO.map(a => ({ valor: a, rotulo: 'Anexo ' + a })),
     anexoDaMercadoria, anexoDoServico,
@@ -169,8 +161,6 @@ export function useCalculadoraDoSimples() {
       setDigitados(d => { const x = { ...d }; if (v == null) delete x[campo]; else x[campo] = v; return x; });
     },
     voltar(campo: CampoDoSimples) { setDigitados(d => { const x = { ...d }; delete x[campo]; return x; }); },
-    temDigitado: Object.keys(digitados).length > 0 || !!mercadoriaEscolhida || !!servicoEscolhido,
-    limpar,
     // as contas
     calculo, fator, temFolha,
     /** o Fator R só importa para o serviço no Anexo III ou V */
