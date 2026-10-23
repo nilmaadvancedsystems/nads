@@ -80,7 +80,7 @@ const configBom = new Map();
 function lerConfig(arquivo, doBanco) {
   let doArquivo = {};
   try { doArquivo = JSON.parse(fs.readFileSync(arquivo, 'utf8').replace(/^﻿/, '')); configBom.set(arquivo, doArquivo); }
-  catch (e) { if (e.code !== 'ENOENT' && configBom.has(arquivo)) doArquivo = configBom.get(arquivo); /* sem arquivo: o do banco ou o padrão */ }
+  catch (e) { if (e.code === 'ENOENT') configBom.delete(arquivo); else if (configBom.has(arquivo)) doArquivo = configBom.get(arquivo); /* sem arquivo: o do banco ou o padrão */ }
   const c = Object.assign({}, PADRAO, doBanco || {}, doArquivo);
   if (!['desligado', 'simulacao', 'producao'].includes(c.modo)) c.modo = 'simulacao';
   // "todos" (texto ou na lista) libera todos os tipos
@@ -412,6 +412,7 @@ function iniciar(opcoes) {
     const resumo = { decididos: 0, arquivou: 0, arquivaria: 0, jaArquivado: 0, naoIdentificado: 0, fica: 0, erros: 0, restantes: 0, esperando: null };
     if (rodando || parado) { resumo.esperando = rodando ? 'um ciclo já está rodando' : 'parado'; return resumo; }
     const cfg = lerConfig(CONFIG, configBanco);
+    anunciarModo(cfg);
     acomp.config(cfg);
     if (cfg.modo === 'desligado') { resumo.esperando = 'o arquivador novo está desligado no config'; return resumo; }
     // o G: some quando o Google Drive desconecta: espera voltar (sem concluir que os arquivos "sumiram")
@@ -507,6 +508,11 @@ function iniciar(opcoes) {
       /** Esvazia os lotes enquanto houver pelo menos "ate" prontos. Devolve false quando a passada tem de parar. */
       const drenar = async (ate) => {
         while (prontos.length && prontos.length >= ate && !parado) {
+          // o config relido antes de CADA lote: mudou o modo, os tipos em produção ou o mover dos não identificados, a
+          // passada para aqui e a próxima começa com o config novo (23/10/2026)
+          const agoraCfg = lerConfig(CONFIG, configBanco);
+          anunciarModo(agoraCfg);
+          if (mudouOConfig(cfg, agoraCfg)) { o.log('o config mudou no meio da passada (' + resumoDoConfig(cfg) + ' → ' + resumoDoConfig(agoraCfg) + '): paro aqui; a próxima volta segue o config novo'); acomp.config(agoraCfg); resumo.esperando = 'o config mudou'; return false; }
           if (!comTrava) { if (!pegarTrava()) { o.log('outro processo do arquivador novo está trabalhando'); resumo.esperando = 'outro processo do arquivador novo está trabalhando'; return false; } comTrava = true; }
           informarPasta(false);
           const r2 = await processarLote(prontos.splice(0, loteAgora(cfg, op.porPedido)), cfg, op, resumo, modoChave, esperaMs, listagemMs);
@@ -566,6 +572,17 @@ function iniciar(opcoes) {
       await compararSeForHora();
     }
     return resumo;
+  }
+  /** O modo em vigor no painel e no log: "modo: produção, lido às 16:20" (a cada volta; no log quando muda). */
+  let modoAnunciado = '';
+  const resumoDoConfig = c => c.modo + (c.modo === 'producao' ? ' (' + (c.emProducao ? (c.tiposProducao || []).join(', ') : 'nenhum tipo') + (c.moverNaoIdentificados ? ', move os não identificados' : '') + ')' : '');
+  const mudouOConfig = (a, b) => a.modo !== b.modo || a.emProducao !== b.emProducao || JSON.stringify(a.tiposProducao) !== JSON.stringify(b.tiposProducao) || !!a.moverNaoIdentificados !== !!b.moverNaoIdentificados;
+  function anunciarModo(c) {
+    const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const r = resumoDoConfig(c);
+    if (r !== modoAnunciado) { o.log('modo: ' + r + ', lido às ' + hora); modoAnunciado = r; }
+    if (o.painel) o.painel.fazendo('arquivador-novo-modo', 'modo: ' + r + ', lido às ' + hora);
+    publicarEstado({ modoEmVigor: { modo: c.modo, emProducao: !!c.emProducao, tiposProducao: c.tiposProducao || [], lidoEm: new Date().toISOString() } });
   }
   /** Entre as passadas inteiras: só o que o fs.watch avisou (o nome relativo à origem; pasta nova = a pasta inteira). */
   async function* doQueMudou(org) {
@@ -823,6 +840,7 @@ function iniciar(opcoes) {
     // para os testes: o ritmo e a varredura
     _medirRitmo: (v, a) => medirRitmo(v, a), _ritmo: () => ({ nivel: nivelRitmo, proximoCicloEm, folgados }),
     _listar: async (raiz) => { const out = []; for await (const p of andarEmFluxo(raiz || o.origem)) out.push(...p); return out; },
+    _modoAnunciado: () => modoAnunciado,
     _mudados: () => mudados, _decididos: () => estado.decididos, _recentes: () => recentes, _grupos: () => gruposNi, _conferirNaoIdentificados: f => conferirNaoIdentificados(f), _lembrar: e => lembrarGrupo(e),
     parar: () => { parado = true; if (pedidos) pedidos.parar(); if (timer) clearInterval(timer); clearTimeout(acordar); if (observador) observador.close(); soltarTrava(); void acomp.parar(); },
   };

@@ -110,6 +110,30 @@ igual('lado a lado: o texto cita o destino diferente', /2 - Y/.test(C.textoDoLad
     const linhasP = fs.readFileSync(path.join(controleP, 'continuo', diarioP[0]), 'utf8').trim().split('\n').map(JSON.parse);
     igual('produção com erro: tentou 3 vezes e parou', [linhasP.length, linhasP.every(l => l.acao === 'NAO_IDENTIFICADO' && l.erro && l.modo === 'SIMULACAO')], [3, true]);
     igual('produção com erro: o original ficou na origem', fs.existsSync(arqP), true);
+
+    // 23/10/2026: o config muda no meio da passada (produção → desligado): o lote seguinte já não sai
+    {
+      const oM = path.join(sb, 'origem-m'), kM = path.join(sb, 'controle-m');
+      fs.mkdirSync(oM, { recursive: true }); fs.mkdirSync(kM, { recursive: true });
+      const cfgM = path.join(kM, 'config.json');
+      fs.writeFileSync(cfgM, JSON.stringify({ modo: 'simulacao', estavelMs: 0, lote: 1 }));
+      const velho = new Date(Date.now() - 3600e3);
+      for (let i = 0; i < 5; i++) { const f = path.join(oM, 'a' + i + '.txt'); fs.writeFileSync(f, 'x' + i); fs.utimesSync(f, velho, velho); }
+      const logs = [];
+      let lotes = 0;
+      const painelM = { atividade: () => {}, erro: () => {}, estado: () => {}, modulo: () => {}, fazendo: (id, t) => { if (id === 'arquivador-novo' && /^Simulando/.test(t || '')) { if (++lotes === 2) fs.writeFileSync(cfgM, JSON.stringify({ modo: 'desligado' })); } } };
+      const vm = C.iniciar(Object.assign({}, base, { origem: oM, controle: kM, painel: painelM, log: (...m) => logs.push(m.join(' ')) }));
+      const rM = await vm.ciclo();
+      const rM2 = await vm.ciclo();
+      vm.parar();
+      igual('config: mudou no meio da passada → para no lote seguinte (2 de 5 decididos)', [rM.decididos, rM.esperando], [2, 'o config mudou']);
+      igual('config: o modo e a hora da leitura no log', [logs.some(l => /^modo: simulacao, lido às \d{2}:\d{2}$/.test(l)), logs.some(l => /o config mudou no meio da passada \(simulacao → desligado\)/.test(l)), logs.some(l => /^modo: desligado, lido às/.test(l))], [true, true, true]);
+      igual('config: na próxima volta o desligado vale', rM2.esperando, 'o arquivador novo está desligado no config');
+      fs.writeFileSync(cfgM, JSON.stringify({ modo: 'producao', tiposProducao: 'todos' }));
+      igual('config: o arquivo lido inteiro sempre vale (sem o "último bom")', C.lerConfig(cfgM, null).modo, 'producao');
+      fs.writeFileSync(cfgM, '{ "modo": "desl');   // gravado pela metade
+      igual('config: o arquivo pela metade fica com o último lido inteiro', C.lerConfig(cfgM, null).modo, 'producao');
+    }
   } finally { fs.rmSync(sb, { recursive: true, force: true }); }
   console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
   process.exit(falhas ? 1 : 0);
