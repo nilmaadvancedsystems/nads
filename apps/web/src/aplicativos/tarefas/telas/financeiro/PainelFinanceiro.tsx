@@ -3,7 +3,9 @@
 // plano; os honorários do mês passado e as notas emitidas no período; e o mês a mês dos últimos 12 meses. Só as peças do
 // catálogo (Segmentado, Stat, Cartão, Ranking, Tabela, Vazio).
 import { formatos } from '@nads/core';
-import { Segmentado, Stat, useCarregando, Vazio } from '@nads/ui';
+import { Icone, Segmentado, Stat, useCarregando, Vazio } from '@nads/ui';
+import { useState } from 'react';
+import { JanelaDoResultado } from './ResultadoPorConta';
 import { usePainelFinanceiro } from './usePainelFinanceiro';
 
 const reais = (v: number) => formatos.reais(v);
@@ -26,7 +28,9 @@ function PorConta({ titulo, itens, cor, vazio }: { titulo: string; itens: { rotu
   );
 }
 
-export function PainelFinanceiro() {
+/** comResultado: já abre com a janela do Resultado por conta (o endereço antigo /financeiro/resultado) */
+export function PainelFinanceiro({ comResultado }: { comResultado?: boolean }) {
+  const [resultado, setResultado] = useState(!!comResultado);
   const vm = usePainelFinanceiro();
   useCarregando(vm.carregando);
   const n = vm.numeros, h = vm.honorarios;
@@ -36,7 +40,9 @@ export function PainelFinanceiro() {
         <Segmentado valor={vm.periodo} opcoes={vm.periodos} onMudar={vm.setPeriodo} />
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
+        <button type="button" className="btn btn-primary" onClick={() => setResultado(true)}><Icone nome="scale" />Resultado por conta</button>
       </div>
+      {resultado && <JanelaDoResultado fechar={() => setResultado(false)} />}
 
       <div className="stat-grid fin-numeros">
         <Stat rotulo="Entradas" valor={reais(n.entradas)} cor="entrada" />

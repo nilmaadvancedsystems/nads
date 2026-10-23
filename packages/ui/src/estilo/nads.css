@@ -4753,6 +4753,16 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .fin-resultado-ano th.num,.fin-resultado-ano td.num{width:92px;}
 .fin-resultado tbody tr:not(.fin-resultado-grupo):hover td{background:var(--hover-bg);}
 .fin-resultado-antes{color:var(--ink-muted);}
+/* a janela flutuante do Resultado (aberta pelo Painel): larga, com a tabela rolando por dentro */
+.modal.registro-novo.fin-resultado-janela{max-width:1240px;width:calc(100vw - 48px);max-height:calc(100vh - 48px);}
+.fin-resultado-corpo{overflow:auto;display:flex;flex-direction:column;gap:12px;}
+.fin-resultado-corpo .tarefas-barra-topo{margin:0;}
+.fin-resultado-col{display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.2;}
+.fin-resultado-col small{font-size:10px;font-weight:400;color:var(--ink-faint,var(--ink-muted));text-transform:none;}
+.fin-resultado th.fin-resultado-atual,.fin-resultado td.fin-resultado-atual{background:color-mix(in srgb,var(--ink) 4%,transparent);font-weight:600;}
+.fin-resultado .fin-resultado-inicio{border-left:1px solid var(--border);}
+.fin-peso{color:var(--ink-muted);font-size:var(--fs-12,12px);}
+.fin-resultado-wrap thead th{position:sticky;top:0;z-index:1;background:var(--surface-2);}
 .fin-resultado-cabeca{display:flex;align-items:center;gap:10px;}
 .fin-resultado-tudo{border:none;background:none;padding:0;color:var(--ink-muted);text-decoration:underline;font:inherit;font-size:var(--fs-12,12px);cursor:pointer;text-transform:none;}
 .fin-resultado-tudo:hover{text-decoration:underline;}
