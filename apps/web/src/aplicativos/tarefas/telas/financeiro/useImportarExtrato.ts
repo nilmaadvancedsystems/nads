@@ -1,6 +1,6 @@
 // ViewModel de Financeiro › Importar extrato (23/10/2026: "a parte de conciliação não vai existir, ela vai se tornar um
-// importador de extrato que vai trazer os dados e informações para o dashboard inicial"): o banco (o nome, com os já
-// usados de sugestão), o extrato escolhido (PDF, OFX, planilha ou foto), lido pelo Extrator (extrator.lerArquivo); a
+// importador de extrato que vai trazer os dados e informações para o dashboard inicial"): o banco (Sicoob ou Efí, os
+// dois que o escritório usa: "deixe uma opção, já que no escritório só é usado o banco Efí e Sicoob"), o extrato escolhido (PDF, OFX, planilha ou foto), lido pelo Extrator (extrator.lerArquivo); a
 // prévia (o período, as entradas, as saídas, o saldo final e quantas linhas já estavam importadas) e Importar, que grava
 // à parte do Caixa (financeiroBanco). Embaixo, as importações feitas, cada uma com Desfazer. O arquivo não é guardado.
 import { extrator, financeiro, formatos } from '@nads/core';
@@ -14,6 +14,11 @@ import { useCaixa } from '../../dados/repo';
 
 extrator.definirWorkerDoPdf(workerDoPdf);
 
+/** os bancos do escritório (23/10/2026) */
+export type BancoDoEscritorio = 'Sicoob' | 'Efí';
+export const BANCOS_DO_ESCRITORIO: { valor: BancoDoEscritorio; rotulo: string }[] = [{ valor: 'Sicoob', rotulo: 'Sicoob' }, { valor: 'Efí', rotulo: 'Efí' }];
+const ehDoEscritorio = (b: string | undefined): b is BancoDoEscritorio => b === 'Sicoob' || b === 'Efí';
+
 interface Lido { nome: string; id: string; lancamentos: extrator.Lancamento[]; saldoAnterior?: number; saldosDoDia?: { data: string; saldo: number }[]; ocr: boolean; erro: string | null }
 
 export function useImportarExtrato() {
@@ -23,10 +28,10 @@ export function useImportarExtrato() {
   const { toast } = useRetorno();
   const navegar = useNavigate();
   const operador = useOperador().operador?.nome || '';
-  const bancos = useMemo(() => [...new Set(importacoes.lista.map(i => i.banco))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [importacoes.lista]);
-  const [bancoEscrito, setBanco] = useState<string | null>(null);
-  // o banco começa no da última importação
-  const banco = bancoEscrito ?? importacoes.lista[0]?.banco ?? '';
+  const [bancoEscolhido, setBanco] = useState<BancoDoEscritorio | null>(null);
+  // o banco começa no da última importação (ou no Sicoob)
+  const ultimo = importacoes.lista[0]?.banco;
+  const banco: BancoDoEscritorio = bancoEscolhido ?? (ehDoEscritorio(ultimo) ? ultimo : 'Sicoob');
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [lendo, setLendo] = useState(false);
   const [lido, setLido] = useState<Lido | null>(null);
@@ -47,7 +52,7 @@ export function useImportarExtrato() {
     } finally { setLendo(false); }
   }
 
-  const nomeDoBanco = banco.trim() || 'Banco';
+  const nomeDoBanco = banco;
   const linhas = useMemo(() => (lido ? financeiro.linhasDoExtrato(lido.lancamentos, nomeDoBanco, lido.id) : []), [lido, nomeDoBanco]);
   const ja = useMemo(() => new Set(extrato.lista.map(x => x.id)), [extrato.lista]);
   const repetidas = linhas.filter(l => ja.has(l.id)).length;
@@ -58,7 +63,7 @@ export function useImportarExtrato() {
     carregando: !extrato.carregada || !importacoes.carregada,
     exemplos: repo.exemplos,
     erroDoBanco: extrato.erro || importacoes.erro,
-    banco, setBanco, bancos,
+    banco, setBanco, bancos: BANCOS_DO_ESCRITORIO,
     arquivo, escolher, lendo,
     erro: lido?.erro || '',
     ocr: !!lido?.ocr,
