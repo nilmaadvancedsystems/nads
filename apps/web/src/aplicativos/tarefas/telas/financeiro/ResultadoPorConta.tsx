@@ -20,14 +20,16 @@ function Variacao({ v, saida }: { v: number | null; saida?: boolean }) {
   if (v == null) return <span className="fraco">—</span>;
   // na saída, subir é ruim (vermelho); na entrada e no resultado, subir é bom (verde)
   const bom = saida ? v <= 0 : v >= 0;
-  return <span className={v === 0 ? 'fraco' : bom ? 'fin-valor-entrada' : 'fin-valor-saida'}>{v > 0 ? '+' : ''}{v.toLocaleString('pt-BR')}%</span>;
+  if (v === 0) return <span className="fraco">0%</span>;
+  return <span className={'fin-variacao ' + (bom ? 'fin-valor-entrada' : 'fin-valor-saida')}>{v > 0 ? '▲' : '▼'} {Math.abs(v).toLocaleString('pt-BR')}%</span>;
 }
 
 /** as células de valor de uma linha: no comparativo, a variação logo depois do período; no ano, o total no fim */
 function Valores({ vm, valores, saida, forte }: { vm: Vm; valores: number[]; saida?: boolean; forte?: boolean }) {
   const celulas = [];
   for (const [i, v] of valores.entries()) {
-    celulas.push(<td key={i} className={'num ' + (forte ? cor(v, saida) : i > 0 && vm.comparativo ? 'fraco' : '')}>{reais(v)}</td>);
+    const atual = vm.comparativo && i === 0;
+    celulas.push(<td key={i} className={'num ' + (forte && atual ? cor(v, saida) : !atual && vm.comparativo ? 'fin-resultado-antes' : !v ? 'fraco' : '')}>{reais(v)}</td>);
     if (vm.comparativo && i === 0) celulas.push(<td key="var" className="num"><Variacao v={financeiro.variacao(valores[0], valores[1])} saida={saida} /></td>);
   }
   if (!vm.comparativo) {
@@ -41,7 +43,7 @@ function Bloco({ vm, titulo, linhas, totais, saida }: { vm: Vm; titulo: string; 
   const colunas = vm.colunas.length + 2;
   return (
     <>
-      <tr className="fin-resultado-grupo"><td colSpan={colunas}>{titulo}</td></tr>
+      <tr className={'fin-resultado-grupo ' + (saida ? 'saida' : 'entrada')}><td colSpan={colunas}>{titulo}</td></tr>
       {linhas.length ? linhas.map(l => (
         <tr key={l.tipo + l.linha.conta} className={l.temFilhos ? 'fin-resultado-pai' : ''}>
           <td>
@@ -109,18 +111,21 @@ export function ResultadoPorConta() {
           : <MenuSuspenso rotulo={String(vm.ano)} icone="calendar" titulo="O ano" largura={140} itens={vm.anos.map(a => ({ rotulo: String(a), marcado: a === vm.ano, onClick: () => vm.setAno(a) }))} />}
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
-        <button type="button" className="btn btn-outline" onClick={vm.abrirTudo}><Icone nome={vm.tudoAberto ? 'minimizar' : 'maximizar'} />{vm.tudoAberto ? 'Fechar os grupos' : 'Abrir os grupos'}</button>
         <button type="button" className="btn btn-outline" onClick={vm.exportar}><Icone nome="download" />Exportar planilha</button>
       </div>
       {vm.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.erro}</p>}
 
       {!vm.carregando && vm.vazio ? <Vazio icone="scale" titulo="Nenhum lançamento no período" /> : (
         <div className="card">
-          <div className="table-wrap">
+          <div className="table-wrap fin-resultado-wrap">
             <table className={'table-compact fin-resultado' + (vm.comparativo ? '' : ' fin-resultado-ano')}>
               <thead>
                 <tr>
-                  <th>Conta</th>
+                  <th>
+                    <span className="fin-resultado-cabeca">Conta
+                      <button type="button" className="fin-resultado-tudo" onClick={vm.abrirTudo}>{vm.tudoAberto ? 'fechar os grupos' : 'abrir os grupos'}</button>
+                    </span>
+                  </th>
                   {vm.colunas.flatMap((c, i) => [<th key={c.chave} className="num">{c.rotulo}</th>, ...(vm.comparativo && i === 0 ? [<th key="var" className="num">Variação</th>] : [])])}
                   {!vm.comparativo && <th className="num">Total</th>}
                 </tr>
