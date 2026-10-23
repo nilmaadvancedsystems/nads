@@ -1,6 +1,6 @@
 // Financeiro › Configurações (15/10/2026: "vamos criar um emissor de notas fiscais para o financeiro"), no estilo das
 // configurações do Notion (como o Cadastro › Empresa): a emissão (ambiente, série, numeração), o prestador (a Nilma), o
-// serviço, o e-mail ao cliente, o token da prefeitura e o robô. Cada campo grava ao sair dele; o inválido não grava e mostra o aviso ao lado.
+// serviço (com a descrição automática das notas), o e-mail ao cliente, o token da prefeitura e o robô. Cada campo grava ao sair dele; o inválido não grava e mostra o aviso ao lado.
 import { ConfigLinha, ConfigSecao, Icone, Interruptor, MenuSuspenso, useCarregando, BotaoAcao } from '@nads/ui';
 import { dataBr, dataHoraBr } from './formatosDaNota';
 import { AMBIENTES, OPCOES_DA_APURACAO, OPCOES_DO_SIMPLES, useConfiguracoesDoFinanceiro } from './useConfiguracoesDoFinanceiro';
@@ -15,9 +15,10 @@ export function ConfiguracoesDoFinanceiro() {
   const c = vm.config;
   const r = vm.robo;
   /** um campo de texto que grava ao sair (a chave refaz o valor mostrado quando o gravado muda) */
-  const campo = (id: string, valor: string, rotulo: string, aoSair: (v: string) => void, extra?: { placeholder?: string; modo?: 'numeric' | 'decimal'; largo?: boolean }) => (
+  const campo = (id: string, valor: string, rotulo: string, aoSair: (v: string) => void, extra?: { placeholder?: string; modo?: 'numeric' | 'decimal'; largo?: boolean; aoDigitar?: (v: string) => void }) => (
     <input key={id + '|' + valor} type="text" className={'nf-entrada' + (extra?.largo ? ' largo' : '')} aria-label={rotulo} defaultValue={valor} inputMode={extra?.modo} placeholder={extra?.placeholder}
-      onBlur={e => { if (e.target.value !== valor) aoSair(e.target.value); }} onKeyDown={enter} />
+      onChange={extra?.aoDigitar ? e => extra.aoDigitar?.(e.target.value) : undefined}
+      onBlur={e => { if (e.target.value !== valor) aoSair(e.target.value); else extra?.aoDigitar?.(valor); }} onKeyDown={enter} />
   );
   const apuracao = OPCOES_DA_APURACAO.find(o => o.id === c.prestador.regApTribSN);
   return (
@@ -72,6 +73,10 @@ export function ConfiguracoesDoFinanceiro() {
         </ConfigLinha>
         <ConfigLinha titulo="Alíquota do ISS (%)" descricao="Entre 0 e 5%. Vazio: a prefeitura calcula." aviso={vm.avisos.aliquota}>
           {campo('aliquota', vm.aliquotaNoCampo, 'Alíquota do ISS em porcentagem', vm.definirAliquota, { modo: 'decimal', placeholder: '3,74' })}
+        </ConfigLinha>
+        <ConfigLinha titulo="Descrição automática das notas" aviso={vm.avisos.descricao}
+          descricao={<>A descrição que a nota nova já traz (dá para mudar na própria nota). Pode usar {vm.variaveisDaDescricao.map((v, i) => <span key={v.nome}>{i ? (i === vm.variaveisDaDescricao.length - 1 ? ' e ' : ', ') : ''}<code>{v.nome}</code> ({v.exemplo})</span>)}. Vazio volta ao padrão.<br />Prévia: <strong>{vm.previaDaDescricao}</strong></>}>
+          {campo('descricao', c.descricao, 'Descrição automática das notas', vm.definirDescricao, { largo: true, aoDigitar: vm.digitarDescricao })}
         </ConfigLinha>
         <ConfigLinha titulo="Observação na nota" descricao="A frase das informações complementares (a do IBPT).">
           <textarea key={'obs|' + c.servico.infoCompl} className="nf-entrada nf-texto largo" rows={2} aria-label="Observação na nota" defaultValue={c.servico.infoCompl}

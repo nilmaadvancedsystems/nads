@@ -6,7 +6,7 @@ import { nomeNorm } from '../../formatos';
 import { cnpjFormatado, documentoValido } from './receita';
 import { BANCOS_CONHECIDOS, bancosDaEmpresa, idDaConta, rotuloDaConta, type BancoDaEmpresa } from '../bancos';
 import {
-  type BancoDoRelatorio, BANCOS_DO_RELATORIO, type CadastroDaEmpresa, type EmprestimoDaEmpresa, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, type ParametrosDoDpDoMes, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel, type ArquivoDoFiscal, type DocumentosDoFiscal, type PlanilhaDoFiscal,
+  type BancoDoRelatorio, BANCOS_DO_RELATORIO, type CadastroDaEmpresa, type EmprestimoDaEmpresa, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, type ParametrosDoDpDoMes, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel, type ArquivoDoFiscal, type DocumentosDoFiscal, type PlanilhaDoFiscal, type AntecipacaoDoFiscal,
 } from './tipos';
 
 /** Quantos registros do histórico ficam guardados (os mais novos). */
@@ -149,6 +149,52 @@ function documentosFiscaisDoDocumento(v: unknown): { documentosFiscais?: Documen
   return Object.keys(planilhas).length || outros.length ? { documentosFiscais: { ...(Object.keys(planilhas).length ? { planilhas } : {}), ...(outros.length ? { outros } : {}) } } : {};
 }
 
+// ─── a antecipação do ICMS do ES (Heverton, 22/10/2026) ─────────────────────────────────────────────────────────────
+
+/** no máximo tantas situações marcadas por empresa (as mais velhas saem; o documento do cadastro tem 1 MB) */
+export const MAX_SITUACOES_DA_ANTECIPACAO = 3000;
+const SITUACOES_VALIDAS = ['a-conferir', 'conferido', 'revisar', 'dispensado', 'nao-se-aplica'];
+
+function antecipacaoDoDocumento(v: unknown): { antecipacaoIcmsEs?: AntecipacaoDoFiscal } {
+  if (!v || typeof v !== 'object') return {};
+  const o = v as Record<string, unknown>;
+  const aliquota = typeof o.aliquota === 'number' && o.aliquota > 0 && o.aliquota < 100 ? o.aliquota : undefined;
+  const situacoes: NonNullable<AntecipacaoDoFiscal['situacoes']> = {};
+  const s = (o.situacoes && typeof o.situacoes === 'object' ? o.situacoes : {}) as Record<string, Record<string, unknown> | null>;
+  for (const [id, m] of Object.entries(s)) {
+    if (m && SITUACOES_VALIDAS.includes(texto(m.situacao)) && id.length <= 200) situacoes[id] = { situacao: texto(m.situacao), por: texto(m.por), em: texto(m.em) };
+  }
+  const a: AntecipacaoDoFiscal = { ...(aliquota != null ? { aliquota } : {}), ...(Object.keys(situacoes).length ? { situacoes } : {}) };
+  return Object.keys(a).length ? { antecipacaoIcmsEs: a } : {};
+}
+
+/** A alíquota interna da antecipação (de 0,01 a 99,99%; vazio volta à padrão). Fica no histórico. */
+export function definirAliquotaDaAntecipacao(c: CadastroDaEmpresa, aliquota: number | null, por: string, agora: Date): CadastroDaEmpresa | { erro: string } {
+  if (aliquota != null && !(Number.isFinite(aliquota) && aliquota > 0 && aliquota < 100)) return { erro: 'A alíquota vai de 0,01 a 99,99%.' };
+  const atual = c.antecipacaoIcmsEs?.aliquota ?? null;
+  const nova = aliquota == null ? null : Math.round(aliquota * 100) / 100;
+  if (atual === nova) return c;
+  const a: AntecipacaoDoFiscal = { ...(c.antecipacaoIcmsEs || {}) };
+  if (nova == null) delete a.aliquota; else a.aliquota = nova;
+  return registrar({ ...c, antecipacaoIcmsEs: a }, por, agora, 'Antecipação ICMS-ES', 'Alíquota interna: ' + (nova == null ? 'a padrão' : String(nova).replace('.', ',') + '%'));
+}
+
+/**
+ * A situação de uma linha da antecipação (sem o histórico: são muitas; a marca guarda quem e quando). As mais velhas
+ * saem depois de MAX_SITUACOES_DA_ANTECIPACAO.
+ */
+export function marcarSituacaoDaAntecipacao(c: CadastroDaEmpresa, id: string, situacao: string, por: string, agora: Date): CadastroDaEmpresa {
+  if (!SITUACOES_VALIDAS.includes(situacao) || !id || id.length > 200) return c;
+  if (c.antecipacaoIcmsEs?.situacoes?.[id]?.situacao === situacao) return c;
+  const situacoes = { ...(c.antecipacaoIcmsEs?.situacoes || {}), [id]: { situacao, por: por || '—', em: agora.toISOString() } };
+  const ids = Object.keys(situacoes);
+  if (ids.length > MAX_SITUACOES_DA_ANTECIPACAO) {
+    ids.sort((x, y) => situacoes[x].em.localeCompare(situacoes[y].em));
+    for (const velho of ids.slice(0, ids.length - MAX_SITUACOES_DA_ANTECIPACAO)) delete situacoes[velho];
+  }
+  return { ...c, antecipacaoIcmsEs: { ...(c.antecipacaoIcmsEs || {}), situacoes }, atualizadoEm: agora.toISOString() };
+}
+
 /** o link do Drive (ou de outro lugar seguro) que vale: https://; senão, o erro */
 export function linkValido(link: string): string {
   const l = String(link || '').trim();
@@ -213,6 +259,7 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...(Array.isArray(doc.socios) ? { socios: (doc.socios as Record<string, unknown>[]).map(s => ({ nome: texto(s?.nome), cpf: texto(s?.cpf) })).filter(s => s.nome || s.cpf) } : {}), atualizadoEm: opcional(doc.atualizadoEm),
     ...responsaveisDoDocumento(doc.responsaveis), ...dpDoDocumento(doc.dp), ...transferenciasDoDocumento(doc.transferencias),
     ...documentosFiscaisDoDocumento(doc.documentosFiscais),
+    ...antecipacaoDoDocumento(doc.antecipacaoIcmsEs),
     ...(doc.nova && typeof doc.nova === 'object' && texto((doc.nova as Record<string, unknown>).regime)
       ? { nova: { regime: texto((doc.nova as Record<string, unknown>).regime), criadaEm: texto((doc.nova as Record<string, unknown>).criadaEm) } } : {}),
   };
@@ -242,6 +289,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(c.transferencias && Object.keys(c.transferencias).length ? { transferencias: c.transferencias } : {}),
     ...(c.nova ? { nova: c.nova } : {}),
     ...(c.documentosFiscais && (Object.keys(c.documentosFiscais.planilhas || {}).length || c.documentosFiscais.outros?.length) ? { documentosFiscais: c.documentosFiscais } : {}),
+    ...(c.antecipacaoIcmsEs && (c.antecipacaoIcmsEs.aliquota != null || Object.keys(c.antecipacaoIcmsEs.situacoes || {}).length) ? { antecipacaoIcmsEs: c.antecipacaoIcmsEs } : {}),
     historico: c.historico.slice(0, MAX_HISTORICO),
     atualizadoEm: c.atualizadoEm || new Date().toISOString(),
   };

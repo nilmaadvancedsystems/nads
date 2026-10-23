@@ -124,7 +124,7 @@ export function useImportarPlanilha() {
     if (b.fone) tomador.fone = b.fone;
     const e = enderecos[doc(b)]?.endereco;
     if (e) tomador.endereco = e;
-    return { tomador, servico: { descricao: nfse.descricaoPadrao(b.rec.data), valor: b.rec.valor, competencia: b.rec.data }, empresaCodigo: b.rec.codigo };
+    return { tomador, servico: { descricao: nfse.descricaoPadrao(b.rec.data, config.descricao), valor: b.rec.valor, competencia: b.rec.data }, empresaCodigo: b.rec.codigo };
   }
 
   // a nota que já existe do cliente no mês da data (não conta a recusada nem a cancelada)
@@ -152,7 +152,7 @@ export function useImportarPlanilha() {
     const pronta = !problema;
     return {
       indice, codigo: b.rec.codigo, cliente: b.empresa?.nome || b.rec.nome, documento: b.documento, valor: b.rec.valor, data: b.rec.data,
-      descricao: nfse.descricaoPadrao(b.rec.data), problema, situacao: pronta ? 'Pronta' : problema, tom: pronta ? 'ok' : tom, buscando, pronta,
+      descricao: nfse.descricaoPadrao(b.rec.data, config.descricao), problema, situacao: pronta ? 'Pronta' : problema, tom: pronta ? 'ok' : tom, buscando, pronta,
       marcada: pronta && (marcas[indice] ?? true),
     };
   });

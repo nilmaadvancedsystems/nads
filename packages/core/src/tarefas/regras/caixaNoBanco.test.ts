@@ -62,6 +62,25 @@ describe('o caixa × os bancos (16/10/2026)', () => {
       ['2026-03-30', 'FORNECEDOR EXEMPLO LTDA', ['62000']],
     ]);
   });
+  it('o PIX sem NF: com descrição, só com o nome batendo; sem descrição, só no mesmo dia (23/10/2026)', () => {
+    const pix = (data: string, valor: number, texto: string) => C(data, -valor, 'Pix PIX EMITIDO OUTRA IF Pagamento Pix ***.437.336-** ' + texto, 'Banco Sicoob Credinor');
+    const cx = [
+      // o adiantamento do empregado não é a compra de insumos de dois dias antes (nem do mesmo dia)
+      C('2026-03-18', 300, 'Pela compra de Insumos a vista conf. nota fiscal nº - 5610-23395767000162-COMERCIAL INSUMOS', 'Compras Líquidas de Insumo á vista'),
+      pix('2026-03-20', 300, 'Adiant salarial Fulano'),
+      // o PIX que diz o fornecedor: o nome bate, mesmo um dia depois
+      C('2026-04-10', 450, 'Pagamento conf. NF 7788 - FERRAGENS MODELO LTDA', 'FERRAGENS MODELO LTDA'),
+      pix('2026-04-11', 450, 'Ferragens Modelo'),
+      // o PIX sem descrição: no mesmo dia vale; dois dias depois, não
+      C('2026-05-05', 120, 'Compra à vista', 'Material de consumo'),
+      pix('2026-05-05', 120, ''),
+      C('2026-05-08', 80, 'Compra à vista', 'Material de consumo'),
+      pix('2026-05-10', 80, ''),
+    ];
+    expect(passouPeloCaixa(cx, ['2026-03', '2026-04', '2026-05']).map(x => [x.entrada.data, x.saida.data])).toEqual([
+      ['2026-04-11', '2026-04-10'], ['2026-05-05', '2026-05-05'],
+    ]);
+  });
   it('sem extrato, nada', () => {
     expect(caixaNoBanco(caixa, [], ['2026-03'])).toEqual([]);
   });

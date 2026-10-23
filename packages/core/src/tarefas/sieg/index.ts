@@ -26,6 +26,8 @@ export interface ItemDoXml {
   ncm: string; cfop: string; cst: string; cest: string; valor: number;
   /** desde o resumo 2 (13/10/2026), só quando têm: o ICMS destacado, o ICMS-ST, o IPI e o CST do PIS */
   icms?: number; st?: number; ipi?: number; cstPis?: string;
+  /** desde o resumo 4 (22/10/2026), só quando têm: a base e a alíquota do ICMS e as despesas (frete, seguro e outras, menos o desconto) */
+  bc?: number; aliq?: number; desp?: number;
 }
 
 /** Uma nota lida do XML do SIEG (o resumo; o arquivo fica na pasta do cliente no Drive). */
@@ -55,7 +57,7 @@ export interface NotasSieg {
   emitidas: NotaDoSieg[]; recebidas: NotaDoSieg[];
   /** o resumo passou do tamanho de um documento: saíram os itens */
   itensCortados?: boolean;
-  /** a versão do resumo (2 = os itens com o ICMS, o ST, o IPI e o CST do PIS; 3 = o frete e o desconto da nota; sem = 1) */
+  /** a versão do resumo (2 = os itens com o ICMS, o ST, o IPI e o CST do PIS; 3 = o frete e o desconto da nota; 4 = mais a base, a alíquota e as despesas de cada item; sem = 1) */
   resumo?: number;
 }
 
@@ -213,3 +215,4 @@ export { espelhoDaNota, type EspelhoDaNota } from './espelho';
 export { competenciasDoPeriodo, faturamentoDasSaidas, linhasDoFaturamento, mesesDoDetalhe, resumoDasEmitidas, curvaAbc, type ClasseAbc, type CurvaAbc, type MesDoDetalhe, type ResumoDasEmitidas, planilhaDoFaturamento, htmlDoFaturamento, mesCurto, PERIODOS_DO_FATURAMENTO, FONTE_SIEG, FONTE_SIEG_CURTA, type PeriodoDoFaturamento, type LinhaDoFaturamento, type EmpresaDoFaturamento, type ValorDoFaturamento } from './faturamento';
 export { ratear, repartir, tributacaoDoItem, valoresDaNota, gruposDaNota, rateioDosNcms, TRIBUTACOES, type Rateio, type LinhaRateada, type LinhaParaRatear, type Tributacao, type ValoresDaNota, type GrupoDaNota, type AgruparPor } from './rateio';
 export { danfeDoXml, htmlDaDanfe, chaveEmGrupos, docFormatado, type Danfe, type ItemDaDanfe, type PessoaDaDanfe } from './danfe';
+export { linhasDaAntecipacao, calcularAntecipacao, contaDaAntecipacao, totaisDaAntecipacao, resumoDaAntecipacao, filtrarAntecipacao, htmlDaAntecipacao, cfopDeEntrada, rotuloDaSituacao, mesDaLinha, arred, SITUACOES_DA_ANTECIPACAO, ALIQUOTA_INTERNA_ES, type SituacaoDaAntecipacao, type LinhaDaAntecipacao, type LinhaCalculada, type MarcaDaAntecipacao, type TotaisDaAntecipacao, type ResumoDaAntecipacao, type EmpresaDoRelatorio } from './antecipacao';

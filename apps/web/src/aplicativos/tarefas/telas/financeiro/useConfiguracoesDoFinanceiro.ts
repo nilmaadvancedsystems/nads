@@ -3,12 +3,13 @@
 // prefeitura. Grava ao sair de cada campo, como o Cadastro › Empresa; campo inválido não grava e devolve o aviso. Sem
 // configuração no banco, começa da CONFIG_PADRAO (os dados da nota real do escritório). O token só entra: não se lê de volta.
 // E-mail ao cliente (15/10/2026): ligar o envio automático da nota autorizada ao tomador e o assunto e o texto do e-mail.
+// A descrição automática das notas (23/10/2026): o modelo com a competência entrando sozinha, com a prévia enquanto digita.
 import { nfse } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { useOperador } from '../../casca/operador';
 import { useNfse } from '../../dados/repo';
-import { documentoFormatado } from './formatosDaNota';
+import { documentoFormatado, hoje } from './formatosDaNota';
 
 export const OPCOES_DO_SIMPLES: { id: 1 | 2 | 3; rotulo: string }[] = [
   { id: 1, rotulo: 'Não optante' },
@@ -35,6 +36,8 @@ export function useConfiguracoesDoFinanceiro() {
   const [avisos, setAvisos] = useState<Record<string, string>>({});
   const [token, setToken] = useState('');
   const [gravandoToken, setGravandoToken] = useState(false);
+  // o modelo da descrição que está sendo digitado (null = o gravado), só para a prévia
+  const [descricaoDigitada, setDescricaoDigitada] = useState<string | null>(null);
 
   /** `feito` é a configuração nova, ou o aviso (texto) de que o valor não serve; igual à de agora, não grava */
   function gravar(campo: string, feito: nfse.ConfigNfse | string) {
@@ -117,6 +120,17 @@ export function useConfiguracoesDoFinanceiro() {
       servico('aliquota', { pAliq: n });
     },
     definirObservacao: (v: string) => servico('observacao', { infoCompl: v.trim() }),
+
+    /** a descrição de uma nota feita hoje (a competência do mês anterior), pelo modelo que está no campo */
+    previaDaDescricao: nfse.descricaoDaNota(descricaoDigitada ?? config.descricao, nfse.competenciaAnterior(hoje())),
+    variaveisDaDescricao: nfse.VARIAVEIS_DA_DESCRICAO,
+    digitarDescricao: setDescricaoDigitada,
+    /** vazio volta ao padrão */
+    definirDescricao(v: string) {
+      setDescricaoDigitada(null);
+      const d = v.trim() || nfse.DESCRICAO_PADRAO;
+      gravar('descricao', d.length <= 500 ? { ...config, descricao: d } : 'A descrição passa de 500 letras.');
+    },
 
     /** o envio automático da nota autorizada (produção) ao e-mail do tomador */
     alternarEmailAutomatico: () => gravar('email-automatico', { ...config, email: { ...config.email, automatico: !config.email.automatico } }),
