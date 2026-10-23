@@ -5184,3 +5184,37 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .espelho-totais .stat{padding:8px 12px;min-height:0;}
 .espelho-totais .stat-value{font-size:var(--fs-14,14px);margin-top:2px;}
 @media (max-width:700px){.stat-grid.espelho-totais{grid-template-columns:repeat(2,minmax(0,1fr));}}
+/* o fluxo operacional do Fiscal (23/10/2026): a etapa escolhida, o andamento e os subprocessos (o responsável e o status) */
+.fluxo{display:flex;flex-direction:column;gap:12px;max-width:1100px;}
+.fluxo-topo{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.fluxo-topo h2{margin:2px 0 0;font-size:var(--fs-20,20px);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.fluxo-caminho{margin:0;font-size:var(--fs-12,12px);}
+.fluxo-topo-direita{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.fluxo-topo-direita .btn svg{width:16px;height:16px;}
+.fluxo-dica{margin:0;font-size:var(--fs-13,13px);}
+.fluxo-lista{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:var(--radius,8px);background:var(--surface);}
+.fluxo-sub{border-bottom:1px solid var(--border);}
+.fluxo-sub:last-child{border-bottom:none;}
+.fluxo-sub.aberto{background:var(--surface-2);}
+.fluxo-sub-linha{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px;padding:6px 10px 6px 6px;}
+.fluxo-sub-nome{all:unset;box-sizing:border-box;display:flex;align-items:flex-start;gap:8px;padding:6px;border-radius:6px;min-width:0;cursor:pointer;font-size:var(--fs-14,14px);}
+.fluxo-sub-nome:disabled{cursor:default;}
+.fluxo-sub-nome:not(:disabled):hover{background:var(--hover-bg);}
+.fluxo-sub-nome:focus-visible{outline:2px solid var(--accent);}
+.fluxo-sub-nome>svg{width:14px;height:14px;flex:none;margin-top:3px;color:var(--ink-muted);}
+.fluxo-sub-vazio{width:14px;flex:none;}
+.fluxo-sub-nome>span{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.fluxo-sub-nome b{font-weight:500;}
+.fluxo-sub.encerrado .fluxo-sub-nome b{color:var(--ink-muted);}
+.fluxo-sub-quem{font-size:var(--fs-12,12px);}
+.fluxo-resp svg,.fluxo-status svg{width:14px;height:14px;}
+.fluxo-resp{max-width:200px;color:var(--ink);}
+.fluxo-resp .fraco{color:var(--ink-muted);}
+.fluxo-status .badge{white-space:nowrap;}
+.fluxo-status-travado{display:inline-flex;align-items:center;gap:4px;opacity:.7;white-space:nowrap;}
+.fluxo-status-travado svg{width:12px;height:12px;}
+.fluxo-sub-corpo{display:flex;flex-direction:column;gap:10px;padding:4px 16px 14px 34px;}
+.fluxo-sub-acoes{display:flex;gap:8px;flex-wrap:wrap;}
+.fluxo-sub-acoes:empty{display:none;}
+.fluxo-sub-acoes .btn svg{width:14px;height:14px;}
+@media (max-width:700px){.fluxo-sub-linha{grid-template-columns:1fr;}.fluxo-sub-corpo{padding-left:12px;}}

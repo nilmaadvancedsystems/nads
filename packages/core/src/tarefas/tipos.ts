@@ -140,6 +140,9 @@ export interface EstadoEtapa {
   /** quem avisar no celular (07/10/2026: a REINF que o Fiscal transmitiu avisa o responsável do DP); o robô grava avisadoEm */
   avisar?: string;
   avisadoEm?: string;
+  /** o fluxo do Fiscal (23/10/2026): o status do subprocesso e o responsável por ele */
+  status?: 'pendente' | 'execucao' | 'conferencia' | 'aprovado' | 'nao-aplicavel' | 'concluido';
+  responsavel?: string;
 }
 
 /** A competência de uma empresa num departamento: o estado de cada etapa. */
@@ -169,7 +172,9 @@ export interface Execucao {
 }
 
 export type TipoEvento = 'inicio' | 'feita' | 'dispensada' | 'interrompida' | 'verificacao-falhou' | 'sem-movimento' | 'com-movimento' | 'reaberta'
-  | 'periodo' | 'periodo-encerrado' | 'adicionada' | 'retirada' | 'valor';
+  | 'periodo' | 'periodo-encerrado' | 'adicionada' | 'retirada' | 'valor'
+  // o fluxo do Fiscal (23/10/2026): o status e o responsável de um subprocesso
+  | 'status' | 'responsavel';
 
 /** O que aconteceu, quando e com quem (para produtividade e análise das objeções). */
 export interface Evento {
