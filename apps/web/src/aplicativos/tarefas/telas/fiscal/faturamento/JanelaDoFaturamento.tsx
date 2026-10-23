@@ -7,10 +7,10 @@ import { useDetalheDoFaturamento } from './useDetalheDoFaturamento';
 
 const brl = (n: number | null | undefined) => (n == null ? '' : n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
-export function JanelaDoFaturamento({ cliente, competencias, rotuloDoPeriodo, fechar }: {
-  cliente: { codigo: number; nome: string; regime: string }; competencias: readonly string[]; rotuloDoPeriodo: string; fechar: () => void;
+export function JanelaDoFaturamento({ cliente, competencias, rotuloDoPeriodo, anual, fechar }: {
+  cliente: { codigo: number; nome: string; regime: string }; competencias: readonly string[]; rotuloDoPeriodo: string; anual: boolean; fechar: () => void;
 }) {
-  const vm = useDetalheDoFaturamento(cliente.codigo, competencias);
+  const vm = useDetalheDoFaturamento(cliente.codigo, cliente.nome, competencias, anual);
   const janela = useRef<HTMLDivElement>(null);
   useJanela(janela, fechar);
   return (
@@ -52,6 +52,7 @@ export function JanelaDoFaturamento({ cliente, competencias, rotuloDoPeriodo, fe
                 </tbody>
               </table>
             </div>
+            {vm.semDado > 0 && <p className="fraco">{vm.semDado === 1 ? '1 mês' : vm.semDado + ' meses'} do período sem dado no SIEG</p>}
           </section>
 
           <section className="card fat-detalhe-mes">
@@ -87,6 +88,37 @@ export function JanelaDoFaturamento({ cliente, competencias, rotuloDoPeriodo, fe
               )}
           </section>
         </div>
+
+        {/* as despesas do mês pelo balancete dinâmico do Contábil (22/10/2026: "fgts, água, dentre outros") */}
+        {vm.mes && (
+          <section className="card fat-detalhe-despesas">
+            <h3>Despesas de {vm.mes.rotulo}{vm.despesas ? <span className="fraco"> · R$ {brl(vm.despesas.total)}</span> : null}</h3>
+            {(vm.despesas?.destaques.length || vm.guiaFgts) ? (
+              <div className="fat-destaques">
+                {vm.guiaFgts && <div className="fat-destaque"><span className="fraco">Guia do FGTS</span><b className="num">R$ {vm.guiaFgts.valor}</b>{vm.guiaFgts.vencimento && <span className="fraco">vence {vm.guiaFgts.vencimento}</span>}</div>}
+                {vm.despesas?.destaques.map(x => <div key={x.rotulo} className="fat-destaque"><span className="fraco">{x.rotulo}</span><b className="num">R$ {brl(x.valor)}</b></div>)}
+              </div>
+            ) : null}
+            {!vm.temDinamico ? <p className="fraco">O balancete dinâmico desta empresa ainda não foi importado no Contábil (na Importação da rotina). Com ele, aparecem aqui as despesas do mês: água, energia, aluguel, salários, FGTS e as outras.</p>
+              : !vm.despesas ? <p className="fraco">O balancete dinâmico importado não tem {vm.mes.rotulo}. Importe o mais novo no Contábil.</p>
+              : !vm.despesas.contas.length ? <p className="fraco">Nenhuma despesa lançada no mês.</p>
+              : (
+                <>
+                  <p className="fat-detalhe-sub">As maiores contas do mês</p>
+                  <div className="rank">
+                    {vm.despesas.contas.map(c => (
+                      <div key={c.codigo} className="rank-item">
+                        <span className="rank-nome" title={c.classificacao + ' · ' + c.descricao}>{c.descricao}</span>
+                        <span className="rank-val num">{brl(c.valor)}</span>
+                        <span className="rank-barra"><span style={{ width: Math.max(0, c.pct) + '%', background: 'var(--warn)' }} /></span>
+                      </div>
+                    ))}
+                  </div>
+                  {vm.despesas.outras > 0 && <p className="fraco">e mais {vm.despesas.outras} contas</p>}
+                </>
+              )}
+          </section>
+        )}
       </div>
     </div>
   );

@@ -5061,6 +5061,11 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .fat-detalhe-mes{display:flex;flex-direction:column;gap:8px;}
 .fat-detalhe-mes>p{margin:0;font-size:var(--fs-13,13px);}
 .fat-detalhe-sub{font-weight:600;font-size:var(--fs-13,13px);margin:6px 0 0;}
+.fat-detalhe-despesas{display:flex;flex-direction:column;gap:8px;}
+.fat-detalhe-despesas>p{margin:0;font-size:var(--fs-13,13px);}
+.fat-destaques{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;}
+.fat-destaque{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius,8px);background:var(--surface-2);font-size:var(--fs-12,12px);}
+.fat-destaque b{font-size:var(--fs-14,14px);}
 @media (max-width:900px){.fat-detalhe-corpo{grid-template-columns:1fr;}}
 /* Fiscal › Simples: a calculadora do Simples Nacional (22/10/2026) */
 .simples-calc{display:flex;flex-direction:column;gap:12px;max-width:1040px;}
