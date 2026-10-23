@@ -10,7 +10,7 @@ export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 
   const vm = useSiegDaEtapa(tipo, codigo, competencia);
   return (
     <section className="sieg-painel">
-      {vm.vendo && <EspelhoDaNota nota={vm.vendo} fechar={vm.fecharNota} />}
+      {vm.vendo && <EspelhoDaNota nota={vm.vendo} codigo={codigo} competencia={competencia} fechar={vm.fecharNota} />}
       <header className="sieg-topo">
         <b>SIEG</b>
         {vm.exemplos && <span className="fraco">dados de exemplo</span>}

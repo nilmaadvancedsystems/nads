@@ -212,3 +212,4 @@ export { percentuaisEfetivos, calculoDoSimples, fatorR, PARCELAS_DA_RECEITA, TRI
 export { espelhoDaNota, type EspelhoDaNota } from './espelho';
 export { competenciasDoPeriodo, faturamentoDasSaidas, linhasDoFaturamento, mesesDoDetalhe, resumoDasEmitidas, curvaAbc, type ClasseAbc, type CurvaAbc, type MesDoDetalhe, type ResumoDasEmitidas, planilhaDoFaturamento, htmlDoFaturamento, mesCurto, PERIODOS_DO_FATURAMENTO, FONTE_SIEG, FONTE_SIEG_CURTA, type PeriodoDoFaturamento, type LinhaDoFaturamento, type EmpresaDoFaturamento, type ValorDoFaturamento } from './faturamento';
 export { ratear, repartir, tributacaoDoItem, valoresDaNota, gruposDaNota, rateioDosNcms, TRIBUTACOES, type Rateio, type LinhaRateada, type LinhaParaRatear, type Tributacao, type ValoresDaNota, type GrupoDaNota, type AgruparPor } from './rateio';
+export { danfeDoXml, htmlDaDanfe, chaveEmGrupos, docFormatado, type Danfe, type ItemDaDanfe, type PessoaDaDanfe } from './danfe';
