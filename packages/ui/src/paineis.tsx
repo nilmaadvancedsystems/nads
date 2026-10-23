@@ -52,6 +52,8 @@ export function RoscaComLegenda({ fatias, total, subtitulo, ativa, onEscolher }:
 
 export interface ColunaDasBarras {
   chave: string; rotulo: string; total: number;
+  /** o número em cima da barra, já escrito ("1,54 mi"); sem ele, o total */
+  valor?: string;
   /** o pequeno rótulo de baixo (o ano, nas barras de meses) */
   sub?: string;
   /** a barra no tom de aviso (âmbar) em vez do verde */
@@ -68,7 +70,7 @@ export function BarrasEmColuna({ colunas, ativa, onEscolher }: { colunas: readon
       {colunas.map(m => (
         <button key={m.chave} type="button" className={'cert-barra' + (ativa === m.chave ? ' ativa' : '') + (m.aviso ? ' logo' : '')} disabled={!m.total}
           onClick={() => onEscolher(m.chave)} aria-label={m.leitura}>
-          <span className="cert-barra-num num">{m.total || ''}</span>
+          <span className="cert-barra-num num">{m.valor ?? (m.total || '')}</span>
           <span className="cert-barra-trilho"><span className="cert-barra-cheia" style={{ height: (m.total / max) * 100 + '%' }} /></span>
           <span className="cert-barra-mes">{m.rotulo}</span>
           <span className="cert-barra-ano fraco">{m.sub || ''}</span>
