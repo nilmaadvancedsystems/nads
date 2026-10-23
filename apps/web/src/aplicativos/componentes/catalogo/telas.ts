@@ -38,7 +38,7 @@ export const TELAS: Tela[] = [
   { id: 't-financeiro-painel', app: 'Tarefas', nome: 'Financeiro › Painel (e o Resultado por conta)' },
   { id: 't-financeiro-honorarios', app: 'Tarefas', nome: 'Financeiro › Honorários (e o Reajuste)' },
   { id: 't-financeiro-devedores', app: 'Tarefas', nome: 'Financeiro › Devedores' },
-  { id: 't-financeiro-conciliacao', app: 'Tarefas', nome: 'Financeiro › Conciliação com o extrato' },
+  { id: 't-financeiro-conciliacao', app: 'Tarefas', nome: 'Financeiro › Importar extrato do banco' },
   { id: 't-insights', app: 'Tarefas', nome: 'Insights' },
   { id: 't-contabil', app: 'Tarefas', nome: 'Contábil' },
   { id: 't-empresa', app: 'Tarefas', nome: 'Página da empresa' },

@@ -174,3 +174,4 @@ export * from './honorarios';
 export * from './painel';
 export * from './gestao';
 export * from './resultado';
+export * from './banco';
