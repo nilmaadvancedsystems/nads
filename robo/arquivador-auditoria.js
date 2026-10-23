@@ -228,6 +228,7 @@ const anoDaParte = p => (/^((?:19|20)\d{2})$/.exec(p) || [])[1];
  * Onde o arquivo está × a árvore canônica do cliente. sub = pastas entre a do cliente e o arquivo; cli = cadastro.
  * Devolve { tipo, achados: [{ g, problema, sugestao (sub novo, array) ou null, conf, ev }], comp: { mes, ano } | null, fonte }.
  */
+const ANUAIS = /^(DEFIS|DIRF|ECF|BALANCETE|INFORME DE RENDIMENTOS)$/;   // ficam no ano da ENTREGA (Vitor, 23/10/2026)
 const COM_EXTENSAO = /\.(pdf|xml|ofx|txt|xlsx|xls|csv|zip|rar|7z|jpe?g|png|docx?|pfx|p12)$/i;
 function analisarLocal(sub, nome, cli) {
   // a rotina antiga deixou PASTAS com nome de arquivo ("…\NFC-e\09-2026_NFC-e_31411.xml\09-2026_NFC-e_31411.xml",
@@ -308,7 +309,9 @@ function analisarLocal(sub, nome, cli) {
                 if (!ok) {
                   // "Comprovante 09-04-2026 16h24m57s.pdf": o nome do banco preservado (o BACKFILL de 27/08/2026 registrou assim)
                   const doBanco = /^Comprovante \d{2}-\d{2}-\d{4}\b/i.test(nome);
-                  nomeFora(b4.c === 'COMPROVANTES' ? 'Comprovantes [MÊS E ANO].pdf' + (doBanco ? ' (ficou o nome do banco, com a data e a hora)' : '') : '[MÊS E ANO].[ext]', doBanco ? 0.7 : 0.85);
+                  nomeFora(b4.c === 'COMPROVANTES' ? 'Comprovantes [MÊS E ANO].pdf' + (doBanco ? ' (ficou o nome do banco, com a data e a hora)' : '') : '[MÊS E ANO].[ext]', b4.c === 'COMPROVANTES' ? (doBanco ? 0.95 : 0.9) : 0.85);
+                  // comprovantes: renomear para "Comprovantes MM-AAAA.pdf" (o mês da pasta), com " (N)" (Vitor, 23/10/2026)
+                  if (b4.c === 'COMPROVANTES') { const x = achados[achados.length - 1]; x.sugestao = sub.slice(); x.nomeNovo = 'Comprovantes ' + sub[3] + '-' + sub[2] + (W.extname(nome).toLowerCase() || '.pdf'); x.ev += ' (Vitor, 23/10/2026: renomear com " (N)")'; }
                   const ms = mesesDoNome(nome);
                   if (ms.length) { comp = b4.c === 'COMPROVANTES' ? ms[0] : ms[ms.length - 1]; compDe = 'nome'; conferePastas(2, 3); }
                 } else conferePastas(2, 3);
@@ -572,11 +575,12 @@ async function conferirConteudo(item, buf, ctx, cad, raiz) {
     const nomeSug = c.nomeFinal || d1.nomeFinal;
     const sug = destinoDe(d1, X);
     info.decisao += ' → ' + (ano !== ctx.anoRaiz ? ano + '\\' : '') + c.destinoRelativo;
-    const anual = /^(DEFIS|DIRF|ECF|BALANCETE|INFORME DE RENDIMENTOS)$/.test(d1.tipo || '');
-    if (ano !== ctx.anoRaiz) ach('ERRADO-ANO', 'a competência é de ' + ano + ' (raiz ' + ctx.anoRaiz + ')' + (anual ? ' (declaração/livro anual: ano-calendário)' : ''), sug, anual ? 0.7 : Math.min(d1.confianca, 0.95), 'conteúdo: ' + (d1.evidencias || []).filter(x => /raiz do ano|compet/i.test(x)).slice(0, 2).join('; '));
+    // as declarações anuais ficam no ano da ENTREGA (Vitor, 23/10/2026): as regras dão o ano-calendário; a entrega é o seguinte
+    const anual = ANUAIS.test(d1.tipo || '');
+    const anoCerto = anual && d1.anoRaiz ? ano + 1 : ano;
+    if (anoCerto !== ctx.anoRaiz) ach('ERRADO-ANO', (anual ? 'declaração/livro anual do ano-calendário ' + ano + ' (entregue em ' + anoCerto + ')' : 'a competência é de ' + ano) + ' (raiz ' + ctx.anoRaiz + ')', anual ? String(sug).replace('\\' + ano + '\\', '\\' + anoCerto + '\\') : sug, anual ? 0.7 : Math.min(d1.confianca, 0.95), 'conteúdo: ' + (d1.evidencias || []).filter(x => /raiz do ano|compet/i.test(x)).slice(0, 2).join('; '));
     else if (N(subAtual[0] || '') === 'DEPARTAMENTO PESSOAL' && N(subAtual[2] || '') === 'FGTS' && d1.tipo === 'FGTS') {
-      // duas regras: o robô do FGTS no PC (DEPARTAMENTO PESSOAL\MM\FGTS, 09/10/2026) × o 04b/arquivador (SOCIETÁRIO\IMPOSTOS\FGTS\AAAA)
-      ach('INCERTO', 'duas regras para a guia do FGTS: o robô do DP grava em DEPARTAMENTO PESSOAL\\MM\\FGTS, o 04b e o arquivador em ' + relSug.join('\\'), sug, 0.5, 'decidir uma; o cliente confere');
+      // o FGTS fica em DEPARTAMENTO PESSOAL\MM\FGTS, com o nome do robô (Vitor, 23/10/2026): o cliente confere, nada a corrigir
       return { achados, info, sha: sha(buf) };
     } else if (relSug.map(N).join('\\') !== subAtual.map(N).join('\\')) ach('ERRADO-PASTA', 'as regras põem em ' + relSug.join('\\') + ' (' + (d1.tipo || '?') + ')', sug, Math.min(d1.confianca, 0.95), 'conteúdo: ' + (d1.evidencias || []).slice(0, 3).join('; ') + (d1.fonte ? ' [' + d1.fonte + ']' : ''));
     if (nomeSug && semSufixo(nomeSug) !== semSufixo(nome)) {
@@ -646,12 +650,14 @@ async function auditar(opcoes) {
     const reg = { tipo: loc.tipo, comp: loc.comp, compDe: loc.compDe, codigo: pc ? pc.codigo : null, s: a.s, m: a.m };
     porArquivo.set(a.p, reg);
     tiposCont[loc.tipo] = (tiposCont[loc.tipo] || 0) + 1;
-    const sugAbs = s => s ? W.join(raiz, partes[0], ...s, nome) : null;
-    for (const x of loc.achados) novo(x.g, a.p, reg.codigo, x.problema, sugAbs(x.sugestao), x.conf, x.ev, 'nome/pasta', x.pastaArquivo ? { pastaFora: partes[0] + '\\' + x.pastaArquivo } : null);
+    const sugAbs = (s, nomeNovo) => s ? W.join(raiz, partes[0], ...s, nomeNovo || nome) : null;
+    for (const x of loc.achados) novo(x.g, a.p, reg.codigo, x.problema, sugAbs(x.sugestao, x.nomeNovo), x.conf, x.ev, 'nome/pasta', x.pastaArquivo ? { pastaFora: partes[0] + '\\' + x.pastaArquivo } : null);
     // o ano: a raiz é a do ano da competência (Vitor, 23/10/2026)
-    if (loc.comp && loc.comp.ano && loc.comp.ano !== anoRaiz) {
-      const anual = ['DEFIS', 'DIRF', 'ECF', 'INFORME DE RENDIMENTOS', 'BALANCETE'].includes(loc.tipo);
-      novo('ERRADO-ANO', a.p, reg.codigo, 'competência ' + (loc.comp.mes ? dois(loc.comp.mes) + '-' : '') + loc.comp.ano + ' na raiz ' + anoRaiz + (anual ? ' (declaração/livro anual: ano-calendário)' : ''), W.join(W.dirname(raiz), String(loc.comp.ano), a.p), anual ? 0.6 : loc.compDe === 'nome' ? 0.9 : 0.85, 'pelo ' + (loc.compDe || '?') + '; regra da raiz pelo ano da competência (arquivador-regras, 23/10/2026)');
+    // as declarações anuais ficam no ano da ENTREGA (Vitor, 23/10/2026): o ano-calendário + 1 (não se lê o recibo aqui)
+    const anual = ANUAIS.test(loc.tipo);
+    const anoCerto = loc.comp && loc.comp.ano ? (anual ? loc.comp.ano + 1 : loc.comp.ano) : null;
+    if (anoCerto && anoCerto !== anoRaiz) {
+      novo('ERRADO-ANO', a.p, reg.codigo, (anual ? 'declaração/livro anual do ano-calendário ' + loc.comp.ano + ' (entregue em ' + anoCerto + ')' : 'competência ' + (loc.comp.mes ? dois(loc.comp.mes) + '-' : '') + loc.comp.ano) + ' na raiz ' + anoRaiz, W.join(W.dirname(raiz), String(anoCerto), a.p), anual ? (loc.tipo === 'BALANCETE' ? 0.7 : 0.85) : loc.compDe === 'nome' ? 0.9 : 0.85, anual ? 'ano da entrega = ano-calendário + 1 (Vitor, 23/10/2026: "no ano da entrega")' : 'pelo ' + (loc.compDe || '?') + '; regra da raiz pelo ano da competência (arquivador-regras, 23/10/2026)');
     }
     // o cliente pelo que os índices sabem do arquivo (sem abrir)
     // na pasta com nome de arquivo, o manifesto aponta para a PASTA ("…\09-2026_NFC-e_31411.xml"): é o registro do arquivo
@@ -808,7 +814,7 @@ async function auditar(opcoes) {
       ficam.push(fica);
       for (const p of lista.slice(1)) {
         const de = m.get(p) === 'lido agora' && m.get(fica) === 'lido agora' ? 'sha256 calculado agora (os dois lidos)' : 'sha256 dos manifestos/índices' + (m.get(p) === 'lido agora' || m.get(fica) === 'lido agora' ? ' + lido agora' : '');
-        novo('DUPLICADO', p, (porArquivo.get(p) || {}).codigo, 'o mesmo conteúdo está em ' + fica, 'QUARENTENA', de.includes('agora (os dois') ? 0.99 : 0.9, de + ' ' + h);
+        novo('DUPLICADO', p, (porArquivo.get(p) || {}).codigo, 'o mesmo conteúdo está em ' + fica, 'QUARENTENA', de.includes('agora (os dois') ? 0.99 : 0.9, de + ' ' + h, 'índice', { igualA: W.join(raiz, fica) });
         jaDup.add(p);
       }
     }
@@ -823,7 +829,7 @@ async function auditar(opcoes) {
     const ps = [...set].filter(p => vistos.has(lower(W.join(raiz, p))) && !jaDup.has(p));
     if (ps.length < 2) continue;
     ps.sort(cmp);
-    for (const p of ps.slice(1)) if (p.split('\\')[0] === ps[0].split('\\')[0]) { novo('DUPLICADO', p, (porArquivo.get(p) || {}).codigo, 'o mesmo XML (chave + protocolo) está em ' + ps[0], 'QUARENTENA', 0.85, 'índice de conteúdo do XML'); jaDup.add(p); }
+    for (const p of ps.slice(1)) if (p.split('\\')[0] === ps[0].split('\\')[0]) { novo('DUPLICADO', p, (porArquivo.get(p) || {}).codigo, 'o mesmo XML (chave + protocolo) está em ' + ps[0], 'QUARENTENA', 0.85, 'índice de conteúdo do XML', 'índice', { igualA: W.join(raiz, ps[0]), soXml: true }); jaDup.add(p); }
   }
   // candidato pelo nome+tamanho que não foi confirmado nem desmentido pelo hash
   for (const [p, porque] of candDup) {
@@ -834,11 +840,22 @@ async function auditar(opcoes) {
     novo('INCERTO', p, r ? r.codigo : null, 'possível duplicado: ' + porque + ' (não confirmado pelo conteúdo)', null, 0.5, 'nome+tamanho iguais');
   }
 
+  // fora do plano: o que a migração de 23/10 gravou em 2026 com o ano errado — o outro agente corrige pelo manifesto
+  // (corrigir-ano.js, a mesma janela); aqui não se mexe neles
+  const excluir = new Set();
+  const [jDe, jAte] = String(opcoes.excluirJanela || '2026-10-23T19:10:00Z..2026-10-23T21:30:00Z').split('..');
+  CT.cadaLinha(W.join(CONTROLE, 'MANIFESTO', 'manifesto.jsonl'), m => {
+    if (!m.timestamp || m.timestamp < jDe || m.timestamp >= jAte || m.descarte || m.correcao) return;
+    const onde = A.caminhoArquivado(m.destino_final, m.nome_final);
+    if (lower(onde).startsWith(lower(raiz) + '\\')) excluir.add(lower(onde.slice(raiz.length + 1)));
+  });
+  log('fora do plano (migração de 23/10, o outro agente corrige): ' + excluir.size + ' linhas do manifesto; ' + [...porArquivo.keys()].filter(p => excluir.has(lower(p))).length + ' ainda em ' + raiz);
+
   // grava
   const tFim = Date.now();
   let cacheDepois = null;
   if (cacheAntes) { try { cacheDepois = tamanhoPasta(cacheAntes.pasta); } catch (e) {} }
-  const res = resumir({ raiz, anoRaiz, achados, porArquivo, pastasCli, arquivos, pastas, erros, conteudo, est, cad, gruposDup, candDup, entreClientes, mesmoConteudo, nota: opcoes.nota || null, tempos: Object.assign(tempos, { totalMs: tFim - t0 }), infoInv, cacheAntes, cacheDepois, tiposCont });
+  const res = resumir({ raiz, anoRaiz, achados, porArquivo, pastasCli, arquivos, pastas, erros, conteudo, est, cad, gruposDup, candDup, entreClientes, mesmoConteudo, shaLido, excluir, nota: opcoes.nota || null, tempos: Object.assign(tempos, { totalMs: tFim - t0 }), infoInv, cacheAntes, cacheDepois, tiposCont });
   gravar(saida, res, achados, porArquivo, log);
   log('pronto: ' + achados.length + ' achados; ' + W.join(saida, 'relatorio.md'));
   await A.encerrarOcr();
@@ -987,23 +1004,55 @@ function gravar(saida, r, achados, porArquivo, log) {
   }
   fs.writeFileSync(W.join(saida, 'achados.csv'), '\ufeff' + linhas.join('\r\n'));
   // o plano em SIMULAÇÃO: nada disto foi executado
+  // um passo por arquivo: o do achado mais grave; se ele não tem destino seguro e é só de pasta, o renome (no lugar) ainda
+  // pode ir; cliente/ano sem destino seguro: o arquivo inteiro fica para revisão. Os repetidos vão para a quarentena só
+  // se o executor conferir o sha256 dos dois (o "igualA"). O executor só faz os "automatico".
   const plano = [];
   const ordemG = { 'ERRADO-CLIENTE': 1, 'ERRADO-ANO': 2, 'ERRADO-PASTA': 3, DUPLICADO: 4, 'NOME-FORA-DO-PADRAO': 5 };
-  const feito = new Set();
+  const ETAPA = { 'ERRADO-CLIENTE': 'cliente', 'ERRADO-ANO': 'ano', 'ERRADO-PASTA': 'pasta', DUPLICADO: 'duplicados', 'NOME-FORA-DO-PADRAO': 'renomes' };
+  const porArq = new Map();
+  for (const a of ordenados) if (!a.pasta && ordemG[a.g]) { if (!porArq.has(a.p)) porArq.set(a.p, []); porArq.get(a.p).push(a); }
+  // o que já está, igual, no cliente dono (a subpasta com o nome do outro cliente: "356 - A7 COMERCIO\…\A7 MOBILE\…")
   for (const a of ordenados) {
-    if (a.pasta || !ordemG[a.g] || feito.has(a.p)) continue;
-    feito.add(a.p);
+    if (a.g !== 'INCERTO' || !/também está em outro cliente/.test(a.problema) || porArq.has(a.p)) continue;
+    const pa = porArquivo.get(a.p) || {};
+    const codigos = [...String(pa.suspeito || '').matchAll(/(\d+) - /g)].map(m => m[1]);
+    const la = codigos.length && /uma subpasta/.test(pa.suspeito || '') ? (r.mesmoConteudo.get(a.p) || []).find(q => codigos.some(c => q.startsWith(c + ' - '))) : null;
+    if (la) porArq.set(a.p, [{ g: 'ERRADO-CLIENTE', p: a.p, codigo: a.codigo, problema: 'cópia de outro cliente numa subpasta com o nome dele; o original está em ' + la, sugestao: null, conf: 0.95, ev: a.ev, igualA: W.join(r.raiz, la) }]);
+  }
+  const passoDe = a => {
     const de = W.join(r.raiz, a.p);
     let acao = a.g === 'DUPLICADO' ? 'QUARENTENA' : a.g === 'NOME-FORA-DO-PADRAO' ? 'RENOMEAR' : 'MOVER';
-    let para = a.g === 'DUPLICADO' ? (a.sugestao === 'QUARENTENA' ? '<quarentena>\\' + a.p : null) : a.sugestao;
-    let porque = a.problema;
+    let para = a.g === 'DUPLICADO' ? null : a.sugestao;
+    let porque = a.problema, igualA = a.igualA || null;
     // o mesmo conteúdo JÁ está no cliente/pasta de destino: não move, vai para a quarentena
-    if (acao === 'MOVER' && para && r.mesmoConteudo && r.mesmoConteudo.has(a.p)) {
-      const alvoCli = lower(String(para).slice(W.dirname(r.raiz).length + 1).split('\\').slice(1, 2).join(''));
-      const la = r.mesmoConteudo.get(a.p).find(q => lower(q.split('\\')[0]) === alvoCli);
-      if (la) { acao = 'QUARENTENA'; para = '<quarentena>\\' + a.p; porque += ' — o mesmo conteúdo já está em ' + la; }
+    if (acao === 'MOVER' && r.mesmoConteudo && r.mesmoConteudo.has(a.p)) {
+      const alvoCli = para ? lower(String(para).slice(W.dirname(r.raiz).length + 1).split('\\').slice(1, 2).join('')) : null;
+      const la = alvoCli ? r.mesmoConteudo.get(a.p).find(q => lower(q.split('\\')[0]) === alvoCli) : null;
+      if (la) { igualA = W.join(r.raiz, la); porque += ' — o mesmo conteúdo já está em ' + la; }
     }
-    plano.push({ ordem: ordemG[a.g], gravidade: a.g, acao, de, para, confianca: a.conf, automatico: !!para && a.conf >= AUTOMATICO && !(acao === 'QUARENTENA' && a.g === 'DUPLICADO' && a.conf < 0.99), porque, evidencia: a.ev });
+    if (igualA) { acao = 'QUARENTENA'; para = null; }
+    const pa = porArquivo.get(a.p) || {};
+    let auto = acao === 'QUARENTENA' ? !!igualA && a.conf >= AUTOMATICO : !!para && a.conf >= AUTOMATICO;
+    // mover para OUTRO cliente: só com revisão (a quarentena do que já está igual no dono, conferida pelo sha256, pode)
+    if (auto && a.g === 'ERRADO-CLIENTE' && acao === 'MOVER') { auto = false; porque += ' — mover entre clientes só com revisão'; }
+    // repetido com nome de OUTRA coisa (outra pasta e outro começo de nome: "Fatura_JOSE…" × "Fatura_MAGNO…"): um dos dois
+    // está com o nome errado; qual fica é decisão humana
+    if (auto && a.g === 'DUPLICADO' && igualA) {
+      const cab = s => R.norm(W.basename(s)).replace(/ \(\d+\)(?=\.[A-Z0-9]+$)/, '').replace(/\.[A-Z0-9]+$/, '').split(/ - |_/).slice(0, 2).join(' - ');
+      if (lower(W.dirname(de)) !== lower(W.dirname(igualA)) && cab(de) !== cab(igualA)) { auto = false; porque += ' — nomes de coisas diferentes: conferir qual é o certo'; }
+    }
+    return { ordem: ordemG[a.g], etapa: ETAPA[a.g], gravidade: a.g, acao, de, para, igualA, confianca: a.conf, automatico: auto, porque, evidencia: a.ev, tamanho: pa.s || null, hash: (pa.ix && pa.ix.h) || ((r.shaLido && r.shaLido.get(a.p)) || null) };
+  };
+  for (const [p, lista] of porArq) {
+    const passos = lista.map(passoDe);
+    const primeiro = passos[0];
+    let feito = primeiro.automatico ? primeiro : null;
+    if (!feito && primeiro.gravidade === 'ERRADO-PASTA') feito = passos.find(s => s.automatico && s.acao === 'RENOMEAR') || null;
+    const entrada = Object.assign({}, feito || primeiro, { automatico: !!feito });
+    entrada.outros = passos.filter(s => s !== (feito || primeiro)).map(s => s.gravidade + ': ' + s.porque).slice(0, 4);
+    if (r.excluir && r.excluir.has(lower(p))) Object.assign(entrada, { automatico: false, excluido: 'migração de 23/10 (16:10-18:30): o outro agente corrige pelo manifesto (corrigir-ano.js)' });
+    plano.push(entrada);
   }
   plano.sort((a, b) => a.ordem - b.ordem || b.confianca - a.confianca);
   fs.writeFileSync(W.join(saida, 'plano-simulado.jsonl'), plano.map(p => JSON.stringify(p)).join('\n') + '\n');
@@ -1013,7 +1062,9 @@ function gravar(saida, r, achados, porArquivo, log) {
     mover: conta(p => p.acao === 'MOVER'), moverComDestino: conta(p => p.acao === 'MOVER' && p.para), moverAutomatico: conta(p => p.acao === 'MOVER' && p.automatico),
     quarentena: conta(p => p.acao === 'QUARENTENA'), quarentenaJaNoLugarCerto: conta(p => p.acao === 'QUARENTENA' && p.gravidade !== 'DUPLICADO'),
     renomear: conta(p => p.acao === 'RENOMEAR'), revisarHumano: r.revisar.size, automaticos: conta(p => p.automatico),
+    excluidosMigracao: conta(p => p.excluido), porEtapa: {},
   };
+  for (const p of plano) { const e = r.estimativa.porEtapa[p.etapa] = r.estimativa.porEtapa[p.etapa] || { passos: 0, automaticos: 0, excluidos: 0, porAcao: {} }; e.passos++; if (p.automatico) e.automaticos++; if (p.excluido) e.excluidos++; e.porAcao[p.acao] = (e.porAcao[p.acao] || 0) + 1; }
   // resumo em JSON (para a resposta e para comparar com a próxima auditoria)
   const top = [...r.porProblema].sort((a, b) => b[1].n - a[1].n);
   const resumo = {
@@ -1080,12 +1131,13 @@ function relatorioMd(r, top, plano) {
   L.push('- revisão humana (INCERTO, sem outro achado mais grave): **' + n(r.revisar.size) + '**', '');
   L.push('## Plano de correção (SIMULAÇÃO, não executado)', '');
   const porOrdem = {};
-  for (const p of plano) { const k = p.ordem + '. ' + p.gravidade + ' (' + p.acao + ')'; porOrdem[k] = porOrdem[k] || { total: 0, auto: 0 }; porOrdem[k].total++; if (p.automatico) porOrdem[k].auto++; }
-  for (const [k, v] of Object.entries(porOrdem).sort()) L.push('- ' + k + ': ' + n(v.total) + ' passos, ' + n(v.auto) + ' automáticos (confiança ≥ ' + AUTOMATICO + ' e destino conhecido)');
+  for (const p of plano) { const k = p.ordem + '. ' + p.gravidade + ' (' + p.acao + ')'; porOrdem[k] = porOrdem[k] || { total: 0, auto: 0, excl: 0 }; porOrdem[k].total++; if (p.automatico) porOrdem[k].auto++; if (p.excluido) porOrdem[k].excl++; }
+  for (const [k, v] of Object.entries(porOrdem).sort()) L.push('- ' + k + ': ' + n(v.total) + ' passos, ' + n(v.auto) + ' automáticos (confiança ≥ ' + AUTOMATICO + ' e destino conhecido)' + (v.excl ? ', ' + n(v.excl) + ' fora (migração: o outro agente corrige)' : ''));
+  L.push('', 'ERRADO-ANO não entra nesta correção (etapa "ano"): a migração o outro agente corrige pelo manifesto; o resto espera a raiz por ano. Executor: `robo/arquivador-correcao.js` (etapas zelo, cliente, pasta, duplicados, renomes).');
   L.push('', 'Os passos estão em `plano-simulado.jsonl` (de, para, confiança, por quê), na ordem: os graves primeiro.', '');
   L.push('### Como executar com segurança (quando aprovado)', '');
   L.push('1. **Antes de tudo:** desligar o arquivador contínuo e a rotina antiga (a trava `_execucao.lock` e o `config.json` do arquivador novo em "desligado") e refazer o inventário (`--reinventariar`): o plano só vale para o Drive como ele está.');
-  L.push('2. **Ordem:** (a) ERRADO-CLIENTE — primeiro a pasta "591 - ZELO" → "602 - ZELO" (resolve também a trava PASTA_DO_CLIENTE_DUPLICADA da 591), depois os outros, só com confiança ≥ 0,9 ou revisão humana; (b) ERRADO-ANO — junto com a raiz por ano do arquivador novo, para a pasta do cliente em G:\\Meu Drive\\<AAAA> (nascida com o mesmo nome da de 2026); (c) ERRADO-PASTA (pastas com nome de arquivo, regime, mês, pastas manuais); (d) DUPLICADO para a quarentena; (e) NOME-FORA-DO-PADRAO (renomear no lugar, por último: não muda de pasta).');
+  L.push('2. **Ordem** (`arquivador-correcao.js`): (a) zelo — a troca ZELO × AAP (feita em 23/10/2026: a ZELO é a 591, a AAP a 602; "591 - AAP" → "602 - AAP", a 602-ZELO juntada na 591-ZELO); (b) cliente — ERRADO-CLIENTE, só com confiança ≥ 0,9 ou revisão humana; (c) pasta — ERRADO-PASTA (pastas com nome de arquivo, regime, mês, pastas manuais); (d) duplicados para a quarentena; (e) renomes (no lugar, por último). ERRADO-ANO fica fora (a migração o outro agente corrige; o resto espera a raiz por ano).');
   L.push('3. **Mover sempre por rename dentro do G:** (`fs.renameSync`, o mesmo `mover()` do arquivador novo): no Google Drive é só trocar a pasta no servidor, sem baixar nem subir. Nunca sobrescrever: destino ocupado com outro conteúdo → " (N)" (Dicionário §2); destino com o mesmo conteúdo → o de origem vira duplicado e vai para a quarentena.');
   L.push('4. **Registrar cada passo** numa linha do manifesto do arquivador novo (`%LOCALAPPDATA%\\nads\\arquivador-novo\\MANIFESTO\\manifesto.jsonl`, `id_execucao` "CORRECAO-AAAAMMDD-…", com `de`, `destino_final`, `nome_final`, hash quando conhecido) e no índice de conteúdo/chaves, para o "já arquivado" e os eventos acharem o lugar novo.');
   L.push('5. **Duplicados:** nunca apagar. Quarentena DENTRO do G: (rename, sem baixar), numa pasta que nenhuma rotina varre — recomendo `G:\\Meu Drive\\CLAUDE FAVOR NÃO MEXER\\QUARENTENA-AUDITORIA\\<DD-MM-AAAA>\\<caminho relativo>` (a quarentena do arquivador novo fica no C:, e mover do G: para o C: é baixar). Só depois de conferir o sha256 dos DOIS arquivos (no plano, "automatico" só quando os dois foram lidos e o sha256 conferiu agora; o hash dos manifestos é de quando foram gravados); retenção de 7 dias antes de qualquer purga, como o Dicionário §1.');
