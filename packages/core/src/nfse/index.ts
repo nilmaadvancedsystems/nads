@@ -3,6 +3,7 @@
 // DPS da NFS-e Nacional. O nads grava o pedido (nfseEmissoes, banco do Entregas); o robô da nuvem monta a DPS, assina com
 // o certificado do escritório, envia com o token da prefeitura, consulta até sair a nota e cancela quando pedem.
 // Aqui: os tipos, os nomes das situações e o que confere o pedido e a configuração (puro, sem banco).
+import { DESCRICAO_PADRAO } from './descricao';
 import { EMAIL_PADRAO, type ConfigEmailNfse, type EmailDaNota, type PedidoDeEmail } from './email';
 
 export type AmbienteNfse = 'homologacao' | 'producao';
@@ -89,6 +90,8 @@ export interface ConfigNfse {
   proximoNumero: Record<AmbienteNfse, number>;
   /** a nota autorizada por e-mail ao tomador (o robô manda a DANFSe e o XML) */
   email: ConfigEmailNfse;
+  /** o modelo da descrição automática das notas ({competencia}, {mes}, {ano}); vazio = DESCRICAO_PADRAO */
+  descricao: string;
 }
 
 export const CONFIG_PADRAO: ConfigNfse = {
@@ -99,6 +102,7 @@ export const CONFIG_PADRAO: ConfigNfse = {
   serie: '1',
   proximoNumero: { homologacao: 1, producao: 1 },
   email: EMAIL_PADRAO,
+  descricao: DESCRICAO_PADRAO,
 };
 
 export const soDigitos = (v: string) => String(v || '').replace(/\D/g, '');
@@ -211,6 +215,7 @@ export function andamentoDaNota(n: NotaFiscal, agora: Date): string {
   return '';
 }
 export * from './danfse';
+export * from './descricao';
 export * from './email';
 export * from './recebimentos';
 export * from './planilha';

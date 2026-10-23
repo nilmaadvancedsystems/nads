@@ -5,6 +5,7 @@
 //   - config/nfse: o prestador, o serviço e a numeração (o admin grava; o robô só aumenta o número);
 //   - nfseEmissoes/{id}.envioEmail {para, pedidoPor, pedidoEm}: o pedido de mandar a autorizada por e-mail (o robô manda,
 //     grava email {para, enviadoEm, erro} e apaga o pedido); config/nfse.email {automatico, assunto, texto}: o envio automático;
+//   - config/nfse.descricao: o modelo da descrição automática das notas ({competencia}, {mes}, {ano});
 //   - segredos/nfse: o token da prefeitura (o admin grava e não lê; só o robô lê);
 //   - robo/nfse (só leitura): o robô ligado (com o certificado do escritório) ou o motivo.
 import { nfse } from '@nads/core';
@@ -75,6 +76,7 @@ function configDoBanco(d: Record<string, unknown>): nfse.ConfigNfse {
     serie: texto(d.serie) || P.serie,
     proximoNumero: { homologacao: Number(n.homologacao) || 1, producao: Number(n.producao) || 1 },
     email: nfse.configDoEmail(d.email),
+    descricao: nfse.modeloDaDescricao(d.descricao),
   };
 }
 
@@ -151,7 +153,7 @@ export function criarNfseFirestore(quem: () => Quem): RepoNfse {
       await updateDoc(doc(db, 'nfseEmissoes', id), { envioEmail: { para: para.trim(), pedidoPor: nome, pedidoEm: new Date().toISOString() } });
     },
     async salvarConfig(c) {
-      await setDoc(doc(db, 'config', 'nfse'), { ambiente: c.ambiente, prestador: { ...c.prestador, cnpj: nfse.soDigitos(c.prestador.cnpj), fone: nfse.soDigitos(c.prestador.fone) }, servico: { ...c.servico, cNBS: nfse.soDigitos(c.servico.cNBS) }, serie: c.serie, proximoNumero: c.proximoNumero, email: { automatico: c.email.automatico, assunto: c.email.assunto.trim(), texto: c.email.texto.trim() } }, { merge: true });
+      await setDoc(doc(db, 'config', 'nfse'), { ambiente: c.ambiente, prestador: { ...c.prestador, cnpj: nfse.soDigitos(c.prestador.cnpj), fone: nfse.soDigitos(c.prestador.fone) }, servico: { ...c.servico, cNBS: nfse.soDigitos(c.servico.cNBS) }, serie: c.serie, proximoNumero: c.proximoNumero, email: { automatico: c.email.automatico, assunto: c.email.assunto.trim(), texto: c.email.texto.trim() }, descricao: c.descricao.trim() }, { merge: true });
     },
     async salvarToken(token, nome) {
       const agora = new Date().toISOString();
