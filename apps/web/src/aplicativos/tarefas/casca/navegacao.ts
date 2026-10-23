@@ -107,9 +107,9 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'caixa', rotulo: 'Caixa', icone: 'dinheiro', titulo: 'Movimento de caixa' },
     // os honorários dos clientes, por competência (19/10/2026, fase 2 do Financeiro)
     { id: 'honorarios', rotulo: 'Honorários', icone: 'recibo', titulo: 'Honorários' },
-    // os itens 2, 6 e 7 da lista do Painel (22/10/2026): quem deve, o resultado por conta e a conciliação com o extrato
+    // os itens 2 e 7 da lista do Painel (22/10/2026): quem deve e a conciliação com o extrato; o Resultado por conta virou
+    // um botão do Painel, numa janela flutuante ("a aba de resultado vai virar um botão no painel")
     { id: 'devedores', rotulo: 'Devedores', icone: 'alert', titulo: 'Devedores' },
-    { id: 'resultado', rotulo: 'Resultado', icone: 'scale', titulo: 'Resultado por conta' },
     { id: 'conciliacao', rotulo: 'Conciliação', icone: 'fileSearch', titulo: 'Conciliação com o extrato' },
     { id: 'plano', rotulo: 'Plano de contas', icone: 'list', titulo: 'Plano de contas' },
     { id: 'notas', rotulo: 'Notas fiscais', icone: 'recibo', titulo: 'Notas fiscais' },
