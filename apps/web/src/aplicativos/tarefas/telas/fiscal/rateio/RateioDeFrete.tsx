@@ -3,8 +3,10 @@
 // nota escolhida numa linha (produtos, frete e desconto, editáveis), o rateio e, clicando numa linha, o frete pelos NCMs.
 // "Sem XML? Digite os valores" faz a planilha à mão. Só as peças do catálogo (Busca com lupa, Botão com borda, SeletorMes,
 // Segmentado, busca curta, Cartão, Tabela padrão, Linhas especiais, Valor editável, Botão fantasma, Alerta, Vazio, Esqueleto).
-import { Alerta, BotaoIcone, Esqueleto, Icone, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
+import { Alerta, BotaoIcone, Dica, Esqueleto, Icone, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
 import { ValorEditavel } from '../../financeiro/partes/ValorEditavel';
+import { EmpresaDaBarra } from '../partes/EmpresaDaBarra';
+import { EspelhoDaNota } from '../partes/EspelhoDaNota';
 import { useRateioDeFrete, type VmRateioDeFrete } from './useRateioDeFrete';
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -16,10 +18,11 @@ export function RateioDeFrete() {
   const daNota = vm.fonte === 'nota';
   return (
     <section className="rateio-frete">
+      {vm.vendo && <EspelhoDaNota nota={vm.vendo} fechar={vm.fecharNota} />}
       <div className="tarefas-barra-topo">
         {daNota && (
           <>
-            <EscolherEmpresa vm={vm} />
+            <EmpresaDaBarra vm={vm} id="rateio-empresas" />
             <SeletorMes valor={vm.competencia} onMudar={vm.setCompetencia} rotulo="Competência" />
             <Segmentado valor={vm.lado} onMudar={vm.setLado} opcoes={[{ valor: 'recebidas', rotulo: 'Entradas' }, { valor: 'emitidas', rotulo: 'Saídas' }]} />
           </>
@@ -45,46 +48,6 @@ export function RateioDeFrete() {
   );
 }
 
-function EscolherEmpresa({ vm }: { vm: VmRateioDeFrete }) {
-  if (vm.empresa) {
-    return (
-      <button type="button" className="btn btn-outline rateio-frete-empresa" title="Trocar a empresa" onClick={vm.trocarEmpresa}>
-        <Icone nome="briefcase" width={16} height={16} /><span className="rateio-frete-empresa-nome"><b>{vm.empresa.codigo}</b> · {vm.empresa.nome}</span><Icone nome="x" width={14} height={14} />
-      </button>
-    );
-  }
-  const aberta = vm.achadas.length > 0;
-  return (
-    <div className="rateio-frete-busca">
-      <label className="busca-curta rateio-frete-empresa">
-        <Icone nome="search" width={16} height={16} />
-        <input type="text" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} placeholder="Empresa: código ou nome" aria-label="Buscar a empresa por código ou nome" autoComplete="off"
-          role="combobox" aria-expanded={aberta} aria-controls="rateio-empresas"
-          onKeyDown={e => {
-            if (!aberta) return;
-            if (e.key === 'ArrowDown') { e.preventDefault(); vm.mover(1); }
-            else if (e.key === 'ArrowUp') { e.preventDefault(); vm.mover(-1); }
-            else if (e.key === 'Enter') { e.preventDefault(); vm.escolherDestacado(); }
-            else if (e.key === 'Escape') vm.setBusca('');
-          }} />
-      </label>
-      {aberta && (
-        <ul className="nf-achados" id="rateio-empresas" role="listbox" aria-label="Empresas encontradas">
-          {vm.achadas.map((e, i) => (
-            <li key={e.codigo + e.nome}>
-              <button type="button" className={'popover-item' + (i === vm.ativo ? ' nf-ativo' : '')} role="option" aria-selected={i === vm.ativo} tabIndex={-1}
-                onMouseEnter={() => vm.setAtivo(i)} onClick={() => vm.escolher(e)}>
-                <span className="nf-achado-codigo">{e.codigo}</span>
-                <span className="popover-texto">{e.nome}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
 function Notas({ vm }: { vm: VmRateioDeFrete }) {
   return (
     <section className="card">
@@ -97,16 +60,17 @@ function Notas({ vm }: { vm: VmRateioDeFrete }) {
       </div>
       <div className="table-wrap">
         <table className="table-compact rateio-frete-notas">
-          <thead><tr><th>Número</th><th>Data</th><th>{vm.lado === 'recebidas' ? 'Emitente' : 'Destinatário'}</th><th className="num">Valor</th><th className="num">Frete</th><th className="num">Desconto</th></tr></thead>
+          <thead><tr><th>Número</th><th>Data</th><th>{vm.lado === 'recebidas' ? 'Emitente' : 'Destinatário'}</th><th className="num">Valor</th><th className="num">Frete</th><th className="num">Desconto</th><th aria-label="Ver a nota" /></tr></thead>
           <tbody>
             {vm.notas.map(n => (
               <tr key={n.chave} onClick={() => vm.escolherNota(n.chave)} title="Ratear o frete desta nota">
                 <td><b>{n.numero}</b></td><td>{n.data}</td><td className="wrap">{n.parte}</td><td className="num">{brl(n.valor)}</td>
                 <td className="num">{n.frete ? <b>{brl(n.frete)}</b> : <span className="fraco">—</span>}</td>
                 <td className="num">{n.desconto ? brl(n.desconto) : <span className="fraco">—</span>}</td>
+                <td className="nf-direita"><button type="button" className="btn btn-ghost btn-sm" title="Ver a nota (a chave, os itens e os totais)" onClick={ev => { ev.stopPropagation(); vm.verNota(n.chave); }}><Icone nome="olho" width={14} height={14} />Ver</button></td>
               </tr>
             ))}
-            {!vm.notas.length && <tr><td colSpan={6} className="hint">Nenhuma nota com essa busca.</td></tr>}
+            {!vm.notas.length && <tr><td colSpan={7} className="hint">Nenhuma nota com essa busca.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -122,7 +86,10 @@ function Resultado({ vm }: { vm: VmRateioDeFrete }) {
       <section className="card">
         <div className="card-head">
           <h3>{n.titulo} <span className="fraco">· {n.data} · {n.parte}</span></h3>
-          <button type="button" className="btn btn-outline" onClick={vm.trocarNota}>Trocar a nota</button>
+          <span className="btn-row">
+            <button type="button" className="btn btn-outline" onClick={() => vm.verNota(n.chave)}><Icone nome="olho" width={16} height={16} />Ver a nota</button>
+            <button type="button" className="btn btn-outline" onClick={vm.trocarNota}>Trocar a nota</button>
+          </span>
         </div>
         <Valores vm={vm} />
         {vm.estimado && <div className="rateio-frete-corpo"><Alerta naLinha titulo="Frete estimado" texto="A nota foi baixada antes de o nads guardar o frete: o valor veio da diferença do total da nota. Confira com o DANFE." /></div>}
@@ -153,7 +120,8 @@ function Rateio({ vm }: { vm: VmRateioDeFrete }) {
   return (
     <>
       <div className="rateio-frete-corpo rateio-frete-explica">
-        <span className="hint">O frete e o desconto vão para cada linha na proporção do valor dela; a base é valor + IPI + frete − desconto.{daNota && ' Clique numa linha para ver pelos NCMs.'}</span>
+        {/* a explicação numa dica (23/10/2026: sem textos soltos na tela) */}
+        <span className="rateio-frete-titulo">Rateio <Dica texto={'O frete e o desconto vão para cada linha na proporção do valor dela; a base é valor + IPI + frete − desconto.' + (daNota ? ' Clique numa linha para ver pelos NCMs.' : '')} /></span>
         {daNota && <Segmentado valor={vm.agrupar} onMudar={vm.setAgrupar} opcoes={[{ valor: 'tributacao', rotulo: 'Por tributação' }, { valor: 'cfop', rotulo: 'Por CFOP' }]} />}
       </div>
       <div className="table-wrap">

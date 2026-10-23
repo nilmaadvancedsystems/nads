@@ -3,9 +3,10 @@
 // números grandes, uma tabela com a conta (cada valor editável, a fonte num selo) e, recolhidos, por tributo e o Fator R.
 // Só as peças do catálogo: busca de cliente com lista, SeletorMes, Filtro da barra (menu), Alerta, Stat, Tabela padrão,
 // Valor editável, selo suave, Botão de ícone, Faixas que abrem, Vazio.
-import { Alerta, BotaoIcone, Esqueleto, Icone, MenuSuspenso, SeletorMes, Stat, useCarregando, Vazio } from '@nads/ui';
+import { Alerta, BotaoIcone, Esqueleto, MenuSuspenso, SeletorMes, Stat, useCarregando, Vazio } from '@nads/ui';
 import { tarefas as t } from '@nads/core';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
+import { EmpresaDaBarra } from '../partes/EmpresaDaBarra';
 import { ValorEditavel } from '../../financeiro/partes/ValorEditavel';
 import { SEM_O_QUE, useCalculadoraDoSimples, type NumeroDoSimples, type VmCalculadoraDoSimples } from './useCalculadoraDoSimples';
 
@@ -18,7 +19,7 @@ export function CalculadoraDoSimples() {
   return (
     <section className="simples-calc">
       <div className="tarefas-barra-topo">
-        <EscolherEmpresa vm={vm} />
+        <EmpresaDaBarra vm={vm} id="simples-empresas" />
         <SeletorMes valor={vm.competencia} onMudar={vm.setCompetencia} rotulo="Competência" />
         {vm.empresa && vm.anexosUsados.map(a => (
           <MenuSuspenso key={a.tipo} rotulo={a.tipo + ': Anexo ' + a.anexo} titulo={'Anexo · ' + a.tipo} className="btn btn-outline ativo"
@@ -31,49 +32,6 @@ export function CalculadoraDoSimples() {
       {!vm.empresa ? <Vazio icone="recibo" titulo="Escolha a empresa" />
         : vm.carregando ? <Esqueleto linhas={8} /> : <Calculo vm={vm} />}
     </section>
-  );
-}
-
-function EscolherEmpresa({ vm }: { vm: VmCalculadoraDoSimples }) {
-  if (vm.empresa) {
-    return (
-      <div className="registro-busca simples-calc-empresa">
-        <Icone nome="briefcase" width={16} height={16} />
-        <span className="nf-escolhido"><b>{vm.empresa.codigo}</b> · {vm.empresa.nome}</span>
-        <BotaoIcone icone="x" pequeno titulo="Trocar a empresa" onClick={vm.trocarEmpresa} />
-      </div>
-    );
-  }
-  const aberta = vm.achadas.length > 0;
-  return (
-    <div className="simples-calc-empresa simples-calc-busca">
-      <div className="registro-busca">
-        <Icone nome="search" width={16} height={16} />
-        <input type="text" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} placeholder="Empresa: código do ERP ou nome" aria-label="Buscar a empresa por código ou nome" autoComplete="off"
-          role="combobox" aria-expanded={aberta} aria-controls="simples-empresas"
-          onKeyDown={e => {
-            if (!aberta) return;
-            if (e.key === 'ArrowDown') { e.preventDefault(); vm.mover(1); }
-            else if (e.key === 'ArrowUp') { e.preventDefault(); vm.mover(-1); }
-            else if (e.key === 'Enter') { e.preventDefault(); vm.escolherDestacado(); }
-            else if (e.key === 'Escape') vm.setBusca('');
-          }} />
-      </div>
-      {aberta && (
-        <ul className="nf-achados" id="simples-empresas" role="listbox" aria-label="Empresas encontradas (as do Simples primeiro)">
-          {vm.achadas.map((e, i) => (
-            <li key={e.codigo + e.nome}>
-              <button type="button" className={'popover-item' + (i === vm.ativo ? ' nf-ativo' : '')} role="option" aria-selected={i === vm.ativo} tabIndex={-1}
-                onMouseEnter={() => vm.setAtivo(i)} onClick={() => vm.escolher(e)}>
-                <span className="nf-achado-codigo">{e.codigo}</span>
-                <span className="popover-texto">{e.nome}</span>
-                {e.regime && <span className="popover-dica">{e.regime}</span>}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
   );
 }
 
@@ -109,9 +67,15 @@ function Calculo({ vm }: { vm: VmCalculadoraDoSimples }) {
         : faltaMes && <Alerta naLinha titulo={'RBT12 com ' + vm.rbt12Meses + ' de 12 meses'} texto="Faltam meses no SIEG: confira o RBT12 com o PGDAS." />}
       {vm.aviso && <Alerta naLinha titulo={vm.aviso.nivel === 'passou' ? 'Limite passado' : 'Perto do limite'} texto={vm.aviso.texto} />}
 
+      {/* o caminho da conta, como nas calculadoras do Simples (23/10/2026): o DAS e a receita, a alíquota efetiva com a faixa,
+          a nominal e a parcela a deduzir, e o RBT12 com quanto já foi do teto */}
       <div className="stat-grid">
-        <Stat rotulo={'DAS de ' + t.rotuloCompetencia(vm.competencia)} valor={'R$ ' + brl(c.total)} />
-        {vm.anexosUsados.map(a => <Stat key={a.tipo} rotulo={'Alíquota · Anexo ' + a.anexo + ' (' + a.p.faixa + 'ª faixa)'} valor={pct(a.p.efetiva)} />)}
+        <Stat rotulo={'DAS de ' + t.rotuloCompetencia(vm.competencia)} valor={'R$ ' + brl(c.total)} sub={'sobre a receita de R$ ' + brl(c.receita)} />
+        {vm.anexosUsados.map(a => (
+          <Stat key={a.tipo} rotulo={'Alíquota efetiva · Anexo ' + a.anexo + (vm.anexosUsados.length > 1 ? ' (' + a.tipo + ')' : '')} valor={pct(a.p.efetiva)}
+            sub={a.p.faixa + 'ª faixa · nominal ' + pct(a.p.nominal) + (a.p.deduzir ? ' − R$ ' + brl(a.p.deduzir) + ' a deduzir' : '')} />
+        ))}
+        <Stat rotulo="RBT12" valor={'R$ ' + brl(vm.rbt12.valor)} sub={vm.rbt12.valor ? pct((vm.rbt12.valor / t.sieg.TETO) * 100) + ' do teto de R$ 4,8 milhões' : 'digite o do PGDAS na tabela'} />
       </div>
 
       <div className="table-wrap simples-calc-tabela">

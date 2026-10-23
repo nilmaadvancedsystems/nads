@@ -132,3 +132,19 @@ export function MapaDeCalor({ grade, maior, lado = 50, rotulo }: { grade: Readon
     </div>
   );
 }
+
+/**
+ * A variação de um número contra o período anterior (23/10/2026, as telas do Fiscal e do Financeiro): a seta (▲ subiu,
+ * ▼ caiu) e o % sem sinal, em verde quando é bom e em vermelho quando é ruim. `subirEhRuim` para o que é gasto (saídas,
+ * despesas, imposto). null = não dá para comparar (o anterior é zero ou não tem dado): um traço.
+ */
+export function Variacao({ pct, subirEhRuim, titulo }: { pct: number | null | undefined; subirEhRuim?: boolean; titulo?: string }) {
+  if (pct == null || !Number.isFinite(pct)) return <span className="variacao fraco" title={titulo}>—</span>;
+  if (pct === 0) return <span className="variacao fraco" title={titulo}>0%</span>;
+  const bom = subirEhRuim ? pct < 0 : pct > 0;
+  return (
+    <span className={'variacao ' + (bom ? 'variacao-boa' : 'variacao-ruim')} title={titulo}>
+      {pct > 0 ? '▲' : '▼'} {Math.abs(pct).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%
+    </span>
+  );
+}

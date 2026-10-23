@@ -49,6 +49,8 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
   // a janela do andamento (Vitor, 07/10/2026: "quero uma barra de progresso/tela flutuante para a pessoa ter o feedback"):
   // abre no clique, acompanha o pedido e fica até o ×
   const [janela, setJanela] = useState<Janela | null>(null);
+  // a nota aberta no espelho (23/10/2026: "conferir as danfe direto pelo app")
+  const [vendo, setVendo] = useState('');
   // o relógio da janela (o tempo passado e o que falta), de segundo em segundo enquanto o robô trabalha
   const [agora, setAgora] = useState(() => Date.now());
   const conf = sai.dados ? t.sieg.conferirSaidas(sai.dados) : null;
@@ -129,7 +131,13 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
     catch (err) { setJanela(null); toast('Não consegui pedir ao SIEG: ' + (err instanceof Error ? err.message : String(err))); }
   }
 
+  const todasAsNotas = [...(notas.dados?.emitidas || []), ...(notas.dados?.recebidas || [])];
   return {
+    /** o espelho da nota (a divergente com a SEFAZ, aberta pela chave) */
+    vendo: vendo ? todasAsNotas.find(n => n.chave === vendo) || null : null,
+    podeVer: (c: string) => todasAsNotas.some(n => n.chave === c),
+    verNota: (c: string) => setVendo(c),
+    fecharNota: () => setVendo(''),
     tipo,
     exemplos: repo.exemplos,
     desligado: robo.carregado && !robo.ligado ? (robo.motivo === 'sem acesso' ? 'Sem acesso aos dados do SIEG.' : 'O robô do SIEG ainda não está ligado (' + (robo.motivo || 'sem credenciais') + ').') : '',

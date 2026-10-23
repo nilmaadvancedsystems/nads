@@ -1,7 +1,7 @@
 // As peças do catálogo, desenhadas com as MESMAS peças do sistema (@nads/ui e as classes do nads.css). A ordem dentro
 // de cada tipo dá o código (BT-01, BT-02…): peça nova entra no FIM do tipo, para os códigos não mudarem.
 import {
-  Alerta, AnelDeContagem, BarrasEmColuna, BotaoAcao, BotaoFechar, Vazio, CartaoComAnel, RoscaComLegenda, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail, MapaDeCalor,
+  Alerta, AnelDeContagem, BarrasEmColuna, BotaoAcao, BotaoFechar, Vazio, CartaoComAnel, RoscaComLegenda, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail, MapaDeCalor, Variacao,
   LogoFgts, LogoGovernoMinas, LogoInss, LogoReceitaFederal, LogoSimplesNacional, LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
 } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
@@ -804,6 +804,11 @@ export const PECAS_BASE: Peca[] = [
         </div>
       </div>
     ) },
+
+  // a variação contra o período anterior (23/10/2026, o Faturamento e o Simples do Fiscal): a seta e o %, verde quando é bom
+  { id: 'variacao', tipo: 'graficos', nome: 'Variação (▲ ▼ contra o anterior)', descricao: 'A seta e o % sem sinal: verde quando é bom, vermelho quando é ruim; subirEhRuim para gasto (saídas, despesas, imposto); sem comparação, um traço. No Stat, vai na linha de baixo (sub)', componente: 'Variacao', classes: ['variacao', 'variacao-boa', 'variacao-ruim', 'stat-comparacao'], telas: ['t-fiscal-faturamento', 't-fiscal-simples', 't-financeiro-painel'],
+    uso: '<Stat rotulo="Setembro/2026" valor="R$ 205.657,38" sub={<><Variacao pct={38.9} /> sobre ago/26</>} />',
+    demo: () => <div className="stat-grid" style={{ width: '100%', maxWidth: 640 }}><Stat rotulo="Setembro/2026" valor="R$ 205.657,38" sub={<><Variacao pct={38.9} /> sobre ago/26</>} /><Stat rotulo="Despesas" valor="R$ 3.936,31" sub={<><Variacao pct={161.2} subirEhRuim /> sobre ago/26</>} /><Stat rotulo="Sem comparação" valor="R$ 10,00" sub={<Variacao pct={null} />} /></div> },
 
   // ─── Cores ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'cores', tipo: 'cores', nome: 'As cores do sistema', descricao: 'Mude o tema no ☰ para ver o escuro', telas: TODAS, largo: true,

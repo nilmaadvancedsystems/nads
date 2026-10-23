@@ -3,12 +3,14 @@
 // com o Baixar do SIEG (o robô do PC baixa as saídas do mês) e o Atualizar.
 import { Alerta, BotaoAcao, BotaoFechar, Esqueleto, Icone } from '@nads/ui';
 import { createPortal } from 'react-dom';
+import { EspelhoDaNota } from '../../fiscal/partes/EspelhoDaNota';
 import { useSiegDaEtapa } from '../useSiegDaEtapa';
 
 export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 'saidas'; codigo: string; competencia: string }) {
   const vm = useSiegDaEtapa(tipo, codigo, competencia);
   return (
     <section className="sieg-painel">
+      {vm.vendo && <EspelhoDaNota nota={vm.vendo} fechar={vm.fecharNota} />}
       <header className="sieg-topo">
         <b>SIEG</b>
         {vm.exemplos && <span className="fraco">dados de exemplo</span>}
@@ -140,7 +142,7 @@ export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 
                     {vm.situacao.resultado.divergentes.length > 0 ? (
                       <div className="table-wrap">
                         <table className="dp-tabela">
-                          <thead><tr><th>Nota</th><th>No SIEG</th><th>Na SEFAZ</th><th>Valor</th><th>Motivo</th></tr></thead>
+                          <thead><tr><th>Nota</th><th>No SIEG</th><th>Na SEFAZ</th><th>Valor</th><th>Motivo</th><th aria-label="Ver a nota" /></tr></thead>
                           <tbody>
                             {vm.situacao.resultado.divergentes.map(d => (
                               <tr key={d.chave} title={d.chave}>
@@ -149,6 +151,7 @@ export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 
                                 <td><span className={'badge ' + (d.sefaz === 'cancelada' ? 'badge-neutral' : 'badge-warn')}>{d.sefaz === 'nao-encontrada' ? 'Não consta' : d.sefaz === 'erro' ? 'Sem resposta' : d.sefaz.charAt(0).toUpperCase() + d.sefaz.slice(1)}</span></td>
                                 <td className="num">{d.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                                 <td className="fraco">{d.motivo}{d.cStat ? ' (' + d.cStat + ')' : ''}</td>
+                                <td>{vm.podeVer(d.chave) && <button type="button" className="btn btn-ghost btn-sm" title="Ver a nota (a chave, os itens e os totais)" onClick={() => vm.verNota(d.chave)}><Icone nome="olho" width={14} height={14} />Ver</button>}</td>
                               </tr>
                             ))}
                           </tbody>

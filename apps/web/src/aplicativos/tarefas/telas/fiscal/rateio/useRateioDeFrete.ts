@@ -42,6 +42,8 @@ export function useRateioDeFrete() {
   const [chave, setChave] = useState('');
   const [agrupar, setAgrupar] = useState<t.sieg.AgruparPor>('tributacao');
   const [aberto, setAberto] = useState('');
+  // a nota aberta no espelho (23/10/2026: "conferir as danfe direto pelo app")
+  const [vendo, setVendo] = useState('');
   // o que a pessoa mudou nos valores (de qual nota; outra nota volta aos da nota)
   const [mudados, setMudados] = useState<{ de: string } & Partial<Record<Campo, number>>>({ de: '' });
   const [digitadas, setDigitadas] = useState<LinhaDigitada[]>(LINHAS_INICIAIS);
@@ -110,8 +112,12 @@ export function useRateioDeFrete() {
     })),
     notasFora: Math.max(0, achadasDaNota.length - NOTAS_NA_TABELA),
     escolherNota: (c: string) => { setChave(c); setAberto(''); },
+    /** o espelho da nota (a chave, as partes, os itens e os totais) */
+    vendo: vendo ? (doSieg?.dados?.[lado] || []).find(n => n.chave === vendo) || null : null,
+    verNota: (c: string) => setVendo(c),
+    fecharNota: () => setVendo(''),
     trocarNota: () => { setChave(''); setAberto(''); },
-    nota: nota ? { titulo: nota.tipo + ' ' + nota.numero, data: nota.data, parte: daParte(nota).nome, valor: nota.valor } : null,
+    nota: nota ? { chave: nota.chave, titulo: nota.tipo + ' ' + nota.numero, data: nota.data, parte: daParte(nota).nome, valor: nota.valor } : null,
     // o resultado
     agrupar, setAgrupar: (a: t.sieg.AgruparPor) => { setAgrupar(a); setAberto(''); },
     total: valor('total'), frete: valor('frete'), desconto: valor('desconto'),
