@@ -18,7 +18,7 @@ export function RateioDeFrete() {
   const daNota = vm.fonte === 'nota';
   return (
     <section className="rateio-frete">
-      {vm.vendo && <EspelhoDaNota nota={vm.vendo} fechar={vm.fecharNota} />}
+      {vm.vendo && <EspelhoDaNota nota={vm.vendo} codigo={vm.empresa?.codigo} competencia={vm.competencia} fechar={vm.fecharNota} />}
       <div className="tarefas-barra-topo">
         {daNota && (
           <>

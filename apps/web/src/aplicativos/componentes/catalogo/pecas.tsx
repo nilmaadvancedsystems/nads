@@ -773,6 +773,15 @@ export const PECAS_BASE: Peca[] = [
   { id: 'destaque-valor', tipo: 'graficos', nome: 'Destaque de valor (as despesas do mês)', descricao: 'Uma grade de quadrinhos pequenos: o nome em cima, o valor embaixo (e uma nota opcional, como o vencimento). Para vários valores lado a lado, menores que o Stat', classes: ['fat-destaques', 'fat-destaque'], telas: ['t-fiscal-faturamento'],
     uso: '<div className="fat-destaques"><div className="fat-destaque"><span className="fraco">FGTS</span><b className="num">R$ 1.000,00</b></div></div>',
     demo: () => <div className="fat-destaques" style={{ width: '100%' }}>{([['Salários', '12.500,00'], ['FGTS', '1.000,00'], ['Água', '212,40'], ['Energia', '1.350,90']] as const).map(([r, v]) => <div key={r} className="fat-destaque"><span className="fraco">{r}</span><b className="num">R$ {v}</b></div>)}</div> },
+  // as notas do mês por comprador ou por CFOP no faturamento detalhado (23/10/2026: "ver todos os clientes / abrir e ver / pesquisar")
+  { id: 'grupos-que-abrem', tipo: 'graficos', nome: 'Grupos que abrem (as notas por comprador ou CFOP)', descricao: 'Uma lista com borda: cada linha é um grupo (o nome, quantas notas e a parte do total, o valor e uma barra fina); clicar abre a tabela das notas dele embaixo. Com a busca curta e o Segmentado em cima; de 30 em 30, com o Mostrar mais', classes: ['fat-grupos', 'fat-grupo', 'fat-grupo-linha', 'fat-grupo-barra', 'fat-grupo-notas'], telas: ['t-fiscal-faturamento'],
+    uso: '<div className="fat-grupos"><div className="fat-grupo aberto"><button className="fat-grupo-linha">…</button><div className="table-wrap fat-grupo-notas">…</div></div></div>',
+    demo: () => (
+      <div className="fat-grupos" style={{ width: '100%' }}>
+        {([['TELHAS SALINAS LTDA', '4 notas · 4,2%', '65.000,00', 100], ['Consumidor (sem identificação)', '455 notas · 36,8%', '565.427,00', 60]] as const).map(([n, q, v, b]) => (
+          <div key={n} className="fat-grupo"><button type="button" className="fat-grupo-linha"><Icone nome="chevronRight" width={14} height={14} /><span className="fat-grupo-nome">{n}</span><span className="fraco">{q}</span><b className="num">{v}</b><span className="fat-grupo-barra"><span style={{ width: b + '%' }} /></span></button></div>
+        ))}
+      </div>) },
   // o mapa na tela (21/10/2026): por cima da tela de verdade, a moldura de cada controle na cor do calor e a barra de baixo
   { id: 'mapa-na-tela', tipo: 'graficos', nome: 'Mapa na tela (os botões pintados)', descricao: 'Ligado pelo "Ver na tela" do Uso do sistema: cada controle da tela aberta ganha a moldura na cor do calor com o número de cliques (a camada não pega clique); a barra de baixo diz a tela, o que cada cor quer dizer e tem o Sair. Montado uma vez na casca (casca/MapaNaTela.tsx)', classes: ['mapa-tela-caixa', 'mapa-tela-barra'], telas: ['a-uso'],
     uso: '<MapaNaTela /> (na casca; liga com ligarMapaNaTela(periodo))',

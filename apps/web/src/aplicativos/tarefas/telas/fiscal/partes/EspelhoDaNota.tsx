@@ -1,20 +1,25 @@
 // O espelho da nota (23/10/2026: "quero que tenha como conferir as danfe direto pelo app, tanto no rateio quanto nas
 // outras telas"; a 1ª etapa, com o que o app guarda do XML do SIEG): no desenho das janelas do sistema, de cima para
 // baixo, a chave de acesso (clicar copia; a consulta da SEFAZ ao lado), o emitente e o destinatário, os totais da nota e
-// os itens (NCM, CFOP, CST, valor, ICMS, ST, IPI). A DANFE completa, pelo XML inteiro, é a 2ª etapa. Só as peças do
+// os itens (NCM, CFOP, CST, valor, ICMS, ST, IPI). A nota original, pelo XML inteiro, abre no "Ver a nota original"
+// (23/10/2026, a 2ª etapa: DanfeDaNota e useNotaOriginal; o robô traz o XML pela chave). Só as peças do
 // catálogo (a janela, Propriedade, texto copiável, Tabela padrão, Stat, selo).
 import { tarefas as t } from '@nads/core';
 import { BotaoFechar, Icone, Stat, useJanela, useRetorno } from '@nads/ui';
 import { useRef } from 'react';
 import { documentoFormatado } from '../../financeiro/formatosDaNota';
+import { DanfeDaNota } from './DanfeDaNota';
+import { useNotaOriginal } from './useNotaOriginal';
 import { Propriedade } from '../../financeiro/partes/Propriedade';
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 /** a consulta pública da NF-e no portal nacional (a SEFAZ pede o captcha; a chave vai copiada) */
 const CONSULTA_NFE = 'https://www.nfe.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=resumo&tipoConteudo=7PhJ+gAVw2g=';
 
-export function EspelhoDaNota({ nota, fechar }: { nota: t.sieg.NotaDoSieg; fechar: () => void }) {
+/** codigo e competencia: a empresa e o mês dos XMLs (para o robô trazer a nota original) */
+export function EspelhoDaNota({ nota, codigo, competencia, fechar }: { nota: t.sieg.NotaDoSieg; codigo?: string | number | null; competencia?: string; fechar: () => void }) {
   const e = t.sieg.espelhoDaNota(nota);
+  const original = useNotaOriginal(nota, codigo, competencia);
   const { toast } = useRetorno();
   const janela = useRef<HTMLDivElement>(null);
   useJanela(janela, fechar);
@@ -68,11 +73,17 @@ export function EspelhoDaNota({ nota, fechar }: { nota: t.sieg.NotaDoSieg; fecha
           )}
         </div>
         <footer className="registro-pe">
-          <span className="fraco">{e.itens.length} {e.itens.length === 1 ? 'item' : 'itens'}</span>
+          <span className="fraco">{original.fase === 'pedindo' ? original.andamento : original.fase === 'erro' ? 'Não veio a nota original: ' + original.erro : e.itens.length + (e.itens.length === 1 ? ' item' : ' itens')}</span>
           <span className="tarefas-barra-espaco" />
+          {original.pode && (
+            <button type="button" className="btn btn-primary" disabled={original.fase === 'pedindo'} onClick={() => void original.abrir()}>
+              <Icone nome="fileText" width={16} height={16} />{original.fase === 'pedindo' ? 'Buscando a nota…' : original.fase === 'erro' ? 'Tentar de novo' : 'Ver a nota original'}
+            </button>
+          )}
           <button type="button" className="btn btn-outline" onClick={fechar}>Fechar</button>
         </footer>
       </div>
+      {original.aberta && original.danfe && <DanfeDaNota d={original.danfe} xml={original.xml} fechar={original.fechar} />}
     </div>
   );
 }

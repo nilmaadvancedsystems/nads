@@ -1,7 +1,8 @@
 // Financeiro › Painel (22/10/2026: "no financeiro, faça um dashboard de entradas, saídas dentre outros"): o período e
 // quatro números (entradas, saídas, resultado, saldo do caixa hoje); para onde foi e de onde veio o dinheiro, por conta do
-// plano; os honorários do mês passado e as notas emitidas no período; e o mês a mês dos últimos 12 meses. Só as peças do
-// catálogo (Segmentado, Stat, Cartão, Ranking, Tabela, Vazio).
+// plano (com o extrato do banco importado somado, 23/10/2026); os honorários do mês passado, o banco (o saldo de cada um)
+// e as notas emitidas no período. O mês a mês saiu (23/10/2026). Só as peças do catálogo (Segmentado, Stat, Cartão,
+// Ranking, Vazio).
 import { formatos } from '@nads/core';
 import { Icone, Segmentado, Stat, useCarregando, Vazio } from '@nads/ui';
 import { useState } from 'react';
@@ -40,7 +41,10 @@ export function PainelFinanceiro({ comResultado }: { comResultado?: boolean }) {
         <Segmentado valor={vm.periodo} opcoes={vm.periodos} onMudar={vm.setPeriodo} />
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
-        <button type="button" className="btn btn-primary" onClick={() => setResultado(true)}><Icone nome="scale" />Resultado por conta</button>
+        <span className="fin-acoes">
+          <button type="button" className="btn btn-outline" onClick={() => setResultado(true)}><Icone nome="scale" />Resultado por conta</button>
+          <button type="button" className="btn btn-primary" onClick={() => vm.ir('extrato')}><Icone nome="fileUp" />Importar extrato</button>
+        </span>
       </div>
       {resultado && <JanelaDoResultado fechar={() => setResultado(false)} />}
 
@@ -49,7 +53,9 @@ export function PainelFinanceiro({ comResultado }: { comResultado?: boolean }) {
         <Stat rotulo="Saídas" valor={reais(n.saidas)} cor="saida" />
         <Stat rotulo="Resultado" valor={reais(n.resultado)} cor={n.resultado < 0 ? 'saida' : 'entrada'} />
         <Stat rotulo="Saldo do caixa hoje" valor={reais(n.saldo)} cor={n.saldo < 0 ? 'saida' : undefined} />
+        {n.saldoBanco != null && <Stat rotulo="Saldo no banco" valor={reais(n.saldoBanco)} cor={n.saldoBanco < 0 ? 'saida' : undefined} />}
       </div>
+      {vm.dicas && <p className="hint fin-painel-dica">Entradas: {vm.dicas.entradas} · Saídas: {vm.dicas.saidas}</p>}
 
       {!vm.carregando && !n.lancamentos ? (
         <Vazio icone="dinheiro" titulo="Nenhum lançamento neste período">
@@ -62,7 +68,7 @@ export function PainelFinanceiro({ comResultado }: { comResultado?: boolean }) {
         </div>
       )}
 
-      <div className="fin-painel-colunas">
+      <div className="fin-painel-colunas fin-painel-tres">
         <div className="card">
           <h3>Honorários de {h.competencia}</h3>
           {!h.carregado ? <p className="fraco">Lendo…</p> : !h.total ? <p className="fraco">Nenhum contrato de honorário ativo.</p> : (
@@ -79,6 +85,20 @@ export function PainelFinanceiro({ comResultado }: { comResultado?: boolean }) {
           <div className="btn-row"><button type="button" className="btn btn-outline" onClick={() => vm.ir('honorarios')}>Ver os honorários</button></div>
         </div>
         <div className="card">
+          <h3>Banco</h3>
+          {vm.bancos.length ? (
+            <div className="rank">
+              {vm.bancos.map(b => (
+                <div key={b.banco} className="rank-item">
+                  <span className="rank-nome">{b.banco} <span className="fraco">até {b.ateBr}</span></span><span className={'rank-val num' + (b.saldo < 0 ? ' fin-valor-saida' : '')}>{b.saldoBr}</span>
+                </div>
+              ))}
+            </div>
+          ) : <p className="fraco">{vm.ultimaImportacao ? 'O extrato importado não trouxe o saldo.' : 'Nenhum extrato importado ainda.'}</p>}
+          {vm.ultimaImportacao && <p className="fin-painel-linha fraco">Última importação: {vm.ultimaImportacao.banco}, em {vm.ultimaImportacao.quando}</p>}
+          <div className="btn-row"><button type="button" className="btn btn-outline" onClick={() => vm.ir('extrato')}>Importar extrato</button></div>
+        </div>
+        <div className="card">
           <h3>Notas fiscais emitidas no período</h3>
           {!vm.notas.carregada ? <p className="fraco">Lendo…</p> : (
             <p className="fin-painel-linha"><b className="fin-painel-grande num">{vm.notas.quantas}</b> {vm.notas.quantas === 1 ? 'nota autorizada' : 'notas autorizadas'} · {reais(vm.notas.valor)}</p>
@@ -87,24 +107,6 @@ export function PainelFinanceiro({ comResultado }: { comResultado?: boolean }) {
         </div>
       </div>
 
-      <div className="card">
-        <h3>Mês a mês (últimos 12 meses)</h3>
-        <div className="table-wrap">
-          <table className="table-compact">
-            <thead><tr><th>Mês</th><th className="num">Entradas</th><th className="num">Saídas</th><th className="num">Resultado</th></tr></thead>
-            <tbody>
-              {vm.meses.map(m => (
-                <tr key={m.mes}>
-                  <td>{m.rotulo}</td>
-                  <td className={'num' + (m.entradas ? ' fin-valor-entrada' : ' fraco')}>{m.entradas ? reais(m.entradas) : '—'}</td>
-                  <td className={'num' + (m.saidas ? ' fin-valor-saida' : ' fraco')}>{m.saidas ? reais(m.saidas) : '—'}</td>
-                  <td className={'num ' + (m.resultado < 0 ? 'fin-valor-saida' : m.resultado > 0 ? 'fin-valor-entrada' : '')}>{m.entradas || m.saidas ? reais(m.resultado) : '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
     </section>
   );
 }

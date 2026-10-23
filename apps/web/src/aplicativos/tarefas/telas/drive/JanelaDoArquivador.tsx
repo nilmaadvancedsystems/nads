@@ -46,6 +46,31 @@ function Progresso({ vm }: { vm: Vm }) {
       </div>
     );
   }
+  // o arquivador NOVO (contínuo): o que está fazendo agora, os números de hoje e o último arquivado
+  const nv = vm.novo;
+  if (nv) {
+    return (
+      <div className="arquivador-hero">
+        <span className={'arquivador-hero-icone' + (nv.agora.tom === 'ok' ? ' em-dia' : nv.agora.tom === 'erro' ? ' erro' : '')}><Icone nome={nv.agora.icone} /></span>
+        <h3>{nv.agora.texto}</h3>
+        <p className="arquivador-hero-texto">{nv.nota}</p>
+        <p className="arquivador-hero-nota">{nv.modo} · {nv.sinal}</p>
+        <div className="arquivador-ultima">
+          <p className="fraco">Hoje</p>
+          <div className="arquivador-numeros">
+            {nv.numeros.map(x => <div key={x.rotulo} className={'arquivador-numero' + (x.aviso ? ' aviso' : '')}><b>{x.valor.toLocaleString('pt-BR')}</b><span>{x.rotulo}</span></div>)}
+          </div>
+          {nv.ultimo && <p className="fraco">{nv.ultimo}</p>}
+        </div>
+        {vm.paraResolver && (
+          <p className={'arquivador-hero-nota' + (vm.paraResolver.aviso ? ' aviso' : '')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+            <Icone nome={vm.paraResolver.aviso ? 'alert' : 'checkCircle'} width={16} height={16} />{vm.paraResolver.texto}
+            {vm.paraResolver.aviso && vm.linkDoAdmin && <> · <a href={vm.linkDoAdmin}>abrir no Arquivador</a></>}
+          </p>
+        )}
+      </div>
+    );
+  }
   const u = vm.ultimaRodada;
   return (
     <div className="arquivador-hero">
