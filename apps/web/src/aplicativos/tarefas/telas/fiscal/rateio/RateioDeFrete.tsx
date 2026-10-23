@@ -6,6 +6,7 @@
 import { Alerta, BotaoIcone, Dica, Esqueleto, Icone, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
 import { ValorEditavel } from '../../financeiro/partes/ValorEditavel';
 import { EmpresaDaBarra } from '../partes/EmpresaDaBarra';
+import { EspelhoDaNota } from '../partes/EspelhoDaNota';
 import { useRateioDeFrete, type VmRateioDeFrete } from './useRateioDeFrete';
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -17,6 +18,7 @@ export function RateioDeFrete() {
   const daNota = vm.fonte === 'nota';
   return (
     <section className="rateio-frete">
+      {vm.vendo && <EspelhoDaNota nota={vm.vendo} fechar={vm.fecharNota} />}
       <div className="tarefas-barra-topo">
         {daNota && (
           <>
@@ -58,16 +60,17 @@ function Notas({ vm }: { vm: VmRateioDeFrete }) {
       </div>
       <div className="table-wrap">
         <table className="table-compact rateio-frete-notas">
-          <thead><tr><th>Número</th><th>Data</th><th>{vm.lado === 'recebidas' ? 'Emitente' : 'Destinatário'}</th><th className="num">Valor</th><th className="num">Frete</th><th className="num">Desconto</th></tr></thead>
+          <thead><tr><th>Número</th><th>Data</th><th>{vm.lado === 'recebidas' ? 'Emitente' : 'Destinatário'}</th><th className="num">Valor</th><th className="num">Frete</th><th className="num">Desconto</th><th aria-label="Ver a nota" /></tr></thead>
           <tbody>
             {vm.notas.map(n => (
               <tr key={n.chave} onClick={() => vm.escolherNota(n.chave)} title="Ratear o frete desta nota">
                 <td><b>{n.numero}</b></td><td>{n.data}</td><td className="wrap">{n.parte}</td><td className="num">{brl(n.valor)}</td>
                 <td className="num">{n.frete ? <b>{brl(n.frete)}</b> : <span className="fraco">—</span>}</td>
                 <td className="num">{n.desconto ? brl(n.desconto) : <span className="fraco">—</span>}</td>
+                <td className="nf-direita"><button type="button" className="btn btn-ghost btn-sm" title="Ver a nota (a chave, os itens e os totais)" onClick={ev => { ev.stopPropagation(); vm.verNota(n.chave); }}><Icone nome="olho" width={14} height={14} />Ver</button></td>
               </tr>
             ))}
-            {!vm.notas.length && <tr><td colSpan={6} className="hint">Nenhuma nota com essa busca.</td></tr>}
+            {!vm.notas.length && <tr><td colSpan={7} className="hint">Nenhuma nota com essa busca.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -83,7 +86,10 @@ function Resultado({ vm }: { vm: VmRateioDeFrete }) {
       <section className="card">
         <div className="card-head">
           <h3>{n.titulo} <span className="fraco">· {n.data} · {n.parte}</span></h3>
-          <button type="button" className="btn btn-outline" onClick={vm.trocarNota}>Trocar a nota</button>
+          <span className="btn-row">
+            <button type="button" className="btn btn-outline" onClick={() => vm.verNota(n.chave)}><Icone nome="olho" width={16} height={16} />Ver a nota</button>
+            <button type="button" className="btn btn-outline" onClick={vm.trocarNota}>Trocar a nota</button>
+          </span>
         </div>
         <Valores vm={vm} />
         {vm.estimado && <div className="rateio-frete-corpo"><Alerta naLinha titulo="Frete estimado" texto="A nota foi baixada antes de o nads guardar o frete: o valor veio da diferença do total da nota. Confira com o DANFE." /></div>}

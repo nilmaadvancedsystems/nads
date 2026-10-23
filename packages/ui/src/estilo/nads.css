@@ -5155,3 +5155,18 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .badge.fat-classe-B{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn);}
 .badge.fat-classe-C{background:var(--surface-3);color:var(--ink-muted);}
 .rank-nome .badge{margin-right:4px;font-size:10px;padding:0 5px;}
+
+/* o espelho da nota (23/10/2026: conferir a nota pelo app): a janela, a chave com a consulta e os itens rolando */
+.modal.registro-novo.espelho-nota{max-width:960px;width:calc(100vw - 48px);max-height:calc(100vh - 48px);}
+.espelho-corpo{overflow:auto;display:flex;flex-direction:column;gap:12px;}
+.espelho-corpo>*{flex-shrink:0;}
+.espelho-chave{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.espelho-chave .texto-copiavel{letter-spacing:.02em;}
+.espelho-chave .btn svg{width:14px;height:14px;}
+.espelho-totais{margin:0;}
+.espelho-itens{max-height:none;}
+.registro-caminho .badge{margin-left:8px;}
+.stat-grid.espelho-totais{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;}
+.espelho-totais .stat{padding:8px 12px;min-height:0;}
+.espelho-totais .stat-value{font-size:var(--fs-14,14px);margin-top:2px;}
+@media (max-width:700px){.stat-grid.espelho-totais{grid-template-columns:repeat(2,minmax(0,1fr));}}

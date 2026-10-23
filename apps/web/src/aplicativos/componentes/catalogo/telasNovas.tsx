@@ -60,4 +60,15 @@ export const PECAS_DAS_TELAS_NOVAS: Peca[] = [
         <div className="registro-corpo fin-resultado-corpo"><div className="tarefas-barra-topo"><Segmentado valor="c" opcoes={[{ valor: 'c', rotulo: 'Comparativo' }, { valor: 'a', rotulo: 'Ano mês a mês' }]} onMudar={() => undefined} /></div><p className="fraco">A tabela em árvore vai aqui.</p></div>
         <footer className="registro-pe"><span className="tarefas-barra-espaco" /><button type="button" className="btn btn-outline"><Icone nome="download" />Exportar planilha</button><button type="button" className="btn btn-outline">Fechar</button></footer>
       </div>) },
+  { id: 'espelho-nota', tipo: 'janelas', nome: 'Espelho da nota (conferir a NF-e)', descricao: 'O "Ver" das notas (Rateio, Faturamento detalhado, SIEG da etapa): a chave de acesso (clicar copia; a consulta da SEFAZ ao lado), o emitente e o destinatário, os totais numa linha (produtos, frete, desconto, IPI, ICMS-ST, total) e os itens (NCM, CFOP, CST, valor, ICMS, ST, IPI)', componente: 'EspelhoDaNota (fiscal/partes)', classes: ['modal registro-novo espelho-nota', 'espelho-chave', 'stat-grid espelho-totais', 'espelho-itens'], telas: ['t-fiscal-rateio', 't-fiscal-faturamento'], largo: true,
+    uso: '<EspelhoDaNota nota={notaDoSieg} fechar={fechar} />',
+    demo: () => (
+      <div className="modal registro-novo espelho-nota" style={{ position: 'static', width: '100%', maxWidth: 720 }}>
+        <header className="registro-topo"><span className="registro-caminho"><Icone nome="recibo" />Nota fiscal<Icone nome="chevronRight" /><b>NF-e 502 · série 1 · 08/09/2026</b></span><BotaoFechar onClick={() => undefined} /></header>
+        <div className="registro-corpo espelho-corpo">
+          <div className="stat-grid fin-numeros espelho-totais">{([['Produtos', '1.000,00'], ['Frete', '500,00'], ['Desconto', '0,00'], ['IPI', '10,00'], ['ICMS-ST', '26,00'], ['Total da nota', '1.536,00']] as const).map(([r, v]) => <div key={r} className="stat"><p className="stat-label">{r}</p><p className="stat-value">R$ {v}</p></div>)}</div>
+          <div className="table-wrap espelho-itens"><table className="table-compact"><thead><tr><th>#</th><th>NCM</th><th>CFOP</th><th className="num">Valor</th><th className="num">ICMS</th></tr></thead><tbody><tr><td className="num fraco">1</td><td className="num">39241000</td><td className="num">2102</td><td className="num"><b>600,00</b></td><td className="num">72,00</td></tr></tbody></table></div>
+        </div>
+        <footer className="registro-pe"><span className="fraco">1 item</span><span className="tarefas-barra-espaco" /><button type="button" className="btn btn-outline">Fechar</button></footer>
+      </div>) },
 ];

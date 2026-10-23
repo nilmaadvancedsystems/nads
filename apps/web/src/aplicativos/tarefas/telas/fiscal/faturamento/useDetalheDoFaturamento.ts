@@ -35,6 +35,10 @@ export function useDetalheDoFaturamento(codigo: number, nome: string, competenci
   const nfe = comDado.reduce((s, m) => s + (m.nfe || 0), 0), nfce = comDado.reduce((s, m) => s + (m.nfce || 0), 0);
   const ultimo = comDado[comDado.length - 1] || null;
   const curva = resumo ? f.curvaAbc(resumo.porCliente) : null;
+  // as maiores notas do mês, para conferir no espelho (23/10/2026: "conferir as danfe direto pelo app")
+  const [vendo, setVendo] = useState('');
+  const vendas = (notas?.dados?.emitidas || []).filter(n => (n.tipo === 'NF-e' || n.tipo === 'NFC-e') && !n.cancelada);
+  const maioresNotas = [...vendas].sort((a, b) => b.valor - a.valor).slice(0, 8);
   return {
     numeros: {
       total,
@@ -75,6 +79,11 @@ export function useDetalheDoFaturamento(codigo: number, nome: string, competenci
       outrosClientes: Math.max(0, resumo.porCliente.length - 8),
       cfops: resumo.porCfop.slice(0, 8).map(c => ({ ...c, pct: pct(c.valor, totalDoResumo) })),
     } : null,
+    /** as maiores notas do mês e a aberta no espelho */
+    maioresNotas: maioresNotas.map(n => ({ chave: n.chave, titulo: n.tipo + ' ' + n.numero, data: n.data, para: n.destinatario.nome || 'Consumidor (sem identificação)', valor: n.valor })),
+    vendo: vendo ? vendas.find(n => n.chave === vendo) || null : null,
+    verNota: (c: string) => setVendo(c),
+    fecharNota: () => setVendo(''),
     /** o balancete dinâmico do Contábil: importado? tem o mês? as despesas do mês */
     temDinamico: !!contabil.dinamico,
     despesas: despesas ? {

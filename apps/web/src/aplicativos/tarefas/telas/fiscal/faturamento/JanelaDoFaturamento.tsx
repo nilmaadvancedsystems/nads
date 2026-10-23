@@ -3,6 +3,7 @@
 // mês escolhido, para quem vendeu e por CFOP. Só as peças do catálogo (modal, BotaoFechar, Stat, Tabela padrão, Ranking).
 import { BarrasEmColuna, BotaoFechar, Icone, Stat, useJanela, Variacao } from '@nads/ui';
 import { useRef } from 'react';
+import { EspelhoDaNota } from '../partes/EspelhoDaNota';
 import { useDetalheDoFaturamento } from './useDetalheDoFaturamento';
 
 const brl = (n: number | null | undefined) => (n == null ? '' : n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
@@ -12,9 +13,11 @@ export function JanelaDoFaturamento({ cliente, competencias, rotuloDoPeriodo, an
 }) {
   const vm = useDetalheDoFaturamento(cliente.codigo, cliente.nome, competencias, anual);
   const janela = useRef<HTMLDivElement>(null);
-  useJanela(janela, fechar);
+  // com o espelho da nota aberto por cima, o Esc fecha só ele
+  useJanela(janela, () => { if (!vm.vendo) fechar(); });
   return (
     <div className="modal-overlay" onMouseDown={ev => { if (ev.target === ev.currentTarget) fechar(); }}>
+      {vm.vendo && <EspelhoDaNota nota={vm.vendo} fechar={vm.fecharNota} />}
       {/* no desenho da janela do Financeiro (o Resultado por conta; 23/10/2026: "agora tá muito grande… faça no estilo do
           financeiro"): o caminho no topo, o corpo rolando por dentro e o Fechar no pé; até 1240 px, só a altura que precisa */}
       <div ref={janela} className="modal registro-novo fat-detalhe" role="dialog" aria-modal="true" aria-labelledby="fatDetalheTitulo">
@@ -101,6 +104,24 @@ export function JanelaDoFaturamento({ cliente, competencias, rotuloDoPeriodo, an
                     ))}
                   </div>
                   {vm.resumo.outrosClientes > 0 && <p className="fraco">e mais {vm.resumo.outrosClientes}</p>}
+                  {vm.maioresNotas.length > 0 && (
+                    <>
+                      <p className="fat-detalhe-sub">As maiores notas do mês</p>
+                      <div className="table-wrap">
+                        <table className="table-compact">
+                          <thead><tr><th>Nota</th><th>Data</th><th>Para</th><th className="num">Valor</th><th aria-label="Ver a nota" /></tr></thead>
+                          <tbody>
+                            {vm.maioresNotas.map(n => (
+                              <tr key={n.chave}>
+                                <td><b>{n.titulo}</b></td><td className="num">{n.data}</td><td className="wrap">{n.para}</td><td className="num">{brl(n.valor)}</td>
+                                <td className="nf-direita"><button type="button" className="btn btn-ghost btn-sm" title="Ver a nota (a chave, os itens e os totais)" onClick={() => vm.verNota(n.chave)}><Icone nome="olho" width={14} height={14} />Ver</button></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
                   <p className="fat-detalhe-sub">Por CFOP</p>
                   <div className="rank">
                     {vm.resumo.cfops.map(c => (
