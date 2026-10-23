@@ -124,8 +124,10 @@ export function useArquivadorDoDrive() {
       ? 'PC do arquivador ligado' + (e.situacao === 'rodando' ? ' · organizando agora' : e.situacao === 'aguardando' ? ' · esperando para começar' : '')
       : 'PC do arquivador desligado' + (e.em && Date.parse(e.em) > 0 ? ' desde ' + quando(e.desligadoEm || e.em) : ''),
     rotulo: aberto ? (aberto.status === 'processando' ? 'Organizando' + (pct != null ? ' ' + pct + '%' : '…') : 'Arquivamento pedido')
-      : rodandoPorFora ? 'Organizando' + (pctRotina != null ? ' ' + pctRotina + '%' : '…') : 'Arquivar agora',
+      : rodandoPorFora ? 'Organizando' + (pctRotina != null ? ' ' + pctRotina + '%' : '…') : 'Arquivador',
     ocupado: !!aberto || rodandoPorFora,
+    /** a próxima organização sozinha (todo dia às 9h) */
+    proximaRodada: new Date().getHours() < 9 ? 'hoje às 9h' : 'amanhã às 9h',
     podePedir: !aberto,
     rotina: rodandoPorFora && r ? {
       titulo: 'Organização em andamento',
