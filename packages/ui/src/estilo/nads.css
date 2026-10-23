@@ -4322,9 +4322,11 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 /* Fiscal › Rateio de frete (22/10/2026) */
 .rateio-frete{display:flex;flex-direction:column;gap:12px;}
 .rateio-frete > .card{margin:0;}
-.rateio-frete-empresa{min-width:320px;max-width:480px;flex:1 1 320px;}
+.rateio-frete .busca-curta.rateio-frete-empresa{width:320px;}
+.btn.rateio-frete-empresa{max-width:360px;}
+.rateio-frete-empresa-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .rateio-frete-busca{position:relative;}
-.rateio-frete-busca .nf-achados{position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:30;box-shadow:var(--shadow-lg);background:var(--surface);}
+.rateio-frete-busca .nf-achados{position:absolute;left:0;width:420px;top:100%;margin-top:4px;z-index:30;box-shadow:var(--shadow-lg);background:var(--surface);}
 .rateio-frete-notas tbody tr,.rateio-frete-abre{cursor:pointer;}
 .rateio-frete-valores{display:flex;flex-wrap:wrap;align-items:center;gap:8px 24px;margin-bottom:12px;}
 .rateio-frete-valores label{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-13);color:var(--ink-muted);}

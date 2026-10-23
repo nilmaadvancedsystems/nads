@@ -1,7 +1,7 @@
 // Fiscal › Rateio de frete (Heverton, 22/10/2026: a planilha "RATEIO - FRETE"), de cima para baixo: (1) na barra, a empresa
-// (a busca com lista), o mês e Entradas ou Saídas; (2) as notas do mês numa tabela com busca, as com frete primeiro; (3) a
+// (a busca com lupa, com a lista embaixo; escolhida, vira o botão com borda que troca), o mês e Entradas ou Saídas; (2) as notas do mês numa tabela com busca, as com frete primeiro; (3) a
 // nota escolhida numa linha (produtos, frete e desconto, editáveis), o rateio e, clicando numa linha, o frete pelos NCMs.
-// "Sem XML? Digite os valores" faz a planilha à mão. Só as peças do catálogo (busca de cliente com lista, SeletorMes,
+// "Sem XML? Digite os valores" faz a planilha à mão. Só as peças do catálogo (Busca com lupa, Botão com borda, SeletorMes,
 // Segmentado, busca curta, Cartão, Tabela padrão, Linhas especiais, Valor editável, Botão fantasma, Alerta, Vazio, Esqueleto).
 import { Alerta, BotaoIcone, Esqueleto, Icone, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
 import { ValorEditavel } from '../../financeiro/partes/ValorEditavel';
@@ -48,19 +48,17 @@ export function RateioDeFrete() {
 function EscolherEmpresa({ vm }: { vm: VmRateioDeFrete }) {
   if (vm.empresa) {
     return (
-      <div className="registro-busca rateio-frete-empresa">
-        <Icone nome="briefcase" width={16} height={16} />
-        <span className="nf-escolhido"><b>{vm.empresa.codigo}</b> · {vm.empresa.nome}</span>
-        <BotaoIcone icone="x" pequeno titulo="Trocar a empresa" onClick={vm.trocarEmpresa} />
-      </div>
+      <button type="button" className="btn btn-outline rateio-frete-empresa" title="Trocar a empresa" onClick={vm.trocarEmpresa}>
+        <Icone nome="briefcase" width={16} height={16} /><span className="rateio-frete-empresa-nome"><b>{vm.empresa.codigo}</b> · {vm.empresa.nome}</span><Icone nome="x" width={14} height={14} />
+      </button>
     );
   }
   const aberta = vm.achadas.length > 0;
   return (
-    <div className="rateio-frete-empresa rateio-frete-busca">
-      <div className="registro-busca">
+    <div className="rateio-frete-busca">
+      <label className="busca-curta rateio-frete-empresa">
         <Icone nome="search" width={16} height={16} />
-        <input type="text" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} placeholder="Empresa: código do ERP ou nome" aria-label="Buscar a empresa por código ou nome" autoComplete="off"
+        <input type="text" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} placeholder="Empresa: código ou nome" aria-label="Buscar a empresa por código ou nome" autoComplete="off"
           role="combobox" aria-expanded={aberta} aria-controls="rateio-empresas"
           onKeyDown={e => {
             if (!aberta) return;
@@ -69,7 +67,7 @@ function EscolherEmpresa({ vm }: { vm: VmRateioDeFrete }) {
             else if (e.key === 'Enter') { e.preventDefault(); vm.escolherDestacado(); }
             else if (e.key === 'Escape') vm.setBusca('');
           }} />
-      </div>
+      </label>
       {aberta && (
         <ul className="nf-achados" id="rateio-empresas" role="listbox" aria-label="Empresas encontradas">
           {vm.achadas.map((e, i) => (
