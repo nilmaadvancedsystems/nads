@@ -61,17 +61,25 @@ function cstDoItem(det) {
 
 /**
  * Um item da NF-e: o NCM, o CFOP, o CST/CSOSN, o CEST e o valor; e (13/10/2026, a apuração do Presumido e do Real) o ICMS
- * destacado, o ICMS-ST, o IPI e o CST do PIS, só quando têm (para o resumo não crescer à toa).
+ * destacado, o ICMS-ST, o IPI e o CST do PIS, só quando têm (para o resumo não crescer à toa). Desde o resumo 3
+ * (22/10/2026, a antecipação do ICMS do ES): a base e a alíquota do ICMS e as despesas do item (frete, seguro e outras,
+ * menos o desconto), também só quando têm.
  */
 function itemDoXml(det) {
   const it = { ncm: tag(det, 'NCM'), cfop: tag(det, 'CFOP'), cst: cstDoItem(det), cest: tag(det, 'CEST'), valor: num(tag(det, 'vProd')) };
   const icmsBloco = tag(det, 'ICMS');
   const icms = num(tag(icmsBloco, 'vICMS')), st = num(tag(icmsBloco, 'vICMSST')), ipi = num(tag(tag(det, 'IPI'), 'vIPI'));
   const cstPis = tag(tag(det, 'PIS'), 'CST');
+  const prod = tag(det, 'prod');
+  const bc = num(tag(icmsBloco, 'vBC')), aliq = num(tag(icmsBloco, 'pICMS'));
+  const desp = num(num(tag(prod, 'vFrete')) + num(tag(prod, 'vSeg')) + num(tag(prod, 'vOutro')) - num(tag(prod, 'vDesc')));
   if (icms) it.icms = icms;
   if (st) it.st = st;
   if (ipi) it.ipi = ipi;
   if (cstPis) it.cstPis = cstPis;
+  if (bc) it.bc = bc;
+  if (aliq) it.aliq = aliq;
+  if (desp) it.desp = desp;
   return it;
 }
 
@@ -148,6 +156,6 @@ function zipDe(arquivos) {
 }
 
 /** A versão do resumo (2 = os itens com o ICMS, o ICMS-ST, o IPI e o CST do PIS; 13/10/2026). */
-const VERSAO_DO_RESUMO = 2;
+const VERSAO_DO_RESUMO = 3;
 
 module.exports = { VERSAO_DO_RESUMO, tipoDoXml, tipoDeNota, nomeDoArquivo, resumoDaNota, zipDe, crc32 };
