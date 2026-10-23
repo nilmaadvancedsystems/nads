@@ -64,6 +64,18 @@ const anual = (tipo, comp, anoEntrega) => R.finalizar({ acao: 'ARQUIVAR', client
 igual('DEFIS de 2025: raiz de 2026 (a entrega); a de 2021: 2022; com o recibo de 2023: 2023; a mensal fica no ano dela', [anual('DEFIS', { ano: 2025 }), anual('DEFIS', { ano: 2021 }), anual('DEFIS', { ano: 2021 }, 2023), anual('BALANCETE', { ano: 2024, mes: 9 })], [2026, 2022, 2023, 2024]);
 igual('o recibo: a data da transmissão', R.anoDaEntrega({ texto: ['Recibo de entrega da DEFIS\nData e hora da transmissão: 27/03/2026 10:11'] }), 2026);
 
+// a competência do OFX pelos lançamentos (23/10/2026: o Bradesco exporta DTSTART = DTEND = o dia da exportação)
+{
+  const lanc = (mes, n) => Array.from({ length: n }, (_, i) => '<STMTTRN><TRNTYPE>DEBIT<DTPOSTED>' + mes + String(1 + (i % 27)).padStart(2, '0') + '120000<TRNAMT>-1.00</STMTTRN>').join('');
+  const ofx = (ini, fim, corpo) => '<OFX><BANKACCTFROM><BANKID>0237<ACCTID>12345</BANKACCTFROM><BANKTRANLIST><DTSTART>' + ini + '<DTEND>' + fim + corpo + '</BANKTRANLIST></OFX>';
+  igual('OFX: DTSTART = DTEND = a exportação (17/05/2022) e 260 lançamentos de fevereiro: 02-2022', R.ofxCompetencia(ofx('20220517120000', '20220517120000', lanc('202202', 260) + lanc('202205', 31)), '20220517120000', '20220517120000').comp, { ano: 2022, mes: 2 });
+  igual('OFX: três meses de verdade dentro do período: consolidado de 01 a 03', (r => [r.de, r.comp])(R.ofxCompetencia(ofx('20220101', '20220331', lanc('202201', 50) + lanc('202202', 40) + lanc('202203', 45)), '20220101', '20220331')), [{ ano: 2022, mes: 1 }, { ano: 2022, mes: 3 }]);
+  igual('OFX: o ano inteiro baixado de uma vez (12 meses, nenhum com metade): de 01 a 12, a competência é dezembro', (r => [r.de, r.comp])(R.ofxCompetencia(ofx('20240112', '20240112', lanc('202301', 99) + lanc('202302', 60) + lanc('202306', 37) + lanc('202309', 56) + lanc('202312', 14)), '20240112', '20240112')), [{ ano: 2023, mes: 1 }, { ano: 2023, mes: 12 }]);
+  igual('OFX: sem lançamentos, o DTEND', R.ofxCompetencia(ofx('20220301', '20220331', ''), '20220301', '20220331').comp, { mes: 3, ano: 2022 });
+  const d0 = R.decidir({ nome: 'FEVEREIRO 2022.OFX', rel: '0010 - DORNAS HAVANA LTDA - ME\\EXTRATOS\\2022\\03\\FEVEREIRO 2022.OFX', ofx: ofx('20220517120000', '20220517120000', lanc('202202', 260) + lanc('202205', 31)) }, { cadastro: montar({ 2022: ['10 - DORNAS HAVANA LTDA'] }), hoje: new Date(2026, 9, 23) });
+  igual('OFX da migração: 02-2022 pelo conteúdo, e o registro de que a pasta (03) discorda', [d0.acao, d0.nomeFinal, d0.destinoRelativo, d0.evidencias.some(e => /difere do da pasta de origem/.test(e))], ['ARQUIVAR', '02-2022.ofx', '10 - DORNAS HAVANA LTDA\\CONTÁBIL\\EXTRATOS\\2022\\02\\BANCÁRIOS\\BRADESCO', true]);
+}
+
 // ---------- 5. o tipo pela pasta de origem (o mapa da migração) ----------
 const decidirMig = (rel, texto, c) => { const e = { nome: path.win32.basename(rel), rel, texto: [texto] }; const c2 = c || ctx; const d0 = R.decidir(e, c2); return MIG.decidir(e, c2, d0) || d0; };
 d = decidirMig('0010 - DORNAS HAVANA LTDA - ME\\DEPARTAMENTO FISCAL\\DESTDA\\2024\\04-2024.pdf', 'recibo de entrega sem titulo conhecido', { cadastro: montar({ 2024: ['10 - DORNAS HAVANA LTDA'] }), hoje: new Date(2026, 9, 23) });

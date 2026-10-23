@@ -10,6 +10,9 @@
 // As cópias (NFS-e da Nilma, duas clientes) e os de dentro de um compactado: o mesmo, pelo cliente da linha.
 //
 //   node corrigir-ano.js --de 2026-10-23T19:10:00Z --ate 2026-10-23T21:30:00Z [--aplicar] [--saida <pasta>]
+//   --destino (23/10/2026, o mês dos extratos): corrige qualquer destino que as regras de agora dêem diferente (em qualquer
+//   raiz de ano, a pasta e o nome), não só o ano; os caminhos que os próprios arquivos da janela ocupam contam como livres
+//   (o "05-2022.ofx" que o extrato de fevereiro ocupava é do de maio), e a ordem dos renames resolve quem sai primeiro
 // Sem --aplicar: só a lista (corrigir-ano.jsonl e o resumo), nada é mexido.
 'use strict';
 const fs = require('fs');
@@ -26,6 +29,7 @@ const APLICAR = process.argv.includes('--aplicar');
 const CONTROLE = arg('--controle', A.CONTROLE);
 const CLIENTES = arg('--clientes', R.RAIZ_CLIENTES);
 const SAIDA = arg('--saida', path.join(CONTROLE, 'correcao-do-ano'));
+const DESTINO = process.argv.includes('--destino');
 const EXCLUIR = new Set(String(arg('--excluir-clientes', '591,602')).split(',').map(Number).filter(Boolean));
 const sha = b => crypto.createHash('sha256').update(b).digest('hex');
 const log = (...m) => console.log(new Date().toLocaleTimeString('pt-BR'), ...m);
@@ -36,7 +40,9 @@ const raizDoAno = ano => path.join(path.dirname(CLIENTES), String(ano));
   if (!DE) { console.log('uso: node corrigir-ano.js --de <ISO> [--ate <ISO>] [--aplicar]'); process.exit(1); }
   fs.mkdirSync(SAIDA, { recursive: true });
   const arqManifesto = path.join(CONTROLE, 'MANIFESTO', 'manifesto.jsonl');
-  const linhas = ler(arqManifesto).filter(r => r.timestamp >= DE && r.timestamp < ATE && !r.descarte && !r.correcao && String(r.destino_final || '').toLowerCase().startsWith(CLIENTES.toLowerCase() + '\\'));
+  const raizes = path.dirname(CLIENTES).toLowerCase() + '\\';
+  const naRaiz = d => DESTINO ? (d.toLowerCase().startsWith(raizes) && /^\d{4}\\/.test(d.slice(raizes.length))) : d.toLowerCase().startsWith(CLIENTES.toLowerCase() + '\\');
+  const linhas = ler(arqManifesto).filter(r => r.timestamp >= DE && r.timestamp < ATE && !r.descarte && !r.correcao && naRaiz(String(r.destino_final || '')));
   const diario = [];
   for (const f of fs.readdirSync(path.join(CONTROLE, 'continuo')).filter(n => /^decisoes-\d{4}-\d{2}\.jsonl$/.test(n))) diario.push(...ler(path.join(CONTROLE, 'continuo', f)).filter(r => r.em >= DE && r.em < ATE && r.modo === 'PRODUCAO'));
   const relPeloHash = new Map(diario.filter(r => r.hash).map(r => [r.hash, r.rel]));
@@ -45,6 +51,8 @@ const raizDoAno = ano => path.join(path.dirname(CLIENTES), String(ano));
   const cadastro = A.carregarCadastro({ controle: CONTROLE, clientes: CLIENTES });
   const chaves = K.carregar({ controle: CONTROLE, manifestoAntigo, raiz: CLIENTES }); chaves.arquivo = null;
   const ctx = { cadastro, hoje: new Date(), clientes: CLIENTES, contas: A.lerContas(CONTROLE), manifesto: A.indiceDoManifesto(manifestoAntigo), chaves, reservados: new Map(), existe: new Map(), hashes: new Map(), conteudos: null };
+  // --destino: os caminhos de agora dos arquivos da janela contam como livres (eles vão sair de lá)
+  if (DESTINO) for (const m of linhas) ctx.existe.set(A.caminhoArquivado(m.destino_final, m.nome_final), false);
   const out = [];
   const conta = {};
   const anotar = (x) => { out.push(x); conta[x.situacao] = (conta[x.situacao] || 0) + 1; };
@@ -76,6 +84,14 @@ const raizDoAno = ano => path.join(path.dirname(CLIENTES), String(ano));
     const ano = (copia && copia.anoRaiz) || d.anoRaiz;
     const atualRel = path.win32.relative(CLIENTES, path.win32.dirname(atual));
     const mesmoCaminho = atualRel.toLowerCase() === String(alvoRel).toLowerCase() && path.win32.basename(atual).toLowerCase() === String(d.nomeFinal).toLowerCase();
+    if (DESTINO) {
+      const hx2 = /\.xml$/i.test(nome) ? A.conteudoXml(buf) : null;
+      const c2 = A.conferirDestino({ destinoRelativo: alvoRel, nomeFinal: d.nomeFinal, raiz: raizDoAno(ano || R.ANO_DAS_PASTAS) }, m.hash_origem, ctx, !!copia, hx2);
+      const para = c2.onde.replace(/ \(neste lote\)$/, '');
+      if (para.toLowerCase() === atual.toLowerCase()) { anotar(Object.assign(base, { situacao: 'FICA_CERTO', ano })); continue; }
+      anotar(Object.assign(base, { situacao: c2.situacao === 'JA_ARQUIVADO' ? 'DUPLICADO_NO_ANO_CERTO' : 'MOVER', ano, para, porque: (d.evidencias || []).filter(e => /compet|período|lançamentos|pasta de origem/.test(e)).slice(-2).join(' · ') }));
+      continue;
+    }
     if (!ano || +ano === R.ANO_DAS_PASTAS) { anotar(Object.assign(base, { situacao: mesmoCaminho ? 'FICA_2026' : 'FICA_2026_OUTRO_CAMINHO', ano: ano || null, certo: mesmoCaminho ? null : alvoRel + '\\' + d.nomeFinal })); continue; }
     const hx = /\.xml$/i.test(nome) ? A.conteudoXml(buf) : null;
     const c = A.conferirDestino({ destinoRelativo: alvoRel, nomeFinal: d.nomeFinal, raiz: raizDoAno(ano) }, m.hash_origem, ctx, !!copia, hx);
@@ -88,7 +104,34 @@ const raizDoAno = ano => path.join(path.dirname(CLIENTES), String(ano));
   // aplicar: rename dentro do G:, sem sobrescrever; o duplicado vai para a quarentena; tudo com a linha no manifesto
   const feitos = { movidos: 0, quarentena: 0, erros: 0 };
   const linha = o => fs.appendFileSync(arqManifesto, JSON.stringify(o) + '\n');
-  for (const x of out) {
+  if (DESTINO) {
+    const pendentes = out.filter(x => x.situacao === 'MOVER');
+    const ocupados = () => new Set(pendentes.filter(x => !x.feito).map(x => x.atual.toLowerCase()));
+    for (let volta = 0; volta < 50 && pendentes.some(x => !x.feito); volta++) {
+      let andou = false;
+      for (const x of pendentes.filter(y => !y.feito)) {
+        if (fs.existsSync(x.para)) {
+          if (ocupados().has(x.para.toLowerCase())) continue;   // é de outro da janela: espera ele sair
+          // ocupado por um arquivo de fora da janela: o próximo " (N)" livre
+          const ext = path.extname(x.para), b = x.para.slice(0, x.para.length - ext.length); let k = 0, q = x.para; while (fs.existsSync(q)) q = b + ' (' + (++k) + ')' + ext; x.para = q;
+        }
+        try {
+          fs.mkdirSync(path.dirname(x.para), { recursive: true });
+          fs.renameSync(x.atual, x.para);
+          linha({ hash_origem: x.hash, hash_original: x.hash, nome_original: path.win32.basename(x.rel || x.atual), destino_final: path.dirname(x.para), nome_final: path.basename(x.para), id_execucao: 'CORRECAO-DESTINO-' + new Date().toISOString().slice(0, 10), timestamp: new Date().toISOString(), tipo: x.tipo, cliente: x.cliente, movido: true, correcao: { de: x.atualOriginal || x.atual, motivo: 'corrigido o destino pelas regras de agora' + (x.porque ? ' (' + x.porque + ')' : '') } });
+          x.feito = 'movido'; feitos.movidos++; andou = true;
+        } catch (e) { x.feito = 'erro: ' + e.message; feitos.erros++; }
+      }
+      if (!andou && pendentes.some(x => !x.feito)) {
+        // um ciclo (A vai para onde está B e B para onde está A): um deles sai para um nome provisório na pasta dele
+        const x = pendentes.find(y => !y.feito);
+        const prov = path.join(path.dirname(x.atual), '__corrigindo-' + x.hash.slice(0, 12) + path.extname(x.atual));
+        fs.renameSync(x.atual, prov); x.atualOriginal = x.atualOriginal || x.atual; x.atual = prov;
+      }
+    }
+    for (const x of out.filter(y => y.situacao === 'DUPLICADO_NO_ANO_CERTO')) x.feito = 'ficou (o mesmo conteúdo já está em ' + x.para + '; confira à mão)';
+  }
+  for (const x of DESTINO ? [] : out) {
     try {
       if (x.situacao === 'MOVER') {
         if (fs.existsSync(x.para)) throw new Error('o destino certo apareceu no meio: ' + x.para);

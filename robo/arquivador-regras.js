@@ -1016,7 +1016,15 @@ function decidirOfx(entrada, ctx, ev) {
   const bankid = so(tag('BANKID') || tag('FID') || '').padStart(3, '0').slice(-3);
   const banco = BANCO_POR_CODIGO[bankid] || bancoDoTexto(tag('ORG') || '') || null;
   const fimP = tag('DTEND'), iniP = tag('DTSTART');
-  const comp = fimP && /^\d{8}/.test(fimP) ? { mes: +fimP.slice(4, 6), ano: +fimP.slice(0, 4) } : null;
+  // a competência (23/10/2026: o Bradesco exporta DTSTART = DTEND = o dia da exportação; os extratos de fevereiro, março e
+  // abril de 2022 da 183 foram todos para 05-2022): o mês com mais lançamentos (DTPOSTED); o período DTSTART–DTEND só quando
+  // ele de fato cobre os lançamentos; sem lançamentos, o DTEND; e, de reserva, o mês das pastas de origem e o do nome
+  const p = ofxCompetencia(t, iniP, fimP);
+  let comp = p.comp;
+  const pista = (r => (r && r.mes ? r : null))(anoDaPasta(entrada.rel || '')) || competenciaDoNome(entrada.nome);
+  if (!comp && pista) { comp = { mes: pista.mes, ano: pista.ano }; ev.push('competência pela pasta de origem ou pelo nome (o OFX não traz o período)'); }
+  if (comp && pista && (pista.mes !== comp.mes || pista.ano !== comp.ano)) ev.push('o período do conteúdo (' + mesAno(comp) + ') difere do da pasta de origem ou do nome (' + mesAno(pista) + '): vale o do conteúdo');
+  if (p.porque) ev.push(p.porque);
   if (!banco) return { acao: 'NAO_IDENTIFICADO', motivo: 'BANCO_AUSENTE', confianca: 0.3, tipo: 'EXTRATO OFX', setor: 'CONTABIL' };
   if (!comp) return { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.3, tipo: 'EXTRATO OFX', setor: 'CONTABIL' };
   const conta = so(tag('ACCTID') || '');
@@ -1028,8 +1036,32 @@ function decidirOfx(entrada, ctx, ev) {
   else { const sub = clienteDaPasta(entrada.rel, cad); if (sub) { cliente = sub.codigo; conf = sub.forte ? 0.9 : 0.8; como = sub.forte ? 'pastaConferida' : 'pasta'; ev.push(sub.como + ' (OFX não traz CNPJ)'); } }
   if (!cliente) return { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, tipo: 'EXTRATO OFX', setor: 'CONTABIL' };
   let nomeFinal = mesAno(comp) + '.ofx';
-  if (iniP && /^\d{8}/.test(iniP) && (iniP.slice(0, 6) !== fimP.slice(0, 6)) && +iniP.slice(6, 8) < 25) nomeFinal = dois(+iniP.slice(4, 6)) + '-' + iniP.slice(0, 4) + ' A ' + mesAno(comp) + '.ofx';
+  if (p.de) nomeFinal = mesAno(p.de) + ' A ' + mesAno(comp) + '.ofx';   // 04: extrato consolidado (vários meses de verdade)
   return { acao: 'ARQUIVAR', cliente, comoCliente: como, confianca: conf, tipo: 'EXTRATO', setor: 'CONTABIL', competencia: comp, caminho: ['CONTÁBIL', 'EXTRATOS', String(comp.ano), dois(comp.mes), 'BANCÁRIOS', banco], nomeFinal, fonte: 'Dicionário §6.1.4; 04 (Bancários)' };
+}
+
+/**
+ * A competência de um OFX pelos lançamentos: { comp, de (o primeiro mês do consolidado, quando há), porque }.
+ * Um mês com metade ou mais dos lançamentos: é dele (o resto são lançamentos do dia da exportação etc.). Sem um mês assim:
+ * o extrato de vários meses (o do ano inteiro que o cliente baixou de uma vez) — de o primeiro ao último mês com
+ * lançamentos relevantes, a competência é o último. Sem lançamentos: o DTEND (se não for zero).
+ */
+function ofxCompetencia(t, iniP, fimP) {
+  const porMes = new Map();
+  for (const m of String(t).matchAll(/<DTPOSTED>\s*((?:19|20)\d{2})(\d{2})/gi)) { const k = m[1] + '-' + m[2]; porMes.set(k, (porMes.get(k) || 0) + 1); }
+  const valida = d => d && /^(19|20)\d{6}/.test(d) && +d.slice(4, 6) >= 1 && +d.slice(4, 6) <= 12;
+  const total = [...porMes.values()].reduce((s, n) => s + n, 0);
+  const deK = k => ({ ano: +k.slice(0, 4), mes: +k.slice(5, 7) });
+  if (total) {
+    const ordem = [...porMes.entries()].sort((a, b) => b[1] - a[1]);
+    const [maior, nMaior] = ordem[0];
+    if (nMaior >= total * 0.5 || porMes.size === 1) return { comp: deK(maior), porque: 'competência pelos lançamentos (' + nMaior + ' de ' + total + ' em ' + maior.slice(5) + '/' + maior.slice(0, 4) + ')' };
+    // vários meses: os que têm ao menos 1% dos lançamentos (tira o lançamento solto do dia da exportação)
+    const meses = [...porMes.entries()].filter(([, n]) => n >= Math.max(2, total * 0.01)).map(([k]) => k).sort();
+    return { comp: deK(meses[meses.length - 1]), de: meses.length > 1 ? deK(meses[0]) : null, porque: 'extrato de ' + meses.length + ' meses pelos lançamentos (' + meses[0].slice(5) + '/' + meses[0].slice(0, 4) + ' a ' + meses[meses.length - 1].slice(5) + '/' + meses[meses.length - 1].slice(0, 4) + ')' };
+  }
+  if (valida(fimP)) return { comp: { mes: +fimP.slice(4, 6), ano: +fimP.slice(0, 4) }, porque: 'sem lançamentos: o fim do período (DTEND)' };
+  return { comp: null };
 }
 
 /** TXT: SPED Fiscal, SPED Contribuições e Sintegra pelo conteúdo (registro 0000 / registro 10). */
@@ -1446,6 +1478,11 @@ function montarContabil(regra, campos, u, bruto, entrada, ctx, ev, porHash) {
   let comp = campos.competencia, confComp = 0.97;
   if (!comp) { comp = competenciaDoNome(entrada.nome); confComp = 0.88; if (comp) ev.push('competência pelo nome do arquivo'); }
   if (!comp) { comp = competenciaDaPasta(entrada.rel); confComp = 0.8; if (comp) ev.push('competência pela pasta do mês'); }
+  // a migração (23/10/2026): a pasta de origem com o mês ("…\EXTRATOS\2022\02\") de reserva; quando o conteúdo discorda, vale o
+  // conteúdo e fica registrado
+  const pastaComp = (r => (r && r.mes ? r : null))(anoDaPasta(entrada.rel || ''));
+  if (!comp && pastaComp) { comp = { mes: pastaComp.mes, ano: pastaComp.ano }; confComp = 0.88; ev.push('competência pela pasta de origem (' + mesAno(comp) + ')'); }
+  if (comp && pastaComp && (pastaComp.mes !== comp.mes || pastaComp.ano !== comp.ano)) ev.push('o período do conteúdo (' + mesAno(comp) + ') difere do da pasta de origem (' + mesAno(pastaComp) + '): vale o do conteúdo');
   if (!comp) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5 });
   const conf = Math.min(c.conf, confBanco, confComp);
   const ano = String(comp.ano), mes = dois(comp.mes), ma = mesAno(comp);
@@ -1665,7 +1702,7 @@ function tipoDoDestino(destino) {
 }
 
 module.exports = {
-  LIMIAR, RAIZ_CLIENTES, ARVORE, REGRAS_PDF, BANCOS, ANUAIS, anoDaEntrega, ANO_MINIMO, ANO_DAS_PASTAS, anoDaPasta, pastasDoAno, partesDoCaminho, comMotivoDoCodigo,
+  LIMIAR, RAIZ_CLIENTES, ARVORE, REGRAS_PDF, BANCOS, ANUAIS, ofxCompetencia, anoDaEntrega, ANO_MINIMO, ANO_DAS_PASTAS, anoDaPasta, pastasDoAno, partesDoCaminho, comMotivoDoCodigo,
   semAcento, norm, chaveNome, nomeNormalizado, nomeSeguro, so, dataBr, valorBr, competenciaSolta, competenciaDoNome, competenciaDaPasta, periodoEscrito,
   cnpjValido, cpfValido, documentosDoTexto, raizesDoTexto, mascarasDoTexto,
   regimeCanonico, montarCadastro, comAnosEMapa, clientesDoDoc, clienteDaPasta, clientesPeloNomeNoTexto,
