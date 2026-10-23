@@ -4,7 +4,7 @@
 // e as notas emitidas no período. O mês a mês saiu (23/10/2026). Só as peças do catálogo (Segmentado, Stat, Cartão,
 // Ranking, Vazio).
 import { formatos } from '@nads/core';
-import { Icone, Segmentado, Stat, useCarregando, Vazio } from '@nads/ui';
+import { Icone, LogoBanco, Segmentado, Stat, useCarregando, Vazio } from '@nads/ui';
 import { useState } from 'react';
 import { JanelaDoResultado } from './ResultadoPorConta';
 import { usePainelFinanceiro } from './usePainelFinanceiro';
@@ -90,7 +90,7 @@ export function PainelFinanceiro({ comResultado }: { comResultado?: boolean }) {
             <div className="rank">
               {vm.bancos.map(b => (
                 <div key={b.banco} className="rank-item">
-                  <span className="rank-nome">{b.banco} <span className="fraco">até {b.ateBr}</span></span><span className={'rank-val num' + (b.saldo < 0 ? ' fin-valor-saida' : '')}>{b.saldoBr}</span>
+                  <span className="rank-nome fin-conta"><span className="fin-logo" aria-hidden="true"><LogoBanco banco={b.marca} cor /></span>{b.banco} <span className="fraco">até {b.ateBr}</span></span><span className={'rank-val num' + (b.saldo < 0 ? ' fin-valor-saida' : '')}>{b.saldoBr}</span>
                 </div>
               ))}
             </div>

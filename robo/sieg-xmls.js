@@ -103,10 +103,16 @@ function resumoDaNota(xml) {
   }
   if (t === 'cte') {
     const ide = tag(xml, 'ide');
-    return {
+    const r = {
       tipo: 'CT-e', chave: /Id="CTe(\d{44})"/.exec(xml)[1], numero: tag(ide, 'nCT'), serie: tag(ide, 'serie'), data: data(tag(ide, 'dhEmi')),
       emitente: pessoa(tag(xml, 'emit')), destinatario: pessoa(primeira(xml, 'dest', 'rem')), valor: num(primeira(xml, 'vTPrest', 'vRec')), cfop: tag(ide, 'CFOP'),
     };
+    // as NF-e que o CT-e transporta (infDoc/infNFe/chave) e o ICMS do CT-e (23/10/2026: o Rateio de frete pelo CT-e), só quando têm
+    const nfes = [...new Set(blocos(tag(xml, 'infDoc'), 'infNFe').map(b => tag(b, 'chave')).filter(Boolean))];
+    const icms = num(tag(tag(xml, 'imp'), 'vICMS'));
+    if (nfes.length) r.nfes = nfes;
+    if (icms) r.icms = icms;
+    return r;
   }
   if (t === 'nfse') {
     const ret = {
@@ -160,7 +166,8 @@ function zipDe(arquivos) {
   return Buffer.concat([...locais, dir, fim]);
 }
 
-/** A versão do resumo (2 = os itens com o ICMS, o ICMS-ST, o IPI e o CST do PIS; 13/10/2026; 3 = o frete e o desconto da NF-e; 22/10/2026; 4 = a base, a alíquota e as despesas do item; 22/10/2026). */
-const VERSAO_DO_RESUMO = 4;
+/** A versão do resumo (2 = os itens com o ICMS, o ICMS-ST, o IPI e o CST do PIS; 13/10/2026; 3 = o frete e o desconto da NF-e; 22/10/2026; 4 = a base, a alíquota e as despesas do item; 22/10/2026;
+ * 5 = as NF-e que o CT-e transporta e o ICMS do CT-e; 23/10/2026). */
+const VERSAO_DO_RESUMO = 5;
 
 module.exports = { VERSAO_DO_RESUMO, tipoDoXml, tipoDeNota, nomeDoArquivo, resumoDaNota, zipDe, crc32 };

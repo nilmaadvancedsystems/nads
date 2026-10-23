@@ -782,6 +782,10 @@ igual('SIEG: o item com a base, a alíquota e as despesas', sxT.resumoDaNota(nfe
 // o frete e o desconto da nota (22/10/2026: o Rateio de frete)
 const nfeFreteT = nfeItensT.replace('<vNF>100.50</vNF>', '<vFrete>12.30</vFrete><vDesc>2.00</vDesc><vNF>110.80</vNF>');
 igual('SIEG: o frete e o desconto da NF-e', [sxT.resumoDaNota(nfeFreteT).frete, sxT.resumoDaNota(nfeFreteT).desconto, sxT.resumoDaNota(nfeItensT).frete], [12.3, 2, undefined]);
+// as NF-e do CT-e e o ICMS dele (23/10/2026: o Rateio de frete pelo CT-e)
+const cteT = '<cteProc><CTe><infCte Id="CTe31260919449248000162570010000000011000000017"><ide><CFOP>6353</CFOP><nCT>1</nCT><serie>1</serie><dhEmi>2026-09-05T10:00:00-03:00</dhEmi></ide><emit><CNPJ>19449248000162</CNPJ><xNome>TRANSP</xNome></emit><rem><CNPJ>22222222000122</CNPJ><xNome>REM</xNome></rem><dest><CNPJ>11111111000111</CNPJ><xNome>DEST</xNome></dest><vPrest><vTPrest>500.00</vTPrest><vRec>500.00</vRec></vPrest><imp><ICMS><ICMS00><CST>00</CST><vBC>500.00</vBC><pICMS>12.00</pICMS><vICMS>60.00</vICMS></ICMS00></ICMS></imp><infCTeNorm><infDoc><infNFe><chave>31260922222222000122550010000020751000020751</chave></infNFe><infNFe><chave>31260922222222000122550010000020761000020761</chave></infNFe></infDoc></infCTeNorm></infCte></CTe></cteProc>';
+const cteR = sxT.resumoDaNota(cteT);
+igual('SIEG: o CT-e com as NF-e que transporta e o ICMS', [cteR.tipo, cteR.valor, cteR.icms, cteR.nfes], ['CT-e', 500, 60, ['31260922222222000122550010000020751000020751', '31260922222222000122550010000020761000020761']]);
 igual('SIEG: o nome do arquivo da NF-e', sxT.nomeDoArquivo(nfeItensT), '31260919449248000162550010000102701620070002-nfe.xml');
 igual('SIEG: o cancelamento no resumo', sxT.resumoDaNota(cancT), { cancela: '31260919449248000162550010000102701620070002' });
 // o tipo de nota de qualquer XML, a nota ou o evento (pelo modelo na chave; 08/10/2026: o Drive como atalho)

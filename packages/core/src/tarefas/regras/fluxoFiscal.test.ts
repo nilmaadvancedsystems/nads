@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ROTINA_FISCAL } from '../rotinas/fiscal';
-import { FLUXO_PRESUMIDO, FLUXO_REAL, FLUXO_SIMPLES, FLUXOS_FISCAIS, fluxoDoRegime } from '../rotinas/fluxoFiscal';
-import { definirResponsavelDeVarios, definirResponsavelDoSubprocesso, definirStatus, definirStatusDeVarios, fluxoDoMes, resumoDoFluxo, statusDe } from './fluxoFiscal';
+import { FLUXO_PRESUMIDO, FLUXO_REAL, FLUXO_SIMPLES, FLUXOS_FISCAIS, fluxoDoRegime, nomeCurto } from '../rotinas/fluxoFiscal';
+import { definirResponsavelDeVarios, definirResponsavelDoSubprocesso, definirStatus, definirStatusDeVarios, fasesDoMes, fluxoDoMes, gruposDaEtapa, resumoDoFluxo, statusDe } from './fluxoFiscal';
 import { etapaNoMes, execucaoNova } from './execucao';
 
 const agora = new Date('2026-10-23T12:00:00Z');
@@ -65,5 +65,29 @@ describe('o fluxo operacional do Fiscal (23/10/2026)', () => {
     expect(Object.keys(v.execucao.etapas)).toEqual(['fs-1-empresas', 'fs-1-tarefas']);
     expect(v.evento.observacao).toBe('concluido · 2 subprocessos');
     expect(definirResponsavelDeVarios(ex, ['fs-1-empresas', 'fs-1-tarefas'], 'Ana', 'G', agora).execucao.etapas['fs-1-tarefas'].responsavel).toBe('Ana');
+  });
+});
+
+describe('a organização da tela do fluxo (23/10/2026: "tem muita informação")', () => {
+  it('cada subprocesso num grupo só, de até 4; as fases cobrem todas as etapas', () => {
+    for (const f of FLUXOS_FISCAIS) {
+      expect(f.fases!.flatMap(x => x.etapas).sort((a, b) => a - b)).toEqual(f.etapas.map(e => e.n));
+      for (const e of f.etapas) {
+        const nos = e.grupos!.flatMap(g => g.subs);
+        expect(nos.sort()).toEqual(e.subprocessos.map(s => s.id).sort());
+        for (const g of e.grupos!) expect(g.subs.length).toBeLessThanOrEqual(4);
+      }
+    }
+  });
+  it('os nomes curtos e os grupos do mês', () => {
+    expect(nomeCurto('Importar notas fiscais de entrada')).toBe('Entrada');
+    expect(nomeCurto('Importar documentos de transporte, quando pertinentes')).toBe('Documentos de transporte');
+    expect(nomeCurto('IBS e CBS, quando aplicáveis')).toBe('IBS e CBS');
+    expect(nomeCurto('ECD, quando exigível e em integração com o setor contábil')).toBe('ECD');
+    expect(nomeCurto('Identificar obrigações aplicáveis')).toBe('Identificar obrigações aplicáveis');
+    const etapas = fluxoDoMes(FLUXO_SIMPLES, null, '2026-09');
+    expect(gruposDaEtapa(etapas[1]).map(g => g.nome)).toEqual(['Notas', 'Serviços', 'Conferência']);
+    expect(gruposDaEtapa(etapas.find(e => e.n === 8)!).map(g => g.subprocessos.length)).toEqual([3, 3]);
+    expect(fasesDoMes(FLUXO_SIMPLES, etapas).map(f => f.nome)).toEqual(['Abertura', 'Documentos', 'Faturamento e DAS', 'Estaduais, obrigações e guias', 'Fechamento']);
   });
 });

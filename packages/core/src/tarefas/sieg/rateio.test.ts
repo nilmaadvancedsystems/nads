@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gruposDaNota, ratear, rateioDosNcms, repartir, tributacaoDoItem, valoresDaNota } from './rateio';
+import { gruposDaNota, ratear, rateioDoCte, rateioDosNcms, repartir, tributacaoDoItem, valoresDaNota } from './rateio';
 import type { NotaDoSieg } from './index';
 
 const pessoa = { doc: '11111111000111', nome: 'X' };
@@ -66,5 +66,17 @@ describe('o Rateio de frete (a planilha RATEIO - FRETE, 22/10/2026)', () => {
     expect(valoresDaNota(nfe([{ ncm: '1', cfop: '5102', cst: '000', cest: '', valor: 100, st: 5 }], { valor: 117.5 }))).toEqual({ total: 100, frete: 12.5, desconto: 0, estimado: true });
     expect(valoresDaNota(nfe([{ ncm: '1', cfop: '5102', cst: '000', cest: '', valor: 100 }], { valor: 90 }))).toEqual({ total: 100, frete: 0, desconto: 10, estimado: true });
     expect(valoresDaNota(nfe([{ ncm: '1', cfop: '5102', cst: '000', cest: '', valor: 100 }], { valor: 100 })).estimado).toBe(false);
+  });
+  it('pelo CT-e: o valor dele pelas NF-e que transporta e pelas tributações dos itens, fechando no centavo', () => {
+    const a = nfe([{ ncm: '39241000', cfop: '2102', cst: '000', cest: '', valor: 600 }], { chave: 'A', numero: '10' });
+    const b = nfe([{ ncm: '39241000', cfop: '2403', cst: '010', cest: '', valor: 300, ipi: 10 }, { ncm: '69120000', cfop: '2403', cst: '010', cest: '', valor: 100 }], { chave: 'B', numero: '11' });
+    const r = rateioDoCte({ valor: 500 }, [a, b]);
+    expect(r.notas.map(n => [n.numero, n.produtos, n.pct, n.frete])).toEqual([['10', 600, 60, 300], ['11', 400, 40, 200]]);
+    expect(r.rateio.linhas.map(l => [l.rotulo, l.frete, l.base])).toEqual([['Tributado', 300, 900], ['ICMS-ST', 200, 610]]);
+    expect(r.rateio.soma.frete).toBe(500);
+    // um valor que não divide certo
+    const x = rateioDoCte({ valor: 100 }, [a, b, nfe([{ ncm: '1', cfop: '2102', cst: '000', cest: '', valor: 333.33 }], { chave: 'C' })], 'tributacao', 100.01);
+    expect(Math.round(x.notas.reduce((t, n) => t + n.frete, 0) * 100)).toBe(10001);
+    expect(x.rateio.soma.frete).toBe(100.01);
   });
 });

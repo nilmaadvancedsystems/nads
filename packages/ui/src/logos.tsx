@@ -147,6 +147,8 @@ const DESENHOS: Record<string, (cor?: boolean) => React.JSX.Element> = {
 /** [fundo, texto, iniciais] das marcas sem logo aqui ainda (selo simplificado). */
 const SELOS: Record<string, [string, string, string]> = {
   cora: ['#FE3E6D', '#FFFFFF', 'c'],
+  // o banco do escritório (23/10/2026), no laranja da marca
+  efi: ['#F37021', '#FFFFFF', 'e'],
   sicredi: ['#3FA110', '#FFFFFF', 's'],
 };
 
