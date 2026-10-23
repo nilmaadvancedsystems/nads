@@ -1556,10 +1556,20 @@ function destinoNoCliente(d, cli, comoCliente, cad, ano) {
     if (cli.regime === undefined) return { erro: { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', evidencia: 'enquadramento "' + cli.regimeTexto + '" fora do Dicionário §2.1' } };
     if (!cli.regime) return { erro: { acao: 'NAO_IDENTIFICADO', motivo: 'REGIME_INDEFINIDO' } };
     if (cli.regime === 'MEI') return { erro: { acao: 'FICA', motivo: 'REGIME_SEM_ESPECIALISTA', evidencia: '05: MEI ainda sem regra fiscal; fica na origem' } };
-    const arv = ARVORE[cli.regime];
+    let regime = cli.regime, arv = ARVORE[cli.regime];
     const chave = d.fiscal[0];
+    if (!arv[chave] && ano && ano < new Date().getFullYear()) {
+      // 23/10/2026 (Vitor): o documento antigo de quando a empresa tinha outro regime vai para a pasta do regime daquela
+      // época — o tipo que só existe num regime diz qual era (a DeSTDA e o Sintegra, só no Simples Nacional); sem como
+      // saber, a pasta do regime de hoje com o nome do tipo; nunca recusa
+      const comOTipo = Object.keys(ARVORE).filter(r => ARVORE[r][chave]);
+      if (comOTipo.length === 1) { regime = comOTipo[0]; arv = ARVORE[regime]; (d.evidencias || (d.evidencias = [])).push(chave + ' só existe no ' + regime + ': o documento é de quando a empresa era do ' + regime + ' (hoje ' + cli.regime + ')'); }
+      else if (comOTipo.length) { arv = Object.assign({}, arv, { [chave]: ARVORE[comOTipo[0]][chave].replace(/^\d+\.\s*/, '') }); (d.evidencias || (d.evidencias = [])).push(chave + ' não está na árvore do ' + cli.regime + ': na pasta do regime de hoje, com o nome do tipo'); }
+      else return { erro: { acao: 'NAO_IDENTIFICADO', motivo: 'TIPO_INCOMPATIVEL_COM_REGIME', evidencia: chave + ' não previsto em ' + cli.regime } };
+    }
+    // o documento do ano corrente (o regime muda na virada do ano): o tipo fora da árvore de hoje continua recusado
     if (!arv[chave]) return { erro: { acao: 'NAO_IDENTIFICADO', motivo: 'TIPO_INCOMPATIVEL_COM_REGIME', evidencia: chave + ' não previsto em ' + cli.regime } };
-    caminho = ['FISCAL', cli.regime, arv[chave]].concat(d.fiscal.slice(1));
+    caminho = ['FISCAL', regime, arv[chave]].concat(d.fiscal.slice(1));
   }
   // 03 regra 1/2: pasta raiz pelo código; sem pasta, só cria se o cliente veio do CNPJ do documento. A raiz é a do ano
   // (23/10/2026): G:\Meu Drive\<ano>; a pasta do cliente num ano tem o mesmo nome que a de 2026 (ou "<cód> - <razão>")
@@ -1574,7 +1584,7 @@ function destinoNoCliente(d, cli, comoCliente, cad, ano) {
   else if (!doAno.base) return { erro: { acao: 'NAO_IDENTIFICADO', motivo: 'PASTA_DO_ANO_SEM_CNPJ', evidencia: 'a pasta do cliente em ' + ano + ' ainda não existe e o documento não traz o CNPJ dele: ela só nasce com o CNPJ conferido (Vitor, 23/10/2026)' } };
   else return { erro: { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_AMBIGUO', evidencia: 'pasta do cliente não existe e o documento não traz o CNPJ dele (03 regra 2)' } };
   caminho = caminho.map(nomeSeguro);
-  return { pastaCliente, criarPastaCliente, caminho, regime: cli.regime || null, destinoRelativo: [pastaCliente].concat(caminho).join('\\') };
+  return { pastaCliente, criarPastaCliente, caminho, regime: (d.fiscal && caminho[1]) || cli.regime || null, destinoRelativo: [pastaCliente].concat(caminho).join('\\') };
 }
 
 /**

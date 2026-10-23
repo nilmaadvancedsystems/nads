@@ -72,8 +72,12 @@ const SEM_DECISAO_PELO_CONTEUDO = new Set(['TIPO_NAO_RECONHECIDO', 'CONTEUDO_SEM
  * ou null quando a pasta não diz nada.
  */
 function decidir(entrada, ctx, d) {
+  return clientePelaPasta(entrada, ctx, d) || decidirPeloMapa(entrada, ctx, d);
+}
+function decidirPeloMapa(entrada, ctx, d) {
   const mapa = ctx.cadastro && ctx.cadastro.mapaMigracao;
-  if (!mapa || !d || d.acao !== 'NAO_IDENTIFICADO' || !SEM_DECISAO_PELO_CONTEUDO.has(d.motivo)) return null;
+  // d.clienteDaPasta: o cliente já dado pela pasta conferida (clientePelaPasta); o mapa só diz o tipo
+  if (!mapa || !d || d.acao !== 'NAO_IDENTIFICADO' || !(SEM_DECISAO_PELO_CONTEUDO.has(d.motivo) || d.clienteDaPasta)) return null;
   const M = require('./arquivador-manual');
   let t = mapa.tipoDaOrigem(entrada.rel || '');
   // o conteúdo já disse o tipo (DAE, DARF, DEFIS…) e só faltou a competência: o nome ou as pastas de origem dão
@@ -91,7 +95,8 @@ function decidir(entrada, ctx, d) {
   const pista = R.clienteDaPasta(entrada.rel || '', cad);
   // o cliente que o conteúdo traz: o da decisão das regras, ou os CNPJ/CPF de clientes escritos no texto
   let doConteudo = d.cliente != null && cad.porCod.has(d.cliente) ? d.cliente : null;
-  if (doConteudo == null) {
+  if (d.clienteDaPasta) doConteudo = null;   // o cliente vem da pasta (abaixo); o conteúdo já foi conferido
+  if (doConteudo == null && !d.clienteDaPasta) {
     const texto = Array.isArray(entrada.texto) ? entrada.texto.slice(0, 3).join('\n') : String(entrada.texto || entrada.txt || '');
     const cods = [...new Set(R.documentosDoTexto(texto).flatMap(x => R.clientesDoDoc(x.doc, cad)))];
     if (cods.length === 1) { doConteudo = cods[0]; ev.push('CNPJ/CPF do cliente no conteúdo'); }
@@ -118,6 +123,39 @@ function decidir(entrada, ctx, d) {
 }
 
 /**
+ * O cliente pela pasta de origem (Vitor, 23/10/2026): o conteúdo não achou o cliente (CLIENTE_NAO_LOCALIZADO) ou ficou entre
+ * dois (CLIENTE_AMBIGUO), e a pasta "0NNN - NOME…" da migração tem o código E o nome conferidos no cadastro. Vale se o
+ * conteúdo não contradiz: nenhum CNPJ/CPF de OUTRO cliente (no ambíguo, a pasta tem de ser um dos dois, da mesma raiz de
+ * CNPJ — matriz e filial). Decide de novo pelas regras com o cliente dado (como a decisão do admin), confiança 0,9.
+ */
+function clientePelaPasta(entrada, ctx, d) {
+  if (!d || d.acao !== 'NAO_IDENTIFICADO' || !['CLIENTE_NAO_LOCALIZADO', 'CLIENTE_AMBIGUO'].includes(d.motivo)) return null;
+  const cad = ctx.cadastro;
+  const pista = R.clienteDaPasta(entrada.rel || '', cad);
+  if (!pista || !pista.forte) return null;
+  const cli = cad.porCod.get(pista.codigo);
+  if (!cli) return null;
+  // o que o conteúdo traz: os CNPJ/CPF de clientes (o texto do PDF, o XML)
+  const texto = entrada.xml ? String(entrada.xml) : Array.isArray(entrada.texto) ? entrada.texto.slice(0, 3).join('\n') : String(entrada.texto || entrada.txt || entrada.ofx || '');
+  const outros = [...new Set(R.documentosDoTexto(texto).flatMap(x => R.clientesDoDoc(x.doc, cad)))].filter(c => c !== pista.codigo);
+  const raiz = c => { const x = cad.porCod.get(c); return x && x.doc && x.doc.length === 14 ? x.doc.slice(0, 8) : null; };
+  if (outros.length && !(d.motivo === 'CLIENTE_AMBIGUO' && raiz(pista.codigo) && outros.every(c => raiz(c) === raiz(pista.codigo)))) return null;
+  const confirmados = new Map(ctx.confirmados || []);
+  if (entrada.hash) confirmados.set(entrada.hash, pista.codigo);
+  let d2 = null;
+  try { d2 = R.decidir(entrada, Object.assign({}, ctx, { confirmados })); } catch (e) { return null; }
+  if (!d2 || d2.acao !== 'ARQUIVAR' || Number(d2.cliente) !== pista.codigo) {
+    // as regras com o cliente dado ainda não chegam: o mapa da migração pela subpasta, com o cliente da pasta
+    const t = d2 && d2.acao === 'NAO_IDENTIFICADO' ? decidirPeloMapa(entrada, Object.assign({}, ctx, { confirmados }), Object.assign({}, d2, { cliente: null, clienteDaPasta: true })) : null;
+    return t && t.acao === 'ARQUIVAR' ? t : null;
+  }
+  d2.confianca = Math.min(d2.confianca || 0.9, 0.9);
+  d2.comoCliente = 'pastaConferida';
+  d2.evidencias = (d2.evidencias || []).concat('o cliente pela pasta de origem (' + pista.como + '); o conteúdo não traz o CNPJ de outro cliente' + (outros.length ? ' (só o da mesma empresa, matriz/filial)' : '') + ' — era ' + d.motivo);
+  return d2;
+}
+
+/**
  * A chave de GRUPO de um não identificado (Para resolver em lote): o motivo + a pasta de origem sem as de data
  * ("0010 - DORNAS HAVANA LTDA - ME\DEPARTAMENTO FISCAL\DESTDA"). rel = o caminho na origem.
  */
@@ -126,4 +164,4 @@ function chaveDoGrupo(motivo, rel) {
   return { motivo: motivo || 'SEM_MOTIVO_REGISTRADO', pasta: partes.slice(0, 4).join('\\') || '(solto na Claudio Secretario)' };
 }
 
-module.exports = { carregar, decidir, chaveDoGrupo, partesSemData, VERSIONADO };
+module.exports = { carregar, decidir, clientePelaPasta, chaveDoGrupo, partesSemData, VERSIONADO };

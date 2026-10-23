@@ -99,6 +99,20 @@ d = decidirMig('0010 - DORNAS HAVANA LTDA - ME\\DEPARTAMENTO FISCAL\\DESTDA\\202
 igual('o conteúdo diz outro cliente que a pasta: NÃO IDENTIFICADOS', [d.acao, d.motivo], ['NAO_IDENTIFICADO', 'PISTA_DA_PASTA_DIVERGE']);
 d = decidirMig('0066 - ADERLEI DOS SANTOS & CIA LTDA - EPP\\DEPARTAMENTO FISCAL\\DESTDA\\2026\\02-2026.pdf', 'recibo de entrega sem titulo conhecido');
 igual('DESTDA num cliente do Presumido: a árvore do regime não tem a pasta', [d.acao, d.motivo], ['NAO_IDENTIFICADO', 'TIPO_INCOMPATIVEL_COM_REGIME']);
+// 23/10/2026 (Vitor): o documento ANTIGO de quando a empresa era de outro regime: a pasta do regime da época pelo tipo
+d = decidirMig('0066 - ADERLEI DOS SANTOS & CIA LTDA - EPP\\DEPARTAMENTO FISCAL\\DESTDA\\2021\\04-2021.pdf', 'recibo de entrega sem titulo conhecido', { cadastro: montar({ 2021: ['66 - ADERLEI DOS SANTOS E CIA'] }), hoje: new Date(2026, 9, 23) });
+igual('DESTDA de 2021 de um cliente hoje do Presumido: na pasta do Simples (a DeSTDA só existe nele)', [d.acao, d.anoRaiz, d.destinoRelativo], ['ARQUIVAR', 2021, '66 - ADERLEI DOS SANTOS E CIA\\FISCAL\\SIMPLES NACIONAL\\04. DeSTDA']);
+// o cliente pela pasta conferida quando o conteúdo não acha o cliente e não traz CNPJ de outro
+{
+  const ctx21 = { cadastro: montar({ 2023: ['10 - DORNAS HAVANA LTDA'] }), hoje: new Date(2026, 9, 23) };
+  const e = { nome: 'Extrato sicoob 03.2023.pdf', rel: '0010 - DORNAS HAVANA LTDA - ME\\EXTRATOS\\2023\\03\\Extrato sicoob 03.2023.pdf', hash: 'h-ext', texto: ['EXTRATO DE CONTA CORRENTE\nSICOOB\nPeriodo: 01/03/2023 a 31/03/2023\nsaldo anterior 1.000,00\nsem cnpj nem nome'] };
+  const d1 = R.decidir(e, ctx21);
+  const d2 = MIG.decidir(e, ctx21, d1);
+  igual('o cliente pela pasta conferida (o extrato sem CNPJ): arquiva na 10', [d1.acao === 'ARQUIVAR' || d1.motivo, d2 ? d2.acao : (d1.acao === 'ARQUIVAR' ? 'já arquivava' : null), (d2 || d1).cliente], [d1.acao === 'ARQUIVAR' ? true : d1.motivo, d1.acao === 'ARQUIVAR' ? 'já arquivava' : 'ARQUIVAR', 10]);
+  const e2 = Object.assign({}, e, { texto: [e.texto[0] + '\nCNPJ 03.149.551/0001-00'] });
+  const d3 = R.decidir(e2, ctx21);
+  igual('o conteúdo com o CNPJ de outro cliente: a pasta não vale', d3.acao === 'NAO_IDENTIFICADO' ? !MIG.clientePelaPasta(e2, ctx21, d3) || MIG.clientePelaPasta(e2, ctx21, d3).cliente !== 10 : Number(d3.cliente) !== 10, true);
+}
 d = decidirMig('0010 - DORNAS HAVANA LTDA - ME\\DEPARTAMENTO FISCAL\\DES - BH\\2023\\12-2023.pdf', 'recibo de entrega da declaracao municipal sem titulo conhecido pelas regras');
 igual('pasta sem equivalente no mapa (DES - BH): fica como as regras deixaram', [d.acao, d.motivo], ['NAO_IDENTIFICADO', 'TIPO_NAO_RECONHECIDO']);
 {
