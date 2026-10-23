@@ -42,6 +42,7 @@ export function PainelFinanceiro({ comResultado }: { comResultado?: boolean }) {
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
         <span className="fin-acoes">
+          <button type="button" className="btn btn-outline" onClick={vm.imprimirCaixa} title="O Demonstrativo de Caixa do período, para imprimir"><Icone nome="printer" />Imprimir o caixa</button>
           <button type="button" className="btn btn-outline" onClick={() => setResultado(true)}><Icone nome="scale" />Resultado por conta</button>
           <button type="button" className="btn btn-primary" onClick={() => vm.ir('extrato')}><Icone nome="fileUp" />Importar extrato</button>
         </span>

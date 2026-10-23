@@ -9,6 +9,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { caminhoDaPagina } from '../../casca/navegacao';
 import { useCaixa, useHonorarios, useNfse } from '../../dados/repo';
+import { imprimirHtml } from '../dp/imprimirHtml';
 import { hoje } from './formatosDaNota';
 
 export type PeriodoDoPainel = 'este-mes' | 'mes-passado' | 'este-ano';
@@ -55,6 +56,12 @@ export function usePainelFinanceiro() {
     carregando: !lanc.carregada || !plano.carregada,
     exemplos: caixa.exemplos,
     periodo, setPeriodo, periodos: PERIODOS_DO_PAINEL,
+    /** o Demonstrativo de Caixa do período do painel para imprimir direto (23/10/2026: "quero tirar no painel"), o mesmo do Caixa */
+    imprimirCaixa() {
+      const contas = new Map(plano.lista.map(c => [c.id, c]));
+      imprimirHtml(financeiro.htmlDoDemonstrativo({ de, ate, saldoInicial: resumo.saldoInicial, filtrado: false,
+        itens: resumo.lancamentos.map(l => ({ lancamento: l, conta: l.conta ? contas.get(l.conta) : undefined })) }));
+    },
     /** o Caixa e o banco somados; a dica diz quanto é de cada um (só quando há extrato importado) */
     numeros: {
       entradas: soma(resumo.entradas, banco.entradas), saidas: soma(resumo.saidas, banco.saidas),
