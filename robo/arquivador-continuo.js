@@ -6,7 +6,7 @@
 //   - estável = tamanho e data sem mudar há ESTAVEL_MS (45 s) e a data mais velha que isso; fora os temporários do Drive
 //     e do Office (~$…, .tmp, .crdownload, .part, desktop.ini) e arquivo de 0 byte; .zip só com o diretório central
 //     inteiro (zip ainda chegando não abre);
-//   - lotes pequenos (até LOTE arquivos ou LOTE_MS de trabalho), um de cada vez, com a trava própria (continuo.lock) e
+//   - lotes (LOTE arquivos; menos com o Drive lento, mais com ele rápido), um de cada vez, com a trava própria (continuo.lock) e
 //     NUNCA junto com a rotina antiga (a das 9h ou um pedido do botão "Arquivar agora": _CONTROLE\_execucao.lock, sinal
 //     recente em _CONTROLE ou robo/arquivador "rodando") nem com outro processo deste arquivador.
 //
@@ -36,11 +36,13 @@ const CONTROLE_ANTIGO = path.join(ROTINA, '_CONTROLE');
 const INTERVALO_MS = 60 * 1000;
 const ESTAVEL_MS = 45 * 1000;
 const LOTE = 40;
-const LOTE_MS = 50 * 1000;
 const COMPARAR_DEPOIS_DAS = [11, 30];   // a das 9h terminou (JANELA_DAS_9H do arquivador.js vai até 11h)
 // o evento sem o original no índice de chaves espera o original (23/10/2026, "24–48 h"): 48 h; depois, o SIEG pela chave
 // (até siegPorDia chamadas por dia) e só então NÃO IDENTIFICADOS
-const PADRAO = { modo: 'simulacao', tiposProducao: [], moverNaoIdentificados: false, intervaloMs: INTERVALO_MS, estavelMs: ESTAVEL_MS, lote: LOTE, esperaOriginalHoras: 48, siegPorDia: 200 };
+// origensExtras: pastas LOCAIS de entrada (23/10/2026: cargas grandes copiadas direto no PC, sem passar duas vezes pela
+// sincronização do Drive); as mesmas regras, o mesmo manifesto e a mesma quarentena; os não identificados vão para o
+// NÃO IDENTIFICADOS do G:
+const PADRAO = { modo: 'simulacao', tiposProducao: [], moverNaoIdentificados: false, intervaloMs: INTERVALO_MS, estavelMs: ESTAVEL_MS, lote: LOTE, esperaOriginalHoras: 48, siegPorDia: 200, origensExtras: [] };
 const K = require('./arquivador-chaves');
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -71,14 +73,21 @@ function estaveis(mapa, vistos, agora, estavelMs) {
 }
 
 /** Junta o config do arquivo com o do banco (o do arquivo manda) e normaliza. */
+// o último config.json lido inteiro de cada arquivo: uma falha passageira de leitura (o arquivo preso por outro programa,
+// gravado pela metade) não vira "simulação" (23/10/2026: o robô religou às 15:42 dizendo "modo simulacao" com o arquivo
+// em produção)
+const configBom = new Map();
 function lerConfig(arquivo, doBanco) {
   let doArquivo = {};
-  try { doArquivo = JSON.parse(fs.readFileSync(arquivo, 'utf8')); } catch (e) { /* sem arquivo: o do banco ou o padrão */ }
+  try { doArquivo = JSON.parse(fs.readFileSync(arquivo, 'utf8').replace(/^﻿/, '')); configBom.set(arquivo, doArquivo); }
+  catch (e) { if (e.code !== 'ENOENT' && configBom.has(arquivo)) doArquivo = configBom.get(arquivo); /* sem arquivo: o do banco ou o padrão */ }
   const c = Object.assign({}, PADRAO, doBanco || {}, doArquivo);
   if (!['desligado', 'simulacao', 'producao'].includes(c.modo)) c.modo = 'simulacao';
   // "todos" (texto ou na lista) libera todos os tipos
   c.tiposProducao = c.tiposProducao === 'todos' ? ['todos'] : Array.isArray(c.tiposProducao) ? c.tiposProducao.map(String).filter(Boolean) : [];
   c.emProducao = c.modo === 'producao' && c.tiposProducao.length > 0;
+  c.origensExtras = (Array.isArray(c.origensExtras) ? c.origensExtras : c.origensExtras ? [c.origensExtras] : []).map(String).filter(Boolean);
+  c.lote = Math.max(1, Math.min(400, +c.lote || LOTE));
   return c;
 }
 
@@ -126,7 +135,6 @@ function iniciar(opcoes) {
   fs.mkdirSync(pasta, { recursive: true });
   const TRAVA = path.join(o.controle, 'continuo.lock');
   const CONFIG = path.join(o.controle, 'config.json');
-  const mapa = new Map();
   let configBanco = null, parado = false, rodando = false, acordar = null, observador = null, avisouSemDrive = false, tentouVigiarEm = 0;
   let cache = { em: 0 };
   // o SIEG pela chave: o módulo do robô (o.sieg; null desliga, nos testes); criado no primeiro uso
@@ -166,11 +174,21 @@ function iniciar(opcoes) {
     return null;
   }
   /** O contexto caro (cadastro, manifesto antigo, contas, índice de chaves), refeito a cada 30 min. */
+  // 23/10/2026: o cadastro do banco tem prazo (atualizarCadastro, 45 s); os índices (chaves, conteúdo, manifesto antigo)
+  // crescem na hora em memória a cada decisão, então só são relidos do disco a cada 6 h (relê-los a cada 30 min, com o diário
+  // do contínuo passando de 100 MB, segurava o robô)
   async function garantirContexto() {
     if (Date.now() - cache.em <= 30 * 60000) return cache;
     if (o.db) await A.atualizarCadastro({ db: o.db, controle: o.controle, log: o.log });
-    cache = { em: Date.now(), cadastro: o.cadastro || A.carregarCadastro({ controle: o.controle }), contas: A.lerContas(o.controle), manifesto: A.indiceDoManifesto(path.join(o.controleAntigo, 'MANIFESTO', 'manifesto.jsonl')),
-      chaves: K.carregar({ controle: o.controle, manifestoAntigo: path.join(o.controleAntigo, 'MANIFESTO', 'manifesto.jsonl'), raiz: o.clientes }) };
+    const relerIndices = !cache.indicesEm || Date.now() - cache.indicesEm > 6 * 36e5;
+    const manifestoAntigo = path.join(o.controleAntigo, 'MANIFESTO', 'manifesto.jsonl');
+    const t0 = Date.now();
+    cache = { em: Date.now(), cadastro: o.cadastro || A.carregarCadastro({ controle: o.controle }), contas: A.lerContas(o.controle),
+      indicesEm: relerIndices ? Date.now() : cache.indicesEm,
+      manifesto: relerIndices ? A.indiceDoManifesto(manifestoAntigo) : cache.manifesto,
+      chaves: relerIndices ? K.carregar({ controle: o.controle, manifestoAntigo, raiz: o.clientes }) : cache.chaves,
+      conteudos: relerIndices ? require('./arquivador-conteudos').carregar({ controle: o.controle, manifestoAntigo }) : cache.conteudos };
+    if (relerIndices) o.log('índices relidos em ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s: ' + cache.chaves.tamanho + ' chaves, ' + cache.conteudos.tamanho + ' conteúdos já arquivados');
     if (o.depurar) o.log('índice de chaves: ' + JSON.stringify(cache.chaves.estatistica));
     if (pedidos) void pedidos.publicarCadastro(cache.cadastro);
     return cache;
@@ -180,8 +198,14 @@ function iniciar(opcoes) {
    * da volta: esperam a volta terminar (até 10 min) e nunca junto com a rotina antiga.
    */
   async function exclusivo(fn) {
-    const ate = Date.now() + 10 * 60000;
-    while (rodando) { if (Date.now() > ate) throw new Error('o arquivador está ocupado há 10 min: tente de novo'); await new Promise(r => setTimeout(r, 1500)); }
+    // a passada pode levar horas (a carga do SIEG): o pedido entra entre um lote e outro, com a trava que a passada já tem
+    if (rodando) {
+      return new Promise((ok, erro) => {
+        const p = { fn: () => { const m = outraExecucao(true); if (m) throw new Error('espere: ' + m); return fn(); }, ok, erro };
+        vez.push(p);
+        setTimeout(() => { const i = vez.indexOf(p); if (i >= 0) { vez.splice(i, 1); erro(new Error('o arquivador está ocupado há 10 min: tente de novo')); } }, 10 * 60000);
+      });
+    }
     const motivo = outraExecucao(true);
     if (motivo) throw new Error('espere: ' + motivo);
     rodando = true;
@@ -196,7 +220,7 @@ function iniciar(opcoes) {
     const res = await A.executar({
       modo, confirmo: true, origem: o.origem, controle: o.controle, clientes: o.clientes, arquivos: [rel], manual: { [rel]: escolha },
       pastaNaoIdentificados: new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-NOVO', travaAntiga: path.join(o.controleAntigo, '_execucao.lock'),
-      cadastro: cache.cadastro, contas: cache.contas, manifesto: cache.manifesto, tiposProducao: ['todos'], moverNaoIdentificados: false,
+      cadastro: cache.cadastro, contas: cache.contas, manifesto: cache.manifesto, conteudos: cache.conteudos, tiposProducao: ['todos'], moverNaoIdentificados: false,
       chaves: cache.chaves, manifestoAntigo: path.join(o.controleAntigo, 'MANIFESTO', 'manifesto.jsonl'),
       painel: modo === 'PRODUCAO' ? { atividade: (t, x, d) => atividade(x, d), erro: (t, x, d) => atividade(x, d, true) } : null,
       registrar: false, log: () => {},
@@ -215,15 +239,21 @@ function iniciar(opcoes) {
     fs.writeFileSync(TRAVA, JSON.stringify({ pid: process.pid, em: Date.now() }));
     return true;
   }
+  const tocarTrava = () => { try { fs.writeFileSync(TRAVA, JSON.stringify({ pid: process.pid, em: Date.now() })); } catch (e) { /* segue */ } };
   const soltarTrava = () => { try { if (JSON.parse(fs.readFileSync(TRAVA, 'utf8')).pid === process.pid) fs.unlinkSync(TRAVA); } catch (e) { /* já foi */ } };
 
-  /** Varredura leve: só o nome, o tamanho e a data de cada arquivo. */
-  // 23/10/2026: com 10.973 arquivos e o Google Drive sobrecarregado, listar a pasta levou 383 s. Com a árvore grande (ou o
-  // Drive lento), a varredura usa a lista do ciclo anterior mais o que o fs.watch avisou que mudou, e a lista inteira só
-  // a cada 15 min (ou quando o aviso veio sem o nome)
-  let lista = null, completaEm = 0;
-  const mudados = new Set();
-  const ARVORE_GRANDE = o.arvoreGrande != null ? o.arvoreGrande : 2000;
+  // ---------------------------------------------------------------------------------------------------------------------
+  // a leitura da pasta EM FLUXO (23/10/2026: com ~11 mil arquivos o robô passou mais de 1 h só listando e conferindo o
+  // tamanho de cada um — statSync, um por vez, ~40 ms cada no G: em streaming — com o laço do Node parado: sem ponto, sem
+  // painel, sem banco; e a carga do SIEG vai a ~320 mil). Agora:
+  //   - nunca espera a lista inteira: anda pasta por pasta (fs.opendir), confere o tamanho e a data em paralelo (16 juntos)
+  //     e manda para o lote o que está pronto enquanto lê; entre um pedaço e outro o resto do robô roda;
+  //   - entre as passadas inteiras (a cada 15 min, ou quando o fs.watch avisou sem o nome), só o que o fs.watch avisou;
+  //   - nada da pasta fica inteiro na memória: os "já decididos" que saíram da pasta são esquecidos no fim de cada passada
+  //     inteira; os que ainda estão chegando (mexidos há menos de 10 min) ficam num mapa pequeno;
+  //   - o progresso vai ao painel ("Lendo a pasta: 37.000 de ~100.000 · N na fila (G:) + M (local) · X/min · faltam ~Y").
+  // ---------------------------------------------------------------------------------------------------------------------
+  const STAT_JUNTOS = 16, PEDACO = 64, RECENTE_MS = 10 * 60000, MAX_RECENTES = 50000, PASSADA_INTEIRA_MS = 15 * 60000;
   const incluir = (rel, ehPasta) => {
     const p = rel.split('\\');
     const pastas = ehPasta ? p : p.slice(0, -1);
@@ -231,35 +261,77 @@ function iniciar(opcoes) {
     const n = p[p.length - 1];
     return ehPasta || (!n.startsWith('_nao_identificados') && n !== 'desktop.ini');
   };
-  function varrerCompleto() {
-    const out = [];
-    for (const rel of A.varrer(o.origem, {})) {
-      try { const st = fs.statSync(path.join(o.origem, rel)); out.push({ rel, tam: st.size, mtime: st.mtimeMs }); } catch (e) { /* sumiu no meio */ }
-    }
-    lista = new Map(out.map(v => [v.rel, v])); completaEm = Date.now(); mudados.clear();
+  /** As origens: a do Drive e as locais do config (origensExtras: a entrada local; o resto igual, NÃO IDENTIFICADOS no G:). */
+  function origensDe(cfg) {
+    const out = [{ id: 'G:', raiz: o.origem, principal: true }];
+    for (const p of cfg.origensExtras || []) { const raiz = String(p || '').trim(); if (raiz && fs.existsSync(raiz) && path.resolve(raiz).toLowerCase() !== path.resolve(o.origem).toLowerCase()) out.push({ id: 'local:' + raiz, raiz, principal: false, nome: 'local' }); }
     return out;
   }
-  function varrer() {
-    const grande = lista && (lista.size > ARVORE_GRANDE || nivelRitmo > 0);
-    if (!lista || !observador || !grande || Date.now() - completaEm > 15 * 60000 || mudados.has('*')) return varrerCompleto();
-    const nomes = [...mudados]; mudados.clear();
-    for (const nome of nomes) {
-      const rel = String(nome).replace(/\//g, '\\');
-      let st = null;
-      try { st = fs.statSync(path.join(o.origem, rel)); } catch (e) { /* saiu (arquivado, movido, apagado) */ }
-      if (!st) { lista.delete(rel); for (const k of [...lista.keys()]) if (k.startsWith(rel + '\\')) lista.delete(k); continue; }
-      if (st.isDirectory()) {
-        if (!incluir(rel, true)) continue;
-        for (const r of A.varrer(o.origem, { pasta: rel })) { try { const s2 = fs.statSync(path.join(o.origem, r)); lista.set(r, { rel: r, tam: s2.size, mtime: s2.mtimeMs }); } catch (e) { /* sumiu */ } }
-      } else if (incluir(rel, false)) lista.set(rel, { rel, tam: st.size, mtime: st.mtimeMs });
+  // a chave do "já decidido": a do G: igual à de antes (o estado.json que já existe continua valendo)
+  const chaveDe = (org, rel, v) => (org.principal ? '' : org.id + '|') + rel + '|' + v.tam + '|' + Math.round(v.mtime);
+  const chave = (rel, v) => rel + '|' + v.tam + '|' + Math.round(v.mtime);   // (o G:; o lado a lado e os testes)
+  /** Os arquivos de uma pasta e das de dentro, em pedaços de até PEDACO, sem esperar a árvore inteira. */
+  async function* andarEmFluxo(raiz, desde) {
+    const pilha = [desde || ''];
+    while (pilha.length && !parado) {
+      const rel = pilha.pop();
+      let dir;
+      try { dir = await fs.promises.opendir(rel ? path.join(raiz, rel) : raiz, { bufferSize: 256 }); } catch (e) { continue; }
+      const subs = [];
+      let pedaco = [];
+      try {
+        for await (const e of dir) {
+          const r = rel ? rel + '\\' + e.name : e.name;
+          if (e.isDirectory()) { if (incluir(r, true)) subs.push(r); continue; }
+          if (!incluir(r, false)) continue;
+          pedaco.push(r);
+          if (pedaco.length >= PEDACO) { yield pedaco; pedaco = []; }
+        }
+      } catch (e) { /* a pasta sumiu ou mudou no meio: o resto vem na próxima passada */ }
+      if (pedaco.length) yield pedaco;
+      subs.sort((a, b) => b.localeCompare(a));
+      pilha.push(...subs);   // a ordem alfabética, como antes
     }
-    return [...lista.values()];
+  }
+  /** O tamanho e a data de cada um, STAT_JUNTOS de cada vez (no G: em streaming, um por vez é ~40 ms). */
+  async function conferirTamanhos(raiz, rels) {
+    const out = new Array(rels.length).fill(null);
+    let i = 0;
+    await Promise.all(Array.from({ length: Math.min(STAT_JUNTOS, rels.length) }, async () => {
+      while (i < rels.length) { const k = i++; try { const st = await fs.promises.stat(path.join(raiz, rels[k])); if (st.isFile()) out[k] = { rel: rels[k], tam: st.size, mtime: st.mtimeMs }; } catch (e) { /* sumiu */ } }
+    }));
+    return out;
   }
 
-  // o ritmo pelo Google Drive (23/10/2026): a varredura de mais de 60 s ou mais de 10 s por arquivo no lote, o lote cai
-  // (40 → 10 → 5) e os ciclos se espaçam (2 e 5 min); três ciclos rápidos seguidos, volta um degrau
+  // o que ainda está chegando (mexido há menos de RECENTE_MS): o tamanho e a data da primeira vez que foi visto
+  const recentes = new Map();
+  /**
+   * Pronto para decidir? O arquivo mexido há mais de 10 min está parado (pronto já na primeira vez); o mais novo precisa ser
+   * visto duas vezes com o mesmo tamanho e a mesma data, com estavelMs entre elas, e a data mais velha que estavelMs.
+   */
+  function situacaoDe(org, v, agora, estavelMs, porPedido) {
+    if (C_ehTemporario(v.rel) || !v.tam) return 'ignorado';
+    const idade = agora - v.mtime, k = org.id + '|' + v.rel;
+    if (porPedido && idade >= 10000) { recentes.delete(k); return 'pronto'; }
+    if (idade >= RECENTE_MS) { recentes.delete(k); return 'pronto'; }
+    const a = recentes.get(k);
+    if (!a || a.tam !== v.tam || a.mtime !== v.mtime) {
+      if (recentes.size >= MAX_RECENTES) recentes.delete(recentes.keys().next().value);
+      recentes.set(k, { org, rel: v.rel, tam: v.tam, mtime: v.mtime, desde: agora, visto: agora, pronto: false });
+      return 'chegando';
+    }
+    a.visto = agora;
+    // confirmado parado: fica marcado (o que continua na pasta — esperando o original, "fica" — não volta a "chegando")
+    if (a.pronto || (agora - a.desde >= estavelMs && idade >= estavelMs)) { a.pronto = true; return 'pronto'; }
+    return 'chegando';
+  }
+
+  // o ritmo pelo Google Drive (23/10/2026): um pedaço da leitura de mais de 60 s ou mais de 10 s por arquivo no lote, o lote
+  // cai (40 → 10 → 5) e os lotes se espaçam (2 e 5 min); três lotes rápidos seguidos, volta um degrau. No ritmo normal, com
+  // o Drive respondendo rápido (menos de 1,5 s por arquivo em três lotes seguidos), o lote sobe para LOTE_RAPIDO
   const RITMOS = [{ lote: null, esperaMs: 0 }, { lote: 10, esperaMs: 2 * 60000 }, { lote: 5, esperaMs: 5 * 60000 }];
-  let nivelRitmo = 0, rapidos = 0, proximoCicloEm = 0;
+  const LOTE_RAPIDO = 100;
+  let nivelRitmo = 0, rapidos = 0, proximoCicloEm = 0, folgados = 0;
   function medirRitmo(varreduraMs, porArquivoMs) {
     const antes = nivelRitmo;
     const lento = varreduraMs > 60000 || (porArquivoMs != null && porArquivoMs > 10000);
@@ -267,23 +339,72 @@ function iniciar(opcoes) {
     if (lento) { nivelRitmo = Math.min(RITMOS.length - 1, nivelRitmo + 1); rapidos = 0; }
     else if (rapido && nivelRitmo) { if (++rapidos >= 3) { nivelRitmo--; rapidos = 0; } }
     else if (!rapido) rapidos = 0;
+    folgados = !nivelRitmo && porArquivoMs != null && porArquivoMs < 1500 ? folgados + 1 : 0;
     const r = RITMOS[nivelRitmo];
-    const texto = nivelRitmo ? 'Google Drive lento: indo devagar (lote de ' + r.lote + ', um ciclo a cada ' + Math.round(r.esperaMs / 60000) + ' min; varredura de ' + Math.round(varreduraMs / 1000) + ' s' + (porArquivoMs != null ? ', ' + Math.round(porArquivoMs / 1000) + ' s por arquivo' : '') + ')' : null;
+    const texto = nivelRitmo ? 'Google Drive lento: indo devagar (lote de ' + r.lote + ', um lote a cada ' + Math.round(r.esperaMs / 60000) + ' min; ' + (varreduraMs > 60000 ? 'a leitura da pasta levou ' + Math.round(varreduraMs / 1000) + ' s' : 'leitura da pasta ok') + (porArquivoMs != null ? ', ' + (porArquivoMs / 1000).toFixed(1).replace('.', ',') + ' s por arquivo' : '') + ')' : null;
     if (nivelRitmo !== antes) o.log(texto || 'Google Drive rápido de novo: ritmo normal');
     if (o.painel) o.painel.fazendo('arquivador-novo-ritmo', texto);
     acomp.ritmo(texto);
     proximoCicloEm = Date.now() + r.esperaMs;
   }
-  const chave = (rel, v) => rel + '|' + v.tam + '|' + Math.round(v.mtime);
+  const loteAgora = (cfg, porPedido) => porPedido ? 400 : nivelRitmo ? Math.min(cfg.lote, RITMOS[nivelRitmo].lote) : folgados >= 3 ? Math.max(cfg.lote, LOTE_RAPIDO) : cfg.lote;
+
   /** zip ainda chegando: o diretório central não está lá. */
-  function zipInteiro(rel) {
+  function zipInteiro(raiz, rel) {
     if (!/\.zip$/i.test(rel)) return true;
-    try { A.abrirZip(fs.readFileSync(path.join(o.origem, rel))); return true; } catch (e) { return false; }
+    try { A.abrirZip(fs.readFileSync(path.join(raiz, rel))); return true; } catch (e) { return false; }
   }
+
+  // ---------------------------------------------------------------------------------------------------------------------
+  // a passada
+  // ---------------------------------------------------------------------------------------------------------------------
+  const mudados = new Set();
+  let ultimaInteiraEm = 0;
+  let vez = [];                  // os pedidos do site (exclusivo) que esperam o fim do lote
+  const feitosEm = [];           // a hora de cada decisão (o ritmo por minuto e a previsão)
+  let leitura = null;            // a passada de agora: { inicio, inteira, porOrigem: { id: { lidos, achados, feitos, total } } }
+  let progressoEm = 0, salvoEm = 0;
+  const mil = n => Math.round(n).toLocaleString('pt-BR');
+  const porMinuto = () => { const agora = Date.now(); while (feitosEm.length && agora - feitosEm[0] > 10 * 60000) feitosEm.shift(); if (feitosEm.length < 2) return 0; return feitosEm.length / Math.max(1, (agora - feitosEm[0]) / 60000); };
+  const duracao = min => min < 1 ? 'menos de 1 min' : min < 60 ? Math.round(min) + ' min' : min < 48 * 60 ? (Math.round(min / 6) / 10).toString().replace('.', ',') + ' h' : Math.round(min / 1440) + ' dias';
+  /** A fila de cada origem: os achados prontos que ainda não foram feitos + a parte ainda não lida (pela proporção desta passada). */
+  function filas() {
+    const out = {};
+    for (const [id, p] of Object.entries((leitura && leitura.porOrigem) || {})) {
+      const total = Math.max(p.total || 0, p.lidos);
+      const proporcao = p.lidos ? p.achados / p.lidos : 1;
+      out[id] = Math.max(0, p.achados - p.feitos) + (leitura.inteira ? Math.max(0, total - p.lidos) * proporcao : 0);
+    }
+    return out;
+  }
+  function textoDoProgresso() {
+    if (!leitura) return null;
+    const ps = Object.values(leitura.porOrigem);
+    const lidos = ps.reduce((s, p) => s + p.lidos, 0), total = ps.reduce((s, p) => s + Math.max(p.total || 0, p.lidos), 0);
+    const f = filas(), g = Math.round(f['G:'] || 0), local = Math.round(Object.entries(f).filter(([k]) => k !== 'G:').reduce((s, [, n]) => s + n, 0));
+    const ritmo = porMinuto();
+    const partes = [(leitura.inteira ? 'Lendo a pasta: ' + mil(lidos) + (total > lidos ? ' de ~' + mil(total) : '') + ' arquivos' : 'Conferindo o que chegou: ' + mil(lidos) + ' arquivo(s)'),
+      mil(g) + ' na fila (G:)' + (ps.length > 1 ? ' + ' + mil(local) + ' na fila (local)' : '')];
+    if (ritmo) partes.push(mil(ritmo) + '/min' + (g + local ? ' · faltam ~' + duracao((g + local) / ritmo) : ''));
+    return partes.join(' · ');
+  }
+  function publicarProgresso(forcar) {
+    if (!forcar && Date.now() - progressoEm < 5000) return;
+    progressoEm = Date.now();
+    const texto = textoDoProgresso();
+    if (o.painel) o.painel.fazendo('arquivador-novo-leitura', texto);
+    acomp.leitura(texto ? { texto, filas: filas(), porMinuto: Math.round(porMinuto()), em: new Date().toISOString() } : null);
+  }
+  const salvarDeVezEmQuando = () => { if (Date.now() - salvoEm >= 30000) { salvoEm = Date.now(); salvar(); } };
+  /** A vez dos pedidos do site entre um lote e outro (a passada pode levar horas). */
+  async function darAVez() {
+    while (vez.length) { const p = vez.shift(); try { p.ok(await p.fn()); } catch (e) { p.erro(e); } }
+  }
+  const dormir = ms => new Promise(r => { const t = setTimeout(r, ms); const tic = setInterval(() => { if (parado || vez.length) { clearTimeout(t); clearInterval(tic); r(); } }, 1000); setTimeout(() => clearInterval(tic), ms + 10); });
 
   /**
    * Um ciclo. opcoes: { porPedido: true } = o botão "Arquivar agora" do nads (o arquivador.js já está "ocupado" com o
-   * pedido: não espera por ele; arquivo parado há 10 s já vale; trabalha até ~10 min). Devolve o resumo
+   * pedido: não espera por ele; arquivo parado há 10 s já vale). Devolve o resumo
    * { decididos, arquivou, arquivaria, jaArquivado, naoIdentificado, fica, erros, restantes, esperando }.
    */
   async function ciclo(op) {
@@ -310,74 +431,199 @@ function iniciar(opcoes) {
     // o Drive lento: os ciclos se espaçam (o botão do nads passa na frente)
     if (!op.porPedido && Date.now() < proximoCicloEm) { resumo.esperando = 'Google Drive lento: o próximo ciclo em ' + Math.ceil((proximoCicloEm - Date.now()) / 1000) + ' s'; return resumo; }
     rodando = true;
-    let varreduraMs = 0, porArquivoMs = null;
+    let comTrava = false;
     try {
-      const t0 = Date.now();
-      const vistos = varrer();
-      varreduraMs = Date.now() - t0;
-      const porRel = new Map(vistos.map(v => [v.rel, v]));
-      // pelo botão: arquivo parado há 10 s (e já visto numa varredura) vale
+      const origens = origensDe(cfg);
+      const inteira = !observador || mudados.has('*') || Date.now() - ultimaInteiraEm >= PASSADA_INTEIRA_MS || !ultimaInteiraEm || op.porPedido || o.umaVez;
+      if (inteira) { mudados.clear(); ultimaInteiraEm = Date.now(); }
+      const totais = estado.totais || {};
+      leitura = { inicio: Date.now(), inteira, porOrigem: Object.fromEntries(origens.map(g => [g.id, { lidos: 0, achados: 0, feitos: 0, total: inteira ? (totais[g.id] || 0) : 0 }])) };
       const estavelMs = op.porPedido ? Math.min(cfg.estavelMs, 10000) : cfg.estavelMs;
-      let estaveisAgora = estaveis(mapa, vistos, Date.now(), estavelMs);
-      if (op.porPedido && !estaveisAgora.length) estaveisAgora = vistos.filter(v => !C_ehTemporario(v.rel) && v.tam && Date.now() - v.mtime >= 10000).map(v => v.rel);
       const modoChave = cfg.emProducao ? 'P' : 'S';   // o que a simulação decidiu volta a ser avaliado em produção
       estado.aguardando = estado.aguardando || {};
       const esperaMs = Math.max(0, +cfg.esperaOriginalHoras || 0) * 36e5;
-      const versaoIdx = cache.chaves ? cache.chaves.versao + ':' + cache.em : '';
-      const esperaDe = rel => estado.aguardando[chave(rel, porRel.get(rel))];
-      const pendentes = estaveisAgora.filter(rel => !estado.decididos[chave(rel, porRel.get(rel)) + '|' + modoChave])
-        // volta quando o índice mudou, a cada 10 min, ou logo que a espera vence (a primeira vez depois de vencer: o SIEG)
-        .filter(rel => { const e = esperaDe(rel); return !e || e.versao !== versaoIdx || Date.now() - e.tentativa >= 10 * 60000 || (Date.now() - e.desde >= esperaMs && e.tentativa - e.desde < esperaMs); })
-        .sort((a, b) => (esperaDe(a) ? 1 : 0) - (esperaDe(b) ? 1 : 0));
-      const aguardandoAgora = estaveisAgora.filter(rel => esperaDe(rel));
-      const limite = op.porPedido ? 400 : Math.min(cfg.lote, RITMOS[nivelRitmo].lote || cfg.lote);
-      // o zip só é aberto (para ver se chegou inteiro) quando vai entrar no lote, não a cada varredura
-      const prontos = pendentes.slice(0, limite * 3).filter(zipInteiro);
-      resumo.restantes = Math.max(0, pendentes.length - prontos.length);
-      acomp.varredura({ vistos, mapa, pendentes, estavelMs, aguardando: aguardandoAgora });
-      if (o.depurar) o.log('varredura: ' + vistos.length + ' arquivo(s), ' + estaveisAgora.length + ' estável(is), ' + prontos.length + ' para decidir');
-      if (!prontos.length) return resumo;
-      if (!pegarTrava()) { o.log('outro processo do arquivador novo está trabalhando'); resumo.esperando = 'outro processo do arquivador novo está trabalhando'; return resumo; }
-      try {
-        await garantirContexto();
-        if (!buscaSieg) buscaSieg = K.criarBuscaSieg({ controle: o.controle, sieg: siegDoRobo(), limiteDia: cfg.siegPorDia, log: m => o.log(m) });
-        const esperaVencida = rel => { const v = porRel.get(rel); const e = v && estado.aguardando[chave(rel, v)]; return !!e && Date.now() - e.desde >= esperaMs; };
-        const inicio = Date.now();
-        const tempo = op.porPedido ? 10 * 60000 : LOTE_MS;
-        let feitos = 0;
-        while (prontos.length && feitos < limite && Date.now() - inicio < tempo) {
-          const lote = prontos.splice(0, Math.min(10, limite - feitos));
-          feitos += lote.length;
-          const tLote = Date.now();
-          acomp.lendo(lote);
-          if (o.painel) o.painel.fazendo('arquivador-novo', (cfg.modo === 'producao' ? 'Arquivando ' : 'Simulando ') + lote.length + ' arquivo(s) da Claudio Secretario');
-          const res = await A.executar({
-            modo: cfg.emProducao ? 'PRODUCAO' : 'SIMULACAO', confirmo: true, origem: o.origem, controle: o.controle, clientes: o.clientes,
-            pastaNaoIdentificados: new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-NOVO', travaAntiga: path.join(o.controleAntigo, '_execucao.lock'),
-            arquivos: lote, cadastro: cache.cadastro, contas: cache.contas, manifesto: cache.manifesto, tiposProducao: cfg.tiposProducao, moverNaoIdentificados: !!cfg.moverNaoIdentificados,
-            chaves: cache.chaves, buscaSieg, esperaVencida, manifestoAntigo: path.join(o.controleAntigo, 'MANIFESTO', 'manifesto.jsonl'),
-            painel: cfg.modo === 'producao' ? { atividade: (t, x, d) => atividade(x, d), erro: (t, x, d) => atividade(x, d, true) } : null,
-            registrar: false, log: () => {},
-          });
-          registrar(res, lote, porRel, cfg, resumo, modoChave, versaoIdx);
-          // o tempo por arquivo (ler, gravar no destino e tirar da origem pelo Drive); lento, para o ciclo aqui
-          porArquivoMs = Math.max(porArquivoMs || 0, (Date.now() - tLote) / Math.max(1, lote.length));
-          if (!op.porPedido && porArquivoMs > 10000) break;
+      const vistosDecididos = new Set();
+      const amostra = { vistos: [], pendentes: [], aguardando: [] };
+      const conta = { naPasta: 0, chegando: 0, naFila: 0, esperandoOriginal: 0, parados: 0 };
+      let completa = true;
+      // os pedaços: as origens se revezam (a carga do G: não segura a entrada local, e vice-versa)
+      const fontes = origens.map(g => ({ org: g, it: inteira ? andarEmFluxo(g.raiz) : (g.principal ? doQueMudou(g) : andarEmFluxo(g.raiz)) }));
+      const prontos = [];   // [{ org, v }]
+      let listagemMs = 0;
+      const tratarPedaco = async (org, rels) => {
+        const t0 = Date.now();
+        const vs = await conferirTamanhos(org.raiz, rels);
+        listagemMs = Math.max(listagemMs, Date.now() - t0);
+        const agora = Date.now();
+        const p = leitura.porOrigem[org.id];
+        for (const v of vs) {
+          if (!v) continue;
+          p.lidos++; conta.naPasta++;
+          avaliar(org, v, situacaoDe(org, v, agora, estavelMs, op.porPedido));
         }
-        resumo.restantes += prontos.length;
-      } finally { soltarTrava(); if (o.painel) o.painel.fazendo('arquivador-novo', null); }
+      };
+      /** Onde o arquivo entra: parado (já decidido), chegando, esperando o original, ou na fila. */
+      function avaliar(org, v, s) {
+        if (s === 'ignorado') return;
+        const k = chaveDe(org, v.rel, v);
+        if (estado.decididos[k + '|' + modoChave]) { vistosDecididos.add(k + '|' + modoChave); conta.parados++; return; }
+        if (s === 'chegando') { conta.chegando++; if (amostra.vistos.length < 300) amostra.vistos.push(v); return; }
+        const e = estado.aguardando[k];
+        // o evento esperando o original volta quando o índice mudou, a cada 10 min, ou logo que a espera vence
+        const versaoIdx = cache.chaves ? cache.chaves.versao + ':' + cache.em : '';
+        if (e && !(e.versao !== versaoIdx || Date.now() - e.tentativa >= 10 * 60000 || (Date.now() - e.desde >= esperaMs && e.tentativa - e.desde < esperaMs))) { conta.esperandoOriginal++; if (amostra.aguardando.length < 100) { amostra.aguardando.push(v.rel); amostra.vistos.push(v); } return; }
+        leitura.porOrigem[org.id].achados++; conta.naFila++;
+        if (amostra.pendentes.length < 200) { amostra.pendentes.push(v.rel); amostra.vistos.push(v); }
+        prontos.push({ org, v });
+      }
+      /** Os que estavam chegando e já podem estar prontos: confere de novo só esses (sem esperar a próxima passada). */
+      async function conferirRecentes() {
+        const agora = Date.now();
+        const vencidos = [...recentes.values()].filter(r => !r.pronto && agora - r.desde >= estavelMs && agora - r.mtime >= estavelMs).slice(0, 500);
+        for (const r of vencidos) {
+          if (!leitura.porOrigem[r.org.id]) continue;
+          let st = null;
+          try { st = await fs.promises.stat(path.join(r.org.raiz, r.rel)); } catch (e) { recentes.delete(r.org.id + '|' + r.rel); continue; }
+          const v = { rel: r.rel, tam: st.size, mtime: st.mtimeMs };
+          const s = situacaoDe(r.org, v, Date.now(), estavelMs, false);
+          if (s !== 'pronto' || prontos.some(x => x.org.id === r.org.id && x.v.rel === v.rel)) continue;
+          if (r.visto >= leitura.inicio) conta.chegando = Math.max(0, conta.chegando - 1);   // já contado como chegando nesta passada
+          avaliar(r.org, v, s);
+        }
+      }
+      // a pasta para o site: uma amostra da lista e os números de tudo; faltam = a fila estimada (abre e fecha a passada)
+      let informadoEm = 0;
+      const informarPasta = (fim) => {
+        if (!fim && Date.now() - informadoEm < 5000 && informadoEm) return;
+        informadoEm = Date.now();
+        const f = filas();
+        const faltam = fim ? prontos.length : Math.max(prontos.length, Math.round(Object.values(f).reduce((s, n) => s + n, 0)));
+        // a amostra só com o que ainda está na fila, chegando ou esperando (o que já foi decidido sai)
+        const naFila = new Set(prontos.map(x => x.v.rel)), esperando = new Set(amostra.aguardando);
+        amostra.pendentes = amostra.pendentes.filter(r => naFila.has(r));
+        amostra.vistos = amostra.vistos.filter(v => naFila.has(v.rel) || esperando.has(v.rel) || (recentes.get('G:|' + v.rel) || {}).pronto === false);
+        acomp.varredura({ vistos: amostra.vistos, mapa: new Map([...recentes.values()].filter(r => r.org.principal && !r.pronto).slice(0, 300).map(r => [r.rel, r])), pendentes: amostra.pendentes, estavelMs, aguardando: amostra.aguardando, contagem: conta, faltam });
+      };
+      /** Esvazia os lotes enquanto houver pelo menos "ate" prontos. Devolve false quando a passada tem de parar. */
+      const drenar = async (ate) => {
+        while (prontos.length && prontos.length >= ate && !parado) {
+          if (!comTrava) { if (!pegarTrava()) { o.log('outro processo do arquivador novo está trabalhando'); resumo.esperando = 'outro processo do arquivador novo está trabalhando'; return false; } comTrava = true; }
+          informarPasta(false);
+          const r2 = await processarLote(prontos.splice(0, loteAgora(cfg, op.porPedido)), cfg, op, resumo, modoChave, esperaMs, listagemMs);
+          listagemMs = 0;
+          tocarTrava();
+          publicarProgresso(true);
+          await darAVez();
+          // a rotina antiga começou no meio: para aqui (o resto vem na próxima passada)
+          const m2 = outraExecucao(op.porPedido);
+          if (m2) { acomp.situacao('esperando', m2); resumo.esperando = m2; return false; }
+          if (!op.porPedido && r2.esperaMs && (prontos.length || fontes.length)) await dormir(r2.esperaMs);
+        }
+        return !parado;
+      };
+      let seguir = true;
+      while (seguir && fontes.length && !parado) {
+        for (let i = 0; seguir && i < fontes.length && !parado; i++) {
+          const f = fontes[i];
+          const r = await f.it.next();
+          if (r.done) { fontes.splice(i--, 1); continue; }
+          await tratarPedaco(f.org, r.value);
+          publicarProgresso();
+          seguir = await drenar(loteAgora(cfg, op.porPedido));
+        }
+        // o que estava chegando e já parou de mudar (sem esperar a próxima passada)
+        if (seguir) await conferirRecentes();
+      }
+      if (seguir) { await conferirRecentes(); seguir = await drenar(1); }
+      if (!seguir) { completa = false; for (const f of fontes) { try { await f.it.return(); } catch (e) { /* já fechou */ } } }
+      if (parado) completa = false;
+      resumo.restantes = prontos.length;
+      // a pasta agora (a lista do site mostra só uma amostra; os números são de tudo)
+      informarPasta(true);
+      if (o.depurar) o.log('leitura ' + (inteira ? 'inteira' : 'do que mudou') + ': ' + JSON.stringify(leitura.porOrigem) + ' · ' + JSON.stringify(conta));
+      // a passada inteira terminou: o total de cada origem (a estimativa da próxima) e os "já decididos" que saíram da pasta
+      if (inteira && completa) {
+        estado.totais = Object.fromEntries(Object.entries(leitura.porOrigem).map(([id, p]) => [id, p.lidos]));
+        // o que estava chegando e não foi visto nesta passada saiu da pasta
+        for (const [k, r] of recentes) if (r.visto < leitura.inicio && origens.some(g => g.id === r.org.id)) recentes.delete(k);
+        const ids = new Set(origens.map(g => g.id));
+        for (const k of Object.keys(estado.decididos)) {
+          if (vistosDecididos.has(k) || estado.decididos[k] >= leitura.inicio) continue;   // visto agora, ou decidido nesta passada
+          const extra = /^local:/.test(k) ? k.slice(0, k.indexOf('|')) : 'G:';
+          if (ids.has(extra)) delete estado.decididos[k];
+        }
+        salvar();
+      }
     } catch (err) { o.log('erro no ciclo:', err.message); atividade('O arquivador novo deu erro', err.message, true); acomp.erro(err.message); resumo.esperando = 'erro: ' + err.message; }
     finally {
+      if (comTrava) soltarTrava();
       rodando = false;
-      try { if (!op.porPedido) medirRitmo(varreduraMs, porArquivoMs); } catch (e) { /* só o ritmo */ }
-      try { conferirNaoIdentificados(); } catch (e) { o.log('não conferi NÃO IDENTIFICADOS:', e.message); }
+      leitura = null;
+      publicarProgresso(true);
+      if (o.painel) o.painel.fazendo('arquivador-novo', null);
+      await darAVez();
+      try { await conferirNaoIdentificados(); } catch (e) { o.log('não conferi NÃO IDENTIFICADOS:', e.message); }
       await compararSeForHora();
     }
     return resumo;
   }
+  /** Entre as passadas inteiras: só o que o fs.watch avisou (o nome relativo à origem; pasta nova = a pasta inteira). */
+  async function* doQueMudou(org) {
+    const nomes = [...mudados]; mudados.clear();
+    let pedaco = [];
+    for (const nome of nomes) {
+      const rel = String(nome).replace(/\//g, '\\');
+      let st = null;
+      try { st = await fs.promises.stat(path.join(org.raiz, rel)); } catch (e) { continue; /* saiu (arquivado, movido, apagado) */ }
+      if (st.isDirectory()) { if (incluir(rel, true)) yield* andarEmFluxo(org.raiz, rel); continue; }
+      if (!incluir(rel, false)) continue;
+      pedaco.push(rel);
+      if (pedaco.length >= PEDACO) { yield pedaco; pedaco = []; }
+    }
+    if (pedaco.length) yield pedaco;
+  }
+  /** Um lote: decide e (em produção) aplica, por origem. Devolve { esperaMs } (o ritmo pelo Drive). */
+  async function processarLote(itens, cfg, op, resumo, modoChave, esperaMs, listagemMs) {
+    await garantirContexto();
+    if (!buscaSieg) buscaSieg = K.criarBuscaSieg({ controle: o.controle, sieg: siegDoRobo(), limiteDia: cfg.siegPorDia, log: m => o.log(m) });
+    const versaoIdx = cache.chaves ? cache.chaves.versao + ':' + cache.em : '';
+    let porArquivoMs = null;
+    const porOrigem = new Map();
+    for (const x of itens) { if (!porOrigem.has(x.org.id)) porOrigem.set(x.org.id, { org: x.org, vs: [] }); porOrigem.get(x.org.id).vs.push(x.v); }
+    for (const { org, vs } of porOrigem.values()) {
+      const lote = vs.filter(v => zipInteiro(org.raiz, v.rel)).map(v => v.rel);
+      if (!lote.length) continue;
+      const porRel = new Map(vs.map(v => [v.rel, v]));
+      const esperaVencida = rel => { const v = porRel.get(rel); const e = v && estado.aguardando[chaveDe(org, rel, v)]; return !!e && Date.now() - e.desde >= esperaMs; };
+      const tLote = Date.now();
+      acomp.lendo(lote);
+      if (o.painel) o.painel.fazendo('arquivador-novo', (cfg.modo === 'producao' ? 'Arquivando ' : 'Simulando ') + lote.length + ' arquivo(s) da ' + (org.principal ? 'Claudio Secretario' : 'entrada local'));
+      const res = await A.executar({
+        modo: cfg.emProducao ? 'PRODUCAO' : 'SIMULACAO', confirmo: true, origem: org.raiz, controle: o.controle, clientes: o.clientes,
+        pastaNaoIdentificados: new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-NOVO', raizNaoIdentificados: o.origem, travaAntiga: path.join(o.controleAntigo, '_execucao.lock'),
+        arquivos: lote, marcas: porRel, cadastro: cache.cadastro, contas: cache.contas, manifesto: cache.manifesto, conteudos: cache.conteudos, tiposProducao: cfg.tiposProducao, moverNaoIdentificados: !!cfg.moverNaoIdentificados,
+        chaves: cache.chaves, buscaSieg, esperaVencida, manifestoAntigo: path.join(o.controleAntigo, 'MANIFESTO', 'manifesto.jsonl'),
+        painel: cfg.modo === 'producao' ? { atividade: (t, x, d) => atividade(x, d), erro: (t, x, d) => atividade(x, d, true) } : null,
+        registrar: false, log: () => {},
+      });
+      registrar(res, lote, porRel, cfg, resumo, modoChave, versaoIdx, org);
+      const ms = Date.now() - tLote;
+      for (let i = 0; i < lote.length; i++) feitosEm.push(Date.now());
+      if (leitura && leitura.porOrigem[org.id]) leitura.porOrigem[org.id].feitos += lote.length;
+      // o tempo por arquivo (ler, decidir, levar ao destino pelo Drive)
+      porArquivoMs = Math.max(porArquivoMs || 0, ms / Math.max(1, lote.length));
+      const t = res.tempos || {};
+      o.log('lote de ' + lote.length + (org.principal ? '' : ' (local)') + ' em ' + (ms / 1000).toFixed(1) + ' s: leitura ' + ((t.leituraMs || 0) / 1000).toFixed(1) + ' s, decisão ' + ((t.decisaoMs || 0) / 1000).toFixed(1) + ' s, destino ' + ((t.gravacaoMs || 0) / 1000).toFixed(1) + ' s · listagem ' + (listagemMs / 1000).toFixed(1) + ' s');
+    }
+    if (o.painel) o.painel.fazendo('arquivador-novo', null);
+    if (op.porPedido) return { esperaMs: 0 };
+    medirRitmo(listagemMs, porArquivoMs);
+    return { esperaMs: RITMOS[nivelRitmo].esperaMs };
+  }
 
   /** Diário, contagem do mês e painel. */
-  function registrar(res, lote, porRel, cfg, resumo, modoChave, versaoIdx) {
+  function registrar(res, lote, porRel, cfg, resumo, modoChave, versaoIdx, org) {
+    org = org || { id: 'G:', principal: true };
     const mes = new Date().toISOString().slice(0, 7);
     const diario = path.join(pasta, 'decisoes-' + mes + '.jsonl');
     const m = estado.mes[mes] || (estado.mes[mes] = { arquivou: 0, arquivaria: 0, jaArquivado: 0, naoIdentificado: 0, pastasNovas: 0 });
@@ -400,6 +646,9 @@ function iniciar(opcoes) {
     // em produção, o que deu erro (o Google Drive às vezes falha um rename/leitura no G:) volta no próximo ciclo, até 3 vezes;
     // o destino nunca é sobrescrito, então tentar de novo é seguro (o que já foi gravado vira "já arquivado")
     const comErro = new Set(res.modo === 'PRODUCAO' ? A.planos(res).filter(x => x.erro).map(x => x.dentroDe || x.rel) : []);
+    // o erro de leitura temporário (o arquivo ainda subindo de outro PC, preso por outro programa; 23/10/2026): tenta de novo,
+    // até 5 vezes, em qualquer modo
+    const temporarios = new Set(res.itens.filter(x => x.temporario).map(x => x.rel));
     estado.tentativas = estado.tentativas || {};
     // o evento que espera o documento original: não fica decidido; anota desde quando espera (a espera vence em
     // esperaOriginalHoras) e com que versão do índice tentou (volta quando o índice muda, ou em 10 min)
@@ -407,10 +656,11 @@ function iniciar(opcoes) {
     estado.aguardando = estado.aguardando || {};
     for (const rel of lote) {
       const v = porRel.get(rel); if (!v) continue;
-      const ka = chave(rel, v);
+      const ka = chaveDe(org, rel, v);
       if (esperam.has(rel)) { estado.aguardando[ka] = { desde: (estado.aguardando[ka] && estado.aguardando[ka].desde) || Date.now(), tentativa: Date.now(), versao: versaoIdx }; continue; }
       delete estado.aguardando[ka];
-      const k = chave(rel, v) + '|' + modoChave;
+      const k = ka + '|' + modoChave;
+      if (temporarios.has(rel) && (estado.tentativas[k] = (estado.tentativas[k] || 0) + 1) < 5) continue;
       if (comErro.has(rel) && (estado.tentativas[k] = (estado.tentativas[k] || 0) + 1) < 3) continue;
       delete estado.tentativas[k];
       estado.decididos[k] = Date.now();
@@ -423,7 +673,7 @@ function iniciar(opcoes) {
     const limite = Date.now() - 40 * 864e5;
     for (const [k, t] of Object.entries(estado.decididos)) if (t < limite) delete estado.decididos[k];
     for (const [k, e] of Object.entries(estado.aguardando || {})) if (e.tentativa < limite) delete estado.aguardando[k];
-    salvar();
+    salvarDeVezEmQuando();
   }
 
   /** Uma vez por dia, depois da rotina das 9h: o lado a lado (publicado no painel e gravado no controle). */
@@ -432,16 +682,17 @@ function iniciar(opcoes) {
    * só dos que ainda estão lá. Vai para a lista "Para resolver" do acompanhamento (a cada 10 min e no começo).
    */
   let conferidoNiEm = 0;
-  function conferirNaoIdentificados(forcar) {
+  // 23/10/2026: assíncrona (com 1.600 não identificados, um stat por arquivo no G: segurava o robô um minuto)
+  async function conferirNaoIdentificados(forcar) {
     if (!forcar && Date.now() - conferidoNiEm < 10 * 60000) return;
     conferidoNiEm = Date.now();
     const pastaNi = path.join(o.origem, 'NÃO IDENTIFICADOS');
     let subs = [];
-    try { subs = fs.readdirSync(pastaNi, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name); } catch (e) { return; }
+    try { subs = (await fs.promises.readdir(pastaNi, { withFileTypes: true })).filter(d => d.isDirectory()).map(d => d.name); } catch (e) { return; }
     const ultimos = new Map();
     for (const sub of subs) {
       let texto = '';
-      try { texto = fs.readFileSync(path.join(pastaNi, sub, '_nao_identificados.jsonl'), 'utf8'); } catch (e) { continue; }
+      try { texto = await fs.promises.readFile(path.join(pastaNi, sub, '_nao_identificados.jsonl'), 'utf8'); } catch (e) { continue; }
       for (const l of texto.split(/\r?\n/)) {
         let j; try { j = JSON.parse(l); } catch (e) { continue; }
         if (!j || !j.arquivo) continue;
@@ -452,18 +703,21 @@ function iniciar(opcoes) {
     // a varredura real (23/10/2026: "todo arquivo que está de fato em NÃO IDENTIFICADOS tem de aparecer"): o que está na
     // pasta sem linha no índice entra com o motivo SEM_MOTIVO_REGISTRADO
     const naPasta = [];
-    (function andar(d, rel) {
-      let l = []; try { l = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; }
-      for (const e of l) { const r = rel ? rel + '\\' + e.name : e.name; if (e.isDirectory()) andar(path.join(d, e.name), r); else if (!/^_/.test(e.name)) naPasta.push(r); }
+    await (async function andar(d, rel) {
+      let l = []; try { l = await fs.promises.readdir(d, { withFileTypes: true }); } catch (e) { return; }
+      for (const e of l) { const r = rel ? rel + '\\' + e.name : e.name; if (e.isDirectory()) await andar(path.join(d, e.name), r); else if (!/^_/.test(e.name)) naPasta.push(r); }
     })(pastaNi, '');
-    for (const k of naPasta) {
-      if (ultimos.has(k)) continue;
+    const presentes = new Set(naPasta.map(k => k.toLowerCase()));
+    const semMotivo = naPasta.filter(k => !ultimos.has(k));
+    for (const k of semMotivo) {
       const partes = k.split('\\');
-      ultimos.set(k, { sub: partes[0], dir: partes.slice(1, -1).join('\\'), arquivo: partes[partes.length - 1], motivo: 'SEM_MOTIVO_REGISTRADO', confianca: 0, timestamp: (() => { try { return fs.statSync(path.join(pastaNi, k)).mtime.toISOString(); } catch (e) { return new Date().toISOString(); } })() });
+      let em = new Date().toISOString();
+      if (semMotivo.length <= 200) { try { em = (await fs.promises.stat(path.join(pastaNi, k))).mtime.toISOString(); } catch (e) { /* fica a hora de agora */ } }
+      ultimos.set(k, { sub: partes[0], dir: partes.slice(1, -1).join('\\'), arquivo: partes[partes.length - 1], motivo: 'SEM_MOTIVO_REGISTRADO', confianca: 0, timestamp: em });
     }
     const itens = [];
     for (const [k, j] of ultimos) {
-      if (!fs.existsSync(path.join(pastaNi, k))) continue;
+      if (!presentes.has(k.toLowerCase())) continue;
       itens.push({ rel: (j.dir ? j.dir + '\\' : '') + j.arquivo, nome: j.arquivo, motivo: j.motivo, confianca: j.confianca, cliente: j.cliente_tentativa, chave: j.chave || null, em: j.timestamp, hash: require('crypto').createHash('sha1').update(k).digest('hex'), naPasta: 'NÃO IDENTIFICADOS\\' + k });
     }
     // a MESMA contagem em todo lugar que diz "para resolver" (23/10/2026): o painel do robô (robo/painelPC.paraResolver),
@@ -499,19 +753,20 @@ function iniciar(opcoes) {
 
   // fs.watch recursivo acorda o ciclo (com folga para o arquivo terminar de chegar); a varredura de minuto faz o resto.
   // Sem a pasta (Drive desconectado) ou se o watch cair, tenta de novo no máximo a cada 10 min.
+  const realDe = p => { try { return fs.realpathSync.native(p); } catch (e) { return p; } };
   function vigiar() {
     if (observador || parado || Date.now() - tentouVigiarEm < 10 * 60000) return;
     tentouVigiarEm = Date.now();
     try {
-      observador = fs.watch(o.origem, { recursive: true }, (ev, nome) => { mudados.add(nome ? String(nome) : '*'); if (mudados.size > 20000) mudados.add('*'); clearTimeout(acordar); acordar = setTimeout(() => { void ciclo(); }, 5000); });
-      observador.on('error', e => { o.log('fs.watch caiu (segue a varredura de minuto):', e.message); try { observador.close(); } catch (x) { /* já fechou */ } observador = null; lista = null; });
+      observador = fs.watch(realDe(o.origem), { recursive: true }, (ev, nome) => { mudados.add(nome ? String(nome) : '*'); if (mudados.size > 20000) mudados.add('*'); clearTimeout(acordar); acordar = setTimeout(() => { void ciclo(); }, 5000); });
+      observador.on('error', e => { o.log('fs.watch caiu (segue a varredura de minuto):', e.message); try { observador.close(); } catch (x) { /* já fechou */ } observador = null; mudados.add('*'); });
     } catch (e) { observador = null; o.log('fs.watch não ligou (segue a varredura de minuto):', e.message); }
   }
   vigiar();
   // os pedidos do site do admin (Para resolver: abrir o arquivo, a prévia, arquivar em…, descartar; 23/10/2026)
   let pedidos = null;
   if (o.db && !o.umaVez) {
-    try { pedidos = require('./arquivador-pedidos').criar({ db: o.db, origem: o.origem, clientes: o.clientes, log: o.log, exclusivo, executar: executarDecisao, aposMudar: () => conferirNaoIdentificados(true) }); }
+    try { pedidos = require('./arquivador-pedidos').criar({ db: o.db, origem: o.origem, clientes: o.clientes, log: o.log, exclusivo, executar: executarDecisao, aposMudar: () => { void conferirNaoIdentificados(true).catch(e => o.log('não conferi NÃO IDENTIFICADOS:', e.message)); } }); }
     catch (e) { o.log('pedidos do site não ligaram:', e.message); }
     void garantirContexto().catch(e => o.log('contexto:', e.message));
   }
@@ -521,7 +776,9 @@ function iniciar(opcoes) {
   return {
     ciclo, comparar, config: () => lerConfig(CONFIG, configBanco),
     // para os testes: o ritmo e a varredura
-    _medirRitmo: (v, a) => medirRitmo(v, a), _ritmo: () => ({ nivel: nivelRitmo, proximoCicloEm }), _varrer: () => varrer(),
+    _medirRitmo: (v, a) => medirRitmo(v, a), _ritmo: () => ({ nivel: nivelRitmo, proximoCicloEm, folgados }),
+    _listar: async (raiz) => { const out = []; for await (const p of andarEmFluxo(raiz || o.origem)) out.push(...p); return out; },
+    _mudados: () => mudados, _decididos: () => estado.decididos, _recentes: () => recentes,
     parar: () => { parado = true; if (pedidos) pedidos.parar(); if (timer) clearInterval(timer); clearTimeout(acordar); if (observador) observador.close(); soltarTrava(); void acomp.parar(); },
   };
 }

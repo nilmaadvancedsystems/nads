@@ -248,7 +248,7 @@ igual('pasta nova quando o Drive já tem a mesma empresa com outro código: não
     igual('produção: o original saiu da origem (quarentena própria)', fs.existsSync(path.join(origem, '2026-09', 'X', 'nfse-nilma.xml')), false);
     igual('produção: não identificado fica na origem enquanto a rotina antiga roda', fs.existsSync(path.join(origem, 'foto.jpg')), true);
     const man = fs.readFileSync(path.join(controle, 'MANIFESTO', 'manifesto.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
-    igual('produção: duas linhas no manifesto, a da pasta nova marcada', man.map(m => [m.cliente, m.pasta_cliente_criada]), [[284, false], [152, true]]);
+    igual('produção: duas linhas no manifesto, a da pasta nova marcada', man.map(m => [m.cliente, m.pasta_cliente_criada]).sort((a, b) => a[0] - b[0]), [[152, true], [284, false]]);   // a cópia vai antes (o original só sai depois dela)
     igual('produção: painel com a pasta criada e os dois arquivamentos', atividades.filter(a => /^Criou|^Arquivou/.test(a)).length, 3);
     igual('produção: nenhum erro', r.itens.filter(i => i.erro).map(i => i.erro), []);
     // rodar de novo com o mesmo arquivo: nunca sobrescreve, já está lá

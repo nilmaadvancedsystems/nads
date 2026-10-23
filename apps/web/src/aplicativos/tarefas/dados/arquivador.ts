@@ -106,6 +106,8 @@ export interface ResumoDoArquivadorNovo {
   situacao: string; esperando: string;
   /** o Google Drive lento: o robô reduziu o lote e espaçou os ciclos (o texto do ritmo), ou vazio no ritmo normal */
   lento: string;
+  /** a leitura da pasta agora: "Lendo a pasta: 37.000 de ~100.000 arquivos · 1.234 na fila (G:) · 300/min · faltam ~4 h", ou vazio */
+  progresso: string;
   pasta: { naPasta: number; chegando: number; naFila: number; sendoLidos: number } | null;
   hoje: { dia: string; arquivados: number; aMao: number; clientes: number; jaArquivado: number; descartados: number; erros: number };
   paraResolver: number;
@@ -120,7 +122,7 @@ export function lerResumoDoArquivadorNovo(d: Record<string, unknown> | null | un
   if (!d || !d.em) return null;
   const p = d.pasta ? obj(d.pasta) : null, h = obj(d.hoje), u = d.ultimo ? obj(d.ultimo) : null;
   return {
-    em: txt(d.em), modo: txt(d.modo), emProducao: d.emProducao === true, situacao: txt(d.situacao) || 'ok', esperando: txt(d.esperando), lento: txt(d.lento),
+    em: txt(d.em), modo: txt(d.modo), emProducao: d.emProducao === true, situacao: txt(d.situacao) || 'ok', esperando: txt(d.esperando), lento: txt(d.lento), progresso: txt(d.progresso),
     pasta: p ? { naPasta: num(p.naPasta), chegando: num(p.chegando), naFila: num(p.naFila), sendoLidos: num(p.sendoLidos) } : null,
     hoje: { dia: txt(h.dia), arquivados: num(h.arquivados), aMao: num(h.aMao), clientes: num(h.clientes), jaArquivado: num(h.jaArquivado), descartados: num(h.descartados), erros: num(h.erros) },
     paraResolver: num(d.paraResolver),
@@ -168,7 +170,7 @@ export function criarArquivadorMemoria(quem: () => { nome: string } | null): Rep
     exemplos: true,
     estado: () => ({ carregado: true, semPermissao: false, em: agora(), situacao: pedidos.some(p => p.status === 'processando') ? 'rodando' : 'livre', desligadoEm: '', rotina, paraResolver: { agora: 0, em: agora() },
       novo: {
-        em: new Date(Date.now() - 40 * 1000).toISOString(), modo: 'producao', emProducao: true, situacao: 'ok', esperando: '', lento: '',
+        em: new Date(Date.now() - 40 * 1000).toISOString(), modo: 'producao', emProducao: true, situacao: 'ok', esperando: '', lento: '', progresso: '',
         pasta: { naPasta: 3, chegando: 1, naFila: 0, sendoLidos: 0 },
         hoje: { dia: agora().slice(0, 10), arquivados: 59, aMao: 1, clientes: 14, jaArquivado: 12, descartados: 0, erros: 0 }, paraResolver: 0,
         ultimo: { em: new Date(Date.now() - 6 * 60000).toISOString(), tipo: 'XML NF-e', cliente: '380', clienteNome: 'LEONARDO EXEMPLO ME', nomeFinal: '10-2026_NF-e_7261.xml' },

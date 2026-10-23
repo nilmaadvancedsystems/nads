@@ -24,6 +24,9 @@
 //
 // Uso: node arquivador.js     (fica rodando; o iniciar-arquivador.cmd liga no boot)
 require('./fuso.js');
+// as leituras do G: em paralelo (o arquivador novo confere 16 arquivos de cada vez; o padrão do Node são 4 de uma vez para
+// tudo, disco e DNS juntos). Precisa vir antes de qualquer operação assíncrona de disco (23/10/2026)
+if (!process.env.UV_THREADPOOL_SIZE) process.env.UV_THREADPOOL_SIZE = '24';
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -73,7 +76,11 @@ let estado = { situacao: 'livre', pedidoId: null, desde: agora(), mensagem: null
 // código 4 e o arquivador-laco.cmd religa em 30 s, com um cliente novo do Firestore
 const BANCO_MUDO_MS = 5 * 60 * 1000;
 let bancoRespondeuEm = Date.now();
+let vigiadoEm = Date.now();
 function vigiarOBanco() {
+  // o laço do Node esteve parado (código síncrono longo): o ponto nem teve a chance de sair; recomeça a contar (23/10/2026)
+  if (Date.now() - vigiadoEm > 2 * 60 * 1000) bancoRespondeuEm = Date.now();
+  vigiadoEm = Date.now();
   const mudo = Date.now() - bancoRespondeuEm;
   if (mudo < BANCO_MUDO_MS) return;
   log('o banco (Firestore) não responde há ' + Math.round(mudo / 60000) + ' min: saio para o laço religar com uma conexão nova');

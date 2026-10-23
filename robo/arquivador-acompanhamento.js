@@ -219,7 +219,7 @@ function resumoParaODrive(st, em, maquina) {
   return {
     em, maquina,
     modo: st.config ? st.config.modo : null, emProducao: !!(st.config && st.config.emProducao),
-    situacao: st.situacao || 'ok', esperando: st.esperando || null, lento: st.lento || null,
+    situacao: st.situacao || 'ok', esperando: st.esperando || null, lento: st.lento || null, progresso: (st.leitura && st.leitura.texto) || null,
     pasta: st.pasta ? { naPasta: st.pasta.naPasta || 0, chegando: st.pasta.chegando || 0, naFila: st.pasta.naFila || 0, sendoLidos: st.pasta.sendoLidos || 0 } : null,
     hoje: { dia: h.chave, arquivados: h.porAcao.arquivou || 0, aMao: h.aMao || 0, clientes: Object.keys(h.porCliente || {}).length, jaArquivado: h.porAcao.jaArquivado || 0, descartados: h.porAcao.descartado || 0, erros: h.porAcao.erro || 0 },
     paraResolver: st.pendentesTotal == null ? (st.pendentes || []).length : st.pendentesTotal,
@@ -269,8 +269,11 @@ function situacaoDaPasta(v, agora) {
   }
   const ordem = { lendo: 0, chegando: 1, fila: 2, original: 3 };
   lista.sort((a, b) => ordem[a.situacao] - ordem[b.situacao] || a.desde.localeCompare(b.desde));
+  // a leitura em fluxo (23/10/2026) manda só uma amostra da lista e os números de tudo em v.contagem
+  const c = v.contagem || null;
   return {
-    naPasta: vistos.length, chegando, naFila, sendoLidos, parados, esperandoOriginal,
+    naPasta: c ? c.naPasta : vistos.length, chegando: c ? c.chegando : chegando, naFila: c ? c.naFila : naFila, sendoLidos,
+    parados: c ? c.parados : parados, esperandoOriginal: c ? c.esperandoOriginal : esperandoOriginal,
     lista: lista.slice(0, MAX_CHEGANDO).map(x => ({ nome: corta(path.win32.basename(x.rel), 140), rel: corta(x.rel, 260), tam: x.tam, desde: x.desde, situacao: x.situacao })),
   };
 }
@@ -304,6 +307,7 @@ function alertas(estado, agora) {
   const out = [];
   if (estado.situacao === 'sem-drive') out.push({ tipo: 'drive', tom: 'erro', titulo: 'O Google Drive (G:) está fora do ar', texto: 'O robô parou de ler a pasta Claudio Secretario e espera o Drive voltar.', oQueFazer: 'Abra o Google Drive no PC do robô e confira se o G: aparece.' });
   if (estado.situacao === 'esperando' && estado.esperando) out.push({ tipo: 'esperando', tom: 'aviso', titulo: 'Esperando para continuar', texto: estado.esperando.charAt(0).toUpperCase() + estado.esperando.slice(1) + '.', oQueFazer: 'Nada: ele continua sozinho quando a outra execução terminar.' });
+  if (estado.leitura && estado.leitura.texto) out.push({ tipo: 'leitura', tom: 'info', titulo: estado.leitura.texto.split(' · ')[0], texto: estado.leitura.texto.split(' · ').slice(1).join(' · ') || 'Lendo a pasta Claudio Secretario.', oQueFazer: null });
   if (estado.lento) out.push({ tipo: 'drive-lento', tom: 'aviso', titulo: 'Google Drive lento: indo devagar', texto: estado.lento, oQueFazer: 'Nada: o robô volta ao ritmo normal sozinho quando o Drive responder rápido. Se demorar muito, reinicie o Google Drive no PC do robô.' });
   if (estado.erroDoCiclo && agora - Date.parse(estado.erroDoCiclo.em) < 30 * 60000) out.push({ tipo: 'ciclo', tom: 'erro', titulo: 'A última volta do arquivador deu erro', texto: estado.erroDoCiclo.texto, oQueFazer: classificarErro(estado.erroDoCiclo.texto).oQueFazer });
   const lentos = (estado.ultimos || []).filter(x => x.ocr && x.ocr.segundos != null && x.ocr.segundos >= 60 && agora - Date.parse(x.em) < 3600e3).length;
@@ -326,6 +330,7 @@ function criar(opcoes) {
   const arqDia = dia => path.join(o.controle, 'arquivados-' + dia + '.jsonl');
   let st = (() => { try { return JSON.parse(fs.readFileSync(arqEstado, 'utf8')); } catch (e) { return null; } })() || {};
   st = Object.assign({ ultimos: [], pendentes: [], erros: [], marcas: [], passada: null, situacao: 'ok', esperando: null, erroDoCiclo: null, pasta: null, config: null, ladoALado: null, hoje: null, mes: null }, st);
+  st.leitura = null;   // a leitura de antes de desligar não vale mais
   const agora0 = o.agora();
   if (!st.hoje || st.hoje.chave !== hojeLocal(agora0)) st.hoje = contagemVazia(hojeLocal(agora0));
   if (!st.mes || st.mes.chave !== hojeLocal(agora0).slice(0, 7)) st.mes = contagemVazia(hojeLocal(agora0).slice(0, 7));
@@ -498,7 +503,7 @@ function criar(opcoes) {
       virarDia(t);
       const antes = assinatura();
       st.pasta = situacaoDaPasta(Object.assign({ lendo: st.lendoAgora || [] }, v), t);
-      st.passada = avancarPassada(st.passada, (v.pendentes || []).length, t);
+      st.passada = avancarPassada(st.passada, v.faltam != null ? v.faltam : (v.pendentes || []).length, t);
       // a varredura roda a cada minuto: só grava quando a pasta mudou, ou a cada BATIMENTO_MS (o sinal de vida da página)
       if (assinatura() !== antes || t - ultimaGravacao >= BATIMENTO_MS) publicar();
     }),
@@ -559,6 +564,8 @@ function criar(opcoes) {
      */
     /** o Drive lento (23/10/2026): o texto do ritmo reduzido, ou null no ritmo normal */
     ritmo: seguro('ritmo', (texto) => { const t = texto || null; if (st.lento !== t) { st.lento = t; publicar(); } }),
+    /** a leitura da pasta agora (23/10/2026): { texto: "Lendo a pasta: 37.000 de ~100.000 arquivos · …", filas, porMinuto } ou null */
+    leitura: seguro('leitura', (l) => { const antes = st.leitura && st.leitura.texto; st.leitura = l || null; if ((l && l.texto) !== antes) publicar(); }),
     naoIdentificados: seguro('naoIdentificados', (itens, existe, aoContar) => {
       const daPasta = (itens || []).map(x => Object.assign(itemCompacto(Object.assign({ acao: 'NAO_IDENTIFICADO' }, x), 'PRODUCAO', x.em || new Date(o.agora()).toISOString(), false), { naPasta: x.naPasta || null }));
       const ficam = st.pendentes.filter(p => p.acao === 'fica' && (!existe || existe(p.rel)));
