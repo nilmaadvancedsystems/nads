@@ -2,6 +2,7 @@
 // importar os XMLs que os clientes mandam"): soltar os .xml ou o .zip, ler no navegador, mandar ao robô e acompanhar.
 // O robô fica com os XMLs do cliente (os de outra empresa ficam de fora), junta com os do Drive, lança as notas no nads
 // (as tabelas de verificação e a sequência das saídas) e salva no Drive só os novos.
+import { tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { lerXmlsDosArquivos } from '../../dados/arquivosXml';
@@ -23,6 +24,17 @@ export function useXmlsDoCliente(codigo: string, competencia: string) {
   const p = enviado ? pedido : null;
   const atual = !p ? 0 : p.status === 'pendente' ? 1 : p.status === 'processando' ? (p.fase ? PELA_FASE[p.fase] : 2) : p.status === 'concluido' ? 5 : 0;
   const pronto = atual === 5;
+  // o que entrou, por tipo (23/10/2026: a A7 puxou 28 XMLs do Drive e "não integra": eram 1 NFS-e emitida e 17 recebidas,
+  // nenhuma NF-e de saída; a tela dizia só "Concluído")
+  const notas = pronto && codigo ? repo.notas(codigo, competencia).dados : null;
+  const valem = (l: t.sieg.NotaDoSieg[]) => l.filter(n => !n.cancelada);
+  const doMes = notas ? {
+    saidas: valem(notas.emitidas).filter(n => n.tipo === 'NF-e' || n.tipo === 'NFC-e').length,
+    servicos: valem(notas.emitidas).filter(n => n.tipo === 'NFS-e').length,
+    recebidas: valem(notas.recebidas).length,
+  } : null;
+  const mes = competencia.slice(5) + '/' + competencia.slice(0, 4);
+  const plural = (n: number, um: string, varios: string) => n + ' ' + (n === 1 ? um : varios);
   return {
     exemplos: repo.exemplos,
     lendo,
@@ -68,7 +80,15 @@ export function useXmlsDoCliente(codigo: string, competencia: string) {
       detalhe: p.status === 'processando' ? p.andamento : '',
       passos: PASSOS.map((texto, i) => ({ texto, feito: i < atual || pronto, atual: i === atual && !pronto })),
       numeros: p.numeros ? { doCliente: p.numeros.doCliente || 0, deOutros: p.numeros.deOutros || 0, novos: p.numeros.novos, xmls: p.numeros.xmls } : null,
-      resultado: pronto && p.resultado ? p.resultado.emitidas + ' notas emitidas e ' + p.resultado.recebidas + ' recebidas no mês · na pasta ' + p.resultado.pasta : '',
+      resultado: !pronto ? '' : doMes
+        ? 'No mês: ' + plural(doMes.saidas, 'NF-e/NFC-e de saída', 'NF-e/NFC-e de saída') + ', ' + plural(doMes.servicos, 'NFS-e emitida', 'NFS-e emitidas') + ' e ' + plural(doMes.recebidas, 'nota recebida', 'notas recebidas') + (p.resultado ? ' · na pasta ' + p.resultado.pasta : '')
+        : p.resultado ? p.resultado.emitidas + ' notas emitidas e ' + p.resultado.recebidas + ' recebidas no mês · na pasta ' + p.resultado.pasta : '',
+      /** nenhuma NF-e/NFC-e de saída nos XMLs: a sequência das saídas fica vazia (o aviso diz por quê e o que fazer) */
+      semSaidas: doMes && !doMes.saidas ? {
+        titulo: 'Nenhuma NF-e ou NFC-e de saída do cliente em ' + mes,
+        texto: 'Os XMLs eram ' + [doMes.servicos ? plural(doMes.servicos, 'NFS-e emitida', 'NFS-e emitidas') : '', doMes.recebidas ? plural(doMes.recebidas, 'nota recebida', 'notas recebidas') : ''].filter(Boolean).join(' e ') +
+          '. Se o cliente vendeu com NF-e ou NFC-e, esses XMLs não estão no Drive: solte-os acima ou baixe do SIEG.',
+      } : null,
     } : null,
   };
 }
