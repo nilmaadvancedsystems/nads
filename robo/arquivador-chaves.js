@@ -73,6 +73,10 @@ function lerDestino(arquivo, raiz) {
 }
 
 const PESO = { doc: 3, evento: 2, outro: 1 };
+// as subpastas repetem muito (FISCAL\SIMPLES NACIONAL\12. XML\NF-e…): um array só para cada uma (23/10/2026, a carga de
+// 320 mil arquivos)
+const SUBS = new Map();
+const subUnica = sub => { if (!sub || !sub.length) return null; const k = sub.join('\\'); let s = SUBS.get(k); if (!s) { s = Object.freeze(sub.slice()); SUBS.set(k, s); } return s; };
 
 /** O índice em memória. anotar() grava na hora em chaves.jsonl (quando persistir). */
 class Indice {
@@ -82,6 +86,7 @@ class Indice {
   juntar(ch, cliente, sub, de, fonte) {
     ch = chaveDoIndice(ch);
     if (!valeNoIndice(ch) || cliente == null || !Number.isFinite(+cliente)) return false;
+    sub = subUnica(sub);
     let lista = this.mapa.get(ch);
     if (!lista) this.mapa.set(ch, lista = []);
     const atual = lista.find(x => x.cliente === +cliente);
@@ -115,17 +120,8 @@ class Indice {
   }
 }
 
-function linhasJson(arquivo, f) {
-  let texto = '';
-  try { texto = fs.readFileSync(arquivo, 'utf8'); } catch (e) { return 0; }
-  let n = 0;
-  for (const l of texto.split(/\r?\n/)) {
-    if (!l.trim()) continue;
-    let r; try { r = JSON.parse(l); } catch (e) { try { r = JSON.parse(l.replace(/\\/g, '/')); } catch (e2) { continue; } }
-    n++; f(r);
-  }
-  return n;
-}
+// em pedaços (o diário do contínuo passa de 100 MB com a carga do SIEG; 23/10/2026)
+const linhasJson = (arquivo, f) => require('./arquivador-conteudos').cadaLinha(arquivo, f);
 
 /**
  * Monta o índice com o que já está no PC (nada do G: é aberto).

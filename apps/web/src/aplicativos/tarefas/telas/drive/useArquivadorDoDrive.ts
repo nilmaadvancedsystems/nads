@@ -125,6 +125,7 @@ export function useArquivadorDoDrive() {
       : n.situacao === 'sem-drive' ? { texto: 'Esperando o Google Drive', tom: 'aviso' as const, icone: 'clock' as const }
         : n.situacao === 'esperando' ? { texto: 'Esperando: ' + (n.esperando || 'outra execução terminar'), tom: 'aviso' as const, icone: 'clock' as const }
           : n.lento ? { texto: 'Google Drive lento: indo devagar', tom: 'aviso' as const, icone: 'clock' as const }
+          : n.progresso ? { texto: n.progresso.split(' · ')[0], tom: 'ok' as const, icone: 'girar' as const }
           : lendo ? { texto: 'Arquivando ' + lendo.toLocaleString('pt-BR') + (lendo === 1 ? ' arquivo' : ' arquivos'), tom: 'ok' as const, icone: 'girar' as const }
             : fila ? { texto: fila.toLocaleString('pt-BR') + (fila === 1 ? ' arquivo na fila' : ' arquivos na fila'), tom: 'ok' as const, icone: 'girar' as const }
               : { texto: 'Vigiando a pasta', tom: 'ok' as const, icone: 'checkCircle' as const };
@@ -132,7 +133,8 @@ export function useArquivadorDoDrive() {
     return {
       modo: n.emProducao ? 'Produção' : n.modo === 'desligado' ? 'Desligado' : 'Simulação',
       agora: estadoAgora,
-      nota: n.emProducao ? 'Arquiva assim que o arquivo chega na pasta Claudio Secretario.' : n.modo === 'desligado' ? 'O arquivador novo não está olhando a pasta.' : 'Em simulação: só registra o que faria.',
+      // a leitura de agora: a fila, o ritmo e a previsão (23/10/2026)
+      nota: vivo && n.progresso && n.progresso.includes(' · ') ? n.progresso.split(' · ').slice(1).join(' · ') : n.emProducao ? 'Arquiva assim que o arquivo chega na pasta Claudio Secretario.' : n.modo === 'desligado' ? 'O arquivador novo não está olhando a pasta.' : 'Em simulação: só registra o que faria.',
       sinal: 'Último sinal ' + ha(n.em),
       numeros: [
         { valor: n.hoje.arquivados, rotulo: n.hoje.arquivados === 1 ? 'arquivado hoje' : 'arquivados hoje', aviso: false },

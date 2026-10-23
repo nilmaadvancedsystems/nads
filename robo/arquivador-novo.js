@@ -3,7 +3,10 @@
 // As regras moram em arquivador-regras.js (puro, testado). Aqui fica o que mexe em disco: varrer a origem, ler cada
 // arquivo (texto do PDF, XML, OFX, TXT, planilha; abre .zip/.rar/.7z), pedir a decisão às regras, conferir o destino
 // (nunca sobrescreve: mesmo conteúdo = já arquivado; mesmo nome com conteúdo diferente = sufixo " (N)", Dicionário §2) e,
-// só em PRODUCAO, copiar, conferir o hash, registrar e tirar o original da origem para a quarentena.
+// só em PRODUCAO, levar ao destino e registrar. Dentro do mesmo disco (o G: do Google Drive em streaming) o original é
+// MOVIDO (rename: no Drive vira troca de pasta no servidor, sem baixar nem subir de novo; 23/10/2026); só a cópia para outro
+// cliente (a NFS-e da Nilma no tomador, a regra das duas clientes), o de dentro de um .zip e a origem em outro disco
+// (a entrada local) gravam o conteúdo, conferem o hash e mandam o original para a quarentena.
 //
 // Modos:
 //   SIMULACAO (padrão)  só lê. Grava o relatório e o plano na pasta de controle deste arquivador (fora do Drive e fora
@@ -319,11 +322,21 @@ function conteudoXml(buf) {
 }
 function conteudoDe(p, ctx) {
   const k = 'xml:' + p;
-  if (!ctx.hashes.has(k)) { let h = ''; try { if (/\.xml$/i.test(p) && fs.statSync(p).isFile()) h = conteudoXml(fs.readFileSync(p)); } catch (e) {} ctx.hashes.set(k, h); }
+  if (!ctx.hashes.has(k)) {
+    let h = '', buf = null;
+    try { if (/\.xml$/i.test(p) && fs.statSync(p).isFile()) { buf = fs.readFileSync(p); h = conteudoXml(buf); } } catch (e) {}
+    ctx.hashes.set(k, h);
+    // abriu o destino uma vez: o índice guarda o conteúdo dele (não abre de novo)
+    if (buf && ctx.conteudos) { if (!ctx.hashes.has(p)) ctx.hashes.set(p, sha(buf)); ctx.conteudos.anotar([ctx.hashes.get(p), h], p); }
+  }
   return ctx.hashes.get(k);
 }
 function conferirDestino(d, hash, ctx, soNaPasta, hashXml) {
   const pasta = path.join(ctx.clientes, d.destinoRelativo);
+  // o índice de conteúdo (arquivador-conteudos.js; 23/10/2026): o mesmo conteúdo já arquivado NESTA pasta, sem abrir o destino
+  if (ctx.conteudos) for (const onde of ctx.conteudos.achar(hash, hashXml)) {
+    if (path.dirname(onde).toLowerCase() === pasta.toLowerCase() && !ctx.reservados.has(onde.toLowerCase()) && existe(onde, ctx)) return { situacao: 'JA_ARQUIVADO', nomeFinal: path.basename(onde), onde };
+  }
   const anterior = ctx.manifesto.get(hash);
   // soNaPasta (as cópias, ex. a NFS-e da Nilma no tomador): o manifesto antigo só vale se o arquivo dele está NESTA pasta
   if (anterior && existe(anterior, ctx) && (!soNaPasta || path.dirname(anterior).toLowerCase() === pasta.toLowerCase())) return { situacao: 'JA_ARQUIVADO', nomeFinal: path.basename(anterior), onde: anterior };
@@ -340,7 +353,15 @@ function conferirDestino(d, hash, ctx, soNaPasta, hashXml) {
 }
 // "existe" é qualquer coisa com o nome (a rotina antiga deixou PASTAS chamadas "CONTRATO.pdf"): ocupado, vai para " (N)"
 function existe(p, ctx) { if (!ctx.existe.has(p)) { let ok = false; try { fs.statSync(p); ok = true; } catch (e) {} ctx.existe.set(p, ok); } return ctx.existe.get(p); }
-function hashDe(p, ctx) { if (!ctx.hashes.has(p)) { let h = ''; try { if (fs.statSync(p).isFile()) h = sha(fs.readFileSync(p)); } catch (e) {} ctx.hashes.set(p, h); } return ctx.hashes.get(p); }
+function hashDe(p, ctx) {
+  if (!ctx.hashes.has(p)) {
+    let h = '', buf = null;
+    try { if (fs.statSync(p).isFile()) { buf = fs.readFileSync(p); h = sha(buf); } } catch (e) {}
+    ctx.hashes.set(p, h);
+    if (buf && ctx.conteudos) { const hx = /\.xml$/i.test(p) ? conteudoXml(buf) : null; if (hx) ctx.hashes.set('xml:' + p, hx); ctx.conteudos.anotar([h, hx], p); }
+  }
+  return ctx.hashes.get(p);
+}
 
 /**
  * Move um arquivo. Entre discos (o G: do Drive para a quarentena no C:) o rename do Windows não vale (EXDEV): copia,
@@ -369,6 +390,7 @@ async function executar(opcoes) {
   const id = (producao ? 'EXEC-' : 'SIM-') + carimbo(agora) + '-NOVO';
   const cadastro = opcoes.cadastro || carregarCadastro(opcoes);
   const ctx = { cadastro, hoje: agora, contas: opcoes.contas || lerContas(opcoes.controle), clientes: opcoes.clientes, manifesto: opcoes.manifesto || indiceDoManifesto(opcoes.manifestoAntigo || MANIFESTO_ANTIGO), reservados: new Map(), existe: new Map(), hashes: new Map(),
+    conteudos: opcoes.conteudos || null,
     chaves: opcoes.chaves || K.carregar({ controle: opcoes.controle, manifestoAntigo: opcoes.manifestoAntigo || MANIFESTO_ANTIGO, raiz: opcoes.clientes }),
     // a decisão do admin no nads (23/10/2026, arquivador-manual.js): { [rel]: { codigo, tipoDoc, competencia, por } ou { descartar, por } }
     manual: opcoes.manual || null };
@@ -377,12 +399,24 @@ async function executar(opcoes) {
   const log = opcoes.log || (() => {});
   log(id + ': ' + arquivos.length + ' arquivo(s) na origem');
 
+  // a leitura em paralelo (23/10/2026: no G: em streaming, ler é baixar; ~1 s por arquivo um de cada vez, 5 a 8 por
+  // segundo com 8 juntos): até opcoes.leiturasJuntas (8) adiantadas, na ordem do lote; a decisão vem uma de cada vez
+  const tempos = { leituraMs: 0, decisaoMs: 0, gravacaoMs: 0 };
+  const juntas = Math.max(1, +opcoes.leiturasJuntas || 8);
+  const leituras = new Map();
+  const adiantar = i => { if (i < arquivos.length && !leituras.has(i)) leituras.set(i, fs.promises.readFile(path.join(opcoes.origem, arquivos[i])).then(b => ({ b }), e => ({ e }))); };
   for (let i = 0; i < arquivos.length; i++) {
     const rel = arquivos[i];
     const caminho = path.join(opcoes.origem, rel);
     if ((i + 1) % 500 === 0) log('  ' + (i + 1) + '/' + arquivos.length);
-    let buffer;
-    try { buffer = fs.readFileSync(caminho); } catch (e) { itens.push({ rel, acao: 'FICA', motivo: 'ARQUIVO_INACESSIVEL', confianca: 0, evidencias: [e.message] }); continue; }
+    for (let j = i; j < i + juntas; j++) adiantar(j);
+    const t0 = Date.now();
+    const lido = await leituras.get(i); leituras.delete(i);
+    tempos.leituraMs += Date.now() - t0;
+    // erro de leitura (o arquivo ainda subindo de outro PC, preso por outro programa): fica e tenta depois
+    if (lido.e) { itens.push({ rel, acao: 'FICA', motivo: 'ARQUIVO_INACESSIVEL', temporario: true, confianca: 0, evidencias: [lido.e.message] }); continue; }
+    const buffer = lido.b;
+    const t1 = Date.now();
     const pai = { rel, hash: sha(buffer), tamanho: buffer.length };
     if (/\.(zip|rar|7z)$/i.test(rel)) {
       let lista;
@@ -393,13 +427,17 @@ async function executar(opcoes) {
       itens.push(Object.assign(pai, { acao: 'CONTEINER', filhos, confianca: filhos.length ? Math.min(...filhos.map(f => f.confianca || 0)) : 0 }));
       continue;
     }
-    itens.push(Object.assign(await decidirUm(path.basename(rel), rel, buffer, ctx), { tamanho: buffer.length }));
+    // o conteúdo pequeno fica com o item até o fim (a quarentena do "já arquivado" grava dele, sem ler o G: de novo)
+    itens.push(Object.assign(await decidirUm(path.basename(rel), rel, buffer, ctx), { tamanho: buffer.length }, producao && buffer.length <= 1024 * 1024 ? { _buf: buffer } : {}));
+    tempos.decisaoMs += Date.now() - t1;
   }
 
   await resolverEsperas(itens, opcoes, ctx);
   for (const it of itens) { delete it._buffer; for (const f of it.filhos || []) delete f._buffer; }
-  const resultado = { id, modo: opcoes.modo, em: agora.toISOString(), origem: opcoes.origem, itens };
-  if (producao) aplicar(resultado, opcoes, ctx);
+  const resultado = { id, modo: opcoes.modo, em: agora.toISOString(), origem: opcoes.origem, itens, tempos };
+  const t2 = Date.now();
+  try { if (producao) await aplicar(resultado, opcoes, ctx); } finally { for (const it of itens) delete it._buf; }
+  tempos.gravacaoMs = Date.now() - t2;
   if (opcoes.registrar !== false) gravarRegistros(resultado, opcoes);   // o modo contínuo tem o diário dele
   if (opcoes.publicar) await publicar(resultado, opcoes);
   await encerrarOcr();
@@ -416,6 +454,7 @@ async function decidirUm(nome, rel, buffer, ctx) {
   if (entrada.erroLeitura) item.evidencias.push('leitura do PDF: ' + entrada.erroLeitura);
   if (d.acao === 'ARQUIVAR') {
     const hx = /\.xml$/i.test(nome) && buffer ? conteudoXml(buffer) : null;
+    if (hx) item.conteudoXml = hx;
     const c = conferirDestino(d, entrada.hash, ctx, false, hx);
     item.situacaoDestino = c.situacao;
     item.nomeFinal = c.nomeFinal;
@@ -507,11 +546,12 @@ async function resolverEsperas(itens, opcoes, ctx) {
  * opcoes.moverNaoIdentificados: false (padrão enquanto a rotina antiga roda) deixa o não identificado na origem.
  * opcoes.painel: o módulo painel.js (atividade "Arquivou X em Y", pasta de cliente criada).
  */
-function aplicar(res, opcoes, ctx) {
+async function aplicar(res, opcoes, ctx) {
   const dia = dois(new Date().getDate()) + '-' + dois(new Date().getMonth() + 1) + '-' + new Date().getFullYear();
   const quarentena = path.join(opcoes.controle, 'QUARENTENA', dia);
   // a subpasta de NÃO IDENTIFICADOS: a da execução, ou a que o modo contínuo passa (uma por dia, não uma por lote)
-  const ni = path.join(opcoes.origem, NAO_IDENTIFICADOS, opcoes.pastaNaoIdentificados || res.id.replace(/^EXEC-/, ''));
+  // a entrada local (origensExtras) manda os não identificados para o NÃO IDENTIFICADOS do G: (opcoes.raizNaoIdentificados)
+  const ni = path.join(opcoes.raizNaoIdentificados || opcoes.origem, NAO_IDENTIFICADOS, opcoes.pastaNaoIdentificados || res.id.replace(/^EXEC-/, ''));
   const manifesto = path.join(opcoes.controle, 'MANIFESTO', 'manifesto.jsonl');
   const painel = opcoes.painel || null;
   const permitido = it => !opcoes.tiposProducao || opcoes.tiposProducao.includes('todos') || opcoes.tiposProducao.some(t => String(it.tipo || '').startsWith(t));
@@ -525,31 +565,60 @@ function aplicar(res, opcoes, ctx) {
     if (buffer) fs.writeFileSync(alvo, buffer, { flag: 'wx' }); else mover(path.join(opcoes.origem, it.rel), alvo);
     it.movidoPara = alvo;
   };
-  /** Grava uma cópia num destino (o principal ou uma das cópias), registrando a pasta de cliente que nasceu. */
-  const gravar = (it, buffer, alvo, cliente, pastaCliente, criar) => {
-    const raiz = pastaCliente ? path.join(opcoes.clientes, pastaCliente) : null;
-    const novaPasta = !!(criar && raiz && !fs.existsSync(raiz));
-    fs.mkdirSync(path.dirname(alvo), { recursive: true });
-    fs.writeFileSync(alvo, buffer, { flag: 'wx' });                         // 'wx': falha se já existir — nunca sobrescreve
-    if (sha(fs.readFileSync(alvo)) !== it.hash) throw new Error('hash não confere depois da cópia: ' + alvo);
-    linha(manifesto, Object.assign({ hash_origem: it.hash, hash_original: it.hashPai || it.hash, nome_original: it.nome, destino_final: path.dirname(alvo), nome_final: path.basename(alvo), id_execucao: res.id, timestamp: new Date().toISOString(), pai_completo: !it.hashPai, confianca: it.confianca, tipo: it.tipo, cliente, pasta_cliente_criada: novaPasta }, it.chave ? { chave: it.chave } : {}, it.decididoPor ? { decidido_por: it.decididoPor } : {}));
+  /** A linha do manifesto, o índice de chaves, o índice de conteúdo e o painel de um arquivo que chegou ao destino. */
+  const registrarNoDestino = (it, alvo, cliente, pastaCliente, novaPasta, movido) => {
+    linha(manifesto, Object.assign({ hash_origem: it.hash, hash_original: it.hashPai || it.hash, nome_original: it.nome, destino_final: path.dirname(alvo), nome_final: path.basename(alvo), id_execucao: res.id, timestamp: new Date().toISOString(), pai_completo: !it.hashPai, confianca: it.confianca, tipo: it.tipo, cliente, pasta_cliente_criada: novaPasta }, it.chave ? { chave: it.chave } : {}, it.conteudoXml ? { conteudo_xml: it.conteudoXml } : {}, movido ? { movido: true, origem: it.rel } : {}, it.decididoPor ? { decidido_por: it.decididoPor } : {}));
     if (it.chave && ctx.chaves) ctx.chaves.anotar(it.chave, { onde: alvo, raiz: opcoes.clientes, fonte: 'arquivou' }, true);
+    if (ctx.conteudos) ctx.conteudos.anotar([it.hash, it.conteudoXml], alvo);
     if (novaPasta && painel) painel.atividade('arquivamento', 'Criou a pasta do cliente ' + pastaCliente, 'CNPJ do documento conferido com o cadastro · ' + it.nome);
     if (painel) painel.atividade('arquivamento', 'Arquivou ' + it.nome + ' em ' + (pastaCliente || ''), path.dirname(alvo).replace(opcoes.clientes, '').replace(/^\\/, '') + '\\' + path.basename(alvo));
   };
-  const copiar = (it, buffer) => {
-    if (it.situacaoDestino === 'NOVO') { gravar(it, buffer, it.onde, it.cliente, it.pastaCliente, it.criarPastaCliente); it.gravadoEm = it.onde; }
-    for (const cp of it.copias || []) if (cp.situacao === 'NOVO') { gravar(it, buffer, cp.onde, cp.cliente, cp.pastaCliente, cp.criarPastaCliente); cp.gravadoEm = cp.onde; }
+  const pastaNova = (pastaCliente, criar) => { const raiz = pastaCliente ? path.join(opcoes.clientes, pastaCliente) : null; return !!(criar && raiz && !fs.existsSync(raiz)); };
+  /** Grava uma cópia num destino (uma das cópias, o de dentro de um .zip, a origem em outro disco): confere o hash. */
+  const gravar = (it, buffer, alvo, cliente, pastaCliente, criar) => {
+    const novaPasta = pastaNova(pastaCliente, criar);
+    fs.mkdirSync(path.dirname(alvo), { recursive: true });
+    fs.writeFileSync(alvo, buffer, { flag: 'wx' });                         // 'wx': falha se já existir — nunca sobrescreve
+    if (sha(fs.readFileSync(alvo)) !== it.hash) throw new Error('hash não confere depois da cópia: ' + alvo);
+    registrarNoDestino(it, alvo, cliente, pastaCliente, novaPasta, false);
   };
-  const paraQuarentena = (it) => {
+  // o mesmo disco (o G: para o G:): mover é trocar de pasta; entre discos, gravar o conteúdo
+  const raizDe = p => path.parse(path.resolve(p)).root.toLowerCase();
+  const mesmoDisco = (a, b) => raizDe(a) === raizDe(b);
+  /** O original ainda é o que foi lido (o tamanho e a data da varredura; sem reler o conteúdo). */
+  const igualAoLido = (it, de) => {
+    const st = fs.statSync(de);
+    const m = opcoes.marcas && opcoes.marcas.get ? opcoes.marcas.get(it.rel) : null;
+    if ((it.tamanho != null && st.size !== it.tamanho) || (m && (st.size !== m.tam || Math.round(st.mtimeMs) !== Math.round(m.mtime)))) throw new Error('o original mudou durante a execução: ' + it.rel);
+  };
+  /** O original vai para o destino principal por rename (o G: do Drive: sem baixar nem subir de novo). Nunca sobrescreve. */
+  const moverParaODestino = async (it) => {
+    const de = path.join(opcoes.origem, it.rel), alvo = it.onde;
+    igualAoLido(it, de);
+    const novaPasta = pastaNova(it.pastaCliente, it.criarPastaCliente);
+    fs.mkdirSync(path.dirname(alvo), { recursive: true });
+    if (fs.existsSync(alvo)) throw new Error('o destino apareceu no meio da execução: ' + alvo + ' (o original ficou)');
+    await fs.promises.rename(de, alvo);
+    it.gravadoEm = alvo; it.movido = true;
+    registrarNoDestino(it, alvo, it.cliente, it.pastaCliente, novaPasta, true);
+  };
+  const paraQuarentena = (it, buf) => {
     const de = path.join(opcoes.origem, it.rel);
-    if (sha(fs.readFileSync(de)) !== it.hash) throw new Error('o original mudou durante a execução: ' + it.rel);
+    // o conteúdo lido na decisão (ou relido): o hash confere e o arquivo na origem continua o mesmo
+    const b = buf || it._buf || fs.readFileSync(de);
+    if (sha(b) !== it.hash) throw new Error('o original mudou durante a execução: ' + it.rel);
+    igualAoLido(it, de);
     const alvo = semSobrescrever(path.join(quarentena, it.rel));
     linha(path.join(quarentena, '_quarentena.jsonl'), { hash_original: it.hash, arquivo_original_caminho: it.rel, destino_final: it.gravadoEm || it.onde || null, id_execucao: res.id, timestamp: new Date().toISOString() });
     fs.mkdirSync(path.dirname(alvo), { recursive: true });
-    mover(de, alvo);
+    if (mesmoDisco(de, alvo)) { mover(de, alvo); return; }
+    // G: → C:: grava a cópia do conteúdo já lido, confere e só então tira o original (sem baixar de novo)
+    fs.writeFileSync(alvo, b, { flag: 'wx' });
+    if (sha(fs.readFileSync(alvo)) !== it.hash) { try { fs.unlinkSync(alvo); } catch (x) { /* fica a cópia ruim */ } throw new Error('a cópia para ' + alvo + ' não conferiu; o original ficou'); }
+    fs.unlinkSync(de);
   };
   for (const it of res.itens) {
+    await new Promise(r => setImmediate(r));   // o resto do robô (o ponto, o painel, os ouvintes) não espera o lote
     try {
       if (it.acao === 'CONTEINER') {
         // compactado: só quando todos os de dentro são de tipo liberado (senão fica inteiro para a rotina antiga)
@@ -562,14 +631,31 @@ function aplicar(res, opcoes, ctx) {
         for (const f of it.filhos) {
           f.hashPai = it.hash;
           const b = porNome.get(f.rel);
-          if (f.acao === 'ARQUIVAR') copiar(f, b);
+          if (f.acao === 'ARQUIVAR') {
+            if (f.situacaoDestino === 'NOVO') { gravar(f, b, f.onde, f.cliente, f.pastaCliente, f.criarPastaCliente); f.gravadoEm = f.onde; }
+            for (const cp of f.copias || []) if (cp.situacao === 'NOVO') { gravar(f, b, cp.onde, cp.cliente, cp.pastaCliente, cp.criarPastaCliente); cp.gravadoEm = cp.onde; }
+          }
           else if (f.acao === 'NAO_IDENTIFICADO' || f.acao === 'FICA') moverParaNi(f, b);   // 01 Fase 4b (09/10/2026)
         }
-        paraQuarentena(it);
+        paraQuarentena(it, buf);
         continue;
       }
       if (!permitido(it)) { it.naoAplicado = 'tipo ainda em simulação'; continue; }
-      if (it.acao === 'ARQUIVAR') { copiar(it, fs.readFileSync(path.join(opcoes.origem, it.rel))); paraQuarentena(it); }
+      if (it.acao === 'ARQUIVAR') {
+        const de = path.join(opcoes.origem, it.rel);
+        // 23/10/2026: o principal vai por rename quando é o mesmo disco (o G: em streaming: troca de pasta no servidor);
+        // as cópias (outro cliente) gravam o conteúdo; a origem em outro disco grava e manda o original para a quarentena
+        const renomear = it.situacaoDestino === 'NOVO' && mesmoDisco(de, it.onde);
+        const copias = (it.copias || []).filter(cp => cp.situacao === 'NOVO');
+        const buf = copias.length || !renomear ? (it._buf || fs.readFileSync(de)) : null;
+        if (buf && sha(buf) !== it.hash) throw new Error('o original mudou durante a execução: ' + it.rel);
+        for (const cp of copias) { gravar(it, buf, cp.onde, cp.cliente, cp.pastaCliente, cp.criarPastaCliente); cp.gravadoEm = cp.onde; }
+        if (renomear) await moverParaODestino(it);
+        else {
+          if (it.situacaoDestino === 'NOVO') { gravar(it, buf, it.onde, it.cliente, it.pastaCliente, it.criarPastaCliente); it.gravadoEm = it.onde; }
+          paraQuarentena(it, buf);
+        }
+      }
       else if (it.acao === 'DESCARTAR') {
         // descarte confirmado (23/10/2026): para a quarentena, nunca apagado; a linha no manifesto diz para onde foi
         paraQuarentena(it);

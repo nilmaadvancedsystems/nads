@@ -3128,6 +3128,9 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .pt-tarefa-acoes .hint svg,.pt-tarefa .imp-faixa-corpo > .hint svg{width:13px;height:13px;vertical-align:-2px;}
 .pt-tarefa .imp-faixa-corpo{gap:12px;}
 .pt-janela .imp-conf-topo .page-title{display:none;}
+/* a janela de importar do Fiscal (23/10/2026: "a janela tá bem pequena e a tabela não dá para ver"): quase a tela toda */
+.pessoal-janela.usuario-janela.pt-janela{width:min(1400px,96vw);height:min(900px,92vh);}
+.pt-janela .table-wrap td{white-space:nowrap;}
 /* o painel de cada tarefa do Fiscal (só peças do catálogo: Stat, rank, tabela, Alerta, gh-blank) */
 .graf-painel{display:flex;flex-direction:column;gap:12px;}
 .graf-painel > .stat-grid{margin-bottom:0;}
