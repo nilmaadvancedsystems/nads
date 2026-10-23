@@ -202,7 +202,10 @@ function regimeCanonico(t) {
 // Os códigos vêm da planilha antiga. Com o cadastro do nads como fonte, o código pode ter mudado de dono (a ZELO era a 591
 // na planilha; no Entregas a 591 é a AAP INTERMEDIAÇÕES e a ZELO é a 602): por isso cada linha leva o nome, e quem decide
 // é confirmado(), que confere o nome e, se o código mudou, acha o código atual pelo nome (único) — senão não usa.
-const DOC_CONFIRMADO = { '42460727615': [62, 'CARLOS LUCAS MENDES'], '36857858691': [424, 'JOELFLOR PEREIRA'] };   // (03)
+const DOC_CONFIRMADO = { '42460727615': [62, 'CARLOS LUCAS MENDES'], '36857858691': [424, 'JOELFLOR PEREIRA'],   // (03)
+  // 23/10/2026 (Vitor, pelo coordenador: "Joelflor 422 × 424: siga a regra confirmada (424)"): o CNPJ da JOELFLOR PEREIRA
+  // DA ROCHA LTDA (422, inativa no Entregas, sem pasta no Drive) também vai para a 424
+  '17683269000112': [424, 'JOELFLOR PEREIRA'] };
 const RAIZ_MESMA_PASTA = { '53636418': [591, 'ZELO AGROINDUSTRI'] };            // ZELO: matriz e filiais na mesma pasta (03)
 const APELIDOS = [                                                          // 03: "Apelidos confirmados pelo responsável"
   { re: /\bFITO A\b(?!\s*LIMENTOS)/, codigo: 309, nome: 'FITO ALIMENTOS' },
@@ -251,7 +254,7 @@ function montarCadastro(linhas, pastas) {
     const doc = so(l.doc);
     const reg = regimeCanonico(l.regime);
     const outrosNomes = (l.outrosNomes || []).map(n => String(n).trim()).filter(Boolean);
-    porCod.set(codigo, { codigo, razao: String(l.razao || '').trim(), outrosNomes, fantasia: String(l.fantasia || '').trim(), doc, ie: so(l.ie), regime: reg === undefined ? undefined : reg, regimeTexto: l.regime || null });
+    porCod.set(codigo, { codigo, razao: String(l.razao || '').trim(), outrosNomes, fantasia: String(l.fantasia || '').trim(), doc, ie: so(l.ie), regime: reg === undefined ? undefined : reg, regimeTexto: l.regime || null, ativo: l.ativo !== false });
     for (const d of [doc].concat((l.outrosDocs || []).map(so))) {   // CPF e CNPJ do mesmo cliente (fontes diferentes)
       if (d.length === 14 || d.length === 11) add(porDoc, d, codigo);
       if (d.length === 14) add(porRaiz, d.slice(0, 8), codigo);
@@ -452,6 +455,8 @@ const mesAnoIso = d => { const m = /^(\d{4})-(\d{2})/.exec(d || ''); return m ? 
 const diaIso = d => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ''); return m ? m[3] + '-' + m[2] + '-' + m[1] : null; };
 const nomeEvento = d => semAcento(d || '').toUpperCase().replace(/\s+/g, ' ').trim();
 const numChave = ch => (ch && /^\d{44}$/.test(ch) ? String(+ch.slice(25, 34)) : null);
+/** A "chave" da NFS-e no índice de chaves (23/10/2026): prestador + número — o SIEG grava "nfse-<prestador>-<número>.xml". */
+const chaveDaNfse = (prestador, n) => (prestador && n != null && String(n) !== '' ? 'NFSE:' + prestador + ':' + (/^\d+$/.test(String(n)) ? String(+n) : String(n)) : null);
 
 /** O que o XML é: { tipo, sub, nome, emit, partes, evento, nomes, competencia } ou { erro }. */
 function classificarXml(textoXml) {
@@ -483,7 +488,10 @@ function _classificarXml(raiz) {
     const emit = docsDe(achar(inf, 'emit')).slice(0, 1);
     let partes = emit.slice();
     for (const p of ['rem', 'dest', 'exped', 'receb', 'ide/toma4']) partes = partes.concat(docsDe(achar(inf, p)));
-    return { tipo: 'CT-e', sub: '', nome: mesAnoIso(d) + '_CT-e_' + (+n) + '.xml', emit, partes, data: d };
+    // o tomador do serviço: <toma3><toma> 0 remetente, 1 expedidor, 2 recebedor, 3 destinatário; ou <toma4> com o CNPJ
+    const papel = { 0: 'rem', 1: 'exped', 2: 'receb', 3: 'dest' }[txt(inf, 'ide/toma3/toma', 'ide/toma03/toma')];
+    const tomador = (papel ? docsDe(achar(inf, papel)) : docsDe(achar(inf, 'ide/toma4'))).slice(0, 1);
+    return { tipo: 'CT-e', sub: '', nome: mesAnoIso(d) + '_CT-e_' + (+n) + '.xml', emit, partes, tomador, data: d };
   }
   if (tag === 'cteOSProc' || tag === 'CTeOS') {
     // CT-e OS (modelo 67, transporte de pessoas/valores): na pasta do CT-e, com "CT-e OS" no nome; o tomador é <toma>
@@ -537,7 +545,7 @@ function _classificarXml(raiz) {
     const d = txt(inf, 'DPS/infDPS/dhEmi', '//dhEmi', 'dhProc');
     const emit = (docsDe(achar(inf, 'emit')).length ? docsDe(achar(inf, 'emit')) : docsDe(primeiro(inf, 'prest'))).slice(0, 1);
     if (!n || !mesAnoIso(d)) return null;
-    return { tipo: 'NFS-e', sub: '', nome: mesAnoIso(d) + '_NFS-e_' + (/^\d+$/.test(n) ? +n : n) + '.xml', emit, partes: emit.concat(docsDe(primeiro(inf, 'toma'))), data: d };
+    return { tipo: 'NFS-e', sub: '', nome: mesAnoIso(d) + '_NFS-e_' + (/^\d+$/.test(n) ? +n : n) + '.xml', emit, partes: emit.concat(docsDe(primeiro(inf, 'toma'))), data: d, chave: chaveDaNfse(emit[0], n) };
   }
   inf = primeiro(raiz, 'InfNfse');
   if (inf || /nfse/i.test(tag)) {
@@ -546,7 +554,7 @@ function _classificarXml(raiz) {
     const d = txt(inf, 'DataEmissao', '//DataEmissao');
     const emit = (docsDe(primeiro(inf, 'PrestadorServico')).length ? docsDe(primeiro(inf, 'PrestadorServico')) : docsDe(primeiro(inf, 'Prestador'))).slice(0, 1);
     if (!n || !mesAnoIso(d)) return null;
-    return { tipo: 'NFS-e', sub: '', nome: mesAnoIso(d) + '_NFS-e_' + (/^\d+$/.test(n) ? +n : n) + '.xml', emit, partes: emit.concat(docsDe(primeiro(inf, 'TomadorServico')), docsDe(primeiro(inf, 'Tomador'))), data: d };
+    return { tipo: 'NFS-e', sub: '', nome: mesAnoIso(d) + '_NFS-e_' + (/^\d+$/.test(n) ? +n : n) + '.xml', emit, partes: emit.concat(docsDe(primeiro(inf, 'TomadorServico')), docsDe(primeiro(inf, 'Tomador'))), data: d, chave: chaveDaNfse(emit[0], n) };
   }
   return null;
 }
@@ -593,7 +601,7 @@ function camposDaGuia(u) {
   }
   if (!valor) valor = valorBr(linhaApos(u, /\bTOTAL\b/, 200));
   let per = null;
-  const pa = /PA:\s*(\d{2})\/(\d{4})/.exec(u) || /PERIODO DE APURACAO[^0-9A-Z]{0,40}(?:\d{2}\/)?(\d{2})\/(\d{4})/.exec(u);
+  const pa = /PA:\s*(\d{2})\/(\d{4})/.exec(u) || /PERIODO\s*DE\s*APURACAO[^0-9A-Z]{0,40}(?:\d{2}\/)?(\d{2})\/(\d{4})/.exec(u);
   if (pa) per = { mes: +pa[1], ano: +pa[2] };
   if (!per && colados) per = { mes: +colados[2], ano: +colados[3] };
   if (!per) {
@@ -611,10 +619,10 @@ const REGRAS_PDF = [
   // ---- guias fiscais (05a, 05d §4) ----
   { tipo: 'DAS', setor: 'FISCAL', re: /DOCUMENTO DE ARRECADACAO DO SIMPLES NACIONAL|\bDAS\s+DE\s+PARCELAMENTO\b/, fonte: '05a',
     campos: u => Object.assign(camposDaGuia(u), { parcelamento: /PARCELAMENTO/.test(u) }) },
-  { tipo: 'DARF', setor: 'FISCAL', re: /DOCUMENTO DE ARRECADACAO\s*(DE\s*)?RECEITAS FEDERAIS|\bDARF\b.*CODIGO DA RECEITA|REGISTRO DE ARRECADACAO DE DARF/, fonte: '05d §4',
+  { tipo: 'DARF', setor: 'FISCAL', re: /DOCUMENTO\s*DE\s*ARRECADACAO\s*(DE\s*)?RECEITAS\s*FEDERAIS|\bDARF\b.*CODIGO DA RECEITA|REGISTRO DE ARRECADACAO DE DARF/, fonte: '05d §4',
     campos: u => {
       const c = camposDaGuia(u);
-      const cod = /COMPOSICAO DO DOCUMENTO[\s\S]{0,200}?\n\s*(\d{4})/.exec(u) || /CODIGO DA RECEITA[^0-9]{0,40}(\d{4})/.exec(u) || /\n(\d{4})[A-Z]/.exec(u);
+      const cod = /COMPOSICAO DO DOCUMENTO[\s\S]{0,200}?\n\s*(\d{4})/.exec(u) || /CODIGO\s*DA\s*RECEITA[^0-9]{0,40}(\d{4})/.exec(u) || /\n(\d{4})[A-Z]/.exec(u);
       let trib = cod ? TRIBUTO_POR_CODIGO[cod[1]] : null;
       if (!trib && /DCTFWEB|CP SEGURADOS|PREVIDENCI|CONTRIB(UICAO)? (PATRONAL|INDIVIDUAL)|GILRAT|SENAR/.test(u)) trib = 'INSS';
       if (!trib && /ESOCIAL|DOMESTIC/.test(u)) trib = 'ESOCIAL DOMESTICO';
@@ -647,6 +655,9 @@ const REGRAS_PDF = [
   { tipo: 'NF-e PDF', setor: 'FISCAL', re: /\bDANFE\b|DOCUMENTO AUXILIAR DA NOTA FISCAL ELETRONICA/, fonte: '05d §1', campos: u => camposDeNota(u) },
   { tipo: 'CT-e PDF', setor: 'FISCAL', re: /\bDACTE\b|DOCUMENTO AUXILIAR DO CONHECIMENTO DE TRANSPORTE/, fonte: '05d §1', campos: u => camposDeNota(u) },
   { tipo: 'NFS-e PDF', setor: 'FISCAL', re: /\bDANFSE\b|NOTA FISCAL DE SERVICOS? ELETRONICA|\bNFS-E\b/, fonte: '05d §1 (NFS-e)', campos: u => camposDeNfse(u) },
+  // relatório mensal de notas (05d §1: emitidas em EMITIDOS\RELATÓRIO MENSAL\[ANO]; recebidas em RECEBIDOS\RELATÓRIO MENSAL)
+  { tipo: 'RELATORIO DE NOTAS', setor: 'FISCAL', re: /^[\s\S]{0,300}(NOTAS FISCAIS (DE )?(SAIDA|ENTRADA|CONSUMIDOR ELETRONICA)|RELATORIO DE CUPOM|RELATORIO (MENSAL )?DE NOTAS (FISCAIS )?(EMITIDAS|RECEBIDAS))/, fonte: '05d §1 (Relatório Mensal de Notas Emitidas/Recebidas)',
+    campos: u => ({ recebidas: /^[\s\S]{0,300}(NOTAS FISCAIS (DE )?ENTRADA|NOTAS (FISCAIS )?RECEBIDAS)/.test(u), periodo: periodoEscrito(u) || periodoLivre(u.slice(0, 1500)) }) },
   // ---- folha e societário (04b) ----
   { tipo: 'CARTAO CNPJ', setor: 'FOLHA_SOCIETARIO', re: /COMPROVANTE DE INSCRICAO E DE SITUACAO CADASTRAL/, fonte: '04b (Documentos Constitutivos)', campos: () => ({}) },
   { tipo: 'DOC CONSTITUTIVO', setor: 'FOLHA_SOCIETARIO', re: /^[\s\S]{0,600}(CONTRATO SOCIAL|ALTERACAO CONTRATUAL|ATO CONSTITUTIVO|ESTATUTO SOCIAL|ATA DA? (ASSEMBLEIA|REUNIAO))/, fonte: '04b (Documentos Constitutivos)', campos: () => ({}) },
@@ -674,7 +685,7 @@ const REGRAS_PDF = [
   { tipo: 'COMPROVANTE', setor: 'CONTABIL', re: /COMPROVANTE\s+(DE\s+)?(PAGAMENTO|TRANSFERENCIA|PIX|AGENDAMENTO|TITULOS|OPERACAO|TRANSACAO)|PIX (ENVIADO|REALIZADO)\s*\n.*COMPROVANTE/, fonte: 'Dicionário §6.1 e §6.1.1', campos: u => camposDeComprovante(u) },
   { tipo: 'FATURA CARTAO', setor: 'CONTABIL', re: /FATURA DO CARTAO|EXTRATO DE CARTAO DE CREDITO|FATURA MASTERCARD|FATURA VISA|RESUMO DA FATURA/, fonte: '04 (fatura de cartão → fallback extrato avulso)',
     campos: u => ({ competencia: competenciaSolta(linhaApos(u, /VENCIMENTO/, 60)) || (dataBr(linhaApos(u, /VENCIMENTO/, 60)) ? (d => ({ mes: +d.slice(3, 5), ano: +d.slice(6) }))(dataBr(linhaApos(u, /VENCIMENTO/, 60))) : null) }) },
-  { tipo: 'EXTRATO', setor: 'CONTABIL', re: /EXTRATO (DE |DA )?(CONTA|C\/C|MENSAL|CONSOLIDADO|FINANCEIRO|POR PERIODO|BANCARIO)|EXTRATOMENSAL|EXTRATO HISTORICO|EXTRATO DE: AG|EXTRATO CONTA CORRENTE|RELATORIO DE MOVIMENTACOES|SALDO FINAL DO PERIODO|SALDO ANTERIOR[\s\S]{0,4000}SALDO/, fonte: 'Dicionário §6.1; 04 (Bancários)', campos: u => camposDeExtrato(u) },
+  { tipo: 'EXTRATO', setor: 'CONTABIL', re: /EXTRATO EXPORTADO NO DIA|EXTRATO (DE |DA )?(CONTA|C\/C|MENSAL|CONSOLIDADO|FINANCEIRO|POR PERIODO|BANCARIO)|EXTRATOMENSAL|EXTRATO HISTORICO|EXTRATO DE: AG|EXTRATO CONTA CORRENTE|RELATORIO DE MOVIMENTACOES|SALDO FINAL DO PERIODO|SALDO ANTERIOR[\s\S]{0,4000}SALDO/, fonte: 'Dicionário §6.1; 04 (Bancários)', campos: u => camposDeExtrato(u) },
 ];
 
 function anoCalendario(u) {
@@ -786,6 +797,17 @@ function decidirXml(entrada, ctx, ev) {
   const copias = [];
   // o escritório como emitente decide antes da pasta de origem (a nota de honorários pode estar na pasta do cliente)
   if (info.emit.length && ESCRITORIO.has(info.emit[0])) cand = cand.filter(c => !(cad.porCod.get(c) && ESCRITORIO.has(cad.porCod.get(c).doc)));
+  // 23/10/2026 (Vitor, "é a regra contábil"): a nota entre DUAS empresas clientes vai para as duas — saída na pasta do
+  // emitente, entrada na do destinatário/tomador —, cada uma com a sua linha no manifesto (como a NFS-e de honorários).
+  // Só quando cada CNPJ/CPF da nota é de um código só; cliente inativo e sem pasta no Drive não recebe a nota.
+  const duas = !info.evento ? clientesDaNota(info, cad) : null;
+  if (duas && duas.inativos.length) ev.push('inativo(s) sem pasta no Drive, fora da nota: ' + duas.inativos.join(', '));
+  if (duas && duas.codigos.length >= 2) {
+    const [principal, ...outros] = duas.codigos;
+    ev.push('nota entre clientes: ' + duas.papeis.join(', ') + ' — na pasta de cada um (regra das duas clientes, 23/10/2026)');
+    return { acao: 'ARQUIVAR', cliente: principal, comoCliente: 'doc', confianca: 0.97, copias: outros.map(c => ({ cliente: c, comoCliente: 'doc' })), tipo: 'XML ' + info.tipo + (info.sub ? ' ' + info.sub : ''), setor: 'FISCAL', fiscal: ['XML', info.tipo].concat(info.sub ? [info.sub] : []), nomeFinal: info.nome, chave: info.chave || null, fonte: '05d §1b; regra das duas clientes (Vitor, 23/10/2026)', competencia: info.data ? { mes: +info.data.slice(5, 7), ano: +info.data.slice(0, 4) } : null };
+  }
+  if (duas && duas.codigos.length === 1 && duas.inativos.length && cand.length > 1) cand = duas.codigos.slice();
   if (sub && cand.includes(sub.codigo) && !(info.emit.length && ESCRITORIO.has(info.emit[0]))) { cliente = sub.codigo; conf = 0.99; como = 'doc'; ev.push('CNPJ/CPF do XML e ' + sub.como); }
   else if (info.emit.length && ESCRITORIO.has(info.emit[0]) && cad.porDoc.has(info.emit[0])) {
     // emitida pelo escritório (honorários): na pasta da Nilma (xml_lote) E, desde 21/10/2026 (Vitor), também na do tomador
@@ -828,6 +850,27 @@ function decidirXml(entrada, ctx, ev) {
 }
 
 /**
+ * Os clientes de uma nota (regra das duas clientes, 23/10/2026): { codigos (o emitente, ou no CT-e o tomador, primeiro),
+ * papeis, inativos } — ou null quando algum CNPJ/CPF da nota é de mais de um código (ambíguo de verdade).
+ */
+function clientesDaNota(info, cad) {
+  const codigos = [], papeis = [], inativos = [];
+  for (const d of [...new Set(info.partes)]) {
+    const cs = clientesDoDoc(d, cad);
+    if (cs.length > 1) return null;
+    if (!cs.length || codigos.includes(cs[0]) || inativos.includes(cs[0])) continue;
+    const c = cad.porCod.get(cs[0]);
+    if (c && c.ativo === false && !(cad.pastas && cad.pastas.has(cs[0]))) { inativos.push(cs[0]); continue; }
+    codigos.push(cs[0]);
+    papeis.push(cs[0] + (info.emit.includes(d) ? ' (emitente)' : (info.tomador || []).includes(d) ? ' (tomador)' : ''));
+  }
+  // o primeiro: o emitente cliente; no CT-e de transportadora que não é cliente, o tomador
+  const primeiro = [info.emit[0], (info.tomador || [])[0]].map(d => d && clientesDoDoc(d, cad)[0]).find(c => c != null && codigos.includes(c));
+  if (primeiro != null) codigos.sort((a, b) => (b === primeiro) - (a === primeiro));
+  return { codigos, papeis, inativos };
+}
+
+/**
  * Evento cujo documento original não está no índice de chaves (23/10/2026): AGUARDANDO_ORIGINAL — fica na origem e o
  * modo contínuo tenta de novo a cada ciclo (o evento costuma chegar antes do original no lote do SIEG). Passada a
  * espera, o executor pergunta ao SIEG pela chave e, sem resposta, manda para NÃO IDENTIFICADOS com EVENTO_SEM_ORIGINAL.
@@ -837,6 +880,13 @@ function semOriginal(info, ev, porque) {
     evidencias: ev.concat(porque, 'chave ' + info.chave + ': o documento original ainda não foi arquivado (índice de chaves)') };
 }
 
+/** O cliente de uma conta já arquivada (contas.json: banco:conta → cliente → hashes), sem contar o próprio arquivo. */
+function donoDaConta(ctx, banco, conta, hash) {
+  const porCli = ctx.contas && conta ? ctx.contas.get(banco + ':' + conta) : null;
+  if (!porCli || typeof porCli.entries !== 'function') return null;
+  const donos = [...porCli.entries()].filter(([, hs]) => [...hs].some(h => h !== hash)).map(([c]) => +c);
+  return donos.length === 1 ? donos[0] : null;
+}
 /** OFX: sempre Bancários (Dicionário §6.1.4); banco pelas tags; conta pela tabela do 03. */
 function decidirOfx(entrada, ctx, ev) {
   const t = String(entrada.ofx || '');
@@ -852,7 +902,7 @@ function decidirOfx(entrada, ctx, ev) {
   let cliente = null, conf = 0, como = null;
   const confirmada = CONTAS_CONFIRMADAS.find(c => c.banco === banco && conta && (conta.endsWith(c.conta) || c.conta.endsWith(conta)));
   if (confirmada && confirmado(confirmada.codigo, confirmada.nome, cad) != null) { cliente = confirmado(confirmada.codigo, confirmada.nome, cad); conf = 0.97; como = 'conta'; ev.push('conta ' + conta + ' confirmada no 03'); }
-  else if (ctx.contas && conta && ctx.contas.get(banco + ':' + conta)) { cliente = ctx.contas.get(banco + ':' + conta); conf = 0.92; como = 'conta'; ev.push('conta ' + conta + ' já arquivada só deste cliente (03)'); }
+  else if (donoDaConta(ctx, banco, conta, entrada.hash) != null) { cliente = donoDaConta(ctx, banco, conta, entrada.hash); conf = 0.92; como = 'conta'; ev.push('conta ' + conta + ' já arquivada só deste cliente (03)'); }
   else { const sub = clienteDaPasta(entrada.rel, cad); if (sub) { cliente = sub.codigo; conf = 0.8; como = 'pasta'; ev.push(sub.como + ' (OFX não traz CNPJ)'); } }
   if (!cliente) return { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, tipo: 'EXTRATO OFX', setor: 'CONTABIL' };
   let nomeFinal = mesAno(comp) + '.ofx';
@@ -864,6 +914,18 @@ function decidirOfx(entrada, ctx, ev) {
 function decidirTxt(entrada, ctx, ev) {
   const t = String(entrada.txt || '');
   const cad = ctx.cadastro;
+  // livro fiscal em texto (05d §1c, 23/10/2026: "RELATORIO 04 SET.txt" = RAICMS modelo P9): mesma pasta e nome do PDF, .txt
+  const ut = norm(t.slice(0, 4000));
+  const livro = /REGISTRO DE APURACAO DO ICMS/.test(ut) ? 'APURACAO ICMS' : /REGISTRO DE ENTRADAS/.test(ut) ? 'REGISTRO DE ENTRADAS' : /REGISTRO DE SAIDAS/.test(ut) ? 'REGISTRO DE SAIDAS' : null;
+  if (livro) {
+    const cli = unico(documentosDoTexto(t.slice(0, 4000)).map(d => d.doc).flatMap(d => clientesDoDoc(d, cad)));
+    const p = periodoEscrito(ut) || periodoLivre(ut);
+    if (!cli) return { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, tipo: 'LIVRO_FISCAL', setor: 'FISCAL' };
+    if (!p) return { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, cliente: cli, tipo: 'LIVRO_FISCAL', setor: 'FISCAL' };
+    const ini = { mes: p.de.mes, ano: p.de.ano }, f = { mes: p.ate.mes, ano: p.ate.ano };
+    ev.push('livro fiscal em texto: ' + livro + ' (CNPJ e período do cabeçalho)');
+    return { acao: 'ARQUIVAR', cliente: cli, comoCliente: 'doc', confianca: 0.96, tipo: 'LIVRO_FISCAL', setor: 'FISCAL', fiscal: ['LIVROS', String(f.ano)], competencia: f, nomeFinal: (mesAno(ini) === mesAno(f) ? mesAno(f) : mesAno(ini) + ' A ' + mesAno(f)) + ' - ' + livro + '.txt', fonte: '05d §1c (livro fiscal; extensão original preservada)' };
+  }
   const l0 = /^\|0000\|([^\r\n]*)/m.exec(t);
   if (l0) {
     const c = l0[1].split('|');
@@ -1030,6 +1092,30 @@ function clienteDoPdf(u, bruto, entrada, ctx, ev, regra, campos) {
   return { motivo: 'CLIENTE_NAO_LOCALIZADO' };
 }
 
+/**
+ * O cliente do relatório de notas (23/10/2026): é quem emitiu o relatório (o cabeçalho), nunca os favorecidos da lista —
+ * o CNPJ no nome do arquivo ("RelatSaidasCupom55887431000103_202609") ou no cabeçalho; senão a pasta de origem, quando o
+ * nome do cabeçalho é o do cliente dela (abreviado: "ALMEIDA E SOUZA PROD ALIMENTICIOS" = ALMEIDA & SOUZA PRODUTOS …).
+ */
+function clienteDoRelatorio(u, entrada, ctx, ev) {
+  const cad = ctx.cadastro;
+  const doNome = unico((String(entrada.nome || '').match(/\d{14}/g) || []).filter(cnpjValido).flatMap(d => clientesDoDoc(d, cad)));
+  if (doNome) { ev.push('CNPJ do emitente no nome do arquivo do relatório'); return { cliente: doNome, conf: 0.95, como: 'doc' }; }
+  const cab = u.slice(0, 600);
+  const doCab = unico(documentosDoTexto(cab).map(d => d.doc).flatMap(d => clientesDoDoc(d, cad)));
+  if (doCab) { ev.push('CNPJ do cabeçalho do relatório'); return { cliente: doCab, conf: 0.95, como: 'doc' }; }
+  const sub = clienteDaPasta(entrada.rel, cad);
+  const cli = sub && cad.porCod.get(sub.codigo);
+  if (cli) {
+    const fora = new Set(['LTDA', 'EPP', 'EIRELI', 'ME', 'SA', 'CIA', 'E', 'DE', 'DA', 'DO', 'DOS', 'DAS']);
+    const tok = s => textoDeNome(s).trim().split(' ').filter(w => w.length >= 2 && !fora.has(w));
+    const doCli = tok(cli.razao), noCab = tok(cab.slice(0, 400));
+    const bate = w => noCab.some(x => x.length >= 4 && w.length >= 4 ? (w.startsWith(x) || x.startsWith(w)) : x === w);
+    if (doCli.length >= 2 && doCli.every(bate)) { ev.push('a razão do cabeçalho é a do cliente da pasta (' + sub.como + ')'); return { cliente: sub.codigo, conf: 0.9, como: 'pasta' }; }
+  }
+  return null;
+}
+
 function decidirPdf(entrada, ctx, ev, porHash) {
   const paginas = Array.isArray(entrada.texto) ? entrada.texto : [String(entrada.texto || '')];
   const bruto = paginas.slice(0, 3).join('\n');
@@ -1057,7 +1143,7 @@ function decidirPdf(entrada, ctx, ev, porHash) {
     return montarContabil(r2, r2.campos(u), u, bruto, entrada, ctx, ev, porHash);
   }
   if (regra.setor === 'CONTABIL') return montarContabil(regra, campos, u, bruto, entrada, ctx, ev, porHash);
-  const c = porHash ? { cliente: porHash, conf: 0.97, como: 'hash' } : clienteDoPdf(u, bruto, entrada, ctx, ev, regra, campos);
+  const c = porHash ? { cliente: porHash, conf: 0.97, como: 'hash' } : (regra.tipo === 'RELATORIO DE NOTAS' && clienteDoRelatorio(u, entrada, ctx, ev)) || clienteDoPdf(u, bruto, entrada, ctx, ev, regra, campos);
   if (!c.cliente) return { acao: 'NAO_IDENTIFICADO', motivo: c.motivo, confianca: 0.3, tipo: regra.tipo, setor: regra.setor, evidencias: ev.concat(c.candidatos ? 'candidatos ' + c.candidatos.join(', ') : []) };
   const base = { cliente: c.cliente, comoCliente: c.como, setor: regra.setor, tipo: regra.tipo, fonte: regra.fonte, nomeArquivo: entrada.nome };
   const nomeOrig = entrada.nome;
@@ -1095,6 +1181,14 @@ function decidirPdf(entrada, ctx, ev, porHash) {
     }
     case 'NFC-e PDF': case 'NF-e PDF': case 'CT-e PDF': return montarNotaPdf(regra, campos, u, bruto, base, c, ctx, ev);
     case 'NFS-e PDF': return montarNfsePdf(campos, u, bruto, base, c, ctx, ev);
+    case 'RELATORIO DE NOTAS': {
+      const p = campos.periodo;
+      if (!p || p.de.mes !== p.ate.mes || p.de.ano !== p.ate.ano) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, evidencias: ev.concat('relatório de notas sem período de um mês') });
+      const comp = { mes: p.ate.mes, ano: p.ate.ano };
+      const cli = ctx.cadastro.porCod.get(c.cliente);
+      const lado = campos.recebidas ? 'RECEBIDOS' : 'EMITIDOS';
+      return Object.assign(base, { acao: 'ARQUIVAR', confianca: Math.min(c.conf, 0.95), competencia: comp, fiscal: ['DOCS', lado, 'RELATÓRIO MENSAL', String(comp.ano)], nomeFinal: mesAno(comp) + ' - RELATORIO NOTAS ' + (campos.recebidas ? 'RECEBIDAS' : 'EMITIDAS') + ' - ' + nomeNormalizado(cli ? cli.razao : '') + '.pdf' });
+    }
     case 'CARTAO CNPJ': case 'DOC CONSTITUTIVO':
       return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, caminho: ['SOCIETÁRIO', 'DOCUMENTOS CONSTITUTIVOS'], nomeFinal: nomeOrig });
     case 'CERTIDAO':
