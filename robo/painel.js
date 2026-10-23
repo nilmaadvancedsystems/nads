@@ -68,7 +68,8 @@ const FILAS = {
     { id: 'nfse', nome: 'NFS-e dos honorários', colecao: 'nfseEmissoes', esperando: ['pedida', 'cancelamento-pedido'], andamento: ['enviando', 'processando'], campoData: 'pedidoEm' },
     { id: 'sefaz', nome: 'Situação na SEFAZ', colecao: 'pedidosSituacao', esperando: ['pendente'], andamento: ['processando'] },
     { id: 'envios', nome: 'Envios do nads (Claudio Secretario)', colecao: 'enviosSecretario', esperando: ['pendente'], andamento: ['gravando'] },
-    { id: 'extratos', nome: 'Extratos para importar', colecao: 'extratosRecebidos', esperando: ['novo'], andamento: [], campoData: 'em' },
+    // extratosRecebidos NÃO é fila do robô: o Gmail/Drive só depositam e quem importa é o Extrator, quando alguém o abre
+    // (aparecia sempre "atrasada" sem o robô ter o que fazer; tirada em 22/10/2026).
   ],
 };
 

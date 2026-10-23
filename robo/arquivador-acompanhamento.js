@@ -125,7 +125,7 @@ function acaoDoItem(x, modoRes) {
   if (x.acao === 'AGUARDANDO_ORIGINAL') return 'aguardando';
   const aplicado = modoRes === 'PRODUCAO' && !x.naoAplicado;
   if (x.acao === 'ARQUIVAR') return aplicado ? 'arquivou' : 'arquivaria';
-  if (x.acao === 'JA_ARQUIVADO') return 'jaArquivado';
+  if (x.acao === 'JA_ARQUIVADO' || x.acao === 'DESCARTAR') return 'jaArquivado';   // descarte confirmado: saiu da pasta para a quarentena
   if (x.acao === 'NAO_IDENTIFICADO') return 'naoIdentificado';
   return 'fica';
 }
@@ -308,6 +308,7 @@ function criar(opcoes) {
       mes: contagemPublicada(st.mes),
       ultimos: st.ultimos,
       pendentes: st.pendentes,
+      pendentesTotal: st.pendentesTotal == null ? st.pendentes.length : st.pendentesTotal,
       erros: st.erros,
       alertas: alertas(st, t),
       ladoALado: st.ladoALado,
@@ -423,6 +424,20 @@ function criar(opcoes) {
       publicar();
     }),
     /** o relatório lado a lado do dia (compararDia) */
+    /**
+     * A lista "Para resolver" de verdade (23/10/2026: a lista guardava os 80 últimos não identificados, e os
+     * reprocessamentos tiravam a maioria da pasta). itens = [{ rel, nome, motivo, confianca, cliente, chave, em, hash }]
+     * do que está hoje em NÃO IDENTIFICADOS; o "fica" (na origem) continua enquanto o arquivo estiver lá (existe(rel)).
+     */
+    naoIdentificados: seguro('naoIdentificados', (itens, existe) => {
+      const daPasta = (itens || []).map(x => Object.assign(itemCompacto(Object.assign({ acao: 'NAO_IDENTIFICADO' }, x), 'PRODUCAO', x.em || new Date(o.agora()).toISOString(), false), { naPasta: x.naPasta || null }));
+      const ficam = st.pendentes.filter(p => p.acao === 'fica' && (!existe || existe(p.rel)));
+      const todos = daPasta.concat(ficam).sort((a, b) => String(b.em).localeCompare(String(a.em)));
+      const antes = JSON.stringify([st.pendentesTotal, st.pendentes.map(p => p.id)]);
+      st.pendentes = todos.slice(0, MAX_PENDENTES);
+      st.pendentesTotal = todos.length;
+      if (antes !== JSON.stringify([st.pendentesTotal, st.pendentes.map(p => p.id)])) publicar();
+    }),
     ladoALado: seguro('ladoALado', (r) => { st.ladoALado = Object.assign({}, r, { exemplos: (r.exemplos || []).slice(0, 20) }); publicar(); }),
     /** grava o que falta agora (ao desligar) */
     parar: async () => { try { if (timer) { clearTimeout(timer); timer = null; } await gravar(); } catch (e) { /* desligando */ } parado = true; },

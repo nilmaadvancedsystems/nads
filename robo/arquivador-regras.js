@@ -209,6 +209,8 @@ const DOC_CONFIRMADO = { '42460727615': [62, 'CARLOS LUCAS MENDES'], '3685785869
 const RAIZ_MESMA_PASTA = { '53636418': [591, 'ZELO AGROINDUSTRI'] };            // ZELO: matriz e filiais na mesma pasta (03)
 const APELIDOS = [                                                          // 03: "Apelidos confirmados pelo responsável"
   { re: /\bFITO A\b(?!\s*LIMENTOS)/, codigo: 309, nome: 'FITO ALIMENTOS' },
+  // 23/10/2026 (Vitor): "FITO IND…" / "FITO IND. E COM." = 292 (a 294 tem o mesmo nome, inativa); "FITO A…" = 309
+  { re: /\bFITO IND(USTRIA)?\b/, codigo: 292, nome: 'FITO INDUSTRIA', venceHomonimo: true },
   { re: /\bFACIL VISTORIAS\b/, codigo: 358, nome: 'MITRA TRANSPORTE' },
   { re: /\bGMM ATIVOS FLORESTAIS\b/, codigo: 356, nome: 'A7 COMERCIO' },
 ];
@@ -227,7 +229,17 @@ const HASH_CONFIRMADO = {                                                   // 0
   '50d18b3ac3eb39c03318a74c19f01436b0c842cf005875f469837731edb106d8': 358, '20e9669e6912372a6244a0a3a598a1a267c25a7611c4eb39845333e80d789b6c': 358,
   '7e7d073c73b34ac734566803ab78110f1ee97695c281a36fae5698a74538833e': 358, d822931f9674c02f5bc61d3801a24ce3af0f24fabab3cf68dc23c4fa03455909: 358,
 };
-const NOME_DO_HASH = { 584: 'IMOBILIARIOS M', 356: 'A7 COMERCIO', 358: 'MITRA TRANSPORTE' };
+HASH_CONFIRMADO.d378ba6934daa35ef03df5c440a8d3319356924ff51f81318f2cb4e9109b6a1e = 413;   // Relatório_Set_26.xlsx (Vitor, 23/10/2026)
+const NOME_DO_HASH = { 584: 'IMOBILIARIOS M', 356: 'A7 COMERCIO', 358: 'MITRA TRANSPORTE', 413: 'BRAZILIAN FORESTRY' };
+// Descartes confirmados pelo responsável (Vitor, 23/10/2026): vão para a QUARENTENA (nunca apagados), com linha no manifesto.
+// Os registros de envio do emissor da MADEIREIRA ("env-lot=…", "Erro-…") e os 2 editais da Prefeitura de Rio Pardo de Minas.
+const HASH_DESCARTE = Object.fromEntries([
+  ['028a68a74d8caa4c0f467fc6acf818019496a492326c26c055b4e2be648f48bc', 'registro de envio do emissor'], ['73ae80fe26e4bbae825387d5c9e92b36a7b623c895e9f2b10a63a7cb2a6396a3', 'registro de envio do emissor'],
+  ['9f9a21b15a3b45c63fee50c9ddb3871fb2c5d2d2e4eefd72615469dff1f790c0', 'registro de envio do emissor'], ['03134a61a35de451e31e6488eb4e29a55e5ac76ba7e69fc24de666de53137953', 'registro de envio do emissor'],
+  ['193ff17418636c51577ed1566fad65c71d18487568645d620cae8c07b52ed393', 'registro de envio do emissor'], ['7d36ede5f1db040da0dbd14f1170d2d3010f07d41be4586e70b2e1c934a582dd', 'registro de envio do emissor'],
+  ['ac3267c3dbb2b49d1a2235d734ec05f9fb84bfe90758c61f4d3c87d240623bbe', 'registro de envio do emissor'], ['45682ab4f3720981da8aee1eccc93d1df09c7585af416d62d7f655d0cefe73b8', 'registro de erro do emissor'],
+  ['561a74ee0b27cdbd39e09df63fab6157f83830cb3b9ae767d2fcf7bbc3a91e83', 'edital de licitação da prefeitura'], ['02d945e9300c0e1d35e277682291fe755ed179688ca21f0a42cdd2458351ce5b', 'edital de licitação da prefeitura'],
+]);
 
 /** O código confirmado no 03, conferido contra o cadastro atual (null se o código não é mais daquela empresa e o nome não acha um só). */
 function confirmado(codigo, nome, cad) {
@@ -246,7 +258,7 @@ function confirmado(codigo, nome, cad) {
  * nads) e as pastas que já existem em G:\Meu Drive\2026 (nomes "<código> - <nome>").
  */
 function montarCadastro(linhas, pastas) {
-  const porCod = new Map(), porDoc = new Map(), porRaiz = new Map(), porNome = new Map();
+  const porCod = new Map(), porDoc = new Map(), porRaiz = new Map(), porNome = new Map(), porNomeEntregas = new Map();
   const add = (m, k, c) => { if (!k) return; if (!m.has(k)) m.set(k, new Set()); m.get(k).add(c); };
   for (const l of linhas || []) {
     const codigo = Number(l.codigo);
@@ -260,10 +272,11 @@ function montarCadastro(linhas, pastas) {
       if (d.length === 14) add(porRaiz, d.slice(0, 8), codigo);
     }
     add(porNome, chaveNome(l.razao), codigo);
+    if (l.nomeEntregas) add(porNomeEntregas, chaveNome(l.nomeEntregas), codigo);
     outrosNomes.forEach(n => add(porNome, chaveNome(n), codigo));
     if (l.fantasia && chaveNome(l.fantasia).length >= 6) add(porNome, chaveNome(l.fantasia), codigo);
   }
-  const cad = { porCod, porDoc, porRaiz, porNome };
+  const cad = { porCod, porDoc, porRaiz, porNome, porNomeEntregas };
   for (const [d, [c, nome]] of Object.entries(DOC_CONFIRMADO)) { const atual = confirmado(c, nome, cad); if (atual != null && porCod.has(atual)) porDoc.set(d, new Set([atual])); }
   // pastas no Drive: duas pastas com o mesmo código (ex.: "591 - AAP INTERMEDIACOES" e "591 - ZELO …") não servem a ninguém
   const pastasPorCod = new Map(), pastasDuplicadas = new Map();
@@ -298,6 +311,10 @@ function clienteDaPasta(rel, cad) {
       const cands = new Set();
       for (const [k, cs] of cad.porNome) if (k.length >= 6 && (k.startsWith(n) || n.startsWith(k))) cs.forEach(c => cands.add(c));
       if (cands.size === 1) return { codigo: [...cands][0], como: 'nome da pasta "' + parte + '"' };
+      // 23/10/2026: o robô do SIEG nomeia a pasta e o lote ("SIEG AAAA-MM - <nome>.zip") com o nome do cliente no Entregas;
+      // as filiais costumam ter a mesma razão no nads, mas no Entregas o nome é de um código só (TEOBALDO … LTDA = 299)
+      const pe = cad.porNomeEntregas && cad.porNomeEntregas.get(n);
+      if (pe && pe.size === 1) return { codigo: [...pe][0], como: 'nome do cliente no Entregas na pasta "' + parte + '" (lote do SIEG)' };
     }
   }
   return null;
@@ -320,7 +337,13 @@ function clientesPeloNomeNoTexto(texto, cad) {
   }
   // "ADERLEI DOS SANTOS" (pessoa física) dentro de "ADERLEI DOS SANTOS E CIA LTDA": vale o nome mais longo
   for (const [c1, r1] of [...achados]) for (const [c2, r2] of achados) if (c1 !== c2 && r2.length > r1.length && r2.includes(r1)) { achados.delete(c1); break; }
-  for (const a of APELIDOS) if (a.re.test(t)) { const c = confirmado(a.codigo, a.nome, cad); if (c != null) achados.set(c, String(c)); }
+  for (const a of APELIDOS) if (a.re.test(t)) {
+    const c = confirmado(a.codigo, a.nome, cad);
+    if (c == null) continue;
+    achados.set(c, String(c));
+    // o apelido decide entre códigos com a MESMA razão social (ex.: FITO 292 × 294)
+    if (a.venceHomonimo) { const k = chaveNome(cad.porCod.get(c).razao); for (const o of [...achados.keys()]) if (o !== c && cad.porCod.get(o) && chaveNome(cad.porCod.get(o).razao) === k) achados.delete(o); }
+  }
   return [...achados.keys()];
 }
 
@@ -579,6 +602,7 @@ const TRIBUTO_POR_CODIGO = {   // DARF: código da receita → [TRIBUTO] (05d §
   '8109': 'PIS', '6912': 'PIS', '2172': 'COFINS', '5856': 'COFINS', '0561': 'IRRF', '1708': 'IRRF', '3208': 'IRRF', '0588': 'IRRF', '5952': 'CSRF',
   '1099': 'INSS', '1138': 'INSS', '1082': 'INSS', '1646': 'INSS', '1657': 'INSS', '1213': 'INSS', '1141': 'INSS', '1170': 'INSS', '1176': 'INSS', '1191': 'INSS', '1196': 'INSS', '1200': 'INSS', '1162': 'INSS', '1769': 'INSS', '2141': 'INSS', '2158': 'INSS', '2985': 'INSS', '2991': 'INSS',
   '0190': 'CARNE-LEAO', '4600': 'GCAP', '6015': 'IRPF',
+  '0289': 'INSS',   // auto de infração de INSS (Vitor, 23/10/2026: os 13 DARFs da OURO VERDE 409)
 };
 
 function linhaApos(u, rotulo, distancia) {
@@ -592,7 +616,7 @@ function camposDaGuia(u) {
   // comprovante de arrecadação: "Período Apuração" e "Data de Vencimento" impressos colados ("30/04/202523/05/2025")
   const colados = /COMPROVANTE DE ARRECADACAO/.test(u) ? /(\d{2})\/(\d{2})\/(20\d{2})(\d{2}\/\d{2}\/20\d{2})/.exec(u) : null;
   if (colados) venc = dataBr(colados[4]);
-  let valor = valorBr(linhaApos(u, /VALOR TOTAL DO DOCUMENTO|VALOR A RECOLHER|TOTAL DA GUIA|VALOR TOTAL|VALOR:|\bTOTAIS\b/, 200));
+  let valor = valorBr(linhaApos(u, /VALOR\s*TOTAL\s*DO\s*DOCUMENTO|VALOR A RECOLHER|TOTAL DA GUIA|VALOR\s*TOTAL|VALOR:|\bTOTAIS\b/, 200));
   if (colados) {
     // "Totais 7.186,7523,710,007.210,46": principal, juros, multa, total — o total é o último
     const linha = (/\bTOTAIS\n([^\n]+)/.exec(u) || [])[1] || '';
@@ -664,6 +688,9 @@ const REGRAS_PDF = [
   { tipo: 'CERTIDAO', setor: 'FOLHA_SOCIETARIO', re: /^[\s\S]{0,800}(CERTIDAO (NEGATIVA|POSITIVA|CONJUNTA|DE REGULARIDADE|DE DEBITOS)|CERTIFICADO DE REGULARIDADE DO FGTS)/, fonte: '04b (Certidões)',
     campos: u => ({ orgao: /FGTS|CAIXA ECONOMICA/.test(u) ? 'FGTS' : /TRABALHISTA|\bCNDT\b|JUSTICA DO TRABALHO/.test(u) ? 'TRABALHISTA' : /RECEITA FEDERAL|PROCURADORIA-GERAL DA FAZENDA|DIVIDA ATIVA DA UNIAO|TRIBUTOS FEDERAIS/.test(u) ? 'FEDERAL' : /PREFEITURA|MUNICIPIO DE|MUNICIPAL/.test(u) ? 'MUNICIPAL' : /ESTADO D[EO]|SECRETARIA DE ESTADO|FAZENDA ESTADUAL|SEFAZ/.test(u) ? 'ESTADUAL' : null,
       data: dataBr(linhaApos(u, /EMITIDA (AS|EM)|DATA DA EMISSAO|EMISSAO:|EMITIDA/, 160)) }) },
+  // documentos POR FUNCIONÁRIO (Vitor, 23/10/2026): <cliente>\DEPARTAMENTO PESSOAL\FUNCIONÁRIOS\<NOME>\<tipo> <data>.pdf
+  { tipo: 'DP FUNCIONARIO', setor: 'FOLHA_SOCIETARIO', re: /^[\s\S]{0,800}(ATESTADO DE SAUDE OCUPACIONAL|TERMO DE RESCISAO DO CONTRATO DE TRABALHO|AVISO DE FERIAS|RECIBO DE FERIAS|AVISO PREVIO|CONTRATO (INDIVIDUAL )?DE TRABALHO|CONTRATO DE EXPERIENCIA|FICHA DE REGISTRO DE EMPREGADO)/, fonte: 'DP por funcionário (Vitor, 23/10/2026)',
+    campos: u => camposDoFuncionario(u) },
   { tipo: 'FOLHA', setor: 'FOLHA_SOCIETARIO', re: /^[\s\S]{0,800}(FOLHA DE PAGAMENTO|RECIBO DE PAGAMENTO DE SALARIO|HOLERITE|RECIBO DE FERIAS|RECIBO DE 13|RESUMO DA FOLHA)/, fonte: '04b (Folha)',
     campos: u => ({ competencia: competenciaSolta(linhaApos(u, /COMPETENCIA|REFERENCIA|MES\/ANO|PERIODO/, 120)) || competenciaSolta(u.slice(0, 800)) }) },
   // ---- contábil (04; Dicionário §6.1) ----
@@ -674,9 +701,12 @@ const REGRAS_PDF = [
   { tipo: 'INFORME DE RENDIMENTOS', setor: 'CONTABIL', re: /INFORME DE RENDIMENTOS|COMPROVANTE DE RENDIMENTOS|FONTE PAGADORA[\s\S]{0,400}BENEFICIARI[AO] DOS RENDIMENTOS/, fonte: 'Dicionário §6.2; 04 (Informe de Rendimentos)',
     campos: u => {
       const a = /ANO[- ]?CALENDARIO[^0-9]{0,20}(20\d{2})/.exec(u) || /EXERCICIO[^0-9]{0,20}(20\d{2})/.exec(u);
-      const ano = a ? (/EXERCICIO/.test(a[0]) ? +a[1] - 1 : +a[1]) : null;
+      let ano = a ? (/EXERCICIO/.test(a[0]) ? +a[1] - 1 : +a[1]) : null;
+      // informe trimestral (Vitor, 23/10/2026: o Nubank da LC FLORESTAL, "Terceiro trimestre 2026"): o período vai no nome
+      let trimestre = null;
+      if (!ano) { const t = /\b(PRIMEIRO|SEGUNDO|TERCEIRO|QUARTO|[1-4]\s*[O°º]?)\s*TRIMESTRE\s*(?:DE\s*)?(20\d{2})/.exec(u.slice(0, 1500)); if (t) { trimestre = { PRIMEIRO: 1, SEGUNDO: 2, TERCEIRO: 3, QUARTO: 4 }[t[1]] || +t[1][0]; ano = +t[2]; } }
       const fonte = (/FONTE PAGADORA[\s\S]{0,160}?NOME(?: EMPRESARIAL)?\s*:?\s*[—-]?\s*\|?\s*\[?([A-Z0-9&. /-]{4,})/.exec(u) || [])[1];
-      return { ano, fonte: fonte ? fonte.trim() : null };
+      return { ano, trimestre, fonte: fonte ? fonte.trim() : null };
     } },
   { tipo: 'OPERACAO DE CREDITO', setor: 'CONTABIL', re: /EXTRATO DE (EMPRESTIMOS?|OPERACAO DE CREDITO)|EVOLUCAO CONTRATUAL|CONTRATO DE (EMPRESTIMO|FINANCIAMENTO)|CEDULA DE CREDITO BANCARIO|DADOS DA CONTRATACAO|GIRO PRONAMPE/, fonte: '04 (Op. Crédito)', campos: () => ({}) },
   { tipo: 'RECEBIMENTO DE CLIENTES', setor: 'CONTABIL', re: /RELATORIO DE RECEBIMENTOS|TITULOS LIQUIDADOS|TITULOS BAIXADOS|TITULOS PAGOS POR CONTA CREDITO|RELATORIO DE COBRANCA|CREDITOS? DE LIQUIDACAO|CRED\.? LIQUIDACAO/, fonte: 'Dicionário §6.1', campos: u => camposDeExtrato(u) },
@@ -687,6 +717,25 @@ const REGRAS_PDF = [
     campos: u => ({ competencia: competenciaSolta(linhaApos(u, /VENCIMENTO/, 60)) || (dataBr(linhaApos(u, /VENCIMENTO/, 60)) ? (d => ({ mes: +d.slice(3, 5), ano: +d.slice(6) }))(dataBr(linhaApos(u, /VENCIMENTO/, 60))) : null) }) },
   { tipo: 'EXTRATO', setor: 'CONTABIL', re: /EXTRATO EXPORTADO NO DIA|EXTRATO (DE |DA )?(CONTA|C\/C|MENSAL|CONSOLIDADO|FINANCEIRO|POR PERIODO|BANCARIO)|EXTRATOMENSAL|EXTRATO HISTORICO|EXTRATO DE: AG|EXTRATO CONTA CORRENTE|RELATORIO DE MOVIMENTACOES|SALDO FINAL DO PERIODO|SALDO ANTERIOR[\s\S]{0,4000}SALDO/, fonte: 'Dicionário §6.1; 04 (Bancários)', campos: u => camposDeExtrato(u) },
 ];
+
+/**
+ * O documento por funcionário: o tipo (ASO, Rescisão, Férias, Aviso prévio, Contrato, Admissão), o nome do funcionário
+ * (o nome que vem antes do CPF, depois do rótulo Funcionário/Empregado/Trabalhador/Colaborador) e a data do documento.
+ */
+function camposDoFuncionario(u) {
+  const doc = /ATESTADO DE SAUDE OCUPACIONAL/.test(u) ? 'ASO' : /TERMO DE RESCISAO/.test(u) ? 'Rescisão' : /AVISO DE FERIAS|RECIBO DE FERIAS/.test(u) ? 'Férias'
+    : /AVISO PREVIO/.test(u) ? 'Aviso prévio' : /CONTRATO (INDIVIDUAL )?DE TRABALHO|CONTRATO DE EXPERIENCIA/.test(u) ? 'Contrato' : 'Admissão';
+  const m = /\b(?:FUNCIONARIO|EMPREGADO|TRABALHADOR|COLABORADOR)\b[^\n]{0,60}\n?\s*([A-Z][A-Z ]{4,80}?)\s+(?:CPF:?\s*)?\d{3}\.\d{3}\.\d{3}-\d{2}/.exec(u);
+  let nome = m ? m[1].replace(/\s+/g, ' ').trim() : null;
+  if (nome && (nome.split(' ').length < 2 || /\b(CPF|DATA|NASC|NOME|FUNCAO|SETOR)\b/.test(nome))) nome = null;
+  const dataApos = re => { const i = u.search(re); if (i < 0) return null; const d = /(\d{2})\/(\d{2})\/(20\d{2})/.exec(u.slice(i, i + 400)); return d ? d[1] + '/' + d[2] + '/' + d[3] : null; };
+  const data = doc === 'ASO' ? dataApos(/EXAMES? COMPLEMENTARES|NOME DO EXAME/) || dataApos(/\bDATA:/)
+    : doc === 'Rescisão' ? dataApos(/DATA DE AFASTAMENTO/)
+    : doc === 'Férias' ? dataApos(/PERIODO DE (GOZO|FERIAS)|INICIO D[AE]S? FERIAS/)
+    : doc === 'Aviso prévio' ? dataApos(/DATA DO AVISO|AVISO EM|EM\s+\d{2}\/\d{2}\/20\d{2}/)
+    : dataApos(/DATA DE ADMISSAO|ADMITIDO EM|ADMISSAO:/);
+  return { doc, nome, data };
+}
 
 function anoCalendario(u) {
   const m = /ANO[- ]CALENDARIO[^0-9]{0,20}(20\d{2})/.exec(u) || /PERIODO[^0-9]{0,30}\d{2}\/\d{2}\/(20\d{2})/.exec(u) || /EXERCICIO[^0-9]{0,20}(20\d{2})/.exec(u);
@@ -759,6 +808,7 @@ function decidir(entrada, ctx) {
   const e = (ext || '').toLowerCase();
   const fim = o => finalizar(Object.assign({ evidencias: ev, nomeOriginal: nome, ocr: entrada.ocr || null }, o), ctx);
   if (VIDEO_AUDIO.test(nome)) return { acao: 'IGNORAR', motivo: 'VIDEO_OU_AUDIO', confianca: 1, evidencias: ['Dicionário §1: vídeo/áudio fica na origem'] };
+  if (entrada.hash && HASH_DESCARTE[entrada.hash]) return { acao: 'DESCARTAR', motivo: 'DESCARTE_CONFIRMADO', confianca: 1, tipo: 'DESCARTE', evidencias: ['descarte confirmado pelo responsável (' + HASH_DESCARTE[entrada.hash] + '): vai para a quarentena, nunca é apagado direto'] };
   if (CONTEINER.test(nome)) return { acao: 'CONTEINER', motivo: null, confianca: 1, evidencias: ['Dicionário §1: compactado é extraído, cada arquivo vira item'] };
   const cad = ctx.cadastro;
 
@@ -999,7 +1049,13 @@ function decidirPlanilha(entrada, ctx, ev, porHash) {
     const ext = (/\.[a-z0-9]+$/i.exec(entrada.nome) || ['.xlsx'])[0].toLowerCase();
     return { acao: 'ARQUIVAR', cliente: cli, comoCliente: 'nome', confianca: 0.88, tipo: 'MAQUININHAS', setor: 'CONTABIL', competencia: comp, caminho: ['CONTÁBIL', 'EXTRATOS', String(comp.ano), dois(comp.mes), 'MAQUININHAS', operadora], nomeFinal: mesAno(comp) + ext, fonte: 'Dicionário §6.1.3; 04 (Maquininhas)' };
   }
-  if (porHash) return { acao: 'NAO_IDENTIFICADO', motivo: 'HASH_CONFIRMADO_SEM_REGRA_DE_DESTINO', confianca: 0.5, cliente: porHash };
+  if (porHash) {
+    // 04: documento contábil sem sub-regra, com cliente identificado → CONTÁBIL\OUTROS DOCUMENTOS\[ANO]\, nome original;
+    // o ano do conteúdo, senão o da subpasta de origem ("2026-10\"), senão o ano corrente
+    const ano = ((/(?:^|\\)(20\d{2})-\d{2}(?:\\|$)/.exec(entrada.rel || '')) || [])[1] || String((ctx.hoje || new Date()).getFullYear());
+    ev.push('cliente confirmado pelo responsável (arquivo) e sem sub-regra: OUTROS DOCUMENTOS (04)');
+    return { acao: 'ARQUIVAR', cliente: porHash, comoCliente: 'hash', confianca: 0.97, tipo: 'OUTROS DOCUMENTOS', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'OUTROS DOCUMENTOS', ano], nomeFinal: entrada.nome, fonte: '04 (Outros documentos)' };
+  }
   return { acao: 'NAO_IDENTIFICADO', motivo: 'TIPO_NAO_RECONHECIDO', confianca: 0, tipo: 'PLANILHA', evidencias: ev.concat('planilha sem regra determinística') };
 }
 
@@ -1189,6 +1245,12 @@ function decidirPdf(entrada, ctx, ev, porHash) {
       const lado = campos.recebidas ? 'RECEBIDOS' : 'EMITIDOS';
       return Object.assign(base, { acao: 'ARQUIVAR', confianca: Math.min(c.conf, 0.95), competencia: comp, fiscal: ['DOCS', lado, 'RELATÓRIO MENSAL', String(comp.ano)], nomeFinal: mesAno(comp) + ' - RELATORIO NOTAS ' + (campos.recebidas ? 'RECEBIDAS' : 'EMITIDAS') + ' - ' + nomeNormalizado(cli ? cli.razao : '') + '.pdf' });
     }
+    case 'DP FUNCIONARIO': {
+      if (!campos.nome) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', confianca: 0.5, tipo: 'DP FUNCIONARIO ' + campos.doc, evidencias: ev.concat('nome do funcionário não lido no documento') });
+      if (!campos.data) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, tipo: 'DP FUNCIONARIO ' + campos.doc, evidencias: ev.concat('data do ' + campos.doc + ' não lida') });
+      ev.push('funcionário: ' + campos.nome + ' · ' + campos.doc + ' de ' + campos.data);
+      return Object.assign(base, { acao: 'ARQUIVAR', confianca: Math.min(c.conf, 0.95), tipo: 'DP FUNCIONARIO ' + campos.doc, competencia: { mes: +campos.data.slice(3, 5), ano: +campos.data.slice(6) }, caminho: ['DEPARTAMENTO PESSOAL', 'FUNCIONÁRIOS', campos.nome], nomeFinal: campos.doc + ' ' + campos.data.replace(/\//g, '-') + '.pdf' });
+    }
     case 'CARTAO CNPJ': case 'DOC CONSTITUTIVO':
       return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, caminho: ['SOCIETÁRIO', 'DOCUMENTOS CONSTITUTIVOS'], nomeFinal: nomeOrig });
     case 'CERTIDAO':
@@ -1282,7 +1344,7 @@ function montarContabil(regra, campos, u, bruto, entrada, ctx, ev, porHash) {
     if (!campos.ano) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5 });
     const fonte = bancoDoTexto(bruto, true) || (campos.fonte ? nomeNormalizado(campos.fonte) : null);
     if (!fonte) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'EMITENTE_INDETERMINADO', confianca: 0.5 });
-    return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: { ano: campos.ano }, caminho: ['CONTÁBIL', 'INFORME DE RENDIMENTOS', String(campos.ano)], nomeFinal: campos.ano + ' - INFORME DE RENDIMENTOS ' + fonte + '.pdf' });
+    return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: { ano: campos.ano }, caminho: ['CONTÁBIL', 'INFORME DE RENDIMENTOS', String(campos.ano)], nomeFinal: (campos.trimestre ? campos.trimestre + 'º TRIMESTRE ' : '') + campos.ano + ' - INFORME DE RENDIMENTOS ' + fonte + '.pdf' });
   }
   if (regra.tipo === 'BALANCETE') {
     let ano = campos.ano;

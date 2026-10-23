@@ -565,6 +565,12 @@ function aplicar(res, opcoes, ctx) {
       }
       if (!permitido(it)) { it.naoAplicado = 'tipo ainda em simulação'; continue; }
       if (it.acao === 'ARQUIVAR') { copiar(it, fs.readFileSync(path.join(opcoes.origem, it.rel))); paraQuarentena(it); }
+      else if (it.acao === 'DESCARTAR') {
+        // descarte confirmado (23/10/2026): para a quarentena, nunca apagado; a linha no manifesto diz para onde foi
+        paraQuarentena(it);
+        linha(manifesto, { hash_origem: it.hash, hash_original: it.hashPai || it.hash, nome_original: it.nome, destino_final: path.join(quarentena, path.dirname(it.rel)), nome_final: path.basename(it.rel), id_execucao: res.id, timestamp: new Date().toISOString(), pai_completo: !it.hashPai, confianca: 1, tipo: 'DESCARTE', cliente: null, descarte: true, motivo: (it.evidencias || [])[0] || null });
+        if (painel) painel.atividade('arquivamento', 'Descartou ' + it.nome + ' (quarentena)', (it.evidencias || [])[0] || '');
+      }
       else if (it.acao === 'JA_ARQUIVADO') { paraQuarentena(it); if (it.chave && ctx.chaves && it.onde) ctx.chaves.anotar(it.chave, { onde: it.onde, raiz: opcoes.clientes, fonte: 'já arquivado' }, true); }
       else if (it.acao === 'NAO_IDENTIFICADO' && opcoes.moverNaoIdentificados) moverParaNi(it);
     } catch (e) { it.erro = e.message; if (painel) painel.erro('arquivamento', 'Não consegui arquivar ' + (it.nome || it.rel), e.message); }
@@ -651,6 +657,7 @@ function arquivosDosNaoIdentificados(pastaNi) {
 function rotaDoReprocesso(x) {
   if (x.erro) return 'erro';
   if (x.acao === 'JA_ARQUIVADO') return 'ja arquivado';
+  if (x.acao === 'DESCARTAR') return 'descarte';
   if (x.acao === 'ARQUIVAR') return x.viaSieg ? 'sieg' : /índice de chaves/.test(x.fonte || '') ? 'chave' : HELLO.has(+x.cliente) ? 'hello' : 'outros';
   return 'fica: ' + (x.motivo || x.acao);
 }
