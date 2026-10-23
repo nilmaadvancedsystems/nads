@@ -49,11 +49,12 @@ export function Caixa() {
         </label>
         <span className="fin-acoes">
           {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
-          <MenuSuspenso rotulo="Mais" titulo="Calculadora, contar cédulas e exportar" direita largura={220}
+          <MenuSuspenso rotulo="Mais" titulo="Calculadora, contar cédulas, exportar e imprimir" direita largura={220}
             itens={[
               { rotulo: 'Calculadora', icone: 'hash', onClick: () => vm.setCalculando(true) },
               { rotulo: 'Contar cédulas', icone: 'dinheiro', onClick: () => vm.setContando(true) },
               { rotulo: 'Exportar planilha', icone: 'download', desabilitado: !vm.periodoValido, onClick: vm.exportar },
+              { rotulo: 'Imprimir', icone: 'printer', desabilitado: !vm.periodoValido, onClick: vm.imprimir },
             ]} />
           <button type="button" className="btn btn-primary" onClick={() => vm.abrir({})}><Icone nome="plus" />Novo lançamento</button>
         </span>
