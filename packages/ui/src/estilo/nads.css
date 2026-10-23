@@ -4322,11 +4322,12 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 /* Fiscal › Rateio de frete (22/10/2026) */
 .rateio-frete{display:flex;flex-direction:column;gap:12px;}
 .rateio-frete > .card{margin:0;}
-.rateio-frete .busca-curta.rateio-frete-empresa{width:320px;}
-.btn.rateio-frete-empresa{max-width:360px;}
-.rateio-frete-empresa-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.rateio-frete-busca{position:relative;}
-.rateio-frete-busca .nf-achados{position:absolute;left:0;width:420px;top:100%;margin-top:4px;z-index:30;box-shadow:var(--shadow-lg);background:var(--surface);}
+/* a empresa na barra (Rateio de frete e Simples Nacional; 23/10/2026: uma peça só, fiscal/partes/EmpresaDaBarra.tsx) */
+.busca-curta.empresa-da-barra{width:320px;max-width:100%;}
+.btn.empresa-da-barra{max-width:360px;min-width:0;}
+.empresa-da-barra-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.empresa-da-barra-busca{position:relative;max-width:100%;}
+.empresa-da-barra-busca .nf-achados{position:absolute;left:0;width:min(420px,calc(100vw - 32px));top:100%;margin-top:4px;z-index:30;box-shadow:var(--shadow-lg);background:var(--surface);}
 .rateio-frete-notas tbody tr,.rateio-frete-abre{cursor:pointer;}
 .rateio-frete-valores{display:flex;flex-wrap:wrap;align-items:center;gap:8px 24px;margin-bottom:12px;}
 .rateio-frete-valores label{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-13);color:var(--ink-muted);}
@@ -5041,6 +5042,19 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .faturamento-nome{max-width:280px;overflow:hidden;text-overflow:ellipsis;}
 .faturamento-tabela tfoot td{border-top:2px solid var(--border);position:sticky;bottom:0;background:var(--surface);}
 .faturamento-subiu{color:var(--ok,#1E8E3E);}
+/* a tabela do Faturamento (23/10/2026): o código e o cliente parados na rolagem para o lado (no celular também), o
+   regime pequeno embaixo do nome, o total e a variação logo depois do cliente */
+.faturamento-tabela .fat-fixa{position:sticky;background:var(--surface);z-index:1;}
+.faturamento-tabela thead .fat-fixa,.faturamento-tabela tfoot .fat-fixa{z-index:2;}
+.faturamento-tabela .fat-fixa-cod{left:0;min-width:56px;}
+.faturamento-tabela .fat-fixa-nome{left:56px;box-shadow:inset -1px 0 0 var(--border);}
+.faturamento-tabela thead th{position:sticky;top:0;z-index:1;background:var(--surface-2);}
+.faturamento-tabela thead th.fat-fixa{z-index:3;}
+.fat-linha:hover .fat-fixa{background:var(--hover-bg);}
+.fat-regime{display:block;font-size:11px;color:var(--ink-muted);line-height:1.2;}
+.fat-col-total{border-left:1px solid var(--border);}
+.fat-maior-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;display:block;}
+@media (max-width:700px){.faturamento-nome{max-width:160px;}}
 .faturamento-caiu{color:var(--danger);}
 /* o faturamento detalhado de um cliente (22/10/2026): a linha clicável e a janela */
 .fat-linha{cursor:pointer;}
@@ -5071,9 +5085,6 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 @media (max-width:900px){.fat-detalhe-corpo{grid-template-columns:1fr;}}
 /* Fiscal › Simples: a calculadora do Simples Nacional (22/10/2026) */
 .simples-calc{display:flex;flex-direction:column;gap:12px;max-width:1040px;}
-.simples-calc-empresa{min-width:320px;max-width:480px;flex:1 1 320px;}
-.simples-calc-busca{position:relative;}
-.simples-calc-busca .nf-achados{position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:30;box-shadow:var(--shadow-lg);background:var(--surface);}
 .simples-calc-tabela{max-height:none;}
 .simples-calc-faixas{border:1px solid var(--border);border-radius:6px;overflow:hidden;}
 .simples-calc-faixas > .imp-faixa:first-child{border-top:none;}
@@ -5110,3 +5121,19 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .arquivador-ultima{display:flex;flex-direction:column;gap:8px;align-self:stretch;margin-top:12px;}
 .arquivador-ultima > p{margin:0;font-size:var(--fs-12);}
 .arquivador-progresso .arquivador-hero h3{margin:0;padding:0;border:none;background:none;}
+
+/* a Variação (23/10/2026): a seta e o %, verde quando é bom, vermelho quando é ruim */
+.variacao{font-size:var(--fs-12,12px);font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.variacao-boa{color:var(--success);}
+.variacao-ruim{color:var(--destructive);}
+/* o número do Stat com a variação embaixo (o "contra o mês anterior") */
+.stat-comparacao{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:var(--fs-12,12px);color:var(--ink-muted);}
+
+.rateio-frete-titulo{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:var(--fs-13,13px);}
+/* a barra do Faturamento numa linha só em 1366 px (23/10/2026) */
+.faturamento .tarefas-barra-topo .busca-curta{width:170px;}
+/* na janela do faturamento detalhado, os blocos não encolhem (a grade dos números sumia com 2 px; 23/10/2026) */
+.modal.fat-detalhe>*{flex-shrink:0;}
+/* no celular (23/10/2026): os números do Faturamento, do detalhe e do Simples dois por linha, a busca na largura toda */
+@media (max-width:600px){.faturamento .stat-grid,.fat-detalhe .stat-grid,.simples-calc .stat-grid{grid-template-columns:1fr 1fr;}.faturamento .stat-value,.fat-detalhe .stat-value,.simples-calc .stat-value{font-size:var(--fs-16,16px);}.faturamento .stat,.fat-detalhe .stat,.simples-calc .stat{padding:12px;}.faturamento .tarefas-barra-topo .busca-curta{width:100%;}.modal.fat-detalhe{padding:14px 12px;width:calc(100vw - 16px);}}
+.faturamento .stat,.fat-detalhe .stat,.simples-calc .stat{min-width:0;overflow:hidden;}

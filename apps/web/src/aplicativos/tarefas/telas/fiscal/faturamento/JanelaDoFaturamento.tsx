@@ -1,7 +1,7 @@
 // O faturamento detalhado de um cliente (Fiscal › Faturamento; 22/10/2026: "quando eu clique no cliente abra um
 // faturamento detalhado"): de cima para baixo, os números do período, o mês a mês (clicar num mês escolhe o mês) e, no
 // mês escolhido, para quem vendeu e por CFOP. Só as peças do catálogo (modal, BotaoFechar, Stat, Tabela padrão, Ranking).
-import { BotaoFechar, Stat, useJanela } from '@nads/ui';
+import { BotaoFechar, Stat, useJanela, Variacao } from '@nads/ui';
 import { useRef } from 'react';
 import { useDetalheDoFaturamento } from './useDetalheDoFaturamento';
 
@@ -25,10 +25,11 @@ export function JanelaDoFaturamento({ cliente, competencias, rotuloDoPeriodo, an
         </header>
 
         <div className="stat-grid">
-          <Stat rotulo="Total no período" valor={'R$ ' + brl(vm.numeros.total)} />
-          <Stat rotulo={'Média por mês (' + vm.numeros.mesesComDado + (vm.numeros.mesesComDado === 1 ? ' mês' : ' meses') + ' com dado)'} valor={'R$ ' + brl(vm.numeros.media)} />
-          <Stat rotulo={'Maior mês' + (vm.numeros.maior ? ' · ' + vm.numeros.maior.rotulo : '')} valor={vm.numeros.maior ? 'R$ ' + brl(vm.numeros.maior.valor) : '—'} />
-          <Stat rotulo="Notas emitidas" valor={vm.numeros.notas.toLocaleString('pt-BR')} />
+          {/* o número em cima e o detalhe embaixo, pequeno (23/10/2026: os rótulos longos quebravam no celular) */}
+          <Stat rotulo="Total no período" valor={'R$ ' + brl(vm.numeros.total)} sub={vm.numeros.mesesComDado + (vm.numeros.mesesComDado === 1 ? ' mês com dado' : ' meses com dado')} />
+          <Stat rotulo="Média por mês" valor={'R$ ' + brl(vm.numeros.media)} sub="nos meses com dado" />
+          <Stat rotulo="Maior mês" valor={vm.numeros.maior ? 'R$ ' + brl(vm.numeros.maior.valor) : '—'} sub={vm.numeros.maior?.rotulo} />
+          <Stat rotulo="Notas emitidas" valor={vm.numeros.notas.toLocaleString('pt-BR')} sub="NF-e e NFC-e, sem as canceladas" />
         </div>
 
         <div className="fat-detalhe-corpo">
@@ -36,17 +37,17 @@ export function JanelaDoFaturamento({ cliente, competencias, rotuloDoPeriodo, an
             <h3>Mês a mês</h3>
             <div className="table-wrap">
               <table className="table-compact">
-                <thead><tr><th>Mês</th><th className="num">NF-e</th><th className="num">NFC-e</th><th className="num">Notas</th><th className="num">Total</th><th className="num">Var.</th></tr></thead>
+                <thead><tr><th>Mês</th><th className="num">Total</th><th className="num">Variação</th><th className="num">NF-e</th><th className="num">NFC-e</th><th className="num">Notas</th></tr></thead>
                 <tbody>
                   {vm.meses.map(m => (
                     <tr key={m.competencia} className={(m.escolhido ? 'fat-mes-escolhido' : '') + (m.total == null ? ' fraco' : ' fat-mes')}
                       onClick={m.total == null ? undefined : () => vm.escolher(m.competencia)} title={m.total == null ? 'Sem dado neste mês' : 'Ver as notas de ' + m.rotulo}>
                       <td>{m.rotulo}</td>
-                      <td className="num">{brl(m.nfe)}</td>
-                      <td className="num">{brl(m.nfce)}</td>
-                      <td className="num">{m.total == null ? '' : m.notas + (m.canceladas ? ' (' + m.canceladas + ' canc.)' : '')}</td>
                       <td className="num"><b>{m.total == null ? 'sem dado' : brl(m.total)}</b></td>
-                      <td className={'num' + (m.variacao == null ? '' : m.variacao < 0 ? ' faturamento-caiu' : ' faturamento-subiu')}>{m.variacao == null ? '' : (m.variacao > 0 ? '+' : '') + String(m.variacao).replace('.', ',') + '%'}</td>
+                      <td className="num">{m.total == null ? '' : <Variacao pct={m.variacao} titulo="Contra o mês anterior" />}</td>
+                      <td className="num fraco">{brl(m.nfe)}</td>
+                      <td className="num fraco">{brl(m.nfce)}</td>
+                      <td className="num fraco">{m.total == null ? '' : m.notas + (m.canceladas ? ' (' + m.canceladas + ' canc.)' : '')}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -69,7 +70,7 @@ export function JanelaDoFaturamento({ cliente, competencias, rotuloDoPeriodo, an
                       <div key={c.doc + c.nome} className="rank-item">
                         <span className="rank-nome" title={c.nome}>{c.nome} <span className="fraco">· {c.notas} {c.notas === 1 ? 'nota' : 'notas'}</span></span>
                         <span className="rank-val num">{brl(c.valor)}</span>
-                        <span className="rank-barra"><span style={{ width: c.pct + '%', background: 'var(--accent)' }} /></span>
+                        <span className="rank-barra"><span style={{ width: c.pct + '%', background: 'var(--info, #3b82f6)' }} /></span>
                       </div>
                     ))}
                   </div>
@@ -80,7 +81,7 @@ export function JanelaDoFaturamento({ cliente, competencias, rotuloDoPeriodo, an
                       <div key={c.cfop} className="rank-item">
                         <span className="rank-nome">{c.cfop}</span>
                         <span className="rank-val num">{brl(c.valor)}</span>
-                        <span className="rank-barra"><span style={{ width: c.pct + '%', background: 'var(--info, var(--accent))' }} /></span>
+                        <span className="rank-barra"><span style={{ width: c.pct + '%', background: 'var(--ink-muted)' }} /></span>
                       </div>
                     ))}
                   </div>

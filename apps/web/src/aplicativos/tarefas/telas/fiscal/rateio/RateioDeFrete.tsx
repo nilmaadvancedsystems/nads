@@ -3,8 +3,9 @@
 // nota escolhida numa linha (produtos, frete e desconto, editáveis), o rateio e, clicando numa linha, o frete pelos NCMs.
 // "Sem XML? Digite os valores" faz a planilha à mão. Só as peças do catálogo (Busca com lupa, Botão com borda, SeletorMes,
 // Segmentado, busca curta, Cartão, Tabela padrão, Linhas especiais, Valor editável, Botão fantasma, Alerta, Vazio, Esqueleto).
-import { Alerta, BotaoIcone, Esqueleto, Icone, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
+import { Alerta, BotaoIcone, Dica, Esqueleto, Icone, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
 import { ValorEditavel } from '../../financeiro/partes/ValorEditavel';
+import { EmpresaDaBarra } from '../partes/EmpresaDaBarra';
 import { useRateioDeFrete, type VmRateioDeFrete } from './useRateioDeFrete';
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -19,7 +20,7 @@ export function RateioDeFrete() {
       <div className="tarefas-barra-topo">
         {daNota && (
           <>
-            <EscolherEmpresa vm={vm} />
+            <EmpresaDaBarra vm={vm} id="rateio-empresas" />
             <SeletorMes valor={vm.competencia} onMudar={vm.setCompetencia} rotulo="Competência" />
             <Segmentado valor={vm.lado} onMudar={vm.setLado} opcoes={[{ valor: 'recebidas', rotulo: 'Entradas' }, { valor: 'emitidas', rotulo: 'Saídas' }]} />
           </>
@@ -42,46 +43,6 @@ export function RateioDeFrete() {
         )
         : !vm.nota ? <Notas vm={vm} /> : <Resultado vm={vm} />}
     </section>
-  );
-}
-
-function EscolherEmpresa({ vm }: { vm: VmRateioDeFrete }) {
-  if (vm.empresa) {
-    return (
-      <button type="button" className="btn btn-outline rateio-frete-empresa" title="Trocar a empresa" onClick={vm.trocarEmpresa}>
-        <Icone nome="briefcase" width={16} height={16} /><span className="rateio-frete-empresa-nome"><b>{vm.empresa.codigo}</b> · {vm.empresa.nome}</span><Icone nome="x" width={14} height={14} />
-      </button>
-    );
-  }
-  const aberta = vm.achadas.length > 0;
-  return (
-    <div className="rateio-frete-busca">
-      <label className="busca-curta rateio-frete-empresa">
-        <Icone nome="search" width={16} height={16} />
-        <input type="text" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} placeholder="Empresa: código ou nome" aria-label="Buscar a empresa por código ou nome" autoComplete="off"
-          role="combobox" aria-expanded={aberta} aria-controls="rateio-empresas"
-          onKeyDown={e => {
-            if (!aberta) return;
-            if (e.key === 'ArrowDown') { e.preventDefault(); vm.mover(1); }
-            else if (e.key === 'ArrowUp') { e.preventDefault(); vm.mover(-1); }
-            else if (e.key === 'Enter') { e.preventDefault(); vm.escolherDestacado(); }
-            else if (e.key === 'Escape') vm.setBusca('');
-          }} />
-      </label>
-      {aberta && (
-        <ul className="nf-achados" id="rateio-empresas" role="listbox" aria-label="Empresas encontradas">
-          {vm.achadas.map((e, i) => (
-            <li key={e.codigo + e.nome}>
-              <button type="button" className={'popover-item' + (i === vm.ativo ? ' nf-ativo' : '')} role="option" aria-selected={i === vm.ativo} tabIndex={-1}
-                onMouseEnter={() => vm.setAtivo(i)} onClick={() => vm.escolher(e)}>
-                <span className="nf-achado-codigo">{e.codigo}</span>
-                <span className="popover-texto">{e.nome}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
   );
 }
 
@@ -153,7 +114,8 @@ function Rateio({ vm }: { vm: VmRateioDeFrete }) {
   return (
     <>
       <div className="rateio-frete-corpo rateio-frete-explica">
-        <span className="hint">O frete e o desconto vão para cada linha na proporção do valor dela; a base é valor + IPI + frete − desconto.{daNota && ' Clique numa linha para ver pelos NCMs.'}</span>
+        {/* a explicação numa dica (23/10/2026: sem textos soltos na tela) */}
+        <span className="rateio-frete-titulo">Rateio <Dica texto={'O frete e o desconto vão para cada linha na proporção do valor dela; a base é valor + IPI + frete − desconto.' + (daNota ? ' Clique numa linha para ver pelos NCMs.' : '')} /></span>
         {daNota && <Segmentado valor={vm.agrupar} onMudar={vm.setAgrupar} opcoes={[{ valor: 'tributacao', rotulo: 'Por tributação' }, { valor: 'cfop', rotulo: 'Por CFOP' }]} />}
       </div>
       <div className="table-wrap">
