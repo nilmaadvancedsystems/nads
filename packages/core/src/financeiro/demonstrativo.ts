@@ -75,3 +75,58 @@ export function xlsxDeLinhas(linhas: CelulaDoDemonstrativo[][], aba: string, lar
 export function planilhaDoDemonstrativo(e: EntradaDoDemonstrativo): Uint8Array {
   return xlsxDeLinhas(linhasDoDemonstrativo(e).linhas, 'Caixa', [12, 44, 30, 16, 16, 36]);
 }
+
+// ---------- para imprimir direto (23/10/2026: "quero que coloque na parte do financeiro essa planilha para impressão direto") ----------
+
+/** quantas linhas a folha leva: as que faltam saem em branco, para escrever à mão (a planilha do escritório tem 36; 26 é
+ *  o que cabe numa folha deitada com o cabeçalho, os totais e o saldo final em Calibri 12; medido) */
+export const LINHAS_DA_FOLHA_DO_CAIXA = 26;
+
+const escHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
+const rs = (v: number | '' | undefined) => (v === '' || v == null ? '' : '<span class="' + (v < 0 ? 'neg' : '') + '">R$ ' + Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/^/, v < 0 ? '-' : '') + '</span>');
+
+/**
+ * O Demonstrativo de Caixa para imprimir, no desenho da planilha do escritório (A4 deitado): o título no meio, o Saldo
+ * inicial e o cabeçalho em cinza claro, as cinco colunas (Data, Histórico, Conta, Entradas, Saídas) com borda fina, uma
+ * linha por lançamento e, até encher a folha, linhas em branco; embaixo, os Totais e o Saldo final em cinza. Calibri 12.
+ */
+export function htmlDoDemonstrativo(e: EntradaDoDemonstrativo): string {
+  const r = linhasDoDemonstrativo(e);
+  const corpo = e.itens.map(({ lancamento: l, conta }) => `<tr><td class="c">${escHtml(dataBr(l.data))}</td><td>${escHtml(l.descricao)}</td><td>${escHtml(conta ? conta.codigo + ' ' + conta.descricao : '')}</td><td class="n">${l.tipo === 'E' ? rs(l.valor) : ''}</td><td class="n">${l.tipo === 'S' ? rs(l.valor) : ''}</td></tr>`);
+  const vazias = Math.max(0, LINHAS_DA_FOLHA_DO_CAIXA - corpo.length);
+  for (let i = 0; i < vazias; i++) corpo.push('<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td></tr>');
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Caixa ${escHtml(e.de)} a ${escHtml(e.ate)}</title>
+<style>
+  @page{size:A4 landscape;margin:8mm}
+  :root{color-scheme:light}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#fff}
+  body{font-family:Calibri,"Segoe UI",Arial,sans-serif;font-size:12pt;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  h1{font-size:12pt;font-weight:700;text-align:center;margin:0 0 6mm}
+  table{width:100%;border-collapse:collapse;table-layout:fixed}
+  thead{display:table-header-group}
+  tr{break-inside:avoid;page-break-inside:avoid}
+  td,th{border:.25mm solid #000;padding:.6mm 1.5mm;height:4.5mm;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  th,.cinza td,.cinza th{background:#f2f2f2;font-weight:700}
+  th{text-align:left}
+  .c{text-align:center}
+  .n{text-align:right}
+  .neg{color:#c00}
+  .sem-borda td{border:none;background:none}
+  .aviso{margin-top:3mm;font-size:10pt}
+</style></head><body>
+<h1>${escHtml(String(r.linhas[0][0]))}</h1>
+<table>
+<colgroup><col style="width:10.5%"><col style="width:42%"><col style="width:20.5%"><col style="width:13.5%"><col style="width:13.5%"></colgroup>
+<thead>
+<tr class="cinza"><td class="sem-fundo" style="background:none;border:none"></td><td colspan="2">Saldo inicial</td><td class="n">${rs(e.saldoInicial)}</td><td style="background:none;border:none"></td></tr>
+<tr><th class="c">Data</th><th>Histórico</th><th>Conta</th><th class="n">Entradas</th><th class="n">Saídas</th></tr>
+</thead>
+<tbody>
+${corpo.join('\n')}
+<tr><td colspan="3" class="c"><b>Totais</b></td><td class="n"><b>${rs(r.entradas)}</b></td><td class="n"><b>${rs(r.saidas)}</b></td></tr>
+<tr class="cinza"><td style="background:none;border:none"></td><td colspan="2" class="c">Saldo final</td><td class="n">${rs(r.saldoFinal)}</td><td style="background:none;border:none"></td></tr>
+</tbody></table>
+${e.filtrado ? '<p class="aviso">Há filtro de busca ou de tipo: o saldo final considera só as linhas listadas.</p>' : ''}
+</body></html>`;
+}

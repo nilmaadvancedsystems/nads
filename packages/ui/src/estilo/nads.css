@@ -5298,3 +5298,4 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .fluxo-concluir{align-self:flex-start;}
 .fluxo-concluir svg{width:16px;height:16px;}
 @media (max-width:700px){.fluxo-sub-linha{flex-wrap:wrap;}.fluxo-sub-corpo{padding-left:12px;}}
+.fluxo-dev{margin-left:8px;}
