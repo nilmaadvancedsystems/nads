@@ -4792,6 +4792,11 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 /* Financeiro › Importar extrato (23/10/2026): as linhas da prévia e os botões */
 .fin-extrato-linhas{max-height:420px;overflow:auto;}
 .fin-extrato-acoes{margin-top:12px;padding:0;}
+/* os extratos importados: uma faixa que abre por extrato (23/10/2026: "queria ter os detalhes") */
+.fin-importacoes{border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.fin-importacoes > .imp-faixa:first-child{border-top:none;}
+.fin-importacoes .imp-faixa-acoes{display:flex;align-items:center;gap:12px;padding:0 8px;}
+.fin-importacao-resumo{font-size:var(--fs-13);white-space:nowrap;}
 .fin-painel-dica{margin:-8px 0 0;}
 .fin-painel-tres{grid-template-columns:repeat(3,minmax(0,1fr));}
 .fin-reajuste-lista{max-height:300px;overflow:auto;margin-top:8px;}
