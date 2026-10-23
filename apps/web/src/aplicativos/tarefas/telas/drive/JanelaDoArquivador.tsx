@@ -1,8 +1,8 @@
 // O painel do arquivador (Vitor, 05/10/2026: "quero uma tela flutuante assim como as outras"; desde 22/10/2026 só o
 // progresso: "remova o botão de arquivar agora e transforme essa tela apenas um painel de progresso da tarefa"). Saíram
 // o Organizar agora, o pedido e a lateral com um tópico só: fica o andamento da organização (a porcentagem, a fase e as
-// 10 fases, feitas, a de agora e as que faltam) ou, parada, a última e a próxima rodada. No pé, para o admin, o link
-// para a área do arquivador no site do admin.
+// 10 fases, feitas, a de agora e as que faltam) ou, parada, a última e a próxima rodada. No pé, só o Fechar (o link
+// Tudo no Admin saiu também, 22/10/2026).
 import { Icone, useJanela } from '@nads/ui';
 import { useRef } from 'react';
 import type { useArquivadorDoDrive } from './useArquivadorDoDrive';
@@ -76,7 +76,6 @@ export function JanelaDoArquivador({ vm, fechar }: { vm: Vm; fechar: () => void 
         </h3>
         <Progresso vm={vm} />
         <div className="modal-actions">
-          {vm.linkDoAdmin && <a className="btn btn-ghost" href={vm.linkDoAdmin} target="_blank" rel="noopener">Tudo no Admin<Icone nome="chevronRight" width={16} height={16} /></a>}
           <span className="tarefas-barra-espaco" />
           <button type="button" className="btn btn-outline" onClick={fechar}>Fechar</button>
         </div>

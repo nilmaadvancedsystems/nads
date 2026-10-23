@@ -781,7 +781,7 @@ export const PECAS_BASE: Peca[] = [
       </div>) },
 
   // o painel de progresso do arquivador do Drive (22/10/2026: "transforme essa tela apenas um painel de progresso da tarefa")
-  { id: 'progresso-tarefa', tipo: 'graficos', nome: 'Painel de progresso de uma tarefa', descricao: 'A janela que só acompanha (sem botão de fazer): no título, o nome e se o PC está ligado; no meio, o ícone, a porcentagem grande, a barra, o lote e o começo, e as fases (feitas em verde, a de agora girando, as que faltam apagadas); parada, a próxima e a última rodada. No pé, só o link para o Admin e o Fechar', classes: ['modal arquivador-progresso', 'arquivador-hero', 'arquivador-hero-numero', 'arquivador-fases', 'arquivador-progresso-fases'], telas: ['t-drive'],
+  { id: 'progresso-tarefa', tipo: 'graficos', nome: 'Painel de progresso de uma tarefa', descricao: 'A janela que só acompanha (sem botão de fazer): no título, o nome e se o PC está ligado; no meio, o ícone, a porcentagem grande, a barra, o lote e o começo, e as fases (feitas em verde, a de agora girando, as que faltam apagadas); parada, a próxima e a última rodada. No pé, só o Fechar', classes: ['modal arquivador-progresso', 'arquivador-hero', 'arquivador-hero-numero', 'arquivador-fases', 'arquivador-progresso-fases'], telas: ['t-drive'],
     uso: '<JanelaDoArquivador vm={vm} fechar={…} />  (no Drive, pelo botão Arquivador)',
     demo: () => (
       <div className="modal arquivador-progresso" style={{ position: 'static', width: '100%', maxWidth: 460, margin: 0 }}>
