@@ -34,6 +34,8 @@ const FgtsDoDp = pedaco(() => import('../telas/dp/FgtsDoDp'), 'FgtsDoDp');
 const LegislacaoDoDp = pedaco(() => import('../telas/dp/LegislacaoDoDp'), 'LegislacaoDoDp');
 const PaginaSintegra = pedaco(() => import('../telas/fiscal/sintegra/PaginaSintegra'), 'PaginaSintegra');
 const FaturamentoDosClientes = pedaco(() => import('../telas/fiscal/faturamento/FaturamentoDosClientes'), 'FaturamentoDosClientes');
+const RateioDeFrete = pedaco(() => import('../telas/fiscal/rateio/RateioDeFrete'), 'RateioDeFrete');
+const CalculadoraDoSimples = pedaco(() => import('../telas/fiscal/simples/CalculadoraDoSimples'), 'CalculadoraDoSimples');
 const ConfiguracoesDoDp = pedaco(() => import('../telas/dp/ConfiguracoesDoDp'), 'ConfiguracoesDoDp');
 const Mandei = pedaco(() => import('../telas/mandei/Mandei'), 'Mandei');
 const ChamadosDoCliente = pedaco(() => import('../telas/area-cliente/ChamadosDoCliente'), 'ChamadosDoCliente');
@@ -43,18 +45,21 @@ const NotasFiscais = pedaco(() => import('../telas/financeiro/NotasFiscais'), 'N
 const Caixa = pedaco(() => import('../telas/financeiro/Caixa'), 'Caixa');
 const Honorarios = pedaco(() => import('../telas/financeiro/Honorarios'), 'Honorarios');
 const PlanoDeContas = pedaco(() => import('../telas/financeiro/PlanoDeContas'), 'PlanoDeContas');
+const PainelFinanceiro = pedaco(() => import('../telas/financeiro/PainelFinanceiro'), 'PainelFinanceiro');
+const Devedores = pedaco(() => import('../telas/financeiro/Devedores'), 'Devedores');
+const Conciliacao = pedaco(() => import('../telas/financeiro/Conciliacao'), 'Conciliacao');
 
 function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
   switch (app) {
     case 'minhas-empresas': return pagina === 'insights' ? <Insights /> : <MinhasEmpresas />;
     case 'contabil': return pagina === 'configuracoes' ? <ConfiguracoesContabil /> : <VisaoContabil pagina={pagina} />;
-    case 'fiscal': return pagina === 'empresas' ? <MinhasEmpresas /> : pagina === 'painel' ? <PainelDoFiscal /> : pagina === 'reinf' ? <Reinf /> : pagina === 'sintegra' ? <PaginaSintegra /> : pagina === 'faturamento' ? <FaturamentoDosClientes /> : <VisaoContabil pagina={pagina} dep="fiscal" />;
+    case 'fiscal': return pagina === 'empresas' ? <MinhasEmpresas /> : pagina === 'painel' ? <PainelDoFiscal /> : pagina === 'reinf' ? <Reinf /> : pagina === 'sintegra' ? <PaginaSintegra /> : pagina === 'faturamento' ? <FaturamentoDosClientes /> : pagina === 'simples' ? <CalculadoraDoSimples /> : pagina === 'rateio-frete' ? <RateioDeFrete /> : <VisaoContabil pagina={pagina} dep="fiscal" />;
     case 'dp': return ABAS_DO_PAINEL.includes(pagina as AbaDoPainel) ? <PainelDoDp aba={pagina as AbaDoPainel} /> : pagina === 'configuracoes' ? <ConfiguracoesDoDp /> : pagina === 'fgts' ? <FgtsDoDp /> : pagina === 'legislacao' ? <LegislacaoDoDp /> : <VisaoContabil pagina={pagina} dep="dp" />;
     case 'senhas': return pagina === 'acesso' ? <AcessoAoCofre /> : pagina === 'gov' ? <ContasGov /> : pagina === 'certificados' ? <Certificados /> : <SenhasDasEmpresas />;
     case 'cadastro': return <UsuariosDoNads />;
     // a Área do Cliente com o Mandei junto (19/10/2026): Chamados, Recebidos, Meus tickets e a Central de tickets
     case 'area-cliente': return pagina === 'recebidos' ? <RecebidosDoCliente /> : pagina === 'meus' || pagina === 'central' ? <Mandei pagina={pagina} /> : <ChamadosDoCliente />;
-    case 'financeiro': return pagina === 'configuracoes' ? <ConfiguracoesDoFinanceiro /> : pagina === 'caixa' ? <Caixa /> : pagina === 'honorarios' ? <Honorarios /> : pagina === 'plano' ? <PlanoDeContas /> : <NotasFiscais />;
+    case 'financeiro': return pagina === 'painel' ? <PainelFinanceiro /> : pagina === 'devedores' ? <Devedores /> : pagina === 'resultado' ? <PainelFinanceiro comResultado /> : pagina === 'conciliacao' ? <Conciliacao /> : pagina === 'configuracoes' ? <ConfiguracoesDoFinanceiro /> : pagina === 'caixa' ? <Caixa /> : pagina === 'honorarios' ? <Honorarios /> : pagina === 'plano' ? <PlanoDeContas /> : <NotasFiscais />;
     // a entrega de documentos aos clientes, trazida do Entregas (16/10/2026)
     case 'entregas': return pagina === 'painel' ? <PainelDeEntregas /> : pagina === 'solicitacoes' ? <Solicitacoes /> : pagina === 'nova' ? <NovaEntrega /> : <RotaDeEntregas />;
     case 'drive': return <ExploradorDoDrive />;

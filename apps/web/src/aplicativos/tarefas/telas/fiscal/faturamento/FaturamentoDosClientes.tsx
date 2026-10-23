@@ -1,7 +1,9 @@
 // Fiscal › Faturamento (Heverton, 20/10/2026: "relação de faturamento dos clientes"): o período, a busca e o regime em
-// cima; a tabela com um mês por coluna, o total, a variação e a fonte; exportar para o Excel e imprimir. Só as peças do
+// cima; a tabela com um mês por coluna, o total, a variação e a fonte; exportar para o Excel e imprimir. Clicar no
+// cliente abre o faturamento detalhado (JanelaDoFaturamento, 22/10/2026). Só as peças do
 // catálogo (Segmentado, SeletorMes, a busca curta, MenuSuspenso, chip, Tabela padrão, Vazio, Esqueleto).
 import { baixarBytes, Esqueleto, Icone, MenuSuspenso, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
+import { JanelaDoFaturamento } from './JanelaDoFaturamento';
 import { useFaturamentoDosClientes } from './useFaturamentoDosClientes';
 
 const brl = (n: number | null | undefined) => (n == null ? '' : n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
@@ -46,9 +48,9 @@ export function FaturamentoDosClientes() {
             </thead>
             <tbody>
               {vm.linhas.map(l => (
-                <tr key={l.codigo}>
+                <tr key={l.codigo} className="fat-linha" onClick={() => vm.abrir(l.codigo)} title={'Ver o faturamento detalhado de ' + l.nome}>
                   <td className="num fraco">{l.codigo}</td>
-                  <td className="faturamento-nome" title={l.nome}>{l.nome}</td>
+                  <td className="faturamento-nome"><button type="button" className="fat-nome-btn" onClick={ev => { ev.stopPropagation(); vm.abrir(l.codigo); }}>{l.nome}</button></td>
                   <td>{l.regime || <span className="fraco">—</span>}</td>
                   {vm.competencias.map(c => {
                     const v = l.meses[c.chave];
@@ -70,6 +72,7 @@ export function FaturamentoDosClientes() {
           </table>
         </div>
       )}
+      {vm.aberto && <JanelaDoFaturamento cliente={vm.aberto} competencias={vm.competenciasDoPeriodo} rotuloDoPeriodo={vm.rotuloDoPeriodo} anual={vm.periodo === 'ano'} fechar={vm.fechar} />}
     </section>
   );
 }

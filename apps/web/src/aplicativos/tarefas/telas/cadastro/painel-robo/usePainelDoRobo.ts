@@ -1,12 +1,12 @@
 // ViewModel do Cadastro › Painel do robô (Vitor, 21/10/2026: "quero um painel para eu saber o que o robô está fazendo,
 // arquivando e afins"): a situação dos dois robôs (o do PC e o da nuvem), as filas de pedidos, os erros das últimas 24 h,
-// o que foi arquivado hoje e no mês (com o caminho para o histórico do Arquivador, no Drive) e a atividade, com o filtro
+// o que foi arquivado hoje e no mês (com o caminho para Admin › Arquivador) e a atividade, com o filtro
 // por tipo e por erro. Os dados chegam ao vivo do banco (usePainelRobo); o relógio da tela anda a cada 15 s para o
 // "há X min" não parar.
 import { entregas } from '@nads/core';
 import { useEffect, useState } from 'react';
 import { useOperador } from '../../../casca/operador';
-import { caminhoDaPagina } from '../../../casca/navegacao';
+import { caminhoDoAdmin } from '../../../../admin/casca/navegacao';
 import { usePainelRobo } from '../../../dados/repo';
 
 const DE_CADA_VEZ = 30;
@@ -24,8 +24,8 @@ export function usePainelDoRobo() {
   const filas = entregas.filasDoPainel(d.pc, d.vm, agora);
   const filtradas = entregas.filtrarAtividades(d.atividades, { tipo, soErros });
   const arquivados = d.pc?.arquivados || null;
-  // o histórico do Arquivador (a "aba Arquivo") fica no Drive, que só o admin e o contábil abrem
-  const podeAbrirArquivo = !!op && (op.admin || op.departamento === 'contabil');
+  // o Arquivador (22/10/2026: a área única dele, no site do admin, onde este painel também mora): só o admin
+  const podeAbrirArquivo = !!op?.admin;
 
   return {
     carregando: !d.carregado,
@@ -42,7 +42,7 @@ export function usePainelDoRobo() {
     /** o mês dos arquivados por extenso ("outubro de 2026") */
     mesDosArquivados: arquivados?.mes ? new Date(Number(arquivados.mes.slice(0, 4)), Number(arquivados.mes.slice(5, 7)) - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : '',
     podeAbrirArquivo,
-    caminhoDoArquivo: caminhoDaPagina('drive', 'pastas') + '?arquivador=historico',
+    caminhoDoArquivo: caminhoDoAdmin('arquivador'),
     tipos: entregas.tiposPresentes(d.atividades),
     tipo,
     soErros,

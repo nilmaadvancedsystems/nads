@@ -22,6 +22,8 @@ export function useFaturamentoDosClientes() {
   const [busca, setBusca] = useState('');
   const [regime, setRegime] = useState('');
   const [soComDado, setSoComDado] = useState(true);
+  // o cliente aberto no faturamento detalhado (22/10/2026: "quando eu clique no cliente abra um faturamento detalhado")
+  const [aberto, setAberto] = useState<number | null>(null);
   const competencias = f.competenciasDoPeriodo(periodo, competencia);
   // cada mês numa consulta só (todos os clientes; a mesma do Painel do Fiscal)
   const meses = competencias.map(c => sieg.doMes(c));
@@ -42,6 +44,11 @@ export function useFaturamentoDosClientes() {
     soComDado, alternarSoComDado: () => setSoComDado(s => !s),
     competencias: competencias.map(c => ({ chave: c, rotulo: f.mesCurto(c), total: totalDoMes(c) })),
     linhas,
+    /** o faturamento detalhado: o cliente aberto, as competências do período, abrir e fechar */
+    aberto: aberto == null ? null : linhas.find(l => l.codigo === aberto) || todas.find(l => l.codigo === aberto) || null,
+    competenciasDoPeriodo: competencias,
+    abrir: (codigo: number) => setAberto(codigo),
+    fechar: () => setAberto(null),
     semDado: todas.filter(l => l.total == null).length,
     totalGeral: linhas.reduce((s, l) => s + (l.total || 0), 0),
     fonte: f.FONTE_SIEG,

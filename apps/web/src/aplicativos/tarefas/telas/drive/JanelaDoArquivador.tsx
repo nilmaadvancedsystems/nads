@@ -1,101 +1,85 @@
-// A janela flutuante do Arquivar agora (Vitor, 05/10/2026: "quero uma tela flutuante assim como as outras" e "um
-// relatório com as mensagens de resposta do Claude"), no desenho das outras (a JanelaLateral): à esquerda o estado e os
-// tópicos; desde 22/10/2026 só o Agora (a organização em andamento com as 10 fases, ou o pedido): a Conversa do Claude,
-// o Relatório e o Histórico saíram ("deixe apenas o agora"); no pé, Organizar agora.
-import { Icone, type NomeIcone } from '@nads/ui';
-import { useState } from 'react';
-import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
+// O painel do arquivador (Vitor, 05/10/2026: "quero uma tela flutuante assim como as outras"; desde 22/10/2026 só o
+// progresso: "remova o botão de arquivar agora e transforme essa tela apenas um painel de progresso da tarefa"). Saíram
+// o Organizar agora, o pedido e a lateral com um tópico só: fica o andamento da organização (a porcentagem, a fase e as
+// 10 fases, feitas, a de agora e as que faltam) ou, parada, a última e a próxima rodada. No pé, só o Fechar (o link
+// Tudo no Admin saiu também, 22/10/2026).
+import { Icone, useJanela } from '@nads/ui';
+import { useRef } from 'react';
 import type { useArquivadorDoDrive } from './useArquivadorDoDrive';
 
 type Vm = ReturnType<typeof useArquivadorDoDrive>;
-export type Topico = 'agora';
 
-const ICONES: Record<string, NomeIcone> = { pendente: 'clock', aguardando: 'clock', processando: 'girar', concluido: 'checkCircle', erro: 'alert', cancelado: 'x' };
-
-function Agora({ vm }: { vm: Vm }) {
+function Progresso({ vm }: { vm: Vm }) {
   const r = vm.rotina;
   const p = vm.pedidoNoAgora ? vm.pedido : null;
-  const ab = p && p.status === 'processando';
-  if (r || ab) {
+  const rodando = r || (p && p.status === 'processando');
+  if (rodando) {
     const pct = r ? r.pct : p!.pct;
-    const fazendo = r ? r.etapa.replace(/^Fase (\d+) de (\d+): (.*)$/, '$3 · fase $1 de $2') : p!.etapa;
     return (
       <div className="arquivador-hero">
         <span className="arquivador-hero-icone ativo"><Icone nome="girar" /></span>
-        <h3>Organizando</h3>
+        <h3>Organizando a pasta Claudio Secretario</h3>
         {pct != null && <b className="arquivador-hero-numero">{pct}%</b>}
-        {fazendo && <p className="arquivador-hero-texto">{fazendo}</p>}
         <span className="tarefas-barra larga andando arquivador-hero-barra"><span style={{ width: (pct ?? 8) + '%' }} /></span>
         {r?.lote && <p className="arquivador-hero-texto">{r.lote}</p>}
         <p className="arquivador-hero-nota">{r ? r.detalhe : p!.detalhe}</p>
-        {r && r.etapas.length > 0 && (
-          <ul className="arquivador-etapas">
-            {r.etapas.map(e => <li key={e.chave} className={e.estado}><Icone nome={e.estado === 'feita' ? 'checkCircle' : e.estado === 'erro' ? 'alert' : 'girar'} /><span>{e.nome}</span></li>)}
+        {vm.fases.length > 0 && (
+          <ul className="arquivador-fases arquivador-progresso-fases">
+            {vm.fases.map(f => (
+              <li key={f.nome} className={f.estado}>
+                <Icone nome={f.estado === 'feita' ? 'checkCircle' : f.estado === 'atual' ? 'girar' : 'clock'} width={15} height={15} />
+                <span>{f.nome}</span>
+              </li>
+            ))}
           </ul>
         )}
       </div>
     );
   }
+  // o pedido que deu erro continua aparecendo (para saber o que houve)
   if (p) {
     return (
       <div className="arquivador-hero">
-        <span className={'arquivador-hero-icone ' + p.status}><Icone nome={ICONES[p.status] || 'arquivo'} /></span>
+        <span className={'arquivador-hero-icone ' + p.status}><Icone nome={p.status === 'erro' ? 'alert' : 'clock'} /></span>
         <h3>{p.titulo}</h3>
         <p className="arquivador-hero-nota">{p.detalhe}</p>
       </div>
     );
   }
-  const n = vm.hoje?.numeros;
+  const u = vm.ultimaRodada;
   return (
     <div className="arquivador-hero">
       <span className={'arquivador-hero-icone' + (vm.hoje ? ' em-dia' : '')}><Icone nome={vm.hoje ? 'checkCircle' : 'arquivo'} /></span>
-      <h3>{vm.hoje ? 'Tudo em dia' : 'Nada rodando agora'}</h3>
-      {vm.ultimaRodada && <p className="arquivador-hero-texto">Última rodada {vm.ultimaRodada.quando}</p>}
-      {n && (
-        <>
-          <b className="arquivador-hero-numero">{n[0].valor}</b>
-          <p className="arquivador-hero-texto">arquivos arquivados hoje</p>
-          <p className="arquivador-hero-nota">{n[1].valor} {n[1].valor === 1 ? 'cliente' : 'clientes'}{n[2].valor ? ' · ' + n[2].valor + ' sem cliente' : ''}</p>
-        </>
+      <h3>Nada rodando agora</h3>
+      <p className="arquivador-hero-texto">Próxima organização {vm.proximaRodada}</p>
+      {u && (
+        <div className="arquivador-ultima">
+          <p className="fraco">Última rodada {u.quando}</p>
+          <div className="arquivador-numeros">
+            {u.numeros.map(n => <div key={n.rotulo} className={'arquivador-numero' + (n.aviso ? ' aviso' : '')}><b>{n.valor}</b><span>{n.rotulo}</span></div>)}
+          </div>
+        </div>
       )}
-      {!n && <p className="arquivador-hero-nota">A organização das 9h roda sozinha todo dia.</p>}
     </div>
   );
 }
 
-export function JanelaDoArquivador({ vm, fechar, inicio }: { vm: Vm; fechar: () => void; inicio?: Topico }) {
-  const [topico, setTopico] = useState<Topico>(inicio || 'agora');
-  const topicos: TopicoDaJanela<Topico>[] = [
-    { id: 'agora', rotulo: 'Agora', icone: vm.ocupado ? 'girar' : 'arquivo' },
-  ];
-  const p = vm.pedido;
+export function JanelaDoArquivador({ vm, fechar }: { vm: Vm; fechar: () => void }) {
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, fechar, true);
   return (
-    <JanelaLateral rotulo="Arquivar" topicos={topicos} topico={topico} mudar={setTopico} fechar={fechar} classe="arquivador-janela"
-      resumo={(
-        <div className="usuario-quem arquivador-quem">
-          <span className={'arquivador-selo' + (vm.ocupado ? ' ativo' : '')}><Icone nome={vm.ocupado ? 'girar' : 'arquivo'} /></span>
-          <b>Arquivador</b>
+    <div className="modal-overlay" onMouseDown={ev => { if (ev.target === ev.currentTarget) fechar(); }}>
+      <div ref={janela} className="modal arquivador-progresso" role="dialog" aria-modal="true" aria-labelledby="arquivadorTitulo">
+        <h3 id="arquivadorTitulo">
+          <Icone nome="arquivo" width={16} height={16} />Arquivador
           <span className={'arquivador-pc' + (vm.ligado ? ' ligado' : '')}><span className="arquivador-ponto" aria-hidden="true" />{vm.pc}</span>
-        </div>
-      )}
-      pe={(
-        <>
-          {vm.podePedir && <p className="arquivador-nota">{vm.notaAoPedir}{vm.exemplos ? ' (Exemplo: nada sai daqui.)' : ''}</p>}
+        </h3>
+        <Progresso vm={vm} />
+        <div className="modal-actions">
           <span className="tarefas-barra-espaco" />
-          {p?.podeCancelar && <button type="button" className="btn btn-outline" onClick={() => vm.cancelar(p.id)}>Cancelar o pedido</button>}
-          {vm.podeParar && (
-            <button type="button" className="btn btn-danger" disabled={vm.parando} onClick={() => void vm.parar()}>
-              {vm.parando ? <span className="btn-spinner" aria-hidden="true" /> : <Icone nome="x" />}{vm.parando ? 'Parando…' : 'Cancelar a organização'}
-            </button>
-          )}
-          {vm.podePedir && (
-            <button type="button" className="btn btn-primary" disabled={vm.pedindo} onClick={() => void vm.pedir()}>
-              {vm.pedindo ? <span className="btn-spinner" aria-hidden="true" /> : <Icone nome="arquivo" />}Organizar agora
-            </button>
-          )}
-        </>
-      )}>
-      {topico === 'agora' && <Agora vm={vm} />}
-    </JanelaLateral>
+          <button type="button" className="btn btn-outline" onClick={fechar}>Fechar</button>
+        </div>
+      </div>
+    </div>
   );
 }

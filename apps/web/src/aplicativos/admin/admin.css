@@ -37,3 +37,160 @@ a.admin-numero:focus-visible{outline:2px solid var(--accent);outline-offset:2px;
   .admin-historico .cert-barra:nth-child(odd):not(:last-child) .cert-barra-ano{visibility:hidden;}
 }
 .admin-visao > .hint,.admin-banco > .hint,.admin-cota > .hint{margin:0 0 10px;}
+
+/* Admin › Arquivador (22/10/2026): o topo (o modo num selo grande, a situação, a barra da passada e o ritmo), as abas com
+   o contador, o resumo do dia, as exceções, o ranking com a marca, a lista com o detalhe ao lado e o detalhe do arquivo.
+   Sem animação: a barra só muda de largura quando o dado muda. */
+.admin-arquivador > .card,.admin-arquivador > .alert,.admin-arquivador .arq-aba > .card,.admin-arquivador .arq-aba > .alert{margin:0 0 16px;}
+.admin-arquivador > .hint{margin:0 0 10px;}
+.arq-topo{padding:16px 20px;}
+.arq-topo-linha{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.arq-modo{display:inline-flex;align-items:center;min-height:40px;padding:0 18px;border-radius:10px;font-size:18px;font-weight:700;letter-spacing:.2px;
+  background:var(--surface-3);color:var(--ink);border:1px solid var(--border);}
+.arq-modo.ok{background:var(--success-soft);color:var(--success-ink);border-color:color-mix(in srgb,var(--success) 35%,transparent);}
+.arq-modo.aviso{background:var(--warn-soft);color:var(--warn);border-color:color-mix(in srgb,var(--warn) 35%,transparent);}
+.arq-modo.erro{background:var(--danger-soft);color:var(--danger-ink);border-color:color-mix(in srgb,var(--danger) 35%,transparent);}
+.arq-topo-situacao{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 260px;}
+.arq-topo-situacao b{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-14);}
+.arq-topo-situacao .fraco{font-size:var(--fs-13);}
+.arq-ponto{width:10px;height:10px;border-radius:50%;flex:none;background:var(--ink-muted);}
+.arq-ponto.ok{background:var(--success);}
+.arq-ponto.aviso{background:var(--warn);}
+.arq-ponto.erro{background:var(--danger);}
+.arq-topo-acoes{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;}
+.arq-progresso{margin-top:14px;display:flex;flex-direction:column;gap:6px;}
+.arq-progresso-linha{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;font-size:var(--fs-13);margin:0;}
+.arq-progresso-linha b{font-size:16px;}
+.arq-progresso-pct{font-size:22px;font-weight:700;color:var(--success);}
+.tarefas-barra.arq-progresso-barra{height:14px;}
+.admin-arquivador .arq-pedido{margin:-6px 0 12px;}
+
+/* as abas: as do ciclo do arquivo à esquerda, a Comparação e a Configuração à direita; o contador de quem pede atenção em âmbar */
+.arq-abas{padding:0;margin:0 0 16px;border-bottom:1px solid var(--border);}
+.arq-abas-espaco{flex:1 1 16px;}
+.menu-contador.arq-contador-aviso{background:var(--warn-soft);color:var(--warn);font-weight:600;}
+
+/* o resumo do dia, em linguagem simples, e as exceções (o que precisa da pessoa) */
+.arq-resumo{display:flex;gap:12px;align-items:flex-start;padding:14px 18px;}
+.arq-resumo p{margin:0;font-size:15px;line-height:1.55;}
+.arq-resumo-icone{flex:none;width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--accent);}
+.arq-excecoes{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 16px;}
+.arq-excecoes .btn{gap:6px;}
+.stat-grid.dp-numeros.arq-numeros{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:8px;}
+button.admin-numero{width:100%;text-align:left;font:inherit;cursor:pointer;}
+button.admin-numero:hover{border-color:var(--tom,var(--border));}
+button.admin-numero:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+/* o ranking com a marca: a logo do órgão, o ícone do arquivo ou um ícone na frente da barra */
+.rank-com-marca .rank-item{grid-template-columns:20px minmax(0,1fr) auto;column-gap:10px;cursor:default;}
+.rank-com-marca.sem-marca .rank-item{grid-template-columns:minmax(0,1fr) auto;}
+.rank-com-marca .rank-barra{grid-column:2/-1;}
+.rank-com-marca .rank-item:hover .rank-nome{text-decoration:none;}
+.rank-com-marca.sem-marca .rank-barra{grid-column:1/-1;}
+.rank-marca{grid-row:1/3;align-self:center;display:flex;align-items:center;justify-content:center;width:20px;height:20px;}
+.rank-marca.icone{border-radius:6px;background:var(--surface-3);color:var(--ink-muted);}
+.rank-marca.logo{padding:1px;border-radius:4px;background:#FFFFFF;}
+
+/* a lista com o detalhe ao lado; no celular e no tablet o detalhe abre por cima (a tela inteira), com o Fechar */
+.arq-duplo{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start;}
+.arq-duplo-detalhe{border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:16px;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;}
+.arq-duplo-fechar{display:flex;justify-content:flex-end;margin:-8px -8px 0 0;}
+.arq-duplo-convite{margin:24px 8px;text-align:center;font-size:var(--fs-13);}
+@media (min-width:1100px){.arq-duplo{grid-template-columns:minmax(0,1.15fr) minmax(320px,1fr);}}
+@media (max-width:1099px){
+  .arq-duplo-detalhe{display:none;}
+  .arq-duplo.com-detalhe .arq-duplo-detalhe{display:block;position:fixed;inset:0;z-index:60;max-height:none;border:0;border-radius:0;padding:16px 16px 32px;}
+}
+.arq-linhas{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;}
+.arq-linhas > li + li{border-top:1px solid var(--border-muted);}
+.arq-linha{display:flex;align-items:center;gap:12px;width:100%;padding:10px 8px;border:0;border-radius:8px;background:none;color:inherit;font:inherit;text-align:left;}
+button.arq-linha{cursor:pointer;}
+button.arq-linha:hover{background:var(--hover-bg);}
+button.arq-linha.ativa{background:var(--accent-soft);}
+button.arq-linha:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+.arq-linha-texto{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+.arq-linha-texto b{font-weight:600;font-size:var(--fs-14);overflow-wrap:anywhere;}
+.arq-linha-texto .fraco{font-size:var(--fs-12);overflow-wrap:anywhere;}
+.arq-linha-fim{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none;max-width:45%;}
+.arq-linha-fim .badge{white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
+.arq-linha-meta{display:flex;gap:8px;font-size:var(--fs-12);white-space:nowrap;}
+.arq-confianca{font-weight:600;font-variant-numeric:tabular-nums;}
+.arq-confianca.ok{color:var(--success);}
+.arq-confianca.aviso{color:var(--warn);}
+.arq-confianca.neutro{color:var(--ink-muted);}
+@media (max-width:640px){
+  .arq-linha{flex-wrap:wrap;}
+  .arq-linha-texto{flex-basis:calc(100% - 44px);}
+  .arq-linha-fim{flex-direction:row;align-items:center;max-width:none;margin-left:44px;flex-wrap:wrap;}
+}
+
+/* o detalhe do arquivo: o porquê */
+.arq-detalhe{display:flex;flex-direction:column;gap:14px;}
+.arq-detalhe-topo{display:flex;gap:12px;align-items:flex-start;}
+.arq-detalhe-titulo{min-width:0;display:flex;flex-direction:column;gap:6px;}
+.arq-detalhe-titulo h3{margin:0;font-size:16px;overflow-wrap:anywhere;}
+.arq-detalhe-selo{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:var(--fs-12);}
+.arq-detalhe-dados > div{grid-template-columns:130px minmax(0,1fr);}
+.arq-detalhe-dados dd{margin:0;overflow-wrap:anywhere;}
+.arq-detalhe-bloco h4{margin:0 0 6px;font-size:var(--fs-13);color:var(--ink-muted);font-weight:600;}
+.arq-evidencias{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:var(--fs-13);}
+.arq-evidencias li{display:flex;gap:8px;align-items:flex-start;overflow-wrap:anywhere;}
+.arq-evidencias svg{flex:none;margin-top:3px;color:var(--success);}
+.arq-fazer{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:8px;background:var(--warn-soft);font-size:var(--fs-13);}
+.arq-fazer.erro{background:var(--danger-soft);}
+.arq-fazer p{margin:4px 0 0;line-height:1.5;}
+.arq-fazer-icone{flex:none;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--surface);color:var(--warn);}
+.arq-fazer.erro .arq-fazer-icone{color:var(--danger);}
+.arq-erro-tecnico{margin:0;padding:8px 10px;border-radius:6px;background:var(--surface-2);font-family:ui-monospace,Consolas,monospace;font-size:var(--fs-12);overflow-wrap:anywhere;}
+
+/* os filtros dos Arquivados, a comparação e a configuração */
+.arq-filtros{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px;}
+.arq-filtros .busca-curta.larga{flex:1 1 240px;width:auto;margin:0;}
+.arq-filtros .select-compact{width:auto;max-width:min(260px,100%);flex:0 1 auto;}
+.arq-caminho{font-size:var(--fs-12);overflow-wrap:anywhere;min-width:200px;}
+.arq-config > div{grid-template-columns:200px minmax(0,1fr);}
+@media (max-width:640px){
+  .arq-detalhe-dados > div,.arq-config > div{grid-template-columns:minmax(0,1fr);gap:0;}
+  .arq-topo-acoes{margin-left:0;width:100%;}
+  .arq-topo-acoes .btn{flex:1;}
+}
+
+/* Para resolver (23/10/2026): a caixa de marcar na linha, a barra do lote, o andamento do pedido, as ações do detalhe,
+   o formulário "Arquivar em…" com a prévia e o visor do arquivo por cima da página. Sem animação (só a barra de espera). */
+.arq-li-marcavel{display:flex;align-items:center;gap:4px;}
+.arq-li-marcavel > .arq-linha{flex:1;min-width:0;}
+.arq-marca{display:flex;align-items:center;justify-content:center;width:32px;height:44px;flex:none;cursor:pointer;}
+.arq-li-marcavel.marcada > .arq-linha:not(.ativa){background:var(--hover-bg);}
+.arq-lote{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 8px;margin-bottom:6px;border-radius:8px;min-height:40px;}
+.arq-lote.ativo{background:var(--accent-soft);}
+.arq-lote-espaco{flex:1 1 8px;}
+.arq-andamento{font-weight:600;color:var(--info);}
+.arq-andamento.erro{color:var(--danger);}
+.arq-detalhe-acoes{display:flex;flex-wrap:wrap;gap:8px;}
+.btn.arq-descartar{color:var(--danger-ink);}
+.arq-em{display:flex;flex-direction:column;gap:12px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);}
+.arq-em h4{margin:0;font-size:var(--fs-14);}
+.arq-em .hint{margin:0;}
+.arq-em .field{margin:0;}
+.arq-em-cliente{position:relative;}
+.arq-em-sugestoes{list-style:none;margin:4px 0 0;padding:4px;border:1px solid var(--border);border-radius:8px;background:var(--surface);max-height:240px;overflow:auto;}
+.arq-em-sugestoes button{display:block;width:100%;padding:8px 10px;border:0;border-radius:6px;background:none;color:inherit;font:inherit;font-size:var(--fs-13);text-align:left;cursor:pointer;}
+.arq-em-sugestoes button:hover,.arq-em-sugestoes button:focus-visible{background:var(--hover-bg);outline:none;}
+.arq-em-previa{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:8px;background:var(--success-soft);font-size:var(--fs-13);overflow-wrap:anywhere;}
+.arq-em-previa.erro{background:var(--warn-soft);}
+.arq-em-previa svg{vertical-align:-2px;}
+.arq-em-destino{font-weight:600;}
+.arq-em-botoes{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;}
+.arq-visor{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;background:var(--bg);}
+.arq-visor-topo{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--header-bg);}
+.arq-visor-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-14);}
+.arq-visor-corpo{flex:1;min-height:0;display:flex;overflow:auto;background:var(--surface-2);}
+.arq-visor-pdf{flex:1;width:100%;border:0;background:#FFFFFF;}
+.arq-visor-img{display:block;max-width:100%;margin:auto;object-fit:contain;}
+.arq-visor-texto{margin:0;padding:16px;width:100%;white-space:pre-wrap;overflow-wrap:anywhere;font-family:ui-monospace,Consolas,monospace;font-size:var(--fs-12);color:var(--ink);}
+.arq-visor-espera{margin:auto;display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px;width:min(360px,100%);text-align:center;}
+@media (max-width:640px){
+  .arq-lote .btn{flex:1 1 auto;}
+  .arq-detalhe-acoes .btn{flex:1 1 auto;}
+  .arq-visor-topo .btn{padding-inline:10px;}
+}

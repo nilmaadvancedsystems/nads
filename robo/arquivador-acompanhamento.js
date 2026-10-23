@@ -10,7 +10,8 @@
 //     últimos arquivos com o porquê (as evidências em português), os não identificados com o motivo e a sugestão, os
 //     erros com o que fazer, os alertas de agora e o último lado a lado.
 //   robo/arquivadorNovo/dias/{AAAA-MM-DD}-{n}   o histórico do dia em partes de até ~700 KB (a busca da aba Arquivados);
-//                                          só a parte que mudou é regravada, junto com o documento principal.
+//                                          só a parte que mudou é regravada, junto com o documento principal; as de mais
+//                                          de DIAS_GUARDADOS dias o próprio robô apaga (no banco e no PC), na virada do dia.
 //
 // No PC fica uma cópia do que foi publicado (continuo\acompanhamento.json) e o histórico do dia (continuo\arquivados-
 // AAAA-MM-DD.jsonl), para o robô reiniciar sem perder as listas nem a contagem.
@@ -33,6 +34,7 @@ const MAX_EVIDENCIAS_HISTORICO = 4;
 const MAX_CLIENTES = 15;
 const BYTES_POR_PARTE = 700 * 1024;
 const JANELA_RITMO_MS = 10 * 60 * 1000;
+const DIAS_GUARDADOS = 31;
 
 // ---------------------------------------------------------------------------------------------------------------------
 // puras (teste-arquivador-acompanhamento.js)
@@ -41,6 +43,7 @@ const JANELA_RITMO_MS = 10 * 60 * 1000;
 const MOTIVOS = {
   CLIENTE_NAO_LOCALIZADO: ['CNPJ não cadastrado', 'Nenhum CNPJ ou CPF do documento é de cliente. Se for de um cliente novo, cadastre o CNPJ no Cadastro do nads; se não for de cliente, tire o arquivo da pasta.'],
   CLIENTE_AMBIGUO: ['Duas empresas possíveis', 'O documento serve para mais de um cliente. Escolha o cliente certo e mova o arquivo para a pasta dele.'],
+  EVENTO_SEM_ORIGINAL: ['Evento sem o documento original', 'É um evento (cancelamento, carta de correção, MDF-e, ciência…) de uma nota que não foi arquivada e que o SIEG também não tem. Procure a nota pela chave de acesso; se for de um cliente, arquive a nota e o evento na pasta dele.'],
   CONTEUDO_SEM_TEXTO: ['Escaneado sem leitura', 'É uma imagem sem texto e a leitura (OCR) não bastou. Peça o PDF original ao cliente ou arquive à mão.'],
   CONTEUDO_ILEGIVEL: ['Escaneado ilegível', 'A leitura (OCR) saiu ruim. Peça uma cópia melhor ou arquive à mão.'],
   CONFIANCA_ABAIXO_DO_LIMIAR: ['Pouca certeza', 'O robô achou um destino, mas sem certeza suficiente. Confira a sugestão e mova o arquivo, se estiver certa.'],
@@ -119,9 +122,10 @@ function classificarErro(texto) {
 /** A ação do item como o painel conta: arquivou (produção), arquivaria (simulação), jaArquivado, naoIdentificado, fica, erro. */
 function acaoDoItem(x, modoRes) {
   if (x.erro) return 'erro';
+  if (x.acao === 'AGUARDANDO_ORIGINAL') return 'aguardando';
   const aplicado = modoRes === 'PRODUCAO' && !x.naoAplicado;
   if (x.acao === 'ARQUIVAR') return aplicado ? 'arquivou' : 'arquivaria';
-  if (x.acao === 'JA_ARQUIVADO') return 'jaArquivado';
+  if (x.acao === 'JA_ARQUIVADO' || x.acao === 'DESCARTAR') return 'jaArquivado';   // descarte confirmado: saiu da pasta para a quarentena
   if (x.acao === 'NAO_IDENTIFICADO') return 'naoIdentificado';
   return 'fica';
 }
@@ -154,6 +158,8 @@ function itemCompacto(x, modoRes, em, historico) {
   };
   if (acao === 'naoIdentificado' || acao === 'fica') {
     it.motivo = x.motivo || null;
+    // o hash e o caminho na pasta: o site manda de volta nos pedidos (abrir, arquivar em…, descartar; arquivador-pedidos.js)
+    it.hash = x.hash || null;
     it.motivoTexto = motivoLegivel(x.motivo);
     it.sugestao = corta(sugestao(x), 260);
     if (x.destinoSugerido) it.destinoSugerido = corta(destinoCurto(x.destinoSugerido), 300);
@@ -186,13 +192,15 @@ function situacaoDaPasta(v, agora) {
   const vistos = v.vistos || [];
   const lendo = new Set(v.lendo || []);
   const pendentes = new Set(v.pendentes || []);
+  const aguardando = new Set(v.aguardando || []);   // eventos esperando o documento original (índice de chaves)
   const mapa = v.mapa || new Map();
   const estavelMs = v.estavelMs || 45000;
   const lista = [];
-  let chegando = 0, naFila = 0, sendoLidos = 0, parados = 0;
+  let chegando = 0, naFila = 0, sendoLidos = 0, parados = 0, esperandoOriginal = 0;
   for (const f of vistos) {
     let s;
     if (lendo.has(f.rel)) { s = 'lendo'; sendoLidos++; }
+    else if (aguardando.has(f.rel)) { s = 'original'; esperandoOriginal++; }
     else if (pendentes.has(f.rel)) { s = 'fila'; naFila++; }
     else {
       const m = mapa.get(f.rel);
@@ -201,10 +209,10 @@ function situacaoDaPasta(v, agora) {
     }
     lista.push({ rel: f.rel, tam: f.tam, desde: new Date(Math.min(f.mtime || agora, agora)).toISOString(), situacao: s });
   }
-  const ordem = { lendo: 0, chegando: 1, fila: 2 };
+  const ordem = { lendo: 0, chegando: 1, fila: 2, original: 3 };
   lista.sort((a, b) => ordem[a.situacao] - ordem[b.situacao] || a.desde.localeCompare(b.desde));
   return {
-    naPasta: vistos.length, chegando, naFila, sendoLidos, parados,
+    naPasta: vistos.length, chegando, naFila, sendoLidos, parados, esperandoOriginal,
     lista: lista.slice(0, MAX_CHEGANDO).map(x => ({ nome: corta(path.win32.basename(x.rel), 140), rel: corta(x.rel, 260), tam: x.tam, desde: x.desde, situacao: x.situacao })),
   };
 }
@@ -278,13 +286,13 @@ function criar(opcoes) {
   }
   carregarDia(st.hoje.chave);
 
-  let ultimaGravacao = 0, timer = null, avisouErro = false, parado = false;
+  let ultimaGravacao = 0, timer = null, avisouErro = false, parado = false, limpar = true;
   const assinatura = () => JSON.stringify([st.pasta && [st.pasta.naPasta, st.pasta.chegando, st.pasta.naFila, st.pasta.sendoLidos, st.pasta.lista.map(x => x.rel + x.situacao)], st.passada]);
   const seguro = (nome, f) => (...a) => { try { if (!parado) f(...a); } catch (e) { o.log('acompanhamento (' + nome + '):', e.message); } };
 
   function virarDia(t) {
     const h = hojeLocal(t);
-    if (st.hoje.chave !== h) { st.hoje = contagemVazia(h); carregarDia(h); }
+    if (st.hoje.chave !== h) { st.hoje = contagemVazia(h); carregarDia(h); limpar = true; }
     if (st.mes.chave !== h.slice(0, 7)) st.mes = contagemVazia(h.slice(0, 7));
   }
 
@@ -302,6 +310,7 @@ function criar(opcoes) {
       mes: contagemPublicada(st.mes),
       ultimos: st.ultimos,
       pendentes: st.pendentes,
+      pendentesTotal: st.pendentesTotal == null ? st.pendentes.length : st.pendentesTotal,
       erros: st.erros,
       alertas: alertas(st, t),
       ladoALado: st.ladoALado,
@@ -324,6 +333,18 @@ function criar(opcoes) {
       }
       avisouErro = false;
     } catch (e) { if (!avisouErro) { o.log('acompanhamento: não publiquei:', e.message); avisouErro = true; } }
+    if (limpar) { limpar = false; await limparAntigos(); }
+  }
+  /** O histórico de mais de DIAS_GUARDADOS dias: as partes no banco (até 50 por vez) e os arquivos do PC. */
+  async function limparAntigos() {
+    const limite = hojeLocal(o.agora() - DIAS_GUARDADOS * 864e5);
+    try { for (const f of fs.readdirSync(o.controle)) { const m = /^arquivados-(\d{4}-\d{2}-\d{2})\.jsonl$/.exec(f); if (m && m[1] < limite) fs.unlinkSync(path.join(o.controle, f)); } } catch (e) { /* segue */ }
+    try {
+      const col = o.db && o.db.collection('robo').doc('arquivadorNovo').collection('dias');
+      if (!col || typeof col.where !== 'function') return;
+      const snap = await col.where('dia', '<', limite).limit(50).get();
+      for (const d of snap.docs) await d.ref.delete();
+    } catch (e) { o.log('acompanhamento: não limpei o histórico antigo:', e.message); }
   }
   /** O freio: no máximo uma gravação a cada freioMs (a mudança no meio espera a próxima). */
   function publicar(jaJa) {
@@ -373,7 +394,7 @@ function criar(opcoes) {
       st.lendoAgora = [];
       const linhas = [];
       for (const x of itens || []) {
-        if (!x || x.acao === 'CONTEINER') continue;
+        if (!x || x.acao === 'CONTEINER' || x.acao === 'AGUARDANDO_ORIGINAL') continue;   // o que espera o original aparece na pasta (Chegando), não no resultado
         const it = itemCompacto(x, modoRes, em, false);
         somar(st.hoje, it); somar(st.mes, it);
         st.marcas.push(t);
@@ -405,6 +426,20 @@ function criar(opcoes) {
       publicar();
     }),
     /** o relatório lado a lado do dia (compararDia) */
+    /**
+     * A lista "Para resolver" de verdade (23/10/2026: a lista guardava os 80 últimos não identificados, e os
+     * reprocessamentos tiravam a maioria da pasta). itens = [{ rel, nome, motivo, confianca, cliente, chave, em, hash }]
+     * do que está hoje em NÃO IDENTIFICADOS; o "fica" (na origem) continua enquanto o arquivo estiver lá (existe(rel)).
+     */
+    naoIdentificados: seguro('naoIdentificados', (itens, existe) => {
+      const daPasta = (itens || []).map(x => Object.assign(itemCompacto(Object.assign({ acao: 'NAO_IDENTIFICADO' }, x), 'PRODUCAO', x.em || new Date(o.agora()).toISOString(), false), { naPasta: x.naPasta || null }));
+      const ficam = st.pendentes.filter(p => p.acao === 'fica' && (!existe || existe(p.rel)));
+      const todos = daPasta.concat(ficam).sort((a, b) => String(b.em).localeCompare(String(a.em)));
+      const antes = JSON.stringify([st.pendentesTotal, st.pendentes.map(p => p.id)]);
+      st.pendentes = todos.slice(0, MAX_PENDENTES);
+      st.pendentesTotal = todos.length;
+      if (antes !== JSON.stringify([st.pendentesTotal, st.pendentes.map(p => p.id)])) publicar();
+    }),
     ladoALado: seguro('ladoALado', (r) => { st.ladoALado = Object.assign({}, r, { exemplos: (r.exemplos || []).slice(0, 20) }); publicar(); }),
     /** grava o que falta agora (ao desligar) */
     parar: async () => { try { if (timer) { clearTimeout(timer); timer = null; } await gravar(); } catch (e) { /* desligando */ } parado = true; },

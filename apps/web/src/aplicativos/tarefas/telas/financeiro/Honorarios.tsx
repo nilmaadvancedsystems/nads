@@ -3,9 +3,11 @@
 // a situação diz "Pago em dd/mm · forma" ou "Em aberto" (não há vencimento), e Receber / Desfazer marcam à mão. Em 21/10/2026:
 // Emitir NFS-e (a Nova nota já preenchida, com o selo da nota que já existe) e Cobrar (tirado em 21/10/2026, a pedido: "remove esse cobrar"; o "Cobrado em" das cobranças já feitas fica).
 import { financeiro, formatos } from '@nads/core';
-import { Icone, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
+import { Icone, MenuSuspenso, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
+import { useState } from 'react';
 import { dataBr } from './formatosDaNota';
 import { JanelaDosContratos } from './JanelaDosContratos';
+import { JanelaDoReajuste } from './JanelaDoReajuste';
 import { JanelaNovaNota } from './JanelaNovaNota';
 import { JanelaReceber } from './JanelaReceber';
 import { ValorEditavel } from './partes/ValorEditavel';
@@ -15,6 +17,8 @@ export function Honorarios() {
   const vm = useHonorariosDaCompetencia();
   useCarregando(vm.carregando);
   const s = vm.situacao;
+  // a janela do reajuste (22/10/2026, o item 5 da lista do Painel)
+  const [reajustando, setReajustando] = useState(false);
   const numeros = [
     { rotulo: 'Previsto', valor: formatos.reais(s.previsto), tom: 'neutro', icone: 'clock' },
     { rotulo: 'Recebido', valor: formatos.reais(s.recebido), tom: 'ok', icone: 'check' },
@@ -26,6 +30,7 @@ export function Honorarios() {
       {vm.recebendo && <JanelaReceber contratoId={vm.recebendo} competencia={vm.competencia} fechar={vm.fecharReceber} />}
       {vm.emitindo && <JanelaNovaNota fechar={vm.fecharEmissao} inicial={vm.emitindo} />}
       {vm.gerenciando && <JanelaDosContratos fechar={() => vm.setGerenciando(false)} />}
+      {reajustando && <JanelaDoReajuste fechar={() => setReajustando(false)} />}
 
       <div className="tarefas-barra-topo fin-barra">
         <SeletorMes valor={vm.competencia} onMudar={vm.setCompetencia} rotulo="Competência" />
@@ -37,7 +42,12 @@ export function Honorarios() {
         </label>
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
-        <button type="button" className="btn btn-outline" disabled={!vm.valida} onClick={vm.exportar}><Icone nome="download" />Exportar planilha</button>
+        {/* o Exportar e o Reajustar num "Mais", como no Caixa: a barra não quebra (22/10/2026) */}
+        <MenuSuspenso rotulo="Mais" titulo="Exportar a planilha e reajustar os honorários" direita largura={240}
+          itens={[
+            { rotulo: 'Exportar planilha', icone: 'download', desabilitado: !vm.valida, onClick: vm.exportar },
+            { rotulo: 'Reajustar os honorários', icone: 'repeat', onClick: () => setReajustando(true) },
+          ]} />
         <button type="button" className="btn btn-outline" onClick={() => vm.setGerenciando(true)}><Icone nome="briefcase" />Gerenciar clientes</button>
       </div>
       {vm.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.erro}</p>}

@@ -5,7 +5,7 @@ import {
   LogoFgts, LogoGovernoMinas, LogoInss, LogoReceitaFederal, LogoSimplesNacional, LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
 } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
-import { CampoAssinatura } from '@nads/ui';
+import { CampoAssinatura, FORMATOS_DE_ARQUIVO, IconeDeArquivo } from '@nads/ui';
 import { entregas, financeiro } from '@nads/core';
 import { CONCILIA, EXECUTOR, EXTRATUDO, TAREFAS, TODAS } from './telas';
 import type { Peca } from './tipos';
@@ -18,7 +18,6 @@ import { CartaoDeGuia } from '../../cliente/partes/CartaoDeGuia';
 import { CartaoDoVeredito } from '../../cliente/partes/CartaoDoVeredito';
 import { ConversaDoChamado } from '../../cliente/partes/ConversaDoChamado';
 import { EsqueletoDaArea } from '../../cliente/partes/EsqueletoDaArea';
-import { FORMATOS_DE_ARQUIVO, IconeDeArquivo } from '../../cliente/partes/IconeDeArquivo';
 import { LinhaDaAgenda } from '../../cliente/partes/LinhaDaAgenda';
 import { LinhaDaAtividade } from '../../cliente/partes/LinhaDaAtividade';
 import { LinhaDeGuia } from '../../cliente/partes/LinhaDeGuia';
@@ -342,11 +341,11 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoDrive /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoDrive cor /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoGmail /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoWhatsApp /></span></> },
 
   // ─── Campos ─────────────────────────────────────────────────────────────────────────────────────────────────────────
-  { id: 'busca-curta', tipo: 'campos', nome: 'Busca (com lupa)', classes: ['busca-curta', 'busca-curta larga'], telas: ['t-empresa-lcdpr', 't-empresas', 't-cadastro', 't-drive', 'e-importacao', 'c-consulta', 't-senhas'],
+  { id: 'busca-curta', tipo: 'campos', nome: 'Busca (com lupa)', classes: ['busca-curta', 'busca-curta larga'], telas: ['t-empresa-lcdpr', 't-empresas', 't-cadastro', 't-drive', 'e-importacao', 'c-consulta', 't-senhas', 'a-arquivador'],
     uso: '<label className="busca-curta"><Icone nome="search" /><input /></label>', demo: () => <label className="busca-curta"><Icone nome="search" /><input type="text" placeholder="Buscar no extrato" /><kbd>/</kbd></label> },
   { id: 'field', tipo: 'campos', nome: 'Campo de texto', classes: ['field'], telas: ['t-entrar', 't-cadastro-janela', 'c-cadastro', 'c-cliente-dp', 'c-cliente-chamados'],
     demo: () => <div className="field" style={{ width: 260 }}><label htmlFor="cat-f1">Agência</label><input id="cat-f1" type="text" placeholder="Ex.: 3001" /></div> },
-  { id: 'select', tipo: 'campos', nome: 'Seleção', descricao: 'Com o triângulo do GitHub; a compacta tem o mesmo tamanho (só a largura acompanha o texto)', classes: ['field select', 'select-compact'], telas: ['t-empresa-lcdpr', 'c-cadastro', 'e-conferencia', 'c-relatorio'],
+  { id: 'select', tipo: 'campos', nome: 'Seleção', descricao: 'Com o triângulo do GitHub; a compacta tem o mesmo tamanho (só a largura acompanha o texto)', classes: ['field select', 'select-compact'], telas: ['t-empresa-lcdpr', 'c-cadastro', 'e-conferencia', 'c-relatorio', 'a-arquivador'],
     demo: () => <><select defaultValue="cfop" style={{ width: 180 }}><option value="cfop">CFOP (A-Z)</option><option>Fornecedor (A-Z)</option></select><select className="select-compact" defaultValue="a"><option value="a">Todas</option></select></> },
   { id: 'checkbox', tipo: 'campos', nome: 'Checkbox', descricao: '18 px; o ✓ é desenhado para 18 px', classes: ['input[type=checkbox]', 'chk-auto'], telas: ['c-naturezas', 'c-relatorio', 't-exec-folha'],
     demo: () => <><input type="checkbox" /><input type="checkbox" defaultChecked /><input type="checkbox" disabled /><input type="checkbox" className="chk-auto" defaultChecked /></> },
@@ -562,7 +561,7 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <AvisoParado tom="erro" titulo="Falta preencher antes de conferir" texto="Escolha a conta · Importe o relatório da conta" />, aoVivo: c => c.aviso({ tom: 'erro', titulo: 'Falta preencher antes de conferir', texto: 'Escolha a conta · Importe o relatório da conta' }) },
   { id: 'abas-menu', tipo: 'abas', nome: 'Abas sublinhadas', classes: ['menu', 'menu-item', 'menu-contador'], telas: TODAS, largo: true,
     demo: () => <nav className="menu">{([['Bancos', 'landmark', true], ['Balancete', 'scale'], ['Entradas', 'arrowDown'], ['Saídas', 'arrowUp'], ['Tomados', 'fileDown']] as [string, NomeIcone, boolean?][]).map(([r, i, a]) => <button key={r} type="button" className={'menu-item' + (a ? ' active' : '')}><Icone nome={i} /><span>{r}</span></button>)}</nav> },
-  { id: 'segmentado', tipo: 'abas', nome: 'Segmentado', componente: 'Segmentado', classes: ['steps', 'step-pill'], telas: ['c-relatorio', 'c-cadastro', 'c-consulta'], demo: () => <SegmentadoVivo /> },
+  { id: 'segmentado', tipo: 'abas', nome: 'Segmentado', componente: 'Segmentado', classes: ['steps', 'step-pill'], telas: ['c-relatorio', 'c-cadastro', 'c-consulta', 'a-arquivador'], demo: () => <SegmentadoVivo /> },
   { id: 'imp-meses', tipo: 'abas', nome: 'Meses do período (Em lote)', descricao: 'Uma tabela: meses em cima (clicar abre), Extrato e Razão nas linhas, um ícone por mês', classes: ['imp-meses', 'imp-meses-mes', 'atual', 'imp-mes-sem'], telas: ['e-importacao', 't-exec-importacao'], largo: true,
     demo: () => {
       const ok = <button className="icon-btn icon-btn-sm imp-btn imp-feito" type="button"><Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" /></button>;
@@ -719,7 +718,7 @@ export const PECAS_BASE: Peca[] = [
         <li><div><b>DAS do Simples</b><span className="fraco">20/10 · 3 guias na rota</span></div><span className="badge badge-neutral">vence em 4 dias</span></li>
       </ul>
     ) },
-  { id: 'ent-dados', tipo: 'listas', nome: 'Dados em linhas (rótulo e valor)', descricao: 'O cadastro, a Receita e a entrega feita: o rótulo apagado à esquerda e o valor à direita; linha sem valor não aparece', classes: ['ent-dados'], telas: ['t-entregas', 'a-robo'],
+  { id: 'ent-dados', tipo: 'listas', nome: 'Dados em linhas (rótulo e valor)', descricao: 'O cadastro, a Receita e a entrega feita: o rótulo apagado à esquerda e o valor à direita; linha sem valor não aparece', classes: ['ent-dados'], telas: ['t-entregas', 'a-robo', 'a-arquivador'],
     demo: () => <dl className="ent-dados" style={{ width: '100%', maxWidth: 420 }}><div><dt>Recebido por</dt><dd>João (exemplo)</dd></div><div><dt>Entregue por</dt><dd>Maria (exemplo)</dd></div><div><dt>Data/hora</dt><dd>15/10/2026, 12:48</dd></div></dl> },
 
   // ─── Carregamento ───────────────────────────────────────────────────────────────────────────────────────────────────
@@ -733,9 +732,9 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <p className="hint">Use o ▶ para ver na tela inteira.</p>, aoVivo: c => c.abertura('vidro') },
 
   // ─── Gráficos ───────────────────────────────────────────────────────────────────────────────────────────────────────
-  { id: 'progresso', tipo: 'graficos', nome: 'Barra de progresso', classes: ['tarefas-barra', 'parada'], telas: ['t-empresas', 't-contabil', 't-exec-fiscal-rotina'],
+  { id: 'progresso', tipo: 'graficos', nome: 'Barra de progresso', classes: ['tarefas-barra', 'parada'], telas: ['t-empresas', 't-contabil', 't-exec-fiscal-rotina', 'a-arquivador'],
     demo: () => <><span className="tarefas-barra"><span style={{ width: '40%' }} /></span><span className="tarefas-barra"><span className="parada" style={{ width: '70%' }} /></span></> },
-  { id: 'rank', tipo: 'graficos', nome: 'Ranking', classes: ['rank', 'rank-item', 'rank-barra'], telas: ['c-relatorio', 't-exec-fiscal-rotina', 'a-uso', 'a-cota'], largo: true,
+  { id: 'rank', tipo: 'graficos', nome: 'Ranking', classes: ['rank', 'rank-item', 'rank-barra'], telas: ['c-relatorio', 't-exec-fiscal-rotina', 'a-uso', 'a-cota', 'a-arquivador'], largo: true,
     demo: () => <div className="rank" style={{ width: '100%' }}>{[['5101 — Venda de produção', 72], ['1101 — Compra para industrialização', 41], ['2910 — Bonificação', 9]].map(([n, v]) => <button key={n} className="rank-item" type="button"><span className="rank-nome">{n}</span><span className="rank-val">{v}%</span><span className="rank-barra"><span style={{ width: v + '%', background: 'var(--accent)' }} /></span></button>)}</div> },
 
   { id: 'barras-dia', removida: { como: 'excluida', em: '06/10/2026', motivo: 'Vitor: "não curti nenhum dos gráficos novos"; a composição voltou para o Ranking e o resto para os Números (Stat).', sumir: true }, tipo: 'graficos', nome: 'Barras por dia do mês', descricao: 'Uma barra por dia; o dia, as notas e o valor ao passar o mouse (as barras sobem ao aparecer)', componente: 'BarrasPorDia', classes: ['graf-dias', 'graf-dia'], telas: ['t-exec-fiscal-rotina'], largo: true,
@@ -746,7 +745,7 @@ export const PECAS_BASE: Peca[] = [
     demo: () => null },
 
   // as três peças do painel com gráfico (Savio, 15/10/2026: o Painel do DP "semelhante ao do Certificados"): Senhas › Certificados e DP › Resumo usam estas
-  { id: 'rosca-legenda', tipo: 'graficos', nome: 'Rosca com legenda (filtra)', descricao: 'A rosca das situações com o total no meio e a legenda ao lado; clicar na fatia ou na legenda escolhe (o painel filtra a lista)', componente: 'RoscaComLegenda', classes: ['cert-rosca', 'cert-legenda', 'cert-cor-ok', 'cert-cor-vence', 'cert-cor-vencido', 'cert-cor-sem'], telas: ['t-senhas', 't-dp-resumo'],
+  { id: 'rosca-legenda', tipo: 'graficos', nome: 'Rosca com legenda (filtra)', descricao: 'A rosca das situações com o total no meio e a legenda ao lado; clicar na fatia ou na legenda escolhe (o painel filtra a lista)', componente: 'RoscaComLegenda', classes: ['cert-rosca', 'cert-legenda', 'cert-cor-ok', 'cert-cor-vence', 'cert-cor-vencido', 'cert-cor-sem'], telas: ['t-senhas', 't-dp-resumo', 'a-arquivador'],
     uso: "<RoscaComLegenda fatias={[{ id, rotulo, valor, tom: 'ok'|'aviso'|'perigo'|'neutro' }]} total={n} subtitulo=\"clientes\" ativa={id|null} onEscolher={...} />",
     demo: () => <div className="card" style={{ width: '100%', maxWidth: 520, margin: 0 }}><RoscaComLegenda total={40} subtitulo="clientes" ativa="pendente" onEscolher={nada}
       fatias={[{ id: 'atrasada', rotulo: 'Atrasados', valor: 6, tom: 'perigo' }, { id: 'pendente', rotulo: 'Pendentes', valor: 14, tom: 'aviso' }, { id: 'feita', rotulo: 'Concluídos', valor: 17, tom: 'ok' }, { id: 'sem', rotulo: 'Sem movimento', valor: 3, tom: 'neutro' }]} /></div> },
@@ -770,6 +769,10 @@ export const PECAS_BASE: Peca[] = [
   { id: 'pilula-calor', tipo: 'graficos', nome: 'Pílula de calor (o botão pelos cliques)', descricao: 'O nome do botão com o número de cliques, em três tons: azul = pouco (calor-1 e 2), amarelo = médio (calor-3), vermelho = muito usado (calor-4 e 5); calor-0 tracejado = ninguém clicou. A legenda em palavras é a uso-cor. O nível vem de uso.nivelDoCalor', classes: ['uso-pilula', 'calor-0', 'calor-1', 'calor-5', 'uso-cor'], telas: ['a-uso'],
     uso: '<span className={"uso-pilula calor-" + uso.nivelDoCalor(cliques, maior)}>Exportar Excel<b className="num">89</b></span>',
     demo: () => <div className="uso-botoes">{([['Exportar Excel', 89, 5], ['Filtros', 41, 4], ['Abrir', 23, 3], ['Salvar', 9, 2], ['Imprimir', 2, 1], ['Fechar', 0, 0]] as const).map(([r, n, c]) => <span key={r} className={'uso-pilula calor-' + c}>{r}<b className="num">{n}</b></span>)}</div> },
+  // os destaques das despesas no faturamento detalhado (22/10/2026: "fgts, água, dentre outros")
+  { id: 'destaque-valor', tipo: 'graficos', nome: 'Destaque de valor (as despesas do mês)', descricao: 'Uma grade de quadrinhos pequenos: o nome em cima, o valor embaixo (e uma nota opcional, como o vencimento). Para vários valores lado a lado, menores que o Stat', classes: ['fat-destaques', 'fat-destaque'], telas: ['t-fiscal-faturamento'],
+    uso: '<div className="fat-destaques"><div className="fat-destaque"><span className="fraco">FGTS</span><b className="num">R$ 1.000,00</b></div></div>',
+    demo: () => <div className="fat-destaques" style={{ width: '100%' }}>{([['Salários', '12.500,00'], ['FGTS', '1.000,00'], ['Água', '212,40'], ['Energia', '1.350,90']] as const).map(([r, v]) => <div key={r} className="fat-destaque"><span className="fraco">{r}</span><b className="num">R$ {v}</b></div>)}</div> },
   // o mapa na tela (21/10/2026): por cima da tela de verdade, a moldura de cada controle na cor do calor e a barra de baixo
   { id: 'mapa-na-tela', tipo: 'graficos', nome: 'Mapa na tela (os botões pintados)', descricao: 'Ligado pelo "Ver na tela" do Uso do sistema: cada controle da tela aberta ganha a moldura na cor do calor com o número de cliques (a camada não pega clique); a barra de baixo diz a tela, o que cada cor quer dizer e tem o Sair. Montado uma vez na casca (casca/MapaNaTela.tsx)', classes: ['mapa-tela-caixa', 'mapa-tela-barra'], telas: ['a-uso'],
     uso: '<MapaNaTela /> (na casca; liga com ligarMapaNaTela(periodo))',
@@ -780,6 +783,27 @@ export const PECAS_BASE: Peca[] = [
             <span className={'mapa-tela-caixa calor-' + c} style={{ position: 'absolute', inset: -3 }} title={n + ' cliques'} /></span>
         ))}
       </div>) },
+
+  // o painel de progresso do arquivador do Drive (22/10/2026: "transforme essa tela apenas um painel de progresso da tarefa")
+  { id: 'progresso-tarefa', tipo: 'graficos', nome: 'Painel de progresso de uma tarefa', descricao: 'A janela que só acompanha (sem botão de fazer): no título, o nome e se o PC está ligado; no meio, o ícone, a porcentagem grande, a barra, o lote e o começo, e as fases (feitas em verde, a de agora girando, as que faltam apagadas); parada, a próxima e a última rodada. No pé, só o Fechar', classes: ['modal arquivador-progresso', 'arquivador-hero', 'arquivador-hero-numero', 'arquivador-fases', 'arquivador-progresso-fases'], telas: ['t-drive'],
+    uso: '<JanelaDoArquivador vm={vm} fechar={…} />  (no Drive, pelo botão Arquivador)',
+    demo: () => (
+      <div className="modal arquivador-progresso" style={{ position: 'static', width: '100%', maxWidth: 460, margin: 0 }}>
+        <h3><Icone nome="arquivo" width={16} height={16} />Arquivador<span className="arquivador-pc ligado"><span className="arquivador-ponto" aria-hidden="true" />PC do arquivador ligado</span></h3>
+        <div className="arquivador-hero">
+          <span className="arquivador-hero-icone ativo"><Icone nome="girar" /></span>
+          <h3>Organizando a pasta Claudio Secretario</h3>
+          <b className="arquivador-hero-numero">45%</b>
+          <span className="tarefas-barra larga arquivador-hero-barra"><span style={{ width: '45%' }} /></span>
+          <p className="arquivador-hero-texto">3 de 5 agentes prontos</p>
+          <ul className="arquivador-fases arquivador-progresso-fases">
+            {([['Separando os PDFs', 'feita'], ['Descobrindo o cliente de cada arquivo', 'atual'], ['Conferindo', 'falta']] as const).map(([n, e]) => (
+              <li key={n} className={e}><Icone nome={e === 'feita' ? 'checkCircle' : e === 'atual' ? 'girar' : 'clock'} width={15} height={15} /><span>{n}</span></li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    ) },
 
   // ─── Cores ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'cores', tipo: 'cores', nome: 'As cores do sistema', descricao: 'Mude o tema no ☰ para ver o escuro', telas: TODAS, largo: true,
@@ -868,7 +892,7 @@ export const PECAS_BASE: Peca[] = [
         { de: 'escritorio', autor: 'Camila', texto: 'Oi! Precisamos do RG, CPF, comprovante de residência e o exame admissional.', em: '2026-10-15T11:05:00' },
       ]} />
     ) },
-  { id: 'icone-arquivo', tipo: 'icones', nome: 'Ícone do arquivo (Área do Cliente)', descricao: 'Da Central de documentos (Vitor, 16/10/2026: "quero um ícone mais bonito, pode ser dependendo do arquivo"): desenhado à mão — a folha com o canto dobrado, a etiqueta com a extensão e um desenho de dentro por tipo (linhas no PDF e no DOC, grade na planilha, </> no XML, zíper no ZIP, montanha com o sol na imagem), cada um na cor clássica pelos tokens do nads. 36 px na tabela; no escuro a folha pega um tom da cor e não apaga', componente: 'IconeDeArquivo', classes: ['cli-arquivo', 'cli-arquivo-folha', 'cli-arquivo-canto', 'cli-arquivo-dentro', 'cli-arquivo-etiqueta', 'cli-arquivo-ext'], telas: ['c-cliente-documentos'], largo: true,
+  { id: 'icone-arquivo', tipo: 'icones', nome: 'Ícone do arquivo (Área do Cliente)', descricao: 'Da Central de documentos (Vitor, 16/10/2026: "quero um ícone mais bonito, pode ser dependendo do arquivo"): desenhado à mão — a folha com o canto dobrado, a etiqueta com a extensão e um desenho de dentro por tipo (linhas no PDF e no DOC, grade na planilha, </> no XML, zíper no ZIP, montanha com o sol na imagem), cada um na cor clássica pelos tokens do nads. 36 px na tabela; no escuro a folha pega um tom da cor e não apaga. Desde 22/10/2026 no @nads/ui (o CSS no nads.css), com o TXT (SPED, Sintegra) e o OFX (extrato) a mais e o formatoPeloNome(nome): o Arquivador do admin usa na lista dos arquivos (32 px), no detalhe (40 px) e no ranking por tipo (20 px)', componente: 'IconeDeArquivo', classes: ['cli-arquivo', 'cli-arquivo-folha', 'cli-arquivo-canto', 'cli-arquivo-dentro', 'cli-arquivo-etiqueta', 'cli-arquivo-ext'], telas: ['c-cliente-documentos', 'a-arquivador'], largo: true,
     uso: '<IconeDeArquivo formato="PDF" tamanho={36} />',
     demo: () => (
       <div className="cli-app cli-demo" style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
@@ -989,7 +1013,7 @@ export const PECAS_BASE: Peca[] = [
     uso: "<Segmentado valor={tipo} opcoes={[{ valor: 'todos', rotulo: 'Todos' }, …]} onMudar={setTipo} />",
     demo: () => <Segmentado valor="E" opcoes={[{ valor: 'todos', rotulo: 'Todos' }, { valor: 'E', rotulo: 'Entradas' }, { valor: 'S', rotulo: 'Saídas' }]} onMudar={nada} /> },
   { id: 'valor-editavel', tipo: 'campos', nome: 'Valor editável na linha', descricao: 'Nos Honorários (19/10/2026): o valor do honorário se digita na própria linha da tabela; grava ao sair do campo ou no Enter, Esc desfaz; sem valor mostra "definir valor" na cor da marca', componente: 'ValorEditavel', classes: ['fin-valor-edita', 'fin-valor-edita-vazio'], telas: ['t-fin-honorarios'],
-    uso: '<ValorEditavel valor={850} rotulo="Valor do honorário" aoSalvar={texto => …} />',
+    uso: '<ValorEditavel valor={850} rotulo="Valor do honorário" aoSalvar={texto => …} />  ·  zeroVale: o zero é um valor e mostra 0,00 (a calculadora do Simples)',
     demo: () => <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}><ValorEditavel valor={850} rotulo="Valor com valor" aoSalvar={nada} /><ValorEditavel valor={0} rotulo="Valor sem valor" aoSalvar={nada} /></div> },
   { id: 'situacao-do-honorario', tipo: 'selos', nome: 'Situação do honorário', descricao: 'Nos Honorários: "Pago em dd/mm · forma" (verde) ou "Em aberto" (amarelo); não há vencimento, então nunca "atrasado"', classes: ['badge', 'badge-ok', 'badge-warn'], telas: ['t-fin-honorarios'],
     demo: () => <div style={{ display: 'flex', gap: 8 }}><span className="badge badge-ok">Pago em 05/10 · PIX</span><span className="badge badge-warn">Em aberto</span></div> },
@@ -1029,6 +1053,6 @@ export const PECAS_BASE: Peca[] = [
       const itens = entregas.saudeDoBanco({ resumo, uso: entregas.lerUsoDeHoje({ em: new Date(agora - 6e5).toISOString(), leituras: 38200, gravacoes: 1320, exclusoes: 240 }), sinais: [], filas: [], errosDaFila: [] }, agora);
       return <div className="card" style={{ width: '100%', margin: 0 }}><div className="cad-placar atencao"><span className="saude-ponto" aria-hidden="true" /><b>{itens.filter(i => i.tom === 'aviso' || i.tom === 'erro').length} itens precisam de atenção</b></div><ListaDaSaude itens={itens} /></div>;
     } },
-  { id: 'admin-numero', tipo: 'cartoes', nome: 'Número do painel que abre a página (site do admin)', descricao: 'O número em painel colorido (painel-numero) como link: clicar abre a página dele (Robôs ligados → Robô, Feedbacks altos novos → Feedbacks). O tom segue a situação: verde tudo certo, âmbar atenção, laranja erro', classes: ['stat painel-numero admin-numero', 'admin-numeros', 'painel-ok', 'painel-aviso', 'painel-laranja'], telas: ['a-visao-geral'], largo: true,
+  { id: 'admin-numero', tipo: 'cartoes', nome: 'Número do painel que abre a página (site do admin)', descricao: 'O número em painel colorido (painel-numero) como link: clicar abre a página dele (Robôs ligados → Robô, Feedbacks altos novos → Feedbacks). O tom segue a situação: verde tudo certo, âmbar atenção, laranja erro', classes: ['stat painel-numero admin-numero', 'admin-numeros', 'painel-ok', 'painel-aviso', 'painel-laranja'], telas: ['a-visao-geral', 'a-arquivador'], largo: true,
     demo: () => <div className="stat-grid dp-numeros admin-numeros" style={{ width: '100%' }}>{([['Robôs ligados', '2 de 2', 'ok', 'robo'], ['Erros em 24 h', '3', 'laranja', 'alert'], ['Filas atrasadas', '1', 'aviso', 'clock'], ['Feedbacks altos novos', '0', 'ok', 'mensagem']] as [string, string, string, NomeIcone][]).map(([r, v, tom, ic]) => <a key={r} href="#" onClick={e => e.preventDefault()} className={'stat painel-numero admin-numero painel-' + tom}><span className="painel-numero-icone" aria-hidden="true"><Icone nome={ic} width={16} height={16} /></span><p className="stat-label">{r}</p><p className="stat-value num">{v}</p></a>)}</div> },
 ];

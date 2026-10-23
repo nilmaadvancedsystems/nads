@@ -77,7 +77,7 @@ function xmlsDeExemplo(competencia: string): Pick<t.sieg.NotasSieg, 'emitidas' |
   const cli = { doc: '44555666000172', nome: 'CLIENTE EXEMPLO (TESTE)' };
   const forn = { doc: '77888999000163', nome: 'FORNECEDOR EXEMPLO (TESTE)' };
   return {
-    resumo: 2,
+    resumo: 3,
     emitidas: [
       { tipo: 'NF-e', chave: 'T1', numero: 'T901', serie: '1', data: dia(3), emitente: eu, destinatario: cli, valor: 1500,
         itens: [{ ncm: '21069090', cfop: '5102', cst: '000', cest: '', valor: 1000, icms: 180, cstPis: '01' }, { ncm: '22021000', cfop: '5405', cst: '060', cest: '0300700', valor: 500, cstPis: '04' }] },
@@ -89,6 +89,10 @@ function xmlsDeExemplo(competencia: string): Pick<t.sieg.NotasSieg, 'emitidas' |
     recebidas: [
       { tipo: 'NF-e', chave: 'T3', numero: 'T501', serie: '1', data: dia(5), emitente: forn, destinatario: eu, valor: 2200,
         itens: [{ ncm: '39232990', cfop: '6102', cst: '090', cest: '', valor: 2200, icms: 264 }] },
+      // uma compra com frete (o Rateio de frete; 22/10/2026): os números da planilha do Fiscal, 600 tributado e 400 com ST, frete de 500
+      { tipo: 'NF-e', chave: 'T4', numero: 'T502', serie: '1', data: dia(8), emitente: forn, destinatario: eu, valor: 1536, frete: 500, desconto: 0,
+        itens: [{ ncm: '39241000', cfop: '2102', cst: '000', cest: '', valor: 600, icms: 72 }, { ncm: '39241000', cfop: '2403', cst: '010', cest: '', valor: 200, st: 20, ipi: 10 },
+          { ncm: '69120000', cfop: '2403', cst: '010', cest: '', valor: 100, st: 6 }, { ncm: '70134900', cfop: '2403', cst: '060', cest: '', valor: 100 }] },
       // uma NFS-e tomada com INSS e IRRF/PIS/COFINS/CSLL retidos (a REINF: R-2010 e R-4020)
       { tipo: 'NFS-e', chave: '', numero: 'T88', serie: '', data: dia(15), emitente: forn, destinatario: eu, valor: 4000, nbs: '1.0501.10.00',
         descricao: 'Limpeza e conservação (TESTE)', retencoes: [{ imposto: 'INSS', valor: 440 }, { imposto: 'IRRF', valor: 60 }, { imposto: 'PIS', valor: 26 }, { imposto: 'COFINS', valor: 120 }, { imposto: 'CSLL', valor: 40 }] },

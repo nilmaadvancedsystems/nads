@@ -5,6 +5,8 @@
 // (só admin e contábil).
 import { useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
+import { caminhoDoAdmin } from '../../../admin/casca/navegacao';
+import { URL_DO_ADMIN } from '../../casca/navegacao';
 import { useOperador } from '../../casca/operador';
 import { useArquivador } from '../../dados/repo';
 import type { PedidoDeArquivo } from '../../dados/arquivador';
@@ -115,13 +117,17 @@ export function useArquivadorDoDrive() {
   return {
     exemplos: repo.exemplos,
     visivel: !e.semPermissao,
+    /** a área do arquivador no site do admin (só o admin): o que foi arquivado e por quê, o que ficou para resolver, os erros */
+    linkDoAdmin: admin ? URL_DO_ADMIN + caminhoDoAdmin('arquivador') : '',
     ligado,
     pc: ligado
       ? 'PC do arquivador ligado' + (e.situacao === 'rodando' ? ' · organizando agora' : e.situacao === 'aguardando' ? ' · esperando para começar' : '')
       : 'PC do arquivador desligado' + (e.em && Date.parse(e.em) > 0 ? ' desde ' + quando(e.desligadoEm || e.em) : ''),
     rotulo: aberto ? (aberto.status === 'processando' ? 'Organizando' + (pct != null ? ' ' + pct + '%' : '…') : 'Arquivamento pedido')
-      : rodandoPorFora ? 'Organizando' + (pctRotina != null ? ' ' + pctRotina + '%' : '…') : 'Arquivar agora',
+      : rodandoPorFora ? 'Organizando' + (pctRotina != null ? ' ' + pctRotina + '%' : '…') : 'Arquivador',
     ocupado: !!aberto || rodandoPorFora,
+    /** a próxima organização sozinha (todo dia às 9h) */
+    proximaRodada: new Date().getHours() < 9 ? 'hoje às 9h' : 'amanhã às 9h',
     podePedir: !aberto,
     rotina: rodandoPorFora && r ? {
       titulo: 'Organização em andamento',

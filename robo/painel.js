@@ -62,13 +62,15 @@ const FILAS = {
     { id: 'area-chamados', nome: 'Chamados da Área do Cliente', colecao: 'areaClienteChamados', consultar: true },
     { id: 'area-envios', nome: 'Arquivos da Área do Cliente', colecao: 'areaClienteEnvios', consultar: true },
     { id: 'mensagens', nome: 'Mensagens ao Claude da rotina', colecao: 'arquivadorMensagens', esperando: ['pendente', 'aguardando'], andamento: ['respondendo'] },
+    { id: 'pedidos-arquivador', nome: 'Pedidos do Arquivador (abrir, arquivar em…)', colecao: 'pedidosArquivador', esperando: ['pendente'], andamento: ['trabalhando'] },
   ],
   vm: [
     { id: 'gmail', nome: 'Gmail e cobranças', colecao: 'solicitacoesEmail', esperando: ['pendente'], andamento: ['processando'] },
     { id: 'nfse', nome: 'NFS-e dos honorários', colecao: 'nfseEmissoes', esperando: ['pedida', 'cancelamento-pedido'], andamento: ['enviando', 'processando'], campoData: 'pedidoEm' },
     { id: 'sefaz', nome: 'Situação na SEFAZ', colecao: 'pedidosSituacao', esperando: ['pendente'], andamento: ['processando'] },
     { id: 'envios', nome: 'Envios do nads (Claudio Secretario)', colecao: 'enviosSecretario', esperando: ['pendente'], andamento: ['gravando'] },
-    { id: 'extratos', nome: 'Extratos para importar', colecao: 'extratosRecebidos', esperando: ['novo'], andamento: [], campoData: 'em' },
+    // extratosRecebidos NÃO é fila do robô: o Gmail/Drive só depositam e quem importa é o Extrator, quando alguém o abre
+    // (aparecia sempre "atrasada" sem o robô ter o que fazer; tirada em 22/10/2026).
   ],
 };
 
@@ -245,6 +247,7 @@ function atividade(tipo, texto, detalhe, opcoes) {
   try {
     const t = TIPOS.includes(tipo) ? tipo : 'robo';
     const linha = { em: isoAgora(), tipo: t, texto: cortar(texto, MAX_TEXTO), detalhe: cortar(detalhe || '', MAX_DETALHE), erro: !!(opcoes && opcoes.erro) };
+    if (opcoes && opcoes.aviso) linha.aviso = true;   // aviso: algo que a pessoa corrige no cadastro, não é falha do robô
     if (!linha.texto) return;
     if (!freio.pode(t + '|' + linha.texto + '|' + linha.detalhe, Date.now())) return;
     if (!st) { if (antesDeIniciar.length < MAX_ANTES_DE_INICIAR) antesDeIniciar.push(linha); return; }
