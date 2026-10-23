@@ -1,10 +1,14 @@
 // O caixa do escritório no banco do Entregas (19/10/2026), nas regras de lá (o admin e o diretor):
 //   - financeiroCaixa/{id}: {data 'AAAA-MM-DD', descricao, valor, tipo 'E'|'S', observacoes?, conta?, origem 'toriba'|'nads',
 //     toribaId?, criadoEm, criadoPor, atualizadoEm?, atualizadoPor?}; ao vivo (a coleção toda, uns 3.700 lançamentos);
-//   - financeiroPlano/{id}: {codigo, descricao, tipo, nivel, pai, ativo, movimentavel}; ao vivo.
+//   - financeiroPlano/{id}: {codigo, descricao, tipo, nivel, pai, ativo, movimentavel}; ao vivo;
+//   - financeiroBanco/{id}: o extrato do banco (23/10/2026, à parte do Caixa) {data, historico, valor, tipo, banco,
+//     importacao}; o id é fixo (core financeiro.linhasDoExtrato), então o mesmo extrato não duplica; ao vivo;
+//   - financeiroBancoImportacoes/{id}: {banco, arquivo, de, ate, quantos, entradas, saidas, saldoFinal?, importadoEm,
+//     importadoPor}; ao vivo.
 import { financeiro } from '@nads/core';
-import { addDoc, collection, deleteDoc as deleteDocBruto, doc, onSnapshot, setDoc as setDocBruto } from 'firebase/firestore';
-import { guardar } from '../../../comum/modoDesenvolvedor';
+import { addDoc, collection, deleteDoc as deleteDocBruto, doc, onSnapshot, setDoc as setDocBruto, writeBatch as writeBatchBruto } from 'firebase/firestore';
+import { guardar, guardarLote } from '../../../comum/modoDesenvolvedor';
 import type { ListaAoVivo } from './agentes';
 import type { RepoCaixa } from './caixa';
 import { bancoDoEntregas } from './entregas.firestore';
@@ -12,6 +16,9 @@ import { bancoDoEntregas } from './entregas.firestore';
 const setDoc = guardar(setDocBruto) as typeof setDocBruto;
 const deleteDoc = guardar(deleteDocBruto) as typeof deleteDocBruto;
 const addDocGuardado = guardar(addDoc) as typeof addDoc;
+const writeBatch = ((...a: Parameters<typeof writeBatchBruto>) => guardarLote(writeBatchBruto(...a))) as typeof writeBatchBruto;
+/** o lote do Firestore cabe 500 gravações; com folga */
+const POR_LOTE = 400;
 const texto = (v: unknown) => (v == null ? '' : String(v));
 const TIPOS = financeiro.TIPOS_DE_CONTA.map(t => t.valor);
 
@@ -33,6 +40,18 @@ function contaDoBanco(id: string, d: Record<string, unknown>): financeiro.ContaD
   };
 }
 
+function linhaDoBanco(id: string, d: Record<string, unknown>): financeiro.LancamentoDoBanco {
+  return { id, data: texto(d.data), historico: texto(d.historico), valor: Number(d.valor) || 0, tipo: d.tipo === 'S' ? 'S' : 'E', banco: texto(d.banco) || 'Banco', importacao: texto(d.importacao) };
+}
+
+function importacaoDoBanco(id: string, d: Record<string, unknown>): financeiro.ImportacaoDeExtrato {
+  return {
+    id, banco: texto(d.banco) || 'Banco', arquivo: texto(d.arquivo), de: texto(d.de), ate: texto(d.ate), quantos: Number(d.quantos) || 0,
+    entradas: Number(d.entradas) || 0, saidas: Number(d.saidas) || 0, saldoFinal: typeof d.saldoFinal === 'number' ? d.saldoFinal : undefined,
+    importadoEm: texto(d.importadoEm), importadoPor: texto(d.importadoPor),
+  };
+}
+
 const erroDe = (err: Error) => (/permission|insufficient/i.test(err.message) ? 'Só o admin e o diretor veem o financeiro.' : err.message);
 
 export function criarCaixaFirestore(): RepoCaixa {
@@ -42,6 +61,8 @@ export function criarCaixaFirestore(): RepoCaixa {
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   let lancamentos: ListaAoVivo<financeiro.LancamentoDeCaixa> | null = null;
   let plano: ListaAoVivo<financeiro.ContaDoPlano> | null = null;
+  let extrato: ListaAoVivo<financeiro.LancamentoDoBanco> | null = null;
+  let importacoes: ListaAoVivo<financeiro.ImportacaoDeExtrato> | null = null;
 
   return {
     exemplos: false,
@@ -90,6 +111,52 @@ export function criarCaixaFirestore(): RepoCaixa {
       const dados = { codigo: r.codigo.trim(), descricao: r.descricao.trim(), tipo: r.tipo, nivel: r.nivel, pai: r.pai, ativo: r.ativo, movimentavel: r.movimentavel };
       if (r.id) { await setDoc(doc(db, 'financeiroPlano', r.id), dados); return r.id; }
       return (await addDocGuardado(collection(db, 'financeiroPlano'), dados)).id;
+    },
+    extrato() {
+      if (!extrato) {
+        extrato = { carregada: false, lista: [], erro: '' };
+        onSnapshot(collection(db, 'financeiroBanco'), s => {
+          extrato = { carregada: true, lista: s.docs.map(x => linhaDoBanco(x.id, x.data())).sort((a, b) => a.data.localeCompare(b.data) || a.id.localeCompare(b.id)), erro: '' };
+          mudou();
+        }, err => { extrato = { carregada: true, lista: [], erro: erroDe(err) }; mudou(); });
+      }
+      return extrato;
+    },
+    importacoes() {
+      if (!importacoes) {
+        importacoes = { carregada: false, lista: [], erro: '' };
+        onSnapshot(collection(db, 'financeiroBancoImportacoes'), s => {
+          importacoes = { carregada: true, lista: s.docs.map(x => importacaoDoBanco(x.id, x.data())).sort((a, b) => b.importadoEm.localeCompare(a.importadoEm)), erro: '' };
+          mudou();
+        }, err => { importacoes = { carregada: true, lista: [], erro: erroDe(err) }; mudou(); });
+      }
+      return importacoes;
+    },
+    async importarExtrato(i, linhas, quem) {
+      // só as linhas que ainda não estão no banco (a lista ao vivo já está carregada: a tela mostra as repetidas antes)
+      const ja = new Set((extrato?.lista ?? []).map(x => x.id));
+      const novas = linhas.filter(x => !ja.has(x.id));
+      for (let k = 0; k < novas.length; k += POR_LOTE) {
+        const b = writeBatch(db);
+        for (const l of novas.slice(k, k + POR_LOTE)) {
+          b.set(doc(db, 'financeiroBanco', l.id), { data: l.data, historico: l.historico, valor: l.valor, tipo: l.tipo, banco: l.banco, importacao: l.importacao });
+        }
+        await b.commit();
+      }
+      await setDoc(doc(db, 'financeiroBancoImportacoes', i.id), {
+        banco: i.banco, arquivo: i.arquivo, de: i.de, ate: i.ate, quantos: novas.length, entradas: i.entradas, saidas: i.saidas,
+        ...(i.saldoFinal != null ? { saldoFinal: i.saldoFinal } : {}), importadoEm: new Date().toISOString(), importadoPor: quem,
+      });
+      return { novas: novas.length, repetidas: linhas.length - novas.length };
+    },
+    async desfazerImportacao(id) {
+      const delas = (extrato?.lista ?? []).filter(x => x.importacao === id);
+      for (let k = 0; k < delas.length; k += POR_LOTE) {
+        const b = writeBatch(db);
+        for (const l of delas.slice(k, k + POR_LOTE)) b.delete(doc(db, 'financeiroBanco', l.id));
+        await b.commit();
+      }
+      await deleteDoc(doc(db, 'financeiroBancoImportacoes', id));
     },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,

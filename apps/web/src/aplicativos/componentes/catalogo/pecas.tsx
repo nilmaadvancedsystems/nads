@@ -773,6 +773,15 @@ export const PECAS_BASE: Peca[] = [
   { id: 'destaque-valor', tipo: 'graficos', nome: 'Destaque de valor (as despesas do mês)', descricao: 'Uma grade de quadrinhos pequenos: o nome em cima, o valor embaixo (e uma nota opcional, como o vencimento). Para vários valores lado a lado, menores que o Stat', classes: ['fat-destaques', 'fat-destaque'], telas: ['t-fiscal-faturamento'],
     uso: '<div className="fat-destaques"><div className="fat-destaque"><span className="fraco">FGTS</span><b className="num">R$ 1.000,00</b></div></div>',
     demo: () => <div className="fat-destaques" style={{ width: '100%' }}>{([['Salários', '12.500,00'], ['FGTS', '1.000,00'], ['Água', '212,40'], ['Energia', '1.350,90']] as const).map(([r, v]) => <div key={r} className="fat-destaque"><span className="fraco">{r}</span><b className="num">R$ {v}</b></div>)}</div> },
+  // as notas do mês por comprador ou por CFOP no faturamento detalhado (23/10/2026: "ver todos os clientes / abrir e ver / pesquisar")
+  { id: 'grupos-que-abrem', tipo: 'graficos', nome: 'Grupos que abrem (as notas por comprador ou CFOP)', descricao: 'Uma lista com borda: cada linha é um grupo (o nome, quantas notas e a parte do total, o valor e uma barra fina); clicar abre a tabela das notas dele embaixo. Com a busca curta e o Segmentado em cima; de 30 em 30, com o Mostrar mais', classes: ['fat-grupos', 'fat-grupo', 'fat-grupo-linha', 'fat-grupo-barra', 'fat-grupo-notas'], telas: ['t-fiscal-faturamento'],
+    uso: '<div className="fat-grupos"><div className="fat-grupo aberto"><button className="fat-grupo-linha">…</button><div className="table-wrap fat-grupo-notas">…</div></div></div>',
+    demo: () => (
+      <div className="fat-grupos" style={{ width: '100%' }}>
+        {([['TELHAS SALINAS LTDA', '4 notas · 4,2%', '65.000,00', 100], ['Consumidor (sem identificação)', '455 notas · 36,8%', '565.427,00', 60]] as const).map(([n, q, v, b]) => (
+          <div key={n} className="fat-grupo"><button type="button" className="fat-grupo-linha"><Icone nome="chevronRight" width={14} height={14} /><span className="fat-grupo-nome">{n}</span><span className="fraco">{q}</span><b className="num">{v}</b><span className="fat-grupo-barra"><span style={{ width: b + '%' }} /></span></button></div>
+        ))}
+      </div>) },
   // o mapa na tela (21/10/2026): por cima da tela de verdade, a moldura de cada controle na cor do calor e a barra de baixo
   { id: 'mapa-na-tela', tipo: 'graficos', nome: 'Mapa na tela (os botões pintados)', descricao: 'Ligado pelo "Ver na tela" do Uso do sistema: cada controle da tela aberta ganha a moldura na cor do calor com o número de cliques (a camada não pega clique); a barra de baixo diz a tela, o que cada cor quer dizer e tem o Sair. Montado uma vez na casca (casca/MapaNaTela.tsx)', classes: ['mapa-tela-caixa', 'mapa-tela-barra'], telas: ['a-uso'],
     uso: '<MapaNaTela /> (na casca; liga com ligarMapaNaTela(periodo))',
@@ -1058,6 +1067,19 @@ export const PECAS_BASE: Peca[] = [
       const itens = entregas.saudeDoBanco({ resumo, uso: entregas.lerUsoDeHoje({ em: new Date(agora - 6e5).toISOString(), leituras: 38200, gravacoes: 1320, exclusoes: 240 }), sinais: [], filas: [], errosDaFila: [] }, agora);
       return <div className="card" style={{ width: '100%', margin: 0 }}><div className="cad-placar atencao"><span className="saude-ponto" aria-hidden="true" /><b>{itens.filter(i => i.tom === 'aviso' || i.tom === 'erro').length} itens precisam de atenção</b></div><ListaDaSaude itens={itens} /></div>;
     } },
+  // o subprocesso do fluxo do Fiscal (23/10/2026): o nome (abre o painel), o responsável e o status
+  { id: 'fluxo-sub', tipo: 'listas', nome: 'Subprocesso do fluxo (responsável e status)', descricao: 'Uma linha por subprocesso: o nome (com a seta quando tem o que abrir: o painel, o importar, o link), quem mexeu por último, o responsável num menu e o status num selo que abre os seis status. Travado (a etapa de antes não acabou): o selo com o cadeado', classes: ['fluxo-lista', 'fluxo-sub', 'fluxo-sub-linha', 'fluxo-sub-nome', 'fluxo-resp', 'fluxo-status'], telas: ['t-exec-fiscal-rotina'],
+    uso: '<div className="fluxo-lista"><div className="fluxo-sub"><div className="fluxo-sub-linha">…nome… <MenuSuspenso className="btn btn-ghost btn-sm fluxo-resp" … /> <MenuSuspenso className="btn btn-ghost btn-sm fluxo-status" rotulo={<span className="badge badge-ok">Concluído</span>} … /></div></div></div>',
+    demo: () => (
+      <div className="fluxo-lista" style={{ width: '100%' }}>
+        {([['Importar notas fiscais de entrada', 'Heverton', 'Concluído', 'badge-ok'], ['Importar notas fiscais de saída', '', 'Em execução', 'badge-warn'], ['Importar documentos de transporte', '', 'Não aplicável', 'badge-neutral']] as const).map(([n, r, st, b]) => (
+          <div key={n} className="fluxo-sub"><div className="fluxo-sub-linha">
+            <button type="button" className="fluxo-sub-nome"><Icone nome="chevronRight" width={14} height={14} /><span><b>{n}</b></span></button>
+            <button type="button" className="btn btn-ghost btn-sm fluxo-resp"><Icone nome="usuario" width={14} height={14} />{r || <span className="fraco">Sem responsável</span>}</button>
+            <button type="button" className="btn btn-ghost btn-sm fluxo-status"><span className={'badge ' + b}>{st}</span></button>
+          </div></div>
+        ))}
+      </div>) },
   { id: 'admin-numero', tipo: 'cartoes', nome: 'Número do painel que abre a página (site do admin)', descricao: 'O número em painel colorido (painel-numero) como link: clicar abre a página dele (Robôs ligados → Robô, Feedbacks altos novos → Feedbacks). O tom segue a situação: verde tudo certo, âmbar atenção, laranja erro', classes: ['stat painel-numero admin-numero', 'admin-numeros', 'painel-ok', 'painel-aviso', 'painel-laranja'], telas: ['a-visao-geral', 'a-arquivador'], largo: true,
     demo: () => <div className="stat-grid dp-numeros admin-numeros" style={{ width: '100%' }}>{([['Robôs ligados', '2 de 2', 'ok', 'robo'], ['Erros em 24 h', '3', 'laranja', 'alert'], ['Filas atrasadas', '1', 'aviso', 'clock'], ['Feedbacks altos novos', '0', 'ok', 'mensagem']] as [string, string, string, NomeIcone][]).map(([r, v, tom, ic]) => <a key={r} href="#" onClick={e => e.preventDefault()} className={'stat painel-numero admin-numero painel-' + tom}><span className="painel-numero-icone" aria-hidden="true"><Icone nome={ic} width={16} height={16} /></span><p className="stat-label">{r}</p><p className="stat-value num">{v}</p></a>)}</div> },
 ];

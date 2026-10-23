@@ -17,7 +17,7 @@ const CadastroAberto = pedaco(() => import('./casca/CadastroAberto'), 'CadastroA
 const CadastroAntigo = pedaco(() => import('./casca/CadastroAberto'), 'CadastroAntigo');
 const EmpresaAberta = pedaco(() => import('./casca/EmpresaAberta'), 'EmpresaAberta');
 const ConviteDoNads = pedaco(() => import('./telas/convite/ConviteDoNads'), 'ConviteDoNads');
-const Executor = pedaco(() => import('./telas/executor/Executor'), 'Executor');
+const ExecutorDaRotina = pedaco(() => import('./telas/executor/ExecutorDaRotina'), 'ExecutorDaRotina');
 const PreviaAbertura = pedaco(() => import('./telas/previa/PreviaAbertura'), 'PreviaAbertura');
 const PreviaAnimacoes = pedaco(() => import('./telas/previa/PreviaAnimacoes'), 'PreviaAnimacoes');
 
@@ -38,7 +38,7 @@ export const rotasTarefas: RouteObject[] = [
     children: [
       // onde a Tarefas abre: a pessoa escolhe na Minha página › Aparência e telas (padrão: Minhas empresas)
       { index: true, element: <Inicio /> },
-      { path: 'executar/:empresa/:competencia', element: <NaEspera inteira><Executor /></NaEspera> },
+      { path: 'executar/:empresa/:competencia', element: <NaEspera inteira><ExecutorDaRotina /></NaEspera> },
       { path: 'minhas-empresas/empresa/:empresa', element: <NaEspera inteira><EmpresaAberta /></NaEspera> },
       // o endereço antigo do LCDPR na página da empresa (16/10/2026): volta para a página da empresa (o LCDPR agora é a
       // etapa do executor)

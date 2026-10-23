@@ -1,5 +1,5 @@
 // Peças pequenas da Conferência, com as mesmas classes do CSS original.
-import { useEffect, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode, type Ref } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode, type Ref } from 'react';
 import { createPortal } from 'react-dom';
 import { animate, cleanInlineStyles, spring, stagger } from 'animejs';
 import { animacoesPedidas, useIndicador, useNumeroAnimado } from './animacao';
@@ -128,6 +128,10 @@ export function CampoArquivo({ id, arquivo = null, onEscolher, onEscolherVarios,
   ref?: Ref<HTMLInputElement>;
 }) {
   const input = useRef<HTMLInputElement | null>(null);
+  // sem id, o rótulo "Escolher arquivo" não acha o campo (htmlFor) e o clique não abre a janela (23/10/2026: o
+  // Importar extrato do Financeiro): o id vem daqui quando a tela não passa um
+  const idProprio = useId();
+  const idDoCampo = id || idProprio;
   useEffect(() => { if (abrirAgora) input.current?.click(); }, [abrirAgora]);
   useEffect(() => { if (!arquivo && input.current && !semCaixa) input.current.value = ''; }, [arquivo, semCaixa]);
   const ligar = (el: HTMLInputElement | null) => {
@@ -135,7 +139,7 @@ export function CampoArquivo({ id, arquivo = null, onEscolher, onEscolherVarios,
     if (typeof ref === 'function') ref(el); else if (ref) (ref as { current: HTMLInputElement | null }).current = el;
   };
   const campo = (
-    <input ref={ligar} type="file" id={id} accept={aceitar} multiple={multiplo} className="sr-only" disabled={desabilitado}
+    <input ref={ligar} type="file" id={idDoCampo} accept={aceitar} multiple={multiplo} className="sr-only" disabled={desabilitado}
       tabIndex={semFoco ? -1 : undefined} aria-hidden={semFoco ? 'true' : undefined}
       onChange={ev => {
         const fs = Array.from(ev.target.files || []);
@@ -146,7 +150,7 @@ export function CampoArquivo({ id, arquivo = null, onEscolher, onEscolherVarios,
   if (semCaixa) return campo;
   return (
     <>
-      <label className={'file-picker' + (arquivo ? ' has-file' : '')} htmlFor={id} hidden={oculto}>
+      <label className={'file-picker' + (arquivo ? ' has-file' : '')} htmlFor={idDoCampo} hidden={oculto}>
         <span><Icone nome="upload" /></span>
         <span className="file-picker-name">{arquivo ? arquivo.name : 'Escolher arquivo'}</span>
         {arquivo && (
