@@ -228,6 +228,8 @@ const anoDaParte = p => (/^((?:19|20)\d{2})$/.exec(p) || [])[1];
  * Onde o arquivo está × a árvore canônica do cliente. sub = pastas entre a do cliente e o arquivo; cli = cadastro.
  * Devolve { tipo, achados: [{ g, problema, sugestao (sub novo, array) ou null, conf, ev }], comp: { mes, ano } | null, fonte }.
  */
+// empresas do mesmo dono (Vitor, 23/10/2026): o cruzamento entre elas não é ERRADO-CLIENTE; vale o conteúdo
+const MESMO_DONO = [[55, 174]];
 const ANUAIS = /^(DEFIS|DIRF|ECF|BALANCETE|INFORME DE RENDIMENTOS)$/;   // ficam no ano da ENTREGA (Vitor, 23/10/2026)
 const COM_EXTENSAO = /\.(pdf|xml|ofx|txt|xlsx|xls|csv|zip|rar|7z|jpe?g|png|docx?|pfx|p12)$/i;
 function analisarLocal(sub, nome, cli) {
@@ -783,6 +785,17 @@ async function auditar(opcoes) {
     tempos.conteudoMs = Date.now() - t3;
     log('fase 3: ' + conteudo.lidos + ' lidos, ' + mb(conteudo.bytes) + (conteudo.parouNoTeto ? ' (PAROU NO TETO)' : ''));
   }
+  // empresas do MESMO DONO (Vitor, 23/10/2026: a 55 TORRA TORRA e a 174 ARMARINHO): o documento de uma na pasta da outra não
+  // é erro grave — valem as regras pelo conteúdo, como um erro de pasta; a suspeita só pelo nome entre elas cai
+  for (let k = achados.length - 1; k >= 0; k--) {
+    const x = achados[k];
+    if (x.pasta || !['ERRADO-CLIENTE', 'INCERTO'].includes(x.g) || x.codigo == null) continue;
+    const g = MESMO_DONO.find(gr => gr.includes(+x.codigo));
+    const outro = +((/(\d+) - [A-Z]/.exec(x.problema) || [])[1] || NaN);
+    if (!g || !g.includes(outro) || outro === +x.codigo) continue;
+    if (x.g === 'INCERTO') { achados.splice(k, 1); continue; }
+    Object.assign(x, { g: 'ERRADO-PASTA', mesmoDono: true, problema: 'do outro cliente do mesmo dono (' + g.join(' e ') + '), pelas regras: ' + x.problema, ev: x.ev + ' | Vitor, 23/10/2026: ' + g.join(' e ') + ' são do mesmo dono' });
+  }
   // o mesmo arquivo com a mesma gravidade pelo nome e pelo conteúdo: um achado só (o que tem destino, a maior confiança)
   juntarRepetidos(achados);
   // a suspeita pelo nome que o conteúdo confirmou ou desmentiu: tira o INCERTO
@@ -1109,6 +1122,7 @@ function relatorioMd(r, top, plano) {
   for (const [f, tot] of Object.entries(r.origemTodos).sort((a, b) => b[1] - a[1])) L.push('| ' + f + ' | ' + n(tot) + ' | ' + GRAVIDADES.map(g => n((r.origem[f] || {})[g])).join(' / ') + ' |');
   L.push('', '## Causas prováveis', '', '| Causa | Achados | Arquivos | Por gravidade |', '|---|---:|---:|---|');
   for (const [c, v] of Object.entries(r.porCausa).sort((a, b) => b[1].achados - a[1].achados)) L.push('| ' + CAUSAS[c].replace(/\|/g, '/') + ' | ' + n(v.achados) + ' | ' + n(v.arquivos.size) + ' | ' + Object.entries(v.g).map(([g, k]) => g + ' ' + n(k)).join(', ') + ' |');
+  L.push('', '## Empresas do mesmo dono', '', MESMO_DONO.map(g => g.join(' e ')).join('; ') + ' são do mesmo dono (Vitor, 23/10/2026): o documento de uma na pasta da outra não é erro grave; vale o destino que as regras dão pelo conteúdo (entra como ERRADO-PASTA, etapa "pasta"). Achados assim nesta rodada: ' + n(r.achados.filter(a => a.mesmoDono).length) + '.');
   L.push('', '## Cópias entre clientes', '', 'O mesmo conteúdo em mais de um cliente: ' + n(r.entreClientes.grupos) + ' grupos; ' + n(r.entreClientes.fiscais) + ' arquivos no FISCAL (esperado: a regra das duas clientes e a NFS-e da Nilma no tomador; não contam como achado); ' + n(r.entreClientes.foraDoFiscal) + ' fora do FISCAL (INCERTO).');
   L.push('', '## Anos (competência pelo nome ou pela pasta)', '', Object.entries(r.anos).sort((a, b) => String(a[0]).localeCompare(String(b[0]))).map(([a, v]) => a + ': ' + n(v)).join(' · '), '');
   L.push('## Conteúdo (amostra)', '');
