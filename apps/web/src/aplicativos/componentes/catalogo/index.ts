@@ -3,13 +3,14 @@
 import { PECAS_DO_ARQUIVADOR } from './arquivador';
 import { JANELAS } from './janelas';
 import { PECAS_BASE } from './pecas';
+import { PECAS_DAS_TELAS_NOVAS } from './telasNovas';
 import { TELAS, TIPOS } from './telas';
 import type { Peca } from './tipos';
 
 export { TELAS, TIPOS };
 
 const contagem: Record<string, number> = {};
-export const PECAS: Peca[] = [...PECAS_BASE, ...JANELAS, ...PECAS_DO_ARQUIVADOR].map(p => {
+export const PECAS: Peca[] = [...PECAS_BASE, ...JANELAS, ...PECAS_DO_ARQUIVADOR, ...PECAS_DAS_TELAS_NOVAS].map(p => {
   const t = TIPOS.find(x => x.id === p.tipo);
   const n = (contagem[p.tipo] = (contagem[p.tipo] || 0) + 1);
   return { ...p, cod: (t ? t.prefixo : 'XX') + '-' + String(n).padStart(2, '0') };

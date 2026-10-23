@@ -5,7 +5,7 @@
 // peso) —, as contas pela árvore do plano (o grupo abre e fecha na seta; o nome abre os lançamentos) e o Exportar planilha.
 // Só as peças do catálogo (Segmentado, SeletorMes, MenuSuspenso, Tabela, Vazio e a janela do desenho das outras).
 import { financeiro, formatos } from '@nads/core';
-import { BotaoFechar, Icone, MenuSuspenso, Segmentado, SeletorMes, useCarregando, useJanela, Vazio } from '@nads/ui';
+import { BotaoFechar, Icone, MenuSuspenso, Segmentado, SeletorMes, useCarregando, useJanela, Variacao, Vazio } from '@nads/ui';
 import { useRef } from 'react';
 import { dataBr } from './formatosDaNota';
 import { useResultadoPorConta, type LinhaVisivel } from './useResultadoPorConta';
@@ -18,14 +18,6 @@ const cor = (v: number, saida?: boolean) => (!v ? 'fraco' : saida || v < 0 ? 'fi
 const somar = (vs: number[]) => vs.reduce((s, x) => s + Math.round(x * 100), 0) / 100;
 /** o nome de cada coluna do comparativo: o período e o que ele é */
 const PAPEL = ['atual', 'período anterior', 'ano passado'];
-
-function Variacao({ v, saida }: { v: number | null; saida?: boolean }) {
-  if (v == null) return <span className="fraco">—</span>;
-  // na saída, subir é ruim (vermelho); na entrada e no resultado, subir é bom (verde)
-  const bom = saida ? v <= 0 : v >= 0;
-  if (v === 0) return <span className="fraco">0%</span>;
-  return <span className={'fin-variacao ' + (bom ? 'fin-valor-entrada' : 'fin-valor-saida')}>{v > 0 ? '▲' : '▼'} {Math.abs(v).toLocaleString('pt-BR')}%</span>;
-}
 
 /** o peso no total do bloco (as entradas ou as saídas), em % com uma casa */
 function Peso({ v, total }: { v: number; total: number }) {
@@ -44,7 +36,7 @@ function Valores({ vm, valores, total, saida, forte }: { vm: Vm; valores: number
     celulas.push(<td key="p" className="num">{total != null ? <Peso v={valores[0]} total={total} /> : null}</td>);
     for (let i = 1; i < valores.length; i++) {
       celulas.push(<td key={'v' + i} className="num fin-resultado-antes fin-resultado-inicio">{reais(valores[i])}</td>);
-      celulas.push(<td key={'x' + i} className="num"><Variacao v={financeiro.variacao(valores[0], valores[i])} saida={saida} /></td>);
+      celulas.push(<td key={'x' + i} className="num"><Variacao pct={financeiro.variacao(valores[0], valores[i])} subirEhRuim={saida} /></td>);
     }
   } else {
     for (const [i, v] of valores.entries()) celulas.push(<td key={i} className={'num ' + (!v ? 'fraco' : '')}>{reais(v)}</td>);
