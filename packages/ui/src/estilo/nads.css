@@ -4792,11 +4792,17 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 /* Financeiro › Importar extrato (23/10/2026): as linhas da prévia e os botões */
 .fin-extrato-linhas{max-height:420px;overflow:auto;}
 .fin-extrato-acoes{margin-top:12px;padding:0;}
-/* os extratos importados: uma faixa que abre por extrato (23/10/2026: "queria ter os detalhes") */
-.fin-importacoes{border:1px solid var(--border);border-radius:6px;overflow:hidden;}
-.fin-importacoes > .imp-faixa:first-child{border-top:none;}
-.fin-importacoes .imp-faixa-acoes{display:flex;align-items:center;gap:12px;padding:0 8px;}
-.fin-importacao-resumo{font-size:var(--fs-13);white-space:nowrap;}
+/* o logo do banco no lugar do nome (23/10/2026), a conta do extrato e a janela flutuante do extrato */
+.fin-logo{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;flex:none;}
+.fin-logo > svg,.fin-logo .logo-img{width:22px;height:22px;border-radius:5px;}
+.fin-conta{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-13);white-space:nowrap;}
+.fin-conta-ok{width:16px;height:16px;flex:none;color:var(--success);}
+.registro-caminho .fin-logo{margin-right:2px;}
+.modal.registro-novo.fin-extrato-janela{max-width:880px;width:calc(100vw - 48px);max-height:calc(100vh - 48px);}
+.fin-extrato-janela .registro-corpo{display:flex;flex-direction:column;gap:12px;overflow:auto;}
+.fin-extrato-janela .fin-extrato-linhas{max-height:none;}
+.fin-extrato-numeros{grid-template-columns:repeat(4,minmax(0,1fr));margin:0;}
+@media (max-width:700px){.fin-extrato-numeros{grid-template-columns:repeat(2,minmax(0,1fr));}}
 .fin-painel-dica{margin:-8px 0 0;}
 .fin-painel-tres{grid-template-columns:repeat(3,minmax(0,1fr));}
 .fin-reajuste-lista{max-height:300px;overflow:auto;margin-top:8px;}
