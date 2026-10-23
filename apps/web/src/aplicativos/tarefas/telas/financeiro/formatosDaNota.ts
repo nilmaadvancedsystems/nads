@@ -51,12 +51,6 @@ export function hoje(agora = new Date()): string {
   return agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0') + '-' + String(agora.getDate()).padStart(2, '0');
 }
 
-/** A descrição que a nota real do escritório usa: "Serviços Contábeis Ref. 09/2026" (o mês anterior ao de hoje). */
-export function descricaoPadrao(agora = new Date()): string {
-  const ant = new Date(agora.getFullYear(), agora.getMonth() - 1, 1);
-  return 'Serviços Contábeis Ref. ' + String(ant.getMonth() + 1).padStart(2, '0') + '/' + ant.getFullYear();
-}
-
 /** A prévia do imposto numa linha: "ISS 3,74% (Simples): R$ 15,71 · não retido" ('' sem valor ou sem alíquota). */
 export function previaDoIss(valor: number, c: nfse.ConfigNfse): string {
   if (!(valor > 0)) return '';

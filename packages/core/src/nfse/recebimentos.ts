@@ -3,6 +3,8 @@
 //   A = o código do cliente entre parênteses, com zeros ("(00462)"); B = o nome; C = a data do pagamento; D = o valor.
 // Aqui só a leitura (pura, sem tela nem banco); a leitura do arquivo em si (xlsx, xls, csv) é a planilha.ts.
 
+import { competenciaAnterior, DESCRICAO_PADRAO, descricaoDaNota } from './descricao';
+
 export interface Recebimento { codigo: number; nome: string; /** AAAA-MM-DD */ data: string; valor: number }
 
 const texto = (v: unknown) => String(v ?? '').trim();
@@ -82,11 +84,7 @@ export function lerPlanilhaDeRecebimentos(linhas: unknown[][]): { recebimentos: 
   return { recebimentos, avisos };
 }
 
-/** "Serviços Contábeis Ref. MM/AAAA" do mês ANTERIOR à data (a nota real de 14/10/2026 diz "Ref. 09/2026"). */
-export function descricaoPadrao(data: string): string {
-  const m = /^(\d{4})-(\d{2})/.exec(data);
-  if (!m) return 'Serviços Contábeis';
-  const ano = Number(m[1]);
-  const mes = Number(m[2]);
-  return 'Serviços Contábeis Ref. ' + String(mes === 1 ? 12 : mes - 1).padStart(2, '0') + '/' + (mes === 1 ? ano - 1 : ano);
+/** A descrição da nota pelo modelo (o padrão: "Serviços Contábeis Ref. MM/AAAA"), com a competência do mês ANTERIOR à data (a nota real de 14/10/2026 diz "Ref. 09/2026"). */
+export function descricaoPadrao(data: string, modelo = DESCRICAO_PADRAO): string {
+  return descricaoDaNota(modelo, competenciaAnterior(data));
 }
