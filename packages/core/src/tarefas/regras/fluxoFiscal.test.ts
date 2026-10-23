@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ROTINA_FISCAL } from '../rotinas/fiscal';
 import { FLUXO_PRESUMIDO, FLUXO_REAL, FLUXO_SIMPLES, FLUXOS_FISCAIS, fluxoDoRegime } from '../rotinas/fluxoFiscal';
-import { definirResponsavelDoSubprocesso, definirStatus, fluxoDoMes, resumoDoFluxo, statusDe } from './fluxoFiscal';
+import { definirResponsavelDeVarios, definirResponsavelDoSubprocesso, definirStatus, definirStatusDeVarios, fluxoDoMes, resumoDoFluxo, statusDe } from './fluxoFiscal';
 import { etapaNoMes, execucaoNova } from './execucao';
 
 const agora = new Date('2026-10-23T12:00:00Z');
@@ -55,5 +55,15 @@ describe('o fluxo operacional do Fiscal (23/10/2026)', () => {
     expect(fluxoDoMes(FLUXO_PRESUMIDO, null, '2026-10').map(e => e.n)).not.toContain(5);
     expect(fluxoDoMes(FLUXO_SIMPLES, null, '2026-02').find(e => e.n === 8)!.subprocessos.map(s => s.nome)).toContain('DEFIS anual');
     expect(fluxoDoMes(FLUXO_SIMPLES, null, '2026-09').find(e => e.n === 8)!.subprocessos.map(s => s.nome)).not.toContain('DEFIS anual');
+  });
+  it('o responsável padrão entra sozinho ao mudar o status; vários de uma vez numa gravação só', () => {
+    const ex = execucaoNova('X', 1, '2026-09', 'fiscal');
+    expect(definirStatus(ex, 'fs-1-empresas', 'concluido', 'Gustavo', agora, '', 'Heverton').execucao.etapas['fs-1-empresas'].responsavel).toBe('Heverton');
+    const com = definirResponsavelDoSubprocesso(ex, 'fs-1-empresas', 'Clara', 'G', agora).execucao;
+    expect(definirStatus(com, 'fs-1-empresas', 'concluido', 'G', agora, '', 'Heverton').execucao.etapas['fs-1-empresas'].responsavel).toBe('Clara');
+    const v = definirStatusDeVarios(ex, ['fs-1-empresas', 'fs-1-tarefas'], 'concluido', 'G', agora, 'Heverton');
+    expect(Object.keys(v.execucao.etapas)).toEqual(['fs-1-empresas', 'fs-1-tarefas']);
+    expect(v.evento.observacao).toBe('concluido · 2 subprocessos');
+    expect(definirResponsavelDeVarios(ex, ['fs-1-empresas', 'fs-1-tarefas'], 'Ana', 'G', agora).execucao.etapas['fs-1-tarefas'].responsavel).toBe('Ana');
   });
 });

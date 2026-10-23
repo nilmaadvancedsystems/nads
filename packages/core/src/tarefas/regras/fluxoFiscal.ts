@@ -16,19 +16,36 @@ export function statusDe(est: EstadoEtapa | undefined): StatusDoSubprocesso {
   return 'pendente';
 }
 
-/** muda o status do subprocesso (a observação vai junto quando tem) */
-export function definirStatus(ex: Execucao, sub: string, status: StatusDoSubprocesso, por: string, agora: Date, observacao = ''): { execucao: Execucao; evento: Evento } {
+/**
+ * muda o status do subprocesso (a observação vai junto quando tem); sem responsável gravado, fica o padrão (o do Fiscal da
+ * empresa no Cadastro, ou quem mexeu: 23/10/2026, "tenho que ficar colocando responsável em todos?")
+ */
+export function definirStatus(ex: Execucao, sub: string, status: StatusDoSubprocesso, por: string, agora: Date, observacao = '', responsavelPadrao = ''): { execucao: Execucao; evento: Evento } {
   const em = agora.toISOString();
   const antes = ex.etapas[sub];
   const situacao: EstadoEtapa['situacao'] = status === 'nao-aplicavel' ? 'dispensada' : statusEncerra(status) ? 'feita' : 'pendente';
   const obs = observacao.trim();
   const estado: EstadoEtapa = {
     situacao, por, em, status,
-    ...(antes?.responsavel ? { responsavel: antes.responsavel } : {}),
+    ...(antes?.responsavel ? { responsavel: antes.responsavel } : responsavelPadrao ? { responsavel: responsavelPadrao } : {}),
     ...(status === 'nao-aplicavel' ? { objecao: 'nao-se-aplica' } : {}),
     ...(obs ? { observacao: obs } : antes?.observacao ? { observacao: antes.observacao } : {}),
   };
   return { execucao: { ...ex, etapas: { ...ex.etapas, [sub]: estado } }, evento: { tipo: 'status', etapa: sub, por, em, observacao: status + (obs ? ' · ' + obs : '') } };
+}
+
+/** o mesmo status em vários subprocessos de uma vez (o "Concluir a etapa"): uma gravação só, um evento só */
+export function definirStatusDeVarios(ex: Execucao, subs: readonly string[], status: StatusDoSubprocesso, por: string, agora: Date, responsavelPadrao = ''): { execucao: Execucao; evento: Evento } {
+  let atual = ex;
+  for (const sub of subs) atual = definirStatus(atual, sub, status, por, agora, '', responsavelPadrao).execucao;
+  return { execucao: atual, evento: { tipo: 'status', etapa: subs[0] || '', por, em: agora.toISOString(), observacao: status + ' · ' + subs.length + ' subprocessos' } };
+}
+
+/** o mesmo responsável em vários subprocessos de uma vez (o "trocar" do responsável da etapa) */
+export function definirResponsavelDeVarios(ex: Execucao, subs: readonly string[], responsavel: string, por: string, agora: Date): { execucao: Execucao; evento: Evento } {
+  let atual = ex;
+  for (const sub of subs) atual = definirResponsavelDoSubprocesso(atual, sub, responsavel, por, agora).execucao;
+  return { execucao: atual, evento: { tipo: 'responsavel', etapa: subs[0] || '', por, em: agora.toISOString(), observacao: responsavel + ' · ' + subs.length + ' subprocessos' } };
 }
 
 /** o responsável do subprocesso ('' = tira) */

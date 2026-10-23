@@ -3,7 +3,7 @@
 // mês com os subprocessos (tarefas.fluxoDoMes: o status, o responsável, se a etapa está liberada) e as ações — mudar o
 // status (a própria pessoa passa por todos) e o responsável de cada subprocesso, gravados na rotina do mês. O painel de
 // cada subprocesso é o mesmo do executor antigo (usePainelDoFiscal).
-import { empresas, tarefas as t } from '@nads/core';
+import { demo, empresas, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -13,6 +13,7 @@ import { useOperador } from '../../../casca/operador';
 import { useAcesso, useCadastro, useExecucoesDoPeriodo, useRegimesDoEntregas, useRepo } from '../../../dados/repo';
 import { useModoDesenvolvedor } from '../../../../../comum/modoDesenvolvedor';
 import { usePainelDoFiscal } from '../usePainelDoFiscal';
+import { implantarNotasFiscaisDeTeste } from '../../../../concilia-ai/importadosNaEtapa';
 
 export function useFluxoDoFiscal(rotaEmpresa: string, competencia: string) {
   useRegimesDoEntregas();
@@ -40,6 +41,11 @@ export function useFluxoDoFiscal(rotaEmpresa: string, competencia: string) {
     .sort((a, b) => a.localeCompare(b, 'pt-BR'));
   const painel = usePainelDoFiscal(empresa?.nome || '', empresa?.codigo != null ? String(empresa.codigo) : '', competencia, [competencia]);
   const quem = op?.nome || '';
+  // o responsável de cada subprocesso sem escolher (23/10/2026: "tenho que ficar colocando responsável em todos?"): o do
+  // Fiscal da empresa no Cadastro; sem ele, quem está trabalhando. Escolher só quando for outra pessoa
+  const responsavelPadrao = responsavelDaEmpresa || quem;
+  const responsavelDe = (s: { responsavel: string }) => s.responsavel || responsavelPadrao;
+  const daEtapa = etapa ? [...new Set(etapa.subprocessos.map(responsavelDe))] : [];
 
   const gravar = (r: { execucao: t.Execucao; evento: t.Evento }) => {
     if (dev) { toast('Modo desenvolvedor: nada é gravado.'); return; }
@@ -60,6 +66,11 @@ export function useFluxoDoFiscal(rotaEmpresa: string, competencia: string) {
     abrir: (id: string) => setAberto(a => (a === id ? '' : id)),
     pessoas,
     responsavelDaEmpresa,
+    responsavelPadrao,
+    /** o responsável da etapa: um nome (todos iguais) ou "vários" */
+    responsavelDaEtapaAtual: daEtapa.length === 1 ? daEtapa[0] : daEtapa.length ? 'vários' : responsavelPadrao,
+    /** o responsável do subprocesso quando é outro que não o da etapa (para mostrar na linha) */
+    outroResponsavel: (s: { responsavel: string }) => (daEtapa.length > 1 || (s.responsavel && s.responsavel !== responsavelPadrao) ? responsavelDe(s) : ''),
     painel,
     valores: ex?.valores || {},
     informar(chave: string, valor: number) {
@@ -77,21 +88,34 @@ export function useFluxoDoFiscal(rotaEmpresa: string, competencia: string) {
     },
     mudarStatus(sub: string, status: t.StatusDoSubprocesso, observacao = '') {
       if (!ex) return;
-      gravar(t.definirStatus(ex, sub, status, quem, new Date(), observacao));
+      gravar(t.definirStatus(ex, sub, status, quem, new Date(), observacao, responsavelPadrao));
+    },
+    /** a caixinha: um clique conclui; de novo, volta para Pendente */
+    alternar(sub: string, encerrado: boolean) {
+      if (!ex) return;
+      gravar(t.definirStatus(ex, sub, encerrado ? 'pendente' : 'concluido', quem, new Date(), '', responsavelPadrao));
+    },
+    /** o "Concluir a etapa": tudo o que falta na etapa fica Concluído, numa gravação só */
+    concluirEtapa() {
+      if (!ex || !etapa) return;
+      const faltam = etapa.subprocessos.filter(s => !s.encerrado).map(s => s.id);
+      if (faltam.length) gravar(t.definirStatusDeVarios(ex, faltam, 'concluido', quem, new Date(), responsavelPadrao));
+    },
+    /** o "trocar" do responsável da etapa: todos os subprocessos dela */
+    trocarResponsavelDaEtapa(nome: string) {
+      if (!ex || !etapa) return;
+      gravar(t.definirResponsavelDeVarios(ex, etapa.subprocessos.map(s => s.id), nome, quem, new Date()));
     },
     mudarResponsavel(sub: string, nome: string) {
       if (!ex) return;
       gravar(t.definirResponsavelDoSubprocesso(ex, sub, nome, quem, new Date()));
     },
-    /** todos os subprocessos da etapa que ainda estão pendentes ficam com este responsável */
-    responsavelDaEtapa(nome: string) {
-      if (!ex || !etapa) return;
-      let atual = ex;
-      const subs = etapa.subprocessos.filter(s => !s.responsavel);
-      if (!subs.length) return;
-      let ultimo: t.Evento | null = null;
-      for (const s of subs) { const r = t.definirResponsavelDoSubprocesso(atual, s.id, nome, quem, new Date()); atual = r.execucao; ultimo = r.evento; }
-      if (ultimo) gravar({ execucao: atual, evento: { ...ultimo, observacao: nome + ' (' + subs.length + ' subprocessos)' } });
+    /** os dados de teste (o ⚡ do executor antigo): só no modo desenvolvedor ou na empresa de teste */
+    testes: empresa && (dev || demo.ehEmpresaDemo(empresa.nome)) ? demo.OPCOES_FISCAIS_DE_TESTE.map(o => ({ rotulo: o.rotulo, id: o.id })) : [],
+    usarTeste(id: string) {
+      if (!empresa) return;
+      if (implantarNotasFiscaisDeTeste(empresa.nome, [competencia], id)) toast(id === 'apagar-fiscal' ? 'Notas de teste apagadas.' : 'Notas de teste importadas na Conferência da empresa.');
+      else toast('Os dados de teste só valem no modo desenvolvedor ou na empresa de teste.');
     },
     sair: () => navegar(lista + '?competencia=' + competencia),
     abrirEmpresa: () => { if (empresa) navegar(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), competencia)); },
