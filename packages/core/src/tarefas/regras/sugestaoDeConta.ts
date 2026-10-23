@@ -27,7 +27,8 @@ function abrevia(curta: string, longa: string): boolean {
   return i === curta.length;
 }
 
-const casa = (w: string, a: string) => a === w || (w.length >= 4 && a.startsWith(w)) || (w.length >= 5 && abrevia(w, a));
+/** A palavra bate com a outra: igual, o começo dela (4 letras ou mais) ou abreviada (5 ou mais). */
+export const casa = (w: string, a: string) => a === w || (w.length >= 4 && a.startsWith(w)) || (w.length >= 5 && abrevia(w, a));
 
 export interface IndiceDeContas { contas: { conta: ContaSugerida; palavras: string[] }[] }
 
