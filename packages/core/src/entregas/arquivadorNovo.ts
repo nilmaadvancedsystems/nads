@@ -28,6 +28,8 @@ export interface ItemDoArquivador {
   /** erro */
   erro: string; erroTipo: string; erroTitulo: string; oQueFazer: string;
   naoAplicado: string;
+  /** os não identificados: o hash que o robô confere nos pedidos e o caminho na pasta Claudio Secretario */
+  hash: string; naPasta: string;
 }
 
 export interface ClienteDaContagem { codigo: string; nome: string; n: number }
@@ -91,6 +93,7 @@ export function lerItemDoArquivador(d: Obj): ItemDoArquivador {
     ocr: o ? { confianca: numOuNulo(o.confianca), segundos: numOuNulo(o.segundos), erro: txt(o.erro) } : null, dentroDe: txt(d.dentroDe),
     motivo: txt(d.motivo), motivoTexto: txt(d.motivoTexto), sugestao: txt(d.sugestao), destinoSugerido: txt(d.destinoSugerido),
     erro: txt(d.erro), erroTipo: txt(d.erroTipo), erroTitulo: txt(d.erroTitulo), oQueFazer: txt(d.oQueFazer), naoAplicado: txt(d.naoAplicado),
+    hash: txt(d.hash), naPasta: txt(d.naPasta),
   };
 }
 
@@ -298,3 +301,62 @@ export function filtrarItens(itens: readonly ItemDoArquivador[], f: FiltroDoArqu
 export const ROTULO_DA_ACAO: Record<AcaoDoArquivador, string> = {
   arquivou: 'Arquivado', arquivaria: 'Arquivaria (simulação)', jaArquivado: 'Já estava arquivado', naoIdentificado: 'Não identificado', fica: 'Ficou na pasta', erro: 'Erro',
 };
+
+// ---------------------------------------------------------------------------------------------------------------------
+// os pedidos ao robô (Para resolver: abrir o arquivo, a prévia, arquivar em…, descartar; 23/10/2026)
+// ---------------------------------------------------------------------------------------------------------------------
+export type TipoDoPedido = 'abrir' | 'previa' | 'arquivar' | 'descartar';
+export type SituacaoDoPedido = 'pendente' | 'trabalhando' | 'pronto' | 'feito' | 'erro';
+export interface RespostaDoPedido {
+  acao: string; destino: string; nomeFinal: string; situacao: string; pastaNova: string; copias: string[]; motivo: string; evidencias: string[];
+  cliente: string; clienteNome: string; tipo: string;
+}
+export interface PedidoDoArquivador {
+  id: string; tipo: TipoDoPedido; status: SituacaoDoPedido; erro: string;
+  resposta: RespostaDoPedido | null;
+  /** abrir: o arquivo em partes (pedidosArquivador/{id}/partes/{n}, base64) */
+  arquivo: { nome: string; mime: string; tamanho: number; partes: number } | null;
+}
+const TIPOS_DE_PEDIDO: readonly TipoDoPedido[] = ['abrir', 'previa', 'arquivar', 'descartar'];
+const SITUACOES: readonly SituacaoDoPedido[] = ['pendente', 'trabalhando', 'pronto', 'feito', 'erro'];
+
+/** Um pedido como veio do banco (o robô responde no próprio documento). */
+export function lerPedidoDoArquivador(id: string, d: Obj | null | undefined): PedidoDoArquivador | null {
+  if (!d) return null;
+  const r = d.resposta ? obj(d.resposta) : null;
+  const a = d.arquivo ? obj(d.arquivo) : null;
+  return {
+    id, tipo: TIPOS_DE_PEDIDO.includes(d.tipo as TipoDoPedido) ? d.tipo as TipoDoPedido : 'abrir',
+    status: SITUACOES.includes(d.status as SituacaoDoPedido) ? d.status as SituacaoDoPedido : 'pendente', erro: txt(d.erro),
+    resposta: r ? {
+      acao: txt(r.acao), destino: txt(r.destino), nomeFinal: txt(r.nomeFinal), situacao: txt(r.situacao), pastaNova: txt(r.pastaNova), copias: textos(r.copias),
+      motivo: txt(r.motivo), evidencias: textos(r.evidencias), cliente: txt(r.cliente), clienteNome: txt(r.clienteNome), tipo: txt(r.tipo),
+    } : null,
+    arquivo: a ? { nome: txt(a.nome), mime: txt(a.mime) || 'application/octet-stream', tamanho: num(a.tamanho), partes: num(a.partes) } : null,
+  };
+}
+
+/** Os clientes e os tipos do formulário "Arquivar em…" (robo/arquivadorNovoCadastro). */
+export interface ClienteDoFormulario { codigo: number; nome: string; temPasta: boolean }
+export interface TipoDoFormulario { id: string; rotulo: string; precisa: 'mes' | 'ano' | null }
+export interface CadastroDoFormulario { carregado: boolean; em: string; clientes: ClienteDoFormulario[]; tipos: TipoDoFormulario[] }
+export function lerCadastroDoFormulario(d: Obj | null | undefined): CadastroDoFormulario {
+  const x = obj(d);
+  return {
+    carregado: true, em: txt(x.em),
+    clientes: lista(x.clientes).map(c => ({ codigo: num(c.c), nome: txt(c.n), temPasta: !!c.p })).filter(c => c.codigo > 0),
+    tipos: lista(x.tipos).map(t => ({ id: txt(t.id), rotulo: txt(t.rotulo), precisa: (t.precisa === 'mes' || t.precisa === 'ano' ? t.precisa : null) as TipoDoFormulario['precisa'] })).filter(t => /^[A-Z_]{2,30}$/.test(t.id)),
+  };
+}
+
+/** A busca do cliente no formulário: pelo código (começo) ou pelo nome (sem acento), até `max`. */
+export function buscarClientesDoFormulario(clientes: readonly ClienteDoFormulario[], texto: string, max = 8): ClienteDoFormulario[] {
+  const t = semAcento(texto.trim());
+  if (!t) return [];
+  const soNum = /^\d+$/.test(t);
+  const achados = clientes.filter(c => (soNum ? String(c.codigo).startsWith(t) : semAcento(c.codigo + ' ' + c.nome).includes(t)));
+  return achados.sort((a, b) => (soNum ? Number(String(b.codigo) === t) - Number(String(a.codigo) === t) || a.codigo - b.codigo : a.codigo - b.codigo)).slice(0, max);
+}
+
+/** O caminho do arquivo na pasta Claudio Secretario, que vai no pedido (o não identificado: em NÃO IDENTIFICADOS). */
+export const caminhoDoArquivo = (x: ItemDoArquivador) => x.naPasta || x.rel;

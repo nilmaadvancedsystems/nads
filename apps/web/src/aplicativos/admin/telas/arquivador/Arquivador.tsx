@@ -7,11 +7,14 @@
 // marca, a lista com o detalhe ao lado, o ícone do arquivo, os dados em linhas, a busca, a seleção, o Alerta e o Vazio.
 import { Alerta, Dica, Esqueleto, Icone, RoscaComLegenda, Segmentado, Vazio, useCarregando } from '@nads/ui';
 import { useEffect, useRef, type ReactNode } from 'react';
+import { ArquivarEm } from './partes/ArquivarEm';
 import { DetalheDoArquivo } from './partes/DetalheDoArquivo';
 import { LinhaDoArquivo, ListaComDetalhe } from './partes/ListaComDetalhe';
 import { RankingComMarca } from './partes/RankingComMarca';
 import { TopoDoArquivador } from './partes/TopoDoArquivador';
+import { VisorDoArquivo } from './partes/VisorDoArquivo';
 import { useArquivadorAdmin, type AbaDoArquivador } from './useArquivadorAdmin';
+import { useResolver } from './useResolver';
 
 type Vm = ReturnType<typeof useArquivadorAdmin>;
 const TOM_DO_NUMERO = { ok: 'painel-ok', aviso: 'painel-aviso', erro: 'painel-laranja', neutro: 'painel-neutro' } as const;
@@ -175,6 +178,57 @@ function Lista({ vm, titulo, dica, vazio }: { vm: Vm; titulo: string; dica: stri
   );
 }
 
+/**
+ * Para resolver (23/10/2026: "coloca um botão para abrir o arquivo direto daqui e selecionar para onde vai também"): a
+ * lista com a caixa para marcar, a barra do lote (Arquivar em…, Descartar), e no detalhe Abrir o arquivo, Arquivar em… e
+ * Descartar; o visor por cima. Tudo pedido ao robô do PC.
+ */
+function Resolver({ vm }: { vm: Vm }) {
+  const r = useResolver(vm.pendentes);
+  const linhas = vm.linhas.filter(l => !r.feitos.has(l.id)).map(l => ({ ...l, andamento: r.andamento(l.id) }));
+  const x = vm.itemBruto && !r.feitos.has(vm.itemBruto.id) && vm.pendentes.some(p => p.id === vm.itemBruto!.id) ? vm.itemBruto : null;
+  const marcados = [...r.marcados].filter(id => linhas.some(l => l.id === id));
+  const f = r.formulario;
+  const formDoLote = f && f.lote > 1 ? <div className="arq-detalhe"><ArquivarEm f={f} /></div> : null;
+  const formDoItem = f && f.lote === 1 && x && f.alvo[0] === x.id ? <ArquivarEm f={f} /> : null;
+  const ocupado = x ? !!r.andamento(x.id) : false;
+  const detalhe = formDoLote || (x && vm.aberto ? (
+    <DetalheDoArquivo d={vm.aberto} formulario={formDoItem}
+      acoes={(
+        <>
+          <button type="button" className="btn btn-outline" onClick={() => void r.abrir(x)}><Icone nome="olho" width={16} height={16} />Abrir o arquivo</button>
+          <button type="button" className="btn btn-primary" disabled={!!formDoItem || ocupado} onClick={() => r.abrirFormulario([x.id])}><Icone nome="pasta" width={16} height={16} />Arquivar em…</button>
+          <button type="button" className="btn btn-ghost arq-descartar" disabled={ocupado} onClick={() => void r.descartar([x.id])}><Icone nome="lixeira" width={16} height={16} />Descartar</button>
+        </>
+      )} />
+  ) : null);
+  const topo = linhas.length > 0 && (
+    <div className={'arq-lote' + (marcados.length ? ' ativo' : '')}>
+      {marcados.length ? (
+        <>
+          <b>{marcados.length === 1 ? '1 marcado' : marcados.length + ' marcados'}</b>
+          <span className="arq-lote-espaco" />
+          <button type="button" className="btn btn-primary" onClick={() => { vm.abrir(null); r.abrirFormulario(marcados); }}><Icone nome="pasta" width={16} height={16} />Arquivar em…</button>
+          <button type="button" className="btn btn-outline" onClick={() => void r.descartar(marcados)}><Icone nome="lixeira" width={16} height={16} />Descartar</button>
+          <button type="button" className="btn btn-ghost" onClick={r.desmarcar}>Desmarcar</button>
+        </>
+      ) : <button type="button" className="btn btn-ghost" onClick={() => r.marcarTodos(linhas.map(l => l.id))}><Icone nome="checklist" width={16} height={16} />Marcar todos</button>}
+    </div>
+  );
+  return (
+    <div className="card">
+      <div className="card-head">
+        <h3>Para resolver<Dica texto="Os arquivos que o robô não arquivou sozinho, os mais novos primeiro, com o motivo e o que fazer. Abra o arquivo, escolha o cliente, o tipo e a competência (o robô mostra o destino antes de arquivar) ou descarte; marque vários para fazer em lote. Tudo vai como pedido ao robô do PC." /></h3>
+        {vm.pendentes.length > linhas.length && <span className="card-head-ctl fraco">{vm.pendentes.length - linhas.length} resolvido(s) agora</span>}
+      </div>
+      <ListaComDetalhe rotulo="Para resolver" linhas={linhas} aberto={x?.id ?? ''} onAbrir={id => vm.abrir(id)}
+        onFechar={() => { if (f) f.fechar(); vm.abrir(null); }} detalhe={detalhe} topo={topo} marcar={{ marcados: r.marcados, alternar: r.alternar }}
+        vazio={<Vazio compacto icone="checkCircle" titulo="Nada para resolver" texto="O robô arquivou tudo sozinho." />} />
+      {r.visor && <VisorDoArquivo v={r.visor} onFechar={r.fecharVisor} />}
+    </div>
+  );
+}
+
 function Arquivados({ vm }: { vm: Vm }) {
   const f = vm.filtro;
   const h = vm.historico;
@@ -278,8 +332,7 @@ export function Arquivador() {
   const conteudo: Record<AbaDoArquivador, () => ReactNode> = {
     geral: () => <VisaoGeral vm={vm} />,
     chegando: () => <Chegando vm={vm} />,
-    resolver: () => <Lista vm={vm} titulo="Para resolver" dica="Os arquivos que o robô não arquivou sozinho (os não identificados e os que ficaram na pasta), os mais novos primeiro, com o motivo e o que fazer. Os 80 mais recentes."
-      vazio={{ icone: 'checkCircle', titulo: 'Nada para resolver', texto: 'O robô arquivou tudo sozinho.' }} />,
+    resolver: () => <Resolver vm={vm} />,
     arquivados: () => <Arquivados vm={vm} />,
     erros: () => <Lista vm={vm} titulo="Erros" dica="Quando e por que algo não funcionou: arquivo travado, sem permissão, Drive fora, PDF corrompido, OCR demorado. Cada um com o que fazer. Os 30 mais recentes."
       vazio={{ icone: 'checkCircle', titulo: 'Nenhum erro', texto: 'Tudo funcionando.' }} />,

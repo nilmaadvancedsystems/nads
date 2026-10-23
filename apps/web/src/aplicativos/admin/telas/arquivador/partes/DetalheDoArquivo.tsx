@@ -1,8 +1,10 @@
 // O detalhe de um arquivo no Arquivador (Vitor, 22/10/2026: "só que eu preciso de um feedback melhor dele"): o que o robô
 // fez e por quê — o ícone e o nome, o selo da decisão e quando; o que fazer (no não identificado e no erro); os dados (o
 // cliente, o tipo, a confiança, o destino, o nome final, de onde veio, a leitura por OCR); as evidências que as regras
-// devolveram, em português; as cópias e a pasta nova. Peça do catálogo (Listas), junto com a lista ao lado.
+// devolveram, em português; as cópias e a pasta nova. Peça do catálogo (Listas), junto com a lista ao lado. No Para
+// resolver (23/10/2026), as ações embaixo do título (Abrir o arquivo, Arquivar em…, Descartar) e o formulário no fim.
 import { Icone, IconeDeArquivo, type FormatoDoArquivo } from '@nads/ui';
+import type { ReactNode } from 'react';
 import type { TomDaLinha } from './ListaComDetalhe';
 
 export interface DadosDoDetalhe {
@@ -13,7 +15,7 @@ export interface DadosDoDetalhe {
 }
 const SELO: Record<TomDaLinha, string> = { ok: 'badge-ok', aviso: 'badge-warn', erro: 'badge-bad', neutro: 'badge-neutral' };
 
-export function DetalheDoArquivo({ d }: { d: DadosDoDetalhe }) {
+export function DetalheDoArquivo({ d, acoes, formulario }: { d: DadosDoDetalhe; acoes?: ReactNode; formulario?: ReactNode }) {
   return (
     <div className="arq-detalhe">
       <div className="arq-detalhe-topo">
@@ -26,6 +28,9 @@ export function DetalheDoArquivo({ d }: { d: DadosDoDetalhe }) {
           </span>
         </div>
       </div>
+
+      {acoes && <div className="arq-detalhe-acoes">{acoes}</div>}
+      {formulario}
 
       {d.acao && (
         <div className={'arq-fazer ' + d.acao.tom}>

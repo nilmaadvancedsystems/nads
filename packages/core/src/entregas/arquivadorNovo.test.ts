@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  barrasPorTipo, filtrarItens, grupoDoTipo, lerPainelDoArquivador, lerParteDoDia, progressoDaPassada, resumoDoDia, situacaoDoArquivador,
+  barrasPorTipo, buscarClientesDoFormulario, caminhoDoArquivo, filtrarItens, lerCadastroDoFormulario, lerItemDoArquivador, lerPedidoDoArquivador, grupoDoTipo, lerPainelDoArquivador, lerParteDoDia, progressoDaPassada, resumoDoDia, situacaoDoArquivador,
   type PainelDoArquivador,
 } from '.';
 
@@ -104,5 +104,32 @@ describe('o arquivador novo (Admin › Arquivador)', () => {
     expect(filtrarItens(p.ultimos, { tipo: 'xml-nfe' }).map(x => x.id)).toEqual(['2']);
     expect(filtrarItens(p.ultimos, { acao: 'jaArquivado' }).map(x => x.id)).toEqual(['3']);
     expect(filtrarItens(p.ultimos, { busca: 'beta' }).map(x => x.id)).toEqual(['2']);
+  });
+
+  it('os pedidos ao robô (Para resolver): a resposta, o arquivo aberto e o que veio torto', () => {
+    expect(lerPedidoDoArquivador('p1', null)).toBeNull();
+    const destino = String.raw`568 - X\FISCAL\01-2026.pdf`;
+    const p = lerPedidoDoArquivador('p1', { tipo: 'arquivar', status: 'feito', resposta: { acao: 'ARQUIVAR', destino, copias: ['a', ''], evidencias: ['decidido por Vitor'] } })!;
+    expect([p.tipo, p.status, p.resposta?.destino, p.resposta?.copias, p.arquivo]).toEqual(['arquivar', 'feito', destino, ['a'], null]);
+    const a = lerPedidoDoArquivador('p2', { tipo: 'abrir', status: 'pronto', arquivo: { nome: 'a.pdf', tamanho: '1200', partes: 2 } })!;
+    expect(a.arquivo).toEqual({ nome: 'a.pdf', mime: 'application/octet-stream', tamanho: 1200, partes: 2 });
+    expect(lerPedidoDoArquivador('p3', { tipo: 'apagar', status: '???' })).toMatchObject({ tipo: 'abrir', status: 'pendente' });
+  });
+
+  it('o cadastro do formulário e a busca do cliente por código ou nome', () => {
+    const c = lerCadastroDoFormulario({ em: 'x', clientes: [{ c: 568, n: 'BRAZILIAN EXEMPLO LTDA', p: true }, { c: 56, n: 'SÃO JOSÉ EXEMPLO', p: false }, { c: 5, n: 'ALFA' }, { n: 'sem código' }],
+      tipos: [{ id: 'DAS', rotulo: 'DAS', precisa: 'mes' }, { id: 'x y', rotulo: 'ruim' }, { id: 'OUTROS', rotulo: 'Outros', precisa: 'qualquer' }] });
+    expect(c.clientes.map(x => x.codigo)).toEqual([568, 56, 5]);
+    expect(c.tipos).toEqual([{ id: 'DAS', rotulo: 'DAS', precisa: 'mes' }, { id: 'OUTROS', rotulo: 'Outros', precisa: null }]);
+    expect(buscarClientesDoFormulario(c.clientes, '56').map(x => x.codigo)).toEqual([56, 568]);
+    expect(buscarClientesDoFormulario(c.clientes, 'sao jose').map(x => x.codigo)).toEqual([56]);
+    expect(buscarClientesDoFormulario(c.clientes, '  ')).toEqual([]);
+    expect(buscarClientesDoFormulario(c.clientes, 'a', 1).length).toBe(1);
+  });
+
+  it('o caminho que vai no pedido: em NÃO IDENTIFICADOS, ou o da origem', () => {
+    const rel = String.raw`2026-10\a.pdf`, naPasta = String.raw`NÃO IDENTIFICADOS\X\2026-10\a.pdf`;
+    expect(caminhoDoArquivo(lerItemDoArquivador({ rel, naPasta, hash: 'h' }))).toBe(naPasta);
+    expect(caminhoDoArquivo(lerItemDoArquivador({ rel }))).toBe(rel);
   });
 });

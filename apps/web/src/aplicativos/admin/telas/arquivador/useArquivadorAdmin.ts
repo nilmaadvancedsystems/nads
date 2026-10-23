@@ -72,7 +72,7 @@ function detalheDoItem(x: entregas.ItemDoArquivador, agora: number): DetalheDoAr
     { rotulo: x.acao === 'arquivaria' ? 'Iria para' : x.acao === 'jaArquivado' ? 'Já está em' : 'Destino', valor: x.destino },
     { rotulo: 'Nome final', valor: x.nomeFinal && x.nomeFinal !== x.nome ? x.nomeFinal : '' },
     { rotulo: 'Sugestão de destino', valor: x.destinoSugerido },
-    { rotulo: 'Veio de', valor: 'Claudio Secretario\\' + x.rel + (x.dentroDe ? ' (dentro de ' + x.dentroDe + ')' : '') },
+    { rotulo: x.naPasta ? 'Está em' : 'Veio de', valor: 'Claudio Secretario\\' + (x.naPasta || x.rel) + (x.dentroDe ? ' (dentro de ' + x.dentroDe + ')' : '') },
     { rotulo: 'Leitura', valor: x.ocr ? 'Por OCR (escaneado)' + (x.ocr.confianca != null ? ', leitura ' + x.ocr.confianca + '%' : '') + (x.ocr.segundos != null ? ', ' + x.ocr.segundos + ' s' : '') + (x.ocr.erro ? ' · ' + x.ocr.erro : '') : '' },
     { rotulo: 'Observação', valor: x.naoAplicado },
   ].filter(d => d.valor);
@@ -267,6 +267,9 @@ export function useArquivadorAdmin() {
     maisQueOMaximo: Math.max(0, filtrados.length - MAX),
     totalDaLista: daLista.length,
     aberto: aberto ? detalheDoItem(aberto, agora) : null,
+    /** o item aberto e os não identificados como vieram (as ações do Para resolver: abrir, arquivar em…, descartar) */
+    itemBruto: aberto ?? null,
+    pendentes,
     abrir,
     chegando,
     chegandoAberto: chegandoAberto ? {

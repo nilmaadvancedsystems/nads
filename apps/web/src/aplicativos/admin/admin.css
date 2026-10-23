@@ -154,3 +154,43 @@ button.arq-linha:focus-visible{outline:2px solid var(--accent);outline-offset:-2
   .arq-topo-acoes{margin-left:0;width:100%;}
   .arq-topo-acoes .btn{flex:1;}
 }
+
+/* Para resolver (23/10/2026): a caixa de marcar na linha, a barra do lote, o andamento do pedido, as ações do detalhe,
+   o formulário "Arquivar em…" com a prévia e o visor do arquivo por cima da página. Sem animação (só a barra de espera). */
+.arq-li-marcavel{display:flex;align-items:center;gap:4px;}
+.arq-li-marcavel > .arq-linha{flex:1;min-width:0;}
+.arq-marca{display:flex;align-items:center;justify-content:center;width:32px;height:44px;flex:none;cursor:pointer;}
+.arq-li-marcavel.marcada > .arq-linha:not(.ativa){background:var(--hover-bg);}
+.arq-lote{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 8px;margin-bottom:6px;border-radius:8px;min-height:40px;}
+.arq-lote.ativo{background:var(--accent-soft);}
+.arq-lote-espaco{flex:1 1 8px;}
+.arq-andamento{font-weight:600;color:var(--info);}
+.arq-andamento.erro{color:var(--danger);}
+.arq-detalhe-acoes{display:flex;flex-wrap:wrap;gap:8px;}
+.btn.arq-descartar{color:var(--danger-ink);}
+.arq-em{display:flex;flex-direction:column;gap:12px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);}
+.arq-em h4{margin:0;font-size:var(--fs-14);}
+.arq-em .hint{margin:0;}
+.arq-em .field{margin:0;}
+.arq-em-cliente{position:relative;}
+.arq-em-sugestoes{list-style:none;margin:4px 0 0;padding:4px;border:1px solid var(--border);border-radius:8px;background:var(--surface);max-height:240px;overflow:auto;}
+.arq-em-sugestoes button{display:block;width:100%;padding:8px 10px;border:0;border-radius:6px;background:none;color:inherit;font:inherit;font-size:var(--fs-13);text-align:left;cursor:pointer;}
+.arq-em-sugestoes button:hover,.arq-em-sugestoes button:focus-visible{background:var(--hover-bg);outline:none;}
+.arq-em-previa{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:8px;background:var(--success-soft);font-size:var(--fs-13);overflow-wrap:anywhere;}
+.arq-em-previa.erro{background:var(--warn-soft);}
+.arq-em-previa svg{vertical-align:-2px;}
+.arq-em-destino{font-weight:600;}
+.arq-em-botoes{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;}
+.arq-visor{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;background:var(--bg);}
+.arq-visor-topo{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--header-bg);}
+.arq-visor-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-14);}
+.arq-visor-corpo{flex:1;min-height:0;display:flex;overflow:auto;background:var(--surface-2);}
+.arq-visor-pdf{flex:1;width:100%;border:0;background:#FFFFFF;}
+.arq-visor-img{display:block;max-width:100%;margin:auto;object-fit:contain;}
+.arq-visor-texto{margin:0;padding:16px;width:100%;white-space:pre-wrap;overflow-wrap:anywhere;font-family:ui-monospace,Consolas,monospace;font-size:var(--fs-12);color:var(--ink);}
+.arq-visor-espera{margin:auto;display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px;width:min(360px,100%);text-align:center;}
+@media (max-width:640px){
+  .arq-lote .btn{flex:1 1 auto;}
+  .arq-detalhe-acoes .btn{flex:1 1 auto;}
+  .arq-visor-topo .btn{padding-inline:10px;}
+}

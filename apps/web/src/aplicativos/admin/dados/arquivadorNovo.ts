@@ -2,7 +2,8 @@
 // robo/arquivadorNovo.painel e o histórico do dia em robo/arquivadorNovo/dias/{dia}-{n} (robo/arquivador-acompanhamento.js).
 // No banco: arquivadorNovo.firestore.ts (ouve o painel enquanto a página está aberta; o histórico de um dia só quando a aba
 // Arquivados pede). Nos exemplos: aqui, com a primeira passada do arquivador em andamento (as datas contadas a partir de
-// agora, para a tela sempre parecer viva).
+// agora, para a tela sempre parecer viva). Os pedidos ao robô (Para resolver: abrir o arquivo, a prévia, arquivar em…,
+// descartar; 23/10/2026) vão em pedidosArquivador; nos exemplos, um robô de mentira responde em instantes.
 import { entregas } from '@nads/core';
 
 export interface DocsDoArquivadorNovo {
@@ -15,8 +16,21 @@ export interface DocsDoArquivadorNovo {
 /** O histórico de um dia (as partes juntas, o mais novo primeiro). */
 export interface DiaDoArquivador { dia: string; carregado: boolean; erro: string; itens: entregas.ItemDoArquivador[] }
 
+/** Um pedido novo ao robô (o repositório põe quem pediu e a hora). */
+export interface NovoPedidoDoArquivador {
+  tipo: entregas.TipoDoPedido; rel: string; hash: string; nome?: string; codigo?: number; tipoDoc?: string; competencia?: string;
+}
+
 export interface RepoArquivadorNovo {
   readonly exemplos: boolean;
+  /** os clientes e os tipos do formulário "Arquivar em…" (lê na primeira vez que pedem) */
+  cadastroDoFormulario(): entregas.CadastroDoFormulario;
+  /** cria o pedido ao robô do PC; devolve o id (o pedido é acompanhado até a resposta) */
+  pedir(p: NovoPedidoDoArquivador): Promise<string>;
+  /** o pedido e a resposta do robô (null enquanto não chegou) */
+  pedido(id: string): entregas.PedidoDoArquivador | null;
+  /** o arquivo aberto: junta as partes que o robô gravou */
+  conteudo(id: string, partes: number): Promise<Uint8Array>;
   docs(): DocsDoArquivadorNovo;
   /** começa a ouvir o painel (enquanto a página está aberta); devolve como parar */
   acompanhar(): () => void;
@@ -67,11 +81,13 @@ function itemDeExemplo(i: number, em: string, acao: entregas.AcaoDoArquivador = 
     id: 'ex-' + i, em, nome: m.nome.replace('{n}', n), rel: '2026-10\\' + m.nome.replace('{n}', n), acao, tipo: m.tipo, cliente: cod, clienteNome: nome,
     confianca: m.conf, destino: pastaCliente + '\\' + m.pasta + '\\' + final, nomeFinal: final,
     copias: [], pastaNova: '', evidencias: [...m.ev], ocr: m.ocr ? { confianca: 81, segundos: 14, erro: '' } : null, dentroDe: i % 9 === 4 ? 'xmls-outubro.zip' : '',
-    motivo: '', motivoTexto: '', sugestao: '', destinoSugerido: '', erro: '', erroTipo: '', erroTitulo: '', oQueFazer: '', naoAplicado: '',
+    motivo: '', motivoTexto: '', sugestao: '', destinoSugerido: '', erro: '', erroTipo: '', erroTitulo: '', oQueFazer: '', naoAplicado: '', hash: '', naPasta: '',
   };
 }
 
 const PENDENTES: readonly Partial<entregas.ItemDoArquivador>[] = [
+  // o do print do Vitor (23/10/2026)
+  { nome: '2026-2151 BRAZILIAN.pdf', tipo: 'DAS', motivo: 'VOCABULARIO_AUSENTE', motivoTexto: 'Faltou um dado do documento', sugestao: 'Não leu um dado necessário (o tributo, a chave, o emissor ou o número). Arquive à mão.', evidencias: ['Título "Documento de Arrecadação do Simples Nacional" → tipo DAS', 'Razão social escrita no documento', 'Período de apuração não lido'], confianca: 50, cliente: '568', clienteNome: 'BRAZILIAN EXEMPLO LTDA' },
   { nome: 'nota servico prefeitura.pdf', tipo: 'NFS-e PDF', motivo: 'CLIENTE_NAO_LOCALIZADO', motivoTexto: 'CNPJ não cadastrado', sugestao: 'Nenhum CNPJ ou CPF do documento é de cliente. Se for de um cliente novo, cadastre o CNPJ no Cadastro do nads; se não for de cliente, tire o arquivo da pasta.', evidencias: ['Título "Nota Fiscal de Serviço Eletrônica" → tipo NFS-e', 'Nenhum CNPJ/CPF do documento é de cliente'], confianca: 30 },
   { nome: 'DAS 09-2026 (1).pdf', tipo: 'DAS', motivo: 'CLIENTE_AMBIGUO', motivoTexto: 'Duas empresas possíveis', sugestao: 'Escolha entre 544 e 564 e mova o arquivo para a pasta do certo.', evidencias: ['Título "Documento de Arrecadação do Simples Nacional" → tipo DAS', 'Candidatos 544, 564'], confianca: 50, cliente: '544', clienteNome: 'CONSTRUTORA ALFA EXEMPLO' },
   { nome: 'IMG_20261021_0932.jpg', tipo: '', motivo: 'FORMATO_SEM_REGRA', motivoTexto: 'Formato sem regra', sugestao: 'Imagem, Word e afins não têm regra automática. Arquive à mão.', evidencias: ['Extensão .jpg sem regra determinística (imagem, Word, etc.)'], confianca: 0 },
@@ -85,7 +101,7 @@ const PENDENTES: readonly Partial<entregas.ItemDoArquivador>[] = [
 
 function vazioDoItem(): entregas.ItemDoArquivador {
   return { id: '', em: '', nome: '', rel: '', acao: 'naoIdentificado', tipo: '', cliente: '', clienteNome: '', confianca: null, destino: '', nomeFinal: '', copias: [], pastaNova: '', evidencias: [], ocr: null, dentroDe: '',
-    motivo: '', motivoTexto: '', sugestao: '', destinoSugerido: '', erro: '', erroTipo: '', erroTitulo: '', oQueFazer: '', naoAplicado: '' };
+    motivo: '', motivoTexto: '', sugestao: '', destinoSugerido: '', erro: '', erroTipo: '', erroTitulo: '', oQueFazer: '', naoAplicado: '', hash: '', naPasta: '' };
 }
 
 /** O painel de exemplo: a primeira passada (a pilha antiga da pasta) em andamento, em produção. */
@@ -100,7 +116,8 @@ export function painelDeExemplo(agora = Date.now()): entregas.PainelDoArquivador
     copias: ['58 - COMÉRCIO EXEMPLO LTDA\\FISCAL\\DOCUMENTOS FISCAIS\\RECEBIDOS\\2026\\10\\NFSe 000412 10-2026.pdf'],
     evidencias: ['Título "Nota Fiscal de Serviço Eletrônica" → tipo NFS-e', 'Emitida pelo escritório: na pasta dele e uma cópia na do tomador (58)'],
   };
-  const pendentes = PENDENTES.map((p, i) => ({ ...vazioDoItem(), ...p, id: 'pen-' + i, em: ha(3 + i * 11), rel: '2026-10\\' + p.nome }));
+  const pendentes = PENDENTES.map((p, i) => ({ ...vazioDoItem(), ...p, id: 'pen-' + i, em: ha(3 + i * 11), rel: '2026-10\\' + p.nome,
+    naPasta: p.acao === 'fica' ? '' : 'NÃO IDENTIFICADOS\\20261022-NOVO\\2026-10\\' + p.nome, hash: 'exemplo' + i }));
   const erros: entregas.ItemDoArquivador[] = [
     { ...vazioDoItem(), id: 'er-1', em: ha(8), acao: 'erro', nome: 'Planilha de vendas.xlsx', rel: '2026-10\\Planilha de vendas.xlsx', erro: "EBUSY: resource busy or locked, open 'G:\\Meu Drive\\Claudio Secretario\\2026-10\\Planilha de vendas.xlsx'", erroTipo: 'travado', erroTitulo: 'Arquivo travado', oQueFazer: 'Feche o arquivo no programa que o abriu (ou espere o Drive terminar de sincronizar). O robô tenta de novo sozinho.' },
     { ...vazioDoItem(), id: 'er-2', em: ha(52), acao: 'erro', nome: 'nf 4471.pdf', rel: '2026-10\\nf 4471.pdf', erro: 'leitura do PDF: Invalid PDF structure', erroTipo: 'corrompido', erroTitulo: 'Arquivo corrompido', oQueFazer: 'O arquivo não abre (corrompido ou com senha). Peça de novo ao cliente.' },
@@ -155,16 +172,67 @@ export function diaDeExemplo(dia: string, agora = Date.now()): entregas.ItemDoAr
     .sort((a, b) => b.em.localeCompare(a.em));
 }
 
+// o robô de mentira dos exemplos: o conteúdo do arquivo aberto e o destino da prévia (só para ver a tela; o de verdade
+// sai das regras do robô)
+const PASTA_DE_EXEMPLO: Record<string, (c: string) => string> = {
+  DAS: c => 'FISCAL\\SIMPLES NACIONAL\\01. DAS\\' + c + '.pdf',
+  DARF: c => 'FISCAL\\SIMPLES NACIONAL\\16. DARF\\' + c + ' - DARF.pdf',
+  DAE: c => 'FISCAL\\SIMPLES NACIONAL\\02. DAE\\' + c + ' - DAE.pdf',
+  FGTS: c => 'SOCIETÁRIO\\IMPOSTOS\\FGTS\\' + c.slice(3) + '\\' + c + '.pdf',
+  EXTRATO: c => 'CONTÁBIL\\EXTRATOS\\' + c.slice(3) + '\\' + c.slice(0, 2) + '\\BANCÁRIOS\\SICOOB\\' + c + '.pdf',
+  NOTA_RECEBIDA: c => 'FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\RECEBIDOS\\' + c + ' - nota.pdf',
+  OUTROS: c => 'CONTÁBIL\\OUTROS DOCUMENTOS\\' + c.slice(-4) + '\\arquivo.pdf',
+};
+const TIPOS_DE_EXEMPLO: entregas.TipoDoFormulario[] = [
+  { id: 'AUTO', rotulo: 'Pelo conteúdo (o robô escolhe o tipo)', precisa: null }, { id: 'DAS', rotulo: 'DAS (Simples Nacional)', precisa: 'mes' },
+  { id: 'DARF', rotulo: 'DARF (Receita Federal)', precisa: 'mes' }, { id: 'DAE', rotulo: 'DAE (estadual)', precisa: 'mes' }, { id: 'DAM', rotulo: 'DAM (municipal)', precisa: 'mes' },
+  { id: 'FGTS', rotulo: 'FGTS', precisa: 'mes' }, { id: 'NOTA_RECEBIDA', rotulo: 'Nota fiscal recebida (NF-e, NFS-e, CT-e)', precisa: 'mes' },
+  { id: 'NOTA_EMITIDA', rotulo: 'Nota fiscal emitida (NF-e, NFS-e, NFC-e)', precisa: 'mes' }, { id: 'EXTRATO', rotulo: 'Extrato bancário', precisa: 'mes' },
+  { id: 'COMPROVANTE', rotulo: 'Comprovante de pagamento', precisa: 'mes' }, { id: 'FOLHA', rotulo: 'Folha de pagamento', precisa: 'mes' },
+  { id: 'DEFIS', rotulo: 'DEFIS', precisa: 'ano' }, { id: 'DIRF', rotulo: 'DIRF', precisa: 'ano' }, { id: 'BALANCETE', rotulo: 'Balancete e livros contábeis', precisa: 'ano' },
+  { id: 'DOC_CONSTITUTIVO', rotulo: 'Contrato social e documentos constitutivos', precisa: null }, { id: 'OUTROS', rotulo: 'Outros documentos (contábil)', precisa: 'ano' },
+];
+
+/** Um PDF de uma página, com o texto, para o "Abrir o arquivo" dos exemplos. */
+function pdfDeExemplo(linhas: string[]): Uint8Array {
+  const limpa = (l: string) => l.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[()\\]/g, '');
+  const texto = linhas.map((l, i) => 'BT /F1 ' + (i ? 12 : 16) + ' Tf 60 ' + (760 - i * 26) + ' Td (' + limpa(l) + ') Tj ET').join('\n');
+  const objs = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
+    '<< /Length ' + texto.length + ' >>\nstream\n' + texto + '\nendstream', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'];
+  let pdf = '%PDF-1.4\n';
+  const pos: number[] = [];
+  objs.forEach((o, i) => { pos.push(pdf.length); pdf += (i + 1) + ' 0 obj\n' + o + '\nendobj\n'; });
+  const xref = pdf.length;
+  pdf += 'xref\n0 ' + (objs.length + 1) + '\n0000000000 65535 f \n' + pos.map(p => String(p).padStart(10, '0') + ' 00000 n \n').join('');
+  pdf += 'trailer\n<< /Size ' + (objs.length + 1) + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF';
+  return new TextEncoder().encode(pdf);
+}
+
 export function criarArquivadorNovoMemoria(): RepoArquivadorNovo {
-  let docs: DocsDoArquivadorNovo = { carregado: true, semPermissao: false, painel: painelDeExemplo() };
+  // os que o admin já resolveu nos exemplos saem da lista (o painel de exemplo é refeito a cada minuto)
+  const resolvidos = new Set<string>();
+  const comResolvidos = (p: entregas.PainelDoArquivador): entregas.PainelDoArquivador => {
+    const pendentes = p.pendentes.filter(x => !resolvidos.has(x.naPasta || x.rel));
+    return { ...p, pendentes, pendentesTotal: pendentes.length };
+  };
+  let docs: DocsDoArquivadorNovo = { carregado: true, semPermissao: false, painel: comResolvidos(painelDeExemplo()) };
   const dias = new Map<string, DiaDoArquivador>();
+  const pedidos = new Map<string, entregas.PedidoDoArquivador>();
+  const conteudos = new Map<string, Uint8Array>();
   let ver = 0;
   const ouvintes = new Set<() => void>();
+  const mudou = () => { ver++; for (const f of ouvintes) f(); };
+  const clientes: entregas.ClienteDoFormulario[] = [...CLIENTES, ['568', 'BRAZILIAN EXEMPLO LTDA'], ['413', 'BRAZILIAN FORESTRY EXEMPLO LTDA'], ['284', 'NILMA CONTABILIDADE']]
+    .map(([c, n]) => ({ codigo: Number(c), nome: n, temPasta: c !== '593' })).sort((a, b) => a.codigo - b.codigo);
+  const nomeDe = (codigo?: number) => clientes.find(c => c.codigo === codigo)?.nome || 'CLIENTE';
+  const responder = (id: string, p: entregas.PedidoDoArquivador) => { pedidos.set(id, p); mudou(); };
+  const tirarDaLista = (rel: string) => { resolvidos.add(rel); docs = { ...docs, painel: docs.painel && comResolvidos(docs.painel) }; };
   return {
     exemplos: true,
     docs: () => docs,
     acompanhar() {
-      const r = setInterval(() => { docs = { ...docs, painel: painelDeExemplo() }; ver++; for (const f of ouvintes) f(); }, 60 * 1000);
+      const r = setInterval(() => { docs = { ...docs, painel: comResolvidos(painelDeExemplo()) }; mudou(); }, 60 * 1000);
       return () => clearInterval(r);
     },
     dia(dia) {
@@ -172,6 +240,49 @@ export function criarArquivadorNovoMemoria(): RepoArquivadorNovo {
       if (!d) { d = { dia, carregado: true, erro: '', itens: diaDeExemplo(dia) }; dias.set(dia, d); }
       return d;
     },
+    cadastroDoFormulario: () => ({ carregado: true, em: new Date().toISOString(), clientes, tipos: TIPOS_DE_EXEMPLO }),
+    async pedir(n) {
+      const id = 'ex-pedido-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const base: entregas.PedidoDoArquivador = { id, tipo: n.tipo, status: 'pendente', erro: '', resposta: null, arquivo: null };
+      responder(id, base);
+      setTimeout(() => responder(id, { ...base, status: 'trabalhando' }), 400);
+      setTimeout(() => {
+        const nome = n.nome || n.rel.split('\\').pop() || 'arquivo';
+        if (n.tipo === 'abrir') {
+          const ehTexto = /\.(xml|txt|ofx|csv)$/i.test(nome);
+          const bytes = ehTexto ? new TextEncoder().encode('<?xml version="1.0"?>\n<!-- exemplo: o conteúdo de ' + nome + ' -->\n<nfeProc><NFe/></nfeProc>\n')
+            : pdfDeExemplo(['Exemplo: ' + nome, 'Este e o arquivo que esta em', 'NAO IDENTIFICADOS (dados de exemplo).', 'No banco, o robo do PC manda o arquivo de verdade.']);
+          conteudos.set(id, bytes);
+          responder(id, { ...base, status: 'pronto', arquivo: { nome, mime: ehTexto ? 'text/xml' : 'application/pdf', tamanho: bytes.length, partes: 1 } });
+          return;
+        }
+        if (n.tipo === 'descartar') {
+          tirarDaLista(n.rel);
+          responder(id, { ...base, status: 'feito', resposta: { acao: 'DESCARTAR', destino: 'QUARENTENA\\' + nome, nomeFinal: nome, situacao: '', pastaNova: '', copias: [], motivo: '', evidencias: ['descartado no nads (exemplo)'], cliente: '', clienteNome: '', tipo: 'DESCARTE' } });
+          return;
+        }
+        const tipo = TIPOS_DE_EXEMPLO.find(t => t.id === n.tipoDoc);
+        const comp = n.competencia ? (n.competencia.length === 7 ? n.competencia.slice(5) + '-' + n.competencia.slice(0, 4) : n.competencia) : '';
+        if (!tipo || (tipo.precisa && !comp) || (tipo.precisa === 'mes' && comp.length !== 7)) {
+          responder(id, { ...base, status: 'erro', erro: tipo ? 'o tipo ' + tipo.rotulo + ' precisa ' + (tipo.precisa === 'ano' ? 'do ano' : 'do mês (MM/AAAA)') : 'escolha o tipo' });
+          return;
+        }
+        if (tipo.id === 'AUTO') { responder(id, { ...base, status: 'erro', erro: 'as regras não chegaram a um destino para este cliente (exemplo): escolha o tipo' }); return; }
+        const pasta = n.codigo + ' - ' + nomeDe(n.codigo);
+        const montar = PASTA_DE_EXEMPLO[tipo.id] || ((c: string) => 'CONTÁBIL\\OUTROS DOCUMENTOS\\' + c.slice(-4) + '\\' + nome);
+        const destino = pasta + '\\' + montar(comp || '2026');
+        const resposta: entregas.RespostaDoPedido = {
+          acao: 'ARQUIVAR', destino, nomeFinal: destino.split('\\').pop() || nome, situacao: 'NOVO', pastaNova: n.codigo === 593 ? pasta : '', copias: [], motivo: '',
+          evidencias: ['decidido por você no nads: ' + pasta + ' · ' + tipo.rotulo + (comp ? ' · ' + comp : '') + ' (exemplo)'], cliente: String(n.codigo), clienteNome: nomeDe(n.codigo), tipo: tipo.id,
+        };
+        if (n.tipo === 'previa') { responder(id, { ...base, status: 'pronto', resposta }); return; }
+        tirarDaLista(n.rel);
+        responder(id, { ...base, status: 'feito', resposta });
+      }, n.tipo === 'previa' ? 900 : 1600);
+      return id;
+    },
+    pedido: id => pedidos.get(id) || null,
+    conteudo: async id => conteudos.get(id) || new Uint8Array(),
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };

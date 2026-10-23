@@ -9,6 +9,8 @@ import { painelDeExemplo } from '../../admin/dados/arquivadorNovo';
 import { DetalheDoArquivo } from '../../admin/telas/arquivador/partes/DetalheDoArquivo';
 import { ListaComDetalhe, type LinhaDaLista } from '../../admin/telas/arquivador/partes/ListaComDetalhe';
 import { RankingComMarca } from '../../admin/telas/arquivador/partes/RankingComMarca';
+import { ArquivarEm } from '../../admin/telas/arquivador/partes/ArquivarEm';
+import { VisorDoArquivo } from '../../admin/telas/arquivador/partes/VisorDoArquivo';
 import { TopoDoArquivador } from '../../admin/telas/arquivador/partes/TopoDoArquivador';
 import type { Peca } from './tipos';
 
@@ -77,7 +79,35 @@ export const PECAS_DO_ARQUIVADOR: Peca[] = [
       const maior = Math.max(1, ...b.map(x => x.n));
       return <div style={{ width: '100%' }}><RankingComMarca barras={b.map(x => ({ chave: x.id, rotulo: x.rotulo, n: x.n, pct: Math.round((x.n / maior) * 100), marca: x.marca, formato: x.marca ? null : x.formato, icone: x.marca || x.formato ? null : x.icone as never }))} /></div>;
     } },
-  { id: 'arq-lista-detalhe', tipo: 'listas', nome: 'Lista com o detalhe ao lado (Arquivador)', descricao: 'O dual-pane do Docupath (22/10/2026): à esquerda, uma linha por arquivo — o ícone do formato (32 px), o nome, o apoio (o cliente e o tipo, ou o motivo), o selo suave, a confiança (verde 95%+, âmbar abaixo de 85%) e a hora; clicar marca a linha em carmim suave e abre à direita o porquê: o que fazer (âmbar no não identificado, vermelho no erro), os dados em linhas, as evidências com o ✓, as cópias e a pasta nova. Abaixo de 1.100 px o detalhe abre por cima da tela inteira, com o Fechar', componente: 'ListaComDetalhe', classes: ['arq-duplo', 'arq-duplo-detalhe', 'arq-linhas', 'arq-linha', 'arq-linha ativa', 'arq-confianca', 'arq-detalhe', 'arq-fazer', 'arq-evidencias'], telas: TELA, largo: true,
+  { id: 'arq-lista-detalhe', tipo: 'listas', nome: 'Lista com o detalhe ao lado (Arquivador)', descricao: 'O dual-pane do Docupath (22/10/2026): à esquerda, uma linha por arquivo — o ícone do formato (32 px), o nome, o apoio (o cliente e o tipo, ou o motivo), o selo suave, a confiança (verde 95%+, âmbar abaixo de 85%) e a hora; no Para resolver, a caixa de marcar na frente (a barra do lote em cima: Arquivar em…, Descartar, Desmarcar) e o andamento do pedido ao robô no lugar da confiança ("Arquivando…"); clicar marca a linha em carmim suave e abre à direita o porquê: o que fazer (âmbar no não identificado, vermelho no erro), os dados em linhas, as evidências com o ✓, as cópias e a pasta nova. Abaixo de 1.100 px o detalhe abre por cima da tela inteira, com o Fechar', componente: 'ListaComDetalhe', classes: ['arq-duplo', 'arq-duplo-detalhe', 'arq-linhas', 'arq-linha', 'arq-linha ativa', 'arq-confianca', 'arq-detalhe', 'arq-fazer', 'arq-evidencias'], telas: TELA, largo: true,
     uso: '<ListaComDetalhe linhas={linhas} aberto={id} onAbrir={abrir} onFechar={fechar} detalhe={<DetalheDoArquivo d={…} />} vazio={<Vazio … />} rotulo="Arquivados" />',
     demo: () => <DemoDaLista /> },
+  // Para resolver (23/10/2026: "coloca um botão para abrir o arquivo direto daqui e selecionar para onde vai também")
+  { id: 'arq-arquivar-em', tipo: 'campos', nome: 'Arquivar em… (cliente, tipo e competência, com a prévia)', descricao: 'No detalhe de um arquivo de Para resolver (ou para os marcados, em lote): o cliente pela busca por código ou nome (a lista de sugestões; "sem pasta no Drive" quando o robô vai criar), o tipo de documento (os que as regras conhecem), o mês (Seletor de mês) ou o ano quando o tipo pede; embaixo, a prévia que o robô calcula pelas mesmas regras (verde: "Vai para" a pasta e o nome final, a pasta nova, a cópia; âmbar: por que não dá). Arquivar só com a prévia pronta', componente: 'ArquivarEm', classes: ['arq-em', 'arq-em-sugestoes', 'arq-em-previa', 'arq-em-previa erro', 'arq-em-destino', 'arq-em-botoes'], telas: TELA, largo: true,
+    uso: '<ArquivarEm f={formulario} />',
+    demo: () => <DemoDoArquivarEm /> },
+  { id: 'arq-visor', tipo: 'janelas', nome: 'Visor do arquivo (Abrir o arquivo)', descricao: 'Por cima da página inteira (também no celular): o ícone do formato e o nome, Baixar e Fechar (Esc); o PDF no visualizador do navegador, a imagem inteira, o XML/TXT como texto; o resto, só o Baixar. Enquanto o robô do PC lê o arquivo, a barra de espera com a frase', componente: 'VisorDoArquivo', classes: ['arq-visor', 'arq-visor-topo', 'arq-visor-corpo', 'arq-visor-pdf', 'arq-visor-texto', 'arq-visor-espera'], telas: TELA, largo: true,
+    uso: '<VisorDoArquivo v={visor} onFechar={fechar} />',
+    demo: () => (
+      <div style={{ position: 'relative', width: '100%', height: 260, overflow: 'hidden', border: '1px solid var(--border)', borderRadius: 8, transform: 'translateZ(0)' }}>
+        <VisorDoArquivo v={{ nome: '35261012345678000190550010000123451.xml', formato: 'XML', carregando: false, erro: '', url: '', como: 'texto', texto: '<?xml version="1.0"?>' + NL + '<nfeProc>' + NL + '  <NFe>…</NFe>' + NL + '</nfeProc>' }} onFechar={nada} />
+      </div>
+    ) },
 ];
+
+const nada = () => {};
+const NL = String.fromCharCode(10);
+function DemoDoArquivarEm() {
+  const [mes, setMes] = useState('2026-01');
+  return (
+    <div style={{ width: '100%', maxWidth: 460 }}>
+      <ArquivarEm f={{
+        lote: 1, nomes: ['2026-2151 BRAZILIAN.pdf'], carregando: false, semCadastro: false, busca: '568 · BRAZILIAN EXEMPLO LTDA', setBusca: nada, sugeridos: [],
+        cliente: { codigo: 568, nome: 'BRAZILIAN EXEMPLO LTDA', temPasta: true }, escolher: nada,
+        tipos: [{ id: 'DAS', rotulo: 'DAS (Simples Nacional)', precisa: 'mes' }], tipoDoc: 'DAS', setTipoDoc: nada, precisa: 'mes', mes, setMes, ano: '', setAno: nada, anos: ['2026'],
+        previa: { carregando: false, erro: '', destino: ['568 - BRAZILIAN EXEMPLO LTDA', 'FISCAL', 'SIMPLES NACIONAL', '01. DAS', '01-2026.pdf'].join(String.fromCharCode(92)), nomeFinal: '01-2026.pdf', pastaNova: '', jaArquivado: false, copias: [] },
+        enviando: false, podeConfirmar: true, confirmar: nada, fechar: nada,
+      }} />
+    </div>
+  );
+}

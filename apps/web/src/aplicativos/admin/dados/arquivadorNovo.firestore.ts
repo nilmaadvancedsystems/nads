@@ -2,12 +2,20 @@
 // (o campo painel, que o robô do PC regrava no máximo a cada 45 s) ouvido enquanto a página está aberta, e o histórico de
 // um dia (robo/arquivadorNovo/dias, as partes do dia) lido quando a aba Arquivados pede. O de hoje é relido quando o painel
 // diz que o dia cresceu (no máximo a cada 2 min, para não baixar as partes a cada gravação do robô).
+// Os pedidos ao robô (23/10/2026): pedidosArquivador (só o admin cria, com a hora do servidor), ouvido do pedido até a
+// resposta; o arquivo aberto vem em pedidosArquivador/{id}/partes (base64); os clientes e os tipos do formulário em
+// robo/arquivadorNovoCadastro (lido uma vez por abertura do formulário, no máximo a cada 30 min).
 import { entregas as e } from '@nads/core';
-import { collection, doc, getDocs, onSnapshot, query, where } from 'firebase/firestore';
+import { addDoc as addDocBruto, collection, doc, getDoc, getDocs, onSnapshot, query, serverTimestamp, where } from 'firebase/firestore';
+import { guardarPedido } from '../../../comum/modoDesenvolvedor';
 import { bancoDoEntregas } from '../../tarefas/dados/entregas.firestore';
+import { quemPede } from '../../tarefas/dados/fonte';
 import { hojeLocal, type DiaDoArquivador, type DocsDoArquivadorNovo, type RepoArquivadorNovo } from './arquivadorNovo';
 
 const RELER_HOJE_MS = 2 * 60 * 1000;
+const RELER_CADASTRO_MS = 30 * 60 * 1000;
+const FINAIS: readonly string[] = ['pronto', 'feito', 'erro'];
+const addDoc = guardarPedido(addDocBruto) as typeof addDocBruto;
 const negado = (err: unknown) => /permission|insufficient/i.test(err instanceof Error ? err.message : String(err));
 
 export function criarArquivadorNovoFirestore(): RepoArquivadorNovo {
@@ -19,6 +27,9 @@ export function criarArquivadorNovoFirestore(): RepoArquivadorNovo {
   let parar: (() => void) | null = null;
   const ouvintes = new Set<() => void>();
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
+  let cadastro: e.CadastroDoFormulario = { carregado: false, em: '', clientes: [], tipos: [] };
+  let cadastroLidoEm = 0;
+  const pedidos = new Map<string, e.PedidoDoArquivador>();
 
   async function lerDia(dia: string) {
     const atual = dias.get(dia);
@@ -63,6 +74,44 @@ export function criarArquivadorNovoFirestore(): RepoArquivadorNovo {
         void lerDia(dia);
       }
       return d;
+    },
+    cadastroDoFormulario() {
+      if (Date.now() - cadastroLidoEm > RELER_CADASTRO_MS) {
+        cadastroLidoEm = Date.now();
+        getDoc(doc(db, 'robo', 'arquivadorNovoCadastro'))
+          .then(s => { cadastro = s.exists() ? e.lerCadastroDoFormulario(s.data()) : { carregado: true, em: '', clientes: [], tipos: [] }; mudou(); })
+          .catch(() => { cadastro = { carregado: true, em: '', clientes: [], tipos: [] }; cadastroLidoEm = 0; mudou(); });
+      }
+      return cadastro;
+    },
+    async pedir(n) {
+      const q = quemPede();
+      if (!q) throw new Error('entre com a sua conta para pedir ao robô');
+      const dados: Record<string, unknown> = { tipo: n.tipo, rel: n.rel, hash: n.hash, status: 'pendente', criadoEm: serverTimestamp(), pedidoPor: q.nome.slice(0, 80), pedidoPorUid: q.uid };
+      if (n.nome) dados.nome = n.nome.slice(0, 200);
+      if (n.codigo != null) dados.codigo = n.codigo;
+      if (n.tipoDoc) dados.tipoDoc = n.tipoDoc;
+      if (n.competencia) dados.competencia = n.competencia;
+      const ref = await addDoc(collection(db, 'pedidosArquivador'), dados);
+      pedidos.set(ref.id, { id: ref.id, tipo: n.tipo, status: 'pendente', erro: '', resposta: null, arquivo: null });
+      mudou();
+      // ouvido até a resposta (pronto, feito ou erro)
+      const pararPedido = onSnapshot(ref, s => {
+        const p = e.lerPedidoDoArquivador(ref.id, s.exists() ? s.data() : null);
+        if (p) { pedidos.set(ref.id, p); mudou(); if (FINAIS.includes(p.status)) pararPedido(); }
+      }, () => { pedidos.set(ref.id, { id: ref.id, tipo: n.tipo, status: 'erro', erro: 'perdi a resposta do robô: tente de novo', resposta: null, arquivo: null }); mudou(); });
+      return ref.id;
+    },
+    pedido: id => pedidos.get(id) || null,
+    async conteudo(id, partes) {
+      const snap = await getDocs(collection(db, 'pedidosArquivador', id, 'partes'));
+      const pedacos = snap.docs.map(d => ({ n: Number(d.data().n), dados: String(d.data().dados || '') })).sort((a, b) => a.n - b.n);
+      if (pedacos.length < partes) throw new Error('o arquivo chegou incompleto (' + pedacos.length + ' de ' + partes + ' partes): tente de novo');
+      const bytes = pedacos.map(p => Uint8Array.from(atob(p.dados), c => c.charCodeAt(0)));
+      const out = new Uint8Array(bytes.reduce((t, b) => t + b.length, 0));
+      let pos = 0;
+      for (const b of bytes) { out.set(b, pos); pos += b.length; }
+      return out;
     },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
