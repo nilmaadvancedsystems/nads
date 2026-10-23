@@ -321,10 +321,11 @@ try {
     { arquivo: 'fica.xml', caminho_relativo: '2026-09\\X', motivo: 'CLIENTE_AMBIGUO', timestamp: '2026-10-22T19:00:00Z' },
     { arquivo: 'saiu.xml', caminho_relativo: '2026-09\\X', motivo: 'CLIENTE_NAO_LOCALIZADO', timestamp: '2026-10-22T19:00:01Z' },
     { arquivo: 'fica.xml', caminho_relativo: '2026-09\\X', motivo: 'EVENTO_SEM_ORIGINAL', chave: 'k', timestamp: '2026-10-22T21:00:00Z' }].map(x => JSON.stringify(x)).join('\n') + '\n');
+  fs.writeFileSync(path.join(oP, 'NÃO IDENTIFICADOS', '20261022-NOVO', '2026-09', 'X', 'orfao.pdf'), 'pdf');
   const vP = C.iniciar(Object.assign({}, baseC, { origem: oP, controle: kP }));
   await vP.ciclo(); vP.parar();
   const acP = JSON.parse(fs.readFileSync(path.join(kP, 'continuo', 'acompanhamento.json'), 'utf8'));
-  igual('Para resolver: só o que ainda está na pasta, com o motivo mais novo', [acP.pendentes.map(x => [x.nome, x.motivo]), acP.pendentesTotal], [[['fica.xml', 'EVENTO_SEM_ORIGINAL']], 1]);
+  igual('Para resolver: o que está na pasta (com o motivo mais novo; sem linha no índice, entra assim mesmo)', [acP.pendentes.map(x => [x.nome, x.motivo]), acP.pendentesTotal], [[['orfao.pdf', 'SEM_MOTIVO_REGISTRADO'], ['fica.xml', 'EVENTO_SEM_ORIGINAL']], 2]);
 } catch (e) { falhas++; console.log('FALHOU com erro:', e.stack); }
 finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');

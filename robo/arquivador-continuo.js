@@ -201,6 +201,8 @@ function iniciar(opcoes) {
       painel: modo === 'PRODUCAO' ? { atividade: (t, x, d) => atividade(x, d), erro: (t, x, d) => atividade(x, d, true) } : null,
       registrar: false, log: () => {},
     });
+    // a decisão à mão (arquivou, descartou) entra no histórico do dia, com quem decidiu (23/10/2026)
+    if (modo === 'PRODUCAO') { try { acomp.decisoes(A.planos(res).filter(x => x.acao !== 'CONTEINER'), res.modo); } catch (e) { /* só o histórico */ } }
     return A.planos(res).find(x => x.acao !== 'CONTEINER' && x.rel === rel) || res.itens[0] || null;
   }
 
@@ -383,6 +385,18 @@ function iniciar(opcoes) {
         const dir = j.caminho_relativo && j.caminho_relativo !== '.' ? j.caminho_relativo : '';
         ultimos.set(path.join(sub, dir, j.arquivo), Object.assign({ sub, dir }, j));
       }
+    }
+    // a varredura real (23/10/2026: "todo arquivo que está de fato em NÃO IDENTIFICADOS tem de aparecer"): o que está na
+    // pasta sem linha no índice entra com o motivo SEM_MOTIVO_REGISTRADO
+    const naPasta = [];
+    (function andar(d, rel) {
+      let l = []; try { l = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; }
+      for (const e of l) { const r = rel ? rel + '\\' + e.name : e.name; if (e.isDirectory()) andar(path.join(d, e.name), r); else if (!/^_/.test(e.name)) naPasta.push(r); }
+    })(pastaNi, '');
+    for (const k of naPasta) {
+      if (ultimos.has(k)) continue;
+      const partes = k.split('\\');
+      ultimos.set(k, { sub: partes[0], dir: partes.slice(1, -1).join('\\'), arquivo: partes[partes.length - 1], motivo: 'SEM_MOTIVO_REGISTRADO', confianca: 0, timestamp: (() => { try { return fs.statSync(path.join(pastaNi, k)).mtime.toISOString(); } catch (e) { return new Date().toISOString(); } })() });
     }
     const itens = [];
     for (const [k, j] of ultimos) {

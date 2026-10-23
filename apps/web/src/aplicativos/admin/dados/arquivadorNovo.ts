@@ -15,6 +15,8 @@ export interface DocsDoArquivadorNovo {
 
 /** O histórico de um dia (as partes juntas, o mais novo primeiro). */
 export interface DiaDoArquivador { dia: string; carregado: boolean; erro: string; itens: entregas.ItemDoArquivador[] }
+/** O resumo de um mês (robo/arquivadorNovo/meses/{AAAA-MM}); mes null: o mês sem nada (ou o robô ainda não publica). */
+export interface MesCarregado { mes: string; carregado: boolean; erro: string; resumo: entregas.MesDoArquivador | null }
 
 /** Um pedido novo ao robô (o repositório põe quem pediu e a hora). */
 export interface NovoPedidoDoArquivador {
@@ -36,6 +38,8 @@ export interface RepoArquivadorNovo {
   acompanhar(): () => void;
   /** o histórico de um dia ('AAAA-MM-DD'): pede ao banco na primeira vez; o de hoje é relido quando o painel avisa que cresceu */
   dia(dia: string): DiaDoArquivador;
+  /** o resumo de um mês ('AAAA-MM'): pede ao banco na primeira vez; o do mês corrente é relido a cada 5 min */
+  mes(mes: string): MesCarregado;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -81,7 +85,7 @@ function itemDeExemplo(i: number, em: string, acao: entregas.AcaoDoArquivador = 
     id: 'ex-' + i, em, nome: m.nome.replace('{n}', n), rel: '2026-10\\' + m.nome.replace('{n}', n), acao, tipo: m.tipo, cliente: cod, clienteNome: nome,
     confianca: m.conf, destino: pastaCliente + '\\' + m.pasta + '\\' + final, nomeFinal: final,
     copias: [], pastaNova: '', evidencias: [...m.ev], ocr: m.ocr ? { confianca: 81, segundos: 14, erro: '' } : null, dentroDe: i % 9 === 4 ? 'xmls-outubro.zip' : '',
-    motivo: '', motivoTexto: '', sugestao: '', destinoSugerido: '', erro: '', erroTipo: '', erroTitulo: '', oQueFazer: '', naoAplicado: '', hash: '', naPasta: '',
+    motivo: '', motivoTexto: '', sugestao: '', destinoSugerido: '', erro: '', erroTipo: '', erroTitulo: '', oQueFazer: '', naoAplicado: '', hash: '', naPasta: '', porQuem: '',
   };
 }
 
@@ -101,7 +105,7 @@ const PENDENTES: readonly Partial<entregas.ItemDoArquivador>[] = [
 
 function vazioDoItem(): entregas.ItemDoArquivador {
   return { id: '', em: '', nome: '', rel: '', acao: 'naoIdentificado', tipo: '', cliente: '', clienteNome: '', confianca: null, destino: '', nomeFinal: '', copias: [], pastaNova: '', evidencias: [], ocr: null, dentroDe: '',
-    motivo: '', motivoTexto: '', sugestao: '', destinoSugerido: '', erro: '', erroTipo: '', erroTitulo: '', oQueFazer: '', naoAplicado: '', hash: '', naPasta: '' };
+    motivo: '', motivoTexto: '', sugestao: '', destinoSugerido: '', erro: '', erroTipo: '', erroTitulo: '', oQueFazer: '', naoAplicado: '', hash: '', naPasta: '', porQuem: '' };
 }
 
 /** O painel de exemplo: a primeira passada (a pilha antiga da pasta) em andamento, em produção. */
@@ -128,7 +132,8 @@ export function painelDeExemplo(agora = Date.now()): entregas.PainelDoArquivador
   const clientesHoje = CLIENTES.map(([codigo, nome], i) => ({ codigo, nome, n: Math.max(4, Math.round(arquivouHoje / (i + 2.2) / 2.1)) })).sort((a, b) => b.n - a.n);
   const contagem = (chave: string, f: number, extra: Partial<entregas.ContagemDoArquivador>): entregas.ContagemDoArquivador => ({
     chave,
-    porAcao: { arquivou: Math.round(arquivouHoje * f), arquivaria: 0, jaArquivado: Math.round(54 * f), naoIdentificado: Math.round(8 * f), fica: Math.round(1 * f), erro: Math.round(3 * f) },
+    porAcao: { arquivou: Math.round(arquivouHoje * f), arquivaria: 0, jaArquivado: Math.round(54 * f), naoIdentificado: Math.round(8 * f), fica: Math.round(1 * f), erro: Math.round(3 * f), descartado: Math.round(1 * f) },
+    aMao: Math.round(2 * f),
     porTipo: Object.fromEntries(Object.entries(porTipo).map(([k, v]) => [k, Math.round(v * f)])),
     porMotivo: { CLIENTE_NAO_LOCALIZADO: Math.round(4 * f), CLIENTE_AMBIGUO: Math.round(2 * f), CONTEUDO_SEM_TEXTO: Math.round(1 * f), CONFIANCA_ABAIXO_DO_LIMIAR: Math.round(1 * f), PDF_COMPOSTO_NAO_SEPARADO: Math.round(1 * f) },
     pastasNovas: [], clientes: clientesHoje.map(c => ({ ...c, n: Math.round(c.n * f) })), totalDeClientes: Math.round(41 * Math.min(f, 3.4)),
@@ -167,9 +172,35 @@ export function diaDeExemplo(dia: string, agora = Date.now()): entregas.ItemDoAr
   const p = painelDeExemplo(agora);
   const hoje = dia === hojeLocal(agora);
   const base = hoje ? agora : Date.parse(dia + 'T18:00:00');
-  const mais = Array.from({ length: hoje ? 96 : 60 }, (_, i) => itemDeExemplo(i + (hoje ? 24 : 300), new Date(base - (hoje ? 12 : 0) * 60000 - i * 3.1 * 60000).toISOString(), i % 17 === 9 ? 'jaArquivado' : 'arquivou'));
+  const mais = Array.from({ length: hoje ? 96 : 60 }, (_, i) => itemDeExemplo(i + (hoje ? 24 : 300), new Date(base - (hoje ? 12 : 0) * 60000 - i * 3.1 * 60000).toISOString(), i % 17 === 9 ? 'jaArquivado' : 'arquivou'))
+    // os exemplos do histórico do período (23/10/2026): à mão, descartado, e o não identificado que foi resolvido depois
+    .map((x, i) => (i % 23 === 5 ? { ...x, porQuem: 'Vitor' } : i % 29 === 7 ? { ...x, acao: 'descartado' as const, destino: '', porQuem: 'Vitor' } : x))
+    // o id e o hash de cada dia (como os do robô: o hash do conteúdo e a hora)
+    .map(x => ({ ...x, id: x.id + '@' + dia, hash: x.hash || ('ex' + dia.replace(/-/g, '') + x.id.replace(/\D/g, '')).padEnd(16, '0').slice(0, 16) }));
+  if (!hoje && mais.length > 12) {
+    const resolvido = mais[3];
+    mais.push({ ...resolvido, id: resolvido.id + '-ni', acao: 'naoIdentificado', em: new Date(Date.parse(resolvido.em) - 90 * 60000).toISOString(), destino: '', motivo: 'CLIENTE_AMBIGUO', motivoTexto: 'Duas empresas possíveis', sugestao: 'Escolha o cliente certo.' });
+  }
   return (hoje ? [...p.ultimos, ...p.pendentes, ...p.erros, ...mais] : [...mais, ...p.pendentes.slice(0, 3).map(x => ({ ...x, id: x.id + '-' + dia, em: new Date(base - 200 * 60000).toISOString() }))])
     .sort((a, b) => b.em.localeCompare(a.em));
+}
+
+/** O resumo do mês dos exemplos: as contagens de cada dia, dos dias de exemplo (do começo do arquivador até hoje). */
+const mesesDeExemplo = new Map<string, entregas.MesDoArquivador | null>();
+export function mesDeExemplo(mes: string, agora = Date.now()): entregas.MesDoArquivador | null {
+  const hoje = hojeLocal(agora);
+  if (mes > hoje.slice(0, 7)) return null;
+  if (mesesDeExemplo.has(mes) && mes !== hoje.slice(0, 7)) return mesesDeExemplo.get(mes) ?? null;
+  const dias: Record<string, entregas.ContagemDoDia> = {};
+  const p = entregas.intervaloDoPeriodo('tudo', hoje);
+  for (const dia of entregas.diasDoPeriodo(p).filter(d => d.slice(0, 7) === mes)) {
+    const c = { arquivou: 0, arquivaria: 0, jaArquivado: 0, naoIdentificado: 0, fica: 0, erro: 0, descartado: 0, aMao: 0 };
+    for (const x of diaDeExemplo(dia, agora)) { c[x.acao]++; if (x.acao === 'arquivou' && x.porQuem) c.aMao++; }
+    dias[dia] = c;
+  }
+  const r = entregas.lerMesDoArquivador({ mes, em: new Date(agora).toISOString(), dias, porAcao: {}, porCliente: {} });
+  mesesDeExemplo.set(mes, r);
+  return r;
 }
 
 // o robô de mentira dos exemplos: o conteúdo do arquivo aberto e o destino da prévia (só para ver a tela; o de verdade
@@ -240,6 +271,7 @@ export function criarArquivadorNovoMemoria(): RepoArquivadorNovo {
       if (!d) { d = { dia, carregado: true, erro: '', itens: diaDeExemplo(dia) }; dias.set(dia, d); }
       return d;
     },
+    mes(mes) { return { mes, carregado: true, erro: '', resumo: mesDeExemplo(mes) }; },
     cadastroDoFormulario: () => ({ carregado: true, em: new Date().toISOString(), clientes, tipos: TIPOS_DE_EXEMPLO }),
     async pedir(n) {
       const id = 'ex-pedido-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);

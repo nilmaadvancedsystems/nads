@@ -35,21 +35,37 @@ const tamanho = (b: number) => (b >= 1048576 ? (b / 1048576).toLocaleString('pt-
 
 /** A confiança no tom: 95+ verde, 85+ neutro, abaixo âmbar. */
 const tomDaConfianca = (c: number | null): Tom => (c == null ? 'neutro' : c >= 95 ? 'ok' : c >= 85 ? 'neutro' : 'aviso');
-const TOM_DA_ACAO: Record<entregas.AcaoDoArquivador, Tom> = { arquivou: 'ok', arquivaria: 'neutro', jaArquivado: 'neutro', naoIdentificado: 'aviso', fica: 'aviso', erro: 'erro' };
+const TOM_DA_ACAO: Record<entregas.AcaoDoArquivador, Tom> = { arquivou: 'ok', arquivaria: 'neutro', jaArquivado: 'neutro', naoIdentificado: 'aviso', fica: 'aviso', erro: 'erro', descartado: 'neutro' };
+
+/** A situação na lista do histórico (o filtro da aba Arquivados; 23/10/2026: a lista padrão só com o que foi arquivado). */
+export type FiltroDeSituacao = 'arquivados' | 'aMao' | 'duplicados' | 'naoIdentificados' | 'pendentes' | 'descartados' | 'simulados' | 'erros' | 'todos';
+const SITUACOES_DO_FILTRO: Record<FiltroDeSituacao, readonly entregas.SituacaoNoHistorico[] | null> = {
+  arquivados: ['arquivado', 'aMao'], aMao: ['aMao'], duplicados: ['duplicado'], naoIdentificados: ['naoIdentificado', 'resolvido'], pendentes: ['naoIdentificado'],
+  descartados: ['descartado'], simulados: ['simulado'], erros: ['erro'], todos: null,
+};
+const ROTULO_DO_FILTRO: Record<FiltroDeSituacao, string> = {
+  arquivados: 'Arquivados (pelo robô e à mão)', aMao: 'Arquivados à mão', duplicados: 'Duplicados — já estavam na pasta', naoIdentificados: 'Não identificados (pendentes e resolvidos)',
+  pendentes: 'Não identificados ainda pendentes', descartados: 'Descartados', simulados: 'Simulação (arquivaria)', erros: 'Erros', todos: 'Tudo o que o robô decidiu',
+};
+const ROTULO_DO_PERIODO: Record<entregas.TipoDePeriodo, string> = { hoje: 'Hoje', '7d': '7 dias', '30d': '30 dias', mes: 'Este mês', intervalo: 'Intervalo', tudo: 'Desde o começo' };
+/** Os dias que a aba baixa de cada vez (o histórico de um dia cheio pode ter alguns MB). */
+const DIAS_DE_CADA_VEZ = 7;
 
 /** Uma linha das listas (o ícone do formato, o nome, o cliente, o tipo, a confiança e a hora). */
 export interface LinhaDoArquivador {
   id: string; nome: string; formato: FormatoDoArquivo; apoio: string; selo: { rotulo: string; tom: Tom }; confianca: string; tomConfianca: Tom; hora: string;
 }
 
-function linhaDoItem(x: entregas.ItemDoArquivador, agora: number): LinhaDoArquivador {
+function linhaDoItem(x: entregas.ItemDoArquivador, agora: number, s?: entregas.SituacaoDoItem): LinhaDoArquivador {
   const cliente = x.cliente ? x.cliente + (x.clienteNome ? ' · ' + x.clienteNome : '') : '';
+  const tipo = x.tipo ? entregas.grupoDoTipo(x.tipo).rotulo : '';
   const apoio = x.acao === 'erro' ? (x.erroTitulo || 'Erro')
-    : x.acao === 'naoIdentificado' || x.acao === 'fica' ? [x.motivoTexto || 'Não identificado', cliente].filter(Boolean).join(' · ')
-      : [cliente || 'sem cliente', x.tipo].filter(Boolean).join(' · ');
+    : x.acao === 'naoIdentificado' || x.acao === 'fica' ? [x.motivoTexto || 'Não identificado', cliente, tipo].filter(Boolean).join(' · ')
+      : [cliente || 'sem cliente', tipo].filter(Boolean).join(' · ');
   return {
     id: x.id, nome: x.nome, formato: formatoPeloNome(x.nome), apoio,
-    selo: { rotulo: x.acao === 'arquivou' ? (x.tipo ? entregas.grupoDoTipo(x.tipo).rotulo : 'Arquivado') : entregas.ROTULO_DA_ACAO[x.acao], tom: TOM_DA_ACAO[x.acao] },
+    // o selo é a SITUAÇÃO (23/10/2026: o verde mostrava o tipo, "XML NF-e", no lugar da situação); o tipo vai no texto
+    selo: s ? { rotulo: s.rotulo, tom: s.tom } : { rotulo: x.acao === 'arquivou' && x.porQuem ? 'Arquivado à mão por ' + x.porQuem : entregas.ROTULO_DA_ACAO[x.acao], tom: TOM_DA_ACAO[x.acao] },
     confianca: x.confianca && x.acao !== 'erro' ? x.confianca + '%' : '', tomConfianca: tomDaConfianca(x.confianca), hora: quando(x.em, agora),
   };
 }
@@ -63,7 +79,7 @@ export interface DetalheDoArquivo {
   evidencias: string[];
   copias: string[]; pastaNova: string; erroTecnico: string;
 }
-function detalheDoItem(x: entregas.ItemDoArquivador, agora: number): DetalheDoArquivo {
+function detalheDoItem(x: entregas.ItemDoArquivador, agora: number, s?: entregas.SituacaoDoItem): DetalheDoArquivo {
   const g = x.tipo ? entregas.grupoDoTipo(x.tipo) : null;
   const dados = [
     { rotulo: 'Cliente', valor: x.cliente ? x.cliente + (x.clienteNome ? ' · ' + x.clienteNome : '') : '' },
@@ -75,11 +91,13 @@ function detalheDoItem(x: entregas.ItemDoArquivador, agora: number): DetalheDoAr
     { rotulo: x.naPasta ? 'Está em' : 'Veio de', valor: 'Claudio Secretario\\' + (x.naPasta || x.rel) + (x.dentroDe ? ' (dentro de ' + x.dentroDe + ')' : '') },
     { rotulo: 'Leitura', valor: x.ocr ? 'Por OCR (escaneado)' + (x.ocr.confianca != null ? ', leitura ' + x.ocr.confianca + '%' : '') + (x.ocr.segundos != null ? ', ' + x.ocr.segundos + ' s' : '') + (x.ocr.erro ? ' · ' + x.ocr.erro : '') : '' },
     { rotulo: 'Observação', valor: x.naoAplicado },
+    { rotulo: 'Decidido por', valor: x.porQuem ? x.porQuem + ' (no site)' : '' },
+    { rotulo: 'Resolvido', valor: s?.situacao === 'resolvido' ? (s.resolvidoEm ? quando(s.resolvidoEm, agora) : 'Saiu de NÃO IDENTIFICADOS') + (s.resolvidoPara ? ' → ' + s.resolvidoPara : '') : '' },
   ].filter(d => d.valor);
   const acao = x.acao === 'erro' ? { titulo: x.erroTitulo || 'Erro', texto: x.oQueFazer, tom: 'erro' as Tom }
     : x.acao === 'naoIdentificado' || x.acao === 'fica' ? { titulo: x.motivoTexto || 'Não identificado', texto: x.sugestao, tom: 'aviso' as Tom } : null;
   return {
-    id: x.id, nome: x.nome, formato: formatoPeloNome(x.nome), selo: { rotulo: entregas.ROTULO_DA_ACAO[x.acao], tom: TOM_DA_ACAO[x.acao] }, quando: quando(x.em, agora),
+    id: x.id, nome: x.nome, formato: formatoPeloNome(x.nome), selo: s ? { rotulo: s.rotulo, tom: s.tom } : { rotulo: entregas.ROTULO_DA_ACAO[x.acao], tom: TOM_DA_ACAO[x.acao] }, quando: quando(x.em, agora),
     dados, acao, evidencias: x.evidencias, copias: x.copias, pastaNova: x.pastaNova, erroTecnico: x.acao === 'erro' ? x.erro : '',
   };
 }
@@ -87,7 +105,6 @@ function detalheDoItem(x: entregas.ItemDoArquivador, agora: number): DetalheDoAr
 /** Uma barra do gráfico (por tipo ou por cliente). */
 export interface BarraDoArquivador { chave: string; rotulo: string; n: number; pct: number; marca: entregas.MarcaDoTipo; formato: FormatoDoArquivo | null; icone: NomeIcone | null; dica: string }
 
-const DIAS_NO_FILTRO = 7;
 
 export function useArquivadorAdmin() {
   const d = useArquivadorNovo();
@@ -99,8 +116,11 @@ export function useArquivadorAdmin() {
   const [busca, setBusca] = useState('');
   const [cliente, setCliente] = useState('');
   const [tipo, setTipo] = useState('');
-  const [acaoFiltro, setAcaoFiltro] = useState<entregas.AcaoDoArquivador | ''>('');
-  const [dia, setDia] = useState(() => hojeLocal());
+  const [situacaoFiltro, setSituacaoFiltro] = useState<FiltroDeSituacao>('arquivados');
+  // o período (23/10/2026: "um acompanhamento de todo período"): hoje, 7 dias, 30 dias, o mês, um intervalo livre ou desde o começo
+  const [tipoPeriodo, setTipoPeriodo] = useState<entregas.TipoDePeriodo>('hoje');
+  const [livre, setLivre] = useState(() => ({ de: hojeLocal(), ate: hojeLocal() }));
+  const [diasMostrados, setDiasMostrados] = useState(DIAS_DE_CADA_VEZ);
 
   const p = d.painel;
   const aba = (ABAS.includes(params.get('aba') as AbaDoArquivador) ? params.get('aba') : 'geral') as AbaDoArquivador;
@@ -113,8 +133,20 @@ export function useArquivadorAdmin() {
   });
   const abrir = (id: string | null) => setParams(prev => { const n = new URLSearchParams(prev); if (id) n.set('item', id); else n.delete('item'); return n; }, { replace: true });
 
-  // o histórico do dia escolhido (só quando a aba Arquivados está aberta)
-  const historico = aba === 'arquivados' ? d.dia(dia) : null;
+  // o histórico do período (só quando a aba Arquivados está aberta): os dias do mais novo para o mais velho, de 7 em 7;
+  // os totais pelos resumos dos meses (sem baixar os dias)
+  const hojeDia = hojeLocal(agora);
+  const intervalo = entregas.intervaloDoPeriodo(tipoPeriodo, hojeDia, livre);
+  const diasDoPeriodo = entregas.diasDoPeriodo(intervalo);
+  const diasLidos = aba === 'arquivados' ? diasDoPeriodo.slice(0, diasMostrados).map(x => d.dia(x)) : [];
+  const mesesLidos = aba === 'arquivados' ? entregas.mesesDoPeriodo(intervalo).map(m => d.mes(m)) : [];
+  const itensDoPeriodo = useMemo(() => diasLidos.flatMap(x => x.itens).sort((a, b) => b.em.localeCompare(a.em)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [diasLidos.map(x => x.dia + ':' + x.itens.length).join('|')]);
+  const historico = aba === 'arquivados' ? {
+    carregado: diasLidos.length > 0 && diasLidos.every(x => x.carregado),
+    erro: diasLidos.find(x => x.erro)?.erro ?? '',
+  } : null;
 
   const situacao = entregas.situacaoDoArquivador(p, agora);
   const progresso = p ? entregas.progressoDaPassada(p.passada, p.ritmo, agora) : null;
@@ -164,29 +196,53 @@ export function useArquivadorAdmin() {
   } : null;
 
   // as listas de cada aba
-  const pendentes = p?.pendentes ?? [];
-  const erros = p?.erros ?? [];
-  const daLista = aba === 'resolver' ? pendentes : aba === 'erros' ? erros : aba === 'arquivados' ? (historico?.itens ?? []) : [];
-  const filtrados = aba === 'arquivados' ? entregas.filtrarItens(daLista, { busca, cliente, tipo, acao: acaoFiltro }) : daLista;
+  const pendentes = useMemo(() => p?.pendentes ?? [], [p?.pendentes]);
+  const erros = useMemo(() => p?.erros ?? [], [p?.erros]);
+  const pendentesCompletos = entregas.paraResolverAgora(p) <= pendentes.length;
+  const situacoes = useMemo(() => entregas.situacoesDoHistorico(itensDoPeriodo, pendentes, pendentesCompletos), [itensDoPeriodo, pendentes, pendentesCompletos]);
+  const daLista = useMemo(() => (aba === 'resolver' ? pendentes : aba === 'erros' ? erros : aba === 'arquivados' ? itensDoPeriodo : []), [aba, pendentes, erros, itensDoPeriodo]);
+  const filtrados = useMemo(() => {
+    if (aba !== 'arquivados') return daLista;
+    const quer = SITUACOES_DO_FILTRO[situacaoFiltro];
+    return entregas.filtrarItens(daLista, { busca, cliente, tipo, acao: '' }).filter(x => !quer || quer.includes(situacoes.get(x)?.situacao ?? 'arquivado'));
+  }, [aba, daLista, busca, cliente, tipo, situacaoFiltro, situacoes]);
   const MAX = 300;
-  const linhas = filtrados.slice(0, MAX).map(x => linhaDoItem(x, agora));
+  const linhas = filtrados.slice(0, MAX).map(x => linhaDoItem(x, agora, aba === 'arquivados' ? situacoes.get(x) : undefined));
   const aberto = itemAberto ? (filtrados.find(x => x.id === itemAberto) || [...(p?.ultimos ?? []), ...pendentes, ...erros].find(x => x.id === itemAberto)) : undefined;
+  const situacaoDoAberto = aberto && aba === 'arquivados' ? situacoes.get(aberto) : undefined;
+
+  // os totais do período (os resumos dos meses; sem eles, os dias baixados)
+  const totais = useMemo(() => {
+    if (aba !== 'arquivados') return null;
+    const doMes = mesesLidos.length && mesesLidos.every(m => m.carregado && !m.erro);
+    if (doMes) return { ...entregas.totaisDoPeriodo(intervalo, mesesLidos.map(m => m.resumo)), fonte: 'mes' as const };
+    const t = { arquivados: 0, aMao: 0, jaArquivado: 0, naoIdentificado: 0, descartado: 0, erro: 0, simulados: 0, dias: diasLidos.length };
+    for (const x of itensDoPeriodo) {
+      if (x.acao === 'arquivou') { t.arquivados++; if (x.porQuem) t.aMao++; }
+      else if (x.acao === 'jaArquivado') t.jaArquivado++;
+      else if (x.acao === 'naoIdentificado' || x.acao === 'fica') t.naoIdentificado++;
+      else if (x.acao === 'descartado') t.descartado++;
+      else if (x.acao === 'erro') t.erro++;
+      else if (x.acao === 'arquivaria') t.simulados++;
+    }
+    return { ...t, fonte: 'dias' as const };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aba, intervalo.de, intervalo.ate, mesesLidos.map(m => m.mes + (m.carregado ? '1' : '0') + (m.resumo?.em ?? '') + m.erro).join('|'), itensDoPeriodo]);
+
+  /** o CSV dos que estão na lista (com os filtros), para abrir no Excel: o nome e o conteúdo (a View baixa) */
+  const csvDoPeriodo = () => ({ nome: 'arquivador ' + intervalo.de + (intervalo.de !== intervalo.ate ? ' a ' + intervalo.ate : '') + '.csv', conteudo: entregas.csvDoHistorico(filtrados, situacoes) });
 
   // os filtros da aba Arquivados: os clientes e os tipos que aparecem no dia
   const opcoesCliente = useMemo(() => {
     const m = new Map<string, string>();
-    for (const x of historico?.itens ?? []) if (x.cliente && !m.has(x.cliente)) m.set(x.cliente, x.clienteNome);
+    for (const x of itensDoPeriodo) if (x.cliente && !m.has(x.cliente)) m.set(x.cliente, x.clienteNome);
     return [...m.entries()].sort((a, b) => Number(a[0]) - Number(b[0])).map(([codigo, nome]) => ({ valor: codigo, rotulo: codigo + ' · ' + nome }));
-  }, [historico?.itens]);
+  }, [itensDoPeriodo]);
   const opcoesTipo = useMemo(() => {
     const m = new Map<string, string>();
-    for (const x of historico?.itens ?? []) if (x.tipo) { const g = entregas.grupoDoTipo(x.tipo); m.set(g.id, g.rotulo); }
+    for (const x of itensDoPeriodo) if (x.tipo) { const g = entregas.grupoDoTipo(x.tipo); m.set(g.id, g.rotulo); }
     return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([valor, rotulo]) => ({ valor, rotulo }));
-  }, [historico?.itens]);
-  const opcoesDia = Array.from({ length: DIAS_NO_FILTRO }, (_, i) => {
-    const v = hojeLocal(agora - i * 864e5);
-    return { valor: v, rotulo: i === 0 ? 'Hoje' : i === 1 ? 'Ontem' : v.slice(8, 10) + '/' + v.slice(5, 7) };
-  });
+  }, [itensDoPeriodo]);
 
   // a pasta (aba Chegando)
   const SITUACAO = { lendo: { rotulo: 'Sendo lido', tom: 'ok' as Tom }, chegando: { rotulo: 'Chegando', tom: 'neutro' as Tom }, fila: { rotulo: 'Na fila', tom: 'neutro' as Tom }, original: { rotulo: 'Esperando o documento original', tom: 'aviso' as Tom } };
@@ -202,7 +258,7 @@ export function useArquivadorAdmin() {
     { id: 'geral', rotulo: 'Visão geral', icone: 'painel', contador: '', aviso: false },
     { id: 'chegando', rotulo: 'Chegando', icone: 'caixaEntrada', contador: naFila ? mil(naFila) : '', aviso: false },
     { id: 'resolver', rotulo: 'Para resolver', icone: 'alert', contador: resolver ? mil(resolver) : '', aviso: resolver > 0 },
-    { id: 'arquivados', rotulo: 'Arquivados', icone: 'checkCircle', contador: p?.historico.itens ? mil(p.historico.itens) : '', aviso: false },
+    { id: 'arquivados', rotulo: 'Arquivados', icone: 'checkCircle', contador: p?.hoje.porAcao.arquivou ? mil(p.hoje.porAcao.arquivou) : '', aviso: false },
     { id: 'erros', rotulo: 'Erros', icone: 'x', contador: erros.length ? mil(erros.length) : '', aviso: erros.length > 0 },
     { id: 'comparacao', rotulo: 'Comparação', icone: 'scale', contador: '', aviso: false, direita: true },
     { id: 'config', rotulo: 'Configuração', icone: 'settings', contador: '', aviso: false, direita: true },
@@ -269,7 +325,9 @@ export function useArquivadorAdmin() {
     linhas,
     maisQueOMaximo: Math.max(0, filtrados.length - MAX),
     totalDaLista: daLista.length,
-    aberto: aberto ? detalheDoItem(aberto, agora) : null,
+    aberto: aberto ? detalheDoItem(aberto, agora, situacaoDoAberto) : null,
+    /** o não identificado do histórico que ainda está em Para resolver: o caminho até ele */
+    resolverAberto: situacaoDoAberto?.pendenteId ? () => irPara('resolver', situacaoDoAberto.pendenteId) : null,
     /** o item aberto e os não identificados como vieram (as ações do Para resolver: abrir, arquivar em…, descartar) */
     itemBruto: aberto ?? null,
     pendentes,
@@ -286,13 +344,34 @@ export function useArquivadorAdmin() {
     } : null,
     pasta: p?.pasta ?? null,
     historico: historico ? { carregado: historico.carregado, erro: historico.erro } : null,
+    // o período da aba Arquivados
+    periodoDoHistorico: {
+      tipo: tipoPeriodo, setTipo: (t: entregas.TipoDePeriodo) => { setTipoPeriodo(t); setDiasMostrados(DIAS_DE_CADA_VEZ); abrir(null); },
+      opcoes: (Object.keys(ROTULO_DO_PERIODO) as entregas.TipoDePeriodo[]).map(v => ({ valor: v, rotulo: ROTULO_DO_PERIODO[v] })),
+      livre, setDe: (v: string) => setLivre(l => ({ ...l, de: v })), setAte: (v: string) => setLivre(l => ({ ...l, ate: v })),
+      minimo: entregas.INICIO_DO_ARQUIVADOR, maximo: hojeDia,
+      texto: intervalo.de === intervalo.ate ? intervalo.de.split('-').reverse().join('/') : intervalo.de.split('-').reverse().join('/') + ' a ' + intervalo.ate.split('-').reverse().join('/'),
+      diasNoPeriodo: diasDoPeriodo.length, diasLidos: diasLidos.length,
+      faltamDias: Math.max(0, diasDoPeriodo.length - diasLidos.length),
+      carregarMais: () => setDiasMostrados(n => n + DIAS_DE_CADA_VEZ),
+    },
+    totais: totais ? [
+      { id: 'arquivados', rotulo: 'Arquivados', valor: mil(totais.arquivados), tom: 'ok' as Tom, icone: 'checkCircle' as NomeIcone, situacao: 'arquivados' as FiltroDeSituacao },
+      { id: 'aMao', rotulo: 'Arquivados à mão', valor: mil(totais.aMao), tom: 'neutro' as Tom, icone: 'usuario' as NomeIcone, situacao: 'aMao' as FiltroDeSituacao },
+      { id: 'duplicados', rotulo: 'Já estavam na pasta', valor: mil(totais.jaArquivado), tom: 'neutro' as Tom, icone: 'copiar' as NomeIcone, situacao: 'duplicados' as FiltroDeSituacao },
+      { id: 'ni', rotulo: 'Não identificados', valor: mil(totais.naoIdentificado), tom: 'neutro' as Tom, icone: 'alert' as NomeIcone, situacao: 'naoIdentificados' as FiltroDeSituacao },
+      { id: 'descartados', rotulo: 'Descartados', valor: mil(totais.descartado), tom: 'neutro' as Tom, icone: 'lixeira' as NomeIcone, situacao: 'descartados' as FiltroDeSituacao },
+    ] : [],
+    totaisDosDias: totais?.fonte === 'dias',
+    csvDoPeriodo,
     // os filtros da aba Arquivados
     filtro: {
-      busca, setBusca, cliente, setCliente, tipo, setTipo, acao: acaoFiltro, setAcao: setAcaoFiltro, dia, setDia: (v: string) => { setDia(v); abrir(null); },
-      opcoesCliente, opcoesTipo, opcoesDia,
-      opcoesAcao: (['arquivou', 'arquivaria', 'jaArquivado', 'naoIdentificado', 'fica', 'erro'] as const).map(a => ({ valor: a, rotulo: entregas.ROTULO_DA_ACAO[a] })),
-      ativo: !!(busca || cliente || tipo || acaoFiltro),
-      limpar: () => { setBusca(''); setCliente(''); setTipo(''); setAcaoFiltro(''); },
+      busca, setBusca, cliente, setCliente, tipo, setTipo, situacao: situacaoFiltro, setSituacao: (v: FiltroDeSituacao) => { setSituacaoFiltro(v); abrir(null); },
+      opcoesCliente, opcoesTipo,
+      opcoesSituacao: (Object.keys(ROTULO_DO_FILTRO) as FiltroDeSituacao[]).map(v => ({ valor: v, rotulo: ROTULO_DO_FILTRO[v] })),
+      rotuloDaSituacao: ROTULO_DO_FILTRO[situacaoFiltro],
+      ativo: !!(busca || cliente || tipo || situacaoFiltro !== 'arquivados'),
+      limpar: () => { setBusca(''); setCliente(''); setTipo(''); setSituacaoFiltro('arquivados'); },
     },
     comparacao,
     configuracao,

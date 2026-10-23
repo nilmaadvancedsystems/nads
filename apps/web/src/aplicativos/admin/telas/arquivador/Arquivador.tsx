@@ -229,18 +229,56 @@ function Resolver({ vm }: { vm: Vm }) {
   );
 }
 
+/** Baixa um arquivo de texto (o CSV do período). */
+function baixar({ nome, conteudo }: { nome: string; conteudo: string }) {
+  const url = URL.createObjectURL(new Blob([conteudo], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = nome;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/**
+ * Arquivados (23/10/2026: "um acompanhamento de todo período" e "na parte de arquivados tem arquivos escritos como não
+ * identificados"): o período (hoje, 7 dias, 30 dias, o mês, um intervalo ou desde o começo), os totais dele, e a lista
+ * pela SITUAÇÃO — o padrão só com o que foi arquivado (pelo robô ou à mão); os duplicados, os não identificados (os
+ * pendentes levam ao Para resolver; os resolvidos dizem para onde foram) e os descartados no filtro.
+ */
 function Arquivados({ vm }: { vm: Vm }) {
   const f = vm.filtro;
   const h = vm.historico;
+  const pd = vm.periodoDoHistorico;
   return (
     <div className="card">
       <div className="card-head">
-        <h3>Arquivados<Dica texto="Tudo o que o robô decidiu no dia: o que arquivou, o que já estava arquivado, o que ficou para resolver e os erros. Clique num arquivo para ver o porquê." /></h3>
+        <h3>Arquivados<Dica texto="O que o robô arquivou no período (e o que foi arquivado à mão no site). Os duplicados, os não identificados e os descartados ficam no filtro de situação. Clique num arquivo para ver o porquê." /></h3>
+        <span className="card-head-ctl fraco num">{pd.texto}</span>
       </div>
       <div className="arq-filtros">
+        <Segmentado valor={pd.tipo} opcoes={pd.opcoes} onMudar={pd.setTipo} />
+        {pd.tipo === 'intervalo' && (
+          <>
+            <input type="date" className="select-compact" aria-label="De" min={pd.minimo} max={pd.maximo} value={pd.livre.de} onChange={e => pd.setDe(e.target.value)} />
+            <input type="date" className="select-compact" aria-label="Até" min={pd.minimo} max={pd.maximo} value={pd.livre.ate} onChange={e => pd.setAte(e.target.value)} />
+          </>
+        )}
+      </div>
+      {vm.totais.length > 0 && (
+        <div className="stat-grid dp-numeros admin-numeros arq-totais">
+          {vm.totais.map(n => (
+            <button key={n.id} type="button" className={'stat painel-numero admin-numero ' + TOM_DO_NUMERO[n.tom]} onClick={() => f.setSituacao(n.situacao)} aria-pressed={f.situacao === n.situacao}>
+              <span className="painel-numero-icone" aria-hidden="true"><Icone nome={n.icone} width={16} height={16} /></span>
+              <p className="stat-label">{n.rotulo}</p>
+              <p className="stat-value num">{n.valor}</p>
+            </button>
+          ))}
+        </div>
+      )}
+      {vm.totaisDosDias && <p className="hint">Os totais contam só os dias já baixados (o resumo do mês ainda não chegou do robô).</p>}
+      <div className="arq-filtros">
         <label className="busca-curta larga"><Icone nome="search" width={16} height={16} /><input type="text" placeholder="Buscar pelo nome, cliente ou pasta" aria-label="Buscar nos arquivados" value={f.busca} onChange={e => f.setBusca(e.target.value)} /></label>
-        <select className="select-compact" aria-label="Dia" value={f.dia} onChange={e => f.setDia(e.target.value)}>
-          {f.opcoesDia.map(o => <option key={o.valor} value={o.valor}>{o.rotulo}</option>)}
+        <select className="select-compact" aria-label="Situação" value={f.situacao} onChange={e => f.setSituacao(e.target.value as typeof f.situacao)}>
+          {f.opcoesSituacao.map(o => <option key={o.valor} value={o.valor}>{o.rotulo}</option>)}
         </select>
         <select className="select-compact" aria-label="Cliente" value={f.cliente} onChange={e => f.setCliente(e.target.value)}>
           <option value="">Todos os clientes</option>
@@ -250,17 +288,27 @@ function Arquivados({ vm }: { vm: Vm }) {
           <option value="">Todos os tipos</option>
           {f.opcoesTipo.map(o => <option key={o.valor} value={o.valor}>{o.rotulo}</option>)}
         </select>
-        <select className="select-compact" aria-label="O que o robô fez" value={f.acao} onChange={e => f.setAcao(e.target.value as typeof f.acao)}>
-          <option value="">Tudo</option>
-          {f.opcoesAcao.map(o => <option key={o.valor} value={o.valor}>{o.rotulo}</option>)}
-        </select>
         {f.ativo && <button type="button" className="btn btn-ghost" onClick={f.limpar}>Limpar</button>}
+        <span className="tarefas-barra-espaco" />
+        <button type="button" className="btn btn-outline" onClick={() => baixar(vm.csvDoPeriodo())} disabled={!vm.linhas.length}><Icone nome="download" width={16} height={16} />Exportar CSV</button>
       </div>
       {h && !h.carregado ? <Esqueleto linhas={6} /> : h?.erro ? <Alerta naLinha titulo="Não deu para ler o histórico" texto={h.erro} /> : (
         <ListaComDetalhe rotulo="Arquivados" linhas={vm.linhas} aberto={vm.aberto?.id ?? ''} onAbrir={id => vm.abrir(id)} onFechar={() => vm.abrir(null)}
-          detalhe={vm.aberto ? <DetalheDoArquivo d={vm.aberto} /> : null}
-          vazio={<Vazio compacto icone="arquivo" titulo={f.ativo ? 'Nada com esses filtros' : 'Nada arquivado neste dia'} texto={f.ativo ? 'Tente outra busca ou limpe os filtros.' : 'O robô não decidiu nenhum arquivo neste dia.'} />}
-          pe={<p className="hint num">{vm.linhas.length.toLocaleString('pt-BR')} de {vm.totalDaLista.toLocaleString('pt-BR')}{vm.maisQueOMaximo ? ' (mostra os 300 mais novos: use a busca)' : ''}</p>} />
+          detalhe={vm.aberto ? (
+            <>
+              {vm.resolverAberto && (
+                <div className="arq-detalhe-acoes"><button type="button" className="btn btn-primary" onClick={vm.resolverAberto}><Icone nome="alert" width={16} height={16} />Resolver em Para resolver</button></div>
+              )}
+              <DetalheDoArquivo d={vm.aberto} />
+            </>
+          ) : null}
+          vazio={<Vazio compacto icone="arquivo" titulo={f.ativo ? 'Nada com esses filtros' : 'Nada arquivado no período'} texto={f.ativo ? 'Tente outra busca ou limpe os filtros.' : 'O robô não arquivou nenhum arquivo nestes dias.'} />}
+          pe={(
+            <div className="arq-pe">
+              <p className="hint num">{vm.linhas.length.toLocaleString('pt-BR')} de {vm.totalDaLista.toLocaleString('pt-BR')} decididos {pd.diasLidos === 1 ? 'no dia' : 'nos ' + pd.diasLidos + ' dias'} mais novos{vm.maisQueOMaximo ? ' (mostra os 300 mais novos: use a busca)' : ''}</p>
+              {pd.faltamDias > 0 && <button type="button" className="btn btn-outline" onClick={pd.carregarMais}>Mais {Math.min(7, pd.faltamDias)} {Math.min(7, pd.faltamDias) === 1 ? 'dia' : 'dias'} ({pd.faltamDias.toLocaleString('pt-BR')} no período)</button>}
+            </div>
+          )} />
       )}
     </div>
   );

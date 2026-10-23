@@ -11,7 +11,11 @@
 //     erros com o que fazer, os alertas de agora e o último lado a lado.
 //   robo/arquivadorNovo/dias/{AAAA-MM-DD}-{n}   o histórico do dia em partes de até ~700 KB (a busca da aba Arquivados);
 //                                          só a parte que mudou é regravada, junto com o documento principal; as de mais
-//                                          de DIAS_GUARDADOS dias o próprio robô apaga (no banco e no PC), na virada do dia.
+//                                          de DIAS_GUARDADOS dias (24 meses) o próprio robô apaga (no banco e no PC).
+//   robo/arquivadorNovo/meses/{AAAA-MM}  o resumo do mês (Vitor, 23/10/2026: "um acompanhamento de todo período"): as
+//                                          contagens por ação (com os descartados e os arquivados à mão), por tipo e por
+//                                          cliente, e as de cada dia (dias.{AAAA-MM-DD}), para a visão do período não ter de
+//                                          baixar todos os dias. As contagens de cada dia ficam no PC (continuo\resumo-dias.json).
 //
 // No PC fica uma cópia do que foi publicado (continuo\acompanhamento.json) e o histórico do dia (continuo\arquivados-
 // AAAA-MM-DD.jsonl), para o robô reiniciar sem perder as listas nem a contagem.
@@ -34,7 +38,7 @@ const MAX_EVIDENCIAS_HISTORICO = 4;
 const MAX_CLIENTES = 15;
 const BYTES_POR_PARTE = 700 * 1024;
 const JANELA_RITMO_MS = 10 * 60 * 1000;
-const DIAS_GUARDADOS = 31;
+const DIAS_GUARDADOS = 730;   // 24 meses (23/10/2026: era 31)
 
 // ---------------------------------------------------------------------------------------------------------------------
 // puras (teste-arquivador-acompanhamento.js)
@@ -68,7 +72,9 @@ const MOTIVOS = {
   ARQUIVO_COMPACTADO_CORROMPIDO: ['Compactado corrompido', 'O .zip/.rar não abre. Peça o arquivo de novo.'],
   FERRAMENTA_EXTRACAO_AUSENTE: ['Sem o programa para abrir', 'Falta o programa para abrir este compactado no PC (WinRAR/7-Zip).'],
   ARQUIVO_INACESSIVEL: ['Arquivo travado', 'O arquivo está aberto em outro programa ou ainda sincronizando. Feche-o; o robô tenta de novo sozinho.'],
-  TIPO_XML_NAO_TRATADO: ['XML sem regra', 'Este tipo de XML ainda não tem regra. Arquive à mão.'],
+  TIPO_XML_NAO_TRATADO: ['Sem regra para este tipo de XML', 'Este tipo de XML ainda não tem regra. Arquive à mão; se for comum, peça a regra.'],
+  SEM_MOTIVO_REGISTRADO: ['Está na pasta sem o motivo registrado', 'O arquivo está em NÃO IDENTIFICADOS, mas não tem linha no índice (_nao_identificados.jsonl). Abra e arquive à mão.'],
+  DESCARTE_CONFIRMADO: ['Descartado', 'Foi para a quarentena por decisão do responsável (nunca é apagado direto).'],
   VIDEO_OU_AUDIO: ['Vídeo ou áudio', 'Vídeo e áudio ficam na pasta: não são arquivados.'],
   IDENTICO_JA_ARQUIVADO: ['Já arquivado', 'O mesmo conteúdo já está na pasta do cliente.'],
 };
@@ -125,7 +131,8 @@ function acaoDoItem(x, modoRes) {
   if (x.acao === 'AGUARDANDO_ORIGINAL') return 'aguardando';
   const aplicado = modoRes === 'PRODUCAO' && !x.naoAplicado;
   if (x.acao === 'ARQUIVAR') return aplicado ? 'arquivou' : 'arquivaria';
-  if (x.acao === 'JA_ARQUIVADO' || x.acao === 'DESCARTAR') return 'jaArquivado';   // descarte confirmado: saiu da pasta para a quarentena
+  if (x.acao === 'JA_ARQUIVADO') return 'jaArquivado';
+  if (x.acao === 'DESCARTAR') return 'descartado';   // descarte confirmado: saiu da pasta para a quarentena
   if (x.acao === 'NAO_IDENTIFICADO') return 'naoIdentificado';
   return 'fica';
 }
@@ -156,11 +163,12 @@ function itemCompacto(x, modoRes, em, historico) {
     ocr: x.ocr ? { confianca: x.ocr.confianca == null ? null : Math.round(x.ocr.confianca), segundos: x.ocr.ms ? Math.round(x.ocr.ms / 1000) : null, erro: x.ocr.erro ? corta(x.ocr.erro, 120) : null } : null,
     dentroDe: x.dentroDe ? corta(path.win32.basename(x.dentroDe), 140) : null,
   };
+  if (x.decididoPor) it.porQuem = corta(x.decididoPor, 80);
   if (acao === 'naoIdentificado' || acao === 'fica') {
     it.motivo = x.motivo || null;
     // o hash e o caminho na pasta: o site manda de volta nos pedidos (abrir, arquivar em…, descartar; arquivador-pedidos.js)
     it.hash = x.hash || null;
-    it.motivoTexto = motivoLegivel(x.motivo);
+    it.motivoTexto = motivoLegivel(x.motivo) + (x.motivo === 'TIPO_XML_NAO_TRATADO' && x.tipo ? ' (' + String(x.tipo).replace(/^XML\s*/i, '') + ')' : '');
     it.sugestao = corta(sugestao(x), 260);
     if (x.destinoSugerido) it.destinoSugerido = corta(destinoCurto(x.destinoSugerido), 300);
   }
@@ -169,10 +177,11 @@ function itemCompacto(x, modoRes, em, historico) {
   return it;
 }
 
-function contagemVazia(chave) { return { chave, porAcao: { arquivou: 0, arquivaria: 0, jaArquivado: 0, naoIdentificado: 0, fica: 0, erro: 0 }, porTipo: {}, porCliente: {}, porMotivo: {}, pastasNovas: [] }; }
+function contagemVazia(chave) { return { chave, porAcao: { arquivou: 0, arquivaria: 0, jaArquivado: 0, naoIdentificado: 0, fica: 0, erro: 0, descartado: 0 }, aMao: 0, porTipo: {}, porCliente: {}, porMotivo: {}, pastasNovas: [] }; }
 /** Soma um item (compacto) na contagem do dia ou do mês. */
 function somar(c, it) {
   c.porAcao[it.acao] = (c.porAcao[it.acao] || 0) + 1;
+  if (it.acao === 'arquivou' && it.porQuem) c.aMao = (c.aMao || 0) + 1;
   if (it.acao === 'arquivou' || it.acao === 'arquivaria') {
     const t = it.tipo || 'OUTROS';
     c.porTipo[t] = (c.porTipo[t] || 0) + 1;
@@ -184,7 +193,25 @@ function somar(c, it) {
 /** A contagem como vai para o banco: os clientes viram a lista dos que mais receberam (e quantos são ao todo). */
 function contagemPublicada(c) {
   const clientes = Object.entries(c.porCliente).map(([codigo, v]) => ({ codigo, nome: v.nome, n: v.n })).sort((a, b) => b.n - a.n || a.codigo.localeCompare(b.codigo));
-  return { chave: c.chave, porAcao: c.porAcao, porTipo: c.porTipo, porMotivo: c.porMotivo, pastasNovas: c.pastasNovas, clientes: clientes.slice(0, MAX_CLIENTES), totalDeClientes: clientes.length };
+  return { chave: c.chave, porAcao: c.porAcao, aMao: c.aMao || 0, porTipo: c.porTipo, porMotivo: c.porMotivo, pastasNovas: c.pastasNovas, clientes: clientes.slice(0, MAX_CLIENTES), totalDeClientes: clientes.length };
+}
+
+/**
+ * O resumo de um mês a partir das contagens de cada dia (resumo-dias.json): as somas por ação, os arquivados à mão, por
+ * tipo e por cliente (todos), as pastas novas e a contagem por ação de cada dia (a visão do período soma estas).
+ */
+function resumoDoMes(mes, porDia, em) {
+  const out = { mes, em, porAcao: {}, aMao: 0, porTipo: {}, porCliente: {}, porMotivo: {}, pastasNovas: [], dias: {} };
+  for (const [dia, c] of Object.entries(porDia || {}).filter(([d]) => d.slice(0, 7) === mes).sort()) {
+    out.dias[dia] = Object.assign({}, c.porAcao, { aMao: c.aMao || 0 });
+    for (const [k, n] of Object.entries(c.porAcao || {})) out.porAcao[k] = (out.porAcao[k] || 0) + n;
+    out.aMao += c.aMao || 0;
+    for (const [k, n] of Object.entries(c.porTipo || {})) out.porTipo[k] = (out.porTipo[k] || 0) + n;
+    for (const [k, n] of Object.entries(c.porMotivo || {})) out.porMotivo[k] = (out.porMotivo[k] || 0) + n;
+    for (const [k, v] of Object.entries(c.porCliente || {})) { const a = out.porCliente[k] || (out.porCliente[k] = { nome: v.nome || '', n: 0 }); a.n += v.n; if (!a.nome && v.nome) a.nome = v.nome; }
+    for (const p of c.pastasNovas || []) if (!out.pastasNovas.includes(p) && out.pastasNovas.length < 50) out.pastasNovas.push(p);
+  }
+  return out;
 }
 
 /** Os arquivos da pasta separados pela situação: chegando (ainda mudando), na fila (prontos), sendo lidos, parados (já decididos). */
@@ -285,6 +312,21 @@ function criar(opcoes) {
     dia.tam = dia.partes[dia.partes.length - 1].reduce((s, x) => s + JSON.stringify(x).length, 0);
   }
   carregarDia(st.hoje.chave);
+  // as contagens de cada dia (para o resumo do mês): as que já estão no PC, mais as dos dias que só têm o histórico
+  // (arquivados-AAAA-MM-DD.jsonl), contadas uma vez; o dia de hoje é sempre o st.hoje
+  const arqResumo = path.join(o.controle, 'resumo-dias.json');
+  let porDia = (() => { try { return JSON.parse(fs.readFileSync(arqResumo, 'utf8')); } catch (e) { return {}; } })();
+  const mesesSujos = new Set([st.hoje.chave.slice(0, 7)]);
+  try {
+    for (const f of fs.readdirSync(o.controle)) {
+      const m = /^arquivados-(\d{4}-\d{2}-\d{2})\.jsonl$/.exec(f);
+      if (!m || porDia[m[1]] || m[1] === st.hoje.chave) continue;
+      const c = contagemVazia(m[1]);
+      for (const l of fs.readFileSync(path.join(o.controle, f), 'utf8').split('\n')) { if (!l.trim()) continue; try { somar(c, JSON.parse(l)); } catch (e) { /* linha ruim */ } }
+      porDia[m[1]] = c; mesesSujos.add(m[1].slice(0, 7));
+    }
+  } catch (e) { /* sem histórico no PC */ }
+  let resumoDoHoje = '';
 
   let ultimaGravacao = 0, timer = null, avisouErro = false, parado = false, limpar = true;
   const assinatura = () => JSON.stringify([st.pasta && [st.pasta.naPasta, st.pasta.chegando, st.pasta.naFila, st.pasta.sendoLidos, st.pasta.lista.map(x => x.rel + x.situacao)], st.passada]);
@@ -292,7 +334,7 @@ function criar(opcoes) {
 
   function virarDia(t) {
     const h = hojeLocal(t);
-    if (st.hoje.chave !== h) { st.hoje = contagemVazia(h); carregarDia(h); limpar = true; }
+    if (st.hoje.chave !== h) { porDia[st.hoje.chave] = JSON.parse(JSON.stringify(st.hoje)); mesesSujos.add(st.hoje.chave.slice(0, 7)); st.hoje = contagemVazia(h); carregarDia(h); limpar = true; }
     if (st.mes.chave !== h.slice(0, 7)) st.mes = contagemVazia(h.slice(0, 7));
   }
 
@@ -330,6 +372,14 @@ function criar(opcoes) {
       for (const n of [...dia.sujas]) {
         await ref.collection('dias').doc(dia.chave + '-' + n).set({ dia: dia.chave, parte: n, em: painel.em, itens: dia.partes[n] || [] });
         dia.sujas.delete(n);
+      }
+      // o resumo do mês: o de hoje mudou (ou há meses da volta do histórico do PC)
+      const h = JSON.stringify(st.hoje);
+      if (h !== resumoDoHoje) { porDia[st.hoje.chave] = JSON.parse(h); mesesSujos.add(st.hoje.chave.slice(0, 7)); }
+      if (mesesSujos.size) {
+        try { fs.writeFileSync(arqResumo + '.tmp', JSON.stringify(porDia)); fs.renameSync(arqResumo + '.tmp', arqResumo); } catch (e) { o.log('acompanhamento: não gravei o resumo dos dias:', e.message); }
+        for (const mes of [...mesesSujos]) { await ref.collection('meses').doc(mes).set(resumoDoMes(mes, porDia, painel.em)); mesesSujos.delete(mes); }
+        resumoDoHoje = h;
       }
       avisouErro = false;
     } catch (e) { if (!avisouErro) { o.log('acompanhamento: não publiquei:', e.message); avisouErro = true; } }
@@ -449,4 +499,4 @@ function criar(opcoes) {
   };
 }
 
-module.exports = { criar, MOTIVOS, motivoLegivel, sugestao, evidenciaLegivel, classificarErro, acaoDoItem, itemCompacto, contagemVazia, somar, contagemPublicada, situacaoDaPasta, ritmo, avancarPassada, alertas, destinoCurto, FREIO_MS };
+module.exports = { criar, MOTIVOS, motivoLegivel, sugestao, evidenciaLegivel, classificarErro, acaoDoItem, itemCompacto, contagemVazia, somar, contagemPublicada, resumoDoMes, situacaoDaPasta, ritmo, avancarPassada, alertas, destinoCurto, FREIO_MS };

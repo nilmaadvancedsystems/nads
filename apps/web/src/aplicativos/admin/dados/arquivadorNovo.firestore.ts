@@ -10,9 +10,10 @@ import { addDoc as addDocBruto, collection, doc, getDoc, getDocs, onSnapshot, qu
 import { guardarPedido } from '../../../comum/modoDesenvolvedor';
 import { bancoDoEntregas } from '../../tarefas/dados/entregas.firestore';
 import { quemPede } from '../../tarefas/dados/fonte';
-import { hojeLocal, type DiaDoArquivador, type DocsDoArquivadorNovo, type RepoArquivadorNovo } from './arquivadorNovo';
+import { hojeLocal, type DiaDoArquivador, type DocsDoArquivadorNovo, type MesCarregado, type RepoArquivadorNovo } from './arquivadorNovo';
 
 const RELER_HOJE_MS = 2 * 60 * 1000;
+const RELER_MES_MS = 5 * 60 * 1000;
 const RELER_CADASTRO_MS = 30 * 60 * 1000;
 const FINAIS: readonly string[] = ['pronto', 'feito', 'erro'];
 const addDoc = guardarPedido(addDocBruto) as typeof addDocBruto;
@@ -30,6 +31,20 @@ export function criarArquivadorNovoFirestore(): RepoArquivadorNovo {
   let cadastro: e.CadastroDoFormulario = { carregado: false, em: '', clientes: [], tipos: [] };
   let cadastroLidoEm = 0;
   const pedidos = new Map<string, e.PedidoDoArquivador>();
+  // os resumos dos meses (robo/arquivadorNovo/meses/{AAAA-MM}; 23/10/2026)
+  const meses = new Map<string, MesCarregado & { lidoEm: number; lendo: boolean }>();
+  async function lerMes(mes: string) {
+    const atual = meses.get(mes);
+    if (!atual || atual.lendo) return;
+    atual.lendo = true;
+    try {
+      const s = await getDoc(doc(db, 'robo', 'arquivadorNovo', 'meses', mes));
+      meses.set(mes, { ...atual, carregado: true, erro: '', resumo: e.lerMesDoArquivador(s.exists() ? s.data() : null), lidoEm: Date.now(), lendo: false });
+    } catch (err) {
+      meses.set(mes, { ...atual, carregado: true, erro: negado(err) ? 'Sem acesso ao resumo do mês.' : 'Não consegui ler o resumo do mês: ' + (err instanceof Error ? err.message : String(err)), lidoEm: Date.now(), lendo: false });
+    }
+    mudou();
+  }
 
   async function lerDia(dia: string) {
     const atual = dias.get(dia);
@@ -74,6 +89,12 @@ export function criarArquivadorNovoFirestore(): RepoArquivadorNovo {
         void lerDia(dia);
       }
       return d;
+    },
+    mes(mes) {
+      let m = meses.get(mes);
+      if (!m) { m = { mes, carregado: false, erro: '', resumo: null, lidoEm: 0, lendo: false }; meses.set(mes, m); void lerMes(mes); }
+      else if (mes === hojeLocal().slice(0, 7) && Date.now() - m.lidoEm > RELER_MES_MS) void lerMes(mes);
+      return m;
     },
     cadastroDoFormulario() {
       if (Date.now() - cadastroLidoEm > RELER_CADASTRO_MS) {
