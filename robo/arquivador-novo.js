@@ -72,7 +72,10 @@ async function atualizarCadastro(opcoes) {
   opcoes = opcoes || {};
   try {
     const db = opcoes.db || require('./firestore-client').getDb('entregas-2e5e2');
-    await CAD.atualizar(db, path.join(opcoes.controle || CONTROLE, 'cadastro.json'));
+    // com prazo (23/10/2026: o banco parou de responder e o ciclo ficou esperando): sem resposta, fica o cache
+    let t;
+    await Promise.race([CAD.atualizar(db, path.join(opcoes.controle || CONTROLE, 'cadastro.json')),
+      new Promise((_, rej) => { t = setTimeout(() => rej(new Error('o banco não respondeu em 45 s')), opcoes.prazoMs || 45000); if (t.unref) t.unref(); })]).finally(() => clearTimeout(t));
     return true;
   } catch (e) { if (opcoes.log) opcoes.log('cadastro: não li o banco (' + e.message + '); fica o cache/planilha'); return false; }
 }

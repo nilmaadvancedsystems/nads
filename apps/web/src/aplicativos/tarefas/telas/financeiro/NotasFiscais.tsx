@@ -1,5 +1,5 @@
 // Financeiro › Notas fiscais (15/10/2026: "vamos criar um emissor de notas fiscais para o financeiro"): no topo o estado do
-// emissor (o robô, o ambiente e o que falta configurar), a barra (busca, filtro e Nova nota) e a lista das notas, a mais
+// emissor (o robô, o ambiente e o que falta configurar), a barra (busca, período, filtro e Nova nota) e a lista das notas, a mais
 // nova primeiro. Clicar na linha abre a nota; "Nova nota" abre a janela de criar.
 import { formatos, nfse } from '@nads/core';
 import { Alerta, Icone, Segmentado, useCarregando, Vazio } from '@nads/ui';
@@ -55,6 +55,7 @@ export function NotasFiscais() {
           <input type="text" autoFocus placeholder="Buscar nota" aria-label="Buscar nota (nome, CPF ou CNPJ, descrição, número)" value={vm.busca}
             onChange={e => vm.setBusca(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') vm.setBusca(''); }} />
         </label>
+        <Segmentado valor={vm.periodo} opcoes={vm.periodos} onMudar={vm.setPeriodo} />
         <Segmentado valor={vm.filtro} opcoes={FILTROS_DE_NOTAS} onMudar={vm.setFiltro} />
         <span className="tarefas-barra-espaco" />
         <button type="button" className="btn btn-outline" onClick={() => vm.setImportando(true)}><Icone nome="upload" />Importar planilha</button>
@@ -62,9 +63,11 @@ export function NotasFiscais() {
       </div>
 
       {!vm.carregando && !vm.linhas.length ? (
-        <Vazio icone="recibo" titulo={vm.total ? 'Nenhuma nota com isso' : 'Nenhuma nota ainda'}>
+        <Vazio icone="recibo" titulo={!vm.total ? 'Nenhuma nota ainda' : vm.noPeriodo ? 'Nenhuma nota com isso' : 'Nenhuma nota neste período'}>
           {/* a saída do vazio (revisão da UI, 18/10/2026) */}
-          {vm.total ? <button type="button" className="btn btn-outline" onClick={() => { vm.setBusca(''); vm.setFiltro('todas'); }}>Limpar a busca e o filtro</button>
+          {vm.total ? (vm.noPeriodo
+            ? <button type="button" className="btn btn-outline" onClick={() => { vm.setBusca(''); vm.setFiltro('todas'); }}>Limpar a busca e o filtro</button>
+            : vm.periodo !== 'este-ano' && <button type="button" className="btn btn-outline" onClick={() => vm.setPeriodo('este-ano')}>Ver as do ano</button>)
             : <button type="button" className="btn btn-primary" onClick={() => vm.setNova(true)}><Icone nome="plus" />Emitir a primeira nota</button>}
         </Vazio>
       ) : (

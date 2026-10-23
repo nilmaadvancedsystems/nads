@@ -4,7 +4,7 @@
 // O que foi importado fica guardado neste navegador (Vitor, 15/10/2026: voltou, está onde parou; comum/guardado.ts).
 import { formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGuardado } from '../../../../comum/guardado';
 import { useContabilDaEmpresa } from '../../../../comum/contabilDaEmpresa';
 import { useCaixaNoBancoDoRazao } from './etapas/caixabancos/useCaixaNoBanco';
@@ -50,6 +50,20 @@ export function useRazaoDaEtapa(chave: string, meses: readonly string[], onImpor
   // o que saiu do caixa e também saiu do banco (o Caixa × bancos, agora dentro do Caixa)
   const noBanco = useCaixaNoBancoDoRazao(empresa?.nome || '', empresa?.codigo ?? null, meses, atual?.razao ?? null);
   const doPeriodo = atual ? t.mesesDoRazao(atual.razao, meses) : [];
+  // a sugestão de conta dos pontos de atenção (Vitor, 23/10/2026): o nome do histórico nas contas do dinâmico
+  // uma vez por histórico (o dinâmico da 450 tem 12.902 contas)
+  const { indice, jaSugeridas } = useMemo(() => ({
+    indice: t.indiceDeContas(contabil.dinamico?.d.linhas || []), jaSugeridas: new Map<string, { sugestao: string; sugestoes: string }>(),
+  }), [contabil.dinamico]);
+  const sugerir = (l: t.LancamentoDoRazao) => {
+    const ja = jaSugeridas.get(l.historico);
+    if (ja) return ja;
+    const sg = t.sugestaoDeConta(l.historico, indice);
+    // o título da célula: todas as achadas, uma por linha
+    const r = { sugestao: t.rotuloDaSugestao(sg), sugestoes: sg.contas.map(x => x.codigo + ' — ' + x.nome).join('\n') + (sg.total > sg.contas.length ? '\n…' : '') };
+    jaSugeridas.set(l.historico, r);
+    return r;
+  };
   const comCreditor = doPeriodo.filter(t.precisaDoCreditor).map(m => m.mes);
 
   async function importar(f: File | null) {
@@ -118,7 +132,8 @@ export function useRazaoDaEtapa(chave: string, meses: readonly string[], onImpor
       resumo: p.tipo === 'caixa-credor'
         ? p.lancamentos.length + (p.lancamentos.length === 1 ? ' dia' : ' dias') + ' · maior saldo ' + t.valorComLado(p.total)
         : p.lancamentos.length + (p.lancamentos.length === 1 ? ' lançamento' : ' lançamentos') + ' · ' + formatos.reais(p.total),
-      linhas: p.lancamentos.map(linha),
+      // o caixa credor é o saldo do dia: não tem quem sugerir
+      linhas: p.lancamentos.map((l, i) => (p.tipo === 'caixa-credor' ? linha(l, i) : { ...linha(l, i), ...sugerir(l) })),
     })),
     qtdAtencoes: atencoes.reduce((n, p) => n + p.lancamentos.length, 0),
     /** o razão × o período: só avisa (a etapa trabalha só nos meses do período) */

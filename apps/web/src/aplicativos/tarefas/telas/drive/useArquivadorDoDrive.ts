@@ -114,13 +114,44 @@ export function useArquivadorDoDrive() {
     ],
   } : null;
 
+  // o arquivador NOVO (23/10/2026: "isso tem que puxar dados do robô"): o modo, o que está fazendo agora, o último sinal,
+  // os números de hoje, os pendentes e o último arquivado. Ele é contínuo: não há "próxima organização às 9h"
+  const n = e.novo;
+  const ha = (iso: string) => { const min = Math.max(0, Math.round((agora - (Date.parse(iso) || agora)) / 60000)); return min < 1 ? 'agora há pouco' : 'há ' + (min < 60 ? min + ' min' : Math.floor(min / 60) + ' h' + (min % 60 ? ' ' + (min % 60) + ' min' : '')); };
+  const novo = n ? (() => {
+    const vivo = agora - (Date.parse(n.em) || 0) < 15 * 60000;
+    const lendo = n.pasta?.sendoLidos ?? 0, fila = n.pasta?.naFila ?? 0;
+    const estadoAgora = !vivo ? { texto: 'Sem sinal do arquivador', tom: 'erro' as const, icone: 'alert' as const }
+      : n.situacao === 'sem-drive' ? { texto: 'Esperando o Google Drive', tom: 'aviso' as const, icone: 'clock' as const }
+        : n.situacao === 'esperando' ? { texto: 'Esperando: ' + (n.esperando || 'outra execução terminar'), tom: 'aviso' as const, icone: 'clock' as const }
+          : n.lento ? { texto: 'Google Drive lento: indo devagar', tom: 'aviso' as const, icone: 'clock' as const }
+          : lendo ? { texto: 'Arquivando ' + lendo.toLocaleString('pt-BR') + (lendo === 1 ? ' arquivo' : ' arquivos'), tom: 'ok' as const, icone: 'girar' as const }
+            : fila ? { texto: fila.toLocaleString('pt-BR') + (fila === 1 ? ' arquivo na fila' : ' arquivos na fila'), tom: 'ok' as const, icone: 'girar' as const }
+              : { texto: 'Vigiando a pasta', tom: 'ok' as const, icone: 'checkCircle' as const };
+    const u = n.ultimo;
+    return {
+      modo: n.emProducao ? 'Produção' : n.modo === 'desligado' ? 'Desligado' : 'Simulação',
+      agora: estadoAgora,
+      nota: n.emProducao ? 'Arquiva assim que o arquivo chega na pasta Claudio Secretario.' : n.modo === 'desligado' ? 'O arquivador novo não está olhando a pasta.' : 'Em simulação: só registra o que faria.',
+      sinal: 'Último sinal ' + ha(n.em),
+      numeros: [
+        { valor: n.hoje.arquivados, rotulo: n.hoje.arquivados === 1 ? 'arquivado hoje' : 'arquivados hoje', aviso: false },
+        { valor: n.hoje.clientes, rotulo: n.hoje.clientes === 1 ? 'cliente recebeu' : 'clientes receberam', aviso: false },
+        { valor: n.hoje.jaArquivado, rotulo: 'já estavam na pasta', aviso: false },
+        { valor: n.paraResolver, rotulo: 'para resolver', aviso: n.paraResolver > 0 },
+      ],
+      ultimo: u ? ha(u.em).replace(/^h/, 'H').replace(/^agora/, 'Agora') + ': ' + (u.nomeFinal || u.tipo || 'arquivo') + ' → ' + (u.cliente ? u.cliente + (u.clienteNome ? ' · ' + u.clienteNome : '') : 'cliente') : '',
+    };
+  })() : null;
+
   return {
     exemplos: repo.exemplos,
     visivel: !e.semPermissao,
+    novo,
     /** a área do arquivador no site do admin (só o admin): o que foi arquivado e por quê, o que ficou para resolver, os erros */
     linkDoAdmin: admin ? URL_DO_ADMIN + caminhoDoAdmin('arquivador') : '',
     // o que está HOJE em NÃO IDENTIFICADOS (a mesma conta da aba Para resolver do admin), não o histórico das rodadas
-    paraResolver: e.paraResolver ? { n: e.paraResolver.agora, texto: e.paraResolver.agora ? e.paraResolver.agora.toLocaleString('pt-BR') + (e.paraResolver.agora === 1 ? ' arquivo para resolver' : ' arquivos para resolver') : 'Nada para resolver', aviso: e.paraResolver.agora > 0 } : null,
+    paraResolver: n ? { n: n.paraResolver, texto: n.paraResolver ? n.paraResolver.toLocaleString('pt-BR') + (n.paraResolver === 1 ? ' arquivo para resolver' : ' arquivos para resolver') : 'Nada para resolver', aviso: n.paraResolver > 0 } : e.paraResolver ? { n: e.paraResolver.agora, texto: e.paraResolver.agora ? e.paraResolver.agora.toLocaleString('pt-BR') + (e.paraResolver.agora === 1 ? ' arquivo para resolver' : ' arquivos para resolver') : 'Nada para resolver', aviso: e.paraResolver.agora > 0 } : null,
     ligado,
     pc: ligado
       ? 'PC do arquivador ligado' + (e.situacao === 'rodando' ? ' · organizando agora' : e.situacao === 'aguardando' ? ' · esperando para começar' : '')
