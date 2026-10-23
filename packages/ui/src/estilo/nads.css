@@ -4322,9 +4322,11 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 /* Fiscal › Rateio de frete (22/10/2026) */
 .rateio-frete{display:flex;flex-direction:column;gap:12px;}
 .rateio-frete > .card{margin:0;}
-.rateio-frete-empresa{min-width:320px;max-width:480px;flex:1 1 320px;}
+.rateio-frete .busca-curta.rateio-frete-empresa{width:320px;}
+.btn.rateio-frete-empresa{max-width:360px;}
+.rateio-frete-empresa-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .rateio-frete-busca{position:relative;}
-.rateio-frete-busca .nf-achados{position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:30;box-shadow:var(--shadow-lg);background:var(--surface);}
+.rateio-frete-busca .nf-achados{position:absolute;left:0;width:420px;top:100%;margin-top:4px;z-index:30;box-shadow:var(--shadow-lg);background:var(--surface);}
 .rateio-frete-notas tbody tr,.rateio-frete-abre{cursor:pointer;}
 .rateio-frete-valores{display:flex;flex-wrap:wrap;align-items:center;gap:8px 24px;margin-bottom:12px;}
 .rateio-frete-valores label{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-13);color:var(--ink-muted);}
@@ -4753,6 +4755,16 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .fin-resultado-ano th.num,.fin-resultado-ano td.num{width:92px;}
 .fin-resultado tbody tr:not(.fin-resultado-grupo):hover td{background:var(--hover-bg);}
 .fin-resultado-antes{color:var(--ink-muted);}
+/* a janela flutuante do Resultado (aberta pelo Painel): larga, com a tabela rolando por dentro */
+.modal.registro-novo.fin-resultado-janela{max-width:1240px;width:calc(100vw - 48px);max-height:calc(100vh - 48px);}
+.fin-resultado-corpo{overflow:auto;display:flex;flex-direction:column;gap:12px;}
+.fin-resultado-corpo .tarefas-barra-topo{margin:0;}
+.fin-resultado-col{display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.2;}
+.fin-resultado-col small{font-size:10px;font-weight:400;color:var(--ink-faint,var(--ink-muted));text-transform:none;}
+.fin-resultado th.fin-resultado-atual,.fin-resultado td.fin-resultado-atual{background:color-mix(in srgb,var(--ink) 4%,transparent);font-weight:600;}
+.fin-resultado .fin-resultado-inicio{border-left:1px solid var(--border);}
+.fin-peso{color:var(--ink-muted);font-size:var(--fs-12,12px);}
+.fin-resultado-wrap thead th{position:sticky;top:0;z-index:1;background:var(--surface-2);}
 .fin-resultado-cabeca{display:flex;align-items:center;gap:10px;}
 .fin-resultado-tudo{border:none;background:none;padding:0;color:var(--ink-muted);text-decoration:underline;font:inherit;font-size:var(--fs-12,12px);cursor:pointer;text-transform:none;}
 .fin-resultado-tudo:hover{text-decoration:underline;}
@@ -5051,20 +5063,20 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .fat-detalhe-mes{display:flex;flex-direction:column;gap:8px;}
 .fat-detalhe-mes>p{margin:0;font-size:var(--fs-13,13px);}
 .fat-detalhe-sub{font-weight:600;font-size:var(--fs-13,13px);margin:6px 0 0;}
+.fat-detalhe-despesas{display:flex;flex-direction:column;gap:8px;}
+.fat-detalhe-despesas>p{margin:0;font-size:var(--fs-13,13px);}
+.fat-destaques{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;}
+.fat-destaque{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius,8px);background:var(--surface-2);font-size:var(--fs-12,12px);}
+.fat-destaque b{font-size:var(--fs-14,14px);}
 @media (max-width:900px){.fat-detalhe-corpo{grid-template-columns:1fr;}}
 /* Fiscal › Simples: a calculadora do Simples Nacional (22/10/2026) */
-.simples-calc{display:flex;flex-direction:column;gap:12px;}
+.simples-calc{display:flex;flex-direction:column;gap:12px;max-width:1040px;}
 .simples-calc-empresa{min-width:320px;max-width:480px;flex:1 1 320px;}
 .simples-calc-busca{position:relative;}
 .simples-calc-busca .nf-achados{position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:30;box-shadow:var(--shadow-lg);background:var(--surface);}
-.simples-calc-anexo{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;}
-.simples-calc-colunas{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start;}
-.simples-calc-colunas .table-wrap{overflow:auto;max-height:none;}
-.simples-calc-resultado{display:flex;flex-direction:column;gap:12px;min-width:0;}
-.simples-calc-colunas tbody th{text-align:left;font-weight:600;background:var(--surface-2,transparent);}
-.simples-calc-colunas tfoot td{border-top:2px solid var(--border);}
-.simples-calc-detalhe{font-size:12px;}
-@media (max-width:1100px){.simples-calc-colunas{grid-template-columns:minmax(0,1fr);}}
+.simples-calc-tabela{max-height:none;}
+.simples-calc-faixas{border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.simples-calc-faixas > .imp-faixa:first-child{border-top:none;}
 /* Cadastro › a empresa › Fiscal (Heverton, 21/10/2026): os documentos e as planilhas, os parcelamentos */
 .fis-docs-acoes{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .fis-docs-acoes .btn svg{width:16px;height:16px;}

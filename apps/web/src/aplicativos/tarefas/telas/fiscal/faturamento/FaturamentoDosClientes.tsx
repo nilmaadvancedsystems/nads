@@ -72,7 +72,7 @@ export function FaturamentoDosClientes() {
           </table>
         </div>
       )}
-      {vm.aberto && <JanelaDoFaturamento cliente={vm.aberto} competencias={vm.competenciasDoPeriodo} rotuloDoPeriodo={vm.rotuloDoPeriodo} fechar={vm.fechar} />}
+      {vm.aberto && <JanelaDoFaturamento cliente={vm.aberto} competencias={vm.competenciasDoPeriodo} rotuloDoPeriodo={vm.rotuloDoPeriodo} anual={vm.periodo === 'ano'} fechar={vm.fechar} />}
     </section>
   );
 }

@@ -1,15 +1,16 @@
-// Fiscal › Simples (Heverton, 22/10/2026: a planilha do Simples Nacional do Fiscal): a empresa, a competência e o anexo em
-// cima; os números (RBT12, a receita do mês segregada e a folha do Fator R), cada um editável e com a fonte; e as contas da
-// planilha: a alíquota efetiva, o percentual e o valor de cada tributo por parcela da receita, e o Fator R. Só as peças do
-// catálogo (busca de cliente com lista, SeletorMes, Segmentado, Stat, Tabela padrão, Valor editável, selo suave, Alerta, Vazio).
-import { Alerta, BotaoIcone, Esqueleto, Icone, Segmentado, SeletorMes, Stat, useCarregando, Vazio } from '@nads/ui';
+// Fiscal › Simples (Heverton, 22/10/2026: a planilha do Simples Nacional do Fiscal; enxugada no mesmo dia: "muita
+// informação… os botões se repetem e tá tudo fora dos componentes"). A barra (empresa, mês e o anexo como filtro), os
+// números grandes, uma tabela com a conta (cada valor editável, a fonte num selo) e, recolhidos, por tributo e o Fator R.
+// Só as peças do catálogo: busca de cliente com lista, SeletorMes, Filtro da barra (menu), Alerta, Stat, Tabela padrão,
+// Valor editável, selo suave, Botão de ícone, Faixas que abrem, Vazio.
+import { Alerta, BotaoIcone, Esqueleto, Icone, MenuSuspenso, SeletorMes, Stat, useCarregando, Vazio } from '@nads/ui';
 import { tarefas as t } from '@nads/core';
+import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import { ValorEditavel } from '../../financeiro/partes/ValorEditavel';
-import { useCalculadoraDoSimples, type NumeroDoSimples, type VmCalculadoraDoSimples } from './useCalculadoraDoSimples';
+import { SEM_O_QUE, useCalculadoraDoSimples, type NumeroDoSimples, type VmCalculadoraDoSimples } from './useCalculadoraDoSimples';
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const pct = (n: number | null) => (n == null ? '—' : n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%');
-const TOM_DA_FONTE: Record<string, string> = { SIEG: 'badge-ok', 'Folha do DP': 'badge-ok', 'FGTS Digital': 'badge-ok', Digitado: 'badge-warn' };
 
 export function CalculadoraDoSimples() {
   const vm = useCalculadoraDoSimples();
@@ -19,13 +20,16 @@ export function CalculadoraDoSimples() {
       <div className="tarefas-barra-topo">
         <EscolherEmpresa vm={vm} />
         <SeletorMes valor={vm.competencia} onMudar={vm.setCompetencia} rotulo="Competência" />
-        <span className="tarefas-barra-espaco" />
-        {vm.temDigitado && <button type="button" className="btn btn-outline" onClick={vm.limpar}><Icone nome="girar" width={16} height={16} />Voltar aos números do nads</button>}
+        {vm.empresa && vm.anexosUsados.map(a => (
+          <MenuSuspenso key={a.tipo} rotulo={a.tipo + ': Anexo ' + a.anexo} titulo={'Anexo · ' + a.tipo} className="btn btn-outline ativo"
+            itens={(a.tipo === 'Mercadorias' ? vm.anexosDaMercadoria : vm.anexosDoServico).map(o => ({
+              rotulo: o.rotulo, marcado: o.valor === a.anexo,
+              onClick: () => (a.tipo === 'Mercadorias' ? vm.setAnexoDaMercadoria(o.valor) : vm.setAnexoDoServico(o.valor)),
+            }))} />
+        ))}
       </div>
-      {vm.exemplos && <p className="hint drive-aviso">Dados de exemplo: as saídas, os XMLs, a folha e as guias são inventados.</p>}
-      {!vm.empresa ? (
-        <Vazio icone="recibo" titulo="Escolha a empresa" texto="A calculadora vem preenchida com o que o nads tem: o RBT12 pelas saídas do SIEG, a receita do mês pelos XMLs e a folha do Fator R pelo DP. Cada número pode ser trocado à mão." />
-      ) : vm.carregando ? <Esqueleto linhas={8} /> : <Calculo vm={vm} />}
+      {!vm.empresa ? <Vazio icone="recibo" titulo="Escolha a empresa" />
+        : vm.carregando ? <Esqueleto linhas={8} /> : <Calculo vm={vm} />}
     </section>
   );
 }
@@ -35,7 +39,7 @@ function EscolherEmpresa({ vm }: { vm: VmCalculadoraDoSimples }) {
     return (
       <div className="registro-busca simples-calc-empresa">
         <Icone nome="briefcase" width={16} height={16} />
-        <span className="nf-escolhido"><b>{vm.empresa.codigo}</b> · {vm.empresa.nome}{vm.regime && <span className="fraco"> · {vm.regime}</span>}</span>
+        <span className="nf-escolhido"><b>{vm.empresa.codigo}</b> · {vm.empresa.nome}</span>
         <BotaoIcone icone="x" pequeno titulo="Trocar a empresa" onClick={vm.trocarEmpresa} />
       </div>
     );
@@ -56,7 +60,7 @@ function EscolherEmpresa({ vm }: { vm: VmCalculadoraDoSimples }) {
           }} />
       </div>
       {aberta && (
-        <ul className="nf-achados" id="simples-empresas" role="listbox" aria-label="Empresas encontradas">
+        <ul className="nf-achados" id="simples-empresas" role="listbox" aria-label="Empresas encontradas (as do Simples primeiro)">
           {vm.achadas.map((e, i) => (
             <li key={e.codigo + e.nome}>
               <button type="button" className={'popover-item' + (i === vm.ativo ? ' nf-ativo' : '')} role="option" aria-selected={i === vm.ativo} tabIndex={-1}
@@ -73,95 +77,83 @@ function EscolherEmpresa({ vm }: { vm: VmCalculadoraDoSimples }) {
   );
 }
 
-function Calculo({ vm }: { vm: VmCalculadoraDoSimples }) {
-  const c = vm.calculo;
-  const efetiva = (a: string) => c.percentuais.find(p => p.anexo === a);
-  const tributos = t.sieg.TRIBUTOS_DO_SIMPLES.filter(tr => c.percentuais.some(p => p.tributos.some(x => x.tributo === tr)));
-  const pctDe = (a: string, tr: string) => efetiva(a)?.tributos.find(x => x.tributo === tr)?.pct ?? null;
+/** a fonte: o selo pequeno (o detalhe no título) */
+function Fonte({ n }: { n: NumeroDoSimples }) {
+  const tom = !n.fonte ? 'badge-neutral' : n.digitado ? 'badge-warn' : 'badge-ok';
+  return <span className={'badge badge-suave ' + tom} title={n.detalhe}>{n.fonte || 'Sem dado'}</span>;
+}
+
+/** a linha de um número: o nome, o valor editável, a fonte e o ↺ (só quando foi digitado) */
+function Linha({ vm, n, aliquota, das }: { vm: VmCalculadoraDoSimples; n: NumeroDoSimples; aliquota?: number | null; das?: number | null }) {
   return (
-    <>
-      <div className="simples-calc-anexo">
-        <span className="hint">Mercadorias</span>
-        <Segmentado valor={vm.anexoDaMercadoria} opcoes={[...vm.anexosDaMercadoria]} onMudar={vm.setAnexoDaMercadoria} />
-        <span className="hint">Serviços</span>
-        <Segmentado valor={vm.anexoDoServico} opcoes={[...vm.anexosDoServico]} onMudar={vm.setAnexoDoServico} />
-        <span className="hint">{vm.motivoDoServico}</span>
-        {!vm.anexoDoServicoAutomatico && <button type="button" className="btn btn-ghost" onClick={vm.voltarAnexoAutomatico}>Anexo do serviço pelo nads</button>}
-      </div>
-      {vm.aviso && <Alerta naLinha titulo={vm.aviso.nivel === 'passou' ? 'Limite passado' : 'Perto do limite'} texto={vm.aviso.texto} />}
-      <div className="stat-grid">
-        <Stat rotulo="DAS do mês" valor={'R$ ' + brl(c.total)} />
-        <Stat rotulo="Receita do mês" valor={'R$ ' + brl(c.receita)} />
-        <Stat rotulo="Alíquota sobre a receita" valor={pct(c.receita > 0 ? Math.round((c.total / c.receita) * 10000) / 100 : null)} />
-        <Stat rotulo={'Fator R (' + vm.rotuloDosMeses + ')'} valor={vm.temFolha ? pct(vm.fator.fator) + ' · Anexo ' + vm.fator.anexo : 'sem a folha'} />
-      </div>
-      <div className="simples-calc-colunas">
-        <div className="table-wrap">
-          <table className="table-compact">
-            <thead><tr><th>Os números</th><th className="num">Valor (R$)</th><th>De onde veio</th><th aria-label="Voltar" /></tr></thead>
-            <tbody>
-              <LinhaDoNumero vm={vm} n={vm.rbt12} />
-              <tr><th colSpan={4}>Mercadorias em {t.rotuloCompetencia(vm.competencia)} (Anexo {vm.anexoDaMercadoria})</th></tr>
-              {vm.mercadorias.map(n => <LinhaDoNumero key={n.campo} vm={vm} n={n} />)}
-              <tr><th colSpan={4}>Serviços em {t.rotuloCompetencia(vm.competencia)} (Anexo {vm.anexoDoServico})</th></tr>
-              {vm.servicos.map(n => <LinhaDoNumero key={n.campo} vm={vm} n={n} />)}
-              <tr><th colSpan={4}>Folha do Fator R ({vm.rotuloDosMeses})</th></tr>
-              {vm.folha.map(n => <LinhaDoNumero key={n.campo} vm={vm} n={n} />)}
-              <tr><td><b>Folha dos 12 meses</b></td><td className="num"><b>{brl(vm.fator.folha)}</b></td><td colSpan={2} className="fraco">{!vm.temFolha ? 'sem a folha (ou sem o RBT12), o Fator R não sai' : 'Fator R ' + pct(vm.fator.fator) + (vm.fator.anexo === 'III' ? ': 28% ou mais, Anexo III' : ': abaixo de 28%, Anexo V')}</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div className="simples-calc-resultado">
-          <div className="table-wrap">
-            <table className="table-compact">
-              <thead><tr><th>Percentuais efetivos</th>{c.percentuais.map(p => <th key={p.anexo} className="num" title={t.sieg.ANEXOS[p.anexo].nome}>Anexo {p.anexo}</th>)}</tr></thead>
-              <tbody>
-                {tributos.map(tr => <tr key={tr}><td>{t.sieg.ROTULO_DO_TRIBUTO[tr]}</td>{c.percentuais.map(p => <td key={p.anexo} className="num">{pctDe(p.anexo, tr) == null ? <span className="fraco">—</span> : pct(pctDe(p.anexo, tr))}</td>)}</tr>)}
-              </tbody>
-              <tfoot>
-                <tr><td><b>Alíquota efetiva</b></td>{c.percentuais.map(p => <td key={p.anexo} className="num"><b>{pct(p.efetiva)}</b></td>)}</tr>
-                <tr><td className="fraco">Faixa · nominal · deduzir</td>{c.percentuais.map(p => <td key={p.anexo} className="num fraco">{p.faixa}ª · {pct(p.nominal)} · {brl(p.deduzir)}</td>)}</tr>
-              </tfoot>
-            </table>
-          </div>
-          {c.parcelas.length === 0 ? <Vazio compacto icone="recibo" titulo="Sem receita no mês" texto="Digite a receita do mês ao lado para calcular o DAS." /> : (
-            <div className="table-wrap">
-              <table className="table-compact">
-                <thead><tr><th>O DAS (R$)</th>{c.parcelas.map(x => <th key={x.id} className="num" title={x.rotulo + ' · Anexo ' + x.anexo}>{x.rotulo.split(' (')[0]}</th>)}<th className="num">Total</th></tr></thead>
-                <tbody>
-                  {c.porTributo.map(tr => (
-                    <tr key={tr.tributo}>
-                      <td>{t.sieg.ROTULO_DO_TRIBUTO[tr.tributo]}</td>
-                      {c.parcelas.map(x => <td key={x.id} className="num">{x.valores[tr.tributo] == null ? <span className="fraco" title="Esta parcela não paga este tributo no DAS">—</span> : brl(x.valores[tr.tributo]!)}</td>)}
-                      <td className="num"><b>{brl(tr.valor)}</b></td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr><td><b>DAS</b></td>{c.parcelas.map(x => <td key={x.id} className="num"><b>{brl(x.das)}</b></td>)}<td className="num"><b>{brl(c.total)}</b></td></tr>
-                  <tr><td className="fraco">Receita · alíquota</td>{c.parcelas.map(x => <td key={x.id} className="num fraco">{brl(x.valor)} · {pct(x.aplicada)}</td>)}<td className="num fraco">{brl(c.receita)}</td></tr>
-                </tfoot>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-      <p className="hint">
-        As contas da planilha do Fiscal: a alíquota efetiva pelo RBT12 e pela faixa, arredondada como no Excel, e o percentual de cada tributo pela repartição do anexo.
-        A mercadoria com ICMS-ST não paga o ICMS, a monofásica não paga o PIS/Cofins e o serviço com o ISS retido não paga o ISS{c.deduzido > 0 ? ' (aqui, R$ ' + brl(c.deduzido) + ' a menos)' : ''}.
-        {c.percentuais.some(p => p.issNoTeto) && ' O ISS passou de 5% nesta faixa: fica em 5% e o excesso vai para os tributos federais.'} É prévia para conferir: o que vale é o PGDAS-D.
-      </p>
-    </>
+    <tr>
+      <td>{n.rotulo}{SEM_O_QUE[n.campo] && <span className="fraco"> · {SEM_O_QUE[n.campo]}</span>}</td>
+      <td className="num"><ValorEditavel zeroVale={!!n.fonte} valor={n.valor} rotulo={n.rotulo} aoSalvar={texto => vm.digitar(n.campo, texto)} /></td>
+      <td><Fonte n={n} /></td>
+      <td className="num">{aliquota == null ? '' : pct(aliquota)}</td>
+      <td className="num">{das == null ? '' : brl(das)}</td>
+      <td>{n.digitado && <BotaoIcone icone="girar" pequeno titulo="Voltar ao número do nads" onClick={() => vm.voltar(n.campo)} />}</td>
+    </tr>
   );
 }
 
-function LinhaDoNumero({ vm, n }: { vm: VmCalculadoraDoSimples; n: NumeroDoSimples }) {
+function Calculo({ vm }: { vm: VmCalculadoraDoSimples }) {
+  const c = vm.calculo;
+  const linhas = [...(vm.temMercadoria || !vm.temServico ? vm.mercadorias : []), ...(vm.temServico ? vm.servicos : [])];
+  const daParcela = (campo: string) => c.parcelas.find(p => p.id === campo);
+  const faltaMes = vm.rbt12Meses != null && vm.rbt12Meses < 12;
   return (
-    <tr>
-      <td>{n.rotulo}</td>
-      <td className="num"><ValorEditavel zeroVale={!!n.fonte} valor={n.valor} rotulo={n.rotulo} aoSalvar={texto => vm.digitar(n.campo, texto)} /></td>
-      <td title={n.detalhe}>{n.fonte ? <span className={'badge badge-suave ' + (TOM_DA_FONTE[n.fonte] || 'badge-neutral')}>{n.fonte}</span> : <span className="badge badge-suave badge-neutral">Sem dado</span>} <span className="fraco simples-calc-detalhe">{n.detalhe}</span></td>
-      <td>{n.digitado && <BotaoIcone icone="girar" pequeno titulo="Voltar ao número do nads" onClick={() => vm.voltar(n.campo)} />}</td>
-    </tr>
+    <>
+      {vm.foraDoSimples && <Alerta naLinha titulo={'Empresa do ' + vm.regime} texto="Pelo cadastro ela não é do Simples: a conta é só simulação." />}
+      {!vm.rbt12.valor ? <Alerta naLinha titulo="Falta o RBT12" texto="Digite o RBT12 do PGDAS na tabela." />
+        : faltaMes && <Alerta naLinha titulo={'RBT12 com ' + vm.rbt12Meses + ' de 12 meses'} texto="Faltam meses no SIEG: confira o RBT12 com o PGDAS." />}
+      {vm.aviso && <Alerta naLinha titulo={vm.aviso.nivel === 'passou' ? 'Limite passado' : 'Perto do limite'} texto={vm.aviso.texto} />}
+
+      <div className="stat-grid">
+        <Stat rotulo={'DAS de ' + t.rotuloCompetencia(vm.competencia)} valor={'R$ ' + brl(c.total)} />
+        {vm.anexosUsados.map(a => <Stat key={a.tipo} rotulo={'Alíquota · Anexo ' + a.anexo + ' (' + a.p.faixa + 'ª faixa)'} valor={pct(a.p.efetiva)} />)}
+      </div>
+
+      <div className="table-wrap simples-calc-tabela">
+        <table className="table-compact">
+          <thead><tr><th /><th className="num">Valor (R$)</th><th>Fonte</th><th className="num">Alíquota</th><th className="num">DAS (R$)</th><th aria-label="Voltar" /></tr></thead>
+          <tbody>
+            <Linha vm={vm} n={{ ...vm.rbt12, rotulo: 'RBT12 (' + vm.rotuloDosMeses + ')' }} />
+            {linhas.map(n => { const p = daParcela(n.campo); return <Linha key={n.campo} vm={vm} n={n} aliquota={p?.aplicada ?? null} das={p?.das ?? null} />; })}
+          </tbody>
+          <tfoot><tr><td><b>Total do mês</b></td><td className="num"><b>{brl(c.receita)}</b></td><td /><td /><td className="num"><b>{brl(c.total)}</b></td><td /></tr></tfoot>
+        </table>
+      </div>
+
+      <div className="simples-calc-faixas">
+        <FaixaQueAbre titulo="Por tributo" qtd={c.porTributo.length}>
+          <div className="table-wrap">
+            <table className="table-compact">
+              <thead><tr><th>Tributo</th>{c.percentuais.map(p => <th key={p.anexo} className="num">Anexo {p.anexo}</th>)}<th className="num">Valor (R$)</th></tr></thead>
+              <tbody>
+                {c.porTributo.map(tr => (
+                  <tr key={tr.tributo}>
+                    <td>{t.sieg.ROTULO_DO_TRIBUTO[tr.tributo]}</td>
+                    {c.percentuais.map(p => <td key={p.anexo} className="num">{pct(p.tributos.find(y => y.tributo === tr.tributo)?.pct ?? null)}</td>)}
+                    <td className="num">{brl(tr.valor)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </FaixaQueAbre>
+        {vm.mostraFatorR && (
+          <FaixaQueAbre titulo={'Fator R · ' + (vm.temFolha ? pct(vm.fator.fator) + ' (Anexo ' + vm.fator.anexo + ')' : 'sem a folha')} qtd={vm.folha.filter(x => x.fonte).length}>
+            <div className="table-wrap">
+              <table className="table-compact">
+                <thead><tr><th>Folha ({vm.rotuloDosMeses})</th><th className="num">Valor (R$)</th><th>Fonte</th><th /><th /><th aria-label="Voltar" /></tr></thead>
+                <tbody>{vm.folha.map(n => <Linha key={n.campo} vm={vm} n={n} />)}</tbody>
+                <tfoot><tr><td><b>Total</b></td><td className="num"><b>{brl(vm.fator.folha)}</b></td><td /><td /><td /><td /></tr></tfoot>
+              </table>
+            </div>
+          </FaixaQueAbre>
+        )}
+      </div>
+    </>
   );
 }

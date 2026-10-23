@@ -125,10 +125,13 @@ export function useArquivadorAdmin() {
       : p.config.emProducao ? { rotulo: 'Produção', tom: 'ok' as Tom, texto: p.config.tiposProducao.includes('todos') ? 'Arquiva de verdade todos os tipos.' : 'Arquiva de verdade: ' + p.config.tiposProducao.join(', ') + '. O resto é simulado.' }
         : { rotulo: 'Simulação', tom: 'aviso' as Tom, texto: 'Só registra o que faria: nada é movido.' };
 
+  const pendentesAgora = p?.pendentesTotal ?? (p?.pendentes ?? []).length;
   // os números grandes (o dia ou o mês)
   const numeros = c ? [
     { id: 'arquivados', rotulo: p?.config?.emProducao ? 'Arquivados' : 'Arquivaria (simulação)', valor: mil(c.porAcao.arquivou + c.porAcao.arquivaria), icone: 'checkCircle' as NomeIcone, tom: 'ok' as Tom, aba: 'arquivados' as AbaDoArquivador },
-    { id: 'resolver', rotulo: 'Para resolver', valor: mil(c.porAcao.naoIdentificado + c.porAcao.fica), icone: 'alert' as NomeIcone, tom: (c.porAcao.naoIdentificado + c.porAcao.fica ? 'aviso' : 'ok') as Tom, aba: 'resolver' as AbaDoArquivador },
+    // os que estão esperando agora, não as decisões do dia (22/10/2026: "como tem 1200 arquivos para decidir" com a pasta vazia:
+    // o robô passa pela pasta várias vezes, e cada passada que não identificava um arquivo contava de novo, mesmo depois de resolvido)
+    { id: 'resolver', rotulo: 'Para resolver agora', valor: mil(pendentesAgora), icone: 'alert' as NomeIcone, tom: (pendentesAgora ? 'aviso' : 'ok') as Tom, aba: 'resolver' as AbaDoArquivador },
     { id: 'ja', rotulo: 'Já estavam arquivados', valor: mil(c.porAcao.jaArquivado), icone: 'copiar' as NomeIcone, tom: 'neutro' as Tom, aba: 'arquivados' as AbaDoArquivador },
     { id: 'pastas', rotulo: 'Pastas novas', valor: mil(c.pastasNovas.length), icone: 'pasta' as NomeIcone, tom: 'neutro' as Tom, aba: 'arquivados' as AbaDoArquivador },
   ] : [];
