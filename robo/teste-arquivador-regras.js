@@ -97,7 +97,8 @@ d = decidir({ nome: 'MITRA.pdf', texto: [COMP_ARREC] });
 igual('comprovante de arrecadação de DARF no Presumido: 05. DARF, COFINS', [d.destinoRelativo, d.nomeFinal], ['358 - MITRA TRANSPORTE E SERVICOS LTDA\\FISCAL\\LUCRO PRESUMIDO\\05. DARF', '04-2025 - DARF COFINS - VALOR R$15869,95 - VENCIMENTO 23-05-2025.pdf']);
 const FGTS = 'CPF/CNPJ do Empregador\n11.536.337\nNome/Razão Social do Empregador\nDFARMA FARMACIA DE MANIPULACAO LTDA\nTag\n11536337 09/2026 MENSAL\n Pagar este documento até\n20/10/2026\nGFD - Guia do FGTS Digital';
 d = decidir({ nome: '0126101366580513-0.pdf', texto: [FGTS] });
-igual('FGTS Digital: SOCIETÁRIO\\IMPOSTOS\\FGTS\\[ANO]\\[MÊS E ANO].pdf (04b)', [d.destinoRelativo, d.nomeFinal], ['421 - D´FARMA FARMACIA DE MANIPULACAO LTDA\\SOCIETÁRIO\\IMPOSTOS\\FGTS\\2026', '09-2026.pdf']);
+// 23/10/2026 (Vitor): o FGTS vai para DEPARTAMENTO PESSOAL\<MM>\FGTS, como o robô do FGTS grava
+igual('FGTS Digital: DEPARTAMENTO PESSOAL\\<MM>\\FGTS\\FGTS MM-AAAA.pdf', [d.destinoRelativo, d.nomeFinal], ['421 - D´FARMA FARMACIA DE MANIPULACAO LTDA\\DEPARTAMENTO PESSOAL\\09\\FGTS', 'FGTS 09-2026.pdf']);
 const COMP = 'SICOOB - SISTEMA DE COOPERATIVAS DE CRÉDITO DO BRASIL\n26/08/2026\nCOMPROVANTE DE\nPAGAMENTO DE BOLETO\nConta:15.062-2\nCliente:LEONARDO MENDES MARQUES\nBeneficiário:\nNome/Razão Social:TC PNEUS LTDA\nCPF/CNPJ:05.201.107/0001-11\nPagador:\nCPF/CNPJ:11.426.314/0001-77\nDatas:\nRealizado:06/02/2026 às 09:19:36\nPagamento:06/02/2026';
 d = decidir({ nome: '022026.pdf', texto: [COMP] });
 igual('comprovante Sicoob ("COMPROVANTE DE\\nPAGAMENTO"): COMPROVANTES\\SICOOB, mês do pagamento', [d.acao, d.destinoRelativo, d.nomeFinal], ['ARQUIVAR', '380 - LEONARDO MENDES MARQUES\\CONTÁBIL\\EXTRATOS\\2026\\02\\COMPROVANTES\\SICOOB', 'Comprovantes 02-2026.pdf']);
@@ -138,7 +139,8 @@ igual('SPED Fiscal pelo registro 0000 (05b 01. SPED FISCAL)', d.destinoRelativo 
 const ofx = '<OFX><BANKACCTFROM><BANKID>0237<ACCTID>33229</BANKACCTFROM><BANKTRANLIST><DTSTART>20260801<DTEND>20260831</BANKTRANLIST></OFX>';
 const cad2 = R.montarCadastro(LINHAS.concat({ codigo: 591, razao: 'ZELO AGROINDUSTRIAS LTDA', doc: '53.636.418/0001-56', regime: 'Simples' }), PASTAS.concat('591 - ZELO'));
 d = R.decidir({ nome: 'x.ofx', rel: 'x.ofx', ofx }, { cadastro: cad2 });
-igual('OFX: conta confirmada no 03 (Bradesco 33229 → 591), sempre Bancários com .ofx', d.destinoRelativo + '\\' + d.nomeFinal, '591 - ZELO\\CONTÁBIL\\EXTRATOS\\2026\\08\\BANCÁRIOS\\BRADESCO\\08-2026.ofx');
+// 23/10/2026 (Vitor: "o código da ZELO mudou para 591"): as contas da ZELO saíram da tabela; sem conta já arquivada, não identifica
+igual('OFX: sem a conta da ZELO na tabela do 03, o OFX sem CNPJ não acha o cliente', [d.acao, d.motivo], ['NAO_IDENTIFICADO', 'CLIENTE_NAO_LOCALIZADO']);
 igual('certificado .pfx: cliente pelo CNPJ do nome, nome original (04b)', decidir({ nome: 'JANIO_06934601000158.pfx', rel: '2026-10\\JANIO_06934601000158.pfx' }).destinoRelativo, '152 - JANIO JOSE DE ALMEIDA\\SOCIETÁRIO\\CERTIFICADO DIGITAL');
 // a raiz pelo ano (Vitor, 23/10/2026): sem a competência nem o ano na pasta de origem, não vai para 2026 por padrão
 d = decidir({ nome: 'JANIO_06934601000158.pfx' });
@@ -226,7 +228,7 @@ igual('cadastro: CPF (planilha) e CNPJ (Entregas) do mesmo cliente valem os dois
 igual('cadastro: código que na planilha era de outra empresa (591 ZELO × AAP) não herda o CNPJ nem o nome', [l591.doc, l591.outrosDocs, l591.outrosNomes], ['65116389000180', [], []]);
 igual('cadastro: a divergência vai para a lista de pendências', j.divergencias.map(x => x.tipo), ['CODIGO_DE_OUTRA_EMPRESA']);
 const cadZ = R.montarCadastro(j.linhas, ['591 - AAP INTERMEDIACOES LTDA', '591 - ZELO AGROINDUSTRIAIS LTDA']);
-igual('tabela do 03 (raiz da ZELO → 591) segue a empresa: hoje é a 602', R.clientesDoDoc('53636418000400', cadZ), [602]);
+igual('ZELO sem exceção nas regras (23/10/2026): a filial que não está no cadastro não vai para a matriz', R.clientesDoDoc('53636418000400', cadZ), []);
 igual('código com duas pastas no Drive: não escolhe', R.decidir({ nome: 'n.xml', rel: 'n.xml', xml: nfe('65116389000180', '99999999000191', '1', '2026-08-05T10:00:00-03:00') }, { cadastro: cadZ }).motivo, 'PASTA_DO_CLIENTE_DUPLICADA');
 const cadZ2 = R.montarCadastro(j.linhas, ['591 - ZELO AGROINDUSTRIAIS LTDA']);
 igual('pasta nova quando o Drive já tem a mesma empresa com outro código: não cria a segunda', R.decidir({ nome: 'n.xml', rel: 'n.xml', xml: nfe('53636418000156', '99999999000191', '1', '2026-08-05T10:00:00-03:00') }, { cadastro: cadZ2 }).motivo, 'PASTA_EXISTE_COM_OUTRO_CODIGO');

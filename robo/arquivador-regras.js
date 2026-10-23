@@ -227,7 +227,8 @@ const DOC_CONFIRMADO = { '42460727615': [62, 'CARLOS LUCAS MENDES'], '3685785869
   // 23/10/2026 (Vitor, pelo coordenador: "Joelflor 422 × 424: siga a regra confirmada (424)"): o CNPJ da JOELFLOR PEREIRA
   // DA ROCHA LTDA (422, inativa no Entregas, sem pasta no Drive) também vai para a 424
   '17683269000112': [424, 'JOELFLOR PEREIRA'] };
-const RAIZ_MESMA_PASTA = { '53636418': [591, 'ZELO AGROINDUSTRI'] };            // ZELO: matriz e filiais na mesma pasta (03)
+// a ZELO (matriz e filiais na mesma pasta) saiu daqui em 23/10/2026 (Vitor: "o código da ZELO mudou para 591"): vale o cadastro
+const RAIZ_MESMA_PASTA = {};
 const APELIDOS = [                                                          // 03: "Apelidos confirmados pelo responsável"
   { re: /\bFITO A\b(?!\s*LIMENTOS)/, codigo: 309, nome: 'FITO ALIMENTOS' },
   // 23/10/2026 (Vitor): "FITO IND…" / "FITO IND. E COM." = 292 (a 294 tem o mesmo nome, inativa); "FITO A…" = 309
@@ -236,8 +237,7 @@ const APELIDOS = [                                                          // 0
   { re: /\bGMM ATIVOS FLORESTAIS\b/, codigo: 356, nome: 'A7 COMERCIO' },
 ];
 const CONTAS_CONFIRMADAS = [                                                // 03: "Contas bancárias confirmadas"
-  { banco: 'BANCO DO BRASIL', conta: '402427', codigo: 591, nome: 'ZELO AGROINDUSTRI' },
-  { banco: 'BRADESCO', conta: '33229', codigo: 591, nome: 'ZELO AGROINDUSTRI' },
+  // as contas da ZELO (BB 402427, Bradesco 33229) saíram em 23/10/2026: vale o cadastro (a conta já arquivada só dela)
   { banco: 'ITAU', conta: '996992', codigo: 356, nome: 'A7 COMERCIO' },
   { banco: 'BNB', conta: '626840', codigo: 356, nome: 'A7 COMERCIO' },
   { banco: 'SANTANDER', conta: '130098175', codigo: 356, nome: 'A7 COMERCIO' },
@@ -850,7 +850,7 @@ function decidir(entrada, ctx) {
   const rel = entrada.rel || nome;
   const ext = (/\.([a-z0-9]+)$/i.exec(nome) || [])[1];
   const e = (ext || '').toLowerCase();
-  const fim = o => finalizar(Object.assign({ evidencias: ev, nomeOriginal: nome, ocr: entrada.ocr || null, anoPista: anoDaPasta(rel) || competenciaDaPasta(rel) }, o), ctx);
+  const fim = o => finalizar(Object.assign({ evidencias: ev, nomeOriginal: nome, ocr: entrada.ocr || null, anoPista: anoDaPasta(rel) || competenciaDaPasta(rel), anoEntrega: anoDaEntrega(entrada) }, o), ctx);
   if (VIDEO_AUDIO.test(nome)) return { acao: 'IGNORAR', motivo: 'VIDEO_OU_AUDIO', confianca: 1, evidencias: ['Dicionário §1: vídeo/áudio fica na origem'] };
   if (entrada.hash && HASH_DESCARTE[entrada.hash]) return { acao: 'DESCARTAR', motivo: 'DESCARTE_CONFIRMADO', confianca: 1, tipo: 'DESCARTE', evidencias: ['descarte confirmado pelo responsável (' + HASH_DESCARTE[entrada.hash] + '): vai para a quarentena, nunca é apagado direto'] };
   if (CONTEINER.test(nome)) return { acao: 'CONTEINER', motivo: null, confianca: 1, evidencias: ['Dicionário §1: compactado é extraído, cada arquivo vira item'] };
@@ -1263,7 +1263,8 @@ function decidirPdf(entrada, ctx, ev, porHash) {
     }
     case 'FGTS': {
       if (!campos.competencia) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5 });
-      return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: campos.competencia, caminho: ['SOCIETÁRIO', 'IMPOSTOS', 'FGTS', String(campos.competencia.ano)], nomeFinal: mesAno(campos.competencia) + '.pdf' });
+      // 23/10/2026 (Vitor): <ano>\<cliente>\DEPARTAMENTO PESSOAL\<MM>\FGTS\, como o robô do FGTS grava (era SOCIETÁRIO\IMPOSTOS\FGTS\AAAA)
+      return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: campos.competencia, caminho: ['DEPARTAMENTO PESSOAL', dois(campos.competencia.mes), 'FGTS'], nomeFinal: 'FGTS ' + mesAno(campos.competencia) + '.pdf' });
     }
     case 'DIRF': {
       if (!campos.ano) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5 });
@@ -1302,7 +1303,8 @@ function decidirPdf(entrada, ctx, ev, porHash) {
       return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, caminho: ['SOCIETÁRIO', 'DOCUMENTOS CONSTITUTIVOS'], nomeFinal: nomeOrig });
     case 'CERTIDAO':
       if (!campos.orgao || !campos.data) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: !campos.orgao ? 'EMITENTE_INDETERMINADO' : 'COMPETENCIA_AUSENTE', confianca: 0.5 });
-      return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, caminho: ['SOCIETÁRIO', 'CERTIDÕES', campos.orgao], nomeFinal: campos.data + '.pdf' });
+      // a raiz do ano (23/10/2026): o ano da data da certidão
+      return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: /^\d{2}-\d{2}-\d{4}$/.test(campos.data) ? { mes: +campos.data.slice(3, 5), ano: +campos.data.slice(6) } : null, caminho: ['SOCIETÁRIO', 'CERTIDÕES', campos.orgao], nomeFinal: campos.data + '.pdf' });
     case 'FOLHA':
       if (!campos.competencia) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5 });
       return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: campos.competencia, caminho: ['SOCIETÁRIO', 'FOLHA DE PAGAMENTO', String(campos.competencia.ano), dois(campos.competencia.mes)], nomeFinal: nomeOrig });
@@ -1527,7 +1529,20 @@ function pastasDoAno(cad, ano) {
   return cad._porAno.get(ano);
 }
 /** O ano da raiz: o da competência do documento; sem ela, o das pastas de origem (a migração, as pastas de mês do robô). */
+const ANUAIS = new Set(['DEFIS', 'DIRF', 'ECF', 'BALANCETE', 'DMED', 'DIMOB']);
+/** A data de entrega escrita no recibo ("Data e hora da transmissão: 27/03/2026", "entregue em …"): o ano, ou null. */
+function anoDaEntrega(entrada) {
+  const t = norm(Array.isArray(entrada && entrada.texto) ? entrada.texto.slice(0, 3).join('\n') : String((entrada && (entrada.texto || entrada.txt)) || ''));
+  const m = /(TRANSMISS[AÃ]O|TRANSMITID[OA]|ENTREGUE|DATA DA ENTREGA|RECEPCAO|RECEBID[OA] EM|DATA DE RECEBIMENTO)[^0-9]{0,40}(\d{2})\/(\d{2})\/(20\d{2})/.exec(t);
+  return m ? +m[4] : null;
+}
 function anoDoDestino(d, ctx) {
+  // a declaração ou o livro ANUAL (só o ano na competência): a raiz do ano da entrega — a do recibo, ou o ano seguinte
+  if (ANUAIS.has(String(d.tipo || '')) && d.competencia && d.competencia.ano && !d.competencia.mes) {
+    const ano = +d.competencia.ano;
+    const entrega = d.anoEntrega && d.anoEntrega >= ano ? d.anoEntrega : ano + 1;
+    return { ano: entrega, de: d.anoEntrega && d.anoEntrega >= ano ? 'ano da entrega (recibo)' : 'ano da entrega (o seguinte ao do documento)' };
+  }
   if (d.competencia && d.competencia.ano) return { ano: +d.competencia.ano, de: 'competência' };
   if (d.anoPista && d.anoPista.ano) return { ano: +d.anoPista.ano, de: 'pasta de origem' };
   return null;
@@ -1548,6 +1563,7 @@ function finalizar(d, ctx) {
   const anoMax = (ctx.hoje ? new Date(ctx.hoje) : new Date()).getFullYear();
   const a = anoDoDestino(d, ctx);
   if (!a) return comMotivoDoCodigo(Object.assign(d, { acao: 'NAO_IDENTIFICADO', motivo: 'ANO_INDETERMINADO', evidencias: d.evidencias.concat('sem a competência no documento nem o ano nas pastas de origem: o ano da pasta (G:\\Meu Drive\\<AAAA>) não é dedutível e não vai para 2026 por padrão') }));
+  if (a.ano > anoMax && /entrega/.test(a.de)) a.ano = anoMax;   // a entrega do ano corrente ainda por vir: o ano atual
   if (a.ano < ANO_MINIMO || a.ano > anoMax) return comMotivoDoCodigo(Object.assign(d, { acao: 'NAO_IDENTIFICADO', motivo: 'ANO_FORA_DA_FAIXA', evidencias: d.evidencias.concat('o ano ' + a.ano + ' (' + a.de + ') fora de ' + ANO_MINIMO + ' a ' + anoMax) }));
   d.anoRaiz = a.ano;
   if (a.ano !== ANO_DAS_PASTAS) d.evidencias.push('raiz do ano ' + a.ano + ' (' + a.de + ')');
@@ -1611,7 +1627,7 @@ function tipoDoDestino(destino) {
     [/EXTRATOS\/\d{4}\/\d{2}$/, () => 'FATURA CARTAO'], [/RECEBIMENTO DE CLIENTES/, () => 'RECEBIMENTO DE CLIENTES'],
     [/DOCUMENTOS FISCAIS\/EMITIDOS\/NFC-E/, () => 'NFC-e PDF'], [/DOCUMENTOS FISCAIS\/.*RELATORIO MENSAL/, () => 'RELATORIO DE NOTAS'],
     [/DOCUMENTOS FISCAIS/, () => 'NOTA PDF'], [/\d\d\. DAS$/, () => 'DAS'], [/\d\d\. DARF$/, () => 'DARF'], [/\d\d\. DAE$/, () => 'DAE'], [/\d\d\. DAM$/, () => 'DAM'],
-    [/IMPOSTOS\/FGTS/, () => 'FGTS'], [/SPED FISCAL/, () => 'SPED FISCAL'], [/SPED CONTRIBUICOES/, () => 'SPED CONTRIBUIÇÕES'], [/SINTEGRA/, () => 'SINTEGRA'],
+    [/IMPOSTOS\/FGTS|DEPARTAMENTO PESSOAL\/\d{2}\/FGTS/, () => 'FGTS'], [/SPED FISCAL/, () => 'SPED FISCAL'], [/SPED CONTRIBUICOES/, () => 'SPED CONTRIBUIÇÕES'], [/SINTEGRA/, () => 'SINTEGRA'],
     [/LIVROS FISCAIS/, () => 'LIVRO_FISCAL'], [/DEFIS/, () => 'DEFIS'], [/\bECF\b/, () => 'ECF'], [/REGISTRO DE LIVROS/, () => 'BALANCETE'],
     [/DOCUMENTOS CONSTITUTIVOS/, () => 'DOC CONSTITUTIVO'], [/CERTIFICADO DIGITAL/, () => 'CERTIFICADO DIGITAL'], [/CERTIDOES/, () => 'CERTIDAO'],
     [/FOLHA DE PAGAMENTO/, () => 'FOLHA'], [/RELATORIOS LJ/, () => 'RELATORIO LJ'], [/PARCELAMENTOS/, () => 'PARCELAMENTO'],
@@ -1623,7 +1639,7 @@ function tipoDoDestino(destino) {
 }
 
 module.exports = {
-  LIMIAR, RAIZ_CLIENTES, ARVORE, REGRAS_PDF, BANCOS, ANO_MINIMO, ANO_DAS_PASTAS, anoDaPasta, pastasDoAno, partesDoCaminho, comMotivoDoCodigo,
+  LIMIAR, RAIZ_CLIENTES, ARVORE, REGRAS_PDF, BANCOS, ANUAIS, anoDaEntrega, ANO_MINIMO, ANO_DAS_PASTAS, anoDaPasta, pastasDoAno, partesDoCaminho, comMotivoDoCodigo,
   semAcento, norm, chaveNome, nomeNormalizado, nomeSeguro, so, dataBr, valorBr, competenciaSolta, competenciaDoNome, competenciaDaPasta, periodoEscrito,
   cnpjValido, cpfValido, documentosDoTexto, raizesDoTexto, mascarasDoTexto,
   regimeCanonico, montarCadastro, comAnosEMapa, clientesDoDoc, clienteDaPasta, clientesPeloNomeNoTexto,

@@ -817,7 +817,7 @@ async function reprocessarNaoIdentificados(opcoes) {
 /** O trabalhador do Tesseract segura o processo vivo: fecha no fim de cada execução (se o OCR foi usado). */
 async function encerrarOcr() { const k = require.resolve('./arquivador-ocr'); if (require.cache[k]) await require('./arquivador-ocr').encerrar(); }
 
-module.exports = { reprocessarNaoIdentificados, arquivosDosNaoIdentificados, rotaDoReprocesso, atualizarCadastro, encerrarOcr, executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, relatorioTexto, planos, CONTROLE };
+module.exports = { reprocessarNaoIdentificados, arquivosDosNaoIdentificados, rotaDoReprocesso, atualizarCadastro, encerrarOcr, executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, conteudoXml, raizDoAno, relatorioTexto, planos, CONTROLE };
 
 if (require.main === module) {
   const a = process.argv.slice(2);
