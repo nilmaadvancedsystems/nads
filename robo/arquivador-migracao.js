@@ -100,7 +100,7 @@ function decidir(entrada, ctx, d) {
   if (doConteudo != null && pista && pista.codigo !== doConteudo) return R.comMotivoDoCodigo(Object.assign({}, d, { motivo: 'PISTA_DA_PASTA_DIVERGE', evidencias: ev.concat('o conteúdo diz o cliente ' + doConteudo + ', a pasta de origem diz ' + pista.codigo + ' (' + pista.como + ')') }));
   let cliente = null, como = null, conf = 0;
   if (doConteudo != null) { cliente = doConteudo; como = d.comoCliente || 'doc'; conf = pista ? 0.95 : 0.9; if (pista) ev.push('o cliente do conteúdo confere com a pasta de origem'); }
-  else if (pista && pista.forte) { cliente = pista.codigo; como = 'pasta'; conf = 0.9; ev.push(pista.como); }
+  else if (pista && pista.forte) { cliente = pista.codigo; como = 'pastaConferida'; conf = 0.9; ev.push(pista.como); }
   if (cliente == null) return R.comMotivoDoCodigo(Object.assign({}, d, { motivo: 'CLIENTE_NAO_LOCALIZADO', evidencias: ev.concat(pista ? 'a pasta de origem só traz o código (' + pista.como + '), sem o nome do cadastro' : 'nem o conteúdo nem a pasta de origem dizem o cliente') }));
   // a competência: o nome do arquivo ("04-2024.pdf"), senão as pastas de origem ("…\2024\04\"), senão o conteúdo
   const nome = entrada.nome || path.win32.basename(String(entrada.rel || 'arquivo'));

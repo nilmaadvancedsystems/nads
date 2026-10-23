@@ -538,6 +538,25 @@ function classificarXml(textoXml) {
 }
 function _classificarXml(raiz) {
   const tag = raiz.tag;
+  // a inutilização de numeração (Vitor, 23/10/2026): o XML do cliente (o emitente), em <XML>\<modelo>\INUTILIZAÇÕES
+  if (/^(procInut|inut|retInut)(NFe|CTe)$/.test(tag)) {
+    const pedido = primeiro(raiz, 'inutNFe') || primeiro(raiz, 'inutCTe') || (/^inut/.test(tag) ? raiz : null);
+    const inf = (pedido && primeiro(pedido, 'infInut')) || primeiro(raiz, 'infInut');
+    const ret = primeiro(raiz, 'retInutNFe') || primeiro(raiz, 'retInutCTe') || (/^retInut/.test(tag) ? raiz : null);
+    const infRet = ret ? primeiro(ret, 'infInut') : null;
+    if (!inf && !infRet) return null;
+    const de = inf || infRet;
+    const mod = txt(de, 'mod') || (/CTe$/.test(tag) ? '57' : '55');
+    const tipo = { 55: 'NF-e', 65: 'NFC-e', 57: 'CT-e' }[mod];
+    const ini = txt(de, 'nNFIni', 'nCTIni'), fim = txt(de, 'nNFFin', 'nCTFin'), ano = txt(de, 'ano');
+    const quando = (infRet && txt(infRet, 'dhRecbto')) || null;
+    const cnpj = so(txt(de, 'CNPJ') || txt(infRet, 'CNPJ') || '');
+    if (!tipo || !ini || !cnpj) return null;
+    const faixa = ini === fim || !fim ? String(+ini) : (+ini) + ' A ' + (+fim);
+    const data = quando && mesAnoIso(quando) ? quando : ano ? '20' + String(ano).slice(-2) + '-01-01' : null;
+    if (!data) return null;
+    return { tipo, sub: 'INUTILIZAÇÕES', nome: (quando && diaIso(quando) ? diaIso(quando) : '20' + String(ano).slice(-2)) + ' - INUTILIZACAO ' + tipo + ' ' + faixa + (txt(de, 'serie') ? ' SERIE ' + txt(de, 'serie') : '') + '.xml', emit: [cnpj], partes: [cnpj], data, inutilizacao: true };
+  }
   if (tag === 'nfeProc' || tag === 'NFe') {
     const inf = primeiro(raiz, 'infNFe') || (raiz.tag === 'infNFe' ? raiz : null);
     if (!inf) return null;
@@ -881,8 +900,15 @@ function decidir(entrada, ctx) {
 const unico = arr => { const s = [...new Set(arr)]; return s.length === 1 ? s[0] : null; };
 
 /** XML: o porte do xml_lote.decidir (cliente) + pasta do regime (05d §1b). */
+// as mensagens trocadas com a SEFAZ (23/10/2026, Vitor: "quarentena automática"): não são documento do cliente. A
+// distribuição de DF-e (distDFeInt / retDistDFeInt) traz os documentos dentro: essa não entra aqui (fica para resolver).
+const MENSAGEM_SEFAZ = /^(Envelope|Body|nfeDadosMsg|nfeResultMsg|cteDadosMsg|cteResultMsg|mdfeDadosMsg|mdfeResultMsg|(cons|retCons)(Sit|StatServ|Reci|Cad)(NFe|CTe|Cte|MDFe)?|(envi|retEnvi)(NFe|CTe|Cte|MDFe)|consMDFeNaoEnc|retConsMDFeNaoEnc|(env|retEnv)Evento|retInut(NFe|CTe)Pendente)$/;
+const NOME_MENSAGEM_SEFAZ = /-(ped-sta|sta|env-lot|pro-lot|rec|pro-rec|ped-rec|ped-sit|sit|ped-can|ped-cce|soap|ped-sta-soap|ped-inu|env-cce|env-canc)\.xml$/i;
 function decidirXml(entrada, ctx, ev) {
   const info = classificarXml(entrada.xml);
+  if (info.erro === 'TIPO_XML_NAO_TRATADO' && (MENSAGEM_SEFAZ.test(info.tag || '') || NOME_MENSAGEM_SEFAZ.test(entrada.nome || ''))) {
+    return { acao: 'DESCARTAR', motivo: 'MENSAGEM_DA_SEFAZ', confianca: 1, tipo: 'DESCARTE', setor: 'FISCAL', evidencias: ['mensagem trocada com a SEFAZ (' + (info.tag || '?') + ', ' + entrada.nome + '): não é documento do cliente; vai para a quarentena, nunca apagada (Vitor, 23/10/2026)'] };
+  }
   if (info.erro) return { acao: 'NAO_IDENTIFICADO', motivo: info.erro, confianca: 0, tipo: 'XML ' + (info.tag || '?'), setor: 'FISCAL' };
   const cad = ctx.cadastro;
   let cand = [];
@@ -999,7 +1025,7 @@ function decidirOfx(entrada, ctx, ev) {
   const confirmada = CONTAS_CONFIRMADAS.find(c => c.banco === banco && conta && (conta.endsWith(c.conta) || c.conta.endsWith(conta)));
   if (confirmada && confirmado(confirmada.codigo, confirmada.nome, cad) != null) { cliente = confirmado(confirmada.codigo, confirmada.nome, cad); conf = 0.97; como = 'conta'; ev.push('conta ' + conta + ' confirmada no 03'); }
   else if (donoDaConta(ctx, banco, conta, entrada.hash) != null) { cliente = donoDaConta(ctx, banco, conta, entrada.hash); conf = 0.92; como = 'conta'; ev.push('conta ' + conta + ' já arquivada só deste cliente (03)'); }
-  else { const sub = clienteDaPasta(entrada.rel, cad); if (sub) { cliente = sub.codigo; conf = sub.forte ? 0.9 : 0.8; como = 'pasta'; ev.push(sub.como + ' (OFX não traz CNPJ)'); } }
+  else { const sub = clienteDaPasta(entrada.rel, cad); if (sub) { cliente = sub.codigo; conf = sub.forte ? 0.9 : 0.8; como = sub.forte ? 'pastaConferida' : 'pasta'; ev.push(sub.como + ' (OFX não traz CNPJ)'); } }
   if (!cliente) return { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, tipo: 'EXTRATO OFX', setor: 'CONTABIL' };
   let nomeFinal = mesAno(comp) + '.ofx';
   if (iniP && /^\d{8}/.test(iniP) && (iniP.slice(0, 6) !== fimP.slice(0, 6)) && +iniP.slice(6, 8) < 25) nomeFinal = dois(+iniP.slice(4, 6)) + '-' + iniP.slice(0, 4) + ' A ' + mesAno(comp) + '.ofx';
@@ -1191,7 +1217,7 @@ function clienteDoPdf(u, bruto, entrada, ctx, ev, regra, campos) {
   if (nomes.length > 1 && sub && nomes.includes(sub.codigo)) { ev.push('razão social escrita e ' + sub.como); return { cliente: sub.codigo, conf: 0.88, como: 'nome' }; }
   if (nomes.length > 1) return { motivo: 'CLIENTE_AMBIGUO', candidatos: nomes };
   // 23/10/2026 (a migração): a pasta com o código E o nome do cadastro ("0010 - DORNAS HAVANA LTDA - ME") é pista forte
-  if (sub) { ev.push('só a pasta de origem (' + sub.como + ')'); return { cliente: sub.codigo, conf: sub.forte ? 0.9 : 0.8, como: 'pasta' }; }
+  if (sub) { ev.push('só a pasta de origem (' + sub.como + ')'); return { cliente: sub.codigo, conf: sub.forte ? 0.9 : 0.8, como: sub.forte ? 'pastaConferida' : 'pasta' }; }
   return { motivo: 'CLIENTE_NAO_LOCALIZADO' };
 }
 
@@ -1507,7 +1533,7 @@ function destinoNoCliente(d, cli, comoCliente, cad, ano) {
   if (parecida) return { erro: { acao: 'NAO_IDENTIFICADO', motivo: 'PASTA_EXISTE_COM_OUTRO_CODIGO', evidencia: 'o cadastro diz ' + cli.codigo + ' - ' + cli.razao + ', mas o Drive já tem "' + parecida + '": não crio uma segunda pasta da mesma empresa' } };
   let pastaCliente, criarPastaCliente = false;
   if (pasta) pastaCliente = pasta;
-  else if (['doc', 'conta', 'hash'].includes(comoCliente)) { pastaCliente = (doAno.base ? null : cad.pastas.get(cli.codigo)) || cli.codigo + ' - ' + nomeSeguro(cli.razao); criarPastaCliente = true; }
+  else if (['doc', 'conta', 'hash'].includes(comoCliente) || (!doAno.base && comoCliente === 'pastaConferida')) { pastaCliente = (doAno.base ? null : cad.pastas.get(cli.codigo)) || cli.codigo + ' - ' + nomeSeguro(cli.razao); criarPastaCliente = true; }
   else if (!doAno.base) return { erro: { acao: 'NAO_IDENTIFICADO', motivo: 'PASTA_DO_ANO_SEM_CNPJ', evidencia: 'a pasta do cliente em ' + ano + ' ainda não existe e o documento não traz o CNPJ dele: ela só nasce com o CNPJ conferido (Vitor, 23/10/2026)' } };
   else return { erro: { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_AMBIGUO', evidencia: 'pasta do cliente não existe e o documento não traz o CNPJ dele (03 regra 2)' } };
   caminho = caminho.map(nomeSeguro);
@@ -1602,7 +1628,7 @@ function finalizar(d, ctx) {
 const CODIGOS = {
   CLIENTE_NAO_LOCALIZADO: 'E101', CLIENTE_AMBIGUO: 'E102', EVENTO_SEM_ORIGINAL: 'E103', REGIME_INDEFINIDO: 'E104', SETOR_INDETERMINADO: 'E105', CONFIANCA_ABAIXO_DO_LIMIAR: 'E106',
   REGIME_SEM_ESPECIALISTA: 'E108', ANO_INDETERMINADO: 'E308', ANO_FORA_DA_FAIXA: 'E309', PASTA_DO_ANO_SEM_CNPJ: 'E110', PISTA_DA_PASTA_DIVERGE: 'E111', VOCABULARIO_AUSENTE: 'E201', TIPO_INCOMPATIVEL_COM_REGIME: 'E202', EMITENTE_INDETERMINADO: 'E205',
-  COMPETENCIA_AUSENTE: 'E303', VALOR_AUSENTE: 'E304', BANCO_AUSENTE: 'E305', CONTEUDO_ILEGIVEL: 'E307', CONTEUDO_SEM_TEXTO: 'E307',
+  COMPETENCIA_AUSENTE: 'E303', VALOR_AUSENTE: 'E304', BANCO_AUSENTE: 'E305', CONTEUDO_ILEGIVEL: 'E307', CONTEUDO_SEM_TEXTO: 'E307', MENSAGEM_DA_SEFAZ: 'E402',
   IDENTICO_JA_ARQUIVADO: 'E401', PDF_COMPOSTO_NAO_SEPARADO: 'E701', FERRAMENTA_EXTRACAO_AUSENTE: 'E703', ARQUIVO_COMPACTADO_CORROMPIDO: 'E704',
 };
 function comMotivoDoCodigo(d) { if (d.motivo) d.codigo = CODIGOS[d.motivo] || null; return d; }

@@ -578,13 +578,26 @@ async function aplicar(res, opcoes, ctx) {
   const painel = opcoes.painel || null;
   const permitido = it => !opcoes.tiposProducao || opcoes.tiposProducao.includes('todos') || opcoes.tiposProducao.some(t => String(it.tipo || '').startsWith(t));
   fs.mkdirSync(path.dirname(manifesto), { recursive: true });
-  const linha = (arq, o) => { fs.mkdirSync(path.dirname(arq), { recursive: true }); fs.appendFileSync(arq, JSON.stringify(o) + '\n'); };
-  const semSobrescrever = (alvo) => { const ext = path.extname(alvo), base = alvo.slice(0, alvo.length - ext.length); let k = 0, p = alvo; while (fs.existsSync(p)) p = base + ' (' + (++k) + ')' + ext; return p; };
-  const moverParaNi = (it, buffer) => {
-    const alvo = semSobrescrever(path.join(ni, it.rel));
-    linha(path.join(ni, '_nao_identificados.jsonl'), Object.assign({ arquivo: path.basename(alvo), caminho_relativo: path.dirname(it.rel), status: 'NAO_IDENTIFICADO', motivo: it.motivo, cliente_tentativa: it.cliente, confianca: it.confianca, id_execucao: res.id, timestamp: new Date().toISOString() }, it.chave ? { chave: it.chave } : {}));
-    fs.mkdirSync(path.dirname(alvo), { recursive: true });
-    if (buffer) fs.writeFileSync(alvo, buffer, { flag: 'wx' }); else mover(path.join(opcoes.origem, it.rel), alvo);
+  const linha = (arq, o, varias) => { fs.mkdirSync(path.dirname(arq), { recursive: true }); fs.appendFileSync(arq, (varias || [o]).map(x => JSON.stringify(x)).join('\n') + '\n'); };
+  const existeJa = async p => { try { await fs.promises.access(p); return true; } catch (e) { return false; } };
+  const semSobrescrever = async (alvo) => { const ext = path.extname(alvo), base = alvo.slice(0, alvo.length - ext.length); let k = 0, p = alvo; while (await existeJa(p)) p = base + ' (' + (++k) + ')' + ext; return p; };
+  // o mesmo disco (o G: para o G:): mover é trocar de pasta; entre discos, gravar o conteúdo
+  const raizDe = p => path.parse(path.resolve(p)).root.toLowerCase();
+  const mesmoDisco = (a, b) => raizDe(a) === raizDe(b);
+  /** Move sem sobrescrever: o rename no mesmo disco; entre discos, copia, confere o hash e só então tira o original. */
+  const moverSeguro = async (de, para) => {
+    if (mesmoDisco(de, para)) { if (await existeJa(para)) throw new Error('o destino já existe: ' + para); await fs.promises.rename(de, para); return; }
+    const buf = await fs.promises.readFile(de);
+    await fs.promises.writeFile(para, buf, { flag: 'wx' });
+    if (sha(await fs.promises.readFile(para)) !== sha(buf)) { try { await fs.promises.unlink(para); } catch (x) { /* fica a cópia ruim */ } throw new Error('a cópia para ' + para + ' não conferiu; o original ficou'); }
+    await fs.promises.unlink(de);
+  };
+  const linhasNi = [];
+  const moverParaNi = async (it, buffer) => {
+    const alvo = await semSobrescrever(path.join(ni, it.rel));
+    linhasNi.push(Object.assign({ arquivo: path.basename(alvo), caminho_relativo: path.dirname(it.rel), status: 'NAO_IDENTIFICADO', motivo: it.motivo, cliente_tentativa: it.cliente, confianca: it.confianca, id_execucao: res.id, timestamp: new Date().toISOString() }, it.chave ? { chave: it.chave } : {}));
+    await fs.promises.mkdir(path.dirname(alvo), { recursive: true });
+    if (buffer) await fs.promises.writeFile(alvo, buffer, { flag: 'wx' }); else await moverSeguro(path.join(opcoes.origem, it.rel), alvo);
     it.movidoPara = alvo;
   };
   /** A linha do manifesto, o índice de chaves, o índice de conteúdo e o painel de um arquivo que chegou ao destino. */
@@ -596,102 +609,115 @@ async function aplicar(res, opcoes, ctx) {
     if (painel) painel.atividade('arquivamento', 'Arquivou ' + it.nome + ' em ' + (pastaCliente || ''), path.dirname(alvo).replace(path.dirname(opcoes.clientes), '').replace(/^\\/, '') + '\\' + path.basename(alvo));
   };
   // a pasta do cliente que nasce (na raiz do ano do destino: G:\Meu Drive\<AAAA>\<cód> - <nome>)
-  const pastaNova = (alvo, pastaCliente, criar) => {
+  const pastaNova = async (alvo, pastaCliente, criar) => {
     if (!criar || !pastaCliente) return false;
     const a = String(alvo), i = a.toLowerCase().indexOf('\\' + pastaCliente.toLowerCase() + '\\');
     const raiz = i >= 0 ? a.slice(0, i + 1 + pastaCliente.length) : path.join(opcoes.clientes, pastaCliente);
-    return !fs.existsSync(raiz);
+    return !(await existeJa(raiz));
   };
   /** Grava uma cópia num destino (uma das cópias, o de dentro de um .zip, a origem em outro disco): confere o hash. */
-  const gravar = (it, buffer, alvo, cliente, pastaCliente, criar) => {
-    const novaPasta = pastaNova(alvo, pastaCliente, criar);
-    fs.mkdirSync(path.dirname(alvo), { recursive: true });
-    fs.writeFileSync(alvo, buffer, { flag: 'wx' });                         // 'wx': falha se já existir — nunca sobrescreve
-    if (sha(fs.readFileSync(alvo)) !== it.hash) throw new Error('hash não confere depois da cópia: ' + alvo);
+  const gravar = async (it, buffer, alvo, cliente, pastaCliente, criar) => {
+    const novaPasta = await pastaNova(alvo, pastaCliente, criar);
+    await fs.promises.mkdir(path.dirname(alvo), { recursive: true });
+    await fs.promises.writeFile(alvo, buffer, { flag: 'wx' });              // 'wx': falha se já existir — nunca sobrescreve
+    if (sha(await fs.promises.readFile(alvo)) !== it.hash) throw new Error('hash não confere depois da cópia: ' + alvo);
     registrarNoDestino(it, alvo, cliente, pastaCliente, novaPasta, false);
   };
-  // o mesmo disco (o G: para o G:): mover é trocar de pasta; entre discos, gravar o conteúdo
-  const raizDe = p => path.parse(path.resolve(p)).root.toLowerCase();
-  const mesmoDisco = (a, b) => raizDe(a) === raizDe(b);
   /** O original ainda é o que foi lido (o tamanho e a data da varredura; sem reler o conteúdo). */
-  const igualAoLido = (it, de) => {
-    const st = fs.statSync(de);
+  const igualAoLido = async (it, de) => {
+    const st = await fs.promises.stat(de);
     const m = opcoes.marcas && opcoes.marcas.get ? opcoes.marcas.get(it.rel) : null;
     if ((it.tamanho != null && st.size !== it.tamanho) || (m && (st.size !== m.tam || Math.round(st.mtimeMs) !== Math.round(m.mtime)))) throw new Error('o original mudou durante a execução: ' + it.rel);
   };
   /** O original vai para o destino principal por rename (o G: do Drive: sem baixar nem subir de novo). Nunca sobrescreve. */
   const moverParaODestino = async (it) => {
     const de = path.join(opcoes.origem, it.rel), alvo = it.onde;
-    igualAoLido(it, de);
-    const novaPasta = pastaNova(alvo, it.pastaCliente, it.criarPastaCliente);
-    fs.mkdirSync(path.dirname(alvo), { recursive: true });
-    if (fs.existsSync(alvo)) throw new Error('o destino apareceu no meio da execução: ' + alvo + ' (o original ficou)');
+    await igualAoLido(it, de);
+    const novaPasta = await pastaNova(alvo, it.pastaCliente, it.criarPastaCliente);
+    await fs.promises.mkdir(path.dirname(alvo), { recursive: true });
+    if (await existeJa(alvo)) throw new Error('o destino apareceu no meio da execução: ' + alvo + ' (o original ficou)');
     await fs.promises.rename(de, alvo);
     it.gravadoEm = alvo; it.movido = true;
     registrarNoDestino(it, alvo, it.cliente, it.pastaCliente, novaPasta, true);
   };
-  const paraQuarentena = (it, buf) => {
+  const paraQuarentena = async (it, buf) => {
     const de = path.join(opcoes.origem, it.rel);
     // o conteúdo lido na decisão (ou relido): o hash confere e o arquivo na origem continua o mesmo
-    const b = buf || it._buf || fs.readFileSync(de);
+    const b = buf || it._buf || await fs.promises.readFile(de);
     if (sha(b) !== it.hash) throw new Error('o original mudou durante a execução: ' + it.rel);
-    igualAoLido(it, de);
-    const alvo = semSobrescrever(path.join(quarentena, it.rel));
+    await igualAoLido(it, de);
+    const alvo = await semSobrescrever(path.join(quarentena, it.rel));
     linha(path.join(quarentena, '_quarentena.jsonl'), { hash_original: it.hash, arquivo_original_caminho: it.rel, destino_final: it.gravadoEm || it.onde || null, id_execucao: res.id, timestamp: new Date().toISOString() });
-    fs.mkdirSync(path.dirname(alvo), { recursive: true });
-    if (mesmoDisco(de, alvo)) { mover(de, alvo); return; }
+    await fs.promises.mkdir(path.dirname(alvo), { recursive: true });
+    if (mesmoDisco(de, alvo)) { await moverSeguro(de, alvo); return; }
     // G: → C:: grava a cópia do conteúdo já lido, confere e só então tira o original (sem baixar de novo)
-    fs.writeFileSync(alvo, b, { flag: 'wx' });
-    if (sha(fs.readFileSync(alvo)) !== it.hash) { try { fs.unlinkSync(alvo); } catch (x) { /* fica a cópia ruim */ } throw new Error('a cópia para ' + alvo + ' não conferiu; o original ficou'); }
-    fs.unlinkSync(de);
+    await fs.promises.writeFile(alvo, b, { flag: 'wx' });
+    if (sha(await fs.promises.readFile(alvo)) !== it.hash) { try { await fs.promises.unlink(alvo); } catch (x) { /* fica a cópia ruim */ } throw new Error('a cópia para ' + alvo + ' não conferiu; o original ficou'); }
+    await fs.promises.unlink(de);
   };
-  for (const it of res.itens) {
+  // 23/10/2026: vários destinos ao mesmo tempo (opcoes.destinosJuntos; o contínuo dá menos quando o Drive está lento). Os
+  // destinos já foram reservados na decisão (nenhum par de arquivos disputa o mesmo nome)
+  const juntos = Math.max(1, +opcoes.destinosJuntos || 6);
+  let proximo = 0;
+  const porAcao = {};
+  await Promise.all(Array.from({ length: Math.min(juntos, res.itens.length) }, async () => {
+    while (proximo < res.itens.length) {
+      const it = res.itens[proximo++];
+      const t0 = Date.now();
+      await aplicarUm(it);
+      const k = it.acao === 'ARQUIVAR' ? (it.movido ? 'mover' : 'gravar') : it.acao === 'CONTEINER' ? 'compactado' : it.acao === 'NAO_IDENTIFICADO' ? 'naoIdentificado' : it.acao === 'JA_ARQUIVADO' || it.acao === 'DESCARTAR' ? 'quarentena' : 'outro';
+      const e = porAcao[k] || (porAcao[k] = { n: 0, ms: 0 }); e.n++; e.ms += Date.now() - t0;
+    }
+  }));
+  if (linhasNi.length) { try { linha(path.join(ni, '_nao_identificados.jsonl'), null, linhasNi); } catch (e) { (opcoes.log || (() => {}))('não anotei o índice de NÃO IDENTIFICADOS: ' + e.message); } }
+  if (res.tempos) { res.tempos.porAcao = porAcao; res.tempos.destinosJuntos = juntos; }
+  async function aplicarUm(it) {
     await new Promise(r => setImmediate(r));   // o resto do robô (o ponto, o painel, os ouvintes) não espera o lote
     try {
       if (it.acao === 'CONTEINER') {
         // compactado: só quando todos os de dentro são de tipo liberado (senão fica inteiro para a rotina antiga)
-        if (!it.filhos.every(f => permitido(f) || f.acao === 'JA_ARQUIVADO')) { it.naoAplicado = 'compactado com tipo ainda em simulação'; continue; }
-        if (it.filhos.some(f => f.acao === 'AGUARDANDO_ORIGINAL')) { it.naoAplicado = 'compactado com evento esperando o documento original'; continue; }
-        if (!opcoes.moverNaoIdentificados && it.filhos.some(f => f.acao === 'NAO_IDENTIFICADO' || f.acao === 'FICA')) { it.naoAplicado = 'compactado com não identificado (fica para a rotina antiga)'; continue; }
-        const buf = fs.readFileSync(path.join(opcoes.origem, it.rel));
+        if (!it.filhos.every(f => permitido(f) || f.acao === 'JA_ARQUIVADO')) { it.naoAplicado = 'compactado com tipo ainda em simulação'; return; }
+        if (it.filhos.some(f => f.acao === 'AGUARDANDO_ORIGINAL')) { it.naoAplicado = 'compactado com evento esperando o documento original'; return; }
+        if (!opcoes.moverNaoIdentificados && it.filhos.some(f => f.acao === 'NAO_IDENTIFICADO' || f.acao === 'FICA')) { it.naoAplicado = 'compactado com não identificado (fica para a rotina antiga)'; return; }
+        const buf = await fs.promises.readFile(path.join(opcoes.origem, it.rel));
         const lista = membros(path.basename(it.rel), buf, path.join(opcoes.origem, it.rel));
         const porNome = new Map(lista.map(m => [it.rel + '\\' + m.nome, m.buffer]));
         for (const f of it.filhos) {
           f.hashPai = it.hash;
           const b = porNome.get(f.rel);
           if (f.acao === 'ARQUIVAR') {
-            if (f.situacaoDestino === 'NOVO') { gravar(f, b, f.onde, f.cliente, f.pastaCliente, f.criarPastaCliente); f.gravadoEm = f.onde; }
-            for (const cp of f.copias || []) if (cp.situacao === 'NOVO') { gravar(f, b, cp.onde, cp.cliente, cp.pastaCliente, cp.criarPastaCliente); cp.gravadoEm = cp.onde; }
+            if (f.situacaoDestino === 'NOVO') { await gravar(f, b, f.onde, f.cliente, f.pastaCliente, f.criarPastaCliente); f.gravadoEm = f.onde; }
+            for (const cp of f.copias || []) if (cp.situacao === 'NOVO') { await gravar(f, b, cp.onde, cp.cliente, cp.pastaCliente, cp.criarPastaCliente); cp.gravadoEm = cp.onde; }
           }
-          else if (f.acao === 'NAO_IDENTIFICADO' || f.acao === 'FICA') moverParaNi(f, b);   // 01 Fase 4b (09/10/2026)
+          else if (f.acao === 'NAO_IDENTIFICADO' || f.acao === 'FICA') await moverParaNi(f, b);   // 01 Fase 4b (09/10/2026)
         }
-        paraQuarentena(it, buf);
-        continue;
+        await paraQuarentena(it, buf);
+        return;
       }
-      if (!permitido(it)) { it.naoAplicado = 'tipo ainda em simulação'; continue; }
+      if (!permitido(it)) { it.naoAplicado = 'tipo ainda em simulação'; return; }
       if (it.acao === 'ARQUIVAR') {
         const de = path.join(opcoes.origem, it.rel);
         // 23/10/2026: o principal vai por rename quando é o mesmo disco (o G: em streaming: troca de pasta no servidor);
         // as cópias (outro cliente) gravam o conteúdo; a origem em outro disco grava e manda o original para a quarentena
         const renomear = it.situacaoDestino === 'NOVO' && mesmoDisco(de, it.onde);
         const copias = (it.copias || []).filter(cp => cp.situacao === 'NOVO');
-        const buf = copias.length || !renomear ? (it._buf || fs.readFileSync(de)) : null;
+        const buf = copias.length || !renomear ? (it._buf || await fs.promises.readFile(de)) : null;
         if (buf && sha(buf) !== it.hash) throw new Error('o original mudou durante a execução: ' + it.rel);
-        for (const cp of copias) { gravar(it, buf, cp.onde, cp.cliente, cp.pastaCliente, cp.criarPastaCliente); cp.gravadoEm = cp.onde; }
+        for (const cp of copias) { await gravar(it, buf, cp.onde, cp.cliente, cp.pastaCliente, cp.criarPastaCliente); cp.gravadoEm = cp.onde; }
         if (renomear) await moverParaODestino(it);
         else {
-          if (it.situacaoDestino === 'NOVO') { gravar(it, buf, it.onde, it.cliente, it.pastaCliente, it.criarPastaCliente); it.gravadoEm = it.onde; }
-          paraQuarentena(it, buf);
+          if (it.situacaoDestino === 'NOVO') { await gravar(it, buf, it.onde, it.cliente, it.pastaCliente, it.criarPastaCliente); it.gravadoEm = it.onde; }
+          await paraQuarentena(it, buf);
         }
       }
       else if (it.acao === 'DESCARTAR') {
         // descarte confirmado (23/10/2026): para a quarentena, nunca apagado; a linha no manifesto diz para onde foi
-        paraQuarentena(it);
+        await paraQuarentena(it);
         linha(manifesto, { hash_origem: it.hash, hash_original: it.hashPai || it.hash, nome_original: it.nome, destino_final: path.join(quarentena, path.dirname(it.rel)), nome_final: path.basename(it.rel), id_execucao: res.id, timestamp: new Date().toISOString(), pai_completo: !it.hashPai, confianca: 1, tipo: 'DESCARTE', cliente: null, descarte: true, motivo: (it.evidencias || [])[0] || null, decidido_por: it.decididoPor || undefined });
         if (painel) painel.atividade('arquivamento', 'Descartou ' + it.nome + ' (quarentena)', (it.evidencias || [])[0] || '');
       }
-      else if (it.acao === 'JA_ARQUIVADO') { paraQuarentena(it); if (it.chave && ctx.chaves && it.onde) ctx.chaves.anotar(it.chave, { onde: it.onde, raiz: opcoes.clientes, fonte: 'já arquivado' }, true); }
-      else if (it.acao === 'NAO_IDENTIFICADO' && opcoes.moverNaoIdentificados) moverParaNi(it);
+      else if (it.acao === 'JA_ARQUIVADO') { await paraQuarentena(it); if (it.chave && ctx.chaves && it.onde) ctx.chaves.anotar(it.chave, { onde: it.onde, raiz: opcoes.clientes, fonte: 'já arquivado' }, true); }
+      else if (it.acao === 'NAO_IDENTIFICADO' && opcoes.moverNaoIdentificados) await moverParaNi(it);
     } catch (e) { it.erro = e.message; if (painel) painel.erro('arquivamento', 'Não consegui arquivar ' + (it.nome || it.rel), e.message); }
   }
 }

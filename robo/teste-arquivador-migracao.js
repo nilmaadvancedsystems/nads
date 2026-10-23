@@ -68,10 +68,21 @@ igual('o recibo: a data da transmissão', R.anoDaEntrega({ texto: ['Recibo de en
 const decidirMig = (rel, texto, c) => { const e = { nome: path.win32.basename(rel), rel, texto: [texto] }; const c2 = c || ctx; const d0 = R.decidir(e, c2); return MIG.decidir(e, c2, d0) || d0; };
 d = decidirMig('0010 - DORNAS HAVANA LTDA - ME\\DEPARTAMENTO FISCAL\\DESTDA\\2024\\04-2024.pdf', 'recibo de entrega sem titulo conhecido', { cadastro: montar({ 2024: ['10 - DORNAS HAVANA LTDA'] }), hoje: new Date(2026, 9, 23) });
 igual('DESTDA pela pasta: 2024\\10 - DORNAS…\\FISCAL\\SIMPLES NACIONAL\\04. DeSTDA\\04-2024.pdf', [d.acao, d.anoRaiz, d.destinoRelativo, d.nomeFinal], ['ARQUIVAR', 2024, '10 - DORNAS HAVANA LTDA\\FISCAL\\SIMPLES NACIONAL\\04. DeSTDA', '04-2024.pdf']);
-d = decidirMig('0010 - DORNAS HAVANA LTDA - ME\\DEPARTAMENTO FISCAL\\DESTDA\\2023\\04-2023.pdf', 'recibo de entrega sem titulo conhecido');
-igual('a pasta do ano ainda não existe e só a pasta de origem diz o cliente: não nasce sem o CNPJ', [d.acao, d.motivo], ['NAO_IDENTIFICADO', 'PASTA_DO_ANO_SEM_CNPJ']);
 d = decidirMig('0010 - DORNAS HAVANA LTDA - ME\\DEPARTAMENTO FISCAL\\DESTDA\\2023\\04-2023.pdf', 'recibo de entrega\nCNPJ 36.462.778/0001-60\nDORNAS HAVANA LTDA');
 igual('com o CNPJ no conteúdo (o mesmo da pasta): a pasta do ano nasce', [d.acao, d.anoRaiz, d.criarPastaCliente], ['ARQUIVAR', 2023, true]);
+// 23/10/2026 (Vitor): sem o CNPJ, o cliente da pasta de origem com o código E o nome conferidos também faz a pasta do ano nascer
+d = decidirMig('0010 - DORNAS HAVANA LTDA - ME\\DEPARTAMENTO FISCAL\\DESTDA\\2022\\04-2022.pdf', 'recibo de entrega sem titulo conhecido');
+igual('sem o CNPJ, a pasta de origem conferida (código e nome) faz a pasta do ano nascer', [d.acao, d.anoRaiz, d.criarPastaCliente], ['ARQUIVAR', 2022, true]);
+d = decidirMig('0010 - OUTRO NOME\\DEPARTAMENTO FISCAL\\DESTDA\\2021\\04-2021.pdf', 'recibo de entrega sem titulo conhecido');
+igual('só o código na pasta (o nome não confere): a pasta do ano não nasce', [d.acao, d.motivo], ['NAO_IDENTIFICADO', 'CLIENTE_NAO_LOCALIZADO']);
+// as mensagens da SEFAZ: quarentena; a inutilização: ao lado dos XML do cliente, em INUTILIZAÇÕES
+d = R.decidir({ nome: '20260219080318-ped-sta-soap.xml', rel: 'IMPORTAÇÃO\\0010 - DORNAS HAVANA LTDA - ME\\Adicionados\\20260219080318-ped-sta-soap.xml', xml: '<soap:Envelope xmlns:soap="x"><soap:Body><nfeDadosMsg><consStatServ><tpAmb>1</tpAmb></consStatServ></nfeDadosMsg></soap:Body></soap:Envelope>' }, ctx);
+igual('mensagem da SEFAZ (consulta do status): quarentena', [d.acao, d.motivo], ['DESCARTAR', 'MENSAGEM_DA_SEFAZ']);
+d = R.decidir({ nome: '5358-pro-lot.xml', rel: 'x\\5358-pro-lot.xml', xml: '<retConsReciNFe><cStat>104</cStat></retConsReciNFe>' }, ctx);
+igual('retorno do lote: quarentena', d.acao, 'DESCARTAR');
+const inut = '<procInutNFe><inutNFe><infInut Id="ID3126"><tpAmb>1</tpAmb><xServ>INUTILIZAR</xServ><cUF>31</cUF><ano>26</ano><CNPJ>36462778000160</CNPJ><mod>65</mod><serie>1</serie><nNFIni>2130803</nNFIni><nNFFin>2130805</nNFFin><xJust>falha</xJust></infInut></inutNFe><retInutNFe><infInut><cStat>102</cStat><dhRecbto>2026-03-14T10:00:00-03:00</dhRecbto><nProt>131260000000001</nProt></infInut></retInutNFe></procInutNFe>';
+d = R.decidir({ nome: 'x-InutNFe.xml', rel: 'IMPORTAÇÃO\\x-InutNFe.xml', xml: inut }, ctx);
+igual('inutilização: XML\\NFC-e\\INUTILIZAÇÕES, o nome com a data e a faixa', [d.acao, d.cliente, d.destinoRelativo, d.nomeFinal], ['ARQUIVAR', 10, '10 - DORNAS HAVANA LTDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFC-e\\INUTILIZAÇÕES', '14-03-2026 - INUTILIZACAO NFC-e 2130803 A 2130805 SERIE 1.xml']);
 d = decidirMig('0010 - DORNAS HAVANA LTDA - ME\\DEPARTAMENTO FISCAL\\DESTDA\\2024\\04-2024.pdf', 'recibo de entrega\nCNPJ 03.149.551/0001-00');
 igual('o conteúdo diz outro cliente que a pasta: NÃO IDENTIFICADOS', [d.acao, d.motivo], ['NAO_IDENTIFICADO', 'PISTA_DA_PASTA_DIVERGE']);
 d = decidirMig('0066 - ADERLEI DOS SANTOS & CIA LTDA - EPP\\DEPARTAMENTO FISCAL\\DESTDA\\2026\\02-2026.pdf', 'recibo de entrega sem titulo conhecido');
@@ -106,6 +117,20 @@ igual('o grupo: o motivo e a pasta de origem sem as de data', MIG.chaveDoGrupo('
     const man = fs.readFileSync(path.join(controle, 'MANIFESTO', 'manifesto.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
     igual('executor: o manifesto marca a pasta do cliente criada', [man[0].pasta_cliente_criada, man[0].movido], [true, true]);
     igual('cadastro: lê as pastas de cliente das raízes de ano que existem', [...A.carregarCadastro({ controle, clientes, planilha: path.join(sb, 'sem.xlsx') }).pastasPorAno.get(2024)], ['10 - DORNAS HAVANA LTDA']);
+    // ---------- 6b. vários destinos ao mesmo tempo (23/10/2026): 20 notas e 4 repetidas, 8 juntos ----------
+    {
+      const op = path.join(sb, 'par', 'origem'), kp = path.join(sb, 'par', 'controle'), cp = path.join(sb, 'par', '2026');
+      for (const p2 of PASTAS) fs.mkdirSync(path.join(cp, p2), { recursive: true });
+      fs.mkdirSync(op, { recursive: true }); fs.mkdirSync(kp, { recursive: true });
+      const rels = [];
+      for (let i = 1; i <= 20; i++) { const r = 'n' + i + '.xml'; fs.writeFileSync(path.join(op, r), nfe('36462778000160', '99999999000191', i, '2026-0' + (1 + (i % 9)) + '-10T10:00:00-03:00')); rels.push(r); }
+      for (let i = 1; i <= 4; i++) { const r = 'repetida' + i + '.xml'; fs.writeFileSync(path.join(op, r), nfe('36462778000160', '99999999000191', i, '2026-0' + (1 + (i % 9)) + '-10T10:00:00-03:00')); rels.push(r); }
+      const cadP = R.comAnosEMapa(R.montarCadastro(LINHAS, PASTAS), {}, mapa);
+      const resP = await A.executar({ modo: 'PRODUCAO', confirmo: true, origem: op, clientes: cp, controle: kp, cadastro: cadP, manifesto: new Map(), manifestoAntigo: path.join(sb, 'sem.jsonl'), arquivos: rels, registrar: false, travaAntiga: path.join(sb, 'sem.lock'), destinosJuntos: 8 });
+      const acoes = {}; for (const x of resP.itens) acoes[x.acao + (x.erro ? ' erro' : '')] = (acoes[x.acao + (x.erro ? ' erro' : '')] || 0) + 1;
+      const noDestino = fs.readdirSync(path.join(cp, '10 - DORNAS HAVANA LTDA', 'FISCAL', 'SIMPLES NACIONAL', '12. XML', 'NF-e'));
+      igual('8 juntos: as 20 notas no destino, as 4 repetidas para a quarentena, a origem vazia, sem erro', [acoes, noDestino.length, fs.readdirSync(op).length], [{ ARQUIVAR: 20, JA_ARQUIVADO: 4 }, 20, 0]);
+    }
     // ---------- 7. Para resolver em grupos: o grupo, a prévia, arquivar o grupo e lembrar a pasta ----------
     {
       const C = require('./arquivador-continuo');

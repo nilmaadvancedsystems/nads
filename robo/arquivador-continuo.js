@@ -347,6 +347,7 @@ function iniciar(opcoes) {
     acomp.ritmo(texto);
     proximoCicloEm = Date.now() + r.esperaMs;
   }
+  const destinosJuntos = () => (nivelRitmo === 0 ? (folgados >= 3 ? 8 : 6) : nivelRitmo === 1 ? 2 : 1);
   const loteAgora = (cfg, porPedido) => porPedido ? 400 : nivelRitmo ? Math.min(cfg.lote, RITMOS[nivelRitmo].lote) : folgados >= 3 ? Math.max(cfg.lote, LOTE_RAPIDO) : cfg.lote;
 
   /** zip ainda chegando: o diretório central não está lá. */
@@ -414,7 +415,8 @@ function iniciar(opcoes) {
     const cfg = lerConfig(CONFIG, configBanco);
     anunciarModo(cfg);
     acomp.config(cfg);
-    if (cfg.modo === 'desligado') { resumo.esperando = 'o arquivador novo está desligado no config'; return resumo; }
+    // desligado: não arquiva nada, mas a lista Para resolver (e os grupos) segue em dia — só lê NÃO IDENTIFICADOS
+    if (cfg.modo === 'desligado') { resumo.esperando = 'o arquivador novo está desligado no config'; try { await conferirNaoIdentificados(); } catch (e) { /* só a lista */ } return resumo; }
     // o G: some quando o Google Drive desconecta: espera voltar (sem concluir que os arquivos "sumiram")
     if (!fs.existsSync(o.origem)) {
       if (!avisouSemDrive) { o.log('a pasta de origem não está acessível (' + o.origem + '): espero o Google Drive voltar'); avisouSemDrive = true; }
@@ -618,6 +620,8 @@ function iniciar(opcoes) {
       const res = await A.executar({
         modo: cfg.emProducao ? 'PRODUCAO' : 'SIMULACAO', confirmo: true, origem: org.raiz, controle: o.controle, clientes: o.clientes,
         pastaNaoIdentificados: new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-NOVO', raizNaoIdentificados: o.origem, travaAntiga: path.join(o.controleAntigo, '_execucao.lock'),
+        // vários destinos ao mesmo tempo (23/10/2026): 6 no ritmo normal, 8 com o Drive folgado, 2 e 1 com ele lento
+        destinosJuntos: destinosJuntos(),
         arquivos: lote, marcas: porRel, cadastro: cache.cadastro, contas: cache.contas, manifesto: cache.manifesto, conteudos: cache.conteudos, tiposProducao: cfg.tiposProducao, moverNaoIdentificados: !!cfg.moverNaoIdentificados,
         chaves: cache.chaves, buscaSieg, esperaVencida, manifestoAntigo: path.join(o.controleAntigo, 'MANIFESTO', 'manifesto.jsonl'),
         painel: cfg.modo === 'producao' ? { atividade: (t, x, d) => atividade(x, d), erro: (t, x, d) => atividade(x, d, true) } : null,
@@ -630,7 +634,7 @@ function iniciar(opcoes) {
       // o tempo por arquivo (ler, decidir, levar ao destino pelo Drive)
       porArquivoMs = Math.max(porArquivoMs || 0, ms / Math.max(1, lote.length));
       const t = res.tempos || {};
-      o.log('lote de ' + lote.length + (org.principal ? '' : ' (local)') + ' em ' + (ms / 1000).toFixed(1) + ' s: leitura ' + ((t.leituraMs || 0) / 1000).toFixed(1) + ' s, decisão ' + ((t.decisaoMs || 0) / 1000).toFixed(1) + ' s, destino ' + ((t.gravacaoMs || 0) / 1000).toFixed(1) + ' s · listagem ' + (listagemMs / 1000).toFixed(1) + ' s');
+      o.log('lote de ' + lote.length + (org.principal ? '' : ' (local)') + ' em ' + (ms / 1000).toFixed(1) + ' s: leitura ' + ((t.leituraMs || 0) / 1000).toFixed(1) + ' s, decisão ' + ((t.decisaoMs || 0) / 1000).toFixed(1) + ' s, destino ' + ((t.gravacaoMs || 0) / 1000).toFixed(1) + ' s (' + destinosJuntos() + ' juntos' + (t.porAcao ? ': ' + Object.entries(t.porAcao).map(([k, v]) => k + ' ' + v.n + ' × ' + (v.ms / v.n / 1000).toFixed(2) + ' s').join(', ') : '') + ') · listagem ' + (listagemMs / 1000).toFixed(1) + ' s');
     }
     if (o.painel) o.painel.fazendo('arquivador-novo', null);
     if (op.porPedido) return { esperaMs: 0 };
