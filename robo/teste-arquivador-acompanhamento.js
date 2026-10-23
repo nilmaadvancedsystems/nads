@@ -131,10 +131,45 @@ try {
     igual('grava a parte 0 do dia', parte && parte.dados.itens.length, 2);
     const antes = gravados.length;
     await ac._gravar();
-    igual('a parte que não mudou não é regravada', gravados.length - antes, 1);
+    igual('a parte que não mudou não é regravada', gravados.slice(antes).map(g => g.caminho), ['robo/arquivadorNovo', 'robo/arquivadorResumo']);
+    // o resumo da janela do Drive (o contábil lê): sem o nome original do arquivo
+    const res = gravados.filter(g => g.caminho === 'robo/arquivadorResumo').pop();
+    igual('resumo do Drive: o modo, a situação, os números de hoje e o último sem o nome original', [res.dados.modo, res.dados.situacao, res.dados.hoje.arquivados, res.dados.paraResolver, res.dados.ultimo && Object.keys(res.dados.ultimo).includes('nome')], ['producao', 'sem-drive', 1, 1, false]);
+    // 23/10/2026: o banco que não responde (o robô perdeu o Firestore às 13:18) não prende a gravação nem acumula a fila
+    {
+      const pedidos = [];
+      const travado = { collection: () => ({ doc: () => ({ set: () => { pedidos.push(1); return new Promise(() => {}); }, collection: () => ({ doc: () => ({ set: () => { pedidos.push(1); return new Promise(() => {}); } }) }) }) }) };
+      const dirT = fs.mkdtempSync(path.join(os.tmpdir(), 'teste-acomp-'));
+      let agoraT = T;
+      const acT = A.criar({ db: travado, controle: dirT, origem: 'G:\\x', agora: () => agoraT, prazoMs: 50 });
+      const t0 = Date.now();
+      await acT._gravar();
+      igual('banco travado: a gravação desiste no prazo', [Date.now() - t0 < 2000, pedidos.length], [true, 1]);
+      agoraT += 10 * 60000;   // passou a pausa, mas o pedido de antes ainda não voltou: não manda outro
+      await acT._gravar();
+      igual('banco travado: o que não voltou segura as próximas (a fila não acumula)', pedidos.length, 1);
+      await acT.parar();
+    }
+    // a parte aberta do histórico vai no máximo a cada 3 min (era a cada 45 s, com até 700 KB)
+    {
+      const g = [];
+      const docT = (c) => ({ set: async () => { g.push(c); }, collection: (n) => ({ doc: (id) => docT(c + '/' + n + '/' + id) }) });
+      const dbT = { collection: (n) => ({ doc: (id) => docT(n + '/' + id) }) };
+      const dirT = fs.mkdtempSync(path.join(os.tmpdir(), 'teste-acomp-'));
+      let agoraT = T;
+      const acT = A.criar({ db: dbT, controle: dirT, origem: 'G:\\x', agora: () => agoraT });
+      acT.decisoes([arq], 'PRODUCAO'); await acT._gravar();
+      const partes = () => g.filter(c => /\/dias\//.test(c)).length;
+      const antes = partes();
+      agoraT += 60000; acT.decisoes([Object.assign({}, arq, { hash: 'outro' })], 'PRODUCAO'); await acT._gravar();
+      igual('histórico: a parte aberta não é regravada antes de 3 min', partes() - antes, 0);
+      agoraT += 3 * 60000; await acT._gravar();
+      igual('histórico: depois de 3 min, vai', partes() - antes, 1);
+      await acT.parar();
+    }
     // a varredura igual à anterior não grava de novo (só o batimento de 10 min)
     const g4 = [];
-    const db4 = { collection: () => ({ doc: () => ({ set: async (d) => { g4.push(d); }, collection: () => ({ doc: () => ({ set: async () => {} }) }) }) }) };
+    const db4 = { collection: () => ({ doc: () => ({ set: async (d) => { if (d.painel) g4.push(d); }, collection: () => ({ doc: () => ({ set: async () => {} }) }) }) }) };
     let agora4 = T;
     const ac4 = A.criar({ db: db4, controle: fs.mkdtempSync(path.join(os.tmpdir(), 'teste-acomp-')), origem: 'G:\\x', agora: () => agora4, freioMs: 0 });
     const v4 = () => ({ vistos: [{ rel: 'a.pdf', tam: 1, mtime: T - 600000 }], pendentes: ['a.pdf'], mapa: new Map(), estavelMs: 45000 });

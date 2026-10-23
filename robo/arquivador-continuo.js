@@ -218,12 +218,61 @@ function iniciar(opcoes) {
   const soltarTrava = () => { try { if (JSON.parse(fs.readFileSync(TRAVA, 'utf8')).pid === process.pid) fs.unlinkSync(TRAVA); } catch (e) { /* já foi */ } };
 
   /** Varredura leve: só o nome, o tamanho e a data de cada arquivo. */
-  function varrer() {
+  // 23/10/2026: com 10.973 arquivos e o Google Drive sobrecarregado, listar a pasta levou 383 s. Com a árvore grande (ou o
+  // Drive lento), a varredura usa a lista do ciclo anterior mais o que o fs.watch avisou que mudou, e a lista inteira só
+  // a cada 15 min (ou quando o aviso veio sem o nome)
+  let lista = null, completaEm = 0;
+  const mudados = new Set();
+  const ARVORE_GRANDE = o.arvoreGrande != null ? o.arvoreGrande : 2000;
+  const incluir = (rel, ehPasta) => {
+    const p = rel.split('\\');
+    const pastas = ehPasta ? p : p.slice(0, -1);
+    if (pastas.some(s => s.startsWith('_') || /^CLAUDE FAVOR N[ÃA]O MEXER$/i.test(s) || s === 'NÃO IDENTIFICADOS')) return false;
+    const n = p[p.length - 1];
+    return ehPasta || (!n.startsWith('_nao_identificados') && n !== 'desktop.ini');
+  };
+  function varrerCompleto() {
     const out = [];
     for (const rel of A.varrer(o.origem, {})) {
       try { const st = fs.statSync(path.join(o.origem, rel)); out.push({ rel, tam: st.size, mtime: st.mtimeMs }); } catch (e) { /* sumiu no meio */ }
     }
+    lista = new Map(out.map(v => [v.rel, v])); completaEm = Date.now(); mudados.clear();
     return out;
+  }
+  function varrer() {
+    const grande = lista && (lista.size > ARVORE_GRANDE || nivelRitmo > 0);
+    if (!lista || !observador || !grande || Date.now() - completaEm > 15 * 60000 || mudados.has('*')) return varrerCompleto();
+    const nomes = [...mudados]; mudados.clear();
+    for (const nome of nomes) {
+      const rel = String(nome).replace(/\//g, '\\');
+      let st = null;
+      try { st = fs.statSync(path.join(o.origem, rel)); } catch (e) { /* saiu (arquivado, movido, apagado) */ }
+      if (!st) { lista.delete(rel); for (const k of [...lista.keys()]) if (k.startsWith(rel + '\\')) lista.delete(k); continue; }
+      if (st.isDirectory()) {
+        if (!incluir(rel, true)) continue;
+        for (const r of A.varrer(o.origem, { pasta: rel })) { try { const s2 = fs.statSync(path.join(o.origem, r)); lista.set(r, { rel: r, tam: s2.size, mtime: s2.mtimeMs }); } catch (e) { /* sumiu */ } }
+      } else if (incluir(rel, false)) lista.set(rel, { rel, tam: st.size, mtime: st.mtimeMs });
+    }
+    return [...lista.values()];
+  }
+
+  // o ritmo pelo Google Drive (23/10/2026): a varredura de mais de 60 s ou mais de 10 s por arquivo no lote, o lote cai
+  // (40 → 10 → 5) e os ciclos se espaçam (2 e 5 min); três ciclos rápidos seguidos, volta um degrau
+  const RITMOS = [{ lote: null, esperaMs: 0 }, { lote: 10, esperaMs: 2 * 60000 }, { lote: 5, esperaMs: 5 * 60000 }];
+  let nivelRitmo = 0, rapidos = 0, proximoCicloEm = 0;
+  function medirRitmo(varreduraMs, porArquivoMs) {
+    const antes = nivelRitmo;
+    const lento = varreduraMs > 60000 || (porArquivoMs != null && porArquivoMs > 10000);
+    const rapido = varreduraMs < 20000 && (porArquivoMs == null || porArquivoMs < 3000);
+    if (lento) { nivelRitmo = Math.min(RITMOS.length - 1, nivelRitmo + 1); rapidos = 0; }
+    else if (rapido && nivelRitmo) { if (++rapidos >= 3) { nivelRitmo--; rapidos = 0; } }
+    else if (!rapido) rapidos = 0;
+    const r = RITMOS[nivelRitmo];
+    const texto = nivelRitmo ? 'Google Drive lento: indo devagar (lote de ' + r.lote + ', um ciclo a cada ' + Math.round(r.esperaMs / 60000) + ' min; varredura de ' + Math.round(varreduraMs / 1000) + ' s' + (porArquivoMs != null ? ', ' + Math.round(porArquivoMs / 1000) + ' s por arquivo' : '') + ')' : null;
+    if (nivelRitmo !== antes) o.log(texto || 'Google Drive rápido de novo: ritmo normal');
+    if (o.painel) o.painel.fazendo('arquivador-novo-ritmo', texto);
+    acomp.ritmo(texto);
+    proximoCicloEm = Date.now() + r.esperaMs;
   }
   const chave = (rel, v) => rel + '|' + v.tam + '|' + Math.round(v.mtime);
   /** zip ainda chegando: o diretório central não está lá. */
@@ -258,9 +307,14 @@ function iniciar(opcoes) {
     acomp.situacao(motivo ? 'esperando' : 'ok', motivo);
     if (motivo) { if (o.painel) o.painel.fazendo('arquivador-novo', 'Esperando: ' + motivo); resumo.esperando = motivo; return resumo; }
     if (o.painel) o.painel.fazendo('arquivador-novo', null);
+    // o Drive lento: os ciclos se espaçam (o botão do nads passa na frente)
+    if (!op.porPedido && Date.now() < proximoCicloEm) { resumo.esperando = 'Google Drive lento: o próximo ciclo em ' + Math.ceil((proximoCicloEm - Date.now()) / 1000) + ' s'; return resumo; }
     rodando = true;
+    let varreduraMs = 0, porArquivoMs = null;
     try {
+      const t0 = Date.now();
       const vistos = varrer();
+      varreduraMs = Date.now() - t0;
       const porRel = new Map(vistos.map(v => [v.rel, v]));
       // pelo botão: arquivo parado há 10 s (e já visto numa varredura) vale
       const estavelMs = op.porPedido ? Math.min(cfg.estavelMs, 10000) : cfg.estavelMs;
@@ -276,7 +330,7 @@ function iniciar(opcoes) {
         .filter(rel => { const e = esperaDe(rel); return !e || e.versao !== versaoIdx || Date.now() - e.tentativa >= 10 * 60000 || (Date.now() - e.desde >= esperaMs && e.tentativa - e.desde < esperaMs); })
         .sort((a, b) => (esperaDe(a) ? 1 : 0) - (esperaDe(b) ? 1 : 0));
       const aguardandoAgora = estaveisAgora.filter(rel => esperaDe(rel));
-      const limite = op.porPedido ? 400 : cfg.lote;
+      const limite = op.porPedido ? 400 : Math.min(cfg.lote, RITMOS[nivelRitmo].lote || cfg.lote);
       // o zip só é aberto (para ver se chegou inteiro) quando vai entrar no lote, não a cada varredura
       const prontos = pendentes.slice(0, limite * 3).filter(zipInteiro);
       resumo.restantes = Math.max(0, pendentes.length - prontos.length);
@@ -294,6 +348,7 @@ function iniciar(opcoes) {
         while (prontos.length && feitos < limite && Date.now() - inicio < tempo) {
           const lote = prontos.splice(0, Math.min(10, limite - feitos));
           feitos += lote.length;
+          const tLote = Date.now();
           acomp.lendo(lote);
           if (o.painel) o.painel.fazendo('arquivador-novo', (cfg.modo === 'producao' ? 'Arquivando ' : 'Simulando ') + lote.length + ' arquivo(s) da Claudio Secretario');
           const res = await A.executar({
@@ -305,11 +360,19 @@ function iniciar(opcoes) {
             registrar: false, log: () => {},
           });
           registrar(res, lote, porRel, cfg, resumo, modoChave, versaoIdx);
+          // o tempo por arquivo (ler, gravar no destino e tirar da origem pelo Drive); lento, para o ciclo aqui
+          porArquivoMs = Math.max(porArquivoMs || 0, (Date.now() - tLote) / Math.max(1, lote.length));
+          if (!op.porPedido && porArquivoMs > 10000) break;
         }
         resumo.restantes += prontos.length;
       } finally { soltarTrava(); if (o.painel) o.painel.fazendo('arquivador-novo', null); }
     } catch (err) { o.log('erro no ciclo:', err.message); atividade('O arquivador novo deu erro', err.message, true); acomp.erro(err.message); resumo.esperando = 'erro: ' + err.message; }
-    finally { rodando = false; try { conferirNaoIdentificados(); } catch (e) { o.log('não conferi NÃO IDENTIFICADOS:', e.message); } await compararSeForHora(); }
+    finally {
+      rodando = false;
+      try { if (!op.porPedido) medirRitmo(varreduraMs, porArquivoMs); } catch (e) { /* só o ritmo */ }
+      try { conferirNaoIdentificados(); } catch (e) { o.log('não conferi NÃO IDENTIFICADOS:', e.message); }
+      await compararSeForHora();
+    }
     return resumo;
   }
 
@@ -440,8 +503,8 @@ function iniciar(opcoes) {
     if (observador || parado || Date.now() - tentouVigiarEm < 10 * 60000) return;
     tentouVigiarEm = Date.now();
     try {
-      observador = fs.watch(o.origem, { recursive: true }, () => { clearTimeout(acordar); acordar = setTimeout(() => { void ciclo(); }, 5000); });
-      observador.on('error', e => { o.log('fs.watch caiu (segue a varredura de minuto):', e.message); try { observador.close(); } catch (x) { /* já fechou */ } observador = null; });
+      observador = fs.watch(o.origem, { recursive: true }, (ev, nome) => { mudados.add(nome ? String(nome) : '*'); if (mudados.size > 20000) mudados.add('*'); clearTimeout(acordar); acordar = setTimeout(() => { void ciclo(); }, 5000); });
+      observador.on('error', e => { o.log('fs.watch caiu (segue a varredura de minuto):', e.message); try { observador.close(); } catch (x) { /* já fechou */ } observador = null; lista = null; });
     } catch (e) { observador = null; o.log('fs.watch não ligou (segue a varredura de minuto):', e.message); }
   }
   vigiar();
@@ -457,6 +520,8 @@ function iniciar(opcoes) {
   o.log('vigiando ' + o.origem + ' (modo ' + lerConfig(CONFIG, configBanco).modo + ')');
   return {
     ciclo, comparar, config: () => lerConfig(CONFIG, configBanco),
+    // para os testes: o ritmo e a varredura
+    _medirRitmo: (v, a) => medirRitmo(v, a), _ritmo: () => ({ nivel: nivelRitmo, proximoCicloEm }), _varrer: () => varrer(),
     parar: () => { parado = true; if (pedidos) pedidos.parar(); if (timer) clearInterval(timer); clearTimeout(acordar); if (observador) observador.close(); soltarTrava(); void acomp.parar(); },
   };
 }

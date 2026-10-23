@@ -68,6 +68,18 @@ const fila = db.collection('solicitacoesArquivo');
 const estadoRef = db.collection('robo').doc('arquivador');
 
 let estado = { situacao: 'livre', pedidoId: null, desde: agora(), mensagem: null };
+// o vigia do banco (23/10/2026: às 13:18 o robô perdeu todas as conexões com o Firestore e ficou parado até alguém
+// religar): o ponto de cada minuto é a prova de vida do banco; mais de BANCO_MUDO_MS sem ele voltar, o robô sai com o
+// código 4 e o arquivador-laco.cmd religa em 30 s, com um cliente novo do Firestore
+const BANCO_MUDO_MS = 5 * 60 * 1000;
+let bancoRespondeuEm = Date.now();
+function vigiarOBanco() {
+  const mudo = Date.now() - bancoRespondeuEm;
+  if (mudo < BANCO_MUDO_MS) return;
+  log('o banco (Firestore) não responde há ' + Math.round(mudo / 60000) + ' min: saio para o laço religar com uma conexão nova');
+  try { if (continuo) continuo.parar(); } catch (e) { /* saindo */ }
+  setTimeout(() => process.exit(4), 2000);
+}
 // o que está HOJE em NÃO IDENTIFICADOS (o arquivador novo conta; 23/10/2026): vai no ponto de cada minuto
 let paraResolver = null;
 function baterPonto() {
@@ -79,6 +91,7 @@ function baterPonto() {
   painel.fazendo('rotina', rotina && rotina.ativa && !rotina.deUmPedido
     ? 'Organizando o Drive (rotina das 9h' + (rotina.fase ? ', fase ' + rotina.fase : '') + ')' : null);
   estadoRef.set(Object.assign({ em: agora(), pc: os.hostname(), rotina }, paraResolver ? { paraResolver } : {}, estado), { merge: true })
+    .then(() => { bancoRespondeuEm = Date.now(); })
     .catch(err => log('não consegui bater o ponto:', err.message));
 }
 function mudarEstado(novo) {
@@ -640,6 +653,7 @@ async function iniciar() {
   }
   mudarEstado({ situacao: 'livre' });
   setInterval(baterPonto, 60 * 1000);
+  setInterval(vigiarOBanco, 60 * 1000);
 
   await publicar(null);
   setInterval(() => publicar(null), PUBLICAR_A_CADA_MS);
