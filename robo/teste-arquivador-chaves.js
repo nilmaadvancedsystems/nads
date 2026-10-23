@@ -269,6 +269,62 @@ try {
   igual('relatório de notas de saída: EMITIDOS\\RELATÓRIO MENSAL do ano', [dr.acao, dr.destinoRelativo, dr.nomeFinal], ['ARQUIVAR', '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\EMITIDOS\\RELATÓRIO MENSAL\\2026', '09-2026 - RELATORIO NOTAS EMITIDAS - JANIO JOSE DE ALMEIDA.pdf']);
   const drE = R.decidir({ nome: 'RELATORIO 02 SET.PDF', rel: 'r.pdf', texto: [rel[0].replace('Notas Fiscais Saída', 'Notas Fiscais Entrada')] }, ctx2);
   igual('relatório de notas de entrada: RECEBIDOS', [drE.acao, drE.nomeFinal], ['ARQUIVAR', '09-2026 - RELATORIO NOTAS RECEBIDAS - JANIO JOSE DE ALMEIDA.pdf']);
+
+  // ---------- 13. as respostas do Vitor (23/10/2026) ----------
+  const LINHAS3 = LINHAS.concat(
+    { codigo: 298, razao: 'TEOBALDO MENDES DE OLIVEIRA LTDA', doc: '07.061.814/0001-85', regime: 'Simples', nomeEntregas: 'TEOBALDO MENDES DE OLIVEIRA - EIRELI' },
+    { codigo: 299, razao: 'TEOBALDO MENDES DE OLIVEIRA LTDA - FILIAL 02', outrosNomes: ['TEOBALDO MENDES DE OLIVEIRA LTDA'], doc: '07.061.814/0002-66', regime: 'Simples', nomeEntregas: 'TEOBALDO MENDES DE OLIVEIRA LTDA' },
+    { codigo: 300, razao: 'TEOBALDO MENDES DE OLIVEIRA LTDA - FILIAL 03', doc: '07.061.814/0003-47', regime: 'Simples', nomeEntregas: 'TEOBALDO MENDES DE OLIVEIRA - EIRELI' },
+    { codigo: 292, razao: 'FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA', doc: '19.449.248/0001-62', regime: 'Presumido' },
+    { codigo: 294, razao: 'FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA', doc: '19.449.248/0003-24', regime: 'Simples', ativo: false },
+    { codigo: 309, razao: 'FITO ALIMENTOS LTDA', doc: '26.124.295/0001-00', regime: 'Simples' },
+    { codigo: 485, razao: 'XTREME ACADEMIA ESPECIALIZADA LTDA', doc: '49.032.922/0001-70', regime: 'Simples' },
+    { codigo: 409, razao: 'OURO VERDE MINERACAO LTDA - FILIAL 02', doc: '27.119.416/0002-60', regime: 'Presumido' });
+  const cad3 = R.montarCadastro(LINHAS3, PASTAS.concat('298 - TEOBALDO MENDES DE OLIVEIRA LTDA', '299 - TEOBALDO MENDES DE OLIVEIRA LTDA - FILIAL 02', '300 - TEOBALDO', '292 - FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA', '309 - FITO ALIMENTOS LTDA', '485 - XTREME ACADEMIA ESPECIALIZADA LTDA', '409 - OURO VERDE MINERACAO LTDA - FILIAL 02'));
+  const ctx3 = { cadastro: cad3, hoje: new Date(2026, 9, 23), chaves: new K.Indice() };
+  // o lote do SIEG pelo nome do cliente no Entregas
+  igual('lote do SIEG: "TEOBALDO MENDES DE OLIVEIRA LTDA" é o nome da 299 no Entregas', R.clienteDaPasta('2026-09\\TEOBALDO MENDES DE OLIVEIRA LTDA\\SIEG 2026-09 - TEOBALDO MENDES DE OLIVEIRA LTDA.zip\\x.xml', cad3).codigo, 299);
+  igual('lote do SIEG: "… - EIRELI" é de três códigos: não decide', R.clienteDaPasta('2026-09\\TEOBALDO MENDES DE OLIVEIRA - EIRELI\\x.xml', cad3), null);
+  const evT = evCte(chave('31', '2609', TRANSP, '57', 2582285));
+  const dT = R.decidir({ nome: 'e.xml', rel: '2026-09\\TEOBALDO MENDES DE OLIVEIRA LTDA\\SIEG 2026-09 - TEOBALDO MENDES DE OLIVEIRA LTDA.zip\\e.xml', xml: evT }, ctx3);
+  igual('evento de CT-e sem CNPJ de cliente, no lote do SIEG da 299: vai para a 299', [dT.acao, dT.cliente], ['ARQUIVAR', 299]);
+  // DARF 0289 = INSS
+  const darf = '1ªVia MINISTÉRIODAFAZENDA DocumentodeArrecadaçãodeReceitasFederais DARF 02PeríododeApuração15/10/2026 03NúmerodoCPFouCNPJ27.119.416/0002-60 04CódigodaReceita0289 01Nome/RazãoSocial OUROVERDEMINERACAOLTDA 06DatadeVencimento29/10/2026 07ValordoPrincipal631,38 10ValorTotal631,38';
+  const dD = R.decidir({ nome: 'g.pdf', rel: 'g.pdf', texto: [darf] }, ctx3);
+  igual('DARF 0289 com o texto colado: INSS', [dD.acao, dD.nomeFinal, dD.destinoRelativo], ['ARQUIVAR', '10-2026 - DARF INSS - VALOR R$631,38 - VENCIMENTO 29-10-2026.pdf', '409 - OURO VERDE MINERACAO LTDA - FILIAL 02\\FISCAL\\LUCRO PRESUMIDO\\05. DARF']);
+  // FITO pelo nome escrito
+  igual('"FITO IND. E COM." é a 292 (não a 294, mesmo nome)', R.clientesPeloNomeNoTexto('FITO IND. E COM. DE ALIMENTOS LTDA RELATÓRIO PERIÓDICO FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA', cad3), [292]);
+  igual('"FITO A" é a 309', R.clientesPeloNomeNoTexto('PAGADOR FITO A', cad3), [309]);
+  // informe trimestral
+  const inf = 'Informe de Rendimentos Financeiro Terceiro trimestre 2026 Imposto de Renda - Pessoa Jurídica Pessoa jurídica beneficiária dos rendimentos CNPJ XTREME ACADEMIA ESPECIALIZADA LTDA 49.032.922/0001-70 Fonte pagadora: Nu Pagamentos S.A. - Instituição de Pagamento';
+  const dI = R.decidir({ nome: 'v1.pdf', rel: 'v1.pdf', texto: [inf] }, ctx3);
+  igual('informe trimestral: com o período no nome', [dI.acao, dI.nomeFinal], ['ARQUIVAR', '3º TRIMESTRE 2026 - INFORME DE RENDIMENTOS NUBANK.pdf']);
+  // documento por funcionário
+  const aso = 'Medicina e Segurança do Trabalho - CNPJ: 58.026.242/0001-34\nAtestado de Saúde Ocupacional\nEXAME\nEmpresa\nXTREME ACADEMIA ESPECIALIZADA LTDA - GRAU DE RISCO 2 - 49.032.922/0001-70\nSetor Função Data de Admissão\nADMINISTRATIVO INSTRUTOR | 02/06/2025\nFuncionário CPF Data de Nasc.\nTAMIRES DE SOUSA FERREIRA 187.654.226-86 02/05/2006\nExames Complementares\nO trabalhador acima identificado submeteu-se aos procedimentos\n| 0295 | Clinico ocupacional 17/10/2026 |';
+  const dA = R.decidir({ nome: 'ASO-X.pdf', rel: 'ASO-X.pdf', texto: [aso] }, ctx3);
+  igual('ASO: DEPARTAMENTO PESSOAL\\FUNCIONÁRIOS\\<nome>\\ASO <data do exame>.pdf', [dA.acao, dA.destinoRelativo, dA.nomeFinal], ['ARQUIVAR', '485 - XTREME ACADEMIA ESPECIALIZADA LTDA\\DEPARTAMENTO PESSOAL\\FUNCIONÁRIOS\\TAMIRES DE SOUSA FERREIRA', 'ASO 17-10-2026.pdf']);
+  igual('ASO sem o nome legível: NÃO IDENTIFICADO', R.decidir({ nome: 'ASO-Y.pdf', rel: 'ASO-Y.pdf', texto: [aso.replace('TAMIRES DE SOUSA FERREIRA 187.654.226-86', '???')] }, ctx3).acao, 'NAO_IDENTIFICADO');
+  // descarte confirmado e a planilha confirmada pelo hash
+  igual('descarte confirmado pelo hash', R.decidir({ nome: 'x', rel: 'x', hash: '028a68a74d8caa4c0f467fc6acf818019496a492326c26c055b4e2be648f48bc' }, ctx3).acao, 'DESCARTAR');
+  const cad4 = R.montarCadastro(LINHAS.concat({ codigo: 413, razao: 'BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA', doc: '33.117.361/0001-71', regime: 'Real' }), PASTAS.concat('413 - BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA'));
+  const dP = R.decidir({ nome: 'Relatório_Set_26.xlsx', rel: '2026-10\\BC SAUDE LTDA\\Relatório_Set_26.xlsx', hash: 'd378ba6934daa35ef03df5c440a8d3319356924ff51f81318f2cb4e9109b6a1e', planilha: [['Relatório - Financeiro']] }, { cadastro: cad4, hoje: new Date(2026, 9, 23) });
+  igual('planilha confirmada pelo hash, sem sub-regra: CONTÁBIL\\OUTROS DOCUMENTOS\\ano (04)', [dP.acao, dP.destinoRelativo, dP.nomeFinal], ['ARQUIVAR', '413 - BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\\CONTÁBIL\\OUTROS DOCUMENTOS\\2026', 'Relatório_Set_26.xlsx']);
+
+  // ---------- 14. "Para resolver" = o que está hoje em NÃO IDENTIFICADOS ----------
+  const sp = path.join(tmp, 'resolver');
+  const oP = path.join(sp, 'origem'), kP = path.join(sp, 'controle');
+  fs.mkdirSync(path.join(oP, 'NÃO IDENTIFICADOS', '20261022-NOVO', '2026-09', 'X'), { recursive: true });
+  fs.mkdirSync(kP, { recursive: true });
+  fs.writeFileSync(path.join(kP, 'config.json'), JSON.stringify({ modo: 'producao', tiposProducao: 'todos', moverNaoIdentificados: true, estavelMs: 0 }));
+  fs.writeFileSync(path.join(oP, 'NÃO IDENTIFICADOS', '20261022-NOVO', '2026-09', 'X', 'fica.xml'), '<a/>');
+  fs.writeFileSync(path.join(oP, 'NÃO IDENTIFICADOS', '20261022-NOVO', '_nao_identificados.jsonl'), [
+    { arquivo: 'fica.xml', caminho_relativo: '2026-09\\X', motivo: 'CLIENTE_AMBIGUO', timestamp: '2026-10-22T19:00:00Z' },
+    { arquivo: 'saiu.xml', caminho_relativo: '2026-09\\X', motivo: 'CLIENTE_NAO_LOCALIZADO', timestamp: '2026-10-22T19:00:01Z' },
+    { arquivo: 'fica.xml', caminho_relativo: '2026-09\\X', motivo: 'EVENTO_SEM_ORIGINAL', chave: 'k', timestamp: '2026-10-22T21:00:00Z' }].map(x => JSON.stringify(x)).join('\n') + '\n');
+  const vP = C.iniciar(Object.assign({}, baseC, { origem: oP, controle: kP }));
+  await vP.ciclo(); vP.parar();
+  const acP = JSON.parse(fs.readFileSync(path.join(kP, 'continuo', 'acompanhamento.json'), 'utf8'));
+  igual('Para resolver: só o que ainda está na pasta, com o motivo mais novo', [acP.pendentes.map(x => [x.nome, x.motivo]), acP.pendentesTotal], [[['fica.xml', 'EVENTO_SEM_ORIGINAL']], 1]);
 } catch (e) { falhas++; console.log('FALHOU com erro:', e.stack); }
 finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');

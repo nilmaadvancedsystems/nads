@@ -274,7 +274,7 @@ function iniciar(opcoes) {
         resumo.restantes += prontos.length;
       } finally { soltarTrava(); if (o.painel) o.painel.fazendo('arquivador-novo', null); }
     } catch (err) { o.log('erro no ciclo:', err.message); atividade('O arquivador novo deu erro', err.message, true); acomp.erro(err.message); resumo.esperando = 'erro: ' + err.message; }
-    finally { rodando = false; await compararSeForHora(); }
+    finally { rodando = false; try { conferirNaoIdentificados(); } catch (e) { o.log('não conferi NÃO IDENTIFICADOS:', e.message); } await compararSeForHora(); }
     return resumo;
   }
 
@@ -329,6 +329,36 @@ function iniciar(opcoes) {
   }
 
   /** Uma vez por dia, depois da rotina das 9h: o lado a lado (publicado no painel e gravado no controle). */
+  /**
+   * O que está HOJE em NÃO IDENTIFICADOS: a última linha de cada arquivo no _nao_identificados.jsonl de cada subpasta,
+   * só dos que ainda estão lá. Vai para a lista "Para resolver" do acompanhamento (a cada 10 min e no começo).
+   */
+  let conferidoNiEm = 0;
+  function conferirNaoIdentificados(forcar) {
+    if (!forcar && Date.now() - conferidoNiEm < 10 * 60000) return;
+    conferidoNiEm = Date.now();
+    const pastaNi = path.join(o.origem, 'NÃO IDENTIFICADOS');
+    let subs = [];
+    try { subs = fs.readdirSync(pastaNi, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name); } catch (e) { return; }
+    const ultimos = new Map();
+    for (const sub of subs) {
+      let texto = '';
+      try { texto = fs.readFileSync(path.join(pastaNi, sub, '_nao_identificados.jsonl'), 'utf8'); } catch (e) { continue; }
+      for (const l of texto.split(/\r?\n/)) {
+        let j; try { j = JSON.parse(l); } catch (e) { continue; }
+        if (!j || !j.arquivo) continue;
+        const dir = j.caminho_relativo && j.caminho_relativo !== '.' ? j.caminho_relativo : '';
+        ultimos.set(path.join(sub, dir, j.arquivo), Object.assign({ sub, dir }, j));
+      }
+    }
+    const itens = [];
+    for (const [k, j] of ultimos) {
+      if (!fs.existsSync(path.join(pastaNi, k))) continue;
+      itens.push({ rel: (j.dir ? j.dir + '\\' : '') + j.arquivo, nome: j.arquivo, motivo: j.motivo, confianca: j.confianca, cliente: j.cliente_tentativa, chave: j.chave || null, em: j.timestamp, hash: require('crypto').createHash('sha1').update(k).digest('hex'), naPasta: 'NÃO IDENTIFICADOS\\' + k });
+    }
+    acomp.naoIdentificados(itens, rel => fs.existsSync(path.join(o.origem, rel)));
+  }
+
   async function compararSeForHora() {
     const agora = new Date();
     const dia = agora.toISOString().slice(0, 10);

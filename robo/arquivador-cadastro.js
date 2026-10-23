@@ -50,6 +50,7 @@ function juntar({ planilha = [], entregas = [], nads = [] }) {
       outrosNomes: [x.en && x.en.nome, outraEmpresa ? null : x.pl && x.pl.razao].filter(n => n && R.chaveNome(n) !== R.chaveNome(razao)),
       fonteRegime: x.na && x.na.regime ? 'nads' : x.en && x.en.enquadramento ? 'entregas' : x.pl && x.pl.regime ? 'planilha' : null,
       ativo: x.en ? x.en.ativo !== false : true,
+      nomeEntregas: (x.en && x.en.nome) || '',
     });
   }
   // o mesmo CNPJ em dois códigos (cadastro duplicado) e nomes iguais em códigos diferentes (matriz/filiais sem "FILIAL")

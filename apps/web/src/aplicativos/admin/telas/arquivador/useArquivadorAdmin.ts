@@ -193,7 +193,7 @@ export function useArquivadorAdmin() {
   }));
   const chegandoAberto = aba === 'chegando' && itemAberto ? (p?.pasta?.lista ?? []).find(x => x.rel === itemAberto) : undefined;
 
-  const resolver = pendentes.length;
+  const resolver = p?.pendentesTotal ?? pendentes.length;
   const naFila = p?.pasta ? p.pasta.chegando + p.pasta.naFila + p.pasta.sendoLidos : 0;
   const abas: { id: AbaDoArquivador; rotulo: string; icone: NomeIcone; contador: string; aviso: boolean; direita?: boolean }[] = [
     { id: 'geral', rotulo: 'Visão geral', icone: 'painel', contador: '', aviso: false },
