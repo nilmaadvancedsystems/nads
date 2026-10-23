@@ -21,6 +21,8 @@ export interface AtestadoParaBuscar { id: string; funcionario: string; empresa: 
 export interface EscritaPerdida { oQue: string; motivo: string; quando: string }
 /** O resultado de uma gravação que não trava: 'aparelho' = sem sinal, sobe sozinho quando voltar. */
 export type ResultadoDaGravacao = 'servidor' | 'aparelho';
+/** O documento do mês da Pendências (documentosMensal), só o que o protocolo de extratos usa. */
+export interface DocumentoMensal { clienteId: string; competencia: string; extrato: boolean; semMovimento: boolean }
 /** O arquivo do Drive trazido pelo robô (modo "ler"). */
 export interface ArquivoDoDrive { bytes: Uint8Array; base64: string; tamanho: number }
 
@@ -77,6 +79,8 @@ export interface RepoEntregasDeDocumentos {
   vistoNoLink(token: string): Promise<{ ultima: string; vezes: number } | null>;
   /** documentosMensal/{cliente}_{comp} (o Extrato do mês) */
   documentosDoMes(clienteId: string, competencia: string): Promise<Record<string, unknown>>;
+  /** os documentosMensal das competências (até 30), de todos os clientes: o extrato e o sem movimento (o protocolo de extratos) */
+  documentosDasCompetencias(competencias: readonly string[]): Promise<DocumentoMensal[]>;
 
   // ---- gravações ----
   /** põe na rota (ou no link); devolve o id e se ficou só no aparelho */
@@ -228,6 +232,11 @@ export function criarEntregasDeDocumentosMemoria(): RepoEntregasDeDocumentos {
     async assinaturaFeita() { return null; },
     async vistoNoLink() { return { ultima: iso(30), vezes: 3 }; },
     async documentosDoMes() { return { extrato: true }; },
+    async documentosDasCompetencias(comps) {
+      // o exemplo: os clientes c1 a c5 mandaram o extrato dos meses passados, menos o c4 em alguns; o c3 ficou sem movimento
+      return comps.filter(c => c < comp(0)).flatMap((c, i) => ['c1', 'c2', 'c3', 'c4', 'c5']
+        .filter(id => !(id === 'c4' && i % 3 === 1)).map(id => ({ clienteId: id, competencia: c, extrato: id !== 'c3', semMovimento: id === 'c3' })));
+    },
     async registrar(n) {
       const id = 'ex-' + Date.now();
       lista = [...lista, entregas.entregaDoDocumento(id, entregas.dadosDaEntregaNova(n, quem, agora()))];

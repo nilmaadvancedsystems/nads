@@ -32,7 +32,7 @@ export function RoscaComLegenda({ fatias, total, subtitulo, ativa, onEscolher }:
           antes += pct;
           return fatia;
         })}
-        <text x="21" y="20.5" className="cert-rosca-total">{total}</text>
+        <text x="21" y="20.5" className="cert-rosca-total">{total.toLocaleString('pt-BR')}</text>
         <text x="21" y="26" className="cert-rosca-sub">{subtitulo}</text>
       </svg>
       <ul className="cert-legenda">
@@ -41,7 +41,7 @@ export function RoscaComLegenda({ fatias, total, subtitulo, ativa, onEscolher }:
             <button type="button" className={'cert-legenda-item' + (ativa === f.id ? ' ativo' : '')} onClick={() => onEscolher(f.id)}>
               <span className={'cert-legenda-cor cert-cor-' + COR[f.tom]} aria-hidden="true" />
               <span>{f.rotulo}</span>
-              <b className="num">{f.valor}</b>
+              <b className="num">{f.valor.toLocaleString('pt-BR')}</b>
             </button>
           </li>
         ))}
@@ -130,5 +130,21 @@ export function MapaDeCalor({ grade, maior, lado = 50, rotulo }: { grade: Readon
           style={{ left: x * tamanho + '%', top: y * tamanho + '%', width: tamanho + '%', height: tamanho + '%', opacity: forca }} />;
       })}
     </div>
+  );
+}
+
+/**
+ * A variação de um número contra o período anterior (23/10/2026, as telas do Fiscal e do Financeiro): a seta (▲ subiu,
+ * ▼ caiu) e o % sem sinal, em verde quando é bom e em vermelho quando é ruim. `subirEhRuim` para o que é gasto (saídas,
+ * despesas, imposto). null = não dá para comparar (o anterior é zero ou não tem dado): um traço.
+ */
+export function Variacao({ pct, subirEhRuim, titulo }: { pct: number | null | undefined; subirEhRuim?: boolean; titulo?: string }) {
+  if (pct == null || !Number.isFinite(pct)) return <span className="variacao fraco" title={titulo}>—</span>;
+  if (pct === 0) return <span className="variacao fraco" title={titulo}>0%</span>;
+  const bom = subirEhRuim ? pct < 0 : pct > 0;
+  return (
+    <span className={'variacao ' + (bom ? 'variacao-boa' : 'variacao-ruim')} title={titulo}>
+      {pct > 0 ? '▲' : '▼'} {Math.abs(pct).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%
+    </span>
   );
 }

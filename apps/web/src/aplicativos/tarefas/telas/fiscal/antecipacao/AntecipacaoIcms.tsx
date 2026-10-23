@@ -160,7 +160,7 @@ export function AntecipacaoIcms() {
                         <td className="num">{l.cst}</td>
                         <td className="num">{brl(l.valorOperacao)}</td>
                         <td className="num">{brl(l.baseNf)}</td>
-                        <td className="num" title={l.aliquotaEstimada ? 'Estimada pelo ICMS e pela base (XML baixado antes da versão 3 do robô)' : undefined}>{pct(l.aliquotaInterestadual)}{l.aliquotaEstimada ? '*' : ''}</td>
+                        <td className="num" title={l.aliquotaEstimada ? 'Estimada pelo ICMS e pela base (XML baixado antes da versão 4 do resumo do robô)' : undefined}>{pct(l.aliquotaInterestadual)}{l.aliquotaEstimada ? '*' : ''}</td>
                         <td className="num">{brl(l.icmsDestacado)}</td>
                         <td className="num">{brl(l.baseAntecipacao)}</td>
                         <td className="num">{brl(l.icmsInterno)}</td>

@@ -7,6 +7,8 @@ export * from './saude';
 export * from './painelRobo';
 // a saúde do banco (o site do admin, 21/10/2026)
 export * from './saudeBanco';
+// o arquivador novo (Admin › Arquivador, 22/10/2026)
+export * from './arquivadorNovo';
 export * from './gmail';
 export * from './parcelamentos';
 // a entrega de documentos aos clientes (a rota e o painel do Entregas, no nads desde 16/10/2026)

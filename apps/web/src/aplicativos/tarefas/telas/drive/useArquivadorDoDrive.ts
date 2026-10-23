@@ -5,6 +5,8 @@
 // (só admin e contábil).
 import { useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
+import { caminhoDoAdmin } from '../../../admin/casca/navegacao';
+import { URL_DO_ADMIN } from '../../casca/navegacao';
 import { useOperador } from '../../casca/operador';
 import { useArquivador } from '../../dados/repo';
 import type { PedidoDeArquivo } from '../../dados/arquivador';
@@ -108,20 +110,26 @@ export function useArquivadorDoDrive() {
     numeros: [
       { valor: deHoje.reduce((s, x) => s + x.arquivados, 0), rotulo: 'arquivados hoje', aviso: false },
       { valor: new Set(deHoje.flatMap(x => x.codigos)).size, rotulo: 'clientes', aviso: false },
-      { valor: deHoje.reduce((s, x) => s + x.naoIdentificados, 0), rotulo: 'sem cliente', aviso: deHoje.some(x => x.naoIdentificados > 0) },
+      { valor: deHoje.reduce((s, x) => s + x.naoIdentificados, 0), rotulo: 'sem cliente nas rodadas', aviso: false },
     ],
   } : null;
 
   return {
     exemplos: repo.exemplos,
     visivel: !e.semPermissao,
+    /** a área do arquivador no site do admin (só o admin): o que foi arquivado e por quê, o que ficou para resolver, os erros */
+    linkDoAdmin: admin ? URL_DO_ADMIN + caminhoDoAdmin('arquivador') : '',
+    // o que está HOJE em NÃO IDENTIFICADOS (a mesma conta da aba Para resolver do admin), não o histórico das rodadas
+    paraResolver: e.paraResolver ? { n: e.paraResolver.agora, texto: e.paraResolver.agora ? e.paraResolver.agora.toLocaleString('pt-BR') + (e.paraResolver.agora === 1 ? ' arquivo para resolver' : ' arquivos para resolver') : 'Nada para resolver', aviso: e.paraResolver.agora > 0 } : null,
     ligado,
     pc: ligado
       ? 'PC do arquivador ligado' + (e.situacao === 'rodando' ? ' · organizando agora' : e.situacao === 'aguardando' ? ' · esperando para começar' : '')
       : 'PC do arquivador desligado' + (e.em && Date.parse(e.em) > 0 ? ' desde ' + quando(e.desligadoEm || e.em) : ''),
     rotulo: aberto ? (aberto.status === 'processando' ? 'Organizando' + (pct != null ? ' ' + pct + '%' : '…') : 'Arquivamento pedido')
-      : rodandoPorFora ? 'Organizando' + (pctRotina != null ? ' ' + pctRotina + '%' : '…') : 'Arquivar agora',
+      : rodandoPorFora ? 'Organizando' + (pctRotina != null ? ' ' + pctRotina + '%' : '…') : 'Arquivador',
     ocupado: !!aberto || rodandoPorFora,
+    /** a próxima organização sozinha (todo dia às 9h) */
+    proximaRodada: new Date().getHours() < 9 ? 'hoje às 9h' : 'amanhã às 9h',
     podePedir: !aberto,
     rotina: rodandoPorFora && r ? {
       titulo: 'Organização em andamento',
@@ -179,7 +187,7 @@ export function useArquivadorDoDrive() {
         numeros: [
           { valor: x.arquivados, rotulo: x.arquivados === 1 ? 'arquivo arquivado' : 'arquivos arquivados', aviso: false },
           { valor: x.codigos.length, rotulo: x.codigos.length === 1 ? 'cliente' : 'clientes', aviso: false },
-          { valor: x.naoIdentificados, rotulo: 'sem cliente', aviso: x.naoIdentificados > 0 },
+          { valor: x.naoIdentificados, rotulo: 'sem cliente na rodada', aviso: false },
         ],
         clientes: clientes.map(c => ({ chave: c.codigo, codigo: c.codigo, nome: c.nome, n: c.n, pct: Math.round(c.n / maior * 100) })),
         maisClientes: Math.max(0, (res?.clientes.length || 0) - clientes.length),
@@ -200,7 +208,7 @@ export function useArquivadorDoDrive() {
         numeros: [
           { valor: resultado.arquivados, rotulo: resultado.arquivados === 1 ? 'arquivo arquivado' : 'arquivos arquivados', aviso: false },
           { valor: resultado.clientes.length, rotulo: resultado.clientes.length === 1 ? 'cliente' : 'clientes', aviso: false },
-          { valor: resultado.naoIdentificados, rotulo: 'sem cliente', aviso: resultado.naoIdentificados > 0 },
+          { valor: resultado.naoIdentificados, rotulo: 'sem cliente na rodada', aviso: false },
         ],
         vazio: resultado.arquivados === 0,
         clientes: resultado.clientes.slice(0, 4).map(c => ({ chave: c.codigo, rotulo: c.codigo + ' · ' + c.nome, n: c.n })),

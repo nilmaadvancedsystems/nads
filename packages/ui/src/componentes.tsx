@@ -181,13 +181,15 @@ export function Segmentado<T extends string>({ valor, opcoes, onMudar, id }: {
 }
 
 /** Um número da faixa (.stat). */
-export function Stat({ rotulo, valor, cor, grande = true }: { rotulo: string; valor: ReactNode; cor?: 'entrada' | 'saida'; grande?: boolean }) {
+/** sub: a linha de baixo, pequena (a comparação com o período anterior, a Variação; 23/10/2026) */
+export function Stat({ rotulo, valor, cor, grande = true, sub }: { rotulo: string; valor: ReactNode; cor?: 'entrada' | 'saida'; grande?: boolean; sub?: ReactNode }) {
   return (
     <div className="stat">
       <p className="stat-label">{rotulo}</p>
       <p className={'stat-value' + (cor ? ' cor-' + cor : '')} style={grande ? undefined : { fontSize: 16 }}>
         {typeof valor === 'string' || typeof valor === 'number' ? <NumeroQueConta texto={String(valor)} /> : valor}
       </p>
+      {sub != null && <div className="stat-comparacao">{sub}</div>}
     </div>
   );
 }

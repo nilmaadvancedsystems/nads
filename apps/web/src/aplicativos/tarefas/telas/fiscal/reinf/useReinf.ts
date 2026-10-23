@@ -15,7 +15,8 @@ import { useClientesDoDp } from '../../dp/useClientesDoDp';
 const CHAVE = 'nads-reinf';
 type Filtro = 'todas' | 'pendentes' | 'transmitidas';
 
-function ler(): Record<number, t.EstadoReinf> {
+/** O estado da REINF de cada empresa: o do Notion com o que foi mudado neste navegador (também o protocolo da REINF lê). */
+export function estadosDaReinf(): Record<number, t.EstadoReinf> {
   const base = Object.fromEntries(t.estadosIniciaisReinf().map(e => [e.codigo, e]));
   try {
     const v = JSON.parse(localStorage.getItem(CHAVE) || '{}') as Record<number, t.EstadoReinf>;
@@ -35,7 +36,7 @@ export function useReinf() {
   const [params, setParams] = useSearchParams();
   const competencias = competenciasDaTela(12);
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
-  const [estados, setEstados] = useState(ler);
+  const [estados, setEstados] = useState(estadosDaReinf);
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<Filtro>('todas');
   // a REINF do DP do mesmo mês (a aba REINF do Painel do DP lê a etapa dp-reinf da execução do DP)

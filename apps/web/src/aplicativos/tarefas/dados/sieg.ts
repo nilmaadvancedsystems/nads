@@ -77,7 +77,7 @@ function xmlsDeExemplo(competencia: string): Pick<t.sieg.NotasSieg, 'emitidas' |
   const cli = { doc: '44555666000172', nome: 'CLIENTE EXEMPLO (TESTE)' };
   const forn = { doc: '77888999000163', nome: 'FORNECEDOR EXEMPLO (TESTE)' };
   return {
-    resumo: 3,
+    resumo: 4,
     emitidas: [
       { tipo: 'NF-e', chave: 'T1', numero: 'T901', serie: '1', data: dia(3), emitente: eu, destinatario: cli, valor: 1500,
         itens: [{ ncm: '21069090', cfop: '5102', cst: '000', cest: '', valor: 1000, icms: 180, cstPis: '01' }, { ncm: '22021000', cfop: '5405', cst: '060', cest: '0300700', valor: 500, cstPis: '04' }] },
@@ -89,12 +89,16 @@ function xmlsDeExemplo(competencia: string): Pick<t.sieg.NotasSieg, 'emitidas' |
     recebidas: [
       { tipo: 'NF-e', chave: 'T3', numero: 'T501', serie: '1', data: dia(5), emitente: forn, destinatario: eu, valor: 2200,
         itens: [{ ncm: '39232990', cfop: '6102', cst: '090', cest: '', valor: 2200, icms: 264 }] },
+      // uma compra com frete (o Rateio de frete; 22/10/2026): os números da planilha do Fiscal, 600 tributado e 400 com ST, frete de 500
+      { tipo: 'NF-e', chave: 'T4', numero: 'T502', serie: '1', data: dia(8), emitente: forn, destinatario: eu, valor: 1536, frete: 500, desconto: 0,
+        itens: [{ ncm: '39241000', cfop: '2102', cst: '000', cest: '', valor: 600, icms: 72 }, { ncm: '39241000', cfop: '2403', cst: '010', cest: '', valor: 200, st: 20, ipi: 10 },
+          { ncm: '69120000', cfop: '2403', cst: '010', cest: '', valor: 100, st: 6 }, { ncm: '70134900', cfop: '2403', cst: '060', cest: '', valor: 100 }] },
       // a antecipação do ICMS do ES (22/10/2026): uma compra de SP a 7% com IPI, por CST, e uma com ICMS-ST
-      { tipo: 'NF-e', chave: 'T4', numero: 'T213719', serie: '1', data: dia(6), emitente: { doc: '61222333000144', nome: 'AUTOPECAS SP (TESTE)' }, destinatario: eu, valor: 7902.76,
+      { tipo: 'NF-e', chave: 'T6', numero: 'T213719', serie: '1', data: dia(6), emitente: { doc: '61222333000144', nome: 'AUTOPECAS SP (TESTE)' }, destinatario: eu, valor: 7902.76,
         itens: [{ ncm: '87083090', cfop: '6102', cst: '000', cest: '', valor: 4433.52, ipi: 144.08, bc: 4433.52, aliq: 7, icms: 310.35 },
           { ncm: '87089990', cfop: '6102', cst: '500', cest: '', valor: 1400.5, ipi: 45.51, bc: 1400.5, aliq: 7, icms: 98.04 },
           { ncm: '84213100', cfop: '6102', cst: '100', cest: '', valor: 1820, ipi: 59.15, bc: 1820, aliq: 4, icms: 72.8 }] },
-      { tipo: 'NF-e', chave: 'T5', numero: 'T15093', serie: '1', data: dia(18), emitente: { doc: '61222333000144', nome: 'AUTOPECAS SP (TESTE)' }, destinatario: eu, valor: 1312.4,
+      { tipo: 'NF-e', chave: 'T7', numero: 'T15093', serie: '1', data: dia(18), emitente: { doc: '61222333000144', nome: 'AUTOPECAS SP (TESTE)' }, destinatario: eu, valor: 1312.4,
         itens: [{ ncm: '40111000', cfop: '6403', cst: '010', cest: '1600100', valor: 1100, bc: 1100, aliq: 12, icms: 132, st: 80.4 }] },
       // uma NFS-e tomada com INSS e IRRF/PIS/COFINS/CSLL retidos (a REINF: R-2010 e R-4020)
       { tipo: 'NFS-e', chave: '', numero: 'T88', serie: '', data: dia(15), emitente: forn, destinatario: eu, valor: 4000, nbs: '1.0501.10.00',

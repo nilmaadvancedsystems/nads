@@ -36,6 +36,7 @@ export function docsDeExemplo(agora = Date.now()): entregas.DocsDoPainelRobo {
       { id: 'area-envios', nome: 'Arquivos da Área do Cliente', esperando: 2, andamento: 0, maisAntigoEm: ha(75) },
       { id: 'mensagens', nome: 'Mensagens ao Claude da rotina', esperando: 0, andamento: 0, maisAntigoEm: '' },
     ],
+    paraResolver: { agora: 0, em: ha(2) },
     arquivados: {
       mes, em: ha(6), hoje: 38, noMes: 912, naoIdentificadosNoMes: 17, execucoesNoMes: 19,
       execucoes: [
@@ -59,7 +60,6 @@ export function docsDeExemplo(agora = Date.now()): entregas.DocsDoPainelRobo {
       { id: 'nfse', nome: 'NFS-e dos honorários', esperando: 0, andamento: 0, maisAntigoEm: '' },
       { id: 'sefaz', nome: 'Situação na SEFAZ', esperando: 1, andamento: 0, maisAntigoEm: ha(130) },
       { id: 'envios', nome: 'Envios do nads (Claudio Secretario)', esperando: 0, andamento: 0, maisAntigoEm: '' },
-      { id: 'extratos', nome: 'Extratos para importar', esperando: 4, andamento: 0, maisAntigoEm: ha(60 * 5) },
     ],
   });
   const a = (id: string, min: number, robo: 'pc' | 'vm', tipo: string, texto: string, detalhe: string, erro = false) =>

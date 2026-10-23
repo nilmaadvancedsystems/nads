@@ -19,7 +19,7 @@ const FORA_DO_RECOLHER: readonly SituacaoDaAntecipacao[] = ['dispensado', 'nao-s
 
 /** a alíquota interna do ES (a padrão da aba PARÂMETROS) */
 export const ALIQUOTA_INTERNA_ES = 17;
-/** as alíquotas interestaduais: a estimada (nota baixada antes do resumo 3, sem a alíquota no item) vai para a mais perto */
+/** as alíquotas interestaduais: a estimada (nota baixada antes do resumo 4, sem a alíquota no item) vai para a mais perto */
 const INTERESTADUAIS = [4, 7, 12];
 
 /** o arredondamento da planilha (ARRED: metade para longe do zero), em centavos */

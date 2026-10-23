@@ -22,6 +22,8 @@ export function useFaturamentoDosClientes() {
   const [busca, setBusca] = useState('');
   const [regime, setRegime] = useState('');
   const [soComDado, setSoComDado] = useState(true);
+  // o cliente aberto no faturamento detalhado (22/10/2026: "quando eu clique no cliente abra um faturamento detalhado")
+  const [aberto, setAberto] = useState<number | null>(null);
   const competencias = f.competenciasDoPeriodo(periodo, competencia);
   // cada mês numa consulta só (todos os clientes; a mesma do Painel do Fiscal)
   const meses = competencias.map(c => sieg.doMes(c));
@@ -31,6 +33,13 @@ export function useFaturamentoDosClientes() {
   const achadas = q ? new Set(emp.buscarEmpresas(todas, q).map(e => e.codigo)) : null;
   const linhas = todas.filter(l => (!achadas || achadas.has(l.codigo)) && (!regime || l.regime === regime) && (!soComDado || l.total != null));
   const totalDoMes = (c: string) => { const v = linhas.reduce((s, l) => s + (l.meses[c]?.valor || 0), 0); return linhas.some(l => l.meses[c]) ? Math.round(v * 100) / 100 : null; };
+  // os números do topo (23/10/2026, como nos painéis de receita: o número com a comparação): o último mês com dado
+  // contra o anterior, quantos clientes faturaram e o maior
+  const mesesComDado = competencias.filter(c => totalDoMes(c) != null);
+  const ultimo = mesesComDado[mesesComDado.length - 1];
+  const penultimo = mesesComDado[mesesComDado.length - 2];
+  const vUltimo = ultimo ? totalDoMes(ultimo) || 0 : 0, vPenultimo = penultimo ? totalDoMes(penultimo) || 0 : 0;
+  const maior = linhas.reduce<(typeof linhas)[number] | null>((m, l) => (!m || (l.total || 0) > (m.total || 0) ? l : m), null);
   const rotuloDoPeriodo = periodo === 'mes' ? t.rotuloCompetencia(competencia) : periodo === 'ano' ? 'Janeiro a ' + t.rotuloCompetencia(competencia) : '12 meses até ' + t.rotuloCompetencia(competencia);
   return {
     exemplos: sieg.exemplos,
@@ -42,8 +51,18 @@ export function useFaturamentoDosClientes() {
     soComDado, alternarSoComDado: () => setSoComDado(s => !s),
     competencias: competencias.map(c => ({ chave: c, rotulo: f.mesCurto(c), total: totalDoMes(c) })),
     linhas,
+    /** o faturamento detalhado: o cliente aberto, as competências do período, abrir e fechar */
+    aberto: aberto == null ? null : linhas.find(l => l.codigo === aberto) || todas.find(l => l.codigo === aberto) || null,
+    competenciasDoPeriodo: competencias,
+    abrir: (codigo: number) => setAberto(codigo),
+    fechar: () => setAberto(null),
     semDado: todas.filter(l => l.total == null).length,
     totalGeral: linhas.reduce((s, l) => s + (l.total || 0), 0),
+    numeros: {
+      ultimo: ultimo ? { rotulo: t.rotuloCompetencia(ultimo), valor: vUltimo, anterior: penultimo ? f.mesCurto(penultimo) : '', variacao: vPenultimo ? Math.round(((vUltimo - vPenultimo) / vPenultimo) * 1000) / 10 : null } : null,
+      clientes: linhas.filter(l => l.total != null).length,
+      maior: maior && maior.total ? { nome: maior.nome, valor: maior.total } : null,
+    },
     fonte: f.FONTE_SIEG,
     rotuloDoPeriodo,
     exportar() {

@@ -12,7 +12,8 @@ export function EscolherEmpresaCadastro() {
   // a Nova empresa (Vitor, 07/10/2026: "um cadastro de empresas sem o botão de cadastrar empresa")
   const [nova, setNova] = useState(false);
   const vm = useListaDoCadastro();
-  // os papéis do mês (Heverton, 20/10/2026): as etiquetas do envelope e o protocolo de tributos, das empresas da lista
+  // os papéis do mês (Heverton, 20/10/2026): as etiquetas do envelope, o protocolo de tributos e os protocolos do ano (de
+  // extratos e da REINF; 22/10/2026), das empresas da lista
   const papeis = usePapeisDoCadastro(vm.linhas);
   useCarregando(vm.carregando);
   // as linhas chegam em cascata quando o banco responde
@@ -42,7 +43,8 @@ export function EscolherEmpresaCadastro() {
             ...SITUACOES.map(s => ({ rotulo: s.rotulo, marcado: s.valor === vm.situacao, onClick: () => vm.setSituacao(s.valor) }))]} />
         {/* os papéis do mês num menu só (a barra não quebra): as etiquetas do envelope e o protocolo de tributos */}
         <MenuSuspenso rotulo="Papéis do mês" icone="printer" titulo="Imprimir os papéis do mês das empresas da lista" direita largura={240}
-          itens={[{ rotulo: 'Etiquetas do mês', onClick: () => papeis.abrir('etiquetas') }, { rotulo: 'Protocolo de tributos', onClick: () => papeis.abrir('protocolo') }]} />
+          itens={[{ rotulo: 'Etiquetas do mês', onClick: () => papeis.abrir('etiquetas') }, { rotulo: 'Protocolo de tributos', onClick: () => papeis.abrir('protocolo') },
+            { rotulo: 'Protocolo de extratos', onClick: () => papeis.abrir('extratos') }, { rotulo: 'Protocolo da REINF', onClick: () => papeis.abrir('reinf') }]} />
         <button type="button" className="btn btn-primary" onClick={() => setNova(true)}><Icone nome="plus" />Nova empresa</button>
       </div>
 

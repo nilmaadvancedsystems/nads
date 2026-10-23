@@ -58,6 +58,10 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'sintegra', rotulo: 'SINTEGRA', icone: 'fileText', titulo: 'Leitor do SINTEGRA' },
     // a relação de faturamento dos clientes (Heverton, 20/10/2026; o usuário decidiu em 21/10: a receita de cada cliente)
     { id: 'faturamento', rotulo: 'Faturamento', icone: 'dinheiro', titulo: 'Faturamento dos clientes' },
+    // o rateio do frete e do desconto de uma nota pelas tributações (Heverton, 22/10/2026: a planilha "RATEIO - FRETE")
+    { id: 'rateio-frete', rotulo: 'Rateio de frete', icone: 'caminhao', titulo: 'Rateio de frete' },
+    // a calculadora do Simples Nacional, a planilha do Fiscal preenchida com o SIEG e a folha do DP (Heverton, 22/10/2026)
+    { id: 'simples', rotulo: 'Simples Nacional', icone: 'recibo', titulo: 'Calculadora do Simples Nacional' },
     // a antecipação do ICMS do ES (Heverton, 22/10/2026: a planilha "Antecipação ICMS-ES", com as notas do SIEG)
     { id: 'antecipacao-es', rotulo: 'Antecipação ICMS-ES', icone: 'fileSearch', titulo: 'Antecipação de ICMS — ES' },
   ] },
@@ -99,10 +103,16 @@ export const APLICACOES: readonly Aplicacao[] = [
   // o financeiro do escritório (15/10/2026: "vamos criar um emissor de notas fiscais para o financeiro"): as NFS-e de
   // honorários da Nilma (Taiobeiras, E&L), emitidas pelo robô da nuvem; só o admin e o diretor
   { id: 'financeiro', nome: 'Financeiro', icone: 'cartao', grupo: 'Escritório', pronta: true, paginas: [
+    // o painel (22/10/2026: "faça um dashboard de entradas, saídas dentre outros"), a primeira página do Financeiro
+    { id: 'painel', rotulo: 'Painel', icone: 'barChart', titulo: 'Painel financeiro' },
     // o Movimento de Caixa e o Plano de Contas que vieram do Toriba (19/10/2026), no início do Financeiro
     { id: 'caixa', rotulo: 'Caixa', icone: 'dinheiro', titulo: 'Movimento de caixa' },
     // os honorários dos clientes, por competência (19/10/2026, fase 2 do Financeiro)
     { id: 'honorarios', rotulo: 'Honorários', icone: 'recibo', titulo: 'Honorários' },
+    // os itens 2 e 7 da lista do Painel (22/10/2026): quem deve e a conciliação com o extrato; o Resultado por conta virou
+    // um botão do Painel, numa janela flutuante ("a aba de resultado vai virar um botão no painel")
+    { id: 'devedores', rotulo: 'Devedores', icone: 'alert', titulo: 'Devedores' },
+    { id: 'conciliacao', rotulo: 'Conciliação', icone: 'fileSearch', titulo: 'Conciliação com o extrato' },
     { id: 'plano', rotulo: 'Plano de contas', icone: 'list', titulo: 'Plano de contas' },
     { id: 'notas', rotulo: 'Notas fiscais', icone: 'recibo', titulo: 'Notas fiscais' },
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Configurações do emissor' },

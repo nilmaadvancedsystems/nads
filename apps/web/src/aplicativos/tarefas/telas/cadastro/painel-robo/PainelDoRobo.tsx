@@ -1,7 +1,7 @@
 // Cadastro › Painel do robô (Vitor, 21/10/2026: "quero um painel para eu saber o que o robô está fazendo, arquivando e
 // afins"). Só o admin e o diretor. De cima para baixo: os dois robôs (ligado ou não, onde roda, a versão e o que está
 // fazendo agora), os erros das últimas 24 h em destaque, as filas de pedidos, o que foi arquivado hoje e no mês (com o
-// caminho para o histórico do Arquivador) e a atividade dos últimos 7 dias, com o filtro por tipo e por erro.
+// caminho para Admin › Arquivador) e a atividade dos últimos 7 dias, com o filtro por tipo e por erro.
 import { Alerta, Dica, Esqueleto, Icone, Vazio, useCarregando } from '@nads/ui';
 import { Link } from 'react-router';
 import { CartaoDoRobo } from './partes/CartaoDoRobo';
@@ -74,7 +74,7 @@ export function PainelDoRobo() {
         <div className="card-head">
           <h3>Arquivados{vm.mesDosArquivados ? ' em ' + vm.mesDosArquivados : ''}</h3>
           {vm.podeAbrirArquivo && (
-            <Link className="btn btn-outline" to={vm.caminhoDoArquivo}><Icone nome="arquivo" width={16} height={16} />Abrir o histórico do Arquivador</Link>
+            <Link className="btn btn-outline" to={vm.caminhoDoArquivo}><Icone nome="arquivo" width={16} height={16} />Abrir o Arquivador</Link>
           )}
         </div>
         {vm.carregando ? <Esqueleto linhas={2} numeros={4} /> : !a ? (
@@ -85,7 +85,10 @@ export function PainelDoRobo() {
               <div className="stat painel-numero painel-ok"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="checkCircle" width={16} height={16} /></span><p className="stat-label">Arquivados hoje</p><p className="stat-value num">{num(a.hoje)}</p></div>
               <div className="stat painel-numero painel-info"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="arquivo" width={16} height={16} /></span><p className="stat-label">Arquivados no mês</p><p className="stat-value num">{num(a.noMes)}</p></div>
               <div className="stat painel-numero painel-neutro"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="clock" width={16} height={16} /></span><p className="stat-label">Organizações no mês</p><p className="stat-value num">{num(a.execucoesNoMes)}</p></div>
-              <div className="stat painel-numero painel-aviso"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="alert" width={16} height={16} /></span><p className="stat-label">Não identificados no mês</p><p className="stat-value num">{num(a.naoIdentificadosNoMes)}</p></div>
+              {vm.paraResolver && (
+                <div className={'stat painel-numero ' + (vm.paraResolver.n ? 'painel-aviso' : 'painel-ok')}><span className="painel-numero-icone" aria-hidden="true"><Icone nome={vm.paraResolver.n ? 'alert' : 'checkCircle'} width={16} height={16} /></span><p className="stat-label">Para resolver agora</p><p className="stat-value num">{vm.paraResolver.texto}</p></div>
+              )}
+              <div className="stat painel-numero painel-neutro"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="arquivo" width={16} height={16} /></span><p className="stat-label">Não identificados no mês (histórico)</p><p className="stat-value num">{num(a.naoIdentificadosNoMes)}</p></div>
             </div>
             {a.execucoes.length ? (
               <div className="table-wrap robo-execucoes"><table className="table-compact">
@@ -96,7 +99,7 @@ export function PainelDoRobo() {
                       <td>{entregas.quandoNoPainel(x.em, vm.agora)}</td>
                       <td className="num">{num(x.arquivados)}</td>
                       <td className="num">{num(x.clientes)}</td>
-                      <td className="num">{x.naoIdentificados ? <span className="badge badge-suave badge-warn">{num(x.naoIdentificados)}</span> : '—'}</td>
+                      <td className="num">{x.naoIdentificados ? num(x.naoIdentificados) : '—'}</td>
                       <td className="fraco">{x.id}</td>
                     </tr>
                   ))}

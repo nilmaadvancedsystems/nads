@@ -34,6 +34,7 @@ const CLIENTES = process.env.ARQ_NOVO_CLIENTES || R.RAIZ_CLIENTES;
 const ROTINA = process.env.ARQUIVO_RAIZ || 'C:\\Users\\DPTO FISCAL 004\\GUSTAVO\\claudio';
 const PLANILHA = path.join(ROTINA, 'necessario para o claude', 'dados agentes', 'cadastro_empresas_unificado.xlsx');
 const MANIFESTO_ANTIGO = path.join(ROTINA, '_CONTROLE', 'MANIFESTO', 'manifesto.jsonl');
+const K = require('./arquivador-chaves');
 const TRAVA_ANTIGA = path.join(ROTINA, '_CONTROLE', '_execucao.lock');
 const CONTROLE = process.env.ARQ_NOVO_CONTROLE || path.join(process.env.LOCALAPPDATA || os.homedir(), 'nads', 'arquivador-novo');
 const NAO_IDENTIFICADOS = 'NÃO IDENTIFICADOS';
@@ -298,7 +299,27 @@ function varrer(origem, opcoes) {
  * Mesmo conteúdo já gravado (no mesmo nome, num " (N)" da mesma pasta, ou registrado no manifesto da rotina antiga com
  * o arquivo ainda lá) = JA_ARQUIVADO. Nome ocupado por outro conteúdo = próximo " (N)" livre (Dicionário §2).
  */
-function conferirDestino(d, hash, ctx, soNaPasta) {
+/**
+ * O XML igual com bytes diferentes (23/10/2026: o mesmo evento solto e de dentro do .zip do SIEG, um com BOM e o outro
+ * sem): o conteúdo sem BOM, sem espaço nas pontas e com quebra de linha única. Só para XML; os outros, o hash de sempre.
+ */
+// A nota autorizada é a mesma quando a chave E o protocolo de autorização são os mesmos (23/10/2026: a mesma NF-e com e
+// sem "<?xml …?>", vinda do emissor e do SIEG); o evento, pela chave, tipo, sequência e protocolo.
+function conteudoXml(buf) {
+  const t = buf.toString('utf8').replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').trim();
+  const g = re => (re.exec(t) || [])[1] || '';
+  const prot = g(/<nProt>(\d{10,20})</);
+  const ev = g(/<tpEvento>(\d{6})</);
+  const ch = ev ? g(/<ch(?:NFe|CTe|MDFe)>(\d{44})</) : g(/Id="(?:NFe|CTe|MDFe)(\d{44})"/);
+  if (ch && prot) return 'XML:' + ch + ':' + (ev ? ev + ':' + g(/<nSeqEvento>(\d+)</) + ':' : '') + prot;
+  return sha(Buffer.from(t, 'utf8'));
+}
+function conteudoDe(p, ctx) {
+  const k = 'xml:' + p;
+  if (!ctx.hashes.has(k)) { let h = ''; try { if (/\.xml$/i.test(p) && fs.statSync(p).isFile()) h = conteudoXml(fs.readFileSync(p)); } catch (e) {} ctx.hashes.set(k, h); }
+  return ctx.hashes.get(k);
+}
+function conferirDestino(d, hash, ctx, soNaPasta, hashXml) {
   const pasta = path.join(ctx.clientes, d.destinoRelativo);
   const anterior = ctx.manifesto.get(hash);
   // soNaPasta (as cópias, ex. a NFS-e da Nilma no tomador): o manifesto antigo só vale se o arquivo dele está NESTA pasta
@@ -308,9 +329,9 @@ function conferirDestino(d, hash, ctx, soNaPasta) {
     const nome = k === 0 ? d.nomeFinal : base + ' (' + k + ')' + ext;
     const alvo = path.join(pasta, nome);
     const chave = alvo.toLowerCase();
-    if (ctx.reservados.has(chave)) { if (ctx.reservados.get(chave) === hash) return { situacao: 'JA_ARQUIVADO', nomeFinal: nome, onde: alvo + ' (neste lote)' }; continue; }
-    if (!existe(alvo, ctx)) { ctx.reservados.set(chave, hash); return { situacao: 'NOVO', nomeFinal: nome, onde: alvo }; }
-    if (hashDe(alvo, ctx) === hash) return { situacao: 'JA_ARQUIVADO', nomeFinal: nome, onde: alvo };
+    if (ctx.reservados.has(chave)) { const r = ctx.reservados.get(chave); if (r === hash || (hashXml && ctx.reservadosXml && ctx.reservadosXml.get(chave) === hashXml)) return { situacao: 'JA_ARQUIVADO', nomeFinal: nome, onde: alvo + ' (neste lote)' }; continue; }
+    if (!existe(alvo, ctx)) { ctx.reservados.set(chave, hash); if (hashXml) (ctx.reservadosXml || (ctx.reservadosXml = new Map())).set(chave, hashXml); return { situacao: 'NOVO', nomeFinal: nome, onde: alvo }; }
+    if (hashDe(alvo, ctx) === hash || (hashXml && conteudoDe(alvo, ctx) === hashXml)) return { situacao: 'JA_ARQUIVADO', nomeFinal: nome, onde: alvo };
   }
   throw new Error('nomes esgotados em ' + pasta);
 }
@@ -344,7 +365,10 @@ async function executar(opcoes) {
   const agora = new Date();
   const id = (producao ? 'EXEC-' : 'SIM-') + carimbo(agora) + '-NOVO';
   const cadastro = opcoes.cadastro || carregarCadastro(opcoes);
-  const ctx = { cadastro, hoje: agora, contas: opcoes.contas || lerContas(opcoes.controle), clientes: opcoes.clientes, manifesto: opcoes.manifesto || indiceDoManifesto(opcoes.manifestoAntigo || MANIFESTO_ANTIGO), reservados: new Map(), existe: new Map(), hashes: new Map() };
+  const ctx = { cadastro, hoje: agora, contas: opcoes.contas || lerContas(opcoes.controle), clientes: opcoes.clientes, manifesto: opcoes.manifesto || indiceDoManifesto(opcoes.manifestoAntigo || MANIFESTO_ANTIGO), reservados: new Map(), existe: new Map(), hashes: new Map(),
+    chaves: opcoes.chaves || K.carregar({ controle: opcoes.controle, manifestoAntigo: opcoes.manifestoAntigo || MANIFESTO_ANTIGO, raiz: opcoes.clientes }),
+    // a decisão do admin no nads (23/10/2026, arquivador-manual.js): { [rel]: { codigo, tipoDoc, competencia, por } ou { descartar, por } }
+    manual: opcoes.manual || null };
   const arquivos = opcoes.arquivos || varrer(opcoes.origem, opcoes);   // o modo contínuo passa o lote pronto
   const itens = [];
   const log = opcoes.log || (() => {});
@@ -369,6 +393,8 @@ async function executar(opcoes) {
     itens.push(Object.assign(await decidirUm(path.basename(rel), rel, buffer, ctx), { tamanho: buffer.length }));
   }
 
+  await resolverEsperas(itens, opcoes, ctx);
+  for (const it of itens) { delete it._buffer; for (const f of it.filhos || []) delete f._buffer; }
   const resultado = { id, modo: opcoes.modo, em: agora.toISOString(), origem: opcoes.origem, itens };
   if (producao) aplicar(resultado, opcoes, ctx);
   if (opcoes.registrar !== false) gravarRegistros(resultado, opcoes);   // o modo contínuo tem o diário dele
@@ -379,26 +405,94 @@ async function executar(opcoes) {
 
 async function decidirUm(nome, rel, buffer, ctx) {
   const entrada = await montarEntrada(nome, rel, buffer);
-  const d = R.decidir(entrada, ctx);
-  const item = { rel, nome, hash: entrada.hash, acao: d.acao, motivo: d.motivo || null, codigo: d.codigo || null, confianca: d.confianca, tipo: d.tipo || null, setor: d.setor || null,
+  const d = ctx.manual && ctx.manual[rel] ? require('./arquivador-manual').decidirManual(entrada, ctx, ctx.manual[rel]) : R.decidir(entrada, ctx);
+  const item = { rel, nome, hash: entrada.hash, decididoPor: d.decididoPor || null, acao: d.acao, motivo: d.motivo || null, codigo: d.codigo || null, confianca: d.confianca, tipo: d.tipo || null, setor: d.setor || null,
     cliente: d.cliente || null, clienteNome: d.clienteNome || null, destinoRelativo: d.destinoRelativo || null, nomeFinal: d.nomeFinal || null, destinoSugerido: d.destinoSugerido || null,
-    criarPastaCliente: !!d.criarPastaCliente, pastaCliente: d.pastaCliente || null, evidencias: d.evidencias || [], fonte: d.fonte || null, ocr: entrada.ocr || null, copias: [] };
+    criarPastaCliente: !!d.criarPastaCliente, pastaCliente: d.pastaCliente || null, evidencias: d.evidencias || [], fonte: d.fonte || null, ocr: entrada.ocr || null, copias: [], chave: d.chave || null };
+  if (d.acao === 'AGUARDANDO_ORIGINAL') item._buffer = buffer;   // para decidir de novo quando o original aparecer
   if (entrada.erroLeitura) item.evidencias.push('leitura do PDF: ' + entrada.erroLeitura);
   if (d.acao === 'ARQUIVAR') {
-    const c = conferirDestino(d, entrada.hash, ctx);
+    const hx = /\.xml$/i.test(nome) && buffer ? conteudoXml(buffer) : null;
+    const c = conferirDestino(d, entrada.hash, ctx, false, hx);
     item.situacaoDestino = c.situacao;
     item.nomeFinal = c.nomeFinal;
     item.onde = c.onde;
     if (c.nomeFinal !== d.nomeFinal && c.situacao === 'NOVO') item.evidencias.push('nome ocupado por outro conteúdo: numerado (Dicionário §2, E402)');
     // a mesma peça em outro cliente (NFS-e de honorários da Nilma: também no tomador)
     for (const cp of d.copias || []) {
-      const cc = conferirDestino({ destinoRelativo: cp.destinoRelativo, nomeFinal: cp.nomeFinal }, entrada.hash, ctx, true);
+      const cc = conferirDestino({ destinoRelativo: cp.destinoRelativo, nomeFinal: cp.nomeFinal }, entrada.hash, ctx, true, hx);
       item.copias.push(Object.assign({}, cp, { situacao: cc.situacao, nomeFinal: cc.nomeFinal, onde: cc.onde }));
     }
     const faltaAlgo = c.situacao === 'NOVO' || item.copias.some(cp => cp.situacao === 'NOVO');
     if (!faltaAlgo) { item.acao = 'JA_ARQUIVADO'; item.motivo = 'IDENTICO_JA_ARQUIVADO'; item.codigo = 'E401'; }
+    // o índice de chaves cresce na hora (em memória; em PRODUCAO o aplicar grava em chaves.jsonl): um evento do mesmo
+    // lote, decidido depois, já acha o original
+    // (as cópias também: a nota das duas clientes leva os eventos para as duas)
+    if (item.chave && ctx.chaves) for (const o of [item.onde].concat(item.copias.map(cp => cp.onde))) if (o) ctx.chaves.anotar(item.chave, { onde: String(o).replace(/ \(neste lote\)$/, ''), raiz: ctx.clientes, fonte: 'decisão' }, false);
   }
   return item;
+}
+
+/**
+ * Os eventos AGUARDANDO_ORIGINAL (23/10/2026): primeiro, o original pode ter vindo neste mesmo lote (decidido depois do
+ * evento): decide de novo pelo índice. Depois, os que já esperaram o bastante (opcoes.esperaVencida(rel do arquivo na
+ * origem); sem a função, todos — execução avulsa, reprocessamento de NÃO IDENTIFICADOS) vão ao SIEG pela chave
+ * (opcoes.buscaSieg, com limite por dia). O SIEG achou: o cliente do original decide o do evento. Não achou (ou o SIEG
+ * está desligado): NAO_IDENTIFICADO "evento sem o documento original", com a chave. Ficou sem resposta (limite do dia):
+ * continua esperando.
+ */
+async function resolverEsperas(itens, opcoes, ctx) {
+  const esperando = [];
+  const juntar = (lista, i, top) => { const it = lista[i]; if (it.acao === 'AGUARDANDO_ORIGINAL') esperando.push({ lista, i, top }); };
+  itens.forEach((it, i) => { juntar(itens, i, it.rel); (it.filhos || []).forEach((f, j) => juntar(it.filhos, j, it.rel)); });
+  if (!esperando.length) return;
+  const redecidir = async (e, extra) => {
+    const velho = e.lista[e.i];
+    const novo = await decidirUm(velho.nome, velho.rel, velho._buffer, ctx);
+    if (extra) novo.evidencias.push(extra);
+    if (velho.tamanho) novo.tamanho = velho.tamanho;
+    e.lista[e.i] = novo;
+    return novo;
+  };
+  const vencidas = [];
+  for (const e of esperando) {
+    const it = e.lista[e.i];
+    // o original pode ter vindo neste lote (decidido depois do evento): decide de novo; se ainda espera, segue abaixo
+    if (ctx.chaves && ctx.chaves.achar(it.chave).length && (await redecidir(e, 'o índice de chaves mudou neste lote: decidido de novo')).acao !== 'AGUARDANDO_ORIGINAL') continue;
+    if (!opcoes.esperaVencida || opcoes.esperaVencida(e.top)) vencidas.push(e);
+  }
+  if (!vencidas.length) return;
+  const busca = opcoes.buscaSieg || null;
+  let achados = new Map();
+  if (busca && busca.ligado) {
+    try { achados = await busca.buscar(vencidas.map(e => e.lista[e.i].chave)); }
+    catch (err) { (opcoes.log || (() => {}))('SIEG por chave: ' + err.message); }
+  }
+  for (const e of vencidas) {
+    const it = e.lista[e.i];
+    const xml = achados.get(it.chave);
+    if (xml) {
+      // o original veio do SIEG: decide o original (com a mesma subpasta de origem do evento) para achar o cliente
+      const orig = R.decidir({ nome: it.chave + '.xml', rel: it.rel, xml, hash: '' }, ctx);
+      if (orig.acao === 'ARQUIVAR' && orig.cliente != null) {
+        // o original pode ir para mais de um cliente (regra das duas clientes): o evento segue todos
+        for (const c of [orig.cliente].concat((orig.copias || []).map(x => x.cliente))) ctx.chaves.anotar(it.chave, { cliente: c, de: 'outro', fonte: 'SIEG' }, false);
+        const novo = await redecidir(e, 'documento original baixado do SIEG pela chave ' + it.chave + ' (cliente ' + orig.cliente + ')');
+        novo.viaSieg = true;
+        continue;
+      }
+      // o original também é ambíguo (ex.: nota entre a matriz e a filial, as duas clientes): o motivo é o dele
+      const ambiguo = orig.motivo === 'CLIENTE_AMBIGUO';
+      Object.assign(it, { acao: 'NAO_IDENTIFICADO', motivo: ambiguo ? 'CLIENTE_AMBIGUO' : 'EVENTO_SEM_ORIGINAL', codigo: ambiguo ? 'E102' : 'E103', evidencias: it.evidencias.concat('o SIEG tem o original (chave ' + it.chave + '), mas ele também não identifica o cliente: ' + (orig.motivo || orig.acao) + ((orig.evidencias || []).length ? ' (' + orig.evidencias[orig.evidencias.length - 1] + ')' : '')) });
+      continue;
+    }
+    if (achados.has(it.chave) || !busca || !busca.ligado) {
+      Object.assign(it, { acao: 'NAO_IDENTIFICADO', motivo: 'EVENTO_SEM_ORIGINAL', codigo: 'E103', evidencias: it.evidencias.concat(!K.chaveValida(it.chave) ? 'chave da NFS-e nacional (50 dígitos): o SIEG por chave não vale para ela' : busca && busca.ligado ? 'o SIEG não tem o documento original desta chave' : 'SIEG por chave desligado' + (busca && busca.motivo ? ' (' + busca.motivo + ')' : '')) });
+      continue;
+    }
+    it.evidencias.push('o SIEG não respondeu por esta chave hoje (limite do dia ou erro): tenta de novo');
+    if (!opcoes.esperaVencida) Object.assign(it, { acao: 'NAO_IDENTIFICADO', motivo: 'EVENTO_SEM_ORIGINAL', codigo: 'E103', semRespostaDoSieg: true });
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -423,7 +517,7 @@ function aplicar(res, opcoes, ctx) {
   const semSobrescrever = (alvo) => { const ext = path.extname(alvo), base = alvo.slice(0, alvo.length - ext.length); let k = 0, p = alvo; while (fs.existsSync(p)) p = base + ' (' + (++k) + ')' + ext; return p; };
   const moverParaNi = (it, buffer) => {
     const alvo = semSobrescrever(path.join(ni, it.rel));
-    linha(path.join(ni, '_nao_identificados.jsonl'), { arquivo: path.basename(alvo), caminho_relativo: path.dirname(it.rel), status: 'NAO_IDENTIFICADO', motivo: it.motivo, cliente_tentativa: it.cliente, confianca: it.confianca, id_execucao: res.id, timestamp: new Date().toISOString() });
+    linha(path.join(ni, '_nao_identificados.jsonl'), Object.assign({ arquivo: path.basename(alvo), caminho_relativo: path.dirname(it.rel), status: 'NAO_IDENTIFICADO', motivo: it.motivo, cliente_tentativa: it.cliente, confianca: it.confianca, id_execucao: res.id, timestamp: new Date().toISOString() }, it.chave ? { chave: it.chave } : {}));
     fs.mkdirSync(path.dirname(alvo), { recursive: true });
     if (buffer) fs.writeFileSync(alvo, buffer, { flag: 'wx' }); else mover(path.join(opcoes.origem, it.rel), alvo);
     it.movidoPara = alvo;
@@ -435,7 +529,8 @@ function aplicar(res, opcoes, ctx) {
     fs.mkdirSync(path.dirname(alvo), { recursive: true });
     fs.writeFileSync(alvo, buffer, { flag: 'wx' });                         // 'wx': falha se já existir — nunca sobrescreve
     if (sha(fs.readFileSync(alvo)) !== it.hash) throw new Error('hash não confere depois da cópia: ' + alvo);
-    linha(manifesto, { hash_origem: it.hash, hash_original: it.hashPai || it.hash, nome_original: it.nome, destino_final: path.dirname(alvo), nome_final: path.basename(alvo), id_execucao: res.id, timestamp: new Date().toISOString(), pai_completo: !it.hashPai, confianca: it.confianca, tipo: it.tipo, cliente, pasta_cliente_criada: novaPasta });
+    linha(manifesto, Object.assign({ hash_origem: it.hash, hash_original: it.hashPai || it.hash, nome_original: it.nome, destino_final: path.dirname(alvo), nome_final: path.basename(alvo), id_execucao: res.id, timestamp: new Date().toISOString(), pai_completo: !it.hashPai, confianca: it.confianca, tipo: it.tipo, cliente, pasta_cliente_criada: novaPasta }, it.chave ? { chave: it.chave } : {}, it.decididoPor ? { decidido_por: it.decididoPor } : {}));
+    if (it.chave && ctx.chaves) ctx.chaves.anotar(it.chave, { onde: alvo, raiz: opcoes.clientes, fonte: 'arquivou' }, true);
     if (novaPasta && painel) painel.atividade('arquivamento', 'Criou a pasta do cliente ' + pastaCliente, 'CNPJ do documento conferido com o cadastro · ' + it.nome);
     if (painel) painel.atividade('arquivamento', 'Arquivou ' + it.nome + ' em ' + (pastaCliente || ''), path.dirname(alvo).replace(opcoes.clientes, '').replace(/^\\/, '') + '\\' + path.basename(alvo));
   };
@@ -456,6 +551,7 @@ function aplicar(res, opcoes, ctx) {
       if (it.acao === 'CONTEINER') {
         // compactado: só quando todos os de dentro são de tipo liberado (senão fica inteiro para a rotina antiga)
         if (!it.filhos.every(f => permitido(f) || f.acao === 'JA_ARQUIVADO')) { it.naoAplicado = 'compactado com tipo ainda em simulação'; continue; }
+        if (it.filhos.some(f => f.acao === 'AGUARDANDO_ORIGINAL')) { it.naoAplicado = 'compactado com evento esperando o documento original'; continue; }
         if (!opcoes.moverNaoIdentificados && it.filhos.some(f => f.acao === 'NAO_IDENTIFICADO' || f.acao === 'FICA')) { it.naoAplicado = 'compactado com não identificado (fica para a rotina antiga)'; continue; }
         const buf = fs.readFileSync(path.join(opcoes.origem, it.rel));
         const lista = membros(path.basename(it.rel), buf, path.join(opcoes.origem, it.rel));
@@ -471,7 +567,13 @@ function aplicar(res, opcoes, ctx) {
       }
       if (!permitido(it)) { it.naoAplicado = 'tipo ainda em simulação'; continue; }
       if (it.acao === 'ARQUIVAR') { copiar(it, fs.readFileSync(path.join(opcoes.origem, it.rel))); paraQuarentena(it); }
-      else if (it.acao === 'JA_ARQUIVADO') paraQuarentena(it);
+      else if (it.acao === 'DESCARTAR') {
+        // descarte confirmado (23/10/2026): para a quarentena, nunca apagado; a linha no manifesto diz para onde foi
+        paraQuarentena(it);
+        linha(manifesto, { hash_origem: it.hash, hash_original: it.hashPai || it.hash, nome_original: it.nome, destino_final: path.join(quarentena, path.dirname(it.rel)), nome_final: path.basename(it.rel), id_execucao: res.id, timestamp: new Date().toISOString(), pai_completo: !it.hashPai, confianca: 1, tipo: 'DESCARTE', cliente: null, descarte: true, motivo: (it.evidencias || [])[0] || null, decidido_por: it.decididoPor || undefined });
+        if (painel) painel.atividade('arquivamento', 'Descartou ' + it.nome + ' (quarentena)', (it.evidencias || [])[0] || '');
+      }
+      else if (it.acao === 'JA_ARQUIVADO') { paraQuarentena(it); if (it.chave && ctx.chaves && it.onde) ctx.chaves.anotar(it.chave, { onde: it.onde, raiz: opcoes.clientes, fonte: 'já arquivado' }, true); }
       else if (it.acao === 'NAO_IDENTIFICADO' && opcoes.moverNaoIdentificados) moverParaNi(it);
     } catch (e) { it.erro = e.message; if (painel) painel.erro('arquivamento', 'Não consegui arquivar ' + (it.nome || it.rel), e.message); }
   }
@@ -535,10 +637,70 @@ async function publicar(res, opcoes) {
   await ref.collection('detalhe').doc('tudo').set(detalhe, { merge: true });
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+// reprocessar NÃO IDENTIFICADOS (23/10/2026: índice de chaves, SIEG pela chave, HELLO 545 no cadastro)
+// ---------------------------------------------------------------------------------------------------------------------
+const HELLO = new Set([544, 545, 564]);
+/** Os arquivos de NÃO IDENTIFICADOS (todas as subpastas), sem os índices "_nao_identificados.jsonl". */
+function arquivosDosNaoIdentificados(pastaNi) {
+  const out = [];
+  (function andar(d, rel) {
+    let lista = [];
+    try { lista = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; }
+    for (const e of lista) {
+      const r = rel ? rel + '\\' + e.name : e.name;
+      if (e.isDirectory()) andar(path.join(d, e.name), r);
+      else if (!/^_/.test(e.name) && !/^~\$|\.tmp$/i.test(e.name)) out.push(r);
+    }
+  })(pastaNi, '');
+  return out.sort();
+}
+/** Por onde cada documento sairia: chave (índice), sieg, hello (544/545/564), outros, ja, ou o motivo de ficar. */
+function rotaDoReprocesso(x) {
+  if (x.erro) return 'erro';
+  if (x.acao === 'JA_ARQUIVADO') return 'ja arquivado';
+  if (x.acao === 'DESCARTAR') return 'descarte';
+  if (x.acao === 'ARQUIVAR') return x.viaSieg ? 'sieg' : /índice de chaves/.test(x.fonte || '') ? 'chave' : HELLO.has(+x.cliente) ? 'hello' : 'outros';
+  return 'fica: ' + (x.motivo || x.acao);
+}
+/**
+ * Reprocessa G:\Meu Drive\Claudio Secretario\NÃO IDENTIFICADOS (que a varredura normal deixa de fora). SIMULACAO por
+ * padrão (nada muda; o SIEG é consultado, com o limite do dia, e a resposta fica guardada). Em PRODUCAO: o que se
+ * resolveu vai para o cliente (o original para a quarentena, como sempre); o que fica, fica onde está, e quem mudou de
+ * motivo (ex.: EVENTO_SEM_ORIGINAL, com a chave) ganha uma linha nova no _nao_identificados.jsonl da subpasta.
+ */
+async function reprocessarNaoIdentificados(opcoes) {
+  opcoes = Object.assign({ modo: 'SIMULACAO', controle: CONTROLE, clientes: CLIENTES }, opcoes);
+  const pastaNi = opcoes.pastaNi || path.join(opcoes.origem || ORIGEM, NAO_IDENTIFICADOS);
+  const arquivos = opcoes.arquivos || arquivosDosNaoIdentificados(pastaNi);
+  // o motivo de antes de cada arquivo (a última linha do índice da subpasta)
+  const antes = new Map();
+  for (const sub of new Set(arquivos.map(r => r.split('\\')[0]))) {
+    let texto = '';
+    try { texto = fs.readFileSync(path.join(pastaNi, sub, '_nao_identificados.jsonl'), 'utf8'); } catch (e) { continue; }
+    for (const l of texto.split(/\r?\n/)) { try { const j = JSON.parse(l); antes.set(sub + '\\' + (j.caminho_relativo && j.caminho_relativo !== '.' ? j.caminho_relativo + '\\' : '') + j.arquivo, j.motivo); } catch (e) { /* linha ruim */ } }
+  }
+  const res = await executar(Object.assign({}, opcoes, { origem: pastaNi, arquivos, moverNaoIdentificados: false, tiposProducao: ['todos'], esperaVencida: undefined, registrar: opcoes.registrar !== false }));
+  const docs = planos(res).filter(x => x.acao !== 'CONTEINER');
+  const porRota = {};
+  for (const x of docs) { x.rota = rotaDoReprocesso(x); x.motivoAntes = antes.get(x.dentroDe || x.rel) || null; porRota[x.rota] = (porRota[x.rota] || 0) + 1; }
+  if (res.modo === 'PRODUCAO') {
+    for (const x of docs) {
+      if (x.dentroDe || x.acao !== 'NAO_IDENTIFICADO' || (x.motivo === x.motivoAntes && !x.chave)) continue;
+      const sub = x.rel.split('\\')[0], resto = x.rel.split('\\').slice(1);
+      const linha = { arquivo: resto[resto.length - 1], caminho_relativo: resto.slice(0, -1).join('\\') || '.', status: 'NAO_IDENTIFICADO', motivo: x.motivo, cliente_tentativa: x.cliente, confianca: x.confianca, id_execucao: res.id, timestamp: new Date().toISOString(), reprocessado: true, motivo_anterior: x.motivoAntes };
+      if (x.chave) linha.chave = x.chave;
+      try { fs.appendFileSync(path.join(pastaNi, sub, '_nao_identificados.jsonl'), JSON.stringify(linha) + '\n'); } catch (e) { x.erro = 'não gravei o índice de NÃO IDENTIFICADOS: ' + e.message; }
+    }
+  }
+  res.porRota = porRota;
+  return res;
+}
+
 /** O trabalhador do Tesseract segura o processo vivo: fecha no fim de cada execução (se o OCR foi usado). */
 async function encerrarOcr() { const k = require.resolve('./arquivador-ocr'); if (require.cache[k]) await require('./arquivador-ocr').encerrar(); }
 
-module.exports = { atualizarCadastro, encerrarOcr, executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, relatorioTexto, planos, CONTROLE };
+module.exports = { reprocessarNaoIdentificados, arquivosDosNaoIdentificados, rotaDoReprocesso, atualizarCadastro, encerrarOcr, executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, relatorioTexto, planos, CONTROLE };
 
 if (require.main === module) {
   const a = process.argv.slice(2);
@@ -547,6 +709,24 @@ if (require.main === module) {
     modo: a.includes('--producao') ? 'PRODUCAO' : 'SIMULACAO', confirmo: a.includes('--confirmo'), publicar: a.includes('--publicar'),
     incluirNaoIdentificados: a.includes('--incluir-nao-identificados'), pasta: valor('--pasta'), log: m => console.log(new Date().toLocaleTimeString('pt-BR'), m),
   };
+  if (a.includes('--reprocessar-nao-identificados')) {
+    // node arquivador-novo.js --reprocessar-nao-identificados [--producao --confirmo] [--sieg-por-dia 200] [--sem-sieg]
+    (async () => {
+      const db = require('./firestore-client').getDb('entregas-2e5e2');
+      await atualizarCadastro({ db, log: opcoes.log });   // a HELLO 545 (e o resto) do Cadastro do nads
+      let sieg = null;
+      if (!a.includes('--sem-sieg')) { try { sieg = require('./sieg'); } catch (e) { opcoes.log('SIEG: ' + e.message); } }
+      const buscaSieg = K.criarBuscaSieg({ controle: CONTROLE, sieg, limiteDia: +(valor('--sieg-por-dia') || 200), log: opcoes.log });
+      opcoes.log('SIEG por chave: ' + (buscaSieg.ligado ? 'ligado, ' + buscaSieg.restantesHoje() + ' chamada(s) restantes hoje' : 'desligado (' + buscaSieg.motivo + ')'));
+      const r = await reprocessarNaoIdentificados(Object.assign({}, opcoes, { buscaSieg }));
+      console.log(r.id, JSON.stringify(r.porRota));
+      console.log('chamadas ao SIEG hoje:', buscaSieg.chamadasHoje());
+      console.log('relatório:', r.relatorio, '· plano:', r.plano);
+      await encerrarOcr();
+      process.exit(0);
+    })().catch(e => { console.error('erro:', e.stack); process.exit(1); });
+    return;
+  }
   if (a.includes('--aprender-contas')) {
     aprenderContas({ log: opcoes.log }).then(idx => console.log('contas aprendidas:', Object.keys(idx).length)).catch(e => { console.error('erro:', e.message); process.exit(1); });
     return;

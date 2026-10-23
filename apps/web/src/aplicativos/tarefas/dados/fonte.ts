@@ -259,7 +259,7 @@ export async function gravarLeituraDoRobo(ligado: boolean): Promise<void> {
 }
 
 /** Quem está logado (vai nos pedidos ao robô do Entregas). */
-function quemPede(): entregas.Quem | null {
+export function quemPede(): entregas.Quem | null {
   const u = sessaoDaTarefas()?.estado().usuario;
   return u ? { nome: u.nome, uid: u.uid, email: u.email } : null;
 }

@@ -92,7 +92,7 @@ describe('as linhas a partir dos XMLs do SIEG', () => {
   const nota = (numero: string, data: string, itens: NotaDoSieg['itens'], extra: Partial<NotaDoSieg> = {}): NotaDoSieg => ({
     tipo: 'NF-e', chave: 'CH' + numero, numero, serie: '1', data, emitente: { doc: '11', nome: 'FORNECEDOR SP' }, destinatario: { doc: '22', nome: 'EU' }, valor: 0, itens, ...extra,
   });
-  const mes = (competencia: string, recebidas: NotaDoSieg[]): NotasSieg => ({ codigo: '585', competencia, em: '', pasta: '', arquivos: 0, novos: 0, emitidas: [], recebidas, resumo: 3 });
+  const mes = (competencia: string, recebidas: NotaDoSieg[]): NotasSieg => ({ codigo: '585', competencia, em: '', pasta: '', arquivos: 0, novos: 0, emitidas: [], recebidas, resumo: 4 });
 
   it('as notas da planilha viram linhas (por CST e alíquota) e as contas batem', () => {
     const porNota = new Map<string, NotaDoSieg>();

@@ -34,6 +34,7 @@ igual('caixa de entrada (sem status): tudo esperando', painel.contarFila([{ cria
 const nfse = painel.FILAS.vm.find(f => f.id === 'nfse');
 igual('NFS-e: a data do pedido é pedidoEm', painel.contarFila([{ status: 'pedida', pedidoEm: '2026-10-21T07:00:00Z' }], nfse).maisAntigoEm, '2026-10-21T07:00:00.000Z');
 verdade('todas as filas têm id, nome e coleção', [...painel.FILAS.pc, ...painel.FILAS.vm].every(f => f.id && f.nome && f.colecao));
+verdade('extratosRecebidos não é fila do robô (o Extrator importa ao abrir)', ![...painel.FILAS.pc, ...painel.FILAS.vm].some(f => f.colecao === 'extratosRecebidos'));
 
 // ---------- o freio ----------
 const f = painel.criarFreio(3, 1000, 100);

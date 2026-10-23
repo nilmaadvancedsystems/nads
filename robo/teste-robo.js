@@ -779,6 +779,9 @@ igual('SIEG: o item com ICMS, ST, IPI e o CST do PIS', sxT.resumoDaNota(nfeImpos
 // a base, a alíquota e as despesas do item (22/10/2026: a antecipação do ICMS do ES)
 const nfeBaseT = nfeItensT.replace('<vProd>100.50</vProd>', '<vProd>100.50</vProd><vFrete>10.00</vFrete><vOutro>2.00</vOutro><vDesc>1.50</vDesc>').replace('<ICMS><ICMS00><orig>0</orig><CST>00</CST></ICMS00></ICMS>', '<ICMS><ICMS00><orig>1</orig><CST>00</CST><vBC>111.00</vBC><pICMS>4.0000</pICMS><vICMS>4.44</vICMS></ICMS00></ICMS>');
 igual('SIEG: o item com a base, a alíquota e as despesas', sxT.resumoDaNota(nfeBaseT).itens, [{ ncm: '21069090', cfop: '5102', cst: '100', cest: '1704900', valor: 100.5, icms: 4.44, bc: 111, aliq: 4, desp: 10.5 }]);
+// o frete e o desconto da nota (22/10/2026: o Rateio de frete)
+const nfeFreteT = nfeItensT.replace('<vNF>100.50</vNF>', '<vFrete>12.30</vFrete><vDesc>2.00</vDesc><vNF>110.80</vNF>');
+igual('SIEG: o frete e o desconto da NF-e', [sxT.resumoDaNota(nfeFreteT).frete, sxT.resumoDaNota(nfeFreteT).desconto, sxT.resumoDaNota(nfeItensT).frete], [12.3, 2, undefined]);
 igual('SIEG: o nome do arquivo da NF-e', sxT.nomeDoArquivo(nfeItensT), '31260919449248000162550010000102701620070002-nfe.xml');
 igual('SIEG: o cancelamento no resumo', sxT.resumoDaNota(cancT), { cancela: '31260919449248000162550010000102701620070002' });
 // o tipo de nota de qualquer XML, a nota ou o evento (pelo modelo na chave; 08/10/2026: o Drive como atalho)

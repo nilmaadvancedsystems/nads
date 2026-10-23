@@ -61,7 +61,7 @@ function cstDoItem(det) {
 
 /**
  * Um item da NF-e: o NCM, o CFOP, o CST/CSOSN, o CEST e o valor; e (13/10/2026, a apuração do Presumido e do Real) o ICMS
- * destacado, o ICMS-ST, o IPI e o CST do PIS, só quando têm (para o resumo não crescer à toa). Desde o resumo 3
+ * destacado, o ICMS-ST, o IPI e o CST do PIS, só quando têm (para o resumo não crescer à toa). Desde o resumo 4
  * (22/10/2026, a antecipação do ICMS do ES): a base e a alíquota do ICMS e as despesas do item (frete, seguro e outras,
  * menos o desconto), também só quando têm.
  */
@@ -89,12 +89,17 @@ function resumoDaNota(xml) {
   if (t === 'evento') return tag(xml, 'tpEvento') === '110111' ? { cancela: primeira(xml, 'chNFe', 'chCTe') } : null;
   if (t === 'nfe') {
     const ide = tag(xml, 'ide');
-    return {
+    const r = {
       tipo: tag(ide, 'mod') === '65' ? 'NFC-e' : 'NF-e',
       chave: /Id="NFe(\d{44})"/.exec(xml)[1], numero: tag(ide, 'nNF'), serie: tag(ide, 'serie'), data: data(primeira(ide, 'dhEmi', 'dEmi')),
       emitente: pessoa(tag(xml, 'emit')), destinatario: pessoa(tag(xml, 'dest')), valor: num(tag(tag(xml, 'ICMSTot'), 'vNF')),
       itens: blocos(xml, 'det').map(itemDoXml),
     };
+    // o frete e o desconto da nota (22/10/2026: o Rateio de frete do Fiscal), só quando têm
+    const tot = tag(xml, 'ICMSTot'), frete = num(tag(tot, 'vFrete')), desconto = num(tag(tot, 'vDesc'));
+    if (frete) r.frete = frete;
+    if (desconto) r.desconto = desconto;
+    return r;
   }
   if (t === 'cte') {
     const ide = tag(xml, 'ide');
@@ -155,7 +160,7 @@ function zipDe(arquivos) {
   return Buffer.concat([...locais, dir, fim]);
 }
 
-/** A versão do resumo (2 = os itens com o ICMS, o ICMS-ST, o IPI e o CST do PIS; 13/10/2026). */
-const VERSAO_DO_RESUMO = 3;
+/** A versão do resumo (2 = os itens com o ICMS, o ICMS-ST, o IPI e o CST do PIS; 13/10/2026; 3 = o frete e o desconto da NF-e; 22/10/2026; 4 = a base, a alíquota e as despesas do item; 22/10/2026). */
+const VERSAO_DO_RESUMO = 4;
 
 module.exports = { VERSAO_DO_RESUMO, tipoDoXml, tipoDeNota, nomeDoArquivo, resumoDaNota, zipDe, crc32 };

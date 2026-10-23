@@ -42,7 +42,7 @@ export function criarArquivadorFirestore(quem: () => Quem): RepoArquivador {
   let ver = 0;
   const ouvintes = new Set<() => void>();
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
-  let estado: EstadoDoArquivador = { carregado: false, semPermissao: false, em: '', situacao: '', desligadoEm: '', rotina: null };
+  let estado: EstadoDoArquivador = { carregado: false, semPermissao: false, em: '', situacao: '', desligadoEm: '', rotina: null, paraResolver: null };
   let execucoes: ExecucaoPublicada[] = [];
   let conversa: ConversaDaRotina = { carregada: false, atualizadaEm: '', sessao: '', mensagens: [], relatorio: null, agentes: [] };
   let escritas: MensagemParaOClaude[] = [];
@@ -62,7 +62,9 @@ export function criarArquivadorFirestore(quem: () => Quem): RepoArquivador {
         ativa: !!r.ativa, execucao: texto(r.execucao), inicio: texto(r.inicio), modo: texto(r.modo), fase: texto(r.fase),
         ultimoSinalEm: texto(r.ultimoSinalEm), deUmPedido: !!r.deUmPedido,
       } : null;
-      estado = { ...estado, carregado: true, em: texto(d.em), situacao: texto(d.situacao), desligadoEm: texto(d.desligadoEm), rotina };
+      const pr = d.paraResolver as Record<string, unknown> | null | undefined;
+      const paraResolver = pr && Number.isFinite(Number(pr.agora)) ? { agora: Number(pr.agora), em: texto(pr.em) } : null;
+      estado = { ...estado, carregado: true, em: texto(d.em), situacao: texto(d.situacao), desligadoEm: texto(d.desligadoEm), rotina, paraResolver };
       mudou();
     }, () => { estado = { ...estado, carregado: true, semPermissao: true }; mudou(); });
     onSnapshot(query(collection(db, 'solicitacoesArquivo'), orderBy('criadoEm', 'desc'), limit(5)), s => {

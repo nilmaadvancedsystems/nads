@@ -53,7 +53,7 @@ export function useAntecipacaoIcms() {
   const linhas = s.filtrarAntecipacao(todas, { mes, situacao });
   const resumo = s.resumoDaAntecipacao(todas);
   const semXml = meses.filter(m => m.carregadas && !m.dados).map(m => m.competencia);
-  const antigos = meses.filter(m => m.dados && (m.dados.resumo || 1) < 3).map(m => m.competencia);
+  const antigos = meses.filter(m => m.dados && (m.dados.resumo || 1) < 4).map(m => m.competencia);
   const pedidos = semXml.map(m => sieg.pedido(String(empresa?.codigo), m, 'xmls')).filter(p => p && (p.status === 'pendente' || p.status === 'processando'));
 
   const d = dados.dados;
