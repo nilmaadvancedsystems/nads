@@ -34,7 +34,7 @@ export function usePainelFinanceiro() {
   const { de, ate } = financeiro.periodoPronto(periodo, dia);
   // o extrato do banco como lançamentos de uma "conta" por banco (Banco Sicoob…), para entrar nas contas do painel
   const doBanco = useMemo(() => extrato.lista.map((l): financeiro.LancamentoDeCaixa => (
-    { id: l.id, data: l.data, descricao: l.historico, valor: l.valor, tipo: l.tipo, conta: 'banco:' + l.banco, origem: 'nads', criadoEm: '', criadoPor: '' })), [extrato.lista]);
+    { id: l.id, data: l.data, descricao: l.historico, valor: l.valor, tipo: l.tipo, conta: l.conta || 'banco:' + l.banco, origem: 'nads', criadoEm: '', criadoPor: '' })), [extrato.lista]);
   const contas = useMemo(() => {
     const m = new Map(plano.lista.map(c => [c.id, c]));
     for (const b of new Set(extrato.lista.map(l => l.banco))) {
@@ -70,7 +70,7 @@ export function usePainelFinanceiro() {
     saidasPorConta: financeiro.totaisPorConta(todos, 'S', de, ate, contas),
     entradasPorConta: financeiro.totaisPorConta(todos, 'E', de, ate, contas),
     /** o banco: o saldo de cada um (no fim do último extrato) e a última importação */
-    bancos: saldos.map(s => ({ ...s, saldoBr: formatos.reais(s.saldo), ateBr: s.ate.slice(8, 10) + '/' + s.ate.slice(5, 7) + '/' + s.ate.slice(0, 4) })),
+    bancos: saldos.map(s => ({ ...s, marca: importacoes.lista.find(i => i.banco === s.banco && i.marca)?.marca || (s.banco === 'Efí' ? 'efi' : s.banco === 'Sicoob' ? 'sicoob' : ''), saldoBr: formatos.reais(s.saldo), ateBr: s.ate.slice(8, 10) + '/' + s.ate.slice(5, 7) + '/' + s.ate.slice(0, 4) })),
     ultimaImportacao: importacoes.lista[0] ? { banco: importacoes.lista[0].banco, quando: new Date(importacoes.lista[0].importadoEm).toLocaleDateString('pt-BR') } : null,
     honorarios: { competencia: financeiro.competenciaBr(competencia), carregado: contratos.carregada && recebimentos.carregada, ...honorarios, pct: honorarios.previsto ? Math.round((honorarios.recebido / honorarios.previsto) * 100) : 0 },
     notas: { carregada: notas.carregada, quantas: notasDoPeriodo.length, valor: notasDoPeriodo.reduce((s, n) => s + Math.round(n.servico.valor * 100), 0) / 100 },

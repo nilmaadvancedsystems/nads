@@ -41,6 +41,8 @@ export const BANCOS_CONHECIDOS: readonly BancoDaEmpresa[] = [
   { id: 'caixa', nome: 'Caixa' },
   { id: 'cora', nome: 'Cora' },
   { id: 'cresol', nome: 'Cresol' },
+  // o banco do escritório (23/10/2026: "no escritório só é usado o banco Efí e Sicoob")
+  { id: 'efi', nome: 'Efí' },
   { id: 'infinitepay', nome: 'InfinitePay' },
   { id: 'inter', nome: 'Inter' },
   { id: 'itau', nome: 'Itaú' },

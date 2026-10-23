@@ -41,12 +41,16 @@ function contaDoBanco(id: string, d: Record<string, unknown>): financeiro.ContaD
 }
 
 function linhaDoBanco(id: string, d: Record<string, unknown>): financeiro.LancamentoDoBanco {
-  return { id, data: texto(d.data), historico: texto(d.historico), valor: Number(d.valor) || 0, tipo: d.tipo === 'S' ? 'S' : 'E', banco: texto(d.banco) || 'Banco', importacao: texto(d.importacao) };
+  return {
+    id, data: texto(d.data), historico: texto(d.historico), valor: Number(d.valor) || 0, tipo: d.tipo === 'S' ? 'S' : 'E', banco: texto(d.banco) || 'Banco', importacao: texto(d.importacao),
+    contaBancaria: texto(d.contaBancaria) || undefined, conta: texto(d.conta) || undefined,
+  };
 }
 
 function importacaoDoBanco(id: string, d: Record<string, unknown>): financeiro.ImportacaoDeExtrato {
   return {
-    id, banco: texto(d.banco) || 'Banco', arquivo: texto(d.arquivo), de: texto(d.de), ate: texto(d.ate), quantos: Number(d.quantos) || 0,
+    id, banco: texto(d.banco) || 'Banco', marca: texto(d.marca) || undefined, contaBancaria: texto(d.contaBancaria) || undefined, conta: texto(d.conta) || undefined,
+    rotuloDaConta: texto(d.rotuloDaConta) || undefined, arquivo: texto(d.arquivo), de: texto(d.de), ate: texto(d.ate), quantos: Number(d.quantos) || 0,
     entradas: Number(d.entradas) || 0, saidas: Number(d.saidas) || 0, saldoFinal: typeof d.saldoFinal === 'number' ? d.saldoFinal : undefined,
     importadoEm: texto(d.importadoEm), importadoPor: texto(d.importadoPor),
   };
@@ -139,12 +143,16 @@ export function criarCaixaFirestore(): RepoCaixa {
       for (let k = 0; k < novas.length; k += POR_LOTE) {
         const b = writeBatch(db);
         for (const l of novas.slice(k, k + POR_LOTE)) {
-          b.set(doc(db, 'financeiroBanco', l.id), { data: l.data, historico: l.historico, valor: l.valor, tipo: l.tipo, banco: l.banco, importacao: l.importacao });
+          b.set(doc(db, 'financeiroBanco', l.id), {
+            data: l.data, historico: l.historico, valor: l.valor, tipo: l.tipo, banco: l.banco, importacao: l.importacao,
+            ...(l.contaBancaria ? { contaBancaria: l.contaBancaria } : {}), ...(l.conta ? { conta: l.conta } : {}),
+          });
         }
         await b.commit();
       }
       await setDoc(doc(db, 'financeiroBancoImportacoes', i.id), {
-        banco: i.banco, arquivo: i.arquivo, de: i.de, ate: i.ate, quantos: novas.length, entradas: i.entradas, saidas: i.saidas,
+        banco: i.banco, ...(i.marca ? { marca: i.marca } : {}), ...(i.contaBancaria ? { contaBancaria: i.contaBancaria } : {}), ...(i.conta ? { conta: i.conta } : {}),
+        ...(i.rotuloDaConta ? { rotuloDaConta: i.rotuloDaConta } : {}), arquivo: i.arquivo, de: i.de, ate: i.ate, quantos: novas.length, entradas: i.entradas, saidas: i.saidas,
         ...(i.saldoFinal != null ? { saldoFinal: i.saldoFinal } : {}), importadoEm: new Date().toISOString(), importadoPor: quem,
       });
       return { novas: novas.length, repetidas: linhas.length - novas.length };
