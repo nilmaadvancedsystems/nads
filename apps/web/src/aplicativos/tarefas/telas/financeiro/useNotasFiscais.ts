@@ -1,11 +1,13 @@
 // ViewModel de Financeiro › Notas fiscais (15/10/2026: "vamos criar um emissor de notas fiscais para o financeiro"): o estado do
 // emissor (o robô, o ambiente, o que falta na configuração), a lista das notas com a busca e o filtro, e qual janela está aberta
 // (a Nova nota, a nota aberta, ou a recusada sendo corrigida).
-import { nfse } from '@nads/core';
+// O período (23/10/2026, o mesmo do Painel financeiro): este mês, o passado ou o ano, pela data do serviço da nota.
+import { financeiro, nfse } from '@nads/core';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { caminhoDaPagina } from '../../casca/navegacao';
 import { useNfse } from '../../dados/repo';
+import { hoje } from './formatosDaNota';
 
 export type FiltroDeNotas = 'todas' | 'andamento' | 'autorizadas' | 'recusadas' | 'canceladas';
 export const FILTROS_DE_NOTAS: { valor: FiltroDeNotas; rotulo: string }[] = [
@@ -15,6 +17,18 @@ export const FILTROS_DE_NOTAS: { valor: FiltroDeNotas; rotulo: string }[] = [
   { valor: 'recusadas', rotulo: 'Recusadas' },
   { valor: 'canceladas', rotulo: 'Canceladas' },
 ];
+
+export type PeriodoDasNotas = 'este-mes' | 'mes-passado' | 'este-ano';
+export const PERIODOS_DAS_NOTAS: { valor: PeriodoDasNotas; rotulo: string }[] = [
+  { valor: 'este-mes', rotulo: 'Este mês' }, { valor: 'mes-passado', rotulo: 'Mês passado' }, { valor: 'este-ano', rotulo: 'Este ano' },
+];
+/** o começo da data (AAAA-MM ou AAAA) que a nota precisa ter: o mês inteiro, mesmo a nota com o serviço no fim do mês */
+function prefixoDoPeriodo(p: PeriodoDasNotas, dia: string): string {
+  const { de } = financeiro.periodoPronto(p, dia);
+  return p === 'este-ano' ? de.slice(0, 4) : de.slice(0, 7);
+}
+/** a data do serviço (a competência da DPS); a nota sem ela, pela data do pedido */
+const dataDaNota = (n: nfse.NotaFiscal) => n.servico.competencia || n.pedidoEm.slice(0, 10);
 
 const noFiltro = (f: FiltroDeNotas, s: nfse.StatusNfse) =>
   f === 'todas' ? true : f === 'andamento' ? nfse.andando(s) : f === 'autorizadas' ? s === 'autorizada' : f === 'recusadas' ? s === 'erro' || s === 'erro-cancelamento' : s === 'cancelada';
@@ -27,6 +41,7 @@ export function useNotasFiscais() {
   const cfg = repo.config();
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<FiltroDeNotas>('todas');
+  const [periodo, setPeriodo] = useState<PeriodoDasNotas>('este-mes');
   const [nova, setNova] = useState(false);
   /** o Importar planilha (15/10/2026: "quero que ele leia uma planilha com clientes que já pagaram") */
   const [importando, setImportando] = useState(false);
@@ -36,7 +51,9 @@ export function useNotasFiscais() {
 
   const q = busca.trim().toLowerCase();
   const qd = nfse.soDigitos(busca);
-  const linhas = lista.lista.filter(n => noFiltro(filtro, n.status) && (!q || nfse.textoDaNota(n).includes(q) || (qd.length >= 3 && n.tomador.documento.includes(qd))));
+  const prefixo = prefixoDoPeriodo(periodo, hoje());
+  const doPeriodo = lista.lista.filter(n => dataDaNota(n).startsWith(prefixo));
+  const linhas = doPeriodo.filter(n => noFiltro(filtro, n.status) && (!q || nfse.textoDaNota(n).includes(q) || (qd.length >= 3 && n.tomador.documento.includes(qd))));
   const faltas = cfg.carregada ? nfse.faltasNaConfig(cfg.config, !!cfg.tokenGravadoEm) : [];
 
   return {
@@ -48,8 +65,10 @@ export function useNotasFiscais() {
     faltas,
     irParaConfiguracoes: () => navegar(caminhoDaPagina('financeiro', 'configuracoes')),
     total: lista.lista.length,
+    /** as do período, antes da busca e do filtro (para dizer por que a lista está vazia) */
+    noPeriodo: doPeriodo.length,
     linhas,
-    busca, setBusca, filtro, setFiltro,
+    busca, setBusca, filtro, setFiltro, periodo, setPeriodo, periodos: PERIODOS_DAS_NOTAS,
     nova, setNova, importando, setImportando, aberta, setAberta, corrigindo,
     corrigir(n: nfse.NotaFiscal) { setAberta(null); setCorrigindo(n); },
     fecharCorrecao: () => setCorrigindo(null),
