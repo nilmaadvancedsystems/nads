@@ -64,6 +64,8 @@ export interface PainelDoArquivador {
   ritmo: number;
   hoje: ContagemDoArquivador; mes: ContagemDoArquivador;
   ultimos: ItemDoArquivador[]; pendentes: ItemDoArquivador[]; erros: ItemDoArquivador[];
+  /** quantos estão hoje em NÃO IDENTIFICADOS (a lista mostra até 80) */
+  pendentesTotal?: number;
   alertas: AlertaDoArquivador[];
   ladoALado: LadoALado | null;
   historico: { dia: string; partes: number; itens: number };
@@ -130,6 +132,7 @@ export function lerPainelDoArquivador(doc: Obj | null | undefined): PainelDoArqu
     ritmo: num(d.ritmo),
     hoje: lerContagem(d.hoje), mes: lerContagem(d.mes),
     ultimos: lista(d.ultimos).map(lerItemDoArquivador), pendentes: lista(d.pendentes).map(lerItemDoArquivador), erros: lista(d.erros).map(lerItemDoArquivador),
+    pendentesTotal: typeof d.pendentesTotal === 'number' ? d.pendentesTotal : lista(d.pendentes).length,
     alertas: lista(d.alertas).map(a => ({ tipo: txt(a.tipo), tom: a.tom === 'erro' ? 'erro' as const : 'aviso' as const, titulo: txt(a.titulo), texto: txt(a.texto), oQueFazer: txt(a.oQueFazer) })).filter(a => a.titulo),
     ladoALado: l ? {
       dia: txt(l.dia), rotinaArquivou: num(l.rotinaArquivou), iguais: num(l.iguais), pastaIgualNomeDiferente: num(l.pastaIgualNomeDiferente), diferentes: num(l.diferentes),
