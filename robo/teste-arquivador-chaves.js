@@ -326,6 +326,32 @@ try {
   await vP.ciclo(); vP.parar();
   const acP = JSON.parse(fs.readFileSync(path.join(kP, 'continuo', 'acompanhamento.json'), 'utf8'));
   igual('Para resolver: o que está na pasta (com o motivo mais novo; sem linha no índice, entra assim mesmo)', [acP.pendentes.map(x => [x.nome, x.motivo]), acP.pendentesTotal], [[['orfao.pdf', 'SEM_MOTIVO_REGISTRADO'], ['fica.xml', 'EVENTO_SEM_ORIGINAL']], 2]);
+
+  // ---------- 15. o ritmo pelo Google Drive e a varredura pela lista anterior + fs.watch (23/10/2026) ----------
+  {
+    const sr = path.join(tmp, 'ritmo'); const oR = path.join(sr, 'origem'), kR = path.join(sr, 'controle');
+    fs.mkdirSync(path.join(oR, '2026-10'), { recursive: true }); fs.mkdirSync(kR, { recursive: true });
+    fs.writeFileSync(path.join(kR, 'config.json'), JSON.stringify({ modo: 'simulacao', estavelMs: 0 }));
+    fs.writeFileSync(path.join(oR, '2026-10', 'a.xml'), '<a/>'); fs.writeFileSync(path.join(oR, '2026-10', 'b.xml'), '<b/>');
+    const vR = C.iniciar(Object.assign({}, baseC, { origem: oR, controle: kR, arvoreGrande: 0, umaVez: false }));
+    vR._medirRitmo(70000, null);
+    igual('ritmo: varredura de 70 s → lote de 10 e ciclo a cada 2 min', [vR._ritmo().nivel, vR._ritmo().proximoCicloEm > Date.now() + 100000], [1, true]);
+    vR._medirRitmo(5000, 12000);
+    igual('ritmo: 12 s por arquivo → lote de 5', vR._ritmo().nivel, 2);
+    vR._medirRitmo(1000, 500); vR._medirRitmo(1000, 500);
+    igual('ritmo: dois ciclos rápidos ainda não voltam', vR._ritmo().nivel, 2);
+    vR._medirRitmo(1000, 500);
+    igual('ritmo: o terceiro rápido volta um degrau', vR._ritmo().nivel, 1);
+    const r1 = await vR.ciclo();
+    igual('ritmo: ciclo antes da hora espera', /Google Drive lento/.test(r1.esperando || ''), true);
+    // a varredura: a primeira inteira; depois, só o que o fs.watch avisou (o novo entra, o que saiu some)
+    const nomes = l => l.map(x => x.rel).sort();
+    igual('varredura: a primeira lista tudo', nomes(vR._varrer()), ['2026-10\\a.xml', '2026-10\\b.xml']);
+    fs.writeFileSync(path.join(oR, '2026-10', 'c.xml'), '<c/>'); fs.unlinkSync(path.join(oR, '2026-10', 'a.xml'));
+    await new Promise(r => setTimeout(r, 600));
+    igual('varredura: pela lista anterior + fs.watch', nomes(vR._varrer()), ['2026-10\\b.xml', '2026-10\\c.xml']);
+    vR.parar();
+  }
 } catch (e) { falhas++; console.log('FALHOU com erro:', e.stack); }
 finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
