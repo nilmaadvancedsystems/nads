@@ -31,6 +31,25 @@ function docDaNota(n: NotaAlvo): string {
   return d.length > 11 ? d.padStart(14, '0') : d;
 }
 
+/**
+ * O texto padrão do código do histórico: as palavras do começo que todas as linhas com o código têm, até o primeiro número
+ * ("Pelos Serviços Prestados conf. Nota Fiscal nº"). Com uma linha só, não dá para saber: fica vazio.
+ */
+export function textoPadrao(textos: readonly string[]): string {
+  if (textos.length < 2) return '';
+  const ps = textos.map(t => t.trim().split(/\s+/));
+  const out: string[] = [];
+  for (let i = 0; ps.every(p => i < p.length && p[i] === ps[0][i] && !/\d/.test(p[i])); i++) out.push(ps[0][i]);
+  return out.join(' ');
+}
+
+/** O complemento: o texto sem o padrão do código (o Alterdata põe o padrão sozinho). */
+export function semPadrao(texto: string, padrao: string): string {
+  if (!padrao) return texto;
+  const t = texto.trim().replace(/\s+/g, ' ');
+  return t.startsWith(padrao) ? t.slice(padrao.length).trim() : texto;
+}
+
 /** O texto do histórico da nota, a partir do texto modelo: a nota (com os zeros do modelo), o documento e o nome trocados. */
 export function historicoDaNota(modelo: string, n: { numero: string; doc: string; nome: string }): string {
   const p = partesDoHistorico(modelo);
@@ -71,6 +90,9 @@ export function lancamentosFaltando(r: ResultadoVerificacao): LancamentosFaltand
   // o modelo do histórico: o lançamento mais recente que tem o código e o texto
   const comHist = linhas.map(l => ({ l, h: historicoDaLinha(l.txt) })).filter(x => x.h);
   const modelo = comHist.sort((a, b) => diaDe(b.l.data) - diaDe(a.l.data))[0]?.h || null;
+  // o Alterdata põe o texto padrão do código antes do complemento (Vitor, 23/10/2026: "Pelo valor do Empréstimo Crédito
+  // Trabalhador Pelo valor do Empréstimo Crédito Trabalhador <08/2026> …"): o complemento vai sem ele
+  const padrao = modelo ? textoPadrao(comHist.filter(x => x.h!.codigo === modelo.codigo).map(x => x.h!.texto)) : '';
   const credita = r.serv ? r.serv === 'prestados' : null;
   const lancamentos: LinhaDeImportacao[] = [];
   const semConta: NotaAlvo[] = [];
@@ -89,7 +111,7 @@ export function lancamentosFaltando(r: ResultadoVerificacao): LancamentosFaltand
       credito: saida ? conta : part,
       valor: Math.round(Math.abs(n.valor) * 100) / 100,
       codHistorico: modelo?.codigo || '',
-      historico: modelo ? historicoDaNota(modelo.texto, { numero: n.numero, doc, nome: n.nome }) : historicoDaNota('', { numero: n.numero, doc, nome: n.nome }),
+      historico: semPadrao(historicoDaNota(modelo?.texto || '', { numero: n.numero, doc, nome: n.nome }), padrao),
       documento: semZeros(n.numero),
     });
   }
