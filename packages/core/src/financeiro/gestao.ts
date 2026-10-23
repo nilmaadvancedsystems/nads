@@ -3,7 +3,7 @@
 // Extrator (a conciliação com o extrato do banco). Puro: sem banco e sem tela.
 import type { LancamentoDoArquivo } from '../extratudo/extrator/tipos';
 import { competenciaAnterior, type ContratoDeHonorario, type RecebimentoDeHonorario } from './honorarios';
-import type { ContaDoPlano, LancamentoDeCaixa, TipoDeLancamento } from './index';
+import type { LancamentoDeCaixa } from './index';
 
 const emCentavos = (v: number) => Math.round(v * 100);
 
@@ -83,55 +83,7 @@ export function previaDoReajuste(contratos: readonly ContratoDeHonorario[], pct:
     .sort((a, b) => a.contrato.nome.localeCompare(b.contrato.nome, 'pt-BR'));
 }
 
-// ─── 6. O resultado por conta ───────────────────────────────────────────────────────────────────────────────────────
-
-export interface ValoresDoResultado { atual: number; anterior: number; anoPassado: number }
-export interface LinhaDoResultado extends ValoresDoResultado {
-  conta: string | null;
-  rotulo: string;
-  /** a variação do mês contra o anterior, em % (null quando o anterior é zero) */
-  variacao: number | null;
-}
-export interface ResultadoPorConta {
-  mes: string; anterior: string; anoPassado: string;
-  entradas: LinhaDoResultado[];
-  saidas: LinhaDoResultado[];
-  totais: { entradas: ValoresDoResultado; saidas: ValoresDoResultado; resultado: ValoresDoResultado };
-}
-
-const variacaoDe = (atual: number, anterior: number) => (anterior ? Math.round(((atual - anterior) / anterior) * 1000) / 10 : null);
-
-/** as entradas e as saídas de cada conta no mês (AAAA-MM), no mês anterior e no mesmo mês do ano passado */
-export function resultadoPorConta(lancamentos: readonly LancamentoDeCaixa[], contas: ReadonlyMap<string, ContaDoPlano>, mes: string): ResultadoPorConta {
-  const anterior = mesAnterior(mes);
-  const anoPassado = String(Number(mes.slice(0, 4)) - 1) + mes.slice(4);
-  const coluna = (m: string): keyof ValoresDoResultado | null => (m === mes ? 'atual' : m === anterior ? 'anterior' : m === anoPassado ? 'anoPassado' : null);
-  const porTipo = (tipo: TipoDeLancamento) => {
-    const soma = new Map<string, ValoresDoResultado>();
-    for (const l of lancamentos) {
-      const k = l.tipo === tipo ? coluna(l.data.slice(0, 7)) : null;
-      if (!k) continue;
-      const conta = l.conta && contas.has(l.conta) ? l.conta : '';
-      const x = soma.get(conta) || { atual: 0, anterior: 0, anoPassado: 0 };
-      x[k] += emCentavos(l.valor);
-      soma.set(conta, x);
-    }
-    return [...soma.entries()].map(([k, v]) => {
-      const c = contas.get(k);
-      const atual = v.atual / 100, ant = v.anterior / 100;
-      return { conta: k || null, rotulo: c ? c.codigo + ' ' + c.descricao : 'Sem conta', atual, anterior: ant, anoPassado: v.anoPassado / 100, variacao: variacaoDe(atual, ant) };
-    }).sort((a, b) => b.atual - a.atual || b.anterior - a.anterior || a.rotulo.localeCompare(b.rotulo, 'pt-BR'));
-  };
-  const entradas = porTipo('E'), saidas = porTipo('S');
-  const total = (ls: LinhaDoResultado[]): ValoresDoResultado => ({
-    atual: ls.reduce((s, l) => s + emCentavos(l.atual), 0) / 100,
-    anterior: ls.reduce((s, l) => s + emCentavos(l.anterior), 0) / 100,
-    anoPassado: ls.reduce((s, l) => s + emCentavos(l.anoPassado), 0) / 100,
-  });
-  const e = total(entradas), s = total(saidas);
-  const menos = (a: number, b: number) => (emCentavos(a) - emCentavos(b)) / 100;
-  return { mes, anterior, anoPassado, entradas, saidas, totais: { entradas: e, saidas: s, resultado: { atual: menos(e.atual, s.atual), anterior: menos(e.anterior, s.anterior), anoPassado: menos(e.anoPassado, s.anoPassado) } } };
-}
+// ─── 6. O resultado por conta: em resultado.ts (o comparativo e o ano mês a mês, pela árvore do plano) ─────────────────────
 
 // ─── 7. A conciliação com o extrato ─────────────────────────────────────────────────────────────────────────────────
 
