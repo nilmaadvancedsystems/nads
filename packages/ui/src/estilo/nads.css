@@ -5261,7 +5261,7 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .fluxo-sub-nome>svg{width:14px;height:14px;flex:none;color:var(--ink-muted);}
 .fluxo-sub-nome>span{display:flex;flex-direction:column;gap:2px;min-width:0;}
 .fluxo-sub-nome b{font-weight:500;}
-.fluxo-sub.encerrado .fluxo-sub-nome b{color:var(--ink-muted);text-decoration:line-through;text-decoration-color:var(--border-strong);}
+.fluxo-sub.encerrado .fluxo-sub-nome b{color:var(--ink-muted);}
 .fluxo-sub-quem{font-size:var(--fs-12,12px);}
 .fluxo-sub-resp{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-13,13px);white-space:nowrap;}
 .fluxo-sub-resp svg{width:12px;height:12px;}
@@ -5271,4 +5271,22 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .fluxo-sub-acoes{display:flex;gap:8px;flex-wrap:wrap;}
 .fluxo-sub-acoes:empty{display:none;}
 .fluxo-sub-acoes .btn svg{width:14px;height:14px;}
+/* as etapas da fase em cartões que abrem (uma aberta por vez) e os grupos pequenos dentro */
+.fluxo-etapas{display:flex;flex-direction:column;gap:8px;}
+.fluxo-etapa{border:1px solid var(--border);border-radius:var(--radius,8px);background:var(--surface);}
+.fluxo-etapa.aberta{border-color:var(--border-strong);}
+.fluxo-etapa-topo{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:flex;align-items:center;gap:10px;padding:14px 16px;font-size:var(--fs-16,16px);border-radius:var(--radius,8px);}
+.fluxo-etapa-topo:hover{background:var(--hover-bg);}
+.fluxo-etapa-topo:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+.fluxo-etapa-icone{display:flex;color:var(--ink-muted);}
+.fluxo-etapa-icone svg{width:16px;height:16px;}
+.fluxo-etapa-icone.ok{color:var(--success);}
+.fluxo-etapa.concluida .fluxo-etapa-topo b{color:var(--ink-muted);font-weight:500;}
+.fluxo-etapa.travada .fluxo-etapa-topo{opacity:.7;}
+.fluxo-etapa-conta{margin-left:auto;font-size:var(--fs-13,13px);white-space:nowrap;}
+.fluxo-etapa-corpo{display:flex;flex-direction:column;gap:14px;padding:0 16px 16px;}
+.fluxo-grupo{display:flex;flex-direction:column;gap:6px;}
+.fluxo-grupo-nome{margin:0;font-size:var(--fs-12,12px);font-weight:600;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.04em;}
+.fluxo-concluir{align-self:flex-start;}
+.fluxo-concluir svg{width:16px;height:16px;}
 @media (max-width:700px){.fluxo-sub-linha{flex-wrap:wrap;}.fluxo-sub-corpo{padding-left:12px;}}

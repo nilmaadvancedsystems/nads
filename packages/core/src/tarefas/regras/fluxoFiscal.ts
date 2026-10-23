@@ -90,6 +90,26 @@ export function fluxoDoMes(fluxo: FluxoFiscal, ex: Execucao | null, competencia:
   return etapas;
 }
 
+/** os grupos da etapa no mês (os que sobram, sem grupo, vão para "Outros"; o grupo vazio no mês sai) */
+export function gruposDaEtapa(e: EtapaNoMes): { nome: string; subprocessos: SubprocessoNoMes[] }[] {
+  if (!e.grupos?.length) return [{ nome: '', subprocessos: e.subprocessos }];
+  const usados = new Set(e.grupos.flatMap(g => g.subs));
+  const grupos = e.grupos.map(g => ({ nome: g.nome, subprocessos: e.subprocessos.filter(s => g.subs.includes(s.id)) }));
+  const resto = e.subprocessos.filter(s => !usados.has(s.id));
+  return [...grupos, ...(resto.length ? [{ nome: 'Outros', subprocessos: resto }] : [])].filter(g => g.subprocessos.length);
+}
+
+/** as fases do mês: cada uma com as etapas dela (as que entram no mês), quantos encerraram e se acabou */
+export function fasesDoMes(fluxo: FluxoFiscal, etapas: readonly EtapaNoMes[]): { nome: string; etapas: EtapaNoMes[]; encerrados: number; total: number; concluida: boolean; liberada: boolean }[] {
+  const fases = fluxo.fases?.length ? fluxo.fases : etapas.map(e => ({ nome: e.n + '. ' + e.nome, etapas: [e.n] }));
+  return fases.map(f => {
+    const es = etapas.filter(e => f.etapas.includes(e.n));
+    const total = es.reduce((s, e) => s + e.subprocessos.length, 0);
+    const encerrados = es.reduce((s, e) => s + e.encerrados, 0);
+    return { nome: f.nome, etapas: es, encerrados, total, concluida: es.every(e => e.concluida), liberada: es.some(e => e.liberada) };
+  }).filter(f => f.etapas.length);
+}
+
 /** o resumo do fluxo do mês: quantos subprocessos encerraram, a etapa da vez e se acabou */
 export function resumoDoFluxo(etapas: readonly EtapaNoMes[]): { encerrados: number; total: number; daVez: EtapaNoMes | null; concluido: boolean } {
   const total = etapas.reduce((s, e) => s + e.subprocessos.length, 0);
