@@ -57,9 +57,15 @@ const valeNoIndice = k => chaveValida(k) || /^NFSE:\d{11,14}:\d+$/.test(String(k
  * de = 'doc' (o XML do documento), 'evento' (estava em EVENTOS) ou 'outro' (PDF etc.: só o cliente vale).
  */
 function lerDestino(arquivo, raiz) {
-  const r = String(raiz || R.RAIZ_CLIENTES).replace(/\\+$/, '') + '\\';
+  let r = String(raiz || R.RAIZ_CLIENTES).replace(/\\+$/, '') + '\\';
   const a = String(arquivo || '').replace(/\//g, '\\');
-  if (a.slice(0, r.length).toLowerCase() !== r.toLowerCase()) return null;
+  // a raiz de outro ano (23/10/2026: G:\Meu Drive\2024\… é irmã de G:\Meu Drive\2026\)
+  if (a.slice(0, r.length).toLowerCase() !== r.toLowerCase()) {
+    const m = /^(.*\\)\d{4}\\$/.exec(r);
+    const o = m && new RegExp('^' + m[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(\\d{4})\\\\', 'i').exec(a);
+    if (!o) return null;
+    r = m[1] + o[1] + '\\';
+  }
   const partes = a.slice(r.length).split('\\').filter(Boolean);
   if (partes.length < 2) return null;
   const m = /^(\d{1,4}) - /.exec(partes[0]);

@@ -188,6 +188,14 @@ button.admin-numero[aria-pressed="true"]{border-color:var(--tom,var(--accent));b
 .arq-em-previa svg{vertical-align:-2px;}
 .arq-em-destino{font-weight:600;}
 .arq-em-botoes{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;}
+/* Para resolver em grupos (23/10/2026): a chave Sim/Não com o texto, os exemplos da prévia, a pasta do grupo */
+.arq-em-chave{display:flex;align-items:center;gap:10px;font-size:var(--fs-13);}
+.arq-em-exemplos{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
+.arq-em-exemplos li{display:flex;flex-direction:column;gap:2px;}
+.arq-em-erro{color:var(--danger-ink);}
+.arq-grupo-pasta{margin:0;font-size:var(--fs-13);overflow-wrap:anywhere;}
+.arq-grupo-exemplos{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:var(--fs-13);}
+.arq-grupo-exemplos svg{vertical-align:-2px;}
 .arq-visor{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;background:var(--bg);}
 .arq-visor-topo{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--header-bg);}
 .arq-visor-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-14);}

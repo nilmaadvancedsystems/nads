@@ -113,6 +113,7 @@ export function criarArquivadorNovoFirestore(): RepoArquivadorNovo {
       if (n.codigo != null) dados.codigo = n.codigo;
       if (n.tipoDoc) dados.tipoDoc = n.tipoDoc;
       if (n.competencia) dados.competencia = n.competencia;
+      if (n.lembrar === true && n.tipo === 'grupo') dados.lembrar = true;
       const ref = await addDoc(collection(db, 'pedidosArquivador'), dados);
       pedidos.set(ref.id, { id: ref.id, tipo: n.tipo, status: 'pendente', erro: '', resposta: null, arquivo: null });
       mudou();

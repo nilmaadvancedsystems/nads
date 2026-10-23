@@ -62,6 +62,23 @@ export interface LadoALado {
   dia: string; rotinaArquivou: number; iguais: number; pastaIgualNomeDiferente: number; diferentes: number; novoNaoIdentificou: number; novoNaoViu: number;
   exemplos: ExemploDoLadoALado[];
 }
+/**
+ * Um grupo de "Para resolver" (23/10/2026, a migração: os não identificados podem virar milhares): os da mesma causa e da
+ * mesma pasta de origem (sem as pastas de ano e mês), com 3 exemplos e a sugestão (o cliente pela pasta, o tipo pelo mapa).
+ */
+export interface GrupoParaResolver {
+  id: string; motivo: string; motivoTexto: string; pasta: string; n: number;
+  exemplos: { nome: string; rel: string; hash: string }[];
+  sugestao: { codigo: number | null; tipoDoc: string | null } | null;
+}
+export function lerGrupoParaResolver(d: Obj): GrupoParaResolver {
+  const s = d.sugestao ? obj(d.sugestao) : null;
+  return {
+    id: txt(d.id), motivo: txt(d.motivo), motivoTexto: txt(d.motivoTexto) || txt(d.motivo), pasta: txt(d.pasta), n: num(d.n),
+    exemplos: lista(d.exemplos).map(x => ({ nome: txt(x.nome), rel: txt(x.rel), hash: txt(x.hash) })).filter(x => x.rel),
+    sugestao: s ? { codigo: typeof s.codigo === 'number' ? s.codigo : null, tipoDoc: s.tipoDoc ? txt(s.tipoDoc) : null } : null,
+  };
+}
 export interface PainelDoArquivador {
   em: string; maquina: string; config: ConfigDoArquivador | null;
   /** ok | sem-drive | esperando */
@@ -74,6 +91,8 @@ export interface PainelDoArquivador {
   /** quantos estão hoje em NÃO IDENTIFICADOS (a lista mostra até 80) */
   pendentesTotal?: number;
   alertas: AlertaDoArquivador[];
+  /** Para resolver em grupos (os maiores primeiro; até 150) */
+  grupos: GrupoParaResolver[];
   ladoALado: LadoALado | null;
   historico: { dia: string; partes: number; itens: number };
 }
@@ -142,6 +161,7 @@ export function lerPainelDoArquivador(doc: Obj | null | undefined): PainelDoArqu
     hoje: lerContagem(d.hoje), mes: lerContagem(d.mes),
     ultimos: lista(d.ultimos).map(lerItemDoArquivador), pendentes: lista(d.pendentes).map(lerItemDoArquivador), erros: lista(d.erros).map(lerItemDoArquivador),
     pendentesTotal: typeof d.pendentesTotal === 'number' ? d.pendentesTotal : lista(d.pendentes).length,
+    grupos: lista(d.grupos).map(lerGrupoParaResolver).filter(g => g.id && g.n > 0),
     alertas: lista(d.alertas).map(a => ({ tipo: txt(a.tipo), tom: a.tom === 'erro' ? 'erro' as const : 'aviso' as const, titulo: txt(a.titulo), texto: txt(a.texto), oQueFazer: txt(a.oQueFazer) })).filter(a => a.titulo),
     ladoALado: l ? {
       dia: txt(l.dia), rotinaArquivou: num(l.rotinaArquivou), iguais: num(l.iguais), pastaIgualNomeDiferente: num(l.pastaIgualNomeDiferente), diferentes: num(l.diferentes),
@@ -439,11 +459,14 @@ export function csvDoHistorico(itens: readonly ItemDoArquivador[], situacoes: Ma
 // ---------------------------------------------------------------------------------------------------------------------
 // os pedidos ao robô (Para resolver: abrir o arquivo, a prévia, arquivar em…, descartar; 23/10/2026)
 // ---------------------------------------------------------------------------------------------------------------------
-export type TipoDoPedido = 'abrir' | 'previa' | 'arquivar' | 'descartar';
+export type TipoDoPedido = 'abrir' | 'previa' | 'arquivar' | 'descartar' | 'grupoPrevia' | 'grupo';
 export type SituacaoDoPedido = 'pendente' | 'trabalhando' | 'pronto' | 'feito' | 'erro';
+export interface ExemploDaPreviaDoGrupo { nome: string; competencia: string; destino: string; pastaNova: string; acao: string; erro: string }
 export interface RespostaDoPedido {
   acao: string; destino: string; nomeFinal: string; situacao: string; pastaNova: string; copias: string[]; motivo: string; evidencias: string[];
   cliente: string; clienteNome: string; tipo: string;
+  /** o pedido de grupo: quantos no grupo, os exemplos da prévia, os arquivados e os que deram erro, e se a decisão foi lembrada */
+  total?: number; exemplos?: ExemploDaPreviaDoGrupo[]; feitos?: number; erros?: number; primeiroErro?: string; lembrou?: boolean;
 }
 export interface PedidoDoArquivador {
   id: string; tipo: TipoDoPedido; status: SituacaoDoPedido; erro: string;
@@ -451,7 +474,7 @@ export interface PedidoDoArquivador {
   /** abrir: o arquivo em partes (pedidosArquivador/{id}/partes/{n}, base64) */
   arquivo: { nome: string; mime: string; tamanho: number; partes: number } | null;
 }
-const TIPOS_DE_PEDIDO: readonly TipoDoPedido[] = ['abrir', 'previa', 'arquivar', 'descartar'];
+const TIPOS_DE_PEDIDO: readonly TipoDoPedido[] = ['abrir', 'previa', 'arquivar', 'descartar', 'grupoPrevia', 'grupo'];
 const SITUACOES: readonly SituacaoDoPedido[] = ['pendente', 'trabalhando', 'pronto', 'feito', 'erro'];
 
 /** Um pedido como veio do banco (o robô responde no próprio documento). */
@@ -465,6 +488,10 @@ export function lerPedidoDoArquivador(id: string, d: Obj | null | undefined): Pe
     resposta: r ? {
       acao: txt(r.acao), destino: txt(r.destino), nomeFinal: txt(r.nomeFinal), situacao: txt(r.situacao), pastaNova: txt(r.pastaNova), copias: textos(r.copias),
       motivo: txt(r.motivo), evidencias: textos(r.evidencias), cliente: txt(r.cliente), clienteNome: txt(r.clienteNome), tipo: txt(r.tipo),
+      ...(r.total != null ? {
+        total: num(r.total), feitos: num(r.feitos), erros: num(r.erros), primeiroErro: txt(r.primeiroErro), lembrou: r.lembrou === true,
+        exemplos: lista(r.exemplos).map(x => ({ nome: txt(x.nome), competencia: txt(x.competencia), destino: txt(x.destino), pastaNova: txt(x.pastaNova), acao: txt(x.acao), erro: txt(x.erro) })),
+      } : {}),
     } : null,
     arquivo: a ? { nome: txt(a.nome), mime: txt(a.mime) || 'application/octet-stream', tamanho: num(a.tamanho), partes: num(a.partes) } : null,
   };

@@ -720,13 +720,57 @@ function iniciar(opcoes) {
       if (!presentes.has(k.toLowerCase())) continue;
       itens.push({ rel: (j.dir ? j.dir + '\\' : '') + j.arquivo, nome: j.arquivo, motivo: j.motivo, confianca: j.confianca, cliente: j.cliente_tentativa, chave: j.chave || null, em: j.timestamp, hash: require('crypto').createHash('sha1').update(k).digest('hex'), naPasta: 'NÃO IDENTIFICADOS\\' + k });
     }
+    // os GRUPOS (23/10/2026, a migração: os não identificados podem virar milhares): pela causa e pela pasta de origem
+    // ("312 de 0010 - DORNAS…\DEPARTAMENTO FISCAL\DESTDA sem regra"), com 3 exemplos e a sugestão do mapa/da pasta
+    gruposNi = montarGrupos(itens);
     // a MESMA contagem em todo lugar que diz "para resolver" (23/10/2026): o painel do robô (robo/painelPC.paraResolver),
     // o ponto do arquivador (robo/arquivador.paraResolver, que a janela do Drive lê) e o acompanhamento (pendentesTotal)
+    acomp.grupos([...gruposNi.values()].sort((a, b) => b.n - a.n).slice(0, 150).map(g => ({ id: g.id, motivo: g.motivo, pasta: g.pasta, n: g.n, exemplos: g.arquivos.slice(0, 3).map(a => ({ nome: a.nome, rel: a.rel, hash: a.hash })), sugestao: g.sugestao })));
     acomp.naoIdentificados(itens, rel => fs.existsSync(path.join(o.origem, rel)), total => {
       const p = { agora: total, em: new Date().toISOString() };
       if (o.painel) o.painel.estado({ paraResolver: p });
       if (o.aoContarPendentes) { try { o.aoContarPendentes(p); } catch (e) { /* só o aviso */ } }
     });
+  }
+
+  let gruposNi = new Map();
+  /** Os grupos de NÃO IDENTIFICADOS: id → { id, motivo, pasta, n, arquivos: [{ rel (na origem), nome, hash }], sugestao } */
+  function montarGrupos(itens) {
+    const MIG = require('./arquivador-migracao');
+    const R = require('./arquivador-regras');
+    const out = new Map();
+    const cad = cache.cadastro || o.cadastro || null;
+    for (const x of itens) {
+      const g = MIG.chaveDoGrupo(x.motivo, x.rel);
+      const id = require('crypto').createHash('sha1').update(g.motivo + '|' + g.pasta.toUpperCase()).digest('hex').slice(0, 16);
+      let e = out.get(id);
+      if (!e) {
+        // a sugestão: o cliente pela pasta de origem (código e nome conferidos) e o tipo pelo mapa da migração
+        let sugestao = null;
+        try {
+          const cp = cad ? R.clienteDaPasta(x.rel, cad) : null;
+          const tp = cad && cad.mapaMigracao ? cad.mapaMigracao.tipoDaOrigem(x.rel) : null;
+          if ((cp && cp.forte) || tp) sugestao = { codigo: cp && cp.forte ? cp.codigo : null, tipoDoc: tp ? tp.tipoDoc : null };
+        } catch (err) { sugestao = null; }
+        e = { id, motivo: g.motivo, pasta: g.pasta, n: 0, arquivos: [], sugestao };
+        out.set(id, e);
+      }
+      e.n++;
+      e.arquivos.push({ rel: x.naPasta, nome: x.nome, hash: x.hash });
+    }
+    return out;
+  }
+  /** "Lembrar" a decisão de um grupo: o cliente pela pasta do cliente; o tipo pela pasta do grupo (o mapa do controle). */
+  function lembrarGrupo(e) {
+    const MIG = require('./arquivador-migracao');
+    const partes = String(e.pasta || '').split('\\');
+    const iCli = partes.findIndex(p => /^\d{1,4}\b/.test(p) && !/^\d{1,2}$|^(19|20)\d{2}/.test(p));
+    const mapa = MIG.carregar({ controle: o.controle });
+    const ok = mapa.anotar({ pasta: e.tipoDoc && e.tipoDoc !== 'AUTO' ? e.pasta : '', tipoDoc: e.tipoDoc && e.tipoDoc !== 'AUTO' ? e.tipoDoc : null, cliente: e.cliente, pastaDoCliente: iCli >= 0 ? partes[iCli] : null, por: e.por });
+    // o cadastro em memória passa a usar o mapa novo já na próxima volta
+    if (cache.cadastro) cache.cadastro.mapaMigracao = MIG.carregar({ controle: o.controle });
+    o.log('mapa da migração: ' + e.pasta + ' = cliente ' + e.cliente + (e.tipoDoc ? ', tipo ' + e.tipoDoc : '') + ' (decidido por ' + e.por + ')');
+    return ok;
   }
 
   async function compararSeForHora() {
@@ -766,7 +810,8 @@ function iniciar(opcoes) {
   // os pedidos do site do admin (Para resolver: abrir o arquivo, a prévia, arquivar em…, descartar; 23/10/2026)
   let pedidos = null;
   if (o.db && !o.umaVez) {
-    try { pedidos = require('./arquivador-pedidos').criar({ db: o.db, origem: o.origem, clientes: o.clientes, log: o.log, exclusivo, executar: executarDecisao, aposMudar: () => { void conferirNaoIdentificados(true).catch(e => o.log('não conferi NÃO IDENTIFICADOS:', e.message)); } }); }
+    try { pedidos = require('./arquivador-pedidos').criar({ db: o.db, origem: o.origem, clientes: o.clientes, log: o.log, exclusivo, executar: executarDecisao, aposMudar: () => { void conferirNaoIdentificados(true).catch(e => o.log('não conferi NÃO IDENTIFICADOS:', e.message)); },
+      grupo: id => gruposNi.get(id) || null, lembrar: lembrarGrupo }); }
     catch (e) { o.log('pedidos do site não ligaram:', e.message); }
     void garantirContexto().catch(e => o.log('contexto:', e.message));
   }
@@ -778,7 +823,7 @@ function iniciar(opcoes) {
     // para os testes: o ritmo e a varredura
     _medirRitmo: (v, a) => medirRitmo(v, a), _ritmo: () => ({ nivel: nivelRitmo, proximoCicloEm, folgados }),
     _listar: async (raiz) => { const out = []; for await (const p of andarEmFluxo(raiz || o.origem)) out.push(...p); return out; },
-    _mudados: () => mudados, _decididos: () => estado.decididos, _recentes: () => recentes,
+    _mudados: () => mudados, _decididos: () => estado.decididos, _recentes: () => recentes, _grupos: () => gruposNi, _conferirNaoIdentificados: f => conferirNaoIdentificados(f), _lembrar: e => lembrarGrupo(e),
     parar: () => { parado = true; if (pedidos) pedidos.parar(); if (timer) clearInterval(timer); clearTimeout(acordar); if (observador) observador.close(); soltarTrava(); void acomp.parar(); },
   };
 }

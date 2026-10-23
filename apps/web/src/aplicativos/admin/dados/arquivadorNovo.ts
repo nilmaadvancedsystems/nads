@@ -21,6 +21,8 @@ export interface MesCarregado { mes: string; carregado: boolean; erro: string; r
 /** Um pedido novo ao robô (o repositório põe quem pediu e a hora). */
 export interface NovoPedidoDoArquivador {
   tipo: entregas.TipoDoPedido; rel: string; hash: string; nome?: string; codigo?: number; tipoDoc?: string; competencia?: string;
+  /** o pedido de grupo: a decisão vira regra do mapa da migração (os próximos da mesma pasta saem sozinhos) */
+  lembrar?: boolean;
 }
 
 export interface RepoArquivadorNovo {
@@ -108,6 +110,15 @@ function vazioDoItem(): entregas.ItemDoArquivador {
     motivo: '', motivoTexto: '', sugestao: '', destinoSugerido: '', erro: '', erroTipo: '', erroTitulo: '', oQueFazer: '', naoAplicado: '', hash: '', naPasta: '', porQuem: '' };
 }
 
+/** Os grupos de Para resolver dos exemplos (a migração: as pastas antigas por cliente). */
+const GRUPOS_DE_EXEMPLO: entregas.GrupoParaResolver[] = [
+  { id: 'g-destda', motivo: 'TIPO_NAO_RECONHECIDO', motivoTexto: 'Tipo de documento desconhecido', pasta: '0010 - DORNAS HAVANA LTDA - ME\\DEPARTAMENTO FISCAL\\DES - BH', n: 312,
+    exemplos: ['12-2023.pdf', '01-2024.pdf', '02-2024.pdf'].map((nome, i) => ({ nome, rel: 'NÃO IDENTIFICADOS\\20261023-NOVO\\0010 - DORNAS HAVANA LTDA - ME\\DEPARTAMENTO FISCAL\\DES - BH\\' + nome, hash: 'gx' + i })), sugestao: { codigo: 10, tipoDoc: null } },
+  { id: 'g-escaneados', motivo: 'CONTEUDO_SEM_TEXTO', motivoTexto: 'Escaneado sem leitura', pasta: '0049 - POSTO DE COMBUSTIVEL ALTA FLORESTA LTDA - EPP\\DOCUMENTO CONSTITUTIVOS', n: 88,
+    exemplos: ['CNH Digital (22).pdf', 'contrato 2019.pdf', 'alteracao.pdf'].map((nome, i) => ({ nome, rel: 'NÃO IDENTIFICADOS\\20261023-NOVO\\0049 - POSTO\\' + nome, hash: 'gy' + i })), sugestao: { codigo: 49, tipoDoc: 'DOC_CONSTITUTIVO' } },
+  { id: 'g-ano', motivo: 'ANO_INDETERMINADO', motivoTexto: 'Sem o ano', pasta: '0055 - TORRA TORRA LTDA - ME\\CERTIDÕES', n: 41,
+    exemplos: ['CND - FEDERAL.pdf', 'CND ESTADUAL.pdf', 'FGTS.pdf'].map((nome, i) => ({ nome, rel: 'NÃO IDENTIFICADOS\\20261023-NOVO\\0055 - TORRA TORRA LTDA - ME\\CERTIDÕES\\' + nome, hash: 'gz' + i })), sugestao: { codigo: 55, tipoDoc: null } },
+];
 /** O painel de exemplo: a primeira passada (a pilha antiga da pasta) em andamento, em produção. */
 export function painelDeExemplo(agora = Date.now()): entregas.PainelDoArquivador {
   const ha = (min: number) => new Date(agora - min * 60000).toISOString();
@@ -155,6 +166,7 @@ export function painelDeExemplo(agora = Date.now()): entregas.PainelDoArquivador
     hoje: contagem(hojeLocal(agora), 1, { pastasNovas: ['593 - OFICINA BETA EXEMPLO ME', '591 - CLÍNICA EXEMPLO S/S'] }),
     mes: contagem(hojeLocal(agora).slice(0, 7), 1, { pastasNovas: ['593 - OFICINA BETA EXEMPLO ME', '591 - CLÍNICA EXEMPLO S/S'] }),
     ultimos, pendentes, erros,
+    grupos: GRUPOS_DE_EXEMPLO,
     alertas: [{ tipo: 'ocr', tom: 'aviso', titulo: 'Um PDF escaneado demorou mais de 1 minuto para ler', texto: 'A leitura por OCR é lenta nos escaneados grandes.', oQueFazer: 'Se a fila crescer, peça os PDFs originais em vez dos escaneados.' }],
     ladoALado: {
       dia: hojeLocal(agora - 864e5), rotinaArquivou: 214, iguais: 188, pastaIgualNomeDiferente: 14, diferentes: 5, novoNaoIdentificou: 4, novoNaoViu: 3,
@@ -291,6 +303,20 @@ export function criarArquivadorNovoMemoria(): RepoArquivadorNovo {
         if (n.tipo === 'descartar') {
           tirarDaLista(n.rel);
           responder(id, { ...base, status: 'feito', resposta: { acao: 'DESCARTAR', destino: 'QUARENTENA\\' + nome, nomeFinal: nome, situacao: '', pastaNova: '', copias: [], motivo: '', evidencias: ['descartado no nads (exemplo)'], cliente: '', clienteNome: '', tipo: 'DESCARTE' } });
+          return;
+        }
+        if (n.tipo === 'grupoPrevia' || n.tipo === 'grupo') {
+          const g = GRUPOS_DE_EXEMPLO.find(x => x.id === n.hash);
+          const tipoG = TIPOS_DE_EXEMPLO.find(t => t.id === n.tipoDoc);
+          if (!g || !tipoG || tipoG.id === 'AUTO') { responder(id, { ...base, status: 'erro', erro: g ? 'escolha o tipo (exemplo)' : 'o grupo não está mais em NÃO IDENTIFICADOS' }); return; }
+          const pastaG = n.codigo + ' - ' + nomeDe(n.codigo);
+          const vazia = { acao: '', destino: '', nomeFinal: '', situacao: '', pastaNova: '', copias: [], motivo: '', evidencias: [], cliente: String(n.codigo), clienteNome: nomeDe(n.codigo), tipo: tipoG.id };
+          if (n.tipo === 'grupoPrevia') {
+            const exemplos = g.exemplos.map(x => { const ano = (/(20\d{2})/.exec(x.nome) || [])[1] || (n.competencia || '').slice(0, 4); return { nome: x.nome, competencia: n.competencia || ano, destino: ano ? ano + '\\' + pastaG + '\\' + (PASTA_DE_EXEMPLO[tipoG.id] || ((c: string) => 'CONTÁBIL\\OUTROS DOCUMENTOS\\' + c.slice(-4) + '\\' + x.nome))('01-' + ano) : '', pastaNova: ano && ano !== '2026' ? ano + '\\' + pastaG : '', acao: ano ? 'ARQUIVAR' : 'NAO_IDENTIFICADO', erro: ano ? '' : 'sem o ano no nome nem nas pastas de origem: escolha a competência do grupo' }; });
+            responder(id, { ...base, status: 'pronto', resposta: { ...vazia, total: g.n, exemplos } });
+            return;
+          }
+          responder(id, { ...base, status: 'feito', resposta: { ...vazia, total: g.n, feitos: g.n, erros: 0, primeiroErro: '', lembrou: !!n.lembrar } });
           return;
         }
         const tipo = TIPOS_DE_EXEMPLO.find(t => t.id === n.tipoDoc);

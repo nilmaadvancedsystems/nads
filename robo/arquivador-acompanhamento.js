@@ -63,6 +63,11 @@ const MOTIVOS = {
   CONTEUDO_SEM_TEXTO: ['Escaneado sem leitura', 'É uma imagem sem texto e a leitura (OCR) não bastou. Peça o PDF original ao cliente ou arquive à mão.'],
   CONTEUDO_ILEGIVEL: ['Escaneado ilegível', 'A leitura (OCR) saiu ruim. Peça uma cópia melhor ou arquive à mão.'],
   CONFIANCA_ABAIXO_DO_LIMIAR: ['Pouca certeza', 'O robô achou um destino, mas sem certeza suficiente. Confira a sugestão e mova o arquivo, se estiver certa.'],
+  // a raiz pelo ano e a migração (23/10/2026)
+  ANO_INDETERMINADO: ['Sem o ano', 'Nem o documento nem as pastas de origem dizem o ano (a pasta G:\\Meu Drive\\<ano>). O robô não põe em 2026 por padrão: escolha o ano em "Arquivar em…".'],
+  ANO_FORA_DA_FAIXA: ['Ano fora da faixa', 'O ano do documento é antes de 2015 ou depois do ano atual. Confira a data e arquive à mão.'],
+  PASTA_DO_ANO_SEM_CNPJ: ['Pasta do ano sem o CNPJ', 'A pasta do cliente nesse ano ainda não existe e o arquivo não traz o CNPJ dele (a pasta só nasce com o CNPJ conferido). Arquive o grupo à mão: a pasta nasce e os próximos vão sozinhos.'],
+  PISTA_DA_PASTA_DIVERGE: ['Pasta e conteúdo divergem', 'A pasta de origem diz um cliente e o conteúdo diz outro. Abra o arquivo e escolha o certo.'],
   COMPETENCIA_AUSENTE: ['Sem a competência', 'Não achou o mês do documento. Ponha o mês no nome do arquivo (ex.: 01-2026) ou arquive à mão.'],
   VENCIMENTO_AUSENTE: ['Sem o vencimento', 'Não achou o vencimento da guia. Arquive à mão.'],
   VALOR_AUSENTE: ['Sem o valor', 'Não achou o valor do documento. Arquive à mão.'],
@@ -394,6 +399,7 @@ function criar(opcoes) {
       pendentesTotal: st.pendentesTotal == null ? st.pendentes.length : st.pendentesTotal,
       erros: st.erros,
       alertas: alertas(st, t),
+      grupos: st.grupos || [],
       ladoALado: st.ladoALado,
       historico: { dia: dia.chave, partes: dia.partes.length, itens: dia.partes.reduce((s, p) => s + p.length, 0) },
     };
@@ -564,6 +570,11 @@ function criar(opcoes) {
      */
     /** o Drive lento (23/10/2026): o texto do ritmo reduzido, ou null no ritmo normal */
     ritmo: seguro('ritmo', (texto) => { const t = texto || null; if (st.lento !== t) { st.lento = t; publicar(); } }),
+    /** os grupos de NÃO IDENTIFICADOS (23/10/2026): [{ id, motivo, pasta, n, exemplos, sugestao }], os maiores primeiro */
+    grupos: seguro('grupos', (gs) => {
+      const novos = (gs || []).map(g => ({ id: g.id, motivo: g.motivo, motivoTexto: motivoLegivel(g.motivo), pasta: corta(g.pasta, 260), n: g.n, exemplos: (g.exemplos || []).slice(0, 3).map(x => ({ nome: corta(x.nome, 140), rel: corta(x.rel, 400), hash: x.hash })), sugestao: g.sugestao || null }));
+      if (JSON.stringify(novos) !== JSON.stringify(st.grupos || [])) { st.grupos = novos; publicar(); }
+    }),
     /** a leitura da pasta agora (23/10/2026): { texto: "Lendo a pasta: 37.000 de ~100.000 arquivos · …", filas, porMinuto } ou null */
     leitura: seguro('leitura', (l) => { const antes = st.leitura && st.leitura.texto; st.leitura = l || null; if ((l && l.texto) !== antes) publicar(); }),
     naoIdentificados: seguro('naoIdentificados', (itens, existe, aoContar) => {

@@ -310,6 +310,8 @@ export function useArquivadorAdmin() {
     ritmo: p && p.ritmo > 0 ? mil(Math.round(p.ritmo * 10) / 10) + ' por minuto' : p ? 'parado agora' : '',
     resumo: p ? entregas.resumoDoDia(p) : '',
     alertas: p?.alertas ?? [],
+    // Para resolver em grupos (23/10/2026, a migração)
+    grupos: p?.grupos ?? [],
     // o que precisa da pessoa (o normal é tudo ser arquivado sozinho: a tela destaca só as exceções)
     excecoes: { resolver, erros: erros.length },
     botao,

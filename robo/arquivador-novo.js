@@ -66,6 +66,16 @@ function carregarCadastro(opcoes) {
   let pastas = [];
   try { pastas = fs.readdirSync(opcoes.clientes || CLIENTES, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name); } catch (e) { /* sem Drive: só a planilha */ }
   const cad = R.montarCadastro(linhas, pastas);
+  // as outras raízes de ano (23/10/2026: a raiz pelo ano da competência) e o mapa da migração (a pasta de origem como pista)
+  const porAno = new Map();
+  const raizes = path.dirname(opcoes.clientes || CLIENTES);
+  for (let ano = R.ANO_MINIMO; ano <= new Date().getFullYear(); ano++) {
+    if (ano === R.ANO_DAS_PASTAS) continue;
+    try { porAno.set(ano, fs.readdirSync(path.join(raizes, String(ano)), { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name)); } catch (e) { /* a raiz do ano ainda não existe */ }
+  }
+  let mapa = null;
+  try { mapa = require('./arquivador-migracao').carregar({ controle: opcoes.controle || CONTROLE }); } catch (e) { /* sem o mapa: só o conteúdo */ }
+  R.comAnosEMapa(cad, porAno, mapa);
   cad.divergencias = divergencias;
   cad.fonte = cache ? 'Cadastro do nads + Entregas (lido em ' + cache.em + '), planilha antiga só como reserva' : 'planilha da rotina antiga';
   return cad;
@@ -331,8 +341,16 @@ function conteudoDe(p, ctx) {
   }
   return ctx.hashes.get(k);
 }
+/** A raiz de um ano: a irmã da de clientes (G:\Meu Drive\2026 → G:\Meu Drive\2024); sem ano, a de clientes. */
+function raizDoAno(clientes, ano) {
+  if (!ano) return clientes;
+  const base = path.basename(clientes);
+  if (base === String(ano)) return clientes;
+  if (!/^\d{4}$/.test(base) && +ano === R.ANO_DAS_PASTAS) return clientes;   // raiz de teste sem o ano no nome
+  return path.join(path.dirname(clientes), String(ano));
+}
 function conferirDestino(d, hash, ctx, soNaPasta, hashXml) {
-  const pasta = path.join(ctx.clientes, d.destinoRelativo);
+  const pasta = path.join(d.raiz || ctx.clientes, d.destinoRelativo);
   // o índice de conteúdo (arquivador-conteudos.js; 23/10/2026): o mesmo conteúdo já arquivado NESTA pasta, sem abrir o destino
   if (ctx.conteudos) for (const onde of ctx.conteudos.achar(hash, hashXml)) {
     if (path.dirname(onde).toLowerCase() === pasta.toLowerCase() && !ctx.reservados.has(onde.toLowerCase()) && existe(onde, ctx)) return { situacao: 'JA_ARQUIVADO', nomeFinal: path.basename(onde), onde };
@@ -446,10 +464,14 @@ async function executar(opcoes) {
 
 async function decidirUm(nome, rel, buffer, ctx) {
   const entrada = await montarEntrada(nome, rel, buffer);
-  const d = ctx.manual && ctx.manual[rel] ? require('./arquivador-manual').decidirManual(entrada, ctx, ctx.manual[rel]) : R.decidir(entrada, ctx);
+  let d = ctx.manual && ctx.manual[rel] ? require('./arquivador-manual').decidirManual(entrada, ctx, ctx.manual[rel]) : R.decidir(entrada, ctx);
+  // a migração (23/10/2026): o que o conteúdo não decidiu, a pasta de origem pode decidir (o mapa da migração)
+  if (!(ctx.manual && ctx.manual[rel]) && d.acao === 'NAO_IDENTIFICADO') { try { const m = require('./arquivador-migracao').decidir(entrada, ctx, d); if (m) d = m; } catch (e) { d.evidencias = (d.evidencias || []).concat('mapa da migração: ' + e.message); } }
+  if (d.acao === 'ARQUIVAR') { d.raiz = raizDoAno(ctx.clientes, d.anoRaiz); for (const cp of d.copias || []) cp.raiz = raizDoAno(ctx.clientes, cp.anoRaiz || d.anoRaiz); }
   const item = { rel, nome, hash: entrada.hash, decididoPor: d.decididoPor || null, acao: d.acao, motivo: d.motivo || null, codigo: d.codigo || null, confianca: d.confianca, tipo: d.tipo || null, setor: d.setor || null,
     cliente: d.cliente || null, clienteNome: d.clienteNome || null, destinoRelativo: d.destinoRelativo || null, nomeFinal: d.nomeFinal || null, destinoSugerido: d.destinoSugerido || null,
-    criarPastaCliente: !!d.criarPastaCliente, pastaCliente: d.pastaCliente || null, evidencias: d.evidencias || [], fonte: d.fonte || null, ocr: entrada.ocr || null, copias: [], chave: d.chave || null };
+    criarPastaCliente: !!d.criarPastaCliente, pastaCliente: d.pastaCliente || null, evidencias: d.evidencias || [], fonte: d.fonte || null, ocr: entrada.ocr || null, copias: [], chave: d.chave || null,
+    anoRaiz: d.anoRaiz || null, raiz: d.raiz || null, pelaMigracao: d.pelaMigracao || null };
   if (d.acao === 'AGUARDANDO_ORIGINAL') item._buffer = buffer;   // para decidir de novo quando o original aparecer
   if (entrada.erroLeitura) item.evidencias.push('leitura do PDF: ' + entrada.erroLeitura);
   if (d.acao === 'ARQUIVAR') {
@@ -462,7 +484,7 @@ async function decidirUm(nome, rel, buffer, ctx) {
     if (c.nomeFinal !== d.nomeFinal && c.situacao === 'NOVO') item.evidencias.push('nome ocupado por outro conteúdo: numerado (Dicionário §2, E402)');
     // a mesma peça em outro cliente (NFS-e de honorários da Nilma: também no tomador)
     for (const cp of d.copias || []) {
-      const cc = conferirDestino({ destinoRelativo: cp.destinoRelativo, nomeFinal: cp.nomeFinal }, entrada.hash, ctx, true, hx);
+      const cc = conferirDestino({ destinoRelativo: cp.destinoRelativo, nomeFinal: cp.nomeFinal, raiz: cp.raiz }, entrada.hash, ctx, true, hx);
       item.copias.push(Object.assign({}, cp, { situacao: cc.situacao, nomeFinal: cc.nomeFinal, onde: cc.onde }));
     }
     const faltaAlgo = c.situacao === 'NOVO' || item.copias.some(cp => cp.situacao === 'NOVO');
@@ -571,12 +593,18 @@ async function aplicar(res, opcoes, ctx) {
     if (it.chave && ctx.chaves) ctx.chaves.anotar(it.chave, { onde: alvo, raiz: opcoes.clientes, fonte: 'arquivou' }, true);
     if (ctx.conteudos) ctx.conteudos.anotar([it.hash, it.conteudoXml], alvo);
     if (novaPasta && painel) painel.atividade('arquivamento', 'Criou a pasta do cliente ' + pastaCliente, 'CNPJ do documento conferido com o cadastro · ' + it.nome);
-    if (painel) painel.atividade('arquivamento', 'Arquivou ' + it.nome + ' em ' + (pastaCliente || ''), path.dirname(alvo).replace(opcoes.clientes, '').replace(/^\\/, '') + '\\' + path.basename(alvo));
+    if (painel) painel.atividade('arquivamento', 'Arquivou ' + it.nome + ' em ' + (pastaCliente || ''), path.dirname(alvo).replace(path.dirname(opcoes.clientes), '').replace(/^\\/, '') + '\\' + path.basename(alvo));
   };
-  const pastaNova = (pastaCliente, criar) => { const raiz = pastaCliente ? path.join(opcoes.clientes, pastaCliente) : null; return !!(criar && raiz && !fs.existsSync(raiz)); };
+  // a pasta do cliente que nasce (na raiz do ano do destino: G:\Meu Drive\<AAAA>\<cód> - <nome>)
+  const pastaNova = (alvo, pastaCliente, criar) => {
+    if (!criar || !pastaCliente) return false;
+    const a = String(alvo), i = a.toLowerCase().indexOf('\\' + pastaCliente.toLowerCase() + '\\');
+    const raiz = i >= 0 ? a.slice(0, i + 1 + pastaCliente.length) : path.join(opcoes.clientes, pastaCliente);
+    return !fs.existsSync(raiz);
+  };
   /** Grava uma cópia num destino (uma das cópias, o de dentro de um .zip, a origem em outro disco): confere o hash. */
   const gravar = (it, buffer, alvo, cliente, pastaCliente, criar) => {
-    const novaPasta = pastaNova(pastaCliente, criar);
+    const novaPasta = pastaNova(alvo, pastaCliente, criar);
     fs.mkdirSync(path.dirname(alvo), { recursive: true });
     fs.writeFileSync(alvo, buffer, { flag: 'wx' });                         // 'wx': falha se já existir — nunca sobrescreve
     if (sha(fs.readFileSync(alvo)) !== it.hash) throw new Error('hash não confere depois da cópia: ' + alvo);
@@ -595,7 +623,7 @@ async function aplicar(res, opcoes, ctx) {
   const moverParaODestino = async (it) => {
     const de = path.join(opcoes.origem, it.rel), alvo = it.onde;
     igualAoLido(it, de);
-    const novaPasta = pastaNova(it.pastaCliente, it.criarPastaCliente);
+    const novaPasta = pastaNova(alvo, it.pastaCliente, it.criarPastaCliente);
     fs.mkdirSync(path.dirname(alvo), { recursive: true });
     if (fs.existsSync(alvo)) throw new Error('o destino apareceu no meio da execução: ' + alvo + ' (o original ficou)');
     await fs.promises.rename(de, alvo);

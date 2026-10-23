@@ -139,7 +139,10 @@ const ofx = '<OFX><BANKACCTFROM><BANKID>0237<ACCTID>33229</BANKACCTFROM><BANKTRA
 const cad2 = R.montarCadastro(LINHAS.concat({ codigo: 591, razao: 'ZELO AGROINDUSTRIAS LTDA', doc: '53.636.418/0001-56', regime: 'Simples' }), PASTAS.concat('591 - ZELO'));
 d = R.decidir({ nome: 'x.ofx', rel: 'x.ofx', ofx }, { cadastro: cad2 });
 igual('OFX: conta confirmada no 03 (Bradesco 33229 → 591), sempre Bancários com .ofx', d.destinoRelativo + '\\' + d.nomeFinal, '591 - ZELO\\CONTÁBIL\\EXTRATOS\\2026\\08\\BANCÁRIOS\\BRADESCO\\08-2026.ofx');
-igual('certificado .pfx: cliente pelo CNPJ do nome, nome original (04b)', decidir({ nome: 'JANIO_06934601000158.pfx' }).destinoRelativo, '152 - JANIO JOSE DE ALMEIDA\\SOCIETÁRIO\\CERTIFICADO DIGITAL');
+igual('certificado .pfx: cliente pelo CNPJ do nome, nome original (04b)', decidir({ nome: 'JANIO_06934601000158.pfx', rel: '2026-10\\JANIO_06934601000158.pfx' }).destinoRelativo, '152 - JANIO JOSE DE ALMEIDA\\SOCIETÁRIO\\CERTIFICADO DIGITAL');
+// a raiz pelo ano (Vitor, 23/10/2026): sem a competência nem o ano na pasta de origem, não vai para 2026 por padrão
+d = decidir({ nome: 'JANIO_06934601000158.pfx' });
+igual('certificado sem ano na pasta: NÃO IDENTIFICADOS (ANO_INDETERMINADO), nunca 2026 por padrão', [d.acao, d.motivo], ['NAO_IDENTIFICADO', 'ANO_INDETERMINADO']);
 igual('vídeo é ignorado (Dicionário §1)', decidir({ nome: 'reuniao.mp4' }).acao, 'IGNORAR');
 igual('imagem/Word: sem regra → NAO_IDENTIFICADO', decidir({ nome: 'foto.jpg' }).motivo, 'FORMATO_SEM_REGRA');
 d = decidir({ nome: 'vendas.csv', planilha: [['Nome Cliente', 'Data da Transação', 'Bandeira', 'Valor Bruto', 'Valor Taxa', 'Valor Líquido'], ['ADERLEI DOS SANTOS & CIA LTDA', '20/01/2026 16:11', 'Visa', 100, 1, 99], ['ADERLEI DOS SANTOS & CIA LTDA', '21/01/2026 10:00', 'Elo', 50, 1, 49]] });

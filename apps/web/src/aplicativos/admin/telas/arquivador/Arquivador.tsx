@@ -6,7 +6,8 @@
 // Só peças do catálogo: o topo do arquivador, as abas sublinhadas, o número do painel, a rosca com legenda, o ranking com a
 // marca, a lista com o detalhe ao lado, o ícone do arquivo, os dados em linhas, a busca, a seleção, o Alerta e o Vazio.
 import { Alerta, Dica, Esqueleto, Icone, RoscaComLegenda, Segmentado, Vazio, useCarregando } from '@nads/ui';
-import { useEffect, useRef, type ReactNode } from 'react';
+import type { entregas } from '@nads/core';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ArquivarEm } from './partes/ArquivarEm';
 import { DetalheDoArquivo } from './partes/DetalheDoArquivo';
 import { LinhaDoArquivo, ListaComDetalhe } from './partes/ListaComDetalhe';
@@ -15,6 +16,7 @@ import { TopoDoArquivador } from './partes/TopoDoArquivador';
 import { VisorDoArquivo } from './partes/VisorDoArquivo';
 import { useArquivadorAdmin, type AbaDoArquivador } from './useArquivadorAdmin';
 import { useResolver } from './useResolver';
+import { useGrupos } from './useGrupos';
 
 type Vm = ReturnType<typeof useArquivadorAdmin>;
 const TOM_DO_NUMERO = { ok: 'painel-ok', aviso: 'painel-aviso', erro: 'painel-laranja', neutro: 'painel-neutro' } as const;
@@ -184,6 +186,47 @@ function Lista({ vm, titulo, dica, vazio }: { vm: Vm; titulo: string; dica: stri
  * Descartar; o visor por cima. Tudo pedido ao robô do PC.
  */
 function Resolver({ vm }: { vm: Vm }) {
+  // um a um (a lista de sempre) ou em grupos (pela causa e pela pasta de origem; 23/10/2026, a migração)
+  const [modo, setModo] = useState<'um' | 'grupos'>('um');
+  const grupos = vm.grupos;
+  const escolha = grupos.length > 0 && (
+    <span className="card-head-ctl"><Segmentado valor={modo} opcoes={[{ valor: 'um', rotulo: 'Um a um' }, { valor: 'grupos', rotulo: 'Em grupos · ' + grupos.length.toLocaleString('pt-BR') }]} onMudar={setModo} /></span>
+  );
+  if (modo === 'grupos' && grupos.length) return <ResolverEmGrupos grupos={grupos} escolha={escolha} />;
+  return <ResolverUmAUm vm={vm} escolha={escolha} />;
+}
+
+/** Para resolver em grupos: a lista dos grupos (os maiores primeiro), o detalhe com os exemplos e o Arquivar o grupo em…. */
+function ResolverEmGrupos({ grupos, escolha }: { grupos: readonly entregas.GrupoParaResolver[]; escolha: ReactNode }) {
+  const g = useGrupos(grupos);
+  const linhas = g.grupos.map(x => ({
+    id: x.id, nome: x.n.toLocaleString('pt-BR') + (x.n === 1 ? ' arquivo · ' : ' arquivos · ') + x.motivoTexto, formato: 'ZIP' as const, apoio: x.pasta,
+    selo: { rotulo: x.sugestao?.codigo != null ? 'Cliente ' + x.sugestao.codigo : 'Sem sugestão', tom: (x.sugestao?.codigo != null ? 'ok' : 'neutro') as 'ok' | 'neutro' },
+    confianca: '', tomConfianca: 'neutro' as const, hora: '', andamento: g.andamento(x.id),
+  }));
+  const a = g.aberto;
+  const detalhe = a ? (
+    <div className="arq-detalhe">
+      <h4>{a.n.toLocaleString('pt-BR')} {a.n === 1 ? 'arquivo' : 'arquivos'} · {a.motivoTexto}</h4>
+      <p className="fraco arq-grupo-pasta">{a.pasta}</p>
+      <ul className="arq-grupo-exemplos">{a.exemplos.map(x => <li key={x.rel}><Icone nome="arquivo" width={14} height={14} /> {x.nome}</li>)}</ul>
+      {a.sugestao && <p className="hint">Sugestão: {a.sugestao.codigo != null ? 'cliente ' + a.sugestao.codigo + ' (pela pasta de origem)' : ''}{a.sugestao.codigo != null && a.sugestao.tipoDoc ? ' · ' : ''}{a.sugestao.tipoDoc ? 'tipo ' + a.sugestao.tipoDoc + ' (pelo mapa da migração)' : ''}</p>}
+      {g.formulario && <ArquivarEm f={g.formulario} />}
+    </div>
+  ) : null;
+  return (
+    <div className="card">
+      <div className="card-head">
+        <h3>Para resolver em grupos<Dica texto="Os não identificados da mesma causa e da mesma pasta de origem juntos, os maiores primeiro. Escolha o cliente e o tipo para o grupo inteiro: a competência sai do nome ou das pastas de cada arquivo, o robô mostra 3 exemplos antes e, com Lembrar, os próximos da mesma pasta vão sozinhos." /></h3>
+        {escolha}
+      </div>
+      <ListaComDetalhe rotulo="Grupos para resolver" linhas={linhas} aberto={a?.id ?? ''} onAbrir={id => g.abrir(id)} onFechar={g.fechar} detalhe={detalhe}
+        vazio={<Vazio compacto icone="checkCircle" titulo="Nenhum grupo para resolver" texto="O robô arquivou tudo sozinho." />} />
+    </div>
+  );
+}
+
+function ResolverUmAUm({ vm, escolha }: { vm: Vm; escolha: ReactNode }) {
   const r = useResolver(vm.pendentes);
   const linhas = vm.linhas.filter(l => !r.feitos.has(l.id)).map(l => ({ ...l, andamento: r.andamento(l.id) }));
   const x = vm.itemBruto && !r.feitos.has(vm.itemBruto.id) && vm.pendentes.some(p => p.id === vm.itemBruto!.id) ? vm.itemBruto : null;
@@ -220,6 +263,7 @@ function Resolver({ vm }: { vm: Vm }) {
       <div className="card-head">
         <h3>Para resolver<Dica texto="Os arquivos que o robô não arquivou sozinho, os mais novos primeiro, com o motivo e o que fazer. Abra o arquivo, escolha o cliente, o tipo e a competência (o robô mostra o destino antes de arquivar) ou descarte; marque vários para fazer em lote. Tudo vai como pedido ao robô do PC." /></h3>
         {vm.pendentes.length > linhas.length && <span className="card-head-ctl fraco">{vm.pendentes.length - linhas.length} resolvido(s) agora</span>}
+        {escolha}
       </div>
       <ListaComDetalhe rotulo="Para resolver" linhas={linhas} aberto={x?.id ?? ''} onAbrir={id => vm.abrir(id)}
         onFechar={() => { if (f) f.fechar(); vm.abrir(null); }} detalhe={detalhe} topo={topo} marcar={{ marcados: r.marcados, alternar: r.alternar }}
