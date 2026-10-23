@@ -23,16 +23,16 @@ export function PagamentosDoProLabore({ empresa, codigo, contaDoItem, travado }:
       )}
       {vm.temRazao && (vm.qtd ? (
         <>
-          {/* a conta do crédito digitada (Vitor, 14/10/2026: "não de selecionar, só o input") */}
-          <input type="text" inputMode="numeric" placeholder="Conta" aria-label="Conta do crédito" title="O código da conta do crédito (ex.: 10101)"
-            value={vm.conta} disabled={travado} onChange={e => vm.digitarConta(e.target.value)} onBlur={vm.salvarConta}
+          {/* a conta do crédito digitada (Vitor, 14/10/2026: "não de selecionar, só o input"); sem ela, o baixar fica travado (Vitor, 23/10/2026) */}
+          <input type="text" inputMode="numeric" placeholder="Conta" aria-label="Conta do crédito" title={vm.faltaConta ? 'Digite a conta do crédito para poder baixar' : 'O código da conta do crédito (ex.: 10101)'}
+            value={vm.conta} disabled={travado} aria-invalid={vm.faltaConta || undefined} onChange={e => vm.digitarConta(e.target.value)} onBlur={vm.salvarConta}
             onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: 96 }} />
           {travado
             ? <button type="button" className="btn btn-outline" disabled>{vm.diaUtil}º dia útil</button>
             : <MenuSuspenso rotulo={vm.diaUtil + 'º dia útil'} className="btn btn-outline" dica="O dia útil do pagamento, no mês seguinte à competência" largura={160}
               itens={[1, 2, 3, 4, 5].map(n => ({ rotulo: n + 'º dia útil', marcado: vm.diaUtil === n, onClick: () => vm.escolherDiaUtil(n) }))} />}
           <button type="button" className="icon-btn icon-btn-sm" disabled={travado || !vm.podeExportar} onClick={vm.baixarXls}
-            title={vm.podeExportar ? 'Importar no meu Sistema: o .xls do Alterdata com ' + vm.qtd + ' pagamentos (' + vm.total + ')' : 'Escolha a conta do crédito'}
+            title={vm.podeExportar ? 'Importar no meu Sistema: o .xls do Alterdata com ' + vm.qtd + ' pagamentos (' + vm.total + ')' : vm.faltaConta ? 'Digite a conta do crédito para baixar' : 'Nada para baixar'}
             aria-label="Importar no meu Sistema"><Icone nome="download" /></button>
         </>
       ) : <span className="hint">O razão já zera</span>)}
