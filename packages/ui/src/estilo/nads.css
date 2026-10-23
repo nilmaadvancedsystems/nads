@@ -4789,9 +4789,7 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .fin-painel .card>h3{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
 .fin-painel .card>h3 .steps{margin:0;}
 .fin-conc-arquivo{min-width:260px;}
-/* Financeiro › Importar extrato (23/10/2026): o nome do banco na barra, as linhas da prévia e os botões */
-.fin-banco{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-13);}
-.fin-banco .field{width:160px;margin:0;}
+/* Financeiro › Importar extrato (23/10/2026): as linhas da prévia e os botões */
 .fin-extrato-linhas{max-height:420px;overflow:auto;}
 .fin-extrato-acoes{margin-top:12px;padding:0;}
 .fin-painel-dica{margin:-8px 0 0;}

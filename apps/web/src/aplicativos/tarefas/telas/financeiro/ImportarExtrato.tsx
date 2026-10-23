@@ -1,9 +1,9 @@
 // Financeiro › Importar extrato (23/10/2026: "a parte de conciliação não vai existir, ela vai se tornar um importador de
-// extrato que vai trazer os dados e informações para o dashboard inicial"): o banco e o arquivo na barra; a prévia do
+// extrato que vai trazer os dados e informações para o dashboard inicial"): o banco (Sicoob ou Efí) e o arquivo na barra; a prévia do
 // extrato lido (os números, as linhas, as que já estavam) e Importar; embaixo, as importações feitas, com Desfazer. O que
 // se importa vai para o Painel (as entradas, as saídas e o saldo do banco), à parte do Caixa. Só as peças do catálogo
-// (CampoArquivo, Stat, Cartão, Tabela, badge, Vazio).
-import { CampoArquivo, Icone, Stat, useCarregando, Vazio } from '@nads/ui';
+// (Segmentado, CampoArquivo, Stat, Cartão, Tabela, badge, Vazio).
+import { CampoArquivo, Icone, Segmentado, Stat, useCarregando, Vazio } from '@nads/ui';
 import { useImportarExtrato } from './useImportarExtrato';
 
 export function ImportarExtrato() {
@@ -13,11 +13,7 @@ export function ImportarExtrato() {
   return (
     <section className="fin-painel">
       <div className="tarefas-barra-topo fin-barra">
-        <label className="fin-banco">
-          <span className="fraco">Banco</span>
-          <input className="field" list="fin-bancos" placeholder="Sicoob, Efí…" value={vm.banco} onChange={e => vm.setBanco(e.target.value)} aria-label="O banco do extrato" />
-          <datalist id="fin-bancos">{vm.bancos.map(b => <option key={b} value={b} />)}</datalist>
-        </label>
+        <Segmentado valor={vm.banco} opcoes={vm.bancos} onMudar={vm.setBanco} />
         <span className="fin-conc-arquivo"><CampoArquivo arquivo={vm.arquivo} onEscolher={f => void vm.escolher(f)} aceitar=".pdf,.ofx,.xlsx,.xls,.csv,.txt,.jpg,.jpeg,.png" /></span>
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
