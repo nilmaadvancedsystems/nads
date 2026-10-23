@@ -5061,15 +5061,17 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .fat-linha:hover td{background:var(--hover-bg);}
 .fat-nome-btn{border:none;background:none;padding:0;font:inherit;color:var(--ink);cursor:pointer;text-align:left;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
 .fat-linha:hover .fat-nome-btn{text-decoration:underline;}
-.modal.fat-detalhe{width:min(1100px,calc(100vw - 32px));max-width:none;max-height:calc(100vh - 48px);overflow:auto;display:flex;flex-direction:column;gap:14px;padding:18px 20px;}
+/* a janela do faturamento detalhado na tela inteira, com os blocos um embaixo do outro (23/10/2026: "não tá usando o
+   layout da tela inteira, e não gostei desse layout side by side") */
+.modal.fat-detalhe{width:calc(100vw - 32px);max-width:none;height:calc(100vh - 32px);max-height:none;overflow:auto;display:flex;flex-direction:column;gap:14px;padding:18px 24px;}
 .fat-detalhe-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
 .fat-detalhe p{padding:0;}
 .fat-detalhe-topo h3{margin:0;padding:0;border:none;font-size:var(--fs-16,16px);}
 .fat-detalhe-topo p{margin:4px 0 0;font-size:var(--fs-13,13px);}
 .fat-detalhe .stat-grid{margin:0;}
-.fat-detalhe-corpo{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:14px;align-items:start;}
+.fat-detalhe-corpo{display:flex;flex-direction:column;gap:14px;}
 .fat-detalhe .card{margin:0;}
-.fat-detalhe-meses .table-wrap{max-height:420px;overflow:auto;}
+.fat-detalhe-meses .table-wrap{max-height:none;overflow:auto;}
 .fat-mes{cursor:pointer;}
 .fat-mes:hover td{background:var(--hover-bg);}
 .fat-mes-escolhido td{background:var(--surface-2);}
@@ -5084,7 +5086,7 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .fat-destaque b{font-size:var(--fs-14,14px);}
 @media (max-width:900px){.fat-detalhe-corpo{grid-template-columns:1fr;}}
 /* Fiscal › Simples: a calculadora do Simples Nacional (22/10/2026) */
-.simples-calc{display:flex;flex-direction:column;gap:12px;max-width:1040px;}
+.simples-calc{display:flex;flex-direction:column;gap:12px;}
 .simples-calc-tabela{max-height:none;}
 .simples-calc-faixas{border:1px solid var(--border);border-radius:6px;overflow:hidden;}
 .simples-calc-faixas > .imp-faixa:first-child{border-top:none;}
