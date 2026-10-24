@@ -14,7 +14,9 @@
     { "pasta": "PARCELAMENTO", "tipoDoc": "PARCELAMENTO" },
     { "pasta": "DOCUMENTO CONSTITUTIVOS", "tipoDoc": "DOC_CONSTITUTIVO" },
     { "pasta": "DOCUMENTOS CONSTITUTIVOS", "tipoDoc": "DOC_CONSTITUTIVO" },
-    { "pasta": "CERTIFICADO DIGITAL", "tipoDoc": "CERTIFICADO_DIGITAL" }
+    { "pasta": "CERTIFICADO DIGITAL", "tipoDoc": "CERTIFICADO_DIGITAL" },
+    { "pasta": "EXTRATOS", "tipoDoc": "EXTRATO", "nome": "EXTRAT" },
+    { "pasta": "EXTRATOS BANCARIOS", "tipoDoc": "EXTRATO", "nome": "EXTRAT" }
   ],
   "clientes": [
     { "pasta": "413 BRAZILIAN FILIAIS 414. 418. 453", "cliente": null, "porque": "a matriz e as filiais na mesma pasta: o cliente só pelo conteúdo" },

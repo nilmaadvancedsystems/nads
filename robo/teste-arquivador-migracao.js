@@ -59,6 +59,8 @@ igual('ano antes de 2015: NÃO IDENTIFICADOS', [d.acao, d.motivo], ['NAO_IDENTIF
 d = R.decidir({ nome: 'contrato.pdf', rel: '0010 - DORNAS HAVANA LTDA - ME\\DOCUMENTO CONSTITUTIVOS\\contrato.pdf', texto: ['CONTRATO SOCIAL\nDORNAS HAVANA LTDA\nCNPJ 36.462.778/0001-60'] }, ctx);
 igual('sem competência nem ano na pasta: NÃO IDENTIFICADOS (nunca 2026 por padrão)', [d.acao, d.motivo, d.cliente], ['NAO_IDENTIFICADO', 'ANO_INDETERMINADO', 10]);
 
+// a pasta EXTRATOS só dá EXTRATO ao arquivo com "extrato" no nome
+igual('mapa: "…\\EXTRATOS\\2022\\01\\Extrato bb 01.2022.pdf" = EXTRATO; o comprovante na mesma pasta, não', [(mapa.tipoDaOrigem('0010 - DORNAS\\EXTRATOS\\2022\\01\\Extrato bb 01.2022.pdf') || {}).tipoDoc, mapa.tipoDaOrigem('0010 - DORNAS\\EXTRATOS\\2022\\01\\Comprovante pix.pdf')], ['EXTRATO', null]);
 // as declarações anuais na raiz do ano da ENTREGA (Vitor, 23/10/2026: "a DEFIS de 2025 entregue em 2026 vai para 2026")
 const anual = (tipo, comp, anoEntrega) => R.finalizar({ acao: 'ARQUIVAR', cliente: 10, comoCliente: 'doc', confianca: 0.97, tipo, caminho: ['FISCAL', 'SIMPLES NACIONAL', '14. DEFIS'], nomeFinal: 'x.pdf', competencia: comp, anoEntrega, evidencias: [] }, { cadastro: montar(), hoje: new Date(2026, 9, 23) }).anoRaiz;
 igual('DEFIS de 2025: raiz de 2026 (a entrega); a de 2021: 2022; com o recibo de 2023: 2023; a mensal fica no ano dela', [anual('DEFIS', { ano: 2025 }), anual('DEFIS', { ano: 2021 }), anual('DEFIS', { ano: 2021 }, 2023), anual('BALANCETE', { ano: 2024, mes: 9 })], [2026, 2022, 2023, 2024]);

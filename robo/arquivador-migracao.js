@@ -41,7 +41,9 @@ function carregar(opcoes) {
     /** O tipo pela pasta de origem: { tipoDoc, pasta } ou null. */
     tipoDaOrigem(rel) {
       const caminho = partesSemData(rel).join('\\');
-      for (const t of tipos) { const i = caminho.indexOf(t._k); if (i >= 0 && (i === 0 || caminho[i - 1] === '\\') && (caminho.length === i + t._k.length || caminho[i + t._k.length] === '\\')) return { tipoDoc: t.tipoDoc, pasta: t.pasta, porque: t.porque || 'mapa da migração' }; }
+      // "nome": só quando o nome do arquivo tem o texto (ex.: a pasta EXTRATOS só dá EXTRATO ao "Extrato bb 01.2022.pdf")
+      const nomeArq = R.norm(path.win32.basename(String(rel || '')));
+      for (const t of tipos) { if (t.nome && !nomeArq.includes(R.norm(t.nome))) continue; const i = caminho.indexOf(t._k); if (i >= 0 && (i === 0 || caminho[i - 1] === '\\') && (caminho.length === i + t._k.length || caminho[i + t._k.length] === '\\')) return { tipoDoc: t.tipoDoc, pasta: t.pasta, porque: t.porque || 'mapa da migração' }; }
       return null;
     },
     /** undefined = o mapa não fala desta pasta; null = ela não dá o cliente; { cliente, porque } */
@@ -64,7 +66,8 @@ function carregar(opcoes) {
 }
 
 // o que o conteúdo não decidiu e a pasta de origem pode decidir
-const SEM_DECISAO_PELO_CONTEUDO = new Set(['TIPO_NAO_RECONHECIDO', 'CONTEUDO_SEM_TEXTO', 'CONTEUDO_ILEGIVEL', 'FORMATO_SEM_REGRA', 'COMPETENCIA_AUSENTE']);
+// CONTRATO_SEM_NUMERO: o extrato do BB que as regras leram como contrato (23/10/2026: 64 na pasta EXTRATOS, "Extrato bb 01.2022.pdf")
+const SEM_DECISAO_PELO_CONTEUDO = new Set(['TIPO_NAO_RECONHECIDO', 'CONTEUDO_SEM_TEXTO', 'CONTEUDO_ILEGIVEL', 'FORMATO_SEM_REGRA', 'COMPETENCIA_AUSENTE', 'CONTRATO_SEM_NUMERO']);
 
 /**
  * A decisão pela pasta de origem para o que as regras deixaram em NAO_IDENTIFICADO. entrada: a das regras ({ nome, rel,
