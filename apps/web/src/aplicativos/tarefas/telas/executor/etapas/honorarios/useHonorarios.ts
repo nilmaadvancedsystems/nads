@@ -24,7 +24,8 @@ export function useHonorarios() {
   const { aviso } = useRetorno();
   const op = useOperador().operador;
   const vivo = useCadastro(s.nome, s.codigo);
-  const razao = useRazaoDaFolha('honorarios', s.nome + '|honorarios|' + s.meses.join(','), s.meses, s.nome);
+  // só importado (Vitor, 26/10/2026: "deixa só importado, às vezes o cliente não paga"): o razão não precisa zerar
+  const razao = useRazaoDaFolha('honorarios', s.nome + '|honorarios|' + s.meses.join(','), s.meses, s.nome, true);
   const chave = s.nome + '|' + s.meses.join(',');
   // o extrato por cobrança e as contas ficam guardados (Vitor, 15/10/2026: voltou, está onde parou)
   const [extrato, setExtrato] = useGuardado<{ chave: string; arquivo: string; cobrancas: t.CobrancaDeHonorario[] } | null>('honorarios-extrato|' + chave, null);
@@ -127,16 +128,10 @@ export function useHonorarios() {
     else razao.teste[+id.slice(1)]?.onClick();
   });
 
-  // baixou a planilha (Vitor, 16/10/2026: "o cara baixou a planilha, pode prosseguir"): o saldo do razão se corrige com ela
-  const corrigidoPelaPlanilha = baixado && !!e;
-  const faltam = [
-    ...(!razao.temRazao ? ['Importar o razão do Honorários a pagar'] : []),
-    ...(corrigidoPelaPlanilha ? [] : razao.sobras.map(x => 'O honorário de antes não zerou em ' + x.mes + ' (sobrou ' + x.valor + ')')),
-    ...(!corrigidoPelaPlanilha && razao.devedores.length ? ['Corrigir o saldo devedor do Honorários a pagar em ' + razao.devedores.join(', ')] : []),
-    ...(emiteNota === null ? ['Informar se o escritório emite nota de honorário para a empresa'] : []),
-    ...(emiteNota === false && !e ? ['Importar o Extrato por cobrança (PDF do Alterdata)'] : []),
-  ];
-  useRequisitosDaEtapa({ pronto: emiteNota !== undefined && !faltam.length, faltam });
+  // só o razão importado (Vitor, 26/10/2026: "deixa só importado, às vezes o cliente não paga"): o zerar, o saldo devedor,
+  // a nota de honorário e o Extrato por cobrança não cobram mais; o extrato continua aqui para gerar os lançamentos
+  const faltam = !razao.temRazao ? ['Importar o razão do Honorários a pagar'] : [];
+  useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
 
   return {
     dev: s.dev, razao,
