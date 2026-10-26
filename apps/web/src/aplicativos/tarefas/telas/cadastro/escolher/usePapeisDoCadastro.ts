@@ -36,7 +36,6 @@ export function usePapeisDoCadastro(linhas: readonly LinhaEmpresa[]) {
   // a competência de trabalho da tela (em outubro, o movimento de setembro)
   const [competencia, setCompetencia] = useState(() => competenciasDaTela(1)[0]);
   const [departamento, setDepartamento] = useState<t.DepartamentoDoEnvelope>('Fiscal');
-  const [porPagina, setPorPagina] = useState<t.EnvelopesPorPagina>(2);
   const [caixa, setCaixa] = useState<TextoDaCaixa>('tipo');
   const [grupoId, setGrupoId] = useState(t.GRUPOS_DO_PROTOCOLO[0].id);
   const [preencher, setPreencher] = useState(true);
@@ -115,15 +114,12 @@ export function usePapeisDoCadastro(linhas: readonly LinhaEmpresa[]) {
     ? execucoesDoDp.porMes.reduce((n, m) => n + m.execucoes.filter(ex => t.estadoDa(ex, 'dp-reinf')?.situacao === 'feita').length, 0) : 0;
 
   const textoDaCaixa = (regime: string) => (caixa === 'branco' ? '' : caixa === 'tipo' ? t.tipoNaEtiqueta(regime, departamento) : caixa === 'regime' ? regime : t.regimeAbreviado(regime));
-  const paginas = aberto === 'etiquetas' ? t.paginasDosEnvelopes(escolhidas.length, porPagina) : 0;
   return {
     aberto,
     abrir: (p: PapelDoCadastro) => { setDesmarcadas(new Set()); setAberto(p); },
     fechar: () => setAberto(null),
     competencia, setCompetencia,
     departamento, setDepartamento, departamentos: t.DEPARTAMENTOS_DO_ENVELOPE.map(d => ({ valor: d, rotulo: d })),
-    porPagina, setPorPagina: (v: string) => setPorPagina(Number(v) as t.EnvelopesPorPagina),
-    porPaginaOpcoes: t.ENVELOPES_POR_PAGINA.map(n => ({ valor: String(n), rotulo: String(n) })),
     caixa, setCaixa, textosDaCaixa: TEXTOS_DA_CAIXA,
     grupo, setGrupo: (id: string) => { setGrupoId(id); setDesmarcadas(new Set()); },
     grupos: t.GRUPOS_DO_PROTOCOLO.map(g => ({ valor: g.id, rotulo: g.rotulo })),
@@ -140,14 +136,13 @@ export function usePapeisDoCadastro(linhas: readonly LinhaEmpresa[]) {
     /** as empresas da janela, com a marca e o texto da caixa */
     empresas: candidatas.map(l => ({ chave: l.chave, codigo: l.codigo, nome: l.nome, regime: l.regime, marcada: !desmarcadas.has(l.chave), caixa: textoDaCaixa(l.regime) })),
     quantas: escolhidas.length,
-    paginas,
     alternar: (chave: string) => setDesmarcadas(s => { const n = new Set(s); if (n.has(chave)) n.delete(chave); else n.add(chave); return n; }),
     marcarTodas: () => setDesmarcadas(new Set()),
     desmarcarTodas: () => setDesmarcadas(new Set(candidatas.map(l => l.chave))),
     imprimir() {
       if (!escolhidas.length) return;
       if (aberto === 'etiquetas') {
-        imprimirHtml(t.htmlDosEnvelopes({ competencia, departamento, porPagina, logo: logoNilmaParaImprimir('branca'),
+        imprimirHtml(t.htmlDosEnvelopes({ competencia, departamento, logo: logoNilmaParaImprimir('branca'),
           etiquetas: escolhidas.map(l => ({ codigo: l.codigo, nome: l.nome, caixa: textoDaCaixa(l.regime) })) }));
         toast(escolhidas.length + (escolhidas.length === 1 ? ' etiqueta pronta' : ' etiquetas prontas') + ': escolha a impressora');
       } else if (aberto === 'extratos') {
