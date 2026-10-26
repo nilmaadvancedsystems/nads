@@ -1696,7 +1696,8 @@ td.cad-acoes .menu-seta{display:none;}
 .cad-banco-qtd{position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--ink);color:var(--surface);
   font-size:10px;font-weight:700;line-height:16px;text-align:center;}
 /* a lista ocupa a tela até embaixo e rola por dentro, com o cabeçalho preso (26/10/2026: "caber na tela inteira e não fica flutuando") */
-.cad-lista-rolagem{max-height:calc(100vh - 190px);overflow:auto;}
+/* uma rolagem só, a da página (26/10/2026: "pra que 2 scrolls?"): a tabela não rola por dentro; o cabeçalho fica preso no topo */
+.cad-lista-rolagem{overflow:visible;max-height:none;}
 .cad-lista-rolagem .cad-lista{width:100%;}
 .cad-lista th:nth-child(4),.cad-lista td:nth-child(4){min-width:210px;}
 .cad-lista th:last-child,.cad-lista td:last-child{width:1%;white-space:nowrap;}
